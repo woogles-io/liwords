@@ -18,10 +18,14 @@ import {
   PlayedTiles,
   PlayerOfTiles,
 } from '../../utils/cwgame/common';
-import { EnglishCrosswordGameDistribution } from '../../constants/tile_distributions';
 import { PlayerOrder } from '../constants';
 import { ClockController, Millis } from '../timer_controller';
 import { ThroughTileMarker } from '../../utils/cwgame/game_event';
+import {
+  Alphabet,
+  alphabetFromName,
+  StandardEnglishAlphabet,
+} from '../../constants/alphabets';
 
 type TileDistribution = { [rune: string]: number };
 
@@ -50,7 +54,7 @@ const initialExpandToFull = (playerList: PlayerInfo[]): RawPlayerInfo[] => {
 export type GameState = {
   board: Board;
   // The initial tile distribution:
-  tileDistribution: TileDistribution;
+  alphabet: Alphabet;
   // players are always in order of who went first:
   players: Array<RawPlayerInfo>;
   // The unseen tiles to the user (bag and opp's tiles)
@@ -69,15 +73,23 @@ export type GameState = {
   onClockTimeout: (p: PlayerOrder) => void;
 };
 
+const makePool = (alphabet: Alphabet): TileDistribution => {
+  const td: TileDistribution = {};
+  alphabet.letters.forEach((l) => {
+    td[l.rune] = l.count;
+  });
+  return td;
+};
+
 export const startingGameState = (
-  tileDistribution: TileDistribution,
+  alphabet: Alphabet,
   players: Array<RawPlayerInfo>,
   gameID: string
 ): GameState => {
   const gs = {
     board: new Board(),
-    tileDistribution,
-    pool: { ...tileDistribution },
+    alphabet,
+    pool: makePool(alphabet),
     turns: new Array<GameEvent>(),
     players,
     onturn: 0,
@@ -119,7 +131,7 @@ const clonePlayers = (players: Array<RawPlayerInfo>) => {
   return pclone;
 };
 
-const newGameState = (
+const newGameStateFromGameplayEvent = (
   state: GameState,
   sge: ServerGameplayEvent
 ): GameState => {
@@ -169,7 +181,7 @@ const newGameState = (
   onturn = 1 - onturn;
   return {
     // These never change:
-    tileDistribution: state.tileDistribution,
+    alphabet: state.alphabet,
     gameID: state.gameID,
     nickToPlayerOrder: state.nickToPlayerOrder,
     uidToPlayerOrder: state.uidToPlayerOrder,
@@ -285,11 +297,6 @@ export const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
 };
 
 const stateFromHistory = (history: GameHistory): GameState => {
-  // XXX: Do this for now. We will eventually want to put the tile
-  // distribution itself in the history protobuf.
-  // if (['NWL18', 'CSW19'].includes(history!.getLexicon())) {
-  //   const dist = EnglishCrosswordGameDistribution;
-  // }
   let playerList = history.getPlayersList();
   const flipPlayers = history.getSecondWentFirst();
   // If flipPlayers is on, we want to flip the players in the playerList.
@@ -308,8 +315,12 @@ const stateFromHistory = (history: GameHistory): GameState => {
     [playerList[1].getUserId()]: 'p1' as PlayerOrder,
   };
 
+  const alphabet = alphabetFromName(
+    history.getLetterDistribution().toLowerCase()
+  );
+
   const gs = startingGameState(
-    EnglishCrosswordGameDistribution,
+    alphabet,
     initialExpandToFull(playerList),
     history!.getUid()
   );
@@ -454,7 +465,7 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
   switch (action.actionType) {
     case ActionType.ClearHistory: {
       const gs = startingGameState(
-        EnglishCrosswordGameDistribution,
+        StandardEnglishAlphabet,
         new Array<RawPlayerInfo>(),
         ''
       );
@@ -488,7 +499,7 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
         return state; // no change
       }
       console.log('add game event', sge);
-      const ngs = newGameState(state, sge);
+      const ngs = newGameStateFromGameplayEvent(state, sge);
 
       // Always pass the clock ref along. Begin imperative section:
       ngs.clockController = state.clockController;

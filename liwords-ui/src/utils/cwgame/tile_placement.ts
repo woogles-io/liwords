@@ -1,5 +1,4 @@
 /** @fileoverview business logic for placing tiles on a board */
-import { EnglishCrosswordGameDistribution } from '../../constants/tile_distributions';
 
 import {
   EphemeralTile,
@@ -10,6 +9,7 @@ import {
 } from './common';
 import { calculateTemporaryScore } from './scoring';
 import { Board } from './board';
+import { Alphabet } from '../../constants/alphabets';
 
 const NormalizedBackspace = 'BACKSPACE';
 const NormalizedSpace = ' ';
@@ -75,7 +75,8 @@ const handleTileDeletion = (
   arrowProperty: PlacementArrow,
   unplacedTiles: string, // tiles currently still on rack
   currentlyPlacedTiles: Set<EphemeralTile>,
-  board: Board
+  board: Board,
+  alphabet: Alphabet
 ): KeypressHandlerReturn => {
   // Remove any tiles.
   let newUnplacedTiles = unplacedTiles;
@@ -91,7 +92,15 @@ const handleTileDeletion = (
         // unassign the blank
         letter = Blank;
       }
-      newUnplacedTiles += letter;
+      const emptyIndex = newUnplacedTiles.indexOf(EmptySpace);
+      if (emptyIndex >= 0) {
+        newUnplacedTiles =
+          newUnplacedTiles.substring(0, emptyIndex) +
+          letter +
+          newUnplacedTiles.substring(emptyIndex + 1);
+      } else {
+        newUnplacedTiles += letter;
+      }
     }
   });
 
@@ -99,7 +108,7 @@ const handleTileDeletion = (
     newArrow: arrowProperty,
     newPlacedTiles,
     newDisplayedRack: newUnplacedTiles,
-    playScore: calculateTemporaryScore(newPlacedTiles, board),
+    playScore: calculateTemporaryScore(newPlacedTiles, board, alphabet),
   };
 };
 
@@ -115,7 +124,8 @@ export const handleKeyPress = (
   board: Board,
   key: string,
   unplacedTiles: string, // tiles currently still on rack
-  currentlyPlacedTiles: Set<EphemeralTile>
+  currentlyPlacedTiles: Set<EphemeralTile>,
+  alphabet: Alphabet
 ): KeypressHandlerReturn | null => {
   const normalizedKey = key.toUpperCase();
 
@@ -128,10 +138,7 @@ export const handleKeyPress = (
   });
 
   if (
-    !Object.prototype.hasOwnProperty.call(
-      EnglishCrosswordGameDistribution,
-      normalizedKey
-    ) &&
+    !Object.prototype.hasOwnProperty.call(alphabet.letterMap, normalizedKey) &&
     normalizedKey !== NormalizedBackspace &&
     normalizedKey !== NormalizedSpace
   ) {
@@ -205,7 +212,8 @@ export const handleKeyPress = (
       },
       unplacedTiles,
       currentlyPlacedTiles,
-      board
+      board,
+      alphabet
     );
   }
 
@@ -230,7 +238,7 @@ export const handleKeyPress = (
       },
       newPlacedTiles,
       newDisplayedRack: newUnplacedTiles,
-      playScore: calculateTemporaryScore(newPlacedTiles, board),
+      playScore: calculateTemporaryScore(newPlacedTiles, board, alphabet),
     };
   }
 
@@ -249,6 +257,7 @@ export const handleKeyPress = (
     });
     newUnplacedTiles =
       unplacedTiles.substring(0, blankIdx) +
+      EmptySpace +
       unplacedTiles.substring(blankIdx + 1);
   } else {
     // check if the key is in the unplaced tiles.
@@ -265,7 +274,9 @@ export const handleKeyPress = (
         });
 
         newUnplacedTiles =
-          unplacedTiles.substring(0, i) + unplacedTiles.substring(i + 1);
+          unplacedTiles.substring(0, i) +
+          EmptySpace +
+          unplacedTiles.substring(i + 1);
         existed = true;
         break;
       }
@@ -282,6 +293,7 @@ export const handleKeyPress = (
 
       newUnplacedTiles =
         unplacedTiles.substring(0, blankIdx) +
+        EmptySpace +
         unplacedTiles.substring(blankIdx + 1);
     } else {
       // Can't place this tile at all.
@@ -298,16 +310,57 @@ export const handleKeyPress = (
     },
     newPlacedTiles,
     newDisplayedRack: newUnplacedTiles,
-    playScore: calculateTemporaryScore(newPlacedTiles, board),
+    playScore: calculateTemporaryScore(newPlacedTiles, board, alphabet),
   };
+};
+
+// Insert a rune to unplacedTiles at the preferred position.
+// Remove a nearby gap if any to keep length the same.
+// Assume 0 <= rackIndex <= unplacedTiles.length and rune.length === 1.
+export const stableInsertRack = (
+  unplacedTiles: string,
+  rackIndex: number,
+  rune: string
+): string => {
+  let newUnplacedTilesLeft = unplacedTiles.substring(0, rackIndex);
+  let newUnplacedTilesRight = unplacedTiles.substring(rackIndex);
+  let emptyIndexLeft = newUnplacedTilesLeft.lastIndexOf(EmptySpace);
+  let emptyIndexRight = newUnplacedTilesRight.indexOf(EmptySpace);
+  if (emptyIndexLeft >= 0 && emptyIndexRight >= 0) {
+    // Determine which gap to recover.
+    // Right has an advantage because it starts from 0, Left starts from 1.
+    if (newUnplacedTilesLeft.length - emptyIndexLeft < emptyIndexRight) {
+      // Left wins anyway.
+      emptyIndexRight = -1;
+    } else {
+      emptyIndexLeft = -1;
+    }
+  }
+  if (emptyIndexLeft >= 0) {
+    newUnplacedTilesLeft =
+      newUnplacedTilesLeft.substring(0, emptyIndexLeft) +
+      newUnplacedTilesLeft.substring(emptyIndexLeft + 1);
+    // Keep Left's length the same if possible.
+    if (newUnplacedTilesRight.length > 0) {
+      newUnplacedTilesLeft += newUnplacedTilesRight[0];
+      newUnplacedTilesRight = newUnplacedTilesRight.substring(1);
+    }
+  } else if (emptyIndexRight >= 0) {
+    newUnplacedTilesRight =
+      newUnplacedTilesRight.substring(0, emptyIndexRight) +
+      newUnplacedTilesRight.substring(emptyIndexRight + 1);
+  }
+  // It is also possible there are no gaps left, just insert in that case.
+  return newUnplacedTilesLeft + rune + newUnplacedTilesRight;
 };
 
 export const returnTileToRack = (
   board: Board,
   unplacedTiles: string,
   currentlyPlacedTiles: Set<EphemeralTile>,
-  rackIndex: number = -1,
-  tileIndex: number = -1
+  alphabet: Alphabet,
+  rackIndex = -1,
+  tileIndex = -1
 ): PlacementHandlerReturn | null => {
   // Create an ephemeral tile map with unique keys.
   const ephTileMap: { [tileIdx: number]: EphemeralTile } = {};
@@ -326,12 +379,10 @@ export const returnTileToRack = (
   } else {
     return null;
   }
-  const newRack = unplacedTiles.split('');
-  newRack.splice(rackIndex, 0, rune);
   return {
     newPlacedTiles,
-    newDisplayedRack: newRack.join(''),
-    playScore: calculateTemporaryScore(newPlacedTiles, board),
+    newDisplayedRack: stableInsertRack(unplacedTiles, rackIndex, rune),
+    playScore: calculateTemporaryScore(newPlacedTiles, board, alphabet),
   };
 };
 
@@ -342,47 +393,73 @@ export const handleDroppedTile = (
   unplacedTiles: string,
   currentlyPlacedTiles: Set<EphemeralTile>,
   rackIndex: number,
-  tileIndex: number
+  tileIndex: number,
+  alphabet: Alphabet
 ): PlacementHandlerReturn | null => {
   // Create an ephemeral tile map with unique keys.
   const ephTileMap: { [tileIdx: number]: EphemeralTile } = {};
+  let targetSquare: EphemeralTile | undefined;
+  let sourceSquare: EphemeralTile | undefined;
   currentlyPlacedTiles.forEach((t) => {
-    ephTileMap[uniqueTileIdx(t.row, t.col)] = t;
+    if (t.row === row && t.col === col) {
+      targetSquare = t;
+    } else {
+      const thisTileIndex = uniqueTileIdx(t.row, t.col);
+      if (!(rackIndex >= 0) && tileIndex === thisTileIndex) {
+        sourceSquare = t;
+      } else {
+        ephTileMap[thisTileIndex] = t;
+      }
+    }
   });
   let newUnplacedTiles = unplacedTiles;
-  const newPlacedTiles = new Set(currentlyPlacedTiles);
+  const newPlacedTiles = new Set(Object.values(ephTileMap));
   let rune;
-  if (rackIndex > -1) {
+  if (rackIndex >= 0) {
     rune = unplacedTiles[rackIndex];
+    if (targetSquare) {
+      newUnplacedTiles =
+        unplacedTiles.substring(0, rackIndex) +
+        (isBlank(targetSquare.letter) ? Blank : targetSquare.letter) +
+        unplacedTiles.substring(rackIndex + 1);
+    } else {
+      newUnplacedTiles =
+        unplacedTiles.substring(0, rackIndex) +
+        EmptySpace +
+        unplacedTiles.substring(rackIndex + 1);
+    }
   } else {
-    if (!(tileIndex in ephTileMap)) {
+    if (!sourceSquare) {
       // Dragged tile no longer at source, likely because opponent moved there.
+      // Also the case if dragging to the same spot.
       return null;
     }
-    rune = ephTileMap[tileIndex].letter;
-    newPlacedTiles.delete(ephTileMap[tileIndex]);
+    rune = sourceSquare.letter;
+    if (targetSquare) {
+      // Behold this prestidigitation!
+      newPlacedTiles.add({
+        ...sourceSquare,
+        letter: targetSquare.letter,
+      });
+    }
+  }
+
+  if (isBlank(rune)) {
+    // reset moved blanks
+    rune = Blank;
   }
 
   newPlacedTiles.add({
     row: row,
     col: col,
-    // reset moved blanks
-    letter: isBlank(rune) ? Blank : rune,
+    letter: rune,
   });
-
-  if (rackIndex > -1) {
-    newUnplacedTiles =
-      unplacedTiles.substring(0, rackIndex) +
-      unplacedTiles.substring(rackIndex + 1);
-  } else {
-    newUnplacedTiles = unplacedTiles;
-  }
 
   return {
     newPlacedTiles,
     newDisplayedRack: newUnplacedTiles,
-    playScore: calculateTemporaryScore(newPlacedTiles, board),
-    isUndesignated: isBlank(rune),
+    playScore: calculateTemporaryScore(newPlacedTiles, board, alphabet),
+    isUndesignated: rune === Blank,
   };
 };
 
@@ -390,7 +467,8 @@ export const designateBlank = (
   board: Board,
   currentlyPlacedTiles: Set<EphemeralTile>,
   displayedRack: string,
-  rune: string
+  rune: string,
+  alphabet: Alphabet
 ): PlacementHandlerReturn | null => {
   // Find the undesignated blank
   const newPlacedTiles = new Set(currentlyPlacedTiles);
@@ -402,6 +480,6 @@ export const designateBlank = (
   return {
     newPlacedTiles,
     newDisplayedRack: displayedRack,
-    playScore: calculateTemporaryScore(newPlacedTiles, board),
+    playScore: calculateTemporaryScore(newPlacedTiles, board, alphabet),
   };
 };

@@ -16,6 +16,7 @@ $card-background: 'color-card-background';
 
 $gray-subtle: 'color-gray-subtle';
 $gray-medium: 'color-gray-medium';
+$gray-dark: 'color-gray-dark';
 $gray-extreme: 'color-gray-extreme';
 $grid: 'color-grid';
 
@@ -41,16 +42,24 @@ $board-dws: 'color-board-dws';
 $board-tws: 'color-board-tws';
 $board-tls: 'color-board-tls';
 $board-empty: 'color-board-empty';
+$board-fill: 'color-board-fill';
+$board-space-opacity: 'number-board-space-opacity';
+$board-space-mix-mode: 'type-board-space-mix-mode';
+$board-center-icon: 'color-center-icon';
+$board-center-fill: 'color-center-fill';
+$board-bonus-text: 'color-bonus-text';
+$board-selection-color: 'color-selection-color';
 
 $tile-background: 'color-tile-background';
 $tile-background-secondary: 'color-tile-background-secondary';
 $tile-background-tertiary: 'color-tile-background-tertiary';
-$tile-background-quartenary: 'color-tile-background-quartenary';
+$tile-background-quaternary: 'color-tile-background-quaternary';
+$tile-blank-text: 'color-tile-blank-text';
 $tile-text: 'color-tile-text';
 $tile-last-background: 'color-tile-last-background';
 $tile-last-text: 'color-tile-last-text';
 $tile-last-blank: 'color-tile-last-blank';
-
+$tile-border: 'color-tile-border';
 $list-header: 'color-list-header';
 $list-header-text: 'color-list-header-text';
 
@@ -80,6 +89,7 @@ $modes: (
 
           color-gray-subtle: #bebebe,
           color-gray-medium: #999999,
+          color-gray-dark: #777,
           color-gray-extreme: #414141,
 
           color-grid: #c3c3c3,
@@ -111,11 +121,13 @@ $modes: (
           color-tile-background: #6b268b,
           color-tile-background-secondary: #cfb7d1,
           color-tile-background-tertiary: #955f9a,
-          color-tile-background-quartenary: #dec5e4,
+          color-tile-background-quaternary: #dec5e4,
+          color-tile-blank-text: #6b268b,
           color-tile-text: #ffffff,
           color-tile-last-background: #f4b000,
           color-tile-last-text: #414141,
           color-tile-last-blank: #414141,
+          color-tile-border: 0px solid transparent,
 
           color-timer-light: #e5ffdf,
           color-timer-dark: #449e2d,
@@ -137,7 +149,8 @@ $modes: (
           color-card-background: #3A3A3A,
 
           color-gray-subtle: #515151,
-          color-gray-medium: #cccccc,
+          color-gray-medium: #ccc,
+          color-gray-dark: #ddd,
           color-gray-extreme: #ffffff,
 
           color-grid: #232323,
@@ -169,11 +182,13 @@ $modes: (
           color-tile-background: #baadbb,
           color-tile-background-secondary: #643e69,
           color-tile-background-tertiary: #b094b3,
-          color-tile-background-quartenary: #5d4269,
+          color-tile-background-quaternary: #5d4269,
+          color-tile-blank-text: #baadbb,
           color-tile-text: #313131,
           color-tile-last-background: #fbe5ae,
           color-tile-last-text: #414141,
           color-tile-last-blank: #414141,
+          color-tile-border: 0px solid transparent,
 
           color-timer-light: #24542d,
           color-timer-dark: #b2e49b,

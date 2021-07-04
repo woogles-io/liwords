@@ -3,12 +3,9 @@ import { Link } from 'react-router-dom';
 import { Card, Dropdown, Menu } from 'antd';
 import { PoolFormatType, PoolFormats } from '../constants/pool_formats';
 import { singularCount } from '../utils/plural';
+import { Alphabet } from '../constants/alphabets';
 
 type poolType = { [rune: string]: number };
-
-// TODO: Store these elsewhere -- they're language specific
-const VOWELS = 'AEIOU';
-const CONSONANTS = 'BCDFGHJKLMNPQRSTVWXYZ';
 
 function poolMinusRack(pool: poolType, rack: string) {
   const poolCopy = { ...pool };
@@ -21,7 +18,7 @@ function poolMinusRack(pool: poolType, rack: string) {
 function renderLetters(
   pool: poolType,
   possibleLetters: string,
-  maxConsecutive: number = 6
+  maxConsecutive = 6
 ) {
   const output = [];
   for (
@@ -57,10 +54,11 @@ function renderLetters(
 
 function getPoolCount(
   pool: poolType,
-  includeRunes = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ?'
+  alphabet: Alphabet,
+  filterfn: (a: Alphabet) => string
 ) {
   return Object.keys(pool).reduce((acc, cur) => {
-    if (includeRunes.lastIndexOf(cur) > -1) {
+    if (filterfn(alphabet).lastIndexOf(cur) > -1) {
       return acc + pool[cur];
     }
     return acc;
@@ -73,12 +71,14 @@ type Props = {
   poolFormat: PoolFormatType;
   setPoolFormat: (format: PoolFormatType) => void;
   currentRack: string;
+  alphabet: Alphabet;
 };
 
 const Pool = React.memo((props: Props) => {
   const letterOrder =
-    PoolFormats.find((f) => f.poolFormatType === props.poolFormat)?.format ||
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZ?';
+    PoolFormats.find((f) => f.poolFormatType === props.poolFormat)?.format(
+      props.alphabet
+    ) || 'ABCDEFGHIJKLMNOPQRSTUVWXYZ?';
   const pool = poolMinusRack(props.pool, props.currentRack);
   const letterSections = letterOrder
     .split(',')
@@ -111,17 +111,31 @@ const Pool = React.memo((props: Props) => {
     </Dropdown>
   );
 
+  const vowels = (a: Alphabet): string => {
+    return a.letters.map((l) => (l.vowel ? l.rune : '')).join('');
+  };
+
+  const consonants = (a: Alphabet): string => {
+    return a.letters.map((l) => (!l.vowel ? l.rune : '')).join('');
+  };
+
+  console.log('vowels', vowels(props.alphabet));
+
   const renderContents = (title?: string) => (
     <div className="pool">
       {title ? <p className="label">{title}</p> : null}
       <div className="tiles-remaining">{letterSections}</div>
       <div className="vc-distribution">
         <div>
-          {singularCount(getPoolCount(pool, VOWELS), 'vowel', 'vowels')}
+          {singularCount(
+            getPoolCount(pool, props.alphabet, vowels),
+            'vowel',
+            'vowels'
+          )}
         </div>
         <div>
           {singularCount(
-            getPoolCount(pool, CONSONANTS),
+            getPoolCount(pool, props.alphabet, consonants),
             'consonant',
             'consonants'
           )}
@@ -130,7 +144,9 @@ const Pool = React.memo((props: Props) => {
     </div>
   );
 
-  const unseen = getPoolCount(pool);
+  const unseen = getPoolCount(pool, props.alphabet, (a: Alphabet) =>
+    a.letters.map((l) => l.rune).join('')
+  );
   const inbag = Math.max(unseen - 7, 0);
 
   let title: string;

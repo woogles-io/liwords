@@ -12,6 +12,8 @@ import { PlayerAvatar } from '../shared/player_avatar';
 import './scss/playerCards.scss';
 import { GameMetadata, PlayerMetadata } from './game_info';
 import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { DisplayUserFlag } from '../shared/display_flag';
+import { useBriefProfile } from '../utils/brief_profiles';
 
 const colors = require('../base.scss');
 
@@ -39,11 +41,11 @@ const timepenalty = (time: Millis) => {
 
 const PlayerCard = React.memo((props: CardProps) => {
   const { isExamining } = useExamineStoreContext();
+  const briefProfile = useBriefProfile(props.player?.userID);
 
   if (!props.player) {
     return <Card />;
   }
-
   // Find the metadata for this player.
   const meta = props.meta.find((pi) => pi.user_id === props.player?.userID);
   const timeStr =
@@ -60,24 +62,17 @@ const PlayerCard = React.memo((props: CardProps) => {
       <Row className="player">
         <PlayerAvatar player={meta} />
         <div className="player-info">
-          <p className="player-name">{meta?.full_name || meta?.nickname}</p>
-          {meta?.country_code ? (
-            <img
-              className="player-flag"
-              src={meta.country_code}
-              // Todo: It would be better if FullPlayerInfo included a displayable country name, for screen readers, etc.
-              alt="Country Flag"
-            />
-          ) : (
-            ''
-          )}
+          <p className="player-name">
+            {briefProfile?.getFullName() || meta?.nickname}
+          </p>
           <div className="player-details">
+            <DisplayUserFlag uuid={props.player?.userID} />
             {meta?.rating || 'Unrated'} •{' '}
             <Link
               target="_blank"
               to={`/profile/${encodeURIComponent(meta?.nickname ?? '')}`}
             >
-              View Profile
+              View profile
             </Link>
           </div>
         </div>

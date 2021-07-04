@@ -8,11 +8,8 @@ import {
   uniqueTileIdx,
 } from './common';
 
-import {
-  CrosswordGameTileValues,
-  runeToValues,
-} from '../../constants/tile_values';
 import { Board } from './board';
+import { Alphabet, runeToValues } from '../../constants/alphabets';
 
 export type simpletile = {
   fresh: boolean;
@@ -118,7 +115,8 @@ const getCrossScore = (
   row: number,
   col: number,
   crossDir: Direction,
-  board: Board
+  board: Board,
+  alphabet: Alphabet
 ): [number, boolean] => {
   // Traverse in both directions from (row, col) in the crossDir axis.
   let lastSeenTile;
@@ -136,7 +134,7 @@ const getCrossScore = (
     if (lastSeenTile !== null && lastSeenTile !== EmptySpace) {
       actualCrossWord = true;
     }
-    crossScore += runeToValues(lastSeenTile, CrosswordGameTileValues);
+    crossScore += runeToValues(alphabet, lastSeenTile);
   }
   // Now go in the other direction:
   newCol = col;
@@ -152,7 +150,7 @@ const getCrossScore = (
     if (lastSeenTile !== null && lastSeenTile !== EmptySpace) {
       actualCrossWord = true;
     }
-    crossScore += runeToValues(lastSeenTile, CrosswordGameTileValues);
+    crossScore += runeToValues(alphabet, lastSeenTile);
   }
   return [crossScore, actualCrossWord];
 };
@@ -298,7 +296,8 @@ export const contiguousTilesFromTileSet = (
 
 export const calculateTemporaryScore = (
   currentlyPlacedTiles: Set<EphemeralTile>,
-  board: Board
+  board: Board,
+  alphabet: Alphabet
 ): number | undefined => {
   const ret = contiguousTilesFromTileSet(currentlyPlacedTiles, board);
   if (ret === null) {
@@ -345,12 +344,18 @@ export const calculateTemporaryScore = (
           break;
       }
     }
-    const [cs, realcs] = getCrossScore(st.row, st.col, crossDir, board);
+    const [cs, realcs] = getCrossScore(
+      st.row,
+      st.col,
+      crossDir,
+      board,
+      alphabet
+    );
     let ls;
     if (isBlank(st.letter)) {
       ls = 0;
     } else {
-      ls = runeToValues(st.letter, CrosswordGameTileValues);
+      ls = runeToValues(alphabet, st.letter);
     }
     mainWordScore += ls * letterMultiplier;
     if (realcs && st.fresh) {

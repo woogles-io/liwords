@@ -78,23 +78,3 @@ func NewMatchRequest(ctx context.Context, gameStore SoughtGameStore,
 	}
 	return sg, nil
 }
-
-// ValidateSoughtGame validates the seek request.
-func ValidateSoughtGame(ctx context.Context, req *pb.GameRequest) error {
-	if req.InitialTimeSeconds < 15 {
-		return errors.New("the initial time must be at least 15 seconds")
-	}
-	if req.MaxOvertimeMinutes < 0 || req.MaxOvertimeMinutes > 10 {
-		return errors.New("overtime minutes must be between 0 and 10")
-	}
-	if req.IncrementSeconds < 0 {
-		return errors.New("you cannot have a negative time increment")
-	}
-	if req.MaxOvertimeMinutes > 0 && req.IncrementSeconds > 0 {
-		return errors.New("you can have increments or max overtime, but not both")
-	}
-	if req.PlayerVsBot && entity.TotalTimeEstimate(req) < 45 {
-		return errors.New("this time control is too fast for our poor bot")
-	}
-	return nil
-}

@@ -7,10 +7,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	nats "github.com/nats-io/nats.go"
@@ -109,6 +111,7 @@ func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, err
 	bus.gameStore.SetGameEventChan(bus.gameEventChan)
 	bus.tournamentStore.SetTournamentEventChan(bus.tournamentEventChan)
 	bus.chatStore.SetEventChan(bus.genericEventChan)
+	bus.presenceStore.SetEventChan(bus.genericEventChan)
 
 	topics := []string{
 		// ipc.pb are generic publishes
@@ -143,7 +146,8 @@ func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, err
 func (b *Bus) ProcessMessages(ctx context.Context) {
 
 	ctx = context.WithValue(ctx, gameplay.ConfigCtxKey("config"), &b.config.MacondoConfig)
-
+	ctx = log.Logger.WithContext(ctx)
+	log := zerolog.Ctx(ctx)
 	// Adjudicate unfinished games every few seconds.
 	adjudicator := time.NewTicker(AdjudicateInterval)
 	defer adjudicator.Stop()
@@ -159,11 +163,12 @@ outerfor:
 		select {
 		case msg := <-b.subchans["ipc.pb.>"]:
 			// Regular messages.
-			log.Debug().Str("topic", msg.Subject).Msg("got ipc.pb message")
+			log := log.With().Interface("msg-subject", msg.Subject).Logger()
+			log.Debug().Msg("got ipc.pb message")
 			subtopics := strings.Split(msg.Subject, ".")
 
-			go func() {
-				err := b.handleNatsPublish(ctx, subtopics[2:], msg.Data)
+			go func(subtopics []string, data []byte) {
+				err := b.handleNatsPublish(log.WithContext(ctx), subtopics[2:], data)
 				if err != nil {
 					log.Err(err).Msg("process-message-publish-error")
 					// The user ID should have hopefully come in the topic name.
@@ -175,15 +180,16 @@ outerfor:
 							pb.MessageType_ERROR_MESSAGE))
 					}
 				}
-			}()
+			}(subtopics, msg.Data)
 
 		case msg := <-b.subchans["ipc.request.>"]:
-			log.Debug().Str("topic", msg.Subject).Msg("got ipc.request")
+			log := log.With().Interface("msg-subject", msg.Subject).Logger()
+			log.Debug().Msg("got ipc.request")
 			// Requests. We must respond on a specific topic.
 			subtopics := strings.Split(msg.Subject, ".")
 
 			go func() {
-				err := b.handleNatsRequest(ctx, subtopics[2], msg.Reply, msg.Data)
+				err := b.handleNatsRequest(log.WithContext(ctx), subtopics[2], msg.Reply, msg.Data)
 				if err != nil {
 					log.Err(err).Msg("process-message-request-error")
 					// just send a blank response so there isn't a timeout on
@@ -202,6 +208,31 @@ outerfor:
 			}()
 
 		case msg := <-b.gameEventChan:
+			if msg.Type == pb.MessageType_ACTIVE_GAME_ENTRY {
+				// This message usually has no audience.
+				if evt, ok := msg.Event.(*pb.ActiveGameEntry); ok {
+					log.Debug().Interface("event", evt).Msg("active-game-entry")
+					ret, err := b.presenceStore.UpdateActiveGame(ctx, evt)
+					if err != nil {
+						log.Err(err).Msg("update-active-game-error")
+						// but continue anyway
+					} else {
+						for idx, chans := range ret {
+							oldChannels := chans[0]
+							newChannels := chans[1]
+							userId := evt.Player[idx].UserId
+							username := evt.Player[idx].Username
+							if err = b.broadcastChannelChanges(ctx, oldChannels, newChannels, userId, username); err != nil {
+								log.Err(err).Msg("broadcast-active-game-error")
+								// but continue anyway
+							}
+						}
+					}
+				} else {
+					log.Error().Interface("event", msg.Event).Msg("bad-active-game-entry")
+				}
+			}
+
 			// A game event. Publish directly to the right realm.
 			topics := msg.Audience()
 			data, err := msg.Serialize()
@@ -371,6 +402,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 
 // handleNatsPublish runs in a separate goroutine
 func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []byte) error {
+
 	log.Debug().Interface("subtopics", subtopics).Msg("handling nats publish")
 
 	msgType := subtopics[0]
@@ -385,13 +417,19 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		wsConnID = subtopics[3]
 	}
 
-	switch msgType {
-	case "seekRequest":
-		return b.seekRequest(ctx, auth, userID, wsConnID, data)
-	case "matchRequest":
-		return b.matchRequest(ctx, auth, userID, wsConnID, data)
+	pnum, err := strconv.Atoi(msgType)
+	if err == nil {
+		msgType = pb.MessageType(pnum).String()
+	}
+	// XXX: Otherwise, ignore error for now
 
-	case "chat":
+	switch msgType {
+	// XXX: remove the camelCased version of these soon, after deploying new socket server
+	case "seekRequest", pb.MessageType_SEEK_REQUEST.String():
+		return b.seekRequest(ctx, auth, userID, wsConnID, data)
+	case "matchRequest", pb.MessageType_MATCH_REQUEST.String():
+		return b.matchRequest(ctx, auth, userID, wsConnID, data)
+	case "chat", pb.MessageType_CHAT_MESSAGE.String():
 		// The user is subtopics[2]
 		evt := &pb.ChatMessage{}
 		err := proto.Unmarshal(data, evt)
@@ -400,7 +438,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		log.Debug().Str("user", userID).Str("msg", evt.Message).Str("channel", evt.Channel).Msg("chat")
 		return b.chat(ctx, userID, evt)
-	case "declineMatchRequest":
+	case "declineMatchRequest", pb.MessageType_DECLINE_MATCH_REQUEST.String():
 		evt := &pb.DeclineMatchRequest{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
@@ -408,8 +446,16 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		log.Debug().Str("user", userID).Str("reqid", evt.RequestId).Msg("decline-rematch")
 		return b.matchDeclined(ctx, evt, userID)
+	case "gameMetaEvent", pb.MessageType_GAME_META_EVENT.String():
+		evt := &pb.GameMetaEvent{}
+		err := proto.Unmarshal(data, evt)
+		if err != nil {
+			return err
+		}
+		log.Debug().Str("user", userID).Interface("evt", evt).Msg("game-meta-event")
+		return b.gameMetaEvent(ctx, evt, userID)
 
-	case "soughtGameProcess":
+	case "soughtGameProcess", pb.MessageType_SOUGHT_GAME_PROCESS_EVENT.String():
 		evt := &pb.SoughtGameProcessEvent{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
@@ -418,7 +464,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 
 		return b.gameAccepted(ctx, evt, userID, wsConnID)
 
-	case "gameplayEvent":
+	case "gameplayEvent", pb.MessageType_CLIENT_GAMEPLAY_EVENT.String():
 		evt := &pb.ClientGameplayEvent{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
@@ -442,7 +488,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		return nil
 
-	case "timedOut":
+	case "timedOut", pb.MessageType_TIMED_OUT.String():
 		evt := &pb.TimedOut{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
@@ -450,21 +496,14 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		return gameplay.TimedOut(ctx, b.gameStore, b.userStore, b.notorietyStore, b.listStatStore, b.tournamentStore, evt.UserId, evt.GameId)
 
-	case "initRealmInfo":
-		evt := &pb.InitRealmInfo{}
-		err := proto.Unmarshal(data, evt)
-		if err != nil {
-			return err
-		}
-		return b.initRealmInfo(ctx, evt, wsConnID)
-	case "readyForGame":
+	case "readyForGame", pb.MessageType_READY_FOR_GAME.String():
 		evt := &pb.ReadyForGame{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
 			return err
 		}
 		return b.readyForGame(ctx, evt, userID)
-	case "readyForTournamentGame":
+	case "readyForTournamentGame", pb.MessageType_READY_FOR_TOURNAMENT_GAME.String():
 		evt := &pb.ReadyForTournamentGame{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
@@ -472,13 +511,25 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		return b.readyForTournamentGame(ctx, evt, userID, wsConnID)
 
+		// The messages after this are messages sent only from liwords-socket to liwords,
+		// so there are no MessageType enums for these. It's ok:
+	case "initRealmInfo":
+		evt := &pb.InitRealmInfo{}
+		err := proto.Unmarshal(data, evt)
+		if err != nil {
+			return err
+		}
+		return b.initRealmInfo(ctx, evt, wsConnID)
+
 	case "leaveSite":
 		// There is no event here. We have the user ID in the subject.
 		return b.leaveSite(ctx, userID)
 	case "leaveTab":
 		return b.leaveTab(ctx, userID, wsConnID)
+
 	case "pongReceived":
 		return b.pongReceived(ctx, userID, wsConnID)
+
 	default:
 		return fmt.Errorf("unhandled-publish-topic: %v", subtopics)
 	}
@@ -522,7 +573,7 @@ func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 	channel string) error {
 	// Publish to a user, but pass in a specific channel. Only publish to those
 	// user sockets that are in this channel/realm/what-have-you.
-	sanitized, err := sanitize(evt, userID)
+	sanitized, err := sanitize(b.userStore, evt, userID)
 	if err != nil {
 		return err
 	}
@@ -542,7 +593,7 @@ func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 
 func (b *Bus) pubToConnectionID(connID, userID string, evt *entity.EventWrapper) error {
 	// Publish to a specific connection ID.
-	sanitized, err := sanitize(evt, userID)
+	sanitized, err := sanitize(b.userStore, evt, userID)
 	if err != nil {
 		return err
 	}
@@ -551,6 +602,52 @@ func (b *Bus) pubToConnectionID(connID, userID string, evt *entity.EventWrapper)
 		return err
 	}
 	return b.natsconn.Publish("connid."+connID, bts)
+}
+
+func didChannelsChange(oldChannels, newChannels []string) bool {
+	// just compare the arrays because they're already sort/dedup'ed
+	if len(newChannels) != len(oldChannels) {
+		return true
+	}
+	for ri, r := range newChannels {
+		if r != oldChannels[ri] {
+			return true
+		}
+	}
+	return false
+}
+
+func (b *Bus) broadcastChannelChanges(ctx context.Context, oldChannels, newChannels []string, userID, username string) error {
+	if !didChannelsChange(oldChannels, newChannels) {
+		return nil
+	}
+
+	// Courtesy note: followee* is not acceptable in csw19.
+	followee, err := b.userStore.GetByUUID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	followerUsers, err := b.userStore.GetFollowedBy(ctx, followee.ID)
+	if err != nil {
+		return err
+	}
+
+	if len(followerUsers) > 0 && b.genericEventChan != nil {
+		wrapped := entity.WrapEvent(&pb.PresenceEntry{
+			Username: username,
+			UserId:   userID,
+			Channel:  newChannels,
+		}, pb.MessageType_PRESENCE_ENTRY)
+
+		for _, fu := range followerUsers {
+			wrapped.AddAudience(entity.AudUser, fu.UUID)
+		}
+
+		b.genericEventChan <- wrapped
+	}
+
+	return nil
 }
 
 func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID string) error {
@@ -581,7 +678,14 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 
 		if presenceChan != "" {
 			log.Debug().Str("presence-chan", presenceChan).Str("username", username).Msg("SetPresence")
-			b.presenceStore.SetPresence(ctx, evt.UserId, username, anon, presenceChan, connID)
+			oldChannels, newChannels, err := b.presenceStore.SetPresence(ctx, evt.UserId, username, anon, presenceChan, connID)
+			if err != nil {
+				// this was not checked?
+				return err
+			}
+			if err = b.broadcastChannelChanges(ctx, oldChannels, newChannels, evt.UserId, username); err != nil {
+				return err
+			}
 		}
 
 		if realm == "lobby" {
@@ -650,7 +754,7 @@ func (b *Bus) leaveTab(ctx context.Context, userID, connID string) error {
 	if err != nil {
 		return err
 	}
-	channels, err := b.presenceStore.ClearPresence(ctx, userID, username, anon, connID)
+	oldChannels, newChannels, channels, err := b.presenceStore.ClearPresence(ctx, userID, username, anon, connID)
 	if err != nil {
 		return err
 	}
@@ -666,11 +770,20 @@ func (b *Bus) leaveTab(ctx context.Context, userID, connID string) error {
 	if err != nil {
 		return err
 	}
-	return b.deleteTournamentReadyMsgs(ctx, userID, connID)
 	// Delete any tournament ready messages
+	err = b.deleteTournamentReadyMsgs(ctx, userID, connID)
+	if err != nil {
+		return err
+	}
+	if err = b.broadcastChannelChanges(ctx, oldChannels, newChannels, userID, username); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (b *Bus) deleteTournamentReadyMsgs(ctx context.Context, userID, connID string) error {
+	// When a user leaves the site, we want to make sure to clear any of their
+	// "tournament ready" messages in the actual tournament.
 	conn := b.redisPool.Get()
 	defer conn.Close()
 	bts, err := redis.Bytes(conn.Do("GET", "tready:"+connID))
@@ -703,7 +816,14 @@ func (b *Bus) pongReceived(ctx context.Context, userID, connID string) error {
 	if err != nil {
 		return err
 	}
-	return b.presenceStore.RenewPresence(ctx, userID, username, anon, connID)
+	oldChannels, newChannels, err := b.presenceStore.RenewPresence(ctx, userID, username, anon, connID)
+	if err != nil {
+		return err
+	}
+	if err = b.broadcastChannelChanges(ctx, oldChannels, newChannels, userID, username); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (b *Bus) activeGames(ctx context.Context, tourneyID string) (*entity.EventWrapper, error) {
@@ -712,7 +832,7 @@ func (b *Bus) activeGames(ctx context.Context, tourneyID string) (*entity.EventW
 	if err != nil {
 		return nil, err
 	}
-	log.Debug().Interface("active-games", games).Msg("active-games")
+	log.Debug().Int("num-active-games", len(games.GameInfo)).Msg("active-games")
 
 	evt := entity.WrapEvent(games, pb.MessageType_ONGOING_GAMES)
 	return evt, nil
@@ -798,27 +918,6 @@ func (b *Bus) sendTournamentContext(ctx context.Context, realm, userID, connID s
 	err = b.pubToConnectionID(connID, userID, matches)
 	if err != nil {
 		return err
-	}
-
-	// Send a TournamentDivisionDataResponse for every division in the tournament.
-
-	t, err := b.tournamentStore.Get(ctx, tourneyID)
-	if err != nil {
-		return err
-	}
-
-	for name := range t.Divisions {
-		r, err := tournament.TournamentDivisionDataResponse(ctx, b.tournamentStore, tourneyID, name)
-		if err != nil {
-			return err
-		}
-
-		evt := entity.WrapEvent(r, pb.MessageType_TOURNAMENT_DIVISION_MESSAGE)
-		err = b.pubToConnectionID(connID, userID, evt)
-		if err != nil {
-			return err
-		}
-
 	}
 
 	return err

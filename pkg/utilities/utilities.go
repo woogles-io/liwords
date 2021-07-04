@@ -5,6 +5,11 @@ import (
 	"strings"
 )
 
+// This username is prevented on login and will never be valid.
+var CensoredUsername = "Unwoogler"
+var AnotherCensoredUsername = "AnotherUnwoogler"
+var CensoredAvatarUrl = "https://woogles-prod-assets.s3.amazonaws.com/unknown-woogler.png"
+
 func MinArr(array []int) int {
 	if len(array) == 0 {
 		return 0
@@ -75,5 +80,9 @@ func Reverse(array []int) {
 }
 
 func IntArrayToString(array []int) string {
+	return strings.Trim(strings.Join(strings.Fields(fmt.Sprint(array)), ", "), "[]")
+}
+
+func StringArrayToString(array []string) string {
 	return strings.Trim(strings.Join(strings.Fields(fmt.Sprint(array)), ", "), "[]")
 }

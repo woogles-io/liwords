@@ -23,8 +23,9 @@ var DefaultConfig = macondoconfig.Config{
 }
 
 func newMacondoGame() *game.Game {
-	rules, err := game.NewBasicGameRules(&DefaultConfig, board.CrosswordGameBoard,
-		DefaultConfig.DefaultLetterDistribution)
+	rules, err := game.NewBasicGameRules(
+		&DefaultConfig, "", board.CrosswordGameLayout,
+		DefaultConfig.DefaultLetterDistribution, game.CrossScoreOnly, "")
 	if err != nil {
 		panic(err)
 	}

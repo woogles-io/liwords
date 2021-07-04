@@ -49,32 +49,21 @@ import {
   PlayState,
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { endGameMessageFromGameInfo } from '../store/end_of_game';
-import { singularCount } from '../utils/plural';
 import { Notepad, NotepadContextProvider } from './notepad';
 import { Analyzer, AnalyzerContextProvider } from './analyzer';
-import { isPairedMode, sortTiles } from '../store/constants';
-import { ActionType } from '../actions/actions';
-import {
-  readyForTournamentGame,
-  TournamentMetadata,
-} from '../store/reducers/tournament_reducer';
+import { isClubType, isPairedMode, sortTiles } from '../store/constants';
+import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
 import { CompetitorStatus } from '../tournament/competitor_status';
 import { Unrace } from '../utils/unrace';
+import { MetaEventControl } from './meta_event_control';
 import { Blank } from '../utils/cwgame/common';
+import { useTourneyMetadata } from '../tournament/utils';
+import { Disclaimer } from './disclaimer';
+import { alphabetFromName } from '../constants/alphabets';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   sendChat: (msg: string, chan: string) => void;
-};
-
-type UserGameInfo = {
-  uuid: string;
-  avatar_url: string;
-  title: string;
-};
-
-type UsersGameInfoResponse = {
-  infos: UserGameInfo[];
 };
 
 const StreakFetchDelay = 2000;
@@ -218,12 +207,12 @@ export const Table = React.memo((props: Props) => {
   const competitorState = tournamentContext.competitorState;
   const isRegistered = competitorState.isRegistered;
   const [playerNames, setPlayerNames] = useState(new Array<string>());
-  const [needAvatars, setNeedAvatars] = useState(false);
   const { sendSocketMsg } = props;
   // const location = useLocation();
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
   const [streakGameInfo, setStreakGameInfo] = useState<StreakInfoResponse>({
     streak: [],
+    playersInfo: [],
   });
   const [isObserver, setIsObserver] = useState(false);
 
@@ -288,7 +277,6 @@ export const Table = React.memo((props: Props) => {
       )
       .then((resp) => {
         setGameInfo(resp.data);
-        setNeedAvatars(true);
         if (localStorage?.getItem('poolFormat')) {
           setPoolFormat(
             parseInt(localStorage.getItem('poolFormat') || '0', 10)
@@ -315,65 +303,13 @@ export const Table = React.memo((props: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameID]);
 
-  useEffect(() => {
-    if (!gameInfo.game_id || !needAvatars) {
-      return;
-    }
-
-    axios
-      .post<UsersGameInfoResponse>(
-        toAPIUrl('user_service.ProfileService', 'GetUsersGameInfo'),
-        {
-          uuids: gameInfo.players.map((p) => p.user_id),
-        }
-      )
-      .then((resp) => {
-        setNeedAvatars(false);
-        const players = [...gameInfo.players];
-        resp.data.infos.forEach((info) => {
-          if (info.avatar_url.length) {
-            const index = gameInfo.players.findIndex(
-              (p) => p.user_id === info.uuid
-            );
-            if (index >= 0) {
-              players[index] = {
-                ...players[index],
-                avatar_url: info.avatar_url,
-              };
-            }
-          }
-        });
-        setGameInfo({ ...gameInfo, players: players });
-      })
-      .catch((err) => {
-        message.error({
-          content: `Failed to fetch player information; please refresh. (Error: ${err.message})`,
-          duration: 10,
-        });
-      });
-  }, [gameInfo, needAvatars]);
-
-  useEffect(() => {
-    if (!gameInfo.tournament_id) {
-      return;
-    }
-    axios
-      .post<TournamentMetadata>(
-        toAPIUrl(
-          'tournament_service.TournamentService',
-          'GetTournamentMetadata'
-        ),
-        {
-          id: gameInfo.tournament_id,
-        }
-      )
-      .then((resp) => {
-        dispatchTournamentContext({
-          actionType: ActionType.SetTourneyMetadata,
-          payload: resp.data,
-        });
-      });
-  }, [gameInfo.tournament_id, dispatchTournamentContext]);
+  useTourneyMetadata(
+    '',
+    gameInfo.tournament_id,
+    dispatchTournamentContext,
+    loginState,
+    undefined
+  );
 
   useEffect(() => {
     // Request streak info only if a few conditions are true.
@@ -473,29 +409,102 @@ export const Table = React.memo((props: Props) => {
   >(undefined);
   const [willHideDefinitionHover, setWillHideDefinitionHover] = useState(false);
 
+  const anagrams = gameInfo.game_request.rules.variant_name === 'wordsmog';
+  const [definedAnagram, setDefinedAnagram] = useState(0);
+  const definedAnagramRef = useRef(definedAnagram);
+  definedAnagramRef.current = definedAnagram;
+
   const definitionPopover = useMemo(() => {
     if (!showDefinitionHover) return undefined;
     const entries = [];
+    const numAnagramsEach = [];
     for (const word of showDefinitionHover.words) {
       const uppercasedWord = word.toUpperCase();
       const definition = wordInfo[uppercasedWord];
       // if phony-checker returned {v:true,d:""}, wait for definition to load
       if (definition && !(definition.v && !definition.d)) {
-        entries.push(
-          <li key={entries.length} className="definition-entry">
-            <span className="defined-word">
-              {uppercasedWord}
-              {definition.v ? '' : '*'}
-            </span>{' '}
-            -{' '}
-            {definition.v ? (
-              <span className="definition">{String(definition.d)}</span>
-            ) : (
-              <span className="invalid-word">not a word</span>
-            )}
-          </li>
-        );
+        if (anagrams && definition.v) {
+          const shortList = []; // list of words and invalid entries
+          const anagramDefinitions = []; // defined words
+          for (const singleEntry of definition.d.split('\n')) {
+            const m = singleEntry.match(/^([^-]*) - (.*)$/m)!;
+            if (m) {
+              const [, actualWord, actualDefinition] = m;
+              anagramDefinitions.push({
+                word: actualWord,
+                definition: (
+                  <React.Fragment>
+                    <span className="defined-word">{actualWord}</span> -{' '}
+                    {actualDefinition}
+                  </React.Fragment>
+                ),
+              });
+              shortList.push(actualWord);
+            } else {
+              shortList.push(singleEntry);
+            }
+          }
+          const defineWhich =
+            anagramDefinitions.length > 0
+              ? definedAnagramRef.current % anagramDefinitions.length
+              : 0;
+          const anagramDefinition = anagramDefinitions[defineWhich];
+          entries.push(
+            <li key={entries.length} className="definition-entry">
+              {uppercasedWord} -{' '}
+              {shortList.map((word, idx) => (
+                <React.Fragment key={idx}>
+                  {idx > 0 && ', '}
+                  {word === anagramDefinition?.word ? (
+                    <span className="defined-word">{word}</span>
+                  ) : (
+                    word
+                  )}
+                </React.Fragment>
+              ))}
+            </li>
+          );
+          if (anagramDefinitions.length > 0) {
+            numAnagramsEach.push(anagramDefinitions.length);
+            entries.push(
+              <li key={entries.length} className="definition-entry">
+                {anagramDefinition.definition}
+              </li>
+            );
+          }
+        } else {
+          entries.push(
+            <li key={entries.length} className="definition-entry">
+              <span className="defined-word">
+                {uppercasedWord}
+                {definition.v ? '' : '*'}
+              </span>{' '}
+              -{' '}
+              {definition.v ? (
+                <span className="definition">{String(definition.d)}</span>
+              ) : (
+                <span className="invalid-word">
+                  {anagrams ? 'no valid words' : 'not a word'}
+                </span>
+              )}
+            </li>
+          );
+        }
       }
+    }
+    if (numAnagramsEach.length > 0) {
+      const numAnagramsLCM = numAnagramsEach.reduce((a, b) => {
+        const ab = a * b;
+        while (b !== 0) {
+          const t = b;
+          b = a % b;
+          a = t;
+        }
+        return ab / a; // a = gcd, so ab/a = lcm
+      });
+      setDefinedAnagram((definedAnagramRef.current + 1) % numAnagramsLCM);
+    } else {
+      setDefinedAnagram(0);
     }
     if (!entries.length) return undefined;
     return {
@@ -503,7 +512,7 @@ export const Table = React.memo((props: Props) => {
       y: showDefinitionHover.y,
       content: <ul className="definitions">{entries}</ul>,
     };
-  }, [showDefinitionHover, wordInfo]);
+  }, [anagrams, showDefinitionHover, wordInfo]);
 
   const hideDefinitionHover = useCallback(() => {
     setShowDefinitionHover(undefined);
@@ -529,7 +538,12 @@ export const Table = React.memo((props: Props) => {
       if (enableHoverDefine && words) {
         setWillHideDefinitionHover(false);
         setShowDefinitionHover((oldValue) => {
-          const newValue = { x, y, words };
+          const newValue = {
+            x,
+            y,
+            words,
+            definedAnagram,
+          };
           // if the pointer is moved out of a tile and back in, and the words
           // formed have not changed, reuse the object to avoid rerendering.
           if (JSON.stringify(oldValue) === JSON.stringify(newValue)) {
@@ -541,7 +555,7 @@ export const Table = React.memo((props: Props) => {
         setWillHideDefinitionHover(true);
       }
     },
-    [enableHoverDefine]
+    [enableHoverDefine, definedAnagram]
   );
 
   const [playedWords, setPlayedWords] = useState(new Set());
@@ -623,6 +637,7 @@ export const Table = React.memo((props: Props) => {
             lexicon,
             words: wordsToDefine,
             definitions: !!showDefinitionHover,
+            anagrams,
           },
           { cancelToken: cancelTokenSource.token }
         );
@@ -632,6 +647,8 @@ export const Table = React.memo((props: Props) => {
             ? ['NWL20']
             : lexicon === 'ECWL'
             ? ['CSW19', 'NWL20']
+            : lexicon === 'CSW19X'
+            ? ['CSW19']
             : []) {
             const wordsToRedefine = [];
             for (const word of wordsToDefine) {
@@ -648,7 +665,8 @@ export const Table = React.memo((props: Props) => {
               {
                 lexicon: otherLexicon,
                 words: wordsToRedefine,
-                definitions: showDefinitionHover,
+                definitions: !!showDefinitionHover,
+                anagrams,
               },
               { cancelToken: cancelTokenSource.token }
             );
@@ -679,7 +697,13 @@ export const Table = React.memo((props: Props) => {
     return () => {
       cancelTokenSource.cancel();
     };
-  }, [showDefinitionHover, gameInfo.game_request.lexicon, wordInfo, unrace]);
+  }, [
+    anagrams,
+    showDefinitionHover,
+    gameInfo.game_request.lexicon,
+    wordInfo,
+    unrace,
+  ]);
 
   useEffect(() => {
     if (phonies === null) {
@@ -706,6 +730,7 @@ export const Table = React.memo((props: Props) => {
     }
   }, [gameDone, phonies, playedWords, wordInfo]);
 
+  const lastPhonyReport = useRef('');
   useEffect(() => {
     if (!phonies) return;
     if (phonies.length) {
@@ -730,33 +755,44 @@ export const Table = React.memo((props: Props) => {
       const challengedPhonies = phonies.filter((word) =>
         groupedWords[1].has(word)
       );
-      if (challengedPhonies.length) {
-        addChat({
-          entityType: ChatEntityType.ErrorMsg,
-          sender: '',
-          message: `Invalid words challenged off: ${challengedPhonies
-            .map((x) => `${x}*`)
-            .join(', ')}`,
-          channel: 'server',
-        });
-      }
-      if (unchallengedPhonies.length) {
-        addChat({
-          entityType: ChatEntityType.ErrorMsg,
-          sender: '',
-          message: `Invalid words played and not challenged: ${unchallengedPhonies
-            .map((x) => `${x}*`)
-            .join(', ')}`,
-          channel: 'server',
-        });
+      const thisPhonyReport = JSON.stringify({
+        challengedPhonies,
+        unchallengedPhonies,
+      });
+      if (lastPhonyReport.current !== thisPhonyReport) {
+        lastPhonyReport.current = thisPhonyReport;
+        if (challengedPhonies.length) {
+          addChat({
+            entityType: ChatEntityType.ErrorMsg,
+            sender: '',
+            message: `Invalid words challenged off: ${challengedPhonies
+              .map((x) => `${x}*`)
+              .join(', ')}`,
+            channel: 'server',
+          });
+        }
+        if (unchallengedPhonies.length) {
+          addChat({
+            entityType: ChatEntityType.ErrorMsg,
+            sender: '',
+            message: `Invalid words played and not challenged: ${unchallengedPhonies
+              .map((x) => `${x}*`)
+              .join(', ')}`,
+            channel: 'server',
+          });
+        }
       }
     } else {
-      addChat({
-        entityType: ChatEntityType.ServerMsg,
-        sender: '',
-        message: 'All words played are valid',
-        channel: 'server',
-      });
+      const thisPhonyReport = 'all valid';
+      if (lastPhonyReport.current !== thisPhonyReport) {
+        lastPhonyReport.current = thisPhonyReport;
+        addChat({
+          entityType: ChatEntityType.ServerMsg,
+          sender: '',
+          message: 'All words played are valid',
+          channel: 'server',
+        });
+      }
     }
   }, [gameContext, phonies, addChat]);
 
@@ -878,26 +914,58 @@ export const Table = React.memo((props: Props) => {
     searchParams,
     searchedTurn,
   ]);
-  const peopleOnlineContext = useCallback(
-    (n: number) =>
-      isObserver
-        ? singularCount(n, 'Observer', 'Observers')
-        : singularCount(n, 'Player', 'Players'),
-    [isObserver]
+  const boardTheme =
+    'board--' + tournamentContext.metadata.getBoardStyle() || '';
+  const tileTheme = 'tile--' + tournamentContext.metadata.getTileStyle() || '';
+  const alphabet = useMemo(
+    () =>
+      alphabetFromName(gameInfo.game_request.rules.letter_distribution_name),
+    [gameInfo]
   );
+  const showingFinalTurn =
+    gameContext.turns.length === examinableGameContext.turns.length;
+  const gameEpilog = useMemo(() => {
+    // XXX: this doesn't get updated when game ends, only when refresh?
+
+    return (
+      <React.Fragment>
+        {showingFinalTurn && (
+          <React.Fragment>
+            {gameInfo.game_end_reason === 'FORCE_FORFEIT' && (
+              <React.Fragment>
+                Game ended in forfeit.{/* XXX: How to get winners? */}
+              </React.Fragment>
+            )}
+            {gameInfo.game_end_reason === 'ABORTED' && (
+              <React.Fragment>
+                The game was aborted. Rating and statistics were not affected.
+              </React.Fragment>
+            )}
+          </React.Fragment>
+        )}
+      </React.Fragment>
+    );
+  }, [gameInfo.game_end_reason, showingFinalTurn]);
 
   let ret = (
     <div className={`game-container${isRegistered ? ' competitor' : ''}`}>
       <ManageWindowTitleAndTurnSound />
       <TopBar tournamentID={gameInfo.tournament_id} />
-      <div className="game-table">
-        <div className="chat-area" id="left-sidebar">
+      <div className={`game-table ${boardTheme} ${tileTheme}`}>
+        <div
+          className={`chat-area ${
+            !isExamining && tournamentContext.metadata.getDisclaimer()
+              ? 'has-disclaimer'
+              : ''
+          }`}
+          id="left-sidebar"
+        >
           <Card className="left-menu">
             {gameInfo.tournament_id ? (
-              <Link to={tournamentContext.metadata.slug}>
+              <Link to={tournamentContext.metadata?.getSlug()}>
                 <HomeOutlined />
                 Back to
-                {['CLUB', 'CHILD'].includes(tournamentContext.metadata.type)
+                {isClubType(tournamentContext.metadata?.getType())
                   ? ' Club'
                   : ' Tournament'}
               </Link>
@@ -911,7 +979,7 @@ export const Table = React.memo((props: Props) => {
           {playerNames.length > 1 ? (
             <Chat
               sendChat={props.sendChat}
-              highlight={tournamentContext.metadata.directors}
+              highlight={tournamentContext.directors}
               highlightText="Director"
               defaultChannel={`chat.${
                 isObserver ? 'gametv' : 'game'
@@ -921,22 +989,32 @@ export const Table = React.memo((props: Props) => {
                 username,
                 isObserver
               )}
-              peopleOnlineContext={peopleOnlineContext}
               tournamentID={gameInfo.tournament_id}
             />
           ) : null}
-
           {isExamining ? (
-            <Analyzer includeCard lexicon={gameInfo.game_request.lexicon} />
+            <Analyzer
+              includeCard
+              lexicon={gameInfo.game_request.lexicon}
+              variant={gameInfo.game_request.rules.variant_name}
+            />
           ) : (
-            <Notepad includeCard />
+            <React.Fragment key="not-examining">
+              <Notepad includeCard />
+              {tournamentContext.metadata.getDisclaimer() && (
+                <Disclaimer
+                  disclaimer={tournamentContext.metadata.getDisclaimer()}
+                  logoUrl={tournamentContext.metadata.getLogo()}
+                />
+              )}
+            </React.Fragment>
           )}
           {isRegistered && (
             <CompetitorStatus
               sendReady={() =>
                 readyForTournamentGame(
                   sendSocketMsg,
-                  tournamentContext.metadata.id,
+                  tournamentContext.metadata?.getId(),
                   competitorState
                 )
               }
@@ -962,21 +1040,30 @@ export const Table = React.memo((props: Props) => {
             gameDone={gameDone}
             playerMeta={gameInfo.players}
             tournamentID={gameInfo.tournament_id}
-            tournamentSlug={tournamentContext.metadata.slug}
+            vsBot={gameInfo.game_request.player_vs_bot}
+            tournamentSlug={tournamentContext.metadata?.getSlug()}
             tournamentPairedMode={isPairedMode(
-              tournamentContext?.metadata?.type
+              tournamentContext.metadata?.getType()
             )}
             lexicon={gameInfo.game_request.lexicon}
+            alphabet={alphabet}
             challengeRule={gameInfo.game_request.challenge_rule}
             handleAcceptRematch={
               rematchRequest.getRematchFor() === gameID
                 ? handleAcceptRematch
                 : null
             }
+            handleAcceptAbort={() => {}}
             handleSetHover={handleSetHover}
             handleUnsetHover={hideDefinitionHover}
             definitionPopover={definitionPopover}
           />
+          {!gameDone && (
+            <MetaEventControl
+              sendSocketMsg={props.sendSocketMsg}
+              gameID={gameID}
+            />
+          )}
           <StreakWidget streakInfo={streakGameInfo} />
         </div>
         <div className="data-area" id="right-sidebar">
@@ -986,7 +1073,7 @@ export const Table = React.memo((props: Props) => {
               sendReady={() =>
                 readyForTournamentGame(
                   sendSocketMsg,
-                  tournamentContext.metadata.id,
+                  tournamentContext.metadata?.getId(),
                   competitorState
                 )
               }
@@ -996,13 +1083,16 @@ export const Table = React.memo((props: Props) => {
           <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
           <GameInfo
             meta={gameInfo}
-            tournamentName={tournamentContext.metadata.name}
+            tournamentName={tournamentContext.metadata?.getName()}
+            colorOverride={tournamentContext.metadata?.getColor()}
+            logoUrl={tournamentContext.metadata?.getLogo()}
           />
           <Pool
             pool={examinableGameContext?.pool}
             currentRack={sortedRack}
             poolFormat={poolFormat}
             setPoolFormat={setPoolFormat}
+            alphabet={alphabet}
           />
           <Popconfirm
             title={`${rematchRequest
@@ -1019,10 +1109,12 @@ export const Table = React.memo((props: Props) => {
             username={username}
             playing={us !== undefined}
             lexicon={gameInfo.game_request.lexicon}
+            variant={gameInfo.game_request.rules.variant_name}
             events={examinableGameContext.turns}
             board={examinableGameContext.board}
             playerMeta={gameInfo.players}
             poolFormat={poolFormat}
+            gameEpilog={gameEpilog}
           />
         </div>
       </div>

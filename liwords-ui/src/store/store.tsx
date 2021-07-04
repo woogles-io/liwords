@@ -7,7 +7,6 @@ import React, {
 } from 'react';
 import { useMountedState } from '../utils/mounted';
 
-import { EnglishCrosswordGameDistribution } from '../constants/tile_distributions';
 import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import {
   ServerChallengeResultEvent,
@@ -32,6 +31,8 @@ import {
   TournamentReducer,
   TournamentState,
 } from './reducers/tournament_reducer';
+import { MetaEventState, MetaStates } from './meta_game_events';
+import { StandardEnglishAlphabet } from '../constants/alphabets';
 
 export enum ChatEntityType {
   UserChat,
@@ -65,9 +66,17 @@ const defaultTimerContext = {
   activePlayer: 'p0' as PlayerOrder,
   lastUpdate: 0,
 };
+
 const defaultFunction = () => {};
 
 // Functions and data to deal with the global store.
+
+type ContextMatchStoreData = {
+  handleContextMatches: Array<(s: string) => void>;
+  addHandleContextMatch: (x: (s: string) => void) => void;
+  removeHandleContextMatch: (x: (s: string) => void) => void;
+};
+
 type LobbyStoreData = {
   lobbyContext: LobbyState;
   dispatchLobbyContext: (action: Action) => void;
@@ -92,8 +101,37 @@ type ExcludedPlayersStoreData = {
   setPendingBlockRefresh: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
+export type FriendUser = {
+  username: string;
+  uuid: string;
+  channel: string[];
+};
+
+type FriendsStoreData = {
+  friends: { [uuid: string]: FriendUser };
+  setFriends: React.Dispatch<
+    React.SetStateAction<{ [uuid: string]: FriendUser }>
+  >;
+  pendingFriendsRefresh: boolean;
+  setPendingFriendsRefresh: React.Dispatch<React.SetStateAction<boolean>>;
+};
+
+type ModeratorsStoreData = {
+  moderators: Set<string>;
+  setModerators: React.Dispatch<React.SetStateAction<Set<string>>>;
+  admins: Set<string>;
+  setAdmins: React.Dispatch<React.SetStateAction<Set<string>>>;
+  modsFetched: boolean;
+  setModsFetched: React.Dispatch<React.SetStateAction<boolean>>;
+};
+
 type ChallengeResultEventStoreData = {
   challengeResultEvent: (sge: ServerChallengeResultEvent) => void;
+};
+
+type GameMetaEventStoreData = {
+  gameMetaEventContext: MetaEventState;
+  setGameMetaEventContext: React.Dispatch<React.SetStateAction<MetaEventState>>;
 };
 
 type GameContextStoreData = {
@@ -177,15 +215,17 @@ type ExamineStoreData = {
   removeHandleExaminer: (x: () => void) => void;
 };
 
-const defaultGameState = startingGameState(
-  EnglishCrosswordGameDistribution,
-  [],
-  ''
-);
+const defaultGameState = startingGameState(StandardEnglishAlphabet, [], '');
 
 // This is annoying, but we have to add a default for everything in this
 // declaration. Declaring it as a Partial<StoreData> breaks things elsewhere.
 // For context, these used to be a single StoreData that contained everything.
+
+const ContextMatchContext = createContext<ContextMatchStoreData>({
+  handleContextMatches: [],
+  addHandleContextMatch: defaultFunction,
+  removeHandleContextMatch: defaultFunction,
+});
 
 const LobbyContext = createContext<LobbyStoreData>({
   lobbyContext: {
@@ -237,10 +277,38 @@ const ExcludedPlayersContext = createContext<ExcludedPlayersStoreData>({
   setPendingBlockRefresh: defaultFunction,
 });
 
+const FriendsContext = createContext<FriendsStoreData>({
+  friends: {},
+  setFriends: defaultFunction,
+  pendingFriendsRefresh: false,
+  setPendingFriendsRefresh: defaultFunction,
+});
+
+const ModeratorsContext = createContext<ModeratorsStoreData>({
+  // used for displaying mod status to other users, should not be trusted for actually granting powers
+  moderators: new Set<string>(),
+  setModerators: defaultFunction,
+  admins: new Set<string>(),
+  setAdmins: defaultFunction,
+  modsFetched: false,
+  setModsFetched: defaultFunction,
+});
+
 const ChallengeResultEventContext = createContext<
   ChallengeResultEventStoreData
 >({
   challengeResultEvent: defaultFunction,
+});
+
+const GameMetaEventContext = createContext<GameMetaEventStoreData>({
+  gameMetaEventContext: {
+    curEvt: MetaStates.NO_ACTIVE_REQUEST,
+    initialExpiry: 0,
+    evtId: '',
+    evtCreator: '',
+    // timer: null,
+  },
+  setGameMetaEventContext: defaultFunction,
 });
 
 const [GameContextContext, ExaminableGameContextContext] = Array.from(
@@ -393,7 +461,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   const examinableGameContext = useMemo(() => {
     if (!isExamining) return gameContext;
     const ret = startingGameState(
-      gameContext.tileDistribution,
+      gameContext.alphabet,
       gameContext.players.map(({ userID }) => ({
         userID,
         score: 0,
@@ -431,23 +499,17 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       }
       ret.players[i].score = score;
 
-      // The last few turns may have zero time.
-      // Find out the last turn that has nonzero time.
-      // (This will also incorrectly eliminate unlikely legitimate events
-      // at zero millisecond time at the end.)
-      let timeCutoff = gameContext.turns.length;
-      while (
-        timeCutoff > 0 &&
-        gameContext.turns[timeCutoff - 1].getMillisRemaining() === 0
-      ) {
-        --timeCutoff;
-      }
-
       // Time comes from the most recent past.
       // But may belong to either player, depending on event type.
       let time = Infinity; // No gameInfo here, patch in PlayerCard.
-      for (let j = Math.min(timeCutoff, replayedTurns.length); --j >= 0; ) {
+      for (let j = replayedTurns.length; --j >= 0; ) {
         const turn = gameContext.turns[j];
+        if (
+          turn.getType() === GameEvent.Type.END_RACK_PTS ||
+          turn.getType() === GameEvent.Type.END_RACK_PENALTY
+        ) {
+          continue;
+        }
 
         // Logic from game_reducer setClock.
         let flipTimeRemaining = false;
@@ -474,6 +536,13 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       let rack = gameContext.players[i].currentRack;
       for (let j = replayedTurns.length; j < gameContext.turns.length; ++j) {
         const turn = gameContext.turns[j];
+        if (
+          turn.getType() === GameEvent.Type.END_RACK_PTS ||
+          turn.getType() === GameEvent.Type.END_RACK_PENALTY
+        ) {
+          continue;
+        }
+
         if (turn.getNickname() === nickname) {
           rack = turn.getRack();
           break;
@@ -550,11 +619,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
 
   const handleExamineShortcuts = useCallback(
     (evt) => {
-      if (
-        isExamining &&
-        (shouldTrigger(document.activeElement) ||
-          shouldTrigger(window.getSelection()?.focusNode?.parentElement))
-      ) {
+      if (isExamining && shouldTrigger(document.activeElement)) {
         if (evt.ctrlKey || evt.altKey || evt.metaKey) {
           // If a modifier key is held, never mind.
         } else {
@@ -737,6 +802,16 @@ const RealStore = ({ children, ...props }: Props) => {
     undefined
   );
 
+  const [gameMetaEventContext, setGameMetaEventContext] = useState<
+    MetaEventState
+  >({
+    curEvt: MetaStates.NO_ACTIVE_REQUEST,
+    initialExpiry: 0,
+    evtId: '',
+    evtCreator: '',
+    // clockController: null,
+  });
+
   const [poolFormat, setPoolFormat] = useState<PoolFormatType>(
     PoolFormatType.Alphabet
   );
@@ -748,8 +823,13 @@ const RealStore = ({ children, ...props }: Props) => {
     ActiveChatChannels.AsObject | undefined
   >(undefined);
   const [excludedPlayers, setExcludedPlayers] = useState(new Set<string>());
+  const [friends, setFriends] = useState({});
+  const [pendingFriendsRefresh, setPendingFriendsRefresh] = useState(false);
   const [excludedPlayersFetched, setExcludedPlayersFetched] = useState(false);
   const [pendingBlockRefresh, setPendingBlockRefresh] = useState(false);
+  const [moderators, setModerators] = useState(new Set<string>());
+  const [admins, setAdmins] = useState(new Set<string>());
+  const [modsFetched, setModsFetched] = useState(false);
   const [presences, setPresences] = useState(new Array<PresenceEntity>());
 
   const addChat = useCallback((entity: ChatEntityObj) => {
@@ -832,6 +912,32 @@ const RealStore = ({ children, ...props }: Props) => {
     setTimerContext({ ...clockController.current.times });
   }, []);
 
+  const [handleContextMatches, setHandleContextMatches] = useState(
+    new Array<(s: string) => void>()
+  );
+  const addHandleContextMatch = useCallback((x) => {
+    setHandleContextMatches((a: Array<(s: string) => void>) => {
+      if (!a.includes(x)) {
+        a = [...a, x];
+      }
+      return a;
+    });
+  }, []);
+  const removeHandleContextMatch = useCallback((x) => {
+    setHandleContextMatches((a) => {
+      const b = a.filter((y) => y !== x);
+      return a.length === b.length ? a : b;
+    });
+  }, []);
+
+  const contextMatchStore = useMemo(
+    () => ({
+      handleContextMatches,
+      addHandleContextMatch,
+      removeHandleContextMatch,
+    }),
+    [handleContextMatches, addHandleContextMatch, removeHandleContextMatch]
+  );
   const lobbyStore = useMemo(
     () => ({
       lobbyContext,
@@ -904,6 +1010,26 @@ const RealStore = ({ children, ...props }: Props) => {
       setPendingBlockRefresh,
     ]
   );
+  const friendsStore = useMemo(
+    () => ({
+      friends,
+      setFriends,
+      pendingFriendsRefresh,
+      setPendingFriendsRefresh,
+    }),
+    [friends, setFriends, pendingFriendsRefresh, setPendingFriendsRefresh]
+  );
+  const moderatorsStore = useMemo(
+    () => ({
+      moderators,
+      setModerators,
+      admins,
+      setAdmins,
+      modsFetched,
+      setModsFetched,
+    }),
+    [moderators, setModerators, admins, setAdmins, modsFetched, setModsFetched]
+  );
   const challengeResultEventStore = useMemo(
     () => ({
       challengeResultEvent,
@@ -917,6 +1043,15 @@ const RealStore = ({ children, ...props }: Props) => {
     }),
     [gameContext, dispatchGameContext]
   );
+
+  const gameMetaEventContextStore = useMemo(
+    () => ({
+      gameMetaEventContext,
+      setGameMetaEventContext,
+    }),
+    [gameMetaEventContext, setGameMetaEventContext]
+  );
+
   const chatStore = useMemo(
     () => ({
       addChat,
@@ -984,6 +1119,9 @@ const RealStore = ({ children, ...props }: Props) => {
   );
 
   let ret = <ExaminableStore children={children} />;
+  ret = (
+    <ContextMatchContext.Provider value={contextMatchStore} children={ret} />
+  );
   ret = <LobbyContext.Provider value={lobbyStore} children={ret} />;
   ret = <LoginStateContext.Provider value={loginStateStore} children={ret} />;
   ret = <LagContext.Provider value={lagStore} children={ret} />;
@@ -999,6 +1137,8 @@ const RealStore = ({ children, ...props }: Props) => {
       children={ret}
     />
   );
+  ret = <FriendsContext.Provider value={friendsStore} children={ret} />;
+  ret = <ModeratorsContext.Provider value={moderatorsStore} children={ret} />;
   ret = (
     <ChallengeResultEventContext.Provider
       value={challengeResultEventStore}
@@ -1006,6 +1146,12 @@ const RealStore = ({ children, ...props }: Props) => {
     />
   );
   ret = <GameContextContext.Provider value={gameContextStore} children={ret} />;
+  ret = (
+    <GameMetaEventContext.Provider
+      value={gameMetaEventContextStore}
+      children={ret}
+    />
+  );
   ret = <ChatContext.Provider value={chatStore} children={ret} />;
   ret = <PresenceContext.Provider value={presenceStore} children={ret} />;
   ret = (
@@ -1055,6 +1201,7 @@ export const Store = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+export const useContextMatchContext = () => useContext(ContextMatchContext);
 export const useLobbyStoreContext = () => useContext(LobbyContext);
 export const useLoginStateStoreContext = () => useContext(LoginStateContext);
 export const useLagStoreContext = () => useContext(LagContext);
@@ -1062,9 +1209,12 @@ export const useTournamentStoreContext = () => useContext(TournamentContext);
 export const useTentativeTileContext = () => useContext(TentativePlayContext);
 export const useExcludedPlayersStoreContext = () =>
   useContext(ExcludedPlayersContext);
+export const useFriendsStoreContext = () => useContext(FriendsContext);
+export const useModeratorStoreContext = () => useContext(ModeratorsContext);
 export const useChallengeResultEventStoreContext = () =>
   useContext(ChallengeResultEventContext);
 export const useGameContextStoreContext = () => useContext(GameContextContext);
+export const useGameMetaEventContext = () => useContext(GameMetaEventContext);
 export const useChatStoreContext = () => useContext(ChatContext);
 export const usePresenceStoreContext = () => useContext(PresenceContext);
 export const useGameEndMessageStoreContext = () =>

@@ -1,5 +1,4 @@
 import { GameReducer, startingGameState } from './game_reducer';
-import { EnglishCrosswordGameDistribution } from '../../constants/tile_distributions';
 import { ActionType } from '../../actions/actions';
 import {
   GameHistoryRefresher,
@@ -10,6 +9,7 @@ import {
   PlayerInfo,
   GameEvent,
 } from '../../gen/macondo/api/proto/macondo/macondo_pb';
+import { StandardEnglishAlphabet } from '../../constants/alphabets';
 
 const historyRefresher = () => {
   const ghr = new GameHistoryRefresher();
@@ -29,7 +29,7 @@ const historyRefresher = () => {
 };
 
 it('tests refresher', () => {
-  const state = startingGameState(EnglishCrosswordGameDistribution, [], '');
+  const state = startingGameState(StandardEnglishAlphabet, [], '');
   const newState = GameReducer(state, {
     actionType: ActionType.RefreshHistory,
     payload: historyRefresher(),
@@ -43,7 +43,7 @@ it('tests refresher', () => {
 });
 
 it('tests addevent', () => {
-  const state = startingGameState(EnglishCrosswordGameDistribution, [], '');
+  const state = startingGameState(StandardEnglishAlphabet, [], '');
   const newState = GameReducer(state, {
     actionType: ActionType.RefreshHistory,
     payload: historyRefresher(),
@@ -76,7 +76,7 @@ it('tests addevent', () => {
 });
 
 it('tests addevent with different id', () => {
-  const state = startingGameState(EnglishCrosswordGameDistribution, [], '');
+  const state = startingGameState(StandardEnglishAlphabet, [], '');
   const newState = GameReducer(state, {
     actionType: ActionType.RefreshHistory,
     payload: historyRefresher(),
@@ -176,7 +176,7 @@ Macondo","last_known_racks":["EFMPRST","AEELRX?"],"flip_players":true,"challenge
 */
 
 it('tests flip players', () => {
-  const state = startingGameState(EnglishCrosswordGameDistribution, [], '');
+  const state = startingGameState(StandardEnglishAlphabet, [], '');
   const newState = GameReducer(state, {
     actionType: ActionType.RefreshHistory,
     payload: historyRefresher2(),
@@ -190,7 +190,7 @@ it('tests flip players', () => {
 });
 
 it('tests challenge with refresher event afterwards', () => {
-  const state = startingGameState(EnglishCrosswordGameDistribution, [], '');
+  const state = startingGameState(StandardEnglishAlphabet, [], '');
   let newState = GameReducer(state, {
     actionType: ActionType.RefreshHistory,
     payload: historyRefresher2(),
@@ -237,7 +237,7 @@ it('tests challenge with refresher event afterwards', () => {
 });
 
 it('tests challenge with challenge event afterwards', () => {
-  const state = startingGameState(EnglishCrosswordGameDistribution, [], '');
+  const state = startingGameState(StandardEnglishAlphabet, [], '');
   let newState = GameReducer(state, {
     actionType: ActionType.RefreshHistory,
     payload: historyRefresher2(),

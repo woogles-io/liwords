@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/domino14/liwords/pkg/entity"
+	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	upb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
@@ -18,8 +19,9 @@ type Store interface {
 	Username(ctx context.Context, uuid string) (string, bool, error)
 	New(ctx context.Context, user *entity.User) error
 	SetPassword(ctx context.Context, uuid string, hashpass string) error
-	SetAbout(ctx context.Context, uuid string, about string) error
 	SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string) error
+	GetBriefProfiles(ctx context.Context, uuids []string) (map[string]*upb.BriefProfile, error)
+	SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, birthDate string, countryCode string, about string) error
 	SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p1Rating entity.SingleRating, p2Rating entity.SingleRating) error
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
@@ -27,12 +29,15 @@ type Store interface {
 	SetNotoriety(ctx context.Context, u *entity.User, notoriety int) error
 	ResetRatings(ctx context.Context, uuid string) error
 	ResetStats(ctx context.Context, uuid string) error
+	ResetProfile(ctx context.Context, uuid string) error
+	ResetPersonalInfo(ctx context.Context, uuid string) error
 	GetRandomBot(ctx context.Context) (*entity.User, error)
 
 	AddFollower(ctx context.Context, targetUser, follower uint) error
 	RemoveFollower(ctx context.Context, targetUser, follower uint) error
 	// GetFollows gets all the users that the passed-in DB ID is following.
 	GetFollows(ctx context.Context, uid uint) ([]*entity.User, error)
+	GetFollowedBy(ctx context.Context, uid uint) ([]*entity.User, error)
 
 	AddBlock(ctx context.Context, targetUser, blocker uint) error
 	RemoveBlock(ctx context.Context, targetUser, blocker uint) error
@@ -44,6 +49,9 @@ type Store interface {
 	UsersByPrefix(ctx context.Context, prefix string) ([]*upb.BasicUser, error)
 	CachedCount(ctx context.Context) int
 	Set(ctx context.Context, u *entity.User) error
+	SetPermissions(ctx context.Context, req *cpb.PermissionsRequest) error
+
+	GetModList(ctx context.Context) (*upb.GetModListResponse, error)
 }
 
 // PresenceStore stores user presence. Since it is meant to be easily user-visible,
@@ -54,13 +62,13 @@ type Store interface {
 type PresenceStore interface {
 	// SetPresence sets the presence. If channel is the string NULL this is
 	// equivalent to saying the user logged off.
-	SetPresence(ctx context.Context, uuid, username string, anon bool, channel string, connID string) error
-	ClearPresence(ctx context.Context, uuid, username string, anon bool, connID string) ([]string, error)
+	SetPresence(ctx context.Context, uuid, username string, anon bool, channel string, connID string) ([]string, []string, error)
+	ClearPresence(ctx context.Context, uuid, username string, anon bool, connID string) ([]string, []string, []string, error)
 	GetPresence(ctx context.Context, uuid string) ([]string, error)
 	// RenewPresence prevents the presence store from expiring the relevant keys.
 	// Basically, we're telling the presence store "this user and connection are still here".
 	// Otherwise, missing a few of these events will destroy the relevant presences.
-	RenewPresence(ctx context.Context, uuid, username string, anon bool, connID string) error
+	RenewPresence(ctx context.Context, uuid, username string, anon bool, connID string) ([]string, []string, error)
 
 	CountInChannel(ctx context.Context, channel string) (int, error)
 	GetInChannel(ctx context.Context, channel string) ([]*entity.User, error)
@@ -69,11 +77,18 @@ type PresenceStore interface {
 	BatchGetPresence(ctx context.Context, users []*entity.User) ([]*entity.User, error)
 
 	LastSeen(ctx context.Context, uuid string) (int64, error)
+
+	SetEventChan(chan *entity.EventWrapper)
+	EventChan() chan *entity.EventWrapper
+
+	BatchGetChannels(ctx context.Context, uuids []string) ([][]string, error)
+	UpdateFollower(ctx context.Context, followee, follower *entity.User, following bool) error
+	UpdateActiveGame(ctx context.Context, activeGameEntry *pb.ActiveGameEntry) ([][][]string, error)
 }
 
 // ChatStore stores user and channel chats and messages
 type ChatStore interface {
-	AddChat(ctx context.Context, senderUsername, senderUID, msg, channel, channelFriendly string) (*pb.ChatMessage, error)
+	AddChat(ctx context.Context, senderUsername, senderUID, msg, channel, channelFriendly string, regulateChat bool) (*pb.ChatMessage, error)
 	OldChats(ctx context.Context, channel string, n int) ([]*pb.ChatMessage, error)
 	LatestChannels(ctx context.Context, count, offset int, uid, tid string) (*upb.ActiveChatChannels, error)
 

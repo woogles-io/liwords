@@ -35,6 +35,14 @@
   }
 }
 
+.country-flag {
+  width: 20px;
+  height: 14px;
+  box-shadow: 0px 0px 3px 1px #00000029;
+  position: relative;
+  top: -2px;
+  margin-right: 6px;
+}
 .ant-dropdown.user-menu {
   @include colorModed() {
     background-color: m($background);
@@ -102,15 +110,7 @@ a.plain,
 .donations {
   @include container;
   padding: 48px 18px;
-  .donation-buttons {
-    margin: 24px 0;
-    display: flex;
-    flex-direction: column;
-    width: 200px;
-    button {
-      margin: 12px 0;
-    }
-  }
+
   &.donation-success {
     text-align: center;
     h4 {
@@ -119,5 +119,31 @@ a.plain,
       font-size: 18px;
       letter-spacing: 0;
     }
+  }
+}
+
+.bnjyMode {
+  .tile[data-rune='I'], .tile[data-rune='O'], .tile[data-rune='X'] {
+    transform: rotate(180deg);
+
+    /* this mirrors gameroom/scss/gameroom.scss */
+
+    & .tentative-score.tentative-score-horizontal {
+      left: calc(100% + 2px);
+    }
+
+    & .tentative-score.tentative-score-vertical {
+      left: 2px;
+      top: calc(100% + 4px);
+    }
+
+    & .tentative-score {
+      transform: rotate(180deg);
+    }
+  }
+}
+.ant-modal-body .readable-text-color {
+  @include colorModed() {
+    color: m($gray-extreme);
   }
 }

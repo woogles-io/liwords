@@ -8,11 +8,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
+	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/tournament"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/game"
@@ -59,7 +61,7 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 	var tournamentID string
 	if sg.Type == entity.TypeMatch {
 		if sg.MatchRequest.RematchFor != "" {
-			// Assign firsts to be the the other player.
+			// Assign firsts to be the other player.
 			gameID := sg.MatchRequest.RematchFor
 			g, err := b.gameStore.Get(ctx, gameID)
 			if err != nil {
@@ -238,10 +240,12 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 	// Start the game if both players are ready (or if it's a bot game).
 	// readyflag will be (01 | 10) = 3 for two players.
 	if rf == (1<<len(g.History().Players))-1 || g.GameReq.PlayerVsBot {
-		err = gameplay.StartGame(ctx, b.gameStore, b.gameEventChan, g.GameID())
+		err = gameplay.StartGame(ctx, b.gameStore, b.userStore, b.gameEventChan, g.GameID())
 		if err != nil {
 			log.Err(err).Msg("starting-game")
 		}
+		// Note: for PlayerVsBot, readyForGame is called twice when player is ready and every time player refreshes, why? :-(
+		g.SendChange(g.NewActiveGameEntry(true))
 
 		if g.GameReq.PlayerVsBot && g.PlayerIDOnTurn() != userID {
 			// Make a bot move if it's the bot's turn at the beginning.
@@ -267,7 +271,7 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 		return err
 	}
 
-	fullUserID := userID + ":" + reqUser.Username
+	fullUserID := reqUser.TournamentID()
 
 	t, err := b.tournamentStore.Get(ctx, evt.TournamentId)
 	if err != nil {
@@ -347,11 +351,17 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 	if otherID == userID {
 		return errors.New("both users have same ID?")
 	}
+	if otherUserIdx == -1 {
+		return errors.New("unexpected behavior; did not find other player")
+	}
 	users[otherUserIdx], err = b.userStore.GetByUUID(ctx, otherID)
 	if err != nil {
 		return err
 	}
-	gameReq := t.Divisions[evt.Division].Controls.GameRequest
+	if t.Divisions[evt.Division].DivisionManager == nil {
+		return fmt.Errorf("division manager for division %s is nil", evt.Division)
+	}
+	gameReq := t.Divisions[evt.Division].DivisionManager.GetDivisionControls().GameRequest
 	tdata := &entity.TournamentData{
 		Id:        evt.TournamentId,
 		Division:  evt.Division,
@@ -395,6 +405,8 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 		Str("tournamentID", string(evt.TournamentId)).
 		Str("onturn", g.NickOnTurn()).Msg("tournament-game-started")
 
+	// This is untested.
+	g.SendChange(g.NewActiveGameEntry(true))
 	return nil
 }
 
@@ -410,7 +422,9 @@ func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWr
 		return entity.WrapEvent(&pb.ServerMessage{Message: "Game is starting soon!"},
 			pb.MessageType_SERVER_MESSAGE), nil
 	}
-	evt := entity.WrapEvent(entGame.HistoryRefresherEvent(),
+	hre := entGame.HistoryRefresherEvent()
+	hre.History = mod.CensorHistory(ctx, b.userStore, hre.History)
+	evt := entity.WrapEvent(hre,
 		pb.MessageType_GAME_HISTORY_REFRESHER)
 	return evt, nil
 }
@@ -446,8 +460,13 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 				Interface("now", now).
 				Interface("created", entGame.CreatedAt).
 				Msg("canceling-never-started")
-			err = gameplay.AbortGame(ctx, b.gameStore, g.GameId)
+
+				// need to lock game to abort? maybe lock inside AbortGame?
+			entGame.Lock()
+			err = gameplay.AbortGame(ctx, b.gameStore, b.tournamentStore,
+				entGame, pb.GameEndReason_CANCELLED)
 			log.Err(err).Msg("adjudicating-after-abort-game")
+			entGame.Unlock()
 			// Delete the game from the lobby. We do this here instead
 			// of inside the gameplay package because the game event channel
 			// was never registered with an unstarted game.
@@ -456,34 +475,19 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 			// XXX: Fix for tourneys ?
 			wrapped.AddAudience(entity.AudLobby, "gameEnded")
 			b.gameEventChan <- wrapped
-
-			// If this game is part of a tournament that is not in clubhouse
-			// mode, we must allow the players to try to play again.
-			if g.TournamentId != "" {
-				err = b.redoCancelledGamePairings(
-					ctx, g.Players[0].UserId+":"+g.Players[0].Nickname,
-					g.TournamentId, g.TournamentDivision,
-					int(g.TournamentRound), int(g.TournamentGameIndex))
-				log.Err(err).Msg("redo-cancelled-game-pairings")
-			}
-
 		}
 	}
 	return nil
 }
 
-func (b *Bus) redoCancelledGamePairings(ctx context.Context, userID, tid, div string, round, gidx int) error {
+func (b *Bus) gameMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, userID string) error {
+	// Make sure we are not sending more abort/etc requests than allowed.
 
-	t, err := b.tournamentStore.Get(ctx, tid)
-	if err != nil {
-		return err
+	// Overwrite whatever was passed in with the userID we know made this request.
+	evt.PlayerId = userID
+	if evt.OrigEventId == "" {
+		evt.OrigEventId = shortuuid.New()
 	}
 
-	if t.Type == entity.TypeClub || t.Type == entity.TypeLegacy {
-		log.Info().Str("tid", tid).Msg("no pairings to redo for club or legacy type")
-		return nil
-	}
-
-	return tournament.ClearReadyStates(ctx, b.tournamentStore, t, div, userID, round, gidx)
-
+	return gameplay.HandleMetaEvent(ctx, evt, b.gameEventChan, b.gameStore, b.userStore, b.notorietyStore, b.listStatStore, b.tournamentStore)
 }

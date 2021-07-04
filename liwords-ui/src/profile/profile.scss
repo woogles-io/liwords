@@ -6,19 +6,53 @@
 .profile {
   @include container;
   padding: 0 24px 48px;
+  .settings-link {
+    text-align: right;
+    margin: 15px 0 0 0;
+  }
   header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
   }
   h3 {
     margin: 24px 12px;
     width: auto;
     display: flex;
     justify-content: space-between;
+    font-family: Muli, sans-serif;
+    letter-spacing: 0;
+    font-weight: bold;
+    span.user {
+      display: inline-flex;
+      align-items: center;
+    }
+  }
+  .bio {
+    margin-bottom: 18px;
+    max-width: 600px;
+    padding-left: 9px;
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+  }
+  .country-flag {
+    width: 33px;
+    height: 22px;
+    margin-left: 15px;
   }
   .player-avatar {
-    margin-left: 12px;
+    margin: 18px 12px 18px 0;
+    width: 96px;
+    min-width: 96px;
+    height: 96px;
+    font-size: 48px;
+    @media (min-width: $screen-tablet-min) {
+      width: 96px;
+      min-width: 96px;
+      height: 96px;
+      font-size: 48px
+    }
   }
   label {
     @include colorModed() {

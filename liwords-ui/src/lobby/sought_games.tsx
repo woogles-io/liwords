@@ -11,6 +11,11 @@ import {
 } from '../store/constants';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { useMountedState } from '../utils/mounted';
+import { PlayerAvatar } from '../shared/player_avatar';
+import { DisplayUserFlag } from '../shared/display_flag';
+import { RatingBadge } from './rating_badge';
+import { VariantIcon } from '../shared/variant_icons';
+import { MatchLexiconDisplay } from '../shared/lexicon_display';
 
 export const timeFormat = (
   initialTimeSecs: number,
@@ -38,6 +43,26 @@ export const challengeFormat = (cr: number) => {
   );
 };
 
+type PlayerProps = {
+  userID?: string;
+  username: string;
+};
+
+export const PlayerDisplay = (props: PlayerProps) => {
+  return (
+    <div className="player-display">
+      <PlayerAvatar
+        player={{
+          user_id: props.userID,
+          nickname: props.username,
+        }}
+      />
+      <span className="player-name">{props.username}</span>
+      <DisplayUserFlag uuid={props.userID} />
+    </div>
+  );
+};
+
 type Props = {
   isMatch?: boolean;
   newGame: (seekID: string) => void;
@@ -45,7 +70,6 @@ type Props = {
   username?: string;
   requests: Array<SoughtGame>;
 };
-
 export const SoughtGames = (props: Props) => {
   const { useState } = useMountedState();
   const [cancelVisible, setCancelVisible] = useState(false);
@@ -59,7 +83,7 @@ export const SoughtGames = (props: Props) => {
     {
       title: 'Rating',
       className: 'rating',
-      dataIndex: 'rating',
+      dataIndex: 'ratingBadge',
       key: 'rating',
       sorter: (a: SoughtGameTableData, b: SoughtGameTableData) =>
         parseInt(a.rating) - parseInt(b.rating),
@@ -70,28 +94,22 @@ export const SoughtGames = (props: Props) => {
       dataIndex: 'lexicon',
       key: 'lexicon',
       filters: [
-        {
-          text: 'CSW19',
-          value: 'CSW19',
-        },
-        {
-          text: 'NWL20',
-          value: 'NWL20',
-        },
-        {
-          text: 'NWL18',
-          value: 'NWL18',
-        },
-        {
-          text: 'ECWL',
-          value: 'ECWL',
-        },
-      ],
+        'CSW19',
+        'NWL20',
+        'NWL18',
+        'ECWL',
+        'RD28',
+        'FRA20',
+        'NSF21',
+      ].map((l) => ({
+        text: <MatchLexiconDisplay lexiconCode={l} />,
+        value: l,
+      })),
       filterMultiple: false,
       onFilter: (
         value: string | number | boolean,
         record: SoughtGameTableData
-      ) => record.lexicon.indexOf(value.toString()) === 0,
+      ) => record.lexiconCode.indexOf(value.toString()) === 0,
     },
     {
       title: 'Time',
@@ -112,7 +130,9 @@ export const SoughtGames = (props: Props) => {
   type SoughtGameTableData = {
     seeker: string | ReactNode;
     rating: string;
-    lexicon: string;
+    ratingBadge?: ReactNode;
+    lexicon: ReactNode;
+    lexiconCode: string;
     time: string;
     totalTime: number;
     details?: ReactNode;
@@ -126,6 +146,7 @@ export const SoughtGames = (props: Props) => {
         const getDetails = () => {
           return (
             <>
+              <VariantIcon vcode={sg.variant} />{' '}
               {challengeFormat(sg.challengeRule)}
               {sg.rated ? (
                 <Tooltip title="Rated">
@@ -161,10 +182,11 @@ export const SoughtGames = (props: Props) => {
               </div>
             </Popconfirm>
           ) : (
-            sg.seeker
+            <PlayerDisplay userID={sg.seekerID!} username={sg.seeker} />
           ),
-          rating: sg.userRating,
-          lexicon: sg.lexicon,
+          rating: outgoing ? '' : sg.userRating,
+          ratingBadge: outgoing ? null : <RatingBadge rating={sg.userRating} />,
+          lexicon: <MatchLexiconDisplay lexiconCode={sg.lexicon} />,
           time: timeFormat(
             sg.initialTimeSecs,
             sg.incrementSecs,
@@ -178,6 +200,7 @@ export const SoughtGames = (props: Props) => {
           details: getDetails(),
           outgoing,
           seekID: sg.seekID,
+          lexiconCode: sg.lexicon,
         };
       }
     );
@@ -186,7 +209,7 @@ export const SoughtGames = (props: Props) => {
 
   return (
     <>
-      {props.isMatch ? <h4>Match Requests</h4> : <h4>Available Games</h4>}
+      {props.isMatch ? <h4>Match requests</h4> : <h4>Available games</h4>}
       <Table
         className={`games ${props.isMatch ? 'match' : 'seek'}`}
         dataSource={formatGameData(props.requests)}

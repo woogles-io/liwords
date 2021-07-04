@@ -57,11 +57,15 @@ func notorietyStore(dbURL string) pkgmod.NotorietyStore {
 
 type evtConsumer struct {
 	evts []*entity.EventWrapper
+	ch   chan *entity.EventWrapper
 }
 
 func (ec *evtConsumer) consumeEventChan(ctx context.Context,
 	ch chan *entity.EventWrapper,
 	done chan bool) {
+
+	ec.ch = ch
+
 	defer func() { done <- true }()
 	for {
 		select {
@@ -79,7 +83,7 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStor
 	ctx := context.Background()
 	cesar, _ := ustore.Get(ctx, "cesar4")
 	jesse, _ := ustore.Get(ctx, "jesse")
-	// see the gameReq in game_test.go in this package
+	// see the gameReq in game_stats_test.go in this package
 	gr := proto.Clone(gameReq).(*pb.GameRequest)
 
 	gr.IncrementSeconds = 5
@@ -90,6 +94,7 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStor
 	ch := make(chan *entity.EventWrapper)
 	donechan := make(chan bool)
 	consumer := &evtConsumer{}
+	gstore.SetGameEventChan(ch)
 
 	cctx, cancel := context.WithCancel(ctx)
 	go consumer.consumeEventChan(cctx, ch, donechan)
@@ -97,7 +102,7 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStor
 	nower := entity.NewFakeNower(1234)
 	g.SetTimerModule(nower)
 
-	gameplay.StartGame(ctx, gstore, ch, g.GameID())
+	gameplay.StartGame(ctx, gstore, ustore, ch, g.GameID())
 
 	return g, nower, cancel, donechan, consumer
 }

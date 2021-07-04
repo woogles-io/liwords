@@ -34,9 +34,9 @@ export const Announcements = () => {
     <a href={a.link} target="_blank" rel="noopener noreferrer" key={idx}>
       <li>
         <h4>{a.title}</h4>
-        <p>
+        <div>
           <ReactMarkdown>{a.body}</ReactMarkdown>
-        </p>
+        </div>
       </li>
     </a>
   ));

@@ -7,7 +7,6 @@ import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { GameLists } from './gameLists';
 import { Chat } from '../chat/chat';
 import { useLoginStateStoreContext } from '../store/store';
-import { singularCount } from '../utils/plural';
 import './lobby.scss';
 import { Announcements } from './announcements';
 import { sendAccept, sendSeek } from './sought_game_interactions';
@@ -46,11 +45,6 @@ export const Lobby = (props: Props) => {
     [sendSocketMsg]
   );
 
-  const peopleOnlineContext = useCallback(
-    (n: number) => singularCount(n, 'Player', 'Players'),
-    []
-  );
-
   return (
     <>
       <TopBar />
@@ -59,8 +53,7 @@ export const Lobby = (props: Props) => {
           <Chat
             sendChat={props.sendChat}
             defaultChannel="chat.lobby"
-            defaultDescription="Help Chat"
-            peopleOnlineContext={peopleOnlineContext}
+            defaultDescription="Help chat"
             DISCONNECT={props.DISCONNECT}
           />
         </div>

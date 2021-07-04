@@ -19,18 +19,42 @@ import '../lobby/lobby.scss';
 import 'antd/dist/antd.css';
 import ReactMarkdown from 'react-markdown';
 import { useMountedState } from '../utils/mounted';
-import { toAPIUrl } from '../api/api';
-import { TournamentMetadata } from '../store/reducers/tournament_reducer';
+import { postBinary, toAPIUrl } from '../api/api';
+import {
+  GetTournamentMetadataRequest,
+  TournamentMetadataResponse,
+  TType,
+  TTypeMap,
+} from '../gen/api/proto/tournament_service/tournament_service_pb';
 
 type DProps = {
-  markdown: string;
+  description: string;
+  disclaimer: string;
+  title: string;
+  color: string;
+  logo: string;
 };
 
 const DescriptionPreview = (props: DProps) => {
+  const title = <span style={{ color: props.color }}>{props.title}</span>;
   return (
     <div className="tournament-info">
-      <Card title="Tournament Information">
-        <ReactMarkdown linkTarget="_blank">{props.markdown}</ReactMarkdown>
+      <Card title={title} className="tournament">
+        {props.logo && (
+          <img
+            src={props.logo}
+            alt={props.title}
+            style={{
+              width: 200,
+              textAlign: 'center',
+              margin: '0 auto 18px',
+              display: 'block',
+            }}
+          />
+        )}
+        <ReactMarkdown linkTarget="_blank">{props.description}</ReactMarkdown>
+        <br />
+        <ReactMarkdown linkTarget="_blank">{props.disclaimer}</ReactMarkdown>
       </Card>
     </div>
   );
@@ -52,71 +76,91 @@ type Props = {
 export const TourneyEditor = (props: Props) => {
   const { useState } = useMountedState();
   const [description, setDescription] = useState('');
-
-  // const [formVals, setFormVals] = useState({
-  //   name: '',
-  //   description: '',
-  //   slug: '',
-  //   id: '',
-  //   type: 'STANDARD',
-  //   directors: '',
-  // });
+  const [disclaimer, setDisclaimer] = useState('');
+  const [name, setName] = useState('');
+  const [color, setColor] = useState('');
+  const [logo, setLogo] = useState('');
   const [form] = Form.useForm();
 
-  const onSearch = (val: string) => {
-    axios
-      .post<TournamentMetadata>(
-        toAPIUrl(
-          'tournament_service.TournamentService',
-          'GetTournamentMetadata'
-        ),
-        {
-          slug: val,
-        }
-      )
-      .then((resp) => {
-        setDescription(resp.data.description);
+  const onSearch = async (val: string) => {
+    const tmreq = new GetTournamentMetadataRequest();
+    tmreq.setSlug(val);
 
-        form.setFieldsValue({
-          name: resp.data.name,
-          description: resp.data.description,
-          slug: resp.data.slug,
-          id: resp.data.id,
-          type: resp.data.type,
-          directors: resp.data.directors.join(', '),
-        });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error: ' + err.response?.data?.msg,
-          duration: 5,
-        });
+    try {
+      const resp = await postBinary(
+        'tournament_service.TournamentService',
+        'GetTournamentMetadata',
+        tmreq
+      );
+      const m = TournamentMetadataResponse.deserializeBinary(resp.data);
+      const metadata = m.getMetadata();
+      setDescription(metadata?.getDescription()!);
+      setDisclaimer(metadata?.getDisclaimer() || '');
+      setName(metadata?.getName()!);
+      setColor(metadata?.getColor() || '');
+      setLogo(metadata?.getLogo() || '');
+      form.setFieldsValue({
+        name: metadata?.getName(),
+        description: metadata?.getDescription(),
+        slug: metadata?.getSlug(),
+        id: metadata?.getId(),
+        type: metadata?.getType(),
+        directors: m.getDirectorsList().join(', '),
+        boardStyle: metadata?.getBoardStyle(),
+        tileStyle: metadata?.getTileStyle(),
+        disclaimer: metadata?.getDisclaimer(),
+        logo: metadata?.getLogo(),
+        color: metadata?.getColor(),
       });
+    } catch (err) {
+      message.error({
+        content: 'Error: ' + err.response?.data?.msg,
+        duration: 5,
+      });
+    }
   };
   const onFinish = (vals: Store) => {
     console.log('vals', vals);
     let apicall = '';
     let obj = {};
+
+    const reverseTypeMap = {
+      [TType.CHILD]: 'CHILD',
+      [TType.CLUB]: 'CLUB',
+      [TType.STANDARD]: 'STANDARD',
+      [TType.LEGACY]: 'LEGACY',
+    };
+
+    const jsontype = reverseTypeMap[vals.type as TTypeMap[keyof TTypeMap]];
+
     if (props.mode === 'new') {
       apicall = 'NewTournament';
       const directors = (vals.directors as string)
         .split(',')
         .map((u) => u.trim());
+
       obj = {
         name: vals.name,
         description: vals.description,
         slug: vals.slug,
-        type: vals.type,
+        type: jsontype,
         director_usernames: directors,
       };
     } else if (props.mode === 'edit') {
       apicall = 'SetTournamentMetadata';
       obj = {
-        id: vals.id,
-        name: vals.name,
-        description: vals.description,
-        slug: vals.slug,
-        type: vals.type,
+        metadata: {
+          id: vals.id,
+          name: vals.name,
+          description: vals.description,
+          slug: vals.slug,
+          type: jsontype,
+          boardStyle: vals.boardStyle,
+          tileStyle: vals.tileStyle,
+          disclaimer: vals.disclaimer,
+          logo: vals.logo,
+          color: vals.color,
+        },
       };
     }
 
@@ -139,6 +183,18 @@ export const TourneyEditor = (props: Props) => {
   const onDescriptionChange = (evt: React.ChangeEvent<HTMLTextAreaElement>) => {
     setDescription(evt.target.value);
   };
+  const onDisclaimerChange = (evt: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setDisclaimer(evt.target.value);
+  };
+  const onNameChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
+    setName(evt.target.value);
+  };
+  const onColorChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
+    setColor(evt.target.value);
+  };
+  const onLogoChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
+    setLogo(evt.target.value);
+  };
   const addDirector = () => {
     const director = prompt('Enter a new director username to add:');
     if (!director) {
@@ -149,9 +205,8 @@ export const TourneyEditor = (props: Props) => {
         toAPIUrl('tournament_service.TournamentService', 'AddDirectors'),
         {
           id: form.getFieldValue('id'),
-          persons: {
-            [director]: 10, // or whatever number?
-          },
+          // Need a non-zero "rating" for director..
+          persons: [{ id: director, rating: 1 }],
         }
       )
       .then((resp) => {
@@ -199,7 +254,7 @@ export const TourneyEditor = (props: Props) => {
   };
 
   return (
-    <>
+    <div className="tourney-editor">
       <Form {...layout} hidden={props.mode === 'new'}>
         <Form.Item label="Tournament URL">
           <Search
@@ -216,7 +271,7 @@ export const TourneyEditor = (props: Props) => {
         <Col span={12}>
           <Form {...layout} form={form} layout="horizontal" onFinish={onFinish}>
             <Form.Item name="name" label="Tournament Name">
-              <Input />
+              <Input onChange={onNameChange} />
             </Form.Item>
 
             <Form.Item name="slug" label="Tournament Slug (URL)">
@@ -249,23 +304,59 @@ export const TourneyEditor = (props: Props) => {
 
             <Form.Item name="type" label="Type">
               <Select>
-                <Select.Option value="CLUB">Club</Select.Option>
-                <Select.Option value="CHILD">
+                <Select.Option value={TType.CLUB}>Club</Select.Option>
+                <Select.Option value={TType.CHILD}>
                   Club Session (or Child Tournament)
                 </Select.Option>
-                <Select.Option value="STANDARD">
+                <Select.Option value={TType.STANDARD}>
                   Standard Tournament
                 </Select.Option>
-                <Select.Option value="LEGACY">
+                <Select.Option value={TType.LEGACY}>
                   Legacy Tournament (Clubhouse mode)
                 </Select.Option>
               </Select>
             </Form.Item>
-
             <Form.Item name="description" label="Description">
               <Input.TextArea onChange={onDescriptionChange} rows={20} />
             </Form.Item>
-
+            <h3 hidden={props.mode === 'new'}>
+              The following will usually not be set.
+            </h3>
+            <Form.Item
+              name="boardStyle"
+              label="Board theme (optional)"
+              hidden={props.mode === 'new'}
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              name="tileStyle"
+              label="Tile theme (optional)"
+              hidden={props.mode === 'new'}
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              name="disclaimer"
+              label="Disclaimer (optional)"
+              hidden={props.mode === 'new'}
+            >
+              <Input.TextArea onChange={onDisclaimerChange} rows={20} />
+            </Form.Item>
+            <Form.Item
+              name="logo"
+              label="Logo URL (optional)"
+              hidden={props.mode === 'new'}
+            >
+              <Input onChange={onLogoChange} />
+            </Form.Item>
+            <Form.Item
+              name="color"
+              label="Hex Color (optional)"
+              hidden={props.mode === 'new'}
+            >
+              <Input onChange={onColorChange} />
+            </Form.Item>
             <Form.Item wrapperCol={{ ...layout.wrapperCol, offset: 4 }}>
               <Button type="primary" htmlType="submit">
                 Submit
@@ -273,8 +364,14 @@ export const TourneyEditor = (props: Props) => {
             </Form.Item>
           </Form>
         </Col>
-        <DescriptionPreview markdown={description} />
+        <DescriptionPreview
+          description={description}
+          disclaimer={disclaimer}
+          title={name}
+          color={color}
+          logo={logo}
+        />
       </Row>
-    </>
+    </div>
   );
 };

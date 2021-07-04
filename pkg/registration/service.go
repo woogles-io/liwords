@@ -32,8 +32,9 @@ func (rs *RegistrationService) Register(ctx context.Context, r *pb.UserRegistrat
 	// if r.RegistrationCode != code && r.RegistrationCode != codebot {
 	// 	return nil, errors.New("unauthorized")
 	// }
-	err := RegisterUser(ctx, r.Username, r.Password, r.Email, rs.userStore,
-		r.RegistrationCode == codebot, rs.argonConfig)
+	err := RegisterUser(ctx, r.Username, r.Password, r.Email,
+		r.FirstName, r.LastName, r.BirthDate, r.CountryCode,
+		rs.userStore, r.RegistrationCode == codebot, rs.argonConfig)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}

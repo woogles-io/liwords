@@ -1,14 +1,17 @@
 import React, { ReactNode, useMemo } from 'react';
 import { useTournamentStoreContext } from '../store/store';
-import { Button, Table, Tag } from 'antd';
+import { Button, List, Table, Tag } from 'antd';
 import {
   Division,
   SinglePairing,
   TourneyStatus,
 } from '../store/reducers/tournament_reducer';
-import { TournamentGameResult } from '../gen/api/proto/realtime/realtime_pb';
+import {
+  TournamentGameResult,
+  TournamentPerson,
+} from '../gen/api/proto/realtime/realtime_pb';
 import { useHistory } from 'react-router-dom';
-import { PlayerTag } from './player_tags';
+// import { PlayerTag } from './player_tags';
 
 const usernameFromPlayerEntry = (p: string) =>
   p.split(':').length > 0 ? p.split(':')[1] : 'Unknown player';
@@ -16,18 +19,50 @@ const usernameFromPlayerEntry = (p: string) =>
 const pairingsForRound = (
   round: number,
   division: Division
-): Array<SinglePairing> => {
+): [Array<SinglePairing>, Set<string>] => {
   const m = new Set<string>();
-  const n = new Array<string>();
-  const numPlayers = division.players.length;
-  for (let idx = round * numPlayers; idx < (round + 1) * numPlayers; idx++) {
-    const key = division.roundInfo[idx];
-    if (key && !m.has(key)) {
-      n.push(key);
-      m.add(key);
-    }
+  const n = new Array<SinglePairing>();
+  if (!division.pairings[round]) {
+    return [n, new Set<string>()];
   }
-  return n.map((key) => division.pairingMap[key]);
+  const unpairedPlayers = new Set(division.players.map((tp) => tp.getId()));
+
+  const key = (persons: TournamentPerson[]): string => {
+    let k = persons[0] + ':' + persons[1];
+    if (persons[1] < persons[0]) {
+      k = persons[1] + ':' + persons[0];
+    }
+    return k;
+  };
+
+  division.pairings[round].roundPairings.forEach((value: SinglePairing) => {
+    if (value.players) {
+      const k = key(value.players);
+      if (k && !m.has(k)) {
+        n.push(value);
+        m.add(k);
+        unpairedPlayers.delete(value.players[0].getId());
+        unpairedPlayers.delete(value.players[1].getId());
+        // count repeats.
+        let pairingCt = 1;
+        for (let i = 0; i < round; i++) {
+          const dp = division.pairings[i];
+          for (let j = 0; j < dp.roundPairings.length; j++) {
+            const v = dp.roundPairings[j];
+            if (v.players) {
+              const kk = key(v.players);
+              if (kk === k) {
+                pairingCt += 1;
+                break;
+              }
+            }
+          }
+        }
+        value.pairingCount = pairingCt;
+      }
+    }
+  });
+  return [n, unpairedPlayers];
 };
 
 const getPerformance = (
@@ -41,22 +76,21 @@ const getPerformance = (
   if (roundOfRecord < 0) {
     roundOfRecord = 0;
   }
-  const results = division.standingsMap[roundOfRecord].standingsList.find((s) =>
-    s.player.endsWith(`:${playerName}`)
-  );
+  const results = division.standingsMap
+    .get(roundOfRecord)
+    ?.getStandingsList()
+    .find((s) => s.getPlayerId().endsWith(`:${playerName}`));
   return results
-    ? `(${results.wins + results.draws / 2}-${
-        results.losses + results.draws / 2
+    ? `(${results.getWins() + results.getDraws() / 2}-${
+        results.getLosses() + results.getDraws() / 2
       })`
     : '(0-0)';
 };
 
-const getScores = (
-  playerName: string,
-  viewedRound: number,
-  pairing: SinglePairing
-) => {
-  const playerIndex = pairing.players[0].endsWith(`:${playerName}`) ? 0 : 1;
+const getScores = (playerName: string, pairing: SinglePairing) => {
+  const playerIndex = pairing.players[0].getId().endsWith(`:${playerName}`)
+    ? 0
+    : 1;
   const results = pairing.outcomes;
   if (
     pairing.games.length &&
@@ -87,20 +121,32 @@ type PairingTableData = {
   isMine: boolean;
   actions: ReactNode;
 };
-export const Pairings = (props: Props) => {
+
+export const Pairings = React.memo((props: Props) => {
   const { tournamentContext } = useTournamentStoreContext();
   const { divisions } = tournamentContext;
   const history = useHistory();
   const currentRound = useMemo(
     () =>
-      props.selectedDivision
+      props.selectedDivision && divisions[props.selectedDivision]
         ? divisions[props.selectedDivision].currentRound
         : tournamentContext.competitorState.currentRound,
     [props.selectedDivision, divisions, tournamentContext.competitorState]
   );
+
+  if (!props.selectedDivision) {
+    return null;
+  }
+
+  const [pairings, unpairedPlayers] = pairingsForRound(
+    props.selectedRound,
+    divisions[props.selectedDivision]
+  );
+
   const formatPairingsData = (
     division: Division,
-    round: number
+    round: number,
+    pairings: Array<SinglePairing>
   ): PairingTableData[] => {
     if (!division) {
       return new Array<PairingTableData>();
@@ -110,7 +156,7 @@ export const Pairings = (props: Props) => {
       return new Array<PairingTableData>();
     }
     const { status } = tournamentContext.competitorState;
-    const pairings = pairingsForRound(props.selectedRound, division);
+
     const findGameIdFromActive = (playerName: string) => {
       //This assumes one game per round per user
       const game = tournamentContext.activeGames.find((game) => {
@@ -120,7 +166,8 @@ export const Pairings = (props: Props) => {
     };
     const pairingsData = pairings.map(
       (pairing: SinglePairing): PairingTableData => {
-        const playerNames = pairing.players.map(usernameFromPlayerEntry);
+        const playerFullIDs = pairing.players.map((v) => v.getId());
+        const playerNames = playerFullIDs.map(usernameFromPlayerEntry);
         const isBye = pairing.outcomes[0] === TournamentGameResult.BYE;
         const isForfeit =
           pairing.outcomes[0] === TournamentGameResult.FORFEIT_LOSS;
@@ -135,8 +182,16 @@ export const Pairings = (props: Props) => {
         if (isMyGame) {
           sortPriority = 2;
         }
-        const isRemoved = (playerName: string) =>
-          division.removedPlayers.includes(playerName);
+        const isRemoved = (playerID: string) =>
+          division.players[division.playerIndexMap[playerID]]?.getSuspended();
+
+        const pairingCt = pairing.pairingCount || 1;
+        const repeatCount =
+          pairingCt <= 1
+            ? ''
+            : pairingCt === 2
+            ? 'Repeat'
+            : `${pairingCt}-peat`;
 
         const players =
           playerNames[0] === playerNames[1] ? (
@@ -144,33 +199,39 @@ export const Pairings = (props: Props) => {
               <p>
                 {playerNames[0]}{' '}
                 {
-                  <PlayerTag
-                    username={playerNames[0]}
-                    players={division.players}
-                    tournamentSlug={tournamentContext.metadata.slug}
-                  />
+                  // <PlayerTag
+                  //   username={playerNames[0]}
+                  //   players={division.players}
+                  //   tournamentSlug={tournamentContext.metadata.slug}
+                  // />
                 }
                 {isBye && <Tag className="ant-tag-bye">Bye</Tag>}
+                {isBye && pairingCt > 1 && (
+                  <Tag className="ant-tag-repeat">{repeatCount}</Tag>
+                )}
                 {isForfeit && <Tag className="ant-tag-forfeit">Forfeit</Tag>}
-                {isRemoved(playerNames[0]) && (
+                {isRemoved(playerFullIDs[0]) && (
                   <Tag className="ant-tag-removed">Removed</Tag>
                 )}
               </p>
             </div>
           ) : (
             <div>
-              {playerNames.map((playerName) => (
-                <p key={playerName}>
-                  {playerName}{' '}
+              {playerFullIDs.map((playerID, idx) => (
+                <p key={playerID}>
+                  {usernameFromPlayerEntry(playerID)}{' '}
                   {
-                    <PlayerTag
-                      username={playerName}
-                      players={division.players}
-                      tournamentSlug={tournamentContext.metadata.slug}
-                    />
+                    // <PlayerTag
+                    //   username={playerName}
+                    //   players={division.players}
+                    //   tournamentSlug={tournamentContext.metadata.slug}
+                    // />
                   }
-                  {isRemoved(playerName) && (
+                  {isRemoved(playerID) && (
                     <Tag className="ant-tag-removed">Removed</Tag>
+                  )}
+                  {idx === 0 && pairingCt > 1 && (
+                    <Tag className="ant-tag-repeat">{repeatCount}</Tag>
                   )}
                 </p>
               ))}
@@ -306,10 +367,11 @@ export const Pairings = (props: Props) => {
           playerNames[0] === playerNames[1]
             ? null
             : playerNames.map((playerName) => (
-                <p key={`${playerName}wl`}>
-                  {getScores(playerName, round, pairing)}
+                <p key={`${playerName}scores`}>
+                  {getScores(playerName, pairing)}
                 </p>
               ));
+
         return {
           players,
           key: playerNames.join(':'),
@@ -355,41 +417,52 @@ export const Pairings = (props: Props) => {
     className: 'actions',
   });
 
-  if (!props.selectedDivision) {
-    return null;
-  }
+  const tableData = formatPairingsData(
+    divisions[props.selectedDivision],
+    props.selectedRound,
+    pairings
+  );
 
   return (
-    <Table
-      className={`pairings ${
-        currentRound < props.selectedRound
-          ? 'future'
-          : currentRound > props.selectedRound
-          ? 'completed'
-          : 'current'
-      }`}
-      columns={columns}
-      pagination={false}
-      rowKey={(record) => {
-        return `${record.key}`;
-      }}
-      locale={{
-        emptyText: 'The pairings are not yet available for this round.',
-      }}
-      dataSource={formatPairingsData(
-        divisions[props.selectedDivision],
-        props.selectedRound
-      )}
-      rowClassName={(record) => {
-        let computedClass = `single-pairing ${tournamentContext.competitorState.status}`;
-        if (record.isMine) {
-          computedClass += ' mine';
-        }
-        if (props.selectedRound === currentRound) {
-          computedClass += ' current';
-        }
-        return computedClass;
-      }}
-    />
+    <>
+      <Table
+        className={`pairings ${
+          currentRound < props.selectedRound
+            ? 'future'
+            : currentRound > props.selectedRound
+            ? 'completed'
+            : 'current'
+        }`}
+        columns={columns}
+        pagination={false}
+        rowKey={(record) => {
+          return `${record.key}`;
+        }}
+        locale={{
+          emptyText: 'The pairings are not yet available for this round.',
+        }}
+        dataSource={tableData}
+        rowClassName={(record) => {
+          let computedClass = `single-pairing ${tournamentContext.competitorState.status}`;
+          if (record.isMine) {
+            computedClass += ' mine';
+          }
+          if (props.selectedRound === currentRound) {
+            computedClass += ' current';
+          }
+          return computedClass;
+        }}
+      />
+      {unpairedPlayers.size && tableData.length ? (
+        <>
+          <h5 style={{ marginTop: 10 }}>Unpaired players</h5>
+          <List
+            size="small"
+            dataSource={Array.from(unpairedPlayers).map((v) => v.split(':')[1])}
+            renderItem={(item) => <List.Item>{item}</List.Item>}
+          />
+        </>
+      ) : null}
+    </>
   );
-};
+});

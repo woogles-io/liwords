@@ -41,6 +41,7 @@ var AdminRequiredMap = map[pb.ModActionType]bool{
 	pb.ModActionType_RESET_STATS:             true,
 	pb.ModActionType_RESET_STATS_AND_RATINGS: true,
 	pb.ModActionType_REMOVE_CHAT:             false,
+	pb.ModActionType_DELETE_ACCOUNT:          true,
 }
 
 func (ms *ModService) GetNotorietyReport(ctx context.Context, req *pb.GetNotorietyReportRequest) (*pb.NotorietyReport, error) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/domino14/liwords/pkg/apiserver"
@@ -14,25 +15,114 @@ import (
 )
 
 type SocializeService struct {
-	userStore Store
-	chatStore ChatStore
+	userStore     Store
+	chatStore     ChatStore
+	presenceStore PresenceStore
 }
 
-func NewSocializeService(u Store, c ChatStore) *SocializeService {
-	return &SocializeService{userStore: u, chatStore: c}
+func NewSocializeService(u Store, c ChatStore, p PresenceStore) *SocializeService {
+	return &SocializeService{userStore: u, chatStore: c, presenceStore: p}
 }
 
 func (ss *SocializeService) AddFollow(ctx context.Context, req *pb.AddFollowRequest) (*pb.OKResponse, error) {
-	// stub
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := ss.userStore.Get(ctx, sess.Username)
+	if err != nil {
+		log.Err(err).Msg("getting-user")
+		return nil, twirp.InternalErrorWith(err)
+	}
+
+	followed, err := ss.userStore.GetByUUID(ctx, req.Uuid)
+	if err != nil {
+		log.Err(err).Msg("getting-followed")
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+
+	err = ss.userStore.AddFollower(ctx, followed.ID, user.ID)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+
+	err = ss.presenceStore.UpdateFollower(ctx, followed, user, true)
+	if err != nil {
+		// we cannot rollback the follow
+		return nil, twirp.NewError(twirp.DataLoss, err.Error())
+	}
+
 	return &pb.OKResponse{}, nil
 }
 
 func (ss *SocializeService) RemoveFollow(ctx context.Context, req *pb.RemoveFollowRequest) (*pb.OKResponse, error) {
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := ss.userStore.Get(ctx, sess.Username)
+	if err != nil {
+		log.Err(err).Msg("getting-user")
+		return nil, twirp.InternalErrorWith(err)
+	}
+
+	unfollowed, err := ss.userStore.GetByUUID(ctx, req.Uuid)
+	if err != nil {
+		log.Err(err).Msg("getting-unfollowed")
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+
+	err = ss.userStore.RemoveFollower(ctx, unfollowed.ID, user.ID)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+
+	err = ss.presenceStore.UpdateFollower(ctx, unfollowed, user, false)
+	if err != nil {
+		// we cannot rollback the unfollow
+		return nil, twirp.NewError(twirp.DataLoss, err.Error())
+	}
+
 	return &pb.OKResponse{}, nil
 }
 
 func (ss *SocializeService) GetFollows(ctx context.Context, req *pb.GetFollowsRequest) (*pb.GetFollowsResponse, error) {
-	return &pb.GetFollowsResponse{}, nil
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	user, err := ss.userStore.Get(ctx, sess.Username)
+	if err != nil {
+		log.Err(err).Msg("getting-user")
+		return nil, twirp.InternalErrorWith(err)
+	}
+
+	users, err := ss.userStore.GetFollows(ctx, user.ID)
+	if err != nil {
+		return nil, twirp.InternalErrorWith(err)
+	}
+
+	uuids := make([]string, 0, len(users))
+	for _, u := range users {
+		uuids = append(uuids, u.UUID)
+	}
+	channels, err := ss.presenceStore.BatchGetChannels(ctx, uuids)
+	if err != nil {
+		return nil, twirp.InternalErrorWith(err)
+	}
+
+	basicFollowedUsers := make([]*pb.BasicFollowedUser, len(users))
+	for i, u := range users {
+		basicFollowedUsers[i] = &pb.BasicFollowedUser{
+			Uuid:     u.UUID,
+			Username: u.Username,
+			Channel:  channels[i],
+		}
+	}
+
+	return &pb.GetFollowsResponse{Users: basicFollowedUsers}, nil
 }
 
 // blocks
@@ -194,7 +284,32 @@ func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *pb.GetC
 	if err != nil {
 		return nil, err
 	}
-	return &realtime.ChatMessages{Messages: chats}, err
+	if len(chats) > 0 {
+		chatterUuids := make([]string, 0, len(chats))
+		for _, chatMessage := range chats {
+			chatterUuids = append(chatterUuids, chatMessage.UserId)
+		}
+		sort.Strings(chatterUuids)
+		w := 1
+		for r := 1; r < len(chatterUuids); r++ {
+			if chatterUuids[r] != chatterUuids[r-1] {
+				chatterUuids[w] = chatterUuids[r]
+				w++
+			}
+		}
+		chatterUuids = chatterUuids[:w]
+		chatterBriefProfiles, err := ss.userStore.GetBriefProfiles(ctx, chatterUuids)
+		if err != nil {
+			return nil, err
+		}
+		for _, chatMessage := range chats {
+			if chatterBriefProfile, ok := chatterBriefProfiles[chatMessage.UserId]; ok {
+				chatMessage.CountryCode = chatterBriefProfile.CountryCode
+				chatMessage.AvatarUrl = chatterBriefProfile.AvatarUrl
+			}
+		}
+	}
+	return &realtime.ChatMessages{Messages: chats}, nil
 }
 
 // func (ss *SocializeService) GetBlockedBy(ctx context.Context, req *pb.GetBlocksRequest) (*pb.GetBlockedByResponse, error) {
@@ -223,3 +338,8 @@ func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *pb.GetC
 
 // 	return &pb.GetBlockedByResponse{Users: basicUsers}, nil
 // }
+
+func (ss *SocializeService) GetModList(ctx context.Context, req *pb.GetModListRequest) (*pb.GetModListResponse, error) {
+	// this endpoint should work without login
+	return ss.userStore.GetModList(ctx)
+}

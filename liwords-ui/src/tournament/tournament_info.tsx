@@ -1,12 +1,12 @@
 /* eslint-disable jsx-a11y/anchor-is-valid */
 import React from 'react';
-import { Card, Divider } from 'antd';
+import { Card } from 'antd';
 import ReactMarkdown from 'react-markdown';
 import { useTournamentStoreContext } from '../store/store';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import { CompetitorStatus } from './competitor_status';
 import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
-import { isPairedMode } from '../store/constants';
+import { isClubType } from '../store/constants';
 
 type TournamentInfoProps = {
   setSelectedGameTab: (tab: string) => void;
@@ -16,13 +16,18 @@ type TournamentInfoProps = {
 export const TournamentInfo = (props: TournamentInfoProps) => {
   const { tournamentContext } = useTournamentStoreContext();
   const { competitorState: competitorContext, metadata } = tournamentContext;
-  const directors = tournamentContext.metadata.directors.map((username, i) => (
-    <span key={username}>
+  const directors = tournamentContext.directors.map((username, i) => (
+    <span className="director" key={username}>
       {i > 0 && ', '}
       <UsernameWithContext username={username} omitSendMessage />
     </span>
   ));
-
+  const type = isClubType(metadata.getType()) ? 'Club' : 'Tournament';
+  const title = (
+    <span style={{ color: tournamentContext.metadata.getColor() }}>
+      {tournamentContext.metadata.getName()}
+    </span>
+  );
   return (
     <div className="tournament-info">
       {/* Mobile version of the status widget, hidden by css elsewhere */}
@@ -31,26 +36,36 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
           sendReady={() =>
             readyForTournamentGame(
               props.sendSocketMsg,
-              tournamentContext.metadata.id,
+              tournamentContext.metadata.getId(),
               competitorContext
             )
           }
         />
       )}
-      <Card title="Tournament Information" className="tournament">
-        <h3 className="tournament-name">{tournamentContext.metadata.name}</h3>
-        <h4>Directors: {directors}</h4>
+      <Card title={title} className="tournament">
+        {tournamentContext.metadata.getLogo() && (
+          <img
+            src={tournamentContext.metadata.getLogo()}
+            alt={tournamentContext.metadata.getName()}
+            style={{
+              width: 150,
+              textAlign: 'center',
+              margin: '0 auto 18px',
+              display: 'block',
+            }}
+          />
+        )}
+        <h4>Directed by: {directors}</h4>
+        <h5 className="section-header">{type} Details</h5>
         <ReactMarkdown linkTarget="_blank">
-          {tournamentContext.metadata.description}
+          {tournamentContext.metadata.getDescription()}
         </ReactMarkdown>
-        {!isPairedMode(metadata.type) && (
+        {tournamentContext.metadata.getDisclaimer() && (
           <>
-            <Divider />
-            Recent games can now be found in the{' '}
-            <a onClick={() => props.setSelectedGameTab('RECENT')}>
-              RECENT GAMES
-            </a>{' '}
-            tab in the center panel.
+            <h5 className="section-header">{type} Notice</h5>
+            <ReactMarkdown linkTarget="_blank">
+              {tournamentContext.metadata.getDisclaimer()}
+            </ReactMarkdown>
           </>
         )}
       </Card>

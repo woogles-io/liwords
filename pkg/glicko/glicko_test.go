@@ -108,7 +108,7 @@ func TestRatingLoss(t *testing.T) {
 
 func TestAverageRatingChange(t *testing.T) {
 
-	spreads := []int{SpreadScaling, SpreadScaling/2, SpreadScaling/4, 10, 1}
+	spreads := []int{SpreadScaling, SpreadScaling / 2, SpreadScaling / 4, 10, 1}
 
 	for i := 0; i < len(spreads); i++ {
 		spread := spreads[i]
@@ -122,12 +122,32 @@ func TestAverageRatingChange(t *testing.T) {
 				spread,
 				RatingPeriodinSeconds/12)
 
-		fmt.Printf("A typical rating change for two players with equal ratings\n"+
+		fmt.Printf("A typical rating change for two players with ratings of %d\n"+
 			"and minimum rating deviations in a game where the final\n"+
-			"spread is %d points is %.4f points\n\n", spread, rating-float64(InitialRating))
+			"spread is %d points is %.4f points\n\n", InitialRating, spread, rating-float64(InitialRating))
 	}
 }
+func TestAverageRatingChangeSkilledPlayers(t *testing.T) {
 
+	spreads := []int{SpreadScaling, SpreadScaling / 2, SpreadScaling / 4, 10, 1}
+	skilledRating := InitialRating + 400
+	for i := 0; i < len(spreads); i++ {
+		spread := spreads[i]
+		rating, _, _ :=
+			Rate(
+				float64(skilledRating),
+				float64(MinimumRatingDeviation),
+				InitialVolatility,
+				float64(skilledRating),
+				float64(MinimumRatingDeviation),
+				spread,
+				RatingPeriodinSeconds/12)
+
+		fmt.Printf("A typical rating change for two players with ratings of %d\n"+
+			"and minimum rating deviations in a game where the final\n"+
+			"spread is %d points is %.4f points\n\n", skilledRating, spread, rating-float64(skilledRating))
+	}
+}
 func TestVolatility(t *testing.T) {
 
 	is := is.New(t)
@@ -372,7 +392,7 @@ func TestGamesToMinimumDeviation(t *testing.T) {
 				spread,
 				RatingPeriodinSeconds/12)
 		// fmt.Printf("%.2f %.2f %.2f\n", rating, deviation, volatility)
-		if deviation < 1 + float64(MinimumRatingDeviation) {
+		if deviation < 1+float64(MinimumRatingDeviation) {
 			break
 		}
 	}
@@ -535,7 +555,7 @@ func TestGamesToMinimumDeviationNewPlayers(t *testing.T) {
 		deviation1 = new_deviation1
 		volatility1 = new_volatility1
 		// fmt.Printf("%.2f %.2f %.2f\n", rating, deviation, volatility)
-		if deviation1 < 1 + float64(MinimumRatingDeviation) && deviation2 < 1 + float64(MinimumRatingDeviation) {
+		if deviation1 < 1+float64(MinimumRatingDeviation) && deviation2 < 1+float64(MinimumRatingDeviation) {
 			break
 		}
 	}
@@ -629,6 +649,50 @@ func TestRatingConvergenceTimeAfterSteadyState(t *testing.T) {
 		"a %.2f rated oppoent to get to a rating of %.2f\n\n\n", InitialRating, MinimumRatingDeviation, games_to_steady, spread, opponent_rating, rating)
 }
 
+func TestAdjustedWinBoost(t *testing.T) {
+	fmt.Println("\nAdjusted Win Boosts for each rating:")
+	for i := 1; i <= 20; i++ {
+		rating := 100 * i
+		fmt.Printf("Rating: %4d, Adjusted Win Boost: %f\n", rating, adjustWinBoost(float64(rating)))
+	}
+}
+
+func TestTradeoffs(t *testing.T) {
+
+	for r := 1; r <= 10; r++ {
+		rating := r * 200
+		awb := adjustWinBoost(float64(rating))
+		winSpread := 0.0
+		loseSpread := 0.0
+		winResult := 0.0
+		loseResult := 0.0
+
+		winSpreadCap := 13
+		loseSpreadCap := 13
+
+		fmt.Printf("Tradeoffs for a rating of %d\n\n      ", rating)
+		for i := 0; i < loseSpreadCap; i++ {
+			loseSpread = float64(10 * (i + 1))
+			fmt.Printf("%4d    |", int(loseSpread))
+		}
+		fmt.Println()
+		for i := 0; i < winSpreadCap; i++ {
+			winSpread = float64(10 * (i + 1))
+			fmt.Printf("%4d |", int(winSpread))
+			for j := 0; j < loseSpreadCap; j++ {
+				winSpread = float64(10 * (i + 1))
+				loseSpread = float64(10 * (j + 1))
+				winResult = 0.5 + awb + ((0.5 - awb) * math.Min(1.0, winSpread/float64(SpreadScaling)))
+				loseResult = 0.5 - awb - ((0.5 - awb) * math.Min(1.0, loseSpread/float64(SpreadScaling)))
+				zeroEV := loseResult / (winResult + loseResult)
+				fmt.Printf("%7.4f%%|", zeroEV*100)
+			}
+			fmt.Println()
+		}
+		fmt.Print("\n\n")
+	}
+}
+
 func TestRealData(t *testing.T) {
 
 	players := make(map[int]*Player)
@@ -645,7 +709,8 @@ func TestRealData(t *testing.T) {
 	maxPlayerId := 2000000
 	var spreads []float64
 
-	outer: for _, game := range data {
+outer:
+	for _, game := range data {
 		for i := 0; i < 2; i++ {
 			playerid, _ := strconv.Atoi(game[2+i])
 			if playerid > maxPlayerId {
@@ -714,7 +779,7 @@ func TestRealData(t *testing.T) {
 
 	sort.Sort(ByRating(playersArray))
 
-	fmt.Printf("These are the results of the rating system applied to\n" +
+	fmt.Printf("\n\nThese are the results of the rating system applied to\n" +
 		"every game on cross-tables.com starting on January 1, 2000\n")
 	fmt.Printf("The test pool contains %d players\n\n", len(playersArray))
 	mean, stdev := MeanStdDev(spreads)

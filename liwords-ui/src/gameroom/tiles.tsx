@@ -1,9 +1,5 @@
 import React from 'react';
 
-import {
-  CrosswordGameTileValues,
-  runeToValues,
-} from '../constants/tile_values';
 import Tile from './tile';
 import {
   Blank,
@@ -14,10 +10,12 @@ import {
 } from '../utils/cwgame/common';
 import { PlacementArrow } from '../utils/cwgame/tile_placement';
 import { useExaminableGameContextStoreContext } from '../store/store';
+import { Alphabet, runeToValues } from '../constants/alphabets';
 
 type Props = {
   gridDim: number;
   tilesLayout: string;
+  alphabet: Alphabet;
   lastPlayedTiles: PlayedTiles;
   playerOfTileAt: PlayerOfTiles;
   onClick: (rune: string) => void;
@@ -38,6 +36,12 @@ type Props = {
   definitionPopover?:
     | { x: number; y: number; content: React.ReactNode }
     | undefined;
+  handleTileDrop?: (
+    row: number,
+    col: number,
+    rackIndex: number | undefined,
+    tileIndex: number | undefined
+  ) => void;
 };
 
 const Tiles = React.memo((props: Props) => {
@@ -195,7 +199,7 @@ const Tiles = React.memo((props: Props) => {
         tiles.push(
           <Tile
             rune={rune}
-            value={runeToValues(rune, CrosswordGameTileValues)}
+            value={runeToValues(props.alphabet, rune)}
             lastPlayed={lastPlayed}
             playerOfTile={playerOfTile}
             key={`tile_${x}_${y}`}
@@ -219,10 +223,7 @@ const Tiles = React.memo((props: Props) => {
                 props.onClick(tentativeTile.letter);
               }}
               rune={tentativeTile.letter}
-              value={runeToValues(
-                tentativeTile.letter,
-                CrosswordGameTileValues
-              )}
+              value={runeToValues(props.alphabet, tentativeTile.letter)}
               lastPlayed={false}
               playerOfTile={examinableGameContext.onturn}
               key={`tileT_${tentativeTile.col}_${tentativeTile.row}`}
@@ -233,6 +234,7 @@ const Tiles = React.memo((props: Props) => {
               tentativeScore={tentativeScoreHere}
               tentativeScoreIsHorizontal={tentativeScoreHereIsHorizontal}
               grabbable={true}
+              handleTileDrop={props.handleTileDrop}
               {...(tentativeTile.letter !== Blank && definitionHandlers)}
             />
           );

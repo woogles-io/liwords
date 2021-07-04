@@ -31,10 +31,18 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		return err
 	}
 
-	err = mod.ActionExists(ctx, b.userStore, userID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT, ms.ModActionType_MUTE})
+	_, err = mod.ActionExists(ctx, b.userStore, userID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT, ms.ModActionType_MUTE})
 	if err != nil {
 		return err
 	}
+
+	// Regulate chat only if the user is not privileged and the
+	// chat is not a private chat or a game chat
+	regulateChat := !(sendingUser.IsAdmin ||
+		sendingUser.IsMod ||
+		sendingUser.IsDirector ||
+		strings.HasPrefix(evt.Channel, "chat.pm.") ||
+		strings.HasPrefix(evt.Channel, "chat.game."))
 
 	userFriendlyChannelName := ""
 	if strings.HasPrefix(evt.Channel, "chat.pm.") {
@@ -71,11 +79,31 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 			return err
 		}
 		userFriendlyChannelName = "tournament:" + t.Name
+		if regulateChat {
+			for _, director := range t.Directors.Persons {
+				uuid := director.Id
+				colon := strings.IndexByte(uuid, ':')
+				if colon >= 0 {
+					uuid = uuid[:colon]
+				}
+				if userID == uuid {
+					regulateChat = false
+					break
+				}
+			}
+		}
 	}
 
-	chatMessage, err := b.chatStore.AddChat(ctx, sendingUser.Username, userID, evt.Message, evt.Channel, userFriendlyChannelName)
+	chatMessage, err := b.chatStore.AddChat(ctx, sendingUser.Username, userID, evt.Message, evt.Channel, userFriendlyChannelName, regulateChat)
 	if err != nil {
 		return err
+	}
+	if sendingUser.Profile != nil {
+		chatMessage.CountryCode = sendingUser.Profile.CountryCode
+		chatMessage.AvatarUrl = sendingUser.AvatarUrl()
+	} else {
+		// not sure if it can be nil, but we don't want to crash if that happens
+		log.Warn().Interface("chat-message", chatMessage).Msg("chat-no-profile")
 	}
 	toSend := entity.WrapEvent(chatMessage, pb.MessageType_CHAT_MESSAGE)
 	data, err := toSend.Serialize()

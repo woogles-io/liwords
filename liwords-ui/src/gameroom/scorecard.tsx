@@ -28,8 +28,10 @@ type Props = {
   events: Array<GameEvent>;
   board: Board;
   lexicon: string;
+  variant: string;
   poolFormat: PoolFormatType;
   playerMeta: Array<PlayerMetadata>;
+  gameEpilog: React.ReactElement;
 };
 
 type turnProps = {
@@ -336,12 +338,17 @@ export const ScoreCard = React.memo((props: Props) => {
     >
       <div ref={el} style={cardStyle}>
         {props.isExamining ? (
-          <Analyzer lexicon={props.lexicon} style={analyzerStyle} />
+          <Analyzer
+            lexicon={props.lexicon}
+            variant={props.variant}
+            style={analyzerStyle}
+          />
         ) : (
           <Notepad style={notepadStyle} />
         )}
-        {flipHidden
-          ? turns.map((t, idx) =>
+        {flipHidden ? (
+          <React.Fragment>
+            {turns.map((t, idx) =>
               t.length === 0 ? null : (
                 <ScorecardTurn
                   turn={t}
@@ -352,8 +359,10 @@ export const ScoreCard = React.memo((props: Props) => {
                   username={props.username}
                 />
               )
-            )
-          : null}
+            )}
+            {props.gameEpilog}
+          </React.Fragment>
+        ) : null}
       </div>
     </Card>
   );

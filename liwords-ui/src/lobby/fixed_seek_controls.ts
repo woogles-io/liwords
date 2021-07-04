@@ -1,14 +1,40 @@
 // Note: this is a TEMPORARY file. Once we add this ability to the tournament
 // backend, we can remove this.
 
-import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { initialTimeMinutesToSlider } from '../store/constants';
 
-type settings = { [key: string]: string | number | boolean };
+import {
+  ChallengeRule,
+  ChallengeRuleMap,
+} from '../gen/macondo/api/proto/macondo/macondo_pb';
 
-const phillyvirtual = {
+export type seekPropVals = {
+  lexicon: string;
+  challengerule: ChallengeRuleMap[keyof ChallengeRuleMap];
+  initialtimeslider: number;
+  rated: boolean;
+  extratime: number;
+  friend: string;
+  incOrOT: 'overtime' | 'increment';
+  vsBot: boolean;
+  variant: string;
+};
+
+type hardcodedSeekPropVals = Partial<seekPropVals> &
+  Pick<
+    seekPropVals,
+    'initialtimeslider' | 'rated' | 'extratime' | 'incOrOT' | 'variant'
+  > &
+  Partial<{
+    lexicon: 'CSW19' | 'CSW19X' | 'NSWL20' | 'NWL20'; // add more only as needed
+    variant: 'classic' | 'wordsmog';
+  }>;
+
+const phillyvirtual: hardcodedSeekPropVals = {
+  variant: 'classic',
   lexicon: 'NWL20',
   challengerule: ChallengeRule.VOID,
-  initialtime: 22, // Slider position is equivalent to 20 minutes.
+  initialtimeslider: initialTimeMinutesToSlider(20),
   rated: true,
   extratime: 2,
   friend: '',
@@ -16,10 +42,11 @@ const phillyvirtual = {
   vsBot: false,
 };
 
-const cococlub = {
+const cococlub: hardcodedSeekPropVals = {
+  variant: 'classic',
   lexicon: 'CSW19',
   challengerule: ChallengeRule.FIVE_POINT,
-  initialtime: 17, // 15 minutes
+  initialtimeslider: initialTimeMinutesToSlider(15),
   rated: true,
   extratime: 1,
   friend: '',
@@ -27,10 +54,11 @@ const cococlub = {
   vsBot: false,
 };
 
-const laclub = {
+const laclub: hardcodedSeekPropVals = {
+  variant: 'classic',
   lexicon: 'NWL20',
   challengerule: ChallengeRule.DOUBLE,
-  initialtime: 22, // 20 minutes
+  initialtimeslider: initialTimeMinutesToSlider(20),
   rated: true,
   extratime: 3,
   friend: '',
@@ -38,9 +66,10 @@ const laclub = {
   vsBot: false,
 };
 
-const madisonclub = {
+const madisonclub: hardcodedSeekPropVals = {
+  variant: 'classic',
   challengerule: ChallengeRule.FIVE_POINT,
-  initialtime: 22, // 20 minutes
+  initialtimeslider: initialTimeMinutesToSlider(20),
   rated: true,
   extratime: 1,
   friend: '',
@@ -48,10 +77,11 @@ const madisonclub = {
   vsBot: false,
 };
 
-const cocoblitz = {
+const cocoblitz: hardcodedSeekPropVals = {
+  variant: 'classic',
   lexicon: 'CSW19',
   challengerule: ChallengeRule.FIVE_POINT,
-  initialtime: 5, // 3 minutes
+  initialtimeslider: initialTimeMinutesToSlider(3),
   rated: true,
   extratime: 1,
   friend: '',
@@ -59,10 +89,11 @@ const cocoblitz = {
   vsBot: false,
 };
 
-const channel275 = {
+const channel275: hardcodedSeekPropVals = {
+  variant: 'classic',
   lexicon: 'CSW19',
   challengerule: ChallengeRule.FIVE_POINT,
-  initialtime: 22, // 20 minutes
+  initialtimeslider: initialTimeMinutesToSlider(20),
   rated: true,
   extratime: 1,
   friend: '',
@@ -70,10 +101,11 @@ const channel275 = {
   vsBot: false,
 };
 
-const asci = {
+const nssg: hardcodedSeekPropVals = {
+  variant: 'classic',
   lexicon: 'CSW19X',
   challengerule: ChallengeRule.FIVE_POINT,
-  initialtime: 15, // 13 minutes
+  initialtimeslider: initialTimeMinutesToSlider(13),
   rated: true,
   extratime: 1,
   friend: '',
@@ -81,10 +113,21 @@ const asci = {
   vsBot: false,
 };
 
-const phillyasap = {
+const nssg16: hardcodedSeekPropVals = {
+  ...nssg,
+  initialtimeslider: initialTimeMinutesToSlider(16),
+};
+
+const nssg19: hardcodedSeekPropVals = {
+  ...nssg,
+  initialtimeslider: initialTimeMinutesToSlider(19),
+};
+
+const phillyasap: hardcodedSeekPropVals = {
+  variant: 'classic',
   lexicon: 'NWL20',
   challengerule: ChallengeRule.VOID,
-  initialtime: 22, // 20 minutes
+  initialtimeslider: initialTimeMinutesToSlider(20),
   rated: true,
   extratime: 2,
   friend: '',
@@ -92,10 +135,11 @@ const phillyasap = {
   vsBot: false,
 };
 
-const nyc = {
+const nyc: hardcodedSeekPropVals = {
+  variant: 'classic',
   lexicon: 'NWL20',
   challengerule: ChallengeRule.DOUBLE,
-  initialtime: 19, // 17 minutes
+  initialtimeslider: initialTimeMinutesToSlider(17),
   rated: true,
   extratime: 1,
   friend: '',
@@ -103,17 +147,83 @@ const nyc = {
   vsBot: false,
 };
 
-export const fixedSettings: { [key: string]: settings } = {
+const learners: hardcodedSeekPropVals = {
+  variant: 'classic',
+  initialtimeslider: initialTimeMinutesToSlider(10),
+  rated: true,
+  extratime: 0,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const nasscChampionship: hardcodedSeekPropVals = {
+  variant: 'classic',
+  lexicon: 'NSWL20',
+  challengerule: ChallengeRule.FIVE_POINT,
+  initialtimeslider: initialTimeMinutesToSlider(20),
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const nasscNovice: hardcodedSeekPropVals = {
+  variant: 'classic',
+  lexicon: 'NSWL20',
+  challengerule: ChallengeRule.VOID,
+  initialtimeslider: initialTimeMinutesToSlider(20),
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const nasscHighSchool: hardcodedSeekPropVals = {
+  variant: 'classic',
+  lexicon: 'NSWL20',
+  challengerule: ChallengeRule.DOUBLE,
+  initialtimeslider: initialTimeMinutesToSlider(20),
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const premiumswerve: hardcodedSeekPropVals = {
+  variant: 'wordsmog',
+  lexicon: 'CSW19',
+  challengerule: ChallengeRule.FIVE_POINT,
+  initialtimeslider: initialTimeMinutesToSlider(22),
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+export const fixedSettings: { [key: string]: hardcodedSeekPropVals } = {
   phillyvirtual,
   cococlub,
   madisonclub,
+  eqRyXi3cBrUrDduuKDGuB9: cococlub,
   '26VtG4JCfeD6qvSGJEwRLm': laclub,
   cocoblitz,
   channel275,
   GqgfauAMzorWxGGrCqhV5J: phillyasap,
-  cbCrE5EAnfTpacaZkxc4SZ: asci, // /tournament
-  CSLUwqH4rHUTKzNcp7cPRP: asci, // /club
+  cbCrE5EAnfTpacaZkxc4SZ: nssg, // /tournament
+  CSLUwqH4rHUTKzNcp7cPRP: nssg, // /club
+  K4MwE8nesdmPAQJkHbVpbi: nssg16,
+  nEc9xsgU6h78eeKRA3MeCT: nssg19,
   CL9GW5sDfNqeX2yiPRg9YF: nyc,
+  vhM3xsCFtxvM794dCK2mE6: nasscChampionship,
+  Uzfx4iW2kLhyzWUz6MWQxY: nasscNovice,
+  XZDoU8Z6fMk7WrVitthkeU: nasscHighSchool,
+  KU8PSEu8p4Pni4qvmhn9x3: learners,
+  rmuXRr9CPzpcwjF4vnYdaB: premiumswerve,
 };
 
 // A temporary map of club redirects. Map internal tournament ID to slug:
