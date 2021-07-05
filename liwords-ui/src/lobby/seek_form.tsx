@@ -225,8 +225,29 @@ export const SeekForm = (props: Props) => {
     disableChallengeControls = !freeformItems.includes('challenge_rule');
     disableTimeControls = !freeformItems.includes('time');
     disableRatedControls = !freeformItems.includes('rating_mode');
+    // Pass through default values only if they are NOT disabled
+    // (If they are disabled, we should use the hardcoded values)
+    const valuesToPassThrough: Partial<seekPropVals> = {};
+    if (!disableVariantControls) {
+      valuesToPassThrough.variant = storedValues.variant;
+    }
+    if (!disableLexiconControls) {
+      valuesToPassThrough.lexicon = storedValues.lexicon;
+    }
+    if (!disableChallengeControls) {
+      valuesToPassThrough.challengerule = storedValues.challengerule;
+    }
+    if (!disableTimeControls) {
+      valuesToPassThrough.initialtimeslider = storedValues.initialtimeslider;
+      valuesToPassThrough.extratime = storedValues.extratime;
+      valuesToPassThrough.incOrOT = storedValues.incOrOT;
+    }
+    if (!disableRatedControls) {
+      valuesToPassThrough.rated = storedValues.rated;
+    }
     initialValues = {
       ...initFormValues,
+      ...valuesToPassThrough,
       friend: givenFriend,
     };
   } else {
