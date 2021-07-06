@@ -220,9 +220,9 @@ const App = React.memo(() => {
 
   useEffect(() => {
     const notifyInfo = getTermsNotify();
-    if (!notifyInfo?.notified) {
+    if (loggedIn && !notifyInfo?.notified) {
       notification.info({
-        message: `Our terms of service were updated on ${notifyInfo.changed}.`,
+        message: `Our terms of service were updated on ${notifyInfo.changed}. Click to read them.`,
         duration: 0,
         key: 'terms',
         onClick: () => {
@@ -234,7 +234,7 @@ const App = React.memo(() => {
         },
       });
     }
-  }, [history]);
+  }, [history, loggedIn]);
 
   const sendChat = useCallback(
     (msg: string, chan: string) => {
