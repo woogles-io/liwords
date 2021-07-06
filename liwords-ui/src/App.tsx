@@ -1,9 +1,16 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import { Route, Switch, useLocation, Redirect } from 'react-router-dom';
+import {
+  Route,
+  Switch,
+  useLocation,
+  Redirect,
+  useHistory,
+} from 'react-router-dom';
 import { useMountedState } from './utils/mounted';
 import './App.scss';
 import axios from 'axios';
 import 'antd/dist/antd.css';
+import { notification } from 'antd';
 
 import { Table as GameTable } from './gameroom/table';
 import TileImages from './gameroom/tile_images';
@@ -18,7 +25,7 @@ import {
 } from './store/store';
 
 import { LiwordsSocket } from './socket/socket';
-import { About } from './about/about';
+import { Team } from './about/team';
 import { Register } from './lobby/register';
 import { UserProfile } from './profile/profile';
 import { Settings } from './settings/settings';
@@ -32,6 +39,11 @@ import { Clubs } from './clubs';
 import { TournamentRoom } from './tournament/room';
 import { Admin } from './admin/admin';
 import { DonateSuccess } from './donate_success';
+import {
+  getTermsNotify,
+  setTermsNotify,
+  TermsOfService,
+} from './about/termsOfService';
 
 type Blocks = {
   user_ids: Array<string>;
@@ -89,6 +101,8 @@ const App = React.memo(() => {
   } = useFriendsStoreContext();
 
   const { resetStore } = useResetStoreContext();
+
+  const history = useHistory();
 
   // See store.tsx for how this works.
   const [socketId, setSocketId] = useState(0);
@@ -204,6 +218,24 @@ const App = React.memo(() => {
     }
   }, [getFriends, pendingFriendsRefresh]);
 
+  useEffect(() => {
+    const notifyInfo = getTermsNotify();
+    if (!notifyInfo?.notified) {
+      notification.info({
+        message: `Our terms of service were updated on ${notifyInfo.changed}.`,
+        duration: 0,
+        key: 'terms',
+        onClick: () => {
+          notification.close('terms');
+          history.replace('/terms');
+        },
+        onClose: () => {
+          setTermsNotify();
+        },
+      });
+    }
+  }, [history]);
+
   const sendChat = useCallback(
     (msg: string, chan: string) => {
       const evt = new ChatMessage();
@@ -251,7 +283,13 @@ const App = React.memo(() => {
           <GameTable sendSocketMsg={sendMessage} sendChat={sendChat} />
         </Route>
         <Route path="/about">
-          <About />
+          <Team />
+        </Route>
+        <Route path="/team">
+          <Team />
+        </Route>
+        <Route path="/terms">
+          <TermsOfService />
         </Route>
         <Route path="/register">
           <Register />

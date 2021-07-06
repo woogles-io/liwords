@@ -19,6 +19,7 @@ import woogles from '../assets/woogles.png';
 import { useLoginStateStoreContext } from '../store/store';
 import { LoginModal } from './login';
 import { countryArray } from '../settings/country_map';
+import { setTermsNotify } from '../about/termsOfService';
 
 const allMonthNames = [
   'January',
@@ -256,6 +257,7 @@ export const Register = () => {
   const loggedIn = signedUp || loginState.loggedIn;
   useEffect(() => {
     if (loggedIn) {
+      setTermsNotify();
       history.replace('/');
     }
   }, [history, loggedIn]);
@@ -547,7 +549,7 @@ export const Register = () => {
                 <Checkbox>
                   <p className="no-cheat">
                     I agree to the{' '}
-                    <Link target="_blank" to="/about">
+                    <Link target="_blank" to="/terms">
                       Woogles Terms of Service
                     </Link>
                     . Notably, I promise not to use word finders or game
