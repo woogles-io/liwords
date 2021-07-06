@@ -5,21 +5,18 @@ import woogles from '../assets/woogles.png';
 import moment from 'moment';
 
 // Always change this when the terms change.
-const TERMS_VERSION_RELEASE_DATE = '2021-07-06';
+const TERMS_VERSION_DATE = '2021-07-06';
 
 export const setTermsNotify = () => {
-  localStorage?.setItem(
-    'termsDate',
-    Date.parse(TERMS_VERSION_RELEASE_DATE).toString()
-  );
+  localStorage?.setItem('termsDate', Date.parse(TERMS_VERSION_DATE).toString());
 };
 
 export const getTermsNotify = () => {
-  const releaseDate = Date.parse(TERMS_VERSION_RELEASE_DATE);
+  const releaseDate = Date.parse(TERMS_VERSION_DATE);
   const termsDate = parseInt(localStorage?.getItem('termsDate') || '0', 10);
   return {
     notified: releaseDate === termsDate,
-    changed: moment(TERMS_VERSION_RELEASE_DATE).format('MMMM Do, YYYY'),
+    changed: moment(TERMS_VERSION_DATE).format('MMMM Do, YYYY'),
   };
 };
 
