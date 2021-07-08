@@ -755,15 +755,16 @@ func (t *ClassicDivision) PairRound(round int, overwriteByes bool) (*realtime.Di
 	}
 
 	// Update the gibson status for all players
-	for _, person := range t.Players.Persons {
-		gibsonRound, exists := gibsonizedPlayers[person.Id]
-		if exists && gibsonRound > 0 {
-			person.Gibsonized = gibsonRound
-		} else {
-			person.Gibsonized = 0
+	if t.DivisionControls.Gibsonize {
+		for _, person := range t.Players.Persons {
+			gibsonRound, exists := gibsonizedPlayers[person.Id]
+			if exists && gibsonRound > 0 {
+				person.Gibsonized = gibsonRound
+			} else {
+				person.Gibsonized = 0
+			}
 		}
 	}
-
 	return pmessage, nil
 }
 
