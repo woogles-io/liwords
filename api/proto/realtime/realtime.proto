@@ -494,6 +494,7 @@ message TournamentPerson {
   string id = 1;
   int32 rating = 2;
   bool suspended = 3;
+  int32 gibsonized = 4;
 }
 
 message TournamentPersons {
@@ -558,7 +559,6 @@ message DivisionPairingsResponse {
   string division = 2;
   repeated Pairing division_pairings = 3;
   map<int32, RoundStandings> division_standings = 4;
-  map<string, int32> gibsonized_players = 5;
 }
 
 message DivisionPairingsDeletedResponse {

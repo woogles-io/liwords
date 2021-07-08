@@ -595,6 +595,7 @@ func (t *ClassicDivision) PairRound(round int, overwriteByes bool) (*realtime.Di
 	}
 
 	pmessage := newPairingsMessage()
+	gibsonizedPlayers := make(map[string]int32)
 
 	// Determine Gibsonizations
 	if t.DivisionControls.Gibsonize {
@@ -611,7 +612,7 @@ func (t *ClassicDivision) PairRound(round int, overwriteByes bool) (*realtime.Di
 			}
 			if !cc {
 				gibsonRank = i
-				pmessage.GibsonizedPlayers[poolMembers[i].Id] = int32(round)
+				gibsonizedPlayers[poolMembers[i].Id] = int32(round)
 			} else {
 				break
 			}
@@ -745,6 +746,16 @@ func (t *ClassicDivision) PairRound(round int, overwriteByes bool) (*realtime.Di
 		return nil, err
 	}
 
+	// Update the gibson status for all players
+	for _, person := range t.Players.Persons {
+		gibsonRound, exists := gibsonizedPlayers[person.Id]
+		if exists {
+			person.Gibsonized = gibsonRound
+		} else {
+			person.Gibsonized = -1
+		}
+	}
+
 	return pmessage, nil
 }
 
@@ -775,6 +786,7 @@ func (t *ClassicDivision) AddPlayers(players *realtime.TournamentPersons) (*real
 		if !ok {
 			numNewPlayers++
 			newPlayers[player.Id] = true
+			player.Gibsonized = -1
 		}
 	}
 
@@ -1534,15 +1546,13 @@ func (t *ClassicDivision) opponentOf(player string, round int) (string, error) {
 
 func newPairingsMessage() *realtime.DivisionPairingsResponse {
 	return &realtime.DivisionPairingsResponse{DivisionPairings: []*realtime.Pairing{},
-		DivisionStandings: make(map[int32]*realtime.RoundStandings),
-		GibsonizedPlayers: make(map[string]int32)}
+		DivisionStandings: make(map[int32]*realtime.RoundStandings)}
 }
 
 func combinePairingMessages(pm1 *realtime.DivisionPairingsResponse, pm2 *realtime.DivisionPairingsResponse) *realtime.DivisionPairingsResponse {
 	newPairings := combinePairingsResponses(pm1.DivisionPairings, pm2.DivisionPairings)
 	newStandings := combineStandingsResponses(pm1.DivisionStandings, pm2.DivisionStandings)
-	newGibs := combineGibsonizedPlayers(pm1.GibsonizedPlayers, pm2.GibsonizedPlayers)
-	return &realtime.DivisionPairingsResponse{DivisionPairings: newPairings, DivisionStandings: newStandings, GibsonizedPlayers: newGibs}
+	return &realtime.DivisionPairingsResponse{DivisionPairings: newPairings, DivisionStandings: newStandings}
 }
 
 func combineGibsonizedPlayers(g1 map[string]int32, g2 map[string]int32) map[string]int32 {

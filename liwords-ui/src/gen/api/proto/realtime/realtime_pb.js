@@ -9141,7 +9141,8 @@ proto.liwords.TournamentPerson.toObject = function(includeInstance, msg) {
   var f, obj = {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     rating: jspb.Message.getFieldWithDefault(msg, 2, 0),
-    suspended: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
+    suspended: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
+    gibsonized: jspb.Message.getFieldWithDefault(msg, 4, 0)
   };
 
   if (includeInstance) {
@@ -9190,6 +9191,10 @@ proto.liwords.TournamentPerson.deserializeBinaryFromReader = function(msg, reade
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setSuspended(value);
       break;
+    case 4:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setGibsonized(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -9237,6 +9242,13 @@ proto.liwords.TournamentPerson.serializeBinaryToWriter = function(message, write
   if (f) {
     writer.writeBool(
       3,
+      f
+    );
+  }
+  f = message.getGibsonized();
+  if (f !== 0) {
+    writer.writeInt32(
+      4,
       f
     );
   }
@@ -9294,6 +9306,24 @@ proto.liwords.TournamentPerson.prototype.getSuspended = function() {
  */
 proto.liwords.TournamentPerson.prototype.setSuspended = function(value) {
   return jspb.Message.setProto3BooleanField(this, 3, value);
+};
+
+
+/**
+ * optional int32 gibsonized = 4;
+ * @return {number}
+ */
+proto.liwords.TournamentPerson.prototype.getGibsonized = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.liwords.TournamentPerson} returns this
+ */
+proto.liwords.TournamentPerson.prototype.setGibsonized = function(value) {
+  return jspb.Message.setProto3IntField(this, 4, value);
 };
 
 
@@ -11401,8 +11431,7 @@ proto.liwords.DivisionPairingsResponse.toObject = function(includeInstance, msg)
     division: jspb.Message.getFieldWithDefault(msg, 2, ""),
     divisionPairingsList: jspb.Message.toObjectList(msg.getDivisionPairingsList(),
     proto.liwords.Pairing.toObject, includeInstance),
-    divisionStandingsMap: (f = msg.getDivisionStandingsMap()) ? f.toObject(includeInstance, proto.liwords.RoundStandings.toObject) : [],
-    gibsonizedPlayersMap: (f = msg.getGibsonizedPlayersMap()) ? f.toObject(includeInstance, undefined) : []
+    divisionStandingsMap: (f = msg.getDivisionStandingsMap()) ? f.toObject(includeInstance, proto.liwords.RoundStandings.toObject) : []
   };
 
   if (includeInstance) {
@@ -11456,12 +11485,6 @@ proto.liwords.DivisionPairingsResponse.deserializeBinaryFromReader = function(ms
       var value = msg.getDivisionStandingsMap();
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readInt32, jspb.BinaryReader.prototype.readMessage, proto.liwords.RoundStandings.deserializeBinaryFromReader, 0, new proto.liwords.RoundStandings());
-         });
-      break;
-    case 5:
-      var value = msg.getGibsonizedPlayersMap();
-      reader.readMessage(value, function(message, reader) {
-        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readInt32, null, "", 0);
          });
       break;
     default:
@@ -11518,10 +11541,6 @@ proto.liwords.DivisionPairingsResponse.serializeBinaryToWriter = function(messag
   f = message.getDivisionStandingsMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(4, writer, jspb.BinaryWriter.prototype.writeInt32, jspb.BinaryWriter.prototype.writeMessage, proto.liwords.RoundStandings.serializeBinaryToWriter);
-  }
-  f = message.getGibsonizedPlayersMap(true);
-  if (f && f.getLength() > 0) {
-    f.serializeBinary(5, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeInt32);
   }
 };
 
@@ -11619,28 +11638,6 @@ proto.liwords.DivisionPairingsResponse.prototype.getDivisionStandingsMap = funct
  */
 proto.liwords.DivisionPairingsResponse.prototype.clearDivisionStandingsMap = function() {
   this.getDivisionStandingsMap().clear();
-  return this;};
-
-
-/**
- * map<string, int32> gibsonized_players = 5;
- * @param {boolean=} opt_noLazyCreate Do not create the map if
- * empty, instead returning `undefined`
- * @return {!jspb.Map<string,number>}
- */
-proto.liwords.DivisionPairingsResponse.prototype.getGibsonizedPlayersMap = function(opt_noLazyCreate) {
-  return /** @type {!jspb.Map<string,number>} */ (
-      jspb.Message.getMapField(this, 5, opt_noLazyCreate,
-      null));
-};
-
-
-/**
- * Clears values from the map. The map will be non-null.
- * @return {!proto.liwords.DivisionPairingsResponse} returns this
- */
-proto.liwords.DivisionPairingsResponse.prototype.clearGibsonizedPlayersMap = function() {
-  this.getGibsonizedPlayersMap().clear();
   return this;};
 
 

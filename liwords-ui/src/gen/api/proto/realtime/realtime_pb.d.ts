@@ -1153,6 +1153,9 @@ export class TournamentPerson extends jspb.Message {
   getSuspended(): boolean;
   setSuspended(value: boolean): void;
 
+  getGibsonized(): number;
+  setGibsonized(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): TournamentPerson.AsObject;
   static toObject(includeInstance: boolean, msg: TournamentPerson): TournamentPerson.AsObject;
@@ -1168,6 +1171,7 @@ export namespace TournamentPerson {
     id: string,
     rating: number,
     suspended: boolean,
+    gibsonized: number,
   }
 }
 
@@ -1467,8 +1471,6 @@ export class DivisionPairingsResponse extends jspb.Message {
 
   getDivisionStandingsMap(): jspb.Map<number, RoundStandings>;
   clearDivisionStandingsMap(): void;
-  getGibsonizedPlayersMap(): jspb.Map<string, number>;
-  clearGibsonizedPlayersMap(): void;
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): DivisionPairingsResponse.AsObject;
   static toObject(includeInstance: boolean, msg: DivisionPairingsResponse): DivisionPairingsResponse.AsObject;
@@ -1485,7 +1487,6 @@ export namespace DivisionPairingsResponse {
     division: string,
     divisionPairingsList: Array<Pairing.AsObject>,
     divisionStandingsMap: Array<[number, RoundStandings.AsObject]>,
-    gibsonizedPlayersMap: Array<[string, number]>,
   }
 }
 

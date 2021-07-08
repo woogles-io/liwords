@@ -662,52 +662,52 @@ func TestClassicDivisionGibson(t *testing.T) {
 
 	// Second place is 17 games behind with 17 games to go
 	// and spread is not used, so no players should be gibsonized
-	pm, err := tc.PairRound(currentRound, true)
+	_, err = tc.PairRound(currentRound, true)
 	is.NoErr(err)
 	currentPairings := tc.getPlayerPairings(currentRound)
 	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "f", "c", "g", "b", "e", "d", "h"}))
-	is.True(len(pm.GibsonizedPlayers) == 0)
+	is.True(tc.countGibonsizedPlayers() == 0)
 
 	// Turn gibsonization by spread on, with a low spread
 	// cap, to trigger gibsonization. Player "a" should
 	// be gibsonized now.
 	tc.DivisionControls.GibsonSpread = 199
-	pm, err = tc.PairRound(currentRound, true)
+	_, err = tc.PairRound(currentRound, true)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
 	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "e", "f", "g", "b", "c", "d", "h"}))
-	is.True(len(pm.GibsonizedPlayers) == 1)
-	is.True(pm.GibsonizedPlayers["a"] == int32(currentRound))
+	is.True(tc.countGibonsizedPlayers() == 1)
+	is.True(tc.Players.Persons[int(tc.PlayerIndexMap["a"])].Gibsonized == int32(currentRound))
 
 	// Adjust the spread cap to remove the gibsonization
 	tc.DivisionControls.GibsonSpread = 201
-	pm, err = tc.PairRound(currentRound, true)
+	_, err = tc.PairRound(currentRound, true)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
 	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "f", "c", "g", "b", "e", "d", "h"}))
-	is.True(len(pm.GibsonizedPlayers) == 0)
+	is.True(tc.countGibonsizedPlayers() == 0)
 
 	// Adjust the minimum placement so that only first matters
 	// which means the when first is gibsonized, they will play second
 	tc.DivisionControls.GibsonSpread = 199
 	tc.DivisionControls.MinimumPlacement = 0
-	pm, err = tc.PairRound(currentRound, true)
+	_, err = tc.PairRound(currentRound, true)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
 	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "f", "c", "g", "b", "e", "d", "h"}))
-	is.True(len(pm.GibsonizedPlayers) == 1)
-	is.True(pm.GibsonizedPlayers["a"] == int32(currentRound))
+	is.True(tc.countGibonsizedPlayers() == 1)
+	is.True(tc.Players.Persons[int(tc.PlayerIndexMap["a"])].Gibsonized == int32(currentRound))
 
 	// Adjust the minimum placement to a value that makes no
 	// sense but which shouldn't break anything
 	tc.DivisionControls.GibsonSpread = 199
 	tc.DivisionControls.MinimumPlacement = 7
-	pm, err = tc.PairRound(currentRound, true)
+	_, err = tc.PairRound(currentRound, true)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
 	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "h", "f", "g", "c", "e", "b", "d"}))
-	is.True(len(pm.GibsonizedPlayers) == 1)
-	is.True(pm.GibsonizedPlayers["a"] == int32(currentRound))
+	is.True(tc.countGibonsizedPlayers() == 1)
+	is.True(tc.Players.Persons[int(tc.PlayerIndexMap["a"])].Gibsonized == int32(currentRound))
 
 	// Switch back to games only gibsonization and a minimum placement of 2
 	tc.DivisionControls.GibsonSpread = 0
@@ -719,13 +719,13 @@ func TestClassicDivisionGibson(t *testing.T) {
 		currentRound++
 	}
 
-	pm, err = tc.PairRound(currentRound, true)
+	_, err = tc.PairRound(currentRound, true)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
 	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "f", "c", "g", "b", "e", "d", "h"}))
-	is.True(len(pm.GibsonizedPlayers) == 2)
-	is.True(pm.GibsonizedPlayers["a"] == int32(currentRound))
-	is.True(pm.GibsonizedPlayers["f"] == int32(currentRound))
+	is.True(tc.countGibonsizedPlayers() == 2)
+	is.True(tc.Players.Persons[int(tc.PlayerIndexMap["a"])].Gibsonized == int32(currentRound))
+	is.True(tc.Players.Persons[int(tc.PlayerIndexMap["f"])].Gibsonized == int32(currentRound))
 
 	for i := 0; i < 5; i++ {
 		_, err = pairAndPlay(tc, []string{"a", "c", "f", "e", "g", "b", "d", "h"}, currentRound)
@@ -733,15 +733,15 @@ func TestClassicDivisionGibson(t *testing.T) {
 		currentRound++
 	}
 
-	pm, err = tc.PairRound(currentRound, true)
+	_, err = tc.PairRound(currentRound, true)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
 	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "f", "c", "g", "b", "e", "d", "h"}))
-	is.True(len(pm.GibsonizedPlayers) == 4)
-	is.True(pm.GibsonizedPlayers["a"] == int32(currentRound))
-	is.True(pm.GibsonizedPlayers["f"] == int32(currentRound))
-	is.True(pm.GibsonizedPlayers["c"] == int32(currentRound))
-	is.True(pm.GibsonizedPlayers["g"] == int32(currentRound))
+	is.True(tc.countGibonsizedPlayers() == 4)
+	is.True(tc.Players.Persons[int(tc.PlayerIndexMap["a"])].Gibsonized == int32(currentRound))
+	is.True(tc.Players.Persons[int(tc.PlayerIndexMap["f"])].Gibsonized == int32(currentRound))
+	is.True(tc.Players.Persons[int(tc.PlayerIndexMap["c"])].Gibsonized == int32(currentRound))
+	is.True(tc.Players.Persons[int(tc.PlayerIndexMap["g"])].Gibsonized == int32(currentRound))
 
 	for i := 0; i < 8; i++ {
 		_, err = pairAndPlay(tc, []string{"a", "c", "f", "e", "g", "b", "d", "h"}, currentRound)
@@ -749,15 +749,15 @@ func TestClassicDivisionGibson(t *testing.T) {
 		currentRound++
 	}
 
-	pm, err = tc.PairRound(currentRound, true)
+	_, err = tc.PairRound(currentRound, true)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
 	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "f", "c", "g", "d", "e", "b", "h"}))
-	is.True(len(pm.GibsonizedPlayers) == 5)
-	is.True(pm.GibsonizedPlayers["a"] == int32(currentRound))
-	is.True(pm.GibsonizedPlayers["f"] == int32(currentRound))
-	is.True(pm.GibsonizedPlayers["c"] == int32(currentRound))
-	is.True(pm.GibsonizedPlayers["g"] == int32(currentRound))
+	is.True(tc.countGibonsizedPlayers() == 5)
+	is.True(tc.Players.Persons[int(tc.PlayerIndexMap["a"])].Gibsonized == int32(currentRound))
+	is.True(tc.Players.Persons[int(tc.PlayerIndexMap["f"])].Gibsonized == int32(currentRound))
+	is.True(tc.Players.Persons[int(tc.PlayerIndexMap["c"])].Gibsonized == int32(currentRound))
+	is.True(tc.Players.Persons[int(tc.PlayerIndexMap["g"])].Gibsonized == int32(currentRound))
 
 	// Test edge cases
 	roundControls = []*realtime.RoundControl{}
@@ -789,16 +789,16 @@ func TestClassicDivisionGibson(t *testing.T) {
 	is.NoErr(err)
 	currentRound++
 
-	pm, err = tc.PairRound(currentRound, true)
+	_, err = tc.PairRound(currentRound, true)
 	is.NoErr(err)
-	is.True(len(pm.GibsonizedPlayers) == 0)
+	is.True(tc.countGibonsizedPlayers() == 0)
 
 	tc.DivisionControls.GibsonSpread = 10
 
-	pm, err = tc.PairRound(currentRound, true)
+	_, err = tc.PairRound(currentRound, true)
 	is.NoErr(err)
-	is.True(len(pm.GibsonizedPlayers) == 1)
-	is.True(pm.GibsonizedPlayers["g"] == int32(currentRound))
+	is.True(tc.countGibonsizedPlayers() == 1)
+	is.True(tc.Players.Persons[int(tc.PlayerIndexMap["g"])].Gibsonized == int32(currentRound))
 }
 
 func TestClassicDivisionFactor(t *testing.T) {
@@ -3587,6 +3587,16 @@ func (tc *ClassicDivision) getPlayerPairings(round int) []string {
 		}
 	}
 	return playerPairings
+}
+
+func (tc *ClassicDivision) countGibonsizedPlayers() int {
+	sum := 0
+	for _, player := range tc.Players.Persons {
+		if player.Gibsonized >= 0 {
+			sum++
+		}
+	}
+	return sum
 }
 
 func equalPairings(p1 *realtime.Pairing, p2 *realtime.Pairing) error {
