@@ -589,7 +589,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   }, [shownTimes]);
 
   // There are two handlers (the Tablet view has its own Analyzer button).
-  // Fortunately the second one will do nothing, so we just trigger both.
+  // They are functionally the same.
   const [handleExaminers, setHandleExaminers] = useState(
     new Array<() => void>()
   );
@@ -647,6 +647,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
             evt.preventDefault();
             for (const handleExaminer of handleExaminers) {
               handleExaminer();
+              break; // They are functionally the same, trigger either one.
             }
           }
           if (evt.key === 'Escape') {
