@@ -3592,7 +3592,7 @@ func (tc *ClassicDivision) getPlayerPairings(round int) []string {
 func (tc *ClassicDivision) countGibsonizedPlayers() int {
 	sum := 0
 	for _, player := range tc.Players.Persons {
-		if player.Gibsonized >= 0 {
+		if player.Gibsonized > 0 {
 			sum++
 		}
 	}
