@@ -429,7 +429,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   const numberOfTurns = gameContext.turns.length;
   const [isExamining, setIsExamining] = useState(false);
   const [examinedTurn, setExaminedTurn] = useState(Infinity);
-  const handleExamineStart = useCallback(() => {
+  const handleExamineStartUnconditionally = useCallback(() => {
     setIsExamining(true);
   }, []);
   const handleExamineEnd = useCallback(() => {
@@ -555,6 +555,10 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     };
     return ret;
   }, [isExamining, examinedTurn, gameContext]);
+  const handleExamineStart =
+    examinableGameContext.players.length > 0
+      ? handleExamineStartUnconditionally
+      : handleExamineEnd;
 
   const isShowingLatest = !isExamining || examinedTurn >= numberOfTurns;
   const examinableGameContextStore = useMemo(() => {
