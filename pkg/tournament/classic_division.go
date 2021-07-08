@@ -757,10 +757,10 @@ func (t *ClassicDivision) PairRound(round int, overwriteByes bool) (*realtime.Di
 	// Update the gibson status for all players
 	for _, person := range t.Players.Persons {
 		gibsonRound, exists := gibsonizedPlayers[person.Id]
-		if exists {
+		if exists && gibsonRound > 0 {
 			person.Gibsonized = gibsonRound
 		} else {
-			person.Gibsonized = -1
+			person.Gibsonized = 0
 		}
 	}
 
@@ -794,7 +794,6 @@ func (t *ClassicDivision) AddPlayers(players *realtime.TournamentPersons) (*real
 		if !ok {
 			numNewPlayers++
 			newPlayers[player.Id] = true
-			player.Gibsonized = -1
 		}
 	}
 
