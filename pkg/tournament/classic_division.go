@@ -54,7 +54,15 @@ func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.Divisio
 		return nil, err
 	}
 	log.Debug().Interface("game-req", divisionControls.GameRequest).Msg("divctrls-validated-game-request")
-
+	// minimum placement is zero-indexed
+	if divisionControls.Gibsonize {
+		if divisionControls.MinimumPlacement < 0 {
+			return nil, errors.New("gibsonize requires minimum placement >= 0")
+		}
+		if divisionControls.GibsonSpread < 0 {
+			return nil, errors.New("gibsonize requires gibson spread >= 0")
+		}
+	}
 	t.DivisionControls = divisionControls
 
 	return t.DivisionControls, nil
