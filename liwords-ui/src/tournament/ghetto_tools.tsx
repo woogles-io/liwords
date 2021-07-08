@@ -768,6 +768,11 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
   ] = useState<GameRequest | null>(null);
 
   const [division, setDivision] = useState('');
+  const [gibsonize, setGibsonize] = useState(false);
+  const [gibsonSpread, setGibsonSpread] = useState(500);
+  // min placement is 0-indexed, but we want to display 1-indexed
+  // this variable will be the display variable:
+  const [gibsonMinPlacement, setGibsonMinPlacement] = useState(1);
   const { tournamentContext } = useTournamentStoreContext();
 
   useEffect(() => {
@@ -781,6 +786,11 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
       setSelectedGameRequest(gameRequest);
     } else {
       setSelectedGameRequest(null);
+    }
+    if (div.divisionControls) {
+      setGibsonize(div.divisionControls.getGibsonize());
+      setGibsonSpread(div.divisionControls.getGibsonSpread());
+      setGibsonMinPlacement(div.divisionControls.getMinimumPlacement() + 1);
     }
   }, [division, tournamentContext.divisions]);
 
@@ -822,6 +832,9 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     // can set this later to whatever values, along with a spread
     ctrls.setSuspendedResult(TournamentGameResult.FORFEIT_LOSS);
     ctrls.setAutoStart(false);
+    ctrls.setGibsonize(gibsonize);
+    ctrls.setGibsonSpread(gibsonSpread);
+    ctrls.setMinimumPlacement(gibsonMinPlacement - 1);
 
     try {
       const rbin = await postBinary(
@@ -879,6 +892,36 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
         <DivisionSelector
           value={division}
           onChange={(value: string) => setDivision(value)}
+        />
+      </div>
+
+      <div>
+        Gibsonize:
+        <Switch
+          checked={gibsonize}
+          onChange={(c: boolean) => setGibsonize(c)}
+        />
+      </div>
+
+      <div>
+        Gibson spread:
+        <InputNumber
+          min={0}
+          value={gibsonSpread}
+          onChange={(v: number | string | undefined) =>
+            setGibsonSpread(v as number)
+          }
+        />
+      </div>
+
+      <div>
+        Gibson min placement:
+        <InputNumber
+          min={1}
+          value={gibsonMinPlacement}
+          onChange={(p: number | string | undefined) =>
+            setGibsonMinPlacement(p as number)
+          }
         />
       </div>
 
