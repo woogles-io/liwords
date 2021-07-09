@@ -130,6 +130,8 @@ export type Props = {
 
 const GameControls = React.memo((props: Props) => {
   const { useState } = useMountedState();
+  const { gameContext } = useGameContextStoreContext();
+  const gameHasNotStarted = gameContext.players.length === 0; // :shrug:
 
   // Poka-yoke against accidentally having multiple pop-ups active.
   const [actualCurrentPopUp, setCurrentPopUp] = useState<
@@ -261,7 +263,9 @@ const GameControls = React.memo((props: Props) => {
   if (observer) {
     return (
       <div className="game-controls">
-        <Button onClick={props.onExamine}>Examine</Button>
+        <Button onClick={props.onExamine} disabled={gameHasNotStarted}>
+          Examine
+        </Button>
         <Button onClick={handleExitToLobby}>Exit</Button>
       </div>
     );
@@ -339,6 +343,7 @@ const GameControls = React.memo((props: Props) => {
           overlay={optionsMenu}
           trigger={['click']}
           visible={optionsMenuVisible}
+          disabled={gameHasNotStarted}
         >
           <Button onClick={() => setOptionsMenuVisible((v) => !v)}>
             Options <DownOutlined />
@@ -444,15 +449,21 @@ type EGCProps = {
 const EndGameControls = (props: EGCProps) => {
   const { useState } = useMountedState();
   const [rematchDisabled, setRematchDisabled] = useState(false);
+  const { gameContext } = useGameContextStoreContext();
+  const gameHasNotStarted = gameContext.players.length === 0; // :shrug:
 
   return (
     <div className="game-controls">
       <div className="secondary-controls">
         <Button disabled>Options</Button>
-        <Button onClick={props.onExamine}>Examine</Button>
+        <Button onClick={props.onExamine} disabled={gameHasNotStarted}>
+          Examine
+        </Button>
       </div>
       <div className="secondary-controls">
-        <Button onClick={props.onExportGCG}>Export GCG</Button>
+        <Button onClick={props.onExportGCG} disabled={gameHasNotStarted}>
+          Export GCG
+        </Button>
         <Button onClick={props.onExit}>Exit</Button>
       </div>
       {props.showRematch && !props.tournamentPairedMode && !rematchDisabled && (
