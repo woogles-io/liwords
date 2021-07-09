@@ -186,6 +186,9 @@ const gcgExport = (gameID: string, playerMeta: Array<PlayerMetadata>) => {
     });
 };
 
+const backupKey = (letters: string, rack: string) =>
+  JSON.stringify({ letters, rack });
+
 export const BoardPanel = React.memo((props: Props) => {
   const { useState } = useMountedState();
 
@@ -306,6 +309,7 @@ export const BoardPanel = React.memo((props: Props) => {
             // this is an invalid play
             return;
           }
+          clearBackupRef.current = true;
           break;
       }
       if (!moveEvt) {
@@ -352,6 +356,24 @@ export const BoardPanel = React.memo((props: Props) => {
       );
     },
     [sendSocketMsg, gameID]
+  );
+
+  // For reinstating a premove if an invalid move that invalidates it is successfully challenged off.
+  const backupStatesRef = useRef(
+    new Map<
+      string,
+      {
+        displayedRack: string;
+        placedTiles: Set<EphemeralTile>;
+        placedTilesTempScore: number | undefined;
+        arrowProperties: {
+          row: number;
+          col: number;
+          horizontal: boolean;
+          show: boolean;
+        };
+      }
+    >()
   );
 
   const recallTiles = useCallback(() => {
@@ -431,7 +453,9 @@ export const BoardPanel = React.memo((props: Props) => {
     setDisplayedRack(shuffleString(displayedRack));
   }, [setDisplayedRack, displayedRack]);
 
+  const clearBackupRef = useRef<boolean>(false);
   const lastLettersRef = useRef<string>();
+  const lastRackRef = useRef<string>();
   const readOnlyEffectDependenciesRef = useRef<{
     displayedRack: string;
     isMyTurn: boolean;
@@ -443,6 +467,7 @@ export const BoardPanel = React.memo((props: Props) => {
       horizontal: boolean;
       show: boolean;
     };
+    placedTilesTempScore: number | undefined;
   }>();
   readOnlyEffectDependenciesRef.current = {
     displayedRack,
@@ -450,6 +475,7 @@ export const BoardPanel = React.memo((props: Props) => {
     placedTiles,
     dim: props.board.dim,
     arrowProperties,
+    placedTilesTempScore,
   };
 
   // Need to sync state to props here whenever the board changes.
@@ -517,13 +543,43 @@ export const BoardPanel = React.memo((props: Props) => {
         fullReset = true;
       }
     }
-    if (fullReset) {
-      setDisplayedRack(props.currentRack);
-      setPlacedTiles(new Set<EphemeralTile>());
-      setPlacedTilesTempScore(0);
-      setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
+    const bak = backupStatesRef.current.get(
+      backupKey(props.board.letters, props.currentRack)
+    );
+    // Do not reset if considering a new placement move when challenging.
+    if (fullReset || (bak && dep.placedTiles.size === 0)) {
+      backupStatesRef.current.clear();
+      if (!clearBackupRef.current) {
+        const lastRack = lastRackRef.current;
+        if (lastLetters && lastRack) {
+          backupStatesRef.current.set(backupKey(lastLetters, lastRack), {
+            displayedRack: dep.displayedRack,
+            placedTiles: dep.placedTiles,
+            placedTilesTempScore: dep.placedTilesTempScore,
+            arrowProperties: dep.arrowProperties,
+          });
+        }
+      }
+      clearBackupRef.current = false;
+      if (bak) {
+        setDisplayedRack(bak.displayedRack);
+        setPlacedTiles(bak.placedTiles);
+        setPlacedTilesTempScore(bak.placedTilesTempScore);
+        setArrowProperties(bak.arrowProperties);
+      } else {
+        setDisplayedRack(props.currentRack);
+        setPlacedTiles(new Set<EphemeralTile>());
+        setPlacedTilesTempScore(0);
+        setArrowProperties({
+          row: 0,
+          col: 0,
+          horizontal: false,
+          show: false,
+        });
+      }
     }
     lastLettersRef.current = props.board.letters;
+    lastRackRef.current = props.currentRack;
   }, [
     isExamining,
     props.board.letters,
