@@ -19,7 +19,6 @@ import woogles from '../assets/woogles.png';
 import { useLoginStateStoreContext } from '../store/store';
 import { LoginModal } from './login';
 import { countryArray } from '../settings/country_map';
-import { setTermsNotify } from '../about/termsOfService';
 
 const allMonthNames = [
   'January',
@@ -253,7 +252,6 @@ export const Register = () => {
   const loggedIn = signedUp || loginState.loggedIn;
   useEffect(() => {
     if (loggedIn) {
-      setTermsNotify();
       history.replace('/');
     }
   }, [history, loggedIn]);
