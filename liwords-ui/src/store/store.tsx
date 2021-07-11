@@ -429,7 +429,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   const numberOfTurns = gameContext.turns.length;
   const [isExamining, setIsExamining] = useState(false);
   const [examinedTurn, setExaminedTurn] = useState(Infinity);
-  const handleExamineStart = useCallback(() => {
+  const handleExamineStartUnconditionally = useCallback(() => {
     setIsExamining(true);
   }, []);
   const handleExamineEnd = useCallback(() => {
@@ -555,6 +555,10 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     };
     return ret;
   }, [isExamining, examinedTurn, gameContext]);
+  const handleExamineStart =
+    examinableGameContext.players.length > 0
+      ? handleExamineStartUnconditionally
+      : handleExamineEnd;
 
   const isShowingLatest = !isExamining || examinedTurn >= numberOfTurns;
   const examinableGameContextStore = useMemo(() => {
@@ -585,7 +589,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   }, [shownTimes]);
 
   // There are two handlers (the Tablet view has its own Analyzer button).
-  // Fortunately the second one will do nothing, so we just trigger both.
+  // They are functionally the same.
   const [handleExaminers, setHandleExaminers] = useState(
     new Array<() => void>()
   );
@@ -643,6 +647,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
             evt.preventDefault();
             for (const handleExaminer of handleExaminers) {
               handleExaminer();
+              break; // They are functionally the same, trigger either one.
             }
           }
           if (evt.key === 'Escape') {
