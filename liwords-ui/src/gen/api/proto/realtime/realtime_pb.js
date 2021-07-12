@@ -9141,8 +9141,7 @@ proto.liwords.TournamentPerson.toObject = function(includeInstance, msg) {
   var f, obj = {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     rating: jspb.Message.getFieldWithDefault(msg, 2, 0),
-    suspended: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
-    gibsonized: jspb.Message.getFieldWithDefault(msg, 4, 0)
+    suspended: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
   };
 
   if (includeInstance) {
@@ -9191,10 +9190,6 @@ proto.liwords.TournamentPerson.deserializeBinaryFromReader = function(msg, reade
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setSuspended(value);
       break;
-    case 4:
-      var value = /** @type {number} */ (reader.readInt32());
-      msg.setGibsonized(value);
-      break;
     default:
       reader.skipField();
       break;
@@ -9242,13 +9237,6 @@ proto.liwords.TournamentPerson.serializeBinaryToWriter = function(message, write
   if (f) {
     writer.writeBool(
       3,
-      f
-    );
-  }
-  f = message.getGibsonized();
-  if (f !== 0) {
-    writer.writeInt32(
-      4,
       f
     );
   }
@@ -9306,24 +9294,6 @@ proto.liwords.TournamentPerson.prototype.getSuspended = function() {
  */
 proto.liwords.TournamentPerson.prototype.setSuspended = function(value) {
   return jspb.Message.setProto3BooleanField(this, 3, value);
-};
-
-
-/**
- * optional int32 gibsonized = 4;
- * @return {number}
- */
-proto.liwords.TournamentPerson.prototype.getGibsonized = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
-};
-
-
-/**
- * @param {number} value
- * @return {!proto.liwords.TournamentPerson} returns this
- */
-proto.liwords.TournamentPerson.prototype.setGibsonized = function(value) {
-  return jspb.Message.setProto3IntField(this, 4, value);
 };
 
 
@@ -11014,7 +10984,8 @@ proto.liwords.PlayerStanding.toObject = function(includeInstance, msg) {
     wins: jspb.Message.getFieldWithDefault(msg, 2, 0),
     losses: jspb.Message.getFieldWithDefault(msg, 3, 0),
     draws: jspb.Message.getFieldWithDefault(msg, 4, 0),
-    spread: jspb.Message.getFieldWithDefault(msg, 5, 0)
+    spread: jspb.Message.getFieldWithDefault(msg, 5, 0),
+    gibsonized: jspb.Message.getBooleanFieldWithDefault(msg, 6, false)
   };
 
   if (includeInstance) {
@@ -11070,6 +11041,10 @@ proto.liwords.PlayerStanding.deserializeBinaryFromReader = function(msg, reader)
     case 5:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setSpread(value);
+      break;
+    case 6:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setGibsonized(value);
       break;
     default:
       reader.skipField();
@@ -11132,6 +11107,13 @@ proto.liwords.PlayerStanding.serializeBinaryToWriter = function(message, writer)
   if (f !== 0) {
     writer.writeInt32(
       5,
+      f
+    );
+  }
+  f = message.getGibsonized();
+  if (f) {
+    writer.writeBool(
+      6,
       f
     );
   }
@@ -11225,6 +11207,24 @@ proto.liwords.PlayerStanding.prototype.getSpread = function() {
  */
 proto.liwords.PlayerStanding.prototype.setSpread = function(value) {
   return jspb.Message.setProto3IntField(this, 5, value);
+};
+
+
+/**
+ * optional bool gibsonized = 6;
+ * @return {boolean}
+ */
+proto.liwords.PlayerStanding.prototype.getGibsonized = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 6, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.liwords.PlayerStanding} returns this
+ */
+proto.liwords.PlayerStanding.prototype.setGibsonized = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 6, value);
 };
 
 

@@ -1009,22 +1009,9 @@ func PairRound(ctx context.Context, ts TournamentStore, id string, division stri
 		return err
 	}
 
-	dc := divisionObject.DivisionManager.GetDivisionControls()
-
-	var wrapped *entity.EventWrapper
-	if dc.Gibsonize {
-		// Players may have been gibsonized, send a different message
-		addPlayersMessage := &realtime.PlayersAddedOrRemovedResponse{Id: id,
-			Division:          division,
-			Players:           divisionObject.DivisionManager.GetPlayers(),
-			DivisionPairings:  pairingsResp.DivisionPairings,
-			DivisionStandings: pairingsResp.DivisionStandings}
-		wrapped = entity.WrapEvent(addPlayersMessage, realtime.MessageType_TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE)
-	} else {
-		pairingsResp.Id = id
-		pairingsResp.Division = division
-		wrapped = entity.WrapEvent(pairingsResp, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
-	}
+	pairingsResp.Id = id
+	pairingsResp.Division = division
+	wrapped := entity.WrapEvent(pairingsResp, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
 
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }

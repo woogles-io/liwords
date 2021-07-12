@@ -12,7 +12,7 @@ type DivisionManager interface {
 		realtime.TournamentGameResult, realtime.GameEndReason, bool, int, string) (*realtime.DivisionPairingsResponse, error)
 	PairRound(int, bool) (*realtime.DivisionPairingsResponse, error)
 	DeletePairings(int) error
-	GetStandings(int, bool) (*realtime.RoundStandings, error)
+	GetStandings(int, bool) (*realtime.RoundStandings, int, error)
 	GetCurrentRound() int
 	GetPlayers() *realtime.TournamentPersons
 	SetPairing(string, string, int) (*realtime.DivisionPairingsResponse, error)

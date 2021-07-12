@@ -63,7 +63,25 @@ func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.Divisio
 			return nil, errors.New("gibsonize requires gibson spread >= 0")
 		}
 	}
+
+	gibsonChanged := false
+	if divisionControls.Gibsonize != t.DivisionControls.Gibsonize ||
+		divisionControls.GibsonSpread != t.DivisionControls.GibsonSpread ||
+		divisionControls.MinimumPlacement != t.DivisionControls.MinimumPlacement {
+		gibsonChanged = true
+	}
+
 	t.DivisionControls = divisionControls
+
+	// Update the gibsonizations if the controls have changed
+	if gibsonChanged {
+		for i := 0; i <= t.GetCurrentRound(); i++ {
+			_, _, err := t.GetStandings(i, true)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
 
 	return t.DivisionControls, nil
 }
@@ -456,21 +474,19 @@ func (t *ClassicDivision) SubmitResult(round int,
 	pmessage := newPairingsMessage()
 	pmessage.DivisionPairings = []*realtime.Pairing{pairing}
 
-	standings, err := t.GetStandings(round, true)
+	standings, _, err := t.GetStandings(round, true)
 	if err != nil {
 		return nil, err
 	}
 
-	t.Standings[int32(round)] = standings
 	pmessage.DivisionStandings = map[int32]*realtime.RoundStandings{int32(round): standings}
 
 	if round != len(t.Matrix)-1 {
 		// update standings for round+1
-		nextRoundStandings, err := t.GetStandings(round+1, true)
+		nextRoundStandings, _, err := t.GetStandings(round+1, true)
 		if err != nil {
 			return nil, err
 		}
-		t.Standings[int32(round)+1] = nextRoundStandings
 		pmessage.DivisionStandings[int32(round)+1] = nextRoundStandings
 	}
 
@@ -501,24 +517,24 @@ func isRoundRobin(pm realtime.PairingMethod) bool {
 		pm == realtime.PairingMethod_TEAM_ROUND_ROBIN
 }
 
-func (t *ClassicDivision) canCatch(poolMembers []*entity.PoolMember, round int, i int, j int) (bool, error) {
-	numberOfPlayers := len(poolMembers)
+func (t *ClassicDivision) canCatch(records []*realtime.PlayerStanding, round int, i int, j int) (bool, error) {
+	numberOfPlayers := len(records)
 	if i >= numberOfPlayers || j >= numberOfPlayers {
 		return false, fmt.Errorf("canCatch gibsonization indexes out of range: [0, %d], %d, %d", numberOfPlayers-1, i, j)
 	}
 	remainingRounds := (len(t.Matrix) - round)
 	canCatch := false
-	playerAheadWins := poolMembers[i].Wins*2 + poolMembers[i].Draws
-	playerBehindWins := poolMembers[j].Wins*2 + poolMembers[j].Draws
+	playerAheadWins := int(records[i].Wins*2 + records[i].Draws)
+	playerBehindWins := int(records[j].Wins*2 + records[j].Draws)
 	winDifference := playerAheadWins - playerBehindWins
 	surmountableWinDifference := winDifference <= remainingRounds*2
 	barelyCatchable := winDifference == remainingRounds*2
 	if !barelyCatchable || t.DivisionControls.GibsonSpread == 0 {
 		canCatch = surmountableWinDifference
 	} else {
-		playerAheadSpread := poolMembers[i].Spread
-		playerBehindSpread := poolMembers[j].Spread
-		canCatch = playerAheadSpread-playerBehindSpread <= int(t.DivisionControls.GibsonSpread)*remainingRounds
+		playerAheadSpread := records[i].Spread
+		playerBehindSpread := records[j].Spread
+		canCatch = int(playerAheadSpread-playerBehindSpread) <= int(t.DivisionControls.GibsonSpread)*remainingRounds
 	}
 	return canCatch, nil
 }
@@ -565,7 +581,7 @@ func (t *ClassicDivision) PairRound(round int, overwriteByes bool) (*realtime.Di
 		standingsRound = 1
 	}
 
-	standings, err := t.GetStandings(standingsRound-1, false)
+	standings, gibsonRank, err := t.GetStandings(standingsRound-1, false)
 	if err != nil {
 		return nil, err
 	}
@@ -573,76 +589,58 @@ func (t *ClassicDivision) PairRound(round int, overwriteByes bool) (*realtime.Di
 	poolMembers := []*entity.PoolMember{}
 
 	// Round Robin must have the same ordering for each round
-	var playerOrder []string
+	playerOrder := []*realtime.PlayerStanding{}
 	if isRoundRobin(pairingMethod) {
 		for i := 0; i < len(t.Players.Persons); i++ {
-			playerOrder = append(playerOrder, t.Players.Persons[i].Id)
+			playerOrder = append(playerOrder, &realtime.PlayerStanding{PlayerId: t.Players.Persons[i].Id})
 		}
 	} else {
-		playerOrder = []string{}
 		for i := 0; i < len(standings.Standings); i++ {
 			if overwriteByes || !playersWithByes[standings.Standings[i].PlayerId] {
-				playerOrder = append(playerOrder, standings.Standings[i].PlayerId)
+				playerOrder = append(playerOrder, standings.Standings[i])
 			}
 		}
 	}
 
 	for i := 0; i < len(playerOrder); i++ {
-		pm := &entity.PoolMember{Id: playerOrder[i]}
-		// Wins do not matter for RoundRobin pairings
-		if !isRoundRobin(pairingMethod) {
-			pm.Wins = int(standings.Standings[i].Wins)
-			pm.Draws = int(standings.Standings[i].Draws)
-			pm.Spread = int(standings.Standings[i].Spread)
-		} else {
-			pm.Wins = 0
-			pm.Draws = 0
-			pm.Spread = 0
-		}
-		poolMembers = append(poolMembers, pm)
+		poolMembers = append(poolMembers, &entity.PoolMember{Id: playerOrder[i].PlayerId,
+			Wins:   int(playerOrder[i].Wins),
+			Draws:  int(playerOrder[i].Draws),
+			Spread: int(playerOrder[i].Spread)})
 	}
 
 	pmessage := newPairingsMessage()
-	gibsonizedPlayers := make(map[string]int32)
-
+	gibsonPairedPlayers := make(map[string]bool)
 	// Determine Gibsonizations
-	if t.DivisionControls.Gibsonize {
+	if gibsonRank >= 0 {
 		minimumPlacement := int(t.DivisionControls.MinimumPlacement)
-		if minimumPlacement >= len(poolMembers) {
-			minimumPlacement = len(poolMembers) - 1
+		if minimumPlacement >= len(playerOrder) {
+			minimumPlacement = len(playerOrder) - 1
 		}
-		gibsonPairedPlayers := make(map[string]bool)
-		gibsonRank := -1
-		for i := 0; i < len(poolMembers)-1; i++ {
-			cc, err := t.canCatch(poolMembers, round, i, i+1)
-			if err != nil {
-				return nil, err
-			}
-			if !cc {
-				gibsonRank = i
-				gibsonizedPlayers[poolMembers[i].Id] = int32(round)
-			} else {
-				break
-			}
-		}
+		isOdd := len(playerOrder) % 2
 		for i := 0; i <= gibsonRank; i++ {
 			playerOne := -1
 			playerTwo := -1
-			if i%2 == 1 {
+			// For an odd number of players
+			// give the player in first the bye
+			if i == 0 && isOdd == 1 {
+				playerOne = i
+				playerTwo = i
+			} else if i%2 == 1-isOdd {
 				playerOne = i - 1
 				playerTwo = i
 			} else if i == gibsonRank {
 				// Pair with someone who cannot cash
 				// If everyone can still cash, pair them with the player in last
-				for j := i + 1; j < len(poolMembers); j++ {
-					cc, err := t.canCatch(poolMembers, round, minimumPlacement, j)
+				for j := i + 1; j < len(playerOrder); j++ {
+					cc, err := t.canCatch(playerOrder, round, minimumPlacement, j)
 					if err != nil {
 						return nil, err
 					}
 					// If player j cannot cash, then pair them with
 					// the gibsonized player. If all players can cash,
 					// pair the gibsonized player with the person in last.
-					if !cc || j == len(poolMembers)-1 {
+					if !cc || j == len(playerOrder)-1 {
 						playerOne = i
 						playerTwo = j
 						break
@@ -650,9 +648,9 @@ func (t *ClassicDivision) PairRound(round int, overwriteByes bool) (*realtime.Di
 				}
 			}
 			if playerOne >= 0 && playerTwo >= 0 {
-				gibsonPairedPlayers[poolMembers[playerOne].Id] = true
-				gibsonPairedPlayers[poolMembers[playerTwo].Id] = true
-				newpmessage, err := t.SetPairing(poolMembers[playerOne].Id, poolMembers[playerTwo].Id, round)
+				gibsonPairedPlayers[playerOrder[playerOne].PlayerId] = true
+				gibsonPairedPlayers[playerOrder[playerTwo].PlayerId] = true
+				newpmessage, err := t.SetPairing(playerOrder[playerOne].PlayerId, playerOrder[playerTwo].PlayerId, round)
 				if err != nil {
 					return nil, err
 				}
@@ -754,17 +752,6 @@ func (t *ClassicDivision) PairRound(round int, overwriteByes bool) (*realtime.Di
 		return nil, err
 	}
 
-	// Update the gibson status for all players
-	if t.DivisionControls.Gibsonize {
-		for _, person := range t.Players.Persons {
-			gibsonRound, exists := gibsonizedPlayers[person.Id]
-			if exists && gibsonRound > 0 {
-				person.Gibsonized = gibsonRound
-			} else {
-				person.Gibsonized = 0
-			}
-		}
-	}
 	return pmessage, nil
 }
 
@@ -867,11 +854,10 @@ func (t *ClassicDivision) AddPlayers(players *realtime.TournamentPersons) (*real
 					pmessage = combinePairingMessages(pmessage, newpmessage)
 				}
 			}
-			roundStandings, err := t.GetStandings(i, true)
+			roundStandings, _, err := t.GetStandings(i, true)
 			if err != nil {
 				return nil, err
 			}
-			t.Standings[int32(i)] = roundStandings
 			pmessage.DivisionStandings = combineStandingsResponses(pmessage.DivisionStandings, map[int32]*realtime.RoundStandings{int32(i): roundStandings})
 		}
 	}
@@ -941,11 +927,10 @@ func (t *ClassicDivision) RemovePlayers(persons *realtime.TournamentPersons) (*r
 			}
 		}
 		for i := 0; i < len(t.Matrix); i++ {
-			roundStandings, err := t.GetStandings(i, true)
+			roundStandings, _, err := t.GetStandings(i, true)
 			if err != nil {
 				return nil, err
 			}
-			t.Standings[int32(i)] = roundStandings
 			pairingsMessage.DivisionStandings = combineStandingsResponses(pairingsMessage.DivisionStandings, map[int32]*realtime.RoundStandings{int32(i): roundStandings})
 		}
 	}
@@ -971,9 +956,9 @@ func (t *ClassicDivision) ResetToBeginning() error {
 	return nil
 }
 
-func (t *ClassicDivision) GetStandings(round int, includeSuspended bool) (*realtime.RoundStandings, error) {
+func (t *ClassicDivision) GetStandings(round int, includeSuspended bool) (*realtime.RoundStandings, int, error) {
 	if round < 0 || round >= len(t.Matrix) {
-		return nil, fmt.Errorf("round number out of range (GetStandings): %d", round)
+		return nil, -1, fmt.Errorf("round number out of range (GetStandings): %d", round)
 	}
 
 	var wins int32 = 0
@@ -982,7 +967,6 @@ func (t *ClassicDivision) GetStandings(round int, includeSuspended bool) (*realt
 	var spread int32 = 0
 	playerId := ""
 	records := []*realtime.PlayerStanding{}
-
 	for i := 0; i < len(t.Players.Persons); i++ {
 		wins = 0
 		losses = 0
@@ -1031,10 +1015,11 @@ func (t *ClassicDivision) GetStandings(round int, includeSuspended bool) (*realt
 			}
 		}
 		records = append(records, &realtime.PlayerStanding{PlayerId: playerId,
-			Wins:   wins,
-			Losses: losses,
-			Draws:  draws,
-			Spread: spread})
+			Wins:       wins,
+			Losses:     losses,
+			Draws:      draws,
+			Spread:     spread,
+			Gibsonized: false})
 	}
 
 	pairingMethod := t.RoundControls[round].PairingMethod
@@ -1071,7 +1056,46 @@ func (t *ClassicDivision) GetStandings(round int, includeSuspended bool) (*realt
 			})
 	}
 
-	return &realtime.RoundStandings{Standings: records}, nil
+	gibsonRank := -1
+
+	if t.DivisionControls.Gibsonize {
+
+		lastCompleteRound := round + 1
+		isComplete := false
+
+		for !isComplete && lastCompleteRound > 0 {
+			lastCompleteRound--
+			isCompleteTmp, err := t.IsRoundComplete(lastCompleteRound)
+			if err != nil {
+				return nil, -1, err
+			}
+			isComplete = isCompleteTmp
+		}
+
+		if isComplete {
+			gibsonRound := round
+			if gibsonRound > lastCompleteRound {
+				gibsonRound = lastCompleteRound
+			}
+			numberOfPlayers := len(records)
+			for i := 0; i < numberOfPlayers-1; i++ {
+				cc, err := t.canCatch(records, gibsonRound+1, i, i+1)
+				if err != nil {
+					return nil, -1, err
+				}
+				if !cc {
+					records[i].Gibsonized = true
+					gibsonRank = i
+				} else {
+					break
+				}
+			}
+		}
+	}
+
+	t.Standings[int32(round)] = &realtime.RoundStandings{Standings: records}
+
+	return t.Standings[int32(round)], gibsonRank, nil
 }
 
 func (t *ClassicDivision) IsRoundReady(round int) (bool, error) {

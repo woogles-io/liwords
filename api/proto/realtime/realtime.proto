@@ -494,7 +494,6 @@ message TournamentPerson {
   string id = 1;
   int32 rating = 2;
   bool suspended = 3;
-  int32 gibsonized = 4;
 }
 
 message TournamentPersons {
@@ -550,6 +549,7 @@ message PlayerStanding {
   int32 losses = 3;
   int32 draws = 4;
   int32 spread = 5;
+  bool gibsonized = 6;
 }
 
 message RoundStandings { repeated PlayerStanding standings = 1; }

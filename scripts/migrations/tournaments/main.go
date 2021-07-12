@@ -442,7 +442,7 @@ func main() {
 								Round:       int32(round)}
 						}
 					}
-					newClassicDivision.Standings[int32(round)], err = newClassicDivision.GetStandings(round, true)
+					newClassicDivision.Standings[int32(round)], _, err = newClassicDivision.GetStandings(round, true)
 					if err != nil {
 						return err
 					}

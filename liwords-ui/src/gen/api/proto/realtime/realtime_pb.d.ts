@@ -1153,9 +1153,6 @@ export class TournamentPerson extends jspb.Message {
   getSuspended(): boolean;
   setSuspended(value: boolean): void;
 
-  getGibsonized(): number;
-  setGibsonized(value: number): void;
-
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): TournamentPerson.AsObject;
   static toObject(includeInstance: boolean, msg: TournamentPerson): TournamentPerson.AsObject;
@@ -1171,7 +1168,6 @@ export namespace TournamentPerson {
     id: string,
     rating: number,
     suspended: boolean,
-    gibsonized: number,
   }
 }
 
@@ -1415,6 +1411,9 @@ export class PlayerStanding extends jspb.Message {
   getSpread(): number;
   setSpread(value: number): void;
 
+  getGibsonized(): boolean;
+  setGibsonized(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): PlayerStanding.AsObject;
   static toObject(includeInstance: boolean, msg: PlayerStanding): PlayerStanding.AsObject;
@@ -1432,6 +1431,7 @@ export namespace PlayerStanding {
     losses: number,
     draws: number,
     spread: number,
+    gibsonized: boolean,
   }
 }
 
