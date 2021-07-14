@@ -19,6 +19,20 @@ import { isClubType } from '../store/constants';
 const colors = require('../base.scss');
 
 const TopMenu = React.memo((props: Props) => {
+  const aboutMenu = (
+    <ul>
+      <li>
+        <Link className="plain" to="/team">
+          Meet the team
+        </Link>
+      </li>
+      <li>
+        <Link className="plain" to="/terms">
+          Terms of Service
+        </Link>
+      </li>
+    </ul>
+  );
   return (
     <div className="top-header-menu">
       <div className="top-header-left-frame-crossword-game">
@@ -43,7 +57,16 @@ const TopMenu = React.memo((props: Props) => {
         </a>
       </div>
       <div className="top-header-left-frame-special-land">
-        <Link to="/about">About Us</Link>
+        <Dropdown
+          overlayClassName="user-menu"
+          overlay={aboutMenu}
+          placement="bottomCenter"
+          getPopupContainer={() =>
+            document.getElementById('root') as HTMLElement
+          }
+        >
+          <p>About Us</p>
+        </Dropdown>
       </div>
     </div>
   );

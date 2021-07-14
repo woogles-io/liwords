@@ -109,7 +109,7 @@ $point-size-desktop: $tile-font-size-desktop / 2.8;
   font-style: normal;
   font-size: 16px;
   font-weight: bold;
-  line-height: 20px;
+  line-height: 1.25em;
 }
 
 @mixin type-deco {
@@ -135,7 +135,7 @@ h1,
 h2,
 h3,
 h4 {
-  @include type-deco;
+  @include type-title;
   @include colorModed() {
     color: m($gray-extreme);
   }

@@ -18,7 +18,7 @@ import {
 } from './store/store';
 
 import { LiwordsSocket } from './socket/socket';
-import { About } from './about/about';
+import { Team } from './about/team';
 import { Register } from './lobby/register';
 import { UserProfile } from './profile/profile';
 import { Settings } from './settings/settings';
@@ -32,6 +32,7 @@ import { Clubs } from './clubs';
 import { TournamentRoom } from './tournament/room';
 import { Admin } from './admin/admin';
 import { DonateSuccess } from './donate_success';
+import { TermsOfService } from './about/termsOfService';
 
 type Blocks = {
   user_ids: Array<string>;
@@ -251,7 +252,13 @@ const App = React.memo(() => {
           <GameTable sendSocketMsg={sendMessage} sendChat={sendChat} />
         </Route>
         <Route path="/about">
-          <About />
+          <Team />
+        </Route>
+        <Route path="/team">
+          <Team />
+        </Route>
+        <Route path="/terms">
+          <TermsOfService />
         </Route>
         <Route path="/register">
           <Register />

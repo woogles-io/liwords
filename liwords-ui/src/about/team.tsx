@@ -15,7 +15,7 @@ import { useMountedState } from '../utils/mounted';
 
 type Props = {};
 
-export const About = (props: Props) => {
+export const Team = (props: Props) => {
   const { useState } = useMountedState();
   const [bnjyMode, setBnjyMode] = useState(
     localStorage?.getItem('bnjyMode') === 'true'

@@ -1,0 +1,55 @@
+@import '../base.scss';
+@import '../color_modes.scss';
+
+.static-content {
+  @include container;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: flex-start;
+  .woogles {
+    display: none;
+    width: 160px;
+    height: 262px;
+    margin: 128px 64px 0 128px;
+  }
+  main {
+    max-width: 500px;
+    margin: 64px 32px;
+  }
+  h4 {
+    margin-top:  3em;
+  }
+  p {
+    margin-top: 1.4em;
+  }
+  .bullet-heading {
+    font-weight: 700;
+    padding-right: 1ex;
+  }
+  ol {
+    padding-inline-start: 20px;
+    li {
+      margin-top: 1.4em;
+      font-weight: 700;
+      p, li {
+        font-weight: 400;
+      }
+      li {
+        margin: 1em 0 0 2em;
+        list-style-type: disc;
+      }
+    }
+  }
+}
+
+@media (min-width: $screen-tablet-min) {
+  .static-content {
+    .woogles {
+      display: block;
+    }
+    main {
+      max-width: 634px;
+    }
+  }
+}

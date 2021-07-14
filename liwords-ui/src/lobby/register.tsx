@@ -543,7 +543,7 @@ export const Register = () => {
                 <Checkbox>
                   <p className="no-cheat">
                     I agree to the{' '}
-                    <Link target="_blank" to="/about">
+                    <Link target="_blank" to="/terms">
                       Woogles Terms of Service
                     </Link>
                     . Notably, I promise not to use word finders or game
