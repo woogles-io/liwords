@@ -40,22 +40,20 @@ export const TermsOfService = (props: Props) => {
             word gamers of all skill levels to compete and improve at their
             favorite games. We actively solicit feedback for features that our
             users would like to see. Please feel free to contact us with
-            suggestions via our
+            suggestions via our{' '}
             <a
               href="https://tinyurl.com/y4dkb2g6"
               target="_blank"
               rel="noopener noreferrer"
             >
-              {' '}
               Google form
             </a>
-            ,
+            ,{' '}
             <a
               href="https://discord.gg/GqkUqA7ENm"
               target="_blank"
               rel="noopener noreferrer"
             >
-              {' '}
               Discord,
             </a>{' '}
             or e-mail us at woogles at woogles.io.
@@ -142,16 +140,16 @@ export const TermsOfService = (props: Props) => {
           <ol>
             <li>
               <p>
-                <span className="bullet-heading">Cheating.</span>
-                We consider all the following to be instances of cheating:
+                <span className="bullet-heading">Cheating.</span> We consider
+                all the following to be instances of cheating:
               </p>
               <ul>
-                <li> Using a computer engine to assist your play</li>
+                <li>Using a computer engine to assist your play</li>
                 <li>
                   Using word lookup programs (including but not limited to
                   Zyzzyva, Xerafin, and Ulu) to assist your play
                 </li>
-                <li>Asking another player for help during a game.</li>
+                <li>Asking another player for help during a game</li>
                 <li>
                   Using online broadcasts/commentary of your game in progress to
                   assist your play
@@ -183,7 +181,7 @@ export const TermsOfService = (props: Props) => {
               <p>
                 <span className="bullet-heading">
                   Artificially inflating or deflating your rating.
-                </span>
+                </span>{' '}
                 This is where a User purposefully loses, or has arranged with an
                 opponent to win. As a result, the User’s rating will
                 artificially increase or decrease. This compromises the
@@ -193,8 +191,8 @@ export const TermsOfService = (props: Props) => {
             </li>
             <li>
               <p>
-                <span className="bullet-heading">Impersonation.</span>
-                Don’t pretend to be someone who you’re not.
+                <span className="bullet-heading">Impersonation.</span> Don’t
+                pretend to be someone who you’re not.
               </p>
             </li>
             <li>
@@ -209,7 +207,7 @@ export const TermsOfService = (props: Props) => {
               <p>
                 <span className="bullet-heading">
                   Harassing conduct or offensive language.
-                </span>
+                </span>{' '}
                 We reserve the right for our team and mods to unilaterally
                 determine what constitutes harassment or offensive language.
               </p>
@@ -217,8 +215,8 @@ export const TermsOfService = (props: Props) => {
             <li>
               <p>
                 <span className="bullet-heading">
-                  Sharing copyrighted material,{' '}
-                </span>
+                  Sharing copyrighted material,
+                </span>{' '}
                 defined as posting anything other than what you’ve made
                 yourself, or have a fiduciary right to share. Users are
                 responsible for what they post and share.
@@ -228,7 +226,7 @@ export const TermsOfService = (props: Props) => {
               <p>
                 <span className="bullet-heading">
                   Abuse our infrastructure.
-                </span>
+                </span>{' '}
                 Don’t take any action that imposes an unreasonable load on our
                 infrastructure or on our third-party providers. We reserve the
                 right to determine what is reasonable.
@@ -236,9 +234,9 @@ export const TermsOfService = (props: Props) => {
             </li>
             <li>
               <p>
-                <span className="bullet-heading">Spamming</span>
-                Do not post unsolicited messages like junk mail, chain letters,
-                or general spam.
+                <span className="bullet-heading">Spamming.</span> Do not post
+                unsolicited messages like junk mail, chain letters, or general
+                spam.
               </p>
             </li>
           </ol>
@@ -257,11 +255,13 @@ export const TermsOfService = (props: Props) => {
             content and data. You can close your account through your settings.
           </p>
           <p>
-            Data that is not erased upon account closure: We will not delete the
-            existence of games in which you participated; however, your username
-            will no longer be associated with those games. We may also retain
-            certain information as required by law or as necessary for our
-            legitimate operating purposes.
+            <span className="bullet-heading">
+              Data that is not erased upon account closure:
+            </span>{' '}
+            We will not delete the existence of games in which you participated;
+            however, your username will no longer be associated with those
+            games. We may also retain certain information as required by law or
+            as necessary for our legitimate operating purposes.
           </p>
           <p>
             All of the provisions within this agreement survive the closure of
@@ -296,8 +296,8 @@ export const TermsOfService = (props: Props) => {
           <p>
             We will aggregate all chat logs from our lobby help chat, tournament
             rooms, and private chat, and reserve the right to read through chat
-            logs for evidence of misconduct according to our Fairplay and
-            Community guidelines above.
+            logs for evidence of misconduct according to our Fair Play and
+            Community Guidelines above.
           </p>
           <p>
             This list is non-exhaustive, and we reserve the right to add, edit,
@@ -311,13 +311,12 @@ export const TermsOfService = (props: Props) => {
           </p>
           <h4>Copyright</h4>
           <p>
-            Woogles is licensed under the
+            Woogles is licensed under the{' '}
             <a
               href="https://github.com/domino14/liwords/blob/master/LICENSE"
               target="_blank"
               rel="noopener noreferrer"
             >
-              {' '}
               GNU AGPL license.
             </a>
           </p>
@@ -347,13 +346,12 @@ export const TermsOfService = (props: Props) => {
             Any user may use Woogles.io for free in perpetuity, with no
             expectation of payment. Users can donate to Woogles Inc via the
             donation link on our homepage (
-            <a href="/donate">woogles.io/donate</a>), or by becoming a
+            <a href="/donate">woogles.io/donate</a>), or by becoming a{' '}
             <a
               href="https://www.patreon.com/woogles_io/"
               target="_blank"
               rel="noopener noreferrer"
             >
-              {' '}
               Patreon backer
             </a>
             . Woogles will receive all funds donated except where there are
