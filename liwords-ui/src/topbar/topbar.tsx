@@ -28,7 +28,7 @@ const TopMenu = React.memo((props: Props) => {
       </li>
       <li>
         <Link className="plain" to="/terms">
-          Terms of service
+          Terms of Service
         </Link>
       </li>
     </ul>
