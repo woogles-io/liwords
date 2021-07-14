@@ -18,7 +18,7 @@
     margin: 64px 32px;
   }
   h4 {
-    margin-top:  3em;
+    margin-top: 3em;
   }
   p {
     margin-top: 1.4em;
@@ -29,10 +29,14 @@
   }
   ol {
     padding-inline-start: 20px;
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
     li {
       margin-top: 1.4em;
       font-weight: 700;
-      p, li {
+      p,
+      li {
         font-weight: 400;
       }
       li {
