@@ -163,7 +163,7 @@ func (t *ClassicDivision) prepair() (*realtime.DivisionPairingsResponse, error) 
 		initFontes := t.RoundControls[0].InitialFontes
 		if t.RoundControls[0].PairingMethod != realtime.PairingMethod_MANUAL &&
 			numberOfPlayers >= int(initFontes)+1 {
-			newpm, err := t.PairRound(0, true)
+			newpm, err := t.PairRound(0, false)
 			if err != nil {
 				return nil, err
 			}
@@ -179,7 +179,7 @@ func (t *ClassicDivision) prepair() (*realtime.DivisionPairingsResponse, error) 
 			if pair.IsStandingsIndependent(pairingMethod) &&
 				numberOfPlayers >= int(initFontes)+1 &&
 				pairingMethod != realtime.PairingMethod_MANUAL {
-				newpm, err := t.PairRound(i, true)
+				newpm, err := t.PairRound(i, false)
 				if err != nil {
 					return nil, err
 				}
@@ -497,7 +497,7 @@ func (t *ClassicDivision) SubmitResult(round int,
 	// were made when the tournament was created.
 	if roundComplete && !finished && !amend {
 		if !pair.IsStandingsIndependent(t.RoundControls[round+1].PairingMethod) {
-			newpmessage, err := t.PairRound(round+1, true)
+			newpmessage, err := t.PairRound(round+1, false)
 			if err != nil {
 				return nil, err
 			}
@@ -550,13 +550,13 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 	// This automatic pairing could be the result of an
 	// amendment. Undo all the pairings so byes can be
 	// properly assigned (bye assignment checks for nil pairing).
-	// If preserveByes is false, then a director has called the
+	// If preserveByes is true, then a director has called the
 	// PairRound API and byes should be preserved.
 	numberOfByes := 0
 	playersWithByes := make(map[string]bool)
 	for i := 0; i < len(roundPairings); i++ {
 		player := t.Players.Persons[i].Id
-		if !preserveByes {
+		if preserveByes {
 			isBye, err := t.pairingIsBye(t.Players.Persons[i].Id, round)
 			if err != nil {
 				return nil, err
@@ -570,7 +570,7 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 
 	for i := 0; i < len(roundPairings); i++ {
 		player := t.Players.Persons[i].Id
-		if preserveByes || !playersWithByes[player] {
+		if !preserveByes || !playersWithByes[player] {
 			err := t.clearPairingKey(t.PlayerIndexMap[player], round)
 			if err != nil {
 				return nil, err
@@ -598,7 +598,7 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 		}
 	} else {
 		for i := 0; i < len(standings.Standings); i++ {
-			if preserveByes || !playersWithByes[standings.Standings[i].PlayerId] {
+			if !preserveByes || !playersWithByes[standings.Standings[i].PlayerId] {
 				playerOrder = append(playerOrder, standings.Standings[i])
 			}
 		}
@@ -849,14 +849,14 @@ func (t *ClassicDivision) AddPlayers(players *realtime.TournamentPersons) (*real
 			} else {
 				pm := t.RoundControls[i].PairingMethod
 				if (i == int(t.CurrentRound)+1 || pair.IsStandingsIndependent(pm)) && pm != realtime.PairingMethod_MANUAL {
-					newpmessage, err := t.PairRound(i, true)
+					newpmessage, err := t.PairRound(i, false)
 					if err != nil {
 						return nil, err
 					}
 					pmessage = combinePairingMessages(pmessage, newpmessage)
 				}
 			}
-			roundStandings, _, err := t.GetStandings(i, true)
+			roundStandings, _, err := t.GetStandings(i, false)
 			if err != nil {
 				return nil, err
 			}
@@ -921,7 +921,7 @@ func (t *ClassicDivision) RemovePlayers(persons *realtime.TournamentPersons) (*r
 		for i := int(t.CurrentRound + 1); i < len(t.Matrix); i++ {
 			pm := t.RoundControls[i].PairingMethod
 			if (i == int(t.CurrentRound)+1 || pair.IsStandingsIndependent(pm)) && pm != realtime.PairingMethod_MANUAL {
-				newPairingsMessage, err := t.PairRound(i, true)
+				newPairingsMessage, err := t.PairRound(i, false)
 				if err != nil {
 					return nil, err
 				}

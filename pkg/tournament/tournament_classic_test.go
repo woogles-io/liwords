@@ -498,7 +498,7 @@ func TestClassicDivisionPreserveByes(t *testing.T) {
 	is.True(pk4 == "")
 
 	// Overwrite these pairings
-	_, err = tc.PairRound(0, true)
+	_, err = tc.PairRound(0, false)
 	is.NoErr(err)
 	pk1, err = tc.getPairingKey(player1, 0)
 	is.NoErr(err)
@@ -516,7 +516,7 @@ func TestClassicDivisionPreserveByes(t *testing.T) {
 	is.NoErr(err)
 
 	// Don't overwrite the bye
-	_, err = tc.PairRound(0, false)
+	_, err = tc.PairRound(0, true)
 	is.NoErr(err)
 
 	pk1, err = tc.getPairingKey(player1, 0)
@@ -674,7 +674,7 @@ func TestClassicDivisionGibson(t *testing.T) {
 
 	// Second place is 17 games behind with 17 games to go
 	// and spread is not used, so no players should be gibsonized
-	_, err = tc.PairRound(currentRound, true)
+	_, err = tc.PairRound(currentRound, false)
 	is.NoErr(err)
 	currentPairings := tc.getPlayerPairings(currentRound)
 	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "f", "c", "g", "b", "e", "d", "h"}))
@@ -684,7 +684,7 @@ func TestClassicDivisionGibson(t *testing.T) {
 	// cap, to trigger gibsonization. Player "a" should
 	// be gibsonized now.
 	tc.DivisionControls.GibsonSpread = 199
-	_, err = tc.PairRound(currentRound, true)
+	_, err = tc.PairRound(currentRound, false)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
 	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "e", "f", "g", "b", "c", "d", "h"}))
@@ -693,7 +693,7 @@ func TestClassicDivisionGibson(t *testing.T) {
 
 	// Adjust the spread cap to remove the gibsonization
 	tc.DivisionControls.GibsonSpread = 201
-	_, err = tc.PairRound(currentRound, true)
+	_, err = tc.PairRound(currentRound, false)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
 	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "f", "c", "g", "b", "e", "d", "h"}))
@@ -703,7 +703,7 @@ func TestClassicDivisionGibson(t *testing.T) {
 	// which means the when first is gibsonized, they will play second
 	tc.DivisionControls.GibsonSpread = 199
 	tc.DivisionControls.MinimumPlacement = 0
-	_, err = tc.PairRound(currentRound, true)
+	_, err = tc.PairRound(currentRound, false)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
 	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "f", "c", "g", "b", "e", "d", "h"}))
@@ -714,7 +714,7 @@ func TestClassicDivisionGibson(t *testing.T) {
 	// sense but which shouldn't break anything
 	tc.DivisionControls.GibsonSpread = 199
 	tc.DivisionControls.MinimumPlacement = 7
-	_, err = tc.PairRound(currentRound, true)
+	_, err = tc.PairRound(currentRound, false)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
 	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "h", "f", "g", "c", "e", "b", "d"}))
@@ -731,7 +731,7 @@ func TestClassicDivisionGibson(t *testing.T) {
 		currentRound++
 	}
 
-	_, err = tc.PairRound(currentRound, true)
+	_, err = tc.PairRound(currentRound, false)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
 	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "f", "c", "g", "b", "e", "d", "h"}))
@@ -745,7 +745,7 @@ func TestClassicDivisionGibson(t *testing.T) {
 		currentRound++
 	}
 
-	_, err = tc.PairRound(currentRound, true)
+	_, err = tc.PairRound(currentRound, false)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
 	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "f", "c", "g", "b", "e", "d", "h"}))
@@ -761,7 +761,7 @@ func TestClassicDivisionGibson(t *testing.T) {
 		currentRound++
 	}
 
-	_, err = tc.PairRound(currentRound, true)
+	_, err = tc.PairRound(currentRound, false)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
 	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "f", "c", "g", "d", "e", "b", "h"}))
@@ -774,7 +774,7 @@ func TestClassicDivisionGibson(t *testing.T) {
 	// Test gibsonization with an odd number of players
 	_, err = tc.AddPlayers(makeTournamentPersons(map[string]int32{"i": 50}))
 	is.NoErr(err)
-	_, err = tc.PairRound(currentRound, true)
+	_, err = tc.PairRound(currentRound, false)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
 	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "f", "g", "c", "d", "b", "e", "h", "i"}))
@@ -930,7 +930,7 @@ func TestClassicDivisionFactor(t *testing.T) {
 
 	tc.RoundControls[1].Factor = 3
 
-	_, err = tc.PairRound(1, true)
+	_, err = tc.PairRound(1, false)
 	is.NoErr(err)
 
 	err = tc.StartRound()
@@ -1123,7 +1123,7 @@ func TestClassicDivisionSwiss(t *testing.T) {
 
 	tc.RoundControls[6].AllowOverMaxRepeats = true
 
-	_, err = tc.PairRound(6, true)
+	_, err = tc.PairRound(6, false)
 	is.NoErr(err)
 
 	roundControls = []*realtime.RoundControl{}
