@@ -35,17 +35,13 @@ const allMonthNames = [
   'December',
 ];
 const allMonthLowercaseNames = allMonthNames.map((name) => name.toLowerCase());
-const allMonthOptions = allMonthNames.map((name, idx) => {
-  const mm = String(idx + 1).padStart(2, '0');
-  return {
-    value: name,
-    label: (
-      <React.Fragment>
-        {mm} - {name}
-      </React.Fragment>
-    ),
-  };
-});
+const allMonthNumbers = allMonthNames.map((_, idx) =>
+  String(idx + 1).padStart(2, '0')
+);
+const allMonthOptions = allMonthNames.map((name, idx) => ({
+  value: name,
+  label: `${allMonthNumbers[idx]} - ${name}`,
+}));
 
 const allDateOptions = Array.from(new Array(31), (_, x) => ({
   value: String(x + 1).padStart(2, '0'),
@@ -351,9 +347,9 @@ export const Register = () => {
     useCallback((s) => {
       const lowerSearch = s.toLowerCase();
       return allMonthOptions.filter(
-        ({ value }, idx) =>
+        (_, idx) =>
           allMonthLowercaseNames[idx].includes(lowerSearch) ||
-          value.includes(lowerSearch)
+          allMonthNumbers[idx].includes(lowerSearch)
       );
     }, []),
     'Month'
@@ -547,7 +543,7 @@ export const Register = () => {
                 <Checkbox>
                   <p className="no-cheat">
                     I agree to the{' '}
-                    <Link target="_blank" to="/about">
+                    <Link target="_blank" to="/terms">
                       Woogles Terms of Service
                     </Link>
                     . Notably, I promise not to use word finders or game

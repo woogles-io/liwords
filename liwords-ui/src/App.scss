@@ -147,3 +147,11 @@ a.plain,
     color: m($gray-extreme);
   }
 }
+.tourney-editor .readable-text-color {
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}
+.ant-form-item .ant-select-selection-item-content {
+  color: #777777;
+}

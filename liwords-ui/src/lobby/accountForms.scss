@@ -121,6 +121,9 @@ div.account {
         margin: 9px 0 0; /* match the paragraph's first line */
         height: 100%; /* patch hover/toggle animation size */
       }
+      .ant-checkbox-input {
+        z-index: -1; /* make link clickable */
+      }
     }
     .ant-row.ant-form-item.password {
       &, * {

@@ -41,7 +41,6 @@ export const Admin = () => {
       <Layout>
         <TopBar />
         <Layout>
-          {/* <TourneyEditor /> */}
           <Layout.Sider>
             <Sider setVisibleTab={setVisibleTab} />
           </Layout.Sider>

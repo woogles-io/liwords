@@ -99,7 +99,8 @@ const ManageWindowTitleAndTurnSound = (props: {}) => {
     return myPlayerOrder === 'p0' ? 0 : myPlayerOrder === 'p1' ? 1 : null;
   }, [gameContext.uidToPlayerOrder, userID]);
 
-  const gameDone = gameContext.playState === PlayState.GAME_OVER;
+  const gameDone =
+    gameContext.playState === PlayState.GAME_OVER && !!gameContext.gameID;
 
   // do not play sound when game ends (e.g. resign) or has not loaded
   const canPlaySound = !gameDone && gameContext.gameID;
@@ -243,7 +244,8 @@ export const Table = React.memo((props: Props) => {
     };
   }, []);
 
-  const gameDone = gameContext.playState === PlayState.GAME_OVER;
+  const gameDone =
+    gameContext.playState === PlayState.GAME_OVER && !!gameContext.gameID;
 
   useEffect(() => {
     if (gameDone || isObserver) {

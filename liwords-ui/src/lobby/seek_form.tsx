@@ -14,21 +14,29 @@ import axios from 'axios';
 
 import { Store } from 'antd/lib/form/interface';
 import { useMountedState } from '../utils/mounted';
-import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import {
+  ChallengeRule,
+  ChallengeRuleMap,
+} from '../gen/macondo/api/proto/macondo/macondo_pb';
 import {
   initialTimeMinutesToSlider,
+  initialTimeSecondsToSlider,
   initTimeDiscreteScale,
   timeCtrlToDisplayName,
 } from '../store/constants';
-import { MatchUser } from '../gen/api/proto/realtime/realtime_pb';
+import {
+  GameRequest,
+  MatchUser,
+  RatingMode,
+} from '../gen/api/proto/realtime/realtime_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { toAPIUrl } from '../api/api';
 import { useDebounce } from '../utils/debounce';
-import { fixedSettings, seekPropVals } from './fixed_seek_controls';
 import { ChallengeRulesFormItem } from './challenge_rules_form_item';
 import {
   useFriendsStoreContext,
   usePresenceStoreContext,
+  useTournamentStoreContext,
 } from '../store/store';
 import { VariantIcon } from '../shared/variant_icons';
 import { excludedLexica, LexiconFormItem } from '../shared/lexicon_display';
@@ -60,6 +68,74 @@ type Props = {
   username?: string;
 };
 
+export type seekPropVals = {
+  lexicon: string;
+  challengerule: ChallengeRuleMap[keyof ChallengeRuleMap];
+  initialtimeslider: number;
+  rated: boolean;
+  extratime: number;
+  friend: string;
+  incOrOT: 'overtime' | 'increment';
+  vsBot: boolean;
+  variant: string;
+};
+
+type mandatoryFormValues = Partial<seekPropVals> &
+  Pick<
+    seekPropVals,
+    | 'lexicon'
+    | 'challengerule'
+    | 'initialtimeslider'
+    | 'rated'
+    | 'extratime'
+    | 'incOrOT'
+    | 'variant'
+  >;
+
+export const GameRequestToFormValues: (
+  gameRequest: GameRequest | null
+) => mandatoryFormValues = (gameRequest: GameRequest | null) => {
+  if (!gameRequest) {
+    return {
+      lexicon: 'CSW19',
+      variant: 'classic',
+      challengerule: ChallengeRule.FIVE_POINT,
+      initialtimeslider: initialTimeMinutesToSlider(15),
+      rated: true,
+      extratime: 1,
+      incOrOT: 'overtime',
+    };
+  }
+
+  const vals: mandatoryFormValues = {
+    lexicon: gameRequest.getLexicon(),
+    variant: gameRequest.getRules()?.getVariantName() ?? '',
+    challengerule: gameRequest.getChallengeRule(),
+    rated: gameRequest.getRatingMode() === RatingMode.RATED,
+    initialtimeslider: 0,
+    extratime: 0,
+    incOrOT: 'overtime',
+  };
+
+  const secs = gameRequest.getInitialTimeSeconds();
+  try {
+    vals.initialtimeslider = initialTimeSecondsToSlider(secs);
+  } catch (e) {
+    const msg = `cannot find ${secs} seconds in slider`;
+    console.error(msg, e);
+    alert(msg);
+    vals.initialtimeslider = 0;
+  }
+  if (gameRequest.getMaxOvertimeMinutes()) {
+    vals.extratime = gameRequest.getMaxOvertimeMinutes();
+    vals.incOrOT = 'overtime';
+  } else if (gameRequest.getIncrementSeconds()) {
+    vals.extratime = gameRequest.getIncrementSeconds();
+    vals.incOrOT = 'increment';
+  }
+  return vals;
+};
+
 const otLabel = 'Overtime';
 const incLabel = 'Increment';
 const otUnitLabel = (
@@ -77,6 +153,7 @@ export const SeekForm = (props: Props) => {
   const { useState } = useMountedState();
   const { friends } = useFriendsStoreContext();
   const { presences } = usePresenceStoreContext();
+  const { tournamentContext } = useTournamentStoreContext();
   const { tournamentID, username } = props;
   const enableAllLexicons = React.useMemo(
     () => localStorage.getItem('enableAllLexicons') === 'true',
@@ -128,42 +205,51 @@ export const SeekForm = (props: Props) => {
     vsBot: false,
     variant: 'classic',
   };
-  let disableControls = false;
+  let disableTimeControls = false;
   let disableVariantControls = false;
   let disableLexiconControls = false;
   let disableChallengeControls = false;
+  let disableRatedControls = false;
   let initialValues;
 
-  if (props.tournamentID && props.tournamentID in fixedSettings) {
-    disableControls = true;
-    disableVariantControls = 'variant' in fixedSettings[props.tournamentID];
-    disableLexiconControls = 'lexicon' in fixedSettings[props.tournamentID];
-    disableChallengeControls =
-      'challengerule' in fixedSettings[props.tournamentID];
-    initialValues = {
-      ...fixedSettings[props.tournamentID],
-      friend: givenFriend,
-    };
-    // This is a bit of a hack; sorry.
+  if (
+    props.tournamentID &&
+    tournamentContext.metadata.getDefaultClubSettings()
+  ) {
+    const fixedClubSettings = tournamentContext.metadata.getDefaultClubSettings();
+    const initFormValues = GameRequestToFormValues(fixedClubSettings!);
+    const freeformItems =
+      tournamentContext.metadata.getFreeformClubSettingFieldsList() || [];
+    disableVariantControls = !freeformItems.includes('variant_name');
+    disableLexiconControls = !freeformItems.includes('lexicon');
+    disableChallengeControls = !freeformItems.includes('challenge_rule');
+    disableTimeControls = !freeformItems.includes('time');
+    disableRatedControls = !freeformItems.includes('rating_mode');
+    // Pass through default values only if they are NOT disabled
+    // (If they are disabled, we should use the hardcoded values)
+    const valuesToPassThrough: Partial<seekPropVals> = {};
     if (!disableVariantControls) {
-      initialValues = {
-        ...initialValues,
-        variant: storedValues.variant || defaultValues.variant,
-      };
+      valuesToPassThrough.variant = storedValues.variant;
     }
     if (!disableLexiconControls) {
-      initialValues = {
-        ...initialValues,
-        lexicon: storedValues.lexicon || defaultValues.lexicon,
-      };
+      valuesToPassThrough.lexicon = storedValues.lexicon;
     }
     if (!disableChallengeControls) {
-      initialValues = {
-        ...initialValues,
-        challengerule:
-          storedValues.challengerule || defaultValues.challengerule,
-      };
+      valuesToPassThrough.challengerule = storedValues.challengerule;
     }
+    if (!disableTimeControls) {
+      valuesToPassThrough.initialtimeslider = storedValues.initialtimeslider;
+      valuesToPassThrough.extratime = storedValues.extratime;
+      valuesToPassThrough.incOrOT = storedValues.incOrOT;
+    }
+    if (!disableRatedControls) {
+      valuesToPassThrough.rated = storedValues.rated;
+    }
+    initialValues = {
+      ...initFormValues,
+      ...valuesToPassThrough,
+      friend: givenFriend,
+    };
   } else {
     initialValues = {
       ...defaultValues,
@@ -302,13 +388,6 @@ export const SeekForm = (props: Props) => {
       playerVsBot: props.vsBot || false,
       tournamentID: props.tournamentID || '',
       variant: val.variant as string,
-      ...(props.tournamentID &&
-        fixedSettings[props.tournamentID] && {
-          ...(typeof fixedSettings[props.tournamentID].variant === 'string' && {
-            // this is necessary, because variant may not be rendered depending on localStorage.
-            variant: fixedSettings[props.tournamentID].variant as string,
-          }),
-        }),
     };
     props.onFormSubmit(obj, val);
   };
@@ -368,7 +447,10 @@ export const SeekForm = (props: Props) => {
         </Form.Item>
       )}
 
-      {enableWordSmog && (
+      {/* if variant controls are disabled it means we have hardcoded settings
+      for it, so show them if not classic */}
+      {(enableWordSmog ||
+        (disableVariantControls && initialValues.variant !== 'classic')) && (
         <Form.Item label="Game type" name="variant">
           <Select disabled={disableVariantControls}>
             <Select.Option value="classic">Classic</Select.Option>
@@ -394,7 +476,7 @@ export const SeekForm = (props: Props) => {
         extra={<Tag color={ttag}>{timectrl}</Tag>}
       >
         <Slider
-          disabled={disableControls}
+          disabled={disableTimeControls}
           tipFormatter={initTimeFormatter}
           min={0}
           max={initTimeDiscreteScale.length - 1}
@@ -402,7 +484,7 @@ export const SeekForm = (props: Props) => {
         />
       </Form.Item>
       <Form.Item label="Time setting" name="incOrOT">
-        <Radio.Group disabled={disableControls}>
+        <Radio.Group disabled={disableTimeControls}>
           <Radio.Button value="overtime">Use max overtime</Radio.Button>
           <Radio.Button value="increment">Use increment</Radio.Button>
         </Radio.Group>
@@ -413,10 +495,14 @@ export const SeekForm = (props: Props) => {
         name="extratime"
         extra={extraTimeLabel}
       >
-        <InputNumber min={0} max={maxTimeSetting} disabled={disableControls} />
+        <InputNumber
+          min={0}
+          max={maxTimeSetting}
+          disabled={disableTimeControls}
+        />
       </Form.Item>
       <Form.Item label="Rated" name="rated" valuePropName="checked">
-        <Switch disabled={disableControls} />
+        <Switch disabled={disableRatedControls} />
       </Form.Item>
       <small className="readable-text-color">
         {lexiconCopyright ? lexiconCopyright : ''}

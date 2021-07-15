@@ -237,8 +237,8 @@ type TournamentMetadata struct {
 	// When setting the game request, some clubs would like some parameters
 	// to be more freeform (for example, lexicon option or time setting).
 	// The following parameter is a list of field names that are freeform.
-	// (Use protobuf field names for consistency, for example,
-	// initial_time_seconds).
+	// The acceptable values are:
+	// lexicon, time, challenge_rule, rating_mode, variant_name
 	FreeformClubSettingFields []string `protobuf:"bytes,10,rep,name=freeform_club_setting_fields,json=freeformClubSettingFields,proto3" json:"freeform_club_setting_fields,omitempty"`
 	// a simple password for this tournament. Without it you can't see what is
 	// happening. Likely front-end only implementation, although password
