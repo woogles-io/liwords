@@ -587,6 +587,7 @@ message DivisionControlsResponse {
   string id = 1;
   string division = 2;
   DivisionControls division_controls = 3;
+  map<int32, RoundStandings> division_standings = 4;
 }
 
 message TournamentDivisionDataResponse {

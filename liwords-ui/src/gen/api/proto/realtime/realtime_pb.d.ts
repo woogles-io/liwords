@@ -1608,6 +1608,8 @@ export class DivisionControlsResponse extends jspb.Message {
   getDivisionControls(): DivisionControls | undefined;
   setDivisionControls(value?: DivisionControls): void;
 
+  getDivisionStandingsMap(): jspb.Map<number, RoundStandings>;
+  clearDivisionStandingsMap(): void;
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): DivisionControlsResponse.AsObject;
   static toObject(includeInstance: boolean, msg: DivisionControlsResponse): DivisionControlsResponse.AsObject;
@@ -1623,6 +1625,7 @@ export namespace DivisionControlsResponse {
     id: string,
     division: string,
     divisionControls?: DivisionControls.AsObject,
+    divisionStandingsMap: Array<[number, RoundStandings.AsObject]>,
   }
 }
 

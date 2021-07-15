@@ -48,19 +48,19 @@ func (t *ClassicDivision) GetDivisionControls() *realtime.DivisionControls {
 	return t.DivisionControls
 }
 
-func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.DivisionControls) (*realtime.DivisionControls, error) {
+func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.DivisionControls) (*realtime.DivisionControls, map[int32]*realtime.RoundStandings, error) {
 	err := entity.ValidateGameRequest(context.Background(), divisionControls.GameRequest)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	log.Debug().Interface("game-req", divisionControls.GameRequest).Msg("divctrls-validated-game-request")
 	// minimum placement is zero-indexed
 	if divisionControls.Gibsonize {
 		if divisionControls.MinimumPlacement < 0 {
-			return nil, errors.New("gibsonize requires minimum placement >= 0")
+			return nil, nil, errors.New("gibsonize requires minimum placement >= 0")
 		}
 		if divisionControls.GibsonSpread < 0 {
-			return nil, errors.New("gibsonize requires gibson spread >= 0")
+			return nil, nil, errors.New("gibsonize requires gibson spread >= 0")
 		}
 	}
 
@@ -73,17 +73,19 @@ func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.Divisio
 
 	t.DivisionControls = divisionControls
 
+	standingsMap := make(map[int32]*realtime.RoundStandings)
 	// Update the gibsonizations if the controls have changed
 	if gibsonChanged {
 		for i := 0; i <= t.GetCurrentRound(); i++ {
-			_, _, err := t.GetStandings(i, true)
+			standings, _, err := t.GetStandings(i, true)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
+			standingsMap[int32(i)] = standings
 		}
 	}
 
-	return t.DivisionControls, nil
+	return t.DivisionControls, standingsMap, nil
 }
 
 func (t *ClassicDivision) SetRoundControls(roundControls []*realtime.RoundControl) (*realtime.DivisionPairingsResponse, []*realtime.RoundControl, error) {

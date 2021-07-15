@@ -628,10 +628,10 @@ func TestClassicDivisionGibson(t *testing.T) {
 			SuspendedSpread:  -50,
 			SuspendedResult:  realtime.TournamentGameResult_FORFEIT_LOSS}
 		// Attempt to set a nonsensical minimum placement
-		_, err = tc.SetDivisionControls(newDivisionControls)
+		_, _, err = tc.SetDivisionControls(newDivisionControls)
 		is.NoErr(err)
 		newDivisionControls.MinimumPlacement = 2
-		_, err = tc.SetDivisionControls(newDivisionControls)
+		_, _, err = tc.SetDivisionControls(newDivisionControls)
 		is.NoErr(err)
 	}
 
@@ -817,7 +817,7 @@ func TestClassicDivisionGibson(t *testing.T) {
 			AutoStart:        false,
 			SuspendedSpread:  -50,
 			SuspendedResult:  realtime.TournamentGameResult_FORFEIT_LOSS}
-		_, err = tc.SetDivisionControls(newDivisionControls)
+		_, _, err = tc.SetDivisionControls(newDivisionControls)
 		is.NoErr(err)
 	}
 	_, err = pairAndPlay(tc, []string{"g", "h"}, 0)

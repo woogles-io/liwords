@@ -288,7 +288,7 @@ func SetDivisionControls(ctx context.Context, ts TournamentStore, id string, div
 		return fmt.Errorf("division %s does not exist", division)
 	}
 
-	newDivisionControls, err := divisionObject.DivisionManager.SetDivisionControls(controls)
+	newDivisionControls, standings, err := divisionObject.DivisionManager.SetDivisionControls(controls)
 	if err != nil {
 		return err
 	}
@@ -297,9 +297,10 @@ func SetDivisionControls(ctx context.Context, ts TournamentStore, id string, div
 		return err
 	}
 	resp := &realtime.DivisionControlsResponse{
-		Id:               id,
-		Division:         division,
-		DivisionControls: newDivisionControls,
+		Id:                id,
+		Division:          division,
+		DivisionControls:  newDivisionControls,
+		DivisionStandings: standings,
 	}
 	wrapped := entity.WrapEvent(resp, realtime.MessageType_TOURNAMENT_DIVISION_CONTROLS_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
