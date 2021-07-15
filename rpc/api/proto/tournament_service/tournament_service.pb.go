@@ -499,7 +499,7 @@ type PairRoundRequest struct {
 	Id             string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Division       string `protobuf:"bytes,2,opt,name=division,proto3" json:"division,omitempty"`
 	Round          int32  `protobuf:"varint,3,opt,name=round,proto3" json:"round,omitempty"`
-	OverwriteByes  bool   `protobuf:"varint,4,opt,name=overwrite_byes,json=overwriteByes,proto3" json:"overwrite_byes,omitempty"`
+	PreserveByes   bool   `protobuf:"varint,4,opt,name=overwrite_byes,json=preserveByes,proto3" json:"overwrite_byes,omitempty"`
 	DeletePairings bool   `protobuf:"varint,5,opt,name=delete_pairings,json=deletePairings,proto3" json:"delete_pairings,omitempty"`
 }
 
@@ -556,9 +556,9 @@ func (x *PairRoundRequest) GetRound() int32 {
 	return 0
 }
 
-func (x *PairRoundRequest) GetOverwriteByes() bool {
+func (x *PairRoundRequest) GetPreserveByes() bool {
 	if x != nil {
-		return x.OverwriteByes
+		return x.PreserveByes
 	}
 	return false
 }

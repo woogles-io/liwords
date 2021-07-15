@@ -541,7 +541,7 @@ func (t *ClassicDivision) canCatch(records []*realtime.PlayerStanding, round int
 	return canCatch, nil
 }
 
-func (t *ClassicDivision) PairRound(round int, overwriteByes bool) (*realtime.DivisionPairingsResponse, error) {
+func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.DivisionPairingsResponse, error) {
 	if round < 0 || round >= len(t.Matrix) {
 		return nil, fmt.Errorf("round number out of range (PairRound): %d", round)
 	}
@@ -550,13 +550,13 @@ func (t *ClassicDivision) PairRound(round int, overwriteByes bool) (*realtime.Di
 	// This automatic pairing could be the result of an
 	// amendment. Undo all the pairings so byes can be
 	// properly assigned (bye assignment checks for nil pairing).
-	// If overwriteByes is false, then a director has called the
+	// If preserveByes is false, then a director has called the
 	// PairRound API and byes should be preserved.
 	numberOfByes := 0
 	playersWithByes := make(map[string]bool)
 	for i := 0; i < len(roundPairings); i++ {
 		player := t.Players.Persons[i].Id
-		if !overwriteByes {
+		if !preserveByes {
 			isBye, err := t.pairingIsBye(t.Players.Persons[i].Id, round)
 			if err != nil {
 				return nil, err
@@ -570,7 +570,7 @@ func (t *ClassicDivision) PairRound(round int, overwriteByes bool) (*realtime.Di
 
 	for i := 0; i < len(roundPairings); i++ {
 		player := t.Players.Persons[i].Id
-		if overwriteByes || !playersWithByes[player] {
+		if preserveByes || !playersWithByes[player] {
 			err := t.clearPairingKey(t.PlayerIndexMap[player], round)
 			if err != nil {
 				return nil, err
@@ -598,7 +598,7 @@ func (t *ClassicDivision) PairRound(round int, overwriteByes bool) (*realtime.Di
 		}
 	} else {
 		for i := 0; i < len(standings.Standings); i++ {
-			if overwriteByes || !playersWithByes[standings.Standings[i].PlayerId] {
+			if preserveByes || !playersWithByes[standings.Standings[i].PlayerId] {
 				playerOrder = append(playerOrder, standings.Standings[i])
 			}
 		}

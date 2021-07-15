@@ -449,7 +449,7 @@ func TestClassicDivisionKingOfTheHill(t *testing.T) {
 	is.True(tournamentIsFinished)
 }
 
-func TestClassicDivisionOverwriteByes(t *testing.T) {
+func TestClassicDivisionPreserveByes(t *testing.T) {
 	// This test is used to ensure that the standings are
 	// calculated correctly and that King of the Hill
 	// pairings are correct

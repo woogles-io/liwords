@@ -971,7 +971,7 @@ func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
 	return nil
 }
 
-func PairRound(ctx context.Context, ts TournamentStore, id string, division string, round int, overwriteByes bool) error {
+func PairRound(ctx context.Context, ts TournamentStore, id string, division string, round int, preserveByes bool) error {
 	t, err := ts.Get(ctx, id)
 	if err != nil {
 		return err
@@ -999,7 +999,7 @@ func PairRound(ctx context.Context, ts TournamentStore, id string, division stri
 		return fmt.Errorf("cannot repair non-future round %d since current round is %d", round, currentRound)
 	}
 
-	pairingsResp, err := divisionObject.DivisionManager.PairRound(round, overwriteByes)
+	pairingsResp, err := divisionObject.DivisionManager.PairRound(round, preserveByes)
 
 	if err != nil {
 		return err
