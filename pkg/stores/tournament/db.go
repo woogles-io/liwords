@@ -76,7 +76,6 @@ func (s *DBStore) dbObjToEntity(tm *tournament) (*entity.Tournament, error) {
 
 	for _, division := range divisions {
 		if division.ManagerType == entity.ClassicTournamentType {
-			log.Debug().Interface("division", division).Msg("unmarshalling")
 			var classicDivision tl.ClassicDivision
 			err = json.Unmarshal(division.DivisionRawMessage, &classicDivision)
 			if err != nil {
