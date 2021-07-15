@@ -620,10 +620,16 @@ export function TournamentReducer(
       };
       const division = dc.divisionControlsResponse.getDivision();
 
+      const newStandings = reduceStandings(
+        state.divisions[division].standingsMap,
+        dc.divisionControlsResponse.getDivisionStandingsMap()
+      );
+
       return Object.assign({}, state, {
         divisions: Object.assign({}, state.divisions, {
           [division]: Object.assign({}, state.divisions[division], {
             divisionControls: dc.divisionControlsResponse.getDivisionControls(),
+            standingsMap: newStandings,
           }),
         }),
       });
