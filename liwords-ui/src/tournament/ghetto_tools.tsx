@@ -921,7 +921,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
         <InputNumber
           min={0}
           value={gibsonSpread}
-          onChange={(v: number | string | null | undefined) =>
+          onChange={(v: number | string | undefined | null) =>
             setGibsonSpread(v as number)
           }
         />
@@ -932,7 +932,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
         <InputNumber
           min={1}
           value={gibsonMinPlacement}
-          onChange={(p: number | string | undefined) =>
+          onChange={(p: number | string | undefined | null) =>
             setGibsonMinPlacement(p as number)
           }
         />
