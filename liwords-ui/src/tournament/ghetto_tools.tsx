@@ -67,6 +67,7 @@ const FormModal = (props: ModalProps) => {
     'set-single-pairing': <SetPairing tournamentID={props.tournamentID} />,
     'set-game-result': <SetResult tournamentID={props.tournamentID} />,
     'pair-entire-round': <PairRound tournamentID={props.tournamentID} />,
+    'unpair-entire-round': <UnpairRound tournamentID={props.tournamentID} />,
     'set-tournament-controls': (
       <SetTournamentControls tournamentID={props.tournamentID} />
     ),
@@ -131,6 +132,7 @@ export const GhettoTools = (props: Props) => {
     'Set single pairing', // Set a single pairing
     'Pair entire round', // Pair a whole round
     'Set game result', // Set a single result
+    'Unpair entire round', // Unpair a whole round
     // 'Clear checked in',
   ];
 
@@ -715,6 +717,7 @@ const PairRound = (props: { tournamentID: string }) => {
       id: props.tournamentID,
       division: vals.division,
       round: vals.round - 1, // 1-indexed input
+      preserve_byes: vals.preserveByes,
     };
     axios
       .post<{}>(
@@ -743,6 +746,51 @@ const PairRound = (props: { tournamentID: string }) => {
         <InputNumber min={1} />
       </Form.Item>
 
+      <Form.Item name="preserveByes" label="Preserve byes">
+        <Switch />
+      </Form.Item>
+
+      <Form.Item>
+        <Button type="primary" htmlType="submit">
+          Submit
+        </Button>
+      </Form.Item>
+    </Form>
+  );
+};
+
+const UnpairRound = (props: { tournamentID: string }) => {
+  const onFinish = (vals: Store) => {
+    const obj = {
+      id: props.tournamentID,
+      division: vals.division,
+      round: vals.round - 1, // 1-indexed input
+      deletePairings: true,
+    };
+    axios
+      .post<{}>(
+        toAPIUrl('tournament_service.TournamentService', 'PairRound'),
+        obj
+      )
+      .then((resp) => {
+        message.info({
+          content: 'Pairings for selected round have been deleted',
+          duration: 3,
+        });
+      })
+      .catch((err) => {
+        message.error({
+          content: 'Error ' + err.response?.data?.msg,
+          duration: 5,
+        });
+      });
+  };
+  return (
+    <Form onFinish={onFinish}>
+      <DivisionFormItem />
+      <Form.Item name="round" label="Round (1-indexed)">
+        <InputNumber min={1} />
+      </Form.Item>
       <Form.Item>
         <Button type="primary" htmlType="submit">
           Submit
@@ -873,7 +921,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
         <InputNumber
           min={0}
           value={gibsonSpread}
-          onChange={(v: number | string | undefined) =>
+          onChange={(v: number | string | null | undefined) =>
             setGibsonSpread(v as number)
           }
         />

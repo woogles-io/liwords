@@ -598,12 +598,12 @@ export const useOnSocketMsg = () => {
           }
 
           case MessageType.TOURNAMENT_DIVISION_PAIRINGS_DELETED_MESSAGE: {
-            const tdpm = parsedMsg as DivisionPairingsResponse;
+            const tdpm = parsedMsg as DivisionPairingsDeletedResponse;
 
             dispatchTournamentContext({
               actionType: ActionType.DeleteDivisionPairings,
               payload: {
-                dpr: tdpm,
+                dpdr: tdpm,
                 loginState,
               },
             });

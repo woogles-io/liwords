@@ -476,7 +476,9 @@ export const Pairings = React.memo((props: Props) => {
           <List
             size="small"
             dataSource={Array.from(unpairedPlayers).map((v) => v.split(':')[1])}
-            renderItem={(item) => <List.Item>{item}</List.Item>}
+            renderItem={(item) => (
+              <List.Item className="readable-text-color">{item}</List.Item>
+            )}
           />
         </>
       ) : null}

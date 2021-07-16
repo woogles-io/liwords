@@ -175,8 +175,6 @@ const findOpponentIdx = (
 };
 
 const deletePairings = (
-  players: Array<TournamentPerson>,
-  playerIndexMap: { [playerID: string]: number },
   existingPairings: Array<RoundPairings>,
   round: number
 ): Array<RoundPairings> => {
@@ -642,8 +640,6 @@ export function TournamentReducer(
       };
       const division = dp.dpdr.getDivision();
       const newPairings = deletePairings(
-        state.divisions[division].players,
-        state.divisions[division].playerIndexMap,
         state.divisions[division].pairings,
         dp.dpdr.getRound()
       );
