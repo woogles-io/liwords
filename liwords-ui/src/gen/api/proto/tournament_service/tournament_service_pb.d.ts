@@ -205,6 +205,12 @@ export class PairRoundRequest extends jspb.Message {
   getRound(): number;
   setRound(value: number): void;
 
+  getPreserveByes(): boolean;
+  setPreserveByes(value: boolean): void;
+
+  getDeletePairings(): boolean;
+  setDeletePairings(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): PairRoundRequest.AsObject;
   static toObject(includeInstance: boolean, msg: PairRoundRequest): PairRoundRequest.AsObject;
@@ -220,6 +226,8 @@ export namespace PairRoundRequest {
     id: string,
     division: string,
     round: number,
+    preserveByes: boolean,
+    deletePairings: boolean,
   }
 }
 

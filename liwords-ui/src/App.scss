@@ -152,6 +152,11 @@ a.plain,
     color: m($gray-extreme);
   }
 }
+.ant-list-items .readable-text-color {
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}
 .ant-form-item .ant-select-selection-item-content {
   color: #777777;
 }

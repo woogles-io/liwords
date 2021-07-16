@@ -9,6 +9,7 @@ import {
   RoundStandings,
   TournamentDivisionDataResponse,
   DivisionPairingsResponse,
+  DivisionPairingsDeletedResponse,
   PlayersAddedOrRemovedResponse,
   DivisionControlsResponse,
   DivisionRoundControls,
@@ -171,6 +172,18 @@ const findOpponentIdx = (
       playerIndexMap[pairings[round].roundPairings[player].players[1].getId()];
   }
   return opponent;
+};
+
+const deletePairings = (
+  existingPairings: Array<RoundPairings>,
+  round: number
+): Array<RoundPairings> => {
+  const updatedPairings = [...existingPairings];
+
+  for (let i = 0; i < updatedPairings[round].roundPairings.length; i++) {
+    updatedPairings[round].roundPairings[i] = {} as SinglePairing;
+  }
+  return updatedPairings;
 };
 
 const reducePairings = (
@@ -605,13 +618,39 @@ export function TournamentReducer(
       };
       const division = dc.divisionControlsResponse.getDivision();
 
+      const newStandings = reduceStandings(
+        state.divisions[division].standingsMap,
+        dc.divisionControlsResponse.getDivisionStandingsMap()
+      );
+
       return Object.assign({}, state, {
         divisions: Object.assign({}, state.divisions, {
           [division]: Object.assign({}, state.divisions[division], {
             divisionControls: dc.divisionControlsResponse.getDivisionControls(),
+            standingsMap: newStandings,
           }),
         }),
       });
+    }
+
+    case ActionType.DeleteDivisionPairings: {
+      const dp = action.payload as {
+        dpdr: DivisionPairingsDeletedResponse;
+        loginState: LoginState;
+      };
+      const division = dp.dpdr.getDivision();
+      const newPairings = deletePairings(
+        state.divisions[division].pairings,
+        dp.dpdr.getRound()
+      );
+      const newState = Object.assign({}, state, {
+        divisions: Object.assign({}, state.divisions, {
+          [division]: Object.assign({}, state.divisions[division], {
+            pairings: newPairings,
+          }),
+        }),
+      });
+      return newState;
     }
 
     case ActionType.SetDivisionPairings: {

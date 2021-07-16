@@ -67,6 +67,7 @@ const FormModal = (props: ModalProps) => {
     'set-single-pairing': <SetPairing tournamentID={props.tournamentID} />,
     'set-game-result': <SetResult tournamentID={props.tournamentID} />,
     'pair-entire-round': <PairRound tournamentID={props.tournamentID} />,
+    'unpair-entire-round': <UnpairRound tournamentID={props.tournamentID} />,
     'set-tournament-controls': (
       <SetTournamentControls tournamentID={props.tournamentID} />
     ),
@@ -131,6 +132,7 @@ export const GhettoTools = (props: Props) => {
     'Set single pairing', // Set a single pairing
     'Pair entire round', // Pair a whole round
     'Set game result', // Set a single result
+    'Unpair entire round', // Unpair a whole round
     // 'Clear checked in',
   ];
 
@@ -715,6 +717,7 @@ const PairRound = (props: { tournamentID: string }) => {
       id: props.tournamentID,
       division: vals.division,
       round: vals.round - 1, // 1-indexed input
+      preserve_byes: vals.preserveByes,
     };
     axios
       .post<{}>(
@@ -743,6 +746,51 @@ const PairRound = (props: { tournamentID: string }) => {
         <InputNumber min={1} />
       </Form.Item>
 
+      <Form.Item name="preserveByes" label="Preserve byes">
+        <Switch />
+      </Form.Item>
+
+      <Form.Item>
+        <Button type="primary" htmlType="submit">
+          Submit
+        </Button>
+      </Form.Item>
+    </Form>
+  );
+};
+
+const UnpairRound = (props: { tournamentID: string }) => {
+  const onFinish = (vals: Store) => {
+    const obj = {
+      id: props.tournamentID,
+      division: vals.division,
+      round: vals.round - 1, // 1-indexed input
+      deletePairings: true,
+    };
+    axios
+      .post<{}>(
+        toAPIUrl('tournament_service.TournamentService', 'PairRound'),
+        obj
+      )
+      .then((resp) => {
+        message.info({
+          content: 'Pairings for selected round have been deleted',
+          duration: 3,
+        });
+      })
+      .catch((err) => {
+        message.error({
+          content: 'Error ' + err.response?.data?.msg,
+          duration: 5,
+        });
+      });
+  };
+  return (
+    <Form onFinish={onFinish}>
+      <DivisionFormItem />
+      <Form.Item name="round" label="Round (1-indexed)">
+        <InputNumber min={1} />
+      </Form.Item>
       <Form.Item>
         <Button type="primary" htmlType="submit">
           Submit
@@ -761,6 +809,11 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
   ] = useState<GameRequest | null>(null);
 
   const [division, setDivision] = useState('');
+  const [gibsonize, setGibsonize] = useState(false);
+  const [gibsonSpread, setGibsonSpread] = useState(500);
+  // min placement is 0-indexed, but we want to display 1-indexed
+  // this variable will be the display variable:
+  const [gibsonMinPlacement, setGibsonMinPlacement] = useState(1);
   const { tournamentContext } = useTournamentStoreContext();
 
   useEffect(() => {
@@ -774,6 +827,11 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
       setSelectedGameRequest(gameRequest);
     } else {
       setSelectedGameRequest(null);
+    }
+    if (div.divisionControls) {
+      setGibsonize(div.divisionControls.getGibsonize());
+      setGibsonSpread(div.divisionControls.getGibsonSpread());
+      setGibsonMinPlacement(div.divisionControls.getMinimumPlacement() + 1);
     }
   }, [division, tournamentContext.divisions]);
 
@@ -815,6 +873,9 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     // can set this later to whatever values, along with a spread
     ctrls.setSuspendedResult(TournamentGameResult.FORFEIT_LOSS);
     ctrls.setAutoStart(false);
+    ctrls.setGibsonize(gibsonize);
+    ctrls.setGibsonSpread(gibsonSpread);
+    ctrls.setMinimumPlacement(gibsonMinPlacement - 1);
 
     try {
       const rbin = await postBinary(
@@ -844,6 +905,36 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
         <DivisionSelector
           value={division}
           onChange={(value: string) => setDivision(value)}
+        />
+      </div>
+
+      <div>
+        Gibsonize:
+        <Switch
+          checked={gibsonize}
+          onChange={(c: boolean) => setGibsonize(c)}
+        />
+      </div>
+
+      <div>
+        Gibson spread:
+        <InputNumber
+          min={0}
+          value={gibsonSpread}
+          onChange={(v: number | string | undefined | null) =>
+            setGibsonSpread(v as number)
+          }
+        />
+      </div>
+
+      <div>
+        Gibson min placement:
+        <InputNumber
+          min={1}
+          value={gibsonMinPlacement}
+          onChange={(p: number | string | undefined | null) =>
+            setGibsonMinPlacement(p as number)
+          }
         />
       </div>
 

@@ -1991,7 +1991,9 @@ proto.tournament_service.PairRoundRequest.toObject = function(includeInstance, m
   var f, obj = {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     division: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    round: jspb.Message.getFieldWithDefault(msg, 3, 0)
+    round: jspb.Message.getFieldWithDefault(msg, 3, 0),
+    preserveByes: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
+    deletePairings: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
   };
 
   if (includeInstance) {
@@ -2040,6 +2042,14 @@ proto.tournament_service.PairRoundRequest.deserializeBinaryFromReader = function
       var value = /** @type {number} */ (reader.readInt32());
       msg.setRound(value);
       break;
+    case 4:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setPreserveByes(value);
+      break;
+    case 5:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setDeletePairings(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -2087,6 +2097,20 @@ proto.tournament_service.PairRoundRequest.serializeBinaryToWriter = function(mes
   if (f !== 0) {
     writer.writeInt32(
       3,
+      f
+    );
+  }
+  f = message.getPreserveByes();
+  if (f) {
+    writer.writeBool(
+      4,
+      f
+    );
+  }
+  f = message.getDeletePairings();
+  if (f) {
+    writer.writeBool(
+      5,
       f
     );
   }
@@ -2144,6 +2168,42 @@ proto.tournament_service.PairRoundRequest.prototype.getRound = function() {
  */
 proto.tournament_service.PairRoundRequest.prototype.setRound = function(value) {
   return jspb.Message.setProto3IntField(this, 3, value);
+};
+
+
+/**
+ * optional bool preserve_byes = 4;
+ * @return {boolean}
+ */
+proto.tournament_service.PairRoundRequest.prototype.getPreserveByes = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 4, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.tournament_service.PairRoundRequest} returns this
+ */
+proto.tournament_service.PairRoundRequest.prototype.setPreserveByes = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 4, value);
+};
+
+
+/**
+ * optional bool delete_pairings = 5;
+ * @return {boolean}
+ */
+proto.tournament_service.PairRoundRequest.prototype.getDeletePairings = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 5, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.tournament_service.PairRoundRequest} returns this
+ */
+proto.tournament_service.PairRoundRequest.prototype.setDeletePairings = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 5, value);
 };
 
 

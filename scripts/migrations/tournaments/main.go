@@ -218,7 +218,6 @@ func oldDatabaseObjectToEntity(ctx context.Context, s *DBStore, id string) (*Old
 
 	for _, division := range divisions {
 		if division.ManagerType == entity.ClassicTournamentType {
-			log.Debug().Interface("division", division).Msg("unmarshalling")
 			var classicDivision OldClassicDivision
 			err = json.Unmarshal(division.DivisionRawMessage, &classicDivision)
 			if err != nil {
@@ -442,7 +441,7 @@ func main() {
 								Round:       int32(round)}
 						}
 					}
-					newClassicDivision.Standings[int32(round)], err = newClassicDivision.GetStandings(round, true)
+					newClassicDivision.Standings[int32(round)], _, err = newClassicDivision.GetStandings(round, true)
 					if err != nil {
 						return err
 					}

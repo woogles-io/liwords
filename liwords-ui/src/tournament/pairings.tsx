@@ -185,6 +185,17 @@ export const Pairings = React.memo((props: Props) => {
         const isRemoved = (playerID: string) =>
           division.players[division.playerIndexMap[playerID]]?.getSuspended();
 
+        const isGibsonized = (playerID: string) => {
+          return (
+            division.standingsMap
+              ?.get(round)
+              ?.getStandingsList()
+              ?.find(
+                (p) => p.getPlayerId() === playerID && p.getGibsonized()
+              ) !== undefined
+          );
+        };
+
         const pairingCt = pairing.pairingCount || 1;
         const repeatCount =
           pairingCt <= 1
@@ -213,6 +224,9 @@ export const Pairings = React.memo((props: Props) => {
                 {isRemoved(playerFullIDs[0]) && (
                   <Tag className="ant-tag-removed">Removed</Tag>
                 )}
+                {isGibsonized(playerFullIDs[0]) && (
+                  <Tag className="ant-tag-gibsonized">Gibsonized</Tag>
+                )}
               </p>
             </div>
           ) : (
@@ -232,6 +246,9 @@ export const Pairings = React.memo((props: Props) => {
                   )}
                   {idx === 0 && pairingCt > 1 && (
                     <Tag className="ant-tag-repeat">{repeatCount}</Tag>
+                  )}
+                  {isGibsonized(playerID) && (
+                    <Tag className="ant-tag-gibsonized">Gibsonized</Tag>
                   )}
                 </p>
               ))}
@@ -459,7 +476,9 @@ export const Pairings = React.memo((props: Props) => {
           <List
             size="small"
             dataSource={Array.from(unpairedPlayers).map((v) => v.split(':')[1])}
-            renderItem={(item) => <List.Item>{item}</List.Item>}
+            renderItem={(item) => (
+              <List.Item className="readable-text-color">{item}</List.Item>
+            )}
           />
         </>
       ) : null}
