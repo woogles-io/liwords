@@ -484,6 +484,7 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 		return nil
 	*/
 
+	return nil
 }
 
 func (b *Bus) gameMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, userID string) error {
