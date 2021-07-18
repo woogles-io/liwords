@@ -286,10 +286,12 @@ outerfor:
 			break outerfor
 
 		case <-adjudicator.C:
-			err := b.adjudicateGames(ctx)
-			if err != nil {
-				log.Err(err).Msg("adjudicate-error")
-			}
+			go func() {
+				err := b.adjudicateGames(ctx)
+				if err != nil {
+					log.Err(err).Msg("adjudicate-error")
+				}
+			}()
 
 		case <-gameCounter.C:
 			n, err := b.gameStore.Count(ctx)

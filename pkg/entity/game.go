@@ -332,7 +332,9 @@ func (g *Game) RegisterChangeHook(eventChan chan<- *EventWrapper) error {
 
 // SendChange sends an event via the registered hook.
 func (g *Game) SendChange(e *EventWrapper) {
-	log.Debug().Interface("evt", e.Event).Interface("aud", e.Audience()).Msg("send-change")
+	log.Debug().Interface("evt", e.Event).
+		Interface("aud", e.Audience()).
+		Int("chan-length", len(g.ChangeHook)).Msg("send-change")
 	if g.ChangeHook == nil {
 		// This should never happen in actual operation; consider making it a Fatal.
 		log.Error().Msg("change hook is closed!")
