@@ -203,11 +203,12 @@ func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, 
 	if divisionObject.DivisionManager == nil {
 		return fmt.Errorf("division manager null for division %s", division)
 	}
+	// XXX: TEMPORARY REMOVE THIS CHECK
 
-	currentRound := divisionObject.DivisionManager.GetCurrentRound()
-	if round < currentRound+1 {
-		return fmt.Errorf("cannot set single round controls for non-future round %d since current round is %d", round, currentRound)
-	}
+	// currentRound := divisionObject.DivisionManager.GetCurrentRound()
+	// if round < currentRound+1 {
+	// 	return fmt.Errorf("cannot set single round controls for non-future round %d since current round is %d", round, currentRound)
+	// }
 
 	newControls, err := divisionObject.DivisionManager.SetSingleRoundControls(round, controls)
 	if err != nil {
