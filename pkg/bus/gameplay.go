@@ -431,53 +431,59 @@ func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWr
 
 func (b *Bus) adjudicateGames(ctx context.Context) error {
 	// Always bust the cache when we're adjudicating games.
-	gs, err := b.gameStore.ListActive(ctx, "", true)
 
-	if err != nil {
-		return err
-	}
-	now := time.Now()
-	log.Debug().Interface("active-games", gs).Msg("maybe-adjudicating...")
-	for _, g := range gs.GameInfo {
-		// These will likely be in the cache.
-		entGame, err := b.gameStore.Get(ctx, g.GameId)
+	log.Debug().Msg("not-adjudicating")
+
+	/*
+		gs, err := b.gameStore.ListActive(ctx, "", true)
+
 		if err != nil {
 			return err
 		}
-		entGame.RLock()
-		onTurn := entGame.Game.PlayerOnTurn()
-		started := entGame.Started
-		timeRanOut := entGame.TimeRanOut(onTurn)
-		entGame.RUnlock()
-		if started && timeRanOut {
-			log.Debug().Str("gid", g.GameId).Msg("adjudicating-time-ran-out")
-			err = gameplay.TimedOut(ctx, b.gameStore, b.userStore,
-				b.listStatStore, b.tournamentStore, entGame.Game.PlayerIDOnTurn(), g.GameId)
-			log.Err(err).Msg("adjudicating-after-gameplay-timed-out")
-		} else if !started && now.Sub(entGame.CreatedAt) > CancelAfter {
-			log.Debug().Str("gid", g.GameId).
-				Str("tid", g.TournamentId).
-				Interface("now", now).
-				Interface("created", entGame.CreatedAt).
-				Msg("canceling-never-started")
+		now := time.Now()
+		log.Debug().Interface("active-games", gs).Msg("maybe-adjudicating...")
+		for _, g := range gs.GameInfo {
+			// These will likely be in the cache.
+			entGame, err := b.gameStore.Get(ctx, g.GameId)
+			if err != nil {
+				return err
+			}
+			entGame.RLock()
+			onTurn := entGame.Game.PlayerOnTurn()
+			started := entGame.Started
+			timeRanOut := entGame.TimeRanOut(onTurn)
+			entGame.RUnlock()
+			if started && timeRanOut {
+				log.Debug().Str("gid", g.GameId).Msg("adjudicating-time-ran-out")
+				err = gameplay.TimedOut(ctx, b.gameStore, b.userStore,
+					b.listStatStore, b.tournamentStore, entGame.Game.PlayerIDOnTurn(), g.GameId)
+				log.Err(err).Msg("adjudicating-after-gameplay-timed-out")
+			} else if !started && now.Sub(entGame.CreatedAt) > CancelAfter {
+				log.Debug().Str("gid", g.GameId).
+					Str("tid", g.TournamentId).
+					Interface("now", now).
+					Interface("created", entGame.CreatedAt).
+					Msg("canceling-never-started")
 
-				// need to lock game to abort? maybe lock inside AbortGame?
-			entGame.Lock()
-			err = gameplay.AbortGame(ctx, b.gameStore, b.tournamentStore,
-				entGame, pb.GameEndReason_CANCELLED)
-			log.Err(err).Msg("adjudicating-after-abort-game")
-			entGame.Unlock()
-			// Delete the game from the lobby. We do this here instead
-			// of inside the gameplay package because the game event channel
-			// was never registered with an unstarted game.
-			wrapped := entity.WrapEvent(&pb.GameDeletion{Id: g.GameId},
-				pb.MessageType_GAME_DELETION)
-			// XXX: Fix for tourneys ?
-			wrapped.AddAudience(entity.AudLobby, "gameEnded")
-			b.gameEventChan <- wrapped
+					// need to lock game to abort? maybe lock inside AbortGame?
+				entGame.Lock()
+				err = gameplay.AbortGame(ctx, b.gameStore, b.tournamentStore,
+					entGame, pb.GameEndReason_CANCELLED)
+				log.Err(err).Msg("adjudicating-after-abort-game")
+				entGame.Unlock()
+				// Delete the game from the lobby. We do this here instead
+				// of inside the gameplay package because the game event channel
+				// was never registered with an unstarted game.
+				wrapped := entity.WrapEvent(&pb.GameDeletion{Id: g.GameId},
+					pb.MessageType_GAME_DELETION)
+				// XXX: Fix for tourneys ?
+				wrapped.AddAudience(entity.AudLobby, "gameEnded")
+				b.gameEventChan <- wrapped
+			}
 		}
-	}
-	return nil
+		return nil
+	*/
+
 }
 
 func (b *Bus) gameMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, userID string) error {
