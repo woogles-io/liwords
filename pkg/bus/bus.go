@@ -317,6 +317,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 	case "registerRealm":
 		msg := &pb.RegisterRealmRequest{}
 		err := proto.Unmarshal(data, msg)
+		log.Err(err).Interface("msg", msg).Msg("received-register-realm-request")
 		if err != nil {
 			return err
 		}
@@ -385,6 +386,8 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 		}
 
 		retdata, err := proto.Marshal(resp)
+		log.Err(err).Interface("resp", resp).Msg("responding-to-realm-request")
+
 		if err != nil {
 			return err
 		}
