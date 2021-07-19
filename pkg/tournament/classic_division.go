@@ -148,6 +148,12 @@ func (t *ClassicDivision) SetRoundControls(roundControls []*realtime.RoundContro
 		roundControls[i].InitialFontes = initialFontes
 		roundControls[i].Round = int32(i)
 	}
+
+	err := validateRoundControls(roundControls)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	t.RoundControls = roundControls
 	t.Matrix = newPairingMatrix(len(t.RoundControls), len(t.Players.Persons))
 	pairingsResp, err := t.prepair()
@@ -194,6 +200,12 @@ func (t *ClassicDivision) SetSingleRoundControls(round int, controls *realtime.R
 	if round >= len(t.Matrix) || round < 0 {
 		return nil, fmt.Errorf("round number out of range (SetSingleRoundControls): %d", round)
 	}
+
+	err := validateRoundControl(controls)
+	if err != nil {
+		return nil, err
+	}
+
 	controls.Round = t.RoundControls[round].Round
 	controls.InitialFontes = t.RoundControls[round].InitialFontes
 	t.RoundControls[round] = controls
@@ -475,21 +487,14 @@ func (t *ClassicDivision) SubmitResult(round int,
 
 	pmessage := newPairingsMessage()
 	pmessage.DivisionPairings = []*realtime.Pairing{pairing}
+	pmessage.DivisionStandings = map[int32]*realtime.RoundStandings{}
 
-	standings, _, err := t.GetStandings(round, true)
-	if err != nil {
-		return nil, err
-	}
-
-	pmessage.DivisionStandings = map[int32]*realtime.RoundStandings{int32(round): standings}
-
-	if round != len(t.Matrix)-1 {
-		// update standings for round+1
-		nextRoundStandings, _, err := t.GetStandings(round+1, true)
+	for i := round; i <= int(t.CurrentRound)+1 && i < len(t.Matrix); i++ {
+		standings, _, err := t.GetStandings(i, true)
 		if err != nil {
 			return nil, err
 		}
-		pmessage.DivisionStandings[int32(round)+1] = nextRoundStandings
+		pmessage.DivisionStandings[int32(i)] = standings
 	}
 
 	// Only pair if this round is complete and the tournament
@@ -1686,6 +1691,29 @@ func validatePairings(tc *ClassicDivision, round int) error {
 				opponent,
 				opponentOpponent)
 		}
+	}
+	return nil
+}
+
+func validateRoundControls(rcs []*realtime.RoundControl) error {
+	var err error
+	for _, rc := range rcs {
+		err = validateRoundControl(rc)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateRoundControl(rc *realtime.RoundControl) error {
+	if (rc.PairingMethod == realtime.PairingMethod_SWISS ||
+		rc.PairingMethod == realtime.PairingMethod_FACTOR) &&
+		!rc.AllowOverMaxRepeats && rc.MaxRepeats == 0 {
+		return fmt.Errorf("max repeats set to 0 and allow over max repeats is false for round %d", rc.Round)
+	}
+	if rc.GamesPerRound == 0 {
+		return fmt.Errorf("games per round is 0 for round %d", rc.Round)
 	}
 	return nil
 }

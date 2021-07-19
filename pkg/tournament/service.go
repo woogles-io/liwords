@@ -389,7 +389,7 @@ func (ts *TournamentService) StartRoundCountdown(ctx context.Context, req *pb.To
 	if req.StartAllRounds {
 		err = StartAllRoundCountdowns(ctx, ts.tournamentStore, req.Id, int(req.Round))
 	} else {
-		err = StartRoundCountdown(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round), true, true)
+		err = StartRoundCountdown(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round), true, true, true)
 	}
 
 	if err != nil {
