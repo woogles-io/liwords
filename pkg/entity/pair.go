@@ -13,7 +13,7 @@ const ProhibitiveWeight int64 = 1 << 52
 const WinWeightScaling int64 = 1 << 22
 const MaxRelativeWeight int = 100
 
-// These constant control the swiss weighting function
+// These constants control the swiss weighing function
 const DifferencePenalty = 1
 const DifferencePenaltyMargin = 2
 

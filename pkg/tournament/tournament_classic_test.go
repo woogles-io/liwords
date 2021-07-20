@@ -1101,7 +1101,6 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	is.NoErr(equalStandings(expectedstandings, standings))
 
 	// Test that the marginal win difference penalties are working
-	tc.printPriPairings(5)
 	_, err = tc.SubmitResult(5, player1, player2, 900, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
