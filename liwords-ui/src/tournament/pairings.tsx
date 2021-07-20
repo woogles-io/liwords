@@ -11,6 +11,7 @@ import {
   TournamentPerson,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { useHistory } from 'react-router-dom';
+import { ReadyButton } from './ready_button';
 // import { PlayerTag } from './player_tags';
 
 const usernameFromPlayerEntry = (p: string) =>
@@ -107,7 +108,7 @@ type Props = {
   selectedDivision?: string;
   selectedRound: number;
   username?: string;
-  sendReady?: () => void;
+  sendReady: () => void;
   isDirector: boolean;
 };
 
@@ -265,11 +266,7 @@ export const Pairings = React.memo((props: Props) => {
                 TourneyStatus.ROUND_OPPONENT_WAITING,
               ].includes(status)
             ) {
-              actions = (
-                <Button className="primary" onClick={props.sendReady}>
-                  I'm ready
-                </Button>
-              );
+              actions = <ReadyButton sendReady={props.sendReady} />;
             } else {
               if (status === TourneyStatus.ROUND_READY) {
                 actions = <p>Waiting for opponent</p>;
