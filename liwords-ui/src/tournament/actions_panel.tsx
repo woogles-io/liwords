@@ -44,7 +44,7 @@ type Props = {
   tournamentID: string;
   isDirector: boolean;
   onSeekSubmit: (g: SoughtGame) => void;
-  sendReady?: () => void;
+  sendReady: () => void;
 };
 
 export const ActionsPanel = React.memo((props: Props) => {
