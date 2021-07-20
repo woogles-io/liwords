@@ -1191,6 +1191,10 @@ func (t *ClassicDivision) SetReadyForGame(playerID, connID string, round, gameIn
 			}
 			pairingPlayerID := t.Players.Persons[pairing.Players[idx]].Id
 			if playerID == pairingPlayerID {
+				if !unready && pairing.ReadyStates[idx] != "" {
+					// The user already said they were ready. Return an error.
+					return nil, false, fmt.Errorf("you have already sent a ready signal, please wait for your opponent")
+				}
 				pairing.ReadyStates[idx] = toSet
 			}
 		}
