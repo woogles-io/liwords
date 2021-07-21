@@ -699,11 +699,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 			components := strings.Split(realm, "-")
 			// Get a sanitized history
 			gameID := components[1]
-			refresher, err := b.gameRefresher(ctx, gameID)
-			if err != nil {
-				return err
-			}
-			err = b.pubToConnectionID(connID, evt.UserId, refresher)
+			err := b.sendGameRefresher(ctx, gameID, connID, evt.UserId)
 			if err != nil {
 				return err
 			}

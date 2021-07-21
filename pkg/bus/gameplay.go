@@ -410,23 +410,30 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 	return nil
 }
 
-func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWrapper, error) {
+func (b *Bus) sendGameRefresher(ctx context.Context, gameID, connID, userID string) error {
 	// Get a game refresher event.
 	entGame, err := b.gameStore.Get(ctx, string(gameID))
 	if err != nil {
-		return nil, err
+		return err
 	}
 	entGame.RLock()
 	defer entGame.RUnlock()
+	var evt *entity.EventWrapper
 	if !entGame.Started && entGame.GameEndReason == pb.GameEndReason_NONE {
-		return entity.WrapEvent(&pb.ServerMessage{Message: "Game is starting soon!"},
-			pb.MessageType_SERVER_MESSAGE), nil
+		evt = entity.WrapEvent(&pb.ServerMessage{Message: "Game is starting soon!"},
+			pb.MessageType_SERVER_MESSAGE)
+	} else {
+		hre := entGame.HistoryRefresherEvent()
+		hre.History = mod.CensorHistory(ctx, b.userStore, hre.History)
+		evt = entity.WrapEvent(hre,
+			pb.MessageType_GAME_HISTORY_REFRESHER)
 	}
-	hre := entGame.HistoryRefresherEvent()
-	hre.History = mod.CensorHistory(ctx, b.userStore, hre.History)
-	evt := entity.WrapEvent(hre,
-		pb.MessageType_GAME_HISTORY_REFRESHER)
-	return evt, nil
+	// retain RLock() to prevent handleBotMoveInternally from making a new move not in evt
+	err = b.pubToConnectionID(connID, userID, evt)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (b *Bus) adjudicateGames(ctx context.Context) error {
