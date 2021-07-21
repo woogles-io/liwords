@@ -1199,10 +1199,13 @@ func (t *ClassicDivision) SetReadyForGame(playerID, connID string, round, gameIn
 				// The user already said they were ready. Return an error.
 				return nil, false, fmt.Errorf("you have already sent a ready signal, please wait for your opponent")
 			}
+			if foundIdx != -1 {
+				// This should never happen, but if it does, we'll just return an error.
+				return nil, false, fmt.Errorf("cannot set ready for game, found multiple players with the same ID")
+			}
 			foundIdx = idx
 		}
 	}
-	// the next 3 lines were written by Github Copilot, which is actually pretty scary.
 	if foundIdx == -1 {
 		return nil, false, fmt.Errorf("cannot set ready for game, player %s not found in pairing", playerID)
 	}
