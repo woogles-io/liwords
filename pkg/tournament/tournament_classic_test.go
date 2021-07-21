@@ -964,9 +964,6 @@ func TestClassicDivisionFactor(t *testing.T) {
 }
 
 func TestClassicDivisionSwiss(t *testing.T) {
-	// This test is used to ensure that round robin
-	// pairings work correctly
-
 	is := is.New(t)
 
 	roundControls := []*realtime.RoundControl{}
@@ -1103,7 +1100,8 @@ func TestClassicDivisionSwiss(t *testing.T) {
 
 	is.NoErr(equalStandings(expectedstandings, standings))
 
-	_, err = tc.SubmitResult(5, player1, player4, 900, 500,
+	// Test that the marginal win difference penalties are working
+	_, err = tc.SubmitResult(5, player1, player2, 900, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -1113,9 +1111,9 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	// of round 6, an error will occur since there is
 	// no possible pairing that does not give 3 repeats.
 	tc.RoundControls[6].AllowOverMaxRepeats = false
-	tc.RoundControls[6].MaxRepeats = 2
+	tc.RoundControls[6].MaxRepeats = 1
 
-	_, err = tc.SubmitResult(5, player2, player3, 800, 500,
+	_, err = tc.SubmitResult(5, player3, player4, 800, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")

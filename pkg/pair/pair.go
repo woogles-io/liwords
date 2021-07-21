@@ -279,6 +279,10 @@ func weighSwiss(members *entity.UnpairedPoolMembers, i int, j int) int64 {
 	// The unscaled weight difference where a win is worth 2 and a draw is worth 1
 	unscaledWinDiffWeight := utilities.Abs(((p1.Wins - p2.Wins) * 2) + (p1.Draws - p2.Draws))
 
+	// Add marginal penalties to make the weighing function nonlinear
+	// This will discourage larger maximum win differences over a round
+	unscaledWinDiffWeight += (unscaledWinDiffWeight / (entity.DifferencePenaltyMargin * 2)) * (entity.DifferencePenalty * 2)
+
 	// Now scale the weight difference by WinWeightScaling, but divide by 2 because
 	// we have already multitplied by 2 in the previous step. This was so that
 	// all arithmetic can stay in integer form.
