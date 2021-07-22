@@ -1178,37 +1178,49 @@ func (t *ClassicDivision) SetReadyForGame(playerID, connID string, round, gameIn
 	if err != nil {
 		return nil, false, err
 	}
-
-	if pairingKey != "" {
-		pairing, ok := t.PairingMap[pairingKey]
-		if !ok {
-			return nil, false, fmt.Errorf("pairing does not exist in the pairing map (SetReadyForGame): %s", pairingKey)
-		}
-
-		for idx := range pairing.Players {
-			if int(pairing.Players[idx]) >= len(t.Players.Persons) || pairing.Players[idx] < 0 {
-				return nil, false, fmt.Errorf("cannot set ready for game, player %d index out of range", pairing.Players[idx])
-			}
-			pairingPlayerID := t.Players.Persons[pairing.Players[idx]].Id
-			if playerID == pairingPlayerID {
-				if !unready && pairing.ReadyStates[idx] != "" {
-					// The user already said they were ready. Return an error.
-					return nil, false, fmt.Errorf("you have already sent a ready signal, please wait for your opponent")
-				}
-				pairing.ReadyStates[idx] = toSet
-			}
-		}
-		playerOneId := t.Players.Persons[pairing.Players[0]].Id
-		playerTwoId := t.Players.Persons[pairing.Players[1]].Id
-		// Check to see if both players are ready.
-		involvedPlayers := []string{
-			playerOneId + ":" + pairing.ReadyStates[0],
-			playerTwoId + ":" + pairing.ReadyStates[1],
-		}
-		bothReady := pairing.ReadyStates[0] != "" && pairing.ReadyStates[1] != ""
-		return involvedPlayers, bothReady, nil
+	if pairingKey == "" {
+		return nil, false, errors.New("this pairing does not exist")
 	}
-	return nil, false, nil
+
+	pairing, ok := t.PairingMap[pairingKey]
+	if !ok {
+		return nil, false, fmt.Errorf("pairing does not exist in the pairing map (SetReadyForGame): %s", pairingKey)
+	}
+
+	// search for player
+	foundIdx := -1
+	for idx, pn := range pairing.Players {
+		if int(pn) >= len(t.Players.Persons) || pn < 0 {
+			return nil, false, fmt.Errorf("cannot set ready for game, player %d index out of range", pn)
+		}
+		pairingPlayerID := t.Players.Persons[pn].Id
+		if playerID == pairingPlayerID {
+			if !unready && pairing.ReadyStates[idx] != "" {
+				// The user already said they were ready. Return an error.
+				return nil, false, fmt.Errorf("you have already sent a ready signal, please wait for your opponent")
+			}
+			if foundIdx != -1 {
+				// This should never happen, but if it does, we'll just return an error.
+				return nil, false, fmt.Errorf("cannot set ready for game, found multiple players with the same ID")
+			}
+			foundIdx = idx
+		}
+	}
+	if foundIdx == -1 {
+		return nil, false, fmt.Errorf("cannot set ready for game, player %s not found in pairing", playerID)
+	}
+	pairing.ReadyStates[foundIdx] = toSet
+
+	playerOneId := t.Players.Persons[pairing.Players[0]].Id
+	playerTwoId := t.Players.Persons[pairing.Players[1]].Id
+	// Check to see if both players are ready.
+	involvedPlayers := []string{
+		playerOneId + ":" + pairing.ReadyStates[0],
+		playerTwoId + ":" + pairing.ReadyStates[1],
+	}
+	bothReady := pairing.ReadyStates[0] != "" && pairing.ReadyStates[1] != ""
+	return involvedPlayers, bothReady, nil
+
 }
 
 func (t *ClassicDivision) ClearReadyStates(playerID string, round, gameIndex int) ([]*realtime.Pairing, error) {
