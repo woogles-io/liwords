@@ -329,7 +329,7 @@ func equalActionHistories(ah1 []*ms.ModAction, ah2 []*ms.ModAction) error {
 }
 
 func equalActionMaps(am1 map[string]*ms.ModAction, am2 map[string]*ms.ModAction) error {
-	for key, _ := range ms.ModActionType_value {
+	for key := range ms.ModActionType_value {
 		a1 := am1[key]
 		a2 := am2[key]
 		if a1 == nil && a2 == nil {

@@ -44,7 +44,8 @@ type User struct {
 	IsMod          bool
 	IsAdmin        bool
 
-	Actions *Actions
+	Actions   *Actions
+	Notoriety int
 }
 
 type UserPermission int

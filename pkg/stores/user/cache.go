@@ -32,6 +32,7 @@ type backingStore interface {
 		p1Rating entity.SingleRating, p2Rating entity.SingleRating) error
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p0stats *entity.Stats, p1stats *entity.Stats) error
+	SetNotoriety(ctx context.Context, u *entity.User, notoriety int) error
 	ResetRatings(ctx context.Context, uuid string) error
 	ResetStats(ctx context.Context, uuid string) error
 	ResetProfile(ctx context.Context, uuid string) error
@@ -420,6 +421,16 @@ func (c *Cache) Set(ctx context.Context, u *entity.User) error {
 	}
 	// readd to cache
 	c.cache.Add(u.UUID, u)
+	return nil
+}
+
+// This was written to avoid the zero value trap
+func (c *Cache) SetNotoriety(ctx context.Context, u *entity.User, notoriety int) error {
+	err := c.backing.SetNotoriety(ctx, u, notoriety)
+	if err != nil {
+		return err
+	}
+	u.Notoriety = notoriety
 	return nil
 }
 

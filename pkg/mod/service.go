@@ -23,8 +23,9 @@ type ctxkey string
 const rtchankey ctxkey = "realtimechan"
 
 type ModService struct {
-	userStore user.Store
-	chatStore user.ChatStore
+	userStore      user.Store
+	notorietyStore NotorietyStore
+	chatStore      user.ChatStore
 }
 
 func NewModService(us user.Store, cs user.ChatStore) *ModService {
@@ -41,6 +42,36 @@ var AdminRequiredMap = map[pb.ModActionType]bool{
 	pb.ModActionType_RESET_STATS_AND_RATINGS: true,
 	pb.ModActionType_REMOVE_CHAT:             false,
 	pb.ModActionType_DELETE_ACCOUNT:          true,
+}
+
+func (ms *ModService) GetNotorietyReport(ctx context.Context, req *pb.GetNotorietyReportRequest) (*pb.NotorietyReport, error) {
+	user, err := sessionUser(ctx, ms)
+	if err != nil {
+		return nil, err
+	}
+	if !(user.IsAdmin || user.IsMod) {
+		return nil, twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
+	}
+	score, games, err := GetNotorietyReport(ctx, ms.userStore, ms.notorietyStore, req.UserId)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	return &pb.NotorietyReport{Score: int32(score), Games: games}, nil
+}
+
+func (ms *ModService) ResetNotoriety(ctx context.Context, req *pb.ResetNotorietyRequest) (*pb.ResetNotorietyResponse, error) {
+	user, err := sessionUser(ctx, ms)
+	if err != nil {
+		return nil, err
+	}
+	if !(user.IsAdmin || user.IsMod) {
+		return nil, twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
+	}
+	err = ResetNotoriety(ctx, ms.userStore, ms.notorietyStore, req.UserId)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	return &pb.ResetNotorietyResponse{}, nil
 }
 
 func (ms *ModService) GetActions(ctx context.Context, req *pb.GetActionsRequest) (*pb.ModActionsMap, error) {

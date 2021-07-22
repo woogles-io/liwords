@@ -310,40 +310,12 @@ func applyAction(ctx context.Context, us user.Store, cs user.ChatStore, action *
 			return err
 		}
 	} else {
-		if action.Duration < 0 {
-			return fmt.Errorf("nontransient moderator action has a negative duration: %d", action.Duration)
-		}
-		// A Duration of 0 seconds for nontransient
-		// actions is considered a permanent action
-		if action.Duration == 0 {
-			action.EndTime = nil
-		} else {
-			err = setEndTime(action)
-			if err != nil {
-				return err
-			}
-		}
-
 		err = setCurrentAction(user, action)
 		if err != nil {
 			return err
 		}
 	}
 	return us.Set(ctx, user)
-}
-
-func setEndTime(action *ms.ModAction) error {
-	golangStartTime, err := ptypes.Timestamp(action.StartTime)
-	if err != nil {
-		return err
-	}
-	golangEndTime := golangStartTime.Add(time.Second * time.Duration(action.Duration))
-	protoEndTime, err := ptypes.TimestampProto(golangEndTime)
-	if err != nil {
-		return err
-	}
-	action.EndTime = protoEndTime
-	return nil
 }
 
 func addActionToHistory(user *entity.User, action *ms.ModAction) error {
@@ -353,6 +325,26 @@ func addActionToHistory(user *entity.User, action *ms.ModAction) error {
 }
 
 func setCurrentAction(user *entity.User, action *ms.ModAction) error {
+	if action.Duration < 0 {
+		return fmt.Errorf("nontransient moderator action has a negative duration: %d", action.Duration)
+	}
+	// A Duration of 0 seconds for nontransient
+	// actions is considered a permanent action
+	if action.Duration == 0 {
+		action.EndTime = nil
+	} else {
+		golangStartTime, err := ptypes.Timestamp(action.StartTime)
+		if err != nil {
+			return err
+		}
+		golangEndTime := golangStartTime.Add(time.Second * time.Duration(action.Duration))
+		protoEndTime, err := ptypes.TimestampProto(golangEndTime)
+		if err != nil {
+			return err
+		}
+		action.EndTime = protoEndTime
+	}
+
 	instantiateActions(user)
 	// Remove existing actions for this type
 	_, actionExists := user.Actions.Current[action.Type.String()]

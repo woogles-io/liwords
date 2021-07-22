@@ -21,6 +21,7 @@ import (
 	"github.com/domino14/liwords/pkg/mod"
 	cfgstore "github.com/domino14/liwords/pkg/stores/config"
 	"github.com/domino14/liwords/pkg/stores/game"
+	modstore "github.com/domino14/liwords/pkg/stores/mod"
 	"github.com/domino14/liwords/pkg/stores/session"
 	"github.com/domino14/liwords/pkg/stores/soughtgame"
 	"github.com/domino14/liwords/pkg/stores/stats"
@@ -38,9 +39,9 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	pkgprofile "github.com/domino14/liwords/pkg/profile"
+	pkgredis "github.com/domino14/liwords/pkg/stores/redis"
 	tournamentstore "github.com/domino14/liwords/pkg/stores/tournament"
 	"github.com/domino14/liwords/pkg/stores/user"
-	pkgredis "github.com/domino14/liwords/pkg/stores/redis"
 	pkguser "github.com/domino14/liwords/pkg/user"
 	configservice "github.com/domino14/liwords/rpc/api/proto/config_service"
 	gameservice "github.com/domino14/liwords/rpc/api/proto/game_service"
@@ -140,6 +141,11 @@ func main() {
 	}
 	stores.ConfigStore = cfgstore.NewRedisConfigStore(redisPool)
 	stores.ListStatStore, err = stats.NewListStatStore(cfg.DBConnString)
+	if err != nil {
+		panic(err)
+	}
+
+	stores.NotorietyStore, err = modstore.NewNotorietyStore(cfg.DBConnString)
 	if err != nil {
 		panic(err)
 	}

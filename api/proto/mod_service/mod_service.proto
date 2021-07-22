@@ -42,9 +42,38 @@ message GetActionsRequest { string user_id = 1; }
 
 message ModActionResponse {}
 
+// Automod
+
+enum NotoriousGameType {
+  GOOD = 0;
+  NO_PLAY = 1;
+  SITTING = 2;
+  SANDBAG = 3;
+  NO_PLAY_IGNORE_NUDGE = 4;
+}
+
+message NotoriousGame {
+  string id = 1;
+  NotoriousGameType type = 2;
+  google.protobuf.Timestamp created_at = 3;
+}
+
+message ResetNotorietyRequest { string user_id = 1; }
+
+message ResetNotorietyResponse {}
+
+message GetNotorietyReportRequest { string user_id = 1; }
+
+message NotorietyReport {
+  int32 score = 1;
+  repeated NotoriousGame games = 2;
+}
+
 service ModService {
   rpc ApplyActions(ModActionsList) returns (ModActionResponse);
   rpc RemoveActions(ModActionsList) returns (ModActionResponse);
   rpc GetActions(GetActionsRequest) returns (ModActionsMap);
   rpc GetActionHistory(GetActionsRequest) returns (ModActionsList);
+  rpc GetNotorietyReport(GetNotorietyReportRequest) returns(NotorietyReport);
+  rpc ResetNotoriety(ResetNotorietyRequest) returns(ResetNotorietyResponse);
 }

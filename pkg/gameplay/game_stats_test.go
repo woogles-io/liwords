@@ -83,11 +83,11 @@ func recreateDB() {
 	defer db.Close()
 	db = db.Exec("DROP DATABASE IF EXISTS liwords_test")
 	if db.Error != nil {
-		log.Fatal().Err(db.Error).Msg("error")
+		panic(db.Error)
 	}
 	db = db.Exec("CREATE DATABASE liwords_test")
 	if db.Error != nil {
-		log.Fatal().Err(db.Error).Msg("error")
+		panic(db.Error)
 	}
 	// Create a user table. Initialize the user store.
 	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")

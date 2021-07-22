@@ -294,7 +294,7 @@ func minusRunes(a, b []rune) []rune {
 }
 
 func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameStore,
-	userStore user.Store, listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore,
+	userStore user.Store, notorietyStore mod.NotorietyStore, listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore,
 	timeRemaining int, challengerID string) error {
 	if entGame.ChallengeRule() == macondopb.ChallengeRule_VOID {
 		// The front-end shouldn't even show the button.
@@ -376,7 +376,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 			entGame.SetWinnerIdx(winner)
 			entGame.SetLoserIdx(1 - winner)
 		}
-		err = performEndgameDuties(ctx, entGame, gameStore, userStore, listStatStore, tournamentStore)
+		err = performEndgameDuties(ctx, entGame, gameStore, userStore, notorietyStore, listStatStore, tournamentStore)
 		if err != nil {
 			return err
 		}
@@ -389,6 +389,7 @@ func PlayMove(ctx context.Context,
 	entGame *entity.Game,
 	gameStore GameStore,
 	userStore user.Store,
+	notorietyStore mod.NotorietyStore,
 	listStatStore stats.ListStatStore,
 	tournamentStore tournament.TournamentStore,
 	userID string, onTurn,
@@ -407,7 +408,7 @@ func PlayMove(ctx context.Context,
 
 	if m.Action() == move.MoveTypeChallenge {
 		// Handle in another way
-		return handleChallenge(ctx, entGame, gameStore, userStore, listStatStore, tournamentStore, timeRemaining, userID)
+		return handleChallenge(ctx, entGame, gameStore, userStore, notorietyStore, listStatStore, tournamentStore, timeRemaining, userID)
 	}
 
 	oldTurnLength := len(entGame.Game.History().Events)
@@ -457,7 +458,7 @@ func PlayMove(ctx context.Context,
 		entGame.SendChange(wrapped)
 	}
 	if playing == macondopb.PlayState_GAME_OVER {
-		err = performEndgameDuties(ctx, entGame, gameStore, userStore, listStatStore, tournamentStore)
+		err = performEndgameDuties(ctx, entGame, gameStore, userStore, notorietyStore, listStatStore, tournamentStore)
 		if err != nil {
 			return err
 		}
@@ -466,7 +467,7 @@ func PlayMove(ctx context.Context,
 }
 
 // HandleEvent handles a gameplay event from the socket
-func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store,
+func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store, notorietyStore mod.NotorietyStore,
 	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore, userID string, cge *pb.ClientGameplayEvent) (*entity.Game, error) {
 
 	// XXX: VERIFY THAT THE CLIENT GAME ID CORRESPONDS TO THE GAME
@@ -479,13 +480,12 @@ func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store,
 	defer entGame.Unlock()
 
 	log := zerolog.Ctx(ctx).With().Str("gameID", entGame.GameID()).Logger()
-
-	return handleEventAfterLockingGame(log.WithContext(ctx), gameStore, userStore, listStatStore, tournamentStore, userID, cge, entGame)
+	return handleEventAfterLockingGame(log.WithContext(ctx), gameStore, userStore, listStatStore, notorietyStore, tournamentStore, userID, cge, entGame)
 }
 
 // Assume entGame is already locked.
 func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userStore user.Store,
-	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore, userID string, cge *pb.ClientGameplayEvent,
+	listStatStore stats.ListStatStore, notorietyStore mod.NotorietyStore, tournamentStore tournament.TournamentStore, userID string, cge *pb.ClientGameplayEvent,
 	entGame *entity.Game) (*entity.Game, error) {
 
 	log := zerolog.Ctx(ctx)
@@ -520,7 +520,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 			}
 		} else {
 			// Basically skip to the bottom and exit.
-			return entGame, setTimedOut(ctx, entGame, onTurn, gameStore, userStore, listStatStore, tournamentStore)
+			return entGame, setTimedOut(ctx, entGame, onTurn, gameStore, userStore, notorietyStore, listStatStore, tournamentStore)
 		}
 	}
 
@@ -539,7 +539,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 		entGame.History().Winner = int32(winner)
 		entGame.SetWinnerIdx(winner)
 		entGame.SetLoserIdx(1 - winner)
-		err := performEndgameDuties(ctx, entGame, gameStore, userStore, listStatStore, tournamentStore)
+		err := performEndgameDuties(ctx, entGame, gameStore, userStore, notorietyStore, listStatStore, tournamentStore)
 		if err != nil {
 			return entGame, err
 		}
@@ -549,7 +549,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 			return entGame, err
 		}
 
-		err = PlayMove(ctx, entGame, gameStore, userStore, listStatStore, tournamentStore, userID, onTurn, timeRemaining, m)
+		err = PlayMove(ctx, entGame, gameStore, userStore, notorietyStore, listStatStore, tournamentStore, userID, onTurn, timeRemaining, m)
 		if err != nil {
 			return entGame, err
 		}
@@ -579,7 +579,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 
 // TimedOut gets called when the client thinks the user's time ran out. We
 // verify that that is actually the case.
-func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store,
+func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store, notorietyStore mod.NotorietyStore,
 	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore, timedout string, gameID string) error {
 	// XXX: VERIFY THAT THE GAME ID is the client's current game!!
 	// Note: we can get this event multiple times; the opponent and the player on turn
@@ -611,7 +611,7 @@ func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store,
 	// If opponent played out, auto-pass instead of forfeiting.
 	if entGame.Game.Playing() == macondopb.PlayState_WAITING_FOR_FINAL_PASS {
 		log.Debug().Msg("timed out, so auto-passing instead of forfeiting")
-		_, err = handleEventAfterLockingGame(ctx, gameStore, userStore, listStatStore, tournamentStore,
+		_, err = handleEventAfterLockingGame(ctx, gameStore, userStore, listStatStore, notorietyStore, tournamentStore,
 			entGame.Game.PlayerIDOnTurn(), &pb.ClientGameplayEvent{
 				Type:   pb.ClientGameplayEvent_PASS,
 				GameId: gameID,
@@ -619,7 +619,7 @@ func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store,
 		return err
 	}
 
-	return setTimedOut(ctx, entGame, onTurn, gameStore, userStore, listStatStore, tournamentStore)
+	return setTimedOut(ctx, entGame, onTurn, gameStore, userStore, notorietyStore, listStatStore, tournamentStore)
 }
 
 // sanitizeEvent removes rack information from the event; it is meant to be

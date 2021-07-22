@@ -43,7 +43,8 @@ type User struct {
 	IsMod       bool   `gorm:"default:false;index"`
 	ApiKey      string
 
-	Actions postgres.Jsonb
+	Notoriety int
+	Actions   postgres.Jsonb
 }
 
 // A user profile is in a one-to-one relationship with a user. It is the
@@ -165,6 +166,7 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 		IsAdmin:    u.IsAdmin,
 		IsDirector: u.IsDirector,
 		IsMod:      u.IsMod,
+		Notoriety:  u.Notoriety,
 		Actions:    &actions,
 	}
 
@@ -179,6 +181,12 @@ func (s *DBStore) Set(ctx context.Context, u *entity.User) error {
 
 	result := s.db.Model(&User{}).Set("gorm:query_option", "FOR UPDATE").
 		Where("uuid = ?", u.UUID).Update(dbu)
+	return result.Error
+}
+
+// This was written to avoid the zero value trap
+func (s *DBStore) SetNotoriety(ctx context.Context, u *entity.User, notoriety int) error {
+	result := s.db.Model(&User{}).Where("uuid = ?", u.UUID).Update(map[string]interface{}{"notoriety": notoriety})
 	return result.Error
 }
 
@@ -305,6 +313,7 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 			IsAdmin:    u.IsAdmin,
 			IsDirector: u.IsDirector,
 			IsMod:      u.IsMod,
+			Notoriety:  u.Notoriety,
 			Actions:    &actions,
 		}
 	}
@@ -340,6 +349,7 @@ func (s *DBStore) GetByAPIKey(ctx context.Context, apikey string) (*entity.User,
 		IsAdmin:    u.IsAdmin,
 		IsDirector: u.IsDirector,
 		IsMod:      u.IsMod,
+		Notoriety:  u.Notoriety,
 		Actions:    &actions,
 	}
 
@@ -351,6 +361,7 @@ func (s *DBStore) toDBObj(u *entity.User) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &User{
 		UUID:        u.UUID,
 		Username:    u.Username,
@@ -360,6 +371,7 @@ func (s *DBStore) toDBObj(u *entity.User) (*User, error) {
 		IsAdmin:     u.IsAdmin,
 		IsDirector:  u.IsDirector,
 		IsMod:       u.IsMod,
+		Notoriety:   u.Notoriety,
 		Actions:     postgres.Jsonb{RawMessage: actions},
 	}, nil
 }

@@ -46,6 +46,10 @@ type ModService interface {
 	GetActions(context.Context, *GetActionsRequest) (*ModActionsMap, error)
 
 	GetActionHistory(context.Context, *GetActionsRequest) (*ModActionsList, error)
+
+	GetNotorietyReport(context.Context, *GetNotorietyReportRequest) (*NotorietyReport, error)
+
+	ResetNotoriety(context.Context, *ResetNotorietyRequest) (*ResetNotorietyResponse, error)
 }
 
 // ==========================
@@ -54,7 +58,7 @@ type ModService interface {
 
 type modServiceProtobufClient struct {
 	client      HTTPClient
-	urls        [4]string
+	urls        [6]string
 	interceptor twirp.Interceptor
 	opts        twirp.ClientOptions
 }
@@ -74,11 +78,13 @@ func NewModServiceProtobufClient(baseURL string, client HTTPClient, opts ...twir
 	// Build method URLs: <baseURL>[<prefix>]/<package>.<Service>/<Method>
 	serviceURL := sanitizeBaseURL(baseURL)
 	serviceURL += baseServicePath(clientOpts.PathPrefix(), "mod_service", "ModService")
-	urls := [4]string{
+	urls := [6]string{
 		serviceURL + "ApplyActions",
 		serviceURL + "RemoveActions",
 		serviceURL + "GetActions",
 		serviceURL + "GetActionHistory",
+		serviceURL + "GetNotorietyReport",
+		serviceURL + "ResetNotoriety",
 	}
 
 	return &modServiceProtobufClient{
@@ -273,13 +279,105 @@ func (c *modServiceProtobufClient) callGetActionHistory(ctx context.Context, in 
 	return out, nil
 }
 
+func (c *modServiceProtobufClient) GetNotorietyReport(ctx context.Context, in *GetNotorietyReportRequest) (*NotorietyReport, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "mod_service")
+	ctx = ctxsetters.WithServiceName(ctx, "ModService")
+	ctx = ctxsetters.WithMethodName(ctx, "GetNotorietyReport")
+	caller := c.callGetNotorietyReport
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *GetNotorietyReportRequest) (*NotorietyReport, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*GetNotorietyReportRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*GetNotorietyReportRequest) when calling interceptor")
+					}
+					return c.callGetNotorietyReport(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*NotorietyReport)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*NotorietyReport) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *modServiceProtobufClient) callGetNotorietyReport(ctx context.Context, in *GetNotorietyReportRequest) (*NotorietyReport, error) {
+	out := new(NotorietyReport)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[4], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
+func (c *modServiceProtobufClient) ResetNotoriety(ctx context.Context, in *ResetNotorietyRequest) (*ResetNotorietyResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "mod_service")
+	ctx = ctxsetters.WithServiceName(ctx, "ModService")
+	ctx = ctxsetters.WithMethodName(ctx, "ResetNotoriety")
+	caller := c.callResetNotoriety
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *ResetNotorietyRequest) (*ResetNotorietyResponse, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*ResetNotorietyRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*ResetNotorietyRequest) when calling interceptor")
+					}
+					return c.callResetNotoriety(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ResetNotorietyResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ResetNotorietyResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *modServiceProtobufClient) callResetNotoriety(ctx context.Context, in *ResetNotorietyRequest) (*ResetNotorietyResponse, error) {
+	out := new(ResetNotorietyResponse)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[5], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
 // ======================
 // ModService JSON Client
 // ======================
 
 type modServiceJSONClient struct {
 	client      HTTPClient
-	urls        [4]string
+	urls        [6]string
 	interceptor twirp.Interceptor
 	opts        twirp.ClientOptions
 }
@@ -299,11 +397,13 @@ func NewModServiceJSONClient(baseURL string, client HTTPClient, opts ...twirp.Cl
 	// Build method URLs: <baseURL>[<prefix>]/<package>.<Service>/<Method>
 	serviceURL := sanitizeBaseURL(baseURL)
 	serviceURL += baseServicePath(clientOpts.PathPrefix(), "mod_service", "ModService")
-	urls := [4]string{
+	urls := [6]string{
 		serviceURL + "ApplyActions",
 		serviceURL + "RemoveActions",
 		serviceURL + "GetActions",
 		serviceURL + "GetActionHistory",
+		serviceURL + "GetNotorietyReport",
+		serviceURL + "ResetNotoriety",
 	}
 
 	return &modServiceJSONClient{
@@ -498,6 +598,98 @@ func (c *modServiceJSONClient) callGetActionHistory(ctx context.Context, in *Get
 	return out, nil
 }
 
+func (c *modServiceJSONClient) GetNotorietyReport(ctx context.Context, in *GetNotorietyReportRequest) (*NotorietyReport, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "mod_service")
+	ctx = ctxsetters.WithServiceName(ctx, "ModService")
+	ctx = ctxsetters.WithMethodName(ctx, "GetNotorietyReport")
+	caller := c.callGetNotorietyReport
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *GetNotorietyReportRequest) (*NotorietyReport, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*GetNotorietyReportRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*GetNotorietyReportRequest) when calling interceptor")
+					}
+					return c.callGetNotorietyReport(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*NotorietyReport)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*NotorietyReport) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *modServiceJSONClient) callGetNotorietyReport(ctx context.Context, in *GetNotorietyReportRequest) (*NotorietyReport, error) {
+	out := new(NotorietyReport)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[4], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
+func (c *modServiceJSONClient) ResetNotoriety(ctx context.Context, in *ResetNotorietyRequest) (*ResetNotorietyResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "mod_service")
+	ctx = ctxsetters.WithServiceName(ctx, "ModService")
+	ctx = ctxsetters.WithMethodName(ctx, "ResetNotoriety")
+	caller := c.callResetNotoriety
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *ResetNotorietyRequest) (*ResetNotorietyResponse, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*ResetNotorietyRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*ResetNotorietyRequest) when calling interceptor")
+					}
+					return c.callResetNotoriety(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ResetNotorietyResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ResetNotorietyResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *modServiceJSONClient) callResetNotoriety(ctx context.Context, in *ResetNotorietyRequest) (*ResetNotorietyResponse, error) {
+	out := new(ResetNotorietyResponse)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[5], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
 // =========================
 // ModService Server Handler
 // =========================
@@ -606,6 +798,12 @@ func (s *modServiceServer) ServeHTTP(resp http.ResponseWriter, req *http.Request
 		return
 	case "GetActionHistory":
 		s.serveGetActionHistory(ctx, resp, req)
+		return
+	case "GetNotorietyReport":
+		s.serveGetNotorietyReport(ctx, resp, req)
+		return
+	case "ResetNotoriety":
+		s.serveResetNotoriety(ctx, resp, req)
 		return
 	default:
 		msg := fmt.Sprintf("no handler for path %q", req.URL.Path)
@@ -1334,6 +1532,366 @@ func (s *modServiceServer) serveGetActionHistoryProtobuf(ctx context.Context, re
 	callResponseSent(ctx, s.hooks)
 }
 
+func (s *modServiceServer) serveGetNotorietyReport(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	header := req.Header.Get("Content-Type")
+	i := strings.Index(header, ";")
+	if i == -1 {
+		i = len(header)
+	}
+	switch strings.TrimSpace(strings.ToLower(header[:i])) {
+	case "application/json":
+		s.serveGetNotorietyReportJSON(ctx, resp, req)
+	case "application/protobuf":
+		s.serveGetNotorietyReportProtobuf(ctx, resp, req)
+	default:
+		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
+		twerr := badRouteError(msg, req.Method, req.URL.Path)
+		s.writeError(ctx, resp, twerr)
+	}
+}
+
+func (s *modServiceServer) serveGetNotorietyReportJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "GetNotorietyReport")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	d := json.NewDecoder(req.Body)
+	rawReqBody := json.RawMessage{}
+	if err := d.Decode(&rawReqBody); err != nil {
+		s.handleRequestBodyError(ctx, resp, "the json request could not be decoded", err)
+		return
+	}
+	reqContent := new(GetNotorietyReportRequest)
+	unmarshaler := protojson.UnmarshalOptions{DiscardUnknown: true}
+	if err = unmarshaler.Unmarshal(rawReqBody, reqContent); err != nil {
+		s.handleRequestBodyError(ctx, resp, "the json request could not be decoded", err)
+		return
+	}
+
+	handler := s.ModService.GetNotorietyReport
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *GetNotorietyReportRequest) (*NotorietyReport, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*GetNotorietyReportRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*GetNotorietyReportRequest) when calling interceptor")
+					}
+					return s.ModService.GetNotorietyReport(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*NotorietyReport)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*NotorietyReport) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *NotorietyReport
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *NotorietyReport and nil error while calling GetNotorietyReport. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	marshaler := &protojson.MarshalOptions{UseProtoNames: true, EmitUnpopulated: !s.jsonSkipDefaults}
+	respBytes, err := marshaler.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *modServiceServer) serveGetNotorietyReportProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "GetNotorietyReport")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	buf, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		s.handleRequestBodyError(ctx, resp, "failed to read request body", err)
+		return
+	}
+	reqContent := new(GetNotorietyReportRequest)
+	if err = proto.Unmarshal(buf, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
+		return
+	}
+
+	handler := s.ModService.GetNotorietyReport
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *GetNotorietyReportRequest) (*NotorietyReport, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*GetNotorietyReportRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*GetNotorietyReportRequest) when calling interceptor")
+					}
+					return s.ModService.GetNotorietyReport(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*NotorietyReport)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*NotorietyReport) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *NotorietyReport
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *NotorietyReport and nil error while calling GetNotorietyReport. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	respBytes, err := proto.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/protobuf")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *modServiceServer) serveResetNotoriety(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	header := req.Header.Get("Content-Type")
+	i := strings.Index(header, ";")
+	if i == -1 {
+		i = len(header)
+	}
+	switch strings.TrimSpace(strings.ToLower(header[:i])) {
+	case "application/json":
+		s.serveResetNotorietyJSON(ctx, resp, req)
+	case "application/protobuf":
+		s.serveResetNotorietyProtobuf(ctx, resp, req)
+	default:
+		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
+		twerr := badRouteError(msg, req.Method, req.URL.Path)
+		s.writeError(ctx, resp, twerr)
+	}
+}
+
+func (s *modServiceServer) serveResetNotorietyJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "ResetNotoriety")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	d := json.NewDecoder(req.Body)
+	rawReqBody := json.RawMessage{}
+	if err := d.Decode(&rawReqBody); err != nil {
+		s.handleRequestBodyError(ctx, resp, "the json request could not be decoded", err)
+		return
+	}
+	reqContent := new(ResetNotorietyRequest)
+	unmarshaler := protojson.UnmarshalOptions{DiscardUnknown: true}
+	if err = unmarshaler.Unmarshal(rawReqBody, reqContent); err != nil {
+		s.handleRequestBodyError(ctx, resp, "the json request could not be decoded", err)
+		return
+	}
+
+	handler := s.ModService.ResetNotoriety
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *ResetNotorietyRequest) (*ResetNotorietyResponse, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*ResetNotorietyRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*ResetNotorietyRequest) when calling interceptor")
+					}
+					return s.ModService.ResetNotoriety(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ResetNotorietyResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ResetNotorietyResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *ResetNotorietyResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *ResetNotorietyResponse and nil error while calling ResetNotoriety. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	marshaler := &protojson.MarshalOptions{UseProtoNames: true, EmitUnpopulated: !s.jsonSkipDefaults}
+	respBytes, err := marshaler.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *modServiceServer) serveResetNotorietyProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "ResetNotoriety")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	buf, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		s.handleRequestBodyError(ctx, resp, "failed to read request body", err)
+		return
+	}
+	reqContent := new(ResetNotorietyRequest)
+	if err = proto.Unmarshal(buf, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
+		return
+	}
+
+	handler := s.ModService.ResetNotoriety
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *ResetNotorietyRequest) (*ResetNotorietyResponse, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*ResetNotorietyRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*ResetNotorietyRequest) when calling interceptor")
+					}
+					return s.ModService.ResetNotoriety(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ResetNotorietyResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ResetNotorietyResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *ResetNotorietyResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *ResetNotorietyResponse and nil error while calling ResetNotoriety. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	respBytes, err := proto.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/protobuf")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
 func (s *modServiceServer) ServiceDescriptor() ([]byte, int) {
 	return twirpFileDescriptor0, 0
 }
@@ -1901,48 +2459,61 @@ func callClientError(ctx context.Context, h *twirp.ClientHooks, err twirp.Error)
 }
 
 var twirpFileDescriptor0 = []byte{
-	// 674 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x54, 0xdd, 0x6e, 0xd3, 0x4c,
-	0x10, 0xfd, 0x9c, 0xff, 0x4c, 0x92, 0xc6, 0x9d, 0x4a, 0x5f, 0x2d, 0x57, 0x40, 0x94, 0x8b, 0x36,
-	0x42, 0x95, 0x03, 0x81, 0x8a, 0x1f, 0x89, 0x0b, 0xb7, 0xb5, 0xda, 0x8a, 0xa6, 0x45, 0xb6, 0xc3,
-	0x05, 0x37, 0x96, 0x1b, 0x2f, 0xa9, 0x45, 0xec, 0x35, 0xf6, 0xa6, 0x34, 0x2f, 0xc4, 0x73, 0x20,
-	0x5e, 0x83, 0x97, 0x41, 0xde, 0xb5, 0x93, 0x00, 0x0d, 0xbd, 0xe1, 0x6e, 0xe7, 0xcc, 0x39, 0x33,
-	0xa3, 0x33, 0xa3, 0x85, 0x3d, 0x37, 0xf2, 0xfb, 0x51, 0x4c, 0x19, 0xed, 0x07, 0xd4, 0x73, 0x12,
-	0x12, 0xdf, 0xf8, 0x63, 0xb2, 0xfa, 0xd6, 0x78, 0x16, 0x1b, 0x2b, 0x90, 0xfa, 0x68, 0x42, 0xe9,
-	0x64, 0x4a, 0x84, 0xf0, 0x6a, 0xf6, 0xb1, 0xcf, 0xfc, 0x80, 0x24, 0xcc, 0x0d, 0x22, 0xc1, 0xee,
-	0xfe, 0x28, 0x42, 0x7d, 0x48, 0x3d, 0x7d, 0xcc, 0x7c, 0x1a, 0xe2, 0x36, 0x54, 0x67, 0x09, 0x89,
-	0x1d, 0xdf, 0x53, 0xa4, 0x8e, 0xd4, 0xab, 0x9b, 0x95, 0x34, 0x3c, 0xf3, 0x50, 0x83, 0x12, 0x9b,
-	0x47, 0x44, 0x29, 0x74, 0xa4, 0xde, 0xc6, 0x40, 0xd5, 0x56, 0xdb, 0x2e, 0xe4, 0xf6, 0x3c, 0x22,
-	0x26, 0xe7, 0xa1, 0x0a, 0x35, 0x6f, 0x16, 0xbb, 0x29, 0xaa, 0x14, 0x3b, 0x52, 0xaf, 0x6c, 0x2e,
-	0x62, 0x7c, 0x05, 0x90, 0x30, 0x37, 0x66, 0x4e, 0x3a, 0x8b, 0x52, 0xea, 0x48, 0xbd, 0xc6, 0x40,
-	0xd5, 0xc4, 0xa0, 0x5a, 0x3e, 0xa8, 0x66, 0xe7, 0x83, 0x9a, 0x75, 0xce, 0x4e, 0x63, 0x3c, 0x80,
-	0x1a, 0x09, 0x3d, 0x21, 0x2c, 0xdf, 0x2b, 0xac, 0x92, 0xd0, 0xe3, 0xb2, 0x37, 0xd0, 0x8c, 0x49,
-	0x40, 0x6f, 0x48, 0x26, 0xad, 0xdc, 0x2b, 0x6d, 0x64, 0x7c, 0x2e, 0x57, 0xa0, 0x3a, 0xbe, 0x76,
-	0xc3, 0x90, 0x4c, 0x95, 0x2a, 0x77, 0x25, 0x0f, 0xf1, 0x01, 0x40, 0x40, 0x92, 0xc4, 0x9d, 0x90,
-	0xd4, 0xb2, 0x1a, 0x4f, 0xd6, 0x33, 0xe4, 0xcc, 0xc3, 0x5d, 0x68, 0xbb, 0x51, 0x34, 0xf5, 0x49,
-	0xec, 0xe4, 0xb6, 0xd6, 0x39, 0xa7, 0x95, 0xc1, 0x23, 0xe1, 0xee, 0x2e, 0xb4, 0x45, 0xbf, 0x25,
-	0x0f, 0x04, 0x2f, 0x83, 0x33, 0xde, 0x0e, 0xd4, 0xc7, 0xd7, 0x2e, 0x73, 0x18, 0xb9, 0x65, 0x4a,
-	0x83, 0x33, 0x6a, 0x29, 0x60, 0x93, 0x5b, 0x86, 0x08, 0xa5, 0x90, 0x32, 0xa2, 0x34, 0x39, 0xce,
-	0xdf, 0xdd, 0xaf, 0x12, 0xb4, 0x16, 0xeb, 0x49, 0x86, 0x6e, 0x84, 0x3a, 0x54, 0x5d, 0x11, 0x29,
-	0x52, 0xa7, 0xd8, 0x6b, 0x0c, 0xf6, 0xee, 0xde, 0x65, 0x4a, 0xd6, 0xb2, 0xa7, 0x11, 0xb2, 0x78,
-	0x6e, 0xe6, 0x3a, 0xd5, 0x84, 0xe6, 0x6a, 0x02, 0x65, 0x28, 0x7e, 0x22, 0xf3, 0xec, 0x60, 0xd2,
-	0x27, 0xee, 0x43, 0xf9, 0xc6, 0x9d, 0xce, 0xc4, 0xb9, 0x34, 0x06, 0xff, 0xdf, 0xdd, 0xc2, 0x14,
-	0xa4, 0xd7, 0x85, 0x97, 0x52, 0xf7, 0x10, 0x36, 0x96, 0xad, 0xcf, 0xfd, 0x84, 0xe1, 0x93, 0xdf,
-	0x07, 0x5d, 0x57, 0x25, 0xa7, 0x75, 0xf7, 0x61, 0xf3, 0x84, 0xb0, 0xac, 0x86, 0x49, 0x3e, 0xcf,
-	0x48, 0xc2, 0xd6, 0x5e, 0x74, 0x77, 0x0b, 0x36, 0x97, 0x35, 0x48, 0x12, 0xd1, 0x30, 0x21, 0x8f,
-	0xbf, 0xad, 0xfa, 0x95, 0x9e, 0x33, 0xd6, 0xa0, 0x34, 0x1c, 0xd9, 0x86, 0xfc, 0x1f, 0x6e, 0x41,
-	0xdb, 0x1a, 0x59, 0xef, 0x8c, 0x8b, 0x63, 0x47, 0x3f, 0x3a, 0xba, 0x1c, 0x5d, 0xd8, 0xb2, 0x84,
-	0xdb, 0xb0, 0x95, 0x83, 0xa6, 0x6e, 0x1b, 0xc7, 0xce, 0x89, 0x3e, 0x34, 0x2c, 0xb9, 0x80, 0x9b,
-	0xd0, 0xca, 0x13, 0x02, 0x2a, 0xa6, 0x90, 0x69, 0x58, 0x86, 0x9d, 0x32, 0xcf, 0x2e, 0x4e, 0x2c,
-	0xb9, 0x84, 0x6d, 0x68, 0x08, 0xc8, 0xb2, 0x75, 0xdb, 0x92, 0xcb, 0xb8, 0x03, 0xdb, 0x2b, 0x80,
-	0xa3, 0x8b, 0xba, 0x9c, 0x5d, 0x11, 0xec, 0xe1, 0xe5, 0x7b, 0xc3, 0x39, 0x3a, 0xd5, 0x6d, 0xb9,
-	0x8a, 0x08, 0x1b, 0xc7, 0xc6, 0xb9, 0x61, 0x1b, 0x8b, 0x89, 0x6a, 0x83, 0xef, 0x05, 0x80, 0x21,
-	0xf5, 0x2c, 0xe1, 0x13, 0xbe, 0x85, 0xa6, 0x1e, 0x45, 0xd3, 0x79, 0x66, 0x0b, 0xee, 0xac, 0x59,
-	0x77, 0xea, 0xb9, 0xfa, 0x70, 0x8d, 0xc5, 0x99, 0x3d, 0x78, 0x0e, 0x2d, 0x93, 0x1f, 0xe4, 0x3f,
-	0xa9, 0x76, 0x0a, 0xb0, 0xdc, 0x17, 0xfe, 0xca, 0xfe, 0x63, 0x91, 0xaa, 0xba, 0xfe, 0x4e, 0xf1,
-	0x12, 0xe4, 0x85, 0xe0, 0xd4, 0x4f, 0x18, 0x8d, 0xe7, 0xf7, 0xd6, 0xfb, 0xdb, 0xe8, 0x87, 0x2f,
-	0x3e, 0x1c, 0x4c, 0x7c, 0x76, 0x3d, 0xbb, 0xd2, 0xc6, 0x34, 0xe8, 0x7b, 0x34, 0xf0, 0x43, 0xfa,
-	0xf4, 0x79, 0x7f, 0xea, 0x7f, 0xa1, 0xb1, 0x97, 0xf4, 0xe3, 0x68, 0xdc, 0xbf, 0xf3, 0x3b, 0xbe,
-	0xaa, 0x70, 0xe8, 0xd9, 0xcf, 0x00, 0x00, 0x00, 0xff, 0xff, 0xf0, 0xbc, 0x33, 0x9d, 0xae, 0x05,
-	0x00, 0x00,
+	// 890 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x56, 0xdd, 0x6e, 0xe2, 0x46,
+	0x14, 0x5e, 0xf3, 0x13, 0xe0, 0x10, 0xc0, 0x39, 0xd9, 0x6e, 0x5c, 0xa7, 0xdd, 0x22, 0x2a, 0x65,
+	0xd1, 0x6a, 0x05, 0x29, 0xdd, 0x55, 0xbb, 0x95, 0x7a, 0xe1, 0x04, 0x8b, 0xa0, 0x06, 0x58, 0x19,
+	0x53, 0x29, 0x7b, 0x51, 0xcb, 0xc1, 0x53, 0x62, 0x15, 0x7b, 0x5c, 0x7b, 0x48, 0x97, 0x97, 0xe8,
+	0x63, 0xf4, 0x39, 0xfa, 0x1e, 0x7d, 0x92, 0xde, 0x55, 0x9e, 0x31, 0x7f, 0x09, 0x84, 0x9b, 0xde,
+	0xcd, 0xf9, 0xe6, 0xfb, 0xce, 0x9c, 0x39, 0x73, 0x3e, 0xcb, 0xf0, 0xca, 0x0e, 0xdc, 0x66, 0x10,
+	0x52, 0x46, 0x9b, 0x1e, 0x75, 0xac, 0x88, 0x84, 0xf7, 0xee, 0x98, 0xac, 0xaf, 0x1b, 0x7c, 0x17,
+	0x8b, 0x6b, 0x90, 0xfa, 0xd5, 0x84, 0xd2, 0xc9, 0x94, 0x08, 0xe1, 0xed, 0xec, 0xd7, 0x26, 0x73,
+	0x3d, 0x12, 0x31, 0xdb, 0x0b, 0x04, 0xbb, 0xf6, 0x4f, 0x1a, 0x0a, 0x3d, 0xea, 0x68, 0x63, 0xe6,
+	0x52, 0x1f, 0x4f, 0x20, 0x37, 0x8b, 0x48, 0x68, 0xb9, 0x8e, 0x22, 0x55, 0xa5, 0x7a, 0xc1, 0x38,
+	0x88, 0xc3, 0xae, 0x83, 0x0d, 0xc8, 0xb0, 0x79, 0x40, 0x94, 0x54, 0x55, 0xaa, 0x97, 0x5b, 0x6a,
+	0x63, 0xfd, 0xd8, 0xa5, 0xdc, 0x9c, 0x07, 0xc4, 0xe0, 0x3c, 0x54, 0x21, 0xef, 0xcc, 0x42, 0x3b,
+	0x46, 0x95, 0x74, 0x55, 0xaa, 0x67, 0x8d, 0x65, 0x8c, 0xef, 0x01, 0x22, 0x66, 0x87, 0xcc, 0x8a,
+	0x6b, 0x51, 0x32, 0x55, 0xa9, 0x5e, 0x6c, 0xa9, 0x0d, 0x51, 0x68, 0x63, 0x51, 0x68, 0xc3, 0x5c,
+	0x14, 0x6a, 0x14, 0x38, 0x3b, 0x8e, 0xf1, 0x1d, 0xe4, 0x89, 0xef, 0x08, 0x61, 0x76, 0xaf, 0x30,
+	0x47, 0x7c, 0x87, 0xcb, 0x7e, 0x84, 0xc3, 0x90, 0x78, 0xf4, 0x9e, 0x24, 0xd2, 0x83, 0xbd, 0xd2,
+	0x62, 0xc2, 0xe7, 0x72, 0x05, 0x72, 0xe3, 0x3b, 0xdb, 0xf7, 0xc9, 0x54, 0xc9, 0xf1, 0xae, 0x2c,
+	0x42, 0xfc, 0x12, 0xc0, 0x23, 0x51, 0x64, 0x4f, 0x48, 0xdc, 0xb2, 0x3c, 0xdf, 0x2c, 0x24, 0x48,
+	0xd7, 0xc1, 0x33, 0xa8, 0xd8, 0x41, 0x30, 0x75, 0x49, 0x68, 0x2d, 0xda, 0x5a, 0xe0, 0x9c, 0x52,
+	0x02, 0x8f, 0x44, 0x77, 0xcf, 0xa0, 0x22, 0xce, 0x5b, 0xf1, 0x40, 0xf0, 0x12, 0x38, 0xe1, 0x9d,
+	0x42, 0x61, 0x7c, 0x67, 0x33, 0x8b, 0x91, 0x4f, 0x4c, 0x29, 0x72, 0x46, 0x3e, 0x06, 0x4c, 0xf2,
+	0x89, 0x21, 0x42, 0xc6, 0xa7, 0x8c, 0x28, 0x87, 0x1c, 0xe7, 0xeb, 0xda, 0x5f, 0x12, 0x94, 0x96,
+	0xcf, 0x13, 0xf5, 0xec, 0x00, 0x35, 0xc8, 0xd9, 0x22, 0x52, 0xa4, 0x6a, 0xba, 0x5e, 0x6c, 0xbd,
+	0xda, 0xfe, 0x96, 0x31, 0xb9, 0x91, 0x2c, 0x75, 0x9f, 0x85, 0x73, 0x63, 0xa1, 0x53, 0x0d, 0x38,
+	0x5c, 0xdf, 0x40, 0x19, 0xd2, 0xbf, 0x91, 0x79, 0x32, 0x30, 0xf1, 0x12, 0xdf, 0x40, 0xf6, 0xde,
+	0x9e, 0xce, 0xc4, 0xb8, 0x14, 0x5b, 0x2f, 0xb6, 0x1f, 0x61, 0x08, 0xd2, 0x0f, 0xa9, 0xef, 0xa5,
+	0xda, 0x05, 0x94, 0x57, 0x47, 0x5f, 0xbb, 0x11, 0xc3, 0xf3, 0x87, 0x85, 0xee, 0xca, 0xb2, 0xa0,
+	0xd5, 0xde, 0xc0, 0x51, 0x87, 0xb0, 0x24, 0x87, 0x41, 0x7e, 0x9f, 0x91, 0x88, 0xed, 0x9c, 0xe8,
+	0xda, 0x31, 0x1c, 0xad, 0x72, 0x90, 0x28, 0xa0, 0x7e, 0x44, 0x6a, 0x7f, 0x4a, 0x50, 0xea, 0x53,
+	0x46, 0x43, 0x97, 0xce, 0xa2, 0x8e, 0xed, 0x11, 0x2c, 0x43, 0x6a, 0x29, 0x4d, 0xb9, 0x0e, 0xb6,
+	0x36, 0x8c, 0xf0, 0x72, 0xa3, 0xa6, 0x0d, 0xe5, 0x9a, 0x19, 0xde, 0x03, 0x8c, 0x43, 0x62, 0x33,
+	0xe2, 0x58, 0x36, 0xe3, 0x76, 0xd8, 0x33, 0xf0, 0x09, 0x5b, 0x63, 0xb5, 0x73, 0xf8, 0xcc, 0x20,
+	0x11, 0x61, 0x22, 0x35, 0x61, 0xf3, 0xbd, 0xf7, 0x52, 0xe0, 0xc5, 0x43, 0x45, 0x72, 0xb9, 0xb7,
+	0xf0, 0x79, 0x67, 0x03, 0x0f, 0x68, 0xc8, 0xf6, 0xe6, 0xbb, 0x81, 0xca, 0x03, 0x09, 0x3e, 0x87,
+	0x6c, 0x34, 0xa6, 0x21, 0xe1, 0xcc, 0xac, 0x21, 0x02, 0x3c, 0x87, 0xec, 0xc4, 0xf6, 0x48, 0xa4,
+	0xa4, 0xf8, 0x73, 0xa9, 0xbb, 0x5b, 0x63, 0x08, 0xe2, 0xeb, 0xbf, 0xd7, 0xa7, 0x33, 0xee, 0x17,
+	0xe6, 0x21, 0xd3, 0x1b, 0x99, 0xba, 0xfc, 0x0c, 0x8f, 0xa1, 0x32, 0x1c, 0x0d, 0x3f, 0xe8, 0xfd,
+	0xb6, 0xa5, 0x5d, 0x5e, 0x0e, 0x46, 0x7d, 0x53, 0x96, 0xf0, 0x04, 0x8e, 0x17, 0xa0, 0xa1, 0x99,
+	0x7a, 0xdb, 0xea, 0x68, 0x3d, 0x7d, 0x28, 0xa7, 0xf0, 0x08, 0x4a, 0x8b, 0x0d, 0x01, 0xa5, 0x63,
+	0xc8, 0xd0, 0x87, 0xba, 0x19, 0x33, 0xbb, 0xfd, 0xce, 0x50, 0xce, 0x60, 0x05, 0x8a, 0x02, 0x1a,
+	0x9a, 0x9a, 0x39, 0x94, 0xb3, 0x78, 0x0a, 0x27, 0x6b, 0x80, 0xa5, 0x89, 0xbc, 0x9c, 0x7d, 0x20,
+	0xd8, 0xbd, 0xc1, 0xcf, 0xba, 0x75, 0x79, 0xa5, 0x99, 0x72, 0x0e, 0x11, 0xca, 0x6d, 0xfd, 0x5a,
+	0x37, 0xf5, 0x65, 0x45, 0xf9, 0xd7, 0xbf, 0xc0, 0xd1, 0xa3, 0x57, 0x8f, 0x6f, 0xd1, 0x19, 0x0c,
+	0xda, 0xf2, 0x33, 0x2c, 0x42, 0xae, 0x3f, 0xb0, 0x3e, 0x5c, 0x6b, 0x37, 0xb2, 0x14, 0x07, 0xc3,
+	0xae, 0x19, 0xa7, 0x97, 0x53, 0x3c, 0xd0, 0xfa, 0xed, 0x0b, 0xad, 0x23, 0xa7, 0x51, 0x81, 0xe7,
+	0x09, 0xcd, 0xea, 0x76, 0xfa, 0x03, 0x43, 0xb7, 0xfa, 0xa3, 0x76, 0x47, 0x97, 0x33, 0xad, 0x7f,
+	0xd3, 0x00, 0x3d, 0xea, 0x0c, 0x45, 0x1b, 0xf1, 0x27, 0x38, 0xd4, 0x82, 0x60, 0x3a, 0x4f, 0x86,
+	0x1c, 0x4f, 0x77, 0x98, 0x37, 0x76, 0x90, 0xfa, 0x72, 0x87, 0x61, 0x92, 0x79, 0xc0, 0x6b, 0x28,
+	0x19, 0xfc, 0xf3, 0xf2, 0xbf, 0x64, 0xbb, 0x02, 0x58, 0xb9, 0x0f, 0x37, 0xd9, 0x8f, 0x6c, 0xa9,
+	0xaa, 0xbb, 0xbf, 0x3a, 0x38, 0x00, 0x79, 0x29, 0xb8, 0x72, 0x23, 0x46, 0xc3, 0xf9, 0xde, 0x7c,
+	0x4f, 0x95, 0x8e, 0x1f, 0x01, 0x1f, 0x0f, 0x3e, 0x9e, 0x3d, 0x4c, 0xb9, 0xdd, 0x19, 0xea, 0x17,
+	0x5b, 0x06, 0x79, 0x95, 0xe5, 0x06, 0xca, 0x9b, 0x76, 0xc3, 0xda, 0x06, 0x7f, 0xab, 0x7b, 0xd5,
+	0xaf, 0x9f, 0xe4, 0x88, 0x8e, 0x5e, 0x7c, 0xf7, 0xf1, 0xdd, 0xc4, 0x65, 0x77, 0xb3, 0xdb, 0xc6,
+	0x98, 0x7a, 0x4d, 0x87, 0x7a, 0xae, 0x4f, 0xbf, 0x79, 0xdb, 0x9c, 0xba, 0x7f, 0xd0, 0xd0, 0x89,
+	0x9a, 0x61, 0x30, 0x6e, 0x6e, 0xfd, 0x27, 0xb8, 0x3d, 0xe0, 0xd0, 0xb7, 0xff, 0x05, 0x00, 0x00,
+	0xff, 0xff, 0xde, 0xce, 0x31, 0x22, 0x33, 0x08, 0x00, 0x00,
 }
