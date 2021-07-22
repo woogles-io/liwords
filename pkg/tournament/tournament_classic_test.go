@@ -20,6 +20,39 @@ var defaultPlayersOdd = makeTournamentPersons(map[string]int32{"Will": 10000, "J
 var defaultRounds = 2
 var defaultGamesPerRound int32 = 1
 
+func TestClassicDivisionRoundControls(t *testing.T) {
+	is := is.New(t)
+
+	roundControls := defaultRoundControls(defaultRounds)
+
+	roundControls[0].AllowOverMaxRepeats = false
+	roundControls[0].MaxRepeats = 0
+	roundControls[0].PairingMethod = realtime.PairingMethod_KING_OF_THE_HILL
+
+	_, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
+	is.NoErr(err)
+
+	roundControls[0].PairingMethod = realtime.PairingMethod_FACTOR
+	_, err = compactNewClassicDivision(defaultPlayers, roundControls, true)
+	is.True(err != nil)
+
+	roundControls[0].PairingMethod = realtime.PairingMethod_SWISS
+	_, err = compactNewClassicDivision(defaultPlayers, roundControls, true)
+	is.True(err != nil)
+
+	roundControls[0].PairingMethod = realtime.PairingMethod_ROUND_ROBIN
+	_, err = compactNewClassicDivision(defaultPlayers, roundControls, true)
+	is.NoErr(err)
+
+	roundControls[0].GamesPerRound = 0
+	_, err = compactNewClassicDivision(defaultPlayers, roundControls, true)
+	is.True(err != nil)
+
+	roundControls[0].GamesPerRound = 5
+	_, err = compactNewClassicDivision(defaultPlayers, roundControls, true)
+	is.NoErr(err)
+}
+
 func TestClassicDivisionZeroOrOnePlayers(t *testing.T) {
 	// Division creation with zero or one players is a special
 	// case that should not fail

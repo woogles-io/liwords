@@ -203,12 +203,11 @@ func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, 
 	if divisionObject.DivisionManager == nil {
 		return fmt.Errorf("division manager null for division %s", division)
 	}
-	// XXX: TEMPORARY REMOVE THIS CHECK
 
-	// currentRound := divisionObject.DivisionManager.GetCurrentRound()
-	// if round < currentRound+1 {
-	// 	return fmt.Errorf("cannot set single round controls for non-future round %d since current round is %d", round, currentRound)
-	// }
+	currentRound := divisionObject.DivisionManager.GetCurrentRound()
+	if round < currentRound+1 {
+		return fmt.Errorf("cannot set single round controls for non-future round %d since current round is %d", round, currentRound)
+	}
 
 	newControls, err := divisionObject.DivisionManager.SetSingleRoundControls(round, controls)
 	if err != nil {
@@ -850,7 +849,8 @@ func StartAllRoundCountdowns(ctx context.Context, ts TournamentStore, id string,
 		return err
 	}
 
-	// Do not lock, StartRound will do that
+	t.Lock()
+	defer t.Unlock()
 
 	if t.IsFinished {
 		return fmt.Errorf("tournament %s has finished", id)
@@ -879,7 +879,7 @@ func StartAllRoundCountdowns(ctx context.Context, ts TournamentStore, id string,
 
 	for division := range t.Divisions {
 		t.IsStarted = true
-		err := StartRoundCountdown(ctx, ts, id, division, round, false, true)
+		err := StartRoundCountdown(ctx, ts, id, division, round, false, true, false)
 		if err != nil {
 			t.IsStarted = false
 			return err
@@ -896,14 +896,16 @@ func DivisionChannelName(tid, division string) string {
 }
 
 func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
-	division string, round int, save, send bool) error {
+	division string, round int, save, send, lock bool) error {
 	t, err := ts.Get(ctx, id)
 	if err != nil {
 		return err
 	}
 
-	t.Lock()
-	defer t.Unlock()
+	if lock {
+		t.Lock()
+		defer t.Unlock()
+	}
 
 	if t.IsFinished {
 		return fmt.Errorf("tournament %s has finished", id)
@@ -995,11 +997,10 @@ func PairRound(ctx context.Context, ts TournamentStore, id string, division stri
 		return errors.New("cannot pair a round before the tournament has started")
 	}
 
-	// XXX: temporarily disable future pair round check
-	// currentRound := divisionObject.DivisionManager.GetCurrentRound()
-	// if round < currentRound+1 {
-	// 	return fmt.Errorf("cannot repair non-future round %d since current round is %d", round, currentRound)
-	// }
+	currentRound := divisionObject.DivisionManager.GetCurrentRound()
+	if round < currentRound+1 {
+		return fmt.Errorf("cannot repair non-future round %d since current round is %d", round, currentRound)
+	}
 
 	pairingsResp, err := divisionObject.DivisionManager.PairRound(round, preserveByes)
 
