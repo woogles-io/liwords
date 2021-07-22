@@ -289,7 +289,7 @@ func printPlayerNotorieties(ustore pkguser.Store, nstore pkgmod.NotorietyStore) 
 		gamesString += "}"
 		notorietyString += fmt.Sprintf("\n                       {Score: %d, Games: %s},", score, gamesString)
 	}
-	notorietyString += "}, ustore)\nis.NoErr(err)"
+	notorietyString += "}, ustore, nstore)\nis.NoErr(err)"
 	fmt.Printf("%s\n", notorietyString)
 }
 
@@ -358,6 +358,43 @@ func TestNotoriety(t *testing.T) {
 			Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 			PositionCoords: "11H",
 			Tiles:          "ZI",
+		},
+	}
+
+	sandbagTurns := []*pb.ClientGameplayEvent{
+		{
+			Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
+			PositionCoords: "8D",
+			Tiles:          "BANJO",
+		},
+		{
+			Type: pb.ClientGameplayEvent_PASS,
+		},
+		{
+			Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
+			PositionCoords: "7H",
+			Tiles:          "BUSUUTI",
+		},
+		{
+			Type: pb.ClientGameplayEvent_PASS,
+		},
+		{
+			Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
+			PositionCoords: "O1",
+			Tiles:          "MAYPOPS",
+		},
+		{
+			Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
+			PositionCoords: "9H",
+			Tiles:          "RETINAS",
+		},
+		{
+			Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
+			PositionCoords: "10B",
+			Tiles:          "RETINAS",
+		},
+		{
+			Type: pb.ClientGameplayEvent_PASS,
 		},
 	}
 
@@ -638,10 +675,53 @@ func TestNotoriety(t *testing.T) {
 		{Score: 0, Games: []*ms.NotoriousGame{}}}, ustore, nstore)
 	is.NoErr(err)
 
+	// Test sandbag
+
+	err = pkgmod.ResetNotoriety(context.Background(), ustore, nstore, playerIds[0])
+	is.NoErr(err)
+	err = pkgmod.ResetNotoriety(context.Background(), ustore, nstore, playerIds[1])
+	is.NoErr(err)
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 0, Games: []*ms.NotoriousGame{}},
+		{Score: 0, Games: []*ms.NotoriousGame{}}}, ustore, nstore)
+	is.NoErr(err)
+
+	// Sandbagging
+	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
+	err = playGame(g, ustore, lstore, nstore, tstore, gstore, defaultTurns[:2], 0, pb.GameEndReason_RESIGNED, false)
+	is.NoErr(err)
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 4, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_SANDBAG}}},
+		{Score: 0, Games: []*ms.NotoriousGame{}}}, ustore, nstore)
+	is.NoErr(err)
+
+	// Not sandbagging
+	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
+	err = playGame(g, ustore, lstore, nstore, tstore, gstore, defaultTurns, 0, pb.GameEndReason_RESIGNED, false)
+	is.NoErr(err)
+
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 3, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_SANDBAG}}},
+		{Score: 0, Games: []*ms.NotoriousGame{}}}, ustore, nstore)
+	is.NoErr(err)
+
+	// Sandbagging because of passes
+	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
+	err = playGame(g, ustore, lstore, nstore, tstore, gstore, sandbagTurns, 0, pb.GameEndReason_RESIGNED, false)
+	is.NoErr(err)
+
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 7, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_SANDBAG},
+			{Type: ms.NotoriousGameType_SANDBAG}}},
+		{Score: 0, Games: []*ms.NotoriousGame{}}}, ustore, nstore)
+	is.NoErr(err)
+
 	uDBstore.Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
 	nstore.(*mod.NotorietyStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
-	// Test sandbag
 }

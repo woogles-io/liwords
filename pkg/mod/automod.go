@@ -89,7 +89,10 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 			// The loser let their clock run down, this is rude
 			lngt = ms.NotoriousGameType_SITTING
 		}
-	} else if g.GameEndReason == realtime.GameEndReason_RESIGNED {
+	}
+
+	// Now check for sandbagging
+	if g.GameEndReason == realtime.GameEndReason_RESIGNED && lngt == ms.NotoriousGameType_GOOD {
 		// This could be a case of sandbagging
 		totalMoves := 0
 		for i := 0; i < len(history.Events); i++ {
