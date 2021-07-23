@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import {
   Alert,
   Button,
@@ -23,7 +23,7 @@ import { countryArray } from './country_map';
 import { MarkdownTips } from './markdown_tips';
 import { AvatarCropper } from './avatar_cropper';
 
-type PersonalInfo = {
+export type PersonalInfo = {
   birthDate: string;
   email: string;
   firstName: string;
@@ -181,8 +181,6 @@ export const PersonalInfo = React.memo((props: Props) => {
   );
 
   const [form] = Form.useForm();
-
-  useEffect(() => form.resetFields(), [props.personalInfo, form]);
 
   const layout = {
     labelCol: {

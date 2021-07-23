@@ -277,10 +277,7 @@ const App = React.memo(() => {
         <Route path="/profile/:username">
           <UserProfile />
         </Route>
-        <Route path="/settings/:section">
-          <Settings />
-        </Route>
-        <Route path="/settings">
+        <Route path="/settings/:section?">
           <Settings />
         </Route>
         <Route path="/tile_images">
