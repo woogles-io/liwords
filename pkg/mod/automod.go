@@ -12,6 +12,7 @@ import (
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/rs/zerolog/log"
 )
 
 type NotorietyStore interface {
@@ -191,6 +192,10 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 	}
 
 	if previousNotorietyScore != newNotoriety {
+		log.Debug().Str("username", user.Username).
+			Int("previous-notoriety", previousNotorietyScore).
+			Int32("notorious-game-type", int32(ngt)).
+			Int("new-notoriety", newNotoriety).Msg("updating")
 		return us.SetNotoriety(ctx, user, newNotoriety)
 	}
 	return nil

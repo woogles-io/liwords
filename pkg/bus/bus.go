@@ -98,6 +98,7 @@ func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, err
 		presenceStore:       stores.PresenceStore,
 		listStatStore:       stores.ListStatStore,
 		tournamentStore:     stores.TournamentStore,
+		notorietyStore:      stores.NotorietyStore,
 		configStore:         stores.ConfigStore,
 		chatStore:           stores.ChatStore,
 		subscriptions:       []*nats.Subscription{},
@@ -809,6 +810,12 @@ func (b *Bus) deleteTournamentReadyMsgs(ctx context.Context, userID, connID stri
 
 func (b *Bus) leaveSite(ctx context.Context, userID string) error {
 	log.Debug().Str("userid", userID).Msg("left-site")
+	// Clean up any sought games we may have missed. This only happens if
+	// there was an error in deleting sought games in the leaveTab flow.
+	err := b.deleteSoughtForUser(ctx, userID)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

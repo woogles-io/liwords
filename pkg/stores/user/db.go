@@ -151,7 +151,7 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 	var actions entity.Actions
 	err = json.Unmarshal(u.Actions.RawMessage, &actions)
 	if err != nil {
-		log.Err(err).Msg("convert-user-actions")
+		log.Debug().Msg("convert-user-actions")
 	}
 
 	entu := &entity.User{
@@ -299,7 +299,7 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 		var actions entity.Actions
 		err = json.Unmarshal(u.Actions.RawMessage, &actions)
 		if err != nil {
-			log.Err(err).Msg("convert-user-actions")
+			log.Debug().Msg("convert-user-actions")
 		}
 
 		entu = &entity.User{
@@ -335,7 +335,7 @@ func (s *DBStore) GetByAPIKey(ctx context.Context, apikey string) (*entity.User,
 	var actions entity.Actions
 	err := json.Unmarshal(u.Actions.RawMessage, &actions)
 	if err != nil {
-		log.Err(err).Msg("convert-user-actions")
+		log.Debug().Msg("convert-user-actions")
 	}
 
 	entu := &entity.User{
