@@ -183,6 +183,10 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 			if err != nil {
 				return err
 			}
+			err = us.Set(ctx, user)
+			if err != nil {
+				return err
+			}
 		}
 	} else if newNotoriety > 0 {
 		newNotoriety -= NotorietyDecrement
