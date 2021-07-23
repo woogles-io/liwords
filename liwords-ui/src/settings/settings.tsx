@@ -88,12 +88,9 @@ export const Settings = React.memo((props: Props) => {
   const [player, setPlayer] = useState<Partial<PlayerMetadata> | undefined>(
     undefined
   );
-  const [birthDate, setBirthDate] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [countryCode, setCountryCode] = useState('');
-  const [email, setEmail] = useState('');
-  const [about, setAbout] = useState('');
+  const [personalInfo, setPersonalInfo] = useState<PersonalInfo | undefined>(
+    undefined
+  );
   const [showCloseAccount, setShowCloseAccount] = useState(false);
   const [showClosedAccount, setShowClosedAccount] = useState(false);
   const [accountClosureError, setAccountClosureError] = useState('');
@@ -129,12 +126,14 @@ export const Settings = React.memo((props: Props) => {
           full_name: resp.data.full_name,
           user_id: userID, // for name-based avatar initial to work
         });
-        setBirthDate(resp.data.birth_date);
-        setFirstName(resp.data.first_name);
-        setLastName(resp.data.last_name);
-        setCountryCode(resp.data.country_code);
-        setEmail(resp.data.email);
-        setAbout(resp.data.about);
+        setPersonalInfo({
+          birthDate: resp.data.birth_date,
+          email: resp.data.email,
+          firstName: resp.data.first_name,
+          lastName: resp.data.last_name,
+          countryCode: resp.data.country_code,
+          about: resp.data.about,
+        });
       })
       .catch(errorCatcher);
   }, [viewer, loggedIn, category, userID]);
@@ -264,21 +263,14 @@ export const Settings = React.memo((props: Props) => {
                 />
               ) : showClosedAccount ? (
                 <ClosedAccount />
-              ) : (
+              ) : personalInfo ? (
                 <PersonalInfo
                   player={player}
-                  personalInfo={{
-                    birthDate: birthDate,
-                    email: email,
-                    firstName: firstName,
-                    lastName: lastName,
-                    countryCode: countryCode,
-                    about: about,
-                  }}
+                  personalInfo={personalInfo}
                   updatedAvatar={updatedAvatar}
                   startClosingAccount={startClosingAccount}
                 />
-              )
+              ) : null
             ) : null}
             {category === Category.ChangePassword ? <ChangePassword /> : null}
             {category === Category.Preferences ? <Preferences /> : null}
