@@ -77,7 +77,7 @@ func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.Divisio
 	// Update the gibsonizations if the controls have changed
 	if gibsonChanged {
 		for i := 0; i <= t.GetCurrentRound(); i++ {
-			standings, _, err := t.GetStandings(i, true)
+			standings, _, err := t.GetStandings(i)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -490,7 +490,7 @@ func (t *ClassicDivision) SubmitResult(round int,
 	pmessage.DivisionStandings = map[int32]*realtime.RoundStandings{}
 
 	for i := round; i <= int(t.CurrentRound)+1 && i < len(t.Matrix); i++ {
-		standings, _, err := t.GetStandings(i, true)
+		standings, _, err := t.GetStandings(i)
 		if err != nil {
 			return nil, err
 		}
@@ -588,7 +588,7 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 		standingsRound = 1
 	}
 
-	standings, gibsonRank, err := t.GetStandings(standingsRound-1, false)
+	standings, gibsonRank, err := t.GetStandings(standingsRound - 1)
 	if err != nil {
 		return nil, err
 	}
@@ -861,7 +861,7 @@ func (t *ClassicDivision) AddPlayers(players *realtime.TournamentPersons) (*real
 					pmessage = combinePairingMessages(pmessage, newpmessage)
 				}
 			}
-			roundStandings, _, err := t.GetStandings(i, false)
+			roundStandings, _, err := t.GetStandings(i)
 			if err != nil {
 				return nil, err
 			}
@@ -934,7 +934,7 @@ func (t *ClassicDivision) RemovePlayers(persons *realtime.TournamentPersons) (*r
 			}
 		}
 		for i := 0; i < len(t.Matrix); i++ {
-			roundStandings, _, err := t.GetStandings(i, true)
+			roundStandings, _, err := t.GetStandings(i)
 			if err != nil {
 				return nil, err
 			}
@@ -963,9 +963,9 @@ func (t *ClassicDivision) ResetToBeginning() error {
 	return nil
 }
 
-func (t *ClassicDivision) GetStandings(round int, includeSuspended bool) (*realtime.RoundStandings, int, error) {
+func getRecords(t *ClassicDivision, round int) ([]*realtime.PlayerStanding, error) {
 	if round < 0 || round >= len(t.Matrix) {
-		return nil, -1, fmt.Errorf("round number out of range (GetStandings): %d", round)
+		return nil, fmt.Errorf("round number out of range (GetStandings): %d", round)
 	}
 
 	var wins int32 = 0
@@ -980,7 +980,7 @@ func (t *ClassicDivision) GetStandings(round int, includeSuspended bool) (*realt
 		draws = 0
 		spread = 0
 		playerId = t.Players.Persons[i].Id
-		if t.Players.Persons[i].Suspended && !includeSuspended {
+		if t.Players.Persons[i].Suspended {
 			continue
 		}
 		for j := 0; j <= round; j++ {
@@ -1062,14 +1062,27 @@ func (t *ClassicDivision) GetStandings(round int, includeSuspended bool) (*realt
 				}
 			})
 	}
+	return records, nil
+}
+
+func (t *ClassicDivision) GetStandings(round int) (*realtime.RoundStandings, int, error) {
+	if round < 0 || round >= len(t.Matrix) {
+		return nil, -1, fmt.Errorf("round number out of range (GetStandings): %d", round)
+	}
+
+	records, err := getRecords(t, round)
+	if err != nil {
+		return nil, -1, err
+	}
 
 	gibsonRank := -1
 
-	if t.DivisionControls.Gibsonize {
+	if t.DivisionControls.Gibsonize && len(t.Matrix) != 1 {
 
 		lastCompleteRound := round + 1
 		isComplete := false
 
+		// Only based gibsonizations on the last complete round
 		for !isComplete && lastCompleteRound > 0 {
 			lastCompleteRound--
 			isCompleteTmp, err := t.IsRoundComplete(lastCompleteRound)
@@ -1081,12 +1094,27 @@ func (t *ClassicDivision) GetStandings(round int, includeSuspended bool) (*realt
 
 		if isComplete {
 			gibsonRound := round
+			gibsonRecords := records
 			if gibsonRound > lastCompleteRound {
 				gibsonRound = lastCompleteRound
 			}
+
+			// If this is the last round, base the gibsonizations
+			// on the penultimate round
+			if gibsonRound == len(t.Matrix)-1 {
+				gibsonRound--
+				if gibsonRound < 0 {
+					return nil, -1, fmt.Errorf("gibson round is less than 0 for round %d", round)
+				}
+				gibsonRecords, err = getRecords(t, gibsonRound)
+				if err != nil {
+					return nil, -1, err
+				}
+			}
+
 			numberOfPlayers := len(records)
 			for i := 0; i < numberOfPlayers-1; i++ {
-				cc, err := t.canCatch(records, gibsonRound+1, i, i+1)
+				cc, err := t.canCatch(gibsonRecords, gibsonRound+1, i, i+1)
 				if err != nil {
 					return nil, -1, err
 				}
