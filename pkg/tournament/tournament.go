@@ -843,72 +843,11 @@ func possiblyEndTournament(ctx context.Context, ts TournamentStore, t *entity.To
 	return nil
 }
 
-func StartAllRoundCountdowns(ctx context.Context, ts TournamentStore, id string, round int) error {
-	t, err := ts.Get(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	t.Lock()
-	defer t.Unlock()
+func startRoundAfterLockingTournament(ts TournamentStore, t *entity.Tournament, ctx context.Context,
+	division string, round int, send bool) error {
 
 	if t.IsFinished {
-		return fmt.Errorf("tournament %s has finished", id)
-	}
-
-	if len(t.Divisions) == 0 {
-		return fmt.Errorf("cannot start tournament %s with no divisions", t.Name)
-	}
-
-	for division := range t.Divisions {
-		dm := t.Divisions[division].DivisionManager
-		if dm == nil {
-			return fmt.Errorf("cannot start round %d for division %s because it has a nil division manager", round, division)
-		}
-		if dm.GetDivisionControls().GameRequest == nil {
-			return fmt.Errorf("no division game controls have been set for division %v", division)
-		}
-		isReady, err := dm.IsRoundReady(round)
-		if err != nil {
-			return err
-		}
-		if !isReady {
-			return fmt.Errorf("cannot start round %d for division %s because the round is not ready", round, division)
-		}
-	}
-
-	for division := range t.Divisions {
-		t.IsStarted = true
-		err := StartRoundCountdown(ctx, ts, id, division, round, false, true, false)
-		if err != nil {
-			t.IsStarted = false
-			return err
-		}
-	}
-	return ts.Set(ctx, t)
-}
-
-// DivisionChannelName returns a channel name that can be used
-// for sending communications regarding a tournament and division.
-func DivisionChannelName(tid, division string) string {
-	// We encode to b64 because division can contain spaces.
-	return base64.URLEncoding.EncodeToString([]byte(tid + ":" + division))
-}
-
-func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
-	division string, round int, save, send, lock bool) error {
-	t, err := ts.Get(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	if lock {
-		t.Lock()
-		defer t.Unlock()
-	}
-
-	if t.IsFinished {
-		return fmt.Errorf("tournament %s has finished", id)
+		return fmt.Errorf("tournament %s has finished", t.Name)
 	}
 
 	divisionObject, ok := t.Divisions[division]
@@ -945,7 +884,7 @@ func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
 			// is now accepting "ready" messages for this round.
 			eventChannel := ts.TournamentEventChan()
 			evt := &realtime.TournamentRoundStarted{
-				TournamentId: id,
+				TournamentId: t.UUID,
 				Division:     division,
 				Round:        int32(round),
 				// GameIndex: int32(0) -- fix this when we have other types of tournaments
@@ -954,9 +893,9 @@ func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
 			wrapped := entity.WrapEvent(evt, realtime.MessageType_TOURNAMENT_ROUND_STARTED)
 
 			// Send it to everyone in this division across the app.
-			wrapped.AddAudience(entity.AudChannel, DivisionChannelName(id, division))
+			wrapped.AddAudience(entity.AudChannel, DivisionChannelName(t.UUID, division))
 			// Also send it to the tournament realm.
-			wrapped.AddAudience(entity.AudTournament, id)
+			wrapped.AddAudience(entity.AudTournament, t.UUID)
 			if eventChannel != nil {
 				eventChannel <- wrapped
 			}
@@ -965,13 +904,77 @@ func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
 	} else {
 		return fmt.Errorf("division %s round %d is not ready to be started", division, round)
 	}
-	if save {
-		err = ts.Set(ctx, t)
+	return nil
+}
+
+func StartAllRoundCountdowns(ctx context.Context, ts TournamentStore, id string, round int) error {
+	t, err := ts.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	t.Lock()
+	defer t.Unlock()
+
+	if t.IsFinished {
+		return fmt.Errorf("tournament %s has finished", id)
+	}
+
+	if len(t.Divisions) == 0 {
+		return fmt.Errorf("cannot start tournament %s with no divisions", t.Name)
+	}
+
+	for division := range t.Divisions {
+		dm := t.Divisions[division].DivisionManager
+		if dm == nil {
+			return fmt.Errorf("cannot start round %d for division %s because it has a nil division manager", round, division)
+		}
+		if dm.GetDivisionControls().GameRequest == nil {
+			return fmt.Errorf("no division game controls have been set for division %v", division)
+		}
+		isReady, err := dm.IsRoundReady(round)
 		if err != nil {
 			return err
 		}
+		if !isReady {
+			return fmt.Errorf("cannot start round %d for division %s because the round is not ready", round, division)
+		}
 	}
-	return nil
+
+	for division := range t.Divisions {
+		t.IsStarted = true
+		err = startRoundAfterLockingTournament(ts, t, ctx, division, round, false)
+		if err != nil {
+			t.IsStarted = false
+			return err
+		}
+	}
+	return ts.Set(ctx, t)
+}
+
+// DivisionChannelName returns a channel name that can be used
+// for sending communications regarding a tournament and division.
+func DivisionChannelName(tid, division string) string {
+	// We encode to b64 because division can contain spaces.
+	return base64.URLEncoding.EncodeToString([]byte(tid + ":" + division))
+}
+
+func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
+	division string, round int) error {
+	t, err := ts.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	t.Lock()
+	defer t.Unlock()
+
+	err = startRoundAfterLockingTournament(ts, t, ctx, division, round, true)
+	if err != nil {
+		return err
+	}
+
+	return ts.Set(ctx, t)
 }
 
 func PairRound(ctx context.Context, ts TournamentStore, id string, division string, round int, preserveByes bool) error {
