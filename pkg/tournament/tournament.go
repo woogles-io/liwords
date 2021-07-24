@@ -844,7 +844,7 @@ func possiblyEndTournament(ctx context.Context, ts TournamentStore, t *entity.To
 }
 
 func startRoundAfterLockingTournament(ts TournamentStore, t *entity.Tournament, ctx context.Context,
-	division string, round int, send bool) error {
+	division string, round int) error {
 
 	if t.IsFinished {
 		return fmt.Errorf("tournament %s has finished", t.Name)
@@ -879,28 +879,26 @@ func startRoundAfterLockingTournament(ts TournamentStore, t *entity.Tournament, 
 		if err != nil {
 			return err
 		}
-		if send {
-			// Send code that sends signal to all tournament players that backend
-			// is now accepting "ready" messages for this round.
-			eventChannel := ts.TournamentEventChan()
-			evt := &realtime.TournamentRoundStarted{
-				TournamentId: t.UUID,
-				Division:     division,
-				Round:        int32(round),
-				// GameIndex: int32(0) -- fix this when we have other types of tournaments
-				// add timestamp deadline here as well at some point
-			}
-			wrapped := entity.WrapEvent(evt, realtime.MessageType_TOURNAMENT_ROUND_STARTED)
-
-			// Send it to everyone in this division across the app.
-			wrapped.AddAudience(entity.AudChannel, DivisionChannelName(t.UUID, division))
-			// Also send it to the tournament realm.
-			wrapped.AddAudience(entity.AudTournament, t.UUID)
-			if eventChannel != nil {
-				eventChannel <- wrapped
-			}
-			log.Debug().Interface("evt", evt).Msg("sent-tournament-round-started")
+		// Send code that sends signal to all tournament players that backend
+		// is now accepting "ready" messages for this round.
+		eventChannel := ts.TournamentEventChan()
+		evt := &realtime.TournamentRoundStarted{
+			TournamentId: t.UUID,
+			Division:     division,
+			Round:        int32(round),
+			// GameIndex: int32(0) -- fix this when we have other types of tournaments
+			// add timestamp deadline here as well at some point
 		}
+		wrapped := entity.WrapEvent(evt, realtime.MessageType_TOURNAMENT_ROUND_STARTED)
+
+		// Send it to everyone in this division across the app.
+		wrapped.AddAudience(entity.AudChannel, DivisionChannelName(t.UUID, division))
+		// Also send it to the tournament realm.
+		wrapped.AddAudience(entity.AudTournament, t.UUID)
+		if eventChannel != nil {
+			eventChannel <- wrapped
+		}
+		log.Debug().Interface("evt", evt).Msg("sent-tournament-round-started")
 	} else {
 		return fmt.Errorf("division %s round %d is not ready to be started", division, round)
 	}
@@ -943,7 +941,7 @@ func StartAllRoundCountdowns(ctx context.Context, ts TournamentStore, id string,
 
 	for division := range t.Divisions {
 		t.IsStarted = true
-		err = startRoundAfterLockingTournament(ts, t, ctx, division, round, false)
+		err = startRoundAfterLockingTournament(ts, t, ctx, division, round)
 		if err != nil {
 			t.IsStarted = false
 			return err
@@ -969,7 +967,7 @@ func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
 	t.Lock()
 	defer t.Unlock()
 
-	err = startRoundAfterLockingTournament(ts, t, ctx, division, round, true)
+	err = startRoundAfterLockingTournament(ts, t, ctx, division, round)
 	if err != nil {
 		return err
 	}
