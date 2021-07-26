@@ -975,7 +975,7 @@ func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
 	if err != nil {
 		return err
 	}
-
+	t.IsStarted = true
 	err = ts.Set(ctx, t)
 	if err != nil {
 		return err
