@@ -67,17 +67,19 @@ type AuthenticationService struct {
 	configStore  config.ConfigStore
 	secretKey    string
 	mailgunKey   string
+	discordToken string
 	argonConfig  config.ArgonConfig
 }
 
 func NewAuthenticationService(u user.Store, ss sessions.SessionStore, cs config.ConfigStore,
-	secretKey, mailgunKey string, cfg config.ArgonConfig) *AuthenticationService {
+	secretKey, mailgunKey string, discordToken string, cfg config.ArgonConfig) *AuthenticationService {
 	return &AuthenticationService{
 		userStore:    u,
 		sessionStore: ss,
 		configStore:  cs,
 		secretKey:    secretKey,
 		mailgunKey:   mailgunKey,
+		discordToken: discordToken,
 		argonConfig:  cfg}
 }
 
@@ -354,7 +356,7 @@ func (as *AuthenticationService) NotifyAccountClosure(ctx context.Context, r *pb
 	}
 
 	// This action will not need to use the chat store so we can pass the nil value
-	err = mod.ApplyActions(ctx, as.userStore, nil, []*ms.ModAction{{
+	err = mod.ApplyActions(ctx, as.userStore, nil, as.mailgunKey, as.discordToken, []*ms.ModAction{{
 		UserId:   sess.UserUUID,
 		Duration: 0,
 		Note:     "User initiated account deletion",
