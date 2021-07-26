@@ -26,7 +26,8 @@ type DivisionManager interface {
 	IsRoundComplete(int) (bool, error)
 	IsStarted() bool
 	IsFinished() (bool, error)
-	StartRound() error
+	StartRound(bool) error
+	IsRoundStartable() error
 	GetXHRResponse() (*realtime.TournamentDivisionDataResponse, error)
 	SetReadyForGame(userID, connID string, round, gameIndex int, unready bool) ([]string, bool, error)
 	ClearReadyStates(userID string, round, gameIndex int) ([]*realtime.Pairing, error)

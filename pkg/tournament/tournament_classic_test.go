@@ -141,7 +141,7 @@ func TestClassicDivisionRandom(t *testing.T) {
 		realtime.TournamentGameResult_LOSS, realtime.GameEndReason_STANDARD, false, 0, "")
 	is.True(err != nil)
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	// Submit a result for a paired round
@@ -331,7 +331,7 @@ func TestClassicDivisionSpreadCap(t *testing.T) {
 	tournamentIsFinished, err := tc.IsFinished()
 	is.NoErr(err)
 	is.True(!tournamentIsFinished)
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	// Submit results for the round
@@ -415,7 +415,7 @@ func TestClassicDivisionKingOfTheHill(t *testing.T) {
 	tournamentIsFinished, err := tc.IsFinished()
 	is.NoErr(err)
 	is.True(!tournamentIsFinished)
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	// Submit results for the round
@@ -606,7 +606,7 @@ func pairAndPlay(tc *ClassicDivision, pairings []string, round int) (*realtime.D
 		pm = combinePairingMessages(pm, newpm)
 	}
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	if err != nil {
 		return nil, err
 	}
@@ -902,7 +902,7 @@ func TestClassicDivisionFactor(t *testing.T) {
 
 	is.NoErr(validatePairings(tc, 0))
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	// This should throw an error since it attempts
@@ -966,7 +966,7 @@ func TestClassicDivisionFactor(t *testing.T) {
 	_, err = tc.PairRound(1, false)
 	is.NoErr(err)
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	// Standings should be: 1, 2, 5, 8, 7, 6, 4, 3
@@ -1027,7 +1027,7 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	player3 := defaultPlayers.Persons[2].Id
 	player4 := defaultPlayers.Persons[3].Id
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	_, err = tc.SubmitResult(0, player1, player2, 900, 500,
@@ -1185,7 +1185,7 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	is.NoErr(err)
 	is.True(tc != nil)
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	for i := 0; i < numberOfPlayers; i += 2 {
@@ -1268,7 +1268,7 @@ func TestClassicDivisionSwissRemoved(t *testing.T) {
 	is.NoErr(err)
 	is.True(tc != nil)
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	winLoss := []realtime.TournamentGameResult{realtime.TournamentGameResult_WIN, realtime.TournamentGameResult_LOSS}
@@ -1532,7 +1532,7 @@ func TestClassicDivisionManual(t *testing.T) {
 
 	// Submit results for round 1
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	_, err = tc.SubmitResult(0, player2, player3, 400, 500,
@@ -1617,7 +1617,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 	is.NoErr(err)
 	is.True(tc != nil)
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	is.NoErr(validatePairings(tc, 0))
@@ -1848,7 +1848,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 	is.NoErr(err)
 	is.True(tc != nil)
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	player1 = defaultPlayers.Persons[0].Id
@@ -2012,7 +2012,7 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	is.NoErr(err)
 	is.True(!tournamentIsFinished)
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	// Submit results for the round
@@ -2028,7 +2028,7 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	// Submit results for the round
@@ -2061,7 +2061,7 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	}}
 	is.NoErr(equalStandings(expectedstandings, standings))
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	// Submit results for the round
@@ -2090,7 +2090,7 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	}}
 	is.NoErr(equalStandings(expectedstandings, standings))
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	// Submit results for the round
@@ -2125,7 +2125,7 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	}}
 	is.NoErr(equalStandings(expectedstandings, standings))
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	// Submit results for the round
@@ -2188,7 +2188,7 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	is.NoErr(err)
 	is.True(tc != nil)
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	player1 := defaultPlayers.Persons[0].Id
@@ -2423,7 +2423,7 @@ func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(playerLetterRatings, XHRResponse.Players))
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	_, err = tc.SubmitResult(0, "h", "a", 900, 500,
@@ -2460,7 +2460,7 @@ func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
 	currentPairings = tc.getPlayerPairings(1)
 	is.NoErr(equalPairingStrings(currentPairings, []string{"f", "h", "e", "g", "a", "d", "b", "c"}))
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	_, err = tc.SubmitResult(1, "g", "e", 800, 500,
@@ -2481,7 +2481,7 @@ func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
 	currentPairings = tc.getPlayerPairings(2)
 	is.NoErr(equalPairingStrings(currentPairings, []string{"d", "h", "a", "g", "b", "f", "c", "e"}))
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	roundControls[3].Factor = 2
@@ -2504,7 +2504,7 @@ func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
 
 	is.NoErr(equalStandings(expectedstandings, standings))
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	_, err = tc.SubmitResult(3, "h", "e", 900, 500,
@@ -2543,7 +2543,7 @@ func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
 	currentPairings = tc.getPlayerPairings(4)
 	is.NoErr(equalPairingStrings(currentPairings, []string{"e", "h", "f", "g", "c", "d", "b", "a"}))
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	_, err = tc.SubmitResult(4, "h", "e", 900, 500,
@@ -2589,7 +2589,7 @@ func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
 	currentPairings = tc.getPlayerPairings(5)
 	is.NoErr(equalPairingStrings(currentPairings, []string{"g", "h", "e", "f", "b", "c", "d", "a"}))
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	_, err = tc.SubmitResult(5, "h", "g", 900, 500,
@@ -2930,7 +2930,7 @@ func TestClassicDivisionMessages(t *testing.T) {
 
 	is.NoErr(equalPairingsResponses(expectedPairingsRsp, pairingsRsp.DivisionPairings))
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	pairingsRsp, err = tc.SubmitResult(0, player2, player3, 400, 500,
@@ -2985,7 +2985,7 @@ func TestClassicDivisionMessages(t *testing.T) {
 
 	is.NoErr(equalPairingsResponses(expectedPairingsRsp, pairingsRsp.DivisionPairings))
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	pairingsRsp, err = tc.RemovePlayers(makeTournamentPersons(map[string]int32{player1: -9}))
@@ -3076,7 +3076,7 @@ func TestClassicDivisionMessages(t *testing.T) {
 
 	is.NoErr(equalPairingsResponses(expectedPairingsRsp, pairingsRsp.DivisionPairings))
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	is.NoErr(err)
 
 	pairingsRsp, err = tc.SubmitResult(2, player4, player3, 400, 500,
@@ -3303,7 +3303,7 @@ func runFirstMethodRound(tc *ClassicDivision, playerOrder []string, fs []int, ro
 		}
 	}
 
-	err = tc.StartRound()
+	err = tc.StartRound(true)
 	if err != nil {
 		return err
 	}
@@ -3441,7 +3441,7 @@ func runRandomTournaments(method realtime.PairingMethod, randomizePairings bool)
 			return err
 		}
 
-		err = tc.StartRound()
+		err = tc.StartRound(true)
 		if err != nil {
 			return err
 		}
