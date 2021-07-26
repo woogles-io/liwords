@@ -1,6 +1,9 @@
 package entity
 
 import (
+	"context"
+	"errors"
+
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/lithammer/shortuuid"
 )
@@ -79,4 +82,27 @@ func (sg *SoughtGame) Seeker() string {
 		return sg.MatchRequest.User.UserId
 	}
 	return ""
+}
+
+// ValidateGameRequest validates a generic game request.
+func ValidateGameRequest(ctx context.Context, req *pb.GameRequest) error {
+	if req == nil {
+		return errors.New("game request is missing")
+	}
+	if req.InitialTimeSeconds < 15 {
+		return errors.New("the initial time must be at least 15 seconds")
+	}
+	if req.MaxOvertimeMinutes < 0 || req.MaxOvertimeMinutes > 10 {
+		return errors.New("overtime minutes must be between 0 and 10")
+	}
+	if req.IncrementSeconds < 0 {
+		return errors.New("you cannot have a negative time increment")
+	}
+	if req.IncrementSeconds > 60 {
+		return errors.New("time increment must be at most 60 seconds")
+	}
+	if req.MaxOvertimeMinutes > 0 && req.IncrementSeconds > 0 {
+		return errors.New("you can have increments or max overtime, but not both")
+	}
+	return nil
 }

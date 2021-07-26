@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import BoardSpace from './board_space';
 import { PlacementArrow } from '../utils/cwgame/tile_placement';
 import { BonusType } from '../constants/board_layout';
@@ -61,9 +61,12 @@ const BoardSpaces = React.memo((props: Props) => {
     }),
   });
 
-  if (isTouchDevice()) {
-    drop(boardRef);
-  }
+  const isTouchDeviceResult = isTouchDevice();
+  useEffect(() => {
+    if (isTouchDeviceResult) {
+      drop(boardRef);
+    }
+  }, [isTouchDeviceResult, drop]);
   // y row, x col
   for (let y = 0; y < props.gridDim; y += 1) {
     for (let x = 0; x < props.gridDim; x += 1) {

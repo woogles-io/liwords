@@ -10,22 +10,22 @@ import (
 	"sort"
 	"strconv"
 	"time"
+	"unicode/utf8"
 
 	"github.com/domino14/macondo/runner"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/macondo/alphabet"
-	"github.com/domino14/macondo/board"
-	"github.com/domino14/macondo/cross_set"
-	"github.com/domino14/macondo/gaddag"
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/macondo/move"
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/tournament"
 	"github.com/domino14/liwords/pkg/user"
@@ -52,6 +52,7 @@ type GameStore interface {
 	ListActive(context.Context, string, bool) (*gs.GameInfoResponses, error)
 	Count(ctx context.Context) (int64, error)
 	CachedCount(ctx context.Context) int
+	GameEventChan() chan<- *entity.EventWrapper
 	SetGameEventChan(c chan<- *entity.EventWrapper)
 	Unload(context.Context, string)
 	SetReady(ctx context.Context, gid string, pidx int) (int, error)
@@ -71,7 +72,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		players = append(players, &macondopb.PlayerInfo{
 			Nickname: u.Username,
 			UserId:   u.UUID,
-			RealName: u.RealName(),
+			RealName: u.RealNameIfNotYouth(),
 		})
 		dbids[idx] = u.ID
 	}
@@ -80,33 +81,20 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		return nil, errors.New("no rules")
 	}
 
-	var bd []string
-	switch req.Rules.BoardLayoutName {
-	case entity.CrosswordGame:
-		bd = board.CrosswordGameBoard
-	default:
-		return nil, errors.New("unsupported board layout")
-	}
+	log.Debug().Interface("req-rules", req.Rules).Msg("new-game-rules")
 
 	firstAssigned := false
 	if assignedFirst != -1 {
 		firstAssigned = true
 	}
 
-	dist, err := alphabet.Get(&cfg.MacondoConfig, req.Rules.LetterDistributionName)
+	rules, err := game.NewBasicGameRules(
+		&cfg.MacondoConfig, req.Lexicon, req.Rules.BoardLayoutName,
+		req.Rules.LetterDistributionName, game.CrossScoreOnly,
+		game.Variant(req.Rules.VariantName))
 	if err != nil {
 		return nil, err
 	}
-
-	dawg, err := gaddag.GetDawg(&cfg.MacondoConfig, req.Lexicon)
-	if err != nil {
-		return nil, err
-	}
-
-	rules := game.NewGameRules(
-		&cfg.MacondoConfig, dist, board.MakeBoard(bd),
-		&gaddag.Lexicon{GenericDawg: dawg},
-		cross_set.CrossScoreOnlyGenerator{Dist: dist})
 
 	var gameRunner *runner.GameRunner
 	for {
@@ -156,13 +144,6 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 			IsBot:    u.IsBot,
 			First:    gameRunner.FirstPlayer().UserId == u.UUID,
 		}
-		if u.Profile != nil {
-			playerinfos[idx].FullName = u.RealName()
-			playerinfos[idx].CountryCode = u.Profile.CountryCode
-			playerinfos[idx].Title = u.Profile.Title
-			// There is no avatar URL yet.
-			// playerinfos[idx].AvatarUrl = u.Profile.AvatarUrl
-		}
 	}
 
 	// Create the Quickdata now with the original player info.
@@ -174,6 +155,8 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	// as the CreatedAt date. We need to put it here though in order to
 	// keep the cached version in sync with the saved version at the beginning.
 	entGame.CreatedAt = time.Now()
+
+	entGame.MetaEvents = &entity.MetaEventData{}
 
 	// Save the game to the store.
 	if err = gameStore.Create(ctx, entGame); err != nil {
@@ -221,7 +204,7 @@ func clientEventToMove(cge *pb.ClientGameplayEvent, g *game.Game) (*move.Move, e
 	return nil, errors.New("client gameplay event not handled")
 }
 
-func StartGame(ctx context.Context, gameStore GameStore, eventChan chan<- *entity.EventWrapper, id string) error {
+func StartGame(ctx context.Context, gameStore GameStore, userStore user.Store, eventChan chan<- *entity.EventWrapper, id string) error {
 	// Note that StartGame does _not_ start the Macondo game, which
 	// has already started, but we don't "know" that. It is _this_
 	// function that will actually start the game in the user's eyes.
@@ -249,6 +232,7 @@ func StartGame(ctx context.Context, gameStore GameStore, eventChan chan<- *entit
 	log.Debug().Interface("history", entGame.Game.History()).Msg("game history")
 
 	evt := entGame.HistoryRefresherEvent()
+	evt.History = mod.CensorHistory(ctx, userStore, evt.History)
 	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_HISTORY_REFRESHER)
 	wrapped.AddAudience(entity.AudGameTV, entGame.GameID())
 	for _, p := range players(entGame) {
@@ -310,7 +294,7 @@ func minusRunes(a, b []rune) []rune {
 }
 
 func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameStore,
-	userStore user.Store, listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore,
+	userStore user.Store, notorietyStore mod.NotorietyStore, listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore,
 	timeRemaining int, challengerID string) error {
 	if entGame.ChallengeRule() == macondopb.ChallengeRule_VOID {
 		// The front-end shouldn't even show the button.
@@ -392,7 +376,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 			entGame.SetWinnerIdx(winner)
 			entGame.SetLoserIdx(1 - winner)
 		}
-		err = performEndgameDuties(ctx, entGame, gameStore, userStore, listStatStore, tournamentStore)
+		err = performEndgameDuties(ctx, entGame, gameStore, userStore, notorietyStore, listStatStore, tournamentStore)
 		if err != nil {
 			return err
 		}
@@ -405,6 +389,7 @@ func PlayMove(ctx context.Context,
 	entGame *entity.Game,
 	gameStore GameStore,
 	userStore user.Store,
+	notorietyStore mod.NotorietyStore,
 	listStatStore stats.ListStatStore,
 	tournamentStore tournament.TournamentStore,
 	userID string, onTurn,
@@ -417,10 +402,13 @@ func PlayMove(ctx context.Context,
 	if err != nil {
 		return err
 	}
+	// This cannot be deferred, because if performEndgameDuties expires the game this would unexpire it.
+	// But we are not doing this every turn, because at start of game we already set a very long expiry.
+	//entGame.SendChange(entGame.NewActiveGameEntry(true))
 
 	if m.Action() == move.MoveTypeChallenge {
 		// Handle in another way
-		return handleChallenge(ctx, entGame, gameStore, userStore, listStatStore, tournamentStore, timeRemaining, userID)
+		return handleChallenge(ctx, entGame, gameStore, userStore, notorietyStore, listStatStore, tournamentStore, timeRemaining, userID)
 	}
 
 	oldTurnLength := len(entGame.Game.History().Events)
@@ -470,7 +458,7 @@ func PlayMove(ctx context.Context,
 		entGame.SendChange(wrapped)
 	}
 	if playing == macondopb.PlayState_GAME_OVER {
-		err = performEndgameDuties(ctx, entGame, gameStore, userStore, listStatStore, tournamentStore)
+		err = performEndgameDuties(ctx, entGame, gameStore, userStore, notorietyStore, listStatStore, tournamentStore)
 		if err != nil {
 			return err
 		}
@@ -479,7 +467,7 @@ func PlayMove(ctx context.Context,
 }
 
 // HandleEvent handles a gameplay event from the socket
-func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store,
+func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store, notorietyStore mod.NotorietyStore,
 	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore, userID string, cge *pb.ClientGameplayEvent) (*entity.Game, error) {
 
 	// XXX: VERIFY THAT THE CLIENT GAME ID CORRESPONDS TO THE GAME
@@ -491,13 +479,16 @@ func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store,
 	entGame.Lock()
 	defer entGame.Unlock()
 
-	return handleEventAfterLockingGame(ctx, gameStore, userStore, listStatStore, tournamentStore, userID, cge, entGame)
+	log := zerolog.Ctx(ctx).With().Str("gameID", entGame.GameID()).Logger()
+	return handleEventAfterLockingGame(log.WithContext(ctx), gameStore, userStore, listStatStore, notorietyStore, tournamentStore, userID, cge, entGame)
 }
 
 // Assume entGame is already locked.
 func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userStore user.Store,
-	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore, userID string, cge *pb.ClientGameplayEvent,
+	listStatStore stats.ListStatStore, notorietyStore mod.NotorietyStore, tournamentStore tournament.TournamentStore, userID string, cge *pb.ClientGameplayEvent,
 	entGame *entity.Game) (*entity.Game, error) {
+
+	log := zerolog.Ctx(ctx)
 
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
 		return entGame, errGameNotActive
@@ -510,7 +501,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 		return entGame, errNotOnTurn
 	}
 	timeRemaining := entGame.TimeRemaining(onTurn)
-	log.Debug().Int("time-remaining", timeRemaining).Msg("checking-time-remaining")
+	log.Debug().Interface("cge", cge).Int("time-remaining", timeRemaining).Msg("handle-gameplay-event")
 	// Check that we didn't run out of time.
 	// Allow auto-passing.
 	if !(entGame.Game.Playing() == macondopb.PlayState_WAITING_FOR_FINAL_PASS &&
@@ -529,7 +520,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 			}
 		} else {
 			// Basically skip to the bottom and exit.
-			return entGame, setTimedOut(ctx, entGame, onTurn, gameStore, userStore, listStatStore, tournamentStore)
+			return entGame, setTimedOut(ctx, entGame, onTurn, gameStore, userStore, notorietyStore, listStatStore, tournamentStore)
 		}
 	}
 
@@ -548,7 +539,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 		entGame.History().Winner = int32(winner)
 		entGame.SetWinnerIdx(winner)
 		entGame.SetLoserIdx(1 - winner)
-		err := performEndgameDuties(ctx, entGame, gameStore, userStore, listStatStore, tournamentStore)
+		err := performEndgameDuties(ctx, entGame, gameStore, userStore, notorietyStore, listStatStore, tournamentStore)
 		if err != nil {
 			return entGame, err
 		}
@@ -558,7 +549,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 			return entGame, err
 		}
 
-		err = PlayMove(ctx, entGame, gameStore, userStore, listStatStore, tournamentStore, userID, onTurn, timeRemaining, m)
+		err = PlayMove(ctx, entGame, gameStore, userStore, notorietyStore, listStatStore, tournamentStore, userID, onTurn, timeRemaining, m)
 		if err != nil {
 			return entGame, err
 		}
@@ -567,6 +558,17 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 	// it was already saved to the store somewhere above (in performEndgameDuties)
 	// and we don't want to save it again as it will reload it into the cache.
 	if entGame.GameEndReason == pb.GameEndReason_NONE {
+
+		// Since we processed a game event, we should cancel any outstanding
+		// game meta events.
+		lastMeta := entity.LastOutstandingMetaRequest(entGame.MetaEvents.Events, "", entGame.TimerModule().Now())
+		if lastMeta != nil {
+			err := cancelMetaEvent(ctx, entGame, lastMeta)
+			if err != nil {
+				return entGame, err
+			}
+		}
+
 		if err := gameStore.Set(ctx, entGame); err != nil {
 			log.Err(err).Msg("error-saving")
 			return entGame, err
@@ -577,7 +579,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 
 // TimedOut gets called when the client thinks the user's time ran out. We
 // verify that that is actually the case.
-func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store,
+func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store, notorietyStore mod.NotorietyStore,
 	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore, timedout string, gameID string) error {
 	// XXX: VERIFY THAT THE GAME ID is the client's current game!!
 	// Note: we can get this event multiple times; the opponent and the player on turn
@@ -609,7 +611,7 @@ func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store,
 	// If opponent played out, auto-pass instead of forfeiting.
 	if entGame.Game.Playing() == macondopb.PlayState_WAITING_FOR_FINAL_PASS {
 		log.Debug().Msg("timed out, so auto-passing instead of forfeiting")
-		_, err = handleEventAfterLockingGame(ctx, gameStore, userStore, listStatStore, tournamentStore,
+		_, err = handleEventAfterLockingGame(ctx, gameStore, userStore, listStatStore, notorietyStore, tournamentStore,
 			entGame.Game.PlayerIDOnTurn(), &pb.ClientGameplayEvent{
 				Type:   pb.ClientGameplayEvent_PASS,
 				GameId: gameID,
@@ -617,7 +619,7 @@ func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store,
 		return err
 	}
 
-	return setTimedOut(ctx, entGame, onTurn, gameStore, userStore, listStatStore, tournamentStore)
+	return setTimedOut(ctx, entGame, onTurn, gameStore, userStore, notorietyStore, listStatStore, tournamentStore)
 }
 
 // sanitizeEvent removes rack information from the event; it is meant to be
@@ -626,8 +628,9 @@ func sanitizeEvent(sge *pb.ServerGameplayEvent) *pb.ServerGameplayEvent {
 	cloned := proto.Clone(sge).(*pb.ServerGameplayEvent)
 	cloned.NewRack = ""
 	cloned.Event.Rack = ""
+	// len() > 0 is fine
 	if len(cloned.Event.Exchanged) > 0 {
-		cloned.Event.Exchanged = strconv.Itoa(len(cloned.Event.Exchanged))
+		cloned.Event.Exchanged = strconv.Itoa(utf8.RuneCountInString(cloned.Event.Exchanged))
 	}
 	return cloned
 }

@@ -1,11 +1,21 @@
 import React from 'react';
 import moment from 'moment';
-import { ChatEntityType, useExcludedPlayersStoreContext } from '../store/store';
+import {
+  ChatEntityType,
+  useExcludedPlayersStoreContext,
+  useModeratorStoreContext,
+} from '../store/store';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import { Wooglinkify } from '../shared/wooglinkify';
 import { Modal, Tag } from 'antd';
+import {
+  CrownFilled,
+  SafetyCertificateFilled,
+  StarFilled,
+} from '@ant-design/icons';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { moderateUser, deleteChatMessage } from '../mod/moderate';
+import { PlayerAvatar } from '../shared/player_avatar';
 
 type EntityProps = {
   entityType: ChatEntityType;
@@ -28,9 +38,11 @@ const deleteMessage = (
   channel: string
 ) => {
   Modal.confirm({
-    title: 'Do you want to delete this message?',
+    title: (
+      <p className="readable-text-color">Do you want to delete this message</p>
+    ),
     icon: <ExclamationCircleOutlined />,
-    content: message,
+    content: <p className="readable-text-color">{message}</p>,
     onOk() {
       deleteChatMessage(sender, msgid, channel);
     },
@@ -47,11 +59,21 @@ export const ChatEntity = (props: EntityProps) => {
     excludedPlayers,
     excludedPlayersFetched,
   } = useExcludedPlayersStoreContext();
+  const { moderators, admins } = useModeratorStoreContext();
   if (props.timestamp) {
-    ts = moment(props.timestamp).format('MMM Do - LT');
+    if (
+      moment(Date.now()).format('MMM Do') !==
+      moment(props.timestamp).format('MMM Do')
+    ) {
+      ts = moment(props.timestamp).format('MMM Do - LT');
+    } else {
+      ts = moment(props.timestamp).format('LT');
+    }
   }
   let el;
   let senderClass = 'sender';
+  let fromMod = false;
+  let fromAdmin = false;
   const channel = '';
 
   // Don't render until we know who's been blocked
@@ -62,7 +84,13 @@ export const ChatEntity = (props: EntityProps) => {
   if (props.senderId && excludedPlayers.has(props.senderId)) {
     return null;
   }
-  if (props.highlight) {
+  if (props.senderId && moderators.has(props.senderId)) {
+    fromMod = true;
+  }
+  if (props.senderId && admins.has(props.senderId)) {
+    fromAdmin = true;
+  }
+  if (props.highlight || fromMod || fromAdmin) {
     senderClass = 'special-sender';
   }
   switch (props.entityType) {
@@ -83,39 +111,73 @@ export const ChatEntity = (props: EntityProps) => {
     case ChatEntityType.UserChat:
       el = (
         <div className="chat-entity">
-          <p className="timestamp">
-            {ts}
-            {channel}
-          </p>
-          <p className="message-body">
-            <span className={senderClass}>
-              <UsernameWithContext
-                username={props.sender}
-                userID={props.senderId}
-                omitSendMessage={!props.sendMessage}
-                sendMessage={props.sendMessage}
-                showDeleteMessage
-                showModTools
-                deleteMessage={() => {
-                  if (props.senderId) {
-                    deleteMessage(
-                      props.senderId,
-                      props.msgID,
-                      props.message,
-                      props.channel
-                    );
-                  }
-                }}
-                moderate={moderateUser}
-              />
-              {props.highlightText && props.highlight && (
-                <Tag color={'#d5cad6'}>{props.highlightText}</Tag>
-              )}
-            </span>
-            <span className="message">
-              <Wooglinkify message={props.message} />
-            </span>
-          </p>
+          <PlayerAvatar
+            player={{
+              user_id: props.senderId,
+            }}
+            username={props.sender}
+          />
+          <div className="message-details">
+            <p className="sender-info">
+              <span className={senderClass}>
+                <UsernameWithContext
+                  username={props.sender}
+                  userID={props.senderId}
+                  includeFlag
+                  omitSendMessage={!props.sendMessage}
+                  sendMessage={props.sendMessage}
+                  showDeleteMessage
+                  showModTools
+                  deleteMessage={() => {
+                    if (props.senderId) {
+                      deleteMessage(
+                        props.senderId,
+                        props.msgID,
+                        props.message,
+                        props.channel
+                      );
+                    }
+                  }}
+                  moderate={moderateUser}
+                />
+                {props.highlightText && props.highlight && (
+                  <Tag
+                    className="director"
+                    icon={<CrownFilled />}
+                    color={'#d5cad6'}
+                  >
+                    {props.highlightText}
+                  </Tag>
+                )}
+                {!props.highlight && fromAdmin && (
+                  <Tag
+                    className="admin"
+                    icon={<StarFilled />}
+                    color={'#F4B000'}
+                  >
+                    Admin
+                  </Tag>
+                )}
+                {!props.highlight && !fromAdmin && fromMod && (
+                  <Tag
+                    className="mod"
+                    icon={<SafetyCertificateFilled />}
+                    color={'#E6FFDF'}
+                  >
+                    Moderator
+                  </Tag>
+                )}
+                <span className="timestamp">
+                  {ts} {channel}
+                </span>
+              </span>
+            </p>
+            <p>
+              <span className="message">
+                <Wooglinkify message={props.message} />
+              </span>
+            </p>
+          </div>
         </div>
       );
       break;

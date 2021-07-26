@@ -10,6 +10,7 @@ import {
   PlayedTiles,
   PlayerOfTiles,
 } from '../utils/cwgame/common';
+import { Alphabet } from '../constants/alphabets';
 
 type Props = {
   gridLayout: Array<string>;
@@ -22,6 +23,7 @@ type Props = {
     tileIndex: number | undefined
   ) => void;
   tilesLayout: string;
+  alphabet: Alphabet;
   lastPlayedTiles: PlayedTiles;
   playerOfTileAt: PlayerOfTiles;
   currentRack: string;
@@ -75,6 +77,8 @@ const Board = React.memo((props: Props) => {
           handleSetHover={props.handleSetHover}
           handleUnsetHover={props.handleUnsetHover}
           definitionPopover={props.definitionPopover}
+          handleTileDrop={props.handleTileDrop}
+          alphabet={props.alphabet}
         />
         {svgDrawing}
       </div>

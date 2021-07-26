@@ -1,3 +1,7 @@
+import {
+  TType,
+  TTypeMap,
+} from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { Blank } from '../utils/cwgame/common';
 import { ChatEntityObj, ChatEntityType, randomID } from './store';
@@ -15,10 +19,15 @@ export const calculateTotalTime = (
   return secs + maxOvertime * 60 + incrementSecs * turnsPerGame;
 };
 
-export const isPairedMode = (type: string) => {
-  return type === 'CHILD' || type === 'STANDARD';
+type valueof<T> = T[keyof T];
+
+export const isPairedMode = (type: valueof<TTypeMap>) => {
+  return type === TType.CHILD || type === TType.STANDARD;
 };
 
+export const isClubType = (type: valueof<TTypeMap>) => {
+  return type === TType.CHILD || type === TType.CLUB;
+};
 // See cutoffs in variants.go. XXX: Try to tie these together better.
 export const timeCtrlToDisplayName = (
   secs: number,
@@ -39,7 +48,7 @@ export const timeCtrlToDisplayName = (
   return ['Regular', 'blue'];
 };
 
-export const initialTimeLabel = (secs: number) => {
+const initialTimeLabel = (secs: number) => {
   let initTLabel;
   switch (secs) {
     case 15:
@@ -56,6 +65,26 @@ export const initialTimeLabel = (secs: number) => {
   }
   return initTLabel;
 };
+
+export const initTimeDiscreteScale = [
+  15,
+  30,
+  45,
+  ...Array.from(new Array(25), (_, x) => (x + 1) * 60),
+  ...[30, 35, 40, 45, 50, 55, 60].map((x) => x * 60),
+].map((seconds) => ({
+  seconds,
+  label: initialTimeLabel(seconds),
+}));
+
+export const initialTimeSecondsToSlider = (secs: number) => {
+  const ret = initTimeDiscreteScale.findIndex((x) => x.seconds === secs);
+  if (ret >= 0) return ret;
+  throw new Error(`bad initial time: ${secs} seconds`);
+};
+
+export const initialTimeMinutesToSlider = (mins: number) =>
+  initialTimeSecondsToSlider(mins * 60);
 
 export const timeToString = (
   secs: number,

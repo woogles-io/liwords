@@ -3,9 +3,11 @@ import React, { ReactNode } from 'react';
 import { useHistory } from 'react-router-dom';
 import { FundOutlined } from '@ant-design/icons/lib';
 import { RatingBadge } from './rating_badge';
-import { challengeFormat, timeFormat } from './sought_games';
+import { challengeFormat, PlayerDisplay, timeFormat } from './sought_games';
 import { ActiveGame } from '../store/reducers/lobby_reducer';
 import { calculateTotalTime } from '../store/constants';
+import { VariantIcon } from '../shared/variant_icons';
+import { MatchLexiconDisplay } from '../shared/lexicon_display';
 
 type Props = {
   activeGames: ActiveGame[];
@@ -19,7 +21,8 @@ export const ActiveGames = (props: Props) => {
   type ActiveGameTableData = {
     gameID: string;
     players: ReactNode;
-    lexicon: string;
+    lexicon: ReactNode;
+    lexiconCode: string;
     time: string;
     totalTime: number;
     details?: ReactNode;
@@ -27,52 +30,74 @@ export const ActiveGames = (props: Props) => {
     player2: string;
   };
   const formatGameData = (games: ActiveGame[]): ActiveGameTableData[] => {
-    const gameData: ActiveGameTableData[] = games.map(
-      (ag: ActiveGame): ActiveGameTableData => {
-        const getDetails = () => {
-          return (
-            <>
-              {challengeFormat(ag.challengeRule)}
-              {ag.rated ? (
-                <Tooltip title="Rated">
-                  <FundOutlined />
-                </Tooltip>
-              ) : null}
-            </>
-          );
+    const gameData: ActiveGameTableData[] = games
+      .sort((agA: ActiveGame, agB: ActiveGame) => {
+        // Default sort should be by combined rating
+        const parseRating = (rating: string) => {
+          return rating.endsWith('?')
+            ? parseInt(rating.substring(0, rating.length - 1), 10)
+            : parseInt(rating, 10);
         };
-        return {
-          gameID: ag.gameID,
-          players: (
-            <>
-              <RatingBadge
-                rating={ag.players[0].rating}
-                player={ag.players[0].displayName}
-              />
-              {'vs.  '}
-              <RatingBadge
-                rating={ag.players[1].rating}
-                player={ag.players[1].displayName}
-              />
-            </>
-          ),
-          lexicon: ag.lexicon,
-          time: timeFormat(
-            ag.initialTimeSecs,
-            ag.incrementSecs,
-            ag.maxOvertimeMinutes
-          ),
-          totalTime: calculateTotalTime(
-            ag.initialTimeSecs,
-            ag.incrementSecs,
-            ag.maxOvertimeMinutes
-          ),
-          details: getDetails(),
-          player1: ag.players[0].displayName,
-          player2: ag.players[1].displayName,
-        };
-      }
-    );
+        return (
+          parseRating(agB.players[0].rating) +
+          parseRating(agB.players[1].rating) -
+          (parseRating(agA.players[0].rating) +
+            parseRating(agA.players[1].rating))
+        );
+      })
+      .map(
+        (ag: ActiveGame): ActiveGameTableData => {
+          const getDetails = () => {
+            return (
+              <>
+                <VariantIcon vcode={ag.variant} />{' '}
+                {challengeFormat(ag.challengeRule)}
+                {ag.rated ? (
+                  <Tooltip title="Rated">
+                    <FundOutlined />
+                  </Tooltip>
+                ) : null}
+              </>
+            );
+          };
+          return {
+            gameID: ag.gameID,
+            players: (
+              <>
+                <div>
+                  <PlayerDisplay
+                    username={ag.players[0].displayName}
+                    userID={ag.players[0].uuid}
+                  />
+                  <RatingBadge rating={ag.players[0].rating} />
+                </div>
+                <div>
+                  <PlayerDisplay
+                    username={ag.players[1].displayName}
+                    userID={ag.players[1].uuid}
+                  />
+                  <RatingBadge rating={ag.players[1].rating} />
+                </div>
+              </>
+            ),
+            lexicon: <MatchLexiconDisplay lexiconCode={ag.lexicon} />,
+            lexiconCode: ag.lexicon,
+            time: timeFormat(
+              ag.initialTimeSecs,
+              ag.incrementSecs,
+              ag.maxOvertimeMinutes
+            ),
+            totalTime: calculateTotalTime(
+              ag.initialTimeSecs,
+              ag.incrementSecs,
+              ag.maxOvertimeMinutes
+            ),
+            details: getDetails(),
+            player1: ag.players[0].displayName,
+            player2: ag.players[1].displayName,
+          };
+        }
+      );
     return gameData;
   };
   const columns = [
@@ -88,28 +113,22 @@ export const ActiveGames = (props: Props) => {
       dataIndex: 'lexicon',
       key: 'lexicon',
       filters: [
-        {
-          text: 'CSW19',
-          value: 'CSW19',
-        },
-        {
-          text: 'NWL20',
-          value: 'NWL20',
-        },
-        {
-          text: 'NWL18',
-          value: 'NWL18',
-        },
-        {
-          text: 'ECWL',
-          value: 'ECWL',
-        },
-      ],
+        'CSW19',
+        'NWL20',
+        'NWL18',
+        'ECWL',
+        'RD28',
+        'FRA20',
+        'NSF21',
+      ].map((l) => ({
+        text: <MatchLexiconDisplay lexiconCode={l} />,
+        value: l,
+      })),
       filterMultiple: false,
       onFilter: (
         value: string | number | boolean,
         record: ActiveGameTableData
-      ) => record.lexicon.indexOf(value.toString()) === 0,
+      ) => record.lexiconCode.indexOf(value.toString()) === 0,
     },
     {
       title: 'Time',
@@ -129,7 +148,7 @@ export const ActiveGames = (props: Props) => {
 
   return (
     <>
-      <h4>{props.type === 'RESUME' ? 'Resume' : 'Games Live Now'}</h4>
+      <h4>{props.type === 'RESUME' ? 'Resume' : 'Games live now'}</h4>
       <Table
         className="games observe"
         dataSource={formatGameData(props.activeGames)}

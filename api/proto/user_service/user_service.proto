@@ -55,18 +55,9 @@ message UserGameInfo {
   string avatar_url = 2;
   string title = 3;
   string full_name = 4;
-  CountryFlag flag = 5;
+  // CountryFlag appears to be obsolete; we fetch these using BriefProfiles
+  CountryFlag flag = 5 [deprecated=true]; 
   repeated KickstarterBadge kickstarter_badges = 6;
-}
-
-// Request information for multiple users in a game.
-message UsersGameInfoRequest {
-  repeated string uuids = 1;
-}
-
-// Return information for multiple users in a game.
-message UsersGameInfoResponse {
-  repeated UserGameInfo infos = 1;
 }
 
 // SocketTokenRequest requests a token in order to authenticate with the
@@ -80,7 +71,7 @@ message SocketTokenResponse {
 
 message UserLogoutRequest {}
 message LogoutResponse {}
-message NotifyAccountClosureRequest {}
+message NotifyAccountClosureRequest {string password = 1;}
 message NotifyAccountClosureResponse {}
 
 service AuthenticationService {
@@ -100,6 +91,10 @@ message UserRegistrationRequest {
   string password = 2;
   string email = 3;
   string registration_code = 4;
+  string birth_date = 5;
+  string first_name = 6;
+  string last_name = 7;
+  string country_code = 8;
 }
 
 message RegistrationResponse { string message = 1; }
@@ -133,13 +128,34 @@ message ProfileResponse {
   string avatar_url = 9;
   string full_name = 10;
   bool avatars_editable = 11;
+  string birth_date = 12;
 }
 
-message UpdateProfileRequest {
-  string about = 1;  
+message PersonalInfoRequest { }
+
+message PersonalInfoResponse {
+  string email = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string country_code = 4;
+  string avatar_url = 5;
+  string full_name = 6;
+  string about = 7;
+  string birth_date = 8;
 }
 
-message UpdateProfileResponse {}
+message UpdatePersonalInfoRequest {
+  string email = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string country_code = 4;
+  string avatar_url = 5;
+  string full_name = 6;
+  string about = 7;
+  string birth_date = 8;
+}
+
+message UpdatePersonalInfoResponse { }
 
 message UpdateAvatarRequest {
   bytes jpg_data = 1;
@@ -149,13 +165,37 @@ message UpdateAvatarResponse {
   string avatar_url = 1;
 }
 
+message RemoveAvatarRequest {
+}
+
+message RemoveAvatarResponse {
+}
+
+message BriefProfilesRequest {
+  repeated string user_ids = 1;
+}
+
+// this is a subset of ProfileResponse
+message BriefProfile {
+  string username = 1;
+  string full_name = 2; // omitted for non-adults
+  string country_code = 3;
+  string avatar_url = 9;
+}
+
+message BriefProfilesResponse {
+  map<string, BriefProfile> response = 1;
+}
+
 service ProfileService {
   rpc GetRatings(RatingsRequest) returns(RatingsResponse);
   rpc GetStats(StatsRequest) returns(StatsResponse);
   rpc GetProfile(ProfileRequest) returns(ProfileResponse);
-  rpc UpdateProfile(UpdateProfileRequest) returns(UpdateProfileResponse);
-  rpc GetUsersGameInfo(UsersGameInfoRequest) returns(UsersGameInfoResponse);
+  rpc GetPersonalInfo(PersonalInfoRequest) returns(PersonalInfoResponse);
+  rpc UpdatePersonalInfo(UpdatePersonalInfoRequest) returns(UpdatePersonalInfoResponse);
   rpc UpdateAvatar(UpdateAvatarRequest) returns(UpdateAvatarResponse);
+  rpc RemoveAvatar(RemoveAvatarRequest) returns(RemoveAvatarResponse);
+  rpc GetBriefProfiles(BriefProfilesRequest) returns(BriefProfilesResponse);
 }
 
 // Autocomplete
@@ -184,6 +224,12 @@ message BasicUser {
   string username = 2;
 }
 
+message BasicFollowedUser {
+  string uuid = 1;
+  string username = 2;
+  repeated string channel = 3;
+}
+
 message GetActiveChatChannelsRequest {
   int32 number = 1;
   int32 offset = 2;
@@ -206,11 +252,18 @@ message ActiveChatChannels {
 
 message GetChatsRequest { string channel = 1; }
 
-message GetFollowsResponse { repeated BasicUser users = 1; }
+message GetFollowsResponse { repeated BasicFollowedUser users = 1; }
 message GetBlocksResponse { repeated BasicUser users = 1; }
 // XXX: We should eventually obsolete this and handle blocks purely on
 // the backend but we need to write a lot of hard code for that.
 message GetFullBlocksResponse { repeated string user_ids = 1; }
+
+message GetModListRequest {}
+
+message GetModListResponse {
+  repeated string admin_user_ids = 1;
+  repeated string mod_user_ids = 2;
+}
 
 // Yeah I know
 service SocializeService {
@@ -227,4 +280,5 @@ service SocializeService {
   rpc GetActiveChatChannels(GetActiveChatChannelsRequest)
       returns(ActiveChatChannels);
   rpc GetChatsForChannel(GetChatsRequest) returns(liwords.ChatMessages);
+  rpc GetModList(GetModListRequest) returns (GetModListResponse);
 }

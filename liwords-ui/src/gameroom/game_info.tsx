@@ -1,6 +1,8 @@
 import React from 'react';
-import { Card, Row } from 'antd';
+import { Card } from 'antd';
 import { timeCtrlToDisplayName, timeToString } from '../store/constants';
+import { VariantIcon } from '../shared/variant_icons';
+import { MatchLexiconDisplay } from '../shared/lexicon_display';
 
 // At some point we should get this from the pb but then we have to use
 // twirp for this and we really shouldn't need to. Wait on it probably.
@@ -40,6 +42,7 @@ export type GameRequest = {
   rating_mode: string;
   max_overtime_minutes: number;
   original_request_id: string;
+  player_vs_bot: boolean;
 };
 
 export const defaultGameInfo: GameMetadata = {
@@ -57,20 +60,26 @@ export const defaultGameInfo: GameMetadata = {
     rating_mode: 'RATED',
     max_overtime_minutes: 0,
     original_request_id: '',
+    player_vs_bot: false,
   },
   tournament_id: '',
   game_end_reason: 'NONE',
   time_control_name: '',
 };
 
+export type PlayersStreakInfo = {
+  nickname: string;
+  uuid: number;
+};
+
 export type SingleGameStreakInfo = {
-  players: Array<string>;
   game_id: string;
   winner: number;
 };
 
 export type StreakInfoResponse = {
   streak: Array<SingleGameStreakInfo>;
+  playersInfo: Array<PlayersStreakInfo>;
 };
 
 export type DefineWordsResponse = {
@@ -102,14 +111,17 @@ export type GCGResponse = {
 type Props = {
   meta: GameMetadata;
   tournamentName: string;
+  colorOverride?: string;
+  logoUrl?: string;
 };
 
 export const GameInfo = React.memo((props: Props) => {
-  let variant = props.meta.game_request.rules.variant_name || 'classic';
-  if (variant === 'classic') {
-    variant = 'Classic';
-  }
-
+  const variant = (
+    <VariantIcon
+      vcode={props.meta.game_request.rules.variant_name || 'classic'}
+      withName
+    />
+  );
   const rated =
     props.meta.game_request.rating_mode === 'RATED' ? 'Rated' : 'Unrated';
   const challenge = {
@@ -123,26 +135,43 @@ export const GameInfo = React.memo((props: Props) => {
 
   const card = (
     <Card className="game-info">
-      {props.meta.tournament_id ? (
-        <Row className="tournament-name">{props.tournamentName}</Row>
-      ) : null}
-      <Row className="variant">
-        {`${
-          timeCtrlToDisplayName(
+      <div className="metadata">
+        {props.meta.tournament_id && (
+          <p
+            className="tournament-name"
+            style={{ color: props.colorOverride || 'ignore' }}
+          >
+            {props.tournamentName}
+          </p>
+        )}
+        <p className="variant">
+          {`${
+            timeCtrlToDisplayName(
+              props.meta.game_request.initial_time_seconds,
+              props.meta.game_request.increment_seconds,
+              props.meta.game_request.max_overtime_minutes
+            )[0]
+          } ${timeToString(
             props.meta.game_request.initial_time_seconds,
             props.meta.game_request.increment_seconds,
             props.meta.game_request.max_overtime_minutes
-          )[0]
-        } ${timeToString(
-          props.meta.game_request.initial_time_seconds,
-          props.meta.game_request.increment_seconds,
-          props.meta.game_request.max_overtime_minutes
-        )}`}{' '}
-        • {variant} • {props.meta.game_request.lexicon}
-      </Row>
-      <Row>
-        {challenge} challenge • {rated}
-      </Row>
+          )}`}{' '}
+          • {variant} •{' '}
+          <MatchLexiconDisplay lexiconCode={props.meta.game_request.lexicon} />
+        </p>
+        <p>
+          {challenge} challenge • {rated}
+        </p>
+      </div>
+      {props.logoUrl && (
+        <div className="logo-container">
+          <img
+            className="club-logo"
+            src={props.logoUrl}
+            alt={props.tournamentName}
+          />
+        </div>
+      )}
     </Card>
   );
   return card;

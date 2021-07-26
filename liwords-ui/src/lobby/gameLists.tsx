@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { Card, Modal, Button } from 'antd';
 import { useMountedState } from '../utils/mounted';
 import { SoughtGames } from './sought_games';
 import { ActiveGames } from './active_games';
 import { SeekForm } from './seek_form';
-import { useLobbyStoreContext } from '../store/store';
+import { useContextMatchContext, useLobbyStoreContext } from '../store/store';
 import { ActiveGame, SoughtGame } from '../store/reducers/lobby_reducer';
 import './seek_form.scss';
 
@@ -37,6 +37,32 @@ export const GameLists = React.memo((props: Props) => {
   const [seekModalVisible, setSeekModalVisible] = useState(false);
   const [matchModalVisible, setMatchModalVisible] = useState(false);
   const [botModalVisible, setBotModalVisible] = useState(false);
+
+  const {
+    addHandleContextMatch,
+    removeHandleContextMatch,
+  } = useContextMatchContext();
+  const friendRef = useRef('');
+  const handleContextMatch = useCallback((s: string) => {
+    friendRef.current = s;
+    setMatchModalVisible(true);
+  }, []);
+  useEffect(() => {
+    if (!(seekModalVisible || matchModalVisible || botModalVisible)) {
+      addHandleContextMatch(handleContextMatch);
+      return () => {
+        removeHandleContextMatch(handleContextMatch);
+      };
+    }
+  }, [
+    seekModalVisible,
+    matchModalVisible,
+    botModalVisible,
+    handleContextMatch,
+    addHandleContextMatch,
+    removeHandleContextMatch,
+  ]);
+
   const [simultaneousModeEnabled, setSimultaneousModeEnabled] = useState(false);
   const handleEnableSimultaneousMode = React.useCallback((evt) => {
     evt.preventDefault();
@@ -54,6 +80,21 @@ export const GameLists = React.memo((props: Props) => {
   const currentGame: ActiveGame | null = myCurrentGames[0] ?? null;
   const opponent = currentGame?.players.find((p) => p.displayName !== username)
     ?.displayName;
+
+  const enableWordSmog = React.useMemo(
+    () => localStorage.getItem('enableWordSmog') === 'true',
+    []
+  );
+  const unsanitizedSoughtGames = lobbyContext.soughtGames;
+  const sanitizedSoughtGames = React.useMemo(
+    () =>
+      (unsanitizedSoughtGames || []).filter((soughtGame) => {
+        if (!enableWordSmog && soughtGame.variant === 'wordsmog') return false;
+        return true;
+      }),
+
+    [enableWordSmog, unsanitizedSoughtGames]
+  );
 
   const matchButtonText = 'Match a friend';
 
@@ -84,7 +125,7 @@ export const GameLists = React.memo((props: Props) => {
             userID={userID}
             username={username}
             newGame={newGame}
-            requests={lobbyContext?.soughtGames}
+            requests={sanitizedSoughtGames}
           />
         </>
       );
@@ -121,7 +162,7 @@ export const GameLists = React.memo((props: Props) => {
   };
   const seekModal = (
     <Modal
-      title="Create a Game"
+      title="Create a game"
       className="seek-modal"
       visible={seekModalVisible}
       destroyOnClose
@@ -145,7 +186,7 @@ export const GameLists = React.memo((props: Props) => {
           type="submit"
           disabled={formDisabled}
         >
-          Create Game
+          Create game
         </button>,
       ]}
     >
@@ -160,7 +201,7 @@ export const GameLists = React.memo((props: Props) => {
   const matchModal = (
     <Modal
       className="seek-modal"
-      title="Match a Friend"
+      title="Match a friend"
       visible={matchModalVisible}
       destroyOnClose
       onCancel={() => {
@@ -183,7 +224,7 @@ export const GameLists = React.memo((props: Props) => {
           type="submit"
           disabled={formDisabled}
         >
-          Create Game
+          Create game
         </button>,
       ]}
     >
@@ -191,13 +232,14 @@ export const GameLists = React.memo((props: Props) => {
         onFormSubmit={onFormSubmit}
         loggedIn={props.loggedIn}
         showFriendInput={true}
+        friendRef={friendRef}
         id="match-seek"
       />
     </Modal>
   );
   const botModal = (
     <Modal
-      title="Play a Computer"
+      title="Play a computer"
       visible={botModalVisible}
       className="seek-modal"
       destroyOnClose
@@ -221,7 +263,7 @@ export const GameLists = React.memo((props: Props) => {
           type="submit"
           disabled={formDisabled}
         >
-          Create Game
+          Create game
         </button>,
       ]}
     >
@@ -288,29 +330,29 @@ export const GameLists = React.memo((props: Props) => {
   return (
     <div className="game-lists">
       <Card actions={actions}>
-        <div className="main-content">
-          <div className="tabs">
-            {loggedIn ? (
-              <div
-                onClick={() => {
-                  setSelectedGameTab('PLAY');
-                }}
-                className={selectedGameTab === 'PLAY' ? 'tab active' : 'tab'}
-              >
-                Play
-              </div>
-            ) : null}
+        <div className="tabs">
+          {loggedIn ? (
             <div
               onClick={() => {
-                setSelectedGameTab('WATCH');
+                setSelectedGameTab('PLAY');
               }}
-              className={
-                selectedGameTab === 'WATCH' || !loggedIn ? 'tab active' : 'tab'
-              }
+              className={selectedGameTab === 'PLAY' ? 'tab active' : 'tab'}
             >
-              Watch
+              Play
             </div>
+          ) : null}
+          <div
+            onClick={() => {
+              setSelectedGameTab('WATCH');
+            }}
+            className={
+              selectedGameTab === 'WATCH' || !loggedIn ? 'tab active' : 'tab'
+            }
+          >
+            Watch
           </div>
+        </div>
+        <div className="main-content">
           {renderGames()}
           {seekModal}
           {matchModal}

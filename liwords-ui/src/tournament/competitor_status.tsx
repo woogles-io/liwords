@@ -4,6 +4,7 @@ import { useTournamentStoreContext } from '../store/store';
 import { ClockCircleOutlined } from '@ant-design/icons';
 import './competitor_status.scss';
 import { TourneyStatus } from '../store/reducers/tournament_reducer';
+import { ReadyButton } from './ready_button';
 
 type Props = {
   sendReady: () => void;
@@ -44,7 +45,8 @@ export const CompetitorStatus = (props: Props) => {
           <>
             <ClockCircleOutlined />
             <p>
-              Thanks for registering for the {tournamentContext.metadata.name}.
+              Thanks for registering for the{' '}
+              {tournamentContext.metadata.getName()}.
             </p>
           </>
         );
@@ -96,9 +98,7 @@ export const CompetitorStatus = (props: Props) => {
         return (
           <>
             <p>Time to start round {competitorContext.currentRound + 1}!</p>
-            <Button className="primary" onClick={props.sendReady}>
-              I'm ready
-            </Button>
+            <ReadyButton sendReady={props.sendReady} />
           </>
         );
       }
@@ -113,9 +113,7 @@ export const CompetitorStatus = (props: Props) => {
                 Director may assign a forfeit.
               </span>
             </p>
-            <Button className="primary" onClick={props.sendReady}>
-              I'm ready
-            </Button>
+            <ReadyButton sendReady={props.sendReady} />
           </>
         );
       }
@@ -124,9 +122,7 @@ export const CompetitorStatus = (props: Props) => {
         return (
           <>
             <p>Your opponent is waiting!</p>
-            <Button className="primary" onClick={props.sendReady}>
-              I'm ready
-            </Button>
+            <ReadyButton sendReady={props.sendReady} />
           </>
         );
       }
@@ -181,10 +177,9 @@ export const CompetitorStatus = (props: Props) => {
         return (
           <>
             <ClockCircleOutlined />
-            return (
             <p>
               Thanks so much for playing in the{' '}
-              {tournamentContext.metadata.name}!
+              {tournamentContext.metadata.getName()}!
             </p>
           </>
         );
@@ -194,7 +189,8 @@ export const CompetitorStatus = (props: Props) => {
           <>
             <ClockCircleOutlined />
             <p>
-              Thanks for registering for the {tournamentContext.metadata.name}.
+              Thanks for registering for the{' '}
+              {tournamentContext.metadata.getName()}.
             </p>
           </>
         );

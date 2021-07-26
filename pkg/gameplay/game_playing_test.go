@@ -11,7 +11,9 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
+	pkgmod "github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/stores/game"
+	"github.com/domino14/liwords/pkg/stores/mod"
 	"github.com/domino14/liwords/pkg/stores/stats"
 	ts "github.com/domino14/liwords/pkg/stores/tournament"
 	"github.com/domino14/liwords/pkg/stores/user"
@@ -45,13 +47,25 @@ func tournamentStore(cfg *config.Config, gs gameplay.GameStore) tournament.Tourn
 	return tournamentStore
 }
 
+func notorietyStore(dbURL string) pkgmod.NotorietyStore {
+	n, err := mod.NewNotorietyStore(TestingDBConnStr + " dbname=liwords_test")
+	if err != nil {
+		log.Fatal().Err(err).Msg("error")
+	}
+	return n
+}
+
 type evtConsumer struct {
 	evts []*entity.EventWrapper
+	ch   chan *entity.EventWrapper
 }
 
 func (ec *evtConsumer) consumeEventChan(ctx context.Context,
 	ch chan *entity.EventWrapper,
 	done chan bool) {
+
+	ec.ch = ch
+
 	defer func() { done <- true }()
 	for {
 		select {
@@ -69,7 +83,7 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStor
 	ctx := context.Background()
 	cesar, _ := ustore.Get(ctx, "cesar4")
 	jesse, _ := ustore.Get(ctx, "jesse")
-	// see the gameReq in game_test.go in this package
+	// see the gameReq in game_stats_test.go in this package
 	gr := proto.Clone(gameReq).(*pb.GameRequest)
 
 	gr.IncrementSeconds = 5
@@ -80,6 +94,7 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStor
 	ch := make(chan *entity.EventWrapper)
 	donechan := make(chan bool)
 	consumer := &evtConsumer{}
+	gstore.SetGameEventChan(ch)
 
 	cctx, cancel := context.WithCancel(ctx)
 	go consumer.consumeEventChan(cctx, ch, donechan)
@@ -87,7 +102,7 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStor
 	nower := entity.NewFakeNower(1234)
 	g.SetTimerModule(nower)
 
-	gameplay.StartGame(ctx, gstore, ch, g.GameID())
+	gameplay.StartGame(ctx, gstore, ustore, ch, g.GameID())
 
 	return g, nower, cancel, donechan, consumer
 }
@@ -120,6 +135,7 @@ func TestWrongTurn(t *testing.T) {
 
 	ustore := userStore(cstr)
 	lstore := listStatStore(cstr)
+	nstore := notorietyStore(cstr)
 	cfg, gstore := gameStore(cstr, ustore)
 	tstore := tournamentStore(cfg, gstore)
 
@@ -135,7 +151,7 @@ func TestWrongTurn(t *testing.T) {
 	}
 
 	// User ID below is "cesar4" who's not on turn.
-	_, err := gameplay.HandleEvent(context.Background(), gstore, ustore, lstore, tstore,
+	_, err := gameplay.HandleEvent(context.Background(), gstore, ustore, nstore, lstore, tstore,
 		"xjCWug7EZtDxDHX5fRZTLo", cge)
 
 	is.Equal(err.Error(), "player not on turn")
@@ -146,6 +162,7 @@ func TestWrongTurn(t *testing.T) {
 	is.Equal(len(consumer.evts), 1)
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
+	nstore.(*mod.NotorietyStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
 }
@@ -157,6 +174,7 @@ func Test5ptBadWord(t *testing.T) {
 
 	ustore := userStore(cstr)
 	lstore := listStatStore(cstr)
+	nstore := notorietyStore(cstr)
 	cfg, gstore := gameStore(cstr, ustore)
 	tstore := tournamentStore(cfg, gstore)
 
@@ -174,7 +192,7 @@ func Test5ptBadWord(t *testing.T) {
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
-	_, err := gameplay.HandleEvent(context.Background(), gstore, ustore, lstore, tstore,
+	_, err := gameplay.HandleEvent(context.Background(), gstore, ustore, nstore, lstore, tstore,
 		"3xpEkpRAy3AizbVmDg3kdi", cge)
 
 	is.NoErr(err)
@@ -194,6 +212,7 @@ func Test5ptBadWord(t *testing.T) {
 
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
+	nstore.(*mod.NotorietyStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
 }
@@ -205,6 +224,7 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 
 	ustore := userStore(cstr)
 	lstore := listStatStore(cstr)
+	nstore := notorietyStore(cstr)
 	cfg, gstore := gameStore(cstr, ustore)
 	tstore := tournamentStore(cfg, gstore)
 
@@ -223,13 +243,13 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
-	_, err := gameplay.HandleEvent(context.Background(), gstore, ustore, lstore, tstore,
+	_, err := gameplay.HandleEvent(context.Background(), gstore, ustore, nstore, lstore, tstore,
 		"3xpEkpRAy3AizbVmDg3kdi", cge)
 
 	is.NoErr(err)
 	// "cesar4" waits a while before challenging this very plausible word.
 	nower.Sleep(7620)
-	_, err = gameplay.HandleEvent(context.Background(), gstore, ustore, lstore, tstore,
+	_, err = gameplay.HandleEvent(context.Background(), gstore, ustore, nstore, lstore, tstore,
 		"xjCWug7EZtDxDHX5fRZTLo", &pb.ClientGameplayEvent{
 			Type:   pb.ClientGameplayEvent_CHALLENGE_PLAY,
 			GameId: g.GameID(),
@@ -259,6 +279,7 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
+	nstore.(*mod.NotorietyStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
 }
@@ -270,6 +291,7 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 
 	ustore := userStore(cstr)
 	lstore := listStatStore(cstr)
+	nstore := notorietyStore(cstr)
 	cfg, gstore := gameStore(cstr, ustore)
 	tstore := tournamentStore(cfg, gstore)
 
@@ -288,13 +310,13 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
-	_, err := gameplay.HandleEvent(context.Background(), gstore, ustore, lstore, tstore,
+	_, err := gameplay.HandleEvent(context.Background(), gstore, ustore, nstore, lstore, tstore,
 		"3xpEkpRAy3AizbVmDg3kdi", cge)
 
 	is.NoErr(err)
 	// "cesar4" waits a while before challenging BANJO for some reason.
 	nower.Sleep(7620)
-	_, err = gameplay.HandleEvent(context.Background(), gstore, ustore, lstore, tstore,
+	_, err = gameplay.HandleEvent(context.Background(), gstore, ustore, nstore, lstore, tstore,
 		"xjCWug7EZtDxDHX5fRZTLo", &pb.ClientGameplayEvent{
 			Type:   pb.ClientGameplayEvent_CHALLENGE_PLAY,
 			GameId: g.GameID(),
@@ -322,6 +344,7 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
+	nstore.(*mod.NotorietyStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
 }
@@ -333,6 +356,7 @@ func TestQuickdata(t *testing.T) {
 
 	ustore := userStore(cstr)
 	lstore := listStatStore(cstr)
+	nstore := notorietyStore(cstr)
 	cfg, gstore := gameStore(cstr, ustore)
 	tstore := tournamentStore(cfg, gstore)
 
@@ -358,21 +382,21 @@ func TestQuickdata(t *testing.T) {
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
-	_, err := gameplay.HandleEvent(ctx, gstore, ustore, lstore, tstore,
+	_, err := gameplay.HandleEvent(ctx, gstore, ustore, nstore, lstore, tstore,
 		"3xpEkpRAy3AizbVmDg3kdi", cge1)
 
 	is.NoErr(err)
 
 	// "cesar4" plays a word after some time
 	nower.Sleep(4750) // 4.75 secs
-	_, err = gameplay.HandleEvent(ctx, gstore, ustore, lstore, tstore,
+	_, err = gameplay.HandleEvent(ctx, gstore, ustore, nstore, lstore, tstore,
 		"xjCWug7EZtDxDHX5fRZTLo", cge2)
 
 	is.NoErr(err)
 
 	// "jesse" waits a while before challenging SYZYGAL for some reason.
 	nower.Sleep(7620)
-	entGame, err := gameplay.HandleEvent(ctx, gstore, ustore, lstore, tstore,
+	entGame, err := gameplay.HandleEvent(ctx, gstore, ustore, nstore, lstore, tstore,
 		"3xpEkpRAy3AizbVmDg3kdi", &pb.ClientGameplayEvent{
 			Type:   pb.ClientGameplayEvent_CHALLENGE_PLAY,
 			GameId: g.GameID(),
@@ -392,6 +416,7 @@ func TestQuickdata(t *testing.T) {
 	cancel()
 	<-donechan
 	ustore.(*user.DBStore).Disconnect()
+	nstore.(*mod.NotorietyStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()

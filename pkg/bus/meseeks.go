@@ -15,6 +15,7 @@ import (
 	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	"github.com/domino14/macondo/game"
 )
 
 func (b *Bus) seekRequest(ctx context.Context, auth, userID, connID string,
@@ -51,7 +52,7 @@ func (b *Bus) seekRequest(ctx context.Context, auth, userID, connID string,
 	reqUser.UserId = userID
 	req.User = reqUser
 
-	err = gameplay.ValidateSoughtGame(ctx, gameRequest)
+	err = entity.ValidateGameRequest(ctx, gameRequest)
 	if err != nil {
 		return err
 	}
@@ -115,7 +116,7 @@ func (b *Bus) matchRequest(ctx context.Context, auth, userID, connID string,
 		return err
 	}
 
-	err = gameplay.ValidateSoughtGame(ctx, gameRequest)
+	err = entity.ValidateGameRequest(ctx, gameRequest)
 	if err != nil {
 		return err
 	}
@@ -130,6 +131,9 @@ func (b *Bus) matchRequest(ctx context.Context, auth, userID, connID string,
 	req.User = reqUser
 
 	timefmt, variant, err := entity.VariantFromGameReq(gameRequest)
+	if err != nil {
+		return err
+	}
 	ratingKey := entity.ToVariantKey(gameRequest.Lexicon, variant, timefmt)
 
 	u, err := b.userStore.GetByUUID(ctx, reqUser.UserId)
@@ -247,6 +251,13 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.MatchRequest, botUserID st
 	// NewBotGame creates and starts a new game against a bot!
 	var err error
 	var accUser *entity.User
+
+	if req.GameRequest != nil && req.GameRequest.Rules != nil &&
+		req.GameRequest.Rules.VariantName == string(game.VarWordSmog) {
+
+		return errors.New("the WordSmog variant is currently not supported by our bot")
+	}
+
 	if botUserID == "" {
 		accUser, err = b.userStore.GetRandomBot(ctx)
 	} else {
@@ -403,8 +414,10 @@ func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.
 	ratingKey := entity.ToVariantKey(g.GameReq.Lexicon, variant, timefmt)
 	players := []*gs.PlayerInfo{
 		{Rating: acceptor.GetRelevantRating(ratingKey),
+			UserId:   acceptor.UUID,
 			Nickname: acceptor.Username},
 		{Rating: requester.GetRelevantRating(ratingKey),
+			UserId:   requester.UUID,
 			Nickname: requester.Username},
 	}
 
@@ -496,13 +509,13 @@ func (b *Bus) openMatches(ctx context.Context, receiverID string, tourneyID stri
 
 func actionExists(ctx context.Context, us user.Store, userID string, req *pb.GameRequest) error {
 
-	err := mod.ActionExists(ctx, us, userID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT, ms.ModActionType_SUSPEND_GAMES})
+	_, err := mod.ActionExists(ctx, us, userID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT, ms.ModActionType_SUSPEND_GAMES})
 	if err != nil {
 		return err
 	}
 
 	if req.RatingMode == pb.RatingMode_RATED {
-		err = mod.ActionExists(ctx, us, userID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_RATED_GAMES})
+		_, err = mod.ActionExists(ctx, us, userID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_RATED_GAMES})
 		if err != nil {
 			return err
 		}

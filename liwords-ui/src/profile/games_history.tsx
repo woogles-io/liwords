@@ -6,6 +6,7 @@ import { CheckCircleTwoTone } from '@ant-design/icons';
 import { FundOutlined } from '@ant-design/icons/lib';
 import { GameMetadata } from '../gameroom/game_info';
 import { timeToString } from '../store/constants';
+import { VariantIcon } from '../shared/variant_icons';
 
 type Props = {
   games: Array<GameMetadata>;
@@ -18,12 +19,17 @@ type Props = {
 export const GamesHistoryCard = React.memo((props: Props) => {
   const { userID } = props;
 
+  const special = ['Unwoogler', 'AnotherUnwoogler', userID];
   const formattedGames = props.games
     .filter(
       (item) => item.players?.length && item.game_end_reason !== 'CANCELLED'
     )
     .map((item) => {
-      const userplace = item.players[0].user_id === userID ? 0 : 1;
+      const userplace =
+        special.indexOf(item.players[0].user_id) >
+        special.indexOf(item.players[1].user_id)
+          ? 0
+          : 1;
       const opponent = (
         <Link
           to={`/profile/${encodeURIComponent(
@@ -52,6 +58,11 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       const getDetails = () => {
         return (
           <>
+            {item.game_request.rules.variant_name === 'wordsmog' ? (
+              <>
+                <VariantIcon vcode="wordsmog" />{' '}
+              </>
+            ) : null}
             <span className={`challenge-rule mode_${challenge}`}>
               {challenge}
             </span>
@@ -84,6 +95,9 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         case 'RESIGNED':
           endReason = 'Resignation';
           break;
+        case 'FORCE_FORFEIT':
+          endReason = 'Forfeit';
+          break;
         case 'ABORTED':
           endReason = 'Aborted';
           break;
@@ -91,7 +105,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
           endReason = 'Cancelled';
           break;
         case 'TRIPLE_CHALLENGE':
-          endReason = 'Triple Challenge';
+          endReason = 'Triple challenge';
           break;
         case 'STANDARD':
           endReason = 'Completed';
@@ -171,7 +185,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
   ];
   // TODO: use the normal Ant table pagination when the backend can give us a total
   return (
-    <Card title="Game History">
+    <Card title="Game history">
       <Table
         className="game-history"
         columns={columns}

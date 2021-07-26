@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { TouchBackend } from 'react-dnd-touch-backend';
 import { Button, Modal, notification, message, Tooltip } from 'antd';
 import { DndProvider } from 'react-dnd';
@@ -24,7 +24,14 @@ import {
   handleDroppedTile,
   returnTileToRack,
   designateBlank,
+  stableInsertRack,
 } from '../utils/cwgame/tile_placement';
+
+import {
+  parseBlindfoldCoordinates,
+  natoPhoneticAlphabet,
+  letterPronunciations,
+} from '../utils/cwgame/blindfold';
 
 import {
   tilesetToMoveEvent,
@@ -39,10 +46,12 @@ import {
   MessageType,
   MatchRequest,
   MatchUser,
+  GameMetaEvent,
 } from '../gen/api/proto/realtime/realtime_pb';
 import {
   useExaminableGameContextStoreContext,
   useExaminableGameEndMessageStoreContext,
+  useExaminableTimerStoreContext,
   useExamineStoreContext,
   useGameContextStoreContext,
   useTentativeTileContext,
@@ -57,6 +66,7 @@ import {
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { toAPIUrl } from '../api/api';
 import { TilePreview } from './tile';
+import { Alphabet } from '../constants/alphabets';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -77,7 +87,9 @@ type Props = {
   tournamentID?: string;
   tournamentPairedMode?: boolean;
   lexicon: string;
+  alphabet: Alphabet;
   handleAcceptRematch: (() => void) | null;
+  handleAcceptAbort: (() => void) | null;
   handleSetHover?: (
     x: number,
     y: number,
@@ -87,11 +99,13 @@ type Props = {
   definitionPopover?:
     | { x: number; y: number; content: React.ReactNode }
     | undefined;
+  vsBot: boolean;
 };
 
 const shuffleString = (a: string): string => {
-  const alist = a.split('');
-  const n = a.length;
+  const alistWithGaps = Array.from(a);
+  const alist = alistWithGaps.filter((x) => x !== EmptySpace);
+  const n = alist.length;
 
   let somethingChanged = false;
   for (let i = n - 1; i > 0; i--) {
@@ -122,7 +136,9 @@ const shuffleString = (a: string): string => {
     }
   }
 
-  return alist.join('');
+  // Preserve the gaps.
+  let r = 0;
+  return alistWithGaps.map((x) => (x === EmptySpace ? x : alist[r++])).join('');
 };
 
 const gcgExport = (gameID: string, playerMeta: Array<PlayerMetadata>) => {
@@ -170,12 +186,15 @@ const gcgExport = (gameID: string, playerMeta: Array<PlayerMetadata>) => {
     });
 };
 
+const backupKey = (letters: string, rack: string) =>
+  JSON.stringify({ letters, rack });
+
 export const BoardPanel = React.memo((props: Props) => {
   const { useState } = useMountedState();
 
   // Poka-yoke against accidentally having multiple modes active.
   const [currentMode, setCurrentMode] = useState<
-    'BLANK_MODAL' | 'DRAWING_HOTKEY' | 'EXCHANGE_MODAL' | 'NORMAL'
+    'BLANK_MODAL' | 'DRAWING_HOTKEY' | 'EXCHANGE_MODAL' | 'NORMAL' | 'BLIND'
   >('NORMAL');
 
   const {
@@ -195,6 +214,10 @@ export const BoardPanel = React.memo((props: Props) => {
   const {
     gameEndMessage: examinableGameEndMessage,
   } = useExaminableGameEndMessageStoreContext();
+  const {
+    timerContext: examinableTimerContext,
+  } = useExaminableTimerStoreContext();
+
   const { isExamining, handleExamineStart } = useExamineStoreContext();
   const { gameContext } = useGameContextStoreContext();
   const { stopClock } = useTimerStoreContext();
@@ -223,10 +246,14 @@ export const BoardPanel = React.memo((props: Props) => {
     setPlacedTiles,
     placedTilesTempScore,
     setPlacedTilesTempScore,
+    blindfoldCommand,
+    setBlindfoldCommand,
+    blindfoldUseNPA,
+    setBlindfoldUseNPA,
   } = useTentativeTileContext();
 
   const observer = !props.playerMeta.some((p) => p.nickname === props.username);
-  const isMyTurn = useCallback(() => {
+  const isMyTurn = useMemo(() => {
     const iam = gameContext.nickToPlayerOrder[props.username];
     return iam && iam === `p${examinableGameContext.onturn}`;
   }, [
@@ -241,7 +268,7 @@ export const BoardPanel = React.memo((props: Props) => {
     (move: string, addl?: string) => {
       if (isExamining) return;
       let moveEvt;
-      if (move !== 'resign' && !isMyTurn()) {
+      if (move !== 'resign' && !isMyTurn) {
         console.log(
           'off turn move attempts',
           gameContext.nickToPlayerOrder,
@@ -282,6 +309,7 @@ export const BoardPanel = React.memo((props: Props) => {
             // this is an invalid play
             return;
           }
+          clearBackupRef.current = true;
           break;
       }
       if (!moveEvt) {
@@ -312,6 +340,40 @@ export const BoardPanel = React.memo((props: Props) => {
       sendSocketMsg,
       username,
     ]
+  );
+
+  const sendMetaEvent = useCallback(
+    (evtType: GameMetaEvent.EventTypeMap[keyof GameMetaEvent.EventTypeMap]) => {
+      const metaEvt = new GameMetaEvent();
+      metaEvt.setType(evtType);
+      metaEvt.setGameId(gameID);
+
+      sendSocketMsg(
+        encodeToSocketFmt(
+          MessageType.GAME_META_EVENT,
+          metaEvt.serializeBinary()
+        )
+      );
+    },
+    [sendSocketMsg, gameID]
+  );
+
+  // For reinstating a premove if an invalid move that invalidates it is successfully challenged off.
+  const backupStatesRef = useRef(
+    new Map<
+      string,
+      {
+        displayedRack: string;
+        placedTiles: Set<EphemeralTile>;
+        placedTilesTempScore: number | undefined;
+        arrowProperties: {
+          row: number;
+          col: number;
+          horizontal: boolean;
+          show: boolean;
+        };
+      }
+    >()
   );
 
   const recallTiles = useCallback(() => {
@@ -391,10 +453,12 @@ export const BoardPanel = React.memo((props: Props) => {
     setDisplayedRack(shuffleString(displayedRack));
   }, [setDisplayedRack, displayedRack]);
 
+  const clearBackupRef = useRef<boolean>(false);
   const lastLettersRef = useRef<string>();
+  const lastRackRef = useRef<string>();
   const readOnlyEffectDependenciesRef = useRef<{
     displayedRack: string;
-    isMyTurn: () => boolean;
+    isMyTurn: boolean;
     placedTiles: Set<EphemeralTile>;
     dim: number;
     arrowProperties: {
@@ -403,6 +467,7 @@ export const BoardPanel = React.memo((props: Props) => {
       horizontal: boolean;
       show: boolean;
     };
+    placedTilesTempScore: number | undefined;
   }>();
   readOnlyEffectDependenciesRef.current = {
     displayedRack,
@@ -410,6 +475,7 @@ export const BoardPanel = React.memo((props: Props) => {
     placedTiles,
     dim: props.board.dim,
     arrowProperties,
+    placedTilesTempScore,
   };
 
   // Need to sync state to props here whenever the board changes.
@@ -430,7 +496,7 @@ export const BoardPanel = React.memo((props: Props) => {
     } else if (isExamining) {
       // Prevent stuck tiles.
       fullReset = true;
-    } else if (!dep.isMyTurn()) {
+    } else if (!dep.isMyTurn) {
       // Opponent's turn means we have just made a move. (Assumption: there are only two players.)
       fullReset = true;
     } else {
@@ -477,13 +543,43 @@ export const BoardPanel = React.memo((props: Props) => {
         fullReset = true;
       }
     }
-    if (fullReset) {
-      setDisplayedRack(props.currentRack);
-      setPlacedTiles(new Set<EphemeralTile>());
-      setPlacedTilesTempScore(0);
-      setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
+    const bak = backupStatesRef.current.get(
+      backupKey(props.board.letters, props.currentRack)
+    );
+    // Do not reset if considering a new placement move when challenging.
+    if (fullReset || (bak && dep.placedTiles.size === 0)) {
+      backupStatesRef.current.clear();
+      if (!clearBackupRef.current) {
+        const lastRack = lastRackRef.current;
+        if (lastLetters && lastRack) {
+          backupStatesRef.current.set(backupKey(lastLetters, lastRack), {
+            displayedRack: dep.displayedRack,
+            placedTiles: dep.placedTiles,
+            placedTilesTempScore: dep.placedTilesTempScore,
+            arrowProperties: dep.arrowProperties,
+          });
+        }
+      }
+      clearBackupRef.current = false;
+      if (bak) {
+        setDisplayedRack(bak.displayedRack);
+        setPlacedTiles(bak.placedTiles);
+        setPlacedTilesTempScore(bak.placedTilesTempScore);
+        setArrowProperties(bak.arrowProperties);
+      } else {
+        setDisplayedRack(props.currentRack);
+        setPlacedTiles(new Set<EphemeralTile>());
+        setPlacedTilesTempScore(0);
+        setArrowProperties({
+          row: 0,
+          col: 0,
+          horizontal: false,
+          show: false,
+        });
+      }
     }
     lastLettersRef.current = props.board.letters;
+    lastRackRef.current = props.currentRack;
   }, [
     isExamining,
     props.board.letters,
@@ -516,7 +612,7 @@ export const BoardPanel = React.memo((props: Props) => {
   useEffect(() => {
     if (
       examinableGameContext.playState === PlayState.WAITING_FOR_FINAL_PASS &&
-      isMyTurn()
+      isMyTurn
     ) {
       const finalAction = (
         <>
@@ -608,8 +704,355 @@ export const BoardPanel = React.memo((props: Props) => {
           key = key.toUpperCase();
         }
       }
-      if (currentMode === 'NORMAL') {
-        if (isMyTurn() && !props.gameDone) {
+
+      if (currentMode === 'BLIND') {
+        const PlayerScoresAndTimes = (): [
+          string,
+          number,
+          string,
+          string,
+          number,
+          string
+        ] => {
+          const timepenalty = (time: number) => {
+            // Calculate a timepenalty for speech purposes only. The backend will
+            // also properly calculate this.
+
+            if (time >= 0) {
+              return 0;
+            }
+
+            const minsOvertime = Math.ceil(Math.abs(time) / 60000);
+            return minsOvertime * 10;
+          };
+
+          let p0 = gameContext.players[0];
+          let p1 = gameContext.players[1];
+
+          let p0Time = examinableTimerContext.p0;
+          let p1Time = examinableTimerContext.p1;
+
+          if (props.playerMeta[0].user_id === p1.userID) {
+            [p0, p1] = [p1, p0];
+            [p0Time, p1Time] = [p1Time, p0Time];
+          }
+
+          const playing =
+            examinableGameContext.playState !== PlayState.GAME_OVER;
+          const applyTimePenalty = !isExamining && playing;
+          let p0Score = p0?.score ?? 0;
+          if (applyTimePenalty) p0Score -= timepenalty(p0Time);
+          let p1Score = p1?.score ?? 0;
+          if (applyTimePenalty) p1Score -= timepenalty(p1Time);
+
+          // Always list the player scores and times first
+          if (props.playerMeta[1].nickname === props.username) {
+            return [
+              'you',
+              p1Score,
+              playerTimeToText(p1Time),
+              'opponent',
+              p0Score,
+              playerTimeToText(p0Time),
+            ];
+          }
+          return [
+            'you',
+            p0Score,
+            playerTimeToText(p0Time),
+            'opponent',
+            p1Score,
+            playerTimeToText(p1Time),
+          ];
+        };
+
+        const say = (text: string, moreText: string) => {
+          const speech = new SpeechSynthesisUtterance(text);
+          const lang = 'en-US';
+          const rate = 0.8;
+          speech.lang = lang;
+          speech.rate = rate;
+          window.speechSynthesis.cancel();
+          speech.onend = () => {
+            if (moreText !== '') {
+              const moreSpeech = new SpeechSynthesisUtterance(moreText);
+              moreSpeech.lang = lang;
+              moreSpeech.rate = rate;
+              window.speechSynthesis.cancel();
+              speechSynthesis.speak(moreSpeech);
+            }
+          };
+          window.speechSynthesis.speak(speech);
+        };
+
+        const wordToSayString = (word: string): string => {
+          let speech = '';
+          let currentNumber = '';
+          for (let i = 0; i < word.length; i++) {
+            const natoWord = natoPhoneticAlphabet.get(word[i].toUpperCase());
+            if (natoWord !== undefined) {
+              // Single letters in their own sentences are usually
+              // fairly understandable when spoken by TTS. In some cases
+              // it is unclear and using the NATO Phonetic Alphabet
+              // will remove the ambiguity.
+              if (word[i] >= 'a' && word[i] <= 'z') {
+                speech += 'blank, ';
+              }
+              if (blindfoldUseNPA) {
+                speech += natoWord + ', ';
+              } else {
+                const pword = letterPronunciations.get(word[i].toUpperCase());
+                speech += pword + ', ';
+              }
+            } else if (word[i] === '?') {
+              speech += 'blank, ';
+            } else {
+              // It's a number
+              let middleOfNumber = false;
+              currentNumber += word[i];
+              if (i + 1 < word.length) {
+                const natoNextWord = natoPhoneticAlphabet.get(
+                  word[i + 1].toUpperCase()
+                );
+                if (natoNextWord === undefined) {
+                  middleOfNumber = true;
+                }
+              }
+              if (!middleOfNumber) {
+                speech += currentNumber + '. ';
+                currentNumber = '';
+              }
+            }
+          }
+          return speech;
+        };
+
+        const sayGameEvent = (ge: GameEvent) => {
+          const type = ge.getType();
+          let nickname = 'opponent.';
+          if (ge.getNickname() === props.username) {
+            nickname = 'you.';
+          }
+          const playedTiles = ge.getPlayedTiles();
+          const mainWord = ge.getWordsFormedList()[0];
+          let blankAwareWord = '';
+          for (let i = 0; i < playedTiles.length; i++) {
+            const tile = playedTiles[i];
+            if (tile >= 'a' && tile <= 'z') {
+              blankAwareWord += tile;
+            } else {
+              blankAwareWord += mainWord[i];
+            }
+          }
+          if (type === GameEvent.Type.TILE_PLACEMENT_MOVE) {
+            say(
+              nickname + ' ' + wordToSayString(ge.getPosition()),
+              wordToSayString(blankAwareWord) + ' ' + ge.getScore().toString()
+            );
+          } else if (type === GameEvent.Type.PHONY_TILES_RETURNED) {
+            say(nickname + ' lost challenge', '');
+          } else if (type === GameEvent.Type.EXCHANGE) {
+            say(nickname + ' exchanged ' + ge.getExchanged(), '');
+          } else if (type === GameEvent.Type.PASS) {
+            say(nickname + ' passed', '');
+          } else if (type === GameEvent.Type.CHALLENGE) {
+            say(nickname + ' challenged', '');
+          } else if (type === GameEvent.Type.CHALLENGE_BONUS) {
+            say(nickname + ' challenge bonus', '');
+          } else {
+            // This is a bum way to deal with all other events
+            // but I am holding out for a better solution to saying events altogether
+            say(nickname + ' 5 point challenge or outplay', '');
+          }
+        };
+
+        const playerTimeToText = (ms: number): string => {
+          const neg = ms < 0;
+          // eslint-disable-next-line no-param-reassign
+          const absms = Math.abs(ms);
+          // const mins = Math.floor(ms / 60000);
+          let totalSecs;
+          if (!neg) {
+            totalSecs = Math.ceil(absms / 1000);
+          } else {
+            totalSecs = Math.floor(absms / 1000);
+          }
+          const secs = totalSecs % 60;
+          const mins = Math.floor(totalSecs / 60);
+
+          let negative = '';
+          if (neg) {
+            negative = 'negative ';
+          }
+          return (
+            negative +
+            mins.toString() +
+            ' minutes and ' +
+            secs.toString() +
+            ' seconds'
+          );
+        };
+
+        let newBlindfoldCommand = blindfoldCommand;
+        if (key === EnterKey) {
+          // There is a better way to do this
+          // This should be done like the Scorecards
+          // are. It should access the Scorecard info somehow
+          // but I is of the not knowing.
+          if (blindfoldCommand.toUpperCase() === 'P') {
+            if (gameContext.turns.length < 2) {
+              say('no previous play', '');
+            } else {
+              sayGameEvent(gameContext.turns[gameContext.turns.length - 2]);
+            }
+          } else if (blindfoldCommand.toUpperCase() === 'C') {
+            if (gameContext.turns.length < 1) {
+              say('no current play', '');
+            } else {
+              sayGameEvent(gameContext.turns[gameContext.turns.length - 1]);
+            }
+          } else if (blindfoldCommand.toUpperCase() === 'S') {
+            const [, p0Score, , , p1Score] = PlayerScoresAndTimes();
+            const scoresay = `${p0Score} to ${p1Score}`;
+            say(scoresay, '');
+          } else if (
+            blindfoldCommand.toUpperCase() === 'E' &&
+            exchangeAllowed &&
+            !props.gameDone
+          ) {
+            evt.preventDefault();
+            if (handleNeitherShortcut.current) handleNeitherShortcut.current();
+            setCurrentMode('EXCHANGE_MODAL');
+            setBlindfoldCommand('');
+            say('exchange modal opened', '');
+            return;
+          } else if (
+            blindfoldCommand.toUpperCase() === 'PASS' &&
+            !props.gameDone
+          ) {
+            makeMove('pass');
+            setCurrentMode('NORMAL');
+          } else if (
+            blindfoldCommand.toUpperCase() === 'CHAL' &&
+            !props.gameDone
+          ) {
+            makeMove('challenge');
+            setCurrentMode('NORMAL');
+            return;
+          } else if (blindfoldCommand.toUpperCase() === 'T') {
+            const [, , p0Time, , , p1Time] = PlayerScoresAndTimes();
+            const timesay = `${p0Time} to ${p1Time}.`;
+            say(timesay, '');
+          } else if (blindfoldCommand.toUpperCase() === 'R') {
+            say(wordToSayString(props.currentRack), '');
+          } else if (blindfoldCommand.toUpperCase() === 'B') {
+            const bag = { ...gameContext.pool };
+            for (let i = 0; i < props.currentRack.length; i += 1) {
+              bag[props.currentRack[i]] -= 1;
+            }
+            let numTilesRemaining = 0;
+            let tilesRemaining = '';
+            let blankString = ' ';
+            for (const [key, value] of Object.entries(bag)) {
+              const letter = key + '. ';
+              if (value > 0) {
+                numTilesRemaining += value;
+                if (key === '?') {
+                  blankString = value + ', blank';
+                } else {
+                  tilesRemaining += value + ', ' + letter;
+                }
+              }
+            }
+            say(
+              numTilesRemaining +
+                ' tiles unseen, ' +
+                wordToSayString(tilesRemaining) +
+                blankString,
+              ''
+            );
+          } else if (
+            blindfoldCommand.charAt(0).toUpperCase() === 'B' &&
+            blindfoldCommand.length === 2 &&
+            blindfoldCommand.charAt(1).match(/[a-z.]/i)
+          ) {
+            const bag = { ...gameContext.pool };
+            for (let i = 0; i < props.currentRack.length; i += 1) {
+              bag[props.currentRack[i]] -= 1;
+            }
+            let tile = blindfoldCommand.charAt(1).toUpperCase();
+            let numTiles = bag[tile];
+            if (tile === '.') {
+              tile = '?';
+              numTiles = bag[tile];
+              say(numTiles + ', blank', '');
+            } else {
+              say(wordToSayString(numTiles + ', ' + tile), '');
+            }
+          } else if (blindfoldCommand.toUpperCase() === 'N') {
+            setBlindfoldUseNPA(!blindfoldUseNPA);
+            say(
+              'NATO Phonetic Alphabet is ' +
+                (!blindfoldUseNPA ? ' enabled.' : ' disabled.'),
+              ''
+            );
+          } else if (blindfoldCommand.toUpperCase() === 'W') {
+            if (isMyTurn) {
+              say('It is your turn.', '');
+            } else {
+              say("It is your opponent's turn", '');
+            }
+          } else if (blindfoldCommand.toUpperCase() === 'L') {
+            say(
+              'B for bag. C for current play. ' +
+                'E for exchange. N for NATO pronunciations. ' +
+                'P for the previous play. R for rack. ' +
+                'S for score. T for time. W for turn. ' +
+                'P, A, S, S, for pass. C, H, A, L, for challenge.',
+              ''
+            );
+          } else {
+            const blindfoldCoordinates = parseBlindfoldCoordinates(
+              blindfoldCommand
+            );
+            if (blindfoldCoordinates !== undefined) {
+              // Valid coordinates, place the arrow
+              say(wordToSayString(blindfoldCommand), '');
+              const board = { ...gameContext.board };
+              const existingTile = board.letters[
+                blindfoldCoordinates.row * 15 + blindfoldCoordinates.col
+              ].trim();
+              if (!existingTile) {
+                setArrowProperties({
+                  row: blindfoldCoordinates.row,
+                  col: blindfoldCoordinates.col,
+                  horizontal: blindfoldCoordinates.horizontal,
+                  show: true,
+                });
+              }
+            } else {
+              console.log('invalid command: ', blindfoldCommand);
+              say('invalid command', '');
+            }
+          }
+
+          newBlindfoldCommand = '';
+          setCurrentMode('NORMAL');
+        } else {
+          newBlindfoldCommand = blindfoldCommand + key.toUpperCase();
+        }
+        setBlindfoldCommand(newBlindfoldCommand);
+      } else if (currentMode === 'NORMAL') {
+        if (
+          key.toUpperCase() === ';' &&
+          localStorage?.getItem('enableBlindfoldMode') === 'true'
+        ) {
+          evt.preventDefault();
+          if (handleNeitherShortcut.current) handleNeitherShortcut.current();
+          setCurrentMode('BLIND');
+          return;
+        }
+        if (isMyTurn && !props.gameDone) {
           if (key === '2') {
             evt.preventDefault();
             if (handlePassShortcut.current) handlePassShortcut.current();
@@ -667,7 +1110,8 @@ export const BoardPanel = React.memo((props: Props) => {
           props.board,
           key,
           displayedRack,
-          placedTiles
+          placedTiles,
+          props.alphabet
         );
 
         if (handlerReturn === null) {
@@ -682,12 +1126,27 @@ export const BoardPanel = React.memo((props: Props) => {
     },
     [
       arrowProperties,
+      blindfoldCommand,
+      blindfoldUseNPA,
+      gameContext.pool,
+      gameContext.board,
+      examinableGameContext.playState,
+      examinableTimerContext.p0,
+      examinableTimerContext.p1,
+      gameContext.players,
+      gameContext.turns,
+      isExamining,
+      props.alphabet,
+      props.playerMeta,
+      props.username,
       currentMode,
       displayedRack,
       exchangeAllowed,
       setDisplayedRack,
       setPlacedTiles,
       setPlacedTilesTempScore,
+      setBlindfoldCommand,
+      setBlindfoldUseNPA,
       isMyTurn,
       makeMove,
       placedTiles,
@@ -700,12 +1159,7 @@ export const BoardPanel = React.memo((props: Props) => {
   );
 
   const handleTileDrop = useCallback(
-    (
-      row: number,
-      col: number,
-      rackIndex: number = -1,
-      tileIndex: number = -1
-    ) => {
+    (row: number, col: number, rackIndex = -1, tileIndex = -1) => {
       const handlerReturn = handleDroppedTile(
         row,
         col,
@@ -713,7 +1167,8 @@ export const BoardPanel = React.memo((props: Props) => {
         displayedRack,
         placedTiles,
         rackIndex,
-        tileIndex
+        tileIndex,
+        props.alphabet
       );
       if (handlerReturn === null) {
         return;
@@ -729,6 +1184,7 @@ export const BoardPanel = React.memo((props: Props) => {
     [
       displayedRack,
       placedTiles,
+      props.alphabet,
       props.board,
       setDisplayedRack,
       setPlacedTilesTempScore,
@@ -752,7 +1208,8 @@ export const BoardPanel = React.memo((props: Props) => {
         displayedRack,
         placedTiles,
         rackIndex,
-        uniqueTileIdx(arrowProperties.row, arrowProperties.col)
+        uniqueTileIdx(arrowProperties.row, arrowProperties.col),
+        props.alphabet
       );
       if (handlerReturn === null) {
         return;
@@ -797,6 +1254,7 @@ export const BoardPanel = React.memo((props: Props) => {
       arrowProperties.show,
       displayedRack,
       placedTiles,
+      props.alphabet,
       setDisplayedRack,
       setPlacedTiles,
       setPlacedTilesTempScore,
@@ -816,7 +1274,8 @@ export const BoardPanel = React.memo((props: Props) => {
         props.board,
         placedTiles,
         displayedRack,
-        rune
+        rune,
+        props.alphabet
       );
       if (handlerReturn === null) {
         return;
@@ -828,6 +1287,7 @@ export const BoardPanel = React.memo((props: Props) => {
     [
       displayedRack,
       placedTiles,
+      props.alphabet,
       props.board,
       setPlacedTiles,
       setPlacedTilesTempScore,
@@ -844,6 +1304,7 @@ export const BoardPanel = React.memo((props: Props) => {
         props.board,
         displayedRack,
         placedTiles,
+        props.alphabet,
         rackIndex,
         tileIndex
       );
@@ -861,6 +1322,7 @@ export const BoardPanel = React.memo((props: Props) => {
       setPlacedTilesTempScore,
       setDisplayedRack,
       setPlacedTiles,
+      props.alphabet,
       props.board,
     ]
   );
@@ -868,10 +1330,21 @@ export const BoardPanel = React.memo((props: Props) => {
   const moveRackTile = useCallback(
     (newIndex: number | undefined, oldIndex: number | undefined) => {
       if (typeof newIndex === 'number' && typeof oldIndex === 'number') {
-        const newRack = displayedRack.split('');
-        newRack.splice(oldIndex, 1);
-        newRack.splice(newIndex, 0, displayedRack[oldIndex]);
-        setDisplayedRack(newRack.join(''));
+        const leftIndex = Math.min(oldIndex, newIndex);
+        const rightIndex = Math.max(oldIndex, newIndex) + 1;
+        // Within only the affected area, replace oldIndex with empty,
+        // and then insert that removed tile at the desired place.
+        setDisplayedRack(
+          displayedRack.substring(0, leftIndex) +
+            stableInsertRack(
+              displayedRack.substring(leftIndex, oldIndex) +
+                EmptySpace +
+                displayedRack.substring(oldIndex + 1, rightIndex),
+              newIndex - leftIndex,
+              displayedRack[oldIndex]
+            ) +
+            displayedRack.substring(rightIndex)
+        );
       }
     },
     [displayedRack, setDisplayedRack]
@@ -996,6 +1469,20 @@ export const BoardPanel = React.memo((props: Props) => {
   const handleExchangeTilesCancel = useCallback(() => {
     setCurrentMode('NORMAL');
   }, []);
+  const handleRequestAbort = useCallback(() => {
+    sendMetaEvent(GameMetaEvent.EventType.REQUEST_ABORT);
+  }, [sendMetaEvent]);
+  const handleNudge = useCallback(() => {
+    sendMetaEvent(GameMetaEvent.EventType.REQUEST_ADJUDICATION);
+  }, [sendMetaEvent]);
+  const showAbort = useMemo(() => {
+    // This hardcoded number is also on the backend.
+    return !props.vsBot && gameContext.turns.length <= 7;
+  }, [gameContext.turns, props.vsBot]);
+  const showNudge = useMemo(() => {
+    // Only show nudge if this is not a tournament/club game and it's not our turn.
+    return !isMyTurn && !props.vsBot && props.tournamentID === '';
+  }, [isMyTurn, props.tournamentID, props.vsBot]);
 
   const gameBoard = (
     <div
@@ -1023,6 +1510,7 @@ export const BoardPanel = React.memo((props: Props) => {
         handleSetHover={props.handleSetHover}
         handleUnsetHover={props.handleUnsetHover}
         definitionPopover={props.definitionPopover}
+        alphabet={props.alphabet}
       />
       {!examinableGameEndMessage ? (
         <div className="rack-container">
@@ -1046,6 +1534,7 @@ export const BoardPanel = React.memo((props: Props) => {
             returnToRack={returnToRack}
             onTileClick={clickToBoard}
             moveRackTile={moveRackTile}
+            alphabet={props.alphabet}
           />
           <Tooltip
             title="Shuffle &uarr;"
@@ -1069,7 +1558,7 @@ export const BoardPanel = React.memo((props: Props) => {
       {isTouchDevice() ? <TilePreview gridDim={props.board.dim} /> : null}
       <GameControls
         isExamining={isExamining}
-        myTurn={isMyTurn()}
+        myTurn={isMyTurn}
         finalPassOrChallenge={
           examinableGameContext.playState === PlayState.WAITING_FOR_FINAL_PASS
         }
@@ -1079,11 +1568,15 @@ export const BoardPanel = React.memo((props: Props) => {
         showExchangeModal={showExchangeModal}
         onPass={handlePass}
         onResign={handleResign}
+        onRequestAbort={handleRequestAbort}
+        onNudge={handleNudge}
         onChallenge={handleChallenge}
         onCommit={handleCommit}
         onRematch={props.handleAcceptRematch ?? rematch}
         onExamine={handleExamineStart}
         onExportGCG={handleExportGCG}
+        showNudge={showNudge}
+        showAbort={showAbort}
         showRematch={examinableGameEndMessage !== ''}
         gameEndControls={examinableGameEndMessage !== '' || props.gameDone}
         currentRack={props.currentRack}
@@ -1096,6 +1589,7 @@ export const BoardPanel = React.memo((props: Props) => {
         setHandleNeitherShortcut={setHandleNeitherShortcut}
       />
       <ExchangeTiles
+        alphabet={props.alphabet}
         rack={props.currentRack}
         modalVisible={currentMode === 'EXCHANGE_MODAL'}
         onOk={handleExchangeModalOk}
@@ -1109,7 +1603,10 @@ export const BoardPanel = React.memo((props: Props) => {
         width={360}
         footer={null}
       >
-        <BlankSelector handleSelection={handleBlankSelection} />
+        <BlankSelector
+          handleSelection={handleBlankSelection}
+          alphabet={props.alphabet}
+        />
       </Modal>
     </div>
   );

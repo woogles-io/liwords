@@ -6,8 +6,57 @@
 p {
   margin: 0;
 }
+
+.breadcrumb {
+  padding: 6px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  letter-spacing: 1.3px;
+  @include colorModed() {
+    color: m($gray-medium);
+  }
+  p {
+    @include colorModed() {
+      color: m($gray-medium);
+    }
+  }
+  .link.plain {
+    text-transform: none;
+    font-size: 14px;
+    @include colorModed() {
+      color: m($primary-dark);
+    }
+  }
+  .anticon {
+    font-size: 18px;
+    margin-right: 12px;
+  }
+}
+
+.notification {
+  display: inline-flex;
+  width: 15px;
+  height: 15px;
+  font-size: 10px;
+  font-family: 'Muli';
+  line-height: 0;
+  text-align: center;
+  padding: 1px 0 0 2px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  margin-left: 6px;
+  color: white;
+  @include colorModed() {
+    background: m($timer-out-dark);
+  }
+}
+
 .chat-area {
   order: 3;
+
   p {
     font-family: $font-default;
   }
@@ -21,6 +70,7 @@ p {
       max-height: $main-container-width-tablet - 122px;
     }
   }
+
   p.disabled-message {
     padding: 24px;
     @include colorModed() {
@@ -30,9 +80,7 @@ p {
   .ant-card.chat .ant-card-body {
     padding: 0 0 40px 0;
   }
-  #rc-tabs-0-panel-PLAYERS {
-    padding: 24px;
-  }
+
   .channel-list {
     overflow-y: auto;
     max-height: $main-container-width-tablet;
@@ -80,32 +128,7 @@ p {
         }
       }
     }
-    .breadcrumb {
-      padding: 6px 0 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 12px;
-      @include colorModed() {
-        color: m($gray-medium);
-      }
-      p {
-        @include colorModed() {
-          color: m($gray-medium);
-        }
-      }
-      .link.plain {
-        text-transform: none;
-        font-size: 14px;
-        @include colorModed() {
-          color: m($primary-dark);
-        }
-      }
-      .anticon {
-        font-size: 18px;
-        margin-right: 12px;
-      }
-    }
+
     .presence-count {
       position: relative;
       display: flex;
@@ -132,7 +155,7 @@ p {
         font-weight: normal;
         display: inline;
         @include colorModed() {
-          color: m($gray-medium);
+          color: m($gray-medium)
         }
       }
     }
@@ -156,11 +179,29 @@ p {
     }
     .channel-listing {
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      margin-bottom: 18px;
+      .player-avatar {
+        margin-right: 12px;
+        &.channel-icon {
+          &.ch-tournament {
+            background: #955f9a;
+          }
+          &.ch-lobby {
+            background:  #888;
+          }
+        }
+      }
       .listing-name {
-        font-weight: 400;
+        font-weight: 800;
         @include colorModed() {
           color: m($gray-extreme);
         }
+      }
+
+      .country-flag {
+        margin: 0 0 0 6px;
       }
       &.unread {
         .listing-name {
@@ -168,9 +209,10 @@ p {
         }
         .listing-preview {
           font-weight: 700;
-            @include colorModed() {
-              color: m($primary-dark);
-            }
+          margin-top: 0;
+          @include colorModed() {
+            color: m($primary-dark);
+          }
         }
       }
       &:first-child {
@@ -183,19 +225,36 @@ p {
     .listing-preview {
       font-size: 14px;
       font-weight: 200;
+      margin-top: 6px;
       width: 100%;
+      max-width: 400px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      margin-bottom: 18px;
+      line-height: 1em;
+      padding-bottom: 6px;
       @include colorModed() {
         color: m($gray-extreme);
       }
+      @media (min-width: $screen-tablet-min) {
+        max-width: 100%;
+      }
+      @media (min-width: $screen-laptop-min) {
+        max-width: calc(15vw);
+      }
+      @media (min-width: $screen-desktop-l-min) {
+        max-width: calc(20vw);
+      }
     }
   }
-  .description .unread-marker {
-    font-size: inherit;
-    padding: 0 6px;
+  .description {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    .unread-marker {
+      font-size: inherit;
+      padding: 0 6px;
+    }
   }
   .channel-list .breadcrumb {
     text-transform: uppercase;
@@ -239,33 +298,79 @@ p {
   .entities {
     padding: 12px 24px 0px;
     .chat-entity {
+      width: 100%;
+      width: 100%;
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 15px;
+      &:hover {
+        .timestamp {
+          visibility: visible;
+        }
+      }
       .sender {
         font-weight: 800;
-        margin: 0 9px 0 0;
+        margin: 0 6px 0 0;
         @include colorModed() {
           color: m($primary-dark);
         }
       }
+      .message {
+        line-height: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+      .player-avatar {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        font-size: 20px;
+        margin-right: 12px;
+        @media (min-width: $screen-tablet-min) {
+          width: 36px;
+          height: 36px;
+          min-width: 36px;
+          font-size: 20px;
+        }
+      }
+      .country-flag {
+        margin: 0 0 0 6px;
+      }
+      .message-details {
+        flex: 2;
+        line-height: 1.2em;
+      }
       .special-sender {
         @include colorModed() {
           color: m($primary-dark);
+        }
+        span.user-context-menu.ant-dropdown-trigger {
+          padding-right: 9px;
+          margin: 0;
         }
         font-weight: 800;
         .ant-tag {
           position: relative;
           top: -1px;
           font-size: 11px;
-          margin: 0 9px 0 9px;
           text-transform: uppercase;
           letter-spacing: 0.16em;
           padding: 0 2px 0 4px;
           line-height: 14px;
-          color: #52186d;
+          &.director {
+            color: #52186d;
+          }
+          &.admin {
+            color: #444444;
+          }
+          &.mod {
+            color: #1d6b0a;
+          }
         }
       }
-      .message-body {
-        margin-bottom: 4px;
-        line-height: 1.4em;
+      .sender-info {
+        margin-bottom: 6px;
+
         @include colorModed() {
           color: m($gray-extreme);
         }
@@ -274,10 +379,13 @@ p {
         @include colorModed() {
           color: m($secondary);
         }
+        visibility: hidden;
+        float: right;
         font-size: 75%;
         margin: 3px 0;
         position: relative;
-        top: 2px;
+        text-align: right;
+        top: -2px;
       }
     }
     .server-error {
@@ -293,13 +401,36 @@ p {
   }
 }
 
+
+
 .game-table {
-  .chat-area .ant-card.chat {
-    height: 400px;
+  .chat-area {
+    .ant-card.chat {
+      height: 400px;
+    }
+    &.has-disclaimer {
+      .ant-card.disclaimer {
+        height: 100px;
+        line-height: 1.3em;
+        margin-top: 12px;
+        font-size: 13px;
+        .ant-card-body {
+          padding: 6px 12px;
+          display: flex;
+          justify-content: space-around;
+          align-items: center;
+        }
+
+        .club-logo {
+          width: 78px;
+          margin: 3px 0 3px 9px;
+        }
+      }
+    }
   }
 }
 
-.chat input {
+.chat input[name='chat-input'] {
   position: absolute;
   bottom: 0;
   left: 0;
@@ -314,14 +445,38 @@ p {
 
 @media (min-width: $screen-laptop-min) {
   .game-table {
-    .chat-area .ant-card.chat {
-      height: 355px;
-      margin-bottom: 12px;
+    .chat-area {
+      .ant-card.chat {
+        height: 355px;
+        margin-bottom: 12px;
+      }
+      &.has-disclaimer {
+        .ant-card.chat {
+          height: 328px;
+        }
+        .ant-card.notepad-card, .ant-card.analyzer-card {
+          .ant-card-body {
+            height: 90px;
+          }
+        }
+      }
     }
   }
   .competitor .game-table {
-    .chat-area .ant-card.chat {
-      height: 290px;
+    .chat-area {
+      .ant-card.chat {
+        height: 290px;
+      }
+      &.has-disclaimer {
+        .ant-card.chat {
+          height: 290px;
+        }
+        .ant-card.notepad-card, .ant-card.analyzer-card {
+          .ant-card-body {
+            height: 90px;
+          }
+        }
+      }
     }
   }
   .chat-area {
@@ -336,26 +491,74 @@ p {
 
 @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
   .game-table {
-    .chat-area .ant-card.chat {
-      height: 495px;
+    .chat-area {
+      .ant-card.chat {
+        height: 495px;
+      }
+      &.has-disclaimer {
+        .ant-card.chat {
+          height: 420px;
+        }
+        .ant-card.notepad-card, .ant-card.analyzer-card {
+          .ant-card-body {
+            height: 90px;
+          }
+        }
+      }
     }
   }
   .competitor .game-table {
-    .chat-area .ant-card.chat {
-      height: 430px;
+    .chat-area {
+      .ant-card.chat {
+        height: 430px;
+      }
+      &.has-disclaimer {
+        .ant-card.chat {
+          height: 430px;
+        }
+        .ant-card.notepad-card, .ant-card.analyzer-card {
+          .ant-card-body {
+            height: 90px;
+          }
+        }
+      }
     }
   }
 }
 
 @media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-min) {
   .game-table {
-    .chat-area .ant-card.chat {
-      height: 564px;
+    .chat-area {
+      .ant-card.chat {
+        height: 564px;
+      }
+      &.has-disclaimer {
+        .ant-card.chat {
+          height: 564px;
+        }
+        .ant-card.notepad-card, .ant-card.analyzer-card {
+          .ant-card-body {
+            height: 90px;
+          }
+        }
+      }
     }
   }
   .competitor .game-table {
-    .chat-area .ant-card.chat {
-      height: 499px;
+    .chat-area {
+      .ant-card.chat {
+        height: 499px;
+      }
+      &.has-disclaimer {
+        .ant-card.chat {
+          height: 499px;
+        }
+        .ant-card.notepad-card, .ant-card.analyzer-card {
+          .ant-card-body {
+            height: 90px;
+          }
+        }
+      }
     }
   }
 }

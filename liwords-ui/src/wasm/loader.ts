@@ -27,7 +27,7 @@ class Loadable {
 
   disownArrayBuffer = async () => {
     if (this.whichStep > 2) return;
-    this.whichStep = 3; // Single-use. Assume only one Macondo worker.
+    this.whichStep = 3; // Single-use. Assume only one Wolges worker.
     this.fetchPromise = undefined;
   };
 
@@ -40,7 +40,7 @@ class Loadable {
     try {
       const arrayBuffer = await this.getArrayBuffer();
       await this.disownArrayBuffer();
-      return arrayBuffer;
+      return arrayBuffer!;
     } catch (e) {
       console.error(`failed to load ${this.cacheKey}`, e);
       await this.reset();
@@ -53,45 +53,62 @@ const loadablesByLexicon: { [key: string]: Array<Loadable> } = {};
 
 for (const { lexicons, cacheKey, path } of [
   {
-    lexicons: ['CSW19', 'CSW19X', 'NWL20', 'NWL18', 'ECWL'],
-    cacheKey: 'data/letterdistributions/english.csv',
-    path: '/wasm/english.csv',
+    lexicons: [
+      'CSW19',
+      'CSW19X',
+      'NWL20',
+      'NWL18',
+      'NSWL20',
+      'ECWL',
+    ].flatMap((name) => [name, `${name}.WordSmog`]),
+    cacheKey: 'klv/english',
+    path: '/wasm/english.klv',
   },
   {
-    lexicons: ['CSW19', 'CSW19X', 'NWL20', 'NWL18', 'ECWL'],
-    cacheKey: 'data/strategy/default_english/leaves.olv',
-    path: '/wasm/leaves.olv',
+    lexicons: ['FRA20'].flatMap((name) => [name, `${name}.WordSmog`]),
+    cacheKey: 'klv/french',
+    path: '/wasm/french.klv',
   },
   {
-    lexicons: ['CSW19', 'CSW19X', 'NWL20', 'NWL18', 'ECWL'],
-    cacheKey: 'data/strategy/default_english/preendgame.json',
-    path: '/wasm/preendgame.json',
+    lexicons: ['RD28'].flatMap((name) => [name, `${name}.WordSmog`]),
+    cacheKey: 'klv/german',
+    path: '/wasm/german.klv',
   },
   {
-    lexicons: ['CSW19'],
-    cacheKey: 'data/lexica/gaddag/CSW19.gaddag',
-    path: '/wasm/CSW19.gaddag',
+    lexicons: ['NSF21'].flatMap((name) => [name, `${name}.WordSmog`]),
+    cacheKey: 'klv/norwegian',
+    path: '/wasm/norwegian.klv',
   },
-  {
-    lexicons: ['CSW19X'],
-    cacheKey: 'data/lexica/gaddag/CSW19X.gaddag',
-    path: '/wasm/CSW19X.gaddag',
-  },
-  {
-    lexicons: ['NWL20'],
-    cacheKey: 'data/lexica/gaddag/NWL20.gaddag',
-    path: '/wasm/NWL20.gaddag',
-  },
-  {
-    lexicons: ['NWL18'],
-    cacheKey: 'data/lexica/gaddag/NWL18.gaddag',
-    path: '/wasm/NWL18.gaddag',
-  },
-  {
-    lexicons: ['ECWL'],
-    cacheKey: 'data/lexica/gaddag/ECWL.gaddag',
-    path: '/wasm/ECWL.gaddag',
-  },
+  ...[
+    'CSW19',
+    'CSW19X',
+    'NWL20',
+    'NWL18',
+    'NSWL20',
+    'ECWL',
+    'FRA20',
+    'RD28',
+    'NSF21',
+  ].map((name) => ({
+    lexicons: [name],
+    cacheKey: `kwg/${name}`,
+    path: `/wasm/${name}.kwg`,
+  })),
+  ...[
+    'CSW19',
+    'CSW19X',
+    'NWL20',
+    'NWL18',
+    'NSWL20',
+    'ECWL',
+    'FRA20',
+    'RD28',
+    'NSF21',
+  ].map((name) => ({
+    lexicons: [`${name}.WordSmog`],
+    cacheKey: `kwg/${name}.WordSmog`,
+    path: `/wasm/${name}.kad`,
+  })),
 ]) {
   const loadable = new Loadable(cacheKey, path);
   for (const lexicon of lexicons) {
@@ -102,134 +119,49 @@ for (const { lexicons, cacheKey, path } of [
   }
 }
 
-const macondoWasmLoadable = new Loadable(
-  'macondo.wasm',
-  `/wasm/${window.RUNTIME_CONFIGURATION.macondoFilename}`
-);
-
 const unrace = new Unrace();
 
-export interface Macondo {
-  loadLexicon: (lexicon: string) => Promise<unknown>;
-  precache: (loadable: Loadable) => Promise<unknown>;
-  analyze: (jsonBoard: string) => Promise<string>;
-}
+const wolgesCache = new WeakMap();
 
-let wrappedWorker: Macondo;
-
-export const getMacondo = async (lexicon: string) =>
+export const getWolges = async (lexicon: string) =>
   unrace.run(async () => {
     // Allow these files to start loading.
-    macondoWasmLoadable.startFetch();
-    for (const loadable of loadablesByLexicon[lexicon] ?? []) {
+    const wolgesPromise = import('wolges-wasm');
+    const effectiveLoadables = loadablesByLexicon[lexicon] ?? [];
+    for (const loadable of effectiveLoadables) {
       loadable.startFetch();
     }
 
-    if (!wrappedWorker) {
-      const pendings: {
-        [key: string]: {
-          promise: Promise<unknown>;
-          res: (a: any) => void;
-          rej: (a: any) => void;
-        };
-      } = {};
-
-      const newPendingId = () => {
-        while (true) {
-          const d = String(performance.now());
-          if (d in pendings) continue;
-
-          let promRes: (a: any) => void;
-          let promRej: (a: any) => void;
-          const prom = new Promise((res, rej) => {
-            promRes = res;
-            promRej = rej;
-          });
-
-          pendings[d] = {
-            promise: prom,
-            res: promRes!,
-            rej: promRej!,
-          };
-
-          return d;
-        }
-      };
-
-      // First-time load.
-      const worker = new Worker('/wasm/macondo.js');
-
-      {
-        const macondoWasmArrayBuffer = (await macondoWasmLoadable.getSingleUseArrayBuffer())!;
-        worker.postMessage(
-          ['getMacondo', macondoWasmArrayBuffer],
-          [macondoWasmArrayBuffer]
-        );
-      } // unscope
-
-      await new Promise((res, rej) => {
-        worker.onmessage = (msg) => {
-          if (msg.data[0] === 'response') {
-            // ["response", id, true, resp]
-            // ["response", id, false] (error)
-            const pending = pendings[msg.data[1]];
-            if (pending) {
-              if (msg.data[2]) {
-                pending.res!(msg.data[3]);
-              } else {
-                pending.rej!(undefined);
-              }
-            }
-          } else if (msg.data[0] === 'getMacondo') {
-            // ["getMacondo", true] (ok)
-            // ["getMacondo", false] (error)
-            msg.data[1] ? res() : rej();
-          }
-        };
-      });
-
-      const sendRequest = async (req: any, transfer?: Array<Transferable>) => {
-        const id = newPendingId();
-        if (transfer) {
-          worker.postMessage(['request', id, req], transfer);
-        } else {
-          worker.postMessage(['request', id, req]);
-        }
-        try {
-          return await pendings[id].promise;
-        } finally {
-          delete pendings[id];
-        }
-      };
-
-      class WrappedMacondo {
-        loadLexicon = async (lexicon: string) => {
-          return await Promise.all(
-            (loadablesByLexicon[lexicon] ?? []).map((loadable) =>
-              this.precache(loadable)
-            )
-          );
-        };
-
-        precache = async (loadable: Loadable) => {
-          const arrayBuffer = await loadable.getSingleUseArrayBuffer();
-          if (arrayBuffer) {
-            await sendRequest(
-              ['precache', loadable.cacheKey, loadable.path, arrayBuffer],
-              [arrayBuffer]
-            );
-          }
-        };
-
-        analyze = async (jsonBoard: string) => {
-          return (await sendRequest(['analyze', jsonBoard])) as string;
-        };
-      }
-
-      wrappedWorker = new WrappedMacondo();
+    const wolges = await wolgesPromise;
+    let cachedStuffs = wolgesCache.get(wolges);
+    if (!cachedStuffs) {
+      wolgesCache.set(wolges, (cachedStuffs = {}));
     }
 
-    await wrappedWorker.loadLexicon(lexicon);
-
-    return wrappedWorker;
+    await Promise.all(
+      effectiveLoadables.map(async (loadable) => {
+        const cacheKey = loadable.cacheKey;
+        if (!cachedStuffs[cacheKey]) {
+          const splitAt = cacheKey.indexOf('/');
+          if (splitAt < 0) throw new Error(`invalid cache key ${cacheKey}`);
+          const type = cacheKey.substring(0, splitAt);
+          const name = cacheKey.substring(splitAt + 1);
+          if (type === 'klv') {
+            await wolges.precache_klv(
+              name,
+              new Uint8Array(await loadable.getSingleUseArrayBuffer())
+            );
+          } else if (type === 'kwg') {
+            await wolges.precache_kwg(
+              name,
+              new Uint8Array(await loadable.getSingleUseArrayBuffer())
+            );
+          } else {
+            throw new Error(`invalid cache key ${cacheKey}`);
+          }
+          cachedStuffs[cacheKey] = true;
+        }
+      })
+    );
+    return wolges;
   });

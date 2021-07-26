@@ -6,6 +6,7 @@ message DefineWordsRequest {
   string lexicon = 1;
   repeated string words = 2;
   bool definitions = 3; // pass true to retrieve definitions
+  bool anagrams = 4;
 }
 
 message DefineWordsResult {

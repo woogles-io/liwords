@@ -9,6 +9,7 @@ import (
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -63,13 +64,18 @@ type Quickdata struct {
 	NewRatings        []float64
 }
 
-// Holds the tournament data for a game.
+// TournamentData holds the tournament data for a game.
 // This is nil if the game is not a tournament game.
 type TournamentData struct {
 	Id        string
 	Division  string `json:"d"`
 	Round     int    `json:"r"`
 	GameIndex int    `json:"i"`
+}
+
+// MetaEventData holds a list of meta events, such as requesting aborts, adjourns, etc.
+type MetaEventData struct {
+	Events []*pb.GameMetaEvent `json:"events"`
 }
 
 // A Game should be saved to the database or store. It wraps a macondo.Game,
@@ -102,6 +108,7 @@ type Game struct {
 
 	Quickdata      *Quickdata
 	TournamentData *TournamentData
+	MetaEvents     *MetaEventData
 	CreatedAt      time.Time
 }
 
@@ -135,6 +142,11 @@ func NewGame(mcg *game.Game, req *pb.GameRequest) *Game {
 // SetTimerModule sets the timer for a game to the given Nower.
 func (g *Game) SetTimerModule(n Nower) {
 	g.nower = n
+}
+
+// TimerModule gets the Nower for this game.
+func (g *Game) TimerModule() Nower {
+	return g.nower
 }
 
 // Reset timers to _now_. The game is actually starting.
@@ -231,17 +243,70 @@ func (g *Game) RecordTimeOfMove(idx int) {
 	g.calculateAndSetTimeRemaining(idx, now, true)
 }
 
+// LastOutstandingMetaRequest returns the last meta request that has not yet been responded to.
+// If a user ID is passed in, it only returns that user's last request, if it exists.
+// If no such event exists, it returns nil.
+func LastOutstandingMetaRequest(evts []*pb.GameMetaEvent, uid string, now int64) *pb.GameMetaEvent {
+	var lastReq *pb.GameMetaEvent
+	var lastReqID string
+	for _, e := range evts {
+
+		switch e.Type {
+		case pb.GameMetaEvent_REQUEST_ABORT,
+			pb.GameMetaEvent_REQUEST_ADJUDICATION,
+			pb.GameMetaEvent_REQUEST_UNDO,
+			pb.GameMetaEvent_REQUEST_ADJOURN:
+
+			if uid != "" && e.PlayerId != uid {
+				// not our event
+				break
+			}
+
+			lastReqID = e.OrigEventId
+			lastReq = e
+
+		case pb.GameMetaEvent_ABORT_ACCEPTED,
+			pb.GameMetaEvent_ABORT_DENIED,
+			pb.GameMetaEvent_ADJUDICATION_ACCEPTED,
+			pb.GameMetaEvent_ADJUDICATION_DENIED,
+			pb.GameMetaEvent_TIMER_EXPIRED:
+
+			if e.OrigEventId == lastReqID {
+				// We found a match, so clear the last request
+				lastReq = nil
+				lastReqID = ""
+			}
+		}
+	}
+	if lastReq != nil && lastReq.Timestamp != nil {
+		// convert to milliseconds, as `now` is in milliseconds.
+		sinceBeginning := now - (lastReq.Timestamp.AsTime().UnixNano() / int64(time.Millisecond))
+		// calculate lastReq's expiry as of _now_ (but we're not saving it back,
+		// this is just for FE purposes)
+		lastReq = proto.Clone(lastReq).(*pb.GameMetaEvent)
+		lastReq.Expiry -= int32(sinceBeginning)
+	}
+	log.Debug().Interface("lastReq", lastReq).Msg("returning last outstanding req")
+
+	return lastReq
+}
+
 func (g *Game) HistoryRefresherEvent() *pb.GameHistoryRefresher {
 	now := g.nower.Now()
 
 	g.calculateAndSetTimeRemaining(0, now, false)
 	g.calculateAndSetTimeRemaining(1, now, false)
+	var outstandingEvent *pb.GameMetaEvent
+	if g.Playing() != macondopb.PlayState_GAME_OVER {
+		outstandingEvent = LastOutstandingMetaRequest(g.MetaEvents.Events, "", now)
+	}
 
 	return &pb.GameHistoryRefresher{
 		History:            g.History(),
 		TimePlayer1:        int32(g.TimeRemaining(0)),
 		TimePlayer2:        int32(g.TimeRemaining(1)),
 		MaxOvertimeMinutes: g.GameReq.MaxOvertimeMinutes,
+		OutstandingEvent:   outstandingEvent,
 	}
 }
 
@@ -267,7 +332,9 @@ func (g *Game) RegisterChangeHook(eventChan chan<- *EventWrapper) error {
 
 // SendChange sends an event via the registered hook.
 func (g *Game) SendChange(e *EventWrapper) {
-	log.Debug().Interface("evt", e.Event).Interface("aud", e.Audience()).Msg("send-change")
+	log.Debug().Interface("evt", e.Event).
+		Interface("aud", e.Audience()).
+		Int("chan-length", len(g.ChangeHook)).Msg("send-change")
 	if g.ChangeHook == nil {
 		// This should never happen in actual operation; consider making it a Fatal.
 		log.Error().Msg("change hook is closed!")
@@ -275,6 +342,31 @@ func (g *Game) SendChange(e *EventWrapper) {
 	}
 	g.ChangeHook <- e
 	log.Debug().Msg("change sent")
+}
+
+func (g *Game) NewActiveGameEntry(gameStillActive bool) *EventWrapper {
+	ttl := int64(0) // seconds
+	if gameStillActive {
+		// Ideally we would set this based on time remaining (and round it up).
+		// But since we don't want to refresh every turn, we can just set a very long expiry here.
+		// A 60min + 60sec increment game can take 12 hours.
+		// - Both players start with 60 mins each.
+		// - Game lasts 600 turns (5 passes, play one tile, repeat 100 times).
+		ttl = 12 * 60 * 60
+	}
+	players := g.History().Players
+	activeGamePlayers := make([]*pb.ActiveGamePlayer, 0, len(players))
+	for _, player := range players {
+		activeGamePlayers = append(activeGamePlayers, &pb.ActiveGamePlayer{
+			Username: player.Nickname,
+			UserId:   player.UserId,
+		})
+	}
+	return WrapEvent(&pb.ActiveGameEntry{
+		Id:     g.GameID(),
+		Player: activeGamePlayers,
+		Ttl:    ttl,
+	}, pb.MessageType_ACTIVE_GAME_ENTRY)
 }
 
 func (g *Game) SetGameEndReason(r pb.GameEndReason) {

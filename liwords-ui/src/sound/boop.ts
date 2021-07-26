@@ -1,5 +1,21 @@
-/* eslint-disable global-require */
 import { Unrace } from '../utils/unrace';
+
+const soundToggleCache: { all: boolean | undefined } = { all: undefined };
+
+const soundIsEnabled = (soundName: string) => {
+  void soundName;
+  let cachedToggle = soundToggleCache['all'];
+  if (cachedToggle === undefined) {
+    // localStorage is synchronous, try not to do it too often.
+    // Not sure if this is helpful...
+    cachedToggle = localStorage.getItem('enableSilentSite') !== 'true';
+    soundToggleCache['all'] = cachedToggle;
+    setTimeout(() => {
+      soundToggleCache['all'] = undefined;
+    }, 1000);
+  }
+  return cachedToggle;
+};
 
 class Booper {
   private audio: HTMLAudioElement;
@@ -25,11 +41,15 @@ class Booper {
     const isPlaying = this.times > 0;
     try {
       // Use .muted, because iOS does not support .volume.
-      this.audio.muted = !isPlaying;
-      // On some browsers (desktop included), audio may start midway.
-      this.audio.currentTime = isPlaying ? 0 : this.audio.duration;
-      await this.audio.play();
-      this.unlocked = true;
+      const thisAudioMuted = !(isPlaying && soundIsEnabled(this.soundName));
+      // Always unlock.
+      if (!thisAudioMuted || !this.unlocked) {
+        this.audio.muted = thisAudioMuted;
+        // On some browsers (desktop included), audio may start midway.
+        this.audio.currentTime = isPlaying ? 0 : this.audio.duration;
+        await this.audio.play();
+        this.unlocked = true;
+      }
       if (isPlaying) --this.times;
     } catch (e) {
       console.warn(
@@ -59,12 +79,14 @@ for (const booper of [
   new Booper('startgameSound', require('../assets/startgame.mp3')),
   new Booper('endgameSound', require('../assets/endgame.mp3')),
   new Booper('woofSound', require('../assets/woof.mp3')),
+  new Booper('meowSound', require('../assets/meow.mp3')),
   new Booper('receiveMsgSound', require('../assets/receivechat.mp3')),
   new Booper(
     'startTourneyRoundSound',
     require('../assets/newtourneyround.mp3')
   ),
   new Booper('wolgesSound', require('../assets/wolges.mp3')),
+  new Booper('abortnudgeSound', require('../assets/abortnudge.mp3')),
 ]) {
   playableSounds[booper.soundName] = booper;
 }
@@ -99,4 +121,5 @@ const playSound = (soundName: string) => {
 
 export const BoopSounds = {
   playSound,
+  soundIsEnabled,
 };

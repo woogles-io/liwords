@@ -21,6 +21,7 @@ import (
 	"github.com/domino14/liwords/pkg/mod"
 	cfgstore "github.com/domino14/liwords/pkg/stores/config"
 	"github.com/domino14/liwords/pkg/stores/game"
+	modstore "github.com/domino14/liwords/pkg/stores/mod"
 	"github.com/domino14/liwords/pkg/stores/session"
 	"github.com/domino14/liwords/pkg/stores/soughtgame"
 	"github.com/domino14/liwords/pkg/stores/stats"
@@ -38,6 +39,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	pkgprofile "github.com/domino14/liwords/pkg/profile"
+	pkgredis "github.com/domino14/liwords/pkg/stores/redis"
 	tournamentstore "github.com/domino14/liwords/pkg/stores/tournament"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
@@ -142,8 +144,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	stores.PresenceStore = user.NewRedisPresenceStore(redisPool)
-	stores.ChatStore = user.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore)
+
+	stores.NotorietyStore, err = modstore.NewNotorietyStore(cfg.DBConnString)
+	if err != nil {
+		panic(err)
+	}
+	stores.PresenceStore = pkgredis.NewRedisPresenceStore(redisPool)
+	stores.ChatStore = pkgredis.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore)
 
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
 		cfg.SecretKey, cfg.MailgunKey, cfg.ArgonConfig)
@@ -152,7 +159,7 @@ func main() {
 	profileService := pkgprofile.NewProfileService(stores.UserStore, pkguser.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET")))
 	wordService := words.NewWordService(&cfg.MacondoConfig)
 	autocompleteService := pkguser.NewAutocompleteService(stores.UserStore)
-	socializeService := pkguser.NewSocializeService(stores.UserStore, stores.ChatStore)
+	socializeService := pkguser.NewSocializeService(stores.UserStore, stores.ChatStore, stores.PresenceStore)
 	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore)
 	tournamentService := tournament.NewTournamentService(stores.TournamentStore, stores.UserStore)
 	modService := mod.NewModService(stores.UserStore, stores.ChatStore, cfg.MailgunKey, cfg.DiscordToken)

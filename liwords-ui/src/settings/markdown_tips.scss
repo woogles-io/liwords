@@ -1,0 +1,18 @@
+@import '../base';
+@include button;
+@include tabs;
+
+.markdown-tips {
+  @include container;
+  .ant-table {
+    @include colorModed() {
+      background-color: m($background);
+      color: m($gray-extreme);
+    }
+  }
+  .ant-table tr:hover > td {
+    @include colorModed() {
+      background-color: m($background);
+    }
+  }
+}

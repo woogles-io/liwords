@@ -12,12 +12,15 @@ import { PlayerAvatar } from '../shared/player_avatar';
 import './scss/playerCards.scss';
 import { GameMetadata, PlayerMetadata } from './game_info';
 import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { DisplayUserFlag } from '../shared/display_flag';
+import { useBriefProfile } from '../utils/brief_profiles';
 
 const colors = require('../base.scss');
 
 type CardProps = {
   player: RawPlayerInfo | undefined;
   time: Millis;
+  initialTimeSeconds: Millis;
   meta: Array<PlayerMetadata>;
   playing: boolean;
   score: number;
@@ -38,17 +41,18 @@ const timepenalty = (time: Millis) => {
 
 const PlayerCard = React.memo((props: CardProps) => {
   const { isExamining } = useExamineStoreContext();
+  const briefProfile = useBriefProfile(props.player?.userID);
 
   if (!props.player) {
     return <Card />;
   }
-
   // Find the metadata for this player.
   const meta = props.meta.find((pi) => pi.user_id === props.player?.userID);
   const timeStr =
     isExamining || props.playing ? millisToTimeStr(props.time) : '--:--';
   // TODO: what we consider low time likely be set somewhere and not a magic number
-  const timeLow = props.time <= 180000 && props.time > 0;
+  const timeLowCutoff = Math.max(props.initialTimeSeconds / 5, 30000);
+  const timeLow = props.time <= timeLowCutoff && props.time > 0;
   const timeOut = props.time <= 0;
   return (
     <div
@@ -58,24 +62,17 @@ const PlayerCard = React.memo((props: CardProps) => {
       <Row className="player">
         <PlayerAvatar player={meta} />
         <div className="player-info">
-          <p className="player-name">{meta?.full_name || meta?.nickname}</p>
-          {meta?.country_code ? (
-            <img
-              className="player-flag"
-              src={meta.country_code}
-              // Todo: It would be better if FullPlayerInfo included a displayable country name, for screen readers, etc.
-              alt="Country Flag"
-            />
-          ) : (
-            ''
-          )}
+          <p className="player-name">
+            {briefProfile?.getFullName() || meta?.nickname}
+          </p>
           <div className="player-details">
+            <DisplayUserFlag uuid={props.player?.userID} />
             {meta?.rating || 'Unrated'} •{' '}
             <Link
               target="_blank"
               to={`/profile/${encodeURIComponent(meta?.nickname ?? '')}`}
             >
-              View Profile
+              View profile
             </Link>
           </div>
         </div>
@@ -165,6 +162,7 @@ export const PlayerCards = React.memo((props: Props) => {
         player={p0}
         meta={props.playerMeta}
         time={p0Time}
+        initialTimeSeconds={initialTimeSeconds}
         score={p0Score}
         spread={p0Spread}
         playing={playing}
@@ -173,6 +171,7 @@ export const PlayerCards = React.memo((props: Props) => {
         player={p1}
         meta={props.playerMeta}
         time={p1Time}
+        initialTimeSeconds={initialTimeSeconds}
         score={p1Score}
         spread={-p0Spread}
         playing={playing}

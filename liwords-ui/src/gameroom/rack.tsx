@@ -1,12 +1,9 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useDrop, XYCoord } from 'react-dnd';
-import {
-  CrosswordGameTileValues,
-  runeToValues,
-} from '../constants/tile_values';
 import Tile, { TILE_TYPE } from './tile';
 import { isTouchDevice } from '../utils/cwgame/common';
 import { useExaminableGameContextStoreContext } from '../store/store';
+import { Alphabet, runeToValues } from '../constants/alphabets';
 
 // const TileSpacing = 6;
 
@@ -29,6 +26,7 @@ const calculatePosition = (
 type Props = {
   letters: string;
   grabbable: boolean;
+  alphabet: Alphabet;
   onTileClick?: (idx: number) => void;
   selected?: Set<number>;
   moveRackTile: (
@@ -90,9 +88,13 @@ export const Rack = React.memo((props: Props) => {
     }),
   });
   const rackRef = useRef(null);
-  if (isTouchDevice()) {
-    drop(rackRef);
-  }
+  const isTouchDeviceResult = isTouchDevice();
+  useEffect(() => {
+    if (isTouchDeviceResult) {
+      drop(rackRef);
+    }
+  }, [isTouchDeviceResult, drop]);
+
   const renderTiles = () => {
     const tiles = [];
     if (!props.letters || props.letters.length === 0) {
@@ -104,7 +106,7 @@ export const Rack = React.memo((props: Props) => {
       tiles.push(
         <Tile
           rune={rune}
-          value={runeToValues(rune, CrosswordGameTileValues)}
+          value={runeToValues(props.alphabet, rune)}
           lastPlayed={false}
           playerOfTile={examinableGameContext.onturn}
           key={`tile_${n}`}

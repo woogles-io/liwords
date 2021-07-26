@@ -32,6 +32,8 @@ services:
     ports:
       - "8001:8001"
     labels:
+      - "traefik.http.middlewares.floc.headers.customresponseheaders.Permissions-Policy=interest-cohort=()"
+      - "traefik.http.routers.liwords.middlewares=floc"
       - "traefik.http.routers.liwords.rule=PathPrefix(`/twirp/`)"
       - "traefik.http.routers.liwords.entrypoints=web"
       - "traefik.http.services.liwords.loadbalancer.server.port=8001"
@@ -46,7 +48,7 @@ services:
       LETTER_DISTRIBUTION_PATH: /opt/program/data/letterdistributions
       STRATEGY_PARAMS_PATH: /opt/program/data/strategy
       NATS_URL: nats://nats:4222
-      DEBUG: 1
+      DEBUG: 0
     volumes:
       - ../macondo:/opt/program:rw
       # Use the same gaddag files we use for the WASM integration.
@@ -67,9 +69,12 @@ services:
     volumes:
       - ../liwords-socket:/opt/program:rw
     command: ["go", "run", "-race", "cmd/socketsrv/main.go"]
+    depends_on: ["nats"]
     networks:
       - aeronet
     labels:
+      - "traefik.http.middlewares.floc.headers.customresponseheaders.Permissions-Policy=interest-cohort=()"
+      - "traefik.http.routers.liwords-socket.middlewares=floc"
       - "traefik.http.routers.liwords-socket.rule=PathPrefix(`/ws`)"
       - "traefik.http.routers.liwords-socket.entrypoints=web"
       - "traefik.http.services.liwords-socket.loadbalancer.server.port=8087"
@@ -117,6 +122,7 @@ services:
       POSTGRES_DB: liwords
     volumes:
       - pg-data-volume:/var/lib/postgresql/data
+      # - /Users/cesar:/opt/cesar
     ports:
       - 5432:5432
     networks:
@@ -137,6 +143,8 @@ services:
     networks:
       - aeronet
     labels:
+      - "traefik.http.middlewares.floc.headers.customresponseheaders.Permissions-Policy=interest-cohort=()"
+      - "traefik.http.routers.liwords-fe.middlewares=floc"
       - "traefik.http.routers.liwords-fe.rule=PathPrefix(`/`)"
       - "traefik.http.services.liwords-fe.loadbalancer.server.port=3000"
       - traefik.enable=true

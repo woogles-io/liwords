@@ -25,6 +25,7 @@ type backingStore interface {
 	Exists(context.Context, string) (bool, error)
 	ListActive(ctx context.Context, tourneyID string) (*gs.GameInfoResponses, error)
 	Count(ctx context.Context) (int64, error)
+	GameEventChan() chan<- *entity.EventWrapper
 	SetGameEventChan(ch chan<- *entity.EventWrapper)
 	Disconnect()
 	SetReady(ctx context.Context, gid string, pidx int) (int, error)
@@ -92,6 +93,10 @@ func (c *Cache) Unload(ctx context.Context, id string) {
 	c.Lock()
 	defer c.Unlock()
 	c.activeGamesLastUpdated = time.Time{}
+}
+
+func (c *Cache) GameEventChan() chan<- *entity.EventWrapper {
+	return c.backing.GameEventChan()
 }
 
 // SetGameEventChan sets the game event channel to the passed in channel.

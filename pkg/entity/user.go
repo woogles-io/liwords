@@ -9,6 +9,8 @@ import (
 
 	"github.com/domino14/liwords/pkg/glicko"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
+	"github.com/domino14/liwords/rpc/api/proto/realtime"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -42,7 +44,8 @@ type User struct {
 	IsMod          bool
 	IsAdmin        bool
 
-	Actions *Actions
+	Actions   *Actions
+	Notoriety int
 }
 
 type UserPermission int
@@ -64,14 +67,16 @@ type Session struct {
 
 // Profile is a user profile. It might not be defined for anonymous users.
 type Profile struct {
-	FirstName   string
-	LastName    string
+	FirstName string
+	LastName  string
+	// BirthDate uses ISO format YYYY-MM-DD
+	BirthDate   string
 	CountryCode string
 	Title       string
 	About       string
 	Ratings     Ratings
 	Stats       ProfileStats
-	AvatarUrl	string
+	AvatarUrl   string
 }
 
 // If the RD is <= this number, the rating is "known"
@@ -132,10 +137,26 @@ func (u *User) GetRating(ratingKey VariantKey) (*SingleRating, error) {
 func (u *User) RealName() string {
 	if u.Profile != nil {
 		if u.Profile.FirstName != "" {
-			return u.Profile.FirstName + " " + u.Profile.LastName
+			if u.Profile.LastName != "" {
+				return u.Profile.FirstName + " " + u.Profile.LastName
+			} else {
+				return u.Profile.FirstName
+			}
 		} else {
 			return u.Profile.LastName
 		}
+	}
+	return ""
+}
+
+// RealNameIfNotYouth returns a user's real name, only if they are older than
+// 13. If a birth date has not been provided, do not show it.
+func (u *User) RealNameIfNotYouth() string {
+	if u.Profile == nil {
+		return ""
+	}
+	if u.IsChild() == realtime.ChildStatus_NOT_CHILD {
+		return u.RealName()
 	}
 	return ""
 }
@@ -146,4 +167,39 @@ func (u *User) AvatarUrl() string {
 	} else {
 		return u.Profile.AvatarUrl
 	}
+}
+
+// TournamentID returns the "player ID" of a user. UUID:username is probably not
+// a good design, but let's at least narrow it down to this function.
+func (u *User) TournamentID() string {
+	return u.UUID + ":" + u.Username
+}
+
+func InferChildStatus(dob string, now time.Time) realtime.ChildStatus {
+	// The birth date must be in the form YYYY-MM-DD
+	birthDateTime, err := time.Parse(time.RFC3339Nano, dob+"T00:00:00.000Z")
+	if err != nil {
+		// This means the birth date was either not defined or malformed
+		// Either way, the child status should be unknown
+		return realtime.ChildStatus_UNKNOWN
+	} else {
+		timeOfNotChild := birthDateTime.AddDate(13, 0, 0)
+		if now.After(timeOfNotChild) {
+			return realtime.ChildStatus_NOT_CHILD
+		} else {
+			return realtime.ChildStatus_CHILD
+		}
+	}
+}
+
+func IsAdult(dob string, now time.Time) bool {
+	return InferChildStatus(dob, now) == realtime.ChildStatus_NOT_CHILD
+}
+
+func (u *User) IsChild() realtime.ChildStatus {
+	if u.Profile == nil {
+		log.Error().Str("uuid", u.UUID).Msg("unexpected-nil-profile")
+		return realtime.ChildStatus_UNKNOWN
+	}
+	return InferChildStatus(u.Profile.BirthDate, time.Now())
 }

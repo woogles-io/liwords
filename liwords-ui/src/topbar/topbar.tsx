@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import './topbar.scss';
 import { DisconnectOutlined, SettingOutlined } from '@ant-design/icons/lib';
-import { notification, Dropdown, Tooltip, Modal } from 'antd';
+import { notification, Dropdown, Tooltip } from 'antd';
 import {
   useLagStoreContext,
   useLoginStateStoreContext,
@@ -12,12 +12,27 @@ import {
   useTournamentStoreContext,
 } from '../store/store';
 import { toAPIUrl } from '../api/api';
-import { Login } from '../lobby/login';
+import { LoginModal } from '../lobby/login';
 import { useMountedState } from '../utils/mounted';
+import { isClubType } from '../store/constants';
 
 const colors = require('../base.scss');
 
 const TopMenu = React.memo((props: Props) => {
+  const aboutMenu = (
+    <ul>
+      <li>
+        <Link className="plain" to="/team">
+          Meet the team
+        </Link>
+      </li>
+      <li>
+        <Link className="plain" to="/terms">
+          Terms of Service
+        </Link>
+      </li>
+    </ul>
+  );
   return (
     <div className="top-header-menu">
       <div className="top-header-left-frame-crossword-game">
@@ -42,7 +57,16 @@ const TopMenu = React.memo((props: Props) => {
         </a>
       </div>
       <div className="top-header-left-frame-special-land">
-        <Link to="/about">About Us</Link>
+        <Dropdown
+          overlayClassName="user-menu"
+          overlay={aboutMenu}
+          placement="bottomCenter"
+          getPopupContainer={() =>
+            document.getElementById('root') as HTMLElement
+          }
+        >
+          <p>About Us</p>
+        </Dropdown>
       </div>
     </div>
   );
@@ -83,7 +107,12 @@ export const TopBar = React.memo((props: Props) => {
     <ul>
       <li>
         <Link className="plain" to={`/profile/${encodeURIComponent(username)}`}>
-          View Profile
+          View profile
+        </Link>
+      </li>
+      <li>
+        <Link className="plain" to={`/settings`}>
+          Settings
         </Link>
       </li>
       <li onClick={handleLogout} className="link plain">
@@ -92,7 +121,9 @@ export const TopBar = React.memo((props: Props) => {
     </ul>
   );
 
-  const homeLink = props.tournamentID ? tournamentContext.metadata.slug : '/';
+  const homeLink = props.tournamentID
+    ? tournamentContext.metadata?.getSlug()
+    : '/';
 
   return (
     <nav className="top-header" id="main-nav">
@@ -116,7 +147,7 @@ export const TopBar = React.memo((props: Props) => {
             {props.tournamentID ? (
               <div className="tournament">
                 Back to
-                {['CLUB', 'CHILD'].includes(tournamentContext.metadata.type)
+                {isClubType(tournamentContext.metadata?.getType())
                   ? ' Club'
                   : ' Tournament'}
               </div>
@@ -151,18 +182,7 @@ export const TopBar = React.memo((props: Props) => {
             <Link to="/register">
               <button className="primary">Sign Up</button>
             </Link>
-            <Modal
-              className="login-modal"
-              title="Welcome back, friend!"
-              visible={loginModalVisible}
-              onCancel={() => {
-                setLoginModalVisible(false);
-              }}
-              footer={null}
-              width={332}
-            >
-              <Login />
-            </Modal>
+            <LoginModal {...{ loginModalVisible, setLoginModalVisible }} />
           </div>
         )}
       </div>

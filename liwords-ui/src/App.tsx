@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import { Route, Switch, useLocation } from 'react-router-dom';
+import { Route, Switch, useLocation, Redirect } from 'react-router-dom';
 import { useMountedState } from './utils/mounted';
 import './App.scss';
 import axios from 'axios';
@@ -10,13 +10,18 @@ import TileImages from './gameroom/tile_images';
 import { Lobby } from './lobby/lobby';
 import {
   useExcludedPlayersStoreContext,
+  useLoginStateStoreContext,
   useResetStoreContext,
+  useModeratorStoreContext,
+  FriendUser,
+  useFriendsStoreContext,
 } from './store/store';
 
 import { LiwordsSocket } from './socket/socket';
-import { About } from './about/about';
+import { Team } from './about/team';
 import { Register } from './lobby/register';
 import { UserProfile } from './profile/profile';
+import { Settings } from './settings/settings';
 import { PasswordChange } from './lobby/password_change';
 import { PasswordReset } from './lobby/password_reset';
 import { NewPassword } from './lobby/new_password';
@@ -26,14 +31,38 @@ import { encodeToSocketFmt } from './utils/protobuf';
 import { Clubs } from './clubs';
 import { TournamentRoom } from './tournament/room';
 import { Admin } from './admin/admin';
+import { DonateSuccess } from './donate_success';
+import { TermsOfService } from './about/termsOfService';
 
 type Blocks = {
   user_ids: Array<string>;
 };
 
-const useDarkMode = localStorage?.getItem('darkMode') === 'true';
+type ModsResponse = {
+  admin_user_ids: Array<string>;
+  mod_user_ids: Array<string>;
+};
 
+type FriendsResponse = {
+  users: Array<FriendUser>;
+};
+
+const useDarkMode = localStorage?.getItem('darkMode') === 'true';
 document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
+
+const userTile = localStorage?.getItem('userTile');
+if (userTile) {
+  document?.body?.classList?.add(`tile--${userTile}`);
+}
+
+const userBoard = localStorage?.getItem('userBoard');
+if (userBoard) {
+  document?.body?.classList?.add(`board--${userBoard}`);
+}
+const bnjyTile = localStorage?.getItem('bnjyMode') === 'true';
+if (bnjyTile) {
+  document?.body?.classList?.add(`bnjyMode`);
+}
 
 const App = React.memo(() => {
   const { useState } = useMountedState();
@@ -44,6 +73,22 @@ const App = React.memo(() => {
     pendingBlockRefresh,
     setPendingBlockRefresh,
   } = useExcludedPlayersStoreContext();
+
+  const { loginState } = useLoginStateStoreContext();
+  const { loggedIn, userID } = loginState;
+
+  const {
+    setAdmins,
+    setModerators,
+    setModsFetched,
+  } = useModeratorStoreContext();
+
+  const {
+    setFriends,
+    pendingFriendsRefresh,
+    setPendingFriendsRefresh,
+  } = useFriendsStoreContext();
+
   const { resetStore } = useResetStoreContext();
 
   // See store.tsx for how this works.
@@ -66,23 +111,33 @@ const App = React.memo(() => {
   }, [isCurrentLocation, resetStore]);
 
   const getFullBlocks = useCallback(() => {
-    axios
-      .post<Blocks>(
-        toAPIUrl('user_service.SocializeService', 'GetFullBlocks'),
-        {},
-        { withCredentials: true }
-      )
-      .then((resp) => {
-        setExcludedPlayers(new Set<string>(resp.data.user_ids));
-      })
-      .catch((e) => {
+    void userID; // used only as effect dependency
+    (async () => {
+      let toExclude = new Set<string>();
+      try {
+        if (loggedIn) {
+          const resp = await axios.post<Blocks>(
+            toAPIUrl('user_service.SocializeService', 'GetFullBlocks'),
+            {},
+            { withCredentials: true }
+          );
+          toExclude = new Set<string>(resp.data.user_ids);
+        }
+      } catch (e) {
         console.log(e);
-      })
-      .finally(() => {
+      } finally {
+        setExcludedPlayers(toExclude);
         setExcludedPlayersFetched(true);
         setPendingBlockRefresh(false);
-      });
-  }, [setExcludedPlayers, setExcludedPlayersFetched, setPendingBlockRefresh]);
+      }
+    })();
+  }, [
+    loggedIn,
+    userID,
+    setExcludedPlayers,
+    setExcludedPlayersFetched,
+    setPendingBlockRefresh,
+  ]);
 
   useEffect(() => {
     getFullBlocks();
@@ -93,6 +148,62 @@ const App = React.memo(() => {
       getFullBlocks();
     }
   }, [getFullBlocks, pendingBlockRefresh]);
+
+  const getMods = useCallback(() => {
+    axios
+      .post<ModsResponse>(
+        toAPIUrl('user_service.SocializeService', 'GetModList'),
+        {},
+        {}
+      )
+      .then((resp) => {
+        setAdmins(new Set<string>(resp.data.admin_user_ids));
+        setModerators(new Set<string>(resp.data.mod_user_ids));
+      })
+      .catch((e) => {
+        console.log(e);
+      })
+      .finally(() => {
+        setModsFetched(true);
+      });
+  }, [setAdmins, setModerators, setModsFetched]);
+
+  useEffect(() => {
+    getMods();
+  }, [getMods]);
+
+  const getFriends = useCallback(() => {
+    if (loggedIn) {
+      axios
+        .post<FriendsResponse>(
+          toAPIUrl('user_service.SocializeService', 'GetFollows'),
+          {},
+          {}
+        )
+        .then((resp) => {
+          console.log('Fetched friends:', resp);
+          const friends: { [uuid: string]: FriendUser } = {};
+          resp.data.users.forEach((f: FriendUser) => {
+            friends[f.uuid] = f;
+          });
+          setFriends(friends);
+        })
+        .catch((e) => {
+          console.log(e);
+        })
+        .finally(() => setPendingFriendsRefresh(false));
+    }
+  }, [setFriends, setPendingFriendsRefresh, loggedIn]);
+
+  useEffect(() => {
+    getFriends();
+  }, [getFriends]);
+
+  useEffect(() => {
+    if (pendingFriendsRefresh) {
+      getFriends();
+    }
+  }, [getFriends, pendingFriendsRefresh]);
 
   const sendChat = useCallback(
     (msg: string, chan: string) => {
@@ -141,7 +252,13 @@ const App = React.memo(() => {
           <GameTable sendSocketMsg={sendMessage} sendChat={sendChat} />
         </Route>
         <Route path="/about">
-          <About />
+          <Team />
+        </Route>
+        <Route path="/team">
+          <Team />
+        </Route>
+        <Route path="/terms">
+          <TermsOfService />
         </Route>
         <Route path="/register">
           <Register />
@@ -160,11 +277,18 @@ const App = React.memo(() => {
         <Route path="/profile/:username">
           <UserProfile />
         </Route>
+        <Route path="/settings/:section?">
+          <Settings />
+        </Route>
         <Route path="/tile_images">
-          <TileImages />
+          <TileImages letterDistribution="english" />
         </Route>
         <Route path="/admin">
           <Admin />
+        </Route>
+        <Redirect from="/donate" to="/settings/donate" />
+        <Route path="/donate_success">
+          <DonateSuccess />
         </Route>
       </Switch>
     </div>

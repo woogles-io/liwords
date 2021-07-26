@@ -19,15 +19,19 @@ export enum ActionType {
   /* tourney actions */
   AddTourneyGameResult,
   AddTourneyGameResults,
+  DeleteDivision,
   SetTourneyGamesOffset,
-
   SetTourneyMetadata,
   SetDivisionData,
   SetDivisionsData,
+  SetDivisionRoundControls,
+  SetDivisionPairings,
+  DeleteDivisionPairings,
+  SetDivisionControls,
+  SetDivisionPlayers,
+  SetTournamentFinished,
   StartTourneyRound,
-
-  // competitor context
-  SetTourneyStatus,
+  SetReadyForGame,
 
   /* game actions */
   AddGameEvent,
@@ -35,6 +39,7 @@ export enum ActionType {
   RefreshHistory,
   ClearHistory,
   EndGame,
+  ProcessGameMetaEvent,
 
   /* login state actions */
   SetAuthentication,

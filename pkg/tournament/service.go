@@ -12,7 +12,9 @@ import (
 
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/user"
+	"github.com/domino14/liwords/pkg/utilities"
 
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
@@ -60,17 +62,15 @@ func (ts *TournamentService) RemoveDivision(ctx context.Context, req *pb.Tournam
 }
 
 func (ts *TournamentService) SetTournamentMetadata(ctx context.Context, req *pb.SetTournamentMetadataRequest) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, false)
+	if req.Metadata == nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, "tournament metadata was empty")
+	}
+	err := authenticateDirector(ctx, ts, req.Metadata.Id, false)
 	if err != nil {
 		return nil, err
 	}
 
-	ttype, err := validateTournamentMeta(req.Type, req.Slug)
-	if err != nil {
-		return nil, err
-	}
-
-	err = SetTournamentMetadata(ctx, ts.tournamentStore, req.Id, req.Name, req.Description, req.Slug, ttype)
+	err = SetTournamentMetadata(ctx, ts.tournamentStore, req.Metadata)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -89,13 +89,25 @@ func (ts *TournamentService) SetSingleRoundControls(ctx context.Context, req *pb
 	return &pb.TournamentResponse{}, nil
 }
 
-func (ts *TournamentService) SetTournamentControls(ctx context.Context, req *realtime.TournamentControls) (*pb.TournamentResponse, error) {
+func (ts *TournamentService) SetRoundControls(ctx context.Context, req *realtime.DivisionRoundControls) (*pb.TournamentResponse, error) {
+	err := authenticateDirector(ctx, ts, req.Id, false)
+	if err != nil {
+		return nil, err
+	}
+	err = SetRoundControls(ctx, ts.tournamentStore, req.Id, req.Division, req.RoundControls)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	return &pb.TournamentResponse{}, nil
+}
+
+func (ts *TournamentService) SetDivisionControls(ctx context.Context, req *realtime.DivisionControls) (*pb.TournamentResponse, error) {
 	err := authenticateDirector(ctx, ts, req.Id, false)
 	if err != nil {
 		return nil, err
 	}
 
-	err = SetTournamentControls(ctx, ts.tournamentStore, req.Id, req.Division, req)
+	err = SetDivisionControls(ctx, ts.tournamentStore, req.Id, req.Division, req)
 
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
@@ -113,7 +125,7 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTourn
 		return nil, twirp.NewError(twirp.InvalidArgument, "need at least one director id")
 	}
 	directors := &realtime.TournamentPersons{
-		Persons: make(map[string]int32),
+		Persons: []*realtime.TournamentPerson{},
 	}
 	for idx := range req.DirectorUsernames {
 		username := req.DirectorUsernames[idx]
@@ -121,7 +133,7 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTourn
 		if err != nil {
 			return nil, err
 		}
-		directors.Persons[u.UUID+":"+u.Username] = int32(idx)
+		directors.Persons = append(directors.Persons, &realtime.TournamentPerson{Id: u.TournamentID(), Rating: int32(idx)})
 	}
 
 	log.Debug().Interface("directors", directors).Msg("directors")
@@ -139,6 +151,14 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTourn
 		Id:   t.UUID,
 		Slug: t.Slug,
 	}, nil
+}
+
+func (ts *TournamentService) GetTournament(ctx context.Context, req *pb.GetTournamentRequest) (*realtime.FullTournamentDivisions, error) {
+	response, err := GetXHRResponse(ctx, ts.tournamentStore, req.Id)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	return response, nil
 }
 
 func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.GetTournamentMetadataRequest) (*pb.TournamentMetadataResponse, error) {
@@ -164,10 +184,10 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.
 
 	directors := []string{}
 
-	for uid, n := range t.Directors.Persons {
+	for n, director := range t.Directors.Persons {
 		// Legacy "persons" are stored as just their UUIDs.
 		// We later on store them as uuid:username to speed up lookups.
-		splitid := strings.Split(uid, ":")
+		splitid := strings.Split(director.Id, ":")
 		var uuid, username string
 		if len(splitid) == 2 {
 			username = splitid[1]
@@ -175,7 +195,7 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.
 		} else if len(splitid) == 1 {
 			uuid = splitid[0]
 		} else {
-			return nil, twirp.NewError(twirp.InvalidArgument, "bad userID: "+uid)
+			return nil, twirp.NewError(twirp.InvalidArgument, "bad userID: "+director.Id)
 		}
 
 		if username == "" {
@@ -205,21 +225,25 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.
 	default:
 		return nil, fmt.Errorf("unrecognized tournament type: %v", t.Type)
 	}
-	divNames := make([]string, len(t.Divisions))
-	idx := 0
-	for d := range t.Divisions {
-		divNames[idx] = d
-		idx++
+	metadata := &pb.TournamentMetadata{
+		Id:                        t.UUID,
+		Name:                      t.Name,
+		Description:               t.Description,
+		Slug:                      t.Slug,
+		Type:                      tt,
+		Disclaimer:                t.ExtraMeta.Disclaimer,
+		TileStyle:                 t.ExtraMeta.TileStyle,
+		BoardStyle:                t.ExtraMeta.BoardStyle,
+		DefaultClubSettings:       t.ExtraMeta.DefaultClubSettings,
+		FreeformClubSettingFields: t.ExtraMeta.FreeformClubSettingFields,
+		Password:                  t.ExtraMeta.Password,
+		Logo:                      t.ExtraMeta.Logo,
+		Color:                     t.ExtraMeta.Color,
 	}
 
 	return &pb.TournamentMetadataResponse{
-		Name:        t.Name,
-		Description: t.Description,
-		Directors:   directors,
-		Slug:        t.Slug,
-		Id:          t.UUID,
-		Type:        tt,
-		Divisions:   divNames,
+		Metadata:  metadata,
+		Directors: directors,
 	}, nil
 
 }
@@ -234,6 +258,7 @@ func (ts *TournamentService) AddDirectors(ctx context.Context, req *realtime.Tou
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
+
 	return &pb.TournamentResponse{}, nil
 }
 func (ts *TournamentService) RemoveDirectors(ctx context.Context, req *realtime.TournamentPersons) (*pb.TournamentResponse, error) {
@@ -319,7 +344,11 @@ func (ts *TournamentService) PairRound(ctx context.Context, req *pb.PairRoundReq
 	if err != nil {
 		return nil, err
 	}
-	err = PairRound(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round))
+	if req.DeletePairings {
+		err = DeletePairings(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round))
+	} else {
+		err = PairRound(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round), req.PreserveByes)
+	}
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -331,19 +360,12 @@ func (ts *TournamentService) RecentGames(ctx context.Context, req *pb.RecentGame
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)
 	}
+	// Censors the response in-place
+	err = censorRecentGamesResponse(ctx, ts.userStore, response)
+	if err != nil {
+		return nil, twirp.InternalErrorWith(err)
+	}
 	return response, nil
-}
-
-func (ts *TournamentService) StartTournament(ctx context.Context, req *pb.StartTournamentRequest) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, true)
-	if err != nil {
-		return nil, err
-	}
-	err = StartTournament(ctx, ts.tournamentStore, req.Id, true)
-	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
-	}
-	return &pb.TournamentResponse{}, nil
 }
 
 func (ts *TournamentService) FinishTournament(ctx context.Context, req *pb.FinishTournamentRequest) (*pb.TournamentResponse, error) {
@@ -363,69 +385,17 @@ func (ts *TournamentService) StartRoundCountdown(ctx context.Context, req *pb.To
 	if err != nil {
 		return nil, err
 	}
-	err = StartRoundCountdown(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round), true, true)
+
+	if req.StartAllRounds {
+		err = StartAllRoundCountdowns(ctx, ts.tournamentStore, req.Id, int(req.Round))
+	} else {
+		err = StartRoundCountdown(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round), true, true, true)
+	}
+
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	return &pb.TournamentResponse{}, nil
-}
-
-func sessionUser(ctx context.Context, ts *TournamentService) (*entity.User, error) {
-	sess, err := apiserver.GetSession(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	user, err := ts.userStore.Get(ctx, sess.Username)
-	if err != nil {
-		log.Err(err).Msg("getting-user")
-		return nil, twirp.InternalErrorWith(err)
-	}
-	return user, nil
-}
-
-func directorOrAdmin(ctx context.Context, ts *TournamentService) (*entity.User, error) {
-
-	user, err := sessionUser(ctx, ts)
-	if err != nil {
-		return nil, err
-	}
-
-	if !user.IsDirector && !user.IsAdmin {
-		return nil, twirp.NewError(twirp.Unauthenticated, "this user is not an authorized director")
-	}
-	return user, nil
-}
-
-func authenticateDirector(ctx context.Context, ts *TournamentService, id string, authenticateExecutive bool) error {
-	user, err := directorOrAdmin(ctx, ts)
-	if err != nil {
-		return err
-	}
-	// Site admins are always allowed to modify any tournaments. (There should only be a small number of these)
-	if user.IsAdmin {
-		return nil
-	}
-
-	t, err := ts.tournamentStore.Get(ctx, id)
-	if err != nil {
-		return twirp.InternalErrorWith(err)
-	}
-	fullID := user.UUID + ":" + user.Username
-	log.Debug().Str("fullID", fullID).Interface("persons", t.Directors.Persons).Msg("authenticating-director")
-
-	if authenticateExecutive && fullID != t.ExecutiveDirector {
-		return twirp.NewError(twirp.Unauthenticated, "this user is not the authorized executive director for this event")
-	}
-	_, authorized := t.Directors.Persons[fullID]
-	if !authorized {
-		return twirp.NewError(twirp.Unauthenticated, "this user is not an authorized director for this event")
-	}
-	if t.IsFinished {
-		return twirp.NewError(twirp.InvalidArgument, "this tournament is finished and cannot be modified")
-	}
-
-	return nil
 }
 
 func (ts *TournamentService) CreateClubSession(ctx context.Context, req *pb.NewClubSessionRequest) (*pb.ClubSessionResponse, error) {
@@ -465,6 +435,107 @@ func (ts *TournamentService) GetRecentClubSessions(ctx context.Context, req *pb.
 	return ts.tournamentStore.GetRecentClubSessions(ctx, req.Id, int(req.Count), int(req.Offset))
 }
 
+func sessionUser(ctx context.Context, ts *TournamentService) (*entity.User, error) {
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := ts.userStore.Get(ctx, sess.Username)
+	if err != nil {
+		log.Err(err).Msg("getting-user")
+		return nil, twirp.InternalErrorWith(err)
+	}
+	return user, nil
+}
+
+func directorOrAdmin(ctx context.Context, ts *TournamentService) (*entity.User, error) {
+
+	user, err := sessionUser(ctx, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	if !user.IsDirector && !user.IsAdmin {
+		return nil, twirp.NewError(twirp.Unauthenticated, "this user is not an authorized director")
+	}
+	return user, nil
+}
+
+func authenticateDirector(ctx context.Context, ts *TournamentService, id string, authenticateExecutive bool) error {
+	user, err := sessionUser(ctx, ts)
+	if err != nil {
+		return err
+	}
+	// Site admins are always allowed to modify any tournaments. (There should only be a small number of these)
+	if user.IsAdmin {
+		return nil
+	}
+
+	t, err := ts.tournamentStore.Get(ctx, id)
+	if err != nil {
+		return twirp.InternalErrorWith(err)
+	}
+	fullID := user.TournamentID()
+	log.Debug().Str("fullID", fullID).Interface("persons", t.Directors.Persons).Msg("authenticating-director")
+
+	if authenticateExecutive && fullID != t.ExecutiveDirector {
+		return twirp.NewError(twirp.Unauthenticated, "this user is not the authorized executive director for this event")
+	}
+	authorized := false
+	for _, director := range t.Directors.Persons {
+		if director.Id == fullID {
+			authorized = true
+			break
+		}
+	}
+	if !authorized {
+		return twirp.NewError(twirp.Unauthenticated, "this user is not an authorized director for this event")
+	}
+	if t.IsFinished {
+		return twirp.NewError(twirp.InvalidArgument, "this tournament is finished and cannot be modified")
+	}
+
+	return nil
+}
+
+func censorRecentGamesResponse(ctx context.Context, us user.Store, rgr *pb.RecentGamesResponse) error {
+	knownUsers := make(map[string]bool)
+
+	for _, game := range rgr.Games {
+		playerOneUserEntity, err := us.Get(ctx, game.Players[0].Username)
+		if err != nil {
+			return err
+		}
+		playerTwoUserEntity, err := us.Get(ctx, game.Players[1].Username)
+		if err != nil {
+			return err
+		}
+		playerOne := playerOneUserEntity.UUID
+		playerTwo := playerTwoUserEntity.UUID
+
+		_, known := knownUsers[playerOne]
+		if !known {
+			knownUsers[playerOne] = mod.IsCensorable(ctx, us, playerOne)
+		}
+		if knownUsers[playerOne] {
+			game.Players[0].Username = utilities.CensoredUsername
+		}
+
+		_, known = knownUsers[playerTwo]
+		if !known {
+			knownUsers[playerTwo] = mod.IsCensorable(ctx, us, playerTwo)
+		}
+		if knownUsers[playerTwo] {
+			game.Players[1].Username = utilities.CensoredUsername
+			if knownUsers[playerOne] {
+				game.Players[1].Username = utilities.AnotherCensoredUsername
+			}
+		}
+	}
+	return nil
+}
+
 // CheckIn does not require director permission.
 func (ts *TournamentService) CheckIn(ctx context.Context, req *pb.CheckinRequest) (*pb.TournamentResponse, error) {
 	user, err := sessionUser(ctx, ts)
@@ -472,7 +543,7 @@ func (ts *TournamentService) CheckIn(ctx context.Context, req *pb.CheckinRequest
 		return nil, err
 	}
 
-	err = CheckIn(ctx, ts.tournamentStore, req.Id, user.UUID+":"+user.Username)
+	err = CheckIn(ctx, ts.tournamentStore, req.Id, user.TournamentID())
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -487,6 +558,39 @@ func (ts *TournamentService) UncheckIn(ctx context.Context, req *pb.UncheckInReq
 	err = UncheckIn(ctx, ts.tournamentStore, req.Id)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	return &pb.TournamentResponse{}, nil
+}
+
+func (ts *TournamentService) UnstartTournament(ctx context.Context, req *pb.UnstartTournamentRequest) (*pb.TournamentResponse, error) {
+	// Unstarting a tournament rolls the round back to zero, and deletes all game info,
+	// but does not delete the players or divisions.
+	// Obviously this is only meant to be used for testing purposes.
+	err := authenticateDirector(ctx, ts, req.Id, false)
+	if err != nil {
+		return nil, err
+	}
+
+	t, err := ts.tournamentStore.Get(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	for division := range t.Divisions {
+		dm := t.Divisions[division].DivisionManager
+		if dm == nil {
+			return nil, fmt.Errorf("cannot reset division %s because it has a nil division manager", division)
+		}
+		err = dm.ResetToBeginning()
+		if err != nil {
+			return nil, err
+		}
+	}
+	t.IsStarted = false
+
+	err = ts.tournamentStore.Set(ctx, t)
+	if err != nil {
+		return nil, err
 	}
 	return &pb.TournamentResponse{}, nil
 }
