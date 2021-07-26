@@ -23,28 +23,6 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
-const ModActionEmailTemplate = `
-Dear Woogles.io user,
-
-The following action was taken against your account:
-
-%s
-
-If you think this was an error, please contact conduct@woogles.io.
-
-The Woogles.io team
-`
-
-var ModActionEmailMap = map[ms.ModActionType]string{
-	ms.ModActionType_MUTE:                    "Disable Chat",
-	ms.ModActionType_SUSPEND_ACCOUNT:         "Account Suspension",
-	ms.ModActionType_SUSPEND_RATED_GAMES:     "Disable Rated Games",
-	ms.ModActionType_SUSPEND_GAMES:           "Disable Games",
-	ms.ModActionType_RESET_RATINGS:           "Reset Ratings",
-	ms.ModActionType_RESET_STATS:             "Reset Statistics",
-	ms.ModActionType_RESET_STATS_AND_RATINGS: "Reset Ratings and Statistics",
-}
-
 var ModActionDispatching = map[string]func(context.Context, user.Store, user.ChatStore, *ms.ModAction) error{
 
 	/*
@@ -347,12 +325,20 @@ func applyAction(ctx context.Context, us user.Store, cs user.ChatStore,
 	actionEmailText, ok := ModActionEmailMap[action.Type]
 	if ok {
 		if mailgunKey != "" {
-			_, err := emailer.SendSimpleMessage(mailgunKey, user.Email, fmt.Sprintf("Account Taken Against %s", user.Username),
-				fmt.Sprintf(ModActionEmailTemplate, actionEmailText))
+			emailContent, err := instantiateEmail(user.Username, actionEmailText, action.Note, action.StartTime, action.EndTime)
 			if err != nil {
-				// Errors should not be fatal, just log them
-				log.Err(err).Str("userID", user.UUID).Msg("mod-action-user-email")
+				_, err := emailer.SendSimpleMessage(mailgunKey,
+					user.Email,
+					fmt.Sprintf("Woogles Terms of Service Violation for Account %s", user.Username),
+					emailContent)
+				if err != nil {
+					// Errors should not be fatal, just log them
+					log.Err(err).Str("userID", user.UUID).Msg("mod-action-send-user-email")
+				}
+			} else {
+				log.Err(err).Str("userID", user.UUID).Msg("mod-action-generate-user-email")
 			}
+
 		}
 		if discordToken != "" {
 			modUser, err := us.GetByUUID(ctx, action.ApplierUserId)
