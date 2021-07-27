@@ -326,7 +326,7 @@ func applyAction(ctx context.Context, us user.Store, cs user.ChatStore,
 	if ok {
 		if mailgunKey != "" {
 			emailContent, err := instantiateEmail(user.Username, actionEmailText, action.Note, action.StartTime, action.EndTime)
-			if err != nil {
+			if err == nil {
 				_, err := emailer.SendSimpleMessage(mailgunKey,
 					user.Email,
 					fmt.Sprintf("Woogles Terms of Service Violation for Account %s", user.Username),
@@ -361,7 +361,6 @@ func applyAction(ctx context.Context, us user.Store, cs user.ChatStore,
 					}
 				}
 				requestBody, err := json.Marshal(map[string]string{"content": message})
-
 				// Errors should not be fatal, just log them
 				if err != nil {
 					log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-marshal")

@@ -53,7 +53,7 @@ func recreateDB() {
 	for _, u := range []*entity.User{
 		{Username: "Spammer", Email: "spammer@woogles.io", UUID: "Spammer"},
 		{Username: "Sandbagger", Email: "sandbagger@gmail.com", UUID: "Sandbagger"},
-		{Username: "Cheater", Email: "cheater@woogles.io", UUID: "Cheater"},
+		{Username: "Cheater", Email: "josh@woogles.io", UUID: "Cheater"},
 		{Username: "Hacker", Email: "hacker@woogles.io", UUID: "Hacker"},
 		{Username: "Deleter", Email: "deleter@woogles.io", UUID: "Deleter"},
 		{Username: "Moderator", Email: "admin@woogles.io", UUID: "Moderator", IsMod: true},
@@ -312,6 +312,33 @@ func TestMod(t *testing.T) {
 	is.True(deleterUser.Profile.About == "")
 	us.(*user.DBStore).Disconnect()
 
+}
+
+func TestNotifications(t *testing.T) {
+	is := is.New(t)
+	session := &entity.Session{
+		ID:       "abcdef",
+		Username: "Moderator",
+		UserUUID: "Moderator",
+		Expiry:   time.Now().Add(time.Second * 100)}
+	ctx := context.Background()
+	ctx = apiserver.PlaceInContext(ctx, session)
+	cstr := TestingDBConnStr + " dbname=liwords_test"
+	mailgunKey := "a"
+	discordToken := "b"
+	recreateDB()
+	us := userStore(cstr)
+	cs := chatStore(cstr)
+
+	permanentAction := &ms.ModAction{UserId: "Spammer", Type: ms.ModActionType_MUTE, Duration: 0}
+	suspendAction := &ms.ModAction{UserId: "Cheater", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: 100, Note: "ya boy is a CHEaT lmaoo"}
+
+	// Apply Actions
+	err := ApplyActions(ctx, us, cs, mailgunKey, discordToken, []*ms.ModAction{permanentAction})
+	is.NoErr(err)
+	err = ApplyActions(ctx, us, cs, mailgunKey, discordToken, []*ms.ModAction{suspendAction})
+	is.NoErr(err)
+	us.(*user.DBStore).Disconnect()
 }
 
 func equalActionHistories(ah1 []*ms.ModAction, ah2 []*ms.ModAction) error {
