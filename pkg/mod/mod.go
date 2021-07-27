@@ -325,7 +325,12 @@ func applyAction(ctx context.Context, us user.Store, cs user.ChatStore,
 	actionEmailText, ok := ModActionEmailMap[action.Type]
 	if ok {
 		if mailgunKey != "" {
-			emailContent, err := instantiateEmail(user.Username, actionEmailText, action.Note, action.StartTime, action.EndTime)
+			emailContent, err := instantiateEmail(user.Username,
+				actionEmailText,
+				action.Note,
+				action.StartTime,
+				action.EndTime,
+				action.EmailType)
 			if err == nil {
 				_, err := emailer.SendSimpleMessage(mailgunKey,
 					user.Email,

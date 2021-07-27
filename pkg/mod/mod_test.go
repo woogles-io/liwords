@@ -331,7 +331,7 @@ func TestNotifications(t *testing.T) {
 	cs := chatStore(cstr)
 
 	permanentAction := &ms.ModAction{UserId: "Spammer", Type: ms.ModActionType_MUTE, Duration: 0}
-	suspendAction := &ms.ModAction{UserId: "Cheater", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: 100, Note: "ya boy is a CHEaT lmaoo"}
+	suspendAction := &ms.ModAction{UserId: "Cheater", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: 100, EmailType: ms.EmailType_CHEATING}
 
 	// Apply Actions
 	err := ApplyActions(ctx, us, cs, mailgunKey, discordToken, []*ms.ModAction{permanentAction})
