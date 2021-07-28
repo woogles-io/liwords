@@ -18,12 +18,13 @@ import (
 )
 
 type ProfileService struct {
-	userStore     user.Store
-	avatarService user.UploadService
+	userStore          user.Store
+	actionHistoryStore mod.ActionHistoryStore
+	avatarService      user.UploadService
 }
 
-func NewProfileService(u user.Store, us user.UploadService) *ProfileService {
-	return &ProfileService{userStore: u, avatarService: us}
+func NewProfileService(u user.Store, ahs mod.ActionHistoryStore, us user.UploadService) *ProfileService {
+	return &ProfileService{userStore: u, actionHistoryStore: ahs, avatarService: us}
 }
 
 func (ps *ProfileService) GetRatings(ctx context.Context, r *pb.RatingsRequest) (*pb.RatingsResponse, error) {
@@ -70,7 +71,7 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 
-	permaban, possiblyForceLogout := mod.ActionExists(ctx, ps.userStore, user.UUID, true, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	permaban, possiblyForceLogout := mod.ActionExists(ctx, ps.userStore, ps.actionHistoryStore, user.UUID, true, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 
 	subjectIsMe := sess != nil && sess.UserUUID == user.UUID
 
@@ -203,7 +204,7 @@ func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *pb.UpdateAvatarRe
 		return nil, twirp.InternalErrorWith(err)
 	}
 
-	_, err = mod.ActionExists(ctx, ps.userStore, user.UUID, true, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	_, err = mod.ActionExists(ctx, ps.userStore, ps.actionHistoryStore, user.UUID, true, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	if err != nil {
 		return nil, err
 	}

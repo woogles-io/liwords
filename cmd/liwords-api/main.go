@@ -149,6 +149,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	stores.ActionHistoryStore, err = modstore.NewActionHistoryStore(cfg.DBConnString)
+	if err != nil {
+		panic(err)
+	}
+
 	stores.PresenceStore = pkgredis.NewRedisPresenceStore(redisPool)
 	stores.ChatStore = pkgredis.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore)
 

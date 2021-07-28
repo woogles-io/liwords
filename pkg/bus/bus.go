@@ -46,31 +46,33 @@ const (
 )
 
 type Stores struct {
-	UserStore       user.Store
-	GameStore       gameplay.GameStore
-	SoughtGameStore gameplay.SoughtGameStore
-	PresenceStore   user.PresenceStore
-	ChatStore       user.ChatStore
-	ListStatStore   stats.ListStatStore
-	NotorietyStore  mod.NotorietyStore
-	TournamentStore tournament.TournamentStore
-	ConfigStore     config.ConfigStore
-	SessionStore    sessions.SessionStore
+	UserStore          user.Store
+	GameStore          gameplay.GameStore
+	SoughtGameStore    gameplay.SoughtGameStore
+	PresenceStore      user.PresenceStore
+	ChatStore          user.ChatStore
+	ListStatStore      stats.ListStatStore
+	NotorietyStore     mod.NotorietyStore
+	ActionHistoryStore mod.ActionHistoryStore
+	TournamentStore    tournament.TournamentStore
+	ConfigStore        config.ConfigStore
+	SessionStore       sessions.SessionStore
 }
 
 // Bus is the struct; it should contain all the stores to verify messages, etc.
 type Bus struct {
-	natsconn        *nats.Conn
-	config          *config.Config
-	userStore       user.Store
-	gameStore       gameplay.GameStore
-	soughtGameStore gameplay.SoughtGameStore
-	presenceStore   user.PresenceStore
-	listStatStore   stats.ListStatStore
-	notorietyStore  mod.NotorietyStore
-	tournamentStore tournament.TournamentStore
-	configStore     config.ConfigStore
-	chatStore       user.ChatStore
+	natsconn           *nats.Conn
+	config             *config.Config
+	userStore          user.Store
+	gameStore          gameplay.GameStore
+	soughtGameStore    gameplay.SoughtGameStore
+	presenceStore      user.PresenceStore
+	listStatStore      stats.ListStatStore
+	notorietyStore     mod.NotorietyStore
+	actionHistoryStore mod.ActionHistoryStore
+	tournamentStore    tournament.TournamentStore
+	configStore        config.ConfigStore
+	chatStore          user.ChatStore
 
 	redisPool *redis.Pool
 
@@ -99,6 +101,7 @@ func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, err
 		listStatStore:       stores.ListStatStore,
 		tournamentStore:     stores.TournamentStore,
 		notorietyStore:      stores.NotorietyStore,
+		actionHistoryStore:  stores.ActionHistoryStore,
 		configStore:         stores.ConfigStore,
 		chatStore:           stores.ChatStore,
 		subscriptions:       []*nats.Subscription{},
@@ -476,7 +479,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
-		entGame, err := gameplay.HandleEvent(ctx, b.gameStore, b.userStore, b.notorietyStore, b.listStatStore,
+		entGame, err := gameplay.HandleEvent(ctx, b.gameStore, b.userStore, b.notorietyStore, b.actionHistoryStore, b.listStatStore,
 			b.tournamentStore, userID, evt)
 		if err != nil {
 			return err
@@ -500,7 +503,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
-		return gameplay.TimedOut(ctx, b.gameStore, b.userStore, b.notorietyStore, b.listStatStore, b.tournamentStore, evt.UserId, evt.GameId)
+		return gameplay.TimedOut(ctx, b.gameStore, b.userStore, b.notorietyStore, b.actionHistoryStore, b.listStatStore, b.tournamentStore, evt.UserId, evt.GameId)
 
 	case "readyForGame", pb.MessageType_READY_FOR_GAME.String():
 		evt := &pb.ReadyForGame{}

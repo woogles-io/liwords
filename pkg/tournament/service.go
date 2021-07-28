@@ -23,14 +23,15 @@ import (
 // TournamentService is a Twirp service that contains functions that
 // allow directors to interact with their tournaments
 type TournamentService struct {
-	tournamentStore TournamentStore
-	userStore       user.Store
-	eventChannel    chan *entity.EventWrapper
+	tournamentStore    TournamentStore
+	userStore          user.Store
+	actionHistoryStore mod.ActionHistoryStore
+	eventChannel       chan *entity.EventWrapper
 }
 
 // NewTournamentService creates a Twirp TournamentService
-func NewTournamentService(ts TournamentStore, us user.Store) *TournamentService {
-	return &TournamentService{ts, us, nil}
+func NewTournamentService(ts TournamentStore, us user.Store, ahs mod.ActionHistoryStore) *TournamentService {
+	return &TournamentService{ts, us, ahs, nil}
 }
 
 func (ts *TournamentService) SetEventChannel(c chan *entity.EventWrapper) {
@@ -361,7 +362,7 @@ func (ts *TournamentService) RecentGames(ctx context.Context, req *pb.RecentGame
 		return nil, twirp.InternalErrorWith(err)
 	}
 	// Censors the response in-place
-	err = censorRecentGamesResponse(ctx, ts.userStore, response)
+	err = censorRecentGamesResponse(ctx, ts.userStore, ts.actionHistoryStore, response)
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)
 	}
@@ -499,7 +500,7 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 	return nil
 }
 
-func censorRecentGamesResponse(ctx context.Context, us user.Store, rgr *pb.RecentGamesResponse) error {
+func censorRecentGamesResponse(ctx context.Context, us user.Store, ahs mod.ActionHistoryStore, rgr *pb.RecentGamesResponse) error {
 	knownUsers := make(map[string]bool)
 
 	for _, game := range rgr.Games {
@@ -516,7 +517,7 @@ func censorRecentGamesResponse(ctx context.Context, us user.Store, rgr *pb.Recen
 
 		_, known := knownUsers[playerOne]
 		if !known {
-			knownUsers[playerOne] = mod.IsCensorable(ctx, us, playerOne)
+			knownUsers[playerOne] = mod.IsCensorable(ctx, us, ahs, playerOne)
 		}
 		if knownUsers[playerOne] {
 			game.Players[0].Username = utilities.CensoredUsername
@@ -524,7 +525,7 @@ func censorRecentGamesResponse(ctx context.Context, us user.Store, rgr *pb.Recen
 
 		_, known = knownUsers[playerTwo]
 		if !known {
-			knownUsers[playerTwo] = mod.IsCensorable(ctx, us, playerTwo)
+			knownUsers[playerTwo] = mod.IsCensorable(ctx, us, ahs, playerTwo)
 		}
 		if knownUsers[playerTwo] {
 			game.Players[1].Username = utilities.CensoredUsername

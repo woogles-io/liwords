@@ -125,7 +125,7 @@ func lastEventWithId(evts []*pb.GameMetaEvent, origEvtId string) *pb.GameMetaEve
 // HandleMetaEvent processes a passed-in Meta Event, returning an error if
 // it is not applicable.
 func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<- *entity.EventWrapper,
-	gameStore GameStore, userStore user.Store, notorietyStore mod.NotorietyStore,
+	gameStore GameStore, userStore user.Store, notorietyStore mod.NotorietyStore, actionHistoryStore mod.ActionHistoryStore,
 	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore) error {
 	g, err := gameStore.Get(ctx, evt.GameId)
 	if err != nil {
@@ -242,7 +242,7 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 			}
 			g.MetaEvents.Events = append(g.MetaEvents.Events, evt)
 
-			err = processMetaEvent(ctx, g, pseudoEvt, matchingEvt, gameStore, userStore, notorietyStore,
+			err = processMetaEvent(ctx, g, pseudoEvt, matchingEvt, gameStore, userStore, notorietyStore, actionHistoryStore,
 				listStatStore, tournamentStore)
 			if err != nil {
 				return err
@@ -260,7 +260,7 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 			}
 			g.MetaEvents.Events = append(g.MetaEvents.Events, evt)
 
-			err = processMetaEvent(ctx, g, pseudoEvt, matchingEvt, gameStore, userStore, notorietyStore,
+			err = processMetaEvent(ctx, g, pseudoEvt, matchingEvt, gameStore, userStore, notorietyStore, actionHistoryStore,
 				listStatStore, tournamentStore)
 			if err != nil {
 				return err
@@ -277,7 +277,7 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 		}
 		g.MetaEvents.Events = append(g.MetaEvents.Events, evt)
 
-		err = processMetaEvent(ctx, g, evt, matchingEvt, gameStore, userStore, notorietyStore,
+		err = processMetaEvent(ctx, g, evt, matchingEvt, gameStore, userStore, notorietyStore, actionHistoryStore,
 			listStatStore, tournamentStore)
 		if err != nil {
 			return err
@@ -328,7 +328,7 @@ func cancelMetaEvent(ctx context.Context, g *entity.Game, evt *pb.GameMetaEvent)
 }
 
 func processMetaEvent(ctx context.Context, g *entity.Game, evt *pb.GameMetaEvent, matchingEvt *pb.GameMetaEvent,
-	gameStore GameStore, userStore user.Store, notorietyStore mod.NotorietyStore,
+	gameStore GameStore, userStore user.Store, notorietyStore mod.NotorietyStore, actionHistoryStore mod.ActionHistoryStore,
 	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore) error {
 	// process an event in a locked game. evt is the event that came in,
 	// and matchingEvt is the event that it corresponds to.
@@ -370,7 +370,7 @@ func processMetaEvent(ctx context.Context, g *entity.Game, evt *pb.GameMetaEvent
 		g.SetLoserIdx(1 - winner)
 		// performEndgameDuties Sets the game back to the store, so no need to do it again here,
 		// unlike in the other cases.
-		return performEndgameDuties(ctx, g, gameStore, userStore, notorietyStore, listStatStore, tournamentStore)
+		return performEndgameDuties(ctx, g, gameStore, userStore, notorietyStore, actionHistoryStore, listStatStore, tournamentStore)
 	case pb.GameMetaEvent_ADJUDICATION_DENIED:
 		log.Info().Str("gameID", g.GameID()).Msg("adjudication-denied")
 		err := gameStore.Set(ctx, g)

@@ -24,6 +24,7 @@ type gamesetup struct {
 	consumer *evtConsumer
 	ustore   pkguser.Store
 	nstore   pkgmod.NotorietyStore
+	nstore   pkgmod.ActionHistoryStore
 	lstore   pkgstats.ListStatStore
 	gstore   gameplay.GameStore
 	tstore   tournament.TournamentStore

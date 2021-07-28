@@ -55,6 +55,14 @@ func notorietyStore(dbURL string) pkgmod.NotorietyStore {
 	return n
 }
 
+func actionHistoryStore(dbURL string) pkgmod.ActionHistoryStore {
+	n, err := mod.NewActionHistoryStore(TestingDBConnStr + " dbname=liwords_test")
+	if err != nil {
+		log.Fatal().Err(err).Msg("error")
+	}
+	return n
+}
+
 type evtConsumer struct {
 	evts []*entity.EventWrapper
 	ch   chan *entity.EventWrapper
@@ -136,6 +144,7 @@ func TestWrongTurn(t *testing.T) {
 	ustore := userStore(cstr)
 	lstore := listStatStore(cstr)
 	nstore := notorietyStore(cstr)
+	ahstore := actionHistoryStore(cstr)
 	cfg, gstore := gameStore(cstr, ustore)
 	tstore := tournamentStore(cfg, gstore)
 
@@ -163,6 +172,7 @@ func TestWrongTurn(t *testing.T) {
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
 	nstore.(*mod.NotorietyStore).Disconnect()
+	nstore.(*mod.ActionHistoryStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
 }

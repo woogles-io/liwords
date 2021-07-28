@@ -23,9 +23,10 @@ type ctxkey string
 const rtchankey ctxkey = "realtimechan"
 
 type ModService struct {
-	userStore      user.Store
-	notorietyStore NotorietyStore
-	chatStore      user.ChatStore
+	userStore          user.Store
+	notorietyStore     NotorietyStore
+	actionHistoryStore ActionHistoryStore
+	chatStore          user.ChatStore
 }
 
 func NewModService(us user.Store, cs user.ChatStore) *ModService {
@@ -82,7 +83,7 @@ func (ms *ModService) GetActions(ctx context.Context, req *pb.GetActionsRequest)
 	if !(user.IsAdmin || user.IsMod) {
 		return nil, twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
 	}
-	actions, err := GetActions(ctx, ms.userStore, req.UserId)
+	actions, err := GetActions(ctx, ms.userStore, ms.actionHistoryStore, req.UserId)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -97,7 +98,7 @@ func (ms *ModService) GetActionHistory(ctx context.Context, req *pb.GetActionsRe
 	if !(user.IsAdmin || user.IsMod) {
 		return nil, twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
 	}
-	history, err := GetActionHistory(ctx, ms.userStore, req.UserId)
+	history, err := GetActionHistory(ctx, ms.userStore, ms.actionHistoryStore, req.UserId)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -109,7 +110,7 @@ func (ms *ModService) RemoveActions(ctx context.Context, req *pb.ModActionsList)
 	if err != nil {
 		return nil, err
 	}
-	err = RemoveActions(ctx, ms.userStore, req.Actions)
+	err = RemoveActions(ctx, ms.userStore, ms.actionHistoryStore, req.Actions)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -121,7 +122,7 @@ func (ms *ModService) ApplyActions(ctx context.Context, req *pb.ModActionsList) 
 	if err != nil {
 		return nil, err
 	}
-	err = ApplyActions(ctx, ms.userStore, ms.chatStore, req.Actions)
+	err = ApplyActions(ctx, ms.userStore, ms.actionHistoryStore, ms.chatStore, req.Actions)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}

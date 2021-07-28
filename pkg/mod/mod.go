@@ -19,6 +19,11 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
+type ActionHistoryStore interface {
+	AddAction(action *ms.ModAction) error
+	GetActions(playerID string) ([]*ms.ModAction, error)
+}
+
 var ModActionDispatching = map[string]func(context.Context, user.Store, user.ChatStore, *ms.ModAction) error{
 
 	/*
@@ -45,8 +50,8 @@ var ModActionTextMap = map[ms.ModActionType]string{
 	ms.ModActionType_SUSPEND_GAMES:       "playing games",
 }
 
-func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLogout bool, actionTypes []ms.ModActionType) (bool, error) {
-	currentActions, err := GetActions(ctx, us, uuid)
+func ActionExists(ctx context.Context, us user.Store, ahs ActionHistoryStore, uuid string, forceInsistLogout bool, actionTypes []ms.ModActionType) (bool, error) {
+	currentActions, err := GetActions(ctx, us, ahs, uuid)
 	if err != nil {
 		return false, err
 	}
@@ -110,7 +115,7 @@ func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLo
 	return permaban, disabledError
 }
 
-func GetActions(ctx context.Context, us user.Store, uuid string) (map[string]*ms.ModAction, error) {
+func GetActions(ctx context.Context, us user.Store, ahs ActionHistoryStore, uuid string) (map[string]*ms.ModAction, error) {
 	user, err := us.GetByUUID(ctx, uuid)
 	if err != nil {
 		return nil, err
@@ -118,7 +123,7 @@ func GetActions(ctx context.Context, us user.Store, uuid string) (map[string]*ms
 
 	// updateActions will initialize user.Actions.Current
 	// so the return will not result in a nil pointer error
-	updated, err := updateActions(user)
+	updated, err := updateActions(ahs, user)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +138,7 @@ func GetActions(ctx context.Context, us user.Store, uuid string) (map[string]*ms
 	return user.Actions.Current, nil
 }
 
-func GetActionHistory(ctx context.Context, us user.Store, uuid string) ([]*ms.ModAction, error) {
+func GetActionHistory(ctx context.Context, us user.Store, ahs ActionHistoryStore, uuid string) ([]*ms.ModAction, error) {
 	user, err := us.GetByUUID(ctx, uuid)
 	if err != nil {
 		return nil, err
@@ -141,7 +146,7 @@ func GetActionHistory(ctx context.Context, us user.Store, uuid string) ([]*ms.Mo
 
 	// updateActions will initialize user.Actions.History
 	// so the return will not result in a nil pointer error
-	updated, err := updateActions(user)
+	updated, err := updateActions(ahs, user)
 	if err != nil {
 		return nil, err
 	}
@@ -153,10 +158,15 @@ func GetActionHistory(ctx context.Context, us user.Store, uuid string) ([]*ms.Mo
 		}
 	}
 
-	return user.Actions.History, nil
+	history, err := ahs.GetActions(uuid)
+	if err != nil {
+		return nil, err
+	}
+
+	return history, nil
 }
 
-func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore, actions []*ms.ModAction) error {
+func ApplyActions(ctx context.Context, us user.Store, ahs ActionHistoryStore, cs user.ChatStore, actions []*ms.ModAction) error {
 	applierUserId, err := sessionUserId(ctx, us)
 	if err != nil {
 		return err
@@ -165,7 +175,7 @@ func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore, actions
 		if action.Type == ms.ModActionType_DELETE_ACCOUNT {
 			// The DELETE_ACCOUNT action erases the profile,
 			// but we still need to permanently ban
-			err := applyAction(ctx, us, cs, &ms.ModAction{
+			err := applyAction(ctx, us, ahs, cs, &ms.ModAction{
 				UserId:        action.UserId,
 				Type:          ms.ModActionType_SUSPEND_ACCOUNT,
 				Duration:      0,
@@ -176,7 +186,7 @@ func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore, actions
 			}
 		}
 		action.ApplierUserId = applierUserId
-		err := applyAction(ctx, us, cs, action)
+		err := applyAction(ctx, us, ahs, cs, action)
 		if err != nil {
 			return err
 		}
@@ -184,7 +194,7 @@ func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore, actions
 	return nil
 }
 
-func RemoveActions(ctx context.Context, us user.Store, actions []*ms.ModAction) error {
+func RemoveActions(ctx context.Context, us user.Store, ahs ActionHistoryStore, actions []*ms.ModAction) error {
 	removerUserId, err := sessionUserId(ctx, us)
 	if err != nil {
 		return err
@@ -193,11 +203,11 @@ func RemoveActions(ctx context.Context, us user.Store, actions []*ms.ModAction) 
 		// This call will update the user actions
 		// so that actions that have already expired
 		// are not removed by a mod or admin
-		_, err := GetActions(ctx, us, action.UserId)
+		_, err := GetActions(ctx, us, ahs, action.UserId)
 		if err != nil {
 			return err
 		}
-		err = removeAction(ctx, us, action, removerUserId)
+		err = removeAction(ctx, us, ahs, action, removerUserId)
 		if err != nil {
 			return err
 		}
@@ -205,13 +215,13 @@ func RemoveActions(ctx context.Context, us user.Store, actions []*ms.ModAction) 
 	return nil
 }
 
-func IsCensorable(ctx context.Context, us user.Store, uuid string) bool {
+func IsCensorable(ctx context.Context, us user.Store, ahs ActionHistoryStore, uuid string) bool {
 	// Don't censor if already censored
 	if uuid == utilities.CensoredUsername ||
 		uuid == utilities.AnotherCensoredUsername {
 		return false
 	}
-	permaban, _ := ActionExists(ctx, us, uuid, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	permaban, _ := ActionExists(ctx, us, ahs, uuid, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	return permaban
 }
 
@@ -231,12 +241,12 @@ func censorPlayerInHistory(hist *macondopb.GameHistory, playerIndex int, bothCen
 	}
 }
 
-func CensorHistory(ctx context.Context, us user.Store, hist *macondopb.GameHistory) *macondopb.GameHistory {
+func CensorHistory(ctx context.Context, us user.Store, ahs ActionHistoryStore, hist *macondopb.GameHistory) *macondopb.GameHistory {
 	playerOne := hist.Players[0].UserId
 	playerTwo := hist.Players[1].UserId
 
-	playerOneCensorable := IsCensorable(ctx, us, playerOne)
-	playerTwoCensorable := IsCensorable(ctx, us, playerTwo)
+	playerOneCensorable := IsCensorable(ctx, us, ahs, playerOne)
+	playerTwoCensorable := IsCensorable(ctx, us, ahs, playerTwo)
 	bothCensorable := playerOneCensorable && playerTwoCensorable
 
 	if !playerOneCensorable && !playerTwoCensorable {
@@ -255,7 +265,7 @@ func CensorHistory(ctx context.Context, us user.Store, hist *macondopb.GameHisto
 	return censoredHistory
 }
 
-func updateActions(user *entity.User) (bool, error) {
+func updateActions(ahs ActionHistoryStore, user *entity.User) (bool, error) {
 
 	instantiateActions(user)
 
@@ -267,7 +277,7 @@ func updateActions(user *entity.User) (bool, error) {
 		// and should never be removed by this function.
 		convertedEndTime, err := ptypes.Timestamp(action.EndTime)
 		if err == nil && now.After(convertedEndTime) {
-			removeCurrentAction(user, action.Type, "")
+			removeCurrentAction(ahs, user, action.Type, "")
 			updated = true
 		}
 	}
@@ -275,13 +285,13 @@ func updateActions(user *entity.User) (bool, error) {
 	return updated, nil
 }
 
-func removeAction(ctx context.Context, us user.Store, action *ms.ModAction, removerUserId string) error {
+func removeAction(ctx context.Context, us user.Store, ahs ActionHistoryStore, action *ms.ModAction, removerUserId string) error {
 	user, err := us.GetByUUID(ctx, action.UserId)
 	if err != nil {
 		return err
 	}
 
-	err = removeCurrentAction(user, action.Type, removerUserId)
+	err = removeCurrentAction(ahs, user, action.Type, removerUserId)
 	if err != nil {
 		return err
 	}
@@ -289,7 +299,7 @@ func removeAction(ctx context.Context, us user.Store, action *ms.ModAction, remo
 	return us.Set(ctx, user)
 }
 
-func applyAction(ctx context.Context, us user.Store, cs user.ChatStore, action *ms.ModAction) error {
+func applyAction(ctx context.Context, us user.Store, ahs ActionHistoryStore, cs user.ChatStore, action *ms.ModAction) error {
 	user, err := us.GetByUUID(ctx, action.UserId)
 	if err != nil {
 		return err
@@ -305,12 +315,12 @@ func applyAction(ctx context.Context, us user.Store, cs user.ChatStore, action *
 		action.EndTime = action.StartTime
 		action.RemovedTime = action.StartTime
 		action.RemoverUserId = ""
-		err = addActionToHistory(user, action)
+		err = addActionToHistory(action, ahs)
 		if err != nil {
 			return err
 		}
 	} else {
-		err = setCurrentAction(user, action)
+		err = setCurrentAction(ahs, user, action)
 		if err != nil {
 			return err
 		}
@@ -318,13 +328,11 @@ func applyAction(ctx context.Context, us user.Store, cs user.ChatStore, action *
 	return us.Set(ctx, user)
 }
 
-func addActionToHistory(user *entity.User, action *ms.ModAction) error {
-	instantiateActions(user)
-	user.Actions.History = append(user.Actions.History, action)
-	return nil
+func addActionToHistory(action *ms.ModAction, ahs ActionHistoryStore) error {
+	return ahs.AddAction(action)
 }
 
-func setCurrentAction(user *entity.User, action *ms.ModAction) error {
+func setCurrentAction(ahs ActionHistoryStore, user *entity.User, action *ms.ModAction) error {
 	if action.Duration < 0 {
 		return fmt.Errorf("nontransient moderator action has a negative duration: %d", action.Duration)
 	}
@@ -349,7 +357,7 @@ func setCurrentAction(user *entity.User, action *ms.ModAction) error {
 	// Remove existing actions for this type
 	_, actionExists := user.Actions.Current[action.Type.String()]
 	if actionExists {
-		err := removeCurrentAction(user, action.Type, action.ApplierUserId)
+		err := removeCurrentAction(ahs, user, action.Type, action.ApplierUserId)
 		if err != nil {
 			return err
 		}
@@ -358,7 +366,7 @@ func setCurrentAction(user *entity.User, action *ms.ModAction) error {
 	return nil
 }
 
-func removeCurrentAction(user *entity.User, actionType ms.ModActionType, removerUserId string) error {
+func removeCurrentAction(ahs ActionHistoryStore, user *entity.User, actionType ms.ModActionType, removerUserId string) error {
 	instantiateActions(user)
 
 	existingCurrentAction, actionExists := user.Actions.Current[actionType.String()]
@@ -381,7 +389,10 @@ func removeCurrentAction(user *entity.User, actionType ms.ModActionType, remover
 		existingCurrentAction.RemovedTime = currentTime
 	}
 
-	addActionToHistory(user, existingCurrentAction)
+	err := addActionToHistory(existingCurrentAction, ahs)
+	if err != nil {
+		return err
+	}
 	delete(user.Actions.Current, actionType.String())
 	return nil
 }
