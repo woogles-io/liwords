@@ -276,18 +276,18 @@ func TestClassicDivisionRandom(t *testing.T) {
 
 	// Attempt to get the Standings
 	// for an out of range round number
-	_, _, err = tc.GetStandings(8, false)
+	_, _, err = tc.GetStandings(8)
 	is.True(err != nil)
 
 	// Standings are tested in the
 	// King of the Hill Classic Tournament test.
 
 	// Get the standings for round 1
-	_, _, err = tc.GetStandings(0, false)
+	_, _, err = tc.GetStandings(0)
 	is.NoErr(err)
 
 	// Get the standings for round 2
-	_, _, err = tc.GetStandings(1, false)
+	_, _, err = tc.GetStandings(1)
 	is.NoErr(err)
 
 	oddPlayers := makeTournamentPersons(map[string]int32{"One": 1000, "Two": 3000, "Three": 2200, "Jesse": 2100, "Matt": 100})
@@ -348,7 +348,7 @@ func TestClassicDivisionSpreadCap(t *testing.T) {
 	is.NoErr(err)
 
 	// Get the standings for round 1
-	standings, _, err := tc.GetStandings(0, false)
+	standings, _, err := tc.GetStandings(0)
 	is.NoErr(err)
 
 	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player4, Wins: 1, Losses: 0, Draws: 0, Spread: 200},
@@ -373,7 +373,7 @@ func TestClassicDivisionSpreadCap(t *testing.T) {
 	is.NoErr(err)
 
 	// Get the standings for round 2
-	standings, _, err = tc.GetStandings(1, false)
+	standings, _, err = tc.GetStandings(1)
 	is.NoErr(err)
 
 	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{
@@ -432,7 +432,7 @@ func TestClassicDivisionKingOfTheHill(t *testing.T) {
 	is.NoErr(err)
 
 	// Get the standings for round 1
-	standings, _, err := tc.GetStandings(0, false)
+	standings, _, err := tc.GetStandings(0)
 	is.NoErr(err)
 
 	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player4, Wins: 1, Losses: 0, Draws: 0, Spread: 400},
@@ -464,7 +464,7 @@ func TestClassicDivisionKingOfTheHill(t *testing.T) {
 	is.NoErr(err)
 
 	// Get the standings for round 2
-	standings, _, err = tc.GetStandings(1, false)
+	standings, _, err = tc.GetStandings(1)
 	is.NoErr(err)
 
 	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player1, Wins: 2, Losses: 0, Draws: 0, Spread: 420},
@@ -864,10 +864,24 @@ func TestClassicDivisionGibson(t *testing.T) {
 
 	tc.DivisionControls.GibsonSpread = 10
 
-	_, _, err = tc.GetStandings(0, true)
+	_, _, err = tc.GetStandings(0)
 	is.NoErr(err)
 	is.True(tc.countGibsonizedPlayers(0) == 1)
 	is.True(tc.isGibsonized("g", 0))
+
+	// For the last round, it is still only g
+	// who should be gibsonized
+	_, err = pairAndPlay(tc, []string{"h", "g"}, 1)
+	is.NoErr(err)
+
+	complete, err = tc.IsRoundComplete(1)
+	is.NoErr(err)
+	is.True(complete)
+
+	_, _, err = tc.GetStandings(1)
+	is.NoErr(err)
+	is.True(tc.countGibsonizedPlayers(1) == 1)
+	is.True(tc.isGibsonized("g", 1))
 }
 
 func TestClassicDivisionFactor(t *testing.T) {
@@ -946,7 +960,7 @@ func TestClassicDivisionFactor(t *testing.T) {
 	is.True(roundIsComplete)
 
 	// Get the standings for round 1
-	standings, _, err := tc.GetStandings(0, false)
+	standings, _, err := tc.GetStandings(0)
 	is.NoErr(err)
 
 	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: "h", Wins: 1, Losses: 0, Draws: 0, Spread: 400},
@@ -1093,7 +1107,7 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	is.NoErr(err)
 
 	// Get the standings for round 4
-	standings, _, err := tc.GetStandings(3, false)
+	standings, _, err := tc.GetStandings(3)
 	is.NoErr(err)
 
 	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player1, Wins: 3, Losses: 1, Draws: 0, Spread: 800},
@@ -1122,7 +1136,7 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	is.NoErr(err)
 
 	// Get the standings for round 5
-	standings, _, err = tc.GetStandings(4, false)
+	standings, _, err = tc.GetStandings(4)
 	is.NoErr(err)
 
 	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player1, Wins: 4, Losses: 1, Draws: 0, Spread: 900},
@@ -1212,7 +1226,7 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	}
 
 	// Get the standings for round 2
-	standings, _, err = tc.GetStandings(1, false)
+	standings, _, err = tc.GetStandings(1)
 	is.NoErr(err)
 
 	for i := 0; i < len(tc.Matrix[2]); i++ {
@@ -1551,7 +1565,7 @@ func TestClassicDivisionManual(t *testing.T) {
 	is.True(roundIsComplete)
 
 	// Get the standings for round 1
-	standings, _, err := tc.GetStandings(0, false)
+	standings, _, err := tc.GetStandings(0)
 	is.NoErr(err)
 
 	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player4, Wins: 1, Losses: 0, Draws: 0, Spread: 250},
@@ -1574,7 +1588,7 @@ func TestClassicDivisionManual(t *testing.T) {
 	is.True(roundIsComplete)
 
 	// Get the standings for round 1 again
-	standings, _, err = tc.GetStandings(0, false)
+	standings, _, err = tc.GetStandings(0)
 	is.NoErr(err)
 
 	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 100},
@@ -1636,7 +1650,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 	expectedpairing2 := newClassicPairing(tc, 2, 3, 0)
 
 	// Get the initial standings
-	standings, _, err := tc.GetStandings(0, false)
+	standings, _, err := tc.GetStandings(0)
 	is.NoErr(err)
 
 	// Ensure standings for Elimination are correct
@@ -1736,7 +1750,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 	is.True(roundIsComplete)
 
 	// Get the standings for round 1
-	standings, _, err = tc.GetStandings(0, false)
+	standings, _, err = tc.GetStandings(0)
 	is.NoErr(err)
 
 	// Elimination standings are based on wins and player order only
@@ -1971,7 +1985,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 	is.True(roundIsComplete)
 
 	// Get the standings for round 1
-	standings, _, err = tc.GetStandings(0, false)
+	standings, _, err = tc.GetStandings(0)
 	is.NoErr(err)
 
 	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{
@@ -2049,7 +2063,7 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	is.NoErr(err)
 
 	// Get the standings for round 2
-	standings, _, err := tc.GetStandings(1, false)
+	standings, _, err := tc.GetStandings(1)
 	is.NoErr(err)
 
 	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{
@@ -2078,7 +2092,7 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	is.NoErr(err)
 
 	// The bye result for player2 should have already been submitted
-	standings, _, err = tc.GetStandings(2, false)
+	standings, _, err = tc.GetStandings(2)
 	is.NoErr(err)
 
 	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{
@@ -2112,7 +2126,7 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	_, err = tc.AddPlayers(makeTournamentPersons(map[string]int32{"Bummer": 50}))
 	is.NoErr(err)
 
-	standings, _, err = tc.GetStandings(3, false)
+	standings, _, err = tc.GetStandings(3)
 	is.NoErr(err)
 
 	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player1, Wins: 4, Losses: 0, Draws: 0, Spread: 620},
@@ -2155,7 +2169,7 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	_, err = tc.AddPlayers(makeTournamentPersons(map[string]int32{"Guy": 50}))
 	is.True(err != nil)
 
-	standings, _, err = tc.GetStandings(4, false)
+	standings, _, err = tc.GetStandings(4)
 	is.NoErr(err)
 
 	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player1, Wins: 5, Losses: 0, Draws: 0, Spread: 720},
@@ -2208,7 +2222,7 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	standings, _, err := tc.GetStandings(0, false)
+	standings, _, err := tc.GetStandings(0)
 	is.NoErr(err)
 
 	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 200},
@@ -2233,7 +2247,7 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 
 	_, err = tc.RemovePlayers(makeTournamentPersons(map[string]int32{player1: 50}))
 	is.NoErr(err)
-	standings, _, err = tc.GetStandings(1, false)
+	standings, _, err = tc.GetStandings(1)
 	is.NoErr(err)
 
 	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player2, Wins: 1, Losses: 1, Draws: 0, Spread: 0},
@@ -2268,7 +2282,7 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	standings, _, err = tc.GetStandings(4, false)
+	standings, _, err = tc.GetStandings(4)
 	is.NoErr(err)
 
 	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player2, Wins: 3, Losses: 1, Draws: 1, Spread: 400},
@@ -2302,7 +2316,7 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	is.True(pairing.Games[0].Results[0] == realtime.TournamentGameResult_FORFEIT_LOSS)
 	is.True(pairing.Games[0].Results[1] == realtime.TournamentGameResult_FORFEIT_LOSS)
 
-	standings, _, err = tc.GetStandings(5, false)
+	standings, _, err = tc.GetStandings(5)
 	is.NoErr(err)
 
 	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player2, Wins: 4, Losses: 1, Draws: 1, Spread: 600},
@@ -2338,7 +2352,7 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	standings, _, err = tc.GetStandings(8, false)
+	standings, _, err = tc.GetStandings(8)
 	is.NoErr(err)
 
 	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player2, Wins: 7, Losses: 1, Draws: 1, Spread: 1200},
@@ -2367,7 +2381,7 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	is.NoErr(err)
 	is.True(tournamentIsFinished)
 
-	standings, _, err = tc.GetStandings(11, false)
+	standings, _, err = tc.GetStandings(11)
 	is.NoErr(err)
 
 	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player3, Wins: 5, Losses: 7, Draws: 0, Spread: -1050}}} // {PlayerId: player2, Wins: 8, Losses: 3, Draws: 1, Spread: 1300},
@@ -2493,7 +2507,7 @@ func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
 	is.NoErr(err)
 
 	// Get the standings for round 3
-	standings, _, err := tc.GetStandings(2, false)
+	standings, _, err := tc.GetStandings(2)
 	is.NoErr(err)
 
 	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: "h", Wins: 3, Losses: 0, Draws: 0, Spread: 850},
@@ -2522,7 +2536,7 @@ func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
 	is.NoErr(err)
 
 	// Get the standings for round 3
-	standings, _, err = tc.GetStandings(3, false)
+	standings, _, err = tc.GetStandings(3)
 	is.NoErr(err)
 
 	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: "h", Wins: 4, Losses: 0, Draws: 0, Spread: 1250},
@@ -2565,7 +2579,7 @@ func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
 	is.NoErr(err)
 
 	// Get the standings for round 3
-	standings, _, err = tc.GetStandings(4, false)
+	standings, _, err = tc.GetStandings(4)
 	is.NoErr(err)
 
 	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{
@@ -2950,7 +2964,7 @@ func TestClassicDivisionMessages(t *testing.T) {
 			Outcomes:    []realtime.TournamentGameResult{2, 1},
 			ReadyStates: []string{"", ""}}}
 
-	expectedStandings, _, err := tc.GetStandings(0, true)
+	expectedStandings, _, err := tc.GetStandings(0)
 	is.NoErr(err)
 	is.NoErr(equalStandings(expectedStandings, pairingsRsp.DivisionStandings[0]))
 	is.NoErr(equalPairingsResponses(expectedPairingsRsp, pairingsRsp.DivisionPairings))
@@ -2972,7 +2986,7 @@ func TestClassicDivisionMessages(t *testing.T) {
 			Outcomes:    []realtime.TournamentGameResult{2, 1},
 			ReadyStates: []string{"", ""}}}
 
-	expectedStandings, _, err = tc.GetStandings(0, true)
+	expectedStandings, _, err = tc.GetStandings(0)
 	is.NoErr(err)
 	is.NoErr(equalStandings(expectedStandings, pairingsRsp.DivisionStandings[0]))
 
@@ -3549,7 +3563,7 @@ func runRandomTournaments(method realtime.PairingMethod, randomizePairings bool)
 					numberOfPlayers, round, method, numberOfPlayers)
 			}
 
-			_, _, err = tc.GetStandings(round, false)
+			_, _, err = tc.GetStandings(round)
 			if err != nil {
 				return err
 			}
@@ -3564,7 +3578,7 @@ func runRandomTournaments(method realtime.PairingMethod, randomizePairings bool)
 				method, numberOfPlayers)
 		}
 		if tc.RoundControls[0].PairingMethod == realtime.PairingMethod_ELIMINATION {
-			standings, _, err := tc.GetStandings(numberOfRounds-1, false)
+			standings, _, err := tc.GetStandings(numberOfRounds - 1)
 			if err != nil {
 				return err
 			}
