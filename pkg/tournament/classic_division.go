@@ -509,7 +509,7 @@ func (t *ClassicDivision) SubmitResult(round int,
 			pmessage = combinePairingMessages(pmessage, newpmessage)
 		}
 		if t.DivisionControls.AutoStart {
-			err = t.StartRound()
+			err = t.StartRound(true)
 			if err != nil {
 				return nil, err
 			}
@@ -1129,7 +1129,7 @@ func (t *ClassicDivision) IsRoundReady(round int) (bool, error) {
 	return true, nil
 }
 
-func (t *ClassicDivision) StartRound() error {
+func (t *ClassicDivision) IsRoundStartable() error {
 	if t.CurrentRound >= 0 {
 		roundComplete, err := t.IsRoundComplete(int(t.CurrentRound))
 		if err != nil {
@@ -1155,6 +1155,17 @@ func (t *ClassicDivision) StartRound() error {
 	}
 	if !ready {
 		return fmt.Errorf("cannot start round %d because it is not ready", t.CurrentRound+1)
+	}
+	return nil
+}
+
+func (t *ClassicDivision) StartRound(checkForStartable bool) error {
+
+	if checkForStartable {
+		err := t.IsRoundStartable()
+		if err != nil {
+			return err
+		}
 	}
 
 	t.CurrentRound = t.CurrentRound + 1
