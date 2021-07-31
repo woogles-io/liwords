@@ -412,12 +412,7 @@ export const Register = () => {
           <p>
             Welcome to Woogles, the online home for word games! If you want to
             be the champion of crossword game, or maybe just want to find a
-            friendly match you’re in the right place. By the way, signing up
-            means you agree to our{' '}
-            <Link target="_blank" to="/about">
-              Privacy Policy
-            </Link>
-            .
+            friendly match you’re in the right place.
           </p>
           <p>- Woogles and team</p>
           <Form layout="inline" name="register" onFinish={onFinish} form={form}>
