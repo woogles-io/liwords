@@ -1,19 +1,23 @@
 package mod
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
-	"google.golang.org/protobuf/proto"
-
 	"github.com/domino14/liwords/pkg/apiserver"
+	"github.com/domino14/liwords/pkg/emailer"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
 	"github.com/domino14/liwords/pkg/utilities"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/proto"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -156,7 +160,8 @@ func GetActionHistory(ctx context.Context, us user.Store, uuid string) ([]*ms.Mo
 	return user.Actions.History, nil
 }
 
-func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore, actions []*ms.ModAction) error {
+func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore,
+	mailgunKey string, discordToken string, actions []*ms.ModAction) error {
 	applierUserId, err := sessionUserId(ctx, us)
 	if err != nil {
 		return err
@@ -165,7 +170,7 @@ func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore, actions
 		if action.Type == ms.ModActionType_DELETE_ACCOUNT {
 			// The DELETE_ACCOUNT action erases the profile,
 			// but we still need to permanently ban
-			err := applyAction(ctx, us, cs, &ms.ModAction{
+			err := applyAction(ctx, us, cs, mailgunKey, discordToken, &ms.ModAction{
 				UserId:        action.UserId,
 				Type:          ms.ModActionType_SUSPEND_ACCOUNT,
 				Duration:      0,
@@ -176,7 +181,7 @@ func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore, actions
 			}
 		}
 		action.ApplierUserId = applierUserId
-		err := applyAction(ctx, us, cs, action)
+		err := applyAction(ctx, us, cs, mailgunKey, discordToken, action)
 		if err != nil {
 			return err
 		}
@@ -289,7 +294,8 @@ func removeAction(ctx context.Context, us user.Store, action *ms.ModAction, remo
 	return us.Set(ctx, user)
 }
 
-func applyAction(ctx context.Context, us user.Store, cs user.ChatStore, action *ms.ModAction) error {
+func applyAction(ctx context.Context, us user.Store, cs user.ChatStore,
+	mailgunKey string, discordToken string, action *ms.ModAction) error {
 	user, err := us.GetByUUID(ctx, action.UserId)
 	if err != nil {
 		return err
@@ -313,6 +319,67 @@ func applyAction(ctx context.Context, us user.Store, cs user.ChatStore, action *
 		err = setCurrentAction(user, action)
 		if err != nil {
 			return err
+		}
+	}
+
+	actionEmailText, ok := ModActionEmailMap[action.Type]
+	if ok {
+		if mailgunKey != "" {
+			emailContent, err := instantiateEmail(user.Username,
+				actionEmailText,
+				action.Note,
+				action.StartTime,
+				action.EndTime,
+				action.EmailType)
+			if err == nil {
+				_, err := emailer.SendSimpleMessage(mailgunKey,
+					user.Email,
+					fmt.Sprintf("Woogles Terms of Service Violation for Account %s", user.Username),
+					emailContent)
+				if err != nil {
+					// Errors should not be fatal, just log them
+					log.Err(err).Str("userID", user.UUID).Msg("mod-action-send-user-email")
+				}
+			} else {
+				log.Err(err).Str("userID", user.UUID).Msg("mod-action-generate-user-email")
+			}
+
+		}
+		if discordToken != "" {
+			modUser, err := us.GetByUUID(ctx, action.ApplierUserId)
+			if err != nil {
+				log.Err(err).Str("userID", user.UUID).Msg("mod-action-applier")
+			} else {
+				message := fmt.Sprintf("Action %s was applied to user %s by moderator %s.", actionEmailText, user.Username, modUser.Username)
+				if !actionExists { // Action is non-transient
+					if action.Duration == 0 {
+						message += " This action is permanent."
+					} else if action.EndTime == nil {
+						log.Err(err).Str("userID", user.UUID).Msg("mod-action-endtime-nil")
+					} else {
+						golangActionEndTime, err := ptypes.Timestamp(action.EndTime)
+						if err != nil {
+							log.Err(err).Str("error", err.Error()).Msg("mod-action-endtime-conversion")
+						} else {
+							message += fmt.Sprintf(" This action will expire on %s.", golangActionEndTime.UTC().Format(time.UnixDate))
+						}
+					}
+				}
+				requestBody, err := json.Marshal(map[string]string{"content": message})
+				// Errors should not be fatal, just log them
+				if err != nil {
+					log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-marshal")
+				} else {
+					resp, err := http.Post(discordToken, "application/json", bytes.NewBuffer(requestBody))
+					// Errors should not be fatal, just log them
+					if err != nil {
+						log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-post-error")
+					} else if resp.StatusCode != 204 { // No Content
+						// We do not expect any other response
+						log.Err(err).Str("status", resp.Status).Msg("mod-action-discord-notification-post-bad-response")
+					}
+				}
+			}
 		}
 	}
 	return us.Set(ctx, user)

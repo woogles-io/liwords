@@ -1,0 +1,20 @@
+Dear Woogles.io user,
+
+The account associated with {{.Username}} has violated the Woogles Terms of Service, which can be found at {{.TermsOfServiceURL}}.{{if .IsCheater}} You are receiving this email because the anti-cheating detection algorithm has flagged the account's play as suspicious. Upon further review of the evidence, it was determined that the account has been cheating on our platform.{{- end}} As such, the following action has been taken against the account:
+
+Action:     {{.Action}}
+Start Time: {{.StartTime}}
+{{if .EndTime}}End Time:   {{.EndTime}}{{- end}}
+{{if .IsCheater}}
+All cheating determinations are final and non-negotiable. However, the length of the action can be appealed. We will not consider or reply to an appeal unless it includes the following:
+
+1. An admission of cheating.
+2. An explanation of when and how you cheated on Woogles.
+3. A promise to not cheat on our platform again.
+
+{{- end}}
+
+If you think this was done in error or would like to appeal, contact {{.AddressToContact}}. Do not reply directly to this email. Contacting Woogles team members privately (by email or on social media) may result in a lengthier ban.
+
+Sincerely,
+The Woogles Team

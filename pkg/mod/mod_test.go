@@ -53,7 +53,7 @@ func recreateDB() {
 	for _, u := range []*entity.User{
 		{Username: "Spammer", Email: "spammer@woogles.io", UUID: "Spammer"},
 		{Username: "Sandbagger", Email: "sandbagger@gmail.com", UUID: "Sandbagger"},
-		{Username: "Cheater", Email: "cheater@woogles.io", UUID: "Cheater"},
+		{Username: "Cheater", Email: "josh@woogles.io", UUID: "Cheater"},
 		{Username: "Hacker", Email: "hacker@woogles.io", UUID: "Hacker"},
 		{Username: "Deleter", Email: "deleter@woogles.io", UUID: "Deleter"},
 		{Username: "Moderator", Email: "admin@woogles.io", UUID: "Moderator", IsMod: true},
@@ -91,6 +91,8 @@ func TestMod(t *testing.T) {
 	ctx := context.Background()
 	ctx = apiserver.PlaceInContext(ctx, session)
 	cstr := TestingDBConnStr + " dbname=liwords_test"
+	mailgunKey := ""
+	discordToken := ""
 	recreateDB()
 	us := userStore(cstr)
 	cs := chatStore(cstr)
@@ -108,7 +110,7 @@ func TestMod(t *testing.T) {
 	is.True(err.Error() == errString)
 
 	// Apply Actions
-	err = ApplyActions(ctx, us, cs, []*ms.ModAction{muteAction, resetAction, suspendAction})
+	err = ApplyActions(ctx, us, cs, mailgunKey, discordToken, []*ms.ModAction{muteAction, resetAction, suspendAction})
 	is.NoErr(err)
 
 	permaban, err := ActionExists(ctx, us, "Spammer", false, []ms.ModActionType{muteAction.Type})
@@ -160,7 +162,7 @@ func TestMod(t *testing.T) {
 	longerSuspendAction := &ms.ModAction{UserId: "Cheater", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: 200}
 
 	// Overwrite some actions
-	err = ApplyActions(ctx, us, cs, []*ms.ModAction{longerSuspendAction})
+	err = ApplyActions(ctx, us, cs, mailgunKey, discordToken, []*ms.ModAction{longerSuspendAction})
 	is.NoErr(err)
 
 	expectedCheaterActions, err = GetActions(ctx, us, "Cheater")
@@ -214,14 +216,14 @@ func TestMod(t *testing.T) {
 	// Test negative durations
 	invalidSuspendAction := &ms.ModAction{UserId: "Cheater", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: -100}
 
-	err = ApplyActions(ctx, us, cs, []*ms.ModAction{invalidSuspendAction})
+	err = ApplyActions(ctx, us, cs, mailgunKey, discordToken, []*ms.ModAction{invalidSuspendAction})
 	is.True(err.Error() == "nontransient moderator action has a negative duration: -100")
 
 	// Apply a permanent action
 
 	permanentSuspendAction := &ms.ModAction{UserId: "Sandbagger", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: 0}
 
-	err = ApplyActions(ctx, us, cs, []*ms.ModAction{permanentSuspendAction})
+	err = ApplyActions(ctx, us, cs, mailgunKey, discordToken, []*ms.ModAction{permanentSuspendAction})
 	is.NoErr(err)
 
 	permaban, err = ActionExists(ctx, us, "Sandbagger", false, []ms.ModActionType{permanentSuspendAction.Type})
@@ -271,7 +273,7 @@ func TestMod(t *testing.T) {
 	longerHackerAction := &ms.ModAction{UserId: "Hacker", Type: ms.ModActionType_SUSPEND_RATED_GAMES, Duration: longerDuration}
 	hackerAction := &ms.ModAction{UserId: "Hacker", Type: ms.ModActionType_SUSPEND_GAMES, Duration: shorterDuration}
 
-	err = ApplyActions(ctx, us, cs, []*ms.ModAction{hackerAction, longerHackerAction})
+	err = ApplyActions(ctx, us, cs, mailgunKey, discordToken, []*ms.ModAction{hackerAction, longerHackerAction})
 	is.NoErr(err)
 
 	_, err = ActionExists(ctx, us, "Hacker", false, []ms.ModActionType{hackerAction.Type, longerHackerAction.Type})
@@ -283,7 +285,7 @@ func TestMod(t *testing.T) {
 
 	permanentHackerAction := &ms.ModAction{UserId: "Hacker", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: 0}
 
-	err = ApplyActions(ctx, us, cs, []*ms.ModAction{permanentHackerAction})
+	err = ApplyActions(ctx, us, cs, mailgunKey, discordToken, []*ms.ModAction{permanentHackerAction})
 	is.NoErr(err)
 
 	_, err = ActionExists(ctx, us, "Hacker", false, []ms.ModActionType{hackerAction.Type, longerHackerAction.Type, permanentHackerAction.Type})
@@ -299,7 +301,7 @@ func TestMod(t *testing.T) {
 	is.True(deleteAbout == deleterUser.Profile.About)
 
 	deleteAction := &ms.ModAction{UserId: "Deleter", Type: ms.ModActionType_DELETE_ACCOUNT, Duration: 9}
-	err = ApplyActions(ctx, us, cs, []*ms.ModAction{deleteAction})
+	err = ApplyActions(ctx, us, cs, mailgunKey, discordToken, []*ms.ModAction{deleteAction})
 	is.NoErr(err)
 
 	permaban, err = ActionExists(ctx, us, "Deleter", false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
@@ -310,6 +312,33 @@ func TestMod(t *testing.T) {
 	is.True(deleterUser.Profile.About == "")
 	us.(*user.DBStore).Disconnect()
 
+}
+
+func TestNotifications(t *testing.T) {
+	is := is.New(t)
+	session := &entity.Session{
+		ID:       "abcdef",
+		Username: "Moderator",
+		UserUUID: "Moderator",
+		Expiry:   time.Now().Add(time.Second * 100)}
+	ctx := context.Background()
+	ctx = apiserver.PlaceInContext(ctx, session)
+	cstr := TestingDBConnStr + " dbname=liwords_test"
+	mailgunKey := "a"
+	discordToken := "b"
+	recreateDB()
+	us := userStore(cstr)
+	cs := chatStore(cstr)
+
+	permanentAction := &ms.ModAction{UserId: "Spammer", Type: ms.ModActionType_MUTE, Duration: 0}
+	suspendAction := &ms.ModAction{UserId: "Cheater", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: 100, EmailType: ms.EmailType_CHEATING}
+
+	// Apply Actions
+	err := ApplyActions(ctx, us, cs, mailgunKey, discordToken, []*ms.ModAction{permanentAction})
+	is.NoErr(err)
+	err = ApplyActions(ctx, us, cs, mailgunKey, discordToken, []*ms.ModAction{suspendAction})
+	is.NoErr(err)
+	us.(*user.DBStore).Disconnect()
 }
 
 func equalActionHistories(ah1 []*ms.ModAction, ah2 []*ms.ModAction) error {

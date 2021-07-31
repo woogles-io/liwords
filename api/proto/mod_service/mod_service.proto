@@ -18,6 +18,11 @@ enum ModActionType {
   DELETE_ACCOUNT = 8;
 }
 
+enum EmailType {
+  DEFAULT = 0;
+  CHEATING = 1;
+}
+
 message ModAction {
   string user_id = 1;
   ModActionType type = 2;
@@ -32,6 +37,7 @@ message ModAction {
   string chat_text = 11;
   // Note: an optional note from the moderator.
   string note = 12;
+  EmailType email_type = 13;
 }
 
 message ModActionsMap { map<string, ModAction> actions = 1; }

@@ -22,6 +22,7 @@ type Config struct {
 	NatsURL      string
 	MailgunKey   string
 	RedisURL     string
+	DiscordToken string
 }
 
 // Load loads the configs from the given arguments
@@ -41,6 +42,7 @@ func (c *Config) Load(args []string) error {
 	fs.StringVar(&c.NatsURL, "nats-url", "nats://localhost:4222", "the NATS server URL")
 	fs.StringVar(&c.MailgunKey, "mailgun-key", "", "the Mailgun secret key")
 	fs.StringVar(&c.RedisURL, "redis-url", "", "the Redis URL")
+	fs.StringVar(&c.DiscordToken, "discord-token", "", "the token used for moderator action discord notifications")
 
 	// For password hashing:
 	fs.IntVar(&c.ArgonConfig.Keylen, "argon-key-len", 32, "the Argon key length")
