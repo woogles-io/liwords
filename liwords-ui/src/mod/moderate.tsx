@@ -33,6 +33,7 @@ type ModAction = {
   removerUserId: string;
   chatText: string;
   note: string;
+  emailType: string;
 };
 
 type ActionsMap = { actions: { [name: string]: ModAction } };
@@ -56,6 +57,7 @@ const Moderation = (props: ModProps) => {
           type: values.action,
           note: values.note,
           duration: Math.round((values.duration as number) * 3600),
+          emailType: values.emailType,
         },
       ],
     };
@@ -91,17 +93,16 @@ const Moderation = (props: ModProps) => {
       .post<ActionsMap>(toAPIUrl('mod_service.ModService', 'GetActions'), obj)
       .then((a) => {
         setActiveActions(a.data);
-      });
-
-    axios
-      .post<ActionsList>(
-        toAPIUrl('mod_service.ModService', 'GetActionHistory'),
-        obj
-      )
-      .then((a) => {
-        // newest first
-        a.data.actions.reverse();
-        setActionsHistory(a.data);
+        axios
+          .post<ActionsList>(
+            toAPIUrl('mod_service.ModService', 'GetActionHistory'),
+            obj
+          )
+          .then((a) => {
+            // newest first
+            a.data.actions.reverse();
+            setActionsHistory(a.data);
+          });
       });
   }, [props.userID]);
 
@@ -150,6 +151,17 @@ const Moderation = (props: ModProps) => {
 
         <Form.Item name="note" label="Optional note">
           <Input maxLength={200}></Input>
+        </Form.Item>
+
+        <div className="readable-text-color">
+          Some actions will send an email to the user. Select the type of email
+          from the list:
+        </div>
+        <Form.Item name="emailType" label="Email type">
+          <Select>
+            <Select.Option value="DEFAULT">Default</Select.Option>
+            <Select.Option value="CHEATING">Cheating</Select.Option>
+          </Select>
         </Form.Item>
 
         <Form.Item>
