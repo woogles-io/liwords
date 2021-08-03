@@ -5,6 +5,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/stats"
@@ -12,7 +13,6 @@ import (
 	"github.com/domino14/liwords/pkg/user"
 	"github.com/domino14/liwords/rpc/api/proto/realtime"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
-	macondoconfig "github.com/domino14/macondo/config"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"
 )
@@ -224,13 +224,15 @@ func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 	defer flipPlayersInHistoryIfNecessary(history)
 
 	// Fetch the Macondo config
-	config := ctx.Value(ConfigCtxKey("config")).(*macondoconfig.Config)
-
+	macondoConfig, err := config.GetMacondoConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
 	// Here, p0 went first and p1 went second, no matter what.
 	p0id, p1id := history.Players[0].UserId, history.Players[1].UserId
 	gameStats := stats.InstantiateNewStats(p0id, p1id)
 
-	err := stats.AddGame(gameStats, listStatStore, history, req, config, evt, history.Uid)
+	err = stats.AddGame(gameStats, listStatStore, history, req, macondoConfig, evt, history.Uid)
 	if err != nil {
 		return nil, err
 	}

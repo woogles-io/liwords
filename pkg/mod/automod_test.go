@@ -198,7 +198,7 @@ func playGame(g *entity.Game,
 	gameEndReason pb.GameEndReason,
 	sitResign bool) error {
 
-	ctx := context.WithValue(context.Background(), gameplay.ConfigCtxKeyword, &DefaultConfig)
+	ctx := context.WithValue(context.Background(), config.CtxKeyword, &config.Config{MacondoConfig: DefaultConfig})
 	nower := entity.NewFakeNower(1234)
 	g.SetTimerModule(nower)
 	g.ResetTimersAndStart()

@@ -1,6 +1,9 @@
 package config
 
 import (
+	"context"
+	"errors"
+
 	"github.com/domino14/macondo/config"
 	"github.com/namsral/flag"
 )
@@ -55,4 +58,16 @@ func (c *Config) Load(args []string) error {
 	fs.IntVar(&c.ArgonConfig.Threads, "argon-threads", 4, "the Argon threads")
 	err := fs.Parse(args)
 	return err
+}
+
+// Get the Macondo config from the context
+func GetMacondoConfig(ctx context.Context) (*config.Config, error) {
+	ctxConfig, ok := ctx.Value(CtxKeyword).(*Config)
+	if !ok {
+		return nil, errors.New("config is not ok")
+	}
+	if ctxConfig == nil {
+		return nil, errors.New("config is nil")
+	}
+	return &ctxConfig.MacondoConfig, nil
 }

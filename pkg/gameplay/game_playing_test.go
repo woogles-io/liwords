@@ -361,7 +361,7 @@ func TestQuickdata(t *testing.T) {
 	tstore := tournamentStore(cfg, gstore)
 
 	g, nower, cancel, donechan, _ := makeGame(cfg, ustore, gstore)
-	ctx := context.WithValue(context.Background(), gameplay.ConfigCtxKeyword, &DefaultConfig)
+	ctx := context.WithValue(context.Background(), config.CtxKeyword, &config.Config{MacondoConfig: DefaultConfig})
 
 	cge1 := &pb.ClientGameplayEvent{
 		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
