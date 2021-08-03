@@ -218,16 +218,19 @@ outerfor:
 						log.Err(err).Msg("update-active-game-error")
 						// but continue anyway
 					} else {
-						for idx, chans := range ret {
-							oldChannels := chans[0]
-							newChannels := chans[1]
-							userId := evt.Player[idx].UserId
-							username := evt.Player[idx].Username
-							if err = b.broadcastChannelChanges(ctx, oldChannels, newChannels, userId, username); err != nil {
-								log.Err(err).Msg("broadcast-active-game-error")
-								// but continue anyway
+						// this should be async because b.broadcastChannelChanges sends to b.genericEventChan and while we are here <-b.genericEventChan is not being drained
+						go func() {
+							for idx, chans := range ret {
+								oldChannels := chans[0]
+								newChannels := chans[1]
+								userId := evt.Player[idx].UserId
+								username := evt.Player[idx].Username
+								if err = b.broadcastChannelChanges(ctx, oldChannels, newChannels, userId, username); err != nil {
+									log.Err(err).Msg("broadcast-active-game-error")
+									// but continue anyway
+								}
 							}
-						}
+						}()
 					}
 				} else {
 					log.Error().Interface("event", msg.Event).Msg("bad-active-game-entry")
