@@ -25,6 +25,10 @@ type Config struct {
 	DiscordToken string
 }
 
+type CtxKey string
+
+const CtxKeyword CtxKey = CtxKey("config")
+
 // Load loads the configs from the given arguments
 func (c *Config) Load(args []string) error {
 	fs := flag.NewFlagSet("macondo", flag.ContinueOnError)

@@ -138,7 +138,7 @@ func TestComputeGameStats(t *testing.T) {
 	err = json.Unmarshal(reqjson, req)
 	is.NoErr(err)
 
-	ctx := context.WithValue(context.Background(), gameplay.ConfigCtxKey("config"), &DefaultConfig)
+	ctx := context.WithValue(context.Background(), gameplay.ConfigCtxKeyword, &DefaultConfig)
 	s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 	is.NoErr(err)
 	pkgstats.Finalize(s, lstore, []string{"m5ktbp4qPVTqaAhg6HJMsb"},
@@ -192,7 +192,7 @@ func TestComputeGameStats2(t *testing.T) {
 	err = json.Unmarshal(reqjson, req)
 	is.NoErr(err)
 
-	ctx := context.WithValue(context.Background(), gameplay.ConfigCtxKey("config"), &DefaultConfig)
+	ctx := context.WithValue(context.Background(), gameplay.ConfigCtxKeyword, &DefaultConfig)
 	s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 	is.NoErr(err)
 
@@ -242,7 +242,7 @@ func TestComputePlayerStats(t *testing.T) {
 	err = json.Unmarshal(reqjson, req)
 	is.NoErr(err)
 
-	ctx := context.WithValue(context.Background(), gameplay.ConfigCtxKey("config"), &DefaultConfig)
+	ctx := context.WithValue(context.Background(), gameplay.ConfigCtxKeyword, &DefaultConfig)
 	_, err = gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 	is.NoErr(err)
 
@@ -304,7 +304,7 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 		err = json.Unmarshal(reqjson, req)
 		is.NoErr(err)
 
-		ctx := context.WithValue(context.Background(), gameplay.ConfigCtxKey("config"), &DefaultConfig)
+		ctx := context.WithValue(context.Background(), gameplay.ConfigCtxKeyword, &DefaultConfig)
 		_, err = gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 		is.NoErr(err)
 	}

@@ -187,7 +187,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	if g.GameReq.RatingMode == realtime.RatingMode_RATED {
 		err = mod.Automod(ctx, userStore, notorietyStore, u0, u1, g)
 		if err != nil {
-			return err
+			log.Err(err).Msg("automod-error")
 		}
 	}
 

@@ -175,11 +175,13 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 		}
 
 		if newNotoriety > NotorietyThreshold {
-			err = setCurrentAction(user, &ms.ModAction{UserId: user.UUID,
+			action := &ms.ModAction{UserId: user.UUID,
 				Type:          ms.ModActionType_SUSPEND_GAMES,
 				StartTime:     ptypes.TimestampNow(),
 				ApplierUserId: AutomodUserId,
-				Duration:      int32(DurationMultiplier * (newNotoriety - NotorietyThreshold))})
+				Duration:      int32(DurationMultiplier * (newNotoriety - NotorietyThreshold))}
+			err = setCurrentAction(user, action)
+			notify(ctx, us, user, action)
 			if err != nil {
 				return err
 			}
