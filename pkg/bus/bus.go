@@ -250,10 +250,17 @@ outerfor:
 					if len(components) > 2 {
 						suffix = components[2]
 					}
+					log.Debug().Str("user", user).Str("suffix", suffix).Msg("pub-to-user")
+					err := b.pubToUser(user, msg, suffix)
+					if err != nil {
+						log.Err(err).Str("topic", topic).Msg("pub-user-error")
+					}
 
-					b.pubToUser(user, msg, suffix)
 				} else {
-					b.natsconn.Publish(topic, data)
+					err := b.natsconn.Publish(topic, data)
+					if err != nil {
+						log.Err(err).Str("topic", topic).Msg("pub-error")
+					}
 				}
 			}
 
