@@ -213,6 +213,7 @@ type ExamineStoreData = {
   handleExamineGoTo: (x: number) => void;
   addHandleExaminer: (x: () => void) => void;
   removeHandleExaminer: (x: () => void) => void;
+  doneButtonRef: React.MutableRefObject<HTMLElement | null>;
 };
 
 const defaultGameState = startingGameState(StandardEnglishAlphabet, [], '');
@@ -383,6 +384,7 @@ const ExamineContext = createContext<ExamineStoreData>({
   handleExamineGoTo: defaultFunction,
   addHandleExaminer: defaultFunction,
   removeHandleExaminer: defaultFunction,
+  doneButtonRef: { current: null },
 });
 
 type Props = {
@@ -425,10 +427,47 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   const gameEndMessageStore = useGameEndMessageStoreContext();
   const timerStore = useTimerStoreContext();
 
+  const shouldTrigger = useCallback((where) => {
+    try {
+      return (
+        where &&
+        WHERE_TO_ENABLE_EXAMINE_SHORTCUTS.some((selector) =>
+          where.closest(selector)
+        )
+      );
+    } catch (e) {
+      return false;
+    }
+  }, []);
+
   const { gameContext } = gameContextStore;
   const numberOfTurns = gameContext.turns.length;
   const [isExamining, setIsExamining] = useState(false);
-  const [examinedTurn, setExaminedTurn] = useState(Infinity);
+  const doneButtonRef = useRef<HTMLElement | null>(null);
+  const [examinedTurn, setExaminedTurnRaw] = useState(Infinity);
+  const setExaminedTurn = useCallback(
+    (x: ((x: number) => number) | number) => {
+      // Check if shortcuts were working when setting the examined turn.
+      if (doneButtonRef.current && shouldTrigger(document.activeElement)) {
+        // If so, they should remain working after.
+        setTimeout(() => {
+          // Examining the last turn disables ">".
+          // In Chrome the body becomes the activeElement.
+          // In Firefox it is necessary to just check .disabled.
+          const dae = document.activeElement;
+          if (
+            doneButtonRef.current &&
+            ((dae as any)?.disabled || !shouldTrigger(dae))
+          ) {
+            // Focusing on the Done button reenables first/prev shortcuts.
+            doneButtonRef.current.focus();
+          }
+        }, 0);
+      }
+      setExaminedTurnRaw(x);
+    },
+    [shouldTrigger]
+  );
   const handleExamineStartUnconditionally = useCallback(() => {
     setIsExamining(true);
   }, []);
@@ -437,16 +476,16 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   }, []);
   const handleExamineFirst = useCallback(() => {
     setExaminedTurn(0);
-  }, []);
+  }, [setExaminedTurn]);
   const handleExaminePrev = useCallback(() => {
     setExaminedTurn((x) => Math.max(Math.min(x, numberOfTurns) - 1, 0));
-  }, [numberOfTurns]);
+  }, [setExaminedTurn, numberOfTurns]);
   const handleExamineNext = useCallback(() => {
     setExaminedTurn((x) => (x >= numberOfTurns - 1 ? Infinity : x + 1));
-  }, [numberOfTurns]);
+  }, [setExaminedTurn, numberOfTurns]);
   const handleExamineLast = useCallback(() => {
     setExaminedTurn(Infinity);
-  }, []);
+  }, [setExaminedTurn]);
   const handleExamineGoTo = useCallback(
     (x) => {
       if (x >= numberOfTurns) {
@@ -455,7 +494,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
         setExaminedTurn(Math.max(Math.min(x, numberOfTurns), 0));
       }
     },
-    [numberOfTurns]
+    [setExaminedTurn, numberOfTurns]
   );
 
   const examinableGameContext = useMemo(() => {
@@ -608,19 +647,6 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     });
   }, []);
 
-  const shouldTrigger = useCallback((where) => {
-    try {
-      return (
-        where &&
-        WHERE_TO_ENABLE_EXAMINE_SHORTCUTS.some((selector) =>
-          where.closest(selector)
-        )
-      );
-    } catch (e) {
-      return false;
-    }
-  }, []);
-
   const handleExamineShortcuts = useCallback(
     (evt) => {
       if (isExamining && shouldTrigger(document.activeElement)) {
@@ -691,6 +717,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       handleExamineGoTo,
       addHandleExaminer,
       removeHandleExaminer,
+      doneButtonRef,
     }),
     [
       isExamining,
@@ -704,6 +731,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       handleExamineGoTo,
       addHandleExaminer,
       removeHandleExaminer,
+      doneButtonRef,
     ]
   );
 

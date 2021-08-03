@@ -28,6 +28,7 @@ const ExamineGameControls = React.memo((props: { lexicon: string }) => {
     handleExaminePrev,
     handleExamineNext,
     handleExamineLast,
+    doneButtonRef,
   } = useExamineStoreContext();
   const { gameContext } = useGameContextStoreContext();
   const { setPlacedTiles, setPlacedTilesTempScore } = useTentativeTileContext();
@@ -35,10 +36,9 @@ const ExamineGameControls = React.memo((props: { lexicon: string }) => {
     setPlacedTilesTempScore(undefined);
     setPlacedTiles(new Set<EphemeralTile>());
   }, [examinedTurn, setPlacedTiles, setPlacedTilesTempScore]);
-  const initialFocus = useRef<HTMLElement | null>(null);
   useEffect(() => {
-    initialFocus.current!.focus();
-  }, []);
+    doneButtonRef.current!.focus();
+  }, [doneButtonRef]);
   const numberOfTurns = gameContext.turns.length;
   return (
     <div className="game-controls">
@@ -71,7 +71,7 @@ const ExamineGameControls = React.memo((props: { lexicon: string }) => {
         onClick={handleExamineLast}
         disabled={examinedTurn >= numberOfTurns}
       />
-      <Button onClick={handleExamineEnd} ref={initialFocus}>
+      <Button onClick={handleExamineEnd} ref={doneButtonRef}>
         Done
       </Button>
     </div>
