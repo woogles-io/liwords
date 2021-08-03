@@ -1,29 +1,24 @@
 package mod
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/domino14/liwords/pkg/apiserver"
-	"github.com/domino14/liwords/pkg/emailer"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
 	"github.com/domino14/liwords/pkg/utilities"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
-var ModActionDispatching = map[string]func(context.Context, user.Store, user.ChatStore, *ms.ModAction) error{
+var ModActionDispatching = map[ms.ModActionType]func(context.Context, user.Store, user.ChatStore, *ms.ModAction) error{
 
 	/*
 		All types are listed here for clearness
@@ -35,11 +30,11 @@ var ModActionDispatching = map[string]func(context.Context, user.Store, user.Cha
 		ms.ModActionType_SUSPEND_RATED_GAMES,
 		ms.ModActionType_SUSPEND_GAMES,
 	*/
-	ms.ModActionType_RESET_RATINGS.String():           resetRatings,
-	ms.ModActionType_RESET_STATS.String():             resetStats,
-	ms.ModActionType_RESET_STATS_AND_RATINGS.String(): resetStatsAndRatings,
-	ms.ModActionType_REMOVE_CHAT.String():             removeChat,
-	ms.ModActionType_DELETE_ACCOUNT.String():          deleteAccount,
+	ms.ModActionType_RESET_RATINGS:           resetRatings,
+	ms.ModActionType_RESET_STATS:             resetStats,
+	ms.ModActionType_RESET_STATS_AND_RATINGS: resetStatsAndRatings,
+	ms.ModActionType_REMOVE_CHAT:             removeChat,
+	ms.ModActionType_DELETE_ACCOUNT:          deleteAccount,
 }
 
 var ModActionTextMap = map[ms.ModActionType]string{
@@ -160,8 +155,7 @@ func GetActionHistory(ctx context.Context, us user.Store, uuid string) ([]*ms.Mo
 	return user.Actions.History, nil
 }
 
-func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore,
-	mailgunKey string, discordToken string, actions []*ms.ModAction) error {
+func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore, actions []*ms.ModAction) error {
 	applierUserId, err := sessionUserId(ctx, us)
 	if err != nil {
 		return err
@@ -170,7 +164,7 @@ func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore,
 		if action.Type == ms.ModActionType_DELETE_ACCOUNT {
 			// The DELETE_ACCOUNT action erases the profile,
 			// but we still need to permanently ban
-			err := applyAction(ctx, us, cs, mailgunKey, discordToken, &ms.ModAction{
+			err := applyAction(ctx, us, cs, &ms.ModAction{
 				UserId:        action.UserId,
 				Type:          ms.ModActionType_SUSPEND_ACCOUNT,
 				Duration:      0,
@@ -181,7 +175,7 @@ func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore,
 			}
 		}
 		action.ApplierUserId = applierUserId
-		err := applyAction(ctx, us, cs, mailgunKey, discordToken, action)
+		err := applyAction(ctx, us, cs, action)
 		if err != nil {
 			return err
 		}
@@ -294,14 +288,13 @@ func removeAction(ctx context.Context, us user.Store, action *ms.ModAction, remo
 	return us.Set(ctx, user)
 }
 
-func applyAction(ctx context.Context, us user.Store, cs user.ChatStore,
-	mailgunKey string, discordToken string, action *ms.ModAction) error {
+func applyAction(ctx context.Context, us user.Store, cs user.ChatStore, action *ms.ModAction) error {
 	user, err := us.GetByUUID(ctx, action.UserId)
 	if err != nil {
 		return err
 	}
 	action.StartTime = ptypes.TimestampNow()
-	modActionFunc, actionExists := ModActionDispatching[action.Type.String()]
+	modActionFunc, actionExists := ModActionDispatching[action.Type]
 	if actionExists { // This ModAction is transient
 		err := modActionFunc(ctx, us, cs, action)
 		if err != nil {
@@ -322,67 +315,12 @@ func applyAction(ctx context.Context, us user.Store, cs user.ChatStore,
 		}
 	}
 
-	actionEmailText, ok := ModActionEmailMap[action.Type]
-	if ok {
-		if mailgunKey != "" {
-			emailContent, err := instantiateEmail(user.Username,
-				actionEmailText,
-				action.Note,
-				action.StartTime,
-				action.EndTime,
-				action.EmailType)
-			if err == nil {
-				_, err := emailer.SendSimpleMessage(mailgunKey,
-					user.Email,
-					fmt.Sprintf("Woogles Terms of Service Violation for Account %s", user.Username),
-					emailContent)
-				if err != nil {
-					// Errors should not be fatal, just log them
-					log.Err(err).Str("userID", user.UUID).Msg("mod-action-send-user-email")
-				}
-			} else {
-				log.Err(err).Str("userID", user.UUID).Msg("mod-action-generate-user-email")
-			}
-
-		}
-		if discordToken != "" {
-			modUser, err := us.GetByUUID(ctx, action.ApplierUserId)
-			if err != nil {
-				log.Err(err).Str("userID", user.UUID).Msg("mod-action-applier")
-			} else {
-				message := fmt.Sprintf("Action %s was applied to user %s by moderator %s.", actionEmailText, user.Username, modUser.Username)
-				if !actionExists { // Action is non-transient
-					if action.Duration == 0 {
-						message += " This action is permanent."
-					} else if action.EndTime == nil {
-						log.Err(err).Str("userID", user.UUID).Msg("mod-action-endtime-nil")
-					} else {
-						golangActionEndTime, err := ptypes.Timestamp(action.EndTime)
-						if err != nil {
-							log.Err(err).Str("error", err.Error()).Msg("mod-action-endtime-conversion")
-						} else {
-							message += fmt.Sprintf(" This action will expire on %s.", golangActionEndTime.UTC().Format(time.UnixDate))
-						}
-					}
-				}
-				requestBody, err := json.Marshal(map[string]string{"content": message})
-				// Errors should not be fatal, just log them
-				if err != nil {
-					log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-marshal")
-				} else {
-					resp, err := http.Post(discordToken, "application/json", bytes.NewBuffer(requestBody))
-					// Errors should not be fatal, just log them
-					if err != nil {
-						log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-post-error")
-					} else if resp.StatusCode != 204 { // No Content
-						// We do not expect any other response
-						log.Err(err).Str("status", resp.Status).Msg("mod-action-discord-notification-post-bad-response")
-					}
-				}
-			}
-		}
+	err = us.Set(ctx, user)
+	if err != nil {
+		return err
 	}
-	return us.Set(ctx, user)
+	notify(ctx, us, user, action)
+	return nil
 }
 
 func addActionToHistory(user *entity.User, action *ms.ModAction) error {

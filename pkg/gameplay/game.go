@@ -59,8 +59,6 @@ type GameStore interface {
 	GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error)
 }
 
-type ConfigCtxKey string
-
 // InstantiateNewGame instantiates a game and returns it.
 func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Config,
 	users [2]*entity.User, assignedFirst int, req *pb.GameRequest, tdata *entity.TournamentData) (*entity.Game, error) {

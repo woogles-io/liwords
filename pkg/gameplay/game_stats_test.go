@@ -12,6 +12,7 @@ import (
 
 	"github.com/jinzhu/gorm"
 
+	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
 	pkgstats "github.com/domino14/liwords/pkg/stats"
@@ -138,7 +139,7 @@ func TestComputeGameStats(t *testing.T) {
 	err = json.Unmarshal(reqjson, req)
 	is.NoErr(err)
 
-	ctx := context.WithValue(context.Background(), gameplay.ConfigCtxKey("config"), &DefaultConfig)
+	ctx := context.WithValue(context.Background(), config.CtxKeyword, &config.Config{MacondoConfig: DefaultConfig})
 	s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 	is.NoErr(err)
 	pkgstats.Finalize(s, lstore, []string{"m5ktbp4qPVTqaAhg6HJMsb"},
@@ -192,7 +193,7 @@ func TestComputeGameStats2(t *testing.T) {
 	err = json.Unmarshal(reqjson, req)
 	is.NoErr(err)
 
-	ctx := context.WithValue(context.Background(), gameplay.ConfigCtxKey("config"), &DefaultConfig)
+	ctx := context.WithValue(context.Background(), config.CtxKeyword, &config.Config{MacondoConfig: DefaultConfig})
 	s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 	is.NoErr(err)
 
@@ -242,7 +243,7 @@ func TestComputePlayerStats(t *testing.T) {
 	err = json.Unmarshal(reqjson, req)
 	is.NoErr(err)
 
-	ctx := context.WithValue(context.Background(), gameplay.ConfigCtxKey("config"), &DefaultConfig)
+	ctx := context.WithValue(context.Background(), config.CtxKeyword, &config.Config{MacondoConfig: DefaultConfig})
 	_, err = gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 	is.NoErr(err)
 
@@ -304,7 +305,7 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 		err = json.Unmarshal(reqjson, req)
 		is.NoErr(err)
 
-		ctx := context.WithValue(context.Background(), gameplay.ConfigCtxKey("config"), &DefaultConfig)
+		ctx := context.WithValue(context.Background(), config.CtxKeyword, &config.Config{MacondoConfig: DefaultConfig})
 		_, err = gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 		is.NoErr(err)
 	}
