@@ -315,8 +315,12 @@ func applyAction(ctx context.Context, us user.Store, cs user.ChatStore, action *
 		}
 	}
 
+	err = us.Set(ctx, user)
+	if err != nil {
+		return err
+	}
 	notify(ctx, us, user, action)
-	return us.Set(ctx, user)
+	return nil
 }
 
 func addActionToHistory(user *entity.User, action *ms.ModAction) error {

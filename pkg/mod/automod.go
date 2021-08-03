@@ -181,7 +181,6 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 				ApplierUserId: AutomodUserId,
 				Duration:      int32(DurationMultiplier * (newNotoriety - NotorietyThreshold))}
 			err = setCurrentAction(user, action)
-			notify(ctx, us, user, action)
 			if err != nil {
 				return err
 			}
@@ -189,6 +188,7 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 			if err != nil {
 				return err
 			}
+			notify(ctx, us, user, action)
 		}
 	} else if newNotoriety > 0 {
 		newNotoriety -= NotorietyDecrement
