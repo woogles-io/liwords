@@ -19,6 +19,7 @@ type EmailInfo struct {
 	EndTime           string
 	AddressToContact  string
 	IsCheater         bool
+	IsDeletion        bool
 }
 
 const TermsOfServiceURL = "https://woogles.io/terms"
@@ -64,7 +65,8 @@ func instantiateEmail(username, actionTaken, note string, starttime, endtime *ti
 		StartTime:         startTimeString,
 		EndTime:           endTimeString,
 		AddressToContact:  AddressToContact,
-		IsCheater:         emailType == ms.EmailType_CHEATING})
+		IsCheater:         emailType == ms.EmailType_CHEATING,
+		IsDeletion:        emailType == ms.EmailType_DELETION})
 	if err != nil {
 		return "", err
 	}

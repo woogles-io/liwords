@@ -21,6 +21,7 @@ enum ModActionType {
 enum EmailType {
   DEFAULT = 0;
   CHEATING = 1;
+  DELETION = 2;
 }
 
 message ModAction {

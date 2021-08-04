@@ -334,11 +334,14 @@ func TestNotifications(t *testing.T) {
 
 	permanentAction := &ms.ModAction{UserId: "Spammer", Type: ms.ModActionType_MUTE, Duration: 0}
 	suspendAction := &ms.ModAction{UserId: "Cheater", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: 100, EmailType: ms.EmailType_CHEATING}
+	deleteAction := &ms.ModAction{UserId: "Cheater", Type: ms.ModActionType_DELETE_ACCOUNT}
 
 	// Apply Actions
 	err := ApplyActions(ctx, us, cs, []*ms.ModAction{permanentAction})
 	is.NoErr(err)
 	err = ApplyActions(ctx, us, cs, []*ms.ModAction{suspendAction})
+	is.NoErr(err)
+	err = ApplyActions(ctx, us, cs, []*ms.ModAction{deleteAction})
 	is.NoErr(err)
 	us.(*user.DBStore).Disconnect()
 }
