@@ -1,5 +1,7 @@
 Dear Woogles.io user,
-
+{{if .IsDeletion}}
+The account associated with {{.Username}} has been closed at your request. In accordance with the Woogles Terms of Service, which can be found at {{.TermsOfServiceURL}}, your personal data has been deleted. We will not delete the existence of games in which you participated; however, your username will no longer be associated with those games. We may also retain certain information as required by law or as necessary for our legitimate operating purposes.
+{{- else}}
 The account associated with {{.Username}} has violated the Woogles Terms of Service, which can be found at {{.TermsOfServiceURL}}.{{if .IsCheater}} You are receiving this email because the anti-cheating detection algorithm has flagged the account's play as suspicious. Upon further review of the evidence, it was determined that the account has been cheating on our platform.{{- end}} As such, the following action has been taken against the account:
 
 Action:     {{.Action}}
@@ -15,6 +17,7 @@ All cheating determinations are final and non-negotiable. However, the length of
 {{- end}}
 
 If you think this was done in error or would like to appeal, contact {{.AddressToContact}}. Do not reply directly to this email. Contacting Woogles team members privately (by email or on social media) may result in a lengthier ban.
+{{- end}}
 
 Sincerely,
 The Woogles Team
