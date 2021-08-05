@@ -146,7 +146,7 @@ func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, err
 // but that's because they do similar things.
 func (b *Bus) ProcessMessages(ctx context.Context) {
 
-	ctx = context.WithValue(ctx, config.CtxKeyword, &b.config)
+	ctx = context.WithValue(ctx, config.CtxKeyword, b.config)
 	ctx = log.Logger.WithContext(ctx)
 	log := zerolog.Ctx(ctx)
 	// Adjudicate unfinished games every few seconds.
