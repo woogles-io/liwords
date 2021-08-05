@@ -50,40 +50,49 @@ func notify(ctx context.Context, us user.Store, user *entity.User, action *ms.Mo
 
 	}
 	if config.DiscordToken != "" {
-		modUser, err := us.GetByUUID(ctx, action.ApplierUserId)
-		if err != nil {
-			log.Err(err).Str("userID", user.UUID).Msg("mod-action-applier")
+		var modUsername string
+		var err error
+		if action.ApplierUserId == AutomodUserId {
+			modUsername = AutomodUserId
 		} else {
-			message := fmt.Sprintf("Action %s was applied to user %s by moderator %s.", actionEmailText, user.Username, modUser.Username)
-			_, actionExists := ModActionDispatching[action.Type]
-			if !actionExists { // Action is non-transient
-				if action.Duration == 0 {
-					message += " This action is permanent."
-				} else if action.EndTime == nil {
-					log.Err(err).Str("userID", user.UUID).Msg("mod-action-endtime-nil")
-				} else {
-					golangActionEndTime, err := ptypes.Timestamp(action.EndTime)
-					if err != nil {
-						log.Err(err).Str("error", err.Error()).Msg("mod-action-endtime-conversion")
-					} else {
-						message += fmt.Sprintf(" This action will expire on %s.", golangActionEndTime.UTC().Format(time.UnixDate))
-					}
-				}
-			}
-			requestBody, err := json.Marshal(map[string]string{"content": message})
-			// Errors should not be fatal, just log them
+			modUser, err := us.GetByUUID(ctx, action.ApplierUserId)
 			if err != nil {
-				log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-marshal")
+				log.Err(err).Str("userID", user.UUID).Msg("mod-action-applier")
+				return
+			}
+			modUsername = modUser.Username
+		}
+
+		message := fmt.Sprintf("Action %s was applied to user %s by moderator %s.", actionEmailText, user.Username, modUsername)
+		_, actionExists := ModActionDispatching[action.Type]
+		if !actionExists { // Action is non-transient
+			if action.Duration == 0 {
+				message += " This action is permanent."
+			} else if action.EndTime == nil {
+				log.Err(err).Str("userID", user.UUID).Msg("mod-action-endtime-nil")
 			} else {
-				resp, err := http.Post(config.DiscordToken, "application/json", bytes.NewBuffer(requestBody))
-				// Errors should not be fatal, just log them
+				golangActionEndTime, err := ptypes.Timestamp(action.EndTime)
 				if err != nil {
-					log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-post-error")
-				} else if resp.StatusCode != 204 { // No Content
-					// We do not expect any other response
-					log.Err(err).Str("status", resp.Status).Msg("mod-action-discord-notification-post-bad-response")
+					log.Err(err).Str("error", err.Error()).Msg("mod-action-endtime-conversion")
+				} else {
+					message += fmt.Sprintf(" This action will expire on %s.", golangActionEndTime.UTC().Format(time.UnixDate))
 				}
 			}
 		}
+		requestBody, err := json.Marshal(map[string]string{"content": message})
+		// Errors should not be fatal, just log them
+		if err != nil {
+			log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-marshal")
+		} else {
+			resp, err := http.Post(config.DiscordToken, "application/json", bytes.NewBuffer(requestBody))
+			// Errors should not be fatal, just log them
+			if err != nil {
+				log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-post-error")
+			} else if resp.StatusCode != 204 { // No Content
+				// We do not expect any other response
+				log.Err(err).Str("status", resp.Status).Msg("mod-action-discord-notification-post-bad-response")
+			}
+		}
 	}
+
 }

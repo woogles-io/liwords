@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/domino14/macondo/config"
+	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/namsral/flag"
 )
 
@@ -16,7 +16,7 @@ type ArgonConfig struct {
 }
 
 type Config struct {
-	MacondoConfig config.Config
+	MacondoConfig macondoconfig.Config
 	ArgonConfig   ArgonConfig
 
 	DBConnString string
@@ -61,7 +61,7 @@ func (c *Config) Load(args []string) error {
 }
 
 // Get the Macondo config from the context
-func GetMacondoConfig(ctx context.Context) (*config.Config, error) {
+func GetMacondoConfig(ctx context.Context) (*macondoconfig.Config, error) {
 	ctxConfig, ok := ctx.Value(CtxKeyword).(*Config)
 	if !ok {
 		return nil, errors.New("config is not ok")
