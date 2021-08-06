@@ -188,7 +188,8 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStor
 	return g, nower, cancel, donechan, consumer
 }
 
-func playGame(g *entity.Game,
+func playGame(ctx context.Context,
+	g *entity.Game,
 	ustore pkguser.Store,
 	lstore pkgstats.ListStatStore,
 	nstore pkgmod.NotorietyStore,
@@ -199,7 +200,6 @@ func playGame(g *entity.Game,
 	gameEndReason pb.GameEndReason,
 	sitResign bool) error {
 
-	ctx := context.WithValue(context.Background(), config.CtxKeyword, &config.Config{MacondoConfig: DefaultConfig})
 	nower := entity.NewFakeNower(1234)
 	g.SetTimerModule(nower)
 	g.ResetTimersAndStart()
@@ -323,6 +323,8 @@ func TestNotoriety(t *testing.T) {
 	recreateDB()
 	cstr := TestingDBConnStr + " dbname=liwords_test"
 
+	ctx := context.WithValue(context.Background(), config.CtxKeyword, &config.Config{MacondoConfig: DefaultConfig})
+
 	ustore, uDBstore := userStore(cstr)
 	lstore := listStatStore(cstr)
 	nstore := notorietyStore(cstr)
@@ -401,7 +403,7 @@ func TestNotoriety(t *testing.T) {
 
 	// No play
 	g, _, _, _, _ := makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
-	err := playGame(g, ustore, lstore, nstore, tstore, gstore, defaultTurns[:1], 0, pb.GameEndReason_TIME, false)
+	err := playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, defaultTurns[:1], 0, pb.GameEndReason_TIME, false)
 	is.NoErr(err)
 	//printPlayerNotorieties(ustore)
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
@@ -412,15 +414,15 @@ func TestNotoriety(t *testing.T) {
 
 	// Play two good games to bring down notoriety
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
-	err = playGame(g, ustore, lstore, nstore, tstore, gstore, defaultTurns[:1], 0, pb.GameEndReason_TRIPLE_CHALLENGE, false)
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, defaultTurns[:1], 0, pb.GameEndReason_TRIPLE_CHALLENGE, false)
 	is.NoErr(err)
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
-	err = playGame(g, ustore, lstore, nstore, tstore, gstore, defaultTurns[:1], 0, pb.GameEndReason_TRIPLE_CHALLENGE, false)
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, defaultTurns[:1], 0, pb.GameEndReason_TRIPLE_CHALLENGE, false)
 	is.NoErr(err)
 
 	// Lost on time, reasonable
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 7, pb.RatingMode_RATED)
-	err = playGame(g, ustore, lstore, nstore, tstore, gstore, defaultTurns, 0, pb.GameEndReason_TIME, false)
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, defaultTurns, 0, pb.GameEndReason_TIME, false)
 	is.NoErr(err)
 	// printPlayerNotorieties(ustore)
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
@@ -431,7 +433,7 @@ func TestNotoriety(t *testing.T) {
 
 	// Lost on time, unreasonable
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
-	err = playGame(g, ustore, lstore, nstore, tstore, gstore, defaultTurns, 0, pb.GameEndReason_TIME, false)
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, defaultTurns, 0, pb.GameEndReason_TIME, false)
 	is.NoErr(err)
 	//printPlayerNotorieties(ustore)
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
@@ -443,7 +445,7 @@ func TestNotoriety(t *testing.T) {
 
 	// Resigned, unrated game, unreasonable
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_CASUAL)
-	err = playGame(g, ustore, lstore, nstore, tstore, gstore, defaultTurns, 0, pb.GameEndReason_RESIGNED, false)
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, defaultTurns, 0, pb.GameEndReason_RESIGNED, false)
 	is.NoErr(err)
 	//printPlayerNotorieties(ustore)
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
@@ -455,7 +457,7 @@ func TestNotoriety(t *testing.T) {
 
 	// Resigned, rated game, reasonable
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 6, pb.RatingMode_RATED)
-	err = playGame(g, ustore, lstore, nstore, tstore, gstore, defaultTurns, 0, pb.GameEndReason_RESIGNED, false)
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, defaultTurns, 0, pb.GameEndReason_RESIGNED, false)
 	is.NoErr(err)
 	//printPlayerNotorieties(ustore)
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
@@ -467,7 +469,7 @@ func TestNotoriety(t *testing.T) {
 
 	// Resigned, rated game, unreasonable sitresign
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
-	err = playGame(g, ustore, lstore, nstore, tstore, gstore, defaultTurns[:2], 0, pb.GameEndReason_RESIGNED, true)
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, defaultTurns[:2], 0, pb.GameEndReason_RESIGNED, true)
 	is.NoErr(err)
 	//printPlayerNotorieties(ustore)
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
@@ -484,7 +486,7 @@ func TestNotoriety(t *testing.T) {
 
 	// Add these additional misbehaved games bring the user over the threshold
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
-	err = playGame(g, ustore, lstore, nstore, tstore, gstore, nil, 0, pb.GameEndReason_RESIGNED, false)
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, nil, 0, pb.GameEndReason_RESIGNED, false)
 	is.NoErr(err)
 	//printPlayerNotorieties(ustore)
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
@@ -501,7 +503,7 @@ func TestNotoriety(t *testing.T) {
 	is.True(err != nil)
 
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
-	err = playGame(g, ustore, lstore, nstore, tstore, gstore, nil, 0, pb.GameEndReason_RESIGNED, false)
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, nil, 0, pb.GameEndReason_RESIGNED, false)
 	is.NoErr(err)
 	//printPlayerNotorieties(ustore)
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
@@ -525,7 +527,7 @@ func TestNotoriety(t *testing.T) {
 
 	// Triple Challenge
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
-	err = playGame(g, ustore, lstore, nstore, tstore, gstore, defaultTurns[:1], 0, pb.GameEndReason_TRIPLE_CHALLENGE, false)
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, defaultTurns[:1], 0, pb.GameEndReason_TRIPLE_CHALLENGE, false)
 	is.NoErr(err)
 	//printPlayerNotorieties(ustore)
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
@@ -541,7 +543,7 @@ func TestNotoriety(t *testing.T) {
 	// The other play has now misbehaved
 	// Now both plays have a nonzero notoriety
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
-	err = playGame(g, ustore, lstore, nstore, tstore, gstore, nil, 1, pb.GameEndReason_RESIGNED, false)
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, nil, 1, pb.GameEndReason_RESIGNED, false)
 	is.NoErr(err)
 	//printPlayerNotorieties(ustore)
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
@@ -557,7 +559,7 @@ func TestNotoriety(t *testing.T) {
 
 	// One player's notoriety should increase, the other's should decrease
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
-	err = playGame(g, ustore, lstore, nstore, tstore, gstore, nil, 0, pb.GameEndReason_RESIGNED, false)
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, nil, 0, pb.GameEndReason_RESIGNED, false)
 	is.NoErr(err)
 	//printPlayerNotorieties(ustore)
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
@@ -582,7 +584,7 @@ func TestNotoriety(t *testing.T) {
 
 	// Both players' notorieties should decrease
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
-	err = playGame(g, ustore, lstore, nstore, tstore, gstore, defaultTurns[:1], 0, pb.GameEndReason_TRIPLE_CHALLENGE, false)
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, defaultTurns[:1], 0, pb.GameEndReason_TRIPLE_CHALLENGE, false)
 	is.NoErr(err)
 	//printPlayerNotorieties(ustore)
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
@@ -629,8 +631,22 @@ func TestNotoriety(t *testing.T) {
 		tstore)
 	is.NoErr(err)
 
-	err = playGame(g, ustore, lstore, nstore, tstore, gstore, nil, 0, pb.GameEndReason_RESIGNED, false)
+	// Update context so notifications are sent for this game
+	session := &entity.Session{
+		ID:       "abcdef",
+		Username: "Moderator",
+		UserUUID: "Moderator",
+		Expiry:   time.Now().Add(time.Second * 100)}
+	ctx = apiserver.PlaceInContext(ctx, session)
+	ctx = context.WithValue(ctx, config.CtxKeyword,
+		&config.Config{MailgunKey: os.Getenv("TEST_MAILGUN_KEY"), DiscordToken: os.Getenv("TEST_DISCORD_TOKEN")})
+
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, nil, 0, pb.GameEndReason_RESIGNED, false)
 	is.NoErr(err)
+
+	// Set the context back so the tests do not give excessive notifications
+	ctx = context.WithValue(ctx, config.CtxKeyword,
+		&config.Config{MailgunKey: "", DiscordToken: ""})
 
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
 		{Score: 35, Games: []*ms.NotoriousGame{
@@ -645,22 +661,6 @@ func TestNotoriety(t *testing.T) {
 			{Type: ms.NotoriousGameType_NO_PLAY}}}}, ustore, nstore)
 	is.NoErr(err)
 
-	session := &entity.Session{
-		ID:       "abcdef",
-		Username: "Moderator",
-		UserUUID: "Moderator",
-		Expiry:   time.Now().Add(time.Second * 100)}
-	ctx := context.Background()
-	ctx = apiserver.PlaceInContext(ctx, session)
-	ctx = context.WithValue(ctx, config.CtxKeyword,
-		&config.Config{MailgunKey: os.Getenv("TEST_MAILGUN_KEY"), DiscordToken: os.Getenv("TEST_DISCORD_TOKEN")})
-	u0, err := ustore.Get(ctx, "player1")
-	is.NoErr(err)
-	u1, err := ustore.Get(ctx, "player2")
-	is.NoErr(err)
-	err = pkgmod.Automod(ctx, ustore, nstore, u0, u1, g)
-	is.NoErr(err)
-
 	// Test resetting the notorieties
 	err = pkgmod.ResetNotoriety(context.Background(), ustore, nstore, playerIds[0])
 	is.NoErr(err)
@@ -673,7 +673,7 @@ func TestNotoriety(t *testing.T) {
 
 	// Test Sitresigning
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
-	err = playGame(g, ustore, lstore, nstore, tstore, gstore, defaultTurns, 0, pb.GameEndReason_RESIGNED, true)
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, defaultTurns, 0, pb.GameEndReason_RESIGNED, true)
 	is.NoErr(err)
 	//printPlayerNotorieties(ustore)
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
@@ -683,7 +683,7 @@ func TestNotoriety(t *testing.T) {
 	is.NoErr(err)
 
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
-	err = playGame(g, ustore, lstore, nstore, tstore, gstore, defaultTurns, 0, pb.GameEndReason_RESIGNED, false)
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, defaultTurns, 0, pb.GameEndReason_RESIGNED, false)
 	is.NoErr(err)
 	//printPlayerNotorieties(ustore)
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
@@ -705,7 +705,7 @@ func TestNotoriety(t *testing.T) {
 
 	// Sandbagging
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
-	err = playGame(g, ustore, lstore, nstore, tstore, gstore, defaultTurns[:2], 0, pb.GameEndReason_RESIGNED, false)
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, defaultTurns[:2], 0, pb.GameEndReason_RESIGNED, false)
 	is.NoErr(err)
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
 		{Score: 4, Games: []*ms.NotoriousGame{
@@ -715,7 +715,7 @@ func TestNotoriety(t *testing.T) {
 
 	// Not sandbagging
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
-	err = playGame(g, ustore, lstore, nstore, tstore, gstore, defaultTurns, 0, pb.GameEndReason_RESIGNED, false)
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, defaultTurns, 0, pb.GameEndReason_RESIGNED, false)
 	is.NoErr(err)
 
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
@@ -726,7 +726,7 @@ func TestNotoriety(t *testing.T) {
 
 	// Sandbagging because of passes
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
-	err = playGame(g, ustore, lstore, nstore, tstore, gstore, sandbagTurns, 0, pb.GameEndReason_RESIGNED, false)
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, sandbagTurns, 0, pb.GameEndReason_RESIGNED, false)
 	is.NoErr(err)
 
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{

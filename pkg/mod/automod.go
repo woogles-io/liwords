@@ -209,8 +209,11 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 				return err
 			}
 			notorietyReport, err := FormatNotorietyReport(ctx, us, ns, user.UUID)
+			// Failing to get the report should not be fatal since it would just be
+			// an inconvenience for the moderators, so just log the error and move on
 			if err != nil {
-				return err
+				notorietyReport = err.Error()
+				log.Err(err).Str("error", err.Error()).Msg("notoriety-report-error")
 			}
 			notify(ctx, us, user, action, "\nNotoriety Report:\n"+notorietyReport)
 		}
