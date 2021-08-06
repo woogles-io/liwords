@@ -22,10 +22,17 @@ type NotorietyStore interface {
 }
 
 var BehaviorToScore map[ms.NotoriousGameType]int = map[ms.NotoriousGameType]int{
-	ms.NotoriousGameType_NO_PLAY_IGNORE_NUDGE: 10,
+	ms.NotoriousGameType_NO_PLAY_DENIED_NUDGE: 10,
 	ms.NotoriousGameType_NO_PLAY:              6,
 	ms.NotoriousGameType_SITTING:              4,
 	ms.NotoriousGameType_SANDBAG:              4,
+}
+
+var BehaviorToString map[ms.NotoriousGameType]string = map[ms.NotoriousGameType]string{
+	ms.NotoriousGameType_NO_PLAY_DENIED_NUDGE: "No Play (Confirmed Nudge)",
+	ms.NotoriousGameType_NO_PLAY:              "No Play",
+	ms.NotoriousGameType_SITTING:              "Sitting",
+	ms.NotoriousGameType_SANDBAG:              "Sandbagging",
 }
 
 var AutomodUserId string = "AUTOMOD"
@@ -77,7 +84,7 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 			// If the loser also denied an abort or adjudication,
 			// this is even ruder
 			if loserDeniedNudge(g, loserId) {
-				lngt = ms.NotoriousGameType_NO_PLAY_IGNORE_NUDGE
+				lngt = ms.NotoriousGameType_NO_PLAY_DENIED_NUDGE
 			} else {
 				lngt = ms.NotoriousGameType_NO_PLAY
 			}
@@ -146,6 +153,19 @@ func GetNotorietyReport(ctx context.Context, us user.Store, ns NotorietyStore, u
 	return user.Notoriety, games, nil
 }
 
+func FormatNotorietyReport(ctx context.Context, us user.Store, ns NotorietyStore, uuid string) (string, error) {
+	notoriety, games, err := GetNotorietyReport(ctx, us, ns, uuid)
+	if err != nil {
+		return "", err
+	}
+	s := ""
+	for _, game := range games {
+		s += fmt.Sprintf("%s (%d): https://woogles.io/game/%s\n", BehaviorToString[game.Type], BehaviorToScore[game.Type], game.Id)
+	}
+	s += fmt.Sprintf("Current Notoriety: %d\n", notoriety)
+	return s, err
+}
+
 func ResetNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, uuid string) error {
 	user, err := us.GetByUUID(ctx, uuid)
 	if err != nil {
@@ -188,7 +208,11 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 			if err != nil {
 				return err
 			}
-			notify(ctx, us, user, action)
+			notorietyReport, err := FormatNotorietyReport(ctx, us, ns, user.UUID)
+			if err != nil {
+				return err
+			}
+			notify(ctx, us, user, action, "\nNotoriety Report:\n"+notorietyReport)
 		}
 	} else if newNotoriety > 0 {
 		newNotoriety -= NotorietyDecrement

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
@@ -147,8 +148,8 @@ func recreateDB() {
 	// Insert a couple of users into the table.
 
 	for _, u := range []*entity.User{
-		{Username: "player1", Email: "cesar4@woogles.io", UUID: playerIds[0]},
-		{Username: "player2", Email: "mina@gmail.com", UUID: playerIds[1]},
+		{Username: "player1", Email: os.Getenv("TEST_EMAIL_USERNAME") + "+spammer@woogles.io", UUID: playerIds[0]},
+		{Username: "player2", Email: os.Getenv("TEST_EMAIL_USERNAME") + "@woogles.io", UUID: playerIds[1]},
 	} {
 		err = ustore.New(context.Background(), u)
 		if err != nil {
@@ -639,9 +640,25 @@ func TestNotoriety(t *testing.T) {
 			{Type: ms.NotoriousGameType_NO_PLAY},
 			{Type: ms.NotoriousGameType_NO_PLAY},
 			{Type: ms.NotoriousGameType_NO_PLAY},
-			{Type: ms.NotoriousGameType_NO_PLAY_IGNORE_NUDGE}}},
+			{Type: ms.NotoriousGameType_NO_PLAY_DENIED_NUDGE}}},
 		{Score: 3, Games: []*ms.NotoriousGame{
 			{Type: ms.NotoriousGameType_NO_PLAY}}}}, ustore, nstore)
+	is.NoErr(err)
+
+	session := &entity.Session{
+		ID:       "abcdef",
+		Username: "Moderator",
+		UserUUID: "Moderator",
+		Expiry:   time.Now().Add(time.Second * 100)}
+	ctx := context.Background()
+	ctx = apiserver.PlaceInContext(ctx, session)
+	ctx = context.WithValue(ctx, config.CtxKeyword,
+		&config.Config{MailgunKey: os.Getenv("TEST_MAILGUN_KEY"), DiscordToken: os.Getenv("TEST_DISCORD_TOKEN")})
+	u0, err := ustore.Get(ctx, "player1")
+	is.NoErr(err)
+	u1, err := ustore.Get(ctx, "player2")
+	is.NoErr(err)
+	err = pkgmod.Automod(ctx, ustore, nstore, u0, u1, g)
 	is.NoErr(err)
 
 	// Test resetting the notorieties

@@ -18,7 +18,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func notify(ctx context.Context, us user.Store, user *entity.User, action *ms.ModAction) {
+func notify(ctx context.Context, us user.Store, user *entity.User, action *ms.ModAction, notorietyReport string) {
 	actionEmailText, ok := ModActionEmailMap[action.Type]
 	if !ok {
 		return
@@ -28,7 +28,7 @@ func notify(ctx context.Context, us user.Store, user *entity.User, action *ms.Mo
 		log.Err(errors.New("config does not exist in notify")).Str("userID", user.UUID).Msg("nil-config")
 		return
 	}
-	if config.MailgunKey != "" {
+	if config.MailgunKey != "" && !IsRemoval(action) {
 		emailContent, err := instantiateEmail(user.Username,
 			actionEmailText,
 			action.Note,
@@ -63,7 +63,13 @@ func notify(ctx context.Context, us user.Store, user *entity.User, action *ms.Mo
 			modUsername = modUser.Username
 		}
 
-		message := fmt.Sprintf("Action %s was applied to user %s by moderator %s.", actionEmailText, user.Username, modUsername)
+		appliedOrRemoved := "applied to"
+		actionExpiration := "action will expire"
+		if IsRemoval(action) {
+			appliedOrRemoved = "removed from"
+			actionExpiration = "will take effect"
+		}
+		message := fmt.Sprintf("Action %s was %s user %s by moderator %s.", actionEmailText, appliedOrRemoved, user.Username, modUsername)
 		_, actionExists := ModActionDispatching[action.Type]
 		if !actionExists { // Action is non-transient
 			if action.Duration == 0 {
@@ -75,11 +81,11 @@ func notify(ctx context.Context, us user.Store, user *entity.User, action *ms.Mo
 				if err != nil {
 					log.Err(err).Str("error", err.Error()).Msg("mod-action-endtime-conversion")
 				} else {
-					message += fmt.Sprintf(" This action will expire on %s.", golangActionEndTime.UTC().Format(time.UnixDate))
+					message += fmt.Sprintf(" This %s on %s.", actionExpiration, golangActionEndTime.UTC().Format(time.UnixDate))
 				}
 			}
 		}
-		requestBody, err := json.Marshal(map[string]string{"content": message})
+		requestBody, err := json.Marshal(map[string]string{"content": message + notorietyReport})
 		// Errors should not be fatal, just log them
 		if err != nil {
 			log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-marshal")
