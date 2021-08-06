@@ -29,7 +29,7 @@ var BehaviorToScore map[ms.NotoriousGameType]int = map[ms.NotoriousGameType]int{
 }
 
 var BehaviorToString map[ms.NotoriousGameType]string = map[ms.NotoriousGameType]string{
-	ms.NotoriousGameType_NO_PLAY_DENIED_NUDGE: "No Play (Confirmed Nudge)",
+	ms.NotoriousGameType_NO_PLAY_DENIED_NUDGE: "No Play (Denied Nudge)",
 	ms.NotoriousGameType_NO_PLAY:              "No Play",
 	ms.NotoriousGameType_SITTING:              "Sitting",
 	ms.NotoriousGameType_SANDBAG:              "Sandbagging",
