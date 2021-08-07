@@ -272,7 +272,6 @@ export const TourneyEditor = (props: Props) => {
       });
   };
 
-  // XXX: this function shouldn't require an "int"
   const removeDirector = () => {
     const director = prompt('Enter a director username to remove:');
     if (!director) {
@@ -283,9 +282,7 @@ export const TourneyEditor = (props: Props) => {
         toAPIUrl('tournament_service.TournamentService', 'RemoveDirectors'),
         {
           id: form.getFieldValue('id'),
-          persons: {
-            [director]: 10,
-          },
+          persons: [{ id: director }],
         }
       )
       .then((resp) => {
