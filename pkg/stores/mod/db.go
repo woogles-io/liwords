@@ -37,10 +37,10 @@ func (ns *NotorietyStore) AddNotoriousGame(playerID string, gameID string, gameT
 	return result.Error
 }
 
-func (ns *NotorietyStore) GetNotoriousGames(playerID string) ([]*ms.NotoriousGame, error) {
+func (ns *NotorietyStore) GetNotoriousGames(playerID string, limit int) ([]*ms.NotoriousGame, error) {
 	var games []notoriousgame
 
-	result := ns.db.Table("notoriousgames").
+	result := ns.db.Limit(limit).Table("notoriousgames").
 		Select("game_id, type, timestamp").
 		Where("player_id = ?", []interface{}{playerID}).
 		Order("timestamp").Scan(&games)

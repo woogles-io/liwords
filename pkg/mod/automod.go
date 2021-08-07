@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
@@ -17,7 +18,7 @@ import (
 
 type NotorietyStore interface {
 	AddNotoriousGame(gameID string, playerID string, gameType int, time int64) error
-	GetNotoriousGames(playerID string) ([]*ms.NotoriousGame, error)
+	GetNotoriousGames(playerID string, limit int) ([]*ms.NotoriousGame, error)
 	DeleteNotoriousGames(playerID string) error
 }
 
@@ -141,29 +142,29 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 	return nil
 }
 
-func GetNotorietyReport(ctx context.Context, us user.Store, ns NotorietyStore, uuid string) (int, []*ms.NotoriousGame, error) {
+func GetNotorietyReport(ctx context.Context, us user.Store, ns NotorietyStore, uuid string, limit int) (int, []*ms.NotoriousGame, error) {
 	user, err := us.GetByUUID(ctx, uuid)
 	if err != nil {
 		return 0, nil, err
 	}
-	games, err := ns.GetNotoriousGames(uuid)
+	games, err := ns.GetNotoriousGames(uuid, limit)
 	if err != nil {
 		return 0, nil, err
 	}
 	return user.Notoriety, games, nil
 }
 
-func FormatNotorietyReport(ctx context.Context, us user.Store, ns NotorietyStore, uuid string) (string, error) {
-	notoriety, games, err := GetNotorietyReport(ctx, us, ns, uuid)
+func FormatNotorietyReport(ns NotorietyStore, uuid string, limit int) (string, error) {
+	games, err := ns.GetNotoriousGames(uuid, limit)
 	if err != nil {
 		return "", err
 	}
-	s := ""
+
+	var report strings.Builder
 	for _, game := range games {
-		s += fmt.Sprintf("%s (%d): https://woogles.io/game/%s\n", BehaviorToString[game.Type], BehaviorToScore[game.Type], game.Id)
+		fmt.Fprintf(&report, "%s (%d): https://woogles.io/game/%s\n", BehaviorToString[game.Type], BehaviorToScore[game.Type], game.Id)
 	}
-	s += fmt.Sprintf("Current Notoriety: %d\n", notoriety)
-	return s, err
+	return report.String(), nil
 }
 
 func ResetNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, uuid string) error {
@@ -193,7 +194,6 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 		if ok {
 			newNotoriety += gameScore
 		}
-
 		if newNotoriety > NotorietyThreshold {
 			action := &ms.ModAction{UserId: user.UUID,
 				Type:          ms.ModActionType_SUSPEND_GAMES,
@@ -208,14 +208,15 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 			if err != nil {
 				return err
 			}
-			notorietyReport, err := FormatNotorietyReport(ctx, us, ns, user.UUID)
+			notorietyReport, err := FormatNotorietyReport(ns, user.UUID, 10)
 			// Failing to get the report should not be fatal since it would just be
 			// an inconvenience for the moderators, so just log the error and move on
 			if err != nil {
 				notorietyReport = err.Error()
 				log.Err(err).Str("error", err.Error()).Msg("notoriety-report-error")
 			}
-			notify(ctx, us, user, action, "\nNotoriety Report:\n"+notorietyReport)
+			moderatorMessage := fmt.Sprintf("\nNotoriety Report:\n%s\nCurrent Notoriety: %d", notorietyReport, newNotoriety)
+			notify(ctx, us, user, action, moderatorMessage)
 		}
 	} else if newNotoriety > 0 {
 		newNotoriety -= NotorietyDecrement

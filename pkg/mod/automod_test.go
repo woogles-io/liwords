@@ -276,7 +276,7 @@ func equalActionHistories(ah1 []*ms.ModAction, ah2 []*ms.ModAction) error {
 func printPlayerNotorieties(ustore pkguser.Store, nstore pkgmod.NotorietyStore) {
 	notorietyString := "err = comparePlayerNotorieties([]*ms.NotorietyReport{"
 	for _, playerId := range playerIds {
-		score, games, err := pkgmod.GetNotorietyReport(context.Background(), ustore, nstore, playerId)
+		score, games, err := pkgmod.GetNotorietyReport(context.Background(), ustore, nstore, playerId, 100)
 		if err != nil {
 			panic(err)
 		}
@@ -296,7 +296,7 @@ func printPlayerNotorieties(ustore pkguser.Store, nstore pkgmod.NotorietyStore) 
 
 func comparePlayerNotorieties(pnrs []*ms.NotorietyReport, ustore pkguser.Store, nstore pkgmod.NotorietyStore) error {
 	for idx, playerId := range playerIds {
-		score, games, err := pkgmod.GetNotorietyReport(context.Background(), ustore, nstore, playerId)
+		score, games, err := pkgmod.GetNotorietyReport(context.Background(), ustore, nstore, playerId, 100)
 		if err != nil {
 			return err
 		}
