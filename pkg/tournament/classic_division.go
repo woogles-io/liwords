@@ -242,11 +242,13 @@ func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round i
 		return nil, fmt.Errorf("playerTwoOpponent does not exist in the division: >%s<", playerTwoOpponent)
 	}
 
+	pairingDestroyed := false
 	if playerOneOpponent != "" {
 		err = t.clearPairingKey(playerOneOpponentIndex, round)
 		if err != nil {
 			return nil, err
 		}
+		pairingDestroyed = true
 	}
 
 	if playerTwoOpponent != "" {
@@ -254,6 +256,7 @@ func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round i
 		if err != nil {
 			return nil, err
 		}
+		pairingDestroyed = true
 	}
 
 	newPairing := newClassicPairing(t, playerOneIndex, playerTwoIndex, round)
@@ -273,6 +276,16 @@ func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round i
 	pairingResponse := []*realtime.Pairing{newPairing}
 	standingsResponse := make(map[int32]*realtime.RoundStandings)
 	pairingsMessage := &realtime.DivisionPairingsResponse{DivisionPairings: pairingResponse, DivisionStandings: standingsResponse}
+
+	// If a pairing was destroyed, the standings may have changed
+	if pairingDestroyed {
+		standings, _, err := t.GetStandings(round)
+		if err != nil {
+			return nil, err
+		}
+		pairingsMessage.DivisionStandings[int32(round)] = standings
+	}
+
 	// This pairing is a bye or forfeit, the result
 	// can be submitted immediately
 	if playerOne == playerTwo ||
