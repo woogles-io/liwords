@@ -93,7 +93,6 @@ export const DirectorTools = React.memo((props: DTProps) => {
     );*/
 
   const renderRoster = useCallback(() => {
-    console.log('defining renderRoster with divs', tournamentContext.divisions);
     return Object.values(tournamentContext.divisions).map((d) => {
       return (
         <div key={d.divisionID}>
@@ -164,7 +163,11 @@ export const DirectorTools = React.memo((props: DTProps) => {
       tournamentContext.metadata.getType() === TType.LEGACY ||
       tournamentContext.metadata.getType() === TType.CLUB
     ) {
-      return null;
+      return (
+        <>
+          <p className="readable-text-color">Director tools are coming soon!</p>
+        </>
+      );
     }
     return (
       <>
