@@ -9,11 +9,11 @@ import {
   Divider,
   Form,
   Input,
-  Modal,
   message,
   Row,
   Select,
 } from 'antd';
+import { Modal } from '../utils/focus_modal';
 import { Store } from 'antd/lib/form/interface';
 import '../App.scss';
 import '../lobby/lobby.scss';

@@ -1,5 +1,5 @@
 import { Button, Card, message, Select } from 'antd';
-import Modal from 'antd/lib/modal/Modal';
+import { Modal } from '../utils/focus_modal';
 import React, {
   ReactNode,
   useCallback,

@@ -7,7 +7,8 @@ import {
 } from '../store/store';
 import Pool from './pool';
 import { singularCount } from '../utils/plural';
-import { Button, Modal } from 'antd';
+import { Button } from 'antd';
+import { Modal } from '../utils/focus_modal';
 import { Alphabet } from '../constants/alphabets';
 // Render an exchange widget.
 

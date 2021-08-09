@@ -9,11 +9,11 @@ import {
   Input,
   InputNumber,
   message,
-  Modal,
   Select,
   Space,
   Switch,
 } from 'antd';
+import { Modal } from '../utils/focus_modal';
 import axios from 'axios';
 import { Store } from 'rc-field-form/lib/interface';
 import React, { useEffect } from 'react';
