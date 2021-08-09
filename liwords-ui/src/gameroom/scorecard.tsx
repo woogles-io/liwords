@@ -55,6 +55,7 @@ type MoveEntityObj = {
   bonus: number;
   endRackPts: number;
   lostScore: number;
+  isBingo: boolean;
 };
 
 const displaySummary = (evt: GameEvent, board: Board) => {
@@ -135,6 +136,7 @@ const ScorecardTurn = (props: turnProps) => {
       bonus: evts[0].getBonus(),
       endRackPts: evts[0].getEndRackPoints(),
       oldScore: oldScore,
+      isBingo: evts[0].getIsBingo(),
     };
     if (evts.length === 1) {
       turn.rack = sortTiles(turn.rack);
@@ -196,7 +198,7 @@ const ScorecardTurn = (props: turnProps) => {
 
   return (
     <>
-      <div className="turn">
+      <div className={`turn${memoizedTurn.isBingo ? ' bingo' : ''}`}>
         <PlayerAvatar player={memoizedTurn.player} withTooltip />
         <div className="coords-time">
           {memoizedTurn.coords ? (

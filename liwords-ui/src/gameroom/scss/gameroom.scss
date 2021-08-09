@@ -1174,6 +1174,19 @@ p.rune {
     @include colorModed() {
       color: m($gray-extreme);
     }
+    &.bingo {
+      /* TODO
+      @include colorModed() {
+        background: linear-gradient(
+          150deg,
+          rgba(m($gray-extreme), 0.25) 0%,
+          transparent 20%,
+          transparent 80%,
+          rgba(m($gray-extreme), 0.25) 100%
+        );
+      }
+      */
+    }
     p {
       line-height: 1.2em;
       margin-bottom: 3px;
