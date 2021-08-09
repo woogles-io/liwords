@@ -31,7 +31,7 @@ export const TournamentRoom = (props: Props) => {
     tournamentContext,
     dispatchTournamentContext,
   } = useTournamentStoreContext();
-  const { loggedIn, username, userID } = loginState;
+  const { loggedIn, username, userID, perms } = loginState;
   const { competitorState: competitorContext } = tournamentContext;
   const { isRegistered } = competitorContext;
   const { sendSocketMsg } = props;
@@ -55,6 +55,10 @@ export const TournamentRoom = (props: Props) => {
   const isDirector = useMemo(() => {
     return tournamentContext.directors.includes(username);
   }, [tournamentContext.directors, username]);
+
+  const isAdmin = useMemo(() => {
+    return perms.includes('adm');
+  }, [perms]);
 
   const handleNewGame = useCallback(
     (seekID: string) => {
@@ -117,6 +121,7 @@ export const TournamentRoom = (props: Props) => {
           selectedGameTab={selectedGameTab}
           setSelectedGameTab={setSelectedGameTab}
           isDirector={isDirector}
+          isAdmin={isAdmin}
           tournamentID={tournamentID}
           onSeekSubmit={onSeekSubmit}
           loggedIn={loggedIn}

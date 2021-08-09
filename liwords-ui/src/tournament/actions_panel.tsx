@@ -43,6 +43,7 @@ type Props = {
   setSelectedGameTab: (tab: string) => void;
   tournamentID: string;
   isDirector: boolean;
+  isAdmin: boolean;
   onSeekSubmit: (g: SoughtGame) => void;
   sendReady: () => void;
 };
@@ -55,6 +56,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     selectedGameTab,
     setSelectedGameTab,
     isDirector,
+    isAdmin,
     onSeekSubmit,
     newGame,
     userID,
@@ -504,7 +506,7 @@ export const ActionsPanel = React.memo((props: Props) => {
               Standings
             </div>
           )}
-          {isDirector && (
+          {(isDirector || isAdmin) && (
             <div
               onClick={() => {
                 setSelectedGameTab('DIRECTOR TOOLS');
@@ -518,7 +520,7 @@ export const ActionsPanel = React.memo((props: Props) => {
           )}
         </div>
         <div className="main-content">
-          {isDirector &&
+          {(isDirector || isAdmin) &&
             selectedGameTab === 'DIRECTOR TOOLS' &&
             renderDirectorTools()}
           {matchModal}
