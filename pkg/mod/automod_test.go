@@ -247,7 +247,6 @@ func playGame(ctx context.Context,
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -308,8 +307,7 @@ func comparePlayerNotorieties(pnrs []*ms.NotorietyReport, ustore pkguser.Store, 
 		}
 		for gameIndex := range pnrs[idx].Games {
 			ge := pnrs[idx].Games[gameIndex]
-			// The games are retrieved in descending chronological order
-			ga := games[(len(games)-1)-gameIndex]
+			ga := games[gameIndex]
 			if ge.Type != ga.Type {
 				return fmt.Errorf("game arrays do not match at index %d: %s != %s", gameIndex, ge.Type.String(), ga.Type.String())
 			}

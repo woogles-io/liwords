@@ -3,6 +3,7 @@ package mod
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"strings"
 	"time"
@@ -44,6 +45,8 @@ var NotorietyThreshold int = 10
 var NotorietyDecrement int = 1
 var DurationMultiplier int = 24 * 60 * 60
 var UnreasonableTime int = 5 * 60
+
+var testTimestamp int64 = 1
 
 func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.User, u1 *entity.User, g *entity.Game) error {
 	totalGameTime := g.GameReq.InitialTimeSeconds + (60 * g.GameReq.MaxOvertimeMinutes)
@@ -186,7 +189,7 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 	if ngt != ms.NotoriousGameType_GOOD {
 
 		// The user misbehaved, add this game to the list of notorious games
-		err := ns.AddNotoriousGame(user.UUID, guid, int(ngt), time.Now().Unix())
+		err := ns.AddNotoriousGame(user.UUID, guid, int(ngt), notoriousGameTimestamp())
 		if err != nil {
 			return err
 		}
@@ -248,4 +251,13 @@ func loserDeniedNudge(g *entity.Game, userId string) bool {
 		}
 	}
 	return false
+}
+
+func notoriousGameTimestamp() int64 {
+	if flag.Lookup("test.v") == nil {
+		return time.Now().Unix()
+	} else {
+		testTimestamp++
+		return testTimestamp
+	}
 }
