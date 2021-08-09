@@ -2,6 +2,7 @@ package tournament
 
 import (
 	"context"
+	"sync"
 
 	"github.com/domino14/liwords/pkg/entity"
 	lru "github.com/hashicorp/golang-lru"
@@ -36,6 +37,7 @@ const (
 
 // Cache will reside in-memory, and will be per-node.
 type Cache struct {
+	sync.Mutex
 	cache *lru.Cache
 
 	backing backingStore
@@ -57,6 +59,14 @@ func NewCache(backing backingStore) *Cache {
 // Get gets a tournament from the cache. It loads it into the cache if it's not there.
 func (c *Cache) Get(ctx context.Context, id string) (*entity.Tournament, error) {
 	tm, ok := c.cache.Get(id)
+	if ok && tm != nil {
+		return tm.(*entity.Tournament), nil
+	}
+
+	// Recheck after locking, to ensure it is still not there.
+	c.Lock()
+	defer c.Unlock()
+	tm, ok = c.cache.Get(id)
 	if ok && tm != nil {
 		return tm.(*entity.Tournament), nil
 	}

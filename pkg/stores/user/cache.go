@@ -78,6 +78,7 @@ type modListCache struct {
 
 // Cache will reside in-memory, and will be per-node.
 type Cache struct {
+	sync.Mutex
 	cache *lru.Cache
 
 	backing backingStore
@@ -133,6 +134,14 @@ func (c *Cache) Get(ctx context.Context, username string) (*entity.User, error) 
 
 func (c *Cache) GetByUUID(ctx context.Context, uuid string) (*entity.User, error) {
 	u, ok := c.cache.Get(uuid)
+	if ok && u != nil {
+		return u.(*entity.User), nil
+	}
+
+	// Recheck after locking, to ensure it is still not there.
+	c.Lock()
+	defer c.Unlock()
+	u, ok = c.cache.Get(uuid)
 	if ok && u != nil {
 		return u.(*entity.User), nil
 	}
