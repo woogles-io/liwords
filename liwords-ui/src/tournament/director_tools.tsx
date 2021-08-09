@@ -165,7 +165,7 @@ export const DirectorTools = React.memo((props: DTProps) => {
     ) {
       return (
         <>
-          <p className="readable-text-color">Director tools are coming soon!</p>
+          <h4>Director tools are coming soon!</h4>
         </>
       );
     }
