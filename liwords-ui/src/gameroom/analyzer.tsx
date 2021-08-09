@@ -244,7 +244,7 @@ const parseExaminableGameContext = (
   const labelToNum = labelToNumFor(letterDistribution);
   const numToLabel = numToLabelFor(letterDistribution);
 
-  const rackStr = players[onturn].currentRack;
+  const rackStr = sortTiles(players[onturn].currentRack);
   const rackNum = Array.from(rackStr, labelToNum);
 
   let effectiveLexicon = lexicon;
