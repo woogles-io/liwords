@@ -166,6 +166,18 @@ export const challRuleToStr = (n: number): string => {
   return 'Unsupported';
 };
 
+export let sharedEnableAutoShuffle =
+  localStorage.getItem('enableAutoShuffle') === 'true';
+
+export const setSharedEnableAutoShuffle = (value: boolean) => {
+  if (value) {
+    localStorage.setItem('enableAutoShuffle', 'true');
+  } else {
+    localStorage.removeItem('enableAutoShuffle');
+  }
+  sharedEnableAutoShuffle = value;
+};
+
 // To expose this and make it more ergonomic to reorder without refreshing.
 export let preferredSortOrder = localStorage.getItem('tileOrder');
 

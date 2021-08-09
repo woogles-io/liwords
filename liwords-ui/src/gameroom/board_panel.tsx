@@ -57,6 +57,7 @@ import {
   useTentativeTileContext,
   useTimerStoreContext,
 } from '../store/store';
+import { sharedEnableAutoShuffle } from '../store/constants';
 import { BlankSelector } from './blank_selector';
 import { GameEndMessage } from './game_end_message';
 import { PlayerMetadata, GCGResponse, ChallengeRule } from './game_info';
@@ -567,7 +568,9 @@ export const BoardPanel = React.memo((props: Props) => {
         setPlacedTilesTempScore(bak.placedTilesTempScore);
         setArrowProperties(bak.arrowProperties);
       } else {
-        setDisplayedRack(props.currentRack);
+        let rack = props.currentRack;
+        if (sharedEnableAutoShuffle) rack = shuffleString(rack);
+        setDisplayedRack(rack);
         setPlacedTiles(new Set<EphemeralTile>());
         setPlacedTilesTempScore(0);
         setArrowProperties({

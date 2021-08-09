@@ -1,7 +1,12 @@
 import React, { useCallback } from 'react';
 import { useMountedState } from '../utils/mounted';
 import { Col, Row, Select, Switch } from 'antd';
-import { preferredSortOrder, setPreferredSortOrder } from '../store/constants';
+import {
+  preferredSortOrder,
+  setPreferredSortOrder,
+  setSharedEnableAutoShuffle,
+  sharedEnableAutoShuffle,
+} from '../store/constants';
 import '../gameroom/scss/gameroom.scss';
 import { TileLetter, PointValue } from '../gameroom/tile';
 import { BoardPreview } from './board_preview';
@@ -157,6 +162,10 @@ export const Preferences = React.memo((props: Props) => {
     setDarkMode((x) => !x);
   }, []);
 
+  const toggleAutoShuffle = useCallback(() => {
+    setSharedEnableAutoShuffle(!sharedEnableAutoShuffle);
+  }, []);
+
   const handleUserTileChange = useCallback((tileStyle: string) => {
     const classes = document?.body?.className
       .split(' ')
@@ -223,6 +232,19 @@ export const Preferences = React.memo((props: Props) => {
               <Select.Option value={tileOrder}>Custom</Select.Option>
             )}
           </Select>
+        </Col>
+      </Row>
+      <div className="toggle-section">
+        <div className="title">Random tile order</div>
+        <div>Automatically shuffle tiles at every turn</div>
+        <Switch
+          defaultChecked={sharedEnableAutoShuffle}
+          onChange={toggleAutoShuffle}
+          className="auto-shuffle-toggle"
+        />
+      </div>
+      <Row>
+        <Col span={12}>
           <div className="tile-order">Tile style</div>
           <div className="tile-selection">
             <Select
