@@ -5,13 +5,13 @@ import {
   Col,
   Form,
   Input,
-  Modal,
   Upload,
   Row,
   Select,
   notification,
   DatePicker,
 } from 'antd';
+import { Modal } from '../utils/focus_modal';
 import moment from 'moment';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { PlayerMetadata } from '../gameroom/game_info';

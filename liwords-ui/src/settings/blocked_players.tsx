@@ -3,7 +3,8 @@ import axios, { AxiosError } from 'axios';
 import { toAPIUrl } from '../api/api';
 import { useMountedState } from '../utils/mounted';
 import iconx from '../assets/icon-x.png';
-import { notification, Modal } from 'antd';
+import { notification } from 'antd';
+import { Modal } from '../utils/focus_modal';
 
 type user = {
   username: string;

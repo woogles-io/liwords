@@ -1,6 +1,7 @@
 import React from 'react';
 
-import { Modal, Alert } from 'antd';
+import { Alert } from 'antd';
+import { Modal } from '../utils/focus_modal';
 
 type Props = {
   visible: boolean;

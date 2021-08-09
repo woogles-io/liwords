@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { TouchBackend } from 'react-dnd-touch-backend';
-import { Button, Modal, notification, message, Tooltip } from 'antd';
+import { Button, notification, message, Tooltip } from 'antd';
+import { Modal } from '../utils/focus_modal';
 import { DndProvider } from 'react-dnd';
 import { ArrowDownOutlined, SyncOutlined } from '@ant-design/icons';
 import axios from 'axios';
