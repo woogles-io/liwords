@@ -56,7 +56,7 @@ enum NotoriousGameType {
   NO_PLAY = 1;
   SITTING = 2;
   SANDBAG = 3;
-  NO_PLAY_IGNORE_NUDGE = 4;
+  NO_PLAY_DENIED_NUDGE = 4;
 }
 
 message NotoriousGame {

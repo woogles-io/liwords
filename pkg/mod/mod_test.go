@@ -52,9 +52,9 @@ func recreateDB() {
 	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
 
 	for _, u := range []*entity.User{
-		{Username: "Spammer", Email: "josh+spammer@woogles.io", UUID: "Spammer"},
+		{Username: "Spammer", Email: os.Getenv("TEST_EMAIL_USERNAME") + "+spammer@woogles.io", UUID: "Spammer"},
 		{Username: "Sandbagger", Email: "sandbagger@gmail.com", UUID: "Sandbagger"},
-		{Username: "Cheater", Email: "josh@woogles.io", UUID: "Cheater"},
+		{Username: "Cheater", Email: os.Getenv("TEST_EMAIL_USERNAME") + "@woogles.io", UUID: "Cheater"},
 		{Username: "Hacker", Email: "hacker@woogles.io", UUID: "Hacker"},
 		{Username: "Deleter", Email: "deleter@woogles.io", UUID: "Deleter"},
 		{Username: "Moderator", Email: "admin@woogles.io", UUID: "Moderator", IsMod: true},
@@ -322,10 +322,8 @@ func TestNotifications(t *testing.T) {
 		Expiry:   time.Now().Add(time.Second * 100)}
 	ctx := context.Background()
 	ctx = apiserver.PlaceInContext(ctx, session)
-	// These values should only be used for testing locally,
-	// do not push valid tokens or keys to remote.
 	ctx = context.WithValue(ctx, config.CtxKeyword,
-		&config.Config{MailgunKey: "", DiscordToken: ""})
+		&config.Config{MailgunKey: os.Getenv("TEST_MAILGUN_KEY"), DiscordToken: os.Getenv("TEST_DISCORD_TOKEN")})
 
 	cstr := TestingDBConnStr + " dbname=liwords_test"
 	recreateDB()
@@ -335,13 +333,15 @@ func TestNotifications(t *testing.T) {
 	permanentAction := &ms.ModAction{UserId: "Spammer", Type: ms.ModActionType_MUTE, Duration: 0}
 	suspendAction := &ms.ModAction{UserId: "Cheater", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: 100, EmailType: ms.EmailType_CHEATING}
 	deleteAction := &ms.ModAction{UserId: "Cheater", Type: ms.ModActionType_DELETE_ACCOUNT}
-
+	removeAction := &ms.ModAction{UserId: "Spammer", Type: ms.ModActionType_MUTE, Duration: 40}
 	// Apply Actions
 	err := ApplyActions(ctx, us, cs, []*ms.ModAction{permanentAction})
 	is.NoErr(err)
 	err = ApplyActions(ctx, us, cs, []*ms.ModAction{suspendAction})
 	is.NoErr(err)
 	err = ApplyActions(ctx, us, cs, []*ms.ModAction{deleteAction})
+	is.NoErr(err)
+	err = ApplyActions(ctx, us, cs, []*ms.ModAction{removeAction})
 	is.NoErr(err)
 	us.(*user.DBStore).Disconnect()
 }

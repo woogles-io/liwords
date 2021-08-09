@@ -54,7 +54,9 @@ func (ms *ModService) GetNotorietyReport(ctx context.Context, req *pb.GetNotorie
 	if !(user.IsAdmin || user.IsMod) {
 		return nil, twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
 	}
-	score, games, err := GetNotorietyReport(ctx, ms.userStore, ms.notorietyStore, req.UserId)
+	// Default to only getting 50 notorious games, which is probably much more than
+	// needed anyway.
+	score, games, err := GetNotorietyReport(ctx, ms.userStore, ms.notorietyStore, req.UserId, 50)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}

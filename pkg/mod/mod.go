@@ -44,6 +44,8 @@ var ModActionTextMap = map[ms.ModActionType]string{
 	ms.ModActionType_SUSPEND_GAMES:       "playing games",
 }
 
+var RemovalDuration = 60
+
 func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLogout bool, actionTypes []ms.ModActionType) (bool, error) {
 	currentActions, err := GetActions(ctx, us, uuid)
 	if err != nil {
@@ -205,6 +207,10 @@ func RemoveActions(ctx context.Context, us user.Store, actions []*ms.ModAction) 
 	return nil
 }
 
+func IsRemoval(action *ms.ModAction) bool {
+	return action.Duration != 0 && action.Duration <= int32(RemovalDuration)
+}
+
 func IsCensorable(ctx context.Context, us user.Store, uuid string) bool {
 	// Don't censor if already censored
 	if uuid == utilities.CensoredUsername ||
@@ -320,7 +326,7 @@ func applyAction(ctx context.Context, us user.Store, cs user.ChatStore, action *
 	if err != nil {
 		return err
 	}
-	notify(ctx, us, user, action)
+	notify(ctx, us, user, action, "")
 	return nil
 }
 

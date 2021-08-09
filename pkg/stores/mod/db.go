@@ -37,21 +37,22 @@ func (ns *NotorietyStore) AddNotoriousGame(playerID string, gameID string, gameT
 	return result.Error
 }
 
-func (ns *NotorietyStore) GetNotoriousGames(playerID string) ([]*ms.NotoriousGame, error) {
+func (ns *NotorietyStore) GetNotoriousGames(playerID string, limit int) ([]*ms.NotoriousGame, error) {
 	var games []notoriousgame
 
-	result := ns.db.Table("notoriousgames").
+	result := ns.db.Limit(limit).Table("notoriousgames").
 		Select("game_id, type, timestamp").
 		Where("player_id = ?", []interface{}{playerID}).
-		Order("timestamp").Scan(&games)
+		Order("timestamp desc").Scan(&games)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 
-	items := make([]*ms.NotoriousGame, len(games))
+	numberOfGames := len(games)
+	items := make([]*ms.NotoriousGame, numberOfGames)
 	for idx, dbgame := range games {
 
-		items[idx] = &ms.NotoriousGame{
+		items[(numberOfGames-1)-idx] = &ms.NotoriousGame{
 			Id:   dbgame.GameID,
 			Type: ms.NotoriousGameType(dbgame.Type),
 			// Converting from a Unix timestamp to
