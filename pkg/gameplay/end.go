@@ -181,10 +181,9 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 		if err != nil {
 			log.Err(err).Msg("error-tourney-game-ended")
 		}
-	}
-
-	// Applies penalties to players who have misbehaved during the game
-	if g.GameReq.RatingMode == realtime.RatingMode_RATED {
+	} else if g.GameReq.RatingMode == realtime.RatingMode_RATED {
+		// Applies penalties to players who have misbehaved during the game
+		// Does not apply for tournament games
 		err = mod.Automod(ctx, userStore, notorietyStore, u0, u1, g)
 		if err != nil {
 			log.Err(err).Msg("automod-error")
