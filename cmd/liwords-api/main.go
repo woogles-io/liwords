@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/twitchtv/twirp"
 
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/bus"
@@ -79,6 +80,16 @@ func pingEndpoint(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status":"copacetic"}`))
 }
 
+// NewLoggingServerHooks logs request and errors to stdout in the service
+func NewLoggingServerHooks() *twirp.ServerHooks {
+	return &twirp.ServerHooks{
+		Error: func(ctx context.Context, twerr twirp.Error) context.Context {
+			log.Err(twerr).Str("code", string(twerr.Code())).Msg("api-error")
+			return ctx
+		},
+	}
+}
+
 func main() {
 
 	cfg := &config.Config{}
@@ -109,12 +120,17 @@ func main() {
 	stores.UserStore = user.NewCache(tmpUserStore)
 
 	stores.SessionStore, err = session.NewDBStore(cfg.DBConnString)
+	if err != nil {
+		panic(err)
+	}
 
 	middlewares := alice.New(
 		hlog.NewHandler(log.With().Str("service", "liwords").Logger()),
 		apiserver.WithCookiesMiddleware,
 		apiserver.AuthenticationMiddlewareGenerator(stores.SessionStore),
 		apiserver.APIKeyMiddlewareGenerator(),
+		config.CtxMiddlewareGenerator(cfg),
+
 		hlog.AccessHandler(func(r *http.Request, status int, size int, d time.Duration) {
 			path := strings.Split(r.URL.Path, "/")
 			method := path[len(path)-1]
@@ -167,34 +183,34 @@ func main() {
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
 	router.Handle(userservice.AuthenticationServicePathPrefix,
-		middlewares.Then(userservice.NewAuthenticationServiceServer(authenticationService, nil)))
+		middlewares.Then(userservice.NewAuthenticationServiceServer(authenticationService, NewLoggingServerHooks())))
 
 	router.Handle(userservice.RegistrationServicePathPrefix,
-		middlewares.Then(userservice.NewRegistrationServiceServer(registrationService, nil)))
+		middlewares.Then(userservice.NewRegistrationServiceServer(registrationService, NewLoggingServerHooks())))
 
 	router.Handle(gameservice.GameMetadataServicePathPrefix,
-		middlewares.Then(gameservice.NewGameMetadataServiceServer(gameService, nil)))
+		middlewares.Then(gameservice.NewGameMetadataServiceServer(gameService, NewLoggingServerHooks())))
 
 	router.Handle(wordservice.WordServicePathPrefix,
-		middlewares.Then(wordservice.NewWordServiceServer(wordService, nil)))
+		middlewares.Then(wordservice.NewWordServiceServer(wordService, NewLoggingServerHooks())))
 
 	router.Handle(userservice.ProfileServicePathPrefix,
-		middlewares.Then(userservice.NewProfileServiceServer(profileService, nil)))
+		middlewares.Then(userservice.NewProfileServiceServer(profileService, NewLoggingServerHooks())))
 
 	router.Handle(userservice.AutocompleteServicePathPrefix,
-		middlewares.Then(userservice.NewAutocompleteServiceServer(autocompleteService, nil)))
+		middlewares.Then(userservice.NewAutocompleteServiceServer(autocompleteService, NewLoggingServerHooks())))
 
 	router.Handle(userservice.SocializeServicePathPrefix,
-		middlewares.Then(userservice.NewSocializeServiceServer(socializeService, nil)))
+		middlewares.Then(userservice.NewSocializeServiceServer(socializeService, NewLoggingServerHooks())))
 
 	router.Handle(configservice.ConfigServicePathPrefix,
-		middlewares.Then(configservice.NewConfigServiceServer(configService, nil)))
+		middlewares.Then(configservice.NewConfigServiceServer(configService, NewLoggingServerHooks())))
 
 	router.Handle(tournamentservice.TournamentServicePathPrefix,
-		middlewares.Then(tournamentservice.NewTournamentServiceServer(tournamentService, nil)))
+		middlewares.Then(tournamentservice.NewTournamentServiceServer(tournamentService, NewLoggingServerHooks())))
 
 	router.Handle(modservice.ModServicePathPrefix,
-		middlewares.Then(modservice.NewModServiceServer(modService, nil)))
+		middlewares.Then(modservice.NewModServiceServer(modService, NewLoggingServerHooks())))
 
 	router.Handle(
 		"/debug/pprof/goroutine", pprof.Handler("goroutine"),
