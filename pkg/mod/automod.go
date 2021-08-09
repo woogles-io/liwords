@@ -199,7 +199,7 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 		}
 		if newNotoriety > NotorietyThreshold {
 			action := &ms.ModAction{UserId: user.UUID,
-				Type:          ms.ModActionType_SUSPEND_GAMES,
+				Type:          ms.ModActionType_SUSPEND_RATED_GAMES,
 				StartTime:     ptypes.TimestampNow(),
 				ApplierUserId: AutomodUserId,
 				Duration:      int32(DurationMultiplier * (newNotoriety - NotorietyThreshold))}
