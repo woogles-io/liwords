@@ -36,14 +36,16 @@ func notify(ctx context.Context, us user.Store, user *entity.User, action *ms.Mo
 			action.EndTime,
 			action.EmailType)
 		if err == nil {
-			_, err := emailer.SendSimpleMessage(config.MailgunKey,
-				user.Email,
-				fmt.Sprintf("Woogles Terms of Service Violation for Account %s", user.Username),
-				emailContent)
-			if err != nil {
-				// Errors should not be fatal, just log them
-				log.Err(err).Str("userID", user.UUID).Msg("mod-action-send-user-email")
-			}
+			go func() {
+				_, err := emailer.SendSimpleMessage(config.MailgunKey,
+					user.Email,
+					fmt.Sprintf("Woogles Terms of Service Violation for Account %s", user.Username),
+					emailContent)
+				if err != nil {
+					// Errors should not be fatal, just log them
+					log.Err(err).Str("userID", user.UUID).Msg("mod-action-send-user-email")
+				}
+			}()
 		} else {
 			log.Err(err).Str("userID", user.UUID).Msg("mod-action-generate-user-email")
 		}
@@ -90,14 +92,16 @@ func notify(ctx context.Context, us user.Store, user *entity.User, action *ms.Mo
 		if err != nil {
 			log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-marshal")
 		} else {
-			resp, err := http.Post(config.DiscordToken, "application/json", bytes.NewBuffer(requestBody))
-			// Errors should not be fatal, just log them
-			if err != nil {
-				log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-post-error")
-			} else if resp.StatusCode != 204 { // No Content
-				// We do not expect any other response
-				log.Err(err).Str("status", resp.Status).Msg("mod-action-discord-notification-post-bad-response")
-			}
+			go func() {
+				resp, err := http.Post(config.DiscordToken, "application/json", bytes.NewBuffer(requestBody))
+				// Errors should not be fatal, just log them
+				if err != nil {
+					log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-post-error")
+				} else if resp.StatusCode != 204 { // No Content
+					// We do not expect any other response
+					log.Err(err).Str("status", resp.Status).Msg("mod-action-discord-notification-post-bad-response")
+				}
+			}()
 		}
 	}
 
