@@ -5,6 +5,9 @@ import (
 	"math"
 	"time"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/mod"
@@ -14,11 +17,11 @@ import (
 	"github.com/domino14/liwords/rpc/api/proto/realtime"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
-	"github.com/rs/zerolog/log"
 )
 
 func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameStore,
 	userStore user.Store, notorietyStore mod.NotorietyStore, listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore) error {
+	log := zerolog.Ctx(ctx)
 
 	log.Debug().Interface("game-end-reason", g.GameEndReason).Msg("checking-game-over")
 	// The game is over already. Set an end game reason if there hasn't been
@@ -30,6 +33,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 			g.SetGameEndReason(pb.GameEndReason_CONSECUTIVE_ZEROES)
 		}
 	}
+	g.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
 
 	// evts := []*pb.ServerGameplayEvent{}
 
@@ -283,7 +287,6 @@ func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore GameStore,
 	userStore user.Store, notorietyStore mod.NotorietyStore, listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore) error {
 	log.Debug().Interface("playing", entGame.Game.Playing()).Msg("timed out!")
-	entGame.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
 
 	// The losing player always overtimes by the maximum amount.
 	// Not less, even if no moves in the final minute.
