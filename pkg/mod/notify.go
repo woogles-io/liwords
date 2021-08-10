@@ -65,25 +65,30 @@ func notify(ctx context.Context, us user.Store, user *entity.User, action *ms.Mo
 			modUsername = modUser.Username
 		}
 
-		appliedOrRemoved := "applied to"
-		actionExpiration := "action will expire"
-		if IsRemoval(action) {
-			appliedOrRemoved = "removed from"
-			actionExpiration = "will take effect"
-		}
-		message := fmt.Sprintf("Action %s was %s user %s by moderator %s.", actionEmailText, appliedOrRemoved, user.Username, modUsername)
-		_, actionExists := ModActionDispatching[action.Type]
-		if !actionExists { // Action is non-transient
-			if action.Duration == 0 {
-				message += " This action is permanent."
-			} else if action.EndTime == nil {
-				log.Err(err).Str("userID", user.UUID).Msg("mod-action-endtime-nil")
-			} else {
-				golangActionEndTime, err := ptypes.Timestamp(action.EndTime)
-				if err != nil {
-					log.Err(err).Str("error", err.Error()).Msg("mod-action-endtime-conversion")
+		var message string
+		if action.ApplierUserId == action.UserId && action.Type == ms.ModActionType_SUSPEND_ACCOUNT {
+			message = fmt.Sprintf("User %s has deleted their account.", user.Username)
+		} else {
+			appliedOrRemoved := "applied to"
+			actionExpiration := "action will expire"
+			if IsRemoval(action) {
+				appliedOrRemoved = "removed from"
+				actionExpiration = "will take effect"
+			}
+			message = fmt.Sprintf("Action %s was %s user %s by moderator %s.", actionEmailText, appliedOrRemoved, user.Username, modUsername)
+			_, actionExists := ModActionDispatching[action.Type]
+			if !actionExists { // Action is non-transient
+				if action.Duration == 0 {
+					message += " This action is permanent."
+				} else if action.EndTime == nil {
+					log.Err(err).Str("userID", user.UUID).Msg("mod-action-endtime-nil")
 				} else {
-					message += fmt.Sprintf(" This %s on %s.", actionExpiration, golangActionEndTime.UTC().Format(time.UnixDate))
+					golangActionEndTime, err := ptypes.Timestamp(action.EndTime)
+					if err != nil {
+						log.Err(err).Str("error", err.Error()).Msg("mod-action-endtime-conversion")
+					} else {
+						message += fmt.Sprintf(" This %s on %s.", actionExpiration, golangActionEndTime.UTC().Format(time.UnixDate))
+					}
 				}
 			}
 		}
