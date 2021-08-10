@@ -212,11 +212,13 @@ export const Preferences = React.memo((props: Props) => {
       console.error(e);
     }
   }, []);
+  const localEnableAutoShuffle = sharedEnableAutoShuffle;
   const tileOrderValue = React.useMemo(
-    () => makeTileOrderValue(tileOrder, sharedEnableAutoShuffle),
-    [tileOrder, sharedEnableAutoShuffle]
+    () => makeTileOrderValue(tileOrder, localEnableAutoShuffle),
+    [tileOrder, localEnableAutoShuffle]
   );
   const tileOrderOptions = React.useMemo(() => {
+    void reevaluateTileOrderOptions;
     const ret: Array<{ name: React.ReactElement; value: string }> = [];
     const pushTileOrder = (
       name: string,
@@ -226,7 +228,7 @@ export const Preferences = React.memo((props: Props) => {
       // Design only wants "Random" for "Alphabetical".
       if (
         !(
-          (tileOrder === value && autoShuffle === sharedEnableAutoShuffle) ||
+          (tileOrder === value && autoShuffle === localEnableAutoShuffle) ||
           name === 'Alphabetical' ||
           !autoShuffle
         )
@@ -235,7 +237,7 @@ export const Preferences = React.memo((props: Props) => {
       }
       let nameText = name;
       let hoverHelp = null;
-      if (autoShuffle !== sharedEnableAutoShuffle) {
+      if (autoShuffle !== localEnableAutoShuffle) {
         hoverHelp = `(turn ${autoShuffle ? 'on' : 'off'} auto-shuffle)`;
       }
       if (name === 'Alphabetical' && autoShuffle) {
@@ -274,7 +276,7 @@ export const Preferences = React.memo((props: Props) => {
       addTileOrder({ name: 'Custom', value: tileOrder });
     }
     return ret;
-  }, [reevaluateTileOrderOptions, tileOrder, sharedEnableAutoShuffle]);
+  }, [reevaluateTileOrderOptions, tileOrder, localEnableAutoShuffle]);
 
   return (
     <div className="preferences">
