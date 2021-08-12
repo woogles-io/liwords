@@ -3,8 +3,8 @@ package mod
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -37,7 +37,7 @@ var BehaviorToString map[ms.NotoriousGameType]string = map[ms.NotoriousGameType]
 	ms.NotoriousGameType_SANDBAG:              "Sandbagging",
 }
 
-var IsTesting = flag.Lookup("test.v") == nil
+var IsTesting = strings.HasSuffix(os.Args[0], ".test")
 
 var AutomodUserId string = "AUTOMOD"
 var SandbaggingThreshold int = 3
@@ -256,10 +256,10 @@ func loserDeniedNudge(g *entity.Game, userId string) bool {
 }
 
 func notoriousGameTimestamp() int64 {
-	if IsTesting {
+	if !IsTesting {
+		return time.Now().Unix()
+	} else {
 		testTimestamp++
 		return testTimestamp
-	} else {
-		return time.Now().Unix()
 	}
 }
