@@ -37,6 +37,8 @@ var BehaviorToString map[ms.NotoriousGameType]string = map[ms.NotoriousGameType]
 	ms.NotoriousGameType_SANDBAG:              "Sandbagging",
 }
 
+var IsTesting = flag.Lookup("test.v") == nil
+
 var AutomodUserId string = "AUTOMOD"
 var SandbaggingThreshold int = 3
 
@@ -254,10 +256,10 @@ func loserDeniedNudge(g *entity.Game, userId string) bool {
 }
 
 func notoriousGameTimestamp() int64 {
-	if flag.Lookup("test.v") == nil {
-		return time.Now().Unix()
-	} else {
+	if IsTesting {
 		testTimestamp++
 		return testTimestamp
+	} else {
+		return time.Now().Unix()
 	}
 }
