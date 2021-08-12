@@ -3,6 +3,7 @@ package bus
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -14,14 +15,15 @@ import (
 	"github.com/domino14/liwords/pkg/user"
 	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
+	"github.com/domino14/liwords/rpc/api/proto/realtime"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/game"
 )
 
+var BootedReceiversMax = 5
+
 func (b *Bus) seekRequest(ctx context.Context, auth, userID, connID string,
 	data []byte) error {
-
-	var gameRequest *pb.GameRequest
 
 	if auth == "anon" {
 		// Require login for now (forever?)
@@ -34,12 +36,40 @@ func (b *Bus) seekRequest(ctx context.Context, auth, userID, connID string,
 		return err
 	}
 
-	gameRequest = req.GameRequest
+	if len(req.BootedReceivers) > BootedReceiversMax {
+		return fmt.Errorf("cannot boot more than %d players", BootedReceiversMax)
+	}
+
+	// determine if seek already exists
+
+	gameRequest := req.GameRequest
 	if gameRequest == nil {
 		return errors.New("no game request was found")
 	}
 
-	err = actionExists(ctx, b.userStore, userID, gameRequest)
+	exists, err := b.soughtGameStore.ExistsForUser(ctx, gameRequest.RequestId)
+	if err != nil {
+		return err
+	}
+
+	if exists {
+		err = b.updateSeekRequest(ctx, auth, userID, connID, req)
+	} else {
+		err = b.newSeekRequest(ctx, auth, userID, connID, req)
+	}
+
+	return err
+}
+
+func (b *Bus) newSeekRequest(ctx context.Context, auth, userID, connID string,
+	req *pb.SeekRequest) error {
+
+	gameRequest := req.GameRequest
+	if gameRequest == nil {
+		return errors.New("no game request was found")
+	}
+
+	err := actionExists(ctx, b.userStore, userID, gameRequest)
 	if err != nil {
 		return err
 	}
@@ -86,6 +116,40 @@ func (b *Bus) seekRequest(ctx context.Context, auth, userID, connID string,
 	return nil
 }
 
+func (b *Bus) updateSeekRequest(ctx context.Context, auth, userID, connID string,
+	newReq *pb.SeekRequest) error {
+
+	// If we are here the seek exists and the game request is not nil
+	reqId := newReq.GameRequest.RequestId
+	sg, err := b.soughtGameStore.Get(ctx, reqId)
+	if err != nil {
+		return err
+	}
+
+	if userID == sg.Seeker() {
+		sg.SeekRequest.UserState = newReq.UserState
+		sg.SeekRequest.BootedReceivers = newReq.BootedReceivers
+	} else {
+		sg.SeekRequest.ReceiverState = newReq.ReceiverState
+	}
+
+	// If both players are ready, start the game
+	// If the receiver is absent, send the updated seek to everyone
+	// Otherwise, only send it to the two players
+	if sg.SeekRequest.ReceiverState == pb.SeekState_READY &&
+		sg.SeekRequest.UserState == pb.SeekState_READY {
+		err = b.gameAccepted(ctx, &realtime.SoughtGameProcessEvent{RequestId: reqId}, userID, connID)
+	} else if sg.SeekRequest.ReceiverState == pb.SeekState_ABSENT {
+		// Send to everyone, the seek is open again
+		err = nil
+	} else {
+		// Only send to the players inwolwed
+		err = nil
+	}
+
+	return err
+}
+
 func (b *Bus) matchRequest(ctx context.Context, auth, userID, connID string,
 	data []byte) error {
 
@@ -98,6 +162,10 @@ func (b *Bus) matchRequest(ctx context.Context, auth, userID, connID string,
 	err := proto.Unmarshal(data, req)
 	if err != nil {
 		return err
+	}
+
+	if len(req.BootedReceivers) > BootedReceiversMax {
+		return fmt.Errorf("cannot boot more than %d players", BootedReceiversMax)
 	}
 
 	gameRequest, lastOpp, err := b.gameRequestForMatch(ctx, req, userID)

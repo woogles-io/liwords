@@ -66,6 +66,7 @@ goog.exportSymbol('proto.liwords.RoundControl', null, global);
 goog.exportSymbol('proto.liwords.RoundStandings', null, global);
 goog.exportSymbol('proto.liwords.SeekRequest', null, global);
 goog.exportSymbol('proto.liwords.SeekRequests', null, global);
+goog.exportSymbol('proto.liwords.SeekState', null, global);
 goog.exportSymbol('proto.liwords.ServerChallengeResultEvent', null, global);
 goog.exportSymbol('proto.liwords.ServerGameplayEvent', null, global);
 goog.exportSymbol('proto.liwords.ServerMessage', null, global);
@@ -348,7 +349,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.liwords.SeekRequest = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.liwords.SeekRequest.repeatedFields_, null);
 };
 goog.inherits(proto.liwords.SeekRequest, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -369,7 +370,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.liwords.MatchRequest = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.liwords.MatchRequest.repeatedFields_, null);
 };
 goog.inherits(proto.liwords.MatchRequest, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -3889,6 +3890,13 @@ proto.liwords.PresenceEntry.prototype.clearChannelList = function() {
 
 
 
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.liwords.SeekRequest.repeatedFields_ = [9];
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -3924,7 +3932,11 @@ proto.liwords.SeekRequest.toObject = function(includeInstance, msg) {
     user: (f = msg.getUser()) && proto.liwords.MatchUser.toObject(includeInstance, f),
     minimumRating: jspb.Message.getFieldWithDefault(msg, 3, 0),
     maximumRating: jspb.Message.getFieldWithDefault(msg, 4, 0),
-    connectionId: jspb.Message.getFieldWithDefault(msg, 5, "")
+    connectionId: jspb.Message.getFieldWithDefault(msg, 5, ""),
+    receivedUser: (f = msg.getReceivedUser()) && proto.liwords.MatchUser.toObject(includeInstance, f),
+    userState: jspb.Message.getFieldWithDefault(msg, 7, 0),
+    receiverState: jspb.Message.getFieldWithDefault(msg, 8, 0),
+    bootedReceiversList: (f = jspb.Message.getRepeatedField(msg, 9)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -3982,6 +3994,23 @@ proto.liwords.SeekRequest.deserializeBinaryFromReader = function(msg, reader) {
     case 5:
       var value = /** @type {string} */ (reader.readString());
       msg.setConnectionId(value);
+      break;
+    case 6:
+      var value = new proto.liwords.MatchUser;
+      reader.readMessage(value,proto.liwords.MatchUser.deserializeBinaryFromReader);
+      msg.setReceivedUser(value);
+      break;
+    case 7:
+      var value = /** @type {!proto.liwords.SeekState} */ (reader.readEnum());
+      msg.setUserState(value);
+      break;
+    case 8:
+      var value = /** @type {!proto.liwords.SeekState} */ (reader.readEnum());
+      msg.setReceiverState(value);
+      break;
+    case 9:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addBootedReceivers(value);
       break;
     default:
       reader.skipField();
@@ -4046,6 +4075,35 @@ proto.liwords.SeekRequest.serializeBinaryToWriter = function(message, writer) {
   if (f.length > 0) {
     writer.writeString(
       5,
+      f
+    );
+  }
+  f = message.getReceivedUser();
+  if (f != null) {
+    writer.writeMessage(
+      6,
+      f,
+      proto.liwords.MatchUser.serializeBinaryToWriter
+    );
+  }
+  f = message.getUserState();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      7,
+      f
+    );
+  }
+  f = message.getReceiverState();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      8,
+      f
+    );
+  }
+  f = message.getBootedReceiversList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      9,
       f
     );
   }
@@ -4180,6 +4238,123 @@ proto.liwords.SeekRequest.prototype.setConnectionId = function(value) {
 };
 
 
+/**
+ * optional MatchUser received_user = 6;
+ * @return {?proto.liwords.MatchUser}
+ */
+proto.liwords.SeekRequest.prototype.getReceivedUser = function() {
+  return /** @type{?proto.liwords.MatchUser} */ (
+    jspb.Message.getWrapperField(this, proto.liwords.MatchUser, 6));
+};
+
+
+/**
+ * @param {?proto.liwords.MatchUser|undefined} value
+ * @return {!proto.liwords.SeekRequest} returns this
+*/
+proto.liwords.SeekRequest.prototype.setReceivedUser = function(value) {
+  return jspb.Message.setWrapperField(this, 6, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.liwords.SeekRequest} returns this
+ */
+proto.liwords.SeekRequest.prototype.clearReceivedUser = function() {
+  return this.setReceivedUser(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.liwords.SeekRequest.prototype.hasReceivedUser = function() {
+  return jspb.Message.getField(this, 6) != null;
+};
+
+
+/**
+ * optional SeekState user_state = 7;
+ * @return {!proto.liwords.SeekState}
+ */
+proto.liwords.SeekRequest.prototype.getUserState = function() {
+  return /** @type {!proto.liwords.SeekState} */ (jspb.Message.getFieldWithDefault(this, 7, 0));
+};
+
+
+/**
+ * @param {!proto.liwords.SeekState} value
+ * @return {!proto.liwords.SeekRequest} returns this
+ */
+proto.liwords.SeekRequest.prototype.setUserState = function(value) {
+  return jspb.Message.setProto3EnumField(this, 7, value);
+};
+
+
+/**
+ * optional SeekState receiver_state = 8;
+ * @return {!proto.liwords.SeekState}
+ */
+proto.liwords.SeekRequest.prototype.getReceiverState = function() {
+  return /** @type {!proto.liwords.SeekState} */ (jspb.Message.getFieldWithDefault(this, 8, 0));
+};
+
+
+/**
+ * @param {!proto.liwords.SeekState} value
+ * @return {!proto.liwords.SeekRequest} returns this
+ */
+proto.liwords.SeekRequest.prototype.setReceiverState = function(value) {
+  return jspb.Message.setProto3EnumField(this, 8, value);
+};
+
+
+/**
+ * repeated string booted_receivers = 9;
+ * @return {!Array<string>}
+ */
+proto.liwords.SeekRequest.prototype.getBootedReceiversList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 9));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.liwords.SeekRequest} returns this
+ */
+proto.liwords.SeekRequest.prototype.setBootedReceiversList = function(value) {
+  return jspb.Message.setField(this, 9, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.liwords.SeekRequest} returns this
+ */
+proto.liwords.SeekRequest.prototype.addBootedReceivers = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 9, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.liwords.SeekRequest} returns this
+ */
+proto.liwords.SeekRequest.prototype.clearBootedReceiversList = function() {
+  return this.setBootedReceiversList([]);
+};
+
+
+
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.liwords.MatchRequest.repeatedFields_ = [9];
 
 
 
@@ -4217,7 +4392,10 @@ proto.liwords.MatchRequest.toObject = function(includeInstance, msg) {
     receivingUser: (f = msg.getReceivingUser()) && proto.liwords.MatchUser.toObject(includeInstance, f),
     rematchFor: jspb.Message.getFieldWithDefault(msg, 4, ""),
     connectionId: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    tournamentId: jspb.Message.getFieldWithDefault(msg, 6, "")
+    tournamentId: jspb.Message.getFieldWithDefault(msg, 6, ""),
+    userState: jspb.Message.getFieldWithDefault(msg, 7, 0),
+    receiverState: jspb.Message.getFieldWithDefault(msg, 8, 0),
+    bootedReceiversList: (f = jspb.Message.getRepeatedField(msg, 9)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -4280,6 +4458,18 @@ proto.liwords.MatchRequest.deserializeBinaryFromReader = function(msg, reader) {
     case 6:
       var value = /** @type {string} */ (reader.readString());
       msg.setTournamentId(value);
+      break;
+    case 7:
+      var value = /** @type {!proto.liwords.SeekState} */ (reader.readEnum());
+      msg.setUserState(value);
+      break;
+    case 8:
+      var value = /** @type {!proto.liwords.SeekState} */ (reader.readEnum());
+      msg.setReceiverState(value);
+      break;
+    case 9:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addBootedReceivers(value);
       break;
     default:
       reader.skipField();
@@ -4352,6 +4542,27 @@ proto.liwords.MatchRequest.serializeBinaryToWriter = function(message, writer) {
   if (f.length > 0) {
     writer.writeString(
       6,
+      f
+    );
+  }
+  f = message.getUserState();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      7,
+      f
+    );
+  }
+  f = message.getReceiverState();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      8,
+      f
+    );
+  }
+  f = message.getBootedReceiversList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      9,
       f
     );
   }
@@ -4520,6 +4731,79 @@ proto.liwords.MatchRequest.prototype.getTournamentId = function() {
  */
 proto.liwords.MatchRequest.prototype.setTournamentId = function(value) {
   return jspb.Message.setProto3StringField(this, 6, value);
+};
+
+
+/**
+ * optional SeekState user_state = 7;
+ * @return {!proto.liwords.SeekState}
+ */
+proto.liwords.MatchRequest.prototype.getUserState = function() {
+  return /** @type {!proto.liwords.SeekState} */ (jspb.Message.getFieldWithDefault(this, 7, 0));
+};
+
+
+/**
+ * @param {!proto.liwords.SeekState} value
+ * @return {!proto.liwords.MatchRequest} returns this
+ */
+proto.liwords.MatchRequest.prototype.setUserState = function(value) {
+  return jspb.Message.setProto3EnumField(this, 7, value);
+};
+
+
+/**
+ * optional SeekState receiver_state = 8;
+ * @return {!proto.liwords.SeekState}
+ */
+proto.liwords.MatchRequest.prototype.getReceiverState = function() {
+  return /** @type {!proto.liwords.SeekState} */ (jspb.Message.getFieldWithDefault(this, 8, 0));
+};
+
+
+/**
+ * @param {!proto.liwords.SeekState} value
+ * @return {!proto.liwords.MatchRequest} returns this
+ */
+proto.liwords.MatchRequest.prototype.setReceiverState = function(value) {
+  return jspb.Message.setProto3EnumField(this, 8, value);
+};
+
+
+/**
+ * repeated string booted_receivers = 9;
+ * @return {!Array<string>}
+ */
+proto.liwords.MatchRequest.prototype.getBootedReceiversList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 9));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.liwords.MatchRequest} returns this
+ */
+proto.liwords.MatchRequest.prototype.setBootedReceiversList = function(value) {
+  return jspb.Message.setField(this, 9, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.liwords.MatchRequest} returns this
+ */
+proto.liwords.MatchRequest.prototype.addBootedReceivers = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 9, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.liwords.MatchRequest} returns this
+ */
+proto.liwords.MatchRequest.prototype.clearBootedReceiversList = function() {
+  return this.setBootedReceiversList([]);
 };
 
 
@@ -14210,6 +14494,15 @@ proto.liwords.MessageType = {
   PRESENCE_ENTRY: 40,
   ACTIVE_GAME_ENTRY: 41,
   GAME_META_EVENT: 42
+};
+
+/**
+ * @enum {number}
+ */
+proto.liwords.SeekState = {
+  ABSENT: 0,
+  PRESENT: 1,
+  READY: 2
 };
 
 /**

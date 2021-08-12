@@ -172,6 +172,12 @@ message PresenceEntry {
   repeated string channel = 3;
 }
 
+enum SeekState {
+  ABSENT = 0;
+  PRESENT = 1;
+  READY = 2;
+}
+
 message SeekRequest {
   GameRequest game_request = 1;
   MatchUser user = 2;
@@ -179,6 +185,10 @@ message SeekRequest {
   int32 maximum_rating = 4;
   // connection_id is the websocket ID via which this game was requested.
   string connection_id = 5;
+  MatchUser received_user = 6;
+  SeekState user_state = 7;
+  SeekState receiver_state = 8;
+  repeated string booted_receivers = 9;
 }
 
 message MatchRequest {
@@ -195,6 +205,9 @@ message MatchRequest {
   // so the following will only be used in "clubhouse mode" / more free-form
   // clubs.
   string tournament_id = 6;
+  SeekState user_state = 7;
+  SeekState receiver_state = 8;
+  repeated string booted_receivers = 9;
 }
 
 message ReadyForGame { string game_id = 1; }

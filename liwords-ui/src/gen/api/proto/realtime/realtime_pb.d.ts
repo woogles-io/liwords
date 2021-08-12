@@ -399,6 +399,22 @@ export class SeekRequest extends jspb.Message {
   getConnectionId(): string;
   setConnectionId(value: string): void;
 
+  hasReceivedUser(): boolean;
+  clearReceivedUser(): void;
+  getReceivedUser(): MatchUser | undefined;
+  setReceivedUser(value?: MatchUser): void;
+
+  getUserState(): SeekStateMap[keyof SeekStateMap];
+  setUserState(value: SeekStateMap[keyof SeekStateMap]): void;
+
+  getReceiverState(): SeekStateMap[keyof SeekStateMap];
+  setReceiverState(value: SeekStateMap[keyof SeekStateMap]): void;
+
+  clearBootedReceiversList(): void;
+  getBootedReceiversList(): Array<string>;
+  setBootedReceiversList(value: Array<string>): void;
+  addBootedReceivers(value: string, index?: number): string;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): SeekRequest.AsObject;
   static toObject(includeInstance: boolean, msg: SeekRequest): SeekRequest.AsObject;
@@ -416,6 +432,10 @@ export namespace SeekRequest {
     minimumRating: number,
     maximumRating: number,
     connectionId: string,
+    receivedUser?: MatchUser.AsObject,
+    userState: SeekStateMap[keyof SeekStateMap],
+    receiverState: SeekStateMap[keyof SeekStateMap],
+    bootedReceiversList: Array<string>,
   }
 }
 
@@ -444,6 +464,17 @@ export class MatchRequest extends jspb.Message {
   getTournamentId(): string;
   setTournamentId(value: string): void;
 
+  getUserState(): SeekStateMap[keyof SeekStateMap];
+  setUserState(value: SeekStateMap[keyof SeekStateMap]): void;
+
+  getReceiverState(): SeekStateMap[keyof SeekStateMap];
+  setReceiverState(value: SeekStateMap[keyof SeekStateMap]): void;
+
+  clearBootedReceiversList(): void;
+  getBootedReceiversList(): Array<string>;
+  setBootedReceiversList(value: Array<string>): void;
+  addBootedReceivers(value: string, index?: number): string;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): MatchRequest.AsObject;
   static toObject(includeInstance: boolean, msg: MatchRequest): MatchRequest.AsObject;
@@ -462,6 +493,9 @@ export namespace MatchRequest {
     rematchFor: string,
     connectionId: string,
     tournamentId: string,
+    userState: SeekStateMap[keyof SeekStateMap],
+    receiverState: SeekStateMap[keyof SeekStateMap],
+    bootedReceiversList: Array<string>,
   }
 }
 
@@ -1900,6 +1934,14 @@ export interface MessageTypeMap {
 }
 
 export const MessageType: MessageTypeMap;
+
+export interface SeekStateMap {
+  ABSENT: 0;
+  PRESENT: 1;
+  READY: 2;
+}
+
+export const SeekState: SeekStateMap;
 
 export interface GameEndReasonMap {
   NONE: 0;
