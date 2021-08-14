@@ -1,7 +1,12 @@
 import React, { useCallback } from 'react';
 import { useMountedState } from '../utils/mounted';
 import { Col, Row, Select, Switch } from 'antd';
-import { preferredSortOrder, setPreferredSortOrder } from '../store/constants';
+import {
+  preferredSortOrder,
+  setPreferredSortOrder,
+  setSharedEnableAutoShuffle,
+  sharedEnableAutoShuffle,
+} from '../store/constants';
 import '../gameroom/scss/gameroom.scss';
 import { TileLetter, PointValue } from '../gameroom/tile';
 import { BoardPreview } from './board_preview';
@@ -132,6 +137,9 @@ const KNOWN_TILE_STYLES = [
   },
 ];
 
+const makeTileOrderValue = (tileOrder: string, autoShuffle: boolean) =>
+  JSON.stringify({ tileOrder, autoShuffle });
+
 export const Preferences = React.memo((props: Props) => {
   const { useState } = useMountedState();
 
@@ -185,11 +193,90 @@ export const Preferences = React.memo((props: Props) => {
     setUserBoard(boardStyle);
   }, []);
 
+  const [reevaluateTileOrderOptions, setReevaluateTileOrderOptions] = useState(
+    0
+  );
   const [tileOrder, setTileOrder] = useState(preferredSortOrder ?? '');
-  const handleTileOrderChange = useCallback((value) => {
-    setTileOrder(value);
-    setPreferredSortOrder(value);
+  const handleTileOrderAndAutoShuffleChange = useCallback((value) => {
+    try {
+      const parsedStuff = JSON.parse(value);
+      const {
+        tileOrder: newTileOrder,
+        autoShuffle: newAutoShuffle,
+      } = parsedStuff;
+      setTileOrder(newTileOrder);
+      setPreferredSortOrder(newTileOrder);
+      setSharedEnableAutoShuffle(newAutoShuffle);
+      setReevaluateTileOrderOptions((x) => (x + 1) | 0);
+    } catch (e) {
+      console.error(e);
+    }
   }, []);
+  const localEnableAutoShuffle = sharedEnableAutoShuffle;
+  const tileOrderValue = React.useMemo(
+    () => makeTileOrderValue(tileOrder, localEnableAutoShuffle),
+    [tileOrder, localEnableAutoShuffle]
+  );
+  const tileOrderOptions = React.useMemo(() => {
+    void reevaluateTileOrderOptions;
+    const ret: Array<{ name: React.ReactElement; value: string }> = [];
+    const pushTileOrder = (
+      name: string,
+      value: string,
+      autoShuffle: boolean
+    ) => {
+      // Design only wants "Random" for "Alphabetical".
+      if (
+        !(
+          (tileOrder === value && autoShuffle === localEnableAutoShuffle) ||
+          name === 'Alphabetical' ||
+          !autoShuffle
+        )
+      ) {
+        return;
+      }
+      let nameText = name;
+      let hoverHelp = null;
+      if (autoShuffle !== localEnableAutoShuffle) {
+        hoverHelp = `(turn ${autoShuffle ? 'on' : 'off'} auto-shuffle)`;
+      }
+      if (name === 'Alphabetical' && autoShuffle) {
+        nameText = 'Random';
+        hoverHelp = '(automatically shuffle tiles at every turn)';
+      } else if (autoShuffle) {
+        // The page should still work logically if this is set manually.
+        // localStorage.enableAutoShuffle = true;
+        nameText = `${nameText} (auto-shuffle)`;
+      }
+      ret.push({
+        name: (
+          <React.Fragment>
+            {nameText}
+            {hoverHelp && (
+              <React.Fragment>
+                {' '}
+                <span className="hover-help">{hoverHelp}</span>
+              </React.Fragment>
+            )}
+          </React.Fragment>
+        ),
+        value: makeTileOrderValue(value, autoShuffle),
+      });
+    };
+    const addTileOrder = ({ name, value }: { name: string; value: string }) => {
+      pushTileOrder(name, value, false);
+      pushTileOrder(name, value, true);
+    };
+    let found = false;
+    for (const { name, value } of KNOWN_TILE_ORDERS) {
+      if (value === tileOrder) found = true;
+      addTileOrder({ name, value });
+    }
+    if (!found) {
+      addTileOrder({ name: 'Custom', value: tileOrder });
+    }
+    return ret;
+  }, [reevaluateTileOrderOptions, tileOrder, localEnableAutoShuffle]);
 
   return (
     <div className="preferences">
@@ -211,17 +298,14 @@ export const Preferences = React.memo((props: Props) => {
           <Select
             className="tile-order-select"
             size="large"
-            defaultValue={tileOrder}
-            onChange={handleTileOrderChange}
+            defaultValue={tileOrderValue}
+            onChange={handleTileOrderAndAutoShuffleChange}
           >
-            {KNOWN_TILE_ORDERS.map(({ name, value }) => (
+            {tileOrderOptions.map(({ name, value }) => (
               <Select.Option value={value} key={value}>
                 {name}
               </Select.Option>
             ))}
-            {KNOWN_TILE_ORDERS.some(({ value }) => value === tileOrder) || (
-              <Select.Option value={tileOrder}>Custom</Select.Option>
-            )}
           </Select>
           <div className="tile-order">Tile style</div>
           <div className="tile-selection">
