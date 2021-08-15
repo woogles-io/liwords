@@ -365,12 +365,5 @@ func (as *AuthenticationService) NotifyAccountClosure(ctx context.Context, r *pb
 		return nil, err
 	}
 
-	id, err := emailer.SendSimpleMessage(as.mailgunKey, emailer.WooglesAdministratorAddress, fmt.Sprintf("%s Account Closure", sess.Username),
-		fmt.Sprintf(AccountClosureTemplate, sess.Username, user.Email))
-	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
-	}
-	log.Info().Str("id", id).Str("email", emailer.WooglesAdministratorAddress).Msg("sent-account-closure")
-
 	return &pb.NotifyAccountClosureResponse{}, nil
 }
