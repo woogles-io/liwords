@@ -165,7 +165,7 @@ func FormatNotorietyReport(ns NotorietyStore, uuid string, limit int) (string, e
 
 	var report strings.Builder
 	for _, game := range games {
-		fmt.Fprintf(&report, "%s (%d): https://woogles.io/game/%s\n", BehaviorToString[game.Type], BehaviorToScore[game.Type], game.Id)
+		fmt.Fprintf(&report, "%s (%d): <https://woogles.io/game/%s>\n", BehaviorToString[game.Type], BehaviorToScore[game.Type], game.Id)
 	}
 	return report.String(), nil
 }
