@@ -40,11 +40,19 @@ func (b *Bus) seekRequest(ctx context.Context, auth, userID, connID string,
 		return fmt.Errorf("cannot boot more than %d players", BootedReceiversMax)
 	}
 
+	if req.ReceivedUser != nil && receiverIsBooted(req.BootedReceivers, req.ReceivedUser.UserId) {
+		return fmt.Errorf("player %s has been booted", req.ReceivedUser.DisplayName)
+	}
 	// determine if seek already exists
 
 	gameRequest := req.GameRequest
 	if gameRequest == nil {
 		return errors.New("no game request was found")
+	}
+
+	err = actionExists(ctx, b.userStore, userID, gameRequest)
+	if err != nil {
+		return err
 	}
 
 	exists, err := b.soughtGameStore.ExistsForUser(ctx, gameRequest.RequestId)
@@ -69,11 +77,6 @@ func (b *Bus) newSeekRequest(ctx context.Context, auth, userID, connID string,
 		return errors.New("no game request was found")
 	}
 
-	err := actionExists(ctx, b.userStore, userID, gameRequest)
-	if err != nil {
-		return err
-	}
-
 	// Note that the seek request should not come with a requesting user;
 	// instead this is in the topic/subject. It is HERE in the API server that
 	// we set the requesting user's display name, rating, etc.
@@ -82,13 +85,16 @@ func (b *Bus) newSeekRequest(ctx context.Context, auth, userID, connID string,
 	reqUser.UserId = userID
 	req.User = reqUser
 
-	err = entity.ValidateGameRequest(ctx, gameRequest)
+	err := entity.ValidateGameRequest(ctx, gameRequest)
 	if err != nil {
 		return err
 	}
 
 	// Look up user.
 	timefmt, variant, err := entity.VariantFromGameReq(gameRequest)
+	if err != nil {
+		return err
+	}
 	ratingKey := entity.ToVariantKey(gameRequest.Lexicon, variant, timefmt)
 
 	u, err := b.userStore.GetByUUID(ctx, reqUser.UserId)
@@ -120,6 +126,9 @@ func (b *Bus) updateSeekRequest(ctx context.Context, auth, userID, connID string
 	newReq *pb.SeekRequest) error {
 
 	// If we are here the seek exists and the game request is not nil
+	if newReq.GameRequest == nil {
+		return errors.New("nil game request for seek to update")
+	}
 	reqId := newReq.GameRequest.RequestId
 	sg, err := b.soughtGameStore.Get(ctx, reqId)
 	if err != nil {
@@ -134,20 +143,26 @@ func (b *Bus) updateSeekRequest(ctx context.Context, auth, userID, connID string
 	}
 
 	// If both players are ready, start the game
-	// If the receiver is absent, send the updated seek to everyone
+	// If the receiver is absent, send a new seek to everyone
 	// Otherwise, only send it to the two players
 	if sg.SeekRequest.ReceiverState == pb.SeekState_READY &&
 		sg.SeekRequest.UserState == pb.SeekState_READY {
-		err = b.gameAccepted(ctx, &realtime.SoughtGameProcessEvent{RequestId: reqId}, userID, connID)
+		return b.gameAccepted(ctx, &realtime.SoughtGameProcessEvent{RequestId: reqId}, userID, connID)
 	} else if sg.SeekRequest.ReceiverState == pb.SeekState_ABSENT {
-		// Send to everyone, the seek is open again
-		err = nil
+		// Send to everyone, the seek is open
+		return b.newSeekRequest(ctx, auth, userID, connID, newReq)
 	} else {
-		// Only send to the players inwolwed
-		err = nil
+		// Update the current seek request
+		evt := entity.WrapEvent(sg.MatchRequest, pb.MessageType_MATCH_REQUEST)
+		log.Debug().Interface("evt", evt).Interface("req", newReq).Interface("receiver", sg.MatchRequest.ReceivingUser).
+			Str("sender", userID).Msg("publishing changed state match request to user and receiver")
+		b.pubToUser(userID, evt, "")
+		b.pubToConnectionID(connID, userID, evt)
+
+		// TODO, delete seek for everyone else
 	}
 
-	return err
+	return nil
 }
 
 func (b *Bus) matchRequest(ctx context.Context, auth, userID, connID string,
@@ -261,19 +276,77 @@ func (b *Bus) matchRequest(ctx context.Context, auth, userID, connID string,
 	// Set the actual UUID of the receiving user.
 	req.ReceivingUser.UserId = receiver.UUID
 
+	// Send new one or update here
+	exists, err := b.soughtGameStore.ExistsForUser(ctx, gameRequest.RequestId)
+	if err != nil {
+		return err
+	}
+
+	if exists {
+		return b.updateMatchRequest(ctx, auth, userID, connID, req)
+	} else {
+		return b.newMatchRequest(ctx, userID, receiver.UUID, connID, req)
+	}
+}
+
+func (b *Bus) newMatchRequest(ctx context.Context, userID string, receiverID string, connID string, req *pb.MatchRequest) error {
 	mg, err := gameplay.NewMatchRequest(ctx, b.soughtGameStore, req)
 	if err != nil {
 		return err
 	}
 	evt := entity.WrapEvent(mg.MatchRequest, pb.MessageType_MATCH_REQUEST)
 	log.Debug().Interface("evt", evt).Interface("req", req).Interface("receiver", mg.MatchRequest.ReceivingUser).
-		Str("sender", reqUser.UserId).Msg("publishing match request to user")
-	b.pubToUser(receiver.UUID, evt, "")
+		Str("sender", userID).Msg("publishing match request to user")
+	b.pubToUser(receiverID, evt, "")
 	// Publish it to the requester as well. This is so they can see it on
 	// their own screen and cancel it if they wish.
-	b.pubToConnectionID(connID, reqUser.UserId, evt)
+	b.pubToConnectionID(connID, userID, evt)
 
 	return nil
+}
+
+func (b *Bus) updateMatchRequest(ctx context.Context, auth string, userID string, connID string, req *pb.MatchRequest) error {
+	// If we are here the seek exists and the game request is not nil
+	reqId := req.GameRequest.RequestId
+	sg, err := b.soughtGameStore.Get(ctx, reqId)
+	if err != nil {
+		return err
+	}
+
+	if userID == sg.Seeker() {
+		sg.MatchRequest.UserState = req.UserState
+		sg.MatchRequest.BootedReceivers = req.BootedReceivers
+	} else {
+		sg.MatchRequest.ReceiverState = req.ReceiverState
+	}
+
+	// If both players are ready, start the game
+	// If the receiver is absent, send the updated seek to everyone
+	// Otherwise, only send it to the two players
+	if sg.MatchRequest.ReceiverState == pb.SeekState_READY &&
+		sg.MatchRequest.UserState == pb.SeekState_READY {
+		return b.gameAccepted(ctx, &realtime.SoughtGameProcessEvent{RequestId: reqId}, userID, connID)
+	} else if sg.MatchRequest.ReceiverState == pb.SeekState_ABSENT {
+		evt := entity.WrapEvent(sg.MatchRequest, pb.MessageType_MATCH_REQUEST)
+		log.Debug().Interface("evt", evt).Interface("req", req).Str("sender", userID).Msg("receiver is absent")
+		b.pubToConnectionID(connID, userID, evt)
+	} else {
+		evt := entity.WrapEvent(sg.MatchRequest, pb.MessageType_MATCH_REQUEST)
+		log.Debug().Interface("evt", evt).Interface("req", req).Interface("receiver", sg.MatchRequest.ReceivingUser).
+			Str("sender", userID).Msg("publishing changed state match request to user and receiver")
+		b.pubToUser(req.ReceivingUser.UserId, evt, "")
+		b.pubToConnectionID(connID, userID, evt)
+	}
+	return nil
+}
+
+func receiverIsBooted(bootedPlayers []string, receiverID string) bool {
+	for _, bootedPlayer := range bootedPlayers {
+		if bootedPlayer == receiverID {
+			return true
+		}
+	}
+	return false
 }
 
 func (b *Bus) gameRequestForMatch(ctx context.Context, req *pb.MatchRequest,
