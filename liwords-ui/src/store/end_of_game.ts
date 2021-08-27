@@ -54,7 +54,7 @@ export const endGameMessage = (gee: GameEndedEvent): string => {
       summaryReason = ' (triple challenge!)';
       break;
     case GameEndReason.ABORTED:
-      summaryReason = 'Game was aborted.';
+      summaryReason = 'Game was cancelled.';
       break;
     case GameEndReason.CANCELLED:
       summaryReason = 'Game was cancelled.';
