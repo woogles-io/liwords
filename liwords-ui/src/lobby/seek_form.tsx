@@ -15,6 +15,7 @@ import axios from 'axios';
 import { Store } from 'antd/lib/form/interface';
 import { useMountedState } from '../utils/mounted';
 import {
+  BotRequest,
   ChallengeRule,
   ChallengeRuleMap,
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
@@ -78,6 +79,7 @@ export type seekPropVals = {
   incOrOT: 'overtime' | 'increment';
   vsBot: boolean;
   variant: string;
+  botType: BotRequest.BotCodeMap[keyof BotRequest.BotCodeMap];
 };
 
 type mandatoryFormValues = Partial<seekPropVals> &
@@ -204,6 +206,7 @@ export const SeekForm = (props: Props) => {
     incOrOT: 'overtime',
     vsBot: false,
     variant: 'classic',
+    botType: BotRequest.BotCode.HASTY_BOT,
   };
   let disableTimeControls = false;
   let disableVariantControls = false;
@@ -386,6 +389,7 @@ export const SeekForm = (props: Props) => {
       receiver,
       rematchFor: '',
       playerVsBot: props.vsBot || false,
+      botType: val.botType,
       tournamentID: props.tournamentID || '',
       variant: val.variant as string,
     };
@@ -415,6 +419,22 @@ export const SeekForm = (props: Props) => {
       name="seekForm"
     >
       {props.prefixItems || null}
+
+      {props.vsBot && (
+        <Form.Item label="Select bot" name="botType">
+          <Select>
+            <Select.Option value={BotRequest.BotCode.HASTY_BOT}>
+              HastyBot (5)
+            </Select.Option>
+            <Select.Option value={BotRequest.BotCode.LEVEL3_PROBABILISTIC}>
+              Dumby Bot (3)
+            </Select.Option>
+            <Select.Option value={BotRequest.BotCode.LEVEL1_PROBABILISTIC}>
+              Beginner Bot(1)
+            </Select.Option>
+          </Select>
+        </Form.Item>
+      )}
 
       {props.showFriendInput && (
         <Form.Item

@@ -69,6 +69,9 @@ export class GameRequest extends jspb.Message {
   getOriginalRequestId(): string;
   setOriginalRequestId(value: string): void;
 
+  getBotType(): macondo_api_proto_macondo_macondo_pb.BotRequest.BotCodeMap[keyof macondo_api_proto_macondo_macondo_pb.BotRequest.BotCodeMap];
+  setBotType(value: macondo_api_proto_macondo_macondo_pb.BotRequest.BotCodeMap[keyof macondo_api_proto_macondo_macondo_pb.BotRequest.BotCodeMap]): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameRequest.AsObject;
   static toObject(includeInstance: boolean, msg: GameRequest): GameRequest.AsObject;
@@ -92,6 +95,7 @@ export namespace GameRequest {
     maxOvertimeMinutes: number,
     playerVsBot: boolean,
     originalRequestId: string,
+    botType: macondo_api_proto_macondo_macondo_pb.BotRequest.BotCodeMap[keyof macondo_api_proto_macondo_macondo_pb.BotRequest.BotCodeMap],
   }
 }
 

@@ -53,6 +53,7 @@ message GameRequest {
   int32 max_overtime_minutes = 9;
   bool player_vs_bot = 10;
   string original_request_id = 11;
+  macondo.BotRequest.BotCode bot_type = 12;
 }
 
 // A MatchUser requests or receives a match via a seek or a match request.

@@ -40,6 +40,7 @@ export const Lobby = (props: Props) => {
   );
   const onSeekSubmit = useCallback(
     (g: SoughtGame) => {
+      console.log('sought game', g);
       sendSeek(g, sendSocketMsg);
     },
     [sendSocketMsg]

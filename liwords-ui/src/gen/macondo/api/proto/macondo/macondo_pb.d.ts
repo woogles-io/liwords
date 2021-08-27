@@ -250,6 +250,9 @@ export class BotRequest extends jspb.Message {
   getEvaluationRequest(): EvaluationRequest | undefined;
   setEvaluationRequest(value?: EvaluationRequest): void;
 
+  getBotType(): BotRequest.BotCodeMap[keyof BotRequest.BotCodeMap];
+  setBotType(value: BotRequest.BotCodeMap[keyof BotRequest.BotCodeMap]): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): BotRequest.AsObject;
   static toObject(includeInstance: boolean, msg: BotRequest): BotRequest.AsObject;
@@ -264,7 +267,21 @@ export namespace BotRequest {
   export type AsObject = {
     gameHistory?: GameHistory.AsObject,
     evaluationRequest?: EvaluationRequest.AsObject,
+    botType: BotRequest.BotCodeMap[keyof BotRequest.BotCodeMap],
   }
+
+  export interface BotCodeMap {
+    HASTY_BOT: 0;
+    CEL_BOT: 1;
+    LEVEL1_PROBABILISTIC: 2;
+    LEVEL2_PROBABILISTIC: 3;
+    LEVEL3_PROBABILISTIC: 4;
+    LEVEL4_PROBABILISTIC: 5;
+    LEVEL5_PROBABILISTIC: 6;
+    SIMMING_BOT: 7;
+  }
+
+  export const BotCode: BotCodeMap;
 }
 
 export class EvaluationRequest extends jspb.Message {

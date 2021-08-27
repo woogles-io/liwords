@@ -33,6 +33,16 @@ export type ChallengeRule =
   | 'TRIPLE'
   | 'VOID';
 
+export type BotType =
+  | 'HASTY_BOT'
+  | 'CEL_BOT'
+  | 'LEVEL1_PROBABILISTIC'
+  | 'LEVEL2_PROBABILISTIC'
+  | 'LEVEL3_PROBABILISTIC'
+  | 'LEVEL4_PROBABILISTIC'
+  | 'LEVEL5_PROBABILISTIC'
+  | 'SIMMING_BOT';
+
 export type GameRequest = {
   lexicon: string;
   rules: GameRules;
@@ -43,6 +53,7 @@ export type GameRequest = {
   max_overtime_minutes: number;
   original_request_id: string;
   player_vs_bot: boolean;
+  bot_type: BotType;
 };
 
 export const defaultGameInfo: GameMetadata = {
@@ -61,6 +72,7 @@ export const defaultGameInfo: GameMetadata = {
     max_overtime_minutes: 0,
     original_request_id: '',
     player_vs_bot: false,
+    bot_type: 'HASTY_BOT',
   },
   tournament_id: '',
   game_end_reason: 'NONE',

@@ -1493,7 +1493,8 @@ proto.liwords.GameRequest.toObject = function(includeInstance, msg) {
     requestId: jspb.Message.getFieldWithDefault(msg, 8, ""),
     maxOvertimeMinutes: jspb.Message.getFieldWithDefault(msg, 9, 0),
     playerVsBot: jspb.Message.getBooleanFieldWithDefault(msg, 10, false),
-    originalRequestId: jspb.Message.getFieldWithDefault(msg, 11, "")
+    originalRequestId: jspb.Message.getFieldWithDefault(msg, 11, ""),
+    botType: jspb.Message.getFieldWithDefault(msg, 12, 0)
   };
 
   if (includeInstance) {
@@ -1574,6 +1575,10 @@ proto.liwords.GameRequest.deserializeBinaryFromReader = function(msg, reader) {
     case 11:
       var value = /** @type {string} */ (reader.readString());
       msg.setOriginalRequestId(value);
+      break;
+    case 12:
+      var value = /** @type {!proto.macondo.BotRequest.BotCode} */ (reader.readEnum());
+      msg.setBotType(value);
       break;
     default:
       reader.skipField();
@@ -1679,6 +1684,13 @@ proto.liwords.GameRequest.serializeBinaryToWriter = function(message, writer) {
   if (f.length > 0) {
     writer.writeString(
       11,
+      f
+    );
+  }
+  f = message.getBotType();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      12,
       f
     );
   }
@@ -1899,6 +1911,24 @@ proto.liwords.GameRequest.prototype.getOriginalRequestId = function() {
  */
 proto.liwords.GameRequest.prototype.setOriginalRequestId = function(value) {
   return jspb.Message.setProto3StringField(this, 11, value);
+};
+
+
+/**
+ * optional macondo.BotRequest.BotCode bot_type = 12;
+ * @return {!proto.macondo.BotRequest.BotCode}
+ */
+proto.liwords.GameRequest.prototype.getBotType = function() {
+  return /** @type {!proto.macondo.BotRequest.BotCode} */ (jspb.Message.getFieldWithDefault(this, 12, 0));
+};
+
+
+/**
+ * @param {!proto.macondo.BotRequest.BotCode} value
+ * @return {!proto.liwords.GameRequest} returns this
+ */
+proto.liwords.GameRequest.prototype.setBotType = function(value) {
+  return jspb.Message.setProto3EnumField(this, 12, value);
 };
 
 

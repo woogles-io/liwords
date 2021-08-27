@@ -7,7 +7,10 @@ import {
   SeekRequest,
   SoughtGameProcessEvent,
 } from '../gen/api/proto/realtime/realtime_pb';
-import { ChallengeRuleMap } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import {
+  BotRequest,
+  ChallengeRuleMap,
+} from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { encodeToSocketFmt } from '../utils/protobuf';
 
@@ -46,6 +49,9 @@ export const sendSeek = (
   gr.setRules(rules);
   gr.setRatingMode(game.rated ? RatingMode.RATED : RatingMode.CASUAL);
   gr.setPlayerVsBot(game.playerVsBot);
+  gr.setBotType(
+    game.botType as BotRequest.BotCodeMap[keyof BotRequest.BotCodeMap]
+  );
 
   if (game.receiver.getDisplayName() === '' && game.playerVsBot === false) {
     sr.setGameRequest(gr);
