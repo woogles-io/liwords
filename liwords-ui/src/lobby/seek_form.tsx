@@ -429,6 +429,9 @@ export const SeekForm = (props: Props) => {
             <Select.Option value={BotRequest.BotCode.LEVEL3_PROBABILISTIC}>
               Dumby Bot (3)
             </Select.Option>
+            <Select.Option value={BotRequest.BotCode.CEL_BOT}>
+              CEL Bot (2)
+            </Select.Option>
             <Select.Option value={BotRequest.BotCode.LEVEL1_PROBABILISTIC}>
               Beginner Bot(1)
             </Select.Option>

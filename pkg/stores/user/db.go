@@ -684,7 +684,7 @@ func (s *DBStore) GetBot(ctx context.Context, botType macondopb.BotRequest_BotCo
 	idx := 0
 	if len(users) == 0 {
 		// Just pick any random bot. This should not be done on prod.
-		if result := s.db.Where("internal_bot = ?", true, username).Find(&users); result.Error != nil {
+		if result := s.db.Where("internal_bot = ?", true).Find(&users); result.Error != nil {
 			return nil, result.Error
 		}
 		idx = rand.Intn(len(users))
