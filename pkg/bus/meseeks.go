@@ -259,7 +259,7 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.MatchRequest, botUserID st
 	}
 
 	if botUserID == "" {
-		accUser, err = b.userStore.GetRandomBot(ctx)
+		accUser, err = b.userStore.GetBot(ctx, req.GameRequest.BotType)
 	} else {
 		accUser, err = b.userStore.GetByUUID(ctx, botUserID)
 	}

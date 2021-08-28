@@ -16,9 +16,19 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/entity"
+
 	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
+
+var botNames = map[macondopb.BotRequest_BotCode]string{
+	macondopb.BotRequest_HASTY_BOT: "HastyBot",
+	// These are temporary names!
+	macondopb.BotRequest_LEVEL1_PROBABILISTIC: "TastyBot",
+	macondopb.BotRequest_LEVEL3_PROBABILISTIC: "SchwiftyBot",
+	macondopb.BotRequest_CEL_BOT:              "CelBot",
+}
 
 // DBStore is a postgres-backed store for users.
 type DBStore struct {
@@ -661,15 +671,25 @@ func getExistingProfileStats(p *profile) *entity.ProfileStats {
 	return &existingProfileStats
 }
 
-func (s *DBStore) GetRandomBot(ctx context.Context) (*entity.User, error) {
+func (s *DBStore) GetBot(ctx context.Context, botType macondopb.BotRequest_BotCode) (*entity.User, error) {
 
 	var users []*User
 	p := &profile{}
 
-	if result := s.db.Where("internal_bot = ?", true).Find(&users); result.Error != nil {
+	username := botNames[botType]
+
+	if result := s.db.Where("internal_bot = ? and username = ?", true, username).Find(&users); result.Error != nil {
 		return nil, result.Error
 	}
-	idx := rand.Intn(len(users))
+	idx := 0
+	if len(users) == 0 {
+		// Just pick any random bot. This should not be done on prod.
+		if result := s.db.Where("internal_bot = ?", true, username).Find(&users); result.Error != nil {
+			return nil, result.Error
+		}
+		idx = rand.Intn(len(users))
+	}
+
 	u := users[idx]
 
 	if result := s.db.Model(u).Related(p); result.Error != nil {
