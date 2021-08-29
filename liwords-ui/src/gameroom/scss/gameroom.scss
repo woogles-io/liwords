@@ -1200,7 +1200,7 @@ p.rune {
       font-weight: 800;
     }
     .main-word {
-      display: block;
+      display: inline-block;
       @include colorModed() {
         color: m($gray-extreme);
       }
@@ -1209,7 +1209,7 @@ p.rune {
       @include colorModed() {
         color: m($timer-out-dark);
       }
-      display: inline-block;
+      display: block;
       margin-bottom: 3px;
     }
 
