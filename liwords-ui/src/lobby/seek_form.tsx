@@ -421,19 +421,19 @@ export const SeekForm = (props: Props) => {
       {props.prefixItems || null}
 
       {props.vsBot && (
-        <Form.Item label="Select bot" name="botType">
+        <Form.Item label="Select bot level" name="botType">
           <Select>
             <Select.Option value={BotRequest.BotCode.HASTY_BOT}>
-              HastyBot (5)
+              Expert
             </Select.Option>
             <Select.Option value={BotRequest.BotCode.LEVEL3_PROBABILISTIC}>
-              Dumby Bot (3)
+              Intermediate
             </Select.Option>
             <Select.Option value={BotRequest.BotCode.CEL_BOT}>
-              CEL Bot (2)
+              Easy
             </Select.Option>
             <Select.Option value={BotRequest.BotCode.LEVEL1_PROBABILISTIC}>
-              Beginner Bot(1)
+              Beginner
             </Select.Option>
           </Select>
         </Form.Item>
