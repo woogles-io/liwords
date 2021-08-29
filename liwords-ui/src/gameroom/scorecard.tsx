@@ -19,6 +19,7 @@ import { Notepad } from './notepad';
 import { sortTiles } from '../store/constants';
 import { getVW, isTablet } from '../utils/cwgame/common';
 import { Analyzer } from './analyzer';
+import { StarFilled } from '@ant-design/icons';
 const screenSizes = require('../base.scss');
 
 type Props = {
@@ -209,7 +210,10 @@ const ScorecardTurn = (props: turnProps) => {
           <p className="time-left">{memoizedTurn.timeRemaining}</p>
         </div>
         <div className="play">
-          <p className="main-word">{memoizedTurn.play}</p>
+          <p className="main-word">
+            {memoizedTurn.play}
+            {memoizedTurn.isBingo && <StarFilled />}
+          </p>
           <p>{memoizedTurn.rack}</p>
         </div>
         <div className="scores">

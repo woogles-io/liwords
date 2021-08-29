@@ -1149,7 +1149,7 @@ p.rune {
     & > div {
       min-height: 300px;
       max-height: 300px;
-      padding: 8px 16px 16px;
+      padding: 8px 0px 16px;
       overflow-y: auto;
     }
     .notepad-container {
@@ -1169,23 +1169,28 @@ p.rune {
     @include type-monospace;
     font-size: 14px;
     display: flex;
-    padding: 6px 0;
+    padding: 6px 16px;
     justify-content: space-between;
     @include colorModed() {
       color: m($gray-extreme);
     }
-    &.bingo {
-      /* TODO
+    &:hover {
       @include colorModed() {
-        background: linear-gradient(
-          150deg,
-          rgba(m($gray-extreme), 0.25) 0%,
-          transparent 20%,
-          transparent 80%,
-          rgba(m($gray-extreme), 0.25) 100%
-        );
+        background: m($primary-light);
       }
-      */
+    }
+    &.bingo {
+      .anticon {
+        position: relative;
+        top: -1px;
+        font-size: 10px;
+        margin: 0 4px;
+      }
+    }
+    &:hover {
+      @include colorModed() {
+        background: m($primary-light);
+      }
     }
     p {
       line-height: 1.2em;
