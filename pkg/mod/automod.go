@@ -3,8 +3,8 @@ package mod
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -36,6 +36,8 @@ var BehaviorToString map[ms.NotoriousGameType]string = map[ms.NotoriousGameType]
 	ms.NotoriousGameType_SITTING:              "Sitting",
 	ms.NotoriousGameType_SANDBAG:              "Sandbagging",
 }
+
+var IsTesting = strings.HasSuffix(os.Args[0], ".test")
 
 var AutomodUserId string = "AUTOMOD"
 var SandbaggingThreshold int = 3
@@ -165,7 +167,7 @@ func FormatNotorietyReport(ns NotorietyStore, uuid string, limit int) (string, e
 
 	var report strings.Builder
 	for _, game := range games {
-		fmt.Fprintf(&report, "%s (%d): https://woogles.io/game/%s\n", BehaviorToString[game.Type], BehaviorToScore[game.Type], game.Id)
+		fmt.Fprintf(&report, "%s (%d): <https://woogles.io/game/%s>\n", BehaviorToString[game.Type], BehaviorToScore[game.Type], game.Id)
 	}
 	return report.String(), nil
 }
@@ -199,7 +201,7 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 		}
 		if newNotoriety > NotorietyThreshold {
 			action := &ms.ModAction{UserId: user.UUID,
-				Type:          ms.ModActionType_SUSPEND_GAMES,
+				Type:          ms.ModActionType_SUSPEND_RATED_GAMES,
 				StartTime:     ptypes.TimestampNow(),
 				ApplierUserId: AutomodUserId,
 				Duration:      int32(DurationMultiplier * (newNotoriety - NotorietyThreshold))}
@@ -254,7 +256,7 @@ func loserDeniedNudge(g *entity.Game, userId string) bool {
 }
 
 func notoriousGameTimestamp() int64 {
-	if flag.Lookup("test.v") == nil {
+	if !IsTesting {
 		return time.Now().Unix()
 	} else {
 		testTimestamp++

@@ -13,7 +13,7 @@ import { TType } from '../gen/api/proto/tournament_service/tournament_service_pb
 import { AddPlayerForm, playersToAdd } from './add_player_form';
 import axios from 'axios';
 import { ModifyDivisionsForm } from './modify_divisions_form';
-import Modal from 'antd/lib/modal/Modal';
+import { Modal } from '../utils/focus_modal';
 import { Store } from 'antd/lib/form/interface';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 */

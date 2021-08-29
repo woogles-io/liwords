@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"errors"
+	"net/http"
 
 	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/namsral/flag"
@@ -70,4 +71,15 @@ func GetMacondoConfig(ctx context.Context) (*macondoconfig.Config, error) {
 		return nil, errors.New("config is nil")
 	}
 	return &ctxConfig.MacondoConfig, nil
+}
+
+func CtxMiddlewareGenerator(config *Config) (mw func(http.Handler) http.Handler) {
+	mw = func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := context.WithValue(r.Context(), CtxKeyword, config)
+			r = r.WithContext(ctx)
+			h.ServeHTTP(w, r)
+		})
+	}
+	return
 }

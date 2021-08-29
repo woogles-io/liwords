@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
-import { Button, Modal, Slider } from 'antd';
+import { Button, Slider } from 'antd';
+import { Modal } from '../utils/focus_modal';
 import Cropper from 'react-easy-crop';
 import { useMountedState } from '../utils/mounted';
 import { Area } from 'react-easy-crop/types';

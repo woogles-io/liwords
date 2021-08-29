@@ -4,7 +4,8 @@ import { useMountedState } from '../utils/mounted';
 import { useResetStoreContext } from '../store/store';
 import './accountForms.scss';
 
-import { Form, Input, Button, Alert, Modal } from 'antd';
+import { Form, Input, Button, Alert } from 'antd';
+import { Modal } from '../utils/focus_modal';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 

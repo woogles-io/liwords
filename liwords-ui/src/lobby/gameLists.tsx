@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { Link, useHistory } from 'react-router-dom';
-import { Card, Modal, Button } from 'antd';
+import { Card, Button } from 'antd';
+import { Modal } from '../utils/focus_modal';
 import { useMountedState } from '../utils/mounted';
 import { SoughtGames } from './sought_games';
 import { ActiveGames } from './active_games';

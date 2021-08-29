@@ -36,14 +36,16 @@ func notify(ctx context.Context, us user.Store, user *entity.User, action *ms.Mo
 			action.EndTime,
 			action.EmailType)
 		if err == nil {
-			_, err := emailer.SendSimpleMessage(config.MailgunKey,
-				user.Email,
-				fmt.Sprintf("Woogles Terms of Service Violation for Account %s", user.Username),
-				emailContent)
-			if err != nil {
-				// Errors should not be fatal, just log them
-				log.Err(err).Str("userID", user.UUID).Msg("mod-action-send-user-email")
-			}
+			go func() {
+				_, err := emailer.SendSimpleMessage(config.MailgunKey,
+					user.Email,
+					fmt.Sprintf("Woogles Terms of Service Violation for Account %s", user.Username),
+					emailContent)
+				if err != nil {
+					// Errors should not be fatal, just log them
+					log.Err(err).Str("userID", user.UUID).Msg("mod-action-send-user-email")
+				}
+			}()
 		} else {
 			log.Err(err).Str("userID", user.UUID).Msg("mod-action-generate-user-email")
 		}
@@ -63,25 +65,30 @@ func notify(ctx context.Context, us user.Store, user *entity.User, action *ms.Mo
 			modUsername = modUser.Username
 		}
 
-		appliedOrRemoved := "applied to"
-		actionExpiration := "action will expire"
-		if IsRemoval(action) {
-			appliedOrRemoved = "removed from"
-			actionExpiration = "will take effect"
-		}
-		message := fmt.Sprintf("Action %s was %s user %s by moderator %s.", actionEmailText, appliedOrRemoved, user.Username, modUsername)
-		_, actionExists := ModActionDispatching[action.Type]
-		if !actionExists { // Action is non-transient
-			if action.Duration == 0 {
-				message += " This action is permanent."
-			} else if action.EndTime == nil {
-				log.Err(err).Str("userID", user.UUID).Msg("mod-action-endtime-nil")
-			} else {
-				golangActionEndTime, err := ptypes.Timestamp(action.EndTime)
-				if err != nil {
-					log.Err(err).Str("error", err.Error()).Msg("mod-action-endtime-conversion")
+		var message string
+		if action.ApplierUserId == action.UserId && action.Type == ms.ModActionType_SUSPEND_ACCOUNT {
+			message = fmt.Sprintf("User %s has deleted their account.", user.Username)
+		} else {
+			appliedOrRemoved := "applied to"
+			actionExpiration := "action will expire"
+			if IsRemoval(action) {
+				appliedOrRemoved = "removed from"
+				actionExpiration = "will take effect"
+			}
+			message = fmt.Sprintf("Action %s was %s user %s by moderator %s.", actionEmailText, appliedOrRemoved, user.Username, modUsername)
+			_, actionExists := ModActionDispatching[action.Type]
+			if !actionExists { // Action is non-transient
+				if action.Duration == 0 {
+					message += " This action is permanent."
+				} else if action.EndTime == nil {
+					log.Err(err).Str("userID", user.UUID).Msg("mod-action-endtime-nil")
 				} else {
-					message += fmt.Sprintf(" This %s on %s.", actionExpiration, golangActionEndTime.UTC().Format(time.UnixDate))
+					golangActionEndTime, err := ptypes.Timestamp(action.EndTime)
+					if err != nil {
+						log.Err(err).Str("error", err.Error()).Msg("mod-action-endtime-conversion")
+					} else {
+						message += fmt.Sprintf(" This %s on %s.", actionExpiration, golangActionEndTime.UTC().Format(time.UnixDate))
+					}
 				}
 			}
 		}
@@ -90,14 +97,16 @@ func notify(ctx context.Context, us user.Store, user *entity.User, action *ms.Mo
 		if err != nil {
 			log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-marshal")
 		} else {
-			resp, err := http.Post(config.DiscordToken, "application/json", bytes.NewBuffer(requestBody))
-			// Errors should not be fatal, just log them
-			if err != nil {
-				log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-post-error")
-			} else if resp.StatusCode != 204 { // No Content
-				// We do not expect any other response
-				log.Err(err).Str("status", resp.Status).Msg("mod-action-discord-notification-post-bad-response")
-			}
+			go func() {
+				resp, err := http.Post(config.DiscordToken, "application/json", bytes.NewBuffer(requestBody))
+				// Errors should not be fatal, just log them
+				if err != nil {
+					log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-post-error")
+				} else if resp.StatusCode != 204 { // No Content
+					// We do not expect any other response
+					log.Err(err).Str("status", resp.Status).Msg("mod-action-discord-notification-post-bad-response")
+				}
+			}()
 		}
 	}
 

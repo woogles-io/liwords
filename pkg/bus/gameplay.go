@@ -452,13 +452,11 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		log.Debug().Str("gid", g.GameId).Msg("rlocking")
 		entGame.RLock()
 		onTurn := entGame.Game.PlayerOnTurn()
 		started := entGame.Started
 		timeRanOut := entGame.TimeRanOut(onTurn)
 		entGame.RUnlock()
-		log.Debug().Str("gid", g.GameId).Msg("runlocked")
 
 		if started && timeRanOut {
 			log.Debug().Str("gid", g.GameId).Msg("adjudicating-time-ran-out")
