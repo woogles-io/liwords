@@ -3,6 +3,7 @@ import { Card } from 'antd';
 import { timeCtrlToDisplayName, timeToString } from '../store/constants';
 import { VariantIcon } from '../shared/variant_icons';
 import { MatchLexiconDisplay } from '../shared/lexicon_display';
+import { BotRequest } from '../gen/macondo/api/proto/macondo/macondo_pb';
 
 // At some point we should get this from the pb but then we have to use
 // twirp for this and we really shouldn't need to. Wait on it probably.
@@ -33,15 +34,7 @@ export type ChallengeRule =
   | 'TRIPLE'
   | 'VOID';
 
-export type BotType =
-  | 'HASTY_BOT'
-  | 'CEL_BOT'
-  | 'LEVEL1_PROBABILISTIC'
-  | 'LEVEL2_PROBABILISTIC'
-  | 'LEVEL3_PROBABILISTIC'
-  | 'LEVEL4_PROBABILISTIC'
-  | 'LEVEL5_PROBABILISTIC'
-  | 'SIMMING_BOT';
+export type BotType = keyof BotRequest.BotCodeMap;
 
 export type GameRequest = {
   lexicon: string;

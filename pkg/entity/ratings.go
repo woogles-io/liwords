@@ -33,6 +33,8 @@ func ToVariantKey(lexiconName string, variantName game.Variant, timeControl Time
 	case strings.HasPrefix(lexiconName, "CSW"):
 		newlex = "CSW19"
 	case strings.HasPrefix(lexiconName, "ECWL"):
+		// This is user-visible as CEL, but we still call it ECWL internally.
+		// This is the Common English List.
 		newlex = "ECWL"
 	default:
 		newlex = lexiconName

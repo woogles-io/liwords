@@ -15,7 +15,6 @@ import axios from 'axios';
 import { Store } from 'antd/lib/form/interface';
 import { useMountedState } from '../utils/mounted';
 import {
-  BotRequest,
   ChallengeRule,
   ChallengeRuleMap,
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
@@ -42,6 +41,7 @@ import {
 import { VariantIcon } from '../shared/variant_icons';
 import { excludedLexica, LexiconFormItem } from '../shared/lexicon_display';
 import { AllLexica } from '../shared/lexica';
+import { BotTypesEnum, BotTypesEnumProperties } from './bots';
 
 const initTimeFormatter = (val?: number) => {
   return val != null ? initTimeDiscreteScale[val].label : null;
@@ -79,7 +79,7 @@ export type seekPropVals = {
   incOrOT: 'overtime' | 'increment';
   vsBot: boolean;
   variant: string;
-  botType: BotRequest.BotCodeMap[keyof BotRequest.BotCodeMap];
+  botType: BotTypesEnum;
 };
 
 type mandatoryFormValues = Partial<seekPropVals> &
@@ -206,7 +206,7 @@ export const SeekForm = (props: Props) => {
     incOrOT: 'overtime',
     vsBot: false,
     variant: 'classic',
-    botType: BotRequest.BotCode.HASTY_BOT,
+    botType: BotTypesEnum.BEGINNER,
   };
   let disableTimeControls = false;
   let disableVariantControls = false;
@@ -423,18 +423,17 @@ export const SeekForm = (props: Props) => {
       {props.vsBot && (
         <Form.Item label="Select bot level" name="botType">
           <Select>
-            <Select.Option value={BotRequest.BotCode.HASTY_BOT}>
-              Expert
-            </Select.Option>
-            <Select.Option value={BotRequest.BotCode.LEVEL3_PROBABILISTIC}>
-              Intermediate
-            </Select.Option>
-            <Select.Option value={BotRequest.BotCode.CEL_BOT}>
-              Easy
-            </Select.Option>
-            <Select.Option value={BotRequest.BotCode.LEVEL1_PROBABILISTIC}>
-              Beginner
-            </Select.Option>
+            {[
+              BotTypesEnum.MASTER,
+              BotTypesEnum.EXPERT,
+              BotTypesEnum.INTERMEDIATE,
+              BotTypesEnum.EASY,
+              BotTypesEnum.BEGINNER,
+            ].map((v) => (
+              <Select.Option value={v} key={v}>
+                {BotTypesEnumProperties[v].userVisible}
+              </Select.Option>
+            ))}
           </Select>
         </Form.Item>
       )}

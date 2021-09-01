@@ -13,6 +13,7 @@ import {
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { encodeToSocketFmt } from '../utils/protobuf';
+import { BotTypesEnumProperties } from './bots';
 
 export const defaultLetterDistribution = (lexicon: string): string => {
   const lowercasedLexicon = lexicon.toLowerCase();
@@ -49,9 +50,7 @@ export const sendSeek = (
   gr.setRules(rules);
   gr.setRatingMode(game.rated ? RatingMode.RATED : RatingMode.CASUAL);
   gr.setPlayerVsBot(game.playerVsBot);
-  gr.setBotType(
-    game.botType as BotRequest.BotCodeMap[keyof BotRequest.BotCodeMap]
-  );
+  gr.setBotType(BotTypesEnumProperties[game.botType].botCode(game.lexicon));
 
   if (game.receiver.getDisplayName() === '' && game.playerVsBot === false) {
     sr.setGameRequest(gr);
