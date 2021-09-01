@@ -8,6 +8,10 @@ export enum BotTypesEnum {
   BEGINNER,
 }
 
+// isEnglish (but not CEL, that is handled separately)
+const isEnglish = (lexicon: string) =>
+  lexicon.startsWith('CSW') || lexicon.startsWith('NWL');
+
 export const BotTypesEnumProperties = {
   [BotTypesEnum.MASTER]: {
     userVisible: 'Master',
@@ -26,7 +30,7 @@ export const BotTypesEnumProperties = {
     botName: 'FOOBot',
     description: 'Etc',
     botCode: (lexicon: string) =>
-      lexicon.startsWith('CSW') || lexicon.startsWith('NWL')
+      isEnglish(lexicon)
         ? BotRequest.BotCode.LEVEL4_CEL_BOT
         : BotRequest.BotCode.LEVEL3_PROBABILISTIC,
   },
@@ -35,7 +39,7 @@ export const BotTypesEnumProperties = {
     botName: 'FOOBot',
     description: 'Etc',
     botCode: (lexicon: string) =>
-      lexicon.startsWith('CSW') || lexicon.startsWith('NWL')
+      isEnglish(lexicon)
         ? BotRequest.BotCode.LEVEL2_CEL_BOT
         : BotRequest.BotCode.LEVEL2_PROBABILISTIC,
   },
@@ -44,7 +48,7 @@ export const BotTypesEnumProperties = {
     botName: 'FOOBot',
     description: 'Etc',
     botCode: (lexicon: string) =>
-      lexicon.startsWith('CSW') || lexicon.startsWith('NWL')
+      isEnglish(lexicon)
         ? BotRequest.BotCode.LEVEL1_CEL_BOT
         : BotRequest.BotCode.LEVEL1_PROBABILISTIC,
   },
