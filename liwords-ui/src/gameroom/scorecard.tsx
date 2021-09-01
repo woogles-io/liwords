@@ -19,6 +19,7 @@ import { Notepad } from './notepad';
 import { sortTiles } from '../store/constants';
 import { getVW, isTablet } from '../utils/cwgame/common';
 import { Analyzer } from './analyzer';
+import { StarFilled } from '@ant-design/icons';
 const screenSizes = require('../base.scss');
 
 type Props = {
@@ -55,6 +56,7 @@ type MoveEntityObj = {
   bonus: number;
   endRackPts: number;
   lostScore: number;
+  isBingo: boolean;
 };
 
 const displaySummary = (evt: GameEvent, board: Board) => {
@@ -135,6 +137,7 @@ const ScorecardTurn = (props: turnProps) => {
       bonus: evts[0].getBonus(),
       endRackPts: evts[0].getEndRackPoints(),
       oldScore: oldScore,
+      isBingo: evts[0].getIsBingo(),
     };
     if (evts.length === 1) {
       turn.rack = sortTiles(turn.rack);
@@ -196,7 +199,7 @@ const ScorecardTurn = (props: turnProps) => {
 
   return (
     <>
-      <div className="turn">
+      <div className={`turn${memoizedTurn.isBingo ? ' bingo' : ''}`}>
         <PlayerAvatar player={memoizedTurn.player} withTooltip />
         <div className="coords-time">
           {memoizedTurn.coords ? (
@@ -207,7 +210,10 @@ const ScorecardTurn = (props: turnProps) => {
           <p className="time-left">{memoizedTurn.timeRemaining}</p>
         </div>
         <div className="play">
-          <p className="main-word">{memoizedTurn.play}</p>
+          <p className="main-word">
+            {memoizedTurn.play}
+            {memoizedTurn.isBingo && <StarFilled />}
+          </p>
           <p>{memoizedTurn.rack}</p>
         </div>
         <div className="scores">
