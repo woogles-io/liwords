@@ -940,7 +940,7 @@ export const Table = React.memo((props: Props) => {
             )}
             {gameInfo.game_end_reason === 'ABORTED' && (
               <React.Fragment>
-                The game was aborted. Rating and statistics were not affected.
+                The game was cancelled. Rating and statistics were not affected.
               </React.Fragment>
             )}
           </React.Fragment>

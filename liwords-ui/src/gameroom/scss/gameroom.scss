@@ -1664,6 +1664,13 @@ p.rune {
   }
 
   & > .row-of-buttons {
+    margin-top: 24px;
     text-align: right;
+  }
+}
+
+.cancel-notification {
+  .ant-notification-close-x {
+    display: none;
   }
 }
