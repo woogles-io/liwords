@@ -1272,6 +1272,7 @@ p.rune {
     background-color: m($primary-middle);
   }
   margin-bottom: 12px;
+  padding: 12px;
   .ant-card-body {
     p {
       @include colorModed() {
