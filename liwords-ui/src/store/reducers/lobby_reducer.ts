@@ -6,6 +6,7 @@ import {
   MatchRequest,
   MatchUser,
 } from '../../gen/api/proto/realtime/realtime_pb';
+import { BotTypesEnum } from '../../lobby/bots';
 
 export type SoughtGame = {
   seeker: string;
@@ -19,6 +20,7 @@ export type SoughtGame = {
   rated: boolean;
   seekID: string;
   playerVsBot: boolean;
+  botType: BotTypesEnum;
   variant: string;
   // Only for direct match requests:
   receiver: MatchUser;
@@ -90,6 +92,9 @@ export const SeekRequestToSoughtGame = (
     playerVsBot: gameReq.getPlayerVsBot(),
     tournamentID,
     variant: gameReq.getRules()?.getVariantName() || '',
+    // this is inconsequential as bot match requests are never shown
+    // to the user. change if this becomes the case some day.
+    botType: 0,
   };
 };
 

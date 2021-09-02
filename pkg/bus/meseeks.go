@@ -247,6 +247,20 @@ func (b *Bus) gameRequestForMatch(ctx context.Context, req *pb.MatchRequest,
 	return gameRequest, lastOpp, nil
 }
 
+func validateCELLexicon(lexicon string) error {
+	// If the lexicon is not an english-language one, it is not compatible with CEL.
+	if strings.HasPrefix(lexicon, "NWL") ||
+		strings.HasPrefix(lexicon, "CSW") {
+
+		// Ironically, the CEL lexicon itself is not compatible with CEL bots,
+		// because CEL bots work on a word list that is a subset of the actual
+		// list. Just use the regular probability bots if the user is using the
+		// CEL lexicon.
+		return nil
+	}
+	return errors.New("CEL bots are not compatible with this lexicon")
+}
+
 func (b *Bus) newBotGame(ctx context.Context, req *pb.MatchRequest, botUserID string) error {
 	// NewBotGame creates and starts a new game against a bot!
 	var err error
@@ -259,13 +273,18 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.MatchRequest, botUserID st
 	}
 
 	if botUserID == "" {
-		accUser, err = b.userStore.GetRandomBot(ctx)
+		accUser, err = b.userStore.GetBot(ctx, req.GameRequest.BotType)
 	} else {
 		accUser, err = b.userStore.GetByUUID(ctx, botUserID)
 	}
 	if err != nil {
 		return err
 	}
+	err = validateCELLexicon(req.GameRequest.Lexicon)
+	if err != nil {
+		return err
+	}
+
 	sg := entity.NewMatchRequest(req)
 	return b.instantiateAndStartGame(ctx, accUser, req.User.UserId, req.GameRequest,
 		sg, BotRequestID, "")

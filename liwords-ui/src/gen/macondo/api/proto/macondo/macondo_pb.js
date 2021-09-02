@@ -16,6 +16,7 @@ var goog = jspb;
 var global = Function('return this')();
 
 goog.exportSymbol('proto.macondo.BotRequest', null, global);
+goog.exportSymbol('proto.macondo.BotRequest.BotCode', null, global);
 goog.exportSymbol('proto.macondo.BotResponse', null, global);
 goog.exportSymbol('proto.macondo.BotResponse.ResponseCase', null, global);
 goog.exportSymbol('proto.macondo.ChallengeRule', null, global);
@@ -1842,7 +1843,8 @@ proto.macondo.BotRequest.prototype.toObject = function(opt_includeInstance) {
 proto.macondo.BotRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     gameHistory: (f = msg.getGameHistory()) && proto.macondo.GameHistory.toObject(includeInstance, f),
-    evaluationRequest: (f = msg.getEvaluationRequest()) && proto.macondo.EvaluationRequest.toObject(includeInstance, f)
+    evaluationRequest: (f = msg.getEvaluationRequest()) && proto.macondo.EvaluationRequest.toObject(includeInstance, f),
+    botType: jspb.Message.getFieldWithDefault(msg, 3, 0)
   };
 
   if (includeInstance) {
@@ -1889,6 +1891,10 @@ proto.macondo.BotRequest.deserializeBinaryFromReader = function(msg, reader) {
       reader.readMessage(value,proto.macondo.EvaluationRequest.deserializeBinaryFromReader);
       msg.setEvaluationRequest(value);
       break;
+    case 3:
+      var value = /** @type {!proto.macondo.BotRequest.BotCode} */ (reader.readEnum());
+      msg.setBotType(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -1934,8 +1940,32 @@ proto.macondo.BotRequest.serializeBinaryToWriter = function(message, writer) {
       proto.macondo.EvaluationRequest.serializeBinaryToWriter
     );
   }
+  f = message.getBotType();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      3,
+      f
+    );
+  }
 };
 
+
+/**
+ * @enum {number}
+ */
+proto.macondo.BotRequest.BotCode = {
+  HASTY_BOT: 0,
+  LEVEL1_CEL_BOT: 1,
+  LEVEL2_CEL_BOT: 2,
+  LEVEL3_CEL_BOT: 3,
+  LEVEL4_CEL_BOT: 4,
+  LEVEL1_PROBABILISTIC: 5,
+  LEVEL2_PROBABILISTIC: 6,
+  LEVEL3_PROBABILISTIC: 7,
+  LEVEL4_PROBABILISTIC: 8,
+  LEVEL5_PROBABILISTIC: 9,
+  SIMMING_BOT: 10
+};
 
 /**
  * optional GameHistory game_history = 1;
@@ -2008,6 +2038,24 @@ proto.macondo.BotRequest.prototype.clearEvaluationRequest = function() {
  */
 proto.macondo.BotRequest.prototype.hasEvaluationRequest = function() {
   return jspb.Message.getField(this, 2) != null;
+};
+
+
+/**
+ * optional BotCode bot_type = 3;
+ * @return {!proto.macondo.BotRequest.BotCode}
+ */
+proto.macondo.BotRequest.prototype.getBotType = function() {
+  return /** @type {!proto.macondo.BotRequest.BotCode} */ (jspb.Message.getFieldWithDefault(this, 3, 0));
+};
+
+
+/**
+ * @param {!proto.macondo.BotRequest.BotCode} value
+ * @return {!proto.macondo.BotRequest} returns this
+ */
+proto.macondo.BotRequest.prototype.setBotType = function(value) {
+  return jspb.Message.setProto3EnumField(this, 3, value);
 };
 
 

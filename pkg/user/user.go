@@ -4,9 +4,11 @@ import (
 	"context"
 
 	"github.com/domino14/liwords/pkg/entity"
+
 	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	upb "github.com/domino14/liwords/rpc/api/proto/user_service"
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
 // Store is an interface that user stores should implement.
@@ -31,7 +33,7 @@ type Store interface {
 	ResetStats(ctx context.Context, uuid string) error
 	ResetProfile(ctx context.Context, uuid string) error
 	ResetPersonalInfo(ctx context.Context, uuid string) error
-	GetRandomBot(ctx context.Context) (*entity.User, error)
+	GetBot(ctx context.Context, botType macondopb.BotRequest_BotCode) (*entity.User, error)
 
 	AddFollower(ctx context.Context, targetUser, follower uint) error
 	RemoveFollower(ctx context.Context, targetUser, follower uint) error

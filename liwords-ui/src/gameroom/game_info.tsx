@@ -3,6 +3,7 @@ import { Card } from 'antd';
 import { timeCtrlToDisplayName, timeToString } from '../store/constants';
 import { VariantIcon } from '../shared/variant_icons';
 import { MatchLexiconDisplay } from '../shared/lexicon_display';
+import { BotRequest } from '../gen/macondo/api/proto/macondo/macondo_pb';
 
 // At some point we should get this from the pb but then we have to use
 // twirp for this and we really shouldn't need to. Wait on it probably.
@@ -33,6 +34,8 @@ export type ChallengeRule =
   | 'TRIPLE'
   | 'VOID';
 
+export type BotType = keyof BotRequest.BotCodeMap;
+
 export type GameRequest = {
   lexicon: string;
   rules: GameRules;
@@ -43,6 +46,7 @@ export type GameRequest = {
   max_overtime_minutes: number;
   original_request_id: string;
   player_vs_bot: boolean;
+  bot_type: BotType;
 };
 
 export const defaultGameInfo: GameMetadata = {
@@ -61,6 +65,7 @@ export const defaultGameInfo: GameMetadata = {
     max_overtime_minutes: 0,
     original_request_id: '',
     player_vs_bot: false,
+    bot_type: 'HASTY_BOT',
   },
   tournament_id: '',
   game_end_reason: 'NONE',

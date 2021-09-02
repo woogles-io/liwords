@@ -41,6 +41,7 @@ import {
 import { VariantIcon } from '../shared/variant_icons';
 import { excludedLexica, LexiconFormItem } from '../shared/lexicon_display';
 import { AllLexica } from '../shared/lexica';
+import { BotTypesEnum, BotTypesEnumProperties } from './bots';
 
 const initTimeFormatter = (val?: number) => {
   return val != null ? initTimeDiscreteScale[val].label : null;
@@ -78,6 +79,7 @@ export type seekPropVals = {
   incOrOT: 'overtime' | 'increment';
   vsBot: boolean;
   variant: string;
+  botType: BotTypesEnum;
 };
 
 type mandatoryFormValues = Partial<seekPropVals> &
@@ -204,6 +206,7 @@ export const SeekForm = (props: Props) => {
     incOrOT: 'overtime',
     vsBot: false,
     variant: 'classic',
+    botType: BotTypesEnum.BEGINNER,
   };
   let disableTimeControls = false;
   let disableVariantControls = false;
@@ -268,6 +271,7 @@ export const SeekForm = (props: Props) => {
   );
   const [timectrl, setTimectrl] = useState(itc);
   const [ttag, setTtag] = useState(itt);
+  const [selections, setSelections] = useState<Store | null>(initialValues);
   const [timeSetting, setTimeSetting] = useState(
     initialValues.incOrOT === 'overtime' ? otLabel : incLabel
   );
@@ -296,6 +300,7 @@ export const SeekForm = (props: Props) => {
         JSON.stringify({ ...allvals, friend: '' })
       );
     }
+    setSelections(allvals);
     if (allvals.incOrOT === 'increment') {
       setTimeSetting(incLabel);
       setMaxTimeSetting(60);
@@ -386,6 +391,7 @@ export const SeekForm = (props: Props) => {
       receiver,
       rematchFor: '',
       playerVsBot: props.vsBot || false,
+      botType: val.botType,
       tournamentID: props.tournamentID || '',
       variant: val.variant as string,
     };
@@ -415,6 +421,34 @@ export const SeekForm = (props: Props) => {
       name="seekForm"
     >
       {props.prefixItems || null}
+
+      {props.vsBot && (
+        <Form.Item label="Select bot level" name="botType">
+          <Select>
+            {[
+              BotTypesEnum.MASTER,
+              BotTypesEnum.EXPERT,
+              BotTypesEnum.INTERMEDIATE,
+              BotTypesEnum.EASY,
+              BotTypesEnum.BEGINNER,
+            ].map((v) => (
+              <Select.Option value={v} key={v}>
+                <span className="level">
+                  {BotTypesEnumProperties[v].userVisible}{' '}
+                </span>
+                <span className="average">
+                  {BotTypesEnumProperties[v].shortDescription}
+                </span>
+                <span className="description">
+                  {BotTypesEnumProperties[v].description(
+                    selections?.lexicon || ''
+                  )}{' '}
+                </span>
+              </Select.Option>
+            ))}
+          </Select>
+        </Form.Item>
+      )}
 
       {props.showFriendInput && (
         <Form.Item
