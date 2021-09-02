@@ -47,7 +47,9 @@ export const sendSeek = (
   gr.setRules(rules);
   gr.setRatingMode(game.rated ? RatingMode.RATED : RatingMode.CASUAL);
   gr.setPlayerVsBot(game.playerVsBot);
-  gr.setBotType(BotTypesEnumProperties[game.botType].botCode(game.lexicon));
+  if (game.playerVsBot) {
+    gr.setBotType(BotTypesEnumProperties[game.botType].botCode(game.lexicon));
+  }
 
   if (game.receiver.getDisplayName() === '' && game.playerVsBot === false) {
     sr.setGameRequest(gr);
