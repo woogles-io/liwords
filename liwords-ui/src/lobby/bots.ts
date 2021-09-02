@@ -50,8 +50,8 @@ export const BotTypesEnumProperties = {
     shortDescription: '330 point average',
     description: (lexicon: string) =>
       isEnglish(lexicon)
-        ? 'Beating Beginnerbot? Basicbot is your next frenemy, scoring more, but still emphasizing common English words.'
-        : 'Beating Beginnerbot? Basicbot is your next frenemy, scoring more.',
+        ? 'Beating BeginnerBot? Basicbot is your next frenemy, scoring more, but still emphasizing common English words.'
+        : 'Beating BeginnerBot? Basicbot is your next frenemy, scoring more.',
     botCode: (lexicon: string) =>
       isEnglish(lexicon)
         ? BotRequest.BotCode.LEVEL2_CEL_BOT
@@ -63,8 +63,8 @@ export const BotTypesEnumProperties = {
     shortDescription: '240 point average',
     description: (lexicon: string) =>
       isEnglish(lexicon)
-        ? 'New to OMGWords? Beginnerbot sticks to lower-scoring plays and common words'
-        : 'New to OMGWords? Beginnerbot sticks to lower-scoring plays',
+        ? 'New to OMGWords? BeginnerBot sticks to lower-scoring plays and common words.'
+        : 'New to OMGWords? BeginnerBot sticks to lower-scoring plays.',
     botCode: (lexicon: string) =>
       isEnglish(lexicon)
         ? BotRequest.BotCode.LEVEL1_CEL_BOT
