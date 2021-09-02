@@ -47,7 +47,7 @@ export const BotTypesEnumProperties = {
   [BotTypesEnum.EASY]: {
     userVisible: 'Basic',
     botName: 'BasicBot',
-    shortDescription: '340 point average',
+    shortDescription: '330 point average',
     description: (lexicon: string) =>
       isEnglish(lexicon)
         ? 'Beating Beginnerbot? Basicbot is your next frenemy, scoring more, but still emphasizing common English words.'
@@ -60,7 +60,7 @@ export const BotTypesEnumProperties = {
   [BotTypesEnum.BEGINNER]: {
     userVisible: 'Beginner',
     botName: 'BeginnerBot',
-    shortDescription: '250 point average',
+    shortDescription: '240 point average',
     description: (lexicon: string) =>
       isEnglish(lexicon)
         ? 'New to OMGWords? Beginnerbot sticks to lower-scoring plays and common words'

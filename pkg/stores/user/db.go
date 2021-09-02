@@ -25,15 +25,15 @@ import (
 var botNames = map[macondopb.BotRequest_BotCode]string{
 	macondopb.BotRequest_HASTY_BOT: "HastyBot",
 	// These are temporary names!
-	macondopb.BotRequest_LEVEL1_PROBABILISTIC: "BabyBot",
-	macondopb.BotRequest_LEVEL2_PROBABILISTIC: "PupBot",
-	macondopb.BotRequest_LEVEL3_PROBABILISTIC: "SchwiftyBot",
-	macondopb.BotRequest_LEVEL4_PROBABILISTIC: "TastyBot",
+	macondopb.BotRequest_LEVEL1_PROBABILISTIC: "BeginnerBot",
+	macondopb.BotRequest_LEVEL2_PROBABILISTIC: "BasicBot",
+	macondopb.BotRequest_LEVEL3_PROBABILISTIC: "BetterBot",
+	macondopb.BotRequest_LEVEL4_PROBABILISTIC: "STEEBot",
 
 	// For english. Reuse level1-3 names from above.
-	macondopb.BotRequest_LEVEL1_CEL_BOT: "BabyBot",
-	macondopb.BotRequest_LEVEL2_CEL_BOT: "PupBot",
-	macondopb.BotRequest_LEVEL4_CEL_BOT: "SchwiftyBot",
+	macondopb.BotRequest_LEVEL1_CEL_BOT: "BeginnerBot",
+	macondopb.BotRequest_LEVEL2_CEL_BOT: "BasicBot",
+	macondopb.BotRequest_LEVEL4_CEL_BOT: "BetterBot",
 }
 
 // DBStore is a postgres-backed store for users.
