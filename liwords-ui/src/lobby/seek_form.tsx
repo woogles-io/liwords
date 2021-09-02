@@ -271,6 +271,7 @@ export const SeekForm = (props: Props) => {
   );
   const [timectrl, setTimectrl] = useState(itc);
   const [ttag, setTtag] = useState(itt);
+  const [selections, setSelections] = useState<Store | null>(initialValues);
   const [timeSetting, setTimeSetting] = useState(
     initialValues.incOrOT === 'overtime' ? otLabel : incLabel
   );
@@ -299,6 +300,7 @@ export const SeekForm = (props: Props) => {
         JSON.stringify({ ...allvals, friend: '' })
       );
     }
+    setSelections(allvals);
     if (allvals.incOrOT === 'increment') {
       setTimeSetting(incLabel);
       setMaxTimeSetting(60);
@@ -431,7 +433,17 @@ export const SeekForm = (props: Props) => {
               BotTypesEnum.BEGINNER,
             ].map((v) => (
               <Select.Option value={v} key={v}>
-                {BotTypesEnumProperties[v].userVisible}
+                <span className="level">
+                  {BotTypesEnumProperties[v].userVisible}{' '}
+                </span>
+                <span className="average">
+                  {BotTypesEnumProperties[v].shortDescription}
+                </span>
+                <span className="description">
+                  {BotTypesEnumProperties[v].description(
+                    selections?.lexicon || ''
+                  )}{' '}
+                </span>
               </Select.Option>
             ))}
           </Select>

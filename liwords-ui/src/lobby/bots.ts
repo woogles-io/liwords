@@ -16,28 +16,42 @@ export const BotTypesEnumProperties = {
   [BotTypesEnum.MASTER]: {
     userVisible: 'Master',
     botName: 'HastyBot',
-    description: 'HastyBot knows all the wordz, some more text here',
+    shortDescription: '460 point average',
+    description: (lexicon: string) =>
+      'The Bot, the myth, the legend. HastyBot always finds the best play.',
     botCode: (lexicon: string) => BotRequest.BotCode.HASTY_BOT,
   },
   [BotTypesEnum.EXPERT]: {
     userVisible: 'Expert',
-    botName: 'FOOBot',
-    description: 'Etc',
+    botName: 'STEEBot',
+    shortDescription: '410 point average',
+    description: (lexicon: string) =>
+      isEnglish(lexicon)
+        ? 'Ready for the weird words? Not quite an expert, STEEBot knows all the words but will make some mistakes.'
+        : 'Not quite an expert, STEEBot knows all the words but will make mistakes.',
     botCode: (lexicon: string) => BotRequest.BotCode.LEVEL4_PROBABILISTIC,
   },
   [BotTypesEnum.INTERMEDIATE]: {
     userVisible: 'Intermediate',
-    botName: 'FOOBot',
-    description: 'Etc',
+    botName: 'BetterBot',
+    shortDescription: '370 point average',
+    description: (lexicon: string) =>
+      isEnglish(lexicon)
+        ? 'BetterBot is the best bot for common-words only, with perfect play compared to its lower-rated counterparts.'
+        : 'BetterBot. A bit better than BasicBot.',
     botCode: (lexicon: string) =>
       isEnglish(lexicon)
         ? BotRequest.BotCode.LEVEL4_CEL_BOT
         : BotRequest.BotCode.LEVEL3_PROBABILISTIC,
   },
   [BotTypesEnum.EASY]: {
-    userVisible: 'Easy',
-    botName: 'FOOBot',
-    description: 'Etc',
+    userVisible: 'Basic',
+    botName: 'BasicBot',
+    shortDescription: '340 point average',
+    description: (lexicon: string) =>
+      isEnglish(lexicon)
+        ? 'Beating Beginnerbot? Basicbot is your next frenemy, scoring more, but still emphasizing common English words.'
+        : 'Beating Beginnerbot? Basicbot is your next frenemy, scoring more.',
     botCode: (lexicon: string) =>
       isEnglish(lexicon)
         ? BotRequest.BotCode.LEVEL2_CEL_BOT
@@ -45,8 +59,12 @@ export const BotTypesEnumProperties = {
   },
   [BotTypesEnum.BEGINNER]: {
     userVisible: 'Beginner',
-    botName: 'FOOBot',
-    description: 'Etc',
+    botName: 'BeginnerBot',
+    shortDescription: '250 point average',
+    description: (lexicon: string) =>
+      isEnglish(lexicon)
+        ? 'New to OMGWords? Beginnerbot sticks to lower-scoring plays and common words'
+        : 'New to OMGWords? Beginnerbot sticks to lower-scoring plays',
     botCode: (lexicon: string) =>
       isEnglish(lexicon)
         ? BotRequest.BotCode.LEVEL1_CEL_BOT
