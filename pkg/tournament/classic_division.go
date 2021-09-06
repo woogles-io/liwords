@@ -9,6 +9,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/pair"
+	"github.com/domino14/liwords/pkg/utilities"
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/rs/zerolog/log"
 )
@@ -54,6 +55,11 @@ func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.Divisio
 		return nil, nil, err
 	}
 	log.Debug().Interface("game-req", divisionControls.GameRequest).Msg("divctrls-validated-game-request")
+
+	if divisionControls.MaximumByePlacement < 0 {
+		return nil, nil, errors.New("max bye placement must not be negative")
+	}
+
 	// minimum placement is zero-indexed
 	if divisionControls.Gibsonize {
 		if divisionControls.MinimumPlacement < 0 {
@@ -606,7 +612,13 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 		return nil, err
 	}
 
+	repeats, err := getRepeats(t, round-1)
+	if err != nil {
+		return nil, err
+	}
+
 	poolMembers := []*entity.PoolMember{}
+	pmessage := newPairingsMessage()
 
 	// Round Robin must have the same ordering for each round
 	playerOrder := []*realtime.PlayerStanding{}
@@ -615,10 +627,40 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 			playerOrder = append(playerOrder, &realtime.PlayerStanding{PlayerId: t.Players.Persons[i].Id})
 		}
 	} else {
-		for i := 0; i < len(standings.Standings); i++ {
-			if !preserveByes || !playersWithByes[standings.Standings[i].PlayerId] {
+
+		// If there are an odd number of players, give a bye based on the standings.
+		totalNumberOfPlayers := len(standings.Standings)
+		maxByePlacement := utilities.Min(totalNumberOfPlayers-1, int(t.DivisionControls.MaximumByePlacement))
+		if totalNumberOfPlayers-len(playersWithByes)%2 != 0 {
+			startingPlayerIndex := totalNumberOfPlayers - 1
+			invByePlayerIndex := startingPlayerIndex
+			minNumberOfByes := repeats[pair.GetRepeatKey(standings.Standings[startingPlayerIndex].PlayerId,
+				standings.Standings[startingPlayerIndex].PlayerId)]
+			for i := startingPlayerIndex + 1; i <= maxByePlacement; i-- {
+				playerId := standings.Standings[i].PlayerId
+				numberOfByes := repeats[pair.GetRepeatKey(playerId, playerId)]
+				if !playersWithByes[playerId] && numberOfByes < minNumberOfByes {
+					invByePlayerIndex = i
+					minNumberOfByes = numberOfByes
+				}
+			}
+			byePlayer := standings.Standings[invByePlayerIndex].PlayerId
+			newpmessage, err := t.SetPairing(byePlayer, byePlayer, round)
+			if err != nil {
+				return nil, err
+			}
+			pmessage = combinePairingMessages(pmessage, newpmessage)
+			playersWithByes[byePlayer] = true
+		}
+
+		for i := 0; i < totalNumberOfPlayers; i++ {
+			if !playersWithByes[standings.Standings[i].PlayerId] {
 				playerOrder = append(playerOrder, standings.Standings[i])
 			}
+		}
+
+		if len(playerOrder)%2 != 0 {
+			return nil, errors.New("internal bye was not assigned correctly")
 		}
 	}
 
@@ -629,7 +671,6 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 			Spread: int(playerOrder[i].Spread)})
 	}
 
-	pmessage := newPairingsMessage()
 	gibsonPairedPlayers := make(map[string]bool)
 	// Determine Gibsonizations
 	if gibsonRank >= 0 {
@@ -689,11 +730,6 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 		}
 	}
 
-	repeats, err := getRepeats(t, round-1)
-	if err != nil {
-		return nil, err
-	}
-
 	upm := &entity.UnpairedPoolMembers{RoundControls: t.RoundControls[round],
 		PoolMembers: poolMembers,
 		Repeats:     repeats}
@@ -710,6 +746,15 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 		return nil, errors.New("pair did not return the correct number of pairings")
 	}
 
+	// Only the round robin pairing methods should assign byes
+	if !isRoundRobin(pairingMethod) {
+		for i := 0; i < len(pairings); i++ {
+			if pairings[i] < 0 {
+				return nil, errors.New("pairings assigned a bye which should never happen")
+			}
+		}
+	}
+
 	for i := 0; i < l; i++ {
 		// Player order might be a different order than the players in roundPairings
 		playerIndex := t.PlayerIndexMap[poolMembers[i].Id]
@@ -720,9 +765,8 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 		if roundPairings[playerIndex] == "" {
 
 			var opponentIndex int32
-			if pairings[i] < 0 {
-				opponentIndex = playerIndex
-			} else if pairings[i] >= l {
+			// Pairings have already been checked for negative values above
+			if pairings[i] >= l {
 				return nil, fmt.Errorf("invalid pairing for round %d: %d", round, pairings[i])
 			} else {
 				opponentIndex = t.PlayerIndexMap[poolMembers[pairings[i]].Id]
@@ -1460,10 +1504,8 @@ func getRepeats(t *ClassicDivision, round int) (map[string]int, error) {
 			if ok && pairing.Players != nil {
 				playerOne := t.Players.Persons[pairing.Players[0]]
 				playerTwo := t.Players.Persons[pairing.Players[1]]
-				if playerOne != playerTwo {
-					key := pair.GetRepeatKey(playerOne.Id, playerTwo.Id)
-					repeats[key]++
-				}
+				key := pair.GetRepeatKey(playerOne.Id, playerTwo.Id)
+				repeats[key]++
 			}
 		}
 	}

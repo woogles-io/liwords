@@ -643,23 +643,7 @@ func TestClassicDivisionGibson(t *testing.T) {
 
 	// To get the compiler to stop complaining
 	if tc != nil && tc.DivisionControls != nil {
-		newDivisionControls := &realtime.DivisionControls{
-			GameRequest: &realtime.GameRequest{Lexicon: "CSW19",
-				Rules: &realtime.GameRules{BoardLayoutName: entity.CrosswordGame,
-					LetterDistributionName: "English", VariantName: "classic"},
-				InitialTimeSeconds: 25 * 60,
-				IncrementSeconds:   0,
-				ChallengeRule:      macondopb.ChallengeRule_FIVE_POINT,
-				GameMode:           realtime.GameMode_REAL_TIME,
-				RatingMode:         realtime.RatingMode_RATED,
-				RequestId:          "yeet",
-				OriginalRequestId:  "originalyeet",
-				MaxOvertimeMinutes: 10},
-			Gibsonize:        true,
-			MinimumPlacement: 200,
-			AutoStart:        false,
-			SuspendedSpread:  -50,
-			SuspendedResult:  realtime.TournamentGameResult_FORFEIT_LOSS}
+		newDivisionControls := newDivisionControls()
 		// Attempt to set a nonsensical minimum placement
 		_, _, err = tc.SetDivisionControls(newDivisionControls)
 		is.NoErr(err)
@@ -833,23 +817,8 @@ func TestClassicDivisionGibson(t *testing.T) {
 
 	// To get the compiler to stop complaining
 	if tc != nil && tc.DivisionControls != nil {
-		newDivisionControls := &realtime.DivisionControls{
-			GameRequest: &realtime.GameRequest{Lexicon: "CSW19",
-				Rules: &realtime.GameRules{BoardLayoutName: entity.CrosswordGame,
-					LetterDistributionName: "English", VariantName: "classic"},
-				InitialTimeSeconds: 25 * 60,
-				IncrementSeconds:   0,
-				ChallengeRule:      macondopb.ChallengeRule_FIVE_POINT,
-				GameMode:           realtime.GameMode_REAL_TIME,
-				RatingMode:         realtime.RatingMode_RATED,
-				RequestId:          "yeet",
-				OriginalRequestId:  "originalyeet",
-				MaxOvertimeMinutes: 10},
-			Gibsonize:        true,
-			MinimumPlacement: 1,
-			AutoStart:        false,
-			SuspendedSpread:  -50,
-			SuspendedResult:  realtime.TournamentGameResult_FORFEIT_LOSS}
+		newDivisionControls := newDivisionControls()
+		newDivisionControls.MinimumPlacement = 1
 		_, _, err = tc.SetDivisionControls(newDivisionControls)
 		is.NoErr(err)
 	}
@@ -2629,6 +2598,104 @@ func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
 	is.True(finished)
 }
 
+func TestClassicDivisionByes(t *testing.T) {
+	// Test
+	//   Try to set Max Bye Placement < 0
+	//   Edge case (2 player tournament)
+	//   Edge case (3 player tournament)
+	//     Bye Max > 1
+	//     Bye Max == 1
+	//     Bye Max == 0
+	//   Normal Division (9 players)
+	//     Starts assigning from last and goes up
+	//     Wraps back around to last
+	//     Skips people who already have a bye
+	//     Finds at least two new minimums
+
+	is := is.New(t)
+
+	player1 := defaultPlayers.Persons[0].Id
+	player2 := defaultPlayers.Persons[1].Id
+	player3 := defaultPlayers.Persons[3].Id
+	// player4 := defaultPlayers.Persons[2].Id
+
+	// 2 player tournament
+
+	roundControls := []*realtime.RoundControl{}
+	numRounds := 1
+
+	for i := 0; i < numRounds; i++ {
+		roundControls = append(roundControls, &realtime.RoundControl{FirstMethod: realtime.FirstMethod_AUTOMATIC_FIRST,
+			PairingMethod:               realtime.PairingMethod_KING_OF_THE_HILL,
+			GamesPerRound:               defaultGamesPerRound,
+			Factor:                      1,
+			MaxRepeats:                  1,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1})
+	}
+
+	tc, err := compactNewClassicDivision(makeTournamentPersons(map[string]int32{"Will": 10000, "Josh": 3000}), roundControls, false)
+	is.NoErr(err)
+	is.True(tc != nil)
+
+	newDivControls := newDivisionControls()
+	newDivControls.MaximumByePlacement = -3
+	_, _, err = tc.SetDivisionControls(newDivControls)
+	is.True(err != nil)
+	is.True(err.Error() == "max bye placement must not be negative")
+
+	tc.DivisionControls.MaximumByePlacement = 500
+
+	_, err = tc.SetPairing(player1, player1, 0)
+	is.NoErr(err)
+
+	_, err = tc.PairRound(0, true)
+
+	// 3 player tournament
+
+	roundControls = []*realtime.RoundControl{}
+	numRounds = 1
+
+	for i := 0; i < numRounds; i++ {
+		roundControls = append(roundControls, &realtime.RoundControl{FirstMethod: realtime.FirstMethod_AUTOMATIC_FIRST,
+			PairingMethod:               realtime.PairingMethod_KING_OF_THE_HILL,
+			GamesPerRound:               defaultGamesPerRound,
+			Factor:                      1,
+			MaxRepeats:                  1,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1})
+	}
+
+	tc, err = compactNewClassicDivision(makeTournamentPersons(map[string]int32{player1: 10000, player2: 3000, player3: 2000}), roundControls, false)
+	is.NoErr(err)
+	is.True(tc != nil)
+
+	tc.DivisionControls.MaximumByePlacement = 500
+
+	_, err = tc.SubmitResult(0, player1, player2, 1, 0,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0, "")
+	is.NoErr(err)
+
+	roundIsComplete, err := tc.IsRoundComplete(0)
+	is.NoErr(err)
+	is.True(roundIsComplete)
+
+	// Get the standings for round 1
+	standings, _, err := tc.GetStandings(0)
+	is.NoErr(err)
+
+	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 400},
+		{PlayerId: player2, Wins: 1, Losses: 0, Draws: 0, Spread: 300},
+		{PlayerId: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 200},
+	}}
+
+	is.NoErr(equalStandings(expectedstandings, standings))
+}
+
 func TestClassicDivisionFirsts(t *testing.T) {
 	// Test
 	//   Manual sets the correct firsts
@@ -3893,6 +3960,46 @@ func logTwo(n int) int {
 		n = n / 2
 	}
 	return res
+}
+
+func newDivisionControls() *realtime.DivisionControls {
+	return &realtime.DivisionControls{
+		GameRequest: &realtime.GameRequest{Lexicon: "CSW19",
+			Rules: &realtime.GameRules{BoardLayoutName: entity.CrosswordGame,
+				LetterDistributionName: "English", VariantName: "classic"},
+			InitialTimeSeconds: 25 * 60,
+			IncrementSeconds:   0,
+			ChallengeRule:      macondopb.ChallengeRule_FIVE_POINT,
+			GameMode:           realtime.GameMode_REAL_TIME,
+			RatingMode:         realtime.RatingMode_RATED,
+			RequestId:          "yeet",
+			OriginalRequestId:  "originalyeet",
+			MaxOvertimeMinutes: 10},
+		Gibsonize:        true,
+		MinimumPlacement: 200,
+		AutoStart:        false,
+		SuspendedSpread:  -50,
+		SuspendedResult:  realtime.TournamentGameResult_FORFEIT_LOSS}
+}
+
+func getByeCount(t *ClassicDivision, round int) map[string]int {
+
+	byeCount := make(map[string]int)
+
+	for i := 0; i < len(t.Players.Persons); i++ {
+		playerId := t.Players.Persons[i].Id
+		if t.Players.Persons[i].Suspended {
+			continue
+		}
+		for j := 0; j <= round; j++ {
+			pairingKey := t.Matrix[j][i]
+			pairing, ok := t.PairingMap[pairingKey]
+			if ok && pairing != nil && pairing.Players != nil && {
+				
+			}
+		}
+	}
+	return byeCount
 }
 
 func makeTournamentPersons(persons map[string]int32) *realtime.TournamentPersons {
