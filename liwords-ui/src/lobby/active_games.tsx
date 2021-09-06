@@ -8,6 +8,7 @@ import { ActiveGame } from '../store/reducers/lobby_reducer';
 import { calculateTotalTime } from '../store/constants';
 import { VariantIcon } from '../shared/variant_icons';
 import { MatchLexiconDisplay } from '../shared/lexicon_display';
+import { useLoginStateStoreContext } from '../store/store';
 
 type Props = {
   activeGames: ActiveGame[];
@@ -17,6 +18,10 @@ type Props = {
 
 export const ActiveGames = (props: Props) => {
   const history = useHistory();
+  const {
+    loginState: { perms },
+  } = useLoginStateStoreContext();
+  const isAdmin = perms.includes('adm');
 
   type ActiveGameTableData = {
     gameID: string;
@@ -146,9 +151,20 @@ export const ActiveGames = (props: Props) => {
     },
   ];
 
+  let title = <>Resume</>;
+  if (props.type !== 'RESUME') {
+    title = isAdmin ? (
+      <>
+        {'Games live now'}
+        <span className="game-count">{props.activeGames?.length}</span>
+      </>
+    ) : (
+      <>`Games live now`</>
+    );
+  }
   return (
     <>
-      <h4>{props.type === 'RESUME' ? 'Resume' : 'Games live now'}</h4>
+      <h4>{title}</h4>
       <Table
         className="games observe"
         dataSource={formatGameData(props.activeGames)}
