@@ -892,12 +892,12 @@ export const BoardPanel = React.memo((props: Props) => {
           }
           let minutes = '';
           if (mins) {
-            minutes = singularCount(mins, 'minutes', 'minute') + ' and ';
+            minutes = singularCount(mins, 'minute', 'minutes') + ' and ';
           }
           return (
             negative +
             minutes +
-            singularCount(secs, 'seconds', 'second');
+            singularCount(secs, 'second', 'seconds');
           );
         };
 
