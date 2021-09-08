@@ -159,7 +159,7 @@ export const ActiveGames = (props: Props) => {
         <span className="game-count">{props.activeGames?.length}</span>
       </>
     ) : (
-      <>`Games live now`</>
+      <>Games live now</>
     );
   }
   return (
