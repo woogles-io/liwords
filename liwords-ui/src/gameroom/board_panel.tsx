@@ -33,7 +33,6 @@ import {
   natoPhoneticAlphabet,
   letterPronunciations,
 } from '../utils/cwgame/blindfold';
-import { singularCount } from '../utils/plural';
 
 import {
   tilesetToMoveEvent,
@@ -890,14 +889,12 @@ export const BoardPanel = React.memo((props: Props) => {
           if (neg) {
             negative = 'negative ';
           }
-          let minutes = '';
-          if (mins) {
-            minutes = singularCount(mins, 'minute', 'minutes') + ' and ';
-          }
           return (
             negative +
-            minutes +
-            singularCount(secs, 'second', 'seconds');
+            mins.toString() +
+            ' minutes and ' +
+            secs.toString() +
+            ' seconds'
           );
         };
 
