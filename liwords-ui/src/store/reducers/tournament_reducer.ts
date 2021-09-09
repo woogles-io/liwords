@@ -161,7 +161,7 @@ const findOpponentIdx = (
   pairings: Array<RoundPairings>,
   round: number
 ): number => {
-  if (!pairings[round].roundPairings[player].players) {
+  if (!pairings[round].roundPairings[player]?.players) {
     return -1;
   }
 
