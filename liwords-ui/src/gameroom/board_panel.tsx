@@ -894,11 +894,7 @@ export const BoardPanel = React.memo((props: Props) => {
           if (mins) {
             minutes = singularCount(mins, 'minute', 'minutes') + ' and ';
           }
-          return (
-            negative +
-            minutes +
-            singularCount(secs, 'second', 'seconds');
-          );
+          return negative + minutes + singularCount(secs, 'second', 'seconds');
         };
 
         let newBlindfoldCommand = blindfoldCommand;
