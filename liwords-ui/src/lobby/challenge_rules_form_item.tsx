@@ -9,6 +9,10 @@ type Props = {
 export const ChallengeRulesFormItem = (props: Props) => (
   <Form.Item label="Challenge rule" name="challengerule">
     <Select disabled={props.disabled}>
+      <Select.Option value={ChallengeRule.VOID}>
+        Void{' '}
+        <span className="hover-help">(All words are checked before play)</span>
+      </Select.Option>
       <Select.Option value={ChallengeRule.FIVE_POINT}>
         5 points{' '}
         <span className="hover-help">(Reward for winning a challenge)</span>
@@ -28,10 +32,6 @@ export const ChallengeRulesFormItem = (props: Props) => (
         <span className="hover-help">
           (No penalty for challenging a valid word)
         </span>
-      </Select.Option>
-      <Select.Option value={ChallengeRule.VOID}>
-        Void{' '}
-        <span className="hover-help">(All words are checked before play)</span>
       </Select.Option>
       <Select.Option value={ChallengeRule.TRIPLE}>
         Triple{' '}
