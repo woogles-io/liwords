@@ -367,7 +367,9 @@ func (t *ClassicDivision) SubmitResult(round int,
 
 	log.Debug().Str("p1", p1).Str("p2", p2).Int("p1Score", p1Score).Int("p2Score", p2Score).
 		Interface("p1Result", p1Result).Interface("p2Result", p2Result).Interface("gameendReason", reason).
-		Bool("amend", amend).Int("gameIndex", gameIndex).Str("gid", gid).Msg("submit-result")
+		Bool("amend", amend).Int("gameIndex", gameIndex).Str("gid", gid).
+		Int("round", round).Int("currentRound", t.GetCurrentRound()).
+		Msg("submit-result")
 	// Fetch the player round records
 
 	pk1, err := t.getPairingKey(p1, round)
@@ -444,8 +446,8 @@ func (t *ClassicDivision) SubmitResult(round int,
 
 	// If this claims to be an amendment and is not submitting forfeit
 	// losses for players show up late, reject this submission.
-	if amend && p1Result != realtime.TournamentGameResult_FORFEIT_LOSS &&
-		p2Result != realtime.TournamentGameResult_FORFEIT_LOSS &&
+	if amend && p1Result != t.DivisionControls.SuspendedResult &&
+		p2Result != t.DivisionControls.SuspendedResult &&
 		pairing.Games[gameIndex].Results[0] == realtime.TournamentGameResult_NO_RESULT &&
 		pairing.Games[gameIndex].Results[1] == realtime.TournamentGameResult_NO_RESULT {
 		return nil, fmt.Errorf("submitted amendment for a result that does not exist in round %d, %s vs. %s", round, p1, p2)
@@ -879,6 +881,7 @@ func (t *ClassicDivision) AddPlayers(players *realtime.TournamentPersons) (*real
 				return nil, err
 			}
 			pmessage.DivisionStandings = combineStandingsResponses(pmessage.DivisionStandings, map[int32]*realtime.RoundStandings{int32(i): roundStandings})
+			t.Standings[int32(i)] = roundStandings
 		}
 	}
 	return pmessage, nil
@@ -952,6 +955,7 @@ func (t *ClassicDivision) RemovePlayers(persons *realtime.TournamentPersons) (*r
 				return nil, err
 			}
 			pairingsMessage.DivisionStandings = combineStandingsResponses(pairingsMessage.DivisionStandings, map[int32]*realtime.RoundStandings{int32(i): roundStandings})
+			t.Standings[int32(i)] = roundStandings
 		}
 	}
 
@@ -968,6 +972,10 @@ func (t *ClassicDivision) GetPlayers() *realtime.TournamentPersons {
 
 func (t *ClassicDivision) ResetToBeginning() error {
 	t.CurrentRound = -1
+
+	for _, p := range t.Players.Persons {
+		p.Suspended = false
+	}
 
 	_, err := t.prepair()
 	if err != nil {
