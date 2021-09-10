@@ -790,6 +790,21 @@ func (t *ClassicDivision) DeletePairings(round int) error {
 	return nil
 }
 
+func (t *ClassicDivision) RecalculateStandings() (*realtime.DivisionPairingsResponse, error) {
+	pairingsMessage := newPairingsMessage()
+
+	for i := 0; i < len(t.Matrix); i++ {
+		roundStandings, _, err := t.GetStandings(i)
+		if err != nil {
+			return nil, err
+		}
+		pairingsMessage.DivisionStandings = combineStandingsResponses(
+			pairingsMessage.DivisionStandings,
+			map[int32]*realtime.RoundStandings{int32(i): roundStandings})
+	}
+	return pairingsMessage, nil
+}
+
 func (t *ClassicDivision) AddPlayers(players *realtime.TournamentPersons) (*realtime.DivisionPairingsResponse, error) {
 
 	numNewPlayers := 0
@@ -876,13 +891,13 @@ func (t *ClassicDivision) AddPlayers(players *realtime.TournamentPersons) (*real
 					pmessage = combinePairingMessages(pmessage, newpmessage)
 				}
 			}
-			roundStandings, _, err := t.GetStandings(i)
-			if err != nil {
-				return nil, err
-			}
-			pmessage.DivisionStandings = combineStandingsResponses(pmessage.DivisionStandings, map[int32]*realtime.RoundStandings{int32(i): roundStandings})
-			t.Standings[int32(i)] = roundStandings
 		}
+
+		pairingsResponse, err := t.RecalculateStandings()
+		if err != nil {
+			return nil, err
+		}
+		pmessage = combinePairingMessages(pmessage, pairingsResponse)
 	}
 	return pmessage, nil
 }
@@ -949,14 +964,13 @@ func (t *ClassicDivision) RemovePlayers(persons *realtime.TournamentPersons) (*r
 				pairingsMessage.DivisionPairings = combinePairingsResponses(pairingsMessage.DivisionPairings, newPairingsMessage.DivisionPairings)
 			}
 		}
-		for i := 0; i < len(t.Matrix); i++ {
-			roundStandings, _, err := t.GetStandings(i)
-			if err != nil {
-				return nil, err
-			}
-			pairingsMessage.DivisionStandings = combineStandingsResponses(pairingsMessage.DivisionStandings, map[int32]*realtime.RoundStandings{int32(i): roundStandings})
-			t.Standings[int32(i)] = roundStandings
+
+		pairingsResponse, err := t.RecalculateStandings()
+		if err != nil {
+			return nil, err
 		}
+		pairingsMessage = combinePairingMessages(pairingsMessage, pairingsResponse)
+
 	}
 
 	return pairingsMessage, nil
@@ -1071,16 +1085,26 @@ func getRecords(t *ClassicDivision, round int) ([]*realtime.PlayerStanding, erro
 	} else {
 		sort.Slice(records,
 			func(i, j int) bool {
-				if records[i].Wins == records[j].Wins && records[i].Draws == records[j].Draws && records[i].Spread == records[j].Spread {
-					// Tiebreak by rank to ensure determinism
-					return t.PlayerIndexMap[records[j].PlayerId] > t.PlayerIndexMap[records[i].PlayerId]
-				} else if records[i].Wins == records[j].Wins && records[i].Draws == records[j].Draws {
-					return records[i].Spread > records[j].Spread
-				} else if records[i].Wins == records[j].Wins {
-					return records[i].Draws > records[j].Draws
-				} else {
+				if records[i].Wins != records[j].Wins {
 					return records[i].Wins > records[j].Wins
 				}
+
+				if records[i].Draws != records[j].Draws {
+					return records[i].Draws > records[j].Draws
+				}
+
+				if records[i].Losses != records[j].Losses {
+					return records[i].Losses < records[j].Losses
+				}
+
+				if records[i].Spread != records[j].Spread {
+					return records[i].Spread > records[j].Spread
+				}
+
+				// Otherwise they're all equal.
+				// Tiebreak by rank to ensure determinism
+				return t.PlayerIndexMap[records[j].PlayerId] > t.PlayerIndexMap[records[i].PlayerId]
+
 			})
 	}
 	return records, nil
