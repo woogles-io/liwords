@@ -215,6 +215,28 @@ const DivisionFormItem = (props: {
   );
 };
 
+const PlayersFormItem = (props: {
+  name: string;
+  label: string;
+  division: string;
+}) => {
+  const { tournamentContext } = useTournamentStoreContext();
+  return (
+    <Form.Item name={props.name} label={props.label}>
+      <Select>
+        {tournamentContext.divisions[props.division]?.players.map((v) => {
+          const u = username(v.getId());
+          return (
+            <Select.Option value={u} key={v.getId()}>
+              {u}
+            </Select.Option>
+          );
+        })}
+      </Select>
+    </Form.Item>
+  );
+};
+
 const AddDivision = (props: { tournamentID: string }) => {
   const onFinish = (vals: Store) => {
     const obj = {
@@ -406,6 +428,9 @@ const AddPlayers = (props: { tournamentID: string }) => {
 };
 
 const RemovePlayer = (props: { tournamentID: string }) => {
+  const { useState } = useMountedState();
+  const [division, setDivision] = useState('');
+
   const onFinish = (vals: Store) => {
     const obj = {
       id: props.tournamentID,
@@ -438,10 +463,13 @@ const RemovePlayer = (props: { tournamentID: string }) => {
 
   return (
     <Form onFinish={onFinish}>
-      <DivisionFormItem />
-      <Form.Item name="username" label="Username to remove">
-        <Input />
-      </Form.Item>
+      <DivisionFormItem onChange={(div: string) => setDivision(div)} />
+
+      <PlayersFormItem
+        name="username"
+        label="Username to remove"
+        division={division}
+      />
       <Form.Item>
         <Button type="primary" htmlType="submit">
           Submit
@@ -506,6 +534,11 @@ const userUUID = (username: string, divobj: Division) => {
   return p.getId().split(':')[0];
 };
 
+const username = (fullID: string) => {
+  const parts = fullID.split(':');
+  return parts[1];
+};
+
 const fullPlayerID = (username: string, divobj: Division) => {
   if (!divobj) {
     return '';
@@ -527,6 +560,8 @@ const fullPlayerID = (username: string, divobj: Division) => {
 
 const SetPairing = (props: { tournamentID: string }) => {
   const { tournamentContext } = useTournamentStoreContext();
+  const { useState } = useMountedState();
+  const [division, setDivision] = useState('');
 
   const onFinish = (vals: Store) => {
     const obj = {
@@ -567,15 +602,18 @@ const SetPairing = (props: { tournamentID: string }) => {
 
   return (
     <Form onFinish={onFinish}>
-      <DivisionFormItem />
+      <DivisionFormItem onChange={(div: string) => setDivision(div)} />
 
-      <Form.Item name="p1" label="Player 1 username">
-        <Input />
-      </Form.Item>
-
-      <Form.Item name="p2" label="Player 2 username">
-        <Input />
-      </Form.Item>
+      <PlayersFormItem
+        name="p1"
+        label="Player 1 username"
+        division={division}
+      />
+      <PlayersFormItem
+        name="p2"
+        label="Player 2 username"
+        division={division}
+      />
 
       <Form.Item name="round" label="Round (1-indexed)">
         <InputNumber min={1} />
@@ -592,6 +630,8 @@ const SetPairing = (props: { tournamentID: string }) => {
 
 const SetResult = (props: { tournamentID: string }) => {
   const { tournamentContext } = useTournamentStoreContext();
+  const { useState } = useMountedState();
+  const [division, setDivision] = useState('');
 
   const onFinish = (vals: Store) => {
     const obj = {
@@ -634,15 +674,18 @@ const SetResult = (props: { tournamentID: string }) => {
 
   return (
     <Form onFinish={onFinish}>
-      <DivisionFormItem />
+      <DivisionFormItem onChange={(div: string) => setDivision(div)} />
 
-      <Form.Item name="p1" label="Player 1 username">
-        <Input />
-      </Form.Item>
-
-      <Form.Item name="p2" label="Player 2 username">
-        <Input />
-      </Form.Item>
+      <PlayersFormItem
+        name="p1"
+        label="Player 1 username"
+        division={division}
+      />
+      <PlayersFormItem
+        name="p2"
+        label="Player 2 username"
+        division={division}
+      />
 
       <Form.Item name="round" label="Round (1-indexed)">
         <InputNumber min={1} />
