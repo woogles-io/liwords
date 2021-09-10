@@ -283,6 +283,17 @@ export const Pairings = React.memo((props: Props) => {
                   {isGibsonized(playerID) && (
                     <Tag className="ant-tag-gibsonized">Gibsonized</Tag>
                   )}
+                  {/* {props.isDirector && pairing.readyStates[idx] !== '' && (
+                    <CheckCircleTwoTone />
+                    Temporary for https://github.com/domino14/liwords/issues/825
+
+                    This requires a back-end change to send the ready state to
+                    the directors as well as the involved players.
+
+                    The reducer would have to significantly change as well,
+                    as it expects any Ready state messages to be directed
+                    to a player currently in the tournament.
+                  )} */}
                 </p>
               ))}
             </div>
