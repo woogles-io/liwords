@@ -1085,15 +1085,19 @@ func getRecords(t *ClassicDivision, round int) ([]*realtime.PlayerStanding, erro
 	} else {
 		sort.Slice(records,
 			func(i, j int) bool {
-				totalGames1 := 2 * (records[i].Wins + records[i].Draws + records[i].Losses)
-				totalGames2 := 2 * (records[j].Wins + records[j].Draws + records[j].Losses)
+				totalGames1 := records[i].Wins + records[i].Draws + records[i].Losses
+				totalGames2 := records[j].Wins + records[j].Draws + records[j].Losses
+				n1d2 := (records[i].Wins*2 + records[i].Draws) * totalGames2
+				n2d1 := (records[j].Wins*2 + records[j].Draws) * totalGames1
 
-				score1 := float64(records[i].Wins*2+records[i].Draws) / float64(totalGames1)
-				score2 := float64(records[j].Wins*2+records[j].Draws) / float64(totalGames2)
-
-				if score1 != score2 {
-					return score1 > score2
+				if n1d2 != n2d1 {
+					return n1d2 > n2d1
 				}
+				// Tiebreak with losses (more losses is bad)
+				if records[i].Losses != records[j].Losses {
+					return records[i].Losses < records[j].Losses
+				}
+
 				if records[i].Spread != records[j].Spread {
 					return records[i].Spread > records[j].Spread
 				}
