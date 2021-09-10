@@ -1085,18 +1085,15 @@ func getRecords(t *ClassicDivision, round int) ([]*realtime.PlayerStanding, erro
 	} else {
 		sort.Slice(records,
 			func(i, j int) bool {
-				if records[i].Wins != records[j].Wins {
-					return records[i].Wins > records[j].Wins
-				}
+				totalGames1 := 2 * (records[i].Wins + records[i].Draws + records[i].Losses)
+				totalGames2 := 2 * (records[j].Wins + records[j].Draws + records[j].Losses)
 
-				if records[i].Draws != records[j].Draws {
-					return records[i].Draws > records[j].Draws
-				}
+				score1 := float64(records[i].Wins*2+records[i].Draws) / float64(totalGames1)
+				score2 := float64(records[j].Wins*2+records[j].Draws) / float64(totalGames2)
 
-				if records[i].Losses != records[j].Losses {
-					return records[i].Losses < records[j].Losses
+				if score1 != score2 {
+					return score1 > score2
 				}
-
 				if records[i].Spread != records[j].Spread {
 					return records[i].Spread > records[j].Spread
 				}
