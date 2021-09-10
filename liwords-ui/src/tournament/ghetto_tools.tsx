@@ -16,7 +16,7 @@ import {
 import { Modal } from '../utils/focus_modal';
 import axios from 'axios';
 import { Store } from 'rc-field-form/lib/interface';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { postBinary, toAPIUrl, twirpErrToMsg } from '../api/api';
 import {
   DivisionControls,
@@ -428,6 +428,7 @@ const AddPlayers = (props: { tournamentID: string }) => {
 };
 
 const RemovePlayer = (props: { tournamentID: string }) => {
+  const { useState } = useMountedState();
   const [division, setDivision] = useState('');
 
   const onFinish = (vals: Store) => {
@@ -559,7 +560,7 @@ const fullPlayerID = (username: string, divobj: Division) => {
 
 const SetPairing = (props: { tournamentID: string }) => {
   const { tournamentContext } = useTournamentStoreContext();
-
+  const { useState } = useMountedState();
   const [division, setDivision] = useState('');
 
   const onFinish = (vals: Store) => {
@@ -629,6 +630,7 @@ const SetPairing = (props: { tournamentID: string }) => {
 
 const SetResult = (props: { tournamentID: string }) => {
   const { tournamentContext } = useTournamentStoreContext();
+  const { useState } = useMountedState();
   const [division, setDivision] = useState('');
 
   const onFinish = (vals: Store) => {
