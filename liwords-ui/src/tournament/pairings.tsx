@@ -66,11 +66,25 @@ const pairingsForRound = (
   return [n, unpairedPlayers];
 };
 
+type record = {
+  wins: number;
+  draws: number;
+  losses: number;
+  spread: number;
+  sortKey: number;
+};
+
+const recordToString = (rec: record) => {
+  return `(${rec.wins + rec.draws / 2}-${rec.losses + rec.draws / 2}) ${
+    rec.spread >= 0 ? '+' : ''
+  }${rec.spread}`;
+};
+
 const getPerformance = (
   playerName: string,
   viewedRound: number,
   division: Division
-) => {
+): record => {
   const currentTournamentRound = division.currentRound;
   let roundOfRecord =
     viewedRound > currentTournamentRound ? currentTournamentRound : viewedRound;
@@ -81,11 +95,25 @@ const getPerformance = (
     .get(roundOfRecord)
     ?.getStandingsList()
     .find((s) => s.getPlayerId().endsWith(`:${playerName}`));
-  return results
-    ? `(${results.getWins() + results.getDraws() / 2}-${
-        results.getLosses() + results.getDraws() / 2
-      })`
-    : '(0-0)';
+
+  const wins = results?.getWins() || 0;
+  const losses = results?.getLosses() || 0;
+  const draws = results?.getDraws() || 0;
+
+  const totalGames = wins + losses + draws;
+  let weightedPts = 0;
+  if (totalGames > 0) {
+    // this sort key will always be <= 1 and >= 0
+    weightedPts = (wins + draws / 2) / totalGames;
+  }
+
+  return {
+    wins,
+    losses,
+    draws,
+    spread: results?.getSpread() || 0,
+    sortKey: weightedPts,
+  };
 };
 
 const getScores = (playerName: string, pairing: SinglePairing) => {
@@ -179,7 +207,11 @@ export const Pairings = React.memo((props: Props) => {
         // This results in a list sorted with your game at the top,
         // followed by games in order of combined wl percentage, followed by
         // byes (ranked in order of their participants w/l percentage.
-        let sortPriority = isBye || isForfeit ? -2 : 0;
+        let sortPriority =
+          isBye || isForfeit
+            ? -2
+            : getPerformance(playerNames[0], round, division).sortKey +
+              getPerformance(playerNames[1], round, division).sortKey;
         if (isMyGame) {
           sortPriority = 2;
         }
@@ -360,19 +392,23 @@ export const Pairings = React.memo((props: Props) => {
         const wl =
           playerNames[0] === playerNames[1] ? (
             <p key={`${playerNames[0]}wl`}>
-              {getPerformance(
-                playerNames[0],
-                round,
-                divisions[props.selectedDivision!]
+              {recordToString(
+                getPerformance(
+                  playerNames[0],
+                  round,
+                  divisions[props.selectedDivision!]
+                )
               )}
             </p>
           ) : (
             playerNames.map((playerName) => (
               <p key={`${playerName}wl`}>
-                {getPerformance(
-                  playerName,
-                  round,
-                  divisions[props.selectedDivision!]
+                {recordToString(
+                  getPerformance(
+                    playerName,
+                    round,
+                    divisions[props.selectedDivision!]
+                  )
                 )}
               </p>
             ))
