@@ -623,9 +623,10 @@ ul {
         .ant-modal-header {
           border-radius: 0;
         }
-        .ant-modal-footer {
+        .ant-modal-footer, .ant-modal-confirm-btns {
           position: fixed;
           bottom: 0;
+          left: 0;
           width: 100vw;
           flex-direction: column;
           padding: 12px;
