@@ -55,6 +55,9 @@
       padding-top: 0px;
     }
   }
+  @media (max-width: $screen-tablet-min + 1) {
+    order: 3;
+  }
 }
 
 .announcements {
