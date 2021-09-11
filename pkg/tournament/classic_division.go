@@ -631,20 +631,27 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 		// If there are an odd number of players, give a bye based on the standings.
 		totalNumberOfPlayers := len(standings.Standings)
 		maxByePlacement := utilities.Min(totalNumberOfPlayers-1, int(t.DivisionControls.MaximumByePlacement))
-		if totalNumberOfPlayers-len(playersWithByes)%2 != 0 {
-			startingPlayerIndex := totalNumberOfPlayers - 1
-			invByePlayerIndex := startingPlayerIndex
-			minNumberOfByes := repeats[pair.GetRepeatKey(standings.Standings[startingPlayerIndex].PlayerId,
-				standings.Standings[startingPlayerIndex].PlayerId)]
-			for i := startingPlayerIndex + 1; i <= maxByePlacement; i-- {
+
+		if (totalNumberOfPlayers-len(playersWithByes))%2 != 0 {
+			var invByePlayerIndex int
+			minNumberOfByes := len(t.Matrix) + 1
+			for i := totalNumberOfPlayers - 1; i >= maxByePlacement; i-- {
 				playerId := standings.Standings[i].PlayerId
-				numberOfByes := repeats[pair.GetRepeatKey(playerId, playerId)]
-				if !playersWithByes[playerId] && numberOfByes < minNumberOfByes {
-					invByePlayerIndex = i
-					minNumberOfByes = numberOfByes
+				if !playersWithByes[playerId] {
+					numberOfByes := repeats[pair.GetRepeatKey(playerId, playerId)]
+					if numberOfByes < minNumberOfByes {
+						invByePlayerIndex = i
+						minNumberOfByes = numberOfByes
+					}
 				}
 			}
+
+			if minNumberOfByes == len(t.Matrix)+1 {
+				return nil, errors.New("unable to assign bye with the current parameters")
+			}
+
 			byePlayer := standings.Standings[invByePlayerIndex].PlayerId
+
 			newpmessage, err := t.SetPairing(byePlayer, byePlayer, round)
 			if err != nil {
 				return nil, err
@@ -1107,16 +1114,25 @@ func getRecords(t *ClassicDivision, round int) ([]*realtime.PlayerStanding, erro
 	} else {
 		sort.Slice(records,
 			func(i, j int) bool {
-				if records[i].Wins == records[j].Wins && records[i].Draws == records[j].Draws && records[i].Spread == records[j].Spread {
-					// Tiebreak by rank to ensure determinism
-					return t.PlayerIndexMap[records[j].PlayerId] > t.PlayerIndexMap[records[i].PlayerId]
-				} else if records[i].Wins == records[j].Wins && records[i].Draws == records[j].Draws {
-					return records[i].Spread > records[j].Spread
-				} else if records[i].Wins == records[j].Wins {
-					return records[i].Draws > records[j].Draws
-				} else {
-					return records[i].Wins > records[j].Wins
+
+				iscore := records[i].Wins*2 + records[i].Draws
+				jscore := records[j].Wins*2 + records[j].Draws
+
+				if iscore != jscore {
+					return iscore > jscore
 				}
+
+				if records[i].Losses != records[j].Losses {
+					return records[i].Losses < records[j].Losses
+				}
+
+				if records[i].Spread != records[j].Spread {
+					return records[i].Spread > records[j].Spread
+				}
+
+				// Tiebreak by rank to ensure determinism
+				return t.PlayerIndexMap[records[j].PlayerId] > t.PlayerIndexMap[records[i].PlayerId]
+
 			})
 	}
 	return records, nil
@@ -1497,6 +1513,7 @@ func getRepeats(t *ClassicDivision, round int) (map[string]int, error) {
 		return nil, fmt.Errorf("round number out of range (getRepeats): %d", round)
 	}
 	repeats := make(map[string]int)
+	byeKeys := make(map[string]bool)
 	for i := 0; i <= round; i++ {
 		roundPairings := t.Matrix[i]
 		for _, pairingKey := range roundPairings {
@@ -1505,15 +1522,20 @@ func getRepeats(t *ClassicDivision, round int) (map[string]int, error) {
 				playerOne := t.Players.Persons[pairing.Players[0]]
 				playerTwo := t.Players.Persons[pairing.Players[1]]
 				key := pair.GetRepeatKey(playerOne.Id, playerTwo.Id)
+				if playerOne == playerTwo {
+					byeKeys[key] = true
+				}
 				repeats[key]++
 			}
 		}
 	}
 
-	// All repeats have been counted twice at this point
-	// so divide by two.
+	// If the repeat is not a bye, it has bee counted
+	// twice, so divide all non-bye repeats by 2.
 	for key := range repeats {
-		repeats[key] = repeats[key] / 2
+		if !byeKeys[key] {
+			repeats[key] = repeats[key] / 2
+		}
 	}
 	return repeats, nil
 }

@@ -2602,22 +2602,18 @@ func TestClassicDivisionByes(t *testing.T) {
 	// Test
 	//   Try to set Max Bye Placement < 0
 	//   Edge case (2 player tournament)
-	//   Edge case (3 player tournament)
-	//     Bye Max > 1
-	//     Bye Max == 1
-	//     Bye Max == 0
+	//   3 player tournament
+	//     Bye Max > 2
+	//     Bye Max == 2
 	//   Normal Division (9 players)
-	//     Starts assigning from last and goes up
-	//     Wraps back around to last
-	//     Skips people who already have a bye
 	//     Finds at least two new minimums
+	//     Skips people who already have a bye
 
 	is := is.New(t)
 
 	player1 := defaultPlayers.Persons[0].Id
 	player2 := defaultPlayers.Persons[1].Id
-	player3 := defaultPlayers.Persons[3].Id
-	// player4 := defaultPlayers.Persons[2].Id
+	player3 := defaultPlayers.Persons[2].Id
 
 	// 2 player tournament
 
@@ -2651,11 +2647,12 @@ func TestClassicDivisionByes(t *testing.T) {
 	is.NoErr(err)
 
 	_, err = tc.PairRound(0, true)
+	is.NoErr(err)
 
 	// 3 player tournament
 
 	roundControls = []*realtime.RoundControl{}
-	numRounds = 1
+	numRounds = 11
 
 	for i := 0; i < numRounds; i++ {
 		roundControls = append(roundControls, &realtime.RoundControl{FirstMethod: realtime.FirstMethod_AUTOMATIC_FIRST,
@@ -2668,32 +2665,277 @@ func TestClassicDivisionByes(t *testing.T) {
 			WinDifferenceRelativeWeight: 1})
 	}
 
-	tc, err = compactNewClassicDivision(makeTournamentPersons(map[string]int32{player1: 10000, player2: 3000, player3: 2000}), roundControls, false)
+	tc, err = compactNewClassicDivision(makeTournamentPersons(map[string]int32{player1: 10000, player2: 3000, player3: 2000}), roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
 
 	tc.DivisionControls.MaximumByePlacement = 500
 
-	_, err = tc.SubmitResult(0, player1, player2, 1, 0,
+	byes := getByeCount(tc, 0)
+
+	is.True(byes[player1] == 0)
+	is.True(byes[player2] == 0)
+	is.True(byes[player3] == 1)
+
+	err = tc.StartRound(true)
+	is.NoErr(err)
+
+	_, err = tc.SubmitResult(0, player1, player2, 3, 0,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	roundIsComplete, err := tc.IsRoundComplete(0)
-	is.NoErr(err)
-	is.True(roundIsComplete)
+	byes = getByeCount(tc, 1)
+	is.True(byes[player1] == 0)
+	is.True(byes[player2] == 1)
+	is.True(byes[player3] == 1)
 
-	// Get the standings for round 1
-	standings, _, err := tc.GetStandings(0)
+	_, err = tc.SubmitResult(1, player3, player1, 1, 0,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 400},
-		{PlayerId: player2, Wins: 1, Losses: 0, Draws: 0, Spread: 300},
-		{PlayerId: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 200},
+	byes = getByeCount(tc, 2)
+	is.True(byes[player1] == 1)
+	is.True(byes[player2] == 1)
+	is.True(byes[player3] == 1)
+
+	_, err = tc.SubmitResult(2, player2, player3, 2, 0,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0, "")
+	is.NoErr(err)
+
+	byes = getByeCount(tc, 3)
+	is.True(byes[player1] == 1)
+	is.True(byes[player2] == 1)
+	is.True(byes[player3] == 2)
+
+	tc.DivisionControls.MaximumByePlacement = 2
+
+	for i := 3; i < 9; i++ {
+		_, err = tc.SetPairing(player1, player2, i)
+		is.NoErr(err)
+		_, err = tc.SetPairing(player3, player3, i)
+		is.NoErr(err)
+		_, err = tc.SubmitResult(i, player1, player2, 1, 1,
+			realtime.TournamentGameResult_DRAW,
+			realtime.TournamentGameResult_DRAW,
+			realtime.GameEndReason_STANDARD, false, 0, "")
+		is.NoErr(err)
+		_, err = tc.SubmitResult(i, player3, player3, 1, 1,
+			realtime.TournamentGameResult_FORFEIT_LOSS,
+			realtime.TournamentGameResult_FORFEIT_LOSS,
+			realtime.GameEndReason_STANDARD, true, 0, "")
+		is.NoErr(err)
+	}
+	// Get the standings for round 3
+	standings, _, err := tc.GetStandings(8)
+	is.NoErr(err)
+
+	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{
+		{PlayerId: player1, Wins: 2, Losses: 1, Draws: 6, Spread: 52},
+		{PlayerId: player2, Wins: 2, Losses: 1, Draws: 6, Spread: 49},
+		{PlayerId: player3, Wins: 2, Losses: 7, Draws: 0, Spread: -251},
 	}}
-
 	is.NoErr(equalStandings(expectedstandings, standings))
+
+	standings, _, err = tc.GetStandings(9)
+	is.NoErr(err)
+
+	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{
+		{PlayerId: player1, Wins: 2, Losses: 1, Draws: 6, Spread: 52},
+		{PlayerId: player2, Wins: 2, Losses: 1, Draws: 6, Spread: 49},
+		{PlayerId: player3, Wins: 3, Losses: 7, Draws: 0, Spread: -201},
+	}}
+	is.NoErr(equalStandings(expectedstandings, standings))
+
+	byes = getByeCount(tc, 8)
+	is.True(byes[player1] == 1)
+	is.True(byes[player2] == 1)
+	is.True(byes[player3] == 7)
+
+	byes = getByeCount(tc, 9)
+	is.True(byes[player1] == 1)
+	is.True(byes[player2] == 1)
+	is.True(byes[player3] == 8)
+
+	// 9 player tournament
+
+	roundControls = []*realtime.RoundControl{}
+
+	for i := 0; i < 98; i++ {
+		roundControls = append(roundControls, &realtime.RoundControl{FirstMethod: realtime.FirstMethod_AUTOMATIC_FIRST,
+			PairingMethod: realtime.PairingMethod_KING_OF_THE_HILL,
+			GamesPerRound: defaultGamesPerRound,
+			Round:         int32(i)})
+	}
+	players := makeTournamentPersons(map[string]int32{"h": 4000, "g": 3000, "f": 2200, "e": 2100, "d": 50, "c": 43, "b": 40, "a": 2, "z": 1})
+	tc, err = compactNewClassicDivision(players, roundControls, true)
+	is.NoErr(err)
+	is.True(tc != nil)
+
+	_, err = tc.SetPairing("z", "z", 0)
+	is.NoErr(err)
+
+	tc.DivisionControls.MaximumByePlacement = 4
+
+	_, err = tc.PairRound(0, true)
+	is.NoErr(err)
+
+	byes = getByeCount(tc, 0)
+
+	for key, val := range byes {
+		if key == "z" {
+			is.True(val == 1)
+		} else {
+			is.True(val == 0)
+		}
+	}
+
+	err = tc.DeletePairings(0)
+	is.NoErr((err))
+
+	_, err = tc.SetPairing("z", "z", 0)
+	is.NoErr(err)
+	_, err = tc.SetPairing("a", "a", 0)
+	is.NoErr(err)
+
+	byePlayer := tc.Standings[0].Standings[8].PlayerId
+
+	_, err = tc.PairRound(0, true)
+	is.NoErr(err)
+
+	byes = getByeCount(tc, 0)
+
+	for key, val := range byes {
+		if key == "a" || key == "z" || key == byePlayer {
+			is.True(val == 1)
+		} else {
+			is.True(val == 0)
+		}
+	}
+
+	err = tc.StartRound(true)
+	is.NoErr(err)
+
+	_, err = tc.SubmitResult(0, "h", "g", 500, 0,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0, "")
+	is.NoErr(err)
+
+	_, err = tc.SubmitResult(0, "f", "e", 400, 0,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0, "")
+	is.NoErr(err)
+
+	_, err = tc.SubmitResult(0, "d", "c", 300, 0,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0, "")
+	is.NoErr(err)
+
+	err = tc.DeletePairings(1)
+	is.NoErr((err))
+
+	_, err = tc.SetPairing("z", "z", 1)
+	is.NoErr(err)
+
+	standings, _, err = tc.GetStandings(0)
+	is.NoErr(err)
+
+	_, err = tc.PairRound(1, true)
+	is.NoErr(err)
+
+	_, err = tc.SubmitResult(1, "h", "f", 500, 0,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0, "")
+	is.NoErr(err)
+
+	_, err = tc.SubmitResult(1, "d", "b", 500, 0,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0, "")
+	is.NoErr(err)
+
+	_, err = tc.SubmitResult(1, "a", "c", 500, 0,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0, "")
+	is.NoErr(err)
+
+	_, err = tc.SubmitResult(1, "g", "e", 600, 0,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0, "")
+	is.NoErr(err)
+
+	roundComplete, err := tc.IsRoundComplete(1)
+	is.True(roundComplete)
+	is.NoErr(err)
+
+	for i := 2; i <= 3; i++ {
+		_, err = tc.SetPairing("c", "h", i)
+		is.NoErr(err)
+		_, err = tc.SetPairing("e", "d", i)
+		is.NoErr(err)
+		_, err = tc.SetPairing("b", "a", i)
+		is.NoErr(err)
+		_, err = tc.SetPairing("f", "z", i)
+		is.NoErr(err)
+		_, err = tc.SetPairing("g", "g", i)
+		is.NoErr(err)
+
+		_, err = tc.SubmitResult(i, "c", "h", 600, 0,
+			realtime.TournamentGameResult_WIN,
+			realtime.TournamentGameResult_LOSS,
+			realtime.GameEndReason_STANDARD, false, 0, "")
+		is.NoErr(err)
+		_, err = tc.SubmitResult(i, "e", "d", 600, 0,
+			realtime.TournamentGameResult_WIN,
+			realtime.TournamentGameResult_LOSS,
+			realtime.GameEndReason_STANDARD, false, 0, "")
+		is.NoErr(err)
+		_, err = tc.SubmitResult(i, "b", "a", 600, 0,
+			realtime.TournamentGameResult_WIN,
+			realtime.TournamentGameResult_LOSS,
+			realtime.GameEndReason_STANDARD, false, 0, "")
+		is.NoErr(err)
+		_, err = tc.SubmitResult(i, "f", "z", 600, 0,
+			realtime.TournamentGameResult_WIN,
+			realtime.TournamentGameResult_LOSS,
+			realtime.GameEndReason_STANDARD, false, 0, "")
+		is.NoErr(err)
+	}
+
+	byes = getByeCount(tc, 3)
+	is.True(byes["a"] == 1)
+	is.True(byes["b"] == 1)
+	is.True(byes["c"] == 0)
+	is.True(byes["d"] == 0)
+	is.True(byes["e"] == 0)
+	is.True(byes["f"] == 0)
+	is.True(byes["g"] == 2)
+	is.True(byes["h"] == 0)
+	is.True(byes["z"] == 2)
+
+	byes = getByeCount(tc, 4)
+	is.True(byes["a"] == 1)
+	is.True(byes["b"] == 1)
+	is.True(byes["c"] == 0)
+	// Ensure d gets the bye and there
+	// are no extraneous byes
+	is.True(byes["d"] == 1)
+	is.True(byes["e"] == 0)
+	is.True(byes["f"] == 0)
+	is.True(byes["g"] == 2)
+	is.True(byes["h"] == 0)
+	is.True(byes["z"] == 2)
 }
 
 func TestClassicDivisionFirsts(t *testing.T) {
@@ -3983,9 +4225,10 @@ func newDivisionControls() *realtime.DivisionControls {
 }
 
 func getByeCount(t *ClassicDivision, round int) map[string]int {
-
+	if round < 0 || round >= len(t.Matrix) {
+		panic(fmt.Errorf("round number out of range (getByeCount): %d", round))
+	}
 	byeCount := make(map[string]int)
-
 	for i := 0; i < len(t.Players.Persons); i++ {
 		playerId := t.Players.Persons[i].Id
 		if t.Players.Persons[i].Suspended {
@@ -3994,8 +4237,12 @@ func getByeCount(t *ClassicDivision, round int) map[string]int {
 		for j := 0; j <= round; j++ {
 			pairingKey := t.Matrix[j][i]
 			pairing, ok := t.PairingMap[pairingKey]
-			if ok && pairing != nil && pairing.Players != nil && {
-				
+			isBye, err := t.pairingIsBye(playerId, j)
+			if err != nil {
+				panic(err)
+			}
+			if ok && pairing != nil && pairing.Players != nil && isBye {
+				byeCount[playerId]++
 			}
 		}
 	}
