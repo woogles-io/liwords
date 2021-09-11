@@ -738,9 +738,14 @@ ul {
       }
       .ant-notification-notice-message {
         font-weight: 1000;
+        max-width: 80%;
         @include colorModed() {
           color: m($background);
         }
+      }
+
+      .ant-notification-notice-description p {
+        padding-right: 12px;
       }
       span.message-action {
         font-weight: 600;
@@ -751,6 +756,18 @@ ul {
         @include colorModed() {
           color: m($primary-light);
         }
+      }
+    }
+    button.ant-btn,
+    button.ant-btn-primary,
+    button.primary,
+    a.btn-primary {
+      box-shadow: none;
+      font-size: 14px;
+      @include colorModed() {
+        background-color: transparent;
+        border-color: m($background);
+        color: m($background);
       }
     }
   }

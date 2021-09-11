@@ -36,5 +36,13 @@ export const SimpleTimer = ({
 
   const currentSec = Math.ceil(currentMillis / 1000);
   const nonnegativeSec = Math.max(currentSec, 0);
-  return <>{`${nonnegativeSec} second${nonnegativeSec === 1 ? '' : 's'}`}</>;
+  const displayMinutes = Math.floor(nonnegativeSec / 60);
+  const displaySeconds = (nonnegativeSec - displayMinutes * 60).toLocaleString(
+    'en-US',
+    {
+      minimumIntegerDigits: 2,
+      useGrouping: false,
+    }
+  );
+  return <>{`${displayMinutes}:${displaySeconds}`}</>;
 };

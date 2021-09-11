@@ -25,9 +25,15 @@ import (
 var botNames = map[macondopb.BotRequest_BotCode]string{
 	macondopb.BotRequest_HASTY_BOT: "HastyBot",
 	// These are temporary names!
-	macondopb.BotRequest_LEVEL1_PROBABILISTIC: "TastyBot",
-	macondopb.BotRequest_LEVEL3_PROBABILISTIC: "SchwiftyBot",
-	macondopb.BotRequest_CEL_BOT:              "CelBot",
+	macondopb.BotRequest_LEVEL1_PROBABILISTIC: "BeginnerBot",
+	macondopb.BotRequest_LEVEL2_PROBABILISTIC: "BasicBot",
+	macondopb.BotRequest_LEVEL3_PROBABILISTIC: "BetterBot",
+	macondopb.BotRequest_LEVEL4_PROBABILISTIC: "STEEBot",
+
+	// For english. Reuse level1-3 names from above.
+	macondopb.BotRequest_LEVEL1_CEL_BOT: "BeginnerBot",
+	macondopb.BotRequest_LEVEL2_CEL_BOT: "BasicBot",
+	macondopb.BotRequest_LEVEL4_CEL_BOT: "BetterBot",
 }
 
 // DBStore is a postgres-backed store for users.
@@ -684,6 +690,7 @@ func (s *DBStore) GetBot(ctx context.Context, botType macondopb.BotRequest_BotCo
 	idx := 0
 	if len(users) == 0 {
 		// Just pick any random bot. This should not be done on prod.
+		log.Warn().Msg("picking-random-bot")
 		if result := s.db.Where("internal_bot = ?", true).Find(&users); result.Error != nil {
 			return nil, result.Error
 		}

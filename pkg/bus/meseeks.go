@@ -15,6 +15,8 @@ import (
 	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+
 	"github.com/domino14/macondo/game"
 )
 
@@ -247,6 +249,28 @@ func (b *Bus) gameRequestForMatch(ctx context.Context, req *pb.MatchRequest,
 	return gameRequest, lastOpp, nil
 }
 
+func validateCELLexicon(lexicon string, botType macondopb.BotRequest_BotCode) error {
+	// If the lexicon is not an english-language one, it is not compatible with CEL.
+	if strings.HasPrefix(lexicon, "NWL") ||
+		strings.HasPrefix(lexicon, "CSW") {
+
+		// Ironically, the CEL lexicon itself is not compatible with CEL bots,
+		// because CEL bots work on a word list that is a subset of the actual
+		// list. Just use the regular probability bots if the user is using the
+		// CEL lexicon.
+		return nil
+	}
+	if botType == macondopb.BotRequest_LEVEL1_CEL_BOT ||
+		botType == macondopb.BotRequest_LEVEL2_CEL_BOT ||
+		botType == macondopb.BotRequest_LEVEL3_CEL_BOT ||
+		botType == macondopb.BotRequest_LEVEL4_CEL_BOT {
+
+		return errors.New("CEL bots are not compatible with this lexicon")
+	}
+
+	return nil
+}
+
 func (b *Bus) newBotGame(ctx context.Context, req *pb.MatchRequest, botUserID string) error {
 	// NewBotGame creates and starts a new game against a bot!
 	var err error
@@ -266,6 +290,12 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.MatchRequest, botUserID st
 	if err != nil {
 		return err
 	}
+
+	err = validateCELLexicon(req.GameRequest.Lexicon, req.GameRequest.BotType)
+	if err != nil {
+		return err
+	}
+
 	sg := entity.NewMatchRequest(req)
 	return b.instantiateAndStartGame(ctx, accUser, req.User.UserId, req.GameRequest,
 		sg, BotRequestID, "")

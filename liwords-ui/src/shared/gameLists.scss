@@ -301,4 +301,11 @@
       }
     }
   }
+  .game-count {
+    margin-left: 9px;
+    font-size: 14px;
+    @include colorModed() {
+      color: m($gray-subtle);
+    }
+  }
 }

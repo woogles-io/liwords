@@ -200,7 +200,7 @@ export const Table = React.memo((props: Props) => {
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
   const { rematchRequest, setRematchRequest } = useRematchRequestStoreContext();
   const { pTimedOut, setPTimedOut } = useTimerStoreContext();
-  const { username, userID } = loginState;
+  const { username, userID, loggedIn } = loginState;
   const {
     tournamentContext,
     dispatchTournamentContext,
@@ -940,7 +940,7 @@ export const Table = React.memo((props: Props) => {
             )}
             {gameInfo.game_end_reason === 'ABORTED' && (
               <React.Fragment>
-                The game was aborted. Rating and statistics were not affected.
+                The game was cancelled. Rating and statistics were not affected.
               </React.Fragment>
             )}
           </React.Fragment>
@@ -1033,6 +1033,7 @@ export const Table = React.memo((props: Props) => {
         </div>
         <div className="play-area">
           <BoardPanel
+            anonymousViewer={!loggedIn}
             username={username}
             board={examinableGameContext.board}
             currentRack={sortedRack}

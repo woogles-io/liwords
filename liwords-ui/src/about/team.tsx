@@ -205,7 +205,29 @@ export const Team = (props: Props) => {
                   personalities who proved that scoring 300 points per game
                   wouldn't cut it anymore, kid. Now an expert player, Doug is
                   dizzily euphoric to be part of the Woogles team and believes,
-                  of course, that all Woogles are good Woogles.
+                  of course, that all Woogles are good Woogles. Doug has never
+                  met a condiment he didn't like.
+                </p>
+              </div>
+            </div>
+          </Col>
+        </Row>
+        <Row>
+          <Col span={24} className="bio">
+            <div className="container">
+              <div className="team-info">
+                <h3>Andy Kurnia</h3>
+                <p>
+                  Andy Kurnia is a veteran technology aficionado and Woogles
+                  contributor. By day, Andy is CTO at Singapore's first online
+                  real estate co-investment platform. By night, he brings a
+                  wealth of technical wizardry to the Woogles team. As OMGWords
+                  is more a math game than a word game, Andy approaches it by
+                  computing odd ratios and probability of word occurrences!
+                  Among Andy's achievements are winning several coding
+                  competitions and gold and silver medals in the International
+                  Olympiad in Informatics. He has made no public statement
+                  regarding his feelings about ketchup.
                 </p>
               </div>
             </div>

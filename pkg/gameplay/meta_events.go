@@ -17,11 +17,11 @@ import (
 )
 
 var (
-	ErrTooManyAborts = errors.New("you have made too many abort requests in this game")
+	ErrTooManyAborts = errors.New("you have made too many cancel requests in this game")
 	ErrTooManyNudges = errors.New("you have made too many nudges in this game")
 
 	ErrNoMatchingEvent              = errors.New("no matching request to respond to")
-	ErrTooManyTurns                 = errors.New("it is too late to abort")
+	ErrTooManyTurns                 = errors.New("it is too late to cancel")
 	ErrPleaseWaitToEnd              = errors.New("this game is almost over; request not sent")
 	ErrMetaEventExpirationIncorrect = errors.New("meta event did not expire")
 	ErrAlreadyOutstandingRequest    = errors.New("you already have an outstanding request")

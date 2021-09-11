@@ -53,12 +53,12 @@ export const metaStateFromMetaEvent = (
 
     case GameMetaEvent.EventType.ABORT_DENIED: {
       evtCreator = metaEvent.getPlayerId();
-      let content = 'The abort request was denied.';
+      let content = 'Your opponent declined your request to cancel the game.';
       if (!evtCreator) {
         // if this isn't filled in, the abort request is auto cancelled.
-        content = 'The abort request was cancelled.';
+        content = 'The cancel request expired.';
       } else if (evtCreator === oldState.evtCreator) {
-        content = 'The abort request was withdrawn.';
+        content = 'The cancel request was withdrawn.';
       }
 
       message.info({
@@ -73,7 +73,7 @@ export const metaStateFromMetaEvent = (
 
     case GameMetaEvent.EventType.ABORT_ACCEPTED: {
       message.info({
-        content: 'The abort request was accepted.',
+        content: 'The cancel request was accepted.',
       });
       initialExpiry = 0;
       metaState = MetaStates.NO_ACTIVE_REQUEST;

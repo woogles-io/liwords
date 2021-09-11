@@ -15,7 +15,6 @@ import axios from 'axios';
 import { Store } from 'antd/lib/form/interface';
 import { useMountedState } from '../utils/mounted';
 import {
-  BotRequest,
   ChallengeRule,
   ChallengeRuleMap,
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
@@ -42,6 +41,7 @@ import {
 import { VariantIcon } from '../shared/variant_icons';
 import { excludedLexica, LexiconFormItem } from '../shared/lexicon_display';
 import { AllLexica } from '../shared/lexica';
+import { BotTypesEnum, BotTypesEnumProperties } from './bots';
 
 const initTimeFormatter = (val?: number) => {
   return val != null ? initTimeDiscreteScale[val].label : null;
@@ -79,7 +79,7 @@ export type seekPropVals = {
   incOrOT: 'overtime' | 'increment';
   vsBot: boolean;
   variant: string;
-  botType: BotRequest.BotCodeMap[keyof BotRequest.BotCodeMap];
+  botType: BotTypesEnum;
 };
 
 type mandatoryFormValues = Partial<seekPropVals> &
@@ -198,7 +198,7 @@ export const SeekForm = (props: Props) => {
   }, [props.friendRef]);
   const defaultValues: seekPropVals = {
     lexicon: 'CSW19',
-    challengerule: ChallengeRule.FIVE_POINT,
+    challengerule: ChallengeRule.VOID,
     initialtimeslider: initialTimeMinutesToSlider(20),
     rated: true,
     extratime: 1,
@@ -206,7 +206,7 @@ export const SeekForm = (props: Props) => {
     incOrOT: 'overtime',
     vsBot: false,
     variant: 'classic',
-    botType: BotRequest.BotCode.HASTY_BOT,
+    botType: BotTypesEnum.BEGINNER,
   };
   let disableTimeControls = false;
   let disableVariantControls = false;
@@ -271,6 +271,7 @@ export const SeekForm = (props: Props) => {
   );
   const [timectrl, setTimectrl] = useState(itc);
   const [ttag, setTtag] = useState(itt);
+  const [selections, setSelections] = useState<Store | null>(initialValues);
   const [timeSetting, setTimeSetting] = useState(
     initialValues.incOrOT === 'overtime' ? otLabel : incLabel
   );
@@ -299,6 +300,7 @@ export const SeekForm = (props: Props) => {
         JSON.stringify({ ...allvals, friend: '' })
       );
     }
+    setSelections(allvals);
     if (allvals.incOrOT === 'increment') {
       setTimeSetting(incLabel);
       setMaxTimeSetting(60);
@@ -421,20 +423,29 @@ export const SeekForm = (props: Props) => {
       {props.prefixItems || null}
 
       {props.vsBot && (
-        <Form.Item label="Select bot" name="botType">
+        <Form.Item label="Select bot level" name="botType">
           <Select>
-            <Select.Option value={BotRequest.BotCode.HASTY_BOT}>
-              HastyBot (5)
-            </Select.Option>
-            <Select.Option value={BotRequest.BotCode.LEVEL3_PROBABILISTIC}>
-              Dumby Bot (3)
-            </Select.Option>
-            <Select.Option value={BotRequest.BotCode.CEL_BOT}>
-              CEL Bot (2)
-            </Select.Option>
-            <Select.Option value={BotRequest.BotCode.LEVEL1_PROBABILISTIC}>
-              Beginner Bot(1)
-            </Select.Option>
+            {[
+              BotTypesEnum.MASTER,
+              BotTypesEnum.EXPERT,
+              BotTypesEnum.INTERMEDIATE,
+              BotTypesEnum.EASY,
+              BotTypesEnum.BEGINNER,
+            ].map((v) => (
+              <Select.Option value={v} key={v}>
+                <span className="level">
+                  {BotTypesEnumProperties[v].userVisible}{' '}
+                </span>
+                <span className="average">
+                  {BotTypesEnumProperties[v].shortDescription}
+                </span>
+                <span className="description">
+                  {BotTypesEnumProperties[v].description(
+                    selections?.lexicon || ''
+                  )}{' '}
+                </span>
+              </Select.Option>
+            ))}
           </Select>
         </Form.Item>
       )}

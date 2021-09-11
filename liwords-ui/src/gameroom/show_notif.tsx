@@ -20,9 +20,10 @@ export const ShowNotif = (props: Props) => {
     []
   );
   React.useEffect(() => {
-    notification.info({
+    notification.open({
       // other params, TODO
-      closeIcon: <></>,
+      className: 'cancel-notification',
+      closeIcon: <div></div>,
       key: myId,
       message: '',
       description: <TimedNotif {...props} />,
