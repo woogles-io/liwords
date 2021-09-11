@@ -424,7 +424,7 @@ export const SeekForm = (props: Props) => {
 
       {props.vsBot && (
         <Form.Item label="Select bot level" name="botType">
-          <Select>
+          <Select listHeight={500}>
             {[
               BotTypesEnum.MASTER,
               BotTypesEnum.EXPERT,

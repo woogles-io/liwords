@@ -1182,9 +1182,10 @@ p.rune {
     &.bingo {
       .anticon {
         position: relative;
-        top: -2px;
-        font-size: 8px;
         margin: 0 6px;
+        @include colorModed() {
+          color: m($timer-out-dark);
+        }
       }
     }
     &:hover {

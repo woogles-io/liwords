@@ -604,6 +604,39 @@ ul {
     .ant-modal-footer {
       border: 0;
     }
+    @media (max-width: $screen-mobile-min + 1) {
+      .ant-modal-mask {
+        @include colorModed() {
+          background: m($background);
+        }
+      }
+      .ant-modal {
+        margin: unset;
+        max-width: unset;
+        top: 0;
+        .ant-modal-content {
+          height: 100vh;
+          width: 100vw;
+          box-shadow: none;
+          padding-bottom: 48px;
+        }
+        .ant-modal-header {
+          border-radius: 0;
+        }
+        .ant-modal-footer, .ant-modal-confirm-btns {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          width: 100vw;
+          flex-direction: column;
+          padding: 12px;
+          button, button.ant-btn {
+            width: 100%;
+            margin: 6px 0;
+          }
+        }
+      }
+    }
   }
 }
 @mixin button {
