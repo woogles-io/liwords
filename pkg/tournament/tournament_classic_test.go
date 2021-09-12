@@ -638,6 +638,7 @@ func TestClassicDivisionGibson(t *testing.T) {
 	}
 	playerLetterRatings := makeTournamentPersons(map[string]int32{"h": 1000, "g": 3000, "f": 2200, "e": 2100, "d": 12, "c": 43, "b": 40, "a": 2})
 	tc, err := compactNewClassicDivision(playerLetterRatings, roundControls, false)
+
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -694,7 +695,7 @@ func TestClassicDivisionGibson(t *testing.T) {
 	_, err = tc.PairRound(currentRound, false)
 	is.NoErr(err)
 	currentPairings := tc.getPlayerPairings(currentRound)
-	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "f", "c", "g", "b", "e", "d", "h"}))
+	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a", "f"}, {"b", "e"}, {"c", "g"}, {"d", "h"}}))
 	is.True(tc.countGibsonizedPlayers(currentRound-1) == 0)
 
 	// Turn gibsonization by spread on, with a low spread
@@ -704,7 +705,7 @@ func TestClassicDivisionGibson(t *testing.T) {
 	_, err = tc.PairRound(currentRound, false)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
-	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "e", "f", "g", "b", "c", "d", "h"}))
+	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a", "e"}, {"b", "c"}, {"d", "h"}, {"f", "g"}}))
 	is.True(tc.countGibsonizedPlayers(currentRound-1) == 1)
 	is.True(tc.isGibsonized("a", currentRound-1))
 
@@ -713,7 +714,7 @@ func TestClassicDivisionGibson(t *testing.T) {
 	_, err = tc.PairRound(currentRound, false)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
-	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "f", "c", "g", "b", "e", "d", "h"}))
+	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a", "f"}, {"b", "e"}, {"c", "g"}, {"d", "h"}}))
 	is.True(tc.countGibsonizedPlayers(currentRound-1) == 0)
 
 	// Adjust the minimum placement so that only first matters
@@ -723,7 +724,7 @@ func TestClassicDivisionGibson(t *testing.T) {
 	_, err = tc.PairRound(currentRound, false)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
-	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "f", "c", "g", "b", "e", "d", "h"}))
+	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a", "f"}, {"b", "e"}, {"c", "g"}, {"d", "h"}}))
 	is.True(tc.countGibsonizedPlayers(currentRound-1) == 1)
 	is.True(tc.isGibsonized("a", currentRound-1))
 
@@ -734,7 +735,7 @@ func TestClassicDivisionGibson(t *testing.T) {
 	_, err = tc.PairRound(currentRound, false)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
-	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "h", "f", "g", "c", "e", "b", "d"}))
+	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a", "h"}, {"b", "d"}, {"c", "e"}, {"f", "g"}}))
 	is.True(tc.countGibsonizedPlayers(currentRound-1) == 1)
 	is.True(tc.isGibsonized("a", currentRound-1))
 
@@ -751,7 +752,7 @@ func TestClassicDivisionGibson(t *testing.T) {
 	_, err = tc.PairRound(currentRound, false)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
-	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "f", "c", "g", "b", "e", "d", "h"}))
+	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a", "f"}, {"b", "e"}, {"c", "g"}, {"d", "h"}}))
 	is.True(tc.countGibsonizedPlayers(currentRound-1) == 2)
 	is.True(tc.isGibsonized("a", currentRound-1))
 	is.True(tc.isGibsonized("f", currentRound-1))
@@ -765,7 +766,7 @@ func TestClassicDivisionGibson(t *testing.T) {
 	_, err = tc.PairRound(currentRound, false)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
-	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "f", "c", "g", "b", "e", "d", "h"}))
+	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a", "f"}, {"b", "e"}, {"c", "g"}, {"d", "h"}}))
 	is.True(tc.countGibsonizedPlayers(currentRound-1) == 4)
 	is.True(tc.isGibsonized("a", currentRound-1))
 	is.True(tc.isGibsonized("f", currentRound-1))
@@ -781,7 +782,7 @@ func TestClassicDivisionGibson(t *testing.T) {
 	_, err = tc.PairRound(currentRound, false)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
-	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "f", "c", "g", "d", "e", "b", "h"}))
+	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a", "f"}, {"b", "h"}, {"c", "g"}, {"d", "e"}}))
 	is.True(tc.countGibsonizedPlayers(currentRound-1) == 4)
 	is.True(tc.isGibsonized("a", currentRound-1))
 	is.True(tc.isGibsonized("f", currentRound-1))
@@ -791,10 +792,14 @@ func TestClassicDivisionGibson(t *testing.T) {
 	// Test gibsonization with an odd number of players
 	_, err = tc.AddPlayers(makeTournamentPersons(map[string]int32{"i": 50}))
 	is.NoErr(err)
+
+	// Ensure that the byes is always assigned to the person in last.
+	tc.DivisionControls.MaximumByePlacement = 1000
+
 	_, err = tc.PairRound(currentRound, false)
 	is.NoErr(err)
 	currentPairings = tc.getPlayerPairings(currentRound)
-	is.NoErr(equalPairingStrings(currentPairings, []string{"a", "f", "g", "c", "d", "b", "e", "h", "i"}))
+	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a", "f"}, {"b", "h"}, {"c", "g"}, {"d", "e"}, {"i"}}))
 	is.True(tc.countGibsonizedPlayers(currentRound-1) == 4)
 	is.True(tc.isGibsonized("a", currentRound-1))
 	is.True(tc.isGibsonized("f", currentRound-1))
@@ -1982,6 +1987,9 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	is.NoErr(err)
 	is.True(tc != nil)
 
+	// Ensure the bye is always given to the player in last
+	tc.DivisionControls.MaximumByePlacement = 10000
+
 	is.NoErr(validatePairings(tc, 0))
 
 	// Tournament should not be over
@@ -2170,6 +2178,9 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
+
+	// Ensure the bye is always given to the player in last
+	tc.DivisionControls.MaximumByePlacement = 10000
 
 	err = tc.StartRound(true)
 	is.NoErr(err)
@@ -2435,13 +2446,13 @@ func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
 
 	// Round Robin pairings shouldn't change after removing players
 	currentPairings := tc.getPlayerPairings(1)
-	is.NoErr(equalPairingStrings(currentPairings, []string{"f", "h", "e", "g", "a", "d", "b", "c"}))
+	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a", "d"}, {"b", "c"}, {"e", "g"}, {"f", "h"}}))
 
 	_, err = tc.RemovePlayers(makeTournamentPersons(map[string]int32{"c": 43, "f": 2200, "b": 40}))
 	is.NoErr(err)
 
 	currentPairings = tc.getPlayerPairings(1)
-	is.NoErr(equalPairingStrings(currentPairings, []string{"f", "h", "e", "g", "a", "d", "b", "c"}))
+	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a", "d"}, {"b", "c"}, {"e", "g"}, {"f", "h"}}))
 
 	err = tc.StartRound(true)
 	is.NoErr(err)
@@ -2462,7 +2473,7 @@ func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
 	is.NoErr(err)
 
 	currentPairings = tc.getPlayerPairings(2)
-	is.NoErr(equalPairingStrings(currentPairings, []string{"d", "h", "a", "g", "b", "f", "c", "e"}))
+	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a", "g"}, {"b", "f"}, {"c", "e"}, {"d", "h"}}))
 
 	err = tc.StartRound(true)
 	is.NoErr(err)
@@ -2518,13 +2529,13 @@ func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
 
 	// Add players back
 	currentPairings = tc.getPlayerPairings(4)
-	is.NoErr(equalPairingStrings(currentPairings, []string{"e", "h", "d", "g", "f", "c", "b", "a"}))
+	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a"}, {"b"}, {"c"}, {"d", "g"}, {"e", "h"}, {"f"}}))
 
 	_, err = tc.AddPlayers(makeTournamentPersons(map[string]int32{"c": 43, "f": 2200, "b": 40}))
 	is.NoErr(err)
 
 	currentPairings = tc.getPlayerPairings(4)
-	is.NoErr(equalPairingStrings(currentPairings, []string{"e", "h", "f", "g", "c", "d", "b", "a"}))
+	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a"}, {"b", "c"}, {"d"}, {"e", "h"}, {"f", "g"}}))
 
 	err = tc.StartRound(true)
 	is.NoErr(err)
@@ -2541,36 +2552,37 @@ func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	_, err = tc.SubmitResult(4, "d", "c", 700, 500,
+	_, err = tc.SubmitResult(4, "b", "c", 700, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	// Get the standings for round 3
+	// Get the standings for round 5
 	standings, _, err = tc.GetStandings(4)
 	is.NoErr(err)
 
 	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{
 		{PlayerId: "h", Wins: 5, Losses: 0, Draws: 0, Spread: 1650},
 		{PlayerId: "g", Wins: 5, Losses: 0, Draws: 0, Spread: 1250},
-		{PlayerId: "d", Wins: 2, Losses: 3, Draws: 0, Spread: -400},
+		{PlayerId: "d", Wins: 2, Losses: 3, Draws: 0, Spread: -550},
 		{PlayerId: "e", Wins: 2, Losses: 3, Draws: 0, Spread: -950},
 		{PlayerId: "f", Wins: 1, Losses: 4, Draws: 0, Spread: -250},
-		{PlayerId: "b", Wins: 1, Losses: 4, Draws: 0, Spread: -400},
+		{PlayerId: "b", Wins: 1, Losses: 4, Draws: 0, Spread: -250},
 		{PlayerId: "c", Wins: 0, Losses: 5, Draws: 0, Spread: -550},
 	}}
 	is.NoErr(equalStandings(expectedstandings, standings))
 
 	// Check pairings
 	currentPairings = tc.getPlayerPairings(5)
-	is.NoErr(equalPairingStrings(currentPairings, []string{"g", "h", "d", "f", "b", "e", "c", "a"}))
+	tc.printPriPairings(5)
+	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a"}, {"b", "d"}, {"c", "f"}, {"e"}, {"g", "h"}}))
 
 	_, err = tc.RemovePlayers(makeTournamentPersons(map[string]int32{"d": -9}))
 	is.NoErr(err)
 
 	currentPairings = tc.getPlayerPairings(5)
-	is.NoErr(equalPairingStrings(currentPairings, []string{"g", "h", "e", "f", "b", "c", "d", "a"}))
+	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a"}, {"b", "e"}, {"c", "f"}, {"d"}, {"g", "h"}}))
 
 	err = tc.StartRound(true)
 	is.NoErr(err)
@@ -2581,13 +2593,13 @@ func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	_, err = tc.SubmitResult(5, "f", "e", 800, 500,
+	_, err = tc.SubmitResult(5, "b", "e", 800, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	_, err = tc.SubmitResult(5, "b", "c", 800, 500,
+	_, err = tc.SubmitResult(5, "f", "c", 800, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -3060,6 +3072,10 @@ func TestClassicDivisionMessages(t *testing.T) {
 
 	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, false)
 	is.NoErr(err)
+
+	// Ensure the player in last always gets the bye
+	tc.DivisionControls.MaximumByePlacement = 1000
+
 	player1 := defaultPlayers.Persons[0].Id
 	player2 := defaultPlayers.Persons[1].Id
 	player3 := defaultPlayers.Persons[2].Id
@@ -3463,15 +3479,6 @@ func TestClassicDivisionMessages(t *testing.T) {
 
 	expectedPairingsRsp = []*realtime.Pairing{
 		{
-			Players: []int32{2, 3},
-			Round:   3,
-			Games: []*realtime.TournamentGame{
-				{Scores: []int32{0, 0},
-					Results:       []realtime.TournamentGameResult{0, 0},
-					GameEndReason: 0}},
-			Outcomes:    []realtime.TournamentGameResult{0, 0},
-			ReadyStates: []string{"", ""}},
-		{
 			Players: []int32{0, 0},
 			Round:   3,
 			Games: []*realtime.TournamentGame{
@@ -3479,6 +3486,15 @@ func TestClassicDivisionMessages(t *testing.T) {
 					Results:       []realtime.TournamentGameResult{4, 4},
 					GameEndReason: 0}},
 			Outcomes:    []realtime.TournamentGameResult{4, 4},
+			ReadyStates: []string{"", ""}},
+		{
+			Players: []int32{2, 3},
+			Round:   3,
+			Games: []*realtime.TournamentGame{
+				{Scores: []int32{0, 0},
+					Results:       []realtime.TournamentGameResult{0, 0},
+					GameEndReason: 0}},
+			Outcomes:    []realtime.TournamentGameResult{0, 0},
 			ReadyStates: []string{"", ""}},
 		{
 			Players: []int32{1, 1},
@@ -3777,7 +3793,13 @@ func runRandomTournaments(method realtime.PairingMethod, randomizePairings bool)
 				return err
 			}
 
-			pairings := tc.getPlayerPairings(round)
+			unflattenedPairings := tc.getPlayerPairings(round)
+			pairings := []string{}
+			for i := 0; i < len(unflattenedPairings); i++ {
+				for j := 0; j < len(unflattenedPairings[i]); j++ {
+					pairings = append(pairings, unflattenedPairings[i][j])
+				}
+			}
 			for game := 0; game < int(tc.RoundControls[round].GamesPerRound); game++ {
 				for l := 0; l < len(pairings); l += 2 {
 
@@ -3945,37 +3967,39 @@ func equalStandingsRecord(s1 *realtime.PlayerStanding, s2 *realtime.PlayerStandi
 	return nil
 }
 
-func (tc *ClassicDivision) getPlayerPairings(round int) []string {
+func (tc *ClassicDivision) getPlayerPairings(round int) [][]string {
 	players := tc.Players.Persons
 
-	pairingKeys := []string{}
-	for i := 0; i < len(tc.Matrix[round]); i++ {
-		pairingKeys = append(pairingKeys, tc.Matrix[round][i])
-	}
-	sort.Strings(pairingKeys)
-	m := make(map[string]int)
+	m := make(map[string]bool)
 	for _, player := range players {
-		m[player.Id] = 0
+		m[player.Id] = false
 	}
 
-	playerPairings := []string{}
-	for _, pk := range pairingKeys {
+	playerPairings := [][]string{}
+	for _, pk := range tc.Matrix[round] {
 		// An eliminated player could have nil for Players, skip them
 		pairing := tc.PairingMap[pk]
+		stringPairing := []string{""}
 		p0 := tc.Players.Persons[pairing.Players[0]].Id
 		p1 := tc.Players.Persons[pairing.Players[1]].Id
 		if p0 > p1 {
 			p0, p1 = p1, p0
 		}
-		if pairing.Players != nil && m[p0] == 0 {
-			playerPairings = append(playerPairings, p0)
+		if pairing.Players != nil && !m[p0] {
+			stringPairing[0] = p0
 			if p0 != p1 {
-				playerPairings = append(playerPairings, p1)
+				stringPairing = append(stringPairing, p1)
 			}
-			m[p0] = 1
-			m[p1] = 1
+			m[p0] = true
+			m[p1] = true
+			playerPairings = append(playerPairings, stringPairing)
 		}
 	}
+	sort.Slice(playerPairings,
+		func(i, j int) bool {
+			return playerPairings[i][0] < playerPairings[j][0]
+		})
+	fmt.Println(playerPairings)
 	return playerPairings
 }
 
@@ -4120,13 +4144,20 @@ func equalTournamentPerson(p1 *realtime.TournamentPerson, p2 *realtime.Tournamen
 	return p1.Id == p2.Id && p1.Rating == p2.Rating && p1.Suspended == p2.Suspended
 }
 
-func equalPairingStrings(s1 []string, s2 []string) error {
+func equalPairingStrings(s1 [][]string, s2 [][]string) error {
 	if len(s1) != len(s2) {
 		return fmt.Errorf("pairing lengths do not match: %d != %d", len(s1), len(s2))
 	}
 	for i := 0; i < len(s1); i++ {
-		if s1[i] != s2[i] {
-			return fmt.Errorf("pairings are not equal:\n%s\n%s", utilities.StringArrayToString(s1), utilities.StringArrayToString(s2))
+		p1 := s1[i]
+		p2 := s2[i]
+		if len(p1) != len(p2) {
+			return fmt.Errorf("pairings lengths are not equal:\n%s\n%s", utilities.StringArrayToString(p1), utilities.StringArrayToString(p2))
+		}
+		for j := 0; j < len(p1); j++ {
+			if p1[j] != p2[j] {
+				return fmt.Errorf("pairings are not equal:\n%s\n%s", utilities.StringArrayToString(p1), utilities.StringArrayToString(p2))
+			}
 		}
 	}
 	return nil

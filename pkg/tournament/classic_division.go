@@ -774,9 +774,12 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 		if roundPairings[playerIndex] == "" {
 
 			var opponentIndex int32
-			// Pairings have already been checked for negative values above
-			if pairings[i] >= l {
+			if pairings[i] < 0 && isRoundRobin(pairingMethod) {
+				opponentIndex = playerIndex
+			} else if pairings[i] >= l {
 				return nil, fmt.Errorf("invalid pairing for round %d: %d", round, pairings[i])
+			} else if pairings[i] < 0 {
+				return nil, fmt.Errorf("bye in non-round robin pairings for round %d: %d", round, pairings[i])
 			} else {
 				opponentIndex = t.PlayerIndexMap[poolMembers[pairings[i]].Id]
 			}
