@@ -1557,7 +1557,7 @@ func getRepeats(t *ClassicDivision, round int) (map[string]int, error) {
 		}
 	}
 
-	// If the repeat is not a bye, it has bee counted
+	// If the repeat is not a bye, it has been counted
 	// twice, so divide all non-bye repeats by 2.
 	for key := range repeats {
 		if !byeKeys[key] {
