@@ -463,6 +463,25 @@ func (t *ClassicDivision) SubmitResult(round int,
 		gid = pairing.Games[gameIndex].Id
 	}
 
+	// Adjust the spread if the loser lost on time
+	if reason == realtime.GameEndReason_TIME {
+		loserIndex, err := findLoser(p1Result, p2Result)
+		if err != nil {
+			return nil, err
+		}
+		winnerIndex := 1 - loserIndex
+		scores := []int{p1Score, p2Score}
+		loserScore := scores[loserIndex]
+		winnerScore := scores[winnerIndex]
+		if loserScore < winnerScore {
+			scores[loserIndex] -= 50
+		} else {
+			scores[loserIndex] = scores[winnerIndex] - 50
+		}
+		p1Score = scores[0]
+		p2Score = scores[1]
+	}
+
 	if pairingMethod == realtime.PairingMethod_ELIMINATION {
 		pairing.Games[gameIndex].Scores[p1Index] = int32(p1Score)
 		pairing.Games[gameIndex].Scores[1-p1Index] = int32(p2Score)
@@ -1750,6 +1769,26 @@ func isByeOrForfeit(r realtime.TournamentGameResult) bool {
 	return r == realtime.TournamentGameResult_FORFEIT_WIN ||
 		r == realtime.TournamentGameResult_FORFEIT_LOSS ||
 		r == realtime.TournamentGameResult_BYE
+}
+
+func findLoser(tgr1 realtime.TournamentGameResult, tgr2 realtime.TournamentGameResult) (int, error) {
+	tgr1IsLoss := tgr1 == realtime.TournamentGameResult_ELIMINATED ||
+		tgr1 == realtime.TournamentGameResult_FORFEIT_LOSS ||
+		tgr1 == realtime.TournamentGameResult_LOSS
+	tgr2IsLoss := tgr2 == realtime.TournamentGameResult_ELIMINATED ||
+		tgr2 == realtime.TournamentGameResult_FORFEIT_LOSS ||
+		tgr2 == realtime.TournamentGameResult_LOSS
+	if tgr1IsLoss && tgr2IsLoss {
+		return -1, fmt.Errorf("both tournament game results are losses: %s, %s", tgr1.String(), tgr2.String())
+	}
+	if !tgr1IsLoss && !tgr2IsLoss {
+		return -1, fmt.Errorf("both tournament game results are not losses: %s, %s", tgr1.String(), tgr2.String())
+	}
+	if tgr1IsLoss {
+		return 0, nil
+	} else {
+		return 1, nil
+	}
 }
 
 func validatePairings(tc *ClassicDivision, round int) error {
