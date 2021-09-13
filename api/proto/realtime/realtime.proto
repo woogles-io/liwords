@@ -470,6 +470,7 @@ enum TournamentGameResult {
   FORFEIT_LOSS = 6;
   // ELIMINATED: player is eliminated in a bracket tournament
   ELIMINATED = 7;
+  VOID = 8;
 }
 
 enum PairingMethod {

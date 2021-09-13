@@ -14268,7 +14268,8 @@ proto.liwords.TournamentGameResult = {
   BYE: 4,
   FORFEIT_WIN: 5,
   FORFEIT_LOSS: 6,
-  ELIMINATED: 7
+  ELIMINATED: 7,
+  VOID: 8
 };
 
 /**
