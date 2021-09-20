@@ -48,33 +48,3 @@ func NewSoughtGame(ctx context.Context, gameStore SoughtGameStore,
 func CancelSoughtGame(ctx context.Context, gameStore SoughtGameStore, id string) error {
 	return gameStore.Delete(ctx, id)
 }
-
-func NewMatchRequest(ctx context.Context, gameStore SoughtGameStore,
-	req *pb.MatchRequest) (*entity.SoughtGame, error) {
-
-	exists, err := gameStore.ExistsForUser(ctx, req.User.UserId)
-	if err != nil {
-		return nil, err
-	}
-	if exists {
-		return nil, errAlreadyOpenReq
-	}
-
-	// Check that the user we are matching hasn't already matched us.
-	// XXX: Move to Redis store, and put this in an atomic script
-	// create match only if not already matched by, to avoid
-	// race conditions.
-	matched, err := gameStore.UserMatchedBy(ctx, req.User.UserId, req.ReceivingUser.UserId)
-	if err != nil {
-		return nil, err
-	}
-	if matched {
-		return nil, errMatchAlreadyExists
-	}
-
-	sg := entity.NewMatchRequest(req)
-	if err := gameStore.Set(ctx, sg); err != nil {
-		return nil, err
-	}
-	return sg, nil
-}

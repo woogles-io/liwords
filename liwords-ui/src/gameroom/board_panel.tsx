@@ -45,9 +45,10 @@ import { Board } from '../utils/cwgame/board';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import {
   MessageType,
-  MatchRequest,
   MatchUser,
+  SeekRequest,
   GameMetaEvent,
+  SeekState,
 } from '../gen/api/proto/realtime/realtime_pb';
 import {
   useExaminableGameContextStoreContext,
@@ -1364,7 +1365,7 @@ export const BoardPanel = React.memo((props: Props) => {
   );
 
   const rematch = useCallback(() => {
-    const evt = new MatchRequest();
+    const evt = new SeekRequest();
     const receiver = new MatchUser();
 
     let opp = '';
@@ -1380,12 +1381,15 @@ export const BoardPanel = React.memo((props: Props) => {
 
     receiver.setDisplayName(opp);
     evt.setReceivingUser(receiver);
+    evt.setReceiverIsPermanent(true);
+    evt.setUserState(SeekState.READY);
+
     evt.setRematchFor(gameID);
     if (props.tournamentID) {
       evt.setTournamentId(props.tournamentID);
     }
     sendSocketMsg(
-      encodeToSocketFmt(MessageType.MATCH_REQUEST, evt.serializeBinary())
+      encodeToSocketFmt(MessageType.SEEK_REQUEST, evt.serializeBinary())
     );
 
     notification.info({

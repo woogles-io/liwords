@@ -17,11 +17,6 @@ import (
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
-const (
-	typeSeek  = "seek"
-	typeMatch = "match"
-)
-
 type DBStore struct {
 	cfg *config.Config
 	db  *gorm.DB
@@ -32,10 +27,11 @@ type soughtgame struct {
 	UUID      string `gorm:"index"`
 	Seeker    string `gorm:"index"`
 
-	Type   string // seek, match
-	ConnID string `gorm:"index"`
+	Type         string // seek, match
+	SeekerConnID string `gorm:"index"`
 	// Only for match requests
-	Receiver string `gorm:"index"`
+	Receiver       string `gorm:"index"`
+	ReceiverConnID string `gorm:"index"`
 
 	Request datatypes.JSON
 }
@@ -50,26 +46,12 @@ func NewDBStore(config *config.Config) (*DBStore, error) {
 }
 
 func (s *DBStore) sgFromDBObj(g *soughtgame) (*entity.SoughtGame, error) {
-	var err error
-
-	switch g.Type {
-	case typeSeek:
-		sr := &pb.SeekRequest{}
-		err = json.Unmarshal(g.Request, sr)
-		if err != nil {
-			return nil, err
-		}
-		return &entity.SoughtGame{SeekRequest: sr, Type: entity.TypeSeek}, nil
-	case typeMatch:
-		mr := &pb.MatchRequest{}
-		err = json.Unmarshal(g.Request, mr)
-		if err != nil {
-			return nil, err
-		}
-		return &entity.SoughtGame{MatchRequest: mr, Type: entity.TypeMatch}, nil
+	sr := &pb.SeekRequest{}
+	err := json.Unmarshal(g.Request, sr)
+	if err != nil {
+		return nil, err
 	}
-	log.Error().Str("seekType", g.Type).Str("id", g.UUID).Msg("unexpected-seek-type")
-	return nil, errors.New("unknown error getting seek or match")
+	return &entity.SoughtGame{SeekRequest: sr}, nil
 }
 
 // Get gets the sought game with the given ID.
@@ -101,30 +83,39 @@ func (s *DBStore) getBySeekerID(ctx context.Context, seekerID string) (*entity.S
 	return s.sgFromDBObj(g)
 }
 
+func (s *DBStore) getByReceiverID(ctx context.Context, receiverID string) (*entity.SoughtGame, error) {
+	g := &soughtgame{}
+	ctxDB := s.db.WithContext(ctx)
+	if result := ctxDB.Where("receiver = ?", receiverID).First(g); result.Error != nil {
+		return nil, result.Error
+	}
+	return s.sgFromDBObj(g)
+}
+
 // Set sets the sought-game in the database.
 func (s *DBStore) Set(ctx context.Context, game *entity.SoughtGame) error {
 	var bts []byte
 	var sgtype string
 	var err error
-	if game.Type == entity.TypeSeek {
-		bts, err = json.Marshal(game.SeekRequest)
-		sgtype = typeSeek
-	} else if game.Type == entity.TypeMatch {
-		bts, err = json.Marshal(game.MatchRequest)
-		sgtype = typeMatch
-	}
+	bts, err = json.Marshal(game.SeekRequest)
+
 	if err != nil {
 		return err
 	}
+	id, _ := game.ID()
+	seekerConnID, _ := game.SeekerConnID()
+	seeker, _ := game.Seeker()
+	receiver, _ := game.Receiver()
+	receiverConnID, _ := game.ReceiverConnID()
+
 	dbg := &soughtgame{
-		UUID:    game.ID(),
-		ConnID:  game.ConnID(),
-		Seeker:  game.Seeker(),
-		Type:    sgtype,
-		Request: bts,
-	}
-	if game.Type == entity.TypeMatch {
-		dbg.Receiver = game.MatchRequest.ReceivingUser.UserId
+		UUID:           id,
+		SeekerConnID:   seekerConnID,
+		Seeker:         seeker,
+		Receiver:       receiver,
+		ReceiverConnID: receiverConnID,
+		Type:           sgtype,
+		Request:        bts,
 	}
 	ctxDB := s.db.WithContext(ctx)
 	result := ctxDB.Create(dbg)
@@ -163,7 +154,26 @@ func (s *DBStore) DeleteForUser(ctx context.Context, userID string) (*entity.Sou
 		}
 		return nil, err
 	}
-	return sg, s.deleteSoughtGame(ctx, sg.ID())
+
+	id, err := sg.ID()
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.deleteSoughtGame(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	sg, err = s.getByReceiverID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return sg, s.deleteSoughtGame(ctx, id)
 }
 
 // DeleteForConnID deletes the game by connection ID
@@ -175,7 +185,12 @@ func (s *DBStore) DeleteForConnID(ctx context.Context, connID string) (*entity.S
 		}
 		return nil, err
 	}
-	return sg, s.deleteSoughtGame(ctx, sg.ID())
+	id, err := sg.ID()
+	if err != nil {
+		return nil, err
+	}
+
+	return sg, s.deleteSoughtGame(ctx, id)
 }
 
 // ListOpenSeeks lists all open seek requests
@@ -186,7 +201,7 @@ func (s *DBStore) ListOpenSeeks(ctx context.Context) ([]*entity.SoughtGame, erro
 
 	ctxDB := s.db.WithContext(ctx)
 	if result := ctxDB.Table("soughtgames").
-		Where("type = ?", typeSeek).Scan(&games); result.Error != nil {
+		Where("receiver = ?", "").Scan(&games); result.Error != nil {
 
 		return nil, result.Error
 	}
@@ -206,7 +221,7 @@ func (s *DBStore) ListOpenMatches(ctx context.Context, receiverID, tourneyID str
 	var err error
 	ctxDB := s.db.WithContext(ctx)
 	query := ctxDB.Table("soughtgames").
-		Where("receiver = ? AND type = ?", receiverID, typeMatch)
+		Where("receiver = ?", receiverID)
 	if tourneyID != "" {
 		query = query.Where("request->>'tournament_id' = ?", tourneyID)
 	}
@@ -240,7 +255,7 @@ func (s *DBStore) UserMatchedBy(ctx context.Context, userID, matcher string) (bo
 	var count int64
 
 	if result := ctxDB.Model(&soughtgame{}).
-		Where("receiver = ? AND seeker = ? AND type = ?", userID, matcher, typeMatch).
+		Where("receiver = ? AND seeker = ?", userID, matcher).
 		Count(&count); result.Error != nil {
 		return false, result.Error
 	}

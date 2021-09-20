@@ -3,7 +3,6 @@ import { GameInfoResponse } from '../../gen/api/proto/game_service/game_service_
 import {
   SeekRequest,
   RatingMode,
-  MatchRequest,
   MatchUser,
 } from '../../gen/api/proto/realtime/realtime_pb';
 
@@ -56,7 +55,7 @@ export type LobbyState = {
 };
 
 export const SeekRequestToSoughtGame = (
-  req: SeekRequest | MatchRequest
+  req: SeekRequest
 ): SoughtGame | null => {
   const gameReq = req.getGameRequest();
   const user = req.getUser();
@@ -67,7 +66,7 @@ export const SeekRequestToSoughtGame = (
   let receivingUser = new MatchUser();
   let rematchFor = '';
   let tournamentID = '';
-  if (req instanceof MatchRequest) {
+  if (req.getReceiverIsPermanent()) {
     console.log('ismatchrequest');
     receivingUser = req.getReceivingUser()!;
     rematchFor = req.getRematchFor();
@@ -167,30 +166,6 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
       return {
         ...state,
         soughtGames,
-      };
-    }
-
-    case ActionType.AddMatchRequest: {
-      const { matchRequests } = state;
-      const matchRequest = action.payload as SoughtGame;
-
-      // it's a match request; put new ones on top.
-      return {
-        ...state,
-        matchRequests: [matchRequest, ...matchRequests],
-      };
-    }
-
-    case ActionType.AddMatchRequests: {
-      const matchRequests = action.payload as Array<SoughtGame>;
-      // These are match requests.
-      console.log('matchRequests', matchRequests);
-      matchRequests.sort((a, b) => {
-        return a.userRating < b.userRating ? -1 : 1;
-      });
-      return {
-        ...state,
-        matchRequests,
       };
     }
 

@@ -25,16 +25,12 @@ import {
   ChatMessage,
   ChatMessageDeleted,
   ClientGameplayEvent,
-  DeclineMatchRequest,
   ErrorMessage,
   GameDeletion,
   GameEndedEvent,
   GameHistoryRefresher,
   GameMetaEvent,
   LagMeasurement,
-  MatchRequest,
-  MatchRequestCancellation,
-  MatchRequests,
   MessageType,
   MessageTypeMap,
   NewGameEvent,
@@ -44,6 +40,8 @@ import {
   RematchStartedEvent,
   SeekRequest,
   SeekRequests,
+  DeclineSeekRequest,
+  SeekRequestCancellation,
   ServerChallengeResultEvent,
   ServerGameplayEvent,
   ServerMessage,
@@ -97,7 +95,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.SERVER_MESSAGE]: ServerMessage,
       [MessageType.NEW_GAME_EVENT]: NewGameEvent,
       [MessageType.GAME_HISTORY_REFRESHER]: GameHistoryRefresher,
-      [MessageType.MATCH_REQUEST]: MatchRequest,
+      [MessageType.MATCH_REQUEST]: SeekRequest,
       [MessageType.SOUGHT_GAME_PROCESS_EVENT]: SoughtGameProcessEvent,
       [MessageType.CLIENT_GAMEPLAY_EVENT]: ClientGameplayEvent,
       [MessageType.SERVER_GAMEPLAY_EVENT]: ServerGameplayEvent,
@@ -108,8 +106,8 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.ONGOING_GAME_EVENT]: GameInfoResponse,
       [MessageType.ONGOING_GAMES]: GameInfoResponses,
       [MessageType.GAME_DELETION]: GameDeletion,
-      [MessageType.MATCH_REQUESTS]: MatchRequests,
-      [MessageType.DECLINE_MATCH_REQUEST]: DeclineMatchRequest,
+      [MessageType.MATCH_REQUESTS]: SeekRequests,
+      [MessageType.DECLINE_SEEK_REQUEST]: DeclineSeekRequest,
       [MessageType.CHAT_MESSAGE]: ChatMessage,
       [MessageType.USER_PRESENCE]: UserPresence,
       [MessageType.USER_PRESENCES]: UserPresences,
@@ -117,7 +115,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.READY_FOR_TOURNAMENT_GAME]: ReadyForTournamentGame,
       [MessageType.TOURNAMENT_ROUND_STARTED]: TournamentRoundStarted,
       [MessageType.LAG_MEASUREMENT]: LagMeasurement,
-      [MessageType.MATCH_REQUEST_CANCELLATION]: MatchRequestCancellation,
+      [MessageType.MATCH_REQUEST_CANCELLATION]: SeekRequestCancellation,
       [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,
       [MessageType.REMATCH_STARTED]: RematchStartedEvent,
       [MessageType.GAME_META_EVENT]: GameMetaEvent,
@@ -209,24 +207,100 @@ export const useOnSocketMsg = () => {
         switch (msgType) {
           case MessageType.SEEK_REQUEST: {
             const sr = parsedMsg as SeekRequest;
-            console.log('Got a seek request', sr);
 
-            const userID = sr.getUser()?.getUserId();
-            if (!userID || excludedPlayers.has(userID)) {
+            if (!sr.getReceiverIsPermanent()) {
+              console.log('Got a seek request', sr);
+
+              const userID = sr.getUser()?.getUserId();
+              if (!userID || excludedPlayers.has(userID)) {
+                break;
+              }
+
+              const soughtGame = SeekRequestToSoughtGame(sr);
+              if (soughtGame === null) {
+                break;
+              }
+
+              dispatchLobbyContext({
+                actionType: ActionType.AddSoughtGame,
+                payload: soughtGame,
+              });
+
+              break;
+            } else {
+              const userID = sr.getUser()?.getUserId();
+              if (!userID || excludedPlayers.has(userID)) {
+                break;
+              }
+
+              const receiver = sr.getReceivingUser()?.getDisplayName();
+              const soughtGame = SeekRequestToSoughtGame(sr);
+              if (soughtGame === null) {
+                break;
+              }
+              console.log('gameContext', gameContext);
+              let inReceiverGameList = false;
+              if (receiver === loginState.username) {
+                BoopSounds.playSound('matchReqSound');
+                const rematchFor = sr.getRematchFor();
+                console.log(
+                  'sg',
+                  soughtGame.tournamentID,
+                  'gc',
+                  gameContext.gameID,
+                  'tc',
+                  tournamentContext
+                );
+                if (soughtGame.tournamentID) {
+                  // This is a match game attached to a tourney.
+                  console.log('match attached to tourney');
+                  if (
+                    tournamentContext.metadata?.getId() ===
+                      soughtGame.tournamentID &&
+                    !gameContext.gameID
+                  ) {
+                    console.log(
+                      'matches this tourney, and we are not in a game'
+                    );
+
+                    dispatchLobbyContext({
+                      actionType: ActionType.AddSoughtGame,
+                      payload: soughtGame,
+                    });
+                    inReceiverGameList = true;
+                  } else if (rematchFor && rematchFor === gameContext.gameID) {
+                    console.log('it is a rematch');
+                    setRematchRequest(sr);
+                  } else {
+                    console.log('tourney match request elsewhere');
+                    notification.info({
+                      message: 'Tournament Match Request',
+                      description: `You have a tournament match request from ${soughtGame.seeker}. Please return to your tournament at your convenience.`,
+                    });
+                  }
+                } else if (gameContext.gameID) {
+                  if (rematchFor === gameContext.gameID) {
+                    // Only display the rematch modal if we are the recipient
+                    // of the rematch request.
+                    setRematchRequest(sr);
+                  } else {
+                    notification.info({
+                      message: 'Match Request',
+                      description: `You have a match request from ${soughtGame.seeker}, in the lobby.`,
+                    });
+                    inReceiverGameList = true;
+                  }
+                } // else, we're in the lobby. Handle it below.
+              }
+
+              if (!inReceiverGameList) {
+                dispatchLobbyContext({
+                  actionType: ActionType.AddSoughtGame,
+                  payload: soughtGame,
+                });
+              }
               break;
             }
-
-            const soughtGame = SeekRequestToSoughtGame(sr);
-            if (soughtGame === null) {
-              break;
-            }
-
-            dispatchLobbyContext({
-              actionType: ActionType.AddSoughtGame,
-              payload: soughtGame,
-            });
-
-            break;
           }
 
           case MessageType.SEEK_REQUESTS: {
@@ -250,104 +324,6 @@ export const useOnSocketMsg = () => {
               payload: soughtGames,
             });
 
-            break;
-          }
-
-          case MessageType.MATCH_REQUEST: {
-            const mr = parsedMsg as MatchRequest;
-
-            const userID = mr.getUser()?.getUserId();
-            if (!userID || excludedPlayers.has(userID)) {
-              break;
-            }
-
-            const receiver = mr.getReceivingUser()?.getDisplayName();
-            const soughtGame = SeekRequestToSoughtGame(mr);
-            if (soughtGame === null) {
-              break;
-            }
-            console.log('gameContext', gameContext);
-            let inReceiverGameList = false;
-            if (receiver === loginState.username) {
-              BoopSounds.playSound('matchReqSound');
-              const rematchFor = mr.getRematchFor();
-              console.log(
-                'sg',
-                soughtGame.tournamentID,
-                'gc',
-                gameContext.gameID,
-                'tc',
-                tournamentContext
-              );
-              if (soughtGame.tournamentID) {
-                // This is a match game attached to a tourney.
-                console.log('match attached to tourney');
-                if (
-                  tournamentContext.metadata?.getId() ===
-                    soughtGame.tournamentID &&
-                  !gameContext.gameID
-                ) {
-                  console.log('matches this tourney, and we are not in a game');
-
-                  dispatchLobbyContext({
-                    actionType: ActionType.AddMatchRequest,
-                    payload: soughtGame,
-                  });
-                  inReceiverGameList = true;
-                } else if (rematchFor && rematchFor === gameContext.gameID) {
-                  console.log('it is a rematch');
-                  setRematchRequest(mr);
-                } else {
-                  console.log('tourney match request elsewhere');
-                  notification.info({
-                    message: 'Tournament Match Request',
-                    description: `You have a tournament match request from ${soughtGame.seeker}. Please return to your tournament at your convenience.`,
-                  });
-                }
-              } else if (gameContext.gameID) {
-                if (rematchFor === gameContext.gameID) {
-                  // Only display the rematch modal if we are the recipient
-                  // of the rematch request.
-                  setRematchRequest(mr);
-                } else {
-                  notification.info({
-                    message: 'Match Request',
-                    description: `You have a match request from ${soughtGame.seeker}, in the lobby.`,
-                  });
-                  inReceiverGameList = true;
-                }
-              } // else, we're in the lobby. Handle it below.
-            }
-
-            if (!inReceiverGameList) {
-              dispatchLobbyContext({
-                actionType: ActionType.AddMatchRequest,
-                payload: soughtGame,
-              });
-            }
-            break;
-          }
-
-          case MessageType.MATCH_REQUESTS: {
-            const mr = parsedMsg as MatchRequests;
-
-            const soughtGames = new Array<SoughtGame>();
-
-            mr.getRequestsList().forEach((r) => {
-              const userID = r.getUser()?.getUserId();
-              if (!userID || excludedPlayers.has(userID)) {
-                return;
-              }
-              const sg = SeekRequestToSoughtGame(r);
-              if (sg) {
-                soughtGames.push(sg);
-              }
-            });
-
-            dispatchLobbyContext({
-              actionType: ActionType.AddMatchRequests,
-              payload: soughtGames,
-            });
             break;
           }
 
@@ -739,17 +715,8 @@ export const useOnSocketMsg = () => {
             break;
           }
 
-          case MessageType.MATCH_REQUEST_CANCELLATION: {
-            const mrc = parsedMsg as MatchRequestCancellation;
-            dispatchLobbyContext({
-              actionType: ActionType.RemoveSoughtGame,
-              payload: mrc.getRequestId(),
-            });
-            break;
-          }
-
-          case MessageType.DECLINE_MATCH_REQUEST: {
-            const dec = parsedMsg as DeclineMatchRequest;
+          case MessageType.DECLINE_SEEK_REQUEST: {
+            const dec = parsedMsg as DeclineSeekRequest;
             dispatchLobbyContext({
               actionType: ActionType.RemoveSoughtGame,
               payload: dec.getRequestId(),

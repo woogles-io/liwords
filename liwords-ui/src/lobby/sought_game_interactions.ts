@@ -1,7 +1,6 @@
 import {
   GameRequest,
   GameRules,
-  MatchRequest,
   MessageType,
   RatingMode,
   SeekRequest,
@@ -29,7 +28,6 @@ export const sendSeek = (
   sendSocketMsg: (msg: Uint8Array) => void
 ): void => {
   const sr = new SeekRequest();
-  const mr = new MatchRequest();
   const gr = new GameRequest();
   const rules = new GameRules();
   rules.setBoardLayoutName('CrosswordGame');
@@ -47,19 +45,21 @@ export const sendSeek = (
   gr.setRatingMode(game.rated ? RatingMode.RATED : RatingMode.CASUAL);
   gr.setPlayerVsBot(game.playerVsBot);
 
+  sr.setUserState(0);
+
   if (game.receiver.getDisplayName() === '' && game.playerVsBot === false) {
     sr.setGameRequest(gr);
-
     sendSocketMsg(
       encodeToSocketFmt(MessageType.SEEK_REQUEST, sr.serializeBinary())
     );
   } else {
     // We make it a match request if the receiver is non-empty, or if playerVsBot.
-    mr.setGameRequest(gr);
-    mr.setReceivingUser(game.receiver);
-    mr.setTournamentId(game.tournamentID);
+    sr.setGameRequest(gr);
+    sr.setReceivingUser(game.receiver);
+    sr.setTournamentId(game.tournamentID);
+    sr.setReceiverIsPermanent(true);
     sendSocketMsg(
-      encodeToSocketFmt(MessageType.MATCH_REQUEST, mr.serializeBinary())
+      encodeToSocketFmt(MessageType.SEEK_REQUEST, sr.serializeBinary())
     );
   }
 };

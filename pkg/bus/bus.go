@@ -442,9 +442,8 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 	switch msgType {
 	// XXX: remove the camelCased version of these soon, after deploying new socket server
 	case "seekRequest", pb.MessageType_SEEK_REQUEST.String():
+		log.Debug().Str("user", userID).Msg("seek-request")
 		return b.seekRequest(ctx, auth, userID, wsConnID, data)
-	case "matchRequest", pb.MessageType_MATCH_REQUEST.String():
-		return b.matchRequest(ctx, auth, userID, wsConnID, data)
 	case "chat", pb.MessageType_CHAT_MESSAGE.String():
 		// The user is subtopics[2]
 		evt := &pb.ChatMessage{}
@@ -454,14 +453,14 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		log.Debug().Str("user", userID).Str("msg", evt.Message).Str("channel", evt.Channel).Msg("chat")
 		return b.chat(ctx, userID, evt)
-	case "declineMatchRequest", pb.MessageType_DECLINE_MATCH_REQUEST.String():
-		evt := &pb.DeclineMatchRequest{}
+	case "declineMatchRequest", pb.MessageType_DECLINE_SEEK_REQUEST.String():
+		evt := &pb.DeclineSeekRequest{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
 			return err
 		}
 		log.Debug().Str("user", userID).Str("reqid", evt.RequestId).Msg("decline-rematch")
-		return b.matchDeclined(ctx, evt, userID)
+		return b.seekDeclined(ctx, evt, userID)
 	case "gameMetaEvent", pb.MessageType_GAME_META_EVENT.String():
 		evt := &pb.GameMetaEvent{}
 		err := proto.Unmarshal(data, evt)
