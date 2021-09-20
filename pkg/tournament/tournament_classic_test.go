@@ -1331,8 +1331,9 @@ func TestClassicDivisionSwissRemoved(t *testing.T) {
 }
 
 func TestClassicDivisionVoidResult(t *testing.T) {
-	// This test is used to ensure that round robin
-	// pairings work correctly
+	// This test is used to ensure that void results
+	// do not affect the standings and that they allow a
+	// round to be complete
 
 	is := is.New(t)
 
