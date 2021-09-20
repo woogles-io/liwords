@@ -1331,8 +1331,8 @@ func TestClassicDivisionSwissRemoved(t *testing.T) {
 }
 
 func TestClassicDivisionTimeoutSpread(t *testing.T) {
-	// This test is used to ensure that round robin
-	// pairings work correctly
+	// This test is used to ensure that timeouts
+	// assign the correct spread for each player
 
 	is := is.New(t)
 
