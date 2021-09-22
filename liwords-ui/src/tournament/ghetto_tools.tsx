@@ -854,9 +854,12 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
   const [division, setDivision] = useState('');
   const [gibsonize, setGibsonize] = useState(false);
   const [gibsonSpread, setGibsonSpread] = useState(500);
+
   // min placement is 0-indexed, but we want to display 1-indexed
   // this variable will be the display variable:
   const [gibsonMinPlacement, setGibsonMinPlacement] = useState(1);
+  // bye max placement is 0-indexed, this is also the display variable
+  const [byeMaxPlacement, setByeMaxPlacement] = useState(1);
   const { tournamentContext } = useTournamentStoreContext();
 
   useEffect(() => {
@@ -875,6 +878,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
       setGibsonize(div.divisionControls.getGibsonize());
       setGibsonSpread(div.divisionControls.getGibsonSpread());
       setGibsonMinPlacement(div.divisionControls.getMinimumPlacement() + 1);
+      setByeMaxPlacement(div.divisionControls.getMaximumByePlacement() + 1);
     }
   }, [division, tournamentContext.divisions]);
 
@@ -919,6 +923,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     ctrls.setGibsonize(gibsonize);
     ctrls.setGibsonSpread(gibsonSpread);
     ctrls.setMinimumPlacement(gibsonMinPlacement - 1);
+    ctrls.setMaximumByePlacement(byeMaxPlacement - 1);
 
     try {
       const rbin = await postBinary(
@@ -977,6 +982,18 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
           value={gibsonMinPlacement}
           onChange={(p: number | string | undefined | null) =>
             setGibsonMinPlacement(p as number)
+          }
+        />
+      </div>
+
+      <div>
+        Bye cut-off (Byes may be assigned to players ranked this, and worse, if
+        odd):
+        <InputNumber
+          min={1}
+          value={byeMaxPlacement}
+          onChange={(p: number | string | undefined | null) =>
+            setByeMaxPlacement(p as number)
           }
         />
       </div>
