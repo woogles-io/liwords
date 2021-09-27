@@ -699,13 +699,13 @@ const SetResult = (props: { tournamentID: string }) => {
     }
   }, [form, score1, score2]);
 
-  const score1Change = (v: number | string | undefined) => {
+  const score1Change = (v: number | string | null | undefined) => {
     if (typeof v !== 'number') {
       return;
     }
     setScore1(v);
   };
-  const score2Change = (v: number | string | undefined) => {
+  const score2Change = (v: number | string | null | undefined) => {
     if (typeof v !== 'number') {
       return;
     }
