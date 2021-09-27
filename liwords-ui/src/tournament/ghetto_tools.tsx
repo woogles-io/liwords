@@ -31,6 +31,7 @@ import {
   PairingMethod,
   RoundControl,
   TournamentGameResult,
+  TournamentGameResultMap,
 } from '../gen/api/proto/realtime/realtime_pb';
 import {
   SingleRoundControlsRequest,
@@ -50,6 +51,7 @@ import {
   settingsEqual,
   SingleRoundSetting,
 } from './pairing_methods';
+import { valueof } from '../store/constants';
 
 type ModalProps = {
   title: string;
@@ -904,6 +906,9 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
   const [gibsonMinPlacement, setGibsonMinPlacement] = useState(1);
   // bye max placement is 0-indexed, this is also the display variable
   const [byeMaxPlacement, setByeMaxPlacement] = useState(1);
+  const [suspendedResult, setSuspendedResult] = useState<
+    valueof<TournamentGameResultMap>
+  >(TournamentGameResult.FORFEIT_LOSS);
   const { tournamentContext } = useTournamentStoreContext();
 
   useEffect(() => {
@@ -923,6 +928,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
       setGibsonSpread(div.divisionControls.getGibsonSpread());
       setGibsonMinPlacement(div.divisionControls.getMinimumPlacement() + 1);
       setByeMaxPlacement(div.divisionControls.getMaximumByePlacement() + 1);
+      setSuspendedResult(div.divisionControls.getSuspendedResult());
     }
   }, [division, tournamentContext.divisions]);
 
@@ -962,7 +968,12 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     ctrls.setDivision(division);
     ctrls.setGameRequest(selectedGameRequest);
     // can set this later to whatever values, along with a spread
-    ctrls.setSuspendedResult(TournamentGameResult.FORFEIT_LOSS);
+    ctrls.setSuspendedResult(suspendedResult);
+    if (suspendedResult === TournamentGameResult.BYE) {
+      ctrls.setSuspendedSpread(50);
+    } else if (suspendedResult === TournamentGameResult.FORFEIT_LOSS) {
+      ctrls.setSuspendedSpread(-50);
+    }
     ctrls.setAutoStart(false);
     ctrls.setGibsonize(gibsonize);
     ctrls.setGibsonSpread(gibsonSpread);
@@ -992,7 +1003,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
 
   const formItemLayout = {
     labelCol: {
-      span: 7,
+      span: 10,
     },
     wrapperCol: {
       span: 12,
@@ -1036,7 +1047,23 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
           />
         </Form.Item>
 
-        <Form.Item {...formItemLayout} label="Bye cut-off">
+        <Form.Item
+          {...formItemLayout}
+          label={
+            <>
+              Bye cut-off
+              <Tooltip
+                title="Byes may be assigned to players ranked this, and worse,
+          if odd. Make this 1 if you wish everyone in the tournament to be eligible for byes."
+              >
+                <QuestionCircleOutlined
+                  className="readable-text-color"
+                  style={{ marginLeft: 5 }}
+                />
+              </Tooltip>
+            </>
+          }
+        >
           <InputNumber
             min={1}
             value={byeMaxPlacement}
@@ -1044,17 +1071,39 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
               setByeMaxPlacement(p as number)
             }
           />
-          <Tooltip
-            title="Byes may be assigned to players ranked this, and worse,
-          if odd. Make this 1 if you wish everyone in the tournament to be eligible for byes."
+        </Form.Item>
+
+        <Form.Item
+          {...formItemLayout}
+          label={
+            <>
+              Suspended game result
+              <Tooltip title="What result would you like to assign to players who join your tournament late, for prior rounds?">
+                <QuestionCircleOutlined
+                  className="readable-text-color"
+                  style={{ marginLeft: 5 }}
+                />
+              </Tooltip>
+            </>
+          }
+        >
+          <Select
+            value={suspendedResult}
+            onChange={(v) => setSuspendedResult(v)}
           >
-            <QuestionCircleOutlined
-              className="readable-text-color"
-              style={{ marginLeft: 5 }}
-            />
-          </Tooltip>
+            <Select.Option value={TournamentGameResult.FORFEIT_LOSS}>
+              Forfeit loss (-50)
+            </Select.Option>
+            <Select.Option value={TournamentGameResult.BYE}>
+              Bye +50
+            </Select.Option>
+            <Select.Option value={TournamentGameResult.VOID}>
+              No result
+            </Select.Option>
+          </Select>
         </Form.Item>
       </Form>
+
       <div>{DisplayedGameSetting(selectedGameRequest)}</div>
 
       <Button

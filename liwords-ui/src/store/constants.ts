@@ -19,7 +19,7 @@ export const calculateTotalTime = (
   return secs + maxOvertime * 60 + incrementSecs * turnsPerGame;
 };
 
-type valueof<T> = T[keyof T];
+export type valueof<T> = T[keyof T];
 
 export const isPairedMode = (type: valueof<TTypeMap>) => {
   return type === TType.CHILD || type === TType.STANDARD;
