@@ -657,7 +657,6 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 		// If there are an odd number of players, give a bye based on the standings.
 		totalNumberOfPlayers := len(standings.Standings)
 		maxByePlacement := utilities.Min(totalNumberOfPlayers-1, int(t.DivisionControls.MaximumByePlacement))
-
 		if (totalNumberOfPlayers-len(playersWithByes))%2 != 0 {
 			var invByePlayerIndex int
 			minNumberOfByes := len(t.Matrix) + 1
@@ -1166,11 +1165,16 @@ func getRecords(t *ClassicDivision, round int) ([]*realtime.PlayerStanding, erro
 			func(i, j int) bool {
 				totalGames1 := records[i].Wins + records[i].Draws + records[i].Losses
 				totalGames2 := records[j].Wins + records[j].Draws + records[j].Losses
+
+				if totalGames1 == 0 && totalGames2 == 0 {
+					return t.PlayerIndexMap[records[j].PlayerId] > t.PlayerIndexMap[records[i].PlayerId]
+				}
+
 				n1d2 := (records[i].Wins*2 + records[i].Draws) * totalGames2
 				n2d1 := (records[j].Wins*2 + records[j].Draws) * totalGames1
 
 				if totalGames1 == 0 {
-					return isPositiveRecord(records[j])
+					return !isPositiveRecord(records[j])
 				}
 
 				if totalGames2 == 0 {
