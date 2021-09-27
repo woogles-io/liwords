@@ -1294,6 +1294,9 @@ export class DivisionControls extends jspb.Message {
   getMinimumPlacement(): number;
   setMinimumPlacement(value: number): void;
 
+  getMaximumByePlacement(): number;
+  setMaximumByePlacement(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): DivisionControls.AsObject;
   static toObject(includeInstance: boolean, msg: DivisionControls): DivisionControls.AsObject;
@@ -1316,6 +1319,7 @@ export namespace DivisionControls {
     gibsonize: boolean,
     gibsonSpread: number,
     minimumPlacement: number,
+    maximumByePlacement: number,
   }
 }
 

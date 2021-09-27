@@ -75,9 +75,9 @@ type record = {
 };
 
 const recordToString = (rec: record) => {
-  return `(${rec.wins + rec.draws / 2}-${rec.losses + rec.draws / 2}) ${
-    rec.spread >= 0 ? '+' : ''
-  }${rec.spread}`;
+  return `(${rec.wins + rec.draws / 2}-${rec.losses + rec.draws / 2})`;
+  // this looks too crowded:
+  // ${rec.spread >= 0 ? '+' : ''}${rec.spread}`;
 };
 
 const getPerformance = (

@@ -9988,7 +9988,8 @@ proto.liwords.DivisionControls.toObject = function(includeInstance, msg) {
     spreadCap: jspb.Message.getFieldWithDefault(msg, 7, 0),
     gibsonize: jspb.Message.getBooleanFieldWithDefault(msg, 8, false),
     gibsonSpread: jspb.Message.getFieldWithDefault(msg, 9, 0),
-    minimumPlacement: jspb.Message.getFieldWithDefault(msg, 10, 0)
+    minimumPlacement: jspb.Message.getFieldWithDefault(msg, 10, 0),
+    maximumByePlacement: jspb.Message.getFieldWithDefault(msg, 11, 0)
   };
 
   if (includeInstance) {
@@ -10065,6 +10066,10 @@ proto.liwords.DivisionControls.deserializeBinaryFromReader = function(msg, reade
     case 10:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setMinimumPlacement(value);
+      break;
+    case 11:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setMaximumByePlacement(value);
       break;
     default:
       reader.skipField();
@@ -10163,6 +10168,13 @@ proto.liwords.DivisionControls.serializeBinaryToWriter = function(message, write
   if (f !== 0) {
     writer.writeInt32(
       10,
+      f
+    );
+  }
+  f = message.getMaximumByePlacement();
+  if (f !== 0) {
+    writer.writeInt32(
+      11,
       f
     );
   }
@@ -10365,6 +10377,24 @@ proto.liwords.DivisionControls.prototype.getMinimumPlacement = function() {
  */
 proto.liwords.DivisionControls.prototype.setMinimumPlacement = function(value) {
   return jspb.Message.setProto3IntField(this, 10, value);
+};
+
+
+/**
+ * optional int32 maximum_bye_placement = 11;
+ * @return {number}
+ */
+proto.liwords.DivisionControls.prototype.getMaximumByePlacement = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 11, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.liwords.DivisionControls} returns this
+ */
+proto.liwords.DivisionControls.prototype.setMaximumByePlacement = function(value) {
+  return jspb.Message.setProto3IntField(this, 11, value);
 };
 
 
