@@ -430,7 +430,7 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 
 func getRoundRobinPairings(numberOfPlayers int, round int) ([]int, error) {
 
-	/* Round Robin pairing algorithm (from stackoverflow, where else?):
+	/* Round Robin pairing algorithm:
 
 	Players are numbered 1..n. In this example, there are 8 players
 
@@ -473,7 +473,7 @@ func getRoundRobinPairings(numberOfPlayers int, round int) ([]int, error) {
 		players = append(players, numberOfPlayers)
 	}
 
-	rotatedPlayers := players[1:len(players)]
+	rotatedPlayers := players[1:]
 
 	l := len(rotatedPlayers)
 
