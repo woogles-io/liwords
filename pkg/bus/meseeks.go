@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
@@ -119,19 +120,33 @@ func (b *Bus) newSeekRequest(ctx context.Context, auth, userID, connID string,
 		return b.newBotGame(ctx, req, botToPlay)
 	}
 
+	if req.ReceiverIsPermanent && req.ReceivingUser == nil {
+		return errors.New("receiver is marked as permanent but is nil")
+	}
+
+	if req.ReceivingUser != nil {
+		req.ReceivingUser.DisplayName = strings.TrimSpace(req.ReceivingUser.DisplayName)
+		receiver, err := b.userStore.Get(ctx, req.ReceivingUser.DisplayName)
+		if err != nil {
+			// No such user, most likely.
+			return err
+		}
+		requester, err := b.userStore.GetByUUID(ctx, reqUser.UserId)
+		if err != nil {
+			return err
+		}
+		err = checkForBlock(ctx, b, connID, requester, receiver)
+		if err != nil {
+			return err
+		}
+		req.ReceivingUser.UserId = receiver.UUID
+	}
+
 	sg, err := gameplay.NewSoughtGame(ctx, b.soughtGameStore, req)
 	if err != nil {
 		return err
 	}
-
-	receiverID, err := sg.Receiver()
-
-	if err == nil {
-		err = checkForBlock(ctx, b, connID, userID, receiverID)
-		if err != nil {
-			return err
-		}
-	}
+	log.Debug().Interface("sought-game", sg).Msg("new seek request")
 
 	return publishSeek(ctx, b, sg, userID, connID, pb.SeekState_ABSENT)
 }
@@ -150,25 +165,41 @@ func (b *Bus) updateSeekRequest(ctx context.Context, auth, userID, connID string
 
 	oldReceiverState := sg.SeekRequest.ReceiverState
 
-	seekerID, err := sg.Seeker()
+	seekerUserID, err := sg.SeekerUserID()
 	if err != nil {
 		return err
 	}
 
-	receiverID, err := sg.Receiver()
+	receiverUserID, err := sg.ReceiverUserID()
 	if err != nil {
 		return err
 	}
 
-	err = checkForBlock(ctx, b, connID, seekerID, receiverID)
+	receiverDisplayName, err := sg.ReceiverDisplayName()
 	if err != nil {
 		return err
 	}
 
-	if userID == seekerID {
+	sg.SeekRequest.ReceivingUser.DisplayName = strings.TrimSpace(receiverDisplayName)
+	receiver, err := b.userStore.Get(ctx, receiverDisplayName)
+	if err != nil {
+		// No such user, most likely.
+		return err
+	}
+	requester, err := b.userStore.GetByUUID(ctx, seekerUserID)
+	if err != nil {
+		return err
+	}
+
+	err = checkForBlock(ctx, b, connID, receiver, requester)
+	if err != nil {
+		return err
+	}
+
+	if userID == seekerUserID {
 		sg.SeekRequest.UserState = newReq.UserState
 		sg.SeekRequest.BootedReceivers = newReq.BootedReceivers
-	} else if receiverID == "" || userID == receiverID {
+	} else if receiverUserID == "" || userID == receiverUserID {
 		sg.SeekRequest.ReceiverState = newReq.ReceiverState
 	} else {
 		return errors.New("you are not a seeker or receiver for this seek")
@@ -191,12 +222,12 @@ func publishSeek(ctx context.Context, b *Bus, sg *entity.SoughtGame, userID stri
 	} else if sg.SeekRequest.ReceiverIsPermanent || sg.SeekRequest.ReceiverState != pb.SeekState_ABSENT {
 		log.Debug().Interface("sought-game", sg).Msg("processing seek as match")
 		// Update the current seek request
-		seekerID, err := sg.Seeker()
+		seekerUserID, err := sg.SeekerUserID()
 		if err != nil {
 			return err
 		}
 
-		receiverID, err := sg.Receiver()
+		receiverUserID, err := sg.ReceiverUserID()
 		if err != nil {
 			return err
 		}
@@ -211,7 +242,7 @@ func publishSeek(ctx context.Context, b *Bus, sg *entity.SoughtGame, userID stri
 			return err
 		}
 
-		publishSeekToPlayers(b, sg, seekerID, seekerConnId, receiverID, receiverConnId)
+		publishSeekToPlayers(b, sg, seekerUserID, seekerConnId, receiverUserID, receiverConnId)
 	} else {
 		log.Debug().Interface("sought-game", sg).Msg("publishing to lobby")
 		// If the receiver is absent or not permanent and this is not a match request, resend or send to everyone to let them
@@ -368,21 +399,7 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 	return b.instantiateAndStartGame(ctx, accUser, requester, gameReq, sg, evt.RequestId, connID)
 }
 
-func checkForBlock(ctx context.Context, b *Bus, connID string, userID string, opponentID string) error {
-	if opponentID == "" || userID == "" {
-		return nil
-	}
-
-	accUser, err := b.userStore.GetByUUID(ctx, userID)
-	if err != nil {
-		return err
-	}
-
-	reqUser, err := b.userStore.GetByUUID(ctx, opponentID)
-	if err != nil {
-		return err
-	}
-
+func checkForBlock(ctx context.Context, b *Bus, connID string, accUser *entity.User, reqUser *entity.User) error {
 	block, err := b.blockExists(ctx, reqUser, accUser)
 	if err != nil {
 		return err
@@ -445,6 +462,34 @@ func (b *Bus) broadcastSeekDeletion(seekID string) error {
 		return err
 	}
 	return b.natsconn.Publish("lobby.soughtGameProcess", data)
+}
+
+func (b *Bus) sendReceiverAbsent(ctx context.Context, req *entity.SoughtGame) error {
+	isMatch, err := req.ReceiverIsPermanent()
+	if err != nil {
+		return err
+	}
+
+	if isMatch {
+		seekerConnID, err := req.SeekerConnID()
+		if err != nil {
+			return err
+		}
+
+		seekerID, err := req.SeekerUserID()
+		if err != nil {
+			return err
+		}
+		evt := entity.WrapEvent(req.SeekRequest, pb.MessageType_SEEK_REQUEST)
+		return b.pubToConnectionID(seekerConnID, seekerID, evt)
+	} else {
+		evt := entity.WrapEvent(req.SeekRequest, pb.MessageType_SEEK_REQUEST)
+		outdata, err := evt.Serialize()
+		if err != nil {
+			return err
+		}
+		return b.natsconn.Publish("lobby.soughtGameProcess", outdata)
+	}
 }
 
 func (b *Bus) sendSeekCancellation(userID, seekerID, requestID string) error {
@@ -514,11 +559,24 @@ func (b *Bus) deleteSoughtForUser(ctx context.Context, userID string) error {
 		return nil
 	}
 	log.Debug().Interface("req", req).Str("userID", userID).Msg("deleting-sought")
-	return b.sendSoughtGameDeletion(ctx, req)
+	err = b.sendSoughtGameDeletion(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	req, err = b.soughtGameStore.UpdateForReceiver(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if req == nil {
+		return nil
+	}
+	log.Debug().Interface("req", req).Str("userID", userID).Msg("deleting-sought")
+	return b.sendReceiverAbsent(ctx, req)
 }
 
 func (b *Bus) deleteSoughtForConnID(ctx context.Context, connID string) error {
-	req, err := b.soughtGameStore.DeleteForConnID(ctx, connID)
+	req, err := b.soughtGameStore.DeleteForSeekerConnID(ctx, connID)
 	if err != nil {
 		return err
 	}
@@ -526,7 +584,20 @@ func (b *Bus) deleteSoughtForConnID(ctx context.Context, connID string) error {
 		return nil
 	}
 	log.Debug().Interface("req", req).Str("connID", connID).Msg("deleting-sought-for-connid")
-	return b.sendSoughtGameDeletion(ctx, req)
+	err = b.sendSoughtGameDeletion(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	req, err = b.soughtGameStore.UpdateForReceiverConnID(ctx, connID)
+	if err != nil {
+		return err
+	}
+	if req == nil {
+		return nil
+	}
+	log.Debug().Interface("req", req).Str("connID", connID).Msg("updating-receiver-for-connid")
+	return b.sendReceiverAbsent(ctx, req)
 }
 
 func (b *Bus) openSeeks(ctx context.Context) (*entity.EventWrapper, error) {

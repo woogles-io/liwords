@@ -1396,7 +1396,7 @@ export const BoardPanel = React.memo((props: Props) => {
       message: 'Rematch',
       description: `Sent rematch request to ${opp}`,
     });
-    console.log('rematching');
+    console.log('rematching', evt);
   }, [
     observer,
     gameID,

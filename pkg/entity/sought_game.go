@@ -63,7 +63,7 @@ func (sg *SoughtGame) ReceiverConnID() (string, error) {
 	return sr.ReceiverConnectionId, nil
 }
 
-func (sg *SoughtGame) Seeker() (string, error) {
+func (sg *SoughtGame) SeekerUserID() (string, error) {
 	sr, err := getSeekRequest(sg)
 	if err != nil {
 		return "", err
@@ -74,7 +74,7 @@ func (sg *SoughtGame) Seeker() (string, error) {
 	return sr.User.UserId, nil
 }
 
-func (sg *SoughtGame) Receiver() (string, error) {
+func (sg *SoughtGame) ReceiverUserID() (string, error) {
 	sr, err := getSeekRequest(sg)
 	if err != nil {
 		return "", err
@@ -83,6 +83,25 @@ func (sg *SoughtGame) Receiver() (string, error) {
 		return "", errors.New("nil receiving user on seek request")
 	}
 	return sr.ReceivingUser.UserId, nil
+}
+
+func (sg *SoughtGame) ReceiverDisplayName() (string, error) {
+	sr, err := getSeekRequest(sg)
+	if err != nil {
+		return "", err
+	}
+	if sr.ReceivingUser == nil {
+		return "", errors.New("nil receiving user on seek request")
+	}
+	return sr.ReceivingUser.DisplayName, nil
+}
+
+func (sg *SoughtGame) ReceiverIsPermanent() (bool, error) {
+	sr, err := getSeekRequest(sg)
+	if err != nil {
+		return false, err
+	}
+	return sr.ReceiverIsPermanent, nil
 }
 
 func getSeekRequest(sg *SoughtGame) (*pb.SeekRequest, error) {

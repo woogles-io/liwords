@@ -10,19 +10,20 @@ import (
 )
 
 var errAlreadyOpenReq = errors.New("You already have an open match or seek request")
-var errMatchAlreadyExists = errors.New("The user you are trying to match has already matched you")
 
 // SoughtGameStore is an interface for getting a sought game.
 type SoughtGameStore interface {
 	Get(ctx context.Context, id string) (*entity.SoughtGame, error)
-	GetByConnID(ctx context.Context, connID string) (*entity.SoughtGame, error)
+	GetBySeekerConnID(ctx context.Context, connID string) (*entity.SoughtGame, error)
 	Set(context.Context, *entity.SoughtGame) error
 	Delete(ctx context.Context, id string) error
 	ListOpenSeeks(ctx context.Context) ([]*entity.SoughtGame, error)
 	ListOpenMatches(ctx context.Context, receiverID, tourneyID string) ([]*entity.SoughtGame, error)
 	ExistsForUser(ctx context.Context, userID string) (bool, error)
 	DeleteForUser(ctx context.Context, userID string) (*entity.SoughtGame, error)
-	DeleteForConnID(ctx context.Context, connID string) (*entity.SoughtGame, error)
+	UpdateForReceiver(ctx context.Context, userID string) (*entity.SoughtGame, error)
+	DeleteForSeekerConnID(ctx context.Context, connID string) (*entity.SoughtGame, error)
+	UpdateForReceiverConnID(ctx context.Context, connID string) (*entity.SoughtGame, error)
 	UserMatchedBy(ctx context.Context, userID, matcher string) (bool, error)
 	ExpireOld(ctx context.Context) error
 }

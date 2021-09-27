@@ -388,6 +388,7 @@ export const SeekForm = (props: Props) => {
       playerVsBot: props.vsBot || false,
       tournamentID: props.tournamentID || '',
       variant: val.variant as string,
+      receiverIsPermanent: receiver.getDisplayName() !== '',
     };
     props.onFormSubmit(obj, val);
   };
