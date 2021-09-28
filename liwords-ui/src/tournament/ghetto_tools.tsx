@@ -1078,7 +1078,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
           label={
             <>
               Suspended game result
-              <Tooltip title="What result would you like to assign to players who join your tournament late, for prior rounds?">
+              <Tooltip title="What result would you like to assign to players who join your tournament late, for unplayed rounds?">
                 <QuestionCircleOutlined
                   className="readable-text-color"
                   style={{ marginLeft: 5 }}
