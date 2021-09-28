@@ -369,7 +369,7 @@ const divisionDataResponseToObj = (
   return ret;
 };
 
-const toResultStr = (r: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7) => {
+const toResultStr = (r: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => {
   return {
     0: 'NO_RESULT',
     1: 'WIN',
@@ -379,6 +379,7 @@ const toResultStr = (r: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7) => {
     5: 'FORFEIT_WIN',
     6: 'FORFEIT_LOSS',
     7: 'ELIMINATED',
+    8: 'VOID',
   }[r];
 };
 

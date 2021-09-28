@@ -1364,6 +1364,78 @@ func TestClassicDivisionTimeoutSpread(t *testing.T) {
 	is.NoErr(equalStandings(expectedstandings, standings))
 }
 
+func TestClassicDivisionVoidResult(t *testing.T) {
+	// This test is used to ensure that void results
+	// do not affect the standings and that they allow a
+	// round to be complete
+
+	is := is.New(t)
+
+	roundControls := []*realtime.RoundControl{}
+	numberOfRounds := 1
+
+	for i := 0; i < numberOfRounds; i++ {
+		roundControls = append(roundControls, &realtime.RoundControl{FirstMethod: realtime.FirstMethod_AUTOMATIC_FIRST,
+			PairingMethod:               realtime.PairingMethod_KING_OF_THE_HILL,
+			GamesPerRound:               defaultGamesPerRound,
+			Round:                       int32(i),
+			Factor:                      1,
+			MaxRepeats:                  1,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1})
+	}
+
+	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
+
+	is.NoErr(err)
+	is.True(tc != nil)
+
+	is.NoErr(validatePairings(tc, 0))
+
+	player1 := defaultPlayers.Persons[0].Id
+	player2 := defaultPlayers.Persons[1].Id
+	player3 := defaultPlayers.Persons[2].Id
+	player4 := defaultPlayers.Persons[3].Id
+
+	err = tc.StartRound(true)
+	is.NoErr(err)
+
+	_, err = tc.SubmitResult(0, player1, player2, 500, 400,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_VOID,
+		realtime.GameEndReason_TIME, false, 0, "")
+	is.True(err.Error() == "cannot mix void and nonvoid results: WIN, VOID")
+
+	_, err = tc.SubmitResult(0, player1, player2, 500, 400,
+		realtime.TournamentGameResult_VOID,
+		realtime.TournamentGameResult_VOID,
+		realtime.GameEndReason_STANDARD, false, 0, "")
+	is.NoErr(err)
+
+	_, err = tc.SubmitResult(0, player3, player4, 350, 300,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0, "")
+	is.NoErr(err)
+
+	isRoundComplete, err := tc.IsRoundComplete(0)
+	is.NoErr(err)
+	is.True(isRoundComplete)
+
+	// Get the standings for round 1
+	standings, _, err := tc.GetStandings(0)
+	is.NoErr(err)
+
+	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 50},
+		{PlayerId: player1, Wins: 0, Losses: 0, Draws: 0, Spread: 0},
+		{PlayerId: player2, Wins: 0, Losses: 0, Draws: 0, Spread: 0},
+		{PlayerId: player4, Wins: 0, Losses: 1, Draws: 0, Spread: -50},
+	}}
+	printStandings(standings.Standings)
+	is.NoErr(equalStandings(expectedstandings, standings))
+}
+
 func TestClassicDivisionRoundRobin(t *testing.T) {
 	// This test is used to ensure that round robin
 	// pairings work correctly

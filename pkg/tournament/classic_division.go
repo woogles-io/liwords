@@ -411,6 +411,11 @@ func (t *ClassicDivision) SubmitResult(round int,
 		return nil, fmt.Errorf("submitted result for players that didn't play each other: %s (%s), %s (%s) round (%d)", p1, pk1, p2, pk2, round)
 	}
 
+	if (p1Result == realtime.TournamentGameResult_VOID && p2Result != realtime.TournamentGameResult_VOID) ||
+		(p2Result == realtime.TournamentGameResult_VOID && p1Result != realtime.TournamentGameResult_VOID) {
+		return nil, fmt.Errorf("cannot mix void and nonvoid results: %s, %s", p1Result.String(), p2Result.String())
+	}
+
 	pairing, ok := t.PairingMap[pk1]
 	if !ok {
 		return nil, fmt.Errorf("pairing does not exist in the pairing map: %s", pk1)
@@ -652,7 +657,6 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 		// If there are an odd number of players, give a bye based on the standings.
 		totalNumberOfPlayers := len(standings.Standings)
 		maxByePlacement := utilities.Min(totalNumberOfPlayers-1, int(t.DivisionControls.MaximumByePlacement))
-
 		if (totalNumberOfPlayers-len(playersWithByes))%2 != 0 {
 			var invByePlayerIndex int
 			minNumberOfByes := len(t.Matrix) + 1
@@ -1099,7 +1103,8 @@ func getRecords(t *ClassicDivision, round int) ([]*realtime.PlayerStanding, erro
 				if t.Players.Persons[pairing.Players[1]].Id == playerId {
 					playerIndex = 1
 				}
-				if pairing.Outcomes[playerIndex] != realtime.TournamentGameResult_NO_RESULT {
+				if pairing.Outcomes[playerIndex] != realtime.TournamentGameResult_NO_RESULT &&
+					pairing.Outcomes[playerIndex] != realtime.TournamentGameResult_VOID {
 					result := convertResult(pairing.Outcomes[playerIndex])
 					if result == 2 {
 						wins++
@@ -1160,8 +1165,21 @@ func getRecords(t *ClassicDivision, round int) ([]*realtime.PlayerStanding, erro
 			func(i, j int) bool {
 				totalGames1 := records[i].Wins + records[i].Draws + records[i].Losses
 				totalGames2 := records[j].Wins + records[j].Draws + records[j].Losses
+
+				if totalGames1 == 0 && totalGames2 == 0 {
+					return t.PlayerIndexMap[records[j].PlayerId] > t.PlayerIndexMap[records[i].PlayerId]
+				}
+
 				n1d2 := (records[i].Wins*2 + records[i].Draws) * totalGames2
 				n2d1 := (records[j].Wins*2 + records[j].Draws) * totalGames1
+
+				if totalGames1 == 0 {
+					return !isPositiveRecord(records[j])
+				}
+
+				if totalGames2 == 0 {
+					return isPositiveRecord(records[i])
+				}
 
 				if n1d2 != n2d1 {
 					return n1d2 > n2d1
@@ -1704,6 +1722,13 @@ func (t *ClassicDivision) clearPairingKey(playerIndex int32, round int) error {
 	delete(t.PairingMap, pairingKey)
 	t.Matrix[round][playerIndex] = ""
 	return nil
+}
+
+func isPositiveRecord(r *realtime.PlayerStanding) bool {
+	if r.Wins*2+r.Draws == r.Losses*2 {
+		return r.Spread > 0
+	}
+	return r.Wins*2+r.Draws > r.Losses*2
 }
 
 func (t *ClassicDivision) pairingIsBye(player string, round int) (bool, error) {

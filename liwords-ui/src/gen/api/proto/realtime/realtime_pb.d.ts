@@ -1932,6 +1932,7 @@ export interface TournamentGameResultMap {
   FORFEIT_WIN: 5;
   FORFEIT_LOSS: 6;
   ELIMINATED: 7;
+  VOID: 8;
 }
 
 export const TournamentGameResult: TournamentGameResultMap;
