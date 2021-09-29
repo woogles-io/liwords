@@ -633,3 +633,10 @@ message TournamentDivisionDeletedResponse {
 message JoinPath { string path = 1; }
 
 message UnjoinRealm {}
+
+// Errors
+
+enum WooglesError {
+  WOOGLES_ERROR = 0;
+  TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT = 1001;
+}

@@ -597,6 +597,52 @@ func (FirstMethod) EnumDescriptor() ([]byte, []int) {
 	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{7}
 }
 
+type WooglesError int32
+
+const (
+	WooglesError_WOOGLES_ERROR                         WooglesError = 0
+	WooglesError_TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT WooglesError = 1001
+)
+
+// Enum value maps for WooglesError.
+var (
+	WooglesError_name = map[int32]string{
+		0:    "WOOGLES_ERROR",
+		1001: "TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT",
+	}
+	WooglesError_value = map[string]int32{
+		"WOOGLES_ERROR":                         0,
+		"TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT": 1001,
+	}
+)
+
+func (x WooglesError) Enum() *WooglesError {
+	p := new(WooglesError)
+	*p = x
+	return p
+}
+
+func (x WooglesError) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (WooglesError) Descriptor() protoreflect.EnumDescriptor {
+	return file_api_proto_realtime_realtime_proto_enumTypes[8].Descriptor()
+}
+
+func (WooglesError) Type() protoreflect.EnumType {
+	return &file_api_proto_realtime_realtime_proto_enumTypes[8]
+}
+
+func (x WooglesError) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use WooglesError.Descriptor instead.
+func (WooglesError) EnumDescriptor() ([]byte, []int) {
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{8}
+}
+
 type GameMetaEvent_EventType int32
 
 const (
@@ -669,11 +715,11 @@ func (x GameMetaEvent_EventType) String() string {
 }
 
 func (GameMetaEvent_EventType) Descriptor() protoreflect.EnumDescriptor {
-	return file_api_proto_realtime_realtime_proto_enumTypes[8].Descriptor()
+	return file_api_proto_realtime_realtime_proto_enumTypes[9].Descriptor()
 }
 
 func (GameMetaEvent_EventType) Type() protoreflect.EnumType {
-	return &file_api_proto_realtime_realtime_proto_enumTypes[8]
+	return &file_api_proto_realtime_realtime_proto_enumTypes[9]
 }
 
 func (x GameMetaEvent_EventType) Number() protoreflect.EnumNumber {
@@ -724,11 +770,11 @@ func (x ClientGameplayEvent_EventType) String() string {
 }
 
 func (ClientGameplayEvent_EventType) Descriptor() protoreflect.EnumDescriptor {
-	return file_api_proto_realtime_realtime_proto_enumTypes[9].Descriptor()
+	return file_api_proto_realtime_realtime_proto_enumTypes[10].Descriptor()
 }
 
 func (ClientGameplayEvent_EventType) Type() protoreflect.EnumType {
-	return &file_api_proto_realtime_realtime_proto_enumTypes[9]
+	return &file_api_proto_realtime_realtime_proto_enumTypes[10]
 }
 
 func (x ClientGameplayEvent_EventType) Number() protoreflect.EnumNumber {
@@ -5481,11 +5527,16 @@ var file_api_proto_realtime_realtime_proto_rawDesc = []byte{
 	0x6f, 0x64, 0x12, 0x10, 0x0a, 0x0c, 0x4d, 0x41, 0x4e, 0x55, 0x41, 0x4c, 0x5f, 0x46, 0x49, 0x52,
 	0x53, 0x54, 0x10, 0x00, 0x12, 0x10, 0x0a, 0x0c, 0x52, 0x41, 0x4e, 0x44, 0x4f, 0x4d, 0x5f, 0x46,
 	0x49, 0x52, 0x53, 0x54, 0x10, 0x01, 0x12, 0x13, 0x0a, 0x0f, 0x41, 0x55, 0x54, 0x4f, 0x4d, 0x41,
-	0x54, 0x49, 0x43, 0x5f, 0x46, 0x49, 0x52, 0x53, 0x54, 0x10, 0x02, 0x42, 0x34, 0x5a, 0x32, 0x67,
-	0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x64, 0x6f, 0x6d, 0x69, 0x6e, 0x6f,
-	0x31, 0x34, 0x2f, 0x6c, 0x69, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x2f, 0x72, 0x70, 0x63, 0x2f, 0x61,
-	0x70, 0x69, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x72, 0x65, 0x61, 0x6c, 0x74, 0x69, 0x6d,
-	0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x54, 0x49, 0x43, 0x5f, 0x46, 0x49, 0x52, 0x53, 0x54, 0x10, 0x02, 0x2a, 0x4d, 0x0a, 0x0c, 0x57,
+	0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x73, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x12, 0x11, 0x0a, 0x0d, 0x57,
+	0x4f, 0x4f, 0x47, 0x4c, 0x45, 0x53, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x10, 0x00, 0x12, 0x2a,
+	0x0a, 0x25, 0x54, 0x4f, 0x55, 0x52, 0x4e, 0x41, 0x4d, 0x45, 0x4e, 0x54, 0x5f, 0x4e, 0x45, 0x47,
+	0x41, 0x54, 0x49, 0x56, 0x45, 0x5f, 0x4d, 0x41, 0x58, 0x5f, 0x42, 0x59, 0x45, 0x5f, 0x50, 0x4c,
+	0x41, 0x43, 0x45, 0x4d, 0x45, 0x4e, 0x54, 0x10, 0xe9, 0x07, 0x42, 0x34, 0x5a, 0x32, 0x67, 0x69,
+	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x64, 0x6f, 0x6d, 0x69, 0x6e, 0x6f, 0x31,
+	0x34, 0x2f, 0x6c, 0x69, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x2f, 0x72, 0x70, 0x63, 0x2f, 0x61, 0x70,
+	0x69, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x72, 0x65, 0x61, 0x6c, 0x74, 0x69, 0x6d, 0x65,
+	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -5500,7 +5551,7 @@ func file_api_proto_realtime_realtime_proto_rawDescGZIP() []byte {
 	return file_api_proto_realtime_realtime_proto_rawDescData
 }
 
-var file_api_proto_realtime_realtime_proto_enumTypes = make([]protoimpl.EnumInfo, 10)
+var file_api_proto_realtime_realtime_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
 var file_api_proto_realtime_realtime_proto_msgTypes = make([]protoimpl.MessageInfo, 66)
 var file_api_proto_realtime_realtime_proto_goTypes = []interface{}{
 	(GameMode)(0),                             // 0: liwords.GameMode
@@ -5511,149 +5562,150 @@ var file_api_proto_realtime_realtime_proto_goTypes = []interface{}{
 	(TournamentGameResult)(0),                 // 5: liwords.TournamentGameResult
 	(PairingMethod)(0),                        // 6: liwords.PairingMethod
 	(FirstMethod)(0),                          // 7: liwords.FirstMethod
-	(GameMetaEvent_EventType)(0),              // 8: liwords.GameMetaEvent.EventType
-	(ClientGameplayEvent_EventType)(0),        // 9: liwords.ClientGameplayEvent.EventType
-	(*GameRules)(nil),                         // 10: liwords.GameRules
-	(*GameRequest)(nil),                       // 11: liwords.GameRequest
-	(*MatchUser)(nil),                         // 12: liwords.MatchUser
-	(*GameDeletion)(nil),                      // 13: liwords.GameDeletion
-	(*ActiveGamePlayer)(nil),                  // 14: liwords.ActiveGamePlayer
-	(*ActiveGameEntry)(nil),                   // 15: liwords.ActiveGameEntry
-	(*LagMeasurement)(nil),                    // 16: liwords.LagMeasurement
-	(*ChatMessage)(nil),                       // 17: liwords.ChatMessage
-	(*ChatMessages)(nil),                      // 18: liwords.ChatMessages
-	(*UserPresence)(nil),                      // 19: liwords.UserPresence
-	(*UserPresences)(nil),                     // 20: liwords.UserPresences
-	(*PresenceEntry)(nil),                     // 21: liwords.PresenceEntry
-	(*SeekRequest)(nil),                       // 22: liwords.SeekRequest
-	(*MatchRequest)(nil),                      // 23: liwords.MatchRequest
-	(*ReadyForGame)(nil),                      // 24: liwords.ReadyForGame
-	(*SoughtGameProcessEvent)(nil),            // 25: liwords.SoughtGameProcessEvent
-	(*MatchRequestCancellation)(nil),          // 26: liwords.MatchRequestCancellation
-	(*SeekRequests)(nil),                      // 27: liwords.SeekRequests
-	(*MatchRequests)(nil),                     // 28: liwords.MatchRequests
-	(*ServerGameplayEvent)(nil),               // 29: liwords.ServerGameplayEvent
-	(*ServerChallengeResultEvent)(nil),        // 30: liwords.ServerChallengeResultEvent
-	(*GameEndedEvent)(nil),                    // 31: liwords.GameEndedEvent
-	(*GameMetaEvent)(nil),                     // 32: liwords.GameMetaEvent
-	(*TournamentGameEndedEvent)(nil),          // 33: liwords.TournamentGameEndedEvent
-	(*TournamentRoundStarted)(nil),            // 34: liwords.TournamentRoundStarted
-	(*RematchStartedEvent)(nil),               // 35: liwords.RematchStartedEvent
-	(*GameHistoryRefresher)(nil),              // 36: liwords.GameHistoryRefresher
-	(*NewGameEvent)(nil),                      // 37: liwords.NewGameEvent
-	(*ErrorMessage)(nil),                      // 38: liwords.ErrorMessage
-	(*ServerMessage)(nil),                     // 39: liwords.ServerMessage
-	(*ChatMessageDeleted)(nil),                // 40: liwords.ChatMessageDeleted
-	(*ClientGameplayEvent)(nil),               // 41: liwords.ClientGameplayEvent
-	(*ReadyForTournamentGame)(nil),            // 42: liwords.ReadyForTournamentGame
-	(*TimedOut)(nil),                          // 43: liwords.TimedOut
-	(*DeclineMatchRequest)(nil),               // 44: liwords.DeclineMatchRequest
-	(*TournamentPerson)(nil),                  // 45: liwords.TournamentPerson
-	(*TournamentPersons)(nil),                 // 46: liwords.TournamentPersons
-	(*RoundControl)(nil),                      // 47: liwords.RoundControl
-	(*DivisionControls)(nil),                  // 48: liwords.DivisionControls
-	(*TournamentGame)(nil),                    // 49: liwords.TournamentGame
-	(*Pairing)(nil),                           // 50: liwords.Pairing
-	(*PlayerStanding)(nil),                    // 51: liwords.PlayerStanding
-	(*RoundStandings)(nil),                    // 52: liwords.RoundStandings
-	(*DivisionPairingsResponse)(nil),          // 53: liwords.DivisionPairingsResponse
-	(*DivisionPairingsDeletedResponse)(nil),   // 54: liwords.DivisionPairingsDeletedResponse
-	(*PlayersAddedOrRemovedResponse)(nil),     // 55: liwords.PlayersAddedOrRemovedResponse
-	(*DivisionRoundControls)(nil),             // 56: liwords.DivisionRoundControls
-	(*DivisionControlsResponse)(nil),          // 57: liwords.DivisionControlsResponse
-	(*TournamentDivisionDataResponse)(nil),    // 58: liwords.TournamentDivisionDataResponse
-	(*FullTournamentDivisions)(nil),           // 59: liwords.FullTournamentDivisions
-	(*TournamentFinishedResponse)(nil),        // 60: liwords.TournamentFinishedResponse
-	(*TournamentDataResponse)(nil),            // 61: liwords.TournamentDataResponse
-	(*TournamentDivisionDeletedResponse)(nil), // 62: liwords.TournamentDivisionDeletedResponse
-	(*JoinPath)(nil),                          // 63: liwords.JoinPath
-	(*UnjoinRealm)(nil),                       // 64: liwords.UnjoinRealm
-	nil,                                       // 65: liwords.GameEndedEvent.ScoresEntry
-	nil,                                       // 66: liwords.GameEndedEvent.NewRatingsEntry
-	nil,                                       // 67: liwords.GameEndedEvent.RatingDeltasEntry
-	(*TournamentGameEndedEvent_Player)(nil),   // 68: liwords.TournamentGameEndedEvent.Player
-	nil,                                       // 69: liwords.DivisionPairingsResponse.DivisionStandingsEntry
-	nil,                                       // 70: liwords.PlayersAddedOrRemovedResponse.DivisionStandingsEntry
-	nil,                                       // 71: liwords.DivisionRoundControls.DivisionStandingsEntry
-	nil,                                       // 72: liwords.DivisionControlsResponse.DivisionStandingsEntry
-	nil,                                       // 73: liwords.TournamentDivisionDataResponse.StandingsEntry
-	nil,                                       // 74: liwords.TournamentDivisionDataResponse.PairingMapEntry
-	nil,                                       // 75: liwords.FullTournamentDivisions.DivisionsEntry
-	(macondo.ChallengeRule)(0),                // 76: macondo.ChallengeRule
-	(macondo.BotRequest_BotCode)(0),           // 77: macondo.BotRequest.BotCode
-	(*macondo.GameEvent)(nil),                 // 78: macondo.GameEvent
-	(macondo.PlayState)(0),                    // 79: macondo.PlayState
-	(*macondo.GameHistory)(nil),               // 80: macondo.GameHistory
-	(*timestamppb.Timestamp)(nil),             // 81: google.protobuf.Timestamp
+	(WooglesError)(0),                         // 8: liwords.WooglesError
+	(GameMetaEvent_EventType)(0),              // 9: liwords.GameMetaEvent.EventType
+	(ClientGameplayEvent_EventType)(0),        // 10: liwords.ClientGameplayEvent.EventType
+	(*GameRules)(nil),                         // 11: liwords.GameRules
+	(*GameRequest)(nil),                       // 12: liwords.GameRequest
+	(*MatchUser)(nil),                         // 13: liwords.MatchUser
+	(*GameDeletion)(nil),                      // 14: liwords.GameDeletion
+	(*ActiveGamePlayer)(nil),                  // 15: liwords.ActiveGamePlayer
+	(*ActiveGameEntry)(nil),                   // 16: liwords.ActiveGameEntry
+	(*LagMeasurement)(nil),                    // 17: liwords.LagMeasurement
+	(*ChatMessage)(nil),                       // 18: liwords.ChatMessage
+	(*ChatMessages)(nil),                      // 19: liwords.ChatMessages
+	(*UserPresence)(nil),                      // 20: liwords.UserPresence
+	(*UserPresences)(nil),                     // 21: liwords.UserPresences
+	(*PresenceEntry)(nil),                     // 22: liwords.PresenceEntry
+	(*SeekRequest)(nil),                       // 23: liwords.SeekRequest
+	(*MatchRequest)(nil),                      // 24: liwords.MatchRequest
+	(*ReadyForGame)(nil),                      // 25: liwords.ReadyForGame
+	(*SoughtGameProcessEvent)(nil),            // 26: liwords.SoughtGameProcessEvent
+	(*MatchRequestCancellation)(nil),          // 27: liwords.MatchRequestCancellation
+	(*SeekRequests)(nil),                      // 28: liwords.SeekRequests
+	(*MatchRequests)(nil),                     // 29: liwords.MatchRequests
+	(*ServerGameplayEvent)(nil),               // 30: liwords.ServerGameplayEvent
+	(*ServerChallengeResultEvent)(nil),        // 31: liwords.ServerChallengeResultEvent
+	(*GameEndedEvent)(nil),                    // 32: liwords.GameEndedEvent
+	(*GameMetaEvent)(nil),                     // 33: liwords.GameMetaEvent
+	(*TournamentGameEndedEvent)(nil),          // 34: liwords.TournamentGameEndedEvent
+	(*TournamentRoundStarted)(nil),            // 35: liwords.TournamentRoundStarted
+	(*RematchStartedEvent)(nil),               // 36: liwords.RematchStartedEvent
+	(*GameHistoryRefresher)(nil),              // 37: liwords.GameHistoryRefresher
+	(*NewGameEvent)(nil),                      // 38: liwords.NewGameEvent
+	(*ErrorMessage)(nil),                      // 39: liwords.ErrorMessage
+	(*ServerMessage)(nil),                     // 40: liwords.ServerMessage
+	(*ChatMessageDeleted)(nil),                // 41: liwords.ChatMessageDeleted
+	(*ClientGameplayEvent)(nil),               // 42: liwords.ClientGameplayEvent
+	(*ReadyForTournamentGame)(nil),            // 43: liwords.ReadyForTournamentGame
+	(*TimedOut)(nil),                          // 44: liwords.TimedOut
+	(*DeclineMatchRequest)(nil),               // 45: liwords.DeclineMatchRequest
+	(*TournamentPerson)(nil),                  // 46: liwords.TournamentPerson
+	(*TournamentPersons)(nil),                 // 47: liwords.TournamentPersons
+	(*RoundControl)(nil),                      // 48: liwords.RoundControl
+	(*DivisionControls)(nil),                  // 49: liwords.DivisionControls
+	(*TournamentGame)(nil),                    // 50: liwords.TournamentGame
+	(*Pairing)(nil),                           // 51: liwords.Pairing
+	(*PlayerStanding)(nil),                    // 52: liwords.PlayerStanding
+	(*RoundStandings)(nil),                    // 53: liwords.RoundStandings
+	(*DivisionPairingsResponse)(nil),          // 54: liwords.DivisionPairingsResponse
+	(*DivisionPairingsDeletedResponse)(nil),   // 55: liwords.DivisionPairingsDeletedResponse
+	(*PlayersAddedOrRemovedResponse)(nil),     // 56: liwords.PlayersAddedOrRemovedResponse
+	(*DivisionRoundControls)(nil),             // 57: liwords.DivisionRoundControls
+	(*DivisionControlsResponse)(nil),          // 58: liwords.DivisionControlsResponse
+	(*TournamentDivisionDataResponse)(nil),    // 59: liwords.TournamentDivisionDataResponse
+	(*FullTournamentDivisions)(nil),           // 60: liwords.FullTournamentDivisions
+	(*TournamentFinishedResponse)(nil),        // 61: liwords.TournamentFinishedResponse
+	(*TournamentDataResponse)(nil),            // 62: liwords.TournamentDataResponse
+	(*TournamentDivisionDeletedResponse)(nil), // 63: liwords.TournamentDivisionDeletedResponse
+	(*JoinPath)(nil),                          // 64: liwords.JoinPath
+	(*UnjoinRealm)(nil),                       // 65: liwords.UnjoinRealm
+	nil,                                       // 66: liwords.GameEndedEvent.ScoresEntry
+	nil,                                       // 67: liwords.GameEndedEvent.NewRatingsEntry
+	nil,                                       // 68: liwords.GameEndedEvent.RatingDeltasEntry
+	(*TournamentGameEndedEvent_Player)(nil),   // 69: liwords.TournamentGameEndedEvent.Player
+	nil,                                       // 70: liwords.DivisionPairingsResponse.DivisionStandingsEntry
+	nil,                                       // 71: liwords.PlayersAddedOrRemovedResponse.DivisionStandingsEntry
+	nil,                                       // 72: liwords.DivisionRoundControls.DivisionStandingsEntry
+	nil,                                       // 73: liwords.DivisionControlsResponse.DivisionStandingsEntry
+	nil,                                       // 74: liwords.TournamentDivisionDataResponse.StandingsEntry
+	nil,                                       // 75: liwords.TournamentDivisionDataResponse.PairingMapEntry
+	nil,                                       // 76: liwords.FullTournamentDivisions.DivisionsEntry
+	(macondo.ChallengeRule)(0),                // 77: macondo.ChallengeRule
+	(macondo.BotRequest_BotCode)(0),           // 78: macondo.BotRequest.BotCode
+	(*macondo.GameEvent)(nil),                 // 79: macondo.GameEvent
+	(macondo.PlayState)(0),                    // 80: macondo.PlayState
+	(*macondo.GameHistory)(nil),               // 81: macondo.GameHistory
+	(*timestamppb.Timestamp)(nil),             // 82: google.protobuf.Timestamp
 }
 var file_api_proto_realtime_realtime_proto_depIdxs = []int32{
-	10, // 0: liwords.GameRequest.rules:type_name -> liwords.GameRules
-	76, // 1: liwords.GameRequest.challenge_rule:type_name -> macondo.ChallengeRule
+	11, // 0: liwords.GameRequest.rules:type_name -> liwords.GameRules
+	77, // 1: liwords.GameRequest.challenge_rule:type_name -> macondo.ChallengeRule
 	0,  // 2: liwords.GameRequest.game_mode:type_name -> liwords.GameMode
 	1,  // 3: liwords.GameRequest.rating_mode:type_name -> liwords.RatingMode
-	77, // 4: liwords.GameRequest.bot_type:type_name -> macondo.BotRequest.BotCode
-	14, // 5: liwords.ActiveGameEntry.player:type_name -> liwords.ActiveGamePlayer
-	17, // 6: liwords.ChatMessages.messages:type_name -> liwords.ChatMessage
-	19, // 7: liwords.UserPresences.presences:type_name -> liwords.UserPresence
-	11, // 8: liwords.SeekRequest.game_request:type_name -> liwords.GameRequest
-	12, // 9: liwords.SeekRequest.user:type_name -> liwords.MatchUser
-	11, // 10: liwords.MatchRequest.game_request:type_name -> liwords.GameRequest
-	12, // 11: liwords.MatchRequest.user:type_name -> liwords.MatchUser
-	12, // 12: liwords.MatchRequest.receiving_user:type_name -> liwords.MatchUser
-	22, // 13: liwords.SeekRequests.requests:type_name -> liwords.SeekRequest
-	23, // 14: liwords.MatchRequests.requests:type_name -> liwords.MatchRequest
-	78, // 15: liwords.ServerGameplayEvent.event:type_name -> macondo.GameEvent
-	79, // 16: liwords.ServerGameplayEvent.playing:type_name -> macondo.PlayState
-	76, // 17: liwords.ServerChallengeResultEvent.challenge_rule:type_name -> macondo.ChallengeRule
-	65, // 18: liwords.GameEndedEvent.scores:type_name -> liwords.GameEndedEvent.ScoresEntry
-	66, // 19: liwords.GameEndedEvent.new_ratings:type_name -> liwords.GameEndedEvent.NewRatingsEntry
+	78, // 4: liwords.GameRequest.bot_type:type_name -> macondo.BotRequest.BotCode
+	15, // 5: liwords.ActiveGameEntry.player:type_name -> liwords.ActiveGamePlayer
+	18, // 6: liwords.ChatMessages.messages:type_name -> liwords.ChatMessage
+	20, // 7: liwords.UserPresences.presences:type_name -> liwords.UserPresence
+	12, // 8: liwords.SeekRequest.game_request:type_name -> liwords.GameRequest
+	13, // 9: liwords.SeekRequest.user:type_name -> liwords.MatchUser
+	12, // 10: liwords.MatchRequest.game_request:type_name -> liwords.GameRequest
+	13, // 11: liwords.MatchRequest.user:type_name -> liwords.MatchUser
+	13, // 12: liwords.MatchRequest.receiving_user:type_name -> liwords.MatchUser
+	23, // 13: liwords.SeekRequests.requests:type_name -> liwords.SeekRequest
+	24, // 14: liwords.MatchRequests.requests:type_name -> liwords.MatchRequest
+	79, // 15: liwords.ServerGameplayEvent.event:type_name -> macondo.GameEvent
+	80, // 16: liwords.ServerGameplayEvent.playing:type_name -> macondo.PlayState
+	77, // 17: liwords.ServerChallengeResultEvent.challenge_rule:type_name -> macondo.ChallengeRule
+	66, // 18: liwords.GameEndedEvent.scores:type_name -> liwords.GameEndedEvent.ScoresEntry
+	67, // 19: liwords.GameEndedEvent.new_ratings:type_name -> liwords.GameEndedEvent.NewRatingsEntry
 	4,  // 20: liwords.GameEndedEvent.end_reason:type_name -> liwords.GameEndReason
-	67, // 21: liwords.GameEndedEvent.rating_deltas:type_name -> liwords.GameEndedEvent.RatingDeltasEntry
-	80, // 22: liwords.GameEndedEvent.history:type_name -> macondo.GameHistory
-	81, // 23: liwords.GameMetaEvent.timestamp:type_name -> google.protobuf.Timestamp
-	8,  // 24: liwords.GameMetaEvent.type:type_name -> liwords.GameMetaEvent.EventType
-	68, // 25: liwords.TournamentGameEndedEvent.players:type_name -> liwords.TournamentGameEndedEvent.Player
+	68, // 21: liwords.GameEndedEvent.rating_deltas:type_name -> liwords.GameEndedEvent.RatingDeltasEntry
+	81, // 22: liwords.GameEndedEvent.history:type_name -> macondo.GameHistory
+	82, // 23: liwords.GameMetaEvent.timestamp:type_name -> google.protobuf.Timestamp
+	9,  // 24: liwords.GameMetaEvent.type:type_name -> liwords.GameMetaEvent.EventType
+	69, // 25: liwords.TournamentGameEndedEvent.players:type_name -> liwords.TournamentGameEndedEvent.Player
 	4,  // 26: liwords.TournamentGameEndedEvent.end_reason:type_name -> liwords.GameEndReason
-	81, // 27: liwords.TournamentRoundStarted.deadline:type_name -> google.protobuf.Timestamp
-	80, // 28: liwords.GameHistoryRefresher.history:type_name -> macondo.GameHistory
-	32, // 29: liwords.GameHistoryRefresher.outstanding_event:type_name -> liwords.GameMetaEvent
-	9,  // 30: liwords.ClientGameplayEvent.type:type_name -> liwords.ClientGameplayEvent.EventType
-	45, // 31: liwords.TournamentPersons.persons:type_name -> liwords.TournamentPerson
+	82, // 27: liwords.TournamentRoundStarted.deadline:type_name -> google.protobuf.Timestamp
+	81, // 28: liwords.GameHistoryRefresher.history:type_name -> macondo.GameHistory
+	33, // 29: liwords.GameHistoryRefresher.outstanding_event:type_name -> liwords.GameMetaEvent
+	10, // 30: liwords.ClientGameplayEvent.type:type_name -> liwords.ClientGameplayEvent.EventType
+	46, // 31: liwords.TournamentPersons.persons:type_name -> liwords.TournamentPerson
 	6,  // 32: liwords.RoundControl.pairing_method:type_name -> liwords.PairingMethod
 	7,  // 33: liwords.RoundControl.first_method:type_name -> liwords.FirstMethod
-	11, // 34: liwords.DivisionControls.game_request:type_name -> liwords.GameRequest
+	12, // 34: liwords.DivisionControls.game_request:type_name -> liwords.GameRequest
 	5,  // 35: liwords.DivisionControls.suspended_result:type_name -> liwords.TournamentGameResult
 	5,  // 36: liwords.TournamentGame.results:type_name -> liwords.TournamentGameResult
 	4,  // 37: liwords.TournamentGame.game_end_reason:type_name -> liwords.GameEndReason
-	49, // 38: liwords.Pairing.games:type_name -> liwords.TournamentGame
+	50, // 38: liwords.Pairing.games:type_name -> liwords.TournamentGame
 	5,  // 39: liwords.Pairing.outcomes:type_name -> liwords.TournamentGameResult
-	51, // 40: liwords.RoundStandings.standings:type_name -> liwords.PlayerStanding
-	50, // 41: liwords.DivisionPairingsResponse.division_pairings:type_name -> liwords.Pairing
-	69, // 42: liwords.DivisionPairingsResponse.division_standings:type_name -> liwords.DivisionPairingsResponse.DivisionStandingsEntry
-	46, // 43: liwords.PlayersAddedOrRemovedResponse.players:type_name -> liwords.TournamentPersons
-	50, // 44: liwords.PlayersAddedOrRemovedResponse.division_pairings:type_name -> liwords.Pairing
-	70, // 45: liwords.PlayersAddedOrRemovedResponse.division_standings:type_name -> liwords.PlayersAddedOrRemovedResponse.DivisionStandingsEntry
-	47, // 46: liwords.DivisionRoundControls.round_controls:type_name -> liwords.RoundControl
-	50, // 47: liwords.DivisionRoundControls.division_pairings:type_name -> liwords.Pairing
-	71, // 48: liwords.DivisionRoundControls.division_standings:type_name -> liwords.DivisionRoundControls.DivisionStandingsEntry
-	48, // 49: liwords.DivisionControlsResponse.division_controls:type_name -> liwords.DivisionControls
-	72, // 50: liwords.DivisionControlsResponse.division_standings:type_name -> liwords.DivisionControlsResponse.DivisionStandingsEntry
-	46, // 51: liwords.TournamentDivisionDataResponse.players:type_name -> liwords.TournamentPersons
-	73, // 52: liwords.TournamentDivisionDataResponse.standings:type_name -> liwords.TournamentDivisionDataResponse.StandingsEntry
-	74, // 53: liwords.TournamentDivisionDataResponse.pairing_map:type_name -> liwords.TournamentDivisionDataResponse.PairingMapEntry
-	48, // 54: liwords.TournamentDivisionDataResponse.controls:type_name -> liwords.DivisionControls
-	47, // 55: liwords.TournamentDivisionDataResponse.round_controls:type_name -> liwords.RoundControl
-	75, // 56: liwords.FullTournamentDivisions.divisions:type_name -> liwords.FullTournamentDivisions.DivisionsEntry
-	46, // 57: liwords.TournamentDataResponse.directors:type_name -> liwords.TournamentPersons
-	81, // 58: liwords.TournamentDataResponse.start_time:type_name -> google.protobuf.Timestamp
+	52, // 40: liwords.RoundStandings.standings:type_name -> liwords.PlayerStanding
+	51, // 41: liwords.DivisionPairingsResponse.division_pairings:type_name -> liwords.Pairing
+	70, // 42: liwords.DivisionPairingsResponse.division_standings:type_name -> liwords.DivisionPairingsResponse.DivisionStandingsEntry
+	47, // 43: liwords.PlayersAddedOrRemovedResponse.players:type_name -> liwords.TournamentPersons
+	51, // 44: liwords.PlayersAddedOrRemovedResponse.division_pairings:type_name -> liwords.Pairing
+	71, // 45: liwords.PlayersAddedOrRemovedResponse.division_standings:type_name -> liwords.PlayersAddedOrRemovedResponse.DivisionStandingsEntry
+	48, // 46: liwords.DivisionRoundControls.round_controls:type_name -> liwords.RoundControl
+	51, // 47: liwords.DivisionRoundControls.division_pairings:type_name -> liwords.Pairing
+	72, // 48: liwords.DivisionRoundControls.division_standings:type_name -> liwords.DivisionRoundControls.DivisionStandingsEntry
+	49, // 49: liwords.DivisionControlsResponse.division_controls:type_name -> liwords.DivisionControls
+	73, // 50: liwords.DivisionControlsResponse.division_standings:type_name -> liwords.DivisionControlsResponse.DivisionStandingsEntry
+	47, // 51: liwords.TournamentDivisionDataResponse.players:type_name -> liwords.TournamentPersons
+	74, // 52: liwords.TournamentDivisionDataResponse.standings:type_name -> liwords.TournamentDivisionDataResponse.StandingsEntry
+	75, // 53: liwords.TournamentDivisionDataResponse.pairing_map:type_name -> liwords.TournamentDivisionDataResponse.PairingMapEntry
+	49, // 54: liwords.TournamentDivisionDataResponse.controls:type_name -> liwords.DivisionControls
+	48, // 55: liwords.TournamentDivisionDataResponse.round_controls:type_name -> liwords.RoundControl
+	76, // 56: liwords.FullTournamentDivisions.divisions:type_name -> liwords.FullTournamentDivisions.DivisionsEntry
+	47, // 57: liwords.TournamentDataResponse.directors:type_name -> liwords.TournamentPersons
+	82, // 58: liwords.TournamentDataResponse.start_time:type_name -> google.protobuf.Timestamp
 	5,  // 59: liwords.TournamentGameEndedEvent.Player.result:type_name -> liwords.TournamentGameResult
-	52, // 60: liwords.DivisionPairingsResponse.DivisionStandingsEntry.value:type_name -> liwords.RoundStandings
-	52, // 61: liwords.PlayersAddedOrRemovedResponse.DivisionStandingsEntry.value:type_name -> liwords.RoundStandings
-	52, // 62: liwords.DivisionRoundControls.DivisionStandingsEntry.value:type_name -> liwords.RoundStandings
-	52, // 63: liwords.DivisionControlsResponse.DivisionStandingsEntry.value:type_name -> liwords.RoundStandings
-	52, // 64: liwords.TournamentDivisionDataResponse.StandingsEntry.value:type_name -> liwords.RoundStandings
-	50, // 65: liwords.TournamentDivisionDataResponse.PairingMapEntry.value:type_name -> liwords.Pairing
-	58, // 66: liwords.FullTournamentDivisions.DivisionsEntry.value:type_name -> liwords.TournamentDivisionDataResponse
+	53, // 60: liwords.DivisionPairingsResponse.DivisionStandingsEntry.value:type_name -> liwords.RoundStandings
+	53, // 61: liwords.PlayersAddedOrRemovedResponse.DivisionStandingsEntry.value:type_name -> liwords.RoundStandings
+	53, // 62: liwords.DivisionRoundControls.DivisionStandingsEntry.value:type_name -> liwords.RoundStandings
+	53, // 63: liwords.DivisionControlsResponse.DivisionStandingsEntry.value:type_name -> liwords.RoundStandings
+	53, // 64: liwords.TournamentDivisionDataResponse.StandingsEntry.value:type_name -> liwords.RoundStandings
+	51, // 65: liwords.TournamentDivisionDataResponse.PairingMapEntry.value:type_name -> liwords.Pairing
+	59, // 66: liwords.FullTournamentDivisions.DivisionsEntry.value:type_name -> liwords.TournamentDivisionDataResponse
 	67, // [67:67] is the sub-list for method output_type
 	67, // [67:67] is the sub-list for method input_type
 	67, // [67:67] is the sub-list for extension type_name
@@ -6345,7 +6397,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_api_proto_realtime_realtime_proto_rawDesc,
-			NumEnums:      10,
+			NumEnums:      11,
 			NumMessages:   66,
 			NumExtensions: 0,
 			NumServices:   0,

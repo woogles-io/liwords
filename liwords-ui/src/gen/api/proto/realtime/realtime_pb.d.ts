@@ -1960,3 +1960,10 @@ export interface FirstMethodMap {
 
 export const FirstMethod: FirstMethodMap;
 
+export interface WooglesErrorMap {
+  WOOGLES_ERROR: 0;
+  TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT: 1001;
+}
+
+export const WooglesError: WooglesErrorMap;
+

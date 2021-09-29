@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
+	"strconv"
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/pair"
@@ -57,7 +58,7 @@ func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.Divisio
 	log.Debug().Interface("game-req", divisionControls.GameRequest).Msg("divctrls-validated-game-request")
 
 	if divisionControls.MaximumByePlacement < 0 {
-		return nil, nil, errors.New("max bye placement must not be negative")
+		return nil, nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT, []string{strconv.Itoa(int(divisionControls.MaximumByePlacement))})
 	}
 
 	// minimum placement is zero-indexed
