@@ -370,17 +370,14 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.SeekRequest, botUserID str
 	if err != nil {
 		return err
 	}
-<<<<<<< HEAD
-	sg := entity.NewSoughtGame(req)
-=======
 
 	err = validateCELLexicon(req.GameRequest.Lexicon, req.GameRequest.BotType)
 	if err != nil {
 		return err
 	}
 
-	sg := entity.NewMatchRequest(req)
->>>>>>> master
+	sg := entity.NewSoughtGame(req)
+
 	return b.instantiateAndStartGame(ctx, accUser, req.User.UserId, req.GameRequest,
 		sg, BotRequestID, "")
 }
