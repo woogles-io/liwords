@@ -30,8 +30,13 @@ func (b *Bus) seekRequest(ctx context.Context, auth, userID, connID string,
 		return errors.New("please log in to start a game")
 	}
 
+	err := b.errIfGamesDisabled(ctx)
+	if err != nil {
+		return err
+	}
+
 	req := &pb.SeekRequest{}
-	err := proto.Unmarshal(data, req)
+	err = proto.Unmarshal(data, req)
 	if err != nil {
 		return err
 	}
@@ -96,8 +101,13 @@ func (b *Bus) matchRequest(ctx context.Context, auth, userID, connID string,
 		return errors.New("please log in to start a game")
 	}
 
+	err := b.errIfGamesDisabled(ctx)
+	if err != nil {
+		return err
+	}
+
 	req := &pb.MatchRequest{}
-	err := proto.Unmarshal(data, req)
+	err = proto.Unmarshal(data, req)
 	if err != nil {
 		return err
 	}
