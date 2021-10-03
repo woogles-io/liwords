@@ -69,6 +69,9 @@ export class GameRequest extends jspb.Message {
   getOriginalRequestId(): string;
   setOriginalRequestId(value: string): void;
 
+  getBotType(): macondo_api_proto_macondo_macondo_pb.BotRequest.BotCodeMap[keyof macondo_api_proto_macondo_macondo_pb.BotRequest.BotCodeMap];
+  setBotType(value: macondo_api_proto_macondo_macondo_pb.BotRequest.BotCodeMap[keyof macondo_api_proto_macondo_macondo_pb.BotRequest.BotCodeMap]): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameRequest.AsObject;
   static toObject(includeInstance: boolean, msg: GameRequest): GameRequest.AsObject;
@@ -92,6 +95,7 @@ export namespace GameRequest {
     maxOvertimeMinutes: number,
     playerVsBot: boolean,
     originalRequestId: string,
+    botType: macondo_api_proto_macondo_macondo_pb.BotRequest.BotCodeMap[keyof macondo_api_proto_macondo_macondo_pb.BotRequest.BotCodeMap],
   }
 }
 
@@ -1258,6 +1262,9 @@ export class DivisionControls extends jspb.Message {
   getMinimumPlacement(): number;
   setMinimumPlacement(value: number): void;
 
+  getMaximumByePlacement(): number;
+  setMaximumByePlacement(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): DivisionControls.AsObject;
   static toObject(includeInstance: boolean, msg: DivisionControls): DivisionControls.AsObject;
@@ -1280,6 +1287,7 @@ export namespace DivisionControls {
     gibsonize: boolean,
     gibsonSpread: number,
     minimumPlacement: number,
+    maximumByePlacement: number,
   }
 }
 
@@ -1900,6 +1908,7 @@ export interface TournamentGameResultMap {
   FORFEIT_WIN: 5;
   FORFEIT_LOSS: 6;
   ELIMINATED: 7;
+  VOID: 8;
 }
 
 export const TournamentGameResult: TournamentGameResultMap;

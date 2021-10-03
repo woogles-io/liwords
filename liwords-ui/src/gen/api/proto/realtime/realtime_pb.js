@@ -1450,7 +1450,8 @@ proto.liwords.GameRequest.toObject = function(includeInstance, msg) {
     requestId: jspb.Message.getFieldWithDefault(msg, 8, ""),
     maxOvertimeMinutes: jspb.Message.getFieldWithDefault(msg, 9, 0),
     playerVsBot: jspb.Message.getBooleanFieldWithDefault(msg, 10, false),
-    originalRequestId: jspb.Message.getFieldWithDefault(msg, 11, "")
+    originalRequestId: jspb.Message.getFieldWithDefault(msg, 11, ""),
+    botType: jspb.Message.getFieldWithDefault(msg, 12, 0)
   };
 
   if (includeInstance) {
@@ -1531,6 +1532,10 @@ proto.liwords.GameRequest.deserializeBinaryFromReader = function(msg, reader) {
     case 11:
       var value = /** @type {string} */ (reader.readString());
       msg.setOriginalRequestId(value);
+      break;
+    case 12:
+      var value = /** @type {!proto.macondo.BotRequest.BotCode} */ (reader.readEnum());
+      msg.setBotType(value);
       break;
     default:
       reader.skipField();
@@ -1636,6 +1641,13 @@ proto.liwords.GameRequest.serializeBinaryToWriter = function(message, writer) {
   if (f.length > 0) {
     writer.writeString(
       11,
+      f
+    );
+  }
+  f = message.getBotType();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      12,
       f
     );
   }
@@ -1856,6 +1868,24 @@ proto.liwords.GameRequest.prototype.getOriginalRequestId = function() {
  */
 proto.liwords.GameRequest.prototype.setOriginalRequestId = function(value) {
   return jspb.Message.setProto3StringField(this, 11, value);
+};
+
+
+/**
+ * optional macondo.BotRequest.BotCode bot_type = 12;
+ * @return {!proto.macondo.BotRequest.BotCode}
+ */
+proto.liwords.GameRequest.prototype.getBotType = function() {
+  return /** @type {!proto.macondo.BotRequest.BotCode} */ (jspb.Message.getFieldWithDefault(this, 12, 0));
+};
+
+
+/**
+ * @param {!proto.macondo.BotRequest.BotCode} value
+ * @return {!proto.liwords.GameRequest} returns this
+ */
+proto.liwords.GameRequest.prototype.setBotType = function(value) {
+  return jspb.Message.setProto3EnumField(this, 12, value);
 };
 
 
@@ -9699,7 +9729,8 @@ proto.liwords.DivisionControls.toObject = function(includeInstance, msg) {
     spreadCap: jspb.Message.getFieldWithDefault(msg, 7, 0),
     gibsonize: jspb.Message.getBooleanFieldWithDefault(msg, 8, false),
     gibsonSpread: jspb.Message.getFieldWithDefault(msg, 9, 0),
-    minimumPlacement: jspb.Message.getFieldWithDefault(msg, 10, 0)
+    minimumPlacement: jspb.Message.getFieldWithDefault(msg, 10, 0),
+    maximumByePlacement: jspb.Message.getFieldWithDefault(msg, 11, 0)
   };
 
   if (includeInstance) {
@@ -9776,6 +9807,10 @@ proto.liwords.DivisionControls.deserializeBinaryFromReader = function(msg, reade
     case 10:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setMinimumPlacement(value);
+      break;
+    case 11:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setMaximumByePlacement(value);
       break;
     default:
       reader.skipField();
@@ -9874,6 +9909,13 @@ proto.liwords.DivisionControls.serializeBinaryToWriter = function(message, write
   if (f !== 0) {
     writer.writeInt32(
       10,
+      f
+    );
+  }
+  f = message.getMaximumByePlacement();
+  if (f !== 0) {
+    writer.writeInt32(
+      11,
       f
     );
   }
@@ -10076,6 +10118,24 @@ proto.liwords.DivisionControls.prototype.getMinimumPlacement = function() {
  */
 proto.liwords.DivisionControls.prototype.setMinimumPlacement = function(value) {
   return jspb.Message.setProto3IntField(this, 10, value);
+};
+
+
+/**
+ * optional int32 maximum_bye_placement = 11;
+ * @return {number}
+ */
+proto.liwords.DivisionControls.prototype.getMaximumByePlacement = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 11, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.liwords.DivisionControls} returns this
+ */
+proto.liwords.DivisionControls.prototype.setMaximumByePlacement = function(value) {
+  return jspb.Message.setProto3IntField(this, 11, value);
 };
 
 
@@ -13988,7 +14048,8 @@ proto.liwords.TournamentGameResult = {
   BYE: 4,
   FORFEIT_WIN: 5,
   FORFEIT_LOSS: 6,
-  ELIMINATED: 7
+  ELIMINATED: 7,
+  VOID: 8
 };
 
 /**

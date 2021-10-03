@@ -53,6 +53,7 @@ message GameRequest {
   int32 max_overtime_minutes = 9;
   bool player_vs_bot = 10;
   string original_request_id = 11;
+  macondo.BotRequest.BotCode bot_type = 12;
 }
 
 // A MatchUser requests or receives a match via a seek or a match request.
@@ -472,6 +473,7 @@ enum TournamentGameResult {
   FORFEIT_LOSS = 6;
   // ELIMINATED: player is eliminated in a bracket tournament
   ELIMINATED = 7;
+  VOID = 8;
 }
 
 enum PairingMethod {
@@ -529,6 +531,7 @@ message DivisionControls {
   bool gibsonize = 8;
   int32 gibson_spread = 9;
   int32 minimum_placement = 10;
+  int32 maximum_bye_placement = 11;
 }
 
 message TournamentGame {

@@ -6,7 +6,6 @@ import { MenuInfo } from 'rc-menu/lib/interface';
 import {
   DoubleLeftOutlined,
   DoubleRightOutlined,
-  DownOutlined,
   ExclamationCircleOutlined,
   LeftOutlined,
   RightOutlined,
@@ -294,7 +293,7 @@ const GameControls = React.memo((props: Props) => {
               // XXX: what if it's unrated?
               content: (
                 <p className="readable-text-color">
-                  Your rating will be maximally affected.
+                  Your rating may be affected.
                 </p>
               ),
               onOk() {
@@ -303,33 +302,10 @@ const GameControls = React.memo((props: Props) => {
             });
             break;
           case 'abort':
-            Modal.confirm({
-              title: <p className="readable-text-color">Request an abort</p>,
-              icon: <ExclamationCircleOutlined />,
-              content: (
-                <p className="readable-text-color">
-                  This will request an abort from your opponent.
-                </p>
-              ),
-              onOk() {
-                props.onRequestAbort();
-              },
-            });
+            props.onRequestAbort();
             break;
           case 'nudge':
-            Modal.confirm({
-              title: <p className="readable-text-color">Nudge your opponent</p>,
-              icon: <ExclamationCircleOutlined />,
-              content: (
-                <p className="readable-text-color">
-                  Clicking OK will send a nudge to your opponent. If they do not
-                  respond, the game will be adjudicated in your favor.
-                </p>
-              ),
-              onOk() {
-                props.onNudge();
-              },
-            });
+            props.onNudge();
             break;
         }
       }}
@@ -347,7 +323,7 @@ const GameControls = React.memo((props: Props) => {
           disabled={gameHasNotStarted}
         >
           <Button onClick={() => setOptionsMenuVisible((v) => !v)}>
-            Options <DownOutlined />
+            Options
           </Button>
         </Dropdown>
 

@@ -19,7 +19,7 @@ export const calculateTotalTime = (
   return secs + maxOvertime * 60 + incrementSecs * turnsPerGame;
 };
 
-type valueof<T> = T[keyof T];
+export type valueof<T> = T[keyof T];
 
 export const isPairedMode = (type: valueof<TTypeMap>) => {
   return type === TType.CHILD || type === TType.STANDARD;
@@ -164,6 +164,18 @@ export const challRuleToStr = (n: number): string => {
       return 'Void';
   }
   return 'Unsupported';
+};
+
+export let sharedEnableAutoShuffle =
+  localStorage.getItem('enableAutoShuffle') === 'true';
+
+export const setSharedEnableAutoShuffle = (value: boolean) => {
+  if (value) {
+    localStorage.setItem('enableAutoShuffle', 'true');
+  } else {
+    localStorage.removeItem('enableAutoShuffle');
+  }
+  sharedEnableAutoShuffle = value;
 };
 
 // To expose this and make it more ergonomic to reorder without refreshing.

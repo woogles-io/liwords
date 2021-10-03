@@ -162,12 +162,15 @@ func (b *Bus) handleBotMoveInternally(ctx context.Context, g *entity.Game, onTur
 	// could have ended it
 	for g.PlayerOnTurn() == onTurn && g.Game.Playing() != macondopb.PlayState_GAME_OVER {
 		hist := g.History()
-		req := macondopb.BotRequest{GameHistory: hist}
+		log.Debug().Interface("bot-type", g.GameReq.BotType).Msg("bot-type")
+		req := macondopb.BotRequest{GameHistory: hist, BotType: g.GameReq.BotType}
 		data, err := proto.Marshal(&req)
 		if err != nil {
 			log.Err(err).Msg("bot-cant-move")
 			return
 		}
+		// XXX: Putting this in a Lock is bad. We need to rework this, or
+		// we can't have bots that sim.
 		res, err := b.natsconn.Request("macondo.bot", data, 10*time.Second)
 
 		if err != nil {

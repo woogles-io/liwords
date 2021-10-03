@@ -41,6 +41,7 @@
     }
   }
   .bio {
+    min-height: 380px;
     @include colorModed() {
       background: m($secondary-lighter);
     }
@@ -65,9 +66,13 @@
     }
     p {
       padding: 0 24px 0 0;
+      max-width: 80%;
     }
   }
   .ant-row:nth-child(odd) .bio {
+    .container {
+      justify-content: flex-end;
+    }
     @include colorModed() {
       background: m($primary-light);
     }
@@ -85,6 +90,12 @@
     .team-info {
       padding: 24px 24px 0 0;
       text-align: right;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      p {
+        padding: 0 0 0 24px;
+      }
     }
   }
 }

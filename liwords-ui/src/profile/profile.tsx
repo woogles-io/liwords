@@ -17,6 +17,7 @@ import { UsernameWithContext } from '../shared/usernameWithContext';
 import { moderateUser } from '../mod/moderate';
 import { DisplayFlag } from '../shared/display_flag';
 import { VariantIcon } from '../shared/variant_icons';
+import { AllLexica } from '../shared/lexica';
 
 type ProfileResponse = {
   birth_date: string;
@@ -83,11 +84,8 @@ type StatsProps = {
 const variantToName = (variant: string) => {
   const arr = variant.split('.');
   let lex = arr[0];
-  if (lex.startsWith('NWL')) {
-    lex = 'NWL';
-  } else if (lex.startsWith('CSW')) {
-    lex = 'CSW';
-  }
+  lex = AllLexica[lex]?.ratingName || arr[0];
+
   const timectrl = {
     ultrablitz: 'Ultra-Blitz!',
     blitz: 'Blitz',

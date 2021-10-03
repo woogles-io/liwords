@@ -1149,7 +1149,7 @@ p.rune {
     & > div {
       min-height: 300px;
       max-height: 300px;
-      padding: 8px 16px 16px;
+      padding: 8px 0px 16px;
       overflow-y: auto;
     }
     .notepad-container {
@@ -1169,10 +1169,29 @@ p.rune {
     @include type-monospace;
     font-size: 14px;
     display: flex;
-    padding: 6px 0;
+    padding: 6px 16px;
     justify-content: space-between;
     @include colorModed() {
       color: m($gray-extreme);
+    }
+    &:hover {
+      @include colorModed() {
+        background: m($primary-light);
+      }
+    }
+    &.bingo {
+      .anticon {
+        position: relative;
+        margin: 0 6px;
+        @include colorModed() {
+          color: m($timer-out-dark);
+        }
+      }
+    }
+    &:hover {
+      @include colorModed() {
+        background: m($primary-light);
+      }
     }
     p {
       line-height: 1.2em;
@@ -1182,7 +1201,7 @@ p.rune {
       font-weight: 800;
     }
     .main-word {
-      display: block;
+      display: inline-block;
       @include colorModed() {
         color: m($gray-extreme);
       }
@@ -1191,7 +1210,7 @@ p.rune {
       @include colorModed() {
         color: m($timer-out-dark);
       }
-      display: inline-block;
+      display: block;
       margin-bottom: 3px;
     }
 
@@ -1272,6 +1291,7 @@ p.rune {
     background-color: m($primary-middle);
   }
   margin-bottom: 12px;
+  padding: 12px;
   .ant-card-body {
     p {
       @include colorModed() {
@@ -1663,6 +1683,13 @@ p.rune {
   }
 
   & > .row-of-buttons {
+    margin-top: 24px;
     text-align: right;
+  }
+}
+
+.cancel-notification {
+  .ant-notification-close-x {
+    display: none;
   }
 }

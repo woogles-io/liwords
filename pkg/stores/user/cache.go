@@ -12,6 +12,7 @@ import (
 
 	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
 // same as the GameStore in gameplay package, but this gives us a bit more flexibility
@@ -37,7 +38,7 @@ type backingStore interface {
 	ResetStats(ctx context.Context, uuid string) error
 	ResetProfile(ctx context.Context, uuid string) error
 	ResetPersonalInfo(ctx context.Context, uuid string) error
-	GetRandomBot(ctx context.Context) (*entity.User, error)
+	GetBot(ctx context.Context, botType macondopb.BotRequest_BotCode) (*entity.User, error)
 
 	AddFollower(ctx context.Context, targetUser, follower uint) error
 	RemoveFollower(ctx context.Context, targetUser, follower uint) error
@@ -370,8 +371,8 @@ func (c *Cache) ResetProfile(ctx context.Context, uuid string) error {
 	return c.ResetPersonalInfo(ctx, uuid)
 }
 
-func (c *Cache) GetRandomBot(ctx context.Context) (*entity.User, error) {
-	return c.backing.GetRandomBot(ctx)
+func (c *Cache) GetBot(ctx context.Context, botType macondopb.BotRequest_BotCode) (*entity.User, error) {
+	return c.backing.GetBot(ctx, botType)
 }
 
 func (c *Cache) AddFollower(ctx context.Context, targetUser, follower uint) error {

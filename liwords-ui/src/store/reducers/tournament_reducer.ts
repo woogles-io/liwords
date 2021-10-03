@@ -161,7 +161,7 @@ const findOpponentIdx = (
   pairings: Array<RoundPairings>,
   round: number
 ): number => {
-  if (!pairings[round].roundPairings[player].players) {
+  if (!pairings[round].roundPairings[player]?.players) {
     return -1;
   }
 
@@ -369,7 +369,7 @@ const divisionDataResponseToObj = (
   return ret;
 };
 
-const toResultStr = (r: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7) => {
+const toResultStr = (r: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => {
   return {
     0: 'NO_RESULT',
     1: 'WIN',
@@ -379,6 +379,7 @@ const toResultStr = (r: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7) => {
     5: 'FORFEIT_WIN',
     6: 'FORFEIT_LOSS',
     7: 'ELIMINATED',
+    8: 'VOID',
   }[r];
 };
 
@@ -750,12 +751,12 @@ export function TournamentReducer(
 
       if (
         state.started &&
-        respPlayers &&
-        respPlayers?.length > newPlayers.length
+        newPlayers.length > state.divisions[division].players.length
       ) {
         // Players have been added and the tournament has already started
         // This means we must expand the current pairings
-        const numberOfAddedPlayers = respPlayers?.length - newPlayers.length;
+        const numberOfAddedPlayers =
+          newPlayers.length - state.divisions[division].players.length;
 
         expandedPairings.forEach((value: RoundPairings) => {
           for (let i = numberOfAddedPlayers; i >= 0; i--) {

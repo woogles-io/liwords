@@ -33,6 +33,7 @@ import {
   natoPhoneticAlphabet,
   letterPronunciations,
 } from '../utils/cwgame/blindfold';
+import { singularCount } from '../utils/plural';
 
 import {
   tilesetToMoveEvent,
@@ -59,6 +60,7 @@ import {
   useTentativeTileContext,
   useTimerStoreContext,
 } from '../store/store';
+import { sharedEnableAutoShuffle } from '../store/constants';
 import { BlankSelector } from './blank_selector';
 import { GameEndMessage } from './game_end_message';
 import { PlayerMetadata, GCGResponse, ChallengeRule } from './game_info';
@@ -76,6 +78,7 @@ const EnterKey = 'Enter';
 const colors = require('../base.scss');
 
 type Props = {
+  anonymousViewer: boolean;
   username: string;
   currentRack: string;
   events: Array<GameEvent>;
@@ -569,7 +572,9 @@ export const BoardPanel = React.memo((props: Props) => {
         setPlacedTilesTempScore(bak.placedTilesTempScore);
         setArrowProperties(bak.arrowProperties);
       } else {
-        setDisplayedRack(props.currentRack);
+        let rack = props.currentRack;
+        if (sharedEnableAutoShuffle) rack = shuffleString(rack);
+        setDisplayedRack(rack);
         setPlacedTiles(new Set<EphemeralTile>());
         setPlacedTilesTempScore(0);
         setArrowProperties({
@@ -886,13 +891,11 @@ export const BoardPanel = React.memo((props: Props) => {
           if (neg) {
             negative = 'negative ';
           }
-          return (
-            negative +
-            mins.toString() +
-            ' minutes and ' +
-            secs.toString() +
-            ' seconds'
-          );
+          let minutes = '';
+          if (mins) {
+            minutes = singularCount(mins, 'minute', 'minutes') + ' and ';
+          }
+          return negative + minutes + singularCount(secs, 'second', 'seconds');
         };
 
         let newBlindfoldCommand = blindfoldCommand;
@@ -1488,7 +1491,8 @@ export const BoardPanel = React.memo((props: Props) => {
     // Only show nudge if this is not a tournament/club game and it's not our turn.
     return !isMyTurn && !props.vsBot && props.tournamentID === '';
   }, [isMyTurn, props.tournamentID, props.vsBot]);
-
+  const anonymousTourneyViewer =
+    props.tournamentID && props.anonymousViewer && !props.gameDone;
   const gameBoard = (
     <div
       id="board-container"
@@ -1517,7 +1521,13 @@ export const BoardPanel = React.memo((props: Props) => {
         definitionPopover={props.definitionPopover}
         alphabet={props.alphabet}
       />
-      {!examinableGameEndMessage ? (
+      {examinableGameEndMessage || anonymousTourneyViewer ? (
+        <GameEndMessage
+          message={
+            examinableGameEndMessage || 'Log in or register to see player tiles'
+          }
+        />
+      ) : (
         <div className="rack-container">
           <Tooltip
             title="Reset Rack &darr;"
@@ -1557,42 +1567,42 @@ export const BoardPanel = React.memo((props: Props) => {
             />
           </Tooltip>
         </div>
-      ) : (
-        <GameEndMessage message={examinableGameEndMessage} />
       )}
       {isTouchDevice() ? <TilePreview gridDim={props.board.dim} /> : null}
-      <GameControls
-        isExamining={isExamining}
-        myTurn={isMyTurn}
-        finalPassOrChallenge={
-          examinableGameContext.playState === PlayState.WAITING_FOR_FINAL_PASS
-        }
-        exchangeAllowed={exchangeAllowed}
-        observer={observer}
-        onRecall={recallTiles}
-        showExchangeModal={showExchangeModal}
-        onPass={handlePass}
-        onResign={handleResign}
-        onRequestAbort={handleRequestAbort}
-        onNudge={handleNudge}
-        onChallenge={handleChallenge}
-        onCommit={handleCommit}
-        onRematch={props.handleAcceptRematch ?? rematch}
-        onExamine={handleExamineStart}
-        onExportGCG={handleExportGCG}
-        showNudge={showNudge}
-        showAbort={showAbort}
-        showRematch={examinableGameEndMessage !== ''}
-        gameEndControls={examinableGameEndMessage !== '' || props.gameDone}
-        currentRack={props.currentRack}
-        tournamentSlug={props.tournamentSlug}
-        tournamentPairedMode={props.tournamentPairedMode}
-        lexicon={props.lexicon}
-        challengeRule={props.challengeRule}
-        setHandlePassShortcut={setHandlePassShortcut}
-        setHandleChallengeShortcut={setHandleChallengeShortcut}
-        setHandleNeitherShortcut={setHandleNeitherShortcut}
-      />
+      {!anonymousTourneyViewer && (
+        <GameControls
+          isExamining={isExamining}
+          myTurn={isMyTurn}
+          finalPassOrChallenge={
+            examinableGameContext.playState === PlayState.WAITING_FOR_FINAL_PASS
+          }
+          exchangeAllowed={exchangeAllowed}
+          observer={observer}
+          onRecall={recallTiles}
+          showExchangeModal={showExchangeModal}
+          onPass={handlePass}
+          onResign={handleResign}
+          onRequestAbort={handleRequestAbort}
+          onNudge={handleNudge}
+          onChallenge={handleChallenge}
+          onCommit={handleCommit}
+          onRematch={props.handleAcceptRematch ?? rematch}
+          onExamine={handleExamineStart}
+          onExportGCG={handleExportGCG}
+          showNudge={showNudge}
+          showAbort={showAbort}
+          showRematch={examinableGameEndMessage !== ''}
+          gameEndControls={examinableGameEndMessage !== '' || props.gameDone}
+          currentRack={props.currentRack}
+          tournamentSlug={props.tournamentSlug}
+          tournamentPairedMode={props.tournamentPairedMode}
+          lexicon={props.lexicon}
+          challengeRule={props.challengeRule}
+          setHandlePassShortcut={setHandlePassShortcut}
+          setHandleChallengeShortcut={setHandleChallengeShortcut}
+          setHandleNeitherShortcut={setHandleNeitherShortcut}
+        />
+      )}
       <ExchangeTiles
         alphabet={props.alphabet}
         rack={props.currentRack}

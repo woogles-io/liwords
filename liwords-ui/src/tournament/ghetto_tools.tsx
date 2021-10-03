@@ -1,7 +1,11 @@
 /* eslint-disable @typescript-eslint/camelcase */
 // Ghetto tools are Cesar tools before making things pretty.
 
-import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  MinusCircleOutlined,
+  PlusOutlined,
+  QuestionCircleOutlined,
+} from '@ant-design/icons';
 import {
   Button,
   Divider,
@@ -12,6 +16,7 @@ import {
   Select,
   Space,
   Switch,
+  Tooltip,
 } from 'antd';
 import { Modal } from '../utils/focus_modal';
 import axios from 'axios';
@@ -26,6 +31,7 @@ import {
   PairingMethod,
   RoundControl,
   TournamentGameResult,
+  TournamentGameResultMap,
 } from '../gen/api/proto/realtime/realtime_pb';
 import {
   SingleRoundControlsRequest,
@@ -45,6 +51,7 @@ import {
   settingsEqual,
   SingleRoundSetting,
 } from './pairing_methods';
+import { valueof } from '../store/constants';
 
 type ModalProps = {
   title: string;
@@ -211,6 +218,28 @@ const DivisionFormItem = (props: {
       ]}
     >
       <DivisionSelector onChange={props.onChange} value={props.value} />
+    </Form.Item>
+  );
+};
+
+const PlayersFormItem = (props: {
+  name: string;
+  label: string;
+  division: string;
+}) => {
+  const { tournamentContext } = useTournamentStoreContext();
+  return (
+    <Form.Item name={props.name} label={props.label}>
+      <Select>
+        {tournamentContext.divisions[props.division]?.players.map((v) => {
+          const u = username(v.getId());
+          return (
+            <Select.Option value={u} key={v.getId()}>
+              {u}
+            </Select.Option>
+          );
+        })}
+      </Select>
     </Form.Item>
   );
 };
@@ -406,6 +435,9 @@ const AddPlayers = (props: { tournamentID: string }) => {
 };
 
 const RemovePlayer = (props: { tournamentID: string }) => {
+  const { useState } = useMountedState();
+  const [division, setDivision] = useState('');
+
   const onFinish = (vals: Store) => {
     const obj = {
       id: props.tournamentID,
@@ -438,10 +470,13 @@ const RemovePlayer = (props: { tournamentID: string }) => {
 
   return (
     <Form onFinish={onFinish}>
-      <DivisionFormItem />
-      <Form.Item name="username" label="Username to remove">
-        <Input />
-      </Form.Item>
+      <DivisionFormItem onChange={(div: string) => setDivision(div)} />
+
+      <PlayersFormItem
+        name="username"
+        label="Username to remove"
+        division={division}
+      />
       <Form.Item>
         <Button type="primary" htmlType="submit">
           Submit
@@ -506,6 +541,11 @@ const userUUID = (username: string, divobj: Division) => {
   return p.getId().split(':')[0];
 };
 
+const username = (fullID: string) => {
+  const parts = fullID.split(':');
+  return parts[1];
+};
+
 const fullPlayerID = (username: string, divobj: Division) => {
   if (!divobj) {
     return '';
@@ -527,6 +567,8 @@ const fullPlayerID = (username: string, divobj: Division) => {
 
 const SetPairing = (props: { tournamentID: string }) => {
   const { tournamentContext } = useTournamentStoreContext();
+  const { useState } = useMountedState();
+  const [division, setDivision] = useState('');
 
   const onFinish = (vals: Store) => {
     const obj = {
@@ -567,15 +609,18 @@ const SetPairing = (props: { tournamentID: string }) => {
 
   return (
     <Form onFinish={onFinish}>
-      <DivisionFormItem />
+      <DivisionFormItem onChange={(div: string) => setDivision(div)} />
 
-      <Form.Item name="p1" label="Player 1 username">
-        <Input />
-      </Form.Item>
-
-      <Form.Item name="p2" label="Player 2 username">
-        <Input />
-      </Form.Item>
+      <PlayersFormItem
+        name="p1"
+        label="Player 1 username"
+        division={division}
+      />
+      <PlayersFormItem
+        name="p2"
+        label="Player 2 username"
+        division={division}
+      />
 
       <Form.Item name="round" label="Round (1-indexed)">
         <InputNumber min={1} />
@@ -592,6 +637,11 @@ const SetPairing = (props: { tournamentID: string }) => {
 
 const SetResult = (props: { tournamentID: string }) => {
   const { tournamentContext } = useTournamentStoreContext();
+  const { useState } = useMountedState();
+  const [division, setDivision] = useState('');
+  const [score1, setScore1] = useState(0);
+  const [score2, setScore2] = useState(0);
+  const [form] = Form.useForm();
 
   const onFinish = (vals: Store) => {
     const obj = {
@@ -632,28 +682,67 @@ const SetResult = (props: { tournamentID: string }) => {
       });
   };
 
+  useEffect(() => {
+    if (score1 > score2) {
+      form.setFieldsValue({
+        p1result: 'WIN',
+        p2result: 'LOSS',
+      });
+    } else if (score1 < score2) {
+      form.setFieldsValue({
+        p1result: 'LOSS',
+        p2result: 'WIN',
+      });
+    } else {
+      form.setFieldsValue({
+        p1result: 'DRAW',
+        p2result: 'DRAW',
+      });
+    }
+  }, [form, score1, score2]);
+
+  const score1Change = (v: number | string | null | undefined) => {
+    if (typeof v !== 'number') {
+      return;
+    }
+    setScore1(v);
+  };
+  const score2Change = (v: number | string | null | undefined) => {
+    if (typeof v !== 'number') {
+      return;
+    }
+    setScore2(v);
+  };
+
   return (
-    <Form onFinish={onFinish}>
-      <DivisionFormItem />
+    <Form
+      form={form}
+      onFinish={onFinish}
+      initialValues={{ gameEndReason: 'STANDARD' }}
+    >
+      <DivisionFormItem onChange={(div: string) => setDivision(div)} />
 
-      <Form.Item name="p1" label="Player 1 username">
-        <Input />
-      </Form.Item>
-
-      <Form.Item name="p2" label="Player 2 username">
-        <Input />
-      </Form.Item>
+      <PlayersFormItem
+        name="p1"
+        label="Player 1 username"
+        division={division}
+      />
+      <PlayersFormItem
+        name="p2"
+        label="Player 2 username"
+        division={division}
+      />
 
       <Form.Item name="round" label="Round (1-indexed)">
         <InputNumber min={1} />
       </Form.Item>
 
       <Form.Item name="p1score" label="Player 1 score">
-        <InputNumber />
+        <InputNumber onChange={score1Change} value={score1} />
       </Form.Item>
 
       <Form.Item name="p2score" label="Player 2 score">
-        <InputNumber />
+        <InputNumber onChange={score2Change} value={score2} />
       </Form.Item>
 
       <Form.Item name="p1result" label="Player 1 result">
@@ -698,7 +787,7 @@ const SetResult = (props: { tournamentID: string }) => {
         </Select>
       </Form.Item>
 
-      <Form.Item name="amendment" label="Amendment">
+      <Form.Item name="amendment" label="Amendment" valuePropName="checked">
         <Switch />
       </Form.Item>
 
@@ -811,9 +900,15 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
   const [division, setDivision] = useState('');
   const [gibsonize, setGibsonize] = useState(false);
   const [gibsonSpread, setGibsonSpread] = useState(500);
+
   // min placement is 0-indexed, but we want to display 1-indexed
   // this variable will be the display variable:
   const [gibsonMinPlacement, setGibsonMinPlacement] = useState(1);
+  // bye max placement is 0-indexed, this is also the display variable
+  const [byeMaxPlacement, setByeMaxPlacement] = useState(1);
+  const [suspendedResult, setSuspendedResult] = useState<
+    valueof<TournamentGameResultMap>
+  >(TournamentGameResult.FORFEIT_LOSS);
   const { tournamentContext } = useTournamentStoreContext();
 
   useEffect(() => {
@@ -832,6 +927,8 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
       setGibsonize(div.divisionControls.getGibsonize());
       setGibsonSpread(div.divisionControls.getGibsonSpread());
       setGibsonMinPlacement(div.divisionControls.getMinimumPlacement() + 1);
+      setByeMaxPlacement(div.divisionControls.getMaximumByePlacement() + 1);
+      setSuspendedResult(div.divisionControls.getSuspendedResult());
     }
   }, [division, tournamentContext.divisions]);
 
@@ -871,11 +968,17 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     ctrls.setDivision(division);
     ctrls.setGameRequest(selectedGameRequest);
     // can set this later to whatever values, along with a spread
-    ctrls.setSuspendedResult(TournamentGameResult.FORFEIT_LOSS);
+    ctrls.setSuspendedResult(suspendedResult);
+    if (suspendedResult === TournamentGameResult.BYE) {
+      ctrls.setSuspendedSpread(50);
+    } else if (suspendedResult === TournamentGameResult.FORFEIT_LOSS) {
+      ctrls.setSuspendedSpread(-50);
+    }
     ctrls.setAutoStart(false);
     ctrls.setGibsonize(gibsonize);
     ctrls.setGibsonSpread(gibsonSpread);
     ctrls.setMinimumPlacement(gibsonMinPlacement - 1);
+    ctrls.setMaximumByePlacement(byeMaxPlacement - 1);
 
     try {
       const rbin = await postBinary(
@@ -898,45 +1001,108 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     }
   };
 
+  const formItemLayout = {
+    labelCol: {
+      span: 10,
+    },
+    wrapperCol: {
+      span: 12,
+    },
+  };
+
   return (
     <>
-      <div>
-        Division:
-        <DivisionSelector
-          value={division}
-          onChange={(value: string) => setDivision(value)}
-        />
-      </div>
+      <Form>
+        <Form.Item {...formItemLayout} label="Division">
+          <DivisionSelector
+            value={division}
+            onChange={(value: string) => setDivision(value)}
+          />
+        </Form.Item>
 
-      <div>
-        Gibsonize:
-        <Switch
-          checked={gibsonize}
-          onChange={(c: boolean) => setGibsonize(c)}
-        />
-      </div>
+        <Form.Item {...formItemLayout} label="Gibsonize">
+          <Switch
+            checked={gibsonize}
+            onChange={(c: boolean) => setGibsonize(c)}
+          />
+        </Form.Item>
 
-      <div>
-        Gibson spread:
-        <InputNumber
-          min={0}
-          value={gibsonSpread}
-          onChange={(v: number | string | undefined | null) =>
-            setGibsonSpread(v as number)
+        <Form.Item {...formItemLayout} label="Gibson spread">
+          <InputNumber
+            min={0}
+            value={gibsonSpread}
+            onChange={(v: number | string | undefined | null) =>
+              setGibsonSpread(v as number)
+            }
+          />
+        </Form.Item>
+
+        <Form.Item {...formItemLayout} label="Gibson min placement">
+          <InputNumber
+            min={1}
+            value={gibsonMinPlacement}
+            onChange={(p: number | string | undefined | null) =>
+              setGibsonMinPlacement(p as number)
+            }
+          />
+        </Form.Item>
+
+        <Form.Item
+          {...formItemLayout}
+          label={
+            <>
+              Bye cut-off
+              <Tooltip
+                title="Byes may be assigned to players ranked this, and worse,
+          if odd. Make this 1 if you wish everyone in the tournament to be eligible for byes."
+              >
+                <QuestionCircleOutlined
+                  className="readable-text-color"
+                  style={{ marginLeft: 5 }}
+                />
+              </Tooltip>
+            </>
           }
-        />
-      </div>
+        >
+          <InputNumber
+            min={1}
+            value={byeMaxPlacement}
+            onChange={(p: number | string | undefined | null) =>
+              setByeMaxPlacement(p as number)
+            }
+          />
+        </Form.Item>
 
-      <div>
-        Gibson min placement:
-        <InputNumber
-          min={1}
-          value={gibsonMinPlacement}
-          onChange={(p: number | string | undefined | null) =>
-            setGibsonMinPlacement(p as number)
+        <Form.Item
+          {...formItemLayout}
+          label={
+            <>
+              Suspended game result
+              <Tooltip title="What result would you like to assign to players who join your tournament late, for unplayed rounds?">
+                <QuestionCircleOutlined
+                  className="readable-text-color"
+                  style={{ marginLeft: 5 }}
+                />
+              </Tooltip>
+            </>
           }
-        />
-      </div>
+        >
+          <Select
+            value={suspendedResult}
+            onChange={(v) => setSuspendedResult(v)}
+          >
+            <Select.Option value={TournamentGameResult.FORFEIT_LOSS}>
+              Forfeit loss (-50)
+            </Select.Option>
+            <Select.Option value={TournamentGameResult.BYE}>
+              Bye +50
+            </Select.Option>
+            <Select.Option value={TournamentGameResult.VOID}>
+              No result
+            </Select.Option>
+          </Select>
+        </Form.Item>
+      </Form>
 
       <div>{DisplayedGameSetting(selectedGameRequest)}</div>
 
@@ -982,33 +1148,44 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
   const { setting } = props;
   const addlFields = fieldsForMethod(setting.pairingType);
 
+  const formItemLayout = {
+    labelCol: {
+      span: 7,
+    },
+    wrapperCol: {
+      span: 6,
+    },
+  };
+
   return (
     <>
-      <Select
-        value={setting.pairingType}
-        onChange={(e) => {
-          props.onChange('pairingType', e);
-          // Show more fields potentially.
-        }}
-      >
-        <Select.Option value={PairingMethod.RANDOM}>Random</Select.Option>
-        <Select.Option value={PairingMethod.SWISS}>Swiss</Select.Option>
+      <Form.Item {...formItemLayout} label="Pairing Type">
+        <Select
+          value={setting.pairingType}
+          onChange={(e) => {
+            props.onChange('pairingType', e);
+            // Show more fields potentially.
+          }}
+        >
+          <Select.Option value={PairingMethod.RANDOM}>Random</Select.Option>
+          <Select.Option value={PairingMethod.SWISS}>Swiss</Select.Option>
 
-        <Select.Option value={PairingMethod.ROUND_ROBIN}>
-          Round Robin
-        </Select.Option>
-        <Select.Option value={PairingMethod.INITIAL_FONTES}>
-          Initial Fontes
-        </Select.Option>
-        <Select.Option value={PairingMethod.KING_OF_THE_HILL}>
-          King of the Hill
-        </Select.Option>
-        <Select.Option value={PairingMethod.FACTOR}>Factor</Select.Option>
-        <Select.Option value={PairingMethod.MANUAL}>Manual</Select.Option>
-        <Select.Option value={PairingMethod.TEAM_ROUND_ROBIN}>
-          Team Round Robin
-        </Select.Option>
-      </Select>
+          <Select.Option value={PairingMethod.ROUND_ROBIN}>
+            Round Robin
+          </Select.Option>
+          <Select.Option value={PairingMethod.INITIAL_FONTES}>
+            Initial Fontes
+          </Select.Option>
+          <Select.Option value={PairingMethod.KING_OF_THE_HILL}>
+            King of the Hill
+          </Select.Option>
+          <Select.Option value={PairingMethod.FACTOR}>Factor</Select.Option>
+          <Select.Option value={PairingMethod.MANUAL}>Manual</Select.Option>
+          <Select.Option value={PairingMethod.TEAM_ROUND_ROBIN}>
+            Team Round Robin
+          </Select.Option>
+        </Select>
+      </Form.Item>
       <p></p>
       {/* potential additional fields */}
       {addlFields.map((v: PairingMethodField, idx) => {
@@ -1017,8 +1194,12 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
         switch (fieldType) {
           case 'number':
             return (
-              <div style={{ marginBottom: 5 }} key={`${idx}-${fieldName}`}>
-                {displayName}{' '}
+              <Form.Item
+                {...formItemLayout}
+                labelCol={{ span: 12, offset: 1 }}
+                label={displayName}
+                key={`${idx}-${fieldName}`}
+              >
                 <InputNumber
                   key={key}
                   min={0}
@@ -1027,19 +1208,23 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
                     props.onChange(fieldName, e as number);
                   }}
                 />
-              </div>
+              </Form.Item>
             );
 
           case 'bool':
             return (
-              <div style={{ marginBottom: 5 }} key={`${idx}-${fieldName}`}>
-                {displayName}{' '}
+              <Form.Item
+                {...formItemLayout}
+                labelCol={{ span: 12, offset: 1 }}
+                label={displayName}
+                key={`${idx}-${fieldName}`}
+              >
                 <Switch
                   key={key}
                   checked={setting[fieldName] as boolean}
                   onChange={(e) => props.onChange(fieldName, e)}
                 />
-              </div>
+              </Form.Item>
             );
         }
         return null;
@@ -1050,25 +1235,30 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
 
 const RoundControlFields = (props: RdCtrlFieldsProps) => {
   const { setting } = props;
-
   return (
     <>
-      First round:
-      <InputNumber
-        min={1}
-        value={setting.beginRound}
-        onChange={(e) => props.onChange('beginRound', e as number)}
-      />
-      Last round:
-      <InputNumber
-        min={1}
-        value={setting.endRound}
-        onChange={(e) => props.onChange('endRound', e as number)}
-      />
-      <SingleRoundControlFields
-        setting={setting.setting}
-        onChange={props.onChange}
-      />
+      <Form layout="inline" size="small">
+        <Form.Item label="First round">
+          <InputNumber
+            min={1}
+            value={setting.beginRound}
+            onChange={(e) => props.onChange('beginRound', e as number)}
+          />
+        </Form.Item>
+        <Form.Item label="Last round">
+          <InputNumber
+            min={1}
+            value={setting.endRound}
+            onChange={(e) => props.onChange('endRound', e as number)}
+          />
+        </Form.Item>
+      </Form>
+      <Form size="small" style={{ marginTop: 8 }}>
+        <SingleRoundControlFields
+          setting={setting.setting}
+          onChange={props.onChange}
+        />
+      </Form>
       <Button onClick={props.onRemove}>- Remove</Button>
       <Divider />
     </>
@@ -1158,36 +1348,46 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
     }
   };
 
+  const formItemLayout = {
+    labelCol: {
+      span: 7,
+    },
+    wrapperCol: {
+      span: 12,
+    },
+  };
+
   return (
     <>
-      <div>
-        Division:
-        <DivisionSelector
-          value={division}
-          onChange={(value: string) => setDivision(value)}
-        />
-      </div>
-      <div>
-        Round:
-        <InputNumber
-          value={userVisibleRound}
-          onChange={(e) => e && setUserVisibleRound(e as number)}
-        />
-      </div>
+      <Form>
+        <Form.Item {...formItemLayout} label="Division">
+          <DivisionSelector
+            value={division}
+            onChange={(value: string) => setDivision(value)}
+          />
+        </Form.Item>
+        <Form.Item {...formItemLayout} label="Round">
+          <InputNumber
+            value={userVisibleRound}
+            onChange={(e) => e && setUserVisibleRound(e as number)}
+          />
+        </Form.Item>
+      </Form>
       <Divider />
-      <p>Pairing system:</p>
-      <SingleRoundControlFields
-        setting={roundSetting}
-        onChange={(
-          fieldName: keyof SingleRoundSetting,
-          value: string | number | boolean | pairingMethod
-        ) => {
-          const val = { ...roundSetting, [fieldName]: value };
-          setRoundSetting(val);
-        }}
-      />
-      <Divider />
-      <Button onClick={() => setRoundControls()}>Submit</Button>
+      <Form size="small">
+        <SingleRoundControlFields
+          setting={roundSetting}
+          onChange={(
+            fieldName: keyof SingleRoundSetting,
+            value: string | number | boolean | pairingMethod
+          ) => {
+            const val = { ...roundSetting, [fieldName]: value };
+            setRoundSetting(val);
+          }}
+        />
+        <Divider />
+        <Button onClick={() => setRoundControls()}>Submit</Button>
+      </Form>
     </>
   );
 };
@@ -1315,15 +1515,23 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
     }
   };
 
+  const formItemLayout = {
+    labelCol: {
+      span: 7,
+    },
+    wrapperCol: {
+      span: 12,
+    },
+  };
+
   return (
     <>
-      <div>
-        Division:
+      <Form.Item {...formItemLayout} label="Division">
         <DivisionSelector
           value={division}
           onChange={(value: string) => setDivision(value)}
         />
-      </div>
+      </Form.Item>
       <Divider />
       {roundArray.map((v, idx) => (
         <RoundControlFields
