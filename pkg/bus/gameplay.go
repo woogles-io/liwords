@@ -22,12 +22,23 @@ import (
 )
 
 var (
-	errGamesDisabled = errors.New("new games are temporarily disabled; please try again in a few minutes")
+	errGamesDisabled = errors.New("new games are temporarily disabled while we update Woogles; please try again in a few minutes")
 )
 
 const (
 	TournamentReadyExpire = 3600
 )
+
+func (b *Bus) errIfGamesDisabled(ctx context.Context) error {
+	enabled, err := b.configStore.GamesEnabled(ctx)
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return errGamesDisabled
+	}
+	return nil
+}
 
 func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User, requester string,
 	gameReq *pb.GameRequest, sg *entity.SoughtGame, reqID, acceptingConnID string) error {
@@ -37,12 +48,9 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 		return err
 	}
 
-	enabled, err := b.configStore.GamesEnabled(ctx)
+	err = b.errIfGamesDisabled(ctx)
 	if err != nil {
 		return err
-	}
-	if !enabled {
-		return errGamesDisabled
 	}
 
 	// disallow anon game acceptance for now.
@@ -263,12 +271,9 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 
 func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTournamentGame, userID, connID string) error {
 	if !evt.Unready {
-		enabled, err := b.configStore.GamesEnabled(ctx)
+		err := b.errIfGamesDisabled(ctx)
 		if err != nil {
 			return err
-		}
-		if !enabled {
-			return errGamesDisabled
 		}
 	}
 
@@ -312,7 +317,7 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 			defer conn.Close()
 			bts, err := json.Marshal(evt)
 			if err != nil {
-				return errGamesDisabled
+				return err
 			}
 			_, err = conn.Do("SET", "tready:"+connID, bts, "EX", TournamentReadyExpire)
 			if err != nil {

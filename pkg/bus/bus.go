@@ -440,11 +440,10 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 	// XXX: Otherwise, ignore error for now
 
 	switch msgType {
-	// XXX: remove the camelCased version of these soon, after deploying new socket server
-	case "seekRequest", pb.MessageType_SEEK_REQUEST.String():
+	case pb.MessageType_SEEK_REQUEST.String():
 		log.Debug().Str("user", userID).Msg("seek-request")
 		return b.seekRequest(ctx, auth, userID, wsConnID, data)
-	case "chat", pb.MessageType_CHAT_MESSAGE.String():
+	case pb.MessageType_CHAT_MESSAGE.String():
 		// The user is subtopics[2]
 		evt := &pb.ChatMessage{}
 		err := proto.Unmarshal(data, evt)
@@ -453,15 +452,17 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		log.Debug().Str("user", userID).Str("msg", evt.Message).Str("channel", evt.Channel).Msg("chat")
 		return b.chat(ctx, userID, evt)
-	case "declineMatchRequest", pb.MessageType_DECLINE_SEEK_REQUEST.String():
+
+	case pb.MessageType_DECLINE_SEEK_REQUEST.String():
 		evt := &pb.DeclineSeekRequest{}
+
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
 			return err
 		}
 		log.Debug().Str("user", userID).Str("reqid", evt.RequestId).Msg("decline-rematch")
 		return b.seekDeclined(ctx, evt, userID)
-	case "gameMetaEvent", pb.MessageType_GAME_META_EVENT.String():
+	case pb.MessageType_GAME_META_EVENT.String():
 		evt := &pb.GameMetaEvent{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
@@ -470,7 +471,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		log.Debug().Str("user", userID).Interface("evt", evt).Msg("game-meta-event")
 		return b.gameMetaEvent(ctx, evt, userID)
 
-	case "soughtGameProcess", pb.MessageType_SOUGHT_GAME_PROCESS_EVENT.String():
+	case pb.MessageType_SOUGHT_GAME_PROCESS_EVENT.String():
 		evt := &pb.SoughtGameProcessEvent{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
@@ -479,7 +480,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 
 		return b.gameAccepted(ctx, evt, userID, wsConnID)
 
-	case "gameplayEvent", pb.MessageType_CLIENT_GAMEPLAY_EVENT.String():
+	case pb.MessageType_CLIENT_GAMEPLAY_EVENT.String():
 		evt := &pb.ClientGameplayEvent{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
@@ -503,7 +504,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		return nil
 
-	case "timedOut", pb.MessageType_TIMED_OUT.String():
+	case pb.MessageType_TIMED_OUT.String():
 		evt := &pb.TimedOut{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
@@ -511,14 +512,14 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		return gameplay.TimedOut(ctx, b.gameStore, b.userStore, b.notorietyStore, b.listStatStore, b.tournamentStore, evt.UserId, evt.GameId)
 
-	case "readyForGame", pb.MessageType_READY_FOR_GAME.String():
+	case pb.MessageType_READY_FOR_GAME.String():
 		evt := &pb.ReadyForGame{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
 			return err
 		}
 		return b.readyForGame(ctx, evt, userID)
-	case "readyForTournamentGame", pb.MessageType_READY_FOR_TOURNAMENT_GAME.String():
+	case pb.MessageType_READY_FOR_TOURNAMENT_GAME.String():
 		evt := &pb.ReadyForTournamentGame{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
