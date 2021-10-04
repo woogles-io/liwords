@@ -113,6 +113,10 @@ func (s *DBStore) Set(ctx context.Context, game *entity.SoughtGame) error {
 	if err != nil {
 		return err
 	}
+	// For open seek requests, receiverConnID
+	// might return errors. This is okay, when setting
+	// sought games, we just want to set whatever is available
+	// and avoid conditional checks for open/closed seeks.
 	id, _ := game.ID()
 	seekerConnID, _ := game.SeekerConnID()
 	seeker, _ := game.SeekerUserID()
@@ -156,7 +160,7 @@ func (s *DBStore) ExpireOld(ctx context.Context) error {
 	return result.Error
 }
 
-// DeleteForUser deletes the game by seeker ID and modifies games where the user was the receiver
+// DeleteForUser deletes the game by seeker ID
 func (s *DBStore) DeleteForUser(ctx context.Context, userID string) (*entity.SoughtGame, error) {
 	sg, err := s.getBySeekerID(ctx, userID)
 	if err != nil {
@@ -174,6 +178,7 @@ func (s *DBStore) DeleteForUser(ctx context.Context, userID string) (*entity.Sou
 	return sg, s.deleteSoughtGame(ctx, id)
 }
 
+// UpdateForReceiver updates the receiver's status when the receiver leaves
 func (s *DBStore) UpdateForReceiver(ctx context.Context, receiverID string) (*entity.SoughtGame, error) {
 	rg, err := s.getByReceiverID(ctx, receiverID)
 	if err != nil {
