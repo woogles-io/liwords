@@ -29,7 +29,7 @@ func notify(ctx context.Context, us user.Store, user *entity.User, action *ms.Mo
 		return
 	}
 	if config.MailgunKey != "" && !IsRemoval(action) {
-		emailContent, err := instantiateEmail(user.Username,
+		emailContent, emailSubject, err := instantiateEmail(user.Username,
 			actionEmailText,
 			action.Note,
 			action.StartTime,
@@ -39,7 +39,7 @@ func notify(ctx context.Context, us user.Store, user *entity.User, action *ms.Mo
 			go func() {
 				_, err := emailer.SendSimpleMessage(config.MailgunKey,
 					user.Email,
-					fmt.Sprintf("Woogles Terms of Service Violation for Account %s", user.Username),
+					emailSubject,
 					emailContent)
 				if err != nil {
 					// Errors should not be fatal, just log them
