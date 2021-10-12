@@ -24,6 +24,7 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
+var tournamentName = "testTournament"
 var TestDBHost = os.Getenv("TEST_DB_HOST")
 var TestingDBConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
 var gameReq = &realtime.GameRequest{Lexicon: "CSW19",
@@ -109,7 +110,7 @@ func tournamentStore(dbURL string, gs gameplay.GameStore) (*config.Config, tourn
 }
 
 func makeRoundControls() []*realtime.RoundControl {
-	return []*realtime.RoundControl{&realtime.RoundControl{FirstMethod: realtime.FirstMethod_AUTOMATIC_FIRST,
+	return []*realtime.RoundControl{{FirstMethod: realtime.FirstMethod_AUTOMATIC_FIRST,
 		PairingMethod:               realtime.PairingMethod_ROUND_ROBIN,
 		GamesPerRound:               1,
 		Factor:                      1,
@@ -117,7 +118,7 @@ func makeRoundControls() []*realtime.RoundControl {
 		AllowOverMaxRepeats:         true,
 		RepeatRelativeWeight:        1,
 		WinDifferenceRelativeWeight: 1},
-		&realtime.RoundControl{FirstMethod: realtime.FirstMethod_AUTOMATIC_FIRST,
+		{FirstMethod: realtime.FirstMethod_AUTOMATIC_FIRST,
 			PairingMethod:               realtime.PairingMethod_ROUND_ROBIN,
 			GamesPerRound:               1,
 			Factor:                      1,
@@ -125,7 +126,7 @@ func makeRoundControls() []*realtime.RoundControl {
 			AllowOverMaxRepeats:         true,
 			RepeatRelativeWeight:        1,
 			WinDifferenceRelativeWeight: 1},
-		&realtime.RoundControl{FirstMethod: realtime.FirstMethod_AUTOMATIC_FIRST,
+		{FirstMethod: realtime.FirstMethod_AUTOMATIC_FIRST,
 			PairingMethod:               realtime.PairingMethod_ROUND_ROBIN,
 			GamesPerRound:               1,
 			Factor:                      1,
@@ -133,7 +134,7 @@ func makeRoundControls() []*realtime.RoundControl {
 			AllowOverMaxRepeats:         true,
 			RepeatRelativeWeight:        1,
 			WinDifferenceRelativeWeight: 1},
-		&realtime.RoundControl{FirstMethod: realtime.FirstMethod_AUTOMATIC_FIRST,
+		{FirstMethod: realtime.FirstMethod_AUTOMATIC_FIRST,
 			PairingMethod:               realtime.PairingMethod_KING_OF_THE_HILL,
 			GamesPerRound:               1,
 			Factor:                      1,
@@ -152,7 +153,7 @@ func makeControls() *realtime.DivisionControls {
 func makeTournament(ctx context.Context, ts tournament.TournamentStore, cfg *config.Config, directors *realtime.TournamentPersons) (*entity.Tournament, error) {
 	return tournament.NewTournament(ctx,
 		ts,
-		"Tournament",
+		tournamentName,
 		"This is a test Tournament",
 		directors,
 		entity.TypeStandard,
@@ -215,7 +216,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	meta := &pb.TournamentMetadata{
 		Id:          ty.UUID,
-		Name:        "New Name",
+		Name:        tournamentName,
 		Description: "New Description",
 		Slug:        "/tournament/foo",
 		Type:        pb.TType_STANDARD,
@@ -266,7 +267,8 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	// Attempt to remove directors that don't exist
 	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Evans": -1, "Zoof": 2}))
-	is.True(err.Error() == "person Zoof:Zoof does not exist")
+	fmt.Println(err.Error())
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, []string{tournamentName, "", "0", "Zoof:Zoof", "removeTournamentPersons"}).Error())
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2, "Evans:Evans": 4, "Oof:Oof": 2, "Guy:Guy": 10, "Harry:Harry": 11}), ty.Directors))
 
 	// Attempt to remove the executive director
@@ -354,10 +356,10 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.NoErr(err)
 	is.True(!isStarted)
 
-	XHRResponse, err = div1.DivisionManager.GetXHRResponse()
+	_, err = div1.DivisionManager.GetXHRResponse()
 	is.NoErr(err)
 	// Set pairing should work before the tournament starts
-	pairings := []*pb.TournamentPairingRequest{&pb.TournamentPairingRequest{PlayerOneId: "Will:Will", PlayerTwoId: "Jesse:Jesse", Round: 0}}
+	pairings := []*pb.TournamentPairingRequest{{PlayerOneId: "Will:Will", PlayerTwoId: "Jesse:Jesse", Round: 0}}
 	err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, pairings)
 	is.NoErr(err)
 
@@ -390,10 +392,10 @@ func TestTournamentSingleDivision(t *testing.T) {
 	)
 	is.True(err.Error() == "cannot set tournament results before the tournament has started")
 
-	isRoundComplete, err := tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 0)
+	_, err = tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 0)
 	is.True(err.Error() == "cannot check if round is complete before the tournament has started")
 
-	isFinished, err := tournament.IsFinished(ctx, tstore, ty.UUID)
+	_, err = tournament.IsFinished(ctx, tstore, ty.UUID)
 	is.True(err.Error() == "cannot check if tournament is finished before the tournament has started")
 
 	// Add players back in
@@ -419,8 +421,8 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	// Tournament pairings and results are tested in the
 	// entity package
-	pairings = []*pb.TournamentPairingRequest{&pb.TournamentPairingRequest{PlayerOneId: "Will:Will", PlayerTwoId: "Jesse:Jesse", Round: 0},
-		&pb.TournamentPairingRequest{PlayerOneId: "Josh:Josh", PlayerTwoId: "Conrad:Conrad", Round: 0}}
+	pairings = []*pb.TournamentPairingRequest{{PlayerOneId: "Will:Will", PlayerTwoId: "Jesse:Jesse", Round: 0},
+		{PlayerOneId: "Josh:Josh", PlayerTwoId: "Conrad:Conrad", Round: 0}}
 	err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, pairings)
 	is.NoErr(err)
 
@@ -469,7 +471,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.NoErr(err)
 	is.True(isStarted)
 
-	isRoundComplete, err = tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 0)
+	isRoundComplete, err := tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 0)
 	is.NoErr(err)
 	is.True(!isRoundComplete)
 
@@ -558,10 +560,10 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.NoErr(err)
 
 	// See if round is complete for division that does not exist
-	isRoundComplete, err = tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName+"yah", 0)
+	_, err = tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName+"yah", 0)
 	is.True(err.Error() == "division Division 1yah does not exist")
 
-	isFinished, err = tournament.IsFinished(ctx, tstore, ty.UUID)
+	isFinished, err := tournament.IsFinished(ctx, tstore, ty.UUID)
 	is.NoErr(err)
 	is.True(!isFinished)
 
@@ -634,19 +636,19 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(divTwoPlayersCompare, XHRResponse.Players))
 
-	pairings := []*pb.TournamentPairingRequest{&pb.TournamentPairingRequest{PlayerOneId: "Will:Will", PlayerTwoId: "Jesse:Jesse", Round: 0}}
+	pairings := []*pb.TournamentPairingRequest{{PlayerOneId: "Will:Will", PlayerTwoId: "Jesse:Jesse", Round: 0}}
 	err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, pairings)
 	is.NoErr(err)
 
-	pairings = []*pb.TournamentPairingRequest{&pb.TournamentPairingRequest{PlayerOneId: "Guy:Guy", PlayerTwoId: "Comrade:Comrade", Round: 0}}
+	pairings = []*pb.TournamentPairingRequest{{PlayerOneId: "Guy:Guy", PlayerTwoId: "Comrade:Comrade", Round: 0}}
 	err = tournament.SetPairings(ctx, tstore, ty.UUID, divTwoName, pairings)
 	is.NoErr(err)
 
-	pairings = []*pb.TournamentPairingRequest{&pb.TournamentPairingRequest{PlayerOneId: "Conrad:Conrad", PlayerTwoId: "Josh:Josh", Round: 0}}
+	pairings = []*pb.TournamentPairingRequest{{PlayerOneId: "Conrad:Conrad", PlayerTwoId: "Josh:Josh", Round: 0}}
 	err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, pairings)
 	is.NoErr(err)
 
-	pairings = []*pb.TournamentPairingRequest{&pb.TournamentPairingRequest{PlayerOneId: "Dude:Dude", PlayerTwoId: "ValuedCustomer:ValuedCustomer", Round: 0}}
+	pairings = []*pb.TournamentPairingRequest{{PlayerOneId: "Dude:Dude", PlayerTwoId: "ValuedCustomer:ValuedCustomer", Round: 0}}
 	err = tournament.SetPairings(ctx, tstore, ty.UUID, divTwoName, pairings)
 	is.NoErr(err)
 
