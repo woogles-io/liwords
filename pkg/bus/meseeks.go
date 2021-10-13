@@ -651,12 +651,12 @@ func (b *Bus) openMatches(ctx context.Context, receiverID string, tourneyID stri
 	if err != nil {
 		return nil, err
 	}
-	log.Debug().Str("receiver", receiverID).Interface("open-matches", sgs).Msg("open-seeks")
+	log.Debug().Str("receiver", receiverID).Interface("open-matches", sgs).Msg("open-matches")
 	pbobj := &pb.SeekRequests{Requests: []*pb.SeekRequest{}}
 	for _, sg := range sgs {
 		pbobj.Requests = append(pbobj.Requests, sg.SeekRequest)
 	}
-	evt := entity.WrapEvent(pbobj, pb.MessageType_MATCH_REQUESTS)
+	evt := entity.WrapEvent(pbobj, pb.MessageType_SEEK_REQUESTS)
 	return evt, nil
 }
 

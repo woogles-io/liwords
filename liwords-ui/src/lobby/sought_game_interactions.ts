@@ -52,7 +52,7 @@ export const sendSeek = (
 
   sr.setUserState(SeekState.READY);
 
-  if (game.receiver.getDisplayName() === '' && game.playerVsBot === false) {
+  if (game.receiver.getUserId() === '' && game.playerVsBot === false) {
     sr.setGameRequest(gr);
   } else {
     // We make it a match request if the receiver is non-empty, or if playerVsBot.

@@ -247,8 +247,7 @@ func (s *DBStore) ListOpenSeeks(ctx context.Context) ([]*entity.SoughtGame, erro
 
 	ctxDB := s.db.WithContext(ctx)
 	if result := ctxDB.Table("soughtgames").
-		Where("receiver = ? AND receiver_is_permanent IS NOT TRUE", "").Scan(&games); result.Error != nil {
-
+		Where("receiver = '' AND receiver_is_permanent IS NOT TRUE").Scan(&games); result.Error != nil {
 		return nil, result.Error
 	}
 	entGames := make([]*entity.SoughtGame, len(games))
