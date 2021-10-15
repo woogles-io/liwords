@@ -1,8 +1,6 @@
 @import '../base';
 @import '../shared/layout';
 
-@include button;
-
 div.account {
   display: flex;
   flex-direction: row;

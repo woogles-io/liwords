@@ -47,16 +47,8 @@ export const isBlank = (letter: string): boolean => {
   return letter.toLowerCase() === letter;
 };
 
-export const getVW = () => {
-  console.log(
-    Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0),
-    screenSizes.screenSizeTablet
-  );
-  return Math.max(
-    document.documentElement.clientWidth || 0,
-    window.innerWidth || 0
-  );
-};
+export const getVW = () =>
+  Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
 
 export const isMobile = () =>
   getVW() < parseInt(screenSizes.screenSizeTablet, 10);
