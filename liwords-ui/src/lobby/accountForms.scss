@@ -201,7 +201,7 @@ div.account {
     }
   }
 }
-@media (min-width: $screen-tablet-min) {
+@media (min-width: $screen-tablet-landscape-min) {
   div.account {
     .account-form {
       &.register {

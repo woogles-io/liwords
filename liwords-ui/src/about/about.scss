@@ -26,7 +26,7 @@
   }
   .intro {
     margin: 0 auto;
-    max-width: $screen-mobile-min;
+    max-width: $screen-tablet-portrait-min;
     padding: 12px 12px 48px;
     h4 {
       @include colorModed() {
@@ -100,7 +100,7 @@
   }
 }
 
-@media (min-width: $screen-tablet-min) {
+@media (min-width: $screen-tablet-landscape-min) {
   .bios {
     .bio {
       img {

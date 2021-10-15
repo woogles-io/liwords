@@ -6,6 +6,7 @@ import App from './App';
 import * as serviceWorker from './serviceWorker';
 import { Store } from './store/store';
 import { BriefProfiles } from './utils/brief_profiles';
+import { SideMenuContextProvider } from './shared/layoutContainers/menu';
 
 declare global {
   interface Window {
@@ -20,7 +21,8 @@ window.console.info(
 // Scope the variables declared here.
 {
   // Adjust this constant accordingly.
-  const minimumViableWidth = 558;
+  const minimumViableWidth = 568;
+  const idealMobileWidth = 375;
   const metaViewport = document.querySelector("meta[name='viewport']");
   if (!metaViewport) {
     // Should not happen because this is in public/index.html.
@@ -30,8 +32,8 @@ window.console.info(
     let desiredViewport = 'width=device-width, initial-scale=1';
     const deviceWidth = window.outerWidth;
     if (deviceWidth < minimumViableWidth) {
-      desiredViewport = `width=${minimumViableWidth}, initial-scale=${
-        deviceWidth / minimumViableWidth
+      desiredViewport = `width=${idealMobileWidth}, initial-scale=${
+        deviceWidth / idealMobileWidth
       }`;
     }
     metaViewport.setAttribute('content', desiredViewport);

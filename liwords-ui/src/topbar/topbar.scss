@@ -5,13 +5,22 @@ body {
   height: auto;
 }
 
+.ant-layout {
+  @include colorModed() {
+    background-color: m($card-background);
+  }
+}
+
+.ant-layout-header {
+  padding: 0;
+}
+
 .top-header {
   width: 100%;
   display: flex;
   align-items: center;
   top: 0;
   z-index: 2;
-  min-height: 60px;
   @include colorModed() {
     background-color: m($header);
   }
@@ -36,6 +45,14 @@ body {
   }
   .user-info {
     white-space: nowrap;
+  }
+
+  .menu-trigger {
+    transform: scale(1.6);
+    margin-right: 24px;
+    @media (min-width: $screen-laptop-min) {
+      display: none;
+    }
   }
 }
 
@@ -66,7 +83,7 @@ body {
       }
     }
   }
-  @media (min-width: $screen-tablet-min) {
+  @media (min-width: $screen-tablet-landscape-min) {
     display: flex;
     div {
       display: flex;

@@ -279,12 +279,18 @@ p.streak-loss {
   height: 100%;
   position: relative;
   left: 12px;
+  @media (min-width: $screen-tablet-landscape-min){
+    left: 0;
+  }
   .tile.preview {
     position: absolute;
     pointer-events: none;
     margin-top: 10px;
     z-index: 5;
     transition: $tile-transition;
+    @media (min-width: $screen-tablet-landscape-min){
+      margin-top: 0;
+    }
     @include colorModed() {
       background: m($tile-background);
       color: m($background);
@@ -306,6 +312,10 @@ p.streak-loss {
 
 .board {
   position: relative;
+  left: -3px;
+  @media (min-width: $screen-tablet-landscape-min) {
+    left: 0;
+  }
 }
 
 .data-area {
@@ -332,8 +342,6 @@ p.streak-loss {
   position: relative;
   display: flex;
   flex-wrap: wrap;
-  width: $board-size-mobile;
-  height: $board-size-mobile;
   @include colorModed() {
     background: m($grid);
   }
@@ -341,12 +349,30 @@ p.streak-loss {
     background: ub($grid);
   }
 }
+.board-spaces-container, .board-spaces, .tiles {
+  width: $board-size-mobile;
+  height: $board-size-mobile;
+  @media (min-width: $screen-tablet-portrait-min) {
+    width: $board-size-tablet-portrait;
+    height: $board-size-tablet-portrait;
+  }
+  @media (min-width: $screen-tablet-landscape-min) {
+    width: $board-size-tablet-landscape;
+    height: $board-size-tablet-landscape;
+  }
+  @media (min-width: $screen-laptop-min) {
+    width: $board-size-laptop;
+    height: $board-size-laptop;
+  }
+  @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min){
+    width: $board-size-desktop;
+    height: $board-size-desktop;
+  }
+}
 .board-spaces,
 .tiles {
   touch-action: manipulation;
-  width: $board-size-mobile;
-  height: $board-size-mobile;
-  min-width: 360px;
+  min-width: $board-size-mobile;
   display: grid;
   grid-template-columns: repeat(15, 1fr);
   grid-template-rows: repeat(15, 1fr);
@@ -408,7 +434,7 @@ p.streak-loss {
   display: flex;
   .anticon {
     position: absolute;
-    font-size: $tile-font-size-mobile;
+    font-size: $tile-font-size-tablet-portrait;
     @include colorModed() {
       color: m($timer-dark);
     }
@@ -614,8 +640,21 @@ p.streak-loss {
   display: flex;
   justify-content: space-around;
   width: $board-size-mobile;
-  font-size: 18px;
   padding-top: 5px;
+  @media (min-width: $screen-tablet-portrait-min) {
+    width: $board-size-tablet-portrait;
+  }
+  @media (min-width: $screen-tablet-landscape-min) {
+    width: $board-size-tablet-landscape;
+    font-size: 15px;
+    padding-top: 0;
+  }
+  @media (min-width: $screen-laptop-min) {
+    width: $board-size-laptop;
+  }
+  @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
+    width: $board-size-desktop;
+  }
   p {
     @include colorModed() {
       color: m($gray-extreme);
@@ -625,21 +664,23 @@ p.streak-loss {
 
 .coord-labels.vert {
   position: absolute;
-  left: -30px;
+  left: -22px;
   bottom: 0;
   flex-direction: column;
   padding-top: 0;
   width: auto;
   height: calc(100% - 24px);
+  @media (min-width: $screen-tablet-portrait-min) {
+    left: -30px;
+  }
 }
 
 .coord-label {
-  text-align: right;
   margin: 0;
   font-size: 14px;
-  font-weight: 400;
+  font-weight: 800;
   font-family: $font-monospaced;
-  letter-spacing: -0.05em;
+  letter-spacing: -0.1em;
   @include colorModed() {
     color: m($gray-extreme);
   }
@@ -653,9 +694,23 @@ p.streak-loss {
   justify-content: center;
   align-items: center;
   margin: 20px 0;
-  width: ($tile-size-mobile * 8);
+  width: (96 + $tile-size-mobile * 8);
   height: $tile-size-mobile;
   min-height: $tile-size-mobile;
+  @media (min-width: $screen-tablet-portrait-min) {
+    width: (96 + $tile-size-tablet-portrait * 8);
+    height: $tile-size-tablet-portrait;
+    min-height: $tile-size-tablet-portrait;
+  }
+  @media (min-width: $screen-tablet-landscape-min) {
+    width: (48 + $tile-size-tablet-landscape * 8);
+  }
+  @media (min-width: $screen-laptop-min) {
+    width: (48 + $tile-size-laptop * 8);
+  }
+  @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
+    width: (48 + $tile-size-desktop * 8);
+  }
 }
 
 .ant-modal .rack {
@@ -670,16 +725,21 @@ p.streak-loss {
   justify-content: center;
   align-items: center;
   outline-style: none;
-  margin: 12px 0;
+  margin: 6px 0;
   position: relative;
   left: -12px;
-  .rack {
-    width: $tile-size-desktop * 8.5;
+  @media (min-width: $screen-tablet-landscape-min) {
+    margin: 12px 0;
+    left: 0;
   }
   .ant-btn.ant-btn-primary.ant-btn-circle {
     border-radius: 50%;
-    width: $tile-size-desktop;
-    height: $tile-size-desktop;
+    width: $tile-size-laptop;
+    height: $tile-size-laptop;
+    @media (min-width: $screen-tablet-portrait-min) {
+      width: $tile-size-desktop;
+      height: $tile-size-desktop;
+    }
     margin: 0 6px;
     padding: 1px 0 0;
     line-height: 0;
@@ -688,7 +748,6 @@ p.streak-loss {
       font-weight: 500;
       font-size: 28px;
     }
-
     .anticon {
       font-size: 20px;
     }
@@ -710,6 +769,22 @@ p.streak-loss {
   text-align: center;
   width: $tile-size-mobile;
   height: $tile-size-mobile;
+  @media (min-width: $screen-tablet-portrait-min) {
+    width: $tile-size-tablet-portrait;
+    height: $tile-size-tablet-portrait;
+  }
+  @media (min-width: $screen-tablet-landscape-min) {
+    width: $tile-size-tablet-landscape;
+    height: $tile-size-tablet-landscape;
+  }
+  @media (min-width: $screen-laptop-min) {
+    height: $tile-size-laptop;
+    width: $tile-size-laptop;
+  }
+  @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
+    height: $tile-size-desktop;
+    width: $tile-size-desktop;
+  }
 }
 .tile {
   @include colorModed() {
@@ -757,7 +832,6 @@ p.streak-loss {
   border-radius: 50%;
   text-transform: capitalize;
   transform: rotate(-10deg);
-  font-size: $tile-font-size-mobile * 0.95;
   @include colorModed() {
     color: m($tile-blank-text);
     background-color: m($tile-background-secondary);
@@ -866,6 +940,18 @@ p.rune {
   margin: 0;
   line-height: 0;
   font-size: $tile-font-size-mobile;
+  @media (min-width: $screen-tablet-portrait-min) {
+    font-size: $tile-font-size-tablet-portrait;
+  }
+  @media (min-width: $screen-tablet-landscape-min) {
+    font-size: $tile-font-size-tablet-landscape;
+  }
+  @media (min-width: $screen-laptop-min) {
+    font-size: $tile-font-size-laptop;
+  }
+  @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
+    font-size: $tile-font-size-desktop;
+  }
   font-weight: 600;
   width: 100%;
   padding-bottom: 3px;
@@ -878,6 +964,18 @@ p.rune {
 }
 .tile.blank p.rune {
   font-size: $tile-font-size-mobile * 0.9;
+  @media (min-width: $screen-tablet-portrait-min) {
+    font-size: $tile-font-size-tablet-landscape * 0.9;
+  }
+  @media (min-width: $screen-tablet-landscape-min) {
+    font-size: $tile-font-size-tablet-landscape * 0.9;
+  }
+  @media (min-width: $screen-laptop-min) {
+    font-size: $tile-font-size-laptop * 0.9;
+  }
+  @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
+    font-size: $tile-font-size-desktop * 0.9;
+  }
 }
 .tile .point-value {
   position: absolute;
@@ -889,17 +987,48 @@ p.rune {
   letter-spacing: -0.25em;
   font-size: $point-size-mobile;
   font-weight: bold;
+  @media (min-width: $screen-tablet-portrait-min) {
+    font-size: $point-size-tablet-portrait;
+  }
+  @media (min-width: $screen-tablet-landscape-min) {
+    font-size: $point-size-tablet-landscape;
+  }
+  @media (min-width: $screen-laptop-min) {
+    font-size: $point-size-laptop;
+    padding: 5px 3px;
+  }
+  @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
+    font-size: $point-size-desktop;
+    padding: 7px 3px;
+  }
   @include colorModed() {
     color: m($background);
   }
   @include userTile() {
     color: ut($tile-text);
   }
+
 }
 
 .rack .tile, .tile.preview:not(.over-board) {
-  width: $tile-size-desktop;
-  height: $tile-size-desktop;
+  width: $tile-size-laptop;
+  height: $tile-size-laptop;
+  @media (min-width: $screen-tablet-portrait-min) {
+    width: $tile-size-desktop;
+    height: $tile-size-desktop;
+  }
+  @media (min-width: $screen-tablet-landscape-min) {
+    width: $tile-size-tablet-landscape;
+    height: $tile-size-tablet-landscape;
+  }
+  @media (min-width: $screen-laptop-min) {
+    width: $tile-size-laptop;
+    height: $tile-size-laptop;
+  }
+  @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
+    width: $tile-size-desktop;
+    height: $tile-size-desktop;
+  }
   @include colorModed() {
     background: m($tile-background);
   }
@@ -908,7 +1037,22 @@ p.rune {
   }
   margin: 2px;
   p.rune {
-    font-size: $tile-font-size-desktop;
+    font-size: $tile-font-size-laptop;
+    @media (min-width: $screen-tablet-portrait-min) {
+      font-size: $tile-font-size-desktop;
+    }
+    @media (min-width: $screen-tablet-landscape-min) {
+      font-size: $tile-font-size-tablet-landscape;
+      line-height: 1.2em;
+      position: relative;
+    }
+    @media (min-width: $screen-laptop-min) {
+      font-size: $tile-font-size-laptop;
+    }
+    @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
+      font-size: $tile-font-size-desktop;
+      top: 0px;
+    }
     @include colorModed() {
       color: m($background);
     }
@@ -917,7 +1061,23 @@ p.rune {
     }
   }
   .point-value {
-    font-size: $point-size-desktop;
+    font-size: $point-size-laptop;
+    @media (min-width: $screen-tablet-landscape-min) {
+      font-size: $point-size-tablet-landscape;
+      padding: 5px 2px;
+      bottom: 2px;
+    }
+    @media (min-width: $screen-tablet-portrait-min) {
+      font-size: $point-size-desktop;
+    }
+    @media (min-width: $screen-laptop-min) {
+      font-size: $point-size-laptop;
+      bottom: 1px;
+    }
+    @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
+      font-size: $point-size-desktop;
+      bottom: 2px;
+    }
   }
   &.dragging {
     opacity: 0.4;
@@ -932,19 +1092,29 @@ p.rune {
 }
 
 .exchange .rack .tile {
-  width: $tile-size-laptop;
-  height: $tile-size-laptop;
+  width: $tile-size-desktop;
+  height: $tile-size-desktop;
+  @media (min-width: $screen-tablet-portrait-min) {
+    width: $tile-size-laptop;
+    height: $tile-size-laptop;
+  }
   &.selected {
     position: relative;
     top: -30px;
     box-shadow: $card-shadow;
   }
   p.rune {
-    font-size: $tile-font-size-laptop;
-    line-height: 35px;
+    font-size: $tile-font-size-desktop;
+    @media (min-width: $screen-tablet-portrait-min) {
+      font-size: $tile-font-size-laptop;
+      line-height: 35px;
+    }
   }
   .point-value {
-    font-size: $point-size-laptop;
+    font-size: $point-size-desktop;
+    @media (min-width: $screen-tablet-portrait-min) {
+      font-size: $point-size-laptop;
+    }
     padding: 0 2px 5px;
   }
 }
@@ -972,8 +1142,11 @@ p.rune {
   width: calc(100% - 4px);
   height: calc(100% - 12px);
   border-radius: 10%;
-  font-size: 12px;
+  font-size: 9px;
   font-weight: bold;
+  @media (min-width: $screen-tablet-portrait-min) {
+    font-size: 12px;
+  }
   @include colorModed() {
     background-color: m($timer-light);
     border: 1px solid m($timer-dark);
@@ -991,11 +1164,6 @@ p.rune {
   bottom: calc(100% + 4px);
 }
 
-.tile:hover {
-  .tentative-score {
-  }
-}
-
 .tile.dragging .tentative-score {
   opacity: 0;
 }
@@ -1004,7 +1172,7 @@ p.rune {
 // Pool
 .pool {
   order: -1;
-  @media (min-width: $screen-tablet-min) {
+  @media (min-width: $screen-tablet-landscape-min) {
     order: 3;
   }
   header {
@@ -1238,7 +1406,8 @@ p.rune {
   left: -12px;
   width: 100%;
   min-height: 32px;
-  margin: 0 auto 12px;
+  margin: 0 auto 6px;
+  padding: 12px;
   justify-content: space-evenly;
   white-space: nowrap;
   .secondary-controls {
@@ -1256,11 +1425,11 @@ p.rune {
       }
     }
     button {
-      height: calc((#{$board-size-mobile} / 8) - 9px);
+      height: 42px;
     }
   }
   button.ant-btn {
-    margin: 0 12px;
+    margin: 0 6px;
     font-size: 16px;
     touch-action: manipulation;
     &.ant-btn-circle {
@@ -1271,10 +1440,10 @@ p.rune {
       line-height: 0;
     }
     &.play {
-      order: 1;
-      min-width: $board-size-mobile / 4;
-      width: $board-size-mobile / 4;
-      height: $board-size-mobile / 4;
+      order: 2;
+      min-width: 120px;
+      width: 120px;
+      height: 90px;
       margin: 0 6px;
     }
   }
@@ -1283,6 +1452,30 @@ p.rune {
   }
   & > :last-child {
     margin-right: 0;
+  }
+  @media (min-width: $screen-tablet-landscape-min) {
+    justify-content: center;
+    left: 0;
+    .secondary-controls {
+      flex-direction: row;
+      width: auto;
+      button {
+        height: 32px;
+      }
+      &:nth-child(2) {
+        order: 1;
+      }
+    }
+    button.ant-btn {
+      font-size: 12px;
+      margin: 0 6px;
+      &.play {
+        order: 2;
+        min-width: auto;
+        width: auto;
+        height: 32px;
+      }
+    }
   }
 }
 
@@ -1301,65 +1494,7 @@ p.rune {
   }
 }
 
-@media (min-width: $screen-mobile-min) {
-  .board-spaces-container, .board-spaces, .tiles {
-    width: $board-size-mobile;
-    height: $board-size-mobile;
-  }
-  .coord-labels {
-    width: $board-size-mobile;
-  }
-  .rack {
-    width: (48 + $tile-size-mobile * 8);
-  }
-}
-@media (min-width: $screen-tablet-min) {
-  .board-container {
-    left: 0;
-    .tile.preview {
-      margin-top: 0;
-    }
-  }
-  .board-spaces-container, .board-spaces, .tiles {
-    width: $board-size-tablet;
-    height: $board-size-tablet;
-  }
-  .coord-labels {
-    width: $board-size-tablet;
-    font-size: 15px;
-    padding-top: 0;
-  }
-  .coord-labels.vert {
-    left: -24px;
-  }
-  .rack-container {
-    left: 0;
-  }
-  .rack {
-    width: (48 + $tile-size-tablet * 8);
-  }
-  .rack .tile {
-    width: $tile-size-desktop;
-    height: $tile-size-desktop;
-  }
-  .tile,
-  .empty-space {
-    height: $tile-size-tablet;
-    width: $tile-size-tablet;
-  }
-  .tile p.rune {
-    font-size: $tile-font-size-tablet;
-    line-height: 1.2em;
-    position: relative;
-  }
-  .tile.blank p.rune {
-    font-size: $tile-font-size-tablet * 0.9;
-  }
-  .tile .point-value {
-    font-size: $point-size-tablet;
-    padding: 5px 2px;
-    bottom: 2px;
-  }
+@media (min-width: $screen-tablet-landscape-min) {
   .notepad-card, .analyzer-card {
     display: none;
   }
@@ -1406,33 +1541,8 @@ p.rune {
       }
     }
   }
-  .game-controls {
-    justify-content: center;
-    left: 0;
-    .secondary-controls {
-      flex-direction: row;
-      width: auto;
-      button {
-        height: 32px;
-      }
-      &:nth-child(2) {
-        order: 1;
-      }
-    }
-    button.ant-btn {
-      font-size: 12px;
-      margin: 0 6px;
-      &.play {
-        order: 2;
-        min-width: auto;
-        width: auto;
-        height: 32px;
-      }
-    }
-  }
-
 }
-@media (min-width: $screen-tablet-min) and (max-width: $screen-laptop-min - 1)  {
+@media (min-width: $screen-tablet-landscape-min) and (max-width: $screen-laptop-min - 1)  {
   .game-container.competitor {
     // Steal some space for the tournament view
     .data-area .ant-card {
@@ -1517,13 +1627,6 @@ p.rune {
     flex: 0 0 0;
     padding: 12px 12px 0 30px;
   }
-  .board-spaces-container, .board-spaces, .tiles {
-    width: $board-size-laptop;
-    height: $board-size-laptop;
-  }
-  .coord-labels {
-    width: $board-size-laptop;
-  }
   .format-dropdown {
     .ant-dropdown-menu {
       li.ant-dropdown-menu-item {
@@ -1540,38 +1643,9 @@ p.rune {
       }
     }
   }
-  .tile,
-  .empty-space {
-    height: $tile-size-laptop;
-    width: $tile-size-laptop;
-  }
   .tile.droppable {
     pointer-events: all;
     cursor: grab;
-  }
-  .tile p.rune {
-    font-size: $tile-font-size-laptop;
-  }
-  .tile.blank p.rune {
-    font-size: $tile-font-size-laptop * 0.9;
-  }
-  .tile .point-value {
-    font-size: $point-size-laptop;
-    padding: 5px 3px;
-  }
-  .rack {
-    width: (48 + $tile-size-laptop * 8);
-  }
-  .rack .tile {
-    height: $tile-size-laptop;
-    width: $tile-size-laptop;
-    p.rune {
-      font-size: $tile-font-size-laptop;
-    }
-    .point-value {
-      font-size: $point-size-laptop;
-      bottom: 1px;
-    }
   }
   .game-info {
     font-size: 12px;
@@ -1598,44 +1672,6 @@ p.rune {
 @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
   .data-area .ant-card {
     margin-bottom: 12px;
-  }
-  .board-spaces-container, .board-spaces, .tiles {
-    width: $board-size-desktop;
-    height: $board-size-desktop;
-  }
-  .coord-labels {
-    width: $board-size-desktop;
-  }
-  .tile,
-  .empty-space {
-    height: $tile-size-desktop;
-    width: $tile-size-desktop;
-  }
-  .rack {
-    width: (48 + $tile-size-desktop * 8);
-  }
-  .rack .tile {
-    height: $tile-size-desktop;
-    width: $tile-size-desktop;
-    p.rune {
-      font-size: $tile-font-size-desktop;
-      top: 0px;
-    }
-    .point-value {
-      font-size: $point-size-desktop;
-      bottom: 2px;
-    }
-  }
-
-  .tile p.rune {
-    font-size: $tile-font-size-desktop;
-  }
-  .tile.blank p.rune {
-    font-size: $tile-font-size-desktop * 0.9;
-  }
-  .tile .point-value {
-    font-size: $point-size-desktop;
-    padding: 7px 3px;
   }
   .game-info {
     font-size: 14px;

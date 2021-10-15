@@ -5,11 +5,12 @@ $card-shadow-lower: 0px 0px 6px rgba(0, 0, 0, 0.15);
 $card-padding: 16px;
 $card-padding-md: ($card-padding / 2);
 
-$header-height-mobile: 96px;
+$header-height-tablet-portrait: 96px;
 $header-height-desktop: 60px;
 
-$screen-mobile-min: 768px;
-$screen-tablet-min: 1024px;
+$screen-mobile-min: 375px;
+$screen-tablet-portrait-min: 768px;
+$screen-tablet-landscape-min: 1024px;
 $screen-laptop-min: 1280px;
 $screen-desktop-min: 1440px;
 $screen-desktop-l-min: 1920px;
@@ -24,7 +25,7 @@ $screen-desktop-l-min: 1920px;
 // Magic that makes variables available to the tsx code
 :export {
   colorPrimary: #2d6a9e;
-  screenSizeTablet: strip-unit($screen-tablet-min);
+  screenSizeTablet: strip-unit($screen-tablet-landscape-min);
   screenSizeLaptop: strip-unit($screen-laptop-min);
   screenSizeDesktop: strip-unit($screen-desktop-min);
 }
@@ -38,22 +39,25 @@ $font-default: 'Muli', sans-serif;
 $font-monospaced: 'Courier Prime', monospace;
 $font-tile: 'Roboto Mono', monospace;
 
-$tile-size-mobile: 34px;
-$tile-size-tablet: 34px;
+$tile-size-mobile: 23px;
+$tile-size-tablet-portrait: 34px;
+$tile-size-tablet-landscape: 34px;
 $tile-size-laptop: 34px;
 $tile-size-desktop: 44px;
 
 $board-size-mobile: $tile-size-mobile * 15;
-$board-size-tablet: $tile-size-tablet * 15;
+$board-size-tablet-portrait: $tile-size-tablet-portrait * 15;
+$board-size-tablet-landscape: $tile-size-tablet-landscape * 15;
 $board-size-laptop: $tile-size-laptop * 15;
 $board-size-desktop: $tile-size-desktop * 15;
 
-$main-container-width-mobile: $board-size-mobile + 24px;
-$main-container-width-tablet: $board-size-tablet + 24px;
+$main-container-width-mobile: $screen-mobile-min;
+$main-container-width-tablet-portrait: $board-size-tablet-portrait + 24px;
+$main-container-width-tablet-landscape: $board-size-tablet-landscape + 24px;
 $main-container-width-laptop: $board-size-laptop + 24px;
 $main-container-width-desktop: $board-size-desktop + 24px;
 
-$sidebar-width-tablet: calc((100% - #{$main-container-width-laptop}) - 24px);
+$sidebar-width-tablet-landscape: calc((100% - #{$main-container-width-laptop}) - 24px);
 $sidebar-width-laptop: calc(
   (100% - #{$main-container-width-laptop}) / 2 - 12px
 );
@@ -63,13 +67,15 @@ $sidebar-width-desktop: calc(
 
 $settings-width: calc(35%);
 
-$tile-font-size-mobile: $tile-size-mobile * 0.68;
-$tile-font-size-tablet: $tile-size-tablet * 0.68;
+$tile-font-size-mobile: $tile-size-mobile * 0.6;
+$tile-font-size-tablet-portrait: $tile-size-tablet-portrait * 0.68;
+$tile-font-size-tablet-landscape: $tile-size-tablet-landscape * 0.68;
 $tile-font-size-laptop: $tile-size-laptop * 0.68;
 $tile-font-size-desktop: $tile-size-desktop * 0.68;
 
 $point-size-mobile: $tile-font-size-mobile / 3.1;
-$point-size-tablet: $tile-font-size-tablet / 2.6;
+$point-size-tablet-portrait: $tile-font-size-tablet-portrait / 3.1;
+$point-size-tablet-landscape: $tile-font-size-tablet-landscape / 2.6;
 $point-size-laptop: $tile-font-size-laptop / 2.8;
 $point-size-desktop: $tile-font-size-desktop / 2.8;
 
@@ -79,8 +85,11 @@ $point-size-desktop: $tile-font-size-desktop / 2.8;
   position: relative;
   margin: 0 auto;
   padding: 0 12px;
-  @media (min-width: $screen-tablet-min) {
-    max-width: $main-container-width-tablet * 2;
+  @media (min-width: $screen-tablet-portrait-min) {
+    max-width: $main-container-width-tablet-landscape;
+  }
+  @media (min-width: $screen-tablet-landscape-min) {
+    max-width: $main-container-width-tablet-landscape * 2;
   }
   @media (min-width: $screen-laptop-min) {
     max-width: $screen-desktop-l-min;
@@ -604,7 +613,7 @@ ul {
     .ant-modal-footer {
       border: 0;
     }
-    @media (max-width: $screen-mobile-min + 1) {
+    @media (max-width: $screen-tablet-portrait-min + 1) {
       .ant-modal-mask {
         @include colorModed() {
           background: m($background);

@@ -30,12 +30,12 @@ export const isTouchDevice = () => {
 
 export const isMac = () => {
   var userAgent = navigator.userAgent || navigator.vendor;
-  return (/Mac/i.test(userAgent));
+  return /Mac/i.test(userAgent);
 };
 
 export const isWindows = () => {
   var userAgent = navigator.userAgent || navigator.vendor;
-  return (/Win/i.test(userAgent));
+  return /Win/i.test(userAgent);
 };
 
 export const uniqueTileIdx = (row: number, col: number): number => {
@@ -47,8 +47,16 @@ export const isBlank = (letter: string): boolean => {
   return letter.toLowerCase() === letter;
 };
 
-export const getVW = () =>
-  Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+export const getVW = () => {
+  console.log(
+    Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0),
+    screenSizes.screenSizeTablet
+  );
+  return Math.max(
+    document.documentElement.clientWidth || 0,
+    window.innerWidth || 0
+  );
+};
 
 export const isMobile = () =>
   getVW() < parseInt(screenSizes.screenSizeTablet, 10);

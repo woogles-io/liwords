@@ -25,7 +25,7 @@
   background-color: red;
 }
 
-@media (min-width: $screen-tablet-min) {
+@media (min-width: $screen-tablet-landscape-min) {
   .player-avatar {
     width: 48px;
     min-width: 48px;

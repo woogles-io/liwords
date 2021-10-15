@@ -1,7 +1,7 @@
 @import '../base';
 @include button;
 @include tabs;
-/* hide at mobile for now,
+/* hide at tablet-portrait for now,
  expand board */
 p {
   margin: 0;
@@ -62,12 +62,12 @@ p {
   }
   font-family: $font-default;
   .ant-card.chat {
-    height: $main-container-width-tablet + 60px;
+    height: $main-container-width-tablet-landscape + 60px;
     margin-bottom: 12px;
     .entities {
 
       overflow-y: auto;
-      max-height: $main-container-width-tablet - 122px;
+      max-height: $main-container-width-tablet-landscape - 122px;
     }
   }
 
@@ -83,7 +83,7 @@ p {
 
   .channel-list {
     overflow-y: auto;
-    max-height: $main-container-width-tablet;
+    max-height: $main-container-width-tablet-landscape;
   }
   .chat-context, .channel-list {
     min-height: 48px;
@@ -236,7 +236,7 @@ p {
       @include colorModed() {
         color: m($gray-extreme);
       }
-      @media (min-width: $screen-tablet-min) {
+      @media (min-width: $screen-tablet-landscape-min) {
         max-width: 100%;
       }
       @media (min-width: $screen-laptop-min) {
@@ -326,7 +326,7 @@ p {
         min-width: 36px;
         font-size: 20px;
         margin-right: 12px;
-        @media (min-width: $screen-tablet-min) {
+        @media (min-width: $screen-tablet-landscape-min) {
           width: 36px;
           height: 36px;
           min-width: 36px;

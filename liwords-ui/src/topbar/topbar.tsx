@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { ReactNode, ReactNodeArray } from 'react';
 import axios from 'axios';
 
 import { Link } from 'react-router-dom';
 import './topbar.scss';
-import { DisconnectOutlined, SettingOutlined } from '@ant-design/icons/lib';
+import {
+  DisconnectOutlined,
+  MenuOutlined,
+  SettingOutlined,
+} from '@ant-design/icons/lib';
 import { notification, Dropdown, Tooltip } from 'antd';
 import {
   useLagStoreContext,
@@ -15,62 +19,86 @@ import { toAPIUrl } from '../api/api';
 import { LoginModal } from '../lobby/login';
 import { useMountedState } from '../utils/mounted';
 import { isClubType } from '../store/constants';
+import { Header } from 'antd/lib/layout/layout';
+import { useSideMenuContext } from '../shared/layoutContainers/menu';
 
 const colors = require('../base.scss');
 
-const TopMenu = React.memo((props: Props) => {
-  const aboutMenu = (
-    <ul>
-      <li>
-        <Link className="plain" to="/team">
-          Meet the team
-        </Link>
-      </li>
-      <li>
-        <Link className="plain" to="/terms">
-          Terms of Service
-        </Link>
-      </li>
-    </ul>
-  );
-  return (
-    <div className="top-header-menu">
-      <div className="top-header-left-frame-crossword-game">
-        <Link to="/">OMGWords</Link>
-      </div>
-      <div className="top-header-left-frame-aerolith">
-        <a
-          href="https://aerolith.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Aerolith
-        </a>
-      </div>
-      <div className="top-header-left-frame-blog">
-        <a
-          href="http://randomracer.com"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Random.Racer
-        </a>
-      </div>
-      <div className="top-header-left-frame-special-land">
-        <Dropdown
-          overlayClassName="user-menu"
-          overlay={aboutMenu}
-          placement="bottomCenter"
-          getPopupContainer={() =>
-            document.getElementById('root') as HTMLElement
-          }
-        >
-          <p>About Us</p>
-        </Dropdown>
-      </div>
+export const aboutMenuItems = [
+  <Link className="plain" to="/team">
+    Meet the team
+  </Link>,
+  <Link className="plain" to="/terms">
+    Terms of Service
+  </Link>,
+];
+
+const aboutMenu = (
+  <ul>
+    {aboutMenuItems.map((item) => (
+      <li>{item}</li>
+    ))}
+  </ul>
+);
+
+export const offsiteMenuItems = [
+  <Link to="/">OMGWords</Link>,
+  <a href="https://aerolith.org" target="_blank" rel="noopener noreferrer">
+    Aerolith
+  </a>,
+  <a href="http://randomracer.com" target="_blank" rel="noopener noreferrer">
+    Random.Racer
+  </a>,
+];
+
+const offsiteLinks = (
+  <>
+    {offsiteMenuItems.map((item) => (
+      <div>{item}</div>
+    ))}
+  </>
+);
+
+type UserMenuProps = {
+  username: string;
+  handleLogout: (e: React.MouseEvent) => void;
+};
+
+const userMenuItems = (props: UserMenuProps): ReactNodeArray => [
+  <Link className="plain" to={`/profile/${encodeURIComponent(props.username)}`}>
+    View profile
+  </Link>,
+  <Link className="plain" to={`/settings`}>
+    Settings
+  </Link>,
+  <span onClick={props.handleLogout} className="link plain">
+    Log out
+  </span>,
+];
+
+const userMenu = (props: UserMenuProps) => (
+  <ul>
+    {userMenuItems(props).map((item) => (
+      <li>{item}</li>
+    ))}
+  </ul>
+);
+
+const TopMenu = (
+  <div className="top-header-menu">
+    {offsiteLinks}
+    <div className="top-header-left-frame-special-land">
+      <Dropdown
+        overlayClassName="user-menu"
+        overlay={aboutMenu}
+        placement="bottomCenter"
+        getPopupContainer={() => document.getElementById('root') as HTMLElement}
+      >
+        <p>About Us</p>
+      </Dropdown>
     </div>
-  );
-});
+  </div>
+);
 
 type Props = {
   tournamentID?: string;
@@ -78,11 +106,11 @@ type Props = {
 
 export const TopBar = React.memo((props: Props) => {
   const { useState } = useMountedState();
-
   const { currentLagMs } = useLagStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { resetStore } = useResetStoreContext();
   const { tournamentContext } = useTournamentStoreContext();
+  const { isOpen, setIsOpen } = useSideMenuContext();
   const { username, loggedIn, connectedToSocket } = loginState;
   const [loginModalVisible, setLoginModalVisible] = useState(false);
 
@@ -103,31 +131,20 @@ export const TopBar = React.memo((props: Props) => {
         console.log(e);
       });
   };
-  const userMenu = (
-    <ul>
-      <li>
-        <Link className="plain" to={`/profile/${encodeURIComponent(username)}`}>
-          View profile
-        </Link>
-      </li>
-      <li>
-        <Link className="plain" to={`/settings`}>
-          Settings
-        </Link>
-      </li>
-      <li onClick={handleLogout} className="link plain">
-        Log out
-      </li>
-    </ul>
-  );
 
   const homeLink = props.tournamentID
     ? tournamentContext.metadata?.getSlug()
     : '/';
 
   return (
-    <nav className="top-header" id="main-nav">
+    <Header className="top-header" id="main-nav">
       <div className="container">
+        <MenuOutlined
+          className="menu-trigger"
+          onClick={() => {
+            setIsOpen((x) => !x);
+          }}
+        />
         <Tooltip
           placement="bottomLeft"
           color={colors.colorPrimary}
@@ -154,12 +171,15 @@ export const TopBar = React.memo((props: Props) => {
             ) : null}
           </Link>
         </Tooltip>
-        <TopMenu />
+        {TopMenu}
         {loggedIn ? (
           <div className="user-info">
             <Dropdown
               overlayClassName="user-menu"
-              overlay={userMenu}
+              overlay={userMenu({
+                username,
+                handleLogout,
+              })}
               placement="bottomRight"
               getPopupContainer={() =>
                 document.getElementById('root') as HTMLElement
@@ -186,6 +206,6 @@ export const TopBar = React.memo((props: Props) => {
           </div>
         )}
       </div>
-    </nav>
+    </Header>
   );
 });

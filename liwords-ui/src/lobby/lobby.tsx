@@ -10,6 +10,13 @@ import { useLoginStateStoreContext } from '../store/store';
 import './lobby.scss';
 import { Announcements } from './announcements';
 import { sendAccept, sendSeek } from './sought_game_interactions';
+import { Sidebar } from '../shared/layoutContainers/sidebar';
+import { Main } from '../shared/layoutContainers/main';
+import {
+  SideMenu,
+  SideMenuContextProvider,
+} from '../shared/layoutContainers/menu';
+import { PanelComponentWrapper } from '../shared/layoutContainers/panelComponentWrapper';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -47,28 +54,38 @@ export const Lobby = (props: Props) => {
   );
 
   return (
-    <>
+    <SideMenuContextProvider defaultActivePanelKey="GAMES">
       <TopBar />
       <div className="lobby">
-        <div className="chat-area">
-          <Chat
-            sendChat={props.sendChat}
-            defaultChannel="chat.lobby"
-            defaultDescription="Help chat"
-            DISCONNECT={props.DISCONNECT}
-          />
-        </div>
-        <GameLists
-          loggedIn={loggedIn}
-          userID={userID}
-          username={username}
-          newGame={handleNewGame}
-          selectedGameTab={selectedGameTab}
-          setSelectedGameTab={setSelectedGameTab}
-          onSeekSubmit={onSeekSubmit}
-        />
-        <Announcements />
+        <SideMenu>
+          <PanelComponentWrapper panelKey="CHAT" className="chat-area">
+            <Chat
+              sendChat={props.sendChat}
+              defaultChannel="chat.lobby"
+              defaultDescription="Help chat"
+              DISCONNECT={props.DISCONNECT}
+            />
+          </PanelComponentWrapper>
+        </SideMenu>
+        <Main>
+          <PanelComponentWrapper panelKey="GAMES">
+            <GameLists
+              loggedIn={loggedIn}
+              userID={userID}
+              username={username}
+              newGame={handleNewGame}
+              selectedGameTab={selectedGameTab}
+              setSelectedGameTab={setSelectedGameTab}
+              onSeekSubmit={onSeekSubmit}
+            />
+          </PanelComponentWrapper>
+        </Main>
+        <Sidebar className="announcements">
+          <PanelComponentWrapper panelKey="ANNOUNCEMENTS">
+            <Announcements />
+          </PanelComponentWrapper>
+        </Sidebar>
       </div>
-    </>
+    </SideMenuContextProvider>
   );
 };
