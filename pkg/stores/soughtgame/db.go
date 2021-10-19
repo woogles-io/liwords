@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"gorm.io/datatypes"
@@ -239,38 +240,19 @@ func (s *DBStore) UpdateForReceiverConnID(ctx context.Context, connID string) (*
 	return rg, s.Set(ctx, rg)
 }
 
-// ListOpenSeeks lists all open seek requests
-func (s *DBStore) ListOpenSeeks(ctx context.Context) ([]*entity.SoughtGame, error) {
-
-	var games []soughtgame
-	var err error
-
-	ctxDB := s.db.WithContext(ctx)
-	if result := ctxDB.Table("soughtgames").
-		Where("receiver = '' AND receiver_is_permanent IS NOT TRUE").Scan(&games); result.Error != nil {
-		return nil, result.Error
-	}
-	entGames := make([]*entity.SoughtGame, len(games))
-	for idx, g := range games {
-		entGames[idx], err = s.sgFromDBObj(&g)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return entGames, nil
-}
-
-// ListOpenMatches lists all open match requests for receiverID, in tourneyID (optional)
-func (s *DBStore) ListOpenMatches(ctx context.Context, receiverID, tourneyID string) ([]*entity.SoughtGame, error) {
+// ListOpenSeeks lists all open seek requests for receiverID, in tourneyID (optional)
+func (s *DBStore) ListOpenSeeks(ctx context.Context, receiverID, tourneyID string) ([]*entity.SoughtGame, error) {
 	var games []soughtgame
 	var err error
 	ctxDB := s.db.WithContext(ctx)
-	query := ctxDB.Table("soughtgames").
-		Where("receiver = ? AND receiver_is_permanent IS TRUE", receiverID)
+	var queryString string
 	if tourneyID != "" {
-		query = query.Where("request->>'tournament_id' = ?", tourneyID)
+		queryString = fmt.Sprintf("receiver = '%s' AND request->>'tournament_id' = '%s'", receiverID, tourneyID)
+	} else {
+		queryString = fmt.Sprintf("receiver = '%s' OR receiver = ''", receiverID)
 	}
-	if result := query.Scan(&games); result.Error != nil {
+
+	if result := ctxDB.Table("soughtgames").Where(queryString).Scan(&games); result.Error != nil {
 		return nil, result.Error
 	}
 	entGames := make([]*entity.SoughtGame, len(games))

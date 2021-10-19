@@ -528,16 +528,6 @@ func (b *Bus) sendReceiverAbsent(ctx context.Context, req *entity.SoughtGame) er
 	}
 }
 
-func (b *Bus) sendSeekCancellation(userID, seekerID, requestID string) error {
-	toSend := entity.WrapEvent(&pb.SeekRequestCancellation{RequestId: requestID},
-		pb.MessageType_MATCH_REQUEST_CANCELLATION)
-	err := b.pubToUser(userID, toSend, "")
-	if err != nil {
-		return err
-	}
-	return b.pubToUser(seekerID, toSend, "")
-}
-
 func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.User) error {
 	timefmt, variant, err := entity.VariantFromGameReq(g.GameReq)
 	if err != nil {
@@ -636,23 +626,8 @@ func (b *Bus) deleteSoughtForConnID(ctx context.Context, connID string) error {
 	return b.sendReceiverAbsent(ctx, req)
 }
 
-func (b *Bus) openSeeks(ctx context.Context) (*entity.EventWrapper, error) {
-	sgs, err := b.soughtGameStore.ListOpenSeeks(ctx)
-	if err != nil {
-		return nil, err
-	}
-	log.Debug().Interface("open-seeks", sgs).Msg("open-seeks")
-
-	pbobj := &pb.SeekRequests{Requests: []*pb.SeekRequest{}}
-	for _, sg := range sgs {
-		pbobj.Requests = append(pbobj.Requests, sg.SeekRequest)
-	}
-	evt := entity.WrapEvent(pbobj, pb.MessageType_SEEK_REQUESTS)
-	return evt, nil
-}
-
-func (b *Bus) openMatches(ctx context.Context, receiverID string, tourneyID string) (*entity.EventWrapper, error) {
-	sgs, err := b.soughtGameStore.ListOpenMatches(ctx, receiverID, tourneyID)
+func (b *Bus) openSeeks(ctx context.Context, receiverID string, tourneyID string) (*entity.EventWrapper, error) {
+	sgs, err := b.soughtGameStore.ListOpenSeeks(ctx, receiverID, tourneyID)
 	if err != nil {
 		return nil, err
 	}

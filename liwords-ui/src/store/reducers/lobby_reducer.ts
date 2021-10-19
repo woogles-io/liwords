@@ -148,7 +148,7 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
           soughtGames: [...existingSoughtGames, soughtGame],
         };
       } else {
-        const existingMatchRequests = state.soughtGames.filter((sg) => {
+        const existingMatchRequests = state.matchRequests.filter((sg) => {
           return sg.seekID !== soughtGame.seekID;
         });
         return {

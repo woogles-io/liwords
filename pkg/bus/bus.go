@@ -885,7 +885,7 @@ func (b *Bus) blockExists(ctx context.Context, u1, u2 *entity.User) (int, error)
 
 func (b *Bus) sendLobbyContext(ctx context.Context, userID, connID string) error {
 	// open seeks
-	seeks, err := b.openSeeks(ctx)
+	seeks, err := b.openSeeks(ctx, userID, "")
 	if err != nil {
 		return err
 	}
@@ -899,15 +899,6 @@ func (b *Bus) sendLobbyContext(ctx context.Context, userID, connID string) error
 		return err
 	}
 	err = b.pubToConnectionID(connID, userID, activeGames)
-	if err != nil {
-		return err
-	}
-	// open match reqs
-	matches, err := b.openMatches(ctx, userID, "")
-	if err != nil {
-		return err
-	}
-	err = b.pubToConnectionID(connID, userID, matches)
 	if err != nil {
 		return err
 	}
@@ -929,7 +920,7 @@ func (b *Bus) sendTournamentContext(ctx context.Context, realm, userID, connID s
 		return err
 	}
 	// open match reqs
-	matches, err := b.openMatches(ctx, userID, tourneyID)
+	matches, err := b.openSeeks(ctx, userID, tourneyID)
 	if err != nil {
 		return err
 	}

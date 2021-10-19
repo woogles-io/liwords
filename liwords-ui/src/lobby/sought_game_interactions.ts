@@ -52,14 +52,16 @@ export const sendSeek = (
 
   sr.setUserState(SeekState.READY);
 
-  if (game.receiver.getUserId() === '' && game.playerVsBot === false) {
+  if (!game.receiverIsPermanent) {
     sr.setGameRequest(gr);
+    console.log('this is a seek request');
   } else {
     // We make it a match request if the receiver is non-empty, or if playerVsBot.
     sr.setGameRequest(gr);
     sr.setReceivingUser(game.receiver);
     sr.setTournamentId(game.tournamentID);
     sr.setReceiverIsPermanent(true);
+    console.log('this is a match request');
   }
   console.log('sr: ', sr);
   sendSocketMsg(
