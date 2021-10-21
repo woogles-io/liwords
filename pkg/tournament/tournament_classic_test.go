@@ -1432,7 +1432,6 @@ func TestClassicDivisionVoidResult(t *testing.T) {
 		{PlayerId: player2, Wins: 0, Losses: 0, Draws: 0, Spread: 0},
 		{PlayerId: player4, Wins: 0, Losses: 1, Draws: 0, Spread: -50},
 	}}
-	printStandings(standings.Standings)
 	is.NoErr(equalStandings(expectedstandings, standings))
 }
 
@@ -1591,7 +1590,6 @@ func TestClassicDivisionInitialFontes(t *testing.T) {
 	// There should be no pairings at all
 	for i := 0; i < len(tc.Matrix[0]); i++ {
 		for j := 0; j < len(tc.Matrix[0][0]); j++ {
-			tc.printPriPairings(i)
 			is.True(tc.Matrix[i][j] == "")
 		}
 	}
@@ -2707,7 +2705,6 @@ func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
 
 	// Check pairings
 	currentPairings = tc.getPlayerPairings(5)
-	tc.printPriPairings(5)
 	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a"}, {"b", "d"}, {"c", "f"}, {"e"}, {"g", "h"}}))
 
 	_, err = tc.RemovePlayers(makeTournamentPersons(map[string]int32{"d": -9}))

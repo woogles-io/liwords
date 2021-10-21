@@ -392,8 +392,8 @@ func (t *ClassicDivision) SubmitResult(round int,
 		return nil, fmt.Errorf("submitted result for a past round (%d) that is not marked as an amendment", round)
 	}
 
-	if round > int(t.CurrentRound) && (!isByeOrForfeit(p1Result) || !isByeOrForfeit(p2Result)) {
-		return nil, fmt.Errorf("submitted result for a future round (%d) that is not a bye or forfeit", round)
+	if round > int(t.CurrentRound) && (!validFutureResult(p1Result) || !validFutureResult(p2Result)) {
+		return nil, fmt.Errorf("submitted result for a future round (%d) that is not a valid future result", round)
 	}
 
 	// Ensure that the pairing exists
@@ -1848,10 +1848,11 @@ func combineStandingsResponses(s1 map[int32]*realtime.RoundStandings, s2 map[int
 	return s1
 }
 
-func isByeOrForfeit(r realtime.TournamentGameResult) bool {
+func validFutureResult(r realtime.TournamentGameResult) bool {
 	return r == realtime.TournamentGameResult_FORFEIT_WIN ||
 		r == realtime.TournamentGameResult_FORFEIT_LOSS ||
-		r == realtime.TournamentGameResult_BYE
+		r == realtime.TournamentGameResult_BYE ||
+		r == realtime.TournamentGameResult_VOID
 }
 
 func findLoser(tgr1 realtime.TournamentGameResult, tgr2 realtime.TournamentGameResult) (int, error) {
