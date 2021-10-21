@@ -60,6 +60,13 @@ func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.Divisio
 		return nil, nil, errors.New("max bye placement must not be negative")
 	}
 
+	// check that suspended result is only NO_RESULT, FORFEIT_LOSS, or BYE:
+	if divisionControls.SuspendedResult != realtime.TournamentGameResult_NO_RESULT &&
+		divisionControls.SuspendedResult != realtime.TournamentGameResult_FORFEIT_LOSS &&
+		divisionControls.SuspendedResult != realtime.TournamentGameResult_BYE {
+		return nil, nil, errors.New("suspended result must be NO_RESULT, FORFEIT_LOSS, or BYE")
+	}
+
 	// minimum placement is zero-indexed
 	if divisionControls.Gibsonize {
 		if divisionControls.MinimumPlacement < 0 {
