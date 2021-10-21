@@ -1100,7 +1100,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
               Bye +50
             </Select.Option>
             <Select.Option value={TournamentGameResult.VOID}>
-              No result
+              Void (No result)
             </Select.Option>
           </Select>
         </Form.Item>

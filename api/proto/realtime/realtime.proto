@@ -470,6 +470,8 @@ enum TournamentGameResult {
   FORFEIT_LOSS = 6;
   // ELIMINATED: player is eliminated in a bracket tournament
   ELIMINATED = 7;
+  // VOID: player never played this round and should neither be assigned
+  // a win nor a loss. Useful for club-type games.
   VOID = 8;
 }
 

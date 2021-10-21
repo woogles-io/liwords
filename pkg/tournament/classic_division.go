@@ -60,11 +60,11 @@ func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.Divisio
 		return nil, nil, errors.New("max bye placement must not be negative")
 	}
 
-	// check that suspended result is only NO_RESULT, FORFEIT_LOSS, or BYE:
-	if divisionControls.SuspendedResult != realtime.TournamentGameResult_NO_RESULT &&
+	// check that suspended result is only VOID, FORFEIT_LOSS, or BYE:
+	if divisionControls.SuspendedResult != realtime.TournamentGameResult_VOID &&
 		divisionControls.SuspendedResult != realtime.TournamentGameResult_FORFEIT_LOSS &&
 		divisionControls.SuspendedResult != realtime.TournamentGameResult_BYE {
-		return nil, nil, errors.New("suspended result must be NO_RESULT, FORFEIT_LOSS, or BYE")
+		return nil, nil, errors.New("suspended result must be VOID, FORFEIT_LOSS, or BYE")
 	}
 
 	// minimum placement is zero-indexed
