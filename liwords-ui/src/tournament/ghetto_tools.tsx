@@ -747,25 +747,27 @@ const SetResult = (props: { tournamentID: string }) => {
 
       <Form.Item name="p1result" label="Player 1 result">
         <Select>
-          <Select.Option value="NO_RESULT">NO_RESULT</Select.Option>
+          <Select.Option value="VOID">VOID</Select.Option>
           <Select.Option value="WIN">WIN</Select.Option>
           <Select.Option value="LOSS">LOSS</Select.Option>
           <Select.Option value="DRAW">DRAW</Select.Option>
           <Select.Option value="BYE">BYE</Select.Option>
           <Select.Option value="FORFEIT_WIN">FORFEIT_WIN</Select.Option>
           <Select.Option value="FORFEIT_LOSS">FORFEIT_LOSS</Select.Option>
+          <Select.Option value="NO_RESULT">NO_RESULT</Select.Option>
         </Select>
       </Form.Item>
 
       <Form.Item name="p2result" label="Player 2 result">
         <Select>
-          <Select.Option value="NO_RESULT">NO_RESULT</Select.Option>
+          <Select.Option value="VOID">VOID</Select.Option>
           <Select.Option value="WIN">WIN</Select.Option>
           <Select.Option value="LOSS">LOSS</Select.Option>
           <Select.Option value="DRAW">DRAW</Select.Option>
           <Select.Option value="BYE">BYE</Select.Option>
           <Select.Option value="FORFEIT_WIN">FORFEIT_WIN</Select.Option>
           <Select.Option value="FORFEIT_LOSS">FORFEIT_LOSS</Select.Option>
+          <Select.Option value="NO_RESULT">NO_RESULT</Select.Option>
         </Select>
       </Form.Item>
 
