@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"time"
 
 	"gorm.io/datatypes"
@@ -245,16 +244,20 @@ func (s *DBStore) ListOpenSeeks(ctx context.Context, receiverID, tourneyID strin
 	var games []soughtgame
 	var err error
 	ctxDB := s.db.WithContext(ctx)
-	var queryString string
 	if tourneyID != "" {
-		queryString = fmt.Sprintf("receiver = '%s' AND request->>'tournament_id' = '%s'", receiverID, tourneyID)
+		if result := ctxDB.Table("soughtgames").
+			Where("receiver = ? AND request->>'tournament_id' = ?", receiverID, tourneyID).
+			Scan(&games); result.Error != nil {
+			return nil, result.Error
+		}
 	} else {
-		queryString = fmt.Sprintf("receiver = '%s' OR receiver = ''", receiverID)
+		if result := ctxDB.Table("soughtgames").
+			Where("receiver = ? OR receiver = ''", receiverID).
+			Scan(&games); result.Error != nil {
+			return nil, result.Error
+		}
 	}
 
-	if result := ctxDB.Table("soughtgames").Where(queryString).Scan(&games); result.Error != nil {
-		return nil, result.Error
-	}
 	entGames := make([]*entity.SoughtGame, len(games))
 	for idx, g := range games {
 		entGames[idx], err = s.sgFromDBObj(&g)
