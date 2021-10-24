@@ -90,6 +90,9 @@ message TournamentPairingRequest {
   string player_one_id = 1;
   string player_two_id = 2;
   int32 round = 3;
+  // If player_one_id and player_two_id are the same, we should specify what
+  // we want the result to be (BYE, FORFEIT_LOSS, VOID)
+  liwords.TournamentGameResult self_play_result = 4;
 }
 
 message TournamentPairingsRequest {

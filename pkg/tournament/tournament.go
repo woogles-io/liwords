@@ -647,7 +647,7 @@ func SetPairings(ctx context.Context, ts TournamentStore, id string, division st
 			return fmt.Errorf("division %s does not have enough players or controls to set pairings", division)
 		}
 
-		pairingsResp, err := divisionObject.DivisionManager.SetPairing(pairing.PlayerOneId, pairing.PlayerTwoId, int(pairing.Round))
+		pairingsResp, err := divisionObject.DivisionManager.SetPairing(pairing.PlayerOneId, pairing.PlayerTwoId, int(pairing.Round), pairing.SelfPlayResult)
 		if err != nil {
 			return err
 		}

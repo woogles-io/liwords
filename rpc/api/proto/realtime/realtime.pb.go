@@ -422,7 +422,9 @@ const (
 	TournamentGameResult_FORFEIT_LOSS TournamentGameResult = 6
 	// ELIMINATED: player is eliminated in a bracket tournament
 	TournamentGameResult_ELIMINATED TournamentGameResult = 7
-	TournamentGameResult_VOID       TournamentGameResult = 8
+	// VOID: player never played this round and should neither be assigned
+	// a win nor a loss. Useful for club-type games.
+	TournamentGameResult_VOID TournamentGameResult = 8
 )
 
 // Enum value maps for TournamentGameResult.

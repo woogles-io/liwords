@@ -2401,7 +2401,8 @@ proto.tournament_service.TournamentPairingRequest.toObject = function(includeIns
   var f, obj = {
     playerOneId: jspb.Message.getFieldWithDefault(msg, 1, ""),
     playerTwoId: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    round: jspb.Message.getFieldWithDefault(msg, 3, 0)
+    round: jspb.Message.getFieldWithDefault(msg, 3, 0),
+    selfPlayResult: jspb.Message.getFieldWithDefault(msg, 4, 0)
   };
 
   if (includeInstance) {
@@ -2450,6 +2451,10 @@ proto.tournament_service.TournamentPairingRequest.deserializeBinaryFromReader = 
       var value = /** @type {number} */ (reader.readInt32());
       msg.setRound(value);
       break;
+    case 4:
+      var value = /** @type {!proto.liwords.TournamentGameResult} */ (reader.readEnum());
+      msg.setSelfPlayResult(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -2497,6 +2502,13 @@ proto.tournament_service.TournamentPairingRequest.serializeBinaryToWriter = func
   if (f !== 0) {
     writer.writeInt32(
       3,
+      f
+    );
+  }
+  f = message.getSelfPlayResult();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      4,
       f
     );
   }
@@ -2554,6 +2566,24 @@ proto.tournament_service.TournamentPairingRequest.prototype.getRound = function(
  */
 proto.tournament_service.TournamentPairingRequest.prototype.setRound = function(value) {
   return jspb.Message.setProto3IntField(this, 3, value);
+};
+
+
+/**
+ * optional liwords.TournamentGameResult self_play_result = 4;
+ * @return {!proto.liwords.TournamentGameResult}
+ */
+proto.tournament_service.TournamentPairingRequest.prototype.getSelfPlayResult = function() {
+  return /** @type {!proto.liwords.TournamentGameResult} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
+};
+
+
+/**
+ * @param {!proto.liwords.TournamentGameResult} value
+ * @return {!proto.tournament_service.TournamentPairingRequest} returns this
+ */
+proto.tournament_service.TournamentPairingRequest.prototype.setSelfPlayResult = function(value) {
+  return jspb.Message.setProto3EnumField(this, 4, value);
 };
 
 

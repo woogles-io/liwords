@@ -265,6 +265,9 @@ export class TournamentPairingRequest extends jspb.Message {
   getRound(): number;
   setRound(value: number): void;
 
+  getSelfPlayResult(): api_proto_realtime_realtime_pb.TournamentGameResultMap[keyof api_proto_realtime_realtime_pb.TournamentGameResultMap];
+  setSelfPlayResult(value: api_proto_realtime_realtime_pb.TournamentGameResultMap[keyof api_proto_realtime_realtime_pb.TournamentGameResultMap]): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): TournamentPairingRequest.AsObject;
   static toObject(includeInstance: boolean, msg: TournamentPairingRequest): TournamentPairingRequest.AsObject;
@@ -280,6 +283,7 @@ export namespace TournamentPairingRequest {
     playerOneId: string,
     playerTwoId: string,
     round: number,
+    selfPlayResult: api_proto_realtime_realtime_pb.TournamentGameResultMap[keyof api_proto_realtime_realtime_pb.TournamentGameResultMap],
   }
 }
 
