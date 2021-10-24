@@ -569,22 +569,31 @@ const SetPairing = (props: { tournamentID: string }) => {
   const { tournamentContext } = useTournamentStoreContext();
   const { useState } = useMountedState();
   const [division, setDivision] = useState('');
+  const [selfplay, setSelfplay] = useState(false);
 
   const onFinish = (vals: Store) => {
+    const p1id = fullPlayerID(
+      vals.p1,
+      tournamentContext.divisions[vals.division]
+    );
+    let p2id;
+
+    if (vals.selfplay) {
+      p2id = p1id;
+    } else {
+      p2id = fullPlayerID(vals.p2, tournamentContext.divisions[vals.division]);
+    }
+
     const obj = {
       id: props.tournamentID,
       division: vals.division,
       pairings: [
         {
-          player_one_id: fullPlayerID(
-            vals.p1,
-            tournamentContext.divisions[vals.division]
-          ),
-          player_two_id: fullPlayerID(
-            vals.p2,
-            tournamentContext.divisions[vals.division]
-          ),
+          player_one_id: p1id,
+          player_two_id: p2id,
           round: vals.round - 1, // 1-indexed input
+          // use self-play result only if it was set.
+          self_play_result: vals.selfplay ? vals.selfplayresult : undefined,
         },
       ],
     };
@@ -616,11 +625,32 @@ const SetPairing = (props: { tournamentID: string }) => {
         label="Player 1 username"
         division={division}
       />
-      <PlayersFormItem
-        name="p2"
-        label="Player 2 username"
-        division={division}
-      />
+
+      <Form.Item name="selfplay" label="No opponent">
+        <Switch checked={selfplay} onChange={(c) => setSelfplay(c)} />
+      </Form.Item>
+
+      {!selfplay ? (
+        <PlayersFormItem
+          name="p2"
+          label="Player 2 username"
+          division={division}
+        />
+      ) : (
+        <Form.Item name="selfplayresult" label="Desired result for this player">
+          <Select>
+            <Select.Option value={TournamentGameResult.BYE}>
+              Bye (+50)
+            </Select.Option>
+            <Select.Option value={TournamentGameResult.FORFEIT_LOSS}>
+              Forfeit loss (-50)
+            </Select.Option>
+            <Select.Option value={TournamentGameResult.VOID}>
+              Void (no record change)
+            </Select.Option>
+          </Select>
+        </Form.Item>
+      )}
 
       <Form.Item name="round" label="Round (1-indexed)">
         <InputNumber min={1} />
@@ -1012,6 +1042,15 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     },
   };
 
+  const SuspendedGameResultHelptip = (
+    <>
+      What result would you like to assign to players who join your tournament
+      late, for unplayed rounds?
+      <p>- Recommended value for tournaments is Forfeit loss. </p>
+      <p>- Clubs can probably use a Void result.</p>
+    </>
+  );
+
   return (
     <>
       <Form>
@@ -1080,7 +1119,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
           label={
             <>
               Suspended game result
-              <Tooltip title="What result would you like to assign to players who join your tournament late, for unplayed rounds?">
+              <Tooltip title={SuspendedGameResultHelptip}>
                 <QuestionCircleOutlined
                   className="readable-text-color"
                   style={{ marginLeft: 5 }}
@@ -1100,7 +1139,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
               Bye +50
             </Select.Option>
             <Select.Option value={TournamentGameResult.VOID}>
-              Void (No result)
+              Void (No win or loss)
             </Select.Option>
           </Select>
         </Form.Item>
