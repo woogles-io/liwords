@@ -653,7 +653,7 @@ const SetPairing = (props: { tournamentID: string }) => {
       )}
 
       <Form.Item name="round" label="Round (1-indexed)">
-        <InputNumber min={1} />
+        <InputNumber min={1} required />
       </Form.Item>
 
       <Form.Item>
@@ -764,7 +764,7 @@ const SetResult = (props: { tournamentID: string }) => {
       />
 
       <Form.Item name="round" label="Round (1-indexed)">
-        <InputNumber min={1} />
+        <InputNumber min={1} required />
       </Form.Item>
 
       <Form.Item name="p1score" label="Player 1 score">
@@ -864,7 +864,7 @@ const PairRound = (props: { tournamentID: string }) => {
       <DivisionFormItem />
 
       <Form.Item name="round" label="Round (1-indexed)">
-        <InputNumber min={1} />
+        <InputNumber min={1} required />
       </Form.Item>
 
       <Form.Item name="preserveByes" label="Preserve byes">
@@ -910,7 +910,7 @@ const UnpairRound = (props: { tournamentID: string }) => {
     <Form onFinish={onFinish}>
       <DivisionFormItem />
       <Form.Item name="round" label="Round (1-indexed)">
-        <InputNumber min={1} />
+        <InputNumber min={1} required />
       </Form.Item>
       <Form.Item>
         <Button type="primary" htmlType="submit">
