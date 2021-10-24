@@ -244,18 +244,15 @@ func (s *DBStore) ListOpenSeeks(ctx context.Context, receiverID, tourneyID strin
 	var games []soughtgame
 	var err error
 	ctxDB := s.db.WithContext(ctx)
+	query := ctxDB.Table("soughtgames")
+
 	if tourneyID != "" {
-		if result := ctxDB.Table("soughtgames").
-			Where("receiver = ? AND request->>'tournament_id' = ?", receiverID, tourneyID).
-			Scan(&games); result.Error != nil {
-			return nil, result.Error
-		}
+		query = query.Where("receiver = ? AND request->>'tournament_id' = ?", receiverID, tourneyID)
 	} else {
-		if result := ctxDB.Table("soughtgames").
-			Where("receiver = ? OR receiver = ''", receiverID).
-			Scan(&games); result.Error != nil {
-			return nil, result.Error
-		}
+		query = query.Where("receiver = ? OR receiver = ''", receiverID)
+	}
+	if result := query.Scan(&games); result.Error != nil {
+		return nil, result.Error
 	}
 
 	entGames := make([]*entity.SoughtGame, len(games))
