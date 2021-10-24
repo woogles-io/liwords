@@ -1,10 +1,10 @@
 import {
   GameRequest,
   GameRules,
-  MatchRequest,
   MessageType,
   RatingMode,
   SeekRequest,
+  SeekState,
   SoughtGameProcessEvent,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ChallengeRuleMap } from '../gen/macondo/api/proto/macondo/macondo_pb';
@@ -30,7 +30,6 @@ export const sendSeek = (
   sendSocketMsg: (msg: Uint8Array) => void
 ): void => {
   const sr = new SeekRequest();
-  const mr = new MatchRequest();
   const gr = new GameRequest();
   const rules = new GameRules();
   rules.setBoardLayoutName('CrosswordGame');
@@ -51,21 +50,23 @@ export const sendSeek = (
     gr.setBotType(BotTypesEnumProperties[game.botType].botCode(game.lexicon));
   }
 
-  if (game.receiver.getDisplayName() === '' && game.playerVsBot === false) {
-    sr.setGameRequest(gr);
+  sr.setUserState(SeekState.READY);
 
-    sendSocketMsg(
-      encodeToSocketFmt(MessageType.SEEK_REQUEST, sr.serializeBinary())
-    );
+  if (!game.receiverIsPermanent) {
+    sr.setGameRequest(gr);
+    console.log('this is a seek request');
   } else {
     // We make it a match request if the receiver is non-empty, or if playerVsBot.
-    mr.setGameRequest(gr);
-    mr.setReceivingUser(game.receiver);
-    mr.setTournamentId(game.tournamentID);
-    sendSocketMsg(
-      encodeToSocketFmt(MessageType.MATCH_REQUEST, mr.serializeBinary())
-    );
+    sr.setGameRequest(gr);
+    sr.setReceivingUser(game.receiver);
+    sr.setTournamentId(game.tournamentID);
+    sr.setReceiverIsPermanent(true);
+    console.log('this is a match request');
   }
+  console.log('sr: ', sr);
+  sendSocketMsg(
+    encodeToSocketFmt(MessageType.SEEK_REQUEST, sr.serializeBinary())
+  );
 };
 
 export const sendAccept = (

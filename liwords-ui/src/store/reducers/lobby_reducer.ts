@@ -3,7 +3,6 @@ import { GameInfoResponse } from '../../gen/api/proto/game_service/game_service_
 import {
   SeekRequest,
   RatingMode,
-  MatchRequest,
   MatchUser,
 } from '../../gen/api/proto/realtime/realtime_pb';
 import { BotTypesEnum } from '../../lobby/bots';
@@ -26,6 +25,7 @@ export type SoughtGame = {
   receiver: MatchUser;
   rematchFor: string;
   tournamentID: string;
+  receiverIsPermanent: boolean;
 };
 
 type playerMeta = {
@@ -58,7 +58,7 @@ export type LobbyState = {
 };
 
 export const SeekRequestToSoughtGame = (
-  req: SeekRequest | MatchRequest
+  req: SeekRequest
 ): SoughtGame | null => {
   const gameReq = req.getGameRequest();
   const user = req.getUser();
@@ -69,7 +69,7 @@ export const SeekRequestToSoughtGame = (
   let receivingUser = new MatchUser();
   let rematchFor = '';
   let tournamentID = '';
-  if (req instanceof MatchRequest) {
+  if (req.getReceiverIsPermanent()) {
     console.log('ismatchrequest');
     receivingUser = req.getReceivingUser()!;
     rematchFor = req.getRematchFor();
@@ -92,6 +92,7 @@ export const SeekRequestToSoughtGame = (
     playerVsBot: gameReq.getPlayerVsBot(),
     tournamentID,
     variant: gameReq.getRules()?.getVariantName() || '',
+    receiverIsPermanent: req.getReceiverIsPermanent(),
     // this is inconsequential as bot match requests are never shown
     // to the user. change if this becomes the case some day.
     botType: 0,
@@ -136,12 +137,25 @@ export const GameInfoResponseToActiveGame = (
 export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
   switch (action.actionType) {
     case ActionType.AddSoughtGame: {
-      const { soughtGames } = state;
       const soughtGame = action.payload as SoughtGame;
-      return {
-        ...state,
-        soughtGames: [...soughtGames, soughtGame],
-      };
+      console.log('sg: ', soughtGame);
+      if (!soughtGame.receiverIsPermanent) {
+        const existingSoughtGames = state.soughtGames.filter((sg) => {
+          return sg.seekID !== soughtGame.seekID;
+        });
+        return {
+          ...state,
+          soughtGames: [...existingSoughtGames, soughtGame],
+        };
+      } else {
+        const existingMatchRequests = state.matchRequests.filter((sg) => {
+          return sg.seekID !== soughtGame.seekID;
+        });
+        return {
+          ...state,
+          matchRequests: [...existingMatchRequests, soughtGame],
+        };
+      }
     }
 
     case ActionType.RemoveSoughtGame: {
@@ -150,10 +164,10 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
       const id = action.payload as string;
 
       const newSought = soughtGames.filter((sg) => {
-        return sg.seekID !== id;
+        return sg.seekID !== id && !sg.receiverIsPermanent;
       });
-      const newMatch = matchRequests.filter((mr) => {
-        return mr.seekID !== id;
+      const newMatch = matchRequests.filter((sg) => {
+        return sg.seekID !== id && sg.receiverIsPermanent;
       });
 
       return {
@@ -166,36 +180,29 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
     case ActionType.AddSoughtGames: {
       const soughtGames = action.payload as Array<SoughtGame>;
       console.log('soughtGames', soughtGames);
-      soughtGames.sort((a, b) => {
+
+      const seeks: SoughtGame[] = [];
+      const matches: SoughtGame[] = [];
+
+      soughtGames.forEach(function (sg) {
+        if (sg.receiverIsPermanent) {
+          matches.push(sg);
+        } else {
+          seeks.push(sg);
+        }
+      });
+
+      seeks.sort((a, b) => {
         return a.userRating < b.userRating ? -1 : 1;
       });
-      return {
-        ...state,
-        soughtGames,
-      };
-    }
-
-    case ActionType.AddMatchRequest: {
-      const { matchRequests } = state;
-      const matchRequest = action.payload as SoughtGame;
-
-      // it's a match request; put new ones on top.
-      return {
-        ...state,
-        matchRequests: [matchRequest, ...matchRequests],
-      };
-    }
-
-    case ActionType.AddMatchRequests: {
-      const matchRequests = action.payload as Array<SoughtGame>;
-      // These are match requests.
-      console.log('matchRequests', matchRequests);
-      matchRequests.sort((a, b) => {
+      matches.sort((a, b) => {
         return a.userRating < b.userRating ? -1 : 1;
       });
+
       return {
         ...state,
-        matchRequests,
+        soughtGames: seeks,
+        matchRequests: matches,
       };
     }
 

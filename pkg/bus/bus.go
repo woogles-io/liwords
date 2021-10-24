@@ -441,9 +441,8 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 
 	switch msgType {
 	case pb.MessageType_SEEK_REQUEST.String():
+		log.Debug().Str("user", userID).Msg("seek-request")
 		return b.seekRequest(ctx, auth, userID, wsConnID, data)
-	case pb.MessageType_MATCH_REQUEST.String():
-		return b.matchRequest(ctx, auth, userID, wsConnID, data)
 	case pb.MessageType_CHAT_MESSAGE.String():
 		// The user is subtopics[2]
 		evt := &pb.ChatMessage{}
@@ -453,14 +452,16 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		log.Debug().Str("user", userID).Str("msg", evt.Message).Str("channel", evt.Channel).Msg("chat")
 		return b.chat(ctx, userID, evt)
-	case pb.MessageType_DECLINE_MATCH_REQUEST.String():
-		evt := &pb.DeclineMatchRequest{}
+
+	case pb.MessageType_DECLINE_SEEK_REQUEST.String():
+		evt := &pb.DeclineSeekRequest{}
+
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
 			return err
 		}
 		log.Debug().Str("user", userID).Str("reqid", evt.RequestId).Msg("decline-rematch")
-		return b.matchDeclined(ctx, evt, userID)
+		return b.seekDeclined(ctx, evt, userID)
 	case pb.MessageType_GAME_META_EVENT.String():
 		evt := &pb.GameMetaEvent{}
 		err := proto.Unmarshal(data, evt)
@@ -884,7 +885,7 @@ func (b *Bus) blockExists(ctx context.Context, u1, u2 *entity.User) (int, error)
 
 func (b *Bus) sendLobbyContext(ctx context.Context, userID, connID string) error {
 	// open seeks
-	seeks, err := b.openSeeks(ctx)
+	seeks, err := b.openSeeks(ctx, userID, "")
 	if err != nil {
 		return err
 	}
@@ -898,15 +899,6 @@ func (b *Bus) sendLobbyContext(ctx context.Context, userID, connID string) error
 		return err
 	}
 	err = b.pubToConnectionID(connID, userID, activeGames)
-	if err != nil {
-		return err
-	}
-	// open match reqs
-	matches, err := b.openMatches(ctx, userID, "")
-	if err != nil {
-		return err
-	}
-	err = b.pubToConnectionID(connID, userID, matches)
 	if err != nil {
 		return err
 	}
@@ -928,7 +920,7 @@ func (b *Bus) sendTournamentContext(ctx context.Context, realm, userID, connID s
 		return err
 	}
 	// open match reqs
-	matches, err := b.openMatches(ctx, userID, tourneyID)
+	matches, err := b.openSeeks(ctx, userID, tourneyID)
 	if err != nil {
 		return err
 	}

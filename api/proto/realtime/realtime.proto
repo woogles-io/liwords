@@ -37,8 +37,8 @@ enum ChildStatus {
 }
 
 // Game initialization
-// Both SeekRequest and MatchRequest encapsulate a more general GameRequest
-// object Both these types of requests can be sent from client to server or
+// SeekRequest encapsulates a more general GameRequest
+// object. This can be sent from client to server or
 // vice-versa.
 
 message GameRequest {
@@ -94,7 +94,7 @@ enum MessageType {
   TOURNAMENT_ROUND_STARTED = 16;
   GAME_DELETION = 17;
   MATCH_REQUESTS = 18;
-  DECLINE_MATCH_REQUEST = 19;
+  DECLINE_SEEK_REQUEST = 19;
   CHAT_MESSAGE = 20;
   CHAT_MESSAGE_DELETED = 21;
   USER_PRESENCE = 22;
@@ -173,29 +173,33 @@ message PresenceEntry {
   repeated string channel = 3;
 }
 
+enum SeekState {
+  ABSENT = 0;
+  PRESENT = 1;
+  READY = 2;
+}
+
 message SeekRequest {
   GameRequest game_request = 1;
   MatchUser user = 2;
   int32 minimum_rating = 3;
   int32 maximum_rating = 4;
   // connection_id is the websocket ID via which this game was requested.
-  string connection_id = 5;
-}
-
-message MatchRequest {
-  GameRequest game_request = 1;
-  MatchUser user = 2;
-  MatchUser receiving_user = 3;
+  string seeker_connection_id = 5;
+  MatchUser receiving_user = 6;
+  SeekState user_state = 7;
+  SeekState receiver_state = 8;
+  string receiver_connection_id = 9;
+  repeated string booted_receivers = 10;
   // rematch_for is the game ID that this Match Request is a rematch for (empty
   // if it isn't a rematch)
-  string rematch_for = 4;
-  // connection_id is the websocket ID via which this game was requested.
-  string connection_id = 5;
+  string rematch_for = 11;
   // If this match request is part of a tournament, it is treated in a special
   // way. We are moving towards server-only matching during tournaments,
   // so the following will only be used in "clubhouse mode" / more free-form
   // clubs.
-  string tournament_id = 6;
+  string tournament_id = 12;
+  bool receiver_is_permanent = 13;
 }
 
 message ReadyForGame { string game_id = 1; }
@@ -207,11 +211,10 @@ message SoughtGameProcessEvent { string request_id = 1; }
 
 // Server to client messages:
 // When a Seeker cancels their outgoing match request:
-message MatchRequestCancellation { string request_id = 1; }
+message SeekRequestCancellation { string request_id = 1; }
 
 // SeekRequests sends all open seek requests.
 message SeekRequests { repeated SeekRequest requests = 1; }
-message MatchRequests { repeated MatchRequest requests = 1; }
 
 // The server will send back a ServerGameplayEvent to a ClientGameplayEvent.
 // The server will also send these asynchronously for opponent gameplay
@@ -455,7 +458,7 @@ message TimedOut {
 }
 
 // When a Receiver declines a Seeker:
-message DeclineMatchRequest { string request_id = 1; }
+message DeclineSeekRequest { string request_id = 1; }
 
 // Tournaments
 
