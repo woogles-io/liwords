@@ -80,6 +80,8 @@ export type seekPropVals = {
   vsBot: boolean;
   variant: string;
   botType: BotTypesEnum;
+  minRating: number;
+  maxRating: number;
 };
 
 type mandatoryFormValues = Partial<seekPropVals> &
@@ -207,6 +209,8 @@ export const SeekForm = (props: Props) => {
     vsBot: false,
     variant: 'classic',
     botType: BotTypesEnum.BEGINNER,
+    minRating: 0,
+    maxRating: 3000,
   };
   let disableTimeControls = false;
   let disableVariantControls = false;
@@ -395,6 +399,8 @@ export const SeekForm = (props: Props) => {
       tournamentID: props.tournamentID || '',
       variant: val.variant as string,
       receiverIsPermanent: receiver.getDisplayName() !== '',
+      minRating: val.minRating,
+      maxRating: val.maxRating,
     };
     props.onFormSubmit(obj, val);
   };
@@ -422,7 +428,6 @@ export const SeekForm = (props: Props) => {
       name="seekForm"
     >
       {props.prefixItems || null}
-
       {props.vsBot && (
         <Form.Item label="Select bot level" name="botType">
           <Select listHeight={500}>
@@ -450,7 +455,6 @@ export const SeekForm = (props: Props) => {
           </Select>
         </Form.Item>
       )}
-
       {props.showFriendInput && (
         <Form.Item
           label={props.tournamentID ? 'Opponent' : 'Friend'}
@@ -481,7 +485,6 @@ export const SeekForm = (props: Props) => {
           </AutoComplete>
         </Form.Item>
       )}
-
       {/* if variant controls are disabled it means we have hardcoded settings
       for it, so show them if not classic */}
       {(enableWordSmog ||
@@ -495,12 +498,10 @@ export const SeekForm = (props: Props) => {
           </Select>
         </Form.Item>
       )}
-
       <LexiconFormItem
         disabled={disableLexiconControls}
         excludedLexica={excludedLexica(enableAllLexicons, enableCSW19X)}
       />
-
       {showChallengeRule && (
         <ChallengeRulesFormItem disabled={disableChallengeControls} />
       )}
@@ -539,6 +540,18 @@ export const SeekForm = (props: Props) => {
       <Form.Item label="Rated" name="rated" valuePropName="checked">
         <Switch disabled={disableRatedControls} />
       </Form.Item>
+
+      {!props.showFriendInput && !props.vsBot && (
+        <Form.Item label="Minimum Rating" name="minRating">
+          <InputNumber min={0} max={3000} />
+        </Form.Item>
+      )}
+      {!props.showFriendInput && !props.vsBot && (
+        <Form.Item label="Maximum Rating" name="maxRating">
+          <InputNumber min={0} max={3000} />
+        </Form.Item>
+      )}
+
       <small className="readable-text-color">
         {lexiconCopyright ? lexiconCopyright : ''}
       </small>

@@ -77,6 +77,14 @@ func (b *Bus) seekRequest(ctx context.Context, auth, userID, connID string,
 	return err
 }
 
+func ratingKey(gameRequest *pb.GameRequest) (entity.VariantKey, error) {
+	timefmt, variant, err := entity.VariantFromGameReq(gameRequest)
+	if err != nil {
+		return "", err
+	}
+	return entity.ToVariantKey(gameRequest.Lexicon, variant, timefmt), nil
+}
+
 func (b *Bus) newSeekRequest(ctx context.Context, auth, userID, connID string,
 	req *pb.SeekRequest, gameRequest *pb.GameRequest, lastOpp string) error {
 
@@ -101,11 +109,10 @@ func (b *Bus) newSeekRequest(ctx context.Context, auth, userID, connID string,
 	}
 
 	// Look up user.
-	timefmt, variant, err := entity.VariantFromGameReq(gameRequest)
+	ratingKey, err := ratingKey(gameRequest)
 	if err != nil {
 		return err
 	}
-	ratingKey := entity.ToVariantKey(gameRequest.Lexicon, variant, timefmt)
 
 	u, err := b.userStore.GetByUUID(ctx, reqUser.UserId)
 	if err != nil {
@@ -395,6 +402,10 @@ func (b *Bus) sendSoughtGameDeletion(ctx context.Context, sg *entity.SoughtGame)
 	return b.broadcastSeekDeletion(id)
 }
 
+// MinRatingDeviation that can accept a game request, in order to make it so that
+// the player plays at least a couple of games.
+const MinRatingDeviation = 250
+
 func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 	userID, connID string) error {
 	sg, err := b.soughtGameStore.Get(ctx, evt.RequestId)
@@ -423,6 +434,31 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 	accUser, err := b.userStore.GetByUUID(ctx, userID)
 	if err != nil {
 		return err
+	}
+	if sg.SeekRequest.MaximumRating > 0 && sg.SeekRequest.MinimumRating > 0 &&
+		!sg.SeekRequest.ReceiverIsPermanent {
+		// If the receiver is not permanent, then we need to check that the
+		// requester's rating is within the range of the receiver's minimum and
+		// maximum ratings.
+		ratingKey, err := ratingKey(gameReq)
+		if err != nil {
+			return err
+		}
+
+		accRating, err := accUser.GetRating(ratingKey)
+		if err != nil {
+			return err
+		}
+		// These errors should not show up in actual operation, as the front
+		// end would filter out the seeks that don't match.
+		if accRating.RatingDeviation > MinRatingDeviation {
+			return errors.New("you must play a few more games before you can accept this seek")
+		}
+		if accRating.Rating < float64(sg.SeekRequest.MinimumRating) ||
+			accRating.Rating > float64(sg.SeekRequest.MaximumRating) {
+			return errors.New("your rating is not within the requested range")
+		}
+
 	}
 
 	// Otherwise create a game
