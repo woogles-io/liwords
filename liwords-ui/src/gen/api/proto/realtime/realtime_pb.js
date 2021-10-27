@@ -3916,8 +3916,8 @@ proto.liwords.SeekRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     gameRequest: (f = msg.getGameRequest()) && proto.liwords.GameRequest.toObject(includeInstance, f),
     user: (f = msg.getUser()) && proto.liwords.MatchUser.toObject(includeInstance, f),
-    minimumRating: jspb.Message.getFieldWithDefault(msg, 3, 0),
-    maximumRating: jspb.Message.getFieldWithDefault(msg, 4, 0),
+    minimumRatingRange: jspb.Message.getFieldWithDefault(msg, 3, 0),
+    maximumRatingRange: jspb.Message.getFieldWithDefault(msg, 4, 0),
     seekerConnectionId: jspb.Message.getFieldWithDefault(msg, 5, ""),
     receivingUser: (f = msg.getReceivingUser()) && proto.liwords.MatchUser.toObject(includeInstance, f),
     userState: jspb.Message.getFieldWithDefault(msg, 7, 0),
@@ -3975,11 +3975,11 @@ proto.liwords.SeekRequest.deserializeBinaryFromReader = function(msg, reader) {
       break;
     case 3:
       var value = /** @type {number} */ (reader.readInt32());
-      msg.setMinimumRating(value);
+      msg.setMinimumRatingRange(value);
       break;
     case 4:
       var value = /** @type {number} */ (reader.readInt32());
-      msg.setMaximumRating(value);
+      msg.setMaximumRatingRange(value);
       break;
     case 5:
       var value = /** @type {string} */ (reader.readString());
@@ -4063,14 +4063,14 @@ proto.liwords.SeekRequest.serializeBinaryToWriter = function(message, writer) {
       proto.liwords.MatchUser.serializeBinaryToWriter
     );
   }
-  f = message.getMinimumRating();
+  f = message.getMinimumRatingRange();
   if (f !== 0) {
     writer.writeInt32(
       3,
       f
     );
   }
-  f = message.getMaximumRating();
+  f = message.getMaximumRatingRange();
   if (f !== 0) {
     writer.writeInt32(
       4,
@@ -4219,10 +4219,10 @@ proto.liwords.SeekRequest.prototype.hasUser = function() {
 
 
 /**
- * optional int32 minimum_rating = 3;
+ * optional int32 minimum_rating_range = 3;
  * @return {number}
  */
-proto.liwords.SeekRequest.prototype.getMinimumRating = function() {
+proto.liwords.SeekRequest.prototype.getMinimumRatingRange = function() {
   return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 3, 0));
 };
 
@@ -4231,16 +4231,16 @@ proto.liwords.SeekRequest.prototype.getMinimumRating = function() {
  * @param {number} value
  * @return {!proto.liwords.SeekRequest} returns this
  */
-proto.liwords.SeekRequest.prototype.setMinimumRating = function(value) {
+proto.liwords.SeekRequest.prototype.setMinimumRatingRange = function(value) {
   return jspb.Message.setProto3IntField(this, 3, value);
 };
 
 
 /**
- * optional int32 maximum_rating = 4;
+ * optional int32 maximum_rating_range = 4;
  * @return {number}
  */
-proto.liwords.SeekRequest.prototype.getMaximumRating = function() {
+proto.liwords.SeekRequest.prototype.getMaximumRatingRange = function() {
   return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
 };
 
@@ -4249,7 +4249,7 @@ proto.liwords.SeekRequest.prototype.getMaximumRating = function() {
  * @param {number} value
  * @return {!proto.liwords.SeekRequest} returns this
  */
-proto.liwords.SeekRequest.prototype.setMaximumRating = function(value) {
+proto.liwords.SeekRequest.prototype.setMaximumRatingRange = function(value) {
   return jspb.Message.setProto3IntField(this, 4, value);
 };
 

@@ -80,8 +80,7 @@ export type seekPropVals = {
   vsBot: boolean;
   variant: string;
   botType: BotTypesEnum;
-  minRating: number;
-  maxRating: number;
+  ratingRange: number;
 };
 
 type mandatoryFormValues = Partial<seekPropVals> &
@@ -209,8 +208,7 @@ export const SeekForm = (props: Props) => {
     vsBot: false,
     variant: 'classic',
     botType: BotTypesEnum.BEGINNER,
-    minRating: 0,
-    maxRating: 3000,
+    ratingRange: 500,
   };
   let disableTimeControls = false;
   let disableVariantControls = false;
@@ -399,8 +397,10 @@ export const SeekForm = (props: Props) => {
       tournamentID: props.tournamentID || '',
       variant: val.variant as string,
       receiverIsPermanent: receiver.getDisplayName() !== '',
-      minRating: val.minRating,
-      maxRating: val.maxRating,
+      // these are independent values in the backend but for now will be
+      // modified together on the front end.
+      minRatingRange: -val.ratingRange,
+      maxRatingRange: val.ratingRange,
     };
     props.onFormSubmit(obj, val);
   };
@@ -542,13 +542,13 @@ export const SeekForm = (props: Props) => {
       </Form.Item>
 
       {!props.showFriendInput && !props.vsBot && (
-        <Form.Item label="Minimum Rating" name="minRating">
-          <InputNumber min={0} max={3000} />
-        </Form.Item>
-      )}
-      {!props.showFriendInput && !props.vsBot && (
-        <Form.Item label="Maximum Rating" name="maxRating">
-          <InputNumber min={0} max={3000} />
+        <Form.Item label="Rating range" name="ratingRange">
+          <Slider
+            min={50}
+            max={500}
+            tipFormatter={(v) => `± ${v ? v : 0}`}
+            step={50}
+          />
         </Form.Item>
       )}
 

@@ -182,8 +182,8 @@ enum SeekState {
 message SeekRequest {
   GameRequest game_request = 1;
   MatchUser user = 2;
-  int32 minimum_rating = 3;
-  int32 maximum_rating = 4;
+  int32 minimum_rating_range = 3;
+  int32 maximum_rating_range = 4;
   // connection_id is the websocket ID via which this game was requested.
   string seeker_connection_id = 5;
   MatchUser receiving_user = 6;

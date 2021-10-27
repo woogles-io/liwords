@@ -21,8 +21,8 @@ export type SoughtGame = {
   playerVsBot: boolean;
   botType: BotTypesEnum;
   variant: string;
-  minRating: number;
-  maxRating: number;
+  minRatingRange: number;
+  maxRatingRange: number;
   // Only for direct match requests:
   receiver: MatchUser;
   rematchFor: string;
@@ -87,8 +87,8 @@ export const SeekRequestToSoughtGame = (
     challengeRule: gameReq.getChallengeRule(),
     seekID: gameReq.getRequestId(),
     rated: gameReq.getRatingMode() === RatingMode.RATED,
-    minRating: req.getMinimumRating(),
-    maxRating: req.getMaximumRating(),
+    minRatingRange: req.getMinimumRatingRange(),
+    maxRatingRange: req.getMaximumRatingRange(),
     maxOvertimeMinutes: gameReq.getMaxOvertimeMinutes(),
     receiver: receivingUser,
     rematchFor,

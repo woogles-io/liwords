@@ -394,11 +394,11 @@ export class SeekRequest extends jspb.Message {
   getUser(): MatchUser | undefined;
   setUser(value?: MatchUser): void;
 
-  getMinimumRating(): number;
-  setMinimumRating(value: number): void;
+  getMinimumRatingRange(): number;
+  setMinimumRatingRange(value: number): void;
 
-  getMaximumRating(): number;
-  setMaximumRating(value: number): void;
+  getMaximumRatingRange(): number;
+  setMaximumRatingRange(value: number): void;
 
   getSeekerConnectionId(): string;
   setSeekerConnectionId(value: string): void;
@@ -445,8 +445,8 @@ export namespace SeekRequest {
   export type AsObject = {
     gameRequest?: GameRequest.AsObject,
     user?: MatchUser.AsObject,
-    minimumRating: number,
-    maximumRating: number,
+    minimumRatingRange: number,
+    maximumRatingRange: number,
     seekerConnectionId: string,
     receivingUser?: MatchUser.AsObject,
     userState: SeekStateMap[keyof SeekStateMap],

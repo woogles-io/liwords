@@ -51,10 +51,8 @@ export const sendSeek = (
   }
 
   sr.setUserState(SeekState.READY);
-  if (game.minRating > 0 && game.maxRating > 0) {
-    sr.setMinimumRating(game.minRating);
-    sr.setMaximumRating(game.maxRating);
-  }
+  sr.setMinimumRatingRange(game.minRatingRange);
+  sr.setMaximumRatingRange(game.maxRatingRange);
 
   if (!game.receiverIsPermanent) {
     sr.setGameRequest(gr);

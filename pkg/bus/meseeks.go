@@ -435,12 +435,17 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 	if err != nil {
 		return err
 	}
-	if sg.SeekRequest.MaximumRating > 0 && sg.SeekRequest.MinimumRating > 0 &&
-		!sg.SeekRequest.ReceiverIsPermanent {
+	if !sg.SeekRequest.ReceiverIsPermanent {
 		// If the receiver is not permanent, then we need to check that the
 		// requester's rating is within the range of the receiver's minimum and
 		// maximum ratings.
+
 		ratingKey, err := ratingKey(gameReq)
+		if err != nil {
+			return err
+		}
+
+		reqUser, err := b.userStore.GetByUUID(ctx, requester)
 		if err != nil {
 			return err
 		}
@@ -449,16 +454,27 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 		if err != nil {
 			return err
 		}
+
+		reqRating, err := reqUser.GetRating(ratingKey)
+		if err != nil {
+			return err
+		}
+
 		// These errors should not show up in actual operation, as the front
 		// end would filter out the seeks that don't match.
 		if accRating.RatingDeviation > MinRatingDeviation {
 			return errors.New("you must play a few more games before you can accept this seek")
 		}
-		if accRating.Rating < float64(sg.SeekRequest.MinimumRating) ||
-			accRating.Rating > float64(sg.SeekRequest.MaximumRating) {
+		log.Debug().Int32("minRatRange", sg.SeekRequest.MinimumRatingRange).
+			Int32("maxRatRange", sg.SeekRequest.MaximumRatingRange).
+			Float64("accRating", accRating.Rating).
+			Float64("reqRating", reqRating.Rating).
+			Msg("ratingsinfo")
+		// assume min rating range is negative
+		if accRating.Rating < reqRating.Rating+float64(sg.SeekRequest.MinimumRatingRange) ||
+			accRating.Rating > reqRating.Rating+float64(sg.SeekRequest.MaximumRatingRange) {
 			return errors.New("your rating is not within the requested range")
 		}
-
 	}
 
 	// Otherwise create a game
