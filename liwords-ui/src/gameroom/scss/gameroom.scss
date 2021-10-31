@@ -28,7 +28,6 @@ p.streak-loss {
   }
 }
 .game-table {
-  .chat-area {
     .ant-card.left-menu {
       text-transform: uppercase;
       letter-spacing: 1px;
@@ -43,7 +42,6 @@ p.streak-loss {
         font-size: 16px;
         margin-right: 9px;
       }
-    }
   }
   .end-message {
     width: 100%;
@@ -1493,6 +1491,24 @@ p.rune {
   }
 }
 
+
+.timed-notification {
+  & > p:nth-of-type(n + 2) {
+    margin-top: 1em;
+  }
+
+  & > .row-of-buttons {
+    margin-top: 24px;
+    text-align: right;
+  }
+}
+
+.cancel-notification {
+  .ant-notification-close-x {
+    display: none;
+  }
+}
+
 @media (min-width: $screen-tablet-landscape-min) {
   .notepad-card, .analyzer-card {
     display: none;
@@ -1712,19 +1728,5 @@ p.rune {
   }
 }
 
-.timed-notification {
-  & > p:nth-of-type(n + 2) {
-    margin-top: 1em;
-  }
-
-  & > .row-of-buttons {
-    margin-top: 24px;
-    text-align: right;
-  }
-}
-
-.cancel-notification {
-  .ant-notification-close-x {
-    display: none;
-  }
+@media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-min) {
 }

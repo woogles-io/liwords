@@ -1,3 +1,4 @@
+// This should only include mixins and variables
 @import 'color_modes';
 
 $card-shadow: 0px 0px 12px rgba(0, 0, 0, 0.15);
@@ -30,12 +31,15 @@ $screen-desktop-l-min: 1920px;
   screenSizeDesktop: strip-unit($screen-desktop-min);
 }
 
-$screen-min-height-laptop-min: 680px;
+$screen-min-height-mobile-extended: 730px;
+$screen-min-height-tablet-portrait-extended: 820px;
+$screen-min-height-tablet-landscape-extended: 766px;
+$screen-min-height-laptop-min: 820px;
 $screen-min-height-desktop-min: 830px;
-$screen-min-height-desktop-max: 910px;
+$screen-min-height-desktop-max: 930px;
 
 $font-deco: 'Fjalla One', sans-serif;
-$font-default: 'Muli', sans-serif;
+$font-default: 'Mulish', sans-serif;
 $font-monospaced: 'Courier Prime', monospace;
 $font-tile: 'Roboto Mono', monospace;
 

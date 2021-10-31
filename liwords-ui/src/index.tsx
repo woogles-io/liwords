@@ -6,8 +6,6 @@ import App from './App';
 import * as serviceWorker from './serviceWorker';
 import { Store } from './store/store';
 import { BriefProfiles } from './utils/brief_profiles';
-import { SideMenuContextProvider } from './shared/layoutContainers/menu';
-
 declare global {
   interface Window {
     RUNTIME_CONFIGURATION: { [key: string]: string };
@@ -21,8 +19,9 @@ window.console.info(
 // Scope the variables declared here.
 {
   // Adjust this constant accordingly.
-  const minimumViableWidth = 568;
-  const idealMobileWidth = 375;
+  const mobileBreakpoint = 375;
+  const tabletPortraitBreakpoint = 768;
+  const tabletLandscapeBreakpoint = 1024;
   const metaViewport = document.querySelector("meta[name='viewport']");
   if (!metaViewport) {
     // Should not happen because this is in public/index.html.
@@ -31,10 +30,16 @@ window.console.info(
   const resizeFunc = () => {
     let desiredViewport = 'width=device-width, initial-scale=1';
     const deviceWidth = window.outerWidth;
-    if (deviceWidth < minimumViableWidth) {
-      desiredViewport = `width=${idealMobileWidth}, initial-scale=${
-        deviceWidth / idealMobileWidth
-      }`;
+    if (deviceWidth < tabletLandscapeBreakpoint) {
+      if (deviceWidth < tabletPortraitBreakpoint) {
+        desiredViewport = `width=${mobileBreakpoint}, initial-scale=${
+          deviceWidth / mobileBreakpoint
+        }`;
+      } else {
+        desiredViewport = `width=${tabletPortraitBreakpoint}, initial-scale=${
+          deviceWidth / tabletPortraitBreakpoint
+        }`;
+      }
     }
     metaViewport.setAttribute('content', desiredViewport);
   };

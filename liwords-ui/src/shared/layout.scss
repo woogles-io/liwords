@@ -31,6 +31,21 @@ span.user-context-menu.ant-dropdown-trigger {
     }
   }
 }
+.mobile-tabs {
+  @include container();
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  @media (min-width: $screen-tablet-landscape-min) {
+    justify-content: flex-end;
+  }
+  @media (min-width: $screen-laptop-min) {
+    display: none;
+  }
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}
 
 .panel {
   display: none;
@@ -38,8 +53,23 @@ span.user-context-menu.ant-dropdown-trigger {
   &.in {
     display: block;
   }
+  &.panel-ANNOUNCEMENTS {
+    @media (min-width: $screen-tablet-landscape-min) {
+      display: block;
+    }
+  }
   @media (min-width: $screen-laptop-min) {
-    display: block
+    display: block;
+  }
+  @media (max-width: $screen-tablet-landscape-min - 1) {
+    .ant-card {
+      box-shadow: none;
+      border: 0;
+      @include colorModed() {
+        background: m($background);
+      }
+    }
+
   }
 }
 
@@ -55,12 +85,17 @@ span.user-context-menu.ant-dropdown-trigger {
   @media (min-width: $screen-tablet-portrait-min) {
     padding: 15px 12px 0px;
   }
+
+
 }
 .top-header .container {
   flex-wrap: nowrap;
   align-items: center;
   justify-content: space-around;
   padding: 12px;
+  @media (min-width: $screen-tablet-landscape-min) {
+    padding: 12px 48px;
+  }
  }
 
 .game-container {
@@ -68,16 +103,45 @@ span.user-context-menu.ant-dropdown-trigger {
   .top-header {
     display: none;
   }
-}
-
-.top-header {
-  .game-container {
-    .top-header {
-      display: none;
+    @media (min-height: $screen-min-height-mobile-extended) and (max-width: $screen-tablet-portrait-min - 1) {
+      .top-header {
+        display: flex;
+      }
+      .ant-card.left-menu {
+        display: none;
+      }
+    }
+    @media (min-width: $screen-tablet-landscape-min) {
+      .top-header {
+        display: none;
+      }
+      .ant-card.left-menu {
+        display: flex;
+      }
+    }
+    @media (min-height: $screen-min-height-tablet-landscape-extended) and (max-width: $screen-laptop-min - 1) {
+      .top-header {
+        display: flex;
+      }
+      .ant-card.left-menu {
+        display: none;
+      }
+    }
+    @media (min-height: $screen-min-height-laptop-min) and (max-width: $screen-desktop-min - 1) {
+      .top-header {
+        display: flex;
+      }
+    }
+    @media (min-height: $screen-min-height-desktop-max) {
+      .top-header {
+        display: flex;
+      }
+      .ant-card.left-menu {
+        display: none;
+      }
     }
   }
 
-}
 
 .lobby {
   .ant-card {
@@ -96,9 +160,6 @@ span.user-context-menu.ant-dropdown-trigger {
 @media (min-width: $screen-tablet-landscape-min) {
   .lobby, .game-table {
     padding-top: 12px;
-  }
-  .top-header .container {
-    padding: 12px 48px;
   }
   .play-area, .game-lists {
     min-width: $main-container-width-tablet-landscape;
@@ -183,10 +244,5 @@ span.user-context-menu.ant-dropdown-trigger {
 @media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-min) {
   .lobby, .game-table {
     padding-top: 0px;
-  }
-  .game-container {
-    .top-header {
-      display: flex;
-    }
   }
 }

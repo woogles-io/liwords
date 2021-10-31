@@ -1,4 +1,4 @@
-import React, { ReactNode, ReactNodeArray } from 'react';
+import React, { ReactNodeArray } from 'react';
 import axios from 'axios';
 
 import { Link } from 'react-router-dom';
@@ -110,7 +110,7 @@ export const TopBar = React.memo((props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const { resetStore } = useResetStoreContext();
   const { tournamentContext } = useTournamentStoreContext();
-  const { isOpen, setIsOpen } = useSideMenuContext();
+  const { setIsOpen } = useSideMenuContext();
   const { username, loggedIn, connectedToSocket } = loginState;
   const [loginModalVisible, setLoginModalVisible] = useState(false);
 

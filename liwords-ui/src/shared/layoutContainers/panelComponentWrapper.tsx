@@ -10,11 +10,11 @@ type Props = {
 
 export const PanelComponentWrapper = React.memo((props: Props) => {
   const { activePanelKey } = useSideMenuContext();
-  const calculatedClassName = `panel ${props.className || ''}${
-    activePanelKey === props.panelKey ? ' in' : ''
-  }`;
+  const calculatedClassName = `panel ${props.className || ''} panel-${
+    props.panelKey
+  } ${activePanelKey === props.panelKey ? ' in' : ''}`;
   return (
-    <div className={calculatedClassName} data-panelKey={props.panelKey}>
+    <div className={calculatedClassName} data-panelkey={props.panelKey}>
       {props.children}
     </div>
   );

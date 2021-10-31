@@ -17,6 +17,10 @@ import {
   SideMenuContextProvider,
 } from '../shared/layoutContainers/menu';
 import { PanelComponentWrapper } from '../shared/layoutContainers/panelComponentWrapper';
+import {
+  ContextTab,
+  ContextTabs,
+} from '../shared/layoutContainers/contextTabs';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -54,9 +58,12 @@ export const Lobby = (props: Props) => {
   );
 
   return (
-    <SideMenuContextProvider defaultActivePanelKey="GAMES">
+    <SideMenuContextProvider defaultActivePanelKey={selectedGameTab}>
       <TopBar />
       <div className="lobby">
+        <ContextTabs>
+          <ContextTab panelKey={'PLAY'} label="Play" />
+        </ContextTabs>
         <SideMenu>
           <PanelComponentWrapper panelKey="CHAT" className="chat-area">
             <Chat
@@ -68,7 +75,7 @@ export const Lobby = (props: Props) => {
           </PanelComponentWrapper>
         </SideMenu>
         <Main>
-          <PanelComponentWrapper panelKey="GAMES">
+          <PanelComponentWrapper panelKey={'PLAY'}>
             <GameLists
               loggedIn={loggedIn}
               userID={userID}
