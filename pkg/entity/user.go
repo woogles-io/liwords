@@ -88,7 +88,7 @@ func RelevantRating(ratings Ratings, ratingKey VariantKey) string {
 	unknownRating := "?"
 
 	if ratings.Data == nil {
-		// This is not an unrated user. Use default rating.
+		// This is an unrated user. Use default rating.
 		return strconv.Itoa(glicko.InitialRating) + unknownRating
 	}
 	ratdict, ok := ratings.Data[ratingKey]
@@ -131,6 +131,27 @@ func (u *User) GetRating(ratingKey VariantKey) (*SingleRating, error) {
 		return defaultRating, nil
 	}
 	return &ratdict, nil
+}
+
+func (u *User) GetProtoRatings() (map[string]*realtime.ProfileUpdate_Rating, error) {
+	// if u.Profile == nil {
+	// 	return &realtime.Ratings{}
+	// }
+	// return u.Profile.Ratings.GetProto()
+	if u.Profile == nil {
+		return nil, errors.New("anonymous user has no rating")
+	}
+	if u.Profile.Ratings.Data == nil {
+		return nil, nil
+	}
+	ratings := make(map[string]*realtime.ProfileUpdate_Rating)
+	for k, v := range u.Profile.Ratings.Data {
+		ratings[string(k)] = &realtime.ProfileUpdate_Rating{
+			Rating:    float64(v.Rating),
+			Deviation: float64(v.RatingDeviation),
+		}
+	}
+	return ratings, nil
 }
 
 // RealName returns a user's real name, or an empty string if anonymous.

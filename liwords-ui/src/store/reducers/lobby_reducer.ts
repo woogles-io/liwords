@@ -4,6 +4,7 @@ import {
   SeekRequest,
   RatingMode,
   MatchUser,
+  ProfileUpdate,
 } from '../../gen/api/proto/realtime/realtime_pb';
 import { BotTypesEnum } from '../../lobby/bots';
 
@@ -28,6 +29,7 @@ export type SoughtGame = {
   rematchFor: string;
   tournamentID: string;
   receiverIsPermanent: boolean;
+  ratingKey: string;
 };
 
 type playerMeta = {
@@ -57,6 +59,11 @@ export type LobbyState = {
   matchRequests: Array<SoughtGame>;
   // + Other things in the lobby here that have state.
   activeGames: Array<ActiveGame>;
+  profile: {
+    ratings: {
+      [k: string]: ProfileUpdate.Rating;
+    };
+  };
 };
 
 export const SeekRequestToSoughtGame = (
@@ -96,6 +103,7 @@ export const SeekRequestToSoughtGame = (
     playerVsBot: gameReq.getPlayerVsBot(),
     tournamentID,
     variant: gameReq.getRules()?.getVariantName() || '',
+    ratingKey: req.getRatingKey(),
     receiverIsPermanent: req.getReceiverIsPermanent(),
     // this is inconsequential as bot match requests are never shown
     // to the user. change if this becomes the case some day.
@@ -138,11 +146,40 @@ export const GameInfoResponseToActiveGame = (
   };
 };
 
+// see pkg/bus/meseeks.go for this constant.
+const MinRatingDeviation = 250;
+
+export const matchesRatingFormula = (
+  sg: SoughtGame,
+  ratings: { [k: string]: ProfileUpdate.Rating }
+) => {
+  const ratingKey = sg.ratingKey;
+  // Note that accidentally, if sg.userRating ends with a `?`, parseInt still
+  // works:
+  const seekerRating = parseInt(sg.userRating, 10);
+
+  const receiverRating = ratings[ratingKey];
+  if (!receiverRating) {
+    // If this rating doesn't exist, then the user has never played this variant
+    // before, and we can assume they do not meet the rating requirement,
+    // because their deviation is too high.
+    return false;
+  }
+  if (receiverRating.getDeviation() > MinRatingDeviation) {
+    return false;
+  }
+  const receiverRatingValue = receiverRating.getRating();
+  // minRatingRange should be negative for this to work:
+  const minRating = seekerRating + sg.minRatingRange;
+  const maxRating = seekerRating + sg.maxRatingRange;
+  return receiverRatingValue >= minRating && receiverRatingValue <= maxRating;
+};
+
 export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
   switch (action.actionType) {
     case ActionType.AddSoughtGame: {
       const soughtGame = action.payload as SoughtGame;
-      console.log('sg: ', soughtGame);
+
       if (!soughtGame.receiverIsPermanent) {
         const existingSoughtGames = state.soughtGames.filter((sg) => {
           return sg.seekID !== soughtGame.seekID;
@@ -183,8 +220,6 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
 
     case ActionType.AddSoughtGames: {
       const soughtGames = action.payload as Array<SoughtGame>;
-      console.log('soughtGames', soughtGames);
-
       const seeks: SoughtGame[] = [];
       const matches: SoughtGame[] = [];
 
@@ -242,6 +277,23 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
       return {
         ...state,
         activeGames: newArr,
+      };
+    }
+
+    case ActionType.UpdateProfile: {
+      const { profile } = state;
+      const p = action.payload as ProfileUpdate;
+      const ratings: { [k: string]: ProfileUpdate.Rating } = {};
+      p.getRatingsMap().forEach((v, k) => {
+        ratings[k] = v;
+      });
+      console.log('got ratings', ratings);
+      return {
+        ...state,
+        profile: {
+          ...profile,
+          ratings,
+        },
       };
     }
   }

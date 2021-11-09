@@ -113,6 +113,7 @@ func (b *Bus) newSeekRequest(ctx context.Context, auth, userID, connID string,
 	if err != nil {
 		return err
 	}
+	req.RatingKey = string(ratingKey)
 
 	u, err := b.userStore.GetByUUID(ctx, reqUser.UserId)
 	if err != nil {

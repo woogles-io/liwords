@@ -127,6 +127,7 @@ export const GameLists = React.memo((props: Props) => {
             username={username}
             newGame={newGame}
             requests={sanitizedSoughtGames}
+            ratings={lobbyContext?.profile?.ratings}
           />
         </>
       );
