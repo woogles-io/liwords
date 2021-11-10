@@ -403,10 +403,6 @@ func (b *Bus) sendSoughtGameDeletion(ctx context.Context, sg *entity.SoughtGame)
 	return b.broadcastSeekDeletion(id)
 }
 
-// MinRatingDeviation that can accept a game request, in order to make it so that
-// the player plays at least a couple of games.
-const MinRatingDeviation = 250
-
 func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 	userID, connID string) error {
 	sg, err := b.soughtGameStore.Get(ctx, evt.RequestId)
@@ -461,11 +457,6 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 			return err
 		}
 
-		// These errors should not show up in actual operation, as the front
-		// end would filter out the seeks that don't match.
-		if accRating.RatingDeviation > MinRatingDeviation {
-			return errors.New("you must play a few more games before you can accept this seek")
-		}
 		log.Debug().Int32("minRatRange", sg.SeekRequest.MinimumRatingRange).
 			Int32("maxRatRange", sg.SeekRequest.MaximumRatingRange).
 			Float64("accRating", accRating.Rating).

@@ -7,6 +7,7 @@ import {
   ProfileUpdate,
 } from '../../gen/api/proto/realtime/realtime_pb';
 import { BotTypesEnum } from '../../lobby/bots';
+import { StartingRating } from '../constants';
 
 export type SoughtGame = {
   seeker: string;
@@ -146,9 +147,6 @@ export const GameInfoResponseToActiveGame = (
   };
 };
 
-// see pkg/bus/meseeks.go for this constant.
-const MinRatingDeviation = 250;
-
 export const matchesRatingFormula = (
   sg: SoughtGame,
   ratings: { [k: string]: ProfileUpdate.Rating }
@@ -159,16 +157,10 @@ export const matchesRatingFormula = (
   const seekerRating = parseInt(sg.userRating, 10);
 
   const receiverRating = ratings[ratingKey];
-  if (!receiverRating) {
-    // If this rating doesn't exist, then the user has never played this variant
-    // before, and we can assume they do not meet the rating requirement,
-    // because their deviation is too high.
-    return false;
-  }
-  if (receiverRating.getDeviation() > MinRatingDeviation) {
-    return false;
-  }
-  const receiverRatingValue = receiverRating.getRating();
+  // If this rating doesn't exist, then the user has never played this variant
+  // before, so their starting rating is the default starting rating.
+  const receiverRatingValue = receiverRating?.getRating() || StartingRating;
+
   // minRatingRange should be negative for this to work:
   const minRating = seekerRating + sg.minRatingRange;
   const maxRating = seekerRating + sg.maxRatingRange;
