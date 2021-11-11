@@ -884,6 +884,24 @@ func (b *Bus) blockExists(ctx context.Context, u1, u2 *entity.User) (int, error)
 }
 
 func (b *Bus) sendLobbyContext(ctx context.Context, userID, connID string) error {
+	u, err := b.userStore.GetByUUID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	// send ratings first.
+	ratingProto, err := u.GetProtoRatings()
+	if err != nil {
+		return err
+	}
+	profileUpdate := &pb.ProfileUpdate{
+		UserId:  userID,
+		Ratings: ratingProto,
+	}
+	evt := entity.WrapEvent(profileUpdate, pb.MessageType_PROFILE_UPDATE_EVENT)
+	err = b.pubToConnectionID(connID, userID, evt)
+	if err != nil {
+		return err
+	}
 	// open seeks
 	seeks, err := b.openSeeks(ctx, userID, "")
 	if err != nil {

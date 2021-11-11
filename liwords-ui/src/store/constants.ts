@@ -37,15 +37,39 @@ export const timeCtrlToDisplayName = (
   const totalTime = calculateTotalTime(secs, incrementSecs, maxOvertime);
 
   if (totalTime <= 2 * 60) {
-    return ['Ultra-Blitz!', 'magenta'];
+    return ['Ultra-Blitz!', 'ultrablitz', 'magenta'];
   }
   if (totalTime <= 6 * 60) {
-    return ['Blitz', 'volcano'];
+    return ['Blitz', 'blitz', 'volcano'];
   }
   if (totalTime <= 14 * 60) {
-    return ['Rapid', 'gold'];
+    return ['Rapid', 'rapid', 'gold'];
   }
-  return ['Regular', 'blue'];
+  return ['Regular', 'regular', 'blue'];
+};
+export const StartingRating = '1500';
+// see ToVariantKey and related functions in ratings.go
+export const ratingKey = (
+  secs: number,
+  incrementSecs: number,
+  maxOvertime: number,
+  variant: string,
+  lexicon: string
+) => {
+  const a = timeCtrlToDisplayName(secs, incrementSecs, maxOvertime);
+  const tfmt = a[1];
+  let lexVariant = lexicon;
+  // These are just used for the hard-coded rating keys in the profile.
+  if (lexicon.startsWith('NWL')) {
+    lexVariant = 'NWL18';
+  }
+  if (lexicon.startsWith('CSW')) {
+    lexVariant = 'CSW19';
+  }
+  if (lexicon.startsWith('ECWL')) {
+    lexVariant = 'ECWL';
+  }
+  return `${lexVariant}.${variant}.${tfmt}`;
 };
 
 const initialTimeLabel = (secs: number) => {

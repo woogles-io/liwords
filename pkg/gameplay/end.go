@@ -204,7 +204,23 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	log.Info().Str("gameID", g.GameID()).Msg("game-ended-unload-cache")
 	gameStore.Unload(ctx, g.GameID())
 	g.SendChange(g.NewActiveGameEntry(false))
+
+	// send each player their new profile with updated ratings.
+	sendProfileUpdate(ctx, g, users)
 	return nil
+}
+
+func sendProfileUpdate(ctx context.Context, g *entity.Game, users []*entity.User) {
+	for _, u := range users {
+		ratingProto, err := u.GetProtoRatings()
+		if err != nil {
+			continue
+		}
+		wrapped := entity.WrapEvent(&pb.ProfileUpdate{UserId: u.UUID, Ratings: ratingProto},
+			pb.MessageType_PROFILE_UPDATE_EVENT)
+		wrapped.AddAudience(entity.AudUser, u.UUID)
+		g.SendChange(wrapped)
+	}
 }
 
 // Dangerous function that should not have existed.

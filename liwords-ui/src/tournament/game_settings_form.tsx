@@ -57,7 +57,7 @@ export const SettingsForm = (props: Props) => {
   const { gameRequest } = props;
   const initialValues = GameRequestToFormValues(gameRequest);
 
-  const [itc, itt] = timeCtrlToDisplayName(
+  const [itc, , itt] = timeCtrlToDisplayName(
     initTimeDiscreteScale[initialValues.initialtimeslider].seconds,
     initialValues.incOrOT === 'increment'
       ? Math.round(initialValues.extratime as number)
@@ -88,7 +88,7 @@ export const SettingsForm = (props: Props) => {
       setMaxTimeSetting(10);
       setExtraTimeLabel(otUnitLabel);
     }
-    const [tc, tt] = timeCtrlToDisplayName(
+    const [tc, , tt] = timeCtrlToDisplayName(
       initTimeDiscreteScale[allvals.initialtimeslider].seconds,
       allvals.incOrOT === 'increment'
         ? Math.round(allvals.extratime as number)
