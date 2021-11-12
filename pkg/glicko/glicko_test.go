@@ -814,7 +814,7 @@ func TestEquilibrium(t *testing.T) {
 	}
 	fmt.Printf("Rating1: %.2f, Rating2: %.2f\n", rating1, rating2)
 
-	// A new player with ability and/or style enter the pool
+	// A new player with ability and/or style enters the pool
 	rating3 := float64(InitialRating)
 	deviation3 := float64(InitialRatingDeviation)
 	volatility3 := InitialVolatility
