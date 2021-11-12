@@ -77,7 +77,7 @@ type profile struct {
 
 	BirthDate string `gorm:"type:varchar(11)"`
 
-	CountryCode string `gorm:"type:varchar(3)"`
+	CountryCode string `gorm:"type:varchar(6)"`
 	// Title is some sort of acronym/shorthand for a title. Like GM, EX, SM, UK-GM (UK Grandmaster?)
 	Title string `gorm:"type:varchar(8)"`
 

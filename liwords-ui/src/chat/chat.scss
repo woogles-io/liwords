@@ -202,6 +202,8 @@ p {
 
       .country-flag {
         margin: 0 0 0 6px;
+        max-width: 20px;
+        max-height: 1em;
       }
       &.unread {
         .listing-name {
@@ -335,6 +337,8 @@ p {
       }
       .country-flag {
         margin: 0 0 0 6px;
+        max-width: 20px;
+        max-height: 1em;
       }
       .message-details {
         flex: 2;
