@@ -891,7 +891,8 @@ func (b *Bus) sendLobbyContext(ctx context.Context, userID, connID string) error
 	// send ratings first.
 	ratingProto, err := u.GetProtoRatings()
 	if err != nil {
-		return err
+		// Likely an anonymous user. Do not exit.
+		log.Debug().Err(err).Msg("no-ratings-for-user")
 	}
 	profileUpdate := &pb.ProfileUpdate{
 		UserId:  userID,
