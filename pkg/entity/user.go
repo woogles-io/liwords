@@ -134,10 +134,6 @@ func (u *User) GetRating(ratingKey VariantKey) (*SingleRating, error) {
 }
 
 func (u *User) GetProtoRatings() (map[string]*realtime.ProfileUpdate_Rating, error) {
-	// if u.Profile == nil {
-	// 	return &realtime.Ratings{}
-	// }
-	// return u.Profile.Ratings.GetProto()
 	if u.Profile == nil {
 		return nil, errors.New("anonymous user has no rating")
 	}
