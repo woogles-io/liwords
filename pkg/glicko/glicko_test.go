@@ -793,3 +793,69 @@ outer:
 	}
 
 }
+
+func TestEquilibrium(t *testing.T) {
+	rating1 := float64(InitialRating)
+	deviation1 := float64(InitialRatingDeviation)
+	volatility1 := InitialVolatility
+
+	rating2 := float64(InitialRating)
+	deviation2 := float64(InitialRatingDeviation)
+	volatility2 := InitialVolatility
+
+	// Reach an equilibirium with player 1 and 2
+	spread := 100
+	for i := 0; i < 1000000; i++ {
+		s12 := spread
+		if i%20 == 0 {
+			s12 = -s12
+		}
+		rating1, deviation1, volatility1, rating2, deviation2, volatility2 = rate(rating1, deviation1, volatility1, rating2, deviation2, volatility2, s12)
+	}
+	fmt.Printf("Rating1: %.2f, Rating2: %.2f\n", rating1, rating2)
+
+	// A new player with ability and/or style enter the pool
+	rating3 := float64(InitialRating)
+	deviation3 := float64(InitialRatingDeviation)
+	volatility3 := InitialVolatility
+	for i := 0; i < 1000000; i++ {
+		s12 := spread
+		if i%20 == 0 {
+			s12 = -s12
+		}
+		rating1, deviation1, volatility1, rating2, deviation2, volatility2 = rate(rating1, deviation1, volatility1, rating2, deviation2, volatility2, s12)
+		s32 := spread
+		if i%10 == 0 {
+			s32 = -s32
+		}
+		rating3, deviation3, volatility3, rating2, deviation2, volatility2 = rate(rating3, deviation3, volatility3, rating2, deviation2, volatility2, s32)
+		rating1, deviation1, volatility1, rating3, deviation3, volatility3 = rate(rating1, deviation1, volatility1, rating3, deviation3, volatility3, s32)
+	}
+	fmt.Printf("Rating1: %.2f, Rating2: %.2f, Rating3: %.2f\n", rating1, rating2, rating3)
+
+	// Output:
+	// Rating1: 1744.81, Rating2: 1255.19
+	// Rating1: 1830.58, Rating2: 1177.28, Rating3: 1496.12
+}
+
+func rate(r1, d1, v1, r2, d2, v2 float64, spread int) (float64, float64, float64, float64, float64, float64) {
+	nr1, nd1, nv1 :=
+		Rate(
+			r1,
+			d1,
+			v1,
+			r2,
+			d2,
+			spread,
+			RatingPeriodinSeconds/12)
+	nr2, nd2, nv2 :=
+		Rate(
+			r2,
+			d2,
+			v2,
+			r1,
+			d1,
+			-spread,
+			RatingPeriodinSeconds/12)
+	return nr1, nd1, nv1, nr2, nd2, nv2
+}
