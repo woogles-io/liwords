@@ -49,24 +49,29 @@ export const sendSeek = (
   if (game.playerVsBot) {
     gr.setBotType(BotTypesEnumProperties[game.botType].botCode(game.lexicon));
   }
-
-  sr.setUserState(SeekState.READY);
+  sr.setUserState(SeekState.PRESENT);
 
   if (!game.receiverIsPermanent) {
-    sr.setGameRequest(gr);
     console.log('this is a seek request');
   } else {
     // We make it a match request if the receiver is non-empty, or if playerVsBot.
-    sr.setGameRequest(gr);
     sr.setReceivingUser(game.receiver);
     sr.setTournamentId(game.tournamentID);
     sr.setReceiverIsPermanent(true);
     console.log('this is a match request');
   }
-  console.log('sr: ', sr);
+  sr.setGameRequest(gr);
+  console.log('sr: ', sr.toObject(), game);
   sendSocketMsg(
     encodeToSocketFmt(MessageType.SEEK_REQUEST, sr.serializeBinary())
   );
+};
+
+export const sendAcceptOffer = (
+  seekRequest: Uint8Array,
+  sendSocketMsg: (msg: Uint8Array) => void
+): void => {
+  sendSocketMsg(encodeToSocketFmt(MessageType.SEEK_REQUEST, seekRequest));
 };
 
 export const sendAccept = (

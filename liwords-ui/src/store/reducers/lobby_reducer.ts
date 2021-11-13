@@ -26,6 +26,8 @@ export type SoughtGame = {
   rematchFor: string;
   tournamentID: string;
   receiverIsPermanent: boolean;
+  // Optionally keep a copy of the binary for accepting
+  originalRequest?: Uint8Array;
 };
 
 type playerMeta = {
@@ -96,6 +98,7 @@ export const SeekRequestToSoughtGame = (
     // this is inconsequential as bot match requests are never shown
     // to the user. change if this becomes the case some day.
     botType: 0,
+    originalRequest: req.serializeBinary(),
   };
 };
 

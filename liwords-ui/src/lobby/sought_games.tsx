@@ -66,6 +66,7 @@ export const PlayerDisplay = (props: PlayerProps) => {
 type Props = {
   isMatch?: boolean;
   newGame: (seekID: string) => void;
+  onOfferAccept: (req: Uint8Array) => void;
   userID?: string;
   username?: string;
   requests: Array<SoughtGame>;
@@ -137,6 +138,7 @@ export const SoughtGames = (props: Props) => {
     totalTime: number;
     details?: ReactNode;
     outgoing: boolean;
+    req?: Uint8Array;
     seekID: string;
   };
 
@@ -199,6 +201,7 @@ export const SoughtGames = (props: Props) => {
           ),
           details: getDetails(),
           outgoing,
+          req: sg.originalRequest,
           seekID: sg.seekID,
           lexiconCode: sg.lexicon,
         };
@@ -221,7 +224,9 @@ export const SoughtGames = (props: Props) => {
           return {
             onClick: () => {
               if (!record.outgoing) {
-                props.newGame(record.seekID);
+                if (record.req) {
+                  props.onOfferAccept(record.req);
+                }
               } else if (!cancelVisible) {
                 setCancelVisible(true);
               }

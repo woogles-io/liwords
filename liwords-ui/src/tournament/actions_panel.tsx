@@ -44,6 +44,7 @@ type Props = {
   tournamentID: string;
   isDirector: boolean;
   isAdmin: boolean;
+  onOfferAccept: (req: Uint8Array) => void;
   onSeekSubmit: (g: SoughtGame) => void;
   sendReady: () => void;
 };
@@ -57,6 +58,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     setSelectedGameTab,
     isDirector,
     isAdmin,
+    onOfferAccept,
     onSeekSubmit,
     newGame,
     userID,
@@ -263,6 +265,7 @@ export const ActionsPanel = React.memo((props: Props) => {
               userID={userID}
               username={username}
               newGame={newGame}
+              onOfferAccept={onOfferAccept}
               requests={thisTournamentMatchRequests}
             />
           ) : null}

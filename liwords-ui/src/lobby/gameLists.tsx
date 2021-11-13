@@ -17,6 +17,7 @@ type Props = {
   username?: string;
   selectedGameTab: string;
   setSelectedGameTab: (tab: string) => void;
+  onOfferAccept: (req: Uint8Array) => void;
   onSeekSubmit: (g: SoughtGame) => void;
 };
 
@@ -31,6 +32,7 @@ export const GameLists = React.memo((props: Props) => {
     newGame,
     selectedGameTab,
     setSelectedGameTab,
+    onOfferAccept,
     onSeekSubmit,
   } = props;
   const { lobbyContext } = useLobbyStoreContext();
@@ -117,6 +119,7 @@ export const GameLists = React.memo((props: Props) => {
               userID={userID}
               username={username}
               newGame={newGame}
+              onOfferAccept={onOfferAccept}
               requests={lobbyContext?.matchRequests}
             />
           ) : null}
@@ -126,6 +129,7 @@ export const GameLists = React.memo((props: Props) => {
             userID={userID}
             username={username}
             newGame={newGame}
+            onOfferAccept={onOfferAccept}
             requests={sanitizedSoughtGames}
           />
         </>
@@ -139,6 +143,7 @@ export const GameLists = React.memo((props: Props) => {
             userID={userID}
             username={username}
             newGame={newGame}
+            onOfferAccept={onOfferAccept}
             requests={lobbyContext?.matchRequests}
           />
         ) : null}

@@ -9,7 +9,11 @@ import { Chat } from '../chat/chat';
 import { useLoginStateStoreContext } from '../store/store';
 import './lobby.scss';
 import { Announcements } from './announcements';
-import { sendAccept, sendSeek } from './sought_game_interactions';
+import {
+  sendAccept,
+  sendAcceptOffer,
+  sendSeek,
+} from './sought_game_interactions';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -38,6 +42,15 @@ export const Lobby = (props: Props) => {
     },
     [sendSocketMsg]
   );
+
+  const acceptSeek = useCallback(
+    (req: Uint8Array) => {
+      console.log('offering seek accept');
+      sendAcceptOffer(req, sendSocketMsg);
+    },
+    [sendSocketMsg]
+  );
+
   const onSeekSubmit = useCallback(
     (g: SoughtGame) => {
       console.log('sought game', g);
@@ -63,6 +76,7 @@ export const Lobby = (props: Props) => {
           userID={userID}
           username={username}
           newGame={handleNewGame}
+          onOfferAccept={acceptSeek}
           selectedGameTab={selectedGameTab}
           setSelectedGameTab={setSelectedGameTab}
           onSeekSubmit={onSeekSubmit}

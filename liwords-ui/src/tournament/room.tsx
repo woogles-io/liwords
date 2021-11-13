@@ -10,7 +10,11 @@ import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../topbar/topbar';
 import { Chat } from '../chat/chat';
 import { TournamentInfo } from './tournament_info';
-import { sendAccept, sendSeek } from '../lobby/sought_game_interactions';
+import {
+  sendAccept,
+  sendAcceptOffer,
+  sendSeek,
+} from '../lobby/sought_game_interactions';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { ActionsPanel } from './actions_panel';
 import { CompetitorStatus } from './competitor_status';
@@ -66,6 +70,15 @@ export const TournamentRoom = (props: Props) => {
     },
     [sendSocketMsg]
   );
+
+  const acceptSeek = useCallback(
+    (req: Uint8Array) => {
+      console.log('offering seek accept');
+      sendAcceptOffer(req, sendSocketMsg);
+    },
+    [sendSocketMsg]
+  );
+
   const onSeekSubmit = useCallback(
     (g: SoughtGame) => {
       sendSeek(g, sendSocketMsg);
@@ -123,6 +136,7 @@ export const TournamentRoom = (props: Props) => {
           isDirector={isDirector}
           isAdmin={isAdmin}
           tournamentID={tournamentID}
+          onOfferAccept={acceptSeek}
           onSeekSubmit={onSeekSubmit}
           loggedIn={loggedIn}
           newGame={handleNewGame}
