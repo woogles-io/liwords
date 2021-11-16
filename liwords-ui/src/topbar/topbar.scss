@@ -22,7 +22,7 @@ body {
   top: 0;
   z-index: 2;
   @include colorModed() {
-    background-color: m($header);
+    background-color: m($background);
   }
   *, button.link {
     @include type-default;
@@ -32,7 +32,6 @@ body {
     text-transform: uppercase;
     @include colorModed() {
       color: m($gray-extreme);
-      background-color: m($header);
     }
     .anticon {
       display: inline;
@@ -129,7 +128,7 @@ body {
   .top-header-left-frame-site-name {
     /* Inside Auto Layout */
     @include colorModed() {
-      color: m($primary-dark);
+      color: m($primary-midDark);
     }
     flex: none;
     text-transform: none;
@@ -148,7 +147,7 @@ body {
     font-size: 10px;
     background: transparent;
     @include colorModed() {
-      color: m($primary-dark);
+      color: m($primary-midDark);
     }
   }
 }

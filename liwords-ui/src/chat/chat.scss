@@ -64,7 +64,6 @@ p {
     height: $main-container-width-tablet-landscape + 60px;
     margin-bottom: 12px;
     .entities {
-
       overflow-y: auto;
       max-height: $main-container-width-tablet-landscape - 122px;
     }
@@ -84,7 +83,8 @@ p {
     overflow-y: auto;
     max-height: $main-container-width-tablet-landscape;
   }
-  .chat-context, .channel-list {
+  .chat-context,
+  .channel-list {
     min-height: 48px;
     width: 100%;
     @include colorModed() {
@@ -120,7 +120,8 @@ p {
           color: m($gray-medium);
         }
       }
-      input, .ant-select-selector {
+      input,
+      .ant-select-selector {
         @include colorModed() {
           background: m($card-background);
           color: m($gray-extreme);
@@ -154,7 +155,7 @@ p {
         font-weight: normal;
         display: inline;
         @include colorModed() {
-          color: m($gray-medium)
+          color: m($gray-medium);
         }
       }
     }
@@ -188,7 +189,7 @@ p {
             background: #955f9a;
           }
           &.ch-lobby {
-            background:  #888;
+            background: #888;
           }
         }
       }
@@ -400,8 +401,6 @@ p {
   }
 }
 
-
-
 .game-table {
   .chat-area {
     .ant-card.chat {
@@ -453,7 +452,8 @@ p {
         .ant-card.chat {
           height: 328px;
         }
-        .ant-card.notepad-card, .ant-card.analyzer-card {
+        .ant-card.notepad-card,
+        .ant-card.analyzer-card {
           .ant-card-body {
             height: 90px;
           }
@@ -470,7 +470,8 @@ p {
         .ant-card.chat {
           height: 290px;
         }
-        .ant-card.notepad-card, .ant-card.analyzer-card {
+        .ant-card.notepad-card,
+        .ant-card.analyzer-card {
           .ant-card-body {
             height: 90px;
           }
@@ -498,7 +499,8 @@ p {
         .ant-card.chat {
           height: 420px;
         }
-        .ant-card.notepad-card, .ant-card.analyzer-card {
+        .ant-card.notepad-card,
+        .ant-card.analyzer-card {
           .ant-card-body {
             height: 90px;
           }
@@ -515,7 +517,8 @@ p {
         .ant-card.chat {
           height: 430px;
         }
-        .ant-card.notepad-card, .ant-card.analyzer-card {
+        .ant-card.notepad-card,
+        .ant-card.analyzer-card {
           .ant-card-body {
             height: 90px;
           }
@@ -535,7 +538,8 @@ p {
         .ant-card.chat {
           height: 564px;
         }
-        .ant-card.notepad-card, .ant-card.analyzer-card {
+        .ant-card.notepad-card,
+        .ant-card.analyzer-card {
           .ant-card-body {
             height: 90px;
           }
@@ -552,7 +556,8 @@ p {
         .ant-card.chat {
           height: 499px;
         }
-        .ant-card.notepad-card, .ant-card.analyzer-card {
+        .ant-card.notepad-card,
+        .ant-card.analyzer-card {
           .ant-card-body {
             height: 90px;
           }

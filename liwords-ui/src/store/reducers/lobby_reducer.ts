@@ -3,10 +3,11 @@ import { GameInfoResponse } from '../../gen/api/proto/game_service/game_service_
 import {
   SeekRequest,
   RatingMode,
-  MatchRequest,
   MatchUser,
+  ProfileUpdate,
 } from '../../gen/api/proto/realtime/realtime_pb';
 import { BotTypesEnum } from '../../lobby/bots';
+import { StartingRating } from '../constants';
 
 export type SoughtGame = {
   seeker: string;
@@ -22,10 +23,14 @@ export type SoughtGame = {
   playerVsBot: boolean;
   botType: BotTypesEnum;
   variant: string;
+  minRatingRange: number;
+  maxRatingRange: number;
   // Only for direct match requests:
   receiver: MatchUser;
   rematchFor: string;
   tournamentID: string;
+  receiverIsPermanent: boolean;
+  ratingKey: string;
 };
 
 type playerMeta = {
@@ -55,10 +60,15 @@ export type LobbyState = {
   matchRequests: Array<SoughtGame>;
   // + Other things in the lobby here that have state.
   activeGames: Array<ActiveGame>;
+  profile: {
+    ratings: {
+      [k: string]: ProfileUpdate.Rating;
+    };
+  };
 };
 
 export const SeekRequestToSoughtGame = (
-  req: SeekRequest | MatchRequest
+  req: SeekRequest
 ): SoughtGame | null => {
   const gameReq = req.getGameRequest();
   const user = req.getUser();
@@ -69,7 +79,7 @@ export const SeekRequestToSoughtGame = (
   let receivingUser = new MatchUser();
   let rematchFor = '';
   let tournamentID = '';
-  if (req instanceof MatchRequest) {
+  if (req.getReceiverIsPermanent()) {
     console.log('ismatchrequest');
     receivingUser = req.getReceivingUser()!;
     rematchFor = req.getRematchFor();
@@ -85,6 +95,8 @@ export const SeekRequestToSoughtGame = (
     challengeRule: gameReq.getChallengeRule(),
     seekID: gameReq.getRequestId(),
     rated: gameReq.getRatingMode() === RatingMode.RATED,
+    minRatingRange: req.getMinimumRatingRange(),
+    maxRatingRange: req.getMaximumRatingRange(),
     maxOvertimeMinutes: gameReq.getMaxOvertimeMinutes(),
     receiver: receivingUser,
     rematchFor,
@@ -92,6 +104,8 @@ export const SeekRequestToSoughtGame = (
     playerVsBot: gameReq.getPlayerVsBot(),
     tournamentID,
     variant: gameReq.getRules()?.getVariantName() || '',
+    ratingKey: req.getRatingKey(),
+    receiverIsPermanent: req.getReceiverIsPermanent(),
     // this is inconsequential as bot match requests are never shown
     // to the user. change if this becomes the case some day.
     botType: 0,
@@ -133,15 +147,48 @@ export const GameInfoResponseToActiveGame = (
   };
 };
 
+export const matchesRatingFormula = (
+  sg: SoughtGame,
+  ratings: { [k: string]: ProfileUpdate.Rating }
+) => {
+  const ratingKey = sg.ratingKey;
+  // Note that accidentally, if sg.userRating ends with a `?`, parseInt still
+  // works:
+  const seekerRating = parseInt(sg.userRating, 10);
+
+  const receiverRating = ratings[ratingKey];
+  // If this rating doesn't exist, then the user has never played this variant
+  // before, so their starting rating is the default starting rating.
+  const receiverRatingValue = receiverRating?.getRating() || StartingRating;
+
+  // minRatingRange should be negative for this to work:
+  const minRating = seekerRating + sg.minRatingRange;
+  const maxRating = seekerRating + sg.maxRatingRange;
+  return receiverRatingValue >= minRating && receiverRatingValue <= maxRating;
+};
+
 export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
   switch (action.actionType) {
     case ActionType.AddSoughtGame: {
-      const { soughtGames } = state;
       const soughtGame = action.payload as SoughtGame;
-      return {
-        ...state,
-        soughtGames: [...soughtGames, soughtGame],
-      };
+
+      if (!soughtGame.receiverIsPermanent) {
+        const existingSoughtGames = state.soughtGames.filter((sg) => {
+          return sg.seekID !== soughtGame.seekID;
+        });
+        return {
+          ...state,
+          soughtGames: [...existingSoughtGames, soughtGame],
+        };
+      } else {
+        const existingMatchRequests = state.matchRequests.filter((sg) => {
+          return sg.seekID !== soughtGame.seekID;
+        });
+        return {
+          ...state,
+          matchRequests: [...existingMatchRequests, soughtGame],
+        };
+      }
     }
 
     case ActionType.RemoveSoughtGame: {
@@ -150,10 +197,10 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
       const id = action.payload as string;
 
       const newSought = soughtGames.filter((sg) => {
-        return sg.seekID !== id;
+        return sg.seekID !== id && !sg.receiverIsPermanent;
       });
-      const newMatch = matchRequests.filter((mr) => {
-        return mr.seekID !== id;
+      const newMatch = matchRequests.filter((sg) => {
+        return sg.seekID !== id && sg.receiverIsPermanent;
       });
 
       return {
@@ -165,37 +212,28 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
 
     case ActionType.AddSoughtGames: {
       const soughtGames = action.payload as Array<SoughtGame>;
-      console.log('soughtGames', soughtGames);
-      soughtGames.sort((a, b) => {
+      const seeks: SoughtGame[] = [];
+      const matches: SoughtGame[] = [];
+
+      soughtGames.forEach(function (sg) {
+        if (sg.receiverIsPermanent) {
+          matches.push(sg);
+        } else {
+          seeks.push(sg);
+        }
+      });
+
+      seeks.sort((a, b) => {
         return a.userRating < b.userRating ? -1 : 1;
       });
-      return {
-        ...state,
-        soughtGames,
-      };
-    }
-
-    case ActionType.AddMatchRequest: {
-      const { matchRequests } = state;
-      const matchRequest = action.payload as SoughtGame;
-
-      // it's a match request; put new ones on top.
-      return {
-        ...state,
-        matchRequests: [matchRequest, ...matchRequests],
-      };
-    }
-
-    case ActionType.AddMatchRequests: {
-      const matchRequests = action.payload as Array<SoughtGame>;
-      // These are match requests.
-      console.log('matchRequests', matchRequests);
-      matchRequests.sort((a, b) => {
+      matches.sort((a, b) => {
         return a.userRating < b.userRating ? -1 : 1;
       });
+
       return {
         ...state,
-        matchRequests,
+        soughtGames: seeks,
+        matchRequests: matches,
       };
     }
 
@@ -231,6 +269,23 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
       return {
         ...state,
         activeGames: newArr,
+      };
+    }
+
+    case ActionType.UpdateProfile: {
+      const { profile } = state;
+      const p = action.payload as ProfileUpdate;
+      const ratings: { [k: string]: ProfileUpdate.Rating } = {};
+      p.getRatingsMap().forEach((v, k) => {
+        ratings[k] = v;
+      });
+      console.log('got ratings', ratings);
+      return {
+        ...state,
+        profile: {
+          ...profile,
+          ratings,
+        },
       };
     }
   }

@@ -200,6 +200,7 @@ export const Pairings = React.memo((props: Props) => {
         const isBye = pairing.outcomes[0] === TournamentGameResult.BYE;
         const isForfeit =
           pairing.outcomes[0] === TournamentGameResult.FORFEIT_LOSS;
+        const isVoid = pairing.outcomes[0] === TournamentGameResult.VOID;
         const isMyGame = props.username && playerNames.includes(props.username);
         // sortPriorty -- The higher the number, the higher up the list,
         // we start by giving your own games a + 2 boost, and other people's byes a -2 deficit.
@@ -254,6 +255,7 @@ export const Pairings = React.memo((props: Props) => {
                   <Tag className="ant-tag-repeat">{repeatCount}</Tag>
                 )}
                 {isForfeit && <Tag className="ant-tag-forfeit">Forfeit</Tag>}
+                {isVoid && <Tag className="ant-tag-bye">Not playing</Tag>}
                 {isRemoved(playerFullIDs[0]) && (
                   <Tag className="ant-tag-removed">Removed</Tag>
                 )}

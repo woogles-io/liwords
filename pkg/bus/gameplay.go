@@ -63,14 +63,13 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 	}
 
 	log.Debug().Interface("req", sg).
-		Str("seek-conn", sg.ConnID()).
 		Str("accepting-conn", acceptingConnID).Msg("game-request-accepted")
 	assignedFirst := -1
 	var tournamentID string
-	if sg.Type == entity.TypeMatch {
-		if sg.MatchRequest.RematchFor != "" {
+	if sg.SeekRequest.ReceiverIsPermanent {
+		if sg.SeekRequest.RematchFor != "" {
 			// Assign firsts to be the other player.
-			gameID := sg.MatchRequest.RematchFor
+			gameID := sg.SeekRequest.RematchFor
 			g, err := b.gameStore.Get(ctx, gameID)
 			if err != nil {
 				return err
@@ -89,8 +88,8 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 				assignedFirst = 0 // accUser should go first
 			}
 		}
-		if sg.MatchRequest.TournamentId != "" {
-			t, err := b.tournamentStore.Get(ctx, sg.MatchRequest.TournamentId)
+		if sg.SeekRequest.TournamentId != "" {
+			t, err := b.tournamentStore.Get(ctx, sg.SeekRequest.TournamentId)
 			if err != nil {
 				return errors.New("tournament not found")
 			}
@@ -122,10 +121,14 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 		log.Err(err).Msg("broadcasting-game-creation")
 	}
 	// This event will result in a redirect.
+	seekerConnID, err := sg.SeekerConnID()
+	if err != nil {
+		return err
+	}
 	ngevt := entity.WrapEvent(&pb.NewGameEvent{
 		GameId:       g.GameID(),
 		AccepterCid:  acceptingConnID,
-		RequesterCid: sg.ConnID(),
+		RequesterCid: seekerConnID,
 	}, pb.MessageType_NEW_GAME_EVENT)
 	// The front end keeps track of which tabs seek/accept games etc
 	// so we don't attach any extra channel info here.

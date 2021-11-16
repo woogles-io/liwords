@@ -17,11 +17,6 @@ import (
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
-const (
-	typeSeek  = "seek"
-	typeMatch = "match"
-)
-
 type DBStore struct {
 	cfg *config.Config
 	db  *gorm.DB
@@ -32,10 +27,12 @@ type soughtgame struct {
 	UUID      string `gorm:"index"`
 	Seeker    string `gorm:"index"`
 
-	Type   string // seek, match
-	ConnID string `gorm:"index"`
+	Type         string // seek, match
+	SeekerConnID string `gorm:"index"`
 	// Only for match requests
-	Receiver string `gorm:"index"`
+	Receiver            string `gorm:"index"`
+	ReceiverConnID      string `gorm:"index"`
+	ReceiverIsPermanent bool
 
 	Request datatypes.JSON
 }
@@ -50,26 +47,12 @@ func NewDBStore(config *config.Config) (*DBStore, error) {
 }
 
 func (s *DBStore) sgFromDBObj(g *soughtgame) (*entity.SoughtGame, error) {
-	var err error
-
-	switch g.Type {
-	case typeSeek:
-		sr := &pb.SeekRequest{}
-		err = json.Unmarshal(g.Request, sr)
-		if err != nil {
-			return nil, err
-		}
-		return &entity.SoughtGame{SeekRequest: sr, Type: entity.TypeSeek}, nil
-	case typeMatch:
-		mr := &pb.MatchRequest{}
-		err = json.Unmarshal(g.Request, mr)
-		if err != nil {
-			return nil, err
-		}
-		return &entity.SoughtGame{MatchRequest: mr, Type: entity.TypeMatch}, nil
+	sr := &pb.SeekRequest{}
+	err := json.Unmarshal(g.Request, sr)
+	if err != nil {
+		return nil, err
 	}
-	log.Error().Str("seekType", g.Type).Str("id", g.UUID).Msg("unexpected-seek-type")
-	return nil, errors.New("unknown error getting seek or match")
+	return &entity.SoughtGame{SeekRequest: sr}, nil
 }
 
 // Get gets the sought game with the given ID.
@@ -82,11 +65,21 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.SoughtGame, error
 	return s.sgFromDBObj(g)
 }
 
-// GetByConnID gets the sought game with the given socket connection ID.
-func (s *DBStore) GetByConnID(ctx context.Context, connID string) (*entity.SoughtGame, error) {
+// GetBySeekerConnID gets the sought game with the given socket connection ID for the seeker.
+func (s *DBStore) GetBySeekerConnID(ctx context.Context, connID string) (*entity.SoughtGame, error) {
 	g := &soughtgame{}
 	ctxDB := s.db.WithContext(ctx)
-	if result := ctxDB.Where("conn_id = ?", connID).First(g); result.Error != nil {
+	if result := ctxDB.Where("seeker_conn_id = ?", connID).First(g); result.Error != nil {
+		return nil, result.Error
+	}
+	return s.sgFromDBObj(g)
+}
+
+// GetByReceiverConnID gets the sought game with the given socket connection ID for the receiver.
+func (s *DBStore) GetByReceiverConnID(ctx context.Context, connID string) (*entity.SoughtGame, error) {
+	g := &soughtgame{}
+	ctxDB := s.db.WithContext(ctx)
+	if result := ctxDB.Where("receiver_conn_id = ?", connID).First(g); result.Error != nil {
 		return nil, result.Error
 	}
 	return s.sgFromDBObj(g)
@@ -101,30 +94,43 @@ func (s *DBStore) getBySeekerID(ctx context.Context, seekerID string) (*entity.S
 	return s.sgFromDBObj(g)
 }
 
+func (s *DBStore) getByReceiverID(ctx context.Context, receiverID string) (*entity.SoughtGame, error) {
+	g := &soughtgame{}
+	ctxDB := s.db.WithContext(ctx)
+	if result := ctxDB.Where("receiver = ?", receiverID).First(g); result.Error != nil {
+		return nil, result.Error
+	}
+	return s.sgFromDBObj(g)
+}
+
 // Set sets the sought-game in the database.
 func (s *DBStore) Set(ctx context.Context, game *entity.SoughtGame) error {
 	var bts []byte
 	var sgtype string
 	var err error
-	if game.Type == entity.TypeSeek {
-		bts, err = json.Marshal(game.SeekRequest)
-		sgtype = typeSeek
-	} else if game.Type == entity.TypeMatch {
-		bts, err = json.Marshal(game.MatchRequest)
-		sgtype = typeMatch
-	}
+	bts, err = json.Marshal(game.SeekRequest)
+
 	if err != nil {
 		return err
 	}
+	// For open seek requests, receiverConnID
+	// might return errors. This is okay, when setting
+	// sought games, we just want to set whatever is available
+	// and avoid conditional checks for open/closed seeks.
+	id, _ := game.ID()
+	seekerConnID, _ := game.SeekerConnID()
+	seeker, _ := game.SeekerUserID()
+	receiver, _ := game.ReceiverUserID()
+	receiverConnID, _ := game.ReceiverConnID()
+
 	dbg := &soughtgame{
-		UUID:    game.ID(),
-		ConnID:  game.ConnID(),
-		Seeker:  game.Seeker(),
-		Type:    sgtype,
-		Request: bts,
-	}
-	if game.Type == entity.TypeMatch {
-		dbg.Receiver = game.MatchRequest.ReceivingUser.UserId
+		UUID:           id,
+		SeekerConnID:   seekerConnID,
+		Seeker:         seeker,
+		Receiver:       receiver,
+		ReceiverConnID: receiverConnID,
+		Type:           sgtype,
+		Request:        bts,
 	}
 	ctxDB := s.db.WithContext(ctx)
 	result := ctxDB.Create(dbg)
@@ -154,7 +160,7 @@ func (s *DBStore) ExpireOld(ctx context.Context) error {
 	return result.Error
 }
 
-// DeleteForUser deletes the game by seeker ID.
+// DeleteForUser deletes the game by seeker ID
 func (s *DBStore) DeleteForUser(ctx context.Context, userID string) (*entity.SoughtGame, error) {
 	sg, err := s.getBySeekerID(ctx, userID)
 	if err != nil {
@@ -163,56 +169,92 @@ func (s *DBStore) DeleteForUser(ctx context.Context, userID string) (*entity.Sou
 		}
 		return nil, err
 	}
-	return sg, s.deleteSoughtGame(ctx, sg.ID())
+
+	id, err := sg.ID()
+	if err != nil {
+		return nil, err
+	}
+
+	return sg, s.deleteSoughtGame(ctx, id)
 }
 
-// DeleteForConnID deletes the game by connection ID
-func (s *DBStore) DeleteForConnID(ctx context.Context, connID string) (*entity.SoughtGame, error) {
-	sg, err := s.GetByConnID(ctx, connID)
+// UpdateForReceiver updates the receiver's status when the receiver leaves
+func (s *DBStore) UpdateForReceiver(ctx context.Context, receiverID string) (*entity.SoughtGame, error) {
+	rg, err := s.getByReceiverID(ctx, receiverID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	return sg, s.deleteSoughtGame(ctx, sg.ID())
+
+	receiverIsPermanent, err := rg.ReceiverIsPermanent()
+	if err != nil {
+		return nil, err
+	}
+
+	rg.SeekRequest.ReceiverState = pb.SeekState_ABSENT
+	if !receiverIsPermanent {
+		rg.SeekRequest.ReceivingUser = nil
+	}
+	return rg, s.Set(ctx, rg)
 }
 
-// ListOpenSeeks lists all open seek requests
-func (s *DBStore) ListOpenSeeks(ctx context.Context) ([]*entity.SoughtGame, error) {
-
-	var games []soughtgame
-	var err error
-
-	ctxDB := s.db.WithContext(ctx)
-	if result := ctxDB.Table("soughtgames").
-		Where("type = ?", typeSeek).Scan(&games); result.Error != nil {
-
-		return nil, result.Error
-	}
-	entGames := make([]*entity.SoughtGame, len(games))
-	for idx, g := range games {
-		entGames[idx], err = s.sgFromDBObj(&g)
-		if err != nil {
-			return nil, err
+// DeleteForSeekerConnID deletes the game by connection ID
+func (s *DBStore) DeleteForSeekerConnID(ctx context.Context, connID string) (*entity.SoughtGame, error) {
+	sg, err := s.GetBySeekerConnID(ctx, connID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
 		}
+		return nil, err
 	}
-	return entGames, nil
+	id, err := sg.ID()
+	if err != nil {
+		return nil, err
+	}
+
+	return sg, s.deleteSoughtGame(ctx, id)
 }
 
-// ListOpenMatches lists all open match requests for receiverID, in tourneyID (optional)
-func (s *DBStore) ListOpenMatches(ctx context.Context, receiverID, tourneyID string) ([]*entity.SoughtGame, error) {
+// DeleteForConnID modifies the game by connection ID
+func (s *DBStore) UpdateForReceiverConnID(ctx context.Context, connID string) (*entity.SoughtGame, error) {
+	rg, err := s.GetByReceiverConnID(ctx, connID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	receiverIsPermanent, err := rg.ReceiverIsPermanent()
+	if err != nil {
+		return nil, err
+	}
+
+	rg.SeekRequest.ReceiverState = pb.SeekState_ABSENT
+	if !receiverIsPermanent {
+		rg.SeekRequest.ReceivingUser = nil
+	}
+	return rg, s.Set(ctx, rg)
+}
+
+// ListOpenSeeks lists all open seek requests for receiverID, in tourneyID (optional)
+func (s *DBStore) ListOpenSeeks(ctx context.Context, receiverID, tourneyID string) ([]*entity.SoughtGame, error) {
 	var games []soughtgame
 	var err error
 	ctxDB := s.db.WithContext(ctx)
-	query := ctxDB.Table("soughtgames").
-		Where("receiver = ? AND type = ?", receiverID, typeMatch)
+	query := ctxDB.Table("soughtgames")
+
 	if tourneyID != "" {
-		query = query.Where("request->>'tournament_id' = ?", tourneyID)
+		query = query.Where("receiver = ? AND request->>'tournament_id' = ?", receiverID, tourneyID)
+	} else {
+		query = query.Where("receiver = ? OR receiver = ''", receiverID)
 	}
 	if result := query.Scan(&games); result.Error != nil {
 		return nil, result.Error
 	}
+
 	entGames := make([]*entity.SoughtGame, len(games))
 	for idx, g := range games {
 		entGames[idx], err = s.sgFromDBObj(&g)
@@ -240,7 +282,7 @@ func (s *DBStore) UserMatchedBy(ctx context.Context, userID, matcher string) (bo
 	var count int64
 
 	if result := ctxDB.Model(&soughtgame{}).
-		Where("receiver = ? AND seeker = ? AND type = ?", userID, matcher, typeMatch).
+		Where("receiver = ? AND seeker = ?", userID, matcher).
 		Count(&count); result.Error != nil {
 		return false, result.Error
 	}

@@ -12,21 +12,16 @@ type SoughtGameType int
 
 const (
 	TypeSeek SoughtGameType = iota
-	TypeMatch
 	TypeNone
 )
 
 type SoughtGame struct {
-	// A sought game has either of these fields set
-	SeekRequest  *pb.SeekRequest
-	MatchRequest *pb.MatchRequest
-	Type         SoughtGameType
+	SeekRequest *pb.SeekRequest
 }
 
 func NewSoughtGame(seekRequest *pb.SeekRequest) *SoughtGame {
 	sg := &SoughtGame{
 		SeekRequest: seekRequest,
-		Type:        TypeSeek,
 	}
 
 	sg.SeekRequest.GameRequest.RequestId = shortuuid.New()
@@ -41,47 +36,79 @@ func NewSoughtGame(seekRequest *pb.SeekRequest) *SoughtGame {
 	return sg
 }
 
-func NewMatchRequest(matchRequest *pb.MatchRequest) *SoughtGame {
-	sg := &SoughtGame{
-		MatchRequest: matchRequest,
-		Type:         TypeMatch,
+func (sg *SoughtGame) ID() (string, error) {
+	sr, err := getSeekRequest(sg)
+	if err != nil {
+		return "", err
 	}
-	sg.MatchRequest.GameRequest.RequestId = shortuuid.New()
-	if sg.MatchRequest.GameRequest.OriginalRequestId == "" {
-		sg.MatchRequest.GameRequest.OriginalRequestId =
-			sg.MatchRequest.GameRequest.RequestId
+	if sr.GameRequest == nil {
+		return "", errors.New("nil game request on seek request")
 	}
-	return sg
+	return sr.GameRequest.RequestId, nil
 }
 
-func (sg *SoughtGame) ID() string {
-	switch sg.Type {
-	case TypeMatch:
-		return sg.MatchRequest.GameRequest.RequestId
-	case TypeSeek:
-		return sg.SeekRequest.GameRequest.RequestId
+func (sg *SoughtGame) SeekerConnID() (string, error) {
+	sr, err := getSeekRequest(sg)
+	if err != nil {
+		return "", err
 	}
-	return ""
+	return sr.SeekerConnectionId, nil
 }
 
-func (sg *SoughtGame) ConnID() string {
-	switch sg.Type {
-	case TypeSeek:
-		return sg.SeekRequest.ConnectionId
-	case TypeMatch:
-		return sg.MatchRequest.ConnectionId
+func (sg *SoughtGame) ReceiverConnID() (string, error) {
+	sr, err := getSeekRequest(sg)
+	if err != nil {
+		return "", err
 	}
-	return ""
+	return sr.ReceiverConnectionId, nil
 }
 
-func (sg *SoughtGame) Seeker() string {
-	switch sg.Type {
-	case TypeSeek:
-		return sg.SeekRequest.User.UserId
-	case TypeMatch:
-		return sg.MatchRequest.User.UserId
+func (sg *SoughtGame) SeekerUserID() (string, error) {
+	sr, err := getSeekRequest(sg)
+	if err != nil {
+		return "", err
 	}
-	return ""
+	if sr.User == nil {
+		return "", errors.New("nil user for seek request")
+	}
+	return sr.User.UserId, nil
+}
+
+func (sg *SoughtGame) ReceiverUserID() (string, error) {
+	sr, err := getSeekRequest(sg)
+	if err != nil {
+		return "", err
+	}
+	if sr.ReceivingUser == nil {
+		return "", errors.New("nil receiving user on seek request")
+	}
+	return sr.ReceivingUser.UserId, nil
+}
+
+func (sg *SoughtGame) ReceiverDisplayName() (string, error) {
+	sr, err := getSeekRequest(sg)
+	if err != nil {
+		return "", err
+	}
+	if sr.ReceivingUser == nil {
+		return "", errors.New("nil receiving user on seek request")
+	}
+	return sr.ReceivingUser.DisplayName, nil
+}
+
+func (sg *SoughtGame) ReceiverIsPermanent() (bool, error) {
+	sr, err := getSeekRequest(sg)
+	if err != nil {
+		return false, err
+	}
+	return sr.ReceiverIsPermanent, nil
+}
+
+func getSeekRequest(sg *SoughtGame) (*pb.SeekRequest, error) {
+	if sg.SeekRequest != nil {
+		return sg.SeekRequest, nil
+	}
+	return nil, errors.New("nil seek request on sought game")
 }
 
 // ValidateGameRequest validates a generic game request.
