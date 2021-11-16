@@ -162,6 +162,7 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 		Password:                  meta.Password,
 		Logo:                      meta.Logo,
 		Color:                     meta.Color,
+		PrivateAnalysis:           meta.PrivateAnalysis,
 	}
 
 	err = ts.Set(ctx, t)

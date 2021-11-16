@@ -1048,6 +1048,10 @@ export const Table = React.memo((props: Props) => {
             tournamentPairedMode={isPairedMode(
               tournamentContext.metadata?.getType()
             )}
+            tournamentNonDirectorObserver={
+              isObserver && !tournamentContext.directors?.includes(username)
+            }
+            tournamentPrivateAnalysis={tournamentContext.metadata?.getPrivateAnalysis()}
             lexicon={gameInfo.game_request.lexicon}
             alphabet={alphabet}
             challengeRule={gameInfo.game_request.challenge_rule}
