@@ -62,6 +62,8 @@ message TournamentMetadata {
   string logo = 12;
   // an override color for the gradient in the tournament info
   string color = 13;
+
+  bool private_analysis = 14;
 }
 
 message SetTournamentMetadataRequest { TournamentMetadata metadata = 1; }

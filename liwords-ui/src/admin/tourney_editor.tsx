@@ -12,6 +12,7 @@ import {
   message,
   Row,
   Select,
+  Switch,
 } from 'antd';
 import { Modal } from '../utils/focus_modal';
 import { Store } from 'antd/lib/form/interface';
@@ -139,6 +140,7 @@ export const TourneyEditor = (props: Props) => {
       setColor(metadata?.getColor() || '');
       setLogo(metadata?.getLogo() || '');
       setSelectedGameRequest(metadata?.getDefaultClubSettings() || null);
+      console.log('meta private', metadata?.getPrivateAnalysis());
       form.setFieldsValue({
         name: metadata?.getName(),
         description: metadata?.getDescription(),
@@ -152,6 +154,7 @@ export const TourneyEditor = (props: Props) => {
         disclaimer: metadata?.getDisclaimer(),
         logo: metadata?.getLogo(),
         color: metadata?.getColor(),
+        privateAnalysis: metadata?.getPrivateAnalysis() || false,
       });
     } catch (err) {
       message.error({
@@ -209,6 +212,7 @@ export const TourneyEditor = (props: Props) => {
           disclaimer: vals.disclaimer,
           logo: vals.logo,
           color: vals.color,
+          privateAnalysis: vals.privateAnalysis,
         },
       };
     }
@@ -244,6 +248,7 @@ export const TourneyEditor = (props: Props) => {
   const onLogoChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
     setLogo(evt.target.value);
   };
+
   const addDirector = () => {
     const director = prompt('Enter a new director username to add:');
     if (!director) {
@@ -447,6 +452,15 @@ export const TourneyEditor = (props: Props) => {
               hidden={props.mode === 'new'}
             >
               <Input onChange={onColorChange} />
+            </Form.Item>
+
+            <Form.Item
+              name="privateAnalysis"
+              label="Private Analysis (optional)"
+              hidden={props.mode === 'new'}
+              valuePropName="checked"
+            >
+              <Switch />
             </Form.Item>
 
             <Form.Item wrapperCol={{ ...layout.wrapperCol, offset: 4 }}>

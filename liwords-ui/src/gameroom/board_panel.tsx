@@ -91,6 +91,8 @@ type Props = {
   tournamentSlug?: string;
   tournamentID?: string;
   tournamentPairedMode?: boolean;
+  tournamentNonDirectorObserver?: boolean;
+  tournamentPrivateAnalysis?: boolean;
   lexicon: string;
   alphabet: Alphabet;
   handleAcceptRematch: (() => void) | null;
@@ -1493,6 +1495,8 @@ export const BoardPanel = React.memo((props: Props) => {
   }, [isMyTurn, props.tournamentID, props.vsBot]);
   const anonymousTourneyViewer =
     props.tournamentID && props.anonymousViewer && !props.gameDone;
+  const nonDirectorObserverDisallowed =
+    props.tournamentNonDirectorObserver && props.tournamentPrivateAnalysis;
   const gameBoard = (
     <div
       id="board-container"
@@ -1521,10 +1525,15 @@ export const BoardPanel = React.memo((props: Props) => {
         definitionPopover={props.definitionPopover}
         alphabet={props.alphabet}
       />
-      {examinableGameEndMessage || anonymousTourneyViewer ? (
+      {examinableGameEndMessage ||
+      anonymousTourneyViewer ||
+      nonDirectorObserverDisallowed ? (
         <GameEndMessage
           message={
-            examinableGameEndMessage || 'Log in or register to see player tiles'
+            examinableGameEndMessage ||
+            (anonymousTourneyViewer &&
+              'Log in or register to see player tiles') ||
+            'You are not allowed to view player tiles'
           }
         />
       ) : (
@@ -1569,7 +1578,7 @@ export const BoardPanel = React.memo((props: Props) => {
         </div>
       )}
       {isTouchDevice() ? <TilePreview gridDim={props.board.dim} /> : null}
-      {!anonymousTourneyViewer && (
+      {!anonymousTourneyViewer && !nonDirectorObserverDisallowed && (
         <GameControls
           isExamining={isExamining}
           myTurn={isMyTurn}
