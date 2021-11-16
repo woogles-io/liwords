@@ -25,5 +25,5 @@ message InitRealmInfo {
 }
 
 message Pong {
-  repeated string ips = 1;
+  string ips = 1;
 }
