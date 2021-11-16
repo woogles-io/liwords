@@ -1533,7 +1533,7 @@ export const BoardPanel = React.memo((props: Props) => {
             examinableGameEndMessage ||
             (anonymousTourneyViewer &&
               'Log in or register to see player tiles') ||
-            'You are not allowed to view player tiles'
+            'You are not allowed to view player tiles for this event.'
           }
         />
       ) : (

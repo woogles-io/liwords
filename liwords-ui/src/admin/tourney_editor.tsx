@@ -140,7 +140,6 @@ export const TourneyEditor = (props: Props) => {
       setColor(metadata?.getColor() || '');
       setLogo(metadata?.getLogo() || '');
       setSelectedGameRequest(metadata?.getDefaultClubSettings() || null);
-      console.log('meta private', metadata?.getPrivateAnalysis());
       form.setFieldsValue({
         name: metadata?.getName(),
         description: metadata?.getDescription(),
