@@ -29,6 +29,7 @@ var ModActionDispatching = map[ms.ModActionType]func(context.Context, user.Store
 		ms.ModActionType_SUSPEND_ACCOUNT,
 		ms.ModActionType_SUSPEND_RATED_GAMES,
 		ms.ModActionType_SUSPEND_GAMES,
+		ms.ModActionType_SUSPEND_TOURNAMENT_ROOM,
 	*/
 	ms.ModActionType_RESET_RATINGS:           resetRatings,
 	ms.ModActionType_RESET_STATS:             resetStats,
@@ -38,15 +39,17 @@ var ModActionDispatching = map[ms.ModActionType]func(context.Context, user.Store
 }
 
 var ModActionTextMap = map[ms.ModActionType]string{
-	ms.ModActionType_MUTE:                "chatting",
-	ms.ModActionType_SUSPEND_ACCOUNT:     "logging in",
-	ms.ModActionType_SUSPEND_RATED_GAMES: "playing rated games",
-	ms.ModActionType_SUSPEND_GAMES:       "playing games",
+	ms.ModActionType_MUTE:                    "chatting",
+	ms.ModActionType_MUTE_IN_CHANNEL:         "chatting in this channel",
+	ms.ModActionType_SUSPEND_ACCOUNT:         "logging in",
+	ms.ModActionType_SUSPEND_RATED_GAMES:     "playing rated games",
+	ms.ModActionType_SUSPEND_GAMES:           "playing games",
+	ms.ModActionType_SUSPEND_TOURNAMENT_ROOM: "entering this room",
 }
 
 var RemovalDuration = 60
 
-func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLogout bool, actionTypes []ms.ModActionType) (bool, error) {
+func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLogout bool, actionTypes []ms.ModActionType, actionParams ...string) (bool, error) {
 	currentActions, err := GetActions(ctx, us, uuid)
 	if err != nil {
 		return false, err
@@ -66,6 +69,13 @@ func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLo
 	for _, actionType := range actionTypes {
 		action, thisActionExists := currentActions[actionType.String()]
 		if thisActionExists {
+			if action.Type == ms.ModActionType_MUTE_IN_CHANNEL {
+				// check extra parameters
+				if len(actionParams) > 0 {
+					actionParams
+				}
+			}
+
 			if !actionExists {
 				actionExists = true
 			}

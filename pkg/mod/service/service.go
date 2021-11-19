@@ -1,4 +1,4 @@
-package mod
+package service
 
 import (
 	"context"
@@ -9,6 +9,8 @@ import (
 
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/mod"
+	"github.com/domino14/liwords/pkg/tournament"
 	"github.com/domino14/liwords/pkg/user"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/mod_service"
@@ -23,15 +25,16 @@ type ctxkey string
 const rtchankey ctxkey = "realtimechan"
 
 type ModService struct {
-	userStore      user.Store
-	notorietyStore NotorietyStore
-	chatStore      user.ChatStore
-	mailgunKey     string
-	discordToken   string
+	userStore       user.Store
+	notorietyStore  mod.NotorietyStore
+	chatStore       user.ChatStore
+	tournamentStore tournament.TournamentStore
+	mailgunKey      string
+	discordToken    string
 }
 
-func NewModService(us user.Store, cs user.ChatStore) *ModService {
-	return &ModService{userStore: us, chatStore: cs}
+func NewModService(us user.Store, cs user.ChatStore, ts tournament.TournamentStore) *ModService {
+	return &ModService{userStore: us, chatStore: cs, tournamentStore: ts}
 }
 
 var AdminRequiredMap = map[pb.ModActionType]bool{
@@ -44,6 +47,14 @@ var AdminRequiredMap = map[pb.ModActionType]bool{
 	pb.ModActionType_RESET_STATS_AND_RATINGS: true,
 	pb.ModActionType_REMOVE_CHAT:             false,
 	pb.ModActionType_DELETE_ACCOUNT:          true,
+	pb.ModActionType_SUSPEND_TOURNAMENT_ROOM: false,
+	pb.ModActionType_MUTE_IN_CHANNEL:         false,
+}
+
+var TournamentActionMap = map[pb.ModActionType]bool{
+	pb.ModActionType_SUSPEND_TOURNAMENT_ROOM: true,
+	pb.ModActionType_MUTE_IN_CHANNEL:         true,
+	pb.ModActionType_REMOVE_CHAT:             true,
 }
 
 func (ms *ModService) GetNotorietyReport(ctx context.Context, req *pb.GetNotorietyReportRequest) (*pb.NotorietyReport, error) {
@@ -56,7 +67,7 @@ func (ms *ModService) GetNotorietyReport(ctx context.Context, req *pb.GetNotorie
 	}
 	// Default to only getting 50 notorious games, which is probably much more than
 	// needed anyway.
-	score, games, err := GetNotorietyReport(ctx, ms.userStore, ms.notorietyStore, req.UserId, 50)
+	score, games, err := mod.GetNotorietyReport(ctx, ms.userStore, ms.notorietyStore, req.UserId, 50)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -71,7 +82,7 @@ func (ms *ModService) ResetNotoriety(ctx context.Context, req *pb.ResetNotoriety
 	if !(user.IsAdmin || user.IsMod) {
 		return nil, twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
 	}
-	err = ResetNotoriety(ctx, ms.userStore, ms.notorietyStore, req.UserId)
+	err = mod.ResetNotoriety(ctx, ms.userStore, ms.notorietyStore, req.UserId)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -86,7 +97,7 @@ func (ms *ModService) GetActions(ctx context.Context, req *pb.GetActionsRequest)
 	if !(user.IsAdmin || user.IsMod) {
 		return nil, twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
 	}
-	actions, err := GetActions(ctx, ms.userStore, req.UserId)
+	actions, err := mod.GetActions(ctx, ms.userStore, req.UserId)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -101,7 +112,7 @@ func (ms *ModService) GetActionHistory(ctx context.Context, req *pb.GetActionsRe
 	if !(user.IsAdmin || user.IsMod) {
 		return nil, twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
 	}
-	history, err := GetActionHistory(ctx, ms.userStore, req.UserId)
+	history, err := mod.GetActionHistory(ctx, ms.userStore, req.UserId)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -113,7 +124,7 @@ func (ms *ModService) RemoveActions(ctx context.Context, req *pb.ModActionsList)
 	if err != nil {
 		return nil, err
 	}
-	err = RemoveActions(ctx, ms.userStore, req.Actions)
+	err = mod.RemoveActions(ctx, ms.userStore, req.Actions)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -125,7 +136,31 @@ func (ms *ModService) ApplyActions(ctx context.Context, req *pb.ModActionsList) 
 	if err != nil {
 		return nil, err
 	}
-	err = ApplyActions(ctx, ms.userStore, ms.chatStore, req.Actions)
+	err = mod.ApplyActions(ctx, ms.userStore, ms.chatStore, req.Actions)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	return &pb.ModActionResponse{}, nil
+}
+
+func (ms *ModService) ApplyTDAction(ctx context.Context, req *pb.ModAction) (*pb.ModActionResponse, error) {
+	err := authenticateDirector(ctx, ms, req)
+	if err != nil {
+		return nil, err
+	}
+	err = mod.ApplyActions(ctx, ms.userStore, ms.chatStore, []*pb.ModAction{req})
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	return &pb.ModActionResponse{}, nil
+}
+
+func (ms *ModService) RemoveTDAction(ctx context.Context, req *pb.ModAction) (*pb.ModActionResponse, error) {
+	err := authenticateDirector(ctx, ms, req)
+	if err != nil {
+		return nil, err
+	}
+	err = mod.ApplyActions(ctx, ms.userStore, ms.chatStore, []*pb.ModAction{req})
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -163,5 +198,23 @@ func authenticateMod(ctx context.Context, ms *ModService, req *pb.ModActionsList
 	if !user.IsAdmin && (isAdminRequired || !user.IsMod) {
 		return twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
 	}
+	return nil
+}
+
+func authenticateDirector(ctx context.Context, ms *ModService, req *pb.ModAction) error {
+	user, err := sessionUser(ctx, ms)
+	if err != nil {
+		return err
+	}
+
+	if !TournamentActionMap[req.Type] {
+		return twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
+	}
+	err = tournament.AuthorizedDirector(ctx, user, ms.tournamentStore, req.SuspendedTournamentId, false)
+	if err != nil {
+		return err
+	}
+
+	// This is the director for this tournament.
 	return nil
 }

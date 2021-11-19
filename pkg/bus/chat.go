@@ -30,8 +30,15 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	if err != nil {
 		return err
 	}
-
-	_, err = mod.ActionExists(ctx, b.userStore, userID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT, ms.ModActionType_MUTE})
+	_, err = mod.ActionExists(ctx, b.userStore, userID, false,
+		[]ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT, ms.ModActionType_MUTE},
+	)
+	if err != nil {
+		return err
+	}
+	// Check specifically if user can chat in this channel.
+	_, err = mod.ActionExists(ctx, b.userStore, userID, false,
+		[]ms.ModActionType{ms.ModActionType_MUTE_IN_CHANNEL}, evt.Channel)
 	if err != nil {
 		return err
 	}

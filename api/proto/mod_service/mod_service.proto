@@ -7,6 +7,7 @@ import "google/protobuf/timestamp.proto";
 // Moderation
 
 enum ModActionType {
+  // sitewide mute:
   MUTE = 0;
   SUSPEND_ACCOUNT = 1;
   SUSPEND_RATED_GAMES = 2;
@@ -16,6 +17,8 @@ enum ModActionType {
   RESET_STATS_AND_RATINGS = 6;
   REMOVE_CHAT = 7;
   DELETE_ACCOUNT = 8;
+  SUSPEND_TOURNAMENT_ROOM = 9;
+  MUTE_IN_CHANNEL = 10;
 }
 
 enum EmailType {
@@ -39,6 +42,7 @@ message ModAction {
   // Note: an optional note from the moderator.
   string note = 12;
   EmailType email_type = 13;
+  string suspended_tournament_id = 14;
 }
 
 message ModActionsMap { map<string, ModAction> actions = 1; }
@@ -77,6 +81,8 @@ message NotorietyReport {
 }
 
 service ModService {
+  rpc ApplyTDAction(ModAction) returns (ModActionResponse);
+  rpc RemoveTDAction(ModAction) returns (ModActionResponse);
   rpc ApplyActions(ModActionsList) returns (ModActionResponse);
   rpc RemoveActions(ModActionsList) returns (ModActionResponse);
   rpc GetActions(GetActionsRequest) returns (ModActionsMap);

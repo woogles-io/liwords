@@ -472,12 +472,20 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 	if user.IsAdmin {
 		return nil
 	}
+	err = AuthorizedDirector(ctx, user, ts.tournamentStore, id, authenticateExecutive)
+	if err != nil {
+		return err
+	}
 
-	t, err := ts.tournamentStore.Get(ctx, id)
+	return nil
+}
+
+func AuthorizedDirector(ctx context.Context, u *entity.User, s TournamentStore, id string, authenticateExecutive bool) error {
+	t, err := s.Get(ctx, id)
 	if err != nil {
 		return twirp.InternalErrorWith(err)
 	}
-	fullID := user.TournamentID()
+	fullID := u.TournamentID()
 	log.Debug().Str("fullID", fullID).Interface("persons", t.Directors.Persons).Msg("authenticating-director")
 
 	if authenticateExecutive && fullID != t.ExecutiveDirector {
@@ -493,10 +501,6 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 	if !authorized {
 		return twirp.NewError(twirp.Unauthenticated, "this user is not an authorized director for this event")
 	}
-	if t.IsFinished {
-		return twirp.NewError(twirp.InvalidArgument, "this tournament is finished and cannot be modified")
-	}
-
 	return nil
 }
 
