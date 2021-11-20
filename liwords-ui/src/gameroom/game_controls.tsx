@@ -103,6 +103,7 @@ export type Props = {
   finalPassOrChallenge?: boolean;
   myTurn?: boolean;
   observer?: boolean;
+  allowAnalysis: boolean;
   showExchangeModal: () => void;
   onPass: () => void;
   onResign: () => void;
@@ -263,7 +264,10 @@ const GameControls = React.memo((props: Props) => {
   if (observer) {
     return (
       <div className="game-controls">
-        <Button onClick={props.onExamine} disabled={gameHasNotStarted}>
+        <Button
+          onClick={props.onExamine}
+          disabled={gameHasNotStarted || !props.allowAnalysis}
+        >
           Examine
         </Button>
         <Button onClick={handleExitToLobby}>Exit</Button>
