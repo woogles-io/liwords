@@ -1049,7 +1049,9 @@ export const Table = React.memo((props: Props) => {
               tournamentContext.metadata?.getType()
             )}
             tournamentNonDirectorObserver={
-              isObserver && !tournamentContext.directors?.includes(username)
+              isObserver &&
+              !tournamentContext.directors?.includes(username) &&
+              !loginState.perms.includes('adm')
             }
             tournamentPrivateAnalysis={tournamentContext.metadata?.getPrivateAnalysis()}
             lexicon={gameInfo.game_request.lexicon}
