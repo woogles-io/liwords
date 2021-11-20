@@ -1495,7 +1495,7 @@ export const BoardPanel = React.memo((props: Props) => {
   }, [isMyTurn, props.tournamentID, props.vsBot]);
   const anonymousTourneyViewer =
     props.tournamentID && props.anonymousViewer && !props.gameDone;
-  const nonDirectorObserverDisallowed =
+  const nonDirectorAnalyzerDisallowed =
     props.tournamentNonDirectorObserver && props.tournamentPrivateAnalysis;
   const gameBoard = (
     <div
@@ -1525,15 +1525,10 @@ export const BoardPanel = React.memo((props: Props) => {
         definitionPopover={props.definitionPopover}
         alphabet={props.alphabet}
       />
-      {examinableGameEndMessage ||
-      anonymousTourneyViewer ||
-      nonDirectorObserverDisallowed ? (
+      {examinableGameEndMessage || anonymousTourneyViewer ? (
         <GameEndMessage
           message={
-            examinableGameEndMessage ||
-            (anonymousTourneyViewer &&
-              'Log in or register to see player tiles') ||
-            'You are not allowed to view player tiles for this event.'
+            examinableGameEndMessage || 'Log in or register to see player tiles'
           }
         />
       ) : (
@@ -1578,12 +1573,17 @@ export const BoardPanel = React.memo((props: Props) => {
         </div>
       )}
       {isTouchDevice() ? <TilePreview gridDim={props.board.dim} /> : null}
-      {!anonymousTourneyViewer && !nonDirectorObserverDisallowed && (
+      {!anonymousTourneyViewer && (
         <GameControls
           isExamining={isExamining}
           myTurn={isMyTurn}
           finalPassOrChallenge={
             examinableGameContext.playState === PlayState.WAITING_FOR_FINAL_PASS
+          }
+          allowAnalysis={
+            nonDirectorAnalyzerDisallowed
+              ? examinableGameContext.playState === PlayState.GAME_OVER
+              : true
           }
           exchangeAllowed={exchangeAllowed}
           observer={observer}

@@ -14,6 +14,7 @@ function renderGameControls(props: Partial<Props> = {}) {
     myTurn: false,
     observer: false,
     lexicon: 'dummy',
+    allowAnalysis: true,
     setHandleChallengeShortcut: dummyFunction,
     setHandleNeitherShortcut: dummyFunction,
     setHandlePassShortcut: dummyFunction,
