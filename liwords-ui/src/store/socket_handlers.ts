@@ -116,7 +116,6 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.READY_FOR_TOURNAMENT_GAME]: ReadyForTournamentGame,
       [MessageType.TOURNAMENT_ROUND_STARTED]: TournamentRoundStarted,
       [MessageType.LAG_MEASUREMENT]: LagMeasurement,
-      [MessageType.MATCH_REQUEST_CANCELLATION]: SeekRequestCancellation,
       [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,
       [MessageType.REMATCH_STARTED]: RematchStartedEvent,
       [MessageType.GAME_META_EVENT]: GameMetaEvent,

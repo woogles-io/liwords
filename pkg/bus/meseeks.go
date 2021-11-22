@@ -396,11 +396,7 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.SeekRequest, botUserID str
 }
 
 func (b *Bus) sendSoughtGameDeletion(ctx context.Context, sg *entity.SoughtGame) error {
-	id, err := sg.ID()
-	if err != nil {
-		return err
-	}
-	return b.broadcastSeekDeletion(id)
+	return b.broadcastSeekDeletion(sg)
 }
 
 func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
@@ -534,14 +530,40 @@ func (b *Bus) seekDeclined(ctx context.Context, evt *pb.DeclineSeekRequest, user
 	return b.pubToUser(decliner, wrapped, "")
 }
 
-func (b *Bus) broadcastSeekDeletion(seekID string) error {
-	toSend := entity.WrapEvent(&pb.SoughtGameProcessEvent{RequestId: seekID},
+func (b *Bus) broadcastSeekDeletion(sg *entity.SoughtGame) error {
+	id, err := sg.ID()
+	if err != nil {
+		return err
+	}
+	toSend := entity.WrapEvent(&pb.SoughtGameProcessEvent{RequestId: id},
 		pb.MessageType_SOUGHT_GAME_PROCESS_EVENT)
 	data, err := toSend.Serialize()
 	if err != nil {
 		return err
 	}
-	return b.natsconn.Publish("lobby.soughtGameProcess", data)
+	p, err := sg.ReceiverIsPermanent()
+	if err != nil {
+		return err
+	}
+	if !p {
+		return b.natsconn.Publish("lobby.soughtGameProcess", data)
+	}
+	if sg.SeekRequest == nil {
+		return errors.New("seek-request-nil")
+	}
+	if sg.SeekRequest.ReceivingUser == nil {
+		return errors.New("seek-request-receiving-user-nil")
+	}
+	if sg.SeekRequest.User == nil {
+		return errors.New("seek-request-user-nil")
+	}
+	// If it's a permanent receiver, we need to publish to both users only.
+	err = b.pubToUser(sg.SeekRequest.ReceivingUser.UserId, toSend, "")
+	if err != nil {
+		return err
+	}
+	return b.pubToUser(sg.SeekRequest.User.UserId, toSend, "")
+
 }
 
 func (b *Bus) sendReceiverAbsent(ctx context.Context, req *entity.SoughtGame) error {
