@@ -41,7 +41,6 @@ import {
   SeekRequest,
   SeekRequests,
   DeclineSeekRequest,
-  SeekRequestCancellation,
   ServerChallengeResultEvent,
   ServerGameplayEvent,
   ServerMessage,

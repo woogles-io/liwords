@@ -220,10 +220,6 @@ message ReadyForGame { string game_id = 1; }
 // client.
 message SoughtGameProcessEvent { string request_id = 1; }
 
-// Server to client messages:
-// When a Seeker cancels their outgoing match request:
-message SeekRequestCancellation { string request_id = 1; }
-
 // SeekRequests sends all open seek requests.
 message SeekRequests { repeated SeekRequest requests = 1; }
 
