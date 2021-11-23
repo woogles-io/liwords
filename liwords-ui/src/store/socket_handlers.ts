@@ -530,7 +530,7 @@ export const useOnSocketMsg = () => {
           }
 
           case MessageType.TOURNAMENT_GAME_ENDED_EVENT: {
-            // LEGACY tournament game ended event.
+            // Clubhouse mode tournament game ended event.
             const gee = parsedMsg as TournamentGameEndedEvent;
             dispatchTournamentContext({
               actionType: ActionType.AddTourneyGameResult,
@@ -749,6 +749,13 @@ export const useOnSocketMsg = () => {
               actionType: ActionType.RemoveActiveGame,
               payload: gde.getId(),
             });
+            if (!!tournamentContext.metadata?.getId()) {
+              dispatchTournamentContext({
+                actionType: ActionType.RemoveActiveGame,
+                payload: gde.getId(),
+              });
+            }
+
             break;
           }
 
