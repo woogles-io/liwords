@@ -19,6 +19,7 @@ jobs:
 
     working_directory: /opt/liwords
     steps:
+      - run: apk add --update openssh-client git
       - checkout
       - run:
           name: Install build-base (for tests) and bash (for slack notifier)
@@ -50,6 +51,7 @@ jobs:
     docker:
       - image: node:14-alpine3.10
     steps:
+      - run: apk add --update openssh-client git
       - checkout
       - run: apk add bash curl
       - run: cd liwords-ui && npm ci

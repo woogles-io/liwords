@@ -111,6 +111,9 @@ export class TournamentMetadata extends jspb.Message {
   getColor(): string;
   setColor(value: string): void;
 
+  getPrivateAnalysis(): boolean;
+  setPrivateAnalysis(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): TournamentMetadata.AsObject;
   static toObject(includeInstance: boolean, msg: TournamentMetadata): TournamentMetadata.AsObject;
@@ -136,6 +139,7 @@ export namespace TournamentMetadata {
     password: string,
     logo: string,
     color: string,
+    privateAnalysis: boolean,
   }
 }
 
