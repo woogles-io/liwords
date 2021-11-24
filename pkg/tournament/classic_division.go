@@ -62,7 +62,7 @@ func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.Divisio
 	log.Debug().Interface("game-req", divisionControls.GameRequest).Msg("divctrls-validated-game-request")
 
 	if divisionControls.MaximumByePlacement < 0 {
-		return nil, nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT, []string{t.TournamentName, t.DivisionName, strconv.Itoa(int(divisionControls.MaximumByePlacement))})
+		return nil, nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT, []string{t.TournamentName, t.DivisionName, strconv.Itoa(int(divisionControls.MaximumByePlacement + 1))})
 	}
 
 	// check that suspended result is only VOID, FORFEIT_LOSS, or BYE:
@@ -73,7 +73,7 @@ func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.Divisio
 	// minimum placement is zero-indexed
 	if divisionControls.Gibsonize {
 		if divisionControls.MinimumPlacement < 0 {
-			return nil, nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NEGATIVE_MIN_PLACEMENT, []string{t.TournamentName, t.DivisionName, strconv.Itoa(int(divisionControls.MinimumPlacement))})
+			return nil, nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NEGATIVE_MIN_PLACEMENT, []string{t.TournamentName, t.DivisionName, strconv.Itoa(int(divisionControls.MinimumPlacement + 1))})
 		}
 		if divisionControls.GibsonSpread < 0 {
 			return nil, nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NEGATIVE_GIBSON_SPREAD, []string{t.TournamentName, t.DivisionName, strconv.Itoa(int(divisionControls.GibsonSpread))})

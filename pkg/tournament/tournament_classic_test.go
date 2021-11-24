@@ -2782,7 +2782,7 @@ func TestClassicDivisionByes(t *testing.T) {
 	newDivControls.MaximumByePlacement = -3
 	_, _, err = tc.SetDivisionControls(newDivControls)
 	is.True(err != nil)
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT, []string{tournamentName, divisionName, "-3"}).Error())
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT, []string{tournamentName, divisionName, "-2"}).Error())
 
 	tc.DivisionControls.MaximumByePlacement = 500
 

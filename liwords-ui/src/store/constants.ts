@@ -1,3 +1,4 @@
+import internal from 'events';
 import {
   TType,
   TTypeMap,
@@ -235,3 +236,10 @@ export const sortTiles = (rack: string) => {
     )
     .reduce((s, [index, tile]) => s + tile, '');
 };
+
+export const errorMap: Map<number, string> = new Map<number, string>([
+  [
+    1001,
+    'Max Bye Placement cannot be less than 1: Tournament: $ Division: $ Max Bye Placement you entered: $',
+  ],
+]);

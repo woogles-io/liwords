@@ -369,14 +369,15 @@ export const useOnSocketMsg = () => {
 
           case MessageType.ERROR_MESSAGE: {
             const err = parsedMsg as ErrorMessage;
+            const errorMessage = parseWooglesError(err.getMessage());
             notification.open({
               message: 'Error',
-              description: err.getMessage(),
+              description: errorMessage,
             });
             addChat({
               entityType: ChatEntityType.ErrorMsg,
               sender: 'Woogles',
-              message: err.getMessage(),
+              message: errorMessage,
               channel: 'server',
             });
             break;
