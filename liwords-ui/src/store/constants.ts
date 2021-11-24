@@ -1,4 +1,3 @@
-import internal from 'events';
 import {
   TType,
   TTypeMap,
