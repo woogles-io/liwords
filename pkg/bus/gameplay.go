@@ -22,12 +22,23 @@ import (
 )
 
 var (
-	errGamesDisabled = errors.New("new games are temporarily disabled; please try again in a few minutes")
+	errGamesDisabled = errors.New("new games are temporarily disabled while we update Woogles; please try again in a few minutes")
 )
 
 const (
 	TournamentReadyExpire = 3600
 )
+
+func (b *Bus) errIfGamesDisabled(ctx context.Context) error {
+	enabled, err := b.configStore.GamesEnabled(ctx)
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return errGamesDisabled
+	}
+	return nil
+}
 
 func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User, requester string,
 	gameReq *pb.GameRequest, sg *entity.SoughtGame, reqID, acceptingConnID string) error {
@@ -37,12 +48,9 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 		return err
 	}
 
-	enabled, err := b.configStore.GamesEnabled(ctx)
+	err = b.errIfGamesDisabled(ctx)
 	if err != nil {
 		return err
-	}
-	if !enabled {
-		return errGamesDisabled
 	}
 
 	// disallow anon game acceptance for now.
@@ -55,14 +63,13 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 	}
 
 	log.Debug().Interface("req", sg).
-		Str("seek-conn", sg.ConnID()).
 		Str("accepting-conn", acceptingConnID).Msg("game-request-accepted")
 	assignedFirst := -1
 	var tournamentID string
-	if sg.Type == entity.TypeMatch {
-		if sg.MatchRequest.RematchFor != "" {
+	if sg.SeekRequest.ReceiverIsPermanent {
+		if sg.SeekRequest.RematchFor != "" {
 			// Assign firsts to be the other player.
-			gameID := sg.MatchRequest.RematchFor
+			gameID := sg.SeekRequest.RematchFor
 			g, err := b.gameStore.Get(ctx, gameID)
 			if err != nil {
 				return err
@@ -81,8 +88,8 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 				assignedFirst = 0 // accUser should go first
 			}
 		}
-		if sg.MatchRequest.TournamentId != "" {
-			t, err := b.tournamentStore.Get(ctx, sg.MatchRequest.TournamentId)
+		if sg.SeekRequest.TournamentId != "" {
+			t, err := b.tournamentStore.Get(ctx, sg.SeekRequest.TournamentId)
 			if err != nil {
 				return errors.New("tournament not found")
 			}
@@ -114,10 +121,14 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 		log.Err(err).Msg("broadcasting-game-creation")
 	}
 	// This event will result in a redirect.
+	seekerConnID, err := sg.SeekerConnID()
+	if err != nil {
+		return err
+	}
 	ngevt := entity.WrapEvent(&pb.NewGameEvent{
 		GameId:       g.GameID(),
 		AccepterCid:  acceptingConnID,
-		RequesterCid: sg.ConnID(),
+		RequesterCid: seekerConnID,
 	}, pb.MessageType_NEW_GAME_EVENT)
 	// The front end keeps track of which tabs seek/accept games etc
 	// so we don't attach any extra channel info here.
@@ -260,12 +271,9 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 
 func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTournamentGame, userID, connID string) error {
 	if !evt.Unready {
-		enabled, err := b.configStore.GamesEnabled(ctx)
+		err := b.errIfGamesDisabled(ctx)
 		if err != nil {
 			return err
-		}
-		if !enabled {
-			return errGamesDisabled
 		}
 	}
 
@@ -309,7 +317,7 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 			defer conn.Close()
 			bts, err := json.Marshal(evt)
 			if err != nil {
-				return errGamesDisabled
+				return err
 			}
 			_, err = conn.Do("SET", "tready:"+connID, bts, "EX", TournamentReadyExpire)
 			if err != nil {

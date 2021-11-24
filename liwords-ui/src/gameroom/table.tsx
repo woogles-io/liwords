@@ -26,9 +26,9 @@ import Pool from './pool';
 import {
   MessageType,
   TimedOut,
-  MatchRequest,
+  SeekRequest,
+  DeclineSeekRequest,
   SoughtGameProcessEvent,
-  DeclineMatchRequest,
   ReadyForGame,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
@@ -814,16 +814,16 @@ export const Table = React.memo((props: Props) => {
 
   const handleAcceptRematch = useCallback(() => {
     acceptRematch(rematchRequest.getGameRequest()!.getRequestId());
-    setRematchRequest(new MatchRequest());
+    setRematchRequest(new SeekRequest());
   }, [acceptRematch, rematchRequest, setRematchRequest]);
 
   const declineRematch = useCallback(
     (reqID: string) => {
-      const evt = new DeclineMatchRequest();
+      const evt = new DeclineSeekRequest();
       evt.setRequestId(reqID);
       sendSocketMsg(
         encodeToSocketFmt(
-          MessageType.DECLINE_MATCH_REQUEST,
+          MessageType.DECLINE_SEEK_REQUEST,
           evt.serializeBinary()
         )
       );
@@ -833,7 +833,7 @@ export const Table = React.memo((props: Props) => {
 
   const handleDeclineRematch = useCallback(() => {
     declineRematch(rematchRequest.getGameRequest()!.getRequestId());
-    setRematchRequest(new MatchRequest());
+    setRematchRequest(new SeekRequest());
   }, [declineRematch, rematchRequest, setRematchRequest]);
 
   // Figure out what rack we should display.
@@ -1048,6 +1048,12 @@ export const Table = React.memo((props: Props) => {
             tournamentPairedMode={isPairedMode(
               tournamentContext.metadata?.getType()
             )}
+            tournamentNonDirectorObserver={
+              isObserver &&
+              !tournamentContext.directors?.includes(username) &&
+              !loginState.perms.includes('adm')
+            }
+            tournamentPrivateAnalysis={tournamentContext.metadata?.getPrivateAnalysis()}
             lexicon={gameInfo.game_request.lexicon}
             alphabet={alphabet}
             challengeRule={gameInfo.game_request.challenge_rule}

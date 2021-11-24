@@ -239,6 +239,7 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.
 		Password:                  t.ExtraMeta.Password,
 		Logo:                      t.ExtraMeta.Logo,
 		Color:                     t.ExtraMeta.Color,
+		PrivateAnalysis:           t.ExtraMeta.PrivateAnalysis,
 	}
 
 	return &pb.TournamentMetadataResponse{

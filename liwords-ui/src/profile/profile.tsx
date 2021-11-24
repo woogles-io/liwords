@@ -84,7 +84,7 @@ type StatsProps = {
 const variantToName = (variant: string) => {
   const arr = variant.split('.');
   let lex = arr[0];
-  lex = AllLexica[lex].ratingName;
+  lex = AllLexica[lex]?.ratingName || arr[0];
 
   const timectrl = {
     ultrablitz: 'Ultra-Blitz!',

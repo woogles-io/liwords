@@ -62,6 +62,8 @@ message TournamentMetadata {
   string logo = 12;
   // an override color for the gradient in the tournament info
   string color = 13;
+
+  bool private_analysis = 14;
 }
 
 message SetTournamentMetadataRequest { TournamentMetadata metadata = 1; }
@@ -90,6 +92,9 @@ message TournamentPairingRequest {
   string player_one_id = 1;
   string player_two_id = 2;
   int32 round = 3;
+  // If player_one_id and player_two_id are the same, we should specify what
+  // we want the result to be (BYE, FORFEIT_LOSS, VOID)
+  liwords.TournamentGameResult self_play_result = 4;
 }
 
 message TournamentPairingsRequest {

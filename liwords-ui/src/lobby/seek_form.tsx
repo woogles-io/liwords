@@ -22,11 +22,14 @@ import {
   initialTimeMinutesToSlider,
   initialTimeSecondsToSlider,
   initTimeDiscreteScale,
+  ratingKey,
+  StartingRating,
   timeCtrlToDisplayName,
 } from '../store/constants';
 import {
   GameRequest,
   MatchUser,
+  ProfileUpdate,
   RatingMode,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
@@ -35,6 +38,7 @@ import { useDebounce } from '../utils/debounce';
 import { ChallengeRulesFormItem } from './challenge_rules_form_item';
 import {
   useFriendsStoreContext,
+  useLobbyStoreContext,
   usePresenceStoreContext,
   useTournamentStoreContext,
 } from '../store/store';
@@ -80,6 +84,7 @@ export type seekPropVals = {
   vsBot: boolean;
   variant: string;
   botType: BotTypesEnum;
+  ratingRange: number;
 };
 
 type mandatoryFormValues = Partial<seekPropVals> &
@@ -151,12 +156,30 @@ const incUnitLabel = (
   </>
 );
 
+const myDisplayRating = (
+  ratings: { [k: string]: ProfileUpdate.Rating },
+  secs: number,
+  incrementSecs: number,
+  maxOvertime: number,
+  variant: string,
+  lexicon: string
+) => {
+  const r =
+    ratings[ratingKey(secs, incrementSecs, maxOvertime, variant, lexicon)];
+  if (r) {
+    return Math.round(r.getRating());
+  }
+  return `${StartingRating}?`;
+};
+
 export const SeekForm = (props: Props) => {
   const { useState } = useMountedState();
   const { friends } = useFriendsStoreContext();
   const { presences } = usePresenceStoreContext();
   const { tournamentContext } = useTournamentStoreContext();
   const { tournamentID, username } = props;
+  const { lobbyContext } = useLobbyStoreContext();
+
   const enableAllLexicons = React.useMemo(
     () => localStorage.getItem('enableAllLexicons') === 'true',
     []
@@ -207,6 +230,7 @@ export const SeekForm = (props: Props) => {
     vsBot: false,
     variant: 'classic',
     botType: BotTypesEnum.BEGINNER,
+    ratingRange: 500,
   };
   let disableTimeControls = false;
   let disableVariantControls = false;
@@ -260,17 +284,33 @@ export const SeekForm = (props: Props) => {
       friend: givenFriend,
     };
   }
-  const [itc, itt] = timeCtrlToDisplayName(
+  const [selectedSecs, selectedIncrementSecs, selectedMaxOvertime] = [
     initTimeDiscreteScale[initialValues.initialtimeslider].seconds,
     initialValues.incOrOT === 'increment'
       ? Math.round(initialValues.extratime as number)
       : 0,
     initialValues.incOrOT === 'increment'
       ? 0
-      : Math.round(initialValues.extratime as number)
+      : Math.round(initialValues.extratime as number),
+  ];
+
+  const [itc, , itt] = timeCtrlToDisplayName(
+    selectedSecs,
+    selectedIncrementSecs,
+    selectedMaxOvertime
   );
   const [timectrl, setTimectrl] = useState(itc);
   const [ttag, setTtag] = useState(itt);
+  const [myRating, setMyRating] = useState(
+    myDisplayRating(
+      lobbyContext.profile.ratings,
+      selectedSecs,
+      selectedIncrementSecs,
+      selectedMaxOvertime,
+      initialValues.variant,
+      initialValues.lexicon
+    )
+  );
   const [selections, setSelections] = useState<Store | null>(initialValues);
   const [timeSetting, setTimeSetting] = useState(
     initialValues.incOrOT === 'overtime' ? otLabel : incLabel
@@ -310,15 +350,16 @@ export const SeekForm = (props: Props) => {
       setMaxTimeSetting(10);
       setExtraTimeLabel(otUnitLabel);
     }
-    const [tc, tt] = timeCtrlToDisplayName(
-      initTimeDiscreteScale[allvals.initialtimeslider].seconds,
+    const secs = initTimeDiscreteScale[allvals.initialtimeslider].seconds;
+    const incrementSecs =
       allvals.incOrOT === 'increment'
         ? Math.round(allvals.extratime as number)
-        : 0,
+        : 0;
+    const maxOvertime =
       allvals.incOrOT === 'increment'
         ? 0
-        : Math.round(allvals.extratime as number)
-    );
+        : Math.round(allvals.extratime as number);
+    const [tc, , tt] = timeCtrlToDisplayName(secs, incrementSecs, maxOvertime);
     if (allvals.lexicon === 'ECWL') {
       setShowChallengeRule(false);
     } else {
@@ -327,6 +368,16 @@ export const SeekForm = (props: Props) => {
     setTimectrl(tc);
     setTtag(tt);
     setLexiconCopyright(AllLexica[allvals.lexicon].longDescription);
+    setMyRating(
+      myDisplayRating(
+        lobbyContext.profile.ratings,
+        secs,
+        incrementSecs,
+        maxOvertime,
+        allvals.variant || 'classic',
+        allvals.lexicon
+      )
+    );
   };
   const defaultOptions = useMemo(() => {
     let defaultPlayers: string[] = [];
@@ -376,6 +427,7 @@ export const SeekForm = (props: Props) => {
       seeker: '',
       userRating: '',
       seekID: '',
+      ratingKey: '',
 
       lexicon: val.lexicon as string,
       challengeRule:
@@ -394,6 +446,11 @@ export const SeekForm = (props: Props) => {
       botType: val.botType,
       tournamentID: props.tournamentID || '',
       variant: val.variant as string,
+      receiverIsPermanent: receiver.getDisplayName() !== '',
+      // these are independent values in the backend but for now will be
+      // modified together on the front end.
+      minRatingRange: -val.ratingRange || 0,
+      maxRatingRange: val.ratingRange || 0,
     };
     props.onFormSubmit(obj, val);
   };
@@ -421,7 +478,6 @@ export const SeekForm = (props: Props) => {
       name="seekForm"
     >
       {props.prefixItems || null}
-
       {props.vsBot && (
         <Form.Item label="Select bot level" name="botType">
           <Select listHeight={500}>
@@ -449,7 +505,6 @@ export const SeekForm = (props: Props) => {
           </Select>
         </Form.Item>
       )}
-
       {props.showFriendInput && (
         <Form.Item
           label={props.tournamentID ? 'Opponent' : 'Friend'}
@@ -480,7 +535,6 @@ export const SeekForm = (props: Props) => {
           </AutoComplete>
         </Form.Item>
       )}
-
       {/* if variant controls are disabled it means we have hardcoded settings
       for it, so show them if not classic */}
       {(enableWordSmog ||
@@ -494,12 +548,10 @@ export const SeekForm = (props: Props) => {
           </Select>
         </Form.Item>
       )}
-
       <LexiconFormItem
         disabled={disableLexiconControls}
         excludedLexica={excludedLexica(enableAllLexicons, enableCSW19X)}
       />
-
       {showChallengeRule && (
         <ChallengeRulesFormItem disabled={disableChallengeControls} />
       )}
@@ -538,6 +590,19 @@ export const SeekForm = (props: Props) => {
       <Form.Item label="Rated" name="rated" valuePropName="checked">
         <Switch disabled={disableRatedControls} />
       </Form.Item>
+
+      {!props.showFriendInput && !props.vsBot && (
+        <Form.Item label="Rating range" name="ratingRange">
+          <Slider
+            min={50}
+            max={500}
+            tipFormatter={(v) => `${myRating} ± ${v ? v : 0}`}
+            step={50}
+            tooltipVisible={sliderTooltipVisible}
+          />
+        </Form.Item>
+      )}
+
       <small className="readable-text-color">
         {lexiconCopyright ? lexiconCopyright : ''}
       </small>

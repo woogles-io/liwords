@@ -46,9 +46,10 @@ import { Board } from '../utils/cwgame/board';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import {
   MessageType,
-  MatchRequest,
   MatchUser,
+  SeekRequest,
   GameMetaEvent,
+  SeekState,
 } from '../gen/api/proto/realtime/realtime_pb';
 import {
   useExaminableGameContextStoreContext,
@@ -90,6 +91,8 @@ type Props = {
   tournamentSlug?: string;
   tournamentID?: string;
   tournamentPairedMode?: boolean;
+  tournamentNonDirectorObserver?: boolean;
+  tournamentPrivateAnalysis?: boolean;
   lexicon: string;
   alphabet: Alphabet;
   handleAcceptRematch: (() => void) | null;
@@ -1367,7 +1370,7 @@ export const BoardPanel = React.memo((props: Props) => {
   );
 
   const rematch = useCallback(() => {
-    const evt = new MatchRequest();
+    const evt = new SeekRequest();
     const receiver = new MatchUser();
 
     let opp = '';
@@ -1383,19 +1386,22 @@ export const BoardPanel = React.memo((props: Props) => {
 
     receiver.setDisplayName(opp);
     evt.setReceivingUser(receiver);
+    evt.setReceiverIsPermanent(true);
+    evt.setUserState(SeekState.READY);
+
     evt.setRematchFor(gameID);
     if (props.tournamentID) {
       evt.setTournamentId(props.tournamentID);
     }
     sendSocketMsg(
-      encodeToSocketFmt(MessageType.MATCH_REQUEST, evt.serializeBinary())
+      encodeToSocketFmt(MessageType.SEEK_REQUEST, evt.serializeBinary())
     );
 
     notification.info({
       message: 'Rematch',
       description: `Sent rematch request to ${opp}`,
     });
-    console.log('rematching');
+    console.log('rematching', evt);
   }, [
     observer,
     gameID,
@@ -1489,6 +1495,8 @@ export const BoardPanel = React.memo((props: Props) => {
   }, [isMyTurn, props.tournamentID, props.vsBot]);
   const anonymousTourneyViewer =
     props.tournamentID && props.anonymousViewer && !props.gameDone;
+  const nonDirectorAnalyzerDisallowed =
+    props.tournamentNonDirectorObserver && props.tournamentPrivateAnalysis;
   const gameBoard = (
     <div
       id="board-container"
@@ -1571,6 +1579,11 @@ export const BoardPanel = React.memo((props: Props) => {
           myTurn={isMyTurn}
           finalPassOrChallenge={
             examinableGameContext.playState === PlayState.WAITING_FOR_FINAL_PASS
+          }
+          allowAnalysis={
+            nonDirectorAnalyzerDisallowed
+              ? examinableGameContext.playState === PlayState.GAME_OVER
+              : true
           }
           exchangeAllowed={exchangeAllowed}
           observer={observer}

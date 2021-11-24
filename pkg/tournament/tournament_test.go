@@ -146,8 +146,9 @@ func makeRoundControls() []*realtime.RoundControl {
 
 func makeControls() *realtime.DivisionControls {
 	return &realtime.DivisionControls{
-		GameRequest: gameReq,
-		AutoStart:   true}
+		SuspendedResult: realtime.TournamentGameResult_BYE,
+		GameRequest:     gameReq,
+		AutoStart:       true}
 }
 
 func makeTournament(ctx context.Context, ts tournament.TournamentStore, cfg *config.Config, directors *realtime.TournamentPersons) (*entity.Tournament, error) {

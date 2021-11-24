@@ -1,11 +1,14 @@
 @import '../base';
 @import '../color_modes';
 
-.game-lists, .game-history, .profile {
+.game-lists,
+.game-history,
+.profile {
   .ant-table-filter-trigger-container {
     transition: none;
   }
-  .ant-table-filter-trigger-container-open .ant-table-filter-trigger, .ant-table-filter-trigger:hover {
+  .ant-table-filter-trigger-container-open .ant-table-filter-trigger,
+  .ant-table-filter-trigger:hover {
     @include colorModed() {
       background: m($off-background);
       color: m($gray-medium);
@@ -15,7 +18,8 @@
   .ant-table-column-sorters {
     padding: 16px 0;
   }
-  .ant-table-thead > tr, .ant-table-tbody > tr {
+  .ant-table-thead > tr,
+  .ant-table-tbody > tr {
     @include colorModed() {
       background: m($card-background);
     }
@@ -31,11 +35,13 @@
     &.details {
       text-align: right;
     }
-    &.time, &.lexicon {
+    &.time,
+    &.lexicon {
       text-align: center;
     }
   }
-  .ant-table-thead > tr > th, .ant-table-tbody > tr > td {
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td {
     padding: 8px;
     @include colorModed() {
       color: m($gray-extreme);
@@ -109,8 +115,6 @@
       .country-flag {
         top: 0px;
         margin-left: 6px;
-        width: 15px;
-        height: 11px;
       }
     }
     tr.ant-table-row.game-listing {
@@ -127,7 +131,8 @@
       .players {
         width: 350px;
       }
-      .time, .lexicon {
+      .time,
+      .lexicon {
         text-align: center;
       }
       .players > div {
@@ -139,13 +144,14 @@
           height: 22px;
         }
       }
-      td
-      { vertical-align: middle;
+      td {
+        vertical-align: middle;
       }
       .rating {
         text-align: center;
       }
-      &.resume, &.outgoing {
+      &.resume,
+      &.outgoing {
         position: relative;
         vertical-align: bottom;
         @include colorModed() {
@@ -159,7 +165,11 @@
         }
         td.ant-table-column-sort {
           @include colorModed() {
-            background-color: mix(m($card-background), m($timer-low-light), $weight: 90%);
+            background-color: mix(
+              m($card-background),
+              m($timer-low-light),
+              $weight: 90%
+            );
           }
         }
         td {
@@ -263,10 +273,12 @@
   td.time {
     text-transform: capitalize;
   }
-  td.result, th.result {
+  td.result,
+  th.result {
     width: 40px;
   }
-  td.score, th.score {
+  td.score,
+  th.score {
     min-width: 100px;
   }
   td.details {

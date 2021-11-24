@@ -2,6 +2,7 @@ package tournament
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"sort"
@@ -62,6 +63,11 @@ func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.Divisio
 
 	if divisionControls.MaximumByePlacement < 0 {
 		return nil, nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT, []string{t.TournamentName, t.DivisionName, strconv.Itoa(int(divisionControls.MaximumByePlacement))})
+	}
+
+	// check that suspended result is only VOID, FORFEIT_LOSS, or BYE:
+	if !validFutureResult(divisionControls.SuspendedResult) {
+		return nil, nil, errors.New("suspended result must be VOID, FORFEIT_LOSS, or BYE")
 	}
 
 	// minimum placement is zero-indexed
@@ -222,7 +228,8 @@ func (t *ClassicDivision) SetSingleRoundControls(round int, controls *realtime.R
 	return controls, nil
 }
 
-func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round int) (*realtime.DivisionPairingsResponse, error) {
+func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round int,
+	selfPlayResult realtime.TournamentGameResult) (*realtime.DivisionPairingsResponse, error) {
 
 	playerOneIndex, ok := t.PlayerIndexMap[playerOne]
 	if !ok {
@@ -318,13 +325,25 @@ func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round i
 			if t.Players.Persons[playerOneIndex].Suspended {
 				p1score = int(t.DivisionControls.SuspendedSpread)
 				p2score = 0
-				p1tgr = t.DivisionControls.SuspendedResult
-				p2tgr = t.DivisionControls.SuspendedResult
+				if selfPlayResult == realtime.TournamentGameResult_NO_RESULT {
+					p1tgr = t.DivisionControls.SuspendedResult
+					p2tgr = t.DivisionControls.SuspendedResult
+				} else {
+					// user overrode
+					p1tgr = selfPlayResult
+					p2tgr = selfPlayResult
+				}
 			} else {
 				p1score = entity.ByeScore
 				p2score = 0
-				p1tgr = realtime.TournamentGameResult_BYE
-				p2tgr = realtime.TournamentGameResult_BYE
+				if selfPlayResult == realtime.TournamentGameResult_NO_RESULT {
+					p1tgr = realtime.TournamentGameResult_BYE
+					p2tgr = realtime.TournamentGameResult_BYE
+				} else {
+					// user overrode
+					p1tgr = selfPlayResult
+					p2tgr = selfPlayResult
+				}
 			}
 		} else {
 			p1score = 0
@@ -396,7 +415,7 @@ func (t *ClassicDivision) SubmitResult(round int,
 		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONAMENDMENT_PAST_RESULT, []string{t.TournamentName, t.DivisionName, strconv.Itoa(round + 1)})
 	}
 
-	if round > int(t.CurrentRound) && (!isByeOrForfeit(p1Result) || !isByeOrForfeit(p2Result)) {
+	if round > int(t.CurrentRound) && (!validFutureResult(p1Result) || !validFutureResult(p2Result)) {
 		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FUTURE_NONBYE_RESULT, []string{t.TournamentName, t.DivisionName, strconv.Itoa(round + 1)})
 	}
 
@@ -680,7 +699,7 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 
 			byePlayer := standings.Standings[invByePlayerIndex].PlayerId
 
-			newpmessage, err := t.SetPairing(byePlayer, byePlayer, round)
+			newpmessage, err := t.SetPairing(byePlayer, byePlayer, round, realtime.TournamentGameResult_BYE)
 			if err != nil {
 				return nil, err
 			}
@@ -746,7 +765,7 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 			if playerOne >= 0 && playerTwo >= 0 {
 				gibsonPairedPlayers[playerOrder[playerOne].PlayerId] = true
 				gibsonPairedPlayers[playerOrder[playerTwo].PlayerId] = true
-				newpmessage, err := t.SetPairing(playerOrder[playerOne].PlayerId, playerOrder[playerTwo].PlayerId, round)
+				newpmessage, err := t.SetPairing(playerOrder[playerOne].PlayerId, playerOrder[playerTwo].PlayerId, round, realtime.TournamentGameResult_NO_RESULT)
 				if err != nil {
 					return nil, err
 				}
@@ -821,12 +840,12 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 				roundPairings[playerIndex] = pairingKey
 				nextPairingResponse = []*realtime.Pairing{pairing}
 			} else {
-				newPairingMessage, err := t.SetPairing(playerId, opponentId, round)
-				nextPairingResponse = newPairingMessage.DivisionPairings
-				nextStandingsResponse = newPairingMessage.DivisionStandings
+				newPairingMessage, err := t.SetPairing(playerId, opponentId, round, realtime.TournamentGameResult_NO_RESULT)
 				if err != nil {
 					return nil, err
 				}
+				nextPairingResponse = newPairingMessage.DivisionPairings
+				nextStandingsResponse = newPairingMessage.DivisionStandings
 			}
 			pmessage = combinePairingMessages(pmessage, &realtime.DivisionPairingsResponse{DivisionPairings: nextPairingResponse, DivisionStandings: nextStandingsResponse})
 		}
@@ -841,7 +860,7 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 			return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PLAYER_NOT_PAIRED, []string{t.TournamentName, t.DivisionName, strconv.Itoa(round + 1), player.Id})
 		}
 		if pairingMethod != realtime.PairingMethod_ROUND_ROBIN && player.Suspended {
-			newpmessage, err := t.SetPairing(player.Id, player.Id, round)
+			newpmessage, err := t.SetPairing(player.Id, player.Id, round, realtime.TournamentGameResult_NO_RESULT)
 			if err != nil {
 				return nil, err
 			}
@@ -946,7 +965,7 @@ func (t *ClassicDivision) AddPlayers(players *realtime.TournamentPersons) (*real
 					if newPlayers[player.Id] {
 						// Set the pairing
 						// This also automatically submits a forfeit result
-						newpmessage, err := t.SetPairing(player.Id, player.Id, i)
+						newpmessage, err := t.SetPairing(player.Id, player.Id, i, realtime.TournamentGameResult_NO_RESULT)
 
 						if err != nil {
 							return nil, err
@@ -1834,10 +1853,11 @@ func combineStandingsResponses(s1 map[int32]*realtime.RoundStandings, s2 map[int
 	return s1
 }
 
-func isByeOrForfeit(r realtime.TournamentGameResult) bool {
+func validFutureResult(r realtime.TournamentGameResult) bool {
 	return r == realtime.TournamentGameResult_FORFEIT_WIN ||
 		r == realtime.TournamentGameResult_FORFEIT_LOSS ||
-		r == realtime.TournamentGameResult_BYE
+		r == realtime.TournamentGameResult_BYE ||
+		r == realtime.TournamentGameResult_VOID
 }
 
 func findLoser(t *ClassicDivision, p1 string, p2 string, tgr1 realtime.TournamentGameResult, tgr2 realtime.TournamentGameResult) (int, error) {

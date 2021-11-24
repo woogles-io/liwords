@@ -9,8 +9,8 @@ import { useMountedState } from '../utils/mounted';
 
 import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import {
+  SeekRequest,
   ServerChallengeResultEvent,
-  MatchRequest,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { LobbyState, LobbyReducer } from './reducers/lobby_reducer';
 import { Action } from '../actions/actions';
@@ -167,8 +167,8 @@ type GameEndMessageStoreData = {
 };
 
 type RematchRequestStoreData = {
-  rematchRequest: MatchRequest;
-  setRematchRequest: React.Dispatch<React.SetStateAction<MatchRequest>>;
+  rematchRequest: SeekRequest;
+  setRematchRequest: React.Dispatch<React.SetStateAction<SeekRequest>>;
 };
 
 type TimerStoreData = {
@@ -233,6 +233,7 @@ const LobbyContext = createContext<LobbyStoreData>({
     soughtGames: [],
     activeGames: [],
     matchRequests: [],
+    profile: { ratings: {} },
   },
   dispatchLobbyContext: defaultFunction,
 });
@@ -352,7 +353,7 @@ const [GameEndMessageContext, ExaminableGameEndMessageContext] = Array.from(
 );
 
 const RematchRequestContext = createContext<RematchRequestStoreData>({
-  rematchRequest: new MatchRequest(),
+  rematchRequest: new SeekRequest(),
   setRematchRequest: defaultFunction,
 });
 
@@ -783,6 +784,7 @@ const RealStore = ({ children, ...props }: Props) => {
     soughtGames: [],
     activeGames: [],
     matchRequests: [],
+    profile: { ratings: {} },
   });
   const dispatchLobbyContext = useCallback(
     (action) => setLobbyContext((state) => LobbyReducer(state, action)),
@@ -850,7 +852,7 @@ const RealStore = ({ children, ...props }: Props) => {
   );
 
   const [gameEndMessage, setGameEndMessage] = useState('');
-  const [rematchRequest, setRematchRequest] = useState(new MatchRequest());
+  const [rematchRequest, setRematchRequest] = useState(new SeekRequest());
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
   const [chatChannels, setChatChannels] = useState<
     ActiveChatChannels.AsObject | undefined

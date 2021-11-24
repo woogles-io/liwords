@@ -205,6 +205,53 @@ export namespace ActiveGameEntry {
   }
 }
 
+export class ProfileUpdate extends jspb.Message {
+  getUserId(): string;
+  setUserId(value: string): void;
+
+  getRatingsMap(): jspb.Map<string, ProfileUpdate.Rating>;
+  clearRatingsMap(): void;
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ProfileUpdate.AsObject;
+  static toObject(includeInstance: boolean, msg: ProfileUpdate): ProfileUpdate.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ProfileUpdate, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ProfileUpdate;
+  static deserializeBinaryFromReader(message: ProfileUpdate, reader: jspb.BinaryReader): ProfileUpdate;
+}
+
+export namespace ProfileUpdate {
+  export type AsObject = {
+    userId: string,
+    ratingsMap: Array<[string, ProfileUpdate.Rating.AsObject]>,
+  }
+
+  export class Rating extends jspb.Message {
+    getRating(): number;
+    setRating(value: number): void;
+
+    getDeviation(): number;
+    setDeviation(value: number): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): Rating.AsObject;
+    static toObject(includeInstance: boolean, msg: Rating): Rating.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: Rating, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): Rating;
+    static deserializeBinaryFromReader(message: Rating, reader: jspb.BinaryReader): Rating;
+  }
+
+  export namespace Rating {
+    export type AsObject = {
+      rating: number,
+      deviation: number,
+    }
+  }
+}
+
 export class LagMeasurement extends jspb.Message {
   getLagMs(): number;
   setLagMs(value: number): void;
@@ -394,14 +441,45 @@ export class SeekRequest extends jspb.Message {
   getUser(): MatchUser | undefined;
   setUser(value?: MatchUser): void;
 
-  getMinimumRating(): number;
-  setMinimumRating(value: number): void;
+  getMinimumRatingRange(): number;
+  setMinimumRatingRange(value: number): void;
 
-  getMaximumRating(): number;
-  setMaximumRating(value: number): void;
+  getMaximumRatingRange(): number;
+  setMaximumRatingRange(value: number): void;
 
-  getConnectionId(): string;
-  setConnectionId(value: string): void;
+  getSeekerConnectionId(): string;
+  setSeekerConnectionId(value: string): void;
+
+  hasReceivingUser(): boolean;
+  clearReceivingUser(): void;
+  getReceivingUser(): MatchUser | undefined;
+  setReceivingUser(value?: MatchUser): void;
+
+  getUserState(): SeekStateMap[keyof SeekStateMap];
+  setUserState(value: SeekStateMap[keyof SeekStateMap]): void;
+
+  getReceiverState(): SeekStateMap[keyof SeekStateMap];
+  setReceiverState(value: SeekStateMap[keyof SeekStateMap]): void;
+
+  getReceiverConnectionId(): string;
+  setReceiverConnectionId(value: string): void;
+
+  clearBootedReceiversList(): void;
+  getBootedReceiversList(): Array<string>;
+  setBootedReceiversList(value: Array<string>): void;
+  addBootedReceivers(value: string, index?: number): string;
+
+  getRematchFor(): string;
+  setRematchFor(value: string): void;
+
+  getTournamentId(): string;
+  setTournamentId(value: string): void;
+
+  getReceiverIsPermanent(): boolean;
+  setReceiverIsPermanent(value: boolean): void;
+
+  getRatingKey(): string;
+  setRatingKey(value: string): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): SeekRequest.AsObject;
@@ -417,55 +495,18 @@ export namespace SeekRequest {
   export type AsObject = {
     gameRequest?: GameRequest.AsObject,
     user?: MatchUser.AsObject,
-    minimumRating: number,
-    maximumRating: number,
-    connectionId: string,
-  }
-}
-
-export class MatchRequest extends jspb.Message {
-  hasGameRequest(): boolean;
-  clearGameRequest(): void;
-  getGameRequest(): GameRequest | undefined;
-  setGameRequest(value?: GameRequest): void;
-
-  hasUser(): boolean;
-  clearUser(): void;
-  getUser(): MatchUser | undefined;
-  setUser(value?: MatchUser): void;
-
-  hasReceivingUser(): boolean;
-  clearReceivingUser(): void;
-  getReceivingUser(): MatchUser | undefined;
-  setReceivingUser(value?: MatchUser): void;
-
-  getRematchFor(): string;
-  setRematchFor(value: string): void;
-
-  getConnectionId(): string;
-  setConnectionId(value: string): void;
-
-  getTournamentId(): string;
-  setTournamentId(value: string): void;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): MatchRequest.AsObject;
-  static toObject(includeInstance: boolean, msg: MatchRequest): MatchRequest.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: MatchRequest, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): MatchRequest;
-  static deserializeBinaryFromReader(message: MatchRequest, reader: jspb.BinaryReader): MatchRequest;
-}
-
-export namespace MatchRequest {
-  export type AsObject = {
-    gameRequest?: GameRequest.AsObject,
-    user?: MatchUser.AsObject,
+    minimumRatingRange: number,
+    maximumRatingRange: number,
+    seekerConnectionId: string,
     receivingUser?: MatchUser.AsObject,
+    userState: SeekStateMap[keyof SeekStateMap],
+    receiverState: SeekStateMap[keyof SeekStateMap],
+    receiverConnectionId: string,
+    bootedReceiversList: Array<string>,
     rematchFor: string,
-    connectionId: string,
     tournamentId: string,
+    receiverIsPermanent: boolean,
+    ratingKey: string,
   }
 }
 
@@ -509,21 +550,21 @@ export namespace SoughtGameProcessEvent {
   }
 }
 
-export class MatchRequestCancellation extends jspb.Message {
+export class SeekRequestCancellation extends jspb.Message {
   getRequestId(): string;
   setRequestId(value: string): void;
 
   serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): MatchRequestCancellation.AsObject;
-  static toObject(includeInstance: boolean, msg: MatchRequestCancellation): MatchRequestCancellation.AsObject;
+  toObject(includeInstance?: boolean): SeekRequestCancellation.AsObject;
+  static toObject(includeInstance: boolean, msg: SeekRequestCancellation): SeekRequestCancellation.AsObject;
   static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
   static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: MatchRequestCancellation, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): MatchRequestCancellation;
-  static deserializeBinaryFromReader(message: MatchRequestCancellation, reader: jspb.BinaryReader): MatchRequestCancellation;
+  static serializeBinaryToWriter(message: SeekRequestCancellation, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): SeekRequestCancellation;
+  static deserializeBinaryFromReader(message: SeekRequestCancellation, reader: jspb.BinaryReader): SeekRequestCancellation;
 }
 
-export namespace MatchRequestCancellation {
+export namespace SeekRequestCancellation {
   export type AsObject = {
     requestId: string,
   }
@@ -548,28 +589,6 @@ export class SeekRequests extends jspb.Message {
 export namespace SeekRequests {
   export type AsObject = {
     requestsList: Array<SeekRequest.AsObject>,
-  }
-}
-
-export class MatchRequests extends jspb.Message {
-  clearRequestsList(): void;
-  getRequestsList(): Array<MatchRequest>;
-  setRequestsList(value: Array<MatchRequest>): void;
-  addRequests(value?: MatchRequest, index?: number): MatchRequest;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): MatchRequests.AsObject;
-  static toObject(includeInstance: boolean, msg: MatchRequests): MatchRequests.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: MatchRequests, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): MatchRequests;
-  static deserializeBinaryFromReader(message: MatchRequests, reader: jspb.BinaryReader): MatchRequests;
-}
-
-export namespace MatchRequests {
-  export type AsObject = {
-    requestsList: Array<MatchRequest.AsObject>,
   }
 }
 
@@ -1127,21 +1146,21 @@ export namespace TimedOut {
   }
 }
 
-export class DeclineMatchRequest extends jspb.Message {
+export class DeclineSeekRequest extends jspb.Message {
   getRequestId(): string;
   setRequestId(value: string): void;
 
   serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): DeclineMatchRequest.AsObject;
-  static toObject(includeInstance: boolean, msg: DeclineMatchRequest): DeclineMatchRequest.AsObject;
+  toObject(includeInstance?: boolean): DeclineSeekRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: DeclineSeekRequest): DeclineSeekRequest.AsObject;
   static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
   static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: DeclineMatchRequest, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): DeclineMatchRequest;
-  static deserializeBinaryFromReader(message: DeclineMatchRequest, reader: jspb.BinaryReader): DeclineMatchRequest;
+  static serializeBinaryToWriter(message: DeclineSeekRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): DeclineSeekRequest;
+  static deserializeBinaryFromReader(message: DeclineSeekRequest, reader: jspb.BinaryReader): DeclineSeekRequest;
 }
 
-export namespace DeclineMatchRequest {
+export namespace DeclineSeekRequest {
   export type AsObject = {
     requestId: string,
   }
@@ -1882,7 +1901,7 @@ export interface MessageTypeMap {
   TOURNAMENT_ROUND_STARTED: 16;
   GAME_DELETION: 17;
   MATCH_REQUESTS: 18;
-  DECLINE_MATCH_REQUEST: 19;
+  DECLINE_SEEK_REQUEST: 19;
   CHAT_MESSAGE: 20;
   CHAT_MESSAGE_DELETED: 21;
   USER_PRESENCE: 22;
@@ -1905,9 +1924,18 @@ export interface MessageTypeMap {
   PRESENCE_ENTRY: 40;
   ACTIVE_GAME_ENTRY: 41;
   GAME_META_EVENT: 42;
+  PROFILE_UPDATE_EVENT: 43;
 }
 
 export const MessageType: MessageTypeMap;
+
+export interface SeekStateMap {
+  ABSENT: 0;
+  PRESENT: 1;
+  READY: 2;
+}
+
+export const SeekState: SeekStateMap;
 
 export interface GameEndReasonMap {
   NONE: 0;

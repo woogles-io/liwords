@@ -162,6 +162,7 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 		Password:                  meta.Password,
 		Logo:                      meta.Logo,
 		Color:                     meta.Color,
+		PrivateAnalysis:           meta.PrivateAnalysis,
 	}
 
 	err = ts.Set(ctx, t)
@@ -635,7 +636,7 @@ func SetPairings(ctx context.Context, ts TournamentStore, id string, division st
 			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, []string{t.Name, division})
 		}
 
-		pairingsResp, err := divisionObject.DivisionManager.SetPairing(pairing.PlayerOneId, pairing.PlayerTwoId, int(pairing.Round))
+		pairingsResp, err := divisionObject.DivisionManager.SetPairing(pairing.PlayerOneId, pairing.PlayerTwoId, int(pairing.Round), pairing.SelfPlayResult)
 		if err != nil {
 			return err
 		}

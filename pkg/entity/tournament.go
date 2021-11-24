@@ -15,7 +15,7 @@ type DivisionManager interface {
 	GetStandings(int) (*realtime.RoundStandings, int, error)
 	GetCurrentRound() int
 	GetPlayers() *realtime.TournamentPersons
-	SetPairing(string, string, int) (*realtime.DivisionPairingsResponse, error)
+	SetPairing(string, string, int, realtime.TournamentGameResult) (*realtime.DivisionPairingsResponse, error)
 	SetSingleRoundControls(int, *realtime.RoundControl) (*realtime.RoundControl, error)
 	SetRoundControls([]*realtime.RoundControl) (*realtime.DivisionPairingsResponse, []*realtime.RoundControl, error)
 	SetDivisionControls(*realtime.DivisionControls) (*realtime.DivisionControls, map[int32]*realtime.RoundStandings, error)
@@ -79,6 +79,7 @@ type TournamentMeta struct {
 	Password                  string                `json:"password"`
 	Logo                      string                `json:"logo"`
 	Color                     string                `json:"color"`
+	PrivateAnalysis           bool                  `json:"privateAnalysis"`
 }
 
 type Tournament struct {

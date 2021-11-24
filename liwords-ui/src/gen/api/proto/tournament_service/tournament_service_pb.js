@@ -1079,7 +1079,8 @@ proto.tournament_service.TournamentMetadata.toObject = function(includeInstance,
     freeformClubSettingFieldsList: (f = jspb.Message.getRepeatedField(msg, 10)) == null ? undefined : f,
     password: jspb.Message.getFieldWithDefault(msg, 11, ""),
     logo: jspb.Message.getFieldWithDefault(msg, 12, ""),
-    color: jspb.Message.getFieldWithDefault(msg, 13, "")
+    color: jspb.Message.getFieldWithDefault(msg, 13, ""),
+    privateAnalysis: jspb.Message.getBooleanFieldWithDefault(msg, 14, false)
   };
 
   if (includeInstance) {
@@ -1168,6 +1169,10 @@ proto.tournament_service.TournamentMetadata.deserializeBinaryFromReader = functi
     case 13:
       var value = /** @type {string} */ (reader.readString());
       msg.setColor(value);
+      break;
+    case 14:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setPrivateAnalysis(value);
       break;
     default:
       reader.skipField();
@@ -1287,6 +1292,13 @@ proto.tournament_service.TournamentMetadata.serializeBinaryToWriter = function(m
   if (f.length > 0) {
     writer.writeString(
       13,
+      f
+    );
+  }
+  f = message.getPrivateAnalysis();
+  if (f) {
+    writer.writeBool(
+      14,
       f
     );
   }
@@ -1562,6 +1574,24 @@ proto.tournament_service.TournamentMetadata.prototype.getColor = function() {
  */
 proto.tournament_service.TournamentMetadata.prototype.setColor = function(value) {
   return jspb.Message.setProto3StringField(this, 13, value);
+};
+
+
+/**
+ * optional bool private_analysis = 14;
+ * @return {boolean}
+ */
+proto.tournament_service.TournamentMetadata.prototype.getPrivateAnalysis = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 14, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.tournament_service.TournamentMetadata} returns this
+ */
+proto.tournament_service.TournamentMetadata.prototype.setPrivateAnalysis = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 14, value);
 };
 
 
@@ -2401,7 +2431,8 @@ proto.tournament_service.TournamentPairingRequest.toObject = function(includeIns
   var f, obj = {
     playerOneId: jspb.Message.getFieldWithDefault(msg, 1, ""),
     playerTwoId: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    round: jspb.Message.getFieldWithDefault(msg, 3, 0)
+    round: jspb.Message.getFieldWithDefault(msg, 3, 0),
+    selfPlayResult: jspb.Message.getFieldWithDefault(msg, 4, 0)
   };
 
   if (includeInstance) {
@@ -2450,6 +2481,10 @@ proto.tournament_service.TournamentPairingRequest.deserializeBinaryFromReader = 
       var value = /** @type {number} */ (reader.readInt32());
       msg.setRound(value);
       break;
+    case 4:
+      var value = /** @type {!proto.liwords.TournamentGameResult} */ (reader.readEnum());
+      msg.setSelfPlayResult(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -2497,6 +2532,13 @@ proto.tournament_service.TournamentPairingRequest.serializeBinaryToWriter = func
   if (f !== 0) {
     writer.writeInt32(
       3,
+      f
+    );
+  }
+  f = message.getSelfPlayResult();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      4,
       f
     );
   }
@@ -2554,6 +2596,24 @@ proto.tournament_service.TournamentPairingRequest.prototype.getRound = function(
  */
 proto.tournament_service.TournamentPairingRequest.prototype.setRound = function(value) {
   return jspb.Message.setProto3IntField(this, 3, value);
+};
+
+
+/**
+ * optional liwords.TournamentGameResult self_play_result = 4;
+ * @return {!proto.liwords.TournamentGameResult}
+ */
+proto.tournament_service.TournamentPairingRequest.prototype.getSelfPlayResult = function() {
+  return /** @type {!proto.liwords.TournamentGameResult} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
+};
+
+
+/**
+ * @param {!proto.liwords.TournamentGameResult} value
+ * @return {!proto.tournament_service.TournamentPairingRequest} returns this
+ */
+proto.tournament_service.TournamentPairingRequest.prototype.setSelfPlayResult = function(value) {
+  return jspb.Message.setProto3EnumField(this, 4, value);
 };
 
 

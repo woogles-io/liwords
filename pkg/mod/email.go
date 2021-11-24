@@ -3,6 +3,7 @@ package mod
 import (
 	"bytes"
 	_ "embed"
+	"fmt"
 	"text/template"
 	"time"
 
@@ -39,11 +40,11 @@ var ModActionEmailMap = map[ms.ModActionType]string{
 	ms.ModActionType_RESET_STATS_AND_RATINGS: "Reset Ratings and Statistics",
 }
 
-func instantiateEmail(username, actionTaken, note string, starttime, endtime *timestamppb.Timestamp, emailType ms.EmailType) (string, error) {
+func instantiateEmail(username, actionTaken, note string, starttime, endtime *timestamppb.Timestamp, emailType ms.EmailType) (string, string, error) {
 
 	golangStartTime, err := ptypes.Timestamp(starttime)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	startTimeString := golangStartTime.UTC().Format(time.UnixDate)
 
@@ -55,7 +56,7 @@ func instantiateEmail(username, actionTaken, note string, starttime, endtime *ti
 
 	emailTemplate, err := template.New(EmailTemplateName).Parse(EmailTemplate)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	emailContentBuffer := &bytes.Buffer{}
@@ -68,8 +69,15 @@ func instantiateEmail(username, actionTaken, note string, starttime, endtime *ti
 		IsCheater:         emailType == ms.EmailType_CHEATING,
 		IsDeletion:        emailType == ms.EmailType_DELETION})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return emailContentBuffer.String(), nil
 
+	var emailSubject string
+	if emailType == ms.EmailType_DELETION {
+		emailSubject = fmt.Sprintf("Woogles Account Deletion for %s", username)
+	} else {
+		emailSubject = fmt.Sprintf("Woogles Terms of Service Violation for Account %s", username)
+	}
+
+	return emailContentBuffer.String(), emailSubject, nil
 }
