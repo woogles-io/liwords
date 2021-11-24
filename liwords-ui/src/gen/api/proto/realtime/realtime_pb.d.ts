@@ -205,6 +205,53 @@ export namespace ActiveGameEntry {
   }
 }
 
+export class ProfileUpdate extends jspb.Message {
+  getUserId(): string;
+  setUserId(value: string): void;
+
+  getRatingsMap(): jspb.Map<string, ProfileUpdate.Rating>;
+  clearRatingsMap(): void;
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ProfileUpdate.AsObject;
+  static toObject(includeInstance: boolean, msg: ProfileUpdate): ProfileUpdate.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ProfileUpdate, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ProfileUpdate;
+  static deserializeBinaryFromReader(message: ProfileUpdate, reader: jspb.BinaryReader): ProfileUpdate;
+}
+
+export namespace ProfileUpdate {
+  export type AsObject = {
+    userId: string,
+    ratingsMap: Array<[string, ProfileUpdate.Rating.AsObject]>,
+  }
+
+  export class Rating extends jspb.Message {
+    getRating(): number;
+    setRating(value: number): void;
+
+    getDeviation(): number;
+    setDeviation(value: number): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): Rating.AsObject;
+    static toObject(includeInstance: boolean, msg: Rating): Rating.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: Rating, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): Rating;
+    static deserializeBinaryFromReader(message: Rating, reader: jspb.BinaryReader): Rating;
+  }
+
+  export namespace Rating {
+    export type AsObject = {
+      rating: number,
+      deviation: number,
+    }
+  }
+}
+
 export class LagMeasurement extends jspb.Message {
   getLagMs(): number;
   setLagMs(value: number): void;
@@ -394,11 +441,11 @@ export class SeekRequest extends jspb.Message {
   getUser(): MatchUser | undefined;
   setUser(value?: MatchUser): void;
 
-  getMinimumRating(): number;
-  setMinimumRating(value: number): void;
+  getMinimumRatingRange(): number;
+  setMinimumRatingRange(value: number): void;
 
-  getMaximumRating(): number;
-  setMaximumRating(value: number): void;
+  getMaximumRatingRange(): number;
+  setMaximumRatingRange(value: number): void;
 
   getSeekerConnectionId(): string;
   setSeekerConnectionId(value: string): void;
@@ -431,6 +478,9 @@ export class SeekRequest extends jspb.Message {
   getReceiverIsPermanent(): boolean;
   setReceiverIsPermanent(value: boolean): void;
 
+  getRatingKey(): string;
+  setRatingKey(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): SeekRequest.AsObject;
   static toObject(includeInstance: boolean, msg: SeekRequest): SeekRequest.AsObject;
@@ -445,8 +495,8 @@ export namespace SeekRequest {
   export type AsObject = {
     gameRequest?: GameRequest.AsObject,
     user?: MatchUser.AsObject,
-    minimumRating: number,
-    maximumRating: number,
+    minimumRatingRange: number,
+    maximumRatingRange: number,
     seekerConnectionId: string,
     receivingUser?: MatchUser.AsObject,
     userState: SeekStateMap[keyof SeekStateMap],
@@ -456,6 +506,7 @@ export namespace SeekRequest {
     rematchFor: string,
     tournamentId: string,
     receiverIsPermanent: boolean,
+    ratingKey: string,
   }
 }
 
@@ -1873,6 +1924,7 @@ export interface MessageTypeMap {
   PRESENCE_ENTRY: 40;
   ACTIVE_GAME_ENTRY: 41;
   GAME_META_EVENT: 42;
+  PROFILE_UPDATE_EVENT: 43;
 }
 
 export const MessageType: MessageTypeMap;

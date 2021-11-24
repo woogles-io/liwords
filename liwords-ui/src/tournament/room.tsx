@@ -21,6 +21,7 @@ import { CompetitorStatus } from './competitor_status';
 import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
 import './room.scss';
 import { useTourneyMetadata } from './utils';
+import { MatchUser, SeekRequest } from '../gen/api/proto/realtime/realtime_pb';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -35,7 +36,7 @@ export const TournamentRoom = (props: Props) => {
     tournamentContext,
     dispatchTournamentContext,
   } = useTournamentStoreContext();
-  const { loggedIn, username, userID, perms } = loginState;
+  const { loggedIn, username, userID, perms, connID } = loginState;
   const { competitorState: competitorContext } = tournamentContext;
   const { isRegistered } = competitorContext;
   const { sendSocketMsg } = props;
@@ -72,11 +73,19 @@ export const TournamentRoom = (props: Props) => {
   );
 
   const acceptSeek = useCallback(
-    (req: Uint8Array) => {
+    (req: Uint8Array | undefined) => {
       console.log('offering seek accept');
-      sendAcceptOffer(req, sendSocketMsg);
+      if (req) {
+        const sr = SeekRequest.deserializeBinary(req);
+        const user = new MatchUser();
+        user.setUserId(userID);
+        user.setDisplayName(username);
+        user.setIsAnonymous(false);
+        user.setRelevantRating('42');
+        sendAcceptOffer(sr, sendSocketMsg, user, connID);
+      }
     },
-    [sendSocketMsg]
+    [sendSocketMsg, userID, username, connID]
   );
 
   const onSeekSubmit = useCallback(

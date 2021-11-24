@@ -17,7 +17,7 @@ type Props = {
   username?: string;
   selectedGameTab: string;
   setSelectedGameTab: (tab: string) => void;
-  onOfferAccept: (req: Uint8Array) => void;
+  onOfferAccept: (r: Uint8Array | undefined) => void;
   onSeekSubmit: (g: SoughtGame) => void;
 };
 
@@ -131,6 +131,7 @@ export const GameLists = React.memo((props: Props) => {
             newGame={newGame}
             onOfferAccept={onOfferAccept}
             requests={sanitizedSoughtGames}
+            ratings={lobbyContext?.profile?.ratings}
           />
         </>
       );

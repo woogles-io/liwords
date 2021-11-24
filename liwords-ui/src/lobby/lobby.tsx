@@ -14,6 +14,7 @@ import {
   sendAcceptOffer,
   sendSeek,
 } from './sought_game_interactions';
+import { MatchUser, SeekRequest } from '../gen/api/proto/realtime/realtime_pb';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -26,7 +27,7 @@ export const Lobby = (props: Props) => {
   const { sendSocketMsg } = props;
   const { loginState } = useLoginStateStoreContext();
 
-  const { loggedIn, username, userID } = loginState;
+  const { loggedIn, username, userID, connID } = loginState;
 
   const [selectedGameTab, setSelectedGameTab] = useState(
     loggedIn ? 'PLAY' : 'WATCH'
@@ -44,11 +45,19 @@ export const Lobby = (props: Props) => {
   );
 
   const acceptSeek = useCallback(
-    (req: Uint8Array) => {
+    (req: Uint8Array | undefined) => {
       console.log('offering seek accept');
-      sendAcceptOffer(req, sendSocketMsg);
+      if (req) {
+        const sr = SeekRequest.deserializeBinary(req);
+        const user = new MatchUser();
+        user.setUserId(userID);
+        user.setDisplayName(username);
+        user.setIsAnonymous(false);
+        user.setRelevantRating('42');
+        sendAcceptOffer(sr, sendSocketMsg, user, connID);
+      }
     },
-    [sendSocketMsg]
+    [sendSocketMsg, userID, username, connID]
   );
 
   const onSeekSubmit = useCallback(

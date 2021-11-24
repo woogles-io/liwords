@@ -233,6 +233,7 @@ const LobbyContext = createContext<LobbyStoreData>({
     soughtGames: [],
     activeGames: [],
     matchRequests: [],
+    profile: { ratings: {} },
   },
   dispatchLobbyContext: defaultFunction,
 });
@@ -783,6 +784,7 @@ const RealStore = ({ children, ...props }: Props) => {
     soughtGames: [],
     activeGames: [],
     matchRequests: [],
+    profile: { ratings: {} },
   });
   const dispatchLobbyContext = useCallback(
     (action) => setLobbyContext((state) => LobbyReducer(state, action)),

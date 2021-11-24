@@ -9,13 +9,17 @@ import {
   timeCtrlToDisplayName,
   timeToString,
 } from '../store/constants';
-import { SoughtGame } from '../store/reducers/lobby_reducer';
+import {
+  SoughtGame,
+  matchesRatingFormula,
+} from '../store/reducers/lobby_reducer';
 import { useMountedState } from '../utils/mounted';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { DisplayUserFlag } from '../shared/display_flag';
 import { RatingBadge } from './rating_badge';
 import { VariantIcon } from '../shared/variant_icons';
 import { MatchLexiconDisplay } from '../shared/lexicon_display';
+import { ProfileUpdate } from '../gen/api/proto/realtime/realtime_pb';
 
 export const timeFormat = (
   initialTimeSecs: number,
@@ -66,10 +70,11 @@ export const PlayerDisplay = (props: PlayerProps) => {
 type Props = {
   isMatch?: boolean;
   newGame: (seekID: string) => void;
-  onOfferAccept: (req: Uint8Array) => void;
+  onOfferAccept: (sr: Uint8Array | undefined) => void;
+  ratings?: { [key: string]: ProfileUpdate.Rating };
+  requests: Array<SoughtGame>;
   userID?: string;
   username?: string;
-  requests: Array<SoughtGame>;
 };
 export const SoughtGames = (props: Props) => {
   const { useState } = useMountedState();
@@ -138,75 +143,88 @@ export const SoughtGames = (props: Props) => {
     totalTime: number;
     details?: ReactNode;
     outgoing: boolean;
-    req?: Uint8Array;
     seekID: string;
+    request?: Uint8Array;
   };
 
   const formatGameData = (games: SoughtGame[]): SoughtGameTableData[] => {
-    const gameData: SoughtGameTableData[] = games.map(
-      (sg: SoughtGame): SoughtGameTableData => {
-        const getDetails = () => {
-          return (
-            <>
-              <VariantIcon vcode={sg.variant} />{' '}
-              {challengeFormat(sg.challengeRule)}
-              {sg.rated ? (
-                <Tooltip title="Rated">
-                  <FundOutlined />
-                </Tooltip>
-              ) : null}
-            </>
-          );
-        };
-        const outgoing = sg.seeker === props.username;
-        return {
-          seeker: outgoing ? (
-            <Popconfirm
-              title="Do you want to cancel this game?"
-              onConfirm={() => {
-                props.newGame(sg.seekID);
-                setCancelVisible(false);
-              }}
-              okText="Yes"
-              cancelText="No"
-              onCancel={() => {
-                console.log('trying', setCancelVisible, cancelVisible);
-                setCancelVisible(false);
-              }}
-              onVisibleChange={(visible) => {
-                setCancelVisible(visible);
-              }}
-              visible={cancelVisible}
-            >
-              <div>
-                <ExportOutlined />
-                {` ${sg.receiver?.getDisplayName() || 'Seeking...'}`}
-              </div>
-            </Popconfirm>
-          ) : (
-            <PlayerDisplay userID={sg.seekerID!} username={sg.seeker} />
-          ),
-          rating: outgoing ? '' : sg.userRating,
-          ratingBadge: outgoing ? null : <RatingBadge rating={sg.userRating} />,
-          lexicon: <MatchLexiconDisplay lexiconCode={sg.lexicon} />,
-          time: timeFormat(
-            sg.initialTimeSecs,
-            sg.incrementSecs,
-            sg.maxOvertimeMinutes
-          ),
-          totalTime: calculateTotalTime(
-            sg.initialTimeSecs,
-            sg.incrementSecs,
-            sg.maxOvertimeMinutes
-          ),
-          details: getDetails(),
-          outgoing,
-          req: sg.originalRequest,
-          seekID: sg.seekID,
-          lexiconCode: sg.lexicon,
-        };
-      }
-    );
+    const gameData: SoughtGameTableData[] = games
+      .filter((sg: SoughtGame) => {
+        if (sg.seeker === props.username || sg.receiverIsPermanent) {
+          // If we are the seeker, or if it's a match request, always show it.
+          return true;
+        }
+        if (props.ratings && matchesRatingFormula(sg, props.ratings)) {
+          return true;
+        }
+        return false;
+      })
+      .map(
+        (sg: SoughtGame): SoughtGameTableData => {
+          const getDetails = () => {
+            return (
+              <>
+                <VariantIcon vcode={sg.variant} />{' '}
+                {challengeFormat(sg.challengeRule)}
+                {sg.rated ? (
+                  <Tooltip title="Rated">
+                    <FundOutlined />
+                  </Tooltip>
+                ) : null}
+              </>
+            );
+          };
+          const outgoing = sg.seeker === props.username;
+          return {
+            seeker: outgoing ? (
+              <Popconfirm
+                title="Do you want to cancel this game?"
+                onConfirm={() => {
+                  props.newGame(sg.seekID);
+                  setCancelVisible(false);
+                }}
+                okText="Yes"
+                cancelText="No"
+                onCancel={() => {
+                  console.log('trying', setCancelVisible, cancelVisible);
+                  setCancelVisible(false);
+                }}
+                onVisibleChange={(visible) => {
+                  setCancelVisible(visible);
+                }}
+                visible={cancelVisible}
+              >
+                <div>
+                  <ExportOutlined />
+                  {` ${sg.receiver?.getDisplayName() || 'Seeking...'}`}
+                </div>
+              </Popconfirm>
+            ) : (
+              <PlayerDisplay userID={sg.seekerID!} username={sg.seeker} />
+            ),
+            rating: outgoing ? '' : sg.userRating,
+            ratingBadge: outgoing ? null : (
+              <RatingBadge rating={sg.userRating} />
+            ),
+            lexicon: <MatchLexiconDisplay lexiconCode={sg.lexicon} />,
+            time: timeFormat(
+              sg.initialTimeSecs,
+              sg.incrementSecs,
+              sg.maxOvertimeMinutes
+            ),
+            totalTime: calculateTotalTime(
+              sg.initialTimeSecs,
+              sg.incrementSecs,
+              sg.maxOvertimeMinutes
+            ),
+            details: getDetails(),
+            outgoing,
+            seekID: sg.seekID,
+            request: sg.originalRequest,
+            lexiconCode: sg.lexicon,
+          };
+        }
+      );
     return gameData;
   };
 
@@ -224,9 +242,8 @@ export const SoughtGames = (props: Props) => {
           return {
             onClick: () => {
               if (!record.outgoing) {
-                if (record.req) {
-                  props.onOfferAccept(record.req);
-                }
+                console.log(record);
+                props.onOfferAccept(record.request);
               } else if (!cancelVisible) {
                 setCancelVisible(true);
               }

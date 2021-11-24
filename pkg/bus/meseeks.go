@@ -77,6 +77,14 @@ func (b *Bus) seekRequest(ctx context.Context, auth, userID, connID string,
 	return err
 }
 
+func ratingKey(gameRequest *pb.GameRequest) (entity.VariantKey, error) {
+	timefmt, variant, err := entity.VariantFromGameReq(gameRequest)
+	if err != nil {
+		return "", err
+	}
+	return entity.ToVariantKey(gameRequest.Lexicon, variant, timefmt), nil
+}
+
 func (b *Bus) newSeekRequest(ctx context.Context, auth, userID, connID string,
 	req *pb.SeekRequest, gameRequest *pb.GameRequest, lastOpp string) error {
 
@@ -101,11 +109,11 @@ func (b *Bus) newSeekRequest(ctx context.Context, auth, userID, connID string,
 	}
 
 	// Look up user.
-	timefmt, variant, err := entity.VariantFromGameReq(gameRequest)
+	ratingKey, err := ratingKey(gameRequest)
 	if err != nil {
 		return err
 	}
-	ratingKey := entity.ToVariantKey(gameRequest.Lexicon, variant, timefmt)
+	req.RatingKey = string(ratingKey)
 
 	u, err := b.userStore.GetByUUID(ctx, reqUser.UserId)
 	if err != nil {
@@ -423,6 +431,42 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 	accUser, err := b.userStore.GetByUUID(ctx, userID)
 	if err != nil {
 		return err
+	}
+	if !sg.SeekRequest.ReceiverIsPermanent {
+		// If the receiver is not permanent, then we need to check that the
+		// requester's rating is within the range of the receiver's minimum and
+		// maximum ratings.
+
+		ratingKey, err := ratingKey(gameReq)
+		if err != nil {
+			return err
+		}
+
+		reqUser, err := b.userStore.GetByUUID(ctx, requester)
+		if err != nil {
+			return err
+		}
+
+		accRating, err := accUser.GetRating(ratingKey)
+		if err != nil {
+			return err
+		}
+
+		reqRating, err := reqUser.GetRating(ratingKey)
+		if err != nil {
+			return err
+		}
+
+		log.Debug().Int32("minRatRange", sg.SeekRequest.MinimumRatingRange).
+			Int32("maxRatRange", sg.SeekRequest.MaximumRatingRange).
+			Float64("accRating", accRating.Rating).
+			Float64("reqRating", reqRating.Rating).
+			Msg("ratingsinfo")
+		// assume min rating range is negative
+		if accRating.Rating < reqRating.Rating+float64(sg.SeekRequest.MinimumRatingRange) ||
+			accRating.Rating > reqRating.Rating+float64(sg.SeekRequest.MaximumRatingRange) {
+			return errors.New("your rating is not within the requested range")
+		}
 	}
 
 	// Otherwise create a game

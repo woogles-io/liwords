@@ -1,6 +1,7 @@
 import {
   GameRequest,
   GameRules,
+  MatchUser,
   MessageType,
   RatingMode,
   SeekRequest,
@@ -25,13 +26,10 @@ export const defaultLetterDistribution = (lexicon: string): string => {
   }
 };
 
-export const sendSeek = (
-  game: SoughtGame,
-  sendSocketMsg: (msg: Uint8Array) => void
-): void => {
-  const sr = new SeekRequest();
-  const gr = new GameRequest();
+const buildGameRequestFromSoughtGame = (game: SoughtGame) => {
   const rules = new GameRules();
+  const gr = new GameRequest();
+
   rules.setBoardLayoutName('CrosswordGame');
   rules.setVariantName(game.variant);
   rules.setLetterDistributionName(defaultLetterDistribution(game.lexicon));
@@ -49,7 +47,19 @@ export const sendSeek = (
   if (game.playerVsBot) {
     gr.setBotType(BotTypesEnumProperties[game.botType].botCode(game.lexicon));
   }
+  return gr;
+};
+
+export const sendSeek = (
+  game: SoughtGame,
+  sendSocketMsg: (msg: Uint8Array) => void
+): void => {
+  const sr = new SeekRequest();
+  const gr = buildGameRequestFromSoughtGame(game);
+
   sr.setUserState(SeekState.PRESENT);
+  sr.setMinimumRatingRange(game.minRatingRange);
+  sr.setMaximumRatingRange(game.maxRatingRange);
 
   if (!game.receiverIsPermanent) {
     console.log('this is a seek request');
@@ -68,10 +78,19 @@ export const sendSeek = (
 };
 
 export const sendAcceptOffer = (
-  seekRequest: Uint8Array,
-  sendSocketMsg: (msg: Uint8Array) => void
+  sr: SeekRequest | undefined,
+  sendSocketMsg: (msg: Uint8Array) => void,
+  user: MatchUser,
+  connId: string
 ): void => {
-  sendSocketMsg(encodeToSocketFmt(MessageType.SEEK_REQUEST, seekRequest));
+  if (sr) {
+    sr.setReceivingUser(user);
+    sr.setReceiverState(SeekState.PRESENT);
+    sr.setReceiverConnectionId(connId);
+    sendSocketMsg(
+      encodeToSocketFmt(MessageType.SEEK_REQUEST, sr.serializeBinary())
+    );
+  }
 };
 
 export const sendAccept = (

@@ -91,6 +91,8 @@ type Props = {
   tournamentSlug?: string;
   tournamentID?: string;
   tournamentPairedMode?: boolean;
+  tournamentNonDirectorObserver?: boolean;
+  tournamentPrivateAnalysis?: boolean;
   lexicon: string;
   alphabet: Alphabet;
   handleAcceptRematch: (() => void) | null;
@@ -1493,6 +1495,8 @@ export const BoardPanel = React.memo((props: Props) => {
   }, [isMyTurn, props.tournamentID, props.vsBot]);
   const anonymousTourneyViewer =
     props.tournamentID && props.anonymousViewer && !props.gameDone;
+  const nonDirectorAnalyzerDisallowed =
+    props.tournamentNonDirectorObserver && props.tournamentPrivateAnalysis;
   const gameBoard = (
     <div
       id="board-container"
@@ -1575,6 +1579,11 @@ export const BoardPanel = React.memo((props: Props) => {
           myTurn={isMyTurn}
           finalPassOrChallenge={
             examinableGameContext.playState === PlayState.WAITING_FOR_FINAL_PASS
+          }
+          allowAnalysis={
+            nonDirectorAnalyzerDisallowed
+              ? examinableGameContext.playState === PlayState.GAME_OVER
+              : true
           }
           exchangeAllowed={exchangeAllowed}
           observer={observer}

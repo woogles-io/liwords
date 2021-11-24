@@ -13,6 +13,9 @@ export enum ActionType {
   AddActiveGames,
   RemoveActiveGame,
 
+  // XXX: should move somewhere else?
+  UpdateProfile,
+
   /* tourney actions */
   AddTourneyGameResult,
   AddTourneyGameResults,

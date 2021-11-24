@@ -365,6 +365,11 @@ export const countryArray = [
     emoji: '🇸🇻',
   },
   {
+    code: 'GB-ENG',
+    name: 'England',
+    emoji: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+  },
+  {
     code: 'GQ',
     name: 'Equatorial Guinea',
     emoji: '🇬🇶',
@@ -378,6 +383,11 @@ export const countryArray = [
     code: 'EE',
     name: 'Estonia',
     emoji: '🇪🇪',
+  },
+  {
+    code: 'SZ',
+    name: 'Eswatini',
+    emoji: '🇸🇿',
   },
   {
     code: 'ET',
@@ -680,11 +690,6 @@ export const countryArray = [
     emoji: '🇲🇴',
   },
   {
-    code: 'MK',
-    name: 'Macedonia',
-    emoji: '🇲🇰',
-  },
-  {
     code: 'MG',
     name: 'Madagascar',
     emoji: '🇲🇬',
@@ -850,6 +855,16 @@ export const countryArray = [
     emoji: '🇰🇵',
   },
   {
+    code: 'MK',
+    name: 'North Macedonia',
+    emoji: '🇲🇰',
+  },
+  {
+    code: 'GB-NIR',
+    name: 'Northern Ireland',
+    emoji: '🇬🇧',
+  },
+  {
     code: 'MP',
     name: 'Northern Mariana Islands',
     emoji: '🇲🇵',
@@ -963,6 +978,11 @@ export const countryArray = [
     code: 'SA',
     name: 'Saudi Arabia',
     emoji: '🇸🇦',
+  },
+  {
+    code: 'GB-SCT',
+    name: 'Scotland',
+    emoji: '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
   },
   {
     code: 'SN',
@@ -1093,11 +1113,6 @@ export const countryArray = [
     code: 'SJ',
     name: 'Svalbard & Jan Mayen',
     emoji: '🇸🇯',
-  },
-  {
-    code: 'SZ',
-    name: 'Swaziland',
-    emoji: '🇸🇿',
   },
   {
     code: 'SE',
@@ -1263,6 +1278,11 @@ export const countryArray = [
     code: 'VN',
     name: 'Vietnam',
     emoji: '🇻🇳',
+  },
+  {
+    code: 'GB-WLS',
+    name: 'Wales',
+    emoji: '🏴󠁧󠁢󠁷󠁬󠁳󠁿',
   },
   {
     code: 'WF',

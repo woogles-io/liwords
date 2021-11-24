@@ -44,7 +44,7 @@ type Props = {
   tournamentID: string;
   isDirector: boolean;
   isAdmin: boolean;
-  onOfferAccept: (req: Uint8Array) => void;
+  onOfferAccept: (req: Uint8Array | undefined) => void;
   onSeekSubmit: (g: SoughtGame) => void;
   sendReady: () => void;
 };

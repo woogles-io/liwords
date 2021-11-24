@@ -61,6 +61,7 @@ import {
   UserPresence,
   UserPresences,
   FullTournamentDivisions,
+  ProfileUpdate,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
@@ -132,6 +133,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.TOURNAMENT_DIVISION_MESSAGE]: TournamentDivisionDataResponse,
       [MessageType.PRESENCE_ENTRY]: PresenceEntry,
       [MessageType.ACTIVE_GAME_ENTRY]: ActiveGameEntry,
+      [MessageType.PROFILE_UPDATE_EVENT]: ProfileUpdate,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -849,6 +851,16 @@ export const useOnSocketMsg = () => {
               actionType: ActionType.DeleteDivision,
               payload: tdd,
             });
+            break;
+          }
+
+          case MessageType.PROFILE_UPDATE_EVENT: {
+            const pue = parsedMsg as ProfileUpdate;
+            dispatchLobbyContext({
+              actionType: ActionType.UpdateProfile,
+              payload: pue,
+            });
+            break;
           }
         }
       });
