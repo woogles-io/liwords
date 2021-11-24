@@ -268,13 +268,12 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	// Attempt to remove directors that don't exist
 	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Evans": -1, "Zoof": 2}))
-	fmt.Println(err.Error())
 	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, []string{tournamentName, "", "0", "Zoof:Zoof", "removeTournamentPersons"}).Error())
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2, "Evans:Evans": 4, "Oof:Oof": 2, "Guy:Guy": 10, "Harry:Harry": 11}), ty.Directors))
 
 	// Attempt to remove the executive director
 	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Evans": -1, "Kieran": 0}))
-	is.True(err.Error() == "cannot remove the executive director: Kieran:Kieran")
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_REMOVAL, []string{tournamentName, "", "Kieran:Kieran"}).Error())
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2, "Evans:Evans": 4, "Oof:Oof": 2, "Guy:Guy": 10, "Harry:Harry": 11}), ty.Directors))
 
 	// Remove directors
@@ -284,7 +283,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	// Attempt to remove the executive director
 	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Vince": -1, "Kieran": 0}))
-	is.True(err.Error() == "cannot remove the executive director: Kieran:Kieran")
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_REMOVAL, []string{tournamentName, "", "Kieran:Kieran"}).Error())
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2}), ty.Directors))
 
 	// Same thing for players.
@@ -299,7 +298,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	// Add players to a division that doesn't exist
 	err = tournament.AddPlayers(ctx, tstore, us, ty.UUID, divOneName+"not quite", makeTournamentPersons(map[string]int32{"Noah": 4, "Bob": 2}))
-	is.True(err.Error() == "division Division 1not quite does not exist")
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, []string{tournamentName, divOneName + "not quite"}).Error())
 	XHRResponse, err = div1.DivisionManager.GetXHRResponse()
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Will:Will": 1000, "Josh:Josh": 3000, "Conrad:Conrad": 2200, "Jesse:Jesse": 2100}), XHRResponse.Players))
@@ -313,14 +312,14 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	// Remove players that don't exist
 	err = tournament.RemovePlayers(ctx, tstore, us, ty.UUID, divOneName, makeTournamentPersons(map[string]int32{"Evans": -1}))
-	is.True(err.Error() == "player Evans:Evans does not exist in classic division")
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, []string{tournamentName, divOneName, "0", "Evans:Evans", "removePlayers"}).Error())
 	XHRResponse, err = div1.DivisionManager.GetXHRResponse()
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Will:Will": 1000, "Josh:Josh": 3000, "Conrad:Conrad": 2200, "Jesse:Jesse": 2100, "Noah:Noah": 4, "Bob:Bob": 2}), XHRResponse.Players))
 
 	// Remove players from a division that doesn't exist
 	err = tournament.RemovePlayers(ctx, tstore, us, ty.UUID, divOneName+"hmm", makeTournamentPersons(map[string]int32{"Josh": -1, "Conrad": 2}))
-	is.True(err.Error() == "division Division 1hmm does not exist")
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, []string{tournamentName, divOneName + "hmm"}).Error())
 	XHRResponse, err = div1.DivisionManager.GetXHRResponse()
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Will:Will": 1000, "Josh:Josh": 3000, "Conrad:Conrad": 2200, "Jesse:Jesse": 2100, "Noah:Noah": 4, "Bob:Bob": 2}), XHRResponse.Players))
@@ -333,20 +332,12 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Will:Will": 1000, "Jesse:Jesse": 2100, "Noah:Noah": 4, "Bob:Bob": 2}), XHRResponse.Players))
 
 	// Set tournament controls
-	err = tournament.SetDivisionControls(ctx,
-		tstore,
-		ty.UUID,
-		divOneName,
-		makeControls())
+	err = tournament.SetDivisionControls(ctx, tstore, ty.UUID, divOneName, makeControls())
 	is.NoErr(err)
 
 	// Set tournament controls for a division that does not exist
-	err = tournament.SetDivisionControls(ctx,
-		tstore,
-		ty.UUID,
-		divOneName+" another one",
-		makeControls())
-	is.True(err.Error() == "division Division 1 another one does not exist")
+	err = tournament.SetDivisionControls(ctx, tstore, ty.UUID, divOneName+" another one", makeControls())
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, []string{tournamentName, divOneName + " another one"}).Error())
 
 	// Set division round controls
 	err = tournament.SetRoundControls(ctx, tstore, ty.UUID, divOneName, makeRoundControls())
@@ -372,7 +363,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{}), XHRResponse.Players))
 
 	err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, pairings)
-	is.True(err.Error() == "playerOne does not exist in the division: >Will:Will<")
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, []string{tournamentName, divOneName, "1", "Will:Will", "playerOne"}).Error())
 
 	err = tournament.SetResult(ctx,
 		tstore,
@@ -391,13 +382,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 		false,
 		nil,
 	)
-	is.True(err.Error() == "cannot set tournament results before the tournament has started")
-
-	_, err = tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 0)
-	is.True(err.Error() == "cannot check if round is complete before the tournament has started")
-
-	_, err = tournament.IsFinished(ctx, tstore, ty.UUID)
-	is.True(err.Error() == "cannot check if tournament is finished before the tournament has started")
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NOT_STARTED, []string{tournamentName, divOneName}).Error())
 
 	// Add players back in
 	players = makeTournamentPersons(map[string]int32{"Will": 1000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100})
@@ -414,11 +399,11 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	// Attempt to add a division after the tournament has started
 	err = tournament.AddDivision(ctx, tstore, ty.UUID, divOneName+" this time it's different")
-	is.True(err.Error() == "cannot add division after the tournament has started")
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ADD_DIVISION_AFTER_START, []string{tournamentName, divOneName + " this time it's different"}).Error())
 
 	// Attempt to remove a division after the tournament has started
 	err = tournament.RemoveDivision(ctx, tstore, ty.UUID, divOneName)
-	is.True(err.Error() == "cannot remove division "+divOneName+" after the tournament has started")
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DIVISION_REMOVAL_AFTER_START, []string{tournamentName, divOneName}).Error())
 
 	// Tournament pairings and results are tested in the
 	// entity package
@@ -429,7 +414,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	// Set pairings for division that does not exist
 	err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName+"yeet", pairings)
-	is.True(err.Error() == "division Division 1yeet does not exist")
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, []string{tournamentName, divOneName + "yeet"}).Error())
 
 	err = tournament.SetResult(ctx,
 		tstore,
@@ -466,7 +451,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 		0,
 		false,
 		nil)
-	is.True(err.Error() == "division Division 1big boi does not exist")
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, []string{tournamentName, divOneName + "big boi"}).Error())
 
 	isStarted, err = tournament.IsStarted(ctx, tstore, ty.UUID)
 	is.NoErr(err)
@@ -543,26 +528,26 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.True(isRoundComplete)
 
 	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, -1, true)
-	is.True(err.Error() == "cannot repair non-future round -1 since current round is 2")
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, []string{tournamentName, divOneName, "0", "3"}).Error())
 
 	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 5, true)
-	is.True(err.Error() == "round number out of range (PairRound): 5")
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, []string{tournamentName, divOneName, "6", "PairRound"}).Error())
 
 	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 0, true)
-	is.True(err.Error() == "cannot repair non-future round 0 since current round is 2")
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, []string{tournamentName, divOneName, "1", "3"}).Error())
 
 	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 1, true)
-	is.True(err.Error() == "cannot repair non-future round 1 since current round is 2")
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, []string{tournamentName, divOneName, "2", "3"}).Error())
 
 	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 2, true)
-	is.True(err.Error() == "cannot repair non-future round 2 since current round is 2")
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, []string{tournamentName, divOneName, "3", "3"}).Error())
 
 	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 3, true)
 	is.NoErr(err)
 
 	// See if round is complete for division that does not exist
 	_, err = tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName+"yah", 0)
-	is.True(err.Error() == "division Division 1yah does not exist")
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, []string{tournamentName, divOneName + "yah"}).Error())
 
 	isFinished, err := tournament.IsFinished(ctx, tstore, ty.UUID)
 	is.NoErr(err)
