@@ -61,7 +61,7 @@ func (b *Bus) seekRequest(ctx context.Context, auth, userID, connID string,
 		return err
 	}
 
-	exists, err := b.soughtGameStore.ExistsForUser(ctx, gameRequest.RequestId)
+	exists, err := b.soughtGameStore.ExistsForId(ctx, req.GameRequest.RequestId)
 	if err != nil {
 		return err
 	}
@@ -172,31 +172,31 @@ func (b *Bus) updateSeekRequest(ctx context.Context, auth, userID, connID string
 	if newReq.GameRequest == nil {
 		return errors.New("nil game request for seek to update")
 	}
+
+	if newReq.ReceivingUser == nil {
+		return errors.New("updated seek request does not have a receiving user")
+	}
+
+	if newReq.ReceiverConnectionId == "" {
+		return errors.New("updated seek request does not have a receiver connection id")
+	}
+
+	if newReq.ReceiverState == realtime.SeekState_ABSENT {
+		return errors.New("updated seek request should never have receiver state as absent")
+	}
+
 	reqId := newReq.GameRequest.RequestId
 	sg, err := b.soughtGameStore.Get(ctx, reqId)
 	if err != nil {
 		return err
 	}
 
-	oldReceiverState := sg.SeekRequest.ReceiverState
-
 	seekerUserID, err := sg.SeekerUserID()
 	if err != nil {
 		return err
 	}
 
-	receiverUserID, err := sg.ReceiverUserID()
-	if err != nil {
-		return err
-	}
-
-	receiverDisplayName, err := sg.ReceiverDisplayName()
-	if err != nil {
-		return err
-	}
-
-	sg.SeekRequest.ReceivingUser.DisplayName = strings.TrimSpace(receiverDisplayName)
-	receiver, err := b.userStore.Get(ctx, receiverDisplayName)
+	receiver, err := b.userStore.Get(ctx, newReq.ReceivingUser.DisplayName)
 	if err != nil {
 		// No such user, most likely.
 		return err
@@ -211,10 +211,20 @@ func (b *Bus) updateSeekRequest(ctx context.Context, auth, userID, connID string
 		return err
 	}
 
-	if userID == seekerUserID {
+	if sg.SeekRequest.ReceivingUser == nil {
+		sg.SeekRequest.ReceivingUser = newReq.ReceivingUser
+	}
+
+	if sg.SeekRequest.ReceiverConnectionId == "" {
+		sg.SeekRequest.ReceiverConnectionId = newReq.ReceiverConnectionId
+	}
+
+	oldReceiverState := sg.SeekRequest.ReceiverState
+
+	if userID == requester.UUID {
 		sg.SeekRequest.UserState = newReq.UserState
 		sg.SeekRequest.BootedReceivers = newReq.BootedReceivers
-	} else if receiverUserID == "" || userID == receiverUserID {
+	} else if userID == receiver.UUID {
 		sg.SeekRequest.ReceiverState = newReq.ReceiverState
 	} else {
 		return errors.New("you are not a seeker or receiver for this seek")

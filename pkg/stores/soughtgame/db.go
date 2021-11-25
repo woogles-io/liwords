@@ -269,9 +269,19 @@ func (s *DBStore) ListOpenSeeks(ctx context.Context, receiverID, tourneyID strin
 func (s *DBStore) ExistsForUser(ctx context.Context, userID string) (bool, error) {
 	ctxDB := s.db.WithContext(ctx)
 	var count int64
-    if result := ctxDB.Model(&soughtgame{}).Where("seeker = ? OR receiver = ?", userID, userID).Count(&count); result.Error != nil {
-            return false, result.Error
-    }
+	if result := ctxDB.Model(&soughtgame{}).Where("seeker = ?", userID).Count(&count); result.Error != nil {
+		return false, result.Error
+	}
+	return count > 0, nil
+}
+
+// ExistsForId returns true if the there is already a seek with the given request id.
+func (s *DBStore) ExistsForId(ctx context.Context, reqID string) (bool, error) {
+	ctxDB := s.db.WithContext(ctx)
+	var count int64
+	if result := ctxDB.Model(&soughtgame{}).Where("uuid = ?", reqID).Count(&count); result.Error != nil {
+		return false, result.Error
+	}
 	return count > 0, nil
 }
 
