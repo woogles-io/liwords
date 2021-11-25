@@ -5,16 +5,20 @@ import { useSideMenuContext } from './menu';
 type ContextTabProps = {
   panelKey: string;
   label: string;
+  desktop?: boolean;
 };
 
 export const ContextTab = React.memo((props: ContextTabProps) => {
-  const { label, panelKey } = props;
+  const { desktop, label, panelKey } = props;
   const { activePanelKey, setActivePanelKey } = useSideMenuContext();
+  let calculatedClassName =
+    panelKey === activePanelKey ? 'context-tab selected' : 'context-tab';
+  if (desktop) {
+    calculatedClassName += ' desktop';
+  }
   return (
     <Button
-      className={
-        panelKey === activePanelKey ? 'context-tab selected' : 'context-tab'
-      }
+      className={calculatedClassName}
       shape="round"
       onClick={() => {
         setActivePanelKey(panelKey);
@@ -31,7 +35,7 @@ type TabContainerProps = {
 };
 export const ContextTabs = React.memo((props: TabContainerProps) => {
   return (
-    <Affix className={`mobile-tabs ${props.className || ''}`}>
+    <Affix className={`context-tabs ${props.className || ''}`}>
       {props.children}
     </Affix>
   );

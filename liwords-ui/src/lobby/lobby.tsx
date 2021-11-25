@@ -75,17 +75,15 @@ export const Lobby = (props: Props) => {
           </PanelComponentWrapper>
         </SideMenu>
         <Main>
-          <PanelComponentWrapper panelKey={'PLAY'}>
-            <GameLists
-              loggedIn={loggedIn}
-              userID={userID}
-              username={username}
-              newGame={handleNewGame}
-              selectedGameTab={selectedGameTab}
-              setSelectedGameTab={setSelectedGameTab}
-              onSeekSubmit={onSeekSubmit}
-            />
-          </PanelComponentWrapper>
+          <GameLists
+            loggedIn={loggedIn}
+            userID={userID}
+            username={username}
+            newGame={handleNewGame}
+            selectedGameTab={selectedGameTab}
+            setSelectedGameTab={setSelectedGameTab}
+            onSeekSubmit={onSeekSubmit}
+          />
         </Main>
         <Sidebar className="announcements">
           <PanelComponentWrapper panelKey="ANNOUNCEMENTS">

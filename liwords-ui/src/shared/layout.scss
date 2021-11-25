@@ -31,7 +31,7 @@ span.user-context-menu.ant-dropdown-trigger {
     }
   }
 }
-.mobile-tabs {
+.context-tabs {
   @include container();
   display: flex;
   width: 100%;
@@ -40,7 +40,9 @@ span.user-context-menu.ant-dropdown-trigger {
     justify-content: flex-end;
   }
   @media (min-width: $screen-laptop-min) {
-    display: none;
+    .context-tab:not(.desktop) {
+      display: none;
+    }
   }
   @include colorModed() {
     color: m($gray-extreme);
