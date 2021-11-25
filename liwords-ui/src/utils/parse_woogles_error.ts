@@ -1,11 +1,7 @@
 import { errorMap } from '../store/constants';
 
 function sprintf(template: string, args: Array<string>): string {
-  let interpolated = template;
-  args.forEach((arg) => {
-    interpolated = interpolated.replace('$', arg);
-  });
-  return interpolated;
+  return template.replace(/\$(\d+)/g, (_, i) => args[i - 1]);
 }
 
 export function parseWooglesError(err: string): string {

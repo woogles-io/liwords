@@ -239,6 +239,6 @@ export const sortTiles = (rack: string) => {
 export const errorMap: Map<number, string> = new Map<number, string>([
   [
     1001,
-    'Max Bye Placement cannot be less than 1: Tournament: $ Division: $ Max Bye Placement you entered: $',
+    'Max Bye Placement cannot be less than 1: Tournament: $1 Division: $2 Max Bye Placement you entered: $3',
   ],
 ]);
