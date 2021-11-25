@@ -1350,6 +1350,14 @@ func UncheckIn(ctx context.Context, ts TournamentStore, tid string) error {
 	return errors.New("not implemented")
 }
 
+func DisassociateClubGame(ctx context.Context, ts TournamentStore, tid, gid string) error {
+	t, err := ts.Get(ctx, tid)
+	if err != nil {
+		return errors.New("tournament does not exist")
+	}
+
+}
+
 /*
 func CheckIn(ctx context.Context, ts TournamentStore, tid string, playerid string) error {
 	t, err := ts.Get(ctx, tid)

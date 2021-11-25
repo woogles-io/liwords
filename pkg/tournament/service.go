@@ -436,6 +436,18 @@ func (ts *TournamentService) GetRecentClubSessions(ctx context.Context, req *pb.
 	return ts.tournamentStore.GetRecentClubSessions(ctx, req.Id, int(req.Count), int(req.Offset))
 }
 
+func (ts *TournamentService) DisassociateClubGame(ctx context.Context, req *pb.DisassociateClubGameRequest) (*pb.TournamentResponse, error) {
+	err := authenticateDirector(ctx, ts, req.TournamentId, false)
+	if err != nil {
+		return nil, err
+	}
+	err = DisassociateClubGame(ctx, ts.tournamentStore, req.TournamentId, req.GameId)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	return &pb.TournamentResponse{}, nil
+}
+
 func sessionUser(ctx context.Context, ts *TournamentService) (*entity.User, error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {

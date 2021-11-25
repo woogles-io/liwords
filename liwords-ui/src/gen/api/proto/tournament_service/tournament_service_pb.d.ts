@@ -659,6 +659,30 @@ export namespace CheckinRequest {
   }
 }
 
+export class DisassociateClubGameRequest extends jspb.Message {
+  getTournamentId(): string;
+  setTournamentId(value: string): void;
+
+  getGameId(): string;
+  setGameId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): DisassociateClubGameRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: DisassociateClubGameRequest): DisassociateClubGameRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: DisassociateClubGameRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): DisassociateClubGameRequest;
+  static deserializeBinaryFromReader(message: DisassociateClubGameRequest, reader: jspb.BinaryReader): DisassociateClubGameRequest;
+}
+
+export namespace DisassociateClubGameRequest {
+  export type AsObject = {
+    tournamentId: string,
+    gameId: string,
+  }
+}
+
 export class NewClubSessionRequest extends jspb.Message {
   hasDate(): boolean;
   clearDate(): void;

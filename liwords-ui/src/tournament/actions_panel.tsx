@@ -287,6 +287,7 @@ export const ActionsPanel = React.memo((props: Props) => {
                 ? undefined
                 : fetchNext
             }
+            isDirector={isDirector}
           />
         </>
       );

@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 import moment from 'moment';
 import { Button, Table, Tag } from 'antd';
 import { RecentGame } from './recent_game';
+import { DeleteOutlined } from '@ant-design/icons';
 
 type Props = {
   games: Array<RecentGame>;
   fetchPrev?: () => void;
   fetchNext?: () => void;
+  isDirector: boolean;
 };
 
 type playerLinkProps = {
@@ -82,6 +84,24 @@ export const RecentTourneyGames = React.memo((props: Props) => {
         case 'STANDARD':
           endReason = 'Complete';
       }
+      const delbtn = props.isDirector ? (
+        <Button
+          size="small"
+          type="text"
+          danger
+          onClick={() => {
+            if (window.confirm('Are you sure you want to remove this game?')) {
+              fetch(`/api/tournament/game/${item.game_id}`, {
+                method: 'DELETE',
+              }).then(() => {
+                window.location.reload();
+              });
+            }
+          }}
+        >
+          <DeleteOutlined />
+        </Button>
+      ) : null;
 
       return {
         game_id: item.game_id, // used by rowKey
@@ -90,6 +110,7 @@ export const RecentTourneyGames = React.memo((props: Props) => {
         scores,
         endReason,
         when,
+        delbtn,
       };
     })
     .filter((item) => item !== null);
@@ -122,6 +143,14 @@ export const RecentTourneyGames = React.memo((props: Props) => {
       key: 'when',
     },
   ];
+  if (props.isDirector) {
+    columns.push({
+      className: 'delbtn',
+      dataIndex: 'delbtn',
+      key: 'delbtn',
+      title: '',
+    });
+  }
   // TODO: use the normal Ant table pagination when the backend can give us a total
   return (
     <>

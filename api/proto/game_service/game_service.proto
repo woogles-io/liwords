@@ -75,10 +75,29 @@ message StreakInfoResponse {
 
 message RematchStreakRequest { string original_request_id = 1; }
 
+message DisassociateTournamentGameRequest {
+  string tournament_id = 1;
+  string game_id = 2;
+}
+
+message AssociateTournamentGameRequest {
+  string tournament_id = 1;
+  string game_id = 2;
+  string division = 3;
+  int32 round = 4;
+}
+
+message Empty {
+
+}
+
 service GameMetadataService {
   rpc GetMetadata(GameInfoRequest) returns(GameInfoResponse);
   rpc GetGCG(GCGRequest) returns(GCGResponse);
   rpc GetGameHistory(GameHistoryRequest) returns(GameHistoryResponse);
   rpc GetRecentGames(RecentGamesRequest) returns(GameInfoResponses);
   rpc GetRematchStreak(RematchStreakRequest) returns(StreakInfoResponse);
+
+  rpc AssociateTournamentGame(AssociateTournamentGameRequest) returns(Empty);
+  rpc DisassociateTournamentGame(DisassociateTournamentGameRequest) returns (Empty);
 }
