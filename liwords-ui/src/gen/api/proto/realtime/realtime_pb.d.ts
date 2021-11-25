@@ -550,26 +550,6 @@ export namespace SoughtGameProcessEvent {
   }
 }
 
-export class SeekRequestCancellation extends jspb.Message {
-  getRequestId(): string;
-  setRequestId(value: string): void;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): SeekRequestCancellation.AsObject;
-  static toObject(includeInstance: boolean, msg: SeekRequestCancellation): SeekRequestCancellation.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: SeekRequestCancellation, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): SeekRequestCancellation;
-  static deserializeBinaryFromReader(message: SeekRequestCancellation, reader: jspb.BinaryReader): SeekRequestCancellation;
-}
-
-export namespace SeekRequestCancellation {
-  export type AsObject = {
-    requestId: string,
-  }
-}
-
 export class SeekRequests extends jspb.Message {
   clearRequestsList(): void;
   getRequestsList(): Array<SeekRequest>;
@@ -1893,7 +1873,6 @@ export interface MessageTypeMap {
   NEW_GAME_EVENT: 8;
   SERVER_CHALLENGE_RESULT_EVENT: 9;
   SEEK_REQUESTS: 10;
-  MATCH_REQUEST_CANCELLATION: 11;
   ONGOING_GAME_EVENT: 12;
   TIMED_OUT: 13;
   ONGOING_GAMES: 14;

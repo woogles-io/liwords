@@ -1123,7 +1123,7 @@ export function TournamentReducer(
     }
 
     case ActionType.RemoveActiveGame: {
-      // LEGACY event. When games end in regular tournaments, we just get
+      // LEGACY/Clubhouse event. When games end in regular tournaments, we just get
       // a divisions pairing message.
       const { activeGames } = state;
       const g = action.payload as string;
@@ -1131,7 +1131,6 @@ export function TournamentReducer(
       const newArr = activeGames.filter((ag) => {
         return ag.gameID !== g;
       });
-
       return {
         ...state,
         activeGames: newArr,

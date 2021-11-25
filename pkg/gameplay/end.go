@@ -366,8 +366,11 @@ func AbortGame(ctx context.Context, gameStore GameStore, tournamentStore tournam
 
 	wrapped := entity.WrapEvent(&pb.GameDeletion{Id: g.GameID()},
 		pb.MessageType_GAME_DELETION)
-	// XXX: Fix for tourneys ?
 	wrapped.AddAudience(entity.AudLobby, "gameEnded")
+	// send event to the tournament channel if it is a tournament game
+	if g.TournamentData != nil && g.TournamentData.Id != "" {
+		wrapped.AddAudience(entity.AudTournament, g.TournamentData.Id)
+	}
 	evtChan <- wrapped
 
 	evt := &pb.GameEndedEvent{

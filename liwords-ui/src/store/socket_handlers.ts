@@ -41,7 +41,6 @@ import {
   SeekRequest,
   SeekRequests,
   DeclineSeekRequest,
-  SeekRequestCancellation,
   ServerChallengeResultEvent,
   ServerGameplayEvent,
   ServerMessage,
@@ -116,7 +115,6 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.READY_FOR_TOURNAMENT_GAME]: ReadyForTournamentGame,
       [MessageType.TOURNAMENT_ROUND_STARTED]: TournamentRoundStarted,
       [MessageType.LAG_MEASUREMENT]: LagMeasurement,
-      [MessageType.MATCH_REQUEST_CANCELLATION]: SeekRequestCancellation,
       [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,
       [MessageType.REMATCH_STARTED]: RematchStartedEvent,
       [MessageType.GAME_META_EVENT]: GameMetaEvent,
@@ -532,7 +530,7 @@ export const useOnSocketMsg = () => {
           }
 
           case MessageType.TOURNAMENT_GAME_ENDED_EVENT: {
-            // LEGACY tournament game ended event.
+            // Clubhouse mode tournament game ended event.
             const gee = parsedMsg as TournamentGameEndedEvent;
             dispatchTournamentContext({
               actionType: ActionType.AddTourneyGameResult,
@@ -751,6 +749,13 @@ export const useOnSocketMsg = () => {
               actionType: ActionType.RemoveActiveGame,
               payload: gde.getId(),
             });
+            if (!!tournamentContext.metadata?.getId()) {
+              dispatchTournamentContext({
+                actionType: ActionType.RemoveActiveGame,
+                payload: gde.getId(),
+              });
+            }
+
             break;
           }
 
