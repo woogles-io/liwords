@@ -23,3 +23,7 @@ message InitRealmInfo {
   string user_id = 2;
   repeated string realms = 3;
 }
+
+message Pong {
+  string ips = 1;
+}
