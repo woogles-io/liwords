@@ -2,7 +2,6 @@ package entity
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/domino14/liwords/rpc/api/proto/realtime"
@@ -24,14 +23,9 @@ func NewWooglesError(code realtime.WooglesError, data ...string) *WooglesError {
 
 func (w *WooglesError) Error() string {
 	var errb strings.Builder
-	fmt.Fprintf(&errb, "%s%s%s", WooglesErrorDelimiter, strconv.Itoa(int(w.code)), WooglesErrorDelimiter)
-	dataLength := len(w.data)
-	delim := WooglesErrorDelimiter
-	for i, d := range w.data {
-		if i == dataLength-1 {
-			delim = ""
-		}
-		fmt.Fprintf(&errb, "%s%s", d, delim)
+	fmt.Fprintf(&errb, "%s%d", WooglesErrorDelimiter, w.code)
+	for _, d := range w.data {
+		fmt.Fprintf(&errb, "%s%s", WooglesErrorDelimiter, d)
 	}
 	return errb.String()
 }

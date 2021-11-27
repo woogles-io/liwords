@@ -140,14 +140,14 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 	}
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name)
 	}
 
 	t.Lock()
 	defer t.Unlock()
 	name := strings.TrimSpace(meta.Name)
 	if name == "" {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_EMPTY_NAME, t.Name, "")
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_EMPTY_NAME, t.Name)
 	}
 	t.Name = name
 	t.Description = meta.Description
