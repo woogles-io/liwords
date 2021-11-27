@@ -140,14 +140,14 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 	}
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, []string{t.Name, ""})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
 	}
 
 	t.Lock()
 	defer t.Unlock()
 	name := strings.TrimSpace(meta.Name)
 	if name == "" {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_EMPTY_NAME, []string{t.Name, ""})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_EMPTY_NAME, t.Name, "")
 	}
 	t.Name = name
 	t.Description = meta.Description
@@ -188,25 +188,25 @@ func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, 
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	if !t.IsStarted {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NOT_STARTED, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, division)
 	}
 
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	if divisionObject.DivisionManager == nil {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
 	}
 
 	currentRound := divisionObject.DivisionManager.GetCurrentRound()
 	if round < currentRound+1 {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_SET_NON_FUTURE_ROUND_CONTROLS, []string{t.Name, division, strconv.Itoa(currentRound + 1)})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_SET_NON_FUTURE_ROUND_CONTROLS, t.Name, division, strconv.Itoa(currentRound+1))
 	}
 
 	newControls, err := divisionObject.DivisionManager.SetSingleRoundControls(round, controls)
@@ -236,16 +236,16 @@ func SetRoundControls(ctx context.Context, ts TournamentStore, id string, divisi
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	if t.IsStarted {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_SET_ROUND_CONTROLS_AFTER_START, []string{t.Name, division, "tournament"})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_SET_ROUND_CONTROLS_AFTER_START, t.Name, division, "tournament")
 	}
 
 	pairingsResp, newDivisionRoundControls, err := divisionObject.DivisionManager.SetRoundControls(roundControls)
@@ -277,12 +277,12 @@ func SetDivisionControls(ctx context.Context, ts TournamentStore, id string, div
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	newDivisionControls, standings, err := divisionObject.DivisionManager.SetDivisionControls(controls)
@@ -313,20 +313,20 @@ func AddDivision(ctx context.Context, ts TournamentStore, id string, division st
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	if t.IsStarted {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ADD_DIVISION_AFTER_START, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ADD_DIVISION_AFTER_START, t.Name, division)
 	}
 
 	if len(division) == 0 || len(division) > MaxDivisionNameLength {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_INVALID_DIVISION_NAME, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_INVALID_DIVISION_NAME, t.Name, division)
 	}
 
 	_, ok := t.Divisions[division]
 
 	if ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DIVISION_ALREADY_EXISTS, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DIVISION_ALREADY_EXISTS, t.Name, division)
 	}
 
 	t.Divisions[division] = &entity.TournamentDivision{DivisionManager: NewClassicDivision(t.Name, division)}
@@ -355,20 +355,20 @@ func RemoveDivision(ctx context.Context, ts TournamentStore, id string, division
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	_, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	if t.IsStarted {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DIVISION_REMOVAL_AFTER_START, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DIVISION_REMOVAL_AFTER_START, t.Name, division)
 	}
 
 	if len(t.Divisions[division].DivisionManager.GetPlayers().GetPersons()) > 0 {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DIVISION_REMOVAL_EXISTING_PLAYERS, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DIVISION_REMOVAL_EXISTING_PLAYERS, t.Name, division)
 	}
 
 	delete(t.Divisions, division)
@@ -385,7 +385,7 @@ func RemoveDivision(ctx context.Context, ts TournamentStore, id string, division
 func constructFullID(tournamentName string, divisionName string, ctx context.Context, us user.Store, user string) (string, string, error) {
 	u, err := us.Get(ctx, user)
 	if err != nil {
-		return "", "", entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PLAYER_ID_CONSTRUCTION, []string{tournamentName, divisionName, user})
+		return "", "", entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PLAYER_ID_CONSTRUCTION, tournamentName, divisionName, user)
 	}
 	return u.TournamentID(), u.UUID, nil
 }
@@ -400,7 +400,7 @@ func AddDirectors(ctx context.Context, ts TournamentStore, us user.Store, id str
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, []string{t.Name, ""})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
 	}
 	// Only perform the add operation if all persons can be added.
 
@@ -417,11 +417,11 @@ func AddDirectors(ctx context.Context, ts TournamentStore, us user.Store, id str
 
 	for _, newDirector := range directors.Persons {
 		if newDirector.Id == t.ExecutiveDirector || newDirector.Rating == 0 {
-			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_EXISTS, []string{t.Name, "", newDirector.Id})
+			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_EXISTS, t.Name, "", newDirector.Id)
 		}
 		for _, existingDirector := range t.Directors.Persons {
 			if newDirector.Id == existingDirector.Id {
-				return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DIRECTOR_EXISTS, []string{t.Name, "", newDirector.Id})
+				return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DIRECTOR_EXISTS, t.Name, "", newDirector.Id)
 			}
 		}
 	}
@@ -452,7 +452,7 @@ func RemoveDirectors(ctx context.Context, ts TournamentStore, us user.Store, id 
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, []string{t.Name, ""})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
 	}
 
 	for _, newDirector := range directors.Persons {
@@ -492,16 +492,16 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	if divisionObject.DivisionManager == nil {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
 	}
 
 	// Only perform the add operation if all persons can be added.
@@ -555,16 +555,16 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	if divisionObject.DivisionManager == nil {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
 	}
 
 	// Only perform the add operation if all persons can be added.
@@ -619,7 +619,7 @@ func SetPairings(ctx context.Context, ts TournamentStore, id string, division st
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	pairingsResponse := []*realtime.Pairing{}
 	standingsResponse := make(map[int32]*realtime.RoundStandings)
@@ -628,12 +628,12 @@ func SetPairings(ctx context.Context, ts TournamentStore, id string, division st
 		divisionObject, ok := t.Divisions[division]
 
 		if !ok {
-			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, []string{t.Name, division})
+			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 		}
 
 		if divisionObject.DivisionManager == nil {
 			// Not enough players or rounds to make a manager, most likely
-			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, []string{t.Name, division})
+			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
 		}
 
 		pairingsResp, err := divisionObject.DivisionManager.SetPairing(pairing.PlayerOneId, pairing.PlayerTwoId, int(pairing.Round), pairing.SelfPlayResult)
@@ -686,7 +686,7 @@ func SetResult(ctx context.Context,
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	testMode := false
 	if strings.HasSuffix(os.Args[0], ".test") {
@@ -742,11 +742,11 @@ func SetResult(ctx context.Context,
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	if !t.IsStarted {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NOT_STARTED, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, division)
 	}
 
 	// We need to send the division manager the "full" user ID, so look that up here.
@@ -833,11 +833,11 @@ func possiblyEndTournament(ctx context.Context, ts TournamentStore, t *entity.To
 
 func startTournamentChecks(t *entity.Tournament) error {
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, []string{t.Name, ""})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
 	}
 
 	if len(t.Divisions) == 0 {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NO_DIVISIONS, []string{t.Name, ""})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NO_DIVISIONS, t.Name, "")
 	}
 
 	return nil
@@ -847,22 +847,22 @@ func startDivisionChecks(t *entity.Tournament, division string, round int) error
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	if divisionObject.DivisionManager == nil {
 		// division does not have enough players or controls to set pairings
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
 	}
 
 	dm := divisionObject.DivisionManager
 
 	if dm.GetDivisionControls().GameRequest == nil {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_GAME_CONTROLS_NOT_SET, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_GAME_CONTROLS_NOT_SET, t.Name, division)
 	}
 
 	if round != dm.GetCurrentRound()+1 {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_INCORRECT_START_ROUND, []string{t.Name, division, strconv.Itoa(round + 1), strconv.Itoa(dm.GetCurrentRound() + 1)})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_INCORRECT_START_ROUND, t.Name, division, strconv.Itoa(round+1), strconv.Itoa(dm.GetCurrentRound()+1))
 	}
 
 	err := dm.IsRoundStartable()
@@ -989,21 +989,21 @@ func PairRound(ctx context.Context, ts TournamentStore, id string, division stri
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	if !t.IsStarted {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NOT_STARTED, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, division)
 	}
 
 	currentRound := divisionObject.DivisionManager.GetCurrentRound()
 	if round < currentRound+1 {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, []string{t.Name, division, strconv.Itoa(round + 1), strconv.Itoa(currentRound + 1)})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, t.Name, division, strconv.Itoa(round+1), strconv.Itoa(currentRound+1))
 	}
 
 	pairingsResp, err := divisionObject.DivisionManager.PairRound(round, preserveByes)
@@ -1034,21 +1034,21 @@ func DeletePairings(ctx context.Context, ts TournamentStore, id string, division
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	if !t.IsStarted {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NOT_STARTED, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, division)
 	}
 
 	currentRound := divisionObject.DivisionManager.GetCurrentRound()
 	if round < currentRound+1 {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DELETE_NON_FUTURE_ROUND, []string{t.Name, division, strconv.Itoa(round + 1), strconv.Itoa(currentRound + 1)})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DELETE_NON_FUTURE_ROUND, t.Name, division, strconv.Itoa(round+1), strconv.Itoa(currentRound+1))
 	}
 
 	err = divisionObject.DivisionManager.DeletePairings(round)
@@ -1098,7 +1098,7 @@ func IsRoundComplete(ctx context.Context, ts TournamentStore, id string, divisio
 	_, ok := t.Divisions[division]
 
 	if !ok {
-		return false, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, []string{t.Name, division})
+		return false, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	return t.Divisions[division].DivisionManager.IsRoundComplete(round)
@@ -1111,16 +1111,16 @@ func SetFinished(ctx context.Context, ts TournamentStore, id string) error {
 	}
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, []string{t.Name, ""})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
 	}
 
 	if !t.IsStarted {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NOT_STARTED, []string{t.Name, ""})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, "")
 	}
 
 	for _, division := range t.Divisions {
 		if division.DivisionManager == nil {
-			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, []string{t.Name, ""})
+			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, "")
 		}
 
 		finished, err := division.DivisionManager.IsFinished()
@@ -1128,7 +1128,7 @@ func SetFinished(ctx context.Context, ts TournamentStore, id string) error {
 			return nil
 		}
 		if !finished {
-			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DIVISION_NOT_FINISHED, []string{t.Name, ""})
+			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DIVISION_NOT_FINISHED, t.Name, "")
 		}
 	}
 
@@ -1164,7 +1164,7 @@ func GetXHRResponse(ctx context.Context, ts TournamentStore, id string) (*realti
 		Started: t.IsStarted}
 	for divisionKey, division := range t.Divisions {
 		if division.DivisionManager == nil {
-			return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, []string{t.Name, divisionKey})
+			return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, divisionKey)
 		}
 
 		xhr, err := division.DivisionManager.GetXHRResponse()
@@ -1186,12 +1186,12 @@ func SetReadyForGame(ctx context.Context, ts TournamentStore, t *entity.Tourname
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return nil, false, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, []string{t.Name, division})
+		return nil, false, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 
 	_, ok := t.Divisions[division]
 	if !ok {
-		return nil, false, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, []string{t.Name, division})
+		return nil, false, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 	connIDs, bothReady, err := t.Divisions[division].DivisionManager.SetReadyForGame(playerID, connID, round, gameIndex, unready)
 	if err != nil {
@@ -1207,12 +1207,12 @@ func ClearReadyStates(ctx context.Context, ts TournamentStore, t *entity.Tournam
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 
 	_, ok := t.Divisions[division]
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, []string{t.Name, division})
+		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	pairing, err := t.Divisions[division].DivisionManager.ClearReadyStates(userID, round, gameIndex)
@@ -1253,7 +1253,7 @@ func PairingsToResponse(id string, division string, pairings []*realtime.Pairing
 }
 
 func getExecutiveDirector(tournamentName string, directors *realtime.TournamentPersons) (string, error) {
-	err := entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NOT_EXACTLY_ONE_EXECUTIVE_DIRECTOR, []string{tournamentName, ""})
+	err := entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NOT_EXACTLY_ONE_EXECUTIVE_DIRECTOR, tournamentName, "")
 	executiveDirector := ""
 	for _, director := range directors.Persons {
 		if director.Rating == 0 {
@@ -1277,7 +1277,7 @@ func removeTournamentPersons(tournamentName string, divisionName string, persons
 		for index, person := range persons.Persons {
 			if personToRemove.Id == person.Id {
 				if person.Rating == 0 && areDirectors {
-					return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_REMOVAL, []string{tournamentName, divisionName, person.Id})
+					return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_REMOVAL, tournamentName, divisionName, person.Id)
 				}
 				present = true
 				indexesToRemove = append(indexesToRemove, index)
@@ -1285,7 +1285,7 @@ func removeTournamentPersons(tournamentName string, divisionName string, persons
 			}
 		}
 		if !present {
-			return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, []string{tournamentName, divisionName, "0", personToRemove.Id, "removeTournamentPersons"})
+			return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, tournamentName, divisionName, "0", personToRemove.Id, "removeTournamentPersons")
 		}
 	}
 

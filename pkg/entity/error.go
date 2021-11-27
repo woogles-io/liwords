@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -14,7 +15,7 @@ type WooglesError struct {
 
 const WooglesErrorDelimiter = ";"
 
-func NewWooglesError(code realtime.WooglesError, data []string) *WooglesError {
+func NewWooglesError(code realtime.WooglesError, data ...string) *WooglesError {
 	return &WooglesError{
 		code: code,
 		data: data,
@@ -22,5 +23,15 @@ func NewWooglesError(code realtime.WooglesError, data []string) *WooglesError {
 }
 
 func (w *WooglesError) Error() string {
-	return WooglesErrorDelimiter + strings.Join(append([]string{strconv.Itoa(int(w.code))}, w.data...), WooglesErrorDelimiter)
+	var errb strings.Builder
+	fmt.Fprintf(&errb, "%s%s%s", WooglesErrorDelimiter, strconv.Itoa(int(w.code)), WooglesErrorDelimiter)
+	dataLength := len(w.data)
+	delim := WooglesErrorDelimiter
+	for i, d := range w.data {
+		if i == dataLength-1 {
+			delim = ""
+		}
+		fmt.Fprintf(&errb, "%s%s", d, delim)
+	}
+	return errb.String()
 }

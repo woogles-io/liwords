@@ -1407,7 +1407,7 @@ func TestClassicDivisionVoidResult(t *testing.T) {
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_VOID,
 		realtime.GameEndReason_TIME, false, 0, "")
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_MIXED_VOID_AND_NONVOID_RESULTS, []string{tournamentName, divisionName, realtime.TournamentGameResult_WIN.String(), realtime.TournamentGameResult_VOID.String()}).Error())
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_MIXED_VOID_AND_NONVOID_RESULTS, tournamentName, divisionName, realtime.TournamentGameResult_WIN.String(), realtime.TournamentGameResult_VOID.String()).Error())
 
 	_, err = tc.SubmitResult(0, player1, player2, 500, 400,
 		realtime.TournamentGameResult_VOID,
@@ -2476,7 +2476,7 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	is.NoErr(equalStandings(expectedstandings, standings))
 
 	_, err = tc.RemovePlayers(makeTournamentPersons(map[string]int32{player2: 10, player3: 60}))
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_REMOVAL_CREATES_EMPTY_DIVISION, []string{tournamentName, divisionName}).Error())
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_REMOVAL_CREATES_EMPTY_DIVISION, tournamentName, divisionName).Error())
 
 	// Idiot director removed all but one player from the tournament
 	_, err = tc.RemovePlayers(makeTournamentPersons(map[string]int32{player2: 10}))
@@ -2782,7 +2782,7 @@ func TestClassicDivisionByes(t *testing.T) {
 	newDivControls.MaximumByePlacement = -3
 	_, _, err = tc.SetDivisionControls(newDivControls)
 	is.True(err != nil)
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT, []string{tournamentName, divisionName, "-2"}).Error())
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT, tournamentName, divisionName, "-2").Error())
 
 	tc.DivisionControls.MaximumByePlacement = 500
 
