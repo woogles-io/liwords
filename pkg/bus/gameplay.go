@@ -495,8 +495,11 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 			// was never registered with an unstarted game.
 			wrapped := entity.WrapEvent(&pb.GameDeletion{Id: g.GameId},
 				pb.MessageType_GAME_DELETION)
-			// XXX: Fix for tourneys ?
 			wrapped.AddAudience(entity.AudLobby, "gameEnded")
+			// send it to the tournament channel too if it's in one
+			if g.TournamentId != "" {
+				wrapped.AddAudience(entity.AudTournament, g.TournamentId)
+			}
 			b.gameEventChan <- wrapped
 		}
 	}

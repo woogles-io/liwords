@@ -86,7 +86,6 @@ enum MessageType {
   NEW_GAME_EVENT = 8;
   SERVER_CHALLENGE_RESULT_EVENT = 9;
   SEEK_REQUESTS = 10;
-  MATCH_REQUEST_CANCELLATION = 11;
   ONGOING_GAME_EVENT = 12;
   TIMED_OUT = 13;
   ONGOING_GAMES = 14;
@@ -220,10 +219,6 @@ message ReadyForGame { string game_id = 1; }
 // get accepted (from client to server), or canceled -- when sent from server to
 // client.
 message SoughtGameProcessEvent { string request_id = 1; }
-
-// Server to client messages:
-// When a Seeker cancels their outgoing match request:
-message SeekRequestCancellation { string request_id = 1; }
 
 // SeekRequests sends all open seek requests.
 message SeekRequests { repeated SeekRequest requests = 1; }

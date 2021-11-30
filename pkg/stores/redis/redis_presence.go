@@ -256,8 +256,6 @@ func (s *RedisPresenceStore) RenewPresence(ctx context.Context, userID, username
 	conn := s.redisPool.Get()
 	defer conn.Close()
 
-	log.Debug().Str("username", username).Str("connID", connID).Msg("renew-presence")
-
 	authUser := "auth"
 	if anon {
 		authUser = "anon"

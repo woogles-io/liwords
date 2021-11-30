@@ -544,7 +544,12 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		return b.leaveTab(ctx, userID, wsConnID)
 
 	case "pongReceived":
-		return b.pongReceived(ctx, userID, wsConnID)
+		evt := &pb.Pong{}
+		err := proto.Unmarshal(data, evt)
+		if err != nil {
+			return err
+		}
+		return b.pongReceived(ctx, userID, wsConnID, evt.Ips)
 
 	default:
 		return fmt.Errorf("unhandled-publish-topic: %v", subtopics)
@@ -662,6 +667,17 @@ func (b *Bus) broadcastChannelChanges(ctx context.Context, oldChannels, newChann
 
 		b.genericEventChan <- wrapped
 	}
+	// for _, c := range newChannels {
+	// 	if strings.HasPrefix(c, "tournament.") {
+	// 		wrapped := entity.WrapEvent(&pb.PresenceEntry{
+	// 			Username: username,
+	// 			UserId:   userID,
+	// 			Channel:  newChannels,
+	// 		}, pb.MessageType_PRESENCE_ENTRY)
+	// 		wrapped.AddAudience(entity.AudTournament, strings.TrimPrefix(c, "tournament."))
+	// 		b.genericEventChan <- wrapped
+	// 	}
+	// }
 
 	return nil
 }
@@ -829,11 +845,13 @@ func (b *Bus) leaveSite(ctx context.Context, userID string) error {
 	return nil
 }
 
-func (b *Bus) pongReceived(ctx context.Context, userID, connID string) error {
+func (b *Bus) pongReceived(ctx context.Context, userID, connID, ips string) error {
 	username, anon, err := b.userStore.Username(ctx, userID)
 	if err != nil {
 		return err
 	}
+	log.Debug().Str("username", username).Str("connID", connID).Str("ips", ips).Msg("pong-received")
+
 	oldChannels, newChannels, err := b.presenceStore.RenewPresence(ctx, userID, username, anon, connID)
 	if err != nil {
 		return err

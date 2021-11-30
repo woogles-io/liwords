@@ -62,7 +62,7 @@ import {
 } from '../store/store';
 import { sharedEnableAutoShuffle } from '../store/constants';
 import { BlankSelector } from './blank_selector';
-import { GameEndMessage } from './game_end_message';
+import { GameMetaMessage } from './game_meta_message';
 import { PlayerMetadata, GCGResponse, ChallengeRule } from './game_info';
 import {
   GameEvent,
@@ -1497,6 +1497,18 @@ export const BoardPanel = React.memo((props: Props) => {
     props.tournamentID && props.anonymousViewer && !props.gameDone;
   const nonDirectorAnalyzerDisallowed =
     props.tournamentNonDirectorObserver && props.tournamentPrivateAnalysis;
+  const stillWaitingForGameToStart =
+    props.currentRack === '' &&
+    !props.gameDone &&
+    examinableGameContext.playState !== PlayState.WAITING_FOR_FINAL_PASS;
+  let gameMetaMessage;
+  if (examinableGameEndMessage) {
+    gameMetaMessage = examinableGameEndMessage;
+  } else if (anonymousTourneyViewer) {
+    gameMetaMessage = 'Log in or register to see player tiles';
+  } else if (stillWaitingForGameToStart) {
+    gameMetaMessage = 'Waiting for game to start...';
+  }
   const gameBoard = (
     <div
       id="board-container"
@@ -1525,12 +1537,8 @@ export const BoardPanel = React.memo((props: Props) => {
         definitionPopover={props.definitionPopover}
         alphabet={props.alphabet}
       />
-      {examinableGameEndMessage || anonymousTourneyViewer ? (
-        <GameEndMessage
-          message={
-            examinableGameEndMessage || 'Log in or register to see player tiles'
-          }
-        />
+      {gameMetaMessage ? (
+        <GameMetaMessage message={gameMetaMessage} />
       ) : (
         <div className="rack-container">
           <Tooltip

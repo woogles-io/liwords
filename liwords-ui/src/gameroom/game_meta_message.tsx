@@ -5,7 +5,7 @@ type Props = {
   message: string;
 };
 
-export const GameEndMessage = (props: Props) => (
+export const GameMetaMessage = (props: Props) => (
   <Card className="end-message" size="small">
     {props.message.split('\n').map((line, idx) => (
       <Row key={`l-${idx + 0}`} justify="center">
