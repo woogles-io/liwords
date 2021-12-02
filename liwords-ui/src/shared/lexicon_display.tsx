@@ -35,6 +35,7 @@ export const MatchLexiconDisplay = (props: {
 export const LexiconFormItem = React.memo((props: Props) => {
   const order = [
     'CSW19',
+    'CSW21',
     'NWL20',
     'ECWL',
     'RD28',

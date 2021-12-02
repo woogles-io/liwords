@@ -44,6 +44,14 @@ export const AllLexica: { [code: string]: Lexicon } = {
     longDescription:
       'Collins Official Scrabble Words 2019 © HarperCollins Publishers 2019',
   },
+  CSW21: {
+    code: 'CSW21',
+    shortDescription: 'CSW 21 (World English)',
+    ratingName: 'CSW',
+    matchName: 'CSW21',
+    longDescription:
+      'Collins Official Scrabble Words 2021 © HarperCollins Publishers 2021',
+  },
   ECWL: {
     code: 'ECWL',
     shortDescription: 'CEL (Common English Lexicon)',
