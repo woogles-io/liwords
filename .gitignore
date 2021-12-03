@@ -16,4 +16,3 @@ __pycache__
 scripts/**/*-linux-amd64
 
 data/lexica/words/*.txt
-data/lexica/dawg/*.dawg

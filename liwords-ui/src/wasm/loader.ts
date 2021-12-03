@@ -56,6 +56,7 @@ for (const { lexicons, cacheKey, path } of [
     lexicons: [
       'CSW19',
       'CSW19X',
+      'CSW21',
       'NWL20',
       'NWL18',
       'NSWL20',
@@ -82,6 +83,7 @@ for (const { lexicons, cacheKey, path } of [
   ...[
     'CSW19',
     'CSW19X',
+    'CSW21',
     'NWL20',
     'NWL18',
     'NSWL20',
@@ -97,6 +99,7 @@ for (const { lexicons, cacheKey, path } of [
   ...[
     'CSW19',
     'CSW19X',
+    'CSW21',
     'NWL20',
     'NWL18',
     'NSWL20',
