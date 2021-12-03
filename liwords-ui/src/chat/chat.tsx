@@ -90,7 +90,7 @@ export const Chat = React.memo((props: Props) => {
     return channel?.split('.')[1] || '';
   }, [channel]);
 
-  const canonicalizedChannel = React.useMemo(() => {
+  const canonicalizedChannel = useMemo(() => {
     switch (channelType) {
       case 'gametv':
         return 'gametv';
