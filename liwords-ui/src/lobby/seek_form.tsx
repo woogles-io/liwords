@@ -220,7 +220,7 @@ export const SeekForm = (props: Props) => {
     }
   }, [props.friendRef]);
   const defaultValues: seekPropVals = {
-    lexicon: 'CSW19',
+    lexicon: 'CSW21',
     challengerule: ChallengeRule.VOID,
     initialtimeslider: initialTimeMinutesToSlider(20),
     rated: true,

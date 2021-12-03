@@ -38,7 +38,7 @@ export const AllLexica: { [code: string]: Lexicon } = {
   },
   CSW19: {
     code: 'CSW19',
-    shortDescription: 'CSW 19 (World English)',
+    shortDescription: 'CSW 19 (Obsolete)',
     ratingName: 'CSW',
     matchName: 'CSW19',
     longDescription:
@@ -50,7 +50,7 @@ export const AllLexica: { [code: string]: Lexicon } = {
     ratingName: 'CSW',
     matchName: 'CSW21',
     longDescription:
-      'Collins Official Scrabble Words 2021 © HarperCollins Publishers 2021',
+      'Published under license with Collins, an imprint of HarperCollins Publishers Limited',
   },
   ECWL: {
     code: 'ECWL',
