@@ -70,6 +70,7 @@ export const Chat = React.memo((props: Props) => {
   const propsSendChat = useMemo(() => props.sendChat, [props.sendChat]);
   const [selectedChatTab, setSelectedChatTab] = useState('CHAT');
   const chatTab = selectedChatTab === 'CHAT' ? tabContainerElement : null;
+
   // Chat auto-scrolls when the last entity is visible.
   const [hasUnreadChat, setHasUnreadChat] = useState(false);
   const {
@@ -85,9 +86,24 @@ export const Chat = React.memo((props: Props) => {
   const [chatAutoScroll, setChatAutoScroll] = useState(true);
   const [channel, setChannel] = useState<string | undefined>(defaultChannel);
   const [, setRefreshCurMsg] = useState(0);
+  const channelType = useMemo(() => {
+    return channel?.split('.')[1] || '';
+  }, [channel]);
+
+  const canonicalizedChannel = React.useMemo(() => {
+    switch (channelType) {
+      case 'gametv':
+        return 'gametv';
+      case 'game':
+        return 'game';
+      default:
+        return channel;
+    }
+  }, [channelType, channel]);
+
   const setCurMsg = useCallback(
     (x: string) => {
-      if (!channel) {
+      if (!canonicalizedChannel) {
         // cannot store it
         return;
       }
@@ -99,16 +115,16 @@ export const Chat = React.memo((props: Props) => {
         // if they log in as someone else, flush the former user's cache
         globalUnsentChatCache = { [userID]: {} };
       }
-      globalUnsentChatCache[userID][channel] = x;
+      globalUnsentChatCache[userID][canonicalizedChannel] = x;
       setRefreshCurMsg((n) => (n + 1) | 0); // trigger refresh
     },
-    [loggedIn, userID, channel]
+    [loggedIn, userID, canonicalizedChannel]
   );
   const curMsg =
     (loggedIn &&
       userID &&
-      channel &&
-      globalUnsentChatCache[userID]?.[channel]) ||
+      canonicalizedChannel &&
+      globalUnsentChatCache[userID]?.[canonicalizedChannel]) ||
     '';
   const [maxEntitiesHeight, setMaxEntitiesHeight] = useState<
     number | undefined
@@ -136,9 +152,6 @@ export const Chat = React.memo((props: Props) => {
     },
     [setCurMsg]
   );
-  const channelType = useMemo(() => {
-    return channel?.split('.')[1] || '';
-  }, [channel]);
 
   const doChatAutoScroll = useCallback(
     (force = false) => {
