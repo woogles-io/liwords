@@ -1,4 +1,6 @@
+import { message } from 'antd';
 import axios from 'axios';
+import { parseWooglesError } from '../utils/parse_woogles_error';
 
 export const toAPIUrl = (service: string, method: string) => {
   const loc = window.location;
@@ -10,6 +12,49 @@ export const toAPIUrl = (service: string, method: string) => {
 
 interface PBMsg {
   serializeBinary(): Uint8Array;
+}
+
+export const postJsonObj = async (
+  service: string,
+  method: string,
+  msg: any,
+  successHandler?: (res: any) => void,
+  errHandler?: (err: any) => void
+) => {
+  const url = toAPIUrl(service, method);
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(msg),
+    });
+    const json = await response.json();
+    if (!response.ok) {
+      // non-200 response
+      const msg = parseWooglesError(json.msg);
+      throw new Error(msg);
+    }
+    if (successHandler) {
+      successHandler(json);
+    }
+  } catch (e) {
+    if (!errHandler) {
+      message.error({
+        content: e?.message,
+        duration: 8,
+      });
+    } else {
+      errHandler(e);
+    }
+  }
+};
+
+interface JsonError {
+  code: string;
+  msg: string;
 }
 
 export const postBinary = async (
@@ -25,7 +70,7 @@ export const postBinary = async (
   });
 };
 
-interface TwirpError {
+export interface TwirpError {
   response: {
     data: Uint8Array;
   };

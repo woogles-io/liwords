@@ -27,6 +27,7 @@ import { Pairings } from './pairings';
 import { isPairedMode, isClubType } from '../store/constants';
 import { Standings } from './standings';
 import { DirectorTools } from './director_tools';
+import { parseWooglesError } from '../utils/parse_woogles_error';
 // import { CheckIn } from './check_in';
 
 export type RecentTournamentGames = {
@@ -220,13 +221,11 @@ export const ActionsPanel = React.memo((props: Props) => {
           { withCredentials: true }
         )
         .catch((err) => {
+          const msg = parseWooglesError(err.response?.data?.msg);
           message.error({
-            content:
-              'Round cannot be started yet. The error message was: ' +
-              err.response?.data?.msg,
+            content: msg,
             duration: 8,
           });
-          console.log('Error starting round: ' + err.response?.data?.msg);
         });
     };
     return (

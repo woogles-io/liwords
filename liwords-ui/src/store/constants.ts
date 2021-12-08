@@ -236,9 +236,46 @@ export const sortTiles = (rack: string) => {
     .reduce((s, [index, tile]) => s + tile, '');
 };
 
+// Can skip error codes for now.
+// 1001 - max bye placement - front end doesn't allow this
+// 1002 - min gibson placement - front end doesn't allow this
+// 1003 - min gibson spread - not allowed in front end
+// 1004 - empty round controls - not allowed in front end
 export const errorMap: Map<number, string> = new Map<number, string>([
   [
+    // for some reason this doesn't have the division or tournament names:
     1001,
     'Max Bye Placement cannot be less than 1: Tournament: $1 Division: $2 Max Bye Placement you entered: $3',
   ],
+  [1005, 'The tournament has already started.'],
+  // 1006 - elimination tournament not supported yet.
+  [1007, 'You cannot have other pairings preceding Initial Fontes.'],
+  // This is major tom to round controls
+  [1008, 'Initial Fontes must have an odd number of rounds.'],
+  // 1009 - elimination tournament not supported yet.
+  [1010, 'Round number must be between 1 and the number of rounds.'],
+  // 1011 - front end doesn't allow players that are not in the round
+  // 1012 - past rounds
+  [1012, 'Turn on Amendment to edit an already existing score.'],
+  [1013, 'You cannot enter scores for future rounds.'],
+  // XXX: 1014 - nil player pairing -- how can this be triggered?
+  [1015, 'The players you selected did not play in this round.'],
+  // 1016 - mixed void and nonvoid results -- how can this be triggered?
+  // 1017 - nonexistent pairing -- how can this be triggered?
+  // 1018 - pairing has no games -- how can this be triggered?
+  // 1019 - elimination tournament not supported yet
+  // 1020 - tournament game index out of range, only for pairings that have multiple
+  // numbers of games. Can revisit this later.
+  // copypasta
+  // 1021 - current rounds
+  // XXX - check front end error here for this, when i don't click Amendment:
+  [1021, 'Turn on Amendment to edit an already existing score.'],
+  // 1022 - TOURNAMENT_NONEXISTENT_RESULT_AMENDMENT -- how to trigger?
+  [1038, 'This round cannot be opened because round $3 is not complete.'],
+  [
+    1056,
+    'This round is already over or underway. You are currently in round $3 for division $2.',
+  ],
+  [1057, 'You cannot add a division after the tournament has started.'],
+  [1060, 'You cannot remove a division after the tournament has started.'],
 ]);

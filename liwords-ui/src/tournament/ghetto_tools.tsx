@@ -19,10 +19,9 @@ import {
   Tooltip,
 } from 'antd';
 import { Modal } from '../utils/focus_modal';
-import axios from 'axios';
 import { Store } from 'rc-field-form/lib/interface';
 import React, { useEffect } from 'react';
-import { postBinary, toAPIUrl, twirpErrToMsg } from '../api/api';
+import { postBinary, postJsonObj, twirpErrToMsg } from '../api/api';
 import {
   DivisionControls,
   DivisionRoundControls,
@@ -52,6 +51,7 @@ import {
   SingleRoundSetting,
 } from './pairing_methods';
 import { valueof } from '../store/constants';
+import { parseWooglesError } from '../utils/parse_woogles_error';
 
 type ModalProps = {
   title: string;
@@ -245,28 +245,22 @@ const PlayersFormItem = (props: {
 };
 
 const AddDivision = (props: { tournamentID: string }) => {
-  const onFinish = (vals: Store) => {
+  const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
       division: vals.division,
     };
-    axios
-      .post<{}>(
-        toAPIUrl('tournament_service.TournamentService', 'AddDivision'),
-        obj
-      )
-      .then((resp) => {
+    postJsonObj(
+      'tournament_service.TournamentService',
+      'AddDivision',
+      obj,
+      () => {
         message.info({
           content: 'Division added',
           duration: 3,
         });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
-      });
+      }
+    );
   };
 
   return (
@@ -284,28 +278,23 @@ const AddDivision = (props: { tournamentID: string }) => {
 };
 
 const RemoveDivision = (props: { tournamentID: string }) => {
-  const onFinish = (vals: Store) => {
+  const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
       division: vals.division,
     };
-    axios
-      .post<{}>(
-        toAPIUrl('tournament_service.TournamentService', 'RemoveDivision'),
-        obj
-      )
-      .then((resp) => {
+
+    postJsonObj(
+      'tournament_service.TournamentService',
+      'RemoveDivision',
+      obj,
+      () => {
         message.info({
           content: 'Division removed',
           duration: 3,
         });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
-      });
+      }
+    );
   };
 
   return (
@@ -321,7 +310,7 @@ const RemoveDivision = (props: { tournamentID: string }) => {
 };
 
 const AddPlayers = (props: { tournamentID: string }) => {
-  const onFinish = (vals: Store) => {
+  const onFinish = async (vals: Store) => {
     const players = [];
     // const playerMap: { [username: string]: number } = {};
     if (!vals.players) {
@@ -360,23 +349,18 @@ const AddPlayers = (props: { tournamentID: string }) => {
       persons: players,
     };
     console.log(obj);
-    axios
-      .post<{}>(
-        toAPIUrl('tournament_service.TournamentService', 'AddPlayers'),
-        obj
-      )
-      .then((resp) => {
+
+    postJsonObj(
+      'tournament_service.TournamentService',
+      'AddPlayers',
+      obj,
+      () => {
         message.info({
           content: 'Players added',
           duration: 3,
         });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
-      });
+      }
+    );
   };
 
   return (
@@ -438,7 +422,7 @@ const RemovePlayer = (props: { tournamentID: string }) => {
   const { useState } = useMountedState();
   const [division, setDivision] = useState('');
 
-  const onFinish = (vals: Store) => {
+  const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
       division: vals.division,
@@ -449,23 +433,18 @@ const RemovePlayer = (props: { tournamentID: string }) => {
       ],
     };
     console.log(obj);
-    axios
-      .post<{}>(
-        toAPIUrl('tournament_service.TournamentService', 'RemovePlayers'),
-        obj
-      )
-      .then((resp) => {
+
+    postJsonObj(
+      'tournament_service.TournamentService',
+      'RemovePlayers',
+      obj,
+      () => {
         message.info({
           content: 'Player removed',
           duration: 3,
         });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
-      });
+      }
+    );
   };
 
   return (
@@ -487,27 +466,22 @@ const RemovePlayer = (props: { tournamentID: string }) => {
 };
 
 const ClearCheckedIn = (props: { tournamentID: string }) => {
-  const onFinish = (vals: Store) => {
+  const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
     };
-    axios
-      .post<{}>(
-        toAPIUrl('tournament_service.TournamentService', 'UncheckIn'),
-        obj
-      )
-      .then((resp) => {
+
+    postJsonObj(
+      'tournament_service.TournamentService',
+      'ClearCheckedIn',
+      obj,
+      () => {
         message.info({
-          content: 'Checkins cleared',
+          content: 'Checked-in cleared',
           duration: 3,
         });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
-      });
+      }
+    );
   };
 
   return (
@@ -571,7 +545,7 @@ const SetPairing = (props: { tournamentID: string }) => {
   const [division, setDivision] = useState('');
   const [selfplay, setSelfplay] = useState(false);
 
-  const onFinish = (vals: Store) => {
+  const onFinish = async (vals: Store) => {
     const p1id = fullPlayerID(
       vals.p1,
       tournamentContext.divisions[vals.division]
@@ -597,23 +571,18 @@ const SetPairing = (props: { tournamentID: string }) => {
         },
       ],
     };
-    axios
-      .post<{}>(
-        toAPIUrl('tournament_service.TournamentService', 'SetPairing'),
-        obj
-      )
-      .then((resp) => {
+
+    postJsonObj(
+      'tournament_service.TournamentService',
+      'SetPairing',
+      obj,
+      () => {
         message.info({
           content: 'Pairing set',
           duration: 3,
         });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
-      });
+      }
+    );
   };
 
   return (
@@ -673,7 +642,7 @@ const SetResult = (props: { tournamentID: string }) => {
   const [score2, setScore2] = useState(0);
   const [form] = Form.useForm();
 
-  const onFinish = (vals: Store) => {
+  const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
       division: vals.division,
@@ -693,23 +662,18 @@ const SetResult = (props: { tournamentID: string }) => {
       game_end_reason: vals.gameEndReason,
       amendment: vals.amendment,
     };
-    axios
-      .post<{}>(
-        toAPIUrl('tournament_service.TournamentService', 'SetResult'),
-        obj
-      )
-      .then((resp) => {
+
+    postJsonObj(
+      'tournament_service.TournamentService',
+      'SetResult',
+      obj,
+      () => {
         message.info({
           content: 'Result set',
           duration: 3,
         });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
-      });
+      }
+    );
   };
 
   useEffect(() => {
@@ -840,23 +804,18 @@ const PairRound = (props: { tournamentID: string }) => {
       round: vals.round - 1, // 1-indexed input
       preserve_byes: vals.preserveByes,
     };
-    axios
-      .post<{}>(
-        toAPIUrl('tournament_service.TournamentService', 'PairRound'),
-        obj
-      )
-      .then((resp) => {
+
+    postJsonObj(
+      'tournament_service.TournamentService',
+      'PairRound',
+      obj,
+      () => {
         message.info({
-          content: 'Pairing set',
+          content: 'Pair round completed',
           duration: 3,
         });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
-      });
+      }
+    );
   };
 
   return (
@@ -888,23 +847,18 @@ const UnpairRound = (props: { tournamentID: string }) => {
       round: vals.round - 1, // 1-indexed input
       deletePairings: true,
     };
-    axios
-      .post<{}>(
-        toAPIUrl('tournament_service.TournamentService', 'PairRound'),
-        obj
-      )
-      .then((resp) => {
+
+    postJsonObj(
+      'tournament_service.TournamentService',
+      'PairRound',
+      obj,
+      () => {
         message.info({
           content: 'Pairings for selected round have been deleted',
           duration: 3,
         });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
-      });
+      }
+    );
   };
   return (
     <Form onFinish={onFinish}>
@@ -1026,8 +980,11 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
         duration: 3,
       });
     } catch (err) {
+      const unparsedErr = twirpErrToMsg(err);
+      const msg = parseWooglesError(unparsedErr);
+
       message.error({
-        content: 'Error ' + twirpErrToMsg(err),
+        content: msg,
         duration: 5,
       });
     }
@@ -1080,7 +1037,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
 
         <Form.Item {...formItemLayout} label="Gibson min placement">
           <InputNumber
-            min={1}
+            // min={1}
             value={gibsonMinPlacement}
             onChange={(p: number | string | undefined | null) =>
               setGibsonMinPlacement(p as number)
@@ -1343,8 +1300,8 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
 
   const showError = (msg: string) => {
     message.error({
-      content: 'Error ' + msg,
-      duration: 5,
+      content: msg,
+      duration: 8,
     });
   };
 
@@ -1384,8 +1341,9 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
         duration: 3,
       });
     } catch (err) {
-      console.log('err is', err);
-      showError(twirpErrToMsg(err));
+      const unparsedErr = twirpErrToMsg(err);
+      const msg = parseWooglesError(unparsedErr);
+      showError(msg);
     }
   };
 

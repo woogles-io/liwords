@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/domino14/liwords/rpc/api/proto/realtime"
+	"github.com/rs/zerolog/log"
 )
 
 type WooglesError struct {
@@ -15,6 +16,7 @@ type WooglesError struct {
 const WooglesErrorDelimiter = ";"
 
 func NewWooglesError(code realtime.WooglesError, data ...string) *WooglesError {
+	log.Debug().Interface("data", data).Int32("code", int32(code)).Msg("NewWooglesError")
 	return &WooglesError{
 		code: code,
 		data: data,

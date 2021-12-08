@@ -59,7 +59,10 @@ func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.Divisio
 	if err != nil {
 		return nil, nil, err
 	}
-	log.Debug().Interface("game-req", divisionControls.GameRequest).Msg("divctrls-validated-game-request")
+	log.Debug().Interface("game-req", divisionControls.GameRequest).
+		Str("tournament", t.TournamentName).
+		Str("division", t.DivisionName).
+		Msg("divctrls-validated-game-request")
 
 	if divisionControls.MaximumByePlacement < 0 {
 		return nil, nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT, t.TournamentName, t.DivisionName, strconv.Itoa(int(divisionControls.MaximumByePlacement+1)))
@@ -478,7 +481,7 @@ func (t *ClassicDivision) SubmitResult(round int,
 	}
 
 	// If this claims to be an amendment and is not submitting forfeit
-	// losses for players show up late, reject this submission.
+	// losses for players that show up late, reject this submission.
 	if amend && p1Result != t.DivisionControls.SuspendedResult &&
 		p2Result != t.DivisionControls.SuspendedResult &&
 		pairing.Games[gameIndex].Results[0] == realtime.TournamentGameResult_NO_RESULT &&
