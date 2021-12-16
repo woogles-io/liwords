@@ -283,16 +283,12 @@ func excessivePhonies(history *pb.GameHistory, cfg *macondoconfig.Config, nickna
 		evt := history.Events[i]
 		if evt.Nickname == nickname {
 			totalTileMoves++
-			if evt.Type == pb.GameEvent_PHONY_TILES_RETURNED {
+			isPhony, err := isPhonyEvent(evt, history, cfg)
+			if err != nil {
+				return false, err
+			}
+			if isPhony {
 				totalPhonies++
-			} else {
-				isPhony, err := isPhonyEvent(evt, history, cfg)
-				if err != nil {
-					return false, err
-				}
-				if isPhony {
-					totalPhonies++
-				}
 			}
 		}
 	}
