@@ -281,18 +281,14 @@ func excessivePhonies(history *pb.GameHistory, cfg *macondoconfig.Config, nickna
 	totalPhonies := 0
 	for i := 0; i < len(history.Events); i++ {
 		evt := history.Events[i]
-		if evt.Nickname == nickname {
+		if evt.Nickname == nickname && evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE {
 			totalTileMoves++
-			if evt.Type == pb.GameEvent_PHONY_TILES_RETURNED {
+			isPhony, err := isPhonyEvent(evt, history, cfg)
+			if err != nil {
+				return false, err
+			}
+			if isPhony {
 				totalPhonies++
-			} else {
-				isPhony, err := isPhonyEvent(evt, history, cfg)
-				if err != nil {
-					return false, err
-				}
-				if isPhony {
-					totalPhonies++
-				}
 			}
 		}
 	}
@@ -318,21 +314,18 @@ func isPhonyEvent(event *pb.GameEvent,
 	history *pb.GameHistory,
 	cfg *macondoconfig.Config) (bool, error) {
 	phony := false
-	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE {
-		dawg, err := gaddag.GetDawg(cfg, history.Lexicon)
+	dawg, err := gaddag.GetDawg(cfg, history.Lexicon)
+	if err != nil {
+		return phony, err
+	}
+	for _, word := range event.WordsFormed {
+		phony, err := isPhony(dawg, word, history.Variant)
 		if err != nil {
-			return phony, err
+			return false, err
 		}
-		for _, word := range event.WordsFormed {
-			phony, err := isPhony(dawg, word, history.Variant)
-			if err != nil {
-				return false, err
-			}
-			if phony {
-				return phony, nil
-			}
+		if phony {
+			return phony, nil
 		}
-
 	}
 	return false, nil
 }
