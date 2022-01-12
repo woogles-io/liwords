@@ -101,6 +101,7 @@ for (const { lexicons, cacheKey, path } of [
     'CSW19X',
     'CSW21',
     'NWL20',
+    'NWL18',
     'NSWL20',
     'ECWL',
     'FRA20',
