@@ -15,7 +15,8 @@ export const MatchLexiconDisplay = (props: {
 }) => {
   const lex = AllLexica[props.lexiconCode];
   if (!lex) {
-    return null;
+    // For unsupported lexica just return the old lexicon code.
+    return <>{props.lexiconCode}</>;
   }
   const desc = (
     <>
@@ -40,8 +41,6 @@ export const LexiconFormItem = React.memo((props: Props) => {
     'RD28',
     'FRA20',
     'NSF21',
-    'CSW19',
-    'NWL18',
     'NSWL20',
     'CSW19X',
   ];
@@ -73,7 +72,7 @@ export const excludedLexica = (
   enableCSW19X: boolean
 ): Set<string> => {
   if (!enableAllLexicons) {
-    return new Set<string>(['NWL18', 'NSWL20', 'ECWL', 'CSW19', 'CSW19X']);
+    return new Set<string>(['NSWL20', 'ECWL', 'CSW19X']);
   } else if (!enableCSW19X) {
     return new Set<string>(['CSW19X']);
   }

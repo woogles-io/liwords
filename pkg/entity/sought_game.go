@@ -3,6 +3,7 @@ package entity
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/lithammer/shortuuid"
@@ -131,5 +132,10 @@ func ValidateGameRequest(ctx context.Context, req *pb.GameRequest) error {
 	if req.MaxOvertimeMinutes > 0 && req.IncrementSeconds > 0 {
 		return errors.New("you can have increments or max overtime, but not both")
 	}
-	return nil
+	for _, lex := range AllowedNewGameLexica {
+		if req.Lexicon == lex {
+			return nil
+		}
+	}
+	return fmt.Errorf("%s is not a supported lexicon", req.Lexicon)
 }
