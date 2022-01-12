@@ -25,7 +25,7 @@ var TestingDBConnStr = "host=" + TestDBHost + " port=5432 user=postgres password
 var DefaultConfig = macondoconfig.Config{
 	LexiconPath:               os.Getenv("LEXICON_PATH"),
 	LetterDistributionPath:    os.Getenv("LETTER_DISTRIBUTION_PATH"),
-	DefaultLexicon:            "CSW19",
+	DefaultLexicon:            "CSW21",
 	DefaultLetterDistribution: "English",
 }
 
@@ -69,7 +69,7 @@ func InstantiateNewStatsWithHistory(filename string, listStatStore ListStatStore
 		return nil, err
 	}
 
-	req := &realtime.GameRequest{Lexicon: "CSW19",
+	req := &realtime.GameRequest{Lexicon: "CSW21",
 		Rules: &realtime.GameRules{BoardLayoutName: entity.CrosswordGame,
 			LetterDistributionName: "letterdist",
 			VariantName:            "classic"},

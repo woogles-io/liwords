@@ -26,7 +26,7 @@ import (
 
 var TestDBHost = os.Getenv("TEST_DB_HOST")
 var TestingDBConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
-var gameReq = &pb.GameRequest{Lexicon: "CSW19",
+var gameReq = &pb.GameRequest{Lexicon: "CSW21",
 	Rules: &pb.GameRules{BoardLayoutName: entity.CrosswordGame,
 		LetterDistributionName: "English",
 		VariantName:            "classic"},
@@ -43,7 +43,7 @@ var gameReq = &pb.GameRequest{Lexicon: "CSW19",
 var DefaultConfig = macondoconfig.Config{
 	LexiconPath:               os.Getenv("LEXICON_PATH"),
 	LetterDistributionPath:    os.Getenv("LETTER_DISTRIBUTION_PATH"),
-	DefaultLexicon:            "CSW19",
+	DefaultLexicon:            "CSW21",
 	DefaultLetterDistribution: "English",
 }
 

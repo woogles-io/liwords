@@ -57,7 +57,7 @@
         "id": "qzqWHsGVBrAgiuAZp9nJJm",
         "division": "CSW",
         "game_request": {
-          "lexicon": "CSW19",
+          "lexicon": "CSW21",
           "rules": {
             "board_layout_name": "CrosswordGame",
             "letter_distribution_name": "English"
