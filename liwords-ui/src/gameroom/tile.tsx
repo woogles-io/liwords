@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { useMountedState } from '../utils/mounted';
 import { useDrag, useDragLayer, useDrop } from 'react-dnd';
 import TentativeScore from './tentative_score';
 import {
@@ -131,8 +132,13 @@ type TileProps = {
 };
 
 const Tile = React.memo((props: TileProps) => {
+  const { useState } = useMountedState();
+
+  const [isMouseDragging, setIsMouseDragging] = useState(false);
+
   const handleStartDrag = (e: any) => {
     if (e) {
+      setIsMouseDragging(true);
       e.dataTransfer.dropEffect = 'move';
       if (
         props.tentative &&
@@ -144,6 +150,10 @@ const Tile = React.memo((props: TileProps) => {
         e.dataTransfer.setData('rackIndex', props.rackIndex);
       }
     }
+  };
+
+  const handleEndDrag = () => {
+    setIsMouseDragging(false);
   };
 
   const handleDrop = (e: any) => {
@@ -235,13 +245,13 @@ const Tile = React.memo((props: TileProps) => {
     }
   }, [canDrop, isTouchDeviceResult, drop]);
 
-  const computedClassName = `tile${isDragging ? ' dragging' : ''}${
-    canDrag ? ' droppable' : ''
-  }${props.selected ? ' selected' : ''}${props.tentative ? ' tentative' : ''}${
-    props.lastPlayed ? ' last-played' : ''
-  }${isDesignatedBlank(props.rune) ? ' blank' : ''}${
-    props.playerOfTile ? ' tile-p1' : ' tile-p0'
-  }`;
+  const computedClassName = `tile${
+    isDragging || isMouseDragging ? ' dragging' : ''
+  }${canDrag ? ' droppable' : ''}${props.selected ? ' selected' : ''}${
+    props.tentative ? ' tentative' : ''
+  }${props.lastPlayed ? ' last-played' : ''}${
+    isDesignatedBlank(props.rune) ? ' blank' : ''
+  }${props.playerOfTile ? ' tile-p1' : ' tile-p0'}`;
   let ret = (
     <div onDragOver={handleDropOver} onDrop={handleDrop} ref={tileRef}>
       <div
@@ -255,6 +265,7 @@ const Tile = React.memo((props: TileProps) => {
         onMouseEnter={props.onMouseEnter}
         onMouseLeave={props.onMouseLeave}
         onDragStart={canDrag ? handleStartDrag : undefined}
+        onDragEnd={handleEndDrag}
         draggable={canDrag}
       >
         {props.rune !== EmptySpace && (
