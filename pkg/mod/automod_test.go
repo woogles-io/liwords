@@ -275,6 +275,7 @@ func equalActionHistories(ah1 []*ms.ModAction, ah2 []*ms.ModAction) error {
 func printPlayerNotorieties(ustore pkguser.Store, nstore pkgmod.NotorietyStore) {
 	notorietyString := "err = comparePlayerNotorieties([]*ms.NotorietyReport{"
 	for _, playerId := range playerIds {
+		fmt.Println(playerId)
 		score, games, err := pkgmod.GetNotorietyReport(context.Background(), ustore, nstore, playerId, 100)
 		if err != nil {
 			panic(err)
@@ -539,7 +540,7 @@ func TestNotoriety(t *testing.T) {
 		{Score: 0, Games: []*ms.NotoriousGame{}}}, ustore, nstore)
 	is.NoErr(err)
 
-	// The other play has now misbehaved
+	// The other player has now misbehaved
 	// Now both plays have a nonzero notoriety
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
 	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, nil, 1, pb.GameEndReason_RESIGNED, false)
@@ -733,6 +734,75 @@ func TestNotoriety(t *testing.T) {
 			{Type: ms.NotoriousGameType_SANDBAG},
 			{Type: ms.NotoriousGameType_SANDBAG}}},
 		{Score: 0, Games: []*ms.NotoriousGame{}}}, ustore, nstore)
+	is.NoErr(err)
+
+	// Reset notorieties
+	err = pkgmod.ResetNotoriety(context.Background(), ustore, nstore, playerIds[0])
+	is.NoErr(err)
+	err = pkgmod.ResetNotoriety(context.Background(), ustore, nstore, playerIds[1])
+	is.NoErr(err)
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 0, Games: []*ms.NotoriousGame{}},
+		{Score: 0, Games: []*ms.NotoriousGame{}}}, ustore, nstore)
+	is.NoErr(err)
+
+	// Excessive phonies
+	defaultTurns[0].Tiles = "ABNJO"
+	defaultTurns[2].Tiles = "MAYPPOS"
+	defaultTurns[4].Tiles = "RETIANS"
+
+	// Winner and loser should not matter
+	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, defaultTurns, 0, pb.GameEndReason_RESIGNED, false)
+	is.NoErr(err)
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 0, Games: []*ms.NotoriousGame{}},
+		{Score: 8, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_EXCESSIVE_PHONIES}}}}, ustore, nstore)
+	is.NoErr(err)
+
+	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, defaultTurns, 1, pb.GameEndReason_RESIGNED, false)
+	is.NoErr(err)
+
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 0, Games: []*ms.NotoriousGame{}},
+		{Score: 16, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_EXCESSIVE_PHONIES},
+			{Type: ms.NotoriousGameType_EXCESSIVE_PHONIES}}}}, ustore, nstore)
+	is.NoErr(err)
+
+	// Now the other player phonies too much
+	defaultTurns[0].Tiles = "BANJO"
+	defaultTurns[2].Tiles = "MAYPOPS"
+	defaultTurns[4].Tiles = "RETINAS"
+	defaultTurns[1].Tiles = "BUSUTUI"
+	defaultTurns[3].Tiles = "RETIANS"
+
+	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, defaultTurns, 1, pb.GameEndReason_RESIGNED, false)
+	is.NoErr(err)
+
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 8, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_EXCESSIVE_PHONIES}}},
+		{Score: 15, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_EXCESSIVE_PHONIES},
+			{Type: ms.NotoriousGameType_EXCESSIVE_PHONIES}}}}, ustore, nstore)
+	is.NoErr(err)
+
+	defaultTurns[1].Tiles = "BUSUUTI"
+
+	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
+	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, defaultTurns, 1, pb.GameEndReason_RESIGNED, false)
+	is.NoErr(err)
+
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 7, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_EXCESSIVE_PHONIES}}},
+		{Score: 14, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_EXCESSIVE_PHONIES},
+			{Type: ms.NotoriousGameType_EXCESSIVE_PHONIES}}}}, ustore, nstore)
 	is.NoErr(err)
 
 	uDBstore.Disconnect()

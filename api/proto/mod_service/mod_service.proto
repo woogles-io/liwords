@@ -57,6 +57,7 @@ enum NotoriousGameType {
   SITTING = 2;
   SANDBAG = 3;
   NO_PLAY_DENIED_NUDGE = 4;
+  EXCESSIVE_PHONIES = 5;
 }
 
 message NotoriousGame {

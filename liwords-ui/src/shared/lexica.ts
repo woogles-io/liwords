@@ -38,11 +38,19 @@ export const AllLexica: { [code: string]: Lexicon } = {
   },
   CSW19: {
     code: 'CSW19',
-    shortDescription: 'CSW 19 (World English)',
+    shortDescription: 'CSW 19 (Obsolete)',
     ratingName: 'CSW',
     matchName: 'CSW19',
     longDescription:
       'Collins Official Scrabble Words 2019 © HarperCollins Publishers 2019',
+  },
+  CSW21: {
+    code: 'CSW21',
+    shortDescription: 'CSW 21 (World English)',
+    ratingName: 'CSW',
+    matchName: 'CSW21',
+    longDescription:
+      'Published under license with Collins, an imprint of HarperCollins Publishers Limited',
   },
   ECWL: {
     code: 'ECWL',

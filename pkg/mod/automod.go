@@ -8,10 +8,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
+	"github.com/domino14/macondo/alphabet"
+	macondoconfig "github.com/domino14/macondo/config"
+	"github.com/domino14/macondo/gaddag"
+	"github.com/domino14/macondo/game"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/rs/zerolog/log"
@@ -25,6 +30,7 @@ type NotorietyStore interface {
 
 var BehaviorToScore map[ms.NotoriousGameType]int = map[ms.NotoriousGameType]int{
 	ms.NotoriousGameType_NO_PLAY_DENIED_NUDGE: 10,
+	ms.NotoriousGameType_EXCESSIVE_PHONIES:    8,
 	ms.NotoriousGameType_NO_PLAY:              6,
 	ms.NotoriousGameType_SITTING:              4,
 	ms.NotoriousGameType_SANDBAG:              4,
@@ -32,6 +38,7 @@ var BehaviorToScore map[ms.NotoriousGameType]int = map[ms.NotoriousGameType]int{
 
 var BehaviorToString map[ms.NotoriousGameType]string = map[ms.NotoriousGameType]string{
 	ms.NotoriousGameType_NO_PLAY_DENIED_NUDGE: "No Play (Denied Nudge)",
+	ms.NotoriousGameType_EXCESSIVE_PHONIES:    "Excessive Phonies",
 	ms.NotoriousGameType_NO_PLAY:              "No Play",
 	ms.NotoriousGameType_SITTING:              "Sitting",
 	ms.NotoriousGameType_SANDBAG:              "Sandbagging",
@@ -47,7 +54,8 @@ var NotorietyThreshold int = 10
 var NotorietyDecrement int = 1
 var DurationMultiplier int = 24 * 60 * 60
 var UnreasonableTime int = 5 * 60
-
+var ExcessivePhonyThreshold float64 = 0.5
+var ExcessivePhonyMinimum int = 3
 var testTimestamp int64 = 1
 
 func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.User, u1 *entity.User, g *entity.Game) error {
@@ -56,11 +64,18 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 	wngt := ms.NotoriousGameType_GOOD
 	history := g.History()
 	// Perhaps too cute, but solves cases where g.LoserIdex is -1
-	loserNickname := history.Players[g.LoserIdx*g.LoserIdx].Nickname
-	loserId := history.Players[g.LoserIdx*g.LoserIdx].UserId
+	nonNegativeLoserIdx := g.LoserIdx * g.LoserIdx
+	loserNickname := history.Players[nonNegativeLoserIdx].Nickname
+	loserId := history.Players[nonNegativeLoserIdx].UserId
+	winnerNickname := history.Players[1-nonNegativeLoserIdx].Nickname
 	// This should not even be possible but might as well check
 	if u0.Username != loserNickname && u1.Username != loserNickname {
 		return fmt.Errorf("loser (%s) not found in players (%s, %s)", loserNickname, u0.Username, u1.Username)
+	}
+
+	macondoConfig, err := config.GetMacondoConfig(ctx)
+	if err != nil {
+		return err
 	}
 
 	isBotGame := u0.IsBot || u1.IsBot
@@ -102,6 +117,27 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 		} else if unreasonableTime(loserLastEvent.MillisRemaining) {
 			// The loser let their clock run down, this is rude
 			lngt = ms.NotoriousGameType_SITTING
+		}
+	}
+
+	// Check for excessive phonies
+	if wngt == ms.NotoriousGameType_GOOD {
+		excessive, err := excessivePhonies(history, macondoConfig, winnerNickname)
+		if err != nil {
+			return err
+		}
+		if excessive {
+			wngt = ms.NotoriousGameType_EXCESSIVE_PHONIES
+		}
+	}
+
+	if lngt == ms.NotoriousGameType_GOOD {
+		excessive, err := excessivePhonies(history, macondoConfig, loserNickname)
+		if err != nil {
+			return err
+		}
+		if excessive {
+			lngt = ms.NotoriousGameType_EXCESSIVE_PHONIES
 		}
 	}
 
@@ -240,6 +276,25 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 	return nil
 }
 
+func excessivePhonies(history *pb.GameHistory, cfg *macondoconfig.Config, nickname string) (bool, error) {
+	totalTileMoves := 0
+	totalPhonies := 0
+	for i := 0; i < len(history.Events); i++ {
+		evt := history.Events[i]
+		if evt.Nickname == nickname && evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE {
+			totalTileMoves++
+			isPhony, err := isPhonyEvent(evt, history, cfg)
+			if err != nil {
+				return false, err
+			}
+			if isPhony {
+				totalPhonies++
+			}
+		}
+	}
+	return totalPhonies >= ExcessivePhonyMinimum && float64(totalPhonies)/float64(totalTileMoves) > ExcessivePhonyThreshold, nil
+}
+
 func unreasonableTime(millisRemaining int32) bool {
 	return millisRemaining > int32(1000*UnreasonableTime)
 }
@@ -253,6 +308,42 @@ func loserDeniedNudge(g *entity.Game, userId string) bool {
 		}
 	}
 	return false
+}
+
+func isPhonyEvent(event *pb.GameEvent,
+	history *pb.GameHistory,
+	cfg *macondoconfig.Config) (bool, error) {
+	phony := false
+	dawg, err := gaddag.GetDawg(cfg, history.Lexicon)
+	if err != nil {
+		return phony, err
+	}
+	for _, word := range event.WordsFormed {
+		phony, err := isPhony(dawg, word, history.Variant)
+		if err != nil {
+			return false, err
+		}
+		if phony {
+			return phony, nil
+		}
+	}
+	return false, nil
+}
+
+func isPhony(gd gaddag.GenericDawg, word, variant string) (bool, error) {
+	lex := gaddag.Lexicon{GenericDawg: gd}
+	machineWord, err := alphabet.ToMachineWord(word, lex.GetAlphabet())
+	if err != nil {
+		return false, err
+	}
+	var valid bool
+	switch string(variant) {
+	case string(game.VarWordSmog):
+		valid = lex.HasAnagram(machineWord)
+	default:
+		valid = lex.HasWord(machineWord)
+	}
+	return !valid, nil
 }
 
 func notoriousGameTimestamp() int64 {
