@@ -2,7 +2,6 @@ package tournament
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"sort"
@@ -70,7 +69,8 @@ func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.Divisio
 
 	// check that suspended result is only VOID, FORFEIT_LOSS, or BYE:
 	if !validFutureResult(divisionControls.SuspendedResult) {
-		return nil, nil, errors.New("suspended result must be VOID, FORFEIT_LOSS, or BYE")
+		return nil, nil, entity.NewWooglesError(
+			realtime.WooglesError_TOURNAMENT_INVALID_FUTURE_RESULT)
 	}
 
 	// minimum placement is zero-indexed

@@ -1,5 +1,6 @@
+import * as jspb from 'google-protobuf';
+
 import { message } from 'antd';
-import axios from 'axios';
 import { parseWooglesError } from '../utils/parse_woogles_error';
 
 export const toAPIUrl = (service: string, method: string) => {
@@ -60,14 +61,47 @@ interface JsonError {
 export const postBinary = async (
   service: string,
   method: string,
-  msg: PBMsg
+  msg: PBMsg,
+  responseType: jspb.Message,
+  successHandler?: (res: any) => void,
+  errHandler?: (err: any) => void
 ) => {
-  return axios.post(toAPIUrl(service, method), msg.serializeBinary(), {
-    headers: {
-      'Content-Type': 'application/protobuf',
-    },
-    responseType: 'arraybuffer',
-  });
+  const url = toAPIUrl(service, method);
+
+  try {
+    const rbin = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/protobuf',
+      },
+      body: msg.serializeBinary(),
+    });
+    const ab = await rbin.arrayBuffer();
+    const resp = Object.getPrototypeOf(
+      responseType
+    ).constructor.deserializeBinary(ab);
+    if (!rbin.ok) {
+      // XXX FIX ME THIS IS WEIRD
+      // non-200 response
+      const msg = parseWooglesError(resp);
+      throw new Error(msg);
+    }
+    if (successHandler) {
+      successHandler(msg);
+    }
+  } catch (e) {
+    const unparsedErr = twirpErrToMsg(e);
+    const msg = parseWooglesError(unparsedErr);
+
+    if (!errHandler) {
+      message.error({
+        content: msg,
+        duration: 8,
+      });
+    } else {
+      errHandler(e);
+    }
+  }
 };
 
 export interface TwirpError {

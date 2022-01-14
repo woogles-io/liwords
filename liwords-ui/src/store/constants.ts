@@ -243,10 +243,10 @@ export const sortTiles = (rack: string) => {
 // 1004 - empty round controls - not allowed in front end
 export const errorMap: Map<number, string> = new Map<number, string>([
   [
-    // for some reason this doesn't have the division or tournament names:
     1001,
     'Max Bye Placement cannot be less than 1: Tournament: $1 Division: $2 Max Bye Placement you entered: $3',
   ],
+  [1002, 'Min Gibson Placement cannot be less than 1.'],
   [1005, 'The tournament has already started.'],
   // 1006 - elimination tournament not supported yet.
   [1007, 'You cannot have other pairings preceding Initial Fontes.'],
@@ -254,7 +254,7 @@ export const errorMap: Map<number, string> = new Map<number, string>([
   [1008, 'Initial Fontes must have an odd number of rounds.'],
   // 1009 - elimination tournament not supported yet.
   [1010, 'Round number must be between 1 and the number of rounds.'],
-  // 1011 - front end doesn't allow players that are not in the round
+  [1011, 'You must select a player.'],
   // 1012 - past rounds
   [1012, 'Turn on Amendment to edit an already existing score.'],
   [1013, 'You cannot enter scores for future rounds.'],
@@ -271,11 +271,21 @@ export const errorMap: Map<number, string> = new Map<number, string>([
   // XXX - check front end error here for this, when i don't click Amendment:
   [1021, 'Turn on Amendment to edit an already existing score.'],
   // 1022 - TOURNAMENT_NONEXISTENT_RESULT_AMENDMENT -- how to trigger?
+  // 1023 - How to trigger this error?
+  [1023, 'Gibsonization indexes out of range: [0, $3], $4, $5'],
   [1038, 'This round cannot be opened because round $3 is not complete.'],
+  [
+    1040,
+    'Tournament cannot be started. Please ensure all your divisions have at least two players.',
+  ],
+  [1053, 'The tournament has not yet started.'],
+  [1054, 'The division named $2 does not exist in this tournament.'],
   [
     1056,
     'This round is already over or underway. You are currently in round $3 for division $2.',
   ],
   [1057, 'You cannot add a division after the tournament has started.'],
+  [1059, 'The division named $2 already exists in this tournament.'],
   [1060, 'You cannot remove a division after the tournament has started.'],
+  [1073, 'You must select one of the options for Suspended game result'],
 ]);

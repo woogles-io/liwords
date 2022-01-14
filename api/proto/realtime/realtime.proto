@@ -144,7 +144,7 @@ message ProfileUpdate {
     double deviation = 2;
   }
   // map of variant name to rating
-  map <string, Rating> ratings = 2;
+  map<string, Rating> ratings = 2;
 }
 
 message LagMeasurement { int32 lag_ms = 1; }
@@ -309,7 +309,8 @@ message GameMetaEvent {
   EventType type = 3;
   string player_id = 4; // the player that performed the event.
   string game_id = 5;
-  int32 expiry = 6; // how long should this event remain active, in milliseconds?
+  int32 expiry =
+      6; // how long should this event remain active, in milliseconds?
   // 4M seconds should be enough for an event of this type.
 }
 
@@ -722,4 +723,5 @@ enum WooglesError {
   TOURNAMENT_DIVISION_NOT_FINISHED = 1070;
   TOURNAMENT_NOT_EXACTLY_ONE_EXECUTIVE_DIRECTOR = 1071;
   TOURNAMENT_EXECUTIVE_DIRECTOR_REMOVAL = 1072;
+  TOURNAMENT_INVALID_FUTURE_RESULT = 1073;
 }

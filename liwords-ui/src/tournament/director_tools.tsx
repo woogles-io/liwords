@@ -5,8 +5,7 @@ import { useTournamentStoreContext } from '../store/store';
 import './director_tools.scss';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import { Button, Divider, message } from 'antd';
-import axios from 'axios';
-import { toAPIUrl } from '../api/api';
+import { postJsonObj, toAPIUrl } from '../api/api';
 import { GhettoTools } from './ghetto_tools';
 import { TType } from '../gen/api/proto/tournament_service/tournament_service_pb';
 /*
@@ -119,27 +118,15 @@ export const DirectorTools = React.memo((props: DTProps) => {
   }, [tournamentContext.divisions]);
 
   const renderStartButton = () => {
-    const startTournament = () => {
-      axios
-        .post(
-          toAPIUrl(
-            'tournament_service.TournamentService',
-            'StartRoundCountdown'
-          ),
-          {
-            id: props.tournamentID,
-            start_all_rounds: true,
-          },
-          { withCredentials: true }
-        )
-        .catch((err) => {
-          message.error({
-            content:
-              'Tournament cannot be started yet. Please ensure all your divisions have at least 2 players and are fully paired.',
-            duration: 8,
-          });
-          console.log('Error starting tournament: ' + err.response?.data?.msg);
-        });
+    const startTournament = async () => {
+      postJsonObj(
+        'tournament_service.TournamentService',
+        'StartRoundCountdown',
+        {
+          id: props.tournamentID,
+          start_all_rounds: true,
+        }
+      );
     };
     if (
       Object.values(tournamentContext.divisions).length &&

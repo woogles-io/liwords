@@ -741,14 +741,13 @@ const SetResult = (props: { tournamentID: string }) => {
 
       <Form.Item name="p1result" label="Player 1 result">
         <Select>
-          <Select.Option value="VOID">VOID</Select.Option>
+          <Select.Option value="VOID">VOID (no win or loss)</Select.Option>
           <Select.Option value="WIN">WIN</Select.Option>
           <Select.Option value="LOSS">LOSS</Select.Option>
           <Select.Option value="DRAW">DRAW</Select.Option>
           <Select.Option value="BYE">BYE</Select.Option>
           <Select.Option value="FORFEIT_WIN">FORFEIT_WIN</Select.Option>
           <Select.Option value="FORFEIT_LOSS">FORFEIT_LOSS</Select.Option>
-          <Select.Option value="NO_RESULT">NO_RESULT</Select.Option>
         </Select>
       </Form.Item>
 
@@ -966,28 +965,22 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     ctrls.setMinimumPlacement(gibsonMinPlacement - 1);
     ctrls.setMaximumByePlacement(byeMaxPlacement - 1);
 
-    try {
-      const rbin = await postBinary(
-        'tournament_service.TournamentService',
-        'SetDivisionControls',
-        ctrls
-      );
+    // XXX We are posting binary here because otherwise we need to make
+    // a JSON representation of GameRequest and that's a pain.
+    postBinary(
+      'tournament_service.TournamentService',
+      'SetDivisionControls',
+      ctrls,
+      new TournamentResponse(),
+      () => {
+        message.info({
+          content: 'Controls set',
+          duration: 3,
+        });
+      }
+    );
 
-      const resp = TournamentResponse.deserializeBinary(rbin.data);
-      console.log('setTournamentControls', resp);
-      message.info({
-        content: 'Controls set',
-        duration: 3,
-      });
-    } catch (err) {
-      const unparsedErr = twirpErrToMsg(err);
-      const msg = parseWooglesError(unparsedErr);
-
-      message.error({
-        content: msg,
-        duration: 5,
-      });
-    }
+    console.log('setTournamentControls');
   };
 
   const formItemLayout = {
@@ -1037,7 +1030,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
 
         <Form.Item {...formItemLayout} label="Gibson min placement">
           <InputNumber
-            // min={1}
+            min={1}
             value={gibsonMinPlacement}
             onChange={(p: number | string | undefined | null) =>
               setGibsonMinPlacement(p as number)
@@ -1089,6 +1082,9 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
             value={suspendedResult}
             onChange={(v) => setSuspendedResult(v)}
           >
+            <Select.Option value={TournamentGameResult.NO_RESULT}>
+              Please select an option
+            </Select.Option>
             <Select.Option value={TournamentGameResult.FORFEIT_LOSS}>
               Forfeit loss (-50)
             </Select.Option>
@@ -1327,24 +1323,18 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
     const rdCtrl = rdCtrlFromSetting(roundSetting);
     ctrls.setRoundControls(rdCtrl);
 
-    try {
-      const rbin = await postBinary(
-        'tournament_service.TournamentService',
-        'SetSingleRoundControls',
-        ctrls
-      );
-
-      const resp = TournamentResponse.deserializeBinary(rbin.data);
-      console.log('setSingleRoundControls', resp);
-      message.info({
-        content: `Controls set for round ${userVisibleRound}`,
-        duration: 3,
-      });
-    } catch (err) {
-      const unparsedErr = twirpErrToMsg(err);
-      const msg = parseWooglesError(unparsedErr);
-      showError(msg);
-    }
+    postBinary(
+      'tournament_service.TournamentService',
+      'SetSingleRoundControls',
+      ctrls,
+      new TournamentResponse(),
+      () => {
+        message.info({
+          content: `Controls set for round ${userVisibleRound}`,
+          duration: 3,
+        });
+      }
+    );
   };
 
   const formItemLayout = {
@@ -1495,23 +1485,18 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
       }
     });
     ctrls.setRoundControlsList(roundControls);
-
-    try {
-      const rbin = await postBinary(
-        'tournament_service.TournamentService',
-        'SetRoundControls',
-        ctrls
-      );
-
-      const resp = TournamentResponse.deserializeBinary(rbin.data);
-      console.log('setRoundControls', resp);
-      message.info({
-        content: 'Controls set',
-        duration: 3,
-      });
-    } catch (err) {
-      showError(twirpErrToMsg(err));
-    }
+    postBinary(
+      'tournament_service.TournamentService',
+      'SetRoundControls',
+      ctrls,
+      new TournamentResponse(),
+      () => {
+        message.info({
+          content: 'Controls set',
+          duration: 3,
+        });
+      }
+    );
   };
 
   const formItemLayout = {
