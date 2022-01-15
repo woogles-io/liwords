@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { Dropdown } from 'antd';
 import { TheBlocker } from './blocker';
@@ -10,6 +10,7 @@ import { canMod } from '../mod/perms';
 import { DisplayUserFlag } from './display_flag';
 import { SettingOutlined } from '@ant-design/icons';
 import { TheFollower } from './follower';
+import { PettableContext } from './player_avatar';
 
 type UsernameWithContextProps = {
   additionalMenuItems?: React.ReactNode;
@@ -34,6 +35,7 @@ type UsernameWithContextProps = {
 };
 
 export const UsernameWithContext = (props: UsernameWithContextProps) => {
+  const { isPettable, isPetting, setPetting } = useContext(PettableContext);
   const { currentActiveGames, currentWatchedGames } = props;
   const { handleContextMatches } = useContextMatchContext();
   const { loginState } = useLoginStateStoreContext();
@@ -69,6 +71,17 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
   }, [currentActiveGames, currentWatchedGames]);
   const userMenu = (
     <ul>
+      {isPettable && (
+        <li
+          className="link plain"
+          onClick={() => {
+            setPetting((x) => !x);
+          }}
+        >
+          {!isPetting && 'Pet'}
+          {isPetting && 'Stop petting'}
+        </li>
+      )}
       {loggedIn &&
       !props.omitSendMessage &&
       props.userID &&
