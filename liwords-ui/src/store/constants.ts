@@ -287,5 +287,6 @@ export const errorMap: Map<number, string> = new Map<number, string>([
   [1057, 'You cannot add a division after the tournament has started.'],
   [1059, 'The division named $2 already exists in this tournament.'],
   [1060, 'You cannot remove a division after the tournament has started.'],
+  [1062, 'The user with name $3 was not found in our system.'],
   [1073, 'You must select one of the options for Suspended game result'],
 ]);

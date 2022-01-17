@@ -108,6 +108,13 @@ const lowerAndJoin = (v: string): string => {
   return l.split(' ').join('-');
 };
 
+const showError = (msg: string) => {
+  message.error({
+    content: 'Error: ' + msg,
+    duration: 5,
+  });
+};
+
 type Props = {
   tournamentID: string;
 };
@@ -313,10 +320,7 @@ const AddPlayers = (props: { tournamentID: string }) => {
     const players = [];
     // const playerMap: { [username: string]: number } = {};
     if (!vals.players) {
-      message.error({
-        content: 'Add some players first',
-        duration: 5,
-      });
+      showError('Add some players first');
       return;
     }
     for (let i = 0; i < vals.players.length; i++) {
@@ -335,10 +339,7 @@ const AddPlayers = (props: { tournamentID: string }) => {
     }
 
     if (players.length === 0) {
-      message.error({
-        content: 'Add some players first',
-        duration: 5,
-      });
+      showError('Add some players first');
       return;
     }
 
@@ -941,10 +942,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
 
   const submit = async () => {
     if (!selectedGameRequest) {
-      message.error({
-        content: 'Error: No game request',
-        duration: 5,
-      });
+      showError('No game request');
       return;
     }
     const ctrls = new DivisionControls();
@@ -978,10 +976,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
         duration: 3,
       });
     } catch (e) {
-      message.error({
-        content: e.message,
-        duration: 5,
-      });
+      showError(e.message);
     }
   };
 
@@ -1296,13 +1291,6 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
   });
   const [userVisibleRound, setUserVisibleRound] = useState(1);
 
-  const showError = (msg: string) => {
-    message.error({
-      content: msg,
-      duration: 8,
-    });
-  };
-
   const setRoundControls = async () => {
     if (!division) {
       showError('Division is missing');
@@ -1324,20 +1312,20 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
 
     const rdCtrl = rdCtrlFromSetting(roundSetting);
     ctrls.setRoundControls(rdCtrl);
-
-    // XXX: FIX FIX
-    //   postBinary(
-    //     'tournament_service.TournamentService',
-    //     'SetSingleRoundControls',
-    //     ctrls,
-    //     new TournamentResponse(),
-    //     () => {
-    //       message.info({
-    //         content: `Controls set for round ${userVisibleRound}`,
-    //         duration: 3,
-    //       });
-    //     }
-    //   );
+    try {
+      await postProto(
+        TournamentResponse,
+        'tournament_service.TournamentService',
+        'SetSingleRoundControls',
+        ctrls
+      );
+      message.info({
+        content: `Controls set for round ${userVisibleRound}`,
+        duration: 3,
+      });
+    } catch (e) {
+      showError(e.message);
+    }
   };
 
   const formItemLayout = {
@@ -1441,13 +1429,6 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
     setRoundArray(settings);
   }, [division, tournamentContext.divisions]);
 
-  const showError = (msg: string) => {
-    message.error({
-      content: 'Error: ' + msg,
-      duration: 5,
-    });
-  };
-
   const setRoundControls = async () => {
     if (!division) {
       showError('Division is missing');
@@ -1500,10 +1481,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
         duration: 3,
       });
     } catch (e) {
-      message.error({
-        content: e.message,
-        duration: 5,
-      });
+      showError(e.message);
     }
   };
 
