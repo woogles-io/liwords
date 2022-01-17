@@ -1,8 +1,5 @@
-import * as jspb from 'google-protobuf';
-
 import { message } from 'antd';
 import { parseWooglesError } from '../utils/parse_woogles_error';
-import axios from '../__mocks__/axios';
 
 export const toAPIUrl = (service: string, method: string) => {
   const loc = window.location;

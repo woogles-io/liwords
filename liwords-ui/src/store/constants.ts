@@ -258,7 +258,7 @@ export const errorMap: Map<number, string> = new Map<number, string>([
   // 1012 - past rounds
   [1012, 'Turn on Amendment to edit an already existing score.'],
   [1013, 'You cannot enter scores for future rounds.'],
-  // XXX: 1014 - nil player pairing -- how can this be triggered?
+  [1014, 'The pairing did not exist: $3, $4, $6'],
   [1015, 'The players you selected did not play in this round.'],
   // 1016 - mixed void and nonvoid results -- how can this be triggered?
   // 1017 - nonexistent pairing -- how can this be triggered?
