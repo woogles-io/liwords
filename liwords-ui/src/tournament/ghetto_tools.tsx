@@ -21,7 +21,7 @@ import {
 import { Modal } from '../utils/focus_modal';
 import { Store } from 'rc-field-form/lib/interface';
 import React, { useEffect } from 'react';
-import { postBinary, postJsonObj, twirpErrToMsg } from '../api/api';
+import { postJsonObj, postProto } from '../api/api';
 import {
   DivisionControls,
   DivisionRoundControls,
@@ -51,7 +51,6 @@ import {
   SingleRoundSetting,
 } from './pairing_methods';
 import { valueof } from '../store/constants';
-import { parseWooglesError } from '../utils/parse_woogles_error';
 
 type ModalProps = {
   title: string;
@@ -965,22 +964,25 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     ctrls.setMinimumPlacement(gibsonMinPlacement - 1);
     ctrls.setMaximumByePlacement(byeMaxPlacement - 1);
 
-    // XXX We are posting binary here because otherwise we need to make
+    // We are posting binary here because otherwise we need to make
     // a JSON representation of GameRequest and that's a pain.
-    postBinary(
-      'tournament_service.TournamentService',
-      'SetDivisionControls',
-      ctrls,
-      new TournamentResponse(),
-      () => {
-        message.info({
-          content: 'Controls set',
-          duration: 3,
-        });
-      }
-    );
-
-    console.log('setTournamentControls');
+    try {
+      await postProto(
+        TournamentResponse,
+        'tournament_service.TournamentService',
+        'SetDivisionControls',
+        ctrls
+      );
+      message.info({
+        content: 'Controls set',
+        duration: 3,
+      });
+    } catch (e) {
+      message.error({
+        content: e.message,
+        duration: 5,
+      });
+    }
   };
 
   const formItemLayout = {
@@ -1323,18 +1325,19 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
     const rdCtrl = rdCtrlFromSetting(roundSetting);
     ctrls.setRoundControls(rdCtrl);
 
-    postBinary(
-      'tournament_service.TournamentService',
-      'SetSingleRoundControls',
-      ctrls,
-      new TournamentResponse(),
-      () => {
-        message.info({
-          content: `Controls set for round ${userVisibleRound}`,
-          duration: 3,
-        });
-      }
-    );
+    // XXX: FIX FIX
+    //   postBinary(
+    //     'tournament_service.TournamentService',
+    //     'SetSingleRoundControls',
+    //     ctrls,
+    //     new TournamentResponse(),
+    //     () => {
+    //       message.info({
+    //         content: `Controls set for round ${userVisibleRound}`,
+    //         duration: 3,
+    //       });
+    //     }
+    //   );
   };
 
   const formItemLayout = {
@@ -1440,7 +1443,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
 
   const showError = (msg: string) => {
     message.error({
-      content: 'Error ' + msg,
+      content: 'Error: ' + msg,
       duration: 5,
     });
   };
@@ -1485,18 +1488,23 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
       }
     });
     ctrls.setRoundControlsList(roundControls);
-    postBinary(
-      'tournament_service.TournamentService',
-      'SetRoundControls',
-      ctrls,
-      new TournamentResponse(),
-      () => {
-        message.info({
-          content: 'Controls set',
-          duration: 3,
-        });
-      }
-    );
+    try {
+      await postProto(
+        TournamentResponse,
+        'tournament_service.TournamentService',
+        'SetRoundControls',
+        ctrls
+      );
+      message.info({
+        content: 'Controls set',
+        duration: 3,
+      });
+    } catch (e) {
+      message.error({
+        content: e.message,
+        duration: 5,
+      });
+    }
   };
 
   const formItemLayout = {

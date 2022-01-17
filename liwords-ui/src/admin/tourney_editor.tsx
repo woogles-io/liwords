@@ -26,7 +26,7 @@ import {
 } from '../tournament/game_settings_form';
 
 import { useMountedState } from '../utils/mounted';
-import { postBinary, toAPIUrl } from '../api/api';
+import { postProto, toAPIUrl } from '../api/api';
 import {
   GetTournamentMetadataRequest,
   TournamentMetadataResponse,
@@ -127,12 +127,12 @@ export const TourneyEditor = (props: Props) => {
     tmreq.setSlug(val);
 
     try {
-      const resp = await postBinary(
+      const m = await postProto(
+        TournamentMetadataResponse,
         'tournament_service.TournamentService',
         'GetTournamentMetadata',
         tmreq
       );
-      const m = TournamentMetadataResponse.deserializeBinary(resp.data);
       const metadata = m.getMetadata();
       setDescription(metadata?.getDescription()!);
       setDisclaimer(metadata?.getDisclaimer() || '');

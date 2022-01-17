@@ -251,7 +251,7 @@ export const errorMap: Map<number, string> = new Map<number, string>([
   // 1006 - elimination tournament not supported yet.
   [1007, 'You cannot have other pairings preceding Initial Fontes.'],
   // This is major tom to round controls
-  [1008, 'Initial Fontes must have an odd number of rounds.'],
+  [1008, 'Initial Fontes must have an odd number of rounds; you entered $3.'],
   // 1009 - elimination tournament not supported yet.
   [1010, 'Round number must be between 1 and the number of rounds.'],
   [1011, 'You must select a player.'],
