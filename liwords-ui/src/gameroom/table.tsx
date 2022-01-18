@@ -645,12 +645,10 @@ export const Table = React.memo((props: Props) => {
         );
         if (showDefinitionHover) {
           // for certain lexicons, try getting definitions from other sources
-          for (const otherLexicon of lexicon === 'NWL18'
-            ? ['NWL20']
-            : lexicon === 'ECWL'
-            ? ['CSW19', 'NWL20']
-            : lexicon === 'CSW21' || lexicon === 'CSW19X'
-            ? ['CSW19']
+          for (const otherLexicon of lexicon === 'ECWL'
+            ? ['CSW21', 'NWL20']
+            : lexicon === 'CSW19X'
+            ? ['CSW21']
             : []) {
             const wordsToRedefine = [];
             for (const word of wordsToDefine) {

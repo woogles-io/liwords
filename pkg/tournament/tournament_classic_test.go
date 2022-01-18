@@ -4366,7 +4366,7 @@ func logTwo(n int) int {
 
 func newDivisionControls() *realtime.DivisionControls {
 	return &realtime.DivisionControls{
-		GameRequest: &realtime.GameRequest{Lexicon: "CSW19",
+		GameRequest: &realtime.GameRequest{Lexicon: "CSW21",
 			Rules: &realtime.GameRules{BoardLayoutName: entity.CrosswordGame,
 				LetterDistributionName: "English", VariantName: "classic"},
 			InitialTimeSeconds: 25 * 60,

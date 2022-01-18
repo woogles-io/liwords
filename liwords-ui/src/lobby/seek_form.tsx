@@ -104,7 +104,7 @@ export const GameRequestToFormValues: (
 ) => mandatoryFormValues = (gameRequest: GameRequest | null) => {
   if (!gameRequest) {
     return {
-      lexicon: 'CSW19',
+      lexicon: 'CSW21',
       variant: 'classic',
       challengerule: ChallengeRule.FIVE_POINT,
       initialtimeslider: initialTimeMinutesToSlider(15),
@@ -367,7 +367,7 @@ export const SeekForm = (props: Props) => {
     }
     setTimectrl(tc);
     setTtag(tt);
-    setLexiconCopyright(AllLexica[allvals.lexicon].longDescription);
+    setLexiconCopyright(AllLexica[allvals.lexicon]?.longDescription);
     setMyRating(
       myDisplayRating(
         lobbyContext.profile.ratings,
