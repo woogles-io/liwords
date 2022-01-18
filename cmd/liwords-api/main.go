@@ -18,8 +18,10 @@ import (
 
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/bus"
+	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/mod"
+	"github.com/domino14/liwords/pkg/notify"
 	cfgstore "github.com/domino14/liwords/pkg/stores/config"
 	"github.com/domino14/liwords/pkg/stores/game"
 	modstore "github.com/domino14/liwords/pkg/stores/mod"
@@ -85,6 +87,13 @@ func NewLoggingServerHooks() *twirp.ServerHooks {
 	return &twirp.ServerHooks{
 		Error: func(ctx context.Context, twerr twirp.Error) context.Context {
 			log.Err(twerr).Str("code", string(twerr.Code())).Msg("api-error")
+			// Currently the only Woogles Errors are tournament errors
+			// so this will need to be changed later.
+			if len(twerr.Msg()) > 0 &&
+				string(twerr.Msg()[0]) == entity.WooglesErrorDelimiter &&
+				os.Getenv("TournamentDiscordToken") != "" {
+				notify.Post(fmt.Sprintf("%s\n%s", twerr.Msg(), time.Now().Format(time.RFC3339)), os.Getenv("TournamentDiscordToken"))
+			}
 			return ctx
 		},
 	}

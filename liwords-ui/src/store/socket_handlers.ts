@@ -75,7 +75,7 @@ import {
   GameInfoResponses,
 } from '../gen/api/proto/game_service/game_service_pb';
 import { metaStateFromMetaEvent } from './meta_game_events';
-
+import { parseWooglesError } from '../utils/parse_woogles_error';
 // Feature flag.
 export const enableShowSocket =
   localStorage?.getItem('enableShowSocket') === 'true';
@@ -367,14 +367,15 @@ export const useOnSocketMsg = () => {
 
           case MessageType.ERROR_MESSAGE: {
             const err = parsedMsg as ErrorMessage;
+            const errorMessage = parseWooglesError(err.getMessage());
             notification.open({
               message: 'Error',
-              description: err.getMessage(),
+              description: errorMessage,
             });
             addChat({
               entityType: ChatEntityType.ErrorMsg,
               sender: 'Woogles',
-              message: err.getMessage(),
+              message: errorMessage,
               channel: 'server',
             });
             break;

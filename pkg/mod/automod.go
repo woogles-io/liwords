@@ -257,7 +257,7 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 				log.Err(err).Str("error", err.Error()).Msg("notoriety-report-error")
 			}
 			moderatorMessage := fmt.Sprintf("\nNotoriety Report:\n%s\nCurrent Notoriety: %d", notorietyReport, newNotoriety)
-			notify(ctx, us, user, action, moderatorMessage)
+			sendNotification(ctx, us, user, action, moderatorMessage)
 		}
 	} else if newNotoriety > 0 {
 		newNotoriety -= NotorietyDecrement

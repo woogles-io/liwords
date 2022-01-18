@@ -1,4 +1,5 @@
-import axios from 'axios';
+import { message } from 'antd';
+import { parseWooglesError } from '../utils/parse_woogles_error';
 
 export const toAPIUrl = (service: string, method: string) => {
   const loc = window.location;
@@ -12,35 +13,71 @@ interface PBMsg {
   serializeBinary(): Uint8Array;
 }
 
-export const postBinary = async (
+export const postJsonObj = async (
   service: string,
   method: string,
-  msg: PBMsg
+  msg: any,
+  successHandler?: (res: any) => void,
+  errHandler?: (err: any) => void
 ) => {
-  return axios.post(toAPIUrl(service, method), msg.serializeBinary(), {
+  const url = toAPIUrl(service, method);
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(msg),
+    });
+    const json = await response.json();
+    if (!response.ok) {
+      // non-200 response
+      const msg = parseWooglesError(json.msg);
+      throw new Error(msg);
+    }
+    if (successHandler) {
+      successHandler(json);
+    }
+  } catch (e) {
+    if (!errHandler) {
+      message.error({
+        content: e?.message,
+        duration: 8,
+      });
+    } else {
+      errHandler(e);
+    }
+  }
+};
+
+interface JsonError {
+  code: string;
+  msg: string;
+}
+
+const postBinary = async (service: string, method: string, msg: PBMsg) => {
+  const url = toAPIUrl(service, method);
+
+  const response = await fetch(url, {
+    method: 'POST',
     headers: {
       'Content-Type': 'application/protobuf',
     },
-    responseType: 'arraybuffer',
+    body: msg.serializeBinary(),
   });
-};
 
-interface TwirpError {
-  response: {
-    data: Uint8Array;
-  };
-}
-
-export const twirpErrToMsg = (err: TwirpError) => {
-  // Twirp always returns JSON error messages no matter what. But since the
-  // responseType is set to `arraybuffer` above it is annoying to deal with.
-  // This function turns it into the JSON-encoded string that it is and
-  // extracts the error message.
-  if (!err.response || !err.response.data) {
-    return 'non-twirp error: ' + String(err);
+  if (!response.ok) {
+    // non-200 response.
+    // because Twirp always returns errors as JSON, no matter what the
+    // content-type, we must parse this differently.
+    const errJSON = await response.json();
+    const msg = parseWooglesError(errJSON.msg);
+    throw new Error(msg);
+  } else {
+    const ab = await response.arrayBuffer();
+    return ab;
   }
-  const errJSON = new TextDecoder().decode(err.response.data);
-  return JSON.parse(errJSON).msg;
 };
 
 export const postProto: <T>(
@@ -49,4 +86,6 @@ export const postProto: <T>(
   method: string,
   msg: { serializeBinary(): Uint8Array }
 ) => Promise<T> = async (responseType, service, method, msg) =>
-  responseType.deserializeBinary((await postBinary(service, method, msg)).data);
+  responseType.deserializeBinary(
+    new Uint8Array(await postBinary(service, method, msg))
+  );

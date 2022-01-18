@@ -235,3 +235,140 @@ export const sortTiles = (rack: string) => {
     )
     .reduce((s, [index, tile]) => s + tile, '');
 };
+
+// Can skip error codes for now.
+// 1001 - max bye placement - front end doesn't allow this
+// 1002 - min gibson placement - front end doesn't allow this
+// 1003 - min gibson spread - not allowed in front end
+// 1004 - empty round controls - not allowed in front end
+export const errorMap: Map<number, string> = new Map<number, string>([
+  [
+    1001,
+    'Max Bye Placement cannot be less than 1: Tournament: $1 Division: $2 Max Bye Placement you entered: $3',
+  ],
+  [1002, 'Min Gibson Placement cannot be less than 1.'],
+  [1005, 'The tournament has already started.'],
+  // 1006 - elimination tournament not supported yet.
+  [1007, 'You cannot have other pairings preceding Initial Fontes.'],
+  // This is major tom to round controls
+  [1008, 'Initial Fontes must have an odd number of rounds; you entered $3.'],
+  // 1009 - elimination tournament not supported yet.
+  [1010, 'Round number must be between 1 and the number of rounds.'],
+  [1011, 'You must select a player.'],
+  // 1012 - past rounds
+  [1012, 'Turn on Amendment to edit an already existing score.'],
+  [1013, 'You cannot enter scores for future rounds.'],
+  [1014, 'The pairing did not exist: $3, $4, $6'],
+  [1015, 'The players you selected did not play in this round.'],
+  [1016, 'Mixed void and non-void game results; please double-check game.'],
+  [1017, 'This pairing did not exist! (Division $2, Round $3, key $5)'],
+  [
+    1018,
+    'This pairing in division $2 round $3 is corrupt and contains no games.',
+  ],
+  // 1019 - elimination tournament not supported yet
+  // 1020 - tournament game index out of range, only for pairings that have multiple
+  // numbers of games. Can revisit this later.
+  // copypasta
+
+  [1021, 'Turn on Amendment to edit an already existing score.'],
+  [
+    1022,
+    'Attempted to submit an amendment for a result that does not exist (Division $2, round $3, p1 $4, p2 $5)',
+  ],
+  [1023, 'Gibsonization indexes out of range: [0, $3], $4, $5'],
+  [1024, 'Unable to assign bye in round $3, division $2'],
+  [1025, 'Internal error assigning byes: round $3, division $2'],
+  // It is unclear how to trigger a bunch of these errors, but let's have
+  // some text here and the errors will get logged internally anyway.
+  [1026, 'Incorrect pairings length: div $2, round $3, $4, $5'],
+  [1027, 'Internal error assigning byes in round $3, div $2'],
+  [
+    1028,
+    'Internal error pairing; suspended player was not removed in div $2, round $3 ($4)',
+  ],
+  [
+    1029,
+    'Internal error pairing; tournament pairing index out of range, div $2, round $3 ($4)',
+  ],
+  // how?
+  [
+    1030,
+    'Internal error pairing; suspended player was paired! (div $2, round $3, player $4)',
+  ],
+  [
+    1031,
+    'Internal error pairing; a player was unable to be paired! (div $2, round $3, player $4)',
+  ],
+  [1032, 'Unable to add player, as they are already in division $2.'],
+  // am I interpreting this error correctly? I didn't think that was a restriction:
+  [1033, 'A player cannot be added in the last round'],
+  [
+    1034,
+    'Internal error; player index out of range (div $2, round $3, $4, $5)',
+  ],
+  [1035, 'This player has already been removed from division $2.'],
+  [1036, 'Removing this player would create an empty division.'],
+  // how?
+  [1037, 'Gibson round seems to be negative!'],
+  [1038, 'This round cannot be opened because round $3 is not complete.'],
+  [1039, 'This tournament has already finished.'],
+  [
+    1040,
+    'Tournament cannot be started. Please ensure all your divisions have at least two players.',
+  ],
+  [
+    1041,
+    'Round $3 in division $2 cannot be started. Please ensure you have results for all prior rounds.',
+  ],
+  // Should not be possible to trigger, but that's probably the case with a lot of these:
+  [1042, 'Ready was sent for the wrong round (div $2, round $3).'],
+  [1043, 'Already received a ready for this player (round $3, player $4)'],
+  [1044, 'Internal error setting ready: (round $3, player $4)'],
+  [1045, 'Internal error setting ready: player not found'],
+  [1046, 'No loser found for this game: $6, $7'],
+  [1047, 'No winner found for this game: $6, $7'],
+  [1048, 'There is an unpaired player in division $2, round $3: $4'],
+  [1049, 'Internal error pairing; pairing matrix is corrupt'],
+  [
+    1050,
+    'Swiss pairings must not have max repeats set to zero if "Allow over max repeats" is false.',
+  ],
+  // Should not be possible with our UI:
+  [1051, 'Your tournament has zero games per round!'],
+  [1052, 'You must enter a name for your tournament.'],
+  [1053, 'The tournament has not yet started.'],
+  [1054, 'The division named $2 does not exist in this tournament.'],
+  // how?
+  [1055, 'Internal error: The division manager is nil!'],
+  [
+    1056,
+    'This round is already over or underway. You are currently in round $3 for division $2.',
+  ],
+  [1057, 'You cannot add a division after the tournament has started.'],
+  [
+    1058,
+    'Your division name is invalid. Please ensure it is between 1 and 24 characters.',
+  ],
+  [1059, 'The division named $2 already exists in this tournament.'],
+  [1060, 'You cannot remove a division after the tournament has started.'],
+  [
+    1061,
+    'You cannot remove a division that has players in it. Please remove the players first.',
+  ],
+  [1062, 'The user with name $3 was not found in our system.'],
+  [1063, 'An executive director already exists for this tournament.'],
+  [1064, 'A director by that name already exists in this tournament.'],
+  [1065, 'This tournament has no divisions.'],
+  [1066, 'Game controls have not been set for division $2.'],
+  [1067, 'Round $3 cannot be started, as the current round is $4.'],
+  [1068, 'You cannot pair a round that is already open, or in the past.'],
+  [
+    1069,
+    'You cannot delete pairings for a round that is already open, or in the past.',
+  ],
+  [1070, 'Unable to finish tournament because division $2 is not finished.'],
+  [1071, 'Your tournament can only have exactly one executive director.'],
+  [1072, 'You cannot remove the executive director.'],
+  [1073, 'You must select one of the options for Suspended game result'],
+]);

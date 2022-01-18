@@ -1,24 +1,22 @@
 package mod
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/emailer"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/notify"
 	"github.com/domino14/liwords/pkg/user"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/rs/zerolog/log"
 )
 
-func notify(ctx context.Context, us user.Store, user *entity.User, action *ms.ModAction, notorietyReport string) {
+func sendNotification(ctx context.Context, us user.Store, user *entity.User, action *ms.ModAction, notorietyReport string) {
 	actionEmailText, ok := ModActionEmailMap[action.Type]
 	if !ok {
 		return
@@ -92,22 +90,6 @@ func notify(ctx context.Context, us user.Store, user *entity.User, action *ms.Mo
 				}
 			}
 		}
-		requestBody, err := json.Marshal(map[string]string{"content": message + notorietyReport})
-		// Errors should not be fatal, just log them
-		if err != nil {
-			log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-marshal")
-		} else {
-			go func() {
-				resp, err := http.Post(config.DiscordToken, "application/json", bytes.NewBuffer(requestBody))
-				// Errors should not be fatal, just log them
-				if err != nil {
-					log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-post-error")
-				} else if resp.StatusCode != 204 { // No Content
-					// We do not expect any other response
-					log.Err(err).Str("status", resp.Status).Msg("mod-action-discord-notification-post-bad-response")
-				}
-			}()
-		}
+		notify.Post(message+notorietyReport, config.DiscordToken)
 	}
-
 }

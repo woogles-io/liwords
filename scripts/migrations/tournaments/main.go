@@ -406,7 +406,7 @@ func main() {
 				newDivision := &entity.TournamentDivision{}
 				newDivision.ManagerType = entity.TournamentType(oldDivision.ManagerType)
 
-				newClassicDivision := pkgtournament.NewClassicDivision()
+				newClassicDivision := pkgtournament.NewClassicDivision(oldTournament.Name, name)
 				newClassicDivision.Matrix = oldDivision.DivisionManager.Matrix
 				newClassicDivision.PlayerIndexMap = oldDivision.DivisionManager.PlayerIndexMap
 				newClassicDivision.RoundControls = oldDivision.DivisionManager.RoundControls

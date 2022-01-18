@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Action, ActionType } from '../actions/actions';
-import { postBinary } from '../api/api';
+import { postProto } from '../api/api';
 import {
   GetTournamentMetadataRequest,
   GetTournamentRequest,
@@ -43,12 +43,12 @@ export const useTourneyMetadata = (
       }
 
       try {
-        const resp = await postBinary(
+        const meta = await postProto(
+          TournamentMetadataResponse,
           'tournament_service.TournamentService',
           'GetTournamentMetadata',
           tmreq
         );
-        const meta = TournamentMetadataResponse.deserializeBinary(resp.data);
         console.log('got meta', meta);
         dispatchTournamentContext({
           actionType: ActionType.SetTourneyMetadata,
@@ -66,7 +66,8 @@ export const useTourneyMetadata = (
         const treq = new GetTournamentRequest();
         treq.setId(meta.getMetadata()?.getId()!);
 
-        const tresp = await postBinary(
+        const tresp = await postProto(
+          FullTournamentDivisions,
           'tournament_service.TournamentService',
           'GetTournament',
           treq
@@ -75,9 +76,7 @@ export const useTourneyMetadata = (
         dispatchTournamentContext({
           actionType: ActionType.SetDivisionsData,
           payload: {
-            fullDivisions: FullTournamentDivisions.deserializeBinary(
-              tresp.data
-            ),
+            fullDivisions: tresp,
             loginState: loginState,
           },
         });

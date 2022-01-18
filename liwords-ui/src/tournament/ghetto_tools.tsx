@@ -19,10 +19,9 @@ import {
   Tooltip,
 } from 'antd';
 import { Modal } from '../utils/focus_modal';
-import axios from 'axios';
 import { Store } from 'rc-field-form/lib/interface';
 import React, { useEffect } from 'react';
-import { postBinary, toAPIUrl, twirpErrToMsg } from '../api/api';
+import { postJsonObj, postProto } from '../api/api';
 import {
   DivisionControls,
   DivisionRoundControls,
@@ -107,6 +106,13 @@ const FormModal = (props: ModalProps) => {
 const lowerAndJoin = (v: string): string => {
   const l = v.toLowerCase();
   return l.split(' ').join('-');
+};
+
+const showError = (msg: string) => {
+  message.error({
+    content: 'Error: ' + msg,
+    duration: 5,
+  });
 };
 
 type Props = {
@@ -245,28 +251,22 @@ const PlayersFormItem = (props: {
 };
 
 const AddDivision = (props: { tournamentID: string }) => {
-  const onFinish = (vals: Store) => {
+  const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
       division: vals.division,
     };
-    axios
-      .post<{}>(
-        toAPIUrl('tournament_service.TournamentService', 'AddDivision'),
-        obj
-      )
-      .then((resp) => {
+    postJsonObj(
+      'tournament_service.TournamentService',
+      'AddDivision',
+      obj,
+      () => {
         message.info({
           content: 'Division added',
           duration: 3,
         });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
-      });
+      }
+    );
   };
 
   return (
@@ -284,28 +284,23 @@ const AddDivision = (props: { tournamentID: string }) => {
 };
 
 const RemoveDivision = (props: { tournamentID: string }) => {
-  const onFinish = (vals: Store) => {
+  const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
       division: vals.division,
     };
-    axios
-      .post<{}>(
-        toAPIUrl('tournament_service.TournamentService', 'RemoveDivision'),
-        obj
-      )
-      .then((resp) => {
+
+    postJsonObj(
+      'tournament_service.TournamentService',
+      'RemoveDivision',
+      obj,
+      () => {
         message.info({
           content: 'Division removed',
           duration: 3,
         });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
-      });
+      }
+    );
   };
 
   return (
@@ -321,14 +316,11 @@ const RemoveDivision = (props: { tournamentID: string }) => {
 };
 
 const AddPlayers = (props: { tournamentID: string }) => {
-  const onFinish = (vals: Store) => {
+  const onFinish = async (vals: Store) => {
     const players = [];
     // const playerMap: { [username: string]: number } = {};
     if (!vals.players) {
-      message.error({
-        content: 'Add some players first',
-        duration: 5,
-      });
+      showError('Add some players first');
       return;
     }
     for (let i = 0; i < vals.players.length; i++) {
@@ -347,10 +339,7 @@ const AddPlayers = (props: { tournamentID: string }) => {
     }
 
     if (players.length === 0) {
-      message.error({
-        content: 'Add some players first',
-        duration: 5,
-      });
+      showError('Add some players first');
       return;
     }
 
@@ -360,23 +349,18 @@ const AddPlayers = (props: { tournamentID: string }) => {
       persons: players,
     };
     console.log(obj);
-    axios
-      .post<{}>(
-        toAPIUrl('tournament_service.TournamentService', 'AddPlayers'),
-        obj
-      )
-      .then((resp) => {
+
+    postJsonObj(
+      'tournament_service.TournamentService',
+      'AddPlayers',
+      obj,
+      () => {
         message.info({
           content: 'Players added',
           duration: 3,
         });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
-      });
+      }
+    );
   };
 
   return (
@@ -438,7 +422,7 @@ const RemovePlayer = (props: { tournamentID: string }) => {
   const { useState } = useMountedState();
   const [division, setDivision] = useState('');
 
-  const onFinish = (vals: Store) => {
+  const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
       division: vals.division,
@@ -449,23 +433,18 @@ const RemovePlayer = (props: { tournamentID: string }) => {
       ],
     };
     console.log(obj);
-    axios
-      .post<{}>(
-        toAPIUrl('tournament_service.TournamentService', 'RemovePlayers'),
-        obj
-      )
-      .then((resp) => {
+
+    postJsonObj(
+      'tournament_service.TournamentService',
+      'RemovePlayers',
+      obj,
+      () => {
         message.info({
           content: 'Player removed',
           duration: 3,
         });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
-      });
+      }
+    );
   };
 
   return (
@@ -487,27 +466,22 @@ const RemovePlayer = (props: { tournamentID: string }) => {
 };
 
 const ClearCheckedIn = (props: { tournamentID: string }) => {
-  const onFinish = (vals: Store) => {
+  const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
     };
-    axios
-      .post<{}>(
-        toAPIUrl('tournament_service.TournamentService', 'UncheckIn'),
-        obj
-      )
-      .then((resp) => {
+
+    postJsonObj(
+      'tournament_service.TournamentService',
+      'ClearCheckedIn',
+      obj,
+      () => {
         message.info({
-          content: 'Checkins cleared',
+          content: 'Checked-in cleared',
           duration: 3,
         });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
-      });
+      }
+    );
   };
 
   return (
@@ -571,7 +545,7 @@ const SetPairing = (props: { tournamentID: string }) => {
   const [division, setDivision] = useState('');
   const [selfplay, setSelfplay] = useState(false);
 
-  const onFinish = (vals: Store) => {
+  const onFinish = async (vals: Store) => {
     const p1id = fullPlayerID(
       vals.p1,
       tournamentContext.divisions[vals.division]
@@ -597,23 +571,18 @@ const SetPairing = (props: { tournamentID: string }) => {
         },
       ],
     };
-    axios
-      .post<{}>(
-        toAPIUrl('tournament_service.TournamentService', 'SetPairing'),
-        obj
-      )
-      .then((resp) => {
+
+    postJsonObj(
+      'tournament_service.TournamentService',
+      'SetPairing',
+      obj,
+      () => {
         message.info({
           content: 'Pairing set',
           duration: 3,
         });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
-      });
+      }
+    );
   };
 
   return (
@@ -673,7 +642,7 @@ const SetResult = (props: { tournamentID: string }) => {
   const [score2, setScore2] = useState(0);
   const [form] = Form.useForm();
 
-  const onFinish = (vals: Store) => {
+  const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
       division: vals.division,
@@ -693,23 +662,18 @@ const SetResult = (props: { tournamentID: string }) => {
       game_end_reason: vals.gameEndReason,
       amendment: vals.amendment,
     };
-    axios
-      .post<{}>(
-        toAPIUrl('tournament_service.TournamentService', 'SetResult'),
-        obj
-      )
-      .then((resp) => {
+
+    postJsonObj(
+      'tournament_service.TournamentService',
+      'SetResult',
+      obj,
+      () => {
         message.info({
           content: 'Result set',
           duration: 3,
         });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
-      });
+      }
+    );
   };
 
   useEffect(() => {
@@ -777,14 +741,13 @@ const SetResult = (props: { tournamentID: string }) => {
 
       <Form.Item name="p1result" label="Player 1 result">
         <Select>
-          <Select.Option value="VOID">VOID</Select.Option>
+          <Select.Option value="VOID">VOID (no win or loss)</Select.Option>
           <Select.Option value="WIN">WIN</Select.Option>
           <Select.Option value="LOSS">LOSS</Select.Option>
           <Select.Option value="DRAW">DRAW</Select.Option>
           <Select.Option value="BYE">BYE</Select.Option>
           <Select.Option value="FORFEIT_WIN">FORFEIT_WIN</Select.Option>
           <Select.Option value="FORFEIT_LOSS">FORFEIT_LOSS</Select.Option>
-          <Select.Option value="NO_RESULT">NO_RESULT</Select.Option>
         </Select>
       </Form.Item>
 
@@ -840,23 +803,18 @@ const PairRound = (props: { tournamentID: string }) => {
       round: vals.round - 1, // 1-indexed input
       preserve_byes: vals.preserveByes,
     };
-    axios
-      .post<{}>(
-        toAPIUrl('tournament_service.TournamentService', 'PairRound'),
-        obj
-      )
-      .then((resp) => {
+
+    postJsonObj(
+      'tournament_service.TournamentService',
+      'PairRound',
+      obj,
+      () => {
         message.info({
-          content: 'Pairing set',
+          content: 'Pair round completed',
           duration: 3,
         });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
-      });
+      }
+    );
   };
 
   return (
@@ -888,23 +846,18 @@ const UnpairRound = (props: { tournamentID: string }) => {
       round: vals.round - 1, // 1-indexed input
       deletePairings: true,
     };
-    axios
-      .post<{}>(
-        toAPIUrl('tournament_service.TournamentService', 'PairRound'),
-        obj
-      )
-      .then((resp) => {
+
+    postJsonObj(
+      'tournament_service.TournamentService',
+      'PairRound',
+      obj,
+      () => {
         message.info({
           content: 'Pairings for selected round have been deleted',
           duration: 3,
         });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
-      });
+      }
+    );
   };
   return (
     <Form onFinish={onFinish}>
@@ -989,10 +942,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
 
   const submit = async () => {
     if (!selectedGameRequest) {
-      message.error({
-        content: 'Error: No game request',
-        duration: 5,
-      });
+      showError('No game request');
       return;
     }
     const ctrls = new DivisionControls();
@@ -1012,24 +962,21 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     ctrls.setMinimumPlacement(gibsonMinPlacement - 1);
     ctrls.setMaximumByePlacement(byeMaxPlacement - 1);
 
+    // We are posting binary here because otherwise we need to make
+    // a JSON representation of GameRequest and that's a pain.
     try {
-      const rbin = await postBinary(
+      await postProto(
+        TournamentResponse,
         'tournament_service.TournamentService',
         'SetDivisionControls',
         ctrls
       );
-
-      const resp = TournamentResponse.deserializeBinary(rbin.data);
-      console.log('setTournamentControls', resp);
       message.info({
         content: 'Controls set',
         duration: 3,
       });
-    } catch (err) {
-      message.error({
-        content: 'Error ' + twirpErrToMsg(err),
-        duration: 5,
-      });
+    } catch (e) {
+      showError(e.message);
     }
   };
 
@@ -1132,6 +1079,9 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
             value={suspendedResult}
             onChange={(v) => setSuspendedResult(v)}
           >
+            <Select.Option value={TournamentGameResult.NO_RESULT}>
+              Please select an option
+            </Select.Option>
             <Select.Option value={TournamentGameResult.FORFEIT_LOSS}>
               Forfeit loss (-50)
             </Select.Option>
@@ -1341,13 +1291,6 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
   });
   const [userVisibleRound, setUserVisibleRound] = useState(1);
 
-  const showError = (msg: string) => {
-    message.error({
-      content: 'Error ' + msg,
-      duration: 5,
-    });
-  };
-
   const setRoundControls = async () => {
     if (!division) {
       showError('Division is missing');
@@ -1369,23 +1312,19 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
 
     const rdCtrl = rdCtrlFromSetting(roundSetting);
     ctrls.setRoundControls(rdCtrl);
-
     try {
-      const rbin = await postBinary(
+      await postProto(
+        TournamentResponse,
         'tournament_service.TournamentService',
         'SetSingleRoundControls',
         ctrls
       );
-
-      const resp = TournamentResponse.deserializeBinary(rbin.data);
-      console.log('setSingleRoundControls', resp);
       message.info({
         content: `Controls set for round ${userVisibleRound}`,
         duration: 3,
       });
-    } catch (err) {
-      console.log('err is', err);
-      showError(twirpErrToMsg(err));
+    } catch (e) {
+      showError(e.message);
     }
   };
 
@@ -1490,13 +1429,6 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
     setRoundArray(settings);
   }, [division, tournamentContext.divisions]);
 
-  const showError = (msg: string) => {
-    message.error({
-      content: 'Error ' + msg,
-      duration: 5,
-    });
-  };
-
   const setRoundControls = async () => {
     if (!division) {
       showError('Division is missing');
@@ -1537,22 +1469,19 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
       }
     });
     ctrls.setRoundControlsList(roundControls);
-
     try {
-      const rbin = await postBinary(
+      await postProto(
+        TournamentResponse,
         'tournament_service.TournamentService',
         'SetRoundControls',
         ctrls
       );
-
-      const resp = TournamentResponse.deserializeBinary(rbin.data);
-      console.log('setRoundControls', resp);
       message.info({
         content: 'Controls set',
         duration: 3,
       });
-    } catch (err) {
-      showError(twirpErrToMsg(err));
+    } catch (e) {
+      showError(e.message);
     }
   };
 

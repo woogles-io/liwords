@@ -326,7 +326,7 @@ func applyAction(ctx context.Context, us user.Store, cs user.ChatStore, action *
 	if err != nil {
 		return err
 	}
-	notify(ctx, us, user, action, "")
+	sendNotification(ctx, us, user, action, "")
 	return nil
 }
 
