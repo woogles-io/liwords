@@ -1118,7 +1118,7 @@ func SetFinished(ctx context.Context, ts TournamentStore, id string) error {
 		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, "")
 	}
 
-	for _, division := range t.Divisions {
+	for d, division := range t.Divisions {
 		if division.DivisionManager == nil {
 			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, "")
 		}
@@ -1128,7 +1128,7 @@ func SetFinished(ctx context.Context, ts TournamentStore, id string) error {
 			return nil
 		}
 		if !finished {
-			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DIVISION_NOT_FINISHED, t.Name, "")
+			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DIVISION_NOT_FINISHED, t.Name, d)
 		}
 	}
 
