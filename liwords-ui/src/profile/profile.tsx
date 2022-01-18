@@ -9,7 +9,7 @@ import { Link } from 'react-router-dom';
 import './profile.scss';
 import { toAPIUrl } from '../api/api';
 import { BioCard } from './bio';
-import { PlayerAvatar } from '../shared/player_avatar';
+import { PettableAvatar, PlayerAvatar } from '../shared/player_avatar';
 import { useLoginStateStoreContext } from '../store/store';
 import { GameMetadata, RecentGamesResponse } from '../gameroom/game_info';
 import { GamesHistoryCard } from './games_history';
@@ -304,30 +304,32 @@ export const UserProfile = React.memo((props: Props) => {
           </div>
         ) : null}{' '}
         <header>
-          <PlayerAvatar
-            player={player}
-            editable={avatarEditable}
-            username={username}
-          />
-          <h3>
-            {viewer !== username ? (
-              <UsernameWithContext
-                omitProfileLink
-                omitSendMessage
-                fullName={fullName}
-                includeFlag
-                username={username}
-                userID={userID}
-                showModTools
-                moderate={moderateUser}
-              />
-            ) : (
-              <span className="user">
-                <span>{fullName || username}</span>
-                <DisplayFlag countryCode={countryCode} />
-              </span>
-            )}
-          </h3>
+          <PettableAvatar>
+            <PlayerAvatar
+              player={player}
+              editable={avatarEditable}
+              username={username}
+            />
+            <h3>
+              {viewer !== username ? (
+                <UsernameWithContext
+                  omitProfileLink
+                  omitSendMessage
+                  fullName={fullName}
+                  includeFlag
+                  username={username}
+                  userID={userID}
+                  showModTools
+                  moderate={moderateUser}
+                />
+              ) : (
+                <span className="user">
+                  <span>{fullName || username}</span>
+                  <DisplayFlag countryCode={countryCode} />
+                </span>
+              )}
+            </h3>
+          </PettableAvatar>
         </header>
         {!(missingBirthdate && viewer === username) && (
           <BioCard bio={bio} bioLoaded={bioLoaded} />

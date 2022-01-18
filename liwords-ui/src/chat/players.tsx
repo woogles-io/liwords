@@ -6,7 +6,7 @@ import {
   useLoginStateStoreContext,
   usePresenceStoreContext,
 } from '../store/store';
-import { PlayerAvatar } from '../shared/player_avatar';
+import { PettableAvatar, PlayerAvatar } from '../shared/player_avatar';
 import { moderateUser } from '../mod/moderate';
 import { Form, Input } from 'antd';
 import { UsernameWithContext } from '../shared/usernameWithContext';
@@ -75,32 +75,34 @@ const Player = React.memo((props: PlayerProps) => {
       } ${props.className ? props.className : ''}`}
       key={props.uuid}
     >
-      <PlayerAvatar
-        player={{
-          user_id: props.uuid,
-          nickname: props.username,
-        }}
-      />
-      <div>
-        <p className="player-name">
-          <UsernameWithContext
-            username={props.username}
-            userID={props.uuid}
-            moderate={moderateUser}
-            includeFlag
-            omitBlock={props.className === 'friends'}
-            showModTools
-            sendMessage={props.sendMessage}
-            currentActiveGames={currentActiveGames}
-            currentWatchedGames={currentWatchedGames}
-          />
-        </p>
-        {inGame || watching ? (
-          <p className="player-activity">
-            {inGame ? 'Playing OMGWords' : 'Watching OMGWords'}
+      <PettableAvatar>
+        <PlayerAvatar
+          player={{
+            user_id: props.uuid,
+            nickname: props.username,
+          }}
+        />
+        <div>
+          <p className="player-name">
+            <UsernameWithContext
+              username={props.username}
+              userID={props.uuid}
+              moderate={moderateUser}
+              includeFlag
+              omitBlock={props.className === 'friends'}
+              showModTools
+              sendMessage={props.sendMessage}
+              currentActiveGames={currentActiveGames}
+              currentWatchedGames={currentWatchedGames}
+            />
           </p>
-        ) : null}
-      </div>
+          {inGame || watching ? (
+            <p className="player-activity">
+              {inGame ? 'Playing OMGWords' : 'Watching OMGWords'}
+            </p>
+          ) : null}
+        </div>
+      </PettableAvatar>
     </div>
   );
 });
