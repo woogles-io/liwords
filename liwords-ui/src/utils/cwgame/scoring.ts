@@ -334,6 +334,9 @@ export const calculateTemporaryScore = (
         case BonusType.TripleLetter:
           letterMultiplier = 3;
           break;
+        case BonusType.QuadrupleLetter:
+          letterMultiplier = 4;
+          break;
         case BonusType.DoubleWord:
           wordMultiplier *= 2;
           crossWordMultiplier = 2;
@@ -341,6 +344,10 @@ export const calculateTemporaryScore = (
         case BonusType.TripleWord:
           wordMultiplier *= 3;
           crossWordMultiplier = 3;
+          break;
+        case BonusType.QuadrupleWord:
+          wordMultiplier *= 4;
+          crossWordMultiplier = 4;
           break;
       }
     }

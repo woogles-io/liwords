@@ -53,10 +53,10 @@ const TileImages = React.memo((props: { letterDistribution: string }) => {
           {[
             BonusType.DoubleWord,
             BonusType.TripleWord,
-            //BonusType.QuadrupleWord,
+            BonusType.QuadrupleWord,
             BonusType.DoubleLetter,
             BonusType.TripleLetter,
-            //BonusType.QuadrupleLetter,
+            BonusType.QuadrupleLetter,
             BonusType.StartingSquare,
             BonusType.NoBonus,
           ].map((bonusType) => (

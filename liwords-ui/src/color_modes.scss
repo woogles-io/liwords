@@ -41,6 +41,8 @@ $board-dls: 'color-board-dls';
 $board-dws: 'color-board-dws';
 $board-tws: 'color-board-tws';
 $board-tls: 'color-board-tls';
+$board-qws: 'color-board-qws';
+$board-qls: 'color-board-qls';
 $board-empty: 'color-board-empty';
 $board-fill: 'color-board-fill';
 $board-space-opacity: 'number-board-space-opacity';
@@ -116,6 +118,8 @@ $modes: (
           color-board-dws: #f6c0c0,
           color-board-tws: #a92e2e,
           color-board-tls: #3b88ca,
+          color-board-qws: #feebd6,
+          color-board-qls: #ffc4ff,
           color-board-empty: #ffffff,
 
           color-tile-background: #6b268b,
@@ -177,6 +181,8 @@ $modes: (
           color-board-tls: #24547f,
           color-board-dws: #a9545a,
           color-board-tws: #6b2125,
+          color-board-qls: #E38EDA,
+          color-board-qws: #A1A660,
           color-board-empty: #313131,
 
           color-tile-background: #baadbb,

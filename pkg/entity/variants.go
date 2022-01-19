@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	"github.com/domino14/macondo/board"
 	"github.com/domino14/macondo/game"
 )
 
@@ -56,8 +57,14 @@ func VariantFromGameReq(gamereq *pb.GameRequest) (TimeControl, game.Variant, err
 	switch gamereq.Rules.VariantName {
 	case "", string(game.VarClassic):
 		variant = game.VarClassic
+		if gamereq.Rules.BoardLayoutName == board.SuperCrosswordGameLayout {
+			variant = game.VarClassicSuper
+		}
 	case string(game.VarWordSmog):
 		variant = game.VarWordSmog
+		if gamereq.Rules.BoardLayoutName == board.SuperCrosswordGameLayout {
+			variant = game.VarWordSmogSuper
+		}
 	default:
 		return "", "", errors.New("unsupported game type")
 	}

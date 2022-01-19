@@ -451,6 +451,40 @@ p.streak-loss {
       background: ub($board-empty);
     }
   }
+  &.bonus-4WS {
+    @include colorModed() {
+      background-color: m($board-qws);
+    }
+    @include userboard() {
+      background-color: ub($board-qws);
+    }
+    .bonus-label {
+      @include colorModed() {
+        color: m($white);
+      }
+      @include userboard() {
+        color: ub($board-bonus-text);
+      }
+    }
+    &.selected {
+      @include colorModed() {
+        background-color: mix(m($board-qws), m($white), $weight: 70%);
+        border-color: scale-color(m($timer-light), $lightness: -10%);
+      };
+      @include userboard() {
+        background-color: blender(ub($board-qws), ub($board-empty));
+        border-color: lightener(ub($board-selection-color));
+      }
+      .anticon {
+        @include colorModed() {
+          color: scale-color(m($timer-light), $lightness: -10%);
+        }
+        @include userboard() {
+          color: ub($board-selection-color);
+        }
+      }
+    }
+  }
   &.bonus-3WS {
     @include colorModed() {
       background-color: m($board-tws);
@@ -530,6 +564,42 @@ p.streak-loss {
     }
 
   }
+
+  &.bonus-4LS {
+    @include colorModed() {
+      background-color: m($board-qls);
+    };
+    @include userboard() {
+      background-color: ub($board-qls);
+    }
+    .bonus-label {
+      @include colorModed() {
+        color: m($white);
+      };
+      @include userboard() {
+        color: ub($board-bonus-text);
+      };
+    }
+    &.selected {
+      @include colorModed() {
+        background-color: mix(m($board-qls), m($white), $weight: 70%);
+        border-color: scale-color(m($timer-light), $lightness: -10%);
+      };
+      @include userboard() {
+        background-color: blender(ub($board-qls), ub($board-empty));
+        border-color: lightener(ub($board-selection-color));
+      }
+      .anticon {
+        @include colorModed() {
+          color: scale-color(m($timer-light), $lightness: -10%);
+        }
+        @include userboard() {
+          color: ub($board-selection-color);
+        }
+      }
+    }
+  }
+
   &.bonus-3LS {
     @include colorModed() {
       background-color: m($board-tls);

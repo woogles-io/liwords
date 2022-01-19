@@ -165,12 +165,46 @@ export const StandardFrenchAlphabet: Alphabet = {
   letterMap: {},
 };
 
+export const LargeEnglishAlphabet: Alphabet = {
+  letters: [
+    { rune: 'A', score: 1, count: 16, vowel: true, category: 0 },
+    { rune: 'B', score: 3, count: 4, vowel: false, category: 2 },
+    { rune: 'C', score: 3, count: 6, vowel: false, category: 2 },
+    { rune: 'D', score: 2, count: 8, vowel: false, category: 1 },
+    { rune: 'E', score: 1, count: 24, vowel: true, category: 0 },
+    { rune: 'F', score: 4, count: 4, vowel: false, category: 2 },
+    { rune: 'G', score: 2, count: 5, vowel: false, category: 1 },
+    { rune: 'H', score: 4, count: 5, vowel: false, category: 2 },
+    { rune: 'I', score: 1, count: 13, vowel: true, category: 0 },
+    { rune: 'J', score: 8, count: 2, vowel: false, category: 3 },
+    { rune: 'K', score: 5, count: 2, vowel: false, category: 3 },
+    { rune: 'L', score: 1, count: 7, vowel: false, category: 1 },
+    { rune: 'M', score: 3, count: 6, vowel: false, category: 2 },
+    { rune: 'N', score: 1, count: 13, vowel: false, category: 1 },
+    { rune: 'O', score: 1, count: 15, vowel: true, category: 0 },
+    { rune: 'P', score: 3, count: 4, vowel: false, category: 2 },
+    { rune: 'Q', score: 10, count: 2, vowel: false, category: 3 },
+    { rune: 'R', score: 1, count: 13, vowel: false, category: 1 },
+    { rune: 'S', score: 1, count: 10, vowel: false, category: 3 },
+    { rune: 'T', score: 1, count: 15, vowel: false, category: 1 },
+    { rune: 'U', score: 1, count: 7, vowel: true, category: 0 },
+    { rune: 'V', score: 4, count: 3, vowel: false, category: 2 },
+    { rune: 'W', score: 4, count: 4, vowel: false, category: 2 },
+    { rune: 'X', score: 8, count: 2, vowel: false, category: 3 },
+    { rune: 'Y', score: 4, count: 4, vowel: false, category: 2 },
+    { rune: 'Z', score: 10, count: 2, vowel: false, category: 3 },
+    { rune: Blank, score: 0, count: 4, vowel: false, category: 3 },
+  ],
+  letterMap: {},
+};
+
 // Create letter maps for faster access.
 [
   StandardEnglishAlphabet,
   StandardGermanAlphabet,
   StandardNorwegianAlphabet,
   StandardFrenchAlphabet,
+  LargeEnglishAlphabet,
 ].forEach((alph) => {
   alph.letters.forEach((letter) => {
     alph.letterMap[letter.rune] = letter;

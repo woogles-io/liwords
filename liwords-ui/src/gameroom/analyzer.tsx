@@ -266,7 +266,8 @@ const parseExaminableGameContext = (
       letterDistribution === 'english' ||
       letterDistribution === 'german' ||
       letterDistribution === 'norwegian' ||
-      letterDistribution === 'french'
+      letterDistribution === 'french' ||
+      letterDistribution === 'english_super'
         ? letterDistribution
         : 'noleave',
     rules,
@@ -309,6 +310,7 @@ const norwegianLabelToNum = (c: string) => {
 
 const labelToNumFor = (letterDistribution: string) => {
   switch (letterDistribution) {
+    case 'english_super':
     case 'english':
       return englishLabelToNum;
     case 'german':
@@ -336,6 +338,7 @@ const norwegianNumToLabel = (n: number) =>
 
 const numToLabelFor = (letterDistribution: string) => {
   switch (letterDistribution) {
+    case 'english_super':
     case 'english':
       return englishNumToLabel;
     case 'german':

@@ -7,17 +7,16 @@ export type Tile = {
   rune: string; // why doesn't Javascript have runes.
 };
 
-/* TODO: should be dependent on board dimensions in future.  */
-export function blankLayout() {
-  return repeatChar(225, EmptySpace);
-}
-
 function repeatChar(count: number, ch: string) {
   let txt = '';
   for (let i = 0; i < count; i++) {
     txt += ch;
   }
   return txt;
+}
+
+export function blankLayout(dim: number) {
+  return repeatChar(dim * dim, EmptySpace);
 }
 
 export function setCharAt(str: string, index: number, chr: string) {
@@ -36,23 +35,27 @@ export class Board {
 
   dim: number;
 
-  constructor() {
-    this.letters = blankLayout();
+  constructor(layout: string[]) {
+    this.gridLayout = layout;
+    this.letters = blankLayout(layout.length * layout.length);
     this.isEmpty = true;
-    this.gridLayout = CrosswordGameGridLayout;
     this.dim = this.gridLayout.length;
   }
 
   /** take in a 2D board array. ONLY USE FOR TESTS. */
   setTileLayout(layout: Array<string>) {
     this.isEmpty = true;
-    for (let row = 0; row < 15; row += 1) {
-      for (let col = 0; col < 15; col += 1) {
+    for (let row = 0; row < layout.length; row += 1) {
+      for (let col = 0; col < layout.length; col += 1) {
         const letter = layout[row][col];
         if (letter !== EmptySpace) {
           this.isEmpty = false;
         }
-        this.letters = setCharAt(this.letters, row * 15 + col, letter);
+        this.letters = setCharAt(
+          this.letters,
+          row * layout.length + col,
+          letter
+        );
       }
     }
   }
@@ -64,16 +67,20 @@ export class Board {
     if (row > this.dim - 1 || row < 0 || col > this.dim - 1 || col < 0) {
       return null;
     }
-    return this.letters[row * 15 + col];
+    return this.letters[row * this.dim + col];
   }
 
   addTile(t: Tile) {
-    this.letters = setCharAt(this.letters, t.row * 15 + t.col, t.rune);
+    this.letters = setCharAt(this.letters, t.row * this.dim + t.col, t.rune);
     this.isEmpty = false;
   }
 
   removeTile(t: Tile) {
-    this.letters = setCharAt(this.letters, t.row * 15 + t.col, EmptySpace);
+    this.letters = setCharAt(
+      this.letters,
+      t.row * this.dim + t.col,
+      EmptySpace
+    );
     // don't know how else to check, annoyingly
     this.isEmpty = true;
     for (let i = 0; i < this.letters.length; i++) {
@@ -85,9 +92,8 @@ export class Board {
   }
 
   deepCopy() {
-    const newBoard = new Board();
+    const newBoard = new Board([...this.gridLayout]);
     newBoard.letters = this.letters;
-    newBoard.gridLayout = [...this.gridLayout];
     newBoard.isEmpty = this.isEmpty;
     newBoard.dim = this.dim;
     return newBoard;

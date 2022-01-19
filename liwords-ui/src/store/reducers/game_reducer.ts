@@ -26,6 +26,10 @@ import {
   alphabetFromName,
   StandardEnglishAlphabet,
 } from '../../constants/alphabets';
+import {
+  CrosswordGameGridLayout,
+  SuperCrosswordGameGridLayout,
+} from '../../constants/board_layout';
 
 type TileDistribution = { [rune: string]: number };
 
@@ -84,10 +88,11 @@ const makePool = (alphabet: Alphabet): TileDistribution => {
 export const startingGameState = (
   alphabet: Alphabet,
   players: Array<RawPlayerInfo>,
-  gameID: string
+  gameID: string,
+  boardLayout: string[]
 ): GameState => {
   const gs = {
-    board: new Board(),
+    board: new Board(boardLayout),
     alphabet,
     pool: makePool(alphabet),
     turns: new Array<GameEvent>(),
@@ -299,6 +304,7 @@ export const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
 const stateFromHistory = (history: GameHistory): GameState => {
   let playerList = history.getPlayersList();
   const flipPlayers = history.getSecondWentFirst();
+  const boardLayout = history.getBoardLayout();
   // If flipPlayers is on, we want to flip the players in the playerList.
   // The backend doesn't do this because of Reasons.
   if (flipPlayers) {
@@ -319,10 +325,21 @@ const stateFromHistory = (history: GameHistory): GameState => {
     history.getLetterDistribution().toLowerCase()
   );
 
+  let layout;
+  switch (boardLayout) {
+    case 'SuperCrosswordGame':
+      layout = SuperCrosswordGameGridLayout;
+      break;
+    default:
+      layout = CrosswordGameGridLayout;
+      break;
+  }
+
   const gs = startingGameState(
     alphabet,
     initialExpandToFull(playerList),
-    history!.getUid()
+    history!.getUid(),
+    layout
   );
   gs.nickToPlayerOrder = nickToPlayerOrder;
   gs.uidToPlayerOrder = uidToPlayerOrder;
@@ -467,7 +484,10 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       const gs = startingGameState(
         StandardEnglishAlphabet,
         new Array<RawPlayerInfo>(),
-        ''
+        '',
+        // Default to the standard layout.
+        // XXX: this will probably flicker before loading the correct board.
+        CrosswordGameGridLayout
       );
       gs.playState = PlayState.GAME_OVER;
       // Don't lose the clock controller, but pass it on until we get a

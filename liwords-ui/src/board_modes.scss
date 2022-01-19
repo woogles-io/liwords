@@ -9,6 +9,8 @@ $boards: (
         color-board-dws: ignore,
         color-board-tls: ignore,
         color-board-tws: ignore,
+        color-board-qls: ignore,
+        color-board-qws: ignore,
         color-board-empty: ignore,
         color-grid: ignore,
         color-board-fill: transparent,
@@ -19,6 +21,7 @@ $boards: (
         color-bonus-text: ignore,
         color-selection-color: ignore,
     ),
+    // XXX: need to add colors for qls/qws everywhere ...
       cheery: (
           color-board-dls: #b5e468,
           color-board-dws: #ffa84d,
