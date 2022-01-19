@@ -1,0 +1,32 @@
+// ipc is used for inter-process communication between the different
+// services.
+// This file should eventually obsolete the ones in the `realtime` directory
+
+syntax = "proto3";
+package liwords;
+option go_package = "github.com/domino14/liwords/rpc/api/proto/ipc";
+
+
+enum MessageType {
+    CLIENT_GAMEPLAY_EVENT = 3;
+}
+
+
+// ClientGameplayEvent taken from realtime.proto
+message ClientGameplayEvent {
+    enum EventType {
+      TILE_PLACEMENT = 0;
+      PASS = 1;
+      EXCHANGE = 2;
+      CHALLENGE_PLAY = 3;
+      RESIGN = 4;
+    }
+  
+    EventType type = 1;
+    string game_id = 2;
+    // position coordinates, like H8 or G10. Only matters for TILE_PLACEMENT.
+    string position_coords = 3;
+    // tiles that are being played (or exchanged). The `.` character is used
+    // for thru, and lowercase characters are used for blanks.
+    string tiles = 4;
+}
