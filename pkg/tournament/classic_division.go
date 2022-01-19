@@ -446,6 +446,17 @@ func (t *ClassicDivision) SubmitResult(round int,
 	if !ok {
 		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "", pk1, "SubmitResultPairingMap")
 	}
+
+	p1Index := 0
+	if pairing.Players[1] == t.PlayerIndexMap[p1] {
+		p1Index = 1
+	}
+
+	if pairing.Players[p1Index] != t.PlayerIndexMap[p1] ||
+		pairing.Players[1-p1Index] != t.PlayerIndexMap[p2] {
+		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONOPPONENTS, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), p1, p2)
+	}
+
 	pairingMethod := t.RoundControls[round].PairingMethod
 
 	if pairing.Games == nil {
@@ -487,11 +498,6 @@ func (t *ClassicDivision) SubmitResult(round int,
 		pairing.Games[gameIndex].Results[0] == realtime.TournamentGameResult_NO_RESULT &&
 		pairing.Games[gameIndex].Results[1] == realtime.TournamentGameResult_NO_RESULT {
 		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_RESULT_AMENDMENT, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), p1, p2)
-	}
-
-	p1Index := 0
-	if pairing.Players[1] == t.PlayerIndexMap[p1] {
-		p1Index = 1
 	}
 
 	if amend && gid == "" {

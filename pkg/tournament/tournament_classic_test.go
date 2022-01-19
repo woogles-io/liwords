@@ -420,6 +420,13 @@ func TestClassicDivisionKingOfTheHill(t *testing.T) {
 	err = tc.StartRound(true)
 	is.NoErr(err)
 
+	// This should trigger a submission error
+	_, err = tc.SubmitResult(0, player1, player1, 550, 400,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0, "")
+	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONOPPONENTS, tournamentName, divisionName, "1", player1, player1).Error())
+
 	// Submit results for the round
 	_, err = tc.SubmitResult(0, player1, player2, 550, 400,
 		realtime.TournamentGameResult_WIN,
