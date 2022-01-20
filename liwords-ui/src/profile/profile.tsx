@@ -17,7 +17,7 @@ import { UsernameWithContext } from '../shared/usernameWithContext';
 import { moderateUser } from '../mod/moderate';
 import { DisplayFlag } from '../shared/display_flag';
 import { VariantIcon } from '../shared/variant_icons';
-import { AllLexica } from '../shared/lexica';
+import { lexiconCodeToProfileRatingName } from '../shared/lexica';
 
 type ProfileResponse = {
   birth_date: string;
@@ -84,7 +84,7 @@ type StatsProps = {
 const variantToName = (variant: string) => {
   const arr = variant.split('.');
   let lex = arr[0];
-  lex = AllLexica[lex]?.ratingName || arr[0];
+  lex = lexiconCodeToProfileRatingName(lex);
 
   const timectrl = {
     ultrablitz: 'Ultra-Blitz!',
