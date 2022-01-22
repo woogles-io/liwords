@@ -11,7 +11,7 @@ import { toAPIUrl } from '../api/api';
 
 export const Login = React.memo(() => {
   const { useState } = useMountedState();
-  const { resetStore } = useResetStoreContext();
+  const { resetLoginStateStore } = useResetStoreContext();
 
   const [err, setErr] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
@@ -42,9 +42,9 @@ export const Login = React.memo(() => {
 
   React.useEffect(() => {
     if (loggedIn) {
-      resetStore();
+      resetLoginStateStore();
     }
-  }, [loggedIn, resetStore]);
+  }, [loggedIn, resetLoginStateStore]);
 
   return (
     <div className="account">

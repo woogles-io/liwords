@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { Route, Switch, useLocation, Redirect } from 'react-router-dom';
-import { useMountedState } from './utils/mounted';
 import './App.scss';
 import axios from 'axios';
 import 'antd/dist/antd.css';
@@ -17,7 +16,7 @@ import {
   useFriendsStoreContext,
 } from './store/store';
 
-import { LiwordsSocket } from './socket/socket';
+import { useLiwordsSocketContext } from './socket/socket';
 import { Team } from './about/team';
 import { Register } from './lobby/register';
 import { UserProfile } from './profile/profile';
@@ -65,14 +64,17 @@ if (bnjyTile) {
 }
 
 const App = React.memo(() => {
-  const { useState } = useMountedState();
-
   const {
     setExcludedPlayers,
     setExcludedPlayersFetched,
     pendingBlockRefresh,
     setPendingBlockRefresh,
   } = useExcludedPlayersStoreContext();
+
+  const {
+    liwordsSocketValues: { sendMessage },
+    resetLiwordsSocketStore,
+  } = useLiwordsSocketContext();
 
   const { loginState } = useLoginStateStoreContext();
   const { loggedIn, userID } = loginState;
@@ -89,26 +91,16 @@ const App = React.memo(() => {
     setPendingFriendsRefresh,
   } = useFriendsStoreContext();
 
-  const { resetStore } = useResetStoreContext();
-
-  // See store.tsx for how this works.
-  const [socketId, setSocketId] = useState(0);
-  const resetSocket = useCallback(() => setSocketId((n) => (n + 1) | 0), []);
-
-  const [liwordsSocketValues, setLiwordsSocketValues] = useState({
-    sendMessage: (msg: Uint8Array) => {},
-    justDisconnected: false,
-  });
-  const { sendMessage } = liwordsSocketValues;
+  const { resetRestOfStore } = useResetStoreContext();
 
   const location = useLocation();
   const knownLocation = useRef(location.pathname); // Remember the location on first render.
   const isCurrentLocation = knownLocation.current === location.pathname;
   useEffect(() => {
     if (!isCurrentLocation) {
-      resetStore();
+      resetRestOfStore();
     }
-  }, [isCurrentLocation, resetStore]);
+  }, [isCurrentLocation, resetRestOfStore]);
 
   const getFullBlocks = useCallback(() => {
     void userID; // used only as effect dependency
@@ -225,17 +217,12 @@ const App = React.memo(() => {
 
   return (
     <div className="App">
-      <LiwordsSocket
-        key={socketId}
-        resetSocket={resetSocket}
-        setValues={setLiwordsSocketValues}
-      />
       <Switch>
         <Route path="/" exact>
           <Lobby
             sendSocketMsg={sendMessage}
             sendChat={sendChat}
-            DISCONNECT={resetSocket}
+            DISCONNECT={resetLiwordsSocketStore}
           />
         </Route>
         <Route path="/tournament/:partialSlug">

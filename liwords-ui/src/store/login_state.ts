@@ -1,21 +1,15 @@
 import { Action, ActionType } from '../actions/actions';
 
-export type LoginState = {
-  username: string;
-  userID: string;
-  loggedIn: boolean;
-  connID: string;
-  connectedToSocket: boolean;
-  path: string;
-  perms: Array<string>;
-};
-
 export type AuthInfo = {
   username: string;
   userID: string;
   loggedIn: boolean;
   connID: string;
   perms: Array<string>;
+};
+
+export type LoginState = AuthInfo & {
+  connectedToSocket: boolean;
 };
 
 export function LoginStateReducer(

@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { useCallback, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 
 import {
   useLoginStateStoreContext,
@@ -35,7 +36,8 @@ export const TournamentRoom = (props: Props) => {
   const { competitorState: competitorContext } = tournamentContext;
   const { isRegistered } = competitorContext;
   const { sendSocketMsg } = props;
-  const { path } = loginState;
+  const location = useLocation();
+  const path = location.pathname;
   const [badTournament, setBadTournament] = useState(false);
   const [selectedGameTab, setSelectedGameTab] = useState('GAMES');
 

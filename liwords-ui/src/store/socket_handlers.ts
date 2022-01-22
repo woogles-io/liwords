@@ -155,6 +155,8 @@ export const ReverseMessageType = (() => {
   return ret;
 })();
 
+// This needs to have access to Rest Of Store.
+// Therefore it cannot be used directly from LiwordsSocket.
 export const useOnSocketMsg = () => {
   const { challengeResultEvent } = useChallengeResultEventStoreContext();
   const { addChat, deleteChat } = useChatStoreContext();

@@ -80,7 +80,7 @@ export const Settings = React.memo((props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const { userID, username: viewer, loggedIn } = loginState;
   const { useState } = useMountedState();
-  const { resetStore } = useResetStoreContext();
+  const { resetLoginStateStore } = useResetStoreContext();
   const { section } = useParams();
   const [category, setCategory] = useState(
     getInitialCategory(section, loggedIn)
@@ -170,13 +170,13 @@ export const Settings = React.memo((props: Props) => {
           message: 'Success',
           description: 'You have been logged out.',
         });
-        resetStore();
+        resetLoginStateStore();
         history.push('/');
       })
       .catch((e) => {
         console.log(e);
       });
-  }, [history, resetStore]);
+  }, [history, resetLoginStateStore]);
 
   const updatedAvatar = useCallback(
     (avatarUrl: string) => {

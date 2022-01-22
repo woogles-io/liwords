@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import useWebSocket from 'react-use-websocket';
@@ -7,7 +14,6 @@ import { message } from 'antd';
 import { useMountedState } from '../utils/mounted';
 import { useLoginStateStoreContext } from '../store/store';
 import {
-  useOnSocketMsg,
   ReverseMessageType,
   enableShowSocket,
   parseMsgs,
@@ -17,6 +23,42 @@ import { toAPIUrl } from '../api/api';
 import { ActionType } from '../actions/actions';
 import { reloadAction } from './reload';
 import { birthdateWarning } from './birthdateWarning';
+
+// Store-specific code.
+
+const defaultFunction = () => {};
+
+export type LiwordsSocketValues = {
+  sendMessage: (msg: Uint8Array) => void;
+  justDisconnected: boolean;
+};
+
+export type OnSocketMsgType = (reader: FileReader) => void;
+
+type LiwordsSocketStoreData = {
+  liwordsSocketValues: LiwordsSocketValues;
+  onSocketMsg: OnSocketMsgType;
+  resetLiwordsSocketStore: () => void;
+  setLiwordsSocketValues: React.Dispatch<
+    React.SetStateAction<LiwordsSocketValues>
+  >;
+  setOnSocketMsg: React.Dispatch<React.SetStateAction<OnSocketMsgType>>;
+};
+
+export const LiwordsSocketContext = createContext<LiwordsSocketStoreData>({
+  liwordsSocketValues: {
+    sendMessage: defaultFunction,
+    justDisconnected: false,
+  },
+  onSocketMsg: defaultFunction,
+  resetLiwordsSocketStore: defaultFunction,
+  setLiwordsSocketValues: defaultFunction,
+  setOnSocketMsg: defaultFunction,
+});
+
+export const useLiwordsSocketContext = () => useContext(LiwordsSocketContext);
+
+// Non-Store code follows.
 
 const getSocketURI = (): string => {
   const loc = window.location;
@@ -51,23 +93,36 @@ type DecodedToken = {
 // Returning undefined from useEffect is fine, but some linters dislike it.
 const doNothing = () => {};
 
-export const LiwordsSocket = (props: {
-  resetSocket: () => void;
-  setValues: (_: {
-    sendMessage: (msg: Uint8Array) => void;
-    justDisconnected: boolean;
-  }) => void;
-}): null => {
+export const LiwordsSocket = (props: {}): null => {
   const isMountedRef = useRef(true);
   useEffect(() => () => void (isMountedRef.current = false), []);
   const { useState } = useMountedState();
 
-  const { resetSocket, setValues } = props;
-  const onSocketMsg = useOnSocketMsg();
+  const {
+    onSocketMsg,
+    resetLiwordsSocketStore,
+    setLiwordsSocketValues,
+  } = useLiwordsSocketContext();
 
   const loginStateStore = useLoginStateStoreContext();
   const location = useLocation();
-  const { pathname } = location;
+  const pathname = useMemo(() => {
+    const originalPathname = location.pathname;
+    // XXX: The socket requires path to know which realms it has to connect to.
+    // See liwords-socket pkg/hub/hub.go RegisterRealm.
+    // That calls back into liwords pkg/bus/bus.go handleNatsRequest.
+
+    // It seems only a few paths matter.
+    if (
+      originalPathname.startsWith('/game/') ||
+      originalPathname.startsWith('/tournament/') ||
+      originalPathname.startsWith('/club/')
+    )
+      return originalPathname;
+
+    // For everything else, there's MasterCard.
+    return '/';
+  }, [location.pathname]);
 
   // const [socketToken, setSocketToken] = useState('');
   const [justDisconnected, setJustDisconnected] = useState(false);
@@ -109,8 +164,6 @@ export const LiwordsSocket = (props: {
           userID: decoded.uid,
           loggedIn: decoded.a,
           connID: cid,
-          isChild: decoded.cs,
-          path: pathname,
           perms: decoded.perms?.split(','),
         },
       });
@@ -213,12 +266,12 @@ export const LiwordsSocket = (props: {
   useEffect(() => {
     const t = setTimeout(() => {
       console.log('reconnecting socket');
-      resetSocket();
+      resetLiwordsSocketStore();
     }, 15000);
     return () => {
       clearTimeout(t);
     };
-  }, [patienceId, resetSocket]);
+  }, [patienceId, resetLiwordsSocketStore]);
 
   const { sendMessage: originalSendMessage } = useWebSocket(
     getFullSocketUrlAsync,
@@ -271,8 +324,8 @@ export const LiwordsSocket = (props: {
     justDisconnected,
   ]);
   useEffect(() => {
-    setValues(ret);
-  }, [setValues, ret]);
+    setLiwordsSocketValues(ret);
+  }, [setLiwordsSocketValues, ret]);
 
   return null;
 };

@@ -81,7 +81,7 @@ export const TopBar = React.memo((props: Props) => {
 
   const { currentLagMs } = useLagStoreContext();
   const { loginState } = useLoginStateStoreContext();
-  const { resetStore } = useResetStoreContext();
+  const { resetLoginStateStore } = useResetStoreContext();
   const { tournamentContext } = useTournamentStoreContext();
   const { username, loggedIn, connectedToSocket } = loginState;
   const [loginModalVisible, setLoginModalVisible] = useState(false);
@@ -97,7 +97,7 @@ export const TopBar = React.memo((props: Props) => {
           message: 'Success',
           description: 'You have been logged out.',
         });
-        resetStore();
+        resetLoginStateStore();
       })
       .catch((e) => {
         console.log(e);
