@@ -273,6 +273,15 @@ export const LiwordsSocket = (props: {}): null => {
     };
   }, [patienceId, resetLiwordsSocketStore]);
 
+  // Force reconnection when pathname materially changes.
+  const knownPathname = useRef(pathname); // Remember the pathname on first render.
+  const isCurrentPathname = knownPathname.current === pathname;
+  useEffect(() => {
+    if (!isCurrentPathname) {
+      resetLiwordsSocketStore();
+    }
+  }, [isCurrentPathname, resetLiwordsSocketStore]);
+
   const { sendMessage: originalSendMessage } = useWebSocket(
     getFullSocketUrlAsync,
     {
