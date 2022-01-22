@@ -1321,11 +1321,6 @@ export const Store = ({ children }: { children: React.ReactNode }) => {
     []
   );
 
-  // Combine keys hierarchically. These must be strings.
-  const loginStateStoreKey = `${loginStateStoreId}`;
-  const liwordsSocketStoreKey = `${loginStateStoreKey} ${liwordsSocketStoreId}`;
-  const restOfStoreKey = `${liwordsSocketStoreKey} ${restOfStoreId}`;
-
   // Reset on browser navigation.
   React.useEffect(() => {
     const handleBrowserNavigation = (evt: PopStateEvent) => {
@@ -1347,13 +1342,13 @@ export const Store = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <ResetStoreContext.Provider value={resetStore}>
-      <RealLoginStateStore key={loginStateStoreKey}>
+      <RealLoginStateStore key={loginStateStoreId}>
         <RealLiwordsSocketStore
-          key={liwordsSocketStoreKey}
+          key={liwordsSocketStoreId}
           resetLiwordsSocketStore={resetLiwordsSocketStore}
         >
           <LiwordsSocket />
-          <RealRestOfStore key={restOfStoreKey}>
+          <RealRestOfStore key={restOfStoreId}>
             <InstallOnSocketMsg>{children}</InstallOnSocketMsg>
           </RealRestOfStore>
         </RealLiwordsSocketStore>
