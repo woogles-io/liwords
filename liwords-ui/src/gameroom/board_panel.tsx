@@ -23,6 +23,7 @@ import {
   nextArrowPropertyState,
   handleKeyPress,
   handleDroppedTile,
+  handleTileDeletion,
   returnTileToRack,
   designateBlank,
   stableInsertRack,
@@ -381,6 +382,37 @@ export const BoardPanel = React.memo((props: Props) => {
         };
       }
     >()
+  );
+
+  // for use with right-click
+  const recallOneTile = useCallback(
+    (row: number, col: number) => {
+      const handlerReturn = handleTileDeletion(
+        {
+          row,
+          col,
+          horizontal: true,
+          show: true,
+        },
+        displayedRack,
+        placedTiles,
+        props.board,
+        props.alphabet
+      );
+      setDisplayedRack(handlerReturn.newDisplayedRack);
+      // ignore the newArrow
+      setPlacedTiles(handlerReturn.newPlacedTiles);
+      setPlacedTilesTempScore(handlerReturn.playScore);
+    },
+    [
+      displayedRack,
+      placedTiles,
+      props.alphabet,
+      props.board,
+      setDisplayedRack,
+      setPlacedTiles,
+      setPlacedTilesTempScore,
+    ]
   );
 
   const recallTiles = useCallback(() => {
@@ -1536,6 +1568,7 @@ export const BoardPanel = React.memo((props: Props) => {
         handleUnsetHover={props.handleUnsetHover}
         definitionPopover={props.definitionPopover}
         alphabet={props.alphabet}
+        recallOneTile={recallOneTile}
       />
       {gameMetaMessage ? (
         <GameMetaMessage message={gameMetaMessage} />

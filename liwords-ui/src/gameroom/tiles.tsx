@@ -42,6 +42,7 @@ type Props = {
     rackIndex: number | undefined,
     tileIndex: number | undefined
   ) => void;
+  recallOneTile?: (row: number, col: number) => void;
 };
 
 const Tiles = React.memo((props: Props) => {
@@ -217,6 +218,17 @@ const Tiles = React.memo((props: Props) => {
         if (tentativeTile) {
           tiles.push(
             <Tile
+              onContextMenu={(evt: React.MouseEvent<HTMLElement>) => {
+                if (!evt.shiftKey) {
+                  // Recall tile when not holding shift.
+                  evt.preventDefault();
+                  if (props.recallOneTile) {
+                    props.recallOneTile(tentativeTile.row, tentativeTile.col);
+                  }
+                } else {
+                  // Shift+RightClick accesses context menu.
+                }
+              }}
               onClick={() => {
                 // This seems to be used only for undesignated blank.
                 // Definition handler will take over for other letters.
