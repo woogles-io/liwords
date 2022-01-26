@@ -117,6 +117,7 @@ type TileProps = {
     tileIndex: number | undefined
   ) => void;
   onClick?: (evt: React.MouseEvent<HTMLElement>) => void;
+  onContextMenu?: (evt: React.MouseEvent<HTMLElement>) => void;
   onMouseEnter?: (evt: React.MouseEvent<HTMLElement>) => void;
   onMouseLeave?: (evt: React.MouseEvent<HTMLElement>) => void;
   x?: number | undefined;
@@ -262,6 +263,7 @@ const Tile = React.memo((props: TileProps) => {
           ...(props.rune === EmptySpace ? { visibility: 'hidden' } : null),
         }}
         onClick={props.onClick}
+        onContextMenu={props.onContextMenu}
         onMouseEnter={props.onMouseEnter}
         onMouseLeave={props.onMouseLeave}
         onDragStart={canDrag ? handleStartDrag : undefined}

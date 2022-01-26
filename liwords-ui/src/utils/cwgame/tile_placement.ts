@@ -71,7 +71,7 @@ interface KeypressHandlerReturn extends PlacementHandlerReturn {
   newArrow: PlacementArrow;
 }
 
-const handleTileDeletion = (
+export const handleTileDeletion = (
   arrowProperty: PlacementArrow,
   unplacedTiles: string, // tiles currently still on rack
   currentlyPlacedTiles: Set<EphemeralTile>,
