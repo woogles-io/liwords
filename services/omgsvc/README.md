@@ -1,0 +1,1 @@
+Service for OMGWords game (and variants). The code here and in /cmd/omgsvc contain the logic for playing OMGWords and communicating with the rest of the app.

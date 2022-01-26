@@ -1,0 +1,170 @@
+// messages related to the omgwords game, used mainly by IPC
+// note: omgwords is the crossword board game, and includes variants dogworms,
+// superomgwords, etc etc
+syntax = "proto3";
+package liwords;
+option go_package = "github.com/domino14/liwords/rpc/api/proto/ipc";
+
+import "macondo/api/proto/macondo/macondo.proto";
+import "google/protobuf/timestamp.proto";
+
+enum GameEndReason {
+  // NONE: the game has not yet ended!
+  NONE = 0;
+  // TIME: one person timed out (and lost)
+  TIME = 1;
+  // WENT_OUT: game ended regularly, with one person having zero tiles on their
+  // rack.
+  STANDARD = 2;
+  // 6 consecutive zeroes ends the game.
+  CONSECUTIVE_ZEROES = 3;
+  RESIGNED = 4;
+  // Aborted games are aborted by mutual agreement.
+  ABORTED = 5;
+  TRIPLE_CHALLENGE = 6;
+  // CANCELLED means the game never started. Game start signal was not sent.
+  CANCELLED = 7;
+  // FORCE_FORFEIT is a way to force an opponent to take a loss if they left a
+  // game early without resigning.
+  FORCE_FORFEIT = 8;
+}
+
+// ClientGameplayEvent taken from realtime.proto
+message ClientGameplayEvent {
+  enum EventType {
+    TILE_PLACEMENT = 0;
+    PASS = 1;
+    EXCHANGE = 2;
+    CHALLENGE_PLAY = 3;
+    RESIGN = 4;
+  }
+
+  EventType type = 1;
+  string game_id = 2;
+  // position coordinates, like H8 or G10. Only matters for TILE_PLACEMENT.
+  string position_coords = 3;
+  // tiles that are being played (or exchanged). The `.` character is used
+  // for thru, and lowercase characters are used for blanks.
+  string tiles = 4;
+}
+
+// A GameRules is just the name of a board layout + the name of a letter
+// distribution. These must exist in a database or file somewhere.
+message GameRules {
+  string board_layout_name = 1;
+  string letter_distribution_name = 2;
+  // If blank, variant is classic, otherwise it could be some other game
+  // (a is worth 100, dogworms, etc.)
+  string variant_name = 3;
+}
+
+enum GameMode {
+  REAL_TIME = 0;
+  CORRESPONDENCE = 1;
+}
+
+enum RatingMode {
+  RATED = 0;
+  CASUAL = 1;
+}
+
+message GameRequest {
+  string lexicon = 1;
+  GameRules rules = 2;
+  int32 initial_time_seconds = 3;
+  int32 increment_seconds = 4;
+  macondo.ChallengeRule challenge_rule = 5;
+  GameMode game_mode = 6;
+  RatingMode rating_mode = 7;
+  string request_id = 8;
+  int32 max_overtime_minutes = 9;
+  bool player_vs_bot = 10;
+  string original_request_id = 11;
+  macondo.BotRequest.BotCode bot_type = 12;
+}
+
+// GameMetaEvent defines how we serialize meta events to the database.
+message GameMetaEvent {
+  enum EventType {
+    // These are "original events"
+    REQUEST_ABORT = 0;
+    // Adjudication is just seen as a "nudge" on the front end.
+    REQUEST_ADJUDICATION = 1;
+    REQUEST_UNDO = 2;
+    REQUEST_ADJOURN = 3; // Are we going to implement this someday?
+
+    // And these are responses:
+    // A user can accept an abort, or the client will auto-accept when time
+    // expires:
+    ABORT_ACCEPTED = 4;
+    ABORT_DENIED = 5;
+    // A user would not accept an adjudication. The client auto-accepts this
+    // when time expires
+    ADJUDICATION_ACCEPTED = 6;
+    // An adjudication is denied when the receiver responds positively to a
+    // nudge.
+    ADJUDICATION_DENIED = 7;
+    UNDO_ACCEPTED = 8;
+    UNDO_DENIED = 9;
+
+    // More:
+    ADD_TIME = 10; // add X seconds at a time (30?) to opponent's clock
+
+    // Some meta events have a timer associated with them. Send this with the
+    // original event id after time has expired.
+    TIMER_EXPIRED = 11;
+  }
+  string orig_event_id = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  EventType type = 3;
+  string player_id = 4; // the player that performed the event.
+  string game_id = 5;
+  int32 expiry =
+      6; // how long should this event remain active, in milliseconds?
+  // 4M seconds should be enough for an event of this type.
+}
+
+// A GameHistoryRefresher is sent to both players when the game starts,
+// and any observers at the time that they begin observing. It can also be sent
+// to a player who reconnects in the middle of a game.
+message GameHistoryRefresher {
+  // The history contains all the moves, points, as well as the last known racks
+  // of each player. It also implicitly contains whose turn it is at the moment,
+  // by the events / turns in the history.
+  // The front-end is responsible for showing all this information in a nice
+  // format.
+  // Note: the racks of each player should not be sent to both players, only
+  // to observers. The back-end will have to be smart enough to overwrite
+  // this information with a blank string before sending it. It might not
+  // even be that great of a big deal, as I'm sure people can devise other ways
+  // to cheat, but shrug.
+  macondo.GameHistory history = 1;
+  // These represent how much time each player has remaining on their clock
+  // as of the "refresher", in milliseconds.
+  // player1 is the player who is listed first in the game history, regardless
+  // of whether they went first.
+  int32 time_player1 = 2;
+  int32 time_player2 = 3;
+  int32 max_overtime_minutes = 4;
+  // outstanding_event refers to any possible outstanding game meta event that
+  // has not yet been responded to or expired.
+  GameMetaEvent outstanding_event = 5;
+}
+
+message TournamentDataForGame {
+  // The ID of the tournament
+  string tid = 1;
+  string division = 2;
+  int32 round = 3;
+  int32 game_index = 4;
+}
+
+// InstantiateGame is an internal message passed to gamesvc in order to
+// instantiate a game.
+message InstantiateGame {
+  repeated string user_ids = 1;
+  GameRequest game_request = 2;
+  // assigned_first is -1 if random, or the player index in user_ids otherwise
+  int32 assigned_first = 3;
+  TournamentDataForGame tournament_data = 4;
+}

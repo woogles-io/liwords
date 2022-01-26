@@ -3,12 +3,13 @@ module github.com/domino14/liwords
 go 1.16
 
 require (
+	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go-v2 v1.2.0
 	github.com/aws/aws-sdk-go-v2/config v1.1.1
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.0.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.2.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/domino14/macondo v0.4.5-0.20210902160115-30135ceb7940
+	github.com/domino14/macondo v0.4.5-0.20220125183153-f32108b23887
 	github.com/golang/protobuf v1.4.2
 	github.com/gomodule/redigo v1.8.2
 	github.com/hashicorp/golang-lru v0.5.4

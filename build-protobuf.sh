@@ -18,5 +18,8 @@ do
 done
 
 protoc --go_out=rpc --proto_path=$CODE_DIR/liwords --go_opt=paths=source_relative api/proto/realtime/ipc.proto
-
 protoc --plugin="protoc-gen-ts=/opt/node_modules/ts-protoc-gen/bin/protoc-gen-ts" --go_out=rpc --js_out=import_style=commonjs,binary:liwords-ui/src/gen --ts_out=liwords-ui/src/gen --proto_path=$CODE_DIR/ --proto_path=$CODE_DIR/liwords --go_opt=paths=source_relative api/proto/realtime/realtime.proto
+
+protoc --go_out=rpc --proto_path=$CODE_DIR/liwords --go_opt=paths=source_relative api/proto/ipc/ipc.proto
+
+protoc --go_out=rpc --proto_path=$CODE_DIR/ --proto_path=$CODE_DIR/liwords --go_opt=paths=source_relative api/proto/ipc/omgwords.proto
