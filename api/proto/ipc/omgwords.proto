@@ -168,3 +168,16 @@ message InstantiateGame {
   int32 assigned_first = 3;
   TournamentDataForGame tournament_data = 4;
 }
+
+message GameDeletion { string id = 1; }
+
+message ActiveGamePlayer {
+  string username = 1;
+  string user_id = 2;
+}
+
+message ActiveGameEntry {
+  string id = 1;
+  repeated ActiveGamePlayer player = 2;
+  int64 ttl = 3; // time to live, in seconds
+}

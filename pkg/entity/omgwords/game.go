@@ -325,14 +325,14 @@ func (g *Game) CreationRequest() *pb.GameRequest {
 
 // RegisterChangeHook registers a channel with the game. Events will
 // be sent down this channel.
-func (g *Game) RegisterChangeHook(eventChan chan<- *EventWrapper) error {
+func (g *Game) RegisterChangeHook(eventChan chan<- *entity.EventWrapper) error {
 	log.Debug().Msg("register-change-hook")
 	g.ChangeHook = eventChan
 	return nil
 }
 
 // SendChange sends an event via the registered hook.
-func (g *Game) SendChange(e *EventWrapper) {
+func (g *Game) SendChange(e *entity.EventWrapper) {
 	log.Debug().Interface("evt", e.Event).
 		Interface("aud", e.Audience()).
 		Int("chan-length", len(g.ChangeHook)).Msg("send-change")
@@ -345,7 +345,7 @@ func (g *Game) SendChange(e *EventWrapper) {
 	log.Debug().Msg("change sent")
 }
 
-func (g *Game) NewActiveGameEntry(gameStillActive bool) *EventWrapper {
+func (g *Game) NewActiveGameEntry(gameStillActive bool) *entity.EventWrapper {
 	ttl := int64(0) // seconds
 	if gameStillActive {
 		// Ideally we would set this based on time remaining (and round it up).
@@ -363,7 +363,7 @@ func (g *Game) NewActiveGameEntry(gameStillActive bool) *EventWrapper {
 			UserId:   player.UserId,
 		})
 	}
-	return WrapEvent(&pb.ActiveGameEntry{
+	return entity.WrapEvent(&pb.ActiveGameEntry{
 		Id:     g.GameID(),
 		Player: activeGamePlayers,
 		Ttl:    ttl,
