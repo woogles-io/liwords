@@ -38,7 +38,7 @@ func (ts *TournamentService) SetEventChannel(c chan *entity.EventWrapper) {
 }
 
 func (ts *TournamentService) AddDivision(ctx context.Context, req *pb.TournamentDivisionRequest) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, false)
+	err := authenticateDirector(ctx, ts, req.Id, false, fmt.Sprintf("%v", req))
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (ts *TournamentService) AddDivision(ctx context.Context, req *pb.Tournament
 }
 
 func (ts *TournamentService) RemoveDivision(ctx context.Context, req *pb.TournamentDivisionRequest) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, false)
+	err := authenticateDirector(ctx, ts, req.Id, false, fmt.Sprintf("%v", req))
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (ts *TournamentService) SetTournamentMetadata(ctx context.Context, req *pb.
 	if req.Metadata == nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, "tournament metadata was empty")
 	}
-	err := authenticateDirector(ctx, ts, req.Metadata.Id, false)
+	err := authenticateDirector(ctx, ts, req.Metadata.Id, false, fmt.Sprintf("%v", req))
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (ts *TournamentService) SetTournamentMetadata(ctx context.Context, req *pb.
 }
 
 func (ts *TournamentService) SetSingleRoundControls(ctx context.Context, req *pb.SingleRoundControlsRequest) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, false)
+	err := authenticateDirector(ctx, ts, req.Id, false, fmt.Sprintf("%v", req))
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (ts *TournamentService) SetSingleRoundControls(ctx context.Context, req *pb
 }
 
 func (ts *TournamentService) SetRoundControls(ctx context.Context, req *realtime.DivisionRoundControls) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, false)
+	err := authenticateDirector(ctx, ts, req.Id, false, fmt.Sprintf("%v", req))
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (ts *TournamentService) SetRoundControls(ctx context.Context, req *realtime
 }
 
 func (ts *TournamentService) SetDivisionControls(ctx context.Context, req *realtime.DivisionControls) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, false)
+	err := authenticateDirector(ctx, ts, req.Id, false, fmt.Sprintf("%v", req))
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +250,7 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.
 }
 
 func (ts *TournamentService) AddDirectors(ctx context.Context, req *realtime.TournamentPersons) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, true)
+	err := authenticateDirector(ctx, ts, req.Id, true, fmt.Sprintf("%v", req))
 	if err != nil {
 		return nil, err
 	}
@@ -263,7 +263,7 @@ func (ts *TournamentService) AddDirectors(ctx context.Context, req *realtime.Tou
 	return &pb.TournamentResponse{}, nil
 }
 func (ts *TournamentService) RemoveDirectors(ctx context.Context, req *realtime.TournamentPersons) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, true)
+	err := authenticateDirector(ctx, ts, req.Id, true, fmt.Sprintf("%v", req))
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +275,7 @@ func (ts *TournamentService) RemoveDirectors(ctx context.Context, req *realtime.
 	return &pb.TournamentResponse{}, nil
 }
 func (ts *TournamentService) AddPlayers(ctx context.Context, req *realtime.TournamentPersons) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, false)
+	err := authenticateDirector(ctx, ts, req.Id, false, fmt.Sprintf("%v", req))
 	if err != nil {
 		return nil, err
 	}
@@ -287,7 +287,7 @@ func (ts *TournamentService) AddPlayers(ctx context.Context, req *realtime.Tourn
 	return &pb.TournamentResponse{}, nil
 }
 func (ts *TournamentService) RemovePlayers(ctx context.Context, req *realtime.TournamentPersons) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, false)
+	err := authenticateDirector(ctx, ts, req.Id, false, fmt.Sprintf("%v", req))
 	if err != nil {
 		return nil, err
 	}
@@ -300,7 +300,7 @@ func (ts *TournamentService) RemovePlayers(ctx context.Context, req *realtime.To
 }
 
 func (ts *TournamentService) SetPairing(ctx context.Context, req *pb.TournamentPairingsRequest) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, false)
+	err := authenticateDirector(ctx, ts, req.Id, false, fmt.Sprintf("%v", req))
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +314,7 @@ func (ts *TournamentService) SetPairing(ctx context.Context, req *pb.TournamentP
 }
 
 func (ts *TournamentService) SetResult(ctx context.Context, req *pb.TournamentResultOverrideRequest) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, false)
+	err := authenticateDirector(ctx, ts, req.Id, false, fmt.Sprintf("%v", req))
 	if err != nil {
 		return nil, err
 	}
@@ -341,7 +341,7 @@ func (ts *TournamentService) SetResult(ctx context.Context, req *pb.TournamentRe
 }
 
 func (ts *TournamentService) PairRound(ctx context.Context, req *pb.PairRoundRequest) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, false)
+	err := authenticateDirector(ctx, ts, req.Id, false, fmt.Sprintf("%v", req))
 	if err != nil {
 		return nil, err
 	}
@@ -370,7 +370,7 @@ func (ts *TournamentService) RecentGames(ctx context.Context, req *pb.RecentGame
 }
 
 func (ts *TournamentService) FinishTournament(ctx context.Context, req *pb.FinishTournamentRequest) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, true)
+	err := authenticateDirector(ctx, ts, req.Id, true, fmt.Sprintf("%v", req))
 	if err != nil {
 		return nil, err
 	}
@@ -382,7 +382,7 @@ func (ts *TournamentService) FinishTournament(ctx context.Context, req *pb.Finis
 }
 
 func (ts *TournamentService) StartRoundCountdown(ctx context.Context, req *pb.TournamentStartRoundCountdownRequest) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, false)
+	err := authenticateDirector(ctx, ts, req.Id, false, fmt.Sprintf("%v", req))
 	if err != nil {
 		return nil, err
 	}
@@ -400,7 +400,7 @@ func (ts *TournamentService) StartRoundCountdown(ctx context.Context, req *pb.To
 }
 
 func (ts *TournamentService) CreateClubSession(ctx context.Context, req *pb.NewClubSessionRequest) (*pb.ClubSessionResponse, error) {
-	err := authenticateDirector(ctx, ts, req.ClubId, false)
+	err := authenticateDirector(ctx, ts, req.ClubId, false, fmt.Sprintf("%v", req))
 	if err != nil {
 		return nil, err
 	}
@@ -463,7 +463,7 @@ func directorOrAdmin(ctx context.Context, ts *TournamentService) (*entity.User, 
 	return user, nil
 }
 
-func authenticateDirector(ctx context.Context, ts *TournamentService, id string, authenticateExecutive bool) error {
+func authenticateDirector(ctx context.Context, ts *TournamentService, id string, authenticateExecutive bool, reqString string) error {
 	user, err := sessionUser(ctx, ts)
 	if err != nil {
 		return err
@@ -478,6 +478,7 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 		return twirp.InternalErrorWith(err)
 	}
 	fullID := user.TournamentID()
+	log.Info().Str("director", fullID).Str("req", reqString).Msg("authenticated-tournament-request")
 	log.Debug().Str("fullID", fullID).Interface("persons", t.Directors.Persons).Msg("authenticating-director")
 
 	if authenticateExecutive && fullID != t.ExecutiveDirector {
@@ -552,7 +553,7 @@ func (ts *TournamentService) CheckIn(ctx context.Context, req *pb.CheckinRequest
 }
 
 func (ts *TournamentService) UncheckIn(ctx context.Context, req *pb.UncheckInRequest) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, false)
+	err := authenticateDirector(ctx, ts, req.Id, false, fmt.Sprintf("%v", req))
 	if err != nil {
 		return nil, err
 	}
@@ -567,7 +568,7 @@ func (ts *TournamentService) UnstartTournament(ctx context.Context, req *pb.Unst
 	// Unstarting a tournament rolls the round back to zero, and deletes all game info,
 	// but does not delete the players or divisions.
 	// Obviously this is only meant to be used for testing purposes.
-	err := authenticateDirector(ctx, ts, req.Id, false)
+	err := authenticateDirector(ctx, ts, req.Id, false, fmt.Sprintf("%v", req))
 	if err != nil {
 		return nil, err
 	}
