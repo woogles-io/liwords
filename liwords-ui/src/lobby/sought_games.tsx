@@ -19,7 +19,7 @@ import { DisplayUserFlag } from '../shared/display_flag';
 import { RatingBadge } from './rating_badge';
 import { VariantIcon } from '../shared/variant_icons';
 import { MatchLexiconDisplay } from '../shared/lexicon_display';
-import { ProfileUpdate } from '../gen/api/proto/realtime/realtime_pb';
+import { ProfileUpdate } from '../gen/api/proto/ipc/users_pb';
 
 export const timeFormat = (
   initialTimeSecs: number,

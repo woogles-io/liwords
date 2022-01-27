@@ -23,6 +23,7 @@ import {
   nextArrowPropertyState,
   handleKeyPress,
   handleDroppedTile,
+  handleTileDeletion,
   returnTileToRack,
   designateBlank,
   stableInsertRack,
@@ -45,13 +46,6 @@ import {
 import { Board } from '../utils/cwgame/board';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import {
-  MessageType,
-  MatchUser,
-  SeekRequest,
-  GameMetaEvent,
-  SeekState,
-} from '../gen/api/proto/realtime/realtime_pb';
-import {
   useExaminableGameContextStoreContext,
   useExaminableGameEndMessageStoreContext,
   useExaminableTimerStoreContext,
@@ -71,6 +65,13 @@ import {
 import { toAPIUrl } from '../api/api';
 import { TilePreview } from './tile';
 import { Alphabet } from '../constants/alphabets';
+import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
+import {
+  MatchUser,
+  SeekRequest,
+  SeekState,
+} from '../gen/api/proto/ipc/omgseeks_pb';
+import { GameMetaEvent } from '../gen/api/proto/ipc/omgwords_pb';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -381,6 +382,37 @@ export const BoardPanel = React.memo((props: Props) => {
         };
       }
     >()
+  );
+
+  // for use with right-click
+  const recallOneTile = useCallback(
+    (row: number, col: number) => {
+      const handlerReturn = handleTileDeletion(
+        {
+          row,
+          col,
+          horizontal: true,
+          show: true,
+        },
+        displayedRack,
+        placedTiles,
+        props.board,
+        props.alphabet
+      );
+      setDisplayedRack(handlerReturn.newDisplayedRack);
+      // ignore the newArrow
+      setPlacedTiles(handlerReturn.newPlacedTiles);
+      setPlacedTilesTempScore(handlerReturn.playScore);
+    },
+    [
+      displayedRack,
+      placedTiles,
+      props.alphabet,
+      props.board,
+      setDisplayedRack,
+      setPlacedTiles,
+      setPlacedTilesTempScore,
+    ]
   );
 
   const recallTiles = useCallback(() => {
@@ -1536,6 +1568,7 @@ export const BoardPanel = React.memo((props: Props) => {
         handleUnsetHover={props.handleUnsetHover}
         definitionPopover={props.definitionPopover}
         alphabet={props.alphabet}
+        recallOneTile={recallOneTile}
       />
       {gameMetaMessage ? (
         <GameMetaMessage message={gameMetaMessage} />

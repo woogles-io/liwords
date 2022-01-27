@@ -26,12 +26,6 @@ import {
   StartingRating,
   timeCtrlToDisplayName,
 } from '../store/constants';
-import {
-  GameRequest,
-  MatchUser,
-  ProfileUpdate,
-  RatingMode,
-} from '../gen/api/proto/realtime/realtime_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { toAPIUrl } from '../api/api';
 import { useDebounce } from '../utils/debounce';
@@ -46,6 +40,9 @@ import { VariantIcon } from '../shared/variant_icons';
 import { excludedLexica, LexiconFormItem } from '../shared/lexicon_display';
 import { AllLexica } from '../shared/lexica';
 import { BotTypesEnum, BotTypesEnumProperties } from './bots';
+import { GameRequest, RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
+import { MatchUser } from '../gen/api/proto/ipc/omgseeks_pb';
+import { ProfileUpdate } from '../gen/api/proto/ipc/users_pb';
 
 const initTimeFormatter = (val?: number) => {
   return val != null ? initTimeDiscreteScale[val].label : null;

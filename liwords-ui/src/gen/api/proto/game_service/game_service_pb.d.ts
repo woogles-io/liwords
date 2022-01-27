@@ -3,7 +3,7 @@
 
 import * as jspb from "google-protobuf";
 import * as macondo_api_proto_macondo_macondo_pb from "../../../macondo/api/proto/macondo/macondo_pb";
-import * as api_proto_realtime_realtime_pb from "../../../api/proto/realtime/realtime_pb";
+import * as api_proto_ipc_omgwords_pb from "../../../api/proto/ipc/omgwords_pb";
 import * as google_protobuf_timestamp_pb from "google-protobuf/google/protobuf/timestamp_pb";
 
 export class GameInfoRequest extends jspb.Message {
@@ -86,8 +86,8 @@ export class GameInfoResponse extends jspb.Message {
   getTournamentId(): string;
   setTournamentId(value: string): void;
 
-  getGameEndReason(): api_proto_realtime_realtime_pb.GameEndReasonMap[keyof api_proto_realtime_realtime_pb.GameEndReasonMap];
-  setGameEndReason(value: api_proto_realtime_realtime_pb.GameEndReasonMap[keyof api_proto_realtime_realtime_pb.GameEndReasonMap]): void;
+  getGameEndReason(): api_proto_ipc_omgwords_pb.GameEndReasonMap[keyof api_proto_ipc_omgwords_pb.GameEndReasonMap];
+  setGameEndReason(value: api_proto_ipc_omgwords_pb.GameEndReasonMap[keyof api_proto_ipc_omgwords_pb.GameEndReasonMap]): void;
 
   clearScoresList(): void;
   getScoresList(): Array<number>;
@@ -112,8 +112,8 @@ export class GameInfoResponse extends jspb.Message {
 
   hasGameRequest(): boolean;
   clearGameRequest(): void;
-  getGameRequest(): api_proto_realtime_realtime_pb.GameRequest | undefined;
-  setGameRequest(value?: api_proto_realtime_realtime_pb.GameRequest): void;
+  getGameRequest(): api_proto_ipc_omgwords_pb.GameRequest | undefined;
+  setGameRequest(value?: api_proto_ipc_omgwords_pb.GameRequest): void;
 
   getTournamentDivision(): string;
   setTournamentDivision(value: string): void;
@@ -139,13 +139,13 @@ export namespace GameInfoResponse {
     playersList: Array<PlayerInfo.AsObject>,
     timeControlName: string,
     tournamentId: string,
-    gameEndReason: api_proto_realtime_realtime_pb.GameEndReasonMap[keyof api_proto_realtime_realtime_pb.GameEndReasonMap],
+    gameEndReason: api_proto_ipc_omgwords_pb.GameEndReasonMap[keyof api_proto_ipc_omgwords_pb.GameEndReasonMap],
     scoresList: Array<number>,
     winner: number,
     createdAt?: google_protobuf_timestamp_pb.Timestamp.AsObject,
     gameId: string,
     lastUpdate?: google_protobuf_timestamp_pb.Timestamp.AsObject,
-    gameRequest?: api_proto_realtime_realtime_pb.GameRequest.AsObject,
+    gameRequest?: api_proto_ipc_omgwords_pb.GameRequest.AsObject,
     tournamentDivision: string,
     tournamentRound: number,
     tournamentGameIndex: number,

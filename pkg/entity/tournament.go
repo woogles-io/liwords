@@ -4,33 +4,33 @@ import (
 	"encoding/json"
 	"sync"
 
-	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
+	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
 type DivisionManager interface {
-	SubmitResult(int, string, string, int, int, realtime.TournamentGameResult,
-		realtime.TournamentGameResult, realtime.GameEndReason, bool, int, string) (*realtime.DivisionPairingsResponse, error)
-	PairRound(int, bool) (*realtime.DivisionPairingsResponse, error)
+	SubmitResult(int, string, string, int, int, pb.TournamentGameResult,
+		pb.TournamentGameResult, pb.GameEndReason, bool, int, string) (*pb.DivisionPairingsResponse, error)
+	PairRound(int, bool) (*pb.DivisionPairingsResponse, error)
 	DeletePairings(int) error
-	GetStandings(int) (*realtime.RoundStandings, int, error)
+	GetStandings(int) (*pb.RoundStandings, int, error)
 	GetCurrentRound() int
-	GetPlayers() *realtime.TournamentPersons
-	SetPairing(string, string, int, realtime.TournamentGameResult) (*realtime.DivisionPairingsResponse, error)
-	SetSingleRoundControls(int, *realtime.RoundControl) (*realtime.RoundControl, error)
-	SetRoundControls([]*realtime.RoundControl) (*realtime.DivisionPairingsResponse, []*realtime.RoundControl, error)
-	SetDivisionControls(*realtime.DivisionControls) (*realtime.DivisionControls, map[int32]*realtime.RoundStandings, error)
-	GetDivisionControls() *realtime.DivisionControls
-	AddPlayers(*realtime.TournamentPersons) (*realtime.DivisionPairingsResponse, error)
-	RemovePlayers(*realtime.TournamentPersons) (*realtime.DivisionPairingsResponse, error)
+	GetPlayers() *pb.TournamentPersons
+	SetPairing(string, string, int, pb.TournamentGameResult) (*pb.DivisionPairingsResponse, error)
+	SetSingleRoundControls(int, *pb.RoundControl) (*pb.RoundControl, error)
+	SetRoundControls([]*pb.RoundControl) (*pb.DivisionPairingsResponse, []*pb.RoundControl, error)
+	SetDivisionControls(*pb.DivisionControls) (*pb.DivisionControls, map[int32]*pb.RoundStandings, error)
+	GetDivisionControls() *pb.DivisionControls
+	AddPlayers(*pb.TournamentPersons) (*pb.DivisionPairingsResponse, error)
+	RemovePlayers(*pb.TournamentPersons) (*pb.DivisionPairingsResponse, error)
 	IsRoundReady(int) (bool, error)
 	IsRoundComplete(int) (bool, error)
 	IsStarted() bool
 	IsFinished() (bool, error)
 	StartRound(bool) error
 	IsRoundStartable() error
-	GetXHRResponse() (*realtime.TournamentDivisionDataResponse, error)
+	GetXHRResponse() (*pb.TournamentDivisionDataResponse, error)
 	SetReadyForGame(userID, connID string, round, gameIndex int, unready bool) ([]string, bool, error)
-	ClearReadyStates(userID string, round, gameIndex int) ([]*realtime.Pairing, error)
+	ClearReadyStates(userID string, round, gameIndex int) ([]*pb.Pairing, error)
 	ResetToBeginning() error
 }
 
@@ -71,15 +71,15 @@ type TournamentDivision struct {
 }
 
 type TournamentMeta struct {
-	Disclaimer                string                `json:"disclaimer"`
-	TileStyle                 string                `json:"tileStyle"`
-	BoardStyle                string                `json:"boardStyle"`
-	DefaultClubSettings       *realtime.GameRequest `json:"defaultClubSettings"`
-	FreeformClubSettingFields []string              `json:"freeformClubSettingFields"`
-	Password                  string                `json:"password"`
-	Logo                      string                `json:"logo"`
-	Color                     string                `json:"color"`
-	PrivateAnalysis           bool                  `json:"privateAnalysis"`
+	Disclaimer                string          `json:"disclaimer"`
+	TileStyle                 string          `json:"tileStyle"`
+	BoardStyle                string          `json:"boardStyle"`
+	DefaultClubSettings       *pb.GameRequest `json:"defaultClubSettings"`
+	FreeformClubSettingFields []string        `json:"freeformClubSettingFields"`
+	Password                  string          `json:"password"`
+	Logo                      string          `json:"logo"`
+	Color                     string          `json:"color"`
+	PrivateAnalysis           bool            `json:"privateAnalysis"`
 }
 
 type Tournament struct {
@@ -92,7 +92,7 @@ type Tournament struct {
 	URL     string `json:"url"`
 	// XXX: Investigate above.
 	ExecutiveDirector string                         `json:"execDirector"`
-	Directors         *realtime.TournamentPersons    `json:"directors"`
+	Directors         *pb.TournamentPersons          `json:"directors"`
 	IsStarted         bool                           `json:"started"`
 	IsFinished        bool                           `json:"finished"`
 	Divisions         map[string]*TournamentDivision `json:"divs"`

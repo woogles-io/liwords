@@ -1,5 +1,5 @@
 import { message } from 'antd';
-import { GameMetaEvent } from '../gen/api/proto/realtime/realtime_pb';
+import { GameMetaEvent } from '../gen/api/proto/ipc/omgwords_pb';
 import { Millis } from './timer_controller';
 
 export enum MetaStates {

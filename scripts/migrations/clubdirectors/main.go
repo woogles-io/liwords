@@ -11,8 +11,8 @@ import (
 	"github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/stores/tournament"
 	"github.com/domino14/liwords/pkg/stores/user"
-	
-	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
+
+	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
 func main() {
@@ -54,8 +54,8 @@ func main() {
 		}
 		log.Info().Str("tid", tid).Msg("migrating")
 		directors := t.Directors
-		newDirectors := &realtime.TournamentPersons{
-			Persons: []*realtime.TournamentPerson{},
+		newDirectors := &ipc.TournamentPersons{
+			Persons: []*ipc.TournamentPerson{},
 		}
 		for _, person := range directors.Persons {
 			uuid := person.Id
@@ -64,7 +64,7 @@ func main() {
 				log.Err(err).Str("uuid", uuid).Msg("err-userstore-get")
 				panic(err)
 			}
-			person.Id = uuid+":"+player.Username
+			person.Id = uuid + ":" + player.Username
 		}
 		t.Directors = newDirectors
 		err = tournamentStore.Set(ctx, t)

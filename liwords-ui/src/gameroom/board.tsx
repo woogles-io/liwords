@@ -40,6 +40,7 @@ type Props = {
   definitionPopover?:
     | { x: number; y: number; content: React.ReactNode }
     | undefined;
+  recallOneTile?: (row: number, col: number) => void;
 };
 
 const Board = React.memo((props: Props) => {
@@ -79,6 +80,7 @@ const Board = React.memo((props: Props) => {
           definitionPopover={props.definitionPopover}
           handleTileDrop={props.handleTileDrop}
           alphabet={props.alphabet}
+          recallOneTile={props.recallOneTile}
         />
         {svgDrawing}
       </div>

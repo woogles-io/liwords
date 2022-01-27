@@ -20,48 +20,7 @@ import {
   useTimerStoreContext,
   useTournamentStoreContext,
 } from './store';
-import {
-  ActiveGameEntry,
-  ChatMessage,
-  ChatMessageDeleted,
-  ClientGameplayEvent,
-  ErrorMessage,
-  GameDeletion,
-  GameEndedEvent,
-  GameHistoryRefresher,
-  GameMetaEvent,
-  LagMeasurement,
-  MessageType,
-  MessageTypeMap,
-  NewGameEvent,
-  PresenceEntry,
-  ReadyForGame,
-  ReadyForTournamentGame,
-  RematchStartedEvent,
-  SeekRequest,
-  SeekRequests,
-  DeclineSeekRequest,
-  ServerChallengeResultEvent,
-  ServerGameplayEvent,
-  ServerMessage,
-  SoughtGameProcessEvent,
-  TimedOut,
-  TournamentDataResponse,
-  DivisionPairingsResponse,
-  DivisionPairingsDeletedResponse,
-  PlayersAddedOrRemovedResponse,
-  DivisionControlsResponse,
-  DivisionRoundControls,
-  TournamentFinishedResponse,
-  TournamentDivisionDataResponse,
-  TournamentDivisionDeletedResponse,
-  TournamentGameEndedEvent,
-  TournamentRoundStarted,
-  UserPresence,
-  UserPresences,
-  FullTournamentDivisions,
-  ProfileUpdate,
-} from '../gen/api/proto/realtime/realtime_pb';
+
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
 import {
@@ -76,6 +35,55 @@ import {
 } from '../gen/api/proto/game_service/game_service_pb';
 import { metaStateFromMetaEvent } from './meta_game_events';
 import { parseWooglesError } from '../utils/parse_woogles_error';
+import {
+  LagMeasurement,
+  MessageType,
+  MessageTypeMap,
+  ServerMessage,
+} from '../gen/api/proto/ipc/ipc_pb';
+import {
+  DeclineSeekRequest,
+  SeekRequest,
+  SeekRequests,
+  SoughtGameProcessEvent,
+} from '../gen/api/proto/ipc/omgseeks_pb';
+import { ErrorMessage } from '../gen/api/proto/ipc/errors_pb';
+import { ChatMessage, ChatMessageDeleted } from '../gen/api/proto/ipc/chat_pb';
+import {
+  NewGameEvent,
+  GameHistoryRefresher,
+  ClientGameplayEvent,
+  ServerGameplayEvent,
+  GameEndedEvent,
+  ServerChallengeResultEvent,
+  TimedOut,
+  GameDeletion,
+  ReadyForGame,
+  RematchStartedEvent,
+  GameMetaEvent,
+  ActiveGameEntry,
+} from '../gen/api/proto/ipc/omgwords_pb';
+import {
+  UserPresence,
+  UserPresences,
+  PresenceEntry,
+} from '../gen/api/proto/ipc/presence_pb';
+import {
+  ReadyForTournamentGame,
+  TournamentRoundStarted,
+  TournamentGameEndedEvent,
+  FullTournamentDivisions,
+  DivisionRoundControls,
+  DivisionPairingsResponse,
+  DivisionControlsResponse,
+  PlayersAddedOrRemovedResponse,
+  TournamentFinishedResponse,
+  TournamentDivisionDeletedResponse,
+  DivisionPairingsDeletedResponse,
+  TournamentDataResponse,
+  TournamentDivisionDataResponse,
+} from '../gen/api/proto/ipc/tournament_pb';
+import { ProfileUpdate } from '../gen/api/proto/ipc/users_pb';
 // Feature flag.
 export const enableShowSocket =
   localStorage?.getItem('enableShowSocket') === 'true';

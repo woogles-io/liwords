@@ -2,7 +2,7 @@ import { GameMetadata } from '../gameroom/game_info';
 import {
   GameEndedEvent,
   GameEndReason,
-} from '../gen/api/proto/realtime/realtime_pb';
+} from '../gen/api/proto/ipc/omgwords_pb';
 
 export const endGameMessage = (gee: GameEndedEvent): string => {
   const scores = gee.getScoresMap();

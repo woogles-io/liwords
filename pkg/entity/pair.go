@@ -1,7 +1,7 @@
 package entity
 
 import (
-	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
+	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
 // These weights were made very large
@@ -30,6 +30,6 @@ type PoolMember struct {
 
 type UnpairedPoolMembers struct {
 	PoolMembers   []*PoolMember
-	RoundControls *realtime.RoundControl
+	RoundControls *ipc.RoundControl
 	Repeats       map[string]int
 }

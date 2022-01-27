@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/domino14/liwords/pkg/glicko"
+	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
-	"github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/rs/zerolog/log"
 )
 
@@ -133,16 +133,16 @@ func (u *User) GetRating(ratingKey VariantKey) (*SingleRating, error) {
 	return &ratdict, nil
 }
 
-func (u *User) GetProtoRatings() (map[string]*realtime.ProfileUpdate_Rating, error) {
+func (u *User) GetProtoRatings() (map[string]*pb.ProfileUpdate_Rating, error) {
 	if u.Profile == nil {
 		return nil, errors.New("anonymous user has no rating")
 	}
 	if u.Profile.Ratings.Data == nil {
 		return nil, nil
 	}
-	ratings := make(map[string]*realtime.ProfileUpdate_Rating)
+	ratings := make(map[string]*pb.ProfileUpdate_Rating)
 	for k, v := range u.Profile.Ratings.Data {
-		ratings[string(k)] = &realtime.ProfileUpdate_Rating{
+		ratings[string(k)] = &pb.ProfileUpdate_Rating{
 			Rating:    float64(v.Rating),
 			Deviation: float64(v.RatingDeviation),
 		}
@@ -172,7 +172,7 @@ func (u *User) RealNameIfNotYouth() string {
 	if u.Profile == nil {
 		return ""
 	}
-	if u.IsChild() == realtime.ChildStatus_NOT_CHILD {
+	if u.IsChild() == pb.ChildStatus_NOT_CHILD {
 		return u.RealName()
 	}
 	return ""
@@ -192,31 +192,31 @@ func (u *User) TournamentID() string {
 	return u.UUID + ":" + u.Username
 }
 
-func InferChildStatus(dob string, now time.Time) realtime.ChildStatus {
+func InferChildStatus(dob string, now time.Time) pb.ChildStatus {
 	// The birth date must be in the form YYYY-MM-DD
 	birthDateTime, err := time.Parse(time.RFC3339Nano, dob+"T00:00:00.000Z")
 	if err != nil {
 		// This means the birth date was either not defined or malformed
 		// Either way, the child status should be unknown
-		return realtime.ChildStatus_UNKNOWN
+		return pb.ChildStatus_UNKNOWN
 	} else {
 		timeOfNotChild := birthDateTime.AddDate(13, 0, 0)
 		if now.After(timeOfNotChild) {
-			return realtime.ChildStatus_NOT_CHILD
+			return pb.ChildStatus_NOT_CHILD
 		} else {
-			return realtime.ChildStatus_CHILD
+			return pb.ChildStatus_CHILD
 		}
 	}
 }
 
 func IsAdult(dob string, now time.Time) bool {
-	return InferChildStatus(dob, now) == realtime.ChildStatus_NOT_CHILD
+	return InferChildStatus(dob, now) == pb.ChildStatus_NOT_CHILD
 }
 
-func (u *User) IsChild() realtime.ChildStatus {
+func (u *User) IsChild() pb.ChildStatus {
 	if u.Profile == nil {
 		log.Error().Str("uuid", u.UUID).Msg("unexpected-nil-profile")
-		return realtime.ChildStatus_UNKNOWN
+		return pb.ChildStatus_UNKNOWN
 	}
 	return InferChildStatus(u.Profile.BirthDate, time.Now())
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 
 	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
-	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	upb "github.com/domino14/liwords/rpc/api/proto/user_service"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )

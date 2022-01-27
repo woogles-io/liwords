@@ -33,7 +33,7 @@ import {
   TType,
   TTypeMap,
 } from '../gen/api/proto/tournament_service/tournament_service_pb';
-import { GameRequest } from '../gen/api/proto/realtime/realtime_pb';
+import { GameRequest } from '../gen/api/proto/ipc/omgwords_pb';
 
 type DProps = {
   description: string;

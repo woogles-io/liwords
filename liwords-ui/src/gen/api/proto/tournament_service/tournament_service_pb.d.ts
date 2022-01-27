@@ -2,7 +2,8 @@
 // file: api/proto/tournament_service/tournament_service.proto
 
 import * as jspb from "google-protobuf";
-import * as api_proto_realtime_realtime_pb from "../../../api/proto/realtime/realtime_pb";
+import * as api_proto_ipc_omgwords_pb from "../../../api/proto/ipc/omgwords_pb";
+import * as api_proto_ipc_tournament_pb from "../../../api/proto/ipc/tournament_pb";
 import * as google_protobuf_timestamp_pb from "google-protobuf/google/protobuf/timestamp_pb";
 
 export class StartRoundRequest extends jspb.Message {
@@ -94,8 +95,8 @@ export class TournamentMetadata extends jspb.Message {
 
   hasDefaultClubSettings(): boolean;
   clearDefaultClubSettings(): void;
-  getDefaultClubSettings(): api_proto_realtime_realtime_pb.GameRequest | undefined;
-  setDefaultClubSettings(value?: api_proto_realtime_realtime_pb.GameRequest): void;
+  getDefaultClubSettings(): api_proto_ipc_omgwords_pb.GameRequest | undefined;
+  setDefaultClubSettings(value?: api_proto_ipc_omgwords_pb.GameRequest): void;
 
   clearFreeformClubSettingFieldsList(): void;
   getFreeformClubSettingFieldsList(): Array<string>;
@@ -134,7 +135,7 @@ export namespace TournamentMetadata {
     disclaimer: string,
     tileStyle: string,
     boardStyle: string,
-    defaultClubSettings?: api_proto_realtime_realtime_pb.GameRequest.AsObject,
+    defaultClubSettings?: api_proto_ipc_omgwords_pb.GameRequest.AsObject,
     freeformClubSettingFieldsList: Array<string>,
     password: string,
     logo: string,
@@ -177,8 +178,8 @@ export class SingleRoundControlsRequest extends jspb.Message {
 
   hasRoundControls(): boolean;
   clearRoundControls(): void;
-  getRoundControls(): api_proto_realtime_realtime_pb.RoundControl | undefined;
-  setRoundControls(value?: api_proto_realtime_realtime_pb.RoundControl): void;
+  getRoundControls(): api_proto_ipc_tournament_pb.RoundControl | undefined;
+  setRoundControls(value?: api_proto_ipc_tournament_pb.RoundControl): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): SingleRoundControlsRequest.AsObject;
@@ -195,7 +196,7 @@ export namespace SingleRoundControlsRequest {
     id: string,
     division: string,
     round: number,
-    roundControls?: api_proto_realtime_realtime_pb.RoundControl.AsObject,
+    roundControls?: api_proto_ipc_tournament_pb.RoundControl.AsObject,
   }
 }
 
@@ -269,8 +270,8 @@ export class TournamentPairingRequest extends jspb.Message {
   getRound(): number;
   setRound(value: number): void;
 
-  getSelfPlayResult(): api_proto_realtime_realtime_pb.TournamentGameResultMap[keyof api_proto_realtime_realtime_pb.TournamentGameResultMap];
-  setSelfPlayResult(value: api_proto_realtime_realtime_pb.TournamentGameResultMap[keyof api_proto_realtime_realtime_pb.TournamentGameResultMap]): void;
+  getSelfPlayResult(): api_proto_ipc_tournament_pb.TournamentGameResultMap[keyof api_proto_ipc_tournament_pb.TournamentGameResultMap];
+  setSelfPlayResult(value: api_proto_ipc_tournament_pb.TournamentGameResultMap[keyof api_proto_ipc_tournament_pb.TournamentGameResultMap]): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): TournamentPairingRequest.AsObject;
@@ -287,7 +288,7 @@ export namespace TournamentPairingRequest {
     playerOneId: string,
     playerTwoId: string,
     round: number,
-    selfPlayResult: api_proto_realtime_realtime_pb.TournamentGameResultMap[keyof api_proto_realtime_realtime_pb.TournamentGameResultMap],
+    selfPlayResult: api_proto_ipc_tournament_pb.TournamentGameResultMap[keyof api_proto_ipc_tournament_pb.TournamentGameResultMap],
   }
 }
 
@@ -343,14 +344,14 @@ export class TournamentResultOverrideRequest extends jspb.Message {
   getPlayerTwoScore(): number;
   setPlayerTwoScore(value: number): void;
 
-  getPlayerOneResult(): api_proto_realtime_realtime_pb.TournamentGameResultMap[keyof api_proto_realtime_realtime_pb.TournamentGameResultMap];
-  setPlayerOneResult(value: api_proto_realtime_realtime_pb.TournamentGameResultMap[keyof api_proto_realtime_realtime_pb.TournamentGameResultMap]): void;
+  getPlayerOneResult(): api_proto_ipc_tournament_pb.TournamentGameResultMap[keyof api_proto_ipc_tournament_pb.TournamentGameResultMap];
+  setPlayerOneResult(value: api_proto_ipc_tournament_pb.TournamentGameResultMap[keyof api_proto_ipc_tournament_pb.TournamentGameResultMap]): void;
 
-  getPlayerTwoResult(): api_proto_realtime_realtime_pb.TournamentGameResultMap[keyof api_proto_realtime_realtime_pb.TournamentGameResultMap];
-  setPlayerTwoResult(value: api_proto_realtime_realtime_pb.TournamentGameResultMap[keyof api_proto_realtime_realtime_pb.TournamentGameResultMap]): void;
+  getPlayerTwoResult(): api_proto_ipc_tournament_pb.TournamentGameResultMap[keyof api_proto_ipc_tournament_pb.TournamentGameResultMap];
+  setPlayerTwoResult(value: api_proto_ipc_tournament_pb.TournamentGameResultMap[keyof api_proto_ipc_tournament_pb.TournamentGameResultMap]): void;
 
-  getGameEndReason(): api_proto_realtime_realtime_pb.GameEndReasonMap[keyof api_proto_realtime_realtime_pb.GameEndReasonMap];
-  setGameEndReason(value: api_proto_realtime_realtime_pb.GameEndReasonMap[keyof api_proto_realtime_realtime_pb.GameEndReasonMap]): void;
+  getGameEndReason(): api_proto_ipc_omgwords_pb.GameEndReasonMap[keyof api_proto_ipc_omgwords_pb.GameEndReasonMap];
+  setGameEndReason(value: api_proto_ipc_omgwords_pb.GameEndReasonMap[keyof api_proto_ipc_omgwords_pb.GameEndReasonMap]): void;
 
   getAmendment(): boolean;
   setAmendment(value: boolean): void;
@@ -377,9 +378,9 @@ export namespace TournamentResultOverrideRequest {
     round: number,
     playerOneScore: number,
     playerTwoScore: number,
-    playerOneResult: api_proto_realtime_realtime_pb.TournamentGameResultMap[keyof api_proto_realtime_realtime_pb.TournamentGameResultMap],
-    playerTwoResult: api_proto_realtime_realtime_pb.TournamentGameResultMap[keyof api_proto_realtime_realtime_pb.TournamentGameResultMap],
-    gameEndReason: api_proto_realtime_realtime_pb.GameEndReasonMap[keyof api_proto_realtime_realtime_pb.GameEndReasonMap],
+    playerOneResult: api_proto_ipc_tournament_pb.TournamentGameResultMap[keyof api_proto_ipc_tournament_pb.TournamentGameResultMap],
+    playerTwoResult: api_proto_ipc_tournament_pb.TournamentGameResultMap[keyof api_proto_ipc_tournament_pb.TournamentGameResultMap],
+    gameEndReason: api_proto_ipc_omgwords_pb.GameEndReasonMap[keyof api_proto_ipc_omgwords_pb.GameEndReasonMap],
     amendment: boolean,
     gameIndex: number,
   }
@@ -579,9 +580,9 @@ export namespace RecentGamesRequest {
 
 export class RecentGamesResponse extends jspb.Message {
   clearGamesList(): void;
-  getGamesList(): Array<api_proto_realtime_realtime_pb.TournamentGameEndedEvent>;
-  setGamesList(value: Array<api_proto_realtime_realtime_pb.TournamentGameEndedEvent>): void;
-  addGames(value?: api_proto_realtime_realtime_pb.TournamentGameEndedEvent, index?: number): api_proto_realtime_realtime_pb.TournamentGameEndedEvent;
+  getGamesList(): Array<api_proto_ipc_tournament_pb.TournamentGameEndedEvent>;
+  setGamesList(value: Array<api_proto_ipc_tournament_pb.TournamentGameEndedEvent>): void;
+  addGames(value?: api_proto_ipc_tournament_pb.TournamentGameEndedEvent, index?: number): api_proto_ipc_tournament_pb.TournamentGameEndedEvent;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): RecentGamesResponse.AsObject;
@@ -595,7 +596,7 @@ export class RecentGamesResponse extends jspb.Message {
 
 export namespace RecentGamesResponse {
   export type AsObject = {
-    gamesList: Array<api_proto_realtime_realtime_pb.TournamentGameEndedEvent.AsObject>,
+    gamesList: Array<api_proto_ipc_tournament_pb.TournamentGameEndedEvent.AsObject>,
   }
 }
 

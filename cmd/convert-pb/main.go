@@ -7,7 +7,7 @@ import (
 	"flag"
 	"fmt"
 
-	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
+	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"google.golang.org/protobuf/proto"
 )
@@ -15,7 +15,7 @@ import (
 // A script to convert protobuf from binary to JSON
 
 func main() {
-	protofile := flag.String("protofile", "macondo", "the name of the protofile: macondo or realtime")
+	protofile := flag.String("protofile", "macondo", "the name of the protofile: macondo or ipc")
 	messageName := flag.String("messagename", "", "the name of the pb message")
 	convertfrom := flag.String("convertfrom", "hex", "hex: hex->json,  b64: b64->json,  json: json->hex")
 	// pb packets that get sent through the socket have two bytes for length and one for msg type; skip these in this case.
@@ -48,16 +48,16 @@ func main() {
 			panic("message " + *messageName + " not handled")
 		}
 
-	} else if *protofile == "realtime" {
+	} else if *protofile == "ipc" {
 		switch *messageName {
 		case "GameRequest":
-			pbmsg = &realtime.GameRequest{}
+			pbmsg = &ipc.GameRequest{}
 		case "GameHistoryRefresher":
-			pbmsg = &realtime.GameHistoryRefresher{}
+			pbmsg = &ipc.GameHistoryRefresher{}
 		case "ServerGameplayEvent":
-			pbmsg = &realtime.ServerGameplayEvent{}
+			pbmsg = &ipc.ServerGameplayEvent{}
 		case "FullTournamentDivisions":
-			pbmsg = &realtime.FullTournamentDivisions{}
+			pbmsg = &ipc.FullTournamentDivisions{}
 		default:
 			panic("message " + *messageName + " not handled")
 		}

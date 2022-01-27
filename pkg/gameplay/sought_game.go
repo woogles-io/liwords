@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 
 	"github.com/domino14/liwords/pkg/entity"
 )

@@ -20,15 +20,15 @@ import {
 import { useMountedState } from '../utils/mounted';
 import { ChallengeRulesFormItem } from '../lobby/challenge_rules_form_item';
 import { VariantIcon } from '../shared/variant_icons';
+import { LexiconFormItem } from '../shared/lexicon_display';
+import { SmileOutlined } from '@ant-design/icons';
+import { GameRequestToFormValues } from '../lobby/seek_form';
 import {
   GameMode,
   GameRequest,
   GameRules,
   RatingMode,
-} from '../gen/api/proto/realtime/realtime_pb';
-import { LexiconFormItem } from '../shared/lexicon_display';
-import { SmileOutlined } from '@ant-design/icons';
-import { GameRequestToFormValues } from '../lobby/seek_form';
+} from '../gen/api/proto/ipc/omgwords_pb';
 
 type Props = {
   setGameRequest: (gr: GameRequest) => void;

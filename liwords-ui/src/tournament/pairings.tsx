@@ -6,12 +6,13 @@ import {
   SinglePairing,
   TourneyStatus,
 } from '../store/reducers/tournament_reducer';
-import {
-  TournamentGameResult,
-  TournamentPerson,
-} from '../gen/api/proto/realtime/realtime_pb';
+
 import { useHistory } from 'react-router-dom';
 import { ReadyButton } from './ready_button';
+import {
+  TournamentPerson,
+  TournamentGameResult,
+} from '../gen/api/proto/ipc/tournament_pb';
 // import { PlayerTag } from './player_tags';
 
 const usernameFromPlayerEntry = (p: string) =>
