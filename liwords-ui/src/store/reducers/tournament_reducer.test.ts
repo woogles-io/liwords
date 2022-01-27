@@ -1,23 +1,5 @@
 import { ActionType } from '../../actions/actions';
 import {
-  DivisionControls,
-  DivisionControlsResponse,
-  DivisionRoundControls,
-  FirstMethod,
-  FullTournamentDivisions,
-  GameRequest,
-  GameRules,
-  Pairing,
-  PlayersAddedOrRemovedResponse,
-  RoundControl,
-  TournamentDivisionDataResponse,
-  TournamentGame,
-  TournamentGameResult,
-  TournamentPerson,
-  TournamentPersons,
-  TournamentRoundStarted,
-} from '../../gen/api/proto/realtime/realtime_pb';
-import {
   defaultTournamentState,
   TournamentReducer,
 } from './tournament_reducer';
@@ -27,6 +9,23 @@ import {
   TournamentMetadata,
   TType,
 } from '../../gen/api/proto/tournament_service/tournament_service_pb';
+import { GameRequest, GameRules } from '../../gen/api/proto/ipc/omgwords_pb';
+import {
+  FullTournamentDivisions,
+  TournamentRoundStarted,
+  TournamentDivisionDataResponse,
+  PlayersAddedOrRemovedResponse,
+  TournamentPersons,
+  TournamentPerson,
+  DivisionControls,
+  TournamentGameResult,
+  DivisionControlsResponse,
+  DivisionRoundControls,
+  RoundControl,
+  Pairing,
+  FirstMethod,
+  TournamentGame,
+} from '../../gen/api/proto/ipc/tournament_pb';
 
 const toArr = (s: string) => {
   const bytes = new Uint8Array(Math.ceil(s.length / 2));

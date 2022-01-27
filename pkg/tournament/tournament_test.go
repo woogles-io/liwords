@@ -18,7 +18,7 @@ import (
 	"github.com/domino14/liwords/pkg/stores/user"
 	"github.com/domino14/liwords/pkg/tournament"
 	pkguser "github.com/domino14/liwords/pkg/user"
-	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
+	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 	macondoconfig "github.com/domino14/macondo/config"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -27,16 +27,16 @@ import (
 var tournamentName = "testTournament"
 var TestDBHost = os.Getenv("TEST_DB_HOST")
 var TestingDBConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
-var gameReq = &realtime.GameRequest{Lexicon: "CSW21",
-	Rules: &realtime.GameRules{BoardLayoutName: entity.CrosswordGame,
+var gameReq = &ipc.GameRequest{Lexicon: "CSW21",
+	Rules: &ipc.GameRules{BoardLayoutName: entity.CrosswordGame,
 		LetterDistributionName: "English",
 		VariantName:            "classic"},
 
 	InitialTimeSeconds: 25 * 60,
 	IncrementSeconds:   0,
 	ChallengeRule:      macondopb.ChallengeRule_FIVE_POINT,
-	GameMode:           realtime.GameMode_REAL_TIME,
-	RatingMode:         realtime.RatingMode_RATED,
+	GameMode:           ipc.GameMode_REAL_TIME,
+	RatingMode:         ipc.RatingMode_RATED,
 	RequestId:          "yeet",
 	OriginalRequestId:  "originalyeet",
 	MaxOvertimeMinutes: 10}
@@ -109,33 +109,33 @@ func tournamentStore(dbURL string, gs gameplay.GameStore) (*config.Config, tourn
 	return cfg, tournamentStore
 }
 
-func makeRoundControls() []*realtime.RoundControl {
-	return []*realtime.RoundControl{{FirstMethod: realtime.FirstMethod_AUTOMATIC_FIRST,
-		PairingMethod:               realtime.PairingMethod_ROUND_ROBIN,
+func makeRoundControls() []*ipc.RoundControl {
+	return []*ipc.RoundControl{{FirstMethod: ipc.FirstMethod_AUTOMATIC_FIRST,
+		PairingMethod:               ipc.PairingMethod_ROUND_ROBIN,
 		GamesPerRound:               1,
 		Factor:                      1,
 		MaxRepeats:                  1,
 		AllowOverMaxRepeats:         true,
 		RepeatRelativeWeight:        1,
 		WinDifferenceRelativeWeight: 1},
-		{FirstMethod: realtime.FirstMethod_AUTOMATIC_FIRST,
-			PairingMethod:               realtime.PairingMethod_ROUND_ROBIN,
+		{FirstMethod: ipc.FirstMethod_AUTOMATIC_FIRST,
+			PairingMethod:               ipc.PairingMethod_ROUND_ROBIN,
 			GamesPerRound:               1,
 			Factor:                      1,
 			MaxRepeats:                  1,
 			AllowOverMaxRepeats:         true,
 			RepeatRelativeWeight:        1,
 			WinDifferenceRelativeWeight: 1},
-		{FirstMethod: realtime.FirstMethod_AUTOMATIC_FIRST,
-			PairingMethod:               realtime.PairingMethod_ROUND_ROBIN,
+		{FirstMethod: ipc.FirstMethod_AUTOMATIC_FIRST,
+			PairingMethod:               ipc.PairingMethod_ROUND_ROBIN,
 			GamesPerRound:               1,
 			Factor:                      1,
 			MaxRepeats:                  1,
 			AllowOverMaxRepeats:         true,
 			RepeatRelativeWeight:        1,
 			WinDifferenceRelativeWeight: 1},
-		{FirstMethod: realtime.FirstMethod_AUTOMATIC_FIRST,
-			PairingMethod:               realtime.PairingMethod_KING_OF_THE_HILL,
+		{FirstMethod: ipc.FirstMethod_AUTOMATIC_FIRST,
+			PairingMethod:               ipc.PairingMethod_KING_OF_THE_HILL,
 			GamesPerRound:               1,
 			Factor:                      1,
 			MaxRepeats:                  1,
@@ -144,14 +144,14 @@ func makeRoundControls() []*realtime.RoundControl {
 			WinDifferenceRelativeWeight: 1}}
 }
 
-func makeControls() *realtime.DivisionControls {
-	return &realtime.DivisionControls{
-		SuspendedResult: realtime.TournamentGameResult_BYE,
+func makeControls() *ipc.DivisionControls {
+	return &ipc.DivisionControls{
+		SuspendedResult: ipc.TournamentGameResult_BYE,
 		GameRequest:     gameReq,
 		AutoStart:       true}
 }
 
-func makeTournament(ctx context.Context, ts tournament.TournamentStore, cfg *config.Config, directors *realtime.TournamentPersons) (*entity.Tournament, error) {
+func makeTournament(ctx context.Context, ts tournament.TournamentStore, cfg *config.Config, directors *ipc.TournamentPersons) (*entity.Tournament, error) {
 	return tournament.NewTournament(ctx,
 		ts,
 		tournamentName,
@@ -163,10 +163,10 @@ func makeTournament(ctx context.Context, ts tournament.TournamentStore, cfg *con
 	)
 }
 
-func makeTournamentPersons(persons map[string]int32) *realtime.TournamentPersons {
-	tp := &realtime.TournamentPersons{}
+func makeTournamentPersons(persons map[string]int32) *ipc.TournamentPersons {
+	tp := &ipc.TournamentPersons{}
 	for key, value := range persons {
-		tp.Persons = append(tp.Persons, &realtime.TournamentPerson{Id: key, Rating: value})
+		tp.Persons = append(tp.Persons, &ipc.TournamentPerson{Id: key, Rating: value})
 	}
 	return tp
 }
@@ -268,12 +268,12 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	// Attempt to remove directors that don't exist
 	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Evans": -1, "Zoof": 2}))
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, tournamentName, "", "0", "Zoof:Zoof", "removeTournamentPersons").Error())
+	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, tournamentName, "", "0", "Zoof:Zoof", "removeTournamentPersons").Error())
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2, "Evans:Evans": 4, "Oof:Oof": 2, "Guy:Guy": 10, "Harry:Harry": 11}), ty.Directors))
 
 	// Attempt to remove the executive director
 	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Evans": -1, "Kieran": 0}))
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_REMOVAL, tournamentName, "", "Kieran:Kieran").Error())
+	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_REMOVAL, tournamentName, "", "Kieran:Kieran").Error())
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2, "Evans:Evans": 4, "Oof:Oof": 2, "Guy:Guy": 10, "Harry:Harry": 11}), ty.Directors))
 
 	// Remove directors
@@ -283,7 +283,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	// Attempt to remove the executive director
 	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Vince": -1, "Kieran": 0}))
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_REMOVAL, tournamentName, "", "Kieran:Kieran").Error())
+	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_REMOVAL, tournamentName, "", "Kieran:Kieran").Error())
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2}), ty.Directors))
 
 	// Same thing for players.
@@ -298,7 +298,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	// Add players to a division that doesn't exist
 	err = tournament.AddPlayers(ctx, tstore, us, ty.UUID, divOneName+"not quite", makeTournamentPersons(map[string]int32{"Noah": 4, "Bob": 2}))
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, tournamentName, divOneName+"not quite").Error())
+	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, tournamentName, divOneName+"not quite").Error())
 	XHRResponse, err = div1.DivisionManager.GetXHRResponse()
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Will:Will": 1000, "Josh:Josh": 3000, "Conrad:Conrad": 2200, "Jesse:Jesse": 2100}), XHRResponse.Players))
@@ -312,14 +312,14 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	// Remove players that don't exist
 	err = tournament.RemovePlayers(ctx, tstore, us, ty.UUID, divOneName, makeTournamentPersons(map[string]int32{"Evans": -1}))
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, tournamentName, divOneName, "0", "Evans:Evans", "removePlayers").Error())
+	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, tournamentName, divOneName, "0", "Evans:Evans", "removePlayers").Error())
 	XHRResponse, err = div1.DivisionManager.GetXHRResponse()
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Will:Will": 1000, "Josh:Josh": 3000, "Conrad:Conrad": 2200, "Jesse:Jesse": 2100, "Noah:Noah": 4, "Bob:Bob": 2}), XHRResponse.Players))
 
 	// Remove players from a division that doesn't exist
 	err = tournament.RemovePlayers(ctx, tstore, us, ty.UUID, divOneName+"hmm", makeTournamentPersons(map[string]int32{"Josh": -1, "Conrad": 2}))
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, tournamentName, divOneName+"hmm").Error())
+	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, tournamentName, divOneName+"hmm").Error())
 	XHRResponse, err = div1.DivisionManager.GetXHRResponse()
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Will:Will": 1000, "Josh:Josh": 3000, "Conrad:Conrad": 2200, "Jesse:Jesse": 2100, "Noah:Noah": 4, "Bob:Bob": 2}), XHRResponse.Players))
@@ -337,7 +337,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	// Set tournament controls for a division that does not exist
 	err = tournament.SetDivisionControls(ctx, tstore, ty.UUID, divOneName+" another one", makeControls())
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, tournamentName, divOneName+" another one").Error())
+	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, tournamentName, divOneName+" another one").Error())
 
 	// Set division round controls
 	err = tournament.SetRoundControls(ctx, tstore, ty.UUID, divOneName, makeRoundControls())
@@ -363,7 +363,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{}), XHRResponse.Players))
 
 	err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, pairings)
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, tournamentName, divOneName, "1", "Will:Will", "playerOne").Error())
+	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, tournamentName, divOneName, "1", "Will:Will", "playerOne").Error())
 
 	err = tournament.SetResult(ctx,
 		tstore,
@@ -374,15 +374,15 @@ func TestTournamentSingleDivision(t *testing.T) {
 		"Jesse:Jesse",
 		500,
 		400,
-		realtime.TournamentGameResult_WIN,
-		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD,
+		ipc.TournamentGameResult_WIN,
+		ipc.TournamentGameResult_LOSS,
+		ipc.GameEndReason_STANDARD,
 		0,
 		0,
 		false,
 		nil,
 	)
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NOT_STARTED, tournamentName, divOneName).Error())
+	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NOT_STARTED, tournamentName, divOneName).Error())
 
 	// Add players back in
 	players = makeTournamentPersons(map[string]int32{"Will": 1000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100})
@@ -399,11 +399,11 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	// Attempt to add a division after the tournament has started
 	err = tournament.AddDivision(ctx, tstore, ty.UUID, divOneName+" this time it's different")
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ADD_DIVISION_AFTER_START, tournamentName, divOneName+" this time it's different").Error())
+	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_ADD_DIVISION_AFTER_START, tournamentName, divOneName+" this time it's different").Error())
 
 	// Attempt to remove a division after the tournament has started
 	err = tournament.RemoveDivision(ctx, tstore, ty.UUID, divOneName)
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DIVISION_REMOVAL_AFTER_START, tournamentName, divOneName).Error())
+	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_DIVISION_REMOVAL_AFTER_START, tournamentName, divOneName).Error())
 
 	// Tournament pairings and results are tested in the
 	// entity package
@@ -414,7 +414,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	// Set pairings for division that does not exist
 	err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName+"yeet", pairings)
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, tournamentName, divOneName+"yeet").Error())
+	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, tournamentName, divOneName+"yeet").Error())
 
 	err = tournament.SetResult(ctx,
 		tstore,
@@ -425,9 +425,9 @@ func TestTournamentSingleDivision(t *testing.T) {
 		"Jesse",
 		500,
 		400,
-		realtime.TournamentGameResult_WIN,
-		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD,
+		ipc.TournamentGameResult_WIN,
+		ipc.TournamentGameResult_LOSS,
+		ipc.GameEndReason_STANDARD,
 		0,
 		0,
 		false,
@@ -444,14 +444,14 @@ func TestTournamentSingleDivision(t *testing.T) {
 		"Jesse",
 		500,
 		400,
-		realtime.TournamentGameResult_WIN,
-		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD,
+		ipc.TournamentGameResult_WIN,
+		ipc.TournamentGameResult_LOSS,
+		ipc.GameEndReason_STANDARD,
 		0,
 		0,
 		false,
 		nil)
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, tournamentName, divOneName+"big boi").Error())
+	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, tournamentName, divOneName+"big boi").Error())
 
 	isStarted, err = tournament.IsStarted(ctx, tstore, ty.UUID)
 	is.NoErr(err)
@@ -471,9 +471,9 @@ func TestTournamentSingleDivision(t *testing.T) {
 		"Conrad",
 		500,
 		400,
-		realtime.TournamentGameResult_WIN,
-		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD,
+		ipc.TournamentGameResult_WIN,
+		ipc.TournamentGameResult_LOSS,
+		ipc.GameEndReason_STANDARD,
 		0,
 		0,
 		false,
@@ -496,9 +496,9 @@ func TestTournamentSingleDivision(t *testing.T) {
 		"Jesse",
 		500,
 		400,
-		realtime.TournamentGameResult_WIN,
-		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD,
+		ipc.TournamentGameResult_WIN,
+		ipc.TournamentGameResult_LOSS,
+		ipc.GameEndReason_STANDARD,
 		1,
 		0,
 		false,
@@ -514,9 +514,9 @@ func TestTournamentSingleDivision(t *testing.T) {
 		"Conrad",
 		500,
 		400,
-		realtime.TournamentGameResult_WIN,
-		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD,
+		ipc.TournamentGameResult_WIN,
+		ipc.TournamentGameResult_LOSS,
+		ipc.GameEndReason_STANDARD,
 		1,
 		0,
 		false,
@@ -528,26 +528,26 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.True(isRoundComplete)
 
 	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, -1, true)
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, tournamentName, divOneName, "0", "3").Error())
+	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, tournamentName, divOneName, "0", "3").Error())
 
 	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 5, true)
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, tournamentName, divOneName, "6", "PairRound").Error())
+	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, tournamentName, divOneName, "6", "PairRound").Error())
 
 	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 0, true)
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, tournamentName, divOneName, "1", "3").Error())
+	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, tournamentName, divOneName, "1", "3").Error())
 
 	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 1, true)
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, tournamentName, divOneName, "2", "3").Error())
+	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, tournamentName, divOneName, "2", "3").Error())
 
 	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 2, true)
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, tournamentName, divOneName, "3", "3").Error())
+	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, tournamentName, divOneName, "3", "3").Error())
 
 	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 3, true)
 	is.NoErr(err)
 
 	// See if round is complete for division that does not exist
 	_, err = tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName+"yah", 0)
-	is.True(err.Error() == entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, tournamentName, divOneName+"yah").Error())
+	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, tournamentName, divOneName+"yah").Error())
 
 	isFinished, err := tournament.IsFinished(ctx, tstore, ty.UUID)
 	is.NoErr(err)
@@ -652,9 +652,9 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 		"Jesse",
 		500,
 		400,
-		realtime.TournamentGameResult_WIN,
-		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD,
+		ipc.TournamentGameResult_WIN,
+		ipc.TournamentGameResult_LOSS,
+		ipc.GameEndReason_STANDARD,
 		0,
 		0,
 		false,
@@ -670,9 +670,9 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 		"Guy",
 		500,
 		400,
-		realtime.TournamentGameResult_WIN,
-		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD,
+		ipc.TournamentGameResult_WIN,
+		ipc.TournamentGameResult_LOSS,
+		ipc.GameEndReason_STANDARD,
 		0,
 		0,
 		false,
@@ -688,9 +688,9 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 		"Josh",
 		500,
 		400,
-		realtime.TournamentGameResult_WIN,
-		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD,
+		ipc.TournamentGameResult_WIN,
+		ipc.TournamentGameResult_LOSS,
+		ipc.GameEndReason_STANDARD,
 		0,
 		0,
 		false,
@@ -706,9 +706,9 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 		"Dude",
 		500,
 		400,
-		realtime.TournamentGameResult_WIN,
-		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD,
+		ipc.TournamentGameResult_WIN,
+		ipc.TournamentGameResult_LOSS,
+		ipc.GameEndReason_STANDARD,
 		0,
 		0,
 		false,
@@ -728,7 +728,7 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 	gs.(*game.Cache).Disconnect()
 }
 
-func equalTournamentPersons(tp1 *realtime.TournamentPersons, tp2 *realtime.TournamentPersons) error {
+func equalTournamentPersons(tp1 *ipc.TournamentPersons, tp2 *ipc.TournamentPersons) error {
 	tp1String := tournamentPersonsToString(tp1)
 	tp2String := tournamentPersonsToString(tp2)
 
@@ -751,7 +751,7 @@ func equalTournamentPersons(tp1 *realtime.TournamentPersons, tp2 *realtime.Tourn
 	return nil
 }
 
-func tournamentPersonsToString(tp *realtime.TournamentPersons) string {
+func tournamentPersonsToString(tp *ipc.TournamentPersons) string {
 	s := "{"
 	for i := 0; i < len(tp.Persons); i++ {
 		s += fmt.Sprintf("%s: %d", tp.Persons[i].Id, tp.Persons[i].Rating)

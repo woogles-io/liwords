@@ -14,8 +14,7 @@ import (
 	"github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/tournament"
 	"github.com/domino14/liwords/pkg/user"
-	"github.com/domino14/liwords/rpc/api/proto/realtime"
-	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
@@ -185,7 +184,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 		if err != nil {
 			log.Err(err).Msg("error-tourney-game-ended")
 		}
-	} else if g.GameReq.RatingMode == realtime.RatingMode_RATED {
+	} else if g.GameReq.RatingMode == pb.RatingMode_RATED {
 		// Applies penalties to players who have misbehaved during the game
 		// Does not apply for tournament games
 		err = mod.Automod(ctx, userStore, notorietyStore, u0, u1, g)

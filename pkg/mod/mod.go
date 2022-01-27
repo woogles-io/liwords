@@ -14,7 +14,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/protobuf/proto"
 
-	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 

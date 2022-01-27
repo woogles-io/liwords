@@ -14,9 +14,8 @@ import (
 	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/user"
 	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
+	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
-	"github.com/domino14/liwords/rpc/api/proto/realtime"
-	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 
 	"github.com/domino14/macondo/game"
@@ -233,7 +232,7 @@ func publishSeek(ctx context.Context, b *Bus, sg *entity.SoughtGame, userID stri
 		if err != nil {
 			return err
 		}
-		return b.gameAccepted(ctx, &realtime.SoughtGameProcessEvent{RequestId: reqId}, userID, connID)
+		return b.gameAccepted(ctx, &pb.SoughtGameProcessEvent{RequestId: reqId}, userID, connID)
 	} else if sg.SeekRequest.ReceiverIsPermanent || sg.SeekRequest.ReceiverState != pb.SeekState_ABSENT {
 		log.Debug().Interface("sought-game", sg).Msg("processing seek as match")
 		// Update the current seek request

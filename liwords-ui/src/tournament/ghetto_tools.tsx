@@ -23,16 +23,6 @@ import { Store } from 'rc-field-form/lib/interface';
 import React, { useEffect } from 'react';
 import { postJsonObj, postProto } from '../api/api';
 import {
-  DivisionControls,
-  DivisionRoundControls,
-  FirstMethod,
-  GameRequest,
-  PairingMethod,
-  RoundControl,
-  TournamentGameResult,
-  TournamentGameResultMap,
-} from '../gen/api/proto/realtime/realtime_pb';
-import {
   SingleRoundControlsRequest,
   TournamentResponse,
 } from '../gen/api/proto/tournament_service/tournament_service_pb';
@@ -51,6 +41,16 @@ import {
   SingleRoundSetting,
 } from './pairing_methods';
 import { valueof } from '../store/constants';
+import {
+  TournamentGameResult,
+  TournamentGameResultMap,
+  DivisionControls,
+  PairingMethod,
+  RoundControl,
+  FirstMethod,
+  DivisionRoundControls,
+} from '../gen/api/proto/ipc/tournament_pb';
+import { GameRequest } from '../gen/api/proto/ipc/omgwords_pb';
 
 type ModalProps = {
   title: string;

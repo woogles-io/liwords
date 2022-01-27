@@ -26,13 +26,14 @@ import { PasswordChange } from './lobby/password_change';
 import { PasswordReset } from './lobby/password_reset';
 import { NewPassword } from './lobby/new_password';
 import { toAPIUrl } from './api/api';
-import { ChatMessage, MessageType } from './gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from './utils/protobuf';
 import { Clubs } from './clubs';
 import { TournamentRoom } from './tournament/room';
 import { Admin } from './admin/admin';
 import { DonateSuccess } from './donate_success';
 import { TermsOfService } from './about/termsOfService';
+import { ChatMessage } from './gen/api/proto/ipc/chat_pb';
+import { MessageType } from './gen/api/proto/ipc/ipc_pb';
 
 type Blocks = {
   user_ids: Array<string>;

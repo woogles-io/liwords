@@ -15,8 +15,10 @@ var jspb = require('google-protobuf');
 var goog = jspb;
 var global = Function('return this')();
 
-var api_proto_realtime_realtime_pb = require('../../../api/proto/realtime/realtime_pb.js');
-goog.object.extend(proto, api_proto_realtime_realtime_pb);
+var api_proto_ipc_omgwords_pb = require('../../../api/proto/ipc/omgwords_pb.js');
+goog.object.extend(proto, api_proto_ipc_omgwords_pb);
+var api_proto_ipc_tournament_pb = require('../../../api/proto/ipc/tournament_pb.js');
+goog.object.extend(proto, api_proto_ipc_tournament_pb);
 var google_protobuf_timestamp_pb = require('google-protobuf/google/protobuf/timestamp_pb.js');
 goog.object.extend(proto, google_protobuf_timestamp_pb);
 goog.exportSymbol('proto.tournament_service.CheckinRequest', null, global);
@@ -1075,7 +1077,7 @@ proto.tournament_service.TournamentMetadata.toObject = function(includeInstance,
     disclaimer: jspb.Message.getFieldWithDefault(msg, 6, ""),
     tileStyle: jspb.Message.getFieldWithDefault(msg, 7, ""),
     boardStyle: jspb.Message.getFieldWithDefault(msg, 8, ""),
-    defaultClubSettings: (f = msg.getDefaultClubSettings()) && api_proto_realtime_realtime_pb.GameRequest.toObject(includeInstance, f),
+    defaultClubSettings: (f = msg.getDefaultClubSettings()) && api_proto_ipc_omgwords_pb.GameRequest.toObject(includeInstance, f),
     freeformClubSettingFieldsList: (f = jspb.Message.getRepeatedField(msg, 10)) == null ? undefined : f,
     password: jspb.Message.getFieldWithDefault(msg, 11, ""),
     logo: jspb.Message.getFieldWithDefault(msg, 12, ""),
@@ -1150,8 +1152,8 @@ proto.tournament_service.TournamentMetadata.deserializeBinaryFromReader = functi
       msg.setBoardStyle(value);
       break;
     case 9:
-      var value = new api_proto_realtime_realtime_pb.GameRequest;
-      reader.readMessage(value,api_proto_realtime_realtime_pb.GameRequest.deserializeBinaryFromReader);
+      var value = new api_proto_ipc_omgwords_pb.GameRequest;
+      reader.readMessage(value,api_proto_ipc_omgwords_pb.GameRequest.deserializeBinaryFromReader);
       msg.setDefaultClubSettings(value);
       break;
     case 10:
@@ -1264,7 +1266,7 @@ proto.tournament_service.TournamentMetadata.serializeBinaryToWriter = function(m
     writer.writeMessage(
       9,
       f,
-      api_proto_realtime_realtime_pb.GameRequest.serializeBinaryToWriter
+      api_proto_ipc_omgwords_pb.GameRequest.serializeBinaryToWriter
     );
   }
   f = message.getFreeformClubSettingFieldsList();
@@ -1450,17 +1452,17 @@ proto.tournament_service.TournamentMetadata.prototype.setBoardStyle = function(v
 
 
 /**
- * optional liwords.GameRequest default_club_settings = 9;
- * @return {?proto.liwords.GameRequest}
+ * optional ipc.GameRequest default_club_settings = 9;
+ * @return {?proto.ipc.GameRequest}
  */
 proto.tournament_service.TournamentMetadata.prototype.getDefaultClubSettings = function() {
-  return /** @type{?proto.liwords.GameRequest} */ (
-    jspb.Message.getWrapperField(this, api_proto_realtime_realtime_pb.GameRequest, 9));
+  return /** @type{?proto.ipc.GameRequest} */ (
+    jspb.Message.getWrapperField(this, api_proto_ipc_omgwords_pb.GameRequest, 9));
 };
 
 
 /**
- * @param {?proto.liwords.GameRequest|undefined} value
+ * @param {?proto.ipc.GameRequest|undefined} value
  * @return {!proto.tournament_service.TournamentMetadata} returns this
 */
 proto.tournament_service.TournamentMetadata.prototype.setDefaultClubSettings = function(value) {
@@ -1781,7 +1783,7 @@ proto.tournament_service.SingleRoundControlsRequest.toObject = function(includeI
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     division: jspb.Message.getFieldWithDefault(msg, 2, ""),
     round: jspb.Message.getFieldWithDefault(msg, 3, 0),
-    roundControls: (f = msg.getRoundControls()) && api_proto_realtime_realtime_pb.RoundControl.toObject(includeInstance, f)
+    roundControls: (f = msg.getRoundControls()) && api_proto_ipc_tournament_pb.RoundControl.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -1831,8 +1833,8 @@ proto.tournament_service.SingleRoundControlsRequest.deserializeBinaryFromReader 
       msg.setRound(value);
       break;
     case 4:
-      var value = new api_proto_realtime_realtime_pb.RoundControl;
-      reader.readMessage(value,api_proto_realtime_realtime_pb.RoundControl.deserializeBinaryFromReader);
+      var value = new api_proto_ipc_tournament_pb.RoundControl;
+      reader.readMessage(value,api_proto_ipc_tournament_pb.RoundControl.deserializeBinaryFromReader);
       msg.setRoundControls(value);
       break;
     default:
@@ -1890,7 +1892,7 @@ proto.tournament_service.SingleRoundControlsRequest.serializeBinaryToWriter = fu
     writer.writeMessage(
       4,
       f,
-      api_proto_realtime_realtime_pb.RoundControl.serializeBinaryToWriter
+      api_proto_ipc_tournament_pb.RoundControl.serializeBinaryToWriter
     );
   }
 };
@@ -1951,17 +1953,17 @@ proto.tournament_service.SingleRoundControlsRequest.prototype.setRound = functio
 
 
 /**
- * optional liwords.RoundControl round_controls = 4;
- * @return {?proto.liwords.RoundControl}
+ * optional ipc.RoundControl round_controls = 4;
+ * @return {?proto.ipc.RoundControl}
  */
 proto.tournament_service.SingleRoundControlsRequest.prototype.getRoundControls = function() {
-  return /** @type{?proto.liwords.RoundControl} */ (
-    jspb.Message.getWrapperField(this, api_proto_realtime_realtime_pb.RoundControl, 4));
+  return /** @type{?proto.ipc.RoundControl} */ (
+    jspb.Message.getWrapperField(this, api_proto_ipc_tournament_pb.RoundControl, 4));
 };
 
 
 /**
- * @param {?proto.liwords.RoundControl|undefined} value
+ * @param {?proto.ipc.RoundControl|undefined} value
  * @return {!proto.tournament_service.SingleRoundControlsRequest} returns this
 */
 proto.tournament_service.SingleRoundControlsRequest.prototype.setRoundControls = function(value) {
@@ -2482,7 +2484,7 @@ proto.tournament_service.TournamentPairingRequest.deserializeBinaryFromReader = 
       msg.setRound(value);
       break;
     case 4:
-      var value = /** @type {!proto.liwords.TournamentGameResult} */ (reader.readEnum());
+      var value = /** @type {!proto.ipc.TournamentGameResult} */ (reader.readEnum());
       msg.setSelfPlayResult(value);
       break;
     default:
@@ -2600,16 +2602,16 @@ proto.tournament_service.TournamentPairingRequest.prototype.setRound = function(
 
 
 /**
- * optional liwords.TournamentGameResult self_play_result = 4;
- * @return {!proto.liwords.TournamentGameResult}
+ * optional ipc.TournamentGameResult self_play_result = 4;
+ * @return {!proto.ipc.TournamentGameResult}
  */
 proto.tournament_service.TournamentPairingRequest.prototype.getSelfPlayResult = function() {
-  return /** @type {!proto.liwords.TournamentGameResult} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
+  return /** @type {!proto.ipc.TournamentGameResult} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
 };
 
 
 /**
- * @param {!proto.liwords.TournamentGameResult} value
+ * @param {!proto.ipc.TournamentGameResult} value
  * @return {!proto.tournament_service.TournamentPairingRequest} returns this
  */
 proto.tournament_service.TournamentPairingRequest.prototype.setSelfPlayResult = function(value) {
@@ -2946,15 +2948,15 @@ proto.tournament_service.TournamentResultOverrideRequest.deserializeBinaryFromRe
       msg.setPlayerTwoScore(value);
       break;
     case 8:
-      var value = /** @type {!proto.liwords.TournamentGameResult} */ (reader.readEnum());
+      var value = /** @type {!proto.ipc.TournamentGameResult} */ (reader.readEnum());
       msg.setPlayerOneResult(value);
       break;
     case 9:
-      var value = /** @type {!proto.liwords.TournamentGameResult} */ (reader.readEnum());
+      var value = /** @type {!proto.ipc.TournamentGameResult} */ (reader.readEnum());
       msg.setPlayerTwoResult(value);
       break;
     case 10:
-      var value = /** @type {!proto.liwords.GameEndReason} */ (reader.readEnum());
+      var value = /** @type {!proto.ipc.GameEndReason} */ (reader.readEnum());
       msg.setGameEndReason(value);
       break;
     case 11:
@@ -3208,16 +3210,16 @@ proto.tournament_service.TournamentResultOverrideRequest.prototype.setPlayerTwoS
 
 
 /**
- * optional liwords.TournamentGameResult player_one_result = 8;
- * @return {!proto.liwords.TournamentGameResult}
+ * optional ipc.TournamentGameResult player_one_result = 8;
+ * @return {!proto.ipc.TournamentGameResult}
  */
 proto.tournament_service.TournamentResultOverrideRequest.prototype.getPlayerOneResult = function() {
-  return /** @type {!proto.liwords.TournamentGameResult} */ (jspb.Message.getFieldWithDefault(this, 8, 0));
+  return /** @type {!proto.ipc.TournamentGameResult} */ (jspb.Message.getFieldWithDefault(this, 8, 0));
 };
 
 
 /**
- * @param {!proto.liwords.TournamentGameResult} value
+ * @param {!proto.ipc.TournamentGameResult} value
  * @return {!proto.tournament_service.TournamentResultOverrideRequest} returns this
  */
 proto.tournament_service.TournamentResultOverrideRequest.prototype.setPlayerOneResult = function(value) {
@@ -3226,16 +3228,16 @@ proto.tournament_service.TournamentResultOverrideRequest.prototype.setPlayerOneR
 
 
 /**
- * optional liwords.TournamentGameResult player_two_result = 9;
- * @return {!proto.liwords.TournamentGameResult}
+ * optional ipc.TournamentGameResult player_two_result = 9;
+ * @return {!proto.ipc.TournamentGameResult}
  */
 proto.tournament_service.TournamentResultOverrideRequest.prototype.getPlayerTwoResult = function() {
-  return /** @type {!proto.liwords.TournamentGameResult} */ (jspb.Message.getFieldWithDefault(this, 9, 0));
+  return /** @type {!proto.ipc.TournamentGameResult} */ (jspb.Message.getFieldWithDefault(this, 9, 0));
 };
 
 
 /**
- * @param {!proto.liwords.TournamentGameResult} value
+ * @param {!proto.ipc.TournamentGameResult} value
  * @return {!proto.tournament_service.TournamentResultOverrideRequest} returns this
  */
 proto.tournament_service.TournamentResultOverrideRequest.prototype.setPlayerTwoResult = function(value) {
@@ -3244,16 +3246,16 @@ proto.tournament_service.TournamentResultOverrideRequest.prototype.setPlayerTwoR
 
 
 /**
- * optional liwords.GameEndReason game_end_reason = 10;
- * @return {!proto.liwords.GameEndReason}
+ * optional ipc.GameEndReason game_end_reason = 10;
+ * @return {!proto.ipc.GameEndReason}
  */
 proto.tournament_service.TournamentResultOverrideRequest.prototype.getGameEndReason = function() {
-  return /** @type {!proto.liwords.GameEndReason} */ (jspb.Message.getFieldWithDefault(this, 10, 0));
+  return /** @type {!proto.ipc.GameEndReason} */ (jspb.Message.getFieldWithDefault(this, 10, 0));
 };
 
 
 /**
- * @param {!proto.liwords.GameEndReason} value
+ * @param {!proto.ipc.GameEndReason} value
  * @return {!proto.tournament_service.TournamentResultOverrideRequest} returns this
  */
 proto.tournament_service.TournamentResultOverrideRequest.prototype.setGameEndReason = function(value) {
@@ -4635,7 +4637,7 @@ proto.tournament_service.RecentGamesResponse.prototype.toObject = function(opt_i
 proto.tournament_service.RecentGamesResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     gamesList: jspb.Message.toObjectList(msg.getGamesList(),
-    api_proto_realtime_realtime_pb.TournamentGameEndedEvent.toObject, includeInstance)
+    api_proto_ipc_tournament_pb.TournamentGameEndedEvent.toObject, includeInstance)
   };
 
   if (includeInstance) {
@@ -4673,8 +4675,8 @@ proto.tournament_service.RecentGamesResponse.deserializeBinaryFromReader = funct
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = new api_proto_realtime_realtime_pb.TournamentGameEndedEvent;
-      reader.readMessage(value,api_proto_realtime_realtime_pb.TournamentGameEndedEvent.deserializeBinaryFromReader);
+      var value = new api_proto_ipc_tournament_pb.TournamentGameEndedEvent;
+      reader.readMessage(value,api_proto_ipc_tournament_pb.TournamentGameEndedEvent.deserializeBinaryFromReader);
       msg.addGames(value);
       break;
     default:
@@ -4711,24 +4713,24 @@ proto.tournament_service.RecentGamesResponse.serializeBinaryToWriter = function(
     writer.writeRepeatedMessage(
       1,
       f,
-      api_proto_realtime_realtime_pb.TournamentGameEndedEvent.serializeBinaryToWriter
+      api_proto_ipc_tournament_pb.TournamentGameEndedEvent.serializeBinaryToWriter
     );
   }
 };
 
 
 /**
- * repeated liwords.TournamentGameEndedEvent games = 1;
- * @return {!Array<!proto.liwords.TournamentGameEndedEvent>}
+ * repeated ipc.TournamentGameEndedEvent games = 1;
+ * @return {!Array<!proto.ipc.TournamentGameEndedEvent>}
  */
 proto.tournament_service.RecentGamesResponse.prototype.getGamesList = function() {
-  return /** @type{!Array<!proto.liwords.TournamentGameEndedEvent>} */ (
-    jspb.Message.getRepeatedWrapperField(this, api_proto_realtime_realtime_pb.TournamentGameEndedEvent, 1));
+  return /** @type{!Array<!proto.ipc.TournamentGameEndedEvent>} */ (
+    jspb.Message.getRepeatedWrapperField(this, api_proto_ipc_tournament_pb.TournamentGameEndedEvent, 1));
 };
 
 
 /**
- * @param {!Array<!proto.liwords.TournamentGameEndedEvent>} value
+ * @param {!Array<!proto.ipc.TournamentGameEndedEvent>} value
  * @return {!proto.tournament_service.RecentGamesResponse} returns this
 */
 proto.tournament_service.RecentGamesResponse.prototype.setGamesList = function(value) {
@@ -4737,12 +4739,12 @@ proto.tournament_service.RecentGamesResponse.prototype.setGamesList = function(v
 
 
 /**
- * @param {!proto.liwords.TournamentGameEndedEvent=} opt_value
+ * @param {!proto.ipc.TournamentGameEndedEvent=} opt_value
  * @param {number=} opt_index
- * @return {!proto.liwords.TournamentGameEndedEvent}
+ * @return {!proto.ipc.TournamentGameEndedEvent}
  */
 proto.tournament_service.RecentGamesResponse.prototype.addGames = function(opt_value, opt_index) {
-  return jspb.Message.addToRepeatedWrapperField(this, 1, opt_value, proto.liwords.TournamentGameEndedEvent, opt_index);
+  return jspb.Message.addToRepeatedWrapperField(this, 1, opt_value, proto.ipc.TournamentGameEndedEvent, opt_index);
 };
 
 

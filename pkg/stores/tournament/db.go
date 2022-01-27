@@ -15,7 +15,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
 	tl "github.com/domino14/liwords/pkg/tournament"
-	"github.com/domino14/liwords/rpc/api/proto/realtime"
+	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 )
 
@@ -88,7 +88,7 @@ func (s *DBStore) dbObjToEntity(tm *tournament) (*entity.Tournament, error) {
 		}
 	}
 
-	var directors realtime.TournamentPersons
+	var directors ipc.TournamentPersons
 	err = json.Unmarshal(tm.Directors, &directors)
 	if err != nil {
 		return nil, err
@@ -232,27 +232,27 @@ func (s *DBStore) GetRecentGames(ctx context.Context, tourneyID string, numGames
 		return nil, err
 	}
 
-	evts := []*realtime.TournamentGameEndedEvent{}
+	evts := []*ipc.TournamentGameEndedEvent{}
 	for _, info := range infos.GameInfo {
 
-		var res1, res2 realtime.TournamentGameResult
+		var res1, res2 ipc.TournamentGameResult
 		switch info.Winner {
 		case -1:
-			res1 = realtime.TournamentGameResult_DRAW
-			res2 = realtime.TournamentGameResult_DRAW
+			res1 = ipc.TournamentGameResult_DRAW
+			res2 = ipc.TournamentGameResult_DRAW
 		case 0:
-			res1 = realtime.TournamentGameResult_WIN
-			res2 = realtime.TournamentGameResult_LOSS
+			res1 = ipc.TournamentGameResult_WIN
+			res2 = ipc.TournamentGameResult_LOSS
 		case 1:
-			res1 = realtime.TournamentGameResult_LOSS
-			res2 = realtime.TournamentGameResult_WIN
+			res1 = ipc.TournamentGameResult_LOSS
+			res2 = ipc.TournamentGameResult_WIN
 		}
 		if len(info.Scores) != 2 {
 			log.Error().Str("tourneyID", tourneyID).Str("gameID", info.GameId).
 				Msg("corrupted-recent-tourney-game")
 			continue
 		}
-		players := []*realtime.TournamentGameEndedEvent_Player{
+		players := []*ipc.TournamentGameEndedEvent_Player{
 			{Username: info.Players[0].Nickname, Score: info.Scores[0], Result: res1},
 			{Username: info.Players[1].Nickname, Score: info.Scores[1], Result: res2},
 		}
@@ -260,7 +260,7 @@ func (s *DBStore) GetRecentGames(ctx context.Context, tourneyID string, numGames
 			players[0], players[1] = players[1], players[0]
 		}
 
-		evt := &realtime.TournamentGameEndedEvent{
+		evt := &ipc.TournamentGameEndedEvent{
 			Players:   players,
 			GameId:    info.GameId,
 			EndReason: info.GameEndReason,

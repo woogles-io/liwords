@@ -2,7 +2,7 @@
 // file: api/proto/user_service/user_service.proto
 
 import * as jspb from "google-protobuf";
-import * as api_proto_realtime_realtime_pb from "../../../api/proto/realtime/realtime_pb";
+import * as api_proto_ipc_chat_pb from "../../../api/proto/ipc/chat_pb";
 
 export class UserLoginRequest extends jspb.Message {
   getUsername(): string;

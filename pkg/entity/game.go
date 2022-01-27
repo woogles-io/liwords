@@ -5,7 +5,7 @@ import (
 	"time"
 
 	gameservicepb "github.com/domino14/liwords/rpc/api/proto/game_service"
-	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"

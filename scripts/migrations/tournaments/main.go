@@ -15,7 +15,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
+	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 
@@ -27,7 +27,7 @@ import (
 	pkgtournament "github.com/domino14/liwords/pkg/tournament"
 )
 
-// Legacy realtime types that have probably since changed are
+// Legacy ipc types that have probably since changed are
 // copied here so we don't have to think about conflicts
 
 type OldTournamentPersons struct {
@@ -45,10 +45,10 @@ type OldPlayerRoundInfo struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Players     []string                        `protobuf:"bytes,1,rep,name=players,proto3" json:"players,omitempty"`
-	Games       []*realtime.TournamentGame      `protobuf:"bytes,2,rep,name=games,proto3" json:"games,omitempty"` // can be a list, for elimination tourneys
-	Outcomes    []realtime.TournamentGameResult `protobuf:"varint,3,rep,packed,name=outcomes,proto3,enum=liwords.TournamentGameResult" json:"outcomes,omitempty"`
-	ReadyStates []string                        `protobuf:"bytes,4,rep,name=ready_states,json=readyStates,proto3" json:"ready_states,omitempty"`
+	Players     []string                   `protobuf:"bytes,1,rep,name=players,proto3" json:"players,omitempty"`
+	Games       []*ipc.TournamentGame      `protobuf:"bytes,2,rep,name=games,proto3" json:"games,omitempty"` // can be a list, for elimination tourneys
+	Outcomes    []ipc.TournamentGameResult `protobuf:"varint,3,rep,packed,name=outcomes,proto3,enum=liwords.TournamentGameResult" json:"outcomes,omitempty"`
+	ReadyStates []string                   `protobuf:"bytes,4,rep,name=ready_states,json=readyStates,proto3" json:"ready_states,omitempty"`
 }
 
 type OldPlayerProperties struct {
@@ -122,13 +122,13 @@ type OldTournamentControls struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id            string                   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Division      string                   `protobuf:"bytes,2,opt,name=division,proto3" json:"division,omitempty"`
-	GameRequest   *realtime.GameRequest    `protobuf:"bytes,3,opt,name=game_request,json=gameRequest,proto3" json:"game_request,omitempty"`
-	RoundControls []*realtime.RoundControl `protobuf:"bytes,4,rep,name=round_controls,json=roundControls,proto3" json:"round_controls,omitempty"`
-	Type          int32                    `protobuf:"varint,5,opt,name=type,proto3" json:"type,omitempty"`
-	StartTime     *timestamppb.Timestamp   `protobuf:"bytes,6,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
-	AutoStart     bool                     `protobuf:"varint,7,opt,name=auto_start,json=autoStart,proto3" json:"auto_start,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Division      string                 `protobuf:"bytes,2,opt,name=division,proto3" json:"division,omitempty"`
+	GameRequest   *ipc.GameRequest       `protobuf:"bytes,3,opt,name=game_request,json=gameRequest,proto3" json:"game_request,omitempty"`
+	RoundControls []*ipc.RoundControl    `protobuf:"bytes,4,rep,name=round_controls,json=roundControls,proto3" json:"round_controls,omitempty"`
+	Type          int32                  `protobuf:"varint,5,opt,name=type,proto3" json:"type,omitempty"`
+	StartTime     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
+	AutoStart     bool                   `protobuf:"varint,7,opt,name=auto_start,json=autoStart,proto3" json:"auto_start,omitempty"`
 }
 
 // Legacy types that need to be migrated
@@ -140,7 +140,7 @@ type OldClassicDivision struct {
 	Players           []string                          `json:"players"`
 	PlayersProperties []OldPlayerProperties             `json:"playerProperties"`
 	PlayerIndexMap    map[string]int32                  `json:"pidxMap"`
-	RoundControls     []*realtime.RoundControl          `json:"roundCtrls"`
+	RoundControls     []*ipc.RoundControl               `json:"roundCtrls"`
 	CurrentRound      int                               `json:"currentRound"`
 	AutoStart         bool                              `json:"autoStart"`
 	LastStarted       OldTournamentRoundStarted         `json:"lastStarted"`
@@ -396,9 +396,9 @@ func main() {
 
 			// Do some conversions here
 
-			newDirectors := &realtime.TournamentPersons{Persons: []*realtime.TournamentPerson{}}
+			newDirectors := &ipc.TournamentPersons{Persons: []*ipc.TournamentPerson{}}
 			for oldDirector, key := range oldTournament.Directors.Persons {
-				newDirectors.Persons = append(newDirectors.Persons, &realtime.TournamentPerson{Id: oldDirector, Rating: key, Suspended: false})
+				newDirectors.Persons = append(newDirectors.Persons, &ipc.TournamentPerson{Id: oldDirector, Rating: key, Suspended: false})
 			}
 
 			newDivisions := make(map[string]*entity.TournamentDivision)
@@ -411,7 +411,7 @@ func main() {
 				newClassicDivision.PlayerIndexMap = oldDivision.DivisionManager.PlayerIndexMap
 				newClassicDivision.RoundControls = oldDivision.DivisionManager.RoundControls
 				newClassicDivision.DivisionControls.GameRequest = oldDivision.Controls.GameRequest
-				newClassicDivision.DivisionControls.SuspendedResult = realtime.TournamentGameResult_FORFEIT_LOSS
+				newClassicDivision.DivisionControls.SuspendedResult = ipc.TournamentGameResult_FORFEIT_LOSS
 				newClassicDivision.DivisionControls.SuspendedSpread = -50
 				newClassicDivision.DivisionControls.AutoStart = oldDivision.Controls.AutoStart
 
@@ -419,7 +419,7 @@ func main() {
 					playerIndex := newClassicDivision.PlayerIndexMap[player]
 					newClassicDivision.Players.Persons =
 						append(newClassicDivision.Players.Persons,
-							&realtime.TournamentPerson{
+							&ipc.TournamentPerson{
 								Id:        player,
 								Rating:    oldDivision.DivisionManager.PlayersProperties[playerIndex].Rating,
 								Suspended: oldDivision.DivisionManager.PlayersProperties[playerIndex].Removed,
@@ -430,7 +430,7 @@ func main() {
 					for _, pairingKey := range pairings {
 						oldPairing, ok := oldDivision.DivisionManager.PairingMap[pairingKey]
 						if ok {
-							newClassicDivision.PairingMap[pairingKey] = &realtime.Pairing{
+							newClassicDivision.PairingMap[pairingKey] = &ipc.Pairing{
 								Players: []int32{
 									newClassicDivision.PlayerIndexMap[oldPairing.Players[0]],
 									newClassicDivision.PlayerIndexMap[oldPairing.Players[1]],

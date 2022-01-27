@@ -1,0 +1,224 @@
+
+syntax = "proto3";
+package ipc;
+option go_package = "github.com/domino14/liwords/rpc/api/proto/ipc";
+
+import "google/protobuf/timestamp.proto";
+import "api/proto/ipc/omgwords.proto";
+
+// TournamentGameEndedEvent gets sent to a tournament channel when a game is
+// over. This is a legacy way of showing tournament results right in the
+// tournament lobby in real time, and it is used for clubhouse mode.enum
+
+// New tournaments will use full tournament
+// messages (specifically, TournamentDivisionDataResponse et al).
+// This event is also used in the tournament_service's RecentGamesResponse,
+// which can be used to fetch information for the last games played in
+// a tournament.
+message TournamentGameEndedEvent {
+
+  message Player {
+    string username = 1;
+    int32 score = 2;
+    TournamentGameResult result = 3;
+  }
+
+  string game_id = 1;
+  repeated Player players = 2;
+  GameEndReason end_reason = 3;
+  // Time that the game ended
+  int64 time = 4;
+  int32 round = 5;
+  string division = 6;
+  int32 game_index = 7;
+}
+
+// This message makes the "Status Bar" show up and also tells the players
+// that the backend is now accepting "ready" messages for this round.
+message TournamentRoundStarted {
+  string tournament_id = 1;
+  string division = 2;
+  int32 round = 3;
+  int32 game_index = 4; // for matchplay type rounds etc.
+  google.protobuf.Timestamp deadline = 5;
+}
+
+// This can be sent from the user to the tournament or vice-versa.
+message ReadyForTournamentGame {
+  string tournament_id = 1;
+  string division = 2;
+  int32 round = 3;
+  string player_id = 4;
+  int32 game_index = 5; // within a matchplay type tournament where several
+                        // games share a round.
+  bool unready = 6;     // if true, this is a NOT-ready message.
+}
+
+enum TournamentGameResult {
+  // NO_RESULT: the game is not over
+  NO_RESULT = 0;
+  WIN = 1;
+  LOSS = 2;
+  DRAW = 3;
+  BYE = 4;
+  FORFEIT_WIN = 5;
+  FORFEIT_LOSS = 6;
+  // ELIMINATED: player is eliminated in a bracket tournament
+  ELIMINATED = 7;
+  // VOID: player never played this round and should neither be assigned
+  // a win nor a loss. Useful for club-type games.
+  VOID = 8;
+}
+
+enum PairingMethod {
+  RANDOM = 0;
+  ROUND_ROBIN = 1;
+  KING_OF_THE_HILL = 2;
+  ELIMINATION = 3;
+  FACTOR = 4;
+  INITIAL_FONTES = 5;
+  SWISS = 6;
+  QUICKPAIR = 7;
+  MANUAL = 8;
+  TEAM_ROUND_ROBIN = 9;
+}
+
+enum FirstMethod {
+  MANUAL_FIRST = 0;
+  RANDOM_FIRST = 1;
+  AUTOMATIC_FIRST = 2;
+}
+
+message TournamentPerson {
+  string id = 1;
+  int32 rating = 2;
+  bool suspended = 3;
+}
+
+message TournamentPersons {
+  string id = 1;
+  string division = 2;
+  repeated TournamentPerson persons = 3;
+}
+
+message RoundControl {
+  PairingMethod pairing_method = 1;
+  FirstMethod first_method = 2;
+  int32 games_per_round = 3;
+  int32 round = 4;
+  int32 factor = 5;
+  int32 initial_fontes = 6;
+  int32 max_repeats = 7;
+  bool allow_over_max_repeats = 8;
+  int32 repeat_relative_weight = 9;
+  int32 win_difference_relative_weight = 10;
+}
+
+message DivisionControls {
+  string id = 1;
+  string division = 2;
+  GameRequest game_request = 3;
+  TournamentGameResult suspended_result = 4;
+  int32 suspended_spread = 5;
+  bool auto_start = 6;
+  int32 spread_cap = 7;
+  bool gibsonize = 8;
+  int32 gibson_spread = 9;
+  int32 minimum_placement = 10;
+  int32 maximum_bye_placement = 11;
+}
+
+message TournamentGame {
+  repeated int32 scores = 1;
+  repeated TournamentGameResult results = 2;
+  GameEndReason game_end_reason = 3;
+  string id = 4;
+}
+
+message Pairing {
+  repeated int32 players = 1;
+  int32 round = 2;
+  repeated TournamentGame games = 3; // can be a list, for elimination tourneys
+  repeated TournamentGameResult outcomes = 4;
+  repeated string ready_states = 5;
+}
+
+message PlayerStanding {
+  string player_id = 1;
+  int32 wins = 2;
+  int32 losses = 3;
+  int32 draws = 4;
+  int32 spread = 5;
+  bool gibsonized = 6;
+}
+
+message RoundStandings { repeated PlayerStanding standings = 1; }
+
+message DivisionPairingsResponse {
+  string id = 1;
+  string division = 2;
+  repeated Pairing division_pairings = 3;
+  map<int32, RoundStandings> division_standings = 4;
+}
+
+message DivisionPairingsDeletedResponse {
+  string id = 1;
+  string division = 2;
+  int32 round = 3;
+}
+
+message PlayersAddedOrRemovedResponse {
+  string id = 1;
+  string division = 2;
+  TournamentPersons players = 3;
+  repeated Pairing division_pairings = 4;
+  map<int32, RoundStandings> division_standings = 5;
+}
+
+message DivisionRoundControls {
+  string id = 1;
+  string division = 2;
+  repeated RoundControl round_controls = 3;
+  repeated Pairing division_pairings = 4;
+  map<int32, RoundStandings> division_standings = 5;
+}
+
+message DivisionControlsResponse {
+  string id = 1;
+  string division = 2;
+  DivisionControls division_controls = 3;
+  map<int32, RoundStandings> division_standings = 4;
+}
+
+message TournamentDivisionDataResponse {
+  string id = 1;
+  string division = 2;
+  TournamentPersons players = 3;
+  map<int32, RoundStandings> standings = 4;
+  map<string, Pairing> pairing_map = 5;
+  DivisionControls controls = 6;
+  repeated RoundControl round_controls = 7;
+  int32 current_round = 8;
+}
+
+message FullTournamentDivisions {
+  map<string, TournamentDivisionDataResponse> divisions = 1;
+  bool started = 2;
+}
+
+message TournamentFinishedResponse { string id = 1; }
+
+message TournamentDataResponse {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string executive_director = 4;
+  TournamentPersons directors = 5;
+  bool is_started = 6;
+  google.protobuf.Timestamp start_time = 7;
+}
+
+message TournamentDivisionDeletedResponse {
+  string id = 1;
+  string division = 2;
+}
