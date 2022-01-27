@@ -1,8 +1,8 @@
 import { EphemeralTile, Direction, Blank } from './common';
-import { ClientGameplayEvent } from '../../gen/api/proto/realtime/realtime_pb';
 import { contiguousTilesFromTileSet } from './scoring';
 import { Board } from './board';
 import { GameEvent } from '../../gen/macondo/api/proto/macondo/macondo_pb';
+import { ClientGameplayEvent } from '../../gen/api/proto/ipc/omgwords_pb';
 
 export const ThroughTileMarker = '.';
 // convert a set of ephemeral tiles to a protobuf game event.

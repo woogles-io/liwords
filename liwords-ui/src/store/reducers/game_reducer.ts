@@ -7,11 +7,6 @@ import {
 } from '../../gen/macondo/api/proto/macondo/macondo_pb';
 import { Action, ActionType } from '../../actions/actions';
 import {
-  ServerGameplayEvent,
-  GameHistoryRefresher,
-  GameEndedEvent,
-} from '../../gen/api/proto/realtime/realtime_pb';
-import {
   Direction,
   isBlank,
   Blank,
@@ -26,6 +21,11 @@ import {
   alphabetFromName,
   StandardEnglishAlphabet,
 } from '../../constants/alphabets';
+import {
+  GameEndedEvent,
+  GameHistoryRefresher,
+  ServerGameplayEvent,
+} from '../../gen/api/proto/ipc/omgwords_pb';
 
 type TileDistribution = { [rune: string]: number };
 

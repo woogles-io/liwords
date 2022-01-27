@@ -1,29 +1,29 @@
 import * as jspb from 'google-protobuf';
 
 import { Action, ActionType } from '../../actions/actions';
+import { MessageType } from '../../gen/api/proto/ipc/ipc_pb';
+import { GameEndReasonMap } from '../../gen/api/proto/ipc/omgwords_pb';
 import {
+  DivisionControls,
+  DivisionControlsResponse,
+  DivisionPairingsDeletedResponse,
+  DivisionPairingsResponse,
+  DivisionRoundControls,
   FullTournamentDivisions,
-  GameEndReasonMap,
-  MessageType,
+  Pairing,
+  PlayersAddedOrRemovedResponse,
   ReadyForTournamentGame,
+  RoundControl,
   RoundStandings,
   TournamentDivisionDataResponse,
-  DivisionPairingsResponse,
-  DivisionPairingsDeletedResponse,
-  PlayersAddedOrRemovedResponse,
-  DivisionControlsResponse,
-  DivisionRoundControls,
-  // TournamentFinishedResponse,
-  DivisionControls,
-  RoundControl,
-  Pairing,
-  TournamentPerson,
+  TournamentDivisionDeletedResponse,
   TournamentGameEndedEvent,
   TournamentGameResult,
   TournamentGameResultMap,
+  TournamentPerson,
   TournamentRoundStarted,
-  TournamentDivisionDeletedResponse,
-} from '../../gen/api/proto/realtime/realtime_pb';
+} from '../../gen/api/proto/ipc/tournament_pb';
+
 import {
   TournamentMetadata,
   TType,
