@@ -12,7 +12,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
-	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
+	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/macondo/alphabet"
 	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/domino14/macondo/gaddag"
@@ -80,7 +80,7 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 
 	isBotGame := u0.IsBot || u1.IsBot
 
-	if (g.GameEndReason == realtime.GameEndReason_TIME || g.GameEndReason == realtime.GameEndReason_RESIGNED) &&
+	if (g.GameEndReason == ipc.GameEndReason_TIME || g.GameEndReason == ipc.GameEndReason_RESIGNED) &&
 		totalGameTime > int32(UnreasonableTime) && !isBotGame {
 		// g.LoserIdx should never be -1, but if it is somehow, then the whole app will
 		// crash, so let's just be sure
@@ -109,7 +109,7 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 			} else {
 				lngt = ms.NotoriousGameType_NO_PLAY
 			}
-		} else if g.GameEndReason == realtime.GameEndReason_RESIGNED {
+		} else if g.GameEndReason == ipc.GameEndReason_RESIGNED {
 			timeOfResignation := int32(g.Timers.TimeRemaining[g.LoserIdx])
 			if unreasonableTime(loserLastEvent.MillisRemaining - timeOfResignation) {
 				lngt = ms.NotoriousGameType_SITTING
@@ -142,7 +142,7 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 	}
 
 	// Now check for sandbagging
-	if g.GameEndReason == realtime.GameEndReason_RESIGNED && lngt == ms.NotoriousGameType_GOOD {
+	if g.GameEndReason == ipc.GameEndReason_RESIGNED && lngt == ms.NotoriousGameType_GOOD {
 		// This could be a case of sandbagging
 		totalMoves := 0
 		for i := 0; i < len(history.Events); i++ {
@@ -302,8 +302,8 @@ func unreasonableTime(millisRemaining int32) bool {
 func loserDeniedNudge(g *entity.Game, userId string) bool {
 	for _, evt := range g.MetaEvents.Events {
 		if evt.PlayerId == userId &&
-			(evt.Type == realtime.GameMetaEvent_ABORT_DENIED ||
-				evt.Type == realtime.GameMetaEvent_ADJUDICATION_DENIED) {
+			(evt.Type == ipc.GameMetaEvent_ABORT_DENIED ||
+				evt.Type == ipc.GameMetaEvent_ADJUDICATION_DENIED) {
 			return true
 		}
 	}

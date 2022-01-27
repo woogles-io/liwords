@@ -7,7 +7,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/domino14/liwords/pkg/entity"
-	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
+	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/macondo/alphabet"
 	"github.com/domino14/macondo/board"
 	macondoconfig "github.com/domino14/macondo/config"
@@ -24,8 +24,8 @@ type ListStatStore interface {
 
 type IncrementInfo struct {
 	Cfg                 *macondoconfig.Config
-	Req                 *realtime.GameRequest
-	Evt                 *realtime.GameEndedEvent
+	Req                 *ipc.GameRequest
+	Evt                 *ipc.GameEndedEvent
 	Lss                 ListStatStore
 	StatName            string
 	StatItem            *entity.StatItem
@@ -132,8 +132,8 @@ func InstantiateNewStats(playerOneId string, playerTwoId string) *entity.Stats {
 		NotableData:   instantiateNotableData()}
 }
 
-func AddGame(stats *entity.Stats, lss ListStatStore, history *pb.GameHistory, req *realtime.GameRequest,
-	cfg *macondoconfig.Config, gameEndedEvent *realtime.GameEndedEvent, gameId string) error {
+func AddGame(stats *entity.Stats, lss ListStatStore, history *pb.GameHistory, req *ipc.GameRequest,
+	cfg *macondoconfig.Config, gameEndedEvent *ipc.GameEndedEvent, gameId string) error {
 	// Josh, plz fix these asinine calls to incrementStatItem
 	events := history.GetEvents()
 
@@ -610,7 +610,7 @@ func addFirsts(info *IncrementInfo) error {
 
 func addGames(info *IncrementInfo) error {
 	incrementStatItem(info.StatItem, info.Lss, nil, info.GameId, info.PlayerId, info.Evt.Time)
-	info.StatItem.Subitems[realtime.RatingMode_name[int32(info.Req.RatingMode)]]++
+	info.StatItem.Subitems[ipc.RatingMode_name[int32(info.Req.RatingMode)]]++
 	info.StatItem.Subitems[pb.ChallengeRule_name[int32(info.Req.ChallengeRule)]]++
 	return nil
 }
@@ -1239,7 +1239,7 @@ func makeGameSubitems() map[string]int {
 	for _, value := range pb.ChallengeRule_name {
 		gameSubitems[value] = 0
 	}
-	for _, value := range realtime.RatingMode_name {
+	for _, value := range ipc.RatingMode_name {
 		gameSubitems[value] = 0
 	}
 	return gameSubitems

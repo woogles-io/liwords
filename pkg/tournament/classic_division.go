@@ -10,50 +10,50 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/pair"
 	"github.com/domino14/liwords/pkg/utilities"
-	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
+	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/rs/zerolog/log"
 )
 
-type PlayerSorter []*realtime.TournamentPerson
+type PlayerSorter []*pb.TournamentPerson
 
 func (a PlayerSorter) Len() int           { return len(a) }
 func (a PlayerSorter) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a PlayerSorter) Less(i, j int) bool { return a[i].Rating > a[j].Rating }
 
 type ClassicDivision struct {
-	TournamentName string                       `json:"tournamentName"`
-	DivisionName   string                       `json:"divisionName"`
-	Matrix         [][]string                   `json:"matrix"`
-	PairingMap     map[string]*realtime.Pairing `json:"pairingMap"`
+	TournamentName string                 `json:"tournamentName"`
+	DivisionName   string                 `json:"divisionName"`
+	Matrix         [][]string             `json:"matrix"`
+	PairingMap     map[string]*pb.Pairing `json:"pairingMap"`
 	// By convention, players should look like userUUID:username
-	Players          *realtime.TournamentPersons        `json:"players"`
-	PlayerIndexMap   map[string]int32                   `json:"pidxMap"`
-	Standings        map[int32]*realtime.RoundStandings `json:"standings"`
-	RoundControls    []*realtime.RoundControl           `json:"roundControls"`
-	DivisionControls *realtime.DivisionControls         `json:"divisionControls"`
-	CurrentRound     int32                              `json:"currentRound"`
-	PairingKeyInt    int                                `json:"pairingKeyInt"`
+	Players          *pb.TournamentPersons        `json:"players"`
+	PlayerIndexMap   map[string]int32             `json:"pidxMap"`
+	Standings        map[int32]*pb.RoundStandings `json:"standings"`
+	RoundControls    []*pb.RoundControl           `json:"roundControls"`
+	DivisionControls *pb.DivisionControls         `json:"divisionControls"`
+	CurrentRound     int32                        `json:"currentRound"`
+	PairingKeyInt    int                          `json:"pairingKeyInt"`
 }
 
 func NewClassicDivision(tournamentName string, divisionName string) *ClassicDivision {
 	return &ClassicDivision{TournamentName: tournamentName,
 		DivisionName:     divisionName,
 		Matrix:           [][]string{},
-		PairingMap:       make(map[string]*realtime.Pairing),
-		Players:          &realtime.TournamentPersons{},
+		PairingMap:       make(map[string]*pb.Pairing),
+		Players:          &pb.TournamentPersons{},
 		PlayerIndexMap:   make(map[string]int32),
-		Standings:        make(map[int32]*realtime.RoundStandings),
-		RoundControls:    []*realtime.RoundControl{},
-		DivisionControls: &realtime.DivisionControls{},
+		Standings:        make(map[int32]*pb.RoundStandings),
+		RoundControls:    []*pb.RoundControl{},
+		DivisionControls: &pb.DivisionControls{},
 		CurrentRound:     -1,
 		PairingKeyInt:    0}
 }
 
-func (t *ClassicDivision) GetDivisionControls() *realtime.DivisionControls {
+func (t *ClassicDivision) GetDivisionControls() *pb.DivisionControls {
 	return t.DivisionControls
 }
 
-func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.DivisionControls) (*realtime.DivisionControls, map[int32]*realtime.RoundStandings, error) {
+func (t *ClassicDivision) SetDivisionControls(divisionControls *pb.DivisionControls) (*pb.DivisionControls, map[int32]*pb.RoundStandings, error) {
 	err := entity.ValidateGameRequest(context.Background(), divisionControls.GameRequest)
 	if err != nil {
 		return nil, nil, err
@@ -64,22 +64,22 @@ func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.Divisio
 		Msg("divctrls-validated-game-request")
 
 	if divisionControls.MaximumByePlacement < 0 {
-		return nil, nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT, t.TournamentName, t.DivisionName, strconv.Itoa(int(divisionControls.MaximumByePlacement+1)))
+		return nil, nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT, t.TournamentName, t.DivisionName, strconv.Itoa(int(divisionControls.MaximumByePlacement+1)))
 	}
 
 	// check that suspended result is only VOID, FORFEIT_LOSS, or BYE:
 	if !validFutureResult(divisionControls.SuspendedResult) {
 		return nil, nil, entity.NewWooglesError(
-			realtime.WooglesError_TOURNAMENT_INVALID_FUTURE_RESULT)
+			pb.WooglesError_TOURNAMENT_INVALID_FUTURE_RESULT)
 	}
 
 	// minimum placement is zero-indexed
 	if divisionControls.Gibsonize {
 		if divisionControls.MinimumPlacement < 0 {
-			return nil, nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NEGATIVE_MIN_PLACEMENT, t.TournamentName, t.DivisionName, strconv.Itoa(int(divisionControls.MinimumPlacement+1)))
+			return nil, nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NEGATIVE_MIN_PLACEMENT, t.TournamentName, t.DivisionName, strconv.Itoa(int(divisionControls.MinimumPlacement+1)))
 		}
 		if divisionControls.GibsonSpread < 0 {
-			return nil, nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NEGATIVE_GIBSON_SPREAD, t.TournamentName, t.DivisionName, strconv.Itoa(int(divisionControls.GibsonSpread)))
+			return nil, nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NEGATIVE_GIBSON_SPREAD, t.TournamentName, t.DivisionName, strconv.Itoa(int(divisionControls.GibsonSpread)))
 		}
 	}
 
@@ -92,7 +92,7 @@ func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.Divisio
 
 	t.DivisionControls = divisionControls
 
-	standingsMap := make(map[int32]*realtime.RoundStandings)
+	standingsMap := make(map[int32]*pb.RoundStandings)
 	// Update the gibsonizations if the controls have changed
 	if gibsonChanged {
 		for i := 0; i <= t.GetCurrentRound(); i++ {
@@ -107,23 +107,23 @@ func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.Divisio
 	return t.DivisionControls, standingsMap, nil
 }
 
-func (t *ClassicDivision) SetRoundControls(roundControls []*realtime.RoundControl) (*realtime.DivisionPairingsResponse, []*realtime.RoundControl, error) {
+func (t *ClassicDivision) SetRoundControls(roundControls []*pb.RoundControl) (*pb.DivisionPairingsResponse, []*pb.RoundControl, error) {
 
 	numberOfRounds := len(roundControls)
 	numberOfPlayers := len(t.Players.Persons)
 	if numberOfRounds == 0 {
-		return nil, nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_EMPTY_ROUND_CONTROLS, t.TournamentName, t.DivisionName)
+		return nil, nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_EMPTY_ROUND_CONTROLS, t.TournamentName, t.DivisionName)
 	}
 
 	if t.CurrentRound >= 0 {
-		return nil, nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_SET_ROUND_CONTROLS_AFTER_START, t.TournamentName, t.DivisionName, "classic_division")
+		return nil, nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_SET_ROUND_CONTROLS_AFTER_START, t.TournamentName, t.DivisionName, "classic_division")
 	}
 
 	isElimination := false
 
 	for i := 0; i < numberOfRounds; i++ {
 		control := roundControls[i]
-		if control.PairingMethod == realtime.PairingMethod_ELIMINATION {
+		if control.PairingMethod == pb.PairingMethod_ELIMINATION {
 			isElimination = true
 			break
 		}
@@ -132,16 +132,16 @@ func (t *ClassicDivision) SetRoundControls(roundControls []*realtime.RoundContro
 	var initialFontes int32 = 0
 	for i := 0; i < numberOfRounds; i++ {
 		control := roundControls[i]
-		if isElimination && control.PairingMethod != realtime.PairingMethod_ELIMINATION {
-			return nil, nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ELIMINATION_PAIRINGS_MIX, t.TournamentName, t.DivisionName)
+		if isElimination && control.PairingMethod != pb.PairingMethod_ELIMINATION {
+			return nil, nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ELIMINATION_PAIRINGS_MIX, t.TournamentName, t.DivisionName)
 		} else if i != 0 {
-			if control.PairingMethod == realtime.PairingMethod_INITIAL_FONTES &&
-				roundControls[i-1].PairingMethod != realtime.PairingMethod_INITIAL_FONTES {
-				return nil, nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DISCONTINUOUS_INITIAL_FONTES, t.TournamentName, t.DivisionName)
-			} else if control.PairingMethod != realtime.PairingMethod_INITIAL_FONTES &&
-				roundControls[i-1].PairingMethod == realtime.PairingMethod_INITIAL_FONTES {
+			if control.PairingMethod == pb.PairingMethod_INITIAL_FONTES &&
+				roundControls[i-1].PairingMethod != pb.PairingMethod_INITIAL_FONTES {
+				return nil, nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_DISCONTINUOUS_INITIAL_FONTES, t.TournamentName, t.DivisionName)
+			} else if control.PairingMethod != pb.PairingMethod_INITIAL_FONTES &&
+				roundControls[i-1].PairingMethod == pb.PairingMethod_INITIAL_FONTES {
 				initialFontes = int32(i)
-			} else if control.PairingMethod == realtime.PairingMethod_INITIAL_FONTES &&
+			} else if control.PairingMethod == pb.PairingMethod_INITIAL_FONTES &&
 				i == numberOfRounds-1 {
 				initialFontes = int32(numberOfRounds)
 			}
@@ -149,16 +149,16 @@ func (t *ClassicDivision) SetRoundControls(roundControls []*realtime.RoundContro
 	}
 
 	if initialFontes > 0 && initialFontes%2 == 0 {
-		return nil, nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_INVALID_INITIAL_FONTES_ROUNDS, t.TournamentName, t.DivisionName, strconv.Itoa(int(initialFontes)))
+		return nil, nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_INVALID_INITIAL_FONTES_ROUNDS, t.TournamentName, t.DivisionName, strconv.Itoa(int(initialFontes)))
 	}
 
 	// For now, assume we require exactly n rounds and 2 ^ n players for an elimination tournament
 
-	if roundControls[0].PairingMethod == realtime.PairingMethod_ELIMINATION {
+	if roundControls[0].PairingMethod == pb.PairingMethod_ELIMINATION {
 		expectedNumberOfPlayers := 1 << numberOfRounds
 		if expectedNumberOfPlayers != numberOfPlayers {
 
-			return nil, nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_INVALID_ELIMINATION_PLAYERS,
+			return nil, nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_INVALID_ELIMINATION_PLAYERS,
 				strconv.Itoa(numberOfPlayers), strconv.Itoa(numberOfRounds), strconv.Itoa(expectedNumberOfPlayers))
 		}
 	}
@@ -179,14 +179,14 @@ func (t *ClassicDivision) SetRoundControls(roundControls []*realtime.RoundContro
 	return pairingsResp, t.RoundControls, err
 }
 
-func (t *ClassicDivision) prepair() (*realtime.DivisionPairingsResponse, error) {
-	t.PairingMap = make(map[string]*realtime.Pairing)
-	t.Standings = make(map[int32]*realtime.RoundStandings)
+func (t *ClassicDivision) prepair() (*pb.DivisionPairingsResponse, error) {
+	t.PairingMap = make(map[string]*pb.Pairing)
+	t.Standings = make(map[int32]*pb.RoundStandings)
 	pm := newPairingsMessage()
 	if t.IsStartable() {
 		numberOfPlayers := len(t.Players.Persons)
 		initFontes := t.RoundControls[0].InitialFontes
-		if t.RoundControls[0].PairingMethod != realtime.PairingMethod_MANUAL &&
+		if t.RoundControls[0].PairingMethod != pb.PairingMethod_MANUAL &&
 			numberOfPlayers >= int(initFontes)+1 {
 			newpm, err := t.PairRound(0, false)
 			if err != nil {
@@ -203,7 +203,7 @@ func (t *ClassicDivision) prepair() (*realtime.DivisionPairingsResponse, error) 
 			// rounds than players
 			if pair.IsStandingsIndependent(pairingMethod) &&
 				numberOfPlayers >= int(initFontes)+1 &&
-				pairingMethod != realtime.PairingMethod_MANUAL {
+				pairingMethod != pb.PairingMethod_MANUAL {
 				newpm, err := t.PairRound(i, false)
 				if err != nil {
 					return nil, err
@@ -215,9 +215,9 @@ func (t *ClassicDivision) prepair() (*realtime.DivisionPairingsResponse, error) 
 	return pm, nil
 }
 
-func (t *ClassicDivision) SetSingleRoundControls(round int, controls *realtime.RoundControl) (*realtime.RoundControl, error) {
+func (t *ClassicDivision) SetSingleRoundControls(round int, controls *pb.RoundControl) (*pb.RoundControl, error) {
 	if round >= len(t.Matrix) || round < 0 {
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "SetSingleRoundControls")
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "SetSingleRoundControls")
 	}
 
 	err := validateRoundControl(t, controls)
@@ -232,15 +232,15 @@ func (t *ClassicDivision) SetSingleRoundControls(round int, controls *realtime.R
 }
 
 func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round int,
-	selfPlayResult realtime.TournamentGameResult) (*realtime.DivisionPairingsResponse, error) {
+	selfPlayResult pb.TournamentGameResult) (*pb.DivisionPairingsResponse, error) {
 
 	playerOneIndex, ok := t.PlayerIndexMap[playerOne]
 	if !ok {
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerOne, "playerOne")
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerOne, "playerOne")
 	}
 	playerTwoIndex, ok := t.PlayerIndexMap[playerTwo]
 	if !ok {
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerTwo, "playerTwo")
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerTwo, "playerTwo")
 	}
 
 	playerOneOpponent, err := t.opponentOf(playerOne, round)
@@ -255,11 +255,11 @@ func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round i
 
 	playerOneOpponentIndex, ok := t.PlayerIndexMap[playerOneOpponent]
 	if playerOneOpponent != "" && !ok {
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerOneOpponent, "playerOneOpponent")
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerOneOpponent, "playerOneOpponent")
 	}
 	playerTwoOpponentIndex, ok := t.PlayerIndexMap[playerTwoOpponent]
 	if playerTwoOpponent != "" && !ok {
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerTwoOpponent, "playerTwoOpponent")
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerTwoOpponent, "playerTwoOpponent")
 	}
 
 	pairingDestroyed := false
@@ -293,9 +293,9 @@ func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round i
 		return nil, err
 	}
 
-	pairingResponse := []*realtime.Pairing{newPairing}
-	standingsResponse := make(map[int32]*realtime.RoundStandings)
-	pairingsMessage := &realtime.DivisionPairingsResponse{DivisionPairings: pairingResponse, DivisionStandings: standingsResponse}
+	pairingResponse := []*pb.Pairing{newPairing}
+	standingsResponse := make(map[int32]*pb.RoundStandings)
+	pairingsMessage := &pb.DivisionPairingsResponse{DivisionPairings: pairingResponse, DivisionStandings: standingsResponse}
 
 	// If a pairing was destroyed, the standings may have changed
 	if pairingDestroyed {
@@ -321,14 +321,14 @@ func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round i
 
 		var p1score int
 		var p2score int
-		var p1tgr realtime.TournamentGameResult
-		var p2tgr realtime.TournamentGameResult
+		var p1tgr pb.TournamentGameResult
+		var p2tgr pb.TournamentGameResult
 
 		if playerOne == playerTwo {
 			if t.Players.Persons[playerOneIndex].Suspended {
 				p1score = int(t.DivisionControls.SuspendedSpread)
 				p2score = 0
-				if selfPlayResult == realtime.TournamentGameResult_NO_RESULT {
+				if selfPlayResult == pb.TournamentGameResult_NO_RESULT {
 					p1tgr = t.DivisionControls.SuspendedResult
 					p2tgr = t.DivisionControls.SuspendedResult
 				} else {
@@ -339,9 +339,9 @@ func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round i
 			} else {
 				p1score = entity.ByeScore
 				p2score = 0
-				if selfPlayResult == realtime.TournamentGameResult_NO_RESULT {
-					p1tgr = realtime.TournamentGameResult_BYE
-					p2tgr = realtime.TournamentGameResult_BYE
+				if selfPlayResult == pb.TournamentGameResult_NO_RESULT {
+					p1tgr = pb.TournamentGameResult_BYE
+					p2tgr = pb.TournamentGameResult_BYE
 				} else {
 					// user overrode
 					p1tgr = selfPlayResult
@@ -351,8 +351,8 @@ func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round i
 		} else {
 			p1score = 0
 			p2score = 0
-			p1tgr = realtime.TournamentGameResult_FORFEIT_WIN
-			p2tgr = realtime.TournamentGameResult_FORFEIT_WIN
+			p1tgr = pb.TournamentGameResult_FORFEIT_WIN
+			p2tgr = pb.TournamentGameResult_FORFEIT_WIN
 			if t.Players.Persons[playerOneIndex].Suspended {
 				p1score = int(t.DivisionControls.SuspendedSpread)
 				p1tgr = t.DivisionControls.SuspendedResult
@@ -373,7 +373,7 @@ func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round i
 			p2score,
 			p1tgr,
 			p2tgr,
-			realtime.GameEndReason_NONE,
+			pb.GameEndReason_NONE,
 			round < int(t.CurrentRound),
 			0,
 			"")
@@ -390,12 +390,12 @@ func (t *ClassicDivision) SubmitResult(round int,
 	p2 string,
 	p1Score int,
 	p2Score int,
-	p1Result realtime.TournamentGameResult,
-	p2Result realtime.TournamentGameResult,
-	reason realtime.GameEndReason,
+	p1Result pb.TournamentGameResult,
+	p2Result pb.TournamentGameResult,
+	reason pb.GameEndReason,
 	amend bool,
 	gameIndex int,
-	gid string) (*realtime.DivisionPairingsResponse, error) {
+	gid string) (*pb.DivisionPairingsResponse, error) {
 
 	log.Debug().Str("p1", p1).Str("p2", p2).Int("p1Score", p1Score).Int("p2Score", p2Score).
 		Interface("p1Result", p1Result).Interface("p2Result", p2Result).Interface("gameendReason", reason).
@@ -415,36 +415,36 @@ func (t *ClassicDivision) SubmitResult(round int,
 
 	// Ensure that this is the current round
 	if round < int(t.CurrentRound) && !amend {
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONAMENDMENT_PAST_RESULT, t.TournamentName, t.DivisionName, strconv.Itoa(round+1))
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONAMENDMENT_PAST_RESULT, t.TournamentName, t.DivisionName, strconv.Itoa(round+1))
 	}
 
 	if round > int(t.CurrentRound) && (!validFutureResult(p1Result) || !validFutureResult(p2Result)) {
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FUTURE_NONBYE_RESULT, t.TournamentName, t.DivisionName, strconv.Itoa(round+1))
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_FUTURE_NONBYE_RESULT, t.TournamentName, t.DivisionName, strconv.Itoa(round+1))
 	}
 
 	// Ensure that the pairing exists
 	if pk1 == "" {
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_PLAYER_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), p1, "", "SubmitResultPlayerOne")
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NIL_PLAYER_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), p1, "", "SubmitResultPlayerOne")
 	}
 
 	if pk2 == "" {
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_PLAYER_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), p2, "", "SubmitResultPlayerTwo")
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NIL_PLAYER_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), p2, "", "SubmitResultPlayerTwo")
 	}
 
 	// Ensure the submitted results were for players that were paired
 	if pk1 != pk2 {
 		log.Debug().Interface("pr1", pk1).Interface("pri2", pk2).Msg("not-play")
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONOPPONENTS, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), p1, p2)
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONOPPONENTS, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), p1, p2)
 	}
 
-	if (p1Result == realtime.TournamentGameResult_VOID && p2Result != realtime.TournamentGameResult_VOID) ||
-		(p2Result == realtime.TournamentGameResult_VOID && p1Result != realtime.TournamentGameResult_VOID) {
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_MIXED_VOID_AND_NONVOID_RESULTS, t.TournamentName, t.DivisionName, p1Result.String(), p2Result.String())
+	if (p1Result == pb.TournamentGameResult_VOID && p2Result != pb.TournamentGameResult_VOID) ||
+		(p2Result == pb.TournamentGameResult_VOID && p1Result != pb.TournamentGameResult_VOID) {
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_MIXED_VOID_AND_NONVOID_RESULTS, t.TournamentName, t.DivisionName, p1Result.String(), p2Result.String())
 	}
 
 	pairing, ok := t.PairingMap[pk1]
 	if !ok {
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "", pk1, "SubmitResultPairingMap")
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "", pk1, "SubmitResultPairingMap")
 	}
 
 	p1Index := 0
@@ -454,50 +454,50 @@ func (t *ClassicDivision) SubmitResult(round int,
 
 	if pairing.Players[p1Index] != t.PlayerIndexMap[p1] ||
 		pairing.Players[1-p1Index] != t.PlayerIndexMap[p2] {
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONOPPONENTS, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), p1, p2)
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONOPPONENTS, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), p1, p2)
 	}
 
 	pairingMethod := t.RoundControls[round].PairingMethod
 
 	if pairing.Games == nil {
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_UNINITIALIZED_GAMES, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), p1, p2)
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_UNINITIALIZED_GAMES, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), p1, p2)
 	}
 
 	// For Elimination tournaments only.
 	// Could be a tiebreaking result or could be an out of range
 	// game index
-	if pairingMethod == realtime.PairingMethod_ELIMINATION && gameIndex >= int(t.RoundControls[round].GamesPerRound) {
+	if pairingMethod == pb.PairingMethod_ELIMINATION && gameIndex >= int(t.RoundControls[round].GamesPerRound) {
 		if gameIndex != len(pairing.Games) {
-			return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_TIEBREAK_INVALID_GAME_INDEX, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), p1, p2, strconv.Itoa(gameIndex))
+			return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_TIEBREAK_INVALID_GAME_INDEX, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), p1, p2, strconv.Itoa(gameIndex))
 		} else {
 			pairing.Games = append(pairing.Games,
-				&realtime.TournamentGame{Scores: []int32{0, 0},
-					Results: []realtime.TournamentGameResult{realtime.TournamentGameResult_NO_RESULT,
-						realtime.TournamentGameResult_NO_RESULT}})
+				&pb.TournamentGame{Scores: []int32{0, 0},
+					Results: []pb.TournamentGameResult{pb.TournamentGameResult_NO_RESULT,
+						pb.TournamentGameResult_NO_RESULT}})
 		}
 	}
 
 	if gameIndex >= len(pairing.Games) {
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_GAME_INDEX_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), strconv.Itoa(gameIndex), strconv.Itoa(len(pairing.Games)))
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_GAME_INDEX_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), strconv.Itoa(gameIndex), strconv.Itoa(len(pairing.Games)))
 	}
 
 	// If this is not an amendment, but attempts to amend a result, reject
 	// this submission.
-	if !amend && ((pairing.Outcomes[0] != realtime.TournamentGameResult_NO_RESULT &&
-		pairing.Outcomes[1] != realtime.TournamentGameResult_NO_RESULT) ||
+	if !amend && ((pairing.Outcomes[0] != pb.TournamentGameResult_NO_RESULT &&
+		pairing.Outcomes[1] != pb.TournamentGameResult_NO_RESULT) ||
 
-		(pairing.Games[gameIndex].Results[0] != realtime.TournamentGameResult_NO_RESULT &&
-			pairing.Games[gameIndex].Results[1] != realtime.TournamentGameResult_NO_RESULT)) {
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_RESULT_ALREADY_SUBMITTED, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), p1, p2)
+		(pairing.Games[gameIndex].Results[0] != pb.TournamentGameResult_NO_RESULT &&
+			pairing.Games[gameIndex].Results[1] != pb.TournamentGameResult_NO_RESULT)) {
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_RESULT_ALREADY_SUBMITTED, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), p1, p2)
 	}
 
 	// If this claims to be an amendment and is not submitting forfeit
 	// losses for players that show up late, reject this submission.
 	if amend && p1Result != t.DivisionControls.SuspendedResult &&
 		p2Result != t.DivisionControls.SuspendedResult &&
-		pairing.Games[gameIndex].Results[0] == realtime.TournamentGameResult_NO_RESULT &&
-		pairing.Games[gameIndex].Results[1] == realtime.TournamentGameResult_NO_RESULT {
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_RESULT_AMENDMENT, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), p1, p2)
+		pairing.Games[gameIndex].Results[0] == pb.TournamentGameResult_NO_RESULT &&
+		pairing.Games[gameIndex].Results[1] == pb.TournamentGameResult_NO_RESULT {
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_RESULT_AMENDMENT, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), p1, p2)
 	}
 
 	if amend && gid == "" {
@@ -506,7 +506,7 @@ func (t *ClassicDivision) SubmitResult(round int,
 	}
 
 	// Adjust the spread if the loser lost on time
-	if reason == realtime.GameEndReason_TIME {
+	if reason == pb.GameEndReason_TIME {
 		loserIndex, err := findLoser(t, p1, p2, p1Result, p2Result)
 		if err != nil {
 			return nil, err
@@ -524,7 +524,7 @@ func (t *ClassicDivision) SubmitResult(round int,
 		p2Score = scores[1]
 	}
 
-	if pairingMethod == realtime.PairingMethod_ELIMINATION {
+	if pairingMethod == pb.PairingMethod_ELIMINATION {
 		pairing.Games[gameIndex].Scores[p1Index] = int32(p1Score)
 		pairing.Games[gameIndex].Scores[1-p1Index] = int32(p2Score)
 		pairing.Games[gameIndex].Results[p1Index] = p1Result
@@ -562,8 +562,8 @@ func (t *ClassicDivision) SubmitResult(round int,
 	}
 
 	pmessage := newPairingsMessage()
-	pmessage.DivisionPairings = []*realtime.Pairing{pairing}
-	pmessage.DivisionStandings = map[int32]*realtime.RoundStandings{}
+	pmessage.DivisionPairings = []*pb.Pairing{pairing}
+	pmessage.DivisionStandings = map[int32]*pb.RoundStandings{}
 
 	for i := round; i <= int(t.CurrentRound)+1 && i < len(t.Matrix); i++ {
 		standings, _, err := t.GetStandings(i)
@@ -595,15 +595,15 @@ func (t *ClassicDivision) SubmitResult(round int,
 	return pmessage, nil
 }
 
-func isRoundRobin(pm realtime.PairingMethod) bool {
-	return pm == realtime.PairingMethod_ROUND_ROBIN ||
-		pm == realtime.PairingMethod_TEAM_ROUND_ROBIN
+func isRoundRobin(pm pb.PairingMethod) bool {
+	return pm == pb.PairingMethod_ROUND_ROBIN ||
+		pm == pb.PairingMethod_TEAM_ROUND_ROBIN
 }
 
-func (t *ClassicDivision) canCatch(records []*realtime.PlayerStanding, round int, i int, j int) (bool, error) {
+func (t *ClassicDivision) canCatch(records []*pb.PlayerStanding, round int, i int, j int) (bool, error) {
 	numberOfPlayers := len(records)
 	if i >= numberOfPlayers || j >= numberOfPlayers {
-		return false, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_GIBSON_CAN_CATCH, t.TournamentName, t.DivisionName, strconv.Itoa(numberOfPlayers-1), strconv.Itoa(i), strconv.Itoa(j))
+		return false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_GIBSON_CAN_CATCH, t.TournamentName, t.DivisionName, strconv.Itoa(numberOfPlayers-1), strconv.Itoa(i), strconv.Itoa(j))
 	}
 	remainingRounds := (len(t.Matrix) - round)
 	canCatch := false
@@ -622,9 +622,9 @@ func (t *ClassicDivision) canCatch(records []*realtime.PlayerStanding, round int
 	return canCatch, nil
 }
 
-func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.DivisionPairingsResponse, error) {
+func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*pb.DivisionPairingsResponse, error) {
 	if round < 0 || round >= len(t.Matrix) {
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "PairRound")
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "PairRound")
 	}
 	roundPairings := t.Matrix[round]
 	pairingMethod := t.RoundControls[round].PairingMethod
@@ -678,10 +678,10 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 	pmessage := newPairingsMessage()
 
 	// Round Robin must have the same ordering for each round
-	playerOrder := []*realtime.PlayerStanding{}
+	playerOrder := []*pb.PlayerStanding{}
 	if isRoundRobin(pairingMethod) {
 		for i := 0; i < len(t.Players.Persons); i++ {
-			playerOrder = append(playerOrder, &realtime.PlayerStanding{PlayerId: t.Players.Persons[i].Id})
+			playerOrder = append(playerOrder, &pb.PlayerStanding{PlayerId: t.Players.Persons[i].Id})
 		}
 	} else {
 
@@ -703,12 +703,12 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 			}
 
 			if minNumberOfByes == len(t.Matrix)+1 {
-				return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_CANNOT_ASSIGN_BYE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1))
+				return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_CANNOT_ASSIGN_BYE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1))
 			}
 
 			byePlayer := standings.Standings[invByePlayerIndex].PlayerId
 
-			newpmessage, err := t.SetPairing(byePlayer, byePlayer, round, realtime.TournamentGameResult_BYE)
+			newpmessage, err := t.SetPairing(byePlayer, byePlayer, round, pb.TournamentGameResult_BYE)
 			if err != nil {
 				return nil, err
 			}
@@ -723,7 +723,7 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 		}
 
 		if len(playerOrder)%2 != 0 {
-			return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_INTERNAL_BYE_ASSIGNMENT, t.TournamentName, t.DivisionName, strconv.Itoa(round+1))
+			return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_INTERNAL_BYE_ASSIGNMENT, t.TournamentName, t.DivisionName, strconv.Itoa(round+1))
 		}
 	}
 
@@ -774,7 +774,7 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 			if playerOne >= 0 && playerTwo >= 0 {
 				gibsonPairedPlayers[playerOrder[playerOne].PlayerId] = true
 				gibsonPairedPlayers[playerOrder[playerTwo].PlayerId] = true
-				newpmessage, err := t.SetPairing(playerOrder[playerOne].PlayerId, playerOrder[playerTwo].PlayerId, round, realtime.TournamentGameResult_NO_RESULT)
+				newpmessage, err := t.SetPairing(playerOrder[playerOne].PlayerId, playerOrder[playerTwo].PlayerId, round, pb.TournamentGameResult_NO_RESULT)
 				if err != nil {
 					return nil, err
 				}
@@ -806,14 +806,14 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 	l := len(pairings)
 
 	if l != len(poolMembers) {
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_INCORRECT_PAIRINGS_LENGTH, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), strconv.Itoa(l), strconv.Itoa(len(poolMembers)))
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_INCORRECT_PAIRINGS_LENGTH, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), strconv.Itoa(l), strconv.Itoa(len(poolMembers)))
 	}
 
 	// Only the round robin pairing methods should assign byes
 	if !isRoundRobin(pairingMethod) {
 		for i := 0; i < len(pairings); i++ {
 			if pairings[i] < 0 {
-				return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PAIRINGS_ASSIGNED_BYE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), poolMembers[i].Id, strconv.Itoa(pairings[i]))
+				return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PAIRINGS_ASSIGNED_BYE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), poolMembers[i].Id, strconv.Itoa(pairings[i]))
 			}
 		}
 	}
@@ -821,9 +821,9 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 	for i := 0; i < l; i++ {
 		// Player order might be a different order than the players in roundPairings
 		playerIndex := t.PlayerIndexMap[poolMembers[i].Id]
-		if pairingMethod != realtime.PairingMethod_ROUND_ROBIN &&
+		if pairingMethod != pb.PairingMethod_ROUND_ROBIN &&
 			t.Players.Persons[playerIndex].Suspended {
-			return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_SUSPENDED_PLAYER_UNREMOVED, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), t.Players.Persons[playerIndex].Id)
+			return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_SUSPENDED_PLAYER_UNREMOVED, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), t.Players.Persons[playerIndex].Id)
 		}
 		if roundPairings[playerIndex] == "" {
 
@@ -831,45 +831,45 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 			if pairings[i] < 0 && isRoundRobin(pairingMethod) {
 				opponentIndex = playerIndex
 			} else if pairings[i] >= l {
-				return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PAIRING_INDEX_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), strconv.Itoa(pairings[i]))
+				return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PAIRING_INDEX_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), strconv.Itoa(pairings[i]))
 			} else if pairings[i] < 0 {
-				return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PAIRINGS_ASSIGNED_BYE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), poolMembers[i].Id, strconv.Itoa(pairings[i]))
+				return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PAIRINGS_ASSIGNED_BYE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), poolMembers[i].Id, strconv.Itoa(pairings[i]))
 			} else {
 				opponentIndex = t.PlayerIndexMap[poolMembers[pairings[i]].Id]
 			}
 
 			playerId := t.Players.Persons[playerIndex].Id
 			opponentId := t.Players.Persons[opponentIndex].Id
-			var nextPairingResponse []*realtime.Pairing
-			nextStandingsResponse := make(map[int32]*realtime.RoundStandings)
-			if pairingMethod == realtime.PairingMethod_ELIMINATION && round > 0 && i >= l>>round {
+			var nextPairingResponse []*pb.Pairing
+			nextStandingsResponse := make(map[int32]*pb.RoundStandings)
+			if pairingMethod == pb.PairingMethod_ELIMINATION && round > 0 && i >= l>>round {
 				pairingKey := t.makePairingKey()
 				pairing := newEliminatedPairing(playerId, opponentId, round)
 				t.PairingMap[pairingKey] = pairing
 				roundPairings[playerIndex] = pairingKey
-				nextPairingResponse = []*realtime.Pairing{pairing}
+				nextPairingResponse = []*pb.Pairing{pairing}
 			} else {
-				newPairingMessage, err := t.SetPairing(playerId, opponentId, round, realtime.TournamentGameResult_NO_RESULT)
+				newPairingMessage, err := t.SetPairing(playerId, opponentId, round, pb.TournamentGameResult_NO_RESULT)
 				if err != nil {
 					return nil, err
 				}
 				nextPairingResponse = newPairingMessage.DivisionPairings
 				nextStandingsResponse = newPairingMessage.DivisionStandings
 			}
-			pmessage = combinePairingMessages(pmessage, &realtime.DivisionPairingsResponse{DivisionPairings: nextPairingResponse, DivisionStandings: nextStandingsResponse})
+			pmessage = combinePairingMessages(pmessage, &pb.DivisionPairingsResponse{DivisionPairings: nextPairingResponse, DivisionStandings: nextStandingsResponse})
 		}
 	}
 
 	for i := 0; i < len(t.Players.Persons); i++ {
 		player := t.Players.Persons[i]
-		if pairingMethod != realtime.PairingMethod_ROUND_ROBIN && player.Suspended && roundPairings[i] != "" {
-			return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_SUSPENDED_PLAYER_PAIRED, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), player.Id)
+		if pairingMethod != pb.PairingMethod_ROUND_ROBIN && player.Suspended && roundPairings[i] != "" {
+			return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_SUSPENDED_PLAYER_PAIRED, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), player.Id)
 		}
 		if !player.Suspended && roundPairings[i] == "" {
-			return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PLAYER_NOT_PAIRED, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), player.Id)
+			return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PLAYER_NOT_PAIRED, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), player.Id)
 		}
-		if pairingMethod != realtime.PairingMethod_ROUND_ROBIN && player.Suspended {
-			newpmessage, err := t.SetPairing(player.Id, player.Id, round, realtime.TournamentGameResult_NO_RESULT)
+		if pairingMethod != pb.PairingMethod_ROUND_ROBIN && player.Suspended {
+			newpmessage, err := t.SetPairing(player.Id, player.Id, round, pb.TournamentGameResult_NO_RESULT)
 			if err != nil {
 				return nil, err
 			}
@@ -887,7 +887,7 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*realtime.Div
 
 func (t *ClassicDivision) DeletePairings(round int) error {
 	if round < 0 || round >= len(t.Matrix) {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "DeletePairings")
+		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "DeletePairings")
 	}
 	for i := 0; i < len(t.Matrix[round]); i++ {
 		err := t.clearPairingKey(t.PlayerIndexMap[t.Players.Persons[i].Id], round)
@@ -898,7 +898,7 @@ func (t *ClassicDivision) DeletePairings(round int) error {
 	return nil
 }
 
-func (t *ClassicDivision) RecalculateStandings() (*realtime.DivisionPairingsResponse, error) {
+func (t *ClassicDivision) RecalculateStandings() (*pb.DivisionPairingsResponse, error) {
 	pairingsMessage := newPairingsMessage()
 
 	for i := 0; i < len(t.Matrix); i++ {
@@ -908,12 +908,12 @@ func (t *ClassicDivision) RecalculateStandings() (*realtime.DivisionPairingsResp
 		}
 		pairingsMessage.DivisionStandings = combineStandingsResponses(
 			pairingsMessage.DivisionStandings,
-			map[int32]*realtime.RoundStandings{int32(i): roundStandings})
+			map[int32]*pb.RoundStandings{int32(i): roundStandings})
 	}
 	return pairingsMessage, nil
 }
 
-func (t *ClassicDivision) AddPlayers(players *realtime.TournamentPersons) (*realtime.DivisionPairingsResponse, error) {
+func (t *ClassicDivision) AddPlayers(players *pb.TournamentPersons) (*pb.DivisionPairingsResponse, error) {
 
 	numNewPlayers := 0
 	newPlayers := make(map[string]bool)
@@ -922,7 +922,7 @@ func (t *ClassicDivision) AddPlayers(players *realtime.TournamentPersons) (*real
 		// If the player exists and is not suspended or the tournament hasn't started
 		// throw an error
 		if ok && (!t.Players.Persons[idx].Suspended || t.CurrentRound < 0) {
-			return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PLAYER_ALREADY_EXISTS, t.TournamentName, t.DivisionName, player.Id)
+			return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PLAYER_ALREADY_EXISTS, t.TournamentName, t.DivisionName, player.Id)
 		}
 		if !ok {
 			numNewPlayers++
@@ -944,7 +944,7 @@ func (t *ClassicDivision) AddPlayers(players *realtime.TournamentPersons) (*real
 		pmessage = combinePairingMessages(pmessage, newpmessage)
 	} else {
 		if int(t.CurrentRound) == len(t.Matrix)-1 {
-			return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ADD_PLAYERS_LAST_ROUND, t.TournamentName, t.DivisionName, strconv.Itoa(int(t.CurrentRound+1)))
+			return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ADD_PLAYERS_LAST_ROUND, t.TournamentName, t.DivisionName, strconv.Itoa(int(t.CurrentRound+1)))
 		}
 		for _, player := range players.Persons {
 			_, playerExists := t.PlayerIndexMap[player.Id]
@@ -974,7 +974,7 @@ func (t *ClassicDivision) AddPlayers(players *realtime.TournamentPersons) (*real
 					if newPlayers[player.Id] {
 						// Set the pairing
 						// This also automatically submits a forfeit result
-						newpmessage, err := t.SetPairing(player.Id, player.Id, i, realtime.TournamentGameResult_NO_RESULT)
+						newpmessage, err := t.SetPairing(player.Id, player.Id, i, pb.TournamentGameResult_NO_RESULT)
 
 						if err != nil {
 							return nil, err
@@ -991,7 +991,7 @@ func (t *ClassicDivision) AddPlayers(players *realtime.TournamentPersons) (*real
 				}
 			} else {
 				pm := t.RoundControls[i].PairingMethod
-				if (i == int(t.CurrentRound)+1 || pair.IsStandingsIndependent(pm)) && pm != realtime.PairingMethod_MANUAL {
+				if (i == int(t.CurrentRound)+1 || pair.IsStandingsIndependent(pm)) && pm != pb.PairingMethod_MANUAL {
 					newpmessage, err := t.PairRound(i, false)
 					if err != nil {
 						return nil, err
@@ -1010,17 +1010,17 @@ func (t *ClassicDivision) AddPlayers(players *realtime.TournamentPersons) (*real
 	return pmessage, nil
 }
 
-func (t *ClassicDivision) RemovePlayers(persons *realtime.TournamentPersons) (*realtime.DivisionPairingsResponse, error) {
+func (t *ClassicDivision) RemovePlayers(persons *pb.TournamentPersons) (*pb.DivisionPairingsResponse, error) {
 	for _, player := range persons.Persons {
 		playerIndex, ok := t.PlayerIndexMap[player.Id]
 		if !ok {
-			return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, t.TournamentName, t.DivisionName, "0", player.Id, "removePlayers")
+			return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, t.TournamentName, t.DivisionName, "0", player.Id, "removePlayers")
 		}
 		if playerIndex < 0 || int(playerIndex) >= len(t.Players.Persons) {
-			return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PLAYER_INDEX_OUT_OF_RANGE, t.TournamentName, t.DivisionName, "0", player.Id, strconv.Itoa(int(playerIndex)), "removePlayers")
+			return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PLAYER_INDEX_OUT_OF_RANGE, t.TournamentName, t.DivisionName, "0", player.Id, strconv.Itoa(int(playerIndex)), "removePlayers")
 		}
 		if t.Players.Persons[playerIndex].Suspended {
-			return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PLAYER_ALREADY_REMOVED, t.TournamentName, t.DivisionName, player.Id)
+			return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PLAYER_ALREADY_REMOVED, t.TournamentName, t.DivisionName, player.Id)
 		}
 	}
 
@@ -1049,7 +1049,7 @@ func (t *ClassicDivision) RemovePlayers(persons *realtime.TournamentPersons) (*r
 		}
 
 		if playersRemoved+len(persons.Persons) >= len(t.Players.Persons) {
-			return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_REMOVAL_CREATES_EMPTY_DIVISION, t.TournamentName, t.DivisionName)
+			return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_REMOVAL_CREATES_EMPTY_DIVISION, t.TournamentName, t.DivisionName)
 		}
 
 		for _, player := range t.Players.Persons {
@@ -1062,7 +1062,7 @@ func (t *ClassicDivision) RemovePlayers(persons *realtime.TournamentPersons) (*r
 
 		for i := int(t.CurrentRound + 1); i < len(t.Matrix); i++ {
 			pm := t.RoundControls[i].PairingMethod
-			if (i == int(t.CurrentRound)+1 || pair.IsStandingsIndependent(pm)) && pm != realtime.PairingMethod_MANUAL {
+			if (i == int(t.CurrentRound)+1 || pair.IsStandingsIndependent(pm)) && pm != pb.PairingMethod_MANUAL {
 				newPairingsMessage, err := t.PairRound(i, false)
 				if err != nil {
 					return nil, err
@@ -1086,7 +1086,7 @@ func (t *ClassicDivision) GetCurrentRound() int {
 	return int(t.CurrentRound)
 }
 
-func (t *ClassicDivision) GetPlayers() *realtime.TournamentPersons {
+func (t *ClassicDivision) GetPlayers() *pb.TournamentPersons {
 	return t.Players
 }
 
@@ -1104,9 +1104,9 @@ func (t *ClassicDivision) ResetToBeginning() error {
 	return nil
 }
 
-func getRecords(t *ClassicDivision, round int) ([]*realtime.PlayerStanding, error) {
+func getRecords(t *ClassicDivision, round int) ([]*pb.PlayerStanding, error) {
 	if round < 0 || round >= len(t.Matrix) {
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "GetStandings")
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "GetStandings")
 	}
 
 	var wins int32 = 0
@@ -1114,7 +1114,7 @@ func getRecords(t *ClassicDivision, round int) ([]*realtime.PlayerStanding, erro
 	var draws int32 = 0
 	var spread int32 = 0
 	playerId := ""
-	records := []*realtime.PlayerStanding{}
+	records := []*pb.PlayerStanding{}
 	for i := 0; i < len(t.Players.Persons); i++ {
 		wins = 0
 		losses = 0
@@ -1132,8 +1132,8 @@ func getRecords(t *ClassicDivision, round int) ([]*realtime.PlayerStanding, erro
 				if t.Players.Persons[pairing.Players[1]].Id == playerId {
 					playerIndex = 1
 				}
-				if pairing.Outcomes[playerIndex] != realtime.TournamentGameResult_NO_RESULT &&
-					pairing.Outcomes[playerIndex] != realtime.TournamentGameResult_VOID {
+				if pairing.Outcomes[playerIndex] != pb.TournamentGameResult_NO_RESULT &&
+					pairing.Outcomes[playerIndex] != pb.TournamentGameResult_VOID {
 					result := convertResult(pairing.Outcomes[playerIndex])
 					if result == 2 {
 						wins++
@@ -1147,8 +1147,8 @@ func getRecords(t *ClassicDivision, round int) ([]*realtime.PlayerStanding, erro
 							pairing.Games[k].Scores[1-playerIndex]
 						// If this is a double forfeit, we can't use the spreads to give
 						// a subtraction for both players, so we do it here manually
-						if pairing.Outcomes[0] == realtime.TournamentGameResult_FORFEIT_LOSS &&
-							pairing.Outcomes[1] == realtime.TournamentGameResult_FORFEIT_LOSS {
+						if pairing.Outcomes[0] == pb.TournamentGameResult_FORFEIT_LOSS &&
+							pairing.Outcomes[1] == pb.TournamentGameResult_FORFEIT_LOSS {
 							incSpread = t.DivisionControls.SuspendedSpread
 						}
 						if t.DivisionControls.SpreadCap > 0 {
@@ -1163,7 +1163,7 @@ func getRecords(t *ClassicDivision, round int) ([]*realtime.PlayerStanding, erro
 				}
 			}
 		}
-		records = append(records, &realtime.PlayerStanding{PlayerId: playerId,
+		records = append(records, &pb.PlayerStanding{PlayerId: playerId,
 			Wins:       wins,
 			Losses:     losses,
 			Draws:      draws,
@@ -1180,7 +1180,7 @@ func getRecords(t *ClassicDivision, round int) ([]*realtime.PlayerStanding, erro
 	// index in the tournament matrix is used as a tie breaker
 	// for wins. In this way, The groupings are preserved across
 	// rounds.
-	if pairingMethod == realtime.PairingMethod_ELIMINATION {
+	if pairingMethod == pb.PairingMethod_ELIMINATION {
 		sort.Slice(records,
 			func(i, j int) bool {
 				if records[i].Wins == records[j].Wins {
@@ -1231,9 +1231,9 @@ func getRecords(t *ClassicDivision, round int) ([]*realtime.PlayerStanding, erro
 	return records, nil
 }
 
-func (t *ClassicDivision) GetStandings(round int) (*realtime.RoundStandings, int, error) {
+func (t *ClassicDivision) GetStandings(round int) (*pb.RoundStandings, int, error) {
 	if round < 0 || round >= len(t.Matrix) {
-		return nil, -1, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "GetStandings")
+		return nil, -1, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "GetStandings")
 	}
 
 	records, err := getRecords(t, round)
@@ -1270,7 +1270,7 @@ func (t *ClassicDivision) GetStandings(round int) (*realtime.RoundStandings, int
 			if gibsonRound == len(t.Matrix)-1 {
 				gibsonRound--
 				if gibsonRound < 0 {
-					return nil, -1, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NEGATIVE_GIBSON_ROUND, t.TournamentName, t.DivisionName, strconv.Itoa(gibsonRound))
+					return nil, -1, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NEGATIVE_GIBSON_ROUND, t.TournamentName, t.DivisionName, strconv.Itoa(gibsonRound))
 				}
 				gibsonRecords, err = getRecords(t, gibsonRound)
 				if err != nil {
@@ -1294,14 +1294,14 @@ func (t *ClassicDivision) GetStandings(round int) (*realtime.RoundStandings, int
 		}
 	}
 
-	t.Standings[int32(round)] = &realtime.RoundStandings{Standings: records}
+	t.Standings[int32(round)] = &pb.RoundStandings{Standings: records}
 
 	return t.Standings[int32(round)], gibsonRank, nil
 }
 
 func (t *ClassicDivision) IsRoundReady(round int) (bool, error) {
 	if round >= len(t.Matrix) || round < 0 {
-		return false, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "IsRoundReady")
+		return false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "IsRoundReady")
 	}
 	// Check that everyone is paired
 	for i, pairingKey := range t.Matrix[round] {
@@ -1310,7 +1310,7 @@ func (t *ClassicDivision) IsRoundReady(round int) (bool, error) {
 		}
 		_, ok := t.PairingMap[pairingKey]
 		if !ok {
-			return false, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), t.Players.Persons[i].Id, pairingKey, "IsRoundReady")
+			return false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), t.Players.Persons[i].Id, pairingKey, "IsRoundReady")
 		}
 	}
 	// Check that all previous rounds are complete
@@ -1330,17 +1330,17 @@ func (t *ClassicDivision) IsRoundStartable() error {
 			return err
 		}
 		if !roundComplete {
-			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ROUND_NOT_COMPLETE, t.TournamentName, t.DivisionName, strconv.Itoa(int(t.CurrentRound+1)))
+			return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NOT_COMPLETE, t.TournamentName, t.DivisionName, strconv.Itoa(int(t.CurrentRound+1)))
 		}
 		isFinished, err := t.IsFinished()
 		if err != nil {
 			return err
 		}
 		if isFinished {
-			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.TournamentName, t.DivisionName)
+			return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_FINISHED, t.TournamentName, t.DivisionName)
 		}
 	} else if !t.IsStartable() {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NOT_STARTABLE, t.TournamentName, t.DivisionName)
+		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NOT_STARTABLE, t.TournamentName, t.DivisionName)
 	}
 
 	ready, err := t.IsRoundReady(int(t.CurrentRound + 1))
@@ -1348,7 +1348,7 @@ func (t *ClassicDivision) IsRoundStartable() error {
 		return err
 	}
 	if !ready {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ROUND_NOT_READY, t.TournamentName, t.DivisionName, strconv.Itoa(int(t.CurrentRound+2)))
+		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NOT_READY, t.TournamentName, t.DivisionName, strconv.Itoa(int(t.CurrentRound+2)))
 	}
 	return nil
 }
@@ -1374,14 +1374,14 @@ func (t *ClassicDivision) StartRound(checkForStartable bool) error {
 // and an optional error.
 func (t *ClassicDivision) SetReadyForGame(playerID, connID string, round, gameIndex int, unready bool) ([]string, bool, error) {
 	if round >= len(t.Matrix) || round < 0 {
-		return nil, false, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "SetReadyForGame")
+		return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "SetReadyForGame")
 	}
 	toSet := connID
 	if unready {
 		toSet = ""
 	}
 	if int(t.CurrentRound) != round {
-		return nil, false, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_SET_GAME_ROUND_NUMBER, t.TournamentName, t.DivisionName, strconv.Itoa(round+1))
+		return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_SET_GAME_ROUND_NUMBER, t.TournamentName, t.DivisionName, strconv.Itoa(round+1))
 	}
 	// gameIndex is ignored for ClassicDivision?
 	pairingKey, err := t.getPairingKey(playerID, round)
@@ -1389,35 +1389,35 @@ func (t *ClassicDivision) SetReadyForGame(playerID, connID string, round, gameIn
 		return nil, false, err
 	}
 	if pairingKey == "" {
-		return nil, false, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID, pairingKey, "SetReadyForGame")
+		return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID, pairingKey, "SetReadyForGame")
 	}
 
 	pairing, ok := t.PairingMap[pairingKey]
 	if !ok {
-		return nil, false, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID, pairingKey, "SetReadyForGame")
+		return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID, pairingKey, "SetReadyForGame")
 	}
 
 	// search for player
 	foundIdx := -1
 	for idx, pn := range pairing.Players {
 		if int(pn) >= len(t.Players.Persons) || pn < 0 {
-			return nil, false, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PLAYER_INDEX_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID, strconv.Itoa(int(pn)), "SetReadyForGame")
+			return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PLAYER_INDEX_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID, strconv.Itoa(int(pn)), "SetReadyForGame")
 		}
 		pairingPlayerID := t.Players.Persons[pn].Id
 		if playerID == pairingPlayerID {
 			if !unready && pairing.ReadyStates[idx] != "" {
 				// The user already said they were ready. Return an error.
-				return nil, false, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ALREADY_READY, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID)
+				return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ALREADY_READY, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID)
 			}
 			if foundIdx != -1 {
 				// This should never happen, but if it does, we'll just return an error.
-				return nil, false, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_SET_READY_MULTIPLE_IDS, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID)
+				return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_SET_READY_MULTIPLE_IDS, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID)
 			}
 			foundIdx = idx
 		}
 	}
 	if foundIdx == -1 {
-		return nil, false, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_SET_READY_PLAYER_NOT_FOUND, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID)
+		return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_SET_READY_PLAYER_NOT_FOUND, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID)
 	}
 	pairing.ReadyStates[foundIdx] = toSet
 
@@ -1433,9 +1433,9 @@ func (t *ClassicDivision) SetReadyForGame(playerID, connID string, round, gameIn
 
 }
 
-func (t *ClassicDivision) ClearReadyStates(playerID string, round, gameIndex int) ([]*realtime.Pairing, error) {
+func (t *ClassicDivision) ClearReadyStates(playerID string, round, gameIndex int) ([]*pb.Pairing, error) {
 	if round >= len(t.Matrix) || round < 0 {
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "ClearReadyStates")
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "ClearReadyStates")
 	}
 	// ignore gameIndex for classicdivision
 	p, err := t.getPairing(playerID, round)
@@ -1443,20 +1443,20 @@ func (t *ClassicDivision) ClearReadyStates(playerID string, round, gameIndex int
 		return nil, err
 	}
 	p.ReadyStates = []string{"", ""}
-	return []*realtime.Pairing{p}, nil
+	return []*pb.Pairing{p}, nil
 }
 
 func (t *ClassicDivision) IsRoundComplete(round int) (bool, error) {
 	if round >= len(t.Matrix) || round < 0 {
-		return false, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "IsRoundComplete")
+		return false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "IsRoundComplete")
 	}
 	for _, pairingKey := range t.Matrix[round] {
 		pairing, ok := t.PairingMap[pairingKey]
 		if !ok {
 			return false, nil
 		}
-		if pairing.Outcomes[0] == realtime.TournamentGameResult_NO_RESULT ||
-			pairing.Outcomes[1] == realtime.TournamentGameResult_NO_RESULT {
+		if pairing.Outcomes[0] == pb.TournamentGameResult_NO_RESULT ||
+			pairing.Outcomes[1] == pb.TournamentGameResult_NO_RESULT {
 			return false, nil
 		}
 	}
@@ -1482,8 +1482,8 @@ func (t *ClassicDivision) IsStartable() bool {
 	return len(t.Players.Persons) >= 2 && len(t.Matrix) >= 1
 }
 
-func (t *ClassicDivision) GetXHRResponse() (*realtime.TournamentDivisionDataResponse, error) {
-	return &realtime.TournamentDivisionDataResponse{
+func (t *ClassicDivision) GetXHRResponse() (*pb.TournamentDivisionDataResponse, error) {
+	return &pb.TournamentDivisionDataResponse{
 		Players:       t.Players,
 		Controls:      t.DivisionControls,
 		RoundControls: t.RoundControls,
@@ -1507,13 +1507,13 @@ func newPairingMatrix(numberOfRounds int, numberOfPlayers int) [][]string {
 func newClassicPairing(t *ClassicDivision,
 	playerOne int32,
 	playerTwo int32,
-	round int) *realtime.Pairing {
+	round int) *pb.Pairing {
 
-	games := []*realtime.TournamentGame{}
+	games := []*pb.TournamentGame{}
 	for i := 0; i < int(t.RoundControls[round].GamesPerRound); i++ {
-		games = append(games, &realtime.TournamentGame{Scores: []int32{0, 0},
-			Results: []realtime.TournamentGameResult{realtime.TournamentGameResult_NO_RESULT,
-				realtime.TournamentGameResult_NO_RESULT},
+		games = append(games, &pb.TournamentGame{Scores: []int32{0, 0},
+			Results: []pb.TournamentGameResult{pb.TournamentGameResult_NO_RESULT,
+				pb.TournamentGameResult_NO_RESULT},
 			Id: ""})
 	}
 
@@ -1522,10 +1522,10 @@ func newClassicPairing(t *ClassicDivision,
 	switchFirst := false
 	firstMethod := t.RoundControls[round].FirstMethod
 
-	if firstMethod != realtime.FirstMethod_MANUAL_FIRST {
+	if firstMethod != pb.FirstMethod_MANUAL_FIRST {
 		playerOneFS := getPlayerFirstsAndSeconds(t, playerGoingFirst, round-1)
 		playerTwoFS := getPlayerFirstsAndSeconds(t, playerGoingSecond, round-1)
-		if firstMethod == realtime.FirstMethod_RANDOM_FIRST {
+		if firstMethod == pb.FirstMethod_RANDOM_FIRST {
 			switchFirst = rand.Intn(2) == 0
 		} else { // AutomaticFirst
 			if playerOneFS[0] != playerTwoFS[0] {
@@ -1543,10 +1543,10 @@ func newClassicPairing(t *ClassicDivision,
 		playerGoingFirst, playerGoingSecond = playerGoingSecond, playerGoingFirst
 	}
 
-	return &realtime.Pairing{Players: []int32{playerGoingFirst, playerGoingSecond},
+	return &pb.Pairing{Players: []int32{playerGoingFirst, playerGoingSecond},
 		Games: games,
-		Outcomes: []realtime.TournamentGameResult{realtime.TournamentGameResult_NO_RESULT,
-			realtime.TournamentGameResult_NO_RESULT},
+		Outcomes: []pb.TournamentGameResult{pb.TournamentGameResult_NO_RESULT,
+			pb.TournamentGameResult_NO_RESULT},
 		ReadyStates: []string{"", ""},
 		Round:       int32(round)}
 }
@@ -1576,10 +1576,10 @@ func getPlayerFirstsAndSeconds(t *ClassicDivision, playerIndex int32, round int)
 					return fs
 				}
 				outcome := pairing.Outcomes[playerPairingIndex]
-				if outcome == realtime.TournamentGameResult_NO_RESULT ||
-					outcome == realtime.TournamentGameResult_WIN ||
-					outcome == realtime.TournamentGameResult_LOSS ||
-					outcome == realtime.TournamentGameResult_DRAW {
+				if outcome == pb.TournamentGameResult_NO_RESULT ||
+					outcome == pb.TournamentGameResult_WIN ||
+					outcome == pb.TournamentGameResult_LOSS ||
+					outcome == pb.TournamentGameResult_DRAW {
 					fs[playerPairingIndex]++
 				}
 			}
@@ -1588,12 +1588,12 @@ func getPlayerFirstsAndSeconds(t *ClassicDivision, playerIndex int32, round int)
 	return fs
 }
 
-func newEliminatedPairing(playerOne string, playerTwo string, round int) *realtime.Pairing {
-	return &realtime.Pairing{Outcomes: []realtime.TournamentGameResult{realtime.TournamentGameResult_ELIMINATED,
-		realtime.TournamentGameResult_ELIMINATED}, Round: int32(round)}
+func newEliminatedPairing(playerOne string, playerTwo string, round int) *pb.Pairing {
+	return &pb.Pairing{Outcomes: []pb.TournamentGameResult{pb.TournamentGameResult_ELIMINATED,
+		pb.TournamentGameResult_ELIMINATED}, Round: int32(round)}
 }
 
-func newPlayerIndexMap(players []*realtime.TournamentPerson) map[string]int32 {
+func newPlayerIndexMap(players []*pb.TournamentPerson) map[string]int32 {
 	m := make(map[string]int32)
 	for i, player := range players {
 		m[player.Id] = int32(i)
@@ -1603,7 +1603,7 @@ func newPlayerIndexMap(players []*realtime.TournamentPerson) map[string]int32 {
 
 func getRepeats(t *ClassicDivision, round int) (map[string]int, error) {
 	if round >= len(t.Matrix) {
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "getRepeats")
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "getRepeats")
 	}
 	repeats := make(map[string]int)
 	byeKeys := make(map[string]bool)
@@ -1633,7 +1633,7 @@ func getRepeats(t *ClassicDivision, round int) (map[string]int, error) {
 	return repeats, nil
 }
 
-func getEliminationOutcomes(games []*realtime.TournamentGame, gamesPerRound int32) []realtime.TournamentGameResult {
+func getEliminationOutcomes(games []*pb.TournamentGame, gamesPerRound int32) []pb.TournamentGameResult {
 	// Determines if a player is eliminated for a given round in an
 	// elimination tournament. The convertResult function gives 2 for a win,
 	// 1 for a draw, and 0 otherwise. If a player's score is greater than
@@ -1649,8 +1649,8 @@ func getEliminationOutcomes(games []*realtime.TournamentGame, gamesPerRound int3
 		p2Spread += game.Scores[1] - game.Scores[0]
 	}
 
-	p1Outcome := realtime.TournamentGameResult_NO_RESULT
-	p2Outcome := realtime.TournamentGameResult_NO_RESULT
+	p1Outcome := pb.TournamentGameResult_NO_RESULT
+	p2Outcome := pb.TournamentGameResult_NO_RESULT
 
 	// In case of a tie by spread, more games need to be
 	// submitted to break the tie. In the future we
@@ -1660,73 +1660,73 @@ func getEliminationOutcomes(games []*realtime.TournamentGame, gamesPerRound int3
 	if len(games) > int(gamesPerRound) { // Tiebreaking results are present
 		if p1Wins > p2Wins ||
 			(p1Wins == p2Wins && p1Spread > p2Spread) {
-			p1Outcome = realtime.TournamentGameResult_WIN
-			p2Outcome = realtime.TournamentGameResult_ELIMINATED
+			p1Outcome = pb.TournamentGameResult_WIN
+			p2Outcome = pb.TournamentGameResult_ELIMINATED
 		} else if p2Wins > p1Wins ||
 			(p2Wins == p1Wins && p2Spread > p1Spread) {
-			p1Outcome = realtime.TournamentGameResult_ELIMINATED
-			p2Outcome = realtime.TournamentGameResult_WIN
+			p1Outcome = pb.TournamentGameResult_ELIMINATED
+			p2Outcome = pb.TournamentGameResult_WIN
 		}
 	} else {
 		if p1Wins > gamesPerRound ||
 			(p1Wins == gamesPerRound && p2Wins == gamesPerRound && p1Spread > p2Spread) {
-			p1Outcome = realtime.TournamentGameResult_WIN
-			p2Outcome = realtime.TournamentGameResult_ELIMINATED
+			p1Outcome = pb.TournamentGameResult_WIN
+			p2Outcome = pb.TournamentGameResult_ELIMINATED
 		} else if p2Wins > gamesPerRound ||
 			(p1Wins == gamesPerRound && p2Wins == gamesPerRound && p1Spread < p2Spread) {
-			p1Outcome = realtime.TournamentGameResult_ELIMINATED
-			p2Outcome = realtime.TournamentGameResult_WIN
+			p1Outcome = pb.TournamentGameResult_ELIMINATED
+			p2Outcome = pb.TournamentGameResult_WIN
 		}
 	}
-	return []realtime.TournamentGameResult{p1Outcome, p2Outcome}
+	return []pb.TournamentGameResult{p1Outcome, p2Outcome}
 }
 
-func convertResult(result realtime.TournamentGameResult) int32 {
+func convertResult(result pb.TournamentGameResult) int32 {
 	var convertedResult int32 = 0
-	if result == realtime.TournamentGameResult_WIN || result == realtime.TournamentGameResult_BYE || result == realtime.TournamentGameResult_FORFEIT_WIN {
+	if result == pb.TournamentGameResult_WIN || result == pb.TournamentGameResult_BYE || result == pb.TournamentGameResult_FORFEIT_WIN {
 		convertedResult = 2
-	} else if result == realtime.TournamentGameResult_DRAW {
+	} else if result == pb.TournamentGameResult_DRAW {
 		convertedResult = 1
 	}
 	return convertedResult
 }
 
-func (t *ClassicDivision) getPairing(player string, round int) (*realtime.Pairing, error) {
+func (t *ClassicDivision) getPairing(player string, round int) (*pb.Pairing, error) {
 	pk, err := t.getPairingKey(player, round)
 	if err != nil {
 		return nil, err
 	}
 	pairing, ok := t.PairingMap[pk]
 	if !ok {
-		return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), player, pk, "getPairing")
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), player, pk, "getPairing")
 	}
 	return pairing, nil
 }
 
 func (t *ClassicDivision) getPairingKey(player string, round int) (string, error) {
 	if round >= len(t.Matrix) || round < 0 {
-		return "", entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "getPairingKey")
+		return "", entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "getPairingKey")
 	}
 
 	playerIndex, ok := t.PlayerIndexMap[player]
 	if !ok {
-		return "", entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), player, "", "getPairingKey")
+		return "", entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), player, "", "getPairingKey")
 	}
 
 	if playerIndex < 0 || int(playerIndex) >= len(t.Matrix[round]) {
-		return "", entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PLAYER_INDEX_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), player, strconv.Itoa(int(playerIndex)), "getPairingKey")
+		return "", entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PLAYER_INDEX_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), player, strconv.Itoa(int(playerIndex)), "getPairingKey")
 	}
 	return t.Matrix[round][playerIndex], nil
 }
 
 func (t *ClassicDivision) setPairingKey(player string, round int, pairingKey string) error {
 	if round >= len(t.Matrix) || round < 0 {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), player, "setPairingKey")
+		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), player, "setPairingKey")
 	}
 
 	playerIndex, ok := t.PlayerIndexMap[player]
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), player, "setPairingKey")
+		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), player, "setPairingKey")
 	}
 	t.Matrix[round][playerIndex] = pairingKey
 	return nil
@@ -1740,11 +1740,11 @@ func (t *ClassicDivision) makePairingKey() string {
 
 func (t *ClassicDivision) clearPairingKey(playerIndex int32, round int) error {
 	if round >= len(t.Matrix) || round < 0 {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "clearPairingKey")
+		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "clearPairingKey")
 	}
 
 	if int(playerIndex) >= len(t.Matrix[round]) || playerIndex < 0 {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PLAYER_INDEX_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "", strconv.Itoa(int(playerIndex)), "clearPairingKey")
+		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PLAYER_INDEX_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "", strconv.Itoa(int(playerIndex)), "clearPairingKey")
 	}
 
 	pairingKey := t.Matrix[round][playerIndex]
@@ -1753,7 +1753,7 @@ func (t *ClassicDivision) clearPairingKey(playerIndex int32, round int) error {
 	return nil
 }
 
-func isPositiveRecord(r *realtime.PlayerStanding) bool {
+func isPositiveRecord(r *pb.PlayerStanding) bool {
 	if r.Wins*2+r.Draws == r.Losses*2 {
 		return r.Spread > 0
 	}
@@ -1791,18 +1791,18 @@ func (t *ClassicDivision) opponentOf(player string, round int) (string, error) {
 	}
 
 	if int(pairing.Players[0]) >= len(t.Players.Persons) || pairing.Players[0] < 0 {
-		return "", entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PLAYER_INDEX_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), player, strconv.Itoa(int(pairing.Players[0])), "opponentOfPlayerOne")
+		return "", entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PLAYER_INDEX_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), player, strconv.Itoa(int(pairing.Players[0])), "opponentOfPlayerOne")
 	}
 
 	if int(pairing.Players[1]) >= len(t.Players.Persons) || pairing.Players[1] < 0 {
-		return "", entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PLAYER_INDEX_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), player, strconv.Itoa(int(pairing.Players[1])), "opponentOfPlayerTwo")
+		return "", entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PLAYER_INDEX_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), player, strconv.Itoa(int(pairing.Players[1])), "opponentOfPlayerTwo")
 	}
 
 	playerOne := t.Players.Persons[pairing.Players[0]].Id
 	playerTwo := t.Players.Persons[pairing.Players[1]].Id
 
 	if player != playerOne && player != playerTwo {
-		return "", entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), player, "opponentOf", playerOne, playerTwo)
+		return "", entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), player, "opponentOf", playerOne, playerTwo)
 	} else if player != playerOne {
 		return playerOne, nil
 	} else {
@@ -1810,18 +1810,18 @@ func (t *ClassicDivision) opponentOf(player string, round int) (string, error) {
 	}
 }
 
-func newPairingsMessage() *realtime.DivisionPairingsResponse {
-	return &realtime.DivisionPairingsResponse{DivisionPairings: []*realtime.Pairing{},
-		DivisionStandings: make(map[int32]*realtime.RoundStandings)}
+func newPairingsMessage() *pb.DivisionPairingsResponse {
+	return &pb.DivisionPairingsResponse{DivisionPairings: []*pb.Pairing{},
+		DivisionStandings: make(map[int32]*pb.RoundStandings)}
 }
 
-func combinePairingMessages(pm1 *realtime.DivisionPairingsResponse, pm2 *realtime.DivisionPairingsResponse) *realtime.DivisionPairingsResponse {
+func combinePairingMessages(pm1 *pb.DivisionPairingsResponse, pm2 *pb.DivisionPairingsResponse) *pb.DivisionPairingsResponse {
 	newPairings := combinePairingsResponses(pm1.DivisionPairings, pm2.DivisionPairings)
 	newStandings := combineStandingsResponses(pm1.DivisionStandings, pm2.DivisionStandings)
-	return &realtime.DivisionPairingsResponse{DivisionPairings: newPairings, DivisionStandings: newStandings}
+	return &pb.DivisionPairingsResponse{DivisionPairings: newPairings, DivisionStandings: newStandings}
 }
 
-func combinePairingsResponses(pr1 []*realtime.Pairing, pr2 []*realtime.Pairing) []*realtime.Pairing {
+func combinePairingsResponses(pr1 []*pb.Pairing, pr2 []*pb.Pairing) []*pb.Pairing {
 	// If a player has a pairing in pr1 for round x
 	// and a pairing in pr2 for round x, use the pairing
 	// in pr2
@@ -1835,7 +1835,7 @@ func combinePairingsResponses(pr1 []*realtime.Pairing, pr2 []*realtime.Pairing) 
 		}
 	}
 
-	newResponse := []*realtime.Pairing{}
+	newResponse := []*pb.Pairing{}
 
 	for _, pairing := range pr1 {
 		if pairing.Players != nil && len(pairing.Players) == 2 {
@@ -1852,7 +1852,7 @@ func combinePairingsResponses(pr1 []*realtime.Pairing, pr2 []*realtime.Pairing) 
 	return newResponse
 }
 
-func combineStandingsResponses(s1 map[int32]*realtime.RoundStandings, s2 map[int32]*realtime.RoundStandings) map[int32]*realtime.RoundStandings {
+func combineStandingsResponses(s1 map[int32]*pb.RoundStandings, s2 map[int32]*pb.RoundStandings) map[int32]*pb.RoundStandings {
 	// For now, this is quite simple
 	// This function is here in case this structure
 	// gets more complicated
@@ -1862,25 +1862,25 @@ func combineStandingsResponses(s1 map[int32]*realtime.RoundStandings, s2 map[int
 	return s1
 }
 
-func validFutureResult(r realtime.TournamentGameResult) bool {
-	return r == realtime.TournamentGameResult_FORFEIT_WIN ||
-		r == realtime.TournamentGameResult_FORFEIT_LOSS ||
-		r == realtime.TournamentGameResult_BYE ||
-		r == realtime.TournamentGameResult_VOID
+func validFutureResult(r pb.TournamentGameResult) bool {
+	return r == pb.TournamentGameResult_FORFEIT_WIN ||
+		r == pb.TournamentGameResult_FORFEIT_LOSS ||
+		r == pb.TournamentGameResult_BYE ||
+		r == pb.TournamentGameResult_VOID
 }
 
-func findLoser(t *ClassicDivision, p1 string, p2 string, tgr1 realtime.TournamentGameResult, tgr2 realtime.TournamentGameResult) (int, error) {
-	tgr1IsLoss := tgr1 == realtime.TournamentGameResult_ELIMINATED ||
-		tgr1 == realtime.TournamentGameResult_FORFEIT_LOSS ||
-		tgr1 == realtime.TournamentGameResult_LOSS
-	tgr2IsLoss := tgr2 == realtime.TournamentGameResult_ELIMINATED ||
-		tgr2 == realtime.TournamentGameResult_FORFEIT_LOSS ||
-		tgr2 == realtime.TournamentGameResult_LOSS
+func findLoser(t *ClassicDivision, p1 string, p2 string, tgr1 pb.TournamentGameResult, tgr2 pb.TournamentGameResult) (int, error) {
+	tgr1IsLoss := tgr1 == pb.TournamentGameResult_ELIMINATED ||
+		tgr1 == pb.TournamentGameResult_FORFEIT_LOSS ||
+		tgr1 == pb.TournamentGameResult_LOSS
+	tgr2IsLoss := tgr2 == pb.TournamentGameResult_ELIMINATED ||
+		tgr2 == pb.TournamentGameResult_FORFEIT_LOSS ||
+		tgr2 == pb.TournamentGameResult_LOSS
 	if tgr1IsLoss && tgr2IsLoss {
-		return -1, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NO_WINNER, t.TournamentName, t.DivisionName, strconv.Itoa(int(t.CurrentRound+1)), p1, p2, tgr1.String(), tgr2.String())
+		return -1, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NO_WINNER, t.TournamentName, t.DivisionName, strconv.Itoa(int(t.CurrentRound+1)), p1, p2, tgr1.String(), tgr2.String())
 	}
 	if !tgr1IsLoss && !tgr2IsLoss {
-		return -1, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NO_LOSER, t.TournamentName, t.DivisionName, strconv.Itoa(int(t.CurrentRound+1)), p1, p2, tgr1.String(), tgr2.String())
+		return -1, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NO_LOSER, t.TournamentName, t.DivisionName, strconv.Itoa(int(t.CurrentRound+1)), p1, p2, tgr1.String(), tgr2.String())
 	}
 	if tgr1IsLoss {
 		return 0, nil
@@ -1895,21 +1895,21 @@ func validatePairings(t *ClassicDivision, round int) error {
 	//   - Player's opponent's opponent is the player
 
 	if round < 0 || round >= len(t.Matrix) {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "validatePairings")
+		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "validatePairings")
 	}
 
 	for i, pairingKey := range t.Matrix[round] {
 		if pairingKey == "" {
-			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_PLAYER_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), t.Players.Persons[i].Id, "validatePairings", strconv.Itoa(i))
+			return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NIL_PLAYER_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), t.Players.Persons[i].Id, "validatePairings", strconv.Itoa(i))
 		}
 		pairing, ok := t.PairingMap[pairingKey]
 		if !ok {
-			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), t.Players.Persons[i].Id, pairingKey, "validatePairings", strconv.Itoa(i))
+			return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), t.Players.Persons[i].Id, pairingKey, "validatePairings", strconv.Itoa(i))
 		}
 		if pairing.Players == nil {
 			// Some pairings can be nil for Elimination tournaments
-			if t.RoundControls[0].PairingMethod != realtime.PairingMethod_ELIMINATION {
-				return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_UNPAIRED_PLAYER, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), t.Players.Persons[i].Id, strconv.Itoa(i), pairingKey)
+			if t.RoundControls[0].PairingMethod != pb.PairingMethod_ELIMINATION {
+				return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_UNPAIRED_PLAYER, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), t.Players.Persons[i].Id, strconv.Itoa(i), pairingKey)
 			} else {
 				continue
 			}
@@ -1924,13 +1924,13 @@ func validatePairings(t *ClassicDivision, round int) error {
 			return err
 		}
 		if t.Players.Persons[i].Id != opponentOpponent {
-			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_INVALID_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), t.Players.Persons[i].Id, opponent, opponentOpponent, strconv.Itoa(i), pairingKey)
+			return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_INVALID_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), t.Players.Persons[i].Id, opponent, opponentOpponent, strconv.Itoa(i), pairingKey)
 		}
 	}
 	return nil
 }
 
-func validateRoundControls(t *ClassicDivision, rcs []*realtime.RoundControl) error {
+func validateRoundControls(t *ClassicDivision, rcs []*pb.RoundControl) error {
 	var err error
 	for _, rc := range rcs {
 		err = validateRoundControl(t, rc)
@@ -1941,14 +1941,14 @@ func validateRoundControls(t *ClassicDivision, rcs []*realtime.RoundControl) err
 	return nil
 }
 
-func validateRoundControl(t *ClassicDivision, rc *realtime.RoundControl) error {
-	if (rc.PairingMethod == realtime.PairingMethod_SWISS ||
-		rc.PairingMethod == realtime.PairingMethod_FACTOR) &&
+func validateRoundControl(t *ClassicDivision, rc *pb.RoundControl) error {
+	if (rc.PairingMethod == pb.PairingMethod_SWISS ||
+		rc.PairingMethod == pb.PairingMethod_FACTOR) &&
 		!rc.AllowOverMaxRepeats && rc.MaxRepeats == 0 {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_INVALID_SWISS, t.TournamentName, t.DivisionName, strconv.Itoa(int(rc.Round+1)))
+		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_INVALID_SWISS, t.TournamentName, t.DivisionName, strconv.Itoa(int(rc.Round+1)))
 	}
 	if rc.GamesPerRound == 0 {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ZERO_GAMES_PER_ROUND, t.TournamentName, t.DivisionName, strconv.Itoa(int(rc.Round+1)))
+		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ZERO_GAMES_PER_ROUND, t.TournamentName, t.DivisionName, strconv.Itoa(int(rc.Round+1)))
 	}
 	return nil
 }

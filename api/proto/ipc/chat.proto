@@ -1,0 +1,23 @@
+syntax = "proto3";
+package ipc;
+option go_package = "github.com/domino14/liwords/rpc/api/proto/ipc";
+
+message ChatMessage {
+  string username = 1;
+  string channel = 2;
+  string message = 3;
+  // timestamp is in milliseconds!
+  int64 timestamp = 4;
+  string user_id = 5;
+  string id = 6;
+  // these are only loaded by specific endpoints.
+  string country_code = 7;
+  string avatar_url = 8;
+}
+
+message ChatMessages { repeated ChatMessage messages = 1; }
+
+message ChatMessageDeleted {
+  string channel = 1;
+  string id = 2;
+}

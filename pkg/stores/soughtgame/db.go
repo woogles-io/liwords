@@ -14,7 +14,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/rs/zerolog/log"
 
-	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
 type DBStore struct {

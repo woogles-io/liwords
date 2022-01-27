@@ -16,7 +16,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
 
-	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
+	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 )
 
@@ -43,9 +43,9 @@ type TournamentStore interface {
 func HandleTournamentGameEnded(ctx context.Context, ts TournamentStore, us user.Store,
 	g *entity.Game) error {
 
-	Results := []realtime.TournamentGameResult{realtime.TournamentGameResult_DRAW,
-		realtime.TournamentGameResult_WIN,
-		realtime.TournamentGameResult_LOSS}
+	Results := []ipc.TournamentGameResult{ipc.TournamentGameResult_DRAW,
+		ipc.TournamentGameResult_WIN,
+		ipc.TournamentGameResult_LOSS}
 
 	p1idx, p2idx := 0, 1
 	p1result, p2result := Results[g.WinnerIdx+1], Results[g.LoserIdx+1]
@@ -76,7 +76,7 @@ func NewTournament(ctx context.Context,
 	tournamentStore TournamentStore,
 	name string,
 	description string,
-	directors *realtime.TournamentPersons,
+	directors *ipc.TournamentPersons,
 	ttype entity.CompetitionType,
 	parent string,
 	slug string,
@@ -140,14 +140,14 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 	}
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name)
 	}
 
 	t.Lock()
 	defer t.Unlock()
 	name := strings.TrimSpace(meta.Name)
 	if name == "" {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_EMPTY_NAME, t.Name)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_EMPTY_NAME, t.Name)
 	}
 	t.Name = name
 	t.Description = meta.Description
@@ -173,11 +173,11 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 	if err != nil {
 		return err
 	}
-	wrapped := entity.WrapEvent(tdevt, realtime.MessageType_TOURNAMENT_MESSAGE)
+	wrapped := entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_MESSAGE)
 	return SendTournamentMessage(ctx, ts, meta.Id, wrapped)
 }
 
-func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, division string, round int, controls *realtime.RoundControl) error {
+func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, division string, round int, controls *ipc.RoundControl) error {
 
 	t, err := ts.Get(ctx, id)
 	if err != nil {
@@ -188,25 +188,25 @@ func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, 
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	if !t.IsStarted {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, division)
 	}
 
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	if divisionObject.DivisionManager == nil {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
 	}
 
 	currentRound := divisionObject.DivisionManager.GetCurrentRound()
 	if round < currentRound+1 {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_SET_NON_FUTURE_ROUND_CONTROLS, t.Name, division, strconv.Itoa(currentRound+1))
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_SET_NON_FUTURE_ROUND_CONTROLS, t.Name, division, strconv.Itoa(currentRound+1))
 	}
 
 	newControls, err := divisionObject.DivisionManager.SetSingleRoundControls(round, controls)
@@ -218,15 +218,15 @@ func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, 
 	if err != nil {
 		return err
 	}
-	wrapped := entity.WrapEvent(&realtime.DivisionRoundControls{
+	wrapped := entity.WrapEvent(&ipc.DivisionRoundControls{
 		Id:            id,
 		Division:      division,
-		RoundControls: []*realtime.RoundControl{newControls},
-	}, realtime.MessageType_TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE)
+		RoundControls: []*ipc.RoundControl{newControls},
+	}, ipc.MessageType_TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
-func SetRoundControls(ctx context.Context, ts TournamentStore, id string, division string, roundControls []*realtime.RoundControl) error {
+func SetRoundControls(ctx context.Context, ts TournamentStore, id string, division string, roundControls []*ipc.RoundControl) error {
 	t, err := ts.Get(ctx, id)
 	if err != nil {
 		return err
@@ -236,16 +236,16 @@ func SetRoundControls(ctx context.Context, ts TournamentStore, id string, divisi
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	if t.IsStarted {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_SET_ROUND_CONTROLS_AFTER_START, t.Name, division, "tournament")
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_SET_ROUND_CONTROLS_AFTER_START, t.Name, division, "tournament")
 	}
 
 	pairingsResp, newDivisionRoundControls, err := divisionObject.DivisionManager.SetRoundControls(roundControls)
@@ -258,15 +258,15 @@ func SetRoundControls(ctx context.Context, ts TournamentStore, id string, divisi
 		return err
 	}
 
-	wrapped := entity.WrapEvent(&realtime.DivisionRoundControls{Id: id, Division: division,
+	wrapped := entity.WrapEvent(&ipc.DivisionRoundControls{Id: id, Division: division,
 		RoundControls:     newDivisionRoundControls,
 		DivisionPairings:  pairingsResp.DivisionPairings,
 		DivisionStandings: pairingsResp.DivisionStandings},
-		realtime.MessageType_TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE)
+		ipc.MessageType_TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
-func SetDivisionControls(ctx context.Context, ts TournamentStore, id string, division string, controls *realtime.DivisionControls) error {
+func SetDivisionControls(ctx context.Context, ts TournamentStore, id string, division string, controls *ipc.DivisionControls) error {
 
 	t, err := ts.Get(ctx, id)
 	if err != nil {
@@ -277,12 +277,12 @@ func SetDivisionControls(ctx context.Context, ts TournamentStore, id string, div
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	newDivisionControls, standings, err := divisionObject.DivisionManager.SetDivisionControls(controls)
@@ -293,13 +293,13 @@ func SetDivisionControls(ctx context.Context, ts TournamentStore, id string, div
 	if err != nil {
 		return err
 	}
-	resp := &realtime.DivisionControlsResponse{
+	resp := &ipc.DivisionControlsResponse{
 		Id:                id,
 		Division:          division,
 		DivisionControls:  newDivisionControls,
 		DivisionStandings: standings,
 	}
-	wrapped := entity.WrapEvent(resp, realtime.MessageType_TOURNAMENT_DIVISION_CONTROLS_MESSAGE)
+	wrapped := entity.WrapEvent(resp, ipc.MessageType_TOURNAMENT_DIVISION_CONTROLS_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
@@ -313,20 +313,20 @@ func AddDivision(ctx context.Context, ts TournamentStore, id string, division st
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	if t.IsStarted {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_ADD_DIVISION_AFTER_START, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_ADD_DIVISION_AFTER_START, t.Name, division)
 	}
 
 	if len(division) == 0 || len(division) > MaxDivisionNameLength {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_INVALID_DIVISION_NAME, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_INVALID_DIVISION_NAME, t.Name, division)
 	}
 
 	_, ok := t.Divisions[division]
 
 	if ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DIVISION_ALREADY_EXISTS, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_DIVISION_ALREADY_EXISTS, t.Name, division)
 	}
 
 	t.Divisions[division] = &entity.TournamentDivision{DivisionManager: NewClassicDivision(t.Name, division)}
@@ -341,7 +341,7 @@ func AddDivision(ctx context.Context, ts TournamentStore, id string, division st
 	}
 	tdevt.Id = id
 	tdevt.Division = division
-	wrapped := entity.WrapEvent(tdevt, realtime.MessageType_TOURNAMENT_DIVISION_MESSAGE)
+	wrapped := entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_DIVISION_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
@@ -355,20 +355,20 @@ func RemoveDivision(ctx context.Context, ts TournamentStore, id string, division
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	_, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	if t.IsStarted {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DIVISION_REMOVAL_AFTER_START, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_DIVISION_REMOVAL_AFTER_START, t.Name, division)
 	}
 
 	if len(t.Divisions[division].DivisionManager.GetPlayers().GetPersons()) > 0 {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DIVISION_REMOVAL_EXISTING_PLAYERS, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_DIVISION_REMOVAL_EXISTING_PLAYERS, t.Name, division)
 	}
 
 	delete(t.Divisions, division)
@@ -377,20 +377,20 @@ func RemoveDivision(ctx context.Context, ts TournamentStore, id string, division
 		return err
 	}
 
-	tddevt := &realtime.TournamentDivisionDeletedResponse{Id: id, Division: division}
-	wrapped := entity.WrapEvent(tddevt, realtime.MessageType_TOURNAMENT_DIVISION_DELETED_MESSAGE)
+	tddevt := &ipc.TournamentDivisionDeletedResponse{Id: id, Division: division}
+	wrapped := entity.WrapEvent(tddevt, ipc.MessageType_TOURNAMENT_DIVISION_DELETED_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
 func constructFullID(tournamentName string, divisionName string, ctx context.Context, us user.Store, user string) (string, string, error) {
 	u, err := us.Get(ctx, user)
 	if err != nil {
-		return "", "", entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PLAYER_ID_CONSTRUCTION, tournamentName, divisionName, user)
+		return "", "", entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PLAYER_ID_CONSTRUCTION, tournamentName, divisionName, user)
 	}
 	return u.TournamentID(), u.UUID, nil
 }
 
-func AddDirectors(ctx context.Context, ts TournamentStore, us user.Store, id string, directors *realtime.TournamentPersons) error {
+func AddDirectors(ctx context.Context, ts TournamentStore, us user.Store, id string, directors *ipc.TournamentPersons) error {
 	t, err := ts.Get(ctx, id)
 	if err != nil {
 		return err
@@ -400,7 +400,7 @@ func AddDirectors(ctx context.Context, ts TournamentStore, us user.Store, id str
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
 	}
 	// Only perform the add operation if all persons can be added.
 
@@ -417,11 +417,11 @@ func AddDirectors(ctx context.Context, ts TournamentStore, us user.Store, id str
 
 	for _, newDirector := range directors.Persons {
 		if newDirector.Id == t.ExecutiveDirector || newDirector.Rating == 0 {
-			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_EXISTS, t.Name, "", newDirector.Id)
+			return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_EXISTS, t.Name, "", newDirector.Id)
 		}
 		for _, existingDirector := range t.Directors.Persons {
 			if newDirector.Id == existingDirector.Id {
-				return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DIRECTOR_EXISTS, t.Name, "", newDirector.Id)
+				return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_DIRECTOR_EXISTS, t.Name, "", newDirector.Id)
 			}
 		}
 	}
@@ -438,11 +438,11 @@ func AddDirectors(ctx context.Context, ts TournamentStore, us user.Store, id str
 		return err
 	}
 
-	wrapped := entity.WrapEvent(tdevt, realtime.MessageType_TOURNAMENT_MESSAGE)
+	wrapped := entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
-func RemoveDirectors(ctx context.Context, ts TournamentStore, us user.Store, id string, directors *realtime.TournamentPersons) error {
+func RemoveDirectors(ctx context.Context, ts TournamentStore, us user.Store, id string, directors *ipc.TournamentPersons) error {
 	t, err := ts.Get(ctx, id)
 	if err != nil {
 		return err
@@ -452,7 +452,7 @@ func RemoveDirectors(ctx context.Context, ts TournamentStore, us user.Store, id 
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
 	}
 
 	for _, newDirector := range directors.Persons {
@@ -478,11 +478,11 @@ func RemoveDirectors(ctx context.Context, ts TournamentStore, us user.Store, id 
 	if err != nil {
 		return err
 	}
-	wrapped := entity.WrapEvent(tdevt, realtime.MessageType_TOURNAMENT_MESSAGE)
+	wrapped := entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
-func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id string, division string, players *realtime.TournamentPersons) error {
+func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id string, division string, players *ipc.TournamentPersons) error {
 	t, err := ts.Get(ctx, id)
 	if err != nil {
 		return err
@@ -492,16 +492,16 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	if divisionObject.DivisionManager == nil {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
 	}
 
 	// Only perform the add operation if all persons can be added.
@@ -536,16 +536,16 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 	pairingsResp.Id = id
 	pairingsResp.Division = division
 
-	addPlayersMessage := &realtime.PlayersAddedOrRemovedResponse{Id: id,
+	addPlayersMessage := &ipc.PlayersAddedOrRemovedResponse{Id: id,
 		Division:          division,
 		Players:           allCurrentPlayers,
 		DivisionPairings:  pairingsResp.DivisionPairings,
 		DivisionStandings: pairingsResp.DivisionStandings}
-	wrapped := entity.WrapEvent(addPlayersMessage, realtime.MessageType_TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE)
+	wrapped := entity.WrapEvent(addPlayersMessage, ipc.MessageType_TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
-func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id string, division string, players *realtime.TournamentPersons) error {
+func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id string, division string, players *ipc.TournamentPersons) error {
 	t, err := ts.Get(ctx, id)
 	if err != nil {
 		return err
@@ -555,16 +555,16 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	if divisionObject.DivisionManager == nil {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
 	}
 
 	// Only perform the add operation if all persons can be added.
@@ -598,12 +598,12 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 	pairingsResp.Id = id
 	pairingsResp.Division = division
 
-	removePlayersMessage := &realtime.PlayersAddedOrRemovedResponse{Id: id,
+	removePlayersMessage := &ipc.PlayersAddedOrRemovedResponse{Id: id,
 		Division:          division,
 		Players:           allCurrentPlayers,
 		DivisionPairings:  pairingsResp.DivisionPairings,
 		DivisionStandings: pairingsResp.DivisionStandings}
-	wrapped := entity.WrapEvent(removePlayersMessage, realtime.MessageType_TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE)
+	wrapped := entity.WrapEvent(removePlayersMessage, ipc.MessageType_TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
@@ -619,21 +619,21 @@ func SetPairings(ctx context.Context, ts TournamentStore, id string, division st
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
-	pairingsResponse := []*realtime.Pairing{}
-	standingsResponse := make(map[int32]*realtime.RoundStandings)
+	pairingsResponse := []*ipc.Pairing{}
+	standingsResponse := make(map[int32]*ipc.RoundStandings)
 
 	for _, pairing := range pairings {
 		divisionObject, ok := t.Divisions[division]
 
 		if !ok {
-			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+			return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 		}
 
 		if divisionObject.DivisionManager == nil {
 			// Not enough players or rounds to make a manager, most likely
-			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
+			return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
 		}
 
 		pairingsResp, err := divisionObject.DivisionManager.SetPairing(pairing.PlayerOneId, pairing.PlayerTwoId, int(pairing.Round), pairing.SelfPlayResult)
@@ -652,7 +652,7 @@ func SetPairings(ctx context.Context, ts TournamentStore, id string, division st
 		return err
 	}
 	pairingsMessage := PairingsToResponse(id, division, pairingsResponse, standingsResponse)
-	wrapped := entity.WrapEvent(pairingsMessage, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
+	wrapped := entity.WrapEvent(pairingsMessage, ipc.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
@@ -667,9 +667,9 @@ func SetResult(ctx context.Context,
 	playerTwoId string, // user UUID
 	playerOneScore int,
 	playerTwoScore int,
-	playerOneResult realtime.TournamentGameResult,
-	playerTwoResult realtime.TournamentGameResult,
-	reason realtime.GameEndReason,
+	playerOneResult ipc.TournamentGameResult,
+	playerTwoResult ipc.TournamentGameResult,
+	reason ipc.GameEndReason,
 	round int,
 	gameIndex int,
 	amendment bool,
@@ -686,7 +686,7 @@ func SetResult(ctx context.Context,
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	testMode := false
 	if strings.HasSuffix(os.Args[0], ".test") {
@@ -710,7 +710,7 @@ func SetResult(ctx context.Context,
 			return err
 		}
 
-		players := []*realtime.TournamentGameEndedEvent_Player{
+		players := []*ipc.TournamentGameEndedEvent_Player{
 			{Username: p1user.Username, Score: int32(playerOneScore), Result: playerOneResult},
 			{Username: p2user.Username, Score: int32(playerTwoScore), Result: playerTwoResult},
 		}
@@ -719,7 +719,7 @@ func SetResult(ctx context.Context,
 		if g != nil {
 			gameID = g.GameID()
 		}
-		tevt := &realtime.TournamentGameEndedEvent{
+		tevt := &ipc.TournamentGameEndedEvent{
 			GameId:    gameID,
 			Players:   players,
 			EndReason: reason,
@@ -729,7 +729,7 @@ func SetResult(ctx context.Context,
 			Time:      time.Now().Unix(),
 		}
 		log.Debug().Interface("tevt", tevt).Msg("sending legacy tournament game ended evt")
-		wrapped := entity.WrapEvent(tevt, realtime.MessageType_TOURNAMENT_GAME_ENDED_EVENT)
+		wrapped := entity.WrapEvent(tevt, ipc.MessageType_TOURNAMENT_GAME_ENDED_EVENT)
 		wrapped.AddAudience(entity.AudTournament, id)
 		evtChan := ts.TournamentEventChan()
 		if evtChan != nil {
@@ -742,11 +742,11 @@ func SetResult(ctx context.Context,
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	if !t.IsStarted {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, division)
 	}
 
 	// We need to send the division manager the "full" user ID, so look that up here.
@@ -792,7 +792,7 @@ func SetResult(ctx context.Context,
 	}
 	pairingsResp.Id = id
 	pairingsResp.Division = division
-	wrapped := entity.WrapEvent(pairingsResp, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
+	wrapped := entity.WrapEvent(pairingsResp, ipc.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
@@ -833,11 +833,11 @@ func possiblyEndTournament(ctx context.Context, ts TournamentStore, t *entity.To
 
 func startTournamentChecks(t *entity.Tournament) error {
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
 	}
 
 	if len(t.Divisions) == 0 {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NO_DIVISIONS, t.Name, "")
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NO_DIVISIONS, t.Name, "")
 	}
 
 	return nil
@@ -847,22 +847,22 @@ func startDivisionChecks(t *entity.Tournament, division string, round int) error
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	if divisionObject.DivisionManager == nil {
 		// division does not have enough players or controls to set pairings
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
 	}
 
 	dm := divisionObject.DivisionManager
 
 	if dm.GetDivisionControls().GameRequest == nil {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_GAME_CONTROLS_NOT_SET, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_GAME_CONTROLS_NOT_SET, t.Name, division)
 	}
 
 	if round != dm.GetCurrentRound()+1 {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_INCORRECT_START_ROUND, t.Name, division, strconv.Itoa(round+1), strconv.Itoa(dm.GetCurrentRound()+1))
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_INCORRECT_START_ROUND, t.Name, division, strconv.Itoa(round+1), strconv.Itoa(dm.GetCurrentRound()+1))
 	}
 
 	err := dm.IsRoundStartable()
@@ -877,14 +877,14 @@ func sendDivisionStart(ts TournamentStore, tuuid string, division string, round 
 	// Send code that sends signal to all tournament players that backend
 	// is now accepting "ready" messages for this round.
 	eventChannel := ts.TournamentEventChan()
-	evt := &realtime.TournamentRoundStarted{
+	evt := &ipc.TournamentRoundStarted{
 		TournamentId: tuuid,
 		Division:     division,
 		Round:        int32(round),
 		// GameIndex: int32(0) -- fix this when we have other types of tournaments
 		// add timestamp deadline here as well at some point
 	}
-	wrapped := entity.WrapEvent(evt, realtime.MessageType_TOURNAMENT_ROUND_STARTED)
+	wrapped := entity.WrapEvent(evt, ipc.MessageType_TOURNAMENT_ROUND_STARTED)
 
 	// Send it to everyone in this division across the app.
 	wrapped.AddAudience(entity.AudChannel, DivisionChannelName(tuuid, division))
@@ -989,21 +989,21 @@ func PairRound(ctx context.Context, ts TournamentStore, id string, division stri
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	if !t.IsStarted {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, division)
 	}
 
 	currentRound := divisionObject.DivisionManager.GetCurrentRound()
 	if round < currentRound+1 {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, t.Name, division, strconv.Itoa(round+1), strconv.Itoa(currentRound+1))
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, t.Name, division, strconv.Itoa(round+1), strconv.Itoa(currentRound+1))
 	}
 
 	pairingsResp, err := divisionObject.DivisionManager.PairRound(round, preserveByes)
@@ -1019,7 +1019,7 @@ func PairRound(ctx context.Context, ts TournamentStore, id string, division stri
 
 	pairingsResp.Id = id
 	pairingsResp.Division = division
-	wrapped := entity.WrapEvent(pairingsResp, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
+	wrapped := entity.WrapEvent(pairingsResp, ipc.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
 
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
@@ -1034,21 +1034,21 @@ func DeletePairings(ctx context.Context, ts TournamentStore, id string, division
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	if !t.IsStarted {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, division)
 	}
 
 	currentRound := divisionObject.DivisionManager.GetCurrentRound()
 	if round < currentRound+1 {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DELETE_NON_FUTURE_ROUND, t.Name, division, strconv.Itoa(round+1), strconv.Itoa(currentRound+1))
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_DELETE_NON_FUTURE_ROUND, t.Name, division, strconv.Itoa(round+1), strconv.Itoa(currentRound+1))
 	}
 
 	err = divisionObject.DivisionManager.DeletePairings(round)
@@ -1062,9 +1062,9 @@ func DeletePairings(ctx context.Context, ts TournamentStore, id string, division
 		return err
 	}
 
-	wrapped := entity.WrapEvent(&realtime.DivisionPairingsDeletedResponse{Id: id,
+	wrapped := entity.WrapEvent(&ipc.DivisionPairingsDeletedResponse{Id: id,
 		Division: division,
-		Round:    int32(round)}, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_DELETED_MESSAGE)
+		Round:    int32(round)}, ipc.MessageType_TOURNAMENT_DIVISION_PAIRINGS_DELETED_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
@@ -1098,7 +1098,7 @@ func IsRoundComplete(ctx context.Context, ts TournamentStore, id string, divisio
 	_, ok := t.Divisions[division]
 
 	if !ok {
-		return false, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+		return false, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	return t.Divisions[division].DivisionManager.IsRoundComplete(round)
@@ -1111,16 +1111,16 @@ func SetFinished(ctx context.Context, ts TournamentStore, id string) error {
 	}
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
 	}
 
 	if !t.IsStarted {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, "")
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, "")
 	}
 
 	for d, division := range t.Divisions {
 		if division.DivisionManager == nil {
-			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, "")
+			return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, "")
 		}
 
 		finished, err := division.DivisionManager.IsFinished()
@@ -1128,7 +1128,7 @@ func SetFinished(ctx context.Context, ts TournamentStore, id string) error {
 			return nil
 		}
 		if !finished {
-			return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_DIVISION_NOT_FINISHED, t.Name, d)
+			return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_DIVISION_NOT_FINISHED, t.Name, d)
 		}
 	}
 
@@ -1138,7 +1138,7 @@ func SetFinished(ctx context.Context, ts TournamentStore, id string) error {
 	if err != nil {
 		return err
 	}
-	wrapped := entity.WrapEvent(&realtime.TournamentFinishedResponse{Id: id}, realtime.MessageType_TOURNAMENT_FINISHED_MESSAGE)
+	wrapped := entity.WrapEvent(&ipc.TournamentFinishedResponse{Id: id}, ipc.MessageType_TOURNAMENT_FINISHED_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
@@ -1154,17 +1154,17 @@ func IsFinished(ctx context.Context, ts TournamentStore, id string) (bool, error
 	return t.IsFinished, nil
 }
 
-func GetXHRResponse(ctx context.Context, ts TournamentStore, id string) (*realtime.FullTournamentDivisions, error) {
+func GetXHRResponse(ctx context.Context, ts TournamentStore, id string) (*ipc.FullTournamentDivisions, error) {
 	t, err := ts.Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	response := &realtime.FullTournamentDivisions{Divisions: make(map[string]*realtime.TournamentDivisionDataResponse),
+	response := &ipc.FullTournamentDivisions{Divisions: make(map[string]*ipc.TournamentDivisionDataResponse),
 		Started: t.IsStarted}
 	for divisionKey, division := range t.Divisions {
 		if division.DivisionManager == nil {
-			return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, divisionKey)
+			return nil, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, divisionKey)
 		}
 
 		xhr, err := division.DivisionManager.GetXHRResponse()
@@ -1186,12 +1186,12 @@ func SetReadyForGame(ctx context.Context, ts TournamentStore, t *entity.Tourname
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return nil, false, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+		return nil, false, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 
 	_, ok := t.Divisions[division]
 	if !ok {
-		return nil, false, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+		return nil, false, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 	connIDs, bothReady, err := t.Divisions[division].DivisionManager.SetReadyForGame(playerID, connID, round, gameIndex, unready)
 	if err != nil {
@@ -1207,12 +1207,12 @@ func ClearReadyStates(ctx context.Context, ts TournamentStore, t *entity.Tournam
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 
 	_, ok := t.Divisions[division]
 	if !ok {
-		return entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	pairing, err := t.Divisions[division].DivisionManager.ClearReadyStates(userID, round, gameIndex)
@@ -1223,18 +1223,18 @@ func ClearReadyStates(ctx context.Context, ts TournamentStore, t *entity.Tournam
 	if err != nil {
 		return err
 	}
-	pairingsMessage := PairingsToResponse(t.UUID, division, pairing, make(map[int32]*realtime.RoundStandings))
-	wrapped := entity.WrapEvent(pairingsMessage, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
+	pairingsMessage := PairingsToResponse(t.UUID, division, pairing, make(map[int32]*ipc.RoundStandings))
+	wrapped := entity.WrapEvent(pairingsMessage, ipc.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
 	return SendTournamentMessage(ctx, ts, t.UUID, wrapped)
 }
 
-func TournamentDataResponse(ctx context.Context, ts TournamentStore, id string) (*realtime.TournamentDataResponse, error) {
+func TournamentDataResponse(ctx context.Context, ts TournamentStore, id string) (*ipc.TournamentDataResponse, error) {
 	t, err := ts.Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	return &realtime.TournamentDataResponse{Id: t.UUID,
+	return &ipc.TournamentDataResponse{Id: t.UUID,
 		Name:              t.Name,
 		Description:       t.Description,
 		ExecutiveDirector: t.ExecutiveDirector,
@@ -1242,18 +1242,18 @@ func TournamentDataResponse(ctx context.Context, ts TournamentStore, id string) 
 		IsStarted:         t.IsStarted}, nil
 }
 
-func PairingsToResponse(id string, division string, pairings []*realtime.Pairing, standings map[int32]*realtime.RoundStandings) *realtime.DivisionPairingsResponse {
+func PairingsToResponse(id string, division string, pairings []*ipc.Pairing, standings map[int32]*ipc.RoundStandings) *ipc.DivisionPairingsResponse {
 	// This is quite simple for now
 	// This function is here in case this structure
 	// gets more complicated later
-	return &realtime.DivisionPairingsResponse{Id: id,
+	return &ipc.DivisionPairingsResponse{Id: id,
 		Division:          division,
 		DivisionPairings:  pairings,
 		DivisionStandings: standings}
 }
 
-func getExecutiveDirector(tournamentName string, directors *realtime.TournamentPersons) (string, error) {
-	err := entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NOT_EXACTLY_ONE_EXECUTIVE_DIRECTOR, tournamentName, "")
+func getExecutiveDirector(tournamentName string, directors *ipc.TournamentPersons) (string, error) {
+	err := entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NOT_EXACTLY_ONE_EXECUTIVE_DIRECTOR, tournamentName, "")
 	executiveDirector := ""
 	for _, director := range directors.Persons {
 		if director.Rating == 0 {
@@ -1270,14 +1270,14 @@ func getExecutiveDirector(tournamentName string, directors *realtime.TournamentP
 	return executiveDirector, nil
 }
 
-func removeTournamentPersons(tournamentName string, divisionName string, persons *realtime.TournamentPersons, personsToRemove *realtime.TournamentPersons, areDirectors bool) (*realtime.TournamentPersons, error) {
+func removeTournamentPersons(tournamentName string, divisionName string, persons *ipc.TournamentPersons, personsToRemove *ipc.TournamentPersons, areDirectors bool) (*ipc.TournamentPersons, error) {
 	indexesToRemove := []int{}
 	for _, personToRemove := range personsToRemove.Persons {
 		present := false
 		for index, person := range persons.Persons {
 			if personToRemove.Id == person.Id {
 				if person.Rating == 0 && areDirectors {
-					return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_REMOVAL, tournamentName, divisionName, person.Id)
+					return nil, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_REMOVAL, tournamentName, divisionName, person.Id)
 				}
 				present = true
 				indexesToRemove = append(indexesToRemove, index)
@@ -1285,7 +1285,7 @@ func removeTournamentPersons(tournamentName string, divisionName string, persons
 			}
 		}
 		if !present {
-			return nil, entity.NewWooglesError(realtime.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, tournamentName, divisionName, "0", personToRemove.Id, "removeTournamentPersons")
+			return nil, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, tournamentName, divisionName, "0", personToRemove.Id, "removeTournamentPersons")
 		}
 	}
 

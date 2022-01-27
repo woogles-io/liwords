@@ -1,0 +1,20 @@
+// Definitions for user-related matters
+syntax = "proto3";
+package ipc;
+option go_package = "github.com/domino14/liwords/rpc/api/proto/ipc";
+
+enum ChildStatus {
+  CHILD = 0;
+  NOT_CHILD = 1;
+  UNKNOWN = 2;
+}
+
+message ProfileUpdate {
+  string user_id = 1;
+  message Rating {
+    double rating = 1;
+    double deviation = 2;
+  }
+  // map of variant name to rating
+  map<string, Rating> ratings = 2;
+}

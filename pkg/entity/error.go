@@ -4,18 +4,18 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/domino14/liwords/rpc/api/proto/realtime"
+	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/rs/zerolog/log"
 )
 
 type WooglesError struct {
-	code realtime.WooglesError
+	code ipc.WooglesError
 	data []string
 }
 
 const WooglesErrorDelimiter = ";"
 
-func NewWooglesError(code realtime.WooglesError, data ...string) *WooglesError {
+func NewWooglesError(code ipc.WooglesError, data ...string) *WooglesError {
 	log.Debug().Interface("data", data).Int32("code", int32(code)).Msg("NewWooglesError")
 	return &WooglesError{
 		code: code,

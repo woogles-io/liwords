@@ -156,6 +156,9 @@ export class GameEvent extends jspb.Message {
   getMillisRemaining(): number;
   setMillisRemaining(value: number): void;
 
+  getPlayerIndex(): number;
+  setPlayerIndex(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameEvent.AsObject;
   static toObject(includeInstance: boolean, msg: GameEvent): GameEvent.AsObject;
@@ -186,6 +189,7 @@ export namespace GameEvent {
     isBingo: boolean,
     wordsFormedList: Array<string>,
     millisRemaining: number,
+    playerIndex: number,
   }
 
   export interface TypeMap {

@@ -11,30 +11,30 @@ import (
 	"github.com/domino14/liwords/pkg/matching"
 	"github.com/domino14/liwords/pkg/utilities"
 
-	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
+	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
 func Pair(members *entity.UnpairedPoolMembers) ([]int, error) {
 
 	pm := members.RoundControls.PairingMethod
-	if pm == realtime.PairingMethod_MANUAL {
+	if pm == pb.PairingMethod_MANUAL {
 		return nil, errors.New("cannot pair with the given pairing method")
 	}
 	// This way of dispatching is slightly clunky and will
 	// remain until we can think of a better way to do it.
 	var pairings []int
 	var err error
-	if pm == realtime.PairingMethod_RANDOM {
+	if pm == pb.PairingMethod_RANDOM {
 		pairings, err = pairRandom(members)
-	} else if pm == realtime.PairingMethod_ROUND_ROBIN {
+	} else if pm == pb.PairingMethod_ROUND_ROBIN {
 		pairings, err = pairRoundRobin(members)
-	} else if pm == realtime.PairingMethod_KING_OF_THE_HILL || pm == realtime.PairingMethod_ELIMINATION {
+	} else if pm == pb.PairingMethod_KING_OF_THE_HILL || pm == pb.PairingMethod_ELIMINATION {
 		pairings, err = pairKingOfTheHill(members)
-	} else if pm == realtime.PairingMethod_FACTOR {
+	} else if pm == pb.PairingMethod_FACTOR {
 		pairings, err = pairFactor(members)
-	} else if pm == realtime.PairingMethod_INITIAL_FONTES {
+	} else if pm == pb.PairingMethod_INITIAL_FONTES {
 		pairings, err = pairInitialFontes(members)
-	} else if pm == realtime.PairingMethod_TEAM_ROUND_ROBIN {
+	} else if pm == pb.PairingMethod_TEAM_ROUND_ROBIN {
 		pairings, err = pairTeamRoundRobin(members)
 	} else {
 		// The remaining pairing methods are solved by
@@ -226,7 +226,7 @@ func minWeightMatching(members *entity.UnpairedPoolMembers) ([]int, error) {
 		return nil, errors.New("prohibitive weight reached, pairings are not possible with these settings")
 	}
 
-	if members.RoundControls.PairingMethod == realtime.PairingMethod_QUICKPAIR {
+	if members.RoundControls.PairingMethod == pb.PairingMethod_QUICKPAIR {
 		for index, pairing := range pairings {
 			if pairing == -1 {
 				members.PoolMembers[index].Misses++
@@ -259,9 +259,9 @@ func weigh(members *entity.UnpairedPoolMembers, i int, j int) (int64, error) {
 	// remain until we can think of a better way to do it.
 	var weight int64
 	pm := members.RoundControls.PairingMethod
-	if pm == realtime.PairingMethod_SWISS || pm == realtime.PairingMethod_FACTOR {
+	if pm == pb.PairingMethod_SWISS || pm == pb.PairingMethod_FACTOR {
 		weight = weighSwiss(members, i, j)
-	} else if pm == realtime.PairingMethod_QUICKPAIR {
+	} else if pm == pb.PairingMethod_QUICKPAIR {
 		weight = weighQuickpair(members, i, j)
 	} else {
 		return 0, errors.New("pairing method is either unimplemented or is not a reduction to minimum weight matching")
@@ -603,10 +603,10 @@ func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int) ([]i
 	return pairings, nil
 }
 
-func IsStandingsIndependent(pm realtime.PairingMethod) bool {
-	return pm == realtime.PairingMethod_ROUND_ROBIN ||
-		pm == realtime.PairingMethod_TEAM_ROUND_ROBIN ||
-		pm == realtime.PairingMethod_RANDOM ||
-		pm == realtime.PairingMethod_INITIAL_FONTES ||
-		pm == realtime.PairingMethod_MANUAL
+func IsStandingsIndependent(pm pb.PairingMethod) bool {
+	return pm == pb.PairingMethod_ROUND_ROBIN ||
+		pm == pb.PairingMethod_TEAM_ROUND_ROBIN ||
+		pm == pb.PairingMethod_RANDOM ||
+		pm == pb.PairingMethod_INITIAL_FONTES ||
+		pm == pb.PairingMethod_MANUAL
 }

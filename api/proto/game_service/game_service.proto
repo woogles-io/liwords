@@ -3,7 +3,7 @@ package game_service;
 option go_package = "github.com/domino14/liwords/rpc/api/proto/game_service";
 
 import "macondo/api/proto/macondo/macondo.proto";
-import "api/proto/realtime/realtime.proto";
+import "api/proto/ipc/omgwords.proto";
 import "google/protobuf/timestamp.proto";
 
 // Meta information about a game, including its players.
@@ -31,14 +31,14 @@ message GameInfoResponse {
   string tournament_id = 6;
   // done - is game done?
   // bool done = 9;
-  liwords.GameEndReason game_end_reason = 11;
+  ipc.GameEndReason game_end_reason = 11;
   repeated int32 scores = 13;
   int32 winner = 14;
   google.protobuf.Timestamp created_at = 15;
   string game_id = 16;
   google.protobuf.Timestamp last_update = 18;
 
-  liwords.GameRequest game_request = 19;
+  ipc.GameRequest game_request = 19;
   string tournament_division = 20;
   int32 tournament_round = 21;
   // a game index within a round.
@@ -76,9 +76,9 @@ message StreakInfoResponse {
 message RematchStreakRequest { string original_request_id = 1; }
 
 service GameMetadataService {
-  rpc GetMetadata(GameInfoRequest) returns(GameInfoResponse);
-  rpc GetGCG(GCGRequest) returns(GCGResponse);
-  rpc GetGameHistory(GameHistoryRequest) returns(GameHistoryResponse);
-  rpc GetRecentGames(RecentGamesRequest) returns(GameInfoResponses);
-  rpc GetRematchStreak(RematchStreakRequest) returns(StreakInfoResponse);
+  rpc GetMetadata(GameInfoRequest) returns (GameInfoResponse);
+  rpc GetGCG(GCGRequest) returns (GCGResponse);
+  rpc GetGameHistory(GameHistoryRequest) returns (GameHistoryResponse);
+  rpc GetRecentGames(RecentGamesRequest) returns (GameInfoResponses);
+  rpc GetRematchStreak(RematchStreakRequest) returns (StreakInfoResponse);
 }

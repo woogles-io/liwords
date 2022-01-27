@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
-	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/gomodule/redigo/redis"
 	"github.com/rs/zerolog/log"
 )
