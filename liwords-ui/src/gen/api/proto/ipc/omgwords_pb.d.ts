@@ -426,6 +426,11 @@ export class InstantiateGame extends jspb.Message {
   setUserIdsList(value: Array<string>): void;
   addUserIds(value: string, index?: number): string;
 
+  clearConnIdsList(): void;
+  getConnIdsList(): Array<string>;
+  setConnIdsList(value: Array<string>): void;
+  addConnIds(value: string, index?: number): string;
+
   hasGameRequest(): boolean;
   clearGameRequest(): void;
   getGameRequest(): GameRequest | undefined;
@@ -452,9 +457,36 @@ export class InstantiateGame extends jspb.Message {
 export namespace InstantiateGame {
   export type AsObject = {
     userIdsList: Array<string>,
+    connIdsList: Array<string>,
     gameRequest?: GameRequest.AsObject,
     assignedFirst: number,
     tournamentData?: TournamentDataForGame.AsObject,
+  }
+}
+
+export class InstantiateGameResponse extends jspb.Message {
+  getId(): string;
+  setId(value: string): void;
+
+  hasGameInfo(): boolean;
+  clearGameInfo(): void;
+  getGameInfo(): GameInfoResponse | undefined;
+  setGameInfo(value?: GameInfoResponse): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): InstantiateGameResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: InstantiateGameResponse): InstantiateGameResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: InstantiateGameResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): InstantiateGameResponse;
+  static deserializeBinaryFromReader(message: InstantiateGameResponse, reader: jspb.BinaryReader): InstantiateGameResponse;
+}
+
+export namespace InstantiateGameResponse {
+  export type AsObject = {
+    id: string,
+    gameInfo?: GameInfoResponse.AsObject,
   }
 }
 

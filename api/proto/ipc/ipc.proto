@@ -57,6 +57,7 @@ enum MessageType {
   GAME_META_EVENT = 42;
   PROFILE_UPDATE_EVENT = 43;
 
+  GAME_INSTANTIATION = 44;
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be

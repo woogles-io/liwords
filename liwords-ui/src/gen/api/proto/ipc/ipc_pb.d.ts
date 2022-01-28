@@ -214,6 +214,7 @@ export interface MessageTypeMap {
   ACTIVE_GAME_ENTRY: 41;
   GAME_META_EVENT: 42;
   PROFILE_UPDATE_EVENT: 43;
+  GAME_INSTANTIATION: 44;
 }
 
 export const MessageType: MessageTypeMap;

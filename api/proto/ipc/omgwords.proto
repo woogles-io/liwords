@@ -180,14 +180,13 @@ message GameInfoResponse {
   string tournament_id = 6;
   // done - is game done?
   // bool done = 9;
-  ipc.GameEndReason game_end_reason = 11;
+  GameEndReason game_end_reason = 11;
   repeated int32 scores = 13;
   int32 winner = 14;
   google.protobuf.Timestamp created_at = 15;
   string game_id = 16;
   google.protobuf.Timestamp last_update = 18;
-
-  ipc.GameRequest game_request = 19;
+  GameRequest game_request = 19;
   string tournament_division = 20;
   int32 tournament_round = 21;
   // a game index within a round.
@@ -196,15 +195,22 @@ message GameInfoResponse {
 
 message GameInfoResponses { repeated GameInfoResponse game_info = 1; }
 
-
 // InstantiateGame is an internal message passed to gamesvc in order to
 // instantiate a game.
 message InstantiateGame {
   repeated string user_ids = 1;
-  GameRequest game_request = 2;
+  // conn_ids are the connection IDs of the users, in the same order as the user
+  // ids.
+  repeated string conn_ids = 2;
+  GameRequest game_request = 3;
   // assigned_first is -1 if random, or the player index in user_ids otherwise
-  int32 assigned_first = 3;
-  TournamentDataForGame tournament_data = 4;
+  int32 assigned_first = 4;
+  TournamentDataForGame tournament_data = 5;
+}
+
+message InstantiateGameResponse {
+  string id = 1;
+  GameInfoResponse game_info = 2;
 }
 
 message GameDeletion { string id = 1; }

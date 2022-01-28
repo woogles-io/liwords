@@ -7,9 +7,11 @@ jobs:
       LEXICON_PATH: /opt/lexica/
       LETTER_DISTRIBUTION_PATH: /opt/liwords/data/letterdistributions/
       TEST_DB_HOST: localhost
+      NATS_URL: nats://localhost:4222
       REDIS_URL: redis://localhost:6379
     docker:
       - image: golang:alpine
+      - image: nats
       - image: circleci/postgres:12.3
         environment:
           POSTGRES_USER: postgres

@@ -150,6 +150,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	evt := gameEndedEvent(ctx, g, userStore)
 	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_ENDED_EVENT)
 	for _, p := range players(g) {
+		// why not AudGame?
 		wrapped.AddAudience(entity.AudUser, p+".game."+g.GameID())
 	}
 	wrapped.AddAudience(entity.AudGameTV, g.GameID())
@@ -380,6 +381,7 @@ func AbortGame(ctx context.Context, gameStore GameStore, tournamentStore tournam
 
 	wrapped = entity.WrapEvent(evt, pb.MessageType_GAME_ENDED_EVENT)
 	for _, p := range players(g) {
+		// why not AudGame?
 		wrapped.AddAudience(entity.AudUser, p+".game."+g.GameID())
 	}
 	wrapped.AddAudience(entity.AudGameTV, g.GameID())

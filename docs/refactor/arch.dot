@@ -1,0 +1,25 @@
+digraph {
+
+    rankdir = TB;
+
+    twirp -> nats;
+    socket -> nats;
+    other -> nats;
+    tourneysvc -> nats;
+    store -> nats;
+    bots -> nats;
+    gamesvc -> nats;
+
+    nats -> {twirp socket other tourneysvc store bots gamesvc};
+
+    nats [shape=box label="NATS.io"];
+    twirp [label="Twirp\nAPI"];
+    socket [label="Socket\ncomms"];
+    other [label="Other\n(users, mod, etc)"];
+    tourneysvc [label="Tournament\nService"];
+    gamesvc [label="Game\nService"];
+    bots [label="Bots"];
+    store [label="Store\n(pgsql + redis cache)"];
+
+    {rank = same; twirp; socket;}
+}
