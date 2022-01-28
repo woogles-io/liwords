@@ -1,11 +1,8 @@
 import { Action, ActionType } from '../../actions/actions';
 import { GameInfoResponse } from '../../gen/api/proto/game_service/game_service_pb';
-import {
-  SeekRequest,
-  RatingMode,
-  MatchUser,
-  ProfileUpdate,
-} from '../../gen/api/proto/realtime/realtime_pb';
+import { MatchUser, SeekRequest } from '../../gen/api/proto/ipc/omgseeks_pb';
+import { RatingMode } from '../../gen/api/proto/ipc/omgwords_pb';
+import { ProfileUpdate } from '../../gen/api/proto/ipc/users_pb';
 import { BotTypesEnum } from '../../lobby/bots';
 import { StartingRating } from '../constants';
 

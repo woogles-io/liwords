@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
-import {
-  GameMetaEvent,
-  MessageType,
-} from '../gen/api/proto/realtime/realtime_pb';
+import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
+import { GameMetaEvent } from '../gen/api/proto/ipc/omgwords_pb';
 import { MetaStates } from '../store/meta_game_events';
 import { useGameMetaEventContext } from '../store/store';
 import { useMountedState } from '../utils/mounted';

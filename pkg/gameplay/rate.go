@@ -8,7 +8,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/glicko"
 	"github.com/domino14/liwords/pkg/user"
-	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/rs/zerolog/log"
 )
 

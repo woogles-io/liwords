@@ -16,7 +16,7 @@ import (
 	"github.com/domino14/liwords/pkg/user"
 	"github.com/domino14/liwords/pkg/utilities"
 
-	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
+	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 )
 
@@ -89,8 +89,8 @@ func (ts *TournamentService) SetSingleRoundControls(ctx context.Context, req *pb
 	return &pb.TournamentResponse{}, nil
 }
 
-func (ts *TournamentService) SetRoundControls(ctx context.Context, req *realtime.DivisionRoundControls) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, false, fmt.Sprintf("%v", req))
+func (ts *TournamentService) SetRoundControls(ctx context.Context, req *ipc.DivisionRoundControls) (*pb.TournamentResponse, error) {
+	err := authenticateDirector(ctx, ts, req.Id, false)
 	if err != nil {
 		return nil, err
 	}
@@ -101,8 +101,8 @@ func (ts *TournamentService) SetRoundControls(ctx context.Context, req *realtime
 	return &pb.TournamentResponse{}, nil
 }
 
-func (ts *TournamentService) SetDivisionControls(ctx context.Context, req *realtime.DivisionControls) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, false, fmt.Sprintf("%v", req))
+func (ts *TournamentService) SetDivisionControls(ctx context.Context, req *ipc.DivisionControls) (*pb.TournamentResponse, error) {
+	err := authenticateDirector(ctx, ts, req.Id, false)
 	if err != nil {
 		return nil, err
 	}
@@ -124,8 +124,8 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTourn
 	if len(req.DirectorUsernames) < 1 {
 		return nil, twirp.NewError(twirp.InvalidArgument, "need at least one director id")
 	}
-	directors := &realtime.TournamentPersons{
-		Persons: []*realtime.TournamentPerson{},
+	directors := &ipc.TournamentPersons{
+		Persons: []*ipc.TournamentPerson{},
 	}
 	for idx := range req.DirectorUsernames {
 		username := req.DirectorUsernames[idx]
@@ -133,7 +133,7 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTourn
 		if err != nil {
 			return nil, err
 		}
-		directors.Persons = append(directors.Persons, &realtime.TournamentPerson{Id: u.TournamentID(), Rating: int32(idx)})
+		directors.Persons = append(directors.Persons, &ipc.TournamentPerson{Id: u.TournamentID(), Rating: int32(idx)})
 	}
 
 	log.Debug().Interface("directors", directors).Msg("directors")
@@ -153,7 +153,7 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTourn
 	}, nil
 }
 
-func (ts *TournamentService) GetTournament(ctx context.Context, req *pb.GetTournamentRequest) (*realtime.FullTournamentDivisions, error) {
+func (ts *TournamentService) GetTournament(ctx context.Context, req *pb.GetTournamentRequest) (*ipc.FullTournamentDivisions, error) {
 	response, err := GetXHRResponse(ctx, ts.tournamentStore, req.Id)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
@@ -249,8 +249,8 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.
 
 }
 
-func (ts *TournamentService) AddDirectors(ctx context.Context, req *realtime.TournamentPersons) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, true, fmt.Sprintf("%v", req))
+func (ts *TournamentService) AddDirectors(ctx context.Context, req *ipc.TournamentPersons) (*pb.TournamentResponse, error) {
+	err := authenticateDirector(ctx, ts, req.Id, true)
 	if err != nil {
 		return nil, err
 	}
@@ -262,8 +262,8 @@ func (ts *TournamentService) AddDirectors(ctx context.Context, req *realtime.Tou
 
 	return &pb.TournamentResponse{}, nil
 }
-func (ts *TournamentService) RemoveDirectors(ctx context.Context, req *realtime.TournamentPersons) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, true, fmt.Sprintf("%v", req))
+func (ts *TournamentService) RemoveDirectors(ctx context.Context, req *ipc.TournamentPersons) (*pb.TournamentResponse, error) {
+	err := authenticateDirector(ctx, ts, req.Id, true)
 	if err != nil {
 		return nil, err
 	}
@@ -274,8 +274,8 @@ func (ts *TournamentService) RemoveDirectors(ctx context.Context, req *realtime.
 	}
 	return &pb.TournamentResponse{}, nil
 }
-func (ts *TournamentService) AddPlayers(ctx context.Context, req *realtime.TournamentPersons) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, false, fmt.Sprintf("%v", req))
+func (ts *TournamentService) AddPlayers(ctx context.Context, req *ipc.TournamentPersons) (*pb.TournamentResponse, error) {
+	err := authenticateDirector(ctx, ts, req.Id, false)
 	if err != nil {
 		return nil, err
 	}
@@ -286,8 +286,8 @@ func (ts *TournamentService) AddPlayers(ctx context.Context, req *realtime.Tourn
 	}
 	return &pb.TournamentResponse{}, nil
 }
-func (ts *TournamentService) RemovePlayers(ctx context.Context, req *realtime.TournamentPersons) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, false, fmt.Sprintf("%v", req))
+func (ts *TournamentService) RemovePlayers(ctx context.Context, req *ipc.TournamentPersons) (*pb.TournamentResponse, error) {
+	err := authenticateDirector(ctx, ts, req.Id, false)
 	if err != nil {
 		return nil, err
 	}

@@ -15,8 +15,8 @@ var jspb = require('google-protobuf');
 var goog = jspb;
 var global = Function('return this')();
 
-var api_proto_realtime_realtime_pb = require('../../../api/proto/realtime/realtime_pb.js');
-goog.object.extend(proto, api_proto_realtime_realtime_pb);
+var api_proto_ipc_chat_pb = require('../../../api/proto/ipc/chat_pb.js');
+goog.object.extend(proto, api_proto_ipc_chat_pb);
 goog.exportSymbol('proto.user_service.ActiveChatChannels', null, global);
 goog.exportSymbol('proto.user_service.ActiveChatChannels.Channel', null, global);
 goog.exportSymbol('proto.user_service.AddBlockRequest', null, global);

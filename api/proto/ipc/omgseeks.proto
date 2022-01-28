@@ -1,0 +1,59 @@
+// Definitions for OMGWord seek functionality.
+syntax = "proto3";
+package ipc;
+option go_package = "github.com/domino14/liwords/rpc/api/proto/ipc";
+
+import "api/proto/ipc/omgwords.proto";
+
+// A MatchUser requests or receives a match via a seek or a match request.
+message MatchUser {
+  // user_id is the database, or anonymous, ID of the user.
+  string user_id = 1;
+  // relevant_rating is the rating of the user, for the relevant seek mode.
+  string relevant_rating = 2;
+  // if is_anonymous, backend won't bother to look up the user in the DB.
+  bool is_anonymous = 3;
+  // display_name is the display username of the user (could be real name too)
+  string display_name = 4;
+}
+
+enum SeekState {
+  ABSENT = 0;
+  PRESENT = 1;
+  READY = 2;
+}
+
+message SeekRequest {
+  GameRequest game_request = 1;
+  MatchUser user = 2;
+  int32 minimum_rating_range = 3;
+  int32 maximum_rating_range = 4;
+  // connection_id is the websocket ID via which this game was requested.
+  string seeker_connection_id = 5;
+  MatchUser receiving_user = 6;
+  SeekState user_state = 7;
+  SeekState receiver_state = 8;
+  string receiver_connection_id = 9;
+  repeated string booted_receivers = 10;
+  // rematch_for is the game ID that this Match Request is a rematch for (empty
+  // if it isn't a rematch)
+  string rematch_for = 11;
+  // If this match request is part of a tournament, it is treated in a special
+  // way. We are moving towards server-only matching during tournaments,
+  // so the following will only be used in "clubhouse mode" / more free-form
+  // clubs.
+  string tournament_id = 12;
+  bool receiver_is_permanent = 13;
+  string rating_key = 14;
+}
+
+// A SoughtGameProcessEvent gets sent when a match request (or seek request)
+// get accepted (from client to server), or canceled -- when sent from server to
+// client.
+message SoughtGameProcessEvent { string request_id = 1; }
+
+// SeekRequests sends all open seek requests.
+message SeekRequests { repeated SeekRequest requests = 1; }
+
+// When a Receiver declines a Seeker:
+message DeclineSeekRequest { string request_id = 1; }

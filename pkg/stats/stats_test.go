@@ -8,7 +8,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/entity"
 	statstore "github.com/domino14/liwords/pkg/stores/stats"
-	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
+	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/macondo/alphabet"
 	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/domino14/macondo/gcgio"
@@ -69,26 +69,26 @@ func InstantiateNewStatsWithHistory(filename string, listStatStore ListStatStore
 		return nil, err
 	}
 
-	req := &realtime.GameRequest{Lexicon: "CSW19",
-		Rules: &realtime.GameRules{BoardLayoutName: entity.CrosswordGame,
+	req := &ipc.GameRequest{Lexicon: "CSW19",
+		Rules: &ipc.GameRules{BoardLayoutName: entity.CrosswordGame,
 			LetterDistributionName: "letterdist",
 			VariantName:            "classic"},
 
 		InitialTimeSeconds: 25 * 60,
 		IncrementSeconds:   0,
 		ChallengeRule:      pb.ChallengeRule_FIVE_POINT,
-		GameMode:           realtime.GameMode_REAL_TIME,
-		RatingMode:         realtime.RatingMode_RATED,
+		GameMode:           ipc.GameMode_REAL_TIME,
+		RatingMode:         ipc.RatingMode_RATED,
 		RequestId:          "yeet",
 		MaxOvertimeMinutes: 10}
 
 	// Just dummy info to test that rating stats work
-	gameEndedEvent := &realtime.GameEndedEvent{
+	gameEndedEvent := &ipc.GameEndedEvent{
 		Scores: map[string]int32{history.Players[0].Nickname: history.FinalScores[0],
 			history.Players[1].Nickname: history.FinalScores[1]},
 		NewRatings: map[string]int32{history.Players[0].Nickname: int32(1500),
 			history.Players[1].Nickname: int32(1400)},
-		EndReason: realtime.GameEndReason_STANDARD,
+		EndReason: ipc.GameEndReason_STANDARD,
 		Winner:    history.Players[0].Nickname,
 		Loser:     history.Players[1].Nickname,
 		Tie:       history.FinalScores[0] != history.FinalScores[1],

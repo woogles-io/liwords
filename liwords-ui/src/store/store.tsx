@@ -8,10 +8,6 @@ import React, {
 import { useMountedState } from '../utils/mounted';
 
 import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
-import {
-  SeekRequest,
-  ServerChallengeResultEvent,
-} from '../gen/api/proto/realtime/realtime_pb';
 import { LobbyState, LobbyReducer } from './reducers/lobby_reducer';
 import { Action } from '../actions/actions';
 import {
@@ -33,6 +29,8 @@ import {
 } from './reducers/tournament_reducer';
 import { MetaEventState, MetaStates } from './meta_game_events';
 import { StandardEnglishAlphabet } from '../constants/alphabets';
+import { SeekRequest } from '../gen/api/proto/ipc/omgseeks_pb';
+import { ServerChallengeResultEvent } from '../gen/api/proto/ipc/omgwords_pb';
 
 export enum ChatEntityType {
   UserChat,

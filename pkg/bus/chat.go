@@ -9,8 +9,8 @@ import (
 	"github.com/domino14/liwords/pkg/user"
 
 	"github.com/domino14/liwords/pkg/entity"
+	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
-	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/rs/zerolog/log"
 )
 

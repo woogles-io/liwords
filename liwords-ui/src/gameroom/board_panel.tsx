@@ -46,13 +46,6 @@ import {
 import { Board } from '../utils/cwgame/board';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import {
-  MessageType,
-  MatchUser,
-  SeekRequest,
-  GameMetaEvent,
-  SeekState,
-} from '../gen/api/proto/realtime/realtime_pb';
-import {
   useExaminableGameContextStoreContext,
   useExaminableGameEndMessageStoreContext,
   useExaminableTimerStoreContext,
@@ -72,6 +65,13 @@ import {
 import { toAPIUrl } from '../api/api';
 import { TilePreview } from './tile';
 import { Alphabet } from '../constants/alphabets';
+import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
+import {
+  MatchUser,
+  SeekRequest,
+  SeekState,
+} from '../gen/api/proto/ipc/omgseeks_pb';
+import { GameMetaEvent } from '../gen/api/proto/ipc/omgwords_pb';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter

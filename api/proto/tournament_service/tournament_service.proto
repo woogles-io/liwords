@@ -2,7 +2,8 @@ syntax = "proto3";
 package tournament_service;
 option go_package = "github.com/domino14/liwords/rpc/api/proto/tournament_service";
 
-import "api/proto/realtime/realtime.proto";
+import "api/proto/ipc/omgwords.proto";
+import "api/proto/ipc/tournament.proto";
 import "google/protobuf/timestamp.proto";
 
 message StartRoundRequest {
@@ -47,7 +48,7 @@ message TournamentMetadata {
   string board_style = 8;
   // for clubs (not tournaments) we want to be able to hard-code settings
   // if the following parameter is set.
-  liwords.GameRequest default_club_settings = 9;
+  ipc.GameRequest default_club_settings = 9;
   // When setting the game request, some clubs would like some parameters
   // to be more freeform (for example, lexicon option or time setting).
   // The following parameter is a list of field names that are freeform.
@@ -72,7 +73,7 @@ message SingleRoundControlsRequest {
   string id = 1;
   string division = 2;
   int32 round = 3;
-  liwords.RoundControl round_controls = 4;
+  ipc.RoundControl round_controls = 4;
 }
 
 message PairRoundRequest {
@@ -94,7 +95,7 @@ message TournamentPairingRequest {
   int32 round = 3;
   // If player_one_id and player_two_id are the same, we should specify what
   // we want the result to be (BYE, FORFEIT_LOSS, VOID)
-  liwords.TournamentGameResult self_play_result = 4;
+  ipc.TournamentGameResult self_play_result = 4;
 }
 
 message TournamentPairingsRequest {
@@ -115,9 +116,9 @@ message TournamentResultOverrideRequest {
   int32 round = 5;
   int32 player_one_score = 6;
   int32 player_two_score = 7;
-  liwords.TournamentGameResult player_one_result = 8;
-  liwords.TournamentGameResult player_two_result = 9;
-  liwords.GameEndReason game_end_reason = 10;
+  ipc.TournamentGameResult player_one_result = 8;
+  ipc.TournamentGameResult player_two_result = 9;
+  ipc.GameEndReason game_end_reason = 10;
   bool amendment = 11;
   int32 game_index = 12;
 }
@@ -159,9 +160,7 @@ message RecentGamesRequest {
   int32 offset = 3;
 }
 
-message RecentGamesResponse {
-  repeated liwords.TournamentGameEndedEvent games = 1;
-}
+message RecentGamesResponse { repeated ipc.TournamentGameEndedEvent games = 1; }
 
 message UnstartTournamentRequest { string id = 1; }
 
@@ -173,28 +172,25 @@ service TournamentService {
   rpc NewTournament(NewTournamentRequest) returns (NewTournamentResponse);
   rpc GetTournamentMetadata(GetTournamentMetadataRequest)
       returns (TournamentMetadataResponse);
-  rpc GetTournament(GetTournamentRequest)
-      returns (liwords.FullTournamentDivisions);
+  rpc GetTournament(GetTournamentRequest) returns (ipc.FullTournamentDivisions);
   rpc FinishTournament(FinishTournamentRequest) returns (TournamentResponse);
   rpc SetTournamentMetadata(SetTournamentMetadataRequest)
       returns (TournamentResponse);
   rpc PairRound(PairRoundRequest) returns (TournamentResponse);
   rpc SetSingleRoundControls(SingleRoundControlsRequest)
       returns (TournamentResponse);
-  rpc SetRoundControls(liwords.DivisionRoundControls)
-      returns (TournamentResponse);
-  rpc SetDivisionControls(liwords.DivisionControls)
-      returns (TournamentResponse);
+  rpc SetRoundControls(ipc.DivisionRoundControls) returns (TournamentResponse);
+  rpc SetDivisionControls(ipc.DivisionControls) returns (TournamentResponse);
   // Input to AddDirectors should be director usernames.
-  rpc AddDirectors(liwords.TournamentPersons) returns (TournamentResponse);
+  rpc AddDirectors(ipc.TournamentPersons) returns (TournamentResponse);
   // Input to RemoveDirectors should be director usernames.
-  rpc RemoveDirectors(liwords.TournamentPersons) returns (TournamentResponse);
+  rpc RemoveDirectors(ipc.TournamentPersons) returns (TournamentResponse);
   rpc AddDivision(TournamentDivisionRequest) returns (TournamentResponse);
   rpc RemoveDivision(TournamentDivisionRequest) returns (TournamentResponse);
   // Input to AddPlayers should be player usernames
-  rpc AddPlayers(liwords.TournamentPersons) returns (TournamentResponse);
+  rpc AddPlayers(ipc.TournamentPersons) returns (TournamentResponse);
   // Input to RemovePlayers should be player usernames
-  rpc RemovePlayers(liwords.TournamentPersons) returns (TournamentResponse);
+  rpc RemovePlayers(ipc.TournamentPersons) returns (TournamentResponse);
   rpc SetPairing(TournamentPairingsRequest) returns (TournamentResponse);
   rpc SetResult(TournamentResultOverrideRequest) returns (TournamentResponse);
   rpc StartRoundCountdown(TournamentStartRoundCountdownRequest)

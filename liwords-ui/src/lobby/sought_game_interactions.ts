@@ -1,12 +1,14 @@
+import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
 import {
-  GameRequest,
-  GameRules,
-  MessageType,
-  RatingMode,
   SeekRequest,
   SeekState,
   SoughtGameProcessEvent,
-} from '../gen/api/proto/realtime/realtime_pb';
+} from '../gen/api/proto/ipc/omgseeks_pb';
+import {
+  GameRequest,
+  GameRules,
+  RatingMode,
+} from '../gen/api/proto/ipc/omgwords_pb';
 import { ChallengeRuleMap } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { encodeToSocketFmt } from '../utils/protobuf';

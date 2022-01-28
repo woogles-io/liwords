@@ -1,9 +1,9 @@
 // Different pairing methods should show different options to the director.
 
 import {
-  PairingMethod,
   PairingMethodMap,
-} from '../gen/api/proto/realtime/realtime_pb';
+  PairingMethod,
+} from '../gen/api/proto/ipc/tournament_pb';
 
 export type RoundSetting = {
   beginRound: number;

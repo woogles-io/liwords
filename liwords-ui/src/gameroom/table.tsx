@@ -23,14 +23,6 @@ import {
 } from '../store/store';
 import { PlayerCards } from './player_cards';
 import Pool from './pool';
-import {
-  MessageType,
-  TimedOut,
-  SeekRequest,
-  DeclineSeekRequest,
-  SoughtGameProcessEvent,
-  ReadyForGame,
-} from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
@@ -60,6 +52,13 @@ import { Blank } from '../utils/cwgame/common';
 import { useTourneyMetadata } from '../tournament/utils';
 import { Disclaimer } from './disclaimer';
 import { alphabetFromName } from '../constants/alphabets';
+import { ReadyForGame, TimedOut } from '../gen/api/proto/ipc/omgwords_pb';
+import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
+import {
+  DeclineSeekRequest,
+  SeekRequest,
+  SoughtGameProcessEvent,
+} from '../gen/api/proto/ipc/omgseeks_pb';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;

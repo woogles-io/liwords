@@ -17,8 +17,8 @@ var global = Function('return this')();
 
 var macondo_api_proto_macondo_macondo_pb = require('../../../macondo/api/proto/macondo/macondo_pb.js');
 goog.object.extend(proto, macondo_api_proto_macondo_macondo_pb);
-var api_proto_realtime_realtime_pb = require('../../../api/proto/realtime/realtime_pb.js');
-goog.object.extend(proto, api_proto_realtime_realtime_pb);
+var api_proto_ipc_omgwords_pb = require('../../../api/proto/ipc/omgwords_pb.js');
+goog.object.extend(proto, api_proto_ipc_omgwords_pb);
 var google_protobuf_timestamp_pb = require('google-protobuf/google/protobuf/timestamp_pb.js');
 goog.object.extend(proto, google_protobuf_timestamp_pb);
 goog.exportSymbol('proto.game_service.GCGRequest', null, global);
@@ -826,7 +826,7 @@ proto.game_service.GameInfoResponse.toObject = function(includeInstance, msg) {
     createdAt: (f = msg.getCreatedAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f),
     gameId: jspb.Message.getFieldWithDefault(msg, 16, ""),
     lastUpdate: (f = msg.getLastUpdate()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f),
-    gameRequest: (f = msg.getGameRequest()) && api_proto_realtime_realtime_pb.GameRequest.toObject(includeInstance, f),
+    gameRequest: (f = msg.getGameRequest()) && api_proto_ipc_omgwords_pb.GameRequest.toObject(includeInstance, f),
     tournamentDivision: jspb.Message.getFieldWithDefault(msg, 20, ""),
     tournamentRound: jspb.Message.getFieldWithDefault(msg, 21, 0),
     tournamentGameIndex: jspb.Message.getFieldWithDefault(msg, 22, 0)
@@ -880,7 +880,7 @@ proto.game_service.GameInfoResponse.deserializeBinaryFromReader = function(msg, 
       msg.setTournamentId(value);
       break;
     case 11:
-      var value = /** @type {!proto.liwords.GameEndReason} */ (reader.readEnum());
+      var value = /** @type {!proto.ipc.GameEndReason} */ (reader.readEnum());
       msg.setGameEndReason(value);
       break;
     case 13:
@@ -908,8 +908,8 @@ proto.game_service.GameInfoResponse.deserializeBinaryFromReader = function(msg, 
       msg.setLastUpdate(value);
       break;
     case 19:
-      var value = new api_proto_realtime_realtime_pb.GameRequest;
-      reader.readMessage(value,api_proto_realtime_realtime_pb.GameRequest.deserializeBinaryFromReader);
+      var value = new api_proto_ipc_omgwords_pb.GameRequest;
+      reader.readMessage(value,api_proto_ipc_omgwords_pb.GameRequest.deserializeBinaryFromReader);
       msg.setGameRequest(value);
       break;
     case 20:
@@ -1024,7 +1024,7 @@ proto.game_service.GameInfoResponse.serializeBinaryToWriter = function(message, 
     writer.writeMessage(
       19,
       f,
-      api_proto_realtime_realtime_pb.GameRequest.serializeBinaryToWriter
+      api_proto_ipc_omgwords_pb.GameRequest.serializeBinaryToWriter
     );
   }
   f = message.getTournamentDivision();
@@ -1126,16 +1126,16 @@ proto.game_service.GameInfoResponse.prototype.setTournamentId = function(value) 
 
 
 /**
- * optional liwords.GameEndReason game_end_reason = 11;
- * @return {!proto.liwords.GameEndReason}
+ * optional ipc.GameEndReason game_end_reason = 11;
+ * @return {!proto.ipc.GameEndReason}
  */
 proto.game_service.GameInfoResponse.prototype.getGameEndReason = function() {
-  return /** @type {!proto.liwords.GameEndReason} */ (jspb.Message.getFieldWithDefault(this, 11, 0));
+  return /** @type {!proto.ipc.GameEndReason} */ (jspb.Message.getFieldWithDefault(this, 11, 0));
 };
 
 
 /**
- * @param {!proto.liwords.GameEndReason} value
+ * @param {!proto.ipc.GameEndReason} value
  * @return {!proto.game_service.GameInfoResponse} returns this
  */
 proto.game_service.GameInfoResponse.prototype.setGameEndReason = function(value) {
@@ -1291,17 +1291,17 @@ proto.game_service.GameInfoResponse.prototype.hasLastUpdate = function() {
 
 
 /**
- * optional liwords.GameRequest game_request = 19;
- * @return {?proto.liwords.GameRequest}
+ * optional ipc.GameRequest game_request = 19;
+ * @return {?proto.ipc.GameRequest}
  */
 proto.game_service.GameInfoResponse.prototype.getGameRequest = function() {
-  return /** @type{?proto.liwords.GameRequest} */ (
-    jspb.Message.getWrapperField(this, api_proto_realtime_realtime_pb.GameRequest, 19));
+  return /** @type{?proto.ipc.GameRequest} */ (
+    jspb.Message.getWrapperField(this, api_proto_ipc_omgwords_pb.GameRequest, 19));
 };
 
 
 /**
- * @param {?proto.liwords.GameRequest|undefined} value
+ * @param {?proto.ipc.GameRequest|undefined} value
  * @return {!proto.game_service.GameInfoResponse} returns this
 */
 proto.game_service.GameInfoResponse.prototype.setGameRequest = function(value) {

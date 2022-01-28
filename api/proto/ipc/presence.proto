@@ -1,0 +1,20 @@
+syntax = "proto3";
+package ipc;
+option go_package = "github.com/domino14/liwords/rpc/api/proto/ipc";
+
+message UserPresence {
+  string username = 1;
+  string user_id = 2;
+  string channel = 3;
+  bool is_anonymous = 4;
+  bool deleting = 5;
+}
+
+message UserPresences { repeated UserPresence presences = 1; }
+
+// Only authenticated connections.
+message PresenceEntry {
+  string username = 1;
+  string user_id = 2;
+  repeated string channel = 3;
+}

@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/domino14/liwords/pkg/apiserver"
-	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
+	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
@@ -263,7 +263,7 @@ func ChatChannelReceiver(uid, name string) (string, error) {
 	return receiver, nil
 }
 
-func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *pb.GetChatsRequest) (*realtime.ChatMessages, error) {
+func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *pb.GetChatsRequest) (*ipc.ChatMessages, error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
 		log.Debug().Err(err).Msg("get-session-get-chats-for-channel")
@@ -309,7 +309,7 @@ func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *pb.GetC
 			}
 		}
 	}
-	return &realtime.ChatMessages{Messages: chats}, nil
+	return &ipc.ChatMessages{Messages: chats}, nil
 }
 
 // func (ss *SocializeService) GetBlockedBy(ctx context.Context, req *pb.GetBlocksRequest) (*pb.GetBlockedByResponse, error) {

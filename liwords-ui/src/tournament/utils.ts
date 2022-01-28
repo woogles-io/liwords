@@ -7,9 +7,9 @@ import {
   TournamentMetadataResponse,
   TType,
 } from '../gen/api/proto/tournament_service/tournament_service_pb';
-import { FullTournamentDivisions } from '../gen/api/proto/realtime/realtime_pb';
 import { LoginState } from '../store/login_state';
 import { message } from 'antd';
+import { FullTournamentDivisions } from '../gen/api/proto/ipc/tournament_pb';
 
 export const useTourneyMetadata = (
   path: string,

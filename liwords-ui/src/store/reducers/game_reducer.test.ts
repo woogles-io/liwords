@@ -1,15 +1,16 @@
 import { GameReducer, startingGameState } from './game_reducer';
 import { ActionType } from '../../actions/actions';
-import {
-  GameHistoryRefresher,
-  ServerGameplayEvent,
-} from '../../gen/api/proto/realtime/realtime_pb';
+
 import {
   GameHistory,
   PlayerInfo,
   GameEvent,
 } from '../../gen/macondo/api/proto/macondo/macondo_pb';
 import { StandardEnglishAlphabet } from '../../constants/alphabets';
+import {
+  GameHistoryRefresher,
+  ServerGameplayEvent,
+} from '../../gen/api/proto/ipc/omgwords_pb';
 
 const historyRefresher = () => {
   const ghr = new GameHistoryRefresher();
