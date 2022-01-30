@@ -8,6 +8,7 @@ import { alphabetFromName, runeToValues } from '../constants/alphabets';
 
 const TileImages = React.memo((props: { letterDistribution: string }) => {
   // 1. Go to this page (see App.tsx for url).
+  //    Note: use 800x600 responsive mode to get compatible styles.
   // 2. Screen-capture normally. Any white border can be cropped later.
   //    On Mac: cmd+shift+4.
   // 3. Crop the white border and assign transparency.
@@ -36,7 +37,7 @@ const TileImages = React.memo((props: { letterDistribution: string }) => {
           }}
         >
           {Array.from(
-            'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ',
+            'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz?',
             (ch) => (
               <div>
                 <Tile
