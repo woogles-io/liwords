@@ -4,7 +4,6 @@ import (
 	"sync"
 	"time"
 
-	gameservicepb "github.com/domino14/liwords/rpc/api/proto/game_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -57,9 +56,9 @@ func (f *FakeNower) Sleep(t int64) {
 // of aggregating large numbers of games rapidly. This should get saved in
 // its own blob in the store, as opposed to being buried within a game history.
 type Quickdata struct {
-	OriginalRequestId string                      `json:"o"`
-	FinalScores       []int32                     `json:"s"`
-	PlayerInfo        []*gameservicepb.PlayerInfo `json:"pi"`
+	OriginalRequestId string           `json:"o"`
+	FinalScores       []int32          `json:"s"`
+	PlayerInfo        []*pb.PlayerInfo `json:"pi"`
 	OriginalRatings   []float64
 	NewRatings        []float64
 }
