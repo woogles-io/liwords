@@ -42,14 +42,14 @@ var (
 // GameStore is an interface for getting a full game.
 type GameStore interface {
 	Get(ctx context.Context, id string) (*entity.Game, error)
-	GetMetadata(ctx context.Context, id string) (*gs.GameInfoResponse, error)
+	GetMetadata(ctx context.Context, id string) (*pb.GameInfoResponse, error)
 	GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error)
-	GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*gs.GameInfoResponses, error)
-	GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*gs.GameInfoResponses, error)
+	GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*pb.GameInfoResponses, error)
+	GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error)
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
 	Exists(ctx context.Context, id string) (bool, error)
-	ListActive(context.Context, string, bool) (*gs.GameInfoResponses, error)
+	ListActive(context.Context, string, bool) (*pb.GameInfoResponses, error)
 	Count(ctx context.Context) (int64, error)
 	CachedCount(ctx context.Context) int
 	GameEventChan() chan<- *entity.EventWrapper
@@ -132,10 +132,10 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	}
 
 	// Create player info in entGame.Quickdata
-	playerinfos := make([]*gs.PlayerInfo, len(players))
+	playerinfos := make([]*pb.PlayerInfo, len(players))
 
 	for idx, u := range users {
-		playerinfos[idx] = &gs.PlayerInfo{
+		playerinfos[idx] = &pb.PlayerInfo{
 			Nickname: u.Username,
 			UserId:   u.UUID,
 			Rating:   u.GetRelevantRating(ratingKey),

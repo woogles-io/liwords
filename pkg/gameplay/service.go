@@ -12,6 +12,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/game_service"
+	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
@@ -29,7 +30,7 @@ func NewGameService(u user.Store, gs GameStore) *GameService {
 }
 
 // GetMetadata gets metadata for the given game.
-func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest) (*pb.GameInfoResponse, error) {
+func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest) (*ipc.GameInfoResponse, error) {
 	gir, err := gs.gameStore.GetMetadata(ctx, req.GameId)
 	if err != nil {
 		return nil, err
@@ -52,7 +53,7 @@ func (gs *GameService) GetRematchStreak(ctx context.Context, req *pb.RematchStre
 
 //  GetRecentGames gets quickdata for the numGames most recent games of the player
 // offset by offset.
-func (gs *GameService) GetRecentGames(ctx context.Context, req *pb.RecentGamesRequest) (*pb.GameInfoResponses, error) {
+func (gs *GameService) GetRecentGames(ctx context.Context, req *pb.RecentGamesRequest) (*ipc.GameInfoResponses, error) {
 	resp, err := gs.gameStore.GetRecentGames(ctx, req.Username, int(req.NumGames), int(req.Offset))
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
@@ -74,7 +75,7 @@ func (gs *GameService) GetRecentGames(ctx context.Context, req *pb.RecentGamesRe
 			return nil, twirp.InternalErrorWith(err)
 		}
 		if !viewer.IsMod && !viewer.IsAdmin {
-			return &pb.GameInfoResponses{}, nil
+			return &ipc.GameInfoResponses{}, nil
 		}
 	}
 	// Censors the responses in-place
@@ -111,7 +112,7 @@ func (gs *GameService) GetGameHistory(ctx context.Context, req *pb.GameHistoryRe
 	return &pb.GameHistoryResponse{History: hist}, nil
 }
 
-func censorPlayer(gir *pb.GameInfoResponse, playerIndex int, censoredUsername string) {
+func censorPlayer(gir *ipc.GameInfoResponse, playerIndex int, censoredUsername string) {
 	gir.Players[playerIndex].UserId = censoredUsername
 	gir.Players[playerIndex].FullName = censoredUsername
 	gir.Players[playerIndex].Nickname = censoredUsername
@@ -120,7 +121,7 @@ func censorPlayer(gir *pb.GameInfoResponse, playerIndex int, censoredUsername st
 	gir.Players[playerIndex].Rating = ""
 }
 
-func censorGameInfoResponse(ctx context.Context, us user.Store, gir *pb.GameInfoResponse) {
+func censorGameInfoResponse(ctx context.Context, us user.Store, gir *ipc.GameInfoResponse) {
 	playerCensored := false
 	if mod.IsCensorable(ctx, us, gir.Players[0].UserId) {
 		censorPlayer(gir, 0, utilities.CensoredUsername)
@@ -151,7 +152,7 @@ func censorStreakInfoResponse(ctx context.Context, us user.Store, sir *pb.Streak
 	}
 }
 
-func censorGameInfoResponses(ctx context.Context, us user.Store, girs *pb.GameInfoResponses) {
+func censorGameInfoResponses(ctx context.Context, us user.Store, girs *ipc.GameInfoResponses) {
 	knownUsers := make(map[string]bool)
 
 	for _, gir := range girs.GameInfo {

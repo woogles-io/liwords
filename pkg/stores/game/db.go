@@ -158,7 +158,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 }
 
 // GetMetadata gets metadata about the game, but does not actually play the game.
-func (s *DBStore) GetMetadata(ctx context.Context, id string) (*gs.GameInfoResponse, error) {
+func (s *DBStore) GetMetadata(ctx context.Context, id string) (*pb.GameInfoResponse, error) {
 	g := &game{}
 
 	result := s.db.Where("uuid = ?", id).First(g)
@@ -220,7 +220,7 @@ func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string
 	return resp, nil
 }
 
-func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*gs.GameInfoResponses, error) {
+func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*pb.GameInfoResponses, error) {
 	if numGames > MaxRecentGames {
 		return nil, errors.New("too many games")
 	}
@@ -237,7 +237,7 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 	return convertGamesToInfoResponses(games)
 }
 
-func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*gs.GameInfoResponses, error) {
+func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error) {
 	if numGames > MaxRecentGames {
 		return nil, errors.New("too many games")
 	}
@@ -255,8 +255,8 @@ func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, n
 	return convertGamesToInfoResponses(games)
 }
 
-func convertGamesToInfoResponses(games []*game) (*gs.GameInfoResponses, error) {
-	responses := []*gs.GameInfoResponse{}
+func convertGamesToInfoResponses(games []*game) (*pb.GameInfoResponses, error) {
+	responses := []*pb.GameInfoResponse{}
 	for _, g := range games {
 		info, err := convertGameToInfoResponse(g)
 		if err != nil {
@@ -264,10 +264,10 @@ func convertGamesToInfoResponses(games []*game) (*gs.GameInfoResponses, error) {
 		}
 		responses = append(responses, info)
 	}
-	return &gs.GameInfoResponses{GameInfo: responses}, nil
+	return &pb.GameInfoResponses{GameInfo: responses}, nil
 }
 
-func convertGameToInfoResponse(g *game) (*gs.GameInfoResponse, error) {
+func convertGameToInfoResponse(g *game) (*pb.GameInfoResponse, error) {
 	var mdata entity.Quickdata
 
 	err := json.Unmarshal(g.Quickdata, &mdata)
@@ -301,7 +301,7 @@ func convertGameToInfoResponse(g *game) (*gs.GameInfoResponse, error) {
 		tid = trdata.Id
 	}
 
-	info := &gs.GameInfoResponse{
+	info := &pb.GameInfoResponse{
 		Players:             mdata.PlayerInfo,
 		GameEndReason:       pb.GameEndReason(g.GameEndReason),
 		Scores:              mdata.FinalScores,
@@ -449,7 +449,7 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 	return result.Error
 }
 
-func (s *DBStore) ListActive(ctx context.Context, tourneyID string) (*gs.GameInfoResponses, error) {
+func (s *DBStore) ListActive(ctx context.Context, tourneyID string) (*pb.GameInfoResponses, error) {
 	var games []*game
 
 	ctxDB := s.db.WithContext(ctx)

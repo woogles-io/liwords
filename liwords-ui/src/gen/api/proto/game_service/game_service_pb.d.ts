@@ -4,7 +4,6 @@
 import * as jspb from "google-protobuf";
 import * as macondo_api_proto_macondo_macondo_pb from "../../../macondo/api/proto/macondo/macondo_pb";
 import * as api_proto_ipc_omgwords_pb from "../../../api/proto/ipc/omgwords_pb";
-import * as google_protobuf_timestamp_pb from "google-protobuf/google/protobuf/timestamp_pb";
 
 export class GameInfoRequest extends jspb.Message {
   getGameId(): string;
@@ -23,132 +22,6 @@ export class GameInfoRequest extends jspb.Message {
 export namespace GameInfoRequest {
   export type AsObject = {
     gameId: string,
-  }
-}
-
-export class PlayerInfo extends jspb.Message {
-  getUserId(): string;
-  setUserId(value: string): void;
-
-  getNickname(): string;
-  setNickname(value: string): void;
-
-  getFullName(): string;
-  setFullName(value: string): void;
-
-  getCountryCode(): string;
-  setCountryCode(value: string): void;
-
-  getRating(): string;
-  setRating(value: string): void;
-
-  getTitle(): string;
-  setTitle(value: string): void;
-
-  getIsBot(): boolean;
-  setIsBot(value: boolean): void;
-
-  getFirst(): boolean;
-  setFirst(value: boolean): void;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): PlayerInfo.AsObject;
-  static toObject(includeInstance: boolean, msg: PlayerInfo): PlayerInfo.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: PlayerInfo, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): PlayerInfo;
-  static deserializeBinaryFromReader(message: PlayerInfo, reader: jspb.BinaryReader): PlayerInfo;
-}
-
-export namespace PlayerInfo {
-  export type AsObject = {
-    userId: string,
-    nickname: string,
-    fullName: string,
-    countryCode: string,
-    rating: string,
-    title: string,
-    isBot: boolean,
-    first: boolean,
-  }
-}
-
-export class GameInfoResponse extends jspb.Message {
-  clearPlayersList(): void;
-  getPlayersList(): Array<PlayerInfo>;
-  setPlayersList(value: Array<PlayerInfo>): void;
-  addPlayers(value?: PlayerInfo, index?: number): PlayerInfo;
-
-  getTimeControlName(): string;
-  setTimeControlName(value: string): void;
-
-  getTournamentId(): string;
-  setTournamentId(value: string): void;
-
-  getGameEndReason(): api_proto_ipc_omgwords_pb.GameEndReasonMap[keyof api_proto_ipc_omgwords_pb.GameEndReasonMap];
-  setGameEndReason(value: api_proto_ipc_omgwords_pb.GameEndReasonMap[keyof api_proto_ipc_omgwords_pb.GameEndReasonMap]): void;
-
-  clearScoresList(): void;
-  getScoresList(): Array<number>;
-  setScoresList(value: Array<number>): void;
-  addScores(value: number, index?: number): number;
-
-  getWinner(): number;
-  setWinner(value: number): void;
-
-  hasCreatedAt(): boolean;
-  clearCreatedAt(): void;
-  getCreatedAt(): google_protobuf_timestamp_pb.Timestamp | undefined;
-  setCreatedAt(value?: google_protobuf_timestamp_pb.Timestamp): void;
-
-  getGameId(): string;
-  setGameId(value: string): void;
-
-  hasLastUpdate(): boolean;
-  clearLastUpdate(): void;
-  getLastUpdate(): google_protobuf_timestamp_pb.Timestamp | undefined;
-  setLastUpdate(value?: google_protobuf_timestamp_pb.Timestamp): void;
-
-  hasGameRequest(): boolean;
-  clearGameRequest(): void;
-  getGameRequest(): api_proto_ipc_omgwords_pb.GameRequest | undefined;
-  setGameRequest(value?: api_proto_ipc_omgwords_pb.GameRequest): void;
-
-  getTournamentDivision(): string;
-  setTournamentDivision(value: string): void;
-
-  getTournamentRound(): number;
-  setTournamentRound(value: number): void;
-
-  getTournamentGameIndex(): number;
-  setTournamentGameIndex(value: number): void;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): GameInfoResponse.AsObject;
-  static toObject(includeInstance: boolean, msg: GameInfoResponse): GameInfoResponse.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: GameInfoResponse, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): GameInfoResponse;
-  static deserializeBinaryFromReader(message: GameInfoResponse, reader: jspb.BinaryReader): GameInfoResponse;
-}
-
-export namespace GameInfoResponse {
-  export type AsObject = {
-    playersList: Array<PlayerInfo.AsObject>,
-    timeControlName: string,
-    tournamentId: string,
-    gameEndReason: api_proto_ipc_omgwords_pb.GameEndReasonMap[keyof api_proto_ipc_omgwords_pb.GameEndReasonMap],
-    scoresList: Array<number>,
-    winner: number,
-    createdAt?: google_protobuf_timestamp_pb.Timestamp.AsObject,
-    gameId: string,
-    lastUpdate?: google_protobuf_timestamp_pb.Timestamp.AsObject,
-    gameRequest?: api_proto_ipc_omgwords_pb.GameRequest.AsObject,
-    tournamentDivision: string,
-    tournamentRound: number,
-    tournamentGameIndex: number,
   }
 }
 
@@ -231,28 +104,6 @@ export class GameHistoryResponse extends jspb.Message {
 export namespace GameHistoryResponse {
   export type AsObject = {
     history?: macondo_api_proto_macondo_macondo_pb.GameHistory.AsObject,
-  }
-}
-
-export class GameInfoResponses extends jspb.Message {
-  clearGameInfoList(): void;
-  getGameInfoList(): Array<GameInfoResponse>;
-  setGameInfoList(value: Array<GameInfoResponse>): void;
-  addGameInfo(value?: GameInfoResponse, index?: number): GameInfoResponse;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): GameInfoResponses.AsObject;
-  static toObject(includeInstance: boolean, msg: GameInfoResponses): GameInfoResponses.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: GameInfoResponses, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): GameInfoResponses;
-  static deserializeBinaryFromReader(message: GameInfoResponses, reader: jspb.BinaryReader): GameInfoResponses;
-}
-
-export namespace GameInfoResponses {
-  export type AsObject = {
-    gameInfoList: Array<GameInfoResponse.AsObject>,
   }
 }
 

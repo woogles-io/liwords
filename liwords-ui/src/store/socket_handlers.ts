@@ -29,10 +29,6 @@ import {
   SoughtGame,
 } from './reducers/lobby_reducer';
 import { BoopSounds } from '../sound/boop';
-import {
-  GameInfoResponse,
-  GameInfoResponses,
-} from '../gen/api/proto/game_service/game_service_pb';
 import { metaStateFromMetaEvent } from './meta_game_events';
 import { parseWooglesError } from '../utils/parse_woogles_error';
 import {
@@ -62,6 +58,8 @@ import {
   RematchStartedEvent,
   GameMetaEvent,
   ActiveGameEntry,
+  GameInfoResponse,
+  GameInfoResponses,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import {
   UserPresence,

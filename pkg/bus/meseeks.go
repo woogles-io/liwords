@@ -13,7 +13,6 @@ import (
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/user"
-	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -599,7 +598,7 @@ func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.
 		return err
 	}
 	ratingKey := entity.ToVariantKey(g.GameReq.Lexicon, variant, timefmt)
-	players := []*gs.PlayerInfo{
+	players := []*pb.PlayerInfo{
 		{Rating: acceptor.GetRelevantRating(ratingKey),
 			UserId:   acceptor.UUID,
 			Nickname: acceptor.Username},
@@ -608,7 +607,7 @@ func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.
 			Nickname: requester.Username},
 	}
 
-	gameInfo := &gs.GameInfoResponse{Players: players,
+	gameInfo := &pb.GameInfoResponse{Players: players,
 		GameRequest: g.GameReq, GameId: g.GameID()}
 
 	if g.TournamentData != nil {

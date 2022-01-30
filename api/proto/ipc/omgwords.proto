@@ -158,6 +158,45 @@ message TournamentDataForGame {
   int32 game_index = 4;
 }
 
+// Meta information about the player of a particular game.
+message PlayerInfo {
+  string user_id = 1;
+  string nickname = 2;
+  string full_name = 3;
+  string country_code = 4;
+  // Rating for the particular mode of the game. String because it could be
+  // provisional or some other strings.
+  string rating = 5;
+  string title = 6;
+  // string avatar_url = 7; // the UserService now offers Avatar info
+  bool is_bot = 8;
+  // first is true if the player went first
+  bool first = 9;
+}
+
+message GameInfoResponse {
+  repeated PlayerInfo players = 1;
+  string time_control_name = 4;
+  string tournament_id = 6;
+  // done - is game done?
+  // bool done = 9;
+  ipc.GameEndReason game_end_reason = 11;
+  repeated int32 scores = 13;
+  int32 winner = 14;
+  google.protobuf.Timestamp created_at = 15;
+  string game_id = 16;
+  google.protobuf.Timestamp last_update = 18;
+
+  ipc.GameRequest game_request = 19;
+  string tournament_division = 20;
+  int32 tournament_round = 21;
+  // a game index within a round.
+  int32 tournament_game_index = 22;
+}
+
+message GameInfoResponses { repeated GameInfoResponse game_info = 1; }
+
+
 // InstantiateGame is an internal message passed to gamesvc in order to
 // instantiate a game.
 message InstantiateGame {

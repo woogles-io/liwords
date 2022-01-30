@@ -12,7 +12,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/stores/user"
-	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
+	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
 func main() {
@@ -57,7 +57,7 @@ func main() {
 		// it here just so it's not null and it doesn't matter
 		// because it's only used to obtain current rematch streaks.
 
-		playerinfos := make([]*gs.PlayerInfo, 2)
+		playerinfos := make([]*ipc.PlayerInfo, 2)
 
 		for idx, u := range g.History().Players {
 			first := idx == 0
@@ -65,7 +65,7 @@ func main() {
 				first = !first
 			}
 
-			playerinfos[idx] = &gs.PlayerInfo{
+			playerinfos[idx] = &ipc.PlayerInfo{
 				Nickname: u.Nickname,
 				UserId:   u.UserId,
 				// This migration script will only be run once.

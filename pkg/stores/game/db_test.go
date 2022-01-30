@@ -20,7 +20,6 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
-	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
@@ -186,7 +185,7 @@ func createGame(p0, p1 string, initTime int32, is *is.I) *entity.Game {
 	})
 	entGame.PlayerDBIDs = [2]uint{u1.ID, u2.ID}
 	entGame.Quickdata = &entity.Quickdata{
-		PlayerInfo: []*gs.PlayerInfo{
+		PlayerInfo: []*pb.PlayerInfo{
 			{Nickname: u1.Username, Rating: "1500?"},
 			{Nickname: u2.Username, Rating: "1500?"},
 		},
@@ -324,15 +323,15 @@ func TestListActive(t *testing.T) {
 	games, err := store.ListActive(context.Background(), "")
 	is.NoErr(err)
 	is.Equal(len(games.GameInfo), 3)
-	is.Equal(games.GameInfo[0].Players, []*gs.PlayerInfo{
+	is.Equal(games.GameInfo[0].Players, []*pb.PlayerInfo{
 		{Rating: "1600?", Nickname: "mina"},
 		{Rating: "500?", Nickname: "cesar"},
 	})
-	is.Equal(games.GameInfo[1].Players, []*gs.PlayerInfo{
+	is.Equal(games.GameInfo[1].Players, []*pb.PlayerInfo{
 		{Rating: "1500?", Nickname: "cesar"},
 		{Rating: "1500?", Nickname: "jesse"},
 	})
-	is.Equal(games.GameInfo[2].Players, []*gs.PlayerInfo{
+	is.Equal(games.GameInfo[2].Players, []*pb.PlayerInfo{
 		{Rating: "1500?", Nickname: "jesse"},
 		{Rating: "1500?", Nickname: "mina"},
 	})

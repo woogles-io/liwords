@@ -19,7 +19,6 @@ import (
 	"github.com/domino14/liwords/pkg/stores/user"
 	"github.com/domino14/liwords/pkg/tournament"
 	pkguser "github.com/domino14/liwords/pkg/user"
-	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/macondo/alphabet"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -404,7 +403,7 @@ func TestQuickdata(t *testing.T) {
 	is.NoErr(err)
 
 	// Check the quickdata
-	is.Equal(entGame.Quickdata.PlayerInfo, []*gs.PlayerInfo{
+	is.Equal(entGame.Quickdata.PlayerInfo, []*pb.PlayerInfo{
 		{UserId: "xjCWug7EZtDxDHX5fRZTLo", Nickname: "cesar4", First: false, Rating: "1500?"},
 		{UserId: "3xpEkpRAy3AizbVmDg3kdi", Nickname: "jesse", First: true, Rating: "1500?"},
 	})

@@ -7,6 +7,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/entity"
 	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
+	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/rs/zerolog/log"
@@ -16,14 +17,14 @@ import (
 // in defining the backing store (i.e. it may not necessarily be a SQL db store)
 type backingStore interface {
 	Get(ctx context.Context, id string) (*entity.Game, error)
-	GetMetadata(ctx context.Context, id string) (*gs.GameInfoResponse, error)
+	GetMetadata(ctx context.Context, id string) (*pb.GameInfoResponse, error)
 	GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error)
-	GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*gs.GameInfoResponses, error)
-	GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*gs.GameInfoResponses, error)
+	GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*pb.GameInfoResponses, error)
+	GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error)
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
 	Exists(context.Context, string) (bool, error)
-	ListActive(ctx context.Context, tourneyID string) (*gs.GameInfoResponses, error)
+	ListActive(ctx context.Context, tourneyID string) (*pb.GameInfoResponses, error)
 	Count(ctx context.Context) (int64, error)
 	GameEventChan() chan<- *entity.EventWrapper
 	SetGameEventChan(ch chan<- *entity.EventWrapper)
@@ -49,7 +50,7 @@ const (
 type Cache struct {
 	sync.RWMutex // used for the activeGames cache.
 	cache        *lru.Cache
-	activeGames  *gs.GameInfoResponses
+	activeGames  *pb.GameInfoResponses
 
 	activeGamesTTL         time.Duration
 	activeGamesLastUpdated time.Time
@@ -132,17 +133,17 @@ func (c *Cache) GetRematchStreak(ctx context.Context, originalRequestId string) 
 	return c.backing.GetRematchStreak(ctx, originalRequestId)
 }
 
-func (c *Cache) GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*gs.GameInfoResponses, error) {
+func (c *Cache) GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*pb.GameInfoResponses, error) {
 	return c.backing.GetRecentGames(ctx, username, numGames, offset)
 }
 
-func (c *Cache) GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*gs.GameInfoResponses, error) {
+func (c *Cache) GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error) {
 	return c.backing.GetRecentTourneyGames(ctx, tourneyID, numGames, offset)
 }
 
 // Similar to get but does not unmarshal the stats and timers and does
 // not play the game
-func (c *Cache) GetMetadata(ctx context.Context, id string) (*gs.GameInfoResponse, error) {
+func (c *Cache) GetMetadata(ctx context.Context, id string) (*pb.GameInfoResponse, error) {
 	return c.backing.GetMetadata(ctx, id)
 }
 
@@ -182,7 +183,7 @@ func (c *Cache) setOrCreate(ctx context.Context, game *entity.Game, isNew bool) 
 // ListActive lists all active games in the given tournament ID (optional) or
 // site-wide if not provided. If `bust` is true, we will always query the backing
 // store.
-func (c *Cache) ListActive(ctx context.Context, tourneyID string, bust bool) (*gs.GameInfoResponses, error) {
+func (c *Cache) ListActive(ctx context.Context, tourneyID string, bust bool) (*pb.GameInfoResponses, error) {
 	if tourneyID == "" && !bust {
 		return c.listAllActive(ctx)
 	}
@@ -190,7 +191,7 @@ func (c *Cache) ListActive(ctx context.Context, tourneyID string, bust bool) (*g
 	return c.backing.ListActive(ctx, tourneyID)
 }
 
-func (c *Cache) listAllActive(ctx context.Context) (*gs.GameInfoResponses, error) {
+func (c *Cache) listAllActive(ctx context.Context) (*pb.GameInfoResponses, error) {
 	c.RLock()
 	if time.Now().Sub(c.activeGamesLastUpdated) < c.activeGamesTTL {
 		log.Debug().Msg("returning active games from cache")
