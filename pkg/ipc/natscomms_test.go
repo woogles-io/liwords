@@ -19,7 +19,7 @@ import (
 
 func TestRequest(t *testing.T) {
 	is := is.New(t)
-	msgHandler := func(ctx context.Context, bus *Bus, topic string, data []byte, reply string) error {
+	msgHandler := func(ctx context.Context, bus Publisher, topic string, data []byte, reply string) error {
 		log.Info().Str("data", string(data)).Msg("received msg")
 		bus.PublishToTopic(reply, []byte("response to "+string(data)))
 		return nil
@@ -56,7 +56,7 @@ func TestRequest(t *testing.T) {
 func TestRequestRetry(t *testing.T) {
 	is := is.New(t)
 	i := 0
-	msgHandler := func(ctx context.Context, bus *Bus, topic string, data []byte, reply string) error {
+	msgHandler := func(ctx context.Context, bus Publisher, topic string, data []byte, reply string) error {
 		log.Info().Str("data", string(data)).Msg("received msg")
 		if i != 2 {
 			// This msg handler returns an error the first two times.
@@ -110,7 +110,7 @@ func TestRequestRetry(t *testing.T) {
 func TestRequestRetryFail(t *testing.T) {
 	is := is.New(t)
 	i := 0
-	msgHandler := func(ctx context.Context, bus *Bus, topic string, data []byte, reply string) error {
+	msgHandler := func(ctx context.Context, bus Publisher, topic string, data []byte, reply string) error {
 		log.Info().Str("data", string(data)).Msg("received msg")
 		if i != 3 {
 			// return an error the first three times. By default we only retry

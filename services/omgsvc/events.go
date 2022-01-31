@@ -8,26 +8,25 @@ import (
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/ipc"
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
 // MsgHandler handles all game svc related messages
-func MsgHandler(ctx context.Context, b *ipc.Bus, topic string, data []byte, reply string) error {
+func MsgHandler(ctx context.Context, b ipc.Publisher, topic string, data []byte, reply string) error {
 	// MessageType_GAME_META_EVENT
 	// MessageType_CLIENT_GAMEPLAY_EVENT
 	// MessageType_TIMED_OUT
 	// MessageType_READY_FOR_GAME
 
 	log.Debug().Interface("topic", topic).Msg("msghandler")
-	subtopics := strings.Split("topic", ".")
+	subtopics := strings.Split(topic, ".")
 
 	msgType := subtopics[0]
-	auth := ""
+	//auth := ""
 	userID := ""
 	if len(subtopics) > 2 {
-		auth = subtopics[1]
+		//	auth = subtopics[1]
 		userID = subtopics[2]
 	}
 	wsConnID := ""
@@ -44,7 +43,11 @@ func MsgHandler(ctx context.Context, b *ipc.Bus, topic string, data []byte, repl
 	case pb.MessageType_GAME_INSTANTIATION.String():
 		return handleGameInstantiation(ctx, b, data, reply)
 
+	case pb.MessageType_READY_FOR_GAME.String():
+		return handleReadyForGame(ctx, b, userID, wsConnID, data, reply)
+
 	case pb.MessageType_CLIENT_GAMEPLAY_EVENT.String():
+		return handleGameplayEvent(ctx, b, data, reply)
 		// evt := &pb.ClientGameplayEvent{}
 		// err := proto.Unmarshal(data, evt)
 		// if err != nil {
@@ -56,7 +59,7 @@ func MsgHandler(ctx context.Context, b *ipc.Bus, topic string, data []byte, repl
 	return nil
 }
 
-func handleGameInstantiation(ctx context.Context, b *ipc.Bus, data []byte,
+func handleGameInstantiation(ctx context.Context, b ipc.Publisher, data []byte,
 	reply string) error {
 
 	evt := &pb.InstantiateGame{}
@@ -81,7 +84,7 @@ func handleGameInstantiation(ctx context.Context, b *ipc.Bus, data []byte,
 		return err
 	}
 
-	ngevt := entity.WrapEvent(&pb.NewGameEvent{
+	ngevt := ipc.WrapEvent(&pb.NewGameEvent{
 		GameId: resmsg.Id,
 		// Doesn't matter who's accepter/requester; consider renaming these.
 		AccepterCid:  evt.ConnIds[0],
@@ -98,7 +101,7 @@ func handleGameInstantiation(ctx context.Context, b *ipc.Bus, data []byte,
 	}
 	// Also broadcast the game creation to the lobby/whoever needs to know
 
-	ongoingGameEvt := entity.WrapEvent(resmsg.GameInfo, pb.MessageType_ONGOING_GAME_EVENT)
+	ongoingGameEvt := ipc.WrapEvent(resmsg.GameInfo, pb.MessageType_ONGOING_GAME_EVENT)
 	ogData, err := ongoingGameEvt.Serialize()
 	if err != nil {
 		return err

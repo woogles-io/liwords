@@ -7,6 +7,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"github.com/domino14/liwords/pkg/config"
 )
@@ -26,10 +27,18 @@ type TopicListener struct {
 
 const DrainTimeout = 10 * time.Second
 
+// A Publisher sends messages to topics.
+type Publisher interface {
+	Request(subject string, data []byte, opts ...Option) ([]byte, error)
+	RequestProto(subject string, msg, resp protoreflect.ProtoMessage, opts ...Option) error
+	PublishToTopic(topic string, data []byte) error
+	PublishToUser(user string, data []byte, optionalChannel string) error
+}
+
 // MsgHandler defines a function signature for handling NATS messages.
 // Note that the `reply` parameter can be an empty string, in which case
 // the handler should not publish to this channel.
-type MsgHandler func(ctx context.Context, bus *Bus, topic string, data []byte, reply string) error
+type MsgHandler func(ctx context.Context, bus Publisher, topic string, data []byte, reply string) error
 
 type Bus struct {
 	natsconn *nats.Conn

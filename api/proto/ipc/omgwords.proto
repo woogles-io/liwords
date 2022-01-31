@@ -226,7 +226,19 @@ message ActiveGameEntry {
   int64 ttl = 3; // time to live, in seconds
 }
 
-message ReadyForGame { string game_id = 1; }
+message ReadyForGame {
+  string game_id = 1;
+  string user_id = 2;
+  string conn_id = 3;
+}
+
+message ReadyForGameResponse { bool ready_to_start = 1; }
+
+message ResetTimersAndStart { string game_id = 1; }
+
+message ResetTimersAndStartResponse {
+  GameHistoryRefresher game_history_refresher = 1;
+}
 
 // The server will send back a ServerGameplayEvent to a ClientGameplayEvent.
 // The server will also send these asynchronously for opponent gameplay

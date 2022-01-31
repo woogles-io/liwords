@@ -1482,6 +1482,8 @@ type ReadyForGame struct {
 	unknownFields protoimpl.UnknownFields
 
 	GameId string `protobuf:"bytes,1,opt,name=game_id,json=gameId,proto3" json:"game_id,omitempty"`
+	UserId string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	ConnId string `protobuf:"bytes,3,opt,name=conn_id,json=connId,proto3" json:"conn_id,omitempty"`
 }
 
 func (x *ReadyForGame) Reset() {
@@ -1523,6 +1525,161 @@ func (x *ReadyForGame) GetGameId() string {
 	return ""
 }
 
+func (x *ReadyForGame) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *ReadyForGame) GetConnId() string {
+	if x != nil {
+		return x.ConnId
+	}
+	return ""
+}
+
+type ReadyForGameResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	ReadyToStart bool `protobuf:"varint,1,opt,name=ready_to_start,json=readyToStart,proto3" json:"ready_to_start,omitempty"`
+}
+
+func (x *ReadyForGameResponse) Reset() {
+	*x = ReadyForGameResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_proto_ipc_omgwords_proto_msgTypes[15]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ReadyForGameResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReadyForGameResponse) ProtoMessage() {}
+
+func (x *ReadyForGameResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_ipc_omgwords_proto_msgTypes[15]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReadyForGameResponse.ProtoReflect.Descriptor instead.
+func (*ReadyForGameResponse) Descriptor() ([]byte, []int) {
+	return file_api_proto_ipc_omgwords_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *ReadyForGameResponse) GetReadyToStart() bool {
+	if x != nil {
+		return x.ReadyToStart
+	}
+	return false
+}
+
+type ResetTimersAndStart struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	GameId string `protobuf:"bytes,1,opt,name=game_id,json=gameId,proto3" json:"game_id,omitempty"`
+}
+
+func (x *ResetTimersAndStart) Reset() {
+	*x = ResetTimersAndStart{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_proto_ipc_omgwords_proto_msgTypes[16]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ResetTimersAndStart) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResetTimersAndStart) ProtoMessage() {}
+
+func (x *ResetTimersAndStart) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_ipc_omgwords_proto_msgTypes[16]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResetTimersAndStart.ProtoReflect.Descriptor instead.
+func (*ResetTimersAndStart) Descriptor() ([]byte, []int) {
+	return file_api_proto_ipc_omgwords_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *ResetTimersAndStart) GetGameId() string {
+	if x != nil {
+		return x.GameId
+	}
+	return ""
+}
+
+type ResetTimersAndStartResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	GameHistoryRefresher *GameHistoryRefresher `protobuf:"bytes,1,opt,name=game_history_refresher,json=gameHistoryRefresher,proto3" json:"game_history_refresher,omitempty"`
+}
+
+func (x *ResetTimersAndStartResponse) Reset() {
+	*x = ResetTimersAndStartResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_proto_ipc_omgwords_proto_msgTypes[17]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ResetTimersAndStartResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResetTimersAndStartResponse) ProtoMessage() {}
+
+func (x *ResetTimersAndStartResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_ipc_omgwords_proto_msgTypes[17]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResetTimersAndStartResponse.ProtoReflect.Descriptor instead.
+func (*ResetTimersAndStartResponse) Descriptor() ([]byte, []int) {
+	return file_api_proto_ipc_omgwords_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *ResetTimersAndStartResponse) GetGameHistoryRefresher() *GameHistoryRefresher {
+	if x != nil {
+		return x.GameHistoryRefresher
+	}
+	return nil
+}
+
 // The server will send back a ServerGameplayEvent to a ClientGameplayEvent.
 // The server will also send these asynchronously for opponent gameplay
 // events.
@@ -1542,7 +1699,7 @@ type ServerGameplayEvent struct {
 func (x *ServerGameplayEvent) Reset() {
 	*x = ServerGameplayEvent{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_ipc_omgwords_proto_msgTypes[15]
+		mi := &file_api_proto_ipc_omgwords_proto_msgTypes[18]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1555,7 +1712,7 @@ func (x *ServerGameplayEvent) String() string {
 func (*ServerGameplayEvent) ProtoMessage() {}
 
 func (x *ServerGameplayEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_ipc_omgwords_proto_msgTypes[15]
+	mi := &file_api_proto_ipc_omgwords_proto_msgTypes[18]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1568,7 +1725,7 @@ func (x *ServerGameplayEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerGameplayEvent.ProtoReflect.Descriptor instead.
 func (*ServerGameplayEvent) Descriptor() ([]byte, []int) {
-	return file_api_proto_ipc_omgwords_proto_rawDescGZIP(), []int{15}
+	return file_api_proto_ipc_omgwords_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ServerGameplayEvent) GetEvent() *macondo.GameEvent {
@@ -1635,7 +1792,7 @@ type ServerChallengeResultEvent struct {
 func (x *ServerChallengeResultEvent) Reset() {
 	*x = ServerChallengeResultEvent{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_ipc_omgwords_proto_msgTypes[16]
+		mi := &file_api_proto_ipc_omgwords_proto_msgTypes[19]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1648,7 +1805,7 @@ func (x *ServerChallengeResultEvent) String() string {
 func (*ServerChallengeResultEvent) ProtoMessage() {}
 
 func (x *ServerChallengeResultEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_ipc_omgwords_proto_msgTypes[16]
+	mi := &file_api_proto_ipc_omgwords_proto_msgTypes[19]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1661,7 +1818,7 @@ func (x *ServerChallengeResultEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerChallengeResultEvent.ProtoReflect.Descriptor instead.
 func (*ServerChallengeResultEvent) Descriptor() ([]byte, []int) {
-	return file_api_proto_ipc_omgwords_proto_rawDescGZIP(), []int{16}
+	return file_api_proto_ipc_omgwords_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ServerChallengeResultEvent) GetValid() bool {
@@ -1717,7 +1874,7 @@ type GameEndedEvent struct {
 func (x *GameEndedEvent) Reset() {
 	*x = GameEndedEvent{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_ipc_omgwords_proto_msgTypes[17]
+		mi := &file_api_proto_ipc_omgwords_proto_msgTypes[20]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1730,7 +1887,7 @@ func (x *GameEndedEvent) String() string {
 func (*GameEndedEvent) ProtoMessage() {}
 
 func (x *GameEndedEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_ipc_omgwords_proto_msgTypes[17]
+	mi := &file_api_proto_ipc_omgwords_proto_msgTypes[20]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1743,7 +1900,7 @@ func (x *GameEndedEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GameEndedEvent.ProtoReflect.Descriptor instead.
 func (*GameEndedEvent) Descriptor() ([]byte, []int) {
-	return file_api_proto_ipc_omgwords_proto_rawDescGZIP(), []int{17}
+	return file_api_proto_ipc_omgwords_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *GameEndedEvent) GetScores() map[string]int32 {
@@ -1823,7 +1980,7 @@ type RematchStartedEvent struct {
 func (x *RematchStartedEvent) Reset() {
 	*x = RematchStartedEvent{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_ipc_omgwords_proto_msgTypes[18]
+		mi := &file_api_proto_ipc_omgwords_proto_msgTypes[21]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1836,7 +1993,7 @@ func (x *RematchStartedEvent) String() string {
 func (*RematchStartedEvent) ProtoMessage() {}
 
 func (x *RematchStartedEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_ipc_omgwords_proto_msgTypes[18]
+	mi := &file_api_proto_ipc_omgwords_proto_msgTypes[21]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1849,7 +2006,7 @@ func (x *RematchStartedEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RematchStartedEvent.ProtoReflect.Descriptor instead.
 func (*RematchStartedEvent) Descriptor() ([]byte, []int) {
-	return file_api_proto_ipc_omgwords_proto_rawDescGZIP(), []int{18}
+	return file_api_proto_ipc_omgwords_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *RematchStartedEvent) GetRematchGameId() string {
@@ -1875,7 +2032,7 @@ type NewGameEvent struct {
 func (x *NewGameEvent) Reset() {
 	*x = NewGameEvent{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_ipc_omgwords_proto_msgTypes[19]
+		mi := &file_api_proto_ipc_omgwords_proto_msgTypes[22]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1888,7 +2045,7 @@ func (x *NewGameEvent) String() string {
 func (*NewGameEvent) ProtoMessage() {}
 
 func (x *NewGameEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_ipc_omgwords_proto_msgTypes[19]
+	mi := &file_api_proto_ipc_omgwords_proto_msgTypes[22]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1901,7 +2058,7 @@ func (x *NewGameEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NewGameEvent.ProtoReflect.Descriptor instead.
 func (*NewGameEvent) Descriptor() ([]byte, []int) {
-	return file_api_proto_ipc_omgwords_proto_rawDescGZIP(), []int{19}
+	return file_api_proto_ipc_omgwords_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *NewGameEvent) GetGameId() string {
@@ -1937,7 +2094,7 @@ type TimedOut struct {
 func (x *TimedOut) Reset() {
 	*x = TimedOut{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_ipc_omgwords_proto_msgTypes[20]
+		mi := &file_api_proto_ipc_omgwords_proto_msgTypes[23]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1950,7 +2107,7 @@ func (x *TimedOut) String() string {
 func (*TimedOut) ProtoMessage() {}
 
 func (x *TimedOut) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_ipc_omgwords_proto_msgTypes[20]
+	mi := &file_api_proto_ipc_omgwords_proto_msgTypes[23]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1963,7 +2120,7 @@ func (x *TimedOut) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TimedOut.ProtoReflect.Descriptor instead.
 func (*TimedOut) Descriptor() ([]byte, []int) {
-	return file_api_proto_ipc_omgwords_proto_rawDescGZIP(), []int{20}
+	return file_api_proto_ipc_omgwords_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *TimedOut) GetGameId() string {
@@ -2194,9 +2351,26 @@ var file_api_proto_ipc_omgwords_proto_rawDesc = []byte{
 	0x2e, 0x69, 0x70, 0x63, 0x2e, 0x41, 0x63, 0x74, 0x69, 0x76, 0x65, 0x47, 0x61, 0x6d, 0x65, 0x50,
 	0x6c, 0x61, 0x79, 0x65, 0x72, 0x52, 0x06, 0x70, 0x6c, 0x61, 0x79, 0x65, 0x72, 0x12, 0x10, 0x0a,
 	0x03, 0x74, 0x74, 0x6c, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x03, 0x74, 0x74, 0x6c, 0x22,
-	0x27, 0x0a, 0x0c, 0x52, 0x65, 0x61, 0x64, 0x79, 0x46, 0x6f, 0x72, 0x47, 0x61, 0x6d, 0x65, 0x12,
+	0x59, 0x0a, 0x0c, 0x52, 0x65, 0x61, 0x64, 0x79, 0x46, 0x6f, 0x72, 0x47, 0x61, 0x6d, 0x65, 0x12,
 	0x17, 0x0a, 0x07, 0x67, 0x61, 0x6d, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x06, 0x67, 0x61, 0x6d, 0x65, 0x49, 0x64, 0x22, 0xe1, 0x01, 0x0a, 0x13, 0x53, 0x65, 0x72,
+	0x52, 0x06, 0x67, 0x61, 0x6d, 0x65, 0x49, 0x64, 0x12, 0x17, 0x0a, 0x07, 0x75, 0x73, 0x65, 0x72,
+	0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x75, 0x73, 0x65, 0x72, 0x49,
+	0x64, 0x12, 0x17, 0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x03, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x06, 0x63, 0x6f, 0x6e, 0x6e, 0x49, 0x64, 0x22, 0x3c, 0x0a, 0x14, 0x52, 0x65,
+	0x61, 0x64, 0x79, 0x46, 0x6f, 0x72, 0x47, 0x61, 0x6d, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x12, 0x24, 0x0a, 0x0e, 0x72, 0x65, 0x61, 0x64, 0x79, 0x5f, 0x74, 0x6f, 0x5f, 0x73,
+	0x74, 0x61, 0x72, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0c, 0x72, 0x65, 0x61, 0x64,
+	0x79, 0x54, 0x6f, 0x53, 0x74, 0x61, 0x72, 0x74, 0x22, 0x2e, 0x0a, 0x13, 0x52, 0x65, 0x73, 0x65,
+	0x74, 0x54, 0x69, 0x6d, 0x65, 0x72, 0x73, 0x41, 0x6e, 0x64, 0x53, 0x74, 0x61, 0x72, 0x74, 0x12,
+	0x17, 0x0a, 0x07, 0x67, 0x61, 0x6d, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x06, 0x67, 0x61, 0x6d, 0x65, 0x49, 0x64, 0x22, 0x6e, 0x0a, 0x1b, 0x52, 0x65, 0x73, 0x65,
+	0x74, 0x54, 0x69, 0x6d, 0x65, 0x72, 0x73, 0x41, 0x6e, 0x64, 0x53, 0x74, 0x61, 0x72, 0x74, 0x52,
+	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x4f, 0x0a, 0x16, 0x67, 0x61, 0x6d, 0x65, 0x5f,
+	0x68, 0x69, 0x73, 0x74, 0x6f, 0x72, 0x79, 0x5f, 0x72, 0x65, 0x66, 0x72, 0x65, 0x73, 0x68, 0x65,
+	0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x19, 0x2e, 0x69, 0x70, 0x63, 0x2e, 0x47, 0x61,
+	0x6d, 0x65, 0x48, 0x69, 0x73, 0x74, 0x6f, 0x72, 0x79, 0x52, 0x65, 0x66, 0x72, 0x65, 0x73, 0x68,
+	0x65, 0x72, 0x52, 0x14, 0x67, 0x61, 0x6d, 0x65, 0x48, 0x69, 0x73, 0x74, 0x6f, 0x72, 0x79, 0x52,
+	0x65, 0x66, 0x72, 0x65, 0x73, 0x68, 0x65, 0x72, 0x22, 0xe1, 0x01, 0x0a, 0x13, 0x53, 0x65, 0x72,
 	0x76, 0x65, 0x72, 0x47, 0x61, 0x6d, 0x65, 0x70, 0x6c, 0x61, 0x79, 0x45, 0x76, 0x65, 0x6e, 0x74,
 	0x12, 0x28, 0x0a, 0x05, 0x65, 0x76, 0x65, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32,
 	0x12, 0x2e, 0x6d, 0x61, 0x63, 0x6f, 0x6e, 0x64, 0x6f, 0x2e, 0x47, 0x61, 0x6d, 0x65, 0x45, 0x76,
@@ -2309,78 +2483,82 @@ func file_api_proto_ipc_omgwords_proto_rawDescGZIP() []byte {
 }
 
 var file_api_proto_ipc_omgwords_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_api_proto_ipc_omgwords_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
+var file_api_proto_ipc_omgwords_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_api_proto_ipc_omgwords_proto_goTypes = []interface{}{
-	(GameEndReason)(0),                 // 0: ipc.GameEndReason
-	(GameMode)(0),                      // 1: ipc.GameMode
-	(RatingMode)(0),                    // 2: ipc.RatingMode
-	(ClientGameplayEvent_EventType)(0), // 3: ipc.ClientGameplayEvent.EventType
-	(GameMetaEvent_EventType)(0),       // 4: ipc.GameMetaEvent.EventType
-	(*ClientGameplayEvent)(nil),        // 5: ipc.ClientGameplayEvent
-	(*GameRules)(nil),                  // 6: ipc.GameRules
-	(*GameRequest)(nil),                // 7: ipc.GameRequest
-	(*GameMetaEvent)(nil),              // 8: ipc.GameMetaEvent
-	(*GameHistoryRefresher)(nil),       // 9: ipc.GameHistoryRefresher
-	(*TournamentDataForGame)(nil),      // 10: ipc.TournamentDataForGame
-	(*PlayerInfo)(nil),                 // 11: ipc.PlayerInfo
-	(*GameInfoResponse)(nil),           // 12: ipc.GameInfoResponse
-	(*GameInfoResponses)(nil),          // 13: ipc.GameInfoResponses
-	(*InstantiateGame)(nil),            // 14: ipc.InstantiateGame
-	(*InstantiateGameResponse)(nil),    // 15: ipc.InstantiateGameResponse
-	(*GameDeletion)(nil),               // 16: ipc.GameDeletion
-	(*ActiveGamePlayer)(nil),           // 17: ipc.ActiveGamePlayer
-	(*ActiveGameEntry)(nil),            // 18: ipc.ActiveGameEntry
-	(*ReadyForGame)(nil),               // 19: ipc.ReadyForGame
-	(*ServerGameplayEvent)(nil),        // 20: ipc.ServerGameplayEvent
-	(*ServerChallengeResultEvent)(nil), // 21: ipc.ServerChallengeResultEvent
-	(*GameEndedEvent)(nil),             // 22: ipc.GameEndedEvent
-	(*RematchStartedEvent)(nil),        // 23: ipc.RematchStartedEvent
-	(*NewGameEvent)(nil),               // 24: ipc.NewGameEvent
-	(*TimedOut)(nil),                   // 25: ipc.TimedOut
-	nil,                                // 26: ipc.GameEndedEvent.ScoresEntry
-	nil,                                // 27: ipc.GameEndedEvent.NewRatingsEntry
-	nil,                                // 28: ipc.GameEndedEvent.RatingDeltasEntry
-	(macondo.ChallengeRule)(0),         // 29: macondo.ChallengeRule
-	(macondo.BotRequest_BotCode)(0),    // 30: macondo.BotRequest.BotCode
-	(*timestamppb.Timestamp)(nil),      // 31: google.protobuf.Timestamp
-	(*macondo.GameHistory)(nil),        // 32: macondo.GameHistory
-	(*macondo.GameEvent)(nil),          // 33: macondo.GameEvent
-	(macondo.PlayState)(0),             // 34: macondo.PlayState
+	(GameEndReason)(0),                  // 0: ipc.GameEndReason
+	(GameMode)(0),                       // 1: ipc.GameMode
+	(RatingMode)(0),                     // 2: ipc.RatingMode
+	(ClientGameplayEvent_EventType)(0),  // 3: ipc.ClientGameplayEvent.EventType
+	(GameMetaEvent_EventType)(0),        // 4: ipc.GameMetaEvent.EventType
+	(*ClientGameplayEvent)(nil),         // 5: ipc.ClientGameplayEvent
+	(*GameRules)(nil),                   // 6: ipc.GameRules
+	(*GameRequest)(nil),                 // 7: ipc.GameRequest
+	(*GameMetaEvent)(nil),               // 8: ipc.GameMetaEvent
+	(*GameHistoryRefresher)(nil),        // 9: ipc.GameHistoryRefresher
+	(*TournamentDataForGame)(nil),       // 10: ipc.TournamentDataForGame
+	(*PlayerInfo)(nil),                  // 11: ipc.PlayerInfo
+	(*GameInfoResponse)(nil),            // 12: ipc.GameInfoResponse
+	(*GameInfoResponses)(nil),           // 13: ipc.GameInfoResponses
+	(*InstantiateGame)(nil),             // 14: ipc.InstantiateGame
+	(*InstantiateGameResponse)(nil),     // 15: ipc.InstantiateGameResponse
+	(*GameDeletion)(nil),                // 16: ipc.GameDeletion
+	(*ActiveGamePlayer)(nil),            // 17: ipc.ActiveGamePlayer
+	(*ActiveGameEntry)(nil),             // 18: ipc.ActiveGameEntry
+	(*ReadyForGame)(nil),                // 19: ipc.ReadyForGame
+	(*ReadyForGameResponse)(nil),        // 20: ipc.ReadyForGameResponse
+	(*ResetTimersAndStart)(nil),         // 21: ipc.ResetTimersAndStart
+	(*ResetTimersAndStartResponse)(nil), // 22: ipc.ResetTimersAndStartResponse
+	(*ServerGameplayEvent)(nil),         // 23: ipc.ServerGameplayEvent
+	(*ServerChallengeResultEvent)(nil),  // 24: ipc.ServerChallengeResultEvent
+	(*GameEndedEvent)(nil),              // 25: ipc.GameEndedEvent
+	(*RematchStartedEvent)(nil),         // 26: ipc.RematchStartedEvent
+	(*NewGameEvent)(nil),                // 27: ipc.NewGameEvent
+	(*TimedOut)(nil),                    // 28: ipc.TimedOut
+	nil,                                 // 29: ipc.GameEndedEvent.ScoresEntry
+	nil,                                 // 30: ipc.GameEndedEvent.NewRatingsEntry
+	nil,                                 // 31: ipc.GameEndedEvent.RatingDeltasEntry
+	(macondo.ChallengeRule)(0),          // 32: macondo.ChallengeRule
+	(macondo.BotRequest_BotCode)(0),     // 33: macondo.BotRequest.BotCode
+	(*timestamppb.Timestamp)(nil),       // 34: google.protobuf.Timestamp
+	(*macondo.GameHistory)(nil),         // 35: macondo.GameHistory
+	(*macondo.GameEvent)(nil),           // 36: macondo.GameEvent
+	(macondo.PlayState)(0),              // 37: macondo.PlayState
 }
 var file_api_proto_ipc_omgwords_proto_depIdxs = []int32{
 	3,  // 0: ipc.ClientGameplayEvent.type:type_name -> ipc.ClientGameplayEvent.EventType
 	6,  // 1: ipc.GameRequest.rules:type_name -> ipc.GameRules
-	29, // 2: ipc.GameRequest.challenge_rule:type_name -> macondo.ChallengeRule
+	32, // 2: ipc.GameRequest.challenge_rule:type_name -> macondo.ChallengeRule
 	1,  // 3: ipc.GameRequest.game_mode:type_name -> ipc.GameMode
 	2,  // 4: ipc.GameRequest.rating_mode:type_name -> ipc.RatingMode
-	30, // 5: ipc.GameRequest.bot_type:type_name -> macondo.BotRequest.BotCode
-	31, // 6: ipc.GameMetaEvent.timestamp:type_name -> google.protobuf.Timestamp
+	33, // 5: ipc.GameRequest.bot_type:type_name -> macondo.BotRequest.BotCode
+	34, // 6: ipc.GameMetaEvent.timestamp:type_name -> google.protobuf.Timestamp
 	4,  // 7: ipc.GameMetaEvent.type:type_name -> ipc.GameMetaEvent.EventType
-	32, // 8: ipc.GameHistoryRefresher.history:type_name -> macondo.GameHistory
+	35, // 8: ipc.GameHistoryRefresher.history:type_name -> macondo.GameHistory
 	8,  // 9: ipc.GameHistoryRefresher.outstanding_event:type_name -> ipc.GameMetaEvent
 	11, // 10: ipc.GameInfoResponse.players:type_name -> ipc.PlayerInfo
 	0,  // 11: ipc.GameInfoResponse.game_end_reason:type_name -> ipc.GameEndReason
-	31, // 12: ipc.GameInfoResponse.created_at:type_name -> google.protobuf.Timestamp
-	31, // 13: ipc.GameInfoResponse.last_update:type_name -> google.protobuf.Timestamp
+	34, // 12: ipc.GameInfoResponse.created_at:type_name -> google.protobuf.Timestamp
+	34, // 13: ipc.GameInfoResponse.last_update:type_name -> google.protobuf.Timestamp
 	7,  // 14: ipc.GameInfoResponse.game_request:type_name -> ipc.GameRequest
 	12, // 15: ipc.GameInfoResponses.game_info:type_name -> ipc.GameInfoResponse
 	7,  // 16: ipc.InstantiateGame.game_request:type_name -> ipc.GameRequest
 	10, // 17: ipc.InstantiateGame.tournament_data:type_name -> ipc.TournamentDataForGame
 	12, // 18: ipc.InstantiateGameResponse.game_info:type_name -> ipc.GameInfoResponse
 	17, // 19: ipc.ActiveGameEntry.player:type_name -> ipc.ActiveGamePlayer
-	33, // 20: ipc.ServerGameplayEvent.event:type_name -> macondo.GameEvent
-	34, // 21: ipc.ServerGameplayEvent.playing:type_name -> macondo.PlayState
-	29, // 22: ipc.ServerChallengeResultEvent.challenge_rule:type_name -> macondo.ChallengeRule
-	26, // 23: ipc.GameEndedEvent.scores:type_name -> ipc.GameEndedEvent.ScoresEntry
-	27, // 24: ipc.GameEndedEvent.new_ratings:type_name -> ipc.GameEndedEvent.NewRatingsEntry
-	0,  // 25: ipc.GameEndedEvent.end_reason:type_name -> ipc.GameEndReason
-	28, // 26: ipc.GameEndedEvent.rating_deltas:type_name -> ipc.GameEndedEvent.RatingDeltasEntry
-	32, // 27: ipc.GameEndedEvent.history:type_name -> macondo.GameHistory
-	28, // [28:28] is the sub-list for method output_type
-	28, // [28:28] is the sub-list for method input_type
-	28, // [28:28] is the sub-list for extension type_name
-	28, // [28:28] is the sub-list for extension extendee
-	0,  // [0:28] is the sub-list for field type_name
+	9,  // 20: ipc.ResetTimersAndStartResponse.game_history_refresher:type_name -> ipc.GameHistoryRefresher
+	36, // 21: ipc.ServerGameplayEvent.event:type_name -> macondo.GameEvent
+	37, // 22: ipc.ServerGameplayEvent.playing:type_name -> macondo.PlayState
+	32, // 23: ipc.ServerChallengeResultEvent.challenge_rule:type_name -> macondo.ChallengeRule
+	29, // 24: ipc.GameEndedEvent.scores:type_name -> ipc.GameEndedEvent.ScoresEntry
+	30, // 25: ipc.GameEndedEvent.new_ratings:type_name -> ipc.GameEndedEvent.NewRatingsEntry
+	0,  // 26: ipc.GameEndedEvent.end_reason:type_name -> ipc.GameEndReason
+	31, // 27: ipc.GameEndedEvent.rating_deltas:type_name -> ipc.GameEndedEvent.RatingDeltasEntry
+	35, // 28: ipc.GameEndedEvent.history:type_name -> macondo.GameHistory
+	29, // [29:29] is the sub-list for method output_type
+	29, // [29:29] is the sub-list for method input_type
+	29, // [29:29] is the sub-list for extension type_name
+	29, // [29:29] is the sub-list for extension extendee
+	0,  // [0:29] is the sub-list for field type_name
 }
 
 func init() { file_api_proto_ipc_omgwords_proto_init() }
@@ -2570,7 +2748,7 @@ func file_api_proto_ipc_omgwords_proto_init() {
 			}
 		}
 		file_api_proto_ipc_omgwords_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ServerGameplayEvent); i {
+			switch v := v.(*ReadyForGameResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2582,7 +2760,7 @@ func file_api_proto_ipc_omgwords_proto_init() {
 			}
 		}
 		file_api_proto_ipc_omgwords_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ServerChallengeResultEvent); i {
+			switch v := v.(*ResetTimersAndStart); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2594,7 +2772,7 @@ func file_api_proto_ipc_omgwords_proto_init() {
 			}
 		}
 		file_api_proto_ipc_omgwords_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GameEndedEvent); i {
+			switch v := v.(*ResetTimersAndStartResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2606,7 +2784,7 @@ func file_api_proto_ipc_omgwords_proto_init() {
 			}
 		}
 		file_api_proto_ipc_omgwords_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RematchStartedEvent); i {
+			switch v := v.(*ServerGameplayEvent); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2618,7 +2796,7 @@ func file_api_proto_ipc_omgwords_proto_init() {
 			}
 		}
 		file_api_proto_ipc_omgwords_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*NewGameEvent); i {
+			switch v := v.(*ServerChallengeResultEvent); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2630,6 +2808,42 @@ func file_api_proto_ipc_omgwords_proto_init() {
 			}
 		}
 		file_api_proto_ipc_omgwords_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GameEndedEvent); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_proto_ipc_omgwords_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*RematchStartedEvent); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_proto_ipc_omgwords_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*NewGameEvent); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_proto_ipc_omgwords_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*TimedOut); i {
 			case 0:
 				return &v.state
@@ -2648,7 +2862,7 @@ func file_api_proto_ipc_omgwords_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_api_proto_ipc_omgwords_proto_rawDesc,
 			NumEnums:      5,
-			NumMessages:   24,
+			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

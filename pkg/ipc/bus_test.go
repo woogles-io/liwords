@@ -28,7 +28,7 @@ func TestBusLoop(t *testing.T) {
 		{"barsvc.>", "barqueue"}}
 	receivedMessages := []string{}
 	var mu sync.Mutex
-	msgHandler := func(ctx context.Context, bus *Bus, topic string, data []byte, reply string) error {
+	msgHandler := func(ctx context.Context, bus Publisher, topic string, data []byte, reply string) error {
 		mu.Lock()
 		defer mu.Unlock()
 		receivedMessages = append(receivedMessages, string(data))
@@ -80,7 +80,7 @@ func TestBusDrain(t *testing.T) {
 		{"barsvc.>", "barqueue"}}
 	receivedMessages := []string{}
 	var mu sync.Mutex
-	msgHandler := func(ctx context.Context, bus *Bus, topic string, data []byte, reply string) error {
+	msgHandler := func(ctx context.Context, bus Publisher, topic string, data []byte, reply string) error {
 		mu.Lock()
 		defer mu.Unlock()
 		// This is a slow message handler.
@@ -139,7 +139,7 @@ func TestQueueSubscriptions(t *testing.T) {
 	receivedMessages := []string{}
 
 	var mu sync.Mutex
-	msgHandler := func(ctx context.Context, bus *Bus, topic string, data []byte, reply string) error {
+	msgHandler := func(ctx context.Context, bus Publisher, topic string, data []byte, reply string) error {
 		mu.Lock()
 		defer mu.Unlock()
 		// This is a slow message handler.
@@ -223,7 +223,7 @@ func TestPubsubSubscriptions(t *testing.T) {
 	receivedMessages := []string{}
 
 	var mu sync.Mutex
-	msgHandler := func(ctx context.Context, bus *Bus, topic string, data []byte, reply string) error {
+	msgHandler := func(ctx context.Context, bus Publisher, topic string, data []byte, reply string) error {
 		mu.Lock()
 		defer mu.Unlock()
 		// This is a slow message handler.

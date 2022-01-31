@@ -2,6 +2,7 @@ module github.com/domino14/liwords
 
 go 1.17
 
+// XXX: get rid of github.com/golang/protobuf module, it's obsolete
 require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go-v2 v1.2.0

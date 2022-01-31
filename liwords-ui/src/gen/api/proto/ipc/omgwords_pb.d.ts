@@ -568,6 +568,12 @@ export class ReadyForGame extends jspb.Message {
   getGameId(): string;
   setGameId(value: string): void;
 
+  getUserId(): string;
+  setUserId(value: string): void;
+
+  getConnId(): string;
+  setConnId(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): ReadyForGame.AsObject;
   static toObject(includeInstance: boolean, msg: ReadyForGame): ReadyForGame.AsObject;
@@ -581,6 +587,70 @@ export class ReadyForGame extends jspb.Message {
 export namespace ReadyForGame {
   export type AsObject = {
     gameId: string,
+    userId: string,
+    connId: string,
+  }
+}
+
+export class ReadyForGameResponse extends jspb.Message {
+  getReadyToStart(): boolean;
+  setReadyToStart(value: boolean): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ReadyForGameResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: ReadyForGameResponse): ReadyForGameResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ReadyForGameResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ReadyForGameResponse;
+  static deserializeBinaryFromReader(message: ReadyForGameResponse, reader: jspb.BinaryReader): ReadyForGameResponse;
+}
+
+export namespace ReadyForGameResponse {
+  export type AsObject = {
+    readyToStart: boolean,
+  }
+}
+
+export class ResetTimersAndStart extends jspb.Message {
+  getGameId(): string;
+  setGameId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ResetTimersAndStart.AsObject;
+  static toObject(includeInstance: boolean, msg: ResetTimersAndStart): ResetTimersAndStart.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ResetTimersAndStart, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ResetTimersAndStart;
+  static deserializeBinaryFromReader(message: ResetTimersAndStart, reader: jspb.BinaryReader): ResetTimersAndStart;
+}
+
+export namespace ResetTimersAndStart {
+  export type AsObject = {
+    gameId: string,
+  }
+}
+
+export class ResetTimersAndStartResponse extends jspb.Message {
+  hasGameHistoryRefresher(): boolean;
+  clearGameHistoryRefresher(): void;
+  getGameHistoryRefresher(): GameHistoryRefresher | undefined;
+  setGameHistoryRefresher(value?: GameHistoryRefresher): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ResetTimersAndStartResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: ResetTimersAndStartResponse): ResetTimersAndStartResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ResetTimersAndStartResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ResetTimersAndStartResponse;
+  static deserializeBinaryFromReader(message: ResetTimersAndStartResponse, reader: jspb.BinaryReader): ResetTimersAndStartResponse;
+}
+
+export namespace ResetTimersAndStartResponse {
+  export type AsObject = {
+    gameHistoryRefresher?: GameHistoryRefresher.AsObject,
   }
 }
 
