@@ -78,6 +78,15 @@ export const Secret = React.memo((props: Props) => {
     setEnableSilentSite((x) => !x);
   }, []);
 
+  const [hidePool, setHidePool] = useState(
+    localStorage?.getItem('hidePool') === 'true'
+  );
+  const toggleHidePool = useCallback(() => {
+    const wantHidePool = localStorage?.getItem('hidePool') !== 'true';
+    localStorage.setItem('hidePool', wantHidePool ? 'true' : 'false');
+    setHidePool((x) => !x);
+  }, []);
+
   return (
     <div className="preferences secret">
       <h3>Secret features</h3>
@@ -146,6 +155,15 @@ export const Secret = React.memo((props: Props) => {
             defaultChecked={enableSilentSite}
             onChange={toggleEnableSilentSite}
             className="sounds-toggle"
+          />
+        </div>
+        <div className="toggle-section">
+          <div className="title">Practice manual tracking</div>
+          <div>Disable automatic tracking of tiles for you only</div>
+          <Switch
+            defaultChecked={hidePool}
+            onChange={toggleHidePool}
+            className="pool-toggle"
           />
         </div>
       </div>
