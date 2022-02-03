@@ -226,6 +226,45 @@ func loadTilesImg(tptm *TilePainterTilesMeta) (image.Image, error) {
 	return img, nil
 }
 
+func drawEmptySquare(tptm *TilePainterTilesMeta, tilesImg image.Image, img *image.NRGBA, r, c int, b rune) {
+	y := r * squareDim
+	x := c * squareDim
+	srcPt, ok := tptm.BoardSrc[rune(b)]
+	if !ok {
+		srcPt = tptm.BoardSrc[' ']
+	}
+	draw.Draw(img, image.Rect(x, y, x+squareDim, y+squareDim), tilesImg,
+		image.Pt(srcPt[1]*squareDim, srcPt[0]*squareDim), draw.Src)
+}
+
+func realWhose(whichColor int, actualWhose byte) byte {
+	switch whichColor {
+	case 0:
+		return 0
+	case 1:
+		return 1
+	default:
+		return actualWhose
+	}
+}
+
+func drawTileOnBoard(tptm *TilePainterTilesMeta, tilesImg image.Image, img *image.NRGBA, r, c int, b rune, p byte) {
+	y := r * squareDim
+	x := c * squareDim
+	if b != ' ' {
+		tSrc := tptm.Tile0Src
+		if p&1 != 0 {
+			tSrc = tptm.Tile1Src
+		}
+		srcPt, ok := tSrc[b]
+		if !ok {
+			srcPt = tSrc['?']
+		}
+		draw.Draw(img, image.Rect(x, y, x+squareDim, y+squareDim), tilesImg,
+			image.Pt(srcPt[1]*squareDim, srcPt[0]*squareDim), draw.Over)
+	}
+}
+
 func drawBoard(tptm *TilePainterTilesMeta, tilesImg image.Image, boardConfig [][]rune, board [][]rune, whose [][]byte, whichColor int) (image.Image, error) {
 
 	nRows := len(boardConfig)
@@ -255,46 +294,15 @@ func drawBoard(tptm *TilePainterTilesMeta, tilesImg image.Image, boardConfig [][
 
 	// Draw the board.
 	for r := 0; r < nRows; r++ {
-		y := r * squareDim
 		for c := 0; c < nCols; c++ {
-			x := c * squareDim
-			b := boardConfig[r][c]
-			srcPt, ok := tptm.BoardSrc[rune(b)]
-			if !ok {
-				srcPt = tptm.BoardSrc[' ']
-			}
-			draw.Draw(img, image.Rect(x, y, x+squareDim, y+squareDim), tilesImg,
-				image.Pt(srcPt[1]*squareDim, srcPt[0]*squareDim), draw.Src)
+			drawEmptySquare(tptm, tilesImg, img, r, c, boardConfig[r][c])
 		}
 	}
 
 	// Draw the tiles.
 	for r := 0; r < nRows; r++ {
-		y := r * squareDim
 		for c := 0; c < nCols; c++ {
-			x := c * squareDim
-			b := board[r][c]
-			if b != ' ' {
-				var p byte
-				switch whichColor {
-				case 0:
-					p = 0
-				case 1:
-					p = 1
-				default:
-					p = whose[r][c]
-				}
-				tSrc := tptm.Tile0Src
-				if p&1 != 0 {
-					tSrc = tptm.Tile1Src
-				}
-				srcPt, ok := tSrc[b]
-				if !ok {
-					srcPt = tSrc['?']
-				}
-				draw.Draw(img, image.Rect(x, y, x+squareDim, y+squareDim), tilesImg,
-					image.Pt(srcPt[1]*squareDim, srcPt[0]*squareDim), draw.Over)
-			}
+			drawTileOnBoard(tptm, tilesImg, img, r, c, board[r][c], realWhose(whichColor, whose[r][c]))
 		}
 	}
 
@@ -371,6 +379,17 @@ func boardSnapshotHardcoded() *TilePainterBoardSnapshot {
 	}
 }
 
+func whichFromEvent(history *macondopb.GameHistory, evt *macondopb.GameEvent) byte {
+	which := byte(0)
+	if evt.Nickname != history.Players[0].Nickname {
+		which = 1
+	}
+	if history.SecondWentFirst {
+		which ^= 1 // Fix coloring. WHY.
+	}
+	return which
+}
+
 func boardSnapshotFromMacondoHistory(boardConfig [][]rune, history *macondopb.GameHistory, numEvents int) (*TilePainterBoardSnapshot, error) {
 	boardLayoutName, letterDistributionName, variant := game.HistoryToVariant(history)
 	_ = boardLayoutName
@@ -404,13 +423,7 @@ func boardSnapshotFromMacondoHistory(boardConfig [][]rune, history *macondopb.Ga
 	setLastPlaceIndex := func(newLastPlaceIndex int) {
 		if lastPlaceIndex >= 0 {
 			evt := history.Events[lastPlaceIndex]
-			which := byte(0)
-			if evt.Nickname != history.Players[0].Nickname {
-				which = 1
-			}
-			if history.SecondWentFirst {
-				which ^= 1 // Fix coloring. WHY.
-			}
+			which := whichFromEvent(history, evt)
 			r, c := int(evt.Row), int(evt.Column)
 			dr, dc := 0, 1
 			if evt.Direction == macondopb.GameEvent_VERTICAL {
