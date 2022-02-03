@@ -318,6 +318,50 @@ type TilePainterBoardSnapshot struct {
 	whose [][]byte
 }
 
+func boardSnapshotHardcoded() *TilePainterBoardSnapshot {
+	const p_ = 0
+	const p0 = 0
+	const p1 = 1
+	return &TilePainterBoardSnapshot{
+		lang: "english",
+		// https://woogles.io/game/hBQhT94n
+		board: [][]rune{
+			[]rune(" J DROGUE     C"),
+			[]rune(" ARE WENT    GO"),
+			[]rune(" GOX  r      LO"),
+			[]rune("  U   OM     AN"),
+			[]rune("  IVY NEB    I "),
+			[]rune("PAl   T   B  R "),
+			[]rune("EEL   IF  IT EL"),
+			[]rune("D EW  CENTS  SI"),
+			[]rune("   A   D  T   R"),
+			[]rune("  MI      AL QI"),
+			[]rune(" FORK     TO O "),
+			[]rune(" AA I     EN P "),
+			[]rune(" Z  SHUN   E H "),
+			[]rune("YE       VIRUS "),
+			[]rune("AD             "),
+		},
+		whose: [][]byte{
+			{p_, p1, p_, p1, p0, p0, p1, p0, p0, p_, p_, p_, p_, p_, p0},
+			{p_, p1, p0, p1, p_, p1, p1, p1, p1, p_, p_, p_, p_, p1, p0},
+			{p_, p1, p0, p1, p_, p_, p1, p_, p_, p_, p_, p_, p_, p1, p0},
+			{p_, p_, p0, p_, p_, p_, p1, p1, p_, p_, p_, p_, p_, p1, p0},
+			{p_, p_, p0, p1, p1, p_, p1, p1, p0, p_, p_, p_, p_, p1, p_},
+			{p0, p1, p0, p_, p_, p_, p1, p_, p_, p_, p1, p_, p_, p1, p_},
+			{p0, p1, p0, p_, p_, p_, p1, p0, p_, p_, p1, p0, p_, p1, p1},
+			{p0, p_, p0, p0, p_, p_, p0, p0, p0, p0, p1, p_, p_, p1, p1},
+			{p_, p_, p_, p0, p_, p_, p_, p0, p_, p_, p1, p_, p_, p_, p1},
+			{p_, p_, p0, p0, p_, p_, p_, p_, p_, p_, p1, p0, p_, p1, p1},
+			{p_, p1, p0, p0, p0, p_, p_, p_, p_, p_, p1, p0, p_, p1, p_},
+			{p_, p1, p0, p_, p0, p_, p_, p_, p_, p_, p1, p0, p_, p1, p_},
+			{p_, p1, p_, p_, p1, p1, p1, p1, p_, p_, p_, p0, p_, p1, p_},
+			{p0, p1, p_, p_, p_, p_, p_, p_, p_, p0, p0, p0, p0, p0, p_},
+			{p0, p1, p_, p_, p_, p_, p_, p_, p_, p_, p_, p_, p_, p_, p_},
+		},
+	}
+}
+
 func boardSnapshotFromMacondoHistory(boardConfig [][]rune, history *macondopb.GameHistory, numEvents int) (*TilePainterBoardSnapshot, error) {
 	boardLayoutName, letterDistributionName, variant := game.HistoryToVariant(history)
 	_ = boardLayoutName
@@ -396,32 +440,44 @@ func boardSnapshotFromMacondoHistory(boardConfig [][]rune, history *macondopb.Ga
 
 func main() {
 	if len(os.Args) <= 1 {
-		panic("params: gameId [n]\n" +
-			"example: hBQhT94n\n" +
-			"example: XgTRffsq 7\n" +
-			"n = number of events to process (one less than ?turn= examiner param)")
+		panic("usage:\n" +
+			"  params: gameId [n]\n" +
+			"    fetch game from woogles.io\n" +
+			"    example: hBQhT94n\n" +
+			"    example: XgTRffsq 7\n" +
+			"      n = number of events to process (one less than ?turn= examiner param)\n" +
+			"  params: hardcoded\n" +
+			"    use a hardcoded board")
 	}
 
-	gameId := os.Args[1]
-	numEvents := math.MaxInt
+	var outputFile string
+	var boardSnapshot *TilePainterBoardSnapshot
+	if os.Args[1] == "hardcoded" {
+		outputFile = "board"
+		boardSnapshot = boardSnapshotHardcoded()
+	} else {
+		gameId := os.Args[1]
+		outputFile = gameId
+		numEvents := math.MaxInt
 
-	if len(os.Args) > 2 {
-		if s, err := strconv.ParseInt(os.Args[2], 10, 64); err != nil {
-			panic(err)
-		} else {
-			numEvents = int(s)
+		if len(os.Args) > 2 {
+			if s, err := strconv.ParseInt(os.Args[2], 10, 64); err != nil {
+				panic(err)
+			} else {
+				numEvents = int(s)
+			}
 		}
-	}
 
-	history, err := GetGameHistory(gameId)
-	if err != nil {
-		panic(err)
-	}
+		history, err := GetGameHistory(gameId)
+		if err != nil {
+			panic(err)
+		}
 
-	// Assume standard board for now.
-	boardSnapshot, err := boardSnapshotFromMacondoHistory(boardConfig, history, numEvents)
-	if err != nil {
-		panic(err)
+		// Assume standard board for now.
+		boardSnapshot, err = boardSnapshotFromMacondoHistory(boardConfig, history, numEvents)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	// Cache this.
@@ -449,7 +505,7 @@ func main() {
 
 	fmt.Printf("writing %d bytes\n", len(boardPngBytes))
 
-	err = ioutil.WriteFile(gameId+".png", boardPngBytes, 0644)
+	err = ioutil.WriteFile(outputFile+".png", boardPngBytes, 0644)
 	if err != nil {
 		panic(err)
 	}
