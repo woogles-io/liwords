@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"flag"
 	"fmt"
 	"image"
 	"image/draw"
@@ -225,7 +226,7 @@ func loadTilesImg(tptm *TilePainterTilesMeta) (image.Image, error) {
 	return img, nil
 }
 
-func drawBoard(tptm *TilePainterTilesMeta, tilesImg image.Image, boardConfig [][]rune, board [][]rune, whose [][]byte) (image.Image, error) {
+func drawBoard(tptm *TilePainterTilesMeta, tilesImg image.Image, boardConfig [][]rune, board [][]rune, whose [][]byte, whichColor int) (image.Image, error) {
 
 	nRows := len(boardConfig)
 	if nRows < 1 {
@@ -274,7 +275,15 @@ func drawBoard(tptm *TilePainterTilesMeta, tilesImg image.Image, boardConfig [][
 			x := c * squareDim
 			b := board[r][c]
 			if b != ' ' {
-				p := whose[r][c]
+				var p byte
+				switch whichColor {
+				case 0:
+					p = 0
+				case 1:
+					p = 1
+				default:
+					p = whose[r][c]
+				}
 				tSrc := tptm.Tile0Src
 				if p&1 != 0 {
 					tSrc = tptm.Tile1Src
@@ -439,29 +448,60 @@ func boardSnapshotFromMacondoHistory(boardConfig [][]rune, history *macondopb.Ga
 }
 
 func main() {
-	if len(os.Args) <= 1 {
-		panic("usage:\n" +
-			"  params: gameId [n]\n" +
-			"    fetch game from woogles.io\n" +
-			"    example: hBQhT94n\n" +
-			"    example: XgTRffsq 7\n" +
-			"      n = number of events to process (one less than ?turn= examiner param)\n" +
-			"  params: hardcoded\n" +
-			"    use a hardcoded board")
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), `usage of %s:
+
+  params: gameId [n]
+    fetch game from woogles.io
+    example: hBQhT94n
+    example: XgTRffsq 7
+      n = number of events to process (one less than ?turn= examiner param)
+
+  params: hardcoded
+    use a hardcoded board
+
+params can be prefixed with these flags:
+`, os.Args[0])
+		flag.PrintDefaults()
+	}
+
+	badUsage := func(err error) {
+		flag.Usage()
+		panic(err)
+	}
+
+	var colorFlag = flag.String("color", "", "0 = use player 0's colors, 1 = use player 1's colors")
+	flag.Parse()
+	args := flag.Args()
+
+	var whichColor int
+	switch *colorFlag {
+	case "0":
+		whichColor = 0
+	case "1":
+		whichColor = 1
+	case "":
+		whichColor = -1
+	default:
+		badUsage(fmt.Errorf("-color can only be 0 or 1 or \"\""))
+	}
+
+	if len(args) < 1 {
+		badUsage(fmt.Errorf("not enough params"))
 	}
 
 	var outputFile string
 	var boardSnapshot *TilePainterBoardSnapshot
-	if os.Args[1] == "hardcoded" {
+	if args[0] == "hardcoded" {
 		outputFile = "board"
 		boardSnapshot = boardSnapshotHardcoded()
 	} else {
-		gameId := os.Args[1]
+		gameId := args[0]
 		outputFile = gameId
 		numEvents := math.MaxInt
 
-		if len(os.Args) > 2 {
-			if s, err := strconv.ParseInt(os.Args[2], 10, 64); err != nil {
+		if len(args) > 1 {
+			if s, err := strconv.ParseInt(args[1], 10, 64); err != nil {
 				panic(err)
 			} else {
 				numEvents = int(s)
@@ -493,7 +533,7 @@ func main() {
 		panic(err)
 	}
 
-	boardImg, err := drawBoard(tptm, tilesImg, boardConfig, boardSnapshot.board, boardSnapshot.whose)
+	boardImg, err := drawBoard(tptm, tilesImg, boardConfig, boardSnapshot.board, boardSnapshot.whose, whichColor)
 	if err != nil {
 		panic(err)
 	}
