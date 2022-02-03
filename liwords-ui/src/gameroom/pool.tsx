@@ -75,6 +75,26 @@ type Props = {
 };
 
 const Pool = React.memo((props: Props) => {
+  const readHidePool = React.useCallback(
+    () => localStorage.getItem('hidePool') === 'true',
+    []
+  );
+  const [hidePool, setHidePool] = React.useState(readHidePool); // ok to not use useMountedState
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setHidePool(readHidePool);
+    }, 1000); // how long should it be before it picks up changes from other tabs?
+    return () => {
+      clearInterval(interval);
+    };
+  }, [readHidePool]);
+
+  return (
+    <React.Fragment>{!hidePool && <ActualPool {...props} />}</React.Fragment>
+  );
+});
+
+const ActualPool = React.memo((props: Props) => {
   const letterOrder =
     PoolFormats.find((f) => f.poolFormatType === props.poolFormat)?.format(
       props.alphabet
