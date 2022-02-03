@@ -264,7 +264,7 @@ func drawBoard(tptm *TilePainterTilesMeta, tilesImg image.Image, boardConfig [][
 				srcPt = tptm.BoardSrc[' ']
 			}
 			draw.Draw(img, image.Rect(x, y, x+squareDim, y+squareDim), tilesImg,
-				image.Pt(srcPt[1]*squareDim, srcPt[0]*squareDim), draw.Over)
+				image.Pt(srcPt[1]*squareDim, srcPt[0]*squareDim), draw.Src)
 		}
 	}
 
