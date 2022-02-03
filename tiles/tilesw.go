@@ -2,12 +2,24 @@ package main
 
 import (
 	"bytes"
+	"context"
 	_ "embed"
 	"fmt"
 	"image"
 	"image/draw"
 	"image/png"
 	"io/ioutil"
+	"math"
+	"net/http"
+	"os"
+	"strconv"
+	"strings"
+
+	pb "github.com/domino14/liwords/rpc/api/proto/game_service"
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+
+	"github.com/domino14/macondo/alphabet"
+	"github.com/domino14/macondo/game"
 )
 
 var boardConfig = [][]rune{
@@ -289,49 +301,131 @@ func imgToPngBytes(img image.Image) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func main() {
-	// https://woogles.io/game/hBQhT94n
-	var board = [][]rune{
-		[]rune(" J DROGUE     C"),
-		[]rune(" ARE WENT    GO"),
-		[]rune(" GOX  r      LO"),
-		[]rune("  U   OM     AN"),
-		[]rune("  IVY NEB    I "),
-		[]rune("PAl   T   B  R "),
-		[]rune("EEL   IF  IT EL"),
-		[]rune("D EW  CENTS  SI"),
-		[]rune("   A   D  T   R"),
-		[]rune("  MI      AL QI"),
-		[]rune(" FORK     TO O "),
-		[]rune(" AA I     EN P "),
-		[]rune(" Z  SHUN   E H "),
-		[]rune("YE       VIRUS "),
-		[]rune("AD             "),
+func GetGameHistory(id string) (*macondopb.GameHistory, error) {
+
+	client := pb.NewGameMetadataServiceProtobufClient("https://woogles.io", &http.Client{})
+	history, err := client.GetGameHistory(context.Background(), &pb.GameHistoryRequest{GameId: id})
+
+	if err != nil {
+		return &macondopb.GameHistory{}, err
+	}
+	return history.History, nil
+}
+
+type TilePainterBoardSnapshot struct {
+	lang  string
+	board [][]rune
+	whose [][]byte
+}
+
+func boardSnapshotFromMacondoHistory(boardConfig [][]rune, history *macondopb.GameHistory, numEvents int) (*TilePainterBoardSnapshot, error) {
+	boardLayoutName, letterDistributionName, variant := game.HistoryToVariant(history)
+	_ = boardLayoutName
+	_ = variant
+	lang := strings.TrimSuffix(letterDistributionName, "_super")
+
+	// TODO: boardConfig should vary according to boardLayoutName
+	nRows := len(boardConfig)
+	nCols := len(boardConfig[0])
+	board := make([][]rune, nRows)
+	boardBacking := make([]rune, nRows*nCols)
+	for i := range boardBacking {
+		boardBacking[i] = ' '
+	}
+	whose := make([][]byte, nRows)
+	whoseBacking := make([]byte, nRows*nCols)
+	sqp := 0
+	for r := 0; r < nRows; r++ {
+		sqp += nCols
+		board[r] = boardBacking[sqp-nCols : sqp : sqp]
+		whose[r] = whoseBacking[sqp-nCols : sqp : sqp]
 	}
 
-	const p_ = 0
-	const p0 = 0
-	const p1 = 1
-	var whose = [][]byte{
-		{p_, p1, p_, p1, p0, p0, p1, p0, p0, p_, p_, p_, p_, p_, p0},
-		{p_, p1, p0, p1, p_, p1, p1, p1, p1, p_, p_, p_, p_, p1, p0},
-		{p_, p1, p0, p1, p_, p_, p1, p_, p_, p_, p_, p_, p_, p1, p0},
-		{p_, p_, p0, p_, p_, p_, p1, p1, p_, p_, p_, p_, p_, p1, p0},
-		{p_, p_, p0, p1, p1, p_, p1, p1, p0, p_, p_, p_, p_, p1, p_},
-		{p0, p1, p0, p_, p_, p_, p1, p_, p_, p_, p1, p_, p_, p1, p_},
-		{p0, p1, p0, p_, p_, p_, p1, p0, p_, p_, p1, p0, p_, p1, p1},
-		{p0, p_, p0, p0, p_, p_, p0, p0, p0, p0, p1, p_, p_, p1, p1},
-		{p_, p_, p_, p0, p_, p_, p_, p0, p_, p_, p1, p_, p_, p_, p1},
-		{p_, p_, p0, p0, p_, p_, p_, p_, p_, p_, p1, p0, p_, p1, p1},
-		{p_, p1, p0, p0, p0, p_, p_, p_, p_, p_, p1, p0, p_, p1, p_},
-		{p_, p1, p0, p_, p0, p_, p_, p_, p_, p_, p1, p0, p_, p1, p_},
-		{p_, p1, p_, p_, p1, p1, p1, p1, p_, p_, p_, p0, p_, p1, p_},
-		{p0, p1, p_, p_, p_, p_, p_, p_, p_, p0, p0, p0, p0, p0, p_},
-		{p0, p1, p_, p_, p_, p_, p_, p_, p_, p_, p_, p_, p_, p_, p_},
+	// Assume that the input is valid:
+	// - does not go out of bounds
+	// - has no invalid tiles
+	// - PHONY_TILES_RETURNED only immediately after TILE_PLACEMENT_MOVE
+	// - nicknames belong to either player
+	// - two-player games only
+	lastPlaceIndex := -1
+	setLastPlaceIndex := func(newLastPlaceIndex int) {
+		if lastPlaceIndex >= 0 {
+			evt := history.Events[lastPlaceIndex]
+			which := byte(0)
+			if evt.Nickname != history.Players[0].Nickname {
+				which = 1
+			}
+			if history.SecondWentFirst {
+				which ^= 1 // Fix coloring. WHY.
+			}
+			r, c := int(evt.Row), int(evt.Column)
+			dr, dc := 0, 1
+			if evt.Direction == macondopb.GameEvent_VERTICAL {
+				dr, dc = 1, 0
+			}
+			for _, ch := range evt.PlayedTiles {
+				if ch != alphabet.ASCIIPlayedThrough {
+					board[r][c] = ch
+					whose[r][c] = which
+				}
+				r += dr
+				c += dc
+			}
+		}
+		lastPlaceIndex = newLastPlaceIndex
+	}
+	for i, evt := range history.Events {
+		if i >= numEvents {
+			break
+		}
+		switch evt.GetType() {
+		case macondopb.GameEvent_TILE_PLACEMENT_MOVE:
+			setLastPlaceIndex(i)
+		case macondopb.GameEvent_PHONY_TILES_RETURNED:
+			lastPlaceIndex = -1
+		}
+	}
+	setLastPlaceIndex(-1)
+
+	return &TilePainterBoardSnapshot{
+		lang:  lang,
+		board: board,
+		whose: whose,
+	}, nil
+}
+
+func main() {
+	if len(os.Args) <= 1 {
+		panic("params: gameId [n]\n" +
+			"example: hBQhT94n\n" +
+			"example: XgTRffsq 7\n" +
+			"n = number of events to process (one less than ?turn= examiner param)")
+	}
+
+	gameId := os.Args[1]
+	numEvents := math.MaxInt
+
+	if len(os.Args) > 2 {
+		if s, err := strconv.ParseInt(os.Args[2], 10, 64); err != nil {
+			panic(err)
+		} else {
+			numEvents = int(s)
+		}
+	}
+
+	history, err := GetGameHistory(gameId)
+	if err != nil {
+		panic(err)
+	}
+
+	// Assume standard board for now.
+	boardSnapshot, err := boardSnapshotFromMacondoHistory(boardConfig, history, numEvents)
+	if err != nil {
+		panic(err)
 	}
 
 	// Cache this.
-	lang := "english"
+	lang := boardSnapshot.lang
 
 	tptm, ok := tilesMeta[lang]
 	if !ok {
@@ -343,7 +437,7 @@ func main() {
 		panic(err)
 	}
 
-	boardImg, err := drawBoard(tptm, tilesImg, boardConfig, board, whose)
+	boardImg, err := drawBoard(tptm, tilesImg, boardConfig, boardSnapshot.board, boardSnapshot.whose)
 	if err != nil {
 		panic(err)
 	}
@@ -355,7 +449,7 @@ func main() {
 
 	fmt.Printf("writing %d bytes\n", len(boardPngBytes))
 
-	err = ioutil.WriteFile("board.png", boardPngBytes, 0644)
+	err = ioutil.WriteFile(gameId+".png", boardPngBytes, 0644)
 	if err != nil {
 		panic(err)
 	}

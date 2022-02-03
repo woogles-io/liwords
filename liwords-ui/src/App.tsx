@@ -281,8 +281,8 @@ const App = React.memo(() => {
         <Route path="/settings/:section?">
           <Settings />
         </Route>
-        <Route path="/tile_images">
-          <TileImages letterDistribution="english" />
+        <Route path="/tile_images/:letterDistribution?">
+          <TileImages />
         </Route>
         <Route path="/admin">
           <Admin />
