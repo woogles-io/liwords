@@ -645,9 +645,28 @@ params can be prefixed with these flags:
 			if evt.Direction == macondopb.GameEvent_VERTICAL {
 				dr, dc = 1, 0
 			}
-			numPlayedTiles := utf8.RuneCountInString(evt.PlayedTiles)
+			str := evt.PlayedTiles
+			for {
+				ru, size := utf8.DecodeRuneInString(str)
+				if ru != alphabet.ASCIIPlayedThrough {
+					break
+				}
+				r, c = r+dr, c+dc
+				str = str[size:]
+			}
+			if len(str) == 0 {
+				return
+			}
+			for {
+				ru, size := utf8.DecodeLastRuneInString(str)
+				if ru != alphabet.ASCIIPlayedThrough {
+					break
+				}
+				str = str[:len(str)-size]
+			}
+			numPlayedTiles := utf8.RuneCountInString(str)
 			img := image.NewNRGBA(image.Rect(c*squareDim, r*squareDim, (c+1+(numPlayedTiles-1)*dc)*squareDim, (r+1+(numPlayedTiles-1)*dr)*squareDim))
-			for _, ch := range evt.PlayedTiles {
+			for _, ch := range str {
 				if ch != alphabet.ASCIIPlayedThrough {
 					callback(img, r, c, ch)
 				}
