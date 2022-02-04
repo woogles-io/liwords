@@ -578,56 +578,40 @@ params can be prefixed with these flags:
 
 	if *gifFlag && history != nil {
 		// TODO: This can be precomputed.
-		// Quantize to 256 colors where index 0 is Transparent.
-		pal := make([]color.Color, 0, 256)
+		// Build an up to 256 colors palette where index 0 is Transparent.
+		var pal []color.Color
 		{
 			inPal := make(map[color.Color]struct{})
-			histog := make(map[color.Color]int)
-			tallyColors := func(what map[rune][2]int) {
-				for _, v := range what {
-					x0, y0 := v[0]*squareDim, v[1]*squareDim
-					x1, y1 := x0+squareDim, y0+squareDim
-					for y := y0; y < y1; y++ {
-						for x := x0; x < x1; x++ {
-							histog[tilesImg.At(x, y)]++
-						}
-					}
+			b := tilesImg.Bounds()
+			for y := b.Min.Y; y < b.Max.Y; y++ {
+				for x := b.Min.X; x < b.Max.X; x++ {
+					inPal[tilesImg.At(x, y)] = struct{}{}
 				}
 			}
-			commitColors := func(maxLen int) {
-				type freq struct {
-					k color.Color
-					f int
-				}
-				if len(pal) >= maxLen {
-					return
-				}
-				sortedHistog := make([]freq, 0, len(histog))
-				for k, f := range histog {
-					sortedHistog = append(sortedHistog, freq{k: k, f: f})
-				}
-				sort.Slice(sortedHistog, func(i, j int) bool { return sortedHistog[i].f > sortedHistog[j].f })
-				for _, v := range sortedHistog {
-					if _, ok := inPal[v.k]; !ok {
-						inPal[v.k] = struct{}{}
-						pal = append(pal, v.k)
-						if len(pal) >= maxLen {
-							return
-						}
-					}
-				}
+			pal = make([]color.Color, 0, len(inPal)+1)
+			// Always put image.Transparent even if there is another color with zero alpha.
+			pal = append(pal, image.Transparent)
+			for k := range inPal {
+				pal = append(pal, k)
 			}
-
-			// Transparent must be index 0.
-			histog[image.Transparent]++
-			commitColors(1)
-			histog = make(map[color.Color]int) // clear
-			tallyColors(tptm.BoardSrc)
-			commitColors(64)
-			histog = make(map[color.Color]int) // clear
-			tallyColors(tptm.Tile0Src)
-			tallyColors(tptm.Tile1Src)
-			commitColors(256)
+			if len(pal) > 256 {
+				panic(fmt.Errorf("gif cannot support %d colors", len(pal)))
+			}
+			// Sort deterministically, exclude the image.Transparent.
+			sort.Slice(pal[1:], func(i, j int) bool {
+				ri, gi, bi, ai := pal[i+1].RGBA()
+				rj, gj, bj, aj := pal[j+1].RGBA()
+				if ai != aj {
+					return ai < aj
+				}
+				if ri != rj {
+					return ri < rj
+				}
+				if gi != gj {
+					return gi < gj
+				}
+				return bi < bj
+			})
 		}
 
 		agif := &gif.GIF{}
