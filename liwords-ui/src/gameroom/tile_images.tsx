@@ -14,8 +14,9 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
   // 2. Screen-capture normally. Any white border can be cropped later.
   //    On Mac: cmd+shift+4.
   // 3. Crop the white border and assign transparency.
+  //    Also quantize to less than 256 colors for gifs.
   //    On Mac: brew install netpbm
-  // pngtopnm img.png | pnmcrop | pnmtopng -transparent '=#000000' > tiles.png
+  // pngtopnm img.png | pnmcrop | pnmquant 48 | pnmtopng -transparent '=#000000' > tiles.png
 
   const nCols = 15;
   const eachWidth = 34;
