@@ -7,12 +7,15 @@ import (
 	"flag"
 	"fmt"
 	"image"
+	"image/color"
 	"image/draw"
+	"image/gif"
 	"image/png"
 	"io/ioutil"
 	"math"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -484,6 +487,7 @@ params can be prefixed with these flags:
 	}
 
 	var colorFlag = flag.String("color", "", "0 = use player 0's colors, 1 = use player 1's colors")
+	var gifFlag = flag.Bool("gif", false, "generate animated gif")
 	flag.Parse()
 	args := flag.Args()
 
@@ -505,13 +509,15 @@ params can be prefixed with these flags:
 
 	var outputFile string
 	var boardSnapshot *TilePainterBoardSnapshot
+	var history *macondopb.GameHistory
+	var err error
+	numEvents := math.MaxInt
 	if args[0] == "hardcoded" {
 		outputFile = "board"
 		boardSnapshot = boardSnapshotHardcoded()
 	} else {
 		gameId := args[0]
 		outputFile = gameId
-		numEvents := math.MaxInt
 
 		if len(args) > 1 {
 			if s, err := strconv.ParseInt(args[1], 10, 64); err != nil {
@@ -521,7 +527,7 @@ params can be prefixed with these flags:
 			}
 		}
 
-		history, err := GetGameHistory(gameId)
+		history, err = GetGameHistory(gameId)
 		if err != nil {
 			panic(err)
 		}
@@ -561,5 +567,180 @@ params can be prefixed with these flags:
 	err = ioutil.WriteFile(outputFile+".png", boardPngBytes, 0644)
 	if err != nil {
 		panic(err)
+	}
+
+	if *gifFlag && history != nil {
+		// drawBoard (for png) already validated stuffs.
+		nRows := len(boardConfig)
+		nCols := len(boardConfig[0])
+
+		// TODO: This can be precomputed.
+		// Quantize to 256 colors where index 0 is Transparent.
+		pal := make([]color.Color, 0, 256)
+		{
+			inPal := make(map[color.Color]struct{})
+			histog := make(map[color.Color]int)
+			commitColors := func(maxLen int) {
+				type freq struct {
+					k color.Color
+					f int
+				}
+				if len(pal) >= maxLen {
+					return
+				}
+				sortedHistog := make([]freq, 0, len(histog))
+				for k, f := range histog {
+					sortedHistog = append(sortedHistog, freq{k: k, f: f})
+				}
+				sort.Slice(sortedHistog, func(i, j int) bool { return sortedHistog[i].f > sortedHistog[j].f })
+				for _, v := range sortedHistog {
+					if _, ok := inPal[v.k]; !ok {
+						inPal[v.k] = struct{}{}
+						pal = append(pal, v.k)
+						if len(pal) >= maxLen {
+							return
+						}
+					}
+				}
+			}
+
+			// Transparent must be index 0.
+			histog[image.Transparent]++
+			commitColors(1)
+
+			histog = make(map[color.Color]int) // clear
+
+			// Keep the few most popular board colors.
+			for _, v := range tptm.BoardSrc {
+				x0, y0 := v[0]*squareDim, v[1]*squareDim
+				x1, y1 := x0+squareDim, y0+squareDim
+				for y := y0; y < y1; y++ {
+					for x := x0; x < x1; x++ {
+						histog[tilesImg.At(x, y)]++
+					}
+				}
+			}
+			commitColors(64)
+
+			histog = make(map[color.Color]int) // clear
+
+			// Then tile colors.
+			for _, v := range tptm.Tile0Src {
+				x0, y0 := v[0]*squareDim, v[1]*squareDim
+				x1, y1 := x0+squareDim, y0+squareDim
+				for y := y0; y < y1; y++ {
+					for x := x0; x < x1; x++ {
+						histog[tilesImg.At(x, y)]++
+					}
+				}
+			}
+			for _, v := range tptm.Tile1Src {
+				x0, y0 := v[0]*squareDim, v[1]*squareDim
+				x1, y1 := x0+squareDim, y0+squareDim
+				for y := y0; y < y1; y++ {
+					for x := x0; x < x1; x++ {
+						histog[tilesImg.At(x, y)]++
+					}
+				}
+			}
+			commitColors(256)
+		}
+
+		agif := &gif.GIF{}
+
+		{
+			// Empty board.
+			img := image.NewNRGBA(image.Rect(0, 0, nRows*squareDim, nCols*squareDim))
+			for r := 0; r < nRows; r++ {
+				for c := 0; c < nCols; c++ {
+					drawEmptySquare(tptm, tilesImg, img, r, c, boardConfig[r][c])
+				}
+			}
+
+			imgPal := image.NewPaletted(img.Bounds(), pal)
+			draw.Draw(imgPal, imgPal.Bounds(), img, img.Bounds().Min, draw.Src)
+			agif.Image = append(agif.Image, imgPal)
+			agif.Delay = append(agif.Delay, 100)
+		}
+
+		lastPlaceIndex := -1
+		for i, evt := range history.Events {
+			if i >= numEvents {
+				break
+			}
+			switch evt.GetType() {
+			case macondopb.GameEvent_TILE_PLACEMENT_MOVE:
+				lastPlaceIndex = i
+				which := whichFromEvent(history, evt)
+				r, c := int(evt.Row), int(evt.Column)
+				sr, sc := r, c
+				dr, dc := 0, 1
+				if evt.Direction == macondopb.GameEvent_VERTICAL {
+					dr, dc = 1, 0
+				}
+				for _ = range evt.PlayedTiles {
+					r += dr
+					c += dc
+				}
+				img := image.NewNRGBA(image.Rect(sc*squareDim, sr*squareDim, (c+1-dc)*squareDim, (r+1-dr)*squareDim))
+				r, c = sr, sc
+				for _, ch := range evt.PlayedTiles {
+					if ch != alphabet.ASCIIPlayedThrough {
+						drawTileOnBoard(tptm, tilesImg, img, r, c, ch, realWhose(whichColor, which))
+					}
+					r += dr
+					c += dc
+				}
+				imgPal := image.NewPaletted(img.Bounds(), pal)
+				draw.Draw(imgPal, imgPal.Bounds(), img, img.Bounds().Min, draw.Over)
+				agif.Image = append(agif.Image, imgPal)
+				agif.Delay = append(agif.Delay, 100)
+			case macondopb.GameEvent_PHONY_TILES_RETURNED:
+				evt := history.Events[lastPlaceIndex]
+				lastPlaceIndex = -1
+				// XXX: The bounds have been precomputed in the last TILE_PLACEMENT_MOVE.
+				// TODO: Reduce code duplication here.
+				r, c := int(evt.Row), int(evt.Column)
+				sr, sc := r, c
+				dr, dc := 0, 1
+				if evt.Direction == macondopb.GameEvent_VERTICAL {
+					dr, dc = 1, 0
+				}
+				for _ = range evt.PlayedTiles {
+					r += dr
+					c += dc
+				}
+				img := image.NewNRGBA(image.Rect(sc*squareDim, sr*squareDim, (c+1-dc)*squareDim, (r+1-dr)*squareDim))
+				r, c = sr, sc
+				for _, ch := range evt.PlayedTiles {
+					if ch != alphabet.ASCIIPlayedThrough {
+						drawEmptySquare(tptm, tilesImg, img, r, c, boardConfig[r][c])
+					}
+					r += dr
+					c += dc
+				}
+				imgPal := image.NewPaletted(img.Bounds(), pal)
+				draw.Draw(imgPal, imgPal.Bounds(), img, img.Bounds().Min, draw.Over)
+				agif.Image = append(agif.Image, imgPal)
+				agif.Delay = append(agif.Delay, 100)
+			default:
+				continue
+			}
+		}
+
+		var buf bytes.Buffer
+		err = gif.EncodeAll(&buf, agif)
+		if err != nil {
+			panic(err)
+		}
+		boardGifBytes := buf.Bytes()
+
+		fmt.Printf("writing %d bytes\n", len(boardGifBytes))
+
+		err = ioutil.WriteFile(outputFile+".gif", boardGifBytes, 0644)
+		if err != nil {
+			panic(err)
+		}
+
 	}
 }
