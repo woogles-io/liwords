@@ -687,6 +687,46 @@ params can be prefixed with these flags:
 		if err != nil {
 			panic(err)
 		}
+	}
 
+	if *gifFlag {
+		img := boardImg
+		imgPal := image.NewPaletted(img.Bounds(), pal)
+		draw.Draw(imgPal, imgPal.Bounds(), img, img.Bounds().Min, draw.Src)
+
+		{
+			var buf bytes.Buffer
+			err = gif.EncodeAll(&buf, &gif.GIF{
+				Image: []*image.Paletted{imgPal},
+				Delay: []int{100},
+			})
+			if err != nil {
+				panic(err)
+			}
+			boardGifBytes := buf.Bytes()
+
+			fmt.Printf("writing %d bytes\n", len(boardGifBytes))
+
+			err = ioutil.WriteFile(outputFile+"-single.gif", boardGifBytes, 0644)
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		{
+			var buf bytes.Buffer
+			err = gif.Encode(&buf, imgPal, nil)
+			if err != nil {
+				panic(err)
+			}
+			boardGifBytes := buf.Bytes()
+
+			fmt.Printf("writing %d bytes\n", len(boardGifBytes))
+
+			err = ioutil.WriteFile(outputFile+"-static.gif", boardGifBytes, 0644)
+			if err != nil {
+				panic(err)
+			}
+		}
 	}
 }
