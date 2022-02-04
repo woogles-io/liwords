@@ -200,7 +200,10 @@ func (b *Bus) handleBotMoveInternally(ctx context.Context, g *entity.Game, onTur
 		case *macondopb.BotResponse_Move:
 			timeRemaining := g.TimeRemaining(onTurn)
 
-			m := game.MoveFromEvent(r.Move, g.Alphabet(), g.Board())
+			m, err := game.MoveFromEvent(r.Move, g.Alphabet(), g.Board())
+			if err != nil {
+				log.Err(err).Msg("move-from-evt")
+			}
 			err = gameplay.PlayMove(ctx, g, b.gameStore, b.userStore, b.notorietyStore, b.listStatStore, b.tournamentStore, userID, onTurn, timeRemaining, m)
 			if err != nil {
 				log.Err(err).Msg("bot-cant-move-play-error")
