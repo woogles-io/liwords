@@ -158,8 +158,11 @@ export const Secret = React.memo((props: Props) => {
           />
         </div>
         <div className="toggle-section">
-          <div className="title">Practice manual tracking</div>
-          <div>Disable automatic tracking of tiles for you only</div>
+          <div className="title">Practice manual tracking and scoring</div>
+          <div>
+            Disable automatic tracking of tiles and scoring of tentative moves
+            for you only
+          </div>
           <Switch
             defaultChecked={hidePool}
             onChange={toggleHidePool}
