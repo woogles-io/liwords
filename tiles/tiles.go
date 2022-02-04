@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/game_service"
@@ -587,22 +588,29 @@ params can be prefixed with these flags:
 		panic("missing tilesMeta: " + lang)
 	}
 
+	t0 := time.Now()
 	tilesImg, pal, err := loadTilesImg(tptm)
 	if err != nil {
 		panic(err)
 	}
 
+	t1 := time.Now()
 	boardImg, err := drawBoard(tptm, tilesImg, boardConfig, boardSnapshot.board, boardSnapshot.whose, whichColor)
 	if err != nil {
 		panic(err)
 	}
 
+	t2 := time.Now()
 	boardPngBytes, err := imgToPngBytes(boardImg)
 	if err != nil {
 		panic(err)
 	}
 
+	t3 := time.Now()
 	fmt.Printf("writing %d bytes\n", len(boardPngBytes))
+	fmt.Println("loading tiles img", t1.Sub(t0))
+	fmt.Println("drawing board", t2.Sub(t1))
+	fmt.Println("img to png", t3.Sub(t2))
 
 	err = ioutil.WriteFile(outputFile+".png", boardPngBytes, 0644)
 	if err != nil {
@@ -610,6 +618,7 @@ params can be prefixed with these flags:
 	}
 
 	if *gifFlag && history != nil {
+		t4 := time.Now()
 		agif := &gif.GIF{}
 		addFrame := func(img *image.NRGBA, delay int, op draw.Op) {
 			imgPal := image.NewPaletted(img.Bounds(), pal)
@@ -680,8 +689,11 @@ params can be prefixed with these flags:
 			panic(err)
 		}
 		boardGifBytes := buf.Bytes()
+		t5 := time.Now()
 
 		fmt.Printf("writing %d bytes\n", len(boardGifBytes))
+		fmt.Println("img to anim gif", t5.Sub(t4))
+		fmt.Println("num frames", len(agif.Image))
 
 		err = ioutil.WriteFile(outputFile+".gif", boardGifBytes, 0644)
 		if err != nil {
@@ -690,9 +702,11 @@ params can be prefixed with these flags:
 	}
 
 	if *gifFlag {
+		t4 := time.Now()
 		img := boardImg
 		imgPal := image.NewPaletted(img.Bounds(), pal)
 		draw.Draw(imgPal, imgPal.Bounds(), img, img.Bounds().Min, draw.Src)
+		t5 := time.Now()
 
 		{
 			var buf bytes.Buffer
@@ -704,8 +718,11 @@ params can be prefixed with these flags:
 				panic(err)
 			}
 			boardGifBytes := buf.Bytes()
+			t6 := time.Now()
 
 			fmt.Printf("writing %d bytes\n", len(boardGifBytes))
+			fmt.Println("img to pal", t5.Sub(t4))
+			fmt.Println("pal to single anim", t6.Sub(t5))
 
 			err = ioutil.WriteFile(outputFile+"-single.gif", boardGifBytes, 0644)
 			if err != nil {
@@ -713,6 +730,7 @@ params can be prefixed with these flags:
 			}
 		}
 
+		t7 := time.Now()
 		{
 			var buf bytes.Buffer
 			err = gif.Encode(&buf, imgPal, nil)
@@ -720,8 +738,10 @@ params can be prefixed with these flags:
 				panic(err)
 			}
 			boardGifBytes := buf.Bytes()
+			t8 := time.Now()
 
 			fmt.Printf("writing %d bytes\n", len(boardGifBytes))
+			fmt.Println("pal to static gif", t8.Sub(t7))
 
 			err = ioutil.WriteFile(outputFile+"-static.gif", boardGifBytes, 0644)
 			if err != nil {
