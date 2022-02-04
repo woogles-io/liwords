@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/game_service"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -268,6 +269,20 @@ func drawTileOnBoard(tptm *TilePainterTilesMeta, tilesImg image.Image, img *imag
 	}
 }
 
+func newEmptyBoardImage(tptm *TilePainterTilesMeta, tilesImg image.Image, boardConfig [][]rune) *image.NRGBA {
+	// drawBoard (for png) already validated stuffs.
+
+	nRows := len(boardConfig)
+	nCols := len(boardConfig[0])
+	img := image.NewNRGBA(image.Rect(0, 0, nRows*squareDim, nCols*squareDim))
+	for r := 0; r < nRows; r++ {
+		for c := 0; c < nCols; c++ {
+			drawEmptySquare(tptm, tilesImg, img, r, c, boardConfig[r][c])
+		}
+	}
+	return img
+}
+
 func drawBoard(tptm *TilePainterTilesMeta, tilesImg image.Image, boardConfig [][]rune, board [][]rune, whose [][]byte, whichColor int) (image.Image, error) {
 
 	nRows := len(boardConfig)
@@ -293,14 +308,7 @@ func drawBoard(tptm *TilePainterTilesMeta, tilesImg image.Image, boardConfig [][
 	}
 
 	// OK! They have the same dimensions.
-	img := image.NewNRGBA(image.Rect(0, 0, nRows*squareDim, nCols*squareDim))
-
-	// Draw the board.
-	for r := 0; r < nRows; r++ {
-		for c := 0; c < nCols; c++ {
-			drawEmptySquare(tptm, tilesImg, img, r, c, boardConfig[r][c])
-		}
-	}
+	img := newEmptyBoardImage(tptm, tilesImg, boardConfig)
 
 	// Draw the tiles.
 	for r := 0; r < nRows; r++ {
@@ -437,8 +445,7 @@ func boardSnapshotFromMacondoHistory(boardConfig [][]rune, history *macondopb.Ga
 					board[r][c] = ch
 					whose[r][c] = which
 				}
-				r += dr
-				c += dc
+				r, c = r+dr, c+dc
 			}
 		}
 		lastPlaceIndex = newLastPlaceIndex
@@ -570,16 +577,23 @@ params can be prefixed with these flags:
 	}
 
 	if *gifFlag && history != nil {
-		// drawBoard (for png) already validated stuffs.
-		nRows := len(boardConfig)
-		nCols := len(boardConfig[0])
-
 		// TODO: This can be precomputed.
 		// Quantize to 256 colors where index 0 is Transparent.
 		pal := make([]color.Color, 0, 256)
 		{
 			inPal := make(map[color.Color]struct{})
 			histog := make(map[color.Color]int)
+			tallyColors := func(what map[rune][2]int) {
+				for _, v := range what {
+					x0, y0 := v[0]*squareDim, v[1]*squareDim
+					x1, y1 := x0+squareDim, y0+squareDim
+					for y := y0; y < y1; y++ {
+						for x := x0; x < x1; x++ {
+							histog[tilesImg.At(x, y)]++
+						}
+					}
+				}
+			}
 			commitColors := func(maxLen int) {
 				type freq struct {
 					k color.Color
@@ -607,62 +621,40 @@ params can be prefixed with these flags:
 			// Transparent must be index 0.
 			histog[image.Transparent]++
 			commitColors(1)
-
 			histog = make(map[color.Color]int) // clear
-
-			// Keep the few most popular board colors.
-			for _, v := range tptm.BoardSrc {
-				x0, y0 := v[0]*squareDim, v[1]*squareDim
-				x1, y1 := x0+squareDim, y0+squareDim
-				for y := y0; y < y1; y++ {
-					for x := x0; x < x1; x++ {
-						histog[tilesImg.At(x, y)]++
-					}
-				}
-			}
+			tallyColors(tptm.BoardSrc)
 			commitColors(64)
-
 			histog = make(map[color.Color]int) // clear
-
-			// Then tile colors.
-			for _, v := range tptm.Tile0Src {
-				x0, y0 := v[0]*squareDim, v[1]*squareDim
-				x1, y1 := x0+squareDim, y0+squareDim
-				for y := y0; y < y1; y++ {
-					for x := x0; x < x1; x++ {
-						histog[tilesImg.At(x, y)]++
-					}
-				}
-			}
-			for _, v := range tptm.Tile1Src {
-				x0, y0 := v[0]*squareDim, v[1]*squareDim
-				x1, y1 := x0+squareDim, y0+squareDim
-				for y := y0; y < y1; y++ {
-					for x := x0; x < x1; x++ {
-						histog[tilesImg.At(x, y)]++
-					}
-				}
-			}
+			tallyColors(tptm.Tile0Src)
+			tallyColors(tptm.Tile1Src)
 			commitColors(256)
 		}
 
 		agif := &gif.GIF{}
-
-		{
-			// Empty board.
-			img := image.NewNRGBA(image.Rect(0, 0, nRows*squareDim, nCols*squareDim))
-			for r := 0; r < nRows; r++ {
-				for c := 0; c < nCols; c++ {
-					drawEmptySquare(tptm, tilesImg, img, r, c, boardConfig[r][c])
-				}
-			}
-
+		addFrame := func(img *image.NRGBA, delay int, op draw.Op) {
 			imgPal := image.NewPaletted(img.Bounds(), pal)
-			draw.Draw(imgPal, imgPal.Bounds(), img, img.Bounds().Min, draw.Src)
+			draw.Draw(imgPal, imgPal.Bounds(), img, img.Bounds().Min, op)
 			agif.Image = append(agif.Image, imgPal)
-			agif.Delay = append(agif.Delay, 100)
+			agif.Delay = append(agif.Delay, delay)
 		}
+		addFrame(newEmptyBoardImage(tptm, tilesImg, boardConfig), 100, draw.Src)
 
+		patchImage := func(evt *macondopb.GameEvent, callback func(img *image.NRGBA, r, c int, ch rune)) {
+			r, c := int(evt.Row), int(evt.Column)
+			dr, dc := 0, 1
+			if evt.Direction == macondopb.GameEvent_VERTICAL {
+				dr, dc = 1, 0
+			}
+			numPlayedTiles := utf8.RuneCountInString(evt.PlayedTiles)
+			img := image.NewNRGBA(image.Rect(c*squareDim, r*squareDim, (c+1+(numPlayedTiles-1)*dc)*squareDim, (r+1+(numPlayedTiles-1)*dr)*squareDim))
+			for _, ch := range evt.PlayedTiles {
+				if ch != alphabet.ASCIIPlayedThrough {
+					callback(img, r, c, ch)
+				}
+				r, c = r+dr, c+dc
+			}
+			addFrame(img, 100, draw.Over)
+		}
 		lastPlaceIndex := -1
 		for i, evt := range history.Events {
 			if i >= numEvents {
@@ -672,59 +664,14 @@ params can be prefixed with these flags:
 			case macondopb.GameEvent_TILE_PLACEMENT_MOVE:
 				lastPlaceIndex = i
 				which := whichFromEvent(history, evt)
-				r, c := int(evt.Row), int(evt.Column)
-				sr, sc := r, c
-				dr, dc := 0, 1
-				if evt.Direction == macondopb.GameEvent_VERTICAL {
-					dr, dc = 1, 0
-				}
-				for _ = range evt.PlayedTiles {
-					r += dr
-					c += dc
-				}
-				img := image.NewNRGBA(image.Rect(sc*squareDim, sr*squareDim, (c+1-dc)*squareDim, (r+1-dr)*squareDim))
-				r, c = sr, sc
-				for _, ch := range evt.PlayedTiles {
-					if ch != alphabet.ASCIIPlayedThrough {
-						drawTileOnBoard(tptm, tilesImg, img, r, c, ch, realWhose(whichColor, which))
-					}
-					r += dr
-					c += dc
-				}
-				imgPal := image.NewPaletted(img.Bounds(), pal)
-				draw.Draw(imgPal, imgPal.Bounds(), img, img.Bounds().Min, draw.Over)
-				agif.Image = append(agif.Image, imgPal)
-				agif.Delay = append(agif.Delay, 100)
+				patchImage(evt, func(img *image.NRGBA, r, c int, ch rune) {
+					drawTileOnBoard(tptm, tilesImg, img, r, c, ch, realWhose(whichColor, which))
+				})
 			case macondopb.GameEvent_PHONY_TILES_RETURNED:
-				evt := history.Events[lastPlaceIndex]
+				patchImage(history.Events[lastPlaceIndex], func(img *image.NRGBA, r, c int, ch rune) {
+					drawEmptySquare(tptm, tilesImg, img, r, c, boardConfig[r][c])
+				})
 				lastPlaceIndex = -1
-				// XXX: The bounds have been precomputed in the last TILE_PLACEMENT_MOVE.
-				// TODO: Reduce code duplication here.
-				r, c := int(evt.Row), int(evt.Column)
-				sr, sc := r, c
-				dr, dc := 0, 1
-				if evt.Direction == macondopb.GameEvent_VERTICAL {
-					dr, dc = 1, 0
-				}
-				for _ = range evt.PlayedTiles {
-					r += dr
-					c += dc
-				}
-				img := image.NewNRGBA(image.Rect(sc*squareDim, sr*squareDim, (c+1-dc)*squareDim, (r+1-dr)*squareDim))
-				r, c = sr, sc
-				for _, ch := range evt.PlayedTiles {
-					if ch != alphabet.ASCIIPlayedThrough {
-						drawEmptySquare(tptm, tilesImg, img, r, c, boardConfig[r][c])
-					}
-					r += dr
-					c += dc
-				}
-				imgPal := image.NewPaletted(img.Bounds(), pal)
-				draw.Draw(imgPal, imgPal.Bounds(), img, img.Bounds().Min, draw.Over)
-				agif.Image = append(agif.Image, imgPal)
-				agif.Delay = append(agif.Delay, 100)
-			default:
-				continue
 			}
 		}
 
