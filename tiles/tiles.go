@@ -216,18 +216,51 @@ var tilesMeta = map[string]*TilePainterTilesMeta{
 	},
 }
 
-func loadTilesImg(tptm *TilePainterTilesMeta) (image.Image, error) {
+func loadTilesImg(tptm *TilePainterTilesMeta) (image.Image, []color.Color, error) {
 	img, err := png.Decode(bytes.NewReader(tptm.TilesBytes))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	bounds := img.Bounds()
 	expectedX := tptm.NColRows[0] * squareDim
 	expectedY := tptm.NColRows[1] * squareDim
 	if bounds.Min.X != 0 || bounds.Min.Y != 0 || bounds.Dx() != expectedX || bounds.Dy() != expectedY {
-		return nil, fmt.Errorf("unexpected size: %s vs %s", bounds.String(), image.Pt(expectedX, expectedY))
+		return nil, nil, fmt.Errorf("unexpected size: %s vs %s", bounds.String(), image.Pt(expectedX, expectedY))
 	}
-	return img, nil
+
+	// Build an up to 256 colors palette where index 0 is Transparent.
+	inPal := make(map[color.Color]struct{})
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			inPal[img.At(x, y)] = struct{}{}
+		}
+	}
+	pal := make([]color.Color, 0, len(inPal)+1)
+	// Always put image.Transparent even if there is another color with zero alpha.
+	pal = append(pal, image.Transparent)
+	for k := range inPal {
+		pal = append(pal, k)
+	}
+	if len(pal) > 256 {
+		return nil, nil, fmt.Errorf("gif cannot support %d colors", len(pal))
+	}
+	// Sort deterministically, exclude the image.Transparent.
+	sort.Slice(pal[1:], func(i, j int) bool {
+		ri, gi, bi, ai := pal[i+1].RGBA()
+		rj, gj, bj, aj := pal[j+1].RGBA()
+		if ai != aj {
+			return ai < aj
+		}
+		if ri != rj {
+			return ri < rj
+		}
+		if gi != gj {
+			return gi < gj
+		}
+		return bi < bj
+	})
+
+	return img, pal, nil
 }
 
 func drawEmptySquare(tptm *TilePainterTilesMeta, tilesImg image.Image, img *image.NRGBA, r, c int, b rune) {
@@ -554,7 +587,7 @@ params can be prefixed with these flags:
 		panic("missing tilesMeta: " + lang)
 	}
 
-	tilesImg, err := loadTilesImg(tptm)
+	tilesImg, pal, err := loadTilesImg(tptm)
 	if err != nil {
 		panic(err)
 	}
@@ -577,43 +610,6 @@ params can be prefixed with these flags:
 	}
 
 	if *gifFlag && history != nil {
-		// TODO: This can be precomputed.
-		// Build an up to 256 colors palette where index 0 is Transparent.
-		var pal []color.Color
-		{
-			inPal := make(map[color.Color]struct{})
-			b := tilesImg.Bounds()
-			for y := b.Min.Y; y < b.Max.Y; y++ {
-				for x := b.Min.X; x < b.Max.X; x++ {
-					inPal[tilesImg.At(x, y)] = struct{}{}
-				}
-			}
-			pal = make([]color.Color, 0, len(inPal)+1)
-			// Always put image.Transparent even if there is another color with zero alpha.
-			pal = append(pal, image.Transparent)
-			for k := range inPal {
-				pal = append(pal, k)
-			}
-			if len(pal) > 256 {
-				panic(fmt.Errorf("gif cannot support %d colors", len(pal)))
-			}
-			// Sort deterministically, exclude the image.Transparent.
-			sort.Slice(pal[1:], func(i, j int) bool {
-				ri, gi, bi, ai := pal[i+1].RGBA()
-				rj, gj, bj, aj := pal[j+1].RGBA()
-				if ai != aj {
-					return ai < aj
-				}
-				if ri != rj {
-					return ri < rj
-				}
-				if gi != gj {
-					return gi < gj
-				}
-				return bi < bj
-			})
-		}
-
 		agif := &gif.GIF{}
 		addFrame := func(img *image.NRGBA, delay int, op draw.Op) {
 			imgPal := image.NewPaletted(img.Bounds(), pal)
