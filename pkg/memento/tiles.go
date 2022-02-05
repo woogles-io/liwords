@@ -264,6 +264,20 @@ func loadTilesImg(tptm *TilePainterTilesMeta) (*LoadedTilesImg, error) {
 	}, nil
 }
 
+var tilesImgCache map[string]*LoadedTilesImg
+
+func init() {
+	ret := make(map[string]*LoadedTilesImg)
+	for k, tptm := range tilesMeta {
+		loadedTilesImg, err := loadTilesImg(tptm)
+		if err != nil {
+			panic(fmt.Errorf("can't load tilesImg for %s: %v", k, err))
+		}
+		ret[k] = loadedTilesImg
+	}
+	tilesImgCache = ret
+}
+
 func drawEmptySquare(tptm *TilePainterTilesMeta, tilesImg image.Image, img *image.NRGBA, r, c int, b rune) {
 	y := r * squareDim
 	x := c * squareDim
@@ -329,13 +343,12 @@ func renderImage(history *macondopb.GameHistory, wf whichFile) ([]byte, error) {
 
 	tptm, ok := tilesMeta[lang]
 	if !ok {
-		panic("missing tilesMeta: " + lang)
+		return nil, fmt.Errorf("missing tilesMeta: " + lang)
 	}
 
-	// TODO: cache
-	loadedTilesImg, err := loadTilesImg(tptm)
-	if err != nil {
-		panic(err)
+	loadedTilesImg, ok := tilesImgCache[lang]
+	if !ok {
+		return nil, fmt.Errorf("missing tilesImgCache: " + lang)
 	}
 
 	tilesImg := loadedTilesImg.tilesImg
@@ -458,6 +471,7 @@ func renderImage(history *macondopb.GameHistory, wf whichFile) ([]byte, error) {
 	addFrame(image.NewNRGBA(image.Rect(0, 0, 1, 1)), 150, draw.Over)
 
 	var buf bytes.Buffer
+	var err error
 	if isStatic {
 		err = png.Encode(&buf, singleImg)
 	} else {
