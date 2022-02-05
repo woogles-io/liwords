@@ -366,7 +366,7 @@ func renderImage(history *macondopb.GameHistory, wf whichFile) ([]byte, error) {
 		}
 	}
 
-	singleImg := image.NewNRGBA(image.Rect(0, 0, nRows*squareDim, nCols*squareDim))
+	singleImg := image.NewNRGBA(image.Rect(0, 0, nCols*squareDim, nRows*squareDim))
 	for r := 0; r < nRows; r++ {
 		for c := 0; c < nCols; c++ {
 			drawEmptySquare(tptm, tilesImg, singleImg, r, c, boardConfig[r][c])
