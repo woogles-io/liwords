@@ -362,8 +362,8 @@ func whichFromEvent(history *macondopb.GameHistory, evt *macondopb.GameEvent) by
 func renderImage(history *macondopb.GameHistory, wf whichFile) ([]byte, error) {
 	isStatic := wf.fileType == "png"
 	numEvents := math.MaxInt
-	if wf.hasNumEvents {
-		numEvents = wf.numEvents
+	if wf.hasNextEventNum {
+		numEvents = wf.nextEventNum - 1
 	}
 	whichColor := -1 // TODO: simplify if not needed
 

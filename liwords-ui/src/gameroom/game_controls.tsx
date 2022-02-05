@@ -82,12 +82,16 @@ const ExamineGameControls = React.memo(
           switch (e.key) {
             case 'download-png':
               downloadGameImg(
-                `${gameContext.gameID}-${examinableGameContext.turns.length}.png`
+                `${gameContext.gameID}-${
+                  examinableGameContext.turns.length + 1
+                }.png`
               );
               break;
             case 'download-animated-gif':
               downloadGameImg(
-                `${gameContext.gameID}-a-${examinableGameContext.turns.length}.gif`
+                `${gameContext.gameID}-a-${
+                  examinableGameContext.turns.length + 1
+                }.gif`
               );
               break;
           }
