@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"expvar"
-	_ "expvar"
 	"fmt"
 	"net/http"
 	"os"
@@ -20,6 +19,7 @@ import (
 	"github.com/domino14/liwords/pkg/bus"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
+	"github.com/domino14/liwords/pkg/memento"
 	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/notify"
 	cfgstore "github.com/domino14/liwords/pkg/stores/config"
@@ -177,6 +177,7 @@ func main() {
 	stores.PresenceStore = pkgredis.NewRedisPresenceStore(redisPool)
 	stores.ChatStore = pkgredis.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore)
 
+	mementoService := memento.NewMementoService(stores.UserStore, stores.GameStore)
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
 		cfg.SecretKey, cfg.MailgunKey, cfg.DiscordToken, cfg.ArgonConfig)
 	registrationService := registration.NewRegistrationService(stores.UserStore, cfg.ArgonConfig)
@@ -190,6 +191,8 @@ func main() {
 	modService := mod.NewModService(stores.UserStore, stores.ChatStore)
 
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
+
+	router.Handle(memento.GameimgPrefix, middlewares.Then(mementoService))
 
 	router.Handle(userservice.AuthenticationServicePathPrefix,
 		middlewares.Then(userservice.NewAuthenticationServiceServer(authenticationService, NewLoggingServerHooks())))
