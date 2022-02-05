@@ -292,7 +292,7 @@ func init() {
 	}
 	headerHeight = bounds.Dy()
 	paddingColor = headerImg.At(0, 0) // use top left pixel color
-	ofsTop = padTop + headerHeight + padHeader
+	ofsTop = padTop + headerHeight + padHeader + 1
 
 	ret := make(map[string]*LoadedTilesImg)
 	for k, tptm := range tilesMeta {
@@ -395,7 +395,7 @@ func renderImage(history *macondopb.GameHistory, wf whichFile) ([]byte, error) {
 		}
 	}
 
-	singleImg := image.NewNRGBA(image.Rect(0, 0, padLeft+nCols*squareDim+padRight, ofsTop+nRows*squareDim+padBottom))
+	singleImg := image.NewNRGBA(image.Rect(0, 0, padLeft+nCols*squareDim+1+padRight, ofsTop+nRows*squareDim+padBottom))
 	draw.Draw(singleImg, singleImg.Bounds(), &image.Uniform{paddingColor}, image.ZP, draw.Src)
 	headerImgRight := padLeft + headerImgCache.Bounds().Dx()
 	headerImgRightCannotExceed := singleImg.Bounds().Dx() - padRight
@@ -406,6 +406,33 @@ func renderImage(history *macondopb.GameHistory, wf whichFile) ([]byte, error) {
 	for r := 0; r < nRows; r++ {
 		for c := 0; c < nCols; c++ {
 			drawEmptySquare(tptm, tilesImg, singleImg, r, c, boardConfig[r][c])
+		}
+	}
+
+	// Missing borders. Add 1 px at top and right.
+	{
+		srcPt := tptm.BoardSrc[' '] // has bottom and left borders
+		srcl := srcPt[1] * squareDim
+		srct := srcPt[0] * squareDim
+		srcb := srct + squareDim - 1
+		// Copy bottom border to top of board.
+		// This must be what aboveboard means.
+		y := ofsTop - 1
+		x := padLeft
+		for c := 0; c < nCols; c++ {
+			draw.Draw(singleImg, image.Rect(x, y, x+squareDim, y+1), tilesImg,
+				image.Pt(srcl, srcb), draw.Src)
+			x += squareDim
+		}
+		// Copy bottom-left pixel of sample to top right of board.
+		draw.Draw(singleImg, image.Rect(x, y, x+1, y+1), tilesImg,
+			image.Pt(srcl, srcb), draw.Src)
+		y += 1
+		// Copy left border to right.
+		for r := 0; r < nRows; r++ {
+			draw.Draw(singleImg, image.Rect(x, y, x+1, y+squareDim), tilesImg,
+				image.Pt(srcl, srct), draw.Src)
+			y += squareDim
 		}
 	}
 
