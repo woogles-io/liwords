@@ -21,6 +21,7 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
+	"github.com/domino14/liwords/pkg/ipc"
 	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/sessions"
 	"github.com/domino14/liwords/pkg/stats"
@@ -77,10 +78,10 @@ type Bus struct {
 	subscriptions []*nats.Subscription
 	subchans      map[string]chan *nats.Msg
 
-	gameEventChan       chan *entity.EventWrapper
-	tournamentEventChan chan *entity.EventWrapper
+	gameEventChan       chan *ipc.EventWrapper
+	tournamentEventChan chan *ipc.EventWrapper
 
-	genericEventChan chan *entity.EventWrapper
+	genericEventChan chan *ipc.EventWrapper
 }
 
 func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, error) {
@@ -104,9 +105,9 @@ func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, err
 		subscriptions:       []*nats.Subscription{},
 		subchans:            map[string]chan *nats.Msg{},
 		config:              cfg,
-		gameEventChan:       make(chan *entity.EventWrapper, 64),
-		tournamentEventChan: make(chan *entity.EventWrapper, 64),
-		genericEventChan:    make(chan *entity.EventWrapper, 64),
+		gameEventChan:       make(chan *ipc.EventWrapper, 64),
+		tournamentEventChan: make(chan *ipc.EventWrapper, 64),
+		genericEventChan:    make(chan *ipc.EventWrapper, 64),
 		redisPool:           redisPool,
 	}
 	bus.gameStore.SetGameEventChan(bus.gameEventChan)
@@ -177,7 +178,7 @@ outerfor:
 					if len(subtopics) > 5 {
 						userID := subtopics[4]
 						connID := subtopics[5]
-						b.pubToConnectionID(connID, userID, entity.WrapEvent(&pb.ErrorMessage{Message: err.Error()},
+						b.pubToConnectionID(connID, userID, ipc.WrapEvent(&pb.ErrorMessage{Message: err.Error()},
 							pb.MessageType_ERROR_MESSAGE))
 					}
 				}
@@ -203,7 +204,7 @@ outerfor:
 					if err != nil {
 						log.Err(err).Msg("marshalling-error")
 					} else {
-						b.natsconn.Publish(msg.Reply, data)
+						msg.Respond(data)
 					}
 				}
 			}()
@@ -285,6 +286,7 @@ outerfor:
 			// Publish to the right realm.
 			// XXX: This is identical to tournamentEventChan. Should possibly merge.
 			log.Debug().Interface("msg", msg).Msg("generic event chan")
+
 			topics := msg.Audience()
 			data, err := msg.Serialize()
 			if err != nil {
