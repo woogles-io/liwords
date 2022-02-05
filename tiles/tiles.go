@@ -561,10 +561,8 @@ params can be prefixed with these flags:
 		outputFile = gameId
 
 		if len(args) > 1 {
-			if s, err := strconv.ParseInt(args[1], 10, 64); err != nil {
+			if numEvents, err = strconv.Atoi(args[1]); err != nil {
 				panic(err)
-			} else {
-				numEvents = int(s)
 			}
 		}
 
