@@ -626,7 +626,7 @@ params can be prefixed with these flags:
 			agif.Image = append(agif.Image, imgPal)
 			agif.Delay = append(agif.Delay, delay)
 		}
-		addFrame(newEmptyBoardImage(tptm, tilesImg, boardConfig), 100, draw.Src)
+		addFrame(newEmptyBoardImage(tptm, tilesImg, boardConfig), 50, draw.Src)
 
 		patchImage := func(evt *macondopb.GameEvent, callback func(img *image.NRGBA, r, c int, ch rune)) {
 			r, c := int(evt.Row), int(evt.Column)
@@ -661,7 +661,7 @@ params can be prefixed with these flags:
 				}
 				r, c = r+dr, c+dc
 			}
-			addFrame(img, 100, draw.Over)
+			addFrame(img, 50, draw.Over)
 		}
 		lastPlaceIndex := -1
 		for i, evt := range history.Events {
@@ -682,6 +682,17 @@ params can be prefixed with these flags:
 				lastPlaceIndex = -1
 			}
 		}
+
+		// We want the final frame to stay for 2 sec.
+		// Chrome interprets Delay as the delay after the frame.
+		// Mac Quick Look interprets Delay as the delay before the frame.
+		// So if we set the last frame's delay to 200cs (for Chrome),
+		// Mac Quick Look delays the next-to-last frame instead.
+		// If we set the first frame's delay to 200cs (for Mac Quick Look),
+		// Chrome delays the first frame instead.
+		// Solution: we add a transparent 1x1 frame and run it for 150cs.
+		// This adds about 215 bytes to the file, but works for both.
+		addFrame(image.NewNRGBA(image.Rect(0, 0, 1, 1)), 150, draw.Over)
 
 		var buf bytes.Buffer
 		err = gif.EncodeAll(&buf, agif)
