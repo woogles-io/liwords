@@ -38,6 +38,9 @@ var boardConfig = [][]rune{
 	[]rune("=  '   =   '  ="),
 }
 
+//go:embed header.png
+var headerBytes []byte
+
 //go:embed tiles-english.png
 var englishTilesBytes []byte
 
@@ -214,7 +217,7 @@ type LoadedTilesImg struct {
 	palette  []color.Color
 }
 
-func loadTilesImg(tptm *TilePainterTilesMeta) (*LoadedTilesImg, error) {
+func loadTilesImg(tptm *TilePainterTilesMeta, headerPal map[color.Color]struct{}) (*LoadedTilesImg, error) {
 	img, err := png.Decode(bytes.NewReader(tptm.TilesBytes))
 	if err != nil {
 		return nil, err
@@ -228,6 +231,9 @@ func loadTilesImg(tptm *TilePainterTilesMeta) (*LoadedTilesImg, error) {
 
 	// Build an up to 256 colors palette where index 0 is Transparent.
 	inPal := make(map[color.Color]struct{})
+	for k := range headerPal {
+		inPal[k] = struct{}{}
+	}
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
 			inPal[img.At(x, y)] = struct{}{}
@@ -264,23 +270,46 @@ func loadTilesImg(tptm *TilePainterTilesMeta) (*LoadedTilesImg, error) {
 	}, nil
 }
 
+var headerImgCache image.Image
 var tilesImgCache map[string]*LoadedTilesImg
 
+var padTop, padRight, padBottom, padLeft = 10, 10, 10, 10
+var padHeader = 10
+var headerHeight, ofsTop int
+var paddingColor color.Color
+
 func init() {
+	headerImg, err := png.Decode(bytes.NewReader(headerBytes))
+	if err != nil {
+		panic(fmt.Errorf("can't load header png: %v", err))
+	}
+	headerPal := make(map[color.Color]struct{})
+	bounds := headerImg.Bounds()
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			headerPal[headerImg.At(x, y)] = struct{}{}
+		}
+	}
+	headerHeight = bounds.Dy()
+	paddingColor = headerImg.At(0, 0) // use top left pixel color
+	ofsTop = padTop + headerHeight + padHeader
+
 	ret := make(map[string]*LoadedTilesImg)
 	for k, tptm := range tilesMeta {
-		loadedTilesImg, err := loadTilesImg(tptm)
+		loadedTilesImg, err := loadTilesImg(tptm, headerPal)
 		if err != nil {
 			panic(fmt.Errorf("can't load tilesImg for %s: %v", k, err))
 		}
 		ret[k] = loadedTilesImg
 	}
+
+	headerImgCache = headerImg
 	tilesImgCache = ret
 }
 
 func drawEmptySquare(tptm *TilePainterTilesMeta, tilesImg image.Image, img *image.NRGBA, r, c int, b rune) {
-	y := r * squareDim
-	x := c * squareDim
+	y := r*squareDim + ofsTop
+	x := c*squareDim + padLeft
 	srcPt, ok := tptm.BoardSrc[rune(b)]
 	if !ok {
 		srcPt = tptm.BoardSrc[' ']
@@ -301,8 +330,8 @@ func realWhose(whichColor int, actualWhose byte) byte {
 }
 
 func drawTileOnBoard(tptm *TilePainterTilesMeta, tilesImg image.Image, img *image.NRGBA, r, c int, b rune, p byte) {
-	y := r * squareDim
-	x := c * squareDim
+	y := r*squareDim + ofsTop
+	x := c*squareDim + padLeft
 	if b != ' ' {
 		tSrc := tptm.Tile0Src
 		if p&1 != 0 {
@@ -366,7 +395,14 @@ func renderImage(history *macondopb.GameHistory, wf whichFile) ([]byte, error) {
 		}
 	}
 
-	singleImg := image.NewNRGBA(image.Rect(0, 0, nCols*squareDim, nRows*squareDim))
+	singleImg := image.NewNRGBA(image.Rect(0, 0, padLeft+nCols*squareDim+padRight, ofsTop+nRows*squareDim+padBottom))
+	draw.Draw(singleImg, singleImg.Bounds(), &image.Uniform{paddingColor}, image.ZP, draw.Src)
+	headerImgRight := padLeft + headerImgCache.Bounds().Dx()
+	headerImgRightCannotExceed := singleImg.Bounds().Dx() - padRight
+	if headerImgRightCannotExceed < headerImgRight {
+		headerImgRight = headerImgRightCannotExceed
+	}
+	draw.Draw(singleImg, image.Rect(padLeft, padTop, headerImgRight, padTop+headerHeight), headerImgCache, image.ZP, draw.Over)
 	for r := 0; r < nRows; r++ {
 		for c := 0; c < nCols; c++ {
 			drawEmptySquare(tptm, tilesImg, singleImg, r, c, boardConfig[r][c])
@@ -424,7 +460,7 @@ func renderImage(history *macondopb.GameHistory, wf whichFile) ([]byte, error) {
 			str = str[:len(str)-size]
 		}
 		numPlayedTiles := utf8.RuneCountInString(str)
-		img := makeSubImage(image.Rect(c*squareDim, r*squareDim, (c+1+(numPlayedTiles-1)*dc)*squareDim, (r+1+(numPlayedTiles-1)*dr)*squareDim))
+		img := makeSubImage(image.Rect(c*squareDim+padLeft, r*squareDim+ofsTop, (c+1+(numPlayedTiles-1)*dc)*squareDim+padLeft, (r+1+(numPlayedTiles-1)*dr)*squareDim+ofsTop))
 		for _, ch := range str {
 			if ch != alphabet.ASCIIPlayedThrough {
 				callback(img, r, c, ch)
