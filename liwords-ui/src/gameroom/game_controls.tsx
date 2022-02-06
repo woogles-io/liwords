@@ -23,7 +23,7 @@ import { ChallengeRule } from './game_info';
 const downloadGameImg = (downloadFilename: string) => {
   const link = document.createElement('a');
   link.href = new URL(
-    `/gameimg/${downloadFilename}`,
+    `/gameimg/${encodeURIComponent(downloadFilename)}`,
     window.location.href
   ).href;
   link.setAttribute('download', downloadFilename);
