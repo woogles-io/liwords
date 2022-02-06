@@ -35,7 +35,12 @@ const downloadGameImg = (downloadFilename: string) => {
 };
 
 const ExamineGameControls = React.memo(
-  (props: { lexicon: string; darkMode: boolean }) => {
+  (props: {
+    lexicon: string;
+    darkMode: boolean;
+    onExportGCG: () => void;
+    gameDone: boolean;
+  }) => {
     const { useState } = useMountedState();
     const {
       gameContext: examinableGameContext,
@@ -62,61 +67,99 @@ const ExamineGameControls = React.memo(
       doneButtonRef.current!.focus();
     }, [doneButtonRef]);
     const numberOfTurns = gameContext.turns.length;
+    const gameHasNotStarted = gameContext.players.length === 0; // :shrug:
+    const isAtLastTurn =
+      props.gameDone &&
+      examinableGameContext.turns.length === gameContext.turns.length;
 
-    const [optionsMenuVisible, setOptionsMenuVisible] = useState(false);
-    const [optionsMenuId, setOptionsMenuId] = useState(0);
+    const [exportMenuVisible, setExportMenuVisible] = useState(false);
+    const [exportMenuId, setExportMenuId] = useState(0);
     useEffect(() => {
-      if (!optionsMenuVisible) {
+      if (!exportMenuVisible) {
         // when the menu is hidden, yeet it and replace with a new instance altogether.
         // this works around old items being selected when reopening the menu.
-        setOptionsMenuId((n) => (n + 1) | 0);
+        setExportMenuId((n) => (n + 1) | 0);
       }
-    }, [optionsMenuVisible]);
-    const optionsMenu = (
+    }, [exportMenuVisible]);
+    const exportMenu = (
       <Menu
-        key={optionsMenuId}
+        key={exportMenuId}
         onClick={(e) => {
-          setOptionsMenuVisible(false);
+          setExportMenuVisible(false);
           // When at the last move, examineStoreContext.examinedTurn === Infinity.
           // To also detect new moves, we use examinableGameContext.turns.length.
           switch (e.key) {
             case 'download-png':
+              downloadGameImg(`${gameContext.gameID}.png`);
+              break;
+            case 'download-png-turn':
               downloadGameImg(
                 `${gameContext.gameID}-${
                   examinableGameContext.turns.length + 1
                 }.png`
               );
               break;
-            case 'download-animated-gif':
+            case 'download-animated-gif-turn':
               downloadGameImg(
                 `${gameContext.gameID}-a-${
                   examinableGameContext.turns.length + 1
                 }.gif`
               );
               break;
+            case 'download-animated-gif':
+              downloadGameImg(`${gameContext.gameID}-a.gif`);
+              break;
           }
         }}
         onMouseLeave={(e) => {
-          setOptionsMenuVisible(false);
+          setExportMenuVisible(false);
         }}
         theme={props.darkMode ? 'dark' : 'light'}
       >
-        <Menu.Item key="download-png">Download Board PNG</Menu.Item>
-        <Menu.Item key="download-animated-gif">
-          Download Partial Animated GIF
-        </Menu.Item>
+        {isAtLastTurn && (
+          <Menu.Item key="download-png" disabled={gameHasNotStarted}>
+            PNG
+          </Menu.Item>
+        )}
+        {!isAtLastTurn && (
+          <Menu.Item key="download-png-turn" disabled={gameHasNotStarted}>
+            PNG
+          </Menu.Item>
+        )}
+        {!isAtLastTurn && (
+          <Menu.Item
+            key="download-animated-gif-turn"
+            disabled={gameHasNotStarted}
+          >
+            Animated GIF to this position
+          </Menu.Item>
+        )}
+        {props.gameDone && (
+          <Menu.Item key="download-animated-gif" disabled={gameHasNotStarted}>
+            Animated GIF of complete game
+          </Menu.Item>
+        )}
+        {props.gameDone && (
+          <Menu.Item
+            key="download-gcg"
+            disabled={gameHasNotStarted}
+            onClick={props.onExportGCG}
+          >
+            GCG
+          </Menu.Item>
+        )}
       </Menu>
     );
 
     return (
       <div className="game-controls">
         <Dropdown
-          overlay={optionsMenu}
+          overlay={exportMenu}
           trigger={['click']}
-          visible={optionsMenuVisible}
+          visible={exportMenuVisible}
         >
-          <Button onClick={() => setOptionsMenuVisible((v) => !v)}>
-            Options
+          <Button onClick={() => setExportMenuVisible((v) => !v)}>
+            Export
           </Button>
         </Dropdown>
         <Button
@@ -172,6 +215,10 @@ const OptionsGameMenu = (props: OptionsMenuProps) => (
     <Menu.Item key="resign">Resign</Menu.Item>
     {props.showAbort && <Menu.Item key="abort">Cancel game</Menu.Item>}
     {props.showNudge && <Menu.Item key="nudge">Nudge</Menu.Item>}
+    <Menu.Item key="download-png-turn">PNG</Menu.Item>
+    <Menu.Item key="download-animated-gif-turn">
+      Animated GIF to this position
+    </Menu.Item>
   </Menu>
 );
 
@@ -323,7 +370,16 @@ const GameControls = React.memo((props: Props) => {
   }, [optionsMenuVisible]);
 
   if (isExamining) {
-    return <ExamineGameControls lexicon={props.lexicon} darkMode={darkMode} />;
+    // this gameDone is slightly different from the one in table.tsx,
+    // but it's good enough, otherwise we need to prop-drill further.
+    return (
+      <ExamineGameControls
+        lexicon={props.lexicon}
+        darkMode={darkMode}
+        onExportGCG={props.onExportGCG}
+        gameDone={!!gameEndControls}
+      />
+    );
   }
 
   if (gameEndControls) {
@@ -389,6 +445,16 @@ const GameControls = React.memo((props: Props) => {
             break;
           case 'nudge':
             props.onNudge();
+            break;
+          case 'download-png-turn':
+            downloadGameImg(
+              `${gameContext.gameID}-${gameContext.turns.length + 1}.png`
+            );
+            break;
+          case 'download-animated-gif-turn':
+            downloadGameImg(
+              `${gameContext.gameID}-a-${gameContext.turns.length + 1}.gif`
+            );
             break;
         }
       }}
@@ -513,20 +579,22 @@ const EndGameControls = (props: EGCProps) => {
   const { gameContext } = useGameContextStoreContext();
   const gameHasNotStarted = gameContext.players.length === 0; // :shrug:
 
-  const [optionsMenuVisible, setOptionsMenuVisible] = useState(false);
-  const [optionsMenuId, setOptionsMenuId] = useState(0);
+  const [exportMenuVisible, setExportMenuVisible] = useState(false);
+  const [exportMenuId, setExportMenuId] = useState(0);
   useEffect(() => {
-    if (!optionsMenuVisible) {
+    if (!exportMenuVisible) {
       // when the menu is hidden, yeet it and replace with a new instance altogether.
       // this works around old items being selected when reopening the menu.
-      setOptionsMenuId((n) => (n + 1) | 0);
+      setExportMenuId((n) => (n + 1) | 0);
     }
-  }, [optionsMenuVisible]);
-  const optionsMenu = (
+  }, [exportMenuVisible]);
+  const exportMenu = (
     <Menu
-      key={optionsMenuId}
+      key={exportMenuId}
       onClick={(e) => {
-        setOptionsMenuVisible(false);
+        setExportMenuVisible(false);
+        // When at the last move, examineStoreContext.examinedTurn === Infinity.
+        // To also detect new moves, we use examinableGameContext.turns.length.
         switch (e.key) {
           case 'download-png':
             downloadGameImg(`${gameContext.gameID}.png`);
@@ -537,13 +605,22 @@ const EndGameControls = (props: EGCProps) => {
         }
       }}
       onMouseLeave={(e) => {
-        setOptionsMenuVisible(false);
+        setExportMenuVisible(false);
       }}
       theme={props.darkMode ? 'dark' : 'light'}
     >
-      <Menu.Item key="download-png">Download Final Board PNG</Menu.Item>
-      <Menu.Item key="download-animated-gif">
-        Download Full Animated GIF
+      <Menu.Item key="download-png" disabled={gameHasNotStarted}>
+        PNG
+      </Menu.Item>
+      <Menu.Item key="download-animated-gif" disabled={gameHasNotStarted}>
+        Animated GIF of complete game
+      </Menu.Item>
+      <Menu.Item
+        key="download-gcg"
+        disabled={gameHasNotStarted}
+        onClick={props.onExportGCG}
+      >
+        GCG
       </Menu.Item>
     </Menu>
   );
@@ -552,12 +629,12 @@ const EndGameControls = (props: EGCProps) => {
     <div className="game-controls">
       <div className="secondary-controls">
         <Dropdown
-          overlay={optionsMenu}
+          overlay={exportMenu}
           trigger={['click']}
-          visible={optionsMenuVisible}
+          visible={exportMenuVisible}
         >
-          <Button onClick={() => setOptionsMenuVisible((v) => !v)}>
-            Options
+          <Button onClick={() => setExportMenuVisible((v) => !v)}>
+            Export
           </Button>
         </Dropdown>
         <Button onClick={props.onExamine} disabled={gameHasNotStarted}>
@@ -565,9 +642,6 @@ const EndGameControls = (props: EGCProps) => {
         </Button>
       </div>
       <div className="secondary-controls">
-        <Button onClick={props.onExportGCG} disabled={gameHasNotStarted}>
-          Export GCG
-        </Button>
         <Button onClick={props.onExit}>Exit</Button>
       </div>
       {props.showRematch && !props.tournamentPairedMode && !rematchDisabled && (
