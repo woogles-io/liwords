@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/domino14/liwords/pkg/gameplay"
@@ -17,6 +18,8 @@ import (
 	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
 )
+
+var RenderMutex sync.Mutex
 
 type MementoService struct {
 	userStore user.Store
@@ -117,6 +120,8 @@ func (ms *MementoService) loadAndRender(name string) ([]byte, error) {
 	if wf.hasNextEventNum && (wf.nextEventNum <= 0 || wf.nextEventNum > len(hist.Events)+1) {
 		return nil, fmt.Errorf("game only has %d events", len(hist.Events))
 	}
+	RenderMutex.Lock()
+	defer RenderMutex.Unlock()
 
 	return renderImage(hist, wf)
 }
