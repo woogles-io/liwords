@@ -270,8 +270,14 @@ func loadTilesImg(tptm *TilePainterTilesMeta, headerPal map[color.Color]struct{}
 	}, nil
 }
 
-var headerImgCache image.Image
 var tilesImgCache map[string]*LoadedTilesImg
+
+// using *image.NRGBA directly instead of image.Image might be slightly faster?
+type prerenderedBackgroundsType struct {
+	standardBoard map[string]*image.NRGBA
+}
+
+var prerenderedBackgroundsCache prerenderedBackgroundsType
 
 var padTop, padRight, padBottom, padLeft = 10, 10, 10, 10
 var padHeader = 10
@@ -294,6 +300,20 @@ func init() {
 	paddingColor = headerImg.At(0, 0) // use top left pixel color
 	ofsTop = padTop + headerHeight + padHeader + 1
 
+	backgroundImgs := make(map[string]*image.NRGBA)
+
+	nRows := len(boardConfig)
+	if nRows < 1 {
+		panic(fmt.Errorf("invalid boardConfig: expecting at least 1 row"))
+	}
+
+	nCols := len(boardConfig[0])
+	for i, row := range boardConfig {
+		if i > 0 && len(row) != nCols {
+			panic(fmt.Errorf("invalid boardConfig: expecting row %d to have length %d", i+1, nCols))
+		}
+	}
+
 	ret := make(map[string]*LoadedTilesImg)
 	for k, tptm := range tilesMeta {
 		loadedTilesImg, err := loadTilesImg(tptm, headerPal)
@@ -301,10 +321,53 @@ func init() {
 			panic(fmt.Errorf("can't load tilesImg for %s: %v", k, err))
 		}
 		ret[k] = loadedTilesImg
+
+		backgroundImg := image.NewNRGBA(image.Rect(0, 0, padLeft+nCols*squareDim+1+padRight, ofsTop+nRows*squareDim+padBottom))
+		draw.Draw(backgroundImg, backgroundImg.Bounds(), &image.Uniform{paddingColor}, image.ZP, draw.Src)
+		headerImgRight := padLeft + headerImg.Bounds().Dx()
+		headerImgRightCannotExceed := backgroundImg.Bounds().Dx() - padRight
+		if headerImgRightCannotExceed < headerImgRight {
+			headerImgRight = headerImgRightCannotExceed
+		}
+		draw.Draw(backgroundImg, image.Rect(padLeft, padTop, headerImgRight, padTop+headerHeight), headerImg, image.ZP, draw.Over)
+		for r := 0; r < nRows; r++ {
+			for c := 0; c < nCols; c++ {
+				drawEmptySquare(tptm, loadedTilesImg.tilesImg, backgroundImg, r, c, boardConfig[r][c])
+			}
+		}
+
+		// Missing borders. Add 1 px at top and right.
+		srcPt := tptm.BoardSrc[' '] // has bottom and left borders
+		srcl := srcPt[1] * squareDim
+		srct := srcPt[0] * squareDim
+		srcb := srct + squareDim - 1
+		// Copy bottom border to top of board.
+		// This must be what aboveboard means.
+		y := ofsTop - 1
+		x := padLeft
+		for c := 0; c < nCols; c++ {
+			draw.Draw(backgroundImg, image.Rect(x, y, x+squareDim, y+1), loadedTilesImg.tilesImg,
+				image.Pt(srcl, srcb), draw.Src)
+			x += squareDim
+		}
+		// Copy bottom-left pixel of sample to top right of board.
+		draw.Draw(backgroundImg, image.Rect(x, y, x+1, y+1), loadedTilesImg.tilesImg,
+			image.Pt(srcl, srcb), draw.Src)
+		y += 1
+		// Copy left border to right.
+		for r := 0; r < nRows; r++ {
+			draw.Draw(backgroundImg, image.Rect(x, y, x+1, y+squareDim), loadedTilesImg.tilesImg,
+				image.Pt(srcl, srct), draw.Src)
+			y += squareDim
+		}
+
+		backgroundImgs[k] = backgroundImg
 	}
 
-	headerImgCache = headerImg
 	tilesImgCache = ret
+	prerenderedBackgroundsCache = prerenderedBackgroundsType{
+		standardBoard: backgroundImgs,
+	}
 }
 
 func drawEmptySquare(tptm *TilePainterTilesMeta, tilesImg image.Image, img *image.NRGBA, r, c int, b rune) {
@@ -379,63 +442,20 @@ func renderImage(history *macondopb.GameHistory, wf whichFile) ([]byte, error) {
 	if !ok {
 		return nil, fmt.Errorf("missing tilesImgCache: " + lang)
 	}
-
 	tilesImg := loadedTilesImg.tilesImg
 	palette := loadedTilesImg.palette
 
+	prerenderedBackgroundCache := prerenderedBackgroundsCache.standardBoard
+	backgroundImg, ok := prerenderedBackgroundCache[lang]
+	if !ok {
+		return nil, fmt.Errorf("missing prerenderedBackgroundCache: " + lang)
+	}
+	backgroundImgBounds := backgroundImg.Bounds()
+	singleImg := image.NewNRGBA(backgroundImgBounds)
+	draw.Draw(singleImg, backgroundImgBounds, backgroundImg, image.ZP, draw.Src)
+
 	nRows := len(boardConfig)
-	if nRows < 1 {
-		return nil, fmt.Errorf("invalid boardConfig: expecting at least 1 row")
-	}
-
 	nCols := len(boardConfig[0])
-	for i, row := range boardConfig {
-		if i > 0 && len(row) != nCols {
-			return nil, fmt.Errorf("invalid boardConfig: expecting row %d to have length %d", i+1, nCols)
-		}
-	}
-
-	singleImg := image.NewNRGBA(image.Rect(0, 0, padLeft+nCols*squareDim+1+padRight, ofsTop+nRows*squareDim+padBottom))
-	draw.Draw(singleImg, singleImg.Bounds(), &image.Uniform{paddingColor}, image.ZP, draw.Src)
-	headerImgRight := padLeft + headerImgCache.Bounds().Dx()
-	headerImgRightCannotExceed := singleImg.Bounds().Dx() - padRight
-	if headerImgRightCannotExceed < headerImgRight {
-		headerImgRight = headerImgRightCannotExceed
-	}
-	draw.Draw(singleImg, image.Rect(padLeft, padTop, headerImgRight, padTop+headerHeight), headerImgCache, image.ZP, draw.Over)
-	for r := 0; r < nRows; r++ {
-		for c := 0; c < nCols; c++ {
-			drawEmptySquare(tptm, tilesImg, singleImg, r, c, boardConfig[r][c])
-		}
-	}
-
-	// Missing borders. Add 1 px at top and right.
-	{
-		srcPt := tptm.BoardSrc[' '] // has bottom and left borders
-		srcl := srcPt[1] * squareDim
-		srct := srcPt[0] * squareDim
-		srcb := srct + squareDim - 1
-		// Copy bottom border to top of board.
-		// This must be what aboveboard means.
-		y := ofsTop - 1
-		x := padLeft
-		for c := 0; c < nCols; c++ {
-			draw.Draw(singleImg, image.Rect(x, y, x+squareDim, y+1), tilesImg,
-				image.Pt(srcl, srcb), draw.Src)
-			x += squareDim
-		}
-		// Copy bottom-left pixel of sample to top right of board.
-		draw.Draw(singleImg, image.Rect(x, y, x+1, y+1), tilesImg,
-			image.Pt(srcl, srcb), draw.Src)
-		y += 1
-		// Copy left border to right.
-		for r := 0; r < nRows; r++ {
-			draw.Draw(singleImg, image.Rect(x, y, x+1, y+squareDim), tilesImg,
-				image.Pt(srcl, srct), draw.Src)
-			y += squareDim
-		}
-	}
-
 	onBoard := func(r, c int) bool {
 		return r >= 0 && r < nRows && c >= 0 && c < nCols
 	}
