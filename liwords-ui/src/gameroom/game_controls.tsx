@@ -12,6 +12,7 @@ import {
 } from '@ant-design/icons';
 import { useMountedState } from '../utils/mounted';
 import {
+  useExaminableGameContextStoreContext,
   useExamineStoreContext,
   useGameContextStoreContext,
   useTentativeTileContext,
@@ -19,63 +20,183 @@ import {
 import { EphemeralTile } from '../utils/cwgame/common';
 import { ChallengeRule } from './game_info';
 
-const ExamineGameControls = React.memo((props: { lexicon: string }) => {
-  const {
-    examinedTurn,
-    handleExamineEnd,
-    handleExamineFirst,
-    handleExaminePrev,
-    handleExamineNext,
-    handleExamineLast,
-    doneButtonRef,
-  } = useExamineStoreContext();
-  const { gameContext } = useGameContextStoreContext();
-  const { setPlacedTiles, setPlacedTilesTempScore } = useTentativeTileContext();
-  useEffect(() => {
-    setPlacedTilesTempScore(undefined);
-    setPlacedTiles(new Set<EphemeralTile>());
-  }, [examinedTurn, setPlacedTiles, setPlacedTilesTempScore]);
-  useEffect(() => {
-    doneButtonRef.current!.focus();
-  }, [doneButtonRef]);
-  const numberOfTurns = gameContext.turns.length;
-  return (
-    <div className="game-controls">
-      <Button disabled>Options</Button>
-      <Button
-        shape="circle"
-        icon={<DoubleLeftOutlined />}
-        type="primary"
-        onClick={handleExamineFirst}
-        disabled={examinedTurn <= 0 || numberOfTurns <= 0}
-      />
-      <Button
-        shape="circle"
-        icon={<LeftOutlined />}
-        type="primary"
-        onClick={handleExaminePrev}
-        disabled={examinedTurn <= 0 || numberOfTurns <= 0}
-      />
-      <Button
-        shape="circle"
-        icon={<RightOutlined />}
-        type="primary"
-        onClick={handleExamineNext}
-        disabled={examinedTurn >= numberOfTurns}
-      />
-      <Button
-        shape="circle"
-        icon={<DoubleRightOutlined />}
-        type="primary"
-        onClick={handleExamineLast}
-        disabled={examinedTurn >= numberOfTurns}
-      />
-      <Button onClick={handleExamineEnd} ref={doneButtonRef}>
-        Done
-      </Button>
-    </div>
-  );
-});
+const downloadGameImg = (downloadFilename: string) => {
+  const link = document.createElement('a');
+  link.href = new URL(
+    `/gameimg/${encodeURIComponent(downloadFilename)}`,
+    window.location.href
+  ).href;
+  link.setAttribute('download', downloadFilename);
+  document.body.appendChild(link);
+  link.onclick = () => {
+    link.remove();
+  };
+  link.click();
+};
+
+const ExamineGameControls = React.memo(
+  (props: {
+    lexicon: string;
+    darkMode: boolean;
+    onExportGCG: () => void;
+    gameDone: boolean;
+  }) => {
+    const { useState } = useMountedState();
+    const {
+      gameContext: examinableGameContext,
+    } = useExaminableGameContextStoreContext();
+    const {
+      examinedTurn,
+      handleExamineEnd,
+      handleExamineFirst,
+      handleExaminePrev,
+      handleExamineNext,
+      handleExamineLast,
+      doneButtonRef,
+    } = useExamineStoreContext();
+    const { gameContext } = useGameContextStoreContext();
+    const {
+      setPlacedTiles,
+      setPlacedTilesTempScore,
+    } = useTentativeTileContext();
+    useEffect(() => {
+      setPlacedTilesTempScore(undefined);
+      setPlacedTiles(new Set<EphemeralTile>());
+    }, [examinedTurn, setPlacedTiles, setPlacedTilesTempScore]);
+    useEffect(() => {
+      doneButtonRef.current!.focus();
+    }, [doneButtonRef]);
+    const numberOfTurns = gameContext.turns.length;
+    const gameHasNotStarted = gameContext.players.length === 0; // :shrug:
+    const isAtLastTurn =
+      props.gameDone &&
+      examinableGameContext.turns.length === gameContext.turns.length;
+
+    const [exportMenuVisible, setExportMenuVisible] = useState(false);
+    const [exportMenuId, setExportMenuId] = useState(0);
+    useEffect(() => {
+      if (!exportMenuVisible) {
+        // when the menu is hidden, yeet it and replace with a new instance altogether.
+        // this works around old items being selected when reopening the menu.
+        setExportMenuId((n) => (n + 1) | 0);
+      }
+    }, [exportMenuVisible]);
+    const exportMenu = (
+      <Menu
+        key={exportMenuId}
+        onClick={(e) => {
+          setExportMenuVisible(false);
+          // When at the last move, examineStoreContext.examinedTurn === Infinity.
+          // To also detect new moves, we use examinableGameContext.turns.length.
+          switch (e.key) {
+            case 'download-png':
+              downloadGameImg(`${gameContext.gameID}.png`);
+              break;
+            case 'download-png-turn':
+              downloadGameImg(
+                `${gameContext.gameID}-${
+                  examinableGameContext.turns.length + 1
+                }.png`
+              );
+              break;
+            case 'download-animated-gif-turn':
+              downloadGameImg(
+                `${gameContext.gameID}-a-${
+                  examinableGameContext.turns.length + 1
+                }.gif`
+              );
+              break;
+            case 'download-animated-gif':
+              downloadGameImg(`${gameContext.gameID}-a.gif`);
+              break;
+          }
+        }}
+        onMouseLeave={(e) => {
+          setExportMenuVisible(false);
+        }}
+        theme={props.darkMode ? 'dark' : 'light'}
+      >
+        {isAtLastTurn && (
+          <Menu.Item key="download-png" disabled={gameHasNotStarted}>
+            PNG
+          </Menu.Item>
+        )}
+        {!isAtLastTurn && (
+          <Menu.Item key="download-png-turn" disabled={gameHasNotStarted}>
+            PNG
+          </Menu.Item>
+        )}
+        {!isAtLastTurn && (
+          <Menu.Item
+            key="download-animated-gif-turn"
+            disabled={gameHasNotStarted}
+          >
+            Animated GIF to this position
+          </Menu.Item>
+        )}
+        {props.gameDone && (
+          <Menu.Item key="download-animated-gif" disabled={gameHasNotStarted}>
+            Animated GIF of complete game
+          </Menu.Item>
+        )}
+        {props.gameDone && (
+          <Menu.Item
+            key="download-gcg"
+            disabled={gameHasNotStarted}
+            onClick={props.onExportGCG}
+          >
+            GCG
+          </Menu.Item>
+        )}
+      </Menu>
+    );
+
+    return (
+      <div className="game-controls">
+        <Dropdown
+          overlay={exportMenu}
+          trigger={['click']}
+          visible={exportMenuVisible}
+        >
+          <Button onClick={() => setExportMenuVisible((v) => !v)}>
+            Export
+          </Button>
+        </Dropdown>
+        <Button
+          shape="circle"
+          icon={<DoubleLeftOutlined />}
+          type="primary"
+          onClick={handleExamineFirst}
+          disabled={examinedTurn <= 0 || numberOfTurns <= 0}
+        />
+        <Button
+          shape="circle"
+          icon={<LeftOutlined />}
+          type="primary"
+          onClick={handleExaminePrev}
+          disabled={examinedTurn <= 0 || numberOfTurns <= 0}
+        />
+        <Button
+          shape="circle"
+          icon={<RightOutlined />}
+          type="primary"
+          onClick={handleExamineNext}
+          disabled={examinedTurn >= numberOfTurns}
+        />
+        <Button
+          shape="circle"
+          icon={<DoubleRightOutlined />}
+          type="primary"
+          onClick={handleExamineLast}
+          disabled={examinedTurn >= numberOfTurns}
+        />
+        <Button onClick={handleExamineEnd} ref={doneButtonRef}>
+          Done
+        </Button>
+      </div>
+    );
+  }
+);
 
 type OptionsMenuProps = {
   handleOptionsClick: (e: MenuInfo) => void;
@@ -94,6 +215,10 @@ const OptionsGameMenu = (props: OptionsMenuProps) => (
     <Menu.Item key="resign">Resign</Menu.Item>
     {props.showAbort && <Menu.Item key="abort">Cancel game</Menu.Item>}
     {props.showNudge && <Menu.Item key="nudge">Nudge</Menu.Item>}
+    <Menu.Item key="download-png-turn">PNG</Menu.Item>
+    <Menu.Item key="download-animated-gif-turn">
+      Animated GIF to this position
+    </Menu.Item>
   </Menu>
 );
 
@@ -245,7 +370,16 @@ const GameControls = React.memo((props: Props) => {
   }, [optionsMenuVisible]);
 
   if (isExamining) {
-    return <ExamineGameControls lexicon={props.lexicon} />;
+    // this gameDone is slightly different from the one in table.tsx,
+    // but it's good enough, otherwise we need to prop-drill further.
+    return (
+      <ExamineGameControls
+        lexicon={props.lexicon}
+        darkMode={darkMode}
+        onExportGCG={props.onExportGCG}
+        gameDone={!!gameEndControls}
+      />
+    );
   }
 
   if (gameEndControls) {
@@ -257,6 +391,7 @@ const GameControls = React.memo((props: Props) => {
         showRematch={props.showRematch && !props.observer}
         tournamentPairedMode={props.tournamentPairedMode}
         onExit={handleExitToLobby}
+        darkMode={darkMode}
       />
     );
   }
@@ -310,6 +445,16 @@ const GameControls = React.memo((props: Props) => {
             break;
           case 'nudge':
             props.onNudge();
+            break;
+          case 'download-png-turn':
+            downloadGameImg(
+              `${gameContext.gameID}-${gameContext.turns.length + 1}.png`
+            );
+            break;
+          case 'download-animated-gif-turn':
+            downloadGameImg(
+              `${gameContext.gameID}-a-${gameContext.turns.length + 1}.gif`
+            );
             break;
         }
       }}
@@ -425,6 +570,7 @@ type EGCProps = {
   onExportGCG: () => void;
   onExit: () => void;
   tournamentPairedMode?: boolean;
+  darkMode: boolean;
 };
 
 const EndGameControls = (props: EGCProps) => {
@@ -433,18 +579,69 @@ const EndGameControls = (props: EGCProps) => {
   const { gameContext } = useGameContextStoreContext();
   const gameHasNotStarted = gameContext.players.length === 0; // :shrug:
 
+  const [exportMenuVisible, setExportMenuVisible] = useState(false);
+  const [exportMenuId, setExportMenuId] = useState(0);
+  useEffect(() => {
+    if (!exportMenuVisible) {
+      // when the menu is hidden, yeet it and replace with a new instance altogether.
+      // this works around old items being selected when reopening the menu.
+      setExportMenuId((n) => (n + 1) | 0);
+    }
+  }, [exportMenuVisible]);
+  const exportMenu = (
+    <Menu
+      key={exportMenuId}
+      onClick={(e) => {
+        setExportMenuVisible(false);
+        // When at the last move, examineStoreContext.examinedTurn === Infinity.
+        // To also detect new moves, we use examinableGameContext.turns.length.
+        switch (e.key) {
+          case 'download-png':
+            downloadGameImg(`${gameContext.gameID}.png`);
+            break;
+          case 'download-animated-gif':
+            downloadGameImg(`${gameContext.gameID}-a.gif`);
+            break;
+        }
+      }}
+      onMouseLeave={(e) => {
+        setExportMenuVisible(false);
+      }}
+      theme={props.darkMode ? 'dark' : 'light'}
+    >
+      <Menu.Item key="download-png" disabled={gameHasNotStarted}>
+        PNG
+      </Menu.Item>
+      <Menu.Item key="download-animated-gif" disabled={gameHasNotStarted}>
+        Animated GIF of complete game
+      </Menu.Item>
+      <Menu.Item
+        key="download-gcg"
+        disabled={gameHasNotStarted}
+        onClick={props.onExportGCG}
+      >
+        GCG
+      </Menu.Item>
+    </Menu>
+  );
+
   return (
     <div className="game-controls">
       <div className="secondary-controls">
-        <Button disabled>Options</Button>
+        <Dropdown
+          overlay={exportMenu}
+          trigger={['click']}
+          visible={exportMenuVisible}
+        >
+          <Button onClick={() => setExportMenuVisible((v) => !v)}>
+            Export
+          </Button>
+        </Dropdown>
         <Button onClick={props.onExamine} disabled={gameHasNotStarted}>
           Examine
         </Button>
       </div>
       <div className="secondary-controls">
-        <Button onClick={props.onExportGCG} disabled={gameHasNotStarted}>
-          Export GCG
-        </Button>
         <Button onClick={props.onExit}>Exit</Button>
       </div>
       {props.showRematch && !props.tournamentPairedMode && !rematchDisabled && (
