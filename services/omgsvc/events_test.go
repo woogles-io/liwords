@@ -38,6 +38,7 @@ func (m *mockBus) Request(subject string, data []byte, opts ...ipc.Option) ([]by
 					{UserId: ig.UserIds[0], Nickname: "cesar"},
 					{UserId: ig.UserIds[1], Nickname: "josh"},
 				},
+				TournamentId: "galactic-wespac",
 			}}
 		return proto.Marshal(resp)
 	}
@@ -88,15 +89,18 @@ func TestGameInstantiation(t *testing.T) {
 			RequestId:          "abcdef",
 		},
 		AssignedFirst: 1,
+		TournamentData: &pb.TournamentDataForGame{
+			Tid: "galactic-wespac",
+		},
 	}
 	bts, err := proto.Marshal(i)
 	is.NoErr(err)
 	err = MsgHandler(
 		context.Background(), bus,
-		"44.foo.some-user-id.some-conn-id", bts,
+		"omgsvc.pb.44.auth.some-user-id.some-conn-id", bts,
 		"replychan")
 	is.NoErr(err)
-	is.Equal(len(bus.published), 4)
+	is.Equal(len(bus.published), 5)
 
 	resp := &pb.InstantiateGameResponse{
 		Id: "uniq-game-id", GameInfo: &pb.GameInfoResponse{
@@ -104,13 +108,25 @@ func TestGameInstantiation(t *testing.T) {
 				{UserId: "some-user-id", Nickname: "cesar"},
 				{UserId: "user-id-2", Nickname: "josh"},
 			},
+			TournamentId: "galactic-wespac",
 		}}
 	bts, err = proto.Marshal(resp)
 	is.NoErr(err)
 	is.Equal(bus.published["replychan"][0], bts)
 
-	// userMsg :=
+	userMsg := &pb.NewGameEvent{
+		GameId:       "uniq-game-id",
+		AccepterCid:  "some-conn-id",
+		RequesterCid: "conn-id-2",
+	}
+	bts, err = proto.Marshal(userMsg)
+	is.NoErr(err)
+	is.Equal(bus.published["user.pb.8.some-user-id"], [][]byte{bts})
+	is.Equal(bus.published["user.pb.8.user-id-2"], [][]byte{bts})
 
-	// 	is.Equal(bus.published)
+	bts, err = proto.Marshal(resp.GameInfo)
+	is.NoErr(err)
+	is.Equal(bus.published["lobby.pb.12.newLiveGame"], [][]byte{bts})
+	is.Equal(bus.published["tournament.pb.12.galactic-wespac.newLiveGame"], [][]byte{bts})
 
 }

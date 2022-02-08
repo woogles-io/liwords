@@ -13,25 +13,28 @@ import (
 )
 
 // MsgHandler handles all game svc related messages
+// omgsvc should subscribe to omgsvc.>
 func MsgHandler(ctx context.Context, b ipc.Publisher, topic string, data []byte, reply string) error {
 	// MessageType_GAME_META_EVENT
 	// MessageType_CLIENT_GAMEPLAY_EVENT
 	// MessageType_TIMED_OUT
 	// MessageType_READY_FOR_GAME
 
+	// example topic: omgsvc.pb.3.auth.userid.wsconnid
+
 	log.Debug().Interface("topic", topic).Msg("msghandler")
 	subtopics := strings.Split(topic, ".")
 
-	msgType := subtopics[0]
+	msgType := subtopics[2]
 	//auth := ""
 	userID := ""
-	if len(subtopics) > 2 {
+	if len(subtopics) > 4 {
 		//	auth = subtopics[1]
-		userID = subtopics[2]
+		userID = subtopics[4]
 	}
 	wsConnID := ""
-	if len(subtopics) > 3 {
-		wsConnID = subtopics[3]
+	if len(subtopics) > 5 {
+		wsConnID = subtopics[5]
 	}
 	pnum, err := strconv.Atoi(msgType)
 	if err != nil {
@@ -92,32 +95,26 @@ func handleGameInstantiation(ctx context.Context, b ipc.Publisher, data []byte,
 	}, pb.MessageType_NEW_GAME_EVENT)
 
 	// We have a game ID. Send this to all participants.
-	ser, err := ngevt.Serialize()
-	if err != nil {
-		return err
-	}
 	for _, u := range evt.UserIds {
-		b.PublishToUser(u, ser, "")
+		ngevt.AddAudience(ipc.AudUser, u)
 	}
-	// Also broadcast the game creation to the lobby/whoever needs to know
+	err = ngevt.Publish(b)
+	if err != nil {
+		return err
+	}
 
+	// Also broadcast the game creation to the lobby/whoever needs to know
 	ongoingGameEvt := ipc.WrapEvent(resmsg.GameInfo, pb.MessageType_ONGOING_GAME_EVENT)
-	ogData, err := ongoingGameEvt.Serialize()
-	if err != nil {
-		return err
-	}
-	err = b.PublishToTopic("lobby.newLiveGame", ogData)
-	if err != nil {
-		return err
-	}
+	ongoingGameEvt.AddAudience(ipc.AudLobby, "newLiveGame")
 
 	// Also publish to tournament channel if this is a tournament game.
 	if resmsg.GameInfo.TournamentId != "" {
-		channelName := "tournament." + resmsg.GameInfo.TournamentId + ".newLiveGame"
-		err = b.PublishToTopic(channelName, ogData)
-		if err != nil {
-			return err
-		}
+		ongoingGameEvt.AddAudience(ipc.AudTournament, resmsg.GameInfo.TournamentId+".newLiveGame")
 	}
+	err = ongoingGameEvt.Publish(b)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

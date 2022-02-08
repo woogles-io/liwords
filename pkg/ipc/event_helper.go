@@ -6,7 +6,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
-	"github.com/nats-io/nats.go"
+	"github.com/rs/zerolog/log"
 )
 
 type EventAudienceType string
@@ -90,14 +90,20 @@ func (e *EventWrapper) Serialize() ([]byte, error) {
 	return proto.Marshal(e.Event)
 }
 
-func (e *EventWrapper) PublishToNATS(natsconn *nats.Conn) error {
+func (e *EventWrapper) Publish(p Publisher) error {
 	data, err := e.Serialize()
 	if err != nil {
 		return err
 	}
 	for _, r := range e.audience {
 		// Generate topic name from recipient.
-		natsconn.Publish(r.RecipientTopic(e.Type), data)
+		topic := r.RecipientTopic(e.Type)
+		log.Info().Str("topic", topic).Msg("ewrapper-publish-to-topic")
+		err = p.PublishToTopic(topic, data)
+		if err != nil {
+			log.Err(err).Str("topic", r.RecipientTopic(e.Type)).Msg("publish-error")
+			continue
+		}
 	}
 	return nil
 }
