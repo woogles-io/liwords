@@ -90,11 +90,13 @@ const Pool = React.memo((props: Props) => {
   }, [readHidePool]);
 
   return (
-    <React.Fragment>{!hidePool && <ActualPool {...props} />}</React.Fragment>
+    <React.Fragment>
+      <ActualPool {...props} hidePool={hidePool} />
+    </React.Fragment>
   );
 });
 
-const ActualPool = React.memo((props: Props) => {
+const ActualPool = React.memo((props: Props & { hidePool: boolean }) => {
   const letterOrder =
     PoolFormats.find((f) => f.poolFormatType === props.poolFormat)?.format(
       props.alphabet
@@ -118,7 +120,7 @@ const ActualPool = React.memo((props: Props) => {
       ))}
     </Menu>
   );
-  const dropDown = (
+  const dropDown = !props.hidePool && (
     <Dropdown
       overlay={poolMenu}
       trigger={['click']}
@@ -141,28 +143,33 @@ const ActualPool = React.memo((props: Props) => {
 
   console.log('vowels', vowels(props.alphabet));
 
-  const renderContents = (title?: string) => (
-    <div className="pool">
-      {title ? <p className="label">{title}</p> : null}
-      <div className="tiles-remaining">{letterSections}</div>
-      <div className="vc-distribution">
-        <div>
-          {singularCount(
-            getPoolCount(pool, props.alphabet, vowels),
-            'vowel',
-            'vowels'
-          )}
-        </div>
-        <div>
-          {singularCount(
-            getPoolCount(pool, props.alphabet, consonants),
-            'consonant',
-            'consonants'
-          )}
-        </div>
+  const renderContents = (title?: string) =>
+    (!props.hidePool || title) && (
+      <div className="pool">
+        {title ? <p className="label">{title}</p> : null}
+        {!props.hidePool && (
+          <React.Fragment>
+            <div className="tiles-remaining">{letterSections}</div>
+            <div className="vc-distribution">
+              <div>
+                {singularCount(
+                  getPoolCount(pool, props.alphabet, vowels),
+                  'vowel',
+                  'vowels'
+                )}
+              </div>
+              <div>
+                {singularCount(
+                  getPoolCount(pool, props.alphabet, consonants),
+                  'consonant',
+                  'consonants'
+                )}
+              </div>
+            </div>
+          </React.Fragment>
+        )}
       </div>
-    </div>
-  );
+    );
 
   const unseen = getPoolCount(pool, props.alphabet, (a: Alphabet) =>
     a.letters.map((l) => l.rune).join('')
