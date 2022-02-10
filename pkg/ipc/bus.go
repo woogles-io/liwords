@@ -7,7 +7,6 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"github.com/domino14/liwords/pkg/config"
 )
@@ -30,7 +29,6 @@ const DrainTimeout = 10 * time.Second
 // A Publisher sends messages to topics.
 type Publisher interface {
 	Request(subject string, data []byte, opts ...Option) ([]byte, error)
-	RequestProto(subject string, msg, resp protoreflect.ProtoMessage, opts ...Option) error
 	PublishToTopic(topic string, data []byte) error
 	PublishToUser(user string, data []byte, optionalChannel string) error
 }

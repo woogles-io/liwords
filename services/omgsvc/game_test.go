@@ -2,15 +2,19 @@ package omgsvc
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 
-	"github.com/domino14/liwords/pkg/ipc"
-	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/reflect/protoreflect"
+
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+
+	"github.com/domino14/liwords/pkg/ipc"
+	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
 var NatsUrl = os.Getenv("NATS_URL")
@@ -41,12 +45,28 @@ func (m *mockBus) Request(subject string, data []byte, opts ...ipc.Option) ([]by
 				TournamentId: "galactic-wespac",
 			}}
 		return proto.Marshal(resp)
+	} else if subject == "storesvc.omgwords.readygame" {
+		resp := &pb.ReadyForGameResponse{}
+		resp.ReadyToStart = true
+		log.Info().Msg("marshalling rts")
+		return proto.Marshal(resp)
+	} else if subject == "storesvc.omgwords.startgame" {
+		resp := &pb.ResetTimersAndStartResponse{}
+		resp.GameHistoryRefresher = &pb.GameHistoryRefresher{
+			History: &macondopb.GameHistory{
+				Uid: "some-game-id",
+				Players: []*macondopb.PlayerInfo{
+					{UserId: "uid-0", Nickname: "cesar"},
+					{UserId: "uid-1", Nickname: "josh"},
+				},
+				LastKnownRacks: []string{"DDIIKS?", "AEEINST"},
+			},
+			TimePlayer1: 10000,
+			TimePlayer2: 12000,
+		}
+		return proto.Marshal(resp)
 	}
-	return nil, nil
-}
-
-func (m *mockBus) RequestProto(subject string, msg, resp protoreflect.ProtoMessage, opts ...ipc.Option) error {
-	return nil
+	return nil, errors.New(subject + " not handled")
 }
 
 func (m *mockBus) PublishToTopic(topic string, data []byte) error {
@@ -128,5 +148,54 @@ func TestGameInstantiation(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(bus.published["lobby.pb.12.newLiveGame"], [][]byte{bts})
 	is.Equal(bus.published["tournament.pb.12.galactic-wespac.newLiveGame"], [][]byte{bts})
+
+}
+
+func TestReadyForGame(t *testing.T) {
+	is := is.New(t)
+
+	bus := &mockBus{}
+
+	ready := &pb.ReadyForGame{}
+	ready.GameId = "some-game-id"
+	ready.UserId = "uid-0"
+	ready.ConnId = "some-conn-id"
+	bts, err := proto.Marshal(ready)
+	is.NoErr(err)
+
+	err = MsgHandler(
+		context.Background(), bus,
+		"omgsvc.pb.25.auth.uid-0.some-conn-id", bts,
+		"replychan")
+	is.NoErr(err)
+	is.Equal(len(bus.published), 3)
+
+	ghr := &pb.GameHistoryRefresher{
+		History: &macondopb.GameHistory{
+			Uid: "some-game-id",
+			Players: []*macondopb.PlayerInfo{
+				{UserId: "uid-0", Nickname: "cesar"},
+				{UserId: "uid-1", Nickname: "josh"},
+			},
+			LastKnownRacks: []string{"DDIIKS?", "AEEINST"},
+		},
+		TimePlayer1: 10000,
+		TimePlayer2: 12000,
+	}
+	bts, err = proto.Marshal(ghr)
+	is.NoErr(err)
+	is.Equal(bus.published["gametv.pb.6.some-game-id"], [][]byte{bts})
+
+	ghrNoRack0 := proto.Clone(ghr).(*pb.GameHistoryRefresher)
+	ghrNoRack0.History.LastKnownRacks[0] = ""
+	bts0, err := proto.Marshal(ghrNoRack0)
+	is.NoErr(err)
+	ghrNoRack1 := proto.Clone(ghr).(*pb.GameHistoryRefresher)
+	ghrNoRack1.History.LastKnownRacks[1] = ""
+	bts1, err := proto.Marshal(ghrNoRack1)
+	is.NoErr(err)
+
+	is.Equal(bus.published["user.pb.6.uid-0.game.some-game-id"], [][]byte{bts1})
+	is.Equal(bus.published["user.pb.6.uid-1.game.some-game-id"], [][]byte{bts0})
 
 }
