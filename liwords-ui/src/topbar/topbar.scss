@@ -98,8 +98,7 @@ body {
     transform: translateX(-2px) rotate(-10deg);
     position: relative;
     font-family: $font-default;
-    font-style: normal;
-    font-weight: bold;
+    font-weight: normal;
     font-size: 28px;
     line-height: 35px;
     @include colorModed() {
@@ -119,9 +118,9 @@ body {
     align-self: center;
     margin: 0 12px;
     font-size: 28px;
-    font-weight: bold;
+    font-weight: 900;
     line-height: 35px;
-    letter-spacing: 0;
+    letter-spacing: -0.03em;
   }
 
   .tournament {
