@@ -22,6 +22,7 @@ import (
 	"github.com/domino14/liwords/pkg/memento"
 	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/notify"
+	"github.com/domino14/liwords/pkg/puzzles"
 	cfgstore "github.com/domino14/liwords/pkg/stores/config"
 	"github.com/domino14/liwords/pkg/stores/game"
 	modstore "github.com/domino14/liwords/pkg/stores/mod"
@@ -49,6 +50,7 @@ import (
 	configservice "github.com/domino14/liwords/rpc/api/proto/config_service"
 	gameservice "github.com/domino14/liwords/rpc/api/proto/game_service"
 	modservice "github.com/domino14/liwords/rpc/api/proto/mod_service"
+	puzzleservice "github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	tournamentservice "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 	userservice "github.com/domino14/liwords/rpc/api/proto/user_service"
 	wordservice "github.com/domino14/liwords/rpc/api/proto/word_service"
@@ -189,6 +191,7 @@ func main() {
 	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore)
 	tournamentService := tournament.NewTournamentService(stores.TournamentStore, stores.UserStore)
 	modService := mod.NewModService(stores.UserStore, stores.ChatStore)
+	puzzleService := puzzles.NewPuzzleService(stores.PuzzleStore, stores.UserStore)
 
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
@@ -223,6 +226,9 @@ func main() {
 
 	router.Handle(modservice.ModServicePathPrefix,
 		middlewares.Then(modservice.NewModServiceServer(modService, NewLoggingServerHooks())))
+
+	router.Handle(puzzleservice.PuzzleServicePathPrefix,
+		middlewares.Then(puzzleservice.NewPuzzleServiceServer(puzzleService, NewLoggingServerHooks())))
 
 	router.Handle(
 		"/debug/pprof/goroutine", pprof.Handler("goroutine"),

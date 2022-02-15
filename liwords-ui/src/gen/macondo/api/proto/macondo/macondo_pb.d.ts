@@ -410,6 +410,42 @@ export namespace BotResponse {
   }
 }
 
+export class PuzzleCreationResponse extends jspb.Message {
+  getGameId(): string;
+  setGameId(value: string): void;
+
+  getTurnNumber(): number;
+  setTurnNumber(value: number): void;
+
+  hasAnswer(): boolean;
+  clearAnswer(): void;
+  getAnswer(): GameEvent | undefined;
+  setAnswer(value?: GameEvent): void;
+
+  clearTagsList(): void;
+  getTagsList(): Array<PuzzleTagMap[keyof PuzzleTagMap]>;
+  setTagsList(value: Array<PuzzleTagMap[keyof PuzzleTagMap]>): void;
+  addTags(value: PuzzleTagMap[keyof PuzzleTagMap], index?: number): PuzzleTagMap[keyof PuzzleTagMap];
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): PuzzleCreationResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: PuzzleCreationResponse): PuzzleCreationResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: PuzzleCreationResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): PuzzleCreationResponse;
+  static deserializeBinaryFromReader(message: PuzzleCreationResponse, reader: jspb.BinaryReader): PuzzleCreationResponse;
+}
+
+export namespace PuzzleCreationResponse {
+  export type AsObject = {
+    gameId: string,
+    turnNumber: number,
+    answer?: GameEvent.AsObject,
+    tagsList: Array<PuzzleTagMap[keyof PuzzleTagMap]>,
+  }
+}
+
 export interface PlayStateMap {
   PLAYING: 0;
   WAITING_FOR_FINAL_PASS: 1;
@@ -428,4 +464,11 @@ export interface ChallengeRuleMap {
 }
 
 export const ChallengeRule: ChallengeRuleMap;
+
+export interface PuzzleTagMap {
+  EQUITY: 0;
+  ONLY_BINGO: 1;
+}
+
+export const PuzzleTag: PuzzleTagMap;
 

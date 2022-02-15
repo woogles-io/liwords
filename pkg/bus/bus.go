@@ -22,6 +22,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/mod"
+	"github.com/domino14/liwords/pkg/puzzles"
 	"github.com/domino14/liwords/pkg/sessions"
 	"github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/tournament"
@@ -56,6 +57,7 @@ type Stores struct {
 	TournamentStore tournament.TournamentStore
 	ConfigStore     config.ConfigStore
 	SessionStore    sessions.SessionStore
+	PuzzleStore     puzzles.PuzzleStore
 }
 
 // Bus is the struct; it should contain all the stores to verify messages, etc.
@@ -71,6 +73,7 @@ type Bus struct {
 	tournamentStore tournament.TournamentStore
 	configStore     config.ConfigStore
 	chatStore       user.ChatStore
+	puzzleStore     puzzles.PuzzleStore
 
 	redisPool *redis.Pool
 
@@ -101,6 +104,7 @@ func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, err
 		notorietyStore:      stores.NotorietyStore,
 		configStore:         stores.ConfigStore,
 		chatStore:           stores.ChatStore,
+		puzzleStore:         stores.PuzzleStore,
 		subscriptions:       []*nats.Subscription{},
 		subchans:            map[string]chan *nats.Msg{},
 		config:              cfg,

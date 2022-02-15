@@ -192,6 +192,8 @@ message GameInfoResponse {
   int32 tournament_round = 21;
   // a game index within a round.
   int32 tournament_game_index = 22;
+  // game type, for example native, annotated, bot vs bot, etc.
+  int32 type = 23;
 }
 
 message GameInfoResponses { repeated GameInfoResponse game_info = 1; }

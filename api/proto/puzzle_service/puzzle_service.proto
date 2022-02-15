@@ -1,0 +1,42 @@
+syntax = "proto3";
+package game_service;
+option go_package = "github.com/domino14/liwords/rpc/api/proto/puzzle_service";
+
+import "macondo/api/proto/macondo/macondo.proto";
+
+message RandomUnansweredPuzzleIdRequest {}
+
+message RandomUnansweredPuzzleIdResponse { string puzzle_id = 1; }
+
+message PuzzleRequest { string puzzle_id = 1; }
+
+message PuzzleResponse {
+    string game_id = 1;
+    macondo.GameHistory history = 2;
+    string before_text = 3;
+}
+
+message AnswerRequest {
+  string puzzle_id = 1;
+  macondo.GameEvent answer = 2;
+}
+
+message AnswerResponse {
+    bool correct = 1;
+    macondo.GameEvent answer = 2;
+    string after_text = 3;
+}
+
+message PuzzleVoteRequest {
+  string puzzle_id = 1;
+  int32 vote = 2;
+}
+
+message PuzzleVoteResponse {}
+
+service PuzzleService {
+  rpc GetRandomUnansweredPuzzleIdForUser(RandomUnansweredPuzzleIdRequest) returns(RandomUnansweredPuzzleIdResponse);
+  rpc GetPuzzle(PuzzleRequest) returns(PuzzleResponse);
+  rpc GetAnswer(AnswerRequest) returns(AnswerResponse);
+  rpc SetPuzzleVote(PuzzleVoteRequest) returns(PuzzleVoteResponse);
+}

@@ -370,6 +370,9 @@ export class GameInfoResponse extends jspb.Message {
   getTournamentGameIndex(): number;
   setTournamentGameIndex(value: number): void;
 
+  getType(): number;
+  setType(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameInfoResponse.AsObject;
   static toObject(includeInstance: boolean, msg: GameInfoResponse): GameInfoResponse.AsObject;
@@ -395,6 +398,7 @@ export namespace GameInfoResponse {
     tournamentDivision: string,
     tournamentRound: number,
     tournamentGameIndex: number,
+    type: number,
   }
 }
 

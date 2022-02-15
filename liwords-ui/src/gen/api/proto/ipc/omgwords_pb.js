@@ -2589,7 +2589,8 @@ proto.ipc.GameInfoResponse.toObject = function(includeInstance, msg) {
     gameRequest: (f = msg.getGameRequest()) && proto.ipc.GameRequest.toObject(includeInstance, f),
     tournamentDivision: jspb.Message.getFieldWithDefault(msg, 20, ""),
     tournamentRound: jspb.Message.getFieldWithDefault(msg, 21, 0),
-    tournamentGameIndex: jspb.Message.getFieldWithDefault(msg, 22, 0)
+    tournamentGameIndex: jspb.Message.getFieldWithDefault(msg, 22, 0),
+    type: jspb.Message.getFieldWithDefault(msg, 23, 0)
   };
 
   if (includeInstance) {
@@ -2683,6 +2684,10 @@ proto.ipc.GameInfoResponse.deserializeBinaryFromReader = function(msg, reader) {
     case 22:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setTournamentGameIndex(value);
+      break;
+    case 23:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setType(value);
       break;
     default:
       reader.skipField();
@@ -2805,6 +2810,13 @@ proto.ipc.GameInfoResponse.serializeBinaryToWriter = function(message, writer) {
   if (f !== 0) {
     writer.writeInt32(
       22,
+      f
+    );
+  }
+  f = message.getType();
+  if (f !== 0) {
+    writer.writeInt32(
+      23,
       f
     );
   }
@@ -3138,6 +3150,24 @@ proto.ipc.GameInfoResponse.prototype.getTournamentGameIndex = function() {
  */
 proto.ipc.GameInfoResponse.prototype.setTournamentGameIndex = function(value) {
   return jspb.Message.setProto3IntField(this, 22, value);
+};
+
+
+/**
+ * optional int32 type = 23;
+ * @return {number}
+ */
+proto.ipc.GameInfoResponse.prototype.getType = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 23, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.ipc.GameInfoResponse} returns this
+ */
+proto.ipc.GameInfoResponse.prototype.setType = function(value) {
+  return jspb.Message.setProto3IntField(this, 23, value);
 };
 
 

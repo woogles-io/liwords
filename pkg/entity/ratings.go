@@ -1,6 +1,9 @@
 package entity
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
 	"strings"
 
 	"github.com/domino14/macondo/game"
@@ -23,7 +26,36 @@ type Ratings struct {
 type VariantKey string
 
 func ToVariantKey(lexiconName string, variantName game.Variant, timeControl TimeControl) VariantKey {
-	// Transform Lexicon name
+	return VariantKey(transformLexiconName(lexiconName) + "." + string(variantName) + "." + string(timeControl))
+}
+
+func (r *Ratings) Value() (driver.Value, error) {
+	return json.Marshal(r)
+}
+
+func (r *Ratings) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed for ratings")
+	}
+
+	return json.Unmarshal(b, &r)
+}
+
+func (r *SingleRating) Value() (driver.Value, error) {
+	return json.Marshal(r)
+}
+
+func (r *SingleRating) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed for single rating")
+	}
+
+	return json.Unmarshal(b, &r)
+}
+
+func transformLexiconName(lexiconName string) string {
 	var newlex string
 	switch {
 	case strings.HasPrefix(lexiconName, "NWL"):
@@ -39,5 +71,5 @@ func ToVariantKey(lexiconName string, variantName game.Variant, timeControl Time
 	default:
 		newlex = lexiconName
 	}
-	return VariantKey(newlex + "." + string(variantName) + "." + string(timeControl))
+	return newlex
 }

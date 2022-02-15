@@ -265,6 +265,7 @@ func dbProfileToProfile(p *profile) (*entity.Profile, error) {
 		log.Err(err).Msg("profile had bad rating json, zeroing")
 		rdata = entity.Ratings{Data: map[entity.VariantKey]entity.SingleRating{}}
 	}
+
 	var sdata entity.ProfileStats
 	err = json.Unmarshal(p.Stats.RawMessage, &sdata)
 	if err != nil {

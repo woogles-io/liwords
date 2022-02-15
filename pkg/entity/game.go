@@ -77,6 +77,14 @@ type MetaEventData struct {
 	Events []*pb.GameMetaEvent `json:"events"`
 }
 
+type GameCreationType int
+
+const (
+	Native GameCreationType = iota
+	Annotated
+	BotVsBot
+)
+
 // A Game should be saved to the database or store. It wraps a macondo.Game,
 // and we should save most of the included fields here, especially the
 // macondo.game.History (which can be exported as GCG, etc in the future)
@@ -84,6 +92,8 @@ type Game struct {
 	sync.RWMutex
 	game.Game
 
+	DBID        uint
+	Type        GameCreationType
 	PlayerDBIDs [2]uint // needed to associate the games to the player IDs in the db.
 
 	GameReq *pb.GameRequest
@@ -125,12 +135,17 @@ func (g GameTimer) Now() int64 {
 // The time of start must be logged later, when both players are in the table
 // and ready.
 func NewGame(mcg *game.Game, req *pb.GameRequest) *Game {
-	ms := int(req.InitialTimeSeconds * 1000)
+	ms := 0
+	mom := 0
+	if req != nil {
+		ms = int(req.InitialTimeSeconds * 1000)
+		mom = int(req.MaxOvertimeMinutes)
+	}
 	return &Game{
 		Game: *mcg,
 		Timers: Timers{
 			TimeRemaining: []int{ms, ms},
-			MaxOvertime:   int(req.MaxOvertimeMinutes),
+			MaxOvertime:   mom,
 		},
 		GameReq:   req,
 		nower:     &GameTimer{},
