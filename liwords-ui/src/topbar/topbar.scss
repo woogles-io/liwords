@@ -17,25 +17,30 @@ body {
   }
   *, button.link {
     @include type-default;
-    letter-spacing: 0.25em;
-    font-size: 12px;
+    letter-spacing: 0.16em;
+    font-size: 13px;
     font-weight: bold;
     text-transform: uppercase;
     @include colorModed() {
-      color: m($gray-extreme);
+      color: m($primary-dark);
       background-color: m($header);
     }
     .anticon {
       display: inline;
       margin-left: 6px;
-      @include colorModed() {
-        color: m($gray-extreme);
-      }
     }
 
   }
   .user-info {
     white-space: nowrap;
+
+    button.link {
+      font-weight: 900;
+      font-size: 14px;
+      @include colorModed() {
+        color: m($primary-dark);
+      }
+    }
   }
 }
 
@@ -46,12 +51,13 @@ body {
   padding-bottom: 0;
   justify-content: center;
   max-width: none;
+  font-size: 13px;
   div {
     display: none;
     padding: 12px;
-    a {
+    a, p {
       @include colorModed() {
-        color: m($gray-extreme);
+        color: m($primary-dark);
       }
       white-space: nowrap;
       &:focus,
@@ -95,10 +101,10 @@ body {
   .top-header-site-icon-m {
     left: 6px;
     top: 0px;
-    transform: translateX(-2px) rotate(-10deg);
+    transform: translateX(-3px) rotate(-10deg);
     position: relative;
     font-family: $font-default;
-    font-weight: normal;
+    font-weight: 600;
     font-size: 28px;
     line-height: 35px;
     @include colorModed() {
@@ -111,7 +117,7 @@ body {
   .top-header-left-frame-site-name {
     /* Inside Auto Layout */
     @include colorModed() {
-      color: m($primary-dark);
+      color: m($logo);
     }
     flex: none;
     text-transform: none;
