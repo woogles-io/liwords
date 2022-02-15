@@ -271,7 +271,7 @@ ul {
 
 .ant-card-head-title {
   font-family: $font-default;
-  font-weight: 700;
+  font-weight: 800;
   @include colorModed() {
     color: m($gray-extreme);
   }
@@ -772,7 +772,7 @@ ul {
         color: m($background);
       }
       .ant-notification-notice-message {
-        font-weight: 1000;
+        font-weight: 700;
         max-width: 80%;
         @include colorModed() {
           color: m($background);
@@ -783,7 +783,7 @@ ul {
         padding-right: 12px;
       }
       span.message-action {
-        font-weight: 600;
+        font-weight: 700;
         text-decoration: underline;
         cursor: pointer;
       }

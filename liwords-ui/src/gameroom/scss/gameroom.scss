@@ -638,7 +638,7 @@ p.streak-loss {
   text-align: right;
   margin: 0;
   font-size: 14px;
-  font-weight: 400;
+  font-weight: normal;
   font-family: $font-monospaced;
   letter-spacing: -0.05em;
   @include colorModed() {
@@ -689,7 +689,7 @@ p.streak-loss {
     line-height: 0;
     span {
       font-family: $font-tile;
-      font-weight: 500;
+      font-weight: normal;
       font-size: 28px;
     }
 
@@ -870,7 +870,7 @@ p.rune {
   margin: 0;
   line-height: 0;
   font-size: $tile-font-size-mobile;
-  font-weight: 600;
+  font-weight: 800;
   width: 100%;
   padding-bottom: 3px;
   @include colorModed() {
@@ -892,7 +892,7 @@ p.rune {
   margin: 0;
   letter-spacing: -0.25em;
   font-size: $point-size-mobile;
-  font-weight: bold;
+  font-weight: 600;
   @include colorModed() {
     color: m($background);
   }

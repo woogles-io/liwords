@@ -20,6 +20,12 @@
   .ant-alert {
     margin-top: 12px;
   }
+  .anticon-heart {
+    @include colorModed() {
+      color: m($timer-out-dark);
+    }
+    margin-right: 6px;
+  }
   h3 {
     font-family: $font-default;
     font-weight: 700;
