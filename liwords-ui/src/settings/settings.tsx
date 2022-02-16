@@ -20,7 +20,6 @@ import { useResetStoreContext } from '../store/store';
 
 import './settings.scss';
 import { Secret } from './secret';
-import { HeartFilled } from '@ant-design/icons';
 
 type Props = {};
 
@@ -140,7 +139,7 @@ export const Settings = React.memo((props: Props) => {
   }, [viewer, loggedIn, category, userID]);
 
   type CategoryProps = {
-    title: string | React.ReactNode;
+    title: string;
     category: Category;
   };
 
@@ -237,16 +236,11 @@ export const Settings = React.memo((props: Props) => {
         category={Category.BlockedPlayers}
       />
       <CategoryChoice title="Secret features" category={Category.Secret} />
-      <CategoryChoice title="Log out" category={Category.LogOut} />
       <CategoryChoice
-        title={
-          <>
-            <HeartFilled />
-            Support Woogles
-          </>
-        }
-        category={Category.Support}
+        title="Log out of Woogles.io"
+        category={Category.LogOut}
       />
+      <CategoryChoice title="Support Woogles.io" category={Category.Support} />
     </div>
   );
 

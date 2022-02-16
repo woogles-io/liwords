@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { TouchBackend } from 'react-dnd-touch-backend';
-import { Button, notification, message, Tooltip, Affix } from 'antd';
+import { Button, notification, message, Tooltip } from 'antd';
 import { Modal } from '../utils/focus_modal';
 import { DndProvider } from 'react-dnd';
 import { ArrowDownOutlined, SyncOutlined } from '@ant-design/icons';
@@ -1570,55 +1570,48 @@ export const BoardPanel = React.memo((props: Props) => {
         alphabet={props.alphabet}
         recallOneTile={recallOneTile}
       />
-
       {gameMetaMessage ? (
         <GameMetaMessage message={gameMetaMessage} />
       ) : (
-        <Affix
-          offsetTop={126}
-          style={{ width: '100vw' }}
-          className="rack-affix"
-        >
-          <div className="rack-container">
-            <Tooltip
-              title="Reset Rack &darr;"
-              placement="bottomRight"
-              mouseEnterDelay={0.1}
-              mouseLeaveDelay={0.01}
-              color={colors.colorPrimary}
-            >
-              <Button
-                shape="circle"
-                icon={<ArrowDownOutlined />}
-                type="primary"
-                onClick={recallTiles}
-              />
-            </Tooltip>
-            <Rack
-              letters={displayedRack}
-              grabbable
-              returnToRack={returnToRack}
-              onTileClick={clickToBoard}
-              moveRackTile={moveRackTile}
-              alphabet={props.alphabet}
+        <div className="rack-container">
+          <Tooltip
+            title="Reset Rack &darr;"
+            placement="bottomRight"
+            mouseEnterDelay={0.1}
+            mouseLeaveDelay={0.01}
+            color={colors.colorPrimary}
+          >
+            <Button
+              shape="circle"
+              icon={<ArrowDownOutlined />}
+              type="primary"
+              onClick={recallTiles}
             />
-            <Tooltip
-              title="Shuffle &uarr;"
-              placement="bottomLeft"
-              mouseEnterDelay={0.1}
-              mouseLeaveDelay={0.01}
-              color={colors.colorPrimary}
-            >
-              <Button
-                shape="circle"
-                icon={<SyncOutlined />}
-                type="primary"
-                onClick={shuffleTiles}
-                autoFocus={true}
-              />
-            </Tooltip>
-          </div>
-        </Affix>
+          </Tooltip>
+          <Rack
+            letters={displayedRack}
+            grabbable
+            returnToRack={returnToRack}
+            onTileClick={clickToBoard}
+            moveRackTile={moveRackTile}
+            alphabet={props.alphabet}
+          />
+          <Tooltip
+            title="Shuffle &uarr;"
+            placement="bottomLeft"
+            mouseEnterDelay={0.1}
+            mouseLeaveDelay={0.01}
+            color={colors.colorPrimary}
+          >
+            <Button
+              shape="circle"
+              icon={<SyncOutlined />}
+              type="primary"
+              onClick={shuffleTiles}
+              autoFocus={true}
+            />
+          </Tooltip>
+        </div>
       )}
       {isTouchDevice() ? <TilePreview gridDim={props.board.dim} /> : null}
       {!anonymousTourneyViewer && (

@@ -1,7 +1,6 @@
 @import 'base';
 
 .App {
-  font-family: $font-default;
   min-height: 100vh;
   @include colorModed() {
     background-color: m($background);
@@ -41,7 +40,7 @@
   position: relative;
   top: -2px;
   margin-right: 6px;
-  height: 0.8em;
+  height: 1em;
 }
 .ant-dropdown.user-menu {
   @include colorModed() {
@@ -115,7 +114,7 @@ a.plain,
     text-align: center;
     h4 {
       @include type-default;
-      font-weight: 700;
+      font-weight: 600;
       font-size: 18px;
       letter-spacing: 0;
     }
