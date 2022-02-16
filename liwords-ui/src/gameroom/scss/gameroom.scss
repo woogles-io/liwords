@@ -52,7 +52,6 @@ p.streak-loss {
   }
 }
 .game-container {
-  padding-bottom: 24px;
   .ant-card {
     border-radius: 8px;
     .ant-card-body {
@@ -638,7 +637,7 @@ p.streak-loss {
   text-align: right;
   margin: 0;
   font-size: 14px;
-  font-weight: normal;
+  font-weight: 400;
   font-family: $font-monospaced;
   letter-spacing: -0.05em;
   @include colorModed() {
@@ -674,9 +673,6 @@ p.streak-loss {
   margin: 12px 0;
   position: relative;
   left: -12px;
-  @include colorModed() {
-    background-color: m($background);
-  }
   .rack {
     width: $tile-size-desktop * 8.5;
   }
@@ -689,7 +685,7 @@ p.streak-loss {
     line-height: 0;
     span {
       font-family: $font-tile;
-      font-weight: normal;
+      font-weight: 500;
       font-size: 28px;
     }
 
@@ -870,7 +866,7 @@ p.rune {
   margin: 0;
   line-height: 0;
   font-size: $tile-font-size-mobile;
-  font-weight: 800;
+  font-weight: 600;
   width: 100%;
   padding-bottom: 3px;
   @include colorModed() {
@@ -892,7 +888,7 @@ p.rune {
   margin: 0;
   letter-spacing: -0.25em;
   font-size: $point-size-mobile;
-  font-weight: 600;
+  font-weight: bold;
   @include colorModed() {
     color: m($background);
   }
@@ -1239,11 +1235,9 @@ p.rune {
 .game-controls {
   display: flex;
   position: relative;
-  left: -24px;
-  width: 100vw;
-  max-width: 560px;
+  left: -12px;
+  width: 100%;
   min-height: 32px;
-  padding: 15px 45px;
   margin: 0 auto 12px;
   justify-content: space-evenly;
   white-space: nowrap;
@@ -1291,41 +1285,7 @@ p.rune {
     margin-right: 0;
   }
 }
-.examiner-controls .ant-affix {
-  transform: translateX(-6px);
-  @include colorModed() {
-    background-color: m($background);
-    border-bottom: 1px solid m($gray-subtle);
-  }
-}
-.end-message + .examiner-controls {
-  div[aria-hidden="true"] {
-    display: none;
-  }
-  .ant-affix {
-    position: static !important;
-    height: auto !important;
-    @include colorModed() {
-      border-bottom: 0;
-    }
-  }
-}
-.examiner-controls, .rack-affix  {
-  @media (min-width: $screen-tablet-min) {
-    div[aria-hidden="true"] {
-      display: none;
-    }
-    .ant-affix {
-      transform: translateX(0);
-      position: static !important;
-      height: auto !important;
-      border-bottom: transparent;
-      @include colorModed() {
-        border-bottom: 0;
-      }
-    }
-  }
-}
+
 .end-message {
   @include colorModed() {
     background-color: m($primary-middle);
@@ -1374,9 +1334,6 @@ p.rune {
   }
   .rack-container {
     left: 0;
-    @include colorModed() {
-      background: transparent;
-    }
   }
   .rack {
     width: (48 + $tile-size-tablet * 8);
@@ -1452,7 +1409,6 @@ p.rune {
   .game-controls {
     justify-content: center;
     left: 0;
-    width: 100%;
     .secondary-controls {
       flex-direction: row;
       width: auto;
@@ -1464,7 +1420,7 @@ p.rune {
       }
     }
     button.ant-btn {
-      font-size: 14px;
+      font-size: 12px;
       margin: 0 6px;
       &.play {
         order: 2;

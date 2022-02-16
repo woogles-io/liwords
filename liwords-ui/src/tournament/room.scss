@@ -73,7 +73,7 @@
     }
     .ant-select-selection-placeholder {
       z-index: 1;
-      font-weight: normal;
+      font-weight: 400;
       opacity: 0.8;
       @include colorModed() {
         color: m($gray-medium);

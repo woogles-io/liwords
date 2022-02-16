@@ -11,7 +11,7 @@ type Props = {
 export const LogOut = React.memo((props: Props) => {
   return (
     <div className="log-out">
-      <h3>Log out</h3>
+      <h3>Log out of Woogles.io</h3>
       <div className="avatar-container">
         <PlayerAvatar player={props.player} />
         <div className="full-name">{props.player?.full_name}</div>

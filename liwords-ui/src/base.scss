@@ -127,6 +127,7 @@ $point-size-desktop: $tile-font-size-desktop / 2.8;
   font-weight: bold;
   font-size: 12px;
   line-height: 2em;
+  letter-spacing: 0.16em;
   text-align: center;
 }
 
@@ -270,8 +271,6 @@ ul {
 }
 
 .ant-card-head-title {
-  font-family: $font-default;
-  font-weight: 800;
   @include colorModed() {
     color: m($gray-extreme);
   }
@@ -460,6 +459,7 @@ ul {
     width: 100%;
     height: 64px;
     background: transparent;
+    text-transform: uppercase;
     @include colorModed() {
       border-top: 1px solid m($off-background);
     }
@@ -485,7 +485,7 @@ ul {
         @include colorModed() {
           color: m($gray-extreme);
         }
-        font-size: 14px;
+        font-size: 12px;
         width: 100%;
         height: 100%;
       }
@@ -772,7 +772,7 @@ ul {
         color: m($background);
       }
       .ant-notification-notice-message {
-        font-weight: 700;
+        font-weight: 1000;
         max-width: 80%;
         @include colorModed() {
           color: m($background);
@@ -783,7 +783,7 @@ ul {
         padding-right: 12px;
       }
       span.message-action {
-        font-weight: 700;
+        font-weight: 600;
         text-decoration: underline;
         cursor: pointer;
       }
