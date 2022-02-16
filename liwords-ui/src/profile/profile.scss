@@ -38,6 +38,8 @@
   }
   .country-flag {
     margin-left: 15px;
+    height: 0.8em;
+    top: 0;
   }
   .player-avatar {
     margin: 18px 12px 18px 0;
@@ -75,6 +77,9 @@
     @include colorModed() {
       background-color: m($primary-light);
     }
+  }
+  .ant-card-head-title {
+    font-weight: 900;
   }
   a {
     font-size: 14px;
