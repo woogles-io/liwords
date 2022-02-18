@@ -131,8 +131,8 @@ body {
 
   .tournament {
     position: absolute;
-    bottom: 6px;
-    left: 120px;
+    bottom: -3px;
+    left: 124px;
     font-size: 10px;
     background: transparent;
     @include colorModed() {
@@ -143,6 +143,6 @@ body {
 .tournament-mode {
   .top-header-left-frame-site-name {
     position: relative;
-    top: -9px;
+    bottom: 6px;
   }
 }
