@@ -422,13 +422,12 @@ func whichFromEvent(history *macondopb.GameHistory, evt *macondopb.GameEvent) by
 	return which
 }
 
-func renderImage(history *macondopb.GameHistory, wf whichFile) ([]byte, error) {
-	isStatic := wf.fileType == "png"
+func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
+	isStatic := wf.FileType == "png"
 	numEvents := math.MaxInt
-	if wf.hasNextEventNum {
-		numEvents = wf.nextEventNum - 1
+	if wf.HasNextEventNum {
+		numEvents = wf.NextEventNum - 1
 	}
-	whichColor := -1 // TODO: simplify if not needed
 
 	_, letterDistributionName, _ := game.HistoryToVariant(history)
 	lang := strings.TrimSuffix(letterDistributionName, "_super")
@@ -527,7 +526,7 @@ func renderImage(history *macondopb.GameHistory, wf whichFile) ([]byte, error) {
 			which := whichFromEvent(history, evt)
 			patchImage(evt, func(img *image.NRGBA, r, c int, ch rune) {
 				if onBoard(r, c) {
-					drawTileOnBoard(tptm, tilesImg, img, r, c, ch, realWhose(whichColor, which))
+					drawTileOnBoard(tptm, tilesImg, img, r, c, ch, realWhose(wf.WhichColor, which))
 				}
 			})
 		case macondopb.GameEvent_PHONY_TILES_RETURNED:

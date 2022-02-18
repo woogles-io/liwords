@@ -338,14 +338,14 @@ func BenchmarkRenderAGif(b *testing.B) {
 	hist := &macondopb.GameHistory{}
 	err := json.Unmarshal([]byte(gh), hist)
 	is.NoErr(err)
-	wf := whichFile{
-		fileType:        "animated-gif",
-		hasNextEventNum: false,
+	wf := WhichFile{
+		FileType:        "animated-gif",
+		HasNextEventNum: false,
 	}
 	// benchmark runs around 250ms per render on my M1 Mac but it's significantly
 	// slower when run within Docker for Mac. why?
 	for i := 0; i < b.N; i++ {
-		_, err := renderImage(hist, wf)
+		_, err := RenderImage(hist, wf)
 		is.NoErr(err)
 	}
 }
@@ -355,13 +355,13 @@ func BenchmarkRenderPNG(b *testing.B) {
 	hist := &macondopb.GameHistory{}
 	err := json.Unmarshal([]byte(gh), hist)
 	is.NoErr(err)
-	wf := whichFile{
-		fileType:        "png",
-		hasNextEventNum: false,
+	wf := WhichFile{
+		FileType:        "png",
+		HasNextEventNum: false,
 	}
 	// benchmark runs around 109 ms
 	for i := 0; i < b.N; i++ {
-		_, err := renderImage(hist, wf)
+		_, err := RenderImage(hist, wf)
 		is.NoErr(err)
 	}
 }
