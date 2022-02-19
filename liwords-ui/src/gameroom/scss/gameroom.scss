@@ -1301,6 +1301,36 @@ p.rune {
   }
 }
 
+// tile images
+.tile-images.chars {
+  @include type-monospace;
+  // from .ant-card (base.scss)
+  @include colorModed() {
+    background-color: m($card-background);
+    color: m($gray-extreme);
+  }
+}
+.tile-images.chars.p0 {
+  @include colorModed() {
+    background: m($tile-background);
+    color: m($background);
+  }
+  @include userTile() {
+    background: ut($tile-background);
+    color: ut($tile-text);
+  }
+}
+.tile-images.chars.p1 {
+  @include colorModed() {
+    background: m($tile-last-background);
+    color: m($tile-last-text);
+  }
+  @include userTile() {
+    background: ut($tile-last-background);
+    color: ut($tile-last-text);
+  }
+}
+
 @media (min-width: $screen-mobile-min) {
   .board-spaces-container, .board-spaces, .tiles {
     width: $board-size-mobile;
