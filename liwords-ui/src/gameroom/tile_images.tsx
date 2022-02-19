@@ -18,8 +18,10 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
   //    On Mac: brew install netpbm
   // pngtopnm img.png | pnmcrop | pnmquant 48 | pnmtopng -transparent '=#000000' > tiles.png
 
-  const nCols = 15;
   const eachWidth = 34;
+  const retina = 2; // device pixel ratio, so 2 = retina, 1 = no retina
+  const squareDim = retina * eachWidth;
+  const expectedWidth = 15 * squareDim; // retina-adjusted
 
   const alphabet = alphabetFromName(props.letterDistribution);
   const letters: Array<string> = [];
@@ -48,6 +50,10 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
 
   let y = 0;
   let x = 0;
+  let yOffset = 0;
+  let curDimY = squareDim;
+  let curDimX = squareDim;
+  let curNumCols = Math.floor(expectedWidth / curDimX);
   let golang: Array<string> = [];
   let currentLine = '';
   let indentLevel = 0;
@@ -66,9 +72,11 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
   const recordPos = (c: string) => {
     if (currentLine) currentLine += ' ';
     else currentLine = '\t';
-    currentLine += `'${escape(c)}': {${y}, ${x}},`;
+    currentLine += `'${escape(c)}': {${x * curDimX}, ${
+      yOffset + y * curDimY
+    }},`;
     ++x;
-    if (x === nCols) {
+    if (x >= curNumCols) {
       x = 0;
       ++y;
     }
@@ -76,23 +84,28 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
   };
 
   const groupName = props.letterDistribution || 'english';
-  commitLine('// Doubled because of retina screen.');
-  commitLine(`const squareDim = 2 * ${eachWidth}`);
+  commitLine(`//go:embed tiles-${groupName}.png`);
+  commitLine(`var ${groupName}TilesBytes []byte`);
+  commitLine('');
+  commitLine(`const squareDim = ${squareDim}`);
   commitLine('');
   ++indentLevel;
   commitLine(`${JSON.stringify(groupName)}: {`);
   ++indentLevel;
-  commitLine(`Tile0Src: map[rune][2]int{`);
+  commitLine(`TilesBytes: ${groupName}TilesBytes,`);
+  commitLine('Tile0Src: map[rune][2]int{');
   for (const c of shownRunes) recordPos(c);
   commitLine('},');
-  commitLine(`Tile1Src: map[rune][2]int{`);
+  commitLine('Tile1Src: map[rune][2]int{');
   for (const c of shownRunes) recordPos(c);
   commitLine('},');
-  commitLine(`BoardSrc: map[rune][2]int{`);
+  commitLine('BoardSrc: map[rune][2]int{');
   for (const c of bonusTypes) recordPos(c);
   commitLine('},');
   const nRows = y + (x !== 0 ? 1 : 0);
-  commitLine(`NColRows: [2]int{${nCols}, ${nRows}},`);
+  commitLine(
+    `ExpDimXY: [2]int{${expectedWidth}, ${yOffset + nRows * curDimY}},`
+  );
   --indentLevel;
   commitLine('},');
   console.log(golang.join('\n'));
@@ -113,7 +126,7 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
             background: '#000000',
             display: 'flex',
             flexWrap: 'wrap',
-            width: `${nCols * eachWidth}px`,
+            width: `${expectedWidth / retina}px`,
           }}
         >
           {Array.from(
