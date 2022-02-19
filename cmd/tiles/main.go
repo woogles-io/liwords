@@ -15,9 +15,9 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
-func GetGameHistory(id string) (*macondopb.GameHistory, error) {
+func GetGameHistory(url string, id string) (*macondopb.GameHistory, error) {
 
-	client := pb.NewGameMetadataServiceProtobufClient("https://woogles.io", &http.Client{})
+	client := pb.NewGameMetadataServiceProtobufClient(url, &http.Client{})
 	history, err := client.GetGameHistory(context.Background(), &pb.GameHistoryRequest{GameId: id})
 
 	if err != nil {
@@ -31,7 +31,7 @@ func main() {
 		fmt.Fprintf(flag.CommandLine.Output(), `usage of %s:
 
   params: gameId [n]
-    fetch game from woogles.io
+    fetch game from woogles.io or a compatible site
     example: hBQhT94n
     example: XgTRffsq 7
       n = number of events to process (one less than ?turn= examiner param)
@@ -48,8 +48,13 @@ params can be prefixed with these flags:
 
 	var colorFlag = flag.String("color", "", "0 = use player 0's colors, 1 = use player 1's colors")
 	var gifFlag = flag.Bool("gif", false, "generate animated gif")
+	var urlFlag = flag.String("url", "https://woogles.io", "specify url, -url local for http://localhost")
 	flag.Parse()
 	args := flag.Args()
+
+	if *urlFlag == "local" {
+		*urlFlag = "http://localhost" // compatible with docker-compose
+	}
 
 	var whichColor int
 	switch *colorFlag {
@@ -94,7 +99,7 @@ params can be prefixed with these flags:
 
 	t0 := time.Now()
 
-	hist, err := GetGameHistory(wf.GameId)
+	hist, err := GetGameHistory(*urlFlag, wf.GameId)
 	if err != nil {
 		panic(err)
 	}
