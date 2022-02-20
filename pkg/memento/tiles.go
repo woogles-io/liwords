@@ -743,7 +743,7 @@ func whichFromEvent(history *macondopb.GameHistory, evt *macondopb.GameEvent) by
 }
 
 func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
-	isStatic := wf.FileType == "png"
+	isStatic := wf.FileType != "animated-gif"
 	numEvents := math.MaxInt
 	if wf.HasNextEventNum {
 		numEvents = wf.NextEventNum - 1
@@ -903,7 +903,19 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 	var buf bytes.Buffer
 	var err error
 	if isStatic {
-		err = png.Encode(&buf, canvasPalImg)
+		if wf.FileType == "png" {
+			err = png.Encode(&buf, canvasPalImg)
+		} else {
+			err = gif.EncodeAll(&buf, &gif.GIF{
+				Image: []*image.Paletted{canvasPalImg},
+				Delay: []int{0},
+				Config: image.Config{
+					ColorModel: canvasPalImg.Palette,
+					Width:      canvasPalImg.Bounds().Dx(),
+					Height:     canvasPalImg.Bounds().Dy(),
+				},
+			})
+		}
 	} else {
 		err = gif.EncodeAll(&buf, agif)
 	}

@@ -34,7 +34,7 @@ type WhichFile struct {
 	GameId          string
 	HasNextEventNum bool
 	NextEventNum    int
-	FileType        string // "png" or "animated-gif"
+	FileType        string // "png", "gif", "animated-gif"
 	WhichColor      int    // 0, 1, or -1
 }
 
@@ -60,12 +60,15 @@ func determineWhichFile(s string) (WhichFile, error) {
 			s = s[:v]
 		}
 	} else if strings.HasSuffix(s, ".gif") {
+		// "gameid.gif"
+		// "gameid-num.gif"
 		// "gameid-a.gif"
 		// "gameid-a-num.gif"
-		fileType = "animated-gif"
+		fileType = "gif"
 		s = s[:len(s)-4]
 		if strings.HasSuffix(s, "-a") {
 			s = s[:len(s)-2]
+			fileType = "animated-gif"
 		} else if v := strings.LastIndexByte(s, '-'); v >= 0 {
 			nextEventNum, err = strconv.Atoi(s[v+1:])
 			if err != nil || s[v+1:] != strconv.Itoa(nextEventNum) {
@@ -76,11 +79,8 @@ func determineWhichFile(s string) (WhichFile, error) {
 			s = s[:v]
 			if strings.HasSuffix(s, "-a") {
 				s = s[:len(s)-2]
-			} else {
-				return WhichFile{}, errInvalidFilename
+				fileType = "animated-gif"
 			}
-		} else {
-			return WhichFile{}, errInvalidFilename
 		}
 	} else {
 		return WhichFile{}, errInvalidFilename

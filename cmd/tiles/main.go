@@ -47,7 +47,8 @@ params can be prefixed with these flags:
 	}
 
 	var colorFlag = flag.String("color", "", "0 = use player 0's colors, 1 = use player 1's colors")
-	var gifFlag = flag.Bool("gif", false, "generate animated gif")
+	var gifFlag = flag.Bool("gif", false, "generate static gif")
+	var agifFlag = flag.Bool("agif", false, "generate animated gif")
 	var urlFlag = flag.String("url", "https://woogles.io", "specify url, -url local for http://localhost")
 	flag.Parse()
 	args := flag.Args()
@@ -87,9 +88,12 @@ params can be prefixed with these flags:
 		wf.NextEventNum = numEvents
 		outputFilenameSuffix += fmt.Sprintf("-%v", wf.NextEventNum)
 	}
-	if *gifFlag {
+	if *agifFlag {
 		wf.FileType = "animated-gif"
 		outputFilename += "-a"
+		outputFilenameSuffix += ".gif"
+	} else if *gifFlag {
+		wf.FileType = "gif"
 		outputFilenameSuffix += ".gif"
 	} else {
 		wf.FileType = "png"
