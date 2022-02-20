@@ -230,6 +230,85 @@ findLastX:
 	return image.Rect(src.Rect.Min.X+firstX, src.Rect.Min.Y+firstY, src.Rect.Min.X+lastX+1, src.Rect.Min.Y+lastY+1)
 }
 
+// Given a simple paletted image, return the bounding box of the opaque pixels different from dst.
+func croppedBoundsDiff(src *image.Paletted, r image.Rectangle, dst *image.Paletted, dp image.Point) image.Rectangle {
+	srcPY := src.PixOffset(r.Min.X, r.Min.Y)
+	dstPY := dst.PixOffset(dp.X, dp.Y)
+	dx, dy := r.Dx(), r.Dy()
+
+	// Top
+	firstY := -1
+	srcP := srcPY
+	dstP := dstPY
+findFirstY:
+	for y := 0; y < dy; y++ {
+		for x := 0; x < dx; x++ {
+			if src.Pix[srcP+x] != 0 && src.Pix[srcP+x] != dst.Pix[dstP+x] {
+				firstY = y
+				break findFirstY
+			}
+		}
+		srcP += src.Stride
+		dstP += dst.Stride
+	}
+	if firstY < 0 {
+		// Image is entirely transparent.
+		return image.Rectangle{}
+	}
+
+	// Bottom
+	lastY := -1
+	srcP = srcPY + dy*src.Stride
+	dstP = dstPY + dy*dst.Stride
+findLastY:
+	for y := dy - 1; y >= 0; y-- {
+		srcP -= src.Stride
+		dstP -= dst.Stride
+		for x := 0; x < dx; x++ {
+			if src.Pix[srcP+x] != 0 && src.Pix[srcP+x] != dst.Pix[dstP+x] {
+				lastY = y
+				break findLastY
+			}
+		}
+	}
+
+	// Left
+	srcPY += firstY * src.Stride
+	dstPY += firstY * dst.Stride
+	firstX := -1
+findFirstX:
+	for x := 0; x < dx; x++ {
+		srcP = srcPY + x
+		dstP = dstPY + x
+		for y := firstY; y <= lastY; y++ {
+			if src.Pix[srcP] != 0 && src.Pix[srcP] != dst.Pix[dstP] {
+				firstX = x
+				break findFirstX
+			}
+			srcP += src.Stride
+			dstP += dst.Stride
+		}
+	}
+
+	// Right
+	lastX := -1
+findLastX:
+	for x := dx - 1; x >= 0; x-- {
+		srcP = srcPY + x
+		dstP = dstPY + x
+		for y := firstY; y <= lastY; y++ {
+			if src.Pix[srcP] != 0 && src.Pix[srcP] != dst.Pix[dstP] {
+				lastX = x
+				break findLastX
+			}
+			srcP += src.Stride
+			dstP += dst.Stride
+		}
+	}
+
+	return image.Rect(r.Min.X+firstX, r.Min.Y+firstY, r.Min.X+lastX+1, r.Min.Y+lastY+1)
+}
+
 // fastDrawSrc() with a different argument order. src is a SubImage.
 func fastSpriteDrawSrc(dst *image.Paletted, dp image.Point, src *image.Paletted) {
 	dstP := dst.PixOffset(dp.X, dp.Y)

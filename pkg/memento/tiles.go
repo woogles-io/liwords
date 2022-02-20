@@ -10,7 +10,6 @@ import (
 	"image/png"
 	"math"
 	"strings"
-	"unicode/utf8"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 
@@ -769,9 +768,11 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 	canvasPalImg := image.NewPaletted(emptyBoardPalImg.Bounds(), bd.Colors)
 	fastDrawSrc(canvasPalImg, emptyBoardPalImg.Bounds(), emptyBoardPalImg, image.Point{})
 
+	var lastFramePalImg *image.Paletted
 	var agif *gif.GIF
-	addFrame := func(img *image.Paletted, delay int) {}
+	addFrame := func(rect image.Rectangle, delay int) {}
 	if !isStatic {
+		lastFramePalImg = image.NewPaletted(canvasPalImg.Bounds(), bd.Colors)
 		agif = &gif.GIF{
 			Config: image.Config{
 				ColorModel: canvasPalImg.Palette,
@@ -779,56 +780,43 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 				Height:     canvasPalImg.Bounds().Dy(),
 			},
 		}
-		addFrame = func(img *image.Paletted, delay int) {
-			agif.Image = append(agif.Image, img)
-			agif.Delay = append(agif.Delay, delay)
+		addFrame = func(bounds image.Rectangle, delay int) {
+			if len(agif.Delay) == 0 {
+				// Always record the first frame completely.
+				frameDiffPalImg := image.NewPaletted(bounds, bd.Colors)
+				fastDrawSrc(frameDiffPalImg, bounds, canvasPalImg, bounds.Min)
+				fastDrawSrc(lastFramePalImg, bounds, frameDiffPalImg, bounds.Min)
+				agif.Image = append(agif.Image, frameDiffPalImg)
+				agif.Delay = append(agif.Delay, delay)
+			} else {
+				bounds = croppedBoundsDiff(canvasPalImg, bounds, lastFramePalImg, bounds.Min)
+				if bounds.Empty() {
+					agif.Delay[len(agif.Delay)-1] += delay
+				} else {
+					frameDiffPalImg := image.NewPaletted(bounds, bd.Colors)
+					fastDrawSrc(frameDiffPalImg, bounds, canvasPalImg, bounds.Min)
+					fastUndrawOver(frameDiffPalImg, bounds, lastFramePalImg, bounds.Min)
+					fastDrawOver(lastFramePalImg, bounds, frameDiffPalImg, bounds.Min)
+					agif.Image = append(agif.Image, frameDiffPalImg)
+					agif.Delay = append(agif.Delay, delay)
+				}
+			}
 		}
 	}
-	addFrame(canvasPalImg, 50)
+	addFrame(canvasPalImg.Bounds(), 50)
 
-	makeSubImage := func(rect image.Rectangle) *image.Paletted {
-		return image.NewPaletted(rect, bd.Colors)
-	}
-	if isStatic {
-		makeSubImage = func(rect image.Rectangle) *image.Paletted {
-			return canvasPalImg
-		}
-	}
-
-	patchImage := func(evt *macondopb.GameEvent, callback func(img *image.Paletted, r, c int, ch rune)) {
+	patchImage := func(evt *macondopb.GameEvent, callback func(r, c int, ch rune)) {
 		r, c := int(evt.Row), int(evt.Column)
 		dr, dc := 0, 1
 		if evt.Direction == macondopb.GameEvent_VERTICAL {
 			dr, dc = 1, 0
 		}
-		str := evt.PlayedTiles
-		for {
-			ru, size := utf8.DecodeRuneInString(str)
-			if ru != alphabet.ASCIIPlayedThrough {
-				break
-			}
-			r, c = r+dr, c+dc
-			str = str[size:]
-		}
-		if len(str) == 0 {
-			return
-		}
-		for {
-			ru, size := utf8.DecodeLastRuneInString(str)
-			if ru != alphabet.ASCIIPlayedThrough {
-				break
-			}
-			str = str[:len(str)-size]
-		}
-		numPlayedTiles := utf8.RuneCountInString(str)
-		img := makeSubImage(image.Rect(bd.BoardOrigin.X+c*squareDim, bd.BoardOrigin.Y+r*squareDim, bd.BoardOrigin.X+(c+1+(numPlayedTiles-1)*dc)*squareDim, bd.BoardOrigin.Y+(r+1+(numPlayedTiles-1)*dr)*squareDim))
-		for _, ch := range str {
+		for _, ch := range evt.PlayedTiles {
 			if ch != alphabet.ASCIIPlayedThrough {
-				callback(img, r, c, ch)
+				callback(r, c, ch)
 			}
 			r, c = r+dr, c+dc
 		}
-		addFrame(img, 50)
 	}
 	lastPlaceIndex := -1
 	for i, evt := range history.Events {
@@ -843,41 +831,74 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			if whose&1 != 0 {
 				sprites = bd.Tile1Sprite
 			}
-			patchImage(evt, func(img *image.Paletted, r, c int, ch rune) {
+			rect := image.Rectangle{}
+			patchImage(evt, func(r, c int, ch rune) {
 				if ch != ' ' && onBoard(r, c) {
 					sprite, ok := sprites[ch]
 					if !ok {
 						sprite = sprites['?']
 					}
-					fastSpriteDrawOver(img, image.Pt(bd.BoardOrigin.X+c*squareDim, bd.BoardOrigin.Y+r*squareDim), sprite)
+					newX, newY := bd.BoardOrigin.X+c*squareDim, bd.BoardOrigin.Y+r*squareDim
+					fastSpriteDrawOver(canvasPalImg, image.Pt(newX, newY), sprite)
+					rect = rect.Union(image.Rect(newX, newY, newX+squareDim, newY+squareDim))
 				}
 			})
+			addFrame(rect, 50)
 		case macondopb.GameEvent_PHONY_TILES_RETURNED:
 			if lastPlaceIndex >= 0 {
-				patchImage(history.Events[lastPlaceIndex], func(img *image.Paletted, r, c int, ch rune) {
+				rect := image.Rectangle{}
+				patchImage(history.Events[lastPlaceIndex], func(r, c int, ch rune) {
 					if onBoard(r, c) {
 						sprite, ok := bd.BoardSprite[bd.BoardConfig[r][c]]
 						if !ok {
 							sprite = bd.BoardSprite[' ']
 						}
-						fastSpriteDrawSrc(img, image.Pt(bd.BoardOrigin.X+c*squareDim, bd.BoardOrigin.Y+r*squareDim), sprite)
+						newX, newY := bd.BoardOrigin.X+c*squareDim, bd.BoardOrigin.Y+r*squareDim
+						fastSpriteDrawSrc(canvasPalImg, image.Pt(newX, newY), sprite)
+						rect = rect.Union(image.Rect(newX, newY, newX+squareDim, newY+squareDim))
 					}
 				})
+				addFrame(rect, 50)
 				lastPlaceIndex = -1
 			}
 		}
 	}
 
-	// We want the final frame to stay for 2 sec.
-	// Chrome interprets Delay as the delay after the frame.
-	// Mac Quick Look interprets Delay as the delay before the frame.
-	// So if we set the last frame's delay to 200cs (for Chrome),
-	// Mac Quick Look delays the next-to-last frame instead.
-	// If we set the first frame's delay to 200cs (for Mac Quick Look),
-	// Chrome delays the first frame instead.
-	// Solution: we add a transparent 1x1 frame and run it for 150cs.
-	// This works for both.
-	addFrame(image.NewPaletted(image.Rect(0, 0, 1, 1), bd.Colors), 150)
+	if !isStatic {
+		// We want the final frame to stay for 2 sec.
+		agif.Delay[len(agif.Delay)-1] = 200
+
+		// Chrome interprets Delay as the delay after the frame.
+		// Mac Quick Look interprets Delay as the delay before the frame.
+		// Solution: Use a transparent 1x1 frame to hold excess delay.
+		minDelay := math.MaxInt
+		for _, v := range agif.Delay {
+			if v < minDelay {
+				minDelay = v
+			}
+		}
+		nFrames := len(agif.Delay)
+		for _, v := range agif.Delay {
+			if v != minDelay {
+				nFrames++
+			}
+		}
+		if nFrames != len(agif.Delay) {
+			fillerTransparent1x1PalImg := image.NewPaletted(image.Rect(0, 0, 1, 1), bd.Colors)
+			imgs := make([]*image.Paletted, 0, nFrames)
+			delays := make([]int, 0, nFrames)
+			for i, delay := range agif.Delay {
+				imgs = append(imgs, agif.Image[i])
+				delays = append(delays, minDelay)
+				if delay != minDelay {
+					imgs = append(imgs, fillerTransparent1x1PalImg)
+					delays = append(delays, delay-minDelay)
+				}
+			}
+			agif.Image = imgs
+			agif.Delay = delays
+		}
+	}
 
 	var buf bytes.Buffer
 	var err error
