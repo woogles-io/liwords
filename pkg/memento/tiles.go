@@ -36,6 +36,19 @@ var standardBoardConfig = [][]rune{
 	[]rune("=  '   =   '  ="),
 }
 
+// These files must be kept in sync with macondo's data/letterdistribution/.
+//go:embed english.csv
+var englishLetterDistributionCSVBytes []byte
+
+//go:embed french.csv
+var frenchLetterDistributionCSVBytes []byte
+
+//go:embed german.csv
+var germanLetterDistributionCSVBytes []byte
+
+//go:embed norwegian.csv
+var norwegianLetterDistributionCSVBytes []byte
+
 // header should be pre-quantized to very few colors (ideally 8)
 //go:embed header.png
 var headerBytes []byte
@@ -504,25 +517,26 @@ var tilesMeta = map[string]*TilePainterTilesMeta{
 }
 
 type BoardDrawer struct {
-	Colors            []color.Color // all *image.Paletted in this struct share this palette
-	HeaderPalImg      *image.Paletted
-	Tile0Sprite       map[rune]*image.Paletted // SubImage of the original tiles sprites
-	Tile1Sprite       map[rune]*image.Paletted
-	BoardSprite       map[rune]*image.Paletted
-	TextXSprite       map[rune]*image.Paletted
-	Text0Sprite       map[rune]*image.Paletted
-	Text1Sprite       map[rune]*image.Paletted
-	BoardConfig       [][]rune
-	EmptyBoardPalImg  *image.Paletted
-	BoardOrigin       image.Point
-	PadLeft           int
-	PadTop            int
-	PadRight          int
-	PadBottom         int
-	PadHeader         int
-	HeaderHeight      int
-	OfsTop            int
-	PaddingColorIndex byte
+	Colors             []color.Color // all *image.Paletted in this struct share this palette
+	HeaderPalImg       *image.Paletted
+	Tile0Sprite        map[rune]*image.Paletted // SubImage of the original tiles sprites
+	Tile1Sprite        map[rune]*image.Paletted
+	BoardSprite        map[rune]*image.Paletted
+	TextXSprite        map[rune]*image.Paletted
+	Text0Sprite        map[rune]*image.Paletted
+	Text1Sprite        map[rune]*image.Paletted
+	BoardConfig        [][]rune
+	EmptyBoardPalImg   *image.Paletted
+	BoardOrigin        image.Point
+	PadLeft            int
+	PadTop             int
+	PadRight           int
+	PadBottom          int
+	PadHeader          int
+	HeaderHeight       int
+	OfsTop             int
+	PaddingColorIndex  byte
+	LetterDistribution *alphabet.LetterDistribution
 }
 
 var BoardDrawers map[string]*BoardDrawer
@@ -548,6 +562,23 @@ func init() {
 		panic(fmt.Errorf("invalid boardConfig: %v", err))
 	}
 
+	lds := make(map[string]*alphabet.LetterDistribution)
+	for _, entry := range []struct {
+		name     string
+		csvBytes []byte
+	}{
+		{name: "english", csvBytes: englishLetterDistributionCSVBytes},
+		{name: "french", csvBytes: frenchLetterDistributionCSVBytes},
+		{name: "german", csvBytes: germanLetterDistributionCSVBytes},
+		{name: "norwegian", csvBytes: norwegianLetterDistributionCSVBytes},
+	} {
+		ld, err := alphabet.ScanLetterDistribution(bytes.NewReader(entry.csvBytes))
+		if err != nil {
+			panic(fmt.Errorf("invalid letterDistribution for %s: %v", entry.name, err))
+		}
+		lds[entry.name] = ld
+	}
+
 	headerImg, headerColors, err := loadImageAndDistinctOpaqueColors(headerBytes)
 	if err != nil {
 		panic(fmt.Errorf("can't load headerImg: %v", err))
@@ -562,6 +593,11 @@ func init() {
 
 	ret := make(map[string]*BoardDrawer)
 	for k, tptm := range tilesMeta {
+		ld, ok := lds[k]
+		if !ok {
+			panic(fmt.Errorf("no letterDistribution for %s", k))
+		}
+
 		tilesImg, tilesImgColors, err := loadImageAndDistinctOpaqueColors(tptm.TilesBytes)
 		if err != nil {
 			panic(fmt.Errorf("can't load tilesImg for %s: %v", k, err))
@@ -657,25 +693,26 @@ func init() {
 		}
 
 		ret[k] = &BoardDrawer{
-			Colors:            tilesImgPal,
-			HeaderPalImg:      headerPalImg,
-			Tile0Sprite:       tile0Sprite,
-			Tile1Sprite:       tile1Sprite,
-			BoardSprite:       boardSprite,
-			TextXSprite:       textXSprite,
-			Text0Sprite:       text0Sprite,
-			Text1Sprite:       text1Sprite,
-			BoardConfig:       standardBoardConfig,
-			EmptyBoardPalImg:  emptyStandardBoardPalImg,
-			BoardOrigin:       boardOrigin,
-			PadLeft:           padLeft,
-			PadTop:            padTop,
-			PadRight:          padRight,
-			PadBottom:         padBottom,
-			PadHeader:         padHeader,
-			HeaderHeight:      headerHeight,
-			OfsTop:            ofsTop,
-			PaddingColorIndex: paddingColorIndex,
+			Colors:             tilesImgPal,
+			HeaderPalImg:       headerPalImg,
+			Tile0Sprite:        tile0Sprite,
+			Tile1Sprite:        tile1Sprite,
+			BoardSprite:        boardSprite,
+			TextXSprite:        textXSprite,
+			Text0Sprite:        text0Sprite,
+			Text1Sprite:        text1Sprite,
+			BoardConfig:        standardBoardConfig,
+			EmptyBoardPalImg:   emptyStandardBoardPalImg,
+			BoardOrigin:        boardOrigin,
+			PadLeft:            padLeft,
+			PadTop:             padTop,
+			PadRight:           padRight,
+			PadBottom:          padBottom,
+			PadHeader:          padHeader,
+			HeaderHeight:       headerHeight,
+			OfsTop:             ofsTop,
+			PaddingColorIndex:  paddingColorIndex,
+			LetterDistribution: ld,
 		}
 	}
 
