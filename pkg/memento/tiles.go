@@ -6,11 +6,9 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"image/draw"
 	"image/gif"
 	"image/png"
 	"math"
-	"sort"
 	"strings"
 	"unicode/utf8"
 
@@ -20,7 +18,7 @@ import (
 	"github.com/domino14/macondo/game"
 )
 
-var boardConfig = [][]rune{
+var standardBoardConfig = [][]rune{
 	[]rune("=  '   =   '  ="),
 	[]rune(" -   \"   \"   - "),
 	[]rune("  -   ' '   -  "),
@@ -505,173 +503,183 @@ var tilesMeta = map[string]*TilePainterTilesMeta{
 	},
 }
 
-type LoadedTilesImg struct {
-	tilesImg image.Image
-	palette  []color.Color
+type BoardDrawer struct {
+	Colors            []color.Color // all *image.Paletted in this struct share this palette
+	HeaderPalImg      *image.Paletted
+	Tile0Sprite       map[rune]*image.Paletted // SubImage of the original tiles sprites
+	Tile1Sprite       map[rune]*image.Paletted
+	BoardSprite       map[rune]*image.Paletted
+	TextXSprite       map[rune]*image.Paletted
+	Text0Sprite       map[rune]*image.Paletted
+	Text1Sprite       map[rune]*image.Paletted
+	BoardConfig       [][]rune
+	EmptyBoardPalImg  *image.Paletted
+	BoardOrigin       image.Point
+	PadLeft           int
+	PadTop            int
+	PadRight          int
+	PadBottom         int
+	PadHeader         int
+	HeaderHeight      int
+	OfsTop            int
+	PaddingColorIndex byte
 }
 
-func loadTilesImg(tptm *TilePainterTilesMeta, headerPal map[color.Color]struct{}) (*LoadedTilesImg, error) {
-	img, err := png.Decode(bytes.NewReader(tptm.TilesBytes))
-	if err != nil {
-		return nil, err
-	}
-	bounds := img.Bounds()
-	expectedX := tptm.ExpDimXY[0]
-	expectedY := tptm.ExpDimXY[1]
-	if bounds.Min.X != 0 || bounds.Min.Y != 0 || bounds.Dx() != expectedX || bounds.Dy() != expectedY {
-		return nil, fmt.Errorf("unexpected size: %s vs %s", bounds.String(), image.Pt(expectedX, expectedY))
-	}
+var BoardDrawers map[string]*BoardDrawer
 
-	// Build an up to 256 colors palette where index 0 is Transparent.
-	inPal := make(map[color.Color]struct{})
-	for k := range headerPal {
-		inPal[k] = struct{}{}
-	}
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			inPal[img.At(x, y)] = struct{}{}
-		}
-	}
-	pal := make([]color.Color, 0, len(inPal)+1)
-	// Always put image.Transparent even if there is another color with zero alpha.
-	pal = append(pal, image.Transparent)
-	for k := range inPal {
-		pal = append(pal, k)
-	}
-	if len(pal) > 256 {
-		return nil, fmt.Errorf("gif cannot support %d colors", len(pal))
-	}
-	// Sort deterministically, exclude the image.Transparent.
-	sort.Slice(pal[1:], func(i, j int) bool {
-		ri, gi, bi, ai := pal[i+1].RGBA()
-		rj, gj, bj, aj := pal[j+1].RGBA()
-		if ai != aj {
-			return ai < aj
-		}
-		if ri != rj {
-			return ri < rj
-		}
-		if gi != gj {
-			return gi < gj
-		}
-		return bi < bj
-	})
-
-	return &LoadedTilesImg{
-		tilesImg: img,
-		palette:  pal,
-	}, nil
-}
-
-var tilesImgCache map[string]*LoadedTilesImg
-
-// using *image.NRGBA directly instead of image.Image might be slightly faster?
-type prerenderedBackgroundsType struct {
-	standardBoard map[string]*image.NRGBA
-}
-
-var prerenderedBackgroundsCache prerenderedBackgroundsType
-
-var padTop, padRight, padBottom, padLeft = 10, 10, 10, 10
-var padHeader = 10
-var headerHeight, ofsTop int
-var paddingColor color.Color
-
-func init() {
-	headerImg, err := png.Decode(bytes.NewReader(headerBytes))
-	if err != nil {
-		panic(fmt.Errorf("can't load header png: %v", err))
-	}
-	headerPal := make(map[color.Color]struct{})
-	bounds := headerImg.Bounds()
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			headerPal[headerImg.At(x, y)] = struct{}{}
-		}
-	}
-	headerHeight = bounds.Dy()
-	paddingColor = headerImg.At(0, 0) // use top left pixel color
-	ofsTop = padTop + headerHeight + padHeader + 1
-
-	backgroundImgs := make(map[string]*image.NRGBA)
-
+func validateBoardConfig(boardConfig [][]rune) error {
 	nRows := len(boardConfig)
 	if nRows < 1 {
-		panic(fmt.Errorf("invalid boardConfig: expecting at least 1 row"))
+		return fmt.Errorf("expecting at least 1 row")
 	}
 
 	nCols := len(boardConfig[0])
 	for i, row := range boardConfig {
 		if i > 0 && len(row) != nCols {
-			panic(fmt.Errorf("invalid boardConfig: expecting row %d to have length %d", i+1, nCols))
+			return fmt.Errorf("expecting row %d to have length %d", i+1, nCols)
 		}
 	}
 
-	ret := make(map[string]*LoadedTilesImg)
+	return nil
+}
+
+func init() {
+	if err := validateBoardConfig(standardBoardConfig); err != nil {
+		panic(fmt.Errorf("invalid boardConfig: %v", err))
+	}
+
+	headerImg, headerColors, err := loadImageAndDistinctOpaqueColors(headerBytes)
+	if err != nil {
+		panic(fmt.Errorf("can't load headerImg: %v", err))
+	}
+	padLeft := 10
+	padTop := 10
+	padRight := 10
+	padBottom := 10
+	padHeader := 10
+	headerHeight := headerImg.Bounds().Dy()
+	ofsTop := padTop + headerHeight + padHeader + 1
+
+	ret := make(map[string]*BoardDrawer)
 	for k, tptm := range tilesMeta {
-		loadedTilesImg, err := loadTilesImg(tptm, headerPal)
+		tilesImg, tilesImgColors, err := loadImageAndDistinctOpaqueColors(tptm.TilesBytes)
 		if err != nil {
 			panic(fmt.Errorf("can't load tilesImg for %s: %v", k, err))
 		}
-		ret[k] = loadedTilesImg
+		if tilesImg.Bounds().Max != image.Pt(tptm.ExpDimXY[0], tptm.ExpDimXY[1]) {
+			panic(fmt.Errorf("tilesImg for %s has incorrect bounds: %v", k, tilesImg.Bounds()))
+		}
 
-		backgroundImg := image.NewNRGBA(image.Rect(0, 0, padLeft+nCols*squareDim+1+padRight, ofsTop+nRows*squareDim+padBottom))
-		draw.Draw(backgroundImg, backgroundImg.Bounds(), &image.Uniform{paddingColor}, image.ZP, draw.Src)
+		// Add header image's palette to tiles image's palette.
+		// There is no requirement that all tiles images have the same palette,
+		// so they are mixed separately.
+		for c := range headerColors {
+			tilesImgColors[c] = struct{}{}
+		}
+
+		tilesImgPal, err := serializePalette(tilesImgColors)
+		if err != nil {
+			panic(fmt.Errorf("can't build palette for %s: %v", k, err))
+		}
+
+		headerPalImg := cloneToPaletted(headerImg, tilesImgPal)
+		tilesPalImg := cloneToPaletted(tilesImg, tilesImgPal)
+
+		tile0Sprite := make(map[rune]*image.Paletted)
+		for kk, vv := range tptm.Tile0Src {
+			tile0Sprite[kk] = tilesPalImg.SubImage(image.Rect(vv[0], vv[1], vv[0]+squareDim, vv[1]+squareDim)).(*image.Paletted)
+		}
+		tile1Sprite := make(map[rune]*image.Paletted)
+		for kk, vv := range tptm.Tile1Src {
+			tile1Sprite[kk] = tilesPalImg.SubImage(image.Rect(vv[0], vv[1], vv[0]+squareDim, vv[1]+squareDim)).(*image.Paletted)
+		}
+		boardSprite := make(map[rune]*image.Paletted)
+		for kk, vv := range tptm.BoardSrc {
+			boardSprite[kk] = tilesPalImg.SubImage(image.Rect(vv[0], vv[1], vv[0]+squareDim, vv[1]+squareDim)).(*image.Paletted)
+		}
+		textXSprite := make(map[rune]*image.Paletted)
+		for kk, vv := range tptm.TextXSrc {
+			textXSprite[kk] = tilesPalImg.SubImage(image.Rect(vv[0], vv[1], vv[0]+monospacedFontDimX, vv[1]+monospacedFontDimY)).(*image.Paletted)
+		}
+		text0Sprite := make(map[rune]*image.Paletted)
+		for kk, vv := range tptm.Text0Src {
+			text0Sprite[kk] = tilesPalImg.SubImage(image.Rect(vv[0], vv[1], vv[0]+monospacedFontDimX, vv[1]+monospacedFontDimY)).(*image.Paletted)
+		}
+		text1Sprite := make(map[rune]*image.Paletted)
+		for kk, vv := range tptm.Text1Src {
+			text1Sprite[kk] = tilesPalImg.SubImage(image.Rect(vv[0], vv[1], vv[0]+monospacedFontDimX, vv[1]+monospacedFontDimY)).(*image.Paletted)
+		}
+
+		paddingColorIndex := headerPalImg.Pix[0] // use top left pixel color
+
+		nRows := len(standardBoardConfig)
+		nCols := len(standardBoardConfig[0])
+		boardOrigin := image.Pt(padLeft, ofsTop)
+		emptyStandardBoardPalImg := image.NewPaletted(image.Rect(0, 0, boardOrigin.X+nCols*squareDim+1+padRight, boardOrigin.Y+nRows*squareDim+padBottom), tilesImgPal)
+		emptyStandardBoardPalImg.Pix[0] = paddingColorIndex
+		fillPaletted(emptyStandardBoardPalImg)
 		headerImgRight := padLeft + headerImg.Bounds().Dx()
-		headerImgRightCannotExceed := backgroundImg.Bounds().Dx() - padRight
+		headerImgRightCannotExceed := emptyStandardBoardPalImg.Bounds().Dx() - padRight
 		if headerImgRightCannotExceed < headerImgRight {
 			headerImgRight = headerImgRightCannotExceed
 		}
-		draw.Draw(backgroundImg, image.Rect(padLeft, padTop, headerImgRight, padTop+headerHeight), headerImg, image.ZP, draw.Over)
+		fastDrawOver(emptyStandardBoardPalImg, image.Rect(padLeft, padTop, headerImgRight, padTop+headerHeight), headerPalImg, image.Point{})
+		defaultBoardSpace := boardSprite[' ']
 		for r := 0; r < nRows; r++ {
 			for c := 0; c < nCols; c++ {
-				drawEmptySquare(tptm, loadedTilesImg.tilesImg, backgroundImg, r, c, boardConfig[r][c])
+				sprite, ok := boardSprite[standardBoardConfig[r][c]]
+				if !ok {
+					sprite = defaultBoardSpace
+				}
+				fastSpriteDrawSrc(emptyStandardBoardPalImg, image.Pt(boardOrigin.X+c*squareDim, boardOrigin.Y+r*squareDim), sprite)
 			}
 		}
 
 		// Missing borders. Add 1 px at top and right.
-		srcPt := tptm.BoardSrc[' '] // has bottom and left borders
-		srcl := srcPt[0]
-		srct := srcPt[1]
-		srcb := srct + squareDim - 1
+		// The default board space sprite has bottom and left borders.
+		sprite := defaultBoardSpace.SubImage(image.Rect(0, squareDim-1, squareDim, squareDim).Add(defaultBoardSpace.Bounds().Min)).(*image.Paletted)
 		// Copy bottom border to top of board.
 		// This must be what aboveboard means.
-		y := ofsTop - 1
-		x := padLeft
+		x, y := boardOrigin.X, boardOrigin.Y-1
 		for c := 0; c < nCols; c++ {
-			draw.Draw(backgroundImg, image.Rect(x, y, x+squareDim, y+1), loadedTilesImg.tilesImg,
-				image.Pt(srcl, srcb), draw.Src)
+			fastSpriteDrawSrc(emptyStandardBoardPalImg, image.Pt(x, y), sprite)
 			x += squareDim
 		}
 		// Copy bottom-left pixel of sample to top right of board.
-		draw.Draw(backgroundImg, image.Rect(x, y, x+1, y+1), loadedTilesImg.tilesImg,
-			image.Pt(srcl, srcb), draw.Src)
+		sprite = defaultBoardSpace.SubImage(image.Rect(0, squareDim-1, 1, squareDim).Add(defaultBoardSpace.Bounds().Min)).(*image.Paletted)
+		fastSpriteDrawSrc(emptyStandardBoardPalImg, image.Pt(x, y), sprite)
 		y += 1
+		sprite = defaultBoardSpace.SubImage(image.Rect(0, 0, 1, squareDim).Add(defaultBoardSpace.Bounds().Min)).(*image.Paletted)
 		// Copy left border to right.
 		for r := 0; r < nRows; r++ {
-			draw.Draw(backgroundImg, image.Rect(x, y, x+1, y+squareDim), loadedTilesImg.tilesImg,
-				image.Pt(srcl, srct), draw.Src)
+			fastSpriteDrawSrc(emptyStandardBoardPalImg, image.Pt(x, y), sprite)
 			y += squareDim
 		}
 
-		backgroundImgs[k] = backgroundImg
+		ret[k] = &BoardDrawer{
+			Colors:            tilesImgPal,
+			HeaderPalImg:      headerPalImg,
+			Tile0Sprite:       tile0Sprite,
+			Tile1Sprite:       tile1Sprite,
+			BoardSprite:       boardSprite,
+			TextXSprite:       textXSprite,
+			Text0Sprite:       text0Sprite,
+			Text1Sprite:       text1Sprite,
+			BoardConfig:       standardBoardConfig,
+			EmptyBoardPalImg:  emptyStandardBoardPalImg,
+			BoardOrigin:       boardOrigin,
+			PadLeft:           padLeft,
+			PadTop:            padTop,
+			PadRight:          padRight,
+			PadBottom:         padBottom,
+			PadHeader:         padHeader,
+			HeaderHeight:      headerHeight,
+			OfsTop:            ofsTop,
+			PaddingColorIndex: paddingColorIndex,
+		}
 	}
 
-	tilesImgCache = ret
-	prerenderedBackgroundsCache = prerenderedBackgroundsType{
-		standardBoard: backgroundImgs,
-	}
-}
-
-func drawEmptySquare(tptm *TilePainterTilesMeta, tilesImg image.Image, img *image.NRGBA, r, c int, b rune) {
-	y := r*squareDim + ofsTop
-	x := c*squareDim + padLeft
-	srcPt, ok := tptm.BoardSrc[rune(b)]
-	if !ok {
-		srcPt = tptm.BoardSrc[' ']
-	}
-	draw.Draw(img, image.Rect(x, y, x+squareDim, y+squareDim), tilesImg,
-		image.Pt(srcPt[0], srcPt[1]), draw.Src)
+	BoardDrawers = ret
 }
 
 func realWhose(whichColor int, actualWhose byte) byte {
@@ -682,23 +690,6 @@ func realWhose(whichColor int, actualWhose byte) byte {
 		return 1
 	default:
 		return actualWhose
-	}
-}
-
-func drawTileOnBoard(tptm *TilePainterTilesMeta, tilesImg image.Image, img *image.NRGBA, r, c int, b rune, p byte) {
-	y := r*squareDim + ofsTop
-	x := c*squareDim + padLeft
-	if b != ' ' {
-		tSrc := tptm.Tile0Src
-		if p&1 != 0 {
-			tSrc = tptm.Tile1Src
-		}
-		srcPt, ok := tSrc[b]
-		if !ok {
-			srcPt = tSrc['?']
-		}
-		draw.Draw(img, image.Rect(x, y, x+squareDim, y+squareDim), tilesImg,
-			image.Pt(srcPt[0], srcPt[1]), draw.Over)
 	}
 }
 
@@ -725,55 +716,49 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 	_, letterDistributionName, _ := game.HistoryToVariant(history)
 	lang := strings.TrimSuffix(letterDistributionName, "_super")
 
-	tptm, ok := tilesMeta[lang]
+	bd, ok := BoardDrawers[lang]
 	if !ok {
-		return nil, fmt.Errorf("missing tilesMeta: " + lang)
+		return nil, fmt.Errorf("missing boardDrawer: %s", lang)
 	}
 
-	loadedTilesImg, ok := tilesImgCache[lang]
-	if !ok {
-		return nil, fmt.Errorf("missing tilesImgCache: " + lang)
-	}
-	tilesImg := loadedTilesImg.tilesImg
-	palette := loadedTilesImg.palette
-
-	prerenderedBackgroundCache := prerenderedBackgroundsCache.standardBoard
-	backgroundImg, ok := prerenderedBackgroundCache[lang]
-	if !ok {
-		return nil, fmt.Errorf("missing prerenderedBackgroundCache: " + lang)
-	}
-	backgroundImgBounds := backgroundImg.Bounds()
-	singleImg := image.NewNRGBA(backgroundImgBounds)
-	draw.Draw(singleImg, backgroundImgBounds, backgroundImg, image.ZP, draw.Src)
-
-	nRows := len(boardConfig)
-	nCols := len(boardConfig[0])
+	nRows := len(bd.BoardConfig)
+	nCols := len(bd.BoardConfig[0])
 	onBoard := func(r, c int) bool {
 		return r >= 0 && r < nRows && c >= 0 && c < nCols
 	}
 
-	agif := &gif.GIF{}
-	addFrame := func(img *image.NRGBA, delay int, op draw.Op) {
-		imgPal := image.NewPaletted(img.Bounds(), palette)
-		draw.Draw(imgPal, imgPal.Bounds(), img, img.Bounds().Min, op)
-		agif.Image = append(agif.Image, imgPal)
-		agif.Delay = append(agif.Delay, delay)
-	}
-	if isStatic {
-		addFrame = func(img *image.NRGBA, delay int, op draw.Op) {}
-	}
-	addFrame(singleImg, 50, draw.Src)
+	emptyBoardPalImg := bd.EmptyBoardPalImg
 
-	makeSubImage := func(rect image.Rectangle) *image.NRGBA {
-		return image.NewNRGBA(rect)
+	canvasPalImg := image.NewPaletted(emptyBoardPalImg.Bounds(), bd.Colors)
+	fastDrawSrc(canvasPalImg, emptyBoardPalImg.Bounds(), emptyBoardPalImg, image.Point{})
+
+	var agif *gif.GIF
+	addFrame := func(img *image.Paletted, delay int) {}
+	if !isStatic {
+		agif = &gif.GIF{
+			Config: image.Config{
+				ColorModel: canvasPalImg.Palette,
+				Width:      canvasPalImg.Bounds().Dx(),
+				Height:     canvasPalImg.Bounds().Dy(),
+			},
+		}
+		addFrame = func(img *image.Paletted, delay int) {
+			agif.Image = append(agif.Image, img)
+			agif.Delay = append(agif.Delay, delay)
+		}
+	}
+	addFrame(canvasPalImg, 50)
+
+	makeSubImage := func(rect image.Rectangle) *image.Paletted {
+		return image.NewPaletted(rect, bd.Colors)
 	}
 	if isStatic {
-		makeSubImage = func(rect image.Rectangle) *image.NRGBA {
-			return singleImg
+		makeSubImage = func(rect image.Rectangle) *image.Paletted {
+			return canvasPalImg
 		}
 	}
 
-	patchImage := func(evt *macondopb.GameEvent, callback func(img *image.NRGBA, r, c int, ch rune)) {
+	patchImage := func(evt *macondopb.GameEvent, callback func(img *image.Paletted, r, c int, ch rune)) {
 		r, c := int(evt.Row), int(evt.Column)
 		dr, dc := 0, 1
 		if evt.Direction == macondopb.GameEvent_VERTICAL {
@@ -799,14 +784,14 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			str = str[:len(str)-size]
 		}
 		numPlayedTiles := utf8.RuneCountInString(str)
-		img := makeSubImage(image.Rect(c*squareDim+padLeft, r*squareDim+ofsTop, (c+1+(numPlayedTiles-1)*dc)*squareDim+padLeft, (r+1+(numPlayedTiles-1)*dr)*squareDim+ofsTop))
+		img := makeSubImage(image.Rect(bd.BoardOrigin.X+c*squareDim, bd.BoardOrigin.Y+r*squareDim, bd.BoardOrigin.X+(c+1+(numPlayedTiles-1)*dc)*squareDim, bd.BoardOrigin.Y+(r+1+(numPlayedTiles-1)*dr)*squareDim))
 		for _, ch := range str {
 			if ch != alphabet.ASCIIPlayedThrough {
 				callback(img, r, c, ch)
 			}
 			r, c = r+dr, c+dc
 		}
-		addFrame(img, 50, draw.Over)
+		addFrame(img, 50)
 	}
 	lastPlaceIndex := -1
 	for i, evt := range history.Events {
@@ -816,17 +801,29 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 		switch evt.GetType() {
 		case macondopb.GameEvent_TILE_PLACEMENT_MOVE:
 			lastPlaceIndex = i
-			which := whichFromEvent(history, evt)
-			patchImage(evt, func(img *image.NRGBA, r, c int, ch rune) {
-				if onBoard(r, c) {
-					drawTileOnBoard(tptm, tilesImg, img, r, c, ch, realWhose(wf.WhichColor, which))
+			whose := realWhose(wf.WhichColor, whichFromEvent(history, evt))
+			sprites := bd.Tile0Sprite
+			if whose&1 != 0 {
+				sprites = bd.Tile1Sprite
+			}
+			patchImage(evt, func(img *image.Paletted, r, c int, ch rune) {
+				if ch != ' ' && onBoard(r, c) {
+					sprite, ok := sprites[ch]
+					if !ok {
+						sprite = sprites['?']
+					}
+					fastSpriteDrawOver(img, image.Pt(bd.BoardOrigin.X+c*squareDim, bd.BoardOrigin.Y+r*squareDim), sprite)
 				}
 			})
 		case macondopb.GameEvent_PHONY_TILES_RETURNED:
 			if lastPlaceIndex >= 0 {
-				patchImage(history.Events[lastPlaceIndex], func(img *image.NRGBA, r, c int, ch rune) {
+				patchImage(history.Events[lastPlaceIndex], func(img *image.Paletted, r, c int, ch rune) {
 					if onBoard(r, c) {
-						drawEmptySquare(tptm, tilesImg, img, r, c, boardConfig[r][c])
+						sprite, ok := bd.BoardSprite[bd.BoardConfig[r][c]]
+						if !ok {
+							sprite = bd.BoardSprite[' ']
+						}
+						fastSpriteDrawSrc(img, image.Pt(bd.BoardOrigin.X+c*squareDim, bd.BoardOrigin.Y+r*squareDim), sprite)
 					}
 				})
 				lastPlaceIndex = -1
@@ -842,13 +839,13 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 	// If we set the first frame's delay to 200cs (for Mac Quick Look),
 	// Chrome delays the first frame instead.
 	// Solution: we add a transparent 1x1 frame and run it for 150cs.
-	// This adds about 215 bytes to the file, but works for both.
-	addFrame(image.NewNRGBA(image.Rect(0, 0, 1, 1)), 150, draw.Over)
+	// This works for both.
+	addFrame(image.NewPaletted(image.Rect(0, 0, 1, 1), bd.Colors), 150)
 
 	var buf bytes.Buffer
 	var err error
 	if isStatic {
-		err = png.Encode(&buf, singleImg)
+		err = png.Encode(&buf, canvasPalImg)
 	} else {
 		err = gif.EncodeAll(&buf, agif)
 	}
