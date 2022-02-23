@@ -1,6 +1,7 @@
 @import 'base';
 
 .App {
+  font-family: $font-default;
   min-height: 100vh;
   @include colorModed() {
     background-color: m($background);
@@ -35,12 +36,19 @@
   }
 }
 
+
+.ant-input-group-addon {
+  margin: 0;
+  @include colorModed() {
+    background: transparent;
+  }
+}
 .country-flag {
   box-shadow: 0px 0px 3px 1px #00000029;
   position: relative;
   top: -2px;
   margin-right: 6px;
-  height: 1em;
+  height: 0.8em;
 }
 .ant-dropdown.user-menu {
   @include colorModed() {
@@ -114,7 +122,7 @@ a.plain,
     text-align: center;
     h4 {
       @include type-default;
-      font-weight: 600;
+      font-weight: 700;
       font-size: 18px;
       letter-spacing: 0;
     }

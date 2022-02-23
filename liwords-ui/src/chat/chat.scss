@@ -115,7 +115,7 @@ p {
       }
       .ant-select-selection-placeholder {
         z-index: 1;
-        font-weight: 400;
+        font-weight: normal;
         opacity: 0.8;
         @include colorModed() {
           color: m($gray-medium);
@@ -195,7 +195,7 @@ p {
         }
       }
       .listing-name {
-        font-weight: 800;
+        font-weight: 700;
         @include colorModed() {
           color: m($gray-extreme);
         }

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useHistory } from 'react-router-dom';
-import { Button, Dropdown, Menu, Modal, Popconfirm } from 'antd';
+import { Affix, Button, Dropdown, Menu, Modal, Popconfirm } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 
 import {
@@ -152,48 +152,50 @@ const ExamineGameControls = React.memo(
     );
 
     return (
-      <div className="game-controls">
-        <Dropdown
-          overlay={exportMenu}
-          trigger={['click']}
-          visible={exportMenuVisible}
-        >
-          <Button onClick={() => setExportMenuVisible((v) => !v)}>
-            Export
+      <Affix offsetTop={210} className="examiner-controls">
+        <div className="game-controls">
+          <Dropdown
+            overlay={exportMenu}
+            trigger={['click']}
+            visible={exportMenuVisible}
+          >
+            <Button onClick={() => setExportMenuVisible((v) => !v)}>
+              Export
+            </Button>
+          </Dropdown>
+          <Button
+            shape="circle"
+            icon={<DoubleLeftOutlined />}
+            type="primary"
+            onClick={handleExamineFirst}
+            disabled={examinedTurn <= 0 || numberOfTurns <= 0}
+          />
+          <Button
+            shape="circle"
+            icon={<LeftOutlined />}
+            type="primary"
+            onClick={handleExaminePrev}
+            disabled={examinedTurn <= 0 || numberOfTurns <= 0}
+          />
+          <Button
+            shape="circle"
+            icon={<RightOutlined />}
+            type="primary"
+            onClick={handleExamineNext}
+            disabled={examinedTurn >= numberOfTurns}
+          />
+          <Button
+            shape="circle"
+            icon={<DoubleRightOutlined />}
+            type="primary"
+            onClick={handleExamineLast}
+            disabled={examinedTurn >= numberOfTurns}
+          />
+          <Button onClick={handleExamineEnd} ref={doneButtonRef}>
+            Done
           </Button>
-        </Dropdown>
-        <Button
-          shape="circle"
-          icon={<DoubleLeftOutlined />}
-          type="primary"
-          onClick={handleExamineFirst}
-          disabled={examinedTurn <= 0 || numberOfTurns <= 0}
-        />
-        <Button
-          shape="circle"
-          icon={<LeftOutlined />}
-          type="primary"
-          onClick={handleExaminePrev}
-          disabled={examinedTurn <= 0 || numberOfTurns <= 0}
-        />
-        <Button
-          shape="circle"
-          icon={<RightOutlined />}
-          type="primary"
-          onClick={handleExamineNext}
-          disabled={examinedTurn >= numberOfTurns}
-        />
-        <Button
-          shape="circle"
-          icon={<DoubleRightOutlined />}
-          type="primary"
-          onClick={handleExamineLast}
-          disabled={examinedTurn >= numberOfTurns}
-        />
-        <Button onClick={handleExamineEnd} ref={doneButtonRef}>
-          Done
-        </Button>
-      </div>
+        </div>
+      </Affix>
     );
   }
 );
