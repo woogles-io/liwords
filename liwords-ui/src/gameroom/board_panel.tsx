@@ -1574,11 +1574,7 @@ export const BoardPanel = React.memo((props: Props) => {
       {gameMetaMessage ? (
         <GameMetaMessage message={gameMetaMessage} />
       ) : (
-        <Affix
-          offsetTop={126}
-          style={{ width: '100vw' }}
-          className="rack-affix"
-        >
+        <Affix offsetTop={126} className="rack-affix">
           <div className="rack-container">
             <Tooltip
               title="Reset Rack &darr;"
