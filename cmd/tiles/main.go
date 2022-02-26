@@ -49,6 +49,7 @@ params can be prefixed with these flags:
 	var colorFlag = flag.String("color", "", "0 = use player 0's colors, 1 = use player 1's colors")
 	var gifFlag = flag.Bool("gif", false, "generate static gif")
 	var agifFlag = flag.Bool("agif", false, "generate animated gif")
+	var verFlag = flag.Int("ver", 0, "specify version")
 	var urlFlag = flag.String("url", "https://woogles.io", "specify url, -url local for http://localhost")
 	flag.Parse()
 	args := flag.Args()
@@ -75,6 +76,8 @@ params can be prefixed with these flags:
 
 	wf := memento.WhichFile{}
 	wf.GameId = args[0]
+	wf.NextEventNum = -1
+	wf.Version = *verFlag
 	wf.WhichColor = whichColor
 	outputFilename := wf.GameId
 
@@ -87,6 +90,9 @@ params can be prefixed with these flags:
 		wf.HasNextEventNum = true
 		wf.NextEventNum = numEvents
 		outputFilenameSuffix += fmt.Sprintf("-%v", wf.NextEventNum)
+	}
+	if wf.Version != 0 {
+		outputFilename += fmt.Sprintf("-v%v", wf.Version)
 	}
 	if *agifFlag {
 		wf.FileType = "animated-gif"

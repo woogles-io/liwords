@@ -9,7 +9,10 @@ import (
 	"image/gif"
 	"image/png"
 	"math"
+	"sort"
+	"strconv"
 	"strings"
+	"unicode"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 
@@ -526,14 +529,13 @@ type BoardDrawer struct {
 	Text1Sprite        map[rune]*image.Paletted
 	BoardConfig        [][]rune
 	EmptyBoardPalImg   *image.Paletted
-	BoardOrigin        image.Point
 	PadLeft            int
 	PadTop             int
 	PadRight           int
 	PadBottom          int
 	PadHeader          int
+	PadRack            int
 	HeaderHeight       int
-	OfsTop             int
 	PaddingColorIndex  byte
 	LetterDistribution *alphabet.LetterDistribution
 }
@@ -556,7 +558,26 @@ func validateBoardConfig(boardConfig [][]rune) error {
 	return nil
 }
 
+func getSprite(sprites map[rune]*image.Paletted, r, d rune) *image.Paletted {
+	sprite, ok := sprites[r]
+	if !ok {
+		sprite = sprites[d]
+	}
+	return sprite
+}
+
+var displacementRatio []float64
+
 func init() {
+	// For animation.
+	numSteps := 10
+	displacementRatio = make([]float64, numSteps+1)
+	for i := 1; i < numSteps; i++ {
+		// Starts fast, slows down.
+		displacementRatio[i] = math.Sin(float64(math.Pi/2) * float64(i) / float64(numSteps))
+	}
+	displacementRatio[numSteps] = 1
+
 	if err := validateBoardConfig(standardBoardConfig); err != nil {
 		panic(fmt.Errorf("invalid boardConfig: %v", err))
 	}
@@ -587,8 +608,8 @@ func init() {
 	padRight := 10
 	padBottom := 10
 	padHeader := 10
+	padRack := 10
 	headerHeight := headerImg.Bounds().Dy()
-	ofsTop := padTop + headerHeight + padHeader + 1
 
 	ret := make(map[string]*BoardDrawer)
 	for k, tptm := range tilesMeta {
@@ -649,24 +670,11 @@ func init() {
 
 		nRows := len(standardBoardConfig)
 		nCols := len(standardBoardConfig[0])
-		boardOrigin := image.Pt(padLeft, ofsTop)
-		emptyStandardBoardPalImg := image.NewPaletted(image.Rect(0, 0, boardOrigin.X+nCols*squareDim+1+padRight, boardOrigin.Y+nRows*squareDim+padBottom), tilesImgPal)
-		emptyStandardBoardPalImg.Pix[0] = paddingColorIndex
-		fillPaletted(emptyStandardBoardPalImg)
-		headerImgRight := padLeft + headerImg.Bounds().Dx()
-		headerImgRightCannotExceed := emptyStandardBoardPalImg.Bounds().Dx() - padRight
-		if headerImgRightCannotExceed < headerImgRight {
-			headerImgRight = headerImgRightCannotExceed
-		}
-		fastDrawOver(emptyStandardBoardPalImg, image.Rect(padLeft, padTop, headerImgRight, padTop+headerHeight), headerPalImg, image.Point{})
+		emptyStandardBoardPalImg := image.NewPaletted(image.Rect(0, 0, nCols*squareDim+1, 1+nRows*squareDim), tilesImgPal)
 		defaultBoardSpace := boardSprite[' ']
 		for r := 0; r < nRows; r++ {
 			for c := 0; c < nCols; c++ {
-				sprite, ok := boardSprite[standardBoardConfig[r][c]]
-				if !ok {
-					sprite = defaultBoardSpace
-				}
-				fastSpriteDrawSrc(emptyStandardBoardPalImg, image.Pt(boardOrigin.X+c*squareDim, boardOrigin.Y+r*squareDim), sprite)
+				fastSpriteDrawSrc(emptyStandardBoardPalImg, image.Pt(c*squareDim, 1+r*squareDim), getSprite(boardSprite, standardBoardConfig[r][c], ' '))
 			}
 		}
 
@@ -675,7 +683,7 @@ func init() {
 		sprite := defaultBoardSpace.SubImage(image.Rect(0, squareDim-1, squareDim, squareDim).Add(defaultBoardSpace.Bounds().Min)).(*image.Paletted)
 		// Copy bottom border to top of board.
 		// This must be what aboveboard means.
-		x, y := boardOrigin.X, boardOrigin.Y-1
+		x, y := 0, 0
 		for c := 0; c < nCols; c++ {
 			fastSpriteDrawSrc(emptyStandardBoardPalImg, image.Pt(x, y), sprite)
 			x += squareDim
@@ -683,7 +691,7 @@ func init() {
 		// Copy bottom-left pixel of sample to top right of board.
 		sprite = defaultBoardSpace.SubImage(image.Rect(0, squareDim-1, 1, squareDim).Add(defaultBoardSpace.Bounds().Min)).(*image.Paletted)
 		fastSpriteDrawSrc(emptyStandardBoardPalImg, image.Pt(x, y), sprite)
-		y += 1
+		y++
 		sprite = defaultBoardSpace.SubImage(image.Rect(0, 0, 1, squareDim).Add(defaultBoardSpace.Bounds().Min)).(*image.Paletted)
 		// Copy left border to right.
 		for r := 0; r < nRows; r++ {
@@ -702,14 +710,13 @@ func init() {
 			Text1Sprite:        text1Sprite,
 			BoardConfig:        standardBoardConfig,
 			EmptyBoardPalImg:   emptyStandardBoardPalImg,
-			BoardOrigin:        boardOrigin,
 			PadLeft:            padLeft,
 			PadTop:             padTop,
 			PadRight:           padRight,
 			PadBottom:          padBottom,
 			PadHeader:          padHeader,
+			PadRack:            padRack,
 			HeaderHeight:       headerHeight,
-			OfsTop:             ofsTop,
 			PaddingColorIndex:  paddingColorIndex,
 			LetterDistribution: ld,
 		}
@@ -718,32 +725,33 @@ func init() {
 	BoardDrawers = ret
 }
 
-func realWhose(whichColor int, actualWhose byte) byte {
-	switch whichColor {
-	case 0:
-		return 0
-	case 1:
-		return 1
-	default:
-		return actualWhose
+// The previous index. Should work for any number of players.
+func previousNicknameIndex(history *macondopb.GameHistory, which int) int {
+	if which == 0 {
+		return len(history.Players) - 1
 	}
+	return which - 1
 }
 
-func whichFromEvent(history *macondopb.GameHistory, evt *macondopb.GameEvent) byte {
-	which := byte(0)
-	if len(history.Players) >= 2 {
-		if evt.Nickname != history.Players[0].Nickname {
-			which = 1
-		}
-		if history.SecondWentFirst {
-			which ^= 1 // Fix coloring. WHY.
+// Nickname index within history.Players. Not adjusted for SecondWentFirst.
+func nicknameIndex(history *macondopb.GameHistory, evt *macondopb.GameEvent) int {
+	for k, v := range history.Players {
+		if evt.Nickname == v.Nickname {
+			return k
 		}
 	}
-	return which
+	return -1
+}
+
+func reblank(r rune) rune {
+	if r == unicode.ToLower(r) {
+		return '?'
+	}
+	return r
 }
 
 func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
-	isStatic := wf.FileType != "animated-gif"
+	isAnimated := wf.FileType == "animated-gif"
 	numEvents := math.MaxInt
 	if wf.HasNextEventNum {
 		numEvents = wf.NextEventNum - 1
@@ -751,10 +759,139 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 
 	_, letterDistributionName, _ := game.HistoryToVariant(history)
 	lang := strings.TrimSuffix(letterDistributionName, "_super")
-
 	bd, ok := BoardDrawers[lang]
 	if !ok {
 		return nil, fmt.Errorf("missing boardDrawer: %s", lang)
+	}
+
+	numPlayers := len(history.Players)
+	if len(history.LastKnownRacks) != numPlayers {
+		return nil, fmt.Errorf("invalid len(lastKnownRacks): %v racks for %v players", len(history.LastKnownRacks), numPlayers)
+	}
+
+	// Nothing is adjusted for SecondWentFirst.
+	// For 0 <= turn < len(history.Events), [turn] is pre-turn and [turn+1] is post-turn.
+	whoseTurn := make([]int, len(history.Events)+1) // [0] == 0.
+	if history.SecondWentFirst && numPlayers > 1 {
+		whoseTurn[0] = 1
+	}
+	{
+		canHaveActiveAction := true
+		contestedTilePlacementMoveIdx := -1
+		for i, evt := range history.Events {
+			expectedNicknameIndex := whoseTurn[i]
+			whoseTurn[i+1] = expectedNicknameIndex
+			isActiveAction := true
+			switch evt.Type {
+			case
+				macondopb.GameEvent_TILE_PLACEMENT_MOVE,
+				macondopb.GameEvent_PASS,
+				macondopb.GameEvent_EXCHANGE,
+				macondopb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
+				// The player spends the turn.
+				whoseTurn[i+1] = (expectedNicknameIndex + 1) % numPlayers
+			case
+				macondopb.GameEvent_PHONY_TILES_RETURNED,
+				macondopb.GameEvent_CHALLENGE_BONUS:
+				// The player on turn keeps the turn, but the event is attributed to the previous player.
+				expectedNicknameIndex = previousNicknameIndex(history, expectedNicknameIndex)
+			case
+				macondopb.GameEvent_END_RACK_PTS,
+				macondopb.GameEvent_TIME_PENALTY,
+				macondopb.GameEvent_END_RACK_PENALTY:
+				// These are not actual actions, so whose turn it is does not change.
+				// Nonetheless, the event should still be attributed to one of the players.
+				// (Later, END_RACK_PTS should show opponent's tiles.)
+				isActiveAction = false
+				expectedNicknameIndex = nicknameIndex(history, evt)
+				if expectedNicknameIndex < 0 || expectedNicknameIndex > numPlayers {
+					return nil, fmt.Errorf("invalid nickname in event[%v]: %v", i, evt)
+				}
+			default:
+				// Mistake-proof in case the jigglypuff evolves.
+				// * protobuf
+				return nil, fmt.Errorf("unknown event[%v]: %v", i, evt)
+			}
+			expectedNickname := history.Players[expectedNicknameIndex].Nickname
+			if evt.Nickname != expectedNickname {
+				return nil, fmt.Errorf("unexpected nickname in event[%v] (should be %v): %v", i, expectedNickname, evt)
+			}
+			if isActiveAction {
+				if !canHaveActiveAction {
+					return nil, fmt.Errorf("invalid active action in event[%v]: %v", i, evt)
+				}
+			} else {
+				canHaveActiveAction = false // Passive actions cannot be followed by active actions.
+			}
+			switch evt.Type {
+			case
+				macondopb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS,
+				macondopb.GameEvent_PHONY_TILES_RETURNED,
+				macondopb.GameEvent_CHALLENGE_BONUS:
+				if contestedTilePlacementMoveIdx < 0 {
+					return nil, fmt.Errorf("no relevant TILE_PLACEMENT_MOVE in event[%v]: %v", i, evt)
+				}
+			}
+			contestedTilePlacementMoveIdx = -1
+			if evt.Type == macondopb.GameEvent_TILE_PLACEMENT_MOVE {
+				contestedTilePlacementMoveIdx = i
+			}
+		}
+	}
+
+	colorMapping := make([]int, numPlayers)
+	for i := range colorMapping {
+		colorMapping[i] = 1
+	}
+	colorMapping[whoseTurn[0]] = 0
+	if wf.WhichColor >= 0 && wf.WhichColor <= 1 {
+		for i := range colorMapping {
+			colorMapping[i] = wf.WhichColor
+		}
+	}
+
+	// For 0 <= turn < len(history.Events), [turn] is pre-turn and [turn+1] is post-turn.
+	cumes := make([][]int32, len(history.Events)+1)
+	cumes[0] = make([]int32, numPlayers) // Zeros.
+	for i, evt := range history.Events {
+		cumes[i+1] = make([]int32, numPlayers)
+		copy(cumes[i+1], cumes[i])
+		cumes[i+1][nicknameIndex(history, evt)] = evt.Cumulative
+	}
+
+	// For 0 <= turn < len(history.Events), [turn] is pre-turn and [turn+1] is post-turn.
+	racks := make([][][]rune, len(history.Events)+1)
+	{
+		racki := make([][]rune, numPlayers)
+		for p := 0; p < numPlayers; p++ {
+			rack := []rune(history.LastKnownRacks[p])
+			// Racks may not always be pre-sorted.
+			sort.Slice(rack, func(i, j int) bool {
+				return bd.LetterDistribution.SortOrder[rack[i]] < bd.LetterDistribution.SortOrder[rack[j]]
+			})
+			racki[p] = rack
+		}
+		racks[len(history.Events)] = racki
+	}
+	for t := len(history.Events) - 1; t >= 0; t-- {
+		evt := history.Events[t]
+		switch evt.Type {
+		case
+			macondopb.GameEvent_END_RACK_PTS,     // This event has Opponent's Rack, which is already correct.
+			macondopb.GameEvent_TIME_PENALTY,     // This event should not change the rack.
+			macondopb.GameEvent_END_RACK_PENALTY: // This event should not change the rack.
+			racks[t] = racks[t+1]
+		default:
+			racki := make([][]rune, numPlayers)
+			copy(racki, racks[t+1])
+			rack := []rune(evt.Rack)
+			// Racks may not always be pre-sorted.
+			sort.Slice(rack, func(i, j int) bool {
+				return bd.LetterDistribution.SortOrder[rack[i]] < bd.LetterDistribution.SortOrder[rack[j]]
+			})
+			racki[nicknameIndex(history, evt)] = rack
+			racks[t] = racki
+		}
 	}
 
 	nRows := len(bd.BoardConfig)
@@ -765,45 +902,29 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 
 	emptyBoardPalImg := bd.EmptyBoardPalImg
 
-	canvasPalImg := image.NewPaletted(emptyBoardPalImg.Bounds(), bd.Colors)
-	fastDrawSrc(canvasPalImg, emptyBoardPalImg.Bounds(), emptyBoardPalImg, image.Point{})
-
-	var lastFramePalImg *image.Paletted
-	var agif *gif.GIF
-	addFrame := func(rect image.Rectangle, delay int) {}
-	if !isStatic {
-		lastFramePalImg = image.NewPaletted(canvasPalImg.Bounds(), bd.Colors)
-		agif = &gif.GIF{
-			Config: image.Config{
-				ColorModel: canvasPalImg.Palette,
-				Width:      canvasPalImg.Bounds().Dx(),
-				Height:     canvasPalImg.Bounds().Dy(),
-			},
-		}
-		addFrame = func(bounds image.Rectangle, delay int) {
-			if len(agif.Delay) == 0 {
-				// Always record the first frame completely.
-				frameDiffPalImg := image.NewPaletted(bounds, bd.Colors)
-				fastDrawSrc(frameDiffPalImg, bounds, canvasPalImg, bounds.Min)
-				fastDrawSrc(lastFramePalImg, bounds, frameDiffPalImg, bounds.Min)
-				agif.Image = append(agif.Image, frameDiffPalImg)
-				agif.Delay = append(agif.Delay, delay)
-			} else {
-				bounds = croppedBoundsDiff(canvasPalImg, bounds, lastFramePalImg, bounds.Min)
-				if bounds.Empty() {
-					agif.Delay[len(agif.Delay)-1] += delay
-				} else {
-					frameDiffPalImg := image.NewPaletted(bounds, bd.Colors)
-					fastDrawSrc(frameDiffPalImg, bounds, canvasPalImg, bounds.Min)
-					fastUndrawOver(frameDiffPalImg, bounds, lastFramePalImg, bounds.Min)
-					fastDrawOver(lastFramePalImg, bounds, frameDiffPalImg, bounds.Min)
-					agif.Image = append(agif.Image, frameDiffPalImg)
-					agif.Delay = append(agif.Delay, delay)
-				}
-			}
+	boardOrigin := image.Pt(bd.PadLeft, bd.PadTop+bd.HeaderHeight+bd.PadHeader+1)
+	if wf.Version == 2 {
+		// Ensure enough height for 1 line of text.
+		addHeight := monospacedFontDimY - bd.HeaderHeight
+		if addHeight > 0 {
+			boardOrigin.Y += addHeight
 		}
 	}
-	addFrame(canvasPalImg.Bounds(), 50)
+	desiredBounds := image.Rect(0, 0, boardOrigin.X+emptyBoardPalImg.Bounds().Dx()+bd.PadRight, boardOrigin.Y+emptyBoardPalImg.Bounds().Dy()+bd.PadBottom)
+	if wf.Version == 2 {
+		desiredBounds.Max.Y += bd.PadRack + squareDim
+	}
+	canvasPalImg := image.NewPaletted(desiredBounds, bd.Colors)
+	canvasPalImg.Pix[0] = bd.PaddingColorIndex
+	fillPaletted(canvasPalImg)
+	headerImgRight := bd.PadLeft + bd.HeaderPalImg.Bounds().Dx()
+	headerImgRightCannotExceed := desiredBounds.Dx() - bd.PadRight
+	if headerImgRightCannotExceed < headerImgRight {
+		headerImgRight = headerImgRightCannotExceed
+	}
+	fastDrawOver(canvasPalImg, image.Rect(bd.PadLeft, bd.PadTop, headerImgRight, bd.PadTop+bd.HeaderHeight), bd.HeaderPalImg, image.Point{})
+	fastSpriteDrawSrc(canvasPalImg, image.Pt(boardOrigin.X, boardOrigin.Y-1), emptyBoardPalImg)
+	rackY := desiredBounds.Dy() - (squareDim + bd.PadBottom)
 
 	patchImage := func(evt *macondopb.GameEvent, callback func(r, c int, ch rune)) {
 		r, c := int(evt.Row), int(evt.Column)
@@ -812,97 +933,126 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			dr, dc = 1, 0
 		}
 		for _, ch := range evt.PlayedTiles {
-			if ch != alphabet.ASCIIPlayedThrough {
+			if ch != alphabet.ASCIIPlayedThrough && onBoard(r, c) {
 				callback(r, c, ch)
 			}
 			r, c = r+dr, c+dc
 		}
 	}
-	lastPlaceIndex := -1
-	for i, evt := range history.Events {
-		if i >= numEvents {
-			break
+	tileSprite := func(which int) map[rune]*image.Paletted {
+		if colorMapping[which] != 0 {
+			return bd.Tile1Sprite
 		}
-		switch evt.GetType() {
-		case macondopb.GameEvent_TILE_PLACEMENT_MOVE:
-			lastPlaceIndex = i
-			whose := realWhose(wf.WhichColor, whichFromEvent(history, evt))
-			sprites := bd.Tile0Sprite
-			if whose&1 != 0 {
-				sprites = bd.Tile1Sprite
-			}
-			rect := image.Rectangle{}
-			patchImage(evt, func(r, c int, ch rune) {
-				if ch != ' ' && onBoard(r, c) {
-					sprite, ok := sprites[ch]
-					if !ok {
-						sprite = sprites['?']
-					}
-					newX, newY := bd.BoardOrigin.X+c*squareDim, bd.BoardOrigin.Y+r*squareDim
-					fastSpriteDrawOver(canvasPalImg, image.Pt(newX, newY), sprite)
-					rect = rect.Union(image.Rect(newX, newY, newX+squareDim, newY+squareDim))
-				}
-			})
-			addFrame(rect, 50)
-		case macondopb.GameEvent_PHONY_TILES_RETURNED:
+		return bd.Tile0Sprite
+	}
+	type flyingSprite struct {
+		pt0 image.Point
+		pt1 image.Point
+		src *image.Paletted
+		ch  rune
+	}
+	var flyingSpritesBuf []flyingSprite
+	buildHomeRack := func(turn int, arr []flyingSprite) []flyingSprite {
+		// The rack of the turn-to-move. This can be different from the event's nickname.
+		which := whoseTurn[turn]
+		sprites := tileSprite(which)
+		rack := racks[turn][which]
+		pt := image.Pt((bd.PadLeft+canvasPalImg.Bounds().Dx()-bd.PadRight-len(rack)*squareDim)/2, rackY)
+		for _, ch := range rack {
+			arr = append(arr, flyingSprite{pt0: pt, pt1: pt, src: getSprite(sprites, ch, '?'), ch: ch})
+			pt.X += squareDim
+		}
+		return arr
+	}
+	var cumeBuf0 []byte
+	var cumeBuf1 []byte
+	paintCumes := func(turn int) image.Rectangle {
+		cumeBuf0 = strconv.AppendInt(cumeBuf0[:0], int64(cumes[turn][0]), 10)
+		cumeBuf1 = strconv.AppendInt(cumeBuf1[:0], int64(cumes[turn][1]), 10)
+		if history.SecondWentFirst {
+			cumeBuf0, cumeBuf1 = cumeBuf1, cumeBuf0
+		}
+		pt := image.Pt(canvasPalImg.Bounds().Dx()-bd.PadRight-(len(cumeBuf0)+3+len(cumeBuf1))*monospacedFontDimX, bd.PadTop)
+		startX := pt.X
+		for _, ch := range cumeBuf0 {
+			fastSpriteDrawSrc(canvasPalImg, pt, getSprite(bd.Text0Sprite, rune(ch), ' '))
+			pt.X += monospacedFontDimX
+		}
+		fastSpriteDrawSrc(canvasPalImg, pt, bd.TextXSprite[' '])
+		pt.X += monospacedFontDimX
+		fastSpriteDrawSrc(canvasPalImg, pt, getSprite(bd.TextXSprite, '-', ' '))
+		pt.X += monospacedFontDimX
+		fastSpriteDrawSrc(canvasPalImg, pt, bd.TextXSprite[' '])
+		pt.X += monospacedFontDimX
+		for _, ch := range cumeBuf1 {
+			fastSpriteDrawSrc(canvasPalImg, pt, getSprite(bd.Text1Sprite, rune(ch), ' '))
+			pt.X += monospacedFontDimX
+		}
+		return image.Rect(startX, pt.Y, pt.X, pt.Y+monospacedFontDimY)
+	}
+	paintScoreDiff := func(turn int) image.Rectangle {
+		// For 0 <= turn < len(history.Events).
+		// Score difference always belongs to stated nickname.
+		which := nicknameIndex(history, history.Events[turn])
+		scoreDiff := int64(cumes[turn+1][which] - cumes[turn][which])
+		cumeBuf0 = cumeBuf0[:0]
+		if scoreDiff >= 0 {
+			cumeBuf0 = append(cumeBuf0, '+')
+		}
+		cumeBuf0 = strconv.AppendInt(cumeBuf0, scoreDiff, 10)
+		pt := image.Pt((bd.PadLeft+canvasPalImg.Bounds().Dx()-bd.PadRight-len(cumeBuf0)*monospacedFontDimX)/2, bd.PadTop)
+		startX := pt.X
+		sprites := bd.Text0Sprite
+		if colorMapping[which] != 0 {
+			sprites = bd.Text1Sprite
+		}
+		for _, ch := range cumeBuf0 {
+			fastSpriteDrawSrc(canvasPalImg, pt, getSprite(sprites, rune(ch), ' '))
+			pt.X += monospacedFontDimX
+		}
+		return image.Rect(startX, pt.Y, pt.X, pt.Y+monospacedFontDimY)
+	}
+
+	evts := history.Events
+	if numEvents <= 0 {
+		evts = evts[:0]
+	} else if numEvents < len(evts) {
+		evts = evts[:numEvents]
+	}
+	if !isAnimated {
+		lastPlaceIndex := -1
+		setLastPlaceIndex := func(i int) {
 			if lastPlaceIndex >= 0 {
-				rect := image.Rectangle{}
-				patchImage(history.Events[lastPlaceIndex], func(r, c int, ch rune) {
-					if onBoard(r, c) {
-						sprite, ok := bd.BoardSprite[bd.BoardConfig[r][c]]
-						if !ok {
-							sprite = bd.BoardSprite[' ']
-						}
-						newX, newY := bd.BoardOrigin.X+c*squareDim, bd.BoardOrigin.Y+r*squareDim
-						fastSpriteDrawSrc(canvasPalImg, image.Pt(newX, newY), sprite)
-						rect = rect.Union(image.Rect(newX, newY, newX+squareDim, newY+squareDim))
-					}
+				evt := evts[lastPlaceIndex]
+				which := whoseTurn[lastPlaceIndex]
+				sprites := tileSprite(which)
+				patchImage(evt, func(r, c int, ch rune) {
+					pt := image.Pt(boardOrigin.X+c*squareDim, boardOrigin.Y+r*squareDim)
+					fastSpriteDrawOver(canvasPalImg, pt, getSprite(sprites, ch, '?'))
 				})
-				addFrame(rect, 50)
+			}
+			lastPlaceIndex = i
+		}
+		for i, evt := range evts {
+			switch evt.Type {
+			case macondopb.GameEvent_TILE_PLACEMENT_MOVE:
+				setLastPlaceIndex(i)
+			case macondopb.GameEvent_PHONY_TILES_RETURNED:
 				lastPlaceIndex = -1
 			}
 		}
-	}
+		setLastPlaceIndex(-1)
 
-	if !isStatic {
-		// We want the final frame to stay for 2 sec.
-		agif.Delay[len(agif.Delay)-1] = 200
+		if wf.Version == 2 {
+			for _, elt := range buildHomeRack(len(evts), flyingSpritesBuf[:0]) {
+				pt := elt.pt0
+				fastSpriteDrawOver(canvasPalImg, pt, elt.src)
+			}
+			paintCumes(len(evts))
+		}
 
-		// Chrome interprets Delay as the delay after the frame.
-		// Mac Quick Look interprets Delay as the delay before the frame.
-		// Solution: Use a transparent 1x1 frame to hold excess delay.
-		minDelay := math.MaxInt
-		for _, v := range agif.Delay {
-			if v < minDelay {
-				minDelay = v
-			}
-		}
-		nFrames := len(agif.Delay)
-		for _, v := range agif.Delay {
-			if v != minDelay {
-				nFrames++
-			}
-		}
-		if nFrames != len(agif.Delay) {
-			fillerTransparent1x1PalImg := image.NewPaletted(image.Rect(0, 0, 1, 1), bd.Colors)
-			imgs := make([]*image.Paletted, 0, nFrames)
-			delays := make([]int, 0, nFrames)
-			for i, delay := range agif.Delay {
-				imgs = append(imgs, agif.Image[i])
-				delays = append(delays, minDelay)
-				if delay != minDelay {
-					imgs = append(imgs, fillerTransparent1x1PalImg)
-					delays = append(delays, delay-minDelay)
-				}
-			}
-			agif.Image = imgs
-			agif.Delay = delays
-		}
-	}
-
-	var buf bytes.Buffer
-	var err error
-	if isStatic {
+		var buf bytes.Buffer
+		var err error
 		if wf.FileType == "png" {
 			err = png.Encode(&buf, canvasPalImg)
 		} else {
@@ -916,9 +1066,233 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 				},
 			})
 		}
-	} else {
-		err = gif.EncodeAll(&buf, agif)
+		if err != nil {
+			return nil, err
+		}
+		return buf.Bytes(), nil
 	}
+
+	// The boardPalImg only contains header and the current board.
+	boardPalImg := image.NewPaletted(canvasPalImg.Bounds(), bd.Colors)
+	copy(boardPalImg.Pix, canvasPalImg.Pix)
+	lastFramePalImg := image.NewPaletted(canvasPalImg.Bounds(), bd.Colors)
+	agif := &gif.GIF{
+		Config: image.Config{
+			ColorModel: canvasPalImg.Palette,
+			Width:      canvasPalImg.Bounds().Dx(),
+			Height:     canvasPalImg.Bounds().Dy(),
+		},
+	}
+	addFrame := func(bounds image.Rectangle, delay int) {
+		if len(agif.Delay) == 0 {
+			// Always record the first frame completely.
+			frameDiffPalImg := image.NewPaletted(bounds, bd.Colors)
+			fastDrawSrc(frameDiffPalImg, bounds, canvasPalImg, bounds.Min)
+			fastDrawSrc(lastFramePalImg, bounds, frameDiffPalImg, bounds.Min)
+			agif.Image = append(agif.Image, frameDiffPalImg)
+			agif.Delay = append(agif.Delay, delay)
+		} else {
+			bounds = croppedBoundsDiff(canvasPalImg, bounds, lastFramePalImg, bounds.Min)
+			if bounds.Empty() {
+				agif.Delay[len(agif.Delay)-1] += delay
+			} else {
+				frameDiffPalImg := image.NewPaletted(bounds, bd.Colors)
+				fastDrawSrc(frameDiffPalImg, bounds, canvasPalImg, bounds.Min)
+				fastUndrawOver(frameDiffPalImg, bounds, lastFramePalImg, bounds.Min)
+				fastDrawOver(lastFramePalImg, bounds, frameDiffPalImg, bounds.Min)
+				agif.Image = append(agif.Image, frameDiffPalImg)
+				agif.Delay = append(agif.Delay, delay)
+			}
+		}
+	}
+
+	rect := canvasPalImg.Bounds()
+	if wf.Version == 2 {
+		lastPlaceIndex := -1
+		for i, evt := range evts {
+			flyingSpritesBuf = buildHomeRack(i, flyingSpritesBuf[:0])
+			lenRack := len(flyingSpritesBuf)
+			hasAnimation := true
+
+			switch evt.Type {
+			case macondopb.GameEvent_TILE_PLACEMENT_MOVE:
+				// Place tiles from rack.
+				lastPlaceIndex = i
+				patchImage(evt, func(r, c int, ch rune) {
+					pt := image.Pt(boardOrigin.X+c*squareDim, boardOrigin.Y+r*squareDim)
+					ch = reblank(ch)
+					for k := range flyingSpritesBuf {
+						if ch == flyingSpritesBuf[k].ch && flyingSpritesBuf[k].pt0 == flyingSpritesBuf[k].pt1 {
+							flyingSpritesBuf[k].pt1 = pt
+							break
+						}
+					}
+				})
+			case macondopb.GameEvent_PHONY_TILES_RETURNED:
+				// Remove opponent's tiles.
+				withdrawnEvt := evts[lastPlaceIndex]
+				which := whoseTurn[lastPlaceIndex]
+				sprites := tileSprite(which)
+				numRet := 0
+				patchImage(withdrawnEvt, func(r, c int, ch rune) { numRet++ })
+				pt := image.Pt((bd.PadLeft+canvasPalImg.Bounds().Dx()-bd.PadRight-numRet*squareDim)/2, bd.PadTop)
+				patchImage(withdrawnEvt, func(r, c int, ch rune) {
+					ch = reblank(ch)
+					flyingSpritesBuf = append(flyingSpritesBuf, flyingSprite{
+						pt0: image.Pt(boardOrigin.X+c*squareDim, boardOrigin.Y+r*squareDim),
+						pt1: pt, src: getSprite(sprites, ch, '?'), ch: ch})
+					pt.X += squareDim
+				})
+			case macondopb.GameEvent_EXCHANGE:
+				// Set aside unwanted tiles.
+				// Only affect exchanged tiles found on rack.
+				numRet := 0
+				for _, ch := range evt.Exchanged {
+					for k := range flyingSpritesBuf {
+						if ch == flyingSpritesBuf[k].ch && flyingSpritesBuf[k].pt0 == flyingSpritesBuf[k].pt1 {
+							flyingSpritesBuf[k].pt1.X++
+							numRet++
+							break
+						}
+					}
+				}
+				pt := image.Pt((bd.PadLeft+canvasPalImg.Bounds().Dx()-bd.PadRight-numRet*squareDim)/2, bd.PadTop)
+				// Preserve sorting order.
+				for k := range flyingSpritesBuf {
+					if flyingSpritesBuf[k].pt0 != flyingSpritesBuf[k].pt1 {
+						flyingSpritesBuf[k].pt1 = pt
+						pt.X += squareDim
+					}
+				}
+			default:
+				hasAnimation = false
+			}
+
+			cumesRect := paintCumes(i)
+			tilesRect := image.Rectangle{}
+			for _, elt := range flyingSpritesBuf[:lenRack] {
+				pt := elt.pt0
+				fastSpriteDrawOver(canvasPalImg, pt, elt.src)
+				tilesRect = tilesRect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
+			}
+
+			addFrame(rect.Union(cumesRect.Union(tilesRect)), 30)
+			scoreDiffRect := paintScoreDiff(i)
+			if hasAnimation {
+				rect = image.Rectangle{}
+				if evt.Type == macondopb.GameEvent_PHONY_TILES_RETURNED {
+					patchImage(evts[lastPlaceIndex], func(r, c int, ch rune) {
+						pt := image.Pt(boardOrigin.X+c*squareDim, boardOrigin.Y+r*squareDim)
+						fastSpriteDrawSrc(boardPalImg, pt, getSprite(bd.BoardSprite, bd.BoardConfig[r][c], ' '))
+						rect = rect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
+					})
+					fastDrawSrc(canvasPalImg, rect, boardPalImg, rect.Min)
+				}
+				rect = rect.Union(scoreDiffRect.Union(tilesRect))
+				for f := 1; f < len(displacementRatio); f++ {
+					fastDrawSrc(canvasPalImg, tilesRect, boardPalImg, tilesRect.Min)
+					dpr := displacementRatio[f]
+					tilesRect = image.Rectangle{}
+					for _, elt := range flyingSpritesBuf {
+						pt := image.Pt(elt.pt0.X+int(math.RoundToEven(float64(elt.pt1.X-elt.pt0.X)*dpr)), elt.pt0.Y+int(math.RoundToEven(float64(elt.pt1.Y-elt.pt0.Y)*dpr)))
+						fastSpriteDrawOver(canvasPalImg, pt, elt.src)
+						tilesRect = tilesRect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
+					}
+					addFrame(rect.Union(tilesRect), 2)
+					rect = tilesRect
+				}
+			} else {
+				addFrame(scoreDiffRect, 20)
+			}
+			// Erase stuffs.
+			fastDrawSrc(canvasPalImg, cumesRect, boardPalImg, cumesRect.Min)
+			fastDrawSrc(canvasPalImg, tilesRect, boardPalImg, tilesRect.Min)
+			fastDrawSrc(canvasPalImg, scoreDiffRect, boardPalImg, scoreDiffRect.Min)
+			rect = cumesRect.Union(tilesRect).Union(scoreDiffRect)
+
+			if evt.Type == macondopb.GameEvent_TILE_PLACEMENT_MOVE {
+				which := whoseTurn[i]
+				sprites := tileSprite(which)
+				rectBoard := image.Rectangle{}
+				patchImage(evt, func(r, c int, ch rune) {
+					pt := image.Pt(boardOrigin.X+c*squareDim, boardOrigin.Y+r*squareDim)
+					fastSpriteDrawOver(boardPalImg, pt, getSprite(sprites, ch, '?'))
+					rectBoard = rectBoard.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
+				})
+				fastDrawSrc(canvasPalImg, rectBoard, boardPalImg, rectBoard.Min)
+				rect = rect.Union(rectBoard)
+			}
+		}
+
+		for _, elt := range buildHomeRack(len(evts), flyingSpritesBuf[:0]) {
+			pt := elt.pt0
+			fastSpriteDrawOver(canvasPalImg, pt, elt.src)
+			rect = rect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
+		}
+		rect = rect.Union(paintCumes(len(evts)))
+	} else {
+		lastPlaceIndex := -1
+		for i, evt := range evts {
+			switch evt.Type {
+			case macondopb.GameEvent_TILE_PLACEMENT_MOVE:
+				addFrame(rect, 50)
+				rect = image.Rectangle{}
+				lastPlaceIndex = i
+				which := whoseTurn[lastPlaceIndex]
+				sprites := tileSprite(which)
+				patchImage(evt, func(r, c int, ch rune) {
+					pt := image.Pt(boardOrigin.X+c*squareDim, boardOrigin.Y+r*squareDim)
+					fastSpriteDrawOver(canvasPalImg, pt, getSprite(sprites, ch, '?'))
+					rect = rect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
+				})
+			case macondopb.GameEvent_PHONY_TILES_RETURNED:
+				addFrame(rect, 50)
+				rect = image.Rectangle{}
+				patchImage(evts[lastPlaceIndex], func(r, c int, ch rune) {
+					pt := image.Pt(boardOrigin.X+c*squareDim, boardOrigin.Y+r*squareDim)
+					fastSpriteDrawSrc(canvasPalImg, pt, getSprite(bd.BoardSprite, bd.BoardConfig[r][c], ' '))
+					rect = rect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
+				})
+			}
+		}
+	}
+
+	// We want the final frame to stay for 2 sec.
+	addFrame(rect, 200)
+
+	// Chrome interprets Delay as the delay after the frame.
+	// Mac Quick Look interprets Delay as the delay before the frame.
+	// Solution: Use a transparent 1x1 frame to hold excess delay.
+	minDelay := math.MaxInt
+	for _, v := range agif.Delay {
+		if v < minDelay {
+			minDelay = v
+		}
+	}
+	nFrames := len(agif.Delay)
+	for _, v := range agif.Delay {
+		if v != minDelay {
+			nFrames++
+		}
+	}
+	if nFrames != len(agif.Delay) {
+		fillerTransparent1x1PalImg := image.NewPaletted(image.Rect(0, 0, 1, 1), bd.Colors)
+		imgs := make([]*image.Paletted, 0, nFrames)
+		delays := make([]int, 0, nFrames)
+		for i, delay := range agif.Delay {
+			imgs = append(imgs, agif.Image[i])
+			delays = append(delays, minDelay)
+			if delay != minDelay {
+				imgs = append(imgs, fillerTransparent1x1PalImg)
+				delays = append(delays, delay-minDelay)
+			}
+		}
+		agif.Image = imgs
+		agif.Delay = delays
+	}
+
+	var buf bytes.Buffer
+	err := gif.EncodeAll(&buf, agif)
 	if err != nil {
 		return nil, err
 	}

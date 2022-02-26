@@ -116,6 +116,18 @@ func fillPaletted(dst *image.Paletted) {
 	}
 }
 
+// Fast paint single color. Slower than fillPaletted when used on the full image.
+func fillPalettedRect(dst *image.Paletted, r image.Rectangle, c byte) {
+	dstP := dst.PixOffset(r.Min.X, r.Min.Y)
+	dx, dy := r.Dx(), r.Dy()
+	for y := 0; y < dy; y++ {
+		for x := 0; x < dx; x++ {
+			dst.Pix[dstP+x] = c
+		}
+		dstP += dst.Stride
+	}
+}
+
 // Fast draw.Draw(..., draw.Src) for two distinct images sharing the same simple palette.
 func fastDrawSrc(dst *image.Paletted, r image.Rectangle, src *image.Paletted, sp image.Point) {
 	dstP := dst.PixOffset(r.Min.X, r.Min.Y)
