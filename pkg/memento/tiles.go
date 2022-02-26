@@ -939,6 +939,12 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			r, c = r+dr, c+dc
 		}
 	}
+	textSprite := func(which int) map[rune]*image.Paletted {
+		if colorMapping[which] != 0 {
+			return bd.Text1Sprite
+		}
+		return bd.Text0Sprite
+	}
 	tileSprite := func(which int) map[rune]*image.Paletted {
 		if colorMapping[which] != 0 {
 			return bd.Tile1Sprite
@@ -969,13 +975,16 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 	paintCumes := func(turn int) image.Rectangle {
 		cumeBuf0 = strconv.AppendInt(cumeBuf0[:0], int64(cumes[turn][0]), 10)
 		cumeBuf1 = strconv.AppendInt(cumeBuf1[:0], int64(cumes[turn][1]), 10)
+		cumeBuf0Index := 0
 		if history.SecondWentFirst {
 			cumeBuf0, cumeBuf1 = cumeBuf1, cumeBuf0
+			cumeBuf0Index = 1
 		}
 		pt := image.Pt(canvasPalImg.Bounds().Dx()-bd.PadRight-(len(cumeBuf0)+3+len(cumeBuf1))*monospacedFontDimX, bd.PadTop)
 		startX := pt.X
+		sprite := textSprite(cumeBuf0Index)
 		for _, ch := range cumeBuf0 {
-			fastSpriteDrawSrc(canvasPalImg, pt, getSprite(bd.Text0Sprite, rune(ch), ' '))
+			fastSpriteDrawSrc(canvasPalImg, pt, getSprite(sprite, rune(ch), ' '))
 			pt.X += monospacedFontDimX
 		}
 		fastSpriteDrawSrc(canvasPalImg, pt, bd.TextXSprite[' '])
@@ -984,8 +993,9 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 		pt.X += monospacedFontDimX
 		fastSpriteDrawSrc(canvasPalImg, pt, bd.TextXSprite[' '])
 		pt.X += monospacedFontDimX
+		sprite = textSprite(cumeBuf0Index ^ 1)
 		for _, ch := range cumeBuf1 {
-			fastSpriteDrawSrc(canvasPalImg, pt, getSprite(bd.Text1Sprite, rune(ch), ' '))
+			fastSpriteDrawSrc(canvasPalImg, pt, getSprite(sprite, rune(ch), ' '))
 			pt.X += monospacedFontDimX
 		}
 		return image.Rect(startX, pt.Y, pt.X, pt.Y+monospacedFontDimY)
