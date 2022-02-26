@@ -990,28 +990,6 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 		}
 		return image.Rect(startX, pt.Y, pt.X, pt.Y+monospacedFontDimY)
 	}
-	paintScoreDiff := func(turn int) image.Rectangle {
-		// For 0 <= turn < len(history.Events).
-		// Score difference always belongs to stated nickname.
-		which := nicknameIndex(history, history.Events[turn])
-		scoreDiff := int64(cumes[turn+1][which] - cumes[turn][which])
-		cumeBuf0 = cumeBuf0[:0]
-		if scoreDiff >= 0 {
-			cumeBuf0 = append(cumeBuf0, '+')
-		}
-		cumeBuf0 = strconv.AppendInt(cumeBuf0, scoreDiff, 10)
-		pt := image.Pt((bd.PadLeft+canvasPalImg.Bounds().Dx()-bd.PadRight-len(cumeBuf0)*monospacedFontDimX)/2, bd.PadTop)
-		startX := pt.X
-		sprites := bd.Text0Sprite
-		if colorMapping[which] != 0 {
-			sprites = bd.Text1Sprite
-		}
-		for _, ch := range cumeBuf0 {
-			fastSpriteDrawSrc(canvasPalImg, pt, getSprite(sprites, rune(ch), ' '))
-			pt.X += monospacedFontDimX
-		}
-		return image.Rect(startX, pt.Y, pt.X, pt.Y+monospacedFontDimY)
-	}
 
 	evts := history.Events
 	if numEvents <= 0 {
@@ -1176,9 +1154,8 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 				tilesRect = tilesRect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
 			}
 
-			addFrame(rect.Union(cumesRect.Union(tilesRect)), 30)
-			scoreDiffRect := paintScoreDiff(i)
 			if hasAnimation {
+				addFrame(rect.Union(cumesRect.Union(tilesRect)), 30)
 				rect = image.Rectangle{}
 				if evt.Type == macondopb.GameEvent_PHONY_TILES_RETURNED {
 					patchImage(evts[lastPlaceIndex], func(r, c int, ch rune) {
@@ -1188,7 +1165,7 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 					})
 					fastDrawSrc(canvasPalImg, rect, boardPalImg, rect.Min)
 				}
-				rect = rect.Union(scoreDiffRect.Union(tilesRect))
+				rect = rect.Union(tilesRect)
 				for f := 1; f < len(displacementRatio); f++ {
 					fastDrawSrc(canvasPalImg, tilesRect, boardPalImg, tilesRect.Min)
 					dpr := displacementRatio[f]
@@ -1202,13 +1179,12 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 					rect = tilesRect
 				}
 			} else {
-				addFrame(scoreDiffRect, 20)
+				addFrame(rect.Union(cumesRect.Union(tilesRect)), 50)
 			}
 			// Erase stuffs.
 			fastDrawSrc(canvasPalImg, cumesRect, boardPalImg, cumesRect.Min)
 			fastDrawSrc(canvasPalImg, tilesRect, boardPalImg, tilesRect.Min)
-			fastDrawSrc(canvasPalImg, scoreDiffRect, boardPalImg, scoreDiffRect.Min)
-			rect = cumesRect.Union(tilesRect).Union(scoreDiffRect)
+			rect = cumesRect.Union(tilesRect)
 
 			if evt.Type == macondopb.GameEvent_TILE_PLACEMENT_MOVE {
 				which := whoseTurn[i]
