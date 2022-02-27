@@ -538,6 +538,9 @@ type BoardDrawer struct {
 	RackGap            int
 	HeaderHeight       int
 	PaddingColorIndex  byte
+	BackXColorIndex    byte
+	Back0ColorIndex    byte
+	Back1ColorIndex    byte
 	LetterDistribution *alphabet.LetterDistribution
 }
 
@@ -565,6 +568,21 @@ func getSprite(sprites map[rune]*image.Paletted, r, d rune) *image.Paletted {
 		sprite = sprites[d]
 	}
 	return sprite
+}
+
+func isImageOneColor(src *image.Paletted) bool {
+	srcP := src.PixOffset(src.Rect.Min.X, src.Rect.Min.Y)
+	c := src.Pix[srcP]
+	dx, dy := src.Rect.Dx(), src.Rect.Dy()
+	for y := 0; y < dy; y++ {
+		for x := 0; x < dx; x++ {
+			if c != src.Pix[srcP+x] {
+				return false
+			}
+		}
+		srcP += src.Stride
+	}
+	return true
 }
 
 var displacementRatio []float64
@@ -668,6 +686,17 @@ func init() {
 			text1Sprite[kk] = tilesPalImg.SubImage(image.Rect(vv[0], vv[1], vv[0]+monospacedFontDimX, vv[1]+monospacedFontDimY)).(*image.Paletted)
 		}
 
+		// Mandatory character.
+		if sprite, ok := textXSprite[' ']; !(ok && isImageOneColor(sprite)) {
+			panic(fmt.Errorf("textX space for %s is not single color", k))
+		}
+		if sprite, ok := text0Sprite[' ']; !(ok && isImageOneColor(sprite)) {
+			panic(fmt.Errorf("text0 space for %s is not single color", k))
+		}
+		if sprite, ok := text1Sprite[' ']; !(ok && isImageOneColor(sprite)) {
+			panic(fmt.Errorf("text1 space for %s is not single color", k))
+		}
+
 		paddingColorIndex := headerPalImg.Pix[0] // use top left pixel color
 
 		nRows := len(standardBoardConfig)
@@ -721,6 +750,9 @@ func init() {
 			RackGap:            rackGap,
 			HeaderHeight:       headerHeight,
 			PaddingColorIndex:  paddingColorIndex,
+			BackXColorIndex:    textXSprite[' '].Pix[0],
+			Back0ColorIndex:    text0Sprite[' '].Pix[0],
+			Back1ColorIndex:    text1Sprite[' '].Pix[0],
 			LetterDistribution: ld,
 		}
 	}
