@@ -537,6 +537,9 @@ type BoardDrawer struct {
 	PadRack            int
 	RackGap            int
 	HeaderHeight       int
+	PadSpread          int
+	SpreadHeight       int
+	SpreadMax          int
 	PaddingColorIndex  byte
 	BackXColorIndex    byte
 	Back0ColorIndex    byte
@@ -629,6 +632,9 @@ func init() {
 	padHeader := 10
 	padRack := 10
 	rackGap := int(math.RoundToEven(float64(squareDim) * 0.1))
+	padSpread := 10
+	spreadHeight := 10
+	spreadMax := 200
 	headerHeight := headerImg.Bounds().Dy()
 
 	ret := make(map[string]*BoardDrawer)
@@ -749,6 +755,9 @@ func init() {
 			PadRack:            padRack,
 			RackGap:            rackGap,
 			HeaderHeight:       headerHeight,
+			PadSpread:          padSpread,
+			SpreadHeight:       spreadHeight,
+			SpreadMax:          spreadMax,
 			PaddingColorIndex:  paddingColorIndex,
 			BackXColorIndex:    textXSprite[' '].Pix[0],
 			Back0ColorIndex:    text0Sprite[' '].Pix[0],
@@ -960,7 +969,7 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 	}
 	desiredBounds := image.Rect(0, 0, boardOrigin.X+emptyBoardPalImg.Bounds().Dx()+bd.PadRight, boardOrigin.Y+emptyBoardPalImg.Bounds().Dy()+bd.PadBottom)
 	if wf.Version == 2 {
-		desiredBounds.Max.Y += bd.PadRack + squareDim
+		desiredBounds.Max.Y += bd.PadRack + squareDim + bd.PadSpread + bd.SpreadHeight
 	}
 	canvasPalImg := image.NewPaletted(desiredBounds, bd.Colors)
 	canvasPalImg.Pix[0] = bd.PaddingColorIndex
@@ -974,7 +983,7 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 	fastDrawOver(canvasPalImg, image.Rect(bd.PadLeft, headerTop, headerImgRight, headerTop+bd.HeaderHeight), bd.HeaderPalImg, image.Point{})
 	textTop := (twiceHeaderAreaMiddle - monospacedFontDimY) / 2
 	fastSpriteDrawSrc(canvasPalImg, image.Pt(boardOrigin.X, boardOrigin.Y-1), emptyBoardPalImg)
-	rackY := desiredBounds.Dy() - (squareDim + bd.PadBottom)
+	rackY := desiredBounds.Dy() - (squareDim + bd.PadSpread + bd.SpreadHeight + bd.PadBottom)
 
 	patchImage := func(evt *macondopb.GameEvent, callback func(r, c int, ch rune)) {
 		r, c := int(evt.Row), int(evt.Column)
@@ -1000,6 +1009,12 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			return bd.Tile1Sprite
 		}
 		return bd.Tile0Sprite
+	}
+	backColorIndex := func(which int) byte {
+		if colorMapping[which] != 0 {
+			return bd.Back1ColorIndex
+		}
+		return bd.Back0ColorIndex
 	}
 	type flyingSprite struct {
 		pt0 image.Point
@@ -1053,6 +1068,38 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 		fastSpriteDrawSrc(canvasPalImg, pt, sprite[' '])
 		pt.X += monospacedFontDimX
 		return image.Rect(startX, pt.Y, pt.X, pt.Y+monospacedFontDimY)
+	}
+	paintSpread := func(turn int) image.Rectangle {
+		spread := int(cumes[turn][1] - cumes[turn][0])
+		if spread == 0 {
+			return image.Rectangle{}
+		}
+		if history.SecondWentFirst {
+			spread = -spread
+		}
+		twiceSpreadMidX := bd.PadLeft + canvasPalImg.Bounds().Dx() - bd.PadRight
+		twiceSpreadWidth := canvasPalImg.Bounds().Dx() - (bd.PadLeft + bd.PadRight)
+		spreadBottomY := canvasPalImg.Bounds().Dy() - bd.PadBottom
+		spreadTopY := spreadBottomY - bd.SpreadHeight
+		var rect image.Rectangle
+		if spread > 0 {
+			cappedAbsSpread := spread
+			if cappedAbsSpread > bd.SpreadMax {
+				cappedAbsSpread = bd.SpreadMax
+			}
+			barWidth := int(math.RoundToEven(float64(twiceSpreadWidth) * float64(cappedAbsSpread) / float64(bd.SpreadMax)))
+			rect = image.Rect(twiceSpreadMidX/2, spreadTopY, (twiceSpreadMidX+barWidth)/2, spreadBottomY)
+			fillPalettedRect(canvasPalImg, rect, backColorIndex(1))
+		} else {
+			cappedAbsSpread := -spread
+			if cappedAbsSpread > bd.SpreadMax {
+				cappedAbsSpread = bd.SpreadMax
+			}
+			barWidth := int(math.RoundToEven(float64(twiceSpreadWidth) * float64(cappedAbsSpread) / float64(bd.SpreadMax)))
+			rect = image.Rect((twiceSpreadMidX-barWidth)/2, spreadTopY, twiceSpreadMidX/2, spreadBottomY)
+			fillPalettedRect(canvasPalImg, rect, backColorIndex(0))
+		}
+		return rect
 	}
 	paintScoreDiff := func(turn int) image.Rectangle {
 		// For 0 <= turn < len(history.Events).
@@ -1109,6 +1156,7 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 				fastSpriteDrawOver(canvasPalImg, pt, elt.src)
 			}
 			paintCumes(len(evts))
+			paintSpread(len(evts))
 		}
 
 		var buf bytes.Buffer
@@ -1229,6 +1277,7 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			}
 
 			cumesRect := paintCumes(i)
+			spreadRect := paintSpread(i)
 			tilesRect := image.Rectangle{}
 			for _, elt := range flyingSpritesBuf[:lenRack] {
 				pt := elt.pt0
@@ -1236,7 +1285,7 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 				tilesRect = tilesRect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
 			}
 
-			addFrame(rect.Union(cumesRect.Union(tilesRect)), 30)
+			addFrame(rect.Union(cumesRect.Union(spreadRect).Union(tilesRect)), 30)
 			scoreDiffRect := paintScoreDiff(i)
 			if hasAnimation {
 				rect = image.Rectangle{}
@@ -1266,9 +1315,10 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			}
 			// Erase stuffs.
 			fastDrawSrc(canvasPalImg, cumesRect, boardPalImg, cumesRect.Min)
+			fastDrawSrc(canvasPalImg, spreadRect, boardPalImg, spreadRect.Min)
 			fastDrawSrc(canvasPalImg, tilesRect, boardPalImg, tilesRect.Min)
 			fastDrawSrc(canvasPalImg, scoreDiffRect, boardPalImg, scoreDiffRect.Min)
-			rect = cumesRect.Union(tilesRect).Union(scoreDiffRect)
+			rect = cumesRect.Union(spreadRect).Union(tilesRect).Union(scoreDiffRect)
 
 			if evt.Type == macondopb.GameEvent_TILE_PLACEMENT_MOVE {
 				which := whoseTurn[i]
@@ -1289,7 +1339,7 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			fastSpriteDrawOver(canvasPalImg, pt, elt.src)
 			rect = rect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
 		}
-		rect = rect.Union(paintCumes(len(evts)))
+		rect = rect.Union(paintCumes(len(evts))).Union(paintSpread(len(evts)))
 	} else {
 		lastPlaceIndex := -1
 		for i, evt := range evts {
