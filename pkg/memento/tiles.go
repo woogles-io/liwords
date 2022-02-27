@@ -998,7 +998,7 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			cumeBuf0, cumeBuf1 = cumeBuf1, cumeBuf0
 			cumeBuf0Index = 1
 		}
-		pt := image.Pt(canvasPalImg.Bounds().Dx()-bd.PadRight-(len(cumeBuf0)+7+len(cumeBuf1))*monospacedFontDimX, textTop)
+		pt := image.Pt(canvasPalImg.Bounds().Dx()-bd.PadRight-(len(cumeBuf0)+5+len(cumeBuf1))*monospacedFontDimX, textTop)
 		startX := pt.X
 		sprite := textSprite(cumeBuf0Index)
 		fastSpriteDrawSrc(canvasPalImg, pt, sprite[' '])
@@ -1008,10 +1008,6 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			pt.X += monospacedFontDimX
 		}
 		fastSpriteDrawSrc(canvasPalImg, pt, sprite[' '])
-		pt.X += monospacedFontDimX
-		fastSpriteDrawSrc(canvasPalImg, pt, bd.TextXSprite[' '])
-		pt.X += monospacedFontDimX
-		fastSpriteDrawSrc(canvasPalImg, pt, getSprite(bd.TextXSprite, '-', ' '))
 		pt.X += monospacedFontDimX
 		fastSpriteDrawSrc(canvasPalImg, pt, bd.TextXSprite[' '])
 		pt.X += monospacedFontDimX
