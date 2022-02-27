@@ -1322,10 +1322,21 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 					fastDrawSrc(canvasPalImg, tilesRect, boardPalImg, tilesRect.Min)
 					dpr := displacementRatio[f]
 					tilesRect = image.Rectangle{}
+					// Non-moving tiles are below.
 					for _, elt := range flyingSpritesBuf {
-						pt := image.Pt(elt.pt0.X+int(math.RoundToEven(float64(elt.pt1.X-elt.pt0.X)*dpr)), elt.pt0.Y+int(math.RoundToEven(float64(elt.pt1.Y-elt.pt0.Y)*dpr)))
-						fastSpriteDrawOver(canvasPalImg, pt, elt.src)
-						tilesRect = tilesRect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
+						if elt.pt0 == elt.pt1 {
+							pt := elt.pt0
+							fastSpriteDrawOver(canvasPalImg, pt, elt.src)
+							tilesRect = tilesRect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
+						}
+					}
+					// Moving tiles are above. This ordering matters in the few frames when they overlap.
+					for _, elt := range flyingSpritesBuf {
+						if elt.pt0 != elt.pt1 {
+							pt := image.Pt(elt.pt0.X+int(math.RoundToEven(float64(elt.pt1.X-elt.pt0.X)*dpr)), elt.pt0.Y+int(math.RoundToEven(float64(elt.pt1.Y-elt.pt0.Y)*dpr)))
+							fastSpriteDrawOver(canvasPalImg, pt, elt.src)
+							tilesRect = tilesRect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
+						}
 					}
 					addFrame(rect.Union(tilesRect), 2)
 					rect = tilesRect
