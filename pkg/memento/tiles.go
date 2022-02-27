@@ -1171,12 +1171,12 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 		setLastPlaceIndex(-1)
 
 		if wf.Version == 2 {
+			paintCumes(len(evts))
+			paintSpread(len(evts))
 			for _, elt := range buildHomeRack(len(evts), flyingSpritesBuf[:0]) {
 				pt := elt.pt0
 				fastSpriteDrawOver(canvasPalImg, pt, elt.src)
 			}
-			paintCumes(len(evts))
-			paintSpread(len(evts))
 		}
 
 		var buf bytes.Buffer
@@ -1365,12 +1365,12 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			}
 		}
 
+		rect = rect.Union(paintCumes(len(evts))).Union(paintSpread(len(evts)))
 		for _, elt := range buildHomeRack(len(evts), flyingSpritesBuf[:0]) {
 			pt := elt.pt0
 			fastSpriteDrawOver(canvasPalImg, pt, elt.src)
 			rect = rect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
 		}
-		rect = rect.Union(paintCumes(len(evts))).Union(paintSpread(len(evts)))
 	} else {
 		lastPlaceIndex := -1
 		for i, evt := range evts {
