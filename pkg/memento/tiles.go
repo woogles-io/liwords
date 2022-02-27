@@ -1320,9 +1320,10 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 	addFrame := func(bounds image.Rectangle, delay int) {
 		if len(agif.Delay) == 0 {
 			// Always record the first frame completely.
+			// This is a copy (we would be mutating lastFramePalImg later).
 			frameDiffPalImg := image.NewPaletted(bounds, bd.Colors)
 			fastDrawSrc(frameDiffPalImg, bounds, canvasPalImg, bounds.Min)
-			fastDrawSrc(lastFramePalImg, bounds, frameDiffPalImg, bounds.Min)
+			fastDrawSrc(lastFramePalImg, bounds, canvasPalImg, bounds.Min)
 			agif.Image = append(agif.Image, frameDiffPalImg)
 			agif.Delay = append(agif.Delay, delay)
 		} else {
@@ -1336,8 +1337,7 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 				frameDiffPalImg := image.NewPaletted(bounds, bd.Colors)
 				fastDrawSrc(frameDiffPalImg, bounds, canvasPalImg, bounds.Min)
 				fastUndrawOver(frameDiffPalImg, bounds, lastFramePalImg, bounds.Min)
-				// Possibly unnecessary test that the transparency didn't ruin a thing.
-				fastDrawOver(lastFramePalImg, bounds, frameDiffPalImg, bounds.Min)
+				fastDrawSrc(lastFramePalImg, bounds, canvasPalImg, bounds.Min)
 				agif.Image = append(agif.Image, frameDiffPalImg)
 				agif.Delay = append(agif.Delay, delay)
 			}
