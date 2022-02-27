@@ -1074,7 +1074,9 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 		if spread == 0 {
 			return image.Rectangle{}
 		}
+		negativeIndex := 0
 		if history.SecondWentFirst {
+			negativeIndex = 1
 			spread = -spread
 		}
 		twiceSpreadMidX := bd.PadLeft + canvasPalImg.Bounds().Dx() - bd.PadRight
@@ -1089,7 +1091,7 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			}
 			barWidth := int(math.RoundToEven(float64(twiceSpreadWidth) * float64(cappedAbsSpread) / float64(bd.SpreadMax)))
 			rect = image.Rect(twiceSpreadMidX/2, spreadTopY, (twiceSpreadMidX+barWidth)/2, spreadBottomY)
-			fillPalettedRect(canvasPalImg, rect, backColorIndex(1))
+			fillPalettedRect(canvasPalImg, rect, backColorIndex(negativeIndex^1))
 		} else {
 			cappedAbsSpread := -spread
 			if cappedAbsSpread > bd.SpreadMax {
@@ -1097,7 +1099,7 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			}
 			barWidth := int(math.RoundToEven(float64(twiceSpreadWidth) * float64(cappedAbsSpread) / float64(bd.SpreadMax)))
 			rect = image.Rect((twiceSpreadMidX-barWidth)/2, spreadTopY, twiceSpreadMidX/2, spreadBottomY)
-			fillPalettedRect(canvasPalImg, rect, backColorIndex(0))
+			fillPalettedRect(canvasPalImg, rect, backColorIndex(negativeIndex))
 		}
 		return rect
 	}
