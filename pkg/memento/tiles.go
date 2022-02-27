@@ -535,6 +535,7 @@ type BoardDrawer struct {
 	PadBottom          int
 	PadHeader          int
 	PadRack            int
+	RackGap            int
 	HeaderHeight       int
 	PaddingColorIndex  byte
 	LetterDistribution *alphabet.LetterDistribution
@@ -609,6 +610,7 @@ func init() {
 	padBottom := 10
 	padHeader := 10
 	padRack := 10
+	rackGap := int(math.RoundToEven(float64(squareDim) * 0.1))
 	headerHeight := headerImg.Bounds().Dy()
 
 	ret := make(map[string]*BoardDrawer)
@@ -716,6 +718,7 @@ func init() {
 			PadBottom:          padBottom,
 			PadHeader:          padHeader,
 			PadRack:            padRack,
+			RackGap:            rackGap,
 			HeaderHeight:       headerHeight,
 			PaddingColorIndex:  paddingColorIndex,
 			LetterDistribution: ld,
@@ -978,10 +981,10 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 		which := whoseTurn[turn]
 		sprites := tileSprite(which)
 		rack := racks[turn][which]
-		pt := image.Pt((bd.PadLeft+canvasPalImg.Bounds().Dx()-bd.PadRight-len(rack)*squareDim)/2, rackY)
+		pt := image.Pt((bd.PadLeft+canvasPalImg.Bounds().Dx()-bd.PadRight-len(rack)*(squareDim+bd.RackGap)+bd.RackGap)/2, rackY)
 		for _, ch := range rack {
 			arr = append(arr, flyingSprite{pt0: pt, pt1: pt, src: getSprite(sprites, ch, '?'), ch: ch})
-			pt.X += squareDim
+			pt.X += squareDim + bd.RackGap
 		}
 		return arr
 	}
