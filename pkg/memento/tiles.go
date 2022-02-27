@@ -1038,14 +1038,24 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 	var cumeBuf0 []byte
 	var cumeBuf1 []byte
 	paintCumes := func(turn int) image.Rectangle {
+		if numPlayers <= 0 {
+			return image.Rectangle{}
+		}
 		cumeBuf0 = strconv.AppendInt(cumeBuf0[:0], int64(cumes[turn][0]), 10)
-		cumeBuf1 = strconv.AppendInt(cumeBuf1[:0], int64(cumes[turn][1]), 10)
+		cumeBuf1 = cumeBuf1[:0]
+		if numPlayers > 1 {
+			cumeBuf1 = strconv.AppendInt(cumeBuf1, int64(cumes[turn][1]), 10)
+		}
 		cumeBuf0Index := 0
-		if history.SecondWentFirst {
+		if history.SecondWentFirst && numPlayers > 1 {
 			cumeBuf0, cumeBuf1 = cumeBuf1, cumeBuf0
 			cumeBuf0Index = 1
 		}
-		pt := image.Pt(canvasPalImg.Bounds().Dx()-bd.PadRight-(len(cumeBuf0)+5+len(cumeBuf1))*monospacedFontDimX, textTop)
+		gap := 2
+		if numPlayers > 1 {
+			gap += 3
+		}
+		pt := image.Pt(canvasPalImg.Bounds().Dx()-bd.PadRight-(len(cumeBuf0)+gap+len(cumeBuf1))*monospacedFontDimX, textTop)
 		startX := pt.X
 		sprite := textSprite(cumeBuf0Index)
 		fastSpriteDrawSrc(canvasPalImg, pt, sprite[' '])
@@ -1056,26 +1066,34 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 		}
 		fastSpriteDrawSrc(canvasPalImg, pt, sprite[' '])
 		pt.X += monospacedFontDimX
-		fastSpriteDrawSrc(canvasPalImg, pt, bd.TextXSprite[' '])
-		pt.X += monospacedFontDimX
-		sprite = textSprite(cumeBuf0Index ^ 1)
-		fastSpriteDrawSrc(canvasPalImg, pt, sprite[' '])
-		pt.X += monospacedFontDimX
-		for _, ch := range cumeBuf1 {
-			fastSpriteDrawSrc(canvasPalImg, pt, getSprite(sprite, rune(ch), ' '))
+		if numPlayers > 1 {
+			fastSpriteDrawSrc(canvasPalImg, pt, bd.TextXSprite[' '])
+			pt.X += monospacedFontDimX
+			sprite = textSprite(cumeBuf0Index ^ 1)
+			fastSpriteDrawSrc(canvasPalImg, pt, sprite[' '])
+			pt.X += monospacedFontDimX
+			for _, ch := range cumeBuf1 {
+				fastSpriteDrawSrc(canvasPalImg, pt, getSprite(sprite, rune(ch), ' '))
+				pt.X += monospacedFontDimX
+			}
+			fastSpriteDrawSrc(canvasPalImg, pt, sprite[' '])
 			pt.X += monospacedFontDimX
 		}
-		fastSpriteDrawSrc(canvasPalImg, pt, sprite[' '])
-		pt.X += monospacedFontDimX
 		return image.Rect(startX, pt.Y, pt.X, pt.Y+monospacedFontDimY)
 	}
 	paintSpread := func(turn int) image.Rectangle {
-		spread := int(cumes[turn][1] - cumes[turn][0])
+		if numPlayers <= 0 {
+			return image.Rectangle{}
+		}
+		spread := -int(cumes[turn][0])
+		if numPlayers > 1 {
+			spread += int(cumes[turn][1])
+		}
 		if spread == 0 {
 			return image.Rectangle{}
 		}
 		negativeIndex := 0
-		if history.SecondWentFirst {
+		if history.SecondWentFirst && numPlayers > 1 {
 			negativeIndex = 1
 			spread = -spread
 		}
