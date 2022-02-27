@@ -984,13 +984,17 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			cumeBuf0, cumeBuf1 = cumeBuf1, cumeBuf0
 			cumeBuf0Index = 1
 		}
-		pt := image.Pt(canvasPalImg.Bounds().Dx()-bd.PadRight-(len(cumeBuf0)+3+len(cumeBuf1))*monospacedFontDimX, textTop)
+		pt := image.Pt(canvasPalImg.Bounds().Dx()-bd.PadRight-(len(cumeBuf0)+7+len(cumeBuf1))*monospacedFontDimX, textTop)
 		startX := pt.X
 		sprite := textSprite(cumeBuf0Index)
+		fastSpriteDrawSrc(canvasPalImg, pt, sprite[' '])
+		pt.X += monospacedFontDimX
 		for _, ch := range cumeBuf0 {
 			fastSpriteDrawSrc(canvasPalImg, pt, getSprite(sprite, rune(ch), ' '))
 			pt.X += monospacedFontDimX
 		}
+		fastSpriteDrawSrc(canvasPalImg, pt, sprite[' '])
+		pt.X += monospacedFontDimX
 		fastSpriteDrawSrc(canvasPalImg, pt, bd.TextXSprite[' '])
 		pt.X += monospacedFontDimX
 		fastSpriteDrawSrc(canvasPalImg, pt, getSprite(bd.TextXSprite, '-', ' '))
@@ -998,10 +1002,14 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 		fastSpriteDrawSrc(canvasPalImg, pt, bd.TextXSprite[' '])
 		pt.X += monospacedFontDimX
 		sprite = textSprite(cumeBuf0Index ^ 1)
+		fastSpriteDrawSrc(canvasPalImg, pt, sprite[' '])
+		pt.X += monospacedFontDimX
 		for _, ch := range cumeBuf1 {
 			fastSpriteDrawSrc(canvasPalImg, pt, getSprite(sprite, rune(ch), ' '))
 			pt.X += monospacedFontDimX
 		}
+		fastSpriteDrawSrc(canvasPalImg, pt, sprite[' '])
+		pt.X += monospacedFontDimX
 		return image.Rect(startX, pt.Y, pt.X, pt.Y+monospacedFontDimY)
 	}
 
