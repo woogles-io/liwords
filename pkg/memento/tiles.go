@@ -799,13 +799,24 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 				macondopb.GameEvent_END_RACK_PTS,
 				macondopb.GameEvent_TIME_PENALTY,
 				macondopb.GameEvent_END_RACK_PENALTY:
-				// These are not actual actions, so whose turn it is does not change.
+				// These are not actual actions.
 				// Nonetheless, the event should still be attributed to one of the players.
-				// (Later, END_RACK_PTS should show opponent's tiles.)
 				isActiveAction = false
 				expectedNicknameIndex = nicknameIndex(history, evt)
 				if expectedNicknameIndex < 0 || expectedNicknameIndex > numPlayers {
 					return nil, fmt.Errorf("invalid nickname in event[%v]: %v", i, evt)
+				}
+				// For TIME_PENALTY, whose turn it is does not change.
+				// For END_RACK_PTS/END_RACK_PENALTY, set turn to rack owner.
+				// This works because active actions are no longer allowed after this.
+				switch evt.Type {
+				case macondopb.GameEvent_END_RACK_PTS:
+					// For END_RACK_PTS, assume the rack belongs to the immediately preceding player.
+					whoseTurn[i] = (expectedNicknameIndex + numPlayers - 1) % numPlayers
+					whoseTurn[i+1] = whoseTurn[i]
+				case macondopb.GameEvent_END_RACK_PENALTY:
+					whoseTurn[i] = expectedNicknameIndex
+					whoseTurn[i+1] = whoseTurn[i]
 				}
 			default:
 				// Mistake-proof in case the jigglypuff evolves.
