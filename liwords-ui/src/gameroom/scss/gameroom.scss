@@ -886,11 +886,11 @@ p.rune {
 .tile .point-value {
   position: absolute;
   bottom: 5px;
-  right: 0.15em;
+  right: 0;
   padding: 3px 2px;
   line-height: 0;
   margin: 0;
-  letter-spacing: -0.25em;
+  letter-spacing: -0em;
   font-size: $point-size-mobile;
   font-weight: 600;
   @include colorModed() {
@@ -899,6 +899,10 @@ p.rune {
   @include userTile() {
     color: ut($tile-text);
   }
+}
+.tile[data-rune='Q'] .point-value,
+.tile[data-rune='Z'] .point-value {
+  transform: translateX(2px);
 }
 
 .rack .tile, .tile.preview:not(.over-board) {
