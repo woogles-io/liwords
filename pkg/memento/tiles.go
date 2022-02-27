@@ -903,11 +903,13 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 	emptyBoardPalImg := bd.EmptyBoardPalImg
 
 	boardOrigin := image.Pt(bd.PadLeft, bd.PadTop+bd.HeaderHeight+bd.PadHeader+1)
+	twiceHeaderAreaMiddle := 2*bd.PadTop + bd.HeaderHeight
 	if wf.Version == 2 {
 		// Ensure enough height for 1 line of text.
 		addHeight := monospacedFontDimY - bd.HeaderHeight
 		if addHeight > 0 {
 			boardOrigin.Y += addHeight
+			twiceHeaderAreaMiddle += addHeight
 		}
 	}
 	desiredBounds := image.Rect(0, 0, boardOrigin.X+emptyBoardPalImg.Bounds().Dx()+bd.PadRight, boardOrigin.Y+emptyBoardPalImg.Bounds().Dy()+bd.PadBottom)
@@ -922,7 +924,9 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 	if headerImgRightCannotExceed < headerImgRight {
 		headerImgRight = headerImgRightCannotExceed
 	}
-	fastDrawOver(canvasPalImg, image.Rect(bd.PadLeft, bd.PadTop, headerImgRight, bd.PadTop+bd.HeaderHeight), bd.HeaderPalImg, image.Point{})
+	headerTop := (twiceHeaderAreaMiddle - bd.HeaderHeight) / 2
+	fastDrawOver(canvasPalImg, image.Rect(bd.PadLeft, headerTop, headerImgRight, headerTop+bd.HeaderHeight), bd.HeaderPalImg, image.Point{})
+	textTop := (twiceHeaderAreaMiddle - monospacedFontDimY) / 2
 	fastSpriteDrawSrc(canvasPalImg, image.Pt(boardOrigin.X, boardOrigin.Y-1), emptyBoardPalImg)
 	rackY := desiredBounds.Dy() - (squareDim + bd.PadBottom)
 
@@ -980,7 +984,7 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			cumeBuf0, cumeBuf1 = cumeBuf1, cumeBuf0
 			cumeBuf0Index = 1
 		}
-		pt := image.Pt(canvasPalImg.Bounds().Dx()-bd.PadRight-(len(cumeBuf0)+3+len(cumeBuf1))*monospacedFontDimX, bd.PadTop)
+		pt := image.Pt(canvasPalImg.Bounds().Dx()-bd.PadRight-(len(cumeBuf0)+3+len(cumeBuf1))*monospacedFontDimX, textTop)
 		startX := pt.X
 		sprite := textSprite(cumeBuf0Index)
 		for _, ch := range cumeBuf0 {
