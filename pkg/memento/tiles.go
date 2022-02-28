@@ -1461,7 +1461,7 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 						if elt.pt0 == elt.pt1 {
 							pt := elt.pt0
 							fastSpriteDrawOver(canvasPalImg, pt, elt.src)
-							tilesRect = tilesRect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
+							// Do not immediately include this rect.
 						}
 					}
 					// Moving tiles are above. This ordering matters in the few frames when they overlap.
@@ -1472,10 +1472,24 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 							tilesRect = tilesRect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
 						}
 					}
+					// Check if non-moving tiles need to be drawn. They tend to be further away from moving tiles, that this optimization is worth it.
+					for _, elt := range flyingSpritesBuf {
+						if elt.pt0 == elt.pt1 {
+							pt := elt.pt0
+							tilesRect = tilesRect.Union(croppedBoundsDiff(canvasPalImg, image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim), lastFramePalImg, pt))
+						}
+					}
 					// tilesRect bounds the tiles in this frame only.
 					// rect bounds the other changes (erasure of previous tilesRect, and adding score diff for the first frame).
 					addFrame(rect.Union(tilesRect), 2)
 					rect = tilesRect
+				}
+				// Include non-moving tiles in tilesRect so they can be erased.
+				for _, elt := range flyingSpritesBuf {
+					if elt.pt0 == elt.pt1 {
+						pt := elt.pt0
+						tilesRect = tilesRect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
+					}
 				}
 			} else {
 				// With no animation, the remaining 20 centiseconds is the same still frame, with the score diff.
