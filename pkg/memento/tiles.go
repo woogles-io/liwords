@@ -41,16 +41,16 @@ var standardBoardConfig = [][]rune{
 }
 
 // These files must be kept in sync with macondo's data/letterdistribution/.
-//go:embed english.csv
+//go:embed letterdistributions/english.csv
 var englishLetterDistributionCSVBytes []byte
 
-//go:embed french.csv
+//go:embed letterdistributions/french.csv
 var frenchLetterDistributionCSVBytes []byte
 
-//go:embed german.csv
+//go:embed letterdistributions/german.csv
 var germanLetterDistributionCSVBytes []byte
 
-//go:embed norwegian.csv
+//go:embed letterdistributions/norwegian.csv
 var norwegianLetterDistributionCSVBytes []byte
 
 // header should be pre-quantized to very few colors (ideally 8)

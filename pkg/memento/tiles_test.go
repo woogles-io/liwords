@@ -329,6 +329,7 @@ const gh = `
   "original_gcg": "#player1 doug doug\n#player2 emely emely\n\u003edoug: DINNVWY 8D WINDY +32 32\n\u003eemely: ADEEGIL 7C GALE +16 16\n\u003edoug: AEJNOSV E3 JAVE..N +34 66\n\u003eemely: DEILOVX F2 VOX +39 55\n\u003edoug: ADENOST 10B DONATES +82 148\n\u003eemely: DEIILTZ 4B TIL.. +24 79\n\u003eemely: DEIILTZ --  -24 55\n\u003edoug: AAEINRU 9G EAU +16 164\n\u003eemely: DEIILTZ 4D Z.. +38 93\n\u003edoug: AILNORT A5 LATINO +27 191\n\u003eemely: DEEIILT B2 TEIID +29 122\n\u003edoug: ?BDERUW A1 WEB +30 221\n\u003eemely: AELLNST 11E SAT +51 173\n\u003edoug: ?DINRRU 6D R.D +22 243\n\u003eemely: ACELLMN C1 CAN +23 196\n\u003edoug: ?EFINRU B8 FU. +14 257\n\u003eemely: EILLMRR 7H RILL +12 208\n\u003edoug: ?EIINOR K5 RE.IgION +78 335\n\u003eemely: EKMORRU L11 MURK +28 236\n\u003edoug: AEIOORS 15H ARIOSE +33 368\n\u003eemely: ?CEORUY 14F COY +19 255\n\u003edoug: EGHMOPT L4 GET +12 380\n\u003eemely: ?BERSTU 2F .ERB +9 264\n\u003edoug: AEHIMOP 1G PEA +29 409\n\u003eemely: ?HOQSTU M2 QUOTH +46 310\n\u003edoug: EGHIMOP N1 HIM +42 451\n\u003eemely: ?FS 14L .aFS +21 331\n\u003eemely:  (OPEG) +14 345",
   "lexicon": "NWL20",
   "play_state": 2,
+  "last_known_racks": ["EGOP", ""],
   "final_scores": [451, 345]
 }
 `
@@ -341,6 +342,7 @@ func BenchmarkRenderAGif(b *testing.B) {
 	wf := WhichFile{
 		FileType:        "animated-gif",
 		HasNextEventNum: false,
+		Version:         2,
 	}
 	// benchmark runs around 250ms per render on my M1 Mac but it's significantly
 	// slower when run within Docker for Mac. why?
