@@ -887,6 +887,10 @@ func reblank(r rune) rune {
 }
 
 func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
+	if wf.Version == 2 && history.PlayState != macondopb.PlayState_GAME_OVER {
+		return nil, fmt.Errorf("game is not over yet")
+	}
+
 	isAnimated := wf.FileType == "animated-gif"
 	numEvents := math.MaxInt
 	if wf.HasNextEventNum {
