@@ -34,7 +34,7 @@ func main() {
     fetch game from woogles.io or a compatible site
     example: hBQhT94n
     example: XgTRffsq 8
-      n = number of events to process (1-based, matches ?turn= examiner param)
+      n = next event number (so 1-based, matches ?turn= examiner param)
 
 params can be prefixed with these flags:
 `, os.Args[0])
