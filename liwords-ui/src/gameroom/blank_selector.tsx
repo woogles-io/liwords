@@ -1,19 +1,15 @@
 import React from 'react';
 import Tile from './tile';
-import { useExaminableGameContextStoreContext } from '../store/store';
 import { Alphabet } from '../constants/alphabets';
 import { Blank } from '../utils/cwgame/common';
 
 type Props = {
+  tileColorId: number;
   handleSelection: (rune: string) => void;
   alphabet: Alphabet;
 };
 
 export const BlankSelector = (props: Props) => {
-  const {
-    gameContext: examinableGameContext,
-  } = useExaminableGameContextStoreContext();
-
   return (
     <div className="blank-selector">
       {Object.keys(props.alphabet.letterMap)
@@ -21,7 +17,7 @@ export const BlankSelector = (props: Props) => {
         .map((rune) => (
           <Tile
             lastPlayed={false}
-            playerOfTile={examinableGameContext.onturn}
+            playerOfTile={props.tileColorId}
             rune={rune}
             value={0}
             grabbable={false}

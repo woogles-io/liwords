@@ -1541,6 +1541,16 @@ export const BoardPanel = React.memo((props: Props) => {
   } else if (stillWaitingForGameToStart) {
     gameMetaMessage = 'Waiting for game to start...';
   }
+
+  // playerOrder enum seems to ensure we can only have two-player games :-(
+  const myId = useMemo(() => {
+    const myPlayerOrder = gameContext.nickToPlayerOrder[props.username];
+    // eslint-disable-next-line no-nested-ternary
+    return myPlayerOrder === 'p0' ? 0 : myPlayerOrder === 'p1' ? 1 : null;
+  }, [gameContext.nickToPlayerOrder, props.username]);
+  const tileColorId =
+    (props.gameDone ? null : myId) ?? examinableGameContext.onturn;
+
   const gameBoard = (
     <div
       id="board-container"
@@ -1552,6 +1562,7 @@ export const BoardPanel = React.memo((props: Props) => {
       role="textbox"
     >
       <GameBoard
+        tileColorId={tileColorId}
         gridSize={props.board.dim}
         gridLayout={props.board.gridLayout}
         handleBoardTileClick={handleBoardTileClick}
@@ -1591,6 +1602,7 @@ export const BoardPanel = React.memo((props: Props) => {
               />
             </Tooltip>
             <Rack
+              tileColorId={tileColorId}
               letters={displayedRack}
               grabbable
               returnToRack={returnToRack}
@@ -1657,6 +1669,7 @@ export const BoardPanel = React.memo((props: Props) => {
         />
       )}
       <ExchangeTiles
+        tileColorId={tileColorId}
         alphabet={props.alphabet}
         rack={props.currentRack}
         modalVisible={currentMode === 'EXCHANGE_MODAL'}
@@ -1672,6 +1685,7 @@ export const BoardPanel = React.memo((props: Props) => {
         footer={null}
       >
         <BlankSelector
+          tileColorId={tileColorId}
           handleSelection={handleBlankSelection}
           alphabet={props.alphabet}
         />
