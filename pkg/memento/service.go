@@ -30,72 +30,92 @@ func NewMementoService(u user.Store, gs gameplay.GameStore) *MementoService {
 	return &MementoService{u, gs}
 }
 
-type whichFile struct {
-	gameId          string
-	hasNextEventNum bool
-	nextEventNum    int
-	fileType        string // "png" or "animated-gif"
+type WhichFile struct {
+	GameId          string
+	HasNextEventNum bool
+	NextEventNum    int
+	FileType        string // "png", "gif", "animated-gif"
+	WhichColor      int    // 0, 1, or -1
+	Version         int
 }
 
 var errInvalidFilename = fmt.Errorf("invalid filename")
 
-func determineWhichFile(s string) (whichFile, error) {
+func determineWhichFile(s string) (WhichFile, error) {
 	var err error
+	fileType := ""
 	hasNextEventNum := false
 	nextEventNum := -1
-	fileType := ""
-	if strings.HasSuffix(s, ".png") {
-		// "gameid.png"
-		// "gameid-num.png"
+	ver := 0
+
+	// GAMEID, optional "-vVERSION", optional "-a" for gif, optional "-NEXTEVENTNUM", ".png"/".gif"
+
+	v := strings.LastIndexByte(s, '.')
+	if v < 0 {
+		return WhichFile{}, errInvalidFilename
+	} else if s[v:] == ".png" {
 		fileType = "png"
-		s = s[:len(s)-4]
-		if v := strings.LastIndexByte(s, '-'); v >= 0 {
-			nextEventNum, err = strconv.Atoi(s[v+1:])
-			if err != nil || s[v+1:] != strconv.Itoa(nextEventNum) {
-				// Fail because there's leading zero.
-				return whichFile{}, errInvalidFilename
-			}
-			hasNextEventNum = true
-			s = s[:v]
-		}
-	} else if strings.HasSuffix(s, ".gif") {
-		// "gameid-a.gif"
-		// "gameid-a-num.gif"
-		fileType = "animated-gif"
-		s = s[:len(s)-4]
-		if strings.HasSuffix(s, "-a") {
-			s = s[:len(s)-2]
-		} else if v := strings.LastIndexByte(s, '-'); v >= 0 {
-			nextEventNum, err = strconv.Atoi(s[v+1:])
-			if err != nil || s[v+1:] != strconv.Itoa(nextEventNum) {
-				// Fail because there's leading zero.
-				return whichFile{}, errInvalidFilename
-			}
-			hasNextEventNum = true
-			s = s[:v]
-			if strings.HasSuffix(s, "-a") {
-				s = s[:len(s)-2]
-			} else {
-				return whichFile{}, errInvalidFilename
-			}
-		} else {
-			return whichFile{}, errInvalidFilename
-		}
+	} else if s[v:] == ".gif" {
+		fileType = "gif"
 	} else {
-		return whichFile{}, errInvalidFilename
+		return WhichFile{}, errInvalidFilename
+	}
+	s = s[:v]
+
+	nextToken := func() string {
+		v := strings.IndexByte(s, '-')
+		if v < 0 {
+			ret := s
+			s = s[len(s):]
+			return ret
+		} else {
+			ret := s[:v]
+			s = s[v+1:]
+			return ret
+		}
 	}
 
-	if len(s) == 0 || strings.IndexFunc(s, func(c rune) bool {
+	gameId := nextToken()
+	if strings.IndexFunc(gameId, func(c rune) bool {
 		return !strings.ContainsRune(shortuuid.DefaultAlphabet, c)
 	}) != -1 {
-		return whichFile{}, errInvalidFilename
+		return WhichFile{}, errInvalidFilename
 	}
 
-	return whichFile{
-		gameId:          s,
-		hasNextEventNum: hasNextEventNum,
-		nextEventNum:    nextEventNum,
-		fileType:        fileType,
+	if strings.HasPrefix(s, "v") {
+		tok := nextToken()[1:]
+		ver, err = strconv.Atoi(tok)
+		// Only -v2 supported. Default (v0) should not be specified.
+		if err != nil || tok != strconv.Itoa(ver) || ver != 2 {
+			// Fail because there's leading zero.
+			return WhichFile{}, errInvalidFilename
+		}
+	}
+
+	if strings.HasPrefix(s, "a") {
+		if fileType == "gif" && nextToken() == "a" {
+			fileType = "animated-gif"
+		} else {
+			return WhichFile{}, errInvalidFilename
+		}
+	}
+
+	if len(s) > 0 {
+		nextEventNum, err = strconv.Atoi(s)
+		if err != nil || s != strconv.Itoa(nextEventNum) {
+			// Fail because there's leading zero.
+			return WhichFile{}, errInvalidFilename
+		}
+		hasNextEventNum = true
+	}
+
+	return WhichFile{
+		GameId:          gameId,
+		HasNextEventNum: hasNextEventNum,
+		NextEventNum:    nextEventNum,
+		FileType:        fileType,
+		Version:         ver,
+		WhichColor:      -1,
 	}, nil
 }
 
@@ -106,24 +126,24 @@ func (ms *MementoService) loadAndRender(name string) ([]byte, error) {
 	}
 
 	ctx := context.Background()
-	hist, err := ms.gameStore.GetHistory(ctx, wf.gameId)
+	hist, err := ms.gameStore.GetHistory(ctx, wf.GameId)
 	if err != nil {
 		return nil, err
 	}
 
 	// Just following GameService.GetGameHistory although it doesn't matter.
 	hist = mod.CensorHistory(ctx, ms.userStore, hist)
-	if hist.PlayState != macondopb.PlayState_GAME_OVER && !wf.hasNextEventNum {
+	if hist.PlayState != macondopb.PlayState_GAME_OVER && !wf.HasNextEventNum {
 		return nil, fmt.Errorf("game is not over")
 	}
 
-	if wf.hasNextEventNum && (wf.nextEventNum <= 0 || wf.nextEventNum > len(hist.Events)+1) {
+	if wf.HasNextEventNum && (wf.NextEventNum <= 0 || wf.NextEventNum > len(hist.Events)+1) {
 		return nil, fmt.Errorf("game only has %d events", len(hist.Events))
 	}
 	RenderMutex.Lock()
 	defer RenderMutex.Unlock()
 
-	return renderImage(hist, wf)
+	return RenderImage(hist, wf)
 }
 
 func (ms *MementoService) GameimgEndpoint(w http.ResponseWriter, r *http.Request, name string) {

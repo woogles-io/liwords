@@ -68,8 +68,9 @@ const ExamineGameControls = React.memo(
     }, [doneButtonRef]);
     const numberOfTurns = gameContext.turns.length;
     const gameHasNotStarted = gameContext.players.length === 0; // :shrug:
+    const gameDone = props.gameDone;
     const isAtLastTurn =
-      props.gameDone &&
+      gameDone &&
       examinableGameContext.turns.length === gameContext.turns.length;
 
     const [exportMenuVisible, setExportMenuVisible] = useState(false);
@@ -90,24 +91,28 @@ const ExamineGameControls = React.memo(
           // To also detect new moves, we use examinableGameContext.turns.length.
           switch (e.key) {
             case 'download-png':
-              downloadGameImg(`${gameContext.gameID}.png`);
+              downloadGameImg(
+                `${gameContext.gameID}${gameDone ? '-v2' : ''}.png`
+              );
               break;
             case 'download-png-turn':
               downloadGameImg(
-                `${gameContext.gameID}-${
+                `${gameContext.gameID}${gameDone ? '-v2' : ''}-${
                   examinableGameContext.turns.length + 1
                 }.png`
               );
               break;
             case 'download-animated-gif-turn':
               downloadGameImg(
-                `${gameContext.gameID}-a-${
+                `${gameContext.gameID}${gameDone ? '-v2' : ''}-a-${
                   examinableGameContext.turns.length + 1
                 }.gif`
               );
               break;
             case 'download-animated-gif':
-              downloadGameImg(`${gameContext.gameID}-a.gif`);
+              downloadGameImg(
+                `${gameContext.gameID}${gameDone ? '-v2' : ''}-a.gif`
+              );
               break;
           }
         }}
@@ -134,12 +139,12 @@ const ExamineGameControls = React.memo(
             Animated GIF to this position
           </Menu.Item>
         )}
-        {props.gameDone && (
+        {gameDone && (
           <Menu.Item key="download-animated-gif" disabled={gameHasNotStarted}>
             Animated GIF of complete game
           </Menu.Item>
         )}
-        {props.gameDone && (
+        {gameDone && (
           <Menu.Item
             key="download-gcg"
             disabled={gameHasNotStarted}
@@ -371,15 +376,17 @@ const GameControls = React.memo((props: Props) => {
     }
   }, [optionsMenuVisible]);
 
+  // this gameDone is slightly different from the one in table.tsx,
+  // but it's good enough, otherwise we need to prop-drill further.
+  const gameDone = !!gameEndControls;
+
   if (isExamining) {
-    // this gameDone is slightly different from the one in table.tsx,
-    // but it's good enough, otherwise we need to prop-drill further.
     return (
       <ExamineGameControls
         lexicon={props.lexicon}
         darkMode={darkMode}
         onExportGCG={props.onExportGCG}
-        gameDone={!!gameEndControls}
+        gameDone={gameDone}
       />
     );
   }
@@ -450,12 +457,16 @@ const GameControls = React.memo((props: Props) => {
             break;
           case 'download-png-turn':
             downloadGameImg(
-              `${gameContext.gameID}-${gameContext.turns.length + 1}.png`
+              `${gameContext.gameID}${gameDone ? '-v2' : ''}-${
+                gameContext.turns.length + 1
+              }.png`
             );
             break;
           case 'download-animated-gif-turn':
             downloadGameImg(
-              `${gameContext.gameID}-a-${gameContext.turns.length + 1}.gif`
+              `${gameContext.gameID}${gameDone ? '-v2' : ''}-a-${
+                gameContext.turns.length + 1
+              }.gif`
             );
             break;
         }
@@ -580,6 +591,7 @@ const EndGameControls = (props: EGCProps) => {
   const [rematchDisabled, setRematchDisabled] = useState(false);
   const { gameContext } = useGameContextStoreContext();
   const gameHasNotStarted = gameContext.players.length === 0; // :shrug:
+  const gameDone = true; // it is endgame controls after all
 
   const [exportMenuVisible, setExportMenuVisible] = useState(false);
   const [exportMenuId, setExportMenuId] = useState(0);
@@ -599,10 +611,14 @@ const EndGameControls = (props: EGCProps) => {
         // To also detect new moves, we use examinableGameContext.turns.length.
         switch (e.key) {
           case 'download-png':
-            downloadGameImg(`${gameContext.gameID}.png`);
+            downloadGameImg(
+              `${gameContext.gameID}${gameDone ? '-v2' : ''}.png`
+            );
             break;
           case 'download-animated-gif':
-            downloadGameImg(`${gameContext.gameID}-a.gif`);
+            downloadGameImg(
+              `${gameContext.gameID}${gameDone ? '-v2' : ''}-a.gif`
+            );
             break;
         }
       }}
