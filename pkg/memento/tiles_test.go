@@ -360,6 +360,7 @@ func BenchmarkRenderPNG(b *testing.B) {
 	wf := WhichFile{
 		FileType:        "png",
 		HasNextEventNum: false,
+		Version:         2,
 	}
 	// benchmark runs around 109 ms
 	for i := 0; i < b.N; i++ {
