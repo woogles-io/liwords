@@ -13,6 +13,7 @@ import { Alphabet } from '../constants/alphabets';
 // Render an exchange widget.
 
 type Props = {
+  tileColorId: number;
   rack: string;
   alphabet: Alphabet;
   onCancel: () => void;
@@ -180,6 +181,7 @@ export const ExchangeTiles = React.memo((props: Props) => {
       }
     >
       <Rack
+        tileColorId={props.tileColorId}
         letters={props.rack}
         grabbable={false}
         onTileClick={selectTileForExchange}

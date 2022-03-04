@@ -13,6 +13,7 @@ import {
 import { Alphabet } from '../constants/alphabets';
 
 type Props = {
+  tileColorId: number;
   gridLayout: Array<string>;
   gridSize: number;
   handleBoardTileClick: (rune: string) => void;
@@ -66,6 +67,7 @@ const Board = React.memo((props: Props) => {
           squareClicked={props.squareClicked}
         />
         <Tiles
+          tileColorId={props.tileColorId}
           gridDim={props.gridSize}
           onClick={props.handleBoardTileClick}
           tilesLayout={props.tilesLayout}

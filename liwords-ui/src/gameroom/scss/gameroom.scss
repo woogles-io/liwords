@@ -771,7 +771,8 @@ p.streak-loss {
     background: ut($tile-background-secondary);
   }
 }
-.tile.last-played {
+/* This used to be .tile.last-played, and doubling seems necessary. */
+.tile.second-color.second-color {
   @include colorModed() {
     border: 1px solid m($tile-last-background);
     background: m($tile-last-background);

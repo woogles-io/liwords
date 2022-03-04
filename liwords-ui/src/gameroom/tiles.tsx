@@ -9,10 +9,10 @@ import {
   PlayerOfTiles,
 } from '../utils/cwgame/common';
 import { PlacementArrow } from '../utils/cwgame/tile_placement';
-import { useExaminableGameContextStoreContext } from '../store/store';
 import { Alphabet, runeToValues } from '../constants/alphabets';
 
 type Props = {
+  tileColorId: number;
   gridDim: number;
   tilesLayout: string;
   alphabet: Alphabet;
@@ -46,10 +46,6 @@ type Props = {
 };
 
 const Tiles = React.memo((props: Props) => {
-  const {
-    gameContext: examinableGameContext,
-  } = useExaminableGameContextStoreContext();
-
   const tiles = [];
   if (!props.tilesLayout || props.tilesLayout.length === 0) {
     return null;
@@ -237,7 +233,7 @@ const Tiles = React.memo((props: Props) => {
               rune={tentativeTile.letter}
               value={runeToValues(props.alphabet, tentativeTile.letter)}
               lastPlayed={false}
-              playerOfTile={examinableGameContext.onturn}
+              playerOfTile={props.tileColorId}
               key={`tileT_${tentativeTile.col}_${tentativeTile.row}`}
               scale={false}
               tentative={true}
