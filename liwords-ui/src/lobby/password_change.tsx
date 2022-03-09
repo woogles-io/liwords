@@ -4,7 +4,7 @@ import { useMountedState } from '../utils/mounted';
 import { Form, Input, Button, Alert, notification, Row, Col } from 'antd';
 // import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { TopBar } from '../topbar/topbar';
+import { TopBar } from '../navigation/topbar';
 import { toAPIUrl } from '../api/api';
 
 const layout = {

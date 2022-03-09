@@ -1,6 +1,6 @@
 import { Layout, Menu } from 'antd';
 import React from 'react';
-import { TopBar } from '../topbar/topbar';
+import { TopBar } from '../navigation/topbar';
 import { TourneyEditor } from './tourney_editor';
 // import { UserEditor } from './user_editor';
 import { useMountedState } from '../utils/mounted';

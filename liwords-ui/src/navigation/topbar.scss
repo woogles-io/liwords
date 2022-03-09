@@ -54,11 +54,13 @@ body {
   font-size: 13px;
   div {
     display: none;
-    padding: 12px;
+    padding: 12px 24px;
     a, p {
       @include colorModed() {
         color: m($primary-dark);
       }
+      cursor: pointer;
+      letter-spacing: 0.16em;
       white-space: nowrap;
       &:focus,
       &:hover,
@@ -78,15 +80,27 @@ body {
       display: flex;
     }
   }
+  .ant-dropdown-trigger {
+    p {
+    }
+  }
 }
 
-.site-icon {
+
+.tournament-mode {
+  .site-name {
+    position: relative;
+    bottom: 6px;
+  }
+}
+
+.logo {
   display: flex;
   /* Inside Auto Layout */
   flex: none;
   align-self: center;
   margin: 0;
-  .top-header-site-icon-rect {
+  .site-icon-rect {
     width: 40px;
     height: 40px;
     display: flex;
@@ -97,16 +111,17 @@ body {
     }
     border-radius: 4px;
   }
-  /* M */
-  .top-header-site-icon-m {
+  /* W */
+  .site-icon-w {
     left: 6px;
     top: 0px;
-    transform: translateX(-3px) rotate(-10deg);
+    transform: translateX(-3px) rotate(-11deg);
     position: relative;
     font-family: $font-default;
     font-weight: 700;
-    font-size: 28px;
+    font-size: 27px;
     line-height: 35px;
+    letter-spacing: 0.16em;
     @include colorModed() {
       color: m($logo-text);
       background: transparent;
@@ -114,7 +129,7 @@ body {
   }
   /* Macondo */
 
-  .top-header-left-frame-site-name {
+  .site-name {
     /* Inside Auto Layout */
     @include colorModed() {
       color: m($logo);
@@ -138,11 +153,5 @@ body {
     @include colorModed() {
       color: m($primary-dark);
     }
-  }
-}
-.tournament-mode {
-  .top-header-left-frame-site-name {
-    position: relative;
-    bottom: 6px;
   }
 }

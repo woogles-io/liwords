@@ -36,6 +36,10 @@ $button-text: 'color-button-text';
 $logo: 'color-logo';
 $logo-text: 'color-logo-text';
 $header: 'color-header';
+$footer: 'color-footer';
+$footer-logo: 'color-footer-logo';
+$footer-text: 'color-footer-text';
+$footer-w: 'color-footer-w';
 
 $board-dls: 'color-board-dls';
 $board-dws: 'color-board-dws';
@@ -107,9 +111,13 @@ $modes: (
           color-button: #11659e,
           color-button-text: #ffffff,
           color-header: #ffffff,
+          color-footer: #11659e,
+          color-footer-logo: #C9F0FF,
+          color-footer-text: #FFFFFF,
+          color-footer-w: #116593,
           color-logo: #11659e,
           color-logo-text: #C9F0FF,
-          color-list-header: #e2f8ff,
+          color-list-header: #C9F0FF,
           color-list-header-text: #414141,
 
           color-board-dls: #b9e7f5,
@@ -168,6 +176,10 @@ $modes: (
           color-button: #7cc4e3,
           color-button-text: #313131,
           color-header: #282828,
+          color-footer: #2f2f2f,
+          color-footer-logo: #7cc4e3,
+          color-footer-text: #FFFFFF,
+          color-footer-w: #135380,
           color-logo: #7cc4e3,
           color-logo-text: #135380,
           color-list-header: #313131,

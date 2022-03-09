@@ -4,7 +4,7 @@ import { Row, Col, Input, Form, Alert, notification, Button } from 'antd';
 import axios from 'axios';
 import qs from 'qs';
 import { useLocation } from 'react-router-dom';
-import { TopBar } from '../topbar/topbar';
+import { TopBar } from '../navigation/topbar';
 import { toAPIUrl } from '../api/api';
 
 const layout = {

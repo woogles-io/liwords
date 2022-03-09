@@ -6,7 +6,7 @@ import axios from 'axios';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import { useMountedState } from '../utils/mounted';
 import { BoardPanel } from './board_panel';
-import { TopBar } from '../topbar/topbar';
+import { TopBar } from '../navigation/topbar';
 import { Chat } from '../chat/chat';
 import {
   ChatEntityType,

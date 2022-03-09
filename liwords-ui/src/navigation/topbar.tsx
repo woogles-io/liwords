@@ -6,7 +6,6 @@ import './topbar.scss';
 import { DisconnectOutlined, SettingOutlined } from '@ant-design/icons/lib';
 import { notification, Dropdown, Tooltip } from 'antd';
 import {
-  useLagStoreContext,
   useLoginStateStoreContext,
   useResetStoreContext,
   useTournamentStoreContext,
@@ -15,15 +14,77 @@ import { toAPIUrl } from '../api/api';
 import { LoginModal } from '../lobby/login';
 import { useMountedState } from '../utils/mounted';
 import { isClubType } from '../store/constants';
-
-const colors = require('../base.scss');
+import { isMobile } from '../utils/cwgame/common';
 
 const TopMenu = React.memo((props: Props) => {
+  const playMenu = (
+    <ul>
+      <li>
+        <Link to="/" className="plain">
+          OMGWords
+        </Link>
+      </li>
+      <li>
+        <a
+          href="//anagrams.mynetgear.com/"
+          target="_blank"
+          className="plain"
+          rel="noopener noreferrer"
+        >
+          Anagrams
+        </a>
+      </li>
+      <li>
+        <a
+          href="https://seattlephysicstutor.com/plates.html"
+          className="plain"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          License to Spell
+        </a>
+      </li>
+    </ul>
+  );
+  const learnMenu = (
+    <ul>
+      <li>
+        <a
+          href="https://aerolith.org"
+          className="plain"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Aerolith
+        </a>
+      </li>
+      <li>
+        <a
+          href="http://randomracer.com/"
+          className="plain"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Random Racer
+        </a>
+      </li>
+      <li>
+        <a
+          href="https://seattlephysicstutor.com/tree.html"
+          className="plain"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Word Tree
+        </a>
+      </li>
+    </ul>
+  );
   const aboutMenu = (
     <ul>
       <li>
         <Link className="plain" to="/team">
-          Meet the team
+          Meet the Woogles team
         </Link>
       </li>
       <li>
@@ -35,37 +96,48 @@ const TopMenu = React.memo((props: Props) => {
   );
   return (
     <div className="top-header-menu">
-      <div className="top-header-left-frame-crossword-game">
-        <Link to="/">OMGWords</Link>
+      <div>
+        <Link to="/" className="plain">
+          <p>Home</p>
+        </Link>
       </div>
-      <div className="top-header-left-frame-aerolith">
-        <a
-          href="https://aerolith.org"
-          target="_blank"
-          rel="noopener noreferrer"
+      <div>
+        <Dropdown
+          overlayClassName="user-menu"
+          overlay={playMenu}
+          placement="bottomCenter"
+          trigger={['click', 'hover']}
+          getPopupContainer={() =>
+            document.getElementById('root') as HTMLElement
+          }
         >
-          Aerolith
-        </a>
+          <p>Play</p>
+        </Dropdown>
       </div>
-      <div className="top-header-left-frame-blog">
-        <a
-          href="http://randomracer.com"
-          target="_blank"
-          rel="noopener noreferrer"
+      <div>
+        <Dropdown
+          overlayClassName="user-menu"
+          overlay={learnMenu}
+          placement="bottomCenter"
+          trigger={['click', 'hover']}
+          getPopupContainer={() =>
+            document.getElementById('root') as HTMLElement
+          }
         >
-          Random.Racer
-        </a>
+          <p>Learn</p>
+        </Dropdown>
       </div>
       <div className="top-header-left-frame-special-land">
         <Dropdown
           overlayClassName="user-menu"
           overlay={aboutMenu}
           placement="bottomCenter"
+          trigger={['click', 'hover']}
           getPopupContainer={() =>
             document.getElementById('root') as HTMLElement
           }
         >
-          <p>About Us</p>
+          <p>About</p>
         </Dropdown>
       </div>
     </div>
@@ -79,7 +151,6 @@ type Props = {
 export const TopBar = React.memo((props: Props) => {
   const { useState } = useMountedState();
 
-  const { currentLagMs } = useLagStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { resetStore } = useResetStoreContext();
   const { tournamentContext } = useTournamentStoreContext();
@@ -107,13 +178,23 @@ export const TopBar = React.memo((props: Props) => {
     <ul>
       <li>
         <Link className="plain" to={`/profile/${encodeURIComponent(username)}`}>
-          View profile
+          Profile
         </Link>
       </li>
       <li>
         <Link className="plain" to={`/settings`}>
           Settings
         </Link>
+      </li>
+      <li>
+        <a className="plain" href="/clubs">
+          Clubs
+        </a>
+      </li>
+      <li>
+        <a className="plain" href="/donate">
+          Donate
+        </a>
       </li>
       <li onClick={handleLogout} className="link plain">
         Log out
@@ -128,38 +209,31 @@ export const TopBar = React.memo((props: Props) => {
   return (
     <nav className="top-header" id="main-nav">
       <div className="container">
-        <Tooltip
-          placement="bottomLeft"
-          color={colors.colorPrimary}
-          title={`Latency: ${currentLagMs || '...'} ms.`}
+        <Link
+          to={homeLink}
+          className={`logo${props.tournamentID ? ' tournament-mode' : ''}`}
         >
-          <Link
-            to={homeLink}
-            className={`site-icon${
-              props.tournamentID ? ' tournament-mode' : ''
-            }`}
-          >
-            <div className="top-header-site-icon-rect">
-              <div className="top-header-site-icon-m">W</div>
-            </div>
+          <div className="site-icon-rect">
+            <div className="site-icon-w">W</div>
+          </div>
 
-            <div className="top-header-left-frame-site-name">Woogles.io</div>
-            {props.tournamentID ? (
-              <div className="tournament">
-                Back to
-                {isClubType(tournamentContext.metadata?.getType())
-                  ? ' Club'
-                  : ' Tournament'}
-              </div>
-            ) : null}
-          </Link>
-        </Tooltip>
+          <div className="site-name">Woogles.io</div>
+          {props.tournamentID ? (
+            <div className="tournament">
+              Back to
+              {isClubType(tournamentContext.metadata?.getType())
+                ? ' Club'
+                : ' Tournament'}
+            </div>
+          ) : null}
+        </Link>
         <TopMenu />
         {loggedIn ? (
           <div className="user-info">
             <Dropdown
               overlayClassName="user-menu"
               overlay={userMenu}
+              trigger={['click', 'hover']}
               placement="bottomRight"
               getPopupContainer={() =>
                 document.getElementById('root') as HTMLElement

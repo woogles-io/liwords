@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { TopBar } from '../topbar/topbar';
+import { TopBar } from '../navigation/topbar';
 import './about.scss';
 import { Col, Dropdown, Row } from 'antd';
 import cesar from '../assets/bio/bio_cesar.jpg';
