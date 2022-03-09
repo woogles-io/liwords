@@ -1,5 +1,5 @@
 import React from 'react';
-import { TopBar } from '../topbar/topbar';
+import { TopBar } from '../navigation/topbar';
 import './staticContent.scss';
 import woogles from '../assets/woogles.png';
 

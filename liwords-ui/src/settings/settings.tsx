@@ -2,7 +2,7 @@ import React, { useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { notification } from 'antd';
 import { useMountedState } from '../utils/mounted';
-import { TopBar } from '../topbar/topbar';
+import { TopBar } from '../navigation/topbar';
 import { ChangePassword } from './change_password';
 import { PersonalInfo } from './personal_info';
 import { CloseAccount } from './close_account';

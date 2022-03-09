@@ -3,10 +3,11 @@
 .App {
   font-family: $font-default;
   min-height: 100vh;
+  display: flex;
   @include colorModed() {
     background-color: m($background);
   }
-
+  flex-direction: column;
   p,
   h1,
   h2,

@@ -1,0 +1,110 @@
+@import '../base';
+
+footer {
+  margin-top: 12px;
+  padding-top: 24px;
+  flex-grow: 1;
+  @media (min-width: $screen-laptop-min) {
+    margin-top: 32px;
+    padding-bottom: 48px;
+  }
+  @include colorModed() {
+    background: m($footer);
+  }
+
+  .footer-container {
+    @include container;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    & > * {
+      min-width: 33%;
+    }
+    @media (min-width: $screen-tablet-min) {
+      padding: 32px 48px;
+      flex-direction: row;
+      align-items: center;
+    }
+    p, a, h1, h2, h3 {
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 27px;
+      @include colorModed() {
+        color: m($footer-text);
+      }
+    }
+  }
+  .logo {
+    align-self: flex-start;
+    min-width: 66%;
+    .site-icon-rect {
+      @include colorModed() {
+        background: m($footer-logo);
+      }
+    }
+    .site-icon-w {
+      @include colorModed() {
+        color: m($footer-w);
+      }
+    }
+    .site-name {
+      @include colorModed() {
+        color: m($footer-logo);
+      }
+    }
+  }
+  .link-group {
+    align-self: flex-start;
+    @media (min-width: $screen-tablet-min) {
+      margin-bottom: 24px;
+    }
+    a {
+      display: block;
+      width: fit-content;
+    }
+    h4 {
+      margin-top: 32px;
+      text-transform: uppercase;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 32px;
+      letter-spacing: 0.16em;
+      @include colorModed() {
+        color: m($footer-logo);
+      }
+    }
+  }
+  .anticon-heart {
+    @include colorModed() {
+      color: m($timer-out-dark);
+    }
+    margin-left: 4px;
+  }
+  .links-social {
+    order: 7;
+    margin-top: 32px;
+    @media (min-width: $screen-tablet-min) {
+      order: unset;
+      margin: 0;
+    }
+    a {
+      display: inline;
+    }
+    .anticon, .fa-discord {
+      font-size: 24px;
+      margin-right: 6px;
+      @include colorModed() {
+        color: m($footer-logo);
+      }
+    }
+  }
+  .copyright {
+    order: 8;
+    margin-top: 12px;
+    @media (min-width: $screen-tablet-min) {
+      order: unset;
+    }
+  }
+}

@@ -1,6 +1,6 @@
 import { Col, Divider, Row } from 'antd';
 import React from 'react';
-import { TopBar } from './topbar/topbar';
+import { TopBar } from './navigation/topbar';
 import './clubs.scss';
 export const Clubs = (props: {}) => {
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;

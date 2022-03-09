@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect } from 'react';
 import { useMountedState } from '../utils/mounted';
 
-import { TopBar } from '../topbar/topbar';
+import { TopBar } from '../navigation/topbar';
 
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { GameLists } from './gameLists';

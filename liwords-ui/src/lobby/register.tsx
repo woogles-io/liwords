@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { useMountedState } from '../utils/mounted';
 import axios from 'axios';
-import { TopBar } from '../topbar/topbar';
+import { TopBar } from '../navigation/topbar';
 import {
   Input,
   Form,

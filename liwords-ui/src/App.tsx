@@ -34,6 +34,7 @@ import { DonateSuccess } from './donate_success';
 import { TermsOfService } from './about/termsOfService';
 import { ChatMessage } from './gen/api/proto/ipc/chat_pb';
 import { MessageType } from './gen/api/proto/ipc/ipc_pb';
+import Footer from './navigation/footer';
 
 type Blocks = {
   user_ids: Array<string>;
@@ -292,6 +293,7 @@ const App = React.memo(() => {
           <DonateSuccess />
         </Route>
       </Switch>
+      <Footer />
     </div>
   );
 });

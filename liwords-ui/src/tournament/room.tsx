@@ -7,7 +7,7 @@ import {
   useTournamentStoreContext,
 } from '../store/store';
 import { useMountedState } from '../utils/mounted';
-import { TopBar } from '../topbar/topbar';
+import { TopBar } from '../navigation/topbar';
 import { Chat } from '../chat/chat';
 import { TournamentInfo } from './tournament_info';
 import { sendAccept, sendSeek } from '../lobby/sought_game_interactions';

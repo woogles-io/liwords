@@ -3,7 +3,7 @@ import { useMountedState } from '../utils/mounted';
 import { Row, Col, Input, Form, Alert, notification, Button } from 'antd';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
-import { TopBar } from '../topbar/topbar';
+import { TopBar } from '../navigation/topbar';
 
 const layout = {
   labelCol: {
