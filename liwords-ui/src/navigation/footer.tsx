@@ -110,7 +110,7 @@ const Footer = React.memo(() => {
             Static Leave Evaluator
           </a>
           <a
-            href="https://www.cross-tables.com/leaves.php"
+            href="//breakingthegame.net"
             target="_blank"
             rel="noopener noreferrer"
           >
