@@ -771,7 +771,8 @@ p.streak-loss {
     background: ut($tile-background-secondary);
   }
 }
-.tile.last-played {
+/* This used to be .tile.last-played, and doubling seems necessary. */
+.tile.second-color.second-color {
   @include colorModed() {
     border: 1px solid m($tile-last-background);
     background: m($tile-last-background);
@@ -886,11 +887,11 @@ p.rune {
 .tile .point-value {
   position: absolute;
   bottom: 5px;
-  right: 0.15em;
+  right: 0.05em;
   padding: 3px 2px;
   line-height: 0;
   margin: 0;
-  letter-spacing: -0.25em;
+  letter-spacing: -0.13em;
   font-size: $point-size-mobile;
   font-weight: 600;
   @include colorModed() {
@@ -1338,6 +1339,36 @@ p.rune {
         background-color: m($gray-extreme);
       }
     }
+  }
+}
+
+// tile images
+.tile-images.chars {
+  @include type-monospace;
+  // from .ant-card (base.scss)
+  @include colorModed() {
+    background-color: m($card-background);
+    color: m($gray-extreme);
+  }
+}
+.tile-images.chars.p0 {
+  @include colorModed() {
+    background: m($tile-background);
+    color: m($background);
+  }
+  @include userTile() {
+    background: ut($tile-background);
+    color: ut($tile-text);
+  }
+}
+.tile-images.chars.p1 {
+  @include colorModed() {
+    background: m($tile-last-background);
+    color: m($tile-last-text);
+  }
+  @include userTile() {
+    background: ut($tile-last-background);
+    color: ut($tile-last-text);
   }
 }
 

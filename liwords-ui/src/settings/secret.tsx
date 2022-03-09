@@ -87,6 +87,19 @@ export const Secret = React.memo((props: Props) => {
     setHidePool((x) => !x);
   }, []);
 
+  const [enableBicolorMode, setEnableBicolorMode] = useState(
+    localStorage?.getItem('enableBicolorMode') === 'true'
+  );
+  const toggleEnableBicolorMode = useCallback(() => {
+    const wantEnableBicolorMode =
+      localStorage?.getItem('enableBicolorMode') !== 'true';
+    localStorage.setItem(
+      'enableBicolorMode',
+      wantEnableBicolorMode ? 'true' : 'false'
+    );
+    setEnableBicolorMode((x) => !x);
+  }, []);
+
   return (
     <div className="preferences secret">
       <h3>Secret features</h3>
@@ -167,6 +180,18 @@ export const Secret = React.memo((props: Props) => {
             defaultChecked={hidePool}
             onChange={toggleHidePool}
             className="pool-toggle"
+          />
+        </div>
+        <div className="toggle-section">
+          <div className="title">Infuse Second Color</div>
+          <div>
+            Highlight one player's tiles instead of the last move. Requires
+            Refresher Orb.
+          </div>
+          <Switch
+            defaultChecked={enableBicolorMode}
+            onChange={toggleEnableBicolorMode}
+            className="bicolor-toggle"
           />
         </div>
       </div>

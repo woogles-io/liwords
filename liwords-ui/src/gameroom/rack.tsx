@@ -2,7 +2,6 @@ import React, { useEffect, useRef } from 'react';
 import { useDrop, XYCoord } from 'react-dnd';
 import Tile, { TILE_TYPE } from './tile';
 import { isTouchDevice } from '../utils/cwgame/common';
-import { useExaminableGameContextStoreContext } from '../store/store';
 import { Alphabet, runeToValues } from '../constants/alphabets';
 
 // const TileSpacing = 6;
@@ -24,6 +23,7 @@ const calculatePosition = (
 };
 
 type Props = {
+  tileColorId: number;
   letters: string;
   grabbable: boolean;
   alphabet: Alphabet;
@@ -40,9 +40,6 @@ type Props = {
 };
 
 export const Rack = React.memo((props: Props) => {
-  const {
-    gameContext: examinableGameContext,
-  } = useExaminableGameContextStoreContext();
   const handleDropOver = (e: any) => {
     e.preventDefault();
     e.stopPropagation();
@@ -108,7 +105,7 @@ export const Rack = React.memo((props: Props) => {
           rune={rune}
           value={runeToValues(props.alphabet, rune)}
           lastPlayed={false}
-          playerOfTile={examinableGameContext.onturn}
+          playerOfTile={props.tileColorId}
           key={`tile_${n}`}
           scale={false}
           selected={props.selected && props.selected.has(n)}

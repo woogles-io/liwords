@@ -14,7 +14,6 @@ import { toAPIUrl } from '../api/api';
 import { LoginModal } from '../lobby/login';
 import { useMountedState } from '../utils/mounted';
 import { isClubType } from '../store/constants';
-import { isMobile } from '../utils/cwgame/common';
 
 const TopMenu = React.memo((props: Props) => {
   const playMenu = (

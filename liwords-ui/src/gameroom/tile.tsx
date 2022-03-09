@@ -11,6 +11,9 @@ import {
 } from '../utils/cwgame/common';
 import { Popover } from 'antd';
 
+// just refresh the page when changing the setting...
+const bicolorMode = localStorage.getItem('enableBicolorMode') === 'true';
+
 type TileLetterProps = {
   rune: string;
 };
@@ -252,7 +255,9 @@ const Tile = React.memo((props: TileProps) => {
     props.tentative ? ' tentative' : ''
   }${props.lastPlayed ? ' last-played' : ''}${
     isDesignatedBlank(props.rune) ? ' blank' : ''
-  }${props.playerOfTile ? ' tile-p1' : ' tile-p0'}`;
+  }${props.playerOfTile ? ' tile-p1' : ' tile-p0'}${
+    (bicolorMode ? props.playerOfTile : props.lastPlayed) ? ' second-color' : ''
+  }`;
   let ret = (
     <div onDragOver={handleDropOver} onDrop={handleDrop} ref={tileRef}>
       <div

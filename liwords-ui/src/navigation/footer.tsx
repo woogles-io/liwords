@@ -6,11 +6,9 @@ import { useLagStoreContext } from '../store/store';
 import './footer.scss';
 import {
   FacebookFilled,
-  HeartFilled,
   InstagramFilled,
   TwitterCircleFilled,
 } from '@ant-design/icons';
-const colors = require('../base.scss');
 
 const Footer = React.memo(() => {
   const { currentLagMs } = useLagStoreContext();

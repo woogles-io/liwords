@@ -353,15 +353,15 @@ export const Preferences = React.memo((props: Props) => {
                 </div>
               </div>
               <div className={`tile-previewer tile--${userTile}`}>
-                <div className="tile last-played">
+                <div className="tile second-color">
                   <TileLetter rune="O" />
                   <PointValue value={1} />
                 </div>
-                <div className="tile last-played blank">
+                <div className="tile second-color blank">
                   <TileLetter rune="M" />
                   <PointValue value={0} />
                 </div>
-                <div className="tile last-played">
+                <div className="tile second-color">
                   <TileLetter rune="G" />
                   <PointValue value={2} />
                 </div>
