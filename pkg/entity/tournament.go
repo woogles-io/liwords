@@ -22,7 +22,7 @@ type DivisionManager interface {
 	GetDivisionControls() *pb.DivisionControls
 	AddPlayers(*pb.TournamentPersons) (*pb.DivisionPairingsResponse, error)
 	RemovePlayers(*pb.TournamentPersons) (*pb.DivisionPairingsResponse, error)
-	IsRoundReady(int) (bool, error)
+	IsRoundReady(int) error
 	IsRoundComplete(int) (bool, error)
 	IsStarted() bool
 	IsFinished() (bool, error)

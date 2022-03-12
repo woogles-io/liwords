@@ -1299,28 +1299,31 @@ func (t *ClassicDivision) GetStandings(round int) (*pb.RoundStandings, int, erro
 	return t.Standings[int32(round)], gibsonRank, nil
 }
 
-func (t *ClassicDivision) IsRoundReady(round int) (bool, error) {
+func (t *ClassicDivision) IsRoundReady(round int) error {
 	if round >= len(t.Matrix) || round < 0 {
-		return false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "IsRoundReady")
+		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "IsRoundReady")
 	}
 	// Check that everyone is paired
 	for i, pairingKey := range t.Matrix[round] {
 		if pairingKey == "" {
-			return false, nil
+			return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NOT_READY, t.TournamentName, t.DivisionName, strconv.Itoa(int(round+1)))
 		}
 		_, ok := t.PairingMap[pairingKey]
 		if !ok {
-			return false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), t.Players.Persons[i].Id, pairingKey, "IsRoundReady")
+			return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), t.Players.Persons[i].Id, pairingKey, "IsRoundReady")
 		}
 	}
 	// Check that all previous rounds are complete
 	for i := 0; i <= round-1; i++ {
 		complete, err := t.IsRoundComplete(i)
-		if err != nil || !complete {
-			return false, err
+		if err != nil {
+			return err
+		}
+		if !complete {
+			return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NOT_COMPLETE, t.TournamentName, t.DivisionName, strconv.Itoa(int(i+1)))
 		}
 	}
-	return true, nil
+	return nil
 }
 
 func (t *ClassicDivision) IsRoundStartable() error {
@@ -1343,12 +1346,9 @@ func (t *ClassicDivision) IsRoundStartable() error {
 		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NOT_STARTABLE, t.TournamentName, t.DivisionName)
 	}
 
-	ready, err := t.IsRoundReady(int(t.CurrentRound + 1))
+	err := t.IsRoundReady(int(t.CurrentRound + 1))
 	if err != nil {
 		return err
-	}
-	if !ready {
-		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NOT_READY, t.TournamentName, t.DivisionName, strconv.Itoa(int(t.CurrentRound+2)))
 	}
 	return nil
 }
