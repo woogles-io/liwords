@@ -3,11 +3,12 @@ package omgsvc
 import (
 	"context"
 
+	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/proto"
+
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/ipc"
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
-	"github.com/rs/zerolog/log"
-	"google.golang.org/protobuf/proto"
 )
 
 func handleGameInstantiation(ctx context.Context, b ipc.Publisher, data []byte,
@@ -122,10 +123,9 @@ func handleReadyForGame(ctx context.Context, b ipc.Publisher, userID, connID str
 		return err
 	}
 
-	return nil
-}
-
-func handleGameplayEvent(ctx context.Context, b ipc.Publisher, data []byte, reply string) error {
+	// XXX see StartGame in pkg/gameplay/game.go for more stuff.
+	// i.e. getrematchstreak and send notification that a rematch has started
+	// etc.
 
 	return nil
 }

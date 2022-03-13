@@ -213,6 +213,49 @@ message InstantiateGameResponse {
   GameInfoResponse game_info = 2;
 }
 
+message Timers {
+  // time_of_last_update is the timestamp of the last update, in milliseconds
+  // if no update has been made, this defaults to time_started
+  int64 time_of_last_update = 1 [ json_name = "lu" ];
+  // time_started is a unix timestamp, in milliseconds
+  int64 time_started = 2 [ json_name = "ts" ];
+  // time_remaining is an array of remaining time per player, in milliseconds
+  repeated int32 time_remaining = 3 [ json_name = "tr" ];
+  // max_overtime is the max overtime, in _minutes_
+  int32 max_overtime = 4 [ json_name = "mo" ];
+}
+
+message GetGame { string id = 1; }
+
+// GetGameResponse should be sent by the store svc in response to a GetGame
+// request. It needs to have all the information necessary to reconstruct
+// a game. It should be a subset of the database representation of a game.
+message GetGameResponse {
+  GameHistoryRefresher game_history_refresher = 1;
+  bool started = 2;
+  Timers timers = 3;
+  string lexicon = 4;
+  string board_layout_name = 5;
+  string letter_distribution_name = 6;
+  string variant_name = 7;
+  // meta events?
+  // last_game_update is the timestamp at which this game was last updated.
+  // We want to pass it back to the store when making any updates, so that
+  // we can use the `update` postgres function atomically.
+  google.protobuf.Timestamp last_game_update = 8;
+}
+
+// SetGame is a message sent to the storesvc with game updates.
+message SetGame {
+  GameHistoryRefresher game_history_refresher = 1;
+  Timers timers = 2;
+  GameEndReason game_end_reason = 3;
+  int32 winner_idx = 4;
+  int32 loser_idx = 5;
+  // xxx: metaevents probably
+  google.protobuf.Timestamp last_known_game_update = 6;
+}
+
 message GameDeletion { string id = 1; }
 
 message ActiveGamePlayer {

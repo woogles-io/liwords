@@ -49,12 +49,7 @@ func MsgHandler(ctx context.Context, b ipc.Publisher, topic string, data []byte,
 		return handleReadyForGame(ctx, b, userID, wsConnID, data, reply)
 
 	case pb.MessageType_CLIENT_GAMEPLAY_EVENT.String():
-		return handleGameplayEvent(ctx, b, data, reply)
-		// evt := &pb.ClientGameplayEvent{}
-		// err := proto.Unmarshal(data, evt)
-		// if err != nil {
-		// 	return err
-		// }
+		return handleGameplayEvent(ctx, b, userID, data, reply)
 
 	}
 

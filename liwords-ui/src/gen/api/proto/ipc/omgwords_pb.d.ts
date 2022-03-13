@@ -490,6 +490,160 @@ export namespace InstantiateGameResponse {
   }
 }
 
+export class Timers extends jspb.Message {
+  getTimeOfLastUpdate(): number;
+  setTimeOfLastUpdate(value: number): void;
+
+  getTimeStarted(): number;
+  setTimeStarted(value: number): void;
+
+  clearTimeRemainingList(): void;
+  getTimeRemainingList(): Array<number>;
+  setTimeRemainingList(value: Array<number>): void;
+  addTimeRemaining(value: number, index?: number): number;
+
+  getMaxOvertime(): number;
+  setMaxOvertime(value: number): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): Timers.AsObject;
+  static toObject(includeInstance: boolean, msg: Timers): Timers.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: Timers, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): Timers;
+  static deserializeBinaryFromReader(message: Timers, reader: jspb.BinaryReader): Timers;
+}
+
+export namespace Timers {
+  export type AsObject = {
+    timeOfLastUpdate: number,
+    timeStarted: number,
+    timeRemainingList: Array<number>,
+    maxOvertime: number,
+  }
+}
+
+export class GetGame extends jspb.Message {
+  getId(): string;
+  setId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GetGame.AsObject;
+  static toObject(includeInstance: boolean, msg: GetGame): GetGame.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GetGame, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GetGame;
+  static deserializeBinaryFromReader(message: GetGame, reader: jspb.BinaryReader): GetGame;
+}
+
+export namespace GetGame {
+  export type AsObject = {
+    id: string,
+  }
+}
+
+export class GetGameResponse extends jspb.Message {
+  hasGameHistoryRefresher(): boolean;
+  clearGameHistoryRefresher(): void;
+  getGameHistoryRefresher(): GameHistoryRefresher | undefined;
+  setGameHistoryRefresher(value?: GameHistoryRefresher): void;
+
+  getStarted(): boolean;
+  setStarted(value: boolean): void;
+
+  hasTimers(): boolean;
+  clearTimers(): void;
+  getTimers(): Timers | undefined;
+  setTimers(value?: Timers): void;
+
+  getLexicon(): string;
+  setLexicon(value: string): void;
+
+  getBoardLayoutName(): string;
+  setBoardLayoutName(value: string): void;
+
+  getLetterDistributionName(): string;
+  setLetterDistributionName(value: string): void;
+
+  getVariantName(): string;
+  setVariantName(value: string): void;
+
+  hasLastGameUpdate(): boolean;
+  clearLastGameUpdate(): void;
+  getLastGameUpdate(): google_protobuf_timestamp_pb.Timestamp | undefined;
+  setLastGameUpdate(value?: google_protobuf_timestamp_pb.Timestamp): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GetGameResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: GetGameResponse): GetGameResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GetGameResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GetGameResponse;
+  static deserializeBinaryFromReader(message: GetGameResponse, reader: jspb.BinaryReader): GetGameResponse;
+}
+
+export namespace GetGameResponse {
+  export type AsObject = {
+    gameHistoryRefresher?: GameHistoryRefresher.AsObject,
+    started: boolean,
+    timers?: Timers.AsObject,
+    lexicon: string,
+    boardLayoutName: string,
+    letterDistributionName: string,
+    variantName: string,
+    lastGameUpdate?: google_protobuf_timestamp_pb.Timestamp.AsObject,
+  }
+}
+
+export class SetGame extends jspb.Message {
+  hasGameHistoryRefresher(): boolean;
+  clearGameHistoryRefresher(): void;
+  getGameHistoryRefresher(): GameHistoryRefresher | undefined;
+  setGameHistoryRefresher(value?: GameHistoryRefresher): void;
+
+  hasTimers(): boolean;
+  clearTimers(): void;
+  getTimers(): Timers | undefined;
+  setTimers(value?: Timers): void;
+
+  getGameEndReason(): GameEndReasonMap[keyof GameEndReasonMap];
+  setGameEndReason(value: GameEndReasonMap[keyof GameEndReasonMap]): void;
+
+  getWinnerIdx(): number;
+  setWinnerIdx(value: number): void;
+
+  getLoserIdx(): number;
+  setLoserIdx(value: number): void;
+
+  hasLastKnownGameUpdate(): boolean;
+  clearLastKnownGameUpdate(): void;
+  getLastKnownGameUpdate(): google_protobuf_timestamp_pb.Timestamp | undefined;
+  setLastKnownGameUpdate(value?: google_protobuf_timestamp_pb.Timestamp): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): SetGame.AsObject;
+  static toObject(includeInstance: boolean, msg: SetGame): SetGame.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: SetGame, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): SetGame;
+  static deserializeBinaryFromReader(message: SetGame, reader: jspb.BinaryReader): SetGame;
+}
+
+export namespace SetGame {
+  export type AsObject = {
+    gameHistoryRefresher?: GameHistoryRefresher.AsObject,
+    timers?: Timers.AsObject,
+    gameEndReason: GameEndReasonMap[keyof GameEndReasonMap],
+    winnerIdx: number,
+    loserIdx: number,
+    lastKnownGameUpdate?: google_protobuf_timestamp_pb.Timestamp.AsObject,
+  }
+}
+
 export class GameDeletion extends jspb.Message {
   getId(): string;
   setId(value: string): void;
