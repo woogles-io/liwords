@@ -11,7 +11,10 @@ import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { Board } from '../utils/cwgame/board';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { millisToTimeStr } from '../store/timer_controller';
-import { tilePlacementEventDisplay } from '../utils/cwgame/game_event';
+import {
+  nicknameFromEvt,
+  tilePlacementEventDisplay,
+} from '../utils/cwgame/game_event';
 import { PlayerMetadata } from './game_info';
 import { Turn, gameEventsToTurns } from '../store/reducers/turns';
 import { PoolFormatType } from '../constants/pool_formats';
@@ -117,11 +120,13 @@ const ScorecardTurn = (props: turnProps) => {
     ) {
       timeRemaining = millisToTimeStr(evts[0].getMillisRemaining(), false);
     }
+
+    const turnNickname = nicknameFromEvt(evts[0], props.playerMeta);
     const turn = {
       player: props.playerMeta.find(
-        (playerMeta) => playerMeta.nickname === evts[0].getNickname()
+        (playerMeta) => playerMeta.nickname === turnNickname
       ) ?? {
-        nickname: evts[0].getNickname(),
+        nickname: turnNickname,
         // XXX: FIX THIS. avatar url should be set.
         full_name: '',
         avatar_url: '',

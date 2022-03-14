@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.0.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.2.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/domino14/macondo v0.4.5-0.20220119032411-9abf690996ed
+	github.com/domino14/macondo v0.4.5-0.20220225053832-f6c6200b95f7
 	github.com/golang/protobuf v1.4.2
 	github.com/gomodule/redigo v1.8.2
 	github.com/hashicorp/golang-lru v0.5.4
@@ -40,7 +40,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.1.1 // indirect
 	github.com/aws/smithy-go v1.1.0 // indirect
 	github.com/go-chi/chi v4.0.0+incompatible // indirect
-	github.com/google/uuid v1.1.2 // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgconn v1.7.0 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect

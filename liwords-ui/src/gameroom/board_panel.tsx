@@ -42,6 +42,7 @@ import {
   passMoveEvent,
   resignMoveEvent,
   challengeMoveEvent,
+  nicknameFromEvt,
 } from '../utils/cwgame/game_event';
 import { Board } from '../utils/cwgame/board';
 import { encodeToSocketFmt } from '../utils/protobuf';
@@ -693,16 +694,17 @@ export const BoardPanel = React.memo((props: Props) => {
       return;
     }
     const evt = props.events[props.events.length - 1];
-    if (evt.getNickname() === props.username) {
+    const evtNickname = nicknameFromEvt(evt, props.playerMeta);
+    if (evtNickname === props.username) {
       return;
     }
     let boardMessage = null;
     switch (evt.getType()) {
       case GameEvent.Type.PASS:
-        boardMessage = `${evt.getNickname()} passed`;
+        boardMessage = `${evtNickname} passed`;
         break;
       case GameEvent.Type.EXCHANGE:
-        boardMessage = `${evt.getNickname()} exchanged ${evt.getExchanged()}`;
+        boardMessage = `${evtNickname} exchanged ${evt.getExchanged()}`;
         break;
     }
     if (boardMessage) {
@@ -871,7 +873,8 @@ export const BoardPanel = React.memo((props: Props) => {
         const sayGameEvent = (ge: GameEvent) => {
           const type = ge.getType();
           let nickname = 'opponent.';
-          if (ge.getNickname() === props.username) {
+          const evtNickname = nicknameFromEvt(ge, props.playerMeta);
+          if (evtNickname === props.username) {
             nickname = 'you.';
           }
           const playedTiles = ge.getPlayedTiles();

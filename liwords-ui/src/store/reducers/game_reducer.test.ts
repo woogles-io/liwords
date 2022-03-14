@@ -52,7 +52,7 @@ it('tests addevent', () => {
 
   const sge = new ServerGameplayEvent();
   const evt = new GameEvent();
-  evt.setNickname('césar');
+  evt.setPlayerIndex(0);
   evt.setRack('CDEIPTV');
   evt.setCumulative(26);
   evt.setRow(7);
@@ -86,7 +86,7 @@ it('tests addevent with different id', () => {
   const sge = new ServerGameplayEvent();
   const evt = new GameEvent();
   evt.setType(GameEvent.Type.TILE_PLACEMENT_MOVE);
-  evt.setNickname('césar');
+  evt.setPlayerIndex(0);
   evt.setRack('CDEIPTV');
   evt.setCumulative(26);
   evt.setRow(7);
@@ -147,7 +147,7 @@ const historyRefresher2AfterChallenge = () => {
   his.setSecondWentFirst(true);
 
   const evt1 = new GameEvent();
-  evt1.setNickname('mina');
+  evt1.setPlayerIndex(1);
   evt1.setRack('?AEELRX');
   evt1.setCumulative(92);
   evt1.setRow(7);
@@ -157,7 +157,7 @@ const historyRefresher2AfterChallenge = () => {
   evt1.setScore(92);
 
   const evt2 = new GameEvent();
-  evt2.setNickname('mina');
+  evt2.setPlayerIndex(1);
   evt2.setType(GameEvent.Type.CHALLENGE_BONUS);
   evt2.setCumulative(97);
   evt2.setBonus(5);
@@ -199,7 +199,7 @@ it('tests challenge with refresher event afterwards', () => {
 
   const sge = new ServerGameplayEvent();
   const evt = new GameEvent();
-  evt.setNickname('mina');
+  evt.setPlayerIndex(1);
   evt.setRack('?AEELRX');
   evt.setCumulative(92);
   evt.setRow(7);
@@ -246,7 +246,7 @@ it('tests challenge with challenge event afterwards', () => {
 
   const sge = new ServerGameplayEvent();
   const evt = new GameEvent();
-  evt.setNickname('mina');
+  evt.setPlayerIndex(1);
   evt.setRack('?AEELRX');
   evt.setCumulative(92);
   evt.setRow(7);
@@ -266,7 +266,7 @@ it('tests challenge with challenge event afterwards', () => {
   // Now add a challenge event.
   const sge2 = new ServerGameplayEvent();
   const evt2 = new GameEvent();
-  evt2.setNickname('mina');
+  evt2.setPlayerIndex(1);
   evt2.setType(GameEvent.Type.CHALLENGE_BONUS);
   evt2.setCumulative(97);
   evt2.setBonus(5);

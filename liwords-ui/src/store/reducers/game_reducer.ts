@@ -13,9 +13,13 @@ import {
   PlayedTiles,
   PlayerOfTiles,
 } from '../../utils/cwgame/common';
-import { PlayerOrder } from '../constants';
+import { indexToPlayerOrder, PlayerOrder } from '../constants';
 import { ClockController, Millis } from '../timer_controller';
-import { ThroughTileMarker } from '../../utils/cwgame/game_event';
+import {
+  nicknameFromEvt,
+  playerOrderFromEvt,
+  ThroughTileMarker,
+} from '../../utils/cwgame/game_event';
 import {
   Alphabet,
   alphabetFromName,
@@ -357,7 +361,7 @@ const setClock = (newState: GameState, sge: ServerGameplayEvent) => {
   // Set the clock
   const rem = sge.getTimeRemaining(); // time remaining for the player who just played
   const evt = sge.getEvent()!;
-  const justPlayed = newState.nickToPlayerOrder[evt.getNickname()];
+  const justPlayed = playerOrderFromEvt(evt, newState.nickToPlayerOrder);
   let { p0, p1 } = newState.clockController.current.times;
   let activePlayer;
   let flipTimeRemaining = false;

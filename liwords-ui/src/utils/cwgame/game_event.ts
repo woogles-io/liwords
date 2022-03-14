@@ -3,6 +3,8 @@ import { contiguousTilesFromTileSet } from './scoring';
 import { Board } from './board';
 import { GameEvent } from '../../gen/macondo/api/proto/macondo/macondo_pb';
 import { ClientGameplayEvent } from '../../gen/api/proto/ipc/omgwords_pb';
+import { PlayerMetadata } from '../../gameroom/game_info';
+import { indexToPlayerOrder, PlayerOrder } from '../../store/constants';
 
 export const ThroughTileMarker = '.';
 // convert a set of ephemeral tiles to a protobuf game event.
@@ -115,4 +117,29 @@ export const tilePlacementEventDisplay = (evt: GameEvent, board: Board) => {
     m += ')';
   }
   return m;
+};
+
+// nicknameFromEvt gets the nickname of the user who performed an
+// event.
+// XXX: Remove the `evt.getNickname()` part of this once we migrate all games
+// over to use playerIndex.
+export const nicknameFromEvt = (
+  evt: GameEvent,
+  players: Array<PlayerMetadata>
+): string => {
+  return evt.getNickname() || players[evt.getPlayerIndex()].nickname;
+};
+
+// playerOrderFromEvt gets the player order from the event. (p0 | p1 etc)
+// XXX: Remove the nickname logic from this once we migrate games to use
+// playerIndex only.
+export const playerOrderFromEvt = (
+  evt: GameEvent,
+  nickToPlayerOrder: { [nick: string]: PlayerOrder }
+): PlayerOrder => {
+  const nickname = evt.getNickname();
+  if (nickname) {
+    return nickToPlayerOrder[nickname];
+  }
+  return indexToPlayerOrder(evt.getPlayerIndex());
 };

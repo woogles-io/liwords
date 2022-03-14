@@ -8,6 +8,13 @@ import { ChatEntityObj, ChatEntityType, randomID } from './store';
 
 export type PlayerOrder = 'p0' | 'p1';
 
+export const indexToPlayerOrder = (idx: number): PlayerOrder => {
+  if (!(idx >= 0 && idx <= 1)) {
+    throw new Error('unexpected player index');
+  }
+  return `p{idx}` as PlayerOrder;
+};
+
 // number of turns in a game, this is just an estimate. See `variants.go`
 const turnsPerGame = 16;
 
