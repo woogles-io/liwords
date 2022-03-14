@@ -3181,7 +3181,8 @@ proto.ipc.GameInfoResponses.prototype.toObject = function(opt_includeInstance) {
 proto.ipc.GameInfoResponses.toObject = function(includeInstance, msg) {
   var f, obj = {
     gameInfoList: jspb.Message.toObjectList(msg.getGameInfoList(),
-    proto.ipc.GameInfoResponse.toObject, includeInstance)
+    proto.ipc.GameInfoResponse.toObject, includeInstance),
+    count: jspb.Message.getFieldWithDefault(msg, 2, 0)
   };
 
   if (includeInstance) {
@@ -3223,6 +3224,10 @@ proto.ipc.GameInfoResponses.deserializeBinaryFromReader = function(msg, reader) 
       reader.readMessage(value,proto.ipc.GameInfoResponse.deserializeBinaryFromReader);
       msg.addGameInfo(value);
       break;
+    case 2:
+      var value = /** @type {number} */ (reader.readInt64());
+      msg.setCount(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -3258,6 +3263,13 @@ proto.ipc.GameInfoResponses.serializeBinaryToWriter = function(message, writer) 
       1,
       f,
       proto.ipc.GameInfoResponse.serializeBinaryToWriter
+    );
+  }
+  f = message.getCount();
+  if (f !== 0) {
+    writer.writeInt64(
+      2,
+      f
     );
   }
 };
@@ -3298,6 +3310,24 @@ proto.ipc.GameInfoResponses.prototype.addGameInfo = function(opt_value, opt_inde
  */
 proto.ipc.GameInfoResponses.prototype.clearGameInfoList = function() {
   return this.setGameInfoList([]);
+};
+
+
+/**
+ * optional int64 count = 2;
+ * @return {number}
+ */
+proto.ipc.GameInfoResponses.prototype.getCount = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 2, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.ipc.GameInfoResponses} returns this
+ */
+proto.ipc.GameInfoResponses.prototype.setCount = function(value) {
+  return jspb.Message.setProto3IntField(this, 2, value);
 };
 
 

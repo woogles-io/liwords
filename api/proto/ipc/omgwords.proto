@@ -194,7 +194,10 @@ message GameInfoResponse {
   int32 tournament_game_index = 22;
 }
 
-message GameInfoResponses { repeated GameInfoResponse game_info = 1; }
+message GameInfoResponses {
+  repeated GameInfoResponse game_info = 1;
+  int64 count = 2; // int64 for future-proofing
+}
 
 
 // InstantiateGame is an internal message passed to gamesvc in order to

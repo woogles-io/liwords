@@ -77,6 +77,9 @@ type game struct {
 	// most games.
 	TournamentID   string `gorm:"index"`
 	TournamentData datatypes.JSON
+
+	// only for querying
+	Count int64 `gorm:"migration"`
 }
 
 // NewDBStore creates a new DB store for games.
@@ -228,7 +231,7 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 	var games []*game
 	// gorm does not intend to support with clause. https://github.com/go-gorm/gorm/issues/3955#issuecomment-761939460
 	if results := ctxDB.Raw(`with u as (select id from users where lower(username) = lower(?))
-		select games.* from games inner join u on (player0_id = u.id or player1_id = u.id)
+		select games.*, count(*) over () count from games inner join u on (player0_id = u.id or player1_id = u.id)
 		where game_end_reason not in (?, ?, ?) order by created_at desc limit ? offset ?`,
 		username, pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED, numGames, offset).
 		Find(&games); results.Error != nil {
@@ -249,6 +252,7 @@ func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, n
 		Where("tournament_id = ? AND game_end_reason NOT IN (?, ?, ?)", tourneyID,
 			pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED).
 		Order("updated_at desc").
+		Select("games.*, count(*) over () count"). // that last "count" is the (default) column name
 		Find(&games); results.Error != nil {
 		return nil, results.Error
 	}
@@ -264,7 +268,12 @@ func convertGamesToInfoResponses(games []*game) (*pb.GameInfoResponses, error) {
 		}
 		responses = append(responses, info)
 	}
-	return &pb.GameInfoResponses{GameInfo: responses}, nil
+	count := int64(0)
+	if len(games) > 0 {
+		// all rows have the same count
+		count = games[0].Count
+	}
+	return &pb.GameInfoResponses{GameInfo: responses, Count: count}, nil
 }
 
 func convertGameToInfoResponse(g *game) (*pb.GameInfoResponse, error) {
@@ -453,7 +462,7 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string) (*pb.GameInf
 	var games []*game
 
 	ctxDB := s.db.WithContext(ctx)
-	query := ctxDB.Table("games").Select("quickdata, request, uuid, started, tournament_data").
+	query := ctxDB.Table("games").Select("quickdata, request, uuid, started, tournament_data, count(*) over () count").
 		Where("games.game_end_reason = ?", 0 /* ongoing games only*/)
 
 	if tourneyID != "" {

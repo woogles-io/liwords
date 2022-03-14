@@ -273,6 +273,7 @@ func (s *DBStore) GetRecentGames(ctx context.Context, tourneyID string, numGames
 	}
 	return &pb.RecentGamesResponse{
 		Games: evts,
+		Count: infos.Count,
 	}, nil
 }
 

@@ -584,6 +584,9 @@ export class RecentGamesResponse extends jspb.Message {
   setGamesList(value: Array<api_proto_ipc_tournament_pb.TournamentGameEndedEvent>): void;
   addGames(value?: api_proto_ipc_tournament_pb.TournamentGameEndedEvent, index?: number): api_proto_ipc_tournament_pb.TournamentGameEndedEvent;
 
+  getCount(): number;
+  setCount(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): RecentGamesResponse.AsObject;
   static toObject(includeInstance: boolean, msg: RecentGamesResponse): RecentGamesResponse.AsObject;
@@ -597,6 +600,7 @@ export class RecentGamesResponse extends jspb.Message {
 export namespace RecentGamesResponse {
   export type AsObject = {
     gamesList: Array<api_proto_ipc_tournament_pb.TournamentGameEndedEvent.AsObject>,
+    count: number,
   }
 }
 

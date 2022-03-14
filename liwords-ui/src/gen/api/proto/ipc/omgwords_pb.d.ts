@@ -404,6 +404,9 @@ export class GameInfoResponses extends jspb.Message {
   setGameInfoList(value: Array<GameInfoResponse>): void;
   addGameInfo(value?: GameInfoResponse, index?: number): GameInfoResponse;
 
+  getCount(): number;
+  setCount(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameInfoResponses.AsObject;
   static toObject(includeInstance: boolean, msg: GameInfoResponses): GameInfoResponses.AsObject;
@@ -417,6 +420,7 @@ export class GameInfoResponses extends jspb.Message {
 export namespace GameInfoResponses {
   export type AsObject = {
     gameInfoList: Array<GameInfoResponse.AsObject>,
+    count: number,
   }
 }
 

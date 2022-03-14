@@ -4637,7 +4637,8 @@ proto.tournament_service.RecentGamesResponse.prototype.toObject = function(opt_i
 proto.tournament_service.RecentGamesResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     gamesList: jspb.Message.toObjectList(msg.getGamesList(),
-    api_proto_ipc_tournament_pb.TournamentGameEndedEvent.toObject, includeInstance)
+    api_proto_ipc_tournament_pb.TournamentGameEndedEvent.toObject, includeInstance),
+    count: jspb.Message.getFieldWithDefault(msg, 2, 0)
   };
 
   if (includeInstance) {
@@ -4679,6 +4680,10 @@ proto.tournament_service.RecentGamesResponse.deserializeBinaryFromReader = funct
       reader.readMessage(value,api_proto_ipc_tournament_pb.TournamentGameEndedEvent.deserializeBinaryFromReader);
       msg.addGames(value);
       break;
+    case 2:
+      var value = /** @type {number} */ (reader.readInt64());
+      msg.setCount(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -4714,6 +4719,13 @@ proto.tournament_service.RecentGamesResponse.serializeBinaryToWriter = function(
       1,
       f,
       api_proto_ipc_tournament_pb.TournamentGameEndedEvent.serializeBinaryToWriter
+    );
+  }
+  f = message.getCount();
+  if (f !== 0) {
+    writer.writeInt64(
+      2,
+      f
     );
   }
 };
@@ -4754,6 +4766,24 @@ proto.tournament_service.RecentGamesResponse.prototype.addGames = function(opt_v
  */
 proto.tournament_service.RecentGamesResponse.prototype.clearGamesList = function() {
   return this.setGamesList([]);
+};
+
+
+/**
+ * optional int64 count = 2;
+ * @return {number}
+ */
+proto.tournament_service.RecentGamesResponse.prototype.getCount = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 2, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.tournament_service.RecentGamesResponse} returns this
+ */
+proto.tournament_service.RecentGamesResponse.prototype.setCount = function(value) {
+  return jspb.Message.setProto3IntField(this, 2, value);
 };
 
 

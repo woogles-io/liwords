@@ -160,7 +160,10 @@ message RecentGamesRequest {
   int32 offset = 3;
 }
 
-message RecentGamesResponse { repeated ipc.TournamentGameEndedEvent games = 1; }
+message RecentGamesResponse {
+  repeated ipc.TournamentGameEndedEvent games = 1;
+  int64 count = 2; // int64 for future-proofing
+}
 
 message UnstartTournamentRequest { string id = 1; }
 
