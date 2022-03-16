@@ -77,14 +77,6 @@ type MetaEventData struct {
 	Events []*pb.GameMetaEvent `json:"events"`
 }
 
-type GameCreationType int
-
-const (
-	Native GameCreationType = iota
-	Annotated
-	BotVsBot
-)
-
 // A Game should be saved to the database or store. It wraps a macondo.Game,
 // and we should save most of the included fields here, especially the
 // macondo.game.History (which can be exported as GCG, etc in the future)
@@ -93,7 +85,7 @@ type Game struct {
 	game.Game
 
 	DBID        uint
-	Type        GameCreationType
+	Type        pb.GameType
 	PlayerDBIDs [2]uint // needed to associate the games to the player IDs in the db.
 
 	GameReq *pb.GameRequest

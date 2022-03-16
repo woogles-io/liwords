@@ -9,13 +9,13 @@ import (
 
 	"github.com/domino14/liwords/pkg/common"
 	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/puzzles"
 	commondb "github.com/domino14/liwords/pkg/stores/common"
 	"github.com/domino14/liwords/pkg/stores/game"
 	puzzlesstore "github.com/domino14/liwords/pkg/stores/puzzles"
 	"github.com/domino14/liwords/pkg/stores/user"
 
+	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/macondo/automatic"
 )
 
@@ -72,7 +72,7 @@ func main() {
 			continue
 		}
 		mcg := r.Game()
-		_, err = puzzles.CreatePuzzlesFromGame(ctx, gameStore, puzzlesStore, mcg, "", entity.BotVsBot)
+		_, err = puzzles.CreatePuzzlesFromGame(ctx, gameStore, puzzlesStore, mcg, "", pb.GameType_BOT_VS_BOT)
 		// pzls, err := puzzles.CreatePuzzlesFromGame(ctx, gameStore, puzzlesStore, mcg, "", entity.BotVsBot)
 		// for _, pzl := range pzls {
 		// 	fmt.Printf("liwords.localhost/game/%s?turn=%d\n", pzl.GetGameId(), pzl.GetTurnNumber()+1)

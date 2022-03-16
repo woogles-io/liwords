@@ -44,7 +44,13 @@ func NewDBStore(db *sql.DB) (*DBStore, error) {
 func (s *DBStore) CreatePuzzle(ctx context.Context, gameUUID string, turnNumber int32, answer *macondopb.GameEvent, authorUUID string,
 	beforeText string, afterText string, tags []macondopb.PuzzleTag) error {
 
-	gameID, err := common.GetDBIDFromUUID(ctx, s.db, "games", gameUUID)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	gameID, err := common.GetGameDBIDFromUUID(ctx, tx, gameUUID)
 	if err != nil {
 		return err
 	}
@@ -53,16 +59,14 @@ func (s *DBStore) CreatePuzzle(ctx context.Context, gameUUID string, turnNumber 
 	// the insert value for author_id needs to be either a valid
 	// author id or a nil value
 
-	authorId := uint(0)
-	authorIdptr := &authorId
+	authorId := sql.NullInt64{Valid: false}
 	if authorUUID != "" {
-		aid, err := common.GetDBIDFromUUID(ctx, s.db, "users", authorUUID)
+		aid, err := common.GetUserDBIDFromUUID(ctx, tx, authorUUID)
 		if err != nil {
 			return err
 		}
-		authorId = aid
-	} else {
-		authorIdptr = nil
+		authorId.Int64 = int64(aid)
+		authorId.Valid = true
 	}
 
 	newRating := &entity.SingleRating{
@@ -73,32 +77,22 @@ func (s *DBStore) CreatePuzzle(ctx context.Context, gameUUID string, turnNumber 
 
 	uuid := shortuuid.New()
 
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-
 	err = func() error {
 		var id int
-		err = s.db.QueryRowContext(ctx, `INSERT INTO puzzles (uuid, game_id, turn_number, author_id, answer, before_text, after_text, rating, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW()) RETURNING id`,
-			uuid, gameID, turnNumber, authorIdptr, gameEventToAnswer(answer), beforeText, afterText, newRating).Scan(&id)
+		err = tx.QueryRowContext(ctx, `INSERT INTO puzzles (uuid, game_id, turn_number, author_id, answer, before_text, after_text, rating, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW()) RETURNING id`,
+			uuid, gameID, turnNumber, authorId, gameEventToAnswer(answer), beforeText, afterText, newRating).Scan(&id)
 		if err != nil {
 			return err
 		}
 
 		for _, tag := range tags {
-			_, err := s.db.ExecContext(ctx, `INSERT INTO puzzle_tags(tag_id, puzzle_id) VALUES ($1, $2)`, tag+1, id)
+			_, err := tx.ExecContext(ctx, `INSERT INTO puzzle_tags(tag_id, puzzle_id) VALUES ($1, $2)`, tag+1, id)
 			if err != nil {
 				return err
 			}
 		}
 		return nil
 	}()
-
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
 
 	if err := tx.Commit(); err != nil {
 		return err
@@ -108,17 +102,39 @@ func (s *DBStore) CreatePuzzle(ctx context.Context, gameUUID string, turnNumber 
 }
 
 func (s *DBStore) GetRandomUnansweredPuzzleIdForUser(ctx context.Context, userId string) (string, error) {
-	userDBID, err := common.GetDBIDFromUUID(ctx, s.db, "users", userId)
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return "", err
 	}
+	defer tx.Rollback()
+
+	userDBID, err := common.GetUserDBIDFromUUID(ctx, tx, userId)
+	if err != nil {
+		return "", err
+	}
+
+	randomId, err := getRandomPuzzleId(ctx, tx)
+	if err != nil {
+		return "", err
+	}
+	if !randomId.Valid {
+		return "", fmt.Errorf("no puzzle row id found for user: %s", userId)
+	}
 	var puzzleId string
-	err = s.db.QueryRowContext(ctx, `SELECT uuid FROM puzzles WHERE id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $1) ORDER BY RANDOM()`, userDBID).Scan(&puzzleId)
+	err = tx.QueryRowContext(ctx, `SELECT uuid FROM puzzles WHERE id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $1) AND id > $2 ORDER BY id LIMIT 1`, userDBID, randomId.Int64).Scan(&puzzleId)
 	if err == sql.ErrNoRows {
-		// User has answered all available puzzles, return a random seen puzzle
-		err = s.db.QueryRowContext(ctx, `SELECT uuid FROM puzzles ORDER BY RANDOM()`).Scan(&puzzleId)
+		// Try again, but looking before the id instead
+		err = tx.QueryRowContext(ctx, `SELECT uuid FROM puzzles WHERE id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $1) AND id <= $2 ORDER BY id DESC LIMIT 1`, userDBID, randomId.Int64).Scan(&puzzleId)
 		if err == sql.ErrNoRows {
-			return "", fmt.Errorf("no puzzles found for user: %s", userId)
+			// The user has answered all available puzzles.
+			// Return any random puzzle
+			err = tx.QueryRowContext(ctx, `SELECT uuid FROM puzzles OFFSET $1 LIMIT 1`, randomId.Int64).Scan(&puzzleId)
+			if err == sql.ErrNoRows {
+				return "", fmt.Errorf("no puzzles found for user: %s", userId)
+			}
+			if err != nil {
+				return "", err
+			}
 		}
 		if err != nil {
 			return "", err
@@ -127,38 +143,57 @@ func (s *DBStore) GetRandomUnansweredPuzzleIdForUser(ctx context.Context, userId
 	if err != nil {
 		return "", err
 	}
+
+	if err := tx.Commit(); err != nil {
+		return "", err
+	}
+
 	return puzzleId, nil
 }
 
 func (s *DBStore) GetPuzzle(ctx context.Context, puzzleId string) (string, *macondopb.GameHistory, string, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return "", nil, "", err
+	}
+	defer tx.Rollback()
+
 	var gameId int
 	var turnNumber int
 	var beforeText string
 
-	err := s.db.QueryRowContext(ctx, `SELECT game_id, turn_number, before_text FROM puzzles WHERE uuid = $1`, puzzleId).Scan(&gameId, &turnNumber, &beforeText)
+	err = tx.QueryRowContext(ctx, `SELECT game_id, turn_number, before_text FROM puzzles WHERE uuid = $1`, puzzleId).Scan(&gameId, &turnNumber, &beforeText)
 	if err == sql.ErrNoRows {
 		return "", nil, "", fmt.Errorf("puzzle not found: %s", puzzleId)
 	}
 	if err != nil {
 		return "", nil, "", err
 	}
-	hist, _, gameUUID, err := common.GetGameInfo(ctx, s.db, gameId)
+	hist, _, gameUUID, err := common.GetGameInfo(ctx, tx, gameId)
 	if err != nil {
 		return "", nil, "", err
 	}
 
 	hist.Events = hist.Events[:turnNumber]
+	if err := tx.Commit(); err != nil {
+		return "", nil, "", err
+	}
 
 	return gameUUID, hist, beforeText, nil
 }
 
 func (s *DBStore) GetAnswer(ctx context.Context, puzzleId string) (*macondopb.GameEvent, string, *ipc.GameRequest, *entity.SingleRating, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, "", nil, nil, err
+	}
+	defer tx.Rollback()
 	var ans *answer
 	var rat *entity.SingleRating
 	var afterText string
 	var gameId int
 
-	err := s.db.QueryRowContext(ctx, `SELECT answer, rating, after_text, game_id FROM puzzles WHERE uuid = $1`, puzzleId).Scan(&ans, &rat, &afterText, &gameId)
+	err = tx.QueryRowContext(ctx, `SELECT answer, rating, after_text, game_id FROM puzzles WHERE uuid = $1`, puzzleId).Scan(&ans, &rat, &afterText, &gameId)
 	if err == sql.ErrNoRows {
 		return nil, "", nil, nil, fmt.Errorf("puzzle not found: %s", puzzleId)
 	}
@@ -166,11 +201,13 @@ func (s *DBStore) GetAnswer(ctx context.Context, puzzleId string) (*macondopb.Ga
 		return nil, "", nil, nil, err
 	}
 
-	_, req, _, err := common.GetGameInfo(ctx, s.db, gameId)
+	_, req, _, err := common.GetGameInfo(ctx, tx, gameId)
 	if err != nil {
 		return nil, "", nil, nil, err
 	}
-
+	if err := tx.Commit(); err != nil {
+		return nil, "", nil, nil, err
+	}
 	return answerToGameEvent(ans), afterText, req, rat, nil
 }
 
@@ -181,56 +218,49 @@ func (s *DBStore) AnswerPuzzle(ctx context.Context, userId string, ratingKey ent
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback()
 
-	err = func() error {
-		pid, err := common.GetDBIDFromUUID(ctx, s.db, "puzzles", puzzleId)
-		if err != nil {
-			return err
-		}
-
-		uid, err := common.GetDBIDFromUUID(ctx, s.db, "users", userId)
-		if err != nil {
-			return err
-		}
-
-		if newUserRating != nil && newPuzzleRating != nil {
-			_, err = tx.ExecContext(ctx, `UPDATE puzzles SET rating = $1 WHERE id = $2`, newPuzzleRating, pid)
-			if err != nil {
-				return err
-			}
-
-			err = common.UpdateUserRating(ctx, s.db, tx, uid, ratingKey, newUserRating)
-			if err != nil {
-				return err
-			}
-
-			_, err = tx.ExecContext(ctx, `INSERT INTO puzzle_attempts (puzzle_id, user_id, attempts, correct, new_user_rating, new_puzzle_rating, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-				pid, uid, 1, correct, newUserRating, newPuzzleRating)
-			if err != nil {
-				return err
-			}
-		} else {
-			// Update the attempt if another incorrect answer was given
-			var alreadyCorrect bool
-			var attempts int
-			err = s.db.QueryRowContext(ctx, `SELECT correct, attempts FROM puzzle_attempts WHERE puzzle_id = $1 AND user_id = $2`, pid, uid).Scan(&alreadyCorrect, &attempts)
-			if err != nil {
-				return err
-			}
-
-			if !alreadyCorrect {
-				_, err = tx.ExecContext(ctx, `UPDATE puzzle_attempts SET attempts = $1, correct = $2 WHERE puzzle_id = $3 AND user_id = $4`, attempts+1, correct, pid, uid)
-				if err != nil {
-					return err
-				}
-			}
-		}
-		return nil
-	}()
-
+	pid, err := common.GetPuzzleDBIDFromUUID(ctx, tx, puzzleId)
 	if err != nil {
-		tx.Rollback()
 		return err
+	}
+
+	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userId)
+	if err != nil {
+		return err
+	}
+
+	if newUserRating != nil && newPuzzleRating != nil {
+		_, err = tx.ExecContext(ctx, `UPDATE puzzles SET rating = $1 WHERE id = $2`, newPuzzleRating, pid)
+		if err != nil {
+			return err
+		}
+
+		err = common.UpdateUserRating(ctx, tx, uid, ratingKey, newUserRating)
+		if err != nil {
+			return err
+		}
+
+		_, err = tx.ExecContext(ctx, `INSERT INTO puzzle_attempts (puzzle_id, user_id, attempts, correct, new_user_rating, new_puzzle_rating, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+			pid, uid, 1, correct, newUserRating, newPuzzleRating)
+		if err != nil {
+			return err
+		}
+	} else {
+		// Update the attempt if another incorrect answer was given
+		var alreadyCorrect bool
+		var attempts int
+		err = tx.QueryRowContext(ctx, `SELECT correct, attempts FROM puzzle_attempts WHERE puzzle_id = $1 AND user_id = $2`, pid, uid).Scan(&alreadyCorrect, &attempts)
+		if err != nil {
+			return err
+		}
+
+		if !alreadyCorrect {
+			_, err = tx.ExecContext(ctx, `UPDATE puzzle_attempts SET attempts = $1, correct = $2 WHERE puzzle_id = $3 AND user_id = $4`, attempts+1, correct, pid, uid)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -241,12 +271,18 @@ func (s *DBStore) AnswerPuzzle(ctx context.Context, userId string, ratingKey ent
 }
 
 func (s *DBStore) HasUserAttemptedPuzzle(ctx context.Context, userID string, puzzleID string) (bool, error) {
-	pid, err := common.GetDBIDFromUUID(ctx, s.db, "puzzles", puzzleID)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback()
+
+	pid, err := common.GetPuzzleDBIDFromUUID(ctx, tx, puzzleID)
 	if err != nil {
 		return false, err
 	}
 
-	uid, err := common.GetDBIDFromUUID(ctx, s.db, "users", userID)
+	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userID)
 	if err != nil {
 		return false, err
 	}
@@ -256,17 +292,22 @@ func (s *DBStore) HasUserAttemptedPuzzle(ctx context.Context, userID string, puz
 	if err != nil {
 		return false, err
 	}
+
+	if err := tx.Commit(); err != nil {
+		return false, err
+	}
+
 	return seen, nil
 }
 
-// XXX: Pass through function until we figure out the stores solution
 func (s *DBStore) GetUserRating(ctx context.Context, userID string, ratingKey entity.VariantKey) (*entity.SingleRating, error) {
-	uid, err := common.GetDBIDFromUUID(ctx, s.db, "users", userID)
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
+	defer tx.Rollback()
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -277,12 +318,7 @@ func (s *DBStore) GetUserRating(ctx context.Context, userID string, ratingKey en
 		Volatility:        glicko.InitialVolatility,
 		LastGameTimestamp: time.Now().Unix()}
 
-	sr, err := common.GetUserRating(ctx, s.db, tx, uid, ratingKey, initialRating)
-
-	if err != nil {
-		tx.Rollback()
-		return nil, err
-	}
+	sr, err := common.GetUserRating(ctx, tx, uid, ratingKey, initialRating)
 
 	if err := tx.Commit(); err != nil {
 		return nil, err
@@ -291,18 +327,38 @@ func (s *DBStore) GetUserRating(ctx context.Context, userID string, ratingKey en
 }
 
 func (s *DBStore) SetPuzzleVote(ctx context.Context, userID string, puzzleID string, vote int) error {
-	pid, err := common.GetDBIDFromUUID(ctx, s.db, "puzzles", puzzleID)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	pid, err := common.GetPuzzleDBIDFromUUID(ctx, tx, puzzleID)
 	if err != nil {
 		return err
 	}
 
-	uid, err := common.GetDBIDFromUUID(ctx, s.db, "users", userID)
+	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userID)
 	if err != nil {
 		return err
 	}
 
-	_, err = s.db.ExecContext(ctx, `INSERT INTO puzzle_votes (puzzle_id, user_id, vote) VALUES ($1, $2, $3) ON CONFLICT (puzzle_id, user_id) DO UPDATE SET vote = $3`, pid, uid, vote)
+	_, err = tx.ExecContext(ctx, `INSERT INTO puzzle_votes (puzzle_id, user_id, vote) VALUES ($1, $2, $3) ON CONFLICT (puzzle_id, user_id) DO UPDATE SET vote = $3`, pid, uid, vote)
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
 	return err
+}
+
+func getRandomPuzzleId(ctx context.Context, tx *sql.Tx) (*sql.NullInt64, error) {
+	var id sql.NullInt64
+	err := tx.QueryRowContext(ctx, "SELECT FLOOR(RANDOM() * MAX(id)) FROM puzzles").Scan(&id)
+	return &id, err
 }
 
 func (a *answer) Value() (driver.Value, error) {
@@ -317,6 +373,7 @@ func (a *answer) Scan(value interface{}) error {
 
 	return json.Unmarshal(b, &a)
 }
+
 func gameEventToAnswer(evt *macondopb.GameEvent) *answer {
 	return &answer{
 		EventType:   int32(evt.Type),

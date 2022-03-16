@@ -16,8 +16,8 @@ var TestingDBConnStr = fmt.Sprintf("%s database=%s", TestingConnStr, TestDBName)
 
 func RecreatePuzzleTables(db *sql.DB) error {
 	createPuzzlesStmt := `CREATE TABLE puzzles (
-		id SERIAL PRIMARY KEY,
-		uuid character varying(24) UNIQUE NOT NULL,
+		id BIGSERIAL PRIMARY KEY,
+		uuid text UNIQUE NOT NULL,
 		game_id integer NOT NULL,
 		turn_number integer NOT NULL,
 		answer jsonb NOT NULL,
@@ -25,13 +25,13 @@ func RecreatePuzzleTables(db *sql.DB) error {
 		before_text text,
 		after_text text,
 		rating jsonb NOT NULL,
-		created_at timestamp WITH TIME ZONE NOT NULL DEFAULT (current_timestamp AT TIME ZONE 'UTC'),
-		updated_at timestamp WITH TIME ZONE NOT NULL DEFAULT (current_timestamp AT TIME ZONE 'UTC'),
+		created_at timestamptz,
+		updated_at timestamptz,
 		FOREIGN KEY (game_id) REFERENCES games (id),
 		FOREIGN KEY (author_id) REFERENCES users (id))`
 
 	createPuzzleTagTitlesStmt := `CREATE TABLE puzzle_tag_titles (
-		id SERIAL PRIMARY KEY,
+		id BIGSERIAL PRIMARY KEY,
 	   	tag_title text NOT NULL)`
 
 	createPuzzleTagsStmt := `CREATE TABLE puzzle_tags (
@@ -48,7 +48,7 @@ func RecreatePuzzleTables(db *sql.DB) error {
 		attempts integer,
 		new_user_rating jsonb,
 		new_puzzle_rating jsonb,
-		created_at timestamp WITH TIME ZONE NOT NULL DEFAULT (current_timestamp AT TIME ZONE 'UTC'),
+		created_at timestamptz,
 		UNIQUE(puzzle_id, user_id),
 		FOREIGN KEY (puzzle_id) REFERENCES puzzles (id),
 		FOREIGN KEY (user_id) REFERENCES users (id))`
@@ -57,7 +57,7 @@ func RecreatePuzzleTables(db *sql.DB) error {
 		puzzle_id integer NOT NULL,
 		user_id integer NOT NULL,
 		vote integer,
-		created_at timestamp WITH TIME ZONE NOT NULL DEFAULT (current_timestamp AT TIME ZONE 'UTC'),
+		created_at timestamptz,
 		UNIQUE(puzzle_id, user_id),
 		FOREIGN KEY (puzzle_id) REFERENCES puzzles (id),
 		FOREIGN KEY (user_id) REFERENCES users (id))`

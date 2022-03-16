@@ -34,6 +34,7 @@ goog.exportSymbol('proto.ipc.GameMetaEvent.EventType', null, global);
 goog.exportSymbol('proto.ipc.GameMode', null, global);
 goog.exportSymbol('proto.ipc.GameRequest', null, global);
 goog.exportSymbol('proto.ipc.GameRules', null, global);
+goog.exportSymbol('proto.ipc.GameType', null, global);
 goog.exportSymbol('proto.ipc.InstantiateGame', null, global);
 goog.exportSymbol('proto.ipc.NewGameEvent', null, global);
 goog.exportSymbol('proto.ipc.PlayerInfo', null, global);
@@ -2686,7 +2687,7 @@ proto.ipc.GameInfoResponse.deserializeBinaryFromReader = function(msg, reader) {
       msg.setTournamentGameIndex(value);
       break;
     case 23:
-      var value = /** @type {number} */ (reader.readInt32());
+      var value = /** @type {!proto.ipc.GameType} */ (reader.readEnum());
       msg.setType(value);
       break;
     default:
@@ -2814,8 +2815,8 @@ proto.ipc.GameInfoResponse.serializeBinaryToWriter = function(message, writer) {
     );
   }
   f = message.getType();
-  if (f !== 0) {
-    writer.writeInt32(
+  if (f !== 0.0) {
+    writer.writeEnum(
       23,
       f
     );
@@ -3154,20 +3155,20 @@ proto.ipc.GameInfoResponse.prototype.setTournamentGameIndex = function(value) {
 
 
 /**
- * optional int32 type = 23;
- * @return {number}
+ * optional GameType type = 23;
+ * @return {!proto.ipc.GameType}
  */
 proto.ipc.GameInfoResponse.prototype.getType = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 23, 0));
+  return /** @type {!proto.ipc.GameType} */ (jspb.Message.getFieldWithDefault(this, 23, 0));
 };
 
 
 /**
- * @param {number} value
+ * @param {!proto.ipc.GameType} value
  * @return {!proto.ipc.GameInfoResponse} returns this
  */
 proto.ipc.GameInfoResponse.prototype.setType = function(value) {
-  return jspb.Message.setProto3IntField(this, 23, value);
+  return jspb.Message.setProto3EnumField(this, 23, value);
 };
 
 
@@ -5689,6 +5690,15 @@ proto.ipc.GameMode = {
 proto.ipc.RatingMode = {
   RATED: 0,
   CASUAL: 1
+};
+
+/**
+ * @enum {number}
+ */
+proto.ipc.GameType = {
+  NATIVE: 0,
+  ANNOTATED: 1,
+  BOT_VS_BOT: 2
 };
 
 goog.object.extend(exports, proto.ipc);

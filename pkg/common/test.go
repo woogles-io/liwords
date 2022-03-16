@@ -11,19 +11,21 @@ import (
 )
 
 const PuzzleVariant = "puzzle"
-const DefaultLexicon = "CSW21"
+const DefaultLexicon = "CSW19"
+const DefaultLetterDistribution = "English"
+const DefaultVariantName = "classic"
 
 var DefaultConfig = macondoconfig.Config{
 	LexiconPath:               os.Getenv("LEXICON_PATH"),
 	LetterDistributionPath:    os.Getenv("LETTER_DISTRIBUTION_PATH"),
-	DefaultLexicon:            "CSW21",
-	DefaultLetterDistribution: "English",
+	DefaultLexicon:            DefaultLexicon,
+	DefaultLetterDistribution: DefaultLetterDistribution,
 }
 
 var DefaultGameReq = &ipc.GameRequest{Lexicon: DefaultLexicon,
 	Rules: &ipc.GameRules{BoardLayoutName: entity.CrosswordGame,
-		LetterDistributionName: "English",
-		VariantName:            "classic"},
+		LetterDistributionName: DefaultLetterDistribution,
+		VariantName:            DefaultVariantName},
 	InitialTimeSeconds: 25 * 60,
 	IncrementSeconds:   0,
 	ChallengeRule:      macondopb.ChallengeRule_FIVE_POINT,

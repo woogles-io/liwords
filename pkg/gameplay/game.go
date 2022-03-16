@@ -48,7 +48,7 @@ type GameStore interface {
 	GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error)
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
-	CreateRaw(context.Context, *entity.Game, entity.GameCreationType) error
+	CreateRaw(context.Context, *entity.Game, pb.GameType) error
 	Exists(ctx context.Context, id string) (bool, error)
 	ListActive(context.Context, string, bool) (*pb.GameInfoResponses, error)
 	Count(ctx context.Context) (int64, error)

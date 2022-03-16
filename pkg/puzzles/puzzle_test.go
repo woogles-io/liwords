@@ -14,6 +14,7 @@ import (
 	gamestore "github.com/domino14/liwords/pkg/stores/game"
 	puzzlesstore "github.com/domino14/liwords/pkg/stores/puzzles"
 	"github.com/domino14/liwords/pkg/stores/user"
+	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
 
@@ -34,7 +35,7 @@ func TestPuzzles(t *testing.T) {
 
 	rk := ratingKey(common.DefaultGameReq)
 
-	pcid, err := commondb.GetDBIDFromUUID(ctx, db, "users", PuzzleCreatorUUID)
+	pcid, err := transactGetDBIDFromUUID(ctx, db, "users", PuzzleCreatorUUID)
 	is.NoErr(err)
 
 	var curatedPuzzles int
@@ -111,6 +112,7 @@ func TestPuzzles(t *testing.T) {
 
 	correctAnswer, _, _, oldPuzzleRating, err = ps.GetAnswer(ctx, pid)
 	is.NoErr(err)
+
 	oldUserRating, err = getUserRating(ctx, db, PuzzlerUUID, rk)
 	is.NoErr(err)
 
@@ -119,6 +121,7 @@ func TestPuzzles(t *testing.T) {
 
 	_, _, _, newPuzzleRating, err = ps.GetAnswer(ctx, pid)
 	is.NoErr(err)
+
 	newUserRating, err = getUserRating(ctx, db, PuzzlerUUID, rk)
 	is.NoErr(err)
 
@@ -165,7 +168,7 @@ func TestPuzzles(t *testing.T) {
 		_, hist, _, err := GetPuzzle(ctx, ps, pid)
 		is.NoErr(err)
 
-		puzzleDBID, err := commondb.GetDBIDFromUUID(ctx, db, "puzzles", pid)
+		puzzleDBID, err := transactGetDBIDFromUUID(ctx, db, "puzzles", pid)
 		is.NoErr(err)
 
 		var turnNumber int
@@ -267,7 +270,7 @@ func RecreateDB() (*sql.DB, *puzzlesstore.DBStore, int, int, error) {
 		return nil, nil, 0, 0, err
 	}
 
-	rules, err := game.NewBasicGameRules(&common.DefaultConfig, "CSW21", board.CrosswordGameLayout, "english", game.CrossScoreAndSet, game.VarClassic)
+	rules, err := game.NewBasicGameRules(&common.DefaultConfig, common.DefaultLexicon, board.CrosswordGameLayout, "english", game.CrossScoreAndSet, game.VarClassic)
 	if err != nil {
 		return nil, nil, 0, 0, err
 	}
@@ -290,7 +293,7 @@ func RecreateDB() (*sql.DB, *puzzlesstore.DBStore, int, int, error) {
 		if idx%2 == 1 {
 			pcUUID = PuzzleCreatorUUID
 		}
-		pzls, err := CreatePuzzlesFromGame(ctx, gameStore, puzzlesStore, game, pcUUID, entity.Annotated)
+		pzls, err := CreatePuzzlesFromGame(ctx, gameStore, puzzlesStore, game, pcUUID, ipc.GameType_ANNOTATED)
 		if err != nil {
 			return nil, nil, 0, 0, err
 		}
@@ -304,7 +307,7 @@ func RecreateDB() (*sql.DB, *puzzlesstore.DBStore, int, int, error) {
 }
 
 func getUserRating(ctx context.Context, db *sql.DB, userUUID string, rk entity.VariantKey) (*entity.SingleRating, error) {
-	id, err := commondb.GetDBIDFromUUID(ctx, db, "users", userUUID)
+	id, err := transactGetDBIDFromUUID(ctx, db, "users", userUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +330,7 @@ func getUserRating(ctx context.Context, db *sql.DB, userUUID string, rk entity.V
 }
 
 func getPuzzlePopularity(ctx context.Context, db *sql.DB, puzzleUUID string) (int, error) {
-	pid, err := commondb.GetDBIDFromUUID(ctx, db, "puzzles", puzzleUUID)
+	pid, err := transactGetDBIDFromUUID(ctx, db, "puzzles", puzzleUUID)
 	if err != nil {
 		return 0, err
 	}
@@ -337,12 +340,12 @@ func getPuzzlePopularity(ctx context.Context, db *sql.DB, puzzleUUID string) (in
 }
 
 func getPuzzleAttempt(ctx context.Context, db *sql.DB, userUUID string, puzzleUUID string) (int, bool, error) {
-	pid, err := commondb.GetDBIDFromUUID(ctx, db, "puzzles", puzzleUUID)
+	pid, err := transactGetDBIDFromUUID(ctx, db, "puzzles", puzzleUUID)
 	if err != nil {
 		return 0, false, err
 	}
 
-	uid, err := commondb.GetDBIDFromUUID(ctx, db, "users", userUUID)
+	uid, err := transactGetDBIDFromUUID(ctx, db, "users", userUUID)
 	if err != nil {
 		return 0, false, err
 	}
@@ -353,4 +356,31 @@ func getPuzzleAttempt(ctx context.Context, db *sql.DB, userUUID string, puzzleUU
 		return 0, false, err
 	}
 	return attempts, correct, nil
+}
+
+func transactGetDBIDFromUUID(ctx context.Context, db *sql.DB, table string, uuid string) (uint, error) {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	var id uint
+	if table == "users" {
+		id, err = commondb.GetUserDBIDFromUUID(ctx, tx, uuid)
+	} else if table == "games" {
+		id, err = commondb.GetGameDBIDFromUUID(ctx, tx, uuid)
+	} else if table == "puzzles" {
+		id, err = commondb.GetPuzzleDBIDFromUUID(ctx, tx, uuid)
+	} else {
+		return 0, fmt.Errorf("unknown table: %s", table)
+	}
+	if err != nil {
+		return 0, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return id, nil
 }

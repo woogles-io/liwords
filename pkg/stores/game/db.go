@@ -49,7 +49,7 @@ type game struct {
 	gorm.Model
 	UUID string `gorm:"type:varchar(24);index"`
 
-	Type      int
+	Type      pb.GameType
 	Player0ID uint `gorm:"foreignKey;index"`
 	Player0   user.User
 
@@ -317,7 +317,7 @@ func convertGameToInfoResponse(g *game) (*pb.GameInfoResponse, error) {
 		TournamentDivision:  tDiv,
 		TournamentRound:     int32(tRound),
 		TournamentGameIndex: int32(tGameIndex),
-		Type:                int32(g.Type),
+		Type:                g.Type,
 	}
 	return info, nil
 }
@@ -326,7 +326,7 @@ func convertGameToInfoResponse(g *game) (*pb.GameInfoResponse, error) {
 func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 	GameEndReason int, p0id, p1id uint, WinnerIdx, LoserIdx int, reqBytes, histBytes []byte,
 	stats *entity.Stats, mdata *entity.MetaEventData,
-	gameEventChan chan<- *entity.EventWrapper, cfg *config.Config, createdAt time.Time, gameType int, DBID uint) (*entity.Game, error) {
+	gameEventChan chan<- *entity.EventWrapper, cfg *config.Config, createdAt time.Time, gameType pb.GameType, DBID uint) (*entity.Game, error) {
 
 	g := &entity.Game{
 		Started:       Started,
@@ -340,7 +340,7 @@ func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 		MetaEvents:    mdata,
 		Quickdata:     qdata,
 		CreatedAt:     createdAt,
-		Type:          entity.GameCreationType(gameType),
+		Type:          gameType,
 		DBID:          DBID,
 	}
 	g.SetTimerModule(&entity.GameTimer{})
@@ -454,8 +454,8 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 	return result.Error
 }
 
-func (s *DBStore) CreateRaw(ctx context.Context, g *entity.Game, gct entity.GameCreationType) error {
-	if gct == entity.Native {
+func (s *DBStore) CreateRaw(ctx context.Context, g *entity.Game, gt pb.GameType) error {
+	if gt == pb.GameType_NATIVE {
 		return fmt.Errorf("this game already exists: %s", g.Uid())
 	}
 	ctxDB := s.db.WithContext(ctx)
@@ -468,7 +468,7 @@ func (s *DBStore) CreateRaw(ctx context.Context, g *entity.Game, gct entity.Game
 	if err != nil {
 		return err
 	}
-	result := ctxDB.Exec(`insert into games(uuid, request, history, quickdata, timers, game_end_reason, type) values(?, ?, ?, ?, ?, ?, ?)`, g.Uid(), req, hist, g.Quickdata, g.Timers, g.GameEndReason, gct)
+	result := ctxDB.Exec(`insert into games(uuid, request, history, quickdata, timers, game_end_reason, type) values(?, ?, ?, ?, ?, ?, ?)`, g.Uid(), req, hist, g.Quickdata, g.Timers, g.GameEndReason, gt)
 	return result.Error
 }
 
@@ -575,7 +575,7 @@ func (s *DBStore) toDBObj(g *entity.Game) (*game, error) {
 		History:        hist,
 		TournamentData: tourneydata,
 		MetaEvents:     mdata,
-		Type:           int(g.Type),
+		Type:           g.Type,
 	}
 	if g.TournamentData != nil {
 		dbg.TournamentID = g.TournamentData.Id

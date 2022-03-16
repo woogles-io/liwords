@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/domino14/liwords/pkg/apiserver"
-	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/utilities"
 	"github.com/domino14/macondo/gcgio"
@@ -37,7 +36,7 @@ func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest)
 		return nil, err
 	}
 	// Censors the response in-place
-	if gir.Type == int32(entity.Native) {
+	if gir.Type == ipc.GameType_NATIVE {
 		censorGameInfoResponse(ctx, gs.userStore, gir)
 	}
 	return gir, nil

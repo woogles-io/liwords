@@ -3,6 +3,8 @@ package puzzles
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/domino14/liwords/pkg/common"
@@ -11,6 +13,7 @@ import (
 	gamestore "github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	macondogame "github.com/domino14/macondo/game"
+	"github.com/domino14/macondo/gen/api/proto/macondo"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	macondopuzzles "github.com/domino14/macondo/puzzles"
 	"github.com/lithammer/shortuuid"
@@ -25,12 +28,11 @@ type PuzzleStore interface {
 	GetAnswer(ctx context.Context, puzzleId string) (*macondopb.GameEvent, string, *ipc.GameRequest, *entity.SingleRating, error)
 	AnswerPuzzle(ctx context.Context, userId string, ratingKey entity.VariantKey, newUserRating *entity.SingleRating, puzzleId string, newPuzzleRating *entity.SingleRating, correct bool) error
 	HasUserAttemptedPuzzle(ctx context.Context, userId string, puzzleId string) (bool, error)
-	// XXX: Temporary until store problem is resolved
 	GetUserRating(ctx context.Context, userId string, ratingKey entity.VariantKey) (*entity.SingleRating, error)
 	SetPuzzleVote(ctx context.Context, userId string, puzzleId string, vote int) error
 }
 
-func CreatePuzzlesFromGame(ctx context.Context, gs *gamestore.DBStore, ps PuzzleStore, mcg *macondogame.Game, authorId string, gct entity.GameCreationType) ([]*macondopb.PuzzleCreationResponse, error) {
+func CreatePuzzlesFromGame(ctx context.Context, gs *gamestore.DBStore, ps PuzzleStore, mcg *macondogame.Game, authorId string, gt ipc.GameType) ([]*macondopb.PuzzleCreationResponse, error) {
 	g := newPuzzleGame(mcg)
 	pzls, err := macondopuzzles.CreatePuzzlesFromGame(g.Config(), mcg)
 	if err != nil {
@@ -41,8 +43,8 @@ func CreatePuzzlesFromGame(ctx context.Context, gs *gamestore.DBStore, ps Puzzle
 	if len(pzls) > 0 {
 		// If the mcg game is not from a game that already
 		// exists in the database, then create the game
-		if gct != entity.Native {
-			err = gs.CreateRaw(ctx, g, gct)
+		if gt != ipc.GameType_NATIVE {
+			err = gs.CreateRaw(ctx, g, gt)
 			if err != nil {
 				return nil, err
 			}
@@ -164,11 +166,22 @@ func answersAreEqual(ans1 *macondopb.GameEvent, ans2 *macondopb.GameEvent) bool 
 		log.Info().Msg("puzzle answer nil")
 		return false
 	}
+	normalizeAnswer(ans1)
+	normalizeAnswer(ans2)
 	return ans1.Row == ans2.Row &&
 		ans1.Column == ans2.Column &&
 		ans1.Direction == ans2.Direction &&
 		ans1.PlayedTiles == ans2.PlayedTiles &&
 		ans1.Exchanged == ans2.Exchanged
+}
+
+func normalizeAnswer(ans *macondopb.GameEvent) {
+	if len(ans.PlayedTiles) == 1 {
+		ans.Direction = macondo.GameEvent_HORIZONTAL
+	}
+	s := strings.Split(ans.Exchanged, "")
+	sort.Strings(s)
+	ans.Exchanged = strings.Join(s, "")
 }
 
 func ratingKey(gameRequest *ipc.GameRequest) entity.VariantKey {
