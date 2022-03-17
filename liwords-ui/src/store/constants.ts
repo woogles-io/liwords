@@ -4,9 +4,39 @@ import {
 } from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { Blank } from '../utils/cwgame/common';
-import { ChatEntityObj, ChatEntityType, randomID } from './store';
 
 export type PlayerOrder = 'p0' | 'p1';
+
+export enum ChatEntityType {
+  UserChat,
+  ServerMsg,
+  ErrorMsg,
+}
+
+export type ChatEntityObj = {
+  entityType: ChatEntityType;
+  sender: string;
+  message: string;
+  id?: string;
+  timestamp?: number;
+  senderId?: string;
+  channel: string;
+};
+
+export type PresenceEntity = {
+  uuid: string;
+  username: string;
+  channel: string;
+  anon: boolean;
+  deleting: boolean;
+};
+
+export const randomID = () => {
+  // Math.random should be unique because of its seeding algorithm.
+  // Convert it to base 36 (numbers + letters), and grab the first 9 characters
+  // after the decimal.
+  return `_${Math.random().toString(36).substr(2, 9)}`;
+};
 
 export const indexToPlayerOrder = (idx: number): PlayerOrder => {
   if (!(idx >= 0 && idx <= 1)) {

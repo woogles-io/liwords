@@ -1,7 +1,7 @@
 import React from 'react';
-import { PresenceEntity } from '../store/store';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import { moderateUser } from '../mod/moderate';
+import { PresenceEntity } from '../store/constants';
 
 type Props = {
   players: Array<PresenceEntity>;

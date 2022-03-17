@@ -1,7 +1,6 @@
 import React from 'react';
 import moment from 'moment';
 import {
-  ChatEntityType,
   useExcludedPlayersStoreContext,
   useModeratorStoreContext,
 } from '../store/store';
@@ -16,6 +15,7 @@ import {
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { moderateUser, deleteChatMessage } from '../mod/moderate';
 import { PettableAvatar, PlayerAvatar } from '../shared/player_avatar';
+import { ChatEntityType } from '../store/constants';
 
 type EntityProps = {
   entityType: ChatEntityType;

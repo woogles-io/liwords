@@ -2,8 +2,6 @@ import { useCallback, useRef } from 'react';
 import { useHistory } from 'react-router-dom';
 import { message, notification } from 'antd';
 import {
-  ChatEntityType,
-  PresenceEntity,
   useChallengeResultEventStoreContext,
   useChatStoreContext,
   useExamineStoreContext,
@@ -82,6 +80,7 @@ import {
   TournamentDivisionDataResponse,
 } from '../gen/api/proto/ipc/tournament_pb';
 import { ProfileUpdate } from '../gen/api/proto/ipc/users_pb';
+import { ChatEntityType, PresenceEntity } from './constants';
 // Feature flag.
 export const enableShowSocket =
   localStorage?.getItem('enableShowSocket') === 'true';

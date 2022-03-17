@@ -718,7 +718,7 @@ export const BoardPanel = React.memo((props: Props) => {
         undefined
       );
     }
-  }, [props.events, props.username]);
+  }, [props.events, props.playerMeta, props.username]);
   const squareClicked = useCallback(
     (row: number, col: number) => {
       if (props.board.letterAt(row, col) !== EmptySpace) {

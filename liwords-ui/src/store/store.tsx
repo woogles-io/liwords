@@ -17,7 +17,13 @@ import {
   GameReducer,
 } from './reducers/game_reducer';
 import { ClockController, Times, Millis } from './timer_controller';
-import { PlayerOrder } from './constants';
+import {
+  ChatEntityObj,
+  ChatEntityType,
+  PlayerOrder,
+  PresenceEntity,
+  randomID,
+} from './constants';
 import { PoolFormatType } from '../constants/pool_formats';
 import { LoginState, LoginStateReducer } from './login_state';
 import { EphemeralTile } from '../utils/cwgame/common';
@@ -31,30 +37,6 @@ import { MetaEventState, MetaStates } from './meta_game_events';
 import { StandardEnglishAlphabet } from '../constants/alphabets';
 import { SeekRequest } from '../gen/api/proto/ipc/omgseeks_pb';
 import { ServerChallengeResultEvent } from '../gen/api/proto/ipc/omgwords_pb';
-
-export enum ChatEntityType {
-  UserChat,
-  ServerMsg,
-  ErrorMsg,
-}
-
-export type ChatEntityObj = {
-  entityType: ChatEntityType;
-  sender: string;
-  message: string;
-  id?: string;
-  timestamp?: number;
-  senderId?: string;
-  channel: string;
-};
-
-export type PresenceEntity = {
-  uuid: string;
-  username: string;
-  channel: string;
-  anon: boolean;
-  deleting: boolean;
-};
 
 const MaxChatLength = 150;
 
@@ -388,13 +370,6 @@ const ExamineContext = createContext<ExamineStoreData>({
 
 type Props = {
   children: React.ReactNode;
-};
-
-export const randomID = () => {
-  // Math.random should be unique because of its seeding algorithm.
-  // Convert it to base 36 (numbers + letters), and grab the first 9 characters
-  // after the decimal.
-  return `_${Math.random().toString(36).substr(2, 9)}`;
 };
 
 const gameStateInitializer = (

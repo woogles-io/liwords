@@ -9,7 +9,6 @@ import { BoardPanel } from './board_panel';
 import { TopBar } from '../navigation/topbar';
 import { Chat } from '../chat/chat';
 import {
-  ChatEntityType,
   useChatStoreContext,
   useExaminableGameContextStoreContext,
   useExamineStoreContext,
@@ -43,7 +42,12 @@ import {
 import { endGameMessageFromGameInfo } from '../store/end_of_game';
 import { Notepad, NotepadContextProvider } from './notepad';
 import { Analyzer, AnalyzerContextProvider } from './analyzer';
-import { isClubType, isPairedMode, sortTiles } from '../store/constants';
+import {
+  ChatEntityType,
+  isClubType,
+  isPairedMode,
+  sortTiles,
+} from '../store/constants';
 import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
 import { CompetitorStatus } from '../tournament/competitor_status';
 import { Unrace } from '../utils/unrace';
