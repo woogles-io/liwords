@@ -222,24 +222,11 @@ func sendProfileUpdate(ctx context.Context, g *entity.Game, users []*entity.User
 	}
 }
 
-// Dangerous function that should not have existed.
-func flipPlayersInHistoryIfNecessary(history *macondopb.GameHistory) {
-	if history.SecondWentFirst {
-		history.Players[0], history.Players[1] = history.Players[1], history.Players[0]
-		history.FinalScores[0], history.FinalScores[1] = history.FinalScores[1], history.FinalScores[0]
-		if history.Winner != -1 {
-			history.Winner = 1 - history.Winner
-		}
-	}
-}
-
 func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *pb.GameRequest,
 	variantKey entity.VariantKey, evt *pb.GameEndedEvent, userStore user.Store,
 	listStatStore stats.ListStatStore) (*entity.Stats, error) {
 
-	// stats := entity.InstantiateNewStats(1, 2)
-	flipPlayersInHistoryIfNecessary(history)
-	defer flipPlayersInHistoryIfNecessary(history)
+	// stats := entity.InstantiateNewStats(1, 2))
 
 	// Fetch the Macondo config
 	macondoConfig, err := config.GetMacondoConfig(ctx)

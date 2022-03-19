@@ -76,9 +76,6 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 			}
 			wentFirst := 0
 			players := g.History().Players
-			if g.History().SecondWentFirst {
-				wentFirst = 1
-			}
 			log.Debug().Str("went-first", players[wentFirst].Nickname).Msg("determining-first")
 
 			// These are indices in the array passed to InstantiateNewGame

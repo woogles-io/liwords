@@ -868,7 +868,7 @@ func previousNicknameIndex(history *macondopb.GameHistory, which int) int {
 	return which - 1
 }
 
-// Nickname index within history.Players. Not adjusted for SecondWentFirst.
+// Nickname index within history.Players.
 func nicknameIndex(history *macondopb.GameHistory, evt *macondopb.GameEvent) int {
 	for k, v := range history.Players {
 		if evt.Nickname == v.Nickname {
@@ -909,12 +909,8 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 		return nil, fmt.Errorf("invalid len(lastKnownRacks): %v racks for %v players", len(history.LastKnownRacks), numPlayers)
 	}
 
-	// Nothing is adjusted for SecondWentFirst.
 	// For 0 <= turn < len(history.Events), [turn] is pre-turn and [turn+1] is post-turn.
 	whoseTurn := make([]int, len(history.Events)+1) // [0] == 0.
-	if history.SecondWentFirst && numPlayers > 1 {
-		whoseTurn[0] = 1
-	}
 	{
 		canHaveActiveAction := true
 		contestedTilePlacementMoveIdx := -1
@@ -1147,10 +1143,6 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			cumeBuf1 = strconv.AppendInt(cumeBuf1, int64(cumes[turn][1]), 10)
 		}
 		cumeBuf0Index := 0
-		if history.SecondWentFirst && numPlayers > 1 {
-			cumeBuf0, cumeBuf1 = cumeBuf1, cumeBuf0
-			cumeBuf0Index = 1
-		}
 		gap := 2
 		if numPlayers > 1 {
 			gap += 3
@@ -1195,10 +1187,6 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			return image.Rectangle{}
 		}
 		negativeIndex := 0
-		if history.SecondWentFirst && numPlayers > 1 {
-			negativeIndex = 1
-			spread = -spread
-		}
 		twiceSpreadMidX := bd.PadLeft + canvasPalImg.Bounds().Dx() - bd.PadRight
 		twiceSpreadWidth := canvasPalImg.Bounds().Dx() - (bd.PadLeft + bd.PadRight)
 		spreadBottomY := canvasPalImg.Bounds().Dy() - bd.PadBottom

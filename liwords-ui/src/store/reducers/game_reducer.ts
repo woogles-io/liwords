@@ -13,7 +13,7 @@ import {
   PlayedTiles,
   PlayerOfTiles,
 } from '../../utils/cwgame/common';
-import { indexToPlayerOrder, PlayerOrder } from '../constants';
+import { PlayerOrder } from '../constants';
 import { ClockController, Millis } from '../timer_controller';
 import {
   nicknameFromEvt,
@@ -111,7 +111,8 @@ export const startingGameState = (
 };
 
 const onturnFromEvt = (state: GameState, evt: GameEvent) => {
-  const po = state.nickToPlayerOrder[evt.getNickname()];
+  const po = playerOrderFromEvt(evt, state.nickToPlayerOrder);
+  console.log('po', po, 'evt', evt.getPlayerIndex(), evt);
   let onturn;
   if (po === 'p0') {
     onturn = 0;
@@ -119,7 +120,7 @@ const onturnFromEvt = (state: GameState, evt: GameEvent) => {
     onturn = 1;
   } else {
     throw new Error(
-      `unexpected player order; nick:${evt.getNickname()}, ntpo:${JSON.stringify(
+      `unexpected player order; po:${po}, evt:${evt.getPlayerIndex()}, ntpo:${JSON.stringify(
         state.nickToPlayerOrder
       )} `
     );
@@ -305,6 +306,7 @@ const stateFromHistory = (history: GameHistory): GameState => {
   const flipPlayers = history.getSecondWentFirst();
   // If flipPlayers is on, we want to flip the players in the playerList.
   // The backend doesn't do this because of Reasons.
+  // XXX: remove secondWentFirst after backend deploy.
   if (flipPlayers) {
     playerList = [...playerList].reverse();
   }
@@ -365,7 +367,6 @@ const setClock = (newState: GameState, sge: ServerGameplayEvent) => {
   let { p0, p1 } = newState.clockController.current.times;
   let activePlayer;
   let flipTimeRemaining = false;
-  console.log('just played', justPlayed, evt.getNickname());
   console.log('player times are currently', p0, p1, 'from evt:', rem);
 
   if (
@@ -417,6 +418,7 @@ const initializeTimerController = (
   // Note that p0 is always first, even when "secondWentFirst", as p0 refers
   // to the order in the playerList, which always has the first player in that list
   // going first. (See flipPlayers in stateFromHistory)
+  // XXX: This is going away after we deploy the removal of secondWentFirst.
   let onturn = 'p0' as PlayerOrder;
   if (history.getSecondWentFirst()) {
     [t1, t2] = [t2, t1];
@@ -502,7 +504,7 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       if (sge.getGameId() !== state.gameID) {
         return state; // no change
       }
-      console.log('add game event', sge);
+      console.log('add game event', sge.toObject());
       const ngs = newGameStateFromGameplayEvent(state, sge);
 
       // Always pass the clock ref along. Begin imperative section:

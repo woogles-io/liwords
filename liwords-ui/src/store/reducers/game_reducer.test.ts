@@ -123,7 +123,6 @@ const historyRefresher2 = () => {
   his.setPlayersList([player1, player2]);
   his.setLastKnownRacksList(['EFMPRST', 'AEELRX?']);
   his.setUid('game63');
-  his.setSecondWentFirst(true);
   ghr.setHistory(his);
   return ghr;
 };
@@ -144,7 +143,6 @@ const historyRefresher2AfterChallenge = () => {
   his.setPlayersList([player1, player2]);
   his.setLastKnownRacksList(['EFMPRST', 'EEJNNOQ']);
   his.setUid('game63');
-  his.setSecondWentFirst(true);
 
   const evt1 = new GameEvent();
   evt1.setPlayerIndex(1);
@@ -178,6 +176,10 @@ Macondo","last_known_racks":["EFMPRST","AEELRX?"],"flip_players":true,"challenge
 
 it('tests flip players', () => {
   const state = startingGameState(StandardEnglishAlphabet, [], '');
+  const payload = historyRefresher2();
+  // Testing flipping logic of secondWentFirst.
+  // XXX: This is going away after backend deploy, and so should this test.
+  payload.getHistory()?.setSecondWentFirst(true);
   const newState = GameReducer(state, {
     actionType: ActionType.RefreshHistory,
     payload: historyRefresher2(),
