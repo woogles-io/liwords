@@ -127,7 +127,23 @@ const historyRefresher2 = () => {
   return ghr;
 };
 
-const historyRefresher2AfterChallenge = () => {
+const historyRefresher3 = () => {
+  const ghr = new GameHistoryRefresher();
+  const his = new GameHistory();
+  const player1 = new PlayerInfo();
+  const player2 = new PlayerInfo();
+  player1.setUserId('mina123');
+  player1.setNickname('mina');
+  player2.setUserId('cesar123');
+  player2.setNickname('césar');
+  his.setPlayersList([player1, player2]);
+  his.setLastKnownRacksList(['AEELRX?', 'EFMPRST']);
+  his.setUid('game63');
+  ghr.setHistory(his);
+  return ghr;
+};
+
+const historyRefresher3AfterChallenge = () => {
   // {"history":{"turns":[{"events":[{"nickname":"mina","rack":"?AEELRX","cumulative":92,"row":7,"column":7,
   // "position": "8H", "played_tiles": "RELAXEs", "score": 92
   // }, { "nickname":"mina", "type":3, "cumulative":97, "bonus":5}]}], "players": [{ "nickname": "césar", "real_name": "césar" }, { "nickname": "mina", "real_name": "mina" }], "id_auth": "org.aerolith", "uid": "kqVFQ7PXG3Es3gn9jNX5p9", "description": "Created with Macondo", "last_known_racks": ["EFMPRST", "EEJNNOQ"]
@@ -136,16 +152,16 @@ const historyRefresher2AfterChallenge = () => {
   const his = new GameHistory();
   const player1 = new PlayerInfo();
   const player2 = new PlayerInfo();
-  player1.setUserId('cesar123');
-  player1.setNickname('césar');
-  player2.setUserId('mina123');
-  player2.setNickname('mina');
+  player1.setUserId('mina123');
+  player1.setNickname('mina');
+  player2.setUserId('cesar123');
+  player2.setNickname('césar');
   his.setPlayersList([player1, player2]);
-  his.setLastKnownRacksList(['EFMPRST', 'EEJNNOQ']);
+  his.setLastKnownRacksList(['EEJNNOQ', 'EFMPRST']);
   his.setUid('game63');
 
   const evt1 = new GameEvent();
-  evt1.setPlayerIndex(1);
+  evt1.setPlayerIndex(0);
   evt1.setRack('?AEELRX');
   evt1.setCumulative(92);
   evt1.setRow(7);
@@ -155,7 +171,7 @@ const historyRefresher2AfterChallenge = () => {
   evt1.setScore(92);
 
   const evt2 = new GameEvent();
-  evt2.setPlayerIndex(1);
+  evt2.setPlayerIndex(0);
   evt2.setType(GameEvent.Type.CHALLENGE_BONUS);
   evt2.setCumulative(97);
   evt2.setBonus(5);
@@ -177,12 +193,14 @@ Macondo","last_known_racks":["EFMPRST","AEELRX?"],"flip_players":true,"challenge
 it('tests flip players', () => {
   const state = startingGameState(StandardEnglishAlphabet, [], '');
   const payload = historyRefresher2();
+  expect(payload.getHistory()?.getSecondWentFirst()).toBe(false);
   // Testing flipping logic of secondWentFirst.
   // XXX: This is going away after backend deploy, and so should this test.
   payload.getHistory()?.setSecondWentFirst(true);
+  expect(payload.getHistory()?.getSecondWentFirst()).toBe(true);
   const newState = GameReducer(state, {
     actionType: ActionType.RefreshHistory,
-    payload: historyRefresher2(),
+    payload,
   });
   expect(newState.players[0].currentRack).toBe('AEELRX?');
   expect(newState.players[0].userID).toBe('mina123');
@@ -196,12 +214,12 @@ it('tests challenge with refresher event afterwards', () => {
   const state = startingGameState(StandardEnglishAlphabet, [], '');
   let newState = GameReducer(state, {
     actionType: ActionType.RefreshHistory,
-    payload: historyRefresher2(),
+    payload: historyRefresher3(),
   });
 
   const sge = new ServerGameplayEvent();
   const evt = new GameEvent();
-  evt.setPlayerIndex(1);
+  evt.setPlayerIndex(0);
   evt.setRack('?AEELRX');
   evt.setCumulative(92);
   evt.setRow(7);
@@ -226,7 +244,7 @@ it('tests challenge with refresher event afterwards', () => {
   // Now césar challenges RELAXEs (who knows why, it looks phony)
   newState = GameReducer(newState, {
     actionType: ActionType.RefreshHistory,
-    payload: historyRefresher2AfterChallenge(),
+    payload: historyRefresher3AfterChallenge(),
   });
   expect(newState.players[0].currentRack).toBe('EEJNNOQ');
   expect(newState.players[0].userID).toBe('mina123');
@@ -243,12 +261,12 @@ it('tests challenge with challenge event afterwards', () => {
   const state = startingGameState(StandardEnglishAlphabet, [], '');
   let newState = GameReducer(state, {
     actionType: ActionType.RefreshHistory,
-    payload: historyRefresher2(),
+    payload: historyRefresher3(),
   });
 
   const sge = new ServerGameplayEvent();
   const evt = new GameEvent();
-  evt.setPlayerIndex(1);
+  evt.setPlayerIndex(0);
   evt.setRack('?AEELRX');
   evt.setCumulative(92);
   evt.setRow(7);
@@ -268,7 +286,7 @@ it('tests challenge with challenge event afterwards', () => {
   // Now add a challenge event.
   const sge2 = new ServerGameplayEvent();
   const evt2 = new GameEvent();
-  evt2.setPlayerIndex(1);
+  evt2.setPlayerIndex(0);
   evt2.setType(GameEvent.Type.CHALLENGE_BONUS);
   evt2.setCumulative(97);
   evt2.setBonus(5);
