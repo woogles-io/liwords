@@ -12,7 +12,7 @@ const gh = `
 {
   "events": [
     {
-      "nickname": "doug",
+      "player_index": 0,
       "rack": "DINNVWY",
       "cumulative": 32,
       "row": 7,
@@ -23,7 +23,7 @@ const gh = `
       "words_formed": ["WINDY"]
     },
     {
-      "nickname": "emely",
+      "player_index": 1,
       "rack": "ADEEGIL",
       "cumulative": 16,
       "row": 6,
@@ -34,7 +34,7 @@ const gh = `
       "words_formed": ["GALE", "AW", "LI", "EN"]
     },
     {
-      "nickname": "doug",
+      "player_index": 0,
       "rack": "AEJNOSV",
       "cumulative": 66,
       "row": 2,
@@ -46,7 +46,7 @@ const gh = `
       "words_formed": ["JAVELIN"]
     },
     {
-      "nickname": "emely",
+      "player_index": 1,
       "rack": "DEILOVX",
       "cumulative": 55,
       "row": 1,
@@ -58,7 +58,7 @@ const gh = `
       "words_formed": ["VOX", "JO", "AX"]
     },
     {
-      "nickname": "doug",
+      "player_index": 0,
       "rack": "ADENOST",
       "cumulative": 148,
       "row": 9,
@@ -70,7 +70,7 @@ const gh = `
       "words_formed": ["DONATES", "JAVELINA"]
     },
     {
-      "nickname": "emely",
+      "player_index": 1,
       "rack": "DEIILTZ",
       "cumulative": 79,
       "row": 3,
@@ -81,7 +81,7 @@ const gh = `
       "words_formed": ["TILAX"]
     },
     {
-      "nickname": "emely",
+      "player_index": 1,
       "rack": "DEIILTZ",
       "type": 1,
       "cumulative": 55,
@@ -89,7 +89,7 @@ const gh = `
       "lost_score": 24
     },
     {
-      "nickname": "doug",
+      "player_index": 0,
       "rack": "AAEINRU",
       "cumulative": 164,
       "row": 8,
@@ -100,7 +100,7 @@ const gh = `
       "words_formed": ["EAU", "DEE", "YAS"]
     },
     {
-      "nickname": "emely",
+      "player_index": 1,
       "rack": "DEIILTZ",
       "cumulative": 93,
       "row": 3,
@@ -111,7 +111,7 @@ const gh = `
       "words_formed": ["ZAX"]
     },
     {
-      "nickname": "doug",
+      "player_index": 0,
       "rack": "AILNORT",
       "cumulative": 191,
       "row": 4,
@@ -122,7 +122,7 @@ const gh = `
       "words_formed": ["LATINO", "ODONATES"]
     },
     {
-      "nickname": "emely",
+      "player_index": 1,
       "rack": "DEEIILT",
       "cumulative": 122,
       "row": 1,
@@ -134,7 +134,7 @@ const gh = `
       "words_formed": ["TEIID", "LI", "AD"]
     },
     {
-      "nickname": "doug",
+      "player_index": 0,
       "rack": "?BDERUW",
       "cumulative": 221,
       "direction": 1,
@@ -144,7 +144,7 @@ const gh = `
       "words_formed": ["WEB", "ET", "BE"]
     },
     {
-      "nickname": "emely",
+      "player_index": 1,
       "rack": "AELLNST",
       "cumulative": 173,
       "row": 10,
@@ -155,7 +155,7 @@ const gh = `
       "words_formed": ["SAT", "JAVELINAS", "TA", "DEET"]
     },
     {
-      "nickname": "doug",
+      "player_index": 0,
       "rack": "?DINRRU",
       "cumulative": 243,
       "row": 5,
@@ -166,7 +166,7 @@ const gh = `
       "words_formed": ["RED", "RAW", "DEN"]
     },
     {
-      "nickname": "emely",
+      "player_index": 1,
       "rack": "ACELLMN",
       "cumulative": 196,
       "column": 2,
@@ -177,7 +177,7 @@ const gh = `
       "words_formed": ["CAN", "ETA", "BEN"]
     },
     {
-      "nickname": "doug",
+      "player_index": 0,
       "rack": "?EFINRU",
       "cumulative": 257,
       "row": 7,
@@ -189,7 +189,7 @@ const gh = `
       "words_formed": ["FUD", "IF", "NU"]
     },
     {
-      "nickname": "emely",
+      "player_index": 1,
       "rack": "EILLMRR",
       "cumulative": 208,
       "row": 6,
@@ -200,7 +200,7 @@ const gh = `
       "words_formed": ["RILL", "RYAS"]
     },
     {
-      "nickname": "doug",
+      "player_index": 0,
       "rack": "?EIINOR",
       "cumulative": 335,
       "row": 4,
@@ -213,7 +213,7 @@ const gh = `
       "words_formed": ["RELIGION"]
     },
     {
-      "nickname": "emely",
+      "player_index": 1,
       "rack": "EKMORRU",
       "cumulative": 236,
       "row": 10,
@@ -225,7 +225,7 @@ const gh = `
       "words_formed": ["MURK", "OM", "NU"]
     },
     {
-      "nickname": "doug",
+      "player_index": 0,
       "rack": "AEIOORS",
       "cumulative": 368,
       "row": 14,
@@ -236,7 +236,7 @@ const gh = `
       "words_formed": ["ARIOSE", "MURKS"]
     },
     {
-      "nickname": "emely",
+      "player_index": 1,
       "rack": "?CEORUY",
       "cumulative": 255,
       "row": 13,
@@ -247,7 +247,7 @@ const gh = `
       "words_formed": ["COY", "YA"]
     },
     {
-      "nickname": "doug",
+      "player_index": 0,
       "rack": "EGHMOPT",
       "cumulative": 380,
       "row": 3,
@@ -259,7 +259,7 @@ const gh = `
       "words_formed": ["GET", "RE", "ET"]
     },
     {
-      "nickname": "emely",
+      "player_index": 1,
       "rack": "?BERSTU",
       "cumulative": 264,
       "row": 1,
@@ -270,7 +270,7 @@ const gh = `
       "words_formed": ["VERB"]
     },
     {
-      "nickname": "doug",
+      "player_index": 0,
       "rack": "AEHIMOP",
       "cumulative": 409,
       "column": 6,
@@ -280,7 +280,7 @@ const gh = `
       "words_formed": ["PEA", "PE", "ER", "AB"]
     },
     {
-      "nickname": "emely",
+      "player_index": 1,
       "rack": "?HOQSTU",
       "cumulative": 310,
       "row": 1,
@@ -292,7 +292,7 @@ const gh = `
       "words_formed": ["QUOTH", "GO", "RET", "ETH"]
     },
     {
-      "nickname": "doug",
+      "player_index": 0,
       "rack": "EGHIMOP",
       "cumulative": 451,
       "column": 13,
@@ -303,7 +303,7 @@ const gh = `
       "words_formed": ["HIM", "QI", "UM"]
     },
     {
-      "nickname": "emely",
+      "player_index": 1,
       "rack": "?FS",
       "cumulative": 331,
       "row": 13,
@@ -314,7 +314,7 @@ const gh = `
       "words_formed": ["KAFS", "AE"]
     },
     {
-      "nickname": "emely",
+      "player_index": 1,
       "rack": "OPEG",
       "type": 5,
       "cumulative": 345,

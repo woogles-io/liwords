@@ -37,6 +37,7 @@ import { MetaEventState, MetaStates } from './meta_game_events';
 import { StandardEnglishAlphabet } from '../constants/alphabets';
 import { SeekRequest } from '../gen/api/proto/ipc/omgseeks_pb';
 import { ServerChallengeResultEvent } from '../gen/api/proto/ipc/omgwords_pb';
+import { playerOrderFromEvt } from '../utils/cwgame/game_event';
 
 const MaxChatLength = 150;
 
@@ -492,20 +493,20 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     const times = { p0: 0, p1: 0, lastUpdate: 0 };
     for (let i = 0; i < ret.players.length; ++i) {
       const { userID } = ret.players[i];
+      // XXX: We can probably even change this to p{i} once we fully remove
+      // secondWentFirst.
       const playerOrder = gameContext.uidToPlayerOrder[userID];
-      let nickname = '';
-      for (const nick in gameContext.nickToPlayerOrder) {
-        if (playerOrder === gameContext.nickToPlayerOrder[nick]) {
-          nickname = nick;
-          break;
-        }
-      }
-
       // Score comes from the most recent past.
       let score = 0;
       for (let j = replayedTurns.length; --j >= 0; ) {
         const turn = gameContext.turns[j];
-        if (turn.getNickname() === nickname) {
+
+        const turnPlayerOrder = playerOrderFromEvt(
+          turn,
+          gameContext.nickToPlayerOrder
+        );
+
+        if (turnPlayerOrder === playerOrder) {
           score = turn.getCumulative();
           break;
         }
@@ -536,7 +537,12 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
           flipTimeRemaining = true;
         }
 
-        if ((turn.getNickname() === nickname) !== flipTimeRemaining) {
+        const turnPlayerOrder = playerOrderFromEvt(
+          turn,
+          gameContext.nickToPlayerOrder
+        );
+
+        if ((turnPlayerOrder === playerOrder) !== flipTimeRemaining) {
           time = turn.getMillisRemaining();
           break;
         }
@@ -555,8 +561,11 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
         ) {
           continue;
         }
-
-        if (turn.getNickname() === nickname) {
+        const turnPlayerOrder = playerOrderFromEvt(
+          turn,
+          gameContext.nickToPlayerOrder
+        );
+        if (turnPlayerOrder === playerOrder) {
           rack = turn.getRack();
           break;
         }

@@ -1,7 +1,7 @@
 {
   "events": [
     {
-      "nickname": "Mina",
+      "player_index": 0,
       "rack": "ADEINPR",
       "cumulative": 76,
       "row": 7,
@@ -14,7 +14,7 @@
       "millis_remaining": 25374
     },
     {
-      "nickname": "cesar4",
+      "player_index": 1,
       "rack": "AEEGNRW",
       "cumulative": 22,
       "row": 6,
@@ -27,7 +27,7 @@
       "millis_remaining": 13207
     },
     {
-      "nickname": "Mina",
+      "player_index": 0,
       "rack": "AEEKLNU",
       "cumulative": 92,
       "row": 6,
@@ -39,7 +39,7 @@
       "millis_remaining": 19374
     },
     {
-      "nickname": "cesar4",
+      "player_index": 1,
       "rack": "AAAEEOV",
       "cumulative": 34,
       "row": 11,
@@ -51,7 +51,7 @@
       "millis_remaining": 4091
     },
     {
-      "nickname": "Mina",
+      "player_index": 0,
       "rack": "AAEEHRT",
       "cumulative": 183,
       "row": 12,
