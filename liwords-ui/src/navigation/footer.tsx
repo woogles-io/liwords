@@ -110,7 +110,7 @@ const Footer = React.memo(() => {
             Static Leave Evaluator
           </a>
           <a
-            href="//breakingthegame.net"
+            href="http://breakingthegame.net"
             target="_blank"
             rel="noopener noreferrer"
           >
