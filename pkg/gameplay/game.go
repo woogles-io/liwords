@@ -114,9 +114,10 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 			return nil, err
 		}
 		if exists {
+			log.Info().Str("uid", gameRunner.Game.History().Uid).Msg("game-uid-collision")
 			continue
 			// This UUID exists in the database. This is only possible because
-			// we are purposely shortening the UUID in macondo for nicer URLs.
+			// we are purposely shortening the UUID for nicer URLs.
 			// 57^8 should still give us 111 trillion games. (and we can add more
 			// characters if we get close to that number)
 		}

@@ -75,14 +75,13 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 			if err != nil {
 				return err
 			}
-			wentFirst := 0
 			players := g.History().Players
-			log.Debug().Str("went-first", players[wentFirst].Nickname).Msg("determining-first")
+			log.Debug().Str("went-first", players[0].Nickname).Msg("determining-first")
 
 			// These are indices in the array passed to InstantiateNewGame
-			if accUser.UUID == players[wentFirst].UserId {
+			if accUser.UUID == players[0].UserId {
 				assignedFirst = 1 // reqUser should go first
-			} else if reqUser.UUID == players[wentFirst].UserId {
+			} else if reqUser.UUID == players[0].UserId {
 				assignedFirst = 0 // accUser should go first
 			}
 		}

@@ -62,7 +62,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 		newscore := g.PointsFor(0) - p0penalty
 		// >Pakorn: ISBALI (time) -10 409
 		g.History().Events = append(g.History().Events, &macondopb.GameEvent{
-			Nickname:        g.History().Players[0].Nickname,
+			PlayerIndex:     0,
 			Rack:            g.RackLettersFor(0),
 			Type:            macondopb.GameEvent_TIME_PENALTY,
 			LostScore:       int32(p0penalty),
@@ -75,7 +75,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 		penaltyApplied = true
 		newscore := g.PointsFor(1) - p1penalty
 		g.History().Events = append(g.History().Events, &macondopb.GameEvent{
-			Nickname:        g.History().Players[1].Nickname,
+			PlayerIndex:     1,
 			Rack:            g.RackLettersFor(1),
 			Type:            macondopb.GameEvent_TIME_PENALTY,
 			LostScore:       int32(p1penalty),

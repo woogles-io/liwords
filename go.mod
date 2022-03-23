@@ -27,6 +27,7 @@ require (
 	gorm.io/datatypes v0.0.0-20200924071644-3967db6857cf
 	gorm.io/driver/postgres v1.0.2
 	gorm.io/gorm v1.20.2
+	lukechampine.com/frand v1.4.1
 )
 
 require (
@@ -61,5 +62,4 @@ require (
 	golang.org/x/sys v0.0.0-20200905004654-be1d3432aa8f // indirect
 	golang.org/x/text v0.3.3 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
-	lukechampine.com/frand v1.4.1 // indirect
 )
