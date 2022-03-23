@@ -75,5 +75,6 @@
   "challenge_rule": 3,
   "play_state": 2,
   "lexicon": "CSW21",
-  "final_scores": [183, 34]
+  "final_scores": [183, 34],
+  "winner": 0
 }
