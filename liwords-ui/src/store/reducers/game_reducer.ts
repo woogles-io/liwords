@@ -16,7 +16,6 @@ import {
 import { PlayerOrder } from '../constants';
 import { ClockController, Millis } from '../timer_controller';
 import {
-  nicknameFromEvt,
   playerOrderFromEvt,
   ThroughTileMarker,
 } from '../../utils/cwgame/game_event';
