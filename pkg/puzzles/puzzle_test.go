@@ -21,6 +21,7 @@ import (
 	"github.com/domino14/macondo/board"
 	"github.com/domino14/macondo/game"
 	"github.com/domino14/macondo/gcgio"
+	"github.com/domino14/macondo/gen/api/proto/macondo"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
@@ -218,6 +219,22 @@ func TestPuzzles(t *testing.T) {
 	db.Close()
 }
 
+func TestUniqueSingleTileKey(t *testing.T) {
+	is := is.New(t)
+	is.Equal(uniqueSingleTileKey(&macondo.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: macondo.GameEvent_HORIZONTAL}),
+		uniqueSingleTileKey(&macondo.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: macondo.GameEvent_VERTICAL}))
+	is.Equal(uniqueSingleTileKey(&macondo.GameEvent{Row: 8, Column: 10, PlayedTiles: ".R", Direction: macondo.GameEvent_HORIZONTAL}),
+		uniqueSingleTileKey(&macondo.GameEvent{Row: 7, Column: 11, PlayedTiles: ".R", Direction: macondo.GameEvent_VERTICAL}))
+	is.Equal(uniqueSingleTileKey(&macondo.GameEvent{Row: 8, Column: 10, PlayedTiles: "B....", Direction: macondo.GameEvent_HORIZONTAL}),
+		uniqueSingleTileKey(&macondo.GameEvent{Row: 8, Column: 10, PlayedTiles: "B....", Direction: macondo.GameEvent_VERTICAL}))
+	is.Equal(uniqueSingleTileKey(&macondo.GameEvent{Row: 9, Column: 3, PlayedTiles: "....X", Direction: macondo.GameEvent_HORIZONTAL}),
+		uniqueSingleTileKey(&macondo.GameEvent{Row: 5, Column: 7, PlayedTiles: "....X", Direction: macondo.GameEvent_VERTICAL}))
+	is.Equal(uniqueSingleTileKey(&macondo.GameEvent{Row: 11, Column: 9, PlayedTiles: "..A...", Direction: macondo.GameEvent_HORIZONTAL}),
+		uniqueSingleTileKey(&macondo.GameEvent{Row: 7, Column: 11, PlayedTiles: "....A..", Direction: macondo.GameEvent_VERTICAL}))
+	is.True(uniqueSingleTileKey(&macondo.GameEvent{Row: 8, Column: 10, PlayedTiles: "A.", Direction: macondo.GameEvent_HORIZONTAL}) !=
+		uniqueSingleTileKey(&macondo.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: macondo.GameEvent_VERTICAL}))
+}
+
 func RecreateDB() (*sql.DB, *puzzlesstore.DBStore, int, int, error) {
 	cfg := &config.Config{}
 	cfg.MacondoConfig = common.DefaultConfig
@@ -358,14 +375,14 @@ func getPuzzleAttempt(ctx context.Context, db *sql.DB, userUUID string, puzzleUU
 	return attempts, correct, nil
 }
 
-func transactGetDBIDFromUUID(ctx context.Context, db *sql.DB, table string, uuid string) (uint, error) {
+func transactGetDBIDFromUUID(ctx context.Context, db *sql.DB, table string, uuid string) (int64, error) {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
 	}
 	defer tx.Rollback()
 
-	var id uint
+	var id int64
 	if table == "users" {
 		id, err = commondb.GetUserDBIDFromUUID(ctx, tx, uuid)
 	} else if table == "games" {

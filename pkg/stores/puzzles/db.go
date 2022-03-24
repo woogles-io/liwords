@@ -120,27 +120,21 @@ func (s *DBStore) GetRandomUnansweredPuzzleIdForUser(ctx context.Context, userId
 	if !randomId.Valid {
 		return "", fmt.Errorf("no puzzle row id found for user: %s", userId)
 	}
+
 	var puzzleId string
 	err = tx.QueryRowContext(ctx, `SELECT uuid FROM puzzles WHERE id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $1) AND id > $2 ORDER BY id LIMIT 1`, userDBID, randomId.Int64).Scan(&puzzleId)
 	if err == sql.ErrNoRows {
 		// Try again, but looking before the id instead
 		err = tx.QueryRowContext(ctx, `SELECT uuid FROM puzzles WHERE id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $1) AND id <= $2 ORDER BY id DESC LIMIT 1`, userDBID, randomId.Int64).Scan(&puzzleId)
-		if err == sql.ErrNoRows {
-			// The user has answered all available puzzles.
-			// Return any random puzzle
-			err = tx.QueryRowContext(ctx, `SELECT uuid FROM puzzles OFFSET $1 LIMIT 1`, randomId.Int64).Scan(&puzzleId)
-			if err == sql.ErrNoRows {
-				return "", fmt.Errorf("no puzzles found for user: %s", userId)
-			}
-			if err != nil {
-				return "", err
-			}
-		}
-		if err != nil {
-			return "", err
-		}
 	}
-	if err != nil {
+	if err == sql.ErrNoRows {
+		// The user has answered all available puzzles.
+		// Return any random puzzle
+		err = tx.QueryRowContext(ctx, `SELECT uuid FROM puzzles WHERE id > $1 ORDER BY id LIMIT 1`, randomId.Int64).Scan(&puzzleId)
+	}
+	if err == sql.ErrNoRows {
+		return "", fmt.Errorf("no puzzles found for user: %s", userId)
+	} else if err != nil {
 		return "", err
 	}
 
@@ -231,9 +225,17 @@ func (s *DBStore) AnswerPuzzle(ctx context.Context, userId string, ratingKey ent
 	}
 
 	if newUserRating != nil && newPuzzleRating != nil {
-		_, err = tx.ExecContext(ctx, `UPDATE puzzles SET rating = $1 WHERE id = $2`, newPuzzleRating, pid)
+		result, err := tx.ExecContext(ctx, `UPDATE puzzles SET rating = $1 WHERE id = $2`, newPuzzleRating, pid)
 		if err != nil {
 			return err
+		}
+
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rowsAffected != 1 {
+			return fmt.Errorf("not exactly one row affected when setting puzzle rating: %d, %d", pid, rowsAffected)
 		}
 
 		err = common.UpdateUserRating(ctx, tx, uid, ratingKey, newUserRating)
@@ -249,16 +251,23 @@ func (s *DBStore) AnswerPuzzle(ctx context.Context, userId string, ratingKey ent
 	} else {
 		// Update the attempt if another incorrect answer was given
 		var alreadyCorrect bool
-		var attempts int
-		err = tx.QueryRowContext(ctx, `SELECT correct, attempts FROM puzzle_attempts WHERE puzzle_id = $1 AND user_id = $2`, pid, uid).Scan(&alreadyCorrect, &attempts)
+		err = tx.QueryRowContext(ctx, `SELECT correct FROM puzzle_attempts WHERE puzzle_id = $1 AND user_id = $2 FOR UPDATE`, pid, uid).Scan(&alreadyCorrect)
 		if err != nil {
 			return err
 		}
 
 		if !alreadyCorrect {
-			_, err = tx.ExecContext(ctx, `UPDATE puzzle_attempts SET attempts = $1, correct = $2 WHERE puzzle_id = $3 AND user_id = $4`, attempts+1, correct, pid, uid)
+			result, err := tx.ExecContext(ctx, `UPDATE puzzle_attempts SET attempts = attempts + 1, correct = $1 WHERE puzzle_id = $2 AND user_id = $3`, correct, pid, uid)
 			if err != nil {
 				return err
+			}
+
+			rowsAffected, err := result.RowsAffected()
+			if err != nil {
+				return err
+			}
+			if rowsAffected != 1 {
+				return fmt.Errorf("not exactly one row affected when updating puzzle attempt: %d, %d, %d", pid, uid, rowsAffected)
 			}
 		}
 	}
@@ -343,9 +352,17 @@ func (s *DBStore) SetPuzzleVote(ctx context.Context, userID string, puzzleID str
 		return err
 	}
 
-	_, err = tx.ExecContext(ctx, `INSERT INTO puzzle_votes (puzzle_id, user_id, vote) VALUES ($1, $2, $3) ON CONFLICT (puzzle_id, user_id) DO UPDATE SET vote = $3`, pid, uid, vote)
+	result, err := tx.ExecContext(ctx, `INSERT INTO puzzle_votes (puzzle_id, user_id, vote) VALUES ($1, $2, $3) ON CONFLICT (puzzle_id, user_id) DO UPDATE SET vote = $3`, pid, uid, vote)
 	if err != nil {
 		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected != 1 {
+		return fmt.Errorf("not exactly one row affected when setting puzzle vote: %d, %d, %d", pid, uid, rowsAffected)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -355,10 +372,10 @@ func (s *DBStore) SetPuzzleVote(ctx context.Context, userID string, puzzleID str
 	return err
 }
 
-func getRandomPuzzleId(ctx context.Context, tx *sql.Tx) (*sql.NullInt64, error) {
+func getRandomPuzzleId(ctx context.Context, tx *sql.Tx) (sql.NullInt64, error) {
 	var id sql.NullInt64
 	err := tx.QueryRowContext(ctx, "SELECT FLOOR(RANDOM() * MAX(id)) FROM puzzles").Scan(&id)
-	return &id, err
+	return id, err
 }
 
 func (a *answer) Value() (driver.Value, error) {

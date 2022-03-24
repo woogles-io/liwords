@@ -12,8 +12,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func GetUserDBIDFromUUID(ctx context.Context, tx *sql.Tx, uuid string) (uint, error) {
-	var id uint
+func GetUserDBIDFromUUID(ctx context.Context, tx *sql.Tx, uuid string) (int64, error) {
+	var id int64
 	err := tx.QueryRowContext(ctx, "SELECT id FROM users WHERE uuid = $1", uuid).Scan(&id)
 	if err == sql.ErrNoRows {
 		return 0, fmt.Errorf("cannot get id from uuid %s: no rows for table users", uuid)
@@ -24,8 +24,8 @@ func GetUserDBIDFromUUID(ctx context.Context, tx *sql.Tx, uuid string) (uint, er
 	return id, nil
 }
 
-func GetGameDBIDFromUUID(ctx context.Context, tx *sql.Tx, uuid string) (uint, error) {
-	var id uint
+func GetGameDBIDFromUUID(ctx context.Context, tx *sql.Tx, uuid string) (int64, error) {
+	var id int64
 	err := tx.QueryRowContext(ctx, "SELECT id FROM games WHERE uuid = $1", uuid).Scan(&id)
 	if err == sql.ErrNoRows {
 		return 0, fmt.Errorf("cannot get id from uuid %s: no rows for table games", uuid)
@@ -36,8 +36,8 @@ func GetGameDBIDFromUUID(ctx context.Context, tx *sql.Tx, uuid string) (uint, er
 	return id, nil
 }
 
-func GetPuzzleDBIDFromUUID(ctx context.Context, tx *sql.Tx, uuid string) (uint, error) {
-	var id uint
+func GetPuzzleDBIDFromUUID(ctx context.Context, tx *sql.Tx, uuid string) (int64, error) {
+	var id int64
 	err := tx.QueryRowContext(ctx, "SELECT id FROM puzzles WHERE uuid = $1", uuid).Scan(&id)
 	if err == sql.ErrNoRows {
 		return 0, fmt.Errorf("cannot get id from uuid %s: no rows for table puzzles", uuid)
@@ -75,7 +75,7 @@ func GetGameInfo(ctx context.Context, tx *sql.Tx, gameId int) (*macondopb.GameHi
 	return hist, req, uuid, nil
 }
 
-func InitializeUserRating(ctx context.Context, tx *sql.Tx, userId uint) error {
+func InitializeUserRating(ctx context.Context, tx *sql.Tx, userId int64) error {
 	var ratings *entity.Ratings
 	err := tx.QueryRowContext(ctx, `SELECT ratings FROM profiles WHERE user_id = $1`, userId).Scan(&ratings)
 	if err == sql.ErrNoRows {
@@ -86,15 +86,22 @@ func InitializeUserRating(ctx context.Context, tx *sql.Tx, userId uint) error {
 	}
 
 	if ratings.Data == nil {
-		_, err := tx.ExecContext(ctx, `UPDATE profiles SET ratings = jsonb_set(ratings, '{Data}', jsonb '{}') WHERE user_id = $1;`, userId)
+		result, err := tx.ExecContext(ctx, `UPDATE profiles SET ratings = jsonb_set(ratings, '{Data}', jsonb '{}') WHERE user_id = $1;`, userId)
 		if err != nil {
 			return err
+		}
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rowsAffected != 1 {
+			return fmt.Errorf("not exactly one row affected for initializing user rating: %d, %d", userId, rowsAffected)
 		}
 	}
 	return nil
 }
 
-func GetUserRating(ctx context.Context, tx *sql.Tx, userId uint, ratingKey entity.VariantKey, defaultRating *entity.SingleRating) (*entity.SingleRating, error) {
+func GetUserRating(ctx context.Context, tx *sql.Tx, userId int64, ratingKey entity.VariantKey, defaultRating *entity.SingleRating) (*entity.SingleRating, error) {
 	err := InitializeUserRating(ctx, tx, userId)
 	if err != nil {
 		return nil, err
@@ -120,7 +127,7 @@ func GetUserRating(ctx context.Context, tx *sql.Tx, userId uint, ratingKey entit
 	return sr, nil
 }
 
-func UpdateUserRating(ctx context.Context, tx *sql.Tx, userId uint, ratingKey entity.VariantKey, newRating *entity.SingleRating) error {
+func UpdateUserRating(ctx context.Context, tx *sql.Tx, userId int64, ratingKey entity.VariantKey, newRating *entity.SingleRating) error {
 	err := InitializeUserRating(ctx, tx, userId)
 	if err != nil {
 		return err

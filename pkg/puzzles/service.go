@@ -31,6 +31,7 @@ func (ps *PuzzleService) GetRandomUnansweredPuzzleIdForUser(ctx context.Context,
 	}
 	return &pb.RandomUnansweredPuzzleIdResponse{PuzzleId: puzzleId}, nil
 }
+
 func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *pb.PuzzleRequest) (*pb.PuzzleResponse, error) {
 	gameUUID, gameHist, beforeText, err := GetPuzzle(ctx, ps.puzzleStore, req.PuzzleId)
 	if err != nil {
@@ -38,6 +39,7 @@ func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *pb.PuzzleRequest) (
 	}
 	return &pb.PuzzleResponse{GameId: gameUUID, History: gameHist, BeforeText: beforeText}, nil
 }
+
 func (ps *PuzzleService) GetAnswer(ctx context.Context, req *pb.AnswerRequest) (*pb.AnswerResponse, error) {
 	user, err := sessionUser(ctx, ps)
 	if err != nil {
@@ -48,8 +50,8 @@ func (ps *PuzzleService) GetAnswer(ctx context.Context, req *pb.AnswerRequest) (
 		return nil, err
 	}
 	return &pb.AnswerResponse{Correct: correct, Answer: correctAnswer, AfterText: afterText}, nil
-
 }
+
 func (ps *PuzzleService) SetPuzzleVote(ctx context.Context, req *pb.PuzzleVoteRequest) (*pb.PuzzleVoteResponse, error) {
 	user, err := sessionUser(ctx, ps)
 	if err != nil {

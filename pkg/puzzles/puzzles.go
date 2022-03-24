@@ -3,8 +3,6 @@ package puzzles
 import (
 	"context"
 	"fmt"
-	"sort"
-	"strings"
 	"time"
 
 	"github.com/domino14/liwords/pkg/common"
@@ -12,8 +10,8 @@ import (
 	"github.com/domino14/liwords/pkg/glicko"
 	gamestore "github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/domino14/macondo/alphabet"
 	macondogame "github.com/domino14/macondo/game"
-	"github.com/domino14/macondo/gen/api/proto/macondo"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	macondopuzzles "github.com/domino14/macondo/puzzles"
 	"github.com/lithammer/shortuuid"
@@ -166,22 +164,53 @@ func answersAreEqual(ans1 *macondopb.GameEvent, ans2 *macondopb.GameEvent) bool 
 		log.Info().Msg("puzzle answer nil")
 		return false
 	}
-	normalizeAnswer(ans1)
-	normalizeAnswer(ans2)
-	return ans1.Row == ans2.Row &&
+
+	if ans1.Type == macondopb.GameEvent_TILE_PLACEMENT_MOVE &&
+		ans2.Type == macondopb.GameEvent_TILE_PLACEMENT_MOVE &&
+		countPlayedTiles(ans1) == 1 && countPlayedTiles(ans2) == 1 {
+		return uniqueSingleTileKey(ans1) == uniqueSingleTileKey(ans2)
+	}
+
+	return ans1.Type == ans2.Type &&
+		ans1.Row == ans2.Row &&
 		ans1.Column == ans2.Column &&
 		ans1.Direction == ans2.Direction &&
 		ans1.PlayedTiles == ans2.PlayedTiles &&
 		ans1.Exchanged == ans2.Exchanged
 }
 
-func normalizeAnswer(ans *macondopb.GameEvent) {
-	if len(ans.PlayedTiles) == 1 {
-		ans.Direction = macondo.GameEvent_HORIZONTAL
+func countPlayedTiles(ge *macondopb.GameEvent) int {
+	sum := 0
+	for _, tile := range ge.PlayedTiles {
+		if tile != alphabet.ASCIIPlayedThrough {
+			sum++
+		}
 	}
-	s := strings.Split(ans.Exchanged, "")
-	sort.Strings(s)
-	ans.Exchanged = strings.Join(s, "")
+	return sum
+}
+
+func uniqueSingleTileKey(ge *macondopb.GameEvent) int {
+	// Find the tile.
+	var idx int
+	var tile rune
+	for idx, tile = range ge.PlayedTiles {
+		if tile != alphabet.ASCIIPlayedThrough {
+			break
+		}
+	}
+
+	var row, col int
+	row = int(ge.Row)
+	col = int(ge.Column)
+	// We want to get the coordinate of the tile that is on the board itself.
+	if ge.GetDirection() == macondopb.GameEvent_VERTICAL {
+		row += idx
+	} else {
+		col += idx
+	}
+	// A unique, fast to compute key for this play.
+	return row + alphabet.MaxAlphabetSize*col +
+		alphabet.MaxAlphabetSize*alphabet.MaxAlphabetSize*int(tile)
 }
 
 func ratingKey(gameRequest *ipc.GameRequest) entity.VariantKey {
