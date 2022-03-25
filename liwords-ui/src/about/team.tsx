@@ -156,8 +156,8 @@ export const Team = (props: Props) => {
                   player. He hopes to use his experience with GCG parsing and
                   database management to derive a fascinating variety of
                   accessible game data from the vast repository of games played
-                  and imported on Woogles. He works as a software developer at
-                  Arcadia during the day and enjoys juggling and studying
+                  and imported on Woogles. He works as a software engineer at
+                  Google during the day and enjoys juggling and studying
                   Japanese in his spare time. Josh prefers vinegar-based
                   condiments.
                 </p>
