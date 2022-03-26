@@ -4,6 +4,10 @@ import (
 	"context"
 	"os"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -53,8 +57,11 @@ func main() {
 		panic(err)
 	}
 
-	err = commondb.RecreatePuzzleTables(db)
+	m, err := migrate.New(commondb.MigrationFile, commondb.MigrationConnString)
 	if err != nil {
+		panic(err)
+	}
+	if err := m.Up(); err != nil {
 		panic(err)
 	}
 

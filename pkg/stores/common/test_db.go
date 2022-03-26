@@ -9,7 +9,6 @@ import (
 const TestDBName = "liwords_test"
 
 var TestDBHost = os.Getenv("TEST_DB_HOST")
-var codeDirectory = os.Getenv("CODE_DIR")
 var TestingConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
 var TestingDBConnStr = fmt.Sprintf("%s database=%s", TestingConnStr, TestDBName)
 var MigrationFile = "file://../../db/migrations"
