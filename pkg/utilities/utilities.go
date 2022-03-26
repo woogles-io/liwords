@@ -2,6 +2,7 @@ package utilities
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -86,4 +87,10 @@ func IntArrayToString(array []int) string {
 
 func StringArrayToString(array []string) string {
 	return strings.Trim(strings.Join(strings.Fields(fmt.Sprint(array)), ", "), "[]")
+}
+
+func SortString(w string) string {
+	s := strings.Split(w, "")
+	sort.Strings(s)
+	return strings.Join(s, "")
 }

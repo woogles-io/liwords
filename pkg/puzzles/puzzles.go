@@ -9,6 +9,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/glicko"
 	gamestore "github.com/domino14/liwords/pkg/stores/game"
+	"github.com/domino14/liwords/pkg/utilities"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/macondo/alphabet"
 	macondogame "github.com/domino14/macondo/game"
@@ -22,10 +23,11 @@ type PuzzleStore interface {
 	CreatePuzzle(ctx context.Context, gameID string, turnNumber int32, answer *macondopb.GameEvent, authorID string,
 		beforeText string, afterText string, tags []macondopb.PuzzleTag) error
 	GetRandomUnansweredPuzzleIdForUser(context.Context, string) (string, error)
-	GetPuzzle(ctx context.Context, puzzleId string) (string, *macondopb.GameHistory, string, error)
+	GetPuzzle(ctx context.Context, userId string, puzzleId string) (string, *macondopb.GameHistory, string, int32, error)
 	GetAnswer(ctx context.Context, puzzleId string) (*macondopb.GameEvent, string, *ipc.GameRequest, *entity.SingleRating, error)
-	AnswerPuzzle(ctx context.Context, userId string, ratingKey entity.VariantKey, newUserRating *entity.SingleRating, puzzleId string, newPuzzleRating *entity.SingleRating, correct bool) error
-	HasUserAttemptedPuzzle(ctx context.Context, userId string, puzzleId string) (bool, error)
+	SubmitAnswer(ctx context.Context, userId string, ratingKey entity.VariantKey, newUserRating *entity.SingleRating,
+		puzzleId string, newPuzzleRating *entity.SingleRating, userIsCorrect bool, userGaveUp bool) error
+	GetAttempts(ctx context.Context, userId string, puzzleId string) (int32, error)
 	GetUserRating(ctx context.Context, userId string, ratingKey entity.VariantKey) (*entity.SingleRating, error)
 	SetPuzzleVote(ctx context.Context, userId string, puzzleId string, vote int) error
 }
@@ -62,38 +64,38 @@ func GetRandomUnansweredPuzzleIdForUser(ctx context.Context, ps PuzzleStore, use
 	return ps.GetRandomUnansweredPuzzleIdForUser(ctx, userId)
 }
 
-func GetPuzzle(ctx context.Context, ps PuzzleStore, puzzleId string) (string, *macondopb.GameHistory, string, error) {
-	return ps.GetPuzzle(ctx, puzzleId)
+func GetPuzzle(ctx context.Context, ps PuzzleStore, userId string, puzzleId string) (string, *macondopb.GameHistory, string, int32, error) {
+	return ps.GetPuzzle(ctx, userId, puzzleId)
 }
 
-func GetAnswer(ctx context.Context, ps PuzzleStore, puzzleId string, userId string, userAnswer *macondopb.GameEvent) (bool, *macondopb.GameEvent, string, error) {
-	answer, afterText, req, puzzleRating, err := ps.GetAnswer(ctx, puzzleId)
+func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleId string, userId string, userAnswer *macondopb.GameEvent) (bool, *macondopb.GameEvent, string, int32, error) {
+	correctAnswer, afterText, req, puzzleRating, err := ps.GetAnswer(ctx, puzzleId)
 	if err != nil {
-		return false, nil, "", err
+		return false, nil, "", -1, err
 	}
 
-	correct := answersAreEqual(userAnswer, answer)
+	userIsCorrect := answersAreEqual(userAnswer, correctAnswer)
 
 	// Check if user has already seen this puzzle
-	attempted, err := ps.HasUserAttemptedPuzzle(ctx, userId, puzzleId)
+	attempts, err := ps.GetAttempts(ctx, userId, puzzleId)
 	if err != nil {
-		return false, nil, "", err
+		return false, nil, "", -1, err
 	}
 
 	var newPuzzleSingleRating *entity.SingleRating
 	var newUserSingleRating *entity.SingleRating
 	rk := ratingKey(req)
 
-	if !attempted {
+	if attempts == 0 {
 		// Get the user ratings
 		userRating, err := ps.GetUserRating(ctx, userId, rk)
 		if err != nil {
-			return false, nil, "", err
+			return false, nil, "", -1, err
 		}
 
 		spread := glicko.SpreadScaling + 1
 
-		if !correct {
+		if !userIsCorrect {
 			spread *= -1
 		}
 
@@ -124,11 +126,23 @@ func GetAnswer(ctx context.Context, ps PuzzleStore, puzzleId string, userId stri
 		}
 	}
 
-	err = ps.AnswerPuzzle(ctx, userId, rk, newUserSingleRating, puzzleId, newPuzzleSingleRating, correct)
+	userGaveUp := userAnswer == nil
+
+	err = ps.SubmitAnswer(ctx, userId, rk, newUserSingleRating, puzzleId, newPuzzleSingleRating, userIsCorrect, userGaveUp)
 	if err != nil {
-		return false, nil, "", err
+		return false, nil, "", -1, err
 	}
-	return correct, answer, afterText, nil
+
+	attempts, err = ps.GetAttempts(ctx, userId, puzzleId)
+	if err != nil {
+		return false, nil, "", -1, err
+	}
+
+	if !userGaveUp {
+		correctAnswer = nil
+	}
+
+	return userIsCorrect, correctAnswer, afterText, attempts, nil
 }
 
 func SetPuzzleVote(ctx context.Context, ps PuzzleStore, userId string, puzzleId string, vote int) error {
@@ -155,28 +169,29 @@ func newPuzzleGame(mcg *macondogame.Game) *entity.Game {
 	return g
 }
 
-func answersAreEqual(ans1 *macondopb.GameEvent, ans2 *macondopb.GameEvent) bool {
-	if ans1 == nil {
-		log.Info().Msg("user answer nil")
+func answersAreEqual(userAnswer *macondopb.GameEvent, correctAnswer *macondopb.GameEvent) bool {
+	if userAnswer == nil {
+		// The user answer is nil when they have given up
+		// and just want the answer without making an attempt
 		return false
 	}
-	if ans2 == nil {
+	if correctAnswer == nil {
 		log.Info().Msg("puzzle answer nil")
 		return false
 	}
 
-	if ans1.Type == macondopb.GameEvent_TILE_PLACEMENT_MOVE &&
-		ans2.Type == macondopb.GameEvent_TILE_PLACEMENT_MOVE &&
-		countPlayedTiles(ans1) == 1 && countPlayedTiles(ans2) == 1 {
-		return uniqueSingleTileKey(ans1) == uniqueSingleTileKey(ans2)
+	if userAnswer.Type == macondopb.GameEvent_TILE_PLACEMENT_MOVE &&
+		correctAnswer.Type == macondopb.GameEvent_TILE_PLACEMENT_MOVE &&
+		countPlayedTiles(userAnswer) == 1 && countPlayedTiles(correctAnswer) == 1 {
+		return uniqueSingleTileKey(userAnswer) == uniqueSingleTileKey(correctAnswer)
 	}
 
-	return ans1.Type == ans2.Type &&
-		ans1.Row == ans2.Row &&
-		ans1.Column == ans2.Column &&
-		ans1.Direction == ans2.Direction &&
-		ans1.PlayedTiles == ans2.PlayedTiles &&
-		ans1.Exchanged == ans2.Exchanged
+	return userAnswer.Type == correctAnswer.Type &&
+		userAnswer.Row == correctAnswer.Row &&
+		userAnswer.Column == correctAnswer.Column &&
+		userAnswer.Direction == correctAnswer.Direction &&
+		userAnswer.PlayedTiles == correctAnswer.PlayedTiles &&
+		utilities.SortString(userAnswer.Exchanged) == utilities.SortString(correctAnswer.Exchanged)
 }
 
 func countPlayedTiles(ge *macondopb.GameEvent) int {

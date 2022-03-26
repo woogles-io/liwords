@@ -11,20 +11,22 @@ message RandomUnansweredPuzzleIdResponse { string puzzle_id = 1; }
 message PuzzleRequest { string puzzle_id = 1; }
 
 message PuzzleResponse {
-    string game_id = 1;
-    macondo.GameHistory history = 2;
-    string before_text = 3;
+  string game_id = 1;
+  macondo.GameHistory history = 2;
+  string before_text = 3;
+  int32 attempts = 4;
 }
 
-message AnswerRequest {
+message SubmissionRequest {
   string puzzle_id = 1;
   macondo.GameEvent answer = 2;
 }
 
-message AnswerResponse {
-    bool correct = 1;
-    macondo.GameEvent answer = 2;
-    string after_text = 3;
+message SubmissionResponse {
+  bool correct = 1;
+  macondo.GameEvent correct_answer = 2;
+  string after_text = 3;
+  int32 attempts = 4;
 }
 
 message PuzzleVoteRequest {
@@ -37,6 +39,6 @@ message PuzzleVoteResponse {}
 service PuzzleService {
   rpc GetRandomUnansweredPuzzleIdForUser(RandomUnansweredPuzzleIdRequest) returns(RandomUnansweredPuzzleIdResponse);
   rpc GetPuzzle(PuzzleRequest) returns(PuzzleResponse);
-  rpc GetAnswer(AnswerRequest) returns(AnswerResponse);
+  rpc SubmitAnswer(SubmissionRequest) returns(SubmissionResponse);
   rpc SetPuzzleVote(PuzzleVoteRequest) returns(PuzzleVoteResponse);
 }

@@ -33,23 +33,27 @@ func (ps *PuzzleService) GetRandomUnansweredPuzzleIdForUser(ctx context.Context,
 }
 
 func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *pb.PuzzleRequest) (*pb.PuzzleResponse, error) {
-	gameUUID, gameHist, beforeText, err := GetPuzzle(ctx, ps.puzzleStore, req.PuzzleId)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.PuzzleResponse{GameId: gameUUID, History: gameHist, BeforeText: beforeText}, nil
-}
-
-func (ps *PuzzleService) GetAnswer(ctx context.Context, req *pb.AnswerRequest) (*pb.AnswerResponse, error) {
 	user, err := sessionUser(ctx, ps)
 	if err != nil {
 		return nil, err
 	}
-	correct, correctAnswer, afterText, err := GetAnswer(ctx, ps.puzzleStore, req.PuzzleId, user.UUID, req.Answer)
+	gameUUID, gameHist, beforeText, attempts, err := GetPuzzle(ctx, ps.puzzleStore, user.UUID, req.PuzzleId)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.AnswerResponse{Correct: correct, Answer: correctAnswer, AfterText: afterText}, nil
+	return &pb.PuzzleResponse{GameId: gameUUID, History: gameHist, BeforeText: beforeText, Attempts: attempts}, nil
+}
+
+func (ps *PuzzleService) SubmitAnswer(ctx context.Context, req *pb.SubmissionRequest) (*pb.SubmissionResponse, error) {
+	user, err := sessionUser(ctx, ps)
+	if err != nil {
+		return nil, err
+	}
+	correct, correctAnswer, afterText, attempts, err := SubmitAnswer(ctx, ps.puzzleStore, req.PuzzleId, user.UUID, req.Answer)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.SubmissionResponse{Correct: correct, CorrectAnswer: correctAnswer, AfterText: afterText, Attempts: attempts}, nil
 }
 
 func (ps *PuzzleService) SetPuzzleVote(ctx context.Context, req *pb.PuzzleVoteRequest) (*pb.PuzzleVoteResponse, error) {

@@ -48,13 +48,16 @@ func TestPuzzles(t *testing.T) {
 	pid, err := GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID)
 	is.NoErr(err)
 
-	_, _, _, err = GetPuzzle(ctx, ps, pid)
+	_, _, _, attempts, err := GetPuzzle(ctx, ps, PuzzlerUUID, pid)
 	is.NoErr(err)
+	is.Equal(attempts, int32(0))
 
-	correct, correctAnswer, _, err := GetAnswer(ctx, ps, pid, PuzzlerUUID, &pb.GameEvent{})
+	correct, correctAnswer, _, attempts, err := SubmitAnswer(ctx, ps, pid, PuzzlerUUID, &pb.GameEvent{})
 	is.NoErr(err)
+	is.Equal(attempts, int32(1))
+	is.True(correctAnswer == nil)
 
-	_, _, _, newPuzzleRating, err := ps.GetAnswer(ctx, pid)
+	correctAnswer, _, _, newPuzzleRating, err := ps.GetAnswer(ctx, pid)
 	is.NoErr(err)
 	newUserRating, err := getUserRating(ctx, db, PuzzlerUUID, rk)
 	is.NoErr(err)
@@ -67,14 +70,14 @@ func TestPuzzles(t *testing.T) {
 	is.True(float64(puzzlesstore.InitialPuzzleRatingDeviation) > newUserRating.RatingDeviation)
 	attempts, recordedCorrect, err := getPuzzleAttempt(ctx, db, PuzzlerUUID, pid)
 	is.NoErr(err)
-	is.Equal(attempts, 1)
-	is.True(!recordedCorrect)
+	is.Equal(attempts, int32(1))
+	is.True(!recordedCorrect.Valid)
 
 	oldPuzzleRating := newPuzzleRating
 	oldUserRating := newUserRating
 
 	// Submit the correct answer for the same puzzle,
-	correct, _, _, err = GetAnswer(ctx, ps, pid, PuzzlerUUID, correctAnswer)
+	correct, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, correctAnswer)
 	is.NoErr(err)
 
 	_, _, _, newPuzzleRating, err = ps.GetAnswer(ctx, pid)
@@ -84,22 +87,25 @@ func TestPuzzles(t *testing.T) {
 
 	// rating should remain unchanged and another attempt should be recorded
 	is.True(correct)
+	is.Equal(attempts, int32(2))
 	is.True(common.WithinEpsilon(oldPuzzleRating.Rating, newPuzzleRating.Rating))
 	is.True(common.WithinEpsilon(oldPuzzleRating.RatingDeviation, newPuzzleRating.RatingDeviation))
 	is.True(common.WithinEpsilon(oldUserRating.Rating, newUserRating.Rating))
 	is.True(common.WithinEpsilon(oldUserRating.RatingDeviation, newUserRating.RatingDeviation))
 	attempts, recordedCorrect, err = getPuzzleAttempt(ctx, db, PuzzlerUUID, pid)
 	is.NoErr(err)
-	is.Equal(attempts, 2)
-	is.True(recordedCorrect)
+	is.Equal(attempts, int32(2))
+	is.True(recordedCorrect.Valid)
+	is.True(recordedCorrect.Bool)
 
 	// Submit another answer which should not change the puzzle attempt record
-	_, _, _, err = GetAnswer(ctx, ps, pid, PuzzlerUUID, correctAnswer)
+	_, _, _, _, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, correctAnswer)
 	is.NoErr(err)
 	attempts, recordedCorrect, err = getPuzzleAttempt(ctx, db, PuzzlerUUID, pid)
 	is.NoErr(err)
-	is.Equal(attempts, 2)
-	is.True(recordedCorrect)
+	is.Equal(attempts, int32(2))
+	is.True(recordedCorrect.Valid)
+	is.True(recordedCorrect.Bool)
 
 	oldPuzzleRating = newPuzzleRating
 	oldUserRating = newUserRating
@@ -108,8 +114,9 @@ func TestPuzzles(t *testing.T) {
 	pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID)
 	is.NoErr(err)
 
-	_, _, _, err = GetPuzzle(ctx, ps, pid)
+	_, _, _, attempts, err = GetPuzzle(ctx, ps, PuzzlerUUID, pid)
 	is.NoErr(err)
+	is.Equal(attempts, int32(0))
 
 	correctAnswer, _, _, oldPuzzleRating, err = ps.GetAnswer(ctx, pid)
 	is.NoErr(err)
@@ -117,7 +124,7 @@ func TestPuzzles(t *testing.T) {
 	oldUserRating, err = getUserRating(ctx, db, PuzzlerUUID, rk)
 	is.NoErr(err)
 
-	correct, _, _, err = GetAnswer(ctx, ps, pid, PuzzlerUUID, correctAnswer)
+	correct, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, correctAnswer)
 	is.NoErr(err)
 
 	_, _, _, newPuzzleRating, err = ps.GetAnswer(ctx, pid)
@@ -128,14 +135,16 @@ func TestPuzzles(t *testing.T) {
 
 	// User rating should go up, puzzle rating should go down
 	is.True(correct)
+	is.Equal(attempts, int32(1))
 	is.True(oldPuzzleRating.Rating > newPuzzleRating.Rating)
 	is.True(oldPuzzleRating.RatingDeviation > newPuzzleRating.RatingDeviation)
 	is.True(oldUserRating.Rating < newUserRating.Rating)
 	is.True(oldUserRating.RatingDeviation > newUserRating.RatingDeviation)
 	attempts, recordedCorrect, err = getPuzzleAttempt(ctx, db, PuzzlerUUID, pid)
 	is.NoErr(err)
-	is.Equal(attempts, 1)
-	is.True(recordedCorrect)
+	is.Equal(attempts, int32(1))
+	is.True(recordedCorrect.Valid)
+	is.True(recordedCorrect.Bool)
 
 	// Check that the rating transaction rolls back correctly
 	pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID)
@@ -146,7 +155,7 @@ func TestPuzzles(t *testing.T) {
 	oldUserRating, err = getUserRating(ctx, db, PuzzlerUUID, rk)
 	is.NoErr(err)
 
-	_, _, _, err = GetAnswer(ctx, ps, pid, "incorrect uuid", correctAnswer)
+	_, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, "incorrect uuid", correctAnswer)
 	is.Equal(err.Error(), fmt.Sprintf("cannot get id from uuid %s: no rows for table %s", "incorrect uuid", "users"))
 
 	_, _, _, newPuzzleRating, err = ps.GetAnswer(ctx, pid)
@@ -154,20 +163,47 @@ func TestPuzzles(t *testing.T) {
 	newUserRating, err = getUserRating(ctx, db, PuzzlerUUID, rk)
 	is.NoErr(err)
 
+	is.Equal(attempts, int32(-1))
 	is.True(common.WithinEpsilon(oldPuzzleRating.Rating, newPuzzleRating.Rating))
 	is.True(common.WithinEpsilon(oldPuzzleRating.RatingDeviation, newPuzzleRating.RatingDeviation))
 	is.True(common.WithinEpsilon(oldUserRating.Rating, newUserRating.Rating))
 	is.True(common.WithinEpsilon(oldUserRating.RatingDeviation, newUserRating.RatingDeviation))
 
+	// Submit an incorrect answer and then give up
+	pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID)
+	is.NoErr(err)
+
+	_, _, _, attempts, err = GetPuzzle(ctx, ps, PuzzlerUUID, pid)
+	is.NoErr(err)
+	is.Equal(attempts, int32(0))
+
+	correct, correctAnswer, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, &pb.GameEvent{})
+	is.NoErr(err)
+	is.True(!correct)
+	is.True(correctAnswer == nil)
+	is.Equal(attempts, int32(1))
+
+	correct, correctAnswer, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, nil)
+	is.NoErr(err)
+	is.True(!correct)
+	is.True(correctAnswer != nil)
+	is.Equal(attempts, int32(1))
+
+	attempts, recordedCorrect, err = getPuzzleAttempt(ctx, db, PuzzlerUUID, pid)
+	is.NoErr(err)
+	is.Equal(attempts, int32(1))
+	is.True(recordedCorrect.Valid)
+	is.True(!recordedCorrect.Bool)
 	// The user should not see repeat puzzles until they
 	// have answered all of them
 
-	for i := 0; i < totalPuzzles-2; i++ {
+	for i := 0; i < totalPuzzles-3; i++ {
 		pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID)
 		is.NoErr(err)
 
-		_, hist, _, err := GetPuzzle(ctx, ps, pid)
+		_, hist, _, attempts, err := GetPuzzle(ctx, ps, PuzzlerUUID, pid)
 		is.NoErr(err)
+		is.Equal(attempts, int32(0))
 
 		puzzleDBID, err := transactGetDBIDFromUUID(ctx, db, "puzzles", pid)
 		is.NoErr(err)
@@ -176,22 +212,23 @@ func TestPuzzles(t *testing.T) {
 		err = db.QueryRowContext(ctx, `SELECT turn_number FROM puzzles WHERE id = $1`, puzzleDBID).Scan(&turnNumber)
 		is.NoErr(err)
 
-		answered, err := ps.HasUserAttemptedPuzzle(ctx, PuzzlerUUID, pid)
+		attempts, err = ps.GetAttempts(ctx, PuzzlerUUID, pid)
 		is.NoErr(err)
 
-		is.True(!answered)
+		is.Equal(attempts, int32(0))
 		is.Equal(len(hist.Events), turnNumber)
 
-		_, _, _, err = GetAnswer(ctx, ps, pid, PuzzlerUUID, &pb.GameEvent{})
+		_, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, &pb.GameEvent{})
 		is.NoErr(err)
+		is.Equal(attempts, int32(1))
 	}
 
 	pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID)
 	is.NoErr(err)
 
-	answered, err := ps.HasUserAttemptedPuzzle(ctx, PuzzlerUUID, pid)
+	attempts, err = ps.GetAttempts(ctx, PuzzlerUUID, pid)
 	is.NoErr(err)
-	is.True(answered)
+	is.Equal(attempts, int32(1))
 
 	// Test voting system
 
@@ -356,21 +393,21 @@ func getPuzzlePopularity(ctx context.Context, db *sql.DB, puzzleUUID string) (in
 	return popularity, err
 }
 
-func getPuzzleAttempt(ctx context.Context, db *sql.DB, userUUID string, puzzleUUID string) (int, bool, error) {
+func getPuzzleAttempt(ctx context.Context, db *sql.DB, userUUID string, puzzleUUID string) (int32, *sql.NullBool, error) {
 	pid, err := transactGetDBIDFromUUID(ctx, db, "puzzles", puzzleUUID)
 	if err != nil {
-		return 0, false, err
+		return 0, nil, err
 	}
 
 	uid, err := transactGetDBIDFromUUID(ctx, db, "users", userUUID)
 	if err != nil {
-		return 0, false, err
+		return 0, nil, err
 	}
-	var attempts int
-	var correct bool
-	err = db.QueryRowContext(ctx, `SELECT attempts, correct FROM puzzle_attempts WHERE user_id = $1 AND puzzle_id = $2`, uid, pid).Scan(&attempts, &correct)
+	var attempts int32
+	correct := &sql.NullBool{}
+	err = db.QueryRowContext(ctx, `SELECT attempts, correct FROM puzzle_attempts WHERE user_id = $1 AND puzzle_id = $2`, uid, pid).Scan(&attempts, correct)
 	if err != nil {
-		return 0, false, err
+		return 0, nil, err
 	}
 	return attempts, correct, nil
 }
