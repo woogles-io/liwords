@@ -127,7 +127,7 @@ export const nicknameFromEvt = (
   evt: GameEvent,
   players: Array<PlayerMetadata>
 ): string => {
-  return evt.getNickname() || players[evt.getPlayerIndex()].nickname;
+  return evt.getNickname() || players[evt.getPlayerIndex()]?.nickname;
 };
 
 // playerOrderFromEvt gets the player order from the event. (p0 | p1 etc)

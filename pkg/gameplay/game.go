@@ -145,7 +145,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 			UserId:   u.UUID,
 			Rating:   u.GetRelevantRating(ratingKey),
 			IsBot:    u.IsBot,
-			First:    gameRunner.FirstPlayer().UserId == u.UUID,
+			First:    idx == 0,
 		}
 	}
 
