@@ -77,22 +77,19 @@ func (s *DBStore) CreatePuzzle(ctx context.Context, gameUUID string, turnNumber 
 
 	uuid := shortuuid.New()
 
-	err = func() error {
-		var id int
-		err = tx.QueryRowContext(ctx, `INSERT INTO puzzles (uuid, game_id, turn_number, author_id, answer, before_text, after_text, rating, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW()) RETURNING id`,
-			uuid, gameID, turnNumber, authorId, gameEventToAnswer(answer), beforeText, afterText, newRating).Scan(&id)
+	var id int
+	err = tx.QueryRowContext(ctx, `INSERT INTO puzzles (uuid, game_id, turn_number, author_id, answer, before_text, after_text, rating, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW()) RETURNING id`,
+		uuid, gameID, turnNumber, authorId, gameEventToAnswer(answer), beforeText, afterText, newRating).Scan(&id)
+	if err != nil {
+		return err
+	}
+
+	for _, tag := range tags {
+		_, err := tx.ExecContext(ctx, `INSERT INTO puzzle_tags(tag_id, puzzle_id) VALUES ($1, $2)`, tag+1, id)
 		if err != nil {
 			return err
 		}
-
-		for _, tag := range tags {
-			_, err := tx.ExecContext(ctx, `INSERT INTO puzzle_tags(tag_id, puzzle_id) VALUES ($1, $2)`, tag+1, id)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	}()
+	}
 
 	if err := tx.Commit(); err != nil {
 		return err
@@ -323,6 +320,9 @@ func (s *DBStore) GetUserRating(ctx context.Context, userID string, ratingKey en
 		LastGameTimestamp: time.Now().Unix()}
 
 	sr, err := common.GetUserRating(ctx, tx, uid, ratingKey, initialRating)
+	if err != nil {
+		return nil, err
+	}
 
 	if err := tx.Commit(); err != nil {
 		return nil, err

@@ -9,7 +9,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.24.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/domino14/macondo v0.4.5-0.20220305015853-c1c18b7b0910
-	github.com/golang/protobuf v1.5.0
+	github.com/golang-migrate/migrate/v4 v4.15.1
+	github.com/golang/protobuf v1.5.2
 	github.com/gomodule/redigo v1.8.2
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/jinzhu/gorm v1.9.16
@@ -25,8 +26,8 @@ require (
 	golang.org/x/crypto v0.0.0-20211215165025-cf75a172585e
 	google.golang.org/protobuf v1.27.1
 	gorm.io/datatypes v0.0.0-20200924071644-3967db6857cf
-	gorm.io/driver/postgres v1.0.2
-	gorm.io/gorm v1.20.2
+	gorm.io/driver/postgres v1.0.8
+	gorm.io/gorm v1.21.4
 )
 
 require (
@@ -45,14 +46,16 @@ require (
 	github.com/aws/smithy-go v1.10.0 // indirect
 	github.com/go-chi/chi v4.0.0+incompatible // indirect
 	github.com/google/uuid v1.3.0 // indirect
+	github.com/hashicorp/errwrap v1.0.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.0 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
-	github.com/jackc/pgconn v1.7.0 // indirect
+	github.com/jackc/pgconn v1.8.0 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgproto3/v2 v2.0.5 // indirect
+	github.com/jackc/pgproto3/v2 v2.0.7 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
-	github.com/jackc/pgtype v1.5.0 // indirect
-	github.com/jackc/pgx/v4 v4.9.0 // indirect
+	github.com/jackc/pgtype v1.6.2 // indirect
+	github.com/jackc/pgx/v4 v4.10.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
@@ -62,9 +65,10 @@ require (
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rs/xid v1.3.0 // indirect
+	go.uber.org/atomic v1.6.0 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20220209214540-3681064d5158 // indirect
-	golang.org/x/text v0.3.6 // indirect
+	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	lukechampine.com/frand v1.4.2 // indirect

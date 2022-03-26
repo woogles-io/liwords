@@ -23,6 +23,10 @@ import (
 	"github.com/domino14/macondo/gcgio"
 	"github.com/domino14/macondo/gen/api/proto/macondo"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
+
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
 const PuzzlerUUID = "puzzler"
@@ -258,18 +262,18 @@ func TestPuzzles(t *testing.T) {
 
 func TestUniqueSingleTileKey(t *testing.T) {
 	is := is.New(t)
-	is.Equal(uniqueSingleTileKey(&macondo.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: macondo.GameEvent_HORIZONTAL}),
-		uniqueSingleTileKey(&macondo.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: macondo.GameEvent_VERTICAL}))
-	is.Equal(uniqueSingleTileKey(&macondo.GameEvent{Row: 8, Column: 10, PlayedTiles: ".R", Direction: macondo.GameEvent_HORIZONTAL}),
-		uniqueSingleTileKey(&macondo.GameEvent{Row: 7, Column: 11, PlayedTiles: ".R", Direction: macondo.GameEvent_VERTICAL}))
-	is.Equal(uniqueSingleTileKey(&macondo.GameEvent{Row: 8, Column: 10, PlayedTiles: "B....", Direction: macondo.GameEvent_HORIZONTAL}),
-		uniqueSingleTileKey(&macondo.GameEvent{Row: 8, Column: 10, PlayedTiles: "B....", Direction: macondo.GameEvent_VERTICAL}))
-	is.Equal(uniqueSingleTileKey(&macondo.GameEvent{Row: 9, Column: 3, PlayedTiles: "....X", Direction: macondo.GameEvent_HORIZONTAL}),
-		uniqueSingleTileKey(&macondo.GameEvent{Row: 5, Column: 7, PlayedTiles: "....X", Direction: macondo.GameEvent_VERTICAL}))
-	is.Equal(uniqueSingleTileKey(&macondo.GameEvent{Row: 11, Column: 9, PlayedTiles: "..A...", Direction: macondo.GameEvent_HORIZONTAL}),
-		uniqueSingleTileKey(&macondo.GameEvent{Row: 7, Column: 11, PlayedTiles: "....A..", Direction: macondo.GameEvent_VERTICAL}))
-	is.True(uniqueSingleTileKey(&macondo.GameEvent{Row: 8, Column: 10, PlayedTiles: "A.", Direction: macondo.GameEvent_HORIZONTAL}) !=
-		uniqueSingleTileKey(&macondo.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: macondo.GameEvent_VERTICAL}))
+	is.Equal(uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: macondo.GameEvent_HORIZONTAL}),
+		uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: macondo.GameEvent_VERTICAL}))
+	is.Equal(uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: ".R", Direction: macondo.GameEvent_HORIZONTAL}),
+		uniqueSingleTileKey(&pb.GameEvent{Row: 7, Column: 11, PlayedTiles: ".R", Direction: macondo.GameEvent_VERTICAL}))
+	is.Equal(uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "B....", Direction: macondo.GameEvent_HORIZONTAL}),
+		uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "B....", Direction: macondo.GameEvent_VERTICAL}))
+	is.Equal(uniqueSingleTileKey(&pb.GameEvent{Row: 9, Column: 3, PlayedTiles: "....X", Direction: macondo.GameEvent_HORIZONTAL}),
+		uniqueSingleTileKey(&pb.GameEvent{Row: 5, Column: 7, PlayedTiles: "....X", Direction: macondo.GameEvent_VERTICAL}))
+	is.Equal(uniqueSingleTileKey(&pb.GameEvent{Row: 11, Column: 9, PlayedTiles: "..A...", Direction: macondo.GameEvent_HORIZONTAL}),
+		uniqueSingleTileKey(&pb.GameEvent{Row: 7, Column: 11, PlayedTiles: "....A..", Direction: macondo.GameEvent_VERTICAL}))
+	is.True(uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "A.", Direction: macondo.GameEvent_HORIZONTAL}) !=
+		uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: macondo.GameEvent_VERTICAL}))
 }
 
 func RecreateDB() (*sql.DB, *puzzlesstore.DBStore, int, int, error) {
@@ -309,8 +313,11 @@ func RecreateDB() (*sql.DB, *puzzlesstore.DBStore, int, int, error) {
 		return nil, nil, 0, 0, err
 	}
 
-	err = commondb.RecreatePuzzleTables(db)
+	m, err := migrate.New(commondb.MigrationFile, commondb.MigrationConnString)
 	if err != nil {
+		return nil, nil, 0, 0, err
+	}
+	if err := m.Up(); err != nil {
 		return nil, nil, 0, 0, err
 	}
 
