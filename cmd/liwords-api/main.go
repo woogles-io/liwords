@@ -12,6 +12,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/gomodule/redigo/redis"
 	"github.com/twitchtv/twirp"
 
@@ -117,6 +120,14 @@ func main() {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 	log.Debug().Msg("debug log is on")
+
+	m, err := migrate.New("file://db/migrations", "postgres://postgres:pass@db:5432/liwords?sslmode=disable")
+	if err != nil {
+		panic(err)
+	}
+	if err := m.Up(); err != nil {
+		panic(err)
+	}
 
 	redisPool := newPool(cfg.RedisURL)
 
