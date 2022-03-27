@@ -11,10 +11,10 @@ import {
   useLoginStateStoreContext,
   usePoolFormatStoreContext,
 } from '../store/store';
-import { BoardPanel } from './board_panel';
-import { defaultGameInfo, GameInfo, GameMetadata } from './game_info';
-import { PlayerCards } from './player_cards';
-import Pool from './pool';
+import { BoardPanel } from '../gameroom/board_panel';
+import { defaultGameInfo, GameInfo, GameMetadata } from '../gameroom/game_info';
+import { PlayerCards } from '../gameroom/player_cards';
+import Pool from '../gameroom/pool';
 
 type Props = {
   sendChat: (msg: string, chan: string) => void;
@@ -135,8 +135,6 @@ export const SinglePuzzle = (props: Props) => {
         </div>
 
         <div className="data-area" id="right-sidebar">
-          <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
-          <GameInfo meta={gameInfo} tournamentName="" />
           <Pool
             pool={examinableGameContext?.pool}
             currentRack={sortedRack}
