@@ -1698,12 +1698,12 @@ export const BoardPanel = React.memo((props: Props) => {
             onChallenge={handleChallenge}
             onCommit={handleCommit}
             onRematch={props.handleAcceptRematch ?? rematch}
-            onExamine={handleExamineStart}
-            onExportGCG={handleExportGCG}
-            showNudge={showNudge}
-            showAbort={showAbort}
-            showRematch={examinableGameEndMessage !== ''}
-            gameEndControls={examinableGameEndMessage !== '' || props.gameDone}
+            onExamine={() => {}}
+            onExportGCG={() => {}}
+            showNudge={false}
+            showAbort={false}
+            showRematch={false}
+            gameEndControls={false}
             currentRack={props.currentRack}
             tournamentSlug={props.tournamentSlug}
             tournamentPairedMode={props.tournamentPairedMode}
