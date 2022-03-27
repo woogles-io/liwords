@@ -6,16 +6,21 @@ import (
 	"os"
 )
 
-const TestDBName = "liwords_test"
-
 var TestDBHost = os.Getenv("TEST_DB_HOST")
-var TestingConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
-var TestingDBConnStr = fmt.Sprintf("%s database=%s", TestingConnStr, TestDBName)
-var MigrationFile = "file://../../db/migrations"
-var MigrationConnString = fmt.Sprintf("postgres://postgres:pass@localhost:5432/%s?sslmode=disable", TestDBName)
 
-func RecreateDB() error {
-	db, err := sql.Open("pgx", TestingConnStr)
+const (
+	TestDBName     = "liwords_test"
+	TestDBPort     = "5432"
+	TestDBUser     = "postgres"
+	TestDBPassword = "pass"
+	TestDBSSLMode  = "disable"
+)
+
+var MigrationFile = "file://../../db/migrations"
+
+func RecreateTestDB() error {
+	db, err := sql.Open("pgx", PostgresConnString(TestDBHost, TestDBPort,
+		"", TestDBUser, TestDBPassword, TestDBSSLMode))
 	if err != nil {
 		return err
 	}
@@ -34,15 +39,14 @@ func RecreateDB() error {
 	return nil
 }
 
-func OpenDB() (*sql.DB, error) {
-	db, err := sql.Open("pgx", TestingDBConnStr)
-	if err != nil {
-		return nil, err
-	}
+func OpenTestingDB() (*sql.DB, error) {
+	return OpenDB(TestDBHost, TestDBPort, TestDBName, TestDBUser, TestDBPassword, TestDBSSLMode)
+}
 
-	err = db.Ping()
-	if err != nil {
-		return nil, err
-	}
-	return db, nil
+func TestingPostgresConnString() string {
+	return PostgresConnString(TestDBHost, TestDBPort, TestDBName, TestDBUser, TestDBPassword, TestDBSSLMode)
+}
+
+func TestingMigrationConnString() string {
+	return MigrationConnString(TestDBHost, TestDBPort, TestDBName, TestDBUser, TestDBPassword, TestDBSSLMode)
 }

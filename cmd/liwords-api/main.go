@@ -26,9 +26,11 @@ import (
 	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/notify"
 	"github.com/domino14/liwords/pkg/puzzles"
+	"github.com/domino14/liwords/pkg/stores/common"
 	cfgstore "github.com/domino14/liwords/pkg/stores/config"
 	"github.com/domino14/liwords/pkg/stores/game"
 	modstore "github.com/domino14/liwords/pkg/stores/mod"
+	puzzlestore "github.com/domino14/liwords/pkg/stores/puzzles"
 	"github.com/domino14/liwords/pkg/stores/session"
 	"github.com/domino14/liwords/pkg/stores/soughtgame"
 	"github.com/domino14/liwords/pkg/stores/stats"
@@ -125,7 +127,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	if err := m.Up(); err != nil {
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		panic(err)
 	}
 
@@ -189,6 +191,16 @@ func main() {
 	}
 	stores.PresenceStore = pkgredis.NewRedisPresenceStore(redisPool)
 	stores.ChatStore = pkgredis.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore)
+
+	db, err := common.OpenDB(cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBUser, cfg.DBPassword,
+		cfg.DBSSLMode)
+	if err != nil {
+		panic(err)
+	}
+	stores.PuzzleStore, err = puzzlestore.NewDBStore(db)
+	if err != nil {
+		panic(err)
+	}
 
 	mementoService := memento.NewMementoService(stores.UserStore, stores.GameStore)
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,

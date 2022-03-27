@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/domino14/liwords/pkg/stores/common"
 	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/namsral/flag"
 )
@@ -20,7 +21,14 @@ type Config struct {
 	MacondoConfig macondoconfig.Config
 	ArgonConfig   ArgonConfig
 
+	DBHost       string
+	DBPort       string
+	DBUser       string
+	DBPassword   string
+	DBSSLMode    string
+	DBName       string
 	DBConnString string
+
 	ListenAddr   string
 	SecretKey    string
 	NatsURL      string
@@ -44,7 +52,12 @@ func (c *Config) Load(args []string) error {
 	fs.StringVar(&c.MacondoConfig.LexiconPath, "lexicon-path", "../macondo/data/lexica", "directory holding lexicon files")
 	fs.StringVar(&c.MacondoConfig.DefaultLexicon, "default-lexicon", "NWL20", "the default lexicon to use")
 	fs.StringVar(&c.MacondoConfig.DefaultLetterDistribution, "default-letter-distribution", "English", "the default letter distribution to use. English, EnglishSuper, Spanish, Polish, etc.")
-	fs.StringVar(&c.DBConnString, "db-conn-string", "", "the database connection string")
+	fs.StringVar(&c.DBHost, "db-host", "", "the database host")
+	fs.StringVar(&c.DBPort, "db-port", "", "the database port")
+	fs.StringVar(&c.DBUser, "db-user", "", "the database user")
+	fs.StringVar(&c.DBPassword, "db-password", "", "the database password")
+	fs.StringVar(&c.DBSSLMode, "db-ssl-mode", "", "the database SSL mode")
+	fs.StringVar(&c.DBName, "db-name", "", "the database name")
 	fs.StringVar(&c.ListenAddr, "listen-addr", ":8001", "listen on this address")
 	fs.StringVar(&c.SecretKey, "secret-key", "", "secret key must be a random unguessable string")
 	fs.StringVar(&c.NatsURL, "nats-url", "nats://localhost:4222", "the NATS server URL")
@@ -58,6 +71,9 @@ func (c *Config) Load(args []string) error {
 	fs.IntVar(&c.ArgonConfig.Memory, "argon-memory", 64*1024, "the Argon memory (KB)")
 	fs.IntVar(&c.ArgonConfig.Threads, "argon-threads", 4, "the Argon threads")
 	err := fs.Parse(args)
+	// build the DB conn string from the passed-in DB arguments
+	c.DBConnString = common.PostgresConnString(c.DBHost, c.DBPort, c.DBName, c.DBUser, c.DBPassword, c.DBSSLMode)
+
 	return err
 }
 
