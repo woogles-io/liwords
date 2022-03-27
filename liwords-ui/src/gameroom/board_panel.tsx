@@ -89,6 +89,8 @@ type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   gameDone: boolean;
   playerMeta: Array<PlayerMetadata>;
+  puzzleMode?: boolean;
+  puzzleSolved?: boolean;
   tournamentSlug?: string;
   tournamentID?: string;
   tournamentPairedMode?: boolean;
@@ -1582,7 +1584,7 @@ export const BoardPanel = React.memo((props: Props) => {
         recallOneTile={recallOneTile}
       />
 
-      {gameMetaMessage ? (
+      {gameMetaMessage && !props.puzzleMode ? (
         <GameMetaMessage message={gameMetaMessage} />
       ) : (
         <Affix offsetTop={126} className="rack-affix">
@@ -1629,7 +1631,7 @@ export const BoardPanel = React.memo((props: Props) => {
         </Affix>
       )}
       {isTouchDevice() ? <TilePreview gridDim={props.board.dim} /> : null}
-      {!anonymousTourneyViewer && (
+      {!anonymousTourneyViewer && !props.puzzleMode && (
         <GameControls
           isExamining={isExamining}
           myTurn={isMyTurn}
@@ -1667,6 +1669,45 @@ export const BoardPanel = React.memo((props: Props) => {
           setHandleChallengeShortcut={setHandleChallengeShortcut}
           setHandleNeitherShortcut={setHandleNeitherShortcut}
         />
+      )}
+      {props.puzzleMode && (
+        <Affix offsetTop={126} className="rack-affix">
+          <GameControls
+            isExamining={false}
+            myTurn={true}
+            finalPassOrChallenge={
+              examinableGameContext.playState ===
+              PlayState.WAITING_FOR_FINAL_PASS
+            }
+            allowAnalysis={false}
+            exchangeAllowed={exchangeAllowed}
+            observer={false}
+            onRecall={recallTiles}
+            showExchangeModal={showExchangeModal}
+            onPass={handlePass}
+            onResign={handleResign}
+            onRequestAbort={handleRequestAbort}
+            onNudge={handleNudge}
+            onChallenge={handleChallenge}
+            onCommit={handleCommit}
+            onRematch={props.handleAcceptRematch ?? rematch}
+            onExamine={handleExamineStart}
+            onExportGCG={handleExportGCG}
+            showNudge={showNudge}
+            showAbort={showAbort}
+            showRematch={examinableGameEndMessage !== ''}
+            gameEndControls={examinableGameEndMessage !== '' || props.gameDone}
+            currentRack={props.currentRack}
+            tournamentSlug={props.tournamentSlug}
+            tournamentPairedMode={props.tournamentPairedMode}
+            lexicon={props.lexicon}
+            challengeRule={props.challengeRule}
+            setHandlePassShortcut={setHandlePassShortcut}
+            setHandleChallengeShortcut={setHandleChallengeShortcut}
+            setHandleNeitherShortcut={setHandleNeitherShortcut}
+            puzzleMode={true}
+          />
+        </Affix>
       )}
       <ExchangeTiles
         tileColorId={tileColorId}

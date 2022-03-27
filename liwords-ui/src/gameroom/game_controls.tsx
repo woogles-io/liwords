@@ -253,6 +253,7 @@ export type Props = {
   tournamentSlug?: string;
   lexicon: string;
   challengeRule: ChallengeRule;
+  puzzleMode?: boolean;
   setHandlePassShortcut: ((handler: (() => void) | null) => void) | null;
   setHandleChallengeShortcut: ((handler: (() => void) | null) => void) | null;
   setHandleNeitherShortcut: ((handler: (() => void) | null) => void) | null;
@@ -478,51 +479,57 @@ const GameControls = React.memo((props: Props) => {
   return (
     <div className="game-controls">
       <div className="secondary-controls">
-        <Dropdown
-          overlay={optionsMenu}
-          trigger={['click']}
-          visible={optionsMenuVisible}
-          disabled={gameHasNotStarted}
-        >
-          <Button onClick={() => setOptionsMenuVisible((v) => !v)}>
-            Options
-          </Button>
-        </Dropdown>
-
-        <Popconfirm
-          title="Are you sure you wish to pass?"
-          onCancel={() => {
-            setCurrentPopUp('NONE');
-          }}
-          onConfirm={() => {
-            props.onPass();
-            setCurrentPopUp('NONE');
-          }}
-          onVisibleChange={(visible) => {
-            setCurrentPopUp(visible ? 'PASS' : 'NONE');
-          }}
-          okText="Yes"
-          cancelText="No"
-          visible={currentPopUp === 'PASS'}
-        >
-          <Button
-            ref={passButton}
-            onClick={() => {
-              if (currentPopUp === 'PASS') {
-                props.onPass();
-                setCurrentPopUp('NONE');
-              }
-            }}
-            danger
-            disabled={!props.myTurn}
-            type={
-              props.finalPassOrChallenge && props.myTurn ? 'primary' : 'default'
-            }
+        {!props.puzzleMode && (
+          <Dropdown
+            overlay={optionsMenu}
+            trigger={['click']}
+            visible={optionsMenuVisible}
+            disabled={gameHasNotStarted}
           >
-            Pass
-            <span className="key-command">2</span>
-          </Button>
-        </Popconfirm>
+            <Button onClick={() => setOptionsMenuVisible((v) => !v)}>
+              Options
+            </Button>
+          </Dropdown>
+        )}
+
+        {!props.puzzleMode && (
+          <Popconfirm
+            title="Are you sure you wish to pass?"
+            onCancel={() => {
+              setCurrentPopUp('NONE');
+            }}
+            onConfirm={() => {
+              props.onPass();
+              setCurrentPopUp('NONE');
+            }}
+            onVisibleChange={(visible) => {
+              setCurrentPopUp(visible ? 'PASS' : 'NONE');
+            }}
+            okText="Yes"
+            cancelText="No"
+            visible={currentPopUp === 'PASS'}
+          >
+            <Button
+              ref={passButton}
+              onClick={() => {
+                if (currentPopUp === 'PASS') {
+                  props.onPass();
+                  setCurrentPopUp('NONE');
+                }
+              }}
+              danger
+              disabled={!props.myTurn}
+              type={
+                props.finalPassOrChallenge && props.myTurn
+                  ? 'primary'
+                  : 'default'
+              }
+            >
+              Pass
+              <span className="key-command">2</span>
+            </Button>
+          </Popconfirm>
+        )}
       </div>
       <div className="secondary-controls">
         <Popconfirm
@@ -570,7 +577,7 @@ const GameControls = React.memo((props: Props) => {
         onClick={props.onCommit}
         disabled={!props.myTurn || props.finalPassOrChallenge}
       >
-        Play
+        {props.puzzleMode ? 'Solve' : 'Play'}
       </Button>
     </div>
   );

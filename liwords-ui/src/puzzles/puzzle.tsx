@@ -29,6 +29,7 @@ import {
   PuzzleResponse,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { sortTiles } from '../store/constants';
+import { Notepad } from '../gameroom/notepad';
 
 type Props = {
   sendChat: (msg: string, chan: string) => void;
@@ -36,8 +37,8 @@ type Props = {
 // TODO: Delete this after you hook everything up, César
 const mockData = {
   attempts: 2,
-  dateSolved: new Date('2022-03-20 00:01:00'),
-  // dateSolved: undefined,
+  // dateSolved: new Date('2022-03-20 00:01:00'),
+  dateSolved: undefined,
   challengeRule: 'VOID' as ChallengeRule,
   ratingMode: 'RATED',
   gameDate: new Date('2021-01-01 00:01:00'),
@@ -133,7 +134,8 @@ export const SinglePuzzle = (props: Props) => {
 
   // Figure out what rack we should display
   console.log('gamecontextplayers', gameContext.players);
-  const rack = gameContext.players.find((p) => p.onturn)?.currentRack ?? '';
+  const rack =
+    gameContext.players.find((p) => p.onturn)?.currentRack ?? 'ABCDEFG';
   const sortedRack = useMemo(() => sortTiles(rack), [rack]);
   // Play sound here.
 
@@ -170,6 +172,9 @@ export const SinglePuzzle = (props: Props) => {
             defaultDescription=""
             supressDefault
           />
+          <React.Fragment key="not-examining">
+            <Notepad includeCard />
+          </React.Fragment>
         </div>
         <div className="play-area">
           <BoardPanel
@@ -185,11 +190,11 @@ export const SinglePuzzle = (props: Props) => {
             vsBot={false} /* doesn't matter */
             lexicon={gameInfo.game_request.lexicon}
             alphabet={alphabet}
-            challengeRule={
-              gameInfo.game_request.challenge_rule
-            } /* doesn't matter */
+            challengeRule={'SINGLE' as ChallengeRule} /* doesn't matter */
             handleAcceptRematch={() => {}}
             handleAcceptAbort={() => {}}
+            puzzleMode
+            puzzleSolved={!!mockData.dateSolved}
             // handleSetHover={handleSetHover}   // fix later with definitions.
             // handleUnsetHover={hideDefinitionHover}
             // definitionPopover={definitionPopover}
