@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"os"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -18,50 +20,61 @@ import (
 	"github.com/domino14/liwords/pkg/stores/game"
 	puzzlesstore "github.com/domino14/liwords/pkg/stores/puzzles"
 	"github.com/domino14/liwords/pkg/stores/user"
+	macondogame "github.com/domino14/macondo/game"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/macondo/automatic"
+	"github.com/namsral/flag"
 )
 
 func main() {
+	gf := flag.NewFlagSet("gf", flag.ContinueOnError)
+	numGames := gf.Int("i", 10, "number of bot vs bot games used to create puzzles")
+	useBotVsBot := gf.Bool("b", false, "use bot vs bot games to create puzzles")
+	err := gf.Parse(os.Args[1:])
+	if err != nil {
+		panic(err)
+	}
+
 	cfg := &config.Config{}
-	cfg.Load(os.Args[1:])
+	cfg.Load(nil)
 	log.Info().Msgf("Loaded config: %v", cfg)
 	cfg.MacondoConfig.DefaultLexicon = common.DefaultLexicon
 	zerolog.SetGlobalLevel(zerolog.Disabled)
 
-	TestDBHost := os.Getenv("TEST_DB_HOST")
-	TestingConnStr := "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
-	TestingDBConnStr := TestingConnStr + " database=liwords_test"
-
 	// Recreate the test database
-	err := commondb.RecreateDB()
+	err = commondb.RecreateDB()
 	if err != nil {
 		panic(err)
 	}
 
 	// Reconnect to the new test database
-	db, err := commondb.OpenDB()
+	db, err := sql.Open("pgx", "host=localhost port=5432 user=postgres password=pass sslmode=disable database=liwords")
 	if err != nil {
 		panic(err)
 	}
 
-	userStore, err := user.NewDBStore(TestingDBConnStr)
+	err = db.Ping()
 	if err != nil {
 		panic(err)
 	}
 
-	cfg.DBConnString = TestingDBConnStr
+	userStore, err := user.NewDBStore("host=localhost port=5432 user=postgres password=pass sslmode=disable database=liwords")
+	if err != nil {
+		panic(err)
+	}
+
+	cfg.DBConnString = "host=localhost port=5432 user=postgres password=pass sslmode=disable database=liwords"
 	gameStore, err := game.NewDBStore(cfg, userStore)
 	if err != nil {
 		panic(err)
 	}
 
-	m, err := migrate.New(commondb.MigrationFile, commondb.MigrationConnString)
+	m, err := migrate.New(commondb.MigrationFile, "postgres://postgres:pass@localhost:5432/liwords?sslmode=disable")
 	if err != nil {
 		panic(err)
 	}
-	if err := m.Up(); err != nil {
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		panic(err)
 	}
 
@@ -71,21 +84,49 @@ func main() {
 	}
 
 	ctx := context.Background()
-	for i := 0; i < 10; i++ {
-		r := automatic.NewGameRunner(nil, &cfg.MacondoConfig)
-		err := r.CompVsCompStatic(true)
+	if !*useBotVsBot {
+		rows, err := db.QueryContext(ctx, `SELECT uuid FROM games WHERE games.id NOT IN (SELECT game_id FROM puzzles) AND (stats->'d1'->'Unchallenged Phonies'->'t')::int = 0 AND (stats->'d2'->'Unchallenged Phonies'->'t')::int = 0 AND game_end_reason != 0`)
 		if err != nil {
-			log.Err(err).Msg("game-runner")
-			continue
+			panic(err)
 		}
-		mcg := r.Game()
-		_, err = puzzles.CreatePuzzlesFromGame(ctx, gameStore, puzzlesStore, mcg, "", pb.GameType_BOT_VS_BOT)
-		// pzls, err := puzzles.CreatePuzzlesFromGame(ctx, gameStore, puzzlesStore, mcg, "", entity.BotVsBot)
-		// for _, pzl := range pzls {
-		// 	fmt.Printf("liwords.localhost/game/%s?turn=%d\n", pzl.GetGameId(), pzl.GetTurnNumber()+1)
-		// }
-		if err != nil {
-			log.Err(err).Msg("create-puzzles-from-game")
+		defer rows.Close()
+		for rows.Next() {
+			var UUID string
+			if err := rows.Scan(&UUID); err != nil {
+				log.Err(err).Msg("games-scan")
+			}
+			fmt.Printf("uuid: %s\n", UUID)
+			entGame, err := gameStore.Get(ctx, UUID)
+			if err != nil {
+				log.Err(err).Msg("games-store")
+			}
+			mcg := &entGame.Game
+			pzls, err := puzzles.CreatePuzzlesFromGame(ctx, gameStore, puzzlesStore, mcg, "", pb.GameType_NATIVE)
+			for _, pzl := range pzls {
+				fmt.Printf("liwords.localhost/game/%s?turn=%d\n", pzl.GetGameId(), pzl.GetTurnNumber()+1)
+			}
+			if err != nil {
+				fmt.Println(err.Error())
+				log.Err(err).Msg("create-puzzles-from-game")
+			}
+		}
+	} else {
+		for i := 0; i < *numGames; i++ {
+			var mcg *macondogame.Game
+			r := automatic.NewGameRunner(nil, &cfg.MacondoConfig)
+			err := r.CompVsCompStatic(true)
+			if err != nil {
+				log.Err(err).Msg("game-runner")
+				continue
+			}
+			mcg = r.Game()
+			pzls, err := puzzles.CreatePuzzlesFromGame(ctx, gameStore, puzzlesStore, mcg, "", pb.GameType_BOT_VS_BOT)
+			for _, pzl := range pzls {
+				fmt.Printf("liwords.localhost/game/%s?turn=%d\n", pzl.GetGameId(), pzl.GetTurnNumber()+1)
+			}
+			if err != nil {
+				log.Err(err).Msg("create-puzzles-from-game")
+			}
 		}
 	}
 }

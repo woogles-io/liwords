@@ -9,7 +9,6 @@ CREATE TABLE IF NOT EXISTS puzzles (
 		after_text text,
 		rating jsonb NOT NULL,
 		created_at timestamptz NOT NULL DEFAULT NOW(),
-		updated_at timestamptz NOT NULL DEFAULT NOW(),
 		FOREIGN KEY (game_id) REFERENCES games (id),
 		FOREIGN KEY (author_id) REFERENCES users (id)
 );
@@ -35,6 +34,7 @@ CREATE TABLE IF NOT EXISTS puzzle_attempts (
 		new_user_rating jsonb,
 		new_puzzle_rating jsonb,
 		created_at timestamptz NOT NULL DEFAULT NOW(),
+		updated_at timestamptz NOT NULL DEFAULT NOW(),
 		UNIQUE(puzzle_id, user_id),
 		FOREIGN KEY (puzzle_id) REFERENCES puzzles (id),
 		FOREIGN KEY (user_id) REFERENCES users (id)

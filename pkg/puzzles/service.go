@@ -37,11 +37,11 @@ func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *pb.PuzzleRequest) (
 	if err != nil {
 		return nil, err
 	}
-	gameUUID, gameHist, beforeText, attempts, err := GetPuzzle(ctx, ps.puzzleStore, user.UUID, req.PuzzleId)
+	gameHist, beforeText, attempts, err := GetPuzzle(ctx, ps.puzzleStore, user.UUID, req.PuzzleId)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.PuzzleResponse{GameId: gameUUID, History: gameHist, BeforeText: beforeText, Attempts: attempts}, nil
+	return &pb.PuzzleResponse{History: gameHist, BeforeText: beforeText, Attempts: attempts}, nil
 }
 
 func (ps *PuzzleService) SubmitAnswer(ctx context.Context, req *pb.SubmissionRequest) (*pb.SubmissionResponse, error) {
@@ -49,11 +49,11 @@ func (ps *PuzzleService) SubmitAnswer(ctx context.Context, req *pb.SubmissionReq
 	if err != nil {
 		return nil, err
 	}
-	correct, correctAnswer, afterText, attempts, err := SubmitAnswer(ctx, ps.puzzleStore, req.PuzzleId, user.UUID, req.Answer)
+	userIsCorrect, correctAnswer, gameId, afterText, attempts, err := SubmitAnswer(ctx, ps.puzzleStore, req.PuzzleId, user.UUID, req.Answer, req.ShowSolution)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.SubmissionResponse{Correct: correct, CorrectAnswer: correctAnswer, AfterText: afterText, Attempts: attempts}, nil
+	return &pb.SubmissionResponse{UserIsCorrect: userIsCorrect, CorrectAnswer: correctAnswer, GameId: gameId, AfterText: afterText, Attempts: attempts}, nil
 }
 
 func (ps *PuzzleService) SetPuzzleVote(ctx context.Context, req *pb.PuzzleVoteRequest) (*pb.PuzzleVoteResponse, error) {

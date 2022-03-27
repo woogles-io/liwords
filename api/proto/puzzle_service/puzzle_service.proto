@@ -11,22 +11,23 @@ message RandomUnansweredPuzzleIdResponse { string puzzle_id = 1; }
 message PuzzleRequest { string puzzle_id = 1; }
 
 message PuzzleResponse {
-  string game_id = 1;
-  macondo.GameHistory history = 2;
-  string before_text = 3;
-  int32 attempts = 4;
+  macondo.GameHistory history = 1;
+  string before_text = 2;
+  int32 attempts = 3;
 }
 
 message SubmissionRequest {
   string puzzle_id = 1;
   macondo.GameEvent answer = 2;
+  bool show_solution = 3;
 }
 
 message SubmissionResponse {
-  bool correct = 1;
+  bool user_is_correct = 1;
   macondo.GameEvent correct_answer = 2;
-  string after_text = 3;
-  int32 attempts = 4;
+  string game_id = 3;
+  string after_text = 4;
+  int32 attempts = 5;
 }
 
 message PuzzleVoteRequest {

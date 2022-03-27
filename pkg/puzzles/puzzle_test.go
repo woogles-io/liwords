@@ -48,20 +48,34 @@ func TestPuzzles(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(curatedPuzzles, authoredPuzzles)
 
+	// paths
+	// - first try
+	//   1. Don't show solution
+	//   2. Show solution
+	//   3. Correct
+	// - not first try
+	//   4. puzzle over
+	//   -  puzzle not over
+	//     5. Don't show solution
+	//     6. Show solution
+	//     7. Correct
+
+	// Path 1
 	// Submit an incorrect answer
 	pid, err := GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID)
 	is.NoErr(err)
 
-	_, _, _, attempts, err := GetPuzzle(ctx, ps, PuzzlerUUID, pid)
+	_, _, attempts, err := GetPuzzle(ctx, ps, PuzzlerUUID, pid)
 	is.NoErr(err)
 	is.Equal(attempts, int32(0))
 
-	correct, correctAnswer, _, attempts, err := SubmitAnswer(ctx, ps, pid, PuzzlerUUID, &pb.GameEvent{})
+	correct, correctAnswer, gameId, _, attempts, err := SubmitAnswer(ctx, ps, pid, PuzzlerUUID, &pb.GameEvent{}, false)
 	is.NoErr(err)
 	is.Equal(attempts, int32(1))
 	is.True(correctAnswer == nil)
+	is.Equal(gameId, "")
 
-	correctAnswer, _, _, newPuzzleRating, err := ps.GetAnswer(ctx, pid)
+	correctAnswer, _, _, _, newPuzzleRating, err := ps.GetAnswer(ctx, pid)
 	is.NoErr(err)
 	newUserRating, err := getUserRating(ctx, db, PuzzlerUUID, rk)
 	is.NoErr(err)
@@ -80,11 +94,12 @@ func TestPuzzles(t *testing.T) {
 	oldPuzzleRating := newPuzzleRating
 	oldUserRating := newUserRating
 
+	// Path 7
 	// Submit the correct answer for the same puzzle,
-	correct, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, correctAnswer)
+	correct, _, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, correctAnswer, false)
 	is.NoErr(err)
 
-	_, _, _, newPuzzleRating, err = ps.GetAnswer(ctx, pid)
+	_, _, _, _, newPuzzleRating, err = ps.GetAnswer(ctx, pid)
 	is.NoErr(err)
 	newUserRating, err = getUserRating(ctx, db, PuzzlerUUID, rk)
 	is.NoErr(err)
@@ -102,8 +117,9 @@ func TestPuzzles(t *testing.T) {
 	is.True(recordedCorrect.Valid)
 	is.True(recordedCorrect.Bool)
 
+	// Path 4
 	// Submit another answer which should not change the puzzle attempt record
-	_, _, _, _, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, correctAnswer)
+	_, _, _, _, _, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, correctAnswer, false)
 	is.NoErr(err)
 	attempts, recordedCorrect, err = getPuzzleAttempt(ctx, db, PuzzlerUUID, pid)
 	is.NoErr(err)
@@ -114,24 +130,25 @@ func TestPuzzles(t *testing.T) {
 	oldPuzzleRating = newPuzzleRating
 	oldUserRating = newUserRating
 
+	// Path 3
 	// Submit a correct answer
 	pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID)
 	is.NoErr(err)
 
-	_, _, _, attempts, err = GetPuzzle(ctx, ps, PuzzlerUUID, pid)
+	_, _, attempts, err = GetPuzzle(ctx, ps, PuzzlerUUID, pid)
 	is.NoErr(err)
 	is.Equal(attempts, int32(0))
 
-	correctAnswer, _, _, oldPuzzleRating, err = ps.GetAnswer(ctx, pid)
+	correctAnswer, _, _, _, oldPuzzleRating, err = ps.GetAnswer(ctx, pid)
 	is.NoErr(err)
 
 	oldUserRating, err = getUserRating(ctx, db, PuzzlerUUID, rk)
 	is.NoErr(err)
 
-	correct, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, correctAnswer)
+	correct, _, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, correctAnswer, false)
 	is.NoErr(err)
 
-	_, _, _, newPuzzleRating, err = ps.GetAnswer(ctx, pid)
+	_, _, _, _, newPuzzleRating, err = ps.GetAnswer(ctx, pid)
 	is.NoErr(err)
 
 	newUserRating, err = getUserRating(ctx, db, PuzzlerUUID, rk)
@@ -154,15 +171,15 @@ func TestPuzzles(t *testing.T) {
 	pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID)
 	is.NoErr(err)
 
-	correctAnswer, _, _, oldPuzzleRating, err = ps.GetAnswer(ctx, pid)
+	correctAnswer, _, _, _, oldPuzzleRating, err = ps.GetAnswer(ctx, pid)
 	is.NoErr(err)
 	oldUserRating, err = getUserRating(ctx, db, PuzzlerUUID, rk)
 	is.NoErr(err)
 
-	_, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, "incorrect uuid", correctAnswer)
+	_, _, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, "incorrect uuid", correctAnswer, false)
 	is.Equal(err.Error(), fmt.Sprintf("cannot get id from uuid %s: no rows for table %s", "incorrect uuid", "users"))
 
-	_, _, _, newPuzzleRating, err = ps.GetAnswer(ctx, pid)
+	_, _, _, _, newPuzzleRating, err = ps.GetAnswer(ctx, pid)
 	is.NoErr(err)
 	newUserRating, err = getUserRating(ctx, db, PuzzlerUUID, rk)
 	is.NoErr(err)
@@ -177,17 +194,17 @@ func TestPuzzles(t *testing.T) {
 	pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID)
 	is.NoErr(err)
 
-	_, _, _, attempts, err = GetPuzzle(ctx, ps, PuzzlerUUID, pid)
+	_, _, attempts, err = GetPuzzle(ctx, ps, PuzzlerUUID, pid)
 	is.NoErr(err)
 	is.Equal(attempts, int32(0))
 
-	correct, correctAnswer, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, &pb.GameEvent{})
+	correct, correctAnswer, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, &pb.GameEvent{}, false)
 	is.NoErr(err)
 	is.True(!correct)
 	is.True(correctAnswer == nil)
 	is.Equal(attempts, int32(1))
 
-	correct, correctAnswer, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, nil)
+	correct, correctAnswer, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, nil, true)
 	is.NoErr(err)
 	is.True(!correct)
 	is.True(correctAnswer != nil)
@@ -205,7 +222,7 @@ func TestPuzzles(t *testing.T) {
 		pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID)
 		is.NoErr(err)
 
-		_, hist, _, attempts, err := GetPuzzle(ctx, ps, PuzzlerUUID, pid)
+		hist, _, attempts, err := GetPuzzle(ctx, ps, PuzzlerUUID, pid)
 		is.NoErr(err)
 		is.Equal(attempts, int32(0))
 
@@ -222,7 +239,7 @@ func TestPuzzles(t *testing.T) {
 		is.Equal(attempts, int32(0))
 		is.Equal(len(hist.Events), turnNumber)
 
-		_, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, &pb.GameEvent{})
+		_, _, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, &pb.GameEvent{}, false)
 		is.NoErr(err)
 		is.Equal(attempts, int32(1))
 	}

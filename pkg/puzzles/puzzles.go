@@ -23,8 +23,8 @@ type PuzzleStore interface {
 	CreatePuzzle(ctx context.Context, gameID string, turnNumber int32, answer *macondopb.GameEvent, authorID string,
 		beforeText string, afterText string, tags []macondopb.PuzzleTag) error
 	GetRandomUnansweredPuzzleIdForUser(context.Context, string) (string, error)
-	GetPuzzle(ctx context.Context, userId string, puzzleId string) (string, *macondopb.GameHistory, string, int32, error)
-	GetAnswer(ctx context.Context, puzzleId string) (*macondopb.GameEvent, string, *ipc.GameRequest, *entity.SingleRating, error)
+	GetPuzzle(ctx context.Context, userId string, puzzleId string) (*macondopb.GameHistory, string, int32, error)
+	GetAnswer(ctx context.Context, puzzleId string) (*macondopb.GameEvent, string, string, *ipc.GameRequest, *entity.SingleRating, error)
 	SubmitAnswer(ctx context.Context, userId string, ratingKey entity.VariantKey, newUserRating *entity.SingleRating,
 		puzzleId string, newPuzzleRating *entity.SingleRating, userIsCorrect bool, userGaveUp bool) error
 	GetAttempts(ctx context.Context, userId string, puzzleId string) (int32, error)
@@ -64,14 +64,14 @@ func GetRandomUnansweredPuzzleIdForUser(ctx context.Context, ps PuzzleStore, use
 	return ps.GetRandomUnansweredPuzzleIdForUser(ctx, userId)
 }
 
-func GetPuzzle(ctx context.Context, ps PuzzleStore, userId string, puzzleId string) (string, *macondopb.GameHistory, string, int32, error) {
+func GetPuzzle(ctx context.Context, ps PuzzleStore, userId string, puzzleId string) (*macondopb.GameHistory, string, int32, error) {
 	return ps.GetPuzzle(ctx, userId, puzzleId)
 }
 
-func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleId string, userId string, userAnswer *macondopb.GameEvent) (bool, *macondopb.GameEvent, string, int32, error) {
-	correctAnswer, afterText, req, puzzleRating, err := ps.GetAnswer(ctx, puzzleId)
+func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleId string, userId string, userAnswer *macondopb.GameEvent, showSolution bool) (bool, *macondopb.GameEvent, string, string, int32, error) {
+	correctAnswer, gameId, afterText, req, puzzleRating, err := ps.GetAnswer(ctx, puzzleId)
 	if err != nil {
-		return false, nil, "", -1, err
+		return false, nil, "", "", -1, err
 	}
 
 	userIsCorrect := answersAreEqual(userAnswer, correctAnswer)
@@ -79,7 +79,7 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleId string, userId s
 	// Check if user has already seen this puzzle
 	attempts, err := ps.GetAttempts(ctx, userId, puzzleId)
 	if err != nil {
-		return false, nil, "", -1, err
+		return false, nil, "", "", -1, err
 	}
 
 	var newPuzzleSingleRating *entity.SingleRating
@@ -90,7 +90,7 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleId string, userId s
 		// Get the user ratings
 		userRating, err := ps.GetUserRating(ctx, userId, rk)
 		if err != nil {
-			return false, nil, "", -1, err
+			return false, nil, "", "", -1, err
 		}
 
 		spread := glicko.SpreadScaling + 1
@@ -126,23 +126,22 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleId string, userId s
 		}
 	}
 
-	userGaveUp := userAnswer == nil
-
-	err = ps.SubmitAnswer(ctx, userId, rk, newUserSingleRating, puzzleId, newPuzzleSingleRating, userIsCorrect, userGaveUp)
+	err = ps.SubmitAnswer(ctx, userId, rk, newUserSingleRating, puzzleId, newPuzzleSingleRating, userIsCorrect, showSolution)
 	if err != nil {
-		return false, nil, "", -1, err
+		return false, nil, "", "", -1, err
 	}
 
 	attempts, err = ps.GetAttempts(ctx, userId, puzzleId)
 	if err != nil {
-		return false, nil, "", -1, err
+		return false, nil, "", "", -1, err
 	}
 
-	if !userGaveUp {
+	if !showSolution && !userIsCorrect {
 		correctAnswer = nil
+		gameId = ""
 	}
 
-	return userIsCorrect, correctAnswer, afterText, attempts, nil
+	return userIsCorrect, correctAnswer, gameId, afterText, attempts, nil
 }
 
 func SetPuzzleVote(ctx context.Context, ps PuzzleStore, userId string, puzzleId string, vote int) error {
