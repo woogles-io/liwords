@@ -468,7 +468,11 @@ func (s *DBStore) CreateRaw(ctx context.Context, g *entity.Game, gt pb.GameType)
 	if err != nil {
 		return err
 	}
-	result := ctxDB.Exec(`insert into games(uuid, request, history, quickdata, timers, game_end_reason, type) values(?, ?, ?, ?, ?, ?, ?)`, g.Uid(), req, hist, g.Quickdata, g.Timers, g.GameEndReason, gt)
+	result := ctxDB.Exec(
+		`insert into games(uuid, request, history, quickdata, timers,
+			game_end_reason, type)
+		values(?, ?, ?, ?, ?, ?, ?)`,
+		g.Uid(), req, hist, g.Quickdata, g.Timers, g.GameEndReason, gt)
 	return result.Error
 }
 

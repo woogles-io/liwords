@@ -169,11 +169,22 @@ func (s *DBStore) GetPuzzle(ctx context.Context, userUUID string, puzzleUUID str
 	if err != nil {
 		return nil, "", -1, err
 	}
-
-	hist.Events = hist.Events[:turnNumber]
 	if err := tx.Commit(); err != nil {
 		return nil, "", -1, err
 	}
+
+	puzzleEvent := hist.Events[turnNumber]
+
+	hist.Events = hist.Events[:turnNumber]
+	// Set LastKnownRacks to make history valid.
+	playerIndexes := map[string]int{}
+	for idx := range hist.Players {
+		playerIndexes[hist.Players[idx].Nickname] = idx
+	}
+	// XXX: Outdated, fix with PlayerIndex in the future
+	hist.LastKnownRacks = []string{"", ""}
+	idx := playerIndexes[puzzleEvent.Nickname]
+	hist.LastKnownRacks[idx] = puzzleEvent.Rack
 
 	return hist, beforeText, attempts, nil
 }

@@ -12,10 +12,8 @@ import (
 	"github.com/domino14/liwords/pkg/utilities"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/macondo/alphabet"
-	macondogame "github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	macondopuzzles "github.com/domino14/macondo/puzzles"
-	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
 )
 
@@ -32,9 +30,10 @@ type PuzzleStore interface {
 	SetPuzzleVote(ctx context.Context, userId string, puzzleId string, vote int) error
 }
 
-func CreatePuzzlesFromGame(ctx context.Context, gs *gamestore.DBStore, ps PuzzleStore, mcg *macondogame.Game, authorId string, gt ipc.GameType) ([]*macondopb.PuzzleCreationResponse, error) {
-	g := newPuzzleGame(mcg)
-	pzls, err := macondopuzzles.CreatePuzzlesFromGame(g.Config(), mcg)
+func CreatePuzzlesFromGame(ctx context.Context, gs *gamestore.DBStore, ps PuzzleStore,
+	g *entity.Game, authorId string, gt ipc.GameType) ([]*macondopb.PuzzleCreationResponse, error) {
+
+	pzls, err := macondopuzzles.CreatePuzzlesFromGame(g.Config(), &g.Game)
 	if err != nil {
 		return nil, err
 	}
@@ -149,23 +148,6 @@ func SetPuzzleVote(ctx context.Context, ps PuzzleStore, userId string, puzzleId 
 		return fmt.Errorf("puzzle vote must have a value of -1, 0, or 1 but got %d instead", vote)
 	}
 	return ps.SetPuzzleVote(ctx, userId, puzzleId, vote)
-}
-
-func newPuzzleGame(mcg *macondogame.Game) *entity.Game {
-	g := entity.NewGame(mcg, common.DefaultGameReq)
-	g.Started = true
-	uuid := shortuuid.New()
-	g.GameEndReason = ipc.GameEndReason_STANDARD
-	g.Quickdata.FinalScores = []int32{int32(g.Game.PointsFor(0)), int32(g.Game.PointsFor(1))}
-	g.Quickdata.PlayerInfo = []*ipc.PlayerInfo{&common.DefaultPlayerOneInfo, &common.DefaultPlayerTwoInfo}
-	g.Game.History().Uid = uuid
-	g.Game.History().PlayState = macondopb.PlayState_GAME_OVER
-	g.Timers = entity.Timers{
-		TimeRemaining: []int{0, 0},
-		MaxOvertime:   0,
-	}
-
-	return g
 }
 
 func answersAreEqual(userAnswer *macondopb.GameEvent, correctAnswer *macondopb.GameEvent) bool {

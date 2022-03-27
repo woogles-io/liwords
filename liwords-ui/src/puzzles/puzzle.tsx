@@ -1,13 +1,14 @@
 import { HomeOutlined } from '@ant-design/icons';
-import { Card } from 'antd';
+import { Card, message } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { postJsonObj } from '../api/api';
+import { postJsonObj, postProto } from '../api/api';
 import { Chat } from '../chat/chat';
 import { alphabetFromName } from '../constants/alphabets';
 import { TopBar } from '../navigation/topbar';
 import {
   useExaminableGameContextStoreContext,
+  useGameContextStoreContext,
   useLoginStateStoreContext,
   usePoolFormatStoreContext,
 } from '../store/store';
@@ -22,6 +23,12 @@ import { PuzzleScore } from './puzzle_score';
 import Pool from '../gameroom/pool';
 import './puzzles.scss';
 import { PuzzleInfo } from './puzzle_info';
+import { ActionType } from '../actions/actions';
+import {
+  PuzzleRequest,
+  PuzzleResponse,
+} from '../gen/api/proto/puzzle_service/puzzle_service_pb';
+import { sortTiles } from '../store/constants';
 
 type Props = {
   sendChat: (msg: string, chan: string) => void;
@@ -52,13 +59,10 @@ const mockData = {
 export const SinglePuzzle = (props: Props) => {
   const { puzzleID } = useParams();
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
-  const {
-    gameContext: examinableGameContext,
-  } = useExaminableGameContextStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { username, userID, loggedIn } = loginState;
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
-
+  const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   useEffect(() => {
     // Prevent backspace unless we're in an input element. We don't want to
     // leave if we're on Firefox.
@@ -89,29 +93,48 @@ export const SinglePuzzle = (props: Props) => {
   useEffect(() => {
     // Request Puzzle API to get info about the puzzle on load.
     console.log('fetching puzzle info');
-
-    postJsonObj(
-      'puzzle_service.PuzzleService',
-      'GetPuzzle',
-      {
-        puzzle_id: puzzleID,
-      },
-      (resp) => {
-        console.log('got response', resp);
+    dispatchGameContext({
+      actionType: ActionType.ClearHistory,
+      payload: 'noclock',
+    });
+    async function fetchPuzzleData() {
+      const req = new PuzzleRequest();
+      req.setPuzzleId(puzzleID);
+      try {
+        const resp = await postProto(
+          PuzzleResponse,
+          'puzzle_service.PuzzleService',
+          'GetPuzzle',
+          req
+        );
+        console.log('got response', resp.toObject());
         if (localStorage?.getItem('poolFormat')) {
           setPoolFormat(
             parseInt(localStorage.getItem('poolFormat') || '0', 10)
           );
         }
+        dispatchGameContext({
+          actionType: ActionType.SetupStaticPosition,
+          payload: resp.getHistory(),
+        });
+      } catch (err) {
+        console.log(err, 'is of type', typeof err);
+        message.error({
+          content: err.message,
+          duration: 5,
+        });
       }
-    );
-  }, [puzzleID, setPoolFormat]);
+    }
+    fetchPuzzleData();
+  }, [dispatchGameContext, puzzleID, setPoolFormat]);
 
   // add definitions stuff here. We should make common library instead of
   // copy-pasting from table.tsx
 
   // Figure out what rack we should display
-  const sortedRack = 'ABCDEFG';
+  console.log('gamecontextplayers', gameContext.players);
+  const rack = gameContext.players.find((p) => p.onturn)?.currentRack ?? '';
+  const sortedRack = useMemo(() => sortTiles(rack), [rack]);
   // Play sound here.
 
   const alphabet = useMemo(
@@ -152,9 +175,9 @@ export const SinglePuzzle = (props: Props) => {
           <BoardPanel
             anonymousViewer={!loggedIn}
             username={username}
-            board={examinableGameContext.board}
+            board={gameContext.board}
             currentRack={sortedRack}
-            events={examinableGameContext.turns}
+            events={gameContext.turns}
             gameID={''} /* no game id for a puzzle */
             sendSocketMsg={() => {}} // have to overwrite this
             gameDone={false}
@@ -195,7 +218,7 @@ export const SinglePuzzle = (props: Props) => {
             max_overtime_minutes={mockData.max_overtime_minutes}
           />
           <Pool
-            pool={examinableGameContext?.pool}
+            pool={gameContext.pool}
             currentRack={sortedRack}
             poolFormat={poolFormat}
             setPoolFormat={setPoolFormat}

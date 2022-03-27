@@ -11,7 +11,7 @@ import (
 )
 
 const PuzzleVariant = "puzzle"
-const DefaultLexicon = "CSW19"
+const DefaultLexicon = "CSW21"
 const DefaultLetterDistribution = "English"
 const DefaultVariantName = "classic"
 

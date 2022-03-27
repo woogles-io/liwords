@@ -39,7 +39,7 @@ func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *pb.PuzzleRequest) (
 	}
 	gameHist, beforeText, attempts, err := GetPuzzle(ctx, ps.puzzleStore, user.UUID, req.PuzzleId)
 	if err != nil {
-		return nil, err
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	return &pb.PuzzleResponse{History: gameHist, BeforeText: beforeText, Attempts: attempts}, nil
 }
