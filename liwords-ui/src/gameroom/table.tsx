@@ -1037,6 +1037,14 @@ export const Table = React.memo((props: Props) => {
             events={examinableGameContext.turns}
             gameID={gameID}
             sendSocketMsg={props.sendSocketMsg}
+            sendGameplayEvent={(evt) =>
+              props.sendSocketMsg(
+                encodeToSocketFmt(
+                  MessageType.CLIENT_GAMEPLAY_EVENT,
+                  evt.serializeBinary()
+                )
+              )
+            }
             gameDone={gameDone}
             playerMeta={gameInfo.players}
             tournamentID={gameInfo.tournament_id}

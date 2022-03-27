@@ -71,7 +71,10 @@ import {
   SeekRequest,
   SeekState,
 } from '../gen/api/proto/ipc/omgseeks_pb';
-import { GameMetaEvent } from '../gen/api/proto/ipc/omgwords_pb';
+import {
+  ClientGameplayEvent,
+  GameMetaEvent,
+} from '../gen/api/proto/ipc/omgwords_pb';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -87,6 +90,7 @@ type Props = {
   challengeRule: ChallengeRule;
   board: Board;
   sendSocketMsg: (msg: Uint8Array) => void;
+  sendGameplayEvent: (evt: ClientGameplayEvent) => void;
   gameDone: boolean;
   playerMeta: Array<PlayerMetadata>;
   puzzleMode?: boolean;
@@ -272,7 +276,14 @@ export const BoardPanel = React.memo((props: Props) => {
     examinableGameContext.onturn,
   ]);
 
-  const { board, gameID, playerMeta, sendSocketMsg, username } = props;
+  const {
+    board,
+    gameID,
+    playerMeta,
+    sendSocketMsg,
+    sendGameplayEvent,
+    username,
+  } = props;
 
   const makeMove = useCallback(
     (move: string, addl?: string) => {
@@ -325,12 +336,8 @@ export const BoardPanel = React.memo((props: Props) => {
       if (!moveEvt) {
         return;
       }
-      sendSocketMsg(
-        encodeToSocketFmt(
-          MessageType.CLIENT_GAMEPLAY_EVENT,
-          moveEvt.serializeBinary()
-        )
-      );
+      sendGameplayEvent(moveEvt);
+
       // Don't stop the clock; the next user event to come in will change the
       // clock over.
       // stopClock();
@@ -347,7 +354,7 @@ export const BoardPanel = React.memo((props: Props) => {
       placedTiles,
       board,
       gameID,
-      sendSocketMsg,
+      sendGameplayEvent,
       username,
     ]
   );

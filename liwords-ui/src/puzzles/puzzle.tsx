@@ -108,7 +108,6 @@ export const SinglePuzzle = (props: Props) => {
           'GetPuzzle',
           req
         );
-        console.log('got response', resp.toObject());
         if (localStorage?.getItem('poolFormat')) {
           setPoolFormat(
             parseInt(localStorage.getItem('poolFormat') || '0', 10)
@@ -134,8 +133,7 @@ export const SinglePuzzle = (props: Props) => {
 
   // Figure out what rack we should display
   console.log('gamecontextplayers', gameContext.players);
-  const rack =
-    gameContext.players.find((p) => p.onturn)?.currentRack ?? 'ABCDEFG';
+  const rack = gameContext.players.find((p) => p.onturn)?.currentRack ?? '';
   const sortedRack = useMemo(() => sortTiles(rack), [rack]);
   // Play sound here.
 
@@ -184,7 +182,8 @@ export const SinglePuzzle = (props: Props) => {
             currentRack={sortedRack}
             events={gameContext.turns}
             gameID={''} /* no game id for a puzzle */
-            sendSocketMsg={() => {}} // have to overwrite this
+            sendSocketMsg={() => {}}
+            sendGameplayEvent={(evt) => console.log(evt.toObject())}
             gameDone={false}
             playerMeta={gameInfo.players}
             vsBot={false} /* doesn't matter */
