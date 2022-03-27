@@ -1,5 +1,5 @@
 syntax = "proto3";
-package game_service;
+package puzzle_service;
 option go_package = "github.com/domino14/liwords/rpc/api/proto/puzzle_service";
 
 import "macondo/api/proto/macondo/macondo.proto";
@@ -38,8 +38,9 @@ message PuzzleVoteRequest {
 message PuzzleVoteResponse {}
 
 service PuzzleService {
-  rpc GetRandomUnansweredPuzzleIdForUser(RandomUnansweredPuzzleIdRequest) returns(RandomUnansweredPuzzleIdResponse);
-  rpc GetPuzzle(PuzzleRequest) returns(PuzzleResponse);
-  rpc SubmitAnswer(SubmissionRequest) returns(SubmissionResponse);
-  rpc SetPuzzleVote(PuzzleVoteRequest) returns(PuzzleVoteResponse);
+  rpc GetRandomUnansweredPuzzleIdForUser(RandomUnansweredPuzzleIdRequest)
+      returns (RandomUnansweredPuzzleIdResponse);
+  rpc GetPuzzle(PuzzleRequest) returns (PuzzleResponse);
+  rpc SubmitAnswer(SubmissionRequest) returns (SubmissionResponse);
+  rpc SetPuzzleVote(PuzzleVoteRequest) returns (PuzzleVoteResponse);
 }

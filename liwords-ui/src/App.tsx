@@ -6,7 +6,7 @@ import axios from 'axios';
 import 'antd/dist/antd.css';
 
 import { Table as GameTable } from './gameroom/table';
-import { SinglePuzzle } from './gameroom/puzzle';
+import { SinglePuzzle } from './puzzles/puzzle';
 import TileImages from './gameroom/tile_images';
 import { Lobby } from './lobby/lobby';
 import {

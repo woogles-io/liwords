@@ -139,3 +139,28 @@ func UpdateUserRating(ctx context.Context, tx *sql.Tx, userId int64, ratingKey e
 	}
 	return nil
 }
+
+func OpenDB(host, port, name, user, password, sslmode string) (*sql.DB, error) {
+	connStr := PostgresConnString(host, port, name, user, password, sslmode)
+
+	db, err := sql.Open("pgx", connStr)
+	if err != nil {
+		return nil, err
+	}
+
+	err = db.Ping()
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
+}
+
+func PostgresConnString(host, port, name, user, password, sslmode string) string {
+	return fmt.Sprintf("host=%s port=%s user=%s password=%s sslmode=%s dbname=%s",
+		host, port, user, password, sslmode, name)
+}
+
+func MigrationConnString(host, port, name, user, password, sslmode string) string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		user, password, host, port, name, sslmode)
+}

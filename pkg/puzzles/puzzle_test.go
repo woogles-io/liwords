@@ -296,25 +296,24 @@ func TestUniqueSingleTileKey(t *testing.T) {
 func RecreateDB() (*sql.DB, *puzzlesstore.DBStore, int, int, error) {
 	cfg := &config.Config{}
 	cfg.MacondoConfig = common.DefaultConfig
-	cfg.DBConnString = commondb.TestingDBConnStr
+	cfg.DBConnString = commondb.TestingPostgresConnString()
 	cfg.MacondoConfig.DefaultLexicon = common.DefaultLexicon
 	zerolog.SetGlobalLevel(zerolog.Disabled)
 	ctx := context.Background()
 
 	// Recreate the test database
-	commondb.RecreateDB()
+	commondb.RecreateTestDB()
 
 	// Reconnect to the new test database
-	db, err := commondb.OpenDB()
+	db, err := commondb.OpenTestingDB()
 	if err != nil {
 		return nil, nil, 0, 0, err
 	}
 
-	userStore, err := user.NewDBStore(commondb.TestingDBConnStr)
+	userStore, err := user.NewDBStore(commondb.TestingPostgresConnString())
 	if err != nil {
 		return nil, nil, 0, 0, err
 	}
-
 	err = userStore.New(context.Background(), &entity.User{Username: "Puzzler", Email: "puzzler@woogles.io", UUID: PuzzlerUUID})
 	if err != nil {
 		return nil, nil, 0, 0, err
@@ -330,7 +329,7 @@ func RecreateDB() (*sql.DB, *puzzlesstore.DBStore, int, int, error) {
 		return nil, nil, 0, 0, err
 	}
 
-	m, err := migrate.New(commondb.MigrationFile, commondb.MigrationConnString)
+	m, err := migrate.New(commondb.MigrationFile, commondb.TestingMigrationConnString())
 	if err != nil {
 		return nil, nil, 0, 0, err
 	}

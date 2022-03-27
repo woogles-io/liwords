@@ -1,6 +1,6 @@
 import { HomeOutlined } from '@ant-design/icons';
 import { Card } from 'antd';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { postJsonObj } from '../api/api';
 import { Chat } from '../chat/chat';
@@ -8,18 +8,23 @@ import { alphabetFromName } from '../constants/alphabets';
 import { TopBar } from '../navigation/topbar';
 import {
   useExaminableGameContextStoreContext,
-  useExamineStoreContext,
   useLoginStateStoreContext,
   usePoolFormatStoreContext,
 } from '../store/store';
-import { BoardPanel } from './board_panel';
-import { defaultGameInfo, GameInfo, GameMetadata } from './game_info';
-import { Notepad } from './notepad';
-import { PlayerCards } from './player_cards';
-import Pool from './pool';
+import { BoardPanel } from '../gameroom/board_panel';
+import { defaultGameInfo, GameInfo, GameMetadata } from '../gameroom/game_info';
+import { PuzzleScore } from './puzzle_score';
+import Pool from '../gameroom/pool';
+import './puzzles.scss';
 
 type Props = {
   sendChat: (msg: string, chan: string) => void;
+};
+// TODO: Delete this after you hook everything up, César
+const mockData = {
+  attempts: 2,
+  // dateSolved: new Date('2022-03-20 00:01:00'),
+  dateSolved: undefined,
 };
 
 export const SinglePuzzle = (props: Props) => {
@@ -31,12 +36,6 @@ export const SinglePuzzle = (props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const { username, userID, loggedIn } = loginState;
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
-
-  const {
-    isExamining,
-    handleExamineStart,
-    handleExamineGoTo,
-  } = useExamineStoreContext();
 
   useEffect(() => {
     // Prevent backspace unless we're in an input element. We don't want to
@@ -99,8 +98,18 @@ export const SinglePuzzle = (props: Props) => {
     [gameInfo]
   );
 
+  const loadNewPuzzle = useCallback(() => {
+    // TODO: César, when I grow up I want to be a callback that loads a new puzzle...
+  }, []);
+
+  const showSolution = useCallback(() => {
+    // TODO: César, when I grow up I want to be a callback that shows the solution and
+    // tells the backend I gave up. Josh said sending show solution endpoint with no attempts
+    // should do all that.
+  }, []);
+
   const ret = (
-    <div className="game-container">
+    <div className="game-container puzzle-container">
       <TopBar />
       <div className="game-table board-- tile--">
         <div className="chat-area" id="left-sidebar">
@@ -114,12 +123,9 @@ export const SinglePuzzle = (props: Props) => {
             sendChat={props.sendChat}
             defaultChannel="lobby"
             defaultDescription=""
+            supressDefault
           />
-          <React.Fragment key="not-examining">
-            <Notepad includeCard />
-          </React.Fragment>
         </div>
-
         <div className="play-area">
           <BoardPanel
             anonymousViewer={!loggedIn}
@@ -146,8 +152,12 @@ export const SinglePuzzle = (props: Props) => {
         </div>
 
         <div className="data-area" id="right-sidebar">
-          <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
-          <GameInfo meta={gameInfo} tournamentName="" />
+          <PuzzleScore
+            attempts={mockData.attempts}
+            dateSolved={mockData.dateSolved}
+            loadNewPuzzle={loadNewPuzzle}
+            showSolution={showSolution}
+          />
           <Pool
             pool={examinableGameContext?.pool}
             currentRack={sortedRack}
