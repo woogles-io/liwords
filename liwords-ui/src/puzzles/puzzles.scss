@@ -1,0 +1,45 @@
+@import '../base';
+.puzzle-container {
+  .ant-card.pool {
+    order: 3;
+  }
+  .ant-card.puzzle-score {
+    .ant-card-head .ant-card-head-title {
+      padding: 18px 6px;
+      @include colorModed() {
+        color: m($secondary);
+      }
+      font-size: 13px;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+    .ant-card-body {
+      padding: 0 18px 18px;
+    }
+    .stars {
+      .anticon {
+        font-size: 38px;
+        margin-right: 9px;
+        &.anticon-star {
+          @include colorModed() {
+            color: m($timer-low-dark);
+          }
+          &.unearned {
+            @include colorModed() {
+              color: m($gray-subtle);
+            }
+          }
+        }
+      }
+    }
+    .attempts-made {
+      margin-top: 12px;
+    }
+    .actions {
+      margin-top: 12px;
+      button:first-child {
+        margin-left: 0;
+      }
+    }
+  }
+}

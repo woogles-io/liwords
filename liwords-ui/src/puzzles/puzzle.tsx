@@ -1,6 +1,6 @@
 import { HomeOutlined } from '@ant-design/icons';
 import { Card } from 'antd';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { postJsonObj } from '../api/api';
 import { Chat } from '../chat/chat';
@@ -13,11 +13,18 @@ import {
 } from '../store/store';
 import { BoardPanel } from '../gameroom/board_panel';
 import { defaultGameInfo, GameInfo, GameMetadata } from '../gameroom/game_info';
-import { PlayerCards } from '../gameroom/player_cards';
+import { PuzzleScore } from './puzzle_score';
 import Pool from '../gameroom/pool';
+import './puzzles.scss';
 
 type Props = {
   sendChat: (msg: string, chan: string) => void;
+};
+// TODO: Delete this after you hook everything up, César
+const mockData = {
+  attempts: 2,
+  // dateSolved: new Date('2022-03-20 00:01:00'),
+  dateSolved: undefined,
 };
 
 export const SinglePuzzle = (props: Props) => {
@@ -91,6 +98,16 @@ export const SinglePuzzle = (props: Props) => {
     [gameInfo]
   );
 
+  const loadNewPuzzle = useCallback(() => {
+    // TODO: César, when I grow up I want to be a callback that loads a new puzzle...
+  }, []);
+
+  const showSolution = useCallback(() => {
+    // TODO: César, when I grow up I want to be a callback that shows the solution and
+    // tells the backend I gave up. Josh said sending show solution endpoint with no attempts
+    // should do all that.
+  }, []);
+
   const ret = (
     <div className="game-container puzzle-container">
       <TopBar />
@@ -135,6 +152,12 @@ export const SinglePuzzle = (props: Props) => {
         </div>
 
         <div className="data-area" id="right-sidebar">
+          <PuzzleScore
+            attempts={mockData.attempts}
+            dateSolved={mockData.dateSolved}
+            loadNewPuzzle={loadNewPuzzle}
+            showSolution={showSolution}
+          />
           <Pool
             pool={examinableGameContext?.pool}
             currentRack={sortedRack}
