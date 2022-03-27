@@ -8,13 +8,11 @@ import { alphabetFromName } from '../constants/alphabets';
 import { TopBar } from '../navigation/topbar';
 import {
   useExaminableGameContextStoreContext,
-  useExamineStoreContext,
   useLoginStateStoreContext,
   usePoolFormatStoreContext,
 } from '../store/store';
 import { BoardPanel } from './board_panel';
 import { defaultGameInfo, GameInfo, GameMetadata } from './game_info';
-import { Notepad } from './notepad';
 import { PlayerCards } from './player_cards';
 import Pool from './pool';
 
@@ -31,12 +29,6 @@ export const SinglePuzzle = (props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const { username, userID, loggedIn } = loginState;
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
-
-  const {
-    isExamining,
-    handleExamineStart,
-    handleExamineGoTo,
-  } = useExamineStoreContext();
 
   useEffect(() => {
     // Prevent backspace unless we're in an input element. We don't want to
@@ -100,7 +92,7 @@ export const SinglePuzzle = (props: Props) => {
   );
 
   const ret = (
-    <div className="game-container">
+    <div className="game-container puzzle-container">
       <TopBar />
       <div className="game-table board-- tile--">
         <div className="chat-area" id="left-sidebar">
@@ -114,12 +106,9 @@ export const SinglePuzzle = (props: Props) => {
             sendChat={props.sendChat}
             defaultChannel="lobby"
             defaultDescription=""
+            supressDefault
           />
-          <React.Fragment key="not-examining">
-            <Notepad includeCard />
-          </React.Fragment>
         </div>
-
         <div className="play-area">
           <BoardPanel
             anonymousViewer={!loggedIn}
