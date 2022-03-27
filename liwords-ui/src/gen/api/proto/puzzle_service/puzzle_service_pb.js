@@ -19,6 +19,7 @@ var macondo_api_proto_macondo_macondo_pb = require('../../../macondo/api/proto/m
 goog.object.extend(proto, macondo_api_proto_macondo_macondo_pb);
 goog.exportSymbol('proto.puzzle_service.PuzzleRequest', null, global);
 goog.exportSymbol('proto.puzzle_service.PuzzleResponse', null, global);
+goog.exportSymbol('proto.puzzle_service.PuzzleStatus', null, global);
 goog.exportSymbol('proto.puzzle_service.PuzzleVoteRequest', null, global);
 goog.exportSymbol('proto.puzzle_service.PuzzleVoteResponse', null, global);
 goog.exportSymbol('proto.puzzle_service.RandomUnansweredPuzzleIdRequest', null, global);
@@ -225,7 +226,7 @@ proto.puzzle_service.RandomUnansweredPuzzleIdRequest.prototype.toObject = functi
  */
 proto.puzzle_service.RandomUnansweredPuzzleIdRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-
+    lexicon: jspb.Message.getFieldWithDefault(msg, 1, "")
   };
 
   if (includeInstance) {
@@ -262,6 +263,10 @@ proto.puzzle_service.RandomUnansweredPuzzleIdRequest.deserializeBinaryFromReader
     }
     var field = reader.getFieldNumber();
     switch (field) {
+    case 1:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setLexicon(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -291,6 +296,31 @@ proto.puzzle_service.RandomUnansweredPuzzleIdRequest.prototype.serializeBinary =
  */
 proto.puzzle_service.RandomUnansweredPuzzleIdRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
+  f = message.getLexicon();
+  if (f.length > 0) {
+    writer.writeString(
+      1,
+      f
+    );
+  }
+};
+
+
+/**
+ * optional string lexicon = 1;
+ * @return {string}
+ */
+proto.puzzle_service.RandomUnansweredPuzzleIdRequest.prototype.getLexicon = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.puzzle_service.RandomUnansweredPuzzleIdRequest} returns this
+ */
+proto.puzzle_service.RandomUnansweredPuzzleIdRequest.prototype.setLexicon = function(value) {
+  return jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -588,7 +618,8 @@ proto.puzzle_service.PuzzleResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     history: (f = msg.getHistory()) && macondo_api_proto_macondo_macondo_pb.GameHistory.toObject(includeInstance, f),
     beforeText: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    attempts: jspb.Message.getFieldWithDefault(msg, 3, 0)
+    attempts: jspb.Message.getFieldWithDefault(msg, 3, 0),
+    status: jspb.Message.getFieldWithDefault(msg, 4, 0)
   };
 
   if (includeInstance) {
@@ -638,6 +669,10 @@ proto.puzzle_service.PuzzleResponse.deserializeBinaryFromReader = function(msg, 
       var value = /** @type {number} */ (reader.readInt32());
       msg.setAttempts(value);
       break;
+    case 4:
+      var value = /** @type {!proto.puzzle_service.PuzzleStatus} */ (reader.readEnum());
+      msg.setStatus(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -686,6 +721,13 @@ proto.puzzle_service.PuzzleResponse.serializeBinaryToWriter = function(message, 
   if (f !== 0) {
     writer.writeInt32(
       3,
+      f
+    );
+  }
+  f = message.getStatus();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      4,
       f
     );
   }
@@ -762,6 +804,24 @@ proto.puzzle_service.PuzzleResponse.prototype.getAttempts = function() {
  */
 proto.puzzle_service.PuzzleResponse.prototype.setAttempts = function(value) {
   return jspb.Message.setProto3IntField(this, 3, value);
+};
+
+
+/**
+ * optional PuzzleStatus status = 4;
+ * @return {!proto.puzzle_service.PuzzleStatus}
+ */
+proto.puzzle_service.PuzzleResponse.prototype.getStatus = function() {
+  return /** @type {!proto.puzzle_service.PuzzleStatus} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
+};
+
+
+/**
+ * @param {!proto.puzzle_service.PuzzleStatus} value
+ * @return {!proto.puzzle_service.PuzzleResponse} returns this
+ */
+proto.puzzle_service.PuzzleResponse.prototype.setStatus = function(value) {
+  return jspb.Message.setProto3EnumField(this, 4, value);
 };
 
 
@@ -1507,5 +1567,14 @@ proto.puzzle_service.PuzzleVoteResponse.serializeBinaryToWriter = function(messa
   var f = undefined;
 };
 
+
+/**
+ * @enum {number}
+ */
+proto.puzzle_service.PuzzleStatus = {
+  UNANSWERED: 0,
+  CORRECT: 1,
+  INCORRECT: 2
+};
 
 goog.object.extend(exports, proto.puzzle_service);

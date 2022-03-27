@@ -5,6 +5,9 @@ import * as jspb from "google-protobuf";
 import * as macondo_api_proto_macondo_macondo_pb from "../../../macondo/api/proto/macondo/macondo_pb";
 
 export class RandomUnansweredPuzzleIdRequest extends jspb.Message {
+  getLexicon(): string;
+  setLexicon(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): RandomUnansweredPuzzleIdRequest.AsObject;
   static toObject(includeInstance: boolean, msg: RandomUnansweredPuzzleIdRequest): RandomUnansweredPuzzleIdRequest.AsObject;
@@ -17,6 +20,7 @@ export class RandomUnansweredPuzzleIdRequest extends jspb.Message {
 
 export namespace RandomUnansweredPuzzleIdRequest {
   export type AsObject = {
+    lexicon: string,
   }
 }
 
@@ -72,6 +76,9 @@ export class PuzzleResponse extends jspb.Message {
   getAttempts(): number;
   setAttempts(value: number): void;
 
+  getStatus(): PuzzleStatusMap[keyof PuzzleStatusMap];
+  setStatus(value: PuzzleStatusMap[keyof PuzzleStatusMap]): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): PuzzleResponse.AsObject;
   static toObject(includeInstance: boolean, msg: PuzzleResponse): PuzzleResponse.AsObject;
@@ -87,6 +94,7 @@ export namespace PuzzleResponse {
     history?: macondo_api_proto_macondo_macondo_pb.GameHistory.AsObject,
     beforeText: string,
     attempts: number,
+    status: PuzzleStatusMap[keyof PuzzleStatusMap],
   }
 }
 
@@ -197,4 +205,12 @@ export namespace PuzzleVoteResponse {
   export type AsObject = {
   }
 }
+
+export interface PuzzleStatusMap {
+  UNANSWERED: 0;
+  CORRECT: 1;
+  INCORRECT: 2;
+}
+
+export const PuzzleStatus: PuzzleStatusMap;
 

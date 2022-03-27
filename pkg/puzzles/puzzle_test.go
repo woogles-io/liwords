@@ -21,7 +21,6 @@ import (
 	"github.com/domino14/macondo/board"
 	"github.com/domino14/macondo/game"
 	"github.com/domino14/macondo/gcgio"
-	"github.com/domino14/macondo/gen/api/proto/macondo"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -50,22 +49,22 @@ func TestPuzzles(t *testing.T) {
 
 	// paths
 	// - first try
-	//   1. Don't show solution
+	//   1. Incorrect, don't show solution x
 	//   2. Show solution
-	//   3. Correct
+	//   3. Correct x
 	// - not first try
-	//   4. puzzle over
+	//   4. puzzle over x
 	//   -  puzzle not over
-	//     5. Don't show solution
-	//     6. Show solution
-	//     7. Correct
+	//     5. Incorrect, don't show solution x
+	//     6. Show solution x
+	//     7. Correct x
 
 	// Path 1
 	// Submit an incorrect answer
-	pid, err := GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID)
+	pid, err := GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
-	_, _, attempts, err := GetPuzzle(ctx, ps, PuzzlerUUID, pid)
+	_, _, attempts, _, err := GetPuzzle(ctx, ps, PuzzlerUUID, pid)
 	is.NoErr(err)
 	is.Equal(attempts, int32(0))
 
@@ -132,10 +131,10 @@ func TestPuzzles(t *testing.T) {
 
 	// Path 3
 	// Submit a correct answer
-	pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID)
+	pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
-	_, _, attempts, err = GetPuzzle(ctx, ps, PuzzlerUUID, pid)
+	_, _, attempts, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, pid)
 	is.NoErr(err)
 	is.Equal(attempts, int32(0))
 
@@ -168,7 +167,7 @@ func TestPuzzles(t *testing.T) {
 	is.True(recordedCorrect.Bool)
 
 	// Check that the rating transaction rolls back correctly
-	pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID)
+	pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
 	correctAnswer, _, _, _, oldPuzzleRating, err = ps.GetAnswer(ctx, pid)
@@ -190,11 +189,12 @@ func TestPuzzles(t *testing.T) {
 	is.True(common.WithinEpsilon(oldUserRating.Rating, newUserRating.Rating))
 	is.True(common.WithinEpsilon(oldUserRating.RatingDeviation, newUserRating.RatingDeviation))
 
+	// Path 5 and 6
 	// Submit an incorrect answer and then give up
-	pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID)
+	pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
-	_, _, attempts, err = GetPuzzle(ctx, ps, PuzzlerUUID, pid)
+	_, _, attempts, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, pid)
 	is.NoErr(err)
 	is.Equal(attempts, int32(0))
 
@@ -204,25 +204,32 @@ func TestPuzzles(t *testing.T) {
 	is.True(correctAnswer == nil)
 	is.Equal(attempts, int32(1))
 
+	correct, correctAnswer, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, &pb.GameEvent{}, false)
+	is.NoErr(err)
+	is.True(!correct)
+	is.True(correctAnswer == nil)
+	is.Equal(attempts, int32(2))
+
 	correct, correctAnswer, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, nil, true)
 	is.NoErr(err)
 	is.True(!correct)
 	is.True(correctAnswer != nil)
-	is.Equal(attempts, int32(1))
+	is.Equal(attempts, int32(2))
 
 	attempts, recordedCorrect, err = getPuzzleAttempt(ctx, db, PuzzlerUUID, pid)
 	is.NoErr(err)
-	is.Equal(attempts, int32(1))
+	is.Equal(attempts, int32(2))
 	is.True(recordedCorrect.Valid)
 	is.True(!recordedCorrect.Bool)
+
 	// The user should not see repeat puzzles until they
 	// have answered all of them
 
 	for i := 0; i < totalPuzzles-3; i++ {
-		pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID)
+		pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 		is.NoErr(err)
 
-		hist, _, attempts, err := GetPuzzle(ctx, ps, PuzzlerUUID, pid)
+		hist, _, attempts, _, err := GetPuzzle(ctx, ps, PuzzlerUUID, pid)
 		is.NoErr(err)
 		is.Equal(attempts, int32(0))
 
@@ -233,7 +240,7 @@ func TestPuzzles(t *testing.T) {
 		err = db.QueryRowContext(ctx, `SELECT turn_number FROM puzzles WHERE id = $1`, puzzleDBID).Scan(&turnNumber)
 		is.NoErr(err)
 
-		attempts, err = ps.GetAttempts(ctx, PuzzlerUUID, pid)
+		attempts, _, err = ps.GetAttempts(ctx, PuzzlerUUID, pid)
 		is.NoErr(err)
 
 		is.Equal(attempts, int32(0))
@@ -244,10 +251,10 @@ func TestPuzzles(t *testing.T) {
 		is.Equal(attempts, int32(1))
 	}
 
-	pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID)
+	pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
-	attempts, err = ps.GetAttempts(ctx, PuzzlerUUID, pid)
+	attempts, _, err = ps.GetAttempts(ctx, PuzzlerUUID, pid)
 	is.NoErr(err)
 	is.Equal(attempts, int32(1))
 
@@ -279,18 +286,18 @@ func TestPuzzles(t *testing.T) {
 
 func TestUniqueSingleTileKey(t *testing.T) {
 	is := is.New(t)
-	is.Equal(uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: macondo.GameEvent_HORIZONTAL}),
-		uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: macondo.GameEvent_VERTICAL}))
-	is.Equal(uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: ".R", Direction: macondo.GameEvent_HORIZONTAL}),
-		uniqueSingleTileKey(&pb.GameEvent{Row: 7, Column: 11, PlayedTiles: ".R", Direction: macondo.GameEvent_VERTICAL}))
-	is.Equal(uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "B....", Direction: macondo.GameEvent_HORIZONTAL}),
-		uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "B....", Direction: macondo.GameEvent_VERTICAL}))
-	is.Equal(uniqueSingleTileKey(&pb.GameEvent{Row: 9, Column: 3, PlayedTiles: "....X", Direction: macondo.GameEvent_HORIZONTAL}),
-		uniqueSingleTileKey(&pb.GameEvent{Row: 5, Column: 7, PlayedTiles: "....X", Direction: macondo.GameEvent_VERTICAL}))
-	is.Equal(uniqueSingleTileKey(&pb.GameEvent{Row: 11, Column: 9, PlayedTiles: "..A...", Direction: macondo.GameEvent_HORIZONTAL}),
-		uniqueSingleTileKey(&pb.GameEvent{Row: 7, Column: 11, PlayedTiles: "....A..", Direction: macondo.GameEvent_VERTICAL}))
-	is.True(uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "A.", Direction: macondo.GameEvent_HORIZONTAL}) !=
-		uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: macondo.GameEvent_VERTICAL}))
+	is.Equal(uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: pb.GameEvent_HORIZONTAL}),
+		uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: pb.GameEvent_VERTICAL}))
+	is.Equal(uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: ".R", Direction: pb.GameEvent_HORIZONTAL}),
+		uniqueSingleTileKey(&pb.GameEvent{Row: 7, Column: 11, PlayedTiles: ".R", Direction: pb.GameEvent_VERTICAL}))
+	is.Equal(uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "B....", Direction: pb.GameEvent_HORIZONTAL}),
+		uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "B....", Direction: pb.GameEvent_VERTICAL}))
+	is.Equal(uniqueSingleTileKey(&pb.GameEvent{Row: 9, Column: 3, PlayedTiles: "....X", Direction: pb.GameEvent_HORIZONTAL}),
+		uniqueSingleTileKey(&pb.GameEvent{Row: 5, Column: 7, PlayedTiles: "....X", Direction: pb.GameEvent_VERTICAL}))
+	is.Equal(uniqueSingleTileKey(&pb.GameEvent{Row: 11, Column: 9, PlayedTiles: "..A...", Direction: pb.GameEvent_HORIZONTAL}),
+		uniqueSingleTileKey(&pb.GameEvent{Row: 7, Column: 11, PlayedTiles: "....A..", Direction: pb.GameEvent_VERTICAL}))
+	is.True(uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "A.", Direction: pb.GameEvent_HORIZONTAL}) !=
+		uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: pb.GameEvent_VERTICAL}))
 }
 
 func RecreateDB() (*sql.DB, *puzzlesstore.DBStore, int, int, error) {
@@ -366,11 +373,12 @@ func RecreateDB() (*sql.DB, *puzzlesstore.DBStore, int, int, error) {
 		if err != nil {
 			return nil, nil, 0, 0, err
 		}
+		entGame := entity.NewGame(game, common.DefaultGameReq)
 		pcUUID := ""
 		if idx%2 == 1 {
 			pcUUID = PuzzleCreatorUUID
 		}
-		pzls, err := CreatePuzzlesFromGame(ctx, gameStore, puzzlesStore, game, pcUUID, ipc.GameType_ANNOTATED)
+		pzls, err := CreatePuzzlesFromGame(ctx, gameStore, puzzlesStore, entGame, pcUUID, ipc.GameType_ANNOTATED)
 		if err != nil {
 			return nil, nil, 0, 0, err
 		}

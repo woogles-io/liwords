@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS puzzles (
 		turn_number integer NOT NULL,
 		answer jsonb NOT NULL,
 		author_id integer,
+		lexicon text,
 		before_text text,
 		after_text text,
 		rating jsonb NOT NULL,

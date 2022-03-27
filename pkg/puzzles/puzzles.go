@@ -19,13 +19,13 @@ import (
 
 type PuzzleStore interface {
 	CreatePuzzle(ctx context.Context, gameID string, turnNumber int32, answer *macondopb.GameEvent, authorID string,
-		beforeText string, afterText string, tags []macondopb.PuzzleTag) error
-	GetRandomUnansweredPuzzleIdForUser(context.Context, string) (string, error)
-	GetPuzzle(ctx context.Context, userId string, puzzleId string) (*macondopb.GameHistory, string, int32, error)
+		lexicon string, beforeText string, afterText string, tags []macondopb.PuzzleTag) error
+	GetRandomUnansweredPuzzleIdForUser(ctx context.Context, userId string, lexicon string) (string, error)
+	GetPuzzle(ctx context.Context, userId string, puzzleId string) (*macondopb.GameHistory, string, int32, *bool, error)
 	GetAnswer(ctx context.Context, puzzleId string) (*macondopb.GameEvent, string, string, *ipc.GameRequest, *entity.SingleRating, error)
 	SubmitAnswer(ctx context.Context, userId string, ratingKey entity.VariantKey, newUserRating *entity.SingleRating,
 		puzzleId string, newPuzzleRating *entity.SingleRating, userIsCorrect bool, userGaveUp bool) error
-	GetAttempts(ctx context.Context, userId string, puzzleId string) (int32, error)
+	GetAttempts(ctx context.Context, userId string, puzzleId string) (int32, *bool, error)
 	GetUserRating(ctx context.Context, userId string, ratingKey entity.VariantKey) (*entity.SingleRating, error)
 	SetPuzzleVote(ctx context.Context, userId string, puzzleId string, vote int) error
 }
@@ -51,7 +51,7 @@ func CreatePuzzlesFromGame(ctx context.Context, gs *gamestore.DBStore, ps Puzzle
 		}
 
 		for _, pzl := range pzls {
-			err := ps.CreatePuzzle(ctx, pzl.GameId, pzl.TurnNumber, pzl.Answer, authorId, "", "", pzl.Tags)
+			err := ps.CreatePuzzle(ctx, pzl.GameId, pzl.TurnNumber, pzl.Answer, authorId, g.GameReq.Lexicon, "", "", pzl.Tags)
 			if err != nil {
 				return nil, err
 			}
@@ -60,11 +60,11 @@ func CreatePuzzlesFromGame(ctx context.Context, gs *gamestore.DBStore, ps Puzzle
 	return pzls, nil
 }
 
-func GetRandomUnansweredPuzzleIdForUser(ctx context.Context, ps PuzzleStore, userId string) (string, error) {
-	return ps.GetRandomUnansweredPuzzleIdForUser(ctx, userId)
+func GetRandomUnansweredPuzzleIdForUser(ctx context.Context, ps PuzzleStore, userId string, lexicon string) (string, error) {
+	return ps.GetRandomUnansweredPuzzleIdForUser(ctx, userId, lexicon)
 }
 
-func GetPuzzle(ctx context.Context, ps PuzzleStore, userId string, puzzleId string) (*macondopb.GameHistory, string, int32, error) {
+func GetPuzzle(ctx context.Context, ps PuzzleStore, userId string, puzzleId string) (*macondopb.GameHistory, string, int32, *bool, error) {
 	return ps.GetPuzzle(ctx, userId, puzzleId)
 }
 
@@ -77,7 +77,7 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleId string, userId s
 	userIsCorrect := answersAreEqual(userAnswer, correctAnswer)
 
 	// Check if user has already seen this puzzle
-	attempts, err := ps.GetAttempts(ctx, userId, puzzleId)
+	attempts, _, err := ps.GetAttempts(ctx, userId, puzzleId)
 	if err != nil {
 		return false, nil, "", "", -1, err
 	}
@@ -131,7 +131,7 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleId string, userId s
 		return false, nil, "", "", -1, err
 	}
 
-	attempts, err = ps.GetAttempts(ctx, userId, puzzleId)
+	attempts, _, err = ps.GetAttempts(ctx, userId, puzzleId)
 	if err != nil {
 		return false, nil, "", "", -1, err
 	}

@@ -25,7 +25,7 @@ func (ps *PuzzleService) GetRandomUnansweredPuzzleIdForUser(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	puzzleId, err := GetRandomUnansweredPuzzleIdForUser(ctx, ps.puzzleStore, user.UUID)
+	puzzleId, err := GetRandomUnansweredPuzzleIdForUser(ctx, ps.puzzleStore, user.UUID, req.Lexicon)
 	if err != nil {
 		return nil, err
 	}
@@ -37,11 +37,21 @@ func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *pb.PuzzleRequest) (
 	if err != nil {
 		return nil, err
 	}
-	gameHist, beforeText, attempts, err := GetPuzzle(ctx, ps.puzzleStore, user.UUID, req.PuzzleId)
+	gameHist, beforeText, attempts, userIsCorrect, err := GetPuzzle(ctx, ps.puzzleStore, user.UUID, req.PuzzleId)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
-	return &pb.PuzzleResponse{History: gameHist, BeforeText: beforeText, Attempts: attempts}, nil
+
+	status := pb.PuzzleStatus_UNANSWERED
+	if userIsCorrect != nil {
+		if *userIsCorrect {
+			status = pb.PuzzleStatus_CORRECT
+		} else {
+			status = pb.PuzzleStatus_INCORRECT
+		}
+	}
+
+	return &pb.PuzzleResponse{History: gameHist, BeforeText: beforeText, Attempts: attempts, Status: status}, nil
 }
 
 func (ps *PuzzleService) SubmitAnswer(ctx context.Context, req *pb.SubmissionRequest) (*pb.SubmissionResponse, error) {

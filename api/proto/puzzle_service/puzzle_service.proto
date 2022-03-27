@@ -4,16 +4,23 @@ option go_package = "github.com/domino14/liwords/rpc/api/proto/puzzle_service";
 
 import "macondo/api/proto/macondo/macondo.proto";
 
-message RandomUnansweredPuzzleIdRequest {}
+message RandomUnansweredPuzzleIdRequest { string lexicon = 1; }
 
 message RandomUnansweredPuzzleIdResponse { string puzzle_id = 1; }
 
 message PuzzleRequest { string puzzle_id = 1; }
 
+enum PuzzleStatus {
+  UNANSWERED = 0;
+  CORRECT = 1;
+  INCORRECT = 2;
+}
+
 message PuzzleResponse {
   macondo.GameHistory history = 1;
   string before_text = 2;
   int32 attempts = 3;
+  PuzzleStatus status = 4;
 }
 
 message SubmissionRequest {
