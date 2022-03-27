@@ -12,10 +12,16 @@ import {
   usePoolFormatStoreContext,
 } from '../store/store';
 import { BoardPanel } from '../gameroom/board_panel';
-import { defaultGameInfo, GameInfo, GameMetadata } from '../gameroom/game_info';
+import {
+  ChallengeRule,
+  defaultGameInfo,
+  GameInfo,
+  GameMetadata,
+} from '../gameroom/game_info';
 import { PuzzleScore } from './puzzle_score';
 import Pool from '../gameroom/pool';
 import './puzzles.scss';
+import { PuzzleInfo } from './puzzle_info';
 
 type Props = {
   sendChat: (msg: string, chan: string) => void;
@@ -23,8 +29,24 @@ type Props = {
 // TODO: Delete this after you hook everything up, César
 const mockData = {
   attempts: 2,
-  // dateSolved: new Date('2022-03-20 00:01:00'),
-  dateSolved: undefined,
+  dateSolved: new Date('2022-03-20 00:01:00'),
+  // dateSolved: undefined,
+  challengeRule: 'VOID' as ChallengeRule,
+  ratingMode: 'RATED',
+  gameDate: new Date('2021-01-01 00:01:00'),
+  initial_time_seconds: 3000,
+  increment_seconds: 0,
+  max_overtime_minutes: 0,
+  gameUrl: '/game/abcde',
+  lexicon: 'CSW21',
+  variantName: 'classic',
+  // players aren't needed until after solution is shown
+  player1: {
+    nickname: 'magrathean',
+  },
+  player2: {
+    nickname: 'RightBehindYou',
+  },
 };
 
 export const SinglePuzzle = (props: Props) => {
@@ -157,6 +179,20 @@ export const SinglePuzzle = (props: Props) => {
             dateSolved={mockData.dateSolved}
             loadNewPuzzle={loadNewPuzzle}
             showSolution={showSolution}
+          />
+          <PuzzleInfo
+            solved={!!mockData.dateSolved}
+            gameDate={mockData.gameDate}
+            gameUrl={mockData.gameUrl}
+            lexicon={mockData.lexicon}
+            variantName={mockData.variantName}
+            player1={mockData.player1}
+            player2={mockData.player2}
+            ratingMode={mockData.ratingMode}
+            challengeRule={mockData.challengeRule}
+            initial_time_seconds={mockData.initial_time_seconds}
+            increment_seconds={mockData.increment_seconds}
+            max_overtime_minutes={mockData.max_overtime_minutes}
           />
           <Pool
             pool={examinableGameContext?.pool}

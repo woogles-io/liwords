@@ -34,15 +34,15 @@ export const PuzzleScore = React.memo((props: Props) => {
     if (dateSolved) {
       const solveDate = moment(dateSolved).format('MMMM D, YYYY');
       return (
-        <p className="attempts-made">{`Solved after ${attempts} ${
-          attempts == 1 ? 'attempt' : 'attempts'
+        <p className="attempts-made">{`Solved in ${attempts} ${
+          attempts === 1 ? 'attempt' : 'attempts'
         } on ${solveDate}`}</p>
       );
     }
     return (
       <p className="attempts-made">
         {`You have made ${attempts} ${
-          attempts == 1 ? '1 attempt' : 'attempts'
+          attempts === 1 ? '1 attempt' : 'attempts'
         }`}
       </p>
     );

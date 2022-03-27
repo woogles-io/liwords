@@ -42,4 +42,21 @@
       }
     }
   }
+  .ant-card.puzzle-info {
+    .ant-card-head .ant-card-head-title {
+      font-size: 16px;
+      white-space: normal;
+    }
+    .ant-card-body {
+      padding: 0 18px 18px;
+    }
+    .ant-card-extra, .game-settings {
+      text-transform: capitalize;
+    }
+    .user-context-menu {
+      @include colorModed() {
+        color: m($primary-dark);
+      }
+    }
+  }
 }
