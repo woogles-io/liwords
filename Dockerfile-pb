@@ -14,8 +14,8 @@ WORKDIR /tmp/
 RUN unzip protobuf.zip && cp /tmp/bin/protoc /opt && mv /tmp/include /opt
 
 # Install protoc-gen-go
-RUN go get github.com/golang/protobuf/protoc-gen-go \
-    && go get github.com/twitchtv/twirp/protoc-gen-twirp
+RUN go install github.com/golang/protobuf/protoc-gen-go@latest \
+    && go install github.com/twitchtv/twirp/protoc-gen-twirp@latest
 
 FROM node:latest
 
