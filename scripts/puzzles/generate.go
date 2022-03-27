@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"os"
 
@@ -42,35 +41,24 @@ func main() {
 	cfg.MacondoConfig.DefaultLexicon = common.DefaultLexicon
 	zerolog.SetGlobalLevel(zerolog.Disabled)
 
-	// Recreate the test database
-	err = commondb.RecreateDB()
-	if err != nil {
-		panic(err)
-	}
-
 	// Reconnect to the new test database
-	db, err := sql.Open("pgx", "host=localhost port=5432 user=postgres password=pass sslmode=disable database=liwords")
+	db, err := commondb.OpenDB(cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBUser, cfg.DBPassword, cfg.DBSSLMode)
 	if err != nil {
 		panic(err)
 	}
 
-	err = db.Ping()
+	cfg.DBConnString = commondb.PostgresConnString(cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBUser, cfg.DBPassword, cfg.DBSSLMode)
+	userStore, err := user.NewDBStore(cfg.DBConnString)
 	if err != nil {
 		panic(err)
 	}
 
-	userStore, err := user.NewDBStore("host=localhost port=5432 user=postgres password=pass sslmode=disable database=liwords")
-	if err != nil {
-		panic(err)
-	}
-
-	cfg.DBConnString = "host=localhost port=5432 user=postgres password=pass sslmode=disable database=liwords"
 	gameStore, err := game.NewDBStore(cfg, userStore)
 	if err != nil {
 		panic(err)
 	}
 
-	m, err := migrate.New(commondb.MigrationFile, "postgres://postgres:pass@localhost:5432/liwords?sslmode=disable")
+	m, err := migrate.New(commondb.MigrationFile, commondb.MigrationConnString(cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBUser, cfg.DBPassword, cfg.DBSSLMode))
 	if err != nil {
 		panic(err)
 	}
