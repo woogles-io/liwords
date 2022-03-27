@@ -37,6 +37,7 @@ func CreatePuzzlesFromGame(ctx context.Context, gs *gamestore.DBStore, ps Puzzle
 	if err != nil {
 		return nil, err
 	}
+	log.Info().Msgf("created %d puzzles from game %s", len(pzls), g.GameID())
 
 	// Only create if there were puzzles
 	if len(pzls) > 0 {

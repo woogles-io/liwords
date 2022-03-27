@@ -12,7 +12,7 @@ import (
 
 const PuzzleVariant = "puzzle"
 const DefaultLexicon = "CSW21"
-const DefaultLetterDistribution = "English"
+const DefaultLetterDistribution = "english"
 const DefaultVariantName = "classic"
 
 var DefaultConfig = macondoconfig.Config{

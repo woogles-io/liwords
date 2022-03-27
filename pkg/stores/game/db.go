@@ -359,7 +359,7 @@ func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 	if err != nil {
 		return nil, err
 	}
-	log.Info().Interface("hist", hist).Msg("hist-unmarshal")
+	log.Debug().Interface("hist", hist).Msg("hist-unmarshal")
 
 	lexicon := hist.Lexicon
 	if lexicon == "" {

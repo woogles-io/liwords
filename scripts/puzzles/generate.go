@@ -21,6 +21,9 @@ import (
 	"github.com/domino14/liwords/pkg/stores/game"
 	puzzlesstore "github.com/domino14/liwords/pkg/stores/puzzles"
 	"github.com/domino14/liwords/pkg/stores/user"
+	"github.com/domino14/macondo/alphabet"
+	"github.com/domino14/macondo/cross_set"
+	"github.com/domino14/macondo/gaddag"
 	macondogame "github.com/domino14/macondo/game"
 
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
@@ -54,7 +57,8 @@ func main() {
 	gf := flag.NewFlagSet("gf", flag.ContinueOnError)
 	numGames := gf.Int("i", 10, "number of bot vs bot games used to create puzzles")
 	useBotVsBot := gf.Bool("b", false, "use bot vs bot games to create puzzles")
-	useLexicon := gf.String("lex", common.DefaultLexicon, "use lexicon to generate puzzles")
+	lexicon := gf.String("lex", common.DefaultLexicon, "use lexicon to generate puzzles")
+	letterDistribution := gf.String("ld", common.DefaultLetterDistribution, "letter distribution for puzzles")
 	sqlLimit := gf.Int("limit", 100, "sql limit to consider")
 	sqlOffset := gf.Int("offset", 0, "sql offset")
 	err := gf.Parse(os.Args[1:])
@@ -65,7 +69,8 @@ func main() {
 	cfg := &config.Config{}
 	// Only load config from environment variables:
 	cfg.Load(nil)
-	cfg.MacondoConfig.DefaultLexicon = *useLexicon
+	cfg.MacondoConfig.DefaultLexicon = *lexicon
+	cfg.MacondoConfig.DefaultLetterDistribution = *letterDistribution
 
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	log.Info().Msgf("Loaded config: %v", cfg)
@@ -113,31 +118,59 @@ func main() {
 		}
 		defer rows.Close()
 		numGames := 0
+		numPuzzles := 0
+
+		// For non-bot-v-bot games we need to "hydrate" the game we get back
+		// from the database with the right data structures in order for it
+		// to generate moves properly.
+		gd, err := gaddag.Get(&cfg.MacondoConfig, *lexicon)
+		if err != nil {
+			panic(err)
+		}
+		dist, err := alphabet.Get(&cfg.MacondoConfig, *letterDistribution)
+		if err != nil {
+			panic(err)
+		}
+		csgen := cross_set.GaddagCrossSetGenerator{Dist: dist, Gaddag: gd}
+
 		for rows.Next() {
 			var UUID string
 			if err := rows.Scan(&UUID); err != nil {
 				log.Err(err).Msg("games-scan")
 			}
-			fmt.Printf("uuid: %s\n", UUID)
 			entGame, err := gameStore.Get(ctx, UUID)
 			if err != nil {
 				log.Err(err).Msg("games-store")
 			}
-			if entGame.GameReq.Lexicon != *useLexicon {
+			if entGame.GameReq.Lexicon != *lexicon {
 				continue
 			}
-			numGames += 1
-			// need pvp game changes here?
+			if entGame.GameReq.Rules.LetterDistributionName != *letterDistribution {
+				continue
+			}
+			_, variant, err := entity.VariantFromGameReq(entGame.GameReq)
+			if err != nil {
+				panic(err)
+			}
+			if variant != macondogame.VarClassic {
+				continue
+			}
+			// Set cross-set generator so that it can actually generate moves.
+			entGame.Game.SetCrossSetGen(csgen)
 			pzls, err := puzzles.CreatePuzzlesFromGame(ctx, gameStore, puzzlesStore, entGame, "", pb.GameType_NATIVE)
 			for _, pzl := range pzls {
+				numPuzzles += 1
 				fmt.Printf("liwords.localhost/game/%s?turn=%d\n", pzl.GetGameId(), pzl.GetTurnNumber()+1)
+			}
+			if len(pzls) > 0 {
+				numGames += 1
 			}
 			if err != nil {
 				fmt.Println(err.Error())
 				log.Err(err).Msg("create-puzzles-from-game")
 			}
 		}
-		log.Info().Msgf("considered %d games", numGames)
+		log.Info().Msgf("created %d puzzles from %d games", numPuzzles, numGames)
 	} else {
 		for i := 0; i < *numGames; i++ {
 			r := automatic.NewGameRunner(nil, &cfg.MacondoConfig)
