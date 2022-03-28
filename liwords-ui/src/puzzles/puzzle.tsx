@@ -30,6 +30,8 @@ import {
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { sortTiles } from '../store/constants';
 import { Notepad } from '../gameroom/notepad';
+import { PlayerCards } from '../gameroom/player_cards';
+import { StaticPlayerCards } from './static_player_cards';
 
 type Props = {
   sendChat: (msg: string, chan: string) => void;
@@ -37,8 +39,8 @@ type Props = {
 // TODO: Delete this after you hook everything up, César
 const mockData = {
   attempts: 2,
-  // dateSolved: new Date('2022-03-20 00:01:00'),
-  dateSolved: undefined,
+  dateSolved: new Date('2022-03-20 00:01:00'),
+  // dateSolved: undefined,
   challengeRule: 'VOID' as ChallengeRule,
   ratingMode: 'RATED',
   gameDate: new Date('2021-01-01 00:01:00'),
@@ -49,6 +51,9 @@ const mockData = {
   lexicon: 'CSW21',
   variantName: 'classic',
   // players aren't needed until after solution is shown
+  p0Score: 324,
+  p1Score: 325,
+  playerOnTurn: 0, // 0 based
   player1: {
     nickname: 'magrathean',
   },
@@ -227,6 +232,11 @@ export const SinglePuzzle = (props: Props) => {
             poolFormat={poolFormat}
             setPoolFormat={setPoolFormat}
             alphabet={alphabet}
+          />
+          <StaticPlayerCards
+            playerOnTurn={gameContext.onturn}
+            p0Score={gameContext?.players[0]?.score || 0}
+            p1Score={gameContext?.players[1]?.score || 0}
           />
         </div>
       </div>

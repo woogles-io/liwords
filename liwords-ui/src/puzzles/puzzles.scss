@@ -1,6 +1,9 @@
 @import '../base';
 .puzzle-container {
   .ant-card.pool {
+    order: 2;
+  }
+  .ant-card.player-cards {
     order: 3;
   }
   .ant-card.puzzle-score {
@@ -42,6 +45,18 @@
       }
     }
   }
+
+  .player-cards.ant-card .mini-player {
+    .player-avatar {
+      width: 40px;
+      min-width: 40px;
+      height: 40px;
+      font-size: 30px;
+    }
+    .ant-row.player {
+      padding: 18px 6px;
+    }
+  }
   .ant-card.puzzle-info {
     .ant-card-head .ant-card-head-title {
       font-size: 16px;
@@ -57,6 +72,39 @@
       @include colorModed() {
         color: m($primary-dark);
       }
+    }
+  }
+
+  .game-controls {
+    justify-content: center;
+    left: 0;
+    width: 100%;
+    .secondary-controls {
+      flex-direction: row;
+      width: auto;
+      button {
+        height: 32px;
+      }
+      &:nth-child(2) {
+        order: 1;
+      }
+    }
+    button.ant-btn {
+      font-size: 14px;
+      margin: 0 6px;
+      &.play {
+        order: 2;
+        min-width: auto;
+        width: auto;
+        height: 32px;
+      }
+    }
+  }
+  .ant-affix {
+    position: static !important;
+    height: auto !important;
+    @include colorModed() {
+      border-bottom: 0;
     }
   }
 }
