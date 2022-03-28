@@ -17,6 +17,7 @@ import (
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/macondo/board"
 	"github.com/domino14/macondo/game"
@@ -69,35 +70,40 @@ func TestPuzzles(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(curatedPuzzles, authoredPuzzles)
 
-	// paths
-	// - first try
-	//   1. Incorrect, don't show solution x
-	//   2. Show solution
-	//   3. Correct x
-	// - not first try
-	//   4. puzzle over x
-	//   -  puzzle not over
-	//     5. Incorrect, don't show solution x
-	//     6. Show solution x
-	//     7. Correct x
+	// Paths
+	//   - First attempt
+	// 1   - Incorrect, don't show solution
+	// 2   - Show solution
+	// 3   - Correct
+	//   - After first attempt
+	// 4   - puzzle over
+	//     - puzzle not over
+	// 5     - Incorrect, don't show solution
+	// 6     - Show solution
+	// 7     - Correct
 
 	// Path 1
 	// Submit an incorrect answer
 	pid, err := GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
-	_, _, attempts, _, err := GetPuzzle(ctx, ps, PuzzlerUUID, pid)
+	_, _, attempts, userIsCorrect, err := GetPuzzle(ctx, ps, PuzzlerUUID, pid)
 	is.NoErr(err)
 	is.Equal(attempts, int32(0))
+	is.True(userIsCorrect == nil)
 
 	correct, correctAnswer, gameId, _, attempts, err := SubmitAnswer(ctx, ps, pid, PuzzlerUUID, &ipc.ClientGameplayEvent{}, false)
 	is.NoErr(err)
 	is.Equal(attempts, int32(1))
+	is.True(!correct)
 	is.True(correctAnswer == nil)
 	is.Equal(gameId, "")
+	is.Equal(attempts, int32(1))
 
 	correctAnswer, _, _, _, newPuzzleRating, err := ps.GetAnswer(ctx, pid)
 	is.NoErr(err)
+	is.True(correctAnswer != nil)
+
 	newUserRating, err := getUserRating(ctx, db, PuzzlerUUID, rk)
 	is.NoErr(err)
 
@@ -215,7 +221,7 @@ func TestPuzzles(t *testing.T) {
 	is.True(common.WithinEpsilon(oldUserRating.RatingDeviation, newUserRating.RatingDeviation))
 
 	// Path 5 and 6
-	// Submit an incorrect answer and then give up
+	// Submit incorrect answers and then give up
 	pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
@@ -247,12 +253,39 @@ func TestPuzzles(t *testing.T) {
 	is.True(recordedCorrect.Valid)
 	is.True(!recordedCorrect.Bool)
 
+	// Path 2
+	// Give up immediately without submitting any answers
+	pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
+
+	_, _, attempts, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, pid)
+	is.NoErr(err)
+	is.Equal(attempts, int32(0))
+
+	correct, correctAnswer, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, nil, true)
+	is.NoErr(err)
+	is.True(!correct)
+	is.True(correctAnswer != nil)
+	is.Equal(attempts, int32(0))
+
+	attempts, recordedCorrect, err = getPuzzleAttempt(ctx, db, PuzzlerUUID, pid)
+	is.NoErr(err)
+	is.Equal(attempts, int32(0))
+	is.True(recordedCorrect.Valid)
+	is.True(!recordedCorrect.Bool)
+
 	// The user should not see repeat puzzles until they
 	// have answered all of them
+	unseenPuzzles, err := getNumUnattemptedPuzzlesInLexicon(ctx, db, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
 
-	for i := 0; i < totalPuzzles-3; i++ {
+	for i := 0; i < unseenPuzzles; i++ {
 		pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 		is.NoErr(err)
+
+		puzzleLexicon, err := getPuzzleLexicon(ctx, db, pid)
+		is.NoErr(err)
+		is.Equal(puzzleLexicon, common.DefaultGameReq.Lexicon)
 
 		hist, _, attempts, _, err := GetPuzzle(ctx, ps, PuzzlerUUID, pid)
 		is.NoErr(err)
@@ -276,12 +309,25 @@ func TestPuzzles(t *testing.T) {
 		is.Equal(attempts, int32(1))
 	}
 
-	pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	// The user should only see puzzles for their requested lexicon
+	// regardless of how many puzzles they request
+	attemptedPuzzles, err := getNumAttemptedPuzzles(ctx, db, PuzzlerUUID)
 	is.NoErr(err)
 
-	attempts, _, err = ps.GetAttempts(ctx, PuzzlerUUID, pid)
+	unattemptedPuzzles, err := getNumUnattemptedPuzzles(ctx, db, PuzzlerUUID)
 	is.NoErr(err)
-	is.Equal(attempts, int32(1))
+	is.Equal(totalPuzzles, attemptedPuzzles+unattemptedPuzzles)
+
+	for i := 0; i < totalPuzzles*10; i++ {
+		pid, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+		is.NoErr(err)
+		_, _, _, _, _, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, &ipc.ClientGameplayEvent{}, false)
+		is.NoErr(err)
+	}
+
+	newAttemptedPuzzles, err := getNumAttemptedPuzzles(ctx, db, PuzzlerUUID)
+	is.NoErr(err)
+	is.Equal(newAttemptedPuzzles, attemptedPuzzles)
 
 	// Test voting system
 
@@ -398,11 +444,14 @@ func RecreateDB() (*sql.DB, *puzzlesstore.DBStore, int, int, error) {
 		if err != nil {
 			return nil, nil, 0, 0, err
 		}
-		entGame := entity.NewGame(game, common.DefaultGameReq)
+		gameReq := proto.Clone(common.DefaultGameReq).(*ipc.GameRequest)
+
 		pcUUID := ""
 		if idx%2 == 1 {
 			pcUUID = PuzzleCreatorUUID
+			gameReq.Lexicon = "CSW19"
 		}
+		entGame := entity.NewGame(game, gameReq)
 		pzls, err := CreatePuzzlesFromGame(ctx, gameStore, puzzlesStore, entGame, pcUUID, ipc.GameType_ANNOTATED)
 		if err != nil {
 			return nil, nil, 0, 0, err
@@ -466,6 +515,54 @@ func getPuzzleAttempt(ctx context.Context, db *sql.DB, userUUID string, puzzleUU
 		return 0, nil, err
 	}
 	return attempts, correct, nil
+}
+
+func getNumUnattemptedPuzzles(ctx context.Context, db *sql.DB, userUUID string) (int, error) {
+	uid, err := transactGetDBIDFromUUID(ctx, db, "users", userUUID)
+	if err != nil {
+		return -1, err
+	}
+	var unseen int
+	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM puzzles WHERE puzzles.id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $1)`, uid).Scan(&unseen)
+	if err != nil {
+		return -1, err
+	}
+	return unseen, nil
+}
+
+func getNumAttemptedPuzzles(ctx context.Context, db *sql.DB, userUUID string) (int, error) {
+	uid, err := transactGetDBIDFromUUID(ctx, db, "users", userUUID)
+	if err != nil {
+		return -1, err
+	}
+	var attempted int
+	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM puzzle_attempts WHERE user_id = $1`, uid).Scan(&attempted)
+	if err != nil {
+		return -1, err
+	}
+	return attempted, nil
+}
+
+func getNumUnattemptedPuzzlesInLexicon(ctx context.Context, db *sql.DB, userUUID string, lexicon string) (int, error) {
+	uid, err := transactGetDBIDFromUUID(ctx, db, "users", userUUID)
+	if err != nil {
+		return -1, err
+	}
+	var unseen int
+	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM puzzles WHERE lexicon = $1 AND puzzles.id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $2)`, lexicon, uid).Scan(&unseen)
+	if err != nil {
+		return -1, err
+	}
+	return unseen, nil
+}
+
+func getPuzzleLexicon(ctx context.Context, db *sql.DB, puzzleUUID string) (string, error) {
+	var lexicon string
+	err := db.QueryRowContext(ctx, `SELECT lexicon FROM puzzles WHERE uuid = $1`, puzzleUUID).Scan(&lexicon)
+	if err != nil {
+		return "", err
+	}
+	return lexicon, nil
 }
 
 func transactGetDBIDFromUUID(ctx context.Context, db *sql.DB, table string, uuid string) (int64, error) {

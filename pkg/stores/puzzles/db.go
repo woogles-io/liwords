@@ -124,10 +124,13 @@ func (s *DBStore) GetRandomUnansweredPuzzleIdForUser(ctx context.Context, userId
 		// Try again, but looking before the id instead
 		err = tx.QueryRowContext(ctx, `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $2) AND id <= $3 ORDER BY id DESC LIMIT 1`, lexicon, userDBID, randomId.Int64).Scan(&puzzleId)
 	}
+	// The user has answered all available puzzles.
+	// Return any random puzzle
 	if err == sql.ErrNoRows {
-		// The user has answered all available puzzles.
-		// Return any random puzzle
 		err = tx.QueryRowContext(ctx, `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id > $2 ORDER BY id LIMIT 1`, lexicon, randomId.Int64).Scan(&puzzleId)
+	}
+	if err == sql.ErrNoRows {
+		err = tx.QueryRowContext(ctx, `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id <= $2 ORDER BY id DESC LIMIT 1`, lexicon, randomId.Int64).Scan(&puzzleId)
 	}
 	if err == sql.ErrNoRows {
 		return "", fmt.Errorf("no puzzles found for user: %s", userId)

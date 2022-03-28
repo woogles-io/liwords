@@ -78,7 +78,7 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleId string, userId s
 	userIsCorrect := answersAreEqual(userAnswer, correctAnswer)
 
 	// Check if user has already seen this puzzle
-	attempts, _, err := ps.GetAttempts(ctx, userId, puzzleId)
+	attempts, userPreviousCorrect, err := ps.GetAttempts(ctx, userId, puzzleId)
 	if err != nil {
 		return false, nil, "", "", -1, err
 	}
@@ -87,7 +87,7 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleId string, userId s
 	var newUserSingleRating *entity.SingleRating
 	rk := ratingKey(req)
 
-	if attempts == 0 {
+	if attempts == 0 && userPreviousCorrect == nil {
 		// Get the user ratings
 		userRating, err := ps.GetUserRating(ctx, userId, rk)
 		if err != nil {
