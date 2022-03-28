@@ -116,3 +116,31 @@ export const tilePlacementEventDisplay = (evt: GameEvent, board: Board) => {
   }
   return m;
 };
+
+export const computeLeave = (tilesPlayed: string, rack: string) => {
+  const tileDict: { [k: string]: number } = {};
+  for (let i = 0; i < rack.length; i++) {
+    const tile = rack[i];
+    if (!tileDict[tile]) {
+      tileDict[tile] = 1;
+    } else {
+      tileDict[tile] += 1;
+    }
+  }
+  const leave = [];
+  for (let i = 0; i < tilesPlayed.length; i++) {
+    let tile = tilesPlayed[i];
+    if (tile.toLowerCase() === tile) {
+      tile = Blank;
+    }
+    tileDict[tile] -= 1;
+  }
+  for (const tile in tileDict) {
+    const n = tileDict[tile];
+    for (let i = 0; i < n; i++) {
+      leave.push(tile);
+    }
+  }
+  leave.sort();
+  return leave.join('');
+};

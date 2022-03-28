@@ -32,19 +32,26 @@ import { sortTiles } from '../store/constants';
 import { Notepad } from '../gameroom/notepad';
 import { StaticPlayerCards } from './static_player_cards';
 
-import { ClientGameplayEvent } from '../gen/api/proto/ipc/omgwords_pb';
-import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import {
+  GameEvent,
+  GameHistory,
+} from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { excludedLexica, LexiconFormItem } from '../shared/lexicon_display';
 import { Store } from 'antd/lib/form/interface';
 
+import {
+  ClientGameplayEvent,
+  ServerGameplayEvent,
+} from '../gen/api/proto/ipc/omgwords_pb';
+import { computeLeave } from '../utils/cwgame/game_event';
 type Props = {
   sendChat: (msg: string, chan: string) => void;
 };
 // TODO: Delete this after you hook everything up, César
 const mockData = {
   attempts: 2,
-  dateSolved: new Date('2022-03-20 00:01:00'),
-  // dateSolved: undefined,
+  //dateSolved: new Date('2022-03-20 00:01:00'),
+  dateSolved: undefined,
   challengeRule: 'VOID' as ChallengeRule,
   ratingMode: 'RATED',
   gameDate: new Date('2021-01-01 00:01:00'),
@@ -77,6 +84,7 @@ export const SinglePuzzle = (props: Props) => {
   const { username, userID, loggedIn } = loginState;
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
+  const [history, setHistory] = useState<GameHistory | undefined>(undefined);
 
   useEffect(() => {
     if (!puzzleID) {
@@ -131,6 +139,7 @@ export const SinglePuzzle = (props: Props) => {
           actionType: ActionType.SetupStaticPosition,
           payload: resp.getHistory(),
         });
+        setHistory(resp.getHistory());
       } catch (err) {
         message.error({
           content: err.message,
@@ -153,9 +162,12 @@ export const SinglePuzzle = (props: Props) => {
   // copy-pasting from table.tsx
 
   // Figure out what rack we should display
-  console.log('gamecontextplayers', gameContext.players);
   const rack = gameContext.players.find((p) => p.onturn)?.currentRack ?? '';
   const sortedRack = useMemo(() => sortTiles(rack), [rack]);
+  const userIDOnTurn = useMemo(
+    () => gameContext.players.find((p) => p.onturn)?.userID,
+    [gameContext]
+  );
   // Play sound here.
 
   const alphabet = useMemo(
@@ -168,11 +180,54 @@ export const SinglePuzzle = (props: Props) => {
     // TODO: César, when I grow up I want to be a callback that loads a new puzzle...
   }, []);
 
-  const showSolution = useCallback(() => {
-    // TODO: César, when I grow up I want to be a callback that shows the solution and
-    // tells the backend I gave up. Josh said sending show solution endpoint with no attempts
-    // should do all that.
-  }, []);
+  const showSolution = useCallback(async () => {
+    const req = new SubmissionRequest();
+    req.setShowSolution(true);
+    req.setPuzzleId(puzzleID);
+
+    console.log('showing solution?', userIDOnTurn, gameContext.players);
+    try {
+      const resp = await postProto(
+        SubmissionResponse,
+        'puzzle_service.PuzzleService',
+        'SubmitAnswer',
+        req
+      );
+      console.log('got resp', resp.toObject());
+      const solution = resp.getCorrectAnswer();
+      const sge = new ServerGameplayEvent();
+      // This is ridiculous and will need to change when we move to PlayerIndex:
+      solution?.setNickname(
+        history
+          ?.getPlayersList()
+          .find((p) => p.getUserId() === userIDOnTurn)
+          ?.getNickname()!
+      );
+      sge.setEvent(solution);
+      sge.setGameId(resp.getGameId());
+      sge.setUserId(userIDOnTurn!);
+
+      if (solution) {
+        sge.setNewRack(computeLeave(solution.getPlayedTiles(), sortedRack));
+      }
+      dispatchGameContext({
+        actionType: ActionType.AddGameEvent,
+        payload: sge,
+      });
+    } catch (err) {
+      message.error({
+        content: err.message,
+        duration: 5,
+      });
+    }
+  }, [
+    puzzleID,
+    dispatchGameContext,
+    sortedRack,
+    userIDOnTurn,
+    gameContext.players,
+    history?.getPlayersList,
+  ]);
 
   const attemptPuzzle = useCallback(
     async (evt: ClientGameplayEvent) => {
@@ -183,10 +238,16 @@ export const SinglePuzzle = (props: Props) => {
         const resp = await postProto(
           SubmissionResponse,
           'puzzle_service.PuzzleService',
-          'SubmissionRequest',
+          'SubmitAnswer',
           req
         );
         console.log('got resp', resp.toObject());
+        if (resp.getUserIsCorrect()) {
+          // TODO: The user got the answer right
+          // display resp.getAttempts();
+        } else {
+          // Wrong answer
+        }
       } catch (err) {
         message.error({
           content: err.message,

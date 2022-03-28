@@ -20,7 +20,7 @@ export const PuzzleScore = React.memo((props: Props) => {
   const { attempts, dateSolved, loadNewPuzzle, showSolution } = props;
   const score = calculateScore(!!dateSolved, attempts);
   const renderScore = useMemo(() => {
-    let ret: ReactNode[] = [];
+    const ret: ReactNode[] = [];
     for (let i = score; i > 0; i--) {
       ret.push(<StarFilled />);
     }
@@ -68,7 +68,7 @@ export const PuzzleScore = React.memo((props: Props) => {
         </Button>
       </div>
     );
-  }, [dateSolved]);
+  }, [dateSolved, loadNewPuzzle, showSolution]);
   return (
     <Card className="puzzle-score" title="Puzzle Mode">
       <div className="stars">{renderScore}</div>

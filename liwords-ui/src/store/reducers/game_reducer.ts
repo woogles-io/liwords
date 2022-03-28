@@ -501,7 +501,7 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       if (sge.getGameId() !== state.gameID) {
         return state; // no change
       }
-      console.log('add game event', sge);
+
       const ngs = newGameStateFromGameplayEvent(state, sge);
 
       // Always pass the clock ref along. Begin imperative section:

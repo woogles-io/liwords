@@ -74,15 +74,14 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleId string, userId s
 	if err != nil {
 		return false, nil, "", "", -1, err
 	}
-
 	userIsCorrect := answersAreEqual(userAnswer, correctAnswer)
-
 	// Check if user has already seen this puzzle
 	attempts, userPreviousCorrect, err := ps.GetAttempts(ctx, userId, puzzleId)
 	if err != nil {
 		return false, nil, "", "", -1, err
 	}
-
+	log.Debug().Interface("userPreviousCorrect", userPreviousCorrect).
+		Int32("attempts", attempts).Msg("equal")
 	var newPuzzleSingleRating *entity.SingleRating
 	var newUserSingleRating *entity.SingleRating
 	rk := ratingKey(req)
@@ -185,6 +184,7 @@ func answersAreEqual(userAnswer *ipc.ClientGameplayEvent, correctAnswer *macondo
 		log.Info().Msg("puzzle answer nil")
 		return false
 	}
+	log.Debug().Interface("converted", converted).Msg("converted-event")
 
 	if converted.Type == macondopb.GameEvent_TILE_PLACEMENT_MOVE &&
 		correctAnswer.Type == macondopb.GameEvent_TILE_PLACEMENT_MOVE &&
