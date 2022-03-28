@@ -1,5 +1,5 @@
 import { HomeOutlined } from '@ant-design/icons';
-import { Card, message } from 'antd';
+import { Button, Card, Form, message, Modal } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { postJsonObj, postProto } from '../api/api';
@@ -7,7 +7,6 @@ import { Chat } from '../chat/chat';
 import { alphabetFromName } from '../constants/alphabets';
 import { TopBar } from '../navigation/topbar';
 import {
-  useExaminableGameContextStoreContext,
   useGameContextStoreContext,
   useLoginStateStoreContext,
   usePoolFormatStoreContext,
@@ -16,7 +15,6 @@ import { BoardPanel } from '../gameroom/board_panel';
 import {
   ChallengeRule,
   defaultGameInfo,
-  GameInfo,
   GameMetadata,
 } from '../gameroom/game_info';
 import { PuzzleScore } from './puzzle_score';
@@ -32,10 +30,12 @@ import {
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { sortTiles } from '../store/constants';
 import { Notepad } from '../gameroom/notepad';
-import { PlayerCards } from '../gameroom/player_cards';
 import { StaticPlayerCards } from './static_player_cards';
+
 import { ClientGameplayEvent } from '../gen/api/proto/ipc/omgwords_pb';
 import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { excludedLexica, LexiconFormItem } from '../shared/lexicon_display';
+import { Store } from 'antd/lib/form/interface';
 
 type Props = {
   sendChat: (msg: string, chan: string) => void;
@@ -69,14 +69,24 @@ const mockData = {
 export const SinglePuzzle = (props: Props) => {
   const { puzzleID } = useParams();
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
+  const [userLexicon, setUserLexicon] = useState<string | undefined>(
+    localStorage?.getItem('puzzleLexicon') || undefined
+  );
+  const [showLexiconModal, setShowLexiconModal] = useState(false);
   const { loginState } = useLoginStateStoreContext();
   const { username, userID, loggedIn } = loginState;
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
+
+  useEffect(() => {
+    if (!puzzleID) {
+      setShowLexiconModal(true);
+    }
+  }, [puzzleID]);
+
   useEffect(() => {
     // Prevent backspace unless we're in an input element. We don't want to
     // leave if we're on Firefox.
-
     const rx = /INPUT|SELECT|TEXTAREA/i;
     const evtHandler = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
@@ -101,12 +111,7 @@ export const SinglePuzzle = (props: Props) => {
   }, []);
 
   useEffect(() => {
-    // Request Puzzle API to get info about the puzzle on load.
-    console.log('fetching puzzle info');
-    dispatchGameContext({
-      actionType: ActionType.ClearHistory,
-      payload: 'noclock',
-    });
+    // Request Puzzle API to get info about the puzzle on load if we have an id.
     async function fetchPuzzleData() {
       const req = new PuzzleRequest();
       req.setPuzzleId(puzzleID);
@@ -133,7 +138,15 @@ export const SinglePuzzle = (props: Props) => {
         });
       }
     }
-    fetchPuzzleData();
+    if (puzzleID) {
+      console.log('fetching puzzle info');
+      dispatchGameContext({
+        actionType: ActionType.ClearHistory,
+        payload: 'noclock',
+      });
+
+      fetchPuzzleData();
+    }
   }, [dispatchGameContext, puzzleID, setPoolFormat]);
 
   // add definitions stuff here. We should make common library instead of
@@ -184,6 +197,50 @@ export const SinglePuzzle = (props: Props) => {
     [puzzleID]
   );
 
+  useEffect(() => {
+    if (userLexicon) {
+      loadNewPuzzle();
+    }
+  }, [loadNewPuzzle, userLexicon]);
+
+  // This is displayed if there is no puzzle id and no preferred puzzle lexicon saved in local storage
+  const lexiconModal = useMemo(() => {
+    console.log('ugh', puzzleID, userLexicon, showLexiconModal);
+    if (!puzzleID && !userLexicon) {
+      return (
+        <Modal
+          className="puzzle-lexicon-modal"
+          closable={false}
+          destroyOnClose
+          visible={showLexiconModal}
+          title="Welcome to puzzle mode!"
+          footer={[
+            <button
+              disabled={false}
+              className="primary"
+              form="chooseLexicon"
+              key="ok"
+              type="submit"
+            >
+              Okay
+            </button>,
+          ]}
+        >
+          <Form
+            name="chooseLexicon"
+            onFinish={(val: Store) => {
+              localStorage?.setItem('puzzleLexicon', val.lexicon);
+              setUserLexicon(val.lexicon);
+            }}
+          >
+            <LexiconFormItem excludedLexica={excludedLexica(false, false)} />
+          </Form>
+        </Modal>
+      );
+    }
+    return null;
+  }, [puzzleID, showLexiconModal, userLexicon]);
+
   const ret = (
     <div className="game-container puzzle-container">
       <TopBar />
@@ -206,6 +263,7 @@ export const SinglePuzzle = (props: Props) => {
           </React.Fragment>
         </div>
         <div className="play-area">
+          {lexiconModal}
           <BoardPanel
             anonymousViewer={!loggedIn}
             username={username}

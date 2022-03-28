@@ -259,6 +259,10 @@ const App = React.memo(() => {
           <SinglePuzzle sendChat={sendChat} />
         </Route>
 
+        <Route path="/puzzle">
+          <SinglePuzzle sendChat={sendChat} />
+        </Route>
+
         <Route path="/about">
           <Team />
         </Route>

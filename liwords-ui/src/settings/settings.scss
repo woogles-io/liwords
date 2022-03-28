@@ -480,7 +480,7 @@
     }
   }
 }
-.tile-selection, .board-selection {
+.tile-selection, .board-selection, .puzzle-lexicon-selection {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -489,9 +489,10 @@
     min-width: 150px;
   }
   .board-preview {
-    transform: scale(0.6);
-    left: -96px;
-    top: -96px;
+    transform: scale(0.8);
+    left: -32px;
+    top: -18px;
+    margin-bottom: -48px;
   }
   .previewer {
     display: flex;
@@ -499,6 +500,10 @@
     .tile-previewer {
       margin: 6px 6px 0 0;
       display: flex;
+    }
+    .board-spaces-container, .board-spaces, .tiles {
+      width: 310px;
+      height: auto;
     }
   }
 
