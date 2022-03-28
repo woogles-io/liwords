@@ -27,11 +27,15 @@ import { ActionType } from '../actions/actions';
 import {
   PuzzleRequest,
   PuzzleResponse,
+  SubmissionRequest,
+  SubmissionResponse,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { sortTiles } from '../store/constants';
 import { Notepad } from '../gameroom/notepad';
 import { PlayerCards } from '../gameroom/player_cards';
 import { StaticPlayerCards } from './static_player_cards';
+import { ClientGameplayEvent } from '../gen/api/proto/ipc/omgwords_pb';
+import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
 
 type Props = {
   sendChat: (msg: string, chan: string) => void;
@@ -123,7 +127,6 @@ export const SinglePuzzle = (props: Props) => {
           payload: resp.getHistory(),
         });
       } catch (err) {
-        console.log(err, 'is of type', typeof err);
         message.error({
           content: err.message,
           duration: 5,
@@ -158,6 +161,29 @@ export const SinglePuzzle = (props: Props) => {
     // should do all that.
   }, []);
 
+  const attemptPuzzle = useCallback(
+    async (evt: ClientGameplayEvent) => {
+      const req = new SubmissionRequest();
+      req.setAnswer(evt);
+      req.setPuzzleId(puzzleID);
+      try {
+        const resp = await postProto(
+          SubmissionResponse,
+          'puzzle_service.PuzzleService',
+          'SubmissionRequest',
+          req
+        );
+        console.log('got resp', resp.toObject());
+      } catch (err) {
+        message.error({
+          content: err.message,
+          duration: 5,
+        });
+      }
+    },
+    [puzzleID]
+  );
+
   const ret = (
     <div className="game-container puzzle-container">
       <TopBar />
@@ -188,7 +214,7 @@ export const SinglePuzzle = (props: Props) => {
             events={gameContext.turns}
             gameID={''} /* no game id for a puzzle */
             sendSocketMsg={() => {}}
-            sendGameplayEvent={(evt) => console.log(evt.toObject())}
+            sendGameplayEvent={attemptPuzzle}
             gameDone={false}
             playerMeta={gameInfo.players}
             vsBot={false} /* doesn't matter */

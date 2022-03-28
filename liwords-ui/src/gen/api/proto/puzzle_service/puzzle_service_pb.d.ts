@@ -3,6 +3,7 @@
 
 import * as jspb from "google-protobuf";
 import * as macondo_api_proto_macondo_macondo_pb from "../../../macondo/api/proto/macondo/macondo_pb";
+import * as api_proto_ipc_omgwords_pb from "../../../api/proto/ipc/omgwords_pb";
 
 export class RandomUnansweredPuzzleIdRequest extends jspb.Message {
   getLexicon(): string;
@@ -104,8 +105,8 @@ export class SubmissionRequest extends jspb.Message {
 
   hasAnswer(): boolean;
   clearAnswer(): void;
-  getAnswer(): macondo_api_proto_macondo_macondo_pb.GameEvent | undefined;
-  setAnswer(value?: macondo_api_proto_macondo_macondo_pb.GameEvent): void;
+  getAnswer(): api_proto_ipc_omgwords_pb.ClientGameplayEvent | undefined;
+  setAnswer(value?: api_proto_ipc_omgwords_pb.ClientGameplayEvent): void;
 
   getShowSolution(): boolean;
   setShowSolution(value: boolean): void;
@@ -123,7 +124,7 @@ export class SubmissionRequest extends jspb.Message {
 export namespace SubmissionRequest {
   export type AsObject = {
     puzzleId: string,
-    answer?: macondo_api_proto_macondo_macondo_pb.GameEvent.AsObject,
+    answer?: api_proto_ipc_omgwords_pb.ClientGameplayEvent.AsObject,
     showSolution: boolean,
   }
 }

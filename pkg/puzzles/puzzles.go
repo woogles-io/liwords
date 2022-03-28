@@ -13,6 +13,7 @@ import (
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/macondo/alphabet"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/domino14/macondo/move"
 	macondopuzzles "github.com/domino14/macondo/puzzles"
 	"github.com/rs/zerolog/log"
 )
@@ -68,7 +69,7 @@ func GetPuzzle(ctx context.Context, ps PuzzleStore, userId string, puzzleId stri
 	return ps.GetPuzzle(ctx, userId, puzzleId)
 }
 
-func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleId string, userId string, userAnswer *macondopb.GameEvent, showSolution bool) (bool, *macondopb.GameEvent, string, string, int32, error) {
+func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleId string, userId string, userAnswer *ipc.ClientGameplayEvent, showSolution bool) (bool, *macondopb.GameEvent, string, string, int32, error) {
 	correctAnswer, gameId, afterText, req, puzzleRating, err := ps.GetAnswer(ctx, puzzleId)
 	if err != nil {
 		return false, nil, "", "", -1, err
@@ -151,29 +152,52 @@ func SetPuzzleVote(ctx context.Context, ps PuzzleStore, userId string, puzzleId 
 	return ps.SetPuzzleVote(ctx, userId, puzzleId, vote)
 }
 
-func answersAreEqual(userAnswer *macondopb.GameEvent, correctAnswer *macondopb.GameEvent) bool {
+func answersAreEqual(userAnswer *ipc.ClientGameplayEvent, correctAnswer *macondopb.GameEvent) bool {
 	if userAnswer == nil {
 		// The user answer is nil when they have given up
 		// and just want the answer without making an attempt
 		return false
 	}
+	// Convert the ClientGameplayEvent to a macondo GameEvent:
+	converted := &macondopb.GameEvent{}
+
+	switch userAnswer.Type {
+	case ipc.ClientGameplayEvent_TILE_PLACEMENT:
+		converted.Type = macondopb.GameEvent_TILE_PLACEMENT_MOVE
+		converted.PlayedTiles = userAnswer.Tiles
+		row, col, vertical := move.FromBoardGameCoords(userAnswer.PositionCoords)
+
+		converted.Row = int32(row)
+		converted.Column = int32(col)
+		if vertical {
+			converted.Direction = macondopb.GameEvent_VERTICAL
+		} else {
+			converted.Direction = macondopb.GameEvent_HORIZONTAL
+		}
+	case ipc.ClientGameplayEvent_EXCHANGE:
+		converted.Type = macondopb.GameEvent_EXCHANGE
+		converted.Exchanged = userAnswer.Tiles
+	case ipc.ClientGameplayEvent_PASS:
+		converted.Type = macondopb.GameEvent_PASS
+	}
+
 	if correctAnswer == nil {
 		log.Info().Msg("puzzle answer nil")
 		return false
 	}
 
-	if userAnswer.Type == macondopb.GameEvent_TILE_PLACEMENT_MOVE &&
+	if converted.Type == macondopb.GameEvent_TILE_PLACEMENT_MOVE &&
 		correctAnswer.Type == macondopb.GameEvent_TILE_PLACEMENT_MOVE &&
-		countPlayedTiles(userAnswer) == 1 && countPlayedTiles(correctAnswer) == 1 {
-		return uniqueSingleTileKey(userAnswer) == uniqueSingleTileKey(correctAnswer)
+		countPlayedTiles(converted) == 1 && countPlayedTiles(correctAnswer) == 1 {
+		return uniqueSingleTileKey(converted) == uniqueSingleTileKey(correctAnswer)
 	}
 
-	return userAnswer.Type == correctAnswer.Type &&
-		userAnswer.Row == correctAnswer.Row &&
-		userAnswer.Column == correctAnswer.Column &&
-		userAnswer.Direction == correctAnswer.Direction &&
-		userAnswer.PlayedTiles == correctAnswer.PlayedTiles &&
-		utilities.SortString(userAnswer.Exchanged) == utilities.SortString(correctAnswer.Exchanged)
+	return converted.Type == correctAnswer.Type &&
+		converted.Row == correctAnswer.Row &&
+		converted.Column == correctAnswer.Column &&
+		converted.Direction == correctAnswer.Direction &&
+		converted.PlayedTiles == correctAnswer.PlayedTiles &&
+		utilities.SortString(converted.Exchanged) == utilities.SortString(correctAnswer.Exchanged)
 }
 
 func countPlayedTiles(ge *macondopb.GameEvent) int {

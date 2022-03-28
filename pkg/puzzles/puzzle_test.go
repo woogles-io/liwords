@@ -21,7 +21,9 @@ import (
 	"github.com/domino14/macondo/board"
 	"github.com/domino14/macondo/game"
 	"github.com/domino14/macondo/gcgio"
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/domino14/macondo/move"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -30,6 +32,26 @@ import (
 
 const PuzzlerUUID = "puzzler"
 const PuzzleCreatorUUID = "kenji"
+
+func gameEventToClientGameplayEvent(evt *macondopb.GameEvent) *ipc.ClientGameplayEvent {
+	cge := &ipc.ClientGameplayEvent{}
+
+	switch evt.Type {
+	case macondopb.GameEvent_TILE_PLACEMENT_MOVE:
+		cge.Type = ipc.ClientGameplayEvent_TILE_PLACEMENT
+		cge.Tiles = evt.PlayedTiles
+		cge.PositionCoords = move.ToBoardGameCoords(int(evt.Row), int(evt.Column),
+			evt.Direction == macondopb.GameEvent_VERTICAL)
+
+	case macondopb.GameEvent_EXCHANGE:
+		cge.Type = ipc.ClientGameplayEvent_EXCHANGE
+		cge.Tiles = evt.Exchanged
+	case macondopb.GameEvent_PASS:
+		cge.Type = ipc.ClientGameplayEvent_PASS
+	}
+
+	return cge
+}
 
 func TestPuzzles(t *testing.T) {
 	is := is.New(t)
@@ -68,7 +90,7 @@ func TestPuzzles(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(attempts, int32(0))
 
-	correct, correctAnswer, gameId, _, attempts, err := SubmitAnswer(ctx, ps, pid, PuzzlerUUID, &pb.GameEvent{}, false)
+	correct, correctAnswer, gameId, _, attempts, err := SubmitAnswer(ctx, ps, pid, PuzzlerUUID, &ipc.ClientGameplayEvent{}, false)
 	is.NoErr(err)
 	is.Equal(attempts, int32(1))
 	is.True(correctAnswer == nil)
@@ -92,10 +114,10 @@ func TestPuzzles(t *testing.T) {
 
 	oldPuzzleRating := newPuzzleRating
 	oldUserRating := newUserRating
-
+	correctCGE := gameEventToClientGameplayEvent(correctAnswer)
 	// Path 7
 	// Submit the correct answer for the same puzzle,
-	correct, _, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, correctAnswer, false)
+	correct, _, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, correctCGE, false)
 	is.NoErr(err)
 
 	_, _, _, _, newPuzzleRating, err = ps.GetAnswer(ctx, pid)
@@ -118,7 +140,7 @@ func TestPuzzles(t *testing.T) {
 
 	// Path 4
 	// Submit another answer which should not change the puzzle attempt record
-	_, _, _, _, _, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, correctAnswer, false)
+	_, _, _, _, _, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, correctCGE, false)
 	is.NoErr(err)
 	attempts, recordedCorrect, err = getPuzzleAttempt(ctx, db, PuzzlerUUID, pid)
 	is.NoErr(err)
@@ -144,7 +166,9 @@ func TestPuzzles(t *testing.T) {
 	oldUserRating, err = getUserRating(ctx, db, PuzzlerUUID, rk)
 	is.NoErr(err)
 
-	correct, _, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, correctAnswer, false)
+	correctCGE = gameEventToClientGameplayEvent(correctAnswer)
+
+	correct, _, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, correctCGE, false)
 	is.NoErr(err)
 
 	_, _, _, _, newPuzzleRating, err = ps.GetAnswer(ctx, pid)
@@ -175,7 +199,8 @@ func TestPuzzles(t *testing.T) {
 	oldUserRating, err = getUserRating(ctx, db, PuzzlerUUID, rk)
 	is.NoErr(err)
 
-	_, _, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, "incorrect uuid", correctAnswer, false)
+	correctCGE = gameEventToClientGameplayEvent(correctAnswer)
+	_, _, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, "incorrect uuid", correctCGE, false)
 	is.Equal(err.Error(), fmt.Sprintf("cannot get id from uuid %s: no rows for table %s", "incorrect uuid", "users"))
 
 	_, _, _, _, newPuzzleRating, err = ps.GetAnswer(ctx, pid)
@@ -198,13 +223,13 @@ func TestPuzzles(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(attempts, int32(0))
 
-	correct, correctAnswer, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, &pb.GameEvent{}, false)
+	correct, correctAnswer, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, &ipc.ClientGameplayEvent{}, false)
 	is.NoErr(err)
 	is.True(!correct)
 	is.True(correctAnswer == nil)
 	is.Equal(attempts, int32(1))
 
-	correct, correctAnswer, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, &pb.GameEvent{}, false)
+	correct, correctAnswer, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, &ipc.ClientGameplayEvent{}, false)
 	is.NoErr(err)
 	is.True(!correct)
 	is.True(correctAnswer == nil)
@@ -246,7 +271,7 @@ func TestPuzzles(t *testing.T) {
 		is.Equal(attempts, int32(0))
 		is.Equal(len(hist.Events), turnNumber)
 
-		_, _, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, &pb.GameEvent{}, false)
+		_, _, _, _, attempts, err = SubmitAnswer(ctx, ps, pid, PuzzlerUUID, &ipc.ClientGameplayEvent{}, false)
 		is.NoErr(err)
 		is.Equal(attempts, int32(1))
 	}

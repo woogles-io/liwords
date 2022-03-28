@@ -17,6 +17,8 @@ var global = Function('return this')();
 
 var macondo_api_proto_macondo_macondo_pb = require('../../../macondo/api/proto/macondo/macondo_pb.js');
 goog.object.extend(proto, macondo_api_proto_macondo_macondo_pb);
+var api_proto_ipc_omgwords_pb = require('../../../api/proto/ipc/omgwords_pb.js');
+goog.object.extend(proto, api_proto_ipc_omgwords_pb);
 goog.exportSymbol('proto.puzzle_service.PuzzleRequest', null, global);
 goog.exportSymbol('proto.puzzle_service.PuzzleResponse', null, global);
 goog.exportSymbol('proto.puzzle_service.PuzzleStatus', null, global);
@@ -858,7 +860,7 @@ proto.puzzle_service.SubmissionRequest.prototype.toObject = function(opt_include
 proto.puzzle_service.SubmissionRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     puzzleId: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    answer: (f = msg.getAnswer()) && macondo_api_proto_macondo_macondo_pb.GameEvent.toObject(includeInstance, f),
+    answer: (f = msg.getAnswer()) && api_proto_ipc_omgwords_pb.ClientGameplayEvent.toObject(includeInstance, f),
     showSolution: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
   };
 
@@ -901,8 +903,8 @@ proto.puzzle_service.SubmissionRequest.deserializeBinaryFromReader = function(ms
       msg.setPuzzleId(value);
       break;
     case 2:
-      var value = new macondo_api_proto_macondo_macondo_pb.GameEvent;
-      reader.readMessage(value,macondo_api_proto_macondo_macondo_pb.GameEvent.deserializeBinaryFromReader);
+      var value = new api_proto_ipc_omgwords_pb.ClientGameplayEvent;
+      reader.readMessage(value,api_proto_ipc_omgwords_pb.ClientGameplayEvent.deserializeBinaryFromReader);
       msg.setAnswer(value);
       break;
     case 3:
@@ -950,7 +952,7 @@ proto.puzzle_service.SubmissionRequest.serializeBinaryToWriter = function(messag
     writer.writeMessage(
       2,
       f,
-      macondo_api_proto_macondo_macondo_pb.GameEvent.serializeBinaryToWriter
+      api_proto_ipc_omgwords_pb.ClientGameplayEvent.serializeBinaryToWriter
     );
   }
   f = message.getShowSolution();
@@ -982,17 +984,17 @@ proto.puzzle_service.SubmissionRequest.prototype.setPuzzleId = function(value) {
 
 
 /**
- * optional macondo.GameEvent answer = 2;
- * @return {?proto.macondo.GameEvent}
+ * optional ipc.ClientGameplayEvent answer = 2;
+ * @return {?proto.ipc.ClientGameplayEvent}
  */
 proto.puzzle_service.SubmissionRequest.prototype.getAnswer = function() {
-  return /** @type{?proto.macondo.GameEvent} */ (
-    jspb.Message.getWrapperField(this, macondo_api_proto_macondo_macondo_pb.GameEvent, 2));
+  return /** @type{?proto.ipc.ClientGameplayEvent} */ (
+    jspb.Message.getWrapperField(this, api_proto_ipc_omgwords_pb.ClientGameplayEvent, 2));
 };
 
 
 /**
- * @param {?proto.macondo.GameEvent|undefined} value
+ * @param {?proto.ipc.ClientGameplayEvent|undefined} value
  * @return {!proto.puzzle_service.SubmissionRequest} returns this
 */
 proto.puzzle_service.SubmissionRequest.prototype.setAnswer = function(value) {
