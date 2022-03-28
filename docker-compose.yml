@@ -6,6 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile-dev
     environment:
+      STRATEGY_PARAMS_PATH: /opt/program/data/strategy
       LEXICON_PATH: /opt/program/data/lexica
       LETTER_DISTRIBUTION_PATH: /opt/program/data/letterdistributions
       DB_HOST: db
@@ -29,6 +30,8 @@ services:
       # For now: AWS_PROFILE=prod docker-compose up app
     volumes:
       - .:/opt/program:rw
+      - ./data/lexica/gaddag:/opt/program/data/lexica/gaddag
+      - ../macondo/data/strategy:/opt/program/data/strategy
       - ./data/lexica/dawg:/opt/program/data/lexica/dawg
       - ${AWS_CREDENTIALS_PATH:-~/.aws}:/root/.aws:ro
     command: sh -c "go run -race cmd/liwords-api/*.go"
@@ -58,7 +61,7 @@ services:
     volumes:
       - ../macondo:/opt/program:rw
       # Use the same gaddag files we use for the WASM integration.
-      - ./liwords-ui/public/wasm:/opt/program/data/lexica/gaddag
+      - ./data/lexica/gaddag:/opt/program/data/lexica/gaddag
       - ./data/lexica/dawg:/opt/program/data/lexica/dawg
     command: sh -c "go run -race cmd/bot/*.go"
     depends_on: ["nats"]
