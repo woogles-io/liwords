@@ -28,8 +28,6 @@ jobs:
           name: Clone macondo
           command: git clone git@github.com:domino14/macondo /opt/macondo
       - run: mv /opt/liwords/data/lexica $LEXICON_PATH
-      - run: mkdir $LEXICON_PATH/gaddag 
-      - run: cp /opt/liwords/liwords-ui/public/wasm/*.gaddag $LEXICON_PATH/gaddag
       - run: mv /opt/macondo/data/strategy $LEXICON_PATH
       - run: cd cmd/liwords-api && go build
       # Tests must not be run in parallel; postgres issues happen otherwise.
