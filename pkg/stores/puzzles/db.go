@@ -241,9 +241,14 @@ func (s *DBStore) SubmitAnswer(ctx context.Context, userId string, ratingKey ent
 	}
 
 	newCorrectOption := &sql.NullBool{}
+	// Consider the puzzle completed if the user
+	// has gotten the answer correct or has given up
+	// by requesting the solution
 	if userIsCorrect || showSolution {
 		newCorrectOption.Valid = true
-		newCorrectOption.Bool = userIsCorrect
+		// Only consider the user correct if they did
+		// not request the solution
+		newCorrectOption.Bool = userIsCorrect && !showSolution
 	}
 
 	if newUserRating != nil && newPuzzleRating != nil {
