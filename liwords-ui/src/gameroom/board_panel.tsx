@@ -268,12 +268,17 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const observer = !props.playerMeta.some((p) => p.nickname === props.username);
   const isMyTurn = useMemo(() => {
+    if (props.puzzleMode) {
+      // it is always my turn in puzzle mode.
+      return true;
+    }
     const iam = gameContext.nickToPlayerOrder[props.username];
     return iam && iam === `p${examinableGameContext.onturn}`;
   }, [
     gameContext.nickToPlayerOrder,
     props.username,
     examinableGameContext.onturn,
+    props.puzzleMode,
   ]);
 
   const {
