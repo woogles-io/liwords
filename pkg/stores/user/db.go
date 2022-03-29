@@ -123,29 +123,11 @@ type blocking struct {
 }
 
 // NewDBStore creates a new DB store
-func NewDBStore(dbURL string) (*DBStore, error) {
-	db, err := gorm.Open("postgres", dbURL)
+func NewDBStore(dbDSN string) (*DBStore, error) {
+	db, err := gorm.Open("postgres", dbDSN)
 	if err != nil {
 		return nil, err
 	}
-	db.AutoMigrate(&User{}, &profile{}, &following{}, &blocking{})
-	db.Model(&User{}).
-		AddUniqueIndex("username_idx", "lower(username)").
-		AddUniqueIndex("email_idx", "lower(email)").
-		AddIndex("api_key_idx", "api_key")
-
-	// Can't get GORM to auto create these foreign keys, so do it myself /shrug
-	db.Model(&profile{}).AddForeignKey("user_id", "users(id)", "RESTRICT", "RESTRICT")
-	db.Model(&following{}).
-		AddForeignKey("user_id", "users(id)", "RESTRICT", "RESTRICT").
-		AddForeignKey("follower_id", "users(id)", "RESTRICT", "RESTRICT").
-		AddUniqueIndex("user_follower_idx", "user_id", "follower_id")
-
-	db.Model(&blocking{}).
-		AddForeignKey("user_id", "users(id)", "RESTRICT", "RESTRICT").
-		AddForeignKey("blocker_id", "users(id)", "RESTRICT", "RESTRICT").
-		AddUniqueIndex("user_blocker_idx", "user_id", "blocker_id")
-
 	return &DBStore{db: db}, nil
 }
 

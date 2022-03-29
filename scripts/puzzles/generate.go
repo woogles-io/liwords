@@ -82,8 +82,8 @@ func main() {
 		panic(err)
 	}
 
-	cfg.DBConnString = commondb.PostgresConnString(cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBUser, cfg.DBPassword, cfg.DBSSLMode)
-	userStore, err := user.NewDBStore(cfg.DBConnString)
+	cfg.DBConnDSN = commondb.PostgresConnDSN(cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBUser, cfg.DBPassword, cfg.DBSSLMode)
+	userStore, err := user.NewDBStore(cfg.DBConnDSN)
 	if err != nil {
 		panic(err)
 	}
@@ -93,7 +93,7 @@ func main() {
 		panic(err)
 	}
 
-	m, err := migrate.New(commondb.MigrationFile, commondb.MigrationConnString(cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBUser, cfg.DBPassword, cfg.DBSSLMode))
+	m, err := migrate.New(commondb.MigrationFile, commondb.PostgresConnUri(cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBUser, cfg.DBPassword, cfg.DBSSLMode))
 	if err != nil {
 		panic(err)
 	}

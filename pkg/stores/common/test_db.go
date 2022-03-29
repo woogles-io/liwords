@@ -19,11 +19,12 @@ const (
 var MigrationFile = "file://../../db/migrations"
 
 func RecreateTestDB() error {
-	db, err := sql.Open("pgx", PostgresConnString(TestDBHost, TestDBPort,
+	db, err := sql.Open("pgx", PostgresConnUri(TestDBHost, TestDBPort,
 		"", TestDBUser, TestDBPassword, TestDBSSLMode))
 	if err != nil {
 		return err
 	}
+	defer db.Close()
 
 	_, err = db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", TestDBName))
 	if err != nil {
@@ -35,7 +36,21 @@ func RecreateTestDB() error {
 		return err
 	}
 
-	db.Close()
+	return nil
+}
+
+func TeardownTestDB() error {
+	db, err := sql.Open("pgx", PostgresConnUri(TestDBHost, TestDBPort,
+		"", TestDBUser, TestDBPassword, TestDBSSLMode))
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	_, err = db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", TestDBName))
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -43,10 +58,11 @@ func OpenTestingDB() (*sql.DB, error) {
 	return OpenDB(TestDBHost, TestDBPort, TestDBName, TestDBUser, TestDBPassword, TestDBSSLMode)
 }
 
-func TestingPostgresConnString() string {
-	return PostgresConnString(TestDBHost, TestDBPort, TestDBName, TestDBUser, TestDBPassword, TestDBSSLMode)
+func TestingPostgresConnUri() string {
+	return PostgresConnUri(TestDBHost, TestDBPort, TestDBName, TestDBUser, TestDBPassword, TestDBSSLMode)
 }
 
-func TestingMigrationConnString() string {
-	return MigrationConnString(TestDBHost, TestDBPort, TestDBName, TestDBUser, TestDBPassword, TestDBSSLMode)
+// XXX: Delete me after removing Gorm
+func TestingPostgresConnDSN() string {
+	return PostgresConnDSN(TestDBHost, TestDBPort, TestDBName, TestDBUser, TestDBPassword, TestDBSSLMode)
 }

@@ -123,10 +123,14 @@ func main() {
 	}
 	log.Debug().Msg("debug log is on")
 
-	m, err := migrate.New("file://db/migrations", "postgres://postgres:pass@db:5432/liwords?sslmode=disable")
+	pgUri := common.PostgresConnUri(cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBUser,
+		cfg.DBPassword, cfg.DBSSLMode)
+
+	m, err := migrate.New(cfg.DBMigrationsPath, pgUri)
 	if err != nil {
 		panic(err)
 	}
+	log.Info().Msg("bringing up migration")
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		panic(err)
 	}
@@ -135,7 +139,7 @@ func main() {
 
 	router := http.NewServeMux() // here you could also go with third party packages to create a router
 
-	tmpUserStore, err := user.NewDBStore(cfg.DBConnString)
+	tmpUserStore, err := user.NewDBStore(cfg.DBConnDSN)
 	if err != nil {
 		panic(err)
 	}
@@ -143,7 +147,7 @@ func main() {
 
 	stores.UserStore = user.NewCache(tmpUserStore)
 
-	stores.SessionStore, err = session.NewDBStore(cfg.DBConnString)
+	stores.SessionStore, err = session.NewDBStore(cfg.DBConnDSN)
 	if err != nil {
 		panic(err)
 	}
@@ -180,12 +184,12 @@ func main() {
 		panic(err)
 	}
 	stores.ConfigStore = cfgstore.NewRedisConfigStore(redisPool)
-	stores.ListStatStore, err = stats.NewListStatStore(cfg.DBConnString)
+	stores.ListStatStore, err = stats.NewListStatStore(cfg.DBConnDSN)
 	if err != nil {
 		panic(err)
 	}
 
-	stores.NotorietyStore, err = modstore.NewNotorietyStore(cfg.DBConnString)
+	stores.NotorietyStore, err = modstore.NewNotorietyStore(cfg.DBConnDSN)
 	if err != nil {
 		panic(err)
 	}

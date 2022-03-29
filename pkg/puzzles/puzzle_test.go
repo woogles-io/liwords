@@ -392,7 +392,8 @@ func TestUniqueSingleTileKey(t *testing.T) {
 func RecreateDB() (*sql.DB, *puzzlesstore.DBStore, int, int, error) {
 	cfg := &config.Config{}
 	cfg.MacondoConfig = common.DefaultConfig
-	cfg.DBConnString = commondb.TestingPostgresConnString()
+	cfg.DBConnUri = commondb.TestingPostgresConnUri()
+	cfg.DBConnDSN = commondb.TestingPostgresConnDSN()
 	cfg.MacondoConfig.DefaultLexicon = common.DefaultLexicon
 	zerolog.SetGlobalLevel(zerolog.Disabled)
 	ctx := context.Background()
@@ -406,7 +407,7 @@ func RecreateDB() (*sql.DB, *puzzlesstore.DBStore, int, int, error) {
 		return nil, nil, 0, 0, err
 	}
 
-	userStore, err := user.NewDBStore(commondb.TestingPostgresConnString())
+	userStore, err := user.NewDBStore(commondb.TestingPostgresConnDSN())
 	if err != nil {
 		return nil, nil, 0, 0, err
 	}
@@ -425,7 +426,7 @@ func RecreateDB() (*sql.DB, *puzzlesstore.DBStore, int, int, error) {
 		return nil, nil, 0, 0, err
 	}
 
-	m, err := migrate.New(commondb.MigrationFile, commondb.TestingMigrationConnString())
+	m, err := migrate.New(commondb.MigrationFile, commondb.TestingPostgresConnUri())
 	if err != nil {
 		return nil, nil, 0, 0, err
 	}

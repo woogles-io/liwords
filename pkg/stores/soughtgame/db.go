@@ -38,11 +38,10 @@ type soughtgame struct {
 }
 
 func NewDBStore(config *config.Config) (*DBStore, error) {
-	db, err := gorm.Open(postgres.Open(config.DBConnString), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(config.DBConnDSN), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
-	db.AutoMigrate(&soughtgame{})
 	return &DBStore{db: db, cfg: config}, nil
 }
 

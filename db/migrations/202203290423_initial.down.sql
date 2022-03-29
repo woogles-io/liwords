@@ -1,0 +1,3 @@
+-- In order to protect us from doing something bad, let's leave this blank.
+-- If you wish to delete all initial tables, just do a DROP DATABASE liwords
+-- and create it again.
