@@ -3,7 +3,9 @@ package config
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 
 	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/namsral/flag"
@@ -20,13 +22,14 @@ type Config struct {
 	MacondoConfig macondoconfig.Config
 	ArgonConfig   ArgonConfig
 
-	DBConnString string
-	ListenAddr   string
-	SecretKey    string
-	NatsURL      string
-	MailgunKey   string
-	RedisURL     string
-	DiscordToken string
+	DBConnString     string
+	ListenAddr       string
+	SecretKey        string
+	NatsURL          string
+	MailgunKey       string
+	RedisURL         string
+	DiscordToken     string
+	DBMigrationsPath string
 }
 
 type CtxKey string
@@ -51,6 +54,7 @@ func (c *Config) Load(args []string) error {
 	fs.StringVar(&c.MailgunKey, "mailgun-key", "", "the Mailgun secret key")
 	fs.StringVar(&c.RedisURL, "redis-url", "", "the Redis URL")
 	fs.StringVar(&c.DiscordToken, "discord-token", "", "the token used for moderator action discord notifications")
+	fs.StringVar(&c.DBMigrationsPath, "db-migrations-path", "", "the path where migrations are stored")
 
 	// For password hashing:
 	fs.IntVar(&c.ArgonConfig.Keylen, "argon-key-len", 32, "the Argon key length")
@@ -59,6 +63,22 @@ func (c *Config) Load(args []string) error {
 	fs.IntVar(&c.ArgonConfig.Threads, "argon-threads", 4, "the Argon threads")
 	err := fs.Parse(args)
 	return err
+}
+
+func PGConnStringToUrl(connStr string) string {
+	tokens := strings.Split(connStr, " ")
+	tm := map[string]string{}
+	for _, token := range tokens {
+		token = strings.TrimSpace(token)
+		if token == "" {
+			continue
+		}
+		kv := strings.Split(token, "=")
+		tm[kv[0]] = kv[1]
+	}
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		tm["user"], tm["password"], tm["host"], tm["port"], tm["dbname"],
+		tm["sslmode"])
 }
 
 // Get the Macondo config from the context

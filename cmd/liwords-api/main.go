@@ -12,6 +12,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/gomodule/redigo/redis"
 	"github.com/twitchtv/twirp"
 
@@ -115,6 +118,15 @@ func main() {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 	log.Debug().Msg("debug log is on")
+
+	m, err := migrate.New(cfg.DBMigrationsPath, config.PGConnStringToUrl(cfg.DBConnString))
+	if err != nil {
+		panic(err)
+	}
+	log.Info().Msg("bringing up migration")
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		panic(err)
+	}
 
 	redisPool := newPool(cfg.RedisURL)
 
