@@ -20,6 +20,7 @@ services:
       ARGON_MEMORY: 1024
       AWS_PROFILE: ${AWS_PROFILE:-default}
       AVATAR_UPLOAD_BUCKET: woogles-uploads
+      DB_MIGRATIONS_PATH: file:///opt/program/db/migrations
       # XXX: In order to get avatar upload to work locally we need to set up localstack.
       # For now: AWS_PROFILE=prod docker-compose up app
     volumes:
