@@ -33,7 +33,8 @@ import (
 	"github.com/namsral/flag"
 )
 
-func newBotvBotPuzzleGame(mcg *macondogame.Game) *entity.Game {
+func newBotvBotPuzzleGame(mcg *macondogame.Game, lexicon string) *entity.Game {
+	common.DefaultGameReq.Lexicon = lexicon
 	g := entity.NewGame(mcg, common.DefaultGameReq)
 	g.Started = true
 	uuid := shortuuid.New()
@@ -179,7 +180,7 @@ func main() {
 				log.Err(err).Msg("game-runner")
 				continue
 			}
-			g := newBotvBotPuzzleGame(r.Game())
+			g := newBotvBotPuzzleGame(r.Game(), *lexicon)
 			pzls, err := puzzles.CreatePuzzlesFromGame(ctx, gameStore, puzzlesStore, g, "", pb.GameType_BOT_VS_BOT)
 			for _, pzl := range pzls {
 				fmt.Printf("liwords.localhost/game/%s?turn=%d\n", pzl.GetGameId(), pzl.GetTurnNumber()+1)

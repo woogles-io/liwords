@@ -24,6 +24,7 @@ import {
   ChallengeRule,
   defaultGameInfo,
   GameMetadata,
+  protoChallengeRuleConvert,
 } from '../gameroom/game_info';
 import { PuzzleScore } from './puzzle_score';
 import Pool from '../gameroom/pool';
@@ -33,6 +34,7 @@ import { ActionType } from '../actions/actions';
 import {
   PuzzleRequest,
   PuzzleResponse,
+  PuzzleStatus,
   RandomUnansweredPuzzleIdRequest,
   RandomUnansweredPuzzleIdResponse,
   SubmissionRequest,
@@ -51,54 +53,91 @@ import { Store } from 'antd/lib/form/interface';
 
 import {
   ClientGameplayEvent,
-  ServerGameplayEvent,
+  GameInfoResponse,
+  RatingMode,
+  RatingModeMap,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { computeLeave } from '../utils/cwgame/game_event';
 import { EmptySpace, EphemeralTile } from '../utils/cwgame/common';
 import { AnalyzerMove } from '../gameroom/analyzer';
 import { useMountedState } from '../utils/mounted';
+import { BoopSounds } from '../sound/boop';
+import { ResetPasswordResponse } from '../gen/api/proto/user_service/user_service_pb';
+import { GameInfoRequest } from '../gen/api/proto/game_service/game_service_pb';
 type Props = {
   sendChat: (msg: string, chan: string) => void;
 };
 // TODO: Delete this after you hook everything up, César
-const mockData = {
-  attempts: 2,
-  //dateSolved: new Date('2022-03-20 00:01:00'),
+// const mockData = {
+//   attempts: 2,
+//   //dateSolved: new Date('2022-03-20 00:01:00'),
+//   dateSolved: undefined,
+//   challengeRule: 'VOID' as ChallengeRule,
+//   ratingMode: 'RATED',
+//   gameDate: new Date('2021-01-01 00:01:00'),
+//   initial_time_seconds: 3000,
+//   increment_seconds: 0,
+//   max_overtime_minutes: 0,
+//   gameUrl: '/game/abcde',
+//   lexicon: 'CSW21',
+//   variantName: 'classic',
+//   // players aren't needed until after solution is shown
+//   p0Score: 324,
+//   p1Score: 325,
+//   playerOnTurn: 0, // 0 based
+//   player1: {
+//     nickname: 'magrathean',
+//   },
+//   player2: {
+//     nickname: 'RightBehindYou',
+//   },
+// };
+
+type PuzzleInfo = {
+  // puzzle parameters:
+  attempts: number;
+  dateSolved?: Date;
+  lexicon: string;
+  variantName: string;
+  solved: number;
+  // game parameters:
+  challengeRule?: ChallengeRule;
+  ratingMode?: string;
+  gameDate?: Date;
+  initialTimeSeconds?: number;
+  incrementSeconds?: number;
+  maxOvertimeMinutes?: number;
+  gameUrl?: string;
+  player1?: {
+    nickname: string;
+  };
+  player2?: {
+    nickname: string;
+  };
+};
+
+const defaultPuzzleInfo = {
+  attempts: 0,
   dateSolved: undefined,
-  challengeRule: 'VOID' as ChallengeRule,
-  ratingMode: 'RATED',
-  gameDate: new Date('2021-01-01 00:01:00'),
-  initial_time_seconds: 3000,
-  increment_seconds: 0,
-  max_overtime_minutes: 0,
-  gameUrl: '/game/abcde',
-  lexicon: 'CSW21',
-  variantName: 'classic',
-  // players aren't needed until after solution is shown
-  p0Score: 324,
-  p1Score: 325,
-  playerOnTurn: 0, // 0 based
-  player1: {
-    nickname: 'magrathean',
-  },
-  player2: {
-    nickname: 'RightBehindYou',
-  },
+  lexicon: '',
+  variantName: '',
+  solved: PuzzleStatus.UNANSWERED,
 };
 
 export const SinglePuzzle = (props: Props) => {
   const { useState } = useMountedState();
   const { puzzleID } = useParams();
-  const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
+  // const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
+  const [puzzleInfo, setPuzzleInfo] = useState<PuzzleInfo>(defaultPuzzleInfo);
   const [userLexicon, setUserLexicon] = useState<string | undefined>(
     localStorage?.getItem('puzzleLexicon') || undefined
   );
+  const [gameHistory, setGameHistory] = useState<GameHistory | null>(null);
   const [showLexiconModal, setShowLexiconModal] = useState(false);
   const { loginState } = useLoginStateStoreContext();
-  const { username, userID, loggedIn } = loginState;
+  const { username, loggedIn } = loginState;
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
-  const [history, setHistory] = useState<GameHistory | undefined>(undefined);
   const {
     gameContext: examinableGameContext,
   } = useExaminableGameContextStoreContext();
@@ -161,11 +200,25 @@ export const SinglePuzzle = (props: Props) => {
             parseInt(localStorage.getItem('poolFormat') || '0', 10)
           );
         }
+        const gh = resp.getHistory();
+        if (gh == null || gh == undefined) {
+          throw new Error('Did not receive a valid puzzle position!');
+        }
         dispatchGameContext({
           actionType: ActionType.SetupStaticPosition,
-          payload: resp.getHistory(),
+          payload: gh,
         });
-        setHistory(resp.getHistory());
+        setGameHistory(gh);
+        console.log('got game history', gh.toObject());
+        BoopSounds.playSound('puzzleStartSound');
+
+        setPuzzleInfo({
+          attempts: resp.getAttempts(),
+          // XXX: add dateSolved to backend and front end.
+          lexicon: gh.getLexicon(),
+          variantName: gh.getVariant(),
+          solved: resp.getStatus(),
+        });
       } catch (err) {
         message.error({
           content: err.message,
@@ -197,9 +250,8 @@ export const SinglePuzzle = (props: Props) => {
   // Play sound here.
 
   const alphabet = useMemo(
-    () =>
-      alphabetFromName(gameInfo.game_request.rules.letter_distribution_name),
-    [gameInfo]
+    () => alphabetFromName(gameHistory?.getLetterDistribution().toLowerCase()!),
+    [gameHistory?.getLetterDistribution]
   );
 
   const loadNewPuzzle = useCallback(async () => {
@@ -306,7 +358,7 @@ export const SinglePuzzle = (props: Props) => {
     const req = new SubmissionRequest();
     req.setShowSolution(true);
     req.setPuzzleId(puzzleID);
-
+    BoopSounds.playSound('puzzleWrongSound');
     console.log('showing solution?', userIDOnTurn, gameContext.players);
     try {
       const resp = await postProto(
@@ -327,6 +379,43 @@ export const SinglePuzzle = (props: Props) => {
     }
   }, [puzzleID, userIDOnTurn, gameContext.players, placeGameEvt]);
 
+  const setGameInfo = useCallback(async (gid: string) => {
+    const req = new GameInfoRequest();
+    req.setGameId(gid);
+    try {
+      const resp = await postProto(
+        GameInfoResponse,
+        'game_service.GameMetadataService',
+        'GetMetadata',
+        req
+      );
+      console.log('got game info', resp.toObject());
+      const gameRequest = resp.getGameRequest();
+      setPuzzleInfo({
+        ...puzzleInfo,
+        challengeRule: protoChallengeRuleConvert(
+          gameRequest?.getChallengeRule()!
+        ),
+        ratingMode:
+          gameRequest?.getRatingMode() === RatingMode.RATED
+            ? 'Rated'
+            : 'Casual',
+        gameDate: resp.getCreatedAt()?.toDate(),
+        initialTimeSeconds: gameRequest?.getInitialTimeSeconds(),
+        incrementSeconds: gameRequest?.getIncrementSeconds(),
+        maxOvertimeMinutes: gameRequest?.getMaxOvertimeMinutes(),
+        gameUrl: `/game/${gid}`,
+        player1: { nickname: resp.getPlayersList()[0].getNickname() },
+        player2: { nickname: resp.getPlayersList()[1].getNickname() },
+      });
+    } catch (err) {
+      message.error({
+        content: err.message,
+        duration: 5,
+      });
+    }
+  }, []);
+
   const attemptPuzzle = useCallback(
     async (evt: ClientGameplayEvent) => {
       const req = new SubmissionRequest();
@@ -343,8 +432,11 @@ export const SinglePuzzle = (props: Props) => {
         if (resp.getUserIsCorrect()) {
           // TODO: The user got the answer right
           // display resp.getAttempts();
+          BoopSounds.playSound('puzzleCorrectSound');
+          setGameInfo(resp.getGameId());
         } else {
           // Wrong answer
+          BoopSounds.playSound('puzzleWrongSound');
         }
       } catch (err) {
         message.error({
@@ -353,7 +445,7 @@ export const SinglePuzzle = (props: Props) => {
         });
       }
     },
-    [puzzleID]
+    [puzzleID, setGameInfo]
   );
 
   useEffect(() => {
@@ -433,15 +525,15 @@ export const SinglePuzzle = (props: Props) => {
             sendSocketMsg={() => {}}
             sendGameplayEvent={attemptPuzzle}
             gameDone={false}
-            playerMeta={gameInfo.players}
+            playerMeta={[]}
             vsBot={false} /* doesn't matter */
-            lexicon={gameInfo.game_request.lexicon}
+            lexicon={gameHistory?.getLexicon()!}
             alphabet={alphabet}
             challengeRule={'SINGLE' as ChallengeRule} /* doesn't matter */
             handleAcceptRematch={() => {}}
             handleAcceptAbort={() => {}}
             puzzleMode
-            puzzleSolved={!!mockData.dateSolved}
+            puzzleSolved={puzzleInfo.solved === PuzzleStatus.CORRECT}
             // handleSetHover={handleSetHover}   // fix later with definitions.
             // handleUnsetHover={hideDefinitionHover}
             // definitionPopover={definitionPopover}
@@ -450,24 +542,24 @@ export const SinglePuzzle = (props: Props) => {
 
         <div className="data-area" id="right-sidebar">
           <PuzzleScore
-            attempts={mockData.attempts}
-            dateSolved={mockData.dateSolved}
+            attempts={puzzleInfo.attempts}
+            dateSolved={puzzleInfo.dateSolved}
             loadNewPuzzle={loadNewPuzzle}
             showSolution={showSolution}
           />
           <PuzzleInfo
-            solved={!!mockData.dateSolved}
-            gameDate={mockData.gameDate}
-            gameUrl={mockData.gameUrl}
-            lexicon={mockData.lexicon}
-            variantName={mockData.variantName}
-            player1={mockData.player1}
-            player2={mockData.player2}
-            ratingMode={mockData.ratingMode}
-            challengeRule={mockData.challengeRule}
-            initial_time_seconds={mockData.initial_time_seconds}
-            increment_seconds={mockData.increment_seconds}
-            max_overtime_minutes={mockData.max_overtime_minutes}
+            solved={puzzleInfo.solved === PuzzleStatus.CORRECT}
+            gameDate={puzzleInfo.gameDate}
+            gameUrl={puzzleInfo.gameUrl}
+            lexicon={puzzleInfo.lexicon}
+            variantName={puzzleInfo.variantName}
+            player1={puzzleInfo.player1}
+            player2={puzzleInfo.player2}
+            ratingMode={puzzleInfo.ratingMode}
+            challengeRule={puzzleInfo.challengeRule}
+            initial_time_seconds={puzzleInfo.initialTimeSeconds}
+            increment_seconds={puzzleInfo.incrementSeconds}
+            max_overtime_minutes={puzzleInfo.maxOvertimeMinutes}
           />
           <Pool
             pool={gameContext.pool}

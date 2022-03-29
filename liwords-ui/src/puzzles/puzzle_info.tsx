@@ -17,7 +17,7 @@ export const challengeMap = {
 type Props = {
   solved: boolean;
   gameDate?: Date;
-  gameUrl: string;
+  gameUrl?: string;
   lexicon: string;
   variantName: string;
   player1: Partial<PlayerMetadata> | undefined;
