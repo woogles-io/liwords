@@ -1,15 +1,23 @@
 import { HomeOutlined } from '@ant-design/icons';
 import { Button, Card, Form, message, Modal } from 'antd';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import { postJsonObj, postProto } from '../api/api';
 import { Chat } from '../chat/chat';
 import { alphabetFromName } from '../constants/alphabets';
 import { TopBar } from '../navigation/topbar';
 import {
+  useExaminableGameContextStoreContext,
   useGameContextStoreContext,
   useLoginStateStoreContext,
   usePoolFormatStoreContext,
+  useTentativeTileContext,
 } from '../store/store';
 import { BoardPanel } from '../gameroom/board_panel';
 import {
@@ -25,6 +33,8 @@ import { ActionType } from '../actions/actions';
 import {
   PuzzleRequest,
   PuzzleResponse,
+  RandomUnansweredPuzzleIdRequest,
+  RandomUnansweredPuzzleIdResponse,
   SubmissionRequest,
   SubmissionResponse,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
@@ -44,6 +54,9 @@ import {
   ServerGameplayEvent,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { computeLeave } from '../utils/cwgame/game_event';
+import { EmptySpace, EphemeralTile } from '../utils/cwgame/common';
+import { AnalyzerMove } from '../gameroom/analyzer';
+import { useMountedState } from '../utils/mounted';
 type Props = {
   sendChat: (msg: string, chan: string) => void;
 };
@@ -74,6 +87,7 @@ const mockData = {
 };
 
 export const SinglePuzzle = (props: Props) => {
+  const { useState } = useMountedState();
   const { puzzleID } = useParams();
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
   const [userLexicon, setUserLexicon] = useState<string | undefined>(
@@ -85,6 +99,18 @@ export const SinglePuzzle = (props: Props) => {
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const [history, setHistory] = useState<GameHistory | undefined>(undefined);
+  const {
+    gameContext: examinableGameContext,
+  } = useExaminableGameContextStoreContext();
+  const {
+    setDisplayedRack,
+    setPlacedTiles,
+    setPlacedTilesTempScore,
+  } = useTentativeTileContext();
+
+  const browserHistory = useHistory();
+  const browserHistoryRef = useRef(browserHistory);
+  browserHistoryRef.current = browserHistory;
 
   useEffect(() => {
     if (!puzzleID) {
@@ -176,9 +202,105 @@ export const SinglePuzzle = (props: Props) => {
     [gameInfo]
   );
 
-  const loadNewPuzzle = useCallback(() => {
-    // TODO: César, when I grow up I want to be a callback that loads a new puzzle...
-  }, []);
+  const loadNewPuzzle = useCallback(async () => {
+    if (!userLexicon) {
+      return;
+    }
+    const req = new RandomUnansweredPuzzleIdRequest();
+    req.setLexicon(userLexicon);
+    try {
+      const resp = await postProto(
+        RandomUnansweredPuzzleIdResponse,
+        'puzzle_service.PuzzleService',
+        'GetRandomUnansweredPuzzleIdForUser',
+        req
+      );
+      console.log('got resp', resp.toObject());
+      browserHistoryRef.current.replace(
+        `/puzzle/${encodeURIComponent(resp.getPuzzleId())}`
+      );
+    } catch (err) {
+      message.error({
+        content: err.message,
+        duration: 5,
+      });
+    }
+  }, [userLexicon]);
+
+  // XXX: This is copied from analyzer.tsx. When we add the analyzer
+  // to the puzzle page we should figure out another solution.
+  const placeMove = useCallback(
+    (move: AnalyzerMove) => {
+      const {
+        board: { dim, letters },
+      } = examinableGameContext;
+      const newPlacedTiles = new Set<EphemeralTile>();
+      let row = move.row;
+      let col = move.col;
+      let vertical = move.vertical;
+      if (move.isExchange) {
+        row = 0;
+        col = 0;
+        vertical = false;
+      }
+      for (const t of move.tiles) {
+        if (move.isExchange) {
+          while (letters[row * dim + col] !== EmptySpace) {
+            ++col;
+            if (col >= dim) {
+              ++row;
+              if (row >= dim) {
+                // Cannot happen with the standard number of tiles and squares.
+                row = dim - 1;
+                col = dim - 1;
+                break;
+              }
+              col = 0;
+            }
+          }
+        }
+        if (t !== '.') {
+          newPlacedTiles.add({
+            row,
+            col,
+            letter: t,
+          });
+        }
+        if (vertical) ++row;
+        else ++col;
+      }
+      setDisplayedRack(move.leaveWithGaps);
+      setPlacedTiles(newPlacedTiles);
+      setPlacedTilesTempScore(move.score);
+    },
+    [
+      examinableGameContext,
+      setDisplayedRack,
+      setPlacedTiles,
+      setPlacedTilesTempScore,
+    ]
+  );
+
+  const placeGameEvt = useCallback(
+    (evt: GameEvent) => {
+      const m = {
+        jsonKey: '',
+        displayMove: '',
+        coordinates: '',
+        vertical: evt.getDirection() === GameEvent.Direction.VERTICAL,
+        col: evt.getColumn(),
+        row: evt.getRow(),
+        score: evt.getScore(),
+        equity: 0.0, // not shown yet
+        tiles: evt.getPlayedTiles() || evt.getExchanged(),
+        isExchange: evt.getType() === GameEvent.Type.EXCHANGE,
+        leave: '',
+        leaveWithGaps: computeLeave(evt.getPlayedTiles(), sortedRack),
+      };
+      placeMove(m);
+    },
+    [placeMove, sortedRack]
+  );
 
   const showSolution = useCallback(async () => {
     const req = new SubmissionRequest();
@@ -195,39 +317,15 @@ export const SinglePuzzle = (props: Props) => {
       );
       console.log('got resp', resp.toObject());
       const solution = resp.getCorrectAnswer();
-      const sge = new ServerGameplayEvent();
-      // This is ridiculous and will need to change when we move to PlayerIndex:
-      solution?.setNickname(
-        history
-          ?.getPlayersList()
-          .find((p) => p.getUserId() === userIDOnTurn)
-          ?.getNickname()!
-      );
-      sge.setEvent(solution);
-      sge.setGameId(resp.getGameId());
-      sge.setUserId(userIDOnTurn!);
-
-      if (solution) {
-        sge.setNewRack(computeLeave(solution.getPlayedTiles(), sortedRack));
-      }
-      dispatchGameContext({
-        actionType: ActionType.AddGameEvent,
-        payload: sge,
-      });
+      // Place the tiles from the event.
+      placeGameEvt(solution!);
     } catch (err) {
       message.error({
         content: err.message,
         duration: 5,
       });
     }
-  }, [
-    puzzleID,
-    dispatchGameContext,
-    sortedRack,
-    userIDOnTurn,
-    gameContext.players,
-    history?.getPlayersList,
-  ]);
+  }, [puzzleID, userIDOnTurn, gameContext.players, placeGameEvt]);
 
   const attemptPuzzle = useCallback(
     async (evt: ClientGameplayEvent) => {
@@ -259,10 +357,10 @@ export const SinglePuzzle = (props: Props) => {
   );
 
   useEffect(() => {
-    if (userLexicon) {
+    if (userLexicon && !puzzleID) {
       loadNewPuzzle();
     }
-  }, [loadNewPuzzle, userLexicon]);
+  }, [loadNewPuzzle, userLexicon, puzzleID]);
 
   // This is displayed if there is no puzzle id and no preferred puzzle lexicon saved in local storage
   const lexiconModal = useMemo(() => {

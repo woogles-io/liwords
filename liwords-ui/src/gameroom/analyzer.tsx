@@ -78,7 +78,7 @@ const jsonMoveToKey = (v: JsonMove) => {
   }
 };
 
-type AnalyzerMove = {
+export type AnalyzerMove = {
   jsonKey: string;
   chosen?: boolean; // true for played, undefined for analyzer-generated moves
   valid?: boolean; // undefined for analyzer-generated moves
