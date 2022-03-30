@@ -2,7 +2,7 @@ package puzzles
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/domino14/liwords/pkg/common"
@@ -22,13 +22,14 @@ type PuzzleStore interface {
 	CreatePuzzle(ctx context.Context, gameID string, turnNumber int32, answer *macondopb.GameEvent, authorID string,
 		lexicon string, beforeText string, afterText string, tags []macondopb.PuzzleTag) error
 	GetRandomUnansweredPuzzleIdForUser(ctx context.Context, userId string, lexicon string) (string, error)
-	GetPuzzle(ctx context.Context, userId string, puzzleId string) (*macondopb.GameHistory, string, int32, *bool, error)
-	GetAnswer(ctx context.Context, puzzleId string) (*macondopb.GameEvent, string, string, *ipc.GameRequest, *entity.SingleRating, error)
+	GetPuzzle(ctx context.Context, userId string, puzzleUUID string) (*macondopb.GameHistory, string, int32, *bool, time.Time, time.Time, error)
+	GetPreviousPuzzle(ctx context.Context, userId string, puzzleUUID string) (string, error)
+	GetAnswer(ctx context.Context, puzzleUUID string) (*macondopb.GameEvent, string, string, *ipc.GameRequest, *entity.SingleRating, error)
 	SubmitAnswer(ctx context.Context, userId string, ratingKey entity.VariantKey, newUserRating *entity.SingleRating,
-		puzzleId string, newPuzzleRating *entity.SingleRating, userIsCorrect bool, userGaveUp bool) error
-	GetAttempts(ctx context.Context, userId string, puzzleId string) (int32, *bool, error)
+		puzzleUUID string, newPuzzleRating *entity.SingleRating, userIsCorrect bool, userGaveUp bool) error
+	GetAttempts(ctx context.Context, userId string, puzzleUUID string) (int32, *bool, time.Time, time.Time, error)
 	GetUserRating(ctx context.Context, userId string, ratingKey entity.VariantKey) (*entity.SingleRating, error)
-	SetPuzzleVote(ctx context.Context, userId string, puzzleId string, vote int) error
+	SetPuzzleVote(ctx context.Context, userId string, puzzleUUID string, vote int) error
 }
 
 func CreatePuzzlesFromGame(ctx context.Context, gs *gamestore.DBStore, ps PuzzleStore,
@@ -65,20 +66,24 @@ func GetRandomUnansweredPuzzleIdForUser(ctx context.Context, ps PuzzleStore, use
 	return ps.GetRandomUnansweredPuzzleIdForUser(ctx, userId, lexicon)
 }
 
-func GetPuzzle(ctx context.Context, ps PuzzleStore, userId string, puzzleId string) (*macondopb.GameHistory, string, int32, *bool, error) {
-	return ps.GetPuzzle(ctx, userId, puzzleId)
+func GetPuzzle(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID string) (*macondopb.GameHistory, string, int32, *bool, time.Time, time.Time, error) {
+	return ps.GetPuzzle(ctx, userId, puzzleUUID)
 }
 
-func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleId string, userId string, userAnswer *ipc.ClientGameplayEvent, showSolution bool) (bool, *macondopb.GameEvent, string, string, int32, error) {
-	correctAnswer, gameId, afterText, req, puzzleRating, err := ps.GetAnswer(ctx, puzzleId)
+func GetPreviousPuzzle(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID string) (string, error) {
+	return ps.GetPreviousPuzzle(ctx, userId, puzzleUUID)
+}
+
+func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleUUID string, userId string, userAnswer *ipc.ClientGameplayEvent, showSolution bool) (bool, *macondopb.GameEvent, string, string, int32, time.Time, time.Time, error) {
+	correctAnswer, gameId, afterText, req, puzzleRating, err := ps.GetAnswer(ctx, puzzleUUID)
 	if err != nil {
-		return false, nil, "", "", -1, err
+		return false, nil, "", "", -1, time.Time{}, time.Time{}, err
 	}
 	userIsCorrect := answersAreEqual(userAnswer, correctAnswer)
 	// Check if user has already seen this puzzle
-	attempts, userPreviousCorrect, err := ps.GetAttempts(ctx, userId, puzzleId)
+	attempts, userPreviousCorrect, _, _, err := ps.GetAttempts(ctx, userId, puzzleUUID)
 	if err != nil {
-		return false, nil, "", "", -1, err
+		return false, nil, "", "", -1, time.Time{}, time.Time{}, err
 	}
 	log.Debug().Interface("userPreviousCorrect", userPreviousCorrect).
 		Int32("attempts", attempts).Msg("equal")
@@ -90,7 +95,7 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleId string, userId s
 		// Get the user ratings
 		userRating, err := ps.GetUserRating(ctx, userId, rk)
 		if err != nil {
-			return false, nil, "", "", -1, err
+			return false, nil, "", "", -1, time.Time{}, time.Time{}, err
 		}
 
 		spread := glicko.SpreadScaling + 1
@@ -126,14 +131,14 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleId string, userId s
 		}
 	}
 
-	err = ps.SubmitAnswer(ctx, userId, rk, newUserSingleRating, puzzleId, newPuzzleSingleRating, userIsCorrect, showSolution)
+	err = ps.SubmitAnswer(ctx, userId, rk, newUserSingleRating, puzzleUUID, newPuzzleSingleRating, userIsCorrect, showSolution)
 	if err != nil {
-		return false, nil, "", "", -1, err
+		return false, nil, "", "", -1, time.Time{}, time.Time{}, err
 	}
 
-	attempts, _, err = ps.GetAttempts(ctx, userId, puzzleId)
+	attempts, _, firstAttemptTime, lastAttemptTime, err := ps.GetAttempts(ctx, userId, puzzleUUID)
 	if err != nil {
-		return false, nil, "", "", -1, err
+		return false, nil, "", "", -1, time.Time{}, time.Time{}, err
 	}
 
 	if !showSolution && !userIsCorrect {
@@ -141,14 +146,14 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleId string, userId s
 		gameId = ""
 	}
 
-	return userIsCorrect, correctAnswer, gameId, afterText, attempts, nil
+	return userIsCorrect, correctAnswer, gameId, afterText, attempts, firstAttemptTime, lastAttemptTime, nil
 }
 
-func SetPuzzleVote(ctx context.Context, ps PuzzleStore, userId string, puzzleId string, vote int) error {
+func SetPuzzleVote(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID string, vote int) error {
 	if !(vote == -1 || vote == 0 || vote == 1) {
-		return fmt.Errorf("puzzle vote must have a value of -1, 0, or 1 but got %d instead", vote)
+		return entity.NewWooglesError(ipc.WooglesError_PUZZLE_VOTE_INVALID, userId, puzzleUUID, strconv.Itoa(vote))
 	}
-	return ps.SetPuzzleVote(ctx, userId, puzzleId, vote)
+	return ps.SetPuzzleVote(ctx, userId, puzzleUUID, vote)
 }
 
 func answersAreEqual(userAnswer *ipc.ClientGameplayEvent, correctAnswer *macondopb.GameEvent) bool {

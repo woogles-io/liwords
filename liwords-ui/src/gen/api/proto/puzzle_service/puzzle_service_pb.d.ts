@@ -3,6 +3,7 @@
 
 import * as jspb from "google-protobuf";
 import * as macondo_api_proto_macondo_macondo_pb from "../../../macondo/api/proto/macondo/macondo_pb";
+import * as google_protobuf_timestamp_pb from "google-protobuf/google/protobuf/timestamp_pb";
 import * as api_proto_ipc_omgwords_pb from "../../../api/proto/ipc/omgwords_pb";
 
 export class RandomUnansweredPuzzleIdRequest extends jspb.Message {
@@ -80,6 +81,16 @@ export class PuzzleResponse extends jspb.Message {
   getStatus(): PuzzleStatusMap[keyof PuzzleStatusMap];
   setStatus(value: PuzzleStatusMap[keyof PuzzleStatusMap]): void;
 
+  hasFirstAttemptTime(): boolean;
+  clearFirstAttemptTime(): void;
+  getFirstAttemptTime(): google_protobuf_timestamp_pb.Timestamp | undefined;
+  setFirstAttemptTime(value?: google_protobuf_timestamp_pb.Timestamp): void;
+
+  hasLastAttemptTime(): boolean;
+  clearLastAttemptTime(): void;
+  getLastAttemptTime(): google_protobuf_timestamp_pb.Timestamp | undefined;
+  setLastAttemptTime(value?: google_protobuf_timestamp_pb.Timestamp): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): PuzzleResponse.AsObject;
   static toObject(includeInstance: boolean, msg: PuzzleResponse): PuzzleResponse.AsObject;
@@ -96,6 +107,8 @@ export namespace PuzzleResponse {
     beforeText: string,
     attempts: number,
     status: PuzzleStatusMap[keyof PuzzleStatusMap],
+    firstAttemptTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
+    lastAttemptTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
   }
 }
 
@@ -147,6 +160,16 @@ export class SubmissionResponse extends jspb.Message {
   getAttempts(): number;
   setAttempts(value: number): void;
 
+  hasFirstAttemptTime(): boolean;
+  clearFirstAttemptTime(): void;
+  getFirstAttemptTime(): google_protobuf_timestamp_pb.Timestamp | undefined;
+  setFirstAttemptTime(value?: google_protobuf_timestamp_pb.Timestamp): void;
+
+  hasLastAttemptTime(): boolean;
+  clearLastAttemptTime(): void;
+  getLastAttemptTime(): google_protobuf_timestamp_pb.Timestamp | undefined;
+  setLastAttemptTime(value?: google_protobuf_timestamp_pb.Timestamp): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): SubmissionResponse.AsObject;
   static toObject(includeInstance: boolean, msg: SubmissionResponse): SubmissionResponse.AsObject;
@@ -164,6 +187,48 @@ export namespace SubmissionResponse {
     gameId: string,
     afterText: string,
     attempts: number,
+    firstAttemptTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
+    lastAttemptTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
+  }
+}
+
+export class PreviousPuzzleRequest extends jspb.Message {
+  getPuzzleId(): string;
+  setPuzzleId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): PreviousPuzzleRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: PreviousPuzzleRequest): PreviousPuzzleRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: PreviousPuzzleRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): PreviousPuzzleRequest;
+  static deserializeBinaryFromReader(message: PreviousPuzzleRequest, reader: jspb.BinaryReader): PreviousPuzzleRequest;
+}
+
+export namespace PreviousPuzzleRequest {
+  export type AsObject = {
+    puzzleId: string,
+  }
+}
+
+export class PreviousPuzzleResponse extends jspb.Message {
+  getPuzzleId(): string;
+  setPuzzleId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): PreviousPuzzleResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: PreviousPuzzleResponse): PreviousPuzzleResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: PreviousPuzzleResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): PreviousPuzzleResponse;
+  static deserializeBinaryFromReader(message: PreviousPuzzleResponse, reader: jspb.BinaryReader): PreviousPuzzleResponse;
+}
+
+export namespace PreviousPuzzleResponse {
+  export type AsObject = {
+    puzzleId: string,
   }
 }
 

@@ -6,7 +6,6 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
@@ -98,14 +97,14 @@ func (s *DBStore) CreatePuzzle(ctx context.Context, gameUUID string, turnNumber 
 	return err
 }
 
-func (s *DBStore) GetRandomUnansweredPuzzleIdForUser(ctx context.Context, userId string, lexicon string) (string, error) {
+func (s *DBStore) GetRandomUnansweredPuzzleIdForUser(ctx context.Context, userUUID string, lexicon string) (string, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return "", err
 	}
 	defer tx.Rollback()
 
-	userDBID, err := common.GetUserDBIDFromUUID(ctx, tx, userId)
+	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
 	if err != nil {
 		return "", err
 	}
@@ -115,25 +114,25 @@ func (s *DBStore) GetRandomUnansweredPuzzleIdForUser(ctx context.Context, userId
 		return "", err
 	}
 	if !randomId.Valid {
-		return "", fmt.Errorf("no puzzle row id found for user: %s", userId)
+		return "", entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_RANDOM_PUZZLE_ID_NOT_FOUND, userUUID, lexicon)
 	}
 
-	var puzzleId string
-	err = tx.QueryRowContext(ctx, `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $2) AND id > $3 ORDER BY id LIMIT 1`, lexicon, userDBID, randomId.Int64).Scan(&puzzleId)
+	var puzzleUUID string
+	err = tx.QueryRowContext(ctx, `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $2) AND id > $3 ORDER BY id LIMIT 1`, lexicon, uid, randomId.Int64).Scan(&puzzleUUID)
 	if err == sql.ErrNoRows {
 		// Try again, but looking before the id instead
-		err = tx.QueryRowContext(ctx, `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $2) AND id <= $3 ORDER BY id DESC LIMIT 1`, lexicon, userDBID, randomId.Int64).Scan(&puzzleId)
+		err = tx.QueryRowContext(ctx, `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $2) AND id <= $3 ORDER BY id DESC LIMIT 1`, lexicon, uid, randomId.Int64).Scan(&puzzleUUID)
 	}
 	// The user has answered all available puzzles.
 	// Return any random puzzle
 	if err == sql.ErrNoRows {
-		err = tx.QueryRowContext(ctx, `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id > $2 ORDER BY id LIMIT 1`, lexicon, randomId.Int64).Scan(&puzzleId)
+		err = tx.QueryRowContext(ctx, `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id > $2 ORDER BY id LIMIT 1`, lexicon, randomId.Int64).Scan(&puzzleUUID)
 	}
 	if err == sql.ErrNoRows {
-		err = tx.QueryRowContext(ctx, `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id <= $2 ORDER BY id DESC LIMIT 1`, lexicon, randomId.Int64).Scan(&puzzleId)
+		err = tx.QueryRowContext(ctx, `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id <= $2 ORDER BY id DESC LIMIT 1`, lexicon, randomId.Int64).Scan(&puzzleUUID)
 	}
 	if err == sql.ErrNoRows {
-		return "", fmt.Errorf("no puzzles found for user: %s", userId)
+		return "", entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_RANDOM_PUZZLE_NOT_FOUND, userUUID, lexicon)
 	} else if err != nil {
 		return "", err
 	}
@@ -142,19 +141,19 @@ func (s *DBStore) GetRandomUnansweredPuzzleIdForUser(ctx context.Context, userId
 		return "", err
 	}
 
-	return puzzleId, nil
+	return puzzleUUID, nil
 }
 
-func (s *DBStore) GetPuzzle(ctx context.Context, userUUID string, puzzleUUID string) (*macondopb.GameHistory, string, int32, *bool, error) {
+func (s *DBStore) GetPuzzle(ctx context.Context, userUUID string, puzzleUUID string) (*macondopb.GameHistory, string, int32, *bool, time.Time, time.Time, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, "", -1, nil, err
+		return nil, "", -1, nil, time.Time{}, time.Time{}, err
 	}
 	defer tx.Rollback()
 
-	attempts, userIsCorrect, err := s.GetAttempts(ctx, userUUID, puzzleUUID)
+	attempts, userIsCorrect, firstAttemptTime, lastAttemptTime, err := s.GetAttempts(ctx, userUUID, puzzleUUID)
 	if err != nil {
-		return nil, "", -1, nil, err
+		return nil, "", -1, nil, time.Time{}, time.Time{}, err
 	}
 	var gameId int
 	var turnNumber int
@@ -162,18 +161,18 @@ func (s *DBStore) GetPuzzle(ctx context.Context, userUUID string, puzzleUUID str
 
 	err = tx.QueryRowContext(ctx, `SELECT game_id, turn_number, before_text FROM puzzles WHERE uuid = $1`, puzzleUUID).Scan(&gameId, &turnNumber, &beforeText)
 	if err == sql.ErrNoRows {
-		return nil, "", -1, nil, fmt.Errorf("puzzle not found: %s", puzzleUUID)
+		return nil, "", -1, nil, time.Time{}, time.Time{}, entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_PUZZLE_UUID_NOT_FOUND, userUUID, puzzleUUID)
 	}
 	if err != nil {
-		return nil, "", -1, nil, err
+		return nil, "", -1, nil, time.Time{}, time.Time{}, err
 	}
 
 	hist, _, _, err := common.GetGameInfo(ctx, tx, gameId)
 	if err != nil {
-		return nil, "", -1, nil, err
+		return nil, "", -1, nil, time.Time{}, time.Time{}, err
 	}
 	if err := tx.Commit(); err != nil {
-		return nil, "", -1, nil, err
+		return nil, "", -1, nil, time.Time{}, time.Time{}, err
 	}
 
 	puzzleEvent := hist.Events[turnNumber]
@@ -188,11 +187,79 @@ func (s *DBStore) GetPuzzle(ctx context.Context, userUUID string, puzzleUUID str
 	hist.LastKnownRacks = []string{"", ""}
 	idx := playerIndexes[puzzleEvent.Nickname]
 	hist.LastKnownRacks[idx] = puzzleEvent.Rack
+	hist.OriginalGcg = ""
+	hist.IdAuth = ""
+	hist.Uid = ""
 
-	return hist, beforeText, attempts, userIsCorrect, nil
+	return hist, beforeText, attempts, userIsCorrect, firstAttemptTime, lastAttemptTime, nil
 }
 
-func (s *DBStore) GetAnswer(ctx context.Context, puzzleId string) (*macondopb.GameEvent, string, string, *ipc.GameRequest, *entity.SingleRating, error) {
+func (s *DBStore) GetPreviousPuzzle(ctx context.Context, userUUID string, puzzleUUID string) (string, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return "", err
+	}
+	defer tx.Rollback()
+
+	pid, err := common.GetPuzzleDBIDFromUUID(ctx, tx, puzzleUUID)
+	if err != nil {
+		return "", err
+	}
+
+	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
+	if err != nil {
+		return "", err
+	}
+
+	var previousPuzzleUUID string
+	var currentPuzzleUpdatedTime time.Time
+	err = tx.QueryRowContext(ctx, `SELECT updated_at FROM puzzle_attempts WHERE puzzle_id = $1`, pid).Scan(&currentPuzzleUpdatedTime)
+	if err == sql.ErrNoRows {
+		// Current puzzle has not been attempted, just select the most recently attempted puzzle
+		var mostRecentPid int
+		err = tx.QueryRowContext(ctx, `SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $1 ORDER BY updated_at DESC LIMIT 1`, uid).Scan(&mostRecentPid)
+		if err == sql.ErrNoRows {
+			return "", entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_PREVIOUS_PUZZLE_NO_ATTEMPTS, userUUID, puzzleUUID)
+		}
+		if err != nil {
+			return "", err
+		}
+
+		err = tx.QueryRowContext(ctx, `SELECT uuid FROM puzzles WHERE id = $1`, mostRecentPid).Scan(&previousPuzzleUUID)
+		if err == sql.ErrNoRows {
+			return "", entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_PREVIOUS_PUZZLE_NO_ATTEMPTS_ID_NOT_FOUND, userUUID, puzzleUUID)
+		}
+		if err != nil {
+			return "", err
+		}
+	}
+	if err != nil {
+		return "", err
+	}
+
+	if previousPuzzleUUID == "" {
+		var previousPid int
+		err = tx.QueryRowContext(ctx, `SELECT puzzle_id FROM puzzle_attempts WHERE updated_at <= $1 AND puzzle_id != $2 ORDER BY updated_at DESC LIMIT 1`, currentPuzzleUpdatedTime, pid).Scan(&previousPid)
+		if err == sql.ErrNoRows {
+			return "", entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_PREVIOUS_PUZZLE_ATTEMPT_NOT_FOUND, userUUID, puzzleUUID)
+		}
+		if err != nil {
+			return "", err
+		}
+
+		err = tx.QueryRowContext(ctx, `SELECT uuid FROM puzzles WHERE id = $1`, previousPid).Scan(&previousPuzzleUUID)
+		if err == sql.ErrNoRows {
+			return "", entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_PREVIOUS_PUZZLE_ID_NOT_FOUND, userUUID, puzzleUUID)
+		}
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return previousPuzzleUUID, nil
+}
+
+func (s *DBStore) GetAnswer(ctx context.Context, puzzleUUID string) (*macondopb.GameEvent, string, string, *ipc.GameRequest, *entity.SingleRating, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, "", "", nil, nil, err
@@ -203,9 +270,9 @@ func (s *DBStore) GetAnswer(ctx context.Context, puzzleId string) (*macondopb.Ga
 	var afterText string
 	var gameId int
 
-	err = tx.QueryRowContext(ctx, `SELECT answer, rating, after_text, game_id FROM puzzles WHERE uuid = $1`, puzzleId).Scan(&ans, &rat, &afterText, &gameId)
+	err = tx.QueryRowContext(ctx, `SELECT answer, rating, after_text, game_id FROM puzzles WHERE uuid = $1`, puzzleUUID).Scan(&ans, &rat, &afterText, &gameId)
 	if err == sql.ErrNoRows {
-		return nil, "", "", nil, nil, fmt.Errorf("puzzle not found: %s", puzzleId)
+		return nil, "", "", nil, nil, entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_ANSWER_PUZZLE_UUID_NOT_FOUND, puzzleUUID)
 	}
 	if err != nil {
 		return nil, "", "", nil, nil, err
@@ -221,8 +288,8 @@ func (s *DBStore) GetAnswer(ctx context.Context, puzzleId string) (*macondopb.Ga
 	return answerToGameEvent(ans), gameUUID, afterText, req, rat, nil
 }
 
-func (s *DBStore) SubmitAnswer(ctx context.Context, userId string, ratingKey entity.VariantKey,
-	newUserRating *entity.SingleRating, puzzleId string, newPuzzleRating *entity.SingleRating, userIsCorrect bool, showSolution bool) error {
+func (s *DBStore) SubmitAnswer(ctx context.Context, userUUID string, ratingKey entity.VariantKey,
+	newUserRating *entity.SingleRating, puzzleUUID string, newPuzzleRating *entity.SingleRating, userIsCorrect bool, showSolution bool) error {
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -230,12 +297,12 @@ func (s *DBStore) SubmitAnswer(ctx context.Context, userId string, ratingKey ent
 	}
 	defer tx.Rollback()
 
-	pid, err := common.GetPuzzleDBIDFromUUID(ctx, tx, puzzleId)
+	pid, err := common.GetPuzzleDBIDFromUUID(ctx, tx, puzzleUUID)
 	if err != nil {
 		return err
 	}
 
-	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userId)
+	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
 	if err != nil {
 		return err
 	}
@@ -262,7 +329,7 @@ func (s *DBStore) SubmitAnswer(ctx context.Context, userId string, ratingKey ent
 			return err
 		}
 		if rowsAffected != 1 {
-			return fmt.Errorf("not exactly one row affected when setting puzzle rating: %d, %d", pid, rowsAffected)
+			return entity.NewWooglesError(ipc.WooglesError_PUZZLE_SUBMIT_ANSWER_PUZZLE_ID_NOT_FOUND, userUUID, puzzleUUID)
 		}
 
 		err = common.UpdateUserRating(ctx, tx, uid, ratingKey, newUserRating)
@@ -295,6 +362,14 @@ func (s *DBStore) SubmitAnswer(ctx context.Context, userId string, ratingKey ent
 				return err
 			}
 
+			rowsAffected, err := result.RowsAffected()
+			if err != nil {
+				return err
+			}
+			if rowsAffected != 1 {
+				entity.NewWooglesError(ipc.WooglesError_PUZZLE_SUBMIT_ANSWER_SET_CORRECT, userUUID, puzzleUUID)
+			}
+
 			if !showSolution {
 				result, err := tx.ExecContext(ctx, `UPDATE puzzle_attempts SET attempts = attempts + 1, updated_at = NOW() WHERE puzzle_id = $1 AND user_id = $2`, pid, uid)
 				if err != nil {
@@ -305,16 +380,8 @@ func (s *DBStore) SubmitAnswer(ctx context.Context, userId string, ratingKey ent
 					return err
 				}
 				if rowsAffected != 1 {
-					return fmt.Errorf("not exactly one row affected when updating puzzle attempt: %d, %d, %d", pid, uid, rowsAffected)
+					entity.NewWooglesError(ipc.WooglesError_PUZZLE_SUBMIT_ANSWER_SET_ATTEMPTS, userUUID, puzzleUUID)
 				}
-			}
-
-			rowsAffected, err := result.RowsAffected()
-			if err != nil {
-				return err
-			}
-			if rowsAffected != 1 {
-				return fmt.Errorf("not exactly one row affected when updating puzzle attempt: %d, %d, %d", pid, uid, rowsAffected)
 			}
 		}
 	}
@@ -382,7 +449,7 @@ func (s *DBStore) SetPuzzleVote(ctx context.Context, userID string, puzzleID str
 		return err
 	}
 	if rowsAffected != 1 {
-		return fmt.Errorf("not exactly one row affected when setting puzzle vote: %d, %d, %d", pid, uid, rowsAffected)
+		return entity.NewWooglesError(ipc.WooglesError_PUZZLE_SET_PUZZLE_VOTE_ID_NOT_FOUND, userID, puzzleID)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -392,41 +459,43 @@ func (s *DBStore) SetPuzzleVote(ctx context.Context, userID string, puzzleID str
 	return err
 }
 
-func (s *DBStore) GetAttempts(ctx context.Context, userUUID string, puzzleUUID string) (int32, *bool, error) {
+func (s *DBStore) GetAttempts(ctx context.Context, userUUID string, puzzleUUID string) (int32, *bool, time.Time, time.Time, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return -1, nil, err
+		return -1, nil, time.Time{}, time.Time{}, err
 	}
 	defer tx.Rollback()
 
 	pid, err := common.GetPuzzleDBIDFromUUID(ctx, tx, puzzleUUID)
 	if err != nil {
-		return -1, nil, err
+		return -1, nil, time.Time{}, time.Time{}, err
 	}
 
 	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
 	if err != nil {
-		return -1, nil, err
+		return -1, nil, time.Time{}, time.Time{}, err
 	}
 
 	var attempts int32
 	correct := &sql.NullBool{}
+	var firstAttemptTime time.Time
+	var lastAttemptTime time.Time
 
-	err = tx.QueryRowContext(ctx, `SELECT attempts, correct FROM puzzle_attempts WHERE user_id = $1 AND puzzle_id = $2`, uid, pid).Scan(&attempts, correct)
+	err = tx.QueryRowContext(ctx, `SELECT attempts, correct, created_at, updated_at FROM puzzle_attempts WHERE user_id = $1 AND puzzle_id = $2`, uid, pid).Scan(&attempts, correct, &firstAttemptTime, &lastAttemptTime)
 	if err == sql.ErrNoRows {
-		return 0, nil, nil
+		return 0, nil, time.Time{}, time.Time{}, nil
 	}
 	if err != nil {
-		return -1, nil, err
+		return -1, nil, time.Time{}, time.Time{}, err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return -1, nil, err
+		return -1, nil, time.Time{}, time.Time{}, err
 	}
 
 	res := correct.Bool
 
-	return attempts, &res, nil
+	return attempts, &res, firstAttemptTime, lastAttemptTime, nil
 }
 
 func getRandomPuzzleId(ctx context.Context, tx *sql.Tx) (sql.NullInt64, error) {
