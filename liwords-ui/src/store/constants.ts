@@ -319,7 +319,7 @@ export const errorMap: Map<number, string> = new Map<number, string>([
   ],
   [
     1041,
-    'Round $3 in division $2 cannot be started. Please ensure you have results for all prior rounds.',
+    'Round $3 in division $2 cannot be started because round $3 is not fully paired.',
   ],
   // Should not be possible to trigger, but that's probably the case with a lot of these:
   [1042, 'Ready was sent for the wrong round (div $2, round $3).'],

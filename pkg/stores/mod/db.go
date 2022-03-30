@@ -22,7 +22,6 @@ func NewNotorietyStore(dbURL string) (*NotorietyStore, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.AutoMigrate(&notoriousgame{})
 	return &NotorietyStore{db: db}, nil
 }
 

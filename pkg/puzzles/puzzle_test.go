@@ -17,6 +17,7 @@ import (
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/macondo/board"
@@ -25,10 +26,6 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/macondo/move"
-
-	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
 const PuzzlerUUID = "puzzler"
@@ -422,11 +419,12 @@ func TestUniqueSingleTileKey(t *testing.T) {
 func RecreateDB() (*sql.DB, *puzzlesstore.DBStore, int, int, error) {
 	cfg := &config.Config{}
 	cfg.MacondoConfig = common.DefaultConfig
-	cfg.DBConnString = commondb.TestingPostgresConnString()
+	cfg.DBConnUri = commondb.TestingPostgresConnUri()
+	cfg.DBConnDSN = commondb.TestingPostgresConnDSN()
 	cfg.MacondoConfig.DefaultLexicon = common.DefaultLexicon
-	zerolog.SetGlobalLevel(zerolog.Disabled)
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	ctx := context.Background()
-
+	log.Info().Msg("here first")
 	// Recreate the test database
 	commondb.RecreateTestDB()
 
@@ -436,7 +434,7 @@ func RecreateDB() (*sql.DB, *puzzlesstore.DBStore, int, int, error) {
 		return nil, nil, 0, 0, err
 	}
 
-	userStore, err := user.NewDBStore(commondb.TestingPostgresConnString())
+	userStore, err := user.NewDBStore(commondb.TestingPostgresConnDSN())
 	if err != nil {
 		return nil, nil, 0, 0, err
 	}
@@ -452,14 +450,6 @@ func RecreateDB() (*sql.DB, *puzzlesstore.DBStore, int, int, error) {
 
 	gameStore, err := gamestore.NewDBStore(cfg, userStore)
 	if err != nil {
-		return nil, nil, 0, 0, err
-	}
-
-	m, err := migrate.New(commondb.MigrationFile, commondb.TestingMigrationConnString())
-	if err != nil {
-		return nil, nil, 0, 0, err
-	}
-	if err := m.Up(); err != nil {
 		return nil, nil, 0, 0, err
 	}
 

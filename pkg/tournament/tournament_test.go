@@ -6,13 +6,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jinzhu/gorm"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
+	"github.com/domino14/liwords/pkg/stores/common"
 	"github.com/domino14/liwords/pkg/stores/game"
 	ts "github.com/domino14/liwords/pkg/stores/tournament"
 	"github.com/domino14/liwords/pkg/stores/user"
@@ -25,8 +25,6 @@ import (
 )
 
 var tournamentName = "testTournament"
-var TestDBHost = os.Getenv("TEST_DB_HOST")
-var TestingDBConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
 var gameReq = &ipc.GameRequest{Lexicon: "CSW21",
 	Rules: &ipc.GameRules{BoardLayoutName: entity.CrosswordGame,
 		LetterDistributionName: "English",
@@ -53,21 +51,12 @@ var divTwoName = "Division 2"
 
 func recreateDB() {
 	// Create a database.
-	db, err := gorm.Open("postgres", TestingDBConnStr+" dbname=postgres")
+	err := common.RecreateTestDB()
 	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-	defer db.Close()
-	db = db.Exec("DROP DATABASE IF EXISTS liwords_test")
-	if db.Error != nil {
-		log.Fatal().Err(db.Error).Msg("error")
-	}
-	db = db.Exec("CREATE DATABASE liwords_test")
-	if db.Error != nil {
-		log.Fatal().Err(db.Error).Msg("error")
+		panic(err)
 	}
 
-	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
+	ustore := userStore()
 
 	for _, u := range []*entity.User{
 		{Username: "Will", Email: "cesar@woogles.io", UUID: "Will"},
@@ -96,10 +85,10 @@ func recreateDB() {
 	ustore.(*user.DBStore).Disconnect()
 }
 
-func tournamentStore(dbURL string, gs gameplay.GameStore) (*config.Config, tournament.TournamentStore) {
+func tournamentStore(gs gameplay.GameStore) (*config.Config, tournament.TournamentStore) {
 	cfg := &config.Config{}
 	cfg.MacondoConfig = DefaultConfig
-	cfg.DBConnString = dbURL
+	cfg.DBConnDSN = common.TestingPostgresConnDSN()
 
 	tmp, err := ts.NewDBStore(cfg, gs)
 	if err != nil {
@@ -171,18 +160,18 @@ func makeTournamentPersons(persons map[string]int32) *ipc.TournamentPersons {
 	return tp
 }
 
-func userStore(dbURL string) pkguser.Store {
-	ustore, err := user.NewDBStore(TestingDBConnStr + " dbname=liwords_test")
+func userStore() pkguser.Store {
+	ustore, err := user.NewDBStore(common.TestingPostgresConnDSN())
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
 	return ustore
 }
 
-func gameStore(dbURL string, userStore pkguser.Store) (*config.Config, gameplay.GameStore) {
+func gameStore(userStore pkguser.Store) (*config.Config, gameplay.GameStore) {
 	cfg := &config.Config{}
 	cfg.MacondoConfig = DefaultConfig
-	cfg.DBConnString = dbURL
+	cfg.DBConnDSN = common.TestingPostgresConnDSN()
 
 	tmp, err := game.NewDBStore(cfg, userStore)
 	if err != nil {
@@ -195,11 +184,10 @@ func gameStore(dbURL string, userStore pkguser.Store) (*config.Config, gameplay.
 func TestTournamentSingleDivision(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
-	cstr := TestingDBConnStr + " dbname=liwords_test"
 	recreateDB()
-	us := userStore(cstr)
-	_, gs := gameStore(cstr, us)
-	cfg, tstore := tournamentStore(cstr, gs)
+	us := userStore()
+	_, gs := gameStore(us)
+	cfg, tstore := tournamentStore(gs)
 
 	players := makeTournamentPersons(map[string]int32{"Will": 1000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100})
 	directors := makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2})
@@ -561,12 +549,11 @@ func TestTournamentSingleDivision(t *testing.T) {
 func TestTournamentMultipleDivisions(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
-	cstr := TestingDBConnStr + " dbname=liwords_test"
 
 	recreateDB()
-	us := userStore(cstr)
-	_, gs := gameStore(cstr, us)
-	cfg, tstore := tournamentStore(cstr, gs)
+	us := userStore()
+	_, gs := gameStore(us)
+	cfg, tstore := tournamentStore(gs)
 
 	divOnePlayers := makeTournamentPersons(map[string]int32{"Will": 1000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100})
 	divTwoPlayers := makeTournamentPersons(map[string]int32{"Guy": 1000, "Dude": 3000, "Comrade": 2200, "ValuedCustomer": 2100})

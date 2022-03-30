@@ -1,0 +1,5 @@
+BEGIN;
+
+ALTER TABLE public.games ADD COLUMN IF NOT EXISTS "type" INTEGER;
+
+COMMIT;

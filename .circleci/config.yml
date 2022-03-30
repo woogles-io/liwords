@@ -4,10 +4,12 @@ orbs:
 jobs:
   build_api_srv:
     environment:
-      LEXICON_PATH: /opt/lexica/
+      LEXICON_PATH: /opt/liwords/data/lexica
       LETTER_DISTRIBUTION_PATH: /opt/liwords/data/letterdistributions/
+      STRATEGY_PARAMS_PATH: /opt/macondo/data/strategy
       TEST_DB_HOST: localhost
       REDIS_URL: redis://localhost:6379
+      DB_MIGRATIONS_PATH: file:///opt/liwords/db/migrations
     docker:
       - image: golang:alpine
       - image: circleci/postgres:12.3
@@ -27,11 +29,9 @@ jobs:
       - run:
           name: Clone macondo
           command: git clone git@github.com:domino14/macondo /opt/macondo
-      - run: mv /opt/liwords/data/lexica $LEXICON_PATH
-      - run: mv /opt/macondo/data/strategy $LEXICON_PATH
       - run: cd cmd/liwords-api && go build
       # Tests must not be run in parallel; postgres issues happen otherwise.
-      - run: go test -p 1 ./...
+      - run: go test -race -p 1 ./...
       - slack/status: &slack-webhook-setting
           webhook: "${SLACK_WEBHOOK}"
           success_message: ":tada: A $CIRCLE_JOB job has succeeded! (Branch: $CIRCLE_BRANCH)"

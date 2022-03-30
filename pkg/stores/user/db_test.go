@@ -5,34 +5,21 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jinzhu/gorm"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/stores/common"
 )
 
-var TestDBHost = os.Getenv("TEST_DB_HOST")
-
-var TestingDBConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
-
 func recreateDB() *DBStore {
-	// Create a database.
-	db, err := gorm.Open("postgres", TestingDBConnStr+" dbname=postgres")
+	err := common.RecreateTestDB()
 	if err != nil {
-		log.Fatal().Err(err).Msg("error")
+		panic(err)
 	}
-	defer db.Close()
-	db = db.Exec("DROP DATABASE IF EXISTS liwords_test")
-	if db.Error != nil {
-		log.Fatal().Err(db.Error).Msg("error")
-	}
-	db = db.Exec("CREATE DATABASE liwords_test")
-	if db.Error != nil {
-		log.Fatal().Err(db.Error).Msg("error")
-	}
+
 	// Create a user table. Initialize the user store.
-	ustore, err := NewDBStore(TestingDBConnStr + " dbname=liwords_test")
+	ustore, err := NewDBStore(common.TestingPostgresConnDSN())
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}

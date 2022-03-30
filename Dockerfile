@@ -22,6 +22,7 @@ RUN go build -ldflags  "-X=main.BuildDate=${BUILD_DATE} -X=main.BuildHash=${BUIL
 # Build minimal image:
 FROM alpine
 COPY --from=build-env /opt/program/cmd/liwords-api/liwords-api /opt/liwords-api
+COPY --from=build-env /opt/program/db /opt/db
 RUN apk --no-cache add curl
 EXPOSE 8001
 

@@ -21,13 +21,15 @@ type Config struct {
 	MacondoConfig macondoconfig.Config
 	ArgonConfig   ArgonConfig
 
-	DBHost       string
-	DBPort       string
-	DBUser       string
-	DBPassword   string
-	DBSSLMode    string
-	DBName       string
-	DBConnString string
+	DBHost           string
+	DBPort           string
+	DBUser           string
+	DBPassword       string
+	DBSSLMode        string
+	DBName           string
+	DBMigrationsPath string
+	DBConnUri        string
+	DBConnDSN        string
 
 	ListenAddr   string
 	SecretKey    string
@@ -64,6 +66,7 @@ func (c *Config) Load(args []string) error {
 	fs.StringVar(&c.MailgunKey, "mailgun-key", "", "the Mailgun secret key")
 	fs.StringVar(&c.RedisURL, "redis-url", "", "the Redis URL")
 	fs.StringVar(&c.DiscordToken, "discord-token", "", "the token used for moderator action discord notifications")
+	fs.StringVar(&c.DBMigrationsPath, "db-migrations-path", "", "the path where migrations are stored")
 
 	// For password hashing:
 	fs.IntVar(&c.ArgonConfig.Keylen, "argon-key-len", 32, "the Argon key length")
@@ -72,8 +75,8 @@ func (c *Config) Load(args []string) error {
 	fs.IntVar(&c.ArgonConfig.Threads, "argon-threads", 4, "the Argon threads")
 	err := fs.Parse(args)
 	// build the DB conn string from the passed-in DB arguments
-	c.DBConnString = common.PostgresConnString(c.DBHost, c.DBPort, c.DBName, c.DBUser, c.DBPassword, c.DBSSLMode)
-
+	c.DBConnUri = common.PostgresConnUri(c.DBHost, c.DBPort, c.DBName, c.DBUser, c.DBPassword, c.DBSSLMode)
+	c.DBConnDSN = common.PostgresConnDSN(c.DBHost, c.DBPort, c.DBName, c.DBUser, c.DBPassword, c.DBSSLMode)
 	return err
 }
 

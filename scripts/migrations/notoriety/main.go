@@ -20,11 +20,11 @@ func main() {
 
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
-	userStore, err := user.NewDBStore(cfg.DBConnString)
+	userStore, err := user.NewDBStore(cfg.DBConnDSN)
 	if err != nil {
 		panic(err)
 	}
-	notorietyStore, err := mod.NewNotorietyStore(cfg.DBConnString)
+	notorietyStore, err := mod.NewNotorietyStore(cfg.DBConnDSN)
 	if err != nil {
 		panic(err)
 	}

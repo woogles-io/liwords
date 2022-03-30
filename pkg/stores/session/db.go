@@ -31,7 +31,6 @@ func NewDBStore(dbURL string) (*DBStore, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.AutoMigrate(&dbSession{})
 
 	return &DBStore{db: db}, nil
 }

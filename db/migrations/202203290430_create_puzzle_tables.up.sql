@@ -1,3 +1,5 @@
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS puzzles (
 		id BIGSERIAL PRIMARY KEY,
 		uuid text UNIQUE NOT NULL,
@@ -53,3 +55,5 @@ CREATE TABLE IF NOT EXISTS puzzle_votes (
 
 INSERT INTO puzzle_tag_titles (tag_title) VALUES ('EQUITY') ON CONFLICT DO NOTHING;
 INSERT INTO puzzle_tag_titles (tag_title) VALUES ('ONLY_BINGO') ON CONFLICT DO NOTHING;
+
+COMMIT;
