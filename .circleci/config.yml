@@ -9,7 +9,7 @@ jobs:
       STRATEGY_PARAMS_PATH: /opt/strategy
       TEST_DB_HOST: localhost
       REDIS_URL: redis://localhost:6379
-      DB_MIGRATIONS_PATH: /opt/liwords/db/migrations
+      DB_MIGRATIONS_PATH: file:///opt/liwords/db/migrations
     docker:
       - image: golang:alpine
       - image: circleci/postgres:12.3
