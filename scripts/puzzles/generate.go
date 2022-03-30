@@ -93,7 +93,7 @@ func main() {
 		panic(err)
 	}
 
-	m, err := migrate.New(commondb.MigrationFile, commondb.PostgresConnUri(cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBUser, cfg.DBPassword, cfg.DBSSLMode))
+	m, err := migrate.New(commondb.MigrationsPath, commondb.PostgresConnUri(cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBUser, cfg.DBPassword, cfg.DBSSLMode))
 	if err != nil {
 		panic(err)
 	}

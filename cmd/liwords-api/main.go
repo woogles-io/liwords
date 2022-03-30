@@ -123,10 +123,7 @@ func main() {
 	}
 	log.Debug().Msg("debug log is on")
 
-	pgUri := common.PostgresConnUri(cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBUser,
-		cfg.DBPassword, cfg.DBSSLMode)
-
-	m, err := migrate.New(cfg.DBMigrationsPath, pgUri)
+	m, err := migrate.New(cfg.DBMigrationsPath, cfg.DBConnUri)
 	if err != nil {
 		panic(err)
 	}
@@ -134,6 +131,9 @@ func main() {
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		panic(err)
 	}
+	e1, e2 := m.Close()
+	log.Err(e1).Msg("close-source")
+	log.Err(e2).Msg("close-database")
 
 	redisPool := newPool(cfg.RedisURL)
 

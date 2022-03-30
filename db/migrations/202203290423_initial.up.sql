@@ -1,5 +1,51 @@
 BEGIN;
 
+
+-- users
+
+CREATE TABLE public.users (
+    id integer NOT NULL,
+    created_at timestamp with time zone,
+    updated_at timestamp with time zone,
+    deleted_at timestamp with time zone,
+    uuid character varying(24),
+    username character varying(32),
+    email character varying(100),
+    password character varying(128),
+    internal_bot boolean DEFAULT false,
+    is_admin boolean DEFAULT false,
+    api_key text,
+    is_director boolean DEFAULT false,
+    is_mod boolean DEFAULT false,
+    actions jsonb,
+    notoriety integer
+);
+
+CREATE SEQUENCE public.users_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
+ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+CREATE INDEX api_key_idx ON public.users USING btree (api_key);
+CREATE UNIQUE INDEX email_idx ON public.users USING btree (lower((email)::text));
+
+CREATE INDEX idx_users_deleted_at ON public.users USING btree (deleted_at);
+CREATE INDEX idx_users_internal_bot ON public.users USING btree (internal_bot);
+CREATE INDEX idx_users_is_admin ON public.users USING btree (is_admin);
+CREATE INDEX idx_users_is_mod ON public.users USING btree (is_mod);
+CREATE INDEX idx_users_uuid ON public.users USING btree (uuid);
+
+CREATE UNIQUE INDEX username_idx ON public.users USING btree (lower((username)::text));
+
+
 -- block list
 
 CREATE TABLE public.blockings (
@@ -228,49 +274,5 @@ CREATE INDEX idx_tournaments_deleted_at ON public.tournaments USING btree (delet
 CREATE INDEX idx_tournaments_parent ON public.tournaments USING btree (parent);
 CREATE UNIQUE INDEX idx_tournaments_slug ON public.tournaments USING btree (lower(slug));
 CREATE INDEX idx_tournaments_uuid ON public.tournaments USING btree (lower(uuid));
-
--- users
-
-CREATE TABLE public.users (
-    id integer NOT NULL,
-    created_at timestamp with time zone,
-    updated_at timestamp with time zone,
-    deleted_at timestamp with time zone,
-    uuid character varying(24),
-    username character varying(32),
-    email character varying(100),
-    password character varying(128),
-    internal_bot boolean DEFAULT false,
-    is_admin boolean DEFAULT false,
-    api_key text,
-    is_director boolean DEFAULT false,
-    is_mod boolean DEFAULT false,
-    actions jsonb,
-    notoriety integer
-);
-
-CREATE SEQUENCE public.users_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
-ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
-ALTER TABLE ONLY public.users
-    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
-
-CREATE INDEX api_key_idx ON public.users USING btree (api_key);
-CREATE UNIQUE INDEX email_idx ON public.users USING btree (lower((email)::text));
-
-CREATE INDEX idx_users_deleted_at ON public.users USING btree (deleted_at);
-CREATE INDEX idx_users_internal_bot ON public.users USING btree (internal_bot);
-CREATE INDEX idx_users_is_admin ON public.users USING btree (is_admin);
-CREATE INDEX idx_users_is_mod ON public.users USING btree (is_mod);
-CREATE INDEX idx_users_uuid ON public.users USING btree (uuid);
-
-CREATE UNIQUE INDEX username_idx ON public.users USING btree (lower((username)::text));
 
 COMMIT;

@@ -4,9 +4,20 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+
+	// See:
+	// https://github.com/jackc/pgx/wiki/Getting-started-with-pgx-through-database-sql
+	// XXX: Why not use pgx interface directly?
+	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/rs/zerolog/log"
 )
 
 var TestDBHost = os.Getenv("TEST_DB_HOST")
+var MigrationsPath = os.Getenv("DB_MIGRATIONS_PATH")
 
 const (
 	TestDBName     = "liwords_test"
@@ -15,8 +26,6 @@ const (
 	TestDBPassword = "pass"
 	TestDBSSLMode  = "disable"
 )
-
-var MigrationFile = "file://../../db/migrations"
 
 func RecreateTestDB() error {
 	db, err := sql.Open("pgx", PostgresConnUri(TestDBHost, TestDBPort,
@@ -35,7 +44,19 @@ func RecreateTestDB() error {
 	if err != nil {
 		return err
 	}
-
+	log.Info().Msg("running migrations")
+	// And create all tables/sequences/etc.
+	m, err := migrate.New(MigrationsPath, TestingPostgresConnUri())
+	if err != nil {
+		return err
+	}
+	if err := m.Up(); err != nil {
+		return err
+	}
+	e1, e2 := m.Close()
+	log.Err(e1).Msg("close-source")
+	log.Err(e2).Msg("close-database")
+	log.Info().Msg("created test db")
 	return nil
 }
 

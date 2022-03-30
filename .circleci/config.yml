@@ -6,8 +6,10 @@ jobs:
     environment:
       LEXICON_PATH: /opt/lexica/
       LETTER_DISTRIBUTION_PATH: /opt/liwords/data/letterdistributions/
+      STRATEGY_PARAMS_PATH: /opt/strategy
       TEST_DB_HOST: localhost
       REDIS_URL: redis://localhost:6379
+      DB_MIGRATIONS_PATH: /opt/liwords/db/migrations
     docker:
       - image: golang:alpine
       - image: circleci/postgres:12.3
@@ -28,7 +30,7 @@ jobs:
           name: Clone macondo
           command: git clone git@github.com:domino14/macondo /opt/macondo
       - run: mv /opt/liwords/data/lexica $LEXICON_PATH
-      - run: mv /opt/macondo/data/strategy $LEXICON_PATH
+      - run: mv /opt/macondo/data/strategy $STRATEGY_PARAMS_PATH
       - run: cd cmd/liwords-api && go build
       # Tests must not be run in parallel; postgres issues happen otherwise.
       - run: go test -p 1 ./...
