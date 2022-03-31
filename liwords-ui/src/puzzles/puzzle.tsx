@@ -1,12 +1,6 @@
 import { HomeOutlined } from '@ant-design/icons';
-import { Button, Card, Form, message, Modal } from 'antd';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { Card, Form, message, Modal } from 'antd';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { postJsonObj, postProto } from '../api/api';
 import { Chat } from '../chat/chat';
@@ -22,8 +16,6 @@ import {
 import { BoardPanel } from '../gameroom/board_panel';
 import {
   ChallengeRule,
-  defaultGameInfo,
-  GameMetadata,
   protoChallengeRuleConvert,
 } from '../gameroom/game_info';
 import { PuzzleScore } from './puzzle_score';
@@ -55,14 +47,12 @@ import {
   ClientGameplayEvent,
   GameInfoResponse,
   RatingMode,
-  RatingModeMap,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { computeLeave } from '../utils/cwgame/game_event';
 import { EmptySpace, EphemeralTile } from '../utils/cwgame/common';
 import { AnalyzerMove } from '../gameroom/analyzer';
 import { useMountedState } from '../utils/mounted';
 import { BoopSounds } from '../sound/boop';
-import { ResetPasswordResponse } from '../gen/api/proto/user_service/user_service_pb';
 import { GameInfoRequest } from '../gen/api/proto/game_service/game_service_pb';
 type Props = {
   sendChat: (msg: string, chan: string) => void;
@@ -201,7 +191,7 @@ export const SinglePuzzle = (props: Props) => {
           );
         }
         const gh = resp.getHistory();
-        if (gh == null || gh == undefined) {
+        if (gh === null || gh === undefined) {
           throw new Error('Did not receive a valid puzzle position!');
         }
         dispatchGameContext({
@@ -211,10 +201,13 @@ export const SinglePuzzle = (props: Props) => {
         setGameHistory(gh);
         console.log('got game history', gh.toObject());
         BoopSounds.playSound('puzzleStartSound');
-
         setPuzzleInfo({
           attempts: resp.getAttempts(),
-          // XXX: add dateSolved to backend and front end.
+          // XXX: add dateSolved to backend, in the meantime...
+          dateSolved:
+            resp.getStatus() === PuzzleStatus.CORRECT
+              ? resp.getLastAttemptTime()?.toDate()
+              : undefined,
           lexicon: gh.getLexicon(),
           variantName: gh.getVariant(),
           solved: resp.getStatus(),
@@ -251,7 +244,7 @@ export const SinglePuzzle = (props: Props) => {
 
   const alphabet = useMemo(
     () => alphabetFromName(gameHistory?.getLetterDistribution().toLowerCase()!),
-    [gameHistory?.getLetterDistribution]
+    [gameHistory]
   );
 
   const loadNewPuzzle = useCallback(async () => {
@@ -379,42 +372,45 @@ export const SinglePuzzle = (props: Props) => {
     }
   }, [puzzleID, userIDOnTurn, gameContext.players, placeGameEvt]);
 
-  const setGameInfo = useCallback(async (gid: string) => {
-    const req = new GameInfoRequest();
-    req.setGameId(gid);
-    try {
-      const resp = await postProto(
-        GameInfoResponse,
-        'game_service.GameMetadataService',
-        'GetMetadata',
-        req
-      );
-      console.log('got game info', resp.toObject());
-      const gameRequest = resp.getGameRequest();
-      setPuzzleInfo({
-        ...puzzleInfo,
-        challengeRule: protoChallengeRuleConvert(
-          gameRequest?.getChallengeRule()!
-        ),
-        ratingMode:
-          gameRequest?.getRatingMode() === RatingMode.RATED
-            ? 'Rated'
-            : 'Casual',
-        gameDate: resp.getCreatedAt()?.toDate(),
-        initialTimeSeconds: gameRequest?.getInitialTimeSeconds(),
-        incrementSeconds: gameRequest?.getIncrementSeconds(),
-        maxOvertimeMinutes: gameRequest?.getMaxOvertimeMinutes(),
-        gameUrl: `/game/${gid}`,
-        player1: { nickname: resp.getPlayersList()[0].getNickname() },
-        player2: { nickname: resp.getPlayersList()[1].getNickname() },
-      });
-    } catch (err) {
-      message.error({
-        content: err.message,
-        duration: 5,
-      });
-    }
-  }, []);
+  const setGameInfo = useCallback(
+    async (gid: string) => {
+      const req = new GameInfoRequest();
+      req.setGameId(gid);
+      try {
+        const resp = await postProto(
+          GameInfoResponse,
+          'game_service.GameMetadataService',
+          'GetMetadata',
+          req
+        );
+        console.log('got game info', resp.toObject());
+        const gameRequest = resp.getGameRequest();
+        setPuzzleInfo({
+          ...puzzleInfo,
+          challengeRule: protoChallengeRuleConvert(
+            gameRequest?.getChallengeRule()!
+          ),
+          ratingMode:
+            gameRequest?.getRatingMode() === RatingMode.RATED
+              ? 'Rated'
+              : 'Casual',
+          gameDate: resp.getCreatedAt()?.toDate(),
+          initialTimeSeconds: gameRequest?.getInitialTimeSeconds(),
+          incrementSeconds: gameRequest?.getIncrementSeconds(),
+          maxOvertimeMinutes: gameRequest?.getMaxOvertimeMinutes(),
+          gameUrl: `/game/${gid}`,
+          player1: { nickname: resp.getPlayersList()[0].getNickname() },
+          player2: { nickname: resp.getPlayersList()[1].getNickname() },
+        });
+      } catch (err) {
+        message.error({
+          content: err.message,
+          duration: 5,
+        });
+      }
+    },
+    [puzzleInfo]
+  );
 
   const attemptPuzzle = useCallback(
     async (evt: ClientGameplayEvent) => {
@@ -456,7 +452,6 @@ export const SinglePuzzle = (props: Props) => {
 
   // This is displayed if there is no puzzle id and no preferred puzzle lexicon saved in local storage
   const lexiconModal = useMemo(() => {
-    console.log('ugh', puzzleID, userLexicon, showLexiconModal);
     if (!puzzleID && !userLexicon) {
       return (
         <Modal
@@ -473,7 +468,7 @@ export const SinglePuzzle = (props: Props) => {
               key="ok"
               type="submit"
             >
-              Okay
+              Start
             </button>,
           ]}
         >
