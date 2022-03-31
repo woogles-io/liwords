@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Card, Row, Tooltip } from 'antd';
+import { Button, Card, Row } from 'antd';
 import { PlayerAvatar } from '../shared/player_avatar';
 
 type StaticPlayerCardProps = {
