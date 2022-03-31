@@ -34,11 +34,15 @@ func (ps *PuzzleService) GetRandomUnansweredPuzzleIdForUser(ctx context.Context,
 }
 
 func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *pb.PuzzleRequest) (*pb.PuzzleResponse, error) {
+	// Since we want to allow people to see puzzles without
+	// logging in, continue even if there is an error.
+	// Assume an error means the request is unauthenticated.
+	userUUID := ""
 	user, err := sessionUser(ctx, ps)
-	if err != nil {
-		return nil, err
+	if err == nil {
+		userUUID = user.UUID
 	}
-	gameHist, beforeText, attempts, userIsCorrect, firstAttemptTime, lastAttemptTime, err := GetPuzzle(ctx, ps.puzzleStore, user.UUID, req.PuzzleId)
+	gameHist, beforeText, attempts, userIsCorrect, firstAttemptTime, lastAttemptTime, err := GetPuzzle(ctx, ps.puzzleStore, userUUID, req.PuzzleId)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}

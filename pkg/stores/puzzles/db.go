@@ -6,6 +6,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
@@ -151,10 +152,18 @@ func (s *DBStore) GetPuzzle(ctx context.Context, userUUID string, puzzleUUID str
 	}
 	defer tx.Rollback()
 
-	attempts, userIsCorrect, firstAttemptTime, lastAttemptTime, err := s.GetAttempts(ctx, userUUID, puzzleUUID)
-	if err != nil {
-		return nil, "", -1, nil, time.Time{}, time.Time{}, err
+	attempts := int32(0)
+	var userIsCorrect *bool
+	firstAttemptTime := time.Time{}
+	lastAttemptTime := time.Time{}
+
+	if userUUID != "" {
+		attempts, userIsCorrect, firstAttemptTime, lastAttemptTime, err = s.GetAttempts(ctx, userUUID, puzzleUUID)
+		if err != nil {
+			return nil, "", -1, nil, time.Time{}, time.Time{}, err
+		}
 	}
+
 	var gameId int
 	var turnNumber int
 	var beforeText string
@@ -227,7 +236,7 @@ func (s *DBStore) GetPreviousPuzzle(ctx context.Context, userUUID string, puzzle
 
 		err = tx.QueryRowContext(ctx, `SELECT uuid FROM puzzles WHERE id = $1`, mostRecentPid).Scan(&previousPuzzleUUID)
 		if err == sql.ErrNoRows {
-			return "", entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_PREVIOUS_PUZZLE_NO_ATTEMPTS_ID_NOT_FOUND, userUUID, puzzleUUID)
+			return "", entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_PREVIOUS_PUZZLE_NO_ATTEMPTS_ID_NOT_FOUND, strconv.Itoa(mostRecentPid), userUUID, puzzleUUID)
 		}
 		if err != nil {
 			return "", err
@@ -249,7 +258,7 @@ func (s *DBStore) GetPreviousPuzzle(ctx context.Context, userUUID string, puzzle
 
 		err = tx.QueryRowContext(ctx, `SELECT uuid FROM puzzles WHERE id = $1`, previousPid).Scan(&previousPuzzleUUID)
 		if err == sql.ErrNoRows {
-			return "", entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_PREVIOUS_PUZZLE_ID_NOT_FOUND, userUUID, puzzleUUID)
+			return "", entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_PREVIOUS_PUZZLE_ID_NOT_FOUND, strconv.Itoa(previousPid), userUUID, puzzleUUID)
 		}
 		if err != nil {
 			return "", err
@@ -493,9 +502,16 @@ func (s *DBStore) GetAttempts(ctx context.Context, userUUID string, puzzleUUID s
 		return -1, nil, time.Time{}, time.Time{}, err
 	}
 
-	res := correct.Bool
+	var userWasCorrect bool
+	userWasCorrectPtr := &userWasCorrect
 
-	return attempts, &res, firstAttemptTime, lastAttemptTime, nil
+	if correct.Valid {
+		*userWasCorrectPtr = correct.Bool
+	} else {
+		userWasCorrectPtr = nil
+	}
+
+	return attempts, userWasCorrectPtr, firstAttemptTime, lastAttemptTime, nil
 }
 
 func getRandomPuzzleId(ctx context.Context, tx *sql.Tx) (sql.NullInt64, error) {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"testing"
+	"time"
 
 	"github.com/domino14/liwords/pkg/common"
 	"github.com/domino14/liwords/pkg/config"
@@ -87,13 +88,15 @@ func TestPuzzles(t *testing.T) {
 	_, err = GetPreviousPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
 	is.Equal(err.Error(), entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_PREVIOUS_PUZZLE_NO_ATTEMPTS, PuzzlerUUID, puzzleUUID).Error())
 
-	hist, _, attempts, userPreviousCorrect, _, _, err := GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
+	hist, _, attempts, userPreviousCorrect, firstAttemptTime, lastAttemptTime, err := GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
 	is.Equal(attempts, int32(0))
 	is.True(userPreviousCorrect == nil)
 	is.Equal(hist.OriginalGcg, "")
 	is.Equal(hist.IdAuth, "")
 	is.Equal(hist.Uid, "")
+	is.True(firstAttemptTime.Equal(time.Time{}))
+	is.True(lastAttemptTime.Equal(time.Time{}))
 
 	correct, correctAnswer, gameId, _, attempts, _, _, err := SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, &ipc.ClientGameplayEvent{}, false)
 	is.NoErr(err)
@@ -102,6 +105,14 @@ func TestPuzzles(t *testing.T) {
 	is.True(correctAnswer == nil)
 	is.Equal(gameId, "")
 	is.Equal(attempts, int32(1))
+
+	_, _, attempts, userPreviousCorrect, firstAttemptTime, lastAttemptTime, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
+	is.NoErr(err)
+	is.Equal(attempts, int32(1))
+	is.True(userPreviousCorrect == nil)
+	is.True(!firstAttemptTime.Equal(time.Time{}))
+	is.True(!lastAttemptTime.Equal(time.Time{}))
+	is.True(firstAttemptTime.Equal(lastAttemptTime))
 
 	_, err = GetPreviousPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
 	is.Equal(err.Error(), entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_PREVIOUS_PUZZLE_ATTEMPT_NOT_FOUND, PuzzlerUUID, puzzleUUID).Error())
@@ -276,7 +287,7 @@ func TestPuzzles(t *testing.T) {
 	correctAnswer, _, _, _, _, err = ps.GetAnswer(ctx, puzzleUUID)
 	is.NoErr(err)
 
-	// If the user has given up, the answer sent should be considered
+	// If the user has given up, the answer sent should not be considered
 	// for recording the correctness of the attempt
 	correct, correctAnswer, gameId, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, gameEventToClientGameplayEvent(correctAnswer), true)
 	is.NoErr(err)
@@ -290,6 +301,25 @@ func TestPuzzles(t *testing.T) {
 	is.Equal(attempts, int32(2))
 	is.True(recordedCorrect.Valid)
 	is.True(!recordedCorrect.Bool)
+
+	// The response for getting a puzzle should be
+	// different if the user is logged out
+	hist, _, attempts, userPreviousCorrect, firstAttemptTime, lastAttemptTime, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
+	is.NoErr(err)
+	is.True(hist != nil)
+	is.Equal(attempts, int32(2))
+	is.True(!*userPreviousCorrect)
+	is.True(!firstAttemptTime.Equal(time.Time{}))
+	is.True(!lastAttemptTime.Equal(time.Time{}))
+	is.True(lastAttemptTime.After(firstAttemptTime))
+
+	hist, _, attempts, userPreviousCorrect, firstAttemptTime, lastAttemptTime, err = GetPuzzle(ctx, ps, "", puzzleUUID)
+	is.NoErr(err)
+	is.True(hist != nil)
+	is.Equal(attempts, int32(0))
+	is.True(userPreviousCorrect == nil)
+	is.True(firstAttemptTime.Equal(time.Time{}))
+	is.True(lastAttemptTime.Equal(time.Time{}))
 
 	// Path 2
 	// Give up immediately without submitting any answers
@@ -426,7 +456,10 @@ func RecreateDB() (*sql.DB, *puzzlesstore.DBStore, int, int, error) {
 	ctx := context.Background()
 	log.Info().Msg("here first")
 	// Recreate the test database
-	commondb.RecreateTestDB()
+	err := commondb.RecreateTestDB()
+	if err != nil {
+		return nil, nil, 0, 0, err
+	}
 
 	// Reconnect to the new test database
 	db, err := commondb.OpenTestingDB()

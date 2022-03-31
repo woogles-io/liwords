@@ -242,6 +242,7 @@ export const sortTiles = (rack: string) => {
 // 1003 - min gibson spread - not allowed in front end
 // 1004 - empty round controls - not allowed in front end
 export const errorMap: Map<number, string> = new Map<number, string>([
+  // Tournament errors
   [
     1001,
     'Max Bye Placement cannot be less than 1: Tournament: $1 Division: $2 Max Bye Placement you entered: $3',
@@ -371,4 +372,37 @@ export const errorMap: Map<number, string> = new Map<number, string>([
   [1071, 'Your tournament can only have exactly one executive director.'],
   [1072, 'You cannot remove the executive director.'],
   [1073, 'You must select one of the options for Suspended game result'],
+
+  // Puzzle errors
+  [
+    1074,
+    'Your vote must have a value of -1, 0, or 1, got $3 for puzzle $2 instead.',
+  ],
+  [1075, 'Cannot find a random puzzle ID for lexicon $2.'],
+  [1076, 'Cannot find a puzzle for lexicon $2.'],
+  [1077, 'Cannot find puzzle with ID $2.'],
+  [1078, 'You do not have any previous puzzles.'],
+  [
+    1079,
+    'Internal puzzle error: puzzle id %1 not found for user $2, puzzle $3.',
+  ],
+  [1080, 'You do not have any previous puzzles.'],
+  [
+    1081,
+    'Internal puzzle error: puzzle id %1 not found for user $2, puzzle $3 with no attempts.',
+  ],
+  [1082, 'Cannot find puzzle with ID $1.'],
+  [1083, 'Internal puzzle error: puzzle ID $2 not found for user $1.'],
+  [
+    1084,
+    'Internal puzzle error: puzzle attempt not found for user $1, puzzle $2.',
+  ],
+  [
+    1085,
+    'Internal puzzle error: updating attempts failed for user $1, puzzle $2.',
+  ],
+  [
+    1086,
+    'Internal puzzle error: setting puzzle vote failed for user $1, puzzle $2.',
+  ],
 ]);
