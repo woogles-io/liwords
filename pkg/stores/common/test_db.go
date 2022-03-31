@@ -18,14 +18,11 @@ import (
 
 var TestDBHost = os.Getenv("TEST_DB_HOST")
 var MigrationsPath = os.Getenv("DB_MIGRATIONS_PATH")
-
-const (
-	TestDBName     = "liwords_test"
-	TestDBPort     = "5432"
-	TestDBUser     = "postgres"
-	TestDBPassword = "pass"
-	TestDBSSLMode  = "disable"
-)
+var TestDBName = os.Getenv("DB_NAME")
+var TestDBPort = os.Getenv("DB_PORT")
+var TestDBUser = os.Getenv("DB_USER")
+var TestDBPassword = os.Getenv("DB_PASSWORD")
+var TestDBSSLMode = os.Getenv("DB_SSL_MODE")
 
 func RecreateTestDB() error {
 	db, err := sql.Open("pgx", PostgresConnUri(TestDBHost, TestDBPort,

@@ -53,6 +53,8 @@ CREATE TABLE IF NOT EXISTS puzzle_votes (
 		FOREIGN KEY (user_id) REFERENCES users (id)
 );
 
+CREATE INDEX ON puzzle_attempts (updated_at);
+
 INSERT INTO puzzle_tag_titles (tag_title) VALUES ('EQUITY') ON CONFLICT DO NOTHING;
 INSERT INTO puzzle_tag_titles (tag_title) VALUES ('ONLY_BINGO') ON CONFLICT DO NOTHING;
 
