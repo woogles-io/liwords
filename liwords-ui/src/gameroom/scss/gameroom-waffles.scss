@@ -1,0 +1,19 @@
+@import '../../color_modes';
+.tile {
+    @include colorModed() {
+        background: m($tile-background);
+        border: m($tile-border);
+        /* TODO
+    &.tile-p0.tile-p0 {
+      background-color: #0000ff;
+    }
+    &.tile-p1.tile-p1 {
+      background-color: #ff0000;
+    }
+    */
+    background-image: url('../../assets/waffle-tile.png') !important;
+    background-size: 100% !important;
+    background-blend-mode: soft-light !important;
+    }
+
+}
