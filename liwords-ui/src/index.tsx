@@ -6,6 +6,7 @@ import App from './App';
 import * as serviceWorker from './serviceWorker';
 import { Store } from './store/store';
 import { BriefProfiles } from './utils/brief_profiles';
+require('./gameroom/scss/gameroom-waffles.scss');
 
 declare global {
   interface Window {
