@@ -53,6 +53,15 @@ ReactDOM.render(
   document.getElementById('root')
 );
 
+let today = new Date();
+if (
+  today.getDate() === 1 &&
+  today.getMonth() === 3 &&
+  localStorage.getItem('nowaffles') !== 'true'
+) {
+  document.body.parentElement?.classList.add('waffles');
+}
+
 // If you want your app to work offline and load faster, you can change
 // unregister() to register() below. Note this comes with some pitfalls.
 // Learn more about service workers: https://bit.ly/CRA-PWA
