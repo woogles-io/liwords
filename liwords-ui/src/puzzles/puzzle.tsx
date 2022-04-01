@@ -346,7 +346,7 @@ export const SinglePuzzle = (props: Props) => {
           req
         );
         console.log('got resp', resp.toObject());
-        if (resp.getUserIsCorrect()) {
+        if (resp.getStatus() === PuzzleStatus.CORRECT) {
           // TODO: The user got the answer right
           BoopSounds.playSound('puzzleCorrectSound');
           setGameInfo(resp.getGameId());
@@ -357,13 +357,12 @@ export const SinglePuzzle = (props: Props) => {
         console.log(1, puzzleInfo);
         setPuzzleInfo((x) => ({
           ...x,
-          dateSolved: resp.getUserIsCorrect()
-            ? resp.getLastAttemptTime()?.toDate()
-            : undefined,
+          dateSolved:
+            resp.getStatus() === PuzzleStatus.CORRECT
+              ? resp.getLastAttemptTime()?.toDate()
+              : undefined,
           attempts: resp.getAttempts(),
-          solved: resp.getUserIsCorrect()
-            ? PuzzleStatus.CORRECT
-            : PuzzleStatus.UNANSWERED,
+          solved: resp.getStatus(),
         }));
       } catch (err) {
         message.error({
