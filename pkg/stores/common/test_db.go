@@ -18,7 +18,7 @@ import (
 
 var TestDBHost = os.Getenv("TEST_DB_HOST")
 var MigrationsPath = os.Getenv("DB_MIGRATIONS_PATH")
-var TestDBName = os.Getenv("DB_NAME")
+var TestDBName = os.Getenv("TEST_DB_NAME")
 var TestDBPort = os.Getenv("DB_PORT")
 var TestDBUser = os.Getenv("DB_USER")
 var TestDBPassword = os.Getenv("DB_PASSWORD")
