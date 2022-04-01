@@ -60,15 +60,6 @@ import {
   SoughtGameProcessEvent,
 } from '../gen/api/proto/ipc/omgseeks_pb';
 
-let today = new Date();
-if (
-  today.getDate() === 1 &&
-  today.getMonth() === 3 &&
-  localStorage.getItem('nowaffles') !== 'true'
-) {
-  require('./scss/gameroom-waffles.scss');
-}
-
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   sendChat: (msg: string, chan: string) => void;

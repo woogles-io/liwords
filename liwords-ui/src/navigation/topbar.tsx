@@ -15,6 +15,8 @@ import { LoginModal } from '../lobby/login';
 import { useMountedState } from '../utils/mounted';
 import { isClubType } from '../store/constants';
 
+require('./topbar-waffles.scss');
+
 let waffles = false;
 let today = new Date();
 if (
@@ -23,7 +25,6 @@ if (
   localStorage.getItem('nowaffles') !== 'true'
 ) {
   waffles = true;
-  require('./topbar-waffles.scss');
 }
 
 const TopMenu = React.memo((props: Props) => {

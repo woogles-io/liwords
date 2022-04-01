@@ -6,6 +6,7 @@ import App from './App';
 import * as serviceWorker from './serviceWorker';
 import { Store } from './store/store';
 import { BriefProfiles } from './utils/brief_profiles';
+require('./gameroom/scss/gameroom-waffles.scss');
 
 declare global {
   interface Window {
@@ -52,6 +53,15 @@ ReactDOM.render(
   </React.StrictMode>,
   document.getElementById('root')
 );
+
+let today = new Date();
+if (
+  today.getDate() === 1 &&
+  today.getMonth() === 3 &&
+  localStorage.getItem('nowaffles') !== 'true'
+) {
+  document.body.parentElement?.classList.add('waffles');
+}
 
 // If you want your app to work offline and load faster, you can change
 // unregister() to register() below. Note this comes with some pitfalls.
