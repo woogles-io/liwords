@@ -75,6 +75,7 @@ import {
   ClientGameplayEvent,
   GameMetaEvent,
 } from '../gen/api/proto/ipc/omgwords_pb';
+import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -94,7 +95,7 @@ type Props = {
   gameDone: boolean;
   playerMeta: Array<PlayerMetadata>;
   puzzleMode?: boolean;
-  puzzleSolved?: boolean;
+  puzzleSolved?: number;
   tournamentSlug?: string;
   tournamentID?: string;
   tournamentPairedMode?: boolean;
@@ -1682,7 +1683,7 @@ export const BoardPanel = React.memo((props: Props) => {
           setHandleNeitherShortcut={setHandleNeitherShortcut}
         />
       )}
-      {props.puzzleMode && !props.puzzleSolved && (
+      {props.puzzleMode && props.puzzleSolved === PuzzleStatus.UNANSWERED && (
         <Affix offsetTop={126} className="rack-affix">
           <GameControls
             isExamining={false}

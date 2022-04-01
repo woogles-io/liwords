@@ -2,7 +2,7 @@ import { HomeOutlined } from '@ant-design/icons';
 import { Card, Form, message, Modal } from 'antd';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import { postJsonObj, postProto } from '../api/api';
+import { postProto } from '../api/api';
 import { Chat } from '../chat/chat';
 import { alphabetFromName } from '../constants/alphabets';
 import { TopBar } from '../navigation/topbar';
@@ -33,7 +33,7 @@ import {
   SubmissionResponse,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { sortTiles } from '../store/constants';
-import { Notepad } from '../gameroom/notepad';
+import { Notepad, NotepadContextProvider } from '../gameroom/notepad';
 import { StaticPlayerCards } from './static_player_cards';
 
 import {
@@ -57,31 +57,6 @@ import { GameInfoRequest } from '../gen/api/proto/game_service/game_service_pb';
 type Props = {
   sendChat: (msg: string, chan: string) => void;
 };
-// TODO: Delete this after you hook everything up, César
-// const mockData = {
-//   attempts: 2,
-//   //dateSolved: new Date('2022-03-20 00:01:00'),
-//   dateSolved: undefined,
-//   challengeRule: 'VOID' as ChallengeRule,
-//   ratingMode: 'RATED',
-//   gameDate: new Date('2021-01-01 00:01:00'),
-//   initial_time_seconds: 3000,
-//   increment_seconds: 0,
-//   max_overtime_minutes: 0,
-//   gameUrl: '/game/abcde',
-//   lexicon: 'CSW21',
-//   variantName: 'classic',
-//   // players aren't needed until after solution is shown
-//   p0Score: 324,
-//   p1Score: 325,
-//   playerOnTurn: 0, // 0 based
-//   player1: {
-//     nickname: 'magrathean',
-//   },
-//   player2: {
-//     nickname: 'RightBehindYou',
-//   },
-// };
 
 type PuzzleInfo = {
   // puzzle parameters:
@@ -122,6 +97,7 @@ export const SinglePuzzle = (props: Props) => {
   const [userLexicon, setUserLexicon] = useState<string | undefined>(
     localStorage?.getItem('puzzleLexicon') || undefined
   );
+  const [pendingSolution, setPendingSolution] = useState(false);
   const [gameHistory, setGameHistory] = useState<GameHistory | null>(null);
   const [showLexiconModal, setShowLexiconModal] = useState(false);
   const { loginState } = useLoginStateStoreContext();
@@ -172,63 +148,6 @@ export const SinglePuzzle = (props: Props) => {
       document.removeEventListener('keypress', evtHandler);
     };
   }, []);
-
-  useEffect(() => {
-    // Request Puzzle API to get info about the puzzle on load if we have an id.
-    async function fetchPuzzleData() {
-      const req = new PuzzleRequest();
-      req.setPuzzleId(puzzleID);
-      try {
-        const resp = await postProto(
-          PuzzleResponse,
-          'puzzle_service.PuzzleService',
-          'GetPuzzle',
-          req
-        );
-        if (localStorage?.getItem('poolFormat')) {
-          setPoolFormat(
-            parseInt(localStorage.getItem('poolFormat') || '0', 10)
-          );
-        }
-        const gh = resp.getHistory();
-        if (gh === null || gh === undefined) {
-          throw new Error('Did not receive a valid puzzle position!');
-        }
-        dispatchGameContext({
-          actionType: ActionType.SetupStaticPosition,
-          payload: gh,
-        });
-        setGameHistory(gh);
-        console.log('got game history', gh.toObject());
-        BoopSounds.playSound('puzzleStartSound');
-        setPuzzleInfo({
-          attempts: resp.getAttempts(),
-          // XXX: add dateSolved to backend, in the meantime...
-          dateSolved:
-            resp.getStatus() === PuzzleStatus.CORRECT
-              ? resp.getLastAttemptTime()?.toDate()
-              : undefined,
-          lexicon: gh.getLexicon(),
-          variantName: gh.getVariant(),
-          solved: resp.getStatus(),
-        });
-      } catch (err) {
-        message.error({
-          content: err.message,
-          duration: 5,
-        });
-      }
-    }
-    if (puzzleID) {
-      console.log('fetching puzzle info');
-      dispatchGameContext({
-        actionType: ActionType.ClearHistory,
-        payload: 'noclock',
-      });
-
-      fetchPuzzleData();
-    }
-  }, [dispatchGameContext, puzzleID, setPoolFormat]);
 
   // add definitions stuff here. We should make common library instead of
   // copy-pasting from table.tsx
@@ -362,6 +281,11 @@ export const SinglePuzzle = (props: Props) => {
       );
       console.log('got resp', resp.toObject());
       const solution = resp.getCorrectAnswer();
+      setPuzzleInfo((x) => ({
+        ...x,
+        attempts: resp.getAttempts(),
+        solved: PuzzleStatus.INCORRECT,
+      }));
       // Place the tiles from the event.
       placeGameEvt(solution!);
     } catch (err) {
@@ -372,45 +296,42 @@ export const SinglePuzzle = (props: Props) => {
     }
   }, [puzzleID, userIDOnTurn, gameContext.players, placeGameEvt]);
 
-  const setGameInfo = useCallback(
-    async (gid: string) => {
-      const req = new GameInfoRequest();
-      req.setGameId(gid);
-      try {
-        const resp = await postProto(
-          GameInfoResponse,
-          'game_service.GameMetadataService',
-          'GetMetadata',
-          req
-        );
-        console.log('got game info', resp.toObject());
-        const gameRequest = resp.getGameRequest();
-        setPuzzleInfo({
-          ...puzzleInfo,
-          challengeRule: protoChallengeRuleConvert(
-            gameRequest?.getChallengeRule()!
-          ),
-          ratingMode:
-            gameRequest?.getRatingMode() === RatingMode.RATED
-              ? 'Rated'
-              : 'Casual',
-          gameDate: resp.getCreatedAt()?.toDate(),
-          initialTimeSeconds: gameRequest?.getInitialTimeSeconds(),
-          incrementSeconds: gameRequest?.getIncrementSeconds(),
-          maxOvertimeMinutes: gameRequest?.getMaxOvertimeMinutes(),
-          gameUrl: `/game/${gid}`,
-          player1: { nickname: resp.getPlayersList()[0].getNickname() },
-          player2: { nickname: resp.getPlayersList()[1].getNickname() },
-        });
-      } catch (err) {
-        message.error({
-          content: err.message,
-          duration: 5,
-        });
-      }
-    },
-    [puzzleInfo]
-  );
+  const setGameInfo = useCallback(async (gid: string) => {
+    const req = new GameInfoRequest();
+    req.setGameId(gid);
+    try {
+      const resp = await postProto(
+        GameInfoResponse,
+        'game_service.GameMetadataService',
+        'GetMetadata',
+        req
+      );
+      console.log('got game info', resp.toObject());
+      const gameRequest = resp.getGameRequest();
+      setPuzzleInfo((x) => ({
+        ...x,
+        challengeRule: protoChallengeRuleConvert(
+          gameRequest?.getChallengeRule()!
+        ),
+        ratingMode:
+          gameRequest?.getRatingMode() === RatingMode.RATED
+            ? 'Rated'
+            : 'Casual',
+        gameDate: resp.getCreatedAt()?.toDate(),
+        initialTimeSeconds: gameRequest?.getInitialTimeSeconds(),
+        incrementSeconds: gameRequest?.getIncrementSeconds(),
+        maxOvertimeMinutes: gameRequest?.getMaxOvertimeMinutes(),
+        gameUrl: `/game/${gid}`,
+        player1: { nickname: resp.getPlayersList()[0].getNickname() },
+        player2: { nickname: resp.getPlayersList()[1].getNickname() },
+      }));
+    } catch (err) {
+      message.error({
+        content: err.message,
+        duration: 5,
+      });
+    }
+  }, []);
 
   const attemptPuzzle = useCallback(
     async (evt: ClientGameplayEvent) => {
@@ -427,13 +348,23 @@ export const SinglePuzzle = (props: Props) => {
         console.log('got resp', resp.toObject());
         if (resp.getUserIsCorrect()) {
           // TODO: The user got the answer right
-          // display resp.getAttempts();
           BoopSounds.playSound('puzzleCorrectSound');
           setGameInfo(resp.getGameId());
         } else {
           // Wrong answer
           BoopSounds.playSound('puzzleWrongSound');
         }
+        console.log(1, puzzleInfo);
+        setPuzzleInfo((x) => ({
+          ...x,
+          dateSolved: resp.getUserIsCorrect()
+            ? resp.getLastAttemptTime()?.toDate()
+            : undefined,
+          attempts: resp.getAttempts(),
+          solved: resp.getUserIsCorrect()
+            ? PuzzleStatus.CORRECT
+            : PuzzleStatus.UNANSWERED,
+        }));
       } catch (err) {
         message.error({
           content: err.message,
@@ -441,14 +372,79 @@ export const SinglePuzzle = (props: Props) => {
         });
       }
     },
-    [puzzleID, setGameInfo]
+    [puzzleID, setGameInfo, puzzleInfo]
   );
+
+  useEffect(() => {
+    // Request Puzzle API to get info about the puzzle on load if we have an id.
+    async function fetchPuzzleData() {
+      const req = new PuzzleRequest();
+      req.setPuzzleId(puzzleID);
+      try {
+        const resp = await postProto(
+          PuzzleResponse,
+          'puzzle_service.PuzzleService',
+          'GetPuzzle',
+          req
+        );
+        if (localStorage?.getItem('poolFormat')) {
+          setPoolFormat(
+            parseInt(localStorage.getItem('poolFormat') || '0', 10)
+          );
+        }
+        const gh = resp.getHistory();
+        if (gh === null || gh === undefined) {
+          throw new Error('Did not receive a valid puzzle position!');
+        }
+        dispatchGameContext({
+          actionType: ActionType.SetupStaticPosition,
+          payload: gh,
+        });
+        setGameHistory(gh);
+        console.log('got game history', gh.toObject());
+        BoopSounds.playSound('puzzleStartSound');
+        setPuzzleInfo({
+          attempts: resp.getAttempts(),
+          // XXX: add dateSolved to backend, in the meantime...
+          dateSolved:
+            resp.getStatus() === PuzzleStatus.CORRECT
+              ? resp.getLastAttemptTime()?.toDate()
+              : undefined,
+          lexicon: gh.getLexicon(),
+          variantName: gh.getVariant(),
+          solved: resp.getStatus(),
+        });
+        setPendingSolution(true);
+      } catch (err) {
+        message.error({
+          content: err.message,
+          duration: 5,
+        });
+      }
+    }
+    if (puzzleID) {
+      console.log('fetching puzzle info');
+      dispatchGameContext({
+        actionType: ActionType.ClearHistory,
+        payload: 'noclock',
+      });
+
+      fetchPuzzleData();
+    }
+  }, [dispatchGameContext, puzzleID, setPoolFormat]);
 
   useEffect(() => {
     if (userLexicon && !puzzleID) {
       loadNewPuzzle();
     }
   }, [loadNewPuzzle, userLexicon, puzzleID]);
+
+  useEffect(() => {
+    if (pendingSolution) {
+      //TODO: placeGameEvt(??);
+    }
+    setPendingSolution(false);
+  }, [puzzleInfo.solved, pendingSolution, showSolution]);
 
   // This is displayed if there is no puzzle id and no preferred puzzle lexicon saved in local storage
   const lexiconModal = useMemo(() => {
@@ -487,7 +483,7 @@ export const SinglePuzzle = (props: Props) => {
     return null;
   }, [puzzleID, showLexiconModal, userLexicon]);
 
-  const ret = (
+  let ret = (
     <div className="game-container puzzle-container">
       <TopBar />
       <div className="game-table board-- tile--">
@@ -528,7 +524,7 @@ export const SinglePuzzle = (props: Props) => {
             handleAcceptRematch={() => {}}
             handleAcceptAbort={() => {}}
             puzzleMode
-            puzzleSolved={puzzleInfo.solved === PuzzleStatus.CORRECT}
+            puzzleSolved={puzzleInfo.solved}
             // handleSetHover={handleSetHover}   // fix later with definitions.
             // handleUnsetHover={hideDefinitionHover}
             // definitionPopover={definitionPopover}
@@ -541,9 +537,10 @@ export const SinglePuzzle = (props: Props) => {
             dateSolved={puzzleInfo.dateSolved}
             loadNewPuzzle={loadNewPuzzle}
             showSolution={showSolution}
+            solved={puzzleInfo.solved}
           />
           <PuzzleInfo
-            solved={puzzleInfo.solved === PuzzleStatus.CORRECT}
+            solved={puzzleInfo.solved}
             gameDate={puzzleInfo.gameDate}
             gameUrl={puzzleInfo.gameUrl}
             lexicon={puzzleInfo.lexicon}
@@ -572,5 +569,6 @@ export const SinglePuzzle = (props: Props) => {
       </div>
     </div>
   );
+  ret = <NotepadContextProvider children={ret} />;
   return ret;
 };

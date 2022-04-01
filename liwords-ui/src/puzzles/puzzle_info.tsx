@@ -4,6 +4,8 @@ import { ChallengeRule, PlayerMetadata } from '../gameroom/game_info';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import moment from 'moment';
 import { timeCtrlToDisplayName, timeToString } from '../store/constants';
+import { PuzzleScore } from './puzzle_score';
+import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 
 export const challengeMap = {
   FIVE_POINT: '5 point',
@@ -15,7 +17,7 @@ export const challengeMap = {
 };
 
 type Props = {
-  solved: boolean;
+  solved: number;
   gameDate?: Date;
   gameUrl?: string;
   lexicon: string;
@@ -63,7 +65,7 @@ export const PuzzleInfo = React.memo((props: Props) => {
       );
     }
   }, [gameUrl]);
-  if (!solved) {
+  if (solved === PuzzleStatus.UNANSWERED) {
     return (
       <Card
         className="puzzle-info"
@@ -71,8 +73,8 @@ export const PuzzleInfo = React.memo((props: Props) => {
         extra={`${variantName || 'classic'} • ${lexicon}`}
       >
         <p>
-          Find the best play available, based on score and your 'leave'
-          (remaining rack tiles).
+          There is a star play in this position that is significantly better
+          than the second-best play. What would HastyBot play?
         </p>
       </Card>
     );
@@ -115,7 +117,7 @@ export const PuzzleInfo = React.memo((props: Props) => {
       )} • ${variantName || 'classic'} • ${lexicon}`}</p>
       <p>
         {challengeDisplay}
-        {' • '}
+        {challengeDisplay && ratedDisplay ? ' • ' : ''}
         {ratedDisplay}
       </p>
     </Card>
