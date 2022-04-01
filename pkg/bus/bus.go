@@ -389,7 +389,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			tournamentRealm := "tournament-" + currentTournamentID
 			resp.Realms = append(resp.Realms, tournamentRealm, "chat-"+tournamentRealm)
 		} else {
-			log.Info().Str("path", path).Msg("realm-req-not-handled")
+			log.Debug().Str("path", path).Msg("realm-req-not-handled")
 		}
 
 		activeTourneys, err := b.tournamentStore.ActiveTournamentsFor(ctx, userID)
@@ -702,6 +702,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 	// chat.tournament.foo
 	// chat.game.bar
 	// chat.gametv.baz
+	// puzzle.abcdef
 	// global.presence (when it comes, we edit this later)
 
 	for _, realm := range evt.Realms {
