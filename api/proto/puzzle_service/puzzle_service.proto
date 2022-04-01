@@ -34,7 +34,7 @@ message SubmissionRequest {
 }
 
 message SubmissionResponse {
-  bool user_is_correct = 1;
+  PuzzleStatus status = 1;
   macondo.GameEvent correct_answer = 2;
   string game_id = 3;
   string after_text = 4;

@@ -1218,7 +1218,7 @@ proto.puzzle_service.SubmissionResponse.prototype.toObject = function(opt_includ
  */
 proto.puzzle_service.SubmissionResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    userIsCorrect: jspb.Message.getBooleanFieldWithDefault(msg, 1, false),
+    status: jspb.Message.getFieldWithDefault(msg, 1, 0),
     correctAnswer: (f = msg.getCorrectAnswer()) && macondo_api_proto_macondo_macondo_pb.GameEvent.toObject(includeInstance, f),
     gameId: jspb.Message.getFieldWithDefault(msg, 3, ""),
     afterText: jspb.Message.getFieldWithDefault(msg, 4, ""),
@@ -1262,8 +1262,8 @@ proto.puzzle_service.SubmissionResponse.deserializeBinaryFromReader = function(m
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setUserIsCorrect(value);
+      var value = /** @type {!proto.puzzle_service.PuzzleStatus} */ (reader.readEnum());
+      msg.setStatus(value);
       break;
     case 2:
       var value = new macondo_api_proto_macondo_macondo_pb.GameEvent;
@@ -1321,9 +1321,9 @@ proto.puzzle_service.SubmissionResponse.prototype.serializeBinary = function() {
  */
 proto.puzzle_service.SubmissionResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getUserIsCorrect();
-  if (f) {
-    writer.writeBool(
+  f = message.getStatus();
+  if (f !== 0.0) {
+    writer.writeEnum(
       1,
       f
     );
@@ -1377,20 +1377,20 @@ proto.puzzle_service.SubmissionResponse.serializeBinaryToWriter = function(messa
 
 
 /**
- * optional bool user_is_correct = 1;
- * @return {boolean}
+ * optional PuzzleStatus status = 1;
+ * @return {!proto.puzzle_service.PuzzleStatus}
  */
-proto.puzzle_service.SubmissionResponse.prototype.getUserIsCorrect = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 1, false));
+proto.puzzle_service.SubmissionResponse.prototype.getStatus = function() {
+  return /** @type {!proto.puzzle_service.PuzzleStatus} */ (jspb.Message.getFieldWithDefault(this, 1, 0));
 };
 
 
 /**
- * @param {boolean} value
+ * @param {!proto.puzzle_service.PuzzleStatus} value
  * @return {!proto.puzzle_service.SubmissionResponse} returns this
  */
-proto.puzzle_service.SubmissionResponse.prototype.setUserIsCorrect = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 1, value);
+proto.puzzle_service.SubmissionResponse.prototype.setStatus = function(value) {
+  return jspb.Message.setProto3EnumField(this, 1, value);
 };
 
 
