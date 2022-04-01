@@ -143,6 +143,9 @@ export namespace SubmissionRequest {
 }
 
 export class SubmissionResponse extends jspb.Message {
+  getUserIsCorrect(): boolean;
+  setUserIsCorrect(value: boolean): void;
+
   getStatus(): PuzzleStatusMap[keyof PuzzleStatusMap];
   setStatus(value: PuzzleStatusMap[keyof PuzzleStatusMap]): void;
 
@@ -182,6 +185,7 @@ export class SubmissionResponse extends jspb.Message {
 
 export namespace SubmissionResponse {
   export type AsObject = {
+    userIsCorrect: boolean,
     status: PuzzleStatusMap[keyof PuzzleStatusMap],
     correctAnswer?: macondo_api_proto_macondo_macondo_pb.GameEvent.AsObject,
     gameId: string,

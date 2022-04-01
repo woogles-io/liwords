@@ -67,11 +67,11 @@ func (ps *PuzzleService) SubmitAnswer(ctx context.Context, req *pb.SubmissionReq
 	if err != nil {
 		return nil, err
 	}
-	status, correctAnswer, gameId, afterText, attempts, firstAttemptTime, lastAttemptTime, err := SubmitAnswer(ctx, ps.puzzleStore, req.PuzzleId, user.UUID, req.Answer, req.ShowSolution)
+	userIsCorrect, status, correctAnswer, gameId, afterText, attempts, firstAttemptTime, lastAttemptTime, err := SubmitAnswer(ctx, ps.puzzleStore, req.PuzzleId, user.UUID, req.Answer, req.ShowSolution)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.SubmissionResponse{Status: boolPtrToPuzzleStatus(status), CorrectAnswer: correctAnswer, GameId: gameId, AfterText: afterText, Attempts: attempts, FirstAttemptTime: timestamppb.New(firstAttemptTime), LastAttemptTime: timestamppb.New(lastAttemptTime)}, nil
+	return &pb.SubmissionResponse{UserIsCorrect: userIsCorrect, Status: boolPtrToPuzzleStatus(status), CorrectAnswer: correctAnswer, GameId: gameId, AfterText: afterText, Attempts: attempts, FirstAttemptTime: timestamppb.New(firstAttemptTime), LastAttemptTime: timestamppb.New(lastAttemptTime)}, nil
 }
 
 func (ps *PuzzleService) SetPuzzleVote(ctx context.Context, req *pb.PuzzleVoteRequest) (*pb.PuzzleVoteResponse, error) {

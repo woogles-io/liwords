@@ -98,9 +98,10 @@ func TestPuzzles(t *testing.T) {
 	is.True(firstAttemptTime.Equal(time.Time{}))
 	is.True(lastAttemptTime.Equal(time.Time{}))
 
-	status, correctAnswer, gameId, _, attempts, _, _, err := SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, &ipc.ClientGameplayEvent{}, false)
+	userIsCorrect, status, correctAnswer, gameId, _, attempts, _, _, err := SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, &ipc.ClientGameplayEvent{}, false)
 	is.NoErr(err)
 	is.Equal(attempts, int32(1))
+	is.True(!userIsCorrect)
 	is.True(status == nil)
 	is.True(correctAnswer == nil)
 	is.Equal(gameId, "")
@@ -140,7 +141,7 @@ func TestPuzzles(t *testing.T) {
 
 	// Path 7
 	// Submit the correct answer for the same puzzle,
-	status, correctAnswer, gameId, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, correctCGE, false)
+	userIsCorrect, status, correctAnswer, gameId, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, correctCGE, false)
 	is.NoErr(err)
 	is.True(correctAnswer != nil)
 	is.True(gameId != "")
@@ -151,6 +152,7 @@ func TestPuzzles(t *testing.T) {
 	is.NoErr(err)
 
 	// rating should remain unchanged and another attempt should be recorded
+	is.True(userIsCorrect)
 	is.True(*status)
 	is.Equal(attempts, int32(2))
 	is.True(common.WithinEpsilon(oldPuzzleRating.Rating, newPuzzleRating.Rating))
@@ -165,10 +167,11 @@ func TestPuzzles(t *testing.T) {
 
 	// Path 4
 	// Submit another answer which should not change the puzzle attempt record
-	status, correctAnswer, gameId, _, _, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, correctCGE, false)
+	userIsCorrect, status, correctAnswer, gameId, _, _, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, correctCGE, false)
 	is.NoErr(err)
 	attempts, recordedCorrect, err = getPuzzleAttempt(ctx, db, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
+	is.True(userIsCorrect)
 	is.True(*status)
 	is.True(answersAreEqual(correctCGE, correctAnswer))
 	is.True(gameId != "")
@@ -208,7 +211,7 @@ func TestPuzzles(t *testing.T) {
 
 	correctCGE = gameEventToClientGameplayEvent(correctAnswer)
 
-	status, _, _, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, correctCGE, false)
+	userIsCorrect, status, _, _, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, correctCGE, false)
 	is.NoErr(err)
 
 	// Get the previous puzzle while the current puzzle is attempted
@@ -223,6 +226,7 @@ func TestPuzzles(t *testing.T) {
 	is.NoErr(err)
 
 	// User rating should go up, puzzle rating should go down
+	is.True(userIsCorrect)
 	is.True(*status)
 	is.Equal(attempts, int32(1))
 	is.True(oldPuzzleRating.Rating > newPuzzleRating.Rating)
@@ -245,7 +249,7 @@ func TestPuzzles(t *testing.T) {
 	is.NoErr(err)
 
 	correctCGE = gameEventToClientGameplayEvent(correctAnswer)
-	_, _, _, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, "incorrect uuid", correctCGE, false)
+	_, _, _, _, _, _, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, "incorrect uuid", correctCGE, false)
 	is.Equal(err.Error(), fmt.Sprintf("cannot get id from uuid %s: no rows for table %s", "incorrect uuid", "users"))
 
 	_, _, _, _, newPuzzleRating, err = ps.GetAnswer(ctx, puzzleUUID)
@@ -253,11 +257,30 @@ func TestPuzzles(t *testing.T) {
 	newUserRating, err = getUserRating(ctx, db, PuzzlerUUID, rk)
 	is.NoErr(err)
 
-	is.Equal(attempts, int32(-1))
 	is.True(common.WithinEpsilon(oldPuzzleRating.Rating, newPuzzleRating.Rating))
 	is.True(common.WithinEpsilon(oldPuzzleRating.RatingDeviation, newPuzzleRating.RatingDeviation))
 	is.True(common.WithinEpsilon(oldUserRating.Rating, newUserRating.Rating))
 	is.True(common.WithinEpsilon(oldUserRating.RatingDeviation, newUserRating.RatingDeviation))
+
+	// If the user has already gotten the puzzle correct, subsequent
+	// submissions should not affect the status or number of attempts.
+	userIsCorrect, status, correctAnswer, gameId, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, correctCGE, false)
+	is.NoErr(err)
+	is.True(userIsCorrect)
+	is.True(*status)
+	is.True(correctAnswer != nil)
+	is.True(gameId != "")
+	is.Equal(attempts, int32(1))
+
+	// The result should be the same for an incorrect answer
+	correctAnswer.PlayedTiles += "Z"
+	userIsCorrect, status, correctAnswer, gameId, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, gameEventToClientGameplayEvent(correctAnswer), false)
+	is.NoErr(err)
+	is.True(!userIsCorrect)
+	is.True(*status)
+	is.True(correctAnswer == nil)
+	is.True(gameId == "")
+	is.Equal(attempts, int32(1))
 
 	// Path 5 and 6
 	// Submit incorrect answers and then give up
@@ -269,15 +292,17 @@ func TestPuzzles(t *testing.T) {
 	is.True(userPreviousCorrect == nil)
 	is.Equal(attempts, int32(0))
 
-	status, correctAnswer, gameId, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, &ipc.ClientGameplayEvent{}, false)
+	userIsCorrect, status, correctAnswer, gameId, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, &ipc.ClientGameplayEvent{}, false)
 	is.NoErr(err)
+	is.True(!userIsCorrect)
 	is.True(status == nil)
 	is.True(correctAnswer == nil)
 	is.True(gameId == "")
 	is.Equal(attempts, int32(1))
 
-	status, correctAnswer, gameId, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, &ipc.ClientGameplayEvent{}, false)
+	userIsCorrect, status, correctAnswer, gameId, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, &ipc.ClientGameplayEvent{}, false)
 	is.NoErr(err)
+	is.True(!userIsCorrect)
 	is.True(status == nil)
 	is.True(correctAnswer == nil)
 	is.True(gameId == "")
@@ -288,8 +313,19 @@ func TestPuzzles(t *testing.T) {
 
 	// If the user has given up, the answer sent should not be considered
 	// for recording the correctness of the attempt
-	status, correctAnswer, gameId, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, gameEventToClientGameplayEvent(correctAnswer), true)
+	userIsCorrect, status, correctAnswer, gameId, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, gameEventToClientGameplayEvent(correctAnswer), true)
 	is.NoErr(err)
+	is.True(userIsCorrect)
+	is.True(!*status)
+	is.True(correctAnswer != nil)
+	is.True(gameId != "")
+	is.Equal(attempts, int32(2))
+
+	// The result should be the same for an incorrect answer
+	correctAnswer.PlayedTiles += "Z"
+	userIsCorrect, status, correctAnswer, gameId, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, gameEventToClientGameplayEvent(correctAnswer), true)
+	is.NoErr(err)
+	is.True(!userIsCorrect)
 	is.True(!*status)
 	is.True(correctAnswer != nil)
 	is.True(gameId != "")
@@ -330,8 +366,9 @@ func TestPuzzles(t *testing.T) {
 	is.True(userPreviousCorrect == nil)
 	is.Equal(attempts, int32(0))
 
-	status, correctAnswer, gameId, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, nil, true)
+	userIsCorrect, status, correctAnswer, gameId, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, nil, true)
 	is.NoErr(err)
+	is.True(!userIsCorrect)
 	is.True(!*status)
 	is.True(correctAnswer != nil)
 	is.True(gameId != "")
@@ -378,8 +415,10 @@ func TestPuzzles(t *testing.T) {
 		is.Equal(attempts, int32(0))
 		is.Equal(len(hist.Events), turnNumber)
 
-		_, _, _, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, &ipc.ClientGameplayEvent{}, false)
+		userIsCorrect, status, _, _, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, &ipc.ClientGameplayEvent{}, false)
 		is.NoErr(err)
+		is.True(!userIsCorrect)
+		is.True(status == nil)
 		is.Equal(attempts, int32(1))
 	}
 
@@ -395,7 +434,7 @@ func TestPuzzles(t *testing.T) {
 	for i := 0; i < totalPuzzles*10; i++ {
 		puzzleUUID, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 		is.NoErr(err)
-		_, _, _, _, _, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, &ipc.ClientGameplayEvent{}, false)
+		_, _, _, _, _, _, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, &ipc.ClientGameplayEvent{}, false)
 		is.NoErr(err)
 	}
 
