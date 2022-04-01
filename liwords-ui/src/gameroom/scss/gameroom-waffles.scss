@@ -1,5 +1,5 @@
 @import '../../color_modes';
-.waffles .tile {
+.waffles .tile, .waffles .logo .site-icon-rect {
     @include colorModed() {
         background: m($tile-background);
         border: m($tile-border);
