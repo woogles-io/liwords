@@ -1,4 +1,5 @@
 @import '../base';
+@include modal;
 .puzzle-container {
   .ant-card.pool {
     order: 2;
@@ -19,22 +20,6 @@
     .ant-card-body {
       padding: 0 18px 18px;
     }
-    .stars {
-      .anticon {
-        font-size: 38px;
-        margin-right: 9px;
-        &.anticon-star {
-          @include colorModed() {
-            color: m($timer-low-dark);
-          }
-          &.unearned {
-            @include colorModed() {
-              color: m($gray-subtle);
-            }
-          }
-        }
-      }
-    }
     .attempts-made {
       margin-top: 12px;
     }
@@ -45,7 +30,6 @@
       }
     }
   }
-
   .player-cards.ant-card .mini-player {
     .player-avatar {
       width: 40px;
@@ -106,5 +90,29 @@
     @include colorModed() {
       border-bottom: 0;
     }
+  }
+}
+.puzzle-container .stars, .ant-modal-body .stars {
+  .anticon {
+    font-size: 38px;
+    margin-right: 9px;
+    &.anticon-star {
+      @include colorModed() {
+        color: m($timer-low-dark);
+      }
+      &.unearned {
+        @include colorModed() {
+          color: m($gray-subtle);
+        }
+      }
+    }
+  }
+}
+
+.response-modal .ant-modal-body {
+  text-align: center;
+  font-size: 15px;
+  .stars {
+    margin-bottom: 12px;
   }
 }

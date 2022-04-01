@@ -10,11 +10,7 @@ import {
 import '../gameroom/scss/gameroom.scss';
 import { TileLetter, PointValue } from '../gameroom/tile';
 import { BoardPreview } from './board_preview';
-import {
-  lexiconOrder,
-  MatchLexiconDisplay,
-  puzzleLexica,
-} from '../shared/lexicon_display';
+import { MatchLexiconDisplay, puzzleLexica } from '../shared/lexicon_display';
 type Props = {};
 
 const KNOWN_TILE_ORDERS = [
