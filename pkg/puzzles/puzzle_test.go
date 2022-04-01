@@ -16,6 +16,8 @@ import (
 	puzzlesstore "github.com/domino14/liwords/pkg/stores/puzzles"
 	"github.com/domino14/liwords/pkg/stores/user"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -54,17 +56,17 @@ func gameEventToClientGameplayEvent(evt *macondopb.GameEvent) *ipc.ClientGamepla
 
 func TestPuzzles(t *testing.T) {
 	is := is.New(t)
-	db, ps, authoredPuzzles, totalPuzzles, err := RecreateDB()
+	pool, ps, authoredPuzzles, totalPuzzles, err := RecreateDB()
 	is.NoErr(err)
 	ctx := context.Background()
 
 	rk := ratingKey(common.DefaultGameReq)
 
-	pcid, err := transactGetDBIDFromUUID(ctx, db, "users", PuzzleCreatorUUID)
+	pcid, err := transactGetDBIDFromUUID(ctx, pool, "users", PuzzleCreatorUUID)
 	is.NoErr(err)
 
 	var curatedPuzzles int
-	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM puzzles WHERE author_id = $1`, pcid).Scan(&curatedPuzzles)
+	err = pool.QueryRow(ctx, `SELECT COUNT(*) FROM puzzles WHERE author_id = $1`, pcid).Scan(&curatedPuzzles)
 	is.NoErr(err)
 	is.Equal(curatedPuzzles, authoredPuzzles)
 
@@ -122,7 +124,7 @@ func TestPuzzles(t *testing.T) {
 	is.NoErr(err)
 	is.True(correctAnswer != nil)
 
-	newUserRating, err := getUserRating(ctx, db, PuzzlerUUID, rk)
+	newUserRating, err := getUserRating(ctx, pool, PuzzlerUUID, rk)
 	is.NoErr(err)
 
 	// User rating should go down, puzzle rating should go up
@@ -130,7 +132,7 @@ func TestPuzzles(t *testing.T) {
 	is.True(float64(puzzlesstore.InitialPuzzleRatingDeviation) > newPuzzleRating.RatingDeviation)
 	is.True(float64(puzzlesstore.InitialPuzzleRating) > newUserRating.Rating)
 	is.True(float64(puzzlesstore.InitialPuzzleRatingDeviation) > newUserRating.RatingDeviation)
-	attempts, recordedCorrect, err := getPuzzleAttempt(ctx, db, PuzzlerUUID, puzzleUUID)
+	attempts, recordedCorrect, err := getPuzzleAttempt(ctx, pool, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
 	is.Equal(attempts, int32(1))
 	is.True(!recordedCorrect.Valid)
@@ -148,7 +150,7 @@ func TestPuzzles(t *testing.T) {
 
 	_, _, _, _, newPuzzleRating, err = ps.GetAnswer(ctx, puzzleUUID)
 	is.NoErr(err)
-	newUserRating, err = getUserRating(ctx, db, PuzzlerUUID, rk)
+	newUserRating, err = getUserRating(ctx, pool, PuzzlerUUID, rk)
 	is.NoErr(err)
 
 	// rating should remain unchanged and another attempt should be recorded
@@ -159,7 +161,7 @@ func TestPuzzles(t *testing.T) {
 	is.True(common.WithinEpsilon(oldPuzzleRating.RatingDeviation, newPuzzleRating.RatingDeviation))
 	is.True(common.WithinEpsilon(oldUserRating.Rating, newUserRating.Rating))
 	is.True(common.WithinEpsilon(oldUserRating.RatingDeviation, newUserRating.RatingDeviation))
-	attempts, recordedCorrect, err = getPuzzleAttempt(ctx, db, PuzzlerUUID, puzzleUUID)
+	attempts, recordedCorrect, err = getPuzzleAttempt(ctx, pool, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
 	is.Equal(attempts, int32(2))
 	is.True(recordedCorrect.Valid)
@@ -169,7 +171,7 @@ func TestPuzzles(t *testing.T) {
 	// Submit another answer which should not change the puzzle attempt record
 	userIsCorrect, status, correctAnswer, gameId, _, _, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, correctCGE, false)
 	is.NoErr(err)
-	attempts, recordedCorrect, err = getPuzzleAttempt(ctx, db, PuzzlerUUID, puzzleUUID)
+	attempts, recordedCorrect, err = getPuzzleAttempt(ctx, pool, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
 	is.True(userIsCorrect)
 	is.True(*status)
@@ -206,7 +208,7 @@ func TestPuzzles(t *testing.T) {
 	correctAnswer, _, _, _, oldPuzzleRating, err = ps.GetAnswer(ctx, puzzleUUID)
 	is.NoErr(err)
 
-	oldUserRating, err = getUserRating(ctx, db, PuzzlerUUID, rk)
+	oldUserRating, err = getUserRating(ctx, pool, PuzzlerUUID, rk)
 	is.NoErr(err)
 
 	correctCGE = gameEventToClientGameplayEvent(correctAnswer)
@@ -222,7 +224,7 @@ func TestPuzzles(t *testing.T) {
 	_, _, _, _, newPuzzleRating, err = ps.GetAnswer(ctx, puzzleUUID)
 	is.NoErr(err)
 
-	newUserRating, err = getUserRating(ctx, db, PuzzlerUUID, rk)
+	newUserRating, err = getUserRating(ctx, pool, PuzzlerUUID, rk)
 	is.NoErr(err)
 
 	// User rating should go up, puzzle rating should go down
@@ -233,7 +235,7 @@ func TestPuzzles(t *testing.T) {
 	is.True(oldPuzzleRating.RatingDeviation > newPuzzleRating.RatingDeviation)
 	is.True(oldUserRating.Rating < newUserRating.Rating)
 	is.True(oldUserRating.RatingDeviation > newUserRating.RatingDeviation)
-	attempts, recordedCorrect, err = getPuzzleAttempt(ctx, db, PuzzlerUUID, puzzleUUID)
+	attempts, recordedCorrect, err = getPuzzleAttempt(ctx, pool, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
 	is.Equal(attempts, int32(1))
 	is.True(recordedCorrect.Valid)
@@ -245,7 +247,7 @@ func TestPuzzles(t *testing.T) {
 
 	correctAnswer, _, _, _, oldPuzzleRating, err = ps.GetAnswer(ctx, puzzleUUID)
 	is.NoErr(err)
-	oldUserRating, err = getUserRating(ctx, db, PuzzlerUUID, rk)
+	oldUserRating, err = getUserRating(ctx, pool, PuzzlerUUID, rk)
 	is.NoErr(err)
 
 	correctCGE = gameEventToClientGameplayEvent(correctAnswer)
@@ -254,7 +256,7 @@ func TestPuzzles(t *testing.T) {
 
 	_, _, _, _, newPuzzleRating, err = ps.GetAnswer(ctx, puzzleUUID)
 	is.NoErr(err)
-	newUserRating, err = getUserRating(ctx, db, PuzzlerUUID, rk)
+	newUserRating, err = getUserRating(ctx, pool, PuzzlerUUID, rk)
 	is.NoErr(err)
 
 	is.True(common.WithinEpsilon(oldPuzzleRating.Rating, newPuzzleRating.Rating))
@@ -331,7 +333,7 @@ func TestPuzzles(t *testing.T) {
 	is.True(gameId != "")
 	is.Equal(attempts, int32(2))
 
-	attempts, recordedCorrect, err = getPuzzleAttempt(ctx, db, PuzzlerUUID, puzzleUUID)
+	attempts, recordedCorrect, err = getPuzzleAttempt(ctx, pool, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
 	is.Equal(attempts, int32(2))
 	is.True(recordedCorrect.Valid)
@@ -374,7 +376,7 @@ func TestPuzzles(t *testing.T) {
 	is.True(gameId != "")
 	is.Equal(attempts, int32(0))
 
-	attempts, recordedCorrect, err = getPuzzleAttempt(ctx, db, PuzzlerUUID, puzzleUUID)
+	attempts, recordedCorrect, err = getPuzzleAttempt(ctx, pool, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
 	is.Equal(attempts, int32(0))
 	is.True(recordedCorrect.Valid)
@@ -382,7 +384,7 @@ func TestPuzzles(t *testing.T) {
 
 	// The user should not see repeat puzzles until they
 	// have answered all of them
-	unseenPuzzles, err := getNumUnattemptedPuzzlesInLexicon(ctx, db, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	unseenPuzzles, err := getNumUnattemptedPuzzlesInLexicon(ctx, pool, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
 	for i := 0; i < unseenPuzzles; i++ {
@@ -394,7 +396,7 @@ func TestPuzzles(t *testing.T) {
 		is.NoErr(err)
 		is.Equal(expectedPreviousPuzzleUUID, actualPreviousPuzzleUUID)
 
-		puzzleLexicon, err := getPuzzleLexicon(ctx, db, puzzleUUID)
+		puzzleLexicon, err := getPuzzleLexicon(ctx, pool, puzzleUUID)
 		is.NoErr(err)
 		is.Equal(puzzleLexicon, common.DefaultGameReq.Lexicon)
 
@@ -402,11 +404,11 @@ func TestPuzzles(t *testing.T) {
 		is.NoErr(err)
 		is.Equal(attempts, int32(0))
 
-		puzzleDBID, err := transactGetDBIDFromUUID(ctx, db, "puzzles", puzzleUUID)
+		puzzleDBID, err := transactGetDBIDFromUUID(ctx, pool, "puzzles", puzzleUUID)
 		is.NoErr(err)
 
 		var turnNumber int
-		err = db.QueryRowContext(ctx, `SELECT turn_number FROM puzzles WHERE id = $1`, puzzleDBID).Scan(&turnNumber)
+		err = pool.QueryRow(ctx, `SELECT turn_number FROM puzzles WHERE id = $1`, puzzleDBID).Scan(&turnNumber)
 		is.NoErr(err)
 
 		attempts, _, _, _, err = ps.GetAttempts(ctx, PuzzlerUUID, puzzleUUID)
@@ -424,10 +426,10 @@ func TestPuzzles(t *testing.T) {
 
 	// The user should only see puzzles for their requested lexicon
 	// regardless of how many puzzles they request
-	attemptedPuzzles, err := getNumAttemptedPuzzles(ctx, db, PuzzlerUUID)
+	attemptedPuzzles, err := getNumAttemptedPuzzles(ctx, pool, PuzzlerUUID)
 	is.NoErr(err)
 
-	unattemptedPuzzles, err := getNumUnattemptedPuzzles(ctx, db, PuzzlerUUID)
+	unattemptedPuzzles, err := getNumUnattemptedPuzzles(ctx, pool, PuzzlerUUID)
 	is.NoErr(err)
 	is.Equal(totalPuzzles, attemptedPuzzles+unattemptedPuzzles)
 
@@ -438,7 +440,7 @@ func TestPuzzles(t *testing.T) {
 		is.NoErr(err)
 	}
 
-	newAttemptedPuzzles, err := getNumAttemptedPuzzles(ctx, db, PuzzlerUUID)
+	newAttemptedPuzzles, err := getNumAttemptedPuzzles(ctx, pool, PuzzlerUUID)
 	is.NoErr(err)
 	is.Equal(newAttemptedPuzzles, attemptedPuzzles)
 
@@ -447,25 +449,25 @@ func TestPuzzles(t *testing.T) {
 	err = SetPuzzleVote(ctx, ps, PuzzlerUUID, puzzleUUID, 1)
 	is.NoErr(err)
 
-	pop, err := getPuzzlePopularity(ctx, db, puzzleUUID)
+	pop, err := getPuzzlePopularity(ctx, pool, puzzleUUID)
 	is.NoErr(err)
 	is.Equal(pop, 1)
 
 	err = SetPuzzleVote(ctx, ps, PuzzleCreatorUUID, puzzleUUID, -1)
 	is.NoErr(err)
 
-	pop, err = getPuzzlePopularity(ctx, db, puzzleUUID)
+	pop, err = getPuzzlePopularity(ctx, pool, puzzleUUID)
 	is.NoErr(err)
 	is.Equal(pop, 0)
 
 	err = SetPuzzleVote(ctx, ps, PuzzlerUUID, puzzleUUID, 0)
 	is.NoErr(err)
 
-	pop, err = getPuzzlePopularity(ctx, db, puzzleUUID)
+	pop, err = getPuzzlePopularity(ctx, pool, puzzleUUID)
 	is.NoErr(err)
 	is.Equal(pop, -1)
 
-	db.Close()
+	pool.Close()
 }
 
 func TestUniqueSingleTileKey(t *testing.T) {
@@ -484,7 +486,7 @@ func TestUniqueSingleTileKey(t *testing.T) {
 		uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: pb.GameEvent_VERTICAL}))
 }
 
-func RecreateDB() (*sql.DB, *puzzlesstore.DBStore, int, int, error) {
+func RecreateDB() (*pgxpool.Pool, *puzzlesstore.DBStore, int, int, error) {
 	cfg := &config.Config{}
 	cfg.MacondoConfig = common.DefaultConfig
 	cfg.DBConnUri = commondb.TestingPostgresConnUri()
@@ -500,7 +502,7 @@ func RecreateDB() (*sql.DB, *puzzlesstore.DBStore, int, int, error) {
 	}
 
 	// Reconnect to the new test database
-	db, err := commondb.OpenTestingDB()
+	pool, err := commondb.OpenTestingDB()
 	if err != nil {
 		return nil, nil, 0, 0, err
 	}
@@ -524,7 +526,7 @@ func RecreateDB() (*sql.DB, *puzzlesstore.DBStore, int, int, error) {
 		return nil, nil, 0, 0, err
 	}
 
-	puzzlesStore, err := puzzlesstore.NewDBStore(db)
+	puzzlesStore, err := puzzlesstore.NewDBStore(pool)
 	if err != nil {
 		return nil, nil, 0, 0, err
 	}
@@ -571,18 +573,18 @@ func RecreateDB() (*sql.DB, *puzzlesstore.DBStore, int, int, error) {
 		totalPuzzles += len(pzls)
 	}
 
-	return db, puzzlesStore, authoredPuzzles, totalPuzzles, nil
+	return pool, puzzlesStore, authoredPuzzles, totalPuzzles, nil
 }
 
-func getUserRating(ctx context.Context, db *sql.DB, userUUID string, rk entity.VariantKey) (*entity.SingleRating, error) {
-	id, err := transactGetDBIDFromUUID(ctx, db, "users", userUUID)
+func getUserRating(ctx context.Context, pool *pgxpool.Pool, userUUID string, rk entity.VariantKey) (*entity.SingleRating, error) {
+	id, err := transactGetDBIDFromUUID(ctx, pool, "users", userUUID)
 	if err != nil {
 		return nil, err
 	}
 
 	var ratings *entity.Ratings
-	err = db.QueryRowContext(ctx, `SELECT ratings FROM profiles WHERE user_id = $1`, id).Scan(&ratings)
-	if err == sql.ErrNoRows {
+	err = pool.QueryRow(ctx, `SELECT ratings FROM profiles WHERE user_id = $1`, id).Scan(&ratings)
+	if err == pgx.ErrNoRows {
 		return nil, fmt.Errorf("profile not found for user_id: %s", userUUID)
 	}
 	if err != nil {
@@ -597,89 +599,89 @@ func getUserRating(ctx context.Context, db *sql.DB, userUUID string, rk entity.V
 	return &sr, nil
 }
 
-func getPuzzlePopularity(ctx context.Context, db *sql.DB, puzzleUUID string) (int, error) {
-	pid, err := transactGetDBIDFromUUID(ctx, db, "puzzles", puzzleUUID)
+func getPuzzlePopularity(ctx context.Context, pool *pgxpool.Pool, puzzleUUID string) (int, error) {
+	pid, err := transactGetDBIDFromUUID(ctx, pool, "puzzles", puzzleUUID)
 	if err != nil {
 		return 0, err
 	}
 	var popularity int
-	err = db.QueryRowContext(ctx, `SELECT SUM(vote) FROM puzzle_votes WHERE puzzle_id = $1`, pid).Scan(&popularity)
+	err = pool.QueryRow(ctx, `SELECT SUM(vote) FROM puzzle_votes WHERE puzzle_id = $1`, pid).Scan(&popularity)
 	return popularity, err
 }
 
-func getPuzzleAttempt(ctx context.Context, db *sql.DB, userUUID string, puzzleUUID string) (int32, *sql.NullBool, error) {
-	pid, err := transactGetDBIDFromUUID(ctx, db, "puzzles", puzzleUUID)
+func getPuzzleAttempt(ctx context.Context, pool *pgxpool.Pool, userUUID string, puzzleUUID string) (int32, *sql.NullBool, error) {
+	pid, err := transactGetDBIDFromUUID(ctx, pool, "puzzles", puzzleUUID)
 	if err != nil {
 		return 0, nil, err
 	}
 
-	uid, err := transactGetDBIDFromUUID(ctx, db, "users", userUUID)
+	uid, err := transactGetDBIDFromUUID(ctx, pool, "users", userUUID)
 	if err != nil {
 		return 0, nil, err
 	}
 	var attempts int32
 	correct := &sql.NullBool{}
-	err = db.QueryRowContext(ctx, `SELECT attempts, correct FROM puzzle_attempts WHERE user_id = $1 AND puzzle_id = $2`, uid, pid).Scan(&attempts, correct)
+	err = pool.QueryRow(ctx, `SELECT attempts, correct FROM puzzle_attempts WHERE user_id = $1 AND puzzle_id = $2`, uid, pid).Scan(&attempts, correct)
 	if err != nil {
 		return 0, nil, err
 	}
 	return attempts, correct, nil
 }
 
-func getNumUnattemptedPuzzles(ctx context.Context, db *sql.DB, userUUID string) (int, error) {
-	uid, err := transactGetDBIDFromUUID(ctx, db, "users", userUUID)
+func getNumUnattemptedPuzzles(ctx context.Context, pool *pgxpool.Pool, userUUID string) (int, error) {
+	uid, err := transactGetDBIDFromUUID(ctx, pool, "users", userUUID)
 	if err != nil {
 		return -1, err
 	}
 	var unseen int
-	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM puzzles WHERE puzzles.id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $1)`, uid).Scan(&unseen)
+	err = pool.QueryRow(ctx, `SELECT COUNT(*) FROM puzzles WHERE puzzles.id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $1)`, uid).Scan(&unseen)
 	if err != nil {
 		return -1, err
 	}
 	return unseen, nil
 }
 
-func getNumAttemptedPuzzles(ctx context.Context, db *sql.DB, userUUID string) (int, error) {
-	uid, err := transactGetDBIDFromUUID(ctx, db, "users", userUUID)
+func getNumAttemptedPuzzles(ctx context.Context, pool *pgxpool.Pool, userUUID string) (int, error) {
+	uid, err := transactGetDBIDFromUUID(ctx, pool, "users", userUUID)
 	if err != nil {
 		return -1, err
 	}
 	var attempted int
-	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM puzzle_attempts WHERE user_id = $1`, uid).Scan(&attempted)
+	err = pool.QueryRow(ctx, `SELECT COUNT(*) FROM puzzle_attempts WHERE user_id = $1`, uid).Scan(&attempted)
 	if err != nil {
 		return -1, err
 	}
 	return attempted, nil
 }
 
-func getNumUnattemptedPuzzlesInLexicon(ctx context.Context, db *sql.DB, userUUID string, lexicon string) (int, error) {
-	uid, err := transactGetDBIDFromUUID(ctx, db, "users", userUUID)
+func getNumUnattemptedPuzzlesInLexicon(ctx context.Context, pool *pgxpool.Pool, userUUID string, lexicon string) (int, error) {
+	uid, err := transactGetDBIDFromUUID(ctx, pool, "users", userUUID)
 	if err != nil {
 		return -1, err
 	}
 	var unseen int
-	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM puzzles WHERE lexicon = $1 AND puzzles.id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $2)`, lexicon, uid).Scan(&unseen)
+	err = pool.QueryRow(ctx, `SELECT COUNT(*) FROM puzzles WHERE lexicon = $1 AND puzzles.id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $2)`, lexicon, uid).Scan(&unseen)
 	if err != nil {
 		return -1, err
 	}
 	return unseen, nil
 }
 
-func getPuzzleLexicon(ctx context.Context, db *sql.DB, puzzleUUID string) (string, error) {
+func getPuzzleLexicon(ctx context.Context, pool *pgxpool.Pool, puzzleUUID string) (string, error) {
 	var lexicon string
-	err := db.QueryRowContext(ctx, `SELECT lexicon FROM puzzles WHERE uuid = $1`, puzzleUUID).Scan(&lexicon)
+	err := pool.QueryRow(ctx, `SELECT lexicon FROM puzzles WHERE uuid = $1`, puzzleUUID).Scan(&lexicon)
 	if err != nil {
 		return "", err
 	}
 	return lexicon, nil
 }
 
-func transactGetDBIDFromUUID(ctx context.Context, db *sql.DB, table string, uuid string) (int64, error) {
-	tx, err := db.BeginTx(ctx, nil)
+func transactGetDBIDFromUUID(ctx context.Context, pool *pgxpool.Pool, table string, uuid string) (int64, error) {
+	tx, err := pool.BeginTx(ctx, commondb.DefaultTxOptions)
 	if err != nil {
 		return 0, err
 	}
-	defer tx.Rollback()
+	defer tx.Rollback(ctx)
 
 	var id int64
 	if table == "users" {
@@ -695,7 +697,7 @@ func transactGetDBIDFromUUID(ctx context.Context, db *sql.DB, table string, uuid
 		return 0, err
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return 0, err
 	}
 	return id, nil

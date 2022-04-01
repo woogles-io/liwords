@@ -1,18 +1,16 @@
 package common
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 
-	// See:
-	// https://github.com/jackc/pgx/wiki/Getting-started-with-pgx-through-database-sql
-	// XXX: Why not use pgx interface directly?
-	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/rs/zerolog/log"
 )
 
@@ -25,19 +23,20 @@ var TestDBPassword = os.Getenv("DB_PASSWORD")
 var TestDBSSLMode = os.Getenv("DB_SSL_MODE")
 
 func RecreateTestDB() error {
-	db, err := sql.Open("pgx", PostgresConnUri(TestDBHost, TestDBPort,
+	ctx := context.Background()
+	db, err := pgx.Connect(ctx, PostgresConnUri(TestDBHost, TestDBPort,
 		"", TestDBUser, TestDBPassword, TestDBSSLMode))
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer db.Close(ctx)
 
-	_, err = db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", TestDBName))
+	_, err = db.Exec(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS %s", TestDBName))
 	if err != nil {
 		return err
 	}
 
-	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", TestDBName))
+	_, err = db.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s", TestDBName))
 	if err != nil {
 		return err
 	}
@@ -58,21 +57,22 @@ func RecreateTestDB() error {
 }
 
 func TeardownTestDB() error {
-	db, err := sql.Open("pgx", PostgresConnUri(TestDBHost, TestDBPort,
+	ctx := context.Background()
+	db, err := pgx.Connect(ctx, PostgresConnUri(TestDBHost, TestDBPort,
 		"", TestDBUser, TestDBPassword, TestDBSSLMode))
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer db.Close(ctx)
 
-	_, err = db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", TestDBName))
+	_, err = db.Exec(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS %s", TestDBName))
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func OpenTestingDB() (*sql.DB, error) {
+func OpenTestingDB() (*pgxpool.Pool, error) {
 	return OpenDB(TestDBHost, TestDBPort, TestDBName, TestDBUser, TestDBPassword, TestDBSSLMode)
 }
 

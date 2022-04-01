@@ -16,6 +16,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/gomodule/redigo/redis"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/twitchtv/twirp"
 
 	"github.com/domino14/liwords/pkg/apiserver"
@@ -26,7 +27,6 @@ import (
 	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/notify"
 	"github.com/domino14/liwords/pkg/puzzles"
-	"github.com/domino14/liwords/pkg/stores/common"
 	cfgstore "github.com/domino14/liwords/pkg/stores/config"
 	"github.com/domino14/liwords/pkg/stores/game"
 	modstore "github.com/domino14/liwords/pkg/stores/mod"
@@ -136,6 +136,10 @@ func main() {
 	log.Err(e2).Msg("close-database")
 
 	redisPool := newPool(cfg.RedisURL)
+	dbPool, err := pgxpool.Connect(context.Background(), cfg.DBConnUri)
+	if err != nil {
+		panic(err)
+	}
 
 	router := http.NewServeMux() // here you could also go with third party packages to create a router
 
@@ -196,12 +200,7 @@ func main() {
 	stores.PresenceStore = pkgredis.NewRedisPresenceStore(redisPool)
 	stores.ChatStore = pkgredis.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore)
 
-	db, err := common.OpenDB(cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBUser, cfg.DBPassword,
-		cfg.DBSSLMode)
-	if err != nil {
-		panic(err)
-	}
-	stores.PuzzleStore, err = puzzlestore.NewDBStore(db)
+	stores.PuzzleStore, err = puzzlestore.NewDBStore(dbPool)
 	if err != nil {
 		panic(err)
 	}
