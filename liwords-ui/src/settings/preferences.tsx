@@ -10,7 +10,11 @@ import {
 import '../gameroom/scss/gameroom.scss';
 import { TileLetter, PointValue } from '../gameroom/tile';
 import { BoardPreview } from './board_preview';
-import { lexiconOrder, MatchLexiconDisplay } from '../shared/lexicon_display';
+import {
+  lexiconOrder,
+  MatchLexiconDisplay,
+  puzzleLexica,
+} from '../shared/lexicon_display';
 type Props = {};
 
 const KNOWN_TILE_ORDERS = [
@@ -409,7 +413,7 @@ export const Preferences = React.memo((props: Props) => {
             onChange={handlePuzzleLexiconChange}
             defaultValue={puzzleLexicon}
           >
-            {lexiconOrder.map((k) => (
+            {puzzleLexica.map((k) => (
               <Select.Option key={k} value={k}>
                 <MatchLexiconDisplay lexiconCode={k} useShortDescription />
               </Select.Option>
