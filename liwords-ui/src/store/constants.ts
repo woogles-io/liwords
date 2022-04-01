@@ -384,12 +384,12 @@ export const errorMap: Map<number, string> = new Map<number, string>([
   [1078, 'You do not have any previous puzzles.'],
   [
     1079,
-    'Internal puzzle error: puzzle id %1 not found for user $2, puzzle $3.',
+    'Internal puzzle error: puzzle id $1 not found for user $2, puzzle $3.',
   ],
   [1080, 'You do not have any previous puzzles.'],
   [
     1081,
-    'Internal puzzle error: puzzle id %1 not found for user $2, puzzle $3 with no attempts.',
+    'Internal puzzle error: puzzle id $1 not found for user $2, puzzle $3 with no attempts.',
   ],
   [1082, 'Cannot find puzzle with ID $1.'],
   [1083, 'Internal puzzle error: puzzle ID $2 not found for user $1.'],
