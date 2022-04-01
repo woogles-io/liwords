@@ -15,6 +15,17 @@ import { LoginModal } from '../lobby/login';
 import { useMountedState } from '../utils/mounted';
 import { isClubType } from '../store/constants';
 
+let waffles = false;
+let today = new Date();
+if (
+  today.getDate() === 1 &&
+  today.getMonth() === 3 &&
+  localStorage.getItem('nowaffles') !== 'true'
+) {
+  waffles = true;
+  require('./topbar-waffles.scss');
+}
+
 const TopMenu = React.memo((props: Props) => {
   const playMenu = (
     <ul>
@@ -205,6 +216,11 @@ export const TopBar = React.memo((props: Props) => {
     ? tournamentContext.metadata?.getSlug()
     : '/';
 
+  let siteName = 'Woogles.io';
+  if (waffles) {
+    siteName = 'Waffles';
+  }
+
   return (
     <nav className="top-header" id="main-nav">
       <div className="container">
@@ -216,7 +232,7 @@ export const TopBar = React.memo((props: Props) => {
             <div className="site-icon-w">W</div>
           </div>
 
-          <div className="site-name">Woogles.io</div>
+          <div className="site-name">{siteName}</div>
           {props.tournamentID ? (
             <div className="tournament">
               Back to
