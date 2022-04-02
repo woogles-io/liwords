@@ -116,6 +116,16 @@
         }
       }
     }
+    &.puzzling {
+      .player-avatar:after {
+        border-radius: 1px;
+        width: 14px;
+        height: 14px;
+        @include colorModed() {
+          background: m($secondary);
+        }
+      }
+    }
     &.search {
       .player-name {
         @include colorModed() {
