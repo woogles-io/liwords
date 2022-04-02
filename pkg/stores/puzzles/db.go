@@ -131,7 +131,7 @@ func (s *DBStore) GetStartPuzzleId(ctx context.Context, userUUID string, lexicon
 	// or they solved or gave up on the last puzzle,
 	// give the user a new puzzle
 	if getNext || status.Valid {
-		return s.GetNextPuzzleId(ctx, userUUID, lexicon)
+		return getNextPuzzleId(ctx, tx, userUUID, lexicon)
 	}
 
 	var startPuzzleUUID string
@@ -153,6 +153,19 @@ func (s *DBStore) GetNextPuzzleId(ctx context.Context, userUUID string, lexicon 
 	}
 	defer tx.Rollback(ctx)
 
+	puzzleUUID, err := getNextPuzzleId(ctx, tx, userUUID, lexicon)
+	if err != nil {
+		return "", err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return "", err
+	}
+
+	return puzzleUUID, nil
+}
+
+func getNextPuzzleId(ctx context.Context, tx pgx.Tx, userUUID string, lexicon string) (string, error) {
 	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
 	if err != nil {
 		return "", err
@@ -186,10 +199,6 @@ func (s *DBStore) GetNextPuzzleId(ctx context.Context, userUUID string, lexicon 
 		return "", err
 	}
 
-	if err := tx.Commit(ctx); err != nil {
-		return "", err
-	}
-
 	return puzzleUUID, nil
 }
 
@@ -208,7 +217,7 @@ func (s *DBStore) GetPuzzle(ctx context.Context, userUUID string, puzzleUUID str
 	lastAttemptTime := time.Time{}
 
 	if userLoggedIn {
-		attemptExists, attempts, status, firstAttemptTime, lastAttemptTime, err = s.GetAttempts(ctx, userUUID, puzzleUUID)
+		attemptExists, attempts, status, firstAttemptTime, lastAttemptTime, err = getAttempts(ctx, tx, userUUID, puzzleUUID)
 		if err != nil {
 			return nil, "", -1, nil, time.Time{}, time.Time{}, err
 		}
@@ -539,6 +548,19 @@ func (s *DBStore) GetAttempts(ctx context.Context, userUUID string, puzzleUUID s
 	}
 	defer tx.Rollback(ctx)
 
+	attemptExists, attempts, status, firstAttemptTime, lastAttemptTime, err := getAttempts(ctx, tx, userUUID, puzzleUUID)
+	if err != nil {
+		return false, -1, nil, time.Time{}, time.Time{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return false, -1, nil, time.Time{}, time.Time{}, err
+	}
+
+	return attemptExists, attempts, status, firstAttemptTime, lastAttemptTime, nil
+}
+
+func getAttempts(ctx context.Context, tx pgx.Tx, userUUID string, puzzleUUID string) (bool, int32, *bool, time.Time, time.Time, error) {
 	pid, err := common.GetPuzzleDBIDFromUUID(ctx, tx, puzzleUUID)
 	if err != nil {
 		return false, -1, nil, time.Time{}, time.Time{}, err
@@ -559,10 +581,6 @@ func (s *DBStore) GetAttempts(ctx context.Context, userUUID string, puzzleUUID s
 		return false, 0, nil, time.Time{}, time.Time{}, nil
 	}
 	if err != nil {
-		return false, -1, nil, time.Time{}, time.Time{}, err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
 		return false, -1, nil, time.Time{}, time.Time{}, err
 	}
 
