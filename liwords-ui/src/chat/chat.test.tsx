@@ -13,6 +13,7 @@ function renderChat(props: Partial<Props> = {}) {
     defaultChannel: 'lobby',
     defaultDescription: 'description',
     sendChat: dummyFunction,
+    suppressDefault: false,
   };
   return render(<Chat {...defaultProps} {...props} />);
 }

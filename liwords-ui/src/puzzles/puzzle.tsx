@@ -31,6 +31,8 @@ import {
   NextPuzzleIdResponse,
   SubmissionRequest,
   SubmissionResponse,
+  StartPuzzleIdRequest,
+  StartPuzzleIdResponse,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { sortTiles } from '../store/constants';
 import { Notepad, NotepadContextProvider } from '../gameroom/notepad';
@@ -170,30 +172,42 @@ export const SinglePuzzle = (props: Props) => {
     [gameHistory]
   );
 
-  const loadNewPuzzle = useCallback(async () => {
-    if (!userLexicon) {
-      return;
-    }
-    const req = new NextPuzzleIdRequest();
-    req.setLexicon(userLexicon);
-    try {
-      const resp = await postProto(
-        NextPuzzleIdResponse,
-        'puzzle_service.PuzzleService',
-        'GetNextPuzzleIdForUser',
-        req
-      );
-      console.log('got resp', resp.toObject());
-      browserHistoryRef.current.replace(
-        `/puzzle/${encodeURIComponent(resp.getPuzzleId())}`
-      );
-    } catch (err) {
-      message.error({
-        content: err.message,
-        duration: 5,
-      });
-    }
-  }, [userLexicon]);
+  const loadNewPuzzle = useCallback(
+    async (firstLoad?: boolean) => {
+      if (!userLexicon) {
+        return;
+      }
+      let req, respType, method;
+      if (firstLoad === true) {
+        req = new StartPuzzleIdRequest();
+        respType = StartPuzzleIdResponse;
+        method = 'GetStartPuzzleId';
+      } else {
+        req = new NextPuzzleIdRequest();
+        respType = NextPuzzleIdResponse;
+        method = 'GetNextPuzzleId';
+      }
+      req.setLexicon(userLexicon);
+      try {
+        const resp = await postProto(
+          respType,
+          'puzzle_service.PuzzleService',
+          method,
+          req
+        );
+        console.log('got resp', resp.toObject());
+        browserHistoryRef.current.replace(
+          `/puzzle/${encodeURIComponent(resp.getPuzzleId())}`
+        );
+      } catch (err) {
+        message.error({
+          content: err.message,
+          duration: 5,
+        });
+      }
+    },
+    [userLexicon]
+  );
 
   // XXX: This is copied from analyzer.tsx. When we add the analyzer
   // to the puzzle page we should figure out another solution.
@@ -439,7 +453,7 @@ export const SinglePuzzle = (props: Props) => {
 
   useEffect(() => {
     if (userLexicon && !puzzleID) {
-      loadNewPuzzle();
+      loadNewPuzzle(true);
     }
   }, [loadNewPuzzle, userLexicon, puzzleID]);
 
