@@ -18,10 +18,6 @@ import (
 	"github.com/lithammer/shortuuid"
 )
 
-var InitialPuzzleRating = 1500
-var InitialPuzzleRatingDeviation = 400
-var InitialPuzzleVolatility = 0.06
-
 type DBStore struct {
 	dbPool *pgxpool.Pool
 }
@@ -75,9 +71,9 @@ func (s *DBStore) CreatePuzzle(ctx context.Context, gameUUID string, turnNumber 
 	}
 
 	newRating := &entity.SingleRating{
-		Rating:            float64(InitialPuzzleRating),
-		RatingDeviation:   float64(InitialPuzzleRatingDeviation),
-		Volatility:        InitialPuzzleVolatility,
+		Rating:            float64(glicko.InitialRating),
+		RatingDeviation:   float64(glicko.InitialRatingDeviation),
+		Volatility:        glicko.InitialVolatility,
 		LastGameTimestamp: time.Now().Unix()}
 
 	uuid := shortuuid.New()
@@ -333,36 +329,41 @@ func (s *DBStore) GetPreviousPuzzleId(ctx context.Context, userUUID string, puzz
 		return "", err
 	}
 
+	if err := tx.Commit(ctx); err != nil {
+		return "", err
+	}
+
 	return previousPuzzleUUID, nil
 }
 
-func (s *DBStore) GetAnswer(ctx context.Context, puzzleUUID string) (*macondopb.GameEvent, string, string, *ipc.GameRequest, *entity.SingleRating, error) {
+func (s *DBStore) GetAnswer(ctx context.Context, puzzleUUID string) (*macondopb.GameEvent, string, int32, string, *ipc.GameRequest, *entity.SingleRating, error) {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
-		return nil, "", "", nil, nil, err
+		return nil, "", -1, "", nil, nil, err
 	}
 	defer tx.Rollback(ctx)
 	var ans *answer
 	var rat *entity.SingleRating
 	var afterText string
 	var gameId int
+	var turnNumber int32
 
-	err = tx.QueryRow(ctx, `SELECT answer, rating, after_text, game_id FROM puzzles WHERE uuid = $1`, puzzleUUID).Scan(&ans, &rat, &afterText, &gameId)
+	err = tx.QueryRow(ctx, `SELECT answer, rating, after_text, game_id, turn_number FROM puzzles WHERE uuid = $1`, puzzleUUID).Scan(&ans, &rat, &afterText, &gameId, &turnNumber)
 	if err == pgx.ErrNoRows {
-		return nil, "", "", nil, nil, entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_ANSWER_PUZZLE_UUID_NOT_FOUND, puzzleUUID)
+		return nil, "", -1, "", nil, nil, entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_ANSWER_PUZZLE_UUID_NOT_FOUND, puzzleUUID)
 	}
 	if err != nil {
-		return nil, "", "", nil, nil, err
+		return nil, "", -1, "", nil, nil, err
 	}
 
 	_, req, gameUUID, err := common.GetGameInfo(ctx, tx, gameId)
 	if err != nil {
-		return nil, "", "", nil, nil, err
+		return nil, "", -1, "", nil, nil, err
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return nil, "", "", nil, nil, err
+		return nil, "", -1, "", nil, nil, err
 	}
-	return answerToGameEvent(ans), gameUUID, afterText, req, rat, nil
+	return answerToGameEvent(ans), gameUUID, turnNumber, afterText, req, rat, nil
 }
 
 func (s *DBStore) SubmitAnswer(ctx context.Context, userUUID string, ratingKey entity.VariantKey,

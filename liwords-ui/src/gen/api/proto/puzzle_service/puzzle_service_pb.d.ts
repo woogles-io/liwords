@@ -197,6 +197,9 @@ export class SubmissionResponse extends jspb.Message {
   getGameId(): string;
   setGameId(value: string): void;
 
+  getTurnNumber(): number;
+  setTurnNumber(value: number): void;
+
   getAfterText(): string;
   setAfterText(value: string): void;
 
@@ -229,6 +232,7 @@ export namespace SubmissionResponse {
     status: PuzzleStatusMap[keyof PuzzleStatusMap],
     correctAnswer?: macondo_api_proto_macondo_macondo_pb.GameEvent.AsObject,
     gameId: string,
+    turnNumber: number,
     afterText: string,
     attempts: number,
     firstAttemptTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,

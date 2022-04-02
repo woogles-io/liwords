@@ -42,10 +42,11 @@ message SubmissionResponse {
   PuzzleStatus status = 2;
   macondo.GameEvent correct_answer = 3;
   string game_id = 4;
-  string after_text = 5;
-  int32 attempts = 6;
-  google.protobuf.Timestamp first_attempt_time = 7;
-  google.protobuf.Timestamp last_attempt_time = 8;
+  int32 turn_number = 5;
+  string after_text = 6;
+  int32 attempts = 7;
+  google.protobuf.Timestamp first_attempt_time = 8;
+  google.protobuf.Timestamp last_attempt_time = 9;
 }
 
 message PreviousPuzzleRequest { string puzzle_id = 1; }
