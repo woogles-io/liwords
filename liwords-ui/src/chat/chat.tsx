@@ -34,7 +34,7 @@ export type Props = {
   highlight?: Array<string>;
   highlightText?: string;
   tournamentID?: string;
-  supressDefault?: boolean;
+  suppressDefault?: boolean;
 };
 
 type JSONChatChannel = {
@@ -67,10 +67,10 @@ export const Chat = React.memo((props: Props) => {
     setTabContainerElement,
   ] = useState<HTMLDivElement | null>(null);
   const { defaultChannel, defaultDescription } = props;
-  const [showChannels, setShowChannels] = useState(props.supressDefault);
+  const [showChannels, setShowChannels] = useState(props.suppressDefault);
   const propsSendChat = useMemo(() => props.sendChat, [props.sendChat]);
   const [selectedChatTab, setSelectedChatTab] = useState(
-    props.supressDefault ? 'CHAT' : 'PLAYERS'
+    props.suppressDefault ? 'CHAT' : 'PLAYERS'
   );
   const chatTab = selectedChatTab === 'CHAT' ? tabContainerElement : null;
 
@@ -88,7 +88,7 @@ export const Chat = React.memo((props: Props) => {
   const lastChannel = useRef('');
   const [chatAutoScroll, setChatAutoScroll] = useState(true);
   const [channel, setChannel] = useState<string | undefined>(
-    !props.supressDefault ? defaultChannel : undefined
+    !props.suppressDefault ? defaultChannel : undefined
   );
   const [, setRefreshCurMsg] = useState(0);
   const channelType = useMemo(() => {
@@ -320,11 +320,14 @@ export const Chat = React.memo((props: Props) => {
   useEffect(() => {
     setChannel(defaultChannel);
     setDescription(defaultDescription);
-    if (loggedIn && (defaultChannel === 'chat.lobby' || props.supressDefault)) {
+    if (
+      loggedIn &&
+      (defaultChannel === 'chat.lobby' || props.suppressDefault)
+    ) {
       setSelectedChatTab('PLAYERS');
       setShowChannels(true);
     }
-  }, [defaultChannel, defaultDescription, loggedIn, props.supressDefault]);
+  }, [defaultChannel, defaultDescription, loggedIn, props.suppressDefault]);
 
   const decoratedDescription = useMemo(() => {
     switch (channelType) {
@@ -691,7 +694,7 @@ export const Chat = React.memo((props: Props) => {
                 setShowChannels(false);
               }}
               sendMessage={sendNewMessage}
-              suppressDefault={props.supressDefault}
+              suppressDefault={props.suppressDefault}
               tournamentID={props.tournamentID}
             />
           ) : (

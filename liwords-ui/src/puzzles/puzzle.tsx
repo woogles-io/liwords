@@ -590,7 +590,7 @@ export const SinglePuzzle = (props: Props) => {
             sendChat={props.sendChat}
             defaultChannel="lobby"
             defaultDescription=""
-            supressDefault
+            suppressDefault
           />
           <React.Fragment key="not-examining">
             <Notepad includeCard />
