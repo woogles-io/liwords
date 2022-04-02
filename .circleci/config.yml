@@ -7,9 +7,16 @@ jobs:
       LEXICON_PATH: /opt/liwords/data/lexica
       LETTER_DISTRIBUTION_PATH: /opt/liwords/data/letterdistributions/
       STRATEGY_PARAMS_PATH: /opt/macondo/data/strategy
+      # Needed for running local tests that use the database:
       TEST_DB_HOST: localhost
-      REDIS_URL: redis://localhost:6379
+      TEST_DB_NAME: liwords_test
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: pass
+      DB_SSL_MODE: disable
       DB_MIGRATIONS_PATH: file:///opt/liwords/db/migrations
+
+      REDIS_URL: redis://localhost:6379
     docker:
       - image: golang:alpine
       - image: circleci/postgres:12.3
