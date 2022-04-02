@@ -388,6 +388,12 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			currentTournamentID = t.UUID
 			tournamentRealm := "tournament-" + currentTournamentID
 			resp.Realms = append(resp.Realms, tournamentRealm, "chat-"+tournamentRealm)
+		} else if strings.HasPrefix(path, "/puzzle/") {
+			// We are appending a chat realm for two reasons:
+			// 1. In the future we could probably have a puzzle lobby chat
+			// 2. Chat realms are the only ones that are compatible with
+			// presence at this moment.
+			resp.Realms = append(resp.Realms, "chat-puzzlelobby")
 		} else {
 			log.Debug().Str("path", path).Msg("realm-req-not-handled")
 		}
@@ -702,8 +708,9 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 	// chat.tournament.foo
 	// chat.game.bar
 	// chat.gametv.baz
-	// puzzle.abcdef
+	// chat.puzzlelobby
 	// global.presence (when it comes, we edit this later)
+	// maybe chat.puzzle.abcdef in the future.
 
 	for _, realm := range evt.Realms {
 
@@ -717,7 +724,6 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 			log.Debug().Str("presence-chan", presenceChan).Str("username", username).Msg("SetPresence")
 			oldChannels, newChannels, err := b.presenceStore.SetPresence(ctx, evt.UserId, username, anon, presenceChan, connID)
 			if err != nil {
-				// this was not checked?
 				return err
 			}
 			if err = b.broadcastChannelChanges(ctx, oldChannels, newChannels, evt.UserId, username); err != nil {

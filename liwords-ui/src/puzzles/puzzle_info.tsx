@@ -4,7 +4,6 @@ import { ChallengeRule, PlayerMetadata } from '../gameroom/game_info';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import moment from 'moment';
 import { timeCtrlToDisplayName, timeToString } from '../store/constants';
-import { PuzzleScore } from './puzzle_score';
 import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 
 export const challengeMap = {

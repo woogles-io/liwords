@@ -108,7 +108,7 @@ func main() {
 
 	ctx := context.Background()
 	if !*useBotVsBot {
-		rows, err := db.QueryContext(ctx,
+		rows, err := db.Query(ctx,
 			`SELECT uuid FROM games WHERE games.id NOT IN
 				(SELECT game_id FROM puzzles) AND
 				(stats->'d1'->'Unchallenged Phonies'->'t')::int = 0 AND

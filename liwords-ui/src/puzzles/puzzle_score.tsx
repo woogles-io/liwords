@@ -4,8 +4,19 @@ import moment from 'moment';
 import { StarFilled, StarOutlined } from '@ant-design/icons';
 import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 
+export const renderStars = (stars: number) => {
+  const ret: ReactNode[] = [];
+  for (let i = stars; i > 0; i--) {
+    ret.push(<StarFilled />);
+  }
+  while (ret.length < MAX_STARS) {
+    ret.push(<StarOutlined className="unearned" />);
+  }
+  return <div className="stars">{ret}</div>;
+};
+
 const MAX_STARS = 3;
-const calculateScore = (solved: boolean, attempts: number) => {
+export const calculatePuzzleScore = (solved: boolean, attempts: number) => {
   // Score 3 for 1 attempt, 2 for 2 attempts, 1 for all others
   return solved ? Math.max(1, MAX_STARS + 1 - attempts) : 0;
 };
@@ -20,16 +31,9 @@ type Props = {
 
 export const PuzzleScore = React.memo((props: Props) => {
   const { attempts, dateSolved, loadNewPuzzle, showSolution, solved } = props;
-  const score = calculateScore(!!dateSolved, attempts);
+  const score = calculatePuzzleScore(!!dateSolved, attempts);
   const renderScore = useMemo(() => {
-    const ret: ReactNode[] = [];
-    for (let i = score; i > 0; i--) {
-      ret.push(<StarFilled />);
-    }
-    while (ret.length < MAX_STARS) {
-      ret.push(<StarOutlined className="unearned" />);
-    }
-    return ret;
+    return renderStars(score);
   }, [score]);
 
   const attemptsText = useMemo(() => {
@@ -90,7 +94,7 @@ export const PuzzleScore = React.memo((props: Props) => {
   }, [loadNewPuzzle, showSolution, solved]);
   return (
     <Card className="puzzle-score" title="Puzzle Mode">
-      <div className="stars">{renderScore}</div>
+      {renderScore}
       {attemptsText}
       {actions}
     </Card>

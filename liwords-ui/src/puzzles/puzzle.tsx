@@ -18,7 +18,7 @@ import {
   ChallengeRule,
   protoChallengeRuleConvert,
 } from '../gameroom/game_info';
-import { PuzzleScore } from './puzzle_score';
+import { calculatePuzzleScore, PuzzleScore, renderStars } from './puzzle_score';
 import Pool from '../gameroom/pool';
 import './puzzles.scss';
 import { PuzzleInfo } from './puzzle_info';
@@ -99,6 +99,10 @@ export const SinglePuzzle = (props: Props) => {
   );
   const [pendingSolution, setPendingSolution] = useState(false);
   const [gameHistory, setGameHistory] = useState<GameHistory | null>(null);
+  const [showResponseModalWrong, setShowResponseModalWrong] = useState(false);
+  const [showResponseModalCorrect, setShowResponseModalCorrect] = useState(
+    false
+  );
   const [showLexiconModal, setShowLexiconModal] = useState(false);
   const { loginState } = useLoginStateStoreContext();
   const { username, loggedIn } = loginState;
@@ -350,11 +354,12 @@ export const SinglePuzzle = (props: Props) => {
           // TODO: The user got the answer right
           BoopSounds.playSound('puzzleCorrectSound');
           setGameInfo(resp.getGameId());
+          setShowResponseModalCorrect(true);
         } else {
           // Wrong answer
           BoopSounds.playSound('puzzleWrongSound');
+          setShowResponseModalWrong(true);
         }
-        console.log(1, puzzleInfo);
         setPuzzleInfo((x) => ({
           ...x,
           dateSolved:
@@ -371,7 +376,7 @@ export const SinglePuzzle = (props: Props) => {
         });
       }
     },
-    [puzzleID, setGameInfo, puzzleInfo]
+    [puzzleID, setGameInfo]
   );
 
   useEffect(() => {
@@ -482,6 +487,94 @@ export const SinglePuzzle = (props: Props) => {
     return null;
   }, [puzzleID, showLexiconModal, userLexicon]);
 
+  const responseModalWrong = useMemo(() => {
+    return (
+      <Modal
+        className="response-modal"
+        destroyOnClose
+        visible={showResponseModalWrong}
+        title="Try again!"
+        onCancel={() => {
+          setShowResponseModalWrong(false);
+        }}
+        footer={[
+          <button
+            disabled={false}
+            className="primary"
+            key="ok"
+            onClick={() => {
+              showSolution();
+            }}
+          >
+            Give up
+          </button>,
+          <button
+            disabled={false}
+            className="primary"
+            key="ok"
+            onClick={() => {
+              setShowResponseModalWrong(false);
+            }}
+          >
+            Keep trying
+          </button>,
+        ]}
+      >
+        <p>
+          Sorry, that’s not the correct solution. You have made{' '}
+          {puzzleInfo.attempts}{' '}
+          {puzzleInfo.attempts === 1 ? 'attempt' : 'attempts'}.
+        </p>
+      </Modal>
+    );
+  }, [showResponseModalWrong, puzzleInfo, showSolution]);
+
+  const responseModalCorrect = useMemo(() => {
+    //TODO: different title for different scores
+    let correctTitle = 'Awesome!';
+    switch (puzzleInfo.attempts) {
+      case 0:
+        correctTitle = 'Awesome!';
+        break;
+      case 1:
+        correctTitle = 'Great job!';
+        break;
+      case 2:
+      default:
+        correctTitle = 'Nicely done.';
+    }
+    const stars = calculatePuzzleScore(true, puzzleInfo.attempts);
+    return (
+      <Modal
+        className="response-modal"
+        destroyOnClose
+        visible={showResponseModalCorrect}
+        title={correctTitle}
+        onCancel={() => {
+          setShowResponseModalCorrect(false);
+        }}
+        footer={[
+          <button
+            disabled={false}
+            className="primary"
+            key="ok"
+            onClick={() => {
+              loadNewPuzzle();
+            }}
+          >
+            Next
+          </button>,
+        ]}
+      >
+        {renderStars(stars)}
+        <p>
+          You solved the puzzle in {puzzleInfo.attempts}{' '}
+          {puzzleInfo.attempts === 1 ? 'attempt' : 'attempts'}.
+        </p>
+      </Modal>
+    );
+  }, [showResponseModalCorrect, puzzleInfo, loadNewPuzzle]);
+
   let ret = (
     <div className="game-container puzzle-container">
       <TopBar />
@@ -497,7 +590,7 @@ export const SinglePuzzle = (props: Props) => {
             sendChat={props.sendChat}
             defaultChannel="lobby"
             defaultDescription=""
-            supressDefault
+            suppressDefault
           />
           <React.Fragment key="not-examining">
             <Notepad includeCard />
@@ -505,6 +598,8 @@ export const SinglePuzzle = (props: Props) => {
         </div>
         <div className="play-area">
           {lexiconModal}
+          {responseModalWrong}
+          {responseModalCorrect}
           <BoardPanel
             anonymousViewer={!loggedIn}
             username={username}
