@@ -21,7 +21,7 @@ import {
 import { calculatePuzzleScore, PuzzleScore, renderStars } from './puzzle_score';
 import Pool from '../gameroom/pool';
 import './puzzles.scss';
-import { PuzzleInfo } from './puzzle_info';
+import { PuzzleInfo as PuzzleInfoWidget } from './puzzle_info';
 import { ActionType } from '../actions/actions';
 import {
   PuzzleRequest,
@@ -306,6 +306,8 @@ export const SinglePuzzle = (props: Props) => {
       }));
       // Place the tiles from the event.
       placeGameEvt(solution!);
+      // Also get the game metadata.
+      setGameInfo(resp.getGameId(), resp.getTurnNumber());
     } catch (err) {
       message.error({
         content: err.message,
@@ -314,7 +316,7 @@ export const SinglePuzzle = (props: Props) => {
     }
   }, [puzzleID, userIDOnTurn, gameContext.players, placeGameEvt]);
 
-  const setGameInfo = useCallback(async (gid: string) => {
+  const setGameInfo = useCallback(async (gid: string, turnNumber: number) => {
     const req = new GameInfoRequest();
     req.setGameId(gid);
     try {
@@ -339,7 +341,7 @@ export const SinglePuzzle = (props: Props) => {
         initialTimeSeconds: gameRequest?.getInitialTimeSeconds(),
         incrementSeconds: gameRequest?.getIncrementSeconds(),
         maxOvertimeMinutes: gameRequest?.getMaxOvertimeMinutes(),
-        gameUrl: `/game/${gid}`,
+        gameUrl: `/game/${gid}?turn=${turnNumber + 1}`,
         player1: { nickname: resp.getPlayersList()[0].getNickname() },
         player2: { nickname: resp.getPlayersList()[1].getNickname() },
       }));
@@ -367,7 +369,7 @@ export const SinglePuzzle = (props: Props) => {
         if (resp.getStatus() === PuzzleStatus.CORRECT) {
           // TODO: The user got the answer right
           BoopSounds.playSound('puzzleCorrectSound');
-          setGameInfo(resp.getGameId());
+          setGameInfo(resp.getGameId(), resp.getTurnNumber());
           setShowResponseModalCorrect(true);
         } else {
           // Wrong answer
@@ -515,9 +517,10 @@ export const SinglePuzzle = (props: Props) => {
           <button
             disabled={false}
             className="primary"
-            key="ok"
+            key="giveup"
             onClick={() => {
               showSolution();
+              setShowResponseModalWrong(false);
             }}
           >
             Give up
@@ -647,7 +650,7 @@ export const SinglePuzzle = (props: Props) => {
             showSolution={showSolution}
             solved={puzzleInfo.solved}
           />
-          <PuzzleInfo
+          <PuzzleInfoWidget
             solved={puzzleInfo.solved}
             gameDate={puzzleInfo.gameDate}
             gameUrl={puzzleInfo.gameUrl}
