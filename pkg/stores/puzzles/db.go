@@ -139,6 +139,9 @@ func (s *DBStore) GetStartPuzzleId(ctx context.Context, userUUID string, lexicon
 	if err != nil {
 		return "", err
 	}
+	if err := tx.Commit(ctx); err != nil {
+		return "", err
+	}
 
 	return startPuzzleUUID, nil
 }
