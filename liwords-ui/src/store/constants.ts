@@ -382,27 +382,24 @@ export const errorMap: Map<number, string> = new Map<number, string>([
   [1076, 'Cannot find a puzzle for lexicon $2.'],
   [1077, 'Cannot find puzzle with ID $2.'],
   [1078, 'You do not have any previous puzzles.'],
+  [1079, 'You do not have any previous puzzles.'],
+  [1080, 'Cannot find puzzle with ID $1.'],
+  [1081, 'Internal puzzle error: puzzle ID $2 not found for user $1.'],
   [
-    1079,
-    'Internal puzzle error: puzzle id $1 not found for user $2, puzzle $3.',
-  ],
-  [1080, 'You do not have any previous puzzles.'],
-  [
-    1081,
-    'Internal puzzle error: puzzle id $1 not found for user $2, puzzle $3 with no attempts.',
-  ],
-  [1082, 'Cannot find puzzle with ID $1.'],
-  [1083, 'Internal puzzle error: puzzle ID $2 not found for user $1.'],
-  [
-    1084,
+    1082,
     'Internal puzzle error: puzzle attempt not found for user $1, puzzle $2.',
   ],
   [
-    1085,
+    1083,
     'Internal puzzle error: updating attempts failed for user $1, puzzle $2.',
   ],
   [
-    1086,
+    1084,
     'Internal puzzle error: setting puzzle vote failed for user $1, puzzle $2.',
+  ],
+  [1086, 'Puzzle attempt does not exist for user $1 and puzzle $2.'],
+  [
+    1087,
+    'Internal error: cound not find puzzle attempt for user $1 and puzzle $2.',
   ],
 ]);

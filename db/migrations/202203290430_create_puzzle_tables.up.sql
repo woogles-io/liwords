@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS puzzle_attempts (
 		puzzle_id bigint NOT NULL,
 		user_id bigint NOT NULL,
 		correct bool,
-		attempts integer,
+		attempts integer NOT NULL,
 		new_user_rating jsonb,
 		new_puzzle_rating jsonb,
 		created_at timestamptz NOT NULL DEFAULT NOW(),

@@ -6,9 +6,13 @@ import "macondo/api/proto/macondo/macondo.proto";
 import "google/protobuf/timestamp.proto";
 import "api/proto/ipc/omgwords.proto";
 
-message RandomUnansweredPuzzleIdRequest { string lexicon = 1; }
+message StartPuzzleIdRequest { string lexicon = 1; }
 
-message RandomUnansweredPuzzleIdResponse { string puzzle_id = 1; }
+message StartPuzzleIdResponse { string puzzle_id = 1; }
+
+message NextPuzzleIdRequest { string lexicon = 1; }
+
+message NextPuzzleIdResponse { string puzzle_id = 1; }
 
 message PuzzleRequest { string puzzle_id = 1; }
 
@@ -56,10 +60,10 @@ message PuzzleVoteRequest {
 message PuzzleVoteResponse {}
 
 service PuzzleService {
-  rpc GetRandomUnansweredPuzzleIdForUser(RandomUnansweredPuzzleIdRequest)
-      returns (RandomUnansweredPuzzleIdResponse);
+  rpc GetStartPuzzleId(StartPuzzleIdRequest) returns (StartPuzzleIdResponse);
+  rpc GetNextPuzzleId(NextPuzzleIdRequest) returns (NextPuzzleIdResponse);
   rpc GetPuzzle(PuzzleRequest) returns (PuzzleResponse);
   rpc SubmitAnswer(SubmissionRequest) returns (SubmissionResponse);
-  rpc GetPreviousPuzzle(PreviousPuzzleRequest) returns (PreviousPuzzleResponse);
+  rpc GetPreviousPuzzleId(PreviousPuzzleRequest) returns (PreviousPuzzleResponse);
   rpc SetPuzzleVote(PuzzleVoteRequest) returns (PuzzleVoteResponse);
 }

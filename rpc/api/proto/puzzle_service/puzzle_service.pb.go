@@ -72,7 +72,7 @@ func (PuzzleStatus) EnumDescriptor() ([]byte, []int) {
 	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{0}
 }
 
-type RandomUnansweredPuzzleIdRequest struct {
+type StartPuzzleIdRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -80,8 +80,8 @@ type RandomUnansweredPuzzleIdRequest struct {
 	Lexicon string `protobuf:"bytes,1,opt,name=lexicon,proto3" json:"lexicon,omitempty"`
 }
 
-func (x *RandomUnansweredPuzzleIdRequest) Reset() {
-	*x = RandomUnansweredPuzzleIdRequest{}
+func (x *StartPuzzleIdRequest) Reset() {
+	*x = StartPuzzleIdRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -89,13 +89,13 @@ func (x *RandomUnansweredPuzzleIdRequest) Reset() {
 	}
 }
 
-func (x *RandomUnansweredPuzzleIdRequest) String() string {
+func (x *StartPuzzleIdRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RandomUnansweredPuzzleIdRequest) ProtoMessage() {}
+func (*StartPuzzleIdRequest) ProtoMessage() {}
 
-func (x *RandomUnansweredPuzzleIdRequest) ProtoReflect() protoreflect.Message {
+func (x *StartPuzzleIdRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -107,19 +107,19 @@ func (x *RandomUnansweredPuzzleIdRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RandomUnansweredPuzzleIdRequest.ProtoReflect.Descriptor instead.
-func (*RandomUnansweredPuzzleIdRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use StartPuzzleIdRequest.ProtoReflect.Descriptor instead.
+func (*StartPuzzleIdRequest) Descriptor() ([]byte, []int) {
 	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *RandomUnansweredPuzzleIdRequest) GetLexicon() string {
+func (x *StartPuzzleIdRequest) GetLexicon() string {
 	if x != nil {
 		return x.Lexicon
 	}
 	return ""
 }
 
-type RandomUnansweredPuzzleIdResponse struct {
+type StartPuzzleIdResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -127,8 +127,8 @@ type RandomUnansweredPuzzleIdResponse struct {
 	PuzzleId string `protobuf:"bytes,1,opt,name=puzzle_id,json=puzzleId,proto3" json:"puzzle_id,omitempty"`
 }
 
-func (x *RandomUnansweredPuzzleIdResponse) Reset() {
-	*x = RandomUnansweredPuzzleIdResponse{}
+func (x *StartPuzzleIdResponse) Reset() {
+	*x = StartPuzzleIdResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -136,13 +136,13 @@ func (x *RandomUnansweredPuzzleIdResponse) Reset() {
 	}
 }
 
-func (x *RandomUnansweredPuzzleIdResponse) String() string {
+func (x *StartPuzzleIdResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RandomUnansweredPuzzleIdResponse) ProtoMessage() {}
+func (*StartPuzzleIdResponse) ProtoMessage() {}
 
-func (x *RandomUnansweredPuzzleIdResponse) ProtoReflect() protoreflect.Message {
+func (x *StartPuzzleIdResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -154,12 +154,106 @@ func (x *RandomUnansweredPuzzleIdResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RandomUnansweredPuzzleIdResponse.ProtoReflect.Descriptor instead.
-func (*RandomUnansweredPuzzleIdResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use StartPuzzleIdResponse.ProtoReflect.Descriptor instead.
+func (*StartPuzzleIdResponse) Descriptor() ([]byte, []int) {
 	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *RandomUnansweredPuzzleIdResponse) GetPuzzleId() string {
+func (x *StartPuzzleIdResponse) GetPuzzleId() string {
+	if x != nil {
+		return x.PuzzleId
+	}
+	return ""
+}
+
+type NextPuzzleIdRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Lexicon string `protobuf:"bytes,1,opt,name=lexicon,proto3" json:"lexicon,omitempty"`
+}
+
+func (x *NextPuzzleIdRequest) Reset() {
+	*x = NextPuzzleIdRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *NextPuzzleIdRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NextPuzzleIdRequest) ProtoMessage() {}
+
+func (x *NextPuzzleIdRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NextPuzzleIdRequest.ProtoReflect.Descriptor instead.
+func (*NextPuzzleIdRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *NextPuzzleIdRequest) GetLexicon() string {
+	if x != nil {
+		return x.Lexicon
+	}
+	return ""
+}
+
+type NextPuzzleIdResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	PuzzleId string `protobuf:"bytes,1,opt,name=puzzle_id,json=puzzleId,proto3" json:"puzzle_id,omitempty"`
+}
+
+func (x *NextPuzzleIdResponse) Reset() {
+	*x = NextPuzzleIdResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *NextPuzzleIdResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NextPuzzleIdResponse) ProtoMessage() {}
+
+func (x *NextPuzzleIdResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NextPuzzleIdResponse.ProtoReflect.Descriptor instead.
+func (*NextPuzzleIdResponse) Descriptor() ([]byte, []int) {
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *NextPuzzleIdResponse) GetPuzzleId() string {
 	if x != nil {
 		return x.PuzzleId
 	}
@@ -177,7 +271,7 @@ type PuzzleRequest struct {
 func (x *PuzzleRequest) Reset() {
 	*x = PuzzleRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[2]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -190,7 +284,7 @@ func (x *PuzzleRequest) String() string {
 func (*PuzzleRequest) ProtoMessage() {}
 
 func (x *PuzzleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[2]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -203,7 +297,7 @@ func (x *PuzzleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleRequest.ProtoReflect.Descriptor instead.
 func (*PuzzleRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{2}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *PuzzleRequest) GetPuzzleId() string {
@@ -229,7 +323,7 @@ type PuzzleResponse struct {
 func (x *PuzzleResponse) Reset() {
 	*x = PuzzleResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[3]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -242,7 +336,7 @@ func (x *PuzzleResponse) String() string {
 func (*PuzzleResponse) ProtoMessage() {}
 
 func (x *PuzzleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[3]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -255,7 +349,7 @@ func (x *PuzzleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleResponse.ProtoReflect.Descriptor instead.
 func (*PuzzleResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{3}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *PuzzleResponse) GetHistory() *macondo.GameHistory {
@@ -313,7 +407,7 @@ type SubmissionRequest struct {
 func (x *SubmissionRequest) Reset() {
 	*x = SubmissionRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[4]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -326,7 +420,7 @@ func (x *SubmissionRequest) String() string {
 func (*SubmissionRequest) ProtoMessage() {}
 
 func (x *SubmissionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[4]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -339,7 +433,7 @@ func (x *SubmissionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmissionRequest.ProtoReflect.Descriptor instead.
 func (*SubmissionRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{4}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *SubmissionRequest) GetPuzzleId() string {
@@ -381,7 +475,7 @@ type SubmissionResponse struct {
 func (x *SubmissionResponse) Reset() {
 	*x = SubmissionResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[5]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -394,7 +488,7 @@ func (x *SubmissionResponse) String() string {
 func (*SubmissionResponse) ProtoMessage() {}
 
 func (x *SubmissionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[5]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -407,7 +501,7 @@ func (x *SubmissionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmissionResponse.ProtoReflect.Descriptor instead.
 func (*SubmissionResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{5}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *SubmissionResponse) GetUserIsCorrect() bool {
@@ -477,7 +571,7 @@ type PreviousPuzzleRequest struct {
 func (x *PreviousPuzzleRequest) Reset() {
 	*x = PreviousPuzzleRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[6]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -490,7 +584,7 @@ func (x *PreviousPuzzleRequest) String() string {
 func (*PreviousPuzzleRequest) ProtoMessage() {}
 
 func (x *PreviousPuzzleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[6]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -503,7 +597,7 @@ func (x *PreviousPuzzleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviousPuzzleRequest.ProtoReflect.Descriptor instead.
 func (*PreviousPuzzleRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{6}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *PreviousPuzzleRequest) GetPuzzleId() string {
@@ -524,7 +618,7 @@ type PreviousPuzzleResponse struct {
 func (x *PreviousPuzzleResponse) Reset() {
 	*x = PreviousPuzzleResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[7]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -537,7 +631,7 @@ func (x *PreviousPuzzleResponse) String() string {
 func (*PreviousPuzzleResponse) ProtoMessage() {}
 
 func (x *PreviousPuzzleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[7]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -550,7 +644,7 @@ func (x *PreviousPuzzleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviousPuzzleResponse.ProtoReflect.Descriptor instead.
 func (*PreviousPuzzleResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{7}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *PreviousPuzzleResponse) GetPuzzleId() string {
@@ -572,7 +666,7 @@ type PuzzleVoteRequest struct {
 func (x *PuzzleVoteRequest) Reset() {
 	*x = PuzzleVoteRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[8]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -585,7 +679,7 @@ func (x *PuzzleVoteRequest) String() string {
 func (*PuzzleVoteRequest) ProtoMessage() {}
 
 func (x *PuzzleVoteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[8]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -598,7 +692,7 @@ func (x *PuzzleVoteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleVoteRequest.ProtoReflect.Descriptor instead.
 func (*PuzzleVoteRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{8}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *PuzzleVoteRequest) GetPuzzleId() string {
@@ -624,7 +718,7 @@ type PuzzleVoteResponse struct {
 func (x *PuzzleVoteResponse) Reset() {
 	*x = PuzzleVoteResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[9]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -637,7 +731,7 @@ func (x *PuzzleVoteResponse) String() string {
 func (*PuzzleVoteResponse) ProtoMessage() {}
 
 func (x *PuzzleVoteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[9]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -650,7 +744,7 @@ func (x *PuzzleVoteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleVoteResponse.ProtoReflect.Descriptor instead.
 func (*PuzzleVoteResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{9}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{11}
 }
 
 var File_api_proto_puzzle_service_puzzle_service_proto protoreflect.FileDescriptor
@@ -666,12 +760,17 @@ var file_api_proto_puzzle_service_puzzle_service_proto_rawDesc = []byte{
 	0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2f, 0x74, 0x69, 0x6d, 0x65, 0x73, 0x74,
 	0x61, 0x6d, 0x70, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x1c, 0x61, 0x70, 0x69, 0x2f, 0x70,
 	0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x69, 0x70, 0x63, 0x2f, 0x6f, 0x6d, 0x67, 0x77, 0x6f, 0x72, 0x64,
-	0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x3b, 0x0a, 0x1f, 0x52, 0x61, 0x6e, 0x64, 0x6f,
-	0x6d, 0x55, 0x6e, 0x61, 0x6e, 0x73, 0x77, 0x65, 0x72, 0x65, 0x64, 0x50, 0x75, 0x7a, 0x7a, 0x6c,
-	0x65, 0x49, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x6c, 0x65,
-	0x78, 0x69, 0x63, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x6c, 0x65, 0x78,
-	0x69, 0x63, 0x6f, 0x6e, 0x22, 0x3f, 0x0a, 0x20, 0x52, 0x61, 0x6e, 0x64, 0x6f, 0x6d, 0x55, 0x6e,
-	0x61, 0x6e, 0x73, 0x77, 0x65, 0x72, 0x65, 0x64, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x49, 0x64,
+	0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x30, 0x0a, 0x14, 0x53, 0x74, 0x61, 0x72, 0x74,
+	0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x49, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12,
+	0x18, 0x0a, 0x07, 0x6c, 0x65, 0x78, 0x69, 0x63, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x07, 0x6c, 0x65, 0x78, 0x69, 0x63, 0x6f, 0x6e, 0x22, 0x34, 0x0a, 0x15, 0x53, 0x74, 0x61,
+	0x72, 0x74, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x49, 0x64, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x12, 0x1b, 0x0a, 0x09, 0x70, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x5f, 0x69, 0x64, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x70, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x49, 0x64, 0x22,
+	0x2f, 0x0a, 0x13, 0x4e, 0x65, 0x78, 0x74, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x49, 0x64, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x6c, 0x65, 0x78, 0x69, 0x63, 0x6f,
+	0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x6c, 0x65, 0x78, 0x69, 0x63, 0x6f, 0x6e,
+	0x22, 0x33, 0x0a, 0x14, 0x4e, 0x65, 0x78, 0x74, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x49, 0x64,
 	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1b, 0x0a, 0x09, 0x70, 0x75, 0x7a, 0x7a,
 	0x6c, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x70, 0x75, 0x7a,
 	0x7a, 0x6c, 0x65, 0x49, 0x64, 0x22, 0x2c, 0x0a, 0x0d, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x52,
@@ -748,42 +847,46 @@ var file_api_proto_puzzle_service_puzzle_service_proto_rawDesc = []byte{
 	0x61, 0x74, 0x75, 0x73, 0x12, 0x0e, 0x0a, 0x0a, 0x55, 0x4e, 0x41, 0x4e, 0x53, 0x57, 0x45, 0x52,
 	0x45, 0x44, 0x10, 0x00, 0x12, 0x0b, 0x0a, 0x07, 0x43, 0x4f, 0x52, 0x52, 0x45, 0x43, 0x54, 0x10,
 	0x01, 0x12, 0x0d, 0x0a, 0x09, 0x49, 0x4e, 0x43, 0x4f, 0x52, 0x52, 0x45, 0x43, 0x54, 0x10, 0x02,
-	0x32, 0xf8, 0x03, 0x0a, 0x0d, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x53, 0x65, 0x72, 0x76, 0x69,
-	0x63, 0x65, 0x12, 0x87, 0x01, 0x0a, 0x22, 0x47, 0x65, 0x74, 0x52, 0x61, 0x6e, 0x64, 0x6f, 0x6d,
-	0x55, 0x6e, 0x61, 0x6e, 0x73, 0x77, 0x65, 0x72, 0x65, 0x64, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65,
-	0x49, 0x64, 0x46, 0x6f, 0x72, 0x55, 0x73, 0x65, 0x72, 0x12, 0x2f, 0x2e, 0x70, 0x75, 0x7a, 0x7a,
-	0x6c, 0x65, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x52, 0x61, 0x6e, 0x64, 0x6f,
-	0x6d, 0x55, 0x6e, 0x61, 0x6e, 0x73, 0x77, 0x65, 0x72, 0x65, 0x64, 0x50, 0x75, 0x7a, 0x7a, 0x6c,
-	0x65, 0x49, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x30, 0x2e, 0x70, 0x75, 0x7a,
-	0x7a, 0x6c, 0x65, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x52, 0x61, 0x6e, 0x64,
-	0x6f, 0x6d, 0x55, 0x6e, 0x61, 0x6e, 0x73, 0x77, 0x65, 0x72, 0x65, 0x64, 0x50, 0x75, 0x7a, 0x7a,
-	0x6c, 0x65, 0x49, 0x64, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x4a, 0x0a, 0x09,
-	0x47, 0x65, 0x74, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x12, 0x1d, 0x2e, 0x70, 0x75, 0x7a, 0x7a,
-	0x6c, 0x65, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x50, 0x75, 0x7a, 0x7a, 0x6c,
-	0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1e, 0x2e, 0x70, 0x75, 0x7a, 0x7a, 0x6c,
-	0x65, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65,
-	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x55, 0x0a, 0x0c, 0x53, 0x75, 0x62, 0x6d,
-	0x69, 0x74, 0x41, 0x6e, 0x73, 0x77, 0x65, 0x72, 0x12, 0x21, 0x2e, 0x70, 0x75, 0x7a, 0x7a, 0x6c,
-	0x65, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x53, 0x75, 0x62, 0x6d, 0x69, 0x73,
-	0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x22, 0x2e, 0x70, 0x75,
-	0x7a, 0x7a, 0x6c, 0x65, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x53, 0x75, 0x62,
-	0x6d, 0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
-	0x62, 0x0a, 0x11, 0x47, 0x65, 0x74, 0x50, 0x72, 0x65, 0x76, 0x69, 0x6f, 0x75, 0x73, 0x50, 0x75,
-	0x7a, 0x7a, 0x6c, 0x65, 0x12, 0x25, 0x2e, 0x70, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x5f, 0x73, 0x65,
-	0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x50, 0x72, 0x65, 0x76, 0x69, 0x6f, 0x75, 0x73, 0x50, 0x75,
-	0x7a, 0x7a, 0x6c, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x26, 0x2e, 0x70, 0x75,
+	0x32, 0xaf, 0x04, 0x0a, 0x0d, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x53, 0x65, 0x72, 0x76, 0x69,
+	0x63, 0x65, 0x12, 0x5f, 0x0a, 0x10, 0x47, 0x65, 0x74, 0x53, 0x74, 0x61, 0x72, 0x74, 0x50, 0x75,
+	0x7a, 0x7a, 0x6c, 0x65, 0x49, 0x64, 0x12, 0x24, 0x2e, 0x70, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x5f,
+	0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x53, 0x74, 0x61, 0x72, 0x74, 0x50, 0x75, 0x7a,
+	0x7a, 0x6c, 0x65, 0x49, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x25, 0x2e, 0x70,
+	0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x53, 0x74,
+	0x61, 0x72, 0x74, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x49, 0x64, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x12, 0x5c, 0x0a, 0x0f, 0x47, 0x65, 0x74, 0x4e, 0x65, 0x78, 0x74, 0x50, 0x75,
+	0x7a, 0x7a, 0x6c, 0x65, 0x49, 0x64, 0x12, 0x23, 0x2e, 0x70, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x5f,
+	0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x4e, 0x65, 0x78, 0x74, 0x50, 0x75, 0x7a, 0x7a,
+	0x6c, 0x65, 0x49, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x24, 0x2e, 0x70, 0x75,
+	0x7a, 0x7a, 0x6c, 0x65, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x4e, 0x65, 0x78,
+	0x74, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x49, 0x64, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x12, 0x4a, 0x0a, 0x09, 0x47, 0x65, 0x74, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x12, 0x1d,
+	0x2e, 0x70, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e,
+	0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1e, 0x2e,
+	0x70, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x50,
+	0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x55, 0x0a,
+	0x0c, 0x53, 0x75, 0x62, 0x6d, 0x69, 0x74, 0x41, 0x6e, 0x73, 0x77, 0x65, 0x72, 0x12, 0x21, 0x2e,
+	0x70, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x53,
+	0x75, 0x62, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x1a, 0x22, 0x2e, 0x70, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63,
+	0x65, 0x2e, 0x53, 0x75, 0x62, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x12, 0x64, 0x0a, 0x13, 0x47, 0x65, 0x74, 0x50, 0x72, 0x65, 0x76, 0x69,
+	0x6f, 0x75, 0x73, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x49, 0x64, 0x12, 0x25, 0x2e, 0x70, 0x75,
 	0x7a, 0x7a, 0x6c, 0x65, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x50, 0x72, 0x65,
-	0x76, 0x69, 0x6f, 0x75, 0x73, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f,
-	0x6e, 0x73, 0x65, 0x12, 0x56, 0x0a, 0x0d, 0x53, 0x65, 0x74, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65,
-	0x56, 0x6f, 0x74, 0x65, 0x12, 0x21, 0x2e, 0x70, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x5f, 0x73, 0x65,
-	0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x56, 0x6f, 0x74, 0x65,
-	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x22, 0x2e, 0x70, 0x75, 0x7a, 0x7a, 0x6c, 0x65,
-	0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x56,
-	0x6f, 0x74, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x3a, 0x5a, 0x38, 0x67,
-	0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x64, 0x6f, 0x6d, 0x69, 0x6e, 0x6f,
-	0x31, 0x34, 0x2f, 0x6c, 0x69, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x2f, 0x72, 0x70, 0x63, 0x2f, 0x61,
-	0x70, 0x69, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x70, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x5f,
-	0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x76, 0x69, 0x6f, 0x75, 0x73, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x1a, 0x26, 0x2e, 0x70, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x5f, 0x73, 0x65, 0x72, 0x76,
+	0x69, 0x63, 0x65, 0x2e, 0x50, 0x72, 0x65, 0x76, 0x69, 0x6f, 0x75, 0x73, 0x50, 0x75, 0x7a, 0x7a,
+	0x6c, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x56, 0x0a, 0x0d, 0x53, 0x65,
+	0x74, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x56, 0x6f, 0x74, 0x65, 0x12, 0x21, 0x2e, 0x70, 0x75,
+	0x7a, 0x7a, 0x6c, 0x65, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x50, 0x75, 0x7a,
+	0x7a, 0x6c, 0x65, 0x56, 0x6f, 0x74, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x22,
+	0x2e, 0x70, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e,
+	0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x56, 0x6f, 0x74, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x42, 0x3a, 0x5a, 0x38, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d,
+	0x2f, 0x64, 0x6f, 0x6d, 0x69, 0x6e, 0x6f, 0x31, 0x34, 0x2f, 0x6c, 0x69, 0x77, 0x6f, 0x72, 0x64,
+	0x73, 0x2f, 0x72, 0x70, 0x63, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f,
+	0x70, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x62, 0x06,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -799,46 +902,50 @@ func file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP() []byte {
 }
 
 var file_api_proto_puzzle_service_puzzle_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_api_proto_puzzle_service_puzzle_service_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_api_proto_puzzle_service_puzzle_service_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_api_proto_puzzle_service_puzzle_service_proto_goTypes = []interface{}{
-	(PuzzleStatus)(0),                        // 0: puzzle_service.PuzzleStatus
-	(*RandomUnansweredPuzzleIdRequest)(nil),  // 1: puzzle_service.RandomUnansweredPuzzleIdRequest
-	(*RandomUnansweredPuzzleIdResponse)(nil), // 2: puzzle_service.RandomUnansweredPuzzleIdResponse
-	(*PuzzleRequest)(nil),                    // 3: puzzle_service.PuzzleRequest
-	(*PuzzleResponse)(nil),                   // 4: puzzle_service.PuzzleResponse
-	(*SubmissionRequest)(nil),                // 5: puzzle_service.SubmissionRequest
-	(*SubmissionResponse)(nil),               // 6: puzzle_service.SubmissionResponse
-	(*PreviousPuzzleRequest)(nil),            // 7: puzzle_service.PreviousPuzzleRequest
-	(*PreviousPuzzleResponse)(nil),           // 8: puzzle_service.PreviousPuzzleResponse
-	(*PuzzleVoteRequest)(nil),                // 9: puzzle_service.PuzzleVoteRequest
-	(*PuzzleVoteResponse)(nil),               // 10: puzzle_service.PuzzleVoteResponse
-	(*macondo.GameHistory)(nil),              // 11: macondo.GameHistory
-	(*timestamppb.Timestamp)(nil),            // 12: google.protobuf.Timestamp
-	(*ipc.ClientGameplayEvent)(nil),          // 13: ipc.ClientGameplayEvent
-	(*macondo.GameEvent)(nil),                // 14: macondo.GameEvent
+	(PuzzleStatus)(0),               // 0: puzzle_service.PuzzleStatus
+	(*StartPuzzleIdRequest)(nil),    // 1: puzzle_service.StartPuzzleIdRequest
+	(*StartPuzzleIdResponse)(nil),   // 2: puzzle_service.StartPuzzleIdResponse
+	(*NextPuzzleIdRequest)(nil),     // 3: puzzle_service.NextPuzzleIdRequest
+	(*NextPuzzleIdResponse)(nil),    // 4: puzzle_service.NextPuzzleIdResponse
+	(*PuzzleRequest)(nil),           // 5: puzzle_service.PuzzleRequest
+	(*PuzzleResponse)(nil),          // 6: puzzle_service.PuzzleResponse
+	(*SubmissionRequest)(nil),       // 7: puzzle_service.SubmissionRequest
+	(*SubmissionResponse)(nil),      // 8: puzzle_service.SubmissionResponse
+	(*PreviousPuzzleRequest)(nil),   // 9: puzzle_service.PreviousPuzzleRequest
+	(*PreviousPuzzleResponse)(nil),  // 10: puzzle_service.PreviousPuzzleResponse
+	(*PuzzleVoteRequest)(nil),       // 11: puzzle_service.PuzzleVoteRequest
+	(*PuzzleVoteResponse)(nil),      // 12: puzzle_service.PuzzleVoteResponse
+	(*macondo.GameHistory)(nil),     // 13: macondo.GameHistory
+	(*timestamppb.Timestamp)(nil),   // 14: google.protobuf.Timestamp
+	(*ipc.ClientGameplayEvent)(nil), // 15: ipc.ClientGameplayEvent
+	(*macondo.GameEvent)(nil),       // 16: macondo.GameEvent
 }
 var file_api_proto_puzzle_service_puzzle_service_proto_depIdxs = []int32{
-	11, // 0: puzzle_service.PuzzleResponse.history:type_name -> macondo.GameHistory
+	13, // 0: puzzle_service.PuzzleResponse.history:type_name -> macondo.GameHistory
 	0,  // 1: puzzle_service.PuzzleResponse.status:type_name -> puzzle_service.PuzzleStatus
-	12, // 2: puzzle_service.PuzzleResponse.first_attempt_time:type_name -> google.protobuf.Timestamp
-	12, // 3: puzzle_service.PuzzleResponse.last_attempt_time:type_name -> google.protobuf.Timestamp
-	13, // 4: puzzle_service.SubmissionRequest.answer:type_name -> ipc.ClientGameplayEvent
+	14, // 2: puzzle_service.PuzzleResponse.first_attempt_time:type_name -> google.protobuf.Timestamp
+	14, // 3: puzzle_service.PuzzleResponse.last_attempt_time:type_name -> google.protobuf.Timestamp
+	15, // 4: puzzle_service.SubmissionRequest.answer:type_name -> ipc.ClientGameplayEvent
 	0,  // 5: puzzle_service.SubmissionResponse.status:type_name -> puzzle_service.PuzzleStatus
-	14, // 6: puzzle_service.SubmissionResponse.correct_answer:type_name -> macondo.GameEvent
-	12, // 7: puzzle_service.SubmissionResponse.first_attempt_time:type_name -> google.protobuf.Timestamp
-	12, // 8: puzzle_service.SubmissionResponse.last_attempt_time:type_name -> google.protobuf.Timestamp
-	1,  // 9: puzzle_service.PuzzleService.GetRandomUnansweredPuzzleIdForUser:input_type -> puzzle_service.RandomUnansweredPuzzleIdRequest
-	3,  // 10: puzzle_service.PuzzleService.GetPuzzle:input_type -> puzzle_service.PuzzleRequest
-	5,  // 11: puzzle_service.PuzzleService.SubmitAnswer:input_type -> puzzle_service.SubmissionRequest
-	7,  // 12: puzzle_service.PuzzleService.GetPreviousPuzzle:input_type -> puzzle_service.PreviousPuzzleRequest
-	9,  // 13: puzzle_service.PuzzleService.SetPuzzleVote:input_type -> puzzle_service.PuzzleVoteRequest
-	2,  // 14: puzzle_service.PuzzleService.GetRandomUnansweredPuzzleIdForUser:output_type -> puzzle_service.RandomUnansweredPuzzleIdResponse
-	4,  // 15: puzzle_service.PuzzleService.GetPuzzle:output_type -> puzzle_service.PuzzleResponse
-	6,  // 16: puzzle_service.PuzzleService.SubmitAnswer:output_type -> puzzle_service.SubmissionResponse
-	8,  // 17: puzzle_service.PuzzleService.GetPreviousPuzzle:output_type -> puzzle_service.PreviousPuzzleResponse
-	10, // 18: puzzle_service.PuzzleService.SetPuzzleVote:output_type -> puzzle_service.PuzzleVoteResponse
-	14, // [14:19] is the sub-list for method output_type
-	9,  // [9:14] is the sub-list for method input_type
+	16, // 6: puzzle_service.SubmissionResponse.correct_answer:type_name -> macondo.GameEvent
+	14, // 7: puzzle_service.SubmissionResponse.first_attempt_time:type_name -> google.protobuf.Timestamp
+	14, // 8: puzzle_service.SubmissionResponse.last_attempt_time:type_name -> google.protobuf.Timestamp
+	1,  // 9: puzzle_service.PuzzleService.GetStartPuzzleId:input_type -> puzzle_service.StartPuzzleIdRequest
+	3,  // 10: puzzle_service.PuzzleService.GetNextPuzzleId:input_type -> puzzle_service.NextPuzzleIdRequest
+	5,  // 11: puzzle_service.PuzzleService.GetPuzzle:input_type -> puzzle_service.PuzzleRequest
+	7,  // 12: puzzle_service.PuzzleService.SubmitAnswer:input_type -> puzzle_service.SubmissionRequest
+	9,  // 13: puzzle_service.PuzzleService.GetPreviousPuzzleId:input_type -> puzzle_service.PreviousPuzzleRequest
+	11, // 14: puzzle_service.PuzzleService.SetPuzzleVote:input_type -> puzzle_service.PuzzleVoteRequest
+	2,  // 15: puzzle_service.PuzzleService.GetStartPuzzleId:output_type -> puzzle_service.StartPuzzleIdResponse
+	4,  // 16: puzzle_service.PuzzleService.GetNextPuzzleId:output_type -> puzzle_service.NextPuzzleIdResponse
+	6,  // 17: puzzle_service.PuzzleService.GetPuzzle:output_type -> puzzle_service.PuzzleResponse
+	8,  // 18: puzzle_service.PuzzleService.SubmitAnswer:output_type -> puzzle_service.SubmissionResponse
+	10, // 19: puzzle_service.PuzzleService.GetPreviousPuzzleId:output_type -> puzzle_service.PreviousPuzzleResponse
+	12, // 20: puzzle_service.PuzzleService.SetPuzzleVote:output_type -> puzzle_service.PuzzleVoteResponse
+	15, // [15:21] is the sub-list for method output_type
+	9,  // [9:15] is the sub-list for method input_type
 	9,  // [9:9] is the sub-list for extension type_name
 	9,  // [9:9] is the sub-list for extension extendee
 	0,  // [0:9] is the sub-list for field type_name
@@ -851,7 +958,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RandomUnansweredPuzzleIdRequest); i {
+			switch v := v.(*StartPuzzleIdRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -863,7 +970,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RandomUnansweredPuzzleIdResponse); i {
+			switch v := v.(*StartPuzzleIdResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -875,7 +982,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PuzzleRequest); i {
+			switch v := v.(*NextPuzzleIdRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -887,7 +994,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PuzzleResponse); i {
+			switch v := v.(*NextPuzzleIdResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -899,7 +1006,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SubmissionRequest); i {
+			switch v := v.(*PuzzleRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -911,7 +1018,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SubmissionResponse); i {
+			switch v := v.(*PuzzleResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -923,7 +1030,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PreviousPuzzleRequest); i {
+			switch v := v.(*SubmissionRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -935,7 +1042,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PreviousPuzzleResponse); i {
+			switch v := v.(*SubmissionResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -947,7 +1054,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PuzzleVoteRequest); i {
+			switch v := v.(*PreviousPuzzleRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -959,6 +1066,30 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*PreviousPuzzleResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*PuzzleVoteRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*PuzzleVoteResponse); i {
 			case 0:
 				return &v.state
@@ -977,7 +1108,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_api_proto_puzzle_service_puzzle_service_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

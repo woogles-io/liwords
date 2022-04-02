@@ -33,13 +33,15 @@ const _ = twirp.TwirpPackageMinVersion_8_1_0
 // =======================
 
 type PuzzleService interface {
-	GetRandomUnansweredPuzzleIdForUser(context.Context, *RandomUnansweredPuzzleIdRequest) (*RandomUnansweredPuzzleIdResponse, error)
+	GetStartPuzzleId(context.Context, *StartPuzzleIdRequest) (*StartPuzzleIdResponse, error)
+
+	GetNextPuzzleId(context.Context, *NextPuzzleIdRequest) (*NextPuzzleIdResponse, error)
 
 	GetPuzzle(context.Context, *PuzzleRequest) (*PuzzleResponse, error)
 
 	SubmitAnswer(context.Context, *SubmissionRequest) (*SubmissionResponse, error)
 
-	GetPreviousPuzzle(context.Context, *PreviousPuzzleRequest) (*PreviousPuzzleResponse, error)
+	GetPreviousPuzzleId(context.Context, *PreviousPuzzleRequest) (*PreviousPuzzleResponse, error)
 
 	SetPuzzleVote(context.Context, *PuzzleVoteRequest) (*PuzzleVoteResponse, error)
 }
@@ -50,7 +52,7 @@ type PuzzleService interface {
 
 type puzzleServiceProtobufClient struct {
 	client      HTTPClient
-	urls        [5]string
+	urls        [6]string
 	interceptor twirp.Interceptor
 	opts        twirp.ClientOptions
 }
@@ -78,11 +80,12 @@ func NewPuzzleServiceProtobufClient(baseURL string, client HTTPClient, opts ...t
 	// Build method URLs: <baseURL>[<prefix>]/<package>.<Service>/<Method>
 	serviceURL := sanitizeBaseURL(baseURL)
 	serviceURL += baseServicePath(pathPrefix, "puzzle_service", "PuzzleService")
-	urls := [5]string{
-		serviceURL + "GetRandomUnansweredPuzzleIdForUser",
+	urls := [6]string{
+		serviceURL + "GetStartPuzzleId",
+		serviceURL + "GetNextPuzzleId",
 		serviceURL + "GetPuzzle",
 		serviceURL + "SubmitAnswer",
-		serviceURL + "GetPreviousPuzzle",
+		serviceURL + "GetPreviousPuzzleId",
 		serviceURL + "SetPuzzleVote",
 	}
 
@@ -94,26 +97,26 @@ func NewPuzzleServiceProtobufClient(baseURL string, client HTTPClient, opts ...t
 	}
 }
 
-func (c *puzzleServiceProtobufClient) GetRandomUnansweredPuzzleIdForUser(ctx context.Context, in *RandomUnansweredPuzzleIdRequest) (*RandomUnansweredPuzzleIdResponse, error) {
+func (c *puzzleServiceProtobufClient) GetStartPuzzleId(ctx context.Context, in *StartPuzzleIdRequest) (*StartPuzzleIdResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "puzzle_service")
 	ctx = ctxsetters.WithServiceName(ctx, "PuzzleService")
-	ctx = ctxsetters.WithMethodName(ctx, "GetRandomUnansweredPuzzleIdForUser")
-	caller := c.callGetRandomUnansweredPuzzleIdForUser
+	ctx = ctxsetters.WithMethodName(ctx, "GetStartPuzzleId")
+	caller := c.callGetStartPuzzleId
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *RandomUnansweredPuzzleIdRequest) (*RandomUnansweredPuzzleIdResponse, error) {
+		caller = func(ctx context.Context, req *StartPuzzleIdRequest) (*StartPuzzleIdResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*RandomUnansweredPuzzleIdRequest)
+					typedReq, ok := req.(*StartPuzzleIdRequest)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*RandomUnansweredPuzzleIdRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*StartPuzzleIdRequest) when calling interceptor")
 					}
-					return c.callGetRandomUnansweredPuzzleIdForUser(ctx, typedReq)
+					return c.callGetStartPuzzleId(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
-				typedResp, ok := resp.(*RandomUnansweredPuzzleIdResponse)
+				typedResp, ok := resp.(*StartPuzzleIdResponse)
 				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*RandomUnansweredPuzzleIdResponse) when calling interceptor")
+					return nil, twirp.InternalError("failed type assertion resp.(*StartPuzzleIdResponse) when calling interceptor")
 				}
 				return typedResp, err
 			}
@@ -123,9 +126,55 @@ func (c *puzzleServiceProtobufClient) GetRandomUnansweredPuzzleIdForUser(ctx con
 	return caller(ctx, in)
 }
 
-func (c *puzzleServiceProtobufClient) callGetRandomUnansweredPuzzleIdForUser(ctx context.Context, in *RandomUnansweredPuzzleIdRequest) (*RandomUnansweredPuzzleIdResponse, error) {
-	out := new(RandomUnansweredPuzzleIdResponse)
+func (c *puzzleServiceProtobufClient) callGetStartPuzzleId(ctx context.Context, in *StartPuzzleIdRequest) (*StartPuzzleIdResponse, error) {
+	out := new(StartPuzzleIdResponse)
 	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[0], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
+func (c *puzzleServiceProtobufClient) GetNextPuzzleId(ctx context.Context, in *NextPuzzleIdRequest) (*NextPuzzleIdResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "puzzle_service")
+	ctx = ctxsetters.WithServiceName(ctx, "PuzzleService")
+	ctx = ctxsetters.WithMethodName(ctx, "GetNextPuzzleId")
+	caller := c.callGetNextPuzzleId
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *NextPuzzleIdRequest) (*NextPuzzleIdResponse, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*NextPuzzleIdRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*NextPuzzleIdRequest) when calling interceptor")
+					}
+					return c.callGetNextPuzzleId(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*NextPuzzleIdResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*NextPuzzleIdResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *puzzleServiceProtobufClient) callGetNextPuzzleId(ctx context.Context, in *NextPuzzleIdRequest) (*NextPuzzleIdResponse, error) {
+	out := new(NextPuzzleIdResponse)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[1], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -171,7 +220,7 @@ func (c *puzzleServiceProtobufClient) GetPuzzle(ctx context.Context, in *PuzzleR
 
 func (c *puzzleServiceProtobufClient) callGetPuzzle(ctx context.Context, in *PuzzleRequest) (*PuzzleResponse, error) {
 	out := new(PuzzleResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[1], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[2], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -217,7 +266,7 @@ func (c *puzzleServiceProtobufClient) SubmitAnswer(ctx context.Context, in *Subm
 
 func (c *puzzleServiceProtobufClient) callSubmitAnswer(ctx context.Context, in *SubmissionRequest) (*SubmissionResponse, error) {
 	out := new(SubmissionResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[2], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[3], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -232,11 +281,11 @@ func (c *puzzleServiceProtobufClient) callSubmitAnswer(ctx context.Context, in *
 	return out, nil
 }
 
-func (c *puzzleServiceProtobufClient) GetPreviousPuzzle(ctx context.Context, in *PreviousPuzzleRequest) (*PreviousPuzzleResponse, error) {
+func (c *puzzleServiceProtobufClient) GetPreviousPuzzleId(ctx context.Context, in *PreviousPuzzleRequest) (*PreviousPuzzleResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "puzzle_service")
 	ctx = ctxsetters.WithServiceName(ctx, "PuzzleService")
-	ctx = ctxsetters.WithMethodName(ctx, "GetPreviousPuzzle")
-	caller := c.callGetPreviousPuzzle
+	ctx = ctxsetters.WithMethodName(ctx, "GetPreviousPuzzleId")
+	caller := c.callGetPreviousPuzzleId
 	if c.interceptor != nil {
 		caller = func(ctx context.Context, req *PreviousPuzzleRequest) (*PreviousPuzzleResponse, error) {
 			resp, err := c.interceptor(
@@ -245,7 +294,7 @@ func (c *puzzleServiceProtobufClient) GetPreviousPuzzle(ctx context.Context, in 
 					if !ok {
 						return nil, twirp.InternalError("failed type assertion req.(*PreviousPuzzleRequest) when calling interceptor")
 					}
-					return c.callGetPreviousPuzzle(ctx, typedReq)
+					return c.callGetPreviousPuzzleId(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
@@ -261,9 +310,9 @@ func (c *puzzleServiceProtobufClient) GetPreviousPuzzle(ctx context.Context, in 
 	return caller(ctx, in)
 }
 
-func (c *puzzleServiceProtobufClient) callGetPreviousPuzzle(ctx context.Context, in *PreviousPuzzleRequest) (*PreviousPuzzleResponse, error) {
+func (c *puzzleServiceProtobufClient) callGetPreviousPuzzleId(ctx context.Context, in *PreviousPuzzleRequest) (*PreviousPuzzleResponse, error) {
 	out := new(PreviousPuzzleResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[3], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[4], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -309,7 +358,7 @@ func (c *puzzleServiceProtobufClient) SetPuzzleVote(ctx context.Context, in *Puz
 
 func (c *puzzleServiceProtobufClient) callSetPuzzleVote(ctx context.Context, in *PuzzleVoteRequest) (*PuzzleVoteResponse, error) {
 	out := new(PuzzleVoteResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[4], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[5], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -330,7 +379,7 @@ func (c *puzzleServiceProtobufClient) callSetPuzzleVote(ctx context.Context, in 
 
 type puzzleServiceJSONClient struct {
 	client      HTTPClient
-	urls        [5]string
+	urls        [6]string
 	interceptor twirp.Interceptor
 	opts        twirp.ClientOptions
 }
@@ -358,11 +407,12 @@ func NewPuzzleServiceJSONClient(baseURL string, client HTTPClient, opts ...twirp
 	// Build method URLs: <baseURL>[<prefix>]/<package>.<Service>/<Method>
 	serviceURL := sanitizeBaseURL(baseURL)
 	serviceURL += baseServicePath(pathPrefix, "puzzle_service", "PuzzleService")
-	urls := [5]string{
-		serviceURL + "GetRandomUnansweredPuzzleIdForUser",
+	urls := [6]string{
+		serviceURL + "GetStartPuzzleId",
+		serviceURL + "GetNextPuzzleId",
 		serviceURL + "GetPuzzle",
 		serviceURL + "SubmitAnswer",
-		serviceURL + "GetPreviousPuzzle",
+		serviceURL + "GetPreviousPuzzleId",
 		serviceURL + "SetPuzzleVote",
 	}
 
@@ -374,26 +424,26 @@ func NewPuzzleServiceJSONClient(baseURL string, client HTTPClient, opts ...twirp
 	}
 }
 
-func (c *puzzleServiceJSONClient) GetRandomUnansweredPuzzleIdForUser(ctx context.Context, in *RandomUnansweredPuzzleIdRequest) (*RandomUnansweredPuzzleIdResponse, error) {
+func (c *puzzleServiceJSONClient) GetStartPuzzleId(ctx context.Context, in *StartPuzzleIdRequest) (*StartPuzzleIdResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "puzzle_service")
 	ctx = ctxsetters.WithServiceName(ctx, "PuzzleService")
-	ctx = ctxsetters.WithMethodName(ctx, "GetRandomUnansweredPuzzleIdForUser")
-	caller := c.callGetRandomUnansweredPuzzleIdForUser
+	ctx = ctxsetters.WithMethodName(ctx, "GetStartPuzzleId")
+	caller := c.callGetStartPuzzleId
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *RandomUnansweredPuzzleIdRequest) (*RandomUnansweredPuzzleIdResponse, error) {
+		caller = func(ctx context.Context, req *StartPuzzleIdRequest) (*StartPuzzleIdResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*RandomUnansweredPuzzleIdRequest)
+					typedReq, ok := req.(*StartPuzzleIdRequest)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*RandomUnansweredPuzzleIdRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*StartPuzzleIdRequest) when calling interceptor")
 					}
-					return c.callGetRandomUnansweredPuzzleIdForUser(ctx, typedReq)
+					return c.callGetStartPuzzleId(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
-				typedResp, ok := resp.(*RandomUnansweredPuzzleIdResponse)
+				typedResp, ok := resp.(*StartPuzzleIdResponse)
 				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*RandomUnansweredPuzzleIdResponse) when calling interceptor")
+					return nil, twirp.InternalError("failed type assertion resp.(*StartPuzzleIdResponse) when calling interceptor")
 				}
 				return typedResp, err
 			}
@@ -403,9 +453,55 @@ func (c *puzzleServiceJSONClient) GetRandomUnansweredPuzzleIdForUser(ctx context
 	return caller(ctx, in)
 }
 
-func (c *puzzleServiceJSONClient) callGetRandomUnansweredPuzzleIdForUser(ctx context.Context, in *RandomUnansweredPuzzleIdRequest) (*RandomUnansweredPuzzleIdResponse, error) {
-	out := new(RandomUnansweredPuzzleIdResponse)
+func (c *puzzleServiceJSONClient) callGetStartPuzzleId(ctx context.Context, in *StartPuzzleIdRequest) (*StartPuzzleIdResponse, error) {
+	out := new(StartPuzzleIdResponse)
 	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[0], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
+func (c *puzzleServiceJSONClient) GetNextPuzzleId(ctx context.Context, in *NextPuzzleIdRequest) (*NextPuzzleIdResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "puzzle_service")
+	ctx = ctxsetters.WithServiceName(ctx, "PuzzleService")
+	ctx = ctxsetters.WithMethodName(ctx, "GetNextPuzzleId")
+	caller := c.callGetNextPuzzleId
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *NextPuzzleIdRequest) (*NextPuzzleIdResponse, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*NextPuzzleIdRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*NextPuzzleIdRequest) when calling interceptor")
+					}
+					return c.callGetNextPuzzleId(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*NextPuzzleIdResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*NextPuzzleIdResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *puzzleServiceJSONClient) callGetNextPuzzleId(ctx context.Context, in *NextPuzzleIdRequest) (*NextPuzzleIdResponse, error) {
+	out := new(NextPuzzleIdResponse)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[1], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -451,7 +547,7 @@ func (c *puzzleServiceJSONClient) GetPuzzle(ctx context.Context, in *PuzzleReque
 
 func (c *puzzleServiceJSONClient) callGetPuzzle(ctx context.Context, in *PuzzleRequest) (*PuzzleResponse, error) {
 	out := new(PuzzleResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[1], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[2], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -497,7 +593,7 @@ func (c *puzzleServiceJSONClient) SubmitAnswer(ctx context.Context, in *Submissi
 
 func (c *puzzleServiceJSONClient) callSubmitAnswer(ctx context.Context, in *SubmissionRequest) (*SubmissionResponse, error) {
 	out := new(SubmissionResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[2], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[3], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -512,11 +608,11 @@ func (c *puzzleServiceJSONClient) callSubmitAnswer(ctx context.Context, in *Subm
 	return out, nil
 }
 
-func (c *puzzleServiceJSONClient) GetPreviousPuzzle(ctx context.Context, in *PreviousPuzzleRequest) (*PreviousPuzzleResponse, error) {
+func (c *puzzleServiceJSONClient) GetPreviousPuzzleId(ctx context.Context, in *PreviousPuzzleRequest) (*PreviousPuzzleResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "puzzle_service")
 	ctx = ctxsetters.WithServiceName(ctx, "PuzzleService")
-	ctx = ctxsetters.WithMethodName(ctx, "GetPreviousPuzzle")
-	caller := c.callGetPreviousPuzzle
+	ctx = ctxsetters.WithMethodName(ctx, "GetPreviousPuzzleId")
+	caller := c.callGetPreviousPuzzleId
 	if c.interceptor != nil {
 		caller = func(ctx context.Context, req *PreviousPuzzleRequest) (*PreviousPuzzleResponse, error) {
 			resp, err := c.interceptor(
@@ -525,7 +621,7 @@ func (c *puzzleServiceJSONClient) GetPreviousPuzzle(ctx context.Context, in *Pre
 					if !ok {
 						return nil, twirp.InternalError("failed type assertion req.(*PreviousPuzzleRequest) when calling interceptor")
 					}
-					return c.callGetPreviousPuzzle(ctx, typedReq)
+					return c.callGetPreviousPuzzleId(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
@@ -541,9 +637,9 @@ func (c *puzzleServiceJSONClient) GetPreviousPuzzle(ctx context.Context, in *Pre
 	return caller(ctx, in)
 }
 
-func (c *puzzleServiceJSONClient) callGetPreviousPuzzle(ctx context.Context, in *PreviousPuzzleRequest) (*PreviousPuzzleResponse, error) {
+func (c *puzzleServiceJSONClient) callGetPreviousPuzzleId(ctx context.Context, in *PreviousPuzzleRequest) (*PreviousPuzzleResponse, error) {
 	out := new(PreviousPuzzleResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[3], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[4], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -589,7 +685,7 @@ func (c *puzzleServiceJSONClient) SetPuzzleVote(ctx context.Context, in *PuzzleV
 
 func (c *puzzleServiceJSONClient) callSetPuzzleVote(ctx context.Context, in *PuzzleVoteRequest) (*PuzzleVoteResponse, error) {
 	out := new(PuzzleVoteResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[4], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[5], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -701,8 +797,11 @@ func (s *puzzleServiceServer) ServeHTTP(resp http.ResponseWriter, req *http.Requ
 	}
 
 	switch method {
-	case "GetRandomUnansweredPuzzleIdForUser":
-		s.serveGetRandomUnansweredPuzzleIdForUser(ctx, resp, req)
+	case "GetStartPuzzleId":
+		s.serveGetStartPuzzleId(ctx, resp, req)
+		return
+	case "GetNextPuzzleId":
+		s.serveGetNextPuzzleId(ctx, resp, req)
 		return
 	case "GetPuzzle":
 		s.serveGetPuzzle(ctx, resp, req)
@@ -710,8 +809,8 @@ func (s *puzzleServiceServer) ServeHTTP(resp http.ResponseWriter, req *http.Requ
 	case "SubmitAnswer":
 		s.serveSubmitAnswer(ctx, resp, req)
 		return
-	case "GetPreviousPuzzle":
-		s.serveGetPreviousPuzzle(ctx, resp, req)
+	case "GetPreviousPuzzleId":
+		s.serveGetPreviousPuzzleId(ctx, resp, req)
 		return
 	case "SetPuzzleVote":
 		s.serveSetPuzzleVote(ctx, resp, req)
@@ -723,7 +822,7 @@ func (s *puzzleServiceServer) ServeHTTP(resp http.ResponseWriter, req *http.Requ
 	}
 }
 
-func (s *puzzleServiceServer) serveGetRandomUnansweredPuzzleIdForUser(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *puzzleServiceServer) serveGetStartPuzzleId(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	header := req.Header.Get("Content-Type")
 	i := strings.Index(header, ";")
 	if i == -1 {
@@ -731,9 +830,9 @@ func (s *puzzleServiceServer) serveGetRandomUnansweredPuzzleIdForUser(ctx contex
 	}
 	switch strings.TrimSpace(strings.ToLower(header[:i])) {
 	case "application/json":
-		s.serveGetRandomUnansweredPuzzleIdForUserJSON(ctx, resp, req)
+		s.serveGetStartPuzzleIdJSON(ctx, resp, req)
 	case "application/protobuf":
-		s.serveGetRandomUnansweredPuzzleIdForUserProtobuf(ctx, resp, req)
+		s.serveGetStartPuzzleIdProtobuf(ctx, resp, req)
 	default:
 		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
 		twerr := badRouteError(msg, req.Method, req.URL.Path)
@@ -741,9 +840,9 @@ func (s *puzzleServiceServer) serveGetRandomUnansweredPuzzleIdForUser(ctx contex
 	}
 }
 
-func (s *puzzleServiceServer) serveGetRandomUnansweredPuzzleIdForUserJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *puzzleServiceServer) serveGetStartPuzzleIdJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "GetRandomUnansweredPuzzleIdForUser")
+	ctx = ctxsetters.WithMethodName(ctx, "GetStartPuzzleId")
 	ctx, err = callRequestRouted(ctx, s.hooks)
 	if err != nil {
 		s.writeError(ctx, resp, err)
@@ -756,29 +855,29 @@ func (s *puzzleServiceServer) serveGetRandomUnansweredPuzzleIdForUserJSON(ctx co
 		s.handleRequestBodyError(ctx, resp, "the json request could not be decoded", err)
 		return
 	}
-	reqContent := new(RandomUnansweredPuzzleIdRequest)
+	reqContent := new(StartPuzzleIdRequest)
 	unmarshaler := protojson.UnmarshalOptions{DiscardUnknown: true}
 	if err = unmarshaler.Unmarshal(rawReqBody, reqContent); err != nil {
 		s.handleRequestBodyError(ctx, resp, "the json request could not be decoded", err)
 		return
 	}
 
-	handler := s.PuzzleService.GetRandomUnansweredPuzzleIdForUser
+	handler := s.PuzzleService.GetStartPuzzleId
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *RandomUnansweredPuzzleIdRequest) (*RandomUnansweredPuzzleIdResponse, error) {
+		handler = func(ctx context.Context, req *StartPuzzleIdRequest) (*StartPuzzleIdResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*RandomUnansweredPuzzleIdRequest)
+					typedReq, ok := req.(*StartPuzzleIdRequest)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*RandomUnansweredPuzzleIdRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*StartPuzzleIdRequest) when calling interceptor")
 					}
-					return s.PuzzleService.GetRandomUnansweredPuzzleIdForUser(ctx, typedReq)
+					return s.PuzzleService.GetStartPuzzleId(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
-				typedResp, ok := resp.(*RandomUnansweredPuzzleIdResponse)
+				typedResp, ok := resp.(*StartPuzzleIdResponse)
 				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*RandomUnansweredPuzzleIdResponse) when calling interceptor")
+					return nil, twirp.InternalError("failed type assertion resp.(*StartPuzzleIdResponse) when calling interceptor")
 				}
 				return typedResp, err
 			}
@@ -787,7 +886,7 @@ func (s *puzzleServiceServer) serveGetRandomUnansweredPuzzleIdForUserJSON(ctx co
 	}
 
 	// Call service method
-	var respContent *RandomUnansweredPuzzleIdResponse
+	var respContent *StartPuzzleIdResponse
 	func() {
 		defer ensurePanicResponses(ctx, resp, s.hooks)
 		respContent, err = handler(ctx, reqContent)
@@ -798,7 +897,7 @@ func (s *puzzleServiceServer) serveGetRandomUnansweredPuzzleIdForUserJSON(ctx co
 		return
 	}
 	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *RandomUnansweredPuzzleIdResponse and nil error while calling GetRandomUnansweredPuzzleIdForUser. nil responses are not supported"))
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *StartPuzzleIdResponse and nil error while calling GetStartPuzzleId. nil responses are not supported"))
 		return
 	}
 
@@ -824,9 +923,9 @@ func (s *puzzleServiceServer) serveGetRandomUnansweredPuzzleIdForUserJSON(ctx co
 	callResponseSent(ctx, s.hooks)
 }
 
-func (s *puzzleServiceServer) serveGetRandomUnansweredPuzzleIdForUserProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *puzzleServiceServer) serveGetStartPuzzleIdProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "GetRandomUnansweredPuzzleIdForUser")
+	ctx = ctxsetters.WithMethodName(ctx, "GetStartPuzzleId")
 	ctx, err = callRequestRouted(ctx, s.hooks)
 	if err != nil {
 		s.writeError(ctx, resp, err)
@@ -838,28 +937,28 @@ func (s *puzzleServiceServer) serveGetRandomUnansweredPuzzleIdForUserProtobuf(ct
 		s.handleRequestBodyError(ctx, resp, "failed to read request body", err)
 		return
 	}
-	reqContent := new(RandomUnansweredPuzzleIdRequest)
+	reqContent := new(StartPuzzleIdRequest)
 	if err = proto.Unmarshal(buf, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
 		return
 	}
 
-	handler := s.PuzzleService.GetRandomUnansweredPuzzleIdForUser
+	handler := s.PuzzleService.GetStartPuzzleId
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *RandomUnansweredPuzzleIdRequest) (*RandomUnansweredPuzzleIdResponse, error) {
+		handler = func(ctx context.Context, req *StartPuzzleIdRequest) (*StartPuzzleIdResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*RandomUnansweredPuzzleIdRequest)
+					typedReq, ok := req.(*StartPuzzleIdRequest)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*RandomUnansweredPuzzleIdRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*StartPuzzleIdRequest) when calling interceptor")
 					}
-					return s.PuzzleService.GetRandomUnansweredPuzzleIdForUser(ctx, typedReq)
+					return s.PuzzleService.GetStartPuzzleId(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
-				typedResp, ok := resp.(*RandomUnansweredPuzzleIdResponse)
+				typedResp, ok := resp.(*StartPuzzleIdResponse)
 				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*RandomUnansweredPuzzleIdResponse) when calling interceptor")
+					return nil, twirp.InternalError("failed type assertion resp.(*StartPuzzleIdResponse) when calling interceptor")
 				}
 				return typedResp, err
 			}
@@ -868,7 +967,7 @@ func (s *puzzleServiceServer) serveGetRandomUnansweredPuzzleIdForUserProtobuf(ct
 	}
 
 	// Call service method
-	var respContent *RandomUnansweredPuzzleIdResponse
+	var respContent *StartPuzzleIdResponse
 	func() {
 		defer ensurePanicResponses(ctx, resp, s.hooks)
 		respContent, err = handler(ctx, reqContent)
@@ -879,7 +978,187 @@ func (s *puzzleServiceServer) serveGetRandomUnansweredPuzzleIdForUserProtobuf(ct
 		return
 	}
 	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *RandomUnansweredPuzzleIdResponse and nil error while calling GetRandomUnansweredPuzzleIdForUser. nil responses are not supported"))
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *StartPuzzleIdResponse and nil error while calling GetStartPuzzleId. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	respBytes, err := proto.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/protobuf")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *puzzleServiceServer) serveGetNextPuzzleId(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	header := req.Header.Get("Content-Type")
+	i := strings.Index(header, ";")
+	if i == -1 {
+		i = len(header)
+	}
+	switch strings.TrimSpace(strings.ToLower(header[:i])) {
+	case "application/json":
+		s.serveGetNextPuzzleIdJSON(ctx, resp, req)
+	case "application/protobuf":
+		s.serveGetNextPuzzleIdProtobuf(ctx, resp, req)
+	default:
+		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
+		twerr := badRouteError(msg, req.Method, req.URL.Path)
+		s.writeError(ctx, resp, twerr)
+	}
+}
+
+func (s *puzzleServiceServer) serveGetNextPuzzleIdJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "GetNextPuzzleId")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	d := json.NewDecoder(req.Body)
+	rawReqBody := json.RawMessage{}
+	if err := d.Decode(&rawReqBody); err != nil {
+		s.handleRequestBodyError(ctx, resp, "the json request could not be decoded", err)
+		return
+	}
+	reqContent := new(NextPuzzleIdRequest)
+	unmarshaler := protojson.UnmarshalOptions{DiscardUnknown: true}
+	if err = unmarshaler.Unmarshal(rawReqBody, reqContent); err != nil {
+		s.handleRequestBodyError(ctx, resp, "the json request could not be decoded", err)
+		return
+	}
+
+	handler := s.PuzzleService.GetNextPuzzleId
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *NextPuzzleIdRequest) (*NextPuzzleIdResponse, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*NextPuzzleIdRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*NextPuzzleIdRequest) when calling interceptor")
+					}
+					return s.PuzzleService.GetNextPuzzleId(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*NextPuzzleIdResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*NextPuzzleIdResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *NextPuzzleIdResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *NextPuzzleIdResponse and nil error while calling GetNextPuzzleId. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	marshaler := &protojson.MarshalOptions{UseProtoNames: !s.jsonCamelCase, EmitUnpopulated: !s.jsonSkipDefaults}
+	respBytes, err := marshaler.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *puzzleServiceServer) serveGetNextPuzzleIdProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "GetNextPuzzleId")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	buf, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		s.handleRequestBodyError(ctx, resp, "failed to read request body", err)
+		return
+	}
+	reqContent := new(NextPuzzleIdRequest)
+	if err = proto.Unmarshal(buf, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
+		return
+	}
+
+	handler := s.PuzzleService.GetNextPuzzleId
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *NextPuzzleIdRequest) (*NextPuzzleIdResponse, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*NextPuzzleIdRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*NextPuzzleIdRequest) when calling interceptor")
+					}
+					return s.PuzzleService.GetNextPuzzleId(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*NextPuzzleIdResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*NextPuzzleIdResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *NextPuzzleIdResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *NextPuzzleIdResponse and nil error while calling GetNextPuzzleId. nil responses are not supported"))
 		return
 	}
 
@@ -1263,7 +1542,7 @@ func (s *puzzleServiceServer) serveSubmitAnswerProtobuf(ctx context.Context, res
 	callResponseSent(ctx, s.hooks)
 }
 
-func (s *puzzleServiceServer) serveGetPreviousPuzzle(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *puzzleServiceServer) serveGetPreviousPuzzleId(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	header := req.Header.Get("Content-Type")
 	i := strings.Index(header, ";")
 	if i == -1 {
@@ -1271,9 +1550,9 @@ func (s *puzzleServiceServer) serveGetPreviousPuzzle(ctx context.Context, resp h
 	}
 	switch strings.TrimSpace(strings.ToLower(header[:i])) {
 	case "application/json":
-		s.serveGetPreviousPuzzleJSON(ctx, resp, req)
+		s.serveGetPreviousPuzzleIdJSON(ctx, resp, req)
 	case "application/protobuf":
-		s.serveGetPreviousPuzzleProtobuf(ctx, resp, req)
+		s.serveGetPreviousPuzzleIdProtobuf(ctx, resp, req)
 	default:
 		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
 		twerr := badRouteError(msg, req.Method, req.URL.Path)
@@ -1281,9 +1560,9 @@ func (s *puzzleServiceServer) serveGetPreviousPuzzle(ctx context.Context, resp h
 	}
 }
 
-func (s *puzzleServiceServer) serveGetPreviousPuzzleJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *puzzleServiceServer) serveGetPreviousPuzzleIdJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "GetPreviousPuzzle")
+	ctx = ctxsetters.WithMethodName(ctx, "GetPreviousPuzzleId")
 	ctx, err = callRequestRouted(ctx, s.hooks)
 	if err != nil {
 		s.writeError(ctx, resp, err)
@@ -1303,7 +1582,7 @@ func (s *puzzleServiceServer) serveGetPreviousPuzzleJSON(ctx context.Context, re
 		return
 	}
 
-	handler := s.PuzzleService.GetPreviousPuzzle
+	handler := s.PuzzleService.GetPreviousPuzzleId
 	if s.interceptor != nil {
 		handler = func(ctx context.Context, req *PreviousPuzzleRequest) (*PreviousPuzzleResponse, error) {
 			resp, err := s.interceptor(
@@ -1312,7 +1591,7 @@ func (s *puzzleServiceServer) serveGetPreviousPuzzleJSON(ctx context.Context, re
 					if !ok {
 						return nil, twirp.InternalError("failed type assertion req.(*PreviousPuzzleRequest) when calling interceptor")
 					}
-					return s.PuzzleService.GetPreviousPuzzle(ctx, typedReq)
+					return s.PuzzleService.GetPreviousPuzzleId(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
@@ -1338,7 +1617,7 @@ func (s *puzzleServiceServer) serveGetPreviousPuzzleJSON(ctx context.Context, re
 		return
 	}
 	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *PreviousPuzzleResponse and nil error while calling GetPreviousPuzzle. nil responses are not supported"))
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *PreviousPuzzleResponse and nil error while calling GetPreviousPuzzleId. nil responses are not supported"))
 		return
 	}
 
@@ -1364,9 +1643,9 @@ func (s *puzzleServiceServer) serveGetPreviousPuzzleJSON(ctx context.Context, re
 	callResponseSent(ctx, s.hooks)
 }
 
-func (s *puzzleServiceServer) serveGetPreviousPuzzleProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *puzzleServiceServer) serveGetPreviousPuzzleIdProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "GetPreviousPuzzle")
+	ctx = ctxsetters.WithMethodName(ctx, "GetPreviousPuzzleId")
 	ctx, err = callRequestRouted(ctx, s.hooks)
 	if err != nil {
 		s.writeError(ctx, resp, err)
@@ -1384,7 +1663,7 @@ func (s *puzzleServiceServer) serveGetPreviousPuzzleProtobuf(ctx context.Context
 		return
 	}
 
-	handler := s.PuzzleService.GetPreviousPuzzle
+	handler := s.PuzzleService.GetPreviousPuzzleId
 	if s.interceptor != nil {
 		handler = func(ctx context.Context, req *PreviousPuzzleRequest) (*PreviousPuzzleResponse, error) {
 			resp, err := s.interceptor(
@@ -1393,7 +1672,7 @@ func (s *puzzleServiceServer) serveGetPreviousPuzzleProtobuf(ctx context.Context
 					if !ok {
 						return nil, twirp.InternalError("failed type assertion req.(*PreviousPuzzleRequest) when calling interceptor")
 					}
-					return s.PuzzleService.GetPreviousPuzzle(ctx, typedReq)
+					return s.PuzzleService.GetPreviousPuzzleId(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
@@ -1419,7 +1698,7 @@ func (s *puzzleServiceServer) serveGetPreviousPuzzleProtobuf(ctx context.Context
 		return
 	}
 	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *PreviousPuzzleResponse and nil error while calling GetPreviousPuzzle. nil responses are not supported"))
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *PreviousPuzzleResponse and nil error while calling GetPreviousPuzzleId. nil responses are not supported"))
 		return
 	}
 
@@ -2201,54 +2480,55 @@ func callClientError(ctx context.Context, h *twirp.ClientHooks, err twirp.Error)
 }
 
 var twirpFileDescriptor0 = []byte{
-	// 772 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x55, 0xdd, 0x4e, 0xe3, 0x46,
-	0x18, 0x6d, 0x12, 0xf2, 0xf7, 0x85, 0x04, 0x32, 0xa2, 0x6d, 0x94, 0x42, 0x49, 0x5d, 0x95, 0xa2,
-	0xaa, 0xb5, 0x69, 0x4a, 0xa5, 0x96, 0x5e, 0x54, 0x34, 0x04, 0x48, 0x2f, 0x28, 0x72, 0x08, 0x95,
-	0xf6, 0xc6, 0x72, 0xec, 0x49, 0x18, 0xc9, 0xf6, 0x78, 0x3d, 0xe3, 0xf0, 0xf3, 0x02, 0x3c, 0xc0,
-	0x3e, 0xd3, 0xbe, 0xd3, 0x5e, 0xae, 0x3c, 0x33, 0x5e, 0x42, 0x42, 0x20, 0x48, 0x7b, 0x05, 0x73,
-	0xe6, 0x7c, 0x67, 0xbe, 0xf9, 0xce, 0xc9, 0x18, 0x7e, 0xb1, 0x43, 0x62, 0x84, 0x11, 0xe5, 0xd4,
-	0x08, 0xe3, 0xbb, 0x3b, 0x0f, 0x5b, 0x0c, 0x47, 0x13, 0xe2, 0xe0, 0x99, 0xa5, 0x2e, 0x38, 0xa8,
-	0xf6, 0x18, 0x6d, 0xfe, 0xe8, 0xdb, 0x0e, 0x0d, 0x5c, 0x6a, 0x3c, 0xc8, 0xa4, 0x88, 0xfa, 0x2b,
-	0x0b, 0x9b, 0xdb, 0x63, 0x4a, 0xc7, 0x1e, 0x96, 0x9c, 0x61, 0x3c, 0x32, 0x38, 0xf1, 0x31, 0xe3,
-	0xb6, 0x1f, 0x2a, 0xc2, 0xe6, 0x83, 0x02, 0x09, 0x1d, 0x83, 0xfa, 0xe3, 0x6b, 0x1a, 0xb9, 0x4c,
-	0xee, 0x6a, 0x7f, 0xc1, 0xb6, 0x69, 0x07, 0x2e, 0xf5, 0x07, 0x81, 0x1d, 0xb0, 0x6b, 0x1c, 0x61,
-	0xf7, 0x5c, 0x74, 0xd2, 0x73, 0x4d, 0xfc, 0x36, 0xc6, 0x8c, 0xa3, 0x06, 0x14, 0x3d, 0x7c, 0x43,
-	0x1c, 0x1a, 0x34, 0x32, 0xad, 0xcc, 0x6e, 0xd9, 0x4c, 0x97, 0xda, 0xdf, 0xd0, 0x5a, 0x5c, 0xcc,
-	0x42, 0x1a, 0x30, 0x8c, 0xbe, 0x81, 0xb2, 0xba, 0x1a, 0x71, 0x55, 0x7d, 0x29, 0x54, 0x24, 0xed,
-	0x67, 0xa8, 0xca, 0x82, 0xf4, 0xac, 0x67, 0xd9, 0xef, 0xb3, 0x50, 0x4b, 0xe9, 0x4a, 0x5d, 0x87,
-	0xe2, 0x15, 0x61, 0x9c, 0x46, 0xb7, 0x82, 0x5d, 0x69, 0x6f, 0xe8, 0xe9, 0x78, 0x4e, 0x6c, 0x1f,
-	0x9f, 0xca, 0x3d, 0x33, 0x25, 0xa1, 0x6d, 0xa8, 0x0c, 0xf1, 0x88, 0x46, 0xd8, 0xe2, 0xf8, 0x86,
-	0x37, 0xb2, 0xe2, 0x04, 0x90, 0xd0, 0x05, 0xbe, 0xe1, 0xa8, 0x09, 0x25, 0x9b, 0x73, 0xec, 0x87,
-	0x9c, 0x35, 0x72, 0xad, 0xcc, 0x6e, 0xde, 0xfc, 0xb4, 0x46, 0xfb, 0x50, 0x60, 0xdc, 0xe6, 0x31,
-	0x6b, 0xac, 0xb4, 0x32, 0xbb, 0xb5, 0xf6, 0xa6, 0x3e, 0x63, 0xa5, 0x6c, 0xae, 0x2f, 0x38, 0xa6,
-	0xe2, 0xa2, 0x53, 0x40, 0x23, 0x12, 0x31, 0x6e, 0x29, 0x1d, 0x2b, 0x31, 0xa8, 0x91, 0x17, 0xdd,
-	0x36, 0x75, 0xe9, 0x9e, 0x9e, 0xba, 0xa7, 0x5f, 0xa4, 0xee, 0x99, 0xeb, 0xa2, 0xea, 0x50, 0x16,
-	0x25, 0x30, 0x3a, 0x86, 0xba, 0x67, 0xcf, 0x0a, 0x15, 0x5e, 0x14, 0x5a, 0x4b, 0x8a, 0xa6, 0x74,
-	0xb4, 0xfb, 0x0c, 0xd4, 0xfb, 0xf1, 0xd0, 0x27, 0x8c, 0x11, 0x1a, 0x2c, 0x33, 0x7a, 0xb4, 0x07,
-	0x05, 0xe9, 0xb0, 0x18, 0x59, 0xa5, 0xdd, 0xd0, 0x49, 0xe8, 0xe8, 0x1d, 0x8f, 0xe0, 0x80, 0x27,
-	0x83, 0x0e, 0x3d, 0xfb, 0xb6, 0x3b, 0xc1, 0x01, 0x37, 0x15, 0x0f, 0x7d, 0x0f, 0x55, 0x76, 0x45,
-	0xaf, 0x2d, 0x46, 0xbd, 0x98, 0x13, 0x1a, 0x88, 0x69, 0x96, 0xcc, 0xd5, 0x04, 0xec, 0x2b, 0x4c,
-	0x7b, 0x97, 0x03, 0x34, 0xdd, 0x89, 0x72, 0x75, 0x07, 0xd6, 0x62, 0x86, 0x23, 0x8b, 0x30, 0xcb,
-	0xa1, 0x51, 0x84, 0x1d, 0x2e, 0x1a, 0x2a, 0x99, 0xd5, 0x04, 0xee, 0xb1, 0x8e, 0x04, 0xa7, 0x0c,
-	0xc9, 0xbe, 0xc2, 0x90, 0x3f, 0xa1, 0xa6, 0x54, 0x2d, 0x75, 0xa7, 0x9c, 0xb8, 0x13, 0x7a, 0x14,
-	0x1d, 0x79, 0x9b, 0xaa, 0x62, 0x1e, 0xca, 0x4b, 0x7d, 0x0d, 0xc5, 0xb1, 0xed, 0x8b, 0x09, 0xad,
-	0x88, 0x09, 0x15, 0x92, 0x65, 0xcf, 0x45, 0x5b, 0x00, 0xf6, 0x88, 0xe3, 0x48, 0xc6, 0x2a, 0x2f,
-	0xf6, 0xca, 0x02, 0x99, 0x4b, 0x55, 0x61, 0x26, 0x55, 0x4f, 0xe7, 0xa3, 0xf8, 0xb9, 0xf2, 0x51,
-	0x7a, 0x7d, 0x3e, 0xf6, 0xe1, 0xcb, 0xf3, 0x08, 0x4f, 0x08, 0x8d, 0xd9, 0x2b, 0x7e, 0x9d, 0xbf,
-	0xc3, 0x57, 0xb3, 0x55, 0xcb, 0x3c, 0x01, 0x47, 0x50, 0x97, 0xf4, 0x4b, 0xca, 0x97, 0x3a, 0x08,
-	0x21, 0x58, 0x99, 0x50, 0x8e, 0x85, 0xe7, 0x79, 0x53, 0xfc, 0xaf, 0x6d, 0x00, 0x9a, 0x56, 0x91,
-	0x07, 0xff, 0x74, 0x00, 0xab, 0xd3, 0x09, 0x40, 0x35, 0x80, 0xc1, 0xd9, 0xe1, 0x59, 0xff, 0xff,
-	0xae, 0xd9, 0x3d, 0x5a, 0xff, 0x02, 0x55, 0xa0, 0xd8, 0xf9, 0xcf, 0x34, 0xbb, 0x9d, 0x8b, 0xf5,
-	0x0c, 0xaa, 0x42, 0xb9, 0x77, 0x96, 0x2e, 0xb3, 0xed, 0x0f, 0xb9, 0xf4, 0x6d, 0xea, 0xcb, 0x30,
-	0xa1, 0xfb, 0x0c, 0x68, 0x27, 0x98, 0x2f, 0x7a, 0xf1, 0x8e, 0x69, 0x34, 0x60, 0x38, 0x42, 0xc6,
-	0x6c, 0x08, 0x5f, 0x78, 0x5f, 0x9b, 0x7b, 0xcb, 0x17, 0xa8, 0x81, 0xfe, 0x0b, 0xe5, 0x13, 0xcc,
-	0x25, 0x8c, 0xb6, 0x9e, 0x0e, 0x7d, 0xaa, 0xfe, 0xed, 0xa2, 0x6d, 0xa5, 0x35, 0x80, 0x55, 0xf1,
-	0x0b, 0x4c, 0x23, 0xfe, 0xdd, 0x2c, 0x7f, 0xee, 0xa5, 0x68, 0x6a, 0xcf, 0x51, 0x94, 0xec, 0x10,
-	0xea, 0x49, 0x8b, 0x8f, 0x02, 0x81, 0x7e, 0x98, 0xeb, 0xe5, 0xa9, 0x98, 0x35, 0x77, 0x5e, 0xa2,
-	0xa9, 0x33, 0x2e, 0xa1, 0xda, 0x4f, 0xc7, 0x90, 0xf8, 0x3e, 0xdf, 0xfb, 0x5c, 0xb2, 0xe6, 0x7b,
-	0x9f, 0x8f, 0xcd, 0x3f, 0x07, 0x6f, 0xfe, 0x18, 0x13, 0x7e, 0x15, 0x0f, 0x75, 0x87, 0xfa, 0x86,
-	0x4b, 0x7d, 0x12, 0xd0, 0x5f, 0xf7, 0x0d, 0x8f, 0x88, 0x0f, 0xa7, 0x11, 0x85, 0x8e, 0xb1, 0xe8,
-	0xe3, 0x3e, 0x2c, 0x08, 0xf4, 0xb7, 0x8f, 0x01, 0x00, 0x00, 0xff, 0xff, 0xed, 0x55, 0x99, 0x4f,
-	0xff, 0x07, 0x00, 0x00,
+	// 796 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x56, 0xed, 0x6e, 0xe2, 0x46,
+	0x14, 0x2d, 0x84, 0xcf, 0x4b, 0x20, 0x64, 0x96, 0x6d, 0x91, 0xbb, 0xdb, 0x4d, 0xd9, 0xed, 0x36,
+	0xaa, 0x5a, 0x7b, 0xcb, 0x52, 0xa9, 0xdd, 0x7f, 0x29, 0x4b, 0x59, 0xfa, 0x83, 0xae, 0x4c, 0x36,
+	0x95, 0xaa, 0x4a, 0x96, 0xb1, 0x07, 0x32, 0x92, 0xed, 0x71, 0x3d, 0x63, 0x42, 0xf2, 0x02, 0x7d,
+	0x80, 0x3e, 0x48, 0x9f, 0xa2, 0xef, 0x55, 0x79, 0x66, 0xdc, 0x80, 0x21, 0x09, 0x48, 0xfd, 0x05,
+	0x73, 0xe6, 0xdc, 0x73, 0xef, 0xdc, 0x39, 0x73, 0x01, 0xbe, 0xb1, 0x43, 0x62, 0x84, 0x11, 0xe5,
+	0xd4, 0x08, 0xe3, 0x9b, 0x1b, 0x0f, 0x5b, 0x0c, 0x47, 0x0b, 0xe2, 0xe0, 0xcc, 0x52, 0x17, 0x1c,
+	0xd4, 0x58, 0x47, 0xb5, 0x2f, 0x7d, 0xdb, 0xa1, 0x81, 0x4b, 0x8d, 0x5b, 0x99, 0x14, 0x51, 0x9f,
+	0x32, 0x50, 0x7b, 0x36, 0xa7, 0x74, 0xee, 0x61, 0xc9, 0x99, 0xc6, 0x33, 0x83, 0x13, 0x1f, 0x33,
+	0x6e, 0xfb, 0xa1, 0x22, 0x3c, 0xb9, 0x55, 0x20, 0xa1, 0x63, 0x50, 0x7f, 0x7e, 0x45, 0x23, 0x97,
+	0xc9, 0xdd, 0xce, 0x2b, 0x68, 0x4d, 0xb8, 0x1d, 0xf1, 0xf7, 0x22, 0xfd, 0xc8, 0x35, 0xf1, 0x1f,
+	0x31, 0x66, 0x1c, 0xb5, 0xa1, 0xec, 0xe1, 0x25, 0x71, 0x68, 0xd0, 0xce, 0x9d, 0xe4, 0x4e, 0xab,
+	0x66, 0xba, 0xec, 0xf4, 0xe0, 0x71, 0x26, 0x82, 0x85, 0x34, 0x60, 0x18, 0x7d, 0x0a, 0x55, 0x75,
+	0x08, 0xe2, 0xaa, 0xa0, 0x4a, 0xa8, 0x48, 0x1d, 0x03, 0x1e, 0x8d, 0xf1, 0x72, 0x8f, 0x34, 0xaf,
+	0xa1, 0xb5, 0x1e, 0xb0, 0x4b, 0x96, 0xaf, 0xa1, 0x2e, 0x03, 0x52, 0xfd, 0x7b, 0xd9, 0xff, 0xe4,
+	0xa1, 0x91, 0xd2, 0x95, 0xba, 0x0e, 0xe5, 0x4b, 0xc2, 0x38, 0x8d, 0xae, 0x05, 0xbb, 0xd6, 0x6d,
+	0xe9, 0x69, 0xbb, 0x87, 0xb6, 0x8f, 0xdf, 0xc9, 0x3d, 0x33, 0x25, 0xa1, 0x67, 0x50, 0x9b, 0xe2,
+	0x19, 0x8d, 0xb0, 0xc5, 0xf1, 0x92, 0xb7, 0xf3, 0x22, 0x03, 0x48, 0xe8, 0x1c, 0x2f, 0x39, 0xd2,
+	0xa0, 0x62, 0x73, 0x8e, 0xfd, 0x90, 0xb3, 0xf6, 0xc1, 0x49, 0xee, 0xb4, 0x68, 0xfe, 0xb7, 0x46,
+	0x3d, 0x28, 0x31, 0x6e, 0xf3, 0x98, 0xb5, 0x0b, 0x27, 0xb9, 0xd3, 0x46, 0xf7, 0x89, 0x9e, 0xb1,
+	0x86, 0x2c, 0x6e, 0x22, 0x38, 0xa6, 0xe2, 0xa2, 0x77, 0x80, 0x66, 0x24, 0x62, 0xdc, 0x52, 0x3a,
+	0x56, 0x72, 0xe1, 0xed, 0xa2, 0xa8, 0x56, 0xd3, 0xa5, 0x1b, 0xf4, 0xd4, 0x0d, 0xfa, 0x79, 0xea,
+	0x06, 0xb3, 0x29, 0xa2, 0xce, 0x64, 0x50, 0x02, 0xa3, 0x9f, 0xe0, 0xd8, 0xb3, 0xb3, 0x42, 0xa5,
+	0x07, 0x85, 0x8e, 0x92, 0xa0, 0x15, 0x9d, 0xce, 0x9f, 0x39, 0x38, 0x9e, 0xc4, 0x53, 0x9f, 0x30,
+	0x46, 0x68, 0xb0, 0x4b, 0xeb, 0xd1, 0x2b, 0x28, 0xd9, 0x01, 0xbb, 0xc2, 0x91, 0x68, 0x59, 0xad,
+	0xdb, 0xd6, 0x49, 0xe8, 0xe8, 0x7d, 0x8f, 0xe0, 0x80, 0x27, 0x8d, 0x0e, 0x3d, 0xfb, 0x7a, 0xb0,
+	0xc0, 0x01, 0x37, 0x15, 0x0f, 0x3d, 0x87, 0x3a, 0xbb, 0xa4, 0x57, 0x16, 0xa3, 0x5e, 0xcc, 0x09,
+	0x0d, 0x44, 0x37, 0x2b, 0xe6, 0x61, 0x02, 0x4e, 0x14, 0xd6, 0xf9, 0xeb, 0x00, 0xd0, 0x6a, 0x25,
+	0xea, 0x56, 0x5f, 0xc2, 0x51, 0xcc, 0x70, 0x64, 0x11, 0x66, 0x39, 0x34, 0x8a, 0xb0, 0xc3, 0x45,
+	0x41, 0x15, 0xb3, 0x9e, 0xc0, 0x23, 0xd6, 0x97, 0xe0, 0xca, 0x85, 0xe4, 0xf7, 0xb8, 0x90, 0x1f,
+	0xa0, 0xa1, 0x54, 0x2d, 0x75, 0xa6, 0x03, 0x71, 0x26, 0xb4, 0x66, 0x1d, 0x79, 0x9a, 0xba, 0x62,
+	0x9e, 0xc9, 0x43, 0x7d, 0x02, 0xe5, 0xb9, 0xed, 0x8b, 0x0e, 0x15, 0x44, 0x87, 0x4a, 0xc9, 0x72,
+	0xe4, 0xa2, 0xa7, 0x00, 0xf6, 0x8c, 0xe3, 0x48, 0xda, 0xaa, 0x28, 0xf6, 0xaa, 0x02, 0xd9, 0x70,
+	0x55, 0x29, 0xe3, 0xaa, 0xed, 0xfe, 0x28, 0xff, 0x5f, 0xfe, 0xa8, 0xec, 0xef, 0x8f, 0x1e, 0x3c,
+	0x7e, 0x1f, 0xe1, 0x05, 0xa1, 0x31, 0xdb, 0xe3, 0x75, 0x7e, 0x07, 0x1f, 0x67, 0xa3, 0x76, 0x19,
+	0x01, 0x6f, 0xe1, 0x58, 0xd2, 0x2f, 0x28, 0xdf, 0x29, 0x11, 0x42, 0x50, 0x58, 0x50, 0x8e, 0xc5,
+	0x9d, 0x17, 0x4d, 0xf1, 0xbd, 0xd3, 0x02, 0xb4, 0xaa, 0x22, 0x13, 0x7f, 0xf5, 0x06, 0x0e, 0x57,
+	0x1d, 0x80, 0x1a, 0x00, 0x1f, 0xc6, 0x67, 0xe3, 0xc9, 0xaf, 0x03, 0x73, 0xf0, 0xb6, 0xf9, 0x11,
+	0xaa, 0x41, 0xb9, 0xff, 0x8b, 0x69, 0x0e, 0xfa, 0xe7, 0xcd, 0x1c, 0xaa, 0x43, 0x75, 0x34, 0x4e,
+	0x97, 0xf9, 0xee, 0xdf, 0x85, 0x74, 0x36, 0x4d, 0xa4, 0x99, 0x90, 0x05, 0xcd, 0x21, 0xe6, 0x6b,
+	0xb3, 0x14, 0xbd, 0xc8, 0x3a, 0x6e, 0xdb, 0x70, 0xd6, 0xbe, 0x78, 0x80, 0xa5, 0xfa, 0xf4, 0x3b,
+	0x1c, 0x0d, 0x31, 0x5f, 0x9d, 0xa2, 0xe8, 0x79, 0x36, 0x72, 0xcb, 0x50, 0xd6, 0x5e, 0xdc, 0x4f,
+	0x52, 0xea, 0x3f, 0x43, 0x75, 0x88, 0x15, 0x8c, 0x9e, 0x6e, 0x7f, 0x29, 0xa9, 0xe2, 0x67, 0x77,
+	0x6d, 0x2b, 0xad, 0x0f, 0x70, 0x28, 0x9e, 0x6d, 0xfa, 0x2e, 0x3e, 0xdf, 0x38, 0x60, 0x76, 0xbc,
+	0x68, 0x9d, 0xfb, 0x28, 0x4a, 0xd6, 0x85, 0x47, 0x49, 0x89, 0x6b, 0x2e, 0x1a, 0xb9, 0x68, 0xa3,
+	0x7d, 0x5b, 0xdd, 0xa9, 0xbd, 0x7c, 0x88, 0xa6, 0xb2, 0x5c, 0x40, 0x7d, 0x92, 0x36, 0x22, 0xb1,
+	0xcb, 0x66, 0xf5, 0x1b, 0x86, 0xdc, 0xac, 0x7e, 0xd3, 0x6d, 0x3f, 0xbe, 0xf9, 0xed, 0xfb, 0x39,
+	0xe1, 0x97, 0xf1, 0x54, 0x77, 0xa8, 0x6f, 0xb8, 0xd4, 0x27, 0x01, 0xfd, 0xb6, 0x67, 0x78, 0x44,
+	0xfc, 0x7e, 0x1b, 0x51, 0xe8, 0x18, 0x77, 0xfd, 0xc7, 0x98, 0x96, 0x04, 0xfa, 0xfa, 0xdf, 0x00,
+	0x00, 0x00, 0xff, 0xff, 0x8c, 0x20, 0x27, 0xe4, 0x86, 0x08, 0x00, 0x00,
 }

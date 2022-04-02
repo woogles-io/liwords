@@ -21,13 +21,14 @@ import (
 type PuzzleStore interface {
 	CreatePuzzle(ctx context.Context, gameID string, turnNumber int32, answer *macondopb.GameEvent, authorID string,
 		lexicon string, beforeText string, afterText string, tags []macondopb.PuzzleTag) error
-	GetRandomUnansweredPuzzleIdForUser(ctx context.Context, userId string, lexicon string) (string, error)
+	GetStartPuzzleId(ctx context.Context, userId string, lexicon string) (string, error)
+	GetNextPuzzleId(ctx context.Context, userId string, lexicon string) (string, error)
 	GetPuzzle(ctx context.Context, userId string, puzzleUUID string) (*macondopb.GameHistory, string, int32, *bool, time.Time, time.Time, error)
-	GetPreviousPuzzle(ctx context.Context, userId string, puzzleUUID string) (string, error)
+	GetPreviousPuzzleId(ctx context.Context, userId string, puzzleUUID string) (string, error)
 	GetAnswer(ctx context.Context, puzzleUUID string) (*macondopb.GameEvent, string, string, *ipc.GameRequest, *entity.SingleRating, error)
 	SubmitAnswer(ctx context.Context, userId string, ratingKey entity.VariantKey, newUserRating *entity.SingleRating,
 		puzzleUUID string, newPuzzleRating *entity.SingleRating, userIsCorrect bool, userGaveUp bool) error
-	GetAttempts(ctx context.Context, userId string, puzzleUUID string) (int32, *bool, time.Time, time.Time, error)
+	GetAttempts(ctx context.Context, userId string, puzzleUUID string) (bool, int32, *bool, time.Time, time.Time, error)
 	GetUserRating(ctx context.Context, userId string, ratingKey entity.VariantKey) (*entity.SingleRating, error)
 	SetPuzzleVote(ctx context.Context, userId string, puzzleUUID string, vote int) error
 }
@@ -62,16 +63,20 @@ func CreatePuzzlesFromGame(ctx context.Context, gs *gamestore.DBStore, ps Puzzle
 	return pzls, nil
 }
 
-func GetRandomUnansweredPuzzleIdForUser(ctx context.Context, ps PuzzleStore, userId string, lexicon string) (string, error) {
-	return ps.GetRandomUnansweredPuzzleIdForUser(ctx, userId, lexicon)
+func GetStartPuzzleId(ctx context.Context, ps PuzzleStore, userId string, lexicon string) (string, error) {
+	return ps.GetStartPuzzleId(ctx, userId, lexicon)
+}
+
+func GetNextPuzzleId(ctx context.Context, ps PuzzleStore, userId string, lexicon string) (string, error) {
+	return ps.GetNextPuzzleId(ctx, userId, lexicon)
 }
 
 func GetPuzzle(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID string) (*macondopb.GameHistory, string, int32, *bool, time.Time, time.Time, error) {
 	return ps.GetPuzzle(ctx, userId, puzzleUUID)
 }
 
-func GetPreviousPuzzle(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID string) (string, error) {
-	return ps.GetPreviousPuzzle(ctx, userId, puzzleUUID)
+func GetPreviousPuzzleId(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID string) (string, error) {
+	return ps.GetPreviousPuzzleId(ctx, userId, puzzleUUID)
 }
 
 func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleUUID string, userId string, userAnswer *ipc.ClientGameplayEvent, showSolution bool) (bool, *bool, *macondopb.GameEvent, string, string, int32, time.Time, time.Time, error) {
@@ -81,7 +86,7 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleUUID string, userId
 	}
 	userIsCorrect := answersAreEqual(userAnswer, correctAnswer)
 	// Check if user has already seen this puzzle
-	attempts, status, _, _, err := ps.GetAttempts(ctx, userId, puzzleUUID)
+	_, attempts, status, _, _, err := ps.GetAttempts(ctx, userId, puzzleUUID)
 	if err != nil {
 		return false, nil, nil, "", "", -1, time.Time{}, time.Time{}, err
 	}
@@ -136,7 +141,7 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleUUID string, userId
 		return false, nil, nil, "", "", -1, time.Time{}, time.Time{}, err
 	}
 
-	attempts, status, firstAttemptTime, lastAttemptTime, err := ps.GetAttempts(ctx, userId, puzzleUUID)
+	_, attempts, status, firstAttemptTime, lastAttemptTime, err := ps.GetAttempts(ctx, userId, puzzleUUID)
 	if err != nil {
 		return false, nil, nil, "", "", -1, time.Time{}, time.Time{}, err
 	}

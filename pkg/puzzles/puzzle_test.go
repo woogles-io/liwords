@@ -33,6 +33,7 @@ import (
 
 const PuzzlerUUID = "puzzler"
 const PuzzleCreatorUUID = "kenji"
+const OtherLexicon = "CSW19"
 
 func gameEventToClientGameplayEvent(evt *macondopb.GameEvent) *ipc.ClientGameplayEvent {
 	cge := &ipc.ClientGameplayEvent{}
@@ -54,10 +55,9 @@ func gameEventToClientGameplayEvent(evt *macondopb.GameEvent) *ipc.ClientGamepla
 	return cge
 }
 
-func TestPuzzles(t *testing.T) {
+func TestPuzzlesMain(t *testing.T) {
 	is := is.New(t)
-	pool, ps, authoredPuzzles, totalPuzzles, err := RecreateDB()
-	is.NoErr(err)
+	pool, ps, us, gs, authoredPuzzles, totalPuzzles := RecreateDB()
 	ctx := context.Background()
 
 	rk := ratingKey(common.DefaultGameReq)
@@ -84,16 +84,13 @@ func TestPuzzles(t *testing.T) {
 
 	// Path 1
 	// Submit an incorrect answer
-	puzzleUUID, err := GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	puzzleUUID, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
-	_, err = GetPreviousPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
-	is.Equal(err.Error(), entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_PREVIOUS_PUZZLE_NO_ATTEMPTS, PuzzlerUUID, puzzleUUID).Error())
-
-	hist, _, attempts, userPreviousCorrect, firstAttemptTime, lastAttemptTime, err := GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
+	hist, _, attempts, status, firstAttemptTime, lastAttemptTime, err := GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
 	is.Equal(attempts, int32(0))
-	is.True(userPreviousCorrect == nil)
+	is.True(status == nil)
 	is.Equal(hist.OriginalGcg, "")
 	is.Equal(hist.IdAuth, "")
 	is.Equal(hist.Uid, "")
@@ -109,15 +106,15 @@ func TestPuzzles(t *testing.T) {
 	is.Equal(gameId, "")
 	is.Equal(attempts, int32(1))
 
-	_, _, attempts, userPreviousCorrect, firstAttemptTime, lastAttemptTime, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
+	_, _, attempts, status, firstAttemptTime, lastAttemptTime, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
 	is.Equal(attempts, int32(1))
-	is.True(userPreviousCorrect == nil)
+	is.True(status == nil)
 	is.True(!firstAttemptTime.Equal(time.Time{}))
 	is.True(!lastAttemptTime.Equal(time.Time{}))
 	is.True(firstAttemptTime.Equal(lastAttemptTime))
 
-	_, err = GetPreviousPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
+	_, err = GetPreviousPuzzleId(ctx, ps, PuzzlerUUID, puzzleUUID)
 	is.Equal(err.Error(), entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_PREVIOUS_PUZZLE_ATTEMPT_NOT_FOUND, PuzzlerUUID, puzzleUUID).Error())
 
 	correctAnswer, _, _, _, newPuzzleRating, err := ps.GetAnswer(ctx, puzzleUUID)
@@ -183,26 +180,15 @@ func TestPuzzles(t *testing.T) {
 
 	oldPuzzleRating = newPuzzleRating
 	oldUserRating = newUserRating
-	expectedPreviousPuzzleUUID := puzzleUUID
 
 	// Path 3
 	// Submit a correct answer
-	puzzleUUID, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	puzzleUUID, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
-	// Get the previous puzzle while the current puzzle is unattempted
-	actualPreviousPuzzleUUID, err := GetPreviousPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
+	_, _, attempts, status, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
-	is.Equal(expectedPreviousPuzzleUUID, actualPreviousPuzzleUUID)
-
-	// Getting previous again should fail since that was the first puzzle
-	// the user attempted
-	_, err = GetPreviousPuzzle(ctx, ps, PuzzlerUUID, actualPreviousPuzzleUUID)
-	is.Equal(err.Error(), entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_PREVIOUS_PUZZLE_ATTEMPT_NOT_FOUND, PuzzlerUUID, actualPreviousPuzzleUUID).Error())
-
-	_, _, attempts, userPreviousCorrect, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
-	is.NoErr(err)
-	is.True(userPreviousCorrect == nil)
+	is.True(status == nil)
 	is.Equal(attempts, int32(0))
 
 	correctAnswer, _, _, _, oldPuzzleRating, err = ps.GetAnswer(ctx, puzzleUUID)
@@ -215,11 +201,6 @@ func TestPuzzles(t *testing.T) {
 
 	userIsCorrect, status, _, _, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, correctCGE, false)
 	is.NoErr(err)
-
-	// Get the previous puzzle while the current puzzle is attempted
-	actualPreviousPuzzleUUID, err = GetPreviousPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
-	is.NoErr(err)
-	is.Equal(expectedPreviousPuzzleUUID, actualPreviousPuzzleUUID)
 
 	_, _, _, _, newPuzzleRating, err = ps.GetAnswer(ctx, puzzleUUID)
 	is.NoErr(err)
@@ -242,7 +223,7 @@ func TestPuzzles(t *testing.T) {
 	is.True(recordedCorrect.Bool)
 
 	// Check that the rating transaction rolls back correctly
-	puzzleUUID, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	puzzleUUID, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
 	correctAnswer, _, _, _, oldPuzzleRating, err = ps.GetAnswer(ctx, puzzleUUID)
@@ -264,6 +245,35 @@ func TestPuzzles(t *testing.T) {
 	is.True(common.WithinEpsilon(oldUserRating.Rating, newUserRating.Rating))
 	is.True(common.WithinEpsilon(oldUserRating.RatingDeviation, newUserRating.RatingDeviation))
 
+	// Attempting to submit an answer to a puzzle for which the user has
+	// not triggered the GetPuzzle endpoint should fail, since the
+	// GetPuzzle endpoint will create the attempt in the db.
+	_, _, _, _, _, _, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, correctCGE, false)
+	is.Equal(err.Error(), entity.NewWooglesError(ipc.WooglesError_PUZZLE_SUBMIT_ANSWER_PUZZLE_ATTEMPT_NOT_FOUND, PuzzlerUUID, puzzleUUID).Error())
+
+	attemptExists, attempts, _, _, _, err := ps.GetAttempts(ctx, PuzzlerUUID, puzzleUUID)
+	is.NoErr(err)
+	is.True(!attemptExists)
+	is.Equal(attempts, int32(0))
+
+	// This should create the attempt record
+	_, _, attempts, status, firstAttemptTime, lastAttemptTime, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
+	is.NoErr(err)
+	is.True(status == nil)
+	is.Equal(attempts, int32(0))
+
+	attemptExists, attempts, _, _, _, err = ps.GetAttempts(ctx, PuzzlerUUID, puzzleUUID)
+	is.NoErr(err)
+	is.True(attemptExists)
+	is.Equal(attempts, int32(0))
+
+	// This should update the attempt record
+	_, _, attempts, status, firstAttemptTime, newLastAttemptTime, err := GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
+	is.NoErr(err)
+	is.True(status == nil)
+	is.Equal(attempts, int32(0))
+	is.True(newLastAttemptTime.After(lastAttemptTime))
+
 	// If the user has already gotten the puzzle correct, subsequent
 	// submissions should not affect the status or number of attempts.
 	userIsCorrect, status, correctAnswer, gameId, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, correctCGE, false)
@@ -274,7 +284,7 @@ func TestPuzzles(t *testing.T) {
 	is.True(gameId != "")
 	is.Equal(attempts, int32(1))
 
-	// The result should be the same for an incorrect answer
+	// The status should be the same for an incorrect answer
 	correctAnswer.PlayedTiles += "Z"
 	userIsCorrect, status, correctAnswer, gameId, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, gameEventToClientGameplayEvent(correctAnswer), false)
 	is.NoErr(err)
@@ -286,12 +296,12 @@ func TestPuzzles(t *testing.T) {
 
 	// Path 5 and 6
 	// Submit incorrect answers and then give up
-	puzzleUUID, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	puzzleUUID, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
-	_, _, attempts, userPreviousCorrect, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
+	_, _, attempts, status, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
-	is.True(userPreviousCorrect == nil)
+	is.True(status == nil)
 	is.Equal(attempts, int32(0))
 
 	userIsCorrect, status, correctAnswer, gameId, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, &ipc.ClientGameplayEvent{}, false)
@@ -341,31 +351,31 @@ func TestPuzzles(t *testing.T) {
 
 	// The response for getting a puzzle should be
 	// different if the user is logged out
-	hist, _, attempts, userPreviousCorrect, firstAttemptTime, lastAttemptTime, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
+	hist, _, attempts, status, firstAttemptTime, lastAttemptTime, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
 	is.True(hist != nil)
 	is.Equal(attempts, int32(2))
-	is.True(!*userPreviousCorrect)
+	is.True(!*status)
 	is.True(!firstAttemptTime.Equal(time.Time{}))
 	is.True(!lastAttemptTime.Equal(time.Time{}))
 	is.True(lastAttemptTime.After(firstAttemptTime))
 
-	hist, _, attempts, userPreviousCorrect, firstAttemptTime, lastAttemptTime, err = GetPuzzle(ctx, ps, "", puzzleUUID)
+	hist, _, attempts, status, firstAttemptTime, lastAttemptTime, err = GetPuzzle(ctx, ps, "", puzzleUUID)
 	is.NoErr(err)
 	is.True(hist != nil)
 	is.Equal(attempts, int32(0))
-	is.True(userPreviousCorrect == nil)
+	is.True(status == nil)
 	is.True(firstAttemptTime.Equal(time.Time{}))
 	is.True(lastAttemptTime.Equal(time.Time{}))
 
 	// Path 2
 	// Give up immediately without submitting any answers
-	puzzleUUID, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	puzzleUUID, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
-	_, _, attempts, userPreviousCorrect, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
+	_, _, attempts, status, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
-	is.True(userPreviousCorrect == nil)
+	is.True(status == nil)
 	is.Equal(attempts, int32(0))
 
 	userIsCorrect, status, correctAnswer, gameId, _, attempts, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, nil, true)
@@ -388,13 +398,8 @@ func TestPuzzles(t *testing.T) {
 	is.NoErr(err)
 
 	for i := 0; i < unseenPuzzles; i++ {
-		expectedPreviousPuzzleUUID = puzzleUUID
-		puzzleUUID, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+		puzzleUUID, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 		is.NoErr(err)
-
-		actualPreviousPuzzleUUID, err = GetPreviousPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
-		is.NoErr(err)
-		is.Equal(expectedPreviousPuzzleUUID, actualPreviousPuzzleUUID)
 
 		puzzleLexicon, err := getPuzzleLexicon(ctx, pool, puzzleUUID)
 		is.NoErr(err)
@@ -411,9 +416,9 @@ func TestPuzzles(t *testing.T) {
 		err = pool.QueryRow(ctx, `SELECT turn_number FROM puzzles WHERE id = $1`, puzzleDBID).Scan(&turnNumber)
 		is.NoErr(err)
 
-		attempts, _, _, _, err = ps.GetAttempts(ctx, PuzzlerUUID, puzzleUUID)
+		attemptExists, attempts, _, _, _, err := ps.GetAttempts(ctx, PuzzlerUUID, puzzleUUID)
 		is.NoErr(err)
-
+		is.True(attemptExists)
 		is.Equal(attempts, int32(0))
 		is.Equal(len(hist.Events), turnNumber)
 
@@ -434,7 +439,7 @@ func TestPuzzles(t *testing.T) {
 	is.Equal(totalPuzzles, attemptedPuzzles+unattemptedPuzzles)
 
 	for i := 0; i < totalPuzzles*10; i++ {
-		puzzleUUID, err = GetRandomUnansweredPuzzleIdForUser(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+		puzzleUUID, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 		is.NoErr(err)
 		_, _, _, _, _, _, _, _, err = SubmitAnswer(ctx, ps, puzzleUUID, PuzzlerUUID, &ipc.ClientGameplayEvent{}, false)
 		is.NoErr(err)
@@ -467,6 +472,131 @@ func TestPuzzles(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(pop, -1)
 
+	us.Disconnect()
+	gs.Disconnect()
+	ps.Disconnect()
+	pool.Close()
+}
+
+func TestPuzzlesPrevious(t *testing.T) {
+	is := is.New(t)
+	pool, ps, us, gs, _, _ := RecreateDB()
+	ctx := context.Background()
+
+	// Ensure that getting the previous puzzle works
+	// for attempted and unattempted puzzles
+
+	puzzle1, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
+	_, err = GetPreviousPuzzleId(ctx, ps, PuzzlerUUID, puzzle1)
+	is.Equal(err.Error(), entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_PREVIOUS_PUZZLE_NO_ATTEMPTS, PuzzlerUUID, puzzle1).Error())
+	_, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzle1)
+	is.NoErr(err)
+	_, err = GetPreviousPuzzleId(ctx, ps, PuzzlerUUID, puzzle1)
+	is.Equal(err.Error(), entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_PREVIOUS_PUZZLE_ATTEMPT_NOT_FOUND, PuzzlerUUID, puzzle1).Error())
+	_, _, _, _, _, _, _, _, err = SubmitAnswer(ctx, ps, puzzle1, PuzzlerUUID, &ipc.ClientGameplayEvent{}, true)
+	is.NoErr(err)
+
+	puzzle2, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
+	_, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzle2)
+	is.NoErr(err)
+	_, _, _, _, _, _, _, _, err = SubmitAnswer(ctx, ps, puzzle2, PuzzlerUUID, &ipc.ClientGameplayEvent{}, false)
+	is.NoErr(err)
+
+	puzzle3, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
+	_, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzle3)
+	is.NoErr(err)
+
+	puzzle4, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
+	_, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzle4)
+	is.NoErr(err)
+	actualPreviousPuzzle, err := GetPreviousPuzzleId(ctx, ps, PuzzlerUUID, puzzle4)
+	is.NoErr(err)
+	is.Equal(puzzle3, actualPreviousPuzzle)
+	_, _, _, _, _, _, _, _, err = SubmitAnswer(ctx, ps, puzzle4, PuzzlerUUID, &ipc.ClientGameplayEvent{}, false)
+	is.NoErr(err)
+
+	puzzle5, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
+	_, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzle5)
+	is.NoErr(err)
+
+	// Have another user do a bunch of puzzles
+	// This should not affect the previous puzzle
+	// of the original user
+	_, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzleCreatorUUID, puzzle5)
+	is.NoErr(err)
+	_, _, _, _, _, _, _, _, err = SubmitAnswer(ctx, ps, puzzle5, PuzzleCreatorUUID, &ipc.ClientGameplayEvent{}, false)
+	is.NoErr(err)
+	for i := 0; i < 5; i++ {
+		otherPuzzle, err := GetNextPuzzleId(ctx, ps, PuzzleCreatorUUID, common.DefaultGameReq.Lexicon)
+		is.NoErr(err)
+		_, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzleCreatorUUID, otherPuzzle)
+		is.NoErr(err)
+		_, _, _, _, _, _, _, _, err = SubmitAnswer(ctx, ps, otherPuzzle, PuzzleCreatorUUID, &ipc.ClientGameplayEvent{}, false)
+		is.NoErr(err)
+	}
+
+	actualPreviousPuzzle, err = GetPreviousPuzzleId(ctx, ps, PuzzlerUUID, puzzle5)
+	is.NoErr(err)
+	is.Equal(puzzle4, actualPreviousPuzzle)
+
+	us.Disconnect()
+	gs.Disconnect()
+	ps.Disconnect()
+	pool.Close()
+}
+
+func TestPuzzlesStart(t *testing.T) {
+	is := is.New(t)
+	pool, ps, us, gs, _, _ := RecreateDB()
+	ctx := context.Background()
+
+	puzzle1, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
+
+	_, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzle1)
+	is.NoErr(err)
+
+	actualStartPuzzle, err := GetStartPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
+	is.Equal(puzzle1, actualStartPuzzle)
+
+	_, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzleCreatorUUID, puzzle1)
+	is.NoErr(err)
+
+	// Other users doing puzzles should not affect the original user's start puzzle
+	actualStartPuzzle, err = GetStartPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
+	is.Equal(puzzle1, actualStartPuzzle)
+
+	// The user using a different lexicon should not affect
+	// the start puzzle for that lexicon
+	puzzle2, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, OtherLexicon)
+	is.NoErr(err)
+
+	_, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzle2)
+	is.NoErr(err)
+
+	actualStartPuzzle, err = GetStartPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
+	is.Equal(puzzle1, actualStartPuzzle)
+
+	_, _, _, _, _, _, _, _, err = SubmitAnswer(ctx, ps, puzzle1, PuzzlerUUID, &ipc.ClientGameplayEvent{}, true)
+	is.NoErr(err)
+
+	// Since the most recent puzzle was completed, the
+	// start puzzle for the user should just be a random puzzle
+	actualStartPuzzle, err = GetStartPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
+	is.True(puzzle1 != actualStartPuzzle)
+
+	us.Disconnect()
+	gs.Disconnect()
+	ps.Disconnect()
 	pool.Close()
 }
 
@@ -486,7 +616,7 @@ func TestUniqueSingleTileKey(t *testing.T) {
 		uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: pb.GameEvent_VERTICAL}))
 }
 
-func RecreateDB() (*pgxpool.Pool, *puzzlesstore.DBStore, int, int, error) {
+func RecreateDB() (*pgxpool.Pool, *puzzlesstore.DBStore, *user.DBStore, *gamestore.DBStore, int, int) {
 	cfg := &config.Config{}
 	cfg.MacondoConfig = common.DefaultConfig
 	cfg.DBConnUri = commondb.TestingPostgresConnUri()
@@ -498,47 +628,47 @@ func RecreateDB() (*pgxpool.Pool, *puzzlesstore.DBStore, int, int, error) {
 	// Recreate the test database
 	err := commondb.RecreateTestDB()
 	if err != nil {
-		return nil, nil, 0, 0, err
+		panic(err)
 	}
 
 	// Reconnect to the new test database
 	pool, err := commondb.OpenTestingDB()
 	if err != nil {
-		return nil, nil, 0, 0, err
+		panic(err)
 	}
 
 	userStore, err := user.NewDBStore(commondb.TestingPostgresConnDSN())
 	if err != nil {
-		return nil, nil, 0, 0, err
+		panic(err)
 	}
 	err = userStore.New(context.Background(), &entity.User{Username: "Puzzler", Email: "puzzler@woogles.io", UUID: PuzzlerUUID})
 	if err != nil {
-		return nil, nil, 0, 0, err
+		panic(err)
 	}
 
 	err = userStore.New(context.Background(), &entity.User{Username: "Kenji", Email: "kenji@woogles.io", UUID: PuzzleCreatorUUID})
 	if err != nil {
-		return nil, nil, 0, 0, err
+		panic(err)
 	}
 
 	gameStore, err := gamestore.NewDBStore(cfg, userStore)
 	if err != nil {
-		return nil, nil, 0, 0, err
+		panic(err)
 	}
 
 	puzzlesStore, err := puzzlesstore.NewDBStore(pool)
 	if err != nil {
-		return nil, nil, 0, 0, err
+		panic(err)
 	}
 
 	files, err := ioutil.ReadDir("./testdata")
 	if err != nil {
-		return nil, nil, 0, 0, err
+		panic(err)
 	}
 
 	rules, err := game.NewBasicGameRules(&common.DefaultConfig, common.DefaultLexicon, board.CrosswordGameLayout, "english", game.CrossScoreAndSet, game.VarClassic)
 	if err != nil {
-		return nil, nil, 0, 0, err
+		panic(err)
 	}
 
 	authoredPuzzles := 0
@@ -546,26 +676,26 @@ func RecreateDB() (*pgxpool.Pool, *puzzlesstore.DBStore, int, int, error) {
 	for idx, f := range files {
 		gameHistory, err := gcgio.ParseGCG(&common.DefaultConfig, fmt.Sprintf("./testdata/%s", f.Name()))
 		if err != nil {
-			return nil, nil, 0, 0, err
+			panic(err)
 		}
 		// Set the correct challenge rule to allow games with
 		// lost challenges.
 		gameHistory.ChallengeRule = pb.ChallengeRule_FIVE_POINT
 		game, err := game.NewFromHistory(gameHistory, rules, 0)
 		if err != nil {
-			return nil, nil, 0, 0, err
+			panic(err)
 		}
 		gameReq := proto.Clone(common.DefaultGameReq).(*ipc.GameRequest)
 
 		pcUUID := ""
 		if idx%2 == 1 {
 			pcUUID = PuzzleCreatorUUID
-			gameReq.Lexicon = "CSW19"
+			gameReq.Lexicon = OtherLexicon
 		}
 		entGame := entity.NewGame(game, gameReq)
 		pzls, err := CreatePuzzlesFromGame(ctx, gameStore, puzzlesStore, entGame, pcUUID, ipc.GameType_ANNOTATED)
 		if err != nil {
-			return nil, nil, 0, 0, err
+			panic(err)
 		}
 		if idx%2 == 1 {
 			authoredPuzzles += len(pzls)
@@ -573,7 +703,7 @@ func RecreateDB() (*pgxpool.Pool, *puzzlesstore.DBStore, int, int, error) {
 		totalPuzzles += len(pzls)
 	}
 
-	return pool, puzzlesStore, authoredPuzzles, totalPuzzles, nil
+	return pool, puzzlesStore, userStore, gameStore, authoredPuzzles, totalPuzzles
 }
 
 func getUserRating(ctx context.Context, pool *pgxpool.Pool, userUUID string, rk entity.VariantKey) (*entity.SingleRating, error) {

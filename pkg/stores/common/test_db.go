@@ -30,7 +30,6 @@ func RecreateTestDB() error {
 		return err
 	}
 	defer db.Close(ctx)
-
 	_, err = db.Exec(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS %s", TestDBName))
 	if err != nil {
 		return err

@@ -6,41 +6,81 @@ import * as macondo_api_proto_macondo_macondo_pb from "../../../macondo/api/prot
 import * as google_protobuf_timestamp_pb from "google-protobuf/google/protobuf/timestamp_pb";
 import * as api_proto_ipc_omgwords_pb from "../../../api/proto/ipc/omgwords_pb";
 
-export class RandomUnansweredPuzzleIdRequest extends jspb.Message {
+export class StartPuzzleIdRequest extends jspb.Message {
   getLexicon(): string;
   setLexicon(value: string): void;
 
   serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): RandomUnansweredPuzzleIdRequest.AsObject;
-  static toObject(includeInstance: boolean, msg: RandomUnansweredPuzzleIdRequest): RandomUnansweredPuzzleIdRequest.AsObject;
+  toObject(includeInstance?: boolean): StartPuzzleIdRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: StartPuzzleIdRequest): StartPuzzleIdRequest.AsObject;
   static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
   static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: RandomUnansweredPuzzleIdRequest, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): RandomUnansweredPuzzleIdRequest;
-  static deserializeBinaryFromReader(message: RandomUnansweredPuzzleIdRequest, reader: jspb.BinaryReader): RandomUnansweredPuzzleIdRequest;
+  static serializeBinaryToWriter(message: StartPuzzleIdRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): StartPuzzleIdRequest;
+  static deserializeBinaryFromReader(message: StartPuzzleIdRequest, reader: jspb.BinaryReader): StartPuzzleIdRequest;
 }
 
-export namespace RandomUnansweredPuzzleIdRequest {
+export namespace StartPuzzleIdRequest {
   export type AsObject = {
     lexicon: string,
   }
 }
 
-export class RandomUnansweredPuzzleIdResponse extends jspb.Message {
+export class StartPuzzleIdResponse extends jspb.Message {
   getPuzzleId(): string;
   setPuzzleId(value: string): void;
 
   serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): RandomUnansweredPuzzleIdResponse.AsObject;
-  static toObject(includeInstance: boolean, msg: RandomUnansweredPuzzleIdResponse): RandomUnansweredPuzzleIdResponse.AsObject;
+  toObject(includeInstance?: boolean): StartPuzzleIdResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: StartPuzzleIdResponse): StartPuzzleIdResponse.AsObject;
   static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
   static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: RandomUnansweredPuzzleIdResponse, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): RandomUnansweredPuzzleIdResponse;
-  static deserializeBinaryFromReader(message: RandomUnansweredPuzzleIdResponse, reader: jspb.BinaryReader): RandomUnansweredPuzzleIdResponse;
+  static serializeBinaryToWriter(message: StartPuzzleIdResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): StartPuzzleIdResponse;
+  static deserializeBinaryFromReader(message: StartPuzzleIdResponse, reader: jspb.BinaryReader): StartPuzzleIdResponse;
 }
 
-export namespace RandomUnansweredPuzzleIdResponse {
+export namespace StartPuzzleIdResponse {
+  export type AsObject = {
+    puzzleId: string,
+  }
+}
+
+export class NextPuzzleIdRequest extends jspb.Message {
+  getLexicon(): string;
+  setLexicon(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): NextPuzzleIdRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: NextPuzzleIdRequest): NextPuzzleIdRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: NextPuzzleIdRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): NextPuzzleIdRequest;
+  static deserializeBinaryFromReader(message: NextPuzzleIdRequest, reader: jspb.BinaryReader): NextPuzzleIdRequest;
+}
+
+export namespace NextPuzzleIdRequest {
+  export type AsObject = {
+    lexicon: string,
+  }
+}
+
+export class NextPuzzleIdResponse extends jspb.Message {
+  getPuzzleId(): string;
+  setPuzzleId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): NextPuzzleIdResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: NextPuzzleIdResponse): NextPuzzleIdResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: NextPuzzleIdResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): NextPuzzleIdResponse;
+  static deserializeBinaryFromReader(message: NextPuzzleIdResponse, reader: jspb.BinaryReader): NextPuzzleIdResponse;
+}
+
+export namespace NextPuzzleIdResponse {
   export type AsObject = {
     puzzleId: string,
   }

@@ -23,93 +23,93 @@ const (
 type WooglesError int32
 
 const (
-	WooglesError_DEFAULT                                             WooglesError = 0
-	WooglesError_TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT               WooglesError = 1001
-	WooglesError_TOURNAMENT_NEGATIVE_MIN_PLACEMENT                   WooglesError = 1002
-	WooglesError_TOURNAMENT_NEGATIVE_GIBSON_SPREAD                   WooglesError = 1003
-	WooglesError_TOURNAMENT_EMPTY_ROUND_CONTROLS                     WooglesError = 1004
-	WooglesError_TOURNAMENT_SET_ROUND_CONTROLS_AFTER_START           WooglesError = 1005
-	WooglesError_TOURNAMENT_ELIMINATION_PAIRINGS_MIX                 WooglesError = 1006
-	WooglesError_TOURNAMENT_DISCONTINUOUS_INITIAL_FONTES             WooglesError = 1007
-	WooglesError_TOURNAMENT_INVALID_INITIAL_FONTES_ROUNDS            WooglesError = 1008
-	WooglesError_TOURNAMENT_INVALID_ELIMINATION_PLAYERS              WooglesError = 1009
-	WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE                WooglesError = 1010
-	WooglesError_TOURNAMENT_NONEXISTENT_PLAYER                       WooglesError = 1011
-	WooglesError_TOURNAMENT_NONAMENDMENT_PAST_RESULT                 WooglesError = 1012
-	WooglesError_TOURNAMENT_FUTURE_NONBYE_RESULT                     WooglesError = 1013
-	WooglesError_TOURNAMENT_NIL_PLAYER_PAIRING                       WooglesError = 1014
-	WooglesError_TOURNAMENT_NONOPPONENTS                             WooglesError = 1015
-	WooglesError_TOURNAMENT_MIXED_VOID_AND_NONVOID_RESULTS           WooglesError = 1016
-	WooglesError_TOURNAMENT_NONEXISTENT_PAIRING                      WooglesError = 1017
-	WooglesError_TOURNAMENT_UNINITIALIZED_GAMES                      WooglesError = 1018
-	WooglesError_TOURNAMENT_TIEBREAK_INVALID_GAME_INDEX              WooglesError = 1019
-	WooglesError_TOURNAMENT_GAME_INDEX_OUT_OF_RANGE                  WooglesError = 1020
-	WooglesError_TOURNAMENT_RESULT_ALREADY_SUBMITTED                 WooglesError = 1021
-	WooglesError_TOURNAMENT_NONEXISTENT_RESULT_AMENDMENT             WooglesError = 1022
-	WooglesError_TOURNAMENT_GIBSON_CAN_CATCH                         WooglesError = 1023
-	WooglesError_TOURNAMENT_CANNOT_ASSIGN_BYE                        WooglesError = 1024
-	WooglesError_TOURNAMENT_INTERNAL_BYE_ASSIGNMENT                  WooglesError = 1025
-	WooglesError_TOURNAMENT_INCORRECT_PAIRINGS_LENGTH                WooglesError = 1026
-	WooglesError_TOURNAMENT_PAIRINGS_ASSIGNED_BYE                    WooglesError = 1027
-	WooglesError_TOURNAMENT_SUSPENDED_PLAYER_UNREMOVED               WooglesError = 1028
-	WooglesError_TOURNAMENT_PAIRING_INDEX_OUT_OF_RANGE               WooglesError = 1029
-	WooglesError_TOURNAMENT_SUSPENDED_PLAYER_PAIRED                  WooglesError = 1030
-	WooglesError_TOURNAMENT_PLAYER_NOT_PAIRED                        WooglesError = 1031
-	WooglesError_TOURNAMENT_PLAYER_ALREADY_EXISTS                    WooglesError = 1032
-	WooglesError_TOURNAMENT_ADD_PLAYERS_LAST_ROUND                   WooglesError = 1033
-	WooglesError_TOURNAMENT_PLAYER_INDEX_OUT_OF_RANGE                WooglesError = 1034
-	WooglesError_TOURNAMENT_PLAYER_ALREADY_REMOVED                   WooglesError = 1035
-	WooglesError_TOURNAMENT_REMOVAL_CREATES_EMPTY_DIVISION           WooglesError = 1036
-	WooglesError_TOURNAMENT_NEGATIVE_GIBSON_ROUND                    WooglesError = 1037
-	WooglesError_TOURNAMENT_ROUND_NOT_COMPLETE                       WooglesError = 1038
-	WooglesError_TOURNAMENT_FINISHED                                 WooglesError = 1039
-	WooglesError_TOURNAMENT_NOT_STARTABLE                            WooglesError = 1040
-	WooglesError_TOURNAMENT_ROUND_NOT_READY                          WooglesError = 1041
-	WooglesError_TOURNAMENT_SET_GAME_ROUND_NUMBER                    WooglesError = 1042
-	WooglesError_TOURNAMENT_ALREADY_READY                            WooglesError = 1043
-	WooglesError_TOURNAMENT_SET_READY_MULTIPLE_IDS                   WooglesError = 1044
-	WooglesError_TOURNAMENT_SET_READY_PLAYER_NOT_FOUND               WooglesError = 1045
-	WooglesError_TOURNAMENT_NO_LOSER                                 WooglesError = 1046
-	WooglesError_TOURNAMENT_NO_WINNER                                WooglesError = 1047
-	WooglesError_TOURNAMENT_UNPAIRED_PLAYER                          WooglesError = 1048
-	WooglesError_TOURNAMENT_INVALID_PAIRING                          WooglesError = 1049
-	WooglesError_TOURNAMENT_INVALID_SWISS                            WooglesError = 1050
-	WooglesError_TOURNAMENT_ZERO_GAMES_PER_ROUND                     WooglesError = 1051
-	WooglesError_TOURNAMENT_EMPTY_NAME                               WooglesError = 1052
-	WooglesError_TOURNAMENT_NOT_STARTED                              WooglesError = 1053
-	WooglesError_TOURNAMENT_NONEXISTENT_DIVISION                     WooglesError = 1054
-	WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER                     WooglesError = 1055
-	WooglesError_TOURNAMENT_SET_NON_FUTURE_ROUND_CONTROLS            WooglesError = 1056
-	WooglesError_TOURNAMENT_ADD_DIVISION_AFTER_START                 WooglesError = 1057
-	WooglesError_TOURNAMENT_INVALID_DIVISION_NAME                    WooglesError = 1058
-	WooglesError_TOURNAMENT_DIVISION_ALREADY_EXISTS                  WooglesError = 1059
-	WooglesError_TOURNAMENT_DIVISION_REMOVAL_AFTER_START             WooglesError = 1060
-	WooglesError_TOURNAMENT_DIVISION_REMOVAL_EXISTING_PLAYERS        WooglesError = 1061
-	WooglesError_TOURNAMENT_PLAYER_ID_CONSTRUCTION                   WooglesError = 1062
-	WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_EXISTS                WooglesError = 1063
-	WooglesError_TOURNAMENT_DIRECTOR_EXISTS                          WooglesError = 1064
-	WooglesError_TOURNAMENT_NO_DIVISIONS                             WooglesError = 1065
-	WooglesError_TOURNAMENT_GAME_CONTROLS_NOT_SET                    WooglesError = 1066
-	WooglesError_TOURNAMENT_INCORRECT_START_ROUND                    WooglesError = 1067
-	WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND                    WooglesError = 1068
-	WooglesError_TOURNAMENT_DELETE_NON_FUTURE_ROUND                  WooglesError = 1069
-	WooglesError_TOURNAMENT_DIVISION_NOT_FINISHED                    WooglesError = 1070
-	WooglesError_TOURNAMENT_NOT_EXACTLY_ONE_EXECUTIVE_DIRECTOR       WooglesError = 1071
-	WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_REMOVAL               WooglesError = 1072
-	WooglesError_TOURNAMENT_INVALID_FUTURE_RESULT                    WooglesError = 1073
-	WooglesError_PUZZLE_VOTE_INVALID                                 WooglesError = 1074
-	WooglesError_PUZZLE_GET_RANDOM_PUZZLE_ID_NOT_FOUND               WooglesError = 1075
-	WooglesError_PUZZLE_GET_RANDOM_PUZZLE_NOT_FOUND                  WooglesError = 1076
-	WooglesError_PUZZLE_GET_PUZZLE_UUID_NOT_FOUND                    WooglesError = 1077
-	WooglesError_PUZZLE_GET_PREVIOUS_PUZZLE_NO_ATTEMPTS              WooglesError = 1078
-	WooglesError_PUZZLE_GET_PREVIOUS_PUZZLE_NO_ATTEMPTS_ID_NOT_FOUND WooglesError = 1079
-	WooglesError_PUZZLE_GET_PREVIOUS_PUZZLE_ATTEMPT_NOT_FOUND        WooglesError = 1080
-	WooglesError_PUZZLE_GET_PREVIOUS_PUZZLE_ID_NOT_FOUND             WooglesError = 1081
-	WooglesError_PUZZLE_GET_ANSWER_PUZZLE_UUID_NOT_FOUND             WooglesError = 1082
-	WooglesError_PUZZLE_SUBMIT_ANSWER_PUZZLE_ID_NOT_FOUND            WooglesError = 1083
-	WooglesError_PUZZLE_SUBMIT_ANSWER_SET_CORRECT                    WooglesError = 1084
-	WooglesError_PUZZLE_SUBMIT_ANSWER_SET_ATTEMPTS                   WooglesError = 1085
-	WooglesError_PUZZLE_SET_PUZZLE_VOTE_ID_NOT_FOUND                 WooglesError = 1086
+	WooglesError_DEFAULT                                       WooglesError = 0
+	WooglesError_TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT         WooglesError = 1001
+	WooglesError_TOURNAMENT_NEGATIVE_MIN_PLACEMENT             WooglesError = 1002
+	WooglesError_TOURNAMENT_NEGATIVE_GIBSON_SPREAD             WooglesError = 1003
+	WooglesError_TOURNAMENT_EMPTY_ROUND_CONTROLS               WooglesError = 1004
+	WooglesError_TOURNAMENT_SET_ROUND_CONTROLS_AFTER_START     WooglesError = 1005
+	WooglesError_TOURNAMENT_ELIMINATION_PAIRINGS_MIX           WooglesError = 1006
+	WooglesError_TOURNAMENT_DISCONTINUOUS_INITIAL_FONTES       WooglesError = 1007
+	WooglesError_TOURNAMENT_INVALID_INITIAL_FONTES_ROUNDS      WooglesError = 1008
+	WooglesError_TOURNAMENT_INVALID_ELIMINATION_PLAYERS        WooglesError = 1009
+	WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE          WooglesError = 1010
+	WooglesError_TOURNAMENT_NONEXISTENT_PLAYER                 WooglesError = 1011
+	WooglesError_TOURNAMENT_NONAMENDMENT_PAST_RESULT           WooglesError = 1012
+	WooglesError_TOURNAMENT_FUTURE_NONBYE_RESULT               WooglesError = 1013
+	WooglesError_TOURNAMENT_NIL_PLAYER_PAIRING                 WooglesError = 1014
+	WooglesError_TOURNAMENT_NONOPPONENTS                       WooglesError = 1015
+	WooglesError_TOURNAMENT_MIXED_VOID_AND_NONVOID_RESULTS     WooglesError = 1016
+	WooglesError_TOURNAMENT_NONEXISTENT_PAIRING                WooglesError = 1017
+	WooglesError_TOURNAMENT_UNINITIALIZED_GAMES                WooglesError = 1018
+	WooglesError_TOURNAMENT_TIEBREAK_INVALID_GAME_INDEX        WooglesError = 1019
+	WooglesError_TOURNAMENT_GAME_INDEX_OUT_OF_RANGE            WooglesError = 1020
+	WooglesError_TOURNAMENT_RESULT_ALREADY_SUBMITTED           WooglesError = 1021
+	WooglesError_TOURNAMENT_NONEXISTENT_RESULT_AMENDMENT       WooglesError = 1022
+	WooglesError_TOURNAMENT_GIBSON_CAN_CATCH                   WooglesError = 1023
+	WooglesError_TOURNAMENT_CANNOT_ASSIGN_BYE                  WooglesError = 1024
+	WooglesError_TOURNAMENT_INTERNAL_BYE_ASSIGNMENT            WooglesError = 1025
+	WooglesError_TOURNAMENT_INCORRECT_PAIRINGS_LENGTH          WooglesError = 1026
+	WooglesError_TOURNAMENT_PAIRINGS_ASSIGNED_BYE              WooglesError = 1027
+	WooglesError_TOURNAMENT_SUSPENDED_PLAYER_UNREMOVED         WooglesError = 1028
+	WooglesError_TOURNAMENT_PAIRING_INDEX_OUT_OF_RANGE         WooglesError = 1029
+	WooglesError_TOURNAMENT_SUSPENDED_PLAYER_PAIRED            WooglesError = 1030
+	WooglesError_TOURNAMENT_PLAYER_NOT_PAIRED                  WooglesError = 1031
+	WooglesError_TOURNAMENT_PLAYER_ALREADY_EXISTS              WooglesError = 1032
+	WooglesError_TOURNAMENT_ADD_PLAYERS_LAST_ROUND             WooglesError = 1033
+	WooglesError_TOURNAMENT_PLAYER_INDEX_OUT_OF_RANGE          WooglesError = 1034
+	WooglesError_TOURNAMENT_PLAYER_ALREADY_REMOVED             WooglesError = 1035
+	WooglesError_TOURNAMENT_REMOVAL_CREATES_EMPTY_DIVISION     WooglesError = 1036
+	WooglesError_TOURNAMENT_NEGATIVE_GIBSON_ROUND              WooglesError = 1037
+	WooglesError_TOURNAMENT_ROUND_NOT_COMPLETE                 WooglesError = 1038
+	WooglesError_TOURNAMENT_FINISHED                           WooglesError = 1039
+	WooglesError_TOURNAMENT_NOT_STARTABLE                      WooglesError = 1040
+	WooglesError_TOURNAMENT_ROUND_NOT_READY                    WooglesError = 1041
+	WooglesError_TOURNAMENT_SET_GAME_ROUND_NUMBER              WooglesError = 1042
+	WooglesError_TOURNAMENT_ALREADY_READY                      WooglesError = 1043
+	WooglesError_TOURNAMENT_SET_READY_MULTIPLE_IDS             WooglesError = 1044
+	WooglesError_TOURNAMENT_SET_READY_PLAYER_NOT_FOUND         WooglesError = 1045
+	WooglesError_TOURNAMENT_NO_LOSER                           WooglesError = 1046
+	WooglesError_TOURNAMENT_NO_WINNER                          WooglesError = 1047
+	WooglesError_TOURNAMENT_UNPAIRED_PLAYER                    WooglesError = 1048
+	WooglesError_TOURNAMENT_INVALID_PAIRING                    WooglesError = 1049
+	WooglesError_TOURNAMENT_INVALID_SWISS                      WooglesError = 1050
+	WooglesError_TOURNAMENT_ZERO_GAMES_PER_ROUND               WooglesError = 1051
+	WooglesError_TOURNAMENT_EMPTY_NAME                         WooglesError = 1052
+	WooglesError_TOURNAMENT_NOT_STARTED                        WooglesError = 1053
+	WooglesError_TOURNAMENT_NONEXISTENT_DIVISION               WooglesError = 1054
+	WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER               WooglesError = 1055
+	WooglesError_TOURNAMENT_SET_NON_FUTURE_ROUND_CONTROLS      WooglesError = 1056
+	WooglesError_TOURNAMENT_ADD_DIVISION_AFTER_START           WooglesError = 1057
+	WooglesError_TOURNAMENT_INVALID_DIVISION_NAME              WooglesError = 1058
+	WooglesError_TOURNAMENT_DIVISION_ALREADY_EXISTS            WooglesError = 1059
+	WooglesError_TOURNAMENT_DIVISION_REMOVAL_AFTER_START       WooglesError = 1060
+	WooglesError_TOURNAMENT_DIVISION_REMOVAL_EXISTING_PLAYERS  WooglesError = 1061
+	WooglesError_TOURNAMENT_PLAYER_ID_CONSTRUCTION             WooglesError = 1062
+	WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_EXISTS          WooglesError = 1063
+	WooglesError_TOURNAMENT_DIRECTOR_EXISTS                    WooglesError = 1064
+	WooglesError_TOURNAMENT_NO_DIVISIONS                       WooglesError = 1065
+	WooglesError_TOURNAMENT_GAME_CONTROLS_NOT_SET              WooglesError = 1066
+	WooglesError_TOURNAMENT_INCORRECT_START_ROUND              WooglesError = 1067
+	WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND              WooglesError = 1068
+	WooglesError_TOURNAMENT_DELETE_NON_FUTURE_ROUND            WooglesError = 1069
+	WooglesError_TOURNAMENT_DIVISION_NOT_FINISHED              WooglesError = 1070
+	WooglesError_TOURNAMENT_NOT_EXACTLY_ONE_EXECUTIVE_DIRECTOR WooglesError = 1071
+	WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_REMOVAL         WooglesError = 1072
+	WooglesError_TOURNAMENT_INVALID_FUTURE_RESULT              WooglesError = 1073
+	WooglesError_PUZZLE_VOTE_INVALID                           WooglesError = 1074
+	WooglesError_PUZZLE_GET_RANDOM_PUZZLE_ID_NOT_FOUND         WooglesError = 1075
+	WooglesError_PUZZLE_GET_RANDOM_PUZZLE_NOT_FOUND            WooglesError = 1076
+	WooglesError_PUZZLE_GET_PUZZLE_UUID_NOT_FOUND              WooglesError = 1077
+	WooglesError_PUZZLE_GET_PREVIOUS_PUZZLE_NO_ATTEMPTS        WooglesError = 1078
+	WooglesError_PUZZLE_GET_PREVIOUS_PUZZLE_ATTEMPT_NOT_FOUND  WooglesError = 1079
+	WooglesError_PUZZLE_GET_ANSWER_PUZZLE_UUID_NOT_FOUND       WooglesError = 1080
+	WooglesError_PUZZLE_SUBMIT_ANSWER_PUZZLE_ID_NOT_FOUND      WooglesError = 1081
+	WooglesError_PUZZLE_SUBMIT_ANSWER_SET_CORRECT              WooglesError = 1082
+	WooglesError_PUZZLE_SUBMIT_ANSWER_SET_ATTEMPTS             WooglesError = 1083
+	WooglesError_PUZZLE_SET_PUZZLE_VOTE_ID_NOT_FOUND           WooglesError = 1084
+	WooglesError_PUZZLE_SUBMIT_ANSWER_PUZZLE_ATTEMPT_NOT_FOUND WooglesError = 1085
+	WooglesError_PUZZLE_GET_PUZZLE_UPDATE_ATTEMPT              WooglesError = 1086
 )
 
 // Enum value maps for WooglesError.
@@ -194,103 +194,103 @@ var (
 		1076: "PUZZLE_GET_RANDOM_PUZZLE_NOT_FOUND",
 		1077: "PUZZLE_GET_PUZZLE_UUID_NOT_FOUND",
 		1078: "PUZZLE_GET_PREVIOUS_PUZZLE_NO_ATTEMPTS",
-		1079: "PUZZLE_GET_PREVIOUS_PUZZLE_NO_ATTEMPTS_ID_NOT_FOUND",
-		1080: "PUZZLE_GET_PREVIOUS_PUZZLE_ATTEMPT_NOT_FOUND",
-		1081: "PUZZLE_GET_PREVIOUS_PUZZLE_ID_NOT_FOUND",
-		1082: "PUZZLE_GET_ANSWER_PUZZLE_UUID_NOT_FOUND",
-		1083: "PUZZLE_SUBMIT_ANSWER_PUZZLE_ID_NOT_FOUND",
-		1084: "PUZZLE_SUBMIT_ANSWER_SET_CORRECT",
-		1085: "PUZZLE_SUBMIT_ANSWER_SET_ATTEMPTS",
-		1086: "PUZZLE_SET_PUZZLE_VOTE_ID_NOT_FOUND",
+		1079: "PUZZLE_GET_PREVIOUS_PUZZLE_ATTEMPT_NOT_FOUND",
+		1080: "PUZZLE_GET_ANSWER_PUZZLE_UUID_NOT_FOUND",
+		1081: "PUZZLE_SUBMIT_ANSWER_PUZZLE_ID_NOT_FOUND",
+		1082: "PUZZLE_SUBMIT_ANSWER_SET_CORRECT",
+		1083: "PUZZLE_SUBMIT_ANSWER_SET_ATTEMPTS",
+		1084: "PUZZLE_SET_PUZZLE_VOTE_ID_NOT_FOUND",
+		1085: "PUZZLE_SUBMIT_ANSWER_PUZZLE_ATTEMPT_NOT_FOUND",
+		1086: "PUZZLE_GET_PUZZLE_UPDATE_ATTEMPT",
 	}
 	WooglesError_value = map[string]int32{
-		"DEFAULT":                                             0,
-		"TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT":               1001,
-		"TOURNAMENT_NEGATIVE_MIN_PLACEMENT":                   1002,
-		"TOURNAMENT_NEGATIVE_GIBSON_SPREAD":                   1003,
-		"TOURNAMENT_EMPTY_ROUND_CONTROLS":                     1004,
-		"TOURNAMENT_SET_ROUND_CONTROLS_AFTER_START":           1005,
-		"TOURNAMENT_ELIMINATION_PAIRINGS_MIX":                 1006,
-		"TOURNAMENT_DISCONTINUOUS_INITIAL_FONTES":             1007,
-		"TOURNAMENT_INVALID_INITIAL_FONTES_ROUNDS":            1008,
-		"TOURNAMENT_INVALID_ELIMINATION_PLAYERS":              1009,
-		"TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE":                1010,
-		"TOURNAMENT_NONEXISTENT_PLAYER":                       1011,
-		"TOURNAMENT_NONAMENDMENT_PAST_RESULT":                 1012,
-		"TOURNAMENT_FUTURE_NONBYE_RESULT":                     1013,
-		"TOURNAMENT_NIL_PLAYER_PAIRING":                       1014,
-		"TOURNAMENT_NONOPPONENTS":                             1015,
-		"TOURNAMENT_MIXED_VOID_AND_NONVOID_RESULTS":           1016,
-		"TOURNAMENT_NONEXISTENT_PAIRING":                      1017,
-		"TOURNAMENT_UNINITIALIZED_GAMES":                      1018,
-		"TOURNAMENT_TIEBREAK_INVALID_GAME_INDEX":              1019,
-		"TOURNAMENT_GAME_INDEX_OUT_OF_RANGE":                  1020,
-		"TOURNAMENT_RESULT_ALREADY_SUBMITTED":                 1021,
-		"TOURNAMENT_NONEXISTENT_RESULT_AMENDMENT":             1022,
-		"TOURNAMENT_GIBSON_CAN_CATCH":                         1023,
-		"TOURNAMENT_CANNOT_ASSIGN_BYE":                        1024,
-		"TOURNAMENT_INTERNAL_BYE_ASSIGNMENT":                  1025,
-		"TOURNAMENT_INCORRECT_PAIRINGS_LENGTH":                1026,
-		"TOURNAMENT_PAIRINGS_ASSIGNED_BYE":                    1027,
-		"TOURNAMENT_SUSPENDED_PLAYER_UNREMOVED":               1028,
-		"TOURNAMENT_PAIRING_INDEX_OUT_OF_RANGE":               1029,
-		"TOURNAMENT_SUSPENDED_PLAYER_PAIRED":                  1030,
-		"TOURNAMENT_PLAYER_NOT_PAIRED":                        1031,
-		"TOURNAMENT_PLAYER_ALREADY_EXISTS":                    1032,
-		"TOURNAMENT_ADD_PLAYERS_LAST_ROUND":                   1033,
-		"TOURNAMENT_PLAYER_INDEX_OUT_OF_RANGE":                1034,
-		"TOURNAMENT_PLAYER_ALREADY_REMOVED":                   1035,
-		"TOURNAMENT_REMOVAL_CREATES_EMPTY_DIVISION":           1036,
-		"TOURNAMENT_NEGATIVE_GIBSON_ROUND":                    1037,
-		"TOURNAMENT_ROUND_NOT_COMPLETE":                       1038,
-		"TOURNAMENT_FINISHED":                                 1039,
-		"TOURNAMENT_NOT_STARTABLE":                            1040,
-		"TOURNAMENT_ROUND_NOT_READY":                          1041,
-		"TOURNAMENT_SET_GAME_ROUND_NUMBER":                    1042,
-		"TOURNAMENT_ALREADY_READY":                            1043,
-		"TOURNAMENT_SET_READY_MULTIPLE_IDS":                   1044,
-		"TOURNAMENT_SET_READY_PLAYER_NOT_FOUND":               1045,
-		"TOURNAMENT_NO_LOSER":                                 1046,
-		"TOURNAMENT_NO_WINNER":                                1047,
-		"TOURNAMENT_UNPAIRED_PLAYER":                          1048,
-		"TOURNAMENT_INVALID_PAIRING":                          1049,
-		"TOURNAMENT_INVALID_SWISS":                            1050,
-		"TOURNAMENT_ZERO_GAMES_PER_ROUND":                     1051,
-		"TOURNAMENT_EMPTY_NAME":                               1052,
-		"TOURNAMENT_NOT_STARTED":                              1053,
-		"TOURNAMENT_NONEXISTENT_DIVISION":                     1054,
-		"TOURNAMENT_NIL_DIVISION_MANAGER":                     1055,
-		"TOURNAMENT_SET_NON_FUTURE_ROUND_CONTROLS":            1056,
-		"TOURNAMENT_ADD_DIVISION_AFTER_START":                 1057,
-		"TOURNAMENT_INVALID_DIVISION_NAME":                    1058,
-		"TOURNAMENT_DIVISION_ALREADY_EXISTS":                  1059,
-		"TOURNAMENT_DIVISION_REMOVAL_AFTER_START":             1060,
-		"TOURNAMENT_DIVISION_REMOVAL_EXISTING_PLAYERS":        1061,
-		"TOURNAMENT_PLAYER_ID_CONSTRUCTION":                   1062,
-		"TOURNAMENT_EXECUTIVE_DIRECTOR_EXISTS":                1063,
-		"TOURNAMENT_DIRECTOR_EXISTS":                          1064,
-		"TOURNAMENT_NO_DIVISIONS":                             1065,
-		"TOURNAMENT_GAME_CONTROLS_NOT_SET":                    1066,
-		"TOURNAMENT_INCORRECT_START_ROUND":                    1067,
-		"TOURNAMENT_PAIR_NON_FUTURE_ROUND":                    1068,
-		"TOURNAMENT_DELETE_NON_FUTURE_ROUND":                  1069,
-		"TOURNAMENT_DIVISION_NOT_FINISHED":                    1070,
-		"TOURNAMENT_NOT_EXACTLY_ONE_EXECUTIVE_DIRECTOR":       1071,
-		"TOURNAMENT_EXECUTIVE_DIRECTOR_REMOVAL":               1072,
-		"TOURNAMENT_INVALID_FUTURE_RESULT":                    1073,
-		"PUZZLE_VOTE_INVALID":                                 1074,
-		"PUZZLE_GET_RANDOM_PUZZLE_ID_NOT_FOUND":               1075,
-		"PUZZLE_GET_RANDOM_PUZZLE_NOT_FOUND":                  1076,
-		"PUZZLE_GET_PUZZLE_UUID_NOT_FOUND":                    1077,
-		"PUZZLE_GET_PREVIOUS_PUZZLE_NO_ATTEMPTS":              1078,
-		"PUZZLE_GET_PREVIOUS_PUZZLE_NO_ATTEMPTS_ID_NOT_FOUND": 1079,
-		"PUZZLE_GET_PREVIOUS_PUZZLE_ATTEMPT_NOT_FOUND":        1080,
-		"PUZZLE_GET_PREVIOUS_PUZZLE_ID_NOT_FOUND":             1081,
-		"PUZZLE_GET_ANSWER_PUZZLE_UUID_NOT_FOUND":             1082,
-		"PUZZLE_SUBMIT_ANSWER_PUZZLE_ID_NOT_FOUND":            1083,
-		"PUZZLE_SUBMIT_ANSWER_SET_CORRECT":                    1084,
-		"PUZZLE_SUBMIT_ANSWER_SET_ATTEMPTS":                   1085,
-		"PUZZLE_SET_PUZZLE_VOTE_ID_NOT_FOUND":                 1086,
+		"DEFAULT":                                       0,
+		"TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT":         1001,
+		"TOURNAMENT_NEGATIVE_MIN_PLACEMENT":             1002,
+		"TOURNAMENT_NEGATIVE_GIBSON_SPREAD":             1003,
+		"TOURNAMENT_EMPTY_ROUND_CONTROLS":               1004,
+		"TOURNAMENT_SET_ROUND_CONTROLS_AFTER_START":     1005,
+		"TOURNAMENT_ELIMINATION_PAIRINGS_MIX":           1006,
+		"TOURNAMENT_DISCONTINUOUS_INITIAL_FONTES":       1007,
+		"TOURNAMENT_INVALID_INITIAL_FONTES_ROUNDS":      1008,
+		"TOURNAMENT_INVALID_ELIMINATION_PLAYERS":        1009,
+		"TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE":          1010,
+		"TOURNAMENT_NONEXISTENT_PLAYER":                 1011,
+		"TOURNAMENT_NONAMENDMENT_PAST_RESULT":           1012,
+		"TOURNAMENT_FUTURE_NONBYE_RESULT":               1013,
+		"TOURNAMENT_NIL_PLAYER_PAIRING":                 1014,
+		"TOURNAMENT_NONOPPONENTS":                       1015,
+		"TOURNAMENT_MIXED_VOID_AND_NONVOID_RESULTS":     1016,
+		"TOURNAMENT_NONEXISTENT_PAIRING":                1017,
+		"TOURNAMENT_UNINITIALIZED_GAMES":                1018,
+		"TOURNAMENT_TIEBREAK_INVALID_GAME_INDEX":        1019,
+		"TOURNAMENT_GAME_INDEX_OUT_OF_RANGE":            1020,
+		"TOURNAMENT_RESULT_ALREADY_SUBMITTED":           1021,
+		"TOURNAMENT_NONEXISTENT_RESULT_AMENDMENT":       1022,
+		"TOURNAMENT_GIBSON_CAN_CATCH":                   1023,
+		"TOURNAMENT_CANNOT_ASSIGN_BYE":                  1024,
+		"TOURNAMENT_INTERNAL_BYE_ASSIGNMENT":            1025,
+		"TOURNAMENT_INCORRECT_PAIRINGS_LENGTH":          1026,
+		"TOURNAMENT_PAIRINGS_ASSIGNED_BYE":              1027,
+		"TOURNAMENT_SUSPENDED_PLAYER_UNREMOVED":         1028,
+		"TOURNAMENT_PAIRING_INDEX_OUT_OF_RANGE":         1029,
+		"TOURNAMENT_SUSPENDED_PLAYER_PAIRED":            1030,
+		"TOURNAMENT_PLAYER_NOT_PAIRED":                  1031,
+		"TOURNAMENT_PLAYER_ALREADY_EXISTS":              1032,
+		"TOURNAMENT_ADD_PLAYERS_LAST_ROUND":             1033,
+		"TOURNAMENT_PLAYER_INDEX_OUT_OF_RANGE":          1034,
+		"TOURNAMENT_PLAYER_ALREADY_REMOVED":             1035,
+		"TOURNAMENT_REMOVAL_CREATES_EMPTY_DIVISION":     1036,
+		"TOURNAMENT_NEGATIVE_GIBSON_ROUND":              1037,
+		"TOURNAMENT_ROUND_NOT_COMPLETE":                 1038,
+		"TOURNAMENT_FINISHED":                           1039,
+		"TOURNAMENT_NOT_STARTABLE":                      1040,
+		"TOURNAMENT_ROUND_NOT_READY":                    1041,
+		"TOURNAMENT_SET_GAME_ROUND_NUMBER":              1042,
+		"TOURNAMENT_ALREADY_READY":                      1043,
+		"TOURNAMENT_SET_READY_MULTIPLE_IDS":             1044,
+		"TOURNAMENT_SET_READY_PLAYER_NOT_FOUND":         1045,
+		"TOURNAMENT_NO_LOSER":                           1046,
+		"TOURNAMENT_NO_WINNER":                          1047,
+		"TOURNAMENT_UNPAIRED_PLAYER":                    1048,
+		"TOURNAMENT_INVALID_PAIRING":                    1049,
+		"TOURNAMENT_INVALID_SWISS":                      1050,
+		"TOURNAMENT_ZERO_GAMES_PER_ROUND":               1051,
+		"TOURNAMENT_EMPTY_NAME":                         1052,
+		"TOURNAMENT_NOT_STARTED":                        1053,
+		"TOURNAMENT_NONEXISTENT_DIVISION":               1054,
+		"TOURNAMENT_NIL_DIVISION_MANAGER":               1055,
+		"TOURNAMENT_SET_NON_FUTURE_ROUND_CONTROLS":      1056,
+		"TOURNAMENT_ADD_DIVISION_AFTER_START":           1057,
+		"TOURNAMENT_INVALID_DIVISION_NAME":              1058,
+		"TOURNAMENT_DIVISION_ALREADY_EXISTS":            1059,
+		"TOURNAMENT_DIVISION_REMOVAL_AFTER_START":       1060,
+		"TOURNAMENT_DIVISION_REMOVAL_EXISTING_PLAYERS":  1061,
+		"TOURNAMENT_PLAYER_ID_CONSTRUCTION":             1062,
+		"TOURNAMENT_EXECUTIVE_DIRECTOR_EXISTS":          1063,
+		"TOURNAMENT_DIRECTOR_EXISTS":                    1064,
+		"TOURNAMENT_NO_DIVISIONS":                       1065,
+		"TOURNAMENT_GAME_CONTROLS_NOT_SET":              1066,
+		"TOURNAMENT_INCORRECT_START_ROUND":              1067,
+		"TOURNAMENT_PAIR_NON_FUTURE_ROUND":              1068,
+		"TOURNAMENT_DELETE_NON_FUTURE_ROUND":            1069,
+		"TOURNAMENT_DIVISION_NOT_FINISHED":              1070,
+		"TOURNAMENT_NOT_EXACTLY_ONE_EXECUTIVE_DIRECTOR": 1071,
+		"TOURNAMENT_EXECUTIVE_DIRECTOR_REMOVAL":         1072,
+		"TOURNAMENT_INVALID_FUTURE_RESULT":              1073,
+		"PUZZLE_VOTE_INVALID":                           1074,
+		"PUZZLE_GET_RANDOM_PUZZLE_ID_NOT_FOUND":         1075,
+		"PUZZLE_GET_RANDOM_PUZZLE_NOT_FOUND":            1076,
+		"PUZZLE_GET_PUZZLE_UUID_NOT_FOUND":              1077,
+		"PUZZLE_GET_PREVIOUS_PUZZLE_NO_ATTEMPTS":        1078,
+		"PUZZLE_GET_PREVIOUS_PUZZLE_ATTEMPT_NOT_FOUND":  1079,
+		"PUZZLE_GET_ANSWER_PUZZLE_UUID_NOT_FOUND":       1080,
+		"PUZZLE_SUBMIT_ANSWER_PUZZLE_ID_NOT_FOUND":      1081,
+		"PUZZLE_SUBMIT_ANSWER_SET_CORRECT":              1082,
+		"PUZZLE_SUBMIT_ANSWER_SET_ATTEMPTS":             1083,
+		"PUZZLE_SET_PUZZLE_VOTE_ID_NOT_FOUND":           1084,
+		"PUZZLE_SUBMIT_ANSWER_PUZZLE_ATTEMPT_NOT_FOUND": 1085,
+		"PUZZLE_GET_PUZZLE_UPDATE_ATTEMPT":              1086,
 	}
 )
 
@@ -375,7 +375,7 @@ var file_api_proto_ipc_errors_proto_rawDesc = []byte{
 	0x65, 0x72, 0x72, 0x6f, 0x72, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x03, 0x69, 0x70,
 	0x63, 0x22, 0x28, 0x0a, 0x0c, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67,
 	0x65, 0x12, 0x18, 0x0a, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2a, 0xfc, 0x1a, 0x0a, 0x0c,
+	0x28, 0x09, 0x52, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2a, 0xef, 0x1a, 0x0a, 0x0c,
 	0x57, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x73, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x12, 0x0b, 0x0a, 0x07,
 	0x44, 0x45, 0x46, 0x41, 0x55, 0x4c, 0x54, 0x10, 0x00, 0x12, 0x2a, 0x0a, 0x25, 0x54, 0x4f, 0x55,
 	0x52, 0x4e, 0x41, 0x4d, 0x45, 0x4e, 0x54, 0x5f, 0x4e, 0x45, 0x47, 0x41, 0x54, 0x49, 0x56, 0x45,
@@ -568,34 +568,33 @@ var file_api_proto_ipc_errors_proto_rawDesc = []byte{
 	0x4e, 0x4f, 0x54, 0x5f, 0x46, 0x4f, 0x55, 0x4e, 0x44, 0x10, 0xb5, 0x08, 0x12, 0x2b, 0x0a, 0x26,
 	0x50, 0x55, 0x5a, 0x5a, 0x4c, 0x45, 0x5f, 0x47, 0x45, 0x54, 0x5f, 0x50, 0x52, 0x45, 0x56, 0x49,
 	0x4f, 0x55, 0x53, 0x5f, 0x50, 0x55, 0x5a, 0x5a, 0x4c, 0x45, 0x5f, 0x4e, 0x4f, 0x5f, 0x41, 0x54,
-	0x54, 0x45, 0x4d, 0x50, 0x54, 0x53, 0x10, 0xb6, 0x08, 0x12, 0x38, 0x0a, 0x33, 0x50, 0x55, 0x5a,
+	0x54, 0x45, 0x4d, 0x50, 0x54, 0x53, 0x10, 0xb6, 0x08, 0x12, 0x31, 0x0a, 0x2c, 0x50, 0x55, 0x5a,
 	0x5a, 0x4c, 0x45, 0x5f, 0x47, 0x45, 0x54, 0x5f, 0x50, 0x52, 0x45, 0x56, 0x49, 0x4f, 0x55, 0x53,
-	0x5f, 0x50, 0x55, 0x5a, 0x5a, 0x4c, 0x45, 0x5f, 0x4e, 0x4f, 0x5f, 0x41, 0x54, 0x54, 0x45, 0x4d,
-	0x50, 0x54, 0x53, 0x5f, 0x49, 0x44, 0x5f, 0x4e, 0x4f, 0x54, 0x5f, 0x46, 0x4f, 0x55, 0x4e, 0x44,
-	0x10, 0xb7, 0x08, 0x12, 0x31, 0x0a, 0x2c, 0x50, 0x55, 0x5a, 0x5a, 0x4c, 0x45, 0x5f, 0x47, 0x45,
-	0x54, 0x5f, 0x50, 0x52, 0x45, 0x56, 0x49, 0x4f, 0x55, 0x53, 0x5f, 0x50, 0x55, 0x5a, 0x5a, 0x4c,
-	0x45, 0x5f, 0x41, 0x54, 0x54, 0x45, 0x4d, 0x50, 0x54, 0x5f, 0x4e, 0x4f, 0x54, 0x5f, 0x46, 0x4f,
-	0x55, 0x4e, 0x44, 0x10, 0xb8, 0x08, 0x12, 0x2c, 0x0a, 0x27, 0x50, 0x55, 0x5a, 0x5a, 0x4c, 0x45,
-	0x5f, 0x47, 0x45, 0x54, 0x5f, 0x50, 0x52, 0x45, 0x56, 0x49, 0x4f, 0x55, 0x53, 0x5f, 0x50, 0x55,
-	0x5a, 0x5a, 0x4c, 0x45, 0x5f, 0x49, 0x44, 0x5f, 0x4e, 0x4f, 0x54, 0x5f, 0x46, 0x4f, 0x55, 0x4e,
-	0x44, 0x10, 0xb9, 0x08, 0x12, 0x2c, 0x0a, 0x27, 0x50, 0x55, 0x5a, 0x5a, 0x4c, 0x45, 0x5f, 0x47,
-	0x45, 0x54, 0x5f, 0x41, 0x4e, 0x53, 0x57, 0x45, 0x52, 0x5f, 0x50, 0x55, 0x5a, 0x5a, 0x4c, 0x45,
-	0x5f, 0x55, 0x55, 0x49, 0x44, 0x5f, 0x4e, 0x4f, 0x54, 0x5f, 0x46, 0x4f, 0x55, 0x4e, 0x44, 0x10,
-	0xba, 0x08, 0x12, 0x2d, 0x0a, 0x28, 0x50, 0x55, 0x5a, 0x5a, 0x4c, 0x45, 0x5f, 0x53, 0x55, 0x42,
+	0x5f, 0x50, 0x55, 0x5a, 0x5a, 0x4c, 0x45, 0x5f, 0x41, 0x54, 0x54, 0x45, 0x4d, 0x50, 0x54, 0x5f,
+	0x4e, 0x4f, 0x54, 0x5f, 0x46, 0x4f, 0x55, 0x4e, 0x44, 0x10, 0xb7, 0x08, 0x12, 0x2c, 0x0a, 0x27,
+	0x50, 0x55, 0x5a, 0x5a, 0x4c, 0x45, 0x5f, 0x47, 0x45, 0x54, 0x5f, 0x41, 0x4e, 0x53, 0x57, 0x45,
+	0x52, 0x5f, 0x50, 0x55, 0x5a, 0x5a, 0x4c, 0x45, 0x5f, 0x55, 0x55, 0x49, 0x44, 0x5f, 0x4e, 0x4f,
+	0x54, 0x5f, 0x46, 0x4f, 0x55, 0x4e, 0x44, 0x10, 0xb8, 0x08, 0x12, 0x2d, 0x0a, 0x28, 0x50, 0x55,
+	0x5a, 0x5a, 0x4c, 0x45, 0x5f, 0x53, 0x55, 0x42, 0x4d, 0x49, 0x54, 0x5f, 0x41, 0x4e, 0x53, 0x57,
+	0x45, 0x52, 0x5f, 0x50, 0x55, 0x5a, 0x5a, 0x4c, 0x45, 0x5f, 0x49, 0x44, 0x5f, 0x4e, 0x4f, 0x54,
+	0x5f, 0x46, 0x4f, 0x55, 0x4e, 0x44, 0x10, 0xb9, 0x08, 0x12, 0x25, 0x0a, 0x20, 0x50, 0x55, 0x5a,
+	0x5a, 0x4c, 0x45, 0x5f, 0x53, 0x55, 0x42, 0x4d, 0x49, 0x54, 0x5f, 0x41, 0x4e, 0x53, 0x57, 0x45,
+	0x52, 0x5f, 0x53, 0x45, 0x54, 0x5f, 0x43, 0x4f, 0x52, 0x52, 0x45, 0x43, 0x54, 0x10, 0xba, 0x08,
+	0x12, 0x26, 0x0a, 0x21, 0x50, 0x55, 0x5a, 0x5a, 0x4c, 0x45, 0x5f, 0x53, 0x55, 0x42, 0x4d, 0x49,
+	0x54, 0x5f, 0x41, 0x4e, 0x53, 0x57, 0x45, 0x52, 0x5f, 0x53, 0x45, 0x54, 0x5f, 0x41, 0x54, 0x54,
+	0x45, 0x4d, 0x50, 0x54, 0x53, 0x10, 0xbb, 0x08, 0x12, 0x28, 0x0a, 0x23, 0x50, 0x55, 0x5a, 0x5a,
+	0x4c, 0x45, 0x5f, 0x53, 0x45, 0x54, 0x5f, 0x50, 0x55, 0x5a, 0x5a, 0x4c, 0x45, 0x5f, 0x56, 0x4f,
+	0x54, 0x45, 0x5f, 0x49, 0x44, 0x5f, 0x4e, 0x4f, 0x54, 0x5f, 0x46, 0x4f, 0x55, 0x4e, 0x44, 0x10,
+	0xbc, 0x08, 0x12, 0x32, 0x0a, 0x2d, 0x50, 0x55, 0x5a, 0x5a, 0x4c, 0x45, 0x5f, 0x53, 0x55, 0x42,
 	0x4d, 0x49, 0x54, 0x5f, 0x41, 0x4e, 0x53, 0x57, 0x45, 0x52, 0x5f, 0x50, 0x55, 0x5a, 0x5a, 0x4c,
-	0x45, 0x5f, 0x49, 0x44, 0x5f, 0x4e, 0x4f, 0x54, 0x5f, 0x46, 0x4f, 0x55, 0x4e, 0x44, 0x10, 0xbb,
-	0x08, 0x12, 0x25, 0x0a, 0x20, 0x50, 0x55, 0x5a, 0x5a, 0x4c, 0x45, 0x5f, 0x53, 0x55, 0x42, 0x4d,
-	0x49, 0x54, 0x5f, 0x41, 0x4e, 0x53, 0x57, 0x45, 0x52, 0x5f, 0x53, 0x45, 0x54, 0x5f, 0x43, 0x4f,
-	0x52, 0x52, 0x45, 0x43, 0x54, 0x10, 0xbc, 0x08, 0x12, 0x26, 0x0a, 0x21, 0x50, 0x55, 0x5a, 0x5a,
-	0x4c, 0x45, 0x5f, 0x53, 0x55, 0x42, 0x4d, 0x49, 0x54, 0x5f, 0x41, 0x4e, 0x53, 0x57, 0x45, 0x52,
-	0x5f, 0x53, 0x45, 0x54, 0x5f, 0x41, 0x54, 0x54, 0x45, 0x4d, 0x50, 0x54, 0x53, 0x10, 0xbd, 0x08,
-	0x12, 0x28, 0x0a, 0x23, 0x50, 0x55, 0x5a, 0x5a, 0x4c, 0x45, 0x5f, 0x53, 0x45, 0x54, 0x5f, 0x50,
-	0x55, 0x5a, 0x5a, 0x4c, 0x45, 0x5f, 0x56, 0x4f, 0x54, 0x45, 0x5f, 0x49, 0x44, 0x5f, 0x4e, 0x4f,
-	0x54, 0x5f, 0x46, 0x4f, 0x55, 0x4e, 0x44, 0x10, 0xbe, 0x08, 0x42, 0x2f, 0x5a, 0x2d, 0x67, 0x69,
-	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x64, 0x6f, 0x6d, 0x69, 0x6e, 0x6f, 0x31,
-	0x34, 0x2f, 0x6c, 0x69, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x2f, 0x72, 0x70, 0x63, 0x2f, 0x61, 0x70,
-	0x69, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x69, 0x70, 0x63, 0x62, 0x06, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x33,
+	0x45, 0x5f, 0x41, 0x54, 0x54, 0x45, 0x4d, 0x50, 0x54, 0x5f, 0x4e, 0x4f, 0x54, 0x5f, 0x46, 0x4f,
+	0x55, 0x4e, 0x44, 0x10, 0xbd, 0x08, 0x12, 0x25, 0x0a, 0x20, 0x50, 0x55, 0x5a, 0x5a, 0x4c, 0x45,
+	0x5f, 0x47, 0x45, 0x54, 0x5f, 0x50, 0x55, 0x5a, 0x5a, 0x4c, 0x45, 0x5f, 0x55, 0x50, 0x44, 0x41,
+	0x54, 0x45, 0x5f, 0x41, 0x54, 0x54, 0x45, 0x4d, 0x50, 0x54, 0x10, 0xbe, 0x08, 0x42, 0x2f, 0x5a,
+	0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x64, 0x6f, 0x6d, 0x69,
+	0x6e, 0x6f, 0x31, 0x34, 0x2f, 0x6c, 0x69, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x2f, 0x72, 0x70, 0x63,
+	0x2f, 0x61, 0x70, 0x69, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x69, 0x70, 0x63, 0x62, 0x06,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (

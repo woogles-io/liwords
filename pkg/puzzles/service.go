@@ -21,16 +21,28 @@ func NewPuzzleService(ps PuzzleStore, us user.Store) *PuzzleService {
 	return &PuzzleService{puzzleStore: ps, userStore: us}
 }
 
-func (ps *PuzzleService) GetRandomUnansweredPuzzleIdForUser(ctx context.Context, req *pb.RandomUnansweredPuzzleIdRequest) (*pb.RandomUnansweredPuzzleIdResponse, error) {
+func (ps *PuzzleService) GetStartPuzzleId(ctx context.Context, req *pb.StartPuzzleIdRequest) (*pb.StartPuzzleIdResponse, error) {
 	user, err := sessionUser(ctx, ps)
 	if err != nil {
 		return nil, err
 	}
-	puzzleId, err := GetRandomUnansweredPuzzleIdForUser(ctx, ps.puzzleStore, user.UUID, req.Lexicon)
+	puzzleId, err := GetStartPuzzleId(ctx, ps.puzzleStore, user.UUID, req.Lexicon)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.RandomUnansweredPuzzleIdResponse{PuzzleId: puzzleId}, nil
+	return &pb.StartPuzzleIdResponse{PuzzleId: puzzleId}, nil
+}
+
+func (ps *PuzzleService) GetNextPuzzleId(ctx context.Context, req *pb.NextPuzzleIdRequest) (*pb.NextPuzzleIdResponse, error) {
+	user, err := sessionUser(ctx, ps)
+	if err != nil {
+		return nil, err
+	}
+	puzzleId, err := GetNextPuzzleId(ctx, ps.puzzleStore, user.UUID, req.Lexicon)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.NextPuzzleIdResponse{PuzzleId: puzzleId}, nil
 }
 
 func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *pb.PuzzleRequest) (*pb.PuzzleResponse, error) {
@@ -50,12 +62,12 @@ func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *pb.PuzzleRequest) (
 	return &pb.PuzzleResponse{History: gameHist, BeforeText: beforeText, Attempts: attempts, Status: boolPtrToPuzzleStatus(status), FirstAttemptTime: timestamppb.New(firstAttemptTime), LastAttemptTime: timestamppb.New(lastAttemptTime)}, nil
 }
 
-func (ps *PuzzleService) GetPreviousPuzzle(ctx context.Context, req *pb.PreviousPuzzleRequest) (*pb.PreviousPuzzleResponse, error) {
+func (ps *PuzzleService) GetPreviousPuzzleId(ctx context.Context, req *pb.PreviousPuzzleRequest) (*pb.PreviousPuzzleResponse, error) {
 	user, err := sessionUser(ctx, ps)
 	if err != nil {
 		return nil, err
 	}
-	puzzleId, err := GetPreviousPuzzle(ctx, ps.puzzleStore, user.UUID, req.PuzzleId)
+	puzzleId, err := GetPreviousPuzzleId(ctx, ps.puzzleStore, user.UUID, req.PuzzleId)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}

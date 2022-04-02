@@ -27,8 +27,8 @@ import {
   PuzzleRequest,
   PuzzleResponse,
   PuzzleStatus,
-  RandomUnansweredPuzzleIdRequest,
-  RandomUnansweredPuzzleIdResponse,
+  NextPuzzleIdRequest,
+  NextPuzzleIdResponse,
   SubmissionRequest,
   SubmissionResponse,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
@@ -170,13 +170,13 @@ export const SinglePuzzle = (props: Props) => {
     if (!userLexicon) {
       return;
     }
-    const req = new RandomUnansweredPuzzleIdRequest();
+    const req = new NextPuzzleIdRequest();
     req.setLexicon(userLexicon);
     try {
       const resp = await postProto(
-        RandomUnansweredPuzzleIdResponse,
+        NextPuzzleIdResponse,
         'puzzle_service.PuzzleService',
-        'GetRandomUnansweredPuzzleIdForUser',
+        'GetNextPuzzleIdForUser',
         req
       );
       console.log('got resp', resp.toObject());
