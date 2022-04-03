@@ -1,5 +1,5 @@
 import { HomeOutlined } from '@ant-design/icons';
-import { Card, Form, message, Modal } from 'antd';
+import { Button, Card, Form, message, Modal } from 'antd';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { postProto } from '../api/api';
@@ -284,38 +284,6 @@ export const SinglePuzzle = (props: Props) => {
     [placeMove, sortedRack]
   );
 
-  const showSolution = useCallback(async () => {
-    const req = new SubmissionRequest();
-    req.setShowSolution(true);
-    req.setPuzzleId(puzzleID);
-    BoopSounds.playSound('puzzleWrongSound');
-    console.log('showing solution?', userIDOnTurn, gameContext.players);
-    try {
-      const resp = await postProto(
-        SubmissionResponse,
-        'puzzle_service.PuzzleService',
-        'SubmitAnswer',
-        req
-      );
-      console.log('got resp', resp.toObject());
-      const solution = resp.getCorrectAnswer();
-      setPuzzleInfo((x) => ({
-        ...x,
-        attempts: resp.getAttempts(),
-        solved: PuzzleStatus.INCORRECT,
-      }));
-      // Place the tiles from the event.
-      placeGameEvt(solution!);
-      // Also get the game metadata.
-      setGameInfo(resp.getGameId(), resp.getTurnNumber());
-    } catch (err) {
-      message.error({
-        content: err.message,
-        duration: 5,
-      });
-    }
-  }, [puzzleID, userIDOnTurn, gameContext.players, placeGameEvt]);
-
   const setGameInfo = useCallback(async (gid: string, turnNumber: number) => {
     const req = new GameInfoRequest();
     req.setGameId(gid);
@@ -353,6 +321,38 @@ export const SinglePuzzle = (props: Props) => {
     }
   }, []);
 
+  const showSolution = useCallback(async () => {
+    const req = new SubmissionRequest();
+    req.setShowSolution(true);
+    req.setPuzzleId(puzzleID);
+    BoopSounds.playSound('puzzleWrongSound');
+    console.log('showing solution?', userIDOnTurn, gameContext.players);
+    try {
+      const resp = await postProto(
+        SubmissionResponse,
+        'puzzle_service.PuzzleService',
+        'SubmitAnswer',
+        req
+      );
+      console.log('got resp', resp.toObject());
+      const solution = resp.getCorrectAnswer();
+      setPuzzleInfo((x) => ({
+        ...x,
+        attempts: resp.getAttempts(),
+        solved: PuzzleStatus.INCORRECT,
+      }));
+      // Place the tiles from the event.
+      placeGameEvt(solution!);
+      // Also get the game metadata.
+      setGameInfo(resp.getGameId(), resp.getTurnNumber());
+    } catch (err) {
+      message.error({
+        content: err.message,
+        duration: 5,
+      });
+    }
+  }, [puzzleID, userIDOnTurn, gameContext.players, placeGameEvt, setGameInfo]);
+
   const attemptPuzzle = useCallback(
     async (evt: ClientGameplayEvent) => {
       const req = new SubmissionRequest();
@@ -366,8 +366,7 @@ export const SinglePuzzle = (props: Props) => {
           req
         );
         console.log('got resp', resp.toObject());
-        if (resp.getStatus() === PuzzleStatus.CORRECT) {
-          // TODO: The user got the answer right
+        if (resp.getUserIsCorrect()) {
           BoopSounds.playSound('puzzleCorrectSound');
           setGameInfo(resp.getGameId(), resp.getTurnNumber());
           setShowResponseModalCorrect(true);
@@ -514,9 +513,7 @@ export const SinglePuzzle = (props: Props) => {
           setShowResponseModalWrong(false);
         }}
         footer={[
-          <button
-            disabled={false}
-            className="primary"
+          <Button
             key="giveup"
             onClick={() => {
               showSolution();
@@ -524,17 +521,16 @@ export const SinglePuzzle = (props: Props) => {
             }}
           >
             Give up
-          </button>,
-          <button
-            disabled={false}
-            className="primary"
+          </Button>,
+          <Button
             key="ok"
+            type="primary"
             onClick={() => {
               setShowResponseModalWrong(false);
             }}
           >
             Keep trying
-          </button>,
+          </Button>,
         ]}
       >
         <p>
@@ -592,6 +588,7 @@ export const SinglePuzzle = (props: Props) => {
     );
   }, [showResponseModalCorrect, puzzleInfo, loadNewPuzzle]);
 
+  const doNothing = useCallback(() => {}, []);
   let ret = (
     <div className="game-container puzzle-container">
       <TopBar />
@@ -624,7 +621,7 @@ export const SinglePuzzle = (props: Props) => {
             currentRack={sortedRack}
             events={gameContext.turns}
             gameID={''} /* no game id for a puzzle */
-            sendSocketMsg={() => {}}
+            sendSocketMsg={doNothing}
             sendGameplayEvent={attemptPuzzle}
             gameDone={false}
             playerMeta={[]}
@@ -632,8 +629,8 @@ export const SinglePuzzle = (props: Props) => {
             lexicon={gameHistory?.getLexicon()!}
             alphabet={alphabet}
             challengeRule={'SINGLE' as ChallengeRule} /* doesn't matter */
-            handleAcceptRematch={() => {}}
-            handleAcceptAbort={() => {}}
+            handleAcceptRematch={doNothing}
+            handleAcceptAbort={doNothing}
             puzzleMode
             puzzleSolved={puzzleInfo.solved}
             // handleSetHover={handleSetHover}   // fix later with definitions.
