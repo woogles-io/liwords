@@ -25,6 +25,7 @@ export function LoginStateReducer(
   switch (action.actionType) {
     case ActionType.SetAuthentication: {
       const auth = action.payload as AuthInfo;
+      console.log('decoded auth', auth);
       return {
         ...state,
         ...auth,

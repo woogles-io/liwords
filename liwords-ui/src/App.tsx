@@ -3,7 +3,7 @@ import { Route, Switch, useLocation, Redirect } from 'react-router-dom';
 import { useMountedState } from './utils/mounted';
 import './App.scss';
 import axios from 'axios';
-import 'antd/dist/antd.css';
+import 'antd/dist/antd.min.css';
 
 import { Table as GameTable } from './gameroom/table';
 import TileImages from './gameroom/tile_images';

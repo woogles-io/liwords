@@ -7,7 +7,7 @@ import { useMountedState } from '../utils/mounted';
 import { AnnouncementEditor } from './announcement_editor';
 import './admin.scss';
 // import { TourneyManager } from './tourney_manager';
-// import 'antd/dist/antd.css';
+// import 'antd/dist/antd.min.css';
 
 type Props = {};
 
