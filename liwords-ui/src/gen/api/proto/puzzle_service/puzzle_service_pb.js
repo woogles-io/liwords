@@ -1529,6 +1529,8 @@ proto.puzzle_service.SubmissionResponse.toObject = function(includeInstance, msg
     turnNumber: jspb.Message.getFieldWithDefault(msg, 5, 0),
     afterText: jspb.Message.getFieldWithDefault(msg, 6, ""),
     attempts: jspb.Message.getFieldWithDefault(msg, 7, 0),
+    newUserRating: jspb.Message.getFieldWithDefault(msg, 8, 0),
+    newPuzzleRating: jspb.Message.getFieldWithDefault(msg, 9, 0),
     firstAttemptTime: (f = msg.getFirstAttemptTime()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f),
     lastAttemptTime: (f = msg.getLastAttemptTime()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f)
   };
@@ -1597,11 +1599,19 @@ proto.puzzle_service.SubmissionResponse.deserializeBinaryFromReader = function(m
       msg.setAttempts(value);
       break;
     case 8:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setNewUserRating(value);
+      break;
+    case 9:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setNewPuzzleRating(value);
+      break;
+    case 10:
       var value = new google_protobuf_timestamp_pb.Timestamp;
       reader.readMessage(value,google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
       msg.setFirstAttemptTime(value);
       break;
-    case 9:
+    case 11:
       var value = new google_protobuf_timestamp_pb.Timestamp;
       reader.readMessage(value,google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
       msg.setLastAttemptTime(value);
@@ -1685,10 +1695,24 @@ proto.puzzle_service.SubmissionResponse.serializeBinaryToWriter = function(messa
       f
     );
   }
+  f = message.getNewUserRating();
+  if (f !== 0) {
+    writer.writeInt32(
+      8,
+      f
+    );
+  }
+  f = message.getNewPuzzleRating();
+  if (f !== 0) {
+    writer.writeInt32(
+      9,
+      f
+    );
+  }
   f = message.getFirstAttemptTime();
   if (f != null) {
     writer.writeMessage(
-      8,
+      10,
       f,
       google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
     );
@@ -1696,7 +1720,7 @@ proto.puzzle_service.SubmissionResponse.serializeBinaryToWriter = function(messa
   f = message.getLastAttemptTime();
   if (f != null) {
     writer.writeMessage(
-      9,
+      11,
       f,
       google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
     );
@@ -1850,12 +1874,48 @@ proto.puzzle_service.SubmissionResponse.prototype.setAttempts = function(value) 
 
 
 /**
- * optional google.protobuf.Timestamp first_attempt_time = 8;
+ * optional int32 new_user_rating = 8;
+ * @return {number}
+ */
+proto.puzzle_service.SubmissionResponse.prototype.getNewUserRating = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 8, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.puzzle_service.SubmissionResponse} returns this
+ */
+proto.puzzle_service.SubmissionResponse.prototype.setNewUserRating = function(value) {
+  return jspb.Message.setProto3IntField(this, 8, value);
+};
+
+
+/**
+ * optional int32 new_puzzle_rating = 9;
+ * @return {number}
+ */
+proto.puzzle_service.SubmissionResponse.prototype.getNewPuzzleRating = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 9, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.puzzle_service.SubmissionResponse} returns this
+ */
+proto.puzzle_service.SubmissionResponse.prototype.setNewPuzzleRating = function(value) {
+  return jspb.Message.setProto3IntField(this, 9, value);
+};
+
+
+/**
+ * optional google.protobuf.Timestamp first_attempt_time = 10;
  * @return {?proto.google.protobuf.Timestamp}
  */
 proto.puzzle_service.SubmissionResponse.prototype.getFirstAttemptTime = function() {
   return /** @type{?proto.google.protobuf.Timestamp} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 8));
+    jspb.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 10));
 };
 
 
@@ -1864,7 +1924,7 @@ proto.puzzle_service.SubmissionResponse.prototype.getFirstAttemptTime = function
  * @return {!proto.puzzle_service.SubmissionResponse} returns this
 */
 proto.puzzle_service.SubmissionResponse.prototype.setFirstAttemptTime = function(value) {
-  return jspb.Message.setWrapperField(this, 8, value);
+  return jspb.Message.setWrapperField(this, 10, value);
 };
 
 
@@ -1882,17 +1942,17 @@ proto.puzzle_service.SubmissionResponse.prototype.clearFirstAttemptTime = functi
  * @return {boolean}
  */
 proto.puzzle_service.SubmissionResponse.prototype.hasFirstAttemptTime = function() {
-  return jspb.Message.getField(this, 8) != null;
+  return jspb.Message.getField(this, 10) != null;
 };
 
 
 /**
- * optional google.protobuf.Timestamp last_attempt_time = 9;
+ * optional google.protobuf.Timestamp last_attempt_time = 11;
  * @return {?proto.google.protobuf.Timestamp}
  */
 proto.puzzle_service.SubmissionResponse.prototype.getLastAttemptTime = function() {
   return /** @type{?proto.google.protobuf.Timestamp} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 9));
+    jspb.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 11));
 };
 
 
@@ -1901,7 +1961,7 @@ proto.puzzle_service.SubmissionResponse.prototype.getLastAttemptTime = function(
  * @return {!proto.puzzle_service.SubmissionResponse} returns this
 */
 proto.puzzle_service.SubmissionResponse.prototype.setLastAttemptTime = function(value) {
-  return jspb.Message.setWrapperField(this, 9, value);
+  return jspb.Message.setWrapperField(this, 11, value);
 };
 
 
@@ -1919,7 +1979,7 @@ proto.puzzle_service.SubmissionResponse.prototype.clearLastAttemptTime = functio
  * @return {boolean}
  */
 proto.puzzle_service.SubmissionResponse.prototype.hasLastAttemptTime = function() {
-  return jspb.Message.getField(this, 9) != null;
+  return jspb.Message.getField(this, 11) != null;
 };
 
 

@@ -80,16 +80,16 @@ func GetPreviousPuzzleId(ctx context.Context, ps PuzzleStore, userId string, puz
 }
 
 func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleUUID string, userId string,
-	userAnswer *ipc.ClientGameplayEvent, showSolution bool) (bool, *bool, *macondopb.GameEvent, string, int32, string, int32, time.Time, time.Time, error) {
+	userAnswer *ipc.ClientGameplayEvent, showSolution bool) (bool, *bool, *macondopb.GameEvent, string, int32, string, int32, int32, int32, time.Time, time.Time, error) {
 	correctAnswer, gameId, turnNumber, afterText, req, puzzleRating, err := ps.GetAnswer(ctx, puzzleUUID)
 	if err != nil {
-		return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, err
+		return false, nil, nil, "", -1, "", -1, -1, -1, time.Time{}, time.Time{}, err
 	}
 	userIsCorrect := answersAreEqual(userAnswer, correctAnswer)
 	// Check if user has already seen this puzzle
 	_, attempts, status, _, _, err := ps.GetAttempts(ctx, userId, puzzleUUID)
 	if err != nil {
-		return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, err
+		return false, nil, nil, "", -1, "", -1, -1, -1, time.Time{}, time.Time{}, err
 	}
 	log.Debug().Interface("status", status).
 		Int32("attempts", attempts).Msg("equal")
@@ -101,7 +101,7 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleUUID string, userId
 		// Get the user ratings
 		userRating, err := ps.GetUserRating(ctx, userId, rk)
 		if err != nil {
-			return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, err
+			return false, nil, nil, "", -1, "", -1, -1, -1, time.Time{}, time.Time{}, err
 		}
 
 		spread := glicko.SpreadScaling + 1
@@ -139,12 +139,12 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleUUID string, userId
 
 	err = ps.SubmitAnswer(ctx, userId, rk, newUserSingleRating, puzzleUUID, newPuzzleSingleRating, userIsCorrect, showSolution)
 	if err != nil {
-		return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, err
+		return false, nil, nil, "", -1, "", -1, -1, -1, time.Time{}, time.Time{}, err
 	}
 
 	_, attempts, status, firstAttemptTime, lastAttemptTime, err := ps.GetAttempts(ctx, userId, puzzleUUID)
 	if err != nil {
-		return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, err
+		return false, nil, nil, "", -1, "", -1, -1, -1, time.Time{}, time.Time{}, err
 	}
 
 	if !showSolution && !userIsCorrect {
@@ -152,7 +152,16 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleUUID string, userId
 		gameId = ""
 	}
 
-	return userIsCorrect, status, correctAnswer, gameId, turnNumber, afterText, attempts, firstAttemptTime, lastAttemptTime, nil
+	nur := int32(0)
+	npr := int32(0)
+	if newUserSingleRating != nil {
+		nur = int32(newUserSingleRating.Rating)
+	}
+	if newPuzzleSingleRating != nil {
+		npr = int32(newPuzzleSingleRating.Rating)
+	}
+
+	return userIsCorrect, status, correctAnswer, gameId, turnNumber, afterText, attempts, nur, npr, firstAttemptTime, lastAttemptTime, nil
 }
 
 func SetPuzzleVote(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID string, vote int) error {

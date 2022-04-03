@@ -45,8 +45,10 @@ message SubmissionResponse {
   int32 turn_number = 5;
   string after_text = 6;
   int32 attempts = 7;
-  google.protobuf.Timestamp first_attempt_time = 8;
-  google.protobuf.Timestamp last_attempt_time = 9;
+  int32 new_user_rating = 8;
+  int32 new_puzzle_rating = 9;
+  google.protobuf.Timestamp first_attempt_time = 10;
+  google.protobuf.Timestamp last_attempt_time = 11;
 }
 
 message PreviousPuzzleRequest { string puzzle_id = 1; }

@@ -206,6 +206,12 @@ export class SubmissionResponse extends jspb.Message {
   getAttempts(): number;
   setAttempts(value: number): void;
 
+  getNewUserRating(): number;
+  setNewUserRating(value: number): void;
+
+  getNewPuzzleRating(): number;
+  setNewPuzzleRating(value: number): void;
+
   hasFirstAttemptTime(): boolean;
   clearFirstAttemptTime(): void;
   getFirstAttemptTime(): google_protobuf_timestamp_pb.Timestamp | undefined;
@@ -235,6 +241,8 @@ export namespace SubmissionResponse {
     turnNumber: number,
     afterText: string,
     attempts: number,
+    newUserRating: number,
+    newPuzzleRating: number,
     firstAttemptTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
     lastAttemptTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
   }
