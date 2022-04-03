@@ -83,7 +83,12 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       if (item.players[userplace].first) {
         turnOrder = <CheckCircleTwoTone twoToneColor="#52c41a" />;
       }
-      const when = moment(item.created_at ? item.created_at : '').fromNow();
+      const whenMoment = moment(item.created_at ? item.created_at : '');
+      const when = (
+        <Tooltip title={whenMoment.format('LLL')}>
+          {whenMoment.fromNow()}
+        </Tooltip>
+      );
       let endReason = '';
       switch (item.game_end_reason) {
         case 'TIME':

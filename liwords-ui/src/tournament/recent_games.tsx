@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import moment from 'moment';
-import { Button, Table, Tag } from 'antd';
+import { Button, Table, Tag, Tooltip } from 'antd';
 import { RecentGame } from './recent_game';
 
 type Props = {
@@ -54,10 +54,12 @@ export const RecentTourneyGames = React.memo((props: Props) => {
       );
       const whenMoment = moment.unix(item.time ? item.time : 0);
 
-      let when = whenMoment.format('HH:mm');
+      let when: string | JSX.Element = whenMoment.format('HH:mm');
       if (whenMoment.dayOfYear() !== moment.unix(lastDate).dayOfYear()) {
         when = whenMoment.format('MMM Do HH:mm');
       }
+      when = <Tooltip title={whenMoment.format('LLL')}>{when}</Tooltip>;
+
       lastDate = item.time;
       let endReason = '';
       switch (item.end_reason) {
