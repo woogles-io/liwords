@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Switch, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
 
 import { useLagStoreContext } from '../store/store';
 import './footer.scss';
@@ -9,16 +9,6 @@ import {
   InstagramFilled,
   TwitterCircleFilled,
 } from '@ant-design/icons';
-
-let waffles = false;
-let today = new Date();
-if (
-  today.getDate() === 1 &&
-  today.getMonth() === 3 &&
-  localStorage.getItem('nowaffles') !== 'true'
-) {
-  waffles = true;
-}
 
 const Footer = React.memo(() => {
   const { currentLagMs } = useLagStoreContext();
@@ -143,26 +133,6 @@ const Footer = React.memo(() => {
           <a href="/logout">Log out</a>
         </div>
         <p className="copyright">{`©2020-${currentYear} by Woogles.io`}</p>
-        <small>
-          <a
-            href="https://www.flaticon.com/free-icons/waffle"
-            title="waffle icons"
-          >
-            Waffle icons created by Good Ware - Flaticon
-          </a>
-        </small>
-        {waffles && (
-          <p>
-            I've had too many waffles&nbsp;
-            <Switch
-              defaultChecked={localStorage.getItem('nowaffles') === 'true'}
-              onChange={() => {
-                localStorage.setItem('nowaffles', 'true');
-                window.location.reload();
-              }}
-            />
-          </p>
-        )}
       </div>
     </footer>
   );
