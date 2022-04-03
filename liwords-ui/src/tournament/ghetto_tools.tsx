@@ -379,7 +379,6 @@ const AddPlayers = (props: { tournamentID: string }) => {
                 <Form.Item
                   {...field}
                   name={[field.name, 'username']}
-                  fieldKey={[field.fieldKey, 'username']}
                   rules={[{ required: true, message: 'Missing username' }]}
                 >
                   <Input placeholder="Username" />
@@ -387,7 +386,6 @@ const AddPlayers = (props: { tournamentID: string }) => {
                 <Form.Item
                   {...field}
                   name={[field.name, 'rating']}
-                  fieldKey={[field.fieldKey, 'rating']}
                   rules={[{ required: true, message: 'Missing rating' }]}
                 >
                   <Input placeholder="Rating" />

@@ -52,9 +52,10 @@ export const fieldsForMethod = (
     PairingMethod.INITIAL_FONTES):
       return [];
 
+    // @ts-ignore
     case PairingMethod.FACTOR:
       fields.push(['number', 'factor', 'Factor']);
-    // fallthrough
+    // purposeful fallthrough
     case PairingMethod.SWISS:
       fields.push(
         ['number', 'maxRepeats', 'Max Desirable Repeats (1 is no repeats)'],

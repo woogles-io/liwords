@@ -519,8 +519,9 @@ export const SeekForm = (props: Props) => {
             filterOption={(inputValue, option) =>
               !option ||
               !option.value ||
-              option.value.toUpperCase().indexOf(inputValue.toUpperCase()) !==
-                -1
+              (typeof option.value === 'string' &&
+                option.value.toUpperCase().indexOf(inputValue.toUpperCase()) !==
+                  -1)
             }
             onDropdownVisibleChange={handleDropdownVisibleChange}
           >
