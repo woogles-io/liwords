@@ -12,7 +12,7 @@ module.exports = function override(config, env) {
   });
 
   config.experiments = {
-    futureDefaults: true,
+    asyncWebAssembly: true,
   };
 
   return config;
