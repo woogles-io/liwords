@@ -7,7 +7,7 @@ import {
   TourneyStatus,
 } from '../store/reducers/tournament_reducer';
 
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReadyButton } from './ready_button';
 import {
   TournamentPerson,
@@ -155,7 +155,7 @@ type PairingTableData = {
 export const Pairings = React.memo((props: Props) => {
   const { tournamentContext } = useTournamentStoreContext();
   const { divisions } = tournamentContext;
-  const history = useHistory();
+  const navigate = useNavigate();
   const currentRound = useMemo(
     () =>
       props.selectedDivision && divisions[props.selectedDivision]
@@ -325,7 +325,7 @@ export const Pairings = React.memo((props: Props) => {
                     <Button
                       className="primary"
                       onClick={() => {
-                        history.replace(
+                        navigate(
                           `/game/${encodeURIComponent(
                             findGameIdFromActive(props.username!) || ''
                           )}`
@@ -354,9 +354,7 @@ export const Pairings = React.memo((props: Props) => {
                     if (event.ctrlKey || event.altKey || event.metaKey) {
                       window.open(`/game/${encodeURIComponent(otherGameId)}`);
                     } else {
-                      history.replace(
-                        `/game/${encodeURIComponent(otherGameId)}`
-                      );
+                      navigate(`/game/${encodeURIComponent(otherGameId)}`);
                       console.log('redirecting to', otherGameId);
                     }
                   }}
@@ -385,9 +383,7 @@ export const Pairings = React.memo((props: Props) => {
                   if (event.ctrlKey || event.altKey || event.metaKey) {
                     window.open(`/game/${encodeURIComponent(finishedGame)}`);
                   } else {
-                    history.replace(
-                      `/game/${encodeURIComponent(finishedGame)}`
-                    );
+                    navigate(`/game/${encodeURIComponent(finishedGame)}`);
                     console.log('redirecting to', finishedGame);
                   }
                 }}

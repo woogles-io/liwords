@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { message, notification } from 'antd';
 import {
   ChatEntityType,
@@ -184,9 +184,7 @@ export const useOnSocketMsg = () => {
   const { stopClock } = useTimerStoreContext();
   const { isExamining } = useExamineStoreContext();
 
-  const history = useHistory();
-  const historyRef = useRef(history);
-  historyRef.current = history;
+  const navigate = useNavigate();
 
   return useCallback(
     (reader: FileReader) => {
@@ -354,12 +352,12 @@ export const useOnSocketMsg = () => {
                 key: 'rematch-notification',
                 duration: 10, // 10 seconds,
                 onClick: () => {
-                  historyRef.current.replace(url);
+                  navigate(url);
                   notification.close('rematch-notification');
                 },
               });
             } else {
-              historyRef.current.replace(url);
+              navigate(url, { replace: true });
               setGameEndMessage('');
             }
             break;
@@ -660,7 +658,7 @@ export const useOnSocketMsg = () => {
               payload: '',
             });
             const gid = nge.getGameId();
-            historyRef.current.replace(`/game/${encodeURIComponent(gid)}`);
+            navigate(`/game/${encodeURIComponent(gid)}`, { replace: true });
             setGameEndMessage('');
             break;
           }
@@ -890,6 +888,7 @@ export const useOnSocketMsg = () => {
       gameMetaEventContext,
       loginState,
       friends,
+      navigate,
       setFriends,
       setCurrentLagMs,
       setGameEndMessage,

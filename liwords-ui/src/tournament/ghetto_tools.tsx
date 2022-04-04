@@ -21,7 +21,7 @@ import {
 import { Modal } from '../utils/focus_modal';
 import { Store } from 'rc-field-form/lib/interface';
 import React, { useEffect } from 'react';
-import { postJsonObj, postProto } from '../api/api';
+import { LiwordsAPIError, postJsonObj, postProto } from '../api/api';
 import {
   SingleRoundControlsRequest,
   TournamentResponse,
@@ -974,7 +974,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
         duration: 3,
       });
     } catch (e) {
-      showError(e.message);
+      showError((e as LiwordsAPIError).message);
     }
   };
 
@@ -1322,7 +1322,7 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
         duration: 3,
       });
     } catch (e) {
-      showError(e.message);
+      showError((e as LiwordsAPIError).message);
     }
   };
 
@@ -1479,7 +1479,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
         duration: 3,
       });
     } catch (e) {
-      showError(e.message);
+      showError((e as LiwordsAPIError).message);
     }
   };
 

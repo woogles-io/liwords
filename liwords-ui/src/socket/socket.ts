@@ -153,8 +153,9 @@ export const LiwordsSocket = (props: {
 
       return ret;
     } catch (e) {
-      if (e.response) {
-        window.console.log(e.response);
+      // XXX: Fix this; figure out what type of error this can be:
+      if ((e as { [response: string]: string }).response) {
+        window.console.log((e as { [response: string]: string }).response);
       }
       return failUrl;
     }
@@ -266,10 +267,10 @@ export const LiwordsSocket = (props: {
     };
   }, [originalSendMessage]);
 
-  const ret = useMemo(() => ({ sendMessage, justDisconnected }), [
-    sendMessage,
-    justDisconnected,
-  ]);
+  const ret = useMemo(
+    () => ({ sendMessage, justDisconnected }),
+    [sendMessage, justDisconnected]
+  );
   useEffect(() => {
     setValues(ret);
   }, [setValues, ret]);

@@ -1,6 +1,6 @@
 import { Table, Tooltip } from 'antd';
 import React, { ReactNode } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { FundOutlined } from '@ant-design/icons/lib';
 import { RatingBadge } from './rating_badge';
 import { challengeFormat, PlayerDisplay, timeFormat } from './sought_games';
@@ -17,7 +17,7 @@ type Props = {
 };
 
 export const ActiveGames = (props: Props) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const {
     loginState: { perms },
   } = useLoginStateStoreContext();
@@ -172,7 +172,7 @@ export const ActiveGames = (props: Props) => {
               if (event.ctrlKey || event.altKey || event.metaKey) {
                 window.open(`/game/${encodeURIComponent(record.gameID)}`);
               } else {
-                history.replace(`/game/${encodeURIComponent(record.gameID)}`);
+                navigate(`/game/${encodeURIComponent(record.gameID)}`);
                 console.log('redirecting to', record.gameID);
               }
             },

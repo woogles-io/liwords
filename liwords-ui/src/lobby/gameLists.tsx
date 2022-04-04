@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, Button } from 'antd';
 import { Modal } from '../utils/focus_modal';
 import { useMountedState } from '../utils/mounted';
@@ -22,7 +22,7 @@ type Props = {
 
 export const GameLists = React.memo((props: Props) => {
   const { useState } = useMountedState();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const {
     loggedIn,
@@ -288,7 +288,7 @@ export const GameLists = React.memo((props: Props) => {
         <div
           className="resume"
           onClick={() => {
-            history.replace(`/game/${encodeURIComponent(currentGame.gameID)}`);
+            navigate(`/game/${encodeURIComponent(currentGame.gameID)}`);
             console.log('redirecting to', currentGame.gameID);
           }}
         >

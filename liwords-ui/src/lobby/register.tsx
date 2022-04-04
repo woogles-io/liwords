@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMountedState } from '../utils/mounted';
 import axios from 'axios';
 import { TopBar } from '../navigation/topbar';
@@ -248,13 +248,13 @@ export const Register = () => {
       });
   };
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const loggedIn = signedUp || loginState.loggedIn;
   useEffect(() => {
     if (loggedIn) {
-      history.replace('/');
+      navigate('/', { replace: true });
     }
-  }, [history, loggedIn]);
+  }, [navigate, loggedIn]);
 
   // XXX: This is copied from settings/personal_info.tsx (with added placeholder).
   // It has the same issues (such as the emoji not displaying on Windows).

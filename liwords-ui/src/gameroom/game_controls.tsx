@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Affix, Button, Dropdown, Menu, Modal, Popconfirm } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 
@@ -294,12 +294,10 @@ const GameControls = React.memo((props: Props) => {
     []
   );
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const handleExitToLobby = useCallback(() => {
-    props.tournamentSlug
-      ? history.replace(props.tournamentSlug)
-      : history.replace('/');
-  }, [history, props.tournamentSlug]);
+    props.tournamentSlug ? navigate(props.tournamentSlug) : navigate('/');
+  }, [navigate, props.tournamentSlug]);
 
   const {
     isExamining,

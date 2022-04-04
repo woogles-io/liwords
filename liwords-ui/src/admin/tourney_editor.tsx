@@ -26,7 +26,7 @@ import {
 } from '../tournament/game_settings_form';
 
 import { useMountedState } from '../utils/mounted';
-import { postProto, toAPIUrl } from '../api/api';
+import { LiwordsAPIError, postProto, toAPIUrl } from '../api/api';
 import {
   GetTournamentMetadataRequest,
   TournamentMetadataResponse,
@@ -157,7 +157,7 @@ export const TourneyEditor = (props: Props) => {
       });
     } catch (err) {
       message.error({
-        content: 'Error: ' + err.response?.data?.msg,
+        content: 'Error: ' + (err as LiwordsAPIError).message,
         duration: 5,
       });
     }

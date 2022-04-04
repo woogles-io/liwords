@@ -13,6 +13,10 @@ interface PBMsg {
   serializeBinary(): Uint8Array;
 }
 
+export type LiwordsAPIError = {
+  message: string;
+};
+
 export const postJsonObj = async (
   service: string,
   method: string,
@@ -42,7 +46,7 @@ export const postJsonObj = async (
   } catch (e) {
     if (!errHandler) {
       message.error({
-        content: e?.message,
+        content: (e as LiwordsAPIError).message,
         duration: 8,
       });
     } else {

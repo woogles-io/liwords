@@ -311,7 +311,7 @@ export const UserProfile = React.memo((props: Props) => {
               username={username}
             />
             <h3>
-              {viewer !== username ? (
+              {username && viewer !== username ? (
                 <UsernameWithContext
                   omitProfileLink
                   omitSendMessage
@@ -341,13 +341,17 @@ export const UserProfile = React.memo((props: Props) => {
           </div>
         )}
         <RatingsCard ratings={ratings} />
-        <GamesHistoryCard
-          games={recentGames}
-          username={username}
-          userID={userID}
-          fetchPrev={recentGamesOffset > 0 ? fetchPrev : undefined}
-          fetchNext={recentGames.length < gamesPageSize ? undefined : fetchNext}
-        />
+        {username && (
+          <GamesHistoryCard
+            games={recentGames}
+            username={username}
+            userID={userID}
+            fetchPrev={recentGamesOffset > 0 ? fetchPrev : undefined}
+            fetchNext={
+              recentGames.length < gamesPageSize ? undefined : fetchNext
+            }
+          />
+        )}
         <StatsCard stats={stats} />
       </div>
     </>

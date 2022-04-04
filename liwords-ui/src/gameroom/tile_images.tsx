@@ -286,7 +286,7 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
 
 const TileImages = React.memo((props: {}) => {
   const { letterDistribution } = useParams();
-  return <TileImagesSingle letterDistribution={letterDistribution} />;
+  return <TileImagesSingle letterDistribution={letterDistribution || ''} />;
 });
 
 export default TileImages;

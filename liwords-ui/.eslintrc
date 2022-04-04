@@ -3,10 +3,9 @@
   "plugins": ["@typescript-eslint", "react"],
   "extends": [
     "plugin:@typescript-eslint/recommended",
-    "prettier",
-    "plugin:prettier/recommended",
     "plugin:react/recommended",
-    "plugin:react-hooks/recommended"
+    "plugin:react-hooks/recommended",
+    "plugin:prettier/recommended"  // this one must be last.
   ],
 
   "parser": "@typescript-eslint/parser",
@@ -22,13 +21,6 @@
   },
   "rules": {
     "object-curly-spacing": ["warn", "always"],
-    "no-unused-vars": [
-      "warn",
-      {
-        "vars": "all",
-        "args": "none"
-      }
-    ],
     "@typescript-eslint/no-unused-vars": [
       "warn",
       {
@@ -52,24 +44,24 @@
       }
     ],
     "no-plusplus": [
-      "error",
+      "warn",
       {
         "allowForLoopAfterthoughts": true
       }
     ],
     "react/jsx-key": "error",
-    "import/no-extraneous-dependencies": [
-      "error",
-      {
-        "devDependencies": [
-          "**/*.test.js",
-          "**/*.test.jsx",
-          "**/*.test.ts",
-          "**/*.test.tsx",
-          "src/tests/**/*"
-        ]
-      }
-    ],
+    // "import/no-extraneous-dependencies": [
+    //   "error",
+    //   {
+    //     "devDependencies": [
+    //       "**/*.test.js",
+    //       "**/*.test.jsx",
+    //       "**/*.test.ts",
+    //       "**/*.test.tsx",
+    //       "src/tests/**/*"
+    //     ]
+    //   }
+    // ],
     "react/jsx-props-no-spreading": "off",
     "import/prefer-default-export": "off",
     "react/jsx-boolean-value": "off",

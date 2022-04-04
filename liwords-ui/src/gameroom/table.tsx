@@ -3,7 +3,7 @@ import { Card, message, Popconfirm } from 'antd';
 import { HomeOutlined } from '@ant-design/icons/lib';
 import axios from 'axios';
 
-import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
+import { Link, useSearchParams, useParams } from 'react-router-dom';
 import { useMountedState } from '../utils/mounted';
 import { BoardPanel } from './board_panel';
 import { TopBar } from '../navigation/topbar';
@@ -69,7 +69,7 @@ const StreakFetchDelay = 2000;
 
 const DEFAULT_TITLE = 'Woogles.io';
 
-const ManageWindowTitleAndTurnSound = (props: {}) => {
+const ManageWindowTitleAndTurnSound = () => {
   const { gameContext } = useGameContextStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { userID } = loginState;
@@ -185,14 +185,10 @@ export const Table = React.memo((props: Props) => {
 
   const { gameID } = useParams();
   const { addChat } = useChatStoreContext();
-  const {
-    gameContext: examinableGameContext,
-  } = useExaminableGameContextStoreContext();
-  const {
-    isExamining,
-    handleExamineStart,
-    handleExamineGoTo,
-  } = useExamineStoreContext();
+  const { gameContext: examinableGameContext } =
+    useExaminableGameContextStoreContext();
+  const { isExamining, handleExamineStart, handleExamineGoTo } =
+    useExamineStoreContext();
   const { gameContext } = useGameContextStoreContext();
   const { gameEndMessage, setGameEndMessage } = useGameEndMessageStoreContext();
   const { loginState } = useLoginStateStoreContext();
@@ -200,15 +196,12 @@ export const Table = React.memo((props: Props) => {
   const { rematchRequest, setRematchRequest } = useRematchRequestStoreContext();
   const { pTimedOut, setPTimedOut } = useTimerStoreContext();
   const { username, userID, loggedIn } = loginState;
-  const {
-    tournamentContext,
-    dispatchTournamentContext,
-  } = useTournamentStoreContext();
+  const { tournamentContext, dispatchTournamentContext } =
+    useTournamentStoreContext();
   const competitorState = tournamentContext.competitorState;
   const isRegistered = competitorState.isRegistered;
   const [playerNames, setPlayerNames] = useState(new Array<string>());
   const { sendSocketMsg } = props;
-  // const location = useLocation();
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
   const [streakGameInfo, setStreakGameInfo] = useState<StreakInfoResponse>({
     streak: [],
@@ -351,6 +344,7 @@ export const Table = React.memo((props: Props) => {
     // Otherwise, player timed out. This will only send once.
     // Send the time out if we're either of both players that are in the game.
     if (isObserver) return;
+    if (!gameID) return;
 
     let timedout = '';
 
@@ -372,6 +366,7 @@ export const Table = React.memo((props: Props) => {
   }, [pTimedOut, gameContext.nickToPlayerOrder, gameID]);
 
   useEffect(() => {
+    if (!gameID) return;
     let observer = true;
     gameInfo.players.forEach((p) => {
       if (userID === p.user_id) {
@@ -590,7 +585,7 @@ export const Table = React.memo((props: Props) => {
       // design decision to improve usability and responsiveness.
       setWordInfo((oldWordInfo) => {
         let wordInfo = oldWordInfo;
-        for (const word of (playedWords as any) as [string]) {
+        for (const word of playedWords as any as [string]) {
           if (!(word in wordInfo)) {
             if (wordInfo === oldWordInfo) wordInfo = { ...oldWordInfo };
             wordInfo[word] = undefined;
@@ -709,7 +704,7 @@ export const Table = React.memo((props: Props) => {
       if (gameDone) {
         const phonies = [];
         let hasWords = false; // avoid running this before the first GameHistoryRefresher event
-        for (const word of (playedWords as any) as [string]) {
+        for (const word of playedWords as any as [string]) {
           hasWords = true;
           const definition = wordInfo[word];
           if (definition === undefined) {
@@ -838,10 +833,10 @@ export const Table = React.memo((props: Props) => {
   // If we are NOT one of the players (so an observer), display the rack of
   // the player on turn.
   let rack: string;
-  const us = useMemo(() => gameInfo.players.find((p) => p.user_id === userID), [
-    gameInfo.players,
-    userID,
-  ]);
+  const us = useMemo(
+    () => gameInfo.players.find((p) => p.user_id === userID),
+    [gameInfo.players, userID]
+  );
   if (us && !(gameDone && isExamining)) {
     rack =
       examinableGameContext.players.find((p) => p.userID === us.user_id)
@@ -862,10 +857,7 @@ export const Table = React.memo((props: Props) => {
     }
   }, [gameID, gameDone]);
 
-  const location = useLocation();
-  const searchParams = useMemo(() => new URLSearchParams(location.search), [
-    location,
-  ]);
+  const [searchParams, setSearchParams] = useSearchParams();
   const searchedTurn = useMemo(() => searchParams.get('turn'), [searchParams]);
   const turnAsStr = us && !gameDone ? '' : searchedTurn ?? ''; // Do not examine our current games.
   const hasActivatedExamineRef = useRef(false);
@@ -887,7 +879,6 @@ export const Table = React.memo((props: Props) => {
   // Autocorrect the turn on the URL.
   // Do not autocorrect when NEW_GAME_EVENT redirects to a rematch.
   const canAutocorrectURL = autocorrectURL && gameID === gameContext.gameID;
-  const history = useHistory();
   useEffect(() => {
     if (!canAutocorrectURL) return; // Too early if examining has not started.
     const turnParamShouldBe = isExamining
@@ -895,23 +886,18 @@ export const Table = React.memo((props: Props) => {
       : null;
     if (turnParamShouldBe !== searchedTurn) {
       if (turnParamShouldBe == null) {
-        searchParams.delete('turn');
+        setSearchParams({}, { replace: true });
       } else {
-        searchParams.set('turn', turnParamShouldBe);
+        setSearchParams({ turn: turnParamShouldBe }, { replace: true });
       }
-      history.replace({
-        ...location,
-        search: String(searchParams),
-      });
     }
   }, [
     canAutocorrectURL,
     examinableGameContext.turns.length,
-    history,
     isExamining,
-    location,
     searchParams,
     searchedTurn,
+    setSearchParams,
   ]);
   const boardTheme =
     'board--' + tournamentContext.metadata.getBoardStyle() || '';
@@ -946,6 +932,13 @@ export const Table = React.memo((props: Props) => {
     );
   }, [gameInfo.game_end_reason, showingFinalTurn]);
 
+  if (!gameID) {
+    return (
+      <div className="game-container">
+        These are not the games you are looking for.
+      </div>
+    );
+  }
   let ret = (
     <div className={`game-container${isRegistered ? ' competitor' : ''}`}>
       <ManageWindowTitleAndTurnSound />
