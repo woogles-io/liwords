@@ -149,11 +149,17 @@ services:
     networks:
       - aeronet
     labels:
+      - traefik.enable=true
+
       - "traefik.http.middlewares.floc.headers.customresponseheaders.Permissions-Policy=interest-cohort=()"
       - "traefik.http.routers.liwords-fe.middlewares=floc"
       - "traefik.http.routers.liwords-fe.rule=PathPrefix(`/`)"
-      - "traefik.http.services.liwords-fe.loadbalancer.server.port=3000"
-      - traefik.enable=true
+      - "traefik.http.routers.liwords-fe.service=liwords-fe-service"
+      - "traefik.http.services.liwords-fe-service.loadbalancer.server.port=3000"
+
+      - "traefik.http.routers.wds-socket.rule=PathPrefix(`/wds-socket`)"
+      - "traefik.http.routers.wds-socket.service=wds-socket-service"
+      # - "traefik.http.services.wds-socket-service.loadbalancer.server.port=80"
 
   pb_compiler:
     build:
