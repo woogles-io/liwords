@@ -2,6 +2,13 @@ import React from 'react';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import GameControls, { Props } from './game_controls';
 
+const mockedUsedNavigate = jest.fn();
+
+jest.mock('react-router-dom', () => ({
+  ...(jest.requireActual('react-router-dom') as any),
+  useNavigate: () => mockedUsedNavigate,
+}));
+
 function renderGameControls(props: Partial<Props> = {}) {
   const dummyFunction = () => {
     return;
