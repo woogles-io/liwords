@@ -135,6 +135,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile-fe
+    environment:
+      WDS_SOCKET_PORT: 0
+      WDS_SOCKET_PATH: "/wds-socket"
     volumes:
       - ./liwords-ui:/opt/liwords-ui
       # Install node_modules inside the docker container
