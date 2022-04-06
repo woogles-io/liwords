@@ -32,7 +32,7 @@ import {
 
 type Props = {
   setGameRequest: (gr: GameRequest) => void;
-  gameRequest: GameRequest | null;
+  gameRequest: GameRequest | undefined;
 };
 
 const otLabel = 'Overtime';
@@ -196,7 +196,7 @@ export const SettingsForm = (props: Props) => {
   );
 };
 
-export const DisplayedGameSetting = (gr: GameRequest | null) => {
+export const DisplayedGameSetting = (gr: GameRequest | undefined) => {
   return gr ? (
     <dl className="ant-form-text readable-text-color">
       <dt>Initial Time (Minutes)</dt>

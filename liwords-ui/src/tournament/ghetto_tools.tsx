@@ -874,8 +874,9 @@ const UnpairRound = (props: { tournamentID: string }) => {
 const SetTournamentControls = (props: { tournamentID: string }) => {
   const { useState } = useMountedState();
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedGameRequest, setSelectedGameRequest] =
-    useState<GameRequest | null>(null);
+  const [selectedGameRequest, setSelectedGameRequest] = useState<
+    GameRequest | undefined
+  >(undefined);
 
   const [division, setDivision] = useState('');
   const [gibsonize, setGibsonize] = useState(false);
@@ -893,7 +894,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
 
   useEffect(() => {
     if (!division) {
-      setSelectedGameRequest(null);
+      setSelectedGameRequest(undefined);
       return;
     }
     const div = tournamentContext.divisions[division];
@@ -901,7 +902,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     if (gameRequest) {
       setSelectedGameRequest(gameRequest);
     } else {
-      setSelectedGameRequest(null);
+      setSelectedGameRequest(undefined);
     }
     if (div.divisionControls) {
       setGibsonize(div.divisionControls.getGibsonize());

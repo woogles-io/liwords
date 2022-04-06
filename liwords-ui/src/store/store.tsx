@@ -613,10 +613,13 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       setGameEndMessage: doNothing,
     };
   }, [isShowingLatest, gameEndMessage]);
+  let shownTimes: Times;
+  if (isExamining && examinableGameContext.clockController?.current?.times) {
+    shownTimes = examinableGameContext.clockController?.current?.times;
+  } else {
+    shownTimes = timerStore.timerContext;
+  }
 
-  const shownTimes = isExamining
-    ? examinableGameContext.clockController!.current!.times
-    : timerStore.timerContext;
   const examinableTimerStore = useMemo(() => {
     return {
       stopClock: doNothing,
@@ -770,7 +773,7 @@ const RealStore = ({ children, ...props }: Props) => {
     if (!clockController || !clockController.current) {
       return;
     }
-    const newCtx = { ...clockController.current!.times, [p]: t };
+    const newCtx = { ...clockController.current.times, [p]: t };
     setTimerContext(newCtx);
   }, []);
 

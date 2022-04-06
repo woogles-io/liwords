@@ -226,7 +226,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     };
     return (
       <Button className="primary open-round" onClick={startRound}>
-        Open Round {roundToStart! + 1}
+        Open Round {roundToStart + 1}
       </Button>
     );
   };

@@ -423,7 +423,7 @@ export const Table = React.memo((props: Props) => {
           const shortList = []; // list of words and invalid entries
           const anagramDefinitions = []; // defined words
           for (const singleEntry of definition.d.split('\n')) {
-            const m = singleEntry.match(/^([^-]*) - (.*)$/m)!;
+            const m = singleEntry.match(/^([^-]*) - (.*)$/m);
             if (m) {
               const [, actualWord, actualDefinition] = m;
               anagramDefinitions.push({
@@ -805,8 +805,11 @@ export const Table = React.memo((props: Props) => {
   );
 
   const handleAcceptRematch = useCallback(() => {
-    acceptRematch(rematchRequest.getGameRequest()!.getRequestId());
-    setRematchRequest(new SeekRequest());
+    const gr = rematchRequest.getGameRequest();
+    if (gr) {
+      acceptRematch(gr.getRequestId());
+      setRematchRequest(new SeekRequest());
+    }
   }, [acceptRematch, rematchRequest, setRematchRequest]);
 
   const declineRematch = useCallback(
@@ -824,8 +827,11 @@ export const Table = React.memo((props: Props) => {
   );
 
   const handleDeclineRematch = useCallback(() => {
-    declineRematch(rematchRequest.getGameRequest()!.getRequestId());
-    setRematchRequest(new SeekRequest());
+    const gr = rematchRequest.getGameRequest();
+    if (gr) {
+      declineRematch(gr.getRequestId());
+      setRematchRequest(new SeekRequest());
+    }
   }, [declineRematch, rematchRequest, setRematchRequest]);
 
   // Figure out what rack we should display.
@@ -1043,6 +1049,8 @@ export const Table = React.memo((props: Props) => {
               !tournamentContext.directors?.includes(username) &&
               !loginState.perms.includes('adm')
             }
+            // why does my linter keep overwriting this?
+            // eslint-disable-next-line max-len
             tournamentPrivateAnalysis={tournamentContext.metadata?.getPrivateAnalysis()}
             lexicon={gameInfo.game_request.lexicon}
             alphabet={alphabet}

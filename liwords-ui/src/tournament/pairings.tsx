@@ -319,21 +319,20 @@ export const Pairings = React.memo((props: Props) => {
               } else {
                 if (
                   status === TourneyStatus.ROUND_GAME_ACTIVE &&
-                  findGameIdFromActive(props.username!)
+                  props.username &&
+                  findGameIdFromActive(props.username)
                 ) {
                   actions = (
                     <Button
                       className="primary"
                       onClick={() => {
-                        navigate(
-                          `/game/${encodeURIComponent(
-                            findGameIdFromActive(props.username!) || ''
-                          )}`
-                        );
-                        console.log(
-                          'redirecting to',
-                          findGameIdFromActive(props.username!)
-                        );
+                        if (props.username) {
+                          navigate(
+                            `/game/${encodeURIComponent(
+                              findGameIdFromActive(props.username) || ''
+                            )}`
+                          );
+                        }
                       }}
                     >
                       Resume
@@ -400,28 +399,31 @@ export const Pairings = React.memo((props: Props) => {
           }
         }
         const wl =
-          playerNames[0] === playerNames[1] ? (
+          playerNames[0] === playerNames[1] && props.selectedDivision ? (
             <p key={`${playerNames[0]}wl`}>
               {recordToString(
                 getPerformance(
                   playerNames[0],
                   round,
-                  divisions[props.selectedDivision!]
+                  divisions[props.selectedDivision]
                 )
               )}
             </p>
           ) : (
-            playerNames.map((playerName) => (
-              <p key={`${playerName}wl`}>
-                {recordToString(
-                  getPerformance(
-                    playerName,
-                    round,
-                    divisions[props.selectedDivision!]
-                  )
-                )}
-              </p>
-            ))
+            playerNames.map(
+              (playerName) =>
+                props.selectedDivision && (
+                  <p key={`${playerName}wl`}>
+                    {recordToString(
+                      getPerformance(
+                        playerName,
+                        round,
+                        divisions[props.selectedDivision]
+                      )
+                    )}
+                  </p>
+                )
+            )
           );
         const scores =
           playerNames[0] === playerNames[1]

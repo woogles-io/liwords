@@ -257,6 +257,7 @@ export const useDrawing = () => {
         i < strokesRef.current.length && strokesRef.current[i].pen !== 'erase';
         ++i
       ) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         toDraw.push(strokesRef.current[i].elt!);
       }
       for (
@@ -264,6 +265,7 @@ export const useDrawing = () => {
         i < strokesRef.current.length && strokesRef.current[i].pen === 'erase';
         ++i
       ) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         toErase.push(strokesRef.current[i].elt!);
       }
       if (toErase.length > 0) {

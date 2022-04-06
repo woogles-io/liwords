@@ -80,7 +80,7 @@ export const SeekRequestToSoughtGame = (
   let tournamentID = '';
   if (req.getReceiverIsPermanent()) {
     console.log('ismatchrequest');
-    receivingUser = req.getReceivingUser()!;
+    receivingUser = req.getReceivingUser() ?? receivingUser;
     rematchFor = req.getRematchFor();
     tournamentID = req.getTournamentId();
   }

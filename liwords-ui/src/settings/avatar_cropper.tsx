@@ -29,7 +29,7 @@ export const AvatarCropper = React.memo((props: Props) => {
         ctx = canvas.getContext('2d');
       canvas.width = 96;
       canvas.height = 96;
-      ctx!.drawImage(
+      ctx?.drawImage(
         image,
         croppedArea.x,
         croppedArea.y,
@@ -65,9 +65,11 @@ export const AvatarCropper = React.memo((props: Props) => {
 
         canvas.width = width;
         canvas.height = height;
-        ctx!.fillStyle = 'rgba(255,255,255,1)';
-        ctx!.fillRect(0, 0, width, height);
-        ctx!.drawImage(image, 0, 0, width, height);
+        if (ctx) {
+          ctx.fillStyle = 'rgba(255,255,255,1)';
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(image, 0, 0, width, height);
+        }
         setDataUrl(canvas.toDataURL('image/jpeg', 1));
       };
       image.src = String(reader.result);

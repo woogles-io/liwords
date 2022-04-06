@@ -11,8 +11,10 @@ export class Unrace {
     const turn = new Promise<void>((res) => {
       ready = res;
     });
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     this.queue.push({ turn, ready: ready! });
     if (this.queue.length === 1) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       ready!();
     } else {
       await turn;

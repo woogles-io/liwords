@@ -61,7 +61,7 @@ const ExamineGameControls = React.memo(
       setPlacedTiles(new Set<EphemeralTile>());
     }, [examinedTurn, setPlacedTiles, setPlacedTilesTempScore]);
     useEffect(() => {
-      doneButtonRef.current!.focus();
+      doneButtonRef.current?.focus();
     }, [doneButtonRef]);
     const numberOfTurns = gameContext.turns.length;
     const gameHasNotStarted = gameContext.players.length === 0; // :shrug:

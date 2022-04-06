@@ -881,6 +881,7 @@ export function TournamentReducer(
 
       const deleted = dd.getDivision();
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { [deleted]: _, ...divisions } = state.divisions;
 
       return Object.assign({}, state, {

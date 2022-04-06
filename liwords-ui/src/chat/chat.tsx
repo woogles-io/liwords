@@ -348,8 +348,8 @@ export const Chat = React.memo((props: Props) => {
       const lastMessage = chatEntities.reduce(
         (acc: ChatEntityObj | undefined, ch) =>
           ch.channel === defaultChannel &&
-          'timestamp' in ch &&
-          (acc === undefined || ch.timestamp! > acc.timestamp!)
+          ch.timestamp &&
+          (acc === undefined || (acc.timestamp && ch.timestamp > acc.timestamp))
             ? ch
             : acc,
         undefined
@@ -424,8 +424,8 @@ export const Chat = React.memo((props: Props) => {
     if (selectedChatTab === 'PLAYERS') {
       const lastMessage = chatEntities.reduce(
         (acc: ChatEntityObj | undefined, ch) =>
-          'timestamp' in ch &&
-          (acc === undefined || ch.timestamp! > acc.timestamp!)
+          ch.timestamp &&
+          (acc === undefined || (acc.timestamp && ch.timestamp > acc.timestamp))
             ? ch
             : acc,
         undefined
@@ -512,11 +512,14 @@ export const Chat = React.memo((props: Props) => {
           const specialSender = props.highlight
             ? props.highlight.includes(ent.sender)
             : false;
+          if (!ent.id) {
+            return null;
+          }
           return (
             <ChatEntity
               entityType={ent.entityType}
               key={ent.id}
-              msgID={ent.id!}
+              msgID={ent.id}
               sender={ent.sender}
               senderId={ent.senderId}
               message={ent.message}
@@ -693,7 +696,7 @@ export const Chat = React.memo((props: Props) => {
                   {loggedIn ? (
                     <p
                       className={`breadcrumb clickable${
-                        (updatedChannels && updatedChannels!.size > 0) ||
+                        (updatedChannels && updatedChannels.size > 0) ||
                         unseenMessages.length > 0
                           ? ' unread'
                           : ''
@@ -706,7 +709,7 @@ export const Chat = React.memo((props: Props) => {
                       }}
                     >
                       <LeftOutlined /> All chats
-                      {((updatedChannels && updatedChannels!.size > 0) ||
+                      {((updatedChannels && updatedChannels.size > 0) ||
                         unseenMessages.length > 0) && (
                         <span className="unread-marker">•</span>
                       )}

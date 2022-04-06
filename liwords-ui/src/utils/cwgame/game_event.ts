@@ -102,7 +102,7 @@ export const tilePlacementEventDisplay = (evt: GameEvent, board: Board) => {
         m += '(';
         openParen = true;
       }
-      m += board.letterAt(r, c)!;
+      m += board.letterAt(r, c);
     } else {
       if (openParen) {
         m += ')';

@@ -56,11 +56,6 @@ type Rating = {
   v: number;
 };
 
-type user = {
-  username: string;
-  uuid: string;
-};
-
 type ProfileRatings = { [variant: string]: Rating };
 
 type RatingsProps = {

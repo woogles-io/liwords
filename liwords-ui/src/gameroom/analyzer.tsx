@@ -701,21 +701,29 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
       const arr = [];
       for (const elt of cachedMoves) {
         if (!found) {
-          if (elt.jsonKey === currentEvaluatedMove.analyzerMove!.jsonKey) {
-            arr.push(currentEvaluatedMove.analyzerMove!);
-            found = true;
-            continue;
+          if (currentEvaluatedMove.analyzerMove) {
+            if (elt.jsonKey === currentEvaluatedMove.analyzerMove.jsonKey) {
+              arr.push(currentEvaluatedMove.analyzerMove);
+              found = true;
+              continue;
+            }
           }
-          if (elt.equity < currentEvaluatedMove.moveObj!.equity) {
-            // phonies may have better equity than valid plays
-            arr.push(currentEvaluatedMove.analyzerMove!);
-            found = true;
+          if (currentEvaluatedMove.moveObj) {
+            if (elt.equity < currentEvaluatedMove.moveObj.equity) {
+              // phonies may have better equity than valid plays
+              if (currentEvaluatedMove.analyzerMove) {
+                arr.push(currentEvaluatedMove.analyzerMove);
+                found = true;
+              }
+            }
           }
         }
         arr.push(elt);
       }
       if (!found) {
-        arr.push(currentEvaluatedMove.analyzerMove!);
+        if (currentEvaluatedMove.analyzerMove) {
+          arr.push(currentEvaluatedMove.analyzerMove);
+        }
       }
       return arr;
     }

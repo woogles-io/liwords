@@ -97,8 +97,8 @@ type mandatoryFormValues = Partial<seekPropVals> &
   >;
 
 export const GameRequestToFormValues: (
-  gameRequest: GameRequest | null
-) => mandatoryFormValues = (gameRequest: GameRequest | null) => {
+  gameRequest: GameRequest | undefined
+) => mandatoryFormValues = (gameRequest: GameRequest | undefined) => {
   if (!gameRequest) {
     return {
       lexicon: 'CSW21',
@@ -213,6 +213,8 @@ export const SeekForm = (props: Props) => {
   useEffect(() => {
     if (props.friendRef) {
       return () => {
+        // why?
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         props.friendRef!.current = '';
       };
     }
@@ -243,7 +245,7 @@ export const SeekForm = (props: Props) => {
   ) {
     const fixedClubSettings =
       tournamentContext.metadata.getDefaultClubSettings();
-    const initFormValues = GameRequestToFormValues(fixedClubSettings!);
+    const initFormValues = GameRequestToFormValues(fixedClubSettings);
     const freeformItems =
       tournamentContext.metadata.getFreeformClubSettingFieldsList() || [];
     disableVariantControls = !freeformItems.includes('variant_name');

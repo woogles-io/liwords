@@ -115,8 +115,8 @@ export class ClockController {
 
     console.log('setClock', this.times);
 
-    if (isClockRunning) {
-      this.scheduleTick(this.times[this.times.activePlayer!], delayMs);
+    if (isClockRunning && this.times.activePlayer) {
+      this.scheduleTick(this.times[this.times.activePlayer], delayMs);
     }
   };
 

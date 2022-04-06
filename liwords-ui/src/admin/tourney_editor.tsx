@@ -85,7 +85,7 @@ const SettingsModalForm = (mprops: {
   visible: boolean;
   onCancel: () => void;
   setModalVisible: (v: boolean) => void;
-  selectedGameRequest: GameRequest | null;
+  selectedGameRequest: GameRequest | undefined;
   setSelectedGameRequest: (gr: GameRequest) => void;
 }) => {
   return (
@@ -116,8 +116,9 @@ export const TourneyEditor = (props: Props) => {
   const [color, setColor] = useState('');
   const [logo, setLogo] = useState('');
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
-  const [selectedGameRequest, setSelectedGameRequest] =
-    useState<GameRequest | null>(null);
+  const [selectedGameRequest, setSelectedGameRequest] = useState<
+    GameRequest | undefined
+  >(undefined);
   const [form] = Form.useForm();
 
   const onSearch = async (val: string) => {
@@ -140,7 +141,7 @@ export const TourneyEditor = (props: Props) => {
       setName(metadata.getName());
       setColor(metadata.getColor() || '');
       setLogo(metadata.getLogo() || '');
-      setSelectedGameRequest(metadata.getDefaultClubSettings() || null);
+      setSelectedGameRequest(metadata.getDefaultClubSettings() || undefined);
       form.setFieldsValue({
         name: metadata.getName(),
         description: metadata.getDescription(),

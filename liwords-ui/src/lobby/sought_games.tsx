@@ -189,7 +189,7 @@ export const SoughtGames = (props: Props) => {
               </div>
             </Popconfirm>
           ) : (
-            <PlayerDisplay userID={sg.seekerID!} username={sg.seeker} />
+            <PlayerDisplay userID={sg.seekerID} username={sg.seeker} />
           ),
           rating: outgoing ? '' : sg.userRating,
           ratingBadge: outgoing ? null : <RatingBadge rating={sg.userRating} />,

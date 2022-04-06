@@ -27,7 +27,10 @@ export const Standings = (props: Props) => {
         : 0,
     [props.selectedDivision, divisions]
   );
-  const division = divisions[props.selectedDivision!];
+  if (!props.selectedDivision) {
+    return null;
+  }
+  const division = divisions[props.selectedDivision];
   if (!division) {
     return null;
   }

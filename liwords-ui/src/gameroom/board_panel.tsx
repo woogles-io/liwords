@@ -266,7 +266,14 @@ export const BoardPanel = React.memo((props: Props) => {
     examinableGameContext.onturn,
   ]);
 
-  const { board, gameID, playerMeta, sendSocketMsg, username } = props;
+  const {
+    board,
+    gameID,
+    handleUnsetHover,
+    playerMeta,
+    sendSocketMsg,
+    username,
+  } = props;
 
   const makeMove = useCallback(
     (move: string, addl?: string) => {
@@ -296,7 +303,9 @@ export const BoardPanel = React.memo((props: Props) => {
       );
       switch (move) {
         case 'exchange':
-          moveEvt = exchangeMoveEvent(addl!, gameID);
+          if (addl) {
+            moveEvt = exchangeMoveEvent(addl, gameID);
+          }
           break;
         case 'pass':
           moveEvt = passMoveEvent(gameID);
@@ -518,6 +527,8 @@ export const BoardPanel = React.memo((props: Props) => {
   useEffect(() => {
     let fullReset = false;
     const lastLetters = lastLettersRef.current;
+    // XXX: please fix me:
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const dep = readOnlyEffectDependenciesRef.current!;
     if (lastLetters === undefined) {
       // First load.
@@ -647,6 +658,7 @@ export const BoardPanel = React.memo((props: Props) => {
     // rack is smaller than that because past the threshold by then
     setexchangeAllowed(tilesRemaining >= 7);
   }, [gameContext.pool, props.currentRack]);
+
   useEffect(() => {
     if (
       examinableGameContext.playState === PlayState.WAITING_FOR_FINAL_PASS &&
@@ -714,17 +726,19 @@ export const BoardPanel = React.memo((props: Props) => {
       );
     }
   }, [props.events, props.username]);
+
   const squareClicked = useCallback(
     (row: number, col: number) => {
-      if (props.board.letterAt(row, col) !== EmptySpace) {
+      if (board.letterAt(row, col) !== EmptySpace) {
         // If there is a tile on this square, ignore the click.
         return;
       }
       setArrowProperties(nextArrowPropertyState(arrowProperties, row, col));
-      props.handleUnsetHover?.();
+      handleUnsetHover?.();
     },
-    [arrowProperties, props.board, props.handleUnsetHover]
+    [arrowProperties, board, handleUnsetHover]
   );
+
   const keydown = useCallback(
     (evt: React.KeyboardEvent) => {
       if (evt.ctrlKey || evt.altKey || evt.metaKey) {

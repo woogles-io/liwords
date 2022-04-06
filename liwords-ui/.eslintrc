@@ -43,12 +43,7 @@
         "ignoreComments": true
       }
     ],
-    "no-plusplus": [
-      "warn",
-      {
-        "allowForLoopAfterthoughts": true
-      }
-    ],
+    "no-plusplus": "off",
     "react/jsx-key": "error",
     // "import/no-extraneous-dependencies": [
     //   "error",
