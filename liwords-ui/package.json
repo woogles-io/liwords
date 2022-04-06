@@ -15,7 +15,6 @@
     "@types/react": "^17.0.43",
     "@types/react-dom": "^17.0.14",
     "@types/react-router-dom": "^5.1.7",
-    "@types/webaudioapi": "^0.0.27",
     "antd": "^4.12.3",
     "axios": "^0.21.1",
     "google-protobuf": "^3.15.5",

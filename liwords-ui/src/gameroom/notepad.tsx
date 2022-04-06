@@ -188,7 +188,10 @@ export const Notepad = React.memo((props: NotepadProps) => {
 // usage: type catcam on the notepad
 const EasterEgg = () => {
   const ctx = useMemo(() => {
-    const AudioContext = window.AudioContext || webkitAudioContext;
+    const AudioContext =
+      window.AudioContext ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ((window as any).webkitAudioContext as AudioContext);
     return new AudioContext();
   }, []);
 

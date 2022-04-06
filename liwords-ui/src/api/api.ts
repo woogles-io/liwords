@@ -50,7 +50,7 @@ export const postJsonObj = async (
         duration: 8,
       });
     } else {
-      errHandler(e);
+      errHandler(e as LiwordsAPIError);
     }
   }
 };
