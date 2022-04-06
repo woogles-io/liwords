@@ -39,10 +39,8 @@ export const GameLists = React.memo((props: Props) => {
   const [matchModalVisible, setMatchModalVisible] = useState(false);
   const [botModalVisible, setBotModalVisible] = useState(false);
 
-  const {
-    addHandleContextMatch,
-    removeHandleContextMatch,
-  } = useContextMatchContext();
+  const { addHandleContextMatch, removeHandleContextMatch } =
+    useContextMatchContext();
   const friendRef = useRef('');
   const handleContextMatch = useCallback((s: string) => {
     friendRef.current = s;
@@ -79,8 +77,9 @@ export const GameLists = React.memo((props: Props) => {
   const simultaneousModeEffectivelyEnabled =
     simultaneousModeEnabled || myCurrentGames.length !== 1;
   const currentGame: ActiveGame | null = myCurrentGames[0] ?? null;
-  const opponent = currentGame?.players.find((p) => p.displayName !== username)
-    ?.displayName;
+  const opponent = currentGame?.players.find(
+    (p) => p.displayName !== username
+  )?.displayName;
 
   const enableWordSmog = React.useMemo(
     () => localStorage.getItem('enableWordSmog') === 'true',

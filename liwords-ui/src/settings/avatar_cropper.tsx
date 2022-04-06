@@ -23,7 +23,7 @@ export const AvatarCropper = React.memo((props: Props) => {
     if (!croppedArea || !dataUrl) {
       return;
     }
-    let image = new Image();
+    const image = new Image();
     image.onload = () => {
       const canvas = document.createElement('canvas'),
         ctx = canvas.getContext('2d');
@@ -54,9 +54,9 @@ export const AvatarCropper = React.memo((props: Props) => {
   );
 
   useEffect(() => {
-    let reader = new FileReader();
+    const reader = new FileReader();
     reader.onload = () => {
-      let image = new Image();
+      const image = new Image();
       image.onload = () => {
         const canvas = document.createElement('canvas'),
           width = image.width,

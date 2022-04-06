@@ -76,6 +76,7 @@ import { GameMetaEvent } from '../gen/api/proto/ipc/omgwords_pb';
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
 const EnterKey = 'Enter';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const colors = require('../base.scss');
 
 type Props = {
@@ -205,10 +206,8 @@ export const BoardPanel = React.memo((props: Props) => {
     'BLANK_MODAL' | 'DRAWING_HOTKEY' | 'EXCHANGE_MODAL' | 'NORMAL' | 'BLIND'
   >('NORMAL');
 
-  const {
-    drawingCanBeEnabled,
-    handleKeyDown: handleDrawingKeyDown,
-  } = React.useContext(DrawingHandlersSetterContext);
+  const { drawingCanBeEnabled, handleKeyDown: handleDrawingKeyDown } =
+    React.useContext(DrawingHandlersSetterContext);
   const [arrowProperties, setArrowProperties] = useState({
     row: 0,
     col: 0,
@@ -216,15 +215,12 @@ export const BoardPanel = React.memo((props: Props) => {
     show: false,
   });
 
-  const {
-    gameContext: examinableGameContext,
-  } = useExaminableGameContextStoreContext();
-  const {
-    gameEndMessage: examinableGameEndMessage,
-  } = useExaminableGameEndMessageStoreContext();
-  const {
-    timerContext: examinableTimerContext,
-  } = useExaminableTimerStoreContext();
+  const { gameContext: examinableGameContext } =
+    useExaminableGameContextStoreContext();
+  const { gameEndMessage: examinableGameEndMessage } =
+    useExaminableGameEndMessageStoreContext();
+  const { timerContext: examinableTimerContext } =
+    useExaminableTimerStoreContext();
 
   const { isExamining, handleExamineStart } = useExamineStoreContext();
   const { gameContext } = useGameContextStoreContext();
@@ -417,7 +413,8 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const recallTiles = useCallback(() => {
     if (arrowProperties.show) {
-      let { row, col, horizontal } = arrowProperties;
+      let { row, col } = arrowProperties;
+      const { horizontal } = arrowProperties;
       const matchesLocation = ({
         row: tentativeRow,
         col: tentativeCol,
@@ -1051,16 +1048,16 @@ export const BoardPanel = React.memo((props: Props) => {
               ''
             );
           } else {
-            const blindfoldCoordinates = parseBlindfoldCoordinates(
-              blindfoldCommand
-            );
+            const blindfoldCoordinates =
+              parseBlindfoldCoordinates(blindfoldCommand);
             if (blindfoldCoordinates !== undefined) {
               // Valid coordinates, place the arrow
               say(wordToSayString(blindfoldCommand), '');
               const board = { ...gameContext.board };
-              const existingTile = board.letters[
-                blindfoldCoordinates.row * 15 + blindfoldCoordinates.col
-              ].trim();
+              const existingTile =
+                board.letters[
+                  blindfoldCoordinates.row * 15 + blindfoldCoordinates.col
+                ].trim();
               if (!existingTile) {
                 setArrowProperties({
                   row: blindfoldCoordinates.row,

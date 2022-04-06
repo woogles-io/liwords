@@ -217,18 +217,15 @@ const reducePairings = (
         value.getRound()
       );
       if (opp !== -1) {
-        updatedPairings[value.getRound()].roundPairings[
-          opp
-        ] = {} as SinglePairing;
+        updatedPairings[value.getRound()].roundPairings[opp] =
+          {} as SinglePairing;
       }
     }
 
-    updatedPairings[value.getRound()].roundPairings[
-      value.getPlayersList()[0]
-    ] = newSinglePairing;
-    updatedPairings[value.getRound()].roundPairings[
-      value.getPlayersList()[1]
-    ] = newSinglePairing;
+    updatedPairings[value.getRound()].roundPairings[value.getPlayersList()[0]] =
+      newSinglePairing;
+    updatedPairings[value.getRound()].roundPairings[value.getPlayersList()[1]] =
+      newSinglePairing;
   });
   return updatedPairings;
 };

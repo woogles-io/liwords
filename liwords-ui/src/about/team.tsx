@@ -13,9 +13,7 @@ import woogles from '../assets/bio/bio_woogles.jpg';
 import benjy from '../assets/bio/bio_benjy.jpg';
 import { useMountedState } from '../utils/mounted';
 
-type Props = {};
-
-export const Team = (props: Props) => {
+export const Team = () => {
   const { useState } = useMountedState();
   const [bnjyMode, setBnjyMode] = useState(
     localStorage?.getItem('bnjyMode') === 'true'

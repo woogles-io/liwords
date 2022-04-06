@@ -554,7 +554,7 @@ export const Table = React.memo((props: Props) => {
     [enableHoverDefine, definedAnagram]
   );
 
-  const [playedWords, setPlayedWords] = useState(new Set());
+  const [playedWords, setPlayedWords] = useState(new Set<string>());
   useEffect(() => {
     setPlayedWords((oldPlayedWords) => {
       const playedWords = new Set(oldPlayedWords);
@@ -585,12 +585,12 @@ export const Table = React.memo((props: Props) => {
       // design decision to improve usability and responsiveness.
       setWordInfo((oldWordInfo) => {
         let wordInfo = oldWordInfo;
-        for (const word of playedWords as any as [string]) {
+        playedWords.forEach((word) => {
           if (!(word in wordInfo)) {
             if (wordInfo === oldWordInfo) wordInfo = { ...oldWordInfo };
             wordInfo[word] = undefined;
           }
-        }
+        });
         if (showDefinitionHover) {
           // also define tentative words (mostly from examiner) if no undesignated blanks.
           for (const word of showDefinitionHover.words) {
@@ -702,9 +702,9 @@ export const Table = React.memo((props: Props) => {
   useEffect(() => {
     if (phonies === null) {
       if (gameDone) {
-        const phonies = [];
+        const phonies: Array<string> = [];
         let hasWords = false; // avoid running this before the first GameHistoryRefresher event
-        for (const word of playedWords as any as [string]) {
+        playedWords.forEach((word) => {
           hasWords = true;
           const definition = wordInfo[word];
           if (definition === undefined) {
@@ -713,7 +713,7 @@ export const Table = React.memo((props: Props) => {
           } else if (!definition.v) {
             phonies.push(word);
           }
-        }
+        });
         if (hasWords) {
           phonies.sort();
           setPhonies(phonies);

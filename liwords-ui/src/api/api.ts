@@ -20,9 +20,9 @@ export type LiwordsAPIError = {
 export const postJsonObj = async (
   service: string,
   method: string,
-  msg: any,
-  successHandler?: (res: any) => void,
-  errHandler?: (err: any) => void
+  msg: unknown,
+  successHandler?: (res: unknown) => void,
+  errHandler?: (err: LiwordsAPIError) => void
 ) => {
   const url = toAPIUrl(service, method);
 
@@ -54,11 +54,6 @@ export const postJsonObj = async (
     }
   }
 };
-
-interface JsonError {
-  code: string;
-  msg: string;
-}
 
 const postBinary = async (service: string, method: string, msg: PBMsg) => {
   const url = toAPIUrl(service, method);

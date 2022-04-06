@@ -122,7 +122,7 @@ const useBirthBox = (
   }, [reformatSelection, selection, formatSelection, allOptions]);
 
   return [
-    <Form.Item>
+    <Form.Item key="stupidlinter">
       <AutoComplete
         value={searched}
         options={shownOptions}
@@ -376,9 +376,15 @@ export const Register = () => {
 
   const localDateSequence = useMemo(() => determineLocalDateSequence(), []);
   const birthBoxes = [
-    <span className="birth-year">{birthYearBox}</span>,
-    <span className="birth-month">{birthMonthBox}</span>,
-    <span className="birth-date">{birthDateBox}</span>,
+    <span className="birth-year" key="birth-year">
+      {birthYearBox}
+    </span>,
+    <span className="birth-month" key="birth-month">
+      {birthMonthBox}
+    </span>,
+    <span className="birth-date" key="birth-date">
+      {birthDateBox}
+    </span>,
   ];
 
   const [form] = Form.useForm();

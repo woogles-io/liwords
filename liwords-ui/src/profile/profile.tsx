@@ -213,11 +213,9 @@ const StatsCard = React.memo((props: StatsProps) => {
   );
 });
 
-type Props = {};
-
 const gamesPageSize = 10;
 
-export const UserProfile = React.memo((props: Props) => {
+export const UserProfile = React.memo(() => {
   const { useState } = useMountedState();
 
   const { username } = useParams();

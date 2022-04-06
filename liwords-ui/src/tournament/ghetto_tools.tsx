@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/camelcase */
 // Ghetto tools are Cesar tools before making things pretty.
 
 import {
@@ -875,10 +874,8 @@ const UnpairRound = (props: { tournamentID: string }) => {
 const SetTournamentControls = (props: { tournamentID: string }) => {
   const { useState } = useMountedState();
   const [modalVisible, setModalVisible] = useState(false);
-  const [
-    selectedGameRequest,
-    setSelectedGameRequest,
-  ] = useState<GameRequest | null>(null);
+  const [selectedGameRequest, setSelectedGameRequest] =
+    useState<GameRequest | null>(null);
 
   const [division, setDivision] = useState('');
   const [gibsonize, setGibsonize] = useState(false);

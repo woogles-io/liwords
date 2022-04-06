@@ -42,9 +42,8 @@ const ExamineGameControls = React.memo(
     gameDone: boolean;
   }) => {
     const { useState } = useMountedState();
-    const {
-      gameContext: examinableGameContext,
-    } = useExaminableGameContextStoreContext();
+    const { gameContext: examinableGameContext } =
+      useExaminableGameContextStoreContext();
     const {
       examinedTurn,
       handleExamineEnd,
@@ -55,10 +54,8 @@ const ExamineGameControls = React.memo(
       doneButtonRef,
     } = useExamineStoreContext();
     const { gameContext } = useGameContextStoreContext();
-    const {
-      setPlacedTiles,
-      setPlacedTilesTempScore,
-    } = useTentativeTileContext();
+    const { setPlacedTiles, setPlacedTilesTempScore } =
+      useTentativeTileContext();
     useEffect(() => {
       setPlacedTilesTempScore(undefined);
       setPlacedTiles(new Set<EphemeralTile>());

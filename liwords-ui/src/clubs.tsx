@@ -2,7 +2,7 @@ import { Col, Divider, Row } from 'antd';
 import React from 'react';
 import { TopBar } from './navigation/topbar';
 import './clubs.scss';
-export const Clubs = (props: {}) => {
+export const Clubs = () => {
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   return (

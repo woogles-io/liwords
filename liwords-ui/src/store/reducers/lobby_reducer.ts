@@ -1,6 +1,9 @@
 import { Action, ActionType } from '../../actions/actions';
 import { MatchUser, SeekRequest } from '../../gen/api/proto/ipc/omgseeks_pb';
-import { GameInfoResponse, RatingMode } from '../../gen/api/proto/ipc/omgwords_pb';
+import {
+  GameInfoResponse,
+  RatingMode,
+} from '../../gen/api/proto/ipc/omgwords_pb';
 import { ProfileUpdate } from '../../gen/api/proto/ipc/users_pb';
 import { BotTypesEnum } from '../../lobby/bots';
 import { StartingRating } from '../constants';

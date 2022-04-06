@@ -559,9 +559,9 @@ export const useDrawing = () => {
       ) : null,
     [isEnabled, svgProps, currentDrawing]
   );
-  const ret = React.useMemo(() => ({ outerDivProps, svgDrawing }), [
-    outerDivProps,
-    svgDrawing,
-  ]);
+  const ret = React.useMemo(
+    () => ({ outerDivProps, svgDrawing }),
+    [outerDivProps, svgDrawing]
+  );
   return ret;
 };

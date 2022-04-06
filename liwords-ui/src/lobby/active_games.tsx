@@ -50,59 +50,57 @@ export const ActiveGames = (props: Props) => {
             parseRating(agA.players[1].rating))
         );
       })
-      .map(
-        (ag: ActiveGame): ActiveGameTableData => {
-          const getDetails = () => {
-            return (
-              <>
-                <VariantIcon vcode={ag.variant} />{' '}
-                {challengeFormat(ag.challengeRule)}
-                {ag.rated ? (
-                  <Tooltip title="Rated">
-                    <FundOutlined />
-                  </Tooltip>
-                ) : null}
-              </>
-            );
-          };
-          return {
-            gameID: ag.gameID,
-            players: (
-              <>
-                <div>
-                  <PlayerDisplay
-                    username={ag.players[0].displayName}
-                    userID={ag.players[0].uuid}
-                  />
-                  <RatingBadge rating={ag.players[0].rating} />
-                </div>
-                <div>
-                  <PlayerDisplay
-                    username={ag.players[1].displayName}
-                    userID={ag.players[1].uuid}
-                  />
-                  <RatingBadge rating={ag.players[1].rating} />
-                </div>
-              </>
-            ),
-            lexicon: <MatchLexiconDisplay lexiconCode={ag.lexicon} />,
-            lexiconCode: ag.lexicon,
-            time: timeFormat(
-              ag.initialTimeSecs,
-              ag.incrementSecs,
-              ag.maxOvertimeMinutes
-            ),
-            totalTime: calculateTotalTime(
-              ag.initialTimeSecs,
-              ag.incrementSecs,
-              ag.maxOvertimeMinutes
-            ),
-            details: getDetails(),
-            player1: ag.players[0].displayName,
-            player2: ag.players[1].displayName,
-          };
-        }
-      );
+      .map((ag: ActiveGame): ActiveGameTableData => {
+        const getDetails = () => {
+          return (
+            <>
+              <VariantIcon vcode={ag.variant} />{' '}
+              {challengeFormat(ag.challengeRule)}
+              {ag.rated ? (
+                <Tooltip title="Rated">
+                  <FundOutlined />
+                </Tooltip>
+              ) : null}
+            </>
+          );
+        };
+        return {
+          gameID: ag.gameID,
+          players: (
+            <>
+              <div>
+                <PlayerDisplay
+                  username={ag.players[0].displayName}
+                  userID={ag.players[0].uuid}
+                />
+                <RatingBadge rating={ag.players[0].rating} />
+              </div>
+              <div>
+                <PlayerDisplay
+                  username={ag.players[1].displayName}
+                  userID={ag.players[1].uuid}
+                />
+                <RatingBadge rating={ag.players[1].rating} />
+              </div>
+            </>
+          ),
+          lexicon: <MatchLexiconDisplay lexiconCode={ag.lexicon} />,
+          lexiconCode: ag.lexicon,
+          time: timeFormat(
+            ag.initialTimeSecs,
+            ag.incrementSecs,
+            ag.maxOvertimeMinutes
+          ),
+          totalTime: calculateTotalTime(
+            ag.initialTimeSecs,
+            ag.incrementSecs,
+            ag.maxOvertimeMinutes
+          ),
+          details: getDetails(),
+          player1: ag.players[0].displayName,
+          player2: ag.players[1].displayName,
+        };
+      });
     return gameData;
   };
   const columns = [

@@ -116,10 +116,8 @@ export const TourneyEditor = (props: Props) => {
   const [color, setColor] = useState('');
   const [logo, setLogo] = useState('');
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
-  const [
-    selectedGameRequest,
-    setSelectedGameRequest,
-  ] = useState<GameRequest | null>(null);
+  const [selectedGameRequest, setSelectedGameRequest] =
+    useState<GameRequest | null>(null);
   const [form] = Form.useForm();
 
   const onSearch = async (val: string) => {
@@ -134,26 +132,29 @@ export const TourneyEditor = (props: Props) => {
         tmreq
       );
       const metadata = m.getMetadata();
-      setDescription(metadata?.getDescription()!);
-      setDisclaimer(metadata?.getDisclaimer() || '');
-      setName(metadata?.getName()!);
-      setColor(metadata?.getColor() || '');
-      setLogo(metadata?.getLogo() || '');
-      setSelectedGameRequest(metadata?.getDefaultClubSettings() || null);
+      if (!metadata) {
+        throw new Error('undefined tournament metadata');
+      }
+      setDescription(metadata.getDescription());
+      setDisclaimer(metadata.getDisclaimer() || '');
+      setName(metadata.getName());
+      setColor(metadata.getColor() || '');
+      setLogo(metadata.getLogo() || '');
+      setSelectedGameRequest(metadata.getDefaultClubSettings() || null);
       form.setFieldsValue({
-        name: metadata?.getName(),
-        description: metadata?.getDescription(),
-        slug: metadata?.getSlug(),
-        id: metadata?.getId(),
-        type: metadata?.getType(),
+        name: metadata.getName(),
+        description: metadata.getDescription(),
+        slug: metadata.getSlug(),
+        id: metadata.getId(),
+        type: metadata.getType(),
         directors: m.getDirectorsList().join(', '),
-        freeformItems: metadata?.getFreeformClubSettingFieldsList(),
-        boardStyle: metadata?.getBoardStyle(),
-        tileStyle: metadata?.getTileStyle(),
-        disclaimer: metadata?.getDisclaimer(),
-        logo: metadata?.getLogo(),
-        color: metadata?.getColor(),
-        privateAnalysis: metadata?.getPrivateAnalysis() || false,
+        freeformItems: metadata.getFreeformClubSettingFieldsList(),
+        boardStyle: metadata.getBoardStyle(),
+        tileStyle: metadata.getTileStyle(),
+        disclaimer: metadata.getDisclaimer(),
+        logo: metadata.getLogo(),
+        color: metadata.getColor(),
+        privateAnalysis: metadata.getPrivateAnalysis() || false,
       });
     } catch (err) {
       message.error({
@@ -217,8 +218,8 @@ export const TourneyEditor = (props: Props) => {
     }
 
     axios
-      .post<{}>(toAPIUrl('tournament_service.TournamentService', apicall), obj)
-      .then((resp) => {
+      .post(toAPIUrl('tournament_service.TournamentService', apicall), obj)
+      .then(() => {
         message.info({
           content:
             'Tournament ' + (props.mode === 'new' ? 'created' : 'updated'),
@@ -254,15 +255,12 @@ export const TourneyEditor = (props: Props) => {
       return;
     }
     axios
-      .post<{}>(
-        toAPIUrl('tournament_service.TournamentService', 'AddDirectors'),
-        {
-          id: form.getFieldValue('id'),
-          // Need a non-zero "rating" for director..
-          persons: [{ id: director, rating: 1 }],
-        }
-      )
-      .then((resp) => {
+      .post(toAPIUrl('tournament_service.TournamentService', 'AddDirectors'), {
+        id: form.getFieldValue('id'),
+        // Need a non-zero "rating" for director..
+        persons: [{ id: director, rating: 1 }],
+      })
+      .then(() => {
         message.info({
           content: 'Director successfully added',
           duration: 3,
@@ -282,7 +280,7 @@ export const TourneyEditor = (props: Props) => {
       return;
     }
     axios
-      .post<{}>(
+      .post(
         toAPIUrl('tournament_service.TournamentService', 'RemoveDirectors'),
         {
           id: form.getFieldValue('id'),

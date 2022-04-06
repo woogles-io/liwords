@@ -1,5 +1,3 @@
-/* eslint-disable jsx-a11y/click-events-have-key-events */
-/* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
 import { Popconfirm, Table, Tooltip } from 'antd';
 import React, { ReactNode } from 'react';
 import { FundOutlined, ExportOutlined } from '@ant-design/icons/lib';
@@ -151,71 +149,67 @@ export const SoughtGames = (props: Props) => {
         }
         return false;
       })
-      .map(
-        (sg: SoughtGame): SoughtGameTableData => {
-          const getDetails = () => {
-            return (
-              <>
-                <VariantIcon vcode={sg.variant} />{' '}
-                {challengeFormat(sg.challengeRule)}
-                {sg.rated ? (
-                  <Tooltip title="Rated">
-                    <FundOutlined />
-                  </Tooltip>
-                ) : null}
-              </>
-            );
-          };
-          const outgoing = sg.seeker === props.username;
-          return {
-            seeker: outgoing ? (
-              <Popconfirm
-                title="Do you want to cancel this game?"
-                onConfirm={() => {
-                  props.newGame(sg.seekID);
-                  setCancelVisible(false);
-                }}
-                okText="Yes"
-                cancelText="No"
-                onCancel={() => {
-                  console.log('trying', setCancelVisible, cancelVisible);
-                  setCancelVisible(false);
-                }}
-                onVisibleChange={(visible) => {
-                  setCancelVisible(visible);
-                }}
-                visible={cancelVisible}
-              >
-                <div>
-                  <ExportOutlined />
-                  {` ${sg.receiver?.getDisplayName() || 'Seeking...'}`}
-                </div>
-              </Popconfirm>
-            ) : (
-              <PlayerDisplay userID={sg.seekerID!} username={sg.seeker} />
-            ),
-            rating: outgoing ? '' : sg.userRating,
-            ratingBadge: outgoing ? null : (
-              <RatingBadge rating={sg.userRating} />
-            ),
-            lexicon: <MatchLexiconDisplay lexiconCode={sg.lexicon} />,
-            time: timeFormat(
-              sg.initialTimeSecs,
-              sg.incrementSecs,
-              sg.maxOvertimeMinutes
-            ),
-            totalTime: calculateTotalTime(
-              sg.initialTimeSecs,
-              sg.incrementSecs,
-              sg.maxOvertimeMinutes
-            ),
-            details: getDetails(),
-            outgoing,
-            seekID: sg.seekID,
-            lexiconCode: sg.lexicon,
-          };
-        }
-      );
+      .map((sg: SoughtGame): SoughtGameTableData => {
+        const getDetails = () => {
+          return (
+            <>
+              <VariantIcon vcode={sg.variant} />{' '}
+              {challengeFormat(sg.challengeRule)}
+              {sg.rated ? (
+                <Tooltip title="Rated">
+                  <FundOutlined />
+                </Tooltip>
+              ) : null}
+            </>
+          );
+        };
+        const outgoing = sg.seeker === props.username;
+        return {
+          seeker: outgoing ? (
+            <Popconfirm
+              title="Do you want to cancel this game?"
+              onConfirm={() => {
+                props.newGame(sg.seekID);
+                setCancelVisible(false);
+              }}
+              okText="Yes"
+              cancelText="No"
+              onCancel={() => {
+                console.log('trying', setCancelVisible, cancelVisible);
+                setCancelVisible(false);
+              }}
+              onVisibleChange={(visible) => {
+                setCancelVisible(visible);
+              }}
+              visible={cancelVisible}
+            >
+              <div>
+                <ExportOutlined />
+                {` ${sg.receiver?.getDisplayName() || 'Seeking...'}`}
+              </div>
+            </Popconfirm>
+          ) : (
+            <PlayerDisplay userID={sg.seekerID!} username={sg.seeker} />
+          ),
+          rating: outgoing ? '' : sg.userRating,
+          ratingBadge: outgoing ? null : <RatingBadge rating={sg.userRating} />,
+          lexicon: <MatchLexiconDisplay lexiconCode={sg.lexicon} />,
+          time: timeFormat(
+            sg.initialTimeSecs,
+            sg.incrementSecs,
+            sg.maxOvertimeMinutes
+          ),
+          totalTime: calculateTotalTime(
+            sg.initialTimeSecs,
+            sg.incrementSecs,
+            sg.maxOvertimeMinutes
+          ),
+          details: getDetails(),
+          outgoing,
+          seekID: sg.seekID,
+          lexiconCode: sg.lexicon,
+        };
+      });
     return gameData;
   };
 

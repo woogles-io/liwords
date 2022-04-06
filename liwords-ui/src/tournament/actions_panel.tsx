@@ -66,10 +66,8 @@ export const ActionsPanel = React.memo((props: Props) => {
   const renderDirectorTools = () => {
     return <DirectorTools tournamentID={props.tournamentID} />;
   };
-  const {
-    dispatchTournamentContext,
-    tournamentContext,
-  } = useTournamentStoreContext();
+  const { dispatchTournamentContext, tournamentContext } =
+    useTournamentStoreContext();
   const itIsPairedMode = useMemo(
     () => isPairedMode(tournamentContext.metadata?.getType()),
     [tournamentContext]
@@ -89,10 +87,8 @@ export const ActionsPanel = React.memo((props: Props) => {
   const { lobbyContext } = useLobbyStoreContext();
   const tournamentID = tournamentContext.metadata?.getId();
 
-  const {
-    addHandleContextMatch,
-    removeHandleContextMatch,
-  } = useContextMatchContext();
+  const { addHandleContextMatch, removeHandleContextMatch } =
+    useContextMatchContext();
   const friendRef = useRef('');
   const handleContextMatch = useCallback((s: string) => {
     friendRef.current = s;

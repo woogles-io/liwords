@@ -206,9 +206,10 @@ export const SeekForm = (props: Props) => {
   const storedValues = window.localStorage
     ? JSON.parse(window.localStorage.getItem(storageKey) || '{}')
     : {};
-  const givenFriend = useMemo(() => props.friendRef?.current ?? '', [
-    props.friendRef,
-  ]);
+  const givenFriend = useMemo(
+    () => props.friendRef?.current ?? '',
+    [props.friendRef]
+  );
   useEffect(() => {
     if (props.friendRef) {
       return () => {
@@ -240,7 +241,8 @@ export const SeekForm = (props: Props) => {
     props.tournamentID &&
     tournamentContext.metadata.getDefaultClubSettings()
   ) {
-    const fixedClubSettings = tournamentContext.metadata.getDefaultClubSettings();
+    const fixedClubSettings =
+      tournamentContext.metadata.getDefaultClubSettings();
     const initFormValues = GameRequestToFormValues(fixedClubSettings!);
     const freeformItems =
       tournamentContext.metadata.getFreeformClubSettingFieldsList() || [];
