@@ -79,7 +79,7 @@ export const PuzzleInfo = React.memo((props: Props) => {
     );
   }
   const ratedDisplay = ratingMode === 'RATED' ? 'Rated' : 'Unrated';
-  const challengeDisplay = challengeRule ? challengeMap[challengeRule!] : '';
+  const challengeDisplay = challengeRule ? challengeMap[challengeRule] : '';
 
   const player1NameDisplay = player1?.nickname ? (
     <UsernameWithContext username={player1?.nickname || ''} />

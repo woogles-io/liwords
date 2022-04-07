@@ -1,8 +1,8 @@
 import { HomeOutlined } from '@ant-design/icons';
 import { Button, Card, Form, message, Modal } from 'antd';
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { Link, useHistory, useParams } from 'react-router-dom';
-import { postProto } from '../api/api';
+import React, { useCallback, useEffect, useMemo } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { LiwordsAPIError, postProto } from '../api/api';
 import { Chat } from '../chat/chat';
 import { alphabetFromName } from '../constants/alphabets';
 import { TopBar } from '../navigation/topbar';
@@ -102,26 +102,19 @@ export const SinglePuzzle = (props: Props) => {
   const [pendingSolution, setPendingSolution] = useState(false);
   const [gameHistory, setGameHistory] = useState<GameHistory | null>(null);
   const [showResponseModalWrong, setShowResponseModalWrong] = useState(false);
-  const [showResponseModalCorrect, setShowResponseModalCorrect] = useState(
-    false
-  );
+  const [showResponseModalCorrect, setShowResponseModalCorrect] =
+    useState(false);
   const [showLexiconModal, setShowLexiconModal] = useState(false);
   const { loginState } = useLoginStateStoreContext();
   const { username, loggedIn } = loginState;
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
-  const {
-    gameContext: examinableGameContext,
-  } = useExaminableGameContextStoreContext();
-  const {
-    setDisplayedRack,
-    setPlacedTiles,
-    setPlacedTilesTempScore,
-  } = useTentativeTileContext();
+  const { gameContext: examinableGameContext } =
+    useExaminableGameContextStoreContext();
+  const { setDisplayedRack, setPlacedTiles, setPlacedTilesTempScore } =
+    useTentativeTileContext();
 
-  const browserHistory = useHistory();
-  const browserHistoryRef = useRef(browserHistory);
-  browserHistoryRef.current = browserHistory;
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!puzzleID) {
@@ -167,10 +160,14 @@ export const SinglePuzzle = (props: Props) => {
   );
   // Play sound here.
 
-  const alphabet = useMemo(
-    () => alphabetFromName(gameHistory?.getLetterDistribution().toLowerCase()!),
-    [gameHistory]
-  );
+  const alphabet = useMemo(() => {
+    if (gameHistory) {
+      return alphabetFromName(
+        gameHistory?.getLetterDistribution().toLowerCase()
+      );
+    }
+    return undefined;
+  }, [gameHistory]);
 
   const loadNewPuzzle = useCallback(
     async (firstLoad?: boolean) => {
@@ -196,17 +193,15 @@ export const SinglePuzzle = (props: Props) => {
           req
         );
         console.log('got resp', resp.toObject());
-        browserHistoryRef.current.replace(
-          `/puzzle/${encodeURIComponent(resp.getPuzzleId())}`
-        );
+        navigate(`/puzzle/${encodeURIComponent(resp.getPuzzleId())}`);
       } catch (err) {
         message.error({
-          content: err.message,
+          content: (err as LiwordsAPIError).message,
           duration: 5,
         });
       }
     },
-    [userLexicon]
+    [userLexicon, navigate]
   );
 
   // XXX: This is copied from analyzer.tsx. When we add the analyzer
@@ -296,32 +291,37 @@ export const SinglePuzzle = (props: Props) => {
       );
       console.log('got game info', resp.toObject());
       const gameRequest = resp.getGameRequest();
-      setPuzzleInfo((x) => ({
-        ...x,
-        challengeRule: protoChallengeRuleConvert(
-          gameRequest?.getChallengeRule()!
-        ),
-        ratingMode:
-          gameRequest?.getRatingMode() === RatingMode.RATED
-            ? 'Rated'
-            : 'Casual',
-        gameDate: resp.getCreatedAt()?.toDate(),
-        initialTimeSeconds: gameRequest?.getInitialTimeSeconds(),
-        incrementSeconds: gameRequest?.getIncrementSeconds(),
-        maxOvertimeMinutes: gameRequest?.getMaxOvertimeMinutes(),
-        gameUrl: `/game/${gid}?turn=${turnNumber + 1}`,
-        player1: { nickname: resp.getPlayersList()[0].getNickname() },
-        player2: { nickname: resp.getPlayersList()[1].getNickname() },
-      }));
+      if (gameRequest) {
+        setPuzzleInfo((x) => ({
+          ...x,
+          challengeRule: protoChallengeRuleConvert(
+            gameRequest.getChallengeRule()
+          ),
+          ratingMode:
+            gameRequest?.getRatingMode() === RatingMode.RATED
+              ? 'Rated'
+              : 'Casual',
+          gameDate: resp.getCreatedAt()?.toDate(),
+          initialTimeSeconds: gameRequest?.getInitialTimeSeconds(),
+          incrementSeconds: gameRequest?.getIncrementSeconds(),
+          maxOvertimeMinutes: gameRequest?.getMaxOvertimeMinutes(),
+          gameUrl: `/game/${gid}?turn=${turnNumber + 1}`,
+          player1: { nickname: resp.getPlayersList()[0].getNickname() },
+          player2: { nickname: resp.getPlayersList()[1].getNickname() },
+        }));
+      }
     } catch (err) {
       message.error({
-        content: err.message,
+        content: (err as LiwordsAPIError).message,
         duration: 5,
       });
     }
   }, []);
 
   const showSolution = useCallback(async () => {
+    if (!puzzleID) {
+      return;
+    }
     const req = new SubmissionRequest();
     req.setShowSolution(true);
     req.setPuzzleId(puzzleID);
@@ -342,12 +342,14 @@ export const SinglePuzzle = (props: Props) => {
         solved: PuzzleStatus.INCORRECT,
       }));
       // Place the tiles from the event.
-      placeGameEvt(solution!);
+      if (solution) {
+        placeGameEvt(solution);
+      }
       // Also get the game metadata.
       setGameInfo(resp.getGameId(), resp.getTurnNumber());
     } catch (err) {
       message.error({
-        content: err.message,
+        content: (err as LiwordsAPIError).message,
         duration: 5,
       });
     }
@@ -355,6 +357,9 @@ export const SinglePuzzle = (props: Props) => {
 
   const attemptPuzzle = useCallback(
     async (evt: ClientGameplayEvent) => {
+      if (!puzzleID) {
+        return;
+      }
       const req = new SubmissionRequest();
       req.setAnswer(evt);
       req.setPuzzleId(puzzleID);
@@ -386,7 +391,7 @@ export const SinglePuzzle = (props: Props) => {
         }));
       } catch (err) {
         message.error({
-          content: err.message,
+          content: (err as LiwordsAPIError).message,
           duration: 5,
         });
       }
@@ -397,6 +402,9 @@ export const SinglePuzzle = (props: Props) => {
   useEffect(() => {
     // Request Puzzle API to get info about the puzzle on load if we have an id.
     async function fetchPuzzleData() {
+      if (!puzzleID) {
+        return;
+      }
       const req = new PuzzleRequest();
       req.setPuzzleId(puzzleID);
       try {
@@ -436,7 +444,7 @@ export const SinglePuzzle = (props: Props) => {
         setPendingSolution(true);
       } catch (err) {
         message.error({
-          content: err.message,
+          content: (err as LiwordsAPIError).message,
           duration: 5,
         });
       }
@@ -614,29 +622,31 @@ export const SinglePuzzle = (props: Props) => {
           {lexiconModal}
           {responseModalWrong}
           {responseModalCorrect}
-          <BoardPanel
-            anonymousViewer={!loggedIn}
-            username={username}
-            board={gameContext.board}
-            currentRack={sortedRack}
-            events={gameContext.turns}
-            gameID={''} /* no game id for a puzzle */
-            sendSocketMsg={doNothing}
-            sendGameplayEvent={attemptPuzzle}
-            gameDone={false}
-            playerMeta={[]}
-            vsBot={false} /* doesn't matter */
-            lexicon={gameHistory?.getLexicon()!}
-            alphabet={alphabet}
-            challengeRule={'SINGLE' as ChallengeRule} /* doesn't matter */
-            handleAcceptRematch={doNothing}
-            handleAcceptAbort={doNothing}
-            puzzleMode
-            puzzleSolved={puzzleInfo.solved}
-            // handleSetHover={handleSetHover}   // fix later with definitions.
-            // handleUnsetHover={hideDefinitionHover}
-            // definitionPopover={definitionPopover}
-          />
+          {gameHistory?.getLexicon() && alphabet && (
+            <BoardPanel
+              anonymousViewer={!loggedIn}
+              username={username}
+              board={gameContext.board}
+              currentRack={sortedRack}
+              events={gameContext.turns}
+              gameID={''} /* no game id for a puzzle */
+              sendSocketMsg={doNothing}
+              sendGameplayEvent={attemptPuzzle}
+              gameDone={false}
+              playerMeta={[]}
+              vsBot={false} /* doesn't matter */
+              lexicon={gameHistory?.getLexicon()}
+              alphabet={alphabet}
+              challengeRule={'SINGLE' as ChallengeRule} /* doesn't matter */
+              handleAcceptRematch={doNothing}
+              handleAcceptAbort={doNothing}
+              puzzleMode
+              puzzleSolved={puzzleInfo.solved}
+              // handleSetHover={handleSetHover}   // fix later with definitions.
+              // handleUnsetHover={hideDefinitionHover}
+              // definitionPopover={definitionPopover}
+            />
+          )}
         </div>
 
         <div className="data-area" id="right-sidebar">
@@ -661,13 +671,15 @@ export const SinglePuzzle = (props: Props) => {
             increment_seconds={puzzleInfo.incrementSeconds}
             max_overtime_minutes={puzzleInfo.maxOvertimeMinutes}
           />
-          <Pool
-            pool={gameContext.pool}
-            currentRack={sortedRack}
-            poolFormat={poolFormat}
-            setPoolFormat={setPoolFormat}
-            alphabet={alphabet}
-          />
+          {alphabet && (
+            <Pool
+              pool={gameContext.pool}
+              currentRack={sortedRack}
+              poolFormat={poolFormat}
+              setPoolFormat={setPoolFormat}
+              alphabet={alphabet}
+            />
+          )}
           <StaticPlayerCards
             playerOnTurn={gameContext.onturn}
             p0Score={gameContext?.players[0]?.score || 0}
