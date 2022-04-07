@@ -224,8 +224,8 @@ export const ChatChannels = React.memo((props: Props) => {
       const lastUnread = props.unseenMessages.reduce(
         (acc: ChatEntityObj | undefined, m) =>
           m.channel === ch.name &&
-          'timestamp' in m &&
-          (acc === undefined || m.timestamp! > acc.timestamp!)
+          m.timestamp &&
+          (acc === undefined || (acc.timestamp && m.timestamp > acc.timestamp))
             ? m
             : acc,
         undefined
@@ -266,7 +266,7 @@ export const ChatChannels = React.memo((props: Props) => {
     });
   const defaultUnread =
     (props.updatedChannels &&
-      props.updatedChannels!.has(props.defaultChannel)) ||
+      props.updatedChannels.has(props.defaultChannel)) ||
     props.unseenMessages.some((uc) => uc.channel === props.defaultChannel);
   const locationLabel = getLocationLabel(props.defaultChannel);
   return (

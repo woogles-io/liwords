@@ -90,7 +90,9 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
         <li
           className="link plain"
           onClick={() => {
-            props.sendMessage!(props.userID!, props.username);
+            if (props.sendMessage && props.userID) {
+              props.sendMessage(props.userID, props.username);
+            }
           }}
         >
           Chat
@@ -117,7 +119,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
             className="link plain"
             onClick={() => {
               for (const handleContextMatch of handleContextMatches) {
-                handleContextMatch(props.username!);
+                handleContextMatch(props.username);
               }
             }}
           >
@@ -147,8 +149,8 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
         <li
           className="link plain"
           onClick={() =>
-            props.moderate
-              ? props.moderate(props.userID!, props.username)
+            props.moderate && props.userID
+              ? props.moderate(props.userID, props.username)
               : void 0
           }
         >

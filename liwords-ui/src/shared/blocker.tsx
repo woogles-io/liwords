@@ -16,10 +16,8 @@ type BlockerProps = {
 };
 
 export const TheBlocker = (props: BlockerProps) => {
-  const {
-    excludedPlayers,
-    setPendingBlockRefresh,
-  } = useExcludedPlayersStoreContext();
+  const { excludedPlayers, setPendingBlockRefresh } =
+    useExcludedPlayersStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { userID } = loginState;
 

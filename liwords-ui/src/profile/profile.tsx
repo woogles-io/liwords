@@ -56,11 +56,6 @@ type Rating = {
   v: number;
 };
 
-type user = {
-  username: string;
-  uuid: string;
-};
-
 type ProfileRatings = { [variant: string]: Rating };
 
 type RatingsProps = {
@@ -213,11 +208,9 @@ const StatsCard = React.memo((props: StatsProps) => {
   );
 });
 
-type Props = {};
-
 const gamesPageSize = 10;
 
-export const UserProfile = React.memo((props: Props) => {
+export const UserProfile = React.memo(() => {
   const { useState } = useMountedState();
 
   const { username } = useParams();
@@ -311,7 +304,7 @@ export const UserProfile = React.memo((props: Props) => {
               username={username}
             />
             <h3>
-              {viewer !== username ? (
+              {username && viewer !== username ? (
                 <UsernameWithContext
                   omitProfileLink
                   omitSendMessage
@@ -341,13 +334,17 @@ export const UserProfile = React.memo((props: Props) => {
           </div>
         )}
         <RatingsCard ratings={ratings} />
-        <GamesHistoryCard
-          games={recentGames}
-          username={username}
-          userID={userID}
-          fetchPrev={recentGamesOffset > 0 ? fetchPrev : undefined}
-          fetchNext={recentGames.length < gamesPageSize ? undefined : fetchNext}
-        />
+        {username && (
+          <GamesHistoryCard
+            games={recentGames}
+            username={username}
+            userID={userID}
+            fetchPrev={recentGamesOffset > 0 ? fetchPrev : undefined}
+            fetchNext={
+              recentGames.length < gamesPageSize ? undefined : fetchNext
+            }
+          />
+        )}
         <StatsCard stats={stats} />
       </div>
     </>

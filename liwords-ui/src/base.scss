@@ -1,9 +1,11 @@
+@use "sass:math";
+
 @import 'color_modes';
 
 $card-shadow: 0px 0px 12px rgba(0, 0, 0, 0.15);
 $card-shadow-lower: 0px 0px 6px rgba(0, 0, 0, 0.15);
 $card-padding: 16px;
-$card-padding-md: ($card-padding / 2);
+$card-padding-md: ($card-padding * 0.5);
 
 $header-height-mobile: 96px;
 $header-height-desktop: 60px;
@@ -16,7 +18,7 @@ $screen-desktop-l-min: 1920px;
 
 @function strip-unit($number) {
   @if type-of($number) == 'number' and not unitless($number) {
-    @return $number / ($number * 0 + 1);
+    @return math.div($number, $number * 0 + 1);
   }
 
   @return $number;
@@ -68,10 +70,10 @@ $tile-font-size-tablet: $tile-size-tablet * 0.68;
 $tile-font-size-laptop: $tile-size-laptop * 0.68;
 $tile-font-size-desktop: $tile-size-desktop * 0.68;
 
-$point-size-mobile: $tile-font-size-mobile / 3.1;
-$point-size-tablet: $tile-font-size-tablet / 2.6;
-$point-size-laptop: $tile-font-size-laptop / 2.8;
-$point-size-desktop: $tile-font-size-desktop / 2.8;
+$point-size-mobile: math.div($tile-font-size-mobile, 3.1);
+$point-size-tablet: math.div($tile-font-size-tablet, 2.6);
+$point-size-laptop: math.div($tile-font-size-laptop, 2.8);
+$point-size-desktop: math.div($tile-font-size-desktop, 2.8);
 
 @mixin container {
   width: 100%;

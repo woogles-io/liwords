@@ -170,14 +170,14 @@ const Tiles = React.memo((props: Props) => {
               }
             }
             const formedWords = [sh, sv].filter((word) => word.length >= 2);
-            props.handleSetHover!(
+            props.handleSetHover?.(
               x,
               y,
               formedWords.length ? formedWords : undefined
             );
           },
           onMouseLeave: (evt: React.MouseEvent<HTMLElement>) => {
-            props.handleSetHover!(x, y, undefined);
+            props.handleSetHover?.(x, y, undefined);
           },
         }),
         ...(props.definitionPopover &&

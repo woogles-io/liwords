@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import { Route, Switch, useLocation, Redirect } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useMountedState } from './utils/mounted';
 import './App.scss';
 import axios from 'axios';
-import 'antd/dist/antd.css';
+import 'antd/dist/antd.min.css';
 
 import { Table as GameTable } from './gameroom/table';
 import TileImages from './gameroom/tile_images';
@@ -79,17 +79,11 @@ const App = React.memo(() => {
   const { loginState } = useLoginStateStoreContext();
   const { loggedIn, userID } = loginState;
 
-  const {
-    setAdmins,
-    setModerators,
-    setModsFetched,
-  } = useModeratorStoreContext();
+  const { setAdmins, setModerators, setModsFetched } =
+    useModeratorStoreContext();
 
-  const {
-    setFriends,
-    pendingFriendsRefresh,
-    setPendingFriendsRefresh,
-  } = useFriendsStoreContext();
+  const { setFriends, pendingFriendsRefresh, setPendingFriendsRefresh } =
+    useFriendsStoreContext();
 
   const { resetStore } = useResetStoreContext();
 
@@ -232,67 +226,59 @@ const App = React.memo(() => {
         resetSocket={resetSocket}
         setValues={setLiwordsSocketValues}
       />
-      <Switch>
-        <Route path="/" exact>
-          <Lobby
-            sendSocketMsg={sendMessage}
-            sendChat={sendChat}
-            DISCONNECT={resetSocket}
-          />
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <Lobby
+              sendSocketMsg={sendMessage}
+              sendChat={sendChat}
+              DISCONNECT={resetSocket}
+            />
+          }
+        />
+        <Route
+          path="tournament/:partialSlug"
+          element={
+            <TournamentRoom sendSocketMsg={sendMessage} sendChat={sendChat} />
+          }
+        />
+        <Route
+          path="club/:partialSlug"
+          element={
+            <TournamentRoom sendSocketMsg={sendMessage} sendChat={sendChat} />
+          }
+        />
+        <Route path="clubs" element={<Clubs />} />
+        <Route
+          path="game/:gameID"
+          element={
+            <GameTable sendSocketMsg={sendMessage} sendChat={sendChat} />
+          }
+        />
+        <Route path="about" element={<Team />} />
+        <Route path="team" element={<Team />} />
+        <Route path="terms" element={<TermsOfService />} />
+        <Route path="register" element={<Register />} />
+        <Route path="password">
+          <Route path="change" element={<PasswordChange />} />
+          <Route path="reset" element={<PasswordReset />} />
+          <Route path="new" element={<NewPassword />} />
         </Route>
-        <Route path="/tournament/:partialSlug">
-          <TournamentRoom sendSocketMsg={sendMessage} sendChat={sendChat} />
+        <Route path="profile/:username" element={<UserProfile />} />
+        <Route path="settings" element={<Settings />}>
+          <Route path=":section" element={<Settings />} />
         </Route>
-        <Route path="/club/:partialSlug">
-          <TournamentRoom sendSocketMsg={sendMessage} sendChat={sendChat} />
+        <Route path="tile_images" element={<TileImages />}>
+          <Route path=":letterDistribution" element={<TileImages />} />
         </Route>
-        <Route path="/clubs">
-          <Clubs />
-        </Route>
-        <Route path="/game/:gameID">
-          {/* Table meaning a game table */}
-          <GameTable sendSocketMsg={sendMessage} sendChat={sendChat} />
-        </Route>
-        <Route path="/about">
-          <Team />
-        </Route>
-        <Route path="/team">
-          <Team />
-        </Route>
-        <Route path="/terms">
-          <TermsOfService />
-        </Route>
-        <Route path="/register">
-          <Register />
-        </Route>
-        <Route path="/password/change">
-          <PasswordChange />
-        </Route>
-        <Route path="/password/reset">
-          <PasswordReset />
-        </Route>
-
-        <Route path="/password/new">
-          <NewPassword />
-        </Route>
-
-        <Route path="/profile/:username">
-          <UserProfile />
-        </Route>
-        <Route path="/settings/:section?">
-          <Settings />
-        </Route>
-        <Route path="/tile_images/:letterDistribution?">
-          <TileImages />
-        </Route>
-        <Route path="/admin">
-          <Admin />
-        </Route>
-        <Redirect from="/donate" to="/settings/donate" />
-        <Route path="/donate_success">
-          <DonateSuccess />
-        </Route>
-      </Switch>
+        <Route path="admin" element={<Admin />} />
+        <Route
+          path="donate"
+          element={<Navigate replace to="/settings/donate" />}
+        />
+        <Route path="donate_success" element={<DonateSuccess />} />
+      </Routes>
       <Footer />
     </div>
   );

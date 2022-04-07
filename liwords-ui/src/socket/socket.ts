@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import axios from 'axios';
-import jwt from 'jsonwebtoken';
+import jwt_decode from 'jwt-decode';
 import useWebSocket from 'react-use-websocket';
 import { useLocation } from 'react-router-dom';
 import { message } from 'antd';
@@ -101,7 +101,7 @@ export const LiwordsSocket = (props: {
         cid,
       })}`;
 
-      const decoded = jwt.decode(socketToken) as DecodedToken;
+      const decoded = jwt_decode(socketToken) as DecodedToken;
       dispatchLoginState({
         actionType: ActionType.SetAuthentication,
         payload: {
@@ -153,8 +153,9 @@ export const LiwordsSocket = (props: {
 
       return ret;
     } catch (e) {
-      if (e.response) {
-        window.console.log(e.response);
+      // XXX: Fix this; figure out what type of error this can be:
+      if ((e as { [response: string]: string }).response) {
+        window.console.log((e as { [response: string]: string }).response);
       }
       return failUrl;
     }
@@ -266,10 +267,10 @@ export const LiwordsSocket = (props: {
     };
   }, [originalSendMessage]);
 
-  const ret = useMemo(() => ({ sendMessage, justDisconnected }), [
-    sendMessage,
-    justDisconnected,
-  ]);
+  const ret = useMemo(
+    () => ({ sendMessage, justDisconnected }),
+    [sendMessage, justDisconnected]
+  );
   useEffect(() => {
     setValues(ret);
   }, [setValues, ret]);

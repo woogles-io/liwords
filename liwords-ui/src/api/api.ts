@@ -13,12 +13,16 @@ interface PBMsg {
   serializeBinary(): Uint8Array;
 }
 
+export type LiwordsAPIError = {
+  message: string;
+};
+
 export const postJsonObj = async (
   service: string,
   method: string,
-  msg: any,
-  successHandler?: (res: any) => void,
-  errHandler?: (err: any) => void
+  msg: unknown,
+  successHandler?: (res: unknown) => void,
+  errHandler?: (err: LiwordsAPIError) => void
 ) => {
   const url = toAPIUrl(service, method);
 
@@ -42,19 +46,14 @@ export const postJsonObj = async (
   } catch (e) {
     if (!errHandler) {
       message.error({
-        content: e?.message,
+        content: (e as LiwordsAPIError).message,
         duration: 8,
       });
     } else {
-      errHandler(e);
+      errHandler(e as LiwordsAPIError);
     }
   }
 };
-
-interface JsonError {
-  code: string;
-  msg: string;
-}
 
 const postBinary = async (service: string, method: string, msg: PBMsg) => {
   const url = toAPIUrl(service, method);

@@ -22,6 +22,7 @@ import { toAPIUrl } from '../api/api';
 import { countryArray } from './country_map';
 import { MarkdownTips } from './markdown_tips';
 import { AvatarCropper } from './avatar_cropper';
+import { UploadChangeParam } from 'antd/lib/upload';
 
 export type PersonalInfo = {
   birthDate: string;
@@ -53,9 +54,8 @@ export const PersonalInfo = React.memo((props: Props) => {
   const { useState } = useMountedState();
   const { TextArea } = Input;
 
-  const [removeAvatarModalVisible, setRemoveAvatarModalVisible] = useState(
-    false
-  );
+  const [removeAvatarModalVisible, setRemoveAvatarModalVisible] =
+    useState(false);
   const [bioTipsModalVisible, setBioTipsModalVisible] = useState(false);
   const [avatarErr, setAvatarErr] = useState('');
   const [uploadPending, setUploadPending] = useState(false);
@@ -82,7 +82,7 @@ export const PersonalInfo = React.memo((props: Props) => {
       return false;
     },
     maxCount: 1,
-    onChange: (info: any) => {
+    onChange: (info: UploadChangeParam) => {
       if (info.fileList.length > 0) {
         // If they try again, the new one goes to the end of the list
         setImageToUpload(info.fileList[info.fileList.length - 1].originFileObj);
@@ -202,6 +202,7 @@ export const PersonalInfo = React.memo((props: Props) => {
       }}
       footer={[
         <Button
+          key="cheat-sheet"
           onClick={() => {
             const newWindow = window.open(
               'https://www.markdownguide.org/cheat-sheet/',
@@ -214,6 +215,7 @@ export const PersonalInfo = React.memo((props: Props) => {
           See full guide
         </Button>,
         <Button
+          key="ok"
           onClick={() => {
             setBioTipsModalVisible(false);
           }}

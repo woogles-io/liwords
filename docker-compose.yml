@@ -135,6 +135,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile-fe
+    environment:
+      WDS_SOCKET_PORT: 0
+      WDS_SOCKET_PATH: "/wds-socket"
     volumes:
       - ./liwords-ui:/opt/liwords-ui
       # Install node_modules inside the docker container
@@ -146,11 +149,14 @@ services:
     networks:
       - aeronet
     labels:
+      - traefik.enable=true
+
       - "traefik.http.middlewares.floc.headers.customresponseheaders.Permissions-Policy=interest-cohort=()"
       - "traefik.http.routers.liwords-fe.middlewares=floc"
       - "traefik.http.routers.liwords-fe.rule=PathPrefix(`/`)"
-      - "traefik.http.services.liwords-fe.loadbalancer.server.port=3000"
-      - traefik.enable=true
+      - "traefik.http.routers.liwords-fe.service=liwords-fe-service"
+      - "traefik.http.routers.liwords-fe.entrypoints=web"
+      - "traefik.http.services.liwords-fe-service.loadbalancer.server.port=3000"
 
   pb_compiler:
     build:

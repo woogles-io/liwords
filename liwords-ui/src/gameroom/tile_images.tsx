@@ -99,7 +99,7 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
   let curDimX = squareDim;
   let curNumCols = Math.floor(expectedWidth / curDimX);
   const numTileCols = curNumCols;
-  let golang: Array<string> = [];
+  const golang: Array<string> = [];
   let currentLine = '';
   let indentLevel = 0;
 
@@ -234,7 +234,7 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
                   arrowHoriz={false}
                   startingSquare={bonusType === BonusType.StartingSquare}
                   clicked={() => {}}
-                  handleTileDrop={(e: any) => {}}
+                  handleTileDrop={(e: React.DragEvent) => {}}
                 />
               </div>
             ))}
@@ -284,9 +284,9 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
   );
 });
 
-const TileImages = React.memo((props: {}) => {
+const TileImages = React.memo(() => {
   const { letterDistribution } = useParams();
-  return <TileImagesSingle letterDistribution={letterDistribution} />;
+  return <TileImagesSingle letterDistribution={letterDistribution || ''} />;
 });
 
 export default TileImages;

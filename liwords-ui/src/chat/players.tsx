@@ -43,7 +43,7 @@ const Player = React.memo((props: PlayerProps) => {
         if (!games.has(gameID)) {
           games.set(gameID, new Set());
         }
-        games.get(gameID)!.add(groupName);
+        games.get(gameID)?.add(groupName);
         if (groupName === 'activegame:') {
           --numChannels;
         }
@@ -137,7 +137,9 @@ export const Players = React.memo((props: Props) => {
     (a: Partial<FriendUser>, b: Partial<FriendUser>) => {
       const countA = (a.channel || []).length > 0 ? 1 : -1;
       const countB = (b.channel || []).length > 0 ? 1 : -1;
-      return countB - countA || a.username!.localeCompare(b.username!);
+      return (
+        countB - countA || (a.username ?? '').localeCompare(b.username ?? '')
+      );
     },
     []
   );
@@ -184,7 +186,7 @@ export const Players = React.memo((props: Props) => {
   );
 
   const renderPlayerList = useCallback(
-    (userList: Partial<FriendUser>[], className: string = ''): ReactNode => {
+    (userList: Partial<FriendUser>[], className = ''): ReactNode => {
       return (
         <>
           {userList.map((p) => (
