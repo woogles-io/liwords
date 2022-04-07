@@ -898,7 +898,7 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 	}
 
 	_, letterDistributionName, _ := game.HistoryToVariant(history)
-	lang := strings.TrimSuffix(letterDistributionName, "_super")
+	lang := strings.ToLower(strings.TrimSuffix(letterDistributionName, "_super"))
 	bd, ok := BoardDrawers[lang]
 	if !ok {
 		return nil, fmt.Errorf("missing boardDrawer: %s", lang)
