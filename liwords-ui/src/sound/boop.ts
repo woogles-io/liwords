@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 import { Unrace } from '../utils/unrace';
 
 const soundToggleCache: { all: boolean | undefined } = { all: undefined };

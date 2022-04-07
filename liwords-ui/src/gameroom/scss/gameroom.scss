@@ -1279,9 +1279,9 @@ p.rune {
     }
     &.play {
       order: 1;
-      min-width: $board-size-mobile / 4;
-      width: $board-size-mobile / 4;
-      height: $board-size-mobile / 4;
+      min-width: $board-size-mobile * 0.25;
+      width: $board-size-mobile * 0.25;
+      height: $board-size-mobile * 0.25;
       margin: 0 6px;
     }
   }

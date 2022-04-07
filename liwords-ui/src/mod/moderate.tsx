@@ -63,7 +63,7 @@ const Moderation = (props: ModProps) => {
     };
 
     axios
-      .post<{}>(toAPIUrl('mod_service.ModService', 'ApplyActions'), obj)
+      .post(toAPIUrl('mod_service.ModService', 'ApplyActions'), obj)
       .then((e) => {
         message.info({
           content: 'Applied mod action',
@@ -221,7 +221,7 @@ export const deleteChatMessage = (
     ],
   };
   axios
-    .post<{}>(toAPIUrl('mod_service.ModService', 'ApplyActions'), obj)
+    .post(toAPIUrl('mod_service.ModService', 'ApplyActions'), obj)
     .then(() => {
       message.info({
         content: 'Removed chat',

@@ -3,9 +3,7 @@ import { TopBar } from '../navigation/topbar';
 import './staticContent.scss';
 import woogles from '../assets/woogles.png';
 
-type Props = {};
-
-export const TermsOfService = (props: Props) => {
+export const TermsOfService = () => {
   return (
     <>
       <TopBar />

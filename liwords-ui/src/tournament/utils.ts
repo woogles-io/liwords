@@ -5,6 +5,7 @@ import {
   GetTournamentMetadataRequest,
   GetTournamentRequest,
   TournamentMetadataResponse,
+  TournamentMetadata,
   TType,
 } from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { LoginState } from '../store/login_state';
@@ -64,7 +65,9 @@ export const useTourneyMetadata = (
           return;
         }
         const treq = new GetTournamentRequest();
-        treq.setId(meta.getMetadata()?.getId()!);
+        if (meta.getMetadata()) {
+          treq.setId((meta.getMetadata() as TournamentMetadata).getId());
+        }
 
         const tresp = await postProto(
           FullTournamentDivisions,

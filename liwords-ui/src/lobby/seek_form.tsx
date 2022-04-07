@@ -97,8 +97,8 @@ type mandatoryFormValues = Partial<seekPropVals> &
   >;
 
 export const GameRequestToFormValues: (
-  gameRequest: GameRequest | null
-) => mandatoryFormValues = (gameRequest: GameRequest | null) => {
+  gameRequest: GameRequest | undefined
+) => mandatoryFormValues = (gameRequest: GameRequest | undefined) => {
   if (!gameRequest) {
     return {
       lexicon: 'CSW21',
@@ -206,12 +206,15 @@ export const SeekForm = (props: Props) => {
   const storedValues = window.localStorage
     ? JSON.parse(window.localStorage.getItem(storageKey) || '{}')
     : {};
-  const givenFriend = useMemo(() => props.friendRef?.current ?? '', [
-    props.friendRef,
-  ]);
+  const givenFriend = useMemo(
+    () => props.friendRef?.current ?? '',
+    [props.friendRef]
+  );
   useEffect(() => {
     if (props.friendRef) {
       return () => {
+        // why?
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         props.friendRef!.current = '';
       };
     }
@@ -240,8 +243,9 @@ export const SeekForm = (props: Props) => {
     props.tournamentID &&
     tournamentContext.metadata.getDefaultClubSettings()
   ) {
-    const fixedClubSettings = tournamentContext.metadata.getDefaultClubSettings();
-    const initFormValues = GameRequestToFormValues(fixedClubSettings!);
+    const fixedClubSettings =
+      tournamentContext.metadata.getDefaultClubSettings();
+    const initFormValues = GameRequestToFormValues(fixedClubSettings);
     const freeformItems =
       tournamentContext.metadata.getFreeformClubSettingFieldsList() || [];
     disableVariantControls = !freeformItems.includes('variant_name');
@@ -519,8 +523,9 @@ export const SeekForm = (props: Props) => {
             filterOption={(inputValue, option) =>
               !option ||
               !option.value ||
-              option.value.toUpperCase().indexOf(inputValue.toUpperCase()) !==
-                -1
+              (typeof option.value === 'string' &&
+                option.value.toUpperCase().indexOf(inputValue.toUpperCase()) !==
+                  -1)
             }
             onDropdownVisibleChange={handleDropdownVisibleChange}
           >

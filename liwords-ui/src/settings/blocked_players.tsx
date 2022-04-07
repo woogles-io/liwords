@@ -11,8 +11,6 @@ type user = {
   uuid: string;
 };
 
-type Props = {};
-
 const errorCatcher = (e: AxiosError) => {
   console.log('ERROR');
   if (e.response) {
@@ -24,7 +22,7 @@ const errorCatcher = (e: AxiosError) => {
   }
 };
 
-export const BlockedPlayers = React.memo((props: Props) => {
+export const BlockedPlayers = React.memo(() => {
   const { useState } = useMountedState();
   const [blockedUsers, setBlockedUsers] = useState<Array<user>>([]);
   const [confirmModalUser, setConfirmModalUser] = useState<user | undefined>(

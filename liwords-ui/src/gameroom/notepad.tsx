@@ -51,10 +51,10 @@ export const NotepadContextProvider = ({
 }) => {
   const { useState } = useMountedState();
   const [curNotepad, setCurNotepad] = useState('');
-  const contextValue = useMemo(() => ({ curNotepad, setCurNotepad }), [
-    curNotepad,
-    setCurNotepad,
-  ]);
+  const contextValue = useMemo(
+    () => ({ curNotepad, setCurNotepad }),
+    [curNotepad, setCurNotepad]
+  );
 
   return <NotepadContext.Provider value={contextValue} children={children} />;
 };
@@ -62,11 +62,8 @@ export const NotepadContextProvider = ({
 export const Notepad = React.memo((props: NotepadProps) => {
   const notepadEl = useRef<HTMLTextAreaElement>(null);
   const { curNotepad, setCurNotepad } = useContext(NotepadContext);
-  const {
-    displayedRack,
-    placedTiles,
-    placedTilesTempScore,
-  } = useTentativeTileContext();
+  const { displayedRack, placedTiles, placedTilesTempScore } =
+    useTentativeTileContext();
   const { gameContext } = useGameContextStoreContext();
   const board = gameContext.board;
   const addPlay = useCallback(() => {
@@ -127,13 +124,15 @@ export const Notepad = React.memo((props: NotepadProps) => {
     },
     [setCurNotepad]
   );
-  const easterEggEnabled = useMemo(() => /catcam/i.test(curNotepad), [
-    curNotepad,
-  ]);
+  const easterEggEnabled = useMemo(
+    () => /catcam/i.test(curNotepad),
+    [curNotepad]
+  );
   const numWolgesWas = useRef(0);
-  const numWolges = useMemo(() => curNotepad.match(/wolges/gi)?.length || 0, [
-    curNotepad,
-  ]);
+  const numWolges = useMemo(
+    () => curNotepad.match(/wolges/gi)?.length || 0,
+    [curNotepad]
+  );
   useEffect(() => {
     if (numWolges > numWolgesWas.current) {
       BoopSounds.playSound('wolgesSound');
@@ -187,10 +186,11 @@ export const Notepad = React.memo((props: NotepadProps) => {
 });
 
 // usage: type catcam on the notepad
-const EasterEgg = (props: any) => {
+const EasterEgg = () => {
   const ctx = useMemo(() => {
     const AudioContext =
       window.AudioContext ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ((window as any).webkitAudioContext as AudioContext);
     return new AudioContext();
   }, []);
@@ -336,22 +336,7 @@ const EasterEgg = (props: any) => {
         }
 
         const accompaniment = [
-          40,
-          40,
-          45,
-          45,
-          40,
-          40,
-          45,
-          45,
-          40,
-          40,
-          38,
-          40,
-          38,
-          40,
-          38,
-          38,
+          40, 40, 45, 45, 40, 40, 45, 45, 40, 40, 38, 40, 38, 40, 38, 38,
         ];
 
         t = 0;

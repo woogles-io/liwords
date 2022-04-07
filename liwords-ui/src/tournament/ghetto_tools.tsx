@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/camelcase */
 // Ghetto tools are Cesar tools before making things pretty.
 
 import {
@@ -21,7 +20,7 @@ import {
 import { Modal } from '../utils/focus_modal';
 import { Store } from 'rc-field-form/lib/interface';
 import React, { useEffect } from 'react';
-import { postJsonObj, postProto } from '../api/api';
+import { LiwordsAPIError, postJsonObj, postProto } from '../api/api';
 import {
   SingleRoundControlsRequest,
   TournamentResponse,
@@ -379,7 +378,6 @@ const AddPlayers = (props: { tournamentID: string }) => {
                 <Form.Item
                   {...field}
                   name={[field.name, 'username']}
-                  fieldKey={[field.fieldKey, 'username']}
                   rules={[{ required: true, message: 'Missing username' }]}
                 >
                   <Input placeholder="Username" />
@@ -387,7 +385,6 @@ const AddPlayers = (props: { tournamentID: string }) => {
                 <Form.Item
                   {...field}
                   name={[field.name, 'rating']}
-                  fieldKey={[field.fieldKey, 'rating']}
                   rules={[{ required: true, message: 'Missing rating' }]}
                 >
                   <Input placeholder="Rating" />
@@ -877,10 +874,9 @@ const UnpairRound = (props: { tournamentID: string }) => {
 const SetTournamentControls = (props: { tournamentID: string }) => {
   const { useState } = useMountedState();
   const [modalVisible, setModalVisible] = useState(false);
-  const [
-    selectedGameRequest,
-    setSelectedGameRequest,
-  ] = useState<GameRequest | null>(null);
+  const [selectedGameRequest, setSelectedGameRequest] = useState<
+    GameRequest | undefined
+  >(undefined);
 
   const [division, setDivision] = useState('');
   const [gibsonize, setGibsonize] = useState(false);
@@ -898,7 +894,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
 
   useEffect(() => {
     if (!division) {
-      setSelectedGameRequest(null);
+      setSelectedGameRequest(undefined);
       return;
     }
     const div = tournamentContext.divisions[division];
@@ -906,7 +902,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     if (gameRequest) {
       setSelectedGameRequest(gameRequest);
     } else {
-      setSelectedGameRequest(null);
+      setSelectedGameRequest(undefined);
     }
     if (div.divisionControls) {
       setGibsonize(div.divisionControls.getGibsonize());
@@ -976,7 +972,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
         duration: 3,
       });
     } catch (e) {
-      showError(e.message);
+      showError((e as LiwordsAPIError).message);
     }
   };
 
@@ -1324,7 +1320,7 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
         duration: 3,
       });
     } catch (e) {
-      showError(e.message);
+      showError((e as LiwordsAPIError).message);
     }
   };
 
@@ -1481,7 +1477,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
         duration: 3,
       });
     } catch (e) {
-      showError(e.message);
+      showError((e as LiwordsAPIError).message);
     }
   };
 

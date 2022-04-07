@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { loadStripe } from '@stripe/stripe-js';
+import { loadStripe, StripeError } from '@stripe/stripe-js';
 import { Button, message } from 'antd';
 import { useLoginStateStoreContext } from './store/store';
 
@@ -27,10 +27,14 @@ const stripePromise = (async () => {
   }
 })();
 
+type StripeResult = {
+  error?: StripeError;
+};
+
 export const Donate = () => {
   const { loginState } = useLoginStateStoreContext();
 
-  const handleResult = (result: any) => {
+  const handleResult = (result: StripeResult) => {
     if (result.error) {
       message.error({
         content: result.error.message,

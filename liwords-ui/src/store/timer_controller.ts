@@ -25,10 +25,7 @@ export interface ClockData {
   moretime: number;
 }
 
-export const millisToTimeStr = (
-  ms: number,
-  showTenths: boolean = true
-): string => {
+export const millisToTimeStr = (ms: number, showTenths = true): string => {
   const neg = ms < 0;
   // eslint-disable-next-line no-param-reassign
   const absms = Math.abs(ms);
@@ -118,8 +115,8 @@ export class ClockController {
 
     console.log('setClock', this.times);
 
-    if (isClockRunning) {
-      this.scheduleTick(this.times[this.times.activePlayer!], delayMs);
+    if (isClockRunning && this.times.activePlayer) {
+      this.scheduleTick(this.times[this.times.activePlayer], delayMs);
     }
   };
 

@@ -294,11 +294,10 @@ const ModeratorsContext = createContext<ModeratorsStoreData>({
   setModsFetched: defaultFunction,
 });
 
-const ChallengeResultEventContext = createContext<
-  ChallengeResultEventStoreData
->({
-  challengeResultEvent: defaultFunction,
-});
+const ChallengeResultEventContext =
+  createContext<ChallengeResultEventStoreData>({
+    challengeResultEvent: defaultFunction,
+  });
 
 const GameMetaEventContext = createContext<GameMetaEventStoreData>({
   gameMetaEventContext: {
@@ -456,6 +455,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
           const dae = document.activeElement;
           if (
             doneButtonRef.current &&
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             ((dae as any)?.disabled || !shouldTrigger(dae))
           ) {
             // Focusing on the Done button reenables first/prev shortcuts.
@@ -613,10 +613,13 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       setGameEndMessage: doNothing,
     };
   }, [isShowingLatest, gameEndMessage]);
+  let shownTimes: Times;
+  if (isExamining && examinableGameContext.clockController?.current?.times) {
+    shownTimes = examinableGameContext.clockController?.current?.times;
+  } else {
+    shownTimes = timerStore.timerContext;
+  }
 
-  const shownTimes = isExamining
-    ? examinableGameContext.clockController!.current!.times
-    : timerStore.timerContext;
   const examinableTimerStore = useMemo(() => {
     return {
       stopClock: doNothing,
@@ -770,7 +773,7 @@ const RealStore = ({ children, ...props }: Props) => {
     if (!clockController || !clockController.current) {
       return;
     }
-    const newCtx = { ...clockController.current!.times, [p]: t };
+    const newCtx = { ...clockController.current.times, [p]: t };
     setTimerContext(newCtx);
   }, []);
 
@@ -835,15 +838,14 @@ const RealStore = ({ children, ...props }: Props) => {
     undefined
   );
 
-  const [gameMetaEventContext, setGameMetaEventContext] = useState<
-    MetaEventState
-  >({
-    curEvt: MetaStates.NO_ACTIVE_REQUEST,
-    initialExpiry: 0,
-    evtId: '',
-    evtCreator: '',
-    // clockController: null,
-  });
+  const [gameMetaEventContext, setGameMetaEventContext] =
+    useState<MetaEventState>({
+      curEvt: MetaStates.NO_ACTIVE_REQUEST,
+      initialExpiry: 0,
+      evtId: '',
+      evtCreator: '',
+      // clockController: null,
+    });
 
   const [poolFormat, setPoolFormat] = useState<PoolFormatType>(
     PoolFormatType.Alphabet

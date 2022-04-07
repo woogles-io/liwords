@@ -15,14 +15,12 @@ import axios, { AxiosError } from 'axios';
 import { toAPIUrl } from '../api/api';
 import { useLoginStateStoreContext } from '../store/store';
 import { PlayerMetadata } from '../gameroom/game_info';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useResetStoreContext } from '../store/store';
 
 import './settings.scss';
 import { Secret } from './secret';
 import { HeartFilled } from '@ant-design/icons';
-
-type Props = {};
 
 enum Category {
   PersonalInfo = 1,
@@ -55,7 +53,7 @@ const getInitialCategory = (categoryShortcut: string, loggedIn: boolean) => {
     return Category.Support;
   }
   window.history.replaceState({}, 'settings', '/settings');
-
+  console.log('the category shortcut is', categoryShortcut);
   switch (categoryShortcut) {
     case 'donate':
     case 'support':
@@ -77,12 +75,15 @@ const getInitialCategory = (categoryShortcut: string, loggedIn: boolean) => {
   return Category.Preferences;
 };
 
-export const Settings = React.memo((props: Props) => {
+export const Settings = React.memo(() => {
   const { loginState } = useLoginStateStoreContext();
   const { userID, username: viewer, loggedIn } = loginState;
   const { useState } = useMountedState();
   const { resetStore } = useResetStoreContext();
-  const { section } = useParams();
+  let { section } = useParams();
+  if (!section) {
+    section = '';
+  }
   const [category, setCategory] = useState(
     getInitialCategory(section, loggedIn)
   );
@@ -95,7 +96,7 @@ export const Settings = React.memo((props: Props) => {
   const [showCloseAccount, setShowCloseAccount] = useState(false);
   const [showClosedAccount, setShowClosedAccount] = useState(false);
   const [accountClosureError, setAccountClosureError] = useState('');
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const errorCatcher = (e: AxiosError) => {
     console.log(e);
@@ -158,8 +159,8 @@ export const Settings = React.memo((props: Props) => {
   });
 
   const handleContribute = useCallback(() => {
-    history.push('/settings');
-  }, [history]);
+    navigate('/settings');
+  }, [navigate]);
 
   const handleLogout = useCallback(() => {
     axios
@@ -172,12 +173,12 @@ export const Settings = React.memo((props: Props) => {
           description: 'You have been logged out.',
         });
         resetStore();
-        history.push('/');
+        navigate('/');
       })
       .catch((e) => {
         console.log(e);
       });
-  }, [history, resetStore]);
+  }, [navigate, resetStore]);
 
   const updatedAvatar = useCallback(
     (avatarUrl: string) => {

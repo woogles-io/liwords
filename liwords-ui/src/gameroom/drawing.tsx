@@ -257,6 +257,7 @@ export const useDrawing = () => {
         i < strokesRef.current.length && strokesRef.current[i].pen !== 'erase';
         ++i
       ) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         toDraw.push(strokesRef.current[i].elt!);
       }
       for (
@@ -264,6 +265,7 @@ export const useDrawing = () => {
         i < strokesRef.current.length && strokesRef.current[i].pen === 'erase';
         ++i
       ) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         toErase.push(strokesRef.current[i].elt!);
       }
       if (toErase.length > 0) {
@@ -559,9 +561,9 @@ export const useDrawing = () => {
       ) : null,
     [isEnabled, svgProps, currentDrawing]
   );
-  const ret = React.useMemo(() => ({ outerDivProps, svgDrawing }), [
-    outerDivProps,
-    svgDrawing,
-  ]);
+  const ret = React.useMemo(
+    () => ({ outerDivProps, svgDrawing }),
+    [outerDivProps, svgDrawing]
+  );
   return ret;
 };

@@ -21,11 +21,6 @@ type Props = {
   modalVisible: boolean;
 };
 
-type SelectedTile = {
-  rune: string;
-  index: number;
-};
-
 export const ExchangeTiles = React.memo((props: Props) => {
   const { useState } = useMountedState();
 

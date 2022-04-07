@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { DragEvent, useEffect, useRef } from 'react';
 import { useDrop, XYCoord } from 'react-dnd';
 import Tile, { TILE_TYPE } from './tile';
 import { isTouchDevice } from '../utils/cwgame/common';
@@ -40,11 +40,11 @@ type Props = {
 };
 
 export const Rack = React.memo((props: Props) => {
-  const handleDropOver = (e: any) => {
+  const handleDropOver = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
   };
-  const handleDrop = (e: any, index: number) => {
+  const handleDrop = (e: DragEvent<HTMLDivElement>, index: number) => {
     if (props.moveRackTile && e.dataTransfer.getData('rackIndex')) {
       props.moveRackTile(
         index,
@@ -59,6 +59,7 @@ export const Rack = React.memo((props: Props) => {
   };
   const [, drop] = useDrop({
     accept: TILE_TYPE,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     drop: (item: any, monitor) => {
       const clientOffset = monitor.getClientOffset();
       const rackElement = document.getElementById('rack');

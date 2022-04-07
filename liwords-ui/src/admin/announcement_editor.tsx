@@ -65,65 +65,60 @@ export const AnnouncementEditor = () => {
         <Form.List name="announcements">
           {(fields, { add, remove, move }) => (
             <>
-              {fields.map(
-                ({ key, name, fieldKey, ...restField }, index, arr) => (
-                  <>
-                    <Form.Item
-                      {...restField}
-                      name={[name, 'title']}
-                      label="Title"
-                      fieldKey={[fieldKey, 'title']}
-                      rules={[{ required: true, message: 'Missing title' }]}
-                    >
-                      <Input placeholder="Title" />
-                    </Form.Item>
-                    <Form.Item
-                      {...restField}
-                      name={[name, 'link']}
-                      label="Link"
-                      fieldKey={[fieldKey, 'link']}
-                      rules={[{ required: true, message: 'Missing link' }]}
-                    >
-                      <Input placeholder="https://" />
-                    </Form.Item>
-                    <Form.Item
-                      {...restField}
-                      name={[name, 'body']}
-                      fieldKey={[fieldKey, 'body']}
-                      label="Body"
-                      rules={[{ required: true, message: 'Missing body' }]}
-                    >
-                      <Input.TextArea
-                        rows={4}
-                        placeholder="Body - you can use Markdown, but avoid links in here."
-                      />
-                    </Form.Item>
+              {fields.map(({ key, name, ...restField }, index, arr) => (
+                <>
+                  <Form.Item
+                    {...restField}
+                    name={[name, 'title']}
+                    label="Title"
+                    rules={[{ required: true, message: 'Missing title' }]}
+                  >
+                    <Input placeholder="Title" />
+                  </Form.Item>
+                  <Form.Item
+                    {...restField}
+                    name={[name, 'link']}
+                    label="Link"
+                    rules={[{ required: true, message: 'Missing link' }]}
+                  >
+                    <Input placeholder="https://" />
+                  </Form.Item>
+                  <Form.Item
+                    {...restField}
+                    name={[name, 'body']}
+                    label="Body"
+                    rules={[{ required: true, message: 'Missing body' }]}
+                  >
+                    <Input.TextArea
+                      rows={4}
+                      placeholder="Body - you can use Markdown, but avoid links in here."
+                    />
+                  </Form.Item>
+                  <Button
+                    onClick={() => remove(name)}
+                    icon={<MinusCircleOutlined />}
+                  >
+                    Delete
+                  </Button>
+                  {index > 0 ? (
                     <Button
-                      onClick={() => remove(name)}
-                      icon={<MinusCircleOutlined />}
+                      onClick={() => move(index, index - 1)}
+                      icon={<UpOutlined />}
                     >
-                      Delete
+                      Move up
                     </Button>
-                    {index > 0 ? (
-                      <Button
-                        onClick={() => move(index, index - 1)}
-                        icon={<UpOutlined />}
-                      >
-                        Move up
-                      </Button>
-                    ) : null}
-                    {index < arr.length - 1 ? (
-                      <Button
-                        onClick={() => move(index, index + 1)}
-                        icon={<DownOutlined />}
-                      >
-                        Move down
-                      </Button>
-                    ) : null}
-                    <Divider />
-                  </>
-                )
-              )}
+                  ) : null}
+                  {index < arr.length - 1 ? (
+                    <Button
+                      onClick={() => move(index, index + 1)}
+                      icon={<DownOutlined />}
+                    >
+                      Move down
+                    </Button>
+                  ) : null}
+                  <Divider />
+                </>
+              ))}
               <Form.Item>
                 <Button
                   type="dashed"
