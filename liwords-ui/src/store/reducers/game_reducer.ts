@@ -421,9 +421,6 @@ const initializeTimerController = (
   if (!newState.clockController) {
     return;
   }
-  if (!newState.clockController.current) {
-    return;
-  }
 
   let [t1, t2] = [ghr.getTimePlayer1(), ghr.getTimePlayer2()];
   // Note that p0 is always first, even when "secondWentFirst", as p0 refers
