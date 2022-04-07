@@ -7,10 +7,12 @@ import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb'
 export const renderStars = (stars: number) => {
   const ret: ReactNode[] = [];
   for (let i = stars; i > 0; i--) {
-    ret.push(<StarFilled />);
+    ret.push(<StarFilled key={`star${i}`} />);
   }
   while (ret.length < MAX_STARS) {
-    ret.push(<StarOutlined className="unearned" />);
+    ret.push(
+      <StarOutlined key={`star-unearned-${ret.length}`} className="unearned" />
+    );
   }
   return <div className="stars">{ret}</div>;
 };
