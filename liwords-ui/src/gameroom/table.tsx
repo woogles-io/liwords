@@ -704,7 +704,7 @@ export const Table = React.memo((props: Props) => {
       if (gameDone) {
         const phonies: Array<string> = [];
         let hasWords = false; // avoid running this before the first GameHistoryRefresher event
-        playedWords.forEach((word) => {
+        for (const word of Array.from(playedWords)) {
           hasWords = true;
           const definition = wordInfo[word];
           if (definition === undefined) {
@@ -713,7 +713,7 @@ export const Table = React.memo((props: Props) => {
           } else if (!definition.v) {
             phonies.push(word);
           }
-        });
+        }
         if (hasWords) {
           phonies.sort();
           setPhonies(phonies);
