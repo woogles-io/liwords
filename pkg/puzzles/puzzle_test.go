@@ -17,6 +17,7 @@ import (
 	puzzlesstore "github.com/domino14/liwords/pkg/stores/puzzles"
 	"github.com/domino14/liwords/pkg/stores/user"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/matryer/is"
@@ -666,6 +667,13 @@ func RecreateDB() (*pgxpool.Pool, *puzzlesstore.DBStore, *user.DBStore, *gamesto
 		panic(err)
 	}
 
+	pgrjReq := proto.Clone(DefaultPuzzleGenerationJobRequest).(*puzzle_service.PuzzleGenerationJobRequest)
+
+	reqId, err := puzzlesStore.CreateGenerationLog(ctx, pgrjReq)
+	if err != nil {
+		panic(err)
+	}
+
 	files, err := ioutil.ReadDir("./testdata")
 	if err != nil {
 		panic(err)
@@ -698,7 +706,7 @@ func RecreateDB() (*pgxpool.Pool, *puzzlesstore.DBStore, *user.DBStore, *gamesto
 			gameReq.Lexicon = OtherLexicon
 		}
 		entGame := entity.NewGame(game, gameReq)
-		pzls, err := CreatePuzzlesFromGame(ctx, gameStore, puzzlesStore, entGame, pcUUID, ipc.GameType_ANNOTATED)
+		pzls, err := CreatePuzzlesFromGame(ctx, pgrjReq.Request, reqId, gameStore, puzzlesStore, entGame, pcUUID, ipc.GameType_ANNOTATED)
 		if err != nil {
 			panic(err)
 		}

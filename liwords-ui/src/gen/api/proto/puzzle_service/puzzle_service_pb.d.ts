@@ -328,6 +328,48 @@ export namespace PuzzleVoteResponse {
   }
 }
 
+export class PuzzleGenerationJobRequest extends jspb.Message {
+  getBotVsBot(): boolean;
+  setBotVsBot(value: boolean): void;
+
+  getLexicon(): string;
+  setLexicon(value: string): void;
+
+  getLetterDistribution(): string;
+  setLetterDistribution(value: string): void;
+
+  getSqlOffset(): number;
+  setSqlOffset(value: number): void;
+
+  getMaxGames(): number;
+  setMaxGames(value: number): void;
+
+  hasRequest(): boolean;
+  clearRequest(): void;
+  getRequest(): macondo_api_proto_macondo_macondo_pb.PuzzleGenerationRequest | undefined;
+  setRequest(value?: macondo_api_proto_macondo_macondo_pb.PuzzleGenerationRequest): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): PuzzleGenerationJobRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: PuzzleGenerationJobRequest): PuzzleGenerationJobRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: PuzzleGenerationJobRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): PuzzleGenerationJobRequest;
+  static deserializeBinaryFromReader(message: PuzzleGenerationJobRequest, reader: jspb.BinaryReader): PuzzleGenerationJobRequest;
+}
+
+export namespace PuzzleGenerationJobRequest {
+  export type AsObject = {
+    botVsBot: boolean,
+    lexicon: string,
+    letterDistribution: string,
+    sqlOffset: number,
+    maxGames: number,
+    request?: macondo_api_proto_macondo_macondo_pb.PuzzleGenerationRequest.AsObject,
+  }
+}
+
 export interface PuzzleStatusMap {
   UNANSWERED: 0;
   CORRECT: 1;

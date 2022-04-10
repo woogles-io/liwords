@@ -1,5 +1,14 @@
 BEGIN;
 
+CREATE TABLE IF NOT EXISTS puzzle_generation_logs (
+		id BIGSERIAL PRIMARY KEY,
+		request jsonb NOT NULL,
+		fulfilled bool,
+		error_status text,
+		created_at timestamptz NOT NULL DEFAULT NOW(),
+		completed_at timestamptz
+);
+
 CREATE TABLE IF NOT EXISTS puzzles (
 		id BIGSERIAL PRIMARY KEY,
 		uuid text UNIQUE NOT NULL,
@@ -11,9 +20,12 @@ CREATE TABLE IF NOT EXISTS puzzles (
 		before_text text,
 		after_text text,
 		rating jsonb NOT NULL,
+		generation_id bigint NOT NULL,
+		bucket_index integer NOT NULL,
 		created_at timestamptz NOT NULL DEFAULT NOW(),
 		FOREIGN KEY (game_id) REFERENCES games (id),
-		FOREIGN KEY (author_id) REFERENCES users (id)
+		FOREIGN KEY (author_id) REFERENCES users (id),
+		FOREIGN KEY (generation_id) REFERENCES puzzle_generation_logs (id)
 );
 
 CREATE TABLE IF NOT EXISTS puzzle_tag_titles (
@@ -56,6 +68,12 @@ CREATE TABLE IF NOT EXISTS puzzle_votes (
 CREATE INDEX ON puzzle_attempts (updated_at);
 
 INSERT INTO puzzle_tag_titles (tag_title) VALUES ('EQUITY') ON CONFLICT DO NOTHING;
+INSERT INTO puzzle_tag_titles (tag_title) VALUES ('BINGO') ON CONFLICT DO NOTHING;
 INSERT INTO puzzle_tag_titles (tag_title) VALUES ('ONLY_BINGO') ON CONFLICT DO NOTHING;
+INSERT INTO puzzle_tag_titles (tag_title) VALUES ('BLANK_BINGO') ON CONFLICT DO NOTHING;
+INSERT INTO puzzle_tag_titles (tag_title) VALUES ('NON_BINGO') ON CONFLICT DO NOTHING;
+INSERT INTO puzzle_tag_titles (tag_title) VALUES ('POWER_TILE') ON CONFLICT DO NOTHING;
+INSERT INTO puzzle_tag_titles (tag_title) VALUES ('BINGO_NINE_OR_ABOVE') ON CONFLICT DO NOTHING;
+INSERT INTO puzzle_tag_titles (tag_title) VALUES ('CEL_ONLY') ON CONFLICT DO NOTHING;
 
 COMMIT;

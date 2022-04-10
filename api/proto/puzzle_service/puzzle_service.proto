@@ -62,6 +62,15 @@ message PuzzleVoteRequest {
 
 message PuzzleVoteResponse {}
 
+message PuzzleGenerationJobRequest {
+  bool bot_vs_bot = 1;
+  string lexicon = 2;
+  string letter_distribution = 3;
+  int32 sql_offset = 4;
+  int32 max_games = 5;
+  macondo.PuzzleGenerationRequest request = 6;
+}
+
 service PuzzleService {
   rpc GetStartPuzzleId(StartPuzzleIdRequest) returns (StartPuzzleIdResponse);
   rpc GetNextPuzzleId(NextPuzzleIdRequest) returns (NextPuzzleIdResponse);

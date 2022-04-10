@@ -11,7 +11,9 @@ import (
 	gamestore "github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/utilities"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	"github.com/domino14/macondo/alphabet"
+
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/macondo/move"
 	macondopuzzles "github.com/domino14/macondo/puzzles"
@@ -19,8 +21,10 @@ import (
 )
 
 type PuzzleStore interface {
+	CreateGenerationLog(ctx context.Context, req *puzzle_service.PuzzleGenerationJobRequest) (int, error)
+	UpdateGenerationLogStatus(ctx context.Context, genId int, fulfilled bool, err error) error
 	CreatePuzzle(ctx context.Context, gameID string, turnNumber int32, answer *macondopb.GameEvent, authorID string,
-		lexicon string, beforeText string, afterText string, tags []macondopb.PuzzleTag) error
+		lexicon string, beforeText string, afterText string, tags []macondopb.PuzzleTag, reqId int, bucketIndex int32) error
 	GetStartPuzzleId(ctx context.Context, userId string, lexicon string) (string, error)
 	GetNextPuzzleId(ctx context.Context, userId string, lexicon string) (string, error)
 	GetPuzzle(ctx context.Context, userId string, puzzleUUID string) (*macondopb.GameHistory, string, int32, *bool, time.Time, time.Time, error)
@@ -33,30 +37,33 @@ type PuzzleStore interface {
 	SetPuzzleVote(ctx context.Context, userId string, puzzleUUID string, vote int) error
 }
 
-func CreatePuzzlesFromGame(ctx context.Context, gs *gamestore.DBStore, ps PuzzleStore,
+func CreatePuzzlesFromGame(ctx context.Context, req *macondopb.PuzzleGenerationRequest, reqId int, gs *gamestore.DBStore, ps PuzzleStore,
 	g *entity.Game, authorId string, gt ipc.GameType) ([]*macondopb.PuzzleCreationResponse, error) {
 
-	pzls, err := macondopuzzles.CreatePuzzlesFromGame(g.Config(), &g.Game)
+	pzls, err := macondopuzzles.CreatePuzzlesFromGame(g.Config(), &g.Game, req)
 	if err != nil {
 		return nil, err
 	}
-	log.Info().Msgf("created %d puzzles from game %s", len(pzls), g.GameID())
-
 	// Only create if there were puzzles
 	if len(pzls) > 0 {
 		// If the mcg game is not from a game that already
 		// exists in the database, then create the game
-		if gt != ipc.GameType_NATIVE {
-			err = gs.CreateRaw(ctx, g, gt)
-			if err != nil {
-				return nil, err
-			}
-		}
+		gameCreated := false
 
 		for _, pzl := range pzls {
-			err := ps.CreatePuzzle(ctx, pzl.GameId, pzl.TurnNumber, pzl.Answer, authorId, g.GameReq.Lexicon, "", "", pzl.Tags)
-			if err != nil {
-				return nil, err
+			if req.Buckets[pzl.BucketIndex].Size > 0 {
+				if gt != ipc.GameType_NATIVE && !gameCreated {
+					err = gs.CreateRaw(ctx, g, gt)
+					if err != nil {
+						return nil, err
+					}
+					gameCreated = true
+				}
+				err := ps.CreatePuzzle(ctx, pzl.GameId, pzl.TurnNumber, pzl.Answer, authorId, g.GameReq.Lexicon, "", "", pzl.Tags, reqId, pzl.BucketIndex)
+				if err != nil {
+					return nil, err
+				}
+				req.Buckets[pzl.BucketIndex].Size--
 			}
 		}
 	}

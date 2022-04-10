@@ -6,12 +6,14 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/glicko"
 	"github.com/domino14/liwords/pkg/stores/common"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -42,8 +44,60 @@ func (s *DBStore) Disconnect() {
 	s.dbPool.Close()
 }
 
+func (s *DBStore) CreateGenerationLog(ctx context.Context, req *puzzle_service.PuzzleGenerationJobRequest) (int, error) {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return -1, err
+	}
+	defer tx.Rollback(ctx)
+
+	data, err := json.Marshal(req)
+	if err != nil {
+		return -1, err
+	}
+
+	var id int
+	err = tx.QueryRow(ctx, `INSERT INTO puzzle_generation_logs (request, created_at) VALUES ($1, NOW()) RETURNING id`, data).Scan(&id)
+	if err != nil {
+		return -1, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return -1, err
+	}
+
+	return id, nil
+}
+
+func (s *DBStore) UpdateGenerationLogStatus(ctx context.Context, id int, fulfilled bool, procErr error) error {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	errorStatus := &sql.NullString{}
+	if procErr != nil {
+		errorStatus.Valid = true
+		errorStatus.String = procErr.Error()
+	}
+	result, err := tx.Exec(ctx, `UPDATE puzzle_generation_logs SET completed_at = NOW(), error_status = $1, fulfilled = $2 WHERE id = $3`, errorStatus, fulfilled, id)
+	if result.RowsAffected() != 1 {
+		return fmt.Errorf("no rows affecting when updating log %d", id)
+	}
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *DBStore) CreatePuzzle(ctx context.Context, gameUUID string, turnNumber int32, answer *macondopb.GameEvent, authorUUID string,
-	lexicon string, beforeText string, afterText string, tags []macondopb.PuzzleTag) error {
+	lexicon string, beforeText string, afterText string, tags []macondopb.PuzzleTag, generationId int, bucketIndex int32) error {
 
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
@@ -55,10 +109,6 @@ func (s *DBStore) CreatePuzzle(ctx context.Context, gameUUID string, turnNumber 
 	if err != nil {
 		return err
 	}
-
-	// XXX: This is a bit hacky and can probably be improved, but
-	// the insert value for author_id needs to be either a valid
-	// author id or a nil value
 
 	authorId := sql.NullInt64{Valid: false}
 	if authorUUID != "" {
@@ -79,8 +129,8 @@ func (s *DBStore) CreatePuzzle(ctx context.Context, gameUUID string, turnNumber 
 	uuid := shortuuid.New()
 
 	var id int
-	err = tx.QueryRow(ctx, `INSERT INTO puzzles (uuid, game_id, turn_number, author_id, answer, lexicon, before_text, after_text, rating, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW()) RETURNING id`,
-		uuid, gameID, turnNumber, authorId, gameEventToAnswer(answer), lexicon, beforeText, afterText, newRating).Scan(&id)
+	err = tx.QueryRow(ctx, `INSERT INTO puzzles (uuid, game_id, turn_number, author_id, answer, lexicon, before_text, after_text, rating, generation_id, bucket_index, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW()) RETURNING id`,
+		uuid, gameID, turnNumber, authorId, gameEventToAnswer(answer), lexicon, beforeText, afterText, newRating, generationId, bucketIndex).Scan(&id)
 	if err != nil {
 		return err
 	}
@@ -450,7 +500,7 @@ func (s *DBStore) SubmitAnswer(ctx context.Context, userUUID string, ratingKey e
 				return err
 			}
 			if rowsAffected != 1 {
-				entity.NewWooglesError(ipc.WooglesError_PUZZLE_SUBMIT_ANSWER_SET_CORRECT, userUUID, puzzleUUID)
+				return entity.NewWooglesError(ipc.WooglesError_PUZZLE_SUBMIT_ANSWER_SET_CORRECT, userUUID, puzzleUUID)
 			}
 
 			if !showSolution {
