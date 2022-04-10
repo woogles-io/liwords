@@ -7,7 +7,7 @@ import {
   TourneyStatus,
 } from '../store/reducers/tournament_reducer';
 
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReadyButton } from './ready_button';
 import {
   TournamentPerson,
@@ -155,7 +155,7 @@ type PairingTableData = {
 export const Pairings = React.memo((props: Props) => {
   const { tournamentContext } = useTournamentStoreContext();
   const { divisions } = tournamentContext;
-  const history = useHistory();
+  const navigate = useNavigate();
   const currentRound = useMemo(
     () =>
       props.selectedDivision && divisions[props.selectedDivision]
@@ -319,21 +319,20 @@ export const Pairings = React.memo((props: Props) => {
               } else {
                 if (
                   status === TourneyStatus.ROUND_GAME_ACTIVE &&
-                  findGameIdFromActive(props.username!)
+                  props.username &&
+                  findGameIdFromActive(props.username)
                 ) {
                   actions = (
                     <Button
                       className="primary"
                       onClick={() => {
-                        history.replace(
-                          `/game/${encodeURIComponent(
-                            findGameIdFromActive(props.username!) || ''
-                          )}`
-                        );
-                        console.log(
-                          'redirecting to',
-                          findGameIdFromActive(props.username!)
-                        );
+                        if (props.username) {
+                          navigate(
+                            `/game/${encodeURIComponent(
+                              findGameIdFromActive(props.username) || ''
+                            )}`
+                          );
+                        }
                       }}
                     >
                       Resume
@@ -354,9 +353,7 @@ export const Pairings = React.memo((props: Props) => {
                     if (event.ctrlKey || event.altKey || event.metaKey) {
                       window.open(`/game/${encodeURIComponent(otherGameId)}`);
                     } else {
-                      history.replace(
-                        `/game/${encodeURIComponent(otherGameId)}`
-                      );
+                      navigate(`/game/${encodeURIComponent(otherGameId)}`);
                       console.log('redirecting to', otherGameId);
                     }
                   }}
@@ -385,9 +382,7 @@ export const Pairings = React.memo((props: Props) => {
                   if (event.ctrlKey || event.altKey || event.metaKey) {
                     window.open(`/game/${encodeURIComponent(finishedGame)}`);
                   } else {
-                    history.replace(
-                      `/game/${encodeURIComponent(finishedGame)}`
-                    );
+                    navigate(`/game/${encodeURIComponent(finishedGame)}`);
                     console.log('redirecting to', finishedGame);
                   }
                 }}
@@ -404,28 +399,31 @@ export const Pairings = React.memo((props: Props) => {
           }
         }
         const wl =
-          playerNames[0] === playerNames[1] ? (
+          playerNames[0] === playerNames[1] && props.selectedDivision ? (
             <p key={`${playerNames[0]}wl`}>
               {recordToString(
                 getPerformance(
                   playerNames[0],
                   round,
-                  divisions[props.selectedDivision!]
+                  divisions[props.selectedDivision]
                 )
               )}
             </p>
           ) : (
-            playerNames.map((playerName) => (
-              <p key={`${playerName}wl`}>
-                {recordToString(
-                  getPerformance(
-                    playerName,
-                    round,
-                    divisions[props.selectedDivision!]
-                  )
-                )}
-              </p>
-            ))
+            playerNames.map(
+              (playerName) =>
+                props.selectedDivision && (
+                  <p key={`${playerName}wl`}>
+                    {recordToString(
+                      getPerformance(
+                        playerName,
+                        round,
+                        divisions[props.selectedDivision]
+                      )
+                    )}
+                  </p>
+                )
+            )
           );
         const scores =
           playerNames[0] === playerNames[1]

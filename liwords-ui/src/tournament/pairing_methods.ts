@@ -51,10 +51,9 @@ export const fieldsForMethod = (
     PairingMethod.MANUAL,
     PairingMethod.INITIAL_FONTES):
       return [];
-
+    // @ts-expect-error fallthrough is purposeful:
     case PairingMethod.FACTOR:
       fields.push(['number', 'factor', 'Factor']);
-    // fallthrough
     case PairingMethod.SWISS:
       fields.push(
         ['number', 'maxRepeats', 'Max Desirable Repeats (1 is no repeats)'],

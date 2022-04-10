@@ -25,7 +25,9 @@ const BriefProfilesContext = createContext<{
   request: () => {},
 });
 
-export const BriefProfiles = (props: any) => {
+export const BriefProfiles = (props: {
+  children?: JSX.Element | JSX.Element[];
+}) => {
   const { useState } = useMountedState();
   const [profileId, setProfileId] = useState(0);
   const triggerRefresh = useCallback(
@@ -60,10 +62,10 @@ export const BriefProfiles = (props: any) => {
         const respMap = respObj.getResponseMap();
         // because of the await, toRequest.current may have accumulated more items
         const expires = performance.now() + 300000; // 5 minutes
-        for (const k of (toRequestHere as any) as [string]) {
+        toRequestHere.forEach((k) => {
           cacheRef.current.set(k, { data: respMap.get(k) ?? null, expires });
           toRequest.current.delete(k); // this response also answers queries during await
-        }
+        });
         triggerRefresh();
       } catch (e) {
         console.error('unable to access api', e);

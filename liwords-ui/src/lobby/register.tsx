@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMountedState } from '../utils/mounted';
 import axios from 'axios';
 import { TopBar } from '../navigation/topbar';
@@ -122,7 +122,7 @@ const useBirthBox = (
   }, [reformatSelection, selection, formatSelection, allOptions]);
 
   return [
-    <Form.Item>
+    <Form.Item key="stupidlinter">
       <AutoComplete
         value={searched}
         options={shownOptions}
@@ -248,13 +248,13 @@ export const Register = () => {
       });
   };
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const loggedIn = signedUp || loginState.loggedIn;
   useEffect(() => {
     if (loggedIn) {
-      history.replace('/');
+      navigate('/', { replace: true });
     }
-  }, [history, loggedIn]);
+  }, [navigate, loggedIn]);
 
   // XXX: This is copied from settings/personal_info.tsx (with added placeholder).
   // It has the same issues (such as the emoji not displaying on Windows).
@@ -376,9 +376,15 @@ export const Register = () => {
 
   const localDateSequence = useMemo(() => determineLocalDateSequence(), []);
   const birthBoxes = [
-    <span className="birth-year">{birthYearBox}</span>,
-    <span className="birth-month">{birthMonthBox}</span>,
-    <span className="birth-date">{birthDateBox}</span>,
+    <span className="birth-year" key="birth-year">
+      {birthYearBox}
+    </span>,
+    <span className="birth-month" key="birth-month">
+      {birthMonthBox}
+    </span>,
+    <span className="birth-date" key="birth-date">
+      {birthDateBox}
+    </span>,
   ];
 
   const [form] = Form.useForm();

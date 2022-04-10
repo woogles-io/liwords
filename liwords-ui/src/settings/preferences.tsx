@@ -11,7 +11,6 @@ import '../gameroom/scss/gameroom.scss';
 import { TileLetter, PointValue } from '../gameroom/tile';
 import { BoardPreview } from './board_preview';
 import { MatchLexiconDisplay, puzzleLexica } from '../shared/lexicon_display';
-type Props = {};
 
 const KNOWN_TILE_ORDERS = [
   {
@@ -141,7 +140,7 @@ const KNOWN_TILE_STYLES = [
 const makeTileOrderValue = (tileOrder: string, autoShuffle: boolean) =>
   JSON.stringify({ tileOrder, autoShuffle });
 
-export const Preferences = React.memo((props: Props) => {
+export const Preferences = React.memo(() => {
   const { useState } = useMountedState();
 
   const [darkMode, setDarkMode] = useState(
@@ -205,17 +204,14 @@ export const Preferences = React.memo((props: Props) => {
     setUserBoard(boardStyle);
   }, []);
 
-  const [reevaluateTileOrderOptions, setReevaluateTileOrderOptions] = useState(
-    0
-  );
+  const [reevaluateTileOrderOptions, setReevaluateTileOrderOptions] =
+    useState(0);
   const [tileOrder, setTileOrder] = useState(preferredSortOrder ?? '');
   const handleTileOrderAndAutoShuffleChange = useCallback((value) => {
     try {
       const parsedStuff = JSON.parse(value);
-      const {
-        tileOrder: newTileOrder,
-        autoShuffle: newAutoShuffle,
-      } = parsedStuff;
+      const { tileOrder: newTileOrder, autoShuffle: newAutoShuffle } =
+        parsedStuff;
       setTileOrder(newTileOrder);
       setPreferredSortOrder(newTileOrder);
       setSharedEnableAutoShuffle(newAutoShuffle);

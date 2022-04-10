@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Affix, Button, Dropdown, Menu, Modal, Popconfirm } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 
@@ -42,9 +42,8 @@ const ExamineGameControls = React.memo(
     gameDone: boolean;
   }) => {
     const { useState } = useMountedState();
-    const {
-      gameContext: examinableGameContext,
-    } = useExaminableGameContextStoreContext();
+    const { gameContext: examinableGameContext } =
+      useExaminableGameContextStoreContext();
     const {
       examinedTurn,
       handleExamineEnd,
@@ -55,16 +54,14 @@ const ExamineGameControls = React.memo(
       doneButtonRef,
     } = useExamineStoreContext();
     const { gameContext } = useGameContextStoreContext();
-    const {
-      setPlacedTiles,
-      setPlacedTilesTempScore,
-    } = useTentativeTileContext();
+    const { setPlacedTiles, setPlacedTilesTempScore } =
+      useTentativeTileContext();
     useEffect(() => {
       setPlacedTilesTempScore(undefined);
       setPlacedTiles(new Set<EphemeralTile>());
     }, [examinedTurn, setPlacedTiles, setPlacedTilesTempScore]);
     useEffect(() => {
-      doneButtonRef.current!.focus();
+      doneButtonRef.current?.focus();
     }, [doneButtonRef]);
     const numberOfTurns = gameContext.turns.length;
     const gameHasNotStarted = gameContext.players.length === 0; // :shrug:
@@ -295,12 +292,10 @@ const GameControls = React.memo((props: Props) => {
     []
   );
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const handleExitToLobby = useCallback(() => {
-    props.tournamentSlug
-      ? history.replace(props.tournamentSlug)
-      : history.replace('/');
-  }, [history, props.tournamentSlug]);
+    props.tournamentSlug ? navigate(props.tournamentSlug) : navigate('/');
+  }, [navigate, props.tournamentSlug]);
 
   const {
     isExamining,

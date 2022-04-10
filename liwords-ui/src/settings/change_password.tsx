@@ -14,9 +14,7 @@ const layout = {
   },
 };
 
-type Props = {};
-
-export const ChangePassword = React.memo((props: Props) => {
+export const ChangePassword = React.memo(() => {
   const { useState } = useMountedState();
   const [err, setErr] = useState('');
   const [form] = Form.useForm();

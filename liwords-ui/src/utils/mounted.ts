@@ -20,6 +20,7 @@ export const useMountedState: () => {
 } = () => {
   const isMountedRef = React.useRef(true);
   React.useEffect(() => () => void (isMountedRef.current = false), []);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const identsRef = React.useRef<Array<React.Dispatch<any>>>([]);
   const idRef = React.useRef(-1);
   idRef.current = -1;

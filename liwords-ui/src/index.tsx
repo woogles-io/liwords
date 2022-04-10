@@ -10,6 +10,7 @@ import { BriefProfiles } from './utils/brief_profiles';
 declare global {
   interface Window {
     RUNTIME_CONFIGURATION: { [key: string]: string };
+    webkitAudioContext: typeof AudioContext;
   }
 }
 

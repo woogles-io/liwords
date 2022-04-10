@@ -80,6 +80,7 @@ import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb'
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
 const EnterKey = 'Enter';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const colors = require('../base.scss');
 
 type Props = {
@@ -212,10 +213,8 @@ export const BoardPanel = React.memo((props: Props) => {
     'BLANK_MODAL' | 'DRAWING_HOTKEY' | 'EXCHANGE_MODAL' | 'NORMAL' | 'BLIND'
   >('NORMAL');
 
-  const {
-    drawingCanBeEnabled,
-    handleKeyDown: handleDrawingKeyDown,
-  } = React.useContext(DrawingHandlersSetterContext);
+  const { drawingCanBeEnabled, handleKeyDown: handleDrawingKeyDown } =
+    React.useContext(DrawingHandlersSetterContext);
   const [arrowProperties, setArrowProperties] = useState({
     row: 0,
     col: 0,
@@ -223,15 +222,12 @@ export const BoardPanel = React.memo((props: Props) => {
     show: false,
   });
 
-  const {
-    gameContext: examinableGameContext,
-  } = useExaminableGameContextStoreContext();
-  const {
-    gameEndMessage: examinableGameEndMessage,
-  } = useExaminableGameEndMessageStoreContext();
-  const {
-    timerContext: examinableTimerContext,
-  } = useExaminableTimerStoreContext();
+  const { gameContext: examinableGameContext } =
+    useExaminableGameContextStoreContext();
+  const { gameEndMessage: examinableGameEndMessage } =
+    useExaminableGameEndMessageStoreContext();
+  const { timerContext: examinableTimerContext } =
+    useExaminableTimerStoreContext();
 
   const { isExamining, handleExamineStart } = useExamineStoreContext();
   const { gameContext } = useGameContextStoreContext();
@@ -288,6 +284,7 @@ export const BoardPanel = React.memo((props: Props) => {
     playerMeta,
     sendSocketMsg,
     sendGameplayEvent,
+    handleUnsetHover,
     username,
   } = props;
 
@@ -319,7 +316,9 @@ export const BoardPanel = React.memo((props: Props) => {
       );
       switch (move) {
         case 'exchange':
-          moveEvt = exchangeMoveEvent(addl!, gameID);
+          if (addl) {
+            moveEvt = exchangeMoveEvent(addl, gameID);
+          }
           break;
         case 'pass':
           moveEvt = passMoveEvent(gameID);
@@ -432,7 +431,8 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const recallTiles = useCallback(() => {
     if (arrowProperties.show) {
-      let { row, col, horizontal } = arrowProperties;
+      let { row, col } = arrowProperties;
+      const { horizontal } = arrowProperties;
       const matchesLocation = ({
         row: tentativeRow,
         col: tentativeCol,
@@ -536,6 +536,8 @@ export const BoardPanel = React.memo((props: Props) => {
   useEffect(() => {
     let fullReset = false;
     const lastLetters = lastLettersRef.current;
+    // XXX: please fix me:
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const dep = readOnlyEffectDependenciesRef.current!;
     if (lastLetters === undefined) {
       // First load.
@@ -665,6 +667,7 @@ export const BoardPanel = React.memo((props: Props) => {
     // rack is smaller than that because past the threshold by then
     setexchangeAllowed(tilesRemaining >= 7);
   }, [gameContext.pool, props.currentRack]);
+
   useEffect(() => {
     if (
       examinableGameContext.playState === PlayState.WAITING_FOR_FINAL_PASS &&
@@ -732,17 +735,19 @@ export const BoardPanel = React.memo((props: Props) => {
       );
     }
   }, [props.events, props.username]);
+
   const squareClicked = useCallback(
     (row: number, col: number) => {
-      if (props.board.letterAt(row, col) !== EmptySpace) {
+      if (board.letterAt(row, col) !== EmptySpace) {
         // If there is a tile on this square, ignore the click.
         return;
       }
       setArrowProperties(nextArrowPropertyState(arrowProperties, row, col));
-      props.handleUnsetHover?.();
+      handleUnsetHover?.();
     },
-    [arrowProperties, props.board, props.handleUnsetHover]
+    [arrowProperties, board, handleUnsetHover]
   );
+
   const keydown = useCallback(
     (evt: React.KeyboardEvent) => {
       if (evt.ctrlKey || evt.altKey || evt.metaKey) {
@@ -1066,16 +1071,16 @@ export const BoardPanel = React.memo((props: Props) => {
               ''
             );
           } else {
-            const blindfoldCoordinates = parseBlindfoldCoordinates(
-              blindfoldCommand
-            );
+            const blindfoldCoordinates =
+              parseBlindfoldCoordinates(blindfoldCommand);
             if (blindfoldCoordinates !== undefined) {
               // Valid coordinates, place the arrow
               say(wordToSayString(blindfoldCommand), '');
               const board = { ...gameContext.board };
-              const existingTile = board.letters[
-                blindfoldCoordinates.row * 15 + blindfoldCoordinates.col
-              ].trim();
+              const existingTile =
+                board.letters[
+                  blindfoldCoordinates.row * 15 + blindfoldCoordinates.col
+                ].trim();
               if (!existingTile) {
                 setArrowProperties({
                   row: blindfoldCoordinates.row,

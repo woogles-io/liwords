@@ -1,5 +1,5 @@
-import { useCallback, useRef } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { message, notification } from 'antd';
 import {
   ChatEntityType,
@@ -125,13 +125,19 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.REMATCH_STARTED]: RematchStartedEvent,
       [MessageType.GAME_META_EVENT]: GameMetaEvent,
       [MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE]: FullTournamentDivisions,
-      [MessageType.TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE]: DivisionRoundControls,
-      [MessageType.TOURNAMENT_DIVISION_PAIRINGS_MESSAGE]: DivisionPairingsResponse,
-      [MessageType.TOURNAMENT_DIVISION_CONTROLS_MESSAGE]: DivisionControlsResponse,
-      [MessageType.TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE]: PlayersAddedOrRemovedResponse,
+      [MessageType.TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE]:
+        DivisionRoundControls,
+      [MessageType.TOURNAMENT_DIVISION_PAIRINGS_MESSAGE]:
+        DivisionPairingsResponse,
+      [MessageType.TOURNAMENT_DIVISION_CONTROLS_MESSAGE]:
+        DivisionControlsResponse,
+      [MessageType.TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE]:
+        PlayersAddedOrRemovedResponse,
       [MessageType.TOURNAMENT_FINISHED_MESSAGE]: TournamentFinishedResponse,
-      [MessageType.TOURNAMENT_DIVISION_DELETED_MESSAGE]: TournamentDivisionDeletedResponse,
-      [MessageType.TOURNAMENT_DIVISION_PAIRINGS_DELETED_MESSAGE]: DivisionPairingsDeletedResponse,
+      [MessageType.TOURNAMENT_DIVISION_DELETED_MESSAGE]:
+        TournamentDivisionDeletedResponse,
+      [MessageType.TOURNAMENT_DIVISION_PAIRINGS_DELETED_MESSAGE]:
+        DivisionPairingsDeletedResponse,
       [MessageType.CHAT_MESSAGE_DELETED]: ChatMessageDeleted,
       [MessageType.TOURNAMENT_MESSAGE]: TournamentDataResponse,
       [MessageType.TOURNAMENT_DIVISION_MESSAGE]: TournamentDivisionDataResponse,
@@ -156,6 +162,7 @@ export const parseMsgs = (msg: Uint8Array) => {
 export const ReverseMessageType = (() => {
   const ret = [];
   for (const k in MessageType) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ret[(MessageType as { [key: string]: any })[k]] = k;
   }
   return ret;
@@ -166,17 +173,13 @@ export const useOnSocketMsg = () => {
   const { addChat, deleteChat } = useChatStoreContext();
   const { excludedPlayers } = useExcludedPlayersStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
-  const {
-    gameMetaEventContext,
-    setGameMetaEventContext,
-  } = useGameMetaEventContext();
+  const { gameMetaEventContext, setGameMetaEventContext } =
+    useGameMetaEventContext();
   const { setGameEndMessage } = useGameEndMessageStoreContext();
   const { setCurrentLagMs } = useLagStoreContext();
   const { dispatchLobbyContext } = useLobbyStoreContext();
-  const {
-    tournamentContext,
-    dispatchTournamentContext,
-  } = useTournamentStoreContext();
+  const { tournamentContext, dispatchTournamentContext } =
+    useTournamentStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { setPresence, addPresences } = usePresenceStoreContext();
   const { friends, setFriends } = useFriendsStoreContext();
@@ -184,9 +187,7 @@ export const useOnSocketMsg = () => {
   const { stopClock } = useTimerStoreContext();
   const { isExamining } = useExamineStoreContext();
 
-  const history = useHistory();
-  const historyRef = useRef(history);
-  historyRef.current = history;
+  const navigate = useNavigate();
 
   return useCallback(
     (reader: FileReader) => {
@@ -354,12 +355,12 @@ export const useOnSocketMsg = () => {
                 key: 'rematch-notification',
                 duration: 10, // 10 seconds,
                 onClick: () => {
-                  historyRef.current.replace(url);
+                  navigate(url);
                   notification.close('rematch-notification');
                 },
               });
             } else {
-              historyRef.current.replace(url);
+              navigate(url, { replace: true });
               setGameEndMessage('');
             }
             break;
@@ -660,7 +661,7 @@ export const useOnSocketMsg = () => {
               payload: '',
             });
             const gid = nge.getGameId();
-            historyRef.current.replace(`/game/${encodeURIComponent(gid)}`);
+            navigate(`/game/${encodeURIComponent(gid)}`, { replace: true });
             setGameEndMessage('');
             break;
           }
@@ -890,6 +891,7 @@ export const useOnSocketMsg = () => {
       gameMetaEventContext,
       loginState,
       friends,
+      navigate,
       setFriends,
       setCurrentLagMs,
       setGameEndMessage,

@@ -62,10 +62,8 @@ export const Chat = React.memo((props: Props) => {
   const [channelsFetched, setChannelsFetched] = useState(false);
   const [presenceVisible, setPresenceVisible] = useState(false);
   // We cannot useRef because we need to awoken effects relying on the element.
-  const [
-    tabContainerElement,
-    setTabContainerElement,
-  ] = useState<HTMLDivElement | null>(null);
+  const [tabContainerElement, setTabContainerElement] =
+    useState<HTMLDivElement | null>(null);
   const { defaultChannel, defaultDescription } = props;
   const [showChannels, setShowChannels] = useState(props.suppressDefault);
   const propsSendChat = useMemo(() => props.sendChat, [props.sendChat]);
@@ -139,9 +137,8 @@ export const Chat = React.memo((props: Props) => {
   const [channelSelectedTime, setChannelSelectedTime] = useState(Date.now());
   const [channelReadTime, setChannelReadTime] = useState(Date.now());
   const [notificationCount, setNotificationCount] = useState<number>(0);
-  const [lastNotificationTimestamp, setLastNotificationTimestamp] = useState<
-    number
-  >(Date.now());
+  const [lastNotificationTimestamp, setLastNotificationTimestamp] =
+    useState<number>(Date.now());
   // Messages that come in for other channels
   const [unseenMessages, setUnseenMessages] = useState(
     new Array<ChatEntityObj>()
@@ -181,8 +178,8 @@ export const Chat = React.memo((props: Props) => {
 
   const setHeight = useCallback(() => {
     const tabPaneHeight = document.getElementById('chat')?.clientHeight;
-    const contextPanelHeight = document.getElementById('chat-context')
-      ?.clientHeight;
+    const contextPanelHeight =
+      document.getElementById('chat-context')?.clientHeight;
     const calculatedEntitiesHeight =
       contextPanelHeight && tabPaneHeight
         ? tabPaneHeight -
@@ -359,8 +356,8 @@ export const Chat = React.memo((props: Props) => {
       const lastMessage = chatEntities.reduce(
         (acc: ChatEntityObj | undefined, ch) =>
           ch.channel === defaultChannel &&
-          'timestamp' in ch &&
-          (acc === undefined || ch.timestamp! > acc.timestamp!)
+          ch.timestamp &&
+          (acc === undefined || (acc.timestamp && ch.timestamp > acc.timestamp))
             ? ch
             : acc,
         undefined
@@ -435,8 +432,8 @@ export const Chat = React.memo((props: Props) => {
     if (selectedChatTab === 'PLAYERS') {
       const lastMessage = chatEntities.reduce(
         (acc: ChatEntityObj | undefined, ch) =>
-          'timestamp' in ch &&
-          (acc === undefined || ch.timestamp! > acc.timestamp!)
+          ch.timestamp &&
+          (acc === undefined || (acc.timestamp && ch.timestamp > acc.timestamp))
             ? ch
             : acc,
         undefined
@@ -523,11 +520,14 @@ export const Chat = React.memo((props: Props) => {
           const specialSender = props.highlight
             ? props.highlight.includes(ent.sender)
             : false;
+          if (!ent.id) {
+            return null;
+          }
           return (
             <ChatEntity
               entityType={ent.entityType}
               key={ent.id}
-              msgID={ent.id!}
+              msgID={ent.id}
               sender={ent.sender}
               senderId={ent.senderId}
               message={ent.message}
@@ -598,10 +598,8 @@ export const Chat = React.memo((props: Props) => {
         : 0,
     [presences, gameChannel]
   );
-  const [
-    laggedGameChannelPresenceCount,
-    setLaggedGameChannelPresenceCount,
-  ] = useState(0);
+  const [laggedGameChannelPresenceCount, setLaggedGameChannelPresenceCount] =
+    useState(0);
   useEffect(() => {
     const t = setTimeout(() => {
       // lag this update to allow opponent to refresh the window.
@@ -707,7 +705,7 @@ export const Chat = React.memo((props: Props) => {
                   {loggedIn ? (
                     <p
                       className={`breadcrumb clickable${
-                        (updatedChannels && updatedChannels!.size > 0) ||
+                        (updatedChannels && updatedChannels.size > 0) ||
                         unseenMessages.length > 0
                           ? ' unread'
                           : ''
@@ -720,7 +718,7 @@ export const Chat = React.memo((props: Props) => {
                       }}
                     >
                       <LeftOutlined /> All chats
-                      {((updatedChannels && updatedChannels!.size > 0) ||
+                      {((updatedChannels && updatedChannels.size > 0) ||
                         unseenMessages.length > 0) && (
                         <span className="unread-marker">•</span>
                       )}
