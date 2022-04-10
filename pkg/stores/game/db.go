@@ -2,6 +2,7 @@ package game
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"sort"
@@ -226,14 +227,59 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 	}
 	ctxDB := s.db.WithContext(ctx)
 	var games []*game
-	// gorm does not intend to support with clause. https://github.com/go-gorm/gorm/issues/3955#issuecomment-761939460
-	if results := ctxDB.Raw(`with u as (select id from users where lower(username) = lower(?))
-		select games.* from games inner join u on (player0_id = u.id or player1_id = u.id)
-		where game_end_reason not in (?, ?, ?) order by created_at desc limit ? offset ?`,
-		username, pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED, numGames, offset).
-		Find(&games); results.Error != nil {
-		return nil, results.Error
+
+	if err := ctxDB.Transaction(func(tx *gorm.DB) error {
+
+		var userId int64
+		if results := tx.Raw(
+			"select id from users where lower(username) = lower(?)",
+			username).
+			Scan(&userId); results.Error != nil {
+
+			return results.Error
+		} else if results.RowsAffected != 1 {
+			// Note: With gorm, Scan does not return an error when the row is not found.
+			// No users means no games.
+			// There should already be a unique key on (lower(username)), so there cannot be multiple matches.
+			return nil
+		}
+
+		// Note: The query now sorts by id. It used to sort by created_at, which was not indexed.
+		// Note: A partial index may be helpful for the few players with the most number of completed games.
+		// Note: This query only selects ids, to reduce the amount of work required by the db to paginate.
+		var gameIds []int64
+		if results := tx.Raw(
+			`select id from games where (player0_id = ? or player1_id = ?)
+			and game_end_reason not in (?, ?, ?) order by id desc limit ? offset ?`,
+			userId, userId,
+			pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED, numGames, offset).
+			Find(&gameIds); results.Error != nil {
+
+			return results.Error
+		} else if results.RowsAffected == 0 {
+			// No game ids means no games.
+			return nil
+		}
+
+		if results := tx.Raw(
+			"select * from games where id in ? order by id desc",
+			gameIds).
+			Find(&games); results.Error != nil {
+
+			return results.Error
+		}
+
+		return nil
+	}, &sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  true,
+	}); err != nil {
+		// Note: REPEATABLE READ is correct for Postgres (other databases may require SERIALIZABLE to avoid phantom reads).
+		// The default READ COMMITTED may return invalid rows if an update invalidates the row after the id has been chosen.
+		log.Err(err).Msg("get-recent-games")
+		return nil, err
 	}
+
 	return convertGamesToInfoResponses(games)
 }
 
