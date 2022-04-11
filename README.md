@@ -74,7 +74,7 @@ You can do `docker-compose up app` and `docker-compose up frontend` in two diffe
 
 To have two players play each other you must have one browser window in incognito mode, or use another browser.
 
-10. To register a bot, register a user the regular way. Then run this following script, replacing the `$1` with the bot username:
+10. To register a bot, register a user the regular way. Then run this following script, replacing the `$1` with the bot username you just registered.
 
 `docker-compose exec db psql -U postgres liwords -c "UPDATE users SET internal_bot='t' WHERE username = '$1';"`
 
