@@ -14,9 +14,11 @@ This source code is AGPL-licensed. You can modify the source for this app, or fo
 
 ### How to develop locally
 
-You have two options for developing locally. Using the entire Docker stack is the most straightforward option, but, unless you are on Linux, Docker has to spin up virtual machines for your code. Stopping and starting containers repeatedly, especially the frontend code container, is significantly slower than running these natively.
+You have two options for developing locally. 
 
-The other option is to use Docker for the long-running services (postgres, Redis, NATS, proxy), and run your program executables locally. It is a bit more complex to set up, but may work better if you are developing on Mac OS (or Windows?).
+1. Using the entire Docker stack is the most straightforward option, but, unless you are on Linux, Docker has to spin up virtual machines for your code. Stopping and starting containers repeatedly, especially the frontend code container, is significantly slower than running these natively; rebuilding containers, etc is also quite slow.
+
+2. The other option is to use Docker for the long-running services (postgres, Redis, NATS), and run your program executables locally. It is a bit more complex to set up initially, but may work better if you are developing on Mac OS (or Windows?).
 
 #### Using the full stack on Docker:
 
@@ -44,7 +46,9 @@ The other option is to use Docker for the long-running services (postgres, Redis
 
 To have two players play each other you must have one browser window in incognito mode, or use another browser.
 
-11. To register a bot, register a user the regular way. Then change their `internal_bot` flag in the database (`users` table) to true, and restart the server. You need to register at least one bot in order for bot games to work.
+11. To register a bot, run the script in `scripts/utilities/register-bot.sh`. You can run it like this:
+
+`./scripts/utilities/register-bot.sh BotUsername`, replacing BotUsername with your desired bot username.
 
 **Tips**
 
@@ -65,7 +69,14 @@ You can do `docker-compose up app` and `docker-compose up frontend` in two diffe
 - For the frontend, do `npm start` in the `liwords-ui` directory.
 - For the bot, do `go run cmd/bot/*.go` in the `macondo` directory.
 
-8. Go to `http://localhost:8001` to see Woogles.
+8. Go to `http://localhost:3000` to see Woogles.
+9. You can register a user by clicking on `SIGN UP` at the top right.
+
+To have two players play each other you must have one browser window in incognito mode, or use another browser.
+
+10. To register a bot, register a user the regular way. Then run this following script, replacing the `$1` with the bot username:
+
+`docker-compose exec db psql -U postgres liwords -c "UPDATE users SET internal_bot='t' WHERE username = '$1';"`
 
 
 

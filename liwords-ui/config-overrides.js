@@ -25,6 +25,18 @@ module.exports = {
         ...config.webSocketServer.options,
         path: process.env.WDS_SOCKET_PATH,
       };
+      if (process.env.WDS_PROXY) {
+        console.log('Webpack dev-server proxy is on...');
+        config.proxy = {
+            ...config.proxy,
+            '/twirp': 'http://localhost:8001',
+            '/gameimg': 'http://localhost:8001',
+            '/ws': {
+                target: 'ws://localhost:8087',
+                ws: true
+            }
+        };
+      }
       return config;
     }
   }
