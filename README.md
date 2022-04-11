@@ -58,7 +58,7 @@ You can do `docker-compose up app` and `docker-compose up frontend` in two diffe
 3. Download and install Go from golang.org
 4. Copy the `local_skeleton.env` file in this directory to `local.env`, and modify the copy to match your local paths. (See all the variables ending in _PATH).
 5. Open up a few tabs or panels in your terminal so you can bring up the services separately. In each tab, you can do `source local.env`, or alternatively you can put this command in your profile to do it automatically.
-6. Bring up the `dc-local-services.yml` file with `docker-compose up -f dc-local-services.yml` in one tab.
+6. Bring up the `dc-local-services.yml` file with `docker-compose -f dc-local-services.yml up` in one tab.
 7. You can bring up the other services in your other tabs:
 - For the api server, do `go run cmd/liwords-api/*.go`
 - For the socket server, do `go run cmd/socketserv/main.go` in the `liwords-socket` repo.
