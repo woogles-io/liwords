@@ -18,7 +18,7 @@ import {
   ChallengeRule,
   protoChallengeRuleConvert,
 } from '../gameroom/game_info';
-import { calculatePuzzleScore, PuzzleScore, renderStars } from './puzzle_score';
+import { calculatePuzzleScore, renderStars } from './puzzle_info';
 import Pool from '../gameroom/pool';
 import './puzzles.scss';
 import { PuzzleInfo as PuzzleInfoWidget } from './puzzle_info';
@@ -533,6 +533,7 @@ export const SinglePuzzle = (props: Props) => {
           <Button
             key="ok"
             type="primary"
+            autoFocus
             onClick={() => {
               setShowResponseModalWrong(false);
             }}
@@ -650,13 +651,6 @@ export const SinglePuzzle = (props: Props) => {
         </div>
 
         <div className="data-area" id="right-sidebar">
-          <PuzzleScore
-            attempts={puzzleInfo.attempts}
-            dateSolved={puzzleInfo.dateSolved}
-            loadNewPuzzle={loadNewPuzzle}
-            showSolution={showSolution}
-            solved={puzzleInfo.solved}
-          />
           <PuzzleInfoWidget
             solved={puzzleInfo.solved}
             gameDate={puzzleInfo.gameDate}
@@ -670,6 +664,10 @@ export const SinglePuzzle = (props: Props) => {
             initial_time_seconds={puzzleInfo.initialTimeSeconds}
             increment_seconds={puzzleInfo.incrementSeconds}
             max_overtime_minutes={puzzleInfo.maxOvertimeMinutes}
+            attempts={puzzleInfo.attempts}
+            dateSolved={puzzleInfo.dateSolved}
+            loadNewPuzzle={loadNewPuzzle}
+            showSolution={showSolution}
           />
           {alphabet && (
             <Pool

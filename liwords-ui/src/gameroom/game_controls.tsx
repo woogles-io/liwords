@@ -486,78 +486,75 @@ const GameControls = React.memo((props: Props) => {
             </Button>
           </Dropdown>
         )}
-
-        {!props.puzzleMode && (
-          <Popconfirm
-            title="Are you sure you wish to pass?"
-            onCancel={() => {
-              setCurrentPopUp('NONE');
-            }}
-            onConfirm={() => {
-              props.onPass();
-              setCurrentPopUp('NONE');
-            }}
-            onVisibleChange={(visible) => {
-              setCurrentPopUp(visible ? 'PASS' : 'NONE');
-            }}
-            okText="Yes"
-            cancelText="No"
-            visible={currentPopUp === 'PASS'}
-          >
-            <Button
-              ref={passButton}
-              onClick={() => {
-                if (currentPopUp === 'PASS') {
-                  props.onPass();
-                  setCurrentPopUp('NONE');
-                }
-              }}
-              danger
-              disabled={!props.myTurn}
-              type={
-                props.finalPassOrChallenge && props.myTurn
-                  ? 'primary'
-                  : 'default'
-              }
-            >
-              Pass
-              <span className="key-command">2</span>
-            </Button>
-          </Popconfirm>
-        )}
-      </div>
-      <div className="secondary-controls">
         <Popconfirm
-          title="Are you sure you wish to challenge?"
+          title="Are you sure you wish to pass?"
           onCancel={() => {
             setCurrentPopUp('NONE');
           }}
           onConfirm={() => {
-            props.onChallenge();
+            props.onPass();
             setCurrentPopUp('NONE');
           }}
           onVisibleChange={(visible) => {
-            setCurrentPopUp(visible ? 'CHALLENGE' : 'NONE');
+            setCurrentPopUp(visible ? 'PASS' : 'NONE');
           }}
           okText="Yes"
           cancelText="No"
-          visible={currentPopUp === 'CHALLENGE'}
+          visible={currentPopUp === 'PASS'}
         >
           <Button
-            ref={challengeButton}
+            ref={passButton}
             onClick={() => {
-              if (currentPopUp === 'CHALLENGE') {
-                props.onChallenge();
+              if (currentPopUp === 'PASS') {
+                props.onPass();
                 setCurrentPopUp('NONE');
               }
             }}
+            danger
             disabled={!props.myTurn}
-            hidden={props.challengeRule === 'VOID'}
+            type={
+              props.finalPassOrChallenge && props.myTurn ? 'primary' : 'default'
+            }
           >
-            Challenge
-            <span className="key-command">3</span>
+            Pass
+            <span className="key-command">2</span>
           </Button>
         </Popconfirm>
+      </div>
+      <div className="secondary-controls">
+        {!props.puzzleMode && (
+          <Popconfirm
+            title="Are you sure you wish to challenge?"
+            onCancel={() => {
+              setCurrentPopUp('NONE');
+            }}
+            onConfirm={() => {
+              props.onChallenge();
+              setCurrentPopUp('NONE');
+            }}
+            onVisibleChange={(visible) => {
+              setCurrentPopUp(visible ? 'CHALLENGE' : 'NONE');
+            }}
+            okText="Yes"
+            cancelText="No"
+            visible={currentPopUp === 'CHALLENGE'}
+          >
+            <Button
+              ref={challengeButton}
+              onClick={() => {
+                if (currentPopUp === 'CHALLENGE') {
+                  props.onChallenge();
+                  setCurrentPopUp('NONE');
+                }
+              }}
+              disabled={!props.myTurn}
+              hidden={props.challengeRule === 'VOID'}
+            >
+              Challenge
+              <span className="key-command">3</span>
+            </Button>
+          </Popconfirm>
+        )}
         <Button
           onClick={props.showExchangeModal}
           disabled={!(props.myTurn && props.exchangeAllowed)}

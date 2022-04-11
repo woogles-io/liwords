@@ -7,7 +7,7 @@
   .ant-card.player-cards {
     order: 3;
   }
-  .ant-card.puzzle-score {
+  .ant-card.puzzle-info {
     .ant-card-head .ant-card-head-title {
       padding: 18px 6px;
       @include colorModed() {
@@ -21,7 +21,7 @@
       padding: 0 18px 18px;
     }
     .attempts-made {
-      margin-top: 12px;
+      margin: 3px 0 16px;
     }
     .actions {
       margin-top: 12px;
@@ -38,14 +38,10 @@
       font-size: 30px;
     }
     .ant-row.player {
-      padding: 18px 6px;
+      padding: 6px;
     }
   }
   .ant-card.puzzle-info {
-    .ant-card-head .ant-card-head-title {
-      font-size: 16px;
-      white-space: normal;
-    }
     .ant-card-body {
       padding: 0 18px 18px;
     }
@@ -91,8 +87,18 @@
       border-bottom: 0;
     }
   }
+  .instructions {
+    font-style: italic;
+    letter-spacing: 0;
+    margin: 9px 0 0;
+  }
+  .progress {
+    margin: 18px 0 18px;
+    font-weight: 700;
+  }
 }
 .puzzle-container .stars, .ant-modal-body .stars {
+  margin: 9px 0 18px;
   .anticon {
     font-size: 38px;
     margin-right: 9px;
