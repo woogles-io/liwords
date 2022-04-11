@@ -341,8 +341,11 @@ export class PuzzleGenerationJobRequest extends jspb.Message {
   getSqlOffset(): number;
   setSqlOffset(value: number): void;
 
-  getMaxGames(): number;
-  setMaxGames(value: number): void;
+  getGameConsiderationLimit(): number;
+  setGameConsiderationLimit(value: number): void;
+
+  getGameCreationLimit(): number;
+  setGameCreationLimit(value: number): void;
 
   hasRequest(): boolean;
   clearRequest(): void;
@@ -365,7 +368,8 @@ export namespace PuzzleGenerationJobRequest {
     lexicon: string,
     letterDistribution: string,
     sqlOffset: number,
-    maxGames: number,
+    gameConsiderationLimit: number,
+    gameCreationLimit: number,
     request?: macondo_api_proto_macondo_macondo_pb.PuzzleGenerationRequest.AsObject,
   }
 }

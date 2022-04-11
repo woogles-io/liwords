@@ -2562,7 +2562,8 @@ proto.puzzle_service.PuzzleGenerationJobRequest.toObject = function(includeInsta
     lexicon: jspb.Message.getFieldWithDefault(msg, 2, ""),
     letterDistribution: jspb.Message.getFieldWithDefault(msg, 3, ""),
     sqlOffset: jspb.Message.getFieldWithDefault(msg, 4, 0),
-    maxGames: jspb.Message.getFieldWithDefault(msg, 5, 0),
+    gameConsiderationLimit: jspb.Message.getFieldWithDefault(msg, 5, 0),
+    gameCreationLimit: jspb.Message.getFieldWithDefault(msg, 6, 0),
     request: (f = msg.getRequest()) && macondo_api_proto_macondo_macondo_pb.PuzzleGenerationRequest.toObject(includeInstance, f)
   };
 
@@ -2618,9 +2619,13 @@ proto.puzzle_service.PuzzleGenerationJobRequest.deserializeBinaryFromReader = fu
       break;
     case 5:
       var value = /** @type {number} */ (reader.readInt32());
-      msg.setMaxGames(value);
+      msg.setGameConsiderationLimit(value);
       break;
     case 6:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setGameCreationLimit(value);
+      break;
+    case 7:
       var value = new macondo_api_proto_macondo_macondo_pb.PuzzleGenerationRequest;
       reader.readMessage(value,macondo_api_proto_macondo_macondo_pb.PuzzleGenerationRequest.deserializeBinaryFromReader);
       msg.setRequest(value);
@@ -2682,17 +2687,24 @@ proto.puzzle_service.PuzzleGenerationJobRequest.serializeBinaryToWriter = functi
       f
     );
   }
-  f = message.getMaxGames();
+  f = message.getGameConsiderationLimit();
   if (f !== 0) {
     writer.writeInt32(
       5,
       f
     );
   }
+  f = message.getGameCreationLimit();
+  if (f !== 0) {
+    writer.writeInt32(
+      6,
+      f
+    );
+  }
   f = message.getRequest();
   if (f != null) {
     writer.writeMessage(
-      6,
+      7,
       f,
       macondo_api_proto_macondo_macondo_pb.PuzzleGenerationRequest.serializeBinaryToWriter
     );
@@ -2773,10 +2785,10 @@ proto.puzzle_service.PuzzleGenerationJobRequest.prototype.setSqlOffset = functio
 
 
 /**
- * optional int32 max_games = 5;
+ * optional int32 game_consideration_limit = 5;
  * @return {number}
  */
-proto.puzzle_service.PuzzleGenerationJobRequest.prototype.getMaxGames = function() {
+proto.puzzle_service.PuzzleGenerationJobRequest.prototype.getGameConsiderationLimit = function() {
   return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 5, 0));
 };
 
@@ -2785,18 +2797,36 @@ proto.puzzle_service.PuzzleGenerationJobRequest.prototype.getMaxGames = function
  * @param {number} value
  * @return {!proto.puzzle_service.PuzzleGenerationJobRequest} returns this
  */
-proto.puzzle_service.PuzzleGenerationJobRequest.prototype.setMaxGames = function(value) {
+proto.puzzle_service.PuzzleGenerationJobRequest.prototype.setGameConsiderationLimit = function(value) {
   return jspb.Message.setProto3IntField(this, 5, value);
 };
 
 
 /**
- * optional macondo.PuzzleGenerationRequest request = 6;
+ * optional int32 game_creation_limit = 6;
+ * @return {number}
+ */
+proto.puzzle_service.PuzzleGenerationJobRequest.prototype.getGameCreationLimit = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 6, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.puzzle_service.PuzzleGenerationJobRequest} returns this
+ */
+proto.puzzle_service.PuzzleGenerationJobRequest.prototype.setGameCreationLimit = function(value) {
+  return jspb.Message.setProto3IntField(this, 6, value);
+};
+
+
+/**
+ * optional macondo.PuzzleGenerationRequest request = 7;
  * @return {?proto.macondo.PuzzleGenerationRequest}
  */
 proto.puzzle_service.PuzzleGenerationJobRequest.prototype.getRequest = function() {
   return /** @type{?proto.macondo.PuzzleGenerationRequest} */ (
-    jspb.Message.getWrapperField(this, macondo_api_proto_macondo_macondo_pb.PuzzleGenerationRequest, 6));
+    jspb.Message.getWrapperField(this, macondo_api_proto_macondo_macondo_pb.PuzzleGenerationRequest, 7));
 };
 
 
@@ -2805,7 +2835,7 @@ proto.puzzle_service.PuzzleGenerationJobRequest.prototype.getRequest = function(
  * @return {!proto.puzzle_service.PuzzleGenerationJobRequest} returns this
 */
 proto.puzzle_service.PuzzleGenerationJobRequest.prototype.setRequest = function(value) {
-  return jspb.Message.setWrapperField(this, 6, value);
+  return jspb.Message.setWrapperField(this, 7, value);
 };
 
 
@@ -2823,7 +2853,7 @@ proto.puzzle_service.PuzzleGenerationJobRequest.prototype.clearRequest = functio
  * @return {boolean}
  */
 proto.puzzle_service.PuzzleGenerationJobRequest.prototype.hasRequest = function() {
-  return jspb.Message.getField(this, 6) != null;
+  return jspb.Message.getField(this, 7) != null;
 };
 
 

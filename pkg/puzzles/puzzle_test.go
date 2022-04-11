@@ -628,7 +628,7 @@ func RecreateDB() (*pgxpool.Pool, *puzzlesstore.DBStore, *user.DBStore, *gamesto
 	cfg.DBConnUri = commondb.TestingPostgresConnUri()
 	cfg.DBConnDSN = commondb.TestingPostgresConnDSN()
 	cfg.MacondoConfig.DefaultLexicon = common.DefaultLexicon
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	zerolog.SetGlobalLevel(zerolog.Disabled)
 	ctx := context.Background()
 	log.Info().Msg("here first")
 	// Recreate the test database

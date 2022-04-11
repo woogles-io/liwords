@@ -67,8 +67,9 @@ message PuzzleGenerationJobRequest {
   string lexicon = 2;
   string letter_distribution = 3;
   int32 sql_offset = 4;
-  int32 max_games = 5;
-  macondo.PuzzleGenerationRequest request = 6;
+  int32 game_consideration_limit = 5;
+  int32 game_creation_limit = 6;
+  macondo.PuzzleGenerationRequest request = 7;
 }
 
 service PuzzleService {

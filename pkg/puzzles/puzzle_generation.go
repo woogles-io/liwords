@@ -61,7 +61,7 @@ func processJob(ctx context.Context, cfg *config.Config, db *pgxpool.Pool, req *
 				(SELECT game_id FROM puzzles) AND
 				(stats->'d1'->'Unchallenged Phonies'->'t')::int = 0 AND
 				(stats->'d2'->'Unchallenged Phonies'->'t')::int = 0 AND
-				game_end_reason != 0 LIMIT $1 OFFSET $2`, req.MaxGames, req.SqlOffset)
+				game_end_reason != 0 LIMIT $1 OFFSET $2`, req.GameConsiderationLimit, req.SqlOffset)
 		if err != nil {
 			return false, err
 		}
@@ -104,7 +104,7 @@ func processJob(ctx context.Context, cfg *config.Config, db *pgxpool.Pool, req *
 			}
 			// Set cross-set generator so that it can actually generate moves.
 			entGame.Game.SetCrossSetGen(csgen)
-			fulfilled, err := processGame(ctx, req.Request, genId, gs, ps, entGame, "", ipc.GameType_NATIVE)
+			_, fulfilled, err := processGame(ctx, req.Request, genId, gs, ps, entGame, "", ipc.GameType_NATIVE)
 			if err != nil {
 				return false, err
 			}
@@ -113,19 +113,26 @@ func processJob(ctx context.Context, cfg *config.Config, db *pgxpool.Pool, req *
 			}
 		}
 	} else {
-		for i := 0; i < int(req.MaxGames); i++ {
+		gamesCreated := 0
+		for i := 0; i < int(req.GameConsiderationLimit); i++ {
 			r := automatic.NewGameRunner(nil, &cfg.MacondoConfig)
 			err := r.CompVsCompStatic(true)
 			if err != nil {
 				return false, err
 			}
 			g := newBotvBotPuzzleGame(r.Game(), req.Lexicon)
-			fulfilled, err := processGame(ctx, req.Request, genId, gs, ps, g, "", ipc.GameType_BOT_VS_BOT)
+			gameCreated, fulfilled, err := processGame(ctx, req.Request, genId, gs, ps, g, "", ipc.GameType_BOT_VS_BOT)
 			if err != nil {
 				return false, err
 			}
+			if gameCreated {
+				gamesCreated++
+			}
 			if fulfilled {
 				return true, nil
+			}
+			if gamesCreated >= int(req.GameCreationLimit) {
+				return false, nil
 			}
 		}
 	}
@@ -246,11 +253,14 @@ func getPuzzleGameBreakdowns(ctx context.Context, db *pgxpool.Pool, genId int) (
 }
 
 func processGame(ctx context.Context, req *macondopb.PuzzleGenerationRequest, genId int, gs *game.DBStore, ps *puzzlesstore.DBStore,
-	g *entity.Game, authorId string, gameType ipc.GameType) (bool, error) {
+	g *entity.Game, authorId string, gameType ipc.GameType) (bool, bool, error) {
 
-	_, err := CreatePuzzlesFromGame(ctx, req, genId, gs, ps, g, "", gameType)
+	pzls, err := CreatePuzzlesFromGame(ctx, req, genId, gs, ps, g, "", gameType)
 	if err != nil {
-		return false, err
+		return false, false, err
+	}
+	if len(pzls) == 0 {
+		return false, false, nil
 	}
 	lastBucketIndex := len(req.Buckets) - 1
 	for i := len(req.Buckets) - 1; i >= 0; i-- {
@@ -264,7 +274,7 @@ func processGame(ctx context.Context, req *macondopb.PuzzleGenerationRequest, ge
 	if len(req.Buckets) == 0 {
 		fulfilled = true
 	}
-	return fulfilled, nil
+	return true, fulfilled, nil
 }
 
 func newBotvBotPuzzleGame(mcg *macondogame.Game, lexicon string) *entity.Game {

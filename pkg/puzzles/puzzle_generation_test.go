@@ -14,11 +14,12 @@ import (
 )
 
 var DefaultPuzzleGenerationJobRequest = &pb.PuzzleGenerationJobRequest{
-	BotVsBot:           true,
-	Lexicon:            "CSW21",
-	LetterDistribution: "english",
-	SqlOffset:          0,
-	MaxGames:           100,
+	BotVsBot:               true,
+	Lexicon:                "CSW21",
+	LetterDistribution:     "english",
+	SqlOffset:              0,
+	GameConsiderationLimit: 1000,
+	GameCreationLimit:      100,
 	Request: &macondopb.PuzzleGenerationRequest{
 		Buckets: []*macondopb.PuzzleBucket{
 			{
@@ -32,9 +33,8 @@ var DefaultPuzzleGenerationJobRequest = &pb.PuzzleGenerationJobRequest{
 
 func TestPuzzleGeneration(t *testing.T) {
 	is := is.New(t)
-	db, ps, _, gs, _, _ := RecreateDB()
+	db, ps, us, gs, _, _ := RecreateDB()
 	pgrjReq := proto.Clone(DefaultPuzzleGenerationJobRequest).(*puzzle_service.PuzzleGenerationJobRequest)
-
 	cfg := &config.Config{}
 	// Only load config from environment variables:
 	cfg.Load(nil)
@@ -43,4 +43,9 @@ func TestPuzzleGeneration(t *testing.T) {
 	ctx := context.Background()
 	err := Generate(ctx, cfg, db, gs, ps, pgrjReq, true)
 	is.NoErr(err)
+
+	us.Disconnect()
+	gs.Disconnect()
+	ps.Disconnect()
+	db.Close()
 }
