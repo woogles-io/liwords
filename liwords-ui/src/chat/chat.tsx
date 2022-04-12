@@ -68,7 +68,7 @@ export const Chat = React.memo((props: Props) => {
   const [showChannels, setShowChannels] = useState(props.suppressDefault);
   const propsSendChat = useMemo(() => props.sendChat, [props.sendChat]);
   const [selectedChatTab, setSelectedChatTab] = useState(
-    props.suppressDefault ? 'CHAT' : 'PLAYERS'
+    props.suppressDefault || !loggedIn ? 'CHAT' : 'PLAYERS'
   );
   const chatTab = selectedChatTab === 'CHAT' ? tabContainerElement : null;
 
