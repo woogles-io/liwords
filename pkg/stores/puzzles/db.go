@@ -18,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lithammer/shortuuid"
+	"github.com/rs/zerolog/log"
 )
 
 type DBStore struct {
@@ -158,6 +159,7 @@ func (s *DBStore) GetStartPuzzleId(ctx context.Context, userUUID string, lexicon
 
 	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
 	if err != nil {
+		log.Err(err).Msg("get-user-dbid")
 		return "", err
 	}
 
@@ -169,6 +171,7 @@ func (s *DBStore) GetStartPuzzleId(ctx context.Context, userUUID string, lexicon
 		// User has not seen any puzzles, just get a random puzzle
 		getNext = true
 	} else if err != nil {
+		log.Err(err).Msg("error-init-query")
 		return "", err
 	}
 
@@ -182,6 +185,7 @@ func (s *DBStore) GetStartPuzzleId(ctx context.Context, userUUID string, lexicon
 	var startPuzzleUUID string
 	err = tx.QueryRow(ctx, `SELECT uuid FROM puzzles WHERE id = $1`, pid).Scan(&startPuzzleUUID)
 	if err != nil {
+		log.Err(err).Msg("error-scanning")
 		return "", err
 	}
 	if err := tx.Commit(ctx); err != nil {
