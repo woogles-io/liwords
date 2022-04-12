@@ -168,8 +168,7 @@ func (s *DBStore) GetStartPuzzleId(ctx context.Context, userUUID string, lexicon
 	if err == pgx.ErrNoRows {
 		// User has not seen any puzzles, just get a random puzzle
 		getNext = true
-	}
-	if err != nil {
+	} else if err != nil {
 		return "", err
 	}
 
@@ -609,6 +608,87 @@ func (s *DBStore) GetAttempts(ctx context.Context, userUUID string, puzzleUUID s
 	}
 
 	return attemptExists, attempts, status, firstAttemptTime, lastAttemptTime, nil
+}
+
+func (s *DBStore) GetJobInfo(ctx context.Context, genId int) (time.Time, time.Time, time.Duration, *bool, *string, int, int, [][]int, error) {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return time.Time{}, time.Time{}, -1, nil, nil, -1, -1, nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	createdAtTime := time.Time{}
+	completedAtTime := time.Time{}
+	fulfilled := &sql.NullBool{}
+	errorStatus := &sql.NullString{}
+	err = tx.QueryRow(ctx, `SELECT created_at, completed_at, fulfilled, error_status FROM puzzle_generation_logs WHERE id = $1`, genId).Scan(&createdAtTime, &completedAtTime, fulfilled, errorStatus)
+	if err == pgx.ErrNoRows {
+		return time.Time{}, time.Time{}, -1, nil, nil, -1, -1, nil, fmt.Errorf("row not found while calculating job duration: %d", genId)
+	}
+	if err != nil {
+		return time.Time{}, time.Time{}, -1, nil, nil, -1, -1, nil, err
+	}
+
+	fo := false
+	fulfilledOption := &fo
+	if fulfilled.Valid {
+		*fulfilledOption = fulfilled.Bool
+	} else {
+		fulfilledOption = nil
+	}
+	eso := ""
+	errorStatusOption := &eso
+	if errorStatus.Valid {
+		*errorStatusOption = errorStatus.String
+	} else {
+		errorStatusOption = nil
+	}
+
+	rows, err := tx.Query(ctx, `SELECT bucket_index, COUNT(*) FROM puzzles WHERE generation_id = $1 GROUP BY bucket_index ORDER BY bucket_index ASC`, genId)
+	if err == pgx.ErrNoRows {
+		return time.Time{}, time.Time{}, -1, nil, nil, -1, -1, nil, fmt.Errorf("no rows found for generation_id: %d", genId)
+	}
+	if err != nil {
+		return time.Time{}, time.Time{}, -1, nil, nil, -1, -1, nil, err
+	}
+	bucketResults := [][]int{}
+	for rows.Next() {
+		var bucketIndex int
+		var numPuzzles int
+		if err := rows.Scan(&bucketIndex, &numPuzzles); err != nil {
+			rows.Close()
+			return time.Time{}, time.Time{}, -1, nil, nil, -1, -1, nil, err
+		}
+		bucketResults = append(bucketResults, []int{bucketIndex, numPuzzles})
+	}
+
+	rows.Close()
+
+	numTotalPuzzles := 0
+	breakdowns := [][]int{}
+	for i := 0; i < len(bucketResults); i++ {
+		bucketIndex := bucketResults[i][0]
+		numPuzzles := bucketResults[i][1]
+		var numGames int
+		err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM (SELECT DISTINCT game_id FROM puzzles WHERE generation_id = $1 AND bucket_index = $2) as unique_games`, genId, bucketIndex).Scan(&numGames)
+		if err != nil {
+			return time.Time{}, time.Time{}, -1, nil, nil, -1, -1, nil, err
+		}
+		breakdowns = append(breakdowns, []int{bucketIndex, numPuzzles, numGames})
+		numTotalPuzzles += numPuzzles
+	}
+
+	var numTotalGames int
+	err = tx.QueryRow(ctx, `SELECT COUNT(*) FROM (SELECT DISTINCT game_id FROM puzzles WHERE generation_id = $1) as unique_games`, genId).Scan(&numTotalGames)
+	if err != nil {
+		return time.Time{}, time.Time{}, -1, nil, nil, -1, -1, nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return time.Time{}, time.Time{}, -1, nil, nil, -1, -1, nil, err
+	}
+
+	return createdAtTime, completedAtTime, completedAtTime.Sub(createdAtTime), fulfilledOption, errorStatusOption, numTotalPuzzles, numTotalGames, breakdowns, nil
 }
 
 func getAttempts(ctx context.Context, tx pgx.Tx, userUUID string, puzzleUUID string) (bool, int32, *bool, time.Time, time.Time, error) {

@@ -2,7 +2,6 @@ package puzzles
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -10,7 +9,6 @@ import (
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lithammer/shortuuid"
 
@@ -18,11 +16,13 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stores/game"
+	"github.com/domino14/liwords/pkg/stores/puzzles"
 	puzzlesstore "github.com/domino14/liwords/pkg/stores/puzzles"
 	"github.com/domino14/macondo/alphabet"
 	"github.com/domino14/macondo/cross_set"
 	"github.com/domino14/macondo/gaddag"
 	macondogame "github.com/domino14/macondo/game"
+	macondopuzzles "github.com/domino14/macondo/puzzles"
 
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	pb "github.com/domino14/liwords/rpc/api/proto/puzzle_service"
@@ -31,29 +31,50 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
-func Generate(ctx context.Context, cfg *config.Config, db *pgxpool.Pool, gs *game.DBStore, ps *puzzlesstore.DBStore, req *pb.PuzzleGenerationJobRequest, printStatus bool) error {
-	genId, err := CreateGenerationLog(ctx, ps, req)
+func Generate(ctx context.Context, cfg *config.Config, db *pgxpool.Pool, gs *game.DBStore, ps *puzzlesstore.DBStore, req *pb.PuzzleGenerationJobRequest) (int, error) {
+	genId, err := ps.CreateGenerationLog(ctx, req)
 	if err != nil {
-		return err
+		return -1, err
 	}
 	fulfilled, err := processJob(ctx, cfg, db, req, genId, gs, ps)
-	err = UpdateGenerationLogStatus(ctx, ps, genId, fulfilled, err)
+	return genId, ps.UpdateGenerationLogStatus(ctx, genId, fulfilled, err)
+}
+
+func GetJobInfoString(ctx context.Context, ps *puzzles.DBStore, genId int) (string, error) {
+	startTime, endTime, dur, fulfilledOption, errorStatusOption, totalPuzzles, totalGames, breakdowns, err := GetJobInfo(ctx, ps, genId)
 	if err != nil {
-		return err
+		return "", err
 	}
-	if printStatus {
-		stats, err := getJobStatsString(ctx, db, genId)
-		if err != nil {
-			return err
+
+	fo := "incomplete"
+	if fulfilledOption != nil {
+		if *fulfilledOption {
+			fo = "fulfilled"
+		} else {
+			fo = "unfulfilled"
 		}
-		fmt.Println(stats)
 	}
-	return err
+	eso := "OK"
+	if errorStatusOption != nil {
+		eso = *errorStatusOption
+	}
+	var report strings.Builder
+	fmt.Fprintf(&report, "Start:         %s\nEnd:           %s\nDuration:      %s\nFulfilled:     %s\nStatus:        %s\nTotal Puzzles: %d\nTotal Games:   %d\n",
+		startTime.Format(time.RFC3339Nano), endTime.Format(time.RFC3339Nano), dur, fo, eso, totalPuzzles, totalGames)
+
+	for _, bd := range breakdowns {
+		fmt.Fprintf(&report, "Bucket: %4d, Puzzles: %4d, Games: %4d\n", bd[0], bd[1], bd[2])
+	}
+	return report.String(), nil
 }
 
 func processJob(ctx context.Context, cfg *config.Config, db *pgxpool.Pool, req *pb.PuzzleGenerationJobRequest, genId int, gs *game.DBStore, ps *puzzlesstore.DBStore) (bool, error) {
 	if req == nil {
 		return false, errors.New("request is nil")
+	}
+	err := macondopuzzles.InitializePuzzleGenerationRequest(req.Request)
+	if err != nil {
+		return false, err
 	}
 	if !req.BotVsBot {
 		rows, err := db.Query(ctx,
@@ -76,6 +97,7 @@ func processJob(ctx context.Context, cfg *config.Config, db *pgxpool.Pool, req *
 		}
 		dist, err := alphabet.Get(&cfg.MacondoConfig, req.LetterDistribution)
 		if err != nil {
+			panic(err)
 			return false, err
 		}
 		csgen := cross_set.GaddagCrossSetGenerator{Dist: dist, Gaddag: gd}
@@ -139,122 +161,8 @@ func processJob(ctx context.Context, cfg *config.Config, db *pgxpool.Pool, req *
 	return false, nil
 }
 
-func CreateGenerationLog(ctx context.Context, ps *puzzlesstore.DBStore, req *pb.PuzzleGenerationJobRequest) (int, error) {
-	return ps.CreateGenerationLog(ctx, req)
-}
-
-func UpdateGenerationLogStatus(ctx context.Context, ps *puzzlesstore.DBStore, genId int, fulfilled bool, procErr error) error {
-	return ps.UpdateGenerationLogStatus(ctx, genId, fulfilled, procErr)
-}
-
-func getJobStatsString(ctx context.Context, db *pgxpool.Pool, genId int) (string, error) {
-	startTime, endTime, dur, fulfilledOption, errorStatusOption, err := getJobInfo(ctx, db, genId)
-	if err != nil {
-		return "", err
-	}
-	totalPuzzles, totalGames, breakdowns, err := getPuzzleGameBreakdowns(ctx, db, genId)
-	if err != nil {
-		return "", err
-	}
-	fo := "incomplete"
-	if fulfilledOption != nil {
-		if *fulfilledOption {
-			fo = "fulfilled"
-		} else {
-			fo = "unfulfilled"
-		}
-	}
-	eso := "incomplete"
-	if errorStatusOption != nil {
-		if *errorStatusOption == "" {
-			eso = "ok"
-		} else {
-			eso = *errorStatusOption
-		}
-	}
-	var report strings.Builder
-	fmt.Fprintf(&report, "Start:         %s\nEnd:           %s\nDuration:      %s\nFulfilled:     %s\nStatus:        %s\nTotal Puzzles: %d\nTotal Games:   %d\n",
-		startTime.Format(time.RFC3339Nano), endTime.Format(time.RFC3339Nano), dur, fo, eso, totalPuzzles, totalGames)
-
-	for _, bd := range breakdowns {
-		fmt.Fprintf(&report, "Bucket: %4d, Puzzles: %4d, Games: %4d\n", bd[0], bd[1], bd[2])
-	}
-	return report.String(), nil
-}
-
-func getJobInfo(ctx context.Context, db *pgxpool.Pool, genId int) (time.Time, time.Time, time.Duration, *bool, *string, error) {
-	createdAtTime := time.Time{}
-	completedAtTime := time.Time{}
-	fulfilled := &sql.NullBool{}
-	errorStatus := &sql.NullString{}
-	err := db.QueryRow(ctx, `SELECT created_at, completed_at, fulfilled, error_status FROM puzzle_generation_logs WHERE id = $1`, genId).Scan(&createdAtTime, &completedAtTime, fulfilled, errorStatus)
-	if err == pgx.ErrNoRows {
-		return time.Time{}, time.Time{}, 0, nil, nil, fmt.Errorf("row not found while calculating job duration: %d", genId)
-	}
-	if err != nil {
-		return time.Time{}, time.Time{}, 0, nil, nil, err
-	}
-
-	fo := false
-	fulfilledOption := &fo
-	if fulfilled.Valid {
-		*fulfilledOption = fulfilled.Bool
-	} else {
-		fulfilledOption = nil
-	}
-	eso := ""
-	errorStatusOption := &eso
-	if errorStatus.Valid {
-		*errorStatusOption = errorStatus.String
-	} else {
-		errorStatusOption = nil
-	}
-	return createdAtTime, completedAtTime, createdAtTime.Sub(completedAtTime), fulfilledOption, errorStatusOption, nil
-}
-
-func getPuzzleGameBreakdowns(ctx context.Context, db *pgxpool.Pool, genId int) (int, int, [][]int, error) {
-	rows, err := db.Query(ctx, `SELECT bucket_index, COUNT(*) FROM puzzles WHERE generation_id = $1 GROUP BY bucket_index ORDER BY bucket_index ASC`, genId)
-	if err != nil {
-		return 0, 0, nil, err
-	}
-	defer rows.Close()
-	if err == pgx.ErrNoRows {
-		return 0, 0, nil, fmt.Errorf("no rows found for generation_id: %d", genId)
-	}
-	if err != nil {
-		return 0, 0, nil, err
-	}
-	numTotalPuzzles := 0
-	numTotalGames := 0
-	breakdowns := [][]int{}
-	for rows.Next() {
-		var bucketIndex int
-		var numPuzzles int
-		if err := rows.Scan(&bucketIndex, &numPuzzles); err != nil {
-			return 0, 0, nil, err
-		}
-		var numGames int
-		err := db.QueryRow(ctx, `SELECT COUNT(*) FROM (SELECT DISTINCT game_id FROM puzzles WHERE generation_id = $1 AND bucket_index = $2) as unique_games`, genId, bucketIndex).Scan(&numGames)
-		if err != nil {
-			return 0, 0, nil, err
-		}
-		defer rows.Close()
-		if err == pgx.ErrNoRows {
-			return 0, 0, nil, fmt.Errorf("no rows found for generation_id, bucket_index: %d, %d", genId, bucketIndex)
-		}
-		if err != nil {
-			return 0, 0, nil, err
-		}
-		breakdowns = append(breakdowns, []int{bucketIndex, numPuzzles, numGames})
-		numTotalPuzzles += numPuzzles
-		numTotalGames += numGames
-	}
-	return numTotalPuzzles, numTotalGames, breakdowns, nil
-}
-
 func processGame(ctx context.Context, req *macondopb.PuzzleGenerationRequest, genId int, gs *game.DBStore, ps *puzzlesstore.DBStore,
 	g *entity.Game, authorId string, gameType ipc.GameType) (bool, bool, error) {
-
 	pzls, err := CreatePuzzlesFromGame(ctx, req, genId, gs, ps, g, "", gameType)
 	if err != nil {
 		return false, false, err

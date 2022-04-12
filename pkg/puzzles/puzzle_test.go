@@ -561,6 +561,9 @@ func TestPuzzlesStart(t *testing.T) {
 	pool, ps, us, gs, _, _ := RecreateDB()
 	ctx := context.Background()
 
+	_, err := GetStartPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
+
 	puzzle1, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
@@ -667,7 +670,23 @@ func RecreateDB() (*pgxpool.Pool, *puzzlesstore.DBStore, *user.DBStore, *gamesto
 		panic(err)
 	}
 
-	pgrjReq := proto.Clone(DefaultPuzzleGenerationJobRequest).(*puzzle_service.PuzzleGenerationJobRequest)
+	pgrjReq := proto.Clone(&puzzle_service.PuzzleGenerationJobRequest{
+		BotVsBot:               true,
+		Lexicon:                "CSW21",
+		LetterDistribution:     "english",
+		SqlOffset:              0,
+		GameConsiderationLimit: 1000000,
+		GameCreationLimit:      100000,
+		Request: &macondopb.PuzzleGenerationRequest{
+			Buckets: []*macondopb.PuzzleBucket{
+				{
+					Size:     50000,
+					Includes: []macondopb.PuzzleTag{macondopb.PuzzleTag_EQUITY},
+					Excludes: []macondopb.PuzzleTag{},
+				},
+			},
+		},
+	}).(*puzzle_service.PuzzleGenerationJobRequest)
 
 	reqId, err := puzzlesStore.CreateGenerationLog(ctx, pgrjReq)
 	if err != nil {

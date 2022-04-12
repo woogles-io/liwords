@@ -2,6 +2,7 @@ package puzzles
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -35,6 +36,7 @@ type PuzzleStore interface {
 	GetAttempts(ctx context.Context, userId string, puzzleUUID string) (bool, int32, *bool, time.Time, time.Time, error)
 	GetUserRating(ctx context.Context, userId string, ratingKey entity.VariantKey) (*entity.SingleRating, error)
 	SetPuzzleVote(ctx context.Context, userId string, puzzleUUID string, vote int) error
+	GetJobInfo(ctx context.Context, genId int) (time.Time, time.Time, time.Duration, *bool, *string, int, int, [][]int, error)
 }
 
 func CreatePuzzlesFromGame(ctx context.Context, req *macondopb.PuzzleGenerationRequest, reqId int, gs *gamestore.DBStore, ps PuzzleStore,
@@ -44,14 +46,25 @@ func CreatePuzzlesFromGame(ctx context.Context, req *macondopb.PuzzleGenerationR
 	if err != nil {
 		return nil, err
 	}
+
+	bucketIndexToArrayIndex := map[int32]int{}
+
+	for arrayIndex, bucket := range req.Buckets {
+		bucketIndexToArrayIndex[bucket.Index] = arrayIndex
+	}
 	// Only create if there were puzzles
+	gameCreated := false
 	if len(pzls) > 0 {
 		// If the mcg game is not from a game that already
 		// exists in the database, then create the game
-		gameCreated := false
 
 		for _, pzl := range pzls {
-			if req.Buckets[pzl.BucketIndex].Size > 0 {
+			arrIndex, exists := bucketIndexToArrayIndex[pzl.BucketIndex]
+			// This should be impossible, but let's check anyway
+			if !exists {
+				return nil, fmt.Errorf("bucket index does not exist in buckets: %d", pzl.BucketIndex)
+			}
+			if req.Buckets[arrIndex].Size > 0 {
 				if gt != ipc.GameType_NATIVE && !gameCreated {
 					err = gs.CreateRaw(ctx, g, gt)
 					if err != nil {
@@ -63,7 +76,7 @@ func CreatePuzzlesFromGame(ctx context.Context, req *macondopb.PuzzleGenerationR
 				if err != nil {
 					return nil, err
 				}
-				req.Buckets[pzl.BucketIndex].Size--
+				req.Buckets[arrIndex].Size--
 			}
 		}
 	}
@@ -176,6 +189,10 @@ func SetPuzzleVote(ctx context.Context, ps PuzzleStore, userId string, puzzleUUI
 		return entity.NewWooglesError(ipc.WooglesError_PUZZLE_VOTE_INVALID, userId, puzzleUUID, strconv.Itoa(vote))
 	}
 	return ps.SetPuzzleVote(ctx, userId, puzzleUUID, vote)
+}
+
+func GetJobInfo(ctx context.Context, ps PuzzleStore, genId int) (time.Time, time.Time, time.Duration, *bool, *string, int, int, [][]int, error) {
+	return ps.GetJobInfo(ctx, genId)
 }
 
 func answersAreEqual(userAnswer *ipc.ClientGameplayEvent, correctAnswer *macondopb.GameEvent) bool {
