@@ -16,7 +16,6 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stores/game"
-	"github.com/domino14/liwords/pkg/stores/puzzles"
 	puzzlesstore "github.com/domino14/liwords/pkg/stores/puzzles"
 	"github.com/domino14/macondo/alphabet"
 	"github.com/domino14/macondo/cross_set"
@@ -40,7 +39,7 @@ func Generate(ctx context.Context, cfg *config.Config, db *pgxpool.Pool, gs *gam
 	return genId, ps.UpdateGenerationLogStatus(ctx, genId, fulfilled, err)
 }
 
-func GetJobInfoString(ctx context.Context, ps *puzzles.DBStore, genId int) (string, error) {
+func GetJobInfoString(ctx context.Context, ps *puzzlesstore.DBStore, genId int) (string, error) {
 	startTime, endTime, dur, fulfilledOption, errorStatusOption, totalPuzzles, totalGames, breakdowns, err := GetJobInfo(ctx, ps, genId)
 	if err != nil {
 		return "", err
@@ -97,7 +96,6 @@ func processJob(ctx context.Context, cfg *config.Config, db *pgxpool.Pool, req *
 		}
 		dist, err := alphabet.Get(&cfg.MacondoConfig, req.LetterDistribution)
 		if err != nil {
-			panic(err)
 			return false, err
 		}
 		csgen := cross_set.GaddagCrossSetGenerator{Dist: dist, Gaddag: gd}

@@ -28,7 +28,6 @@ import (
 	"github.com/domino14/macondo/board"
 	"github.com/domino14/macondo/game"
 	"github.com/domino14/macondo/gcgio"
-	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/macondo/move"
 )
@@ -37,20 +36,20 @@ const PuzzlerUUID = "puzzler"
 const PuzzleCreatorUUID = "kenji"
 const OtherLexicon = "CSW19"
 
-func gameEventToClientGameplayEvent(evt *macondopb.GameEvent) *ipc.ClientGameplayEvent {
+func gameEventToClientGameplayEvent(evt *pb.GameEvent) *ipc.ClientGameplayEvent {
 	cge := &ipc.ClientGameplayEvent{}
 
 	switch evt.Type {
-	case macondopb.GameEvent_TILE_PLACEMENT_MOVE:
+	case pb.GameEvent_TILE_PLACEMENT_MOVE:
 		cge.Type = ipc.ClientGameplayEvent_TILE_PLACEMENT
 		cge.Tiles = evt.PlayedTiles
 		cge.PositionCoords = move.ToBoardGameCoords(int(evt.Row), int(evt.Column),
-			evt.Direction == macondopb.GameEvent_VERTICAL)
+			evt.Direction == pb.GameEvent_VERTICAL)
 
-	case macondopb.GameEvent_EXCHANGE:
+	case pb.GameEvent_EXCHANGE:
 		cge.Type = ipc.ClientGameplayEvent_EXCHANGE
 		cge.Tiles = evt.Exchanged
-	case macondopb.GameEvent_PASS:
+	case pb.GameEvent_PASS:
 		cge.Type = ipc.ClientGameplayEvent_PASS
 	}
 
@@ -263,7 +262,7 @@ func TestPuzzlesMain(t *testing.T) {
 	is.Equal(attempts, int32(0))
 
 	// This should create the attempt record
-	_, _, attempts, status, firstAttemptTime, lastAttemptTime, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
+	_, _, attempts, status, _, lastAttemptTime, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
 	is.True(status == nil)
 	is.Equal(attempts, int32(0))
@@ -274,7 +273,7 @@ func TestPuzzlesMain(t *testing.T) {
 	is.Equal(attempts, int32(0))
 
 	// This should update the attempt record
-	_, _, attempts, status, firstAttemptTime, newLastAttemptTime, err := GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
+	_, _, attempts, status, _, newLastAttemptTime, err := GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
 	is.True(status == nil)
 	is.Equal(attempts, int32(0))
@@ -677,12 +676,12 @@ func RecreateDB() (*pgxpool.Pool, *puzzlesstore.DBStore, *user.DBStore, *gamesto
 		SqlOffset:              0,
 		GameConsiderationLimit: 1000000,
 		GameCreationLimit:      100000,
-		Request: &macondopb.PuzzleGenerationRequest{
-			Buckets: []*macondopb.PuzzleBucket{
+		Request: &pb.PuzzleGenerationRequest{
+			Buckets: []*pb.PuzzleBucket{
 				{
 					Size:     50000,
-					Includes: []macondopb.PuzzleTag{macondopb.PuzzleTag_EQUITY},
-					Excludes: []macondopb.PuzzleTag{},
+					Includes: []pb.PuzzleTag{pb.PuzzleTag_EQUITY},
+					Excludes: []pb.PuzzleTag{},
 				},
 			},
 		},

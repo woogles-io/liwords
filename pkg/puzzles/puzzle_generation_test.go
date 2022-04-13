@@ -8,7 +8,6 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	"github.com/matryer/is"
 )
@@ -41,7 +40,7 @@ func TestPuzzleGeneration(t *testing.T) {
 	ctx := context.Background()
 
 	// A fulfilled request
-	pgrjReq := proto.Clone(DefaultPuzzleGenerationJobRequest).(*puzzle_service.PuzzleGenerationJobRequest)
+	pgrjReq := proto.Clone(DefaultPuzzleGenerationJobRequest).(*pb.PuzzleGenerationJobRequest)
 	genId, err := Generate(ctx, cfg, db, gs, ps, pgrjReq)
 	is.NoErr(err)
 
@@ -52,7 +51,7 @@ func TestPuzzleGeneration(t *testing.T) {
 	is.Equal(totalPuzzles, 50)
 
 	// An unfulfilled request
-	pgrjReq = proto.Clone(DefaultPuzzleGenerationJobRequest).(*puzzle_service.PuzzleGenerationJobRequest)
+	pgrjReq = proto.Clone(DefaultPuzzleGenerationJobRequest).(*pb.PuzzleGenerationJobRequest)
 	pgrjReq.GameCreationLimit = 10
 	genId, err = Generate(ctx, cfg, db, gs, ps, pgrjReq)
 	is.NoErr(err)
@@ -63,7 +62,7 @@ func TestPuzzleGeneration(t *testing.T) {
 	is.Equal(totalGames, 10)
 
 	// An error
-	pgrjReq = proto.Clone(DefaultPuzzleGenerationJobRequest).(*puzzle_service.PuzzleGenerationJobRequest)
+	pgrjReq = proto.Clone(DefaultPuzzleGenerationJobRequest).(*pb.PuzzleGenerationJobRequest)
 	pgrjReq.Request = nil
 	genId, err = Generate(ctx, cfg, db, gs, ps, pgrjReq)
 	is.NoErr(err)
@@ -75,7 +74,7 @@ func TestPuzzleGeneration(t *testing.T) {
 	is.Equal(totalPuzzles, 0)
 
 	// Multiple buckets, request fulfilled
-	pgrjReq = proto.Clone(DefaultPuzzleGenerationJobRequest).(*puzzle_service.PuzzleGenerationJobRequest)
+	pgrjReq = proto.Clone(DefaultPuzzleGenerationJobRequest).(*pb.PuzzleGenerationJobRequest)
 	pgrjReq.GameCreationLimit = 1000
 	pgrjReq.Request.Buckets = append(pgrjReq.Request.Buckets, []*macondopb.PuzzleBucket{
 		{
@@ -100,7 +99,7 @@ func TestPuzzleGeneration(t *testing.T) {
 		is.Equal(bd[1], 50)
 	}
 
-	pgrjReq = proto.Clone(DefaultPuzzleGenerationJobRequest).(*puzzle_service.PuzzleGenerationJobRequest)
+	pgrjReq = proto.Clone(DefaultPuzzleGenerationJobRequest).(*pb.PuzzleGenerationJobRequest)
 	pgrjReq.GameCreationLimit = 100000
 	pgrjReq.Request.Buckets = append(pgrjReq.Request.Buckets, []*macondopb.PuzzleBucket{
 		{
@@ -138,7 +137,7 @@ func TestPuzzleGeneration(t *testing.T) {
 	is.Equal(breakdowns[4][1], 2)
 
 	// Multitple buckets, request unfulfilled
-	pgrjReq = proto.Clone(DefaultPuzzleGenerationJobRequest).(*puzzle_service.PuzzleGenerationJobRequest)
+	pgrjReq = proto.Clone(DefaultPuzzleGenerationJobRequest).(*pb.PuzzleGenerationJobRequest)
 	pgrjReq.GameCreationLimit = 20
 	pgrjReq.Request.Buckets = append(pgrjReq.Request.Buckets, []*macondopb.PuzzleBucket{
 		{
