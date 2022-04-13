@@ -38,10 +38,12 @@ type Props = {
 export const renderStars = (stars: number) => {
   const ret: ReactNode[] = [];
   for (let i = stars; i > 0; i--) {
-    ret.push(<StarFilled />);
+    ret.push(<StarFilled key={`star-{i}`} />);
   }
   while (ret.length < MAX_STARS) {
-    ret.push(<StarOutlined className="unearned" />);
+    ret.push(
+      <StarOutlined className="unearned" key={`unearned-star-${ret.length}`} />
+    );
   }
   return <div className="stars">{ret}</div>;
 };
@@ -169,7 +171,7 @@ export const PuzzleInfo = React.memo((props: Props) => {
           There is a star play in this position that is significantly better
           than the second-best play. What would HastyBot play?
         </p>
-        <p className="progress">{attemptsText}</p>
+        <div className="progress">{attemptsText}</div>
         {actions}
       </Card>
     );
