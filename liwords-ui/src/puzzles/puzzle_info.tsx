@@ -38,7 +38,7 @@ type Props = {
 export const renderStars = (stars: number) => {
   const ret: ReactNode[] = [];
   for (let i = stars; i > 0; i--) {
-    ret.push(<StarFilled key={`star-{i}`} />);
+    ret.push(<StarFilled key={`star-${i}`} />);
   }
   while (ret.length < MAX_STARS) {
     ret.push(
@@ -152,27 +152,20 @@ export const PuzzleInfo = React.memo((props: Props) => {
     }
   }, [gameUrl]);
 
-  if (solved === PuzzleStatus.CORRECT) {
-    const solveDate = moment(dateSolved).format('MMMM D, YYYY');
-    return (
-      <p className="attempts-made">{`Solved in ${attempts} ${
-        attempts === 1 ? 'attempt' : 'attempts'
-      } on ${solveDate}`}</p>
-    );
-  }
-
   if (solved === PuzzleStatus.UNANSWERED) {
     return (
       <Card className="puzzle-info" title={`Puzzle Mode`} extra={puzzleType}>
-        <p className="game-settings">{`${
-          variantName || 'classic'
-        } • ${lexicon}`}</p>
-        <p className="instructions">
-          There is a star play in this position that is significantly better
-          than the second-best play. What would HastyBot play?
-        </p>
-        <div className="progress">{attemptsText}</div>
-        {actions}
+        <div className="puzzle-details">
+          <p className="game-settings">{`${
+            variantName || 'classic'
+          } • ${lexicon}`}</p>
+          <p className="instructions">
+            There is a star play in this position that is significantly better
+            than the second-best play. What would HastyBot play?
+          </p>
+          <div className="progress">{attemptsText}</div>
+          {actions}
+        </div>
       </Card>
     );
   }
@@ -197,30 +190,32 @@ export const PuzzleInfo = React.memo((props: Props) => {
 
   return (
     <Card className="puzzle-info" title={`Puzzle Mode`} extra={puzzleType}>
-      {solved !== PuzzleStatus.UNANSWERED && renderStars(score)}
-      <p>{playerInfo}</p>
-      <p>
-        {formattedGameDate}
-        {gameLink}
-      </p>
-      <p className="game-settings">{`${
-        timeCtrlToDisplayName(
+      <div className="puzzle-details">
+        {solved !== PuzzleStatus.UNANSWERED && renderStars(score)}
+        <p>{playerInfo}</p>
+        <p>
+          {formattedGameDate}
+          {gameLink}
+        </p>
+        <p className="game-settings">{`${
+          timeCtrlToDisplayName(
+            initial_time_seconds || 0,
+            increment_seconds || 0,
+            max_overtime_minutes || 0
+          )[0]
+        } ${timeToString(
           initial_time_seconds || 0,
           increment_seconds || 0,
           max_overtime_minutes || 0
-        )[0]
-      } ${timeToString(
-        initial_time_seconds || 0,
-        increment_seconds || 0,
-        max_overtime_minutes || 0
-      )} • ${variantName || 'classic'} • ${lexicon}`}</p>
-      <p>
-        {challengeDisplay}
-        {challengeDisplay && ratedDisplay ? ' • ' : ''}
-        {ratedDisplay}
-      </p>
-      <p className="progress">{attemptsText}</p>
-      {actions}
+        )} • ${variantName || 'classic'} • ${lexicon}`}</p>
+        <p>
+          {challengeDisplay}
+          {challengeDisplay && ratedDisplay ? ' • ' : ''}
+          {ratedDisplay}
+        </p>
+        <p className="progress">{attemptsText}</p>
+        {actions}
+      </div>
     </Card>
   );
 });

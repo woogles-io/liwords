@@ -74,6 +74,7 @@ type PuzzleInfo = {
   initialTimeSeconds?: number;
   incrementSeconds?: number;
   maxOvertimeMinutes?: number;
+  solution?: GameEvent;
   gameUrl?: string;
   player1?: {
     nickname: string;
@@ -340,6 +341,7 @@ export const SinglePuzzle = (props: Props) => {
         ...x,
         attempts: resp.getAttempts(),
         solved: PuzzleStatus.INCORRECT,
+        solution: solution,
       }));
       // Place the tiles from the event.
       if (solution) {
@@ -441,7 +443,7 @@ export const SinglePuzzle = (props: Props) => {
           variantName: gh.getVariant(),
           solved: resp.getStatus(),
         });
-        setPendingSolution(true);
+        setPendingSolution(resp.getStatus() !== PuzzleStatus.UNANSWERED);
       } catch (err) {
         message.error({
           content: (err as LiwordsAPIError).message,
@@ -467,8 +469,8 @@ export const SinglePuzzle = (props: Props) => {
   }, [loadNewPuzzle, userLexicon, puzzleID]);
 
   useEffect(() => {
-    if (pendingSolution) {
-      //TODO: placeGameEvt(??);
+    if (pendingSolution && puzzleInfo.solved) {
+      showSolution();
     }
     setPendingSolution(false);
   }, [puzzleInfo.solved, pendingSolution, showSolution]);
@@ -536,6 +538,10 @@ export const SinglePuzzle = (props: Props) => {
             autoFocus
             onClick={() => {
               setShowResponseModalWrong(false);
+              //Reset rack so they can try again
+              setDisplayedRack(rack);
+              setPlacedTiles(new Set<EphemeralTile>());
+              setPlacedTilesTempScore(undefined);
             }}
           >
             Keep trying
@@ -549,7 +555,15 @@ export const SinglePuzzle = (props: Props) => {
         </p>
       </Modal>
     );
-  }, [showResponseModalWrong, puzzleInfo, showSolution]);
+  }, [
+    showResponseModalWrong,
+    puzzleInfo,
+    showSolution,
+    rack,
+    setDisplayedRack,
+    setPlacedTiles,
+    setPlacedTilesTempScore,
+  ]);
 
   const responseModalCorrect = useMemo(() => {
     //TODO: different title for different scores
@@ -632,7 +646,11 @@ export const SinglePuzzle = (props: Props) => {
               events={gameContext.turns}
               gameID={''} /* no game id for a puzzle */
               sendSocketMsg={doNothing}
-              sendGameplayEvent={attemptPuzzle}
+              sendGameplayEvent={
+                puzzleInfo.solved === PuzzleStatus.UNANSWERED
+                  ? attemptPuzzle
+                  : doNothing
+              }
               gameDone={false}
               playerMeta={[]}
               vsBot={false} /* doesn't matter */
@@ -678,6 +696,7 @@ export const SinglePuzzle = (props: Props) => {
               alphabet={alphabet}
             />
           )}
+          <Notepad includeCard />
           <StaticPlayerCards
             playerOnTurn={gameContext.onturn}
             p0Score={gameContext?.players[0]?.score || 0}
