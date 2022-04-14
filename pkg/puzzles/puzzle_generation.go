@@ -9,7 +9,6 @@ import (
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lithammer/shortuuid"
 
 	"github.com/domino14/liwords/pkg/common"
@@ -30,12 +29,12 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
-func Generate(ctx context.Context, cfg *config.Config, db *pgxpool.Pool, gs gameplay.GameStore, ps PuzzleStore, req *pb.PuzzleGenerationJobRequest) (int, error) {
+func Generate(ctx context.Context, cfg *config.Config, gs gameplay.GameStore, ps PuzzleStore, req *pb.PuzzleGenerationJobRequest) (int, error) {
 	genId, err := ps.CreateGenerationLog(ctx, req)
 	if err != nil {
 		return -1, err
 	}
-	fulfilled, err := processJob(ctx, cfg, db, req, genId, gs, ps)
+	fulfilled, err := processJob(ctx, cfg, req, genId, gs, ps)
 	return genId, ps.UpdateGenerationLogStatus(ctx, genId, fulfilled, err)
 }
 
@@ -67,7 +66,7 @@ func GetJobInfoString(ctx context.Context, ps *puzzlesstore.DBStore, genId int) 
 	return report.String(), nil
 }
 
-func processJob(ctx context.Context, cfg *config.Config, db *pgxpool.Pool, req *pb.PuzzleGenerationJobRequest, genId int, gs gameplay.GameStore, ps PuzzleStore) (bool, error) {
+func processJob(ctx context.Context, cfg *config.Config, req *pb.PuzzleGenerationJobRequest, genId int, gs gameplay.GameStore, ps PuzzleStore) (bool, error) {
 	if req == nil {
 		return false, errors.New("request is nil")
 	}
