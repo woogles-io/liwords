@@ -116,7 +116,7 @@ func (ps *PuzzleService) SetPuzzleVote(ctx context.Context, req *pb.PuzzleVoteRe
 	return &pb.PuzzleVoteResponse{}, nil
 }
 
-// Returns the UUID of the user is they are logged in
+// Returns the UUID of the user if they are logged in
 // or an empty string if the user is not logged in
 func sessionUserUUIDOption(ctx context.Context, ps *PuzzleService) string {
 	userUUID := ""

@@ -157,41 +157,48 @@ func (s *DBStore) GetStartPuzzleId(ctx context.Context, userUUID string, lexicon
 	}
 	defer tx.Rollback(ctx)
 
-	if userUUID == "" {
-		return getRandomPuzzleUUID(ctx, tx, lexicon, nil)
-	}
-
-	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
-	if err != nil {
-		log.Err(err).Msg("get-user-dbid")
-		return "", err
-	}
-
-	getNext := false
-	var pid int
-	status := &sql.NullBool{}
-	err = tx.QueryRow(ctx, `SELECT puzzle_id, correct FROM puzzle_attempts WHERE user_id = $1 AND (SELECT lexicon FROM puzzles WHERE id = puzzle_id) = $2 ORDER BY updated_at DESC LIMIT 1`, uid, lexicon).Scan(&pid, status)
-	if err == pgx.ErrNoRows {
-		// User has not seen any puzzles, just get a random puzzle
-		getNext = true
-	} else if err != nil {
-		log.Err(err).Msg("error-init-query")
-		return "", err
-	}
-
-	// If the user has not seen any puzzles
-	// or they solved or gave up on the last puzzle,
-	// give the user a new puzzle
-	if getNext || status.Valid {
-		return getNextPuzzleId(ctx, tx, userUUID, lexicon)
-	}
-
 	var startPuzzleUUID string
-	err = tx.QueryRow(ctx, `SELECT uuid FROM puzzles WHERE id = $1`, pid).Scan(&startPuzzleUUID)
-	if err != nil {
-		log.Err(err).Msg("error-scanning")
-		return "", err
+	if userUUID == "" {
+		startPuzzleUUID, err = getRandomPuzzleUUID(ctx, tx, lexicon, nil)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		uid, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
+		if err != nil {
+			log.Err(err).Msg("get-user-dbid")
+			return "", err
+		}
+
+		getNext := false
+		var pid int
+		status := &sql.NullBool{}
+		err = tx.QueryRow(ctx, `SELECT puzzle_id, correct FROM puzzle_attempts WHERE user_id = $1 AND (SELECT lexicon FROM puzzles WHERE id = puzzle_id) = $2 ORDER BY updated_at DESC LIMIT 1`, uid, lexicon).Scan(&pid, status)
+		if err == pgx.ErrNoRows {
+			// User has not seen any puzzles, just get a random puzzle
+			getNext = true
+		} else if err != nil {
+			log.Err(err).Msg("error-init-query")
+			return "", err
+		}
+
+		// If the user has not seen any puzzles
+		// or they solved or gave up on the last puzzle,
+		// give the user a new puzzle
+		if getNext || status.Valid {
+			startPuzzleUUID, err = getNextPuzzleId(ctx, tx, userUUID, lexicon)
+			if err != nil {
+				return "", err
+			}
+		} else {
+			err = tx.QueryRow(ctx, `SELECT uuid FROM puzzles WHERE id = $1`, pid).Scan(&startPuzzleUUID)
+			if err != nil {
+				log.Err(err).Msg("error-scanning")
+				return "", err
+			}
+		}
 	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return "", err
 	}
@@ -206,20 +213,25 @@ func (s *DBStore) GetNextPuzzleId(ctx context.Context, userUUID string, lexicon 
 	}
 	defer tx.Rollback(ctx)
 
-	if userUUID == "" {
-		return getRandomPuzzleUUID(ctx, tx, lexicon, nil)
-	}
+	var nextPuzzleUUID string
 
-	puzzleUUID, err := getNextPuzzleId(ctx, tx, userUUID, lexicon)
-	if err != nil {
-		return "", err
+	if userUUID == "" {
+		nextPuzzleUUID, err = getRandomPuzzleUUID(ctx, tx, lexicon, nil)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		nextPuzzleUUID, err = getNextPuzzleId(ctx, tx, userUUID, lexicon)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return "", err
 	}
 
-	return puzzleUUID, nil
+	return nextPuzzleUUID, nil
 }
 
 func (s *DBStore) GetPuzzle(ctx context.Context, userUUID string, puzzleUUID string) (*macondopb.GameHistory, string, int32, *bool, time.Time, time.Time, error) {
@@ -726,7 +738,10 @@ func getNextPuzzleId(ctx context.Context, tx pgx.Tx, userUUID string, lexicon st
 	// Return any random puzzle
 
 	if err == pgx.ErrNoRows {
-		return getRandomPuzzleUUID(ctx, tx, lexicon, randomId)
+		puzzleUUID, err = getRandomPuzzleUUID(ctx, tx, lexicon, randomId)
+		if err != nil {
+			return "", err
+		}
 	} else if err != nil {
 		return "", err
 	}
