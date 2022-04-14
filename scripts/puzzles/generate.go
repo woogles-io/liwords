@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 
 	commondb "github.com/domino14/liwords/pkg/stores/common"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/rs/zerolog"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/puzzles"
@@ -19,14 +20,15 @@ import (
 )
 
 // Example:
-// go run . '{"bot_vs_bot":true,"lexicon":"CSW21","letter_distribution":"english","sql_offset":0,"game_consideration_limit":1000000,"game_creation_limit":100,"request":{"buckets":[{"size":50,"includes":[0],"excludes":[]}]}}'
+// go run . '{"bot_vs_bot":true,"lexicon":"CSW21","letter_distribution":"english","sql_offset":0,"game_consideration_limit":1000000,"game_creation_limit":100,"request":{"buckets":[{"size":50,"includes":["EQUITY"],"excludes":[]}]}}'
 
 func main() {
 	req := &pb.PuzzleGenerationJobRequest{}
-	err := json.Unmarshal([]byte(os.Args[1]), req)
+	err := protojson.Unmarshal([]byte(os.Args[1]), req)
 	if err != nil {
 		panic(err)
 	}
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	cfg := &config.Config{}
 	// Only load config from environment variables:
 	cfg.Load(nil)
