@@ -456,10 +456,12 @@ export const SinglePuzzle = (props: Props) => {
         });
         setGameHistory(gh);
         console.log('got game history', gh.toObject());
-        BoopSounds.playSound('puzzleStartSound');
         const answerResponse = resp.getAnswer();
         if (!answerResponse) {
           throw new Error('Fetch puzzle returned a null response!');
+        }
+        if (answerResponse.getStatus() === PuzzleStatus.UNANSWERED) {
+          BoopSounds.playSound('puzzleStartSound');
         }
         setPuzzleInfo({
           attempts: answerResponse.getAttempts(),
@@ -472,6 +474,8 @@ export const SinglePuzzle = (props: Props) => {
           variantName: gh.getVariant(),
           solved: answerResponse.getStatus(),
           solution: answerResponse.getCorrectAnswer(),
+          gameId: answerResponse.getGameId(),
+          turn: answerResponse.getTurnNumber(),
         });
         setPendingSolution(
           answerResponse.getStatus() !== PuzzleStatus.UNANSWERED
