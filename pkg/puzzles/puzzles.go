@@ -99,6 +99,10 @@ func GetPreviousPuzzleId(ctx context.Context, ps PuzzleStore, userId string, puz
 	return ps.GetPreviousPuzzleId(ctx, userId, puzzleUUID)
 }
 
+func GetAnswer(ctx context.Context, ps PuzzleStore, puzzleUUID string) (*macondopb.GameEvent, string, int32, string, *ipc.GameRequest, *entity.SingleRating, error) {
+	return ps.GetAnswer(ctx, puzzleUUID)
+}
+
 func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleUUID string, userId string,
 	userAnswer *ipc.ClientGameplayEvent, showSolution bool) (bool, *bool, *macondopb.GameEvent, string, int32, string, int32, int32, int32, time.Time, time.Time, error) {
 	correctAnswer, gameId, turnNumber, afterText, req, puzzleRating, err := ps.GetAnswer(ctx, puzzleUUID)

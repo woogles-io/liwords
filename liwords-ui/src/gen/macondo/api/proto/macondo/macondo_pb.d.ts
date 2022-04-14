@@ -451,6 +451,9 @@ export namespace PuzzleCreationResponse {
 }
 
 export class PuzzleBucket extends jspb.Message {
+  getIndex(): number;
+  setIndex(value: number): void;
+
   getSize(): number;
   setSize(value: number): void;
 
@@ -476,6 +479,7 @@ export class PuzzleBucket extends jspb.Message {
 
 export namespace PuzzleBucket {
   export type AsObject = {
+    index: number,
     size: number,
     includesList: Array<PuzzleTagMap[keyof PuzzleTagMap]>,
     excludesList: Array<PuzzleTagMap[keyof PuzzleTagMap]>,

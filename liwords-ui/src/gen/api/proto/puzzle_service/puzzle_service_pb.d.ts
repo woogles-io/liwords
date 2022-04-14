@@ -106,20 +106,32 @@ export namespace PuzzleRequest {
   }
 }
 
-export class PuzzleResponse extends jspb.Message {
-  hasHistory(): boolean;
-  clearHistory(): void;
-  getHistory(): macondo_api_proto_macondo_macondo_pb.GameHistory | undefined;
-  setHistory(value?: macondo_api_proto_macondo_macondo_pb.GameHistory): void;
+export class AnswerResponse extends jspb.Message {
+  hasCorrectAnswer(): boolean;
+  clearCorrectAnswer(): void;
+  getCorrectAnswer(): macondo_api_proto_macondo_macondo_pb.GameEvent | undefined;
+  setCorrectAnswer(value?: macondo_api_proto_macondo_macondo_pb.GameEvent): void;
 
-  getBeforeText(): string;
-  setBeforeText(value: string): void;
+  getStatus(): PuzzleStatusMap[keyof PuzzleStatusMap];
+  setStatus(value: PuzzleStatusMap[keyof PuzzleStatusMap]): void;
 
   getAttempts(): number;
   setAttempts(value: number): void;
 
-  getStatus(): PuzzleStatusMap[keyof PuzzleStatusMap];
-  setStatus(value: PuzzleStatusMap[keyof PuzzleStatusMap]): void;
+  getGameId(): string;
+  setGameId(value: string): void;
+
+  getTurnNumber(): number;
+  setTurnNumber(value: number): void;
+
+  getAfterText(): string;
+  setAfterText(value: string): void;
+
+  getNewUserRating(): number;
+  setNewUserRating(value: number): void;
+
+  getNewPuzzleRating(): number;
+  setNewPuzzleRating(value: number): void;
 
   hasFirstAttemptTime(): boolean;
   clearFirstAttemptTime(): void;
@@ -130,6 +142,45 @@ export class PuzzleResponse extends jspb.Message {
   clearLastAttemptTime(): void;
   getLastAttemptTime(): google_protobuf_timestamp_pb.Timestamp | undefined;
   setLastAttemptTime(value?: google_protobuf_timestamp_pb.Timestamp): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): AnswerResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: AnswerResponse): AnswerResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: AnswerResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): AnswerResponse;
+  static deserializeBinaryFromReader(message: AnswerResponse, reader: jspb.BinaryReader): AnswerResponse;
+}
+
+export namespace AnswerResponse {
+  export type AsObject = {
+    correctAnswer?: macondo_api_proto_macondo_macondo_pb.GameEvent.AsObject,
+    status: PuzzleStatusMap[keyof PuzzleStatusMap],
+    attempts: number,
+    gameId: string,
+    turnNumber: number,
+    afterText: string,
+    newUserRating: number,
+    newPuzzleRating: number,
+    firstAttemptTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
+    lastAttemptTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
+  }
+}
+
+export class PuzzleResponse extends jspb.Message {
+  hasHistory(): boolean;
+  clearHistory(): void;
+  getHistory(): macondo_api_proto_macondo_macondo_pb.GameHistory | undefined;
+  setHistory(value?: macondo_api_proto_macondo_macondo_pb.GameHistory): void;
+
+  getBeforeText(): string;
+  setBeforeText(value: string): void;
+
+  hasAnswer(): boolean;
+  clearAnswer(): void;
+  getAnswer(): AnswerResponse | undefined;
+  setAnswer(value?: AnswerResponse): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): PuzzleResponse.AsObject;
@@ -145,10 +196,7 @@ export namespace PuzzleResponse {
   export type AsObject = {
     history?: macondo_api_proto_macondo_macondo_pb.GameHistory.AsObject,
     beforeText: string,
-    attempts: number,
-    status: PuzzleStatusMap[keyof PuzzleStatusMap],
-    firstAttemptTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
-    lastAttemptTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
+    answer?: AnswerResponse.AsObject,
   }
 }
 
@@ -186,41 +234,10 @@ export class SubmissionResponse extends jspb.Message {
   getUserIsCorrect(): boolean;
   setUserIsCorrect(value: boolean): void;
 
-  getStatus(): PuzzleStatusMap[keyof PuzzleStatusMap];
-  setStatus(value: PuzzleStatusMap[keyof PuzzleStatusMap]): void;
-
-  hasCorrectAnswer(): boolean;
-  clearCorrectAnswer(): void;
-  getCorrectAnswer(): macondo_api_proto_macondo_macondo_pb.GameEvent | undefined;
-  setCorrectAnswer(value?: macondo_api_proto_macondo_macondo_pb.GameEvent): void;
-
-  getGameId(): string;
-  setGameId(value: string): void;
-
-  getTurnNumber(): number;
-  setTurnNumber(value: number): void;
-
-  getAfterText(): string;
-  setAfterText(value: string): void;
-
-  getAttempts(): number;
-  setAttempts(value: number): void;
-
-  getNewUserRating(): number;
-  setNewUserRating(value: number): void;
-
-  getNewPuzzleRating(): number;
-  setNewPuzzleRating(value: number): void;
-
-  hasFirstAttemptTime(): boolean;
-  clearFirstAttemptTime(): void;
-  getFirstAttemptTime(): google_protobuf_timestamp_pb.Timestamp | undefined;
-  setFirstAttemptTime(value?: google_protobuf_timestamp_pb.Timestamp): void;
-
-  hasLastAttemptTime(): boolean;
-  clearLastAttemptTime(): void;
-  getLastAttemptTime(): google_protobuf_timestamp_pb.Timestamp | undefined;
-  setLastAttemptTime(value?: google_protobuf_timestamp_pb.Timestamp): void;
+  hasAnswer(): boolean;
+  clearAnswer(): void;
+  getAnswer(): AnswerResponse | undefined;
+  setAnswer(value?: AnswerResponse): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): SubmissionResponse.AsObject;
@@ -235,16 +252,7 @@ export class SubmissionResponse extends jspb.Message {
 export namespace SubmissionResponse {
   export type AsObject = {
     userIsCorrect: boolean,
-    status: PuzzleStatusMap[keyof PuzzleStatusMap],
-    correctAnswer?: macondo_api_proto_macondo_macondo_pb.GameEvent.AsObject,
-    gameId: string,
-    turnNumber: number,
-    afterText: string,
-    attempts: number,
-    newUserRating: number,
-    newPuzzleRating: number,
-    firstAttemptTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
-    lastAttemptTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
+    answer?: AnswerResponse.AsObject,
   }
 }
 

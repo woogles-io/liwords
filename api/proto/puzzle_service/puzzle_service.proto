@@ -22,13 +22,23 @@ enum PuzzleStatus {
   INCORRECT = 2;
 }
 
+message AnswerResponse {
+  macondo.GameEvent correct_answer = 1;
+  PuzzleStatus status = 2;
+  int32 attempts = 3;
+  string game_id = 4;
+  int32 turn_number = 5;
+  string after_text = 6;
+  int32 new_user_rating = 7;
+  int32 new_puzzle_rating = 8;
+  google.protobuf.Timestamp first_attempt_time = 9;
+  google.protobuf.Timestamp last_attempt_time = 10;
+}
+
 message PuzzleResponse {
   macondo.GameHistory history = 1;
   string before_text = 2;
-  int32 attempts = 3;
-  PuzzleStatus status = 4;
-  google.protobuf.Timestamp first_attempt_time = 5;
-  google.protobuf.Timestamp last_attempt_time = 6;
+  AnswerResponse answer = 3;
 }
 
 message SubmissionRequest {
@@ -39,16 +49,7 @@ message SubmissionRequest {
 
 message SubmissionResponse {
   bool user_is_correct = 1;
-  PuzzleStatus status = 2;
-  macondo.GameEvent correct_answer = 3;
-  string game_id = 4;
-  int32 turn_number = 5;
-  string after_text = 6;
-  int32 attempts = 7;
-  int32 new_user_rating = 8;
-  int32 new_puzzle_rating = 9;
-  google.protobuf.Timestamp first_attempt_time = 10;
-  google.protobuf.Timestamp last_attempt_time = 11;
+  AnswerResponse answer = 2;
 }
 
 message PreviousPuzzleRequest { string puzzle_id = 1; }

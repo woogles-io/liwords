@@ -3277,7 +3277,7 @@ proto.macondo.PuzzleCreationResponse.prototype.setBucketIndex = function(value) 
  * @private {!Array<number>}
  * @const
  */
-proto.macondo.PuzzleBucket.repeatedFields_ = [2,3];
+proto.macondo.PuzzleBucket.repeatedFields_ = [3,4];
 
 
 
@@ -3310,9 +3310,10 @@ proto.macondo.PuzzleBucket.prototype.toObject = function(opt_includeInstance) {
  */
 proto.macondo.PuzzleBucket.toObject = function(includeInstance, msg) {
   var f, obj = {
-    size: jspb.Message.getFieldWithDefault(msg, 1, 0),
-    includesList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined : f,
-    excludesList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f
+    index: jspb.Message.getFieldWithDefault(msg, 1, 0),
+    size: jspb.Message.getFieldWithDefault(msg, 2, 0),
+    includesList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f,
+    excludesList: (f = jspb.Message.getRepeatedField(msg, 4)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -3351,15 +3352,19 @@ proto.macondo.PuzzleBucket.deserializeBinaryFromReader = function(msg, reader) {
     switch (field) {
     case 1:
       var value = /** @type {number} */ (reader.readInt32());
-      msg.setSize(value);
+      msg.setIndex(value);
       break;
     case 2:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setSize(value);
+      break;
+    case 3:
       var values = /** @type {!Array<!proto.macondo.PuzzleTag>} */ (reader.isDelimited() ? reader.readPackedEnum() : [reader.readEnum()]);
       for (var i = 0; i < values.length; i++) {
         msg.addIncludes(values[i]);
       }
       break;
-    case 3:
+    case 4:
       var values = /** @type {!Array<!proto.macondo.PuzzleTag>} */ (reader.isDelimited() ? reader.readPackedEnum() : [reader.readEnum()]);
       for (var i = 0; i < values.length; i++) {
         msg.addExcludes(values[i]);
@@ -3394,24 +3399,31 @@ proto.macondo.PuzzleBucket.prototype.serializeBinary = function() {
  */
 proto.macondo.PuzzleBucket.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getSize();
+  f = message.getIndex();
   if (f !== 0) {
     writer.writeInt32(
       1,
       f
     );
   }
+  f = message.getSize();
+  if (f !== 0) {
+    writer.writeInt32(
+      2,
+      f
+    );
+  }
   f = message.getIncludesList();
   if (f.length > 0) {
     writer.writePackedEnum(
-      2,
+      3,
       f
     );
   }
   f = message.getExcludesList();
   if (f.length > 0) {
     writer.writePackedEnum(
-      3,
+      4,
       f
     );
   }
@@ -3419,10 +3431,10 @@ proto.macondo.PuzzleBucket.serializeBinaryToWriter = function(message, writer) {
 
 
 /**
- * optional int32 size = 1;
+ * optional int32 index = 1;
  * @return {number}
  */
-proto.macondo.PuzzleBucket.prototype.getSize = function() {
+proto.macondo.PuzzleBucket.prototype.getIndex = function() {
   return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 1, 0));
 };
 
@@ -3431,17 +3443,35 @@ proto.macondo.PuzzleBucket.prototype.getSize = function() {
  * @param {number} value
  * @return {!proto.macondo.PuzzleBucket} returns this
  */
-proto.macondo.PuzzleBucket.prototype.setSize = function(value) {
+proto.macondo.PuzzleBucket.prototype.setIndex = function(value) {
   return jspb.Message.setProto3IntField(this, 1, value);
 };
 
 
 /**
- * repeated PuzzleTag includes = 2;
+ * optional int32 size = 2;
+ * @return {number}
+ */
+proto.macondo.PuzzleBucket.prototype.getSize = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 2, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.macondo.PuzzleBucket} returns this
+ */
+proto.macondo.PuzzleBucket.prototype.setSize = function(value) {
+  return jspb.Message.setProto3IntField(this, 2, value);
+};
+
+
+/**
+ * repeated PuzzleTag includes = 3;
  * @return {!Array<!proto.macondo.PuzzleTag>}
  */
 proto.macondo.PuzzleBucket.prototype.getIncludesList = function() {
-  return /** @type {!Array<!proto.macondo.PuzzleTag>} */ (jspb.Message.getRepeatedField(this, 2));
+  return /** @type {!Array<!proto.macondo.PuzzleTag>} */ (jspb.Message.getRepeatedField(this, 3));
 };
 
 
@@ -3450,7 +3480,7 @@ proto.macondo.PuzzleBucket.prototype.getIncludesList = function() {
  * @return {!proto.macondo.PuzzleBucket} returns this
  */
 proto.macondo.PuzzleBucket.prototype.setIncludesList = function(value) {
-  return jspb.Message.setField(this, 2, value || []);
+  return jspb.Message.setField(this, 3, value || []);
 };
 
 
@@ -3460,7 +3490,7 @@ proto.macondo.PuzzleBucket.prototype.setIncludesList = function(value) {
  * @return {!proto.macondo.PuzzleBucket} returns this
  */
 proto.macondo.PuzzleBucket.prototype.addIncludes = function(value, opt_index) {
-  return jspb.Message.addToRepeatedField(this, 2, value, opt_index);
+  return jspb.Message.addToRepeatedField(this, 3, value, opt_index);
 };
 
 
@@ -3474,11 +3504,11 @@ proto.macondo.PuzzleBucket.prototype.clearIncludesList = function() {
 
 
 /**
- * repeated PuzzleTag excludes = 3;
+ * repeated PuzzleTag excludes = 4;
  * @return {!Array<!proto.macondo.PuzzleTag>}
  */
 proto.macondo.PuzzleBucket.prototype.getExcludesList = function() {
-  return /** @type {!Array<!proto.macondo.PuzzleTag>} */ (jspb.Message.getRepeatedField(this, 3));
+  return /** @type {!Array<!proto.macondo.PuzzleTag>} */ (jspb.Message.getRepeatedField(this, 4));
 };
 
 
@@ -3487,7 +3517,7 @@ proto.macondo.PuzzleBucket.prototype.getExcludesList = function() {
  * @return {!proto.macondo.PuzzleBucket} returns this
  */
 proto.macondo.PuzzleBucket.prototype.setExcludesList = function(value) {
-  return jspb.Message.setField(this, 3, value || []);
+  return jspb.Message.setField(this, 4, value || []);
 };
 
 
@@ -3497,7 +3527,7 @@ proto.macondo.PuzzleBucket.prototype.setExcludesList = function(value) {
  * @return {!proto.macondo.PuzzleBucket} returns this
  */
 proto.macondo.PuzzleBucket.prototype.addExcludes = function(value, opt_index) {
-  return jspb.Message.addToRepeatedField(this, 3, value, opt_index);
+  return jspb.Message.addToRepeatedField(this, 4, value, opt_index);
 };
 
 

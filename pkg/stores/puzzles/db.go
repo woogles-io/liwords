@@ -157,6 +157,10 @@ func (s *DBStore) GetStartPuzzleId(ctx context.Context, userUUID string, lexicon
 	}
 	defer tx.Rollback(ctx)
 
+	if userUUID == "" {
+		return getRandomPuzzleUUID(ctx, tx, lexicon, nil)
+	}
+
 	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
 	if err != nil {
 		log.Err(err).Msg("get-user-dbid")
@@ -202,49 +206,16 @@ func (s *DBStore) GetNextPuzzleId(ctx context.Context, userUUID string, lexicon 
 	}
 	defer tx.Rollback(ctx)
 
+	if userUUID == "" {
+		return getRandomPuzzleUUID(ctx, tx, lexicon, nil)
+	}
+
 	puzzleUUID, err := getNextPuzzleId(ctx, tx, userUUID, lexicon)
 	if err != nil {
 		return "", err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return "", err
-	}
-
-	return puzzleUUID, nil
-}
-
-func getNextPuzzleId(ctx context.Context, tx pgx.Tx, userUUID string, lexicon string) (string, error) {
-	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
-	if err != nil {
-		return "", err
-	}
-
-	randomId, err := getRandomPuzzleId(ctx, tx)
-	if err != nil {
-		return "", err
-	}
-	if !randomId.Valid {
-		return "", entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_RANDOM_PUZZLE_ID_NOT_FOUND, userUUID, lexicon)
-	}
-
-	var puzzleUUID string
-	err = tx.QueryRow(ctx, `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $2) AND id > $3 ORDER BY id LIMIT 1`, lexicon, uid, randomId.Int64).Scan(&puzzleUUID)
-	if err == pgx.ErrNoRows {
-		// Try again, but looking before the id instead
-		err = tx.QueryRow(ctx, `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $2) AND id <= $3 ORDER BY id DESC LIMIT 1`, lexicon, uid, randomId.Int64).Scan(&puzzleUUID)
-	}
-	// The user has answered all available puzzles.
-	// Return any random puzzle
-	if err == pgx.ErrNoRows {
-		err = tx.QueryRow(ctx, `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id > $2 ORDER BY id LIMIT 1`, lexicon, randomId.Int64).Scan(&puzzleUUID)
-	}
-	if err == pgx.ErrNoRows {
-		err = tx.QueryRow(ctx, `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id <= $2 ORDER BY id DESC LIMIT 1`, lexicon, randomId.Int64).Scan(&puzzleUUID)
-	}
-	if err == pgx.ErrNoRows {
-		return "", entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_RANDOM_PUZZLE_NOT_FOUND, userUUID, lexicon)
-	} else if err != nil {
 		return "", err
 	}
 
@@ -731,10 +702,62 @@ func getAttempts(ctx context.Context, tx pgx.Tx, userUUID string, puzzleUUID str
 	return true, attempts, status, firstAttemptTime, lastAttemptTime, nil
 }
 
-func getRandomPuzzleId(ctx context.Context, tx pgx.Tx) (sql.NullInt64, error) {
+func getNextPuzzleId(ctx context.Context, tx pgx.Tx, userUUID string, lexicon string) (string, error) {
+	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
+	if err != nil {
+		return "", err
+	}
+
+	randomId, err := getRandomPuzzleDBID(ctx, tx)
+	if err != nil {
+		return "", err
+	}
+	if !randomId.Valid {
+		return "", entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_RANDOM_PUZZLE_ID_NOT_FOUND, userUUID, lexicon)
+	}
+
+	var puzzleUUID string
+	err = tx.QueryRow(ctx, `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $2) AND id > $3 ORDER BY id LIMIT 1`, lexicon, uid, randomId.Int64).Scan(&puzzleUUID)
+	if err == pgx.ErrNoRows {
+		// Try again, but looking before the id instead
+		err = tx.QueryRow(ctx, `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $2) AND id <= $3 ORDER BY id DESC LIMIT 1`, lexicon, uid, randomId.Int64).Scan(&puzzleUUID)
+	}
+	// The user has answered all available puzzles.
+	// Return any random puzzle
+
+	if err == pgx.ErrNoRows {
+		return getRandomPuzzleUUID(ctx, tx, lexicon, randomId)
+	} else if err != nil {
+		return "", err
+	}
+
+	return puzzleUUID, nil
+}
+
+func getRandomPuzzleUUID(ctx context.Context, tx pgx.Tx, lexicon string, randomId *sql.NullInt64) (string, error) {
+	var err error
+	if randomId == nil {
+		randomId, err = getRandomPuzzleDBID(ctx, tx)
+		if err != nil {
+			return "", err
+		}
+	}
+	var puzzleUUID string
+	err = tx.QueryRow(ctx, `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id > $2 ORDER BY id LIMIT 1`, lexicon, randomId.Int64).Scan(&puzzleUUID)
+	if err == pgx.ErrNoRows {
+		err = tx.QueryRow(ctx, `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id <= $2 ORDER BY id DESC LIMIT 1`, lexicon, randomId.Int64).Scan(&puzzleUUID)
+	}
+	if err == pgx.ErrNoRows {
+		return "", entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_RANDOM_PUZZLE_NOT_FOUND, "", lexicon)
+	} else if err != nil {
+		return "", err
+	}
+	return puzzleUUID, nil
+}
+func getRandomPuzzleDBID(ctx context.Context, tx pgx.Tx) (*sql.NullInt64, error) {
 	var id sql.NullInt64
 	err := tx.QueryRow(ctx, "SELECT FLOOR(RANDOM() * MAX(id)) FROM puzzles").Scan(&id)
-	return id, err
+	return &id, err
 }
 
 func (a *answer) Value() (driver.Value, error) {

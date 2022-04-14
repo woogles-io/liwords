@@ -83,6 +83,10 @@ func TestPuzzlesMain(t *testing.T) {
 	// 6     - Show solution
 	// 7     - Correct
 
+	// This should work for users who are not logged in
+	_, err = GetNextPuzzleId(ctx, ps, "", common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
+
 	// Path 1
 	// Submit an incorrect answer
 	puzzleUUID, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
@@ -560,7 +564,11 @@ func TestPuzzlesStart(t *testing.T) {
 	pool, ps, us, gs, _, _ := RecreateDB()
 	ctx := context.Background()
 
-	_, err := GetStartPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	// This should work for users who are not logged in
+	_, err := GetStartPuzzleId(ctx, ps, "", common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
+
+	_, err = GetStartPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
 	puzzle1, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
