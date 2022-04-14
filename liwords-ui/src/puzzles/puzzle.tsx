@@ -336,10 +336,14 @@ export const SinglePuzzle = (props: Props) => {
         req
       );
       console.log('got resp', resp.toObject());
-      const solution = resp.getCorrectAnswer();
+      const answerResponse = resp.getAnswer();
+      if (!answerResponse) {
+        throw new Error('Did not have an answer!');
+      }
+      const solution = answerResponse.getCorrectAnswer();
       setPuzzleInfo((x) => ({
         ...x,
-        attempts: resp.getAttempts(),
+        attempts: answerResponse.getAttempts(),
         solved: PuzzleStatus.INCORRECT,
         solution: solution,
       }));
@@ -348,7 +352,7 @@ export const SinglePuzzle = (props: Props) => {
         placeGameEvt(solution);
       }
       // Also get the game metadata.
-      setGameInfo(resp.getGameId(), resp.getTurnNumber());
+      setGameInfo(answerResponse.getGameId(), answerResponse.getTurnNumber());
     } catch (err) {
       message.error({
         content: (err as LiwordsAPIError).message,
@@ -373,9 +377,16 @@ export const SinglePuzzle = (props: Props) => {
           req
         );
         console.log('got resp', resp.toObject());
+        const answerResponse = resp.getAnswer();
+        if (!answerResponse) {
+          throw new Error('Did not have an answer!');
+        }
         if (resp.getUserIsCorrect()) {
           BoopSounds.playSound('puzzleCorrectSound');
-          setGameInfo(resp.getGameId(), resp.getTurnNumber());
+          setGameInfo(
+            answerResponse.getGameId(),
+            answerResponse.getTurnNumber()
+          );
           setShowResponseModalCorrect(true);
         } else {
           // Wrong answer
@@ -385,11 +396,11 @@ export const SinglePuzzle = (props: Props) => {
         setPuzzleInfo((x) => ({
           ...x,
           dateSolved:
-            resp.getStatus() === PuzzleStatus.CORRECT
-              ? resp.getLastAttemptTime()?.toDate()
+            answerResponse.getStatus() === PuzzleStatus.CORRECT
+              ? answerResponse.getLastAttemptTime()?.toDate()
               : undefined,
-          attempts: resp.getAttempts(),
-          solved: resp.getStatus(),
+          attempts: answerResponse.getAttempts(),
+          solved: answerResponse.getStatus(),
         }));
       } catch (err) {
         message.error({
@@ -432,18 +443,24 @@ export const SinglePuzzle = (props: Props) => {
         setGameHistory(gh);
         console.log('got game history', gh.toObject());
         BoopSounds.playSound('puzzleStartSound');
+        const answerResponse = resp.getAnswer();
+        if (!answerResponse) {
+          throw new Error('Fetch puzzle returned a null response!');
+        }
         setPuzzleInfo({
-          attempts: resp.getAttempts(),
+          attempts: answerResponse.getAttempts(),
           // XXX: add dateSolved to backend, in the meantime...
           dateSolved:
-            resp.getStatus() === PuzzleStatus.CORRECT
-              ? resp.getLastAttemptTime()?.toDate()
+            answerResponse.getStatus() === PuzzleStatus.CORRECT
+              ? answerResponse.getLastAttemptTime()?.toDate()
               : undefined,
           lexicon: gh.getLexicon(),
           variantName: gh.getVariant(),
-          solved: resp.getStatus(),
+          solved: answerResponse.getStatus(),
         });
-        setPendingSolution(resp.getStatus() !== PuzzleStatus.UNANSWERED);
+        setPendingSolution(
+          answerResponse.getStatus() !== PuzzleStatus.UNANSWERED
+        );
       } catch (err) {
         message.error({
           content: (err as LiwordsAPIError).message,
