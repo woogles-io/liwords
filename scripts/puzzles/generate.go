@@ -59,7 +59,7 @@ func main() {
 		panic(err)
 	}
 
-	id, err := puzzles.Generate(ctx, cfg, pool, gs, ps, req)
+	id, err := puzzles.Generate(ctx, cfg, gs, ps, req)
 	if err != nil {
 		panic(err)
 	}
