@@ -15,7 +15,7 @@ import (
 	"github.com/domino14/liwords/pkg/common"
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/stores/game"
+	"github.com/domino14/liwords/pkg/gameplay"
 	puzzlesstore "github.com/domino14/liwords/pkg/stores/puzzles"
 	"github.com/domino14/macondo/alphabet"
 	"github.com/domino14/macondo/cross_set"
@@ -30,7 +30,7 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
-func Generate(ctx context.Context, cfg *config.Config, db *pgxpool.Pool, gs *game.DBStore, ps *puzzlesstore.DBStore, req *pb.PuzzleGenerationJobRequest) (int, error) {
+func Generate(ctx context.Context, cfg *config.Config, db *pgxpool.Pool, gs gameplay.GameStore, ps PuzzleStore, req *pb.PuzzleGenerationJobRequest) (int, error) {
 	genId, err := ps.CreateGenerationLog(ctx, req)
 	if err != nil {
 		return -1, err
@@ -67,7 +67,7 @@ func GetJobInfoString(ctx context.Context, ps *puzzlesstore.DBStore, genId int) 
 	return report.String(), nil
 }
 
-func processJob(ctx context.Context, cfg *config.Config, db *pgxpool.Pool, req *pb.PuzzleGenerationJobRequest, genId int, gs *game.DBStore, ps *puzzlesstore.DBStore) (bool, error) {
+func processJob(ctx context.Context, cfg *config.Config, db *pgxpool.Pool, req *pb.PuzzleGenerationJobRequest, genId int, gs gameplay.GameStore, ps PuzzleStore) (bool, error) {
 	if req == nil {
 		return false, errors.New("request is nil")
 	}
@@ -76,12 +76,7 @@ func processJob(ctx context.Context, cfg *config.Config, db *pgxpool.Pool, req *
 		return false, err
 	}
 	if !req.BotVsBot {
-		rows, err := db.Query(ctx,
-			`SELECT uuid FROM games WHERE games.id NOT IN
-				(SELECT game_id FROM puzzles) AND
-				(stats->'d1'->'Unchallenged Phonies'->'t')::int = 0 AND
-				(stats->'d2'->'Unchallenged Phonies'->'t')::int = 0 AND
-				game_end_reason != 0 LIMIT $1 OFFSET $2`, req.GameConsiderationLimit, req.SqlOffset)
+		rows, err := ps.GetPotentialPuzzleGames(ctx, int(req.GameConsiderationLimit), int(req.SqlOffset))
 		if err != nil {
 			return false, err
 		}
@@ -159,7 +154,7 @@ func processJob(ctx context.Context, cfg *config.Config, db *pgxpool.Pool, req *
 	return false, nil
 }
 
-func processGame(ctx context.Context, req *macondopb.PuzzleGenerationRequest, genId int, gs *game.DBStore, ps *puzzlesstore.DBStore,
+func processGame(ctx context.Context, req *macondopb.PuzzleGenerationRequest, genId int, gs gameplay.GameStore, ps PuzzleStore,
 	g *entity.Game, authorId string, gameType ipc.GameType) (bool, bool, error) {
 	pzls, err := CreatePuzzlesFromGame(ctx, req, genId, gs, ps, g, "", gameType)
 	if err != nil {

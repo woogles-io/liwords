@@ -8,13 +8,14 @@ import (
 
 	"github.com/domino14/liwords/pkg/common"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/glicko"
-	gamestore "github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/utilities"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	"github.com/domino14/macondo/alphabet"
 
+	commondb "github.com/domino14/liwords/pkg/stores/common"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/macondo/move"
 	macondopuzzles "github.com/domino14/macondo/puzzles"
@@ -37,9 +38,10 @@ type PuzzleStore interface {
 	GetUserRating(ctx context.Context, userId string, ratingKey entity.VariantKey) (*entity.SingleRating, error)
 	SetPuzzleVote(ctx context.Context, userId string, puzzleUUID string, vote int) error
 	GetJobInfo(ctx context.Context, genId int) (time.Time, time.Time, time.Duration, *bool, *string, int, int, [][]int, error)
+	GetPotentialPuzzleGames(ctx context.Context, limit int, offset int) (commondb.RowIterator, error)
 }
 
-func CreatePuzzlesFromGame(ctx context.Context, req *macondopb.PuzzleGenerationRequest, reqId int, gs *gamestore.DBStore, ps PuzzleStore,
+func CreatePuzzlesFromGame(ctx context.Context, req *macondopb.PuzzleGenerationRequest, reqId int, gs gameplay.GameStore, ps PuzzleStore,
 	g *entity.Game, authorId string, gt ipc.GameType) ([]*macondopb.PuzzleCreationResponse, error) {
 
 	pzls, err := macondopuzzles.CreatePuzzlesFromGame(g.Config(), &g.Game, req)

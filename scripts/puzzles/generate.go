@@ -44,7 +44,12 @@ func main() {
 		panic(err)
 	}
 
-	gs, err := gamestore.NewDBStore(cfg, us)
+	tempgs, err := gamestore.NewDBStore(cfg, us)
+	if err != nil {
+		panic(err)
+	}
+
+	gs := gamestore.NewCache(tempgs)
 	if err != nil {
 		panic(err)
 	}

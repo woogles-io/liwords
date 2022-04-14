@@ -678,6 +678,27 @@ func (s *DBStore) GetJobInfo(ctx context.Context, genId int) (time.Time, time.Ti
 	return createdAtTime, completedAtTime, completedAtTime.Sub(createdAtTime), fulfilledOption, errorStatusOption, numTotalPuzzles, numTotalGames, breakdowns, nil
 }
 
+func (s *DBStore) GetPotentialPuzzleGames(ctx context.Context, limit int, offset int) (common.RowIterator, error) {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+	rows, err := tx.Query(ctx,
+		`SELECT uuid FROM games WHERE games.id NOT IN
+			(SELECT game_id FROM puzzles) AND
+			(stats->'d1'->'Unchallenged Phonies'->'t')::int = 0 AND
+			(stats->'d2'->'Unchallenged Phonies'->'t')::int = 0 AND
+			game_end_reason != 0 LIMIT $1 OFFSET $2`, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
 func getAttempts(ctx context.Context, tx pgx.Tx, userUUID string, puzzleUUID string) (bool, int32, *bool, time.Time, time.Time, error) {
 	pid, err := common.GetPuzzleDBIDFromUUID(ctx, tx, puzzleUUID)
 	if err != nil {
@@ -769,6 +790,7 @@ func getRandomPuzzleUUID(ctx context.Context, tx pgx.Tx, lexicon string, randomI
 	}
 	return puzzleUUID, nil
 }
+
 func getRandomPuzzleDBID(ctx context.Context, tx pgx.Tx) (*sql.NullInt64, error) {
 	var id sql.NullInt64
 	err := tx.QueryRow(ctx, "SELECT FLOOR(RANDOM() * MAX(id)) FROM puzzles").Scan(&id)

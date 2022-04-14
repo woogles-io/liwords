@@ -11,6 +11,7 @@ import (
 	"github.com/domino14/liwords/pkg/common"
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/glicko"
 	commondb "github.com/domino14/liwords/pkg/stores/common"
 	gamestore "github.com/domino14/liwords/pkg/stores/game"
@@ -482,7 +483,7 @@ func TestPuzzlesMain(t *testing.T) {
 	is.Equal(pop, -1)
 
 	us.Disconnect()
-	gs.Disconnect()
+	gs.(*gamestore.Cache).Disconnect()
 	ps.Disconnect()
 	pool.Close()
 }
@@ -554,7 +555,7 @@ func TestPuzzlesPrevious(t *testing.T) {
 	is.Equal(puzzle4, actualPreviousPuzzle)
 
 	us.Disconnect()
-	gs.Disconnect()
+	gs.(*gamestore.Cache).Disconnect()
 	ps.Disconnect()
 	pool.Close()
 }
@@ -611,7 +612,7 @@ func TestPuzzlesStart(t *testing.T) {
 	is.True(puzzle1 != actualStartPuzzle)
 
 	us.Disconnect()
-	gs.Disconnect()
+	gs.(*gamestore.Cache).Disconnect()
 	ps.Disconnect()
 	pool.Close()
 }
@@ -632,7 +633,7 @@ func TestUniqueSingleTileKey(t *testing.T) {
 		uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: pb.GameEvent_VERTICAL}))
 }
 
-func RecreateDB() (*pgxpool.Pool, *puzzlesstore.DBStore, *user.DBStore, *gamestore.DBStore, int, int) {
+func RecreateDB() (*pgxpool.Pool, *puzzlesstore.DBStore, *user.DBStore, gameplay.GameStore, int, int) {
 	cfg := &config.Config{}
 	cfg.MacondoConfig = common.DefaultConfig
 	cfg.DBConnUri = commondb.TestingPostgresConnUri()
@@ -667,7 +668,12 @@ func RecreateDB() (*pgxpool.Pool, *puzzlesstore.DBStore, *user.DBStore, *gamesto
 		panic(err)
 	}
 
-	gameStore, err := gamestore.NewDBStore(cfg, userStore)
+	tempGameStore, err := gamestore.NewDBStore(cfg, userStore)
+	if err != nil {
+		panic(err)
+	}
+
+	gameStore := gamestore.NewCache(tempGameStore)
 	if err != nil {
 		panic(err)
 	}

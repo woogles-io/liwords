@@ -19,6 +19,12 @@ var DefaultTxOptions = pgx.TxOptions{
 	DeferrableMode: pgx.Deferrable, // not used for this isolevel/access mode
 }
 
+type RowIterator interface {
+	Close()
+	Next() bool
+	Scan(dest ...interface{}) error
+}
+
 func GetUserDBIDFromUUID(ctx context.Context, tx pgx.Tx, uuid string) (int64, error) {
 	var id int64
 	err := tx.QueryRow(ctx, "SELECT id FROM users WHERE uuid = $1", uuid).Scan(&id)

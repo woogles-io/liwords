@@ -8,6 +8,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/liwords/pkg/config"
+	"github.com/domino14/liwords/pkg/stores/game"
 	pb "github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	"github.com/matryer/is"
 )
@@ -170,7 +171,7 @@ func TestPuzzleGeneration(t *testing.T) {
 	is.Equal(totalGames, 20)
 
 	us.Disconnect()
-	gs.Disconnect()
+	gs.(*game.Cache).Disconnect()
 	ps.Disconnect()
 	db.Close()
 }
