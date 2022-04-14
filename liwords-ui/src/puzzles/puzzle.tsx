@@ -71,10 +71,12 @@ type PuzzleInfo = {
   challengeRule?: ChallengeRule;
   ratingMode?: string;
   gameDate?: Date;
+  gameId?: string;
   initialTimeSeconds?: number;
   incrementSeconds?: number;
   maxOvertimeMinutes?: number;
   solution?: GameEvent;
+  turn?: number;
   gameUrl?: string;
   player1?: {
     nickname: string;
@@ -346,20 +348,27 @@ export const SinglePuzzle = (props: Props) => {
         attempts: answerResponse.getAttempts(),
         solved: PuzzleStatus.INCORRECT,
         solution: solution,
+        gameId: answerResponse.getGameId(),
+        turn: answerResponse.getTurnNumber(),
       }));
       // Place the tiles from the event.
       if (solution) {
-        placeGameEvt(solution);
+        setPendingSolution(true);
       }
       // Also get the game metadata.
-      setGameInfo(answerResponse.getGameId(), answerResponse.getTurnNumber());
     } catch (err) {
       message.error({
         content: (err as LiwordsAPIError).message,
         duration: 5,
       });
     }
-  }, [puzzleID, userIDOnTurn, gameContext.players, placeGameEvt, setGameInfo]);
+  }, [puzzleID, userIDOnTurn, gameContext.players]);
+
+  useEffect(() => {
+    if (puzzleInfo.gameId && puzzleInfo.turn) {
+      setGameInfo(puzzleInfo.gameId, puzzleInfo.turn);
+    }
+  }, [puzzleInfo.gameId, puzzleInfo.turn, setGameInfo]);
 
   const attemptPuzzle = useCallback(
     async (evt: ClientGameplayEvent) => {
@@ -387,6 +396,11 @@ export const SinglePuzzle = (props: Props) => {
             answerResponse.getGameId(),
             answerResponse.getTurnNumber()
           );
+          setPuzzleInfo((x) => ({
+            ...x,
+            turn: answerResponse.getTurnNumber(),
+            gameId: answerResponse.getGameId(),
+          }));
           setShowResponseModalCorrect(true);
         } else {
           // Wrong answer
@@ -457,6 +471,7 @@ export const SinglePuzzle = (props: Props) => {
           lexicon: gh.getLexicon(),
           variantName: gh.getVariant(),
           solved: answerResponse.getStatus(),
+          solution: answerResponse.getCorrectAnswer(),
         });
         setPendingSolution(
           answerResponse.getStatus() !== PuzzleStatus.UNANSWERED
@@ -486,11 +501,11 @@ export const SinglePuzzle = (props: Props) => {
   }, [loadNewPuzzle, userLexicon, puzzleID]);
 
   useEffect(() => {
-    if (pendingSolution && puzzleInfo.solved) {
-      showSolution();
+    if (puzzleInfo.solution && pendingSolution) {
+      placeGameEvt(puzzleInfo.solution);
     }
     setPendingSolution(false);
-  }, [puzzleInfo.solved, pendingSolution, showSolution]);
+  }, [puzzleInfo.solution, pendingSolution, placeGameEvt]);
 
   // This is displayed if there is no puzzle id and no preferred puzzle lexicon saved in local storage
   const lexiconModal = useMemo(() => {
@@ -541,15 +556,6 @@ export const SinglePuzzle = (props: Props) => {
         }}
         footer={[
           <Button
-            key="giveup"
-            onClick={() => {
-              showSolution();
-              setShowResponseModalWrong(false);
-            }}
-          >
-            Give up
-          </Button>,
-          <Button
             key="ok"
             type="primary"
             autoFocus
@@ -575,7 +581,6 @@ export const SinglePuzzle = (props: Props) => {
   }, [
     showResponseModalWrong,
     puzzleInfo,
-    showSolution,
     rack,
     setDisplayedRack,
     setPlacedTiles,
@@ -608,6 +613,7 @@ export const SinglePuzzle = (props: Props) => {
         }}
         footer={[
           <button
+            autoFocus
             disabled={false}
             className="primary"
             key="ok"
@@ -664,7 +670,7 @@ export const SinglePuzzle = (props: Props) => {
               gameID={''} /* no game id for a puzzle */
               sendSocketMsg={doNothing}
               sendGameplayEvent={
-                puzzleInfo.solved === PuzzleStatus.UNANSWERED
+                loggedIn && puzzleInfo.solved === PuzzleStatus.UNANSWERED
                   ? attemptPuzzle
                   : doNothing
               }

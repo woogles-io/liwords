@@ -100,4 +100,8 @@
       }
     }
   }
+  // hide puzzle ratings for now
+  tr[data-row-key*="puzzle"] {
+    display: none;
+  }
 }

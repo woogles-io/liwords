@@ -1560,6 +1560,8 @@ export const BoardPanel = React.memo((props: Props) => {
     gameMetaMessage = 'Log in or register to see player tiles';
   } else if (stillWaitingForGameToStart) {
     gameMetaMessage = 'Waiting for game to start...';
+  } else if (props.puzzleMode && props.anonymousViewer) {
+    gameMetaMessage = 'Log in or register to start solving puzzles';
   }
 
   // playerOrder enum seems to ensure we can only have two-player games :-(
@@ -1648,6 +1650,9 @@ export const BoardPanel = React.memo((props: Props) => {
           </div>
         </Affix>
       )}
+      {gameMetaMessage && props.puzzleMode && (
+        <GameMetaMessage message={gameMetaMessage} />
+      )}
       {isTouchDevice() ? <TilePreview gridDim={props.board.dim} /> : null}
       {!anonymousTourneyViewer && !props.puzzleMode && (
         <GameControls
@@ -1688,45 +1693,47 @@ export const BoardPanel = React.memo((props: Props) => {
           setHandleNeitherShortcut={setHandleNeitherShortcut}
         />
       )}
-      {props.puzzleMode && props.puzzleSolved === PuzzleStatus.UNANSWERED && (
-        <Affix offsetTop={126} className="rack-affix">
-          <GameControls
-            isExamining={false}
-            myTurn={true}
-            finalPassOrChallenge={
-              examinableGameContext.playState ===
-              PlayState.WAITING_FOR_FINAL_PASS
-            }
-            allowAnalysis={false}
-            exchangeAllowed={exchangeAllowed}
-            observer={false}
-            onRecall={recallTiles}
-            showExchangeModal={showExchangeModal}
-            onPass={handlePass}
-            onResign={handleResign}
-            onRequestAbort={handleRequestAbort}
-            onNudge={handleNudge}
-            onChallenge={handleChallenge}
-            onCommit={handleCommit}
-            onRematch={props.handleAcceptRematch ?? rematch}
-            onExamine={() => {}}
-            onExportGCG={() => {}}
-            showNudge={false}
-            showAbort={false}
-            showRematch={false}
-            gameEndControls={false}
-            currentRack={props.currentRack}
-            tournamentSlug={props.tournamentSlug}
-            tournamentPairedMode={props.tournamentPairedMode}
-            lexicon={props.lexicon}
-            challengeRule={props.challengeRule}
-            setHandlePassShortcut={setHandlePassShortcut}
-            setHandleChallengeShortcut={setHandleChallengeShortcut}
-            setHandleNeitherShortcut={setHandleNeitherShortcut}
-            puzzleMode={true}
-          />
-        </Affix>
-      )}
+      {props.puzzleMode &&
+        props.puzzleSolved === PuzzleStatus.UNANSWERED &&
+        !props.anonymousViewer && (
+          <Affix offsetTop={126} className="rack-affix">
+            <GameControls
+              isExamining={false}
+              myTurn={true}
+              finalPassOrChallenge={
+                examinableGameContext.playState ===
+                PlayState.WAITING_FOR_FINAL_PASS
+              }
+              allowAnalysis={false}
+              exchangeAllowed={exchangeAllowed}
+              observer={false}
+              onRecall={recallTiles}
+              showExchangeModal={showExchangeModal}
+              onPass={handlePass}
+              onResign={handleResign}
+              onRequestAbort={handleRequestAbort}
+              onNudge={handleNudge}
+              onChallenge={handleChallenge}
+              onCommit={handleCommit}
+              onRematch={props.handleAcceptRematch ?? rematch}
+              onExamine={() => {}}
+              onExportGCG={() => {}}
+              showNudge={false}
+              showAbort={false}
+              showRematch={false}
+              gameEndControls={false}
+              currentRack={props.currentRack}
+              tournamentSlug={props.tournamentSlug}
+              tournamentPairedMode={props.tournamentPairedMode}
+              lexicon={props.lexicon}
+              challengeRule={props.challengeRule}
+              setHandlePassShortcut={setHandlePassShortcut}
+              setHandleChallengeShortcut={setHandleChallengeShortcut}
+              setHandleNeitherShortcut={setHandleNeitherShortcut}
+              puzzleMode={true}
+            />
+          </Affix>
+        )}
       <ExchangeTiles
         tileColorId={tileColorId}
         alphabet={props.alphabet}
