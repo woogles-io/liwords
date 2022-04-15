@@ -137,7 +137,7 @@ func (s *DBStore) CreatePuzzle(ctx context.Context, gameUUID string, turnNumber 
 	}
 
 	for _, tag := range tags {
-		_, err := tx.Exec(ctx, `INSERT INTO puzzle_tags(tag_id, puzzle_id) VALUES ($1, $2)`, tag+1, id)
+		_, err := tx.Exec(ctx, `INSERT INTO puzzle_tags(tag_id, puzzle_id) VALUES ((SELECT id FROM puzzle_tag_titles WHERE tag_title = $1), $2)`, tag.String(), id)
 		if err != nil {
 			return err
 		}
@@ -679,21 +679,13 @@ func (s *DBStore) GetJobInfo(ctx context.Context, genId int) (time.Time, time.Ti
 }
 
 func (s *DBStore) GetPotentialPuzzleGames(ctx context.Context, limit int, offset int) (common.RowIterator, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-	rows, err := tx.Query(ctx,
+	rows, err := s.dbPool.Query(ctx,
 		`SELECT uuid FROM games WHERE games.id NOT IN
 			(SELECT game_id FROM puzzles) AND
 			(stats->'d1'->'Unchallenged Phonies'->'t')::int = 0 AND
 			(stats->'d2'->'Unchallenged Phonies'->'t')::int = 0 AND
 			game_end_reason != 0 LIMIT $1 OFFSET $2`, limit, offset)
 	if err != nil {
-		return nil, err
-	}
-	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
 	return rows, nil
