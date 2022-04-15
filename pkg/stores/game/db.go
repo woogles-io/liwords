@@ -279,7 +279,7 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 	}); err != nil {
 		// Note: REPEATABLE READ is correct for Postgres (other databases may require SERIALIZABLE to avoid phantom reads).
 		// The default READ COMMITTED may return invalid rows if an update invalidates the row after the id has been chosen.
-		log.Err(err).Msg("get-recent-games")
+		log.Err(err).Str("username", username).Int("numGames", numGames).Int("offset", offset).Msg("get-recent-games")
 		return nil, err
 	}
 
