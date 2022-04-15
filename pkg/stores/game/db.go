@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	MaxRecentGames = 20
+	MaxRecentGames = 1000
 )
 
 // DBStore is a postgres-backed store for games.
