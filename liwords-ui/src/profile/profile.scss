@@ -85,10 +85,6 @@
     font-size: 14px;
     text-align: right;
   }
-  .game-history-controls {
-    padding: 6px;
-    text-align: right;
-  }
   .ant-table-wrapper {
     overflow-x: auto;
   }
@@ -100,4 +96,9 @@
       }
     }
   }
+}
+.game-history-controls {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px;
 }
