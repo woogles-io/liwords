@@ -261,8 +261,11 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 			return nil
 		}
 
+		// convertGamesToInfoResponses does not need History.
+		// This still reads each history, but then garbage-collects immediately.
+		// The "correct" way is to manually list all surviving column names.
 		if results := tx.Raw(
-			"select * from games where id in ? order by id desc",
+			"select *, null history from games where id in ? order by id desc",
 			gameIds).
 			Find(&games); results.Error != nil {
 
