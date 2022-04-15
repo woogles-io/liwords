@@ -183,9 +183,9 @@ export const PuzzleInfo = React.memo((props: Props) => {
     <span>unknown player</span>
   );
   const playerInfo = (
-    <p className="player-title">
+    <span className="player-title">
       Game played by {player1NameDisplay} vs {player2NameDisplay}
-    </p>
+    </span>
   );
 
   return (
@@ -208,12 +208,12 @@ export const PuzzleInfo = React.memo((props: Props) => {
           increment_seconds || 0,
           max_overtime_minutes || 0
         )} • ${variantName || 'classic'} • ${lexicon}`}</p>
-        <p>
+        <div>
           {challengeDisplay}
           {challengeDisplay && ratedDisplay ? ' • ' : ''}
           {ratedDisplay}
-        </p>
-        <p className="progress">{attemptsText}</p>
+        </div>
+        <div className="progress">{attemptsText}</div>
         {actions}
       </div>
     </Card>
