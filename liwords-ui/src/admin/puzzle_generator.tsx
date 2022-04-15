@@ -7,10 +7,9 @@ import {
   InputNumber,
   message,
   Select,
-  Space,
   Switch,
 } from 'antd';
-import { LiwordsAPIError, postJsonObj, postProto } from '../api/api';
+import { LiwordsAPIError, postProto } from '../api/api';
 import { Store } from 'antd/lib/form/interface';
 import { excludedLexica, LexiconFormItem } from '../shared/lexicon_display';
 import {
@@ -99,12 +98,13 @@ export const PuzzleGenerator = () => {
     apireq.setRequest(req);
 
     try {
-      const m = await postProto(
+      await postProto(
         APIPuzzleGenerationJobResponse,
         'puzzle_service.PuzzleService',
         'StartPuzzleGenJob',
         apireq
       );
+      message.info({ content: 'Submitted job' });
     } catch (e) {
       message.error({
         content: (e as LiwordsAPIError).message,
