@@ -382,6 +382,52 @@ export namespace PuzzleGenerationJobRequest {
   }
 }
 
+export class APIPuzzleGenerationJobResponse extends jspb.Message {
+  getStarted(): boolean;
+  setStarted(value: boolean): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): APIPuzzleGenerationJobResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: APIPuzzleGenerationJobResponse): APIPuzzleGenerationJobResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: APIPuzzleGenerationJobResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): APIPuzzleGenerationJobResponse;
+  static deserializeBinaryFromReader(message: APIPuzzleGenerationJobResponse, reader: jspb.BinaryReader): APIPuzzleGenerationJobResponse;
+}
+
+export namespace APIPuzzleGenerationJobResponse {
+  export type AsObject = {
+    started: boolean,
+  }
+}
+
+export class APIPuzzleGenerationJobRequest extends jspb.Message {
+  hasRequest(): boolean;
+  clearRequest(): void;
+  getRequest(): PuzzleGenerationJobRequest | undefined;
+  setRequest(value?: PuzzleGenerationJobRequest): void;
+
+  getSecretKey(): string;
+  setSecretKey(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): APIPuzzleGenerationJobRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: APIPuzzleGenerationJobRequest): APIPuzzleGenerationJobRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: APIPuzzleGenerationJobRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): APIPuzzleGenerationJobRequest;
+  static deserializeBinaryFromReader(message: APIPuzzleGenerationJobRequest, reader: jspb.BinaryReader): APIPuzzleGenerationJobRequest;
+}
+
+export namespace APIPuzzleGenerationJobRequest {
+  export type AsObject = {
+    request?: PuzzleGenerationJobRequest.AsObject,
+    secretKey: string,
+  }
+}
+
 export interface PuzzleStatusMap {
   UNANSWERED: 0;
   CORRECT: 1;

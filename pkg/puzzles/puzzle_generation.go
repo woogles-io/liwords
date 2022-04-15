@@ -122,6 +122,7 @@ func processJob(ctx context.Context, cfg *config.Config, req *pb.PuzzleGeneratio
 			if err != nil {
 				return false, err
 			}
+			gs.Unload(ctx, UUID)
 			if fulfilled {
 				return true, nil
 			}

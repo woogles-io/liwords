@@ -2,6 +2,7 @@ package puzzles
 
 import (
 	"context"
+	"errors"
 
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/entity"
@@ -13,13 +14,18 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+var (
+	errNotAuthorized = errors.New("this user is not authorized to perform this action")
+)
+
 type PuzzleService struct {
-	puzzleStore PuzzleStore
-	userStore   user.Store
+	puzzleStore        PuzzleStore
+	userStore          user.Store
+	puzzleGenSecretKey string
 }
 
-func NewPuzzleService(ps PuzzleStore, us user.Store) *PuzzleService {
-	return &PuzzleService{puzzleStore: ps, userStore: us}
+func NewPuzzleService(ps PuzzleStore, us user.Store, k string) *PuzzleService {
+	return &PuzzleService{puzzleStore: ps, userStore: us, puzzleGenSecretKey: k}
 }
 
 func (ps *PuzzleService) GetStartPuzzleId(ctx context.Context, req *pb.StartPuzzleIdRequest) (*pb.StartPuzzleIdResponse, error) {
@@ -114,6 +120,25 @@ func (ps *PuzzleService) SetPuzzleVote(ctx context.Context, req *pb.PuzzleVoteRe
 		return nil, err
 	}
 	return &pb.PuzzleVoteResponse{}, nil
+}
+
+func (ps *PuzzleService) StartPuzzleGenJob(ctx context.Context, req *pb.APIPuzzleGenerationJobRequest) (*pb.APIPuzzleGenerationJobResponse, error) {
+	user, err := sessionUser(ctx, ps)
+	if err != nil {
+		return nil, err
+	}
+	if !user.IsAdmin {
+		return nil, twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
+	}
+	log.Debug().Msgf("keys %s %s", req.SecretKey, ps.puzzleGenSecretKey)
+	if req.SecretKey != ps.puzzleGenSecretKey {
+		return nil, twirp.NewError(twirp.PermissionDenied, "must include puzzle generation secret key")
+	}
+	// for logs
+	req.SecretKey = ""
+	log.Info().Interface("req", req).Msg("job-request")
+
+	return &pb.APIPuzzleGenerationJobResponse{}, nil
 }
 
 // Returns the UUID of the user if they are logged in

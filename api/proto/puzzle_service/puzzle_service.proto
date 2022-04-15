@@ -73,6 +73,15 @@ message PuzzleGenerationJobRequest {
   macondo.PuzzleGenerationRequest request = 7;
 }
 
+message APIPuzzleGenerationJobResponse {
+  bool started = 1;
+}
+
+message APIPuzzleGenerationJobRequest {
+  PuzzleGenerationJobRequest request = 1;
+  string secret_key = 2;
+}
+
 service PuzzleService {
   rpc GetStartPuzzleId(StartPuzzleIdRequest) returns (StartPuzzleIdResponse);
   rpc GetNextPuzzleId(NextPuzzleIdRequest) returns (NextPuzzleIdResponse);
@@ -80,4 +89,7 @@ service PuzzleService {
   rpc SubmitAnswer(SubmissionRequest) returns (SubmissionResponse);
   rpc GetPreviousPuzzleId(PreviousPuzzleRequest) returns (PreviousPuzzleResponse);
   rpc SetPuzzleVote(PuzzleVoteRequest) returns (PuzzleVoteResponse);
+
+  rpc StartPuzzleGenJob(APIPuzzleGenerationJobRequest) returns (APIPuzzleGenerationJobResponse);
+
 }
