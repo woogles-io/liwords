@@ -269,6 +269,9 @@
   }
   td.turn-order {
     font-size: 21px;
+    .anticon {
+      display: flex; /* make first and non-first same height so Prev/Next buttons don't move */
+    }
   }
   td.time {
     text-transform: capitalize;
