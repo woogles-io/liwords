@@ -3,6 +3,7 @@ package puzzles
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/entity"
@@ -11,6 +12,7 @@ import (
 	"github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -136,7 +138,11 @@ func (ps *PuzzleService) StartPuzzleGenJob(ctx context.Context, req *pb.APIPuzzl
 	}
 	// for logs
 	req.SecretKey = ""
-	log.Info().Interface("req", req).Msg("job-request")
+	bts, err := protojson.Marshal(req.Request)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("docker-compose run --rm -w /opt/program/cmd/puzzlegen app go run . '%s'\n", string(bts))
 
 	return &pb.APIPuzzleGenerationJobResponse{}, nil
 }
