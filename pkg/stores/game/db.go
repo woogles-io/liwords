@@ -292,15 +292,46 @@ func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, n
 	}
 	ctxDB := s.db.WithContext(ctx)
 	var games []*game
-	if results := ctxDB.Limit(numGames).
-		Offset(offset).
-		// Basically, everything except for 0 (ongoing), 5 (aborted) or 7 (cancelled)
-		Where("tournament_id = ? AND game_end_reason NOT IN (?, ?, ?)", tourneyID,
-			pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED).
-		Order("updated_at desc").
-		Find(&games); results.Error != nil {
-		return nil, results.Error
+
+	if err := ctxDB.Transaction(func(tx *gorm.DB) error {
+
+		// Note: This query only selects ids, to reduce the amount of work required by the db to paginate.
+		var gameIds []int64
+		if results := tx.Raw(
+			`select id from games where tournament_id = ?
+			and game_end_reason not in (?, ?, ?) order by updated_at desc limit ? offset ?`,
+			tourneyID,
+			pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED, numGames, offset).
+			Find(&gameIds); results.Error != nil {
+
+			return results.Error
+		} else if results.RowsAffected == 0 {
+			// No game ids means no games.
+			return nil
+		}
+
+		// convertGamesToInfoResponses does not need History.
+		// This still reads each history, but then garbage-collects immediately.
+		// The "correct" way is to manually list all surviving column names.
+		if results := tx.Raw(
+			"select *, null history from games where id in ? order by updated_at desc",
+			gameIds).
+			Find(&games); results.Error != nil {
+
+			return results.Error
+		}
+
+		return nil
+	}, &sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  true,
+	}); err != nil {
+		// Note: REPEATABLE READ is correct for Postgres (other databases may require SERIALIZABLE to avoid phantom reads).
+		// The default READ COMMITTED may return invalid rows if an update invalidates the row after the id has been chosen.
+		log.Err(err).Str("tourneyID", tourneyID).Int("numGames", numGames).Int("offset", offset).Msg("get-recent-tourney-games")
+		return nil, err
 	}
+
 	return convertGamesToInfoResponses(games)
 }
 
