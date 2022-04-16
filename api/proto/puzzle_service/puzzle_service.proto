@@ -82,6 +82,24 @@ message APIPuzzleGenerationJobRequest {
   string secret_key = 2;
 }
 
+message PuzzleJobLogsRequest {
+  int32 offset = 1;
+  int32 limit = 2;
+}
+
+message PuzzleJobLog {
+  int64 id = 1;
+  PuzzleGenerationJobRequest request = 2;
+  bool fulfilled = 3;
+  string error_status = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp completed_at = 6;
+}
+
+message PuzzleJobLogsResponse {
+  repeated PuzzleJobLog logs = 1;
+}
+
 service PuzzleService {
   rpc GetStartPuzzleId(StartPuzzleIdRequest) returns (StartPuzzleIdResponse);
   rpc GetNextPuzzleId(NextPuzzleIdRequest) returns (NextPuzzleIdResponse);
@@ -91,5 +109,5 @@ service PuzzleService {
   rpc SetPuzzleVote(PuzzleVoteRequest) returns (PuzzleVoteResponse);
 
   rpc StartPuzzleGenJob(APIPuzzleGenerationJobRequest) returns (APIPuzzleGenerationJobResponse);
-
+  rpc GetPuzzleJobLogs(PuzzleJobLogsRequest) returns (PuzzleJobLogsResponse);
 }

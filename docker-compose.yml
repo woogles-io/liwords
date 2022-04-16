@@ -25,9 +25,12 @@ services:
       GORACE: history_size=7
       ARGON_MEMORY: 1024
       AWS_PROFILE: ${AWS_PROFILE:-default}
+      AWS_REGION: ${AWS_REGION:-}
       AVATAR_UPLOAD_BUCKET: woogles-uploads
       DB_MIGRATIONS_PATH: file:///opt/program/db/migrations
       PUZZLE_GENERATION_SECRET_KEY: perplexemes
+      ECS_CLUSTER_NAME: ${ECS_CLUSTER_NAME:-}
+      PUZZLE_GENERATION_TASK_DEFINITION: ${PUZZLE_GENERATION_TASK_DEFINITION:-}
       # XXX: In order to get avatar upload to work locally we need to set up localstack.
       # For now: AWS_PROFILE=prod docker-compose up app
     volumes:

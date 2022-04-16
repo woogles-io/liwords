@@ -5,6 +5,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ecs"
+	"github.com/aws/aws-sdk-go-v2/service/ecs/types"
+	"github.com/aws/smithy-go"
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
@@ -24,10 +29,18 @@ type PuzzleService struct {
 	puzzleStore        PuzzleStore
 	userStore          user.Store
 	puzzleGenSecretKey string
+	ecsCluster         string
+	puzzleGenTaskDef   string
 }
 
-func NewPuzzleService(ps PuzzleStore, us user.Store, k string) *PuzzleService {
-	return &PuzzleService{puzzleStore: ps, userStore: us, puzzleGenSecretKey: k}
+func NewPuzzleService(ps PuzzleStore, us user.Store, k, c, td string) *PuzzleService {
+	return &PuzzleService{
+		puzzleStore:        ps,
+		userStore:          us,
+		puzzleGenSecretKey: k,
+		ecsCluster:         c,
+		puzzleGenTaskDef:   td,
+	}
 }
 
 func (ps *PuzzleService) GetStartPuzzleId(ctx context.Context, req *pb.StartPuzzleIdRequest) (*pb.StartPuzzleIdResponse, error) {
@@ -136,15 +149,70 @@ func (ps *PuzzleService) StartPuzzleGenJob(ctx context.Context, req *pb.APIPuzzl
 	if req.SecretKey != ps.puzzleGenSecretKey {
 		return nil, twirp.NewError(twirp.PermissionDenied, "must include puzzle generation secret key")
 	}
-	// for logs
-	req.SecretKey = ""
 	bts, err := protojson.Marshal(req.Request)
 	if err != nil {
 		return nil, err
 	}
+	// This message is meant to be copy-pasted from the terminal
+	// when run locally. On production, though, it will try to execute
+	// an ECS task.
 	fmt.Printf("docker-compose run --rm -w /opt/program/cmd/puzzlegen app go run . '%s'\n", string(bts))
 
+	err = invokeECSPuzzleGen(ctx, string(bts), ps.ecsCluster, ps.puzzleGenTaskDef)
+	if err != nil {
+		return nil, twirp.InternalErrorWith(err)
+	}
 	return &pb.APIPuzzleGenerationJobResponse{}, nil
+}
+
+func (ps *PuzzleService) GetPuzzleJobLogs(ctx context.Context, req *pb.PuzzleJobLogsRequest) (*pb.PuzzleJobLogsResponse, error) {
+	user, err := sessionUser(ctx, ps)
+	if err != nil {
+		return nil, err
+	}
+	if !user.IsAdmin {
+		return nil, twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
+	}
+	logs, err := GetPuzzleJobLogs(ctx, ps.puzzleStore, int(req.Limit), int(req.Offset))
+	if err != nil {
+		return nil, err
+	}
+	return &pb.PuzzleJobLogsResponse{Logs: logs}, nil
+}
+
+func invokeECSPuzzleGen(ctx context.Context, arg, cluster, taskdef string) error {
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		return err
+	}
+	svc := ecs.NewFromConfig(cfg)
+	input := &ecs.RunTaskInput{
+		Cluster:        aws.String(cluster),
+		TaskDefinition: aws.String(taskdef),
+		Overrides: &types.TaskOverride{
+			ContainerOverrides: []types.ContainerOverride{
+				{
+					Command: []string{
+						"/opt/puzzle-generator",
+						fmt.Sprintf(`'%s'`, arg),
+					},
+				},
+			},
+		},
+	}
+	result, err := svc.RunTask(ctx, input)
+	if err != nil {
+		var apiErr smithy.APIError
+		if errors.As(err, &apiErr) {
+			code := apiErr.ErrorCode()
+			message := apiErr.ErrorMessage()
+			return fmt.Errorf("aws error: code %s, message %s", code, message)
+		} else {
+			return err
+		}
+	}
+	log.Info().Msgf("run-ecs-task-result: %v", result)
+	return nil
 }
 
 // Returns the UUID of the user if they are logged in

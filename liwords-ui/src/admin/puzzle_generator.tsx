@@ -1,10 +1,12 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 
 import {
   Button,
+  Divider,
   Form,
   Input,
   InputNumber,
+  List,
   message,
   Select,
   Switch,
@@ -23,7 +25,11 @@ import {
   APIPuzzleGenerationJobRequest,
   APIPuzzleGenerationJobResponse,
   PuzzleGenerationJobRequest,
+  PuzzleJobLog,
+  PuzzleJobLogsRequest,
+  PuzzleJobLogsResponse,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
+import moment from 'moment';
 
 const layout = {
   labelCol: {
@@ -65,7 +71,52 @@ type formBucket = {
 };
 
 export const PuzzleGenerator = () => {
-  const onFinish = async (vals: Store) => {
+  const [logs, setLogs] = useState<Array<PuzzleJobLog>>([]);
+
+  const renderedLogs = useMemo(() => {
+    return (
+      <List
+        itemLayout="horizontal"
+        dataSource={logs}
+        renderItem={(item) => {
+          const createdAt = item.getCreatedAt();
+          const completedAt = item.getCompletedAt();
+          let dcreate, dcomplete;
+          if (createdAt) {
+            dcreate = moment(createdAt.toDate()).fromNow();
+          }
+          if (completedAt) {
+            dcomplete = moment(completedAt.toDate()).fromNow();
+          }
+
+          return (
+            <List.Item>
+              <List.Item.Meta
+                title={`Job ${item.getId()} - created: ${dcreate}`}
+                description={
+                  <div className="readable-text-color">
+                    <p>Completed: {dcomplete}</p>
+                    <p>Fulfilled: {`${item.getFulfilled()}`}</p>
+                    <p>Error status: {item.getErrorStatus()}</p>
+                    <p>Request:</p>
+                    <pre>
+                      {JSON.stringify(
+                        item.getRequest()?.toObject(),
+                        undefined,
+                        2
+                      )}
+                    </pre>
+                  </div>
+                }
+              />
+            </List.Item>
+          );
+        }}
+      />
+    );
+  }, [logs]);
+
+  const onFinish = useCallback(async (vals: Store) => {
     console.log('vals', vals);
 
     const apireq = new APIPuzzleGenerationJobRequest();
@@ -111,7 +162,28 @@ export const PuzzleGenerator = () => {
         duration: 5,
       });
     }
-  };
+  }, []);
+
+  const fetchRecentLogs = useCallback(async () => {
+    const req = new PuzzleJobLogsRequest();
+    req.setOffset(0);
+    req.setLimit(20);
+    // Add pagination later.
+    try {
+      const resp = await postProto(
+        PuzzleJobLogsResponse,
+        'puzzle_service.PuzzleService',
+        'GetPuzzleJobLogs',
+        req
+      );
+      setLogs(resp.getLogsList());
+    } catch (e) {
+      message.error({
+        content: (e as LiwordsAPIError).message,
+        duration: 5,
+      });
+    }
+  }, []);
 
   // TODO: figure out how to import this from the protobuf.
   const puzzleTags = useMemo(
@@ -228,6 +300,11 @@ export const PuzzleGenerator = () => {
           </Button>
         </Form.Item>
       </Form>
+      <Divider />
+      <Button type="default" onClick={fetchRecentLogs}>
+        Fetch recent generation logs
+      </Button>
+      {renderedLogs}
     </div>
   );
 };

@@ -19,6 +19,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type DBStore struct {
@@ -95,6 +96,49 @@ func (s *DBStore) UpdateGenerationLogStatus(ctx context.Context, id int, fulfill
 	}
 
 	return nil
+}
+
+func (s *DBStore) GetJobLogs(ctx context.Context, limit, offset int) ([]*puzzle_service.PuzzleJobLog, error) {
+	var createdAt time.Time
+	var completedAt time.Time
+	rows, err := s.dbPool.Query(ctx,
+		`SELECT id, request, fulfilled, error_status, created_at, completed_at
+	 FROM puzzle_generation_logs
+	 ORDER by created_at DESC
+	 LIMIT $1
+	 OFFSET $2
+	 `, limit, offset)
+
+	jobLogs := []*puzzle_service.PuzzleJobLog{}
+	for rows.Next() {
+		jobLog := puzzle_service.PuzzleJobLog{}
+		fulfilled := &sql.NullBool{}
+		errorStatus := &sql.NullString{}
+
+		err = rows.Scan(&jobLog.Id, &jobLog.Request, fulfilled, errorStatus, &createdAt, &completedAt)
+		if err != nil {
+			rows.Close()
+			return nil, err
+		}
+		if fulfilled.Valid {
+			jobLog.Fulfilled = fulfilled.Bool
+		} else {
+			jobLog.Fulfilled = false
+		}
+		if errorStatus.Valid {
+			jobLog.ErrorStatus = errorStatus.String
+		} else {
+			jobLog.ErrorStatus = ""
+		}
+		jobLog.CreatedAt = timestamppb.New(createdAt)
+		jobLog.CompletedAt = timestamppb.New(completedAt)
+		jobLogs = append(jobLogs, &jobLog)
+	}
+	rows.Close()
+	if err != nil {
+		return nil, err
+	}
+	return jobLogs, nil
 }
 
 func (s *DBStore) CreatePuzzle(ctx context.Context, gameUUID string, turnNumber int32, answer *macondopb.GameEvent, authorUUID string,

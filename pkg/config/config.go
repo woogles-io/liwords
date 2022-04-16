@@ -32,13 +32,16 @@ type Config struct {
 	DBConnUri        string
 	DBConnDSN        string
 
-	ListenAddr                string
-	SecretKey                 string
-	NatsURL                   string
-	MailgunKey                string
-	RedisURL                  string
-	DiscordToken              string
-	PuzzleGenerationSecretKey string
+	ListenAddr   string
+	SecretKey    string
+	NatsURL      string
+	MailgunKey   string
+	RedisURL     string
+	DiscordToken string
+	// Puzzles
+	PuzzleGenerationSecretKey      string
+	ECSClusterName                 string
+	PuzzleGenerationTaskDefinition string
 }
 
 type CtxKey string
@@ -70,6 +73,8 @@ func (c *Config) Load(args []string) error {
 	fs.StringVar(&c.DiscordToken, "discord-token", "", "the token used for moderator action discord notifications")
 	fs.StringVar(&c.DBMigrationsPath, "db-migrations-path", "", "the path where migrations are stored")
 	fs.StringVar(&c.PuzzleGenerationSecretKey, "puzzle-generation-secret-key", shortuuid.New(), "a secret key used for generating puzzles")
+	fs.StringVar(&c.ECSClusterName, "ecs-cluster-name", "", "the ECS cluster this runs on")
+	fs.StringVar(&c.PuzzleGenerationTaskDefinition, "puzzle-generation-task-definition", "", "the task definition for the puzzle generation ECS task")
 	// For password hashing:
 	fs.IntVar(&c.ArgonConfig.Keylen, "argon-key-len", 32, "the Argon key length")
 	fs.IntVar(&c.ArgonConfig.Time, "argon-time", 1, "the Argon time")
