@@ -16,3 +16,7 @@ __pycache__
 scripts/**/*-linux-amd64
 
 data/lexica/words/*.txt
+
+cmd/convert-pb/convert-pb
+
+liwords-ui/public/wasm/macondo.wasm
