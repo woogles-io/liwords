@@ -10,6 +10,9 @@ import { singularCount } from '../utils/plural';
 import { Button } from 'antd';
 import { Modal } from '../utils/focus_modal';
 import { Alphabet } from '../constants/alphabets';
+
+const doNothing = () => {};
+
 // Render an exchange widget.
 
 type Props = {
@@ -142,7 +145,6 @@ export const ExchangeTiles = React.memo((props: Props) => {
     },
     [exchangedRackIndices]
   );
-  const doNothing = useCallback(() => {}, []);
   const handleOnOk = useCallback(() => {
     propsOnOk(exchangedRack);
   }, [propsOnOk, exchangedRack]);

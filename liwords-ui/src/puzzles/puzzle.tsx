@@ -56,6 +56,9 @@ import { useFirefoxPatch } from '../utils/hooks';
 import { useMountedState } from '../utils/mounted';
 import { BoopSounds } from '../sound/boop';
 import { GameInfoRequest } from '../gen/api/proto/game_service/game_service_pb';
+
+const doNothing = () => {};
+
 type Props = {
   sendChat: (msg: string, chan: string) => void;
 };
@@ -562,7 +565,6 @@ export const SinglePuzzle = (props: Props) => {
     );
   }, [showResponseModalCorrect, puzzleInfo, loadNewPuzzle]);
 
-  const doNothing = useCallback(() => {}, []);
   let ret = (
     <div className="game-container puzzle-container">
       <TopBar />
