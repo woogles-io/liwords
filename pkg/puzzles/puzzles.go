@@ -13,6 +13,7 @@ import (
 	"github.com/domino14/liwords/pkg/utilities"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/liwords/rpc/api/proto/puzzle_service"
+	pb "github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	"github.com/domino14/macondo/alphabet"
 
 	commondb "github.com/domino14/liwords/pkg/stores/common"
@@ -39,6 +40,7 @@ type PuzzleStore interface {
 	SetPuzzleVote(ctx context.Context, userId string, puzzleUUID string, vote int) error
 	GetJobInfo(ctx context.Context, genId int) (time.Time, time.Time, time.Duration, *bool, *string, int, int, [][]int, error)
 	GetPotentialPuzzleGames(ctx context.Context, limit int, offset int) (commondb.RowIterator, error)
+	GetJobLogs(ctx context.Context, limit, offset int) ([]*pb.PuzzleJobLog, error)
 }
 
 func CreatePuzzlesFromGame(ctx context.Context, req *macondopb.PuzzleGenerationRequest, reqId int, gs gameplay.GameStore, ps PuzzleStore,
@@ -103,6 +105,10 @@ func GetPreviousPuzzleId(ctx context.Context, ps PuzzleStore, userId string, puz
 
 func GetAnswer(ctx context.Context, ps PuzzleStore, puzzleUUID string) (*macondopb.GameEvent, string, int32, string, *ipc.GameRequest, *entity.SingleRating, error) {
 	return ps.GetAnswer(ctx, puzzleUUID)
+}
+
+func GetPuzzleJobLogs(ctx context.Context, ps PuzzleStore, limit, offset int) ([]*pb.PuzzleJobLog, error) {
+	return ps.GetJobLogs(ctx, limit, offset)
 }
 
 func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleUUID string, userId string,

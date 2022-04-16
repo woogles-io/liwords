@@ -217,7 +217,7 @@ func main() {
 	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore)
 	tournamentService := tournament.NewTournamentService(stores.TournamentStore, stores.UserStore)
 	modService := mod.NewModService(stores.UserStore, stores.ChatStore)
-	puzzleService := puzzles.NewPuzzleService(stores.PuzzleStore, stores.UserStore)
+	puzzleService := puzzles.NewPuzzleService(stores.PuzzleStore, stores.UserStore, cfg.PuzzleGenerationSecretKey, cfg.PuzzleGenerationTaskDefinition, cfg.ECSClusterName)
 
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 

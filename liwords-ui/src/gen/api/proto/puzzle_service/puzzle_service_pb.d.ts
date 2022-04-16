@@ -382,6 +382,144 @@ export namespace PuzzleGenerationJobRequest {
   }
 }
 
+export class APIPuzzleGenerationJobResponse extends jspb.Message {
+  getStarted(): boolean;
+  setStarted(value: boolean): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): APIPuzzleGenerationJobResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: APIPuzzleGenerationJobResponse): APIPuzzleGenerationJobResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: APIPuzzleGenerationJobResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): APIPuzzleGenerationJobResponse;
+  static deserializeBinaryFromReader(message: APIPuzzleGenerationJobResponse, reader: jspb.BinaryReader): APIPuzzleGenerationJobResponse;
+}
+
+export namespace APIPuzzleGenerationJobResponse {
+  export type AsObject = {
+    started: boolean,
+  }
+}
+
+export class APIPuzzleGenerationJobRequest extends jspb.Message {
+  hasRequest(): boolean;
+  clearRequest(): void;
+  getRequest(): PuzzleGenerationJobRequest | undefined;
+  setRequest(value?: PuzzleGenerationJobRequest): void;
+
+  getSecretKey(): string;
+  setSecretKey(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): APIPuzzleGenerationJobRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: APIPuzzleGenerationJobRequest): APIPuzzleGenerationJobRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: APIPuzzleGenerationJobRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): APIPuzzleGenerationJobRequest;
+  static deserializeBinaryFromReader(message: APIPuzzleGenerationJobRequest, reader: jspb.BinaryReader): APIPuzzleGenerationJobRequest;
+}
+
+export namespace APIPuzzleGenerationJobRequest {
+  export type AsObject = {
+    request?: PuzzleGenerationJobRequest.AsObject,
+    secretKey: string,
+  }
+}
+
+export class PuzzleJobLogsRequest extends jspb.Message {
+  getOffset(): number;
+  setOffset(value: number): void;
+
+  getLimit(): number;
+  setLimit(value: number): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): PuzzleJobLogsRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: PuzzleJobLogsRequest): PuzzleJobLogsRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: PuzzleJobLogsRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): PuzzleJobLogsRequest;
+  static deserializeBinaryFromReader(message: PuzzleJobLogsRequest, reader: jspb.BinaryReader): PuzzleJobLogsRequest;
+}
+
+export namespace PuzzleJobLogsRequest {
+  export type AsObject = {
+    offset: number,
+    limit: number,
+  }
+}
+
+export class PuzzleJobLog extends jspb.Message {
+  getId(): number;
+  setId(value: number): void;
+
+  hasRequest(): boolean;
+  clearRequest(): void;
+  getRequest(): PuzzleGenerationJobRequest | undefined;
+  setRequest(value?: PuzzleGenerationJobRequest): void;
+
+  getFulfilled(): boolean;
+  setFulfilled(value: boolean): void;
+
+  getErrorStatus(): string;
+  setErrorStatus(value: string): void;
+
+  hasCreatedAt(): boolean;
+  clearCreatedAt(): void;
+  getCreatedAt(): google_protobuf_timestamp_pb.Timestamp | undefined;
+  setCreatedAt(value?: google_protobuf_timestamp_pb.Timestamp): void;
+
+  hasCompletedAt(): boolean;
+  clearCompletedAt(): void;
+  getCompletedAt(): google_protobuf_timestamp_pb.Timestamp | undefined;
+  setCompletedAt(value?: google_protobuf_timestamp_pb.Timestamp): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): PuzzleJobLog.AsObject;
+  static toObject(includeInstance: boolean, msg: PuzzleJobLog): PuzzleJobLog.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: PuzzleJobLog, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): PuzzleJobLog;
+  static deserializeBinaryFromReader(message: PuzzleJobLog, reader: jspb.BinaryReader): PuzzleJobLog;
+}
+
+export namespace PuzzleJobLog {
+  export type AsObject = {
+    id: number,
+    request?: PuzzleGenerationJobRequest.AsObject,
+    fulfilled: boolean,
+    errorStatus: string,
+    createdAt?: google_protobuf_timestamp_pb.Timestamp.AsObject,
+    completedAt?: google_protobuf_timestamp_pb.Timestamp.AsObject,
+  }
+}
+
+export class PuzzleJobLogsResponse extends jspb.Message {
+  clearLogsList(): void;
+  getLogsList(): Array<PuzzleJobLog>;
+  setLogsList(value: Array<PuzzleJobLog>): void;
+  addLogs(value?: PuzzleJobLog, index?: number): PuzzleJobLog;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): PuzzleJobLogsResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: PuzzleJobLogsResponse): PuzzleJobLogsResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: PuzzleJobLogsResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): PuzzleJobLogsResponse;
+  static deserializeBinaryFromReader(message: PuzzleJobLogsResponse, reader: jspb.BinaryReader): PuzzleJobLogsResponse;
+}
+
+export namespace PuzzleJobLogsResponse {
+  export type AsObject = {
+    logsList: Array<PuzzleJobLog.AsObject>,
+  }
+}
+
 export interface PuzzleStatusMap {
   UNANSWERED: 0;
   CORRECT: 1;
