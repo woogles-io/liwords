@@ -29,6 +29,9 @@ export const VariantIcon = (props: Props) => {
           <CloudTwoTone />
         </Tooltip>
       );
+    case 'puzzle':
+      // no icon yet
+      break;
   }
   return null;
 };

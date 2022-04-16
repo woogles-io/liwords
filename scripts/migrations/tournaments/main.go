@@ -282,12 +282,10 @@ type registrant struct {
 }
 
 func NewDBStore(config *config.Config, gs gameplay.GameStore) (*DBStore, error) {
-	db, err := gorm.Open(postgres.Open(config.DBConnString), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(config.DBConnDSN), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
-	db.AutoMigrate(&tournament{})
-	db.AutoMigrate(&registrant{})
 	return &DBStore{db: db, gameStore: gs, cfg: config}, nil
 }
 
@@ -363,7 +361,7 @@ func main() {
 
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
-	userStore, err := user.NewDBStore(cfg.DBConnString)
+	userStore, err := user.NewDBStore(cfg.DBConnDSN)
 	if err != nil {
 		panic(err)
 	}

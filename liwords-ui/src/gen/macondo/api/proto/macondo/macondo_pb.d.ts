@@ -410,6 +410,104 @@ export namespace BotResponse {
   }
 }
 
+export class PuzzleCreationResponse extends jspb.Message {
+  getGameId(): string;
+  setGameId(value: string): void;
+
+  getTurnNumber(): number;
+  setTurnNumber(value: number): void;
+
+  hasAnswer(): boolean;
+  clearAnswer(): void;
+  getAnswer(): GameEvent | undefined;
+  setAnswer(value?: GameEvent): void;
+
+  clearTagsList(): void;
+  getTagsList(): Array<PuzzleTagMap[keyof PuzzleTagMap]>;
+  setTagsList(value: Array<PuzzleTagMap[keyof PuzzleTagMap]>): void;
+  addTags(value: PuzzleTagMap[keyof PuzzleTagMap], index?: number): PuzzleTagMap[keyof PuzzleTagMap];
+
+  getBucketIndex(): number;
+  setBucketIndex(value: number): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): PuzzleCreationResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: PuzzleCreationResponse): PuzzleCreationResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: PuzzleCreationResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): PuzzleCreationResponse;
+  static deserializeBinaryFromReader(message: PuzzleCreationResponse, reader: jspb.BinaryReader): PuzzleCreationResponse;
+}
+
+export namespace PuzzleCreationResponse {
+  export type AsObject = {
+    gameId: string,
+    turnNumber: number,
+    answer?: GameEvent.AsObject,
+    tagsList: Array<PuzzleTagMap[keyof PuzzleTagMap]>,
+    bucketIndex: number,
+  }
+}
+
+export class PuzzleBucket extends jspb.Message {
+  getIndex(): number;
+  setIndex(value: number): void;
+
+  getSize(): number;
+  setSize(value: number): void;
+
+  clearIncludesList(): void;
+  getIncludesList(): Array<PuzzleTagMap[keyof PuzzleTagMap]>;
+  setIncludesList(value: Array<PuzzleTagMap[keyof PuzzleTagMap]>): void;
+  addIncludes(value: PuzzleTagMap[keyof PuzzleTagMap], index?: number): PuzzleTagMap[keyof PuzzleTagMap];
+
+  clearExcludesList(): void;
+  getExcludesList(): Array<PuzzleTagMap[keyof PuzzleTagMap]>;
+  setExcludesList(value: Array<PuzzleTagMap[keyof PuzzleTagMap]>): void;
+  addExcludes(value: PuzzleTagMap[keyof PuzzleTagMap], index?: number): PuzzleTagMap[keyof PuzzleTagMap];
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): PuzzleBucket.AsObject;
+  static toObject(includeInstance: boolean, msg: PuzzleBucket): PuzzleBucket.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: PuzzleBucket, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): PuzzleBucket;
+  static deserializeBinaryFromReader(message: PuzzleBucket, reader: jspb.BinaryReader): PuzzleBucket;
+}
+
+export namespace PuzzleBucket {
+  export type AsObject = {
+    index: number,
+    size: number,
+    includesList: Array<PuzzleTagMap[keyof PuzzleTagMap]>,
+    excludesList: Array<PuzzleTagMap[keyof PuzzleTagMap]>,
+  }
+}
+
+export class PuzzleGenerationRequest extends jspb.Message {
+  clearBucketsList(): void;
+  getBucketsList(): Array<PuzzleBucket>;
+  setBucketsList(value: Array<PuzzleBucket>): void;
+  addBuckets(value?: PuzzleBucket, index?: number): PuzzleBucket;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): PuzzleGenerationRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: PuzzleGenerationRequest): PuzzleGenerationRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: PuzzleGenerationRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): PuzzleGenerationRequest;
+  static deserializeBinaryFromReader(message: PuzzleGenerationRequest, reader: jspb.BinaryReader): PuzzleGenerationRequest;
+}
+
+export namespace PuzzleGenerationRequest {
+  export type AsObject = {
+    bucketsList: Array<PuzzleBucket.AsObject>,
+  }
+}
+
 export interface PlayStateMap {
   PLAYING: 0;
   WAITING_FOR_FINAL_PASS: 1;
@@ -428,4 +526,17 @@ export interface ChallengeRuleMap {
 }
 
 export const ChallengeRule: ChallengeRuleMap;
+
+export interface PuzzleTagMap {
+  EQUITY: 0;
+  BINGO: 1;
+  ONLY_BINGO: 2;
+  BLANK_BINGO: 3;
+  NON_BINGO: 4;
+  POWER_TILE: 5;
+  BINGO_NINE_OR_ABOVE: 6;
+  CEL_ONLY: 7;
+}
+
+export const PuzzleTag: PuzzleTagMap;
 

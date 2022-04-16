@@ -6,6 +6,7 @@ import axios from 'axios';
 import 'antd/dist/antd.min.css';
 
 import { Table as GameTable } from './gameroom/table';
+import { SinglePuzzle } from './puzzles/puzzle';
 import TileImages from './gameroom/tile_images';
 import { Lobby } from './lobby/lobby';
 import {
@@ -256,6 +257,13 @@ const App = React.memo(() => {
             <GameTable sendSocketMsg={sendMessage} sendChat={sendChat} />
           }
         />
+        <Route path="puzzle" element={<SinglePuzzle sendChat={sendChat} />}>
+          <Route
+            path=":puzzleID"
+            element={<SinglePuzzle sendChat={sendChat} />}
+          />
+        </Route>
+
         <Route path="about" element={<Team />} />
         <Route path="team" element={<Team />} />
         <Route path="terms" element={<TermsOfService />} />

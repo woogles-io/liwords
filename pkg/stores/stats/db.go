@@ -31,7 +31,6 @@ func NewListStatStore(dbURL string) (*ListStatStore, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.AutoMigrate(&liststat{})
 	return &ListStatStore{db: db}, nil
 }
 

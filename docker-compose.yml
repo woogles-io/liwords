@@ -6,9 +6,15 @@ services:
       context: .
       dockerfile: Dockerfile-dev
     environment:
+      STRATEGY_PARAMS_PATH: /opt/program/data/strategy
       LEXICON_PATH: /opt/program/data/lexica
       LETTER_DISTRIBUTION_PATH: /opt/program/data/letterdistributions
-      DB_CONN_STRING: "host=db port=5432 user=postgres dbname=liwords password=pass sslmode=disable"
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_NAME: liwords
+      DB_PASSWORD: pass
+      DB_SSL_MODE: disable
       SECRET_KEY: jqxztripletriple
       DEBUG: 1
       NATS_URL: nats://nats:4222
@@ -19,16 +25,22 @@ services:
       GORACE: history_size=7
       ARGON_MEMORY: 1024
       AWS_PROFILE: ${AWS_PROFILE:-default}
+      AWS_REGION: ${AWS_REGION:-}
       AVATAR_UPLOAD_BUCKET: woogles-uploads
       DB_MIGRATIONS_PATH: file:///opt/program/db/migrations
+      PUZZLE_GENERATION_SECRET_KEY: perplexemes
+      ECS_CLUSTER_NAME: ${ECS_CLUSTER_NAME:-}
+      PUZZLE_GENERATION_TASK_DEFINITION: ${PUZZLE_GENERATION_TASK_DEFINITION:-}
       # XXX: In order to get avatar upload to work locally we need to set up localstack.
       # For now: AWS_PROFILE=prod docker-compose up app
     volumes:
       - .:/opt/program:rw
+      - ./data/lexica/gaddag:/opt/program/data/lexica/gaddag
+      - ../macondo/data/strategy:/opt/program/data/strategy
       - ./data/lexica/dawg:/opt/program/data/lexica/dawg
       - ${AWS_CREDENTIALS_PATH:-~/.aws}:/root/.aws:ro
     command: sh -c "go run -race cmd/liwords-api/*.go"
-    depends_on: ["db", "proxy", "nats", "socket", "redis"]
+    depends_on: [ "db", "proxy", "nats", "socket", "redis" ]
     networks:
       - aeronet
     ports:
@@ -54,14 +66,15 @@ services:
     volumes:
       - ../macondo:/opt/program:rw
       # Use the same gaddag files we use for the WASM integration.
-      - ./liwords-ui/public/wasm:/opt/program/data/lexica/gaddag
+      - ./data/lexica/gaddag:/opt/program/data/lexica/gaddag
       - ./data/lexica/dawg:/opt/program/data/lexica/dawg
     command: sh -c "go run -race cmd/bot/*.go"
-    depends_on: ["nats"]
+    depends_on: [ "nats" ]
     networks:
       - aeronet
 
-  socket: &socketsetup
+  socket:
+    &socketsetup
     build:
       context: ../liwords-socket
       dockerfile: Dockerfile-dev
@@ -71,8 +84,8 @@ services:
       NATS_URL: nats://nats:4222
     volumes:
       - ../liwords-socket:/opt/program:rw
-    command: ["go", "run", "-race", "cmd/socketsrv/main.go"]
-    depends_on: ["nats"]
+    command: [ "go", "run", "-race", "cmd/socketsrv/main.go" ]
+    depends_on: [ "nats" ]
     networks:
       - aeronet
     labels:

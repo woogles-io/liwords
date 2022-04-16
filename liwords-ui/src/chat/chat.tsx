@@ -34,6 +34,7 @@ export type Props = {
   highlight?: Array<string>;
   highlightText?: string;
   tournamentID?: string;
+  suppressDefault?: boolean;
 };
 
 type JSONChatChannel = {
@@ -64,9 +65,11 @@ export const Chat = React.memo((props: Props) => {
   const [tabContainerElement, setTabContainerElement] =
     useState<HTMLDivElement | null>(null);
   const { defaultChannel, defaultDescription } = props;
-  const [showChannels, setShowChannels] = useState(false);
+  const [showChannels, setShowChannels] = useState(props.suppressDefault);
   const propsSendChat = useMemo(() => props.sendChat, [props.sendChat]);
-  const [selectedChatTab, setSelectedChatTab] = useState('CHAT');
+  const [selectedChatTab, setSelectedChatTab] = useState(
+    props.suppressDefault || !loggedIn ? 'CHAT' : 'PLAYERS'
+  );
   const chatTab = selectedChatTab === 'CHAT' ? tabContainerElement : null;
 
   // Chat auto-scrolls when the last entity is visible.
@@ -82,7 +85,9 @@ export const Chat = React.memo((props: Props) => {
   const [presenceCount, setPresenceCount] = useState(0);
   const lastChannel = useRef('');
   const [chatAutoScroll, setChatAutoScroll] = useState(true);
-  const [channel, setChannel] = useState<string | undefined>(defaultChannel);
+  const [channel, setChannel] = useState<string | undefined>(
+    !props.suppressDefault ? defaultChannel : undefined
+  );
   const [, setRefreshCurMsg] = useState(0);
   const channelType = useMemo(() => {
     return channel?.split('.')[1] || '';
@@ -312,11 +317,14 @@ export const Chat = React.memo((props: Props) => {
   useEffect(() => {
     setChannel(defaultChannel);
     setDescription(defaultDescription);
-    if (loggedIn && defaultChannel === 'chat.lobby') {
+    if (
+      loggedIn &&
+      (defaultChannel === 'chat.lobby' || props.suppressDefault)
+    ) {
       setSelectedChatTab('PLAYERS');
       setShowChannels(true);
     }
-  }, [defaultChannel, defaultDescription, loggedIn]);
+  }, [defaultChannel, defaultDescription, loggedIn, props.suppressDefault]);
 
   const decoratedDescription = useMemo(() => {
     switch (channelType) {
@@ -684,6 +692,7 @@ export const Chat = React.memo((props: Props) => {
                 setShowChannels(false);
               }}
               sendMessage={sendNewMessage}
+              suppressDefault={props.suppressDefault}
               tournamentID={props.tournamentID}
             />
           ) : (

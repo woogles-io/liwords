@@ -58,12 +58,10 @@ type registrant struct {
 
 // NewDBStore creates a new DB store for tournament managers.
 func NewDBStore(config *config.Config, gs gameplay.GameStore) (*DBStore, error) {
-	db, err := gorm.Open(postgres.Open(config.DBConnString), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(config.DBConnDSN), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
-	db.AutoMigrate(&tournament{})
-	db.AutoMigrate(&registrant{})
 	return &DBStore{db: db, gameStore: gs, cfg: config}, nil
 }
 

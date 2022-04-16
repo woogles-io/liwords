@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sort"
 	"time"
 
@@ -48,6 +49,7 @@ type game struct {
 	gorm.Model
 	UUID string `gorm:"type:varchar(24);index"`
 
+	Type      pb.GameType
 	Player0ID uint `gorm:"foreignKey;index"`
 	Player0   user.User
 
@@ -82,11 +84,10 @@ type game struct {
 // NewDBStore creates a new DB store for games.
 func NewDBStore(config *config.Config, userStore pkguser.Store) (*DBStore, error) {
 
-	db, err := gorm.Open(postgres.Open(config.DBConnString), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(config.DBConnDSN), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
-	db.AutoMigrate(&game{})
 	// Note: We need to manually add the following index on production:
 	// create index rematch_req_idx ON games using hash ((quickdata->>'o'));
 	// I don't know how to do this with GORM. This makes the GetRematchStreak function
@@ -142,7 +143,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	}
 
 	entGame, err := fromState(tdata, &qdata, g.Started, g.GameEndReason, g.Player0ID, g.Player1ID,
-		g.WinnerIdx, g.LoserIdx, g.Request, g.History, &sdata, &mdata, s.gameEventChan, s.cfg, g.CreatedAt)
+		g.WinnerIdx, g.LoserIdx, g.Request, g.History, &sdata, &mdata, s.gameEventChan, s.cfg, g.CreatedAt, g.Type, g.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -315,6 +316,7 @@ func convertGameToInfoResponse(g *game) (*pb.GameInfoResponse, error) {
 		TournamentDivision:  tDiv,
 		TournamentRound:     int32(tRound),
 		TournamentGameIndex: int32(tGameIndex),
+		Type:                g.Type,
 	}
 	return info, nil
 }
@@ -323,7 +325,7 @@ func convertGameToInfoResponse(g *game) (*pb.GameInfoResponse, error) {
 func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 	GameEndReason int, p0id, p1id uint, WinnerIdx, LoserIdx int, reqBytes, histBytes []byte,
 	stats *entity.Stats, mdata *entity.MetaEventData,
-	gameEventChan chan<- *entity.EventWrapper, cfg *config.Config, createdAt time.Time) (*entity.Game, error) {
+	gameEventChan chan<- *entity.EventWrapper, cfg *config.Config, createdAt time.Time, gameType pb.GameType, DBID uint) (*entity.Game, error) {
 
 	g := &entity.Game{
 		Started:       Started,
@@ -337,6 +339,8 @@ func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 		MetaEvents:    mdata,
 		Quickdata:     qdata,
 		CreatedAt:     createdAt,
+		Type:          gameType,
+		DBID:          DBID,
 	}
 	g.SetTimerModule(&entity.GameTimer{})
 
@@ -354,7 +358,7 @@ func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 	if err != nil {
 		return nil, err
 	}
-	log.Info().Interface("hist", hist).Msg("hist-unmarshal")
+	log.Debug().Interface("hist", hist).Msg("hist-unmarshal")
 
 	lexicon := hist.Lexicon
 	if lexicon == "" {
@@ -446,6 +450,28 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 	log.Debug().Interface("dbg", dbg).Msg("dbg")
 	ctxDB := s.db.WithContext(ctx)
 	result := ctxDB.Create(dbg)
+	return result.Error
+}
+
+func (s *DBStore) CreateRaw(ctx context.Context, g *entity.Game, gt pb.GameType) error {
+	if gt == pb.GameType_NATIVE {
+		return fmt.Errorf("this game already exists: %s", g.Uid())
+	}
+	ctxDB := s.db.WithContext(ctx)
+
+	req, err := proto.Marshal(g.GameReq)
+	if err != nil {
+		return err
+	}
+	hist, err := proto.Marshal(g.History())
+	if err != nil {
+		return err
+	}
+	result := ctxDB.Exec(
+		`insert into games(uuid, request, history, quickdata, timers,
+			game_end_reason, type)
+		values(?, ?, ?, ?, ?, ?, ?)`,
+		g.Uid(), req, hist, g.Quickdata, g.Timers, g.GameEndReason, gt)
 	return result.Error
 }
 
@@ -552,6 +578,7 @@ func (s *DBStore) toDBObj(g *entity.Game) (*game, error) {
 		History:        hist,
 		TournamentData: tourneydata,
 		MetaEvents:     mdata,
+		Type:           g.Type,
 	}
 	if g.TournamentData != nil {
 		dbg.TournamentID = g.TournamentData.Id

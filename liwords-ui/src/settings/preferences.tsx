@@ -10,6 +10,7 @@ import {
 import '../gameroom/scss/gameroom.scss';
 import { TileLetter, PointValue } from '../gameroom/tile';
 import { BoardPreview } from './board_preview';
+import { MatchLexiconDisplay, puzzleLexica } from '../shared/lexicon_display';
 
 const KNOWN_TILE_ORDERS = [
   {
@@ -151,6 +152,12 @@ export const Preferences = React.memo(() => {
   const initialBoardStyle = localStorage?.getItem('userBoard') || 'Default';
   const [userBoard, setUserBoard] = useState<string>(initialBoardStyle);
 
+  const initialPuzzleLexicon =
+    localStorage?.getItem('puzzleLexicon') || undefined;
+  const [puzzleLexicon, setPuzzleLexicon] = useState<string | undefined>(
+    initialPuzzleLexicon
+  );
+
   const toggleDarkMode = useCallback(() => {
     const useDarkMode = localStorage?.getItem('darkMode') !== 'true';
     localStorage.setItem('darkMode', useDarkMode ? 'true' : 'false');
@@ -176,6 +183,11 @@ export const Preferences = React.memo(() => {
       localStorage.removeItem('userTile');
     }
     setUserTile(tileStyle);
+  }, []);
+
+  const handlePuzzleLexiconChange = useCallback((lexicon: string) => {
+    localStorage.setItem('puzzleLexicon', lexicon);
+    setPuzzleLexicon(lexicon);
   }, []);
 
   const handleUserBoardChange = useCallback((boardStyle: string) => {
@@ -382,6 +394,23 @@ export const Preferences = React.memo(() => {
               <BoardPreview />
             </div>
           </div>
+        </Col>
+      </Row>
+      <div className="section-header">OMGWords Puzzle Mode settings</div>
+      <Row>
+        <Col span={12}>
+          <Select
+            className="puzzle-lexicon-selection"
+            size="large"
+            onChange={handlePuzzleLexiconChange}
+            defaultValue={puzzleLexicon}
+          >
+            {puzzleLexica.map((k) => (
+              <Select.Option key={k} value={k}>
+                <MatchLexiconDisplay lexiconCode={k} useShortDescription />
+              </Select.Option>
+            ))}
+          </Select>
         </Col>
       </Row>
     </div>

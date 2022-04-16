@@ -10,12 +10,11 @@ import (
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 
-	"github.com/jinzhu/gorm"
-
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
 	pkgstats "github.com/domino14/liwords/pkg/stats"
+	"github.com/domino14/liwords/pkg/stores/common"
 	"github.com/domino14/liwords/pkg/stores/stats"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
@@ -24,8 +23,6 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
-var TestDBHost = os.Getenv("TEST_DB_HOST")
-var TestingDBConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
 var gameReq = &pb.GameRequest{Lexicon: "CSW21",
 	Rules: &pb.GameRules{BoardLayoutName: entity.CrosswordGame,
 		LetterDistributionName: "English",
@@ -59,16 +56,16 @@ var gameEndedEventObj = &pb.GameEndedEvent{
 	Tie:       false,
 }
 
-func userStore(dbURL string) pkguser.Store {
-	ustore, err := user.NewDBStore(TestingDBConnStr + " dbname=liwords_test")
+func userStore() pkguser.Store {
+	ustore, err := user.NewDBStore(common.TestingPostgresConnDSN())
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
 	return ustore
 }
 
-func listStatStore(dbURL string) pkgstats.ListStatStore {
-	s, err := stats.NewListStatStore(TestingDBConnStr + " dbname=liwords_test")
+func listStatStore() pkgstats.ListStatStore {
+	s, err := stats.NewListStatStore(common.TestingPostgresConnDSN())
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
@@ -77,21 +74,12 @@ func listStatStore(dbURL string) pkgstats.ListStatStore {
 
 func recreateDB() {
 	// Create a database.
-	db, err := gorm.Open("postgres", TestingDBConnStr+" dbname=postgres")
+	err := common.RecreateTestDB()
 	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-	defer db.Close()
-	db = db.Exec("DROP DATABASE IF EXISTS liwords_test")
-	if db.Error != nil {
-		panic(db.Error)
-	}
-	db = db.Exec("CREATE DATABASE liwords_test")
-	if db.Error != nil {
-		panic(db.Error)
+		panic(err)
 	}
 	// Create a user table. Initialize the user store.
-	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
+	ustore := userStore()
 
 	// Insert a couple of users into the table.
 
@@ -124,8 +112,8 @@ func variantKey(req *pb.GameRequest) entity.VariantKey {
 func TestComputeGameStats(t *testing.T) {
 	is := is.New(t)
 	recreateDB()
-	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
-	lstore := listStatStore(TestingDBConnStr + " dbname=liwords_test")
+	ustore := userStore()
+	lstore := listStatStore()
 
 	histjson, err := ioutil.ReadFile("./testdata/game1/history.json")
 	is.NoErr(err)
@@ -178,8 +166,8 @@ func TestComputeGameStats(t *testing.T) {
 func TestComputeGameStats2(t *testing.T) {
 	is := is.New(t)
 	recreateDB()
-	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
-	lstore := listStatStore(TestingDBConnStr + " dbname=liwords_test")
+	ustore := userStore()
+	lstore := listStatStore()
 
 	histjson, err := ioutil.ReadFile("./testdata/game2/history.json")
 	is.NoErr(err)
@@ -228,8 +216,8 @@ func TestComputeGameStats2(t *testing.T) {
 func TestComputePlayerStats(t *testing.T) {
 	is := is.New(t)
 	recreateDB()
-	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
-	lstore := listStatStore(TestingDBConnStr + " dbname=liwords_test")
+	ustore := userStore()
+	lstore := listStatStore()
 
 	histjson, err := ioutil.ReadFile("./testdata/game1/history.json")
 	is.NoErr(err)
@@ -289,8 +277,8 @@ func TestComputePlayerStats(t *testing.T) {
 func TestComputePlayerStatsMultipleGames(t *testing.T) {
 	is := is.New(t)
 	recreateDB()
-	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
-	lstore := listStatStore(TestingDBConnStr + " dbname=liwords_test")
+	ustore := userStore()
+	lstore := listStatStore()
 
 	for _, g := range []string{"game1", "game2"} {
 		histjson, err := ioutil.ReadFile("./testdata/" + g + "/history.json")

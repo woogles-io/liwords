@@ -26,12 +26,13 @@ type PlayerProps = {
   username?: string;
   uuid?: string;
   channel?: string[];
-  fromChat?: boolean;
+  fromChat?: boolean; // XXX: this doesn't seem to be used?
   sendMessage?: (uuid: string, username: string) => void;
 };
 
 const Player = React.memo((props: PlayerProps) => {
   let online = props.fromChat;
+  let puzzling = false;
   const games = new Map<string, Set<string>>();
   if (props.channel) {
     let numChannels = props.channel.length;
@@ -50,6 +51,7 @@ const Player = React.memo((props: PlayerProps) => {
       }
     }
     if (numChannels > 0) {
+      // if a user is offline but still in a game this condition would not be entered.
       online = true;
     }
   }
@@ -62,6 +64,10 @@ const Player = React.memo((props: PlayerProps) => {
       currentWatchedGames.push(gameId);
     }
   });
+  if (props.channel?.includes('chat.puzzlelobby')) {
+    puzzling = true;
+    // later can use specific puzzle chats and follow people to specific puzzles.
+  }
 
   const inGame = currentActiveGames.length > 0;
   const watching = currentWatchedGames.length > 0;
@@ -72,7 +78,9 @@ const Player = React.memo((props: PlayerProps) => {
     <div
       className={`player-display ${!online ? 'offline' : ''} ${
         inGame ? 'ingame' : ''
-      } ${props.className ? props.className : ''}`}
+      } ${props.className ? props.className : ''} ${
+        puzzling && !inGame ? 'puzzling' : ''
+      }`}
       key={props.uuid}
     >
       <PettableAvatar>
@@ -94,12 +102,15 @@ const Player = React.memo((props: PlayerProps) => {
               sendMessage={props.sendMessage}
               currentActiveGames={currentActiveGames}
               currentWatchedGames={currentWatchedGames}
+              currentlyPuzzling={puzzling}
             />
           </p>
           {inGame || watching ? (
             <p className="player-activity">
               {inGame ? 'Playing OMGWords' : 'Watching OMGWords'}
             </p>
+          ) : puzzling ? (
+            <p className="player-activity">Solving puzzles</p>
           ) : null}
         </div>
       </PettableAvatar>

@@ -7,20 +7,16 @@ import (
 	"testing"
 
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/stores/common"
 	statstore "github.com/domino14/liwords/pkg/stores/stats"
 	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/macondo/alphabet"
 	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/domino14/macondo/gcgio"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
-	"github.com/jinzhu/gorm"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
-
-var TestDBHost = os.Getenv("TEST_DB_HOST")
-var TestingDBConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
 
 var DefaultConfig = macondoconfig.Config{
 	LexiconPath:               os.Getenv("LEXICON_PATH"),
@@ -36,18 +32,9 @@ func TestMain(m *testing.M) {
 
 func recreateDB() {
 	// Create a database.
-	db, err := gorm.Open("postgres", TestingDBConnStr+" dbname=postgres")
+	err := common.RecreateTestDB()
 	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-	defer db.Close()
-	db = db.Exec("DROP DATABASE IF EXISTS liwords_test")
-	if db.Error != nil {
-		log.Fatal().Err(db.Error).Msg("error")
-	}
-	db = db.Exec("CREATE DATABASE liwords_test")
-	if db.Error != nil {
-		log.Fatal().Err(db.Error).Msg("error")
+		panic(err)
 	}
 }
 
@@ -135,7 +122,7 @@ func TestStatsFromJson(t *testing.T) {
 	is := is.New(t)
 
 	recreateDB()
-	listStatStore, err := statstore.NewListStatStore(TestingDBConnStr + " dbname=liwords_test")
+	listStatStore, err := statstore.NewListStatStore(common.TestingPostgresConnDSN())
 	is.NoErr(err)
 	stats, gameIds, err := JoshNationalsFromGames(false, listStatStore)
 	is.NoErr(err)
@@ -154,7 +141,7 @@ func TestStats(t *testing.T) {
 	is := is.New(t)
 
 	recreateDB()
-	listStatStore, err := statstore.NewListStatStore(TestingDBConnStr + " dbname=liwords_test")
+	listStatStore, err := statstore.NewListStatStore(common.TestingPostgresConnDSN())
 	is.NoErr(err)
 	stats, gameIds, err := JoshNationalsFromGames(false, listStatStore)
 	is.NoErr(err)
@@ -239,7 +226,7 @@ func TestNotable(t *testing.T) {
 	recreateDB()
 
 	stats := InstantiateNewStats("1", "2")
-	listStatStore, err := statstore.NewListStatStore(TestingDBConnStr + " dbname=liwords_test")
+	listStatStore, err := statstore.NewListStatStore(common.TestingPostgresConnDSN())
 	is.NoErr(err)
 
 	manyDoubleWordsCoveredStats, _ := InstantiateNewStatsWithHistory("./testdata/many_double_words_covered.gcg", listStatStore)
@@ -292,7 +279,7 @@ func TestPhonyHooks(t *testing.T) {
 	is := is.New(t)
 
 	recreateDB()
-	listStatStore, err := statstore.NewListStatStore(TestingDBConnStr + " dbname=liwords_test")
+	listStatStore, err := statstore.NewListStatStore(common.TestingPostgresConnDSN())
 	is.NoErr(err)
 	stats := InstantiateNewStats("1", "2")
 

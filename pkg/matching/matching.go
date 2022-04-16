@@ -2,6 +2,7 @@ package matching
 
 import (
 	"errors"
+
 	"github.com/domino14/liwords/pkg/utilities"
 )
 

@@ -7,7 +7,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jinzhu/gorm"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 
@@ -18,6 +17,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/stores/common"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
@@ -30,10 +30,6 @@ var DefaultConfig = macondoconfig.Config{
 	DefaultLexicon:            "NWL18",
 	DefaultLetterDistribution: "English",
 }
-
-var TestDBHost = os.Getenv("TEST_DB_HOST")
-
-var TestingDBConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
 
 func newMacondoGame(users [2]*entity.User) *macondogame.Game {
 	rules, err := macondogame.NewBasicGameRules(
@@ -61,7 +57,7 @@ func newMacondoGame(users [2]*entity.User) *macondogame.Game {
 }
 
 func userStore(dbURL string) pkguser.Store {
-	ustore, err := user.NewDBStore(TestingDBConnStr + " dbname=liwords_test")
+	ustore, err := user.NewDBStore(common.TestingPostgresConnDSN())
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
@@ -69,23 +65,13 @@ func userStore(dbURL string) pkguser.Store {
 }
 
 func recreateDB() pkguser.Store {
-	// Create a database.
-	db, err := gorm.Open("postgres", TestingDBConnStr+" dbname=postgres")
+	err := common.RecreateTestDB()
 	if err != nil {
-		log.Fatal().Err(err).Msg("error")
+		panic(err)
 	}
-	defer db.Close()
-	db = db.Exec("DROP DATABASE IF EXISTS liwords_test")
-	if db.Error != nil {
-		log.Fatal().Err(db.Error).Msg("error")
-	}
-	db = db.Exec("CREATE DATABASE liwords_test")
-	if db.Error != nil {
-		log.Fatal().Err(db.Error).Msg("error")
-	}
-	// Create a user table. Initialize the user store.
-	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
 
+	// Crete a user table. Initialize the user store.
+	ustore := userStore(common.TestingPostgresConnDSN())
 	// Insert a couple of users into the table.
 
 	for _, u := range []*entity.User{
@@ -98,6 +84,7 @@ func recreateDB() pkguser.Store {
 			log.Fatal().Err(err).Msg("error")
 		}
 	}
+
 	addfakeGames(ustore)
 	return ustore
 }
@@ -118,7 +105,7 @@ func addfakeGames(ustore pkguser.Store) {
 	}
 	// Add some fake games to the table
 	store, err := NewDBStore(&config.Config{
-		DBConnString: TestingDBConnStr + " dbname=liwords_test"}, ustore)
+		DBConnDSN: common.TestingPostgresConnDSN()}, ustore)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
@@ -140,14 +127,9 @@ func addfakeGames(ustore pkguser.Store) {
 }
 
 func teardown() {
-	db, err := gorm.Open("postgres", TestingDBConnStr+" dbname=postgres")
+	err := common.TeardownTestDB()
 	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-	defer db.Close()
-	db = db.Exec("DROP DATABASE liwords_test")
-	if db.Error != nil {
-		log.Fatal().Err(db.Error).Msg("error")
+		panic(err)
 	}
 }
 
@@ -159,9 +141,9 @@ func TestMain(m *testing.M) {
 }
 
 func createGame(p0, p1 string, initTime int32, is *is.I) *entity.Game {
-	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
+	ustore := userStore(common.TestingPostgresConnDSN())
 	store, err := NewDBStore(&config.Config{
-		DBConnString: TestingDBConnStr + " dbname=liwords_test"}, ustore)
+		DBConnDSN: common.TestingPostgresConnDSN()}, ustore)
 	is.NoErr(err)
 
 	u1, err := ustore.Get(context.Background(), p0)
@@ -210,10 +192,10 @@ func TestCreate(t *testing.T) {
 
 	is.True(entGame.Quickdata != nil)
 
-	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
+	ustore := userStore(common.TestingPostgresConnDSN())
 	store, err := NewDBStore(&config.Config{
 		MacondoConfig: DefaultConfig,
-		DBConnString:  TestingDBConnStr + " dbname=liwords_test",
+		DBConnDSN:     common.TestingPostgresConnDSN(),
 	}, ustore)
 	is.NoErr(err)
 	// Make sure we can fetch the game from the DB.
@@ -233,10 +215,10 @@ func TestSet(t *testing.T) {
 	recreateDB()
 
 	is := is.New(t)
-	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
+	ustore := userStore(common.TestingPostgresConnDSN())
 	store, err := NewDBStore(&config.Config{
 		MacondoConfig: DefaultConfig,
-		DBConnString:  TestingDBConnStr + " dbname=liwords_test"}, ustore)
+		DBConnDSN:     common.TestingPostgresConnDSN()}, ustore)
 	is.NoErr(err)
 
 	// Fetch the game from the backend.
@@ -277,10 +259,10 @@ func TestGet(t *testing.T) {
 
 	is := is.New(t)
 
-	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
+	ustore := userStore(common.TestingPostgresConnDSN())
 	store, err := NewDBStore(&config.Config{
 		MacondoConfig: DefaultConfig,
-		DBConnString:  TestingDBConnStr + " dbname=liwords_test",
+		DBConnDSN:     common.TestingPostgresConnDSN(),
 	}, ustore)
 	is.NoErr(err)
 
@@ -310,13 +292,13 @@ func TestListActive(t *testing.T) {
 	is := is.New(t)
 	createGame("cesar", "jesse", int32(120), is)
 	createGame("jesse", "mina", int32(240), is)
-	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
+	ustore := userStore(common.TestingPostgresConnDSN())
 
 	// There should be an additional game, so 3 total, from recreateDB()
 	// The first game is cesar vs mina. (see TestGet)
 	store, err := NewDBStore(&config.Config{
 		MacondoConfig: DefaultConfig,
-		DBConnString:  TestingDBConnStr + " dbname=liwords_test",
+		DBConnDSN:     common.TestingPostgresConnDSN(),
 	}, ustore)
 	is.NoErr(err)
 

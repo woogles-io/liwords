@@ -40,6 +40,7 @@ export enum ActionType {
   ClearHistory,
   EndGame,
   ProcessGameMetaEvent,
+  SetupStaticPosition,
 
   /* login state actions */
   SetAuthentication,

@@ -586,6 +586,7 @@ ul {
   .ant-modal-root {
     .ant-modal-content {
       border-radius: 8px;
+      font-family: "Mulish", sans-serif;
       @include colorModed() {
         background: m($background);
         color: m($gray-extreme);
@@ -598,6 +599,8 @@ ul {
         color: m($gray-extreme);
       }
       .ant-modal-title {
+        font-family: "Mulish", sans-serif;
+        font-weight: 700;
         @include colorModed() {
           color: m($gray-extreme);
         }

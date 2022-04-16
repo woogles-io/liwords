@@ -31,12 +31,11 @@ type gamesetup struct {
 
 func setupNewGame() *gamesetup {
 	recreateDB()
-	cstr := TestingDBConnStr + " dbname=liwords_test"
 
-	ustore := userStore(cstr)
-	nstore := notorietyStore(cstr)
-	lstore := listStatStore(cstr)
-	cfg, gstore := gameStore(cstr, ustore)
+	ustore := userStore()
+	nstore := notorietyStore()
+	lstore := listStatStore()
+	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
 
 	g, nower, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)

@@ -484,20 +484,23 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       gs.playState = PlayState.GAME_OVER;
       // Don't lose the clock controller, but pass it on until we get a
       // history refresher etc. Reset the shown time to 0.
-      if (state.clockController !== null) {
-        gs.clockController = state.clockController;
-        if (gs.clockController.current) {
-          gs.clockController.current.setClock(gs.playState, {
-            p0: 0,
-            p1: 0,
-            lastUpdate: 0,
-          });
-        } else {
-          gs.clockController.current = new ClockController(
-            { p0: 0, p1: 0, lastUpdate: 0 },
-            state.onClockTimeout,
-            state.onClockTick
-          );
+      const cmd = action.payload as string;
+      if (cmd !== 'noclock') {
+        if (state.clockController !== null) {
+          gs.clockController = state.clockController;
+          if (gs.clockController.current) {
+            gs.clockController.current.setClock(gs.playState, {
+              p0: 0,
+              p1: 0,
+              lastUpdate: 0,
+            });
+          } else {
+            gs.clockController.current = new ClockController(
+              { p0: 0, p1: 0, lastUpdate: 0 },
+              state.onClockTimeout,
+              state.onClockTick
+            );
+          }
         }
       }
       return gs;
@@ -510,7 +513,7 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       if (sge.getGameId() !== state.gameID) {
         return state; // no change
       }
-      console.log('add game event', sge);
+
       const ngs = newGameStateFromGameplayEvent(state, sge);
 
       // Always pass the clock ref along. Begin imperative section:
@@ -533,6 +536,14 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       }
       // Otherwise if it is null, we have an issue, but there's no need to
       // throw an Error..
+      return newState;
+    }
+
+    // A GameHistory that represents a static position.
+    case ActionType.SetupStaticPosition: {
+      const h = action.payload as GameHistory;
+      const newState = stateFromHistory(h);
+
       return newState;
     }
 

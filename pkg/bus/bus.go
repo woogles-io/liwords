@@ -22,6 +22,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/mod"
+	"github.com/domino14/liwords/pkg/puzzles"
 	"github.com/domino14/liwords/pkg/sessions"
 	"github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/tournament"
@@ -56,6 +57,7 @@ type Stores struct {
 	TournamentStore tournament.TournamentStore
 	ConfigStore     config.ConfigStore
 	SessionStore    sessions.SessionStore
+	PuzzleStore     puzzles.PuzzleStore
 }
 
 // Bus is the struct; it should contain all the stores to verify messages, etc.
@@ -71,6 +73,7 @@ type Bus struct {
 	tournamentStore tournament.TournamentStore
 	configStore     config.ConfigStore
 	chatStore       user.ChatStore
+	puzzleStore     puzzles.PuzzleStore
 
 	redisPool *redis.Pool
 
@@ -101,6 +104,7 @@ func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, err
 		notorietyStore:      stores.NotorietyStore,
 		configStore:         stores.ConfigStore,
 		chatStore:           stores.ChatStore,
+		puzzleStore:         stores.PuzzleStore,
 		subscriptions:       []*nats.Subscription{},
 		subchans:            map[string]chan *nats.Msg{},
 		config:              cfg,
@@ -384,8 +388,14 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			currentTournamentID = t.UUID
 			tournamentRealm := "tournament-" + currentTournamentID
 			resp.Realms = append(resp.Realms, tournamentRealm, "chat-"+tournamentRealm)
+		} else if strings.HasPrefix(path, "/puzzle/") {
+			// We are appending a chat realm for two reasons:
+			// 1. In the future we could probably have a puzzle lobby chat
+			// 2. Chat realms are the only ones that are compatible with
+			// presence at this moment.
+			resp.Realms = append(resp.Realms, "chat-puzzlelobby")
 		} else {
-			log.Info().Str("path", path).Msg("realm-req-not-handled")
+			log.Debug().Str("path", path).Msg("realm-req-not-handled")
 		}
 
 		activeTourneys, err := b.tournamentStore.ActiveTournamentsFor(ctx, userID)
@@ -698,7 +708,9 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 	// chat.tournament.foo
 	// chat.game.bar
 	// chat.gametv.baz
+	// chat.puzzlelobby
 	// global.presence (when it comes, we edit this later)
+	// maybe chat.puzzle.abcdef in the future.
 
 	for _, realm := range evt.Realms {
 
@@ -712,7 +724,6 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 			log.Debug().Str("presence-chan", presenceChan).Str("username", username).Msg("SetPresence")
 			oldChannels, newChannels, err := b.presenceStore.SetPresence(ctx, evt.UserId, username, anon, presenceChan, connID)
 			if err != nil {
-				// this was not checked?
 				return err
 			}
 			if err = b.broadcastChannelChanges(ctx, oldChannels, newChannels, evt.UserId, username); err != nil {

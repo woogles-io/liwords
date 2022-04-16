@@ -4,6 +4,7 @@ import { HomeOutlined } from '@ant-design/icons/lib';
 import axios from 'axios';
 
 import { Link, useSearchParams, useParams } from 'react-router-dom';
+import { useFirefoxPatch } from '../utils/hooks';
 import { useMountedState } from '../utils/mounted';
 import { BoardPanel } from './board_panel';
 import { TopBar } from '../navigation/topbar';
@@ -209,32 +210,7 @@ export const Table = React.memo((props: Props) => {
   });
   const [isObserver, setIsObserver] = useState(false);
 
-  useEffect(() => {
-    // Prevent backspace unless we're in an input element. We don't want to
-    // leave if we're on Firefox.
-
-    const rx = /INPUT|SELECT|TEXTAREA/i;
-    const evtHandler = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement;
-      if (e.which === 8) {
-        if (
-          !rx.test(el.tagName) ||
-          (el as HTMLInputElement).disabled ||
-          (el as HTMLInputElement).readOnly
-        ) {
-          e.preventDefault();
-        }
-      }
-    };
-
-    document.addEventListener('keydown', evtHandler);
-    document.addEventListener('keypress', evtHandler);
-
-    return () => {
-      document.removeEventListener('keydown', evtHandler);
-      document.removeEventListener('keypress', evtHandler);
-    };
-  }, []);
+  useFirefoxPatch();
 
   const gameDone =
     gameContext.playState === PlayState.GAME_OVER && !!gameContext.gameID;
@@ -1036,6 +1012,14 @@ export const Table = React.memo((props: Props) => {
             events={examinableGameContext.turns}
             gameID={gameID}
             sendSocketMsg={props.sendSocketMsg}
+            sendGameplayEvent={(evt) =>
+              props.sendSocketMsg(
+                encodeToSocketFmt(
+                  MessageType.CLIENT_GAMEPLAY_EVENT,
+                  evt.serializeBinary()
+                )
+              )
+            }
             gameDone={gameDone}
             playerMeta={gameInfo.players}
             tournamentID={gameInfo.tournament_id}

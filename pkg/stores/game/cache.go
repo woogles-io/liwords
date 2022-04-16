@@ -23,6 +23,7 @@ type backingStore interface {
 	GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error)
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
+	CreateRaw(context.Context, *entity.Game, pb.GameType) error
 	Exists(context.Context, string) (bool, error)
 	ListActive(ctx context.Context, tourneyID string) (*pb.GameInfoResponses, error)
 	Count(ctx context.Context) (int64, error)
@@ -156,6 +157,11 @@ func (c *Cache) Set(ctx context.Context, game *entity.Game) error {
 // Create creates the game in the cache as well as the store.
 func (c *Cache) Create(ctx context.Context, game *entity.Game) error {
 	return c.setOrCreate(ctx, game, true)
+}
+
+// CreateRaw creates the game in the store only.
+func (c *Cache) CreateRaw(ctx context.Context, game *entity.Game, gt pb.GameType) error {
+	return c.backing.CreateRaw(ctx, game, gt)
 }
 
 func (c *Cache) Exists(ctx context.Context, id string) (bool, error) {

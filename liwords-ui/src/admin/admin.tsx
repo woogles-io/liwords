@@ -7,6 +7,7 @@ import { TourneyEditor } from './tourney_editor';
 import { useMountedState } from '../utils/mounted';
 import { AnnouncementEditor } from './announcement_editor';
 import './admin.scss';
+import { PuzzleGenerator } from './puzzle_generator';
 // import { TourneyManager } from './tourney_manager';
 // import 'antd/dist/antd.min.css';
 
@@ -25,6 +26,7 @@ const Sider = (props: SiderProps) => {
       <Menu.Item key="edit-tournament">Edit Tournament</Menu.Item>
       <Menu.Item key="new-tournament">New Tournament</Menu.Item>
       <Menu.Item key="announcement-editor">Edit Announcements</Menu.Item>
+      <Menu.Item key="puzzle-generator">Puzzle Generator</Menu.Item>
       {/* <Menu.Item key="manage-tournament">Tournament Manager</Menu.Item> */}
       {/* <Menu.Item key="user-editor">User Editor</Menu.Item> */}
       {/* </SubMenu> */}
@@ -47,6 +49,7 @@ export const Admin = () => {
             {visibleTab === 'edit-tournament' && <TourneyEditor mode="edit" />}
             {visibleTab === 'new-tournament' && <TourneyEditor mode="new" />}
             {visibleTab === 'announcement-editor' && <AnnouncementEditor />}
+            {visibleTab === 'puzzle-generator' && <PuzzleGenerator />}
             {/* {visibleTab === 'user-editor' && <UserEditor />} */}
             {/* {visibleTab === 'manage-tournament' && <TourneyManager />} */}
           </Layout.Content>

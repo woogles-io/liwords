@@ -86,7 +86,8 @@ const variantToName = (variant: string) => {
     blitz: 'Blitz',
     rapid: 'Rapid',
     regular: 'Regular',
-  }[arr[2] as 'ultrablitz' | 'blitz' | 'rapid' | 'regular']; // cmon typescript
+    corres: arr[1] === 'puzzle' ? 'Puzzle' : 'Correspondence',
+  }[arr[2] as 'ultrablitz' | 'blitz' | 'rapid' | 'regular' | 'corres']; // cmon typescript
 
   return (
     <>

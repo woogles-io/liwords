@@ -1488,20 +1488,20 @@ p.rune {
       flex-direction: row;
       width: auto;
       button {
-        height: 32px;
+        height: 36px;
       }
       &:nth-child(2) {
         order: 1;
       }
     }
     button.ant-btn {
-      font-size: 14px;
+      font-size: 15px;
       margin: 0 6px;
       &.play {
         order: 2;
         min-width: auto;
         width: auto;
-        height: 32px;
+        height: 36px;
       }
     }
   }

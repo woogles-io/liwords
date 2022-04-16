@@ -25,6 +25,7 @@ type Props = {
   sendMessage?: (uuid: string, username: string) => void;
   tournamentID?: string;
   maxHeight?: number;
+  suppressDefault?: boolean;
 };
 
 export type ChatChannelLabel = {
@@ -281,21 +282,26 @@ export const ChatChannels = React.memo((props: Props) => {
       }
     >
       {locationLabel && <p className="breadcrumb">{locationLabel}</p>}
-      <div
-        className={`channel-listing default${defaultUnread ? ' unread' : ''}`}
-        onClick={() => {
-          props.onChannelSelect(props.defaultChannel, props.defaultDescription);
-        }}
-      >
-        {getChannelIcon(getChannelType(props.defaultChannel))}
-        <div>
-          <p className="listing-name">
-            {props.defaultDescription}
-            {defaultUnread && <span className="unread-marker">•</span>}
-          </p>
-          <p className="listing-preview">{props.defaultLastMessage}</p>
+      {!props.suppressDefault && (
+        <div
+          className={`channel-listing default${defaultUnread ? ' unread' : ''}`}
+          onClick={() => {
+            props.onChannelSelect(
+              props.defaultChannel,
+              props.defaultDescription
+            );
+          }}
+        >
+          {getChannelIcon(getChannelType(props.defaultChannel))}
+          <div>
+            <p className="listing-name">
+              {props.defaultDescription}
+              {defaultUnread && <span className="unread-marker">•</span>}
+            </p>
+            <p className="listing-preview">{props.defaultLastMessage}</p>
+          </div>
         </div>
-      </div>
+      )}
       <div className="breadcrumb">
         <p>YOUR CHATS</p>
         <p
