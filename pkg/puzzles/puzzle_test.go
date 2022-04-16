@@ -19,7 +19,6 @@ import (
 	"github.com/domino14/liwords/pkg/stores/user"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/liwords/rpc/api/proto/puzzle_service"
-	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
@@ -756,22 +755,26 @@ func getUserRating(ctx context.Context, pool *pgxpool.Pool, userUUID string, rk 
 	if err != nil {
 		return nil, err
 	}
-
-	var ratings *entity.Ratings
-	err = pool.QueryRow(ctx, `SELECT ratings FROM profiles WHERE user_id = $1`, id).Scan(&ratings)
-	if err == pgx.ErrNoRows {
-		return nil, fmt.Errorf("profile not found for user_id: %s", userUUID)
-	}
+	tx, err := pool.BeginTx(ctx, commondb.DefaultTxOptions)
 	if err != nil {
 		return nil, err
 	}
+	defer tx.Rollback(ctx)
+	initialRating := &entity.SingleRating{
+		Rating:            float64(glicko.InitialRating),
+		RatingDeviation:   float64(glicko.InitialRatingDeviation),
+		Volatility:        glicko.InitialVolatility,
+		LastGameTimestamp: time.Now().Unix()}
 
-	sr, exists := ratings.Data[rk]
-	if !exists {
-		return nil, fmt.Errorf("rating does not exist for rating key %s", rk)
+	userRating, err := commondb.GetUserRating(ctx, tx, id, rk, initialRating)
+
+	if err != nil {
+		return nil, err
 	}
-
-	return &sr, nil
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return userRating, nil
 }
 
 func getPuzzlePopularity(ctx context.Context, pool *pgxpool.Pool, puzzleUUID string) (int, error) {
