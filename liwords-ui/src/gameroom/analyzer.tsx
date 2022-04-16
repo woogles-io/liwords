@@ -458,37 +458,14 @@ export const AnalyzerContextProvider = ({
   return <AnalyzerContext.Provider value={contextValue} children={children} />;
 };
 
-export const Analyzer = React.memo((props: AnalyzerProps) => {
-  const { useState } = useMountedState();
-  const { lexicon, variant } = props;
-  const {
-    autoMode,
-    setAutoMode,
-    cachedMoves,
-    examinerLoading,
-    requestAnalysis,
-    showMovesForTurn,
-    setShowMovesForTurn,
-  } = useContext(AnalyzerContext);
-
+export const usePlaceMoveCallback = () => {
   const { gameContext: examinableGameContext } =
     useExaminableGameContextStoreContext();
-  const { addHandleExaminer, removeHandleExaminer } = useExamineStoreContext();
-  const { gameContext } = useGameContextStoreContext();
   const { setDisplayedRack, setPlacedTiles, setPlacedTilesTempScore } =
     useTentativeTileContext();
 
-  const letterDistribution = useMemo(
-    () => defaultLetterDistribution(lexicon),
-    [lexicon]
-  );
-  const labelToNum = useMemo(
-    () => labelToNumFor(letterDistribution),
-    [letterDistribution]
-  );
-
   const placeMove = useCallback(
-    (move) => {
+    (move: AnalyzerMove) => {
       const {
         board: { dim, letters },
       } = examinableGameContext;
@@ -538,6 +515,38 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
       setPlacedTilesTempScore,
     ]
   );
+
+  return placeMove;
+};
+
+export const Analyzer = React.memo((props: AnalyzerProps) => {
+  const { useState } = useMountedState();
+  const { lexicon, variant } = props;
+  const {
+    autoMode,
+    setAutoMode,
+    cachedMoves,
+    examinerLoading,
+    requestAnalysis,
+    showMovesForTurn,
+    setShowMovesForTurn,
+  } = useContext(AnalyzerContext);
+
+  const { gameContext: examinableGameContext } =
+    useExaminableGameContextStoreContext();
+  const { addHandleExaminer, removeHandleExaminer } = useExamineStoreContext();
+  const { gameContext } = useGameContextStoreContext();
+
+  const letterDistribution = useMemo(
+    () => defaultLetterDistribution(lexicon),
+    [lexicon]
+  );
+  const labelToNum = useMemo(
+    () => labelToNumFor(letterDistribution),
+    [letterDistribution]
+  );
+
+  const placeMove = usePlaceMoveCallback();
 
   const handleExaminer = useCallback(() => {
     setShowMovesForTurn(examinableGameContext.turns.length);
