@@ -207,7 +207,7 @@ export const PuzzleGenerator = () => {
     <div className="puzzle-generator">
       <Form {...layout} onFinish={onFinish}>
         <Form.Item name="secretKey" label="Secret Key for Puzzle Generation">
-          <Input />
+          <Input type="password" />
         </Form.Item>
         <Form.Item
           name="bvb"

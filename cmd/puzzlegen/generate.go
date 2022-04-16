@@ -9,6 +9,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/domino14/liwords/pkg/config"
@@ -29,6 +30,7 @@ func main() {
 		panic(err)
 	}
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	log.Info().Interface("req", req).Msg("requested-job")
 	cfg := &config.Config{}
 	// Only load config from environment variables:
 	cfg.Load(nil)

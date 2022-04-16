@@ -181,7 +181,7 @@ func (ps *PuzzleService) GetPuzzleJobLogs(ctx context.Context, req *pb.PuzzleJob
 }
 
 func invokeECSPuzzleGen(ctx context.Context, arg, cluster, taskdef string) error {
-	cfg, err := config.LoadDefaultConfig(ctx)
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithClientLogMode(aws.LogRetries|aws.LogRequestWithBody))
 	if err != nil {
 		return err
 	}
@@ -194,8 +194,9 @@ func invokeECSPuzzleGen(ctx context.Context, arg, cluster, taskdef string) error
 				{
 					Command: []string{
 						"/opt/puzzle-generator",
-						fmt.Sprintf(`'%s'`, arg),
+						arg,
 					},
+					Name: aws.String("liwords-puzzlegen"),
 				},
 			},
 		},
@@ -206,7 +207,7 @@ func invokeECSPuzzleGen(ctx context.Context, arg, cluster, taskdef string) error
 		if errors.As(err, &apiErr) {
 			code := apiErr.ErrorCode()
 			message := apiErr.ErrorMessage()
-			return fmt.Errorf("aws error: code %s, message %s", code, message)
+			return fmt.Errorf("aws error: code: %s, message: %s", code, message)
 		} else {
 			return err
 		}

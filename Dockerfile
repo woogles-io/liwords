@@ -28,3 +28,5 @@ EXPOSE 8001
 
 WORKDIR /opt
 CMD ["./liwords-api"]
+
+LABEL org.opencontainers.image.source https://github.com/domino14/liwords
