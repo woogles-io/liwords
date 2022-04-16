@@ -52,6 +52,7 @@ import {
 import { computeLeave } from '../utils/cwgame/game_event';
 import { EphemeralTile } from '../utils/cwgame/common';
 import { usePlaceMoveCallback } from '../gameroom/analyzer';
+import { useFirefoxPatch } from '../utils/hooks';
 import { useMountedState } from '../utils/mounted';
 import { BoopSounds } from '../sound/boop';
 import { GameInfoRequest } from '../gen/api/proto/game_service/game_service_pb';
@@ -122,31 +123,7 @@ export const SinglePuzzle = (props: Props) => {
     }
   }, [puzzleID]);
 
-  useEffect(() => {
-    // Prevent backspace unless we're in an input element. We don't want to
-    // leave if we're on Firefox.
-    const rx = /INPUT|SELECT|TEXTAREA/i;
-    const evtHandler = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement;
-      if (e.which === 8) {
-        if (
-          !rx.test(el.tagName) ||
-          (el as HTMLInputElement).disabled ||
-          (el as HTMLInputElement).readOnly
-        ) {
-          e.preventDefault();
-        }
-      }
-    };
-
-    document.addEventListener('keydown', evtHandler);
-    document.addEventListener('keypress', evtHandler);
-
-    return () => {
-      document.removeEventListener('keydown', evtHandler);
-      document.removeEventListener('keypress', evtHandler);
-    };
-  }, []);
+  useFirefoxPatch();
 
   // add definitions stuff here. We should make common library instead of
   // copy-pasting from table.tsx
