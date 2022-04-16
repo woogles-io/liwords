@@ -10,6 +10,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/lithammer/shortuuid"
+	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/common"
 	"github.com/domino14/liwords/pkg/config"
@@ -28,6 +29,24 @@ import (
 	"github.com/domino14/macondo/automatic"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
+
+var mockBotGameReq *ipc.GameRequest
+
+func init() {
+	mockBotGameReq = &ipc.GameRequest{
+		Rules: &ipc.GameRules{
+			BoardLayoutName: entity.CrosswordGame,
+			VariantName:     "classic",
+		},
+		InitialTimeSeconds: 25 * 60,
+		IncrementSeconds:   0,
+		ChallengeRule:      macondopb.ChallengeRule_FIVE_POINT,
+		GameMode:           ipc.GameMode_REAL_TIME,
+		RatingMode:         ipc.RatingMode_RATED,
+		RequestId:          "puzzlereq",
+		OriginalRequestId:  "puzzlereq",
+	}
+}
 
 func Generate(ctx context.Context, cfg *config.Config, gs gameplay.GameStore, ps PuzzleStore, req *pb.PuzzleGenerationJobRequest) (int, error) {
 	genId, err := ps.CreateGenerationLog(ctx, req)
@@ -74,6 +93,7 @@ func processJob(ctx context.Context, cfg *config.Config, req *pb.PuzzleGeneratio
 	if err != nil {
 		return false, err
 	}
+	numProcessedGames := 0
 	if !req.BotVsBot {
 		rows, err := ps.GetPotentialPuzzleGames(ctx, int(req.GameConsiderationLimit), int(req.SqlOffset))
 		if err != nil {
@@ -122,6 +142,10 @@ func processJob(ctx context.Context, cfg *config.Config, req *pb.PuzzleGeneratio
 			if err != nil {
 				return false, err
 			}
+			numProcessedGames += 1
+			if numProcessedGames%1000 == 0 {
+				log.Info().Msgf("processed %d games...", numProcessedGames)
+			}
 			gs.Unload(ctx, UUID)
 			if fulfilled {
 				return true, nil
@@ -135,7 +159,7 @@ func processJob(ctx context.Context, cfg *config.Config, req *pb.PuzzleGeneratio
 			if err != nil {
 				return false, err
 			}
-			g := newBotvBotPuzzleGame(r.Game(), req.Lexicon)
+			g := newBotvBotPuzzleGame(r.Game(), req.Lexicon, req.LetterDistribution)
 			gameCreated, fulfilled, err := processGame(ctx, req.Request, genId, gs, ps, g, "", ipc.GameType_BOT_VS_BOT)
 			if err != nil {
 				return false, err
@@ -178,9 +202,10 @@ func processGame(ctx context.Context, req *macondopb.PuzzleGenerationRequest, ge
 	return true, fulfilled, nil
 }
 
-func newBotvBotPuzzleGame(mcg *macondogame.Game, lexicon string) *entity.Game {
-	common.DefaultGameReq.Lexicon = lexicon
-	g := entity.NewGame(mcg, common.DefaultGameReq)
+func newBotvBotPuzzleGame(mcg *macondogame.Game, lexicon, letterdistribution string) *entity.Game {
+	mockBotGameReq.Lexicon = lexicon
+	mockBotGameReq.Rules.LetterDistributionName = letterdistribution
+	g := entity.NewGame(mcg, mockBotGameReq)
 	g.Started = true
 	uuid := shortuuid.New()
 	g.GameEndReason = ipc.GameEndReason_STANDARD
