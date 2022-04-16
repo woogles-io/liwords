@@ -19,6 +19,12 @@ var DefaultTxOptions = pgx.TxOptions{
 	DeferrableMode: pgx.Deferrable, // not used for this isolevel/access mode
 }
 
+var RepeatableReadTxOptions = pgx.TxOptions{
+	IsoLevel:       pgx.RepeatableRead,
+	AccessMode:     pgx.ReadWrite,
+	DeferrableMode: pgx.Deferrable, // not used for this isolevel/access mode
+}
+
 type RowIterator interface {
 	Close()
 	Next() bool
@@ -99,7 +105,7 @@ func InitializeUserRating(ctx context.Context, tx pgx.Tx, userId int64) error {
 	}
 
 	if ratings.Data == nil {
-		result, err := tx.Exec(ctx, `UPDATE profiles SET ratings = jsonb_set(ratings, '{Data}', jsonb '{}') WHERE user_id = $1;`, userId)
+		result, err := tx.Exec(ctx, `UPDATE profiles SET ratings = jsonb_set(ratings, '{Data}', jsonb '{}') WHERE user_id = $1 AND NULLIF(ratings->'Data', 'null') IS NULL`, userId)
 		if err != nil {
 			return err
 		}

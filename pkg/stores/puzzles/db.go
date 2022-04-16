@@ -151,7 +151,7 @@ func (s *DBStore) CreatePuzzle(ctx context.Context, gameUUID string, turnNumber 
 }
 
 func (s *DBStore) GetStartPuzzleId(ctx context.Context, userUUID string, lexicon string) (string, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	tx, err := s.dbPool.BeginTx(ctx, common.RepeatableReadTxOptions)
 	if err != nil {
 		return "", err
 	}
@@ -207,7 +207,7 @@ func (s *DBStore) GetStartPuzzleId(ctx context.Context, userUUID string, lexicon
 }
 
 func (s *DBStore) GetNextPuzzleId(ctx context.Context, userUUID string, lexicon string) (string, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	tx, err := s.dbPool.BeginTx(ctx, common.RepeatableReadTxOptions)
 	if err != nil {
 		return "", err
 	}
@@ -682,9 +682,15 @@ func (s *DBStore) GetPotentialPuzzleGames(ctx context.Context, limit int, offset
 	rows, err := s.dbPool.Query(ctx,
 		`SELECT uuid FROM games WHERE games.id NOT IN
 			(SELECT game_id FROM puzzles) AND
+			(stats->'d1'->'Challenged Phonies'->'t')::int = 0 AND
+			(stats->'d2'->'Challenged Phonies'->'t')::int = 0 AND
 			(stats->'d1'->'Unchallenged Phonies'->'t')::int = 0 AND
 			(stats->'d2'->'Unchallenged Phonies'->'t')::int = 0 AND
-			game_end_reason != 0 LIMIT $1 OFFSET $2`, limit, offset)
+			game_end_reason not in ($1, $2, $3)
+			ORDER BY created_at DESC
+			LIMIT $4 OFFSET $5`,
+		ipc.GameEndReason_NONE, ipc.GameEndReason_ABORTED, ipc.GameEndReason_CANCELLED, limit, offset)
+
 	if err != nil {
 		return nil, err
 	}
