@@ -723,16 +723,16 @@ func (s *DBStore) GetJobInfo(ctx context.Context, genId int) (time.Time, time.Ti
 }
 
 func (s *DBStore) GetPotentialPuzzleGames(ctx context.Context, limit int, offset int) (common.RowIterator, error) {
+	// Only look at the last 20K games played when this query is run.
 	rows, err := s.dbPool.Query(ctx,
-		`SELECT uuid FROM games WHERE games.id NOT IN
-			(SELECT game_id FROM puzzles) AND
-			(stats->'d1'->'Challenged Phonies'->'t')::int = 0 AND
-			(stats->'d2'->'Challenged Phonies'->'t')::int = 0 AND
-			(stats->'d1'->'Unchallenged Phonies'->'t')::int = 0 AND
-			(stats->'d2'->'Unchallenged Phonies'->'t')::int = 0 AND
-			game_end_reason not in ($1, $2, $3)
-			ORDER BY created_at DESC
-			LIMIT $4 OFFSET $5`,
+		`SELECT games.uuid FROM (select * from games order by id desc limit 20000) games
+		left join puzzles on puzzles.game_id = games.id
+		where puzzles.id is null AND (stats->'d1'->'Challenged Phonies'->'t' = '0') 
+		AND (stats->'d2'->'Challenged Phonies'->'t' = '0') 
+		AND (stats->'d1'->'Unchallenged Phonies'->'t' = '0') 
+		AND (stats->'d2'->'Unchallenged Phonies'->'t' = '0') 
+		AND game_end_reason not in ($1, $2, $3)
+		ORDER BY games.id DESC LIMIT $4 OFFSET $5`,
 		ipc.GameEndReason_NONE, ipc.GameEndReason_ABORTED, ipc.GameEndReason_CANCELLED, limit, offset)
 
 	if err != nil {
