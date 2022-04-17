@@ -21,7 +21,7 @@ import { getVW, isTablet } from '../utils/cwgame/common';
 import { Analyzer } from './analyzer';
 import { HeartFilled } from '@ant-design/icons';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const screenSizes = require('../base.scss');
+const screenSizes = require('../base.scss').default;
 
 type Props = {
   isExamining?: boolean;

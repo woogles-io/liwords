@@ -1,7 +1,7 @@
 export const EmptySpace = ' ';
 export const Blank = '?';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const screenSizes = require('../../base.scss');
+const screenSizes = require('../../base.scss').default;
 
 export type EphemeralTile = {
   // ephemeron <3 you are missed

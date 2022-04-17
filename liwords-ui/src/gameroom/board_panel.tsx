@@ -81,7 +81,7 @@ import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb'
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
 const EnterKey = 'Enter';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const colors = require('../base.scss');
+const colors = require('../base.scss').default;
 
 type Props = {
   anonymousViewer: boolean;

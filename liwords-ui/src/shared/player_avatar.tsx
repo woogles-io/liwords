@@ -6,7 +6,7 @@ import { Tooltip } from 'antd';
 import { PlayerMetadata } from '../gameroom/game_info';
 import { useBriefProfile } from '../utils/brief_profiles';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const colors = require('../base.scss');
+const colors = require('../base.scss').default;
 
 const doNothing = () => {};
 export const PettableContext = createContext<{
