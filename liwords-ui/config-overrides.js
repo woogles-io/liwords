@@ -25,6 +25,10 @@ module.exports = {
         ...config.webSocketServer.options,
         path: process.env.WDS_SOCKET_PATH,
       };
+      config.client = {
+        ...config.client,
+        overlay: false,
+      };
       return config;
     }
   }
