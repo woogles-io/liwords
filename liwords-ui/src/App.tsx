@@ -239,13 +239,13 @@ const App = React.memo(() => {
           }
         />
         <Route
-          path="tournament/:partialSlug*"
+          path="tournament/:partialSlug/*"
           element={
             <TournamentRoom sendSocketMsg={sendMessage} sendChat={sendChat} />
           }
         />
         <Route
-          path="club/:partialSlug*"
+          path="club/:partialSlug/*"
           element={
             <TournamentRoom sendSocketMsg={sendMessage} sendChat={sendChat} />
           }
