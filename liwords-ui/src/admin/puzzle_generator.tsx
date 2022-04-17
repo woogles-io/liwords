@@ -205,7 +205,14 @@ export const PuzzleGenerator = () => {
 
   return (
     <div className="puzzle-generator">
-      <Form {...layout} onFinish={onFinish}>
+      <Form
+        {...layout}
+        onFinish={onFinish}
+        initialValues={{
+          letterdist: 'english',
+          lexicon: 'CSW21',
+        }}
+      >
         <Form.Item name="secretKey" label="Secret Key for Puzzle Generation">
           <Input type="password" />
         </Form.Item>
@@ -218,7 +225,7 @@ export const PuzzleGenerator = () => {
         </Form.Item>
         <LexiconFormItem excludedLexica={excludedLexica(false, false)} />
         <Form.Item name="letterdist" label="Letter distribution">
-          <Select defaultValue="english">
+          <Select>
             <Select.Option value="english">English</Select.Option>
             <Select.Option value="french">French</Select.Option>;
             <Select.Option value="german">German</Select.Option>
