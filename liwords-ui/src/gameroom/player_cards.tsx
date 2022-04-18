@@ -16,7 +16,7 @@ import { DisplayUserFlag } from '../shared/display_flag';
 import { useBriefProfile } from '../utils/brief_profiles';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const colors = require('../base.scss');
+const colors = require('../base.scss').default;
 
 type CardProps = {
   player: RawPlayerInfo | undefined;
