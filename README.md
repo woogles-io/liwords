@@ -14,7 +14,15 @@ This source code is AGPL-licensed. You can modify the source for this app, or fo
 
 ### How to develop locally
 
-1. Download Docker for your operating system (download the Docker preview for M1 Macs, if the full stable version isn't out yet).
+You have two options for developing locally. 
+
+1. Using the entire Docker stack is the most straightforward option, but, unless you are on Linux, Docker has to spin up virtual machines for your code. Stopping and starting containers repeatedly, especially the frontend code container, is significantly slower than running these natively; rebuilding containers, etc is also quite slow.
+
+2. The other option is to use Docker for the long-running services (postgres, Redis, NATS), and run your program executables locally. It is a bit more complex to set up initially, but may work better if you are developing on Mac OS (or Windows?).
+
+#### Using the full stack on Docker:
+
+1. Download Docker for your operating system
 2. Download the latest stable version of Node.js for your operating system
 3. Clone the `liwords-socket` repository from `https://github.com/domino14/liwords-socket`, and place it at the same level as this repo. For example, if your code resides at `/home/developer/code`, you should have two repos, at `/home/developer/code/liwords` (this repo) and `/home/developer/code/liwords-socket`.
 4. Clone the `macondo` repository from `https://github.com/domino14/macondo`, and place it at the same level as this repo.
@@ -38,11 +46,39 @@ This source code is AGPL-licensed. You can modify the source for this app, or fo
 
 To have two players play each other you must have one browser window in incognito mode, or use another browser.
 
-11. To register a bot, register a user the regular way. Then change their `internal_bot` flag in the database (`users` table) to true, and restart the server. You need to register at least one bot in order for bot games to work.
+11. To register a bot, run the script in `scripts/utilities/register-bot.sh`. You can run it like this:
 
-#### Tips
+`./scripts/utilities/register-bot.sh BotUsername`, replacing BotUsername with your desired bot username.
+
+**Tips**
 
 You can do `docker-compose up app` and `docker-compose up frontend` in two different terminal windows to bring these up separately. This may be desirable, for example, when making backend changes and not wanting to restart the frontend compilation everytime something changes.
+
+#### Hybrid stack on Docker
+
+
+1. Download Docker for your operating system
+2. Download the latest stable version of Node.js for your operating system and install it
+3. Download and install Go from golang.org
+4. Copy the `local_skeleton.env` file in this directory to `local.env`, and modify the copy to match your local paths. (See all the variables ending in _PATH).
+5. Open up a few tabs or panels in your terminal so you can bring up the services separately. In each tab, you can do `source local.env`, or alternatively you can put this command in your profile to do it automatically.
+6. Bring up the `dc-local-services.yml` file with `docker-compose -f dc-local-services.yml up` in one tab.
+7. You can bring up the other services in your other tabs:
+- For the api server, do `go run cmd/liwords-api/*.go`
+- For the socket server, do `go run cmd/socketserv/main.go` in the `liwords-socket` repo.
+- For the frontend, do `npm start` in the `liwords-ui` directory.
+- For the bot, do `go run cmd/bot/*.go` in the `macondo` directory.
+
+8. Go to `http://localhost:3000` to see Woogles.
+9. You can register a user by clicking on `SIGN UP` at the top right.
+
+To have two players play each other you must have one browser window in incognito mode, or use another browser.
+
+10. To register a bot, register a user the regular way. Then run this following script, replacing the `$1` with the bot username you just registered.
+
+`docker-compose exec db psql -U postgres liwords -c "UPDATE users SET internal_bot='t' WHERE username = '$1';"`
+
+
 
 ### macondo
 
