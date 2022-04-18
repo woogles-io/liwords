@@ -12,21 +12,18 @@ RUN go mod download
 
 COPY . .
 
-WORKDIR /opt/program/cmd/liwords-api
+WORKDIR /opt/program/cmd/puzzlegen
 
 ARG BUILD_HASH=unknown
 ARG BUILD_DATE=unknown
 
-RUN go build -ldflags  "-X=main.BuildDate=${BUILD_DATE} -X=main.BuildHash=${BUILD_HASH}"
+RUN go build -o puzzle-generator -ldflags "-X=main.BuildDate=${BUILD_DATE} -X=main.BuildHash=${BUILD_HASH}"
+### This Dockerfile is for an ECS task that generates puzzles.
 
 # Build minimal image:
 FROM alpine
-COPY --from=build-env /opt/program/cmd/liwords-api/liwords-api /opt/liwords-api
-COPY --from=build-env /opt/program/db /opt/db
-RUN apk --no-cache add curl
-EXPOSE 8001
-
+COPY --from=build-env /opt/program/cmd/puzzlegen/puzzle-generator /opt/puzzle-generator
 WORKDIR /opt
-CMD ["./liwords-api"]
+CMD ["/opt/puzzle-generator"]
 
 LABEL org.opencontainers.image.source https://github.com/domino14/liwords

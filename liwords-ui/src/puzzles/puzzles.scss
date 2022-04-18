@@ -7,7 +7,7 @@
   .ant-card.player-cards {
     order: 3;
   }
-  .ant-card.puzzle-score {
+  .ant-card.puzzle-info {
     .ant-card-head .ant-card-head-title {
       padding: 18px 6px;
       @include colorModed() {
@@ -21,12 +21,24 @@
       padding: 0 18px 18px;
     }
     .attempts-made {
-      margin-top: 12px;
+      margin: 3px 0 16px;
     }
     .actions {
       margin-top: 12px;
       button:first-child {
         margin-left: 0;
+      }
+    }
+    @media (min-width: $screen-laptop-min) {
+      .instructions {
+        font-size: 15px;
+        margin: 36px 0 18px;
+      }
+    }
+    @media (min-width: $screen-desktop-min) {
+      .progress {
+        margin: 24px 0 36px;
+        font-size: 15px;
       }
     }
   }
@@ -38,14 +50,15 @@
       font-size: 30px;
     }
     .ant-row.player {
-      padding: 18px 6px;
+      padding: 6px;
+    }
+    @media (min-width: $screen-desktop-min) {
+      .ant-row.player {
+        padding: 18px 6px;
+      }
     }
   }
   .ant-card.puzzle-info {
-    .ant-card-head .ant-card-head-title {
-      font-size: 16px;
-      white-space: normal;
-    }
     .ant-card-body {
       padding: 0 18px 18px;
     }
@@ -91,8 +104,30 @@
       border-bottom: 0;
     }
   }
+  .instructions {
+    font-style: italic;
+    letter-spacing: 0;
+    margin: 9px 0 0;
+  }
+  .progress {
+    margin: 18px 0 18px;
+    font-weight: 700;
+  }
+  .data-area .notepad-card {
+    display: none;
+    @media (min-width: $screen-tablet-min) {
+      display: block;
+      .ant-card-body {
+        height: auto;
+      }
+    }
+    @media (min-width: $screen-laptop-min) {
+      display: none;
+    }
+  }
 }
 .puzzle-container .stars, .ant-modal-body .stars {
+  margin: 9px 0 18px;
   .anticon {
     font-size: 38px;
     margin-right: 9px;

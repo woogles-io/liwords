@@ -7,7 +7,6 @@ import { Chat } from '../chat/chat';
 import { alphabetFromName } from '../constants/alphabets';
 import { TopBar } from '../navigation/topbar';
 import {
-  useExaminableGameContextStoreContext,
   useGameContextStoreContext,
   useLoginStateStoreContext,
   usePoolFormatStoreContext,
@@ -18,7 +17,7 @@ import {
   ChallengeRule,
   protoChallengeRuleConvert,
 } from '../gameroom/game_info';
-import { calculatePuzzleScore, PuzzleScore, renderStars } from './puzzle_score';
+import { calculatePuzzleScore, renderStars } from './puzzle_info';
 import Pool from '../gameroom/pool';
 import './puzzles.scss';
 import { PuzzleInfo as PuzzleInfoWidget } from './puzzle_info';
@@ -51,11 +50,15 @@ import {
   RatingMode,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { computeLeave } from '../utils/cwgame/game_event';
-import { EmptySpace, EphemeralTile } from '../utils/cwgame/common';
-import { AnalyzerMove } from '../gameroom/analyzer';
+import { EphemeralTile } from '../utils/cwgame/common';
+import { usePlaceMoveCallback } from '../gameroom/analyzer';
+import { useFirefoxPatch } from '../utils/hooks';
 import { useMountedState } from '../utils/mounted';
 import { BoopSounds } from '../sound/boop';
 import { GameInfoRequest } from '../gen/api/proto/game_service/game_service_pb';
+
+const doNothing = () => {};
+
 type Props = {
   sendChat: (msg: string, chan: string) => void;
 };
@@ -71,9 +74,12 @@ type PuzzleInfo = {
   challengeRule?: ChallengeRule;
   ratingMode?: string;
   gameDate?: Date;
+  gameId?: string;
   initialTimeSeconds?: number;
   incrementSeconds?: number;
   maxOvertimeMinutes?: number;
+  solution?: GameEvent;
+  turn?: number;
   gameUrl?: string;
   player1?: {
     nickname: string;
@@ -109,8 +115,6 @@ export const SinglePuzzle = (props: Props) => {
   const { username, loggedIn } = loginState;
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
-  const { gameContext: examinableGameContext } =
-    useExaminableGameContextStoreContext();
   const { setDisplayedRack, setPlacedTiles, setPlacedTilesTempScore } =
     useTentativeTileContext();
 
@@ -122,31 +126,7 @@ export const SinglePuzzle = (props: Props) => {
     }
   }, [puzzleID]);
 
-  useEffect(() => {
-    // Prevent backspace unless we're in an input element. We don't want to
-    // leave if we're on Firefox.
-    const rx = /INPUT|SELECT|TEXTAREA/i;
-    const evtHandler = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement;
-      if (e.which === 8) {
-        if (
-          !rx.test(el.tagName) ||
-          (el as HTMLInputElement).disabled ||
-          (el as HTMLInputElement).readOnly
-        ) {
-          e.preventDefault();
-        }
-      }
-    };
-
-    document.addEventListener('keydown', evtHandler);
-    document.addEventListener('keypress', evtHandler);
-
-    return () => {
-      document.removeEventListener('keydown', evtHandler);
-      document.removeEventListener('keypress', evtHandler);
-    };
-  }, []);
+  useFirefoxPatch();
 
   // add definitions stuff here. We should make common library instead of
   // copy-pasting from table.tsx
@@ -206,57 +186,7 @@ export const SinglePuzzle = (props: Props) => {
 
   // XXX: This is copied from analyzer.tsx. When we add the analyzer
   // to the puzzle page we should figure out another solution.
-  const placeMove = useCallback(
-    (move: AnalyzerMove) => {
-      const {
-        board: { dim, letters },
-      } = examinableGameContext;
-      const newPlacedTiles = new Set<EphemeralTile>();
-      let row = move.row;
-      let col = move.col;
-      let vertical = move.vertical;
-      if (move.isExchange) {
-        row = 0;
-        col = 0;
-        vertical = false;
-      }
-      for (const t of move.tiles) {
-        if (move.isExchange) {
-          while (letters[row * dim + col] !== EmptySpace) {
-            ++col;
-            if (col >= dim) {
-              ++row;
-              if (row >= dim) {
-                // Cannot happen with the standard number of tiles and squares.
-                row = dim - 1;
-                col = dim - 1;
-                break;
-              }
-              col = 0;
-            }
-          }
-        }
-        if (t !== '.') {
-          newPlacedTiles.add({
-            row,
-            col,
-            letter: t,
-          });
-        }
-        if (vertical) ++row;
-        else ++col;
-      }
-      setDisplayedRack(move.leaveWithGaps);
-      setPlacedTiles(newPlacedTiles);
-      setPlacedTilesTempScore(move.score);
-    },
-    [
-      examinableGameContext,
-      setDisplayedRack,
-      setPlacedTiles,
-      setPlacedTilesTempScore,
-    ]
-  );
+  const placeMove = usePlaceMoveCallback();
 
   const placeGameEvt = useCallback(
     (evt: GameEvent) => {
@@ -335,25 +265,37 @@ export const SinglePuzzle = (props: Props) => {
         req
       );
       console.log('got resp', resp.toObject());
-      const solution = resp.getCorrectAnswer();
+      const answerResponse = resp.getAnswer();
+      if (!answerResponse) {
+        throw new Error('Did not have an answer!');
+      }
+      const solution = answerResponse.getCorrectAnswer();
       setPuzzleInfo((x) => ({
         ...x,
-        attempts: resp.getAttempts(),
+        attempts: answerResponse.getAttempts(),
         solved: PuzzleStatus.INCORRECT,
+        solution: solution,
+        gameId: answerResponse.getGameId(),
+        turn: answerResponse.getTurnNumber(),
       }));
       // Place the tiles from the event.
       if (solution) {
-        placeGameEvt(solution);
+        setPendingSolution(true);
       }
       // Also get the game metadata.
-      setGameInfo(resp.getGameId(), resp.getTurnNumber());
     } catch (err) {
       message.error({
         content: (err as LiwordsAPIError).message,
         duration: 5,
       });
     }
-  }, [puzzleID, userIDOnTurn, gameContext.players, placeGameEvt, setGameInfo]);
+  }, [puzzleID, userIDOnTurn, gameContext.players]);
+
+  useEffect(() => {
+    if (puzzleInfo.gameId && puzzleInfo.turn) {
+      setGameInfo(puzzleInfo.gameId, puzzleInfo.turn);
+    }
+  }, [puzzleInfo.gameId, puzzleInfo.turn, setGameInfo]);
 
   const attemptPuzzle = useCallback(
     async (evt: ClientGameplayEvent) => {
@@ -371,9 +313,21 @@ export const SinglePuzzle = (props: Props) => {
           req
         );
         console.log('got resp', resp.toObject());
+        const answerResponse = resp.getAnswer();
+        if (!answerResponse) {
+          throw new Error('Did not have an answer!');
+        }
         if (resp.getUserIsCorrect()) {
           BoopSounds.playSound('puzzleCorrectSound');
-          setGameInfo(resp.getGameId(), resp.getTurnNumber());
+          setGameInfo(
+            answerResponse.getGameId(),
+            answerResponse.getTurnNumber()
+          );
+          setPuzzleInfo((x) => ({
+            ...x,
+            turn: answerResponse.getTurnNumber(),
+            gameId: answerResponse.getGameId(),
+          }));
           setShowResponseModalCorrect(true);
         } else {
           // Wrong answer
@@ -383,11 +337,11 @@ export const SinglePuzzle = (props: Props) => {
         setPuzzleInfo((x) => ({
           ...x,
           dateSolved:
-            resp.getStatus() === PuzzleStatus.CORRECT
-              ? resp.getLastAttemptTime()?.toDate()
+            answerResponse.getStatus() === PuzzleStatus.CORRECT
+              ? answerResponse.getLastAttemptTime()?.toDate()
               : undefined,
-          attempts: resp.getAttempts(),
-          solved: resp.getStatus(),
+          attempts: answerResponse.getAttempts(),
+          solved: answerResponse.getStatus(),
         }));
       } catch (err) {
         message.error({
@@ -429,19 +383,30 @@ export const SinglePuzzle = (props: Props) => {
         });
         setGameHistory(gh);
         console.log('got game history', gh.toObject());
-        BoopSounds.playSound('puzzleStartSound');
+        const answerResponse = resp.getAnswer();
+        if (!answerResponse) {
+          throw new Error('Fetch puzzle returned a null response!');
+        }
+        if (answerResponse.getStatus() === PuzzleStatus.UNANSWERED) {
+          BoopSounds.playSound('puzzleStartSound');
+        }
         setPuzzleInfo({
-          attempts: resp.getAttempts(),
+          attempts: answerResponse.getAttempts(),
           // XXX: add dateSolved to backend, in the meantime...
           dateSolved:
-            resp.getStatus() === PuzzleStatus.CORRECT
-              ? resp.getLastAttemptTime()?.toDate()
+            answerResponse.getStatus() === PuzzleStatus.CORRECT
+              ? answerResponse.getLastAttemptTime()?.toDate()
               : undefined,
           lexicon: gh.getLexicon(),
           variantName: gh.getVariant(),
-          solved: resp.getStatus(),
+          solved: answerResponse.getStatus(),
+          solution: answerResponse.getCorrectAnswer(),
+          gameId: answerResponse.getGameId(),
+          turn: answerResponse.getTurnNumber(),
         });
-        setPendingSolution(true);
+        setPendingSolution(
+          answerResponse.getStatus() !== PuzzleStatus.UNANSWERED
+        );
       } catch (err) {
         message.error({
           content: (err as LiwordsAPIError).message,
@@ -467,11 +432,11 @@ export const SinglePuzzle = (props: Props) => {
   }, [loadNewPuzzle, userLexicon, puzzleID]);
 
   useEffect(() => {
-    if (pendingSolution) {
-      //TODO: placeGameEvt(??);
+    if (puzzleInfo.solution && pendingSolution) {
+      placeGameEvt(puzzleInfo.solution);
     }
     setPendingSolution(false);
-  }, [puzzleInfo.solved, pendingSolution, showSolution]);
+  }, [puzzleInfo.solution, pendingSolution, placeGameEvt]);
 
   // This is displayed if there is no puzzle id and no preferred puzzle lexicon saved in local storage
   const lexiconModal = useMemo(() => {
@@ -522,19 +487,15 @@ export const SinglePuzzle = (props: Props) => {
         }}
         footer={[
           <Button
-            key="giveup"
-            onClick={() => {
-              showSolution();
-              setShowResponseModalWrong(false);
-            }}
-          >
-            Give up
-          </Button>,
-          <Button
             key="ok"
             type="primary"
+            autoFocus
             onClick={() => {
               setShowResponseModalWrong(false);
+              //Reset rack so they can try again
+              setDisplayedRack(rack);
+              setPlacedTiles(new Set<EphemeralTile>());
+              setPlacedTilesTempScore(undefined);
             }}
           >
             Keep trying
@@ -548,7 +509,14 @@ export const SinglePuzzle = (props: Props) => {
         </p>
       </Modal>
     );
-  }, [showResponseModalWrong, puzzleInfo, showSolution]);
+  }, [
+    showResponseModalWrong,
+    puzzleInfo,
+    rack,
+    setDisplayedRack,
+    setPlacedTiles,
+    setPlacedTilesTempScore,
+  ]);
 
   const responseModalCorrect = useMemo(() => {
     //TODO: different title for different scores
@@ -576,6 +544,7 @@ export const SinglePuzzle = (props: Props) => {
         }}
         footer={[
           <button
+            autoFocus
             disabled={false}
             className="primary"
             key="ok"
@@ -596,7 +565,6 @@ export const SinglePuzzle = (props: Props) => {
     );
   }, [showResponseModalCorrect, puzzleInfo, loadNewPuzzle]);
 
-  const doNothing = useCallback(() => {}, []);
   let ret = (
     <div className="game-container puzzle-container">
       <TopBar />
@@ -631,7 +599,11 @@ export const SinglePuzzle = (props: Props) => {
               events={gameContext.turns}
               gameID={''} /* no game id for a puzzle */
               sendSocketMsg={doNothing}
-              sendGameplayEvent={attemptPuzzle}
+              sendGameplayEvent={
+                loggedIn && puzzleInfo.solved === PuzzleStatus.UNANSWERED
+                  ? attemptPuzzle
+                  : doNothing
+              }
               gameDone={false}
               playerMeta={[]}
               vsBot={false} /* doesn't matter */
@@ -650,13 +622,6 @@ export const SinglePuzzle = (props: Props) => {
         </div>
 
         <div className="data-area" id="right-sidebar">
-          <PuzzleScore
-            attempts={puzzleInfo.attempts}
-            dateSolved={puzzleInfo.dateSolved}
-            loadNewPuzzle={loadNewPuzzle}
-            showSolution={showSolution}
-            solved={puzzleInfo.solved}
-          />
           <PuzzleInfoWidget
             solved={puzzleInfo.solved}
             gameDate={puzzleInfo.gameDate}
@@ -670,6 +635,10 @@ export const SinglePuzzle = (props: Props) => {
             initial_time_seconds={puzzleInfo.initialTimeSeconds}
             increment_seconds={puzzleInfo.incrementSeconds}
             max_overtime_minutes={puzzleInfo.maxOvertimeMinutes}
+            attempts={puzzleInfo.attempts}
+            dateSolved={puzzleInfo.dateSolved}
+            loadNewPuzzle={loadNewPuzzle}
+            showSolution={showSolution}
           />
           {alphabet && (
             <Pool
@@ -680,6 +649,7 @@ export const SinglePuzzle = (props: Props) => {
               alphabet={alphabet}
             />
           )}
+          <Notepad includeCard />
           <StaticPlayerCards
             playerOnTurn={gameContext.onturn}
             p0Score={gameContext?.players[0]?.score || 0}

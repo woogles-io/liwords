@@ -39,6 +39,8 @@ jobs:
       - run: cd cmd/liwords-api && go build
       # Tests must not be run in parallel; postgres issues happen otherwise.
       - run: go test -race -p 1 ./...
+      # Make sure puzzle generator builds too, since we're deploying that docker image.
+      - run: cd cmd/puzzlegen && go build
       - slack/status: &slack-webhook-setting
           webhook: "${SLACK_WEBHOOK}"
           success_message: ":tada: A $CIRCLE_JOB job has succeeded! (Branch: $CIRCLE_BRANCH)"
@@ -54,6 +56,12 @@ jobs:
           --build-arg BUILD_DATE=$(date -Iseconds -u)
           -t ghcr.io/domino14/liwords-api:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM} .
       - run: docker push ghcr.io/domino14/liwords-api:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
+      - run: >
+          docker build --build-arg BUILD_HASH=${CIRCLE_SHA1}
+          --build-arg BUILD_DATE=$(date -Iseconds -u)
+          -t ghcr.io/domino14/liwords-puzzlegen:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
+          -f Dockerfile-puzzlegen .
+      - run: docker push ghcr.io/domino14/liwords-puzzlegen:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
       - slack/status: *slack-webhook-setting
 
   build_fe:

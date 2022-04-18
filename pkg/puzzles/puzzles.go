@@ -2,16 +2,21 @@ package puzzles
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/domino14/liwords/pkg/common"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/glicko"
-	gamestore "github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/utilities"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/domino14/liwords/rpc/api/proto/puzzle_service"
+	pb "github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	"github.com/domino14/macondo/alphabet"
+
+	commondb "github.com/domino14/liwords/pkg/stores/common"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/macondo/move"
 	macondopuzzles "github.com/domino14/macondo/puzzles"
@@ -19,8 +24,10 @@ import (
 )
 
 type PuzzleStore interface {
+	CreateGenerationLog(ctx context.Context, req *puzzle_service.PuzzleGenerationJobRequest) (int, error)
+	UpdateGenerationLogStatus(ctx context.Context, genId int, fulfilled bool, err error) error
 	CreatePuzzle(ctx context.Context, gameID string, turnNumber int32, answer *macondopb.GameEvent, authorID string,
-		lexicon string, beforeText string, afterText string, tags []macondopb.PuzzleTag) error
+		lexicon string, beforeText string, afterText string, tags []macondopb.PuzzleTag, reqId int, bucketIndex int32) error
 	GetStartPuzzleId(ctx context.Context, userId string, lexicon string) (string, error)
 	GetNextPuzzleId(ctx context.Context, userId string, lexicon string) (string, error)
 	GetPuzzle(ctx context.Context, userId string, puzzleUUID string) (*macondopb.GameHistory, string, int32, *bool, time.Time, time.Time, error)
@@ -31,32 +38,49 @@ type PuzzleStore interface {
 	GetAttempts(ctx context.Context, userId string, puzzleUUID string) (bool, int32, *bool, time.Time, time.Time, error)
 	GetUserRating(ctx context.Context, userId string, ratingKey entity.VariantKey) (*entity.SingleRating, error)
 	SetPuzzleVote(ctx context.Context, userId string, puzzleUUID string, vote int) error
+	GetJobInfo(ctx context.Context, genId int) (time.Time, time.Time, time.Duration, *bool, *string, int, int, [][]int, error)
+	GetPotentialPuzzleGames(ctx context.Context, limit int, offset int) (commondb.RowIterator, error)
+	GetJobLogs(ctx context.Context, limit, offset int) ([]*pb.PuzzleJobLog, error)
 }
 
-func CreatePuzzlesFromGame(ctx context.Context, gs *gamestore.DBStore, ps PuzzleStore,
+func CreatePuzzlesFromGame(ctx context.Context, req *macondopb.PuzzleGenerationRequest, reqId int, gs gameplay.GameStore, ps PuzzleStore,
 	g *entity.Game, authorId string, gt ipc.GameType) ([]*macondopb.PuzzleCreationResponse, error) {
 
-	pzls, err := macondopuzzles.CreatePuzzlesFromGame(g.Config(), &g.Game)
+	pzls, err := macondopuzzles.CreatePuzzlesFromGame(g.Config(), &g.Game, req)
 	if err != nil {
 		return nil, err
 	}
-	log.Info().Msgf("created %d puzzles from game %s", len(pzls), g.GameID())
 
+	bucketIndexToArrayIndex := map[int32]int{}
+
+	for arrayIndex, bucket := range req.Buckets {
+		bucketIndexToArrayIndex[bucket.Index] = arrayIndex
+	}
 	// Only create if there were puzzles
+	gameCreated := false
 	if len(pzls) > 0 {
 		// If the mcg game is not from a game that already
 		// exists in the database, then create the game
-		if gt != ipc.GameType_NATIVE {
-			err = gs.CreateRaw(ctx, g, gt)
-			if err != nil {
-				return nil, err
-			}
-		}
 
 		for _, pzl := range pzls {
-			err := ps.CreatePuzzle(ctx, pzl.GameId, pzl.TurnNumber, pzl.Answer, authorId, g.GameReq.Lexicon, "", "", pzl.Tags)
-			if err != nil {
-				return nil, err
+			arrIndex, exists := bucketIndexToArrayIndex[pzl.BucketIndex]
+			// This should be impossible, but let's check anyway
+			if !exists {
+				return nil, fmt.Errorf("bucket index does not exist in buckets: %d", pzl.BucketIndex)
+			}
+			if req.Buckets[arrIndex].Size > 0 {
+				if gt != ipc.GameType_NATIVE && !gameCreated {
+					err = gs.CreateRaw(ctx, g, gt)
+					if err != nil {
+						return nil, err
+					}
+					gameCreated = true
+				}
+				err := ps.CreatePuzzle(ctx, pzl.GameId, pzl.TurnNumber, pzl.Answer, authorId, g.GameReq.Lexicon, "", "", pzl.Tags, reqId, pzl.BucketIndex)
+				if err != nil {
+					return nil, err
+				}
+				req.Buckets[arrIndex].Size--
 			}
 		}
 	}
@@ -77,6 +101,14 @@ func GetPuzzle(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID st
 
 func GetPreviousPuzzleId(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID string) (string, error) {
 	return ps.GetPreviousPuzzleId(ctx, userId, puzzleUUID)
+}
+
+func GetAnswer(ctx context.Context, ps PuzzleStore, puzzleUUID string) (*macondopb.GameEvent, string, int32, string, *ipc.GameRequest, *entity.SingleRating, error) {
+	return ps.GetAnswer(ctx, puzzleUUID)
+}
+
+func GetPuzzleJobLogs(ctx context.Context, ps PuzzleStore, limit, offset int) ([]*pb.PuzzleJobLog, error) {
+	return ps.GetJobLogs(ctx, limit, offset)
 }
 
 func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleUUID string, userId string,
@@ -169,6 +201,10 @@ func SetPuzzleVote(ctx context.Context, ps PuzzleStore, userId string, puzzleUUI
 		return entity.NewWooglesError(ipc.WooglesError_PUZZLE_VOTE_INVALID, userId, puzzleUUID, strconv.Itoa(vote))
 	}
 	return ps.SetPuzzleVote(ctx, userId, puzzleUUID, vote)
+}
+
+func GetJobInfo(ctx context.Context, ps PuzzleStore, genId int) (time.Time, time.Time, time.Duration, *bool, *string, int, int, [][]int, error) {
+	return ps.GetJobInfo(ctx, genId)
 }
 
 func answersAreEqual(userAnswer *ipc.ClientGameplayEvent, correctAnswer *macondopb.GameEvent) bool {

@@ -19,6 +19,18 @@ var DefaultTxOptions = pgx.TxOptions{
 	DeferrableMode: pgx.Deferrable, // not used for this isolevel/access mode
 }
 
+var RepeatableReadTxOptions = pgx.TxOptions{
+	IsoLevel:       pgx.RepeatableRead,
+	AccessMode:     pgx.ReadWrite,
+	DeferrableMode: pgx.Deferrable, // not used for this isolevel/access mode
+}
+
+type RowIterator interface {
+	Close()
+	Next() bool
+	Scan(dest ...interface{}) error
+}
+
 func GetUserDBIDFromUUID(ctx context.Context, tx pgx.Tx, uuid string) (int64, error) {
 	var id int64
 	err := tx.QueryRow(ctx, "SELECT id FROM users WHERE uuid = $1", uuid).Scan(&id)
@@ -83,26 +95,8 @@ func GetGameInfo(ctx context.Context, tx pgx.Tx, gameId int) (*macondopb.GameHis
 }
 
 func InitializeUserRating(ctx context.Context, tx pgx.Tx, userId int64) error {
-	var ratings *entity.Ratings
-	err := tx.QueryRow(ctx, `SELECT ratings FROM profiles WHERE user_id = $1`, userId).Scan(&ratings)
-	if err == pgx.ErrNoRows {
-		return fmt.Errorf("profile not found for user_id: %d", userId)
-	}
-	if err != nil {
-		return err
-	}
-
-	if ratings.Data == nil {
-		result, err := tx.Exec(ctx, `UPDATE profiles SET ratings = jsonb_set(ratings, '{Data}', jsonb '{}') WHERE user_id = $1;`, userId)
-		if err != nil {
-			return err
-		}
-		rowsAffected := result.RowsAffected()
-		if rowsAffected != 1 {
-			return fmt.Errorf("not exactly one row affected for initializing user rating: %d, %d", userId, rowsAffected)
-		}
-	}
-	return nil
+	_, err := tx.Exec(ctx, `UPDATE profiles SET ratings = jsonb_set(ratings, '{Data}', jsonb '{}') WHERE user_id = $1 AND NULLIF(ratings->'Data', 'null') IS NULL`, userId)
+	return err
 }
 
 func GetUserRating(ctx context.Context, tx pgx.Tx, userId int64, ratingKey entity.VariantKey, defaultRating *entity.SingleRating) (*entity.SingleRating, error) {
@@ -112,7 +106,7 @@ func GetUserRating(ctx context.Context, tx pgx.Tx, userId int64, ratingKey entit
 	}
 
 	var sr *entity.SingleRating
-	err = tx.QueryRow(ctx, "select ratings->'Data'->$1 from profiles where user_id = $2", ratingKey, userId).Scan(&sr)
+	err = tx.QueryRow(ctx, "SELECT ratings->'Data'->$1 FROM profiles WHERE user_id = $2", ratingKey, userId).Scan(&sr)
 	if err == pgx.ErrNoRows {
 		return nil, fmt.Errorf("profile not found for user_id: %d", userId)
 	}
@@ -137,7 +131,7 @@ func UpdateUserRating(ctx context.Context, tx pgx.Tx, userId int64, ratingKey en
 		return err
 	}
 
-	_, err = tx.Exec(ctx, "update profiles set ratings = jsonb_set(ratings, array['Data', $1], $2) where user_id = $3", ratingKey, newRating, userId)
+	_, err = tx.Exec(ctx, "UPDATE profiles SET ratings = jsonb_set(ratings, array['Data', $1], $2) WHERE user_id = $3", ratingKey, newRating, userId)
 	if err != nil {
 		return err
 	}

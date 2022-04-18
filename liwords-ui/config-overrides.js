@@ -37,6 +37,10 @@ module.exports = {
             }
         };
       }
+      config.client = {
+        ...config.client,
+        overlay: false,
+      };
       return config;
     }
   }

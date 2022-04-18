@@ -11,13 +11,14 @@ import (
 	"github.com/domino14/liwords/pkg/common"
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/glicko"
 	commondb "github.com/domino14/liwords/pkg/stores/common"
 	gamestore "github.com/domino14/liwords/pkg/stores/game"
 	puzzlesstore "github.com/domino14/liwords/pkg/stores/puzzles"
 	"github.com/domino14/liwords/pkg/stores/user"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
-	"github.com/jackc/pgx/v4"
+	"github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
@@ -27,7 +28,6 @@ import (
 	"github.com/domino14/macondo/board"
 	"github.com/domino14/macondo/game"
 	"github.com/domino14/macondo/gcgio"
-	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/macondo/move"
 )
@@ -36,20 +36,20 @@ const PuzzlerUUID = "puzzler"
 const PuzzleCreatorUUID = "kenji"
 const OtherLexicon = "CSW19"
 
-func gameEventToClientGameplayEvent(evt *macondopb.GameEvent) *ipc.ClientGameplayEvent {
+func gameEventToClientGameplayEvent(evt *pb.GameEvent) *ipc.ClientGameplayEvent {
 	cge := &ipc.ClientGameplayEvent{}
 
 	switch evt.Type {
-	case macondopb.GameEvent_TILE_PLACEMENT_MOVE:
+	case pb.GameEvent_TILE_PLACEMENT_MOVE:
 		cge.Type = ipc.ClientGameplayEvent_TILE_PLACEMENT
 		cge.Tiles = evt.PlayedTiles
 		cge.PositionCoords = move.ToBoardGameCoords(int(evt.Row), int(evt.Column),
-			evt.Direction == macondopb.GameEvent_VERTICAL)
+			evt.Direction == pb.GameEvent_VERTICAL)
 
-	case macondopb.GameEvent_EXCHANGE:
+	case pb.GameEvent_EXCHANGE:
 		cge.Type = ipc.ClientGameplayEvent_EXCHANGE
 		cge.Tiles = evt.Exchanged
-	case macondopb.GameEvent_PASS:
+	case pb.GameEvent_PASS:
 		cge.Type = ipc.ClientGameplayEvent_PASS
 	}
 
@@ -82,6 +82,10 @@ func TestPuzzlesMain(t *testing.T) {
 	// 5     - Incorrect, don't show solution
 	// 6     - Show solution
 	// 7     - Correct
+
+	// This should work for users who are not logged in
+	_, err = GetNextPuzzleId(ctx, ps, "", common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
 
 	// Path 1
 	// Submit an incorrect answer
@@ -262,7 +266,7 @@ func TestPuzzlesMain(t *testing.T) {
 	is.Equal(attempts, int32(0))
 
 	// This should create the attempt record
-	_, _, attempts, status, firstAttemptTime, lastAttemptTime, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
+	_, _, attempts, status, _, lastAttemptTime, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
 	is.True(status == nil)
 	is.Equal(attempts, int32(0))
@@ -273,7 +277,7 @@ func TestPuzzlesMain(t *testing.T) {
 	is.Equal(attempts, int32(0))
 
 	// This should update the attempt record
-	_, _, attempts, status, firstAttemptTime, newLastAttemptTime, err := GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
+	_, _, attempts, status, _, newLastAttemptTime, err := GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
 	is.True(status == nil)
 	is.Equal(attempts, int32(0))
@@ -478,7 +482,7 @@ func TestPuzzlesMain(t *testing.T) {
 	is.Equal(pop, -1)
 
 	us.Disconnect()
-	gs.Disconnect()
+	gs.(*gamestore.Cache).Disconnect()
 	ps.Disconnect()
 	pool.Close()
 }
@@ -550,7 +554,7 @@ func TestPuzzlesPrevious(t *testing.T) {
 	is.Equal(puzzle4, actualPreviousPuzzle)
 
 	us.Disconnect()
-	gs.Disconnect()
+	gs.(*gamestore.Cache).Disconnect()
 	ps.Disconnect()
 	pool.Close()
 }
@@ -559,6 +563,13 @@ func TestPuzzlesStart(t *testing.T) {
 	is := is.New(t)
 	pool, ps, us, gs, _, _ := RecreateDB()
 	ctx := context.Background()
+
+	// This should work for users who are not logged in
+	_, err := GetStartPuzzleId(ctx, ps, "", common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
+
+	_, err = GetStartPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
 
 	puzzle1, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
@@ -600,7 +611,7 @@ func TestPuzzlesStart(t *testing.T) {
 	is.True(puzzle1 != actualStartPuzzle)
 
 	us.Disconnect()
-	gs.Disconnect()
+	gs.(*gamestore.Cache).Disconnect()
 	ps.Disconnect()
 	pool.Close()
 }
@@ -621,13 +632,13 @@ func TestUniqueSingleTileKey(t *testing.T) {
 		uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: pb.GameEvent_VERTICAL}))
 }
 
-func RecreateDB() (*pgxpool.Pool, *puzzlesstore.DBStore, *user.DBStore, *gamestore.DBStore, int, int) {
+func RecreateDB() (*pgxpool.Pool, *puzzlesstore.DBStore, *user.DBStore, gameplay.GameStore, int, int) {
 	cfg := &config.Config{}
 	cfg.MacondoConfig = common.DefaultConfig
 	cfg.DBConnUri = commondb.TestingPostgresConnUri()
 	cfg.DBConnDSN = commondb.TestingPostgresConnDSN()
 	cfg.MacondoConfig.DefaultLexicon = common.DefaultLexicon
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	zerolog.SetGlobalLevel(zerolog.Disabled)
 	ctx := context.Background()
 	log.Info().Msg("here first")
 	// Recreate the test database
@@ -656,12 +667,40 @@ func RecreateDB() (*pgxpool.Pool, *puzzlesstore.DBStore, *user.DBStore, *gamesto
 		panic(err)
 	}
 
-	gameStore, err := gamestore.NewDBStore(cfg, userStore)
+	tempGameStore, err := gamestore.NewDBStore(cfg, userStore)
+	if err != nil {
+		panic(err)
+	}
+
+	gameStore := gamestore.NewCache(tempGameStore)
 	if err != nil {
 		panic(err)
 	}
 
 	puzzlesStore, err := puzzlesstore.NewDBStore(pool)
+	if err != nil {
+		panic(err)
+	}
+
+	pgrjReq := proto.Clone(&puzzle_service.PuzzleGenerationJobRequest{
+		BotVsBot:               true,
+		Lexicon:                "CSW21",
+		LetterDistribution:     "english",
+		SqlOffset:              0,
+		GameConsiderationLimit: 1000000,
+		GameCreationLimit:      100000,
+		Request: &pb.PuzzleGenerationRequest{
+			Buckets: []*pb.PuzzleBucket{
+				{
+					Size:     50000,
+					Includes: []pb.PuzzleTag{pb.PuzzleTag_EQUITY},
+					Excludes: []pb.PuzzleTag{},
+				},
+			},
+		},
+	}).(*puzzle_service.PuzzleGenerationJobRequest)
+
+	reqId, err := puzzlesStore.CreateGenerationLog(ctx, pgrjReq)
 	if err != nil {
 		panic(err)
 	}
@@ -698,7 +737,7 @@ func RecreateDB() (*pgxpool.Pool, *puzzlesstore.DBStore, *user.DBStore, *gamesto
 			gameReq.Lexicon = OtherLexicon
 		}
 		entGame := entity.NewGame(game, gameReq)
-		pzls, err := CreatePuzzlesFromGame(ctx, gameStore, puzzlesStore, entGame, pcUUID, ipc.GameType_ANNOTATED)
+		pzls, err := CreatePuzzlesFromGame(ctx, pgrjReq.Request, reqId, gameStore, puzzlesStore, entGame, pcUUID, ipc.GameType_ANNOTATED)
 		if err != nil {
 			panic(err)
 		}
@@ -716,22 +755,26 @@ func getUserRating(ctx context.Context, pool *pgxpool.Pool, userUUID string, rk 
 	if err != nil {
 		return nil, err
 	}
-
-	var ratings *entity.Ratings
-	err = pool.QueryRow(ctx, `SELECT ratings FROM profiles WHERE user_id = $1`, id).Scan(&ratings)
-	if err == pgx.ErrNoRows {
-		return nil, fmt.Errorf("profile not found for user_id: %s", userUUID)
-	}
+	tx, err := pool.BeginTx(ctx, commondb.DefaultTxOptions)
 	if err != nil {
 		return nil, err
 	}
+	defer tx.Rollback(ctx)
+	initialRating := &entity.SingleRating{
+		Rating:            float64(glicko.InitialRating),
+		RatingDeviation:   float64(glicko.InitialRatingDeviation),
+		Volatility:        glicko.InitialVolatility,
+		LastGameTimestamp: time.Now().Unix()}
 
-	sr, exists := ratings.Data[rk]
-	if !exists {
-		return nil, fmt.Errorf("rating does not exist for rating key %s", rk)
+	userRating, err := commondb.GetUserRating(ctx, tx, id, rk, initialRating)
+
+	if err != nil {
+		return nil, err
 	}
-
-	return &sr, nil
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return userRating, nil
 }
 
 func getPuzzlePopularity(ctx context.Context, pool *pgxpool.Pool, puzzleUUID string) (int, error) {

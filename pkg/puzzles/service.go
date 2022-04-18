@@ -2,31 +2,49 @@ package puzzles
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ecs"
+	"github.com/aws/aws-sdk-go-v2/service/ecs/types"
+	"github.com/aws/smithy-go"
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/puzzle_service"
+	"github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+var (
+	errNotAuthorized = errors.New("this user is not authorized to perform this action")
+)
+
 type PuzzleService struct {
-	puzzleStore PuzzleStore
-	userStore   user.Store
+	puzzleStore        PuzzleStore
+	userStore          user.Store
+	puzzleGenSecretKey string
+	ecsCluster         string
+	puzzleGenTaskDef   string
 }
 
-func NewPuzzleService(ps PuzzleStore, us user.Store) *PuzzleService {
-	return &PuzzleService{puzzleStore: ps, userStore: us}
+func NewPuzzleService(ps PuzzleStore, us user.Store, k, c, td string) *PuzzleService {
+	return &PuzzleService{
+		puzzleStore:        ps,
+		userStore:          us,
+		puzzleGenSecretKey: k,
+		ecsCluster:         c,
+		puzzleGenTaskDef:   td,
+	}
 }
 
 func (ps *PuzzleService) GetStartPuzzleId(ctx context.Context, req *pb.StartPuzzleIdRequest) (*pb.StartPuzzleIdResponse, error) {
-	user, err := sessionUser(ctx, ps)
-	if err != nil {
-		return nil, err
-	}
-	puzzleId, err := GetStartPuzzleId(ctx, ps.puzzleStore, user.UUID, req.Lexicon)
+	puzzleId, err := GetStartPuzzleId(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Lexicon)
 	if err != nil {
 		return nil, err
 	}
@@ -34,11 +52,7 @@ func (ps *PuzzleService) GetStartPuzzleId(ctx context.Context, req *pb.StartPuzz
 }
 
 func (ps *PuzzleService) GetNextPuzzleId(ctx context.Context, req *pb.NextPuzzleIdRequest) (*pb.NextPuzzleIdResponse, error) {
-	user, err := sessionUser(ctx, ps)
-	if err != nil {
-		return nil, err
-	}
-	puzzleId, err := GetNextPuzzleId(ctx, ps.puzzleStore, user.UUID, req.Lexicon)
+	puzzleId, err := GetNextPuzzleId(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Lexicon)
 	if err != nil {
 		return nil, err
 	}
@@ -46,20 +60,34 @@ func (ps *PuzzleService) GetNextPuzzleId(ctx context.Context, req *pb.NextPuzzle
 }
 
 func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *pb.PuzzleRequest) (*pb.PuzzleResponse, error) {
-	// Since we want to allow people to see puzzles without
-	// logging in, continue even if there is an error.
-	// Assume an error means the request is unauthenticated.
-	userUUID := ""
-	user, err := sessionUser(ctx, ps)
-	if err == nil {
-		userUUID = user.UUID
-	}
-	gameHist, beforeText, attempts, status, firstAttemptTime, lastAttemptTime, err := GetPuzzle(ctx, ps.puzzleStore, userUUID, req.PuzzleId)
+	gameHist, beforeText, attempts, status, firstAttemptTime, lastAttemptTime, err := GetPuzzle(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.PuzzleId)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 
-	return &pb.PuzzleResponse{History: gameHist, BeforeText: beforeText, Attempts: attempts, Status: boolPtrToPuzzleStatus(status), FirstAttemptTime: timestamppb.New(firstAttemptTime), LastAttemptTime: timestamppb.New(lastAttemptTime)}, nil
+	var correctAnswer *macondo.GameEvent
+	var gameId string
+	var turnNumber int32
+	var afterText string
+
+	if status != nil {
+		correctAnswer, gameId, turnNumber, afterText, _, _, err = GetAnswer(ctx, ps.puzzleStore, req.PuzzleId)
+		if err != nil {
+			return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		}
+	}
+
+	return &pb.PuzzleResponse{History: gameHist, BeforeText: beforeText, Answer: &pb.AnswerResponse{
+		Status:           boolPtrToPuzzleStatus(status),
+		CorrectAnswer:    correctAnswer,
+		GameId:           gameId,
+		TurnNumber:       turnNumber,
+		AfterText:        afterText,
+		Attempts:         attempts,
+		NewUserRating:    0,
+		NewPuzzleRating:  0,
+		FirstAttemptTime: timestamppb.New(firstAttemptTime),
+		LastAttemptTime:  timestamppb.New(lastAttemptTime)}}, nil
 }
 
 func (ps *PuzzleService) GetPreviousPuzzleId(ctx context.Context, req *pb.PreviousPuzzleRequest) (*pb.PreviousPuzzleResponse, error) {
@@ -84,16 +112,17 @@ func (ps *PuzzleService) SubmitAnswer(ctx context.Context, req *pb.SubmissionReq
 		return nil, err
 	}
 	return &pb.SubmissionResponse{UserIsCorrect: userIsCorrect,
-		Status:           boolPtrToPuzzleStatus(status),
-		CorrectAnswer:    correctAnswer,
-		GameId:           gameId,
-		TurnNumber:       turnNumber,
-		AfterText:        afterText,
-		Attempts:         attempts,
-		NewUserRating:    newUserRating,
-		NewPuzzleRating:  newPuzzleRating,
-		FirstAttemptTime: timestamppb.New(firstAttemptTime),
-		LastAttemptTime:  timestamppb.New(lastAttemptTime)}, nil
+		Answer: &pb.AnswerResponse{
+			Status:           boolPtrToPuzzleStatus(status),
+			CorrectAnswer:    correctAnswer,
+			GameId:           gameId,
+			TurnNumber:       turnNumber,
+			AfterText:        afterText,
+			Attempts:         attempts,
+			NewUserRating:    newUserRating,
+			NewPuzzleRating:  newPuzzleRating,
+			FirstAttemptTime: timestamppb.New(firstAttemptTime),
+			LastAttemptTime:  timestamppb.New(lastAttemptTime)}}, nil
 }
 
 func (ps *PuzzleService) SetPuzzleVote(ctx context.Context, req *pb.PuzzleVoteRequest) (*pb.PuzzleVoteResponse, error) {
@@ -106,6 +135,96 @@ func (ps *PuzzleService) SetPuzzleVote(ctx context.Context, req *pb.PuzzleVoteRe
 		return nil, err
 	}
 	return &pb.PuzzleVoteResponse{}, nil
+}
+
+func (ps *PuzzleService) StartPuzzleGenJob(ctx context.Context, req *pb.APIPuzzleGenerationJobRequest) (*pb.APIPuzzleGenerationJobResponse, error) {
+	user, err := sessionUser(ctx, ps)
+	if err != nil {
+		return nil, err
+	}
+	if !user.IsAdmin {
+		return nil, twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
+	}
+	log.Debug().Msgf("keys %s %s", req.SecretKey, ps.puzzleGenSecretKey)
+	if req.SecretKey != ps.puzzleGenSecretKey {
+		return nil, twirp.NewError(twirp.PermissionDenied, "must include puzzle generation secret key")
+	}
+	bts, err := protojson.Marshal(req.Request)
+	if err != nil {
+		return nil, err
+	}
+	// This message is meant to be copy-pasted from the terminal
+	// when run locally. On production, though, it will try to execute
+	// an ECS task.
+	fmt.Printf("docker-compose run --rm -w /opt/program/cmd/puzzlegen app go run . '%s'\n", string(bts))
+
+	err = invokeECSPuzzleGen(ctx, string(bts), ps.ecsCluster, ps.puzzleGenTaskDef)
+	if err != nil {
+		return nil, twirp.InternalErrorWith(err)
+	}
+	return &pb.APIPuzzleGenerationJobResponse{}, nil
+}
+
+func (ps *PuzzleService) GetPuzzleJobLogs(ctx context.Context, req *pb.PuzzleJobLogsRequest) (*pb.PuzzleJobLogsResponse, error) {
+	user, err := sessionUser(ctx, ps)
+	if err != nil {
+		return nil, err
+	}
+	if !user.IsAdmin {
+		return nil, twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
+	}
+	logs, err := GetPuzzleJobLogs(ctx, ps.puzzleStore, int(req.Limit), int(req.Offset))
+	if err != nil {
+		return nil, err
+	}
+	return &pb.PuzzleJobLogsResponse{Logs: logs}, nil
+}
+
+func invokeECSPuzzleGen(ctx context.Context, arg, cluster, taskdef string) error {
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithClientLogMode(aws.LogRetries|aws.LogRequestWithBody))
+	if err != nil {
+		return err
+	}
+	svc := ecs.NewFromConfig(cfg)
+	input := &ecs.RunTaskInput{
+		Cluster:        aws.String(cluster),
+		TaskDefinition: aws.String(taskdef),
+		Overrides: &types.TaskOverride{
+			ContainerOverrides: []types.ContainerOverride{
+				{
+					Command: []string{
+						"/opt/puzzle-generator",
+						arg,
+					},
+					Name: aws.String("liwords-puzzlegen"),
+				},
+			},
+		},
+	}
+	result, err := svc.RunTask(ctx, input)
+	if err != nil {
+		var apiErr smithy.APIError
+		if errors.As(err, &apiErr) {
+			code := apiErr.ErrorCode()
+			message := apiErr.ErrorMessage()
+			return fmt.Errorf("aws error: code: %s, message: %s", code, message)
+		} else {
+			return err
+		}
+	}
+	log.Info().Msgf("run-ecs-task-result: %v", result)
+	return nil
+}
+
+// Returns the UUID of the user if they are logged in
+// or an empty string if the user is not logged in
+func sessionUserUUIDOption(ctx context.Context, ps *PuzzleService) string {
+	userUUID := ""
+	user, err := sessionUser(ctx, ps)
+	if err == nil {
+		userUUID = user.UUID
+	}
+	return userUUID
 }
 
 func sessionUser(ctx context.Context, ps *PuzzleService) (*entity.User, error) {
