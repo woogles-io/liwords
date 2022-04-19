@@ -326,6 +326,11 @@ export const Chat = React.memo((props: Props) => {
     }
   }, [defaultChannel, defaultDescription, loggedIn, props.suppressDefault]);
 
+  useEffect(() => {
+    if (props.tournamentID) {
+      setSelectedChatTab('CHAT');
+    }
+  }, [props.tournamentID]);
   const decoratedDescription = useMemo(() => {
     switch (channelType) {
       case 'game':
