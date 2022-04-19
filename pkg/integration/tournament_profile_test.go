@@ -93,6 +93,8 @@ func tournamentStore(gs gameplay.GameStore) (*config.Config, tournament.Tourname
 	return cfg, tournamentStore
 }
 
+const NumUsers = 200
+
 func recreateDBManyUsers() {
 	err := common.RecreateTestDB()
 	if err != nil {
@@ -101,7 +103,7 @@ func recreateDBManyUsers() {
 
 	ustore := userStore()
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < NumUsers; i++ {
 		u := &entity.User{
 			Username: fmt.Sprintf("Player%d", i+1),
 			Email:    fmt.Sprintf("player%d@example.com", i+1),
@@ -223,7 +225,7 @@ func createBus() (context.Context, *bus.Bus, context.CancelFunc, bus.Stores, *co
 }
 
 func TestLargeTournamentProfile(t *testing.T) {
-	t.Skip()
+	// t.Skip()
 	// should comment out the above t.Skip() and run with
 	// go test -run TestLargeTournamentProfile -memprofile mem.out -cpuprofile cpu.out
 	is := is.New(t)
@@ -238,8 +240,8 @@ func TestLargeTournamentProfile(t *testing.T) {
 
 	// Create player map
 	pmap := map[string]int32{}
-	for i := 0; i < 100; i++ {
-		pmap[fmt.Sprintf("Player%d", i+1)] = int32((i + 1) * 100)
+	for i := 0; i < NumUsers; i++ {
+		pmap[fmt.Sprintf("Player%d", i+1)] = int32((i + 1) * 10)
 	}
 	players := makeTournamentPersons(pmap)
 
@@ -284,36 +286,38 @@ func TestLargeTournamentProfile(t *testing.T) {
 	natsconn, err := nats.Connect(cfg.NatsURL)
 	is.NoErr(err)
 
-	// Simulate everyone pressing Ready within a few seconds.
-	for i := 0; i < 100; i++ {
-		uid := fmt.Sprintf("uuid-%d", i+1)
-		msg := &ipc.ReadyForTournamentGame{
-			TournamentId: ty.UUID,
-			Division:     divOneName,
-			Round:        0,
-			PlayerId:     uid,
+	go func() {
+		// Simulate everyone pressing Ready within a few seconds.
+		for i := 0; i < NumUsers; i++ {
+			uid := fmt.Sprintf("uuid-%d", i+1)
+			msg := &ipc.ReadyForTournamentGame{
+				TournamentId: ty.UUID,
+				Division:     divOneName,
+				Round:        0,
+				PlayerId:     uid,
+			}
+			bts, err := proto.Marshal(msg)
+			is.NoErr(err)
+			topic := fmt.Sprintf("ipc.pb.%d.%s.%s.%s",
+				ipc.MessageType_READY_FOR_TOURNAMENT_GAME.Number(),
+				"auth",
+				uid,
+				shortuuid.New()[2:10], // a connection id
+			)
+			natsconn.Publish(topic, bts)
+			time.Sleep(10 * time.Millisecond)
 		}
-		bts, err := proto.Marshal(msg)
-		is.NoErr(err)
-		topic := fmt.Sprintf("ipc.pb.%d.%s.%s.%s",
-			ipc.MessageType_READY_FOR_TOURNAMENT_GAME.Number(),
-			"auth",
-			uid,
-			shortuuid.New()[2:10], // a connection id
-		)
+	}()
 
-		natsconn.Publish(topic, bts)
-	}
-	ct, err := stores.GameStore.Count(ctx)
-	is.NoErr(err)
-	is.Equal(ct, 50)
 	// exit bus cleanly
 	idleConnsClosed := make(chan struct{})
 	go func() {
-		time.Sleep(2 * time.Second)
+		time.Sleep(10*time.Millisecond*NumUsers + (2 * time.Second))
 		cancel()
 		close(idleConnsClosed)
 	}()
 	<-idleConnsClosed
-
+	ct, err := stores.GameStore.Count(ctx)
+	is.NoErr(err)
+	is.Equal(int(ct), NumUsers>>1)
 }

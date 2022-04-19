@@ -343,6 +343,10 @@ func (g *Game) SendChange(e *EventWrapper) {
 		Int("chan-length", len(g.ChangeHook)).Msg("send-change")
 	if g.ChangeHook == nil {
 		// This should never happen in actual operation; consider making it a Fatal.
+		// XXX: This happens all the time in production, because we are calling
+		// SendChange for a NewActiveGameEntry, and the game has not started by then.
+		// This channel only gets initialized when a game actually starts.
+		// (how is it working?)
 		log.Error().Msg("change hook is closed!")
 		return
 	}
