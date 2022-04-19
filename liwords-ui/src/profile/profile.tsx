@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { notification, Card, Table, Row, Col } from 'antd';
 import axios, { AxiosError } from 'axios';
@@ -226,7 +226,11 @@ export const UserProfile = React.memo(() => {
   const [bio, setBio] = useState('');
   const [countryCode, setCountryCode] = useState('');
   const [bioLoaded, setBioLoaded] = useState(false);
-  const [recentGames, setRecentGames] = useState<Array<GameMetadata>>([]);
+  const [recentGames, setRecentGames] = useState<{
+    numGames: number;
+    offset: number;
+    array: Array<GameMetadata>;
+  }>({ numGames: gamesPageSize, offset: 0, array: [] });
   const { loginState } = useLoginStateStoreContext();
   const { username: viewer } = loginState;
   const [recentGamesOffset, setRecentGamesOffset] = useState(0);
@@ -253,27 +257,110 @@ export const UserProfile = React.memo(() => {
       })
       .catch(errorCatcher);
   }, [username, location.pathname]);
+  const [queriedRecentGamesOffset, setQueriedRecentGamesOffset] =
+    useState(recentGamesOffset);
+  const reentrancyCheck = useRef<Record<string, never>>();
   useEffect(() => {
-    axios
-      .post<RecentGamesResponse>(
-        toAPIUrl('game_service.GameMetadataService', 'GetRecentGames'),
-        {
-          username,
-          numGames: gamesPageSize,
-          offset: recentGamesOffset,
+    const hiddenObject = {}; // allocate a new thing every time
+    reentrancyCheck.current = hiddenObject;
+    (async () => {
+      try {
+        let queriedOffset = queriedRecentGamesOffset;
+        const resp = await axios.post<RecentGamesResponse>(
+          toAPIUrl('game_service.GameMetadataService', 'GetRecentGames'),
+          {
+            username,
+            numGames: gamesPageSize,
+            offset: queriedOffset,
+          }
+        );
+        // Outdated axios does not support fetch()-compatible AbortController.
+        if (reentrancyCheck.current !== hiddenObject) return;
+        // If the array is empty and it is not the first page,
+        // use binary search to find the last page with content.
+        if (!resp.data.game_info.length && queriedOffset > 0) {
+          // The maximum valid page number is before the empty page retrieved.
+          const maxGuess = Math.max(
+            Math.floor(queriedOffset / gamesPageSize - 1),
+            0
+          );
+          let guessBit = 1;
+          while (guessBit < maxGuess) guessBit *= 2;
+          let guess = 0;
+          for (; guessBit >= 1; guessBit /= 2) {
+            const newGuess = guess + guessBit;
+            if (newGuess <= maxGuess) {
+              const resp2 = await axios.post<RecentGamesResponse>(
+                toAPIUrl('game_service.GameMetadataService', 'GetRecentGames'),
+                {
+                  username,
+                  numGames: gamesPageSize,
+                  offset: newGuess * gamesPageSize,
+                }
+              );
+              if (reentrancyCheck.current !== hiddenObject) return;
+              if (resp2.data.game_info.length) {
+                // This is within range.
+                guess = newGuess;
+              }
+            }
+          }
+          queriedOffset = guess * gamesPageSize;
         }
-      )
-      .then((resp) => {
-        setRecentGames(resp.data.game_info);
-      })
-      .catch(errorCatcher);
-  }, [username, recentGamesOffset]);
+        if (queriedRecentGamesOffset !== queriedOffset) {
+          // This will re-fetch that last page.
+          setRecentGamesOffset(queriedOffset);
+          setQueriedRecentGamesOffset(queriedOffset);
+        } else {
+          setRecentGames({
+            numGames: gamesPageSize,
+            offset: queriedOffset,
+            array: resp.data.game_info,
+          });
+        }
+      } catch (e) {
+        // This dangerous-looking cast should be fine...
+        errorCatcher(e as AxiosError);
+      }
+    })();
+  }, [username, queriedRecentGamesOffset]);
+  useEffect(() => {
+    // offset and numGames are int32 in the protobuf.
+    const maxPage = Math.floor(((1 << 30) * 2 - 1) / gamesPageSize);
+    const adjustedRecentGamesOffset = Math.max(
+      Math.min(recentGamesOffset, maxPage * gamesPageSize),
+      0
+    );
+    if (recentGamesOffset !== adjustedRecentGamesOffset) {
+      setRecentGamesOffset(adjustedRecentGamesOffset);
+    } else {
+      const t = setTimeout(() => {
+        setQueriedRecentGamesOffset(recentGamesOffset);
+      }, 500);
+      return () => {
+        clearTimeout(t);
+      };
+    }
+  }, [recentGamesOffset]);
   const fetchPrev = useCallback(() => {
     setRecentGamesOffset((r) => Math.max(r - gamesPageSize, 0));
   }, []);
+  // Unbounded. It is possible to paginate many empty pages behind what exists by clicking Next many times rapidly.
   const fetchNext = useCallback(() => {
     setRecentGamesOffset((r) => r + gamesPageSize);
   }, []);
+  const handleChangePageNumber = useCallback(
+    (value: number | string | null) => {
+      if (
+        value != null &&
+        String(value) === String(Math.floor(Number(value)))
+      ) {
+        const valueNum = Math.max(1, Math.floor(Number(value)));
+        setRecentGamesOffset((valueNum - 1) * gamesPageSize);
+      }
+    },
+    []
+  );
 
   const player = {
     avatar_url: avatarUrl,
@@ -337,13 +424,20 @@ export const UserProfile = React.memo(() => {
         <RatingsCard ratings={ratings} />
         {username && (
           <GamesHistoryCard
-            games={recentGames}
+            games={recentGames.array}
             username={username}
             userID={userID}
             fetchPrev={recentGamesOffset > 0 ? fetchPrev : undefined}
             fetchNext={
-              recentGames.length < gamesPageSize ? undefined : fetchNext
+              recentGames.array.length < recentGames.numGames
+                ? undefined
+                : fetchNext
             }
+            currentOffset={recentGames.offset}
+            currentPageSize={recentGames.numGames}
+            desiredOffset={recentGamesOffset}
+            desiredPageSize={gamesPageSize}
+            onChangePageNumber={handleChangePageNumber}
           />
         )}
         <StatsCard stats={stats} />
