@@ -122,8 +122,10 @@ func SendTournamentMessage(ctx context.Context, ts TournamentStore, id string, w
 	wrapped.AddAudience(entity.AudTournament, id)
 	if eventChannel != nil {
 		eventChannel <- wrapped
+	} else {
+		log.Error().Msg("send-msg-tournament-event-chan-nil")
 	}
-	log.Debug().Str("tid", id).Msg("sent tournament message type: " + string(wrapped.Type))
+	log.Debug().Str("tid", id).Msg("sent tournament message type: " + wrapped.Type.String())
 	return nil
 }
 
@@ -734,6 +736,8 @@ func SetResult(ctx context.Context,
 		evtChan := ts.TournamentEventChan()
 		if evtChan != nil {
 			evtChan <- wrapped
+		} else {
+			log.Error().Msg("set-result-tournament-event-chan-nil")
 		}
 		log.Debug().Str("tid", id).Msg("sent legacy tournament game ended event")
 		return nil
@@ -892,6 +896,8 @@ func sendDivisionStart(ts TournamentStore, tuuid string, division string, round 
 	wrapped.AddAudience(entity.AudTournament, tuuid)
 	if eventChannel != nil {
 		eventChannel <- wrapped
+	} else {
+		log.Error().Msg("send-divstart-tournament-event-chan-nil")
 	}
 	log.Debug().Interface("evt", evt).Msg("sent-tournament-round-started")
 	return nil
