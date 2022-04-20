@@ -1,5 +1,7 @@
 @import '../base';
+@import '../tile_modes';
 @include modal;
+
 .puzzle-container {
   .ant-card.pool {
     order: 2;
@@ -125,6 +127,40 @@
       display: none;
     }
   }
+  .tile.tentative {
+    @include colorModed() {
+      border: 1px solid m($tile-last-background);
+      background: m($tile-last-background);
+    }
+    @include userTile() {
+      border: 0px solid transparent; // Fallback if border is a gradient
+      border: ut($tile-border);
+      background: ut($tile-last-background);
+    }
+    &.blank {
+      p.rune {
+        @include colorModed() {
+          background-color: m($tile-last-blank);
+          color: m($tile-last-background);
+        }
+        @include userTile() {
+          color: ut($tile-blank-text); // Fallback if border is a gradient
+          color: ut($tile-last-background);
+          background: ut($tile-last-blank);
+        }
+      }
+    }
+    p.rune, p.point-value {
+      @include colorModed() {
+        color: m($tile-last-text);
+      }
+      @include userTile() {
+        color: ut($tile-last-text);
+      }
+    }
+  }
+
+
 }
 .puzzle-container .stars, .ant-modal-body .stars {
   margin: 9px 0 18px;
