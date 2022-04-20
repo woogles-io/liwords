@@ -111,6 +111,7 @@ export const SinglePuzzle = (props: Props) => {
   const [showResponseModalCorrect, setShowResponseModalCorrect] =
     useState(false);
   const [showLexiconModal, setShowLexiconModal] = useState(false);
+  const [nextPending, setNextPending] = useState(false);
   const { loginState } = useLoginStateStoreContext();
   const { username, loggedIn } = loginState;
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
@@ -152,6 +153,7 @@ export const SinglePuzzle = (props: Props) => {
   const loadNewPuzzle = useCallback(
     async (firstLoad?: boolean) => {
       if (!userLexicon) {
+        setShowLexiconModal(true);
         return;
       }
       let req, respType, method;
@@ -183,6 +185,13 @@ export const SinglePuzzle = (props: Props) => {
     },
     [userLexicon, navigate]
   );
+
+  useEffect(() => {
+    if (nextPending) {
+      loadNewPuzzle();
+      setNextPending(false);
+    }
+  }, [loadNewPuzzle, nextPending]);
 
   // XXX: This is copied from analyzer.tsx. When we add the analyzer
   // to the puzzle page we should figure out another solution.
@@ -292,8 +301,8 @@ export const SinglePuzzle = (props: Props) => {
   }, [puzzleID, userIDOnTurn, gameContext.players]);
 
   useEffect(() => {
-    if (puzzleInfo.gameId && puzzleInfo.turn) {
-      setGameInfo(puzzleInfo.gameId, puzzleInfo.turn);
+    if (puzzleInfo.gameId) {
+      setGameInfo(puzzleInfo.gameId, puzzleInfo.turn || 0);
     }
   }, [puzzleInfo.gameId, puzzleInfo.turn, setGameInfo]);
 
@@ -440,7 +449,7 @@ export const SinglePuzzle = (props: Props) => {
 
   // This is displayed if there is no puzzle id and no preferred puzzle lexicon saved in local storage
   const lexiconModal = useMemo(() => {
-    if (!puzzleID && !userLexicon) {
+    if (!userLexicon) {
       return (
         <Modal
           className="puzzle-lexicon-modal"
@@ -465,6 +474,10 @@ export const SinglePuzzle = (props: Props) => {
             onFinish={(val: Store) => {
               localStorage?.setItem('puzzleLexicon', val.lexicon);
               setUserLexicon(val.lexicon);
+              if (puzzleID) {
+                //This loaded because user tried to go to next with no lexicon. Try again now.
+                setNextPending(true);
+              }
             }}
           >
             <LexiconFormItem excludedLexica={excludedLexica(false, false)} />
@@ -476,6 +489,11 @@ export const SinglePuzzle = (props: Props) => {
   }, [puzzleID, showLexiconModal, userLexicon]);
 
   const responseModalWrong = useMemo(() => {
+    const reset = () => {
+      setDisplayedRack(rack);
+      setPlacedTiles(new Set<EphemeralTile>());
+      setPlacedTilesTempScore(undefined);
+    };
     return (
       <Modal
         className="response-modal"
@@ -484,6 +502,7 @@ export const SinglePuzzle = (props: Props) => {
         title="Try again!"
         onCancel={() => {
           setShowResponseModalWrong(false);
+          reset();
         }}
         footer={[
           <Button
@@ -492,10 +511,7 @@ export const SinglePuzzle = (props: Props) => {
             autoFocus
             onClick={() => {
               setShowResponseModalWrong(false);
-              //Reset rack so they can try again
-              setDisplayedRack(rack);
-              setPlacedTiles(new Set<EphemeralTile>());
-              setPlacedTilesTempScore(undefined);
+              reset();
             }}
           >
             Keep trying
@@ -586,7 +602,7 @@ export const SinglePuzzle = (props: Props) => {
             <Notepad includeCard />
           </React.Fragment>
         </div>
-        <div className="play-area">
+        <div className="play-area puzzle-area">
           {lexiconModal}
           {responseModalWrong}
           {responseModalCorrect}
