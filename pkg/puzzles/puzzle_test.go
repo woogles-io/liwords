@@ -616,6 +616,41 @@ func TestPuzzlesStart(t *testing.T) {
 	pool.Close()
 }
 
+func TestPuzzlesVerticalPlays(t *testing.T) {
+	is := is.New(t)
+	pool, ps, us, gs, _, _ := RecreateDB()
+	ctx := context.Background()
+
+	correct, err := transposedPlayByAnswerIsCorrect(ctx, pool, ps, "ZINNIA", PuzzlerUUID)
+	is.NoErr(err)
+	is.True(correct)
+
+	correct, err = transposedPlayByAnswerIsCorrect(ctx, pool, ps, "QUANT", PuzzlerUUID)
+	is.NoErr(err)
+	is.True(correct)
+
+	correct, err = transposedPlayByAnswerIsCorrect(ctx, pool, ps, "LINUX", PuzzlerUUID)
+	is.NoErr(err)
+	is.True(correct)
+
+	correct, err = transposedPlayByAnswerIsCorrect(ctx, pool, ps, "ALI.....", PuzzlerUUID)
+	is.NoErr(err)
+	is.True(!correct)
+
+	correct, err = transposedPlayByAnswerIsCorrect(ctx, pool, ps, "AD......", PuzzlerUUID)
+	is.NoErr(err)
+	is.True(!correct)
+
+	correct, err = transposedPlayByAnswerIsCorrect(ctx, pool, ps, "ERI.OID", PuzzlerUUID)
+	is.NoErr(err)
+	is.True(!correct)
+
+	us.Disconnect()
+	gs.(*gamestore.Cache).Disconnect()
+	ps.Disconnect()
+	pool.Close()
+}
+
 func TestUniqueSingleTileKey(t *testing.T) {
 	is := is.New(t)
 	is.Equal(uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: pb.GameEvent_HORIZONTAL}),
@@ -775,6 +810,46 @@ func getUserRating(ctx context.Context, pool *pgxpool.Pool, userUUID string, rk 
 		return nil, err
 	}
 	return userRating, nil
+}
+
+func transposedPlayByAnswerIsCorrect(ctx context.Context, pool *pgxpool.Pool, ps *puzzlesstore.DBStore, playedTiles string, userUUID string) (bool, error) {
+	puzzleUUID, err := getPuzzleUUIDByAnswer(ctx, pool, playedTiles)
+	if err != nil {
+		return false, err
+	}
+	return transposedPlayIsCorrect(ctx, pool, ps, puzzleUUID, userUUID)
+}
+
+func transposedPlayIsCorrect(ctx context.Context, pool *pgxpool.Pool, ps *puzzlesstore.DBStore, puzzleUUID string, userUUID string) (bool, error) {
+	correctAnswer, _, _, _, _, _, err := ps.GetAnswer(ctx, puzzleUUID)
+	if err != nil {
+		return false, err
+	}
+
+	correctCGE := gameEventToClientGameplayEvent(correctAnswer)
+
+	// Flip the coordinates
+	correctCGE.PositionCoords = move.ToBoardGameCoords(
+		int(correctAnswer.Column),
+		int(correctAnswer.Row),
+		correctAnswer.Direction == pb.GameEvent_HORIZONTAL)
+
+	_, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
+	if err != nil {
+		return false, err
+	}
+
+	userIsCorrect, _, _, _, _, _, _, _, _, _, _, err := SubmitAnswer(ctx, ps, puzzleUUID, userUUID, correctCGE, false)
+	if err != nil {
+		return false, err
+	}
+	return userIsCorrect, nil
+}
+
+func getPuzzleUUIDByAnswer(ctx context.Context, pool *pgxpool.Pool, playedTiles string) (string, error) {
+	var puzzleUUID string
+	err := pool.QueryRow(ctx, `SELECT uuid FROM puzzles WHERE answer->>'PlayedTiles' = $1`, playedTiles).Scan(&puzzleUUID)
+	return puzzleUUID, err
 }
 
 func getPuzzlePopularity(ctx context.Context, pool *pgxpool.Pool, puzzleUUID string) (int, error) {

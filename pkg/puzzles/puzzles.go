@@ -12,7 +12,6 @@ import (
 	"github.com/domino14/liwords/pkg/glicko"
 	"github.com/domino14/liwords/pkg/utilities"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
-	"github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	"github.com/domino14/macondo/alphabet"
 
@@ -24,7 +23,7 @@ import (
 )
 
 type PuzzleStore interface {
-	CreateGenerationLog(ctx context.Context, req *puzzle_service.PuzzleGenerationJobRequest) (int, error)
+	CreateGenerationLog(ctx context.Context, req *pb.PuzzleGenerationJobRequest) (int, error)
 	UpdateGenerationLogStatus(ctx context.Context, genId int, fulfilled bool, err error) error
 	CreatePuzzle(ctx context.Context, gameID string, turnNumber int32, answer *macondopb.GameEvent, authorID string,
 		lexicon string, beforeText string, afterText string, tags []macondopb.PuzzleTag, reqId int, bucketIndex int32) error
@@ -249,11 +248,35 @@ func answersAreEqual(userAnswer *ipc.ClientGameplayEvent, correctAnswer *macondo
 	}
 
 	return converted.Type == correctAnswer.Type &&
-		converted.Row == correctAnswer.Row &&
-		converted.Column == correctAnswer.Column &&
-		converted.Direction == correctAnswer.Direction &&
+		positionsAreEqual(converted, correctAnswer) &&
 		converted.PlayedTiles == correctAnswer.PlayedTiles &&
 		utilities.SortString(converted.Exchanged) == utilities.SortString(correctAnswer.Exchanged)
+}
+
+func positionsAreEqual(userAnswer *macondopb.GameEvent, correctAnswer *macondopb.GameEvent) bool {
+	return (userAnswer.Row == correctAnswer.Row &&
+		userAnswer.Column == correctAnswer.Column &&
+		userAnswer.Direction == correctAnswer.Direction) ||
+		(answerHitsCenterSquare(correctAnswer) &&
+			userAnswer.Row == correctAnswer.Column &&
+			userAnswer.Column == correctAnswer.Row &&
+			userAnswer.Direction != correctAnswer.Direction)
+}
+
+func answerHitsCenterSquare(answer *macondopb.GameEvent) bool {
+	var startSquare int32
+	if answer.Row == 7 && answer.Column <= 7 && answer.Direction == macondopb.GameEvent_HORIZONTAL {
+		startSquare = answer.Column
+	} else if answer.Column == 7 && answer.Row <= 7 && answer.Direction == macondopb.GameEvent_VERTICAL {
+		startSquare = answer.Row
+	} else {
+		return false
+	}
+
+	centerTileIndex := 7 - startSquare
+
+	return int(centerTileIndex) < len(answer.PlayedTiles) &&
+		answer.PlayedTiles[centerTileIndex] != alphabet.ASCIIPlayedThrough
 }
 
 func countPlayedTiles(ge *macondopb.GameEvent) int {
