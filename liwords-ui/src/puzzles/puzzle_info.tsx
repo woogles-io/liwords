@@ -169,7 +169,6 @@ export const PuzzleInfo = React.memo((props: Props) => {
       </Card>
     );
   }
-  const ratedDisplay = ratingMode === 'RATED' ? 'Rated' : 'Unrated';
   const challengeDisplay = challengeRule ? challengeMap[challengeRule] : '';
 
   const player1NameDisplay = player1?.nickname ? (
@@ -210,8 +209,8 @@ export const PuzzleInfo = React.memo((props: Props) => {
         )} • ${variantName || 'classic'} • ${lexicon}`}</p>
         <div>
           {challengeDisplay}
-          {challengeDisplay && ratedDisplay ? ' • ' : ''}
-          {ratedDisplay}
+          {challengeDisplay && ratingMode ? ' • ' : ''}
+          {ratingMode}
         </div>
         <div className="progress">{attemptsText}</div>
         {actions}

@@ -301,8 +301,8 @@ export const SinglePuzzle = (props: Props) => {
   }, [puzzleID, userIDOnTurn, gameContext.players]);
 
   useEffect(() => {
-    if (puzzleInfo.gameId && puzzleInfo.turn) {
-      setGameInfo(puzzleInfo.gameId, puzzleInfo.turn);
+    if (puzzleInfo.gameId) {
+      setGameInfo(puzzleInfo.gameId, puzzleInfo.turn || 0);
     }
   }, [puzzleInfo.gameId, puzzleInfo.turn, setGameInfo]);
 
@@ -486,9 +486,14 @@ export const SinglePuzzle = (props: Props) => {
       );
     }
     return null;
-  }, [puzzleID, showLexiconModal, loadNewPuzzle, userLexicon]);
+  }, [puzzleID, showLexiconModal, userLexicon]);
 
   const responseModalWrong = useMemo(() => {
+    const reset = () => {
+      setDisplayedRack(rack);
+      setPlacedTiles(new Set<EphemeralTile>());
+      setPlacedTilesTempScore(undefined);
+    };
     return (
       <Modal
         className="response-modal"
@@ -497,6 +502,7 @@ export const SinglePuzzle = (props: Props) => {
         title="Try again!"
         onCancel={() => {
           setShowResponseModalWrong(false);
+          reset();
         }}
         footer={[
           <Button
@@ -505,10 +511,7 @@ export const SinglePuzzle = (props: Props) => {
             autoFocus
             onClick={() => {
               setShowResponseModalWrong(false);
-              //Reset rack so they can try again
-              setDisplayedRack(rack);
-              setPlacedTiles(new Set<EphemeralTile>());
-              setPlacedTilesTempScore(undefined);
+              reset();
             }}
           >
             Keep trying
@@ -599,7 +602,7 @@ export const SinglePuzzle = (props: Props) => {
             <Notepad includeCard />
           </React.Fragment>
         </div>
-        <div className="play-area">
+        <div className="play-area puzzle-area">
           {lexiconModal}
           {responseModalWrong}
           {responseModalCorrect}
