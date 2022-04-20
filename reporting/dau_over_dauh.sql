@@ -47,13 +47,53 @@ dauh_report AS
     DATE_TRUNC('day',created_at) AS day,
 	COUNT(DISTINCT player) AS dau_h
 FROM duplicated_games_between_humans
+GROUP BY 1),
+dau_puzzles AS
+(SELECT
+   created_at,
+   user_id AS player
+FROM public.puzzle_attempts),
+dau_puzzles_report AS
+(SELECT
+	DATE_TRUNC('day',dau_puzzles.created_at) AS day,
+	COUNT(DISTINCT player) AS dau_puzzles
+FROM dau_puzzles
+LEFT JOIN public.users ON dau_puzzles.player = users.id
+WHERE NOT users.internal_bot
+GROUP BY 1),
+games_plus_puzzle_attempts AS
+((SELECT
+    created_at,
+    player0_id AS player
+FROM public.games)
+UNION ALL
+(SELECT
+    created_at,
+    player1_id AS player
+FROM public.games)
+UNION ALL
+(SELECT
+   created_at,
+   user_id AS player
+FROM public.puzzle_attempts)),
+games_plus_puzzles_report AS
+(SELECT
+	DATE_TRUNC('day',games_plus_puzzle_attempts.created_at) AS day,
+	COUNT(DISTINCT player) AS dau_plus_puzzlers
+FROM games_plus_puzzle_attempts
+LEFT JOIN public.users ON games_plus_puzzle_attempts.player = users.id
+WHERE NOT (users.internal_bot OR users.id IN (42,43,44,45,46))
 GROUP BY 1)
 
 SELECT
   dau_report.day,
   dau_report.dau,
   dauh_report.dau_h,
-  TRUNC(100.0*dauh_report.dau_h/dau_report.dau,1) AS ratio
+  TRUNC(100.0*dauh_report.dau_h/dau_report.dau,1) AS ratio,
+  dau_puzzles_report.dau_puzzles,
+  games_plus_puzzles_report.dau_plus_puzzlers
 FROM dau_report
 LEFT JOIN dauh_report ON dau_report.day = dauh_report.day
+LEFT JOIN dau_puzzles_report ON dau_report.day = dau_puzzles_report.day
+LEFT JOIN games_plus_puzzles_report ON dau_report.day = games_plus_puzzles_report.day
 ORDER BY 1 DESC
