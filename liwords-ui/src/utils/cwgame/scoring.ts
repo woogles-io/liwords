@@ -216,11 +216,9 @@ export const touchesBoardTile = (t1: EphemeralTile, board: Board): boolean => {
     const row = t1.row + dirsToLook[i][0];
     const col = t1.col + dirsToLook[i][1];
     const letter = board.letterAt(row, col);
-    const isOutOfBounds = (coord) =>
+    const isOutOfBounds = (coord: number) =>
       coord < 0 || coord > board.gridLayout.length - 1;
     if (letter !== EmptySpace && !isOutOfBounds(row) && !isOutOfBounds(col)) {
-      console.log(board);
-      console.log('returning true for ', row, col);
       return true;
     }
   }
