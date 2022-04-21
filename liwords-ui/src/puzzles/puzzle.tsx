@@ -1,5 +1,5 @@
 import { HomeOutlined } from '@ant-design/icons';
-import { Button, Card, Form, message, Modal } from 'antd';
+import { Button, Card, Form, message, Modal, Select } from 'antd';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { LiwordsAPIError, postProto } from '../api/api';
@@ -41,7 +41,7 @@ import {
   GameEvent,
   GameHistory,
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
-import { excludedLexica, LexiconFormItem } from '../shared/lexicon_display';
+import { MatchLexiconDisplay, puzzleLexica } from '../shared/lexicon_display';
 import { Store } from 'antd/lib/form/interface';
 
 import {
@@ -56,6 +56,7 @@ import { useFirefoxPatch } from '../utils/hooks';
 import { useMountedState } from '../utils/mounted';
 import { BoopSounds } from '../sound/boop';
 import { GameInfoRequest } from '../gen/api/proto/game_service/game_service_pb';
+import { isLegalPlay } from '../utils/cwgame/scoring';
 
 const doNothing = () => {};
 
@@ -116,8 +117,12 @@ export const SinglePuzzle = (props: Props) => {
   const { username, loggedIn } = loginState;
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
-  const { setDisplayedRack, setPlacedTiles, setPlacedTilesTempScore } =
-    useTentativeTileContext();
+  const {
+    setDisplayedRack,
+    setPlacedTiles,
+    setPlacedTilesTempScore,
+    placedTiles,
+  } = useTentativeTileContext();
 
   const navigate = useNavigate();
 
@@ -480,8 +485,26 @@ export const SinglePuzzle = (props: Props) => {
               }
             }}
           >
-            <LexiconFormItem excludedLexica={excludedLexica(false, false)} />
+            <Form.Item
+              label="Dictionary"
+              name="lexicon"
+              rules={[
+                {
+                  required: true,
+                },
+              ]}
+            >
+              <Select className="puzzle-lexicon-selection" size="large">
+                {puzzleLexica.map((k) => (
+                  <Select.Option key={k} value={k}>
+                    <MatchLexiconDisplay lexiconCode={k} useShortDescription />
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
           </Form>
+
+          <p>More languages are coming soon! Watch for an announcement.</p>
         </Modal>
       );
     }
@@ -581,6 +604,14 @@ export const SinglePuzzle = (props: Props) => {
     );
   }, [showResponseModalCorrect, puzzleInfo, loadNewPuzzle]);
 
+  const allowAttempt = useMemo(() => {
+    return (
+      isLegalPlay(Array.from(placedTiles.values()), gameContext.board) &&
+      loggedIn &&
+      puzzleInfo.solved === PuzzleStatus.UNANSWERED
+    );
+  }, [placedTiles, gameContext.board, loggedIn, puzzleInfo.solved]);
+
   let ret = (
     <div className="game-container puzzle-container">
       <TopBar />
@@ -615,11 +646,7 @@ export const SinglePuzzle = (props: Props) => {
               events={gameContext.turns}
               gameID={''} /* no game id for a puzzle */
               sendSocketMsg={doNothing}
-              sendGameplayEvent={
-                loggedIn && puzzleInfo.solved === PuzzleStatus.UNANSWERED
-                  ? attemptPuzzle
-                  : doNothing
-              }
+              sendGameplayEvent={allowAttempt ? attemptPuzzle : doNothing}
               gameDone={false}
               playerMeta={[]}
               vsBot={false} /* doesn't matter */
