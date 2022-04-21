@@ -858,9 +858,9 @@ func sanitizeHistory(hist *macondopb.GameHistory) {
 	hist.Players[0].Nickname = commontest.DefaultPlayerOneInfo.Nickname
 	hist.Players[0].RealName = commontest.DefaultPlayerOneInfo.FullName
 	hist.Players[0].UserId = commontest.DefaultPlayerOneInfo.UserId
-	hist.Players[0].Nickname = commontest.DefaultPlayerTwoInfo.Nickname
-	hist.Players[0].RealName = commontest.DefaultPlayerTwoInfo.FullName
-	hist.Players[0].UserId = commontest.DefaultPlayerTwoInfo.UserId
+	hist.Players[1].Nickname = commontest.DefaultPlayerTwoInfo.Nickname
+	hist.Players[1].RealName = commontest.DefaultPlayerTwoInfo.FullName
+	hist.Players[1].UserId = commontest.DefaultPlayerTwoInfo.UserId
 }
 
 func (a *answer) Value() (driver.Value, error) {
