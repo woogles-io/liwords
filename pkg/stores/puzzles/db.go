@@ -856,8 +856,8 @@ func sanitizeHistory(hist *macondopb.GameHistory) {
 	}
 
 	hist.Players[0].Nickname = commontest.DefaultPlayerOneInfo.Nickname
-	hist.Players[0].RealName = commontest.DefaultPlayerOneInfo.Nickname
-	hist.Players[0].UserId = commontest.DefaultPlayerOneInfo.Nickname
+	hist.Players[0].RealName = commontest.DefaultPlayerOneInfo.FullName
+	hist.Players[0].UserId = commontest.DefaultPlayerOneInfo.UserId
 	hist.Players[0].Nickname = commontest.DefaultPlayerTwoInfo.Nickname
 	hist.Players[0].RealName = commontest.DefaultPlayerTwoInfo.FullName
 	hist.Players[0].UserId = commontest.DefaultPlayerTwoInfo.UserId
