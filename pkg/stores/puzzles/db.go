@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	commontest "github.com/domino14/liwords/pkg/common"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/glicko"
 	"github.com/domino14/liwords/pkg/stores/common"
@@ -316,6 +317,10 @@ func (s *DBStore) GetPuzzle(ctx context.Context, userUUID string, puzzleUUID str
 		return nil, "", -1, nil, time.Time{}, time.Time{}, err
 	}
 
+	if len(hist.Players) < 2 {
+		return nil, "", -1, nil, time.Time{}, time.Time{}, fmt.Errorf("history has less than two players for puzzle %s", puzzleUUID)
+	}
+
 	// Create the puzzle attempt if it does not exist
 	// attemptExists will also be true if the user is not logged in
 	if userLoggedIn {
@@ -364,6 +369,8 @@ func (s *DBStore) GetPuzzle(ctx context.Context, userUUID string, puzzleUUID str
 	hist.OriginalGcg = ""
 	hist.IdAuth = ""
 	hist.Uid = ""
+
+	sanitizeHistory(hist)
 
 	return hist, beforeText, attempts, status, firstAttemptTime, lastAttemptTime, nil
 }
@@ -837,6 +844,23 @@ func getRandomPuzzleDBID(ctx context.Context, tx pgx.Tx) (*sql.NullInt64, error)
 	var id sql.NullInt64
 	err := tx.QueryRow(ctx, "SELECT FLOOR(RANDOM() * MAX(id)) FROM puzzles").Scan(&id)
 	return &id, err
+}
+
+func sanitizeHistory(hist *macondopb.GameHistory) {
+	playerSanitizationMap := map[string]string{
+		hist.Players[0].Nickname: commontest.DefaultPlayerOneInfo.Nickname,
+		hist.Players[1].Nickname: commontest.DefaultPlayerTwoInfo.Nickname,
+	}
+	for _, evt := range hist.Events {
+		evt.Nickname = playerSanitizationMap[evt.Nickname]
+	}
+
+	hist.Players[0].Nickname = commontest.DefaultPlayerOneInfo.Nickname
+	hist.Players[0].RealName = commontest.DefaultPlayerOneInfo.Nickname
+	hist.Players[0].UserId = commontest.DefaultPlayerOneInfo.Nickname
+	hist.Players[0].Nickname = commontest.DefaultPlayerTwoInfo.Nickname
+	hist.Players[0].RealName = commontest.DefaultPlayerTwoInfo.FullName
+	hist.Players[0].UserId = commontest.DefaultPlayerTwoInfo.UserId
 }
 
 func (a *answer) Value() (driver.Value, error) {
