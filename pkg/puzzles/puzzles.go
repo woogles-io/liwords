@@ -274,9 +274,10 @@ func answerHitsCenterSquare(answer *macondopb.GameEvent) bool {
 	}
 
 	centerTileIndex := 7 - startSquare
+	runeTiles := []rune(answer.PlayedTiles)
 
-	return int(centerTileIndex) < len(answer.PlayedTiles) &&
-		answer.PlayedTiles[centerTileIndex] != alphabet.ASCIIPlayedThrough
+	return int(centerTileIndex) < len(runeTiles) &&
+		runeTiles[centerTileIndex] != alphabet.ASCIIPlayedThrough
 }
 
 func countPlayedTiles(ge *macondopb.GameEvent) int {
