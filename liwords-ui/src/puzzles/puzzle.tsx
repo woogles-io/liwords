@@ -56,6 +56,7 @@ import { useFirefoxPatch } from '../utils/hooks';
 import { useMountedState } from '../utils/mounted';
 import { BoopSounds } from '../sound/boop';
 import { GameInfoRequest } from '../gen/api/proto/game_service/game_service_pb';
+import { isLegalPlay } from '../utils/cwgame/scoring';
 
 const doNothing = () => {};
 
@@ -116,8 +117,12 @@ export const SinglePuzzle = (props: Props) => {
   const { username, loggedIn } = loginState;
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
-  const { setDisplayedRack, setPlacedTiles, setPlacedTilesTempScore } =
-    useTentativeTileContext();
+  const {
+    setDisplayedRack,
+    setPlacedTiles,
+    setPlacedTilesTempScore,
+    placedTiles,
+  } = useTentativeTileContext();
 
   const navigate = useNavigate();
 
@@ -599,6 +604,14 @@ export const SinglePuzzle = (props: Props) => {
     );
   }, [showResponseModalCorrect, puzzleInfo, loadNewPuzzle]);
 
+  const allowAttempt = useMemo(() => {
+    return (
+      isLegalPlay(Array.from(placedTiles.values()), gameContext.board) &&
+      loggedIn &&
+      puzzleInfo.solved === PuzzleStatus.UNANSWERED
+    );
+  }, [placedTiles, gameContext.board, loggedIn, puzzleInfo.solved]);
+
   let ret = (
     <div className="game-container puzzle-container">
       <TopBar />
@@ -633,11 +646,7 @@ export const SinglePuzzle = (props: Props) => {
               events={gameContext.turns}
               gameID={''} /* no game id for a puzzle */
               sendSocketMsg={doNothing}
-              sendGameplayEvent={
-                loggedIn && puzzleInfo.solved === PuzzleStatus.UNANSWERED
-                  ? attemptPuzzle
-                  : doNothing
-              }
+              sendGameplayEvent={allowAttempt ? attemptPuzzle : doNothing}
               gameDone={false}
               playerMeta={[]}
               vsBot={false} /* doesn't matter */
