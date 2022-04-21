@@ -126,6 +126,34 @@
       display: none;
     }
   }
+  .tile.second-color.second-color {
+    @include colorModed() {
+      background: m($tile-background);
+      border: m($tile-border);
+    }
+    @include userTile() {
+      background: ut($tile-background);
+      border: ut($tile-border);
+    }
+    &.blank p.rune {
+      @include colorModed() {
+        color: m($tile-blank-text);
+        background-color: m($tile-background-secondary);
+      }
+      @include userTile() {
+        color: ut($tile-blank-text);
+        background: ut($tile-background-secondary);
+      }
+    }
+    p.rune, .point-value {
+      @include colorModed() {
+        color: m($background);
+      }
+      @include userTile() {
+        color: ut($tile-text);
+      }
+    }
+  }
   .tile.tentative {
     @include colorModed() {
       border: 1px solid m($tile-last-background);
@@ -158,7 +186,6 @@
       }
     }
   }
-
 
 }
 .puzzle-container .stars, .ant-modal-body .stars {

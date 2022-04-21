@@ -772,7 +772,7 @@ p.streak-loss {
   }
 }
 /* This used to be .tile.last-played, and doubling seems necessary. */
-.play-area:not(.puzzle-area) .tile.second-color.second-color {
+.tile.second-color.second-color {
   @include colorModed() {
     border: 1px solid m($tile-last-background);
     background: m($tile-last-background);
