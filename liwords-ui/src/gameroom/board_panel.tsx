@@ -723,7 +723,7 @@ export const BoardPanel = React.memo((props: Props) => {
         boardMessage = `${evt.getNickname()} exchanged ${evt.getExchanged()}`;
         break;
     }
-    if (boardMessage) {
+    if (boardMessage && !props.puzzleMode) {
       message.info(
         {
           content: boardMessage,
@@ -734,7 +734,7 @@ export const BoardPanel = React.memo((props: Props) => {
         undefined
       );
     }
-  }, [props.events, props.username]);
+  }, [props.events, props.username, props.puzzleMode]);
 
   const squareClicked = useCallback(
     (row: number, col: number) => {
