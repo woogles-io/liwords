@@ -2,7 +2,6 @@ package bus
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -274,11 +273,9 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 }
 
 func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTournamentGame, userID, connID string) error {
-	if !evt.Unready {
-		err := b.errIfGamesDisabled(ctx)
-		if err != nil {
-			return err
-		}
+	err := b.errIfGamesDisabled(ctx)
+	if err != nil {
+		return err
 	}
 
 	reqUser, err := b.userStore.GetByUUID(ctx, userID)
@@ -293,8 +290,9 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 		return err
 	}
 
-	playerIDs, bothReady, err := tournament.SetReadyForGame(ctx, b.tournamentStore, t, fullUserID, connID,
-		evt.Division, int(evt.Round), int(evt.GameIndex), evt.Unready)
+	playerIDs, bothReady, err := tournament.VerifyNewTournamentGame(
+		ctx, b.tournamentStore, t, fullUserID,
+		evt.Division, int(evt.Round), int(evt.GameIndex))
 
 	if err != nil {
 		return err
@@ -314,24 +312,7 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 		b.pubToUser(s[0], ngevt, "")
 	}
 
-	if !bothReady {
-		if !evt.Unready {
-			// Store temporary ready state in Redis.
-			conn := b.redisPool.Get()
-			defer conn.Close()
-			bts, err := json.Marshal(evt)
-			if err != nil {
-				return err
-			}
-			_, err = conn.Do("SET", "tready:"+connID, bts, "EX", TournamentReadyExpire)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-	redisConn := b.redisPool.Get()
-	defer redisConn.Close()
+	///// CHECK BOTHREADY
 
 	// Both players are ready! Instantiate and start a new game.
 	foundUs := false
@@ -354,11 +335,6 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 			otherUserIdx = idx
 		}
 		connIDs[idx] = splitid[2]
-		// Delete the ready state if it existed in Redis.
-		_, err = redisConn.Do("DEL", "tready:"+connIDs[idx])
-		if err != nil {
-			return err
-		}
 	}
 	if !foundUs {
 		return errors.New("unexpected behavior; did not find us")

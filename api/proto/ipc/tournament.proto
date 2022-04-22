@@ -43,7 +43,7 @@ message TournamentRoundStarted {
   google.protobuf.Timestamp deadline = 5;
 }
 
-// This can be sent from the user to the tournament or vice-versa.
+// This can be sent from the user to the tournament.
 message ReadyForTournamentGame {
   string tournament_id = 1;
   string division = 2;
@@ -51,7 +51,9 @@ message ReadyForTournamentGame {
   string player_id = 4;
   int32 game_index = 5; // within a matchplay type tournament where several
                         // games share a round.
-  bool unready = 6;     // if true, this is a NOT-ready message.
+  // deprecate unready, since we cannot do this anymore. ReadyForTournamentGame
+  // will actually instantiate a game or join an instantiated game.
+  bool unready = 6 [ deprecated = true ];
 }
 
 enum TournamentGameResult {
@@ -140,7 +142,7 @@ message Pairing {
   int32 round = 2;
   repeated TournamentGame games = 3; // can be a list, for elimination tourneys
   repeated TournamentGameResult outcomes = 4;
-  repeated string ready_states = 5;
+  repeated string ready_states = 5 [deprecated = true];
 }
 
 message PlayerStanding {

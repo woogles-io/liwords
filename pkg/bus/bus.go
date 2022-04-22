@@ -5,7 +5,6 @@ package bus
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -809,40 +808,10 @@ func (b *Bus) leaveTab(ctx context.Context, userID, connID string) error {
 	if err != nil {
 		return err
 	}
-	// Delete any tournament ready messages
-	err = b.deleteTournamentReadyMsgs(ctx, userID, connID)
-	if err != nil {
-		return err
-	}
 	if err = b.broadcastChannelChanges(ctx, oldChannels, newChannels, userID, username); err != nil {
 		return err
 	}
 	return nil
-}
-
-func (b *Bus) deleteTournamentReadyMsgs(ctx context.Context, userID, connID string) error {
-	// When a user leaves the site, we want to make sure to clear any of their
-	// "tournament ready" messages in the actual tournament.
-	conn := b.redisPool.Get()
-	defer conn.Close()
-	bts, err := redis.Bytes(conn.Do("GET", "tready:"+connID))
-	if err != nil {
-		// There are probably no such messages for this connection.
-		return nil
-	}
-	readyEvt := pb.ReadyForTournamentGame{}
-	err = json.Unmarshal(bts, &readyEvt)
-	if err != nil {
-		return err
-	}
-	readyEvt.Unready = true
-	err = b.readyForTournamentGame(ctx, &readyEvt, userID, connID)
-	if err != nil {
-		return err
-	}
-	// and delete the ready event from redis
-	_, err = conn.Do("DEL", "tready:"+connID)
-	return err
 }
 
 func (b *Bus) leaveSite(ctx context.Context, userID string) error {

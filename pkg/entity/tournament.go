@@ -29,8 +29,7 @@ type DivisionManager interface {
 	StartRound(bool) error
 	IsRoundStartable() error
 	GetXHRResponse() (*pb.TournamentDivisionDataResponse, error)
-	SetReadyForGame(userID, connID string, round, gameIndex int, unready bool) ([]string, bool, error)
-	ClearReadyStates(userID string, round, gameIndex int) ([]*pb.Pairing, error)
+	VerifyNewTournamentGame(userID string, round, gameIndex int) ([]string, bool, error)
 	ResetToBeginning() error
 }
 

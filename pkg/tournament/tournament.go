@@ -1184,9 +1184,9 @@ func GetXHRResponse(ctx context.Context, ts TournamentStore, id string) (*ipc.Fu
 	return response, nil
 }
 
-func SetReadyForGame(ctx context.Context, ts TournamentStore, t *entity.Tournament,
+func VerifyNewTournamentGame(ctx context.Context, ts TournamentStore, t *entity.Tournament,
 	playerID, connID, division string,
-	round, gameIndex int, unready bool) ([]string, bool, error) {
+	round, gameIndex int) ([]string, bool, error) {
 
 	t.Lock()
 	defer t.Unlock()
@@ -1199,40 +1199,40 @@ func SetReadyForGame(ctx context.Context, ts TournamentStore, t *entity.Tourname
 	if !ok {
 		return nil, false, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
-	connIDs, bothReady, err := t.Divisions[division].DivisionManager.SetReadyForGame(playerID, connID, round, gameIndex, unready)
+	playerIDs, shouldInstantiateGame, err := t.Divisions[division].DivisionManager.VerifyNewTournamentGame(playerID, round, gameIndex)
 	if err != nil {
 		return nil, false, err
 	}
-	return connIDs, bothReady, ts.Set(ctx, t)
+	return playerIDs, shouldInstantiateGame, ts.Set(ctx, t)
 }
 
-func ClearReadyStates(ctx context.Context, ts TournamentStore, t *entity.Tournament,
-	division, userID string, round, gameIndex int) error {
+// func ClearReadyStates(ctx context.Context, ts TournamentStore, t *entity.Tournament,
+// 	division, userID string, round, gameIndex int) error {
 
-	t.Lock()
-	defer t.Unlock()
+// 	t.Lock()
+// 	defer t.Unlock()
 
-	if t.IsFinished {
-		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
-	}
+// 	if t.IsFinished {
+// 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+// 	}
 
-	_, ok := t.Divisions[division]
-	if !ok {
-		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
-	}
+// 	_, ok := t.Divisions[division]
+// 	if !ok {
+// 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+// 	}
 
-	pairing, err := t.Divisions[division].DivisionManager.ClearReadyStates(userID, round, gameIndex)
-	if err != nil {
-		return err
-	}
-	err = ts.Set(ctx, t)
-	if err != nil {
-		return err
-	}
-	pairingsMessage := PairingsToResponse(t.UUID, division, pairing, make(map[int32]*ipc.RoundStandings))
-	wrapped := entity.WrapEvent(pairingsMessage, ipc.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
-	return SendTournamentMessage(ctx, ts, t.UUID, wrapped)
-}
+// 	pairing, err := t.Divisions[division].DivisionManager.ClearReadyStates(userID, round, gameIndex)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	err = ts.Set(ctx, t)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	pairingsMessage := PairingsToResponse(t.UUID, division, pairing, make(map[int32]*ipc.RoundStandings))
+// 	wrapped := entity.WrapEvent(pairingsMessage, ipc.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
+// 	return SendTournamentMessage(ctx, ts, t.UUID, wrapped)
+// }
 
 func TournamentDataResponse(ctx context.Context, ts TournamentStore, id string) (*ipc.TournamentDataResponse, error) {
 	t, err := ts.Get(ctx, id)

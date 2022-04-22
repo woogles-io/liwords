@@ -436,8 +436,6 @@ const getPairing = (
 // The "Ready" button and pairings should be displayed based on:
 //    - the tournament having started
 //    - player not having yet started the current round's game
-//      (how do we determine that? a combination of the live games
-//       currently ongoing and a game result already being in for this game?)
 const tourneyStatus = (
   division: Division,
   activeGames: Array<ActiveGame>,

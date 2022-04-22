@@ -336,7 +336,6 @@ func redoCancelledGamePairings(ctx context.Context, tstore tournament.Tournament
 	userID := g.Quickdata.PlayerInfo[0].UserId + ":" + g.Quickdata.PlayerInfo[0].Nickname
 
 	return tournament.ClearReadyStates(ctx, tstore, t, div, userID, round, gidx)
-
 }
 
 // AbortGame aborts a game. This should be done for games that never started,
