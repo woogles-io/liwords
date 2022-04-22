@@ -469,17 +469,22 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 	if err != nil {
 		return err
 	}
+	fullID := user.TournamentID()
+	log.Info().
+		Str("requester", fullID).
+		Interface("req", req).
+		Str("req-name", string(req.ProtoReflect().Type().Descriptor().FullName())).
+		Msg("authenticated-tournament-request")
+
 	// Site admins are always allowed to modify any tournaments. (There should only be a small number of these)
 	if user.IsAdmin {
 		return nil
 	}
-
 	t, err := ts.tournamentStore.Get(ctx, id)
 	if err != nil {
 		return twirp.InternalErrorWith(err)
 	}
-	fullID := user.TournamentID()
-	log.Info().Str("director", fullID).Interface("req", req).Msg("authenticated-tournament-request")
+
 	log.Debug().Str("fullID", fullID).Interface("persons", t.Directors.Persons).Msg("authenticating-director")
 
 	if authenticateExecutive && fullID != t.ExecutiveDirector {
