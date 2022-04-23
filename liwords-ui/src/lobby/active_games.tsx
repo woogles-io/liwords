@@ -160,7 +160,7 @@ export const ActiveGames = (props: Props) => {
           value: l,
         })
       ),
-      filteredValue: sortByLexicon ? [sortByLexicon] : [],
+      defaultFilteredValue: sortByLexicon ? [sortByLexicon] : [],
       filterMultiple: false,
       onFilter: (
         value: string | number | boolean,
