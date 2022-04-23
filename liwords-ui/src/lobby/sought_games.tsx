@@ -1,5 +1,11 @@
 import { Popconfirm, Table, Tooltip } from 'antd';
-import React, { ReactNode } from 'react';
+import {
+  FilterValue,
+  SorterResult,
+  TableCurrentDataSource,
+  TablePaginationConfig,
+} from 'antd/lib/table/interface';
+import React, { ReactNode, useCallback } from 'react';
 import { FundOutlined, ExportOutlined } from '@ant-design/icons/lib';
 import {
   calculateTotalTime,
@@ -76,6 +82,9 @@ type Props = {
 export const SoughtGames = (props: Props) => {
   const { useState } = useMountedState();
   const [cancelVisible, setCancelVisible] = useState(false);
+  const [sortByLexicon, setSortByLexicon] = useState(
+    localStorage.getItem('sortByLexicon')
+  );
   const columns = [
     {
       title: 'Player',
@@ -102,6 +111,7 @@ export const SoughtGames = (props: Props) => {
           value: l,
         })
       ),
+      defaultFilteredValue: sortByLexicon ? [sortByLexicon] : [],
       filterMultiple: false,
       onFilter: (
         value: string | number | boolean,
@@ -123,6 +133,34 @@ export const SoughtGames = (props: Props) => {
       key: 'details',
     },
   ];
+
+  const handleChange = useCallback(
+    (
+      _pagination: TablePaginationConfig,
+      filters: Record<string, FilterValue | null>,
+      _sorter:
+        | SorterResult<SoughtGameTableData>
+        | SorterResult<SoughtGameTableData>[],
+      extra: TableCurrentDataSource<SoughtGameTableData>
+    ) => {
+      if (extra.action === 'filter') {
+        if (filters.lexicon) {
+          if (filters.lexicon.length === 1) {
+            const lexicon = filters.lexicon[0] as string;
+            if (lexicon !== sortByLexicon) {
+              setSortByLexicon(lexicon);
+              localStorage.setItem('sortByLexicon', lexicon);
+            }
+          }
+        } else {
+          // filter is reset, remove lexicon
+          setSortByLexicon(null);
+          localStorage.removeItem('sortByLexicon');
+        }
+      }
+    },
+    []
+  );
 
   type SoughtGameTableData = {
     seeker: string | ReactNode;
@@ -240,6 +278,7 @@ export const SoughtGames = (props: Props) => {
           }
           return 'game-listing';
         }}
+        onChange={handleChange}
       />
     </>
   );
