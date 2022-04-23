@@ -8,7 +8,6 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/stores/game"
 	pb "github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	"github.com/matryer/is"
 )
@@ -33,7 +32,11 @@ var DefaultPuzzleGenerationJobRequest = &pb.PuzzleGenerationJobRequest{
 
 func TestPuzzleGeneration(t *testing.T) {
 	is := is.New(t)
-	db, ps, us, gs, _, _ := RecreateDB()
+	dbc, _, _ := RecreateDB()
+	defer func() {
+		dbc.cleanup()
+	}()
+	gs, ps := dbc.gs, dbc.ps
 	cfg := &config.Config{}
 	cfg.Load(nil)
 	cfg.MacondoConfig.DefaultLexicon = DefaultPuzzleGenerationJobRequest.Lexicon
@@ -170,8 +173,4 @@ func TestPuzzleGeneration(t *testing.T) {
 	is.Equal(errorStatusOption, nil)
 	is.Equal(totalGames, 20)
 
-	us.Disconnect()
-	gs.(*game.Cache).Disconnect()
-	ps.Disconnect()
-	db.Close()
 }

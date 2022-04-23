@@ -484,34 +484,40 @@ func (s *DBStore) SubmitAnswer(ctx context.Context, userUUID string, ratingKey e
 	}
 
 	if newUserRating != nil && newPuzzleRating != nil {
-		result, err := tx.Exec(ctx, `UPDATE puzzles SET rating = $1 WHERE id = $2`, newPuzzleRating, pid)
-		if err != nil {
-			return err
-		}
+		// XXX Uncomment after re-enabling ratings:
+		/*
+			result, err := tx.Exec(ctx, `UPDATE puzzles SET rating = $1 WHERE id = $2`, newPuzzleRating, pid)
+			if err != nil {
+				return err
+			}
 
-		rowsAffected := result.RowsAffected()
-		if err != nil {
-			return err
-		}
-		if rowsAffected != 1 {
-			return entity.NewWooglesError(ipc.WooglesError_PUZZLE_SUBMIT_ANSWER_PUZZLE_ID_NOT_FOUND, userUUID, puzzleUUID)
-		}
+			rowsAffected := result.RowsAffected()
+			if err != nil {
+				return err
+			}
+			if rowsAffected != 1 {
+				return entity.NewWooglesError(ipc.WooglesError_PUZZLE_SUBMIT_ANSWER_PUZZLE_ID_NOT_FOUND, userUUID, puzzleUUID)
+			}
 
-		err = common.UpdateUserRating(ctx, tx, uid, ratingKey, newUserRating)
-		if err != nil {
-			return err
-		}
-
+			err = common.UpdateUserRating(ctx, tx, uid, ratingKey, newUserRating)
+			if err != nil {
+				return err
+			}
+		*/
 		attempts := 1
 
 		if showSolution {
 			attempts = 0
 		}
 
-		result, err = tx.Exec(ctx, `UPDATE puzzle_attempts SET correct = $1, attempts = $2, new_user_rating = $3, new_puzzle_rating = $4, created_at = NOW(), updated_at = NOW() WHERE puzzle_id = $5 AND user_id = $6`,
-			newCorrectOption, attempts, newUserRating, newPuzzleRating, pid, uid)
+		// XXX Uncomment after re-enabling ratings
+		//result, err = tx.Exec(ctx, `UPDATE puzzle_attempts SET correct = $1, attempts = $2, new_user_rating = $3, new_puzzle_rating = $4, created_at = NOW(), updated_at = NOW() WHERE puzzle_id = $5 AND user_id = $6`,
+		//			newCorrectOption, attempts, newUserRating, newPuzzleRating, pid, uid)
 
-		rowsAffected = result.RowsAffected()
+		result, err := tx.Exec(ctx, `UPDATE puzzle_attempts SET correct = $1, attempts = $2, created_at = NOW(), updated_at = NOW() WHERE puzzle_id = $3 AND user_id = $4`,
+			newCorrectOption, attempts, pid, uid)
+
+		rowsAffected := result.RowsAffected()
 		if err != nil {
 			return err
 		}
@@ -734,10 +740,10 @@ func (s *DBStore) GetPotentialPuzzleGames(ctx context.Context, limit int, offset
 	rows, err := s.dbPool.Query(ctx,
 		`SELECT games.uuid FROM (select * from games order by id desc limit 20000) games
 		left join puzzles on puzzles.game_id = games.id
-		where puzzles.id is null AND (stats->'d1'->'Challenged Phonies'->'t' = '0') 
-		AND (stats->'d2'->'Challenged Phonies'->'t' = '0') 
-		AND (stats->'d1'->'Unchallenged Phonies'->'t' = '0') 
-		AND (stats->'d2'->'Unchallenged Phonies'->'t' = '0') 
+		where puzzles.id is null AND (stats->'d1'->'Challenged Phonies'->'t' = '0')
+		AND (stats->'d2'->'Challenged Phonies'->'t' = '0')
+		AND (stats->'d1'->'Unchallenged Phonies'->'t' = '0')
+		AND (stats->'d2'->'Unchallenged Phonies'->'t' = '0')
 		AND game_end_reason not in ($1, $2, $3)
 		ORDER BY games.id DESC LIMIT $4 OFFSET $5`,
 		ipc.GameEndReason_NONE, ipc.GameEndReason_ABORTED, ipc.GameEndReason_CANCELLED, limit, offset)

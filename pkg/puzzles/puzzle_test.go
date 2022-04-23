@@ -56,9 +56,28 @@ func gameEventToClientGameplayEvent(evt *pb.GameEvent) *ipc.ClientGameplayEvent 
 	return cge
 }
 
+type DBController struct {
+	pool *pgxpool.Pool
+	ps   *puzzlesstore.DBStore
+	us   *user.DBStore
+	gs   gameplay.GameStore
+}
+
+func (dbc *DBController) cleanup() {
+	dbc.us.Disconnect()
+	dbc.gs.(*gamestore.Cache).Disconnect()
+	dbc.ps.Disconnect()
+	dbc.pool.Close()
+}
+
 func TestPuzzlesMain(t *testing.T) {
 	is := is.New(t)
-	pool, ps, us, gs, authoredPuzzles, totalPuzzles := RecreateDB()
+	dbc, authoredPuzzles, totalPuzzles := RecreateDB()
+	defer func() {
+		dbc.cleanup()
+	}()
+	pool, ps := dbc.pool, dbc.ps
+
 	ctx := context.Background()
 
 	rk := ratingKey(common.DefaultGameReq)
@@ -132,10 +151,13 @@ func TestPuzzlesMain(t *testing.T) {
 	is.NoErr(err)
 
 	// User rating should go down, puzzle rating should go up
-	is.True(float64(glicko.InitialRating) < newPuzzleRating.Rating)
-	is.True(float64(glicko.InitialRatingDeviation) > newPuzzleRating.RatingDeviation)
-	is.True(float64(glicko.InitialRating) > newUserRating.Rating)
-	is.True(float64(glicko.InitialRatingDeviation) > newUserRating.RatingDeviation)
+	// XXX restore after re-enabling ratings.
+	/*
+		is.True(float64(glicko.InitialRating) < newPuzzleRating.Rating)
+		is.True(float64(glicko.InitialRatingDeviation) > newPuzzleRating.RatingDeviation)
+		is.True(float64(glicko.InitialRating) > newUserRating.Rating)
+		is.True(float64(glicko.InitialRatingDeviation) > newUserRating.RatingDeviation)
+	*/
 	attempts, recordedCorrect, err := getPuzzleAttempt(ctx, pool, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
 	is.Equal(attempts, int32(1))
@@ -221,10 +243,13 @@ func TestPuzzlesMain(t *testing.T) {
 	is.True(userIsCorrect)
 	is.True(*status)
 	is.Equal(attempts, int32(1))
-	is.True(oldPuzzleRating.Rating > newPuzzleRating.Rating)
-	is.True(oldPuzzleRating.RatingDeviation > newPuzzleRating.RatingDeviation)
-	is.True(oldUserRating.Rating < newUserRating.Rating)
-	is.True(oldUserRating.RatingDeviation > newUserRating.RatingDeviation)
+	// XXX restore after re-enabling ratings
+	/*
+		is.True(oldPuzzleRating.Rating > newPuzzleRating.Rating)
+		is.True(oldPuzzleRating.RatingDeviation > newPuzzleRating.RatingDeviation)
+		is.True(oldUserRating.Rating < newUserRating.Rating)
+		is.True(oldUserRating.RatingDeviation > newUserRating.RatingDeviation)
+	*/
 	attempts, recordedCorrect, err = getPuzzleAttempt(ctx, pool, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
 	is.Equal(attempts, int32(1))
@@ -481,15 +506,15 @@ func TestPuzzlesMain(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(pop, -1)
 
-	us.Disconnect()
-	gs.(*gamestore.Cache).Disconnect()
-	ps.Disconnect()
-	pool.Close()
 }
 
 func TestPuzzlesPrevious(t *testing.T) {
 	is := is.New(t)
-	pool, ps, us, gs, _, _ := RecreateDB()
+	dbc, _, _ := RecreateDB()
+	defer func() {
+		dbc.cleanup()
+	}()
+	ps := dbc.ps
 	ctx := context.Background()
 
 	// Ensure that getting the previous puzzle works
@@ -552,16 +577,15 @@ func TestPuzzlesPrevious(t *testing.T) {
 	actualPreviousPuzzle, err = GetPreviousPuzzleId(ctx, ps, PuzzlerUUID, puzzle5)
 	is.NoErr(err)
 	is.Equal(puzzle4, actualPreviousPuzzle)
-
-	us.Disconnect()
-	gs.(*gamestore.Cache).Disconnect()
-	ps.Disconnect()
-	pool.Close()
 }
 
 func TestPuzzlesStart(t *testing.T) {
 	is := is.New(t)
-	pool, ps, us, gs, _, _ := RecreateDB()
+	dbc, _, _ := RecreateDB()
+	defer func() {
+		dbc.cleanup()
+	}()
+	ps := dbc.ps
 	ctx := context.Background()
 
 	// This should work for users who are not logged in
@@ -610,15 +634,15 @@ func TestPuzzlesStart(t *testing.T) {
 	is.NoErr(err)
 	is.True(puzzle1 != actualStartPuzzle)
 
-	us.Disconnect()
-	gs.(*gamestore.Cache).Disconnect()
-	ps.Disconnect()
-	pool.Close()
 }
 
 func TestPuzzlesVerticalPlays(t *testing.T) {
 	is := is.New(t)
-	pool, ps, us, gs, _, _ := RecreateDB()
+	dbc, _, _ := RecreateDB()
+	defer func() {
+		dbc.cleanup()
+	}()
+	pool, ps := dbc.pool, dbc.ps
 	ctx := context.Background()
 
 	correct, err := transposedPlayByAnswerIsCorrect(ctx, pool, ps, "ZINNIA", PuzzlerUUID)
@@ -644,11 +668,6 @@ func TestPuzzlesVerticalPlays(t *testing.T) {
 	correct, err = transposedPlayByAnswerIsCorrect(ctx, pool, ps, "ERI.OID", PuzzlerUUID)
 	is.NoErr(err)
 	is.True(!correct)
-
-	us.Disconnect()
-	gs.(*gamestore.Cache).Disconnect()
-	ps.Disconnect()
-	pool.Close()
 }
 
 func TestUniqueSingleTileKey(t *testing.T) {
@@ -667,7 +686,7 @@ func TestUniqueSingleTileKey(t *testing.T) {
 		uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: pb.GameEvent_VERTICAL}))
 }
 
-func RecreateDB() (*pgxpool.Pool, *puzzlesstore.DBStore, *user.DBStore, gameplay.GameStore, int, int) {
+func RecreateDB() (*DBController, int, int) {
 	cfg := &config.Config{}
 	cfg.MacondoConfig = common.DefaultConfig
 	cfg.DBConnUri = commondb.TestingPostgresConnUri()
@@ -782,7 +801,9 @@ func RecreateDB() (*pgxpool.Pool, *puzzlesstore.DBStore, *user.DBStore, gameplay
 		totalPuzzles += len(pzls)
 	}
 
-	return pool, puzzlesStore, userStore, gameStore, authoredPuzzles, totalPuzzles
+	return &DBController{
+		pool: pool, ps: puzzlesStore, us: userStore, gs: gameStore,
+	}, authoredPuzzles, totalPuzzles
 }
 
 func getUserRating(ctx context.Context, pool *pgxpool.Pool, userUUID string, rk entity.VariantKey) (*entity.SingleRating, error) {
