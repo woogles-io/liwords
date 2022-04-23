@@ -562,7 +562,7 @@ export const SinglePuzzle = (props: Props) => {
 
   useEffect(() => {
     if (checkWordsPending) {
-      const whatevs = getWordsFormed(placedTiles, gameContext.board);
+      const whatevs = getWordsFormed(gameContext.board, placedTiles);
       console.warn('Words', whatevs);
       setCheckWordsPending(false);
       //Todo: Now run them by the endpoint

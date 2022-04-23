@@ -484,11 +484,13 @@ export const designateBlank = (
   };
 };
 
+// Return an array of words on the board.
+// If tiles are included, results will be limited to ones formed by them
 export const getWordsFormed = (
-  tiles: Set<EphemeralTile>,
-  board: Board
+  board: Board,
+  tiles: Set<EphemeralTile> | undefined
 ): string[] => {
-  const tentativeTiles = Array.from(tiles.values());
+  const tentativeTiles = tiles ? Array.from(tiles.values()) : [];
   const tilesLayout = board.letters;
   tentativeTiles.sort((a, b) => {
     if (a.col === b.col) {
@@ -507,7 +509,7 @@ export const getWordsFormed = (
     tentativeBoard[row][col] = letter;
     newTilesPlaced[row][col] = letter;
   }
-  let wordsFormed = new Set<string>();
+  const wordsFormed = new Set<string>();
   for (let y = 0; y < boardSize; y += 1) {
     for (let x = 0; x < boardSize; x += 1) {
       let usesTentativeTile = false;
@@ -522,8 +524,8 @@ export const getWordsFormed = (
           sh += tentativeBoard[y][i];
         }
       }
-      //Ignore if it's not a new word.
-      if (!usesTentativeTile) {
+      //Ignore if it's not a new word and new tiles were placed.
+      if (tiles && !usesTentativeTile) {
         sh = '';
       }
       usesTentativeTile = false;
@@ -538,7 +540,7 @@ export const getWordsFormed = (
           }
         }
       }
-      if (!usesTentativeTile) {
+      if (tiles && !usesTentativeTile) {
         sv = '';
       }
       const tempWords = [sh, sv].filter((word) => word.length >= 2);
