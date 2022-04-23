@@ -2,7 +2,7 @@ import { HomeOutlined } from '@ant-design/icons';
 import { Button, Card, Form, message, Modal, Select } from 'antd';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { LiwordsAPIError, postProto } from '../api/api';
+import { LiwordsAPIError, postProto, toAPIUrl } from '../api/api';
 import { Chat } from '../chat/chat';
 import { alphabetFromName } from '../constants/alphabets';
 import { TopBar } from '../navigation/topbar';
@@ -15,6 +15,7 @@ import {
 import { BoardPanel } from '../gameroom/board_panel';
 import {
   ChallengeRule,
+  DefineWordsResponse,
   protoChallengeRuleConvert,
 } from '../gameroom/game_info';
 import { calculatePuzzleScore, renderStars } from './puzzle_info';
@@ -58,6 +59,7 @@ import { BoopSounds } from '../sound/boop';
 import { GameInfoRequest } from '../gen/api/proto/game_service/game_service_pb';
 import { isLegalPlay } from '../utils/cwgame/scoring';
 import { getWordsFormed } from '../utils/cwgame/tile_placement';
+import axios from 'axios';
 
 const doNothing = () => {};
 
@@ -102,7 +104,6 @@ const defaultPuzzleInfo = {
 export const SinglePuzzle = (props: Props) => {
   const { useState } = useMountedState();
   const { puzzleID } = useParams();
-  // const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
   const [puzzleInfo, setPuzzleInfo] = useState<PuzzleInfo>(defaultPuzzleInfo);
   const [userLexicon, setUserLexicon] = useState<string | undefined>(
     localStorage?.getItem('puzzleLexicon') || undefined
@@ -114,6 +115,7 @@ export const SinglePuzzle = (props: Props) => {
   const [showResponseModalCorrect, setShowResponseModalCorrect] =
     useState(false);
   const [showLexiconModal, setShowLexiconModal] = useState(false);
+  const [phoniesPlayed, setPhoniesPlayed] = useState<string[]>([]);
   const [nextPending, setNextPending] = useState(false);
   const { loginState } = useLoginStateStoreContext();
   const { username, loggedIn } = loginState;
@@ -519,6 +521,7 @@ export const SinglePuzzle = (props: Props) => {
       setDisplayedRack(rack);
       setPlacedTiles(new Set<EphemeralTile>());
       setPlacedTilesTempScore(undefined);
+      setPhoniesPlayed([]);
     };
     return (
       <Modal
@@ -549,10 +552,16 @@ export const SinglePuzzle = (props: Props) => {
           {puzzleInfo.attempts}{' '}
           {puzzleInfo.attempts === 1 ? 'attempt' : 'attempts'}.
         </p>
+        {phoniesPlayed?.length > 0 && (
+          <p className={'invalid-plays'}>{`Invalid words played: ${phoniesPlayed
+            .map((x) => `${x}*`)
+            .join(', ')}`}</p>
+        )}
       </Modal>
     );
   }, [
     showResponseModalWrong,
+    phoniesPlayed,
     puzzleInfo,
     rack,
     setDisplayedRack,
@@ -562,12 +571,29 @@ export const SinglePuzzle = (props: Props) => {
 
   useEffect(() => {
     if (checkWordsPending) {
-      const whatevs = getWordsFormed(gameContext.board, placedTiles);
-      console.warn('Words', whatevs);
+      const wordsFormed = getWordsFormed(gameContext.board, placedTiles);
       setCheckWordsPending(false);
       //Todo: Now run them by the endpoint
+      axios
+        .post<DefineWordsResponse>(
+          toAPIUrl('word_service.WordService', 'DefineWords'),
+          {
+            lexicon: puzzleInfo.lexicon,
+            words: wordsFormed,
+            definitions: false,
+            anagrams: false,
+          }
+        )
+        .then((resp) => {
+          const wordsChecked = resp.data.results;
+          const phonies = Object.keys(wordsChecked).filter(
+            (w) => !wordsChecked[w].v
+          );
+          console.log('Phonies played: ', phonies);
+          setPhoniesPlayed(phonies);
+        });
     }
-  }, [checkWordsPending, placedTiles, gameContext.board]);
+  }, [checkWordsPending, placedTiles, gameContext.board, puzzleInfo.lexicon]);
 
   const responseModalCorrect = useMemo(() => {
     //TODO: different title for different scores
