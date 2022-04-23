@@ -483,3 +483,67 @@ export const designateBlank = (
     playScore: calculateTemporaryScore(newPlacedTiles, board, alphabet),
   };
 };
+
+export const getWordsFormed = (
+  tiles: Set<EphemeralTile>,
+  board: Board
+): string[] => {
+  const tentativeTiles = Array.from(tiles.values());
+  const tilesLayout = board.letters;
+  tentativeTiles.sort((a, b) => {
+    if (a.col === b.col) {
+      return a.row - b.row;
+    }
+    return a.col - b.col;
+  });
+  const boardSize = board.gridLayout.length;
+  const tentativeBoard = Array.from(new Array(boardSize), (_, y) =>
+    Array.from(new Array(boardSize), (_, x) => tilesLayout[y * boardSize + x])
+  );
+  const newTilesPlaced = Array.from(new Array(boardSize), (_, y) =>
+    Array.from(new Array(boardSize), (_, x) => EmptySpace)
+  );
+  for (const { row, col, letter } of tentativeTiles) {
+    tentativeBoard[row][col] = letter;
+    newTilesPlaced[row][col] = letter;
+  }
+  let wordsFormed = new Set<string>();
+  for (let y = 0; y < boardSize; y += 1) {
+    for (let x = 0; x < boardSize; x += 1) {
+      let usesTentativeTile = false;
+      let sh = '';
+      {
+        let i = x;
+        while (i > 0 && tentativeBoard[y][i - 1] !== EmptySpace) --i;
+        for (; i < boardSize && tentativeBoard[y][i] !== EmptySpace; ++i) {
+          if (newTilesPlaced[y][i] !== EmptySpace) {
+            usesTentativeTile = true;
+          }
+          sh += tentativeBoard[y][i];
+        }
+      }
+      //Ignore if it's not a new word.
+      if (!usesTentativeTile) {
+        sh = '';
+      }
+      usesTentativeTile = false;
+      let sv = '';
+      {
+        let i = y;
+        while (i > 0 && tentativeBoard[i - 1][x] !== EmptySpace) --i;
+        for (; i < boardSize && tentativeBoard[i][x] !== EmptySpace; ++i) {
+          sv += tentativeBoard[i][x];
+          if (newTilesPlaced[i][x] !== EmptySpace) {
+            usesTentativeTile = true;
+          }
+        }
+      }
+      if (!usesTentativeTile) {
+        sv = '';
+      }
+      const tempWords = [sh, sv].filter((word) => word.length >= 2);
+      tempWords.forEach(wordsFormed.add, wordsFormed);
+    }
+  }
+  return Array.from(wordsFormed.values());
+};

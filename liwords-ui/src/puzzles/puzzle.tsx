@@ -57,6 +57,7 @@ import { useMountedState } from '../utils/mounted';
 import { BoopSounds } from '../sound/boop';
 import { GameInfoRequest } from '../gen/api/proto/game_service/game_service_pb';
 import { isLegalPlay } from '../utils/cwgame/scoring';
+import { getWordsFormed } from '../utils/cwgame/tile_placement';
 
 const doNothing = () => {};
 
@@ -109,6 +110,7 @@ export const SinglePuzzle = (props: Props) => {
   const [pendingSolution, setPendingSolution] = useState(false);
   const [gameHistory, setGameHistory] = useState<GameHistory | null>(null);
   const [showResponseModalWrong, setShowResponseModalWrong] = useState(false);
+  const [checkWordsPending, setCheckWordsPending] = useState(false);
   const [showResponseModalCorrect, setShowResponseModalCorrect] =
     useState(false);
   const [showLexiconModal, setShowLexiconModal] = useState(false);
@@ -347,6 +349,7 @@ export const SinglePuzzle = (props: Props) => {
           // Wrong answer
           BoopSounds.playSound('puzzleWrongSound');
           setShowResponseModalWrong(true);
+          setCheckWordsPending(true);
         }
         setPuzzleInfo((x) => ({
           ...x,
@@ -556,6 +559,15 @@ export const SinglePuzzle = (props: Props) => {
     setPlacedTiles,
     setPlacedTilesTempScore,
   ]);
+
+  useEffect(() => {
+    if (checkWordsPending) {
+      const whatevs = getWordsFormed(placedTiles, gameContext.board);
+      console.warn('Words', whatevs);
+      setCheckWordsPending(false);
+      //Todo: Now run them by the endpoint
+    }
+  }, [checkWordsPending, placedTiles, gameContext.board]);
 
   const responseModalCorrect = useMemo(() => {
     //TODO: different title for different scores
