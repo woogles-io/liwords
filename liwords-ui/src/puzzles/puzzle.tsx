@@ -180,7 +180,9 @@ export const SinglePuzzle = (props: Props) => {
           req
         );
         console.log('got resp', resp.toObject());
-        navigate(`/puzzle/${encodeURIComponent(resp.getPuzzleId())}`);
+        navigate(`/puzzle/${encodeURIComponent(resp.getPuzzleId())}`, {
+          replace: !!firstLoad,
+        });
       } catch (err) {
         message.error({
           content: (err as LiwordsAPIError).message,
