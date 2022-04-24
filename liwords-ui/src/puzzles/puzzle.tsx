@@ -32,6 +32,7 @@ import {
   SubmissionResponse,
   StartPuzzleIdRequest,
   StartPuzzleIdResponse,
+  AnswerResponse,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { sortTiles } from '../store/constants';
 import { Notepad, NotepadContextProvider } from '../gameroom/notepad';
@@ -57,6 +58,7 @@ import { useMountedState } from '../utils/mounted';
 import { BoopSounds } from '../sound/boop';
 import { GameInfoRequest } from '../gen/api/proto/game_service/game_service_pb';
 import { isLegalPlay } from '../utils/cwgame/scoring';
+import { singularCount } from '../utils/plural';
 
 const doNothing = () => {};
 
@@ -261,6 +263,32 @@ export const SinglePuzzle = (props: Props) => {
       });
     }
   }, []);
+
+  const fetchAnswer = useCallback(async () => {
+    if (!puzzleID) {
+      return;
+    }
+    const req = new PuzzleRequest();
+    req.setPuzzleId(puzzleID);
+    try {
+      const resp = await postProto(
+        AnswerResponse,
+        'puzzle_service.PuzzleService',
+        'GetPuzzleAnswer',
+        req
+      );
+      console.log('got resp', resp.toObject());
+      // Only CorrectAnswer is filled in properly.
+      return resp.getCorrectAnswer();
+    } catch (err) {
+      // There will be an error if this endpoint is called before the user
+      // has submitted a guess.
+      message.error({
+        content: (err as LiwordsAPIError).message,
+        duration: 5,
+      });
+    }
+  }, [puzzleID]);
 
   const showSolution = useCallback(async () => {
     if (!puzzleID) {
@@ -543,8 +571,7 @@ export const SinglePuzzle = (props: Props) => {
       >
         <p>
           Sorry, that’s not the correct solution. You have made{' '}
-          {puzzleInfo.attempts}{' '}
-          {puzzleInfo.attempts === 1 ? 'attempt' : 'attempts'}.
+          {singularCount(puzzleInfo.attempts, 'attempt', 'attempts')}.
         </p>
       </Modal>
     );
@@ -597,8 +624,8 @@ export const SinglePuzzle = (props: Props) => {
       >
         {renderStars(stars)}
         <p>
-          You solved the puzzle in {puzzleInfo.attempts}{' '}
-          {puzzleInfo.attempts === 1 ? 'attempt' : 'attempts'}.
+          You solved the puzzle in{' '}
+          {singularCount(puzzleInfo.attempts, 'attempt', 'attempts')}.
         </p>
       </Modal>
     );
