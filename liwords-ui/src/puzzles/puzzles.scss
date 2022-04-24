@@ -212,4 +212,9 @@
   .stars {
     margin-bottom: 12px;
   }
+  .invalid-plays {
+    @include colorModed() {
+      color: m($timer-out-dark);
+    }
+  }
 }
