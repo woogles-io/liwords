@@ -105,6 +105,9 @@ service PuzzleService {
   rpc GetNextPuzzleId(NextPuzzleIdRequest) returns (NextPuzzleIdResponse);
   rpc GetPuzzle(PuzzleRequest) returns (PuzzleResponse);
   rpc SubmitAnswer(SubmissionRequest) returns (SubmissionResponse);
+  // GetPuzzleAnswer just gets the answer of the puzzle without a submission.
+  // It will not work if the user has not tried the puzzle at least once.
+  rpc GetPuzzleAnswer(PuzzleRequest) returns (AnswerResponse);
   rpc GetPreviousPuzzleId(PreviousPuzzleRequest) returns (PreviousPuzzleResponse);
   rpc SetPuzzleVote(PuzzleVoteRequest) returns (PuzzleVoteResponse);
 

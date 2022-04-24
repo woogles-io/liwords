@@ -125,6 +125,18 @@ func (ps *PuzzleService) SubmitAnswer(ctx context.Context, req *pb.SubmissionReq
 			LastAttemptTime:  timestamppb.New(lastAttemptTime)}}, nil
 }
 
+func (ps *PuzzleService) GetPuzzleAnswer(ctx context.Context, req *pb.PuzzleRequest) (*pb.AnswerResponse, error) {
+	user, err := sessionUser(ctx, ps)
+	if err != nil {
+		return nil, err
+	}
+	answer, err := GetPuzzleAnswer(ctx, ps.puzzleStore, req.PuzzleId, user.UUID)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.AnswerResponse{CorrectAnswer: answer}, nil
+}
+
 func (ps *PuzzleService) SetPuzzleVote(ctx context.Context, req *pb.PuzzleVoteRequest) (*pb.PuzzleVoteResponse, error) {
 	user, err := sessionUser(ctx, ps)
 	if err != nil {
