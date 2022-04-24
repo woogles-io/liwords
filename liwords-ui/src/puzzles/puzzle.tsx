@@ -571,7 +571,9 @@ export const SinglePuzzle = (props: Props) => {
 
   useEffect(() => {
     if (checkWordsPending) {
-      const wordsFormed = getWordsFormed(gameContext.board, placedTiles);
+      const wordsFormed = getWordsFormed(gameContext.board, placedTiles).map(
+        (w) => w.toUpperCase()
+      );
       setCheckWordsPending(false);
       //Todo: Now run them by the endpoint
       axios
