@@ -82,8 +82,8 @@ type Props = {
 export const SoughtGames = (props: Props) => {
   const { useState } = useMountedState();
   const [cancelVisible, setCancelVisible] = useState(false);
-  const [sortByLexicon, setSortByLexicon] = useState(
-    localStorage.getItem('sortByLexicon')
+  const [lobbyFilterByLexicon, setLobbyFilterByLexicon] = useState(
+    localStorage.getItem('lobbyFilterByLexicon')
   );
   const columns = [
     {
@@ -111,7 +111,7 @@ export const SoughtGames = (props: Props) => {
           value: l,
         })
       ),
-      defaultFilteredValue: sortByLexicon ? [sortByLexicon] : [],
+      defaultFilteredValue: lobbyFilterByLexicon ? [lobbyFilterByLexicon] : [],
       filterMultiple: false,
       onFilter: (
         value: string | number | boolean,
@@ -144,22 +144,20 @@ export const SoughtGames = (props: Props) => {
       extra: TableCurrentDataSource<SoughtGameTableData>
     ) => {
       if (extra.action === 'filter') {
-        if (filters.lexicon) {
-          if (filters.lexicon.length === 1) {
-            const lexicon = filters.lexicon[0] as string;
-            if (lexicon !== sortByLexicon) {
-              setSortByLexicon(lexicon);
-              localStorage.setItem('sortByLexicon', lexicon);
-            }
+        if (filters.lexicon?.length === 1) {
+          const lexicon = filters.lexicon[0] as string;
+          if (lexicon !== lobbyFilterByLexicon) {
+            setLobbyFilterByLexicon(lexicon);
+            localStorage.setItem('lobbyFilterByLexicon', lexicon);
           }
         } else {
           // filter is reset, remove lexicon
-          setSortByLexicon(null);
-          localStorage.removeItem('sortByLexicon');
+          setLobbyFilterByLexicon(null);
+          localStorage.removeItem('lobbyFilterByLexicon');
         }
       }
     },
-    []
+    [lobbyFilterByLexicon]
   );
 
   type SoughtGameTableData = {
