@@ -9,7 +9,7 @@ import { TopBar } from '../navigation/topbar';
 import {
   useGameContextStoreContext,
   useLoginStateStoreContext,
-  usePoolFormatStoreContext,
+  // usePoolFormatStoreContext,
   useTentativeTileContext,
 } from '../store/store';
 import { BoardPanel } from '../gameroom/board_panel';
@@ -19,7 +19,7 @@ import {
   protoChallengeRuleConvert,
 } from '../gameroom/game_info';
 import { calculatePuzzleScore, renderStars } from './puzzle_info';
-import Pool from '../gameroom/pool';
+// import Pool from '../gameroom/pool';
 import './puzzles.scss';
 import { PuzzleInfo as PuzzleInfoWidget } from './puzzle_info';
 import { ActionType } from '../actions/actions';
@@ -33,11 +33,11 @@ import {
   SubmissionResponse,
   StartPuzzleIdRequest,
   StartPuzzleIdResponse,
-  AnswerResponse,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { sortTiles } from '../store/constants';
 import { Notepad, NotepadContextProvider } from '../gameroom/notepad';
-import { StaticPlayerCards } from './static_player_cards';
+// Put the player cards back when we have strategy puzzles.
+// import { StaticPlayerCards } from './static_player_cards';
 
 import {
   GameEvent,
@@ -62,6 +62,7 @@ import { isLegalPlay } from '../utils/cwgame/scoring';
 import { singularCount } from '../utils/plural';
 import { getWordsFormed } from '../utils/cwgame/tile_placement';
 import axios from 'axios';
+import { LearnContextProvider } from '../learn/learn_overlay';
 
 const doNothing = () => {};
 
@@ -121,7 +122,7 @@ export const SinglePuzzle = (props: Props) => {
   const [nextPending, setNextPending] = useState(false);
   const { loginState } = useLoginStateStoreContext();
   const { username, loggedIn } = loginState;
-  const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
+  // const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const {
     setDisplayedRack,
@@ -268,32 +269,6 @@ export const SinglePuzzle = (props: Props) => {
     }
   }, []);
 
-  const fetchAnswer = useCallback(async () => {
-    if (!puzzleID) {
-      return;
-    }
-    const req = new PuzzleRequest();
-    req.setPuzzleId(puzzleID);
-    try {
-      const resp = await postProto(
-        AnswerResponse,
-        'puzzle_service.PuzzleService',
-        'GetPuzzleAnswer',
-        req
-      );
-      console.log('got resp', resp.toObject());
-      // Only CorrectAnswer is filled in properly.
-      return resp.getCorrectAnswer();
-    } catch (err) {
-      // There will be an error if this endpoint is called before the user
-      // has submitted a guess.
-      message.error({
-        content: (err as LiwordsAPIError).message,
-        duration: 5,
-      });
-    }
-  }, [puzzleID]);
-
   const showSolution = useCallback(async () => {
     if (!puzzleID) {
       return;
@@ -415,11 +390,11 @@ export const SinglePuzzle = (props: Props) => {
           'GetPuzzle',
           req
         );
-        if (localStorage?.getItem('poolFormat')) {
+        /*if (localStorage?.getItem('poolFormat')) {
           setPoolFormat(
             parseInt(localStorage.getItem('poolFormat') || '0', 10)
           );
-        }
+        }*/
         const gh = resp.getHistory();
         if (gh === null || gh === undefined) {
           throw new Error('Did not receive a valid puzzle position!');
@@ -470,7 +445,7 @@ export const SinglePuzzle = (props: Props) => {
 
       fetchPuzzleData();
     }
-  }, [dispatchGameContext, puzzleID, setPoolFormat]);
+  }, [dispatchGameContext, puzzleID]);
 
   useEffect(() => {
     if (userLexicon && !puzzleID) {
@@ -550,6 +525,7 @@ export const SinglePuzzle = (props: Props) => {
       setPlacedTiles(new Set<EphemeralTile>());
       setPlacedTilesTempScore(undefined);
       setPhoniesPlayed([]);
+      document.getElementById('board-container')?.focus();
     };
     return (
       <Modal
@@ -748,9 +724,10 @@ export const SinglePuzzle = (props: Props) => {
             attempts={puzzleInfo.attempts}
             dateSolved={puzzleInfo.dateSolved}
             loadNewPuzzle={loadNewPuzzle}
+            puzzleID={puzzleID}
             showSolution={showSolution}
           />
-          {alphabet && (
+          {/* alphabet && (
             <Pool
               pool={gameContext.pool}
               currentRack={sortedRack}
@@ -758,17 +735,18 @@ export const SinglePuzzle = (props: Props) => {
               setPoolFormat={setPoolFormat}
               alphabet={alphabet}
             />
-          )}
+          ) */}
           <Notepad includeCard />
-          <StaticPlayerCards
+          {/*<StaticPlayerCards
             playerOnTurn={gameContext.onturn}
             p0Score={gameContext?.players[0]?.score || 0}
             p1Score={gameContext?.players[1]?.score || 0}
-          />
+          />*/}
         </div>
       </div>
     </div>
   );
   ret = <NotepadContextProvider children={ret} />;
+  ret = <LearnContextProvider children={ret} />;
   return ret;
 };

@@ -230,9 +230,16 @@ export const isLegalPlay = (
   board: Board
 ): boolean => {
   // Check that all tiles are colinear
+  const placedTiles = Array.from(currentlyPlacedTiles.values());
+  placedTiles.sort((a, b) => {
+    if (a.col === b.col) {
+      return a.row - b.row;
+    }
+    return a.col - b.col;
+  });
   const rows = new Set<number>();
   const cols = new Set<number>();
-  currentlyPlacedTiles.forEach((t) => {
+  placedTiles.forEach((t) => {
     rows.add(t.row);
     cols.add(t.col);
   });
@@ -246,9 +253,9 @@ export const isLegalPlay = (
 
   // Play must have contiguous tiles (each placed tile must border the next one
   // either directly, or "through" tiles already on the board):
-  for (let i = 0; i < currentlyPlacedTiles.length - 1; i++) {
-    const t1 = currentlyPlacedTiles[i];
-    const t2 = currentlyPlacedTiles[i + 1];
+  for (let i = 0; i < placedTiles.length - 1; i++) {
+    const t1 = placedTiles[i];
+    const t2 = placedTiles[i + 1];
     if (!borders(t1, t2, board)) {
       return false;
     }
@@ -256,8 +263,8 @@ export const isLegalPlay = (
 
   let touches = false;
   // Play must touch some tile already on the board unless board is empty.
-  for (let i = 0; i < currentlyPlacedTiles.length; i++) {
-    if (touchesBoardTile(currentlyPlacedTiles[i], board)) {
+  for (let i = 0; i < placedTiles.length; i++) {
+    if (touchesBoardTile(placedTiles[i], board)) {
       touches = true;
       break;
     }
