@@ -20,7 +20,11 @@ import {
   LearnContext,
   LearnSpaceType,
 } from '../learn/learn_overlay';
-import { BulbFilled } from '@ant-design/icons';
+import {
+  BulbFilled,
+  EyeInvisibleOutlined,
+  EyeOutlined,
+} from '@ant-design/icons';
 
 type Props = {
   puzzleID?: string;
@@ -42,18 +46,6 @@ type AvailableHints = {
 
 const RATED_ATTEMPTS = 2;
 
-const renderHint = (hint: HintInfo) => {
-  if (!hint.revealed) {
-    return null;
-  }
-  return (
-    <div className="puzzle-hint" key={hint.key}>
-      <BulbFilled />
-      {hint.message}
-    </div>
-  );
-};
-
 const readableLane = (row: number, col: number, direction: 0 | 1) => {
   if (direction === 0) {
     return 'row ' + (row + 1).toString();
@@ -68,6 +60,7 @@ export const Hints = (props: Props) => {
   const [hints, setHints] = useState<AvailableHints>({});
   const [solution, setSolution] = useState<GameEvent | undefined>(undefined);
   const { gridDim, setLearnLayout } = useContext(LearnContext);
+  const [boardHighlightingOn, setBoardHighlightingOn] = useState(false);
 
   const fetchAnswer = useCallback(async () => {
     if (!puzzleID) {
@@ -106,9 +99,33 @@ export const Hints = (props: Props) => {
     }
   }, [earnedHints, fetchAnswer, solution]);
 
+  const renderHint = useCallback(
+    (hint: HintInfo) => {
+      if (!hint.revealed) {
+        return null;
+      }
+      return (
+        <div className="puzzle-hint" key={hint.key}>
+          <BulbFilled />
+          {hint.message}
+          {hint.key === 'position-hint' && (
+            <div
+              onClick={() => {
+                console.log('um');
+                setBoardHighlightingOn((x) => !x);
+              }}
+            >
+              {boardHighlightingOn ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+            </div>
+          )}
+        </div>
+      );
+    },
+    [boardHighlightingOn, setBoardHighlightingOn]
+  );
+
   useEffect(() => {
     if (solution) {
-      console.log('Generating hints for: ', solution.toObject());
       // Add score hint
       const scoreHint: HintInfo = {
         key: 'score-hint',
@@ -121,15 +138,16 @@ export const Hints = (props: Props) => {
         revealed: false,
       };
       // Add tiles hint
-      const tilesUsed = solution.getPlayedTiles().length;
+      const tilesUsed = solution.getPlayedTiles().replace('.', '').length;
       const isBingo = solution.getIsBingo();
-      const tilesMessage = isBingo
-        ? 'The play is a bingo! Use all your tiles.'
-        : `The play uses ${singularCount(
-            tilesUsed,
-            'tile',
-            'tiles'
-          )} from the rack.`;
+      const tilesMessage = isBingo ? (
+        <>The play is a bingo! Use all your tiles.</>
+      ) : (
+        <>
+          The play uses {singularCount(tilesUsed, 'tile', 'tiles')} from the
+          rack.
+        </>
+      );
       const tilesHint: HintInfo = {
         key: 'tile-hint',
         message: tilesMessage,
@@ -137,12 +155,18 @@ export const Hints = (props: Props) => {
       };
 
       const positionHint: HintInfo = {
-        key: 'rack-hint',
-        message: `The play should be placed on ${readableLane(
-          solution.getRow(),
-          solution.getColumn(),
-          solution.getDirection()
-        )}.`,
+        key: 'position-hint',
+        message: (
+          <>
+            The play should be placed on{' '}
+            {readableLane(
+              solution.getRow(),
+              solution.getColumn(),
+              solution.getDirection()
+            )}
+            .
+          </>
+        ),
         revealed: false,
       };
 
@@ -155,11 +179,7 @@ export const Hints = (props: Props) => {
   }, [solution]);
 
   useEffect(() => {
-    if (
-      solved == PuzzleStatus.UNANSWERED &&
-      solution &&
-      hints?.position?.revealed
-    ) {
+    if (boardHighlightingOn && solution) {
       const layout = generateEmptyLearnLayout(gridDim, LearnSpaceType.Faded);
       if (solution.getDirection() === 0) {
         layout[solution.getRow()] = new Array(gridDim).fill(
@@ -171,8 +191,20 @@ export const Hints = (props: Props) => {
         }
       }
       setLearnLayout(layout);
+    } else {
+      setLearnLayout(generateEmptyLearnLayout(gridDim, LearnSpaceType.Normal));
     }
-  }, [hints, gridDim, solution, setLearnLayout, solved]);
+  }, [boardHighlightingOn, solution, gridDim, setLearnLayout]);
+
+  useEffect(() => {
+    if (
+      solved == PuzzleStatus.UNANSWERED &&
+      solution &&
+      hints?.position?.revealed
+    ) {
+      setBoardHighlightingOn(true);
+    }
+  }, [hints, solution, solved]);
 
   useEffect(() => {
     if (solved !== PuzzleStatus.UNANSWERED) {
