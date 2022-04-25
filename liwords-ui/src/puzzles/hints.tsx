@@ -98,7 +98,6 @@ export const Hints = (props: Props) => {
   const earnedHints = useMemo(() => {
     const usedHints = Object.values(hints).filter((h) => h.revealed).length;
     const earned = attempts - RATED_ATTEMPTS + 1 - usedHints;
-    console.warn('Earned: ', earned);
     return attempts - RATED_ATTEMPTS + 1 - usedHints;
   }, [hints, attempts]);
 
