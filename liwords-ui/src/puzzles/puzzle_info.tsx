@@ -6,6 +6,7 @@ import moment from 'moment';
 import { timeCtrlToDisplayName, timeToString } from '../store/constants';
 import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { StarFilled, StarOutlined } from '@ant-design/icons';
+import { Hints } from './hints';
 
 export const challengeMap = {
   FIVE_POINT: '5 point',
@@ -24,6 +25,7 @@ type Props = {
   variantName: string;
   player1: Partial<PlayerMetadata> | undefined;
   player2: Partial<PlayerMetadata> | undefined;
+  puzzleID?: string;
   ratingMode?: string;
   challengeRule: ChallengeRule | undefined;
   initial_time_seconds?: number;
@@ -77,7 +79,6 @@ export const PuzzleInfo = React.memo((props: Props) => {
   // TODO: should be determined on the back end and not hardcoded
   const puzzleType = 'Equity puzzle';
   const score = calculatePuzzleScore(!!dateSolved, attempts);
-
   const attemptsText = useMemo(() => {
     if (solved === PuzzleStatus.CORRECT) {
       const solveDate = moment(dateSolved).format('MMMM D, YYYY');
@@ -152,23 +153,6 @@ export const PuzzleInfo = React.memo((props: Props) => {
     }
   }, [gameUrl]);
 
-  if (solved === PuzzleStatus.UNANSWERED) {
-    return (
-      <Card className="puzzle-info" title={`Puzzle Mode`} extra={puzzleType}>
-        <div className="puzzle-details">
-          <p className="game-settings">{`${
-            variantName || 'classic'
-          } • ${lexicon}`}</p>
-          <p className="instructions">
-            There is a star play in this position that is significantly better
-            than the second-best play. What would HastyBot play?
-          </p>
-          <div className="progress">{attemptsText}</div>
-          {actions}
-        </div>
-      </Card>
-    );
-  }
   const challengeDisplay = challengeRule ? challengeMap[challengeRule] : '';
 
   const player1NameDisplay = player1?.nickname ? (
@@ -186,7 +170,28 @@ export const PuzzleInfo = React.memo((props: Props) => {
       Game played by {player1NameDisplay} vs {player2NameDisplay}
     </span>
   );
-
+  if (solved === PuzzleStatus.UNANSWERED) {
+    return (
+      <Card className="puzzle-info" title={`Puzzle Mode`} extra={puzzleType}>
+        <div className="puzzle-details">
+          <p className="game-settings">{`${
+            variantName || 'classic'
+          } • ${lexicon}`}</p>
+          <p className="instructions">
+            There is a star play in this position that is significantly better
+            than the second-best play. What would HastyBot play?
+          </p>
+          <div className="progress">{attemptsText}</div>
+          <Hints
+            puzzleID={props.puzzleID}
+            solved={solved}
+            attempts={attempts}
+          />
+          {actions}
+        </div>
+      </Card>
+    );
+  }
   return (
     <Card className="puzzle-info" title={`Puzzle Mode`} extra={puzzleType}>
       <div className="puzzle-details">
@@ -212,6 +217,7 @@ export const PuzzleInfo = React.memo((props: Props) => {
           {challengeDisplay && ratingMode ? ' • ' : ''}
           {ratingMode}
         </div>
+        <Hints puzzleID={props.puzzleID} solved={solved} attempts={attempts} />
         <div className="progress">{attemptsText}</div>
         {actions}
       </div>

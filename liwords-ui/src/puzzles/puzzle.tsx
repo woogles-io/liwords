@@ -2,23 +2,24 @@ import { HomeOutlined } from '@ant-design/icons';
 import { Button, Card, Form, message, Modal, Select } from 'antd';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { LiwordsAPIError, postProto } from '../api/api';
+import { LiwordsAPIError, postProto, toAPIUrl } from '../api/api';
 import { Chat } from '../chat/chat';
 import { alphabetFromName } from '../constants/alphabets';
 import { TopBar } from '../navigation/topbar';
 import {
   useGameContextStoreContext,
   useLoginStateStoreContext,
-  usePoolFormatStoreContext,
+  // usePoolFormatStoreContext,
   useTentativeTileContext,
 } from '../store/store';
 import { BoardPanel } from '../gameroom/board_panel';
 import {
   ChallengeRule,
+  DefineWordsResponse,
   protoChallengeRuleConvert,
 } from '../gameroom/game_info';
 import { calculatePuzzleScore, renderStars } from './puzzle_info';
-import Pool from '../gameroom/pool';
+// import Pool from '../gameroom/pool';
 import './puzzles.scss';
 import { PuzzleInfo as PuzzleInfoWidget } from './puzzle_info';
 import { ActionType } from '../actions/actions';
@@ -35,7 +36,8 @@ import {
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { sortTiles } from '../store/constants';
 import { Notepad, NotepadContextProvider } from '../gameroom/notepad';
-import { StaticPlayerCards } from './static_player_cards';
+// Put the player cards back when we have strategy puzzles.
+// import { StaticPlayerCards } from './static_player_cards';
 
 import {
   GameEvent,
@@ -57,6 +59,10 @@ import { useMountedState } from '../utils/mounted';
 import { BoopSounds } from '../sound/boop';
 import { GameInfoRequest } from '../gen/api/proto/game_service/game_service_pb';
 import { isLegalPlay } from '../utils/cwgame/scoring';
+import { singularCount } from '../utils/plural';
+import { getWordsFormed } from '../utils/cwgame/tile_placement';
+import axios from 'axios';
+import { LearnContextProvider } from '../learn/learn_overlay';
 
 const doNothing = () => {};
 
@@ -101,7 +107,6 @@ const defaultPuzzleInfo = {
 export const SinglePuzzle = (props: Props) => {
   const { useState } = useMountedState();
   const { puzzleID } = useParams();
-  // const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
   const [puzzleInfo, setPuzzleInfo] = useState<PuzzleInfo>(defaultPuzzleInfo);
   const [userLexicon, setUserLexicon] = useState<string | undefined>(
     localStorage?.getItem('puzzleLexicon') || undefined
@@ -109,13 +114,15 @@ export const SinglePuzzle = (props: Props) => {
   const [pendingSolution, setPendingSolution] = useState(false);
   const [gameHistory, setGameHistory] = useState<GameHistory | null>(null);
   const [showResponseModalWrong, setShowResponseModalWrong] = useState(false);
+  const [checkWordsPending, setCheckWordsPending] = useState(false);
   const [showResponseModalCorrect, setShowResponseModalCorrect] =
     useState(false);
   const [showLexiconModal, setShowLexiconModal] = useState(false);
+  const [phoniesPlayed, setPhoniesPlayed] = useState<string[]>([]);
   const [nextPending, setNextPending] = useState(false);
   const { loginState } = useLoginStateStoreContext();
   const { username, loggedIn } = loginState;
-  const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
+  // const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const {
     setDisplayedRack,
@@ -347,6 +354,7 @@ export const SinglePuzzle = (props: Props) => {
           // Wrong answer
           BoopSounds.playSound('puzzleWrongSound');
           setShowResponseModalWrong(true);
+          setCheckWordsPending(true);
         }
         setPuzzleInfo((x) => ({
           ...x,
@@ -382,11 +390,11 @@ export const SinglePuzzle = (props: Props) => {
           'GetPuzzle',
           req
         );
-        if (localStorage?.getItem('poolFormat')) {
+        /*if (localStorage?.getItem('poolFormat')) {
           setPoolFormat(
             parseInt(localStorage.getItem('poolFormat') || '0', 10)
           );
-        }
+        }*/
         const gh = resp.getHistory();
         if (gh === null || gh === undefined) {
           throw new Error('Did not receive a valid puzzle position!');
@@ -437,7 +445,7 @@ export const SinglePuzzle = (props: Props) => {
 
       fetchPuzzleData();
     }
-  }, [dispatchGameContext, puzzleID, setPoolFormat]);
+  }, [dispatchGameContext, puzzleID]);
 
   useEffect(() => {
     if (userLexicon && !puzzleID) {
@@ -516,6 +524,8 @@ export const SinglePuzzle = (props: Props) => {
       setDisplayedRack(rack);
       setPlacedTiles(new Set<EphemeralTile>());
       setPlacedTilesTempScore(undefined);
+      setPhoniesPlayed([]);
+      document.getElementById('board-container')?.focus();
     };
     return (
       <Modal
@@ -543,19 +553,52 @@ export const SinglePuzzle = (props: Props) => {
       >
         <p>
           Sorry, that’s not the correct solution. You have made{' '}
-          {puzzleInfo.attempts}{' '}
-          {puzzleInfo.attempts === 1 ? 'attempt' : 'attempts'}.
+          {singularCount(puzzleInfo.attempts, 'attempt', 'attempts')}.
         </p>
+        {phoniesPlayed?.length > 0 && (
+          <p className={'invalid-plays'}>{`Invalid words played: ${phoniesPlayed
+            .map((x) => `${x}*`)
+            .join(', ')}`}</p>
+        )}
       </Modal>
     );
   }, [
     showResponseModalWrong,
+    phoniesPlayed,
     puzzleInfo,
     rack,
     setDisplayedRack,
     setPlacedTiles,
     setPlacedTilesTempScore,
   ]);
+
+  useEffect(() => {
+    if (checkWordsPending) {
+      const wordsFormed = getWordsFormed(gameContext.board, placedTiles).map(
+        (w) => w.toUpperCase()
+      );
+      setCheckWordsPending(false);
+      //Todo: Now run them by the endpoint
+      axios
+        .post<DefineWordsResponse>(
+          toAPIUrl('word_service.WordService', 'DefineWords'),
+          {
+            lexicon: puzzleInfo.lexicon,
+            words: wordsFormed,
+            definitions: false,
+            anagrams: false,
+          }
+        )
+        .then((resp) => {
+          const wordsChecked = resp.data.results;
+          const phonies = Object.keys(wordsChecked).filter(
+            (w) => !wordsChecked[w].v
+          );
+          console.log('Phonies played: ', phonies);
+          setPhoniesPlayed(phonies);
+        });
+    }
+  }, [checkWordsPending, placedTiles, gameContext.board, puzzleInfo.lexicon]);
 
   const responseModalCorrect = useMemo(() => {
     //TODO: different title for different scores
@@ -597,8 +640,8 @@ export const SinglePuzzle = (props: Props) => {
       >
         {renderStars(stars)}
         <p>
-          You solved the puzzle in {puzzleInfo.attempts}{' '}
-          {puzzleInfo.attempts === 1 ? 'attempt' : 'attempts'}.
+          You solved the puzzle in{' '}
+          {singularCount(puzzleInfo.attempts, 'attempt', 'attempts')}.
         </p>
       </Modal>
     );
@@ -681,9 +724,10 @@ export const SinglePuzzle = (props: Props) => {
             attempts={puzzleInfo.attempts}
             dateSolved={puzzleInfo.dateSolved}
             loadNewPuzzle={loadNewPuzzle}
+            puzzleID={puzzleID}
             showSolution={showSolution}
           />
-          {alphabet && (
+          {/* alphabet && (
             <Pool
               pool={gameContext.pool}
               currentRack={sortedRack}
@@ -691,17 +735,18 @@ export const SinglePuzzle = (props: Props) => {
               setPoolFormat={setPoolFormat}
               alphabet={alphabet}
             />
-          )}
+          ) */}
           <Notepad includeCard />
-          <StaticPlayerCards
+          {/*<StaticPlayerCards
             playerOnTurn={gameContext.onturn}
             p0Score={gameContext?.players[0]?.score || 0}
             p1Score={gameContext?.players[1]?.score || 0}
-          />
+          />*/}
         </div>
       </div>
     </div>
   );
   ret = <NotepadContextProvider children={ret} />;
+  ret = <LearnContextProvider children={ret} />;
   return ret;
 };

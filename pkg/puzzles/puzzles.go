@@ -110,6 +110,19 @@ func GetPuzzleJobLogs(ctx context.Context, ps PuzzleStore, limit, offset int) ([
 	return ps.GetJobLogs(ctx, limit, offset)
 }
 
+func GetPuzzleAnswer(ctx context.Context, ps PuzzleStore, puzzleUUID string, userId string) (*macondopb.GameEvent, error) {
+	_, attempts, status, _, _, err := ps.GetAttempts(ctx, userId, puzzleUUID)
+	if err != nil {
+		return nil, err
+	}
+	if attempts == 0 && status == nil {
+		// This attempt has not been rated yet. We should not return an answer.
+		return nil, entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_ANSWER_NOT_YET_RATED)
+	}
+	correctAnswer, _, _, _, _, _, err := ps.GetAnswer(ctx, puzzleUUID)
+	return correctAnswer, err
+}
+
 func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleUUID string, userId string,
 	userAnswer *ipc.ClientGameplayEvent, showSolution bool) (bool, *bool, *macondopb.GameEvent, string, int32, string, int32, int32, int32, time.Time, time.Time, error) {
 	correctAnswer, gameId, turnNumber, afterText, req, puzzleRating, err := ps.GetAnswer(ctx, puzzleUUID)
