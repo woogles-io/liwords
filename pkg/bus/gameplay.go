@@ -289,8 +289,15 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 	if err != nil {
 		return err
 	}
+	// XXX: We should not lock all the way out here; this will need to
+	// be refactored when we move to a single store.
+	// For right now, we can't pass the game store to the tournament
+	// function below or we'll have a circular dependency.
+	t.Lock()
+	// XXX can't unlock twice.
+	defer t.Unlock()
 
-	playerIDs, bothReady, err := tournament.VerifyNewTournamentGame(
+	playerIDs, gameID, err := tournament.VerifyNewTournamentGame(
 		ctx, b.tournamentStore, t, fullUserID,
 		evt.Division, int(evt.Round), int(evt.GameIndex))
 
@@ -298,81 +305,80 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 		return err
 	}
 
+	if gameID == "" {
+		// Instantiate and start a new game.
+
+		foundUs := false
+		otherID := ""
+		users := [2]*entity.User{nil, nil}
+		otherUserIdx := -1
+		// playerIDs are in order of first/second
+		for idx, pid := range playerIDs {
+			// userid:username:conn_id
+			splitid := strings.Split(pid, ":")
+			if len(splitid) != 2 {
+				return errors.New("unexpected playerID: " + pid)
+			}
+			if userID == splitid[0] {
+				foundUs = true
+				users[idx] = reqUser
+			} else {
+				otherID = splitid[0]
+				otherUserIdx = idx
+			}
+		}
+		if !foundUs {
+			return errors.New("unexpected behavior; did not find us")
+		}
+		if otherID == userID {
+			return errors.New("both users have same ID?")
+		}
+		if otherUserIdx == -1 {
+			return errors.New("unexpected behavior; did not find other player")
+		}
+		users[otherUserIdx], err = b.userStore.GetByUUID(ctx, otherID)
+		if err != nil {
+			return err
+		}
+		if t.Divisions[evt.Division].DivisionManager == nil {
+			return fmt.Errorf("division manager for division %s is nil", evt.Division)
+		}
+		gameReq := t.Divisions[evt.Division].DivisionManager.GetDivisionControls().GameRequest
+		tdata := &entity.TournamentData{
+			Id:        evt.TournamentId,
+			Division:  evt.Division,
+			Round:     int(evt.Round),
+			GameIndex: int(evt.GameIndex),
+		}
+
+		g, err := gameplay.InstantiateNewGame(ctx, b.gameStore, b.config,
+			users, 0, gameReq, tdata)
+		if err != nil {
+			return err
+		}
+		err = b.broadcastGameCreation(g, reqUser, users[otherUserIdx])
+		if err != nil {
+			log.Err(err).Msg("broadcasting-game-creation")
+		}
+	}
+
 	// Let's send the ready message to both players.
 	evt.PlayerId = fullUserID
 
-	ngevt := entity.WrapEvent(evt, pb.MessageType_READY_FOR_TOURNAMENT_GAME)
+	rdyevt := entity.WrapEvent(evt, pb.MessageType_READY_FOR_TOURNAMENT_GAME)
 	// We'll publish it to both users (across any connections they might be on)
 	// so that the widget updates properly in every context.
 	for _, p := range playerIDs {
 		s := strings.Split(p, ":")
-		if len(s) != 3 {
+		if len(s) != 2 {
 			return fmt.Errorf("unexpected player readystate: %v", p)
 		}
-		b.pubToUser(s[0], ngevt, "")
+		b.pubToUser(s[0], rdyevt, "")
 	}
 
-	///// CHECK BOTHREADY
-
-	// Both players are ready! Instantiate and start a new game.
-	foundUs := false
-	otherID := ""
-	users := [2]*entity.User{nil, nil}
-	connIDs := [2]string{"", ""}
-	otherUserIdx := -1
-	// playerIDs are in order of first/second
-	for idx, pid := range playerIDs {
-		// userid:username:conn_id
-		splitid := strings.Split(pid, ":")
-		if len(splitid) != 3 {
-			return errors.New("unexpected playerID: " + pid)
-		}
-		if userID == splitid[0] {
-			foundUs = true
-			users[idx] = reqUser
-		} else {
-			otherID = splitid[0]
-			otherUserIdx = idx
-		}
-		connIDs[idx] = splitid[2]
-	}
-	if !foundUs {
-		return errors.New("unexpected behavior; did not find us")
-	}
-	if otherID == userID {
-		return errors.New("both users have same ID?")
-	}
-	if otherUserIdx == -1 {
-		return errors.New("unexpected behavior; did not find other player")
-	}
-	users[otherUserIdx], err = b.userStore.GetByUUID(ctx, otherID)
-	if err != nil {
-		return err
-	}
-	if t.Divisions[evt.Division].DivisionManager == nil {
-		return fmt.Errorf("division manager for division %s is nil", evt.Division)
-	}
-	gameReq := t.Divisions[evt.Division].DivisionManager.GetDivisionControls().GameRequest
-	tdata := &entity.TournamentData{
-		Id:        evt.TournamentId,
-		Division:  evt.Division,
-		Round:     int(evt.Round),
-		GameIndex: int(evt.GameIndex),
-	}
-
-	g, err := gameplay.InstantiateNewGame(ctx, b.gameStore, b.config,
-		users, 0, gameReq, tdata)
-	if err != nil {
-		return err
-	}
-
-	err = b.broadcastGameCreation(g, reqUser, users[otherUserIdx])
-	if err != nil {
-		log.Err(err).Msg("broadcasting-game-creation")
-	}
-
+	// XXX: THIS CAN GO -- no need to redirect users to game.
 	// redirect users to the right game
-	ngevt = entity.WrapEvent(&pb.NewGameEvent{
+	ngevt := entity.WrapEvent(&pb.NewGameEvent{
 		GameId: g.GameID(),
 		// doesn't matter who's the accepter or requester here.
 		AccepterCid:  connIDs[0],

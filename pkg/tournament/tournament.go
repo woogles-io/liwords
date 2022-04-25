@@ -1185,25 +1185,21 @@ func GetXHRResponse(ctx context.Context, ts TournamentStore, id string) (*ipc.Fu
 }
 
 func VerifyNewTournamentGame(ctx context.Context, ts TournamentStore, t *entity.Tournament,
-	playerID, connID, division string,
-	round, gameIndex int) ([]string, bool, error) {
-
-	t.Lock()
-	defer t.Unlock()
+	playerID, division string, round, gameIndex int) ([]string, string, error) {
 
 	if t.IsFinished {
-		return nil, false, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+		return nil, "", entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 
 	_, ok := t.Divisions[division]
 	if !ok {
-		return nil, false, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+		return nil, "", entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
-	playerIDs, shouldInstantiateGame, err := t.Divisions[division].DivisionManager.VerifyNewTournamentGame(playerID, round, gameIndex)
+	playerIDs, gameID, err := t.Divisions[division].DivisionManager.VerifyNewTournamentGame(playerID, round, gameIndex)
 	if err != nil {
-		return nil, false, err
+		return nil, "", err
 	}
-	return playerIDs, shouldInstantiateGame, ts.Set(ctx, t)
+	return playerIDs, gameID, nil
 }
 
 // func ClearReadyStates(ctx context.Context, ts TournamentStore, t *entity.Tournament,

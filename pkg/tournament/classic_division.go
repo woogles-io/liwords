@@ -1370,56 +1370,57 @@ func (t *ClassicDivision) StartRound(checkForStartable bool) error {
 // VerifyNewTournamentGame verifies that the given playerID is set to play in
 // the passed in round and gameIndex.
 // It returns a list of playerId:username involved in the game,
-// a boolean saying if the game should be instantiated (i.e. this would only
-// happen if this was the first time calling this function for this pairing),
-// and an optional error.
-func (t *ClassicDivision) VerifyNewTournamentGame(playerID string, round, gameIndex int) ([]string, bool, error) {
+// the game ID if it exists already, and an optional error.
+func (t *ClassicDivision) VerifyNewTournamentGame(playerID string, round, gameIndex int) ([]string, string, error) {
 	if round >= len(t.Matrix) || round < 0 {
-		return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "VerifyNewTournamentGame")
+		return nil, "", entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "VerifyNewTournamentGame")
 	}
 	if int(t.CurrentRound) != round {
-		return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_SET_GAME_ROUND_NUMBER, t.TournamentName, t.DivisionName, strconv.Itoa(round+1))
+		return nil, "", entity.NewWooglesError(pb.WooglesError_TOURNAMENT_SET_GAME_ROUND_NUMBER, t.TournamentName, t.DivisionName, strconv.Itoa(round+1))
 	}
 	// gameIndex is ignored for ClassicDivision?
 	pairingKey, err := t.getPairingKey(playerID, round)
 	if err != nil {
-		return nil, false, err
+		return nil, "", err
 	}
 	if pairingKey == "" {
-		return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID, pairingKey, "VerifyNewTournamentGame")
+		return nil, "", entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID, pairingKey, "VerifyNewTournamentGame")
 	}
 
 	pairing, ok := t.PairingMap[pairingKey]
 	if !ok {
-		return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID, pairingKey, "VerifyNewTournamentGame")
+		return nil, "", entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID, pairingKey, "VerifyNewTournamentGame")
 	}
 
 	// search for player
 	foundIdx := -1
 	for idx, pn := range pairing.Players {
 		if int(pn) >= len(t.Players.Persons) || pn < 0 {
-			return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PLAYER_INDEX_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID, strconv.Itoa(int(pn)), "VerifyNewTournamentGame")
+			return nil, "", entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PLAYER_INDEX_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID, strconv.Itoa(int(pn)), "VerifyNewTournamentGame")
 		}
 		pairingPlayerID := t.Players.Persons[pn].Id
 		if playerID == pairingPlayerID {
 			if foundIdx != -1 {
 				// This should never happen, but if it does, we'll just return an error.
 				// It could mean they somehow clicked Ready on a BYE pairing or similar.
-				return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_SET_READY_MULTIPLE_IDS, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID)
+				return nil, "", entity.NewWooglesError(pb.WooglesError_TOURNAMENT_SET_READY_MULTIPLE_IDS, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID)
 			}
 			foundIdx = idx
 		}
 	}
 	if foundIdx == -1 {
-		return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_SET_READY_PLAYER_NOT_FOUND, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID)
+		return nil, "", entity.NewWooglesError(pb.WooglesError_TOURNAMENT_SET_READY_PLAYER_NOT_FOUND, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID)
 	}
 
 	playerOneId := t.Players.Persons[pairing.Players[0]].Id
 	playerTwoId := t.Players.Persons[pairing.Players[1]].Id
-	// Check to see if both players are ready.
-	involvedPlayers := []string{playerOneId, playerTwoId}
-	bothReady := pairing.ReadyStates[0] != "" && pairing.ReadyStates[1] != ""
-	return involvedPlayers, bothReady, nil
+
+	// Check to see if we should instantiate a new game, or use an existing game.
+	var gid string
+	if len(pairing.Games) > 0 {
+		gid = pairing.Games[0].Id
+	}
+	return []string{playerOneId, playerTwoId}, gid, nil
 
 }
 

@@ -29,7 +29,7 @@ type DivisionManager interface {
 	StartRound(bool) error
 	IsRoundStartable() error
 	GetXHRResponse() (*pb.TournamentDivisionDataResponse, error)
-	VerifyNewTournamentGame(userID string, round, gameIndex int) ([]string, bool, error)
+	VerifyNewTournamentGame(userID string, round, gameIndex int) ([]string, string, error)
 	ResetToBeginning() error
 }
 
