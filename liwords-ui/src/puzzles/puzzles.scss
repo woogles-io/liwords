@@ -25,7 +25,7 @@
         min-height: calc(#{$board-size-tablet} - 125px);
       }
       @media (min-width: $screen-laptop-min) {
-        min-height: calc(#{$board-size-laptop} + 80px);
+        min-height: calc(#{$board-size-laptop} + 90px);
       }
       @media (min-width: $screen-desktop-min) {
         min-height: calc(#{$board-size-desktop} + 80px);
@@ -166,7 +166,7 @@
     @media (min-width: $screen-tablet-min) {
       display: block;
       .ant-card-body {
-        height: 200px;
+        height: 180px;
       }
     }
     @media (min-width: $screen-laptop-min) {
