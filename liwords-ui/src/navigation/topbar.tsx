@@ -45,7 +45,7 @@ const TopMenu = React.memo((props: Props) => {
       </li>
     </ul>
   );
-  const learnMenu = (
+  const studyMenu = (
     <ul>
       <li>
         <a
@@ -96,11 +96,6 @@ const TopMenu = React.memo((props: Props) => {
   return (
     <div className="top-header-menu">
       <div>
-        <Link to="/" className="plain">
-          <p>Home</p>
-        </Link>
-      </div>
-      <div>
         <Dropdown
           overlayClassName="user-menu"
           overlay={playMenu}
@@ -114,16 +109,19 @@ const TopMenu = React.memo((props: Props) => {
         </Dropdown>
       </div>
       <div>
+        <a href="/puzzle">Puzzles</a>
+      </div>
+      <div>
         <Dropdown
           overlayClassName="user-menu"
-          overlay={learnMenu}
+          overlay={studyMenu}
           placement="bottom"
           trigger={['click', 'hover']}
           getPopupContainer={() =>
             document.getElementById('root') as HTMLElement
           }
         >
-          <p>Learn</p>
+          <p>Study</p>
         </Dropdown>
       </div>
       <div className="top-header-left-frame-special-land">
