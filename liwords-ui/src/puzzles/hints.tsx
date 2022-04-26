@@ -90,7 +90,7 @@ export const Hints = (props: Props) => {
 
   const earnedHints = useMemo(() => {
     const usedHints = Object.values(hints).filter((h) => h.revealed).length;
-    return attempts - RATED_ATTEMPTS + 1 - usedHints;
+    return Math.min(3 - usedHints, attempts - RATED_ATTEMPTS + 1 - usedHints);
   }, [hints, attempts]);
 
   useEffect(() => {
@@ -275,12 +275,16 @@ export const Hints = (props: Props) => {
     );
   }, [attempts, earnedHints, hints, revealHint]);
 
+  const hintsRemaining = useMemo(() => {
+    return Object.values(hints).filter((h) => !h.revealed).length;
+  }, [hints]);
+
   if (solved !== PuzzleStatus.UNANSWERED) {
     return null;
   }
   return (
     <div className="puzzle-hints">
-      {earnedHints > 0 && (
+      {earnedHints > 0 && hintsRemaining > 0 && (
         <p className="hint-prompt">
           Having trouble? You've earned{' '}
           {singularCount(earnedHints, 'hint', 'hints')}.

@@ -28,8 +28,17 @@
         min-height: calc(#{$board-size-laptop} + 90px);
       }
       @media (min-width: $screen-desktop-min) {
+        min-height: calc(#{$board-size-laptop} + 90px);
+      }
+      @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
+        min-height: calc(#{$board-size-desktop} + 90px);
+      }
+      @media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-min) {
         min-height: calc(#{$board-size-desktop} + 80px);
       }
+    }
+    button.ant-btn {
+      font-size: 14px;
     }
     .puzzle-hints {
       .hint-prompt {
@@ -277,6 +286,9 @@
   font-size: 15px;
   .stars {
     margin-bottom: 12px;
+  }
+  button, button.ant-btn {
+    font-size: 14px;
   }
   .invalid-plays {
     @include colorModed() {
