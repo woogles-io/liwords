@@ -1,5 +1,5 @@
 import { HomeOutlined } from '@ant-design/icons';
-import { Button, Card, Form, message, Modal, Select } from 'antd';
+import { Card, Form, message, Modal, Select } from 'antd';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { LiwordsAPIError, postProto, toAPIUrl } from '../api/api';
@@ -63,6 +63,7 @@ import { singularCount } from '../utils/plural';
 import { getWordsFormed } from '../utils/cwgame/tile_placement';
 import axios from 'axios';
 import { LearnContextProvider } from '../learn/learn_overlay';
+import { PuzzleShareButton } from './puzzle_share';
 
 const doNothing = () => {};
 
@@ -538,9 +539,10 @@ export const SinglePuzzle = (props: Props) => {
           reset();
         }}
         footer={[
-          <Button
+          <button
             key="ok"
-            type="primary"
+            type="submit"
+            className="ant-button primary"
             autoFocus
             onClick={() => {
               setShowResponseModalWrong(false);
@@ -548,7 +550,7 @@ export const SinglePuzzle = (props: Props) => {
             }}
           >
             Keep trying
-          </Button>,
+          </button>,
         ]}
       >
         <p>
@@ -625,10 +627,16 @@ export const SinglePuzzle = (props: Props) => {
           setShowResponseModalCorrect(false);
         }}
         footer={[
+          <PuzzleShareButton
+            key="share"
+            puzzleID={puzzleID}
+            attempts={puzzleInfo.attempts}
+            solved={PuzzleStatus.CORRECT}
+          />,
           <button
             autoFocus
             disabled={false}
-            className="primary"
+            className="btn ant-btn primary"
             key="ok"
             onClick={() => {
               loadNewPuzzle();
@@ -645,7 +653,7 @@ export const SinglePuzzle = (props: Props) => {
         </p>
       </Modal>
     );
-  }, [showResponseModalCorrect, puzzleInfo, loadNewPuzzle]);
+  }, [showResponseModalCorrect, puzzleInfo, loadNewPuzzle, puzzleID]);
 
   const allowAttempt = useMemo(() => {
     return (

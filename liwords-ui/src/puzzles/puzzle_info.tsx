@@ -7,6 +7,7 @@ import { timeCtrlToDisplayName, timeToString } from '../store/constants';
 import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { StarFilled, StarOutlined } from '@ant-design/icons';
 import { Hints } from './hints';
+import { PuzzleShareButton } from './puzzle_share';
 
 export const challengeMap = {
   FIVE_POINT: '5 point',
@@ -37,16 +38,23 @@ type Props = {
   showSolution: () => void;
 };
 
-export const renderStars = (stars: number) => {
+export const renderStars = (stars: number, useEmoji = false) => {
   const ret: ReactNode[] = [];
+  let eRet = '';
   for (let i = stars; i > 0; i--) {
-    ret.push(<StarFilled key={`star-${i}`} />);
+    if (useEmoji) {
+      eRet += '⭐';
+    } else ret.push(<StarFilled key={`star-${i}`} />);
+  }
+  if (useEmoji) {
+    return eRet;
   }
   while (ret.length < MAX_STARS) {
     ret.push(
       <StarOutlined className="unearned" key={`unearned-star-${ret.length}`} />
     );
   }
+
   return <div className="stars">{ret}</div>;
 };
 
@@ -70,6 +78,7 @@ export const PuzzleInfo = React.memo((props: Props) => {
     variantName,
     player1,
     player2,
+    puzzleID,
     attempts,
     dateSolved,
     loadNewPuzzle,
@@ -132,9 +141,14 @@ export const PuzzleInfo = React.memo((props: Props) => {
         <Button type="primary" onClick={loadNewPuzzle}>
           Next puzzle
         </Button>
+        <PuzzleShareButton
+          puzzleID={puzzleID}
+          attempts={attempts}
+          solved={solved}
+        />
       </div>
     );
-  }, [loadNewPuzzle, showSolution, solved]);
+  }, [loadNewPuzzle, showSolution, solved, puzzleID, attempts]);
 
   const formattedGameDate = useMemo(() => {
     return moment(gameDate).format('MMMM D, YYYY');
