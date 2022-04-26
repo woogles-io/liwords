@@ -308,6 +308,8 @@ export const Players = React.memo((props: Props) => {
         return 'OBSERVERS';
       case 'tournament':
         return 'CLUB/TOURNAMENT';
+      case 'puzzle':
+        return 'SOLVING PUZZLES';
     }
     return 'IN ROOM';
   };
