@@ -484,40 +484,34 @@ func (s *DBStore) SubmitAnswer(ctx context.Context, userUUID string, ratingKey e
 	}
 
 	if newUserRating != nil && newPuzzleRating != nil {
-		// XXX Uncomment after re-enabling ratings:
-		/*
-			result, err := tx.Exec(ctx, `UPDATE puzzles SET rating = $1 WHERE id = $2`, newPuzzleRating, pid)
-			if err != nil {
-				return err
-			}
+		result, err := tx.Exec(ctx, `UPDATE puzzles SET rating = $1 WHERE id = $2`, newPuzzleRating, pid)
+		if err != nil {
+			return err
+		}
 
-			rowsAffected := result.RowsAffected()
-			if err != nil {
-				return err
-			}
-			if rowsAffected != 1 {
-				return entity.NewWooglesError(ipc.WooglesError_PUZZLE_SUBMIT_ANSWER_PUZZLE_ID_NOT_FOUND, userUUID, puzzleUUID)
-			}
+		rowsAffected := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rowsAffected != 1 {
+			return entity.NewWooglesError(ipc.WooglesError_PUZZLE_SUBMIT_ANSWER_PUZZLE_ID_NOT_FOUND, userUUID, puzzleUUID)
+		}
 
-			err = common.UpdateUserRating(ctx, tx, uid, ratingKey, newUserRating)
-			if err != nil {
-				return err
-			}
-		*/
+		err = common.UpdateUserRating(ctx, tx, uid, ratingKey, newUserRating)
+		if err != nil {
+			return err
+		}
+
 		attempts := 1
 
 		if showSolution {
 			attempts = 0
 		}
 
-		// XXX Uncomment after re-enabling ratings
-		//result, err = tx.Exec(ctx, `UPDATE puzzle_attempts SET correct = $1, attempts = $2, new_user_rating = $3, new_puzzle_rating = $4, created_at = NOW(), updated_at = NOW() WHERE puzzle_id = $5 AND user_id = $6`,
-		//			newCorrectOption, attempts, newUserRating, newPuzzleRating, pid, uid)
+		result, err = tx.Exec(ctx, `UPDATE puzzle_attempts SET correct = $1, attempts = $2, new_user_rating = $3, new_puzzle_rating = $4, created_at = NOW(), updated_at = NOW() WHERE puzzle_id = $5 AND user_id = $6`,
+			newCorrectOption, attempts, newUserRating, newPuzzleRating, pid, uid)
 
-		result, err := tx.Exec(ctx, `UPDATE puzzle_attempts SET correct = $1, attempts = $2, created_at = NOW(), updated_at = NOW() WHERE puzzle_id = $3 AND user_id = $4`,
-			newCorrectOption, attempts, pid, uid)
-
-		rowsAffected := result.RowsAffected()
+		rowsAffected = result.RowsAffected()
 		if err != nil {
 			return err
 		}
