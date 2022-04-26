@@ -20,7 +20,7 @@
       text-transform: uppercase;
     }
     .ant-card-body {
-      padding: 0 18px 48px;
+      padding: 0 18px 60px;
       @media (min-width: $screen-tablet-min) {
         min-height: calc(#{$board-size-tablet} - 125px);
       }
@@ -71,6 +71,22 @@
         height: auto;
         padding: 2px 6px;
         margin-left: 0.5em;
+      }
+      .anticon-eye, .anticon-eye-invisible {
+        cursor: pointer;
+        margin-left: 0.5em;
+        font-size: 18px;
+        @include colorModed() {
+          color: m($gray-medium);
+        }
+      }
+      .anticon-eye {
+        @include colorModed() {
+          color: m($primary-midDark);
+        }
+      }
+      .ant-btn.ant-btn-primary {
+        margin-bottom: 0;
       }
     }
     .actions {
