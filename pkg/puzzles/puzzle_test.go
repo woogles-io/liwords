@@ -151,13 +151,11 @@ func TestPuzzlesMain(t *testing.T) {
 	is.NoErr(err)
 
 	// User rating should go down, puzzle rating should go up
-	// XXX restore after re-enabling ratings.
-	/*
-		is.True(float64(glicko.InitialRating) < newPuzzleRating.Rating)
-		is.True(float64(glicko.InitialRatingDeviation) > newPuzzleRating.RatingDeviation)
-		is.True(float64(glicko.InitialRating) > newUserRating.Rating)
-		is.True(float64(glicko.InitialRatingDeviation) > newUserRating.RatingDeviation)
-	*/
+	is.True(float64(glicko.InitialRating) < newPuzzleRating.Rating)
+	is.True(float64(glicko.InitialRatingDeviation) > newPuzzleRating.RatingDeviation)
+	is.True(float64(glicko.InitialRating) > newUserRating.Rating)
+	is.True(float64(glicko.InitialRatingDeviation) > newUserRating.RatingDeviation)
+
 	attempts, recordedCorrect, err := getPuzzleAttempt(ctx, pool, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
 	is.Equal(attempts, int32(1))
@@ -243,13 +241,12 @@ func TestPuzzlesMain(t *testing.T) {
 	is.True(userIsCorrect)
 	is.True(*status)
 	is.Equal(attempts, int32(1))
-	// XXX restore after re-enabling ratings
-	/*
-		is.True(oldPuzzleRating.Rating > newPuzzleRating.Rating)
-		is.True(oldPuzzleRating.RatingDeviation > newPuzzleRating.RatingDeviation)
-		is.True(oldUserRating.Rating < newUserRating.Rating)
-		is.True(oldUserRating.RatingDeviation > newUserRating.RatingDeviation)
-	*/
+
+	is.True(oldPuzzleRating.Rating > newPuzzleRating.Rating)
+	is.True(oldPuzzleRating.RatingDeviation > newPuzzleRating.RatingDeviation)
+	is.True(oldUserRating.Rating < newUserRating.Rating)
+	is.True(oldUserRating.RatingDeviation > newUserRating.RatingDeviation)
+
 	attempts, recordedCorrect, err = getPuzzleAttempt(ctx, pool, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
 	is.Equal(attempts, int32(1))
