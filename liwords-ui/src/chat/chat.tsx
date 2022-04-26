@@ -31,6 +31,8 @@ export type Props = {
   defaultChannel: string;
   defaultDescription: string;
   DISCONNECT?: () => void;
+  //For chat accessible places without channels
+  channelTypeOverride?: string;
   highlight?: Array<string>;
   highlightText?: string;
   tournamentID?: string;
@@ -666,7 +668,9 @@ export const Chat = React.memo((props: Props) => {
         <TabPane tab={<>Players</>} key="PLAYERS" className="player-pane">
           <Players
             sendMessage={sendNewMessage}
-            defaultChannelType={defaultChannel.split('.')[1] || ''}
+            defaultChannelType={
+              props.channelTypeOverride || defaultChannel.split('.')[1] || ''
+            }
           />
         </TabPane>
         <TabPane
