@@ -241,16 +241,18 @@ func StartGame(ctx context.Context, gameStore GameStore, userStore user.Store, e
 
 	// If the previous game was a rematch, notify
 	// the viewers that this game has started.
-	rematchStreak, err := gameStore.GetRematchStreak(ctx, entGame.Quickdata.OriginalRequestId)
-	if err != nil {
-		return err
-	}
-	if len(rematchStreak.Streak) > 0 {
-		previousGameID := rematchStreak.Streak[0].GameId
-		evt := &pb.RematchStartedEvent{RematchGameId: entGame.GameID()}
-		wrappedRematch := entity.WrapEvent(evt, pb.MessageType_REMATCH_STARTED)
-		wrappedRematch.AddAudience(entity.AudGameTV, previousGameID)
-		entGame.SendChange(wrappedRematch)
+	if entGame.Quickdata.OriginalRequestId != "" {
+		rematchStreak, err := gameStore.GetRematchStreak(ctx, entGame.Quickdata.OriginalRequestId)
+		if err != nil {
+			return err
+		}
+		if len(rematchStreak.Streak) > 0 {
+			previousGameID := rematchStreak.Streak[0].GameId
+			evt := &pb.RematchStartedEvent{RematchGameId: entGame.GameID()}
+			wrappedRematch := entity.WrapEvent(evt, pb.MessageType_REMATCH_STARTED)
+			wrappedRematch.AddAudience(entity.AudGameTV, previousGameID)
+			entGame.SendChange(wrappedRematch)
+		}
 	}
 
 	return nil

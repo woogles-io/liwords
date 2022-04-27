@@ -174,16 +174,20 @@ func (s *DBStore) GetMetadata(ctx context.Context, id string) (*pb.GameInfoRespo
 
 func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error) {
 	games := []*game{}
-	if results := s.db.
-		Where("quickdata->>'o' = ? AND game_end_reason not in (?, ?, ?)",
-			originalRequestId, pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED).
-		Order("created_at desc").
-		Find(&games); results.Error != nil {
-		return nil, results.Error
+	ctxDB := s.db.WithContext(ctx)
+	result := ctxDB.Raw(`SELECT uuid, winner_idx, quickdata FROM games where quickdata->>'o' = ?
+		AND game_end_reason not in (?, ?, ?) ORDER BY created_at desc`, originalRequestId,
+		pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED).Scan(&games)
+	if result.Error != nil {
+		return nil, result.Error
 	}
 
 	resp := &gs.StreakInfoResponse{
 		Streak: make([]*gs.StreakInfoResponse_SingleGameInfo, len(games)),
+	}
+
+	if result.RowsAffected <= 0 {
+		return resp, nil
 	}
 
 	for idx, g := range games {
