@@ -138,7 +138,9 @@ export const Hints = (props: Props) => {
         revealed: false,
       };
       // Add tiles hint
-      const tilesUsed = solution.getPlayedTiles().replace('.', '').length;
+      const tilesUsed = Array.from(solution.getPlayedTiles()).filter(
+        (x) => x !== '.'
+      ).length;
       const isBingo = solution.getIsBingo();
       const tilesMessage = isBingo ? (
         <>The play is a bingo! Use all your tiles.</>
