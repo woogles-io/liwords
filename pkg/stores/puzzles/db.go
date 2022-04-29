@@ -294,7 +294,7 @@ func (s *DBStore) GetPuzzle(ctx context.Context, userUUID string, puzzleUUID str
 	lastAttemptTime := time.Time{}
 
 	if userLoggedIn {
-		attemptExists, attempts, status, firstAttemptTime, lastAttemptTime, err = getAttempts(ctx, tx, userUUID, puzzleUUID)
+		_, attemptExists, attempts, status, firstAttemptTime, lastAttemptTime, err = getAttempts(ctx, tx, userUUID, puzzleUUID)
 		if err != nil {
 			return nil, "", -1, nil, time.Time{}, time.Time{}, err
 		}
@@ -629,23 +629,23 @@ func (s *DBStore) SetPuzzleVote(ctx context.Context, userID string, puzzleID str
 	return err
 }
 
-func (s *DBStore) GetAttempts(ctx context.Context, userUUID string, puzzleUUID string) (bool, int32, *bool, time.Time, time.Time, error) {
+func (s *DBStore) GetAttempts(ctx context.Context, userUUID string, puzzleUUID string) (bool, bool, int32, *bool, time.Time, time.Time, error) {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
-		return false, -1, nil, time.Time{}, time.Time{}, err
+		return false, false, -1, nil, time.Time{}, time.Time{}, err
 	}
 	defer tx.Rollback(ctx)
 
-	attemptExists, attempts, status, firstAttemptTime, lastAttemptTime, err := getAttempts(ctx, tx, userUUID, puzzleUUID)
+	rated, attemptExists, attempts, status, firstAttemptTime, lastAttemptTime, err := getAttempts(ctx, tx, userUUID, puzzleUUID)
 	if err != nil {
-		return false, -1, nil, time.Time{}, time.Time{}, err
+		return false, false, -1, nil, time.Time{}, time.Time{}, err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return false, -1, nil, time.Time{}, time.Time{}, err
+		return false, false, -1, nil, time.Time{}, time.Time{}, err
 	}
 
-	return attemptExists, attempts, status, firstAttemptTime, lastAttemptTime, nil
+	return rated, attemptExists, attempts, status, firstAttemptTime, lastAttemptTime, nil
 }
 
 func (s *DBStore) GetJobInfo(ctx context.Context, genId int) (time.Time, time.Time, time.Duration, *bool, *string, int, int, [][]int, error) {
@@ -748,15 +748,15 @@ func (s *DBStore) GetPotentialPuzzleGames(ctx context.Context, limit int, offset
 	return rows, nil
 }
 
-func getAttempts(ctx context.Context, tx pgx.Tx, userUUID string, puzzleUUID string) (bool, int32, *bool, time.Time, time.Time, error) {
+func getAttempts(ctx context.Context, tx pgx.Tx, userUUID string, puzzleUUID string) (bool, bool, int32, *bool, time.Time, time.Time, error) {
 	pid, err := common.GetPuzzleDBIDFromUUID(ctx, tx, puzzleUUID)
 	if err != nil {
-		return false, -1, nil, time.Time{}, time.Time{}, err
+		return false, false, -1, nil, time.Time{}, time.Time{}, err
 	}
 
 	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
 	if err != nil {
-		return false, -1, nil, time.Time{}, time.Time{}, err
+		return false, false, -1, nil, time.Time{}, time.Time{}, err
 	}
 
 	var attempts int32
@@ -766,10 +766,10 @@ func getAttempts(ctx context.Context, tx pgx.Tx, userUUID string, puzzleUUID str
 
 	err = tx.QueryRow(ctx, `SELECT attempts, correct, created_at, updated_at FROM puzzle_attempts WHERE user_id = $1 AND puzzle_id = $2`, uid, pid).Scan(&attempts, correct, &firstAttemptTime, &lastAttemptTime)
 	if err == pgx.ErrNoRows {
-		return false, 0, nil, time.Time{}, time.Time{}, nil
+		return false, false, 0, nil, time.Time{}, time.Time{}, nil
 	}
 	if err != nil {
-		return false, -1, nil, time.Time{}, time.Time{}, err
+		return false, false, -1, nil, time.Time{}, time.Time{}, err
 	}
 
 	var userWasCorrect bool
@@ -781,7 +781,7 @@ func getAttempts(ctx context.Context, tx pgx.Tx, userUUID string, puzzleUUID str
 		status = nil
 	}
 
-	return true, attempts, status, firstAttemptTime, lastAttemptTime, nil
+	return attempts != 0 || status != nil, true, attempts, status, firstAttemptTime, lastAttemptTime, nil
 }
 
 func getNextPuzzleId(ctx context.Context, tx pgx.Tx, userUUID string, lexicon string) (string, error) {

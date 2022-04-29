@@ -107,7 +107,7 @@ func (ps *PuzzleService) SubmitAnswer(ctx context.Context, req *pb.SubmissionReq
 	if err != nil {
 		return nil, err
 	}
-	userIsCorrect, status, correctAnswer, gameId, turnNumber, afterText, attempts, newUserRating, newPuzzleRating, firstAttemptTime, lastAttemptTime, err := SubmitAnswer(ctx, ps.puzzleStore, req.PuzzleId, user.UUID, req.Answer, req.ShowSolution)
+	userIsCorrect, status, correctAnswer, gameId, turnNumber, afterText, attempts, newUserRating, newPuzzleRating, firstAttemptTime, lastAttemptTime, err := SubmitAnswer(ctx, ps.puzzleStore, user.UUID, req.PuzzleId, req.Answer, req.ShowSolution)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func (ps *PuzzleService) GetPuzzleAnswer(ctx context.Context, req *pb.PuzzleRequ
 	if err != nil {
 		return nil, err
 	}
-	answer, err := GetPuzzleAnswer(ctx, ps.puzzleStore, req.PuzzleId, user.UUID)
+	answer, err := GetPuzzleAnswer(ctx, ps.puzzleStore, user.UUID, req.PuzzleId)
 	if err != nil {
 		return nil, err
 	}
