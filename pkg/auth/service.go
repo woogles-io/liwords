@@ -212,6 +212,7 @@ func (as *AuthenticationService) GetSignedCookie(ctx context.Context, r *pb.GetS
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)
 	}
+	log.Info().Str("username", sess.Username).Msg("got-signed-cookie")
 	return &pb.SignedCookieResponse{Jwt: tokenString}, nil
 }
 
@@ -233,7 +234,11 @@ func (as *AuthenticationService) InstallSignedCookie(ctx context.Context, r *pb.
 		if !ok {
 			return nil, twirp.InternalError("could not convert claim")
 		}
+		log.Info().Msg("install-signed-cookie")
 		err = apiserver.SetDefaultCookie(ctx, sessId)
+		if err != nil {
+			return nil, twirp.InternalErrorWith(err)
+		}
 	}
 
 	if !token.Valid {
