@@ -6,6 +6,7 @@ import App from './App';
 import * as serviceWorker from './serviceWorker';
 import { Store } from './store/store';
 import { BriefProfiles } from './utils/brief_profiles';
+import { postJsonObj } from './api/api';
 
 declare global {
   interface Window {
@@ -39,6 +40,39 @@ window.console.info(
   };
   window.addEventListener('resize', resizeFunc);
   resizeFunc();
+}
+
+// Some magic code here to force everyone to use the naked domain before
+// using Cloudfront to redirect:
+{
+  type jwtresp = {
+    jwt: string;
+  };
+  const cookieHandoverFunc = async () => {
+    await postJsonObj(
+      'user_service.AuthenticationService',
+      'GetSignedCookie',
+      {},
+      (response) => {
+        const r = response as jwtresp;
+        console.log('got jwt', r.jwt);
+        const newPath = `/handover-signed-cookie?${new URLSearchParams({
+          jwt: r.jwt,
+          ls: JSON.stringify(localStorage),
+          path: window.location.pathname,
+        })}`;
+        const loc = window.location;
+        const protocol = loc.protocol;
+        const hostname = loc.hostname;
+        const nakedHost = hostname.replace(/www\./, '');
+        window.location.replace(`${protocol}//${nakedHost}${newPath}`);
+      },
+      (err) => {} // ignore errors.
+    );
+  };
+  if (window.location.hostname.startsWith('www.')) {
+    cookieHandoverFunc();
+  }
 }
 
 ReactDOM.render(

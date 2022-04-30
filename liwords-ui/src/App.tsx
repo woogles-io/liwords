@@ -1,5 +1,11 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useSearchParams,
+} from 'react-router-dom';
 import { useMountedState } from './utils/mounted';
 import './App.scss';
 import axios from 'axios';
@@ -26,7 +32,7 @@ import { Settings } from './settings/settings';
 import { PasswordChange } from './lobby/password_change';
 import { PasswordReset } from './lobby/password_reset';
 import { NewPassword } from './lobby/new_password';
-import { toAPIUrl } from './api/api';
+import { postJsonObj, toAPIUrl } from './api/api';
 import { encodeToSocketFmt } from './utils/protobuf';
 import { Clubs } from './clubs';
 import { TournamentRoom } from './tournament/room';
@@ -66,6 +72,42 @@ const bnjyTile = localStorage?.getItem('bnjyMode') === 'true';
 if (bnjyTile) {
   document?.body?.classList?.add(`bnjyMode`);
 }
+
+// A temporary component until we auto-redirect with Cloudfront
+const HandoverSignedCookie = () => {
+  // No render.
+  const [searchParams] = useSearchParams();
+  const jwt = searchParams.get('jwt');
+  const ls = searchParams.get('ls');
+  const path = searchParams.get('path');
+
+  const cookieSetFunc = useCallback(async () => {
+    await postJsonObj(
+      'user_service.AuthenticationService',
+      'InstallSignedCookie',
+      { jwt },
+      () => {
+        // we successfully transferred the cookie.
+        if (ls) {
+          const lsobj = JSON.parse(ls);
+          console.log('got localstorage', lsobj);
+          Object.keys(lsobj).forEach((k) => {
+            localStorage.setItem(k, lsobj[k]);
+          });
+        }
+        if (path) {
+          window.location.replace(path);
+        }
+      }
+    );
+  }, [jwt, ls, path]);
+
+  useEffect(() => {
+    cookieSetFunc();
+  }, [cookieSetFunc]);
+
+  return null;
+};
 
 const App = React.memo(() => {
   const { useState } = useMountedState();
@@ -286,6 +328,10 @@ const App = React.memo(() => {
           element={<Navigate replace to="/settings/donate" />}
         />
         <Route path="donate_success" element={<DonateSuccess />} />
+        <Route
+          path="handover-signed-cookie"
+          element={<HandoverSignedCookie />}
+        />
       </Routes>
       <Footer />
     </div>

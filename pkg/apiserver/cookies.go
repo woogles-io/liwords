@@ -11,6 +11,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/sessions"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 // ExposeResponseWriterMiddleware configures an http.Handler (like any Twirp server)
@@ -37,7 +38,7 @@ func setCookie(ctx context.Context, cookie *http.Cookie) error {
 	return nil
 }
 
-func SetDefaultCookie(ctx context.Context, sessID, rootDomain string) error {
+func SetDefaultCookie(ctx context.Context, sessID string) error {
 	cookie := &http.Cookie{
 		Name:  "session",
 		Value: sessID,
@@ -48,13 +49,12 @@ func SetDefaultCookie(ctx context.Context, sessID, rootDomain string) error {
 		Expires:  time.Now().Add(365 * 24 * time.Hour),
 		HttpOnly: true,
 		Path:     "/",
-		Domain:   "." + rootDomain,
 	}
-
+	log.Debug().Msgf("setting cookie %v", cookie)
 	return setCookie(ctx, cookie)
 }
 
-func ExpireCookie(ctx context.Context, sessID, rootDomain string) error {
+func ExpireCookie(ctx context.Context, sessID string) error {
 	return setCookie(ctx, &http.Cookie{
 		Name:     "session",
 		Value:    sessID,
@@ -62,7 +62,6 @@ func ExpireCookie(ctx context.Context, sessID, rootDomain string) error {
 		HttpOnly: true,
 		Path:     "/",
 		Expires:  time.Now().Add(-100 * time.Hour),
-		Domain:   "." + rootDomain,
 	})
 }
 
@@ -75,7 +74,7 @@ const RenewCookieTimer = time.Hour * 24 * 14
 
 // AuthenticationMiddlewareGenerator generates auth middleware that looks up
 // a session ID, and attaches a Session to the request context (at `sesskey`)
-func AuthenticationMiddlewareGenerator(sessionStore sessions.SessionStore, domain string) (mw func(http.Handler) http.Handler) {
+func AuthenticationMiddlewareGenerator(sessionStore sessions.SessionStore) (mw func(http.Handler) http.Handler) {
 	mw = func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -99,19 +98,12 @@ func AuthenticationMiddlewareGenerator(sessionStore sessions.SessionStore, domai
 				h.ServeHTTP(w, r)
 				return
 			}
-
 			if time.Until(session.Expiry) < RenewCookieTimer {
 				err := sessionStore.ExtendExpiry(ctx, session)
 				log.Err(err).Msg("extending-session")
 				// extend the cookie age as well.
-				SetDefaultCookie(ctx, sessionCookie.Value, domain)
+				SetDefaultCookie(ctx, sessionCookie.Value)
 			}
-			// For now, let's set the cookie again. This will make the
-			// cookie inter-domain if it hasn't been made so already.
-			// Do this for a few weeks until we have a nice number of
-			// inter-domain cookies, before we force everyone onto the
-			// naked domain.
-			SetDefaultCookie(ctx, sessionCookie.Value, domain)
 			ctx = PlaceInContext(ctx, session)
 			r = r.WithContext(ctx)
 			// printContextInternals(r.Context(), true)
