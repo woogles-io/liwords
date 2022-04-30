@@ -45,11 +45,12 @@ window.console.info(
 // Some magic code here to force everyone to use the naked domain before
 // using Cloudfront to redirect:
 {
-  type jwtresp = {
-    jwt: string;
-  };
-  const cookieHandoverFunc = async () => {
-    await postJsonObj(
+  const loc = window.location;
+  if (loc.hostname.startsWith('www.')) {
+    type jwtresp = {
+      jwt: string;
+    };
+    postJsonObj(
       'user_service.AuthenticationService',
       'GetSignedCookie',
       {},
@@ -59,9 +60,8 @@ window.console.info(
         const newPath = `/handover-signed-cookie?${new URLSearchParams({
           jwt: r.jwt,
           ls: JSON.stringify(localStorage),
-          path: window.location.pathname,
+          path: loc.pathname,
         })}`;
-        const loc = window.location;
         const protocol = loc.protocol;
         const hostname = loc.hostname;
         const nakedHost = hostname.replace(/www\./, '');
@@ -70,9 +70,6 @@ window.console.info(
       },
       (err) => {} // ignore errors.
     );
-  };
-  if (window.location.hostname.startsWith('www.')) {
-    cookieHandoverFunc();
   }
 }
 
