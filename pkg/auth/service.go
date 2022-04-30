@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
 
@@ -69,10 +68,11 @@ type AuthenticationService struct {
 	mailgunKey   string
 	discordToken string
 	argonConfig  config.ArgonConfig
+	rootDomain   string
 }
 
 func NewAuthenticationService(u user.Store, ss sessions.SessionStore, cs config.ConfigStore,
-	secretKey, mailgunKey string, discordToken string, cfg config.ArgonConfig) *AuthenticationService {
+	secretKey, mailgunKey string, discordToken string, cfg config.ArgonConfig, domain string) *AuthenticationService {
 	return &AuthenticationService{
 		userStore:    u,
 		sessionStore: ss,
@@ -80,7 +80,8 @@ func NewAuthenticationService(u user.Store, ss sessions.SessionStore, cs config.
 		secretKey:    secretKey,
 		mailgunKey:   mailgunKey,
 		discordToken: discordToken,
-		argonConfig:  cfg}
+		argonConfig:  cfg,
+		rootDomain:   domain}
 }
 
 // Login sets a cookie.
@@ -111,7 +112,7 @@ func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginReque
 		return nil, err
 	}
 
-	err = apiserver.SetDefaultCookie(ctx, sess.ID)
+	err = apiserver.SetDefaultCookie(ctx, sess.ID, as.rootDomain)
 
 	log.Info().Str("value", sess.ID).Msg("setting-cookie")
 	if err != nil {
@@ -132,14 +133,7 @@ func (as *AuthenticationService) Logout(ctx context.Context, r *pb.UserLogoutReq
 		return nil, twirp.InternalErrorWith(err)
 	}
 	// Delete the cookie as well.
-	err = apiserver.SetCookie(ctx, &http.Cookie{
-		Name:     "session",
-		Value:    sess.ID,
-		MaxAge:   -1,
-		HttpOnly: true,
-		Path:     "/",
-		Expires:  time.Now().Add(-100 * time.Hour),
-	})
+	err = apiserver.ExpireCookie(ctx, sess.ID, as.rootDomain)
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)
 	}

@@ -158,8 +158,8 @@ func main() {
 
 	middlewares := alice.New(
 		hlog.NewHandler(log.With().Str("service", "liwords").Logger()),
-		apiserver.WithCookiesMiddleware,
-		apiserver.AuthenticationMiddlewareGenerator(stores.SessionStore),
+		apiserver.ExposeResponseWriterMiddleware,
+		apiserver.AuthenticationMiddlewareGenerator(stores.SessionStore, cfg.RootDomain),
 		apiserver.APIKeyMiddlewareGenerator(),
 		config.CtxMiddlewareGenerator(cfg),
 
@@ -207,7 +207,7 @@ func main() {
 
 	mementoService := memento.NewMementoService(stores.UserStore, stores.GameStore)
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
-		cfg.SecretKey, cfg.MailgunKey, cfg.DiscordToken, cfg.ArgonConfig)
+		cfg.SecretKey, cfg.MailgunKey, cfg.DiscordToken, cfg.ArgonConfig, cfg.RootDomain)
 	registrationService := registration.NewRegistrationService(stores.UserStore, cfg.ArgonConfig)
 	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore)
 	profileService := pkgprofile.NewProfileService(stores.UserStore, pkguser.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET")))
