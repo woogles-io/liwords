@@ -65,6 +65,7 @@ window.console.info(
         const protocol = loc.protocol;
         const hostname = loc.hostname;
         const nakedHost = hostname.replace(/www\./, '');
+        localStorage.clear();
         window.location.replace(`${protocol}//${nakedHost}${newPath}`);
       },
       (err) => {} // ignore errors.

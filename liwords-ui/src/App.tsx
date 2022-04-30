@@ -91,9 +91,9 @@ const HandoverSignedCookie = () => {
         if (ls) {
           const lsobj = JSON.parse(ls);
           console.log('got localstorage', lsobj);
-          Object.keys(lsobj).forEach((k) => {
+          for (const k in lsobj) {
             localStorage.setItem(k, lsobj[k]);
-          });
+          }
         }
         if (path) {
           window.location.replace(path);
