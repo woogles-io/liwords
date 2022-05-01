@@ -59,6 +59,14 @@ func (ps *PuzzleService) GetNextPuzzleId(ctx context.Context, req *pb.NextPuzzle
 	return &pb.NextPuzzleIdResponse{PuzzleId: puzzleId}, nil
 }
 
+func (ps *PuzzleService) GetNextClosestRatingPuzzleId(ctx context.Context, req *pb.NextClosestRatingPuzzleIdRequest) (*pb.NextClosestRatingPuzzleIdResponse, error) {
+	puzzleId, err := GetNextClosestRatingPuzzleId(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Lexicon)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.NextClosestRatingPuzzleIdResponse{PuzzleId: puzzleId}, nil
+}
+
 func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *pb.PuzzleRequest) (*pb.PuzzleResponse, error) {
 	gameHist, beforeText, attempts, status, firstAttemptTime, lastAttemptTime, err := GetPuzzle(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.PuzzleId)
 	if err != nil {

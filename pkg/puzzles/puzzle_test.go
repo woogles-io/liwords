@@ -80,7 +80,7 @@ func TestPuzzlesMain(t *testing.T) {
 
 	ctx := context.Background()
 
-	rk := ratingKey(common.DefaultGameReq)
+	rk := ratingKey(common.DefaultGameReq.Lexicon)
 
 	pcid, err := transactGetDBIDFromUUID(ctx, pool, "users", PuzzleCreatorUUID)
 	is.NoErr(err)

@@ -29,6 +29,7 @@ type PuzzleStore interface {
 		lexicon string, beforeText string, afterText string, tags []macondopb.PuzzleTag, reqId int, bucketIndex int32) error
 	GetStartPuzzleId(ctx context.Context, userId string, lexicon string) (string, error)
 	GetNextPuzzleId(ctx context.Context, userId string, lexicon string) (string, error)
+	GetNextClosestRatingPuzzleId(ctx context.Context, userId string, lexicon string, ratingKey entity.VariantKey) (string, error)
 	GetPuzzle(ctx context.Context, userId string, puzzleUUID string) (*macondopb.GameHistory, string, int32, *bool, time.Time, time.Time, error)
 	GetPreviousPuzzleId(ctx context.Context, userId string, puzzleUUID string) (string, error)
 	GetAnswer(ctx context.Context, puzzleUUID string) (*macondopb.GameEvent, string, int32, string, *ipc.GameRequest, *entity.SingleRating, error)
@@ -94,6 +95,10 @@ func GetNextPuzzleId(ctx context.Context, ps PuzzleStore, userId string, lexicon
 	return ps.GetNextPuzzleId(ctx, userId, lexicon)
 }
 
+func GetNextClosestRatingPuzzleId(ctx context.Context, ps PuzzleStore, userId string, lexicon string) (string, error) {
+	return ps.GetNextClosestRatingPuzzleId(ctx, userId, lexicon, ratingKey(lexicon))
+}
+
 func GetPuzzle(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID string) (*macondopb.GameHistory, string, int32, *bool, time.Time, time.Time, error) {
 	return ps.GetPuzzle(ctx, userId, puzzleUUID)
 }
@@ -139,7 +144,7 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleUUID string, userId
 		Int32("attempts", attempts).Msg("equal")
 	var newPuzzleSingleRating *entity.SingleRating
 	var newUserSingleRating *entity.SingleRating
-	rk := ratingKey(req)
+	rk := ratingKey(req.Lexicon)
 
 	if attempts == 0 && status == nil {
 		// Get the user ratings
@@ -327,6 +332,6 @@ func uniqueSingleTileKey(ge *macondopb.GameEvent) int {
 		alphabet.MaxAlphabetSize*alphabet.MaxAlphabetSize*int(tile)
 }
 
-func ratingKey(gameRequest *ipc.GameRequest) entity.VariantKey {
-	return entity.ToVariantKey(gameRequest.Lexicon, common.PuzzleVariant, entity.TCCorres)
+func ratingKey(lexicon string) entity.VariantKey {
+	return entity.ToVariantKey(lexicon, common.PuzzleVariant, entity.TCCorres)
 }

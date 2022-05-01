@@ -279,6 +279,55 @@ func (s *DBStore) GetNextPuzzleId(ctx context.Context, userUUID string, lexicon 
 	return nextPuzzleUUID, nil
 }
 
+func (s *DBStore) GetNextClosestRatingPuzzleId(ctx context.Context, userId string, lexicon string, ratingKey entity.VariantKey) (string, error) {
+	tx, err := s.dbPool.BeginTx(ctx, common.RepeatableReadTxOptions)
+	if err != nil {
+		return "", err
+	}
+	defer tx.Rollback(ctx)
+
+	var puzzleUUID string
+	if userId == "" {
+		puzzleUUID, err = getRandomPuzzleUUID(ctx, tx, lexicon, nil)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		userRating, err := getUserRating(ctx, tx, userId, ratingKey)
+		if err != nil {
+			return "", err
+		}
+
+		err = tx.QueryRow(ctx,
+			`
+			(SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $1) as attempted_puzzles;
+			SELECT uuid FROM
+		(
+		  (SELECT uuid, rating->'r' AS rating FROM puzzles
+		  WHERE lexicon = $2 AND
+				id NOT IN attempted_puzzles AND
+				rating->'r' >= $3 ORDER BY rating->'r' LIMIT 1) AS above
+		  UNION ALL
+		  (SELECT uuid, rating->'r' AS rating FROM puzzles
+		  WHERE lexicon = $2 AND
+				id NOT IN attempted_puzzles AND
+				rating->'r' < $3 ORDER BY rating->'r' DESC LIMIT 1) AS below
+		) 
+		ORDER BY ABS($3-rating) LIMIT 1`,
+			userId, lexicon, userRating.Rating).Scan(&puzzleUUID)
+
+		if err != nil {
+			return "", err
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return "", err
+	}
+
+	return puzzleUUID, nil
+}
+
 func (s *DBStore) GetPuzzle(ctx context.Context, userUUID string, puzzleUUID string) (*macondopb.GameHistory, string, int32, *bool, time.Time, time.Time, error) {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
@@ -570,18 +619,7 @@ func (s *DBStore) GetUserRating(ctx context.Context, userID string, ratingKey en
 	}
 	defer tx.Rollback(ctx)
 
-	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	initialRating := &entity.SingleRating{
-		Rating:            float64(glicko.InitialRating),
-		RatingDeviation:   float64(glicko.InitialRatingDeviation),
-		Volatility:        glicko.InitialVolatility,
-		LastGameTimestamp: time.Now().Unix()}
-
-	sr, err := common.GetUserRating(ctx, tx, uid, ratingKey, initialRating)
+	sr, err := getUserRating(ctx, tx, userID, ratingKey)
 	if err != nil {
 		return nil, err
 	}
@@ -746,6 +784,25 @@ func (s *DBStore) GetPotentialPuzzleGames(ctx context.Context, limit int, offset
 		return nil, err
 	}
 	return rows, nil
+}
+
+func getUserRating(ctx context.Context, tx pgx.Tx, userID string, ratingKey entity.VariantKey) (*entity.SingleRating, error) {
+	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	initialRating := &entity.SingleRating{
+		Rating:            float64(glicko.InitialRating),
+		RatingDeviation:   float64(glicko.InitialRatingDeviation),
+		Volatility:        glicko.InitialVolatility,
+		LastGameTimestamp: time.Now().Unix()}
+
+	sr, err := common.GetUserRating(ctx, tx, uid, ratingKey, initialRating)
+	if err != nil {
+		return nil, err
+	}
+	return sr, nil
 }
 
 func getAttempts(ctx context.Context, tx pgx.Tx, userUUID string, puzzleUUID string) (bool, int32, *bool, time.Time, time.Time, error) {

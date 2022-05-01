@@ -260,6 +260,100 @@ func (x *NextPuzzleIdResponse) GetPuzzleId() string {
 	return ""
 }
 
+type NextClosestRatingPuzzleIdRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Lexicon string `protobuf:"bytes,1,opt,name=lexicon,proto3" json:"lexicon,omitempty"`
+}
+
+func (x *NextClosestRatingPuzzleIdRequest) Reset() {
+	*x = NextClosestRatingPuzzleIdRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *NextClosestRatingPuzzleIdRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NextClosestRatingPuzzleIdRequest) ProtoMessage() {}
+
+func (x *NextClosestRatingPuzzleIdRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NextClosestRatingPuzzleIdRequest.ProtoReflect.Descriptor instead.
+func (*NextClosestRatingPuzzleIdRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *NextClosestRatingPuzzleIdRequest) GetLexicon() string {
+	if x != nil {
+		return x.Lexicon
+	}
+	return ""
+}
+
+type NextClosestRatingPuzzleIdResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	PuzzleId string `protobuf:"bytes,1,opt,name=puzzle_id,json=puzzleId,proto3" json:"puzzle_id,omitempty"`
+}
+
+func (x *NextClosestRatingPuzzleIdResponse) Reset() {
+	*x = NextClosestRatingPuzzleIdResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *NextClosestRatingPuzzleIdResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NextClosestRatingPuzzleIdResponse) ProtoMessage() {}
+
+func (x *NextClosestRatingPuzzleIdResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NextClosestRatingPuzzleIdResponse.ProtoReflect.Descriptor instead.
+func (*NextClosestRatingPuzzleIdResponse) Descriptor() ([]byte, []int) {
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *NextClosestRatingPuzzleIdResponse) GetPuzzleId() string {
+	if x != nil {
+		return x.PuzzleId
+	}
+	return ""
+}
+
 type PuzzleRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -271,7 +365,7 @@ type PuzzleRequest struct {
 func (x *PuzzleRequest) Reset() {
 	*x = PuzzleRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[4]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -284,7 +378,7 @@ func (x *PuzzleRequest) String() string {
 func (*PuzzleRequest) ProtoMessage() {}
 
 func (x *PuzzleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[4]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -297,7 +391,7 @@ func (x *PuzzleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleRequest.ProtoReflect.Descriptor instead.
 func (*PuzzleRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{4}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *PuzzleRequest) GetPuzzleId() string {
@@ -327,7 +421,7 @@ type AnswerResponse struct {
 func (x *AnswerResponse) Reset() {
 	*x = AnswerResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[5]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -340,7 +434,7 @@ func (x *AnswerResponse) String() string {
 func (*AnswerResponse) ProtoMessage() {}
 
 func (x *AnswerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[5]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -353,7 +447,7 @@ func (x *AnswerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnswerResponse.ProtoReflect.Descriptor instead.
 func (*AnswerResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{5}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *AnswerResponse) GetCorrectAnswer() *macondo.GameEvent {
@@ -439,7 +533,7 @@ type PuzzleResponse struct {
 func (x *PuzzleResponse) Reset() {
 	*x = PuzzleResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[6]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -452,7 +546,7 @@ func (x *PuzzleResponse) String() string {
 func (*PuzzleResponse) ProtoMessage() {}
 
 func (x *PuzzleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[6]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -465,7 +559,7 @@ func (x *PuzzleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleResponse.ProtoReflect.Descriptor instead.
 func (*PuzzleResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{6}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *PuzzleResponse) GetHistory() *macondo.GameHistory {
@@ -502,7 +596,7 @@ type SubmissionRequest struct {
 func (x *SubmissionRequest) Reset() {
 	*x = SubmissionRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[7]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -515,7 +609,7 @@ func (x *SubmissionRequest) String() string {
 func (*SubmissionRequest) ProtoMessage() {}
 
 func (x *SubmissionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[7]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -528,7 +622,7 @@ func (x *SubmissionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmissionRequest.ProtoReflect.Descriptor instead.
 func (*SubmissionRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{7}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *SubmissionRequest) GetPuzzleId() string {
@@ -564,7 +658,7 @@ type SubmissionResponse struct {
 func (x *SubmissionResponse) Reset() {
 	*x = SubmissionResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[8]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -577,7 +671,7 @@ func (x *SubmissionResponse) String() string {
 func (*SubmissionResponse) ProtoMessage() {}
 
 func (x *SubmissionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[8]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -590,7 +684,7 @@ func (x *SubmissionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmissionResponse.ProtoReflect.Descriptor instead.
 func (*SubmissionResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{8}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *SubmissionResponse) GetUserIsCorrect() bool {
@@ -618,7 +712,7 @@ type PreviousPuzzleRequest struct {
 func (x *PreviousPuzzleRequest) Reset() {
 	*x = PreviousPuzzleRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[9]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -631,7 +725,7 @@ func (x *PreviousPuzzleRequest) String() string {
 func (*PreviousPuzzleRequest) ProtoMessage() {}
 
 func (x *PreviousPuzzleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[9]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -644,7 +738,7 @@ func (x *PreviousPuzzleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviousPuzzleRequest.ProtoReflect.Descriptor instead.
 func (*PreviousPuzzleRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{9}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *PreviousPuzzleRequest) GetPuzzleId() string {
@@ -665,7 +759,7 @@ type PreviousPuzzleResponse struct {
 func (x *PreviousPuzzleResponse) Reset() {
 	*x = PreviousPuzzleResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[10]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -678,7 +772,7 @@ func (x *PreviousPuzzleResponse) String() string {
 func (*PreviousPuzzleResponse) ProtoMessage() {}
 
 func (x *PreviousPuzzleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[10]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -691,7 +785,7 @@ func (x *PreviousPuzzleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviousPuzzleResponse.ProtoReflect.Descriptor instead.
 func (*PreviousPuzzleResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{10}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *PreviousPuzzleResponse) GetPuzzleId() string {
@@ -713,7 +807,7 @@ type PuzzleVoteRequest struct {
 func (x *PuzzleVoteRequest) Reset() {
 	*x = PuzzleVoteRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[11]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[13]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -726,7 +820,7 @@ func (x *PuzzleVoteRequest) String() string {
 func (*PuzzleVoteRequest) ProtoMessage() {}
 
 func (x *PuzzleVoteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[11]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[13]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -739,7 +833,7 @@ func (x *PuzzleVoteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleVoteRequest.ProtoReflect.Descriptor instead.
 func (*PuzzleVoteRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{11}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *PuzzleVoteRequest) GetPuzzleId() string {
@@ -765,7 +859,7 @@ type PuzzleVoteResponse struct {
 func (x *PuzzleVoteResponse) Reset() {
 	*x = PuzzleVoteResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[12]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[14]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -778,7 +872,7 @@ func (x *PuzzleVoteResponse) String() string {
 func (*PuzzleVoteResponse) ProtoMessage() {}
 
 func (x *PuzzleVoteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[12]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[14]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -791,7 +885,7 @@ func (x *PuzzleVoteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleVoteResponse.ProtoReflect.Descriptor instead.
 func (*PuzzleVoteResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{12}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{14}
 }
 
 type PuzzleGenerationJobRequest struct {
@@ -811,7 +905,7 @@ type PuzzleGenerationJobRequest struct {
 func (x *PuzzleGenerationJobRequest) Reset() {
 	*x = PuzzleGenerationJobRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[13]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[15]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -824,7 +918,7 @@ func (x *PuzzleGenerationJobRequest) String() string {
 func (*PuzzleGenerationJobRequest) ProtoMessage() {}
 
 func (x *PuzzleGenerationJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[13]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[15]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -837,7 +931,7 @@ func (x *PuzzleGenerationJobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleGenerationJobRequest.ProtoReflect.Descriptor instead.
 func (*PuzzleGenerationJobRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{13}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *PuzzleGenerationJobRequest) GetBotVsBot() bool {
@@ -900,7 +994,7 @@ type APIPuzzleGenerationJobResponse struct {
 func (x *APIPuzzleGenerationJobResponse) Reset() {
 	*x = APIPuzzleGenerationJobResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[14]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[16]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -913,7 +1007,7 @@ func (x *APIPuzzleGenerationJobResponse) String() string {
 func (*APIPuzzleGenerationJobResponse) ProtoMessage() {}
 
 func (x *APIPuzzleGenerationJobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[14]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[16]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -926,7 +1020,7 @@ func (x *APIPuzzleGenerationJobResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use APIPuzzleGenerationJobResponse.ProtoReflect.Descriptor instead.
 func (*APIPuzzleGenerationJobResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{14}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *APIPuzzleGenerationJobResponse) GetStarted() bool {
@@ -948,7 +1042,7 @@ type APIPuzzleGenerationJobRequest struct {
 func (x *APIPuzzleGenerationJobRequest) Reset() {
 	*x = APIPuzzleGenerationJobRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[15]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[17]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -961,7 +1055,7 @@ func (x *APIPuzzleGenerationJobRequest) String() string {
 func (*APIPuzzleGenerationJobRequest) ProtoMessage() {}
 
 func (x *APIPuzzleGenerationJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[15]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[17]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -974,7 +1068,7 @@ func (x *APIPuzzleGenerationJobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use APIPuzzleGenerationJobRequest.ProtoReflect.Descriptor instead.
 func (*APIPuzzleGenerationJobRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{15}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *APIPuzzleGenerationJobRequest) GetRequest() *PuzzleGenerationJobRequest {
@@ -1003,7 +1097,7 @@ type PuzzleJobLogsRequest struct {
 func (x *PuzzleJobLogsRequest) Reset() {
 	*x = PuzzleJobLogsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[16]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[18]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1016,7 +1110,7 @@ func (x *PuzzleJobLogsRequest) String() string {
 func (*PuzzleJobLogsRequest) ProtoMessage() {}
 
 func (x *PuzzleJobLogsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[16]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[18]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1029,7 +1123,7 @@ func (x *PuzzleJobLogsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleJobLogsRequest.ProtoReflect.Descriptor instead.
 func (*PuzzleJobLogsRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{16}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *PuzzleJobLogsRequest) GetOffset() int32 {
@@ -1062,7 +1156,7 @@ type PuzzleJobLog struct {
 func (x *PuzzleJobLog) Reset() {
 	*x = PuzzleJobLog{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[17]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[19]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1075,7 +1169,7 @@ func (x *PuzzleJobLog) String() string {
 func (*PuzzleJobLog) ProtoMessage() {}
 
 func (x *PuzzleJobLog) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[17]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[19]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1088,7 +1182,7 @@ func (x *PuzzleJobLog) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleJobLog.ProtoReflect.Descriptor instead.
 func (*PuzzleJobLog) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{17}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *PuzzleJobLog) GetId() int64 {
@@ -1144,7 +1238,7 @@ type PuzzleJobLogsResponse struct {
 func (x *PuzzleJobLogsResponse) Reset() {
 	*x = PuzzleJobLogsResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[18]
+		mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[20]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1157,7 +1251,7 @@ func (x *PuzzleJobLogsResponse) String() string {
 func (*PuzzleJobLogsResponse) ProtoMessage() {}
 
 func (x *PuzzleJobLogsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[18]
+	mi := &file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[20]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1170,7 +1264,7 @@ func (x *PuzzleJobLogsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleJobLogsResponse.ProtoReflect.Descriptor instead.
 func (*PuzzleJobLogsResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{18}
+	return file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *PuzzleJobLogsResponse) GetLogs() []*PuzzleJobLog {
@@ -1204,6 +1298,14 @@ var file_api_proto_puzzle_service_puzzle_service_proto_rawDesc = []byte{
 	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x6c, 0x65, 0x78, 0x69, 0x63, 0x6f,
 	0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x6c, 0x65, 0x78, 0x69, 0x63, 0x6f, 0x6e,
 	0x22, 0x33, 0x0a, 0x14, 0x4e, 0x65, 0x78, 0x74, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x49, 0x64,
+	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1b, 0x0a, 0x09, 0x70, 0x75, 0x7a, 0x7a,
+	0x6c, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x70, 0x75, 0x7a,
+	0x7a, 0x6c, 0x65, 0x49, 0x64, 0x22, 0x3c, 0x0a, 0x20, 0x4e, 0x65, 0x78, 0x74, 0x43, 0x6c, 0x6f,
+	0x73, 0x65, 0x73, 0x74, 0x52, 0x61, 0x74, 0x69, 0x6e, 0x67, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65,
+	0x49, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x6c, 0x65, 0x78,
+	0x69, 0x63, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x6c, 0x65, 0x78, 0x69,
+	0x63, 0x6f, 0x6e, 0x22, 0x40, 0x0a, 0x21, 0x4e, 0x65, 0x78, 0x74, 0x43, 0x6c, 0x6f, 0x73, 0x65,
+	0x73, 0x74, 0x52, 0x61, 0x74, 0x69, 0x6e, 0x67, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x49, 0x64,
 	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1b, 0x0a, 0x09, 0x70, 0x75, 0x7a, 0x7a,
 	0x6c, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x70, 0x75, 0x7a,
 	0x7a, 0x6c, 0x65, 0x49, 0x64, 0x22, 0x2c, 0x0a, 0x0d, 0x50, 0x75, 0x7a, 0x7a, 0x6c, 0x65, 0x52,
@@ -1415,67 +1517,69 @@ func file_api_proto_puzzle_service_puzzle_service_proto_rawDescGZIP() []byte {
 }
 
 var file_api_proto_puzzle_service_puzzle_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_api_proto_puzzle_service_puzzle_service_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_api_proto_puzzle_service_puzzle_service_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_api_proto_puzzle_service_puzzle_service_proto_goTypes = []interface{}{
-	(PuzzleStatus)(0),                       // 0: puzzle_service.PuzzleStatus
-	(*StartPuzzleIdRequest)(nil),            // 1: puzzle_service.StartPuzzleIdRequest
-	(*StartPuzzleIdResponse)(nil),           // 2: puzzle_service.StartPuzzleIdResponse
-	(*NextPuzzleIdRequest)(nil),             // 3: puzzle_service.NextPuzzleIdRequest
-	(*NextPuzzleIdResponse)(nil),            // 4: puzzle_service.NextPuzzleIdResponse
-	(*PuzzleRequest)(nil),                   // 5: puzzle_service.PuzzleRequest
-	(*AnswerResponse)(nil),                  // 6: puzzle_service.AnswerResponse
-	(*PuzzleResponse)(nil),                  // 7: puzzle_service.PuzzleResponse
-	(*SubmissionRequest)(nil),               // 8: puzzle_service.SubmissionRequest
-	(*SubmissionResponse)(nil),              // 9: puzzle_service.SubmissionResponse
-	(*PreviousPuzzleRequest)(nil),           // 10: puzzle_service.PreviousPuzzleRequest
-	(*PreviousPuzzleResponse)(nil),          // 11: puzzle_service.PreviousPuzzleResponse
-	(*PuzzleVoteRequest)(nil),               // 12: puzzle_service.PuzzleVoteRequest
-	(*PuzzleVoteResponse)(nil),              // 13: puzzle_service.PuzzleVoteResponse
-	(*PuzzleGenerationJobRequest)(nil),      // 14: puzzle_service.PuzzleGenerationJobRequest
-	(*APIPuzzleGenerationJobResponse)(nil),  // 15: puzzle_service.APIPuzzleGenerationJobResponse
-	(*APIPuzzleGenerationJobRequest)(nil),   // 16: puzzle_service.APIPuzzleGenerationJobRequest
-	(*PuzzleJobLogsRequest)(nil),            // 17: puzzle_service.PuzzleJobLogsRequest
-	(*PuzzleJobLog)(nil),                    // 18: puzzle_service.PuzzleJobLog
-	(*PuzzleJobLogsResponse)(nil),           // 19: puzzle_service.PuzzleJobLogsResponse
-	(*macondo.GameEvent)(nil),               // 20: macondo.GameEvent
-	(*timestamppb.Timestamp)(nil),           // 21: google.protobuf.Timestamp
-	(*macondo.GameHistory)(nil),             // 22: macondo.GameHistory
-	(*ipc.ClientGameplayEvent)(nil),         // 23: ipc.ClientGameplayEvent
-	(*macondo.PuzzleGenerationRequest)(nil), // 24: macondo.PuzzleGenerationRequest
+	(PuzzleStatus)(0),                         // 0: puzzle_service.PuzzleStatus
+	(*StartPuzzleIdRequest)(nil),              // 1: puzzle_service.StartPuzzleIdRequest
+	(*StartPuzzleIdResponse)(nil),             // 2: puzzle_service.StartPuzzleIdResponse
+	(*NextPuzzleIdRequest)(nil),               // 3: puzzle_service.NextPuzzleIdRequest
+	(*NextPuzzleIdResponse)(nil),              // 4: puzzle_service.NextPuzzleIdResponse
+	(*NextClosestRatingPuzzleIdRequest)(nil),  // 5: puzzle_service.NextClosestRatingPuzzleIdRequest
+	(*NextClosestRatingPuzzleIdResponse)(nil), // 6: puzzle_service.NextClosestRatingPuzzleIdResponse
+	(*PuzzleRequest)(nil),                     // 7: puzzle_service.PuzzleRequest
+	(*AnswerResponse)(nil),                    // 8: puzzle_service.AnswerResponse
+	(*PuzzleResponse)(nil),                    // 9: puzzle_service.PuzzleResponse
+	(*SubmissionRequest)(nil),                 // 10: puzzle_service.SubmissionRequest
+	(*SubmissionResponse)(nil),                // 11: puzzle_service.SubmissionResponse
+	(*PreviousPuzzleRequest)(nil),             // 12: puzzle_service.PreviousPuzzleRequest
+	(*PreviousPuzzleResponse)(nil),            // 13: puzzle_service.PreviousPuzzleResponse
+	(*PuzzleVoteRequest)(nil),                 // 14: puzzle_service.PuzzleVoteRequest
+	(*PuzzleVoteResponse)(nil),                // 15: puzzle_service.PuzzleVoteResponse
+	(*PuzzleGenerationJobRequest)(nil),        // 16: puzzle_service.PuzzleGenerationJobRequest
+	(*APIPuzzleGenerationJobResponse)(nil),    // 17: puzzle_service.APIPuzzleGenerationJobResponse
+	(*APIPuzzleGenerationJobRequest)(nil),     // 18: puzzle_service.APIPuzzleGenerationJobRequest
+	(*PuzzleJobLogsRequest)(nil),              // 19: puzzle_service.PuzzleJobLogsRequest
+	(*PuzzleJobLog)(nil),                      // 20: puzzle_service.PuzzleJobLog
+	(*PuzzleJobLogsResponse)(nil),             // 21: puzzle_service.PuzzleJobLogsResponse
+	(*macondo.GameEvent)(nil),                 // 22: macondo.GameEvent
+	(*timestamppb.Timestamp)(nil),             // 23: google.protobuf.Timestamp
+	(*macondo.GameHistory)(nil),               // 24: macondo.GameHistory
+	(*ipc.ClientGameplayEvent)(nil),           // 25: ipc.ClientGameplayEvent
+	(*macondo.PuzzleGenerationRequest)(nil),   // 26: macondo.PuzzleGenerationRequest
 }
 var file_api_proto_puzzle_service_puzzle_service_proto_depIdxs = []int32{
-	20, // 0: puzzle_service.AnswerResponse.correct_answer:type_name -> macondo.GameEvent
+	22, // 0: puzzle_service.AnswerResponse.correct_answer:type_name -> macondo.GameEvent
 	0,  // 1: puzzle_service.AnswerResponse.status:type_name -> puzzle_service.PuzzleStatus
-	21, // 2: puzzle_service.AnswerResponse.first_attempt_time:type_name -> google.protobuf.Timestamp
-	21, // 3: puzzle_service.AnswerResponse.last_attempt_time:type_name -> google.protobuf.Timestamp
-	22, // 4: puzzle_service.PuzzleResponse.history:type_name -> macondo.GameHistory
-	6,  // 5: puzzle_service.PuzzleResponse.answer:type_name -> puzzle_service.AnswerResponse
-	23, // 6: puzzle_service.SubmissionRequest.answer:type_name -> ipc.ClientGameplayEvent
-	6,  // 7: puzzle_service.SubmissionResponse.answer:type_name -> puzzle_service.AnswerResponse
-	24, // 8: puzzle_service.PuzzleGenerationJobRequest.request:type_name -> macondo.PuzzleGenerationRequest
-	14, // 9: puzzle_service.APIPuzzleGenerationJobRequest.request:type_name -> puzzle_service.PuzzleGenerationJobRequest
-	14, // 10: puzzle_service.PuzzleJobLog.request:type_name -> puzzle_service.PuzzleGenerationJobRequest
-	21, // 11: puzzle_service.PuzzleJobLog.created_at:type_name -> google.protobuf.Timestamp
-	21, // 12: puzzle_service.PuzzleJobLog.completed_at:type_name -> google.protobuf.Timestamp
-	18, // 13: puzzle_service.PuzzleJobLogsResponse.logs:type_name -> puzzle_service.PuzzleJobLog
+	23, // 2: puzzle_service.AnswerResponse.first_attempt_time:type_name -> google.protobuf.Timestamp
+	23, // 3: puzzle_service.AnswerResponse.last_attempt_time:type_name -> google.protobuf.Timestamp
+	24, // 4: puzzle_service.PuzzleResponse.history:type_name -> macondo.GameHistory
+	8,  // 5: puzzle_service.PuzzleResponse.answer:type_name -> puzzle_service.AnswerResponse
+	25, // 6: puzzle_service.SubmissionRequest.answer:type_name -> ipc.ClientGameplayEvent
+	8,  // 7: puzzle_service.SubmissionResponse.answer:type_name -> puzzle_service.AnswerResponse
+	26, // 8: puzzle_service.PuzzleGenerationJobRequest.request:type_name -> macondo.PuzzleGenerationRequest
+	16, // 9: puzzle_service.APIPuzzleGenerationJobRequest.request:type_name -> puzzle_service.PuzzleGenerationJobRequest
+	16, // 10: puzzle_service.PuzzleJobLog.request:type_name -> puzzle_service.PuzzleGenerationJobRequest
+	23, // 11: puzzle_service.PuzzleJobLog.created_at:type_name -> google.protobuf.Timestamp
+	23, // 12: puzzle_service.PuzzleJobLog.completed_at:type_name -> google.protobuf.Timestamp
+	20, // 13: puzzle_service.PuzzleJobLogsResponse.logs:type_name -> puzzle_service.PuzzleJobLog
 	1,  // 14: puzzle_service.PuzzleService.GetStartPuzzleId:input_type -> puzzle_service.StartPuzzleIdRequest
 	3,  // 15: puzzle_service.PuzzleService.GetNextPuzzleId:input_type -> puzzle_service.NextPuzzleIdRequest
-	5,  // 16: puzzle_service.PuzzleService.GetPuzzle:input_type -> puzzle_service.PuzzleRequest
-	8,  // 17: puzzle_service.PuzzleService.SubmitAnswer:input_type -> puzzle_service.SubmissionRequest
-	5,  // 18: puzzle_service.PuzzleService.GetPuzzleAnswer:input_type -> puzzle_service.PuzzleRequest
-	10, // 19: puzzle_service.PuzzleService.GetPreviousPuzzleId:input_type -> puzzle_service.PreviousPuzzleRequest
-	12, // 20: puzzle_service.PuzzleService.SetPuzzleVote:input_type -> puzzle_service.PuzzleVoteRequest
-	16, // 21: puzzle_service.PuzzleService.StartPuzzleGenJob:input_type -> puzzle_service.APIPuzzleGenerationJobRequest
-	17, // 22: puzzle_service.PuzzleService.GetPuzzleJobLogs:input_type -> puzzle_service.PuzzleJobLogsRequest
+	7,  // 16: puzzle_service.PuzzleService.GetPuzzle:input_type -> puzzle_service.PuzzleRequest
+	10, // 17: puzzle_service.PuzzleService.SubmitAnswer:input_type -> puzzle_service.SubmissionRequest
+	7,  // 18: puzzle_service.PuzzleService.GetPuzzleAnswer:input_type -> puzzle_service.PuzzleRequest
+	12, // 19: puzzle_service.PuzzleService.GetPreviousPuzzleId:input_type -> puzzle_service.PreviousPuzzleRequest
+	14, // 20: puzzle_service.PuzzleService.SetPuzzleVote:input_type -> puzzle_service.PuzzleVoteRequest
+	18, // 21: puzzle_service.PuzzleService.StartPuzzleGenJob:input_type -> puzzle_service.APIPuzzleGenerationJobRequest
+	19, // 22: puzzle_service.PuzzleService.GetPuzzleJobLogs:input_type -> puzzle_service.PuzzleJobLogsRequest
 	2,  // 23: puzzle_service.PuzzleService.GetStartPuzzleId:output_type -> puzzle_service.StartPuzzleIdResponse
 	4,  // 24: puzzle_service.PuzzleService.GetNextPuzzleId:output_type -> puzzle_service.NextPuzzleIdResponse
-	7,  // 25: puzzle_service.PuzzleService.GetPuzzle:output_type -> puzzle_service.PuzzleResponse
-	9,  // 26: puzzle_service.PuzzleService.SubmitAnswer:output_type -> puzzle_service.SubmissionResponse
-	6,  // 27: puzzle_service.PuzzleService.GetPuzzleAnswer:output_type -> puzzle_service.AnswerResponse
-	11, // 28: puzzle_service.PuzzleService.GetPreviousPuzzleId:output_type -> puzzle_service.PreviousPuzzleResponse
-	13, // 29: puzzle_service.PuzzleService.SetPuzzleVote:output_type -> puzzle_service.PuzzleVoteResponse
-	15, // 30: puzzle_service.PuzzleService.StartPuzzleGenJob:output_type -> puzzle_service.APIPuzzleGenerationJobResponse
-	19, // 31: puzzle_service.PuzzleService.GetPuzzleJobLogs:output_type -> puzzle_service.PuzzleJobLogsResponse
+	9,  // 25: puzzle_service.PuzzleService.GetPuzzle:output_type -> puzzle_service.PuzzleResponse
+	11, // 26: puzzle_service.PuzzleService.SubmitAnswer:output_type -> puzzle_service.SubmissionResponse
+	8,  // 27: puzzle_service.PuzzleService.GetPuzzleAnswer:output_type -> puzzle_service.AnswerResponse
+	13, // 28: puzzle_service.PuzzleService.GetPreviousPuzzleId:output_type -> puzzle_service.PreviousPuzzleResponse
+	15, // 29: puzzle_service.PuzzleService.SetPuzzleVote:output_type -> puzzle_service.PuzzleVoteResponse
+	17, // 30: puzzle_service.PuzzleService.StartPuzzleGenJob:output_type -> puzzle_service.APIPuzzleGenerationJobResponse
+	21, // 31: puzzle_service.PuzzleService.GetPuzzleJobLogs:output_type -> puzzle_service.PuzzleJobLogsResponse
 	23, // [23:32] is the sub-list for method output_type
 	14, // [14:23] is the sub-list for method input_type
 	14, // [14:14] is the sub-list for extension type_name
@@ -1538,7 +1642,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PuzzleRequest); i {
+			switch v := v.(*NextClosestRatingPuzzleIdRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1550,7 +1654,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AnswerResponse); i {
+			switch v := v.(*NextClosestRatingPuzzleIdResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1562,7 +1666,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PuzzleResponse); i {
+			switch v := v.(*PuzzleRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1574,7 +1678,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SubmissionRequest); i {
+			switch v := v.(*AnswerResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1586,7 +1690,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SubmissionResponse); i {
+			switch v := v.(*PuzzleResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1598,7 +1702,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PreviousPuzzleRequest); i {
+			switch v := v.(*SubmissionRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1610,7 +1714,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PreviousPuzzleResponse); i {
+			switch v := v.(*SubmissionResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1622,7 +1726,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PuzzleVoteRequest); i {
+			switch v := v.(*PreviousPuzzleRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1634,7 +1738,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PuzzleVoteResponse); i {
+			switch v := v.(*PreviousPuzzleResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1646,7 +1750,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PuzzleGenerationJobRequest); i {
+			switch v := v.(*PuzzleVoteRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1658,7 +1762,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*APIPuzzleGenerationJobResponse); i {
+			switch v := v.(*PuzzleVoteResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1670,7 +1774,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*APIPuzzleGenerationJobRequest); i {
+			switch v := v.(*PuzzleGenerationJobRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1682,7 +1786,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PuzzleJobLogsRequest); i {
+			switch v := v.(*APIPuzzleGenerationJobResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1694,7 +1798,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PuzzleJobLog); i {
+			switch v := v.(*APIPuzzleGenerationJobRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1706,6 +1810,30 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			}
 		}
 		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*PuzzleJobLogsRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*PuzzleJobLog); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_proto_puzzle_service_puzzle_service_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*PuzzleJobLogsResponse); i {
 			case 0:
 				return &v.state
@@ -1724,7 +1852,7 @@ func file_api_proto_puzzle_service_puzzle_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_api_proto_puzzle_service_puzzle_service_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   19,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
