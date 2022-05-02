@@ -371,7 +371,7 @@ ul {
   }
   &:hover {
     @include colorModed() {
-      background: m($background);
+      background: m($off-background);
       color: m($gray-extreme);
     }
   }
