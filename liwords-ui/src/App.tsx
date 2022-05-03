@@ -81,30 +81,35 @@ const HandoverSignedCookie = () => {
   const ls = searchParams.get('ls');
   const path = searchParams.get('path');
 
+  const successFn = useCallback(() => {
+    if (ls) {
+      const lsobj = JSON.parse(ls);
+      for (const k in lsobj) {
+        localStorage.setItem(k, lsobj[k]);
+      }
+    }
+    if (path) {
+      window.location.replace(path);
+    }
+  }, [ls, path]);
+
   const cookieSetFunc = useCallback(async () => {
     await postJsonObj(
       'user_service.AuthenticationService',
       'InstallSignedCookie',
       { jwt },
-      () => {
-        // we successfully transferred the cookie.
-        if (ls) {
-          const lsobj = JSON.parse(ls);
-          console.log('got localstorage', lsobj);
-          for (const k in lsobj) {
-            localStorage.setItem(k, lsobj[k]);
-          }
-        }
-        if (path) {
-          window.location.replace(path);
-        }
-      }
+      // if successFn is called, it means we successfully transferred the cookie.
+      successFn
     );
-  }, [jwt, ls, path]);
+  }, [jwt, ls, path, successFn]);
 
   useEffect(() => {
-    cookieSetFunc();
-  }, [cookieSetFunc]);
+    if (jwt) {
+      cookieSetFunc();
+    } else {
+      successFn();
+    }
+  }, [cookieSetFunc, jwt, successFn]);
 
   return null;
 };

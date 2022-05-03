@@ -50,6 +50,14 @@ window.console.info(
     type jwtresp = {
       jwt: string;
     };
+    const redirectToHandoff = (path: string) => {
+      const protocol = loc.protocol;
+      const hostname = loc.hostname;
+      const nakedHost = hostname.replace(/www\./, '');
+      localStorage.clear();
+      window.location.replace(`${protocol}//${nakedHost}${path}`);
+    };
+
     postJsonObj(
       'user_service.AuthenticationService',
       'GetSignedCookie',
@@ -62,13 +70,19 @@ window.console.info(
           ls: JSON.stringify(localStorage),
           path: loc.pathname,
         })}`;
-        const protocol = loc.protocol;
-        const hostname = loc.hostname;
-        const nakedHost = hostname.replace(/www\./, '');
-        localStorage.clear();
-        window.location.replace(`${protocol}//${nakedHost}${newPath}`);
+        redirectToHandoff(newPath);
       },
-      (err) => {} // ignore errors.
+      (err) => {
+        if (err.message === 'need auth for this endpoint') {
+          // We don't have a jwt because we're not logged in. That's ok;
+          // let's hand off just the local storage then.
+          const newPath = `/handover-signed-cookie?${new URLSearchParams({
+            ls: JSON.stringify(localStorage),
+            path: loc.pathname,
+          })}`;
+          redirectToHandoff(newPath);
+        }
+      }
     );
   }
 }
