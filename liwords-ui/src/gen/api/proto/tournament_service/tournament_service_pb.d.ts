@@ -660,6 +660,50 @@ export namespace CheckinRequest {
   }
 }
 
+export class ExportTournamentRequest extends jspb.Message {
+  getId(): string;
+  setId(value: string): void;
+
+  getFormat(): string;
+  setFormat(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ExportTournamentRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: ExportTournamentRequest): ExportTournamentRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ExportTournamentRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ExportTournamentRequest;
+  static deserializeBinaryFromReader(message: ExportTournamentRequest, reader: jspb.BinaryReader): ExportTournamentRequest;
+}
+
+export namespace ExportTournamentRequest {
+  export type AsObject = {
+    id: string,
+    format: string,
+  }
+}
+
+export class ExportTournamentResponse extends jspb.Message {
+  getExported(): string;
+  setExported(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ExportTournamentResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: ExportTournamentResponse): ExportTournamentResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ExportTournamentResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ExportTournamentResponse;
+  static deserializeBinaryFromReader(message: ExportTournamentResponse, reader: jspb.BinaryReader): ExportTournamentResponse;
+}
+
+export namespace ExportTournamentResponse {
+  export type AsObject = {
+    exported: string,
+  }
+}
+
 export class NewClubSessionRequest extends jspb.Message {
   hasDate(): boolean;
   clearDate(): void;

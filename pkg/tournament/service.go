@@ -602,3 +602,23 @@ func (ts *TournamentService) UnstartTournament(ctx context.Context, req *pb.Unst
 	}
 	return &pb.TournamentResponse{}, nil
 }
+
+func (ts *TournamentService) ExportTournament(ctx context.Context, req *pb.ExportTournamentRequest) (*pb.ExportTournamentResponse, error) {
+	err := authenticateDirector(ctx, ts, req.Id, false, req)
+	if err != nil {
+		return nil, err
+	}
+
+	t, err := ts.tournamentStore.Get(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+	if req.Format == "" {
+		return nil, errors.New("must provide a format")
+	}
+	ret, err := exportTournament(ctx, t, ts.userStore, req.Format)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.ExportTournamentResponse{Exported: ret}, nil
+}

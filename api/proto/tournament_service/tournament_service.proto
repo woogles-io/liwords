@@ -208,6 +208,17 @@ service TournamentService {
   rpc UncheckIn(UncheckInRequest) returns (TournamentResponse);
   // CheckIn allows players to check themselves in.
   rpc CheckIn(CheckinRequest) returns (TournamentResponse);
+
+  rpc ExportTournament(ExportTournamentRequest) returns (ExportTournamentResponse);
+}
+
+message ExportTournamentRequest {
+  string id = 1;
+  string format = 2;
+}
+
+message ExportTournamentResponse {
+  string exported = 1;
 }
 
 message NewClubSessionRequest {
