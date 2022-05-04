@@ -616,7 +616,7 @@ func (ts *TournamentService) ExportTournament(ctx context.Context, req *pb.Expor
 	if req.Format == "" {
 		return nil, errors.New("must provide a format")
 	}
-	ret, err := exportTournament(ctx, t, ts.userStore, req.Format)
+	ret, err := ExportTournament(ctx, t, ts.userStore, req.Format)
 	if err != nil {
 		return nil, err
 	}
