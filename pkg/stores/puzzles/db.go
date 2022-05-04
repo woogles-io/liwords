@@ -297,24 +297,37 @@ func (s *DBStore) GetNextClosestRatingPuzzleId(ctx context.Context, userId strin
 		if err != nil {
 			return "", err
 		}
+		userDBID, err := common.GetUserDBIDFromUUID(ctx, tx, userId)
+		if err != nil {
+			return "", err
+		}
 
 		err = tx.QueryRow(ctx,
-			`
-			(SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $1) as attempted_puzzles;
-			SELECT uuid FROM
-		(
-		  (SELECT uuid, rating->'r' AS rating FROM puzzles
-		  WHERE lexicon = $2 AND
-				id NOT IN attempted_puzzles AND
-				rating->'r' >= $3 ORDER BY rating->'r' LIMIT 1) AS above
-		  UNION ALL
-		  (SELECT uuid, rating->'r' AS rating FROM puzzles
-		  WHERE lexicon = $2 AND
-				id NOT IN attempted_puzzles AND
-				rating->'r' < $3 ORDER BY rating->'r' DESC LIMIT 1) AS below
-		) 
-		ORDER BY ABS($3-rating) LIMIT 1`,
-			userId, lexicon, userRating.Rating).Scan(&puzzleUUID)
+			`SELECT uuid
+			FROM  ((SELECT uuid,
+						   rating -> 'r' AS puzzle_rating
+					FROM   puzzles
+					WHERE  lexicon = $2
+						   AND id NOT IN (SELECT puzzle_id
+										  FROM   puzzle_attempts
+										  WHERE  user_id = $1)
+						   AND ( rating -> 'r' ) :: FLOAT >= $3
+					ORDER  BY ( rating -> 'r' ) :: FLOAT
+					LIMIT  1)
+				   UNION ALL
+				   (SELECT uuid,
+						   rating -> 'r' AS rating
+					FROM   puzzles
+					WHERE  lexicon = $2
+						   AND id NOT IN (SELECT puzzle_id
+										  FROM   puzzle_attempts
+										  WHERE  user_id = $1)
+						   AND ( rating -> 'r' ) :: FLOAT < $3
+					ORDER  BY ( rating -> 'r' ) :: FLOAT DESC
+					LIMIT  1)) AS rating_query
+			ORDER  BY ABS(( $3 ) :: FLOAT - ( puzzle_rating ) :: FLOAT)
+			LIMIT  1 `,
+			userDBID, lexicon, userRating.Rating).Scan(&puzzleUUID)
 
 		if err != nil {
 			return "", err

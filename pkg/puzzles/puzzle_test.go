@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"testing"
 	"time"
 
@@ -631,6 +632,65 @@ func TestPuzzlesStart(t *testing.T) {
 	is.NoErr(err)
 	is.True(puzzle1 != actualStartPuzzle)
 
+}
+
+func TestPuzzlesNextClosestRating(t *testing.T) {
+	is := is.New(t)
+	dbc, _, _ := RecreateDB()
+	defer func() {
+		dbc.cleanup()
+	}()
+	ctx := context.Background()
+
+	playerRating := 10000.0
+
+	dbc.us.SetRatings(ctx, PuzzlerUUID, PuzzleCreatorUUID, "CSW19.puzzle.corres", entity.SingleRating{
+		Volatility:      glicko.InitialVolatility,
+		Rating:          playerRating,
+		RatingDeviation: 40.0,
+	}, entity.SingleRating{
+		Volatility:      glicko.InitialVolatility,
+		Rating:          playerRating,
+		RatingDeviation: 40.0,
+	})
+
+	puzzleRatingDiffs := []int{
+		50,
+		-49,
+		100,
+		200,
+		-300,
+		-250,
+		-400,
+		150,
+	}
+
+	// affectedIds := []int{}
+
+	for _, puzzleRatingDiff := range puzzleRatingDiffs {
+		result, err := dbc.pool.Exec(ctx, `UPDATE puzzles SET rating = jsonb_set(jsonb_set(rating, array['rd'], $2), array['r'], $1) WHERE id = (SELECT id FROM puzzles WHERE lexicon = $3 LIMIT 1)`,
+			playerRating+float64(puzzleRatingDiff), 40.0, common.DefaultGameReq.Lexicon)
+		is.NoErr(err)
+		is.Equal(result.RowsAffected(), int64(1))
+	}
+
+	currentDiff := 0.0
+
+	for range puzzleRatingDiffs {
+		puzzleUUID, err := GetNextClosestRatingPuzzleId(ctx, dbc.ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+		is.NoErr(err)
+
+		_, _, _, _, _, _, err = GetPuzzle(ctx, dbc.ps, PuzzlerUUID, puzzleUUID)
+		is.NoErr(err)
+
+		var puzzleRating float64
+		var puzzleId int
+		err = dbc.pool.QueryRow(ctx, `SELECT id, rating->'r' FROM puzzles WHERE uuid = $1`, puzzleUUID).Scan(&puzzleId, &puzzleRating)
+		is.NoErr(err)
+		thisDiff := math.Abs(playerRating - puzzleRating)
+		is.True(thisDiff > currentDiff)
+		currentDiff = thisDiff
+	}
 }
 
 func TestPuzzlesVerticalPlays(t *testing.T) {
