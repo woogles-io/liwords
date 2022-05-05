@@ -146,16 +146,6 @@ export const DirectorTools = React.memo((props: DTProps) => {
   };
 
   const renderGhettoTools = () => {
-    if (
-      tournamentContext.metadata.getType() === TType.LEGACY ||
-      tournamentContext.metadata.getType() === TType.CLUB
-    ) {
-      return (
-        <>
-          <h4>Director tools are coming soon!</h4>
-        </>
-      );
-    }
     return (
       <>
         <Divider />

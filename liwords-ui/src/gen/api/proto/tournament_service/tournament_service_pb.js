@@ -1673,7 +1673,8 @@ proto.tournament_service.SetTournamentMetadataRequest.prototype.toObject = funct
  */
 proto.tournament_service.SetTournamentMetadataRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    metadata: (f = msg.getMetadata()) && proto.tournament_service.TournamentMetadata.toObject(includeInstance, f)
+    metadata: (f = msg.getMetadata()) && proto.tournament_service.TournamentMetadata.toObject(includeInstance, f),
+    setOnlySpecified: jspb.Message.getBooleanFieldWithDefault(msg, 2, false)
   };
 
   if (includeInstance) {
@@ -1715,6 +1716,10 @@ proto.tournament_service.SetTournamentMetadataRequest.deserializeBinaryFromReade
       reader.readMessage(value,proto.tournament_service.TournamentMetadata.deserializeBinaryFromReader);
       msg.setMetadata(value);
       break;
+    case 2:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setSetOnlySpecified(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -1750,6 +1755,13 @@ proto.tournament_service.SetTournamentMetadataRequest.serializeBinaryToWriter = 
       1,
       f,
       proto.tournament_service.TournamentMetadata.serializeBinaryToWriter
+    );
+  }
+  f = message.getSetOnlySpecified();
+  if (f) {
+    writer.writeBool(
+      2,
+      f
     );
   }
 };
@@ -1789,6 +1801,24 @@ proto.tournament_service.SetTournamentMetadataRequest.prototype.clearMetadata = 
  */
 proto.tournament_service.SetTournamentMetadataRequest.prototype.hasMetadata = function() {
   return jspb.Message.getField(this, 1) != null;
+};
+
+
+/**
+ * optional bool set_only_specified = 2;
+ * @return {boolean}
+ */
+proto.tournament_service.SetTournamentMetadataRequest.prototype.getSetOnlySpecified = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 2, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.tournament_service.SetTournamentMetadataRequest} returns this
+ */
+proto.tournament_service.SetTournamentMetadataRequest.prototype.setSetOnlySpecified = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 2, value);
 };
 
 

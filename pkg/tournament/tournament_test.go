@@ -211,8 +211,28 @@ func TestTournamentSingleDivision(t *testing.T) {
 		Type:        pb.TType_STANDARD,
 	}
 
-	err = tournament.SetTournamentMetadata(ctx, tstore, meta)
+	err = tournament.SetTournamentMetadata(ctx, tstore, meta, false)
 	is.NoErr(err)
+	is.Equal(ty.Name, tournamentName)
+	is.Equal(ty.Description, "New Description")
+	is.Equal(ty.Slug, "/tournament/foo")
+	is.Equal(ty.Type, entity.TypeStandard)
+
+	// test merge
+	err = tournament.SetTournamentMetadata(ctx, tstore, &pb.TournamentMetadata{
+		Id:    ty.UUID,
+		Color: "#00bdff",
+		Logo:  "https://www.example.com/macondo.jpg",
+	}, true)
+	is.NoErr(err)
+	// old meta didn't change
+	is.Equal(ty.Name, tournamentName)
+	is.Equal(ty.Description, "New Description")
+	is.Equal(ty.Slug, "/tournament/foo")
+	is.Equal(ty.Type, entity.TypeStandard)
+	// new meta got put in:
+	is.Equal(ty.ExtraMeta.Color, "#00bdff")
+	is.Equal(ty.ExtraMeta.Logo, "https://www.example.com/macondo.jpg")
 
 	// Check that directors are set correctly
 	is.NoErr(equalTournamentPersons(directors, ty.Directors))

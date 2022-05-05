@@ -150,6 +150,9 @@ export class SetTournamentMetadataRequest extends jspb.Message {
   getMetadata(): TournamentMetadata | undefined;
   setMetadata(value?: TournamentMetadata): void;
 
+  getSetOnlySpecified(): boolean;
+  setSetOnlySpecified(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): SetTournamentMetadataRequest.AsObject;
   static toObject(includeInstance: boolean, msg: SetTournamentMetadataRequest): SetTournamentMetadataRequest.AsObject;
@@ -163,6 +166,7 @@ export class SetTournamentMetadataRequest extends jspb.Message {
 export namespace SetTournamentMetadataRequest {
   export type AsObject = {
     metadata?: TournamentMetadata.AsObject,
+    setOnlySpecified: boolean,
   }
 }
 

@@ -24,6 +24,7 @@ import { LiwordsAPIError, postJsonObj, postProto } from '../api/api';
 import {
   SingleRoundControlsRequest,
   TournamentResponse,
+  TType,
 } from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { Division } from '../store/reducers/tournament_reducer';
 import { useTournamentStoreContext } from '../store/store';
@@ -83,6 +84,7 @@ const FormModal = (props: ModalProps) => {
       <SetSingleRoundControls tournamentID={props.tournamentID} />
     ),
     'export-tournament': <ExportTournament tournamentID={props.tournamentID} />,
+    'edit-description': <EditDescription tournamentID={props.tournamentID} />,
   };
 
   type FormKeys = keyof typeof forms;
@@ -122,12 +124,15 @@ export const GhettoTools = (props: Props) => {
   const [modalTitle, setModalTitle] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState('');
+  const { tournamentContext } = useTournamentStoreContext();
 
   const showModal = (key: string, title: string) => {
     setModalType(key);
     setModalVisible(true);
     setModalTitle(title);
   };
+
+  const metadataTypes = ['Edit description'];
 
   const preTournamentTypes = [
     'Add division',
@@ -160,6 +165,7 @@ export const GhettoTools = (props: Props) => {
     );
   };
 
+  const metadataItems = metadataTypes.map(mapFn);
   const preListItems = preTournamentTypes.map(mapFn);
   const inListItems = inTournamentTypes.map(mapFn);
   const postListItems = postTournamentTypes.map(mapFn);
@@ -167,14 +173,21 @@ export const GhettoTools = (props: Props) => {
   return (
     <>
       <h3>Tournament Tools</h3>
-      <h4>Pre-tournament settings</h4>
-      <ul>{preListItems}</ul>
-      <Divider />
-      <h4>In-tournament management</h4>
-      <ul>{inListItems}</ul>
-      <Divider />
-      <h4>Post-tournament utilities</h4>
-      <ul>{postListItems}</ul>
+      <h4>Edit tournament metadata</h4>
+      <ul>{metadataItems}</ul>
+      {(tournamentContext.metadata.getType() === TType.STANDARD ||
+        tournamentContext.metadata.getType() === TType.CHILD) && (
+        <>
+          <h4>Pre-tournament settings</h4>
+          <ul>{preListItems}</ul>
+          <Divider />
+          <h4>In-tournament management</h4>
+          <ul>{inListItems}</ul>
+          <Divider />
+          <h4>Post-tournament utilities</h4>
+          <ul>{postListItems}</ul>
+        </>
+      )}
       <FormModal
         title={modalTitle}
         visible={modalVisible}
@@ -1619,6 +1632,87 @@ const ExportTournament = (props: { tournamentID: string }) => {
             Submit
           </Button>
         </Form.Item>
+      </Form>
+    </>
+  );
+};
+
+const EditDescription = (props: { tournamentID: string }) => {
+  const { useState } = useMountedState();
+  const { tournamentContext } = useTournamentStoreContext();
+  const [description, setDescription] = useState('');
+  const [name, setName] = useState('');
+  const [color, setColor] = useState('');
+  const [logo, setLogo] = useState('');
+
+  const [form] = Form.useForm();
+
+  const onDescriptionChange = (evt: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setDescription(evt.target.value);
+  };
+  const onNameChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
+    setName(evt.target.value);
+  };
+  const onColorChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
+    setColor(evt.target.value);
+  };
+  const onLogoChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
+    setLogo(evt.target.value);
+  };
+  useEffect(() => {
+    const metadata = tournamentContext.metadata;
+    setDescription(metadata.getDescription());
+    setName(metadata.getName());
+    setColor(metadata.getColor() || '');
+    setLogo(metadata.getLogo() || '');
+    form.setFieldsValue({
+      name: metadata.getName(),
+      description: metadata.getDescription(),
+      logo: metadata.getLogo(),
+      color: metadata.getColor(),
+    });
+  }, []);
+
+  const onSubmit = (vals: Store) => {
+    const obj = {
+      metadata: {
+        name: vals.name,
+        description: vals.description,
+        logo: vals.logo,
+        color: vals.color,
+        id: props.tournamentID,
+      },
+      set_only_specified: true,
+    };
+    postJsonObj(
+      'tournament_service.TournamentService',
+      'SetTournamentMetadata',
+      obj,
+      () => {}
+    );
+  };
+
+  return (
+    <>
+      <Form form={form} onFinish={onSubmit}>
+        <Form.Item name="name" label="Club or tournament name">
+          <Input onChange={onNameChange} />
+        </Form.Item>
+        <Form.Item name="description" label="Description">
+          <Input.TextArea onChange={onDescriptionChange} rows={20} />
+        </Form.Item>
+        <Form.Item name="logo" label="Logo URL (optional)">
+          <Input onChange={onLogoChange} />
+        </Form.Item>
+        <Form.Item name="color" label="Hex Color (optional)">
+          <Input onChange={onColorChange} />
+        </Form.Item>
+        <Form.Item>
+          <Button type="primary" htmlType="submit">
+            Submit
+          </Button>
+        </Form.Item>
+        ;
       </Form>
     </>
   );

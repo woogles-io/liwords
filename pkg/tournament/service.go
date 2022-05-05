@@ -71,7 +71,7 @@ func (ts *TournamentService) SetTournamentMetadata(ctx context.Context, req *pb.
 		return nil, err
 	}
 
-	err = SetTournamentMetadata(ctx, ts.tournamentStore, req.Metadata)
+	err = SetTournamentMetadata(ctx, ts.tournamentStore, req.Metadata, req.SetOnlySpecified)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
