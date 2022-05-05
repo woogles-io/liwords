@@ -34,7 +34,7 @@ type PuzzleStore interface {
 	GetAnswer(ctx context.Context, puzzleUUID string) (*macondopb.GameEvent, string, int32, string, *ipc.GameRequest, *entity.SingleRating, error)
 	SubmitAnswer(ctx context.Context, userId string, ratingKey entity.VariantKey, newUserRating *entity.SingleRating,
 		puzzleUUID string, newPuzzleRating *entity.SingleRating, userIsCorrect bool, userGaveUp bool) error
-	GetAttempts(ctx context.Context, userId string, puzzleUUID string) (bool, int32, *bool, time.Time, time.Time, error)
+	GetAttempts(ctx context.Context, userId string, puzzleUUID string) (bool, bool, int32, *bool, time.Time, time.Time, error)
 	GetUserRating(ctx context.Context, userId string, ratingKey entity.VariantKey) (*entity.SingleRating, error)
 	SetPuzzleVote(ctx context.Context, userId string, puzzleUUID string, vote int) error
 	GetJobInfo(ctx context.Context, genId int) (time.Time, time.Time, time.Duration, *bool, *string, int, int, [][]int, error)
@@ -110,20 +110,20 @@ func GetPuzzleJobLogs(ctx context.Context, ps PuzzleStore, limit, offset int) ([
 	return ps.GetJobLogs(ctx, limit, offset)
 }
 
-func GetPuzzleAnswer(ctx context.Context, ps PuzzleStore, puzzleUUID string, userId string) (*macondopb.GameEvent, error) {
-	_, attempts, status, _, _, err := ps.GetAttempts(ctx, userId, puzzleUUID)
+func GetPuzzleAnswer(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID string) (*macondopb.GameEvent, error) {
+	rated, _, _, _, _, _, err := ps.GetAttempts(ctx, userId, puzzleUUID)
 	if err != nil {
 		return nil, err
 	}
-	if attempts == 0 && status == nil {
+	if !rated {
 		// This attempt has not been rated yet. We should not return an answer.
-		return nil, entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_ANSWER_NOT_YET_RATED)
+		return nil, entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_ANSWER_NOT_YET_RATED, userId, puzzleUUID)
 	}
 	correctAnswer, _, _, _, _, _, err := ps.GetAnswer(ctx, puzzleUUID)
 	return correctAnswer, err
 }
 
-func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleUUID string, userId string,
+func SubmitAnswer(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID string,
 	userAnswer *ipc.ClientGameplayEvent, showSolution bool) (bool, *bool, *macondopb.GameEvent, string, int32, string, int32, int32, int32, time.Time, time.Time, error) {
 	correctAnswer, gameId, turnNumber, afterText, req, puzzleRating, err := ps.GetAnswer(ctx, puzzleUUID)
 	if err != nil {
@@ -131,7 +131,7 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleUUID string, userId
 	}
 	userIsCorrect := answersAreEqual(userAnswer, correctAnswer)
 	// Check if user has already seen this puzzle
-	_, attempts, status, _, _, err := ps.GetAttempts(ctx, userId, puzzleUUID)
+	rated, _, attempts, status, _, _, err := ps.GetAttempts(ctx, userId, puzzleUUID)
 	if err != nil {
 		return false, nil, nil, "", -1, "", -1, -1, -1, time.Time{}, time.Time{}, err
 	}
@@ -141,7 +141,7 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleUUID string, userId
 	var newUserSingleRating *entity.SingleRating
 	rk := ratingKey(req)
 
-	if attempts == 0 && status == nil {
+	if !rated {
 		// Get the user ratings
 		userRating, err := ps.GetUserRating(ctx, userId, rk)
 		if err != nil {
@@ -186,7 +186,7 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, puzzleUUID string, userId
 		return false, nil, nil, "", -1, "", -1, -1, -1, time.Time{}, time.Time{}, err
 	}
 
-	_, attempts, status, firstAttemptTime, lastAttemptTime, err := ps.GetAttempts(ctx, userId, puzzleUUID)
+	_, _, attempts, status, firstAttemptTime, lastAttemptTime, err := ps.GetAttempts(ctx, userId, puzzleUUID)
 	if err != nil {
 		return false, nil, nil, "", -1, "", -1, -1, -1, time.Time{}, time.Time{}, err
 	}
