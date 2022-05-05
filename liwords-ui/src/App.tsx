@@ -101,7 +101,7 @@ const HandoverSignedCookie = () => {
       // if successFn is called, it means we successfully transferred the cookie.
       successFn
     );
-  }, [jwt, ls, path, successFn]);
+  }, [jwt, successFn]);
 
   useEffect(() => {
     if (jwt) {
