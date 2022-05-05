@@ -1688,7 +1688,12 @@ const EditDescription = (props: { tournamentID: string }) => {
       'tournament_service.TournamentService',
       'SetTournamentMetadata',
       obj,
-      () => {}
+      () => {
+        message.info({
+          content: 'Set tournament metadata successfully.',
+          duration: 3,
+        });
+      }
     );
   };
 
@@ -1701,11 +1706,11 @@ const EditDescription = (props: { tournamentID: string }) => {
         <Form.Item name="description" label="Description">
           <Input.TextArea onChange={onDescriptionChange} rows={20} />
         </Form.Item>
-        <Form.Item name="logo" label="Logo URL (optional)">
+        <Form.Item name="logo" label="Logo URL (optional, requires refresh)">
           <Input onChange={onLogoChange} />
         </Form.Item>
-        <Form.Item name="color" label="Hex Color (optional)">
-          <Input onChange={onColorChange} />
+        <Form.Item name="color" label="Hex Color (optional, requires refresh)">
+          <Input onChange={onColorChange} placeholder="#00bdff" />
         </Form.Item>
         <Form.Item>
           <Button type="primary" htmlType="submit">
