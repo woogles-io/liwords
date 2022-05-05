@@ -84,7 +84,15 @@ service AuthenticationService {
   rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse);
   rpc NotifyAccountClosure(NotifyAccountClosureRequest)
       returns (NotifyAccountClosureResponse);
+  // These two temporary endpoints for migrating everyone to naked domain:
+  rpc GetSignedCookie(GetSignedCookieRequest) returns (SignedCookieResponse);
+  rpc InstallSignedCookie(SignedCookieResponse) returns (InstallSignedCookieResponse);
 }
+
+message GetSignedCookieRequest {}
+message SignedCookieResponse { string jwt = 1; }
+
+message InstallSignedCookieResponse {}
 
 message UserRegistrationRequest {
   string username = 1;

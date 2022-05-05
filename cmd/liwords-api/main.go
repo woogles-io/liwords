@@ -158,7 +158,7 @@ func main() {
 
 	middlewares := alice.New(
 		hlog.NewHandler(log.With().Str("service", "liwords").Logger()),
-		apiserver.WithCookiesMiddleware,
+		apiserver.ExposeResponseWriterMiddleware,
 		apiserver.AuthenticationMiddlewareGenerator(stores.SessionStore),
 		apiserver.APIKeyMiddlewareGenerator(),
 		config.CtxMiddlewareGenerator(cfg),

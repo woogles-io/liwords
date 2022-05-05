@@ -30,7 +30,7 @@ export const PuzzleShareButton = (props: Props) => {
     } else {
       messageBuilder += 'Check out this puzzle at Woogles.io.';
     }
-    messageBuilder += ` https://www.woogles.io/puzzle/${puzzleID} Can you solve it?`;
+    messageBuilder += ` https://woogles.io/puzzle/${puzzleID} Can you solve it?`;
     return messageBuilder;
   }, [puzzleID, attempts, solved]);
 
