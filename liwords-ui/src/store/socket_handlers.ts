@@ -82,7 +82,6 @@ import {
   TournamentDivisionDataResponse,
 } from '../gen/api/proto/ipc/tournament_pb';
 import { ProfileUpdate } from '../gen/api/proto/ipc/users_pb';
-import { TournamentMetadataResponse } from '../gen/api/proto/tournament_service/tournament_service_pb';
 // Feature flag.
 export const enableShowSocket =
   localStorage?.getItem('enableShowSocket') === 'true';

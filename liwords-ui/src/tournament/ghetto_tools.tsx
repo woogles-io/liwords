@@ -1638,40 +1638,19 @@ const ExportTournament = (props: { tournamentID: string }) => {
 };
 
 const EditDescription = (props: { tournamentID: string }) => {
-  const { useState } = useMountedState();
   const { tournamentContext } = useTournamentStoreContext();
-  const [description, setDescription] = useState('');
-  const [name, setName] = useState('');
-  const [color, setColor] = useState('');
-  const [logo, setLogo] = useState('');
 
   const [form] = Form.useForm();
 
-  const onDescriptionChange = (evt: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setDescription(evt.target.value);
-  };
-  const onNameChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
-    setName(evt.target.value);
-  };
-  const onColorChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
-    setColor(evt.target.value);
-  };
-  const onLogoChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
-    setLogo(evt.target.value);
-  };
   useEffect(() => {
     const metadata = tournamentContext.metadata;
-    setDescription(metadata.getDescription());
-    setName(metadata.getName());
-    setColor(metadata.getColor() || '');
-    setLogo(metadata.getLogo() || '');
     form.setFieldsValue({
       name: metadata.getName(),
       description: metadata.getDescription(),
       logo: metadata.getLogo(),
       color: metadata.getColor(),
     });
-  }, []);
+  }, [form, tournamentContext.metadata]);
 
   const onSubmit = (vals: Store) => {
     const obj = {
@@ -1701,16 +1680,16 @@ const EditDescription = (props: { tournamentID: string }) => {
     <>
       <Form form={form} onFinish={onSubmit}>
         <Form.Item name="name" label="Club or tournament name">
-          <Input onChange={onNameChange} />
+          <Input />
         </Form.Item>
         <Form.Item name="description" label="Description">
-          <Input.TextArea onChange={onDescriptionChange} rows={20} />
+          <Input.TextArea rows={20} />
         </Form.Item>
         <Form.Item name="logo" label="Logo URL (optional, requires refresh)">
-          <Input onChange={onLogoChange} />
+          <Input />
         </Form.Item>
         <Form.Item name="color" label="Hex Color (optional, requires refresh)">
-          <Input onChange={onColorChange} placeholder="#00bdff" />
+          <Input placeholder="#00bdff" />
         </Form.Item>
         <Form.Item>
           <Button type="primary" htmlType="submit">

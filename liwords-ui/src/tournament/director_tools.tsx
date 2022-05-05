@@ -7,7 +7,6 @@ import { UsernameWithContext } from '../shared/usernameWithContext';
 import { Button, Divider } from 'antd';
 import { postJsonObj } from '../api/api';
 import { GhettoTools } from './ghetto_tools';
-import { TType } from '../gen/api/proto/tournament_service/tournament_service_pb';
 /*
 import { AddPlayerForm, playersToAdd } from './add_player_form';
 import axios from 'axios';
