@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/domino14/liwords/pkg/entity"
@@ -23,6 +24,17 @@ func ExportTournament(ctx context.Context, t *entity.Tournament, us user.Store, 
 	}
 }
 
+func sortedDivNames(t *entity.Tournament) []string {
+	sortedKeys := make([]string, len(t.Divisions))
+	idx := 0
+	for dname := range t.Divisions {
+		sortedKeys[idx] = dname
+		idx += 1
+	}
+	sort.Strings(sortedKeys)
+	return sortedKeys
+}
+
 func exportToTSH(ctx context.Context, t *entity.Tournament, us user.Store) (string, error) {
 	// https://scrabbleplayers.org/tourneys/2022/tsh/04/202204301.tsh
 	var sb strings.Builder
@@ -30,7 +42,8 @@ func exportToTSH(ctx context.Context, t *entity.Tournament, us user.Store) (stri
 	normalize := func(div string) string {
 		return strings.ReplaceAll(div, " ", "")
 	}
-	for dname := range t.Divisions {
+	divNames := sortedDivNames(t)
+	for _, dname := range divNames {
 		fmt.Fprintf(&sb, "division %s %s.t\n", normalize(dname), normalize(dname))
 	}
 	sb.WriteString("# tsh archive file\n")
@@ -41,7 +54,8 @@ func exportToTSH(ctx context.Context, t *entity.Tournament, us user.Store) (stri
 	sb.WriteString("# config event_name = \"Woogles, MI\"\n")
 	sb.WriteString("# config event_date = \"April 30, 2022\"\n")
 
-	for dname, division := range t.Divisions {
+	for _, dname := range divNames {
+		division := t.Divisions[dname]
 		fmt.Fprintf(&sb, "#begin_file name=%s.t\n", normalize(dname))
 
 		if division.DivisionManager == nil {
@@ -131,8 +145,9 @@ func exportToTSH(ctx context.Context, t *entity.Tournament, us user.Store) (stri
 func exportStandings(ctx context.Context, t *entity.Tournament) (string, error) {
 	var sb strings.Builder
 	sb.WriteString("division,rank,username,wins,losses,draws,winpts,spread\n")
-	for dname, division := range t.Divisions {
-
+	divNames := sortedDivNames(t)
+	for _, dname := range divNames {
+		division := t.Divisions[dname]
 		if division.DivisionManager == nil {
 			return "", errors.New("nil division manager")
 		}

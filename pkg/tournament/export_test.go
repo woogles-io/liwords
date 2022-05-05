@@ -45,10 +45,9 @@ func compareGolden(t *testing.T, goldenFile string, actualRepr []byte) {
 func TestExport(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
-	recreateDB()
-	us := userStore()
-	_, gs := gameStore(us)
-	cfg, tstore := tournamentStore(gs)
+	dbc, cfg := recreateDB()
+	defer func() { dbc.cleanup() }()
+	tstore, us := dbc.ts, dbc.us
 
 	testcases := []struct {
 		name         string
