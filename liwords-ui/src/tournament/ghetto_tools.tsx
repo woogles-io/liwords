@@ -24,6 +24,7 @@ import { LiwordsAPIError, postJsonObj, postProto } from '../api/api';
 import {
   SingleRoundControlsRequest,
   TournamentResponse,
+  TType,
 } from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { Division } from '../store/reducers/tournament_reducer';
 import { useTournamentStoreContext } from '../store/store';
@@ -82,6 +83,8 @@ const FormModal = (props: ModalProps) => {
     'set-single-round-controls': (
       <SetSingleRoundControls tournamentID={props.tournamentID} />
     ),
+    'export-tournament': <ExportTournament tournamentID={props.tournamentID} />,
+    'edit-description': <EditDescription tournamentID={props.tournamentID} />,
   };
 
   type FormKeys = keyof typeof forms;
@@ -96,8 +99,6 @@ const FormModal = (props: ModalProps) => {
       className="seek-modal" // temporary display hack
     >
       {forms[props.type as FormKeys]}
-
-      {/* <Form {...layout} form={form} layout="horizontal"></Form> */}
     </Modal>
   );
 };
@@ -123,12 +124,15 @@ export const GhettoTools = (props: Props) => {
   const [modalTitle, setModalTitle] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState('');
+  const { tournamentContext } = useTournamentStoreContext();
 
   const showModal = (key: string, title: string) => {
     setModalType(key);
     setModalVisible(true);
     setModalTitle(title);
   };
+
+  const metadataTypes = ['Edit description'];
 
   const preTournamentTypes = [
     'Add division',
@@ -148,18 +152,9 @@ export const GhettoTools = (props: Props) => {
     // 'Clear checked in',
   ];
 
-  const preListItems = preTournamentTypes.map((v) => {
-    const key = lowerAndJoin(v);
-    return (
-      <li key={key} style={{ marginBottom: 5 }}>
-        <Button onClick={() => showModal(key, v)} size="small">
-          {v}
-        </Button>
-      </li>
-    );
-  });
+  const postTournamentTypes = ['Export tournament'];
 
-  const inListItems = inTournamentTypes.map((v) => {
+  const mapFn = (v: string) => {
     const key = lowerAndJoin(v);
     return (
       <li key={key} style={{ marginBottom: 5 }}>
@@ -168,17 +163,31 @@ export const GhettoTools = (props: Props) => {
         </Button>
       </li>
     );
-  });
+  };
+
+  const metadataItems = metadataTypes.map(mapFn);
+  const preListItems = preTournamentTypes.map(mapFn);
+  const inListItems = inTournamentTypes.map(mapFn);
+  const postListItems = postTournamentTypes.map(mapFn);
 
   return (
     <>
       <h3>Tournament Tools</h3>
-      <h4>Pre-tournament settings</h4>
-      <ul>{preListItems}</ul>
-      <Divider />
-      <h4>In-tournament management</h4>
-      <ul>{inListItems}</ul>
-      <Divider />
+      <h4>Edit tournament metadata</h4>
+      <ul>{metadataItems}</ul>
+      {(tournamentContext.metadata.getType() === TType.STANDARD ||
+        tournamentContext.metadata.getType() === TType.CHILD) && (
+        <>
+          <h4>Pre-tournament settings</h4>
+          <ul>{preListItems}</ul>
+          <Divider />
+          <h4>In-tournament management</h4>
+          <ul>{inListItems}</ul>
+          <Divider />
+          <h4>Post-tournament utilities</h4>
+          <ul>{postListItems}</ul>
+        </>
+      )}
       <FormModal
         title={modalTitle}
         visible={modalVisible}
@@ -1548,6 +1557,147 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
       </Button>
 
       <Button onClick={() => setRoundControls()}>Submit</Button>
+    </>
+  );
+};
+
+const ExportTournament = (props: { tournamentID: string }) => {
+  const { tournamentContext } = useTournamentStoreContext();
+  const formItemLayout = {
+    labelCol: {
+      span: 7,
+    },
+    wrapperCol: {
+      span: 12,
+    },
+  };
+
+  const onSubmit = async (vals: Store) => {
+    const obj = {
+      id: props.tournamentID,
+      format: vals.format,
+    };
+    await postJsonObj(
+      'tournament_service.TournamentService',
+      'ExportTournament',
+      obj,
+      (resp) => {
+        type rtype = {
+          exported: string;
+        };
+        const url = window.URL.createObjectURL(
+          new Blob([(resp as rtype).exported])
+        );
+        const link = document.createElement('a');
+        link.href = url;
+        const tname = tournamentContext.metadata.getName();
+        let extension;
+        switch (vals.format) {
+          case 'tsh':
+            extension = 'tsh';
+            break;
+          case 'standingsonly':
+            extension = 'csv';
+            break;
+        }
+        const downloadFilename = `${tname}.${extension}`;
+        link.setAttribute('download', downloadFilename);
+        document.body.appendChild(link);
+        link.onclick = () => {
+          link.remove();
+          setTimeout(() => {
+            window.URL.revokeObjectURL(url);
+          }, 1000);
+        };
+        link.click();
+      }
+    );
+  };
+
+  return (
+    <>
+      <Form onFinish={onSubmit}>
+        <Form.Item {...formItemLayout} label="Select format" name="format">
+          <Select>
+            <Select.Option value="tsh">
+              NASPA tournament submit format
+            </Select.Option>
+            <Select.Option value="standingsonly">
+              Standings only (CSV)
+            </Select.Option>
+          </Select>
+        </Form.Item>
+        <Form.Item>
+          <Button type="primary" htmlType="submit">
+            Submit
+          </Button>
+        </Form.Item>
+      </Form>
+    </>
+  );
+};
+
+const EditDescription = (props: { tournamentID: string }) => {
+  const { tournamentContext } = useTournamentStoreContext();
+
+  const [form] = Form.useForm();
+
+  useEffect(() => {
+    const metadata = tournamentContext.metadata;
+    form.setFieldsValue({
+      name: metadata.getName(),
+      description: metadata.getDescription(),
+      logo: metadata.getLogo(),
+      color: metadata.getColor(),
+    });
+  }, [form, tournamentContext.metadata]);
+
+  const onSubmit = (vals: Store) => {
+    const obj = {
+      metadata: {
+        name: vals.name,
+        description: vals.description,
+        logo: vals.logo,
+        color: vals.color,
+        id: props.tournamentID,
+      },
+      set_only_specified: true,
+    };
+    postJsonObj(
+      'tournament_service.TournamentService',
+      'SetTournamentMetadata',
+      obj,
+      () => {
+        message.info({
+          content: 'Set tournament metadata successfully.',
+          duration: 3,
+        });
+      }
+    );
+  };
+
+  return (
+    <>
+      <Form form={form} onFinish={onSubmit}>
+        <Form.Item name="name" label="Club or tournament name">
+          <Input />
+        </Form.Item>
+        <Form.Item name="description" label="Description">
+          <Input.TextArea rows={20} />
+        </Form.Item>
+        <Form.Item name="logo" label="Logo URL (optional, requires refresh)">
+          <Input />
+        </Form.Item>
+        <Form.Item name="color" label="Hex Color (optional, requires refresh)">
+          <Input placeholder="#00bdff" />
+        </Form.Item>
+        <Form.Item>
+          <Button type="primary" htmlType="submit">
+            Submit
+          </Button>
+        </Form.Item>
+        ;
+      </Form>
     </>
   );
 };

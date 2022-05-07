@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
 
@@ -132,14 +131,7 @@ func (as *AuthenticationService) Logout(ctx context.Context, r *pb.UserLogoutReq
 		return nil, twirp.InternalErrorWith(err)
 	}
 	// Delete the cookie as well.
-	err = apiserver.SetCookie(ctx, &http.Cookie{
-		Name:     "session",
-		Value:    sess.ID,
-		MaxAge:   -1,
-		HttpOnly: true,
-		Path:     "/",
-		Expires:  time.Now().Add(-100 * time.Hour),
-	})
+	err = apiserver.ExpireCookie(ctx, sess.ID)
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)
 	}
@@ -203,7 +195,56 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 		Cid:             cid,
 		FrontEndVersion: feHash,
 	}, nil
+}
 
+func (as *AuthenticationService) GetSignedCookie(ctx context.Context, r *pb.GetSignedCookieRequest) (*pb.SignedCookieResponse, error) {
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		// Not authed.
+		return nil, twirp.NewError(twirp.Unauthenticated, "need auth for this endpoint")
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"exp":       time.Now().Add(TokenExpiration).Unix(),
+		"sessionID": sess.ID,
+	})
+	tokenString, err := token.SignedString([]byte(as.secretKey))
+	if err != nil {
+		return nil, twirp.InternalErrorWith(err)
+	}
+	log.Info().Str("username", sess.Username).Msg("got-signed-cookie")
+	return &pb.SignedCookieResponse{Jwt: tokenString}, nil
+}
+
+func (as *AuthenticationService) InstallSignedCookie(ctx context.Context, r *pb.SignedCookieResponse) (*pb.InstallSignedCookieResponse, error) {
+	token, err := jwt.Parse(r.Jwt, func(token *jwt.Token) (interface{}, error) {
+		// Don't forget to validate the alg is what you expect:
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+		// hmacSampleSecret is a []byte containing your secret, e.g. []byte("my_secret_key")
+		return []byte(as.secretKey), nil
+	})
+	if err != nil {
+		log.Err(err).Str("token", r.Jwt).Msg("token-failure")
+		return nil, twirp.InternalErrorWith(err)
+	}
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		sessId, ok := claims["sessionID"].(string)
+		if !ok {
+			return nil, twirp.InternalError("could not convert claim")
+		}
+		log.Info().Msg("install-signed-cookie")
+		err = apiserver.SetDefaultCookie(ctx, sessId)
+		if err != nil {
+			return nil, twirp.InternalErrorWith(err)
+		}
+	}
+
+	if !token.Valid {
+		return nil, errors.New("invalid token")
+	}
+	return &pb.InstallSignedCookieResponse{}, nil
 }
 
 func (as *AuthenticationService) ResetPasswordStep1(ctx context.Context, r *pb.ResetPasswordRequestStep1) (*pb.ResetPasswordResponse, error) {

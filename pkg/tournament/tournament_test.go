@@ -49,7 +49,7 @@ var DefaultConfig = macondoconfig.Config{
 var divOneName = "Division 1"
 var divTwoName = "Division 2"
 
-func recreateDB() {
+func recreateDB() (*DBController, *config.Config) {
 	// Create a database.
 	err := common.RecreateTestDB()
 	if err != nil {
@@ -83,6 +83,13 @@ func recreateDB() {
 		}
 	}
 	ustore.(*user.DBStore).Disconnect()
+
+	us := userStore()
+	_, gs := gameStore(us)
+	cfg, tstore := tournamentStore(gs)
+	return &DBController{
+		us: us, gs: gs, ts: tstore,
+	}, cfg
 }
 
 func tournamentStore(gs gameplay.GameStore) (*config.Config, tournament.TournamentStore) {
@@ -181,13 +188,24 @@ func gameStore(userStore pkguser.Store) (*config.Config, gameplay.GameStore) {
 	return cfg, gameStore
 }
 
+type DBController struct {
+	us pkguser.Store
+	gs gameplay.GameStore
+	ts tournament.TournamentStore
+}
+
+func (dbc *DBController) cleanup() {
+	dbc.us.(*user.DBStore).Disconnect()
+	dbc.ts.(*ts.Cache).Disconnect()
+	dbc.gs.(*game.Cache).Disconnect()
+}
+
 func TestTournamentSingleDivision(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
-	recreateDB()
-	us := userStore()
-	_, gs := gameStore(us)
-	cfg, tstore := tournamentStore(gs)
+	dbc, cfg := recreateDB()
+	defer func() { dbc.cleanup() }()
+	tstore, us := dbc.ts, dbc.us
 
 	players := makeTournamentPersons(map[string]int32{"Will": 1000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100})
 	directors := makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2})
@@ -211,8 +229,28 @@ func TestTournamentSingleDivision(t *testing.T) {
 		Type:        pb.TType_STANDARD,
 	}
 
-	err = tournament.SetTournamentMetadata(ctx, tstore, meta)
+	err = tournament.SetTournamentMetadata(ctx, tstore, meta, false)
 	is.NoErr(err)
+	is.Equal(ty.Name, tournamentName)
+	is.Equal(ty.Description, "New Description")
+	is.Equal(ty.Slug, "/tournament/foo")
+	is.Equal(ty.Type, entity.TypeStandard)
+
+	// test merge
+	err = tournament.SetTournamentMetadata(ctx, tstore, &pb.TournamentMetadata{
+		Id:    ty.UUID,
+		Color: "#00bdff",
+		Logo:  "https://www.example.com/macondo.jpg",
+	}, true)
+	is.NoErr(err)
+	// old meta didn't change
+	is.Equal(ty.Name, tournamentName)
+	is.Equal(ty.Description, "New Description")
+	is.Equal(ty.Slug, "/tournament/foo")
+	is.Equal(ty.Type, entity.TypeStandard)
+	// new meta got put in:
+	is.Equal(ty.ExtraMeta.Color, "#00bdff")
+	is.Equal(ty.ExtraMeta.Logo, "https://www.example.com/macondo.jpg")
 
 	// Check that directors are set correctly
 	is.NoErr(equalTournamentPersons(directors, ty.Directors))
@@ -540,20 +578,14 @@ func TestTournamentSingleDivision(t *testing.T) {
 	isFinished, err := tournament.IsFinished(ctx, tstore, ty.UUID)
 	is.NoErr(err)
 	is.True(!isFinished)
-
-	us.(*user.DBStore).Disconnect()
-	tstore.(*ts.Cache).Disconnect()
-	gs.(*game.Cache).Disconnect()
 }
 
 func TestTournamentMultipleDivisions(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
-
-	recreateDB()
-	us := userStore()
-	_, gs := gameStore(us)
-	cfg, tstore := tournamentStore(gs)
+	dbc, cfg := recreateDB()
+	defer func() { dbc.cleanup() }()
+	tstore, us := dbc.ts, dbc.us
 
 	divOnePlayers := makeTournamentPersons(map[string]int32{"Will": 1000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100})
 	divTwoPlayers := makeTournamentPersons(map[string]int32{"Guy": 1000, "Dude": 3000, "Comrade": 2200, "ValuedCustomer": 2100})
@@ -709,10 +741,6 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 	divTwoComplete, err := tournament.IsRoundComplete(ctx, tstore, ty.UUID, divTwoName, 0)
 	is.NoErr(err)
 	is.True(divTwoComplete)
-
-	us.(*user.DBStore).Disconnect()
-	tstore.(*ts.Cache).Disconnect()
-	gs.(*game.Cache).Disconnect()
 }
 
 func equalTournamentPersons(tp1 *ipc.TournamentPersons, tp2 *ipc.TournamentPersons) error {

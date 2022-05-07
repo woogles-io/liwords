@@ -67,7 +67,13 @@ message TournamentMetadata {
   bool private_analysis = 14;
 }
 
-message SetTournamentMetadataRequest { TournamentMetadata metadata = 1; }
+message SetTournamentMetadataRequest {
+  TournamentMetadata metadata = 1;
+  // set_only_specified sets only the specified fields,
+  // and not the entire metadata.
+  // non-zero-value fields will be treated as "specified"
+  bool set_only_specified = 2;
+}
 
 message SingleRoundControlsRequest {
   string id = 1;
@@ -208,6 +214,17 @@ service TournamentService {
   rpc UncheckIn(UncheckInRequest) returns (TournamentResponse);
   // CheckIn allows players to check themselves in.
   rpc CheckIn(CheckinRequest) returns (TournamentResponse);
+
+  rpc ExportTournament(ExportTournamentRequest) returns (ExportTournamentResponse);
+}
+
+message ExportTournamentRequest {
+  string id = 1;
+  string format = 2;
+}
+
+message ExportTournamentResponse {
+  string exported = 1;
 }
 
 message NewClubSessionRequest {
