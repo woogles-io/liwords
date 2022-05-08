@@ -77,11 +77,7 @@ export const LiwordsSocket = (props: {
   const { dispatchLoginState } = loginStateStore;
   const getFullSocketUrlAsync = useCallback(async () => {
     console.log('About to request token');
-    // Unfortunately this function must return a valid url.
-    const failUrl = `${socketUrl}?${new URLSearchParams({
-      path: pathname,
-    })}`;
-
+    const failUrl = '';
     try {
       const resp = await axios.post<TokenResponse>(
         toAPIUrl('user_service.AuthenticationService', 'GetSocketToken'),
@@ -235,7 +231,7 @@ export const LiwordsSocket = (props: {
       reconnectAttempts: Infinity,
       reconnectInterval: 1000,
       retryOnError: true,
-      shouldReconnect: (closeEvent) => true,
+      shouldReconnect: (closeEvent) => isMountedRef.current,
       onMessage: (event: MessageEvent) => {
         // Any incoming message resets the patience.
         resetPatience();
