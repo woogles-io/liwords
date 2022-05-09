@@ -277,15 +277,7 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 	}
 
 	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
-		if gorm.IsRecordNotFoundError(result.Error) {
-			entu = &entity.User{
-				Username:  entity.DeterministicUsername(uuid),
-				Anonymous: true,
-				UUID:      uuid,
-			}
-		} else {
-			return nil, result.Error
-		}
+		return nil, result.Error
 	} else {
 		if result := s.db.Model(u).Related(p); result.Error != nil {
 			return nil, result.Error
@@ -849,9 +841,8 @@ func (s *DBStore) GetFullBlocks(ctx context.Context, uid uint) ([]*entity.User, 
 	return plist, nil
 }
 
-// Username gets the username from the uuid. If not found, return a deterministic username,
-// and return true for isAnonymous.
-func (s *DBStore) Username(ctx context.Context, uuid string) (string, bool, error) {
+// Username gets the username from the uuid.
+func (s *DBStore) Username(ctx context.Context, uuid string) (string, error) {
 	type u struct {
 		Username string
 	}
@@ -860,12 +851,9 @@ func (s *DBStore) Username(ctx context.Context, uuid string) (string, bool, erro
 	if result := s.db.Table("users").Select("username").
 		Where("uuid = ?", uuid).Scan(&user); result.Error != nil {
 
-		if gorm.IsRecordNotFoundError(result.Error) {
-			return entity.DeterministicUsername(uuid), true, nil
-		}
-		return "", false, result.Error
+		return "", result.Error
 	}
-	return user.Username, false, nil
+	return user.Username, nil
 }
 
 func (s *DBStore) UsersByPrefix(ctx context.Context, prefix string) ([]*pb.BasicUser, error) {

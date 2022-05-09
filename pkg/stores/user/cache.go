@@ -23,7 +23,7 @@ type backingStore interface {
 	GetByEmail(ctx context.Context, email string) (*entity.User, error)
 	GetByAPIKey(ctx context.Context, apikey string) (*entity.User, error)
 	// Username by UUID. Good for fast lookups.
-	Username(ctx context.Context, uuid string) (string, bool, error)
+	Username(ctx context.Context, uuid string) (string, error)
 	New(ctx context.Context, user *entity.User) error
 	SetPassword(ctx context.Context, uuid string, hashpass string) error
 	SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string) error
@@ -162,7 +162,7 @@ func (c *Cache) GetByAPIKey(ctx context.Context, apikey string) (*entity.User, e
 	return c.backing.GetByAPIKey(ctx, apikey)
 }
 
-func (c *Cache) Username(ctx context.Context, uuid string) (string, bool, error) {
+func (c *Cache) Username(ctx context.Context, uuid string) (string, error) {
 	return c.backing.Username(ctx, uuid)
 }
 
