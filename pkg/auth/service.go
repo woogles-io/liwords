@@ -15,7 +15,6 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/domino14/liwords/pkg/entity"
 	"github.com/lithammer/shortuuid"
 
 	"github.com/dgrijalva/jwt-go"
@@ -24,6 +23,7 @@ import (
 	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/user"
 
+	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
@@ -140,15 +140,19 @@ func (as *AuthenticationService) Logout(ctx context.Context, r *pb.UserLogoutReq
 }
 
 func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.SocketTokenRequest) (*pb.SocketTokenResponse, error) {
-	// This view requires authentication.
-	sess, err := apiserver.GetSession(ctx)
-	cid := shortuuid.New()[1:10]
 	var unn, uuid string
 	var authed bool
+
+	// Maybe cache this?
+	feHash, err := as.configStore.FEHash(ctx)
 	if err != nil {
-		authed = false
-		uuid = shortuuid.New()
-		unn = entity.DeterministicUsername(uuid)
+		log.Err(err).Msg("error getting fe-hash")
+		// Continue anyway.
+	}
+
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return as.unauthedToken(ctx, feHash)
 	} else {
 		authed = true
 		uuid = sess.UserUUID
@@ -169,7 +173,6 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 		perms = append(perms, "mod")
 	}
 
-	// Create an unauth token.
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"exp":   time.Now().Add(TokenExpiration).Unix(),
 		"uid":   uuid,
@@ -182,14 +185,30 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)
 	}
+	// create a random connection ID.
+	cid := shortuuid.New()[1:10]
+	return &pb.SocketTokenResponse{
+		Token:           tokenString,
+		Cid:             cid,
+		FrontEndVersion: feHash,
+	}, nil
+}
 
-	// Maybe cache this?
-	feHash, err := as.configStore.FEHash(ctx)
+func (as *AuthenticationService) unauthedToken(ctx context.Context, feHash string) (*pb.SocketTokenResponse, error) {
+	cid := shortuuid.New()
+	uid := "anon-" + cid
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"exp":   time.Now().Add(TokenExpiration).Unix(),
+		"uid":   uid,
+		"unn":   uid,
+		"a":     false, // not authed
+		"cs":    ipc.ChildStatus_UNKNOWN,
+		"perms": "",
+	})
+	tokenString, err := token.SignedString([]byte(as.secretKey))
 	if err != nil {
-		log.Err(err).Msg("error getting fe-hash")
-		// Continue anyway.
+		return nil, twirp.InternalErrorWith(err)
 	}
-
 	return &pb.SocketTokenResponse{
 		Token:           tokenString,
 		Cid:             cid,

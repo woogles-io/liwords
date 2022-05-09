@@ -81,11 +81,13 @@ func exportToTSH(ctx context.Context, t *entity.Tournament, us user.Store) (stri
 			if len(split) != 2 {
 				return "", fmt.Errorf("unexpected badly formatted player id %s", p.Id)
 			}
+			var realName string
 			u, err := us.GetByUUID(ctx, split[0])
-			if err != nil {
-				return "", err
+			if err == nil {
+				realName = u.RealName()
 			}
-			realName := u.RealName()
+			// Otherwise, ignore the error. This will allow some flexibility
+			// for users not actually registered in our system (i.e. IRL users)
 			if realName == "" {
 				realName = split[1]
 			}

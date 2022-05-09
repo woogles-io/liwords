@@ -77,11 +77,7 @@ export const LiwordsSocket = (props: {
   const { dispatchLoginState } = loginStateStore;
   const getFullSocketUrlAsync = useCallback(async () => {
     console.log('About to request token');
-    // Unfortunately this function must return a valid url.
-    const failUrl = `${socketUrl}?${new URLSearchParams({
-      path: pathname,
-    })}`;
-
+    const failUrl = '';
     try {
       const resp = await axios.post<TokenResponse>(
         toAPIUrl('user_service.AuthenticationService', 'GetSocketToken'),
@@ -92,16 +88,15 @@ export const LiwordsSocket = (props: {
       // dispatching stuffs from a decommissioned socket after axios returns.
       if (!isMountedRef.current) return failUrl;
 
-      const socketToken = resp.data.token;
-      const { cid, front_end_version } = resp.data;
+      const { cid, front_end_version, token } = resp.data;
 
       const ret = `${socketUrl}?${new URLSearchParams({
-        token: socketToken,
+        token,
         path: pathname,
         cid,
       })}`;
 
-      const decoded = jwt_decode(socketToken) as DecodedToken;
+      const decoded = jwt_decode(token) as DecodedToken;
       dispatchLoginState({
         actionType: ActionType.SetAuthentication,
         payload: {
@@ -130,7 +125,6 @@ export const LiwordsSocket = (props: {
         // Only warn them once a day
         localStorage.setItem('birthdateWarning', Date.now().toString());
       }
-      if (!isMountedRef.current) return failUrl;
       console.log('Got token, setting state, and will try to connect...');
       if (window.RUNTIME_CONFIGURATION.appVersion !== front_end_version) {
         console.log(
@@ -235,7 +229,7 @@ export const LiwordsSocket = (props: {
       reconnectAttempts: Infinity,
       reconnectInterval: 1000,
       retryOnError: true,
-      shouldReconnect: (closeEvent) => true,
+      shouldReconnect: (closeEvent) => isMountedRef.current,
       onMessage: (event: MessageEvent) => {
         // Any incoming message resets the patience.
         resetPatience();

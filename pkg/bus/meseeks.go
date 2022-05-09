@@ -695,6 +695,9 @@ func (b *Bus) openSeeks(ctx context.Context, receiverID string, tourneyID string
 	if err != nil {
 		return nil, err
 	}
+	if len(sgs) == 0 {
+		return nil, nil
+	}
 	log.Debug().Str("receiver", receiverID).Interface("open-matches", sgs).Msg("open-matches")
 	pbobj := &pb.SeekRequests{Requests: []*pb.SeekRequest{}}
 	for _, sg := range sgs {

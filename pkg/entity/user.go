@@ -10,7 +10,6 @@ import (
 	"github.com/domino14/liwords/pkg/glicko"
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
-	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -215,7 +214,6 @@ func IsAdult(dob string, now time.Time) bool {
 
 func (u *User) IsChild() pb.ChildStatus {
 	if u.Profile == nil {
-		log.Error().Str("uuid", u.UUID).Msg("unexpected-nil-profile")
 		return pb.ChildStatus_UNKNOWN
 	}
 	return InferChildStatus(u.Profile.BirthDate, time.Now())

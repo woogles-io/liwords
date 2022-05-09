@@ -18,7 +18,7 @@ type Store interface {
 	GetByEmail(ctx context.Context, email string) (*entity.User, error)
 	GetByAPIKey(ctx context.Context, apiKey string) (*entity.User, error)
 	// Username by UUID. Good for fast lookups.
-	Username(ctx context.Context, uuid string) (string, bool, error)
+	Username(ctx context.Context, uuid string) (string, error)
 	New(ctx context.Context, user *entity.User) error
 	SetPassword(ctx context.Context, uuid string, hashpass string) error
 	SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string) error
@@ -39,6 +39,7 @@ type Store interface {
 	RemoveFollower(ctx context.Context, targetUser, follower uint) error
 	// GetFollows gets all the users that the passed-in DB ID is following.
 	GetFollows(ctx context.Context, uid uint) ([]*entity.User, error)
+	// GetFollowedBy gets all the users that are following the passed-in user DB ID.
 	GetFollowedBy(ctx context.Context, uid uint) ([]*entity.User, error)
 
 	AddBlock(ctx context.Context, targetUser, blocker uint) error
