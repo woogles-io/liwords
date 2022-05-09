@@ -86,6 +86,46 @@ export namespace NextPuzzleIdResponse {
   }
 }
 
+export class NextClosestRatingPuzzleIdRequest extends jspb.Message {
+  getLexicon(): string;
+  setLexicon(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): NextClosestRatingPuzzleIdRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: NextClosestRatingPuzzleIdRequest): NextClosestRatingPuzzleIdRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: NextClosestRatingPuzzleIdRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): NextClosestRatingPuzzleIdRequest;
+  static deserializeBinaryFromReader(message: NextClosestRatingPuzzleIdRequest, reader: jspb.BinaryReader): NextClosestRatingPuzzleIdRequest;
+}
+
+export namespace NextClosestRatingPuzzleIdRequest {
+  export type AsObject = {
+    lexicon: string,
+  }
+}
+
+export class NextClosestRatingPuzzleIdResponse extends jspb.Message {
+  getPuzzleId(): string;
+  setPuzzleId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): NextClosestRatingPuzzleIdResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: NextClosestRatingPuzzleIdResponse): NextClosestRatingPuzzleIdResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: NextClosestRatingPuzzleIdResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): NextClosestRatingPuzzleIdResponse;
+  static deserializeBinaryFromReader(message: NextClosestRatingPuzzleIdResponse, reader: jspb.BinaryReader): NextClosestRatingPuzzleIdResponse;
+}
+
+export namespace NextClosestRatingPuzzleIdResponse {
+  export type AsObject = {
+    puzzleId: string,
+  }
+}
+
 export class PuzzleRequest extends jspb.Message {
   getPuzzleId(): string;
   setPuzzleId(value: string): void;

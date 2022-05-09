@@ -14,6 +14,10 @@ message NextPuzzleIdRequest { string lexicon = 1; }
 
 message NextPuzzleIdResponse { string puzzle_id = 1; }
 
+message NextClosestRatingPuzzleIdRequest { string lexicon = 1; }
+
+message NextClosestRatingPuzzleIdResponse { string puzzle_id = 1; }
+
 message PuzzleRequest { string puzzle_id = 1; }
 
 enum PuzzleStatus {
