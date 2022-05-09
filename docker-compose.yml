@@ -177,6 +177,8 @@ services:
     volumes:
       - .:/opt/code/liwords:rw
       - ../macondo:/opt/code/macondo
+    networks:
+      - aeronet
 
 networks:
   aeronet:
