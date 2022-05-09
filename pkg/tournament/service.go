@@ -500,10 +500,6 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 	if !authorized {
 		return twirp.NewError(twirp.Unauthenticated, "this user is not an authorized director for this event")
 	}
-	if t.IsFinished {
-		return twirp.NewError(twirp.InvalidArgument, "this tournament is finished and cannot be modified")
-	}
-
 	return nil
 }
 
