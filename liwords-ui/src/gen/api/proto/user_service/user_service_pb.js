@@ -13,7 +13,7 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var global = Function('return this')();
+var global = (function() { return this || window || global || self || Function('return this')(); }).call(null);
 
 var api_proto_ipc_chat_pb = require('../../../api/proto/ipc/chat_pb.js');
 goog.object.extend(proto, api_proto_ipc_chat_pb);
