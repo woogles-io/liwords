@@ -32,10 +32,10 @@ services:
     networks:
       - aeronet
 
-  pb_compiler:
+  goutils:
     build:
       context: .
-      dockerfile: Dockerfile-pb
+      dockerfile: Dockerfile-goutils
     volumes:
       - .:/opt/code/liwords:rw
       - ../macondo:/opt/code/macondo

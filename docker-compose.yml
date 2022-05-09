@@ -170,13 +170,15 @@ services:
       - "traefik.http.routers.liwords-fe.entrypoints=web"
       - "traefik.http.services.liwords-fe-service.loadbalancer.server.port=3000"
 
-  pb_compiler:
+  goutils:
     build:
       context: .
-      dockerfile: Dockerfile-pb
+      dockerfile: Dockerfile-goutils
     volumes:
       - .:/opt/code/liwords:rw
       - ../macondo:/opt/code/macondo
+    networks:
+      - aeronet
 
 networks:
   aeronet:
