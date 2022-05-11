@@ -896,6 +896,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
   const [gibsonMinPlacement, setGibsonMinPlacement] = useState(1);
   // bye max placement is 0-indexed, this is also the display variable
   const [byeMaxPlacement, setByeMaxPlacement] = useState(1);
+  const [spreadCap, setSpreadCap] = useState(0);
   const [suspendedResult, setSuspendedResult] = useState<
     valueof<TournamentGameResultMap>
   >(TournamentGameResult.FORFEIT_LOSS);
@@ -919,6 +920,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
       setGibsonMinPlacement(div.divisionControls.getMinimumPlacement() + 1);
       setByeMaxPlacement(div.divisionControls.getMaximumByePlacement() + 1);
       setSuspendedResult(div.divisionControls.getSuspendedResult());
+      setSpreadCap(div.divisionControls.getSpreadCap());
     }
   }, [division, tournamentContext.divisions]);
 
@@ -966,6 +968,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     ctrls.setGibsonSpread(gibsonSpread);
     ctrls.setMinimumPlacement(gibsonMinPlacement - 1);
     ctrls.setMaximumByePlacement(byeMaxPlacement - 1);
+    ctrls.setSpreadCap(spreadCap);
 
     // We are posting binary here because otherwise we need to make
     // a JSON representation of GameRequest and that's a pain.
@@ -1062,6 +1065,16 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
             value={byeMaxPlacement}
             onChange={(p: number | string | undefined | null) =>
               setByeMaxPlacement(p as number)
+            }
+          />
+        </Form.Item>
+
+        <Form.Item {...formItemLayout} label="Spread cap">
+          <InputNumber
+            min={0}
+            value={spreadCap}
+            onChange={(p: number | string | undefined | null) =>
+              setSpreadCap(p as number)
             }
           />
         </Form.Item>
