@@ -1,12 +1,9 @@
 // Ghetto tools are Cesar tools before making things pretty.
 
-import {
-  MinusCircleOutlined,
-  PlusOutlined,
-  QuestionCircleOutlined,
-} from '@ant-design/icons';
+import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   Button,
+  Collapse,
   Divider,
   Form,
   Input,
@@ -203,15 +200,18 @@ export const GhettoTools = (props: Props) => {
 const DivisionSelector = (props: {
   onChange?: (value: string) => void;
   value?: string;
+  exclude?: Array<string>;
 }) => {
   const { tournamentContext } = useTournamentStoreContext();
   return (
     <Select onChange={props.onChange} value={props.value}>
-      {Object.keys(tournamentContext.divisions).map((d) => (
-        <Select.Option value={d} key={`div-${d}`}>
-          {d}
-        </Select.Option>
-      ))}
+      {Object.keys(tournamentContext.divisions)
+        .filter((d) => !props.exclude?.includes(d))
+        .map((d) => (
+          <Select.Option value={d} key={`div-${d}`}>
+            {d}
+          </Select.Option>
+        ))}
     </Select>
   );
 };
@@ -888,6 +888,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
   >(undefined);
 
   const [division, setDivision] = useState('');
+  const [copyFromDivision, setCopyFromDivision] = useState('');
   const [gibsonize, setGibsonize] = useState(false);
   const [gibsonSpread, setGibsonSpread] = useState(500);
 
@@ -1006,15 +1007,64 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     </>
   );
 
+  const copySettings = React.useCallback(() => {
+    // copy settings from copyFromDivision to division
+    const cd = tournamentContext.divisions[copyFromDivision];
+    const cdCopy = cd.divisionControls?.cloneMessage();
+    if (!cdCopy) {
+      return;
+    }
+    setSelectedGameRequest(cdCopy.getGameRequest());
+    setSuspendedResult(cdCopy.getSuspendedResult());
+    setGibsonize(cdCopy.getGibsonize());
+    setGibsonSpread(cdCopy.getGibsonSpread());
+    setSpreadCap(cdCopy.getSpreadCap());
+    // These are display variables so add 1 since they're 0-indexed:
+    setGibsonMinPlacement(cdCopy.getMinimumPlacement() + 1);
+    setByeMaxPlacement(cdCopy.getMaximumByePlacement() + 1);
+  }, [copyFromDivision, tournamentContext.divisions]);
+
   return (
     <>
       <Form>
         <Form.Item {...formItemLayout} label="Division">
           <DivisionSelector
             value={division}
-            onChange={(value: string) => setDivision(value)}
+            onChange={(value: string) => {
+              setDivision(value);
+              setCopyFromDivision('');
+            }}
           />
         </Form.Item>
+
+        {Object.keys(tournamentContext.divisions).length > 1 &&
+          division !== '' &&
+          selectedGameRequest == null && (
+            <Collapse style={{ marginBottom: 10 }}>
+              <Collapse.Panel header="Copy from division" key="copyFrom">
+                <p className="readable-text-color" style={{ marginBottom: 10 }}>
+                  Copy from existing division:
+                  <HelptipLabel
+                    labelText=""
+                    help="If you want to copy settings from another division, select
+                that division and click the Copy button. Note that you must still
+                click Save tournament controls to save your settings after copying them."
+                  />
+                </p>
+                <DivisionSelector
+                  value={copyFromDivision}
+                  onChange={(value: string) => setCopyFromDivision(value)}
+                  exclude={[division]}
+                />
+                <Button onClick={() => copySettings()}>
+                  Copy from {copyFromDivision}
+                </Button>
+                <p className="readable-text-color" style={{ marginTop: 10 }}>
+                  Or, set from scratch:
+                </p>
+              </Collapse.Panel>
+            </Collapse>
+          )}
 
         <Form.Item
           {...formItemLayout}
@@ -1142,10 +1192,10 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
         }}
         onClick={() => setModalVisible(true)}
       >
-        Edit Game Settings
+        Edit game settings
       </Button>
       <Button type="primary" onClick={submit}>
-        Save Game Settings
+        Save tournament controls
       </Button>
 
       <SettingsModalForm
@@ -1418,19 +1468,15 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
 
   const [roundArray, setRoundArray] = useState<Array<RoundSetting>>([]);
   const [division, setDivision] = useState('');
+  const [copyFromDivision, setCopyFromDivision] = useState('');
 
-  useEffect(() => {
-    if (!division) {
-      setRoundArray([]);
-      return;
-    }
-    const div = tournamentContext.divisions[division];
+  const roundControlsToDisplayArray = React.useCallback((roundControls) => {
     const settings = new Array<RoundSetting>();
 
     let lastSetting: SingleRoundSetting | null = null;
     let min = 1;
     let max = 1;
-    div.roundControls.forEach((v: RoundControl, rd: number) => {
+    roundControls.forEach((v: RoundControl, rd: number) => {
       const thisSetting = {
         pairingType: v.getPairingMethod(),
         gamesPerRound: v.getGamesPerRound(),
@@ -1463,9 +1509,17 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
         setting: lastSetting,
       });
     }
+    return settings;
+  }, []);
 
-    setRoundArray(settings);
-  }, [division, tournamentContext.divisions]);
+  useEffect(() => {
+    if (!division) {
+      setRoundArray([]);
+      return;
+    }
+    const div = tournamentContext.divisions[division];
+    setRoundArray(roundControlsToDisplayArray(div.roundControls));
+  }, [division, roundControlsToDisplayArray, tournamentContext.divisions]);
 
   const setRoundControls = async () => {
     if (!division) {
@@ -1532,6 +1586,15 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
     },
   };
 
+  const copySettings = React.useCallback(() => {
+    const div = tournamentContext.divisions[copyFromDivision];
+    setRoundArray(roundControlsToDisplayArray(div.roundControls));
+  }, [
+    copyFromDivision,
+    roundControlsToDisplayArray,
+    tournamentContext.divisions,
+  ]);
+
   return (
     <>
       <Form.Item {...formItemLayout} label="Division">
@@ -1540,6 +1603,36 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
           onChange={(value: string) => setDivision(value)}
         />
       </Form.Item>
+
+      {Object.keys(tournamentContext.divisions).length > 1 &&
+        division !== '' &&
+        roundArray.length === 0 && (
+          <Collapse style={{ marginBottom: 10 }}>
+            <Collapse.Panel header="Copy from division" key="copyFrom">
+              <p className="readable-text-color" style={{ marginBottom: 10 }}>
+                Copy from existing division:
+                <HelptipLabel
+                  labelText=""
+                  help="If you want to copy round controls from another division, select
+                that division and click the Copy button. Note that you must still
+                click Save round controls to save your controls after copying them."
+                />
+              </p>
+              <DivisionSelector
+                value={copyFromDivision}
+                onChange={(value: string) => setCopyFromDivision(value)}
+                exclude={[division]}
+              />
+              <Button onClick={() => copySettings()}>
+                Copy from {copyFromDivision}
+              </Button>
+              <p className="readable-text-color" style={{ marginTop: 10 }}>
+                Or, set from scratch:
+              </p>
+            </Collapse.Panel>
+          </Collapse>
+        )}
+
       <Divider />
       {roundArray.map((v, idx) => (
         <RoundControlFields
@@ -1589,7 +1682,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
         + Add more pairings
       </Button>
 
-      <Button onClick={() => setRoundControls()}>Submit</Button>
+      <Button onClick={() => setRoundControls()}>Save round controls</Button>
     </>
   );
 };
