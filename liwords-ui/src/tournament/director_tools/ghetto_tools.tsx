@@ -15,22 +15,21 @@ import {
   Select,
   Space,
   Switch,
-  Tooltip,
 } from 'antd';
-import { Modal } from '../utils/focus_modal';
+import { Modal } from '../../utils/focus_modal';
 import { Store } from 'rc-field-form/lib/interface';
 import React, { useEffect } from 'react';
-import { LiwordsAPIError, postJsonObj, postProto } from '../api/api';
+import { LiwordsAPIError, postJsonObj, postProto } from '../../api/api';
 import {
   SingleRoundControlsRequest,
   TournamentResponse,
   TType,
-} from '../gen/api/proto/tournament_service/tournament_service_pb';
-import { Division } from '../store/reducers/tournament_reducer';
-import { useTournamentStoreContext } from '../store/store';
-import { useMountedState } from '../utils/mounted';
+} from '../../gen/api/proto/tournament_service/tournament_service_pb';
+import { Division } from '../../store/reducers/tournament_reducer';
+import { useTournamentStoreContext } from '../../store/store';
+import { useMountedState } from '../../utils/mounted';
 import { DisplayedGameSetting, SettingsForm } from './game_settings_form';
-import '../lobby/seek_form.scss';
+import '../../lobby/seek_form.scss';
 
 import {
   fieldsForMethod,
@@ -40,7 +39,7 @@ import {
   settingsEqual,
   SingleRoundSetting,
 } from './pairing_methods';
-import { valueof } from '../store/constants';
+import { valueof } from '../../store/constants';
 import {
   TournamentGameResult,
   TournamentGameResultMap,
@@ -49,8 +48,9 @@ import {
   RoundControl,
   FirstMethod,
   DivisionRoundControls,
-} from '../gen/api/proto/ipc/tournament_pb';
-import { GameRequest } from '../gen/api/proto/ipc/omgwords_pb';
+} from '../../gen/api/proto/ipc/tournament_pb';
+import { GameRequest } from '../../gen/api/proto/ipc/omgwords_pb';
+import { HelptipLabel } from './helptip_label';
 
 type ModalProps = {
   title: string;
@@ -1000,7 +1000,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
   const SuspendedGameResultHelptip = (
     <>
       What result would you like to assign to players who join your tournament
-      late, for unplayed rounds?
+      late, for unplayed rounds?<p>&nbsp;</p>
       <p>- Recommended value for tournaments is Forfeit loss. </p>
       <p>- Clubs can probably use a Void result.</p>
     </>
@@ -1016,14 +1016,30 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
           />
         </Form.Item>
 
-        <Form.Item {...formItemLayout} label="Gibsonize">
+        <Form.Item
+          {...formItemLayout}
+          label={
+            <HelptipLabel
+              labelText="Gibsonize"
+              help="If Gibsonize is on, players who have won the tournament before it is over will be paired against players not in contention."
+            />
+          }
+        >
           <Switch
             checked={gibsonize}
             onChange={(c: boolean) => setGibsonize(c)}
           />
         </Form.Item>
 
-        <Form.Item {...formItemLayout} label="Gibson spread">
+        <Form.Item
+          {...formItemLayout}
+          label={
+            <HelptipLabel
+              labelText="Gibson spread"
+              help="Gibson spread is used to determine whether a player should be Gibsonized. With one round to go, if the first-place player is one win and this much spread ahead of second place, they will be Gibsonized."
+            />
+          }
+        >
           <InputNumber
             min={0}
             value={gibsonSpread}
@@ -1033,7 +1049,15 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
           />
         </Form.Item>
 
-        <Form.Item {...formItemLayout} label="Gibson min placement">
+        <Form.Item
+          {...formItemLayout}
+          label={
+            <HelptipLabel
+              labelText="Gibson min placement"
+              help="If Gibsonize is on, you typically want this number to be at least 2. This number should be the number of places that have prizes."
+            />
+          }
+        >
           <InputNumber
             min={1}
             value={gibsonMinPlacement}
@@ -1046,18 +1070,11 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
         <Form.Item
           {...formItemLayout}
           label={
-            <>
-              Bye cut-off
-              <Tooltip
-                title="Byes may be assigned to players ranked this, and worse,
+            <HelptipLabel
+              help="Byes may be assigned to players ranked this, and worse,
           if odd. Make this 1 if you wish everyone in the tournament to be eligible for byes."
-              >
-                <QuestionCircleOutlined
-                  className="readable-text-color"
-                  style={{ marginLeft: 5 }}
-                />
-              </Tooltip>
-            </>
+              labelText="Bye cut-off"
+            />
           }
         >
           <InputNumber
@@ -1069,7 +1086,15 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
           />
         </Form.Item>
 
-        <Form.Item {...formItemLayout} label="Spread cap">
+        <Form.Item
+          {...formItemLayout}
+          label={
+            <HelptipLabel
+              help="Limit spread from losses to this number. If set to 0, there is no spread cap."
+              labelText="Spread cap"
+            />
+          }
+        >
           <InputNumber
             min={0}
             value={spreadCap}
@@ -1082,15 +1107,10 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
         <Form.Item
           {...formItemLayout}
           label={
-            <>
-              Suspended game result
-              <Tooltip title={SuspendedGameResultHelptip}>
-                <QuestionCircleOutlined
-                  className="readable-text-color"
-                  style={{ marginLeft: 5 }}
-                />
-              </Tooltip>
-            </>
+            <HelptipLabel
+              help={SuspendedGameResultHelptip}
+              labelText="Suspended game result"
+            />
           }
         >
           <Select

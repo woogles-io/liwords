@@ -2,10 +2,10 @@ import { Button, Form, InputNumber, Select } from 'antd';
 import React, { useCallback } from 'react';
 import axios from 'axios';
 
-import { useDebounce } from '../utils/debounce';
-import { toAPIUrl } from '../api/api';
+import { useDebounce } from '../../utils/debounce';
+import { toAPIUrl } from '../../api/api';
 import { AutoComplete } from 'antd';
-import { useMountedState } from '../utils/mounted';
+import { useMountedState } from '../../utils/mounted';
 import { Store } from 'antd/lib/form/interface';
 
 type user = {

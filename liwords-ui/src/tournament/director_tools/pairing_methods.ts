@@ -3,7 +3,7 @@
 import {
   PairingMethodMap,
   PairingMethod,
-} from '../gen/api/proto/ipc/tournament_pb';
+} from '../../gen/api/proto/ipc/tournament_pb';
 
 export type RoundSetting = {
   beginRound: number;
