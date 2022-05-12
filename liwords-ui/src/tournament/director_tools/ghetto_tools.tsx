@@ -1,12 +1,9 @@
 // Ghetto tools are Cesar tools before making things pretty.
 
-import {
-  MinusCircleOutlined,
-  PlusOutlined,
-  QuestionCircleOutlined,
-} from '@ant-design/icons';
+import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   Button,
+  Collapse,
   Divider,
   Form,
   Input,
@@ -15,22 +12,21 @@ import {
   Select,
   Space,
   Switch,
-  Tooltip,
 } from 'antd';
-import { Modal } from '../utils/focus_modal';
+import { Modal } from '../../utils/focus_modal';
 import { Store } from 'rc-field-form/lib/interface';
 import React, { useEffect } from 'react';
-import { LiwordsAPIError, postJsonObj, postProto } from '../api/api';
+import { LiwordsAPIError, postJsonObj, postProto } from '../../api/api';
 import {
   SingleRoundControlsRequest,
   TournamentResponse,
   TType,
-} from '../gen/api/proto/tournament_service/tournament_service_pb';
-import { Division } from '../store/reducers/tournament_reducer';
-import { useTournamentStoreContext } from '../store/store';
-import { useMountedState } from '../utils/mounted';
+} from '../../gen/api/proto/tournament_service/tournament_service_pb';
+import { Division } from '../../store/reducers/tournament_reducer';
+import { useTournamentStoreContext } from '../../store/store';
+import { useMountedState } from '../../utils/mounted';
 import { DisplayedGameSetting, SettingsForm } from './game_settings_form';
-import '../lobby/seek_form.scss';
+import '../../lobby/seek_form.scss';
 
 import {
   fieldsForMethod,
@@ -40,7 +36,7 @@ import {
   settingsEqual,
   SingleRoundSetting,
 } from './pairing_methods';
-import { valueof } from '../store/constants';
+import { valueof } from '../../store/constants';
 import {
   TournamentGameResult,
   TournamentGameResultMap,
@@ -49,8 +45,9 @@ import {
   RoundControl,
   FirstMethod,
   DivisionRoundControls,
-} from '../gen/api/proto/ipc/tournament_pb';
-import { GameRequest } from '../gen/api/proto/ipc/omgwords_pb';
+} from '../../gen/api/proto/ipc/tournament_pb';
+import { GameRequest } from '../../gen/api/proto/ipc/omgwords_pb';
+import { HelptipLabel } from './helptip_label';
 
 type ModalProps = {
   title: string;
@@ -203,15 +200,18 @@ export const GhettoTools = (props: Props) => {
 const DivisionSelector = (props: {
   onChange?: (value: string) => void;
   value?: string;
+  exclude?: Array<string>;
 }) => {
   const { tournamentContext } = useTournamentStoreContext();
   return (
     <Select onChange={props.onChange} value={props.value}>
-      {Object.keys(tournamentContext.divisions).map((d) => (
-        <Select.Option value={d} key={`div-${d}`}>
-          {d}
-        </Select.Option>
-      ))}
+      {Object.keys(tournamentContext.divisions)
+        .filter((d) => !props.exclude?.includes(d))
+        .map((d) => (
+          <Select.Option value={d} key={`div-${d}`}>
+            {d}
+          </Select.Option>
+        ))}
     </Select>
   );
 };
@@ -888,6 +888,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
   >(undefined);
 
   const [division, setDivision] = useState('');
+  const [copyFromDivision, setCopyFromDivision] = useState('');
   const [gibsonize, setGibsonize] = useState(false);
   const [gibsonSpread, setGibsonSpread] = useState(500);
 
@@ -896,6 +897,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
   const [gibsonMinPlacement, setGibsonMinPlacement] = useState(1);
   // bye max placement is 0-indexed, this is also the display variable
   const [byeMaxPlacement, setByeMaxPlacement] = useState(1);
+  const [spreadCap, setSpreadCap] = useState(0);
   const [suspendedResult, setSuspendedResult] = useState<
     valueof<TournamentGameResultMap>
   >(TournamentGameResult.FORFEIT_LOSS);
@@ -919,6 +921,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
       setGibsonMinPlacement(div.divisionControls.getMinimumPlacement() + 1);
       setByeMaxPlacement(div.divisionControls.getMaximumByePlacement() + 1);
       setSuspendedResult(div.divisionControls.getSuspendedResult());
+      setSpreadCap(div.divisionControls.getSpreadCap());
     }
   }, [division, tournamentContext.divisions]);
 
@@ -966,6 +969,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     ctrls.setGibsonSpread(gibsonSpread);
     ctrls.setMinimumPlacement(gibsonMinPlacement - 1);
     ctrls.setMaximumByePlacement(byeMaxPlacement - 1);
+    ctrls.setSpreadCap(spreadCap);
 
     // We are posting binary here because otherwise we need to make
     // a JSON representation of GameRequest and that's a pain.
@@ -997,11 +1001,28 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
   const SuspendedGameResultHelptip = (
     <>
       What result would you like to assign to players who join your tournament
-      late, for unplayed rounds?
+      late, for unplayed rounds?<p>&nbsp;</p>
       <p>- Recommended value for tournaments is Forfeit loss. </p>
       <p>- Clubs can probably use a Void result.</p>
     </>
   );
+
+  const copySettings = React.useCallback(() => {
+    // copy settings from copyFromDivision to division
+    const cd = tournamentContext.divisions[copyFromDivision];
+    const cdCopy = cd.divisionControls?.cloneMessage();
+    if (!cdCopy) {
+      return;
+    }
+    setSelectedGameRequest(cdCopy.getGameRequest());
+    setSuspendedResult(cdCopy.getSuspendedResult());
+    setGibsonize(cdCopy.getGibsonize());
+    setGibsonSpread(cdCopy.getGibsonSpread());
+    setSpreadCap(cdCopy.getSpreadCap());
+    // These are display variables so add 1 since they're 0-indexed:
+    setGibsonMinPlacement(cdCopy.getMinimumPlacement() + 1);
+    setByeMaxPlacement(cdCopy.getMaximumByePlacement() + 1);
+  }, [copyFromDivision, tournamentContext.divisions]);
 
   return (
     <>
@@ -1009,18 +1030,66 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
         <Form.Item {...formItemLayout} label="Division">
           <DivisionSelector
             value={division}
-            onChange={(value: string) => setDivision(value)}
+            onChange={(value: string) => {
+              setDivision(value);
+              setCopyFromDivision('');
+            }}
           />
         </Form.Item>
 
-        <Form.Item {...formItemLayout} label="Gibsonize">
+        {Object.keys(tournamentContext.divisions).length > 1 &&
+          division !== '' &&
+          selectedGameRequest == null && (
+            <Collapse style={{ marginBottom: 10 }}>
+              <Collapse.Panel header="Copy from division" key="copyFrom">
+                <p className="readable-text-color" style={{ marginBottom: 10 }}>
+                  Copy from existing division:
+                  <HelptipLabel
+                    labelText=""
+                    help="If you want to copy settings from another division, select
+                that division and click the Copy button. Note that you must still
+                click Save tournament controls to save your settings after copying them."
+                  />
+                </p>
+                <DivisionSelector
+                  value={copyFromDivision}
+                  onChange={(value: string) => setCopyFromDivision(value)}
+                  exclude={[division]}
+                />
+                <Button onClick={() => copySettings()}>
+                  Copy from {copyFromDivision}
+                </Button>
+                <p className="readable-text-color" style={{ marginTop: 10 }}>
+                  Or, set from scratch:
+                </p>
+              </Collapse.Panel>
+            </Collapse>
+          )}
+
+        <Form.Item
+          {...formItemLayout}
+          label={
+            <HelptipLabel
+              labelText="Gibsonize"
+              help="If Gibsonize is on, players who have won the tournament before it is over will be paired against players not in contention."
+            />
+          }
+        >
           <Switch
             checked={gibsonize}
             onChange={(c: boolean) => setGibsonize(c)}
           />
         </Form.Item>
 
-        <Form.Item {...formItemLayout} label="Gibson spread">
+        <Form.Item
+          {...formItemLayout}
+          label={
+            <HelptipLabel
+              labelText="Gibson spread"
+              help="Gibson spread is used to determine whether a player should be Gibsonized. With one round to go, if the first-place player is one win and this much spread ahead of second place, they will be Gibsonized."
+            />
+          }
+        >
           <InputNumber
             min={0}
             value={gibsonSpread}
@@ -1030,7 +1099,15 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
           />
         </Form.Item>
 
-        <Form.Item {...formItemLayout} label="Gibson min placement">
+        <Form.Item
+          {...formItemLayout}
+          label={
+            <HelptipLabel
+              labelText="Gibson min placement"
+              help="If Gibsonize is on, you typically want this number to be at least 2. This number should be the number of places that have prizes."
+            />
+          }
+        >
           <InputNumber
             min={1}
             value={gibsonMinPlacement}
@@ -1043,18 +1120,11 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
         <Form.Item
           {...formItemLayout}
           label={
-            <>
-              Bye cut-off
-              <Tooltip
-                title="Byes may be assigned to players ranked this, and worse,
+            <HelptipLabel
+              help="Byes may be assigned to players ranked this, and worse,
           if odd. Make this 1 if you wish everyone in the tournament to be eligible for byes."
-              >
-                <QuestionCircleOutlined
-                  className="readable-text-color"
-                  style={{ marginLeft: 5 }}
-                />
-              </Tooltip>
-            </>
+              labelText="Bye cut-off"
+            />
           }
         >
           <InputNumber
@@ -1069,15 +1139,28 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
         <Form.Item
           {...formItemLayout}
           label={
-            <>
-              Suspended game result
-              <Tooltip title={SuspendedGameResultHelptip}>
-                <QuestionCircleOutlined
-                  className="readable-text-color"
-                  style={{ marginLeft: 5 }}
-                />
-              </Tooltip>
-            </>
+            <HelptipLabel
+              help="Limit spread from losses to this number. If set to 0, there is no spread cap."
+              labelText="Spread cap"
+            />
+          }
+        >
+          <InputNumber
+            min={0}
+            value={spreadCap}
+            onChange={(p: number | string | undefined | null) =>
+              setSpreadCap(p as number)
+            }
+          />
+        </Form.Item>
+
+        <Form.Item
+          {...formItemLayout}
+          label={
+            <HelptipLabel
+              help={SuspendedGameResultHelptip}
+              labelText="Suspended game result"
+            />
           }
         >
           <Select
@@ -1109,10 +1192,10 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
         }}
         onClick={() => setModalVisible(true)}
       >
-        Edit Game Settings
+        Edit game settings
       </Button>
       <Button type="primary" onClick={submit}>
-        Save Game Settings
+        Save tournament controls
       </Button>
 
       <SettingsModalForm
@@ -1146,16 +1229,62 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
 
   const formItemLayout = {
     labelCol: {
-      span: 7,
+      span: 6,
     },
     wrapperCol: {
-      span: 6,
+      span: 8,
     },
   };
 
+  const pairingTypesHelptip = (
+    <>
+      <ul>
+        <li>
+          - <strong>Random:</strong> Pairings are random. This is only
+          recommended for the very first round.
+        </li>
+        <li>
+          - <strong>Swiss:</strong> Swiss pairings by default try to match
+          players who are performing similarly.
+        </li>
+        <li>
+          - <strong>Round Robin:</strong> These pairings match everyone in the
+          division against each other. If there are fewer rounds than players,
+          it will do a partial round robin.
+        </li>
+        <li>
+          - <strong>Initial Fontes:</strong> These pairings split up the field
+          into groups of size N+1, and pair everyone in the group against each
+          other. The number you provide (N) must be an odd number. This should
+          be used at the beginning of a tournament.
+        </li>
+        <li>
+          - <strong>King of the hill:</strong> These pairings pair 1v2, 3v4,
+          5v6, and so forth. It is a good format for the very last round of a
+          tournament.
+        </li>
+        <li>
+          - <strong>Factor:</strong> Factor 1 pairs 1 vs 2 and the rest Swiss.
+          Factor 2 pairs 1v3, 2v4, and the rest Swiss. Factor 3 pairs 1v4, 2v5,
+          3v6 and the rest Swiss, and so on.
+        </li>
+        <li>
+          - <strong>Manual:</strong> Manual pairings must be provided manually
+          by the director every round. This is not recommended except for the
+          smallest tournaments.
+        </li>
+      </ul>
+    </>
+  );
+
   return (
     <>
-      <Form.Item {...formItemLayout} label="Pairing Type">
+      <Form.Item
+        {...formItemLayout}
+        label={
+          <HelptipLabel labelText="Pairing type" help={pairingTypesHelptip} />
+        }
+      >
         <Select
           value={setting.pairingType}
           onChange={(e) => {
@@ -1186,14 +1315,14 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
       {/* potential additional fields */}
       {addlFields.map((v: PairingMethodField, idx) => {
         const key = `ni-${idx}`;
-        const [fieldType, fieldName, displayName] = v;
+        const [fieldType, fieldName, displayName, help] = v;
         switch (fieldType) {
           case 'number':
             return (
               <Form.Item
                 {...formItemLayout}
                 labelCol={{ span: 12, offset: 1 }}
-                label={displayName}
+                label={<HelptipLabel labelText={displayName} help={help} />}
                 key={`${idx}-${fieldName}`}
               >
                 <InputNumber
@@ -1212,7 +1341,7 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
               <Form.Item
                 {...formItemLayout}
                 labelCol={{ span: 12, offset: 1 }}
-                label={displayName}
+                label={<HelptipLabel labelText={displayName} help={help} />}
                 key={`${idx}-${fieldName}`}
               >
                 <Switch
@@ -1385,19 +1514,15 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
 
   const [roundArray, setRoundArray] = useState<Array<RoundSetting>>([]);
   const [division, setDivision] = useState('');
+  const [copyFromDivision, setCopyFromDivision] = useState('');
 
-  useEffect(() => {
-    if (!division) {
-      setRoundArray([]);
-      return;
-    }
-    const div = tournamentContext.divisions[division];
+  const roundControlsToDisplayArray = React.useCallback((roundControls) => {
     const settings = new Array<RoundSetting>();
 
     let lastSetting: SingleRoundSetting | null = null;
     let min = 1;
     let max = 1;
-    div.roundControls.forEach((v: RoundControl, rd: number) => {
+    roundControls.forEach((v: RoundControl, rd: number) => {
       const thisSetting = {
         pairingType: v.getPairingMethod(),
         gamesPerRound: v.getGamesPerRound(),
@@ -1430,9 +1555,17 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
         setting: lastSetting,
       });
     }
+    return settings;
+  }, []);
 
-    setRoundArray(settings);
-  }, [division, tournamentContext.divisions]);
+  useEffect(() => {
+    if (!division) {
+      setRoundArray([]);
+      return;
+    }
+    const div = tournamentContext.divisions[division];
+    setRoundArray(roundControlsToDisplayArray(div.roundControls));
+  }, [division, roundControlsToDisplayArray, tournamentContext.divisions]);
 
   const setRoundControls = async () => {
     if (!division) {
@@ -1499,6 +1632,15 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
     },
   };
 
+  const copySettings = React.useCallback(() => {
+    const div = tournamentContext.divisions[copyFromDivision];
+    setRoundArray(roundControlsToDisplayArray(div.roundControls));
+  }, [
+    copyFromDivision,
+    roundControlsToDisplayArray,
+    tournamentContext.divisions,
+  ]);
+
   return (
     <>
       <Form.Item {...formItemLayout} label="Division">
@@ -1507,6 +1649,36 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
           onChange={(value: string) => setDivision(value)}
         />
       </Form.Item>
+
+      {Object.keys(tournamentContext.divisions).length > 1 &&
+        division !== '' &&
+        roundArray.length === 0 && (
+          <Collapse style={{ marginBottom: 10 }}>
+            <Collapse.Panel header="Copy from division" key="copyFrom">
+              <p className="readable-text-color" style={{ marginBottom: 10 }}>
+                Copy from existing division:
+                <HelptipLabel
+                  labelText=""
+                  help="If you want to copy round controls from another division, select
+                that division and click the Copy button. Note that you must still
+                click Save round controls to save your controls after copying them."
+                />
+              </p>
+              <DivisionSelector
+                value={copyFromDivision}
+                onChange={(value: string) => setCopyFromDivision(value)}
+                exclude={[division]}
+              />
+              <Button onClick={() => copySettings()}>
+                Copy from {copyFromDivision}
+              </Button>
+              <p className="readable-text-color" style={{ marginTop: 10 }}>
+                Or, set from scratch:
+              </p>
+            </Collapse.Panel>
+          </Collapse>
+        )}
+
       <Divider />
       {roundArray.map((v, idx) => (
         <RoundControlFields
@@ -1556,7 +1728,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
         + Add more pairings
       </Button>
 
-      <Button onClick={() => setRoundControls()}>Submit</Button>
+      <Button onClick={() => setRoundControls()}>Save round controls</Button>
     </>
   );
 };

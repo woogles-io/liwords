@@ -131,7 +131,7 @@ func pairFactor(members *entity.UnpairedPoolMembers) ([]int, error) {
 func pairInitialFontes(members *entity.UnpairedPoolMembers) ([]int, error) {
 	if members.RoundControls.InitialFontes%2 == 0 {
 		return nil, fmt.Errorf("number of rounds paired with Initial Fontes must be odd,"+
-			" have %d instead (preconditiion violation)", members.RoundControls.InitialFontes)
+			" have %d instead (precondition violation)", members.RoundControls.InitialFontes)
 	}
 
 	numberOfPlayers := len(members.PoolMembers)

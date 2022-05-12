@@ -3,7 +3,7 @@
 import {
   PairingMethodMap,
   PairingMethod,
-} from '../gen/api/proto/ipc/tournament_pb';
+} from '../../gen/api/proto/ipc/tournament_pb';
 
 export type RoundSetting = {
   beginRound: number;
@@ -38,7 +38,12 @@ export const settingsEqual = (
 
 type valueof<T> = T[keyof T];
 export type pairingMethod = valueof<PairingMethodMap>;
-export type PairingMethodField = [string, keyof SingleRoundSetting, string];
+export type PairingMethodField = [
+  string,
+  keyof SingleRoundSetting,
+  string,
+  string
+];
 
 export const fieldsForMethod = (
   m: pairingMethod
@@ -53,21 +58,43 @@ export const fieldsForMethod = (
       return [];
     // @ts-expect-error fallthrough is purposeful:
     case PairingMethod.FACTOR:
-      fields.push(['number', 'factor', 'Factor']);
+      fields.push([
+        'number',
+        'factor',
+        'Factor',
+        'Your selected factor (use 2 for 1v3, 2v4 for example).',
+      ]);
     case PairingMethod.SWISS:
       fields.push(
-        ['number', 'maxRepeats', 'Max Desirable Repeats (1 is no repeats)'],
-        ['number', 'repeatRelativeWeight', 'Repeat Relative Weight'],
+        [
+          'number',
+          'maxRepeats',
+          'Max Desirable Repeats',
+          'Use "1" for no repeats, "2" for 1 max repeat, and so on. ' +
+            'The pairing system will try to meet your requirement, but it is not guaranteed.',
+        ],
+        [
+          'number',
+          'repeatRelativeWeight',
+          'Repeat Relative Weight',
+          'The larger this number, the less likely a repeat will be.',
+        ],
         [
           'number',
           'winDifferenceRelativeWeight',
           'Win Difference Relative Weight',
+          'The larger this number, the more mismatched your pairings will be, in terms of win difference.',
         ]
       );
       break;
 
     case PairingMethod.TEAM_ROUND_ROBIN:
-      fields.push(['number', 'gamesPerRound', 'Games per Round']);
+      fields.push([
+        'number',
+        'gamesPerRound',
+        'Games per Round',
+        'This pairing system is not currently available.',
+      ]);
       break;
   }
 

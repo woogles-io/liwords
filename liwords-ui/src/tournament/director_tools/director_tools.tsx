@@ -1,11 +1,11 @@
 import React, { useCallback } from 'react';
 // import { toAPIUrl } from '../api/api';
 // import { useMountedState } from '../utils/mounted';
-import { useTournamentStoreContext } from '../store/store';
+import { useTournamentStoreContext } from '../../store/store';
 import './director_tools.scss';
-import { UsernameWithContext } from '../shared/usernameWithContext';
+import { UsernameWithContext } from '../../shared/usernameWithContext';
 import { Button, Divider } from 'antd';
-import { postJsonObj } from '../api/api';
+import { postJsonObj } from '../../api/api';
 import { GhettoTools } from './ghetto_tools';
 /*
 import { AddPlayerForm, playersToAdd } from './add_player_form';
