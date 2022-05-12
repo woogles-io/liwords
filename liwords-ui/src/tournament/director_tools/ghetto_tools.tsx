@@ -1229,16 +1229,62 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
 
   const formItemLayout = {
     labelCol: {
-      span: 7,
+      span: 6,
     },
     wrapperCol: {
-      span: 6,
+      span: 8,
     },
   };
 
+  const pairingTypesHelptip = (
+    <>
+      <ul>
+        <li>
+          - <strong>Random:</strong> Pairings are random. This is only
+          recommended for the very first round.
+        </li>
+        <li>
+          - <strong>Swiss:</strong> Swiss pairings by default try to match
+          players who are performing similarly.
+        </li>
+        <li>
+          - <strong>Round Robin:</strong> These pairings match everyone in the
+          division against each other. If there are fewer rounds than players,
+          it will do a partial round robin.
+        </li>
+        <li>
+          - <strong>Initial Fontes:</strong> These pairings split up the field
+          into groups of size N+1, and pair everyone in the group against each
+          other. The number you provide (N) must be an odd number. This should
+          be used at the beginning of a tournament.
+        </li>
+        <li>
+          - <strong>King of the hill:</strong> These pairings pair 1v2, 3v4,
+          5v6, and so forth. It is a good format for the very last round of a
+          tournament.
+        </li>
+        <li>
+          - <strong>Factor:</strong> Factor 1 pairs 1 vs 2 and the rest Swiss.
+          Factor 2 pairs 1v3, 2v4, and the rest Swiss. Factor 3 pairs 1v4, 2v5,
+          3v6 and the rest Swiss, and so on.
+        </li>
+        <li>
+          - <strong>Manual:</strong> Manual pairings must be provided manually
+          by the director every round. This is not recommended except for the
+          smallest tournaments.
+        </li>
+      </ul>
+    </>
+  );
+
   return (
     <>
-      <Form.Item {...formItemLayout} label="Pairing Type">
+      <Form.Item
+        {...formItemLayout}
+        label={
+          <HelptipLabel labelText="Pairing type" help={pairingTypesHelptip} />
+        }
+      >
         <Select
           value={setting.pairingType}
           onChange={(e) => {
@@ -1269,14 +1315,14 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
       {/* potential additional fields */}
       {addlFields.map((v: PairingMethodField, idx) => {
         const key = `ni-${idx}`;
-        const [fieldType, fieldName, displayName] = v;
+        const [fieldType, fieldName, displayName, help] = v;
         switch (fieldType) {
           case 'number':
             return (
               <Form.Item
                 {...formItemLayout}
                 labelCol={{ span: 12, offset: 1 }}
-                label={displayName}
+                label={<HelptipLabel labelText={displayName} help={help} />}
                 key={`${idx}-${fieldName}`}
               >
                 <InputNumber
@@ -1295,7 +1341,7 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
               <Form.Item
                 {...formItemLayout}
                 labelCol={{ span: 12, offset: 1 }}
-                label={displayName}
+                label={<HelptipLabel labelText={displayName} help={help} />}
                 key={`${idx}-${fieldName}`}
               >
                 <Switch
