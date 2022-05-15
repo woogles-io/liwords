@@ -1,23 +1,107 @@
-import React, { useCallback, useEffect, useRef } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
-import { notification, Card, Table, Row, Col } from 'antd';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { Link, useLocation, useParams } from 'react-router-dom';
+import { Card, Carousel, notification } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../navigation/topbar';
-import { Link } from 'react-router-dom';
-
-import './profile.scss';
-import { toAPIUrl } from '../api/api';
-import { BioCard } from './bio';
 import { PettableAvatar, PlayerAvatar } from '../shared/player_avatar';
-import { useLoginStateStoreContext } from '../store/store';
-import { GameMetadata, RecentGamesResponse } from '../gameroom/game_info';
-import { GamesHistoryCard } from './games_history';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import { moderateUser } from '../mod/moderate';
 import { DisplayFlag } from '../shared/display_flag';
-import { VariantIcon } from '../shared/variant_icons';
+import { GameMetadata, RecentGamesResponse } from '../gameroom/game_info';
+import { useLoginStateStoreContext } from '../store/store';
+import { toAPIUrl } from '../api/api';
+import './profile.scss';
+import { BioCard } from './bio';
 import { lexiconCodeToProfileRatingName } from '../shared/lexica';
+import { VariantIcon } from '../shared/variant_icons';
+
+const screenSizes = require('../base.scss').default;
+
+type Rating = {
+  r: number;
+  rd: number;
+  v: number;
+  ts: number;
+};
+
+type ProfileRatings = { [variant: string]: Rating };
+
+type StatItem = {
+  n: string; // name
+  t: number; // total
+  a: Array<number>; // averages
+};
+
+type Stats = {
+  i1: string; // us
+  i2: string; // opp
+  d1: { [key: string]: StatItem }; // us
+  d2: { [key: string]: StatItem }; // opp
+  n: Array<StatItem>; // notable
+};
+
+type ProfileStats = {
+  [variant: string]: Stats;
+};
+
+type VariantCardProps = {
+  variant: string;
+  ratings: Rating | null;
+  stats: Stats;
+};
+
+const VariantCard = React.memo((props: VariantCardProps) => {
+  const { ratings, stats, variant } = props;
+  const gamesPlayed = stats.d1.Games.t;
+  const rating = ratings?.r.toFixed(0);
+  const highGame = stats.d1['High Game'].t;
+  const averageGame = (stats.d1['Score'].t / gamesPlayed).toFixed(0);
+  const averageTurn = (stats.d1['Score'].t / stats.d1['Turns'].t).toFixed(0);
+  const bestPlay = stats.d1['High Turn'].t.toFixed(0);
+  const bingos = stats.d1['Bingos'].t.toFixed(0);
+  return (
+    <Card className="variant-stats" title={variantToName(variant)}>
+      {rating && <h3 className="rating">{rating}</h3>}
+      {gamesPlayed && (
+        <h4 className="stat-item">
+          {gamesPlayed}
+          <span className="label">games played</span>
+        </h4>
+      )}
+      {averageGame && (
+        <h4 className="stat-item">
+          {averageGame}
+          <span className="label">average game</span>
+        </h4>
+      )}
+      {averageTurn && (
+        <h4 className="stat-item">
+          {averageTurn}
+          <span className="label">average play</span>
+        </h4>
+      )}
+      {highGame && (
+        <h4 className="stat-item">
+          {highGame}
+          <span className="label">high game</span>
+        </h4>
+      )}
+      {bestPlay && (
+        <h4 className="stat-item">
+          {bestPlay}
+          <span className="label">best play</span>
+        </h4>
+      )}
+      {bingos && (
+        <h4 className="stat-item">
+          {bingos}
+          <span className="label">bingos</span>
+        </h4>
+      )}
+    </Card>
+  );
+});
 
 type ProfileResponse = {
   birth_date: string;
@@ -44,38 +128,6 @@ const errorCatcher = (e: AxiosError) => {
   }
 };
 
-type StatItem = {
-  n: string; // name
-  t: number; // total
-  a: Array<number>; // averages
-};
-
-type Rating = {
-  r: number;
-  rd: number;
-  v: number;
-};
-
-type ProfileRatings = { [variant: string]: Rating };
-
-type RatingsProps = {
-  ratings: ProfileRatings;
-};
-
-type ProfileStats = {
-  [variant: string]: {
-    i1: string; // us
-    i2: string; // opp
-    d1: { [key: string]: StatItem }; // us
-    d2: { [key: string]: StatItem }; // opp
-    n: Array<StatItem>; // notable
-  };
-};
-
-type StatsProps = {
-  stats: ProfileStats;
-};
-
 const variantToName = (variant: string) => {
   const arr = variant.split('.');
   let lex = arr[0];
@@ -96,129 +148,15 @@ const variantToName = (variant: string) => {
   );
 };
 
-const RatingsCard = React.memo((props: RatingsProps) => {
-  const variants = props.ratings ? Object.keys(props.ratings) : [];
-  const dataSource = variants.map((v) => ({
-    key: v,
-    name: variantToName(v),
-    rating: props.ratings[v].r.toFixed(2),
-    deviation: props.ratings[v].rd.toFixed(2),
-  }));
-
-  const columns = [
-    {
-      title: 'Variant',
-      dataIndex: 'name',
-      key: 'name',
-    },
-    {
-      title: 'Rating',
-      dataIndex: 'rating',
-      key: 'rating',
-    },
-    {
-      title: 'Deviation',
-      dataIndex: 'deviation',
-      key: 'deviation',
-    },
-  ];
-
-  return (
-    <Card title="Ratings">
-      <Table
-        pagination={{
-          hideOnSinglePage: true,
-        }}
-        dataSource={dataSource}
-        columns={columns}
-      />
-    </Card>
-  );
-});
-
-const StatsCard = React.memo((props: StatsProps) => {
-  const variants = props.stats ? Object.keys(props.stats) : [];
-
-  const dataSource = variants.map((v) => ({
-    key: v,
-    name: variantToName(v),
-    games: props.stats[v].d1.Games.t,
-    wld: `${props.stats[v].d1.Wins.t}-${props.stats[v].d1.Losses.t}-${props.stats[v].d1.Draws.t}`,
-    avgScore: (props.stats[v].d1.Score.t / props.stats[v].d1.Games.t).toFixed(
-      2
-    ),
-    avgPerTurn: (props.stats[v].d1.Score.t / props.stats[v].d1.Turns.t).toFixed(
-      2
-    ),
-    avgScoreAgainst: (
-      props.stats[v].d2.Score.t / props.stats[v].d2.Games.t
-    ).toFixed(2),
-    bingosPerGame: (
-      props.stats[v].d1.Bingos.t / props.stats[v].d1.Games.t
-    ).toFixed(2),
-  }));
-
-  const columns = [
-    {
-      title: 'Variant',
-      dataIndex: 'name',
-      key: 'name',
-    },
-    {
-      title: 'Games',
-      dataIndex: 'games',
-      key: 'games',
-    },
-    {
-      title: 'W-L-D',
-      dataIndex: 'wld',
-      key: 'wld',
-    },
-    {
-      title: 'Avg Score',
-      dataIndex: 'avgScore',
-      key: 'avgScore',
-    },
-    {
-      title: 'Avg Per Turn',
-      dataIndex: 'avgPerTurn',
-      key: 'avgPerTurn',
-    },
-    {
-      title: 'Opp Avg Score',
-      dataIndex: 'avgScoreAgainst',
-      key: 'avgScoreAgainst',
-    },
-    {
-      title: 'Bingos Per Game',
-      dataIndex: 'bingosPerGame',
-      key: 'bingosPerGame',
-    },
-  ];
-
-  return (
-    <Card title="Stats">
-      <Table
-        dataSource={dataSource}
-        columns={columns}
-        pagination={{
-          hideOnSinglePage: true,
-        }}
-      />
-    </Card>
-  );
-});
-
-const gamesPageSize = 10;
-
-export const UserProfile = React.memo(() => {
+export const PlayerProfile = React.memo(() => {
   const { useState } = useMountedState();
 
+  const gamesPageSize = 20;
   const { username } = useParams();
   const location = useLocation();
   // Show username's profile
-  const [ratings, setRatings] = useState({});
-  const [stats, setStats] = useState({});
+  const [ratings, setRatings] = useState<ProfileRatings | null>(null);
+  const [stats, setStats] = useState<ProfileStats | null>(null);
   const [userID, setUserID] = useState('');
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -235,6 +173,7 @@ export const UserProfile = React.memo(() => {
   const { username: viewer } = loginState;
   const [recentGamesOffset, setRecentGamesOffset] = useState(0);
   const [missingBirthdate, setMissingBirthdate] = useState(true); // always true except for self
+
   useEffect(() => {
     axios
       .post<ProfileResponse>(
@@ -260,6 +199,7 @@ export const UserProfile = React.memo(() => {
   const [queriedRecentGamesOffset, setQueriedRecentGamesOffset] =
     useState(recentGamesOffset);
   const reentrancyCheck = useRef<Record<string, never>>();
+
   useEffect(() => {
     const hiddenObject = {}; // allocate a new thing every time
     reentrancyCheck.current = hiddenObject;
@@ -361,86 +301,108 @@ export const UserProfile = React.memo(() => {
     },
     []
   );
-
   const player = {
     avatar_url: avatarUrl,
     full_name: fullName,
     user_id: userID, // for name-based avatar initial to work
   };
-
   const avatarEditable = avatarsEditable && viewer === username;
+  useEffect(() => {
+    console.warn(3, recentGames, ratings, stats);
+  }, [recentGames, ratings, stats]);
+
+  const variantCards = useMemo(() => {
+    const data = [];
+    for (const variant in stats) {
+      if (stats.hasOwnProperty(variant)) {
+        data.push({
+          variant: variant,
+          ratings: ratings ? ratings[variant] : null,
+          stats: stats[variant],
+        });
+      }
+    }
+    return data
+      .sort((a, b) => {
+        console.log(b, a);
+        return (b.stats?.d1['Games']?.t || 0) - (a.stats?.d1['Games']?.t || 0);
+      })
+      .map((d) => {
+        return <VariantCard key={d.variant} {...d} />;
+      });
+  }, [ratings, stats]);
 
   return (
     <>
-      <Row>
-        <Col span={24}>
-          <TopBar />
-        </Col>
-      </Row>
-
+      <TopBar />
       <div className="profile">
-        {viewer === username ? (
-          <div className="settings-link">
-            <Link to="/settings">Edit settings</Link>
-          </div>
-        ) : null}{' '}
         <header>
-          <PettableAvatar>
-            <PlayerAvatar
-              player={player}
-              editable={avatarEditable}
-              username={username}
-            />
-            <h3>
-              {username && viewer !== username ? (
-                <UsernameWithContext
-                  omitProfileLink
-                  omitSendMessage
-                  fullName={fullName}
-                  includeFlag
+          <div>
+            <div className="user-info">
+              <PettableAvatar>
+                <PlayerAvatar
+                  player={player}
+                  editable={avatarEditable}
                   username={username}
-                  userID={userID}
-                  showModTools
-                  moderate={moderateUser}
                 />
-              ) : (
-                <span className="user">
-                  <span>{fullName || username}</span>
-                  <DisplayFlag countryCode={countryCode} />
-                </span>
-              )}
-            </h3>
-          </PettableAvatar>
-        </header>
-        {!(missingBirthdate && viewer === username) && (
-          <BioCard bio={bio} bioLoaded={bioLoaded} />
-        )}
-        {missingBirthdate && viewer === username && (
-          <div className="bio">
-            <Link to={'/settings/personal'}>Let us know your birthdate</Link> to
-            share your bio and details
+                <h3>
+                  {username && viewer !== username ? (
+                    <UsernameWithContext
+                      omitProfileLink
+                      omitSendMessage
+                      fullName={fullName}
+                      includeFlag
+                      username={username}
+                      userID={userID}
+                      showModTools
+                      moderate={moderateUser}
+                    />
+                  ) : (
+                    <span className="user">
+                      <span>{fullName || username}</span>
+                      <DisplayFlag countryCode={countryCode} />
+                    </span>
+                  )}
+                </h3>
+              </PettableAvatar>
+            </div>
+            {!(missingBirthdate && viewer === username) && (
+              <BioCard bio={bio} bioLoaded={bioLoaded} />
+            )}
+            {missingBirthdate && viewer === username && (
+              <div className="bio">
+                <Link to={'/settings/personal'}>
+                  Let us know your birthdate
+                </Link>{' '}
+                to share your bio and details
+              </div>
+            )}
           </div>
-        )}
-        <RatingsCard ratings={ratings} />
-        {username && (
-          <GamesHistoryCard
-            games={recentGames.array}
-            username={username}
-            userID={userID}
-            fetchPrev={recentGamesOffset > 0 ? fetchPrev : undefined}
-            fetchNext={
-              recentGames.array.length < recentGames.numGames
-                ? undefined
-                : fetchNext
-            }
-            currentOffset={recentGames.offset}
-            currentPageSize={recentGames.numGames}
-            desiredOffset={recentGamesOffset}
-            desiredPageSize={gamesPageSize}
-            onChangePageNumber={handleChangePageNumber}
-          />
-        )}
-        <StatsCard stats={stats} />
+        </header>
+        <h2>Game Ratings</h2>
+        <Carousel
+          arrows
+          className="variant-items"
+          dots={{
+            className: 'dot',
+          }}
+          slidesToScroll={4}
+          slidesToShow={4}
+          swipeToSlide
+          swipe
+          responsive={[
+            {
+              breakpoint: screenSizes.screenSizeTablet - 1,
+              settings: {
+                slidesToShow: 2,
+                slidesToScroll: 2,
+              },
+            },
+          ]}
+        >
+          {variantCards}
+        </Carousel>
+        <h2>Puzzle Ratings</h2>
       </div>
     </>
   );
