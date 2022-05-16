@@ -1,7 +1,4 @@
-WITH
-  attempts
-AS
-(SELECT
+SELECT
   id,
   uuid,
   lexicon,
@@ -9,11 +6,4 @@ AS
   rating->'rd' AS rating_deviation,
   (SELECT COUNT(*) from puzzle_attempts where puzzle_attempts.puzzle_id = puzzles.id) AS number_of_attempts
 FROM puzzles
-ORDER BY number_of_attempts DESC)
-SELECT
-  lexicon,
-  number_of_attempts,
-  COUNT(*) AS hist
-FROM attempts
-GROUP BY 1,2
-ORDER BY 1,2 ASC
+ORDER BY number_of_attempts DESC

@@ -6,4 +6,4 @@ SELECT
 FROM puzzle_attempts
 LEFT JOIN puzzles on puzzle_attempts.puzzle_id = puzzles.id
 GROUP BY 1,2
-ORDER BY 1,2 ASC
+ORDER BY 1,2 DESC
