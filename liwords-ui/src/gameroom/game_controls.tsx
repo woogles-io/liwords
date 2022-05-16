@@ -160,6 +160,7 @@ const ExamineGameControls = React.memo(
             overlay={exportMenu}
             trigger={['click']}
             visible={exportMenuVisible}
+            placement="topLeft"
           >
             <Button onClick={() => setExportMenuVisible((v) => !v)}>
               Export
@@ -480,6 +481,7 @@ const GameControls = React.memo((props: Props) => {
             trigger={['click']}
             visible={optionsMenuVisible}
             disabled={gameHasNotStarted}
+            placement="topLeft"
           >
             <Button onClick={() => setOptionsMenuVisible((v) => !v)}>
               Options
@@ -653,6 +655,7 @@ const EndGameControls = (props: EGCProps) => {
           overlay={exportMenu}
           trigger={['click']}
           visible={exportMenuVisible}
+          placement="topLeft"
         >
           <Button onClick={() => setExportMenuVisible((v) => !v)}>
             Export

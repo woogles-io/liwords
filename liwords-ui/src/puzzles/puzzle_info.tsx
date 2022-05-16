@@ -33,6 +33,8 @@ type Props = {
   increment_seconds?: number;
   max_overtime_minutes?: number;
   attempts: number;
+  userRating?: number;
+  puzzleRating?: number;
   dateSolved?: Date;
   loadNewPuzzle: () => void;
   showSolution: () => void;
@@ -83,6 +85,8 @@ export const PuzzleInfo = React.memo((props: Props) => {
     dateSolved,
     loadNewPuzzle,
     showSolution,
+    puzzleRating,
+    userRating,
   } = props;
 
   // TODO: should be determined on the back end and not hardcoded
@@ -201,6 +205,12 @@ export const PuzzleInfo = React.memo((props: Props) => {
             solved={solved}
             attempts={attempts}
           />
+          {!!puzzleRating && !!userRating && (
+            <>
+              <p>The puzzle is now rated {puzzleRating}.</p>
+              <p>Your puzzle rating is now {userRating}.</p>
+            </>
+          )}
           {actions}
         </div>
       </Card>
@@ -233,6 +243,12 @@ export const PuzzleInfo = React.memo((props: Props) => {
         </div>
         <Hints puzzleID={props.puzzleID} solved={solved} attempts={attempts} />
         <div className="progress">{attemptsText}</div>
+        {!!puzzleRating && !!userRating && (
+          <>
+            <p>The puzzle is now rated {puzzleRating}.</p>
+            <p>Your puzzle rating is now {userRating}.</p>
+          </>
+        )}
         {actions}
       </div>
     </Card>
