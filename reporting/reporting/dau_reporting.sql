@@ -10,10 +10,10 @@ UNION ALL
     player1_id AS player
 FROM public.games)),
 
-wau_omgwords_report AS
+dau_omgwords_report AS
 (SELECT
-	DATE_TRUNC('week',duplicated_games.created_at) AS week,
-	COUNT(DISTINCT player) AS wau_omgwords
+	DATE_TRUNC('day',duplicated_games.created_at) AS day,
+	COUNT(DISTINCT player) AS dau_omgwords
 FROM duplicated_games
 LEFT JOIN public.users ON duplicated_games.player = users.id
 WHERE NOT (users.internal_bot OR users.id IN (42,43,44,45,46))
@@ -49,29 +49,30 @@ UNION ALL
     created_at,
     player1_id AS player
 FROM pvp_games)),
-wau_omgwords_vs_human_report AS
+dau_omgwords_vs_human_report AS
 (SELECT
-    DATE_TRUNC('week',created_at) AS week,
-	COUNT(DISTINCT player) AS wau_omgwords_vs_human
+    DATE_TRUNC('day',created_at) AS day,
+	COUNT(DISTINCT player) AS dau_omgwords_vs_human
 FROM duplicated_games_between_humans
 GROUP BY 1),
 
 -- Puzzles
-wau_puzzles AS
+dau_puzzles AS
 (SELECT
    created_at,
    user_id AS player
 FROM public.puzzle_attempts),
 
-wau_puzzles_report AS
+dau_puzzles_report AS
 (SELECT
-	DATE_TRUNC('week',wau_puzzles.created_at) AS week,
-	COUNT(DISTINCT player) AS wau_puzzles
-FROM wau_puzzles
-LEFT JOIN public.users ON wau_puzzles.player = users.id
+	DATE_TRUNC('day',dau_puzzles.created_at) AS day,
+	COUNT(DISTINCT player) AS dau_puzzles
+FROM dau_puzzles
+LEFT JOIN public.users ON dau_puzzles.player = users.id
 WHERE NOT users.internal_bot
 GROUP BY 1),
 
+-- Joint reporting
 games_plus_puzzle_attempts AS
 ((SELECT
     created_at,
@@ -90,22 +91,22 @@ FROM public.puzzle_attempts)),
 
 omgwords_plus_puzzles_report AS
 (SELECT
-	DATE_TRUNC('week',games_plus_puzzle_attempts.created_at) AS week,
-	COUNT(DISTINCT player) AS wau
+	DATE_TRUNC('day',games_plus_puzzle_attempts.created_at) AS day,
+	COUNT(DISTINCT player) AS dau
 FROM games_plus_puzzle_attempts
 LEFT JOIN public.users ON games_plus_puzzle_attempts.player = users.id
 WHERE NOT (users.internal_bot OR users.id IN (42,43,44,45,46))
 GROUP BY 1)
 
 SELECT
-  wau_omgwords_report.week,
-  wau_omgwords_report.wau_omgwords,
-  wau_omgwords_vs_human_report.wau_omgwords_vs_human,
-  TRUNC(100.0*wau_omgwords_vs_human_report.wau_omgwords_vs_human/wau_omgwords_report.wau_omgwords,1) AS ratio,
-  wau_puzzles_report.wau_puzzles,
-  omgwords_plus_puzzles_report.wau
-FROM wau_omgwords_report
-LEFT JOIN wau_omgwords_vs_human_report ON wau_omgwords_report.week = wau_omgwords_vs_human_report.week
-LEFT JOIN wau_puzzles_report ON wau_omgwords_report.week = wau_puzzles_report.week
-LEFT JOIN omgwords_plus_puzzles_report ON wau_omgwords_report.week = omgwords_plus_puzzles_report.week
+  dau_omgwords_report.day,
+  dau_omgwords_report.dau_omgwords,
+  dau_omgwords_vs_human_report.dau_omgwords_vs_human,
+  TRUNC(100.0*dau_omgwords_vs_human_report.dau_omgwords_vs_human/dau_omgwords_report.dau_omgwords,1) AS ratio,
+  dau_puzzles_report.dau_puzzles,
+  omgwords_plus_puzzles_report.dau
+FROM dau_omgwords_report
+LEFT JOIN dau_omgwords_vs_human_report ON dau_omgwords_report.day = dau_omgwords_vs_human_report.day
+LEFT JOIN dau_puzzles_report ON dau_omgwords_report.day = dau_puzzles_report.day
+LEFT JOIN omgwords_plus_puzzles_report ON dau_omgwords_report.day = omgwords_plus_puzzles_report.day
 ORDER BY 1 DESC

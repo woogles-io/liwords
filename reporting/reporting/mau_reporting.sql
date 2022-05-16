@@ -72,6 +72,7 @@ LEFT JOIN public.users ON mau_puzzles.player = users.id
 WHERE NOT users.internal_bot
 GROUP BY 1),
 
+-- Joint reporting
 games_plus_puzzle_attempts AS
 ((SELECT
     created_at,
