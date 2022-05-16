@@ -221,10 +221,16 @@ ul {
   color: #414141;
   border-color: #fcac69;
 }
-.ant-tag-gray {
+.ant-tag-gray,
+.ant-tag-tie {
   background: #aaaaaa;
   color: #414141;
-  background: #aaaaaa;
+}
+
+.ant-tag-first {
+  background: #d0d0d0;
+  color: #414141;
+  border-color: #cccccc;
 }
 
 .ant-tag-yellow {
@@ -233,7 +239,8 @@ ul {
   border-color: #f8c033;
 }
 
-.ant-tag-green {
+.ant-tag-green,
+  .ant-tag-win {
   background: #b2e49b;
   color: #414141;
   border-color: #b2e49b;
@@ -247,13 +254,15 @@ ul {
 }
 .ant-tag-red,
 .ant-tag-removed,
-.ant-tag-forfeit {
+.ant-tag-forfeit,
+ {
   background: #8a0f23;
   color: #ffffff;
   border-color: #8a0f23;
 }
 
-.ant-tag-volcano {
+.ant-tag-volcano,
+.ant-tag-loss{
   background: #b3263c;
   color: #ffffff;
   border-color: #b3263c;
@@ -486,6 +495,11 @@ ul {
         transition: none !important;
         width: 100%;
         height: 100%;
+        a:not(.ant-btn) {
+          @include colorModed() {
+            color: m($primary-dark);
+          }
+        }
       }
       div {
         display: flex;

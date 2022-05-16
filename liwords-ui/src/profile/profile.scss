@@ -16,23 +16,10 @@
     justify-content: flex-start;
   }
   h2 {
-    margin: 36px 0 12px 0;
+    margin: 48px 0 18px 9px;
     text-transform: uppercase;
     letter-spacing: 0.16em;
     font-size: 13px;
-  }
-  h3 {
-    margin: 24px 12px;
-    width: auto;
-    display: flex;
-    justify-content: space-between;
-    font-family: 'Mulish', sans-serif;
-    letter-spacing: 0;
-    font-weight: bold;
-    span.user {
-      display: inline-flex;
-      align-items: center;
-    }
   }
   .bio {
     margin-bottom: 18px;
@@ -42,87 +29,104 @@
       color: m($gray-extreme);
     }
   }
-  .country-flag {
-    margin-left: 15px;
-    height: 0.6em;
-    top: 0;
-  }
-  .player-avatar {
-    margin: 0px 12px 18px 0;
-    width: 96px;
-    min-width: 96px;
-    height: 96px;
-    font-size: 48px;
-    @media (min-width: $screen-tablet-min) {
-      width: 96px;
-      min-width: 96px;
-      height: 96px;
-      font-size: 48px;
-    }
-  }
+
+
   header {
-    margin: 18px 0;
+    margin: 36px 0 0;
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     @media (min-width: $screen-tablet-min) {
       flex-direction: row;
       justify-content: space-between;
     }
+    .player-avatar {
+      margin: 0px 12px 18px 0;
+      width: 96px;
+      min-width: 96px;
+      height: 96px;
+      font-size: 48px;
+      @media (min-width: $screen-tablet-min) {
+        width: 96px;
+        min-width: 96px;
+        height: 96px;
+        font-size: 48px;
+      }
+    }
+    .country-flag {
+      margin-left: 15px;
+      height: 0.6em;
+      top: 0;
+    }
   }
-  .quick-stats {
+  .aggregate-stats {
     width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    overflow: hidden;
+    border-radius: 4px;
+    padding: 0;
+    @include colorModed() {
+      background: m($off-background);
+    }
     @media (min-width: $screen-tablet-min) {
       margin-left: 18px;
       width: 50%;
     }
-  }
-
-  .slick-slide {
-    padding: 0 12px 0 6px;
-  }
-
-  .ant-carousel .slick-dots-bottom {
-    bottom: -12px;
-  }
-  .ant-carousel .slick-dots{
-    align-items: baseline;
-  }
-  .ant-carousel .slick-dots li {
-    width: 12px;
-    button {
-      width: 8px;
-      height: 8px;
-      border-radius: 100%;
-      opacity: 1;
-      @include colorModed() {
-        background: m($primary-middle);
-      }
-    }
-  }
-  .ant-carousel .slick-dots li.slick-active {
-    width: 14px;
-    button {
-      width: 10px;
-      height: 10px;
-      border-radius: 100%;
-      @include colorModed() {
-        background: m($primary-dark);
-      }
-    }
-  }
-
-  .variant-stats {
-    display: inline-block;
-    margin-right: 12px;
-    width: 100%;
-    h3 {
+    .aggregate-item {
+      width: calc(100%/3);
+      height: 100px;
       margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      h4 {
+        font-size: 24px;
+        margin: 3px;
+        @include colorModed() {
+          color: m($secondary-dark);
+        }
+      }
+      p {
+        margin: 0;
+      }
+      &:nth-child(2n) {
+        @include colorModed() {
+          background: m($secondary-lighter);
+        }
+      }
+    }
+  }
+
+
+
+  .variant-stats, .puzzle-stats, .game-items {
+    display: inline-block;
+    margin: 6px;
+    width: 100%;
+    h3.rating {
+      margin: 0;
+      font-size: 36px;
+      @include colorModed() {
+        color: m($primary-dark);
+      }
+    }
+    .rating-date {
+      font-size: 13px;
+      margin: 0 0 12px 0;
+    }
+    .ant-card-head {
+      @include colorModed() {
+        background-color: m($primary-light);
+      }
     }
     .stat-item {
       background: transparent;
       margin: 6px 0 0 0;
       padding: 0;
-      font-size: 21px;
+      font-size: 16px;
       .label {
         font-size: 14px;
         font-weight: 200;
@@ -130,30 +134,263 @@
       }
     }
   }
+  .puzzle-stats {
+    h3.rating {
+      @include colorModed() {
+        color: m($secondary-dark);
+      }
+    }
+    .ant-card-head {
+      @include colorModed() {
+        background-color: m($secondary-lighter);
+      }
+    }
+  }
 
+
+  .ant-carousel {
+    margin-bottom: 24px;
+    .slick-slide {
+      padding: 0 12px 0 6px;
+    }
+
+    .slick-dots-bottom {
+      bottom: -18px;
+    }
+    .slick-dots{
+      align-items: baseline;
+    }
+    .slick-dots li {
+      width: 12px;
+      button {
+        width: 8px;
+        height: 8px;
+        border-radius: 100%;
+        opacity: 1;
+        @include colorModed() {
+          background: m($primary-middle);
+        }
+      }
+    }
+    .slick-dots li.slick-active {
+      width: 14px;
+      button {
+        width: 10px;
+        height: 10px;
+        border-radius: 100%;
+        @include colorModed() {
+          background: m($primary-dark);
+        }
+      }
+    }
+    .puzzle-items {
+      .slick-dots li button {
+        @include colorModed() {
+          background: m($secondary-medium);
+        }
+      }
+      .slick-dots li.slick-active button {
+        @include colorModed() {
+          background: m($secondary-dark);
+        }
+      }
+    }
+
+    .game-items {
+      .slick-dots li button{
+        @include colorModed() {
+          background: m($gray-medium);
+        }
+      }
+      .slick-dots li.slick-active button {
+        @include colorModed() {
+          background: m($gray-extreme);
+        }
+      }
+    }
+
+  }
+
+  .game-info {
+    h3.rating {
+      @include colorModed() {
+        color: m($secondary-dark);
+      }
+    }
+    .ant-card-head {
+      @include colorModed() {
+        background-color: m($timer-low-light);
+      }
+    }
+    &.win {
+      .ant-card-head {
+        @include colorModed() {
+          background-color: m($timer-light);
+        }
+      }
+    }
+    &.loss {
+      .ant-card-head {
+        @include colorModed() {
+          background-color: m($timer-out-light);
+        }
+      }
+    }
+    .detail-icons {
+      text-align: right;
+      font-size: 16px;
+      font-weight: 800;
+      & > * {
+        margin-right: 9px;
+      }
+
+      .anticon-fund {
+        font-size: 20px;
+        @include colorModed() {
+          color: m($primary-dark);
+        }
+      }
+    }
+    .ant-card-head-title {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      .ant-tag {
+        margin: 5px 0 0;
+      }
+      div {
+        padding: 9px 0 12px;
+      }
+      h3, p {
+        margin: 0;
+      }
+      h3 {
+        font-weight: 700;
+        font-size: 21px;
+      }
+      p {
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 1.5em;
+      }
+    }
+    .ant-card-body {
+      display: block;
+      height: 140px;
+    }
+    .time-control{
+      text-transform: capitalize;
+    }
+    .challenge-rule {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0;
+      @include colorModed() {
+        color: m($timer-dark);
+      }
+      &.mode_x2 {
+        @include colorModed() {
+          color: m($timer-out-dark);
+        }
+      }
+      &.mode_Void {
+        @include type-deco;
+        font-size: 12px;
+        letter-spacing: 0;
+        @include colorModed() {
+          color: m($timer-low-dark);
+        }
+        text-transform: uppercase;
+      }
+    }
+    .opponent-link {
+      display: flex;
+      a {
+        display: inline-block;
+        font-size: 17px;
+        font-weight: 800;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 184px;
+      }
+    }
+    .variant-info {
+      font-weight: 500;
+      line-height: 2.3em;
+    }
+    .player-avatar {
+      margin: 0 12px 0 0;
+      display: inline-block;
+      width: 32px;
+      min-width: 32px;
+      height: 32px;
+      font-size: 18px;
+      padding: 15px 11px;
+      @media (min-width: $screen-tablet-min) {
+        width: 32px;
+        min-width: 32px;
+        height: 32px;
+        font-size: 18px;
+        padding: 15px 11px;
+      }
+    }
+    .ant-card-actions {
+      @include colorModed() {
+        border-top-color: m($gray-medium);
+        background: m($card-background);
+      }
+      li {
+        text-align: center;
+      }
+    }
+    .ant-card-actions>li>span>.anticon,
+    .ant-card-actions>li>span a:not(.ant-btn){
+      @include colorModed() {
+        color: m($primary-dark);
+      }
+    }
+  }
+  .game-history-card {
+    margin-top: 64px;
+    .ant-card-head {
+      @include colorModed() {
+        background-color: m($primary-light);
+      }
+    }
+    .ant-card-body {
+      padding: 0;
+    }
+  }
+  .show-games-toggle {
+    margin: 9px;
+    cursor: pointer;
+    text-align: right;
+    font-weight: 700;
+    @include colorModed() {
+      color: m($primary-dark);
+    }
+  }
   .ant-card {
     margin-bottom: 12px;
   }
   .ant-card-body {
     padding: 24px;
   }
-  .ant-card-head {
-    @include colorModed() {
-      background-color: m($primary-light);
-    }
-  }
   .ant-card-head-title {
     font-weight: 700;
     font-size: 14px;
+    line-height: 2.2em;
+    padding: 8px 0 0;
   }
-  a {
-    font-size: 14px;
-    text-align: right;
+  .ant-card-head {
+    border-radius: 8px 8px 0 0;
+  }
+  .ant-card-actions {
+    border-radius: 0 0 8px 8px;
   }
   .ant-table-wrapper {
     overflow-x: auto;
   }
-
   .blocked-users {
     .ant-card-body {
       padding: 12px;
@@ -172,4 +409,12 @@
   display: flex;
   justify-content: flex-end;
   padding: 6px;
+}
+
+.not-found {
+  font-size: 16px;
+  height: 50vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
