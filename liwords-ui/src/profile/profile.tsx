@@ -398,7 +398,6 @@ export const PlayerProfile = React.memo(() => {
     }
     const ret = data
       .sort((a, b) => {
-        console.log(b, a);
         return (b.stats?.d1['Games']?.t || 0) - (a.stats?.d1['Games']?.t || 0);
       })
       .map((d) => {
@@ -406,7 +405,7 @@ export const PlayerProfile = React.memo(() => {
       });
     // Mobile swipe requires an even number of cards
     if (ret.length % 2) {
-      ret.push(<div />);
+      ret.push(<div key={`empty-${ret.length}`} />);
     }
     return ret;
   }, [ratings, stats]);
@@ -442,7 +441,7 @@ export const PlayerProfile = React.memo(() => {
     });
     // Mobile swipe requires an even number of cards
     if (ret.length % 2) {
-      ret.push(<div />);
+      ret.push(<div key={`empty-${ret.length}`} />);
     }
     return ret;
   }, [ratings]);
@@ -456,7 +455,7 @@ export const PlayerProfile = React.memo(() => {
       .map((g) => <GameCard game={g} key={g.game_id} userID={userID} />);
     // Mobile swipe requires an even number of cards
     if (ret.length % 2) {
-      ret.push(<div />);
+      ret.push(<div key={`empty-${ret.length}`} />);
     }
     return ret;
   }, [recentGames, userID]);
