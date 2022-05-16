@@ -88,6 +88,8 @@ type PuzzleInfo = {
   maxOvertimeMinutes?: number;
   solution?: GameEvent;
   turn?: number;
+  puzzleRating?: number;
+  userRating?: number;
   gameUrl?: string;
   player1?: {
     nickname: string;
@@ -301,6 +303,8 @@ export const SinglePuzzle = (props: Props) => {
         solution: solution,
         gameId: answerResponse.getGameId(),
         turn: answerResponse.getTurnNumber(),
+        puzzleRating: answerResponse.getNewPuzzleRating(),
+        userRating: answerResponse.getNewUserRating(),
       }));
       // Place the tiles from the event.
       if (solution) {
@@ -351,6 +355,14 @@ export const SinglePuzzle = (props: Props) => {
             ...x,
             turn: answerResponse.getTurnNumber(),
             gameId: answerResponse.getGameId(),
+            dateSolved:
+              answerResponse.getStatus() === PuzzleStatus.CORRECT
+                ? answerResponse.getLastAttemptTime()?.toDate()
+                : undefined,
+            attempts: answerResponse.getAttempts(),
+            solved: answerResponse.getStatus(),
+            puzzleRating: answerResponse.getNewPuzzleRating(),
+            userRating: answerResponse.getNewUserRating(),
           }));
           setShowResponseModalCorrect(true);
         } else {
@@ -358,16 +370,20 @@ export const SinglePuzzle = (props: Props) => {
           BoopSounds.playSound('puzzleWrongSound');
           setShowResponseModalWrong(true);
           setCheckWordsPending(true);
+          setPuzzleInfo((x) => ({
+            ...x,
+            turn: answerResponse.getTurnNumber(),
+            gameId: answerResponse.getGameId(),
+            dateSolved:
+              answerResponse.getStatus() === PuzzleStatus.CORRECT
+                ? answerResponse.getLastAttemptTime()?.toDate()
+                : undefined,
+            attempts: answerResponse.getAttempts(),
+            solved: answerResponse.getStatus(),
+            puzzleRating: answerResponse.getNewPuzzleRating(),
+            userRating: answerResponse.getNewUserRating(),
+          }));
         }
-        setPuzzleInfo((x) => ({
-          ...x,
-          dateSolved:
-            answerResponse.getStatus() === PuzzleStatus.CORRECT
-              ? answerResponse.getLastAttemptTime()?.toDate()
-              : undefined,
-          attempts: answerResponse.getAttempts(),
-          solved: answerResponse.getStatus(),
-        }));
       } catch (err) {
         message.error({
           content: (err as LiwordsAPIError).message,
@@ -428,6 +444,8 @@ export const SinglePuzzle = (props: Props) => {
           solution: answerResponse.getCorrectAnswer(),
           gameId: answerResponse.getGameId(),
           turn: answerResponse.getTurnNumber(),
+          puzzleRating: answerResponse.getNewPuzzleRating(),
+          userRating: answerResponse.getNewUserRating(),
         });
         setPendingSolution(
           answerResponse.getStatus() !== PuzzleStatus.UNANSWERED
@@ -564,6 +582,12 @@ export const SinglePuzzle = (props: Props) => {
             .map((x) => `${x}*`)
             .join(', ')}`}</p>
         )}
+        {!!puzzleInfo.puzzleRating && !!puzzleInfo.userRating && (
+          <>
+            <p>The puzzle is now rated {puzzleInfo.puzzleRating}.</p>
+            <p>Your puzzle rating is now {puzzleInfo.userRating}.</p>
+          </>
+        )}
       </Modal>
     );
   }, [
@@ -653,6 +677,12 @@ export const SinglePuzzle = (props: Props) => {
           You solved the puzzle in{' '}
           {singularCount(puzzleInfo.attempts, 'attempt', 'attempts')}.
         </p>
+        {!!puzzleInfo.puzzleRating && !!puzzleInfo.userRating && (
+          <>
+            <p>The puzzle is now rated {puzzleInfo.puzzleRating}.</p>
+            <p>Your puzzle rating is now {puzzleInfo.userRating}.</p>
+          </>
+        )}
       </Modal>
     );
   }, [showResponseModalCorrect, puzzleInfo, loadNewPuzzle, puzzleID]);
@@ -737,6 +767,8 @@ export const SinglePuzzle = (props: Props) => {
             loadNewPuzzle={loadNewPuzzle}
             puzzleID={puzzleID}
             showSolution={showSolution}
+            userRating={puzzleInfo.userRating}
+            puzzleRating={puzzleInfo.puzzleRating}
           />
           {/* alphabet && (
             <Pool
