@@ -329,7 +329,7 @@ p.streak-loss {
 
 /* Board spaces */
 
-.board-spaces-container {
+.board-spaces-container, {
   position: relative;
   display: flex;
   flex-wrap: wrap;
@@ -343,7 +343,9 @@ p.streak-loss {
   }
 }
 .board-spaces,
-.tiles {
+.tiles,
+.learn-spaces
+{
   touch-action: manipulation;
   width: $board-size-mobile;
   height: $board-size-mobile;
@@ -353,13 +355,21 @@ p.streak-loss {
   grid-template-rows: repeat(15, 1fr);
   gap: 1px;
 }
-.board-spaces {
+.board-spaces:not(.learn-spaces) {
   // Using a box shadow that looks like a border to not mess up the grid
   @include colorModed() {
     box-shadow: m($board-shadow);
   }
   @include userboard() {
     background: ub($board-fill);
+  }
+}
+.learn-spaces {
+  position: absolute;
+  pointer-events: none;
+  &:focus,
+  &:focus-within {
+    visibility: hidden;
   }
 }
 
@@ -443,6 +453,22 @@ p.streak-loss {
     .bonus-label {
       display: none;
     }
+  }
+  &.learn-space {
+    background: transparent;
+    opacity: 0;
+    &.faded {
+      background: black;
+      opacity: 0;
+      mix-blend-mode: multiply;
+      animation: learnFadeIn 300ms ease-out 200ms forwards;
+    }
+    &.highlighted {
+        background: white;
+        opacity: 0;
+        mix-blend-mode: screen;
+        animation: learnFadeIn 300ms ease-out 200ms forwards;
+      }
   }
   &.bonus-none {
     @include colorModed() {
@@ -609,6 +635,15 @@ p.streak-loss {
     opacity: 1;
   }
 }
+
+@keyframes learnFadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0.35;
+  }
+}
 /* Coordinate labels */
 
 .coord-labels {
@@ -772,7 +807,7 @@ p.streak-loss {
   }
 }
 /* This used to be .tile.last-played, and doubling seems necessary. */
-.play-area:not(.puzzle-area) .tile.second-color.second-color {
+.tile.second-color.second-color {
   @include colorModed() {
     border: 1px solid m($tile-last-background);
     background: m($tile-last-background);
@@ -968,7 +1003,7 @@ p.rune {
   }
 }
 
-.tile .tentative-score {
+.tile .tentative-score, .puzzle-info .tentative-score {
   position: absolute;
   display: flex;
   pointer-events: none;

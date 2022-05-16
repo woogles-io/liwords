@@ -653,6 +653,10 @@ func (b *Bus) broadcastChannelChanges(ctx context.Context, oldChannels, newChann
 		return nil
 	}
 
+	if userIsAnon(userID) {
+		return nil
+	}
+
 	// Courtesy note: followee* is not acceptable in csw19.
 	followee, err := b.userStore.GetByUUID(ctx, userID)
 	if err != nil {
@@ -664,6 +668,7 @@ func (b *Bus) broadcastChannelChanges(ctx context.Context, oldChannels, newChann
 		return err
 	}
 
+	// tell all the users that are followng us of our presence.
 	if len(followerUsers) > 0 && b.genericEventChan != nil {
 		wrapped := entity.WrapEvent(&pb.PresenceEntry{
 			Username: username,
@@ -692,15 +697,27 @@ func (b *Bus) broadcastChannelChanges(ctx context.Context, oldChannels, newChann
 	return nil
 }
 
+func userIsAnon(userID string) bool {
+	return strings.HasPrefix(userID, "anon-")
+}
+
 func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID string) error {
 	// For consistency sake, use the `dotted` channels for presence
 	// i.e. game.<gameID>, gametv.<gameID>
 	// The reasoning is that realms should only be cared about by the socket
 	// server. The channels are NATS pubsub channels and we use these for chat
 	// too.
-	username, anon, err := b.userStore.Username(ctx, evt.UserId)
-	if err != nil {
-		return err
+	var anon bool
+	var username string
+	var err error
+	if userIsAnon(evt.UserId) {
+		anon = true
+		username = evt.UserId
+	} else {
+		username, err = b.userStore.Username(ctx, evt.UserId)
+		if err != nil {
+			return err
+		}
 	}
 
 	// The channels with presence should be:
@@ -789,9 +806,17 @@ func (b *Bus) getPresence(ctx context.Context, presenceChan string) (*entity.Eve
 }
 
 func (b *Bus) leaveTab(ctx context.Context, userID, connID string) error {
-	username, anon, err := b.userStore.Username(ctx, userID)
-	if err != nil {
-		return err
+	var anon bool
+	var username string
+	var err error
+	if userIsAnon(userID) {
+		anon = true
+		username = userID
+	} else {
+		username, err = b.userStore.Username(ctx, userID)
+		if err != nil {
+			return err
+		}
 	}
 	oldChannels, newChannels, channels, err := b.presenceStore.ClearPresence(ctx, userID, username, anon, connID)
 	if err != nil {
@@ -857,9 +882,17 @@ func (b *Bus) leaveSite(ctx context.Context, userID string) error {
 }
 
 func (b *Bus) pongReceived(ctx context.Context, userID, connID, ips string) error {
-	username, anon, err := b.userStore.Username(ctx, userID)
-	if err != nil {
-		return err
+	var anon bool
+	var username string
+	var err error
+	if userIsAnon(userID) {
+		anon = true
+		username = userID
+	} else {
+		username, err = b.userStore.Username(ctx, userID)
+		if err != nil {
+			return err
+		}
 	}
 	log.Debug().Str("username", username).Str("connID", connID).Str("ips", ips).Msg("pong-received")
 
@@ -913,33 +946,36 @@ func (b *Bus) blockExists(ctx context.Context, u1, u2 *entity.User) (int, error)
 }
 
 func (b *Bus) sendLobbyContext(ctx context.Context, userID, connID string) error {
-	u, err := b.userStore.GetByUUID(ctx, userID)
-	if err != nil {
-		return err
-	}
-	// send ratings first.
-	ratingProto, err := u.GetProtoRatings()
-	if err != nil {
-		// Likely an anonymous user. Do not exit.
-		log.Debug().Err(err).Msg("no-ratings-for-user")
-	}
-	profileUpdate := &pb.ProfileUpdate{
-		UserId:  userID,
-		Ratings: ratingProto,
-	}
-	evt := entity.WrapEvent(profileUpdate, pb.MessageType_PROFILE_UPDATE_EVENT)
-	err = b.pubToConnectionID(connID, userID, evt)
-	if err != nil {
-		return err
+	if !userIsAnon(userID) {
+		u, err := b.userStore.GetByUUID(ctx, userID)
+		if err != nil {
+			return err
+		}
+		// send ratings first.
+		ratingProto, err := u.GetProtoRatings()
+		if err != nil {
+			return err
+		}
+		profileUpdate := &pb.ProfileUpdate{
+			UserId:  userID,
+			Ratings: ratingProto,
+		}
+		evt := entity.WrapEvent(profileUpdate, pb.MessageType_PROFILE_UPDATE_EVENT)
+		err = b.pubToConnectionID(connID, userID, evt)
+		if err != nil {
+			return err
+		}
 	}
 	// open seeks
 	seeks, err := b.openSeeks(ctx, userID, "")
 	if err != nil {
 		return err
 	}
-	err = b.pubToConnectionID(connID, userID, seeks)
-	if err != nil {
-		return err
+	if seeks != nil {
+		err = b.pubToConnectionID(connID, userID, seeks)
+		if err != nil {
+			return err
+		}
 	}
 	// live games
 	activeGames, err := b.activeGames(ctx, "")
@@ -972,9 +1008,11 @@ func (b *Bus) sendTournamentContext(ctx context.Context, realm, userID, connID s
 	if err != nil {
 		return err
 	}
-	err = b.pubToConnectionID(connID, userID, matches)
-	if err != nil {
-		return err
+	if matches != nil {
+		err = b.pubToConnectionID(connID, userID, matches)
+		if err != nil {
+			return err
+		}
 	}
 
 	return err

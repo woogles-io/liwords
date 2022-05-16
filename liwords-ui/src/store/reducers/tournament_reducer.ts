@@ -15,6 +15,7 @@ import {
   ReadyForTournamentGame,
   RoundControl,
   RoundStandings,
+  TournamentDataResponse,
   TournamentDivisionDataResponse,
   TournamentDivisionDeletedResponse,
   TournamentGameEndedEvent,
@@ -524,6 +525,7 @@ export function TournamentReducer(
       ![
         ActionType.SetDivisionsData,
         ActionType.SetTourneyMetadata,
+        ActionType.SetTourneyReducedMetadata,
         ActionType.AddActiveGames,
         ActionType.AddActiveGame,
         // These are legacy events for CLUB/LEGACY tournament types
@@ -539,7 +541,7 @@ export function TournamentReducer(
   }
 
   switch (action.actionType) {
-    case ActionType.SetTourneyMetadata:
+    case ActionType.SetTourneyMetadata: {
       const m = action.payload as {
         directors: Array<string>;
         metadata: TournamentMetadata;
@@ -550,6 +552,18 @@ export function TournamentReducer(
         directors: m.directors,
         metadata: m.metadata,
       };
+    }
+    case ActionType.SetTourneyReducedMetadata: {
+      const m = action.payload as TournamentDataResponse;
+      console.log('merging metadata', m);
+      const newMetadata = state.metadata.cloneMessage();
+      newMetadata.setName(m.getName());
+      newMetadata.setDescription(m.getDescription());
+      return {
+        ...state,
+        metadata: newMetadata,
+      };
+    }
 
     case ActionType.SetDivisionRoundControls: {
       const drc = action.payload as {

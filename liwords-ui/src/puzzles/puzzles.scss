@@ -20,12 +20,87 @@
       text-transform: uppercase;
     }
     .ant-card-body {
-      padding: 0 18px 18px;
+      padding: 0 18px 60px;
+      @media (min-width: $screen-tablet-min) {
+        min-height: calc(#{$board-size-tablet} - 125px);
+      }
+      @media (min-width: $screen-laptop-min) {
+        min-height: calc(#{$board-size-laptop} + 90px);
+      }
+      @media (min-width: $screen-desktop-min) {
+        min-height: calc(#{$board-size-laptop} + 90px);
+      }
+      @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
+        min-height: calc(#{$board-size-desktop} + 90px);
+      }
+      @media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-min) {
+        min-height: calc(#{$board-size-desktop} + 80px);
+      }
     }
-    .attempts-made {
-      margin: 3px 0 16px;
+    button.ant-btn {
+      font-size: 14px;
+    }
+    .puzzle-hints {
+      .hint-prompt {
+        margin-top: 3px;
+      }
+      margin: 0 0 24px;
+      padding-top: 8px;
+      @include colorModed() {
+        border-top: 1px solid m($gray-subtle);
+      }
+      button.ant-btn {
+        margin: 3px 0;
+      }
+      .puzzle-hint {
+        display: flex;
+        align-items: center;
+        font-size: 15px;
+        font-weight: 700;
+        margin: 6px 0;
+        padding: 6px 0;
+      }
+      .hint-actions {
+        margin-top: 16px;
+        display: flex;
+        flex-direction: column;
+      }
+      .anticon-bulb {
+        font-size: 24px;
+        margin-right: 8px;
+        @include colorModed() {
+          color: m($timer-low-dark);
+        }
+      }
+      .tentative-score {
+        display: inline-block;
+        position: relative;
+        font-size: 16px;
+        width: auto;
+        height: auto;
+        padding: 2px 6px;
+        margin-left: 0.5em;
+      }
+      .anticon-eye, .anticon-eye-invisible {
+        cursor: pointer;
+        margin-left: 0.5em;
+        font-size: 18px;
+        @include colorModed() {
+          color: m($gray-medium);
+        }
+      }
+      .anticon-eye {
+        @include colorModed() {
+          color: m($primary-midDark);
+        }
+      }
+      .ant-btn.ant-btn-primary {
+        margin-bottom: 0;
+      }
     }
     .actions {
+      position: absolute;
+      bottom: 24px;
       margin-top: 12px;
       button:first-child {
         margin-left: 0;
@@ -39,7 +114,7 @@
     }
     @media (min-width: $screen-desktop-min) {
       .progress {
-        margin: 24px 0 36px;
+        margin: 16px 0 16px;
         font-size: 15px;
       }
     }
@@ -61,9 +136,6 @@
     }
   }
   .ant-card.puzzle-info {
-    .ant-card-body {
-      padding: 0 18px 18px;
-    }
     .ant-card-extra, .game-settings {
       text-transform: capitalize;
     }
@@ -93,8 +165,7 @@
       margin: 0 6px;
       &.play {
         order: 2;
-        min-width: auto;
-        width: auto;
+        min-width: 100%;
         height: 32px;
       }
     }
@@ -120,11 +191,42 @@
     @media (min-width: $screen-tablet-min) {
       display: block;
       .ant-card-body {
-        height: auto;
+        height: 180px;
       }
     }
     @media (min-width: $screen-laptop-min) {
       display: none;
+      .ant-card-body {
+        height: auto;
+      }
+    }
+  }
+  .tile.second-color.second-color {
+    @include colorModed() {
+      background: m($tile-background);
+      border: m($tile-border);
+    }
+    @include userTile() {
+      background: ut($tile-background);
+      border: ut($tile-border);
+    }
+    &.blank p.rune {
+      @include colorModed() {
+        color: m($tile-blank-text);
+        background-color: m($tile-background-secondary);
+      }
+      @include userTile() {
+        color: ut($tile-blank-text);
+        background: ut($tile-background-secondary);
+      }
+    }
+    p.rune, .point-value {
+      @include colorModed() {
+        color: m($background);
+      }
+      @include userTile() {
+        color: ut($tile-text);
+      }
     }
   }
   .tile.tentative {
@@ -160,7 +262,6 @@
     }
   }
 
-
 }
 .puzzle-container .stars, .ant-modal-body .stars {
   margin: 9px 0 18px;
@@ -185,5 +286,13 @@
   font-size: 15px;
   .stars {
     margin-bottom: 12px;
+  }
+  button, button.ant-btn {
+    font-size: 14px;
+  }
+  .invalid-plays {
+    @include colorModed() {
+      color: m($timer-out-dark);
+    }
   }
 }

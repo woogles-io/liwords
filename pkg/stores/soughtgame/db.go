@@ -12,6 +12,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/stores/common"
 	"github.com/rs/zerolog/log"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
@@ -38,7 +39,9 @@ type soughtgame struct {
 }
 
 func NewDBStore(config *config.Config) (*DBStore, error) {
-	db, err := gorm.Open(postgres.Open(config.DBConnDSN), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(config.DBConnDSN), &gorm.Config{
+		Logger: common.GormLogger,
+	})
 	if err != nil {
 		return nil, err
 	}

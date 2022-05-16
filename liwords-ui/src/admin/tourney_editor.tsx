@@ -23,7 +23,7 @@ import ReactMarkdown from 'react-markdown';
 import {
   DisplayedGameSetting,
   SettingsForm,
-} from '../tournament/game_settings_form';
+} from '../tournament/director_tools/game_settings_form';
 
 import { useMountedState } from '../utils/mounted';
 import { LiwordsAPIError, postProto, toAPIUrl } from '../api/api';

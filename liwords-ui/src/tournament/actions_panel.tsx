@@ -26,7 +26,7 @@ import { toAPIUrl } from '../api/api';
 import { Pairings } from './pairings';
 import { isPairedMode, isClubType } from '../store/constants';
 import { Standings } from './standings';
-import { DirectorTools } from './director_tools';
+import { DirectorTools } from './director_tools/director_tools';
 import { parseWooglesError } from '../utils/parse_woogles_error';
 // import { CheckIn } from './check_in';
 

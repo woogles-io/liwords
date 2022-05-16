@@ -53,7 +53,6 @@ const getInitialCategory = (categoryShortcut: string, loggedIn: boolean) => {
     return Category.Support;
   }
   window.history.replaceState({}, 'settings', '/settings');
-  console.log('the category shortcut is', categoryShortcut);
   switch (categoryShortcut) {
     case 'donate':
     case 'support':

@@ -356,6 +356,58 @@ export namespace NotifyAccountClosureResponse {
   }
 }
 
+export class GetSignedCookieRequest extends jspb.Message {
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GetSignedCookieRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: GetSignedCookieRequest): GetSignedCookieRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GetSignedCookieRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GetSignedCookieRequest;
+  static deserializeBinaryFromReader(message: GetSignedCookieRequest, reader: jspb.BinaryReader): GetSignedCookieRequest;
+}
+
+export namespace GetSignedCookieRequest {
+  export type AsObject = {
+  }
+}
+
+export class SignedCookieResponse extends jspb.Message {
+  getJwt(): string;
+  setJwt(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): SignedCookieResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: SignedCookieResponse): SignedCookieResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: SignedCookieResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): SignedCookieResponse;
+  static deserializeBinaryFromReader(message: SignedCookieResponse, reader: jspb.BinaryReader): SignedCookieResponse;
+}
+
+export namespace SignedCookieResponse {
+  export type AsObject = {
+    jwt: string,
+  }
+}
+
+export class InstallSignedCookieResponse extends jspb.Message {
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): InstallSignedCookieResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: InstallSignedCookieResponse): InstallSignedCookieResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: InstallSignedCookieResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): InstallSignedCookieResponse;
+  static deserializeBinaryFromReader(message: InstallSignedCookieResponse, reader: jspb.BinaryReader): InstallSignedCookieResponse;
+}
+
+export namespace InstallSignedCookieResponse {
+  export type AsObject = {
+  }
+}
+
 export class UserRegistrationRequest extends jspb.Message {
   getUsername(): string;
   setUsername(value: string): void;

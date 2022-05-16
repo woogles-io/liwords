@@ -447,6 +447,13 @@ ul {
     border-bottom-color: m($card-background);
   }
 }
+.ant-collapse, .ant-collapse-item, .ant-collapse-header, .ant-collapse-content, .ant-collapse-content-box {
+  @include colorModed() {
+    background-color: m($card-background);
+    color: m($gray-extreme);
+  }
+}
+
 .user-context-menu {
   cursor: pointer;
 }

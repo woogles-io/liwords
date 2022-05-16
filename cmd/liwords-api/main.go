@@ -158,7 +158,7 @@ func main() {
 
 	middlewares := alice.New(
 		hlog.NewHandler(log.With().Str("service", "liwords").Logger()),
-		apiserver.WithCookiesMiddleware,
+		apiserver.ExposeResponseWriterMiddleware,
 		apiserver.AuthenticationMiddlewareGenerator(stores.SessionStore),
 		apiserver.APIKeyMiddlewareGenerator(),
 		config.CtxMiddlewareGenerator(cfg),
@@ -256,6 +256,12 @@ func main() {
 	router.Handle(puzzleservice.PuzzleServicePathPrefix,
 		middlewares.Then(puzzleservice.NewPuzzleServiceServer(puzzleService, NewLoggingServerHooks())))
 
+	router.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
+	router.Handle(
+		"/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+	router.Handle(
+		"/debug/pprof/trace", pprof.Handler("trace"),
+	)
 	router.Handle(
 		"/debug/pprof/goroutine", pprof.Handler("goroutine"),
 	)
@@ -283,7 +289,7 @@ func main() {
 	srv := &http.Server{
 		Addr:         cfg.ListenAddr,
 		Handler:      router,
-		WriteTimeout: 10 * time.Second,
+		WriteTimeout: 30 * time.Second,
 		ReadTimeout:  10 * time.Second}
 
 	idleConnsClosed := make(chan struct{})

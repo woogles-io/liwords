@@ -1,13 +1,12 @@
 import React, { useCallback } from 'react';
 // import { toAPIUrl } from '../api/api';
 // import { useMountedState } from '../utils/mounted';
-import { useTournamentStoreContext } from '../store/store';
+import { useTournamentStoreContext } from '../../store/store';
 import './director_tools.scss';
-import { UsernameWithContext } from '../shared/usernameWithContext';
+import { UsernameWithContext } from '../../shared/usernameWithContext';
 import { Button, Divider } from 'antd';
-import { postJsonObj } from '../api/api';
+import { postJsonObj } from '../../api/api';
 import { GhettoTools } from './ghetto_tools';
-import { TType } from '../gen/api/proto/tournament_service/tournament_service_pb';
 /*
 import { AddPlayerForm, playersToAdd } from './add_player_form';
 import axios from 'axios';
@@ -146,16 +145,6 @@ export const DirectorTools = React.memo((props: DTProps) => {
   };
 
   const renderGhettoTools = () => {
-    if (
-      tournamentContext.metadata.getType() === TType.LEGACY ||
-      tournamentContext.metadata.getType() === TType.CLUB
-    ) {
-      return (
-        <>
-          <h4>Director tools are coming soon!</h4>
-        </>
-      );
-    }
     return (
       <>
         <Divider />

@@ -13,7 +13,7 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var global = Function('return this')();
+var global = (function() { return this || window || global || self || Function('return this')(); }).call(null);
 
 goog.exportSymbol('proto.ipc.ErrorMessage', null, global);
 goog.exportSymbol('proto.ipc.WooglesError', null, global);
@@ -258,7 +258,8 @@ proto.ipc.WooglesError = {
   PUZZLE_SUBMIT_ANSWER_SET_ATTEMPTS: 1083,
   PUZZLE_SET_PUZZLE_VOTE_ID_NOT_FOUND: 1084,
   PUZZLE_SUBMIT_ANSWER_PUZZLE_ATTEMPT_NOT_FOUND: 1085,
-  PUZZLE_GET_PUZZLE_UPDATE_ATTEMPT: 1086
+  PUZZLE_GET_PUZZLE_UPDATE_ATTEMPT: 1086,
+  PUZZLE_GET_ANSWER_NOT_YET_RATED: 1087
 };
 
 goog.object.extend(exports, proto.ipc);

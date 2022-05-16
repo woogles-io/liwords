@@ -11,6 +11,7 @@ import {
   PlayerOfTiles,
 } from '../utils/cwgame/common';
 import { Alphabet } from '../constants/alphabets';
+import { LearnOverlay } from '../learn/learn_overlay';
 
 type Props = {
   tileColorId: number;
@@ -66,6 +67,7 @@ const Board = React.memo((props: Props) => {
           placementArrow={props.placementArrowProperties}
           squareClicked={props.squareClicked}
         />
+        <LearnOverlay gridDim={props.gridSize} />
         <Tiles
           tileColorId={props.tileColorId}
           gridDim={props.gridSize}

@@ -14,7 +14,7 @@ This source code is AGPL-licensed. You can modify the source for this app, or fo
 
 ### How to develop locally
 
-You have two options for developing locally. 
+You have two options for developing locally.
 
 1. Using the entire Docker stack is the most straightforward option, but, unless you are on Linux, Docker has to spin up virtual machines for your code. Stopping and starting containers repeatedly, especially the frontend code container, is significantly slower than running these natively; rebuilding containers, etc is also quite slow.
 
@@ -100,7 +100,7 @@ If you change any of the `.proto` files (in this repo or in the Macondo repo) yo
 
 To do so, run in this directory:
 
-`docker-compose run --rm pb_compiler ./build-protobuf.sh`
+`docker-compose run --rm goutils ./build-protobuf.sh`
 
 ### Attributions
 

@@ -59,6 +59,14 @@ func (ps *PuzzleService) GetNextPuzzleId(ctx context.Context, req *pb.NextPuzzle
 	return &pb.NextPuzzleIdResponse{PuzzleId: puzzleId}, nil
 }
 
+func (ps *PuzzleService) GetNextClosestRatingPuzzleId(ctx context.Context, req *pb.NextClosestRatingPuzzleIdRequest) (*pb.NextClosestRatingPuzzleIdResponse, error) {
+	puzzleId, err := GetNextClosestRatingPuzzleId(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Lexicon)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.NextClosestRatingPuzzleIdResponse{PuzzleId: puzzleId}, nil
+}
+
 func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *pb.PuzzleRequest) (*pb.PuzzleResponse, error) {
 	gameHist, beforeText, attempts, status, firstAttemptTime, lastAttemptTime, err := GetPuzzle(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.PuzzleId)
 	if err != nil {
@@ -107,7 +115,7 @@ func (ps *PuzzleService) SubmitAnswer(ctx context.Context, req *pb.SubmissionReq
 	if err != nil {
 		return nil, err
 	}
-	userIsCorrect, status, correctAnswer, gameId, turnNumber, afterText, attempts, newUserRating, newPuzzleRating, firstAttemptTime, lastAttemptTime, err := SubmitAnswer(ctx, ps.puzzleStore, req.PuzzleId, user.UUID, req.Answer, req.ShowSolution)
+	userIsCorrect, status, correctAnswer, gameId, turnNumber, afterText, attempts, newUserRating, newPuzzleRating, firstAttemptTime, lastAttemptTime, err := SubmitAnswer(ctx, ps.puzzleStore, user.UUID, req.PuzzleId, req.Answer, req.ShowSolution)
 	if err != nil {
 		return nil, err
 	}
@@ -123,6 +131,18 @@ func (ps *PuzzleService) SubmitAnswer(ctx context.Context, req *pb.SubmissionReq
 			NewPuzzleRating:  newPuzzleRating,
 			FirstAttemptTime: timestamppb.New(firstAttemptTime),
 			LastAttemptTime:  timestamppb.New(lastAttemptTime)}}, nil
+}
+
+func (ps *PuzzleService) GetPuzzleAnswer(ctx context.Context, req *pb.PuzzleRequest) (*pb.AnswerResponse, error) {
+	user, err := sessionUser(ctx, ps)
+	if err != nil {
+		return nil, err
+	}
+	answer, err := GetPuzzleAnswer(ctx, ps.puzzleStore, user.UUID, req.PuzzleId)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.AnswerResponse{CorrectAnswer: answer}, nil
 }
 
 func (ps *PuzzleService) SetPuzzleVote(ctx context.Context, req *pb.PuzzleVoteRequest) (*pb.PuzzleVoteResponse, error) {

@@ -875,6 +875,15 @@ export const useOnSocketMsg = () => {
             });
             break;
           }
+
+          case MessageType.TOURNAMENT_MESSAGE: {
+            const tm = parsedMsg as TournamentDataResponse;
+            dispatchTournamentContext({
+              actionType: ActionType.SetTourneyReducedMetadata,
+              payload: tm,
+            });
+            break;
+          }
         }
       });
     },

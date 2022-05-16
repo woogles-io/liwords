@@ -1,5 +1,11 @@
 import { Table, Tooltip } from 'antd';
-import React, { ReactNode } from 'react';
+import {
+  FilterValue,
+  SorterResult,
+  TableCurrentDataSource,
+  TablePaginationConfig,
+} from 'antd/lib/table/interface';
+import React, { ReactNode, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FundOutlined } from '@ant-design/icons/lib';
 import { RatingBadge } from './rating_badge';
@@ -9,6 +15,7 @@ import { calculateTotalTime } from '../store/constants';
 import { VariantIcon } from '../shared/variant_icons';
 import { MatchLexiconDisplay } from '../shared/lexicon_display';
 import { useLoginStateStoreContext } from '../store/store';
+import { useMountedState } from '../utils/mounted';
 
 type Props = {
   activeGames: ActiveGame[];
@@ -17,11 +24,41 @@ type Props = {
 };
 
 export const ActiveGames = (props: Props) => {
+  const { useState } = useMountedState();
+  const [lobbyFilterByLexicon, setLobbyFilterByLexicon] = useState(
+    localStorage.getItem('lobbyFilterByLexicon')
+  );
   const navigate = useNavigate();
   const {
     loginState: { perms },
   } = useLoginStateStoreContext();
   const isAdmin = perms.includes('adm');
+
+  const handleChange = useCallback(
+    (
+      pagination: TablePaginationConfig,
+      filters: Record<string, FilterValue | null>,
+      sorter:
+        | SorterResult<ActiveGameTableData>
+        | SorterResult<ActiveGameTableData>[],
+      extra: TableCurrentDataSource<ActiveGameTableData>
+    ) => {
+      if (extra.action === 'filter') {
+        if (filters.lexicon?.length === 1) {
+          const lexicon = filters.lexicon[0] as string;
+          if (lexicon !== lobbyFilterByLexicon) {
+            setLobbyFilterByLexicon(lexicon);
+            localStorage.setItem('lobbyFilterByLexicon', lexicon);
+          }
+        } else {
+          // filter is reset, remove lexicon
+          setLobbyFilterByLexicon(null);
+          localStorage.removeItem('lobbyFilterByLexicon');
+        }
+      }
+    },
+    [lobbyFilterByLexicon]
+  );
 
   type ActiveGameTableData = {
     gameID: string;
@@ -121,6 +158,7 @@ export const ActiveGames = (props: Props) => {
           value: l,
         })
       ),
+      defaultFilteredValue: lobbyFilterByLexicon ? [lobbyFilterByLexicon] : [],
       filterMultiple: false,
       onFilter: (
         value: string | number | boolean,
@@ -192,6 +230,7 @@ export const ActiveGames = (props: Props) => {
           }
           return 'game-listing';
         }}
+        onChange={handleChange}
       />
     </>
   );
