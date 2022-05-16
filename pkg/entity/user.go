@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"database/sql/driver"
+	"encoding/json"
 	"errors"
 	"math"
 	"strconv"
@@ -217,4 +219,17 @@ func (u *User) IsChild() pb.ChildStatus {
 		return pb.ChildStatus_UNKNOWN
 	}
 	return InferChildStatus(u.Profile.BirthDate, time.Now())
+}
+
+func (a *Actions) Value() (driver.Value, error) {
+	return json.Marshal(a)
+}
+
+func (a *Actions) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed for single rating")
+	}
+
+	return json.Unmarshal(b, &a)
 }

@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/jinzhu/gorm"
 	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/lithammer/shortuuid"
@@ -38,7 +41,7 @@ var botNames = map[macondopb.BotRequest_BotCode]string{
 
 // DBStore is a postgres-backed store for users.
 type DBStore struct {
-	db *gorm.DB
+	dbPool *pgxpool.Pool
 }
 
 // User should be a minimal object. All information such as user profile,
@@ -122,13 +125,12 @@ type blocking struct {
 	Blocker   User
 }
 
-// NewDBStore creates a new DB store
-func NewDBStore(dbDSN string) (*DBStore, error) {
-	db, err := gorm.Open("postgres", dbDSN)
-	if err != nil {
-		return nil, err
-	}
-	return &DBStore{db: db}, nil
+func NewDBStore(p *pgxpool.Pool) (*DBStore, error) {
+	return &DBStore{dbPool: p}, nil
+}
+
+func (s *DBStore) Disconnect() {
+	s.dbPool.Close()
 }
 
 // Get gets a user by username.
@@ -166,6 +168,59 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 		IsMod:      u.IsMod,
 		Notoriety:  u.Notoriety,
 		Actions:    &actions,
+	}
+
+	return entu, nil
+}
+
+func getBy(tx pgx.Tx, ctx context.Context, name string, value string) (*entity.User, error) {
+
+	entp := &entity.Profile{
+		FirstName:   p.FirstName,
+		LastName:    p.LastName,
+		BirthDate:   p.BirthDate,
+		CountryCode: p.CountryCode,
+		Title:       p.Title,
+		About:       p.About,
+		Ratings:     rdata,
+		Stats:       sdata,
+		AvatarUrl:   p.AvatarUrl,
+	}, nil
+
+	var id uint
+	var username string
+	var uuid string
+	var email string
+	var password string
+	internal_bot := &sql.NullBool{}
+	is_admin := &sql.NullBool{}
+	is_director := &sql.NullBool{}
+	is_mod := &sql.NullBool{}
+	var notoriety int
+	var actions *entity.Actions
+
+	query := fmt.Sprintf("SELECT id, username, uuid, email, password, internal_bot, is_admin, is_director, is_mod, notoriety, actions FROM users WHERE %s =  $1", name)
+	err := tx.QueryRow(ctx, query, value).Scan(&id, &username, &uuid, &email, &password, &internal_bot, &is_admin, &is_director, &is_mod, &notoriety, &actions)
+	if err == pgx.ErrNoRows {
+		return nil, errors.New("user not found")
+	} else if err != nil {
+		return nil, err
+	}
+
+	entu := &entity.User{
+		ID:         id,
+		Username:   username,
+		UUID:       uuid,
+		Email:      email,
+		Password:   password,
+		IsBot:      internal_bot.Bool,
+		Anonymous:  false,
+		Profile:    profile,
+		IsAdmin:    is_admin.Bool,
+		IsDirector: is_director.Bool,
+		IsMod:      is_mod.Bool,
+		Notoriety:  notoriety,
+		Actions:    actions,
 	}
 
 	return entu, nil
@@ -1006,10 +1061,6 @@ func (s *DBStore) ResetProfile(ctx context.Context, uid string) error {
 		return err
 	}
 	return s.ResetPersonalInfo(ctx, uid)
-}
-
-func (s *DBStore) Disconnect() {
-	s.db.Close()
 }
 
 func (s *DBStore) Count(ctx context.Context) (int64, error) {
