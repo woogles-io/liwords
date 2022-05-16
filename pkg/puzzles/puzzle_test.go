@@ -170,7 +170,7 @@ func TestPuzzlesMain(t *testing.T) {
 
 	// Path 7
 	// Submit the correct answer for the same puzzle,
-	userIsCorrect, status, correctAnswer, gameId, _, _, attempts, _, _, newUserRating, newPuzzleRating, err = SubmitAnswer(ctx, ps, PuzzlerUUID, puzzleUUID, correctCGE, false)
+	userIsCorrect, status, correctAnswer, gameId, _, _, attempts, _, _, newPuzzleRating, newUserRating, err = SubmitAnswer(ctx, ps, PuzzlerUUID, puzzleUUID, correctCGE, false)
 	is.NoErr(err)
 	is.True(correctAnswer != nil)
 	is.True(newUserRating.Rating != 0)
