@@ -5,7 +5,7 @@ import {
   TableCurrentDataSource,
   TablePaginationConfig,
 } from 'antd/lib/table/interface';
-import React, { ReactNode, useCallback } from 'react';
+import React, { ReactNode, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FundOutlined } from '@ant-design/icons/lib';
 import { RatingBadge } from './rating_badge';
@@ -28,6 +28,10 @@ export const ActiveGames = (props: Props) => {
   const [lobbyFilterByLexicon, setLobbyFilterByLexicon] = useState(
     localStorage.getItem('lobbyFilterByLexicon')
   );
+  const lobbyFilterByLexiconArray = useMemo(
+    () => lobbyFilterByLexicon?.match(/\S+/g) ?? [],
+    [lobbyFilterByLexicon]
+  );
   const navigate = useNavigate();
   const {
     loginState: { perms },
@@ -44,8 +48,8 @@ export const ActiveGames = (props: Props) => {
       extra: TableCurrentDataSource<ActiveGameTableData>
     ) => {
       if (extra.action === 'filter') {
-        if (filters.lexicon?.length === 1) {
-          const lexicon = filters.lexicon[0] as string;
+        if (filters.lexicon && filters.lexicon.length > 0) {
+          const lexicon = filters.lexicon.join(' ');
           if (lexicon !== lobbyFilterByLexicon) {
             setLobbyFilterByLexicon(lexicon);
             localStorage.setItem('lobbyFilterByLexicon', lexicon);
@@ -158,12 +162,12 @@ export const ActiveGames = (props: Props) => {
           value: l,
         })
       ),
-      defaultFilteredValue: lobbyFilterByLexicon ? [lobbyFilterByLexicon] : [],
-      filterMultiple: false,
+      defaultFilteredValue: lobbyFilterByLexiconArray,
+      filterMultiple: true,
       onFilter: (
         value: string | number | boolean,
         record: ActiveGameTableData
-      ) => record.lexiconCode.indexOf(value.toString()) === 0,
+      ) => typeof value === 'string' && record.lexiconCode === value,
     },
     {
       title: 'Time',
