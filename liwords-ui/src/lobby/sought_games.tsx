@@ -5,7 +5,7 @@ import {
   TableCurrentDataSource,
   TablePaginationConfig,
 } from 'antd/lib/table/interface';
-import React, { ReactNode, useCallback } from 'react';
+import React, { ReactNode, useCallback, useMemo } from 'react';
 import { FundOutlined, ExportOutlined } from '@ant-design/icons/lib';
 import {
   calculateTotalTime,
@@ -85,6 +85,10 @@ export const SoughtGames = (props: Props) => {
   const [lobbyFilterByLexicon, setLobbyFilterByLexicon] = useState(
     localStorage.getItem('lobbyFilterByLexicon')
   );
+  const lobbyFilterByLexiconArray = useMemo(
+    () => lobbyFilterByLexicon?.match(/\S+/g) ?? [],
+    [lobbyFilterByLexicon]
+  );
   const columns = [
     {
       title: 'Player',
@@ -111,12 +115,12 @@ export const SoughtGames = (props: Props) => {
           value: l,
         })
       ),
-      defaultFilteredValue: lobbyFilterByLexicon ? [lobbyFilterByLexicon] : [],
-      filterMultiple: false,
+      defaultFilteredValue: lobbyFilterByLexiconArray,
+      filterMultiple: true,
       onFilter: (
         value: string | number | boolean,
         record: SoughtGameTableData
-      ) => record.lexiconCode.indexOf(value.toString()) === 0,
+      ) => typeof value === 'string' && record.lexiconCode === value,
     },
     {
       title: 'Time',
@@ -144,8 +148,8 @@ export const SoughtGames = (props: Props) => {
       extra: TableCurrentDataSource<SoughtGameTableData>
     ) => {
       if (extra.action === 'filter') {
-        if (filters.lexicon?.length === 1) {
-          const lexicon = filters.lexicon[0] as string;
+        if (filters.lexicon && filters.lexicon.length > 0) {
+          const lexicon = filters.lexicon.join(' ');
           if (lexicon !== lobbyFilterByLexicon) {
             setLobbyFilterByLexicon(lexicon);
             localStorage.setItem('lobbyFilterByLexicon', lexicon);
