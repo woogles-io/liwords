@@ -114,7 +114,7 @@ service PuzzleService {
   rpc GetPuzzleAnswer(PuzzleRequest) returns (AnswerResponse);
   rpc GetPreviousPuzzleId(PreviousPuzzleRequest) returns (PreviousPuzzleResponse);
   rpc SetPuzzleVote(PuzzleVoteRequest) returns (PuzzleVoteResponse);
-
+  rpc GetNextClosestRatingPuzzleId(NextClosestRatingPuzzleIdRequest) returns (NextClosestRatingPuzzleIdResponse);
   rpc StartPuzzleGenJob(APIPuzzleGenerationJobRequest) returns (APIPuzzleGenerationJobResponse);
   rpc GetPuzzleJobLogs(PuzzleJobLogsRequest) returns (PuzzleJobLogsResponse);
 }
