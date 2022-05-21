@@ -542,7 +542,7 @@ export const SinglePuzzle = (props: Props) => {
 
   const responseModalWrong = useMemo(() => {
     const reset = () => {
-      setDisplayedRack(rack);
+      setDisplayedRack(sortedRack);
       setPlacedTiles(new Set<EphemeralTile>());
       setPlacedTilesTempScore(undefined);
       setPhoniesPlayed([]);
@@ -594,7 +594,7 @@ export const SinglePuzzle = (props: Props) => {
     showResponseModalWrong,
     phoniesPlayed,
     puzzleInfo,
-    rack,
+    sortedRack,
     setDisplayedRack,
     setPlacedTiles,
     setPlacedTilesTempScore,
