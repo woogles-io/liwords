@@ -228,7 +228,10 @@ export const SinglePuzzle = (props: Props) => {
         tiles: evt.getPlayedTiles() || evt.getExchanged(),
         isExchange: evt.getType() === GameEvent.Type.EXCHANGE,
         leave: '',
-        leaveWithGaps: computeLeave(evt.getPlayedTiles(), sortedRack),
+        leaveWithGaps: computeLeave(
+          evt.getPlayedTiles() || evt.getExchanged(),
+          sortedRack
+        ),
       };
       placeMove(m);
     },
