@@ -417,7 +417,4 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  @include colorModed() {
-    color: m($gray-extreme);
-  }
 }

@@ -321,7 +321,6 @@ const App = React.memo(() => {
           <Route path="new" element={<NewPassword />} />
         </Route>
         <Route path="profile/:username" element={<PlayerProfile />} />
-        <Route path="profile/" element={<PlayerProfile />} />
         <Route path="settings" element={<Settings />}>
           <Route path=":section" element={<Settings />} />
         </Route>
