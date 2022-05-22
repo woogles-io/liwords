@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Card, Carousel, notification } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { useMountedState } from '../utils/mounted';
@@ -219,7 +219,13 @@ export const PlayerProfile = React.memo(() => {
   const { useState } = useMountedState();
 
   const gamesPageSize = 24;
+  const { loginState } = useLoginStateStoreContext();
   const { username } = useParams();
+  const navigate = useNavigate();
+  const viewer = loginState.loggedIn ? loginState.username : undefined;
+  if (viewer && !username) {
+    navigate(`/profile/${viewer}`, { replace: true });
+  }
   const location = useLocation();
   // Show username's profile
   const [ratings, setRatings] = useState<ProfileRatings | null>(null);
@@ -238,12 +244,13 @@ export const PlayerProfile = React.memo(() => {
     offset: number;
     array: Array<GameMetadata>;
   }>({ numGames: gamesPageSize, offset: 0, array: [] });
-  const { loginState } = useLoginStateStoreContext();
-  const { username: viewer } = loginState;
   const [recentGamesOffset, setRecentGamesOffset] = useState(0);
   const [missingBirthdate, setMissingBirthdate] = useState(true); // always true except for self
 
   useEffect(() => {
+    if (!username) {
+      return;
+    }
     axios
       .post<ProfileResponse>(
         toAPIUrl('user_service.ProfileService', 'GetProfile'),
@@ -275,6 +282,9 @@ export const PlayerProfile = React.memo(() => {
   const reentrancyCheck = useRef<Record<string, never>>();
 
   useEffect(() => {
+    if (!username) {
+      return;
+    }
     const hiddenObject = {}; // allocate a new thing every time
     reentrancyCheck.current = hiddenObject;
     (async () => {
@@ -615,8 +625,11 @@ export const PlayerProfile = React.memo(() => {
         </div>
       )}
 
-      {userFetched && !userID && (
+      {userFetched && !userID && username && (
         <div className="not-found">User not found.</div>
+      )}
+      {!username && (
+        <div className="not-found">Login or register to view your profile.</div>
       )}
     </>
   );
