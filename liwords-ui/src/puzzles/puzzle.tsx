@@ -228,7 +228,10 @@ export const SinglePuzzle = (props: Props) => {
         tiles: evt.getPlayedTiles() || evt.getExchanged(),
         isExchange: evt.getType() === GameEvent.Type.EXCHANGE,
         leave: '',
-        leaveWithGaps: computeLeave(evt.getPlayedTiles(), sortedRack),
+        leaveWithGaps: computeLeave(
+          evt.getPlayedTiles() || evt.getExchanged(),
+          sortedRack
+        ),
       };
       placeMove(m);
     },
@@ -542,7 +545,7 @@ export const SinglePuzzle = (props: Props) => {
 
   const responseModalWrong = useMemo(() => {
     const reset = () => {
-      setDisplayedRack(rack);
+      setDisplayedRack(sortedRack);
       setPlacedTiles(new Set<EphemeralTile>());
       setPlacedTilesTempScore(undefined);
       setPhoniesPlayed([]);
@@ -594,7 +597,7 @@ export const SinglePuzzle = (props: Props) => {
     showResponseModalWrong,
     phoniesPlayed,
     puzzleInfo,
-    rack,
+    sortedRack,
     setDisplayedRack,
     setPlacedTiles,
     setPlacedTilesTempScore,
