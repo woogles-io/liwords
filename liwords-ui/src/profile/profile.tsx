@@ -248,33 +248,33 @@ export const PlayerProfile = React.memo(() => {
   const [missingBirthdate, setMissingBirthdate] = useState(true); // always true except for self
 
   useEffect(() => {
-    if (username) {
-      console.log(1, username);
-      axios
-        .post<ProfileResponse>(
-          toAPIUrl('user_service.ProfileService', 'GetProfile'),
-          {
-            username,
-          }
-        )
-        .then((resp) => {
-          setUserFetched(true);
-          setMissingBirthdate(!resp.data.birth_date);
-          setRatings(JSON.parse(resp.data.ratings_json).Data);
-          setStats(JSON.parse(resp.data.stats_json).Data);
-          setUserID(resp.data.user_id);
-          setCountryCode(resp.data.country_code);
-          setFullName(resp.data.full_name);
-          setAvatarUrl(resp.data.avatar_url);
-          setAvatarsEditable(resp.data.avatars_editable);
-          setBio(resp.data.about);
-          setBioLoaded(true);
-        })
-        .catch((e: AxiosError) => {
-          setUserFetched(true);
-          errorCatcher(e);
-        });
+    if (!username) {
+      return;
     }
+    axios
+      .post<ProfileResponse>(
+        toAPIUrl('user_service.ProfileService', 'GetProfile'),
+        {
+          username,
+        }
+      )
+      .then((resp) => {
+        setUserFetched(true);
+        setMissingBirthdate(!resp.data.birth_date);
+        setRatings(JSON.parse(resp.data.ratings_json).Data);
+        setStats(JSON.parse(resp.data.stats_json).Data);
+        setUserID(resp.data.user_id);
+        setCountryCode(resp.data.country_code);
+        setFullName(resp.data.full_name);
+        setAvatarUrl(resp.data.avatar_url);
+        setAvatarsEditable(resp.data.avatars_editable);
+        setBio(resp.data.about);
+        setBioLoaded(true);
+      })
+      .catch((e: AxiosError) => {
+        setUserFetched(true);
+        errorCatcher(e);
+      });
   }, [username, location.pathname]);
 
   const [queriedRecentGamesOffset, setQueriedRecentGamesOffset] =
@@ -282,73 +282,71 @@ export const PlayerProfile = React.memo(() => {
   const reentrancyCheck = useRef<Record<string, never>>();
 
   useEffect(() => {
-    if (username) {
-      const hiddenObject = {}; // allocate a new thing every time
-      reentrancyCheck.current = hiddenObject;
-      (async () => {
-        try {
-          let queriedOffset = queriedRecentGamesOffset;
-          const resp = await axios.post<RecentGamesResponse>(
-            toAPIUrl('game_service.GameMetadataService', 'GetRecentGames'),
-            {
-              username,
-              numGames: gamesPageSize,
-              offset: queriedOffset,
-            }
+    if (!username) {
+      return;
+    }
+    const hiddenObject = {}; // allocate a new thing every time
+    reentrancyCheck.current = hiddenObject;
+    (async () => {
+      try {
+        let queriedOffset = queriedRecentGamesOffset;
+        const resp = await axios.post<RecentGamesResponse>(
+          toAPIUrl('game_service.GameMetadataService', 'GetRecentGames'),
+          {
+            username,
+            numGames: gamesPageSize,
+            offset: queriedOffset,
+          }
+        );
+        // Outdated axios does not support fetch()-compatible AbortController.
+        if (reentrancyCheck.current !== hiddenObject) return;
+        // If the array is empty and it is not the first page,
+        // use binary search to find the last page with content.
+        if (!resp.data.game_info.length && queriedOffset > 0) {
+          // The maximum valid page number is before the empty page retrieved.
+          const maxGuess = Math.max(
+            Math.floor(queriedOffset / gamesPageSize - 1),
+            0
           );
-          // Outdated axios does not support fetch()-compatible AbortController.
-          if (reentrancyCheck.current !== hiddenObject) return;
-          // If the array is empty and it is not the first page,
-          // use binary search to find the last page with content.
-          if (!resp.data.game_info.length && queriedOffset > 0) {
-            // The maximum valid page number is before the empty page retrieved.
-            const maxGuess = Math.max(
-              Math.floor(queriedOffset / gamesPageSize - 1),
-              0
-            );
-            let guessBit = 1;
-            while (guessBit < maxGuess) guessBit *= 2;
-            let guess = 0;
-            for (; guessBit >= 1; guessBit /= 2) {
-              const newGuess = guess + guessBit;
-              if (newGuess <= maxGuess) {
-                const resp2 = await axios.post<RecentGamesResponse>(
-                  toAPIUrl(
-                    'game_service.GameMetadataService',
-                    'GetRecentGames'
-                  ),
-                  {
-                    username,
-                    numGames: gamesPageSize,
-                    offset: newGuess * gamesPageSize,
-                  }
-                );
-                if (reentrancyCheck.current !== hiddenObject) return;
-                if (resp2.data.game_info.length) {
-                  // This is within range.
-                  guess = newGuess;
+          let guessBit = 1;
+          while (guessBit < maxGuess) guessBit *= 2;
+          let guess = 0;
+          for (; guessBit >= 1; guessBit /= 2) {
+            const newGuess = guess + guessBit;
+            if (newGuess <= maxGuess) {
+              const resp2 = await axios.post<RecentGamesResponse>(
+                toAPIUrl('game_service.GameMetadataService', 'GetRecentGames'),
+                {
+                  username,
+                  numGames: gamesPageSize,
+                  offset: newGuess * gamesPageSize,
                 }
+              );
+              if (reentrancyCheck.current !== hiddenObject) return;
+              if (resp2.data.game_info.length) {
+                // This is within range.
+                guess = newGuess;
               }
             }
-            queriedOffset = guess * gamesPageSize;
           }
-          if (queriedRecentGamesOffset !== queriedOffset) {
-            // This will re-fetch that last page.
-            setRecentGamesOffset(queriedOffset);
-            setQueriedRecentGamesOffset(queriedOffset);
-          } else {
-            setRecentGames({
-              numGames: gamesPageSize,
-              offset: queriedOffset,
-              array: resp.data.game_info,
-            });
-          }
-        } catch (e) {
-          // This dangerous-looking cast should be fine...
-          errorCatcher(e as AxiosError);
+          queriedOffset = guess * gamesPageSize;
         }
-      })();
-    }
+        if (queriedRecentGamesOffset !== queriedOffset) {
+          // This will re-fetch that last page.
+          setRecentGamesOffset(queriedOffset);
+          setQueriedRecentGamesOffset(queriedOffset);
+        } else {
+          setRecentGames({
+            numGames: gamesPageSize,
+            offset: queriedOffset,
+            array: resp.data.game_info,
+          });
+        }
+      } catch (e) {
+        // This dangerous-looking cast should be fine...
+        errorCatcher(e as AxiosError);
+      }
+    })();
   }, [username, queriedRecentGamesOffset]);
 
   useEffect(() => {
