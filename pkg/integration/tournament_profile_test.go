@@ -1,3 +1,5 @@
+//go:build integ
+
 package integration_test
 
 import (
@@ -225,9 +227,7 @@ func createBus() (context.Context, *bus.Bus, context.CancelFunc, bus.Stores, *co
 }
 
 func TestLargeTournamentProfile(t *testing.T) {
-	// t.Skip()
-	// should comment out the above t.Skip() and run with
-	// go test -run TestLargeTournamentProfile -memprofile mem.out -cpuprofile cpu.out
+	// go test -tags integ -run  TestLargeTournamentProfile -memprofile mem.out -cpuprofile cpu.out
 	is := is.New(t)
 
 	ctx, bus, cancel, stores, cfg := createBus()
