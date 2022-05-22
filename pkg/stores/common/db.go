@@ -31,6 +31,8 @@ type TableType int
 const (
 	UsersTable TableType = iota
 	ProfilesTable
+	GamesTable
+	PuzzlesTable
 )
 
 type CommonDBConfig struct {
@@ -180,6 +182,31 @@ func GetUserRating(ctx context.Context, tx pgx.Tx, userId int64, ratingKey entit
 	}
 
 	return sr, nil
+}
+
+func GetUserStats(ctx context.Context, tx pgx.Tx, userId int64, ratingKey entity.VariantKey) (*entity.Stats, error) {
+	err := InitializeUserStats(ctx, tx, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	var stats *entity.Stats
+	err = tx.QueryRow(ctx, "SELECT ratings->'Data'->$1 FROM profiles WHERE user_id = $2", ratingKey, userId).Scan(&stats)
+	if err == pgx.ErrNoRows {
+		return nil, fmt.Errorf("profile not found for user_id: %d", userId)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if stats == nil {
+		err = UpdateUserStats(ctx, tx, userId, ratingKey, &entity.Stats{})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return stats, nil
 }
 
 func Update(ctx context.Context, tx pgx.Tx, columns []string, args interface{}, cfg *CommonDBConfig) error {

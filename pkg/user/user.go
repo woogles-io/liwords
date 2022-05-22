@@ -25,10 +25,10 @@ type Store interface {
 	GetBriefProfiles(ctx context.Context, uuids []string) (map[string]*upb.BriefProfile, error)
 	SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, birthDate string, countryCode string, about string) error
 	SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
-		p1Rating entity.SingleRating, p2Rating entity.SingleRating) error
+		p1Rating *entity.SingleRating, p2Rating *entity.SingleRating) error
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p0stats *entity.Stats, p1stats *entity.Stats) error
-	SetNotoriety(ctx context.Context, u *entity.User, notoriety int) error
+	SetNotoriety(ctx context.Context, uuid string, notoriety int) error
 	ResetRatings(ctx context.Context, uuid string) error
 	ResetStats(ctx context.Context, uuid string) error
 	ResetProfile(ctx context.Context, uuid string) error
@@ -51,7 +51,6 @@ type Store interface {
 
 	UsersByPrefix(ctx context.Context, prefix string) ([]*upb.BasicUser, error)
 	CachedCount(ctx context.Context) int
-	Set(ctx context.Context, u *entity.User) error
 	SetPermissions(ctx context.Context, req *cpb.PermissionsRequest) error
 
 	GetModList(ctx context.Context) (*upb.GetModListResponse, error)

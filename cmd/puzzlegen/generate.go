@@ -43,7 +43,7 @@ func main() {
 		panic(err)
 	}
 
-	us, err := user.NewDBStore(commondb.PostgresConnDSN(cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBUser, cfg.DBPassword, cfg.DBSSLMode))
+	us, err := user.NewDBStore(pool)
 	if err != nil {
 		panic(err)
 	}

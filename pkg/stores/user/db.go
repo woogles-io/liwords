@@ -890,3 +890,23 @@ func (s *DBStore) GetModList(ctx context.Context) (*pb.GetModListResponse, error
 		ModUserIds:   modUserIds,
 	}, nil
 }
+
+func (s *DBStore) Username(ctx context.Context, uuid string) (string, error) {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return "", err
+	}
+	defer tx.Rollback(ctx)
+
+	var username string
+	err = tx.QueryRow(ctx, "SELECT username FROM users WHERE uuid = $1", uuid).Scan(&username)
+	if err != nil {
+		return "", err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return "", err
+	}
+
+	return username, nil
+}

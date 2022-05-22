@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 
@@ -56,7 +57,12 @@ func recreateDB() (*DBController, *config.Config) {
 		panic(err)
 	}
 
-	ustore := userStore()
+	pool, err := common.OpenTestingDB()
+	if err != nil {
+		panic(err)
+	}
+
+	ustore := userStore(pool)
 
 	for _, u := range []*entity.User{
 		{Username: "Will", Email: "cesar@woogles.io", UUID: "Will"},
@@ -84,7 +90,7 @@ func recreateDB() (*DBController, *config.Config) {
 	}
 	ustore.(*user.DBStore).Disconnect()
 
-	us := userStore()
+	us := userStore(pool)
 	_, gs := gameStore(us)
 	cfg, tstore := tournamentStore(gs)
 	return &DBController{
@@ -167,8 +173,8 @@ func makeTournamentPersons(persons map[string]int32) *ipc.TournamentPersons {
 	return tp
 }
 
-func userStore() pkguser.Store {
-	ustore, err := user.NewDBStore(common.TestingPostgresConnDSN())
+func userStore(pool *pgxpool.Pool) pkguser.Store {
+	ustore, err := user.NewDBStore(pool)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}

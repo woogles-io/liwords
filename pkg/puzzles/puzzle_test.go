@@ -665,11 +665,11 @@ func TestPuzzlesNextClosestRating(t *testing.T) {
 
 	playerRating := 10000.0
 
-	dbc.us.SetRatings(ctx, PuzzlerUUID, PuzzleCreatorUUID, "CSW19.puzzle.corres", entity.SingleRating{
+	dbc.us.SetRatings(ctx, PuzzlerUUID, PuzzleCreatorUUID, "CSW19.puzzle.corres", &entity.SingleRating{
 		Volatility:      glicko.InitialVolatility,
 		Rating:          playerRating,
 		RatingDeviation: 40.0,
-	}, entity.SingleRating{
+	}, &entity.SingleRating{
 		Volatility:      glicko.InitialVolatility,
 		Rating:          playerRating,
 		RatingDeviation: 40.0,
@@ -785,7 +785,7 @@ func RecreateDB() (*DBController, int, int) {
 		panic(err)
 	}
 
-	userStore, err := user.NewDBStore(commondb.TestingPostgresConnDSN())
+	userStore, err := user.NewDBStore(pool)
 	if err != nil {
 		panic(err)
 	}
@@ -1026,31 +1026,4 @@ func getPuzzleLexicon(ctx context.Context, pool *pgxpool.Pool, puzzleUUID string
 		return "", err
 	}
 	return lexicon, nil
-}
-
-func transactGetDBIDFromUUID(ctx context.Context, pool *pgxpool.Pool, table string, uuid string) (int64, error) {
-	tx, err := pool.BeginTx(ctx, commondb.DefaultTxOptions)
-	if err != nil {
-		return 0, err
-	}
-	defer tx.Rollback(ctx)
-
-	var id int64
-	if table == "users" {
-		id, err = commondb.GetUserDBIDFromUUID(ctx, tx, uuid)
-	} else if table == "games" {
-		id, err = commondb.GetGameDBIDFromUUID(ctx, tx, uuid)
-	} else if table == "puzzles" {
-		id, err = commondb.GetPuzzleDBIDFromUUID(ctx, tx, uuid)
-	} else {
-		return 0, fmt.Errorf("unknown table: %s", table)
-	}
-	if err != nil {
-		return 0, err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return 0, err
-	}
-	return id, nil
 }
