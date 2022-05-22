@@ -233,3 +233,16 @@ func (a *Actions) Scan(value interface{}) error {
 
 	return json.Unmarshal(b, &a)
 }
+
+func (p *Profile) Value() (driver.Value, error) {
+	return json.Marshal(p)
+}
+
+func (p *Profile) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed for single rating")
+	}
+
+	return json.Unmarshal(b, &p)
+}

@@ -2,16 +2,11 @@ package user
 
 import (
 	"context"
-	"database/sql"
-	"encoding/json"
 	"errors"
-	"fmt"
-	"math/rand"
-	"sort"
 	"strings"
 	"time"
 
-	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/jinzhu/gorm"
 	"github.com/jinzhu/gorm/dialects/postgres"
@@ -19,6 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/stores/common"
 
 	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
@@ -66,65 +62,6 @@ type User struct {
 	Actions   postgres.Jsonb
 }
 
-// A user profile is in a one-to-one relationship with a user. It is the
-// profile that should have all the extra data we don't want to / shouldn't stick
-// in the user model.
-type profile struct {
-	gorm.Model
-	// `profile` belongs to `user`, `UserID` is the foreign key.
-	UserID uint
-	User   User
-
-	FirstName string `gorm:"type:varchar(32)"`
-	LastName  string `gorm:"type:varchar(64)"`
-
-	BirthDate string `gorm:"type:varchar(11)"`
-
-	CountryCode string `gorm:"type:varchar(6)"`
-	// Title is some sort of acronym/shorthand for a title. Like GM, EX, SM, UK-GM (UK Grandmaster?)
-	Title string `gorm:"type:varchar(8)"`
-
-	// AvatarUrl refers to a file in JPEG format.
-	AvatarUrl string `gorm:"type:varchar(128)"`
-
-	// About is profile notes.
-	About string `gorm:"type:varchar(2048)"`
-	// It's ok to have a few JSON bags here. Postgres makes these easy and fast.
-	// XXX: Come up with a model for friend list.
-	Ratings postgres.Jsonb // A complex dictionary of ratings with variants/lexica/etc.
-	Stats   postgres.Jsonb // Profile stats such as average score per variant, bingos, a lot of other simple stats.
-	// More complex stats might be in a separate place.
-}
-
-type briefProfile struct {
-	UUID        string
-	Username    string
-	InternalBot bool
-	CountryCode string
-	AvatarUrl   string
-	FirstName   string // XXX please add full_name to db instead.
-	LastName    string // XXX please add full_name to db instead.
-	BirthDate   string
-}
-
-type following struct {
-	// Follower follows user; pretty straightforward.
-	UserID uint
-	User   User
-
-	FollowerID uint
-	Follower   User
-}
-
-type blocking struct {
-	// blocker blocks user
-	UserID uint
-	User   User
-
-	BlockerID uint
-	Blocker   User
-}
-
 func NewDBStore(p *pgxpool.Pool) (*DBStore, error) {
 	return &DBStore{dbPool: p}, nil
 }
@@ -135,136 +72,76 @@ func (s *DBStore) Disconnect() {
 
 // Get gets a user by username.
 func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error) {
-	u := &User{}
-	p := &profile{}
-	if result := s.db.Where("lower(username) = ?", strings.ToLower(username)).First(u); result.Error != nil {
-		return nil, result.Error
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
 	}
-	if result := s.db.Model(u).Related(p); result.Error != nil {
-		return nil, result.Error
-	}
-	profile, err := dbProfileToProfile(p)
+	defer tx.Rollback(ctx)
+
+	entu, err := common.GetUserBy(ctx, tx, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUsername, Value: username, IncludeProfile: true})
 	if err != nil {
 		return nil, err
 	}
 
-	var actions entity.Actions
-	err = json.Unmarshal(u.Actions.RawMessage, &actions)
-	if err != nil {
-		log.Debug().Msg("convert-user-actions")
-	}
-
-	entu := &entity.User{
-		ID:         u.ID,
-		Username:   u.Username,
-		UUID:       u.UUID,
-		Email:      u.Email,
-		Password:   u.Password,
-		IsBot:      u.InternalBot,
-		Anonymous:  false,
-		Profile:    profile,
-		IsAdmin:    u.IsAdmin,
-		IsDirector: u.IsDirector,
-		IsMod:      u.IsMod,
-		Notoriety:  u.Notoriety,
-		Actions:    &actions,
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
 	}
 
 	return entu, nil
 }
 
-func getBy(tx pgx.Tx, ctx context.Context, name string, value string) (*entity.User, error) {
-
-	entp := &entity.Profile{
-		FirstName:   p.FirstName,
-		LastName:    p.LastName,
-		BirthDate:   p.BirthDate,
-		CountryCode: p.CountryCode,
-		Title:       p.Title,
-		About:       p.About,
-		Ratings:     rdata,
-		Stats:       sdata,
-		AvatarUrl:   p.AvatarUrl,
-	}, nil
-
-	var id uint
-	var username string
-	var uuid string
-	var email string
-	var password string
-	internal_bot := &sql.NullBool{}
-	is_admin := &sql.NullBool{}
-	is_director := &sql.NullBool{}
-	is_mod := &sql.NullBool{}
-	var notoriety int
-	var actions *entity.Actions
-
-	query := fmt.Sprintf("SELECT id, username, uuid, email, password, internal_bot, is_admin, is_director, is_mod, notoriety, actions FROM users WHERE %s =  $1", name)
-	err := tx.QueryRow(ctx, query, value).Scan(&id, &username, &uuid, &email, &password, &internal_bot, &is_admin, &is_director, &is_mod, &notoriety, &actions)
-	if err == pgx.ErrNoRows {
-		return nil, errors.New("user not found")
-	} else if err != nil {
-		return nil, err
+func (s *DBStore) SetNotoriety(ctx context.Context, uuid string, notoriety int) error {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
 	}
+	defer tx.Rollback(ctx)
 
-	entu := &entity.User{
-		ID:         id,
-		Username:   username,
-		UUID:       uuid,
-		Email:      email,
-		Password:   password,
-		IsBot:      internal_bot.Bool,
-		Anonymous:  false,
-		Profile:    profile,
-		IsAdmin:    is_admin.Bool,
-		IsDirector: is_director.Bool,
-		IsMod:      is_mod.Bool,
-		Notoriety:  notoriety,
-		Actions:    actions,
-	}
-
-	return entu, nil
-}
-
-func (s *DBStore) Set(ctx context.Context, u *entity.User) error {
-	dbu, err := s.toDBObj(u)
+	err = common.Update(ctx, tx, []string{"notoriety"}, []interface{}{notoriety}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: uuid})
 	if err != nil {
 		return err
 	}
 
-	result := s.db.Model(&User{}).Set("gorm:query_option", "FOR UPDATE").
-		Where("uuid = ?", u.UUID).Update(dbu)
-	return result.Error
-}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
 
-// This was written to avoid the zero value trap
-func (s *DBStore) SetNotoriety(ctx context.Context, u *entity.User, notoriety int) error {
-	result := s.db.Model(&User{}).Where("uuid = ?", u.UUID).Update(map[string]interface{}{"notoriety": notoriety})
-	return result.Error
+	return nil
 }
 
 func (s *DBStore) SetPermissions(ctx context.Context, req *cpb.PermissionsRequest) error {
-	updates := make(map[string]interface{})
+	columns := []string{}
+	values := []bool{}
 	if req.Bot != nil {
-		updates["internal_bot"] = req.Bot.Value
+		columns = append(columns, "internal_bot")
+		values = append(values, req.Bot.Value)
 	}
 	if req.Admin != nil {
-		updates["is_admin"] = req.Admin.Value
+		columns = append(columns, "is_admin")
+		values = append(values, req.Admin.Value)
 	}
 	if req.Director != nil {
-		updates["is_director"] = req.Director.Value
+		columns = append(columns, "is_director")
+		values = append(values, req.Director.Value)
 	}
 	if req.Mod != nil {
-		updates["is_mod"] = req.Mod.Value
+		columns = append(columns, "is_mod")
+		values = append(values, req.Mod.Value)
 	}
 
-	result := s.db.Table("users").Where("lower(username) = ?", strings.ToLower(req.Username)).Updates(updates)
-	if result.Error != nil {
-		return result.Error
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
 	}
-	if result.RowsAffected != 1 {
-		// gorm also sets result.RowsAffected == 0 if len(updates) == 0
-		return gorm.ErrRecordNotFound
+	defer tx.Rollback(ctx)
+
+	err = common.Update(ctx, tx, columns, values, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUsername, Value: strings.ToLower(req.Username)})
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
 	}
 
 	return nil
@@ -274,94 +151,39 @@ func (s *DBStore) SetPermissions(ctx context.Context, req *cpb.PermissionsReques
 // We don't get the profile here because GetByEmail is only used for things
 // like password resets and there is no need.
 func (s *DBStore) GetByEmail(ctx context.Context, email string) (*entity.User, error) {
-	u := &User{}
-	if result := s.db.Where("lower(email) = ?", strings.ToLower(email)).First(u); result.Error != nil {
-		return nil, result.Error
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	entu, err := common.GetUserBy(ctx, tx, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByEmail, Value: strings.ToLower(email)})
+	if err != nil {
+		return nil, err
 	}
 
-	entu := &entity.User{
-		ID:         u.ID,
-		Username:   u.Username,
-		UUID:       u.UUID,
-		Email:      u.Email,
-		Password:   u.Password,
-		Anonymous:  false,
-		IsBot:      u.InternalBot,
-		IsAdmin:    u.IsAdmin,
-		IsDirector: u.IsDirector,
-		IsMod:      u.IsMod,
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
 	}
 
 	return entu, nil
 }
 
-func dbProfileToProfile(p *profile) (*entity.Profile, error) {
-	var rdata entity.Ratings
-	err := json.Unmarshal(p.Ratings.RawMessage, &rdata)
-	if err != nil {
-		log.Err(err).Msg("profile had bad rating json, zeroing")
-		rdata = entity.Ratings{Data: map[entity.VariantKey]entity.SingleRating{}}
-	}
-
-	var sdata entity.ProfileStats
-	err = json.Unmarshal(p.Stats.RawMessage, &sdata)
-	if err != nil {
-		log.Err(err).Msg("profile had bad stats json, zeroing")
-		sdata = entity.ProfileStats{Data: map[entity.VariantKey]*entity.Stats{}}
-	}
-	return &entity.Profile{
-		FirstName:   p.FirstName,
-		LastName:    p.LastName,
-		BirthDate:   p.BirthDate,
-		CountryCode: p.CountryCode,
-		Title:       p.Title,
-		About:       p.About,
-		Ratings:     rdata,
-		Stats:       sdata,
-		AvatarUrl:   p.AvatarUrl,
-	}, nil
-}
-
 // GetByUUID gets user by UUID
 func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, error) {
-	u := &User{}
-	p := &profile{}
-	var entu *entity.User
-	if uuid == "" {
-		return nil, errors.New("blank-uuid")
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	entu, err := common.GetUserBy(ctx, tx, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: uuid, IncludeProfile: true})
+	if err != nil {
+		return nil, err
 	}
 
-	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
-		return nil, result.Error
-	} else {
-		if result := s.db.Model(u).Related(p); result.Error != nil {
-			return nil, result.Error
-		}
-		profile, err := dbProfileToProfile(p)
-		if err != nil {
-			return nil, err
-		}
-
-		var actions entity.Actions
-		err = json.Unmarshal(u.Actions.RawMessage, &actions)
-		if err != nil {
-			log.Debug().Msg("convert-user-actions")
-		}
-
-		entu = &entity.User{
-			ID:         u.ID,
-			Username:   u.Username,
-			UUID:       u.UUID,
-			Email:      u.Email,
-			Password:   u.Password,
-			IsBot:      u.InternalBot,
-			Profile:    profile,
-			IsAdmin:    u.IsAdmin,
-			IsDirector: u.IsDirector,
-			IsMod:      u.IsMod,
-			Notoriety:  u.Notoriety,
-			Actions:    &actions,
-		}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
 	}
 
 	return entu, nil
@@ -373,380 +195,290 @@ func (s *DBStore) GetByAPIKey(ctx context.Context, apikey string) (*entity.User,
 	if apikey == "" {
 		return nil, errors.New("api-key is blank")
 	}
-	u := &User{}
-	if result := s.db.Where("api_key = ?", apikey).First(u); result.Error != nil {
-		return nil, result.Error
-	}
-
-	var actions entity.Actions
-	err := json.Unmarshal(u.Actions.RawMessage, &actions)
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
-		log.Debug().Msg("convert-user-actions")
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	entu, err := common.GetUserBy(ctx, tx, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByAPIKey, Value: apikey})
+	if err != nil {
+		return nil, err
 	}
 
-	entu := &entity.User{
-		ID:         u.ID,
-		Username:   u.Username,
-		UUID:       u.UUID,
-		Email:      u.Email,
-		Password:   u.Password,
-		Anonymous:  false,
-		IsBot:      u.InternalBot,
-		IsAdmin:    u.IsAdmin,
-		IsDirector: u.IsDirector,
-		IsMod:      u.IsMod,
-		Notoriety:  u.Notoriety,
-		Actions:    &actions,
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
 	}
 
 	return entu, nil
 }
 
-func (s *DBStore) toDBObj(u *entity.User) (*User, error) {
-	actions, err := json.Marshal(u.Actions)
-	if err != nil {
-		return nil, err
-	}
-
-	return &User{
-		UUID:        u.UUID,
-		Username:    u.Username,
-		Email:       u.Email,
-		Password:    u.Password,
-		InternalBot: u.IsBot,
-		IsAdmin:     u.IsAdmin,
-		IsDirector:  u.IsDirector,
-		IsMod:       u.IsMod,
-		Notoriety:   u.Notoriety,
-		Actions:     postgres.Jsonb{RawMessage: actions},
-	}, nil
-}
-
 // New creates a new user in the DB.
 func (s *DBStore) New(ctx context.Context, u *entity.User) error {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
 	if u.UUID == "" {
 		u.UUID = shortuuid.New()
 	}
-	dbu, err := s.toDBObj(u)
-	if err != nil {
-		return err
-	}
-	result := s.db.Create(dbu)
-	if result.Error != nil {
-		return result.Error
-	}
 
-	// Create profile
-	rdata := entity.Ratings{}
-	ratbytes, err := json.Marshal(rdata)
+	var userId uint
+	err = tx.QueryRow(ctx, `INSERT INTO users (username, uuid, email, password, internal_bot, is_admin, is_director, is_mod, notoriety, actions, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW()) RETURNING id`,
+		u.Username, u.UUID, u.Email, u.Password, u.IsBot, u.IsAdmin, u.IsDirector, u.IsMod, u.Notoriety, u.Actions).Scan(&userId)
 	if err != nil {
 		return err
 	}
 
-	sdata := entity.ProfileStats{}
-	statbytes, err := json.Marshal(sdata)
-	if err != nil {
-		return err
-	}
 	prof := u.Profile
 	if prof == nil {
 		prof = &entity.Profile{}
 	}
-	// XXX: no validation for BirthDate etc. :-(
-	dbp := &profile{
-		User:        *dbu,
-		FirstName:   prof.FirstName,
-		LastName:    prof.LastName,
-		BirthDate:   prof.BirthDate,
-		CountryCode: prof.CountryCode,
-		Title:       prof.Title,
-		AvatarUrl:   prof.AvatarUrl,
-		About:       prof.About,
-		Ratings:     postgres.Jsonb{RawMessage: ratbytes},
-		Stats:       postgres.Jsonb{RawMessage: statbytes},
+
+	_, err = tx.Exec(ctx, `INSERT INTO profiles (user_id, first_name, last_name, country_code, title, about, ratings, stats, avatar_url, birth_date, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())`,
+		userId, prof.FirstName, prof.LastName, prof.CountryCode, prof.Title, prof.About, entity.Ratings{}, entity.ProfileStats{}, prof.AvatarUrl, prof.BirthDate)
+	if err != nil {
+		return err
 	}
-	// XXX: Should be in transaction.
-	result = s.db.Create(dbp)
-	return result.Error
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // SetPassword sets the password for the user. The password is already hashed.
 func (s *DBStore) SetPassword(ctx context.Context, uuid string, hashpass string) error {
-	u := &User{}
-	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
-		return result.Error
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
 	}
-	return s.db.Model(u).Update("password", hashpass).Error
+	defer tx.Rollback(ctx)
+
+	err = common.Update(ctx, tx, []string{"password"}, []string{hashpass}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: uuid})
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // SetAvatarUrl sets the avatar_url (profile field) for the user.
 func (s *DBStore) SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string) error {
-	u := &User{}
-	p := &profile{}
-
-	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
-		return result.Error
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
 	}
-	if result := s.db.Model(u).Related(p); result.Error != nil {
-		return result.Error
+	defer tx.Rollback(ctx)
+
+	id, err := common.GetUserDBIDFromUUID(ctx, tx, uuid)
+	if err != nil {
+		return err
 	}
 
-	return s.db.Model(p).Update("avatar_url", avatarUrl).Error
+	err = common.Update(ctx, tx, []string{"avatar_url"}, []string{avatarUrl}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByID, Value: id})
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[string]*pb.BriefProfile, error) {
-	var profiles []*briefProfile
-	if result := s.db.
-		Table("users").
-		Joins("left join profiles on users.id = profiles.user_id").
-		Where("uuid in (?)", uuids).
-		Select([]string{"uuid", "username", "internal_bot", "country_code", "avatar_url", "first_name", "last_name", "birth_date"}).
-		Find(&profiles); result.Error != nil {
-		return nil, result.Error
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
 	}
+	defer tx.Rollback(ctx)
 
-	profileMap := make(map[string]*briefProfile)
-	for _, profile := range profiles {
-		profileMap[profile.UUID] = profile
+	rows, err := tx.Query(ctx,
+		`SELECT uuid, username, internal_bot, country_code, avatar_url, first_name, last_name, birth_date
+		FROM LEFT JOIN profiles ON users.id = profiles.user_id
+		WHERE uuid IN ($1)`, uuids)
+	if err != nil {
+		return nil, err
 	}
-
-	now := time.Now()
+	defer rows.Close()
 
 	response := make(map[string]*pb.BriefProfile)
-	for _, uuid := range uuids {
-		prof, hasProfile := profileMap[uuid]
-		if !hasProfile {
-			prof = &briefProfile{}
+	now := time.Now()
+
+	for rows.Next() {
+		var UUID string
+		var username string
+		var internalBot bool
+		var countryCode string
+		var avatarUrl string
+		var firstName string
+		var lastName string
+		var birthDate string
+		if err := rows.Scan(&UUID, &username, &internalBot, &countryCode, &avatarUrl, &firstName, &lastName, &birthDate); err != nil {
+			return nil, err
 		}
-		if prof.AvatarUrl == "" && prof.InternalBot {
+
+		if avatarUrl == "" && internalBot {
 			// see entity/user.go
-			prof.AvatarUrl = "https://woogles-prod-assets.s3.amazonaws.com/macondog.png"
+			avatarUrl = "https://woogles-prod-assets.s3.amazonaws.com/macondog.png"
 		}
-		subjectIsAdult := entity.IsAdult(prof.BirthDate, now)
-		avatarUrl := ""
-		fullName := ""
+		subjectIsAdult := entity.IsAdult(birthDate, now)
+		censoredAvatarUrl := ""
+		censoredFullName := ""
 		if subjectIsAdult {
-			avatarUrl = prof.AvatarUrl
+			censoredAvatarUrl = avatarUrl
 			// see entity/user.go RealName()
-			if prof.FirstName != "" {
-				if prof.LastName != "" {
-					fullName = prof.FirstName + " " + prof.LastName
+			if firstName != "" {
+				if lastName != "" {
+					censoredFullName = firstName + " " + lastName
 				} else {
-					fullName = prof.FirstName
+					censoredFullName = firstName
 				}
 			} else {
-				fullName = prof.LastName
+				censoredFullName = lastName
 			}
 		}
-		response[uuid] = &pb.BriefProfile{
-			Username:    prof.Username,
-			CountryCode: prof.CountryCode,
-			AvatarUrl:   avatarUrl,
-			FullName:    fullName,
+		response[UUID] = &pb.BriefProfile{
+			Username:    username,
+			CountryCode: countryCode,
+			AvatarUrl:   censoredAvatarUrl,
+			FullName:    censoredFullName,
 		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
 	}
 
 	return response, nil
 }
 
 func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, birthDate string, countryCode string, about string) error {
-	u := &User{}
-	p := &profile{}
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
 
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		if result := tx.Where("uuid = ?", uuid).First(u); result.Error != nil {
-			return result.Error
-		}
-		if result := tx.Model(u).Update("email", email); result.Error != nil {
-			return result.Error
-		}
-		if result := tx.Model(u).Related(p); result.Error != nil {
-			return result.Error
-		}
+	err = common.Update(ctx, tx, []string{"email", "first_name", "last_name", "birth_date", "country_code", "about"}, []string{email, firstName, lastName, birthDate, countryCode, about}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByUUID, Value: uuid})
+	if err != nil {
+		return err
+	}
 
-		return tx.Model(p).Update(map[string]interface{}{"first_name": firstName,
-			"last_name":    lastName,
-			"birth_date":   birthDate,
-			"about":        about,
-			"country_code": countryCode}).Error
-	})
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
 
+	return nil
 }
 
 // SetRatings set the specific ratings for the given variant in a transaction.
 func (s *DBStore) SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
-	p0Rating entity.SingleRating, p1Rating entity.SingleRating) error {
-
-	return s.db.Transaction(func(tx *gorm.DB) error {
-
-		p0Profile, p0RatingBytes, err := getRatingBytes(tx, ctx, p0uuid, variant, p0Rating)
-		if err != nil {
-			return err
-		}
-
-		err = tx.Model(p0Profile).Update("ratings", postgres.Jsonb{RawMessage: p0RatingBytes}).Error
-
-		if err != nil {
-			return err
-		}
-
-		p1Profile, p1RatingBytes, err := getRatingBytes(tx, ctx, p1uuid, variant, p1Rating)
-		if err != nil {
-			return err
-		}
-
-		err = tx.Model(p1Profile).Update("ratings", postgres.Jsonb{RawMessage: p1RatingBytes}).Error
-
-		if err != nil {
-			return err
-		}
-		// return nil will commit the whole transaction
-		return nil
-	})
-}
-
-func getRatingBytes(tx *gorm.DB, ctx context.Context, uuid string, variant entity.VariantKey,
-	rating entity.SingleRating) (*profile, []byte, error) {
-	u := &User{}
-	p := &profile{}
-
-	if result := tx.Where("uuid = ?", uuid).First(u); result.Error != nil {
-		return nil, nil, result.Error
-	}
-	if result := tx.Model(u).Related(p); result.Error != nil {
-		return nil, nil, result.Error
-	}
-
-	existingRatings := getExistingRatings(p)
-	existingRatings.Data[variant] = rating
-
-	bytes, err := json.Marshal(existingRatings)
+	p0Rating *entity.SingleRating, p1Rating *entity.SingleRating) error {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
-	return p, bytes, nil
-}
+	defer tx.Rollback(ctx)
 
-func getExistingRatings(p *profile) *entity.Ratings {
-	var existingRatings entity.Ratings
-	err := json.Unmarshal(p.Ratings.RawMessage, &existingRatings)
+	p0id, err := common.GetUserDBIDFromUUID(ctx, tx, p0uuid)
 	if err != nil {
-		log.Err(err).Msg("existing ratings missing; initializing...")
-		existingRatings = entity.Ratings{Data: map[entity.VariantKey]entity.SingleRating{}}
+		return err
 	}
 
-	if existingRatings.Data == nil {
-		existingRatings.Data = make(map[entity.VariantKey]entity.SingleRating)
+	p1id, err := common.GetUserDBIDFromUUID(ctx, tx, p1uuid)
+	if err != nil {
+		return err
 	}
-	return &existingRatings
+
+	err = common.UpdateUserRating(ctx, tx, p0id, variant, p0Rating)
+	if err != nil {
+		return err
+	}
+
+	err = common.UpdateUserRating(ctx, tx, p1id, variant, p1Rating)
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *DBStore) SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 	p0Stats *entity.Stats, p1Stats *entity.Stats) error {
-
-	return s.db.Transaction(func(tx *gorm.DB) error {
-
-		p0Profile, p0StatsBytes, err := getStatsBytes(tx, ctx, p0uuid, variant, p0Stats)
-		if err != nil {
-			return err
-		}
-
-		err = tx.Model(p0Profile).Update("stats", postgres.Jsonb{RawMessage: p0StatsBytes}).Error
-
-		if err != nil {
-			return err
-		}
-
-		p1Profile, p1StatsBytes, err := getStatsBytes(tx, ctx, p1uuid, variant, p1Stats)
-		if err != nil {
-			return err
-		}
-
-		err = tx.Model(p1Profile).Update("stats", postgres.Jsonb{RawMessage: p1StatsBytes}).Error
-
-		if err != nil {
-			return err
-		}
-		// return nil will commit the whole transaction
-		return nil
-	})
-}
-
-func getStatsBytes(tx *gorm.DB, ctx context.Context, uuid string, variant entity.VariantKey,
-	stats *entity.Stats) (*profile, []byte, error) {
-	u := &User{}
-	p := &profile{}
-
-	if result := tx.Where("uuid = ?", uuid).First(u); result.Error != nil {
-		return nil, nil, result.Error
-	}
-	if result := tx.Model(u).Related(p); result.Error != nil {
-		return nil, nil, result.Error
-	}
-
-	existingProfileStats := getExistingProfileStats(p)
-	existingProfileStats.Data[variant] = stats
-
-	bytes, err := json.Marshal(existingProfileStats)
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
-	return p, bytes, nil
-}
+	defer tx.Rollback(ctx)
 
-func getExistingProfileStats(p *profile) *entity.ProfileStats {
-	var existingProfileStats entity.ProfileStats
-	err := json.Unmarshal(p.Stats.RawMessage, &existingProfileStats)
+	p0id, err := common.GetUserDBIDFromUUID(ctx, tx, p0uuid)
 	if err != nil {
-		log.Err(err).Msg("existing stats missing; initializing...")
-		existingProfileStats = entity.ProfileStats{Data: map[entity.VariantKey]*entity.Stats{}}
+		return err
 	}
-	if existingProfileStats.Data == nil {
-		existingProfileStats.Data = make(map[entity.VariantKey]*entity.Stats)
+
+	p1id, err := common.GetUserDBIDFromUUID(ctx, tx, p1uuid)
+	if err != nil {
+		return err
 	}
-	return &existingProfileStats
+
+	err = common.UpdateUserStats(ctx, tx, p0id, variant, p0Stats)
+	if err != nil {
+		return err
+	}
+
+	err = common.UpdateUserStats(ctx, tx, p1id, variant, p1Stats)
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *DBStore) GetBot(ctx context.Context, botType macondopb.BotRequest_BotCode) (*entity.User, error) {
-
-	var users []*User
-	p := &profile{}
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
 
 	username := botNames[botType]
 
-	if result := s.db.Where("internal_bot = ? and username = ?", true, username).Find(&users); result.Error != nil {
-		return nil, result.Error
-	}
-	idx := 0
-	if len(users) == 0 {
+	var botUsername string
+	err = tx.QueryRow(ctx, `SELECT username FROM users WHERE internal_bot IS TRUE AND username = $1`, username).Scan(&botUsername)
+	if err == pgx.ErrNoRows {
 		// Just pick any random bot. This should not be done on prod.
 		log.Warn().Msg("picking-random-bot")
-		if result := s.db.Where("internal_bot = ?", true).Find(&users); result.Error != nil {
-			return nil, result.Error
+		err = tx.QueryRow(ctx, `SELECT username FROM users WHERE internal_bot IS TRUE ORDER BY RANDOM`).Scan(&botUsername)
+		if err == pgx.ErrNoRows {
+			return nil, errors.New("no bots found")
 		}
-		idx = rand.Intn(len(users))
 	}
 
-	u := users[idx]
-
-	if result := s.db.Model(u).Related(p); result.Error != nil {
-		return nil, result.Error
-	}
-
-	profile, err := dbProfileToProfile(p)
+	entu, err := common.GetUserBy(ctx, tx, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUsername, Value: strings.ToLower(botUsername), IncludeProfile: true})
 	if err != nil {
 		return nil, err
 	}
 
-	entu := &entity.User{
-		ID:        u.ID,
-		Username:  u.Username,
-		UUID:      u.UUID,
-		Email:     u.Email,
-		Password:  u.Password,
-		Anonymous: false,
-		IsBot:     u.InternalBot,
-		Profile:   profile,
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
 	}
 
 	return entu, nil
@@ -754,114 +486,178 @@ func (s *DBStore) GetBot(ctx context.Context, botType macondopb.BotRequest_BotCo
 
 // AddFollower creates a follower -> target follow.
 func (s *DBStore) AddFollower(ctx context.Context, targetUser, follower uint) error {
-	dbf := &following{UserID: targetUser, FollowerID: follower}
-	result := s.db.Create(dbf)
-	return result.Error
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, `INSERT INTO followings (user_id, follower_id) VALUES ($1, $2)`, targetUser, follower)
+	if err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // RemoveFollower removes a follower -> target follow.
 func (s *DBStore) RemoveFollower(ctx context.Context, targetUser, follower uint) error {
-	return s.db.Where("user_id = ? AND follower_id = ?", targetUser, follower).Delete(&following{}).Error
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, `DELETE FROM followings WHERE user_id = $1 AND follower_id = $2`, targetUser, follower)
+	if err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // GetFollows gets all the users that the passed-in user DB ID is following.
 func (s *DBStore) GetFollows(ctx context.Context, uid uint) ([]*entity.User, error) {
-	type followed struct {
-		Username string
-		Uuid     string
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
 	}
+	defer tx.Rollback(ctx)
 
-	var users []followed
-
-	if result := s.db.Table("followings").Select("u0.username, u0.uuid").
-		Joins("JOIN users as u0 ON u0.id = user_id").
-		Where("follower_id = ?", uid).Scan(&users); result.Error != nil {
-
-		return nil, result.Error
+	rows, err := tx.Query(ctx, `SELECT u0.uuid, u0.username FROM JOIN followings, users AS u0 ON u0.id = user_id WHERE follower_id = $1`, uid)
+	if err != nil {
+		return nil, err
 	}
-	log.Debug().Int("num-followed", len(users)).Msg("found-followed")
-	entUsers := make([]*entity.User, len(users))
-	for idx, u := range users {
-		entUsers[idx] = &entity.User{UUID: u.Uuid, Username: u.Username}
+	defer rows.Close()
+
+	var UUID string
+	var username string
+	entUsers := []*entity.User{}
+	for rows.Next() {
+		if err := rows.Scan(&UUID, &username); err != nil {
+			return nil, err
+		}
+		entUsers = append(entUsers, &entity.User{UUID: UUID, Username: username})
 	}
 	return entUsers, nil
 }
 
 // GetFollowedBy gets all the users that are following the passed-in user DB ID.
 func (s *DBStore) GetFollowedBy(ctx context.Context, uid uint) ([]*entity.User, error) {
-	type followedby struct {
-		Username string
-		Uuid     string
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
 	}
+	defer tx.Rollback(ctx)
 
-	var users []followedby
-
-	if result := s.db.Table("followings").Select("u0.username, u0.uuid").
-		Joins("JOIN users as u0 ON u0.id = follower_id").
-		Where("user_id = ?", uid).Scan(&users); result.Error != nil {
-
-		return nil, result.Error
+	rows, err := tx.Query(ctx, `SELECT u0.uuid, u0.username FROM JOIN followings, users AS u0 ON u0.id = follower_id WHERE user_id = $1`, uid)
+	if err != nil {
+		return nil, err
 	}
-	log.Debug().Int("num-followed-by", len(users)).Msg("found-followed-by")
-	entUsers := make([]*entity.User, len(users))
-	for idx, u := range users {
-		entUsers[idx] = &entity.User{UUID: u.Uuid, Username: u.Username}
+	defer rows.Close()
+
+	var UUID string
+	var username string
+	entUsers := []*entity.User{}
+	for rows.Next() {
+		if err := rows.Scan(&UUID, &username); err != nil {
+			return nil, err
+		}
+		entUsers = append(entUsers, &entity.User{UUID: UUID, Username: username})
 	}
 	return entUsers, nil
 }
 
 func (s *DBStore) AddBlock(ctx context.Context, targetUser, blocker uint) error {
-	dbb := &blocking{UserID: targetUser, BlockerID: blocker}
-	result := s.db.Create(dbb)
-	return result.Error
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, `INSERT INTO blockings (user_id, blocker_id) VALUES ($1, $2)`, targetUser, blocker)
+	if err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *DBStore) RemoveBlock(ctx context.Context, targetUser, blocker uint) error {
-	return s.db.Where("user_id = ? AND blocker_id = ?", targetUser, blocker).Delete(&blocking{}).Error
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, `DELETE FROM blockings WHERE user_id = $1 AND blocker_id = $2`, targetUser, blocker)
+	if err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // GetBlocks gets all the users that the passed-in user DB ID is blocking.
 func (s *DBStore) GetBlocks(ctx context.Context, uid uint) ([]*entity.User, error) {
-	type blocked struct {
-		Username string
-		Uuid     string
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
 	}
+	defer tx.Rollback(ctx)
 
-	var users []blocked
-
-	if result := s.db.Table("blockings").Select("u0.username, u0.uuid").
-		Joins("JOIN users as u0 ON u0.id = user_id").
-		Where("blocker_id = ?", uid).Scan(&users); result.Error != nil {
-
-		return nil, result.Error
+	rows, err := tx.Query(ctx, `SELECT u0.uuid, u0.username FROM JOIN blockings, users AS u0 ON u0.id = user_id WHERE blocker_id = $1`, uid)
+	if err != nil {
+		return nil, err
 	}
-	log.Debug().Int("num-blocked", len(users)).Msg("found-blocked")
-	entUsers := make([]*entity.User, len(users))
-	for idx, u := range users {
-		entUsers[idx] = &entity.User{UUID: u.Uuid, Username: u.Username}
+	defer rows.Close()
+
+	var UUID string
+	var username string
+	entUsers := []*entity.User{}
+	for rows.Next() {
+		if err := rows.Scan(&UUID, &username); err != nil {
+			return nil, err
+		}
+		entUsers = append(entUsers, &entity.User{UUID: UUID, Username: username})
 	}
 	return entUsers, nil
 }
 
 // GetBlockedBy gets all the users that are blocking the passed-in user DB ID.
 func (s *DBStore) GetBlockedBy(ctx context.Context, uid uint) ([]*entity.User, error) {
-	type blockedby struct {
-		Username string
-		Uuid     string
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
 	}
+	defer tx.Rollback(ctx)
 
-	var users []blockedby
-
-	if result := s.db.Table("blockings").Select("u0.username, u0.uuid").
-		Joins("JOIN users as u0 ON u0.id = blocker_id").
-		Where("user_id = ?", uid).Scan(&users); result.Error != nil {
-
-		return nil, result.Error
+	rows, err := tx.Query(ctx, `SELECT u0.uuid, u0.username FROM JOIN blockings, users AS u0 ON u0.id = blocker_id WHERE user_id = $1`, uid)
+	if err != nil {
+		return nil, err
 	}
-	log.Debug().Int("num-blocked-by", len(users)).Msg("found-blocked-by")
-	entUsers := make([]*entity.User, len(users))
-	for idx, u := range users {
-		entUsers[idx] = &entity.User{UUID: u.Uuid, Username: u.Username}
+	defer rows.Close()
+
+	var UUID string
+	var username string
+	entUsers := []*entity.User{}
+	for rows.Next() {
+		if err := rows.Scan(&UUID, &username); err != nil {
+			return nil, err
+		}
+		entUsers = append(entUsers, &entity.User{UUID: UUID, Username: username})
 	}
 	return entUsers, nil
 }
@@ -896,84 +692,70 @@ func (s *DBStore) GetFullBlocks(ctx context.Context, uid uint) ([]*entity.User, 
 	return plist, nil
 }
 
-// Username gets the username from the uuid.
-func (s *DBStore) Username(ctx context.Context, uuid string) (string, error) {
-	type u struct {
-		Username string
-	}
-	var user u
-
-	if result := s.db.Table("users").Select("username").
-		Where("uuid = ?", uuid).Scan(&user); result.Error != nil {
-
-		return "", result.Error
-	}
-	return user.Username, nil
-}
-
 func (s *DBStore) UsersByPrefix(ctx context.Context, prefix string) ([]*pb.BasicUser, error) {
-
-	type u struct {
-		Username string
-		UUID     string
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
 	}
+	defer tx.Rollback(ctx)
 
-	var us []u
-	// This is slightly egregious. Since importing the mod
-	// package would result in a circular dependency, we cannot
-	// get the string the correct way with ms.ModActionType_SUSPEND_ACCOUNT.String(),
-	// so we hard code it here.
-	lowerPrefix := strings.ToLower(prefix)
-	if result := s.db.Table("users").Select("username, uuid").
-		Where("substr(lower(username), 1, length(?)) = ? AND internal_bot = ? AND (actions IS NULL OR actions->'Current' IS NULL OR actions->'Current'->'SUSPEND_ACCOUNT' IS NULL OR actions->'Current'->'SUSPEND_ACCOUNT'->'end_time' IS NOT NULL)",
-			lowerPrefix, lowerPrefix, false).
-		Limit(20).
-		Scan(&us); result.Error != nil {
-		return nil, result.Error
+	// XXX: Fix this once user actions are migrated to the db
+	rows, err := tx.Query(ctx, `SELECT username, uuid FROM users WHERE "substr(lower(username), 1, length($1)) = $1 AND internal_bot IS FALSE AND (actions IS NULL OR actions->'Current' IS NULL OR actions->'Current'->'SUSPEND_ACCOUNT' IS NULL OR actions->'Current'->'SUSPEND_ACCOUNT'->'end_time' IS NOT NULL)"`, strings.ToLower(prefix))
+	if err != nil {
+		return nil, err
 	}
-	log.Debug().Str("prefix", prefix).Int("byprefix", len(us)).Msg("found-matches")
+	defer rows.Close()
 
-	users := make([]*pb.BasicUser, len(us))
-	for idx, u := range us {
-		users[idx] = &pb.BasicUser{Username: u.Username, Uuid: u.UUID}
+	var UUID string
+	var username string
+	users := []*pb.BasicUser{}
+	for rows.Next() {
+		if err := rows.Scan(&UUID, &username); err != nil {
+			return nil, err
+		}
+		users = append(users, &pb.BasicUser{Uuid: UUID, Username: username})
 	}
-	sort.Slice(users, func(i int, j int) bool {
-		return strings.ToLower(users[i].Username) < strings.ToLower(users[j].Username)
-	})
-
 	return users, nil
 }
 
 // List all user IDs.
 func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
-	var uids []struct{ Uuid string }
-	result := s.db.Table("users").Select("uuid").Scan(&uids)
-
-	ids := make([]string, len(uids))
-	for idx, uid := range uids {
-		ids[idx] = uid.Uuid
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
 	}
+	defer tx.Rollback(ctx)
 
-	return ids, result.Error
+	rows, err := tx.Query(ctx, `SELECT uuid FROM users`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	users := []string{}
+	var UUID string
+	for rows.Next() {
+		if err := rows.Scan(&UUID); err != nil {
+			return nil, err
+		}
+		users = append(users, UUID)
+	}
+	return users, nil
 }
 
 func (s *DBStore) ResetStats(ctx context.Context, uid string) error {
-	u, err := s.GetByUUID(ctx, uid)
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
 		return err
 	}
-	p := &profile{}
-	if result := s.db.Model(u).Related(p); result.Error != nil {
-		return fmt.Errorf("Error getting profile for %s", uid)
+	defer tx.Rollback(ctx)
+
+	err = common.Update(ctx, tx, []string{"stats"}, []interface{}{&entity.Stats{}}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByID, Value: uid})
+	if err != nil {
+		return err
 	}
 
-	emptyStats := &entity.Stats{}
-	bytes, err := json.Marshal(emptyStats)
-	if err != nil {
-		return err
-	}
-	err = s.db.Model(p).Update("stats", bytes).Error
-	if err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
 
@@ -981,22 +763,18 @@ func (s *DBStore) ResetStats(ctx context.Context, uid string) error {
 }
 
 func (s *DBStore) ResetRatings(ctx context.Context, uid string) error {
-	u, err := s.GetByUUID(ctx, uid)
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
 		return err
 	}
-	p := &profile{}
-	if result := s.db.Model(u).Related(p); result.Error != nil {
-		return fmt.Errorf("Error getting profile for %s", uid)
+	defer tx.Rollback(ctx)
+
+	err = common.Update(ctx, tx, []string{"ratings"}, []interface{}{&entity.Ratings{}}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByID, Value: uid})
+	if err != nil {
+		return err
 	}
 
-	emptyRatings := &entity.Ratings{}
-	bytes, err := json.Marshal(emptyRatings)
-	if err != nil {
-		return err
-	}
-	err = s.db.Model(p).Update("ratings", bytes).Error
-	if err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
 
@@ -1004,32 +782,18 @@ func (s *DBStore) ResetRatings(ctx context.Context, uid string) error {
 }
 
 func (s *DBStore) ResetStatsAndRatings(ctx context.Context, uid string) error {
-	u, err := s.GetByUUID(ctx, uid)
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
 		return err
 	}
-	p := &profile{}
-	if result := s.db.Model(u).Related(p); result.Error != nil {
-		return fmt.Errorf("Error getting profile for %s", uid)
-	}
+	defer tx.Rollback(ctx)
 
-	emptyRatings := &entity.Ratings{}
-	bytes, err := json.Marshal(emptyRatings)
-	if err != nil {
-		return err
-	}
-	err = s.db.Model(p).Update("ratings", bytes).Error
+	err = common.Update(ctx, tx, []string{"stats", "ratings"}, []interface{}{&entity.Stats{}, &entity.Ratings{}}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByUUID, Value: uid})
 	if err != nil {
 		return err
 	}
 
-	emptyStats := &entity.Stats{}
-	bytes, err = json.Marshal(emptyStats)
-	if err != nil {
-		return err
-	}
-	err = s.db.Model(p).Update("stats", bytes).Error
-	if err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
 
@@ -1037,22 +801,22 @@ func (s *DBStore) ResetStatsAndRatings(ctx context.Context, uid string) error {
 }
 
 func (s *DBStore) ResetPersonalInfo(ctx context.Context, uuid string) error {
-	u := &User{}
-	p := &profile{}
-
-	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
-		return result.Error
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
 	}
-	if result := s.db.Model(u).Related(p); result.Error != nil {
-		return result.Error
+	defer tx.Rollback(ctx)
+
+	err = common.Update(ctx, tx, []string{"first_name", "last_name", "about", "title", "avatar_url", "country_code"}, []string{"", "", "", "", "", ""}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByUUID, Value: uuid})
+	if err != nil {
+		return err
 	}
 
-	return s.db.Model(p).Update(map[string]interface{}{"first_name": "",
-		"last_name":    "",
-		"about":        "",
-		"title":        "",
-		"avatar_url":   "",
-		"country_code": ""}).Error
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *DBStore) ResetProfile(ctx context.Context, uid string) error {
@@ -1064,11 +828,22 @@ func (s *DBStore) ResetProfile(ctx context.Context, uid string) error {
 }
 
 func (s *DBStore) Count(ctx context.Context) (int64, error) {
-	var count int64
-	result := s.db.Model(&User{}).Count(&count)
-	if result.Error != nil {
-		return 0, result.Error
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return 0, err
 	}
+	defer tx.Rollback(ctx)
+
+	var count int64
+	err = tx.QueryRow(ctx, `SELECT COUNT(*) FROM users`).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, err
+	}
+
 	return count, nil
 }
 
@@ -1077,24 +852,37 @@ func (s *DBStore) CachedCount(ctx context.Context) int {
 }
 
 func (s *DBStore) GetModList(ctx context.Context) (*pb.GetModListResponse, error) {
-	var users []User
-	if result := s.db.
-		Where("is_admin = ?", true).Or("is_mod = ?", true).
-		Select([]string{"uuid", "is_admin", "is_mod"}).
-		Find(&users); result.Error != nil {
-		return nil, result.Error
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
 	}
+	defer tx.Rollback(ctx)
+
+	rows, err := tx.Query(ctx, `SELECT uuid, is_admin, is_mod FROM users WHERE is_admin IS TRUE OR is_mod IS TRUE`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
 	var adminUserIds []string
 	var modUserIds []string
+	var uuid string
+	var isAdmin bool
+	var isMod bool
+	for rows.Next() {
+		if err := rows.Scan(&uuid, isAdmin, isMod); err != nil {
+			return nil, err
+		}
+		if isAdmin {
+			adminUserIds = append(adminUserIds, uuid)
+		}
+		if isMod {
+			modUserIds = append(modUserIds, uuid)
+		}
+	}
 
-	for _, user := range users {
-		if user.IsAdmin {
-			adminUserIds = append(adminUserIds, user.UUID)
-		}
-		if user.IsMod {
-			modUserIds = append(modUserIds, user.UUID)
-		}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
 	}
 
 	return &pb.GetModListResponse{
