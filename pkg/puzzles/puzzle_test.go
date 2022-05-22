@@ -81,7 +81,7 @@ func TestPuzzlesMain(t *testing.T) {
 
 	ctx := context.Background()
 
-	rk := ratingKey(common.DefaultGameReq.Lexicon)
+	rk := entity.LexiconToPuzzleVariantKey(common.DefaultGameReq.Lexicon)
 
 	pcid, err := transactGetDBIDFromUUID(ctx, pool, "users", PuzzleCreatorUUID)
 	is.NoErr(err)
@@ -121,8 +121,10 @@ func TestPuzzlesMain(t *testing.T) {
 	is.Equal(hist.Uid, "")
 	is.True(firstAttemptTime.Equal(time.Time{}))
 	is.True(lastAttemptTime.Equal(time.Time{}))
-	is.True(newUserRating == nil)
-	is.True(newPuzzleRating == nil)
+	is.True(newPuzzleRating != nil)
+	is.True(newUserRating != nil)
+	is.True(common.WithinEpsilon(newPuzzleRating.Rating, commondb.InitialRating.Rating))
+	is.True(common.WithinEpsilon(newUserRating.Rating, commondb.InitialRating.Rating))
 
 	userIsCorrect, status, correctAnswer, gameId, _, _, attempts, _, _, newPuzzleRating, newUserRating, err := SubmitAnswer(ctx, ps, PuzzlerUUID, puzzleUUID, &ipc.ClientGameplayEvent{}, false)
 	is.NoErr(err)
@@ -343,7 +345,7 @@ func TestPuzzlesMain(t *testing.T) {
 	is.True(answersAreEqual(correctCGE, answerFromGet))
 
 	// The status should be the same for an incorrect answer
-	correctAnswer.PlayedTiles += "Z"
+	correctAnswer.Type = pb.GameEvent_EXCHANGE
 	userIsCorrect, status, correctAnswer, gameId, _, _, attempts, _, _, _, _, err = SubmitAnswer(ctx, ps, PuzzlerUUID, puzzleUUID, gameEventToClientGameplayEvent(correctAnswer), false)
 	is.NoErr(err)
 	is.True(!userIsCorrect)
@@ -900,13 +902,8 @@ func getUserRating(ctx context.Context, pool *pgxpool.Pool, userUUID string, rk 
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
-	initialRating := &entity.SingleRating{
-		Rating:            float64(glicko.InitialRating),
-		RatingDeviation:   float64(glicko.InitialRatingDeviation),
-		Volatility:        glicko.InitialVolatility,
-		LastGameTimestamp: time.Now().Unix()}
 
-	userRating, err := commondb.GetUserRating(ctx, tx, id, rk, initialRating)
+	userRating, err := commondb.GetUserRating(ctx, tx, id, rk)
 
 	if err != nil {
 		return nil, err

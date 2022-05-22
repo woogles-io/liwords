@@ -11,7 +11,6 @@ import (
 
 	commontest "github.com/domino14/liwords/pkg/common"
 	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/glicko"
 	"github.com/domino14/liwords/pkg/stores/common"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/liwords/rpc/api/proto/puzzle_service"
@@ -166,11 +165,8 @@ func (s *DBStore) CreatePuzzle(ctx context.Context, gameUUID string, turnNumber 
 		authorId.Valid = true
 	}
 
-	newRating := &entity.SingleRating{
-		Rating:            float64(glicko.InitialRating),
-		RatingDeviation:   float64(glicko.InitialRatingDeviation),
-		Volatility:        glicko.InitialVolatility,
-		LastGameTimestamp: time.Now().Unix()}
+	newRating := common.InitialRating
+	newRating.LastGameTimestamp = time.Now().Unix()
 
 	uuid := shortuuid.New()
 
@@ -807,13 +803,7 @@ func getUserRating(ctx context.Context, tx pgx.Tx, userID string, ratingKey enti
 		return nil, err
 	}
 
-	initialRating := &entity.SingleRating{
-		Rating:            float64(glicko.InitialRating),
-		RatingDeviation:   float64(glicko.InitialRatingDeviation),
-		Volatility:        glicko.InitialVolatility,
-		LastGameTimestamp: time.Now().Unix()}
-
-	sr, err := common.GetUserRating(ctx, tx, uid, ratingKey, initialRating)
+	sr, err := common.GetUserRating(ctx, tx, uid, ratingKey)
 	if err != nil {
 		return nil, err
 	}
@@ -840,7 +830,17 @@ func getAttempts(ctx context.Context, tx pgx.Tx, userUUID string, puzzleUUID str
 
 	err = tx.QueryRow(ctx, `SELECT attempts, correct, created_at, updated_at, new_puzzle_rating, new_user_rating FROM puzzle_attempts WHERE user_id = $1 AND puzzle_id = $2`, uid, pid).Scan(&attempts, correct, &firstAttemptTime, &lastAttemptTime, &newPuzzleRating, &newUserRating)
 	if err == pgx.ErrNoRows {
-		return false, false, 0, nil, time.Time{}, time.Time{}, nil, nil, nil
+		// If there are no attempts, return the current ratings
+		var lexicon string
+		err = tx.QueryRow(ctx, `SELECT rating, lexicon FROM puzzles WHERE id = $1`, pid).Scan(&newPuzzleRating, &lexicon)
+		if err != nil {
+			return false, false, 0, nil, time.Time{}, time.Time{}, nil, nil, err
+		}
+		newUserRating, err = common.GetUserRating(ctx, tx, uid, entity.LexiconToPuzzleVariantKey(lexicon))
+		if err != nil {
+			return false, false, 0, nil, time.Time{}, time.Time{}, nil, nil, err
+		}
+		return false, false, 0, nil, time.Time{}, time.Time{}, newPuzzleRating, newUserRating, err
 	}
 	if err != nil {
 		return false, false, -1, nil, time.Time{}, time.Time{}, nil, nil, err

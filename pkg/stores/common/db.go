@@ -3,12 +3,14 @@ package common
 import (
 	"context"
 	"fmt"
+	"time"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/glicko"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"google.golang.org/protobuf/proto"
 )
@@ -23,6 +25,12 @@ var RepeatableReadTxOptions = pgx.TxOptions{
 	IsoLevel:       pgx.RepeatableRead,
 	AccessMode:     pgx.ReadWrite,
 	DeferrableMode: pgx.Deferrable, // not used for this isolevel/access mode
+}
+
+var InitialRating = &entity.SingleRating{
+	Rating:          float64(glicko.InitialRating),
+	RatingDeviation: float64(glicko.InitialRatingDeviation),
+	Volatility:      glicko.InitialVolatility,
 }
 
 type RowIterator interface {
@@ -99,7 +107,7 @@ func InitializeUserRating(ctx context.Context, tx pgx.Tx, userId int64) error {
 	return err
 }
 
-func GetUserRating(ctx context.Context, tx pgx.Tx, userId int64, ratingKey entity.VariantKey, defaultRating *entity.SingleRating) (*entity.SingleRating, error) {
+func GetUserRating(ctx context.Context, tx pgx.Tx, userId int64, ratingKey entity.VariantKey) (*entity.SingleRating, error) {
 	err := InitializeUserRating(ctx, tx, userId)
 	if err != nil {
 		return nil, err
@@ -115,7 +123,8 @@ func GetUserRating(ctx context.Context, tx pgx.Tx, userId int64, ratingKey entit
 	}
 
 	if sr == nil {
-		sr = defaultRating
+		sr = InitialRating
+		sr.LastGameTimestamp = time.Now().Unix()
 		err = UpdateUserRating(ctx, tx, userId, ratingKey, sr)
 		if err != nil {
 			return nil, err

@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/domino14/liwords/pkg/common"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/glicko"
@@ -96,7 +95,7 @@ func GetNextPuzzleId(ctx context.Context, ps PuzzleStore, userId string, lexicon
 }
 
 func GetNextClosestRatingPuzzleId(ctx context.Context, ps PuzzleStore, userId string, lexicon string) (string, error) {
-	return ps.GetNextClosestRatingPuzzleId(ctx, userId, lexicon, ratingKey(lexicon))
+	return ps.GetNextClosestRatingPuzzleId(ctx, userId, lexicon, entity.LexiconToPuzzleVariantKey(lexicon))
 }
 
 func GetPuzzle(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID string) (*macondopb.GameHistory, string, int32, *bool, time.Time, time.Time, *entity.SingleRating, *entity.SingleRating, error) {
@@ -144,7 +143,7 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID
 		Int32("attempts", attempts).Msg("equal")
 	var newPuzzleSingleRating *entity.SingleRating
 	var newUserSingleRating *entity.SingleRating
-	rk := ratingKey(req.Lexicon)
+	rk := entity.LexiconToPuzzleVariantKey(req.Lexicon)
 
 	if !rated {
 		// Get the user ratings
@@ -321,8 +320,4 @@ func uniqueSingleTileKey(ge *macondopb.GameEvent) int {
 	// A unique, fast to compute key for this play.
 	return row + alphabet.MaxAlphabetSize*col +
 		alphabet.MaxAlphabetSize*alphabet.MaxAlphabetSize*int(tile)
-}
-
-func ratingKey(lexicon string) entity.VariantKey {
-	return entity.ToVariantKey(lexicon, common.PuzzleVariant, entity.TCCorres)
 }
