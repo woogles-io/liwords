@@ -85,8 +85,6 @@ export const PuzzleInfo = React.memo((props: Props) => {
     dateSolved,
     loadNewPuzzle,
     showSolution,
-    puzzleRating,
-    userRating,
   } = props;
 
   // TODO: should be determined on the back end and not hardcoded
@@ -183,72 +181,47 @@ export const PuzzleInfo = React.memo((props: Props) => {
   ) : (
     <span>unknown player</span>
   );
-  const playerInfo = (
+  const gamePlayersInfo = (
     <span className="player-title">
       Game played by {player1NameDisplay} vs {player2NameDisplay}
     </span>
   );
-  if (solved === PuzzleStatus.UNANSWERED) {
-    return (
-      <Card className="puzzle-info" title={`Puzzle Mode`} extra={puzzleType}>
-        <div className="puzzle-details">
-          <p className="game-settings">{`${
-            variantName || 'classic'
-          } • ${lexicon}`}</p>
-          <p className="instructions">
-            There is a star play in this position that is significantly better
-            than the second-best play. What would HastyBot play?
-          </p>
-          <div className="progress">{attemptsText}</div>
-          <Hints
-            puzzleID={props.puzzleID}
-            solved={solved}
-            attempts={attempts}
-          />
-          {!!puzzleRating && !!userRating && (
-            <>
-              <p>The puzzle is now rated {puzzleRating}.</p>
-              <p>Your puzzle rating is now {userRating}.</p>
-            </>
-          )}
-          {actions}
-        </div>
-      </Card>
-    );
-  }
+  const stillSolving = solved === PuzzleStatus.UNANSWERED;
   return (
     <Card className="puzzle-info" title={`Puzzle Mode`} extra={puzzleType}>
       <div className="puzzle-details">
-        {solved !== PuzzleStatus.UNANSWERED && renderStars(score)}
-        <p>{playerInfo}</p>
+        {!stillSolving && renderStars(score)}
+        <p>{gamePlayersInfo}</p>
         <p>
           {formattedGameDate}
           {gameLink}
         </p>
-        <p className="game-settings">{`${
-          timeCtrlToDisplayName(
+        {!stillSolving && (
+          <p className="game-settings">{`${
+            timeCtrlToDisplayName(
+              initial_time_seconds || 0,
+              increment_seconds || 0,
+              max_overtime_minutes || 0
+            )[0]
+          } ${timeToString(
             initial_time_seconds || 0,
             increment_seconds || 0,
             max_overtime_minutes || 0
-          )[0]
-        } ${timeToString(
-          initial_time_seconds || 0,
-          increment_seconds || 0,
-          max_overtime_minutes || 0
-        )} • ${variantName || 'classic'} • ${lexicon}`}</p>
+          )} • ${variantName || 'classic'} • ${lexicon}`}</p>
+        )}
         <div>
           {challengeDisplay}
           {challengeDisplay && ratingMode ? ' • ' : ''}
           {ratingMode}
         </div>
-        <Hints puzzleID={props.puzzleID} solved={solved} attempts={attempts} />
-        <div className="progress">{attemptsText}</div>
-        {!!puzzleRating && !!userRating && (
-          <>
-            <p>The puzzle is now rated {puzzleRating}.</p>
-            <p>Your puzzle rating is now {userRating}.</p>
-          </>
+        {stillSolving && (
+          <Hints
+            puzzleID={props.puzzleID}
+            solved={solved}
+            attempts={attempts}
+          />
         )}
+        <div className="progress">{attemptsText}</div>
         {actions}
       </div>
     </Card>

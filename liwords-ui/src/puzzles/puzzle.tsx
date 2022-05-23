@@ -27,12 +27,8 @@ import {
   PuzzleRequest,
   PuzzleResponse,
   PuzzleStatus,
-  NextPuzzleIdRequest,
-  NextPuzzleIdResponse,
   SubmissionRequest,
   SubmissionResponse,
-  StartPuzzleIdRequest,
-  StartPuzzleIdResponse,
   NextClosestRatingPuzzleIdRequest,
   NextClosestRatingPuzzleIdResponse,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
@@ -66,6 +62,7 @@ import { getWordsFormed } from '../utils/cwgame/tile_placement';
 import axios from 'axios';
 import { LearnContextProvider } from '../learn/learn_overlay';
 import { PuzzleShareButton } from './puzzle_share';
+import { RatingsCard } from './ratings';
 
 const doNothing = () => {};
 
@@ -113,6 +110,9 @@ export const SinglePuzzle = (props: Props) => {
   const { useState } = useMountedState();
   const { puzzleID } = useParams();
   const [puzzleInfo, setPuzzleInfo] = useState<PuzzleInfo>(defaultPuzzleInfo);
+  const [initialUserRating, setInitialUserRating] = useState<
+    number | undefined
+  >(undefined);
   const [userLexicon, setUserLexicon] = useState<string | undefined>(
     localStorage?.getItem('puzzleLexicon') || undefined
   );
@@ -176,7 +176,6 @@ export const SinglePuzzle = (props: Props) => {
       const req = new NextClosestRatingPuzzleIdRequest();
       const respType = NextClosestRatingPuzzleIdResponse;
       const method = 'GetNextClosestRatingPuzzleId';
-
       req.setLexicon(userLexicon);
       try {
         const resp = await postProto(
@@ -418,6 +417,7 @@ export const SinglePuzzle = (props: Props) => {
           actionType: ActionType.SetupStaticPosition,
           payload: gh,
         });
+        console.log('got puzzle', resp.toObject());
         setGameHistory(gh);
         console.log('got game history', gh.toObject());
         const answerResponse = resp.getAnswer();
@@ -443,6 +443,7 @@ export const SinglePuzzle = (props: Props) => {
           puzzleRating: answerResponse.getNewPuzzleRating(),
           userRating: answerResponse.getNewUserRating(),
         });
+        setInitialUserRating(answerResponse.getNewUserRating());
         setPendingSolution(
           answerResponse.getStatus() !== PuzzleStatus.UNANSWERED
         );
@@ -580,7 +581,6 @@ export const SinglePuzzle = (props: Props) => {
         )}
         {!!puzzleInfo.puzzleRating && !!puzzleInfo.userRating && (
           <>
-            <p>The puzzle is now rated {puzzleInfo.puzzleRating}.</p>
             <p>Your puzzle rating is now {puzzleInfo.userRating}.</p>
           </>
         )}
@@ -675,7 +675,6 @@ export const SinglePuzzle = (props: Props) => {
         </p>
         {!!puzzleInfo.puzzleRating && !!puzzleInfo.userRating && (
           <>
-            <p>The puzzle is now rated {puzzleInfo.puzzleRating}.</p>
             <p>Your puzzle rating is now {puzzleInfo.userRating}.</p>
           </>
         )}
@@ -745,6 +744,11 @@ export const SinglePuzzle = (props: Props) => {
         </div>
 
         <div className="data-area" id="right-sidebar">
+          <RatingsCard
+            userRating={puzzleInfo.userRating || initialUserRating}
+            puzzleRating={puzzleInfo.puzzleRating}
+            initialUserRating={initialUserRating}
+          />
           <PuzzleInfoWidget
             solved={puzzleInfo.solved}
             gameDate={puzzleInfo.gameDate}
@@ -763,8 +767,6 @@ export const SinglePuzzle = (props: Props) => {
             loadNewPuzzle={loadNewPuzzle}
             puzzleID={puzzleID}
             showSolution={showSolution}
-            userRating={puzzleInfo.userRating}
-            puzzleRating={puzzleInfo.puzzleRating}
           />
           {/* alphabet && (
             <Pool

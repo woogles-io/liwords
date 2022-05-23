@@ -34,10 +34,11 @@ export const PettableAvatar = ({ children }: { children: React.ReactNode }) => {
 };
 
 type AvatarProps = {
-  player: Partial<PlayerMetadata> | undefined;
+  player?: Partial<PlayerMetadata>;
   username?: string;
   withTooltip?: boolean;
   editable?: boolean;
+  icon?: React.ReactNode;
 };
 
 // XXX: AvatarProps should probably not be based on game info's struct.
@@ -83,7 +84,8 @@ export const PlayerAvatar = (props: AvatarProps) => {
 
   const renderAvatar = (
     <div className="player-avatar" style={avatarStyle}>
-      {!avatarUrl
+      {!avatarUrl && props.icon}
+      {!avatarUrl && !props.icon
         ? fixedCharAt(
             profile?.getFullName() || props.player?.nickname || username || '?',
             0,
