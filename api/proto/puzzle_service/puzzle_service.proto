@@ -125,6 +125,7 @@ message PuzzleJobLogsResponse {
 service PuzzleService {
   rpc GetStartPuzzleId(StartPuzzleIdRequest) returns (StartPuzzleIdResponse);
   rpc GetNextPuzzleId(NextPuzzleIdRequest) returns (NextPuzzleIdResponse);
+  rpc GetNextClosestRatingPuzzleId(NextClosestRatingPuzzleIdRequest) returns (NextClosestRatingPuzzleIdResponse);
   rpc GetPuzzle(PuzzleRequest) returns (PuzzleResponse);
   rpc SubmitAnswer(SubmissionRequest) returns (SubmissionResponse);
   // GetPuzzleAnswer just gets the answer of the puzzle without a submission.
