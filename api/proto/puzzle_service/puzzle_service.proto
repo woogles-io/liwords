@@ -6,17 +6,35 @@ import "macondo/api/proto/macondo/macondo.proto";
 import "google/protobuf/timestamp.proto";
 import "api/proto/ipc/omgwords.proto";
 
+enum PuzzleQueryResult {
+  UNSEEN = 0;
+  UNRATED = 1;
+  UNFINISHED = 2;
+  EXHAUSTED = 3;
+  RANDOM = 4;
+  START = 5;
+}
+
 message StartPuzzleIdRequest { string lexicon = 1; }
 
-message StartPuzzleIdResponse { string puzzle_id = 1; }
+message StartPuzzleIdResponse {
+  string puzzle_id = 1;
+  PuzzleQueryResult query_result = 2;
+}
 
 message NextPuzzleIdRequest { string lexicon = 1; }
 
-message NextPuzzleIdResponse { string puzzle_id = 1; }
+message NextPuzzleIdResponse {
+  string puzzle_id = 1;
+  PuzzleQueryResult query_result = 2;
+}
 
 message NextClosestRatingPuzzleIdRequest { string lexicon = 1; }
 
-message NextClosestRatingPuzzleIdResponse { string puzzle_id = 1; }
+message NextClosestRatingPuzzleIdResponse {
+  string puzzle_id = 1;
+  PuzzleQueryResult query_result = 2;
+}
 
 message PuzzleRequest { string puzzle_id = 1; }
 

@@ -44,27 +44,27 @@ func NewPuzzleService(ps PuzzleStore, us user.Store, k, c, td string) *PuzzleSer
 }
 
 func (ps *PuzzleService) GetStartPuzzleId(ctx context.Context, req *pb.StartPuzzleIdRequest) (*pb.StartPuzzleIdResponse, error) {
-	puzzleId, err := GetStartPuzzleId(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Lexicon)
+	puzzleId, pqr, err := GetStartPuzzleId(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Lexicon)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.StartPuzzleIdResponse{PuzzleId: puzzleId}, nil
+	return &pb.StartPuzzleIdResponse{PuzzleId: puzzleId, QueryResult: pqr}, nil
 }
 
 func (ps *PuzzleService) GetNextPuzzleId(ctx context.Context, req *pb.NextPuzzleIdRequest) (*pb.NextPuzzleIdResponse, error) {
-	puzzleId, err := GetNextPuzzleId(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Lexicon)
+	puzzleId, pqr, err := GetNextPuzzleId(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Lexicon)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.NextPuzzleIdResponse{PuzzleId: puzzleId}, nil
+	return &pb.NextPuzzleIdResponse{PuzzleId: puzzleId, QueryResult: pqr}, nil
 }
 
 func (ps *PuzzleService) GetNextClosestRatingPuzzleId(ctx context.Context, req *pb.NextClosestRatingPuzzleIdRequest) (*pb.NextClosestRatingPuzzleIdResponse, error) {
-	puzzleId, err := GetNextClosestRatingPuzzleId(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Lexicon)
+	puzzleId, pqr, err := GetNextClosestRatingPuzzleId(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Lexicon)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.NextClosestRatingPuzzleIdResponse{PuzzleId: puzzleId}, nil
+	return &pb.NextClosestRatingPuzzleIdResponse{PuzzleId: puzzleId, QueryResult: pqr}, nil
 }
 
 func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *pb.PuzzleRequest) (*pb.PuzzleResponse, error) {

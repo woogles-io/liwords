@@ -34,6 +34,7 @@ goog.exportSymbol('proto.puzzle_service.PuzzleGenerationJobRequest', null, globa
 goog.exportSymbol('proto.puzzle_service.PuzzleJobLog', null, global);
 goog.exportSymbol('proto.puzzle_service.PuzzleJobLogsRequest', null, global);
 goog.exportSymbol('proto.puzzle_service.PuzzleJobLogsResponse', null, global);
+goog.exportSymbol('proto.puzzle_service.PuzzleQueryResult', null, global);
 goog.exportSymbol('proto.puzzle_service.PuzzleRequest', null, global);
 goog.exportSymbol('proto.puzzle_service.PuzzleResponse', null, global);
 goog.exportSymbol('proto.puzzle_service.PuzzleStatus', null, global);
@@ -646,7 +647,8 @@ proto.puzzle_service.StartPuzzleIdResponse.prototype.toObject = function(opt_inc
  */
 proto.puzzle_service.StartPuzzleIdResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    puzzleId: jspb.Message.getFieldWithDefault(msg, 1, "")
+    puzzleId: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    queryResult: jspb.Message.getFieldWithDefault(msg, 2, 0)
   };
 
   if (includeInstance) {
@@ -687,6 +689,10 @@ proto.puzzle_service.StartPuzzleIdResponse.deserializeBinaryFromReader = functio
       var value = /** @type {string} */ (reader.readString());
       msg.setPuzzleId(value);
       break;
+    case 2:
+      var value = /** @type {!proto.puzzle_service.PuzzleQueryResult} */ (reader.readEnum());
+      msg.setQueryResult(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -723,6 +729,13 @@ proto.puzzle_service.StartPuzzleIdResponse.serializeBinaryToWriter = function(me
       f
     );
   }
+  f = message.getQueryResult();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      2,
+      f
+    );
+  }
 };
 
 
@@ -741,6 +754,24 @@ proto.puzzle_service.StartPuzzleIdResponse.prototype.getPuzzleId = function() {
  */
 proto.puzzle_service.StartPuzzleIdResponse.prototype.setPuzzleId = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
+};
+
+
+/**
+ * optional PuzzleQueryResult query_result = 2;
+ * @return {!proto.puzzle_service.PuzzleQueryResult}
+ */
+proto.puzzle_service.StartPuzzleIdResponse.prototype.getQueryResult = function() {
+  return /** @type {!proto.puzzle_service.PuzzleQueryResult} */ (jspb.Message.getFieldWithDefault(this, 2, 0));
+};
+
+
+/**
+ * @param {!proto.puzzle_service.PuzzleQueryResult} value
+ * @return {!proto.puzzle_service.StartPuzzleIdResponse} returns this
+ */
+proto.puzzle_service.StartPuzzleIdResponse.prototype.setQueryResult = function(value) {
+  return jspb.Message.setProto3EnumField(this, 2, value);
 };
 
 
@@ -906,7 +937,8 @@ proto.puzzle_service.NextPuzzleIdResponse.prototype.toObject = function(opt_incl
  */
 proto.puzzle_service.NextPuzzleIdResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    puzzleId: jspb.Message.getFieldWithDefault(msg, 1, "")
+    puzzleId: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    queryResult: jspb.Message.getFieldWithDefault(msg, 2, 0)
   };
 
   if (includeInstance) {
@@ -947,6 +979,10 @@ proto.puzzle_service.NextPuzzleIdResponse.deserializeBinaryFromReader = function
       var value = /** @type {string} */ (reader.readString());
       msg.setPuzzleId(value);
       break;
+    case 2:
+      var value = /** @type {!proto.puzzle_service.PuzzleQueryResult} */ (reader.readEnum());
+      msg.setQueryResult(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -983,6 +1019,13 @@ proto.puzzle_service.NextPuzzleIdResponse.serializeBinaryToWriter = function(mes
       f
     );
   }
+  f = message.getQueryResult();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      2,
+      f
+    );
+  }
 };
 
 
@@ -1001,6 +1044,24 @@ proto.puzzle_service.NextPuzzleIdResponse.prototype.getPuzzleId = function() {
  */
 proto.puzzle_service.NextPuzzleIdResponse.prototype.setPuzzleId = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
+};
+
+
+/**
+ * optional PuzzleQueryResult query_result = 2;
+ * @return {!proto.puzzle_service.PuzzleQueryResult}
+ */
+proto.puzzle_service.NextPuzzleIdResponse.prototype.getQueryResult = function() {
+  return /** @type {!proto.puzzle_service.PuzzleQueryResult} */ (jspb.Message.getFieldWithDefault(this, 2, 0));
+};
+
+
+/**
+ * @param {!proto.puzzle_service.PuzzleQueryResult} value
+ * @return {!proto.puzzle_service.NextPuzzleIdResponse} returns this
+ */
+proto.puzzle_service.NextPuzzleIdResponse.prototype.setQueryResult = function(value) {
+  return jspb.Message.setProto3EnumField(this, 2, value);
 };
 
 
@@ -1166,7 +1227,8 @@ proto.puzzle_service.NextClosestRatingPuzzleIdResponse.prototype.toObject = func
  */
 proto.puzzle_service.NextClosestRatingPuzzleIdResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    puzzleId: jspb.Message.getFieldWithDefault(msg, 1, "")
+    puzzleId: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    queryResult: jspb.Message.getFieldWithDefault(msg, 2, 0)
   };
 
   if (includeInstance) {
@@ -1207,6 +1269,10 @@ proto.puzzle_service.NextClosestRatingPuzzleIdResponse.deserializeBinaryFromRead
       var value = /** @type {string} */ (reader.readString());
       msg.setPuzzleId(value);
       break;
+    case 2:
+      var value = /** @type {!proto.puzzle_service.PuzzleQueryResult} */ (reader.readEnum());
+      msg.setQueryResult(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -1243,6 +1309,13 @@ proto.puzzle_service.NextClosestRatingPuzzleIdResponse.serializeBinaryToWriter =
       f
     );
   }
+  f = message.getQueryResult();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      2,
+      f
+    );
+  }
 };
 
 
@@ -1261,6 +1334,24 @@ proto.puzzle_service.NextClosestRatingPuzzleIdResponse.prototype.getPuzzleId = f
  */
 proto.puzzle_service.NextClosestRatingPuzzleIdResponse.prototype.setPuzzleId = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
+};
+
+
+/**
+ * optional PuzzleQueryResult query_result = 2;
+ * @return {!proto.puzzle_service.PuzzleQueryResult}
+ */
+proto.puzzle_service.NextClosestRatingPuzzleIdResponse.prototype.getQueryResult = function() {
+  return /** @type {!proto.puzzle_service.PuzzleQueryResult} */ (jspb.Message.getFieldWithDefault(this, 2, 0));
+};
+
+
+/**
+ * @param {!proto.puzzle_service.PuzzleQueryResult} value
+ * @return {!proto.puzzle_service.NextClosestRatingPuzzleIdResponse} returns this
+ */
+proto.puzzle_service.NextClosestRatingPuzzleIdResponse.prototype.setQueryResult = function(value) {
+  return jspb.Message.setProto3EnumField(this, 2, value);
 };
 
 
@@ -4306,6 +4397,18 @@ proto.puzzle_service.PuzzleJobLogsResponse.prototype.clearLogsList = function() 
   return this.setLogsList([]);
 };
 
+
+/**
+ * @enum {number}
+ */
+proto.puzzle_service.PuzzleQueryResult = {
+  UNSEEN: 0,
+  UNRATED: 1,
+  UNFINISHED: 2,
+  EXHAUSTED: 3,
+  RANDOM: 4,
+  START: 5
+};
 
 /**
  * @enum {number}
