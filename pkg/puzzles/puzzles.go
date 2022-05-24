@@ -11,7 +11,6 @@ import (
 	"github.com/domino14/liwords/pkg/glicko"
 	"github.com/domino14/liwords/pkg/utilities"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
-	"github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	"github.com/domino14/macondo/alphabet"
 
@@ -27,9 +26,9 @@ type PuzzleStore interface {
 	UpdateGenerationLogStatus(ctx context.Context, genId int, fulfilled bool, err error) error
 	CreatePuzzle(ctx context.Context, gameID string, turnNumber int32, answer *macondopb.GameEvent, authorID string,
 		lexicon string, beforeText string, afterText string, tags []macondopb.PuzzleTag, reqId int, bucketIndex int32) error
-	GetStartPuzzleId(ctx context.Context, userId string, lexicon string, ratingKey entity.VariantKey) (string, puzzle_service.PuzzleQueryResult, error)
-	GetNextPuzzleId(ctx context.Context, userId string, lexicon string) (string, puzzle_service.PuzzleQueryResult, error)
-	GetNextClosestRatingPuzzleId(ctx context.Context, userId string, lexicon string, ratingKey entity.VariantKey) (string, puzzle_service.PuzzleQueryResult, error)
+	GetStartPuzzleId(ctx context.Context, userId string, lexicon string, ratingKey entity.VariantKey) (string, pb.PuzzleQueryResult, error)
+	GetNextPuzzleId(ctx context.Context, userId string, lexicon string) (string, pb.PuzzleQueryResult, error)
+	GetNextClosestRatingPuzzleId(ctx context.Context, userId string, lexicon string, ratingKey entity.VariantKey) (string, pb.PuzzleQueryResult, error)
 	GetPuzzle(ctx context.Context, userId string, puzzleUUID string) (*macondopb.GameHistory, string, int32, *bool, time.Time, time.Time, *entity.SingleRating, *entity.SingleRating, error)
 	GetPreviousPuzzleId(ctx context.Context, userId string, puzzleUUID string) (string, error)
 	GetAnswer(ctx context.Context, puzzleUUID string) (*macondopb.GameEvent, string, int32, string, *ipc.GameRequest, *entity.SingleRating, error)
@@ -87,15 +86,15 @@ func CreatePuzzlesFromGame(ctx context.Context, req *macondopb.PuzzleGenerationR
 	return pzls, nil
 }
 
-func GetStartPuzzleId(ctx context.Context, ps PuzzleStore, userId string, lexicon string) (string, puzzle_service.PuzzleQueryResult, error) {
+func GetStartPuzzleId(ctx context.Context, ps PuzzleStore, userId string, lexicon string) (string, pb.PuzzleQueryResult, error) {
 	return ps.GetStartPuzzleId(ctx, userId, lexicon, entity.LexiconToPuzzleVariantKey(lexicon))
 }
 
-func GetNextPuzzleId(ctx context.Context, ps PuzzleStore, userId string, lexicon string) (string, puzzle_service.PuzzleQueryResult, error) {
+func GetNextPuzzleId(ctx context.Context, ps PuzzleStore, userId string, lexicon string) (string, pb.PuzzleQueryResult, error) {
 	return ps.GetNextPuzzleId(ctx, userId, lexicon)
 }
 
-func GetNextClosestRatingPuzzleId(ctx context.Context, ps PuzzleStore, userId string, lexicon string) (string, puzzle_service.PuzzleQueryResult, error) {
+func GetNextClosestRatingPuzzleId(ctx context.Context, ps PuzzleStore, userId string, lexicon string) (string, pb.PuzzleQueryResult, error) {
 	return ps.GetNextClosestRatingPuzzleId(ctx, userId, lexicon, entity.LexiconToPuzzleVariantKey(lexicon))
 }
 
