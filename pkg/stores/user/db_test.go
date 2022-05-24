@@ -12,6 +12,7 @@ import (
 
 	commontest "github.com/domino14/liwords/pkg/common"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/glicko"
 	"github.com/domino14/liwords/pkg/stores/common"
 	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
 )
@@ -139,7 +140,7 @@ func TestSet(t *testing.T) {
 	mina, err := ustore.Get(ctx, "mina")
 	is.NoErr(err)
 	variantKey := "burrito"
-	newCesarRating := 1500.0
+	newCesarRating := 500.0
 	newCesarSingleRating := &entity.SingleRating{
 		Rating:            newCesarRating,
 		RatingDeviation:   350.0,
@@ -199,12 +200,58 @@ func TestSet(t *testing.T) {
 
 	err = ustore.ResetStats(ctx, uuid)
 	is.NoErr(err)
+	actualCesarStats, err = common.GetUserStatsWithPool(ctx, pool, cesarDBID, entity.VariantKey(variantKey))
+	is.NoErr(err)
+	is.Equal(actualCesarStats.PlayerOneId, "")
 
-	// reset stats
-	// reset ratings
-	// reset stats and ratings
-	// reset perfonsl inform
-	// reset profile (stats, ratings, and personal info)
+	err = ustore.ResetRatings(ctx, uuid)
+	is.NoErr(err)
+	actualCesarRating, err = common.GetUserRatingWithPool(ctx, pool, cesarDBID, entity.VariantKey(variantKey), &entity.SingleRating{})
+	is.NoErr(err)
+	is.True(commontest.WithinEpsilon(actualCesarRating.Rating, float64(glicko.InitialRating)))
+
+	err = ustore.ResetStatsAndRatings(ctx, uuid)
+	is.NoErr(err)
+	actualMinaStats, err = common.GetUserStatsWithPool(ctx, pool, minaDBID, entity.VariantKey(variantKey))
+	is.NoErr(err)
+	is.Equal(actualMinaStats.PlayerOneId, "")
+	actualMinaRating, err = common.GetUserRatingWithPool(ctx, pool, minaDBID, entity.VariantKey(variantKey), &entity.SingleRating{})
+	is.NoErr(err)
+	is.True(commontest.WithinEpsilon(actualMinaRating.Rating, float64(glicko.InitialRating)))
+
+	err = ustore.ResetPersonalInfo(ctx, uuid)
+	is.NoErr(err)
+	cesar, err = ustore.Get(ctx, "cesar")
+	is.NoErr(err)
+	is.Equal(cesar.Email, "")
+	is.Equal(cesar.Profile.FirstName, "")
+	is.Equal(cesar.Profile.LastName, "")
+	is.Equal(cesar.Profile.CountryCode, "")
+	is.Equal(cesar.Profile.About, "")
+
+	err = ustore.SetRatings(ctx, uuid, mina.UUID, entity.VariantKey(variantKey), newCesarSingleRating, newMinaSingleRating)
+	is.NoErr(err)
+	err = ustore.SetStats(ctx, uuid, mina.UUID, entity.VariantKey(variantKey), newCesarStats, newMinaStats)
+	is.NoErr(err)
+
+	err = ustore.ResetProfile(ctx, mina.UUID)
+	is.NoErr(err)
+
+	actualMinaStats, err = common.GetUserStatsWithPool(ctx, pool, minaDBID, entity.VariantKey(variantKey))
+	is.NoErr(err)
+	is.Equal(actualMinaStats.PlayerOneId, "")
+
+	actualMinaRating, err = common.GetUserRatingWithPool(ctx, pool, minaDBID, entity.VariantKey(variantKey), &entity.SingleRating{})
+	is.NoErr(err)
+	is.True(commontest.WithinEpsilon(actualMinaRating.Rating, float64(glicko.InitialRating)))
+
+	mina, err = ustore.Get(ctx, "mina")
+	is.NoErr(err)
+	is.Equal(mina.Email, "")
+	is.Equal(mina.Profile.FirstName, "")
+	is.Equal(mina.Profile.LastName, "")
+	is.Equal(mina.Profile.CountryCode, "")
+	is.Equal(mina.Profile.About, "")
 }
 
 func TestAddFollower(t *testing.T) {
