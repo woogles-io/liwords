@@ -110,7 +110,11 @@ func (ec *evtConsumer) consumeEventChan(ctx context.Context,
 }
 
 func userStore() (pkguser.Store, *user.DBStore) {
-	tmp, err := user.NewDBStore(common.TestingPostgresConnDSN())
+	pool, err := common.OpenTestingDB()
+	if err != nil {
+		panic(err)
+	}
+	tmp, err := user.NewDBStore(pool)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}

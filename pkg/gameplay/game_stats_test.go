@@ -57,7 +57,11 @@ var gameEndedEventObj = &pb.GameEndedEvent{
 }
 
 func userStore() pkguser.Store {
-	ustore, err := user.NewDBStore(common.TestingPostgresConnDSN())
+	pool, err := common.OpenTestingDB()
+	if err != nil {
+		panic(err)
+	}
+	ustore, err := user.NewDBStore(pool)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}

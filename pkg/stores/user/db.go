@@ -109,6 +109,25 @@ func (s *DBStore) SetNotoriety(ctx context.Context, uuid string, notoriety int) 
 	return nil
 }
 
+func (s *DBStore) SetActions(ctx context.Context, uuid string, actions *entity.Actions) error {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	err = common.Update(ctx, tx, []string{"actions"}, []interface{}{actions}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: uuid})
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *DBStore) SetPermissions(ctx context.Context, req *cpb.PermissionsRequest) error {
 	columns := []string{}
 	values := []bool{}

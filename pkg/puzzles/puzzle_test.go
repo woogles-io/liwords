@@ -83,7 +83,10 @@ func TestPuzzlesMain(t *testing.T) {
 
 	rk := ratingKey(common.DefaultGameReq.Lexicon)
 
-	pcid, err := transactGetDBIDFromUUID(ctx, pool, "users", PuzzleCreatorUUID)
+	pcid, err := commondb.GetDBIDFromUUID(ctx, pool, &commondb.CommonDBConfig{
+		TableType: commondb.UsersTable,
+		Value:     PuzzleCreatorUUID,
+	})
 	is.NoErr(err)
 
 	var curatedPuzzles int
@@ -461,7 +464,10 @@ func TestPuzzlesMain(t *testing.T) {
 		is.NoErr(err)
 		is.Equal(attempts, int32(0))
 
-		puzzleDBID, err := transactGetDBIDFromUUID(ctx, pool, "puzzles", puzzleUUID)
+		puzzleDBID, err := commondb.GetDBIDFromUUID(ctx, pool, &commondb.CommonDBConfig{
+			TableType: commondb.PuzzlesTable,
+			Value:     puzzleUUID,
+		})
 		is.NoErr(err)
 
 		var turnNumber int
@@ -885,7 +891,10 @@ func RecreateDB() (*DBController, int, int) {
 }
 
 func getUserRating(ctx context.Context, pool *pgxpool.Pool, userUUID string, rk entity.VariantKey) (*entity.SingleRating, error) {
-	id, err := transactGetDBIDFromUUID(ctx, pool, "users", userUUID)
+	id, err := commondb.GetDBIDFromUUID(ctx, pool, &commondb.CommonDBConfig{
+		TableType: commondb.UsersTable,
+		Value:     userUUID,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -952,7 +961,10 @@ func getPuzzleUUIDByAnswer(ctx context.Context, pool *pgxpool.Pool, playedTiles 
 }
 
 func getPuzzlePopularity(ctx context.Context, pool *pgxpool.Pool, puzzleUUID string) (int, error) {
-	pid, err := transactGetDBIDFromUUID(ctx, pool, "puzzles", puzzleUUID)
+	pid, err := commondb.GetDBIDFromUUID(ctx, pool, &commondb.CommonDBConfig{
+		TableType: commondb.PuzzlesTable,
+		Value:     puzzleUUID,
+	})
 	if err != nil {
 		return 0, err
 	}
@@ -962,12 +974,18 @@ func getPuzzlePopularity(ctx context.Context, pool *pgxpool.Pool, puzzleUUID str
 }
 
 func getPuzzleAttempt(ctx context.Context, pool *pgxpool.Pool, userUUID string, puzzleUUID string) (int32, *sql.NullBool, error) {
-	pid, err := transactGetDBIDFromUUID(ctx, pool, "puzzles", puzzleUUID)
+	pid, err := commondb.GetDBIDFromUUID(ctx, pool, &commondb.CommonDBConfig{
+		TableType: commondb.PuzzlesTable,
+		Value:     puzzleUUID,
+	})
 	if err != nil {
 		return 0, nil, err
 	}
 
-	uid, err := transactGetDBIDFromUUID(ctx, pool, "users", userUUID)
+	uid, err := commondb.GetDBIDFromUUID(ctx, pool, &commondb.CommonDBConfig{
+		TableType: commondb.UsersTable,
+		Value:     userUUID,
+	})
 	if err != nil {
 		return 0, nil, err
 	}
@@ -981,7 +999,10 @@ func getPuzzleAttempt(ctx context.Context, pool *pgxpool.Pool, userUUID string, 
 }
 
 func getNumUnattemptedPuzzles(ctx context.Context, pool *pgxpool.Pool, userUUID string) (int, error) {
-	uid, err := transactGetDBIDFromUUID(ctx, pool, "users", userUUID)
+	uid, err := commondb.GetDBIDFromUUID(ctx, pool, &commondb.CommonDBConfig{
+		TableType: commondb.UsersTable,
+		Value:     userUUID,
+	})
 	if err != nil {
 		return -1, err
 	}
@@ -994,7 +1015,10 @@ func getNumUnattemptedPuzzles(ctx context.Context, pool *pgxpool.Pool, userUUID 
 }
 
 func getNumAttemptedPuzzles(ctx context.Context, pool *pgxpool.Pool, userUUID string) (int, error) {
-	uid, err := transactGetDBIDFromUUID(ctx, pool, "users", userUUID)
+	uid, err := commondb.GetDBIDFromUUID(ctx, pool, &commondb.CommonDBConfig{
+		TableType: commondb.UsersTable,
+		Value:     userUUID,
+	})
 	if err != nil {
 		return -1, err
 	}
@@ -1007,7 +1031,10 @@ func getNumAttemptedPuzzles(ctx context.Context, pool *pgxpool.Pool, userUUID st
 }
 
 func getNumUnattemptedPuzzlesInLexicon(ctx context.Context, pool *pgxpool.Pool, userUUID string, lexicon string) (int, error) {
-	uid, err := transactGetDBIDFromUUID(ctx, pool, "users", userUUID)
+	uid, err := commondb.GetDBIDFromUUID(ctx, pool, &commondb.CommonDBConfig{
+		TableType: commondb.UsersTable,
+		Value:     userUUID,
+	})
 	if err != nil {
 		return -1, err
 	}

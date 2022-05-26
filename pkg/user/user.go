@@ -29,6 +29,7 @@ type Store interface {
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p0stats *entity.Stats, p1stats *entity.Stats) error
 	SetNotoriety(ctx context.Context, uuid string, notoriety int) error
+	SetActions(ctx context.Context, uuid string, actions *entity.Actions) error
 	ResetRatings(ctx context.Context, uuid string) error
 	ResetStats(ctx context.Context, uuid string) error
 	ResetProfile(ctx context.Context, uuid string) error
