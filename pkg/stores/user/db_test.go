@@ -48,21 +48,21 @@ func recreateDB() (*DBStore, *pgxpool.Pool) {
 		{Username: "cesar", Email: "cesar@woogles.io", UUID: "mozEwaVMvTfUA2oxZfYN8k"},
 		{Username: "mina", Email: "mina@gmail.com", UUID: "iW7AaqNJDuaxgcYnrFfcJF"},
 		{Username: "jesse", Email: "jesse@woogles.io", UUID: "3xpEkpRAy3AizbVmDg3kdi"},
-		{Username: "HastyBot", Email: "hastybot@woogles.io", UUID: "hasty_bot_uuid", IsBot: true, Profile: &entity.Profile{AvatarUrl: "hasty_bot_avatar_url"}},
+		{Username: "HastyBot", Email: "hastybot@woogles.io", UUID: "hasty_bot_uuid", IsBot: true, Profile: &entity.Profile{BirthDate: "1400-01-01"}},
 		{Username: "adult", Email: "adult@woogles.io", UUID: "adult_uuid", IsMod: true, IsAdmin: true, Profile: &entity.Profile{AvatarUrl: "adult_avatar_url", BirthDate: "1900-01-01", FirstName: "vincent", LastName: "adultman"}},
 		{Username: "child", Email: "child@woogles.io", UUID: "child_uuid", Profile: &entity.Profile{AvatarUrl: "child_avatar_url", BirthDate: "2015-01-01", LastName: "kid"}},
 		{Username: "winter", Email: "winter@woogles.io", UUID: "winter_uuid", IsMod: true, Profile: &entity.Profile{AvatarUrl: "winter_avatar_url", BirthDate: "1972-03-20", FirstName: "winter"}},
 		{Username: "smith", Email: "smith@woogles.io", UUID: "smith_uuid", IsAdmin: true, Profile: &entity.Profile{AvatarUrl: "smith_avatar_url", BirthDate: "1950-07-08", LastName: "smith"}},
-		{Username: "mo", UUID: "mo_uuid"},
-		{Username: "mod", UUID: "mod_uuid", Actions: &entity.Actions{History: []*mod_service.ModAction{{Type: mod_service.ModActionType_SUSPEND_ACCOUNT}}}},
-		{Username: "mot", UUID: "mot_uuid"},
-		{Username: "mode", UUID: "mode_uuid", IsBot: true},
-		{Username: "moder", UUID: "moder_uuid", Actions: &entity.Actions{Current: map[string]*mod_service.ModAction{mod_service.ModActionType_SUSPEND_GAMES.String(): {Type: mod_service.ModActionType_SUSPEND_GAMES}}}},
-		{Username: "modern", UUID: "modern_uuid"},
-		{Username: "moderne", UUID: "moderne_uuid", Actions: &entity.Actions{Current: map[string]*mod_service.ModAction{mod_service.ModActionType_SUSPEND_ACCOUNT.String(): {Type: mod_service.ModActionType_SUSPEND_ACCOUNT, EndTime: timestamppb.New(time.Now())}}}},
-		{Username: "moderns", UUID: "moderns_uuid"},
-		{Username: "modernes", UUID: "modernes_uuid", Actions: &entity.Actions{Current: map[string]*mod_service.ModAction{mod_service.ModActionType_SUSPEND_ACCOUNT.String(): {Type: mod_service.ModActionType_SUSPEND_ACCOUNT}}}},
-		{Username: "modernest", UUID: "modernest_uuid"},
+		{Username: "mo", Email: "mo@woogles.io", UUID: "mo_uuid"},
+		{Username: "mod", Email: "mod@woogles.io", UUID: "mod_uuid", Actions: &entity.Actions{History: []*mod_service.ModAction{{Type: mod_service.ModActionType_SUSPEND_ACCOUNT}}}},
+		{Username: "mot", Email: "mot@woogles.io", UUID: "mot_uuid"},
+		{Username: "mode", Email: "mode@woogles.io", UUID: "mode_uuid", IsBot: true},
+		{Username: "moder", Email: "moder@woogles.io", UUID: "moder_uuid", Actions: &entity.Actions{Current: map[string]*mod_service.ModAction{mod_service.ModActionType_SUSPEND_GAMES.String(): {Type: mod_service.ModActionType_SUSPEND_GAMES}}}},
+		{Username: "modern", Email: "modern@woogles.io", UUID: "modern_uuid"},
+		{Username: "moderne", Email: "moderne@woogles.io", UUID: "moderne_uuid", Actions: &entity.Actions{Current: map[string]*mod_service.ModAction{mod_service.ModActionType_SUSPEND_ACCOUNT.String(): {Type: mod_service.ModActionType_SUSPEND_ACCOUNT, EndTime: timestamppb.New(time.Now())}}}},
+		{Username: "moderns", Email: "moderns@woogles.io", UUID: "moderns_uuid"},
+		{Username: "modernes", Email: "modernes@woogles.io", UUID: "modernes_uuid", Actions: &entity.Actions{Current: map[string]*mod_service.ModAction{mod_service.ModActionType_SUSPEND_ACCOUNT.String(): {Type: mod_service.ModActionType_SUSPEND_ACCOUNT}}}},
+		{Username: "modernest", Email: "modernest@woogles.io", UUID: "modernest_uuid"},
 
 		// is/is not bot
 		// no actions
@@ -102,18 +102,18 @@ func TestGet(t *testing.T) {
 	is.Equal(cesarByUsername.UUID, cesarByEmail.UUID)
 
 	apiKey := "somekey"
-	err = common.UpdateWithPool(ctx, pool, []string{"api_key"}, []string{apiKey}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByAPIKey, Value: apiKey})
+	err = common.UpdateWithPool(ctx, pool, []string{"api_key"}, []interface{}{apiKey}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: cesarByUsername.UUID})
 	is.NoErr(err)
 
 	cesarByAPIKey, err := ustore.GetByAPIKey(ctx, apiKey)
 	is.NoErr(err)
 	is.Equal(cesarByUsername.UUID, cesarByAPIKey.UUID)
 
-	profileUUIDs := []string{"bot_uuid", "adult_uuid", "child_uuid", "winter_uuid", "smith_uuid"}
+	profileUUIDs := []string{"hasty_bot_uuid", "adult_uuid", "child_uuid", "winter_uuid", "smith_uuid"}
 	profiles, err := ustore.GetBriefProfiles(ctx, profileUUIDs)
 	is.NoErr(err)
-	is.Equal(profiles["bot_uuid"].AvatarUrl, "https://woogles-prod-assets.s3.amazonaws.com/macondog.png")
-	is.Equal(profiles["bot_uuid"].FullName, "")
+	is.Equal(profiles["hasty_bot_uuid"].AvatarUrl, "https://woogles-prod-assets.s3.amazonaws.com/macondog.png")
+	is.Equal(profiles["hasty_bot_uuid"].FullName, "")
 	is.Equal(profiles["adult_uuid"].AvatarUrl, "adult_avatar_url")
 	is.Equal(profiles["adult_uuid"].FullName, "vincent adultman")
 	is.Equal(profiles["child_uuid"].AvatarUrl, "")
@@ -132,7 +132,7 @@ func TestGet(t *testing.T) {
 	// which is HastyBot.
 	bot, err = ustore.GetBot(ctx, macondopb.BotRequest_LEVEL2_CEL_BOT)
 	is.NoErr(err)
-	is.Equal(bot.Username, botNames[macondopb.BotRequest_HASTY_BOT])
+	is.True(bot.Username == botNames[macondopb.BotRequest_HASTY_BOT] || bot.Username == "mode")
 
 	// GetModList
 	modList, err := ustore.GetModList(ctx)
@@ -152,10 +152,8 @@ func TestSet(t *testing.T) {
 	cesar, err := ustore.Get(ctx, "cesar")
 	is.NoErr(err)
 
-	uuid := cesar.UUID
-
 	newNotoriety := 7
-	err = ustore.SetNotoriety(ctx, uuid, newNotoriety)
+	err = ustore.SetNotoriety(ctx, cesar.UUID, newNotoriety)
 	is.NoErr(err)
 	cesar, err = ustore.Get(ctx, "cesar")
 	is.NoErr(err)
@@ -176,14 +174,14 @@ func TestSet(t *testing.T) {
 	is.True(!cesar.IsBot)
 
 	newPassword := "newpassword"
-	err = ustore.SetPassword(ctx, uuid, newPassword)
+	err = ustore.SetPassword(ctx, cesar.UUID, newPassword)
 	is.NoErr(err)
 	cesar, err = ustore.Get(ctx, "cesar")
 	is.NoErr(err)
 	is.Equal(cesar.Password, newPassword)
 
 	newAvatarURL := "newavatarurl"
-	err = ustore.SetAvatarUrl(ctx, uuid, newAvatarURL)
+	err = ustore.SetAvatarUrl(ctx, cesar.UUID, newAvatarURL)
 	is.NoErr(err)
 	cesar, err = ustore.Get(ctx, "cesar")
 	is.NoErr(err)
@@ -192,7 +190,7 @@ func TestSet(t *testing.T) {
 	newEmail := "cesar@wolges.io"
 	newLastName := "del lunar"
 	newAbout := "manegar of wolges"
-	err = ustore.SetPersonalInfo(ctx, uuid, newEmail, "", newLastName, "", "", newAbout)
+	err = ustore.SetPersonalInfo(ctx, cesar.UUID, newEmail, "", newLastName, "", "", newAbout)
 	is.NoErr(err)
 	cesar, err = ustore.Get(ctx, "cesar")
 	is.NoErr(err)
@@ -219,14 +217,14 @@ func TestSet(t *testing.T) {
 		Volatility:        0.06,
 		LastGameTimestamp: 0,
 	}
-	err = ustore.SetRatings(ctx, uuid, mina.UUID, entity.VariantKey(variantKey), newCesarSingleRating, newMinaSingleRating)
+	err = ustore.SetRatings(ctx, cesar.UUID, mina.UUID, entity.VariantKey(variantKey), newCesarSingleRating, newMinaSingleRating)
 	is.NoErr(err)
 	mina, err = ustore.Get(ctx, "mina")
 	is.NoErr(err)
 
 	cesarDBID, err := common.GetDBIDFromUUID(ctx, pool, &common.CommonDBConfig{
 		TableType: common.UsersTable,
-		Value:     uuid,
+		Value:     cesar.UUID,
 	})
 	is.NoErr(err)
 	minaDBID, err := common.GetDBIDFromUUID(ctx, pool, &common.CommonDBConfig{
@@ -234,10 +232,10 @@ func TestSet(t *testing.T) {
 		Value:     mina.UUID,
 	})
 	is.NoErr(err)
-	actualCesarRating, err := common.GetUserRatingWithPool(ctx, pool, cesarDBID, entity.VariantKey(variantKey), &entity.SingleRating{})
+	actualCesarRating, err := common.GetUserRatingWithPool(ctx, pool, cesarDBID, entity.VariantKey(variantKey))
 	is.NoErr(err)
 	is.True(commontest.WithinEpsilon(newCesarRating, actualCesarRating.Rating))
-	actualMinaRating, err := common.GetUserRatingWithPool(ctx, pool, minaDBID, entity.VariantKey(variantKey), &entity.SingleRating{})
+	actualMinaRating, err := common.GetUserRatingWithPool(ctx, pool, minaDBID, entity.VariantKey(variantKey))
 	is.NoErr(err)
 	is.True(commontest.WithinEpsilon(newMinaRating, actualMinaRating.Rating))
 
@@ -249,7 +247,7 @@ func TestSet(t *testing.T) {
 	newMinaStats := &entity.Stats{
 		PlayerOneId: "mina",
 	}
-	err = ustore.SetStats(ctx, uuid, mina.UUID, entity.VariantKey(variantKey), newCesarStats, newMinaStats)
+	err = ustore.SetStats(ctx, cesar.UUID, mina.UUID, entity.VariantKey(variantKey), newCesarStats, newMinaStats)
 	is.NoErr(err)
 	mina, err = ustore.Get(ctx, "mina")
 	is.NoErr(err)
@@ -261,40 +259,41 @@ func TestSet(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(newMinaStats.PlayerOneId, actualMinaStats.PlayerOneId)
 
-	err = ustore.ResetStats(ctx, uuid)
+	err = ustore.ResetStats(ctx, cesar.UUID)
 	is.NoErr(err)
 	actualCesarStats, err = common.GetUserStatsWithPool(ctx, pool, cesarDBID, entity.VariantKey(variantKey))
 	is.NoErr(err)
 	is.Equal(actualCesarStats.PlayerOneId, "")
 
-	err = ustore.ResetRatings(ctx, uuid)
+	err = ustore.ResetRatings(ctx, cesar.UUID)
 	is.NoErr(err)
-	actualCesarRating, err = common.GetUserRatingWithPool(ctx, pool, cesarDBID, entity.VariantKey(variantKey), &entity.SingleRating{})
+	actualCesarRating, err = common.GetUserRatingWithPool(ctx, pool, cesarDBID, entity.VariantKey(variantKey))
 	is.NoErr(err)
 	is.True(commontest.WithinEpsilon(actualCesarRating.Rating, float64(glicko.InitialRating)))
 
-	err = ustore.ResetStatsAndRatings(ctx, uuid)
+	err = ustore.ResetStatsAndRatings(ctx, mina.UUID)
 	is.NoErr(err)
 	actualMinaStats, err = common.GetUserStatsWithPool(ctx, pool, minaDBID, entity.VariantKey(variantKey))
 	is.NoErr(err)
 	is.Equal(actualMinaStats.PlayerOneId, "")
-	actualMinaRating, err = common.GetUserRatingWithPool(ctx, pool, minaDBID, entity.VariantKey(variantKey), &entity.SingleRating{})
+	actualMinaRating, err = common.GetUserRatingWithPool(ctx, pool, minaDBID, entity.VariantKey(variantKey))
 	is.NoErr(err)
 	is.True(commontest.WithinEpsilon(actualMinaRating.Rating, float64(glicko.InitialRating)))
 
-	err = ustore.ResetPersonalInfo(ctx, uuid)
+	err = ustore.ResetPersonalInfo(ctx, cesar.UUID)
 	is.NoErr(err)
 	cesar, err = ustore.Get(ctx, "cesar")
 	is.NoErr(err)
-	is.Equal(cesar.Email, "")
+	is.Equal(cesar.Email, "cesar@wolges.io")
 	is.Equal(cesar.Profile.FirstName, "")
 	is.Equal(cesar.Profile.LastName, "")
 	is.Equal(cesar.Profile.CountryCode, "")
 	is.Equal(cesar.Profile.About, "")
+	is.Equal(cesar.Profile.Title, "")
 
-	err = ustore.SetRatings(ctx, uuid, mina.UUID, entity.VariantKey(variantKey), newCesarSingleRating, newMinaSingleRating)
+	err = ustore.SetRatings(ctx, cesar.UUID, mina.UUID, entity.VariantKey(variantKey), newCesarSingleRating, newMinaSingleRating)
 	is.NoErr(err)
-	err = ustore.SetStats(ctx, uuid, mina.UUID, entity.VariantKey(variantKey), newCesarStats, newMinaStats)
+	err = ustore.SetStats(ctx, cesar.UUID, mina.UUID, entity.VariantKey(variantKey), newCesarStats, newMinaStats)
 	is.NoErr(err)
 
 	err = ustore.ResetProfile(ctx, mina.UUID)
@@ -304,13 +303,13 @@ func TestSet(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(actualMinaStats.PlayerOneId, "")
 
-	actualMinaRating, err = common.GetUserRatingWithPool(ctx, pool, minaDBID, entity.VariantKey(variantKey), &entity.SingleRating{})
+	actualMinaRating, err = common.GetUserRatingWithPool(ctx, pool, minaDBID, entity.VariantKey(variantKey))
 	is.NoErr(err)
 	is.True(commontest.WithinEpsilon(actualMinaRating.Rating, float64(glicko.InitialRating)))
 
 	mina, err = ustore.Get(ctx, "mina")
 	is.NoErr(err)
-	is.Equal(mina.Email, "")
+	is.Equal(mina.Email, "mina@gmail.com")
 	is.Equal(mina.Profile.FirstName, "")
 	is.Equal(mina.Profile.LastName, "")
 	is.Equal(mina.Profile.CountryCode, "")
@@ -327,37 +326,37 @@ func TestMisc(t *testing.T) {
 	is.NoErr(err)
 	usernames := getUsernamesFromBasicUsers(users)
 	sort.Strings(usernames)
-	is.Equal(usernames, []string{"mo", "mod", "mot", "moder", "modern", "moderne", "moderns", "modernest"})
+	is.Equal(usernames, []string{"mina", "mo", "mod", "moder", "modern", "moderne", "modernest", "moderns", "mot"})
 
 	users, err = ustore.UsersByPrefix(ctx, "mo")
 	is.NoErr(err)
 	usernames = getUsernamesFromBasicUsers(users)
 	sort.Strings(usernames)
-	is.Equal(usernames, []string{"mo", "mod", "mot", "moder", "modern", "moderne", "moderns", "modernest"})
+	is.Equal(usernames, []string{"mo", "mod", "moder", "modern", "moderne", "modernest", "moderns", "mot"})
 
 	users, err = ustore.UsersByPrefix(ctx, "mod")
 	is.NoErr(err)
 	usernames = getUsernamesFromBasicUsers(users)
 	sort.Strings(usernames)
-	is.Equal(usernames, []string{"mod", "moder", "modern", "moderne", "moderns", "modernest"})
+	is.Equal(usernames, []string{"mod", "moder", "modern", "moderne", "modernest", "moderns"})
 
 	users, err = ustore.UsersByPrefix(ctx, "mode")
 	is.NoErr(err)
 	usernames = getUsernamesFromBasicUsers(users)
 	sort.Strings(usernames)
-	is.Equal(usernames, []string{"moder", "modern", "moderne", "moderns", "modernest"})
+	is.Equal(usernames, []string{"moder", "modern", "moderne", "modernest", "moderns"})
 
 	users, err = ustore.UsersByPrefix(ctx, "moder")
 	is.NoErr(err)
 	usernames = getUsernamesFromBasicUsers(users)
 	sort.Strings(usernames)
-	is.Equal(usernames, []string{"moder", "modern", "moderne", "moderns", "modernest"})
+	is.Equal(usernames, []string{"moder", "modern", "moderne", "modernest", "moderns"})
 
 	users, err = ustore.UsersByPrefix(ctx, "modern")
 	is.NoErr(err)
 	usernames = getUsernamesFromBasicUsers(users)
 	sort.Strings(usernames)
-	is.Equal(usernames, []string{"modern", "moderne", "moderns", "modernest"})
+	is.Equal(usernames, []string{"modern", "moderne", "modernest", "moderns"})
 
 	users, err = ustore.UsersByPrefix(ctx, "moderne")
 	is.NoErr(err)
@@ -392,7 +391,7 @@ func TestMisc(t *testing.T) {
 
 	count, err := ustore.Count(ctx)
 	is.NoErr(err)
-	is.Equal(count, 18)
+	is.Equal(count, int64(18))
 	ustore.Disconnect()
 }
 
@@ -407,18 +406,9 @@ func TestBlocks(t *testing.T) {
 	winter, err := ustore.Get(ctx, "winter")
 	is.NoErr(err)
 
-	// AddBlock
-	// RemoveBlock
-	// GetBlocks
-	// GetBlockedBy
-	// GetFullBlocks
-
-	err = ustore.AddBlock(ctx, adult.ID, smith.ID)
-	is.NoErr(err)
-	err = ustore.AddBlock(ctx, winter.ID, smith.ID)
-	is.NoErr(err)
-	err = ustore.AddBlock(ctx, adult.ID, winter.ID)
-	is.NoErr(err)
+	is.NoErr(ustore.AddBlock(ctx, adult.ID, smith.ID))
+	is.NoErr(ustore.AddBlock(ctx, winter.ID, smith.ID))
+	is.NoErr(ustore.AddBlock(ctx, adult.ID, winter.ID))
 
 	// Try to add a block that already exists
 	err = ustore.AddBlock(ctx, winter.ID, smith.ID)
@@ -430,6 +420,7 @@ func TestBlocks(t *testing.T) {
 
 	blocked, err = ustore.GetBlocks(ctx, smith.ID)
 	is.NoErr(err)
+	sortBlocked(blocked)
 	is.Equal(blocked, []*entity.User{
 		{Username: "adult", UUID: "adult_uuid"},
 		{Username: "winter", UUID: "winter_uuid"},
@@ -441,29 +432,75 @@ func TestBlocks(t *testing.T) {
 
 	blocked, err = ustore.GetBlockedBy(ctx, adult.ID)
 	is.NoErr(err)
+	sortBlocked(blocked)
 	is.Equal(blocked, []*entity.User{
 		{Username: "smith", UUID: "smith_uuid"},
 		{Username: "winter", UUID: "winter_uuid"},
 	})
 
-	blocked, err = ustore.GetFullBlocks(ctx, adult.ID)
+	blocked, err = ustore.GetFullBlocks(ctx, winter.ID)
 	is.NoErr(err)
-	is.Equal(blocked, []*entity.User{})
+	sortBlocked(blocked)
+	is.Equal(blocked, []*entity.User{
+		{Username: "adult", UUID: "adult_uuid"},
+		{Username: "smith", UUID: "smith_uuid"},
+	})
 
 	blocked, err = ustore.GetFullBlocks(ctx, smith.ID)
 	is.NoErr(err)
-	is.Equal(blocked, []*entity.User{})
+	sortBlocked(blocked)
+	is.Equal(blocked, []*entity.User{
+		{Username: "adult", UUID: "adult_uuid"},
+		{Username: "winter", UUID: "winter_uuid"},
+	})
 
 	blocked, err = ustore.GetFullBlocks(ctx, winter.ID)
 	is.NoErr(err)
-	is.Equal(blocked, []*entity.User{})
+	sortBlocked(blocked)
+	is.Equal(blocked, []*entity.User{
+		{Username: "adult", UUID: "adult_uuid"},
+		{Username: "smith", UUID: "smith_uuid"},
+	})
 
 	err = ustore.AddBlock(ctx, smith.ID, adult.ID)
 	is.NoErr(err)
 
 	blocked, err = ustore.GetFullBlocks(ctx, adult.ID)
 	is.NoErr(err)
-	is.Equal(blocked, []*entity.User{{Username: "smith", UUID: "smith_uuid"}})
+	sortBlocked(blocked)
+	is.Equal(blocked, []*entity.User{
+		{Username: "smith", UUID: "smith_uuid"},
+		{Username: "winter", UUID: "winter_uuid"},
+	})
+
+	blocked, err = ustore.GetFullBlocks(ctx, smith.ID)
+	is.NoErr(err)
+	sortBlocked(blocked)
+	is.Equal(blocked, []*entity.User{
+		{Username: "adult", UUID: "adult_uuid"},
+		{Username: "winter", UUID: "winter_uuid"},
+	})
+
+	blocked, err = ustore.GetFullBlocks(ctx, winter.ID)
+	is.NoErr(err)
+	sortBlocked(blocked)
+	is.Equal(blocked, []*entity.User{
+		{Username: "adult", UUID: "adult_uuid"},
+		{Username: "smith", UUID: "smith_uuid"},
+	})
+
+	err = ustore.RemoveBlock(ctx, smith.ID, adult.ID)
+	is.NoErr(err)
+	err = ustore.RemoveBlock(ctx, winter.ID, smith.ID)
+	is.NoErr(err)
+
+	blocked, err = ustore.GetFullBlocks(ctx, adult.ID)
+	is.NoErr(err)
+	sortBlocked(blocked)
+	is.Equal(blocked, []*entity.User{
+		{Username: "smith", UUID: "smith_uuid"},
+		{Username: "winter", UUID: "winter_uuid"},
+	})
 
 	blocked, err = ustore.GetFullBlocks(ctx, smith.ID)
 	is.NoErr(err)
@@ -471,26 +508,12 @@ func TestBlocks(t *testing.T) {
 
 	blocked, err = ustore.GetFullBlocks(ctx, winter.ID)
 	is.NoErr(err)
-	is.Equal(blocked, []*entity.User{})
-
-	err = ustore.RemoveBlock(ctx, smith.ID, adult.ID)
-	is.NoErr(err)
-
-	blocked, err = ustore.GetFullBlocks(ctx, adult.ID)
-	is.NoErr(err)
-	is.Equal(blocked, []*entity.User{})
-
-	blocked, err = ustore.GetFullBlocks(ctx, smith.ID)
-	is.NoErr(err)
-	is.Equal(blocked, []*entity.User{})
-
-	blocked, err = ustore.GetFullBlocks(ctx, winter.ID)
-	is.NoErr(err)
-	is.Equal(blocked, []*entity.User{})
+	is.Equal(blocked, []*entity.User{{Username: "adult", UUID: "adult_uuid"}})
 
 	// Try to remove a block that does not exist
 	err = ustore.RemoveBlock(ctx, smith.ID, adult.ID)
 	is.True(err != nil)
+	is.Equal(err.Error(), "block does not exist")
 	ustore.Disconnect()
 }
 
@@ -505,9 +528,9 @@ func TestAddFollower(t *testing.T) {
 	jesse, err := ustore.Get(ctx, "jesse")
 	is.NoErr(err)
 
-	ustore.AddFollower(ctx, cesar.ID, mina.ID)
-	ustore.AddFollower(ctx, jesse.ID, mina.ID)
-	ustore.AddFollower(ctx, cesar.ID, jesse.ID)
+	is.NoErr(ustore.AddFollower(ctx, cesar.ID, mina.ID))
+	is.NoErr(ustore.AddFollower(ctx, jesse.ID, mina.ID))
+	is.NoErr(ustore.AddFollower(ctx, cesar.ID, jesse.ID))
 
 	followed, err := ustore.GetFollows(ctx, cesar.ID)
 	is.NoErr(err)
@@ -540,9 +563,9 @@ func TestRemoveFollower(t *testing.T) {
 	jesse, err := ustore.Get(ctx, "jesse")
 	is.NoErr(err)
 
-	ustore.AddFollower(ctx, cesar.ID, mina.ID)
-	ustore.AddFollower(ctx, jesse.ID, mina.ID)
-	ustore.AddFollower(ctx, cesar.ID, jesse.ID)
+	is.NoErr(ustore.AddFollower(ctx, cesar.ID, mina.ID))
+	is.NoErr(ustore.AddFollower(ctx, jesse.ID, mina.ID))
+	is.NoErr(ustore.AddFollower(ctx, cesar.ID, jesse.ID))
 
 	ustore.RemoveFollower(ctx, jesse.ID, mina.ID)
 
@@ -603,4 +626,10 @@ func getUsernamesFromBasicUsers(basicUsers []*user_service.BasicUser) []string {
 		s[idx] = bs.Username
 	}
 	return s
+}
+
+func sortBlocked(users []*entity.User) {
+	sort.Slice(users, func(i, j int) bool {
+		return users[i].Username < users[j].Username
+	})
 }

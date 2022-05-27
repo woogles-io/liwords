@@ -118,11 +118,7 @@ func (u *User) GetRating(ratingKey VariantKey) (*SingleRating, error) {
 	if u.Profile == nil {
 		return nil, errors.New("anonymous user has no rating")
 	}
-	defaultRating := &SingleRating{
-		Rating:          float64(glicko.InitialRating),
-		RatingDeviation: float64(glicko.InitialRatingDeviation),
-		Volatility:      glicko.InitialVolatility,
-	}
+	defaultRating := NewDefaultRating(false)
 	if u.Profile.Ratings.Data == nil {
 		return defaultRating, nil
 	}

@@ -903,13 +903,8 @@ func getUserRating(ctx context.Context, pool *pgxpool.Pool, userUUID string, rk 
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
-	initialRating := &entity.SingleRating{
-		Rating:            float64(glicko.InitialRating),
-		RatingDeviation:   float64(glicko.InitialRatingDeviation),
-		Volatility:        glicko.InitialVolatility,
-		LastGameTimestamp: time.Now().Unix()}
 
-	userRating, err := commondb.GetUserRating(ctx, tx, id, rk, initialRating)
+	userRating, err := commondb.GetUserRating(ctx, tx, id, rk)
 
 	if err != nil {
 		return nil, err

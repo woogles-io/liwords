@@ -45,6 +45,7 @@ type CommonDBConfig struct {
 
 var SelectByTypeToString = map[SelectByType]string{
 	SelectByUUID:     "uuid",
+	SelectByID:       "id",
 	SelectByUsername: "lower(username)",
 	SelectByEmail:    "lower(email)",
 	SelectByAPIKey:   "api_key",
@@ -158,30 +159,30 @@ func InitializeUserStats(ctx context.Context, tx pgx.Tx, userId int64) error {
 	return err
 }
 
-func GetUserRating(ctx context.Context, tx pgx.Tx, userId int64, ratingKey entity.VariantKey, defaultRating *entity.SingleRating) (*entity.SingleRating, error) {
+func GetUserRating(ctx context.Context, tx pgx.Tx, userId int64, ratingKey entity.VariantKey) (*entity.SingleRating, error) {
 	err := InitializeUserRating(ctx, tx, userId)
 	if err != nil {
 		return nil, err
 	}
 
-	var sr *entity.SingleRating
-	err = tx.QueryRow(ctx, "SELECT ratings->'Data'->$1 FROM profiles WHERE user_id = $2", ratingKey, userId).Scan(&sr)
+	var playerRating *entity.SingleRating
+	err = tx.QueryRow(ctx, "SELECT ratings->'Data'->$1 FROM profiles WHERE user_id = $2", ratingKey, userId).Scan(&playerRating)
 	if err == pgx.ErrNoRows {
-		return nil, fmt.Errorf("profile not found for user_id: %d", userId)
+		return nil, fmt.Errorf("ratings not found for user_id: %d", userId)
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	if sr == nil {
-		sr = defaultRating
-		err = UpdateUserRating(ctx, tx, userId, ratingKey, sr)
+	if playerRating == nil {
+		playerRating = entity.NewDefaultRating(true)
+		err = UpdateUserRating(ctx, tx, userId, ratingKey, playerRating)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return sr, nil
+	return playerRating, nil
 }
 
 func GetUserStats(ctx context.Context, tx pgx.Tx, userId int64, ratingKey entity.VariantKey) (*entity.Stats, error) {
@@ -191,16 +192,17 @@ func GetUserStats(ctx context.Context, tx pgx.Tx, userId int64, ratingKey entity
 	}
 
 	var stats *entity.Stats
-	err = tx.QueryRow(ctx, "SELECT ratings->'Data'->$1 FROM profiles WHERE user_id = $2", ratingKey, userId).Scan(&stats)
+	err = tx.QueryRow(ctx, "SELECT stats->'Data'->$1 FROM profiles WHERE user_id = $2", ratingKey, userId).Scan(&stats)
 	if err == pgx.ErrNoRows {
-		return nil, fmt.Errorf("profile not found for user_id: %d", userId)
+		return nil, fmt.Errorf("stats not found for user_id: %d", userId)
 	}
 	if err != nil {
 		return nil, err
 	}
 
 	if stats == nil {
-		err = UpdateUserStats(ctx, tx, userId, ratingKey, &entity.Stats{})
+		stats = &entity.Stats{}
+		err = UpdateUserStats(ctx, tx, userId, ratingKey, stats)
 		if err != nil {
 			return nil, err
 		}
@@ -209,7 +211,7 @@ func GetUserStats(ctx context.Context, tx pgx.Tx, userId int64, ratingKey entity
 	return stats, nil
 }
 
-func Update(ctx context.Context, tx pgx.Tx, columns []string, args interface{}, cfg *CommonDBConfig) error {
+func Update(ctx context.Context, tx pgx.Tx, columns []string, args []interface{}, cfg *CommonDBConfig) error {
 	for i := 0; i < len(columns); i++ {
 		columnName := columns[i]
 		columns[i] = fmt.Sprintf("%s = $%d", columnName, i+1)
@@ -217,10 +219,11 @@ func Update(ctx context.Context, tx pgx.Tx, columns []string, args interface{}, 
 
 	setUpdatedAtStmt := ""
 	if cfg.SetUpdatedAt {
-		setUpdatedAtStmt = "updated_at = NOW(), "
+		setUpdatedAtStmt = " updated_at = NOW(), "
 	}
-
-	result, err := tx.Exec(ctx, fmt.Sprintf("UPDATE %s SET %s, %s WHERE %s = $%d", TableTypeToString[cfg.TableType], setUpdatedAtStmt, strings.Join(columns, ","), SelectByTypeToString[cfg.SelectByType], len(columns)+1), args)
+	query := fmt.Sprintf("UPDATE %s SET %s %s WHERE %s = $%d", TableTypeToString[cfg.TableType], setUpdatedAtStmt, strings.Join(columns, ","), SelectByTypeToString[cfg.SelectByType], len(columns)+1)
+	args = append(args, []interface{}{cfg.Value}...)
+	result, err := tx.Exec(ctx, query, args...)
 	if err != nil {
 		return err
 	}
@@ -246,7 +249,7 @@ func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.Use
 	var actions *entity.Actions
 
 	query := fmt.Sprintf("SELECT id, username, uuid, email, password, internal_bot, is_admin, is_director, is_mod, notoriety, actions FROM users WHERE %s = $1", SelectByTypeToString[cfg.SelectByType])
-	err := tx.QueryRow(ctx, query, cfg.Value).Scan(&id, &username, &uuid, &email, &password, &internal_bot, &is_admin, &is_director, &is_mod, &notoriety, &actions)
+	err := tx.QueryRow(ctx, query, cfg.Value).Scan(&id, &username, &uuid, &email, &password, internal_bot, is_admin, is_director, is_mod, &notoriety, &actions)
 	if err == pgx.ErrNoRows {
 		return nil, errors.New("user not found")
 	} else if err != nil {
@@ -317,7 +320,7 @@ func UpdateUserRating(ctx context.Context, tx pgx.Tx, userId int64, ratingKey en
 }
 
 func UpdateUserStats(ctx context.Context, tx pgx.Tx, userId int64, ratingKey entity.VariantKey, newStats *entity.Stats) error {
-	err := InitializeUserRating(ctx, tx, userId)
+	err := InitializeUserStats(ctx, tx, userId)
 	if err != nil {
 		return err
 	}
@@ -343,6 +346,15 @@ func OpenDB(host, port, name, user, password, sslmode string) (*pgxpool.Pool, er
 		return nil, err
 	}
 	return dbPool, nil
+}
+
+func BuildIn(num int) string {
+	var stmt strings.Builder
+	fmt.Fprintf(&stmt, "$%d", 1)
+	for i := 2; i <= num; i++ {
+		fmt.Fprintf(&stmt, ", $%d", i)
+	}
+	return stmt.String()
 }
 
 func PostgresConnUri(host, port, name, user, password, sslmode string) string {

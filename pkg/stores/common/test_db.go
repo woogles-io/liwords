@@ -86,7 +86,7 @@ func TestingPostgresConnDSN() string {
 	return PostgresConnDSN(TestDBHost, TestDBPort, TestDBName, TestDBUser, TestDBPassword, TestDBSSLMode)
 }
 
-func UpdateWithPool(ctx context.Context, pool *pgxpool.Pool, columns []string, args interface{}, cfg *CommonDBConfig) error {
+func UpdateWithPool(ctx context.Context, pool *pgxpool.Pool, columns []string, args []interface{}, cfg *CommonDBConfig) error {
 	tx, err := pool.BeginTx(ctx, DefaultTxOptions)
 	if err != nil {
 		return err
@@ -105,14 +105,14 @@ func UpdateWithPool(ctx context.Context, pool *pgxpool.Pool, columns []string, a
 	return nil
 }
 
-func GetUserRatingWithPool(ctx context.Context, pool *pgxpool.Pool, userId int64, ratingKey entity.VariantKey, defaultRating *entity.SingleRating) (*entity.SingleRating, error) {
+func GetUserRatingWithPool(ctx context.Context, pool *pgxpool.Pool, userId int64, ratingKey entity.VariantKey) (*entity.SingleRating, error) {
 	tx, err := pool.BeginTx(ctx, DefaultTxOptions)
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
 
-	rating, err := GetUserRating(ctx, tx, userId, ratingKey, defaultRating)
+	rating, err := GetUserRating(ctx, tx, userId, ratingKey)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func GetUserStatsWithPool(ctx context.Context, pool *pgxpool.Pool, userId int64,
 	}
 	defer tx.Rollback(ctx)
 
-	rating, err := GetUserStats(ctx, tx, userId, ratingKey)
+	stats, err := GetUserStats(ctx, tx, userId, ratingKey)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +140,7 @@ func GetUserStatsWithPool(ctx context.Context, pool *pgxpool.Pool, userId int64,
 		return nil, err
 	}
 
-	return rating, nil
+	return stats, nil
 }
 
 func GetDBIDFromUUID(ctx context.Context, pool *pgxpool.Pool, cfg *CommonDBConfig) (int64, error) {

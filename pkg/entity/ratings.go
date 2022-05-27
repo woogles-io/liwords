@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 
+	"github.com/domino14/liwords/pkg/glicko"
 	"github.com/domino14/macondo/game"
 )
 
@@ -24,6 +26,20 @@ type Ratings struct {
 }
 
 type VariantKey string
+
+func NewDefaultRating(lastGameIsNow bool) *SingleRating {
+	lastGameTimeStamp := int64(0)
+	if lastGameIsNow {
+		lastGameTimeStamp = time.Now().Unix()
+	}
+	time.Now().Unix()
+	return &SingleRating{
+		Rating:            float64(glicko.InitialRating),
+		RatingDeviation:   float64(glicko.InitialRatingDeviation),
+		Volatility:        glicko.InitialVolatility,
+		LastGameTimestamp: int64(lastGameTimeStamp),
+	}
+}
 
 func ToVariantKey(lexiconName string, variantName game.Variant, timeControl TimeControl) VariantKey {
 	return VariantKey(transformLexiconName(lexiconName) + "." + string(variantName) + "." + string(timeControl))

@@ -2,7 +2,9 @@ package user
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -130,7 +132,7 @@ func (s *DBStore) SetActions(ctx context.Context, uuid string, actions *entity.A
 
 func (s *DBStore) SetPermissions(ctx context.Context, req *cpb.PermissionsRequest) error {
 	columns := []string{}
-	values := []bool{}
+	values := []interface{}{}
 	if req.Bot != nil {
 		columns = append(columns, "internal_bot")
 		values = append(values, req.Bot.Value)
@@ -277,7 +279,7 @@ func (s *DBStore) SetPassword(ctx context.Context, uuid string, hashpass string)
 	}
 	defer tx.Rollback(ctx)
 
-	err = common.Update(ctx, tx, []string{"password"}, []string{hashpass}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: uuid})
+	err = common.Update(ctx, tx, []string{"password"}, []interface{}{hashpass}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: uuid})
 	if err != nil {
 		return err
 	}
@@ -302,7 +304,7 @@ func (s *DBStore) SetAvatarUrl(ctx context.Context, uuid string, avatarUrl strin
 		return err
 	}
 
-	err = common.Update(ctx, tx, []string{"avatar_url"}, []string{avatarUrl}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByID, Value: id})
+	err = common.Update(ctx, tx, []string{"avatar_url"}, []interface{}{avatarUrl}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByID, Value: id})
 	if err != nil {
 		return err
 	}
@@ -321,10 +323,16 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 	}
 	defer tx.Rollback(ctx)
 
-	rows, err := tx.Query(ctx,
-		`SELECT uuid, username, internal_bot, country_code, avatar_url, first_name, last_name, birth_date
-		FROM LEFT JOIN profiles ON users.id = profiles.user_id
-		WHERE uuid IN ($1)`, uuids)
+	query := fmt.Sprintf(`SELECT uuid, username, internal_bot, country_code, avatar_url, first_name, last_name, birth_date
+		FROM users LEFT JOIN profiles ON users.id = profiles.user_id
+		WHERE uuid IN (%s)`, common.BuildIn(len(uuids)))
+
+	args := make([]interface{}, len(uuids))
+	for i := range uuids {
+		args[i] = uuids[i]
+	}
+
+	rows, err := tx.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -388,7 +396,17 @@ func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string
 	}
 	defer tx.Rollback(ctx)
 
-	err = common.Update(ctx, tx, []string{"email", "first_name", "last_name", "birth_date", "country_code", "about"}, []string{email, firstName, lastName, birthDate, countryCode, about}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByUUID, Value: uuid})
+	id, err := common.GetUserDBIDFromUUID(ctx, tx, uuid)
+	if err != nil {
+		return err
+	}
+
+	err = common.Update(ctx, tx, []string{"first_name", "last_name", "birth_date", "country_code", "about"}, []interface{}{firstName, lastName, birthDate, countryCode, about}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByID, Value: id})
+	if err != nil {
+		return err
+	}
+
+	err = common.Update(ctx, tx, []string{"email"}, []interface{}{email}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: uuid})
 	if err != nil {
 		return err
 	}
@@ -485,7 +503,7 @@ func (s *DBStore) GetBot(ctx context.Context, botType macondopb.BotRequest_BotCo
 	if err == pgx.ErrNoRows {
 		// Just pick any random bot. This should not be done on prod.
 		log.Warn().Msg("picking-random-bot")
-		err = tx.QueryRow(ctx, `SELECT username FROM users WHERE internal_bot IS TRUE ORDER BY RANDOM`).Scan(&botUsername)
+		err = tx.QueryRow(ctx, `SELECT username FROM users WHERE internal_bot IS TRUE ORDER BY RANDOM()`).Scan(&botUsername)
 		if err == pgx.ErrNoRows {
 			return nil, errors.New("no bots found")
 		}
@@ -549,7 +567,7 @@ func (s *DBStore) GetFollows(ctx context.Context, uid uint) ([]*entity.User, err
 	}
 	defer tx.Rollback(ctx)
 
-	rows, err := tx.Query(ctx, `SELECT u0.uuid, u0.username FROM JOIN followings, users AS u0 ON u0.id = user_id WHERE follower_id = $1`, uid)
+	rows, err := tx.Query(ctx, `SELECT u0.uuid, u0.username FROM followings JOIN users AS u0 ON u0.id = user_id WHERE follower_id = $1`, uid)
 	if err != nil {
 		return nil, err
 	}
@@ -575,7 +593,7 @@ func (s *DBStore) GetFollowedBy(ctx context.Context, uid uint) ([]*entity.User, 
 	}
 	defer tx.Rollback(ctx)
 
-	rows, err := tx.Query(ctx, `SELECT u0.uuid, u0.username FROM JOIN followings, users AS u0 ON u0.id = follower_id WHERE user_id = $1`, uid)
+	rows, err := tx.Query(ctx, `SELECT u0.uuid, u0.username FROM followings JOIN users AS u0 ON u0.id = follower_id WHERE user_id = $1`, uid)
 	if err != nil {
 		return nil, err
 	}
@@ -618,9 +636,12 @@ func (s *DBStore) RemoveBlock(ctx context.Context, targetUser, blocker uint) err
 	}
 	defer tx.Rollback(ctx)
 
-	_, err = tx.Exec(ctx, `DELETE FROM blockings WHERE user_id = $1 AND blocker_id = $2`, targetUser, blocker)
+	result, err := tx.Exec(ctx, `DELETE FROM blockings WHERE user_id = $1 AND blocker_id = $2`, targetUser, blocker)
 	if err != nil {
 		return err
+	}
+	if result.RowsAffected() != 1 {
+		return errors.New("block does not exist")
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return err
@@ -637,7 +658,7 @@ func (s *DBStore) GetBlocks(ctx context.Context, uid uint) ([]*entity.User, erro
 	}
 	defer tx.Rollback(ctx)
 
-	rows, err := tx.Query(ctx, `SELECT u0.uuid, u0.username FROM JOIN blockings, users AS u0 ON u0.id = user_id WHERE blocker_id = $1`, uid)
+	rows, err := tx.Query(ctx, `SELECT u0.uuid, u0.username FROM blockings JOIN users AS u0 ON u0.id = user_id WHERE blocker_id = $1`, uid)
 	if err != nil {
 		return nil, err
 	}
@@ -663,7 +684,7 @@ func (s *DBStore) GetBlockedBy(ctx context.Context, uid uint) ([]*entity.User, e
 	}
 	defer tx.Rollback(ctx)
 
-	rows, err := tx.Query(ctx, `SELECT u0.uuid, u0.username FROM JOIN blockings, users AS u0 ON u0.id = blocker_id WHERE user_id = $1`, uid)
+	rows, err := tx.Query(ctx, `SELECT u0.uuid, u0.username FROM blockings JOIN users AS u0 ON u0.id = blocker_id WHERE user_id = $1`, uid)
 	if err != nil {
 		return nil, err
 	}
@@ -719,7 +740,7 @@ func (s *DBStore) UsersByPrefix(ctx context.Context, prefix string) ([]*pb.Basic
 	defer tx.Rollback(ctx)
 
 	// XXX: Fix this once user actions are migrated to the db
-	rows, err := tx.Query(ctx, `SELECT username, uuid FROM users WHERE "substr(lower(username), 1, length($1)) = $1 AND internal_bot IS FALSE AND (actions IS NULL OR actions->'Current' IS NULL OR actions->'Current'->'SUSPEND_ACCOUNT' IS NULL OR actions->'Current'->'SUSPEND_ACCOUNT'->'end_time' IS NOT NULL)"`, strings.ToLower(prefix))
+	rows, err := tx.Query(ctx, `SELECT username, uuid FROM users WHERE substr(lower(username), 1, length($1)) = $1 AND internal_bot IS FALSE AND (actions IS NULL OR actions->'Current' IS NULL OR actions->'Current'->'SUSPEND_ACCOUNT' IS NULL OR actions->'Current'->'SUSPEND_ACCOUNT'->'end_time' IS NOT NULL)`, strings.ToLower(prefix))
 	if err != nil {
 		return nil, err
 	}
@@ -729,7 +750,7 @@ func (s *DBStore) UsersByPrefix(ctx context.Context, prefix string) ([]*pb.Basic
 	var username string
 	users := []*pb.BasicUser{}
 	for rows.Next() {
-		if err := rows.Scan(&UUID, &username); err != nil {
+		if err := rows.Scan(&username, &UUID); err != nil {
 			return nil, err
 		}
 		users = append(users, &pb.BasicUser{Uuid: UUID, Username: username})
@@ -762,14 +783,19 @@ func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
 	return users, nil
 }
 
-func (s *DBStore) ResetStats(ctx context.Context, uid string) error {
+func (s *DBStore) ResetStats(ctx context.Context, uuid string) error {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
 
-	err = common.Update(ctx, tx, []string{"stats"}, []interface{}{&entity.Stats{}}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByID, Value: uid})
+	id, err := common.GetUserDBIDFromUUID(ctx, tx, uuid)
+	if err != nil {
+		return err
+	}
+
+	err = common.Update(ctx, tx, []string{"stats"}, []interface{}{&entity.Stats{}}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByID, Value: id})
 	if err != nil {
 		return err
 	}
@@ -781,14 +807,19 @@ func (s *DBStore) ResetStats(ctx context.Context, uid string) error {
 	return nil
 }
 
-func (s *DBStore) ResetRatings(ctx context.Context, uid string) error {
+func (s *DBStore) ResetRatings(ctx context.Context, uuid string) error {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
 
-	err = common.Update(ctx, tx, []string{"ratings"}, []interface{}{&entity.Ratings{}}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByID, Value: uid})
+	id, err := common.GetUserDBIDFromUUID(ctx, tx, uuid)
+	if err != nil {
+		return err
+	}
+
+	err = common.Update(ctx, tx, []string{"ratings"}, []interface{}{&entity.Ratings{}}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByID, Value: id})
 	if err != nil {
 		return err
 	}
@@ -800,14 +831,19 @@ func (s *DBStore) ResetRatings(ctx context.Context, uid string) error {
 	return nil
 }
 
-func (s *DBStore) ResetStatsAndRatings(ctx context.Context, uid string) error {
+func (s *DBStore) ResetStatsAndRatings(ctx context.Context, uuid string) error {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
 
-	err = common.Update(ctx, tx, []string{"stats", "ratings"}, []interface{}{&entity.Stats{}, &entity.Ratings{}}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByUUID, Value: uid})
+	id, err := common.GetUserDBIDFromUUID(ctx, tx, uuid)
+	if err != nil {
+		return err
+	}
+
+	err = common.Update(ctx, tx, []string{"stats", "ratings"}, []interface{}{&entity.Stats{}, &entity.Ratings{}}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByID, Value: id})
 	if err != nil {
 		return err
 	}
@@ -826,7 +862,12 @@ func (s *DBStore) ResetPersonalInfo(ctx context.Context, uuid string) error {
 	}
 	defer tx.Rollback(ctx)
 
-	err = common.Update(ctx, tx, []string{"first_name", "last_name", "about", "title", "avatar_url", "country_code"}, []string{"", "", "", "", "", ""}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByUUID, Value: uuid})
+	id, err := common.GetUserDBIDFromUUID(ctx, tx, uuid)
+	if err != nil {
+		return err
+	}
+
+	err = common.Update(ctx, tx, []string{"first_name", "last_name", "about", "title", "avatar_url", "country_code"}, []interface{}{"", "", "", "", "", ""}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByID, Value: id})
 	if err != nil {
 		return err
 	}
@@ -886,16 +927,16 @@ func (s *DBStore) GetModList(ctx context.Context) (*pb.GetModListResponse, error
 	var adminUserIds []string
 	var modUserIds []string
 	var uuid string
-	var isAdmin bool
-	var isMod bool
+	var isAdmin sql.NullBool
+	var isMod sql.NullBool
 	for rows.Next() {
-		if err := rows.Scan(&uuid, isAdmin, isMod); err != nil {
+		if err := rows.Scan(&uuid, &isAdmin, &isMod); err != nil {
 			return nil, err
 		}
-		if isAdmin {
+		if isAdmin.Bool {
 			adminUserIds = append(adminUserIds, uuid)
 		}
-		if isMod {
+		if isMod.Bool {
 			modUserIds = append(modUserIds, uuid)
 		}
 	}

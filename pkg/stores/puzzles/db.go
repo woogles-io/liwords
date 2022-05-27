@@ -11,7 +11,6 @@ import (
 
 	commontest "github.com/domino14/liwords/pkg/common"
 	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/glicko"
 	"github.com/domino14/liwords/pkg/stores/common"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/liwords/rpc/api/proto/puzzle_service"
@@ -166,11 +165,7 @@ func (s *DBStore) CreatePuzzle(ctx context.Context, gameUUID string, turnNumber 
 		authorId.Valid = true
 	}
 
-	newRating := &entity.SingleRating{
-		Rating:            float64(glicko.InitialRating),
-		RatingDeviation:   float64(glicko.InitialRatingDeviation),
-		Volatility:        glicko.InitialVolatility,
-		LastGameTimestamp: time.Now().Unix()}
+	newRating := entity.NewDefaultRating(true)
 
 	uuid := shortuuid.New()
 
@@ -804,14 +799,7 @@ func getUserRating(ctx context.Context, tx pgx.Tx, userID string, ratingKey enti
 	if err != nil {
 		return nil, err
 	}
-
-	initialRating := &entity.SingleRating{
-		Rating:            float64(glicko.InitialRating),
-		RatingDeviation:   float64(glicko.InitialRatingDeviation),
-		Volatility:        glicko.InitialVolatility,
-		LastGameTimestamp: time.Now().Unix()}
-
-	sr, err := common.GetUserRating(ctx, tx, uid, ratingKey, initialRating)
+	sr, err := common.GetUserRating(ctx, tx, uid, ratingKey)
 	if err != nil {
 		return nil, err
 	}
