@@ -90,6 +90,10 @@ func recreateDB() (*DBController, *config.Config) {
 	}
 	ustore.(*user.DBStore).Disconnect()
 
+	pool, err = common.OpenTestingDB()
+	if err != nil {
+		panic(err)
+	}
 	us := userStore(pool)
 	_, gs := gameStore(us)
 	cfg, tstore := tournamentStore(gs)
