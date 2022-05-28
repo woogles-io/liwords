@@ -161,9 +161,11 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStor
 
 	gr.InitialTimeSeconds = int32(initialTime * 60)
 	gr.RatingMode = ratingMode
-	g, _ := gameplay.InstantiateNewGame(ctx, gstore, cfg, [2]*entity.User{cesar, jesse},
+	g, err := gameplay.InstantiateNewGame(ctx, gstore, cfg, [2]*entity.User{cesar, jesse},
 		1, gr, nil)
-
+	if err != nil {
+		panic(err)
+	}
 	ch := make(chan *entity.EventWrapper)
 	donechan := make(chan bool)
 	consumer := &evtConsumer{}
