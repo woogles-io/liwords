@@ -1,0 +1,298 @@
+@import '../base';
+@import '../tile_modes';
+@include modal;
+
+.puzzle-container {
+  .ant-card.pool {
+    order: 2;
+  }
+  .ant-card.player-cards {
+    order: 3;
+  }
+  .ant-card.puzzle-info {
+    .ant-card-head .ant-card-head-title {
+      padding: 18px 6px;
+      @include colorModed() {
+        color: m($secondary);
+      }
+      font-size: 13px;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+    .ant-card-body {
+      padding: 0 18px 60px;
+      @media (min-width: $screen-tablet-min) {
+        min-height: calc(#{$board-size-tablet} - 125px);
+      }
+      @media (min-width: $screen-laptop-min) {
+        min-height: calc(#{$board-size-laptop} + 90px);
+      }
+      @media (min-width: $screen-desktop-min) {
+        min-height: calc(#{$board-size-laptop} + 90px);
+      }
+      @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
+        min-height: calc(#{$board-size-desktop} + 90px);
+      }
+      @media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-min) {
+        min-height: calc(#{$board-size-desktop} + 80px);
+      }
+    }
+    button.ant-btn {
+      font-size: 14px;
+    }
+    .puzzle-hints {
+      .hint-prompt {
+        margin-top: 3px;
+      }
+      margin: 0 0 24px;
+      padding-top: 8px;
+      @include colorModed() {
+        border-top: 1px solid m($gray-subtle);
+      }
+      button.ant-btn {
+        margin: 3px 0;
+      }
+      .puzzle-hint {
+        display: flex;
+        align-items: center;
+        font-size: 15px;
+        font-weight: 700;
+        margin: 6px 0;
+        padding: 6px 0;
+      }
+      .hint-actions {
+        margin-top: 16px;
+        display: flex;
+        flex-direction: column;
+      }
+      .anticon-bulb {
+        font-size: 24px;
+        margin-right: 8px;
+        @include colorModed() {
+          color: m($timer-low-dark);
+        }
+      }
+      .tentative-score {
+        display: inline-block;
+        position: relative;
+        font-size: 16px;
+        width: auto;
+        height: auto;
+        padding: 2px 6px;
+        margin-left: 0.5em;
+      }
+      .anticon-eye, .anticon-eye-invisible {
+        cursor: pointer;
+        margin-left: 0.5em;
+        font-size: 18px;
+        @include colorModed() {
+          color: m($gray-medium);
+        }
+      }
+      .anticon-eye {
+        @include colorModed() {
+          color: m($primary-midDark);
+        }
+      }
+      .ant-btn.ant-btn-primary {
+        margin-bottom: 0;
+      }
+    }
+    .actions {
+      position: absolute;
+      bottom: 24px;
+      margin-top: 12px;
+      button:first-child {
+        margin-left: 0;
+      }
+    }
+    @media (min-width: $screen-laptop-min) {
+      .instructions {
+        font-size: 15px;
+        margin: 36px 0 18px;
+      }
+    }
+    @media (min-width: $screen-desktop-min) {
+      .progress {
+        margin: 16px 0 16px;
+        font-size: 15px;
+      }
+    }
+  }
+  .player-cards.ant-card .mini-player {
+    .player-avatar {
+      width: 40px;
+      min-width: 40px;
+      height: 40px;
+      font-size: 30px;
+    }
+    .ant-row.player {
+      padding: 6px;
+    }
+    @media (min-width: $screen-desktop-min) {
+      .ant-row.player {
+        padding: 18px 6px;
+      }
+    }
+  }
+  .ant-card.puzzle-info {
+    .ant-card-extra, .game-settings {
+      text-transform: capitalize;
+    }
+    .user-context-menu {
+      @include colorModed() {
+        color: m($primary-dark);
+      }
+    }
+  }
+
+  .game-controls {
+    justify-content: center;
+    left: 0;
+    width: 100%;
+    .secondary-controls {
+      flex-direction: row;
+      width: auto;
+      button {
+        height: 32px;
+      }
+      &:nth-child(2) {
+        order: 1;
+      }
+    }
+    button.ant-btn {
+      font-size: 14px;
+      margin: 0 6px;
+      &.play {
+        order: 2;
+        min-width: 100%;
+        height: 32px;
+      }
+    }
+  }
+  .ant-affix {
+    position: static !important;
+    height: auto !important;
+    @include colorModed() {
+      border-bottom: 0;
+    }
+  }
+  .instructions {
+    font-style: italic;
+    letter-spacing: 0;
+    margin: 9px 0 0;
+  }
+  .progress {
+    margin: 18px 0 18px;
+    font-weight: 700;
+  }
+  .data-area .notepad-card {
+    display: none;
+    @media (min-width: $screen-tablet-min) {
+      display: block;
+      .ant-card-body {
+        height: 180px;
+      }
+    }
+    @media (min-width: $screen-laptop-min) {
+      display: none;
+      .ant-card-body {
+        height: auto;
+      }
+    }
+  }
+  .tile.second-color.second-color {
+    @include colorModed() {
+      background: m($tile-background);
+      border: m($tile-border);
+    }
+    @include userTile() {
+      background: ut($tile-background);
+      border: ut($tile-border);
+    }
+    &.blank p.rune {
+      @include colorModed() {
+        color: m($tile-blank-text);
+        background-color: m($tile-background-secondary);
+      }
+      @include userTile() {
+        color: ut($tile-blank-text);
+        background: ut($tile-background-secondary);
+      }
+    }
+    p.rune, .point-value {
+      @include colorModed() {
+        color: m($background);
+      }
+      @include userTile() {
+        color: ut($tile-text);
+      }
+    }
+  }
+  .tile.tentative {
+    @include colorModed() {
+      border: 1px solid m($tile-last-background);
+      background: m($tile-last-background);
+    }
+    @include userTile() {
+      border: 0px solid transparent; // Fallback if border is a gradient
+      border: ut($tile-border);
+      background: ut($tile-last-background);
+    }
+    &.blank {
+      p.rune {
+        @include colorModed() {
+          background-color: m($tile-last-blank);
+          color: m($tile-last-background);
+        }
+        @include userTile() {
+          color: ut($tile-blank-text); // Fallback if border is a gradient
+          color: ut($tile-last-background);
+          background: ut($tile-last-blank);
+        }
+      }
+    }
+    p.rune, p.point-value {
+      @include colorModed() {
+        color: m($tile-last-text);
+      }
+      @include userTile() {
+        color: ut($tile-last-text);
+      }
+    }
+  }
+
+}
+.puzzle-container .stars, .ant-modal-body .stars {
+  margin: 9px 0 18px;
+  .anticon {
+    font-size: 38px;
+    margin-right: 9px;
+    &.anticon-star {
+      @include colorModed() {
+        color: m($timer-low-dark);
+      }
+      &.unearned {
+        @include colorModed() {
+          color: m($gray-subtle);
+        }
+      }
+    }
+  }
+}
+
+.response-modal .ant-modal-body {
+  text-align: center;
+  font-size: 15px;
+  .stars {
+    margin-bottom: 12px;
+  }
+  button, button.ant-btn {
+    font-size: 14px;
+  }
+  .invalid-plays {
+    @include colorModed() {
+      color: m($timer-out-dark);
+    }
+  }
+}

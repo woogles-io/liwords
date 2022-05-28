@@ -1,0 +1,120 @@
+syntax = "proto3";
+package puzzle_service;
+option go_package = "github.com/domino14/liwords/rpc/api/proto/puzzle_service";
+
+import "macondo/api/proto/macondo/macondo.proto";
+import "google/protobuf/timestamp.proto";
+import "api/proto/ipc/omgwords.proto";
+
+message StartPuzzleIdRequest { string lexicon = 1; }
+
+message StartPuzzleIdResponse { string puzzle_id = 1; }
+
+message NextPuzzleIdRequest { string lexicon = 1; }
+
+message NextPuzzleIdResponse { string puzzle_id = 1; }
+
+message NextClosestRatingPuzzleIdRequest { string lexicon = 1; }
+
+message NextClosestRatingPuzzleIdResponse { string puzzle_id = 1; }
+
+message PuzzleRequest { string puzzle_id = 1; }
+
+enum PuzzleStatus {
+  UNANSWERED = 0;
+  CORRECT = 1;
+  INCORRECT = 2;
+}
+
+message AnswerResponse {
+  macondo.GameEvent correct_answer = 1;
+  PuzzleStatus status = 2;
+  int32 attempts = 3;
+  string game_id = 4;
+  int32 turn_number = 5;
+  string after_text = 6;
+  int32 new_user_rating = 7;
+  int32 new_puzzle_rating = 8;
+  google.protobuf.Timestamp first_attempt_time = 9;
+  google.protobuf.Timestamp last_attempt_time = 10;
+}
+
+message PuzzleResponse {
+  macondo.GameHistory history = 1;
+  string before_text = 2;
+  AnswerResponse answer = 3;
+}
+
+message SubmissionRequest {
+  string puzzle_id = 1;
+  ipc.ClientGameplayEvent answer = 2;
+  bool show_solution = 3;
+}
+
+message SubmissionResponse {
+  bool user_is_correct = 1;
+  AnswerResponse answer = 2;
+}
+
+message PreviousPuzzleRequest { string puzzle_id = 1; }
+
+message PreviousPuzzleResponse { string puzzle_id = 1; }
+
+message PuzzleVoteRequest {
+  string puzzle_id = 1;
+  int32 vote = 2;
+}
+
+message PuzzleVoteResponse {}
+
+message PuzzleGenerationJobRequest {
+  bool bot_vs_bot = 1;
+  string lexicon = 2;
+  string letter_distribution = 3;
+  int32 sql_offset = 4;
+  int32 game_consideration_limit = 5;
+  int32 game_creation_limit = 6;
+  macondo.PuzzleGenerationRequest request = 7;
+}
+
+message APIPuzzleGenerationJobResponse {
+  bool started = 1;
+}
+
+message APIPuzzleGenerationJobRequest {
+  PuzzleGenerationJobRequest request = 1;
+  string secret_key = 2;
+}
+
+message PuzzleJobLogsRequest {
+  int32 offset = 1;
+  int32 limit = 2;
+}
+
+message PuzzleJobLog {
+  int64 id = 1;
+  PuzzleGenerationJobRequest request = 2;
+  bool fulfilled = 3;
+  string error_status = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp completed_at = 6;
+}
+
+message PuzzleJobLogsResponse {
+  repeated PuzzleJobLog logs = 1;
+}
+
+service PuzzleService {
+  rpc GetStartPuzzleId(StartPuzzleIdRequest) returns (StartPuzzleIdResponse);
+  rpc GetNextPuzzleId(NextPuzzleIdRequest) returns (NextPuzzleIdResponse);
+  rpc GetPuzzle(PuzzleRequest) returns (PuzzleResponse);
+  rpc SubmitAnswer(SubmissionRequest) returns (SubmissionResponse);
+  // GetPuzzleAnswer just gets the answer of the puzzle without a submission.
+  // It will not work if the user has not tried the puzzle at least once.
+  rpc GetPuzzleAnswer(PuzzleRequest) returns (AnswerResponse);
+  rpc GetPreviousPuzzleId(PreviousPuzzleRequest) returns (PreviousPuzzleResponse);
+  rpc SetPuzzleVote(PuzzleVoteRequest) returns (PuzzleVoteResponse);
+
+  rpc StartPuzzleGenJob(APIPuzzleGenerationJobRequest) returns (APIPuzzleGenerationJobResponse);
+  rpc GetPuzzleJobLogs(PuzzleJobLogsRequest) returns (PuzzleJobLogsResponse);
+}

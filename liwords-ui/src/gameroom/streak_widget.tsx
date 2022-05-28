@@ -101,7 +101,7 @@ export const StreakWidget = React.memo((props: Props) => {
   const pStyle = {
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap' as 'nowrap',
+    whiteSpace: 'nowrap' as const,
   };
 
   return (

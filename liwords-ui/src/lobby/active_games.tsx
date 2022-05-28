@@ -1,6 +1,12 @@
 import { Table, Tooltip } from 'antd';
-import React, { ReactNode } from 'react';
-import { useHistory } from 'react-router-dom';
+import {
+  FilterValue,
+  SorterResult,
+  TableCurrentDataSource,
+  TablePaginationConfig,
+} from 'antd/lib/table/interface';
+import React, { ReactNode, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FundOutlined } from '@ant-design/icons/lib';
 import { RatingBadge } from './rating_badge';
 import { challengeFormat, PlayerDisplay, timeFormat } from './sought_games';
@@ -9,6 +15,7 @@ import { calculateTotalTime } from '../store/constants';
 import { VariantIcon } from '../shared/variant_icons';
 import { MatchLexiconDisplay } from '../shared/lexicon_display';
 import { useLoginStateStoreContext } from '../store/store';
+import { useMountedState } from '../utils/mounted';
 
 type Props = {
   activeGames: ActiveGame[];
@@ -17,11 +24,45 @@ type Props = {
 };
 
 export const ActiveGames = (props: Props) => {
-  const history = useHistory();
+  const { useState } = useMountedState();
+  const [lobbyFilterByLexicon, setLobbyFilterByLexicon] = useState(
+    localStorage.getItem('lobbyFilterByLexicon')
+  );
+  const lobbyFilterByLexiconArray = useMemo(
+    () => lobbyFilterByLexicon?.match(/\S+/g) ?? [],
+    [lobbyFilterByLexicon]
+  );
+  const navigate = useNavigate();
   const {
     loginState: { perms },
   } = useLoginStateStoreContext();
   const isAdmin = perms.includes('adm');
+
+  const handleChange = useCallback(
+    (
+      pagination: TablePaginationConfig,
+      filters: Record<string, FilterValue | null>,
+      sorter:
+        | SorterResult<ActiveGameTableData>
+        | SorterResult<ActiveGameTableData>[],
+      extra: TableCurrentDataSource<ActiveGameTableData>
+    ) => {
+      if (extra.action === 'filter') {
+        if (filters.lexicon && filters.lexicon.length > 0) {
+          const lexicon = filters.lexicon.join(' ');
+          if (lexicon !== lobbyFilterByLexicon) {
+            setLobbyFilterByLexicon(lexicon);
+            localStorage.setItem('lobbyFilterByLexicon', lexicon);
+          }
+        } else {
+          // filter is reset, remove lexicon
+          setLobbyFilterByLexicon(null);
+          localStorage.removeItem('lobbyFilterByLexicon');
+        }
+      }
+    },
+    [lobbyFilterByLexicon]
+  );
 
   type ActiveGameTableData = {
     gameID: string;
@@ -50,59 +91,57 @@ export const ActiveGames = (props: Props) => {
             parseRating(agA.players[1].rating))
         );
       })
-      .map(
-        (ag: ActiveGame): ActiveGameTableData => {
-          const getDetails = () => {
-            return (
-              <>
-                <VariantIcon vcode={ag.variant} />{' '}
-                {challengeFormat(ag.challengeRule)}
-                {ag.rated ? (
-                  <Tooltip title="Rated">
-                    <FundOutlined />
-                  </Tooltip>
-                ) : null}
-              </>
-            );
-          };
-          return {
-            gameID: ag.gameID,
-            players: (
-              <>
-                <div>
-                  <PlayerDisplay
-                    username={ag.players[0].displayName}
-                    userID={ag.players[0].uuid}
-                  />
-                  <RatingBadge rating={ag.players[0].rating} />
-                </div>
-                <div>
-                  <PlayerDisplay
-                    username={ag.players[1].displayName}
-                    userID={ag.players[1].uuid}
-                  />
-                  <RatingBadge rating={ag.players[1].rating} />
-                </div>
-              </>
-            ),
-            lexicon: <MatchLexiconDisplay lexiconCode={ag.lexicon} />,
-            lexiconCode: ag.lexicon,
-            time: timeFormat(
-              ag.initialTimeSecs,
-              ag.incrementSecs,
-              ag.maxOvertimeMinutes
-            ),
-            totalTime: calculateTotalTime(
-              ag.initialTimeSecs,
-              ag.incrementSecs,
-              ag.maxOvertimeMinutes
-            ),
-            details: getDetails(),
-            player1: ag.players[0].displayName,
-            player2: ag.players[1].displayName,
-          };
-        }
-      );
+      .map((ag: ActiveGame): ActiveGameTableData => {
+        const getDetails = () => {
+          return (
+            <>
+              <VariantIcon vcode={ag.variant} />{' '}
+              {challengeFormat(ag.challengeRule)}
+              {ag.rated ? (
+                <Tooltip title="Rated">
+                  <FundOutlined />
+                </Tooltip>
+              ) : null}
+            </>
+          );
+        };
+        return {
+          gameID: ag.gameID,
+          players: (
+            <>
+              <div>
+                <PlayerDisplay
+                  username={ag.players[0].displayName}
+                  userID={ag.players[0].uuid}
+                />
+                <RatingBadge rating={ag.players[0].rating} />
+              </div>
+              <div>
+                <PlayerDisplay
+                  username={ag.players[1].displayName}
+                  userID={ag.players[1].uuid}
+                />
+                <RatingBadge rating={ag.players[1].rating} />
+              </div>
+            </>
+          ),
+          lexicon: <MatchLexiconDisplay lexiconCode={ag.lexicon} />,
+          lexiconCode: ag.lexicon,
+          time: timeFormat(
+            ag.initialTimeSecs,
+            ag.incrementSecs,
+            ag.maxOvertimeMinutes
+          ),
+          totalTime: calculateTotalTime(
+            ag.initialTimeSecs,
+            ag.incrementSecs,
+            ag.maxOvertimeMinutes
+          ),
+          details: getDetails(),
+          player1: ag.players[0].displayName,
+          player2: ag.players[1].displayName,
+        };
+      });
     return gameData;
   };
   const columns = [
@@ -123,11 +162,12 @@ export const ActiveGames = (props: Props) => {
           value: l,
         })
       ),
-      filterMultiple: false,
+      defaultFilteredValue: lobbyFilterByLexiconArray,
+      filterMultiple: true,
       onFilter: (
         value: string | number | boolean,
         record: ActiveGameTableData
-      ) => record.lexiconCode.indexOf(value.toString()) === 0,
+      ) => typeof value === 'string' && record.lexiconCode === value,
     },
     {
       title: 'Time',
@@ -172,7 +212,7 @@ export const ActiveGames = (props: Props) => {
               if (event.ctrlKey || event.altKey || event.metaKey) {
                 window.open(`/game/${encodeURIComponent(record.gameID)}`);
               } else {
-                history.replace(`/game/${encodeURIComponent(record.gameID)}`);
+                navigate(`/game/${encodeURIComponent(record.gameID)}`);
                 console.log('redirecting to', record.gameID);
               }
             },
@@ -194,6 +234,7 @@ export const ActiveGames = (props: Props) => {
           }
           return 'game-listing';
         }}
+        onChange={handleChange}
       />
     </>
   );

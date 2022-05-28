@@ -53,6 +53,7 @@ type GameStore interface {
 	GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error)
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
+	CreateRaw(context.Context, *entity.Game, pb.GameType) error
 	Exists(ctx context.Context, id string) (bool, error)
 	ListActive(context.Context, string, bool) (*pb.GameInfoResponses, error)
 	Count(ctx context.Context) (int64, error)
@@ -245,16 +246,18 @@ func StartGame(ctx context.Context, gameStore GameStore, userStore user.Store, e
 
 	// If the previous game was a rematch, notify
 	// the viewers that this game has started.
-	rematchStreak, err := gameStore.GetRematchStreak(ctx, entGame.Quickdata.OriginalRequestId)
-	if err != nil {
-		return err
-	}
-	if len(rematchStreak.Streak) > 0 {
-		previousGameID := rematchStreak.Streak[0].GameId
-		evt := &pb.RematchStartedEvent{RematchGameId: entGame.GameID()}
-		wrappedRematch := entity.WrapEvent(evt, pb.MessageType_REMATCH_STARTED)
-		wrappedRematch.AddAudience(entity.AudGameTV, previousGameID)
-		entGame.SendChange(wrappedRematch)
+	if entGame.Quickdata.OriginalRequestId != "" {
+		rematchStreak, err := gameStore.GetRematchStreak(ctx, entGame.Quickdata.OriginalRequestId)
+		if err != nil {
+			return err
+		}
+		if len(rematchStreak.Streak) > 0 {
+			previousGameID := rematchStreak.Streak[0].GameId
+			evt := &pb.RematchStartedEvent{RematchGameId: entGame.GameID()}
+			wrappedRematch := entity.WrapEvent(evt, pb.MessageType_REMATCH_STARTED)
+			wrappedRematch.AddAudience(entity.AudGameTV, previousGameID)
+			entGame.SendChange(wrappedRematch)
+		}
 	}
 
 	return nil

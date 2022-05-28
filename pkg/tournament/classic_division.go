@@ -491,15 +491,6 @@ func (t *ClassicDivision) SubmitResult(round int,
 		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_RESULT_ALREADY_SUBMITTED, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), p1, p2)
 	}
 
-	// If this claims to be an amendment and is not submitting forfeit
-	// losses for players that show up late, reject this submission.
-	if amend && p1Result != t.DivisionControls.SuspendedResult &&
-		p2Result != t.DivisionControls.SuspendedResult &&
-		pairing.Games[gameIndex].Results[0] == pb.TournamentGameResult_NO_RESULT &&
-		pairing.Games[gameIndex].Results[1] == pb.TournamentGameResult_NO_RESULT {
-		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_RESULT_AMENDMENT, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), p1, p2)
-	}
-
 	if amend && gid == "" {
 		// Don't change the ID of the game if it already exists.
 		gid = pairing.Games[gameIndex].Id

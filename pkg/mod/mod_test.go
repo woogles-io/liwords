@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/jinzhu/gorm"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -17,14 +16,12 @@ import (
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/stores/common"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	macondoconfig "github.com/domino14/macondo/config"
 )
-
-var TestDBHost = os.Getenv("TEST_DB_HOST")
-var TestingDBConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
 
 var DefaultConfig = macondoconfig.Config{
 	LexiconPath:               os.Getenv("LEXICON_PATH"),
@@ -35,21 +32,12 @@ var DefaultConfig = macondoconfig.Config{
 
 func recreateDB() {
 	// Create a database.
-	db, err := gorm.Open("postgres", TestingDBConnStr+" dbname=postgres")
+	err := common.RecreateTestDB()
 	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-	defer db.Close()
-	db = db.Exec("DROP DATABASE IF EXISTS liwords_test")
-	if db.Error != nil {
-		log.Fatal().Err(db.Error).Msg("error")
-	}
-	db = db.Exec("CREATE DATABASE liwords_test")
-	if db.Error != nil {
-		log.Fatal().Err(db.Error).Msg("error")
+		panic(err)
 	}
 
-	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
+	ustore := userStore()
 
 	for _, u := range []*entity.User{
 		{Username: "Spammer", Email: os.Getenv("TEST_EMAIL_USERNAME") + "+spammer@woogles.io", UUID: "Spammer"},
@@ -67,15 +55,15 @@ func recreateDB() {
 	ustore.(*user.DBStore).Disconnect()
 }
 
-func userStore(dbURL string) pkguser.Store {
-	ustore, err := user.NewDBStore(TestingDBConnStr + " dbname=liwords_test")
+func userStore() pkguser.Store {
+	ustore, err := user.NewDBStore(common.TestingPostgresConnDSN())
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
 	return ustore
 }
 
-func chatStore(dbURL string) pkguser.ChatStore {
+func chatStore() pkguser.ChatStore {
 	// Return a dummy chatStore since it is
 	// not used in these tests
 	var cstore pkguser.ChatStore = nil
@@ -91,10 +79,9 @@ func TestMod(t *testing.T) {
 		Expiry:   time.Now().Add(time.Second * 100)}
 	ctx := context.Background()
 	ctx = apiserver.PlaceInContext(ctx, session)
-	cstr := TestingDBConnStr + " dbname=liwords_test"
 	recreateDB()
-	us := userStore(cstr)
-	cs := chatStore(cstr)
+	us := userStore()
+	cs := chatStore()
 
 	var muteDuration int32 = 2
 
@@ -325,10 +312,9 @@ func TestNotifications(t *testing.T) {
 	ctx = context.WithValue(ctx, config.CtxKeyword,
 		&config.Config{MailgunKey: os.Getenv("TEST_MAILGUN_KEY"), DiscordToken: os.Getenv("TEST_DISCORD_TOKEN")})
 
-	cstr := TestingDBConnStr + " dbname=liwords_test"
 	recreateDB()
-	us := userStore(cstr)
-	cs := chatStore(cstr)
+	us := userStore()
+	cs := chatStore()
 
 	permanentAction := &ms.ModAction{UserId: "Spammer", Type: ms.ModActionType_MUTE, Duration: 0}
 	suspendAction := &ms.ModAction{UserId: "Cheater", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: 100, EmailType: ms.EmailType_CHEATING}

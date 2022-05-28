@@ -55,17 +55,20 @@ const jsonMoveToKey = (v: JsonMove) => {
   switch (v.action) {
     case 'exchange': {
       return JSON.stringify(
-        ['action', 'tiles'].reduce((h: { [key: string]: any }, k: string) => {
-          h[k] = (v as { [key: string]: any })[k];
-          return h;
-        }, {})
+        ['action', 'tiles'].reduce(
+          (h: { [key: string]: unknown }, k: string) => {
+            h[k] = (v as { [key: string]: unknown })[k];
+            return h;
+          },
+          {}
+        )
       );
     }
     case 'play': {
       return JSON.stringify(
         ['action', 'down', 'lane', 'idx', 'word'].reduce(
-          (h: { [key: string]: any }, k: string) => {
-            h[k] = (v as { [key: string]: any })[k];
+          (h: { [key: string]: unknown }, k: string) => {
+            h[k] = (v as { [key: string]: unknown })[k];
             return h;
           },
           {}
@@ -78,7 +81,7 @@ const jsonMoveToKey = (v: JsonMove) => {
   }
 };
 
-type AnalyzerMove = {
+export type AnalyzerMove = {
   jsonKey: string;
   chosen?: boolean; // true for played, undefined for analyzer-generated moves
   valid?: boolean; // undefined for analyzer-generated moves
@@ -380,9 +383,8 @@ export const AnalyzerContextProvider = ({
   const [autoMode, setAutoMode] = useState(false);
   const [unrace, setUnrace] = useState(new Unrace());
 
-  const {
-    gameContext: examinableGameContext,
-  } = useExaminableGameContextStoreContext();
+  const { gameContext: examinableGameContext } =
+    useExaminableGameContextStoreContext();
 
   const examinerId = useRef(0);
   const movesCacheRef = useRef<Array<Array<AnalyzerMove> | null>>([]);
@@ -456,39 +458,14 @@ export const AnalyzerContextProvider = ({
   return <AnalyzerContext.Provider value={contextValue} children={children} />;
 };
 
-export const Analyzer = React.memo((props: AnalyzerProps) => {
-  const { useState } = useMountedState();
-  const { lexicon, variant } = props;
-  const {
-    autoMode,
-    setAutoMode,
-    cachedMoves,
-    examinerLoading,
-    requestAnalysis,
-    showMovesForTurn,
-    setShowMovesForTurn,
-  } = useContext(AnalyzerContext);
-
-  const {
-    gameContext: examinableGameContext,
-  } = useExaminableGameContextStoreContext();
-  const { addHandleExaminer, removeHandleExaminer } = useExamineStoreContext();
-  const { gameContext } = useGameContextStoreContext();
-  const {
-    setDisplayedRack,
-    setPlacedTiles,
-    setPlacedTilesTempScore,
-  } = useTentativeTileContext();
-
-  const letterDistribution = useMemo(() => defaultLetterDistribution(lexicon), [
-    lexicon,
-  ]);
-  const labelToNum = useMemo(() => labelToNumFor(letterDistribution), [
-    letterDistribution,
-  ]);
+export const usePlaceMoveCallback = () => {
+  const { gameContext: examinableGameContext } =
+    useExaminableGameContextStoreContext();
+  const { setDisplayedRack, setPlacedTiles, setPlacedTilesTempScore } =
+    useTentativeTileContext();
 
   const placeMove = useCallback(
-    (move) => {
+    (move: AnalyzerMove) => {
       const {
         board: { dim, letters },
       } = examinableGameContext;
@@ -538,6 +515,38 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
       setPlacedTilesTempScore,
     ]
   );
+
+  return placeMove;
+};
+
+export const Analyzer = React.memo((props: AnalyzerProps) => {
+  const { useState } = useMountedState();
+  const { lexicon, variant } = props;
+  const {
+    autoMode,
+    setAutoMode,
+    cachedMoves,
+    examinerLoading,
+    requestAnalysis,
+    showMovesForTurn,
+    setShowMovesForTurn,
+  } = useContext(AnalyzerContext);
+
+  const { gameContext: examinableGameContext } =
+    useExaminableGameContextStoreContext();
+  const { addHandleExaminer, removeHandleExaminer } = useExamineStoreContext();
+  const { gameContext } = useGameContextStoreContext();
+
+  const letterDistribution = useMemo(
+    () => defaultLetterDistribution(lexicon),
+    [lexicon]
+  );
+  const labelToNum = useMemo(
+    () => labelToNumFor(letterDistribution),
+    [letterDistribution]
+  );
+
+  const placeMove = usePlaceMoveCallback();
 
   const handleExaminer = useCallback(() => {
     setShowMovesForTurn(examinableGameContext.turns.length);
@@ -701,21 +710,29 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
       const arr = [];
       for (const elt of cachedMoves) {
         if (!found) {
-          if (elt.jsonKey === currentEvaluatedMove.analyzerMove!.jsonKey) {
-            arr.push(currentEvaluatedMove.analyzerMove!);
-            found = true;
-            continue;
+          if (currentEvaluatedMove.analyzerMove) {
+            if (elt.jsonKey === currentEvaluatedMove.analyzerMove.jsonKey) {
+              arr.push(currentEvaluatedMove.analyzerMove);
+              found = true;
+              continue;
+            }
           }
-          if (elt.equity < currentEvaluatedMove.moveObj!.equity) {
-            // phonies may have better equity than valid plays
-            arr.push(currentEvaluatedMove.analyzerMove!);
-            found = true;
+          if (currentEvaluatedMove.moveObj) {
+            if (elt.equity < currentEvaluatedMove.moveObj.equity) {
+              // phonies may have better equity than valid plays
+              if (currentEvaluatedMove.analyzerMove) {
+                arr.push(currentEvaluatedMove.analyzerMove);
+                found = true;
+              }
+            }
           }
         }
         arr.push(elt);
       }
       if (!found) {
-        arr.push(currentEvaluatedMove.analyzerMove!);
+        if (currentEvaluatedMove.analyzerMove) {
+          arr.push(currentEvaluatedMove.analyzerMove);
+        }
       }
       return arr;
     }

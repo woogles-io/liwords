@@ -1,6 +1,9 @@
 import { Action, ActionType } from '../../actions/actions';
 import { MatchUser, SeekRequest } from '../../gen/api/proto/ipc/omgseeks_pb';
-import { GameInfoResponse, RatingMode } from '../../gen/api/proto/ipc/omgwords_pb';
+import {
+  GameInfoResponse,
+  RatingMode,
+} from '../../gen/api/proto/ipc/omgwords_pb';
 import { ProfileUpdate } from '../../gen/api/proto/ipc/users_pb';
 import { BotTypesEnum } from '../../lobby/bots';
 import { StartingRating } from '../constants';
@@ -77,7 +80,7 @@ export const SeekRequestToSoughtGame = (
   let tournamentID = '';
   if (req.getReceiverIsPermanent()) {
     console.log('ismatchrequest');
-    receivingUser = req.getReceivingUser()!;
+    receivingUser = req.getReceivingUser() ?? receivingUser;
     rematchFor = req.getRematchFor();
     tournamentID = req.getTournamentId();
   }

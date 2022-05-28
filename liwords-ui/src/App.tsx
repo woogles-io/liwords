@@ -1,11 +1,18 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import { Route, Switch, useLocation, Redirect } from 'react-router-dom';
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useSearchParams,
+} from 'react-router-dom';
 import { useMountedState } from './utils/mounted';
 import './App.scss';
 import axios from 'axios';
-import 'antd/dist/antd.css';
+import 'antd/dist/antd.min.css';
 
 import { Table as GameTable } from './gameroom/table';
+import { SinglePuzzle } from './puzzles/puzzle';
 import TileImages from './gameroom/tile_images';
 import { Lobby } from './lobby/lobby';
 import {
@@ -20,12 +27,12 @@ import {
 import { LiwordsSocket } from './socket/socket';
 import { Team } from './about/team';
 import { Register } from './lobby/register';
-import { UserProfile } from './profile/profile';
+import { PlayerProfile } from './profile/profile';
 import { Settings } from './settings/settings';
 import { PasswordChange } from './lobby/password_change';
 import { PasswordReset } from './lobby/password_reset';
 import { NewPassword } from './lobby/new_password';
-import { toAPIUrl } from './api/api';
+import { postJsonObj, toAPIUrl } from './api/api';
 import { encodeToSocketFmt } from './utils/protobuf';
 import { Clubs } from './clubs';
 import { TournamentRoom } from './tournament/room';
@@ -66,6 +73,47 @@ if (bnjyTile) {
   document?.body?.classList?.add(`bnjyMode`);
 }
 
+// A temporary component until we auto-redirect with Cloudfront
+const HandoverSignedCookie = () => {
+  // No render.
+  const [searchParams] = useSearchParams();
+  const jwt = searchParams.get('jwt');
+  const ls = searchParams.get('ls');
+  const path = searchParams.get('path');
+
+  const successFn = useCallback(() => {
+    if (ls) {
+      const lsobj = JSON.parse(ls);
+      for (const k in lsobj) {
+        localStorage.setItem(k, lsobj[k]);
+      }
+    }
+    if (path) {
+      window.location.replace(path);
+    }
+  }, [ls, path]);
+
+  const cookieSetFunc = useCallback(async () => {
+    await postJsonObj(
+      'user_service.AuthenticationService',
+      'InstallSignedCookie',
+      { jwt },
+      // if successFn is called, it means we successfully transferred the cookie.
+      successFn
+    );
+  }, [jwt, successFn]);
+
+  useEffect(() => {
+    if (jwt) {
+      cookieSetFunc();
+    } else {
+      successFn();
+    }
+  }, [cookieSetFunc, jwt, successFn]);
+
+  return null;
+};
+
 const App = React.memo(() => {
   const { useState } = useMountedState();
 
@@ -79,17 +127,11 @@ const App = React.memo(() => {
   const { loginState } = useLoginStateStoreContext();
   const { loggedIn, userID } = loginState;
 
-  const {
-    setAdmins,
-    setModerators,
-    setModsFetched,
-  } = useModeratorStoreContext();
+  const { setAdmins, setModerators, setModsFetched } =
+    useModeratorStoreContext();
 
-  const {
-    setFriends,
-    pendingFriendsRefresh,
-    setPendingFriendsRefresh,
-  } = useFriendsStoreContext();
+  const { setFriends, pendingFriendsRefresh, setPendingFriendsRefresh } =
+    useFriendsStoreContext();
 
   const { resetStore } = useResetStoreContext();
 
@@ -232,67 +274,71 @@ const App = React.memo(() => {
         resetSocket={resetSocket}
         setValues={setLiwordsSocketValues}
       />
-      <Switch>
-        <Route path="/" exact>
-          <Lobby
-            sendSocketMsg={sendMessage}
-            sendChat={sendChat}
-            DISCONNECT={resetSocket}
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <Lobby
+              sendSocketMsg={sendMessage}
+              sendChat={sendChat}
+              DISCONNECT={resetSocket}
+            />
+          }
+        />
+        <Route
+          path="tournament/:partialSlug/*"
+          element={
+            <TournamentRoom sendSocketMsg={sendMessage} sendChat={sendChat} />
+          }
+        />
+        <Route
+          path="club/:partialSlug/*"
+          element={
+            <TournamentRoom sendSocketMsg={sendMessage} sendChat={sendChat} />
+          }
+        />
+        <Route path="clubs" element={<Clubs />} />
+        <Route
+          path="game/:gameID"
+          element={
+            <GameTable sendSocketMsg={sendMessage} sendChat={sendChat} />
+          }
+        />
+        <Route path="puzzle" element={<SinglePuzzle sendChat={sendChat} />}>
+          <Route
+            path=":puzzleID"
+            element={<SinglePuzzle sendChat={sendChat} />}
           />
         </Route>
-        <Route path="/tournament/:partialSlug">
-          <TournamentRoom sendSocketMsg={sendMessage} sendChat={sendChat} />
-        </Route>
-        <Route path="/club/:partialSlug">
-          <TournamentRoom sendSocketMsg={sendMessage} sendChat={sendChat} />
-        </Route>
-        <Route path="/clubs">
-          <Clubs />
-        </Route>
-        <Route path="/game/:gameID">
-          {/* Table meaning a game table */}
-          <GameTable sendSocketMsg={sendMessage} sendChat={sendChat} />
-        </Route>
-        <Route path="/about">
-          <Team />
-        </Route>
-        <Route path="/team">
-          <Team />
-        </Route>
-        <Route path="/terms">
-          <TermsOfService />
-        </Route>
-        <Route path="/register">
-          <Register />
-        </Route>
-        <Route path="/password/change">
-          <PasswordChange />
-        </Route>
-        <Route path="/password/reset">
-          <PasswordReset />
-        </Route>
 
-        <Route path="/password/new">
-          <NewPassword />
+        <Route path="about" element={<Team />} />
+        <Route path="team" element={<Team />} />
+        <Route path="terms" element={<TermsOfService />} />
+        <Route path="register" element={<Register />} />
+        <Route path="password">
+          <Route path="change" element={<PasswordChange />} />
+          <Route path="reset" element={<PasswordReset />} />
+          <Route path="new" element={<NewPassword />} />
         </Route>
-
-        <Route path="/profile/:username">
-          <UserProfile />
+        <Route path="profile/:username" element={<PlayerProfile />} />
+        <Route path="profile/" element={<PlayerProfile />} />
+        <Route path="settings" element={<Settings />}>
+          <Route path=":section" element={<Settings />} />
         </Route>
-        <Route path="/settings/:section?">
-          <Settings />
+        <Route path="tile_images" element={<TileImages />}>
+          <Route path=":letterDistribution" element={<TileImages />} />
         </Route>
-        <Route path="/tile_images/:letterDistribution?">
-          <TileImages />
-        </Route>
-        <Route path="/admin">
-          <Admin />
-        </Route>
-        <Redirect from="/donate" to="/settings/donate" />
-        <Route path="/donate_success">
-          <DonateSuccess />
-        </Route>
-      </Switch>
+        <Route path="admin" element={<Admin />} />
+        <Route
+          path="donate"
+          element={<Navigate replace to="/settings/donate" />}
+        />
+        <Route path="donate_success" element={<DonateSuccess />} />
+        <Route
+          path="handover-signed-cookie"
+          element={<HandoverSignedCookie />}
+        />
+      </Routes>
       <Footer />
     </div>
   );

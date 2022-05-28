@@ -123,29 +123,11 @@ type blocking struct {
 }
 
 // NewDBStore creates a new DB store
-func NewDBStore(dbURL string) (*DBStore, error) {
-	db, err := gorm.Open("postgres", dbURL)
+func NewDBStore(dbDSN string) (*DBStore, error) {
+	db, err := gorm.Open("postgres", dbDSN)
 	if err != nil {
 		return nil, err
 	}
-	db.AutoMigrate(&User{}, &profile{}, &following{}, &blocking{})
-	db.Model(&User{}).
-		AddUniqueIndex("username_idx", "lower(username)").
-		AddUniqueIndex("email_idx", "lower(email)").
-		AddIndex("api_key_idx", "api_key")
-
-	// Can't get GORM to auto create these foreign keys, so do it myself /shrug
-	db.Model(&profile{}).AddForeignKey("user_id", "users(id)", "RESTRICT", "RESTRICT")
-	db.Model(&following{}).
-		AddForeignKey("user_id", "users(id)", "RESTRICT", "RESTRICT").
-		AddForeignKey("follower_id", "users(id)", "RESTRICT", "RESTRICT").
-		AddUniqueIndex("user_follower_idx", "user_id", "follower_id")
-
-	db.Model(&blocking{}).
-		AddForeignKey("user_id", "users(id)", "RESTRICT", "RESTRICT").
-		AddForeignKey("blocker_id", "users(id)", "RESTRICT", "RESTRICT").
-		AddUniqueIndex("user_blocker_idx", "user_id", "blocker_id")
-
 	return &DBStore{db: db}, nil
 }
 
@@ -265,6 +247,7 @@ func dbProfileToProfile(p *profile) (*entity.Profile, error) {
 		log.Err(err).Msg("profile had bad rating json, zeroing")
 		rdata = entity.Ratings{Data: map[entity.VariantKey]entity.SingleRating{}}
 	}
+
 	var sdata entity.ProfileStats
 	err = json.Unmarshal(p.Stats.RawMessage, &sdata)
 	if err != nil {
@@ -294,15 +277,7 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 	}
 
 	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
-		if gorm.IsRecordNotFoundError(result.Error) {
-			entu = &entity.User{
-				Username:  entity.DeterministicUsername(uuid),
-				Anonymous: true,
-				UUID:      uuid,
-			}
-		} else {
-			return nil, result.Error
-		}
+		return nil, result.Error
 	} else {
 		if result := s.db.Model(u).Related(p); result.Error != nil {
 			return nil, result.Error
@@ -866,9 +841,8 @@ func (s *DBStore) GetFullBlocks(ctx context.Context, uid uint) ([]*entity.User, 
 	return plist, nil
 }
 
-// Username gets the username from the uuid. If not found, return a deterministic username,
-// and return true for isAnonymous.
-func (s *DBStore) Username(ctx context.Context, uuid string) (string, bool, error) {
+// Username gets the username from the uuid.
+func (s *DBStore) Username(ctx context.Context, uuid string) (string, error) {
 	type u struct {
 		Username string
 	}
@@ -877,12 +851,9 @@ func (s *DBStore) Username(ctx context.Context, uuid string) (string, bool, erro
 	if result := s.db.Table("users").Select("username").
 		Where("uuid = ?", uuid).Scan(&user); result.Error != nil {
 
-		if gorm.IsRecordNotFoundError(result.Error) {
-			return entity.DeterministicUsername(uuid), true, nil
-		}
-		return "", false, result.Error
+		return "", result.Error
 	}
-	return user.Username, false, nil
+	return user.Username, nil
 }
 
 func (s *DBStore) UsersByPrefix(ctx context.Context, prefix string) ([]*pb.BasicUser, error) {

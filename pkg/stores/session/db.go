@@ -6,8 +6,10 @@ import (
 	"errors"
 	"time"
 
-	"github.com/jinzhu/gorm"
-	"github.com/jinzhu/gorm/dialects/postgres"
+	"gorm.io/datatypes"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+
 	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
 
@@ -17,7 +19,13 @@ import (
 type dbSession struct {
 	UUID      string    `gorm:"type:varchar(24);primary_key"`
 	ExpiresAt time.Time `gorm:"index"`
-	Data      postgres.Jsonb
+	Data      datatypes.JSON
+}
+
+// The data inside the session's Data object.
+type sessionInfo struct {
+	Username string `json:"username"`
+	UserUUID string `json:"uuid"`
 }
 
 // DBStore is a postgres-backed store for user sessions.
@@ -27,11 +35,10 @@ type DBStore struct {
 
 // NewDBStore creates a new DB store
 func NewDBStore(dbURL string) (*DBStore, error) {
-	db, err := gorm.Open("postgres", dbURL)
+	db, err := gorm.Open(postgres.Open(dbURL), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
-	db.AutoMigrate(&dbSession{})
 
 	return &DBStore{db: db}, nil
 }
@@ -49,7 +56,7 @@ func (s *DBStore) Get(ctx context.Context, sessionID string) (*entity.Session, e
 
 	// Parse JSONB session data.
 	var data sessionInfo
-	err := json.Unmarshal(u.Data.RawMessage, &data)
+	err := json.Unmarshal(u.Data, &data)
 	if err != nil {
 		return nil, err
 	}
@@ -60,12 +67,6 @@ func (s *DBStore) Get(ctx context.Context, sessionID string) (*entity.Session, e
 		UserUUID: data.UserUUID,
 		Expiry:   u.ExpiresAt,
 	}, nil
-}
-
-// The data inside the session's Data object.
-type sessionInfo struct {
-	Username string `json:"username"`
-	UserUUID string `json:"uuid"`
 }
 
 // New should be called when a user logs in. It'll create a new session.
@@ -81,7 +82,7 @@ func (s *DBStore) New(ctx context.Context, user *entity.User) (*entity.Session, 
 	sess := &dbSession{
 		UUID:      shortuuid.New(),
 		ExpiresAt: time.Now().Add(entity.SessionExpiration),
-		Data:      postgres.Jsonb{RawMessage: bytes},
+		Data:      bytes,
 	}
 
 	result := s.db.Create(sess)

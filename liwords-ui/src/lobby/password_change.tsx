@@ -22,9 +22,7 @@ const tailLayout = {
   },
 };
 
-type Props = {};
-
-export const PasswordChange = (props: Props) => {
+export const PasswordChange = () => {
   const { useState } = useMountedState();
 
   const [err, setErr] = useState('');

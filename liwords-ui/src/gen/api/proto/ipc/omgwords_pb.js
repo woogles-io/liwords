@@ -13,7 +13,7 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var global = Function('return this')();
+var global = (function() { return this || window || global || self || Function('return this')(); }).call(null);
 
 var macondo_api_proto_macondo_macondo_pb = require('../../../macondo/api/proto/macondo/macondo_pb.js');
 goog.object.extend(proto, macondo_api_proto_macondo_macondo_pb);
@@ -34,6 +34,7 @@ goog.exportSymbol('proto.ipc.GameMetaEvent.EventType', null, global);
 goog.exportSymbol('proto.ipc.GameMode', null, global);
 goog.exportSymbol('proto.ipc.GameRequest', null, global);
 goog.exportSymbol('proto.ipc.GameRules', null, global);
+goog.exportSymbol('proto.ipc.GameType', null, global);
 goog.exportSymbol('proto.ipc.InstantiateGame', null, global);
 goog.exportSymbol('proto.ipc.NewGameEvent', null, global);
 goog.exportSymbol('proto.ipc.PlayerInfo', null, global);
@@ -2589,7 +2590,8 @@ proto.ipc.GameInfoResponse.toObject = function(includeInstance, msg) {
     gameRequest: (f = msg.getGameRequest()) && proto.ipc.GameRequest.toObject(includeInstance, f),
     tournamentDivision: jspb.Message.getFieldWithDefault(msg, 20, ""),
     tournamentRound: jspb.Message.getFieldWithDefault(msg, 21, 0),
-    tournamentGameIndex: jspb.Message.getFieldWithDefault(msg, 22, 0)
+    tournamentGameIndex: jspb.Message.getFieldWithDefault(msg, 22, 0),
+    type: jspb.Message.getFieldWithDefault(msg, 23, 0)
   };
 
   if (includeInstance) {
@@ -2683,6 +2685,10 @@ proto.ipc.GameInfoResponse.deserializeBinaryFromReader = function(msg, reader) {
     case 22:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setTournamentGameIndex(value);
+      break;
+    case 23:
+      var value = /** @type {!proto.ipc.GameType} */ (reader.readEnum());
+      msg.setType(value);
       break;
     default:
       reader.skipField();
@@ -2805,6 +2811,13 @@ proto.ipc.GameInfoResponse.serializeBinaryToWriter = function(message, writer) {
   if (f !== 0) {
     writer.writeInt32(
       22,
+      f
+    );
+  }
+  f = message.getType();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      23,
       f
     );
   }
@@ -3138,6 +3151,24 @@ proto.ipc.GameInfoResponse.prototype.getTournamentGameIndex = function() {
  */
 proto.ipc.GameInfoResponse.prototype.setTournamentGameIndex = function(value) {
   return jspb.Message.setProto3IntField(this, 22, value);
+};
+
+
+/**
+ * optional GameType type = 23;
+ * @return {!proto.ipc.GameType}
+ */
+proto.ipc.GameInfoResponse.prototype.getType = function() {
+  return /** @type {!proto.ipc.GameType} */ (jspb.Message.getFieldWithDefault(this, 23, 0));
+};
+
+
+/**
+ * @param {!proto.ipc.GameType} value
+ * @return {!proto.ipc.GameInfoResponse} returns this
+ */
+proto.ipc.GameInfoResponse.prototype.setType = function(value) {
+  return jspb.Message.setProto3EnumField(this, 23, value);
 };
 
 
@@ -5659,6 +5690,15 @@ proto.ipc.GameMode = {
 proto.ipc.RatingMode = {
   RATED: 0,
   CASUAL: 1
+};
+
+/**
+ * @enum {number}
+ */
+proto.ipc.GameType = {
+  NATIVE: 0,
+  ANNOTATED: 1,
+  BOT_VS_BOT: 2
 };
 
 goog.object.extend(exports, proto.ipc);

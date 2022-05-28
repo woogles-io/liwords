@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, DragEvent } from 'react';
 import { useMountedState } from '../utils/mounted';
 import { useDrag, useDragLayer, useDrop } from 'react-dnd';
 import TentativeScore from './tentative_score';
@@ -140,7 +140,7 @@ const Tile = React.memo((props: TileProps) => {
 
   const [isMouseDragging, setIsMouseDragging] = useState(false);
 
-  const handleStartDrag = (e: any) => {
+  const handleStartDrag = (e: DragEvent<HTMLDivElement>) => {
     if (e) {
       setIsMouseDragging(true);
       e.dataTransfer.dropEffect = 'move';
@@ -149,9 +149,12 @@ const Tile = React.memo((props: TileProps) => {
         typeof props.x == 'number' &&
         typeof props.y == 'number'
       ) {
-        e.dataTransfer.setData('tileIndex', uniqueTileIdx(props.y, props.x));
+        e.dataTransfer.setData(
+          'tileIndex',
+          uniqueTileIdx(props.y, props.x).toString()
+        );
       } else {
-        e.dataTransfer.setData('rackIndex', props.rackIndex);
+        e.dataTransfer.setData('rackIndex', props.rackIndex?.toString() || '');
       }
     }
   };
@@ -160,7 +163,7 @@ const Tile = React.memo((props: TileProps) => {
     setIsMouseDragging(false);
   };
 
-  const handleDrop = (e: any) => {
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     if (props.handleTileDrop && props.y != null && props.x != null) {
       props.handleTileDrop(
         props.y,
@@ -185,7 +188,7 @@ const Tile = React.memo((props: TileProps) => {
     }
   };
 
-  const handleDropOver = (e: any) => {
+  const handleDropOver = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
   };
@@ -219,7 +222,8 @@ const Tile = React.memo((props: TileProps) => {
 
   const [, drop] = useDrop({
     accept: TILE_TYPE,
-    drop: (item: any, monitor: any) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    drop: (item: any) => {
       if (props.handleTileDrop && props.y != null && props.x != null) {
         props.handleTileDrop(
           props.y,

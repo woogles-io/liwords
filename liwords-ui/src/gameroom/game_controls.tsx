@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Affix, Button, Dropdown, Menu, Modal, Popconfirm } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 
@@ -42,9 +42,8 @@ const ExamineGameControls = React.memo(
     gameDone: boolean;
   }) => {
     const { useState } = useMountedState();
-    const {
-      gameContext: examinableGameContext,
-    } = useExaminableGameContextStoreContext();
+    const { gameContext: examinableGameContext } =
+      useExaminableGameContextStoreContext();
     const {
       examinedTurn,
       handleExamineEnd,
@@ -55,16 +54,14 @@ const ExamineGameControls = React.memo(
       doneButtonRef,
     } = useExamineStoreContext();
     const { gameContext } = useGameContextStoreContext();
-    const {
-      setPlacedTiles,
-      setPlacedTilesTempScore,
-    } = useTentativeTileContext();
+    const { setPlacedTiles, setPlacedTilesTempScore } =
+      useTentativeTileContext();
     useEffect(() => {
       setPlacedTilesTempScore(undefined);
       setPlacedTiles(new Set<EphemeralTile>());
     }, [examinedTurn, setPlacedTiles, setPlacedTilesTempScore]);
     useEffect(() => {
-      doneButtonRef.current!.focus();
+      doneButtonRef.current?.focus();
     }, [doneButtonRef]);
     const numberOfTurns = gameContext.turns.length;
     const gameHasNotStarted = gameContext.players.length === 0; // :shrug:
@@ -163,6 +160,7 @@ const ExamineGameControls = React.memo(
             overlay={exportMenu}
             trigger={['click']}
             visible={exportMenuVisible}
+            placement="topLeft"
           >
             <Button onClick={() => setExportMenuVisible((v) => !v)}>
               Export
@@ -253,6 +251,7 @@ export type Props = {
   tournamentSlug?: string;
   lexicon: string;
   challengeRule: ChallengeRule;
+  puzzleMode?: boolean;
   setHandlePassShortcut: ((handler: (() => void) | null) => void) | null;
   setHandleChallengeShortcut: ((handler: (() => void) | null) => void) | null;
   setHandleNeitherShortcut: ((handler: (() => void) | null) => void) | null;
@@ -294,12 +293,10 @@ const GameControls = React.memo((props: Props) => {
     []
   );
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const handleExitToLobby = useCallback(() => {
-    props.tournamentSlug
-      ? history.replace(props.tournamentSlug)
-      : history.replace('/');
-  }, [history, props.tournamentSlug]);
+    props.tournamentSlug ? navigate(props.tournamentSlug) : navigate('/');
+  }, [navigate, props.tournamentSlug]);
 
   const {
     isExamining,
@@ -478,84 +475,92 @@ const GameControls = React.memo((props: Props) => {
   return (
     <div className="game-controls">
       <div className="secondary-controls">
-        <Dropdown
-          overlay={optionsMenu}
-          trigger={['click']}
-          visible={optionsMenuVisible}
-          disabled={gameHasNotStarted}
-        >
-          <Button onClick={() => setOptionsMenuVisible((v) => !v)}>
-            Options
-          </Button>
-        </Dropdown>
-
-        <Popconfirm
-          title="Are you sure you wish to pass?"
-          onCancel={() => {
-            setCurrentPopUp('NONE');
-          }}
-          onConfirm={() => {
-            props.onPass();
-            setCurrentPopUp('NONE');
-          }}
-          onVisibleChange={(visible) => {
-            setCurrentPopUp(visible ? 'PASS' : 'NONE');
-          }}
-          okText="Yes"
-          cancelText="No"
-          visible={currentPopUp === 'PASS'}
-        >
-          <Button
-            ref={passButton}
-            onClick={() => {
-              if (currentPopUp === 'PASS') {
-                props.onPass();
-                setCurrentPopUp('NONE');
-              }
-            }}
-            danger
-            disabled={!props.myTurn}
-            type={
-              props.finalPassOrChallenge && props.myTurn ? 'primary' : 'default'
-            }
+        {!props.puzzleMode && (
+          <Dropdown
+            overlay={optionsMenu}
+            trigger={['click']}
+            visible={optionsMenuVisible}
+            disabled={gameHasNotStarted}
+            placement="topLeft"
           >
-            Pass
-            <span className="key-command">2</span>
-          </Button>
-        </Popconfirm>
+            <Button onClick={() => setOptionsMenuVisible((v) => !v)}>
+              Options
+            </Button>
+          </Dropdown>
+        )}
+        {!props.puzzleMode && (
+          <Popconfirm
+            title="Are you sure you wish to pass?"
+            onCancel={() => {
+              setCurrentPopUp('NONE');
+            }}
+            onConfirm={() => {
+              props.onPass();
+              setCurrentPopUp('NONE');
+            }}
+            onVisibleChange={(visible) => {
+              setCurrentPopUp(visible ? 'PASS' : 'NONE');
+            }}
+            okText="Yes"
+            cancelText="No"
+            visible={currentPopUp === 'PASS'}
+          >
+            <Button
+              ref={passButton}
+              onClick={() => {
+                if (currentPopUp === 'PASS') {
+                  props.onPass();
+                  setCurrentPopUp('NONE');
+                }
+              }}
+              danger
+              disabled={!props.myTurn}
+              type={
+                props.finalPassOrChallenge && props.myTurn
+                  ? 'primary'
+                  : 'default'
+              }
+            >
+              Pass
+              <span className="key-command">2</span>
+            </Button>
+          </Popconfirm>
+        )}
       </div>
       <div className="secondary-controls">
-        <Popconfirm
-          title="Are you sure you wish to challenge?"
-          onCancel={() => {
-            setCurrentPopUp('NONE');
-          }}
-          onConfirm={() => {
-            props.onChallenge();
-            setCurrentPopUp('NONE');
-          }}
-          onVisibleChange={(visible) => {
-            setCurrentPopUp(visible ? 'CHALLENGE' : 'NONE');
-          }}
-          okText="Yes"
-          cancelText="No"
-          visible={currentPopUp === 'CHALLENGE'}
-        >
-          <Button
-            ref={challengeButton}
-            onClick={() => {
-              if (currentPopUp === 'CHALLENGE') {
-                props.onChallenge();
-                setCurrentPopUp('NONE');
-              }
+        {!props.puzzleMode && (
+          <Popconfirm
+            title="Are you sure you wish to challenge?"
+            onCancel={() => {
+              setCurrentPopUp('NONE');
             }}
-            disabled={!props.myTurn}
-            hidden={props.challengeRule === 'VOID'}
+            onConfirm={() => {
+              props.onChallenge();
+              setCurrentPopUp('NONE');
+            }}
+            onVisibleChange={(visible) => {
+              setCurrentPopUp(visible ? 'CHALLENGE' : 'NONE');
+            }}
+            okText="Yes"
+            cancelText="No"
+            visible={currentPopUp === 'CHALLENGE'}
           >
-            Challenge
-            <span className="key-command">3</span>
-          </Button>
-        </Popconfirm>
+            <Button
+              ref={challengeButton}
+              onClick={() => {
+                if (currentPopUp === 'CHALLENGE') {
+                  props.onChallenge();
+                  setCurrentPopUp('NONE');
+                }
+              }}
+              disabled={!props.myTurn}
+              hidden={props.challengeRule === 'VOID'}
+            >
+              Challenge
+              <span className="key-command">3</span>
+            </Button>
+          </Popconfirm>
+        )}
         <Button
           onClick={props.showExchangeModal}
           disabled={!(props.myTurn && props.exchangeAllowed)}
@@ -570,7 +575,7 @@ const GameControls = React.memo((props: Props) => {
         onClick={props.onCommit}
         disabled={!props.myTurn || props.finalPassOrChallenge}
       >
-        Play
+        {props.puzzleMode ? 'Solve' : 'Play'}
       </Button>
     </div>
   );
@@ -650,6 +655,7 @@ const EndGameControls = (props: EGCProps) => {
           overlay={exportMenu}
           trigger={['click']}
           visible={exportMenuVisible}
+          placement="topLeft"
         >
           <Button onClick={() => setExportMenuVisible((v) => !v)}>
             Export

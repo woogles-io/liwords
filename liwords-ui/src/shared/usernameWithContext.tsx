@@ -32,15 +32,16 @@ type UsernameWithContextProps = {
   iconOnly?: boolean;
   currentActiveGames?: Array<string>;
   currentWatchedGames?: Array<string>;
+  currentlyPuzzling?: boolean;
 };
 
 export const UsernameWithContext = (props: UsernameWithContextProps) => {
   const { isPettable, isPetting, setPetting } = useContext(PettableContext);
-  const { currentActiveGames, currentWatchedGames } = props;
+  const { currentActiveGames, currentWatchedGames, currentlyPuzzling } = props;
   const { handleContextMatches } = useContextMatchContext();
   const { loginState } = useLoginStateStoreContext();
   const { loggedIn, userID, perms } = loginState;
-  const gameLink = React.useMemo(() => {
+  const contextualLink = React.useMemo(() => {
     if (currentActiveGames && currentActiveGames.length > 0) {
       const gameID =
         currentActiveGames[
@@ -65,10 +66,18 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           </Link>
         </li>
       );
+    } else if (currentlyPuzzling) {
+      return (
+        <li>
+          <Link className="plain" to="/puzzle">
+            Join
+          </Link>
+        </li>
+      );
     } else {
       return null;
     }
-  }, [currentActiveGames, currentWatchedGames]);
+  }, [currentActiveGames, currentWatchedGames, currentlyPuzzling]);
   const userMenu = (
     <ul>
       {isPettable && (
@@ -90,7 +99,9 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
         <li
           className="link plain"
           onClick={() => {
-            props.sendMessage!(props.userID!, props.username);
+            if (props.sendMessage && props.userID) {
+              props.sendMessage(props.userID, props.username);
+            }
           }}
         >
           Chat
@@ -107,7 +118,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           </Link>
         </li>
       )}
-      {gameLink}
+      {contextualLink}
       {loggedIn &&
         props.userID &&
         props.userID !== userID &&
@@ -117,7 +128,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
             className="link plain"
             onClick={() => {
               for (const handleContextMatch of handleContextMatches) {
-                handleContextMatch(props.username!);
+                handleContextMatch(props.username);
               }
             }}
           >
@@ -147,8 +158,8 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
         <li
           className="link plain"
           onClick={() =>
-            props.moderate
-              ? props.moderate(props.userID!, props.username)
+            props.moderate && props.userID
+              ? props.moderate(props.userID, props.username)
               : void 0
           }
         >

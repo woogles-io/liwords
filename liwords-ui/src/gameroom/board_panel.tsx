@@ -72,12 +72,17 @@ import {
   SeekRequest,
   SeekState,
 } from '../gen/api/proto/ipc/omgseeks_pb';
-import { GameMetaEvent } from '../gen/api/proto/ipc/omgwords_pb';
+import {
+  ClientGameplayEvent,
+  GameMetaEvent,
+} from '../gen/api/proto/ipc/omgwords_pb';
+import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
 const EnterKey = 'Enter';
-const colors = require('../base.scss');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const colors = require('../base.scss').default;
 
 type Props = {
   anonymousViewer: boolean;
@@ -88,8 +93,11 @@ type Props = {
   challengeRule: ChallengeRule;
   board: Board;
   sendSocketMsg: (msg: Uint8Array) => void;
+  sendGameplayEvent: (evt: ClientGameplayEvent) => void;
   gameDone: boolean;
   playerMeta: Array<PlayerMetadata>;
+  puzzleMode?: boolean;
+  puzzleSolved?: number;
   tournamentSlug?: string;
   tournamentID?: string;
   tournamentPairedMode?: boolean;
@@ -206,10 +214,8 @@ export const BoardPanel = React.memo((props: Props) => {
     'BLANK_MODAL' | 'DRAWING_HOTKEY' | 'EXCHANGE_MODAL' | 'NORMAL' | 'BLIND'
   >('NORMAL');
 
-  const {
-    drawingCanBeEnabled,
-    handleKeyDown: handleDrawingKeyDown,
-  } = React.useContext(DrawingHandlersSetterContext);
+  const { drawingCanBeEnabled, handleKeyDown: handleDrawingKeyDown } =
+    React.useContext(DrawingHandlersSetterContext);
   const [arrowProperties, setArrowProperties] = useState({
     row: 0,
     col: 0,
@@ -217,15 +223,12 @@ export const BoardPanel = React.memo((props: Props) => {
     show: false,
   });
 
-  const {
-    gameContext: examinableGameContext,
-  } = useExaminableGameContextStoreContext();
-  const {
-    gameEndMessage: examinableGameEndMessage,
-  } = useExaminableGameEndMessageStoreContext();
-  const {
-    timerContext: examinableTimerContext,
-  } = useExaminableTimerStoreContext();
+  const { gameContext: examinableGameContext } =
+    useExaminableGameContextStoreContext();
+  const { gameEndMessage: examinableGameEndMessage } =
+    useExaminableGameEndMessageStoreContext();
+  const { timerContext: examinableTimerContext } =
+    useExaminableTimerStoreContext();
 
   const { isExamining, handleExamineStart } = useExamineStoreContext();
   const { gameContext } = useGameContextStoreContext();
@@ -263,15 +266,28 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const observer = !props.playerMeta.some((p) => p.nickname === props.username);
   const isMyTurn = useMemo(() => {
+    if (props.puzzleMode) {
+      // it is always my turn in puzzle mode.
+      return true;
+    }
     const iam = gameContext.nickToPlayerOrder[props.username];
     return iam && iam === `p${examinableGameContext.onturn}`;
   }, [
     gameContext.nickToPlayerOrder,
     props.username,
     examinableGameContext.onturn,
+    props.puzzleMode,
   ]);
 
-  const { board, gameID, playerMeta, sendSocketMsg, username } = props;
+  const {
+    board,
+    gameID,
+    playerMeta,
+    sendSocketMsg,
+    sendGameplayEvent,
+    handleUnsetHover,
+    username,
+  } = props;
 
   const makeMove = useCallback(
     (move: string, addl?: string) => {
@@ -301,7 +317,9 @@ export const BoardPanel = React.memo((props: Props) => {
       );
       switch (move) {
         case 'exchange':
-          moveEvt = exchangeMoveEvent(addl!, gameID);
+          if (addl) {
+            moveEvt = exchangeMoveEvent(addl, gameID);
+          }
           break;
         case 'pass':
           moveEvt = passMoveEvent(gameID);
@@ -324,12 +342,8 @@ export const BoardPanel = React.memo((props: Props) => {
       if (!moveEvt) {
         return;
       }
-      sendSocketMsg(
-        encodeToSocketFmt(
-          MessageType.CLIENT_GAMEPLAY_EVENT,
-          moveEvt.serializeBinary()
-        )
-      );
+      sendGameplayEvent(moveEvt);
+
       // Don't stop the clock; the next user event to come in will change the
       // clock over.
       // stopClock();
@@ -346,7 +360,7 @@ export const BoardPanel = React.memo((props: Props) => {
       placedTiles,
       board,
       gameID,
-      sendSocketMsg,
+      sendGameplayEvent,
       username,
     ]
   );
@@ -418,7 +432,8 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const recallTiles = useCallback(() => {
     if (arrowProperties.show) {
-      let { row, col, horizontal } = arrowProperties;
+      let { row, col } = arrowProperties;
+      const { horizontal } = arrowProperties;
       const matchesLocation = ({
         row: tentativeRow,
         col: tentativeCol,
@@ -522,6 +537,8 @@ export const BoardPanel = React.memo((props: Props) => {
   useEffect(() => {
     let fullReset = false;
     const lastLetters = lastLettersRef.current;
+    // XXX: please fix me:
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const dep = readOnlyEffectDependenciesRef.current!;
     if (lastLetters === undefined) {
       // First load.
@@ -651,6 +668,7 @@ export const BoardPanel = React.memo((props: Props) => {
     // rack is smaller than that because past the threshold by then
     setexchangeAllowed(tilesRemaining >= 7);
   }, [gameContext.pool, props.currentRack]);
+
   useEffect(() => {
     if (
       examinableGameContext.playState === PlayState.WAITING_FOR_FINAL_PASS &&
@@ -707,7 +725,7 @@ export const BoardPanel = React.memo((props: Props) => {
         boardMessage = `${evtNickname} exchanged ${evt.getExchanged()}`;
         break;
     }
-    if (boardMessage) {
+    if (boardMessage && !props.puzzleMode) {
       message.info(
         {
           content: boardMessage,
@@ -718,18 +736,20 @@ export const BoardPanel = React.memo((props: Props) => {
         undefined
       );
     }
-  }, [props.events, props.playerMeta, props.username]);
+  }, [props.events, props.username, props.puzzleMode]);
+
   const squareClicked = useCallback(
     (row: number, col: number) => {
-      if (props.board.letterAt(row, col) !== EmptySpace) {
+      if (board.letterAt(row, col) !== EmptySpace) {
         // If there is a tile on this square, ignore the click.
         return;
       }
       setArrowProperties(nextArrowPropertyState(arrowProperties, row, col));
-      props.handleUnsetHover?.();
+      handleUnsetHover?.();
     },
-    [arrowProperties, props.board, props.handleUnsetHover]
+    [arrowProperties, board, handleUnsetHover]
   );
+
   const keydown = useCallback(
     (evt: React.KeyboardEvent) => {
       if (evt.ctrlKey || evt.altKey || evt.metaKey) {
@@ -1054,16 +1074,16 @@ export const BoardPanel = React.memo((props: Props) => {
               ''
             );
           } else {
-            const blindfoldCoordinates = parseBlindfoldCoordinates(
-              blindfoldCommand
-            );
+            const blindfoldCoordinates =
+              parseBlindfoldCoordinates(blindfoldCommand);
             if (blindfoldCoordinates !== undefined) {
               // Valid coordinates, place the arrow
               say(wordToSayString(blindfoldCommand), '');
               const board = { ...gameContext.board };
-              const existingTile = board.letters[
-                blindfoldCoordinates.row * 15 + blindfoldCoordinates.col
-              ].trim();
+              const existingTile =
+                board.letters[
+                  blindfoldCoordinates.row * 15 + blindfoldCoordinates.col
+                ].trim();
               if (!existingTile) {
                 setArrowProperties({
                   row: blindfoldCoordinates.row,
@@ -1543,6 +1563,8 @@ export const BoardPanel = React.memo((props: Props) => {
     gameMetaMessage = 'Log in or register to see player tiles';
   } else if (stillWaitingForGameToStart) {
     gameMetaMessage = 'Waiting for game to start...';
+  } else if (props.puzzleMode && props.anonymousViewer) {
+    gameMetaMessage = 'Log in or register to start solving puzzles';
   }
 
   // playerOrder enum seems to ensure we can only have two-player games :-(
@@ -1585,7 +1607,7 @@ export const BoardPanel = React.memo((props: Props) => {
         recallOneTile={recallOneTile}
       />
 
-      {gameMetaMessage ? (
+      {gameMetaMessage && !props.puzzleMode ? (
         <GameMetaMessage message={gameMetaMessage} />
       ) : (
         <Affix offsetTop={126} className="rack-affix">
@@ -1631,8 +1653,11 @@ export const BoardPanel = React.memo((props: Props) => {
           </div>
         </Affix>
       )}
+      {gameMetaMessage && props.puzzleMode && (
+        <GameMetaMessage message={gameMetaMessage} />
+      )}
       {isTouchDevice() ? <TilePreview gridDim={props.board.dim} /> : null}
-      {!anonymousTourneyViewer && (
+      {!anonymousTourneyViewer && !props.puzzleMode && (
         <GameControls
           isExamining={isExamining}
           myTurn={isMyTurn}
@@ -1671,6 +1696,47 @@ export const BoardPanel = React.memo((props: Props) => {
           setHandleNeitherShortcut={setHandleNeitherShortcut}
         />
       )}
+      {props.puzzleMode &&
+        props.puzzleSolved === PuzzleStatus.UNANSWERED &&
+        !props.anonymousViewer && (
+          <Affix offsetTop={126} className="rack-affix">
+            <GameControls
+              isExamining={false}
+              myTurn={true}
+              finalPassOrChallenge={
+                examinableGameContext.playState ===
+                PlayState.WAITING_FOR_FINAL_PASS
+              }
+              allowAnalysis={false}
+              exchangeAllowed={exchangeAllowed}
+              observer={false}
+              onRecall={recallTiles}
+              showExchangeModal={showExchangeModal}
+              onPass={handlePass}
+              onResign={handleResign}
+              onRequestAbort={handleRequestAbort}
+              onNudge={handleNudge}
+              onChallenge={handleChallenge}
+              onCommit={handleCommit}
+              onRematch={props.handleAcceptRematch ?? rematch}
+              onExamine={() => {}}
+              onExportGCG={() => {}}
+              showNudge={false}
+              showAbort={false}
+              showRematch={false}
+              gameEndControls={false}
+              currentRack={props.currentRack}
+              tournamentSlug={props.tournamentSlug}
+              tournamentPairedMode={props.tournamentPairedMode}
+              lexicon={props.lexicon}
+              challengeRule={props.challengeRule}
+              setHandlePassShortcut={setHandlePassShortcut}
+              setHandleChallengeShortcut={setHandleChallengeShortcut}
+              setHandleNeitherShortcut={setHandleNeitherShortcut}
+              puzzleMode={true}
+            />
+          </Affix>
+        )}
       <ExchangeTiles
         tileColorId={tileColorId}
         alphabet={props.alphabet}

@@ -11,11 +11,13 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/sessions"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
-// WithCookies configures an http.Handler (like any Twirp server) to enable
-// setting cookies with the SetCookie function.
-func WithCookiesMiddleware(h http.Handler) http.Handler {
+// ExposeResponseWriterMiddleware configures an http.Handler (like any Twirp server)
+// to place the responseWriter in its context. This should enable
+// setting cookies with the setCookie function.
+func ExposeResponseWriterMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		ctx = context.WithValue(ctx, rwkey, w)
@@ -24,10 +26,10 @@ func WithCookiesMiddleware(h http.Handler) http.Handler {
 	})
 }
 
-// SetCookie sets an http Cookie for a response being handled in the given
+// setCookie sets an http Cookie for a response being handled in the given
 // context. It returns an error if and only if the context has not been
-// configured through the WithCookies function.
-func SetCookie(ctx context.Context, cookie *http.Cookie) error {
+// configured through the ExposeResponseWriterMiddleware function.
+func setCookie(ctx context.Context, cookie *http.Cookie) error {
 	w, ok := ctx.Value(rwkey).(http.ResponseWriter)
 	if !ok {
 		return errors.New("unable to get ResponseWriter from context, middleware might not be set up correctly")
@@ -48,8 +50,19 @@ func SetDefaultCookie(ctx context.Context, sessID string) error {
 		HttpOnly: true,
 		Path:     "/",
 	}
+	log.Debug().Msgf("setting cookie %v", cookie)
+	return setCookie(ctx, cookie)
+}
 
-	return SetCookie(ctx, cookie)
+func ExpireCookie(ctx context.Context, sessID string) error {
+	return setCookie(ctx, &http.Cookie{
+		Name:     "session",
+		Value:    sessID,
+		MaxAge:   -1,
+		HttpOnly: true,
+		Path:     "/",
+		Expires:  time.Now().Add(-100 * time.Hour),
+	})
 }
 
 type ctxkey string
@@ -68,47 +81,28 @@ func AuthenticationMiddlewareGenerator(sessionStore sessions.SessionStore) (mw f
 			log := zerolog.Ctx(ctx)
 			var session *entity.Session
 			var err error
-			// Migrate old sessionid to session
-			oldSessionID, err := r.Cookie("sessionid")
-			authed := false
+			sessionCookie, err := r.Cookie("session")
 			if err != nil {
-				// Don't worry about it, do nothing.
-			} else {
-				session, err = sessionStore.Get(ctx, oldSessionID.Value)
-				if err != nil {
-					log.Err(err).Msg("error-getting-session")
-					// Just serve, unauthenticated.
-					h.ServeHTTP(w, r)
-					return
+				if err != http.ErrNoCookie {
+					log.Err(err).Msg("error-getting-new-cookie")
 				}
-				authed = true
-				// Make new cookie
-				SetDefaultCookie(r.Context(), oldSessionID.Value)
+				// No problem, this user will not be authenticated.
+				log.Debug().Msg("unauthenticated request")
+				h.ServeHTTP(w, r)
+				return
 			}
-
-			if !authed {
-				// Try the new cookie.
-				sessionID, err := r.Cookie("session")
-				if err != nil {
-					if err != http.ErrNoCookie {
-						log.Err(err).Msg("error-getting-new-cookie")
-					}
-					// No problem, this user will not be authenticated.
-					log.Debug().Msg("unauthenticated request")
-					h.ServeHTTP(w, r)
-					return
-				}
-				session, err = sessionStore.Get(ctx, sessionID.Value)
-				if err != nil {
-					log.Err(err).Msg("error-getting-session")
-					// Just serve, unauthenticated.
-					h.ServeHTTP(w, r)
-					return
-				}
+			session, err = sessionStore.Get(ctx, sessionCookie.Value)
+			if err != nil {
+				log.Err(err).Msg("error-getting-session")
+				// Just serve, unauthenticated.
+				h.ServeHTTP(w, r)
+				return
 			}
 			if time.Until(session.Expiry) < RenewCookieTimer {
 				err := sessionStore.ExtendExpiry(ctx, session)
 				log.Err(err).Msg("extending-session")
+				// extend the cookie age as well.
+				SetDefaultCookie(ctx, sessionCookie.Value)
 			}
 			ctx = PlaceInContext(ctx, session)
 			r = r.WithContext(ctx)

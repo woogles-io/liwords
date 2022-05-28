@@ -23,7 +23,8 @@ import { sortTiles } from '../store/constants';
 import { getVW, isTablet } from '../utils/cwgame/common';
 import { Analyzer } from './analyzer';
 import { HeartFilled } from '@ant-design/icons';
-const screenSizes = require('../base.scss');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const screenSizes = require('../base.scss').default;
 
 type Props = {
   isExamining?: boolean;
@@ -251,8 +252,8 @@ export const ScoreCard = React.memo((props: Props) => {
     }
     if (currentEl) {
       currentEl.scrollTop = currentEl.scrollHeight || 0;
-      const boardHeight = document.getElementById('board-container')
-        ?.clientHeight;
+      const boardHeight =
+        document.getElementById('board-container')?.clientHeight;
       const poolTop = document.getElementById('pool')?.clientHeight || 0;
       const playerCardTop =
         document.getElementById('player-cards-vertical')?.clientHeight || 0;

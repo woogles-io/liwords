@@ -27,7 +27,10 @@ export const Standings = (props: Props) => {
         : 0,
     [props.selectedDivision, divisions]
   );
-  const division = divisions[props.selectedDivision!];
+  if (!props.selectedDivision) {
+    return null;
+  }
+  const division = divisions[props.selectedDivision];
   if (!division) {
     return null;
   }
@@ -37,33 +40,31 @@ export const Standings = (props: Props) => {
     formatStandings = division.standingsMap
       .get(currentRound)
       ?.getStandingsList()
-      .map(
-        (standing, index): StandingsTableData => {
-          const [playerId, playerName] = standing.getPlayerId().split(':');
-          return {
-            rank: index + 1,
-            player: (
-              <>
-                <UsernameWithContext
-                  username={playerName}
-                  userID={playerId}
-                  omitSendMessage
-                  omitBlock
-                />{' '}
-                {/* <PlayerTag
+      .map((standing, index): StandingsTableData => {
+        const [playerId, playerName] = standing.getPlayerId().split(':');
+        return {
+          rank: index + 1,
+          player: (
+            <>
+              <UsernameWithContext
+                username={playerName}
+                userID={playerId}
+                omitSendMessage
+                omitBlock
+              />{' '}
+              {/* <PlayerTag
                 username={playerName}
                 players={division.players}
                 tournamentSlug={tournamentContext.metadata.slug}
               /> */}
-              </>
-            ),
-            wins: standing.getWins() + standing.getDraws() / 2,
-            losses: standing.getLosses() + standing.getDraws() / 2,
-            spread: standing.getSpread(),
-            //actions: null, //scorecard button goes here
-          };
-        }
-      );
+            </>
+          ),
+          wins: standing.getWins() + standing.getDraws() / 2,
+          losses: standing.getLosses() + standing.getDraws() / 2,
+          spread: standing.getSpread(),
+          //actions: null, //scorecard button goes here
+        };
+      });
   }
   const columns = [
     {

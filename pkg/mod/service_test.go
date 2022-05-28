@@ -24,9 +24,8 @@ func TestAuthenticateMod(t *testing.T) {
 	ctx := context.Background()
 	ctx = apiserver.PlaceInContext(ctx, session)
 
-	cstr := TestingDBConnStr + " dbname=liwords_test"
 	recreateDB()
-	us := userStore(cstr)
+	us := userStore()
 	ms := &ModService{userStore: us}
 
 	err := authenticateMod(ctx, ms, &pb.ModActionsList{
@@ -47,9 +46,8 @@ func TestAuthenticateModNoAuth(t *testing.T) {
 	ctx := context.Background()
 	ctx = apiserver.PlaceInContext(ctx, session)
 
-	cstr := TestingDBConnStr + " dbname=liwords_test"
 	recreateDB()
-	us := userStore(cstr)
+	us := userStore()
 	ms := &ModService{userStore: us}
 
 	err := authenticateMod(ctx, ms, &pb.ModActionsList{

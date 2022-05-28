@@ -26,7 +26,7 @@ import { toAPIUrl } from '../api/api';
 import { Pairings } from './pairings';
 import { isPairedMode, isClubType } from '../store/constants';
 import { Standings } from './standings';
-import { DirectorTools } from './director_tools';
+import { DirectorTools } from './director_tools/director_tools';
 import { parseWooglesError } from '../utils/parse_woogles_error';
 // import { CheckIn } from './check_in';
 
@@ -66,10 +66,8 @@ export const ActionsPanel = React.memo((props: Props) => {
   const renderDirectorTools = () => {
     return <DirectorTools tournamentID={props.tournamentID} />;
   };
-  const {
-    dispatchTournamentContext,
-    tournamentContext,
-  } = useTournamentStoreContext();
+  const { dispatchTournamentContext, tournamentContext } =
+    useTournamentStoreContext();
   const itIsPairedMode = useMemo(
     () => isPairedMode(tournamentContext.metadata?.getType()),
     [tournamentContext]
@@ -89,10 +87,8 @@ export const ActionsPanel = React.memo((props: Props) => {
   const { lobbyContext } = useLobbyStoreContext();
   const tournamentID = tournamentContext.metadata?.getId();
 
-  const {
-    addHandleContextMatch,
-    removeHandleContextMatch,
-  } = useContextMatchContext();
+  const { addHandleContextMatch, removeHandleContextMatch } =
+    useContextMatchContext();
   const friendRef = useRef('');
   const handleContextMatch = useCallback((s: string) => {
     friendRef.current = s;
@@ -230,7 +226,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     };
     return (
       <Button className="primary open-round" onClick={startRound}>
-        Open Round {roundToStart! + 1}
+        Open Round {roundToStart + 1}
       </Button>
     );
   };

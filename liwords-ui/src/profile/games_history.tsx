@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import moment from 'moment';
-import { Button, Card, Table, Tag, Tooltip } from 'antd';
+import { Button, Card, InputNumber, Table, Tag, Tooltip } from 'antd';
 import { CheckCircleTwoTone } from '@ant-design/icons';
 import { FundOutlined } from '@ant-design/icons/lib';
 import { GameMetadata } from '../gameroom/game_info';
@@ -14,10 +14,37 @@ type Props = {
   fetchPrev?: () => void;
   fetchNext?: () => void;
   userID: string;
+  currentOffset: number;
+  currentPageSize: number;
+  desiredOffset: number;
+  desiredPageSize: number;
+  onChangePageNumber: (value: number | string | null) => void;
 };
 
 export const GamesHistoryCard = React.memo((props: Props) => {
-  const { userID } = props;
+  const {
+    userID,
+    currentOffset,
+    currentPageSize,
+    desiredOffset,
+    desiredPageSize,
+  } = props;
+
+  // The view currently assumes:
+  // currentPageSize === desiredPageSize
+  // currentOffset === (currentPageNumber - 1) * currentPageSize
+  // desiredOffset === (desiredPageNumber - 1) * desiredPageSize
+  const currentPageNumber = Math.floor(currentOffset / currentPageSize + 1);
+  const desiredPageNumber = Math.floor(desiredOffset / desiredPageSize + 1);
+  const isSamePageSize = currentPageSize === desiredPageSize;
+  const isSamePage = isSamePageSize && currentOffset === desiredOffset;
+  void isSamePage;
+  void currentPageNumber;
+  // The above is not currently used, but here's a possible usage:
+  //    {String(currentPageNumber)}
+  //    {!isSamePage && (
+  //      <React.Fragment> &rarr; {String(desiredPageNumber)}</React.Fragment>
+  //    )}
 
   const special = ['Unwoogler', 'AnotherUnwoogler', userID];
   const formattedGames = props.games
@@ -83,7 +110,12 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       if (item.players[userplace].first) {
         turnOrder = <CheckCircleTwoTone twoToneColor="#52c41a" />;
       }
-      const when = moment(item.created_at ? item.created_at : '').fromNow();
+      const whenMoment = moment(item.created_at ? item.created_at : '');
+      const when = (
+        <Tooltip title={whenMoment.format('LLL')}>
+          {whenMoment.fromNow()}
+        </Tooltip>
+      );
       let endReason = '';
       switch (item.game_end_reason) {
         case 'TIME':
@@ -185,19 +217,29 @@ export const GamesHistoryCard = React.memo((props: Props) => {
   ];
   // TODO: use the normal Ant table pagination when the backend can give us a total
   return (
-    <Card title="Game history">
+    <Card title="Game history" className="game-history-card">
       <Table
         className="game-history"
         columns={columns}
         dataSource={formattedGames}
         pagination={{
           hideOnSinglePage: true,
+          defaultPageSize: Infinity,
         }}
         rowKey="game_id"
       />
       <div className="game-history-controls">
-        {props.fetchPrev && <Button onClick={props.fetchPrev}>Prev</Button>}
-        {props.fetchNext && <Button onClick={props.fetchNext}>Next</Button>}
+        <InputNumber
+          min={1}
+          value={desiredPageNumber}
+          onChange={props.onChangePageNumber}
+        />
+        <Button disabled={!props.fetchPrev} onClick={props.fetchPrev}>
+          Prev
+        </Button>
+        <Button disabled={!props.fetchNext} onClick={props.fetchNext}>
+          Next
+        </Button>
       </div>
     </Card>
   );

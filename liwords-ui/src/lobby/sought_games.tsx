@@ -1,7 +1,11 @@
-/* eslint-disable jsx-a11y/click-events-have-key-events */
-/* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
 import { Popconfirm, Table, Tooltip } from 'antd';
-import React, { ReactNode } from 'react';
+import {
+  FilterValue,
+  SorterResult,
+  TableCurrentDataSource,
+  TablePaginationConfig,
+} from 'antd/lib/table/interface';
+import React, { ReactNode, useCallback, useMemo } from 'react';
 import { FundOutlined, ExportOutlined } from '@ant-design/icons/lib';
 import {
   calculateTotalTime,
@@ -78,6 +82,13 @@ type Props = {
 export const SoughtGames = (props: Props) => {
   const { useState } = useMountedState();
   const [cancelVisible, setCancelVisible] = useState(false);
+  const [lobbyFilterByLexicon, setLobbyFilterByLexicon] = useState(
+    localStorage.getItem('lobbyFilterByLexicon')
+  );
+  const lobbyFilterByLexiconArray = useMemo(
+    () => lobbyFilterByLexicon?.match(/\S+/g) ?? [],
+    [lobbyFilterByLexicon]
+  );
   const columns = [
     {
       title: 'Player',
@@ -104,11 +115,12 @@ export const SoughtGames = (props: Props) => {
           value: l,
         })
       ),
-      filterMultiple: false,
+      defaultFilteredValue: lobbyFilterByLexiconArray,
+      filterMultiple: true,
       onFilter: (
         value: string | number | boolean,
         record: SoughtGameTableData
-      ) => record.lexiconCode.indexOf(value.toString()) === 0,
+      ) => typeof value === 'string' && record.lexiconCode === value,
     },
     {
       title: 'Time',
@@ -125,6 +137,32 @@ export const SoughtGames = (props: Props) => {
       key: 'details',
     },
   ];
+
+  const handleChange = useCallback(
+    (
+      _pagination: TablePaginationConfig,
+      filters: Record<string, FilterValue | null>,
+      _sorter:
+        | SorterResult<SoughtGameTableData>
+        | SorterResult<SoughtGameTableData>[],
+      extra: TableCurrentDataSource<SoughtGameTableData>
+    ) => {
+      if (extra.action === 'filter') {
+        if (filters.lexicon && filters.lexicon.length > 0) {
+          const lexicon = filters.lexicon.join(' ');
+          if (lexicon !== lobbyFilterByLexicon) {
+            setLobbyFilterByLexicon(lexicon);
+            localStorage.setItem('lobbyFilterByLexicon', lexicon);
+          }
+        } else {
+          // filter is reset, remove lexicon
+          setLobbyFilterByLexicon(null);
+          localStorage.removeItem('lobbyFilterByLexicon');
+        }
+      }
+    },
+    [lobbyFilterByLexicon]
+  );
 
   type SoughtGameTableData = {
     seeker: string | ReactNode;
@@ -151,71 +189,67 @@ export const SoughtGames = (props: Props) => {
         }
         return false;
       })
-      .map(
-        (sg: SoughtGame): SoughtGameTableData => {
-          const getDetails = () => {
-            return (
-              <>
-                <VariantIcon vcode={sg.variant} />{' '}
-                {challengeFormat(sg.challengeRule)}
-                {sg.rated ? (
-                  <Tooltip title="Rated">
-                    <FundOutlined />
-                  </Tooltip>
-                ) : null}
-              </>
-            );
-          };
-          const outgoing = sg.seeker === props.username;
-          return {
-            seeker: outgoing ? (
-              <Popconfirm
-                title="Do you want to cancel this game?"
-                onConfirm={() => {
-                  props.newGame(sg.seekID);
-                  setCancelVisible(false);
-                }}
-                okText="Yes"
-                cancelText="No"
-                onCancel={() => {
-                  console.log('trying', setCancelVisible, cancelVisible);
-                  setCancelVisible(false);
-                }}
-                onVisibleChange={(visible) => {
-                  setCancelVisible(visible);
-                }}
-                visible={cancelVisible}
-              >
-                <div>
-                  <ExportOutlined />
-                  {` ${sg.receiver?.getDisplayName() || 'Seeking...'}`}
-                </div>
-              </Popconfirm>
-            ) : (
-              <PlayerDisplay userID={sg.seekerID!} username={sg.seeker} />
-            ),
-            rating: outgoing ? '' : sg.userRating,
-            ratingBadge: outgoing ? null : (
-              <RatingBadge rating={sg.userRating} />
-            ),
-            lexicon: <MatchLexiconDisplay lexiconCode={sg.lexicon} />,
-            time: timeFormat(
-              sg.initialTimeSecs,
-              sg.incrementSecs,
-              sg.maxOvertimeMinutes
-            ),
-            totalTime: calculateTotalTime(
-              sg.initialTimeSecs,
-              sg.incrementSecs,
-              sg.maxOvertimeMinutes
-            ),
-            details: getDetails(),
-            outgoing,
-            seekID: sg.seekID,
-            lexiconCode: sg.lexicon,
-          };
-        }
-      );
+      .map((sg: SoughtGame): SoughtGameTableData => {
+        const getDetails = () => {
+          return (
+            <>
+              <VariantIcon vcode={sg.variant} />{' '}
+              {challengeFormat(sg.challengeRule)}
+              {sg.rated ? (
+                <Tooltip title="Rated">
+                  <FundOutlined />
+                </Tooltip>
+              ) : null}
+            </>
+          );
+        };
+        const outgoing = sg.seeker === props.username;
+        return {
+          seeker: outgoing ? (
+            <Popconfirm
+              title="Do you want to cancel this game?"
+              onConfirm={() => {
+                props.newGame(sg.seekID);
+                setCancelVisible(false);
+              }}
+              okText="Yes"
+              cancelText="No"
+              onCancel={() => {
+                console.log('trying', setCancelVisible, cancelVisible);
+                setCancelVisible(false);
+              }}
+              onVisibleChange={(visible) => {
+                setCancelVisible(visible);
+              }}
+              visible={cancelVisible}
+            >
+              <div>
+                <ExportOutlined />
+                {` ${sg.receiver?.getDisplayName() || 'Seeking...'}`}
+              </div>
+            </Popconfirm>
+          ) : (
+            <PlayerDisplay userID={sg.seekerID} username={sg.seeker} />
+          ),
+          rating: outgoing ? '' : sg.userRating,
+          ratingBadge: outgoing ? null : <RatingBadge rating={sg.userRating} />,
+          lexicon: <MatchLexiconDisplay lexiconCode={sg.lexicon} />,
+          time: timeFormat(
+            sg.initialTimeSecs,
+            sg.incrementSecs,
+            sg.maxOvertimeMinutes
+          ),
+          totalTime: calculateTotalTime(
+            sg.initialTimeSecs,
+            sg.incrementSecs,
+            sg.maxOvertimeMinutes
+          ),
+          details: getDetails(),
+          outgoing,
+          seekID: sg.seekID,
+          lexiconCode: sg.lexicon,
+        };
+      });
     return gameData;
   };
 
@@ -246,6 +280,7 @@ export const SoughtGames = (props: Props) => {
           }
           return 'game-listing';
         }}
+        onChange={handleChange}
       />
     </>
   );

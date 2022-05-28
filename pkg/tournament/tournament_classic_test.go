@@ -902,18 +902,12 @@ func TestClassicDivisionFactor(t *testing.T) {
 	err = tc.StartRound(true)
 	is.NoErr(err)
 
-	// This should throw an error since it attempts
-	// to amend a result that never existed
+	// There is no existing result, but it should
+	// be allowed as an amendment
 	_, err = tc.SubmitResult(0, "h", "f", 900, 500,
 		pb.TournamentGameResult_WIN,
 		pb.TournamentGameResult_LOSS,
 		pb.GameEndReason_STANDARD, true, 0, "")
-	is.True(err != nil)
-
-	_, err = tc.SubmitResult(0, "h", "f", 900, 500,
-		pb.TournamentGameResult_WIN,
-		pb.TournamentGameResult_LOSS,
-		pb.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
 	_, err = tc.SubmitResult(0, "g", "e", 800, 500,

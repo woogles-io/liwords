@@ -3,7 +3,7 @@ import { EphemeralTile } from './common';
 import { Board } from './board';
 import { StandardEnglishAlphabet } from '../../constants/alphabets';
 
-const someTileLayout = [
+export const someTileLayout = [
   '         RADIOS',
   '         E     ',
   '      R SI     ',

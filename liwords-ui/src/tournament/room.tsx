@@ -27,10 +27,8 @@ export const TournamentRoom = (props: Props) => {
   const { useState } = useMountedState();
 
   const { loginState } = useLoginStateStoreContext();
-  const {
-    tournamentContext,
-    dispatchTournamentContext,
-  } = useTournamentStoreContext();
+  const { tournamentContext, dispatchTournamentContext } =
+    useTournamentStoreContext();
   const { loggedIn, username, userID, perms } = loginState;
   const { competitorState: competitorContext } = tournamentContext;
   const { isRegistered } = competitorContext;

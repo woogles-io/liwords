@@ -12,7 +12,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/gomodule/redigo/redis"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/twitchtv/twirp"
 
 	"github.com/domino14/liwords/pkg/apiserver"
@@ -22,9 +26,11 @@ import (
 	"github.com/domino14/liwords/pkg/memento"
 	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/notify"
+	"github.com/domino14/liwords/pkg/puzzles"
 	cfgstore "github.com/domino14/liwords/pkg/stores/config"
 	"github.com/domino14/liwords/pkg/stores/game"
 	modstore "github.com/domino14/liwords/pkg/stores/mod"
+	puzzlestore "github.com/domino14/liwords/pkg/stores/puzzles"
 	"github.com/domino14/liwords/pkg/stores/session"
 	"github.com/domino14/liwords/pkg/stores/soughtgame"
 	"github.com/domino14/liwords/pkg/stores/stats"
@@ -49,6 +55,7 @@ import (
 	configservice "github.com/domino14/liwords/rpc/api/proto/config_service"
 	gameservice "github.com/domino14/liwords/rpc/api/proto/game_service"
 	modservice "github.com/domino14/liwords/rpc/api/proto/mod_service"
+	puzzleservice "github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	tournamentservice "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 	userservice "github.com/domino14/liwords/rpc/api/proto/user_service"
 	wordservice "github.com/domino14/liwords/rpc/api/proto/word_service"
@@ -116,11 +123,27 @@ func main() {
 	}
 	log.Debug().Msg("debug log is on")
 
+	m, err := migrate.New(cfg.DBMigrationsPath, cfg.DBConnUri)
+	if err != nil {
+		panic(err)
+	}
+	log.Info().Msg("bringing up migration")
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		panic(err)
+	}
+	e1, e2 := m.Close()
+	log.Err(e1).Msg("close-source")
+	log.Err(e2).Msg("close-database")
+
 	redisPool := newPool(cfg.RedisURL)
+	dbPool, err := pgxpool.Connect(context.Background(), cfg.DBConnUri)
+	if err != nil {
+		panic(err)
+	}
 
 	router := http.NewServeMux() // here you could also go with third party packages to create a router
 
-	tmpUserStore, err := user.NewDBStore(cfg.DBConnString)
+	tmpUserStore, err := user.NewDBStore(cfg.DBConnDSN)
 	if err != nil {
 		panic(err)
 	}
@@ -128,14 +151,14 @@ func main() {
 
 	stores.UserStore = user.NewCache(tmpUserStore)
 
-	stores.SessionStore, err = session.NewDBStore(cfg.DBConnString)
+	stores.SessionStore, err = session.NewDBStore(cfg.DBConnDSN)
 	if err != nil {
 		panic(err)
 	}
 
 	middlewares := alice.New(
 		hlog.NewHandler(log.With().Str("service", "liwords").Logger()),
-		apiserver.WithCookiesMiddleware,
+		apiserver.ExposeResponseWriterMiddleware,
 		apiserver.AuthenticationMiddlewareGenerator(stores.SessionStore),
 		apiserver.APIKeyMiddlewareGenerator(),
 		config.CtxMiddlewareGenerator(cfg),
@@ -165,17 +188,22 @@ func main() {
 		panic(err)
 	}
 	stores.ConfigStore = cfgstore.NewRedisConfigStore(redisPool)
-	stores.ListStatStore, err = stats.NewListStatStore(cfg.DBConnString)
+	stores.ListStatStore, err = stats.NewListStatStore(cfg.DBConnDSN)
 	if err != nil {
 		panic(err)
 	}
 
-	stores.NotorietyStore, err = modstore.NewNotorietyStore(cfg.DBConnString)
+	stores.NotorietyStore, err = modstore.NewNotorietyStore(cfg.DBConnDSN)
 	if err != nil {
 		panic(err)
 	}
 	stores.PresenceStore = pkgredis.NewRedisPresenceStore(redisPool)
 	stores.ChatStore = pkgredis.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore)
+
+	stores.PuzzleStore, err = puzzlestore.NewDBStore(dbPool)
+	if err != nil {
+		panic(err)
+	}
 
 	mementoService := memento.NewMementoService(stores.UserStore, stores.GameStore)
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
@@ -189,6 +217,7 @@ func main() {
 	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore)
 	tournamentService := tournament.NewTournamentService(stores.TournamentStore, stores.UserStore)
 	modService := mod.NewModService(stores.UserStore, stores.ChatStore)
+	puzzleService := puzzles.NewPuzzleService(stores.PuzzleStore, stores.UserStore, cfg.PuzzleGenerationSecretKey, cfg.ECSClusterName, cfg.PuzzleGenerationTaskDefinition)
 
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
@@ -224,6 +253,15 @@ func main() {
 	router.Handle(modservice.ModServicePathPrefix,
 		middlewares.Then(modservice.NewModServiceServer(modService, NewLoggingServerHooks())))
 
+	router.Handle(puzzleservice.PuzzleServicePathPrefix,
+		middlewares.Then(puzzleservice.NewPuzzleServiceServer(puzzleService, NewLoggingServerHooks())))
+
+	router.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
+	router.Handle(
+		"/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+	router.Handle(
+		"/debug/pprof/trace", pprof.Handler("trace"),
+	)
 	router.Handle(
 		"/debug/pprof/goroutine", pprof.Handler("goroutine"),
 	)
@@ -251,7 +289,7 @@ func main() {
 	srv := &http.Server{
 		Addr:         cfg.ListenAddr,
 		Handler:      router,
-		WriteTimeout: 10 * time.Second,
+		WriteTimeout: 30 * time.Second,
 		ReadTimeout:  10 * time.Second}
 
 	idleConnsClosed := make(chan struct{})

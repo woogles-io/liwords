@@ -1,16 +1,47 @@
 const path = require('path');
 
-module.exports = function override(config, env) {
-  const wasmExtensionRegExp = /\.wasm$/;
-
-  config.module.rules.forEach((rule) => {
-    (rule.oneOf || []).forEach((oneOf) => {
-      if (oneOf.loader && oneOf.loader.indexOf('file-loader') >= 0) {
-        // make file-loader ignore WASM files
-        oneOf.exclude.push(wasmExtensionRegExp);
-      }
+module.exports = {
+  webpack: function(config, env) {
+    const wasmExtensionRegExp = /\.wasm$/;
+    config.module.rules.forEach((rule) => {
+        (rule.oneOf || []).forEach((oneOf) => {
+        if (!oneOf.loader && oneOf.type === 'asset/resource') {
+            oneOf.exclude.push(wasmExtensionRegExp);
+        }
+        });
     });
-  });
 
-  return config;
+    config.experiments = {
+        asyncWebAssembly: true,
+    };
+    return config;
+  },
+
+  devServer: function(configFunction) {
+    return function(proxy, allowedHost) {
+      const config = configFunction(proxy, allowedHost);
+      config.webSocketServer = config.webSocketServer || {};
+      config.webSocketServer.options = {
+        ...config.webSocketServer.options,
+        path: process.env.WDS_SOCKET_PATH,
+      };
+      if (process.env.WDS_PROXY) {
+        console.log('Webpack dev-server proxy is on...');
+        config.proxy = {
+            ...config.proxy,
+            '/twirp': 'http://localhost:8001',
+            '/gameimg': 'http://localhost:8001',
+            '/ws': {
+                target: 'ws://localhost:8087',
+                ws: true
+            }
+        };
+      }
+      config.client = {
+        ...config.client,
+        overlay: false,
+      };
+      return config;
+    }
+  }
 };

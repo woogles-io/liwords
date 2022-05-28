@@ -15,7 +15,8 @@ import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { DisplayUserFlag } from '../shared/display_flag';
 import { useBriefProfile } from '../utils/brief_profiles';
 
-const colors = require('../base.scss');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const colors = require('../base.scss').default;
 
 type CardProps = {
   player: RawPlayerInfo | undefined;
@@ -102,12 +103,10 @@ type Props = {
 };
 
 export const PlayerCards = React.memo((props: Props) => {
-  const {
-    gameContext: examinableGameContext,
-  } = useExaminableGameContextStoreContext();
-  const {
-    timerContext: examinableTimerContext,
-  } = useExaminableTimerStoreContext();
+  const { gameContext: examinableGameContext } =
+    useExaminableGameContextStoreContext();
+  const { timerContext: examinableTimerContext } =
+    useExaminableTimerStoreContext();
   const { isExamining } = useExamineStoreContext();
 
   // If the gameContext is not yet available, we should try displaying player cards

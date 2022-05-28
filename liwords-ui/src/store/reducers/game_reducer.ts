@@ -143,7 +143,10 @@ const newGameStateFromGameplayEvent = (
   let { board, lastPlayedTiles, playerOfTileAt, pool } = state;
   const turns = [...state.turns];
   // let currentTurn;
-  const evt = sge.getEvent()!;
+  const evt = sge.getEvent();
+  if (!evt) {
+    throw new Error('missing event');
+  }
 
   // Append the event.
   turns.push(GameEvent.deserializeBinary(evt.serializeBinary()));
@@ -327,7 +330,7 @@ const stateFromHistory = (history: GameHistory): GameState => {
   const gs = startingGameState(
     alphabet,
     initialExpandToFull(playerList),
-    history!.getUid()
+    history.getUid()
   );
   gs.nickToPlayerOrder = nickToPlayerOrder;
   gs.uidToPlayerOrder = uidToPlayerOrder;
@@ -361,8 +364,13 @@ const setClock = (newState: GameState, sge: ServerGameplayEvent) => {
   // happen in some tests.
   // Set the clock
   const rem = sge.getTimeRemaining(); // time remaining for the player who just played
-  const evt = sge.getEvent()!;
+  const evt = sge.getEvent();
+  if (!evt) {
+    throw new Error('missing event in setclock');
+  }
+
   const justPlayed = playerOrderFromEvt(evt, newState.nickToPlayerOrder);
+
   let { p0, p1 } = newState.clockController.current.times;
   let activePlayer;
   let flipTimeRemaining = false;
@@ -403,7 +411,7 @@ const setClock = (newState: GameState, sge: ServerGameplayEvent) => {
   // Send out a tick so the state updates right away (See store)
   newState.onClockTick(
     activePlayer as PlayerOrder,
-    newState.clockController!.current.millisOf(activePlayer as PlayerOrder)
+    newState.clockController.current.millisOf(activePlayer as PlayerOrder)
   );
 };
 
@@ -412,7 +420,14 @@ const initializeTimerController = (
   newState: GameState,
   ghr: GameHistoryRefresher
 ) => {
-  const history = ghr.getHistory()!;
+  const history = ghr.getHistory();
+  if (!history) {
+    throw new Error('missing history in initialize');
+  }
+  if (!newState.clockController) {
+    return;
+  }
+
   let [t1, t2] = [ghr.getTimePlayer1(), ghr.getTimePlayer2()];
   // Note that p0 is always first, even when "secondWentFirst", as p0 refers
   // to the order in the playerList, which always has the first player in that list
@@ -445,11 +460,10 @@ const initializeTimerController = (
     lastUpdate: 0,
   };
 
-  if (newState.clockController!.current) {
-    newState.clockController!.current.setClock(newState.playState, clockState);
+  if (newState.clockController.current) {
+    newState.clockController.current.setClock(newState.playState, clockState);
   } else {
-    // eslint-disable-next-line no-param-reassign
-    newState.clockController!.current = new ClockController(
+    newState.clockController.current = new ClockController(
       clockState,
       state.onClockTimeout,
       state.onClockTick
@@ -458,9 +472,9 @@ const initializeTimerController = (
   // And send out a tick right now.
   newState.onClockTick(
     onturn,
-    newState.clockController!.current.millisOf(onturn)
+    newState.clockController.current.millisOf(onturn)
   );
-  newState.clockController!.current.setMaxOvertime(ghr.getMaxOvertimeMinutes());
+  newState.clockController.current.setMaxOvertime(ghr.getMaxOvertimeMinutes());
 };
 
 // Here we are mixing declarative code with imperative code (needed for the timer).
@@ -477,20 +491,23 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       gs.playState = PlayState.GAME_OVER;
       // Don't lose the clock controller, but pass it on until we get a
       // history refresher etc. Reset the shown time to 0.
-      if (state.clockController !== null) {
-        gs.clockController = state.clockController;
-        if (gs.clockController!.current) {
-          gs.clockController!.current.setClock(gs.playState, {
-            p0: 0,
-            p1: 0,
-            lastUpdate: 0,
-          });
-        } else {
-          gs.clockController!.current = new ClockController(
-            { p0: 0, p1: 0, lastUpdate: 0 },
-            state.onClockTimeout,
-            state.onClockTick
-          );
+      const cmd = action.payload as string;
+      if (cmd !== 'noclock') {
+        if (state.clockController !== null) {
+          gs.clockController = state.clockController;
+          if (gs.clockController.current) {
+            gs.clockController.current.setClock(gs.playState, {
+              p0: 0,
+              p1: 0,
+              lastUpdate: 0,
+            });
+          } else {
+            gs.clockController.current = new ClockController(
+              { p0: 0, p1: 0, lastUpdate: 0 },
+              state.onClockTimeout,
+              state.onClockTick
+            );
+          }
         }
       }
       return gs;
@@ -503,7 +520,6 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       if (sge.getGameId() !== state.gameID) {
         return state; // no change
       }
-      console.log('add game event', sge.toObject());
       const ngs = newGameStateFromGameplayEvent(state, sge);
 
       // Always pass the clock ref along. Begin imperative section:
@@ -514,7 +530,11 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
 
     case ActionType.RefreshHistory: {
       const ghr = action.payload as GameHistoryRefresher;
-      const newState = stateFromHistory(ghr.getHistory()!);
+      const history = ghr.getHistory();
+      if (!history) {
+        throw new Error('missing history in refresh');
+      }
+      const newState = stateFromHistory(history);
 
       if (state.clockController !== null) {
         newState.clockController = state.clockController;
@@ -525,12 +545,24 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       return newState;
     }
 
+    // A GameHistory that represents a static position.
+    case ActionType.SetupStaticPosition: {
+      const h = action.payload as GameHistory;
+      const newState = stateFromHistory(h);
+
+      return newState;
+    }
+
     case ActionType.EndGame: {
       // If the game ends, we should set this in the store, if it hasn't
       // already been set. This can happen if it ends in an "abnormal" way
       // like a resignation or a timeout -- these aren't ServerGamePlayEvents per se.
       const gee = action.payload as GameEndedEvent;
-      const newState = stateFromHistory(gee.getHistory()!);
+      const history = gee.getHistory();
+      if (!history) {
+        throw new Error('missing history in end game event');
+      }
+      const newState = stateFromHistory(history);
       if (newState.clockController) {
         newState.clockController.current?.stopClock();
       }

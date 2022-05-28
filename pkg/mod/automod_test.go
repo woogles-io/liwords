@@ -14,6 +14,7 @@ import (
 	"github.com/domino14/liwords/pkg/gameplay"
 	pkgmod "github.com/domino14/liwords/pkg/mod"
 	pkgstats "github.com/domino14/liwords/pkg/stats"
+	"github.com/domino14/liwords/pkg/stores/common"
 	"github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/stores/mod"
 	"github.com/domino14/liwords/pkg/stores/stats"
@@ -26,7 +27,6 @@ import (
 	"github.com/domino14/macondo/alphabet"
 	macondoconfig "github.com/domino14/macondo/config"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
-	"github.com/jinzhu/gorm"
 	"github.com/lithammer/shortuuid"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
@@ -34,8 +34,6 @@ import (
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
-var TestDBHost = os.Getenv("TEST_DB_HOST")
-var TestingDBConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
 var gameReq = &pb.GameRequest{Lexicon: "CSW21",
 	Rules: &pb.GameRules{BoardLayoutName: entity.CrosswordGame,
 		LetterDistributionName: "English",
@@ -59,10 +57,10 @@ var DefaultConfig = macondoconfig.Config{
 
 var playerIds = []string{"xjCWug7EZtDxDHX5fRZTLo", "qUQkST8CendYA3baHNoPjk"}
 
-func gameStore(dbURL string, userStore pkguser.Store) (*config.Config, gameplay.GameStore) {
+func gameStore(userStore pkguser.Store) (*config.Config, gameplay.GameStore) {
 	cfg := &config.Config{}
 	cfg.MacondoConfig = DefaultConfig
-	cfg.DBConnString = dbURL
+	cfg.DBConnDSN = common.TestingPostgresConnDSN()
 
 	tmp, err := game.NewDBStore(cfg, userStore)
 	if err != nil {
@@ -81,8 +79,8 @@ func tournamentStore(cfg *config.Config, gs gameplay.GameStore) tournament.Tourn
 	return tournamentStore
 }
 
-func notorietyStore(dbURL string) pkgmod.NotorietyStore {
-	n, err := mod.NewNotorietyStore(TestingDBConnStr + " dbname=liwords_test")
+func notorietyStore() pkgmod.NotorietyStore {
+	n, err := mod.NewNotorietyStore(common.TestingPostgresConnDSN())
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
@@ -111,16 +109,16 @@ func (ec *evtConsumer) consumeEventChan(ctx context.Context,
 	}
 }
 
-func userStore(dbURL string) (pkguser.Store, *user.DBStore) {
-	tmp, err := user.NewDBStore(TestingDBConnStr + " dbname=liwords_test")
+func userStore() (pkguser.Store, *user.DBStore) {
+	tmp, err := user.NewDBStore(common.TestingPostgresConnDSN())
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
 	return user.NewCache(tmp), tmp
 }
 
-func listStatStore(dbURL string) pkgstats.ListStatStore {
-	s, err := stats.NewListStatStore(TestingDBConnStr + " dbname=liwords_test")
+func listStatStore() pkgstats.ListStatStore {
+	s, err := stats.NewListStatStore(common.TestingPostgresConnDSN())
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
@@ -128,22 +126,12 @@ func listStatStore(dbURL string) pkgstats.ListStatStore {
 }
 
 func recreateDB() {
-	// Create a database.
-	db, err := gorm.Open("postgres", TestingDBConnStr+" dbname=postgres")
+	err := common.RecreateTestDB()
 	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-	defer db.Close()
-	db = db.Exec("DROP DATABASE IF EXISTS liwords_test")
-	if db.Error != nil {
-		log.Fatal().Err(db.Error).Msg("error")
-	}
-	db = db.Exec("CREATE DATABASE liwords_test")
-	if db.Error != nil {
-		log.Fatal().Err(db.Error).Msg("error")
+		panic(err)
 	}
 	// Create a user table. Initialize the user store.
-	ustore, _ := userStore(TestingDBConnStr + " dbname=liwords_test")
+	ustore, _ := userStore()
 
 	// Insert a couple of users into the table.
 
@@ -332,14 +320,13 @@ func TestNotoriety(t *testing.T) {
 	//zerolog.SetGlobalLevel(zerolog.Disabled)
 	is := is.New(t)
 	recreateDB()
-	cstr := TestingDBConnStr + " dbname=liwords_test"
 
 	ctx := context.WithValue(context.Background(), config.CtxKeyword, &config.Config{MacondoConfig: DefaultConfig})
 
-	ustore, uDBstore := userStore(cstr)
-	lstore := listStatStore(cstr)
-	nstore := notorietyStore(cstr)
-	cfg, gstore := gameStore(cstr, ustore)
+	ustore, uDBstore := userStore()
+	lstore := listStatStore()
+	nstore := notorietyStore()
+	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
 
 	defaultTurns := []*pb.ClientGameplayEvent{

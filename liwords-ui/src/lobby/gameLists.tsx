@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, Button } from 'antd';
 import { Modal } from '../utils/focus_modal';
 import { useMountedState } from '../utils/mounted';
@@ -22,7 +22,7 @@ type Props = {
 
 export const GameLists = React.memo((props: Props) => {
   const { useState } = useMountedState();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const {
     loggedIn,
@@ -39,10 +39,8 @@ export const GameLists = React.memo((props: Props) => {
   const [matchModalVisible, setMatchModalVisible] = useState(false);
   const [botModalVisible, setBotModalVisible] = useState(false);
 
-  const {
-    addHandleContextMatch,
-    removeHandleContextMatch,
-  } = useContextMatchContext();
+  const { addHandleContextMatch, removeHandleContextMatch } =
+    useContextMatchContext();
   const friendRef = useRef('');
   const handleContextMatch = useCallback((s: string) => {
     friendRef.current = s;
@@ -79,8 +77,9 @@ export const GameLists = React.memo((props: Props) => {
   const simultaneousModeEffectivelyEnabled =
     simultaneousModeEnabled || myCurrentGames.length !== 1;
   const currentGame: ActiveGame | null = myCurrentGames[0] ?? null;
-  const opponent = currentGame?.players.find((p) => p.displayName !== username)
-    ?.displayName;
+  const opponent = currentGame?.players.find(
+    (p) => p.displayName !== username
+  )?.displayName;
 
   const enableWordSmog = React.useMemo(
     () => localStorage.getItem('enableWordSmog') === 'true',
@@ -288,7 +287,7 @@ export const GameLists = React.memo((props: Props) => {
         <div
           className="resume"
           onClick={() => {
-            history.replace(`/game/${encodeURIComponent(currentGame.gameID)}`);
+            navigate(`/game/${encodeURIComponent(currentGame.gameID)}`);
             console.log('redirecting to', currentGame.gameID);
           }}
         >

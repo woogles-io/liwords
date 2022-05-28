@@ -13,9 +13,7 @@ import woogles from '../assets/bio/bio_woogles.jpg';
 import benjy from '../assets/bio/bio_benjy.jpg';
 import { useMountedState } from '../utils/mounted';
 
-type Props = {};
-
-export const Team = (props: Props) => {
+export const Team = () => {
   const { useState } = useMountedState();
   const [bnjyMode, setBnjyMode] = useState(
     localStorage?.getItem('bnjyMode') === 'true'
@@ -156,8 +154,8 @@ export const Team = (props: Props) => {
                   player. He hopes to use his experience with GCG parsing and
                   database management to derive a fascinating variety of
                   accessible game data from the vast repository of games played
-                  and imported on Woogles. He works as a software developer at
-                  Arcadia during the day and enjoys juggling and studying
+                  and imported on Woogles. He works as a software engineer at
+                  Google during the day and enjoys juggling and studying
                   Japanese in his spare time. Josh prefers vinegar-based
                   condiments.
                 </p>

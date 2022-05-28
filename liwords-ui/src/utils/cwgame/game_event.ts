@@ -1,4 +1,4 @@
-import { EphemeralTile, Direction, Blank } from './common';
+import { EphemeralTile, Direction, Blank, EmptySpace, isBlank } from './common';
 import { contiguousTilesFromTileSet } from './scoring';
 import { Board } from './board';
 import { GameEvent } from '../../gen/macondo/api/proto/macondo/macondo_pb';
@@ -104,7 +104,7 @@ export const tilePlacementEventDisplay = (evt: GameEvent, board: Board) => {
         m += '(';
         openParen = true;
       }
-      m += board.letterAt(r, c)!;
+      m += board.letterAt(r, c);
     } else {
       if (openParen) {
         m += ')';
@@ -142,4 +142,29 @@ export const playerOrderFromEvt = (
     return nickToPlayerOrder[nickname];
   }
   return indexToPlayerOrder(evt.getPlayerIndex());
+};
+
+export const computeLeave = (tilesPlayed: string, rack: string) => {
+  // tilesPlayed is either from evt.getPlayedTiles(), which is like "TRUNCa.E",
+  // or from evt.getExchanged(), which is like "AE?".
+  // rack is a pre-sorted rack; spaces will be returned where gaps should be.
+
+  const leave: Array<string | null> = Array.from(rack);
+  for (const letter of tilesPlayed) {
+    if (letter !== ThroughTileMarker) {
+      const t = isBlank(letter) ? Blank : letter;
+      const usedTileIndex = leave.lastIndexOf(t);
+      if (usedTileIndex >= 0) {
+        // make it a non-string to disqualify multiple matches in this loop.
+        leave[usedTileIndex] = null;
+      }
+    }
+  }
+  for (let i = 0; i < leave.length; ++i) {
+    if (leave[i] === null) {
+      // this is intentionally done in a separate pass.
+      leave[i] = EmptySpace;
+    }
+  }
+  return leave.join('');
 };

@@ -1,9 +1,11 @@
+@use "sass:math";
+
 @import 'color_modes';
 
 $card-shadow: 0px 0px 12px rgba(0, 0, 0, 0.15);
 $card-shadow-lower: 0px 0px 6px rgba(0, 0, 0, 0.15);
 $card-padding: 16px;
-$card-padding-md: ($card-padding / 2);
+$card-padding-md: ($card-padding * 0.5);
 
 $header-height-mobile: 96px;
 $header-height-desktop: 60px;
@@ -16,7 +18,7 @@ $screen-desktop-l-min: 1920px;
 
 @function strip-unit($number) {
   @if type-of($number) == 'number' and not unitless($number) {
-    @return $number / ($number * 0 + 1);
+    @return math.div($number, $number * 0 + 1);
   }
 
   @return $number;
@@ -68,10 +70,10 @@ $tile-font-size-tablet: $tile-size-tablet * 0.68;
 $tile-font-size-laptop: $tile-size-laptop * 0.68;
 $tile-font-size-desktop: $tile-size-desktop * 0.68;
 
-$point-size-mobile: $tile-font-size-mobile / 3.1;
-$point-size-tablet: $tile-font-size-tablet / 2.6;
-$point-size-laptop: $tile-font-size-laptop / 2.8;
-$point-size-desktop: $tile-font-size-desktop / 2.8;
+$point-size-mobile: math.div($tile-font-size-mobile, 3.1);
+$point-size-tablet: math.div($tile-font-size-tablet, 2.6);
+$point-size-laptop: math.div($tile-font-size-laptop, 2.8);
+$point-size-desktop: math.div($tile-font-size-desktop, 2.8);
 
 @mixin container {
   width: 100%;
@@ -219,10 +221,16 @@ ul {
   color: #414141;
   border-color: #fcac69;
 }
-.ant-tag-gray {
+.ant-tag-gray,
+.ant-tag-tie {
   background: #aaaaaa;
   color: #414141;
-  background: #aaaaaa;
+}
+
+.ant-tag-first {
+  background: #d0d0d0;
+  color: #414141;
+  border-color: #cccccc;
 }
 
 .ant-tag-yellow {
@@ -231,7 +239,8 @@ ul {
   border-color: #f8c033;
 }
 
-.ant-tag-green {
+.ant-tag-green,
+  .ant-tag-win {
   background: #b2e49b;
   color: #414141;
   border-color: #b2e49b;
@@ -245,13 +254,15 @@ ul {
 }
 .ant-tag-red,
 .ant-tag-removed,
-.ant-tag-forfeit {
+.ant-tag-forfeit,
+ {
   background: #8a0f23;
   color: #ffffff;
   border-color: #8a0f23;
 }
 
-.ant-tag-volcano {
+.ant-tag-volcano,
+.ant-tag-loss{
   background: #b3263c;
   color: #ffffff;
   border-color: #b3263c;
@@ -369,7 +380,7 @@ ul {
   }
   &:hover {
     @include colorModed() {
-      background: m($background);
+      background: m($off-background);
       color: m($gray-extreme);
     }
   }
@@ -445,6 +456,13 @@ ul {
     border-bottom-color: m($card-background);
   }
 }
+.ant-collapse, .ant-collapse-item, .ant-collapse-header, .ant-collapse-content, .ant-collapse-content-box {
+  @include colorModed() {
+    background-color: m($card-background);
+    color: m($gray-extreme);
+  }
+}
+
 .user-context-menu {
   cursor: pointer;
 }
@@ -477,6 +495,11 @@ ul {
         transition: none !important;
         width: 100%;
         height: 100%;
+        a:not(.ant-btn) {
+          @include colorModed() {
+            color: m($primary-dark);
+          }
+        }
       }
       div {
         display: flex;
@@ -584,6 +607,7 @@ ul {
   .ant-modal-root {
     .ant-modal-content {
       border-radius: 8px;
+      font-family: "Mulish", sans-serif;
       @include colorModed() {
         background: m($background);
         color: m($gray-extreme);
@@ -596,6 +620,8 @@ ul {
         color: m($gray-extreme);
       }
       .ant-modal-title {
+        font-family: "Mulish", sans-serif;
+        font-weight: 700;
         @include colorModed() {
           color: m($gray-extreme);
         }

@@ -2,9 +2,7 @@ import React from 'react';
 import woogles from '../assets/woogles.png';
 import { Row, Col } from 'antd';
 
-type Props = {};
-
-export const ClosedAccount = React.memo((props: Props) => {
+export const ClosedAccount = React.memo(() => {
   return (
     <div className="closed-account">
       <h3>Your account will be closed</h3>

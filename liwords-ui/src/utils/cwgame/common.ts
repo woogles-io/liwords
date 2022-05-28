@@ -1,6 +1,7 @@
 export const EmptySpace = ' ';
 export const Blank = '?';
-const screenSizes = require('../../base.scss');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const screenSizes = require('../../base.scss').default;
 
 export type EphemeralTile = {
   // ephemeron <3 you are missed
@@ -21,7 +22,7 @@ export enum Direction {
 }
 
 export const isTouchDevice = () => {
-  var userAgent = navigator.userAgent || navigator.vendor;
+  const userAgent = navigator.userAgent || navigator.vendor;
   if (/android/i.test(userAgent) || /iPad|iPhone|iPod/.test(userAgent)) {
     return true;
   }
@@ -29,13 +30,13 @@ export const isTouchDevice = () => {
 };
 
 export const isMac = () => {
-  var userAgent = navigator.userAgent || navigator.vendor;
-  return (/Mac/i.test(userAgent));
+  const userAgent = navigator.userAgent || navigator.vendor;
+  return /Mac/i.test(userAgent);
 };
 
 export const isWindows = () => {
-  var userAgent = navigator.userAgent || navigator.vendor;
-  return (/Win/i.test(userAgent));
+  const userAgent = navigator.userAgent || navigator.vendor;
+  return /Win/i.test(userAgent);
 };
 
 export const uniqueTileIdx = (row: number, col: number): number => {

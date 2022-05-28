@@ -33,19 +33,20 @@ export const MatchLexiconDisplay = (props: {
   return desc;
 };
 
-export const LexiconFormItem = React.memo((props: Props) => {
-  const order = [
-    'CSW21',
-    'NWL20',
-    'ECWL',
-    'RD28',
-    'FRA20',
-    'NSF21',
-    'NSWL20',
-    'CSW19X',
-  ];
+export const lexiconOrder = [
+  'CSW21',
+  'NWL20',
+  'ECWL',
+  'RD28',
+  'FRA20',
+  'NSF21',
+  'NSWL20',
+];
 
-  const options = order
+export const puzzleLexica = ['CSW21', 'NWL20'];
+
+export const LexiconFormItem = React.memo((props: Props) => {
+  const options = lexiconOrder
     .filter((k) => !props.excludedLexica?.has(k))
     .map((k) => (
       <Select.Option key={k} value={k}>

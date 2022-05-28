@@ -67,6 +67,12 @@ enum RatingMode {
   CASUAL = 1;
 }
 
+enum GameType {
+  NATIVE = 0;
+  ANNOTATED = 1;
+  BOT_VS_BOT = 2;
+}
+
 message GameRequest {
   string lexicon = 1;
   GameRules rules = 2;
@@ -192,6 +198,7 @@ message GameInfoResponse {
   int32 tournament_round = 21;
   // a game index within a round.
   int32 tournament_game_index = 22;
+  GameType type = 23;
 }
 
 message GameInfoResponses { repeated GameInfoResponse game_info = 1; }

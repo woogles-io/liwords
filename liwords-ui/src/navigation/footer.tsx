@@ -74,7 +74,9 @@ const Footer = React.memo(() => {
           >
             License to Spell
           </a>
-          <h4>Learn</h4>
+          <h4>Puzzles</h4>
+          <a href="/puzzle">Solve Puzzles</a>
+          <h4>Study</h4>
           <a
             href="https://aerolith.org"
             target="_blank"
@@ -110,7 +112,7 @@ const Footer = React.memo(() => {
             Static Leave Evaluator
           </a>
           <a
-            href="//breakingthegame.net"
+            href="http://breakingthegame.net"
             target="_blank"
             rel="noopener noreferrer"
           >

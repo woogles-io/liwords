@@ -12,6 +12,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
 	pkgmod "github.com/domino14/liwords/pkg/mod"
+	"github.com/domino14/liwords/pkg/stores/common"
 	"github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/stores/mod"
 	"github.com/domino14/liwords/pkg/stores/stats"
@@ -24,10 +25,10 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
-func gameStore(dbURL string, userStore pkguser.Store) (*config.Config, gameplay.GameStore) {
+func gameStore(userStore pkguser.Store) (*config.Config, gameplay.GameStore) {
 	cfg := &config.Config{}
 	cfg.MacondoConfig = DefaultConfig
-	cfg.DBConnString = dbURL
+	cfg.DBConnDSN = common.TestingPostgresConnDSN()
 
 	tmp, err := game.NewDBStore(cfg, userStore)
 	if err != nil {
@@ -46,8 +47,8 @@ func tournamentStore(cfg *config.Config, gs gameplay.GameStore) tournament.Tourn
 	return tournamentStore
 }
 
-func notorietyStore(dbURL string) pkgmod.NotorietyStore {
-	n, err := mod.NewNotorietyStore(TestingDBConnStr + " dbname=liwords_test")
+func notorietyStore() pkgmod.NotorietyStore {
+	n, err := mod.NewNotorietyStore(common.TestingPostgresConnDSN())
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
@@ -109,11 +110,10 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStor
 func TestInitializeGame(t *testing.T) {
 	is := is.New(t)
 	recreateDB()
-	cstr := TestingDBConnStr + " dbname=liwords_test"
 
-	ustore := userStore(cstr)
-	lstore := listStatStore(cstr)
-	cfg, gstore := gameStore(cstr, ustore)
+	ustore := userStore()
+	lstore := listStatStore()
+	cfg, gstore := gameStore(ustore)
 
 	g, _, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
 
@@ -130,12 +130,11 @@ func TestInitializeGame(t *testing.T) {
 func TestWrongTurn(t *testing.T) {
 	is := is.New(t)
 	recreateDB()
-	cstr := TestingDBConnStr + " dbname=liwords_test"
 
-	ustore := userStore(cstr)
-	lstore := listStatStore(cstr)
-	nstore := notorietyStore(cstr)
-	cfg, gstore := gameStore(cstr, ustore)
+	ustore := userStore()
+	lstore := listStatStore()
+	nstore := notorietyStore()
+	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
 
 	g, _, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
@@ -169,12 +168,11 @@ func TestWrongTurn(t *testing.T) {
 func Test5ptBadWord(t *testing.T) {
 	is := is.New(t)
 	recreateDB()
-	cstr := TestingDBConnStr + " dbname=liwords_test"
 
-	ustore := userStore(cstr)
-	lstore := listStatStore(cstr)
-	nstore := notorietyStore(cstr)
-	cfg, gstore := gameStore(cstr, ustore)
+	ustore := userStore()
+	lstore := listStatStore()
+	nstore := notorietyStore()
+	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
 
 	g, nower, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
@@ -219,12 +217,10 @@ func Test5ptBadWord(t *testing.T) {
 func TestDoubleChallengeBadWord(t *testing.T) {
 	is := is.New(t)
 	recreateDB()
-	cstr := TestingDBConnStr + " dbname=liwords_test"
-
-	ustore := userStore(cstr)
-	lstore := listStatStore(cstr)
-	nstore := notorietyStore(cstr)
-	cfg, gstore := gameStore(cstr, ustore)
+	ustore := userStore()
+	lstore := listStatStore()
+	nstore := notorietyStore()
+	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
 
 	g, nower, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
@@ -286,12 +282,11 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 func TestDoubleChallengeGoodWord(t *testing.T) {
 	is := is.New(t)
 	recreateDB()
-	cstr := TestingDBConnStr + " dbname=liwords_test"
 
-	ustore := userStore(cstr)
-	lstore := listStatStore(cstr)
-	nstore := notorietyStore(cstr)
-	cfg, gstore := gameStore(cstr, ustore)
+	ustore := userStore()
+	lstore := listStatStore()
+	nstore := notorietyStore()
+	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
 
 	g, nower, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
@@ -351,12 +346,11 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 func TestQuickdata(t *testing.T) {
 	is := is.New(t)
 	recreateDB()
-	cstr := TestingDBConnStr + " dbname=liwords_test"
 
-	ustore := userStore(cstr)
-	lstore := listStatStore(cstr)
-	nstore := notorietyStore(cstr)
-	cfg, gstore := gameStore(cstr, ustore)
+	ustore := userStore()
+	lstore := listStatStore()
+	nstore := notorietyStore()
+	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
 
 	g, nower, cancel, donechan, _ := makeGame(cfg, ustore, gstore)

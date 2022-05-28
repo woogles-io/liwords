@@ -22,6 +22,7 @@ export enum ActionType {
   DeleteDivision,
   SetTourneyGamesOffset,
   SetTourneyMetadata,
+  SetTourneyReducedMetadata,
   SetDivisionData,
   SetDivisionsData,
   SetDivisionRoundControls,
@@ -40,6 +41,7 @@ export enum ActionType {
   ClearHistory,
   EndGame,
   ProcessGameMetaEvent,
+  SetupStaticPosition,
 
   /* login state actions */
   SetAuthentication,

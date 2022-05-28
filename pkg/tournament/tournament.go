@@ -118,16 +118,30 @@ func SendTournamentMessage(ctx context.Context, ts TournamentStore, id string, w
 	wrapped.AddAudience(entity.AudTournament, id)
 	if eventChannel != nil {
 		eventChannel <- wrapped
+	} else {
+		log.Error().Msg("send-msg-tournament-event-chan-nil")
 	}
-	log.Debug().Str("tid", id).Msg("sent tournament message type: " + string(wrapped.Type))
+	log.Debug().Str("tid", id).Msg("sent tournament message type: " + wrapped.Type.String())
 	return nil
 }
 
-func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.TournamentMetadata) error {
+func ternary[T any](c bool, i, e T) T {
+	if c {
+		return i
+	}
+	return e
+}
 
-	ttype, err := validateTournamentMeta(meta.Type, meta.Slug)
-	if err != nil {
-		return err
+func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.TournamentMetadata,
+	merge bool) error {
+
+	var err error
+	var ttype entity.CompetitionType
+	if meta.Slug != "" {
+		ttype, err = validateTournamentMeta(meta.Type, meta.Slug)
+		if err != nil {
+			return err
+		}
 	}
 
 	t, err := ts.Get(ctx, meta.Id)
@@ -135,32 +149,39 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 		return err
 	}
 
-	if t.IsFinished {
-		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name)
-	}
-
 	t.Lock()
 	defer t.Unlock()
 	name := strings.TrimSpace(meta.Name)
-	if name == "" {
+	if name == "" && !merge {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_EMPTY_NAME, t.Name)
 	}
-	t.Name = name
-	t.Description = meta.Description
-	t.Slug = meta.Slug
-	t.Type = ttype
-	t.ExtraMeta = &entity.TournamentMeta{
-		Disclaimer:                meta.Disclaimer,
-		TileStyle:                 meta.TileStyle,
-		BoardStyle:                meta.BoardStyle,
-		DefaultClubSettings:       meta.DefaultClubSettings,
-		FreeformClubSettingFields: meta.FreeformClubSettingFields,
-		Password:                  meta.Password,
-		Logo:                      meta.Logo,
-		Color:                     meta.Color,
-		PrivateAnalysis:           meta.PrivateAnalysis,
-	}
+	log.Info().Interface("t", t).Msg("tournament-before-set-meta")
 
+	// Not all fields need to be specified if we're merging.
+	t.Name = ternary(merge && name == "", t.Name, name)
+	t.Description = ternary(merge && meta.Description == "", t.Description, meta.Description)
+	t.Slug = ternary(merge && meta.Slug == "", t.Slug, meta.Slug)
+	t.Type = ternary(merge && meta.Type == pb.TType_STANDARD, t.Type, ttype)
+	t.ExtraMeta = &entity.TournamentMeta{
+		Disclaimer: ternary(merge && meta.Disclaimer == "" && t.ExtraMeta != nil,
+			t.ExtraMeta.Disclaimer, meta.Disclaimer),
+		TileStyle: ternary(merge && meta.TileStyle == "" && t.ExtraMeta != nil,
+			t.ExtraMeta.TileStyle, meta.TileStyle),
+		BoardStyle: ternary(merge && meta.BoardStyle == "" && t.ExtraMeta != nil,
+			t.ExtraMeta.BoardStyle, meta.BoardStyle),
+		DefaultClubSettings: ternary(merge && meta.DefaultClubSettings == nil && t.ExtraMeta != nil,
+			t.ExtraMeta.DefaultClubSettings, meta.DefaultClubSettings),
+		FreeformClubSettingFields: ternary(merge && meta.FreeformClubSettingFields == nil && t.ExtraMeta != nil,
+			t.ExtraMeta.FreeformClubSettingFields, meta.FreeformClubSettingFields),
+		Password: ternary(merge && meta.Password == "" && t.ExtraMeta != nil,
+			t.ExtraMeta.Password, meta.Password),
+		Logo: ternary(merge && meta.Logo == "" && t.ExtraMeta != nil,
+			t.ExtraMeta.Logo, meta.Logo),
+		Color: ternary(merge && meta.Color == "" && t.ExtraMeta != nil,
+			t.ExtraMeta.Color, meta.Color),
+		PrivateAnalysis: ternary(merge && !meta.PrivateAnalysis && t.ExtraMeta != nil,
+			t.ExtraMeta.PrivateAnalysis, meta.PrivateAnalysis),
+	}
 	err = ts.Set(ctx, t)
 	if err != nil {
 		return err
@@ -730,6 +751,8 @@ func SetResult(ctx context.Context,
 		evtChan := ts.TournamentEventChan()
 		if evtChan != nil {
 			evtChan <- wrapped
+		} else {
+			log.Error().Msg("set-result-tournament-event-chan-nil")
 		}
 		log.Debug().Str("tid", id).Msg("sent legacy tournament game ended event")
 		return nil
@@ -888,6 +911,8 @@ func sendDivisionStart(ts TournamentStore, tuuid string, division string, round 
 	wrapped.AddAudience(entity.AudTournament, tuuid)
 	if eventChannel != nil {
 		eventChannel <- wrapped
+	} else {
+		log.Error().Msg("send-divstart-tournament-event-chan-nil")
 	}
 	log.Debug().Interface("evt", evt).Msg("sent-tournament-round-started")
 	return nil

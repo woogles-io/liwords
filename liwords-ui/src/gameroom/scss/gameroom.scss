@@ -329,7 +329,7 @@ p.streak-loss {
 
 /* Board spaces */
 
-.board-spaces-container {
+.board-spaces-container, {
   position: relative;
   display: flex;
   flex-wrap: wrap;
@@ -343,7 +343,9 @@ p.streak-loss {
   }
 }
 .board-spaces,
-.tiles {
+.tiles,
+.learn-spaces
+{
   touch-action: manipulation;
   width: $board-size-mobile;
   height: $board-size-mobile;
@@ -353,13 +355,21 @@ p.streak-loss {
   grid-template-rows: repeat(15, 1fr);
   gap: 1px;
 }
-.board-spaces {
+.board-spaces:not(.learn-spaces) {
   // Using a box shadow that looks like a border to not mess up the grid
   @include colorModed() {
     box-shadow: m($board-shadow);
   }
   @include userboard() {
     background: ub($board-fill);
+  }
+}
+.learn-spaces {
+  position: absolute;
+  pointer-events: none;
+  &:focus,
+  &:focus-within {
+    visibility: hidden;
   }
 }
 
@@ -443,6 +453,22 @@ p.streak-loss {
     .bonus-label {
       display: none;
     }
+  }
+  &.learn-space {
+    background: transparent;
+    opacity: 0;
+    &.faded {
+      background: black;
+      opacity: 0;
+      mix-blend-mode: multiply;
+      animation: learnFadeIn 300ms ease-out 200ms forwards;
+    }
+    &.highlighted {
+        background: white;
+        opacity: 0;
+        mix-blend-mode: screen;
+        animation: learnFadeIn 300ms ease-out 200ms forwards;
+      }
   }
   &.bonus-none {
     @include colorModed() {
@@ -607,6 +633,15 @@ p.streak-loss {
   }
   100% {
     opacity: 1;
+  }
+}
+
+@keyframes learnFadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0.35;
   }
 }
 /* Coordinate labels */
@@ -968,7 +1003,7 @@ p.rune {
   }
 }
 
-.tile .tentative-score {
+.tile .tentative-score, .puzzle-info .tentative-score {
   position: absolute;
   display: flex;
   pointer-events: none;
@@ -1279,9 +1314,9 @@ p.rune {
     }
     &.play {
       order: 1;
-      min-width: $board-size-mobile / 4;
-      width: $board-size-mobile / 4;
-      height: $board-size-mobile / 4;
+      min-width: $board-size-mobile * 0.25;
+      width: $board-size-mobile * 0.25;
+      height: $board-size-mobile * 0.25;
       margin: 0 6px;
     }
   }
@@ -1488,20 +1523,20 @@ p.rune {
       flex-direction: row;
       width: auto;
       button {
-        height: 32px;
+        height: 36px;
       }
       &:nth-child(2) {
         order: 1;
       }
     }
     button.ant-btn {
-      font-size: 14px;
+      font-size: 15px;
       margin: 0 6px;
       &.play {
         order: 2;
         min-width: auto;
         width: auto;
-        height: 32px;
+        height: 36px;
       }
     }
   }

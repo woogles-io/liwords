@@ -18,15 +18,15 @@ import { Modal } from '../utils/focus_modal';
 import { Store } from 'antd/lib/form/interface';
 import '../App.scss';
 import '../lobby/lobby.scss';
-import 'antd/dist/antd.css';
+import 'antd/dist/antd.min.css';
 import ReactMarkdown from 'react-markdown';
 import {
   DisplayedGameSetting,
   SettingsForm,
-} from '../tournament/game_settings_form';
+} from '../tournament/director_tools/game_settings_form';
 
 import { useMountedState } from '../utils/mounted';
-import { postProto, toAPIUrl } from '../api/api';
+import { LiwordsAPIError, postProto, toAPIUrl } from '../api/api';
 import {
   GetTournamentMetadataRequest,
   TournamentMetadataResponse,
@@ -85,7 +85,7 @@ const SettingsModalForm = (mprops: {
   visible: boolean;
   onCancel: () => void;
   setModalVisible: (v: boolean) => void;
-  selectedGameRequest: GameRequest | null;
+  selectedGameRequest: GameRequest | undefined;
   setSelectedGameRequest: (gr: GameRequest) => void;
 }) => {
   return (
@@ -116,10 +116,9 @@ export const TourneyEditor = (props: Props) => {
   const [color, setColor] = useState('');
   const [logo, setLogo] = useState('');
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
-  const [
-    selectedGameRequest,
-    setSelectedGameRequest,
-  ] = useState<GameRequest | null>(null);
+  const [selectedGameRequest, setSelectedGameRequest] = useState<
+    GameRequest | undefined
+  >(undefined);
   const [form] = Form.useForm();
 
   const onSearch = async (val: string) => {
@@ -134,30 +133,33 @@ export const TourneyEditor = (props: Props) => {
         tmreq
       );
       const metadata = m.getMetadata();
-      setDescription(metadata?.getDescription()!);
-      setDisclaimer(metadata?.getDisclaimer() || '');
-      setName(metadata?.getName()!);
-      setColor(metadata?.getColor() || '');
-      setLogo(metadata?.getLogo() || '');
-      setSelectedGameRequest(metadata?.getDefaultClubSettings() || null);
+      if (!metadata) {
+        throw new Error('undefined tournament metadata');
+      }
+      setDescription(metadata.getDescription());
+      setDisclaimer(metadata.getDisclaimer() || '');
+      setName(metadata.getName());
+      setColor(metadata.getColor() || '');
+      setLogo(metadata.getLogo() || '');
+      setSelectedGameRequest(metadata.getDefaultClubSettings() || undefined);
       form.setFieldsValue({
-        name: metadata?.getName(),
-        description: metadata?.getDescription(),
-        slug: metadata?.getSlug(),
-        id: metadata?.getId(),
-        type: metadata?.getType(),
+        name: metadata.getName(),
+        description: metadata.getDescription(),
+        slug: metadata.getSlug(),
+        id: metadata.getId(),
+        type: metadata.getType(),
         directors: m.getDirectorsList().join(', '),
-        freeformItems: metadata?.getFreeformClubSettingFieldsList(),
-        boardStyle: metadata?.getBoardStyle(),
-        tileStyle: metadata?.getTileStyle(),
-        disclaimer: metadata?.getDisclaimer(),
-        logo: metadata?.getLogo(),
-        color: metadata?.getColor(),
-        privateAnalysis: metadata?.getPrivateAnalysis() || false,
+        freeformItems: metadata.getFreeformClubSettingFieldsList(),
+        boardStyle: metadata.getBoardStyle(),
+        tileStyle: metadata.getTileStyle(),
+        disclaimer: metadata.getDisclaimer(),
+        logo: metadata.getLogo(),
+        color: metadata.getColor(),
+        privateAnalysis: metadata.getPrivateAnalysis() || false,
       });
     } catch (err) {
       message.error({
-        content: 'Error: ' + err.response?.data?.msg,
+        content: 'Error: ' + (err as LiwordsAPIError).message,
         duration: 5,
       });
     }
@@ -217,8 +219,8 @@ export const TourneyEditor = (props: Props) => {
     }
 
     axios
-      .post<{}>(toAPIUrl('tournament_service.TournamentService', apicall), obj)
-      .then((resp) => {
+      .post(toAPIUrl('tournament_service.TournamentService', apicall), obj)
+      .then(() => {
         message.info({
           content:
             'Tournament ' + (props.mode === 'new' ? 'created' : 'updated'),
@@ -254,15 +256,12 @@ export const TourneyEditor = (props: Props) => {
       return;
     }
     axios
-      .post<{}>(
-        toAPIUrl('tournament_service.TournamentService', 'AddDirectors'),
-        {
-          id: form.getFieldValue('id'),
-          // Need a non-zero "rating" for director..
-          persons: [{ id: director, rating: 1 }],
-        }
-      )
-      .then((resp) => {
+      .post(toAPIUrl('tournament_service.TournamentService', 'AddDirectors'), {
+        id: form.getFieldValue('id'),
+        // Need a non-zero "rating" for director..
+        persons: [{ id: director, rating: 1 }],
+      })
+      .then(() => {
         message.info({
           content: 'Director successfully added',
           duration: 3,
@@ -282,7 +281,7 @@ export const TourneyEditor = (props: Props) => {
       return;
     }
     axios
-      .post<{}>(
+      .post(
         toAPIUrl('tournament_service.TournamentService', 'RemoveDirectors'),
         {
           id: form.getFieldValue('id'),

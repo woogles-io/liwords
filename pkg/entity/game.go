@@ -84,6 +84,8 @@ type Game struct {
 	sync.RWMutex
 	game.Game
 
+	DBID        uint
+	Type        pb.GameType
 	PlayerDBIDs [2]uint // needed to associate the games to the player IDs in the db.
 
 	GameReq *pb.GameRequest
@@ -125,12 +127,17 @@ func (g GameTimer) Now() int64 {
 // The time of start must be logged later, when both players are in the table
 // and ready.
 func NewGame(mcg *game.Game, req *pb.GameRequest) *Game {
-	ms := int(req.InitialTimeSeconds * 1000)
+	ms := 0
+	mom := 0
+	if req != nil {
+		ms = int(req.InitialTimeSeconds * 1000)
+		mom = int(req.MaxOvertimeMinutes)
+	}
 	return &Game{
 		Game: *mcg,
 		Timers: Timers{
 			TimeRemaining: []int{ms, ms},
-			MaxOvertime:   int(req.MaxOvertimeMinutes),
+			MaxOvertime:   mom,
 		},
 		GameReq:   req,
 		nower:     &GameTimer{},
@@ -336,6 +343,10 @@ func (g *Game) SendChange(e *EventWrapper) {
 		Int("chan-length", len(g.ChangeHook)).Msg("send-change")
 	if g.ChangeHook == nil {
 		// This should never happen in actual operation; consider making it a Fatal.
+		// XXX: This happens all the time in production, because we are calling
+		// SendChange for a NewActiveGameEntry, and the game has not started by then.
+		// This channel only gets initialized when a game actually starts.
+		// (how is it working?)
 		log.Error().Msg("change hook is closed!")
 		return
 	}

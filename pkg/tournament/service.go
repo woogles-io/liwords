@@ -71,7 +71,7 @@ func (ts *TournamentService) SetTournamentMetadata(ctx context.Context, req *pb.
 		return nil, err
 	}
 
-	err = SetTournamentMetadata(ctx, ts.tournamentStore, req.Metadata)
+	err = SetTournamentMetadata(ctx, ts.tournamentStore, req.Metadata, req.SetOnlySpecified)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -469,17 +469,22 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 	if err != nil {
 		return err
 	}
+	fullID := user.TournamentID()
+	log.Info().
+		Str("requester", fullID).
+		Interface("req", req).
+		Str("req-name", string(req.ProtoReflect().Type().Descriptor().FullName())).
+		Msg("authenticated-tournament-request")
+
 	// Site admins are always allowed to modify any tournaments. (There should only be a small number of these)
 	if user.IsAdmin {
 		return nil
 	}
-
 	t, err := ts.tournamentStore.Get(ctx, id)
 	if err != nil {
 		return twirp.InternalErrorWith(err)
 	}
-	fullID := user.TournamentID()
-	log.Info().Str("director", fullID).Interface("req", req).Msg("authenticated-tournament-request")
+
 	log.Debug().Str("fullID", fullID).Interface("persons", t.Directors.Persons).Msg("authenticating-director")
 
 	if authenticateExecutive && fullID != t.ExecutiveDirector {
@@ -495,10 +500,6 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 	if !authorized {
 		return twirp.NewError(twirp.Unauthenticated, "this user is not an authorized director for this event")
 	}
-	if t.IsFinished {
-		return twirp.NewError(twirp.InvalidArgument, "this tournament is finished and cannot be modified")
-	}
-
 	return nil
 }
 
@@ -596,4 +597,24 @@ func (ts *TournamentService) UnstartTournament(ctx context.Context, req *pb.Unst
 		return nil, err
 	}
 	return &pb.TournamentResponse{}, nil
+}
+
+func (ts *TournamentService) ExportTournament(ctx context.Context, req *pb.ExportTournamentRequest) (*pb.ExportTournamentResponse, error) {
+	err := authenticateDirector(ctx, ts, req.Id, false, req)
+	if err != nil {
+		return nil, err
+	}
+
+	t, err := ts.tournamentStore.Get(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+	if req.Format == "" {
+		return nil, errors.New("must provide a format")
+	}
+	ret, err := ExportTournament(ctx, t, ts.userStore, req.Format)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.ExportTournamentResponse{Exported: ret}, nil
 }

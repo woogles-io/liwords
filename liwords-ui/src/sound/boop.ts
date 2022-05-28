@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 import { Unrace } from '../utils/unrace';
 
 const soundToggleCache: { all: boolean | undefined } = { all: undefined };
@@ -87,6 +88,12 @@ for (const booper of [
   ),
   new Booper('wolgesSound', require('../assets/wolges.mp3')),
   new Booper('abortnudgeSound', require('../assets/abortnudge.mp3')),
+  new Booper('puzzleStartSound', require('../assets/newpuzzle.mp3')),
+  new Booper(
+    'puzzleCorrectSound',
+    require('../assets/puzzlecorrect-acoustic-fast.mp3')
+  ),
+  new Booper('puzzleWrongSound', require('../assets/puzzlewrong.mp3')),
 ]) {
   playableSounds[booper.soundName] = booper;
 }

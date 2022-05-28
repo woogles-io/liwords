@@ -209,7 +209,8 @@ func (b *Bus) handleBotMoveInternally(ctx context.Context, g *entity.Game, onTur
 
 			m, err := game.MoveFromEvent(r.Move, g.Alphabet(), g.Board())
 			if err != nil {
-				log.Err(err).Msg("move-from-evt")
+				log.Err(err).Msg("move-from-event-error")
+				return
 			}
 			err = gameplay.PlayMove(ctx, g, b.gameStore, b.userStore, b.notorietyStore, b.listStatStore, b.tournamentStore, userID, onTurn, timeRemaining, m)
 			if err != nil {
@@ -440,10 +441,14 @@ func (b *Bus) sendGameRefresher(ctx context.Context, gameID, connID, userID stri
 	entGame.RLock()
 	defer entGame.RUnlock()
 	var evt *entity.EventWrapper
+	log.Debug().Str("gameid", entGame.History().Uid).Msg("sent-refresher")
+
 	if !entGame.Started && entGame.GameEndReason == pb.GameEndReason_NONE {
+		log.Debug().Str("gameid", entGame.History().Uid).Msg("sent-refresher-unstarted-game")
 		evt = entity.WrapEvent(&pb.ServerMessage{Message: "Game is starting soon!"},
 			pb.MessageType_SERVER_MESSAGE)
 	} else {
+		log.Debug().Str("gameid", entGame.History().Uid).Msg("sent-refresher-for-started-game")
 		hre := entGame.HistoryRefresherEvent()
 		hre.History = mod.CensorHistory(ctx, b.userStore, hre.History)
 		evt = entity.WrapEvent(hre,

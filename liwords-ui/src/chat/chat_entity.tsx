@@ -55,10 +55,8 @@ const deleteMessage = (
 export const ChatEntity = (props: EntityProps) => {
   let ts = '';
 
-  const {
-    excludedPlayers,
-    excludedPlayersFetched,
-  } = useExcludedPlayersStoreContext();
+  const { excludedPlayers, excludedPlayersFetched } =
+    useExcludedPlayersStoreContext();
   const { moderators, admins } = useModeratorStoreContext();
   if (props.timestamp) {
     if (

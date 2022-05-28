@@ -36,7 +36,9 @@ func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest)
 		return nil, err
 	}
 	// Censors the response in-place
-	censorGameInfoResponse(ctx, gs.userStore, gir)
+	if gir.Type == ipc.GameType_NATIVE {
+		censorGameInfoResponse(ctx, gs.userStore, gir)
+	}
 	return gir, nil
 }
 

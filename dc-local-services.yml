@@ -1,0 +1,51 @@
+version: "3"
+
+services:
+  nats:
+    image: "nats"
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    networks:
+      - aeronet
+
+  redis:
+    image: "redis:alpine"
+    volumes:
+      - redis-data-volume:/data
+    ports:
+      - 6379:6379
+    networks:
+      - aeronet
+
+  db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: liwords
+    volumes:
+      - pg-data-volume:/var/lib/postgresql/data
+      # - /Users/cesar:/opt/cesar
+    ports:
+      - 5432:5432
+    networks:
+      - aeronet
+
+  goutils:
+    build:
+      context: .
+      dockerfile: Dockerfile-goutils
+    volumes:
+      - .:/opt/code/liwords:rw
+      - ../macondo:/opt/code/macondo
+
+networks:
+  aeronet:
+    driver: bridge
+
+volumes:
+  pg-data-volume:
+    external: false
+  redis-data-volume:
+    external: false

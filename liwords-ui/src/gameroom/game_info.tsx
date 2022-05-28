@@ -3,7 +3,10 @@ import { Card } from 'antd';
 import { timeCtrlToDisplayName, timeToString } from '../store/constants';
 import { VariantIcon } from '../shared/variant_icons';
 import { MatchLexiconDisplay } from '../shared/lexicon_display';
-import { BotRequest } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import {
+  BotRequest,
+  ChallengeRule as ProtoChallengeRule,
+} from '../gen/macondo/api/proto/macondo/macondo_pb';
 
 // At some point we should get this from the pb but then we have to use
 // twirp for this and we really shouldn't need to. Wait on it probably.
@@ -33,6 +36,25 @@ export type ChallengeRule =
   | 'DOUBLE'
   | 'TRIPLE'
   | 'VOID';
+
+export const protoChallengeRuleConvert = (cr: number): ChallengeRule => {
+  switch (cr) {
+    case ProtoChallengeRule.DOUBLE:
+      return 'DOUBLE';
+    case ProtoChallengeRule.TEN_POINT:
+      return 'TEN_POINT';
+    case ProtoChallengeRule.FIVE_POINT:
+      return 'FIVE_POINT';
+    case ProtoChallengeRule.SINGLE:
+      return 'SINGLE';
+    case ProtoChallengeRule.TRIPLE:
+      return 'TRIPLE';
+    case ProtoChallengeRule.VOID:
+      return 'VOID';
+  }
+  // This shouldn't happen:
+  return 'SINGLE';
+};
 
 export type BotType = keyof BotRequest.BotCodeMap;
 
