@@ -126,6 +126,21 @@ func TestPuzzlesMain(t *testing.T) {
 	is.True(common.WithinEpsilon(newPuzzleRating.Rating, commondb.InitialRating.Rating))
 	is.True(common.WithinEpsilon(newUserRating.Rating, commondb.InitialRating.Rating))
 
+	// Reloading should return the same values except for attempt times
+	hist, _, attempts, status, firstAttemptTime, lastAttemptTime, newPuzzleRating, newUserRating, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
+	is.NoErr(err)
+	is.Equal(attempts, int32(0))
+	is.True(status == nil)
+	is.Equal(hist.OriginalGcg, "")
+	is.Equal(hist.IdAuth, "")
+	is.Equal(hist.Uid, "")
+	is.True(!firstAttemptTime.Equal(time.Time{}))
+	is.True(!lastAttemptTime.Equal(time.Time{}))
+	is.True(newPuzzleRating != nil)
+	is.True(newUserRating != nil)
+	is.True(common.WithinEpsilon(newPuzzleRating.Rating, commondb.InitialRating.Rating))
+	is.True(common.WithinEpsilon(newUserRating.Rating, commondb.InitialRating.Rating))
+
 	userIsCorrect, status, correctAnswer, gameId, _, _, attempts, _, _, newPuzzleRating, newUserRating, err := SubmitAnswer(ctx, ps, PuzzlerUUID, puzzleUUID, &ipc.ClientGameplayEvent{}, false)
 	is.NoErr(err)
 	is.Equal(attempts, int32(1))

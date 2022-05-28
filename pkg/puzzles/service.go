@@ -89,10 +89,10 @@ func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *pb.PuzzleRequest) (
 	nur := int32(0)
 
 	if newPuzzleRating != nil {
-		npr = int32(newPuzzleRating.Rating)
+		npr = int32(newPuzzleRating.Rating + 0.5)
 	}
 	if newUserRating != nil {
-		nur = int32(newUserRating.Rating)
+		nur = int32(newUserRating.Rating + 0.5)
 	}
 
 	return &pb.PuzzleResponse{History: gameHist, BeforeText: beforeText, Answer: &pb.AnswerResponse{
@@ -134,10 +134,10 @@ func (ps *PuzzleService) SubmitAnswer(ctx context.Context, req *pb.SubmissionReq
 	nur := int32(0)
 
 	if newPuzzleRating != nil {
-		npr = int32(newPuzzleRating.Rating)
+		npr = int32(newPuzzleRating.Rating + 0.5)
 	}
 	if newUserRating != nil {
-		nur = int32(newUserRating.Rating)
+		nur = int32(newUserRating.Rating + 0.5)
 	}
 
 	return &pb.SubmissionResponse{UserIsCorrect: userIsCorrect,

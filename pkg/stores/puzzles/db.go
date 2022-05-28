@@ -796,21 +796,15 @@ func getAttempts(ctx context.Context, tx pgx.Tx, userUUID string, puzzleUUID str
 	var newUserRating *entity.SingleRating
 
 	err = tx.QueryRow(ctx, `SELECT attempts, correct, created_at, updated_at, new_puzzle_rating, new_user_rating FROM puzzle_attempts WHERE user_id = $1 AND puzzle_id = $2`, uid, pid).Scan(&attempts, correct, &firstAttemptTime, &lastAttemptTime, &newPuzzleRating, &newUserRating)
-	if err == pgx.ErrNoRows {
-		// If there are no attempts, return the current ratings
-		var lexicon string
-		err = tx.QueryRow(ctx, `SELECT rating, lexicon FROM puzzles WHERE id = $1`, pid).Scan(&newPuzzleRating, &lexicon)
-		if err != nil {
-			return false, false, 0, nil, time.Time{}, time.Time{}, nil, nil, err
-		}
-		newUserRating, err = common.GetUserRating(ctx, tx, uid, entity.LexiconToPuzzleVariantKey(lexicon))
-		if err != nil {
-			return false, false, 0, nil, time.Time{}, time.Time{}, nil, nil, err
-		}
-		return false, false, 0, nil, time.Time{}, time.Time{}, newPuzzleRating, newUserRating, err
-	}
-	if err != nil {
+	attemptExists := err != pgx.ErrNoRows
+	if err != nil && attemptExists {
 		return false, false, -1, nil, time.Time{}, time.Time{}, nil, nil, err
+	}
+	if newPuzzleRating == nil || newUserRating == nil {
+		newUserRating, newPuzzleRating, err = getCurrentRatings(ctx, tx, userUUID, puzzleUUID)
+		if err != nil {
+			return false, false, -1, nil, time.Time{}, time.Time{}, nil, nil, err
+		}
 	}
 
 	var userWasCorrect bool
@@ -822,7 +816,26 @@ func getAttempts(ctx context.Context, tx pgx.Tx, userUUID string, puzzleUUID str
 		status = nil
 	}
 
-	return attempts != 0 || status != nil, true, attempts, status, firstAttemptTime, lastAttemptTime, newPuzzleRating, newUserRating, nil
+	return attempts != 0 || status != nil, attemptExists, attempts, status, firstAttemptTime, lastAttemptTime, newPuzzleRating, newUserRating, nil
+}
+
+func getCurrentRatings(ctx context.Context, tx pgx.Tx, userUUID string, puzzleUUID string) (*entity.SingleRating, *entity.SingleRating, error) {
+	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
+	if err != nil {
+		return nil, nil, err
+	}
+	var lexicon string
+	var currentPuzzleRating *entity.SingleRating
+	var currentUserRating *entity.SingleRating
+	err = tx.QueryRow(ctx, `SELECT rating, lexicon FROM puzzles WHERE uuid = $1`, puzzleUUID).Scan(&currentPuzzleRating, &lexicon)
+	if err != nil {
+		return nil, nil, err
+	}
+	currentUserRating, err = common.GetUserRating(ctx, tx, uid, entity.LexiconToPuzzleVariantKey(lexicon))
+	if err != nil {
+		return nil, nil, err
+	}
+	return currentUserRating, currentPuzzleRating, nil
 }
 
 func getNextClosestRatingPuzzleId(ctx context.Context, tx pgx.Tx, userId string, lexicon string, ratingKey entity.VariantKey) (string, puzzle_service.PuzzleQueryResult, error) {
