@@ -3,7 +3,7 @@ import { Button, Card } from 'antd';
 import { ChallengeRule, PlayerMetadata } from '../gameroom/game_info';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import moment from 'moment';
-import { timeCtrlToDisplayName, timeToString } from '../store/constants';
+import { timeCtrlToDisplayName } from '../store/constants';
 import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { StarFilled, StarOutlined } from '@ant-design/icons';
 import { Hints } from './hints';
@@ -190,30 +190,34 @@ export const PuzzleInfo = React.memo((props: Props) => {
   return (
     <Card className="puzzle-info" title={`Puzzle Mode`} extra={puzzleType}>
       <div className="puzzle-details">
-        {!stillSolving && renderStars(score)}
-        <p>{gamePlayersInfo}</p>
-        <p>
-          {formattedGameDate}
-          {gameLink}
-        </p>
         {!stillSolving && (
-          <p className="game-settings">{`${
-            timeCtrlToDisplayName(
-              initial_time_seconds || 0,
-              increment_seconds || 0,
-              max_overtime_minutes || 0
-            )[0]
-          } ${timeToString(
+          <>
+            {renderStars(score)}
+            <p>{gamePlayersInfo}</p>
+            <p>
+              {formattedGameDate}
+              {gameLink}
+            </p>
+          </>
+        )}
+        <p className="game-settings">{`${
+          timeCtrlToDisplayName(
             initial_time_seconds || 0,
             increment_seconds || 0,
             max_overtime_minutes || 0
-          )} • ${variantName || 'classic'} • ${lexicon}`}</p>
-        )}
+          )[0]
+        } • ${variantName || 'classic'} • ${lexicon}`}</p>
         <div>
           {challengeDisplay}
           {challengeDisplay && ratingMode ? ' • ' : ''}
           {ratingMode}
         </div>
+        <p className="instructions">
+          There is a star play in this position that is significantly better
+          than the second-best play. What would HastyBot play?
+        </p>
+
+        <div className="progress">{attemptsText}</div>
         {stillSolving && (
           <Hints
             puzzleID={props.puzzleID}
@@ -221,7 +225,6 @@ export const PuzzleInfo = React.memo((props: Props) => {
             attempts={attempts}
           />
         )}
-        <div className="progress">{attemptsText}</div>
         {actions}
       </div>
     </Card>
