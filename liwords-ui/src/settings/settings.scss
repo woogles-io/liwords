@@ -190,10 +190,13 @@
       position: relative;
       margin-bottom: 24px;
       .ant-switch {
-        position: absolute;
-        right: 0;
-        top: 50%;
-        transform: translateY(-50%);
+        margin: 12px 0 0 0;
+        @media (min-width: $screen-tablet-min) {
+          margin: 0 0 0 12px;
+        }
+      }
+      p {
+        display: inline-block;
       }
     }
     .toggle-section > div {
@@ -336,6 +339,7 @@
   .ant-select {
     border: 1px solid #cfcfcf;
     border-radius: 4px;
+    margin-bottom: 18px;
   }
   .ant-select-selector, .ant-select-item , .ant-select-dropdown{
     @include colorModed() {
@@ -488,23 +492,23 @@
   .ant-select {
     min-width: 150px;
   }
-  .board-preview {
+}
+.previewer {
+  padding-bottom: 12px;
+  position: relative;
+  justify-items: flex-start;
+  transform: scale(0.5);
+  transform-origin: top left;
+  height: 255px;
+  margin: 18px 0;
+  @media (min-width: $screen-mobile-min) {
     transform: scale(0.8);
-    left: -32px;
-    top: -18px;
-    margin-bottom: -48px;
+    height: 408px;
   }
-  .previewer {
-    display: flex;
-    padding-bottom: 12px;
-    .tile-previewer {
-      margin: 6px 6px 0 0;
-      display: flex;
-    }
-    .board-spaces-container, .board-spaces, .tiles {
-      width: 310px;
-      height: auto;
-    }
+  @media (min-width: $screen-desktop-min) {
+    transform: scale(0.62);
   }
-
+  .board-preview {
+    position: absolute;
+  }
 }

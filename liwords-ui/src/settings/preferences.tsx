@@ -8,9 +8,26 @@ import {
   sharedEnableAutoShuffle,
 } from '../store/constants';
 import '../gameroom/scss/gameroom.scss';
-import { TileLetter, PointValue } from '../gameroom/tile';
 import { BoardPreview } from './board_preview';
 import { MatchLexiconDisplay, puzzleLexica } from '../shared/lexicon_display';
+
+const previewTilesLayout = [
+  '               ',
+  '               ',
+  '               ',
+  '               ',
+  '               ',
+  '               ',
+  '               ',
+  '  WOOGLES OmG  ',
+  '               ',
+  '               ',
+  '               ',
+  '               ',
+  '               ',
+  '               ',
+  '               ',
+];
 
 const KNOWN_TILE_ORDERS = [
   {
@@ -292,7 +309,7 @@ export const Preferences = React.memo(() => {
       <div className="section-header">Display</div>
       <div className="toggle-section">
         <div className="title">Dark mode</div>
-        <div>Use the dark version of the Woogles UI on Woogles.io</div>
+        <p>Use the dark version of the Woogles UI on Woogles.io</p>
         <Switch
           defaultChecked={darkMode}
           onChange={toggleDarkMode}
@@ -329,70 +346,31 @@ export const Preferences = React.memo(() => {
                 </Select.Option>
               ))}
             </Select>
-            <div className="previewer">
-              <div className={`tile-previewer tile--${userTile}`}>
-                <div className="tile">
-                  <TileLetter rune="W" />
-                  <PointValue value={4} />
-                </div>
-                <div className="tile">
-                  <TileLetter rune="O" />
-                  <PointValue value={1} />
-                </div>
-                <div className="tile">
-                  <TileLetter rune="O" />
-                  <PointValue value={1} />
-                </div>
-                <div className="tile blank">
-                  <TileLetter rune="G" />
-                  <PointValue value={0} />
-                </div>
-                <div className="tile">
-                  <TileLetter rune="L" />
-                  <PointValue value={1} />
-                </div>
-                <div className="tile">
-                  <TileLetter rune="E" />
-                  <PointValue value={1} />
-                </div>
-                <div className="tile">
-                  <TileLetter rune="S" />
-                  <PointValue value={1} />
-                </div>
-              </div>
-              <div className={`tile-previewer tile--${userTile}`}>
-                <div className="tile second-color">
-                  <TileLetter rune="O" />
-                  <PointValue value={1} />
-                </div>
-                <div className="tile second-color blank">
-                  <TileLetter rune="M" />
-                  <PointValue value={0} />
-                </div>
-                <div className="tile second-color">
-                  <TileLetter rune="G" />
-                  <PointValue value={2} />
-                </div>
-              </div>
-            </div>
-            <div className="board-style">Board style</div>
-            <div className="board-selection">
-              <Select
-                className="board-style-select"
-                size="large"
-                defaultValue={userBoard}
-                onChange={handleUserBoardChange}
-              >
-                {KNOWN_BOARD_STYLES.map(({ name, value }) => (
-                  <Select.Option value={value} key={value}>
-                    {name}
-                  </Select.Option>
-                ))}
-              </Select>
-            </div>
-            <div className="previewer">
-              <BoardPreview />
-            </div>
+          </div>
+          <div className="board-style">Board style</div>
+          <div className="board-selection">
+            <Select
+              className="board-style-select"
+              size="large"
+              defaultValue={userBoard}
+              onChange={handleUserBoardChange}
+            >
+              {KNOWN_BOARD_STYLES.map(({ name, value }) => (
+                <Select.Option value={value} key={value}>
+                  {name}
+                </Select.Option>
+              ))}
+            </Select>
+          </div>
+          <div className="previewer">
+            <BoardPreview
+              tilesLayout={previewTilesLayout}
+              lastPlayedTiles={{
+                R7C10: true,
+                R7C11: true,
+                R7C12: true,
+              }}
+            />
           </div>
         </Col>
       </Row>
