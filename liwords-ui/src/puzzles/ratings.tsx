@@ -31,6 +31,8 @@ export const RatingsCard = React.memo((props: Props) => {
         <div className="puzzle">
           <PlayerAvatar icon={<i className="fa-solid fa-puzzle-piece" />} />
           {!!puzzleRating && puzzleRating.toString()}
+          {(userRating || 0) > (initialUserRating || 0) && <FallOutlined />}
+          {(userRating || 0) < (initialUserRating || 0) && <RiseOutlined />}
         </div>
       )}
     </Card>
