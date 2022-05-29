@@ -31,6 +31,8 @@ import {
   SubmissionResponse,
   NextClosestRatingPuzzleIdRequest,
   NextClosestRatingPuzzleIdResponse,
+  StartPuzzleIdRequest,
+  StartPuzzleIdResponse,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { sortTiles } from '../store/constants';
 import { Notepad, NotepadContextProvider } from '../gameroom/notepad';
@@ -173,9 +175,17 @@ export const SinglePuzzle = (props: Props) => {
         setShowLexiconModal(true);
         return;
       }
-      const req = new NextClosestRatingPuzzleIdRequest();
-      const respType = NextClosestRatingPuzzleIdResponse;
-      const method = 'GetNextClosestRatingPuzzleId';
+      let req, respType, method;
+      if (firstLoad === true) {
+        req = new StartPuzzleIdRequest();
+        respType = StartPuzzleIdResponse;
+        method = 'GetStartPuzzleId';
+      } else {
+        req = new NextClosestRatingPuzzleIdRequest();
+        respType = NextClosestRatingPuzzleIdResponse;
+        method = 'GetNextClosestRatingPuzzleId';
+      }
+
       req.setLexicon(userLexicon);
       try {
         const resp = await postProto(
