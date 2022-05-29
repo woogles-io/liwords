@@ -24,16 +24,16 @@
         min-height: calc(#{$board-size-tablet} - 125px);
       }
       @media (min-width: $screen-laptop-min) {
-        min-height: calc(#{$board-size-laptop} + 90px);
+        min-height: calc(#{$board-size-laptop} + 30px);
       }
       @media (min-width: $screen-desktop-min) {
-        min-height: calc(#{$board-size-laptop} + 90px);
+        min-height: calc(#{$board-size-laptop} + 30px);
       }
       @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
-        min-height: calc(#{$board-size-desktop} + 90px);
+        min-height: calc(#{$board-size-desktop} + 30px);
       }
       @media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-min) {
-        min-height: calc(#{$board-size-desktop} + 80px);
+        min-height: calc(#{$board-size-desktop} + 20px);
       }
     }
     button.ant-btn {
@@ -145,6 +145,48 @@
     }
   }
 
+  .puzzle-rating-card {
+    .ant-card-body {
+      display: flex;
+    }
+    .player, .puzzle {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      padding: 6px 12px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .player-avatar {
+      margin-right: 15px;
+    }
+    .puzzle {
+      justify-content: flex-start;
+      @include colorModed() {
+        border-left: 1px solid m($off-background);
+      }
+    }
+    i.fa-puzzle-piece {
+      transform: rotate(15deg) translateX(2px) translateY(-1px);
+    }
+    .anticon {
+      position: relative;
+      margin-left: 9px;
+      font-size: 21px;
+      top: -1px;
+    }
+    .anticon-fall {
+      @include colorModed() {
+        color: m($timer-out-dark);
+      }
+    }
+    .anticon-rise {
+      @include colorModed() {
+        color: m($timer-dark);
+      }
+    }
+  }
+
   .game-controls {
     justify-content: center;
     left: 0;
@@ -190,7 +232,7 @@
     @media (min-width: $screen-tablet-min) {
       display: block;
       .ant-card-body {
-        height: 180px;
+        height: 120px;
       }
     }
     @media (min-width: $screen-laptop-min) {
