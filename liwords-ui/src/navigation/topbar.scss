@@ -1,4 +1,4 @@
-@import '../base.scss';
+@use '../base.scss' as *;
 
 body {
   width: auto;

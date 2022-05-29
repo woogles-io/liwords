@@ -1,6 +1,5 @@
-@import '../base';
-@import '../tile_modes';
-@include modal;
+@use '../base.scss' as *;
+@use '../tile_modes' as *;
 
 .puzzle-container {
   .ant-card.pool {

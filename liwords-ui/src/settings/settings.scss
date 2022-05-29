@@ -1,7 +1,4 @@
-@import '../base';
-@import '../shared/gameLists';
-@include button;
-@include tabs;
+@use '../base.scss' as *;
 
 .settings {
   @include container;

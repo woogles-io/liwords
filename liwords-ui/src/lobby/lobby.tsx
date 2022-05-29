@@ -10,6 +10,7 @@ import { useLoginStateStoreContext } from '../store/store';
 import './lobby.scss';
 import { Announcements } from './announcements';
 import { sendAccept, sendSeek } from './sought_game_interactions';
+import { PuzzlePreview } from './puzzle_preview';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -67,7 +68,10 @@ export const Lobby = (props: Props) => {
           setSelectedGameTab={setSelectedGameTab}
           onSeekSubmit={onSeekSubmit}
         />
-        <Announcements />
+        <div className="announcements">
+          <PuzzlePreview />
+          <Announcements />
+        </div>
       </div>
     </>
   );
