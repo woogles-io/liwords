@@ -1,4 +1,5 @@
 // Phone & defaults
+$puzzleCardHeight: 300px;
 
 // Center area
 .play-area, .game-lists, .chat-area, .data-area, .announcements, .tournament-info {
@@ -46,18 +47,22 @@ span.user-context-menu.ant-dropdown-trigger {
   .ant-card {
     height: $main-container-width-tablet + 60px;
   }
-  .announcements .ant-card.puzzle-preview {
-      height: 300px;
-    margin-bottom: 9px;
-    .ant-card-body {
-      height: 300px;
-      max-height: 300px;
+  .announcements {
+    .ant-card.puzzle-preview {
+       height: $puzzleCardHeight;
+       margin-bottom: 12px;
+      .ant-card-body {
+        height: $puzzleCardHeight - 60px;
+        max-height: $puzzleCardHeight - 60px;
+      }
     }
-  }
-  .announcements .ant-card.announcements-card {
-    .ant-card-body {
-      height: calc(100vh - #{$header-height-desktop - 200px});
-      max-height: calc(100vh - #{$header-height-desktop - 200px});
+    .ant-card.announcements-card {
+      height: $main-container-width-tablet + 48px - $puzzleCardHeight;
+      .ant-card-body {
+        height: $main-container-width-tablet + 48px - $puzzleCardHeight - 60px;
+        max-height: $main-container-width-tablet + 48px - $puzzleCardHeight - 60px;
+        overflow-y: auto;
+      }
     }
   }
 }
@@ -80,6 +85,7 @@ span.user-context-menu.ant-dropdown-trigger {
     min-width: $sidebar-width-tablet;
     max-width: $sidebar-width-tablet
   }
+
   .chat-area {
     width: 100%;
     min-width: auto;
@@ -120,19 +126,13 @@ span.user-context-menu.ant-dropdown-trigger {
     .game-lists .ant-card, .ant-card.chat, .tournament-info .ant-card.tournament {
       height: calc(100vh - #{$header-height-desktop + 48px});
     }
-    .announcements .ant-card.puzzle-preview {
-      .ant-card {
-        height: 300px;
-      }
-      .ant-card-body {
-        height: 300px;
-        max-height: 300px;
-      }
-    }
-    .announcements .ant-card.announcements-card {
-      .ant-card-body {
-        height: calc(100vh - #{$header-height-desktop - 200px});
-        max-height: calc(100vh - #{$header-height-desktop - 200px});
+    .announcements {
+      .ant-card.announcements-card {
+        height: calc(100vh - #{$header-height-desktop + $puzzleCardHeight + 60px});
+        .ant-card-body {
+          height: calc(100vh - #{$header-height-desktop + $puzzleCardHeight});
+          max-height: calc(100vh - #{$header-height-desktop + $puzzleCardHeight});
+        }
       }
     }
     &.competitor .tournament-info .ant-card.tournament {

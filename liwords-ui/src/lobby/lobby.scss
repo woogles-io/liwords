@@ -42,7 +42,7 @@
   order: 0;
   .ant-card {
     .ant-card-head {
-      font-size: 18px;
+      font-size: 16px;
       border: 0;
     }
   }
@@ -145,13 +145,6 @@
     flex-grow: 1;
     .ant-card {
       height: $main-container-width-tablet + 60px;
-    }
-  }
-  .lobby .announcements .ant-card.announcements-card {
-    height: $main-container-width-tablet - 250px;
-    .ant-card-body {
-      height: $main-container-width-tablet - 250px;
-      overflow-y: auto;
     }
   }
   .lobby .game-lists {
