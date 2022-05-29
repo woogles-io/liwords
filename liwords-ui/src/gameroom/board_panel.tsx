@@ -736,7 +736,7 @@ export const BoardPanel = React.memo((props: Props) => {
         undefined
       );
     }
-  }, [props.events, props.username, props.puzzleMode]);
+  }, [props.events, props.playerMeta, props.username, props.puzzleMode]);
 
   const squareClicked = useCallback(
     (row: number, col: number) => {
