@@ -43,7 +43,7 @@ export class Board {
     this.dim = this.gridLayout.length;
   }
 
-  /** take in a 2D board array. Used for previewer and TESTS,
+  /** take in a 2D board array. Used for tests and board previews only,
    * do not use for interactive boards */
   setTileLayout(layout: Array<string>) {
     this.isEmpty = true;
