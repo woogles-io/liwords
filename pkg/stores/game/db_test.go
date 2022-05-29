@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/lithammer/shortuuid"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/encoding/protojson"
