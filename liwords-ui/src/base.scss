@@ -15,7 +15,7 @@ $screen-mobile-min: 768px;
 $screen-tablet-min: 1024px;
 $screen-laptop-min: 1280px;
 $screen-desktop-min: 1440px;
-$screen-desktop-l-min: 1920px;
+$screen-desktop-l-min: 1600px;
 
 @function strip-unit($number) {
   @if type-of($number) == 'number' and not unitless($number) {
@@ -254,6 +254,7 @@ $point-size-desktop: math.div($tile-font-size-desktop, 2.8);
       }
       .ant-tabs-tab-btn {
         @include type-link;
+        letter-spacing: 0.16em;
         display: flex;
         flex-wrap: nowrap;
         align-items: center;

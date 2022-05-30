@@ -1,6 +1,30 @@
+@use '../base.scss' as *;
+
 .puzzle-preview {
-  .board-preview {
+  .ant-card-body {
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-start;
+  }
+  .puzzle-container {
     transform-origin: top left;
-    transform: scale(0.4);
+    transform: scale(0.39);
+    @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
+      transform: scale(0.31);
+    }
+    .puzzle-rack {
+      display: flex;
+      width: $board-size-mobile;
+      margin-top: 24px;
+      justify-content: center;
+      transform-origin: top center;
+      transform: scale(1.5);
+      @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
+        width: $board-size-desktop;
+      }
+      div {
+        margin: 0 1px;
+      }
+    }
   }
 }
