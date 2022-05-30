@@ -69,8 +69,8 @@ export const Lobby = (props: Props) => {
           onSeekSubmit={onSeekSubmit}
         />
         <div className="announcements">
-          <PuzzlePreview />
           <Announcements />
+          <PuzzlePreview />
         </div>
       </div>
     </>

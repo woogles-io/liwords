@@ -7,8 +7,11 @@
     align-items: flex-start;
   }
   .puzzle-container {
+    cursor: pointer;
     transform-origin: top left;
     transform: scale(0.39);
+    max-width: 220px;
+
     @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
       transform: scale(0.31);
     }

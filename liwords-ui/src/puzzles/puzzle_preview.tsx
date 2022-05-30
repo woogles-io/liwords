@@ -30,7 +30,7 @@ const previewTilesLayout = [
   '               ',
   '               ',
   '               ',
-  ' PUZzLE        ',
+  ' PUZzLEs       ',
   '               ',
   '               ',
   '               ',

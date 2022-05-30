@@ -50,7 +50,6 @@ span.user-context-menu.ant-dropdown-trigger {
   .announcements {
     .ant-card.puzzle-preview {
        height: $puzzleCardHeight;
-       margin-bottom: 12px;
       .ant-card-body {
         height: $puzzleCardHeight - 52px;
         max-height: $puzzleCardHeight - 52px;
@@ -62,7 +61,7 @@ span.user-context-menu.ant-dropdown-trigger {
       }
     }
     .ant-card.announcements-card {
-
+      margin-bottom: 9px;
       height: $main-container-width-tablet + 52px - $puzzleCardHeight;
       .ant-card-body {
         padding: 12px 24px;
@@ -139,10 +138,11 @@ span.user-context-menu.ant-dropdown-trigger {
     }
     .announcements {
       .ant-card.announcements-card {
-        height: calc(100vh - #{$header-height-desktop + $puzzleCardHeight + 55px});
+        margin-bottom: 18px;
+        height: calc(100vh - #{$header-height-desktop + $puzzleCardHeight + 65px});
         .ant-card-body {
-          height: calc(100vh - #{$header-height-desktop + $puzzleCardHeight + 110px});
-          max-height: calc(100vh - #{$header-height-desktop + $puzzleCardHeight + 110px});
+          height: calc(100vh - #{$header-height-desktop + $puzzleCardHeight + 120px});
+          max-height: calc(100vh - #{$header-height-desktop + $puzzleCardHeight + 120px});
         }
       }
     }

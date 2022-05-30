@@ -94,6 +94,10 @@
       background-color: m($primary-light);
     }
   }
+  .ant-select .ant-select-selector {
+    z-index: 0;
+  }
+
   a {
     font-size: 14px;
     text-align: right;
@@ -343,7 +347,6 @@
       background: m($background);
       color: m($gray-extreme);
     }
-    z-index: 1100;
     .hover-help {
       display: none;
     }
