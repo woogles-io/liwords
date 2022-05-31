@@ -143,7 +143,7 @@ export const PuzzlePreview = React.memo(() => {
 
   const title = useMemo(() => {
     return userLexicon ? 'Next puzzle' : 'Try a puzzle';
-  }, [puzzleID, userLexicon]);
+  }, [userLexicon]);
 
   return (
     <Card
