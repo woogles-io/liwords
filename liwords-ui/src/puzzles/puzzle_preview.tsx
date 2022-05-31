@@ -27,24 +27,6 @@ import { DndProvider } from 'react-dnd';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { RatingBadge } from '../lobby/rating_badge';
 
-const previewTilesLayout = [
-  '               ',
-  '               ',
-  '               ',
-  '               ',
-  '               ',
-  '               ',
-  '               ',
-  ' PUZzLEs       ',
-  '               ',
-  '               ',
-  '               ',
-  '               ',
-  '               ',
-  '               ',
-  '               ',
-];
-
 export const PuzzlePreview = React.memo(() => {
   const userLexicon = localStorage?.getItem('puzzleLexicon');
   const { useState } = useMountedState();
@@ -61,6 +43,9 @@ export const PuzzlePreview = React.memo(() => {
 
   const loadNewPuzzle = useCallback(async () => {
     if (!userLexicon) {
+      // A hard coded id for a simple puzzle to display. Clicking in will
+
+      setPuzzleID('E3kGXKyzhYirNzsMfCW3QV');
       return;
     }
     const req = new StartPuzzleIdRequest();
@@ -85,10 +70,8 @@ export const PuzzlePreview = React.memo(() => {
   }, [userLexicon]);
 
   useEffect(() => {
-    if (userLexicon) {
-      loadNewPuzzle();
-    }
-  }, [loadNewPuzzle, userLexicon]);
+    loadNewPuzzle();
+  }, [loadNewPuzzle]);
 
   useEffect(() => {
     async function fetchPuzzleData(id: string) {
@@ -118,11 +101,11 @@ export const PuzzlePreview = React.memo(() => {
         });
       }
     }
-    if (puzzleID && !puzzleRating) {
+    if (puzzleID) {
       console.log('fetching puzzle info');
       fetchPuzzleData(puzzleID);
     }
-  }, [dispatchGameContext, puzzleID, puzzleRating]);
+  }, [puzzleID, puzzleRating, dispatchGameContext]);
 
   useEffect(() => {
     const rack = gameContext.players.find((p) => p.onturn)?.currentRack ?? '';
@@ -159,8 +142,8 @@ export const PuzzlePreview = React.memo(() => {
   }, [alphabet, rack]);
 
   const title = useMemo(() => {
-    return puzzleID ? 'Next puzzle' : 'Try a puzzle';
-  }, [puzzleID]);
+    return userLexicon ? 'Next puzzle' : 'Try a puzzle';
+  }, [puzzleID, userLexicon]);
 
   return (
     <Card
@@ -170,11 +153,7 @@ export const PuzzlePreview = React.memo(() => {
       <div className="puzzle-container">
         <DndProvider backend={TouchBackend}>
           <a href="/puzzle">
-            <BoardPreview
-              tilesLayout={!userLexicon ? previewTilesLayout : undefined}
-              board={puzzleID ? gameContext.board : undefined}
-              alphabet={alphabet}
-            />
+            <BoardPreview board={gameContext.board} alphabet={alphabet} />
             <div className="puzzle-rack">{renderTiles}</div>
           </a>
         </DndProvider>
