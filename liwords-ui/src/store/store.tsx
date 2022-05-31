@@ -532,7 +532,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
           turn.getType() === GameEvent.Type.PHONY_TILES_RETURNED
         ) {
           // For these particular two events, the time remaining is for the CHALLENGER.
-          // Therefore, it's not the time remaining of the player whose nickname is
+          // Therefore, it's not the time remaining of the player
           // in the event, so we must flip the times here.
           flipTimeRemaining = true;
         }

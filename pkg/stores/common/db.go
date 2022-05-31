@@ -84,6 +84,7 @@ func GetGameInfo(ctx context.Context, tx pgx.Tx, gameId int) (*macondopb.GameHis
 	if err != nil {
 		return nil, nil, "", err
 	}
+	hist = MigrateGameHistory(hist)
 
 	req := &ipc.GameRequest{}
 	err = proto.Unmarshal(requestBytes, req)

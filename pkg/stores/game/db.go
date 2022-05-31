@@ -21,6 +21,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/stores/common"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
 	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
@@ -443,6 +444,7 @@ func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 		return nil, err
 	}
 	log.Debug().Interface("hist", hist).Msg("hist-unmarshal")
+	hist = common.MigrateGameHistory(hist)
 
 	lexicon := hist.Lexicon
 	if lexicon == "" {
@@ -698,6 +700,6 @@ func (s *DBStore) GetHistory(ctx context.Context, id string) (*macondopb.GameHis
 	if err != nil {
 		return nil, err
 	}
-
+	hist = common.MigrateGameHistory(hist)
 	return hist, nil
 }
