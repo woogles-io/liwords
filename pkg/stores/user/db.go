@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jinzhu/gorm"
 	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
@@ -46,15 +47,17 @@ type DBStore struct {
 // joins 1-1 with this User object.
 // User is exported as a Game has Foreign Keys to it.
 type User struct {
-	UUID     string
-	Username string
-	Email    string
+	gorm.Model
+
+	UUID     string `gorm:"type:varchar(24);index"`
+	Username string `gorm:"type:varchar(32)"`
+	Email    string `gorm:"type:varchar(100)"`
 	// Password will be hashed.
-	Password    string
-	InternalBot bool
-	IsAdmin     bool
-	IsDirector  bool
-	IsMod       bool
+	Password    string `gorm:"type:varchar(128)"`
+	InternalBot bool   `gorm:"default:false;index"`
+	IsAdmin     bool   `gorm:"default:false;index"`
+	IsDirector  bool   `gorm:"default:false"`
+	IsMod       bool   `gorm:"default:false;index"`
 	ApiKey      string
 
 	Notoriety int
