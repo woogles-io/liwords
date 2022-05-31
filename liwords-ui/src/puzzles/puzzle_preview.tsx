@@ -11,7 +11,10 @@ import {
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { LiwordsAPIError, postProto } from '../api/api';
 import { ActionType } from '../actions/actions';
-import { useGameContextStoreContext } from '../store/store';
+import {
+  useGameContextStoreContext,
+  useLoginStateStoreContext,
+} from '../store/store';
 import { sortTiles } from '../store/constants';
 import Tile from '../gameroom/tile';
 import {
@@ -21,6 +24,8 @@ import {
 } from '../constants/alphabets';
 import { TouchBackend } from 'react-dnd-touch-backend';
 import { DndProvider } from 'react-dnd';
+import { PlayerAvatar } from '../shared/player_avatar';
+import { RatingBadge } from '../lobby/rating_badge';
 
 const previewTilesLayout = [
   '               ',
@@ -44,9 +49,15 @@ export const PuzzlePreview = React.memo(() => {
   const userLexicon = localStorage?.getItem('puzzleLexicon');
   const { useState } = useMountedState();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
+  const { loginState } = useLoginStateStoreContext();
+  const { username, loggedIn } = loginState;
   const [rack, setRack] = useState('');
   const [alphabet, setAlphabet] = useState<Alphabet>(StandardEnglishAlphabet);
   const [puzzleID, setPuzzleID] = useState<string | null>(null);
+  const [userRating, setUserRating] = useState<number | undefined>(undefined);
+  const [puzzleRating, setPuzzleRating] = useState<number | undefined>(
+    undefined
+  );
 
   const loadNewPuzzle = useCallback(async () => {
     if (!userLexicon) {
@@ -80,7 +91,6 @@ export const PuzzlePreview = React.memo(() => {
   }, [loadNewPuzzle, userLexicon]);
 
   useEffect(() => {
-    console.log('fetching puzzle info');
     async function fetchPuzzleData(id: string) {
       const req = new PuzzleRequest();
       req.setPuzzleId(id);
@@ -95,6 +105,8 @@ export const PuzzlePreview = React.memo(() => {
         console.log('got puzzle', resp.toObject());
 
         const gh = resp.getHistory();
+        setUserRating(resp.getAnswer()?.getNewUserRating());
+        setPuzzleRating(resp.getAnswer()?.getNewPuzzleRating());
         dispatchGameContext({
           actionType: ActionType.SetupStaticPosition,
           payload: gh,
@@ -106,10 +118,11 @@ export const PuzzlePreview = React.memo(() => {
         });
       }
     }
-    if (puzzleID) {
+    if (puzzleID && !puzzleRating) {
+      console.log('fetching puzzle info');
       fetchPuzzleData(puzzleID);
     }
-  }, [dispatchGameContext, puzzleID]);
+  }, [dispatchGameContext, puzzleID, puzzleRating]);
 
   useEffect(() => {
     const rack = gameContext.players.find((p) => p.onturn)?.currentRack ?? '';
@@ -145,18 +158,52 @@ export const PuzzlePreview = React.memo(() => {
     return <>{tiles}</>;
   }, [alphabet, rack]);
 
+  const title = useMemo(() => {
+    return puzzleID ? 'Next puzzle' : 'Try a puzzle';
+  }, [puzzleID]);
+
   return (
-    <Card title="Next puzzle" className="puzzle-preview">
+    <Card
+      title={title}
+      className={`puzzle-preview ${!puzzleID ? 'tease' : ''}`}
+    >
       <div className="puzzle-container">
         <DndProvider backend={TouchBackend}>
-          <BoardPreview
-            tilesLayout={!userLexicon ? previewTilesLayout : undefined}
-            board={puzzleID ? gameContext.board : undefined}
-            alphabet={alphabet}
-          />
-          <div className="puzzle-rack">{renderTiles}</div>
+          <a href="/puzzle">
+            <BoardPreview
+              tilesLayout={!userLexicon ? previewTilesLayout : undefined}
+              board={puzzleID ? gameContext.board : undefined}
+              alphabet={alphabet}
+            />
+            <div className="puzzle-rack">{renderTiles}</div>
+          </a>
         </DndProvider>
       </div>
+      {loggedIn && !!userRating ? (
+        <div className="rating-info">
+          <div className="player-rating">
+            <PlayerAvatar username={username} />
+            <div className="player-details">
+              <p>{username}</p>
+              <RatingBadge rating={userRating?.toString() || '1500?'} />
+            </div>
+          </div>
+          <div className="player-rating">
+            <PlayerAvatar icon={<i className="fa-solid fa-puzzle-piece" />} />
+            <div className="player-details">
+              <p>Equity Puzzle</p>
+              <RatingBadge rating={puzzleRating?.toString() || '1500?'} />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="new-puzzler-cta">
+          <p>
+            We have thousands of puzzles created from real games to help you
+            practice play finding. Ready to try one?
+          </p>
+        </div>
+      )}
     </Card>
   );
 });

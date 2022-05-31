@@ -226,99 +226,101 @@ ul {
     box-shadow: m($shadow);
   }
 }
+.App {
 
-.ant-tag {
-  font-weight: 800;
-  color: #414141;
-}
+  .ant-tag {
+    font-weight: 800;
+    color: #414141;
+  }
 
-.ant-tag-gold {
-  background: #fcc65e;
-  color: #414141;
-  border-color: #fcc65e;
-}
+  .ant-tag-gold {
+    background: #fcc65e;
+    color: #414141;
+    border-color: #fcc65e;
+  }
 
-.ant-tag-cyan {
-  background: #55c0e9;
-  color: #414141;
-  border-color: #55c0e9;
-}
+  .ant-tag-cyan {
+    background: #55c0e9;
+    color: #414141;
+    border-color: #55c0e9;
+  }
 
-.ant-tag-pink {
-  background: #b80c79;
-  color: #ffffff;
-  border-color: #b80c79;
-}
+  .ant-tag-pink {
+    background: #b80c79;
+    color: #ffffff;
+    border-color: #b80c79;
+  }
 
-.ant-tag-purple {
-  background: #baadbb;
-  color: #414141;
-  border-color: #baadbb;
-}
+  .ant-tag-purple {
+    background: #baadbb;
+    color: #414141;
+    border-color: #baadbb;
+  }
 
-.ant-tag-lime {
-  background: #abec63;
-  color: #414141;
-  border-color: #abec63;
-}
+  .ant-tag-lime {
+    background: #abec63;
+    color: #414141;
+    border-color: #abec63;
+  }
 
-.ant-tag-orange,
-.ant-tag-bye {
-  background: #fcac69;
-  color: #414141;
-  border-color: #fcac69;
-}
-.ant-tag-gray,
-.ant-tag-tie {
-  background: #aaaaaa;
-  color: #414141;
-}
+  .ant-tag-orange,
+  .ant-tag-bye {
+    background: #fcac69;
+    color: #414141;
+    border-color: #fcac69;
+  }
+  .ant-tag-gray,
+  .ant-tag-tie {
+    background: #aaaaaa;
+    color: #414141;
+  }
 
-.ant-tag-first {
-  background: #d0d0d0;
-  color: #414141;
-  border-color: #cccccc;
-}
+  .ant-tag-first {
+    background: #d0d0d0;
+    color: #414141;
+    border-color: #cccccc;
+  }
 
-.ant-tag-yellow {
-  background: #f8c033;
-  color: #414141;
-  border-color: #f8c033;
-}
+  .ant-tag-yellow {
+    background: #f8c033;
+    color: #414141;
+    border-color: #f8c033;
+  }
 
-.ant-tag-green,
-.ant-tag-win {
-  background: #b2e49b;
-  color: #414141;
-  border-color: #b2e49b;
-}
+  .ant-tag-green,
+  .ant-tag-win {
+    background: #b2e49b;
+    color: #414141;
+    border-color: #b2e49b;
+  }
 
-.ant-tag-blue,
-.ant-tag-repeat {
-  background: #b2dcf0;
-  color: #414141;
-  border-color: #b2dcf0;
-}
-.ant-tag-red,
-.ant-tag-removed,
-.ant-tag-forfeit,
-{
-  background: #8a0f23;
-  color: #ffffff;
-  border-color: #8a0f23;
-}
+  .ant-tag-blue,
+  .ant-tag-repeat {
+    background: #b2dcf0;
+    color: #414141;
+    border-color: #b2dcf0;
+  }
+  .ant-tag-red,
+  .ant-tag-removed,
+  .ant-tag-forfeit,
+  {
+    background: #8a0f23;
+    color: #ffffff;
+    border-color: #8a0f23;
+  }
 
-.ant-tag-volcano,
-.ant-tag-loss{
-  background: #b3263c;
-  color: #ffffff;
-  border-color: #b3263c;
-}
+  .ant-tag-volcano,
+  .ant-tag-loss{
+    background: #b3263c;
+    color: #ffffff;
+    border-color: #b3263c;
+  }
 
-.ant-tag-magenta {
-  background: #9c3e9b;
-  color: #ffffff;
-  border-color: #9c3e9b;
+  .ant-tag-magenta {
+    background: #9c3e9b;
+    color: #ffffff;
+    border-color: #9c3e9b;
+  }
 }
 
 .ant-card-head {

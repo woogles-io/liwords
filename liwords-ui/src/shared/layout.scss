@@ -1,5 +1,5 @@
 // Phone & defaults
-$puzzleCardHeight: 300px;
+$puzzleCardHeight: 270px;
 
 // Center area
 .play-area, .game-lists, .chat-area, .data-area, .announcements, .tournament-info {
@@ -53,7 +53,6 @@ span.user-context-menu.ant-dropdown-trigger {
       .ant-card-body {
         height: $puzzleCardHeight - 52px;
         max-height: $puzzleCardHeight - 52px;
-        padding: 0px 24px 6px;
       }
       .ant-card-head-title {
         padding: 12px 0;

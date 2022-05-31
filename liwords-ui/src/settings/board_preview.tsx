@@ -1,6 +1,4 @@
 import React from 'react';
-import { DndProvider } from 'react-dnd';
-import { TouchBackend } from 'react-dnd-touch-backend';
 import { CrosswordGameGridLayout } from '../constants/board_layout';
 import BoardSpaces from '../gameroom/board_spaces';
 import Tiles from '../gameroom/tiles';
@@ -30,7 +28,6 @@ export const BoardPreview = React.memo((props: Props) => {
       previewBoard.setTileLayout(props.tilesLayout);
     }
   }
-  console.log(previewBoard);
   return (
     <div className="board board-preview">
       <div className="board-spaces-container">
