@@ -25,8 +25,14 @@ type Ratings struct {
 
 type VariantKey string
 
+const PuzzleVariant = "puzzle"
+
 func ToVariantKey(lexiconName string, variantName game.Variant, timeControl TimeControl) VariantKey {
 	return VariantKey(transformLexiconName(lexiconName) + "." + string(variantName) + "." + string(timeControl))
+}
+
+func LexiconToPuzzleVariantKey(lexicon string) VariantKey {
+	return ToVariantKey(lexicon, PuzzleVariant, TCCorres)
 }
 
 func (r *Ratings) Value() (driver.Value, error) {

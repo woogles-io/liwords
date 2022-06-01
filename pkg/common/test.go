@@ -10,7 +10,6 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
-const PuzzleVariant = "puzzle"
 const DefaultLexicon = "CSW21"
 const DefaultLetterDistribution = "english"
 const DefaultVariantName = "classic"
