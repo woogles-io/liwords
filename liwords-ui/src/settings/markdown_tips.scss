@@ -1,6 +1,4 @@
-@import '../base';
-@include button;
-@include tabs;
+@use '../base.scss' as *;
 
 .markdown-tips {
   @include container;

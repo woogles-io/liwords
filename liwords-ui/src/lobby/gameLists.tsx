@@ -9,6 +9,7 @@ import { SeekForm } from './seek_form';
 import { useContextMatchContext, useLobbyStoreContext } from '../store/store';
 import { ActiveGame, SoughtGame } from '../store/reducers/lobby_reducer';
 import './seek_form.scss';
+import '../shared/gameLists.scss';
 
 type Props = {
   loggedIn: boolean;

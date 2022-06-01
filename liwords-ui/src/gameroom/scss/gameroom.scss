@@ -1,11 +1,7 @@
-@import '../../base';
-@import '../../shared/layout';
-@import '../../tile_modes';
-@import '../../board_modes';
-
-@include button;
-@include notification;
-@include modal;
+@use '../../base.scss' as *;
+@use '../../color_modes' as *;
+@use '../../tile_modes' as *;
+@use '../../board_modes' as *;
 
 $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ease-in 100ms;
 
@@ -1363,9 +1359,6 @@ p.rune {
   }
 }
 .end-message {
-  @include colorModed() {
-    background-color: m($primary-middle);
-  }
   margin-bottom: 12px;
   padding: 12px;
   .ant-card-body {

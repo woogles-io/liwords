@@ -1,0 +1,97 @@
+@use '../base.scss' as *;
+
+.puzzle-preview {
+  .ant-card-body {
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-start;
+    overflow: hidden;
+    padding: 0px 24px 6px;
+  }
+  .puzzle-container {
+    cursor: pointer;
+    transform-origin: top left;
+    transform: scale(0.34);
+    max-width: 194px;
+    @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
+      transform: scale(0.26);
+      max-width: 184px;
+    }
+    .puzzle-rack {
+      display: flex;
+      width: $board-size-mobile;
+      margin-top: 24px;
+      justify-content: center;
+      transform-origin: top center;
+      transform: scale(1.2);
+      @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
+        width: $board-size-desktop;
+      }
+      div {
+        margin: 0 1px;
+      }
+    }
+  }
+  .rating-info {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    top: -20px;
+    align-self: center;
+    .player-details {
+      display: flex;
+      align-items: center;
+      @media (min-width: $screen-tablet-min) {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      p {
+        font-weight: 800;
+        line-height: 1.3em;
+        margin-right: 6px;
+      }
+      p, div {
+        margin-bottom: 4px;
+      }
+    }
+    .player-rating {
+      display: flex;
+      margin: 12px 0;
+    }
+    .player-avatar {
+      width: 48px;
+      min-width: 48px;
+      height: 48px;
+      font-size: 22px;
+      margin-right: 9px;
+      i.fa-puzzle-piece {
+        transform: rotate(15deg) translateX(2px) translateY(-1px);
+      }
+    }
+  }
+
+  &.tease {
+    .ant-card-body {
+      padding-top: 15px;
+      .new-puzzler-cta {
+        align-self: center;
+        max-width: 200px;
+        position: relative;
+        top: -20px;
+        @media (min-width: $screen-tablet-min) {
+          max-width: 140px;
+        }
+        @media (min-width: $screen-laptop-min) {
+          max-width: 120px;
+          font-size: 13px;
+          line-height: 1.3em;
+        }
+        @media (min-width: $screen-desktop-min) {
+          max-width: 160px;
+          font-size: 14px;
+          line-height: 1.5em;
+        }
+      }
+    }
+  }
+}
