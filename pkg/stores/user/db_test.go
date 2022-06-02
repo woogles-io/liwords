@@ -435,7 +435,7 @@ func TestBlocks(t *testing.T) {
 
 	blocked, err = ustore.GetBlocks(ctx, smith.ID)
 	is.NoErr(err)
-	sortBlocked(blocked)
+	sortUsers(blocked)
 	is.Equal(blocked, []*entity.User{
 		{Username: "adult", UUID: "adult_uuid"},
 		{Username: "winter", UUID: "winter_uuid"},
@@ -447,7 +447,7 @@ func TestBlocks(t *testing.T) {
 
 	blocked, err = ustore.GetBlockedBy(ctx, adult.ID)
 	is.NoErr(err)
-	sortBlocked(blocked)
+	sortUsers(blocked)
 	is.Equal(blocked, []*entity.User{
 		{Username: "smith", UUID: "smith_uuid"},
 		{Username: "winter", UUID: "winter_uuid"},
@@ -455,7 +455,7 @@ func TestBlocks(t *testing.T) {
 
 	blocked, err = ustore.GetFullBlocks(ctx, winter.ID)
 	is.NoErr(err)
-	sortBlocked(blocked)
+	sortUsers(blocked)
 	is.Equal(blocked, []*entity.User{
 		{Username: "adult", UUID: "adult_uuid"},
 		{Username: "smith", UUID: "smith_uuid"},
@@ -463,7 +463,7 @@ func TestBlocks(t *testing.T) {
 
 	blocked, err = ustore.GetFullBlocks(ctx, smith.ID)
 	is.NoErr(err)
-	sortBlocked(blocked)
+	sortUsers(blocked)
 	is.Equal(blocked, []*entity.User{
 		{Username: "adult", UUID: "adult_uuid"},
 		{Username: "winter", UUID: "winter_uuid"},
@@ -471,7 +471,7 @@ func TestBlocks(t *testing.T) {
 
 	blocked, err = ustore.GetFullBlocks(ctx, winter.ID)
 	is.NoErr(err)
-	sortBlocked(blocked)
+	sortUsers(blocked)
 	is.Equal(blocked, []*entity.User{
 		{Username: "adult", UUID: "adult_uuid"},
 		{Username: "smith", UUID: "smith_uuid"},
@@ -482,7 +482,7 @@ func TestBlocks(t *testing.T) {
 
 	blocked, err = ustore.GetFullBlocks(ctx, adult.ID)
 	is.NoErr(err)
-	sortBlocked(blocked)
+	sortUsers(blocked)
 	is.Equal(blocked, []*entity.User{
 		{Username: "smith", UUID: "smith_uuid"},
 		{Username: "winter", UUID: "winter_uuid"},
@@ -490,7 +490,7 @@ func TestBlocks(t *testing.T) {
 
 	blocked, err = ustore.GetFullBlocks(ctx, smith.ID)
 	is.NoErr(err)
-	sortBlocked(blocked)
+	sortUsers(blocked)
 	is.Equal(blocked, []*entity.User{
 		{Username: "adult", UUID: "adult_uuid"},
 		{Username: "winter", UUID: "winter_uuid"},
@@ -498,7 +498,7 @@ func TestBlocks(t *testing.T) {
 
 	blocked, err = ustore.GetFullBlocks(ctx, winter.ID)
 	is.NoErr(err)
-	sortBlocked(blocked)
+	sortUsers(blocked)
 	is.Equal(blocked, []*entity.User{
 		{Username: "adult", UUID: "adult_uuid"},
 		{Username: "smith", UUID: "smith_uuid"},
@@ -511,7 +511,7 @@ func TestBlocks(t *testing.T) {
 
 	blocked, err = ustore.GetFullBlocks(ctx, adult.ID)
 	is.NoErr(err)
-	sortBlocked(blocked)
+	sortUsers(blocked)
 	is.Equal(blocked, []*entity.User{
 		{Username: "smith", UUID: "smith_uuid"},
 		{Username: "winter", UUID: "winter_uuid"},
@@ -553,7 +553,7 @@ func TestAddFollower(t *testing.T) {
 
 	followed, err = ustore.GetFollows(ctx, mina.ID)
 	is.NoErr(err)
-	sortBlocked(followed)
+	sortUsers(followed)
 	is.Equal(followed, []*entity.User{
 		{Username: cesar.Username, UUID: cesar.UUID},
 		{Username: jesse.Username, UUID: jesse.UUID},
@@ -567,7 +567,7 @@ func TestAddFollower(t *testing.T) {
 
 	followed, err = ustore.GetFollowedBy(ctx, cesar.ID)
 	is.NoErr(err)
-	sortBlocked(followed)
+	sortUsers(followed)
 	is.Equal(followed, []*entity.User{
 		{Username: jesse.Username, UUID: jesse.UUID},
 		{Username: mina.Username, UUID: mina.UUID},
@@ -651,7 +651,7 @@ func getUsernamesFromBasicUsers(basicUsers []*user_service.BasicUser) []string {
 	return s
 }
 
-func sortBlocked(users []*entity.User) {
+func sortUsers(users []*entity.User) {
 	sort.Slice(users, func(i, j int) bool {
 		return users[i].Username < users[j].Username
 	})

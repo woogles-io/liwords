@@ -224,7 +224,7 @@ func (a *Actions) Value() (driver.Value, error) {
 func (a *Actions) Scan(value interface{}) error {
 	b, ok := value.([]byte)
 	if !ok {
-		return errors.New("type assertion to []byte failed for single rating")
+		return errors.New("type assertion to []byte failed for actions")
 	}
 
 	return json.Unmarshal(b, &a)
