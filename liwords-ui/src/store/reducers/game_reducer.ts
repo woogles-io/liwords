@@ -337,6 +337,7 @@ const stateFromHistory = (history: GameHistory): GameState => {
   pushTurns(gs, history.getEventsList());
   // racks are given in the original order that the playerList came in.
   // so if we reversed the player list, we must reverse the racks.
+
   let racks = history.getLastKnownRacksList();
   if (flipPlayers) {
     racks = [...racks].reverse();
@@ -348,7 +349,6 @@ const stateFromHistory = (history: GameHistory): GameState => {
   gs.players[gs.onturn].onturn = true;
   gs.players[1 - gs.onturn].onturn = false;
   gs.playState = history.getPlayState();
-
   console.log('gs id', gs.gameID);
   return gs;
 };

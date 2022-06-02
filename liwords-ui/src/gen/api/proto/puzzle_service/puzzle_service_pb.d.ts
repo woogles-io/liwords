@@ -30,6 +30,9 @@ export class StartPuzzleIdResponse extends jspb.Message {
   getPuzzleId(): string;
   setPuzzleId(value: string): void;
 
+  getQueryResult(): PuzzleQueryResultMap[keyof PuzzleQueryResultMap];
+  setQueryResult(value: PuzzleQueryResultMap[keyof PuzzleQueryResultMap]): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): StartPuzzleIdResponse.AsObject;
   static toObject(includeInstance: boolean, msg: StartPuzzleIdResponse): StartPuzzleIdResponse.AsObject;
@@ -43,6 +46,7 @@ export class StartPuzzleIdResponse extends jspb.Message {
 export namespace StartPuzzleIdResponse {
   export type AsObject = {
     puzzleId: string,
+    queryResult: PuzzleQueryResultMap[keyof PuzzleQueryResultMap],
   }
 }
 
@@ -70,6 +74,9 @@ export class NextPuzzleIdResponse extends jspb.Message {
   getPuzzleId(): string;
   setPuzzleId(value: string): void;
 
+  getQueryResult(): PuzzleQueryResultMap[keyof PuzzleQueryResultMap];
+  setQueryResult(value: PuzzleQueryResultMap[keyof PuzzleQueryResultMap]): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): NextPuzzleIdResponse.AsObject;
   static toObject(includeInstance: boolean, msg: NextPuzzleIdResponse): NextPuzzleIdResponse.AsObject;
@@ -83,6 +90,7 @@ export class NextPuzzleIdResponse extends jspb.Message {
 export namespace NextPuzzleIdResponse {
   export type AsObject = {
     puzzleId: string,
+    queryResult: PuzzleQueryResultMap[keyof PuzzleQueryResultMap],
   }
 }
 
@@ -110,6 +118,9 @@ export class NextClosestRatingPuzzleIdResponse extends jspb.Message {
   getPuzzleId(): string;
   setPuzzleId(value: string): void;
 
+  getQueryResult(): PuzzleQueryResultMap[keyof PuzzleQueryResultMap];
+  setQueryResult(value: PuzzleQueryResultMap[keyof PuzzleQueryResultMap]): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): NextClosestRatingPuzzleIdResponse.AsObject;
   static toObject(includeInstance: boolean, msg: NextClosestRatingPuzzleIdResponse): NextClosestRatingPuzzleIdResponse.AsObject;
@@ -123,6 +134,7 @@ export class NextClosestRatingPuzzleIdResponse extends jspb.Message {
 export namespace NextClosestRatingPuzzleIdResponse {
   export type AsObject = {
     puzzleId: string,
+    queryResult: PuzzleQueryResultMap[keyof PuzzleQueryResultMap],
   }
 }
 
@@ -559,6 +571,17 @@ export namespace PuzzleJobLogsResponse {
     logsList: Array<PuzzleJobLog.AsObject>,
   }
 }
+
+export interface PuzzleQueryResultMap {
+  UNSEEN: 0;
+  UNRATED: 1;
+  UNFINISHED: 2;
+  EXHAUSTED: 3;
+  RANDOM: 4;
+  START: 5;
+}
+
+export const PuzzleQueryResult: PuzzleQueryResultMap;
 
 export interface PuzzleStatusMap {
   UNANSWERED: 0;

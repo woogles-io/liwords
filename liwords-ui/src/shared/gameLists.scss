@@ -1,5 +1,4 @@
-@import '../base';
-@import '../color_modes';
+@use '../base.scss' as *;
 
 .game-lists,
 .game-history {

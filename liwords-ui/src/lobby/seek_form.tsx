@@ -566,6 +566,9 @@ export const SeekForm = (props: Props) => {
         <Slider
           disabled={disableTimeControls}
           tipFormatter={initTimeFormatter}
+          getTooltipPopupContainer={() =>
+            document.getElementById(props.id) as HTMLElement
+          }
           min={0}
           max={initTimeDiscreteScale.length - 1}
           tooltipVisible={sliderTooltipVisible || usernameOptions.length === 0}

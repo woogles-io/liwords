@@ -1,4 +1,11 @@
-@import 'base';
+@use 'base.scss' as *;
+@use 'color_modes' as *;
+@import './shared/layout';
+
+@include button;
+@include notification;
+@include modal;
+@include tabs;
 
 .App {
   font-family: $font-default;
@@ -170,3 +177,351 @@ a.plain,
 .ant-form-item .ant-select-selection-item-content {
   color: #777777;
 }
+
+
+h1,
+h2,
+h3,
+h4 {
+  @include type-title;
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}
+
+h1 {
+  font-size: 48px;
+}
+
+h2 {
+  font-size: 36px;
+}
+
+h3 {
+  font-size: 28px;
+}
+
+h4 {
+  font-size: 16px;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ant-card {
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: $font-default;
+    font-weight: bold;
+    letter-spacing: 0;
+  }
+  @include colorModed() {
+    color: m($gray-extreme);
+    background-color: m($card-background);
+    box-shadow: m($shadow);
+  }
+}
+.App {
+
+  .ant-tag {
+    font-weight: 800;
+    color: #414141;
+  }
+
+  .ant-tag-gold {
+    background: #fcc65e;
+    color: #414141;
+    border-color: #fcc65e;
+  }
+
+  .ant-tag-cyan {
+    background: #55c0e9;
+    color: #414141;
+    border-color: #55c0e9;
+  }
+
+  .ant-tag-pink {
+    background: #b80c79;
+    color: #ffffff;
+    border-color: #b80c79;
+  }
+
+  .ant-tag-purple {
+    background: #baadbb;
+    color: #414141;
+    border-color: #baadbb;
+  }
+
+  .ant-tag-lime {
+    background: #abec63;
+    color: #414141;
+    border-color: #abec63;
+  }
+
+  .ant-tag-orange,
+  .ant-tag-bye {
+    background: #fcac69;
+    color: #414141;
+    border-color: #fcac69;
+  }
+  .ant-tag-gray,
+  .ant-tag-tie {
+    background: #aaaaaa;
+    color: #414141;
+  }
+
+  .ant-tag-first {
+    background: #d0d0d0;
+    color: #414141;
+    border-color: #cccccc;
+  }
+
+  .ant-tag-yellow {
+    background: #f8c033;
+    color: #414141;
+    border-color: #f8c033;
+  }
+
+  .ant-tag-green,
+  .ant-tag-win {
+    background: #b2e49b;
+    color: #414141;
+    border-color: #b2e49b;
+  }
+
+  .ant-tag-blue,
+  .ant-tag-repeat {
+    background: #b2dcf0;
+    color: #414141;
+    border-color: #b2dcf0;
+  }
+  .ant-tag-red,
+  .ant-tag-removed,
+  .ant-tag-forfeit,
+  {
+    background: #8a0f23;
+    color: #ffffff;
+    border-color: #8a0f23;
+  }
+
+  .ant-tag-volcano,
+  .ant-tag-loss{
+    background: #b3263c;
+    color: #ffffff;
+    border-color: #b3263c;
+  }
+
+  .ant-tag-magenta {
+    background: #9c3e9b;
+    color: #ffffff;
+    border-color: #9c3e9b;
+  }
+}
+
+.ant-card-head {
+  @include colorModed() {
+    border-color: m($card-background);
+  }
+}
+
+.ant-card-head-title {
+  font-family: $font-default;
+  font-weight: 800;
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}
+
+.ant-card-bordered {
+  @include colorModed() {
+    border: 1px solid m($off-background);
+  }
+}
+
+.ant-dropdown-menu,
+.ant-select-dropdown {
+  padding: 0;
+  z-index: 1100;
+  @include colorModed() {
+    background: m($background);
+    color: m($gray-extreme);
+  }
+}
+
+.ant-select-item {
+  padding: 0;
+  @include colorModed() {
+    background: m($card-background);
+    color: m($gray-extreme);
+  }
+}
+
+.ant-select-selector,
+.ant-select-item,
+.ant-select-dropdown,
+.ant-select:not(.ant-select-customize-input) .ant-select-selector {
+  @include colorModed() {
+    background: m($background);
+    color: m($gray-extreme);
+  }
+  z-index: 1100;
+  .hover-help {
+    display: none;
+  }
+}
+
+.ant-select-arrow {
+  z-index: 0;
+  @include colorModed() {
+    background: m($background);
+    color: m($gray-extreme);
+  }
+}
+
+.ant-input-affix-wrapper,
+.ant-input-affix-wrapper .anticon {
+  @include colorModed() {
+    background: m($background);
+    color: m($gray-extreme);
+  }
+}
+.ant-form-item input,
+.ant-select-single:not(.ant-select-customize-input)
+.ant-select-selector
+.ant-select-selection-search-input {
+  @include colorModed() {
+    background: m($background);
+    color: m($gray-extreme);
+  }
+}
+.ant-switch-checked {
+  @include colorModed() {
+    background: m($primary-midDark);
+  }
+}
+.ant-input-number-input {
+  @include colorModed() {
+    background: m($card-background);
+    color: m($gray-extreme);
+  }
+}
+
+.ant-form .ant-form-item {
+  label {
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+  }
+  .ant-select-arrow {
+    @include colorModed() {
+      color: m($gray-medium);
+    }
+  }
+}
+
+.ant-dropdown-menu-item,
+.ant-dropdown-menu-submenu-title,
+.ant-radio-wrapper {
+  transition: none;
+  &,
+  .ant-radio-wrapper {
+    @include colorModed() {
+      background: m($background);
+      color: m($gray-extreme);
+    }
+  }
+  &:hover {
+    @include colorModed() {
+      background: m($off-background);
+      color: m($gray-extreme);
+    }
+  }
+}
+
+.ant-select-item {
+  padding: 4px;
+  .hover-help {
+    display: none;
+    @include colorModed() {
+      color: m($primary-midDark);
+    }
+  }
+  &:hover {
+    @include colorModed() {
+      background: m($off-background);
+      color: m($primary-dark);
+      .hover-help {
+        display: inline-block;
+      }
+    }
+  }
+}
+
+.ant-select-item-option-active:not(.ant-select-item-option-disabled),
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  @include colorModed() {
+    background: m($gray-subtle);
+    color: m($primary-dark);
+  }
+  .hover-help {
+    display: inline-block;
+  }
+}
+
+.ant-table-filter-dropdown-btns {
+  display: flex;
+  align-items: center;
+  @include colorModed() {
+    background: m($background);
+    color: m($gray-extreme);
+    border-top: 1px solid m($card-background);
+  }
+}
+
+.ant-empty-normal {
+  @include colorModed() {
+    background-color: m($card-background);
+  }
+}
+
+.ant-popover-inner {
+  @include colorModed() {
+    background-color: m($card-background);
+    color: m($gray-extreme);
+  }
+}
+
+.ant-modal-close-x {
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}
+.ant-popover-message {
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}
+.ant-popover-placement-top > .ant-popover-content > .ant-popover-arrow,
+.ant-popover-placement-topLeft > .ant-popover-content > .ant-popover-arrow,
+.ant-popover-placement-topRight > .ant-popover-content > .ant-popover-arrow {
+  @include colorModed() {
+    border-right-color: m($card-background);
+    border-bottom-color: m($card-background);
+  }
+}
+.ant-collapse, .ant-collapse-item, .ant-collapse-header, .ant-collapse-content, .ant-collapse-content-box {
+  @include colorModed() {
+    background-color: m($card-background);
+    color: m($gray-extreme);
+  }
+}
+
+.user-context-menu {
+  cursor: pointer;
+}
+

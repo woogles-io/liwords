@@ -1,8 +1,4 @@
-@import '../base';
-@import '../shared/gameLists';
-@include button;
-@include notification;
-@include modal;
+@use '../base.scss' as *;
 
 .lobby {
   display: flex;
@@ -46,14 +42,14 @@
   order: 0;
   .ant-card {
     .ant-card-head {
-      font-size: 22px;
+      font-size: 16px;
       border: 0;
     }
-    .ant-card-body {
-      max-height: 520px;
-      overflow-y: auto;
-      padding-top: 0px;
-    }
+  }
+  .tournament .ant-card-body {
+    max-height: 520px;
+    overflow-y: auto;
+    padding-top: 0px;
   }
   @media (max-width: $screen-tablet-min + 1) {
     order: 3;
@@ -144,7 +140,6 @@
   .lobby.competitor {
     padding-bottom: 0;
   }
-  .announcements,
   .tournament-info .tournament {
     order: initial;
     flex-grow: 1;
@@ -158,7 +153,6 @@
 }
 
 @media (min-width: $screen-laptop-min) {
-  .announcements,
   .tournament-info .tournament {
     .ant-card-body {
       max-height: calc(100vh - #{$header-height-desktop + 125px});
