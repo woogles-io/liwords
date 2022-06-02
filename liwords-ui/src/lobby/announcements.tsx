@@ -41,10 +41,8 @@ export const Announcements = () => {
     </a>
   ));
   return (
-    <div className="announcements">
-      <Card title="Announcements">
-        <ul className="announcements-list">{renderAnnouncements}</ul>
-      </Card>
-    </div>
+    <Card title="Announcements" className="announcements-card">
+      <ul className="announcements-list">{renderAnnouncements}</ul>
+    </Card>
   );
 };

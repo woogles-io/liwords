@@ -1,7 +1,4 @@
-@import '../base';
-@import '../shared/layout';
-
-@include button;
+@use '../base.scss' as *;
 
 div.account {
   display: flex;

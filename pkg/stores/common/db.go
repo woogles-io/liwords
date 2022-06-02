@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/glicko"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"google.golang.org/protobuf/proto"
 )
@@ -66,6 +67,12 @@ var RepeatableReadTxOptions = pgx.TxOptions{
 	IsoLevel:       pgx.RepeatableRead,
 	AccessMode:     pgx.ReadWrite,
 	DeferrableMode: pgx.Deferrable, // not used for this isolevel/access mode
+}
+
+var InitialRating = &entity.SingleRating{
+	Rating:          float64(glicko.InitialRating),
+	RatingDeviation: float64(glicko.InitialRatingDeviation),
+	Volatility:      glicko.InitialVolatility,
 }
 
 type RowIterator interface {

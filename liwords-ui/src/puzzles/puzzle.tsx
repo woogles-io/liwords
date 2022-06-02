@@ -27,10 +27,10 @@ import {
   PuzzleRequest,
   PuzzleResponse,
   PuzzleStatus,
-  NextPuzzleIdRequest,
-  NextPuzzleIdResponse,
   SubmissionRequest,
   SubmissionResponse,
+  NextClosestRatingPuzzleIdRequest,
+  NextClosestRatingPuzzleIdResponse,
   StartPuzzleIdRequest,
   StartPuzzleIdResponse,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
@@ -64,6 +64,7 @@ import { getWordsFormed } from '../utils/cwgame/tile_placement';
 import axios from 'axios';
 import { LearnContextProvider } from '../learn/learn_overlay';
 import { PuzzleShareButton } from './puzzle_share';
+import { RatingsCard } from './ratings';
 
 const doNothing = () => {};
 
@@ -88,6 +89,8 @@ type PuzzleInfo = {
   maxOvertimeMinutes?: number;
   solution?: GameEvent;
   turn?: number;
+  puzzleRating?: number;
+  userRating?: number;
   gameUrl?: string;
   player1?: {
     nickname: string;
@@ -109,6 +112,9 @@ export const SinglePuzzle = (props: Props) => {
   const { useState } = useMountedState();
   const { puzzleID } = useParams();
   const [puzzleInfo, setPuzzleInfo] = useState<PuzzleInfo>(defaultPuzzleInfo);
+  const [initialUserRating, setInitialUserRating] = useState<
+    number | undefined
+  >(undefined);
   const [userLexicon, setUserLexicon] = useState<string | undefined>(
     localStorage?.getItem('puzzleLexicon') || undefined
   );
@@ -175,10 +181,11 @@ export const SinglePuzzle = (props: Props) => {
         respType = StartPuzzleIdResponse;
         method = 'GetStartPuzzleId';
       } else {
-        req = new NextPuzzleIdRequest();
-        respType = NextPuzzleIdResponse;
-        method = 'GetNextPuzzleId';
+        req = new NextClosestRatingPuzzleIdRequest();
+        respType = NextClosestRatingPuzzleIdResponse;
+        method = 'GetNextClosestRatingPuzzleId';
       }
+
       req.setLexicon(userLexicon);
       try {
         const resp = await postProto(
@@ -226,7 +233,10 @@ export const SinglePuzzle = (props: Props) => {
         tiles: evt.getPlayedTiles() || evt.getExchanged(),
         isExchange: evt.getType() === GameEvent.Type.EXCHANGE,
         leave: '',
-        leaveWithGaps: computeLeave(evt.getPlayedTiles(), sortedRack),
+        leaveWithGaps: computeLeave(
+          evt.getPlayedTiles() || evt.getExchanged(),
+          sortedRack
+        ),
       };
       placeMove(m);
     },
@@ -301,6 +311,8 @@ export const SinglePuzzle = (props: Props) => {
         solution: solution,
         gameId: answerResponse.getGameId(),
         turn: answerResponse.getTurnNumber(),
+        puzzleRating: answerResponse.getNewPuzzleRating(),
+        userRating: answerResponse.getNewUserRating(),
       }));
       // Place the tiles from the event.
       if (solution) {
@@ -351,6 +363,14 @@ export const SinglePuzzle = (props: Props) => {
             ...x,
             turn: answerResponse.getTurnNumber(),
             gameId: answerResponse.getGameId(),
+            dateSolved:
+              answerResponse.getStatus() === PuzzleStatus.CORRECT
+                ? answerResponse.getLastAttemptTime()?.toDate()
+                : undefined,
+            attempts: answerResponse.getAttempts(),
+            solved: answerResponse.getStatus(),
+            puzzleRating: answerResponse.getNewPuzzleRating(),
+            userRating: answerResponse.getNewUserRating(),
           }));
           setShowResponseModalCorrect(true);
         } else {
@@ -358,16 +378,20 @@ export const SinglePuzzle = (props: Props) => {
           BoopSounds.playSound('puzzleWrongSound');
           setShowResponseModalWrong(true);
           setCheckWordsPending(true);
+          setPuzzleInfo((x) => ({
+            ...x,
+            turn: answerResponse.getTurnNumber(),
+            gameId: answerResponse.getGameId(),
+            dateSolved:
+              answerResponse.getStatus() === PuzzleStatus.CORRECT
+                ? answerResponse.getLastAttemptTime()?.toDate()
+                : undefined,
+            attempts: answerResponse.getAttempts(),
+            solved: answerResponse.getStatus(),
+            puzzleRating: answerResponse.getNewPuzzleRating(),
+            userRating: answerResponse.getNewUserRating(),
+          }));
         }
-        setPuzzleInfo((x) => ({
-          ...x,
-          dateSolved:
-            answerResponse.getStatus() === PuzzleStatus.CORRECT
-              ? answerResponse.getLastAttemptTime()?.toDate()
-              : undefined,
-          attempts: answerResponse.getAttempts(),
-          solved: answerResponse.getStatus(),
-        }));
       } catch (err) {
         message.error({
           content: (err as LiwordsAPIError).message,
@@ -406,6 +430,7 @@ export const SinglePuzzle = (props: Props) => {
           actionType: ActionType.SetupStaticPosition,
           payload: gh,
         });
+        console.log('got puzzle', resp.toObject());
         setGameHistory(gh);
         console.log('got game history', gh.toObject());
         const answerResponse = resp.getAnswer();
@@ -428,7 +453,10 @@ export const SinglePuzzle = (props: Props) => {
           solution: answerResponse.getCorrectAnswer(),
           gameId: answerResponse.getGameId(),
           turn: answerResponse.getTurnNumber(),
+          puzzleRating: answerResponse.getNewPuzzleRating(),
+          userRating: answerResponse.getNewUserRating(),
         });
+        setInitialUserRating(answerResponse.getNewUserRating());
         setPendingSolution(
           answerResponse.getStatus() !== PuzzleStatus.UNANSWERED
         );
@@ -524,7 +552,7 @@ export const SinglePuzzle = (props: Props) => {
 
   const responseModalWrong = useMemo(() => {
     const reset = () => {
-      setDisplayedRack(rack);
+      setDisplayedRack(sortedRack);
       setPlacedTiles(new Set<EphemeralTile>());
       setPlacedTilesTempScore(undefined);
       setPhoniesPlayed([]);
@@ -564,13 +592,18 @@ export const SinglePuzzle = (props: Props) => {
             .map((x) => `${x}*`)
             .join(', ')}`}</p>
         )}
+        {!!puzzleInfo.puzzleRating && !!puzzleInfo.userRating && (
+          <>
+            <p>Your puzzle rating is now {puzzleInfo.userRating}.</p>
+          </>
+        )}
       </Modal>
     );
   }, [
     showResponseModalWrong,
     phoniesPlayed,
     puzzleInfo,
-    rack,
+    sortedRack,
     setDisplayedRack,
     setPlacedTiles,
     setPlacedTilesTempScore,
@@ -653,6 +686,11 @@ export const SinglePuzzle = (props: Props) => {
           You solved the puzzle in{' '}
           {singularCount(puzzleInfo.attempts, 'attempt', 'attempts')}.
         </p>
+        {!!puzzleInfo.puzzleRating && !!puzzleInfo.userRating && (
+          <>
+            <p>Your puzzle rating is now {puzzleInfo.userRating}.</p>
+          </>
+        )}
       </Modal>
     );
   }, [showResponseModalCorrect, puzzleInfo, loadNewPuzzle, puzzleID]);
@@ -719,6 +757,11 @@ export const SinglePuzzle = (props: Props) => {
         </div>
 
         <div className="data-area" id="right-sidebar">
+          <RatingsCard
+            userRating={puzzleInfo.userRating || initialUserRating}
+            puzzleRating={puzzleInfo.puzzleRating}
+            initialUserRating={initialUserRating}
+          />
           <PuzzleInfoWidget
             solved={puzzleInfo.solved}
             gameDate={puzzleInfo.gameDate}

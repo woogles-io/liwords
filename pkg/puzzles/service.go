@@ -44,31 +44,31 @@ func NewPuzzleService(ps PuzzleStore, us user.Store, k, c, td string) *PuzzleSer
 }
 
 func (ps *PuzzleService) GetStartPuzzleId(ctx context.Context, req *pb.StartPuzzleIdRequest) (*pb.StartPuzzleIdResponse, error) {
-	puzzleId, err := GetStartPuzzleId(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Lexicon)
+	puzzleId, pqr, err := GetStartPuzzleId(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Lexicon)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.StartPuzzleIdResponse{PuzzleId: puzzleId}, nil
+	return &pb.StartPuzzleIdResponse{PuzzleId: puzzleId, QueryResult: pqr}, nil
 }
 
 func (ps *PuzzleService) GetNextPuzzleId(ctx context.Context, req *pb.NextPuzzleIdRequest) (*pb.NextPuzzleIdResponse, error) {
-	puzzleId, err := GetNextPuzzleId(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Lexicon)
+	puzzleId, pqr, err := GetNextPuzzleId(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Lexicon)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.NextPuzzleIdResponse{PuzzleId: puzzleId}, nil
+	return &pb.NextPuzzleIdResponse{PuzzleId: puzzleId, QueryResult: pqr}, nil
 }
 
 func (ps *PuzzleService) GetNextClosestRatingPuzzleId(ctx context.Context, req *pb.NextClosestRatingPuzzleIdRequest) (*pb.NextClosestRatingPuzzleIdResponse, error) {
-	puzzleId, err := GetNextClosestRatingPuzzleId(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Lexicon)
+	puzzleId, pqr, err := GetNextClosestRatingPuzzleId(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Lexicon)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.NextClosestRatingPuzzleIdResponse{PuzzleId: puzzleId}, nil
+	return &pb.NextClosestRatingPuzzleIdResponse{PuzzleId: puzzleId, QueryResult: pqr}, nil
 }
 
 func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *pb.PuzzleRequest) (*pb.PuzzleResponse, error) {
-	gameHist, beforeText, attempts, status, firstAttemptTime, lastAttemptTime, err := GetPuzzle(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.PuzzleId)
+	gameHist, beforeText, attempts, status, firstAttemptTime, lastAttemptTime, newPuzzleRating, newUserRating, err := GetPuzzle(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.PuzzleId)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -85,6 +85,16 @@ func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *pb.PuzzleRequest) (
 		}
 	}
 
+	npr := int32(0)
+	nur := int32(0)
+
+	if newPuzzleRating != nil {
+		npr = int32(newPuzzleRating.Rating + 0.5)
+	}
+	if newUserRating != nil {
+		nur = int32(newUserRating.Rating + 0.5)
+	}
+
 	return &pb.PuzzleResponse{History: gameHist, BeforeText: beforeText, Answer: &pb.AnswerResponse{
 		Status:           boolPtrToPuzzleStatus(status),
 		CorrectAnswer:    correctAnswer,
@@ -92,8 +102,8 @@ func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *pb.PuzzleRequest) (
 		TurnNumber:       turnNumber,
 		AfterText:        afterText,
 		Attempts:         attempts,
-		NewUserRating:    0,
-		NewPuzzleRating:  0,
+		NewUserRating:    nur,
+		NewPuzzleRating:  npr,
 		FirstAttemptTime: timestamppb.New(firstAttemptTime),
 		LastAttemptTime:  timestamppb.New(lastAttemptTime)}}, nil
 }
@@ -115,10 +125,21 @@ func (ps *PuzzleService) SubmitAnswer(ctx context.Context, req *pb.SubmissionReq
 	if err != nil {
 		return nil, err
 	}
-	userIsCorrect, status, correctAnswer, gameId, turnNumber, afterText, attempts, newUserRating, newPuzzleRating, firstAttemptTime, lastAttemptTime, err := SubmitAnswer(ctx, ps.puzzleStore, user.UUID, req.PuzzleId, req.Answer, req.ShowSolution)
+	userIsCorrect, status, correctAnswer, gameId, turnNumber, afterText, attempts, firstAttemptTime, lastAttemptTime, newPuzzleRating, newUserRating, err := SubmitAnswer(ctx, ps.puzzleStore, user.UUID, req.PuzzleId, req.Answer, req.ShowSolution)
 	if err != nil {
 		return nil, err
 	}
+
+	npr := int32(0)
+	nur := int32(0)
+
+	if newPuzzleRating != nil {
+		npr = int32(newPuzzleRating.Rating + 0.5)
+	}
+	if newUserRating != nil {
+		nur = int32(newUserRating.Rating + 0.5)
+	}
+
 	return &pb.SubmissionResponse{UserIsCorrect: userIsCorrect,
 		Answer: &pb.AnswerResponse{
 			Status:           boolPtrToPuzzleStatus(status),
@@ -127,8 +148,8 @@ func (ps *PuzzleService) SubmitAnswer(ctx context.Context, req *pb.SubmissionReq
 			TurnNumber:       turnNumber,
 			AfterText:        afterText,
 			Attempts:         attempts,
-			NewUserRating:    newUserRating,
-			NewPuzzleRating:  newPuzzleRating,
+			NewUserRating:    nur,
+			NewPuzzleRating:  npr,
 			FirstAttemptTime: timestamppb.New(firstAttemptTime),
 			LastAttemptTime:  timestamppb.New(lastAttemptTime)}}, nil
 }

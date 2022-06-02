@@ -664,7 +664,12 @@ export const Chat = React.memo((props: Props) => {
 
   return (
     <Card className="chat" id="chat">
-      <Tabs activeKey={selectedChatTab} centered onTabClick={handleTabClick}>
+      <Tabs
+        activeKey={selectedChatTab}
+        centered
+        onTabClick={handleTabClick}
+        animated={false}
+      >
         <TabPane tab={<>Players</>} key="PLAYERS" className="player-pane">
           <Players
             sendMessage={sendNewMessage}
@@ -787,21 +792,23 @@ export const Chat = React.memo((props: Props) => {
                 >
                   {entities}
                 </div>
-                <Input
-                  autoFocus={!defaultChannel.startsWith('chat.game')}
-                  autoComplete="off"
-                  placeholder={
-                    channel === 'chat.lobby'
-                      ? 'Ask or answer question...'
-                      : 'chat...'
-                  }
-                  name="chat-input"
-                  disabled={!loggedIn}
-                  onKeyDown={onKeyDown}
-                  onChange={onChange}
-                  value={curMsg}
-                  spellCheck={false}
-                />
+                <form>
+                  <Input
+                    autoFocus={!defaultChannel.startsWith('chat.game')}
+                    autoComplete="off"
+                    placeholder={
+                      channel === 'chat.lobby'
+                        ? 'Ask or answer question...'
+                        : 'chat...'
+                    }
+                    name="chat-input"
+                    disabled={!loggedIn}
+                    onKeyDown={onKeyDown}
+                    onChange={onChange}
+                    value={curMsg}
+                    spellCheck={false}
+                  />
+                </form>
               </>
             )
           )}

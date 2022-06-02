@@ -27,7 +27,7 @@ import {
 import { LiwordsSocket } from './socket/socket';
 import { Team } from './about/team';
 import { Register } from './lobby/register';
-import { UserProfile } from './profile/profile';
+import { PlayerProfile } from './profile/profile';
 import { Settings } from './settings/settings';
 import { PasswordChange } from './lobby/password_change';
 import { PasswordReset } from './lobby/password_reset';
@@ -320,7 +320,8 @@ const App = React.memo(() => {
           <Route path="reset" element={<PasswordReset />} />
           <Route path="new" element={<NewPassword />} />
         </Route>
-        <Route path="profile/:username" element={<UserProfile />} />
+        <Route path="profile/:username" element={<PlayerProfile />} />
+        <Route path="profile/" element={<PlayerProfile />} />
         <Route path="settings" element={<Settings />}>
           <Route path=":section" element={<Settings />} />
         </Route>

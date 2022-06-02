@@ -1,4 +1,4 @@
-import { EphemeralTile, Direction, Blank } from './common';
+import { EphemeralTile, Direction, Blank, EmptySpace, isBlank } from './common';
 import { contiguousTilesFromTileSet } from './scoring';
 import { Board } from './board';
 import { GameEvent } from '../../gen/macondo/api/proto/macondo/macondo_pb';
@@ -118,29 +118,26 @@ export const tilePlacementEventDisplay = (evt: GameEvent, board: Board) => {
 };
 
 export const computeLeave = (tilesPlayed: string, rack: string) => {
-  const tileDict: { [k: string]: number } = {};
-  for (let i = 0; i < rack.length; i++) {
-    const tile = rack[i];
-    if (!tileDict[tile]) {
-      tileDict[tile] = 1;
-    } else {
-      tileDict[tile] += 1;
+  // tilesPlayed is either from evt.getPlayedTiles(), which is like "TRUNCa.E",
+  // or from evt.getExchanged(), which is like "AE?".
+  // rack is a pre-sorted rack; spaces will be returned where gaps should be.
+
+  const leave: Array<string | null> = Array.from(rack);
+  for (const letter of tilesPlayed) {
+    if (letter !== ThroughTileMarker) {
+      const t = isBlank(letter) ? Blank : letter;
+      const usedTileIndex = leave.lastIndexOf(t);
+      if (usedTileIndex >= 0) {
+        // make it a non-string to disqualify multiple matches in this loop.
+        leave[usedTileIndex] = null;
+      }
     }
   }
-  const leave = [];
-  for (let i = 0; i < tilesPlayed.length; i++) {
-    let tile = tilesPlayed[i];
-    if (tile.toLowerCase() === tile) {
-      tile = Blank;
-    }
-    tileDict[tile] -= 1;
-  }
-  for (const tile in tileDict) {
-    const n = tileDict[tile];
-    for (let i = 0; i < n; i++) {
-      leave.push(tile);
+  for (let i = 0; i < leave.length; ++i) {
+    if (leave[i] === null) {
+      // this is intentionally done in a separate pass.
+      leave[i] = EmptySpace;
     }
   }
-  leave.sort();
   return leave.join('');
 };

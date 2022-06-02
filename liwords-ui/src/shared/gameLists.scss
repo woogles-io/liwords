@@ -1,9 +1,7 @@
-@import '../base';
-@import '../color_modes';
+@use '../base.scss' as *;
 
 .game-lists,
-.game-history,
-.profile {
+.game-history {
   .ant-table-filter-trigger-container {
     transition: none;
   }

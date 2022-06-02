@@ -32,7 +32,6 @@ func NewDefaultRating(lastGameIsNow bool) *SingleRating {
 	if lastGameIsNow {
 		lastGameTimeStamp = time.Now().Unix()
 	}
-	time.Now().Unix()
 	return &SingleRating{
 		Rating:            float64(glicko.InitialRating),
 		RatingDeviation:   float64(glicko.InitialRatingDeviation),
@@ -41,8 +40,14 @@ func NewDefaultRating(lastGameIsNow bool) *SingleRating {
 	}
 }
 
+const PuzzleVariant = "puzzle"
+
 func ToVariantKey(lexiconName string, variantName game.Variant, timeControl TimeControl) VariantKey {
 	return VariantKey(transformLexiconName(lexiconName) + "." + string(variantName) + "." + string(timeControl))
+}
+
+func LexiconToPuzzleVariantKey(lexicon string) VariantKey {
+	return ToVariantKey(lexicon, PuzzleVariant, TCCorres)
 }
 
 func (r *Ratings) Value() (driver.Value, error) {

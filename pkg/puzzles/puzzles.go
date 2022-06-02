@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/domino14/liwords/pkg/common"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/glicko"
@@ -27,15 +26,15 @@ type PuzzleStore interface {
 	UpdateGenerationLogStatus(ctx context.Context, genId int, fulfilled bool, err error) error
 	CreatePuzzle(ctx context.Context, gameID string, turnNumber int32, answer *macondopb.GameEvent, authorID string,
 		lexicon string, beforeText string, afterText string, tags []macondopb.PuzzleTag, reqId int, bucketIndex int32) error
-	GetStartPuzzleId(ctx context.Context, userId string, lexicon string) (string, error)
-	GetNextPuzzleId(ctx context.Context, userId string, lexicon string) (string, error)
-	GetNextClosestRatingPuzzleId(ctx context.Context, userId string, lexicon string, ratingKey entity.VariantKey) (string, error)
-	GetPuzzle(ctx context.Context, userId string, puzzleUUID string) (*macondopb.GameHistory, string, int32, *bool, time.Time, time.Time, error)
+	GetStartPuzzleId(ctx context.Context, userId string, lexicon string, ratingKey entity.VariantKey) (string, pb.PuzzleQueryResult, error)
+	GetNextPuzzleId(ctx context.Context, userId string, lexicon string) (string, pb.PuzzleQueryResult, error)
+	GetNextClosestRatingPuzzleId(ctx context.Context, userId string, lexicon string, ratingKey entity.VariantKey) (string, pb.PuzzleQueryResult, error)
+	GetPuzzle(ctx context.Context, userId string, puzzleUUID string) (*macondopb.GameHistory, string, int32, *bool, time.Time, time.Time, *entity.SingleRating, *entity.SingleRating, error)
 	GetPreviousPuzzleId(ctx context.Context, userId string, puzzleUUID string) (string, error)
 	GetAnswer(ctx context.Context, puzzleUUID string) (*macondopb.GameEvent, string, int32, string, *ipc.GameRequest, *entity.SingleRating, error)
 	SubmitAnswer(ctx context.Context, userId string, ratingKey entity.VariantKey, newUserRating *entity.SingleRating,
 		puzzleUUID string, newPuzzleRating *entity.SingleRating, userIsCorrect bool, userGaveUp bool) error
-	GetAttempts(ctx context.Context, userId string, puzzleUUID string) (bool, bool, int32, *bool, time.Time, time.Time, error)
+	GetAttempts(ctx context.Context, userId string, puzzleUUID string) (bool, bool, int32, *bool, time.Time, time.Time, *entity.SingleRating, *entity.SingleRating, error)
 	GetUserRating(ctx context.Context, userId string, ratingKey entity.VariantKey) (*entity.SingleRating, error)
 	SetPuzzleVote(ctx context.Context, userId string, puzzleUUID string, vote int) error
 	GetJobInfo(ctx context.Context, genId int) (time.Time, time.Time, time.Duration, *bool, *string, int, int, [][]int, error)
@@ -87,19 +86,19 @@ func CreatePuzzlesFromGame(ctx context.Context, req *macondopb.PuzzleGenerationR
 	return pzls, nil
 }
 
-func GetStartPuzzleId(ctx context.Context, ps PuzzleStore, userId string, lexicon string) (string, error) {
-	return ps.GetStartPuzzleId(ctx, userId, lexicon)
+func GetStartPuzzleId(ctx context.Context, ps PuzzleStore, userId string, lexicon string) (string, pb.PuzzleQueryResult, error) {
+	return ps.GetStartPuzzleId(ctx, userId, lexicon, entity.LexiconToPuzzleVariantKey(lexicon))
 }
 
-func GetNextPuzzleId(ctx context.Context, ps PuzzleStore, userId string, lexicon string) (string, error) {
+func GetNextPuzzleId(ctx context.Context, ps PuzzleStore, userId string, lexicon string) (string, pb.PuzzleQueryResult, error) {
 	return ps.GetNextPuzzleId(ctx, userId, lexicon)
 }
 
-func GetNextClosestRatingPuzzleId(ctx context.Context, ps PuzzleStore, userId string, lexicon string) (string, error) {
-	return ps.GetNextClosestRatingPuzzleId(ctx, userId, lexicon, ratingKey(lexicon))
+func GetNextClosestRatingPuzzleId(ctx context.Context, ps PuzzleStore, userId string, lexicon string) (string, pb.PuzzleQueryResult, error) {
+	return ps.GetNextClosestRatingPuzzleId(ctx, userId, lexicon, entity.LexiconToPuzzleVariantKey(lexicon))
 }
 
-func GetPuzzle(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID string) (*macondopb.GameHistory, string, int32, *bool, time.Time, time.Time, error) {
+func GetPuzzle(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID string) (*macondopb.GameHistory, string, int32, *bool, time.Time, time.Time, *entity.SingleRating, *entity.SingleRating, error) {
 	return ps.GetPuzzle(ctx, userId, puzzleUUID)
 }
 
@@ -116,7 +115,7 @@ func GetPuzzleJobLogs(ctx context.Context, ps PuzzleStore, limit, offset int) ([
 }
 
 func GetPuzzleAnswer(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID string) (*macondopb.GameEvent, error) {
-	rated, _, _, _, _, _, err := ps.GetAttempts(ctx, userId, puzzleUUID)
+	rated, _, _, _, _, _, _, _, err := ps.GetAttempts(ctx, userId, puzzleUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -129,28 +128,28 @@ func GetPuzzleAnswer(ctx context.Context, ps PuzzleStore, userId string, puzzleU
 }
 
 func SubmitAnswer(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID string,
-	userAnswer *ipc.ClientGameplayEvent, showSolution bool) (bool, *bool, *macondopb.GameEvent, string, int32, string, int32, int32, int32, time.Time, time.Time, error) {
+	userAnswer *ipc.ClientGameplayEvent, showSolution bool) (bool, *bool, *macondopb.GameEvent, string, int32, string, int32, time.Time, time.Time, *entity.SingleRating, *entity.SingleRating, error) {
 	correctAnswer, gameId, turnNumber, afterText, req, puzzleRating, err := ps.GetAnswer(ctx, puzzleUUID)
 	if err != nil {
-		return false, nil, nil, "", -1, "", -1, -1, -1, time.Time{}, time.Time{}, err
+		return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, nil, nil, err
 	}
 	userIsCorrect := answersAreEqual(userAnswer, correctAnswer)
 	// Check if user has already seen this puzzle
-	rated, _, attempts, status, _, _, err := ps.GetAttempts(ctx, userId, puzzleUUID)
+	rated, _, attempts, status, _, _, _, _, err := ps.GetAttempts(ctx, userId, puzzleUUID)
 	if err != nil {
-		return false, nil, nil, "", -1, "", -1, -1, -1, time.Time{}, time.Time{}, err
+		return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, nil, nil, err
 	}
 	log.Debug().Interface("status", status).
 		Int32("attempts", attempts).Msg("equal")
 	var newPuzzleSingleRating *entity.SingleRating
 	var newUserSingleRating *entity.SingleRating
-	rk := ratingKey(req.Lexicon)
+	rk := entity.LexiconToPuzzleVariantKey(req.Lexicon)
 
 	if !rated {
 		// Get the user ratings
 		userRating, err := ps.GetUserRating(ctx, userId, rk)
 		if err != nil {
-			return false, nil, nil, "", -1, "", -1, -1, -1, time.Time{}, time.Time{}, err
+			return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, nil, nil, err
 		}
 
 		spread := glicko.SpreadScaling + 1
@@ -188,12 +187,12 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID
 
 	err = ps.SubmitAnswer(ctx, userId, rk, newUserSingleRating, puzzleUUID, newPuzzleSingleRating, userIsCorrect, showSolution)
 	if err != nil {
-		return false, nil, nil, "", -1, "", -1, -1, -1, time.Time{}, time.Time{}, err
+		return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, nil, nil, err
 	}
 
-	_, _, attempts, status, firstAttemptTime, lastAttemptTime, err := ps.GetAttempts(ctx, userId, puzzleUUID)
+	_, _, attempts, status, firstAttemptTime, lastAttemptTime, newPuzzleSingleRating, newUserSingleRating, err := ps.GetAttempts(ctx, userId, puzzleUUID)
 	if err != nil {
-		return false, nil, nil, "", -1, "", -1, -1, -1, time.Time{}, time.Time{}, err
+		return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, nil, nil, err
 	}
 
 	if !showSolution && !userIsCorrect {
@@ -201,16 +200,7 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID
 		gameId = ""
 	}
 
-	nur := int32(0)
-	npr := int32(0)
-	if newUserSingleRating != nil {
-		nur = int32(newUserSingleRating.Rating)
-	}
-	if newPuzzleSingleRating != nil {
-		npr = int32(newPuzzleSingleRating.Rating)
-	}
-
-	return userIsCorrect, status, correctAnswer, gameId, turnNumber, afterText, attempts, nur, npr, firstAttemptTime, lastAttemptTime, nil
+	return userIsCorrect, status, correctAnswer, gameId, turnNumber, afterText, attempts, firstAttemptTime, lastAttemptTime, newPuzzleSingleRating, newUserSingleRating, nil
 }
 
 func SetPuzzleVote(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID string, vote int) error {
@@ -330,8 +320,4 @@ func uniqueSingleTileKey(ge *macondopb.GameEvent) int {
 	// A unique, fast to compute key for this play.
 	return row + alphabet.MaxAlphabetSize*col +
 		alphabet.MaxAlphabetSize*alphabet.MaxAlphabetSize*int(tile)
-}
-
-func ratingKey(lexicon string) entity.VariantKey {
-	return entity.ToVariantKey(lexicon, common.PuzzleVariant, entity.TCCorres)
 }
