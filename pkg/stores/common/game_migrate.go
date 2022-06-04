@@ -53,8 +53,12 @@ func migrateToV2(gh *macondo.GameHistory) *macondo.GameHistory {
 		} else if gh2.Winner == 1 {
 			gh2.Winner = 0
 		} // otherwise it's a tie
-		gh2.FinalScores[0], gh2.FinalScores[1] = gh2.FinalScores[1], gh2.FinalScores[0]
-		gh2.LastKnownRacks[0], gh2.LastKnownRacks[1] = gh2.LastKnownRacks[1], gh2.LastKnownRacks[0]
+		if len(gh2.FinalScores) == 2 {
+			gh2.FinalScores[0], gh2.FinalScores[1] = gh2.FinalScores[1], gh2.FinalScores[0]
+		}
+		if len(gh2.LastKnownRacks) == 2 {
+			gh2.LastKnownRacks[0], gh2.LastKnownRacks[1] = gh2.LastKnownRacks[1], gh2.LastKnownRacks[0]
+		}
 	}
 
 	nickname0, nickname1 := gh2.Players[0].Nickname, gh2.Players[1].Nickname

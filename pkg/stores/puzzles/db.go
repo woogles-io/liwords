@@ -385,14 +385,8 @@ func (s *DBStore) GetPuzzle(ctx context.Context, userUUID string, puzzleUUID str
 
 	hist.Events = hist.Events[:turnNumber]
 	// Set LastKnownRacks to make history valid.
-	playerIndexes := map[string]int{}
-	for idx := range hist.Players {
-		playerIndexes[hist.Players[idx].Nickname] = idx
-	}
-	// XXX: Outdated, fix with PlayerIndex in the future
 	hist.LastKnownRacks = []string{"", ""}
-	idx := playerIndexes[puzzleEvent.Nickname]
-	hist.LastKnownRacks[idx] = puzzleEvent.Rack
+	hist.LastKnownRacks[puzzleEvent.PlayerIndex] = puzzleEvent.Rack
 	hist.OriginalGcg = ""
 	hist.IdAuth = ""
 	hist.Uid = ""
@@ -1006,14 +1000,6 @@ func getRandomPuzzleDBID(ctx context.Context, tx pgx.Tx) (*sql.NullInt64, error)
 }
 
 func sanitizeHistory(hist *macondopb.GameHistory) {
-	playerSanitizationMap := map[string]string{
-		hist.Players[0].Nickname: commontest.DefaultPlayerOneInfo.Nickname,
-		hist.Players[1].Nickname: commontest.DefaultPlayerTwoInfo.Nickname,
-	}
-	for _, evt := range hist.Events {
-		evt.Nickname = playerSanitizationMap[evt.Nickname]
-	}
-
 	hist.Players[0].Nickname = commontest.DefaultPlayerOneInfo.Nickname
 	hist.Players[0].RealName = commontest.DefaultPlayerOneInfo.FullName
 	hist.Players[0].UserId = commontest.DefaultPlayerOneInfo.UserId
