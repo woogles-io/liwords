@@ -1,0 +1,105 @@
+@import '../base';
+
+// This component is rendered to a fixed size
+// and then scaled as a whole for different screen sizes
+
+$well-height: 512px;
+$well-width: 256px;
+$block-size: $well-width / 8;
+
+
+$blob-colors: (
+  level-0: #D9D9D9,
+  level-1: #D7BED9,
+  level-2: #A5D3F4,
+  level-3: #A3DCA5,
+  level-4: #F8DF86,
+  level-5: #FFBA7B,
+  level-6: #FF7B7B,
+);
+
+@mixin edge($dir, $color) {
+  @include colorModed() {
+    border-#{$dir}: 1px solid m($background);
+  };
+  .rune {
+    border-#{$dir}: 2px solid $color;
+  }
+}
+
+@mixin leveled-block($level) {
+  background: map-get($blob-colors, level-#{$level});
+  &.right {
+    @include edge('right', darken(map-get($blob-colors, level-#{$level}), 20%));
+  }
+  &.left {
+    @include edge('left', darken(map-get($blob-colors, level-#{$level}), 20%));
+  }
+  &.top {
+    @include edge('top', darken(map-get($blob-colors, level-#{$level}), 20%));
+  }
+  &.bottom {
+    @include edge('bottom', darken(map-get($blob-colors, level-#{$level}), 20%));
+  }
+}
+
+
+
+.hook-game-container {
+  .play-area {
+    display: flex;
+    justify-content: center;
+  }
+  .well-wrapper {
+    position: relative;
+    height: $well-height;
+    width: $well-width;
+    .well-backdrop, .well-overlay {
+      width: $well-width;
+      height: $well-height;
+      box-shadow: inset 0 0 12px 4px rgba(0, 0, 0, 0.08);
+      position: absolute;
+    }
+    .well-overlay {
+      pointer-events: none;
+      mix-blend-mode: multiply;
+      opacity: 50%;
+    }
+  }
+  .well-row {
+    display: flex;
+    flex-direction: row;
+  }
+  .well-backdrop {
+    display: flex;
+    flex-direction: column-reverse;
+  }
+  .block {
+    position: relative;
+    box-sizing: border-box;
+    display: inline-block;
+    font-weight: 700;
+    font-size: 22px;
+    text-align: center;
+    width: $block-size;
+    height: $block-size;
+    border: 1px solid transparent;
+    .rune {
+      position: absolute;
+      width: $block-size;
+      height: $block-size;
+      line-height: 27px;
+      border: 2px solid transparent;
+    }
+    @for $i from 0 through 6 {
+      &.level-#{$i} {
+        @include leveled-block($i);
+        &.empty {
+          background: transparent;
+        }
+      }
+    }
+  }
+}
+
+

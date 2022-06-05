@@ -42,6 +42,7 @@ import { TermsOfService } from './about/termsOfService';
 import { ChatMessage } from './gen/api/proto/ipc/chat_pb';
 import { MessageType } from './gen/api/proto/ipc/ipc_pb';
 import Footer from './navigation/footer';
+import { HookGame } from './hookGame/hookGameroom';
 
 type Blocks = {
   user_ids: Array<string>;
@@ -310,7 +311,7 @@ const App = React.memo(() => {
             element={<SinglePuzzle sendChat={sendChat} />}
           />
         </Route>
-
+        <Route path="hook" element={<HookGame sendChat={sendChat} />} />
         <Route path="about" element={<Team />} />
         <Route path="team" element={<Team />} />
         <Route path="terms" element={<TermsOfService />} />
