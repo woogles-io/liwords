@@ -1,4 +1,4 @@
-@import '../base.scss';
+@use '../base.scss' as *;
 
 .tourney-editor {
   h3 {

@@ -664,7 +664,12 @@ export const Chat = React.memo((props: Props) => {
 
   return (
     <Card className="chat" id="chat">
-      <Tabs activeKey={selectedChatTab} centered onTabClick={handleTabClick}>
+      <Tabs
+        activeKey={selectedChatTab}
+        centered
+        onTabClick={handleTabClick}
+        animated={false}
+      >
         <TabPane tab={<>Players</>} key="PLAYERS" className="player-pane">
           <Players
             sendMessage={sendNewMessage}

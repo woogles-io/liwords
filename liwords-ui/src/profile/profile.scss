@@ -1,7 +1,4 @@
-@import '../base';
-@import '../shared/gameLists';
-@include button;
-@include tabs;
+@use '../base.scss' as *;
 
 .profile {
   @include container;
@@ -417,7 +414,4 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  @include colorModed() {
-    color: m($gray-extreme);
-  }
 }

@@ -1,5 +1,4 @@
-@import '../base.scss';
-@import '../color_modes.scss';
+@use '../base.scss' as *;
 
 .static-content {
   @include container;

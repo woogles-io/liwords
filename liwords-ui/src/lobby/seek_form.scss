@@ -1,7 +1,4 @@
-@import '../base';
-@include button;
-@include notification;
-@include modal;
+@use '../base.scss' as *;
 
 .ant-modal-root .seek-modal {
   .ant-modal-header {
