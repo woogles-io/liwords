@@ -64,6 +64,7 @@ export type LobbyState = {
       [k: string]: ProfileUpdate.Rating;
     };
   };
+  lobbyFilterByLexicon: string | null;
 };
 
 export const SeekRequestToSoughtGame = (
@@ -285,6 +286,14 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
           ...profile,
           ratings,
         },
+      };
+    }
+
+    case ActionType.setLobbyFilterByLexicon: {
+      const newLexiconFilter = action.payload as string | null;
+      return {
+        ...state,
+        lobbyFilterByLexicon: newLexiconFilter,
       };
     }
   }

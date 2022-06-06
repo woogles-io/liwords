@@ -14,8 +14,11 @@ import { ActiveGame } from '../store/reducers/lobby_reducer';
 import { calculateTotalTime } from '../store/constants';
 import { VariantIcon } from '../shared/variant_icons';
 import { MatchLexiconDisplay } from '../shared/lexicon_display';
-import { useLoginStateStoreContext } from '../store/store';
-import { useMountedState } from '../utils/mounted';
+import {
+  useLoginStateStoreContext,
+  useLobbyStoreContext,
+} from '../store/store';
+import { ActionType } from '../actions/actions';
 
 type Props = {
   activeGames: ActiveGame[];
@@ -24,10 +27,10 @@ type Props = {
 };
 
 export const ActiveGames = (props: Props) => {
-  const { useState } = useMountedState();
-  const [lobbyFilterByLexicon, setLobbyFilterByLexicon] = useState(
-    localStorage.getItem('lobbyFilterByLexicon')
-  );
+  const {
+    lobbyContext: { lobbyFilterByLexicon },
+    dispatchLobbyContext,
+  } = useLobbyStoreContext();
   const lobbyFilterByLexiconArray = useMemo(
     () => lobbyFilterByLexicon?.match(/\S+/g) ?? [],
     [lobbyFilterByLexicon]
@@ -40,9 +43,9 @@ export const ActiveGames = (props: Props) => {
 
   const handleChange = useCallback(
     (
-      pagination: TablePaginationConfig,
+      _pagination: TablePaginationConfig,
       filters: Record<string, FilterValue | null>,
-      sorter:
+      _sorter:
         | SorterResult<ActiveGameTableData>
         | SorterResult<ActiveGameTableData>[],
       extra: TableCurrentDataSource<ActiveGameTableData>
@@ -51,17 +54,23 @@ export const ActiveGames = (props: Props) => {
         if (filters.lexicon && filters.lexicon.length > 0) {
           const lexicon = filters.lexicon.join(' ');
           if (lexicon !== lobbyFilterByLexicon) {
-            setLobbyFilterByLexicon(lexicon);
             localStorage.setItem('lobbyFilterByLexicon', lexicon);
+            dispatchLobbyContext({
+              actionType: ActionType.setLobbyFilterByLexicon,
+              payload: lexicon,
+            });
           }
         } else {
           // filter is reset, remove lexicon
-          setLobbyFilterByLexicon(null);
           localStorage.removeItem('lobbyFilterByLexicon');
+          dispatchLobbyContext({
+            actionType: ActionType.setLobbyFilterByLexicon,
+            payload: null,
+          });
         }
       }
     },
-    [lobbyFilterByLexicon]
+    [lobbyFilterByLexicon, dispatchLobbyContext]
   );
 
   type ActiveGameTableData = {

@@ -13,6 +13,8 @@ export enum ActionType {
   AddActiveGames,
   RemoveActiveGame,
 
+  setLobbyFilterByLexicon,
+
   // XXX: should move somewhere else?
   UpdateProfile,
 

@@ -24,6 +24,8 @@ import { RatingBadge } from './rating_badge';
 import { VariantIcon } from '../shared/variant_icons';
 import { MatchLexiconDisplay } from '../shared/lexicon_display';
 import { ProfileUpdate } from '../gen/api/proto/ipc/users_pb';
+import { useLobbyStoreContext } from '../store/store';
+import { ActionType } from '../actions/actions';
 
 export const timeFormat = (
   initialTimeSecs: number,
@@ -82,9 +84,10 @@ type Props = {
 export const SoughtGames = (props: Props) => {
   const { useState } = useMountedState();
   const [cancelVisible, setCancelVisible] = useState(false);
-  const [lobbyFilterByLexicon, setLobbyFilterByLexicon] = useState(
-    localStorage.getItem('lobbyFilterByLexicon')
-  );
+  const {
+    lobbyContext: { lobbyFilterByLexicon },
+    dispatchLobbyContext,
+  } = useLobbyStoreContext();
   const lobbyFilterByLexiconArray = useMemo(
     () => lobbyFilterByLexicon?.match(/\S+/g) ?? [],
     [lobbyFilterByLexicon]
@@ -151,17 +154,23 @@ export const SoughtGames = (props: Props) => {
         if (filters.lexicon && filters.lexicon.length > 0) {
           const lexicon = filters.lexicon.join(' ');
           if (lexicon !== lobbyFilterByLexicon) {
-            setLobbyFilterByLexicon(lexicon);
             localStorage.setItem('lobbyFilterByLexicon', lexicon);
+            dispatchLobbyContext({
+              actionType: ActionType.setLobbyFilterByLexicon,
+              payload: lexicon,
+            });
           }
         } else {
           // filter is reset, remove lexicon
-          setLobbyFilterByLexicon(null);
           localStorage.removeItem('lobbyFilterByLexicon');
+          dispatchLobbyContext({
+            actionType: ActionType.setLobbyFilterByLexicon,
+            payload: null,
+          });
         }
       }
     },
-    [lobbyFilterByLexicon]
+    [lobbyFilterByLexicon, dispatchLobbyContext]
   );
 
   type SoughtGameTableData = {

@@ -8,6 +8,7 @@ import { ActiveGames } from './active_games';
 import { SeekForm } from './seek_form';
 import { useContextMatchContext, useLobbyStoreContext } from '../store/store';
 import { ActiveGame, SoughtGame } from '../store/reducers/lobby_reducer';
+import { ActionType } from '../actions/actions';
 import './seek_form.scss';
 
 type Props = {
@@ -33,7 +34,7 @@ export const GameLists = React.memo((props: Props) => {
     setSelectedGameTab,
     onSeekSubmit,
   } = props;
-  const { lobbyContext } = useLobbyStoreContext();
+  const { lobbyContext, dispatchLobbyContext } = useLobbyStoreContext();
   const [formDisabled, setFormDisabled] = useState(false);
   const [seekModalVisible, setSeekModalVisible] = useState(false);
   const [matchModalVisible, setMatchModalVisible] = useState(false);
@@ -149,6 +150,16 @@ export const GameLists = React.memo((props: Props) => {
       </>
     );
   };
+  const resetLobbyFilter = (gameLexicon: string) => {
+    const lobbyFilter = localStorage.getItem('lobbyFilterByLexicon');
+    if (lobbyFilter && lobbyFilter !== gameLexicon) {
+      localStorage.removeItem('lobbyFilterByLexicon');
+      dispatchLobbyContext({
+        actionType: ActionType.setLobbyFilterByLexicon,
+        payload: null,
+      });
+    }
+  };
   const onFormSubmit = (sg: SoughtGame) => {
     setSeekModalVisible(false);
     setMatchModalVisible(false);
@@ -160,6 +171,7 @@ export const GameLists = React.memo((props: Props) => {
         setFormDisabled(false);
       }, 500);
     }
+    resetLobbyFilter(sg.lexicon);
   };
   const seekModal = (
     <Modal
