@@ -235,9 +235,6 @@ $point-size-desktop: math.div($tile-font-size-desktop, 2.8);
       @include colorModed() {
         border-bottom: 1px solid m($off-background);
       }
-      .ant-tabs-nav-operations {
-        display: none;
-      }
       .ant-tabs-nav-list {
         width: 100%;
         justify-content: space-evenly;
@@ -247,7 +244,6 @@ $point-size-desktop: math.div($tile-font-size-desktop, 2.8);
       justify-content: center;
       padding: 12px 24px;
       margin: 0;
-      width: 100%;
       text-transform: uppercase;
       @include colorModed() {
         color: m($gray-extreme);
@@ -269,6 +265,9 @@ $point-size-desktop: math.div($tile-font-size-desktop, 2.8);
         }
       }
     }
+  }
+  .ant-tabs>.ant-tabs-nav .ant-tabs-nav-operations, .ant-tabs>div>.ant-tabs-nav .ant-tabs-nav-operations {
+    display: none;
   }
 }
 @mixin modal {
