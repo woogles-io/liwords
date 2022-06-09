@@ -169,8 +169,7 @@ func (s *DBStore) CreatePuzzle(ctx context.Context, gameUUID string, turnNumber 
 		authorId.Valid = true
 	}
 
-	newRating := common.InitialRating
-	newRating.LastGameTimestamp = time.Now().Unix()
+	newRating := entity.NewDefaultRating(true)
 
 	uuid := shortuuid.New()
 

@@ -11,8 +11,8 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
-	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
+	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	"github.com/domino14/macondo/alphabet"
 	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/domino14/macondo/gaddag"
@@ -217,7 +217,7 @@ func ResetNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, uuid 
 	if err != nil {
 		return err
 	}
-	return us.SetNotoriety(ctx, user, 0)
+	return us.SetNotoriety(ctx, user.UUID, 0)
 }
 
 func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user *entity.User, guid string, ngt ms.NotoriousGameType) error {
@@ -245,7 +245,7 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 			if err != nil {
 				return err
 			}
-			err = us.Set(ctx, user)
+			err = us.SetActions(ctx, user.UUID, user.Actions)
 			if err != nil {
 				return err
 			}
@@ -271,7 +271,7 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 			Int("previous-notoriety", previousNotorietyScore).
 			Int32("notorious-game-type", int32(ngt)).
 			Int("new-notoriety", newNotoriety).Msg("updating")
-		return us.SetNotoriety(ctx, user, newNotoriety)
+		return us.SetNotoriety(ctx, user.UUID, newNotoriety)
 	}
 	return nil
 }

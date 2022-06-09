@@ -143,13 +143,12 @@ func main() {
 
 	router := http.NewServeMux() // here you could also go with third party packages to create a router
 
-	tmpUserStore, err := user.NewDBStore(cfg.DBConnDSN)
+	stores := bus.Stores{}
+
+	stores.UserStore, err = user.NewDBStore(dbPool)
 	if err != nil {
 		panic(err)
 	}
-	stores := bus.Stores{}
-
-	stores.UserStore = user.NewCache(tmpUserStore)
 
 	stores.SessionStore, err = session.NewDBStore(cfg.DBConnDSN)
 	if err != nil {

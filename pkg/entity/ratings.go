@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 
+	"github.com/domino14/liwords/pkg/glicko"
 	"github.com/domino14/macondo/game"
 )
 
@@ -24,6 +26,19 @@ type Ratings struct {
 }
 
 type VariantKey string
+
+func NewDefaultRating(lastGameIsNow bool) *SingleRating {
+	lastGameTimeStamp := int64(0)
+	if lastGameIsNow {
+		lastGameTimeStamp = time.Now().Unix()
+	}
+	return &SingleRating{
+		Rating:            float64(glicko.InitialRating),
+		RatingDeviation:   float64(glicko.InitialRatingDeviation),
+		Volatility:        glicko.InitialVolatility,
+		LastGameTimestamp: int64(lastGameTimeStamp),
+	}
+}
 
 const PuzzleVariant = "puzzle"
 
