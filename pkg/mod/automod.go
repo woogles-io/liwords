@@ -23,9 +23,9 @@ import (
 )
 
 type NotorietyStore interface {
-	AddNotoriousGame(gameID string, playerID string, gameType int, time int64) error
-	GetNotoriousGames(playerID string, limit int) ([]*ms.NotoriousGame, error)
-	DeleteNotoriousGames(playerID string) error
+	AddNotoriousGame(ctx context.Context, gameID string, playerID string, gameType int, time int64) error
+	GetNotoriousGames(ctx context.Context, playerID string, limit int) ([]*ms.NotoriousGame, error)
+	DeleteNotoriousGames(ctx context.Context, playerID string) error
 }
 
 var BehaviorToScore map[ms.NotoriousGameType]int = map[ms.NotoriousGameType]int{
@@ -188,15 +188,15 @@ func GetNotorietyReport(ctx context.Context, us user.Store, ns NotorietyStore, u
 	if err != nil {
 		return 0, nil, err
 	}
-	games, err := ns.GetNotoriousGames(uuid, limit)
+	games, err := ns.GetNotoriousGames(ctx, uuid, limit)
 	if err != nil {
 		return 0, nil, err
 	}
 	return user.Notoriety, games, nil
 }
 
-func FormatNotorietyReport(ns NotorietyStore, uuid string, limit int) (string, error) {
-	games, err := ns.GetNotoriousGames(uuid, limit)
+func FormatNotorietyReport(ctx context.Context, ns NotorietyStore, uuid string, limit int) (string, error) {
+	games, err := ns.GetNotoriousGames(ctx, uuid, limit)
 	if err != nil {
 		return "", err
 	}
@@ -213,7 +213,7 @@ func ResetNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, uuid 
 	if err != nil {
 		return err
 	}
-	err = ns.DeleteNotoriousGames(user.UUID)
+	err = ns.DeleteNotoriousGames(ctx, user.UUID)
 	if err != nil {
 		return err
 	}
@@ -227,7 +227,7 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 	if ngt != ms.NotoriousGameType_GOOD {
 
 		// The user misbehaved, add this game to the list of notorious games
-		err := ns.AddNotoriousGame(user.UUID, guid, int(ngt), notoriousGameTimestamp())
+		err := ns.AddNotoriousGame(ctx, user.UUID, guid, int(ngt), notoriousGameTimestamp())
 		if err != nil {
 			return err
 		}
@@ -249,7 +249,7 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 			if err != nil {
 				return err
 			}
-			notorietyReport, err := FormatNotorietyReport(ns, user.UUID, 10)
+			notorietyReport, err := FormatNotorietyReport(ctx, ns, user.UUID, 10)
 			// Failing to get the report should not be fatal since it would just be
 			// an inconvenience for the moderators, so just log the error and move on
 			if err != nil {

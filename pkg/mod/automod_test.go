@@ -27,6 +27,7 @@ import (
 	"github.com/domino14/macondo/alphabet"
 	macondoconfig "github.com/domino14/macondo/config"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lithammer/shortuuid"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
@@ -79,8 +80,8 @@ func tournamentStore(cfg *config.Config, gs gameplay.GameStore) tournament.Tourn
 	return tournamentStore
 }
 
-func notorietyStore() pkgmod.NotorietyStore {
-	n, err := mod.NewNotorietyStore(common.TestingPostgresConnDSN())
+func notorietyStore(pool *pgxpool.Pool) *mod.DBStore {
+	n, err := mod.NewDBStore(pool)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
@@ -129,11 +130,17 @@ func listStatStore() pkgstats.ListStatStore {
 	return s
 }
 
-func recreateDB() {
+func recreateDB() *pgxpool.Pool {
 	err := common.RecreateTestDB()
 	if err != nil {
 		panic(err)
 	}
+
+	pool, err := common.OpenTestingDB()
+	if err != nil {
+		panic(err)
+	}
+
 	// Create a user table. Initialize the user store.
 	ustore, _ := userStore()
 
@@ -148,6 +155,7 @@ func recreateDB() {
 			log.Fatal().Err(err).Msg("error")
 		}
 	}
+	return pool
 }
 
 func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStore, initialTime int, ratingMode pb.RatingMode) (
@@ -186,7 +194,7 @@ func playGame(ctx context.Context,
 	g *entity.Game,
 	ustore pkguser.Store,
 	lstore pkgstats.ListStatStore,
-	nstore pkgmod.NotorietyStore,
+	nstore *mod.DBStore,
 	tstore tournament.TournamentStore,
 	gstore gameplay.GameStore,
 	turns []*pb.ClientGameplayEvent,
@@ -314,13 +322,13 @@ func comparePlayerNotorieties(pnrs []*ms.NotorietyReport, ustore pkguser.Store, 
 func TestNotoriety(t *testing.T) {
 	//zerolog.SetGlobalLevel(zerolog.Disabled)
 	is := is.New(t)
-	recreateDB()
+	pool := recreateDB()
 
 	ctx := context.WithValue(context.Background(), config.CtxKeyword, &config.Config{MacondoConfig: DefaultConfig})
 
 	ustore, uDBstore := userStore()
 	lstore := listStatStore()
-	nstore := notorietyStore()
+	nstore := notorietyStore(pool)
 	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
 
@@ -800,7 +808,7 @@ func TestNotoriety(t *testing.T) {
 
 	uDBstore.Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
-	nstore.(*mod.NotorietyStore).Disconnect()
+	nstore.Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
 }

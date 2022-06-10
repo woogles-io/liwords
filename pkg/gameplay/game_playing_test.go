@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 
@@ -47,8 +48,8 @@ func tournamentStore(cfg *config.Config, gs gameplay.GameStore) tournament.Tourn
 	return tournamentStore
 }
 
-func notorietyStore() pkgmod.NotorietyStore {
-	n, err := mod.NewNotorietyStore(common.TestingPostgresConnDSN())
+func notorietyStore(pool *pgxpool.Pool) pkgmod.NotorietyStore {
+	n, err := mod.NewDBStore(pool)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
@@ -109,9 +110,9 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStor
 
 func TestInitializeGame(t *testing.T) {
 	is := is.New(t)
-	recreateDB()
+	pool := recreateDB()
 
-	ustore := userStore()
+	ustore := userStore(pool)
 	lstore := listStatStore()
 	cfg, gstore := gameStore(ustore)
 
@@ -129,11 +130,11 @@ func TestInitializeGame(t *testing.T) {
 
 func TestWrongTurn(t *testing.T) {
 	is := is.New(t)
-	recreateDB()
+	pool := recreateDB()
 
-	ustore := userStore()
+	ustore := userStore(pool)
 	lstore := listStatStore()
-	nstore := notorietyStore()
+	nstore := notorietyStore(pool)
 	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
 
@@ -160,18 +161,18 @@ func TestWrongTurn(t *testing.T) {
 	is.Equal(len(consumer.evts), 1)
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
-	nstore.(*mod.NotorietyStore).Disconnect()
+	nstore.(*mod.DBStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
 }
 
 func Test5ptBadWord(t *testing.T) {
 	is := is.New(t)
-	recreateDB()
+	pool := recreateDB()
 
-	ustore := userStore()
+	ustore := userStore(pool)
 	lstore := listStatStore()
-	nstore := notorietyStore()
+	nstore := notorietyStore(pool)
 	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
 
@@ -209,17 +210,17 @@ func Test5ptBadWord(t *testing.T) {
 
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
-	nstore.(*mod.NotorietyStore).Disconnect()
+	nstore.(*mod.DBStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
 }
 
 func TestDoubleChallengeBadWord(t *testing.T) {
 	is := is.New(t)
-	recreateDB()
-	ustore := userStore()
+	pool := recreateDB()
+	ustore := userStore(pool)
 	lstore := listStatStore()
-	nstore := notorietyStore()
+	nstore := notorietyStore(pool)
 	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
 
@@ -274,18 +275,18 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
-	nstore.(*mod.NotorietyStore).Disconnect()
+	nstore.(*mod.DBStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
 }
 
 func TestDoubleChallengeGoodWord(t *testing.T) {
 	is := is.New(t)
-	recreateDB()
+	pool := recreateDB()
 
-	ustore := userStore()
+	ustore := userStore(pool)
 	lstore := listStatStore()
-	nstore := notorietyStore()
+	nstore := notorietyStore(pool)
 	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
 
@@ -338,18 +339,18 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
-	nstore.(*mod.NotorietyStore).Disconnect()
+	nstore.(*mod.DBStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
 }
 
 func TestQuickdata(t *testing.T) {
 	is := is.New(t)
-	recreateDB()
+	pool := recreateDB()
 
-	ustore := userStore()
+	ustore := userStore(pool)
 	lstore := listStatStore()
-	nstore := notorietyStore()
+	nstore := notorietyStore(pool)
 	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
 
@@ -409,7 +410,7 @@ func TestQuickdata(t *testing.T) {
 	cancel()
 	<-donechan
 	ustore.(*user.DBStore).Disconnect()
-	nstore.(*mod.NotorietyStore).Disconnect()
+	nstore.(*mod.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()

@@ -2,119 +2,37 @@ package soughtgame
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"time"
+	"fmt"
 
-	"gorm.io/datatypes"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
-
-	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stores/common"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rs/zerolog/log"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
 type DBStore struct {
-	cfg *config.Config
-	db  *gorm.DB
+	dbPool *pgxpool.Pool
 }
 
-type soughtgame struct {
-	CreatedAt time.Time
-	UUID      string `gorm:"index"`
-	Seeker    string `gorm:"index"`
-
-	Type         string // seek, match
-	SeekerConnID string `gorm:"index"`
-	// Only for match requests
-	Receiver            string `gorm:"index"`
-	ReceiverConnID      string `gorm:"index"`
-	ReceiverIsPermanent bool
-
-	Request datatypes.JSON
+func NewDBStore(p *pgxpool.Pool) (*DBStore, error) {
+	return &DBStore{dbPool: p}, nil
 }
 
-func NewDBStore(config *config.Config) (*DBStore, error) {
-	db, err := gorm.Open(postgres.Open(config.DBConnDSN), &gorm.Config{
-		Logger: common.GormLogger,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return &DBStore{db: db, cfg: config}, nil
+func (s *DBStore) Disconnect() {
+	s.dbPool.Close()
 }
 
-func (s *DBStore) sgFromDBObj(g *soughtgame) (*entity.SoughtGame, error) {
-	sr := &pb.SeekRequest{}
-	err := json.Unmarshal(g.Request, sr)
-	if err != nil {
-		return nil, err
-	}
-	return &entity.SoughtGame{SeekRequest: sr}, nil
-}
-
-// Get gets the sought game with the given ID.
-func (s *DBStore) Get(ctx context.Context, id string) (*entity.SoughtGame, error) {
-	g := &soughtgame{}
-	ctxDB := s.db.WithContext(ctx)
-	if result := ctxDB.Where("uuid = ?", id).First(g); result.Error != nil {
-		return nil, result.Error
-	}
-	return s.sgFromDBObj(g)
-}
-
-// GetBySeekerConnID gets the sought game with the given socket connection ID for the seeker.
-func (s *DBStore) GetBySeekerConnID(ctx context.Context, connID string) (*entity.SoughtGame, error) {
-	g := &soughtgame{}
-	ctxDB := s.db.WithContext(ctx)
-	if result := ctxDB.Where("seeker_conn_id = ?", connID).First(g); result.Error != nil {
-		return nil, result.Error
-	}
-	return s.sgFromDBObj(g)
-}
-
-// GetByReceiverConnID gets the sought game with the given socket connection ID for the receiver.
-func (s *DBStore) GetByReceiverConnID(ctx context.Context, connID string) (*entity.SoughtGame, error) {
-	g := &soughtgame{}
-	ctxDB := s.db.WithContext(ctx)
-	if result := ctxDB.Where("receiver_conn_id = ?", connID).First(g); result.Error != nil {
-		return nil, result.Error
-	}
-	return s.sgFromDBObj(g)
-}
-
-func (s *DBStore) getBySeekerID(ctx context.Context, seekerID string) (*entity.SoughtGame, error) {
-	g := &soughtgame{}
-	ctxDB := s.db.WithContext(ctx)
-	if result := ctxDB.Where("seeker = ?", seekerID).First(g); result.Error != nil {
-		return nil, result.Error
-	}
-	return s.sgFromDBObj(g)
-}
-
-func (s *DBStore) getByReceiverID(ctx context.Context, receiverID string) (*entity.SoughtGame, error) {
-	g := &soughtgame{}
-	ctxDB := s.db.WithContext(ctx)
-	if result := ctxDB.Where("receiver = ?", receiverID).First(g); result.Error != nil {
-		return nil, result.Error
-	}
-	return s.sgFromDBObj(g)
-}
-
-// Set sets the sought-game in the database.
-func (s *DBStore) Set(ctx context.Context, game *entity.SoughtGame) error {
-	var bts []byte
-	var sgtype string
-	var err error
-	bts, err = json.Marshal(game.SeekRequest)
-
+func (s *DBStore) New(ctx context.Context, game *entity.SoughtGame) error {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback(ctx)
+
 	// For open seek requests, receiverConnID
 	// might return errors. This is okay, when setting
 	// sought games, we just want to set whatever is available
@@ -125,169 +43,301 @@ func (s *DBStore) Set(ctx context.Context, game *entity.SoughtGame) error {
 	receiver, _ := game.ReceiverUserID()
 	receiverConnID, _ := game.ReceiverConnID()
 
-	dbg := &soughtgame{
-		UUID:           id,
-		SeekerConnID:   seekerConnID,
-		Seeker:         seeker,
-		Receiver:       receiver,
-		ReceiverConnID: receiverConnID,
-		Type:           sgtype,
-		Request:        bts,
+	_, err = tx.Exec(ctx, `INSERT INTO sought_games (uuid, seeker, seeker_conn_id, receiver, receiver_conn_id, request) VALUES ($1, $2, $3, $4, $5, $6)`,
+		id, seeker, seekerConnID, receiver, receiverConnID, game.SeekRequest)
+	if err != nil {
+		return err
 	}
-	ctxDB := s.db.WithContext(ctx)
-	result := ctxDB.Create(dbg)
-	return result.Error
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (s *DBStore) deleteSoughtGame(ctx context.Context, id string) error {
-	ctxDB := s.db.WithContext(ctx)
-	result := ctxDB.Where("uuid = ?", id).Delete(&soughtgame{})
-	return result.Error
+// Get gets the sought game with the given ID.
+func (s *DBStore) Get(ctx context.Context, id string) (*entity.SoughtGame, error) {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	sg, err := getSoughtGameBy(ctx, tx, &common.CommonDBConfig{SelectByType: common.SelectByUUID, Value: id})
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return sg, nil
+}
+
+// GetBySeekerConnID gets the sought game with the given socket connection ID for the seeker.
+func (s *DBStore) GetBySeekerConnID(ctx context.Context, connID string) (*entity.SoughtGame, error) {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	sg, err := getSoughtGameBy(ctx, tx, &common.CommonDBConfig{SelectByType: common.SelectBySeekerConnID, Value: connID})
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return sg, nil
+}
+
+// GetByReceiverConnID gets the sought game with the given socket connection ID for the receiver.
+func (s *DBStore) GetByReceiverConnID(ctx context.Context, connID string) (*entity.SoughtGame, error) {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	sg, err := getSoughtGameBy(ctx, tx, &common.CommonDBConfig{SelectByType: common.SelectByReceiverConnID, Value: connID})
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return sg, nil
 }
 
 func (s *DBStore) Delete(ctx context.Context, id string) error {
-	return s.deleteSoughtGame(ctx, id)
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	err = common.Delete(ctx, tx, &common.CommonDBConfig{TableType: common.SoughtGamesTable, SelectByType: common.SelectByUUID, Value: id})
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	return nil
 }
 
 // ExpireOld expires old seek requests. Usually this shouldn't be necessary
 // unless something weird happens.
 func (s *DBStore) ExpireOld(ctx context.Context) error {
-	ctxDB := s.db.WithContext(ctx)
-
-	// Don't expire tournament match requests; handle this elsewhere.
-	result := ctxDB.Where("created_at < now() - interval '1 hour' and type in ('match', 'seek')").Delete(&soughtgame{})
-	if result.Error == nil && result.RowsAffected > 0 {
-		log.Info().Int("rows-affected", int(result.RowsAffected)).Msg("expire-old-seeks")
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil
 	}
-	return result.Error
+	defer tx.Rollback(ctx)
+
+	result, err := tx.Exec(ctx, `DELETE FROM soughtgames WHERE created_at < NOW() - INTERVAL '1 hour'`)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() > 0 {
+		log.Info().Int("rows-affected", int(result.RowsAffected())).Msg("expire-old-seeks")
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil
+	}
+	return nil
 }
 
 // DeleteForUser deletes the game by seeker ID
 func (s *DBStore) DeleteForUser(ctx context.Context, userID string) (*entity.SoughtGame, error) {
-	sg, err := s.getBySeekerID(ctx, userID)
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
+	defer tx.Rollback(ctx)
 
-	id, err := sg.ID()
+	sg, err := getSoughtGameBy(ctx, tx, &common.CommonDBConfig{SelectByType: common.SelectBySeekerID, Value: userID})
 	if err != nil {
 		return nil, err
 	}
 
-	return sg, s.deleteSoughtGame(ctx, id)
+	err = common.Delete(ctx, tx, &common.CommonDBConfig{TableType: common.SoughtGamesTable, SelectByType: common.SelectBySeekerID, Value: userID})
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return sg, nil
 }
 
 // UpdateForReceiver updates the receiver's status when the receiver leaves
 func (s *DBStore) UpdateForReceiver(ctx context.Context, receiverID string) (*entity.SoughtGame, error) {
-	rg, err := s.getByReceiverID(ctx, receiverID)
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
+	defer tx.Rollback(ctx)
 
-	receiverIsPermanent, err := rg.ReceiverIsPermanent()
+	sg, err := getSoughtGameBy(ctx, tx, &common.CommonDBConfig{SelectByType: common.SelectByReceiverID, Value: receiverID})
 	if err != nil {
 		return nil, err
 	}
 
-	rg.SeekRequest.ReceiverState = pb.SeekState_ABSENT
-	if !receiverIsPermanent {
-		rg.SeekRequest.ReceivingUser = nil
+	result, err := tx.Exec(ctx, `UPDATE soughtgames SET request = jsonb_set(request, array['receiver_state'], $1) WHERE receiver = $2`, pb.SeekState_ABSENT, receiverID)
+	if err != nil {
+		return nil, err
 	}
-	return rg, s.Set(ctx, rg)
+	if result.RowsAffected() != 1 {
+		return nil, fmt.Errorf("failed to update receiver status: %s", receiverID)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	return sg, nil
 }
 
 // DeleteForSeekerConnID deletes the game by connection ID
 func (s *DBStore) DeleteForSeekerConnID(ctx context.Context, connID string) (*entity.SoughtGame, error) {
-	sg, err := s.GetBySeekerConnID(ctx, connID)
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
-	id, err := sg.ID()
+	defer tx.Rollback(ctx)
+
+	sg, err := getSoughtGameBy(ctx, tx, &common.CommonDBConfig{SelectByType: common.SelectBySeekerConnID, Value: connID})
 	if err != nil {
 		return nil, err
 	}
 
-	return sg, s.deleteSoughtGame(ctx, id)
+	err = common.Delete(ctx, tx, &common.CommonDBConfig{TableType: common.SoughtGamesTable, SelectByType: common.SelectBySeekerConnID, Value: connID})
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return sg, nil
 }
 
-// DeleteForConnID modifies the game by connection ID
 func (s *DBStore) UpdateForReceiverConnID(ctx context.Context, connID string) (*entity.SoughtGame, error) {
-	rg, err := s.GetByReceiverConnID(ctx, connID)
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
+	defer tx.Rollback(ctx)
 
-	receiverIsPermanent, err := rg.ReceiverIsPermanent()
+	sg, err := getSoughtGameBy(ctx, tx, &common.CommonDBConfig{SelectByType: common.SelectByReceiverConnID, Value: connID})
 	if err != nil {
 		return nil, err
 	}
 
-	rg.SeekRequest.ReceiverState = pb.SeekState_ABSENT
-	if !receiverIsPermanent {
-		rg.SeekRequest.ReceivingUser = nil
+	result, err := tx.Exec(ctx, `UPDATE soughtgames SET request = jsonb_set(request, array['receiver_state'], $1) WHERE receiver_conn_id = $2`, pb.SeekState_ABSENT, connID)
+	if err != nil {
+		return nil, err
 	}
-	return rg, s.Set(ctx, rg)
+	if result.RowsAffected() != 1 {
+		return nil, fmt.Errorf("failed to update receiver status: %s", connID)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	return sg, nil
 }
 
 // ListOpenSeeks lists all open seek requests for receiverID, in tourneyID (optional)
 func (s *DBStore) ListOpenSeeks(ctx context.Context, receiverID, tourneyID string) ([]*entity.SoughtGame, error) {
-	var games []soughtgame
-	var err error
-	ctxDB := s.db.WithContext(ctx)
-	query := ctxDB.Table("soughtgames")
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
 
+	var rows pgx.Rows
 	if tourneyID != "" {
-		query = query.Where("receiver = ? AND request->>'tournament_id' = ?", receiverID, tourneyID)
+		rows, err = tx.Query(ctx, `SELECT request FROM soughtgames WHERE receiver = $1 AND request->>'tournament_id' = $2`, receiverID, tourneyID)
 	} else {
-		query = query.Where("receiver = ? OR receiver = ''", receiverID)
+		rows, err = tx.Query(ctx, `SELECT request FROM soughtgames WHERE receiver = $1 OR receiver = ''`, receiverID)
 	}
-	if result := query.Scan(&games); result.Error != nil {
-		return nil, result.Error
+	if err != nil {
+		return nil, err
 	}
+	defer rows.Close()
 
-	entGames := make([]*entity.SoughtGame, len(games))
-	for idx, g := range games {
-		entGames[idx], err = s.sgFromDBObj(&g)
-		if err != nil {
+	games := []*entity.SoughtGame{}
+
+	for rows.Next() {
+		var req pb.SeekRequest
+		if err := rows.Scan(&req); err != nil {
 			return nil, err
 		}
+		games = append(games, &entity.SoughtGame{SeekRequest: &req})
 	}
-	return entGames, nil
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return games, nil
 }
 
 // ExistsForUser returns true if the user already has an outstanding seek request.
 func (s *DBStore) ExistsForUser(ctx context.Context, userID string) (bool, error) {
-	ctxDB := s.db.WithContext(ctx)
-	var count int64
-	if result := ctxDB.Model(&soughtgame{}).Where("seeker = ?", userID).Count(&count); result.Error != nil {
-		return false, result.Error
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return false, err
 	}
-	return count > 0, nil
+	defer tx.Rollback(ctx)
+
+	var exists bool
+	err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM soughtgames WHERE seeker = $1)`, userID).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return false, err
+	}
+
+	return exists, nil
 }
 
 // UserMatchedBy returns true if there is an open seek request from matcher for user
 func (s *DBStore) UserMatchedBy(ctx context.Context, userID, matcher string) (bool, error) {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback(ctx)
 
-	ctxDB := s.db.WithContext(ctx)
-	var count int64
-
-	if result := ctxDB.Model(&soughtgame{}).
-		Where("receiver = ? AND seeker = ?", userID, matcher).
-		Count(&count); result.Error != nil {
-		return false, result.Error
+	var exists bool
+	err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM soughtgames WHERE receiver = $1 AND seeker = $2)`, userID, matcher).Scan(&exists)
+	if err != nil {
+		return false, err
 	}
 
-	return count > 0, nil
+	if err := tx.Commit(ctx); err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
+
+func getSoughtGameBy(ctx context.Context, tx pgx.Tx, cfg *common.CommonDBConfig) (*entity.SoughtGame, error) {
+	var req pb.SeekRequest
+	err := tx.QueryRow(ctx, fmt.Sprintf("SELECT request FROM users WHERE %s = $1", common.SelectByTypeToString[cfg.SelectByType]), cfg.Value).Scan(&req)
+	if err == pgx.ErrNoRows {
+		return nil, errors.New("sought game not found")
+	} else if err != nil {
+		return nil, err
+	}
+	return &entity.SoughtGame{SeekRequest: &req}, nil
 }

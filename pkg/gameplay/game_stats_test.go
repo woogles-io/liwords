@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 
@@ -56,11 +57,7 @@ var gameEndedEventObj = &pb.GameEndedEvent{
 	Tie:       false,
 }
 
-func userStore() pkguser.Store {
-	pool, err := common.OpenTestingDB()
-	if err != nil {
-		panic(err)
-	}
+func userStore(pool *pgxpool.Pool) pkguser.Store {
 	ustore, err := user.NewDBStore(pool)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
@@ -76,14 +73,19 @@ func listStatStore() pkgstats.ListStatStore {
 	return s
 }
 
-func recreateDB() {
+func recreateDB() *pgxpool.Pool {
 	// Create a database.
 	err := common.RecreateTestDB()
 	if err != nil {
 		panic(err)
 	}
+	pool, err := common.OpenTestingDB()
+	if err != nil {
+		panic(err)
+	}
+
 	// Create a user table. Initialize the user store.
-	ustore := userStore()
+	ustore := userStore(pool)
 
 	// Insert a couple of users into the table.
 
@@ -98,6 +100,7 @@ func recreateDB() {
 		}
 	}
 	ustore.(*user.DBStore).Disconnect()
+	return pool
 }
 
 func TestMain(m *testing.M) {
@@ -115,8 +118,8 @@ func variantKey(req *pb.GameRequest) entity.VariantKey {
 
 func TestComputeGameStats(t *testing.T) {
 	is := is.New(t)
-	recreateDB()
-	ustore := userStore()
+	pool := recreateDB()
+	ustore := userStore(pool)
 	lstore := listStatStore()
 
 	histjson, err := ioutil.ReadFile("./testdata/game1/history.json")
@@ -169,8 +172,8 @@ func TestComputeGameStats(t *testing.T) {
 
 func TestComputeGameStats2(t *testing.T) {
 	is := is.New(t)
-	recreateDB()
-	ustore := userStore()
+	pool := recreateDB()
+	ustore := userStore(pool)
 	lstore := listStatStore()
 
 	histjson, err := ioutil.ReadFile("./testdata/game2/history.json")
@@ -219,8 +222,8 @@ func TestComputeGameStats2(t *testing.T) {
 
 func TestComputePlayerStats(t *testing.T) {
 	is := is.New(t)
-	recreateDB()
-	ustore := userStore()
+	pool := recreateDB()
+	ustore := userStore(pool)
 	lstore := listStatStore()
 
 	histjson, err := ioutil.ReadFile("./testdata/game1/history.json")
@@ -280,8 +283,8 @@ func TestComputePlayerStats(t *testing.T) {
 
 func TestComputePlayerStatsMultipleGames(t *testing.T) {
 	is := is.New(t)
-	recreateDB()
-	ustore := userStore()
+	pool := recreateDB()
+	ustore := userStore(pool)
 	lstore := listStatStore()
 
 	for _, g := range []string{"game1", "game2"} {

@@ -30,7 +30,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	notorietyStore, err := mod.NewNotorietyStore(cfg.DBConnDSN)
+	notorietyStore, err := mod.NewDBStore(pool)
 	if err != nil {
 		panic(err)
 	}

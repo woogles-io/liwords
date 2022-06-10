@@ -25,6 +25,10 @@ const (
 	SelectByUsername
 	SelectByEmail
 	SelectByAPIKey
+	SelectBySeekerID
+	SelectBySeekerConnID
+	SelectByReceiverID
+	SelectByReceiverConnID
 )
 
 type TableType int
@@ -34,6 +38,7 @@ const (
 	ProfilesTable
 	GamesTable
 	PuzzlesTable
+	SoughtGamesTable
 )
 
 type CommonDBConfig struct {
@@ -45,11 +50,15 @@ type CommonDBConfig struct {
 }
 
 var SelectByTypeToString = map[SelectByType]string{
-	SelectByUUID:     "uuid",
-	SelectByID:       "id",
-	SelectByUsername: "lower(username)",
-	SelectByEmail:    "lower(email)",
-	SelectByAPIKey:   "api_key",
+	SelectByUUID:           "uuid",
+	SelectByID:             "id",
+	SelectByUsername:       "lower(username)",
+	SelectByEmail:          "lower(email)",
+	SelectByAPIKey:         "api_key",
+	SelectBySeekerID:       "seeker",
+	SelectBySeekerConnID:   "seeker_conn_id",
+	SelectByReceiverID:     "receiver",
+	SelectByReceiverConnID: "receiver_conn_id",
 }
 
 var TableTypeToString = map[TableType]string{
@@ -239,6 +248,18 @@ func Update(ctx context.Context, tx pgx.Tx, columns []string, args []interface{}
 		return entity.NewWooglesError(ipc.WooglesError_USER_UPDATE_NOT_FOUND, fmt.Sprintf("%v", cfg.Value))
 	}
 
+	return nil
+}
+
+func Delete(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) error {
+	query := fmt.Sprintf(`DELETE FROM %s WHERE %s = $1`, TableTypeToString[cfg.TableType], SelectByTypeToString[cfg.SelectByType])
+	result, err := tx.Exec(ctx, query, cfg.Value)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() != 1 {
+		return fmt.Errorf("value %v not found for %v in delete for table %s", cfg.Value, SelectByTypeToString[cfg.SelectByType], TableTypeToString[cfg.TableType])
+	}
 	return nil
 }
 

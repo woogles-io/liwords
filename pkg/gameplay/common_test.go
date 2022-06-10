@@ -30,10 +30,10 @@ type gamesetup struct {
 }
 
 func setupNewGame() *gamesetup {
-	recreateDB()
+	pool := recreateDB()
 
-	ustore := userStore()
-	nstore := notorietyStore()
+	ustore := userStore(pool)
+	nstore := notorietyStore(pool)
 	lstore := listStatStore()
 	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
@@ -47,7 +47,7 @@ func setupNewGame() *gamesetup {
 
 func teardownGame(g *gamesetup) {
 	g.ustore.(*user.DBStore).Disconnect()
-	g.nstore.(*mod.NotorietyStore).Disconnect()
+	g.nstore.(*mod.DBStore).Disconnect()
 	g.lstore.(*stats.ListStatStore).Disconnect()
 	g.gstore.(*game.Cache).Disconnect()
 	g.tstore.(*ts.Cache).Disconnect()
