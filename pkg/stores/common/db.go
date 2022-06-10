@@ -252,7 +252,7 @@ func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.Use
 	var is_admin sql.NullBool
 	var is_director sql.NullBool
 	var is_mod sql.NullBool
-	var notoriety int
+	var notoriety sql.NullInt64
 	var actions entity.Actions
 
 	placeholder := "$1"
@@ -280,7 +280,7 @@ func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.Use
 		IsAdmin:    is_admin.Bool,
 		IsDirector: is_director.Bool,
 		IsMod:      is_mod.Bool,
-		Notoriety:  notoriety,
+		Notoriety:  int(notoriety.Int64),
 		Actions:    &actions,
 	}
 

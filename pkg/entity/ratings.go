@@ -3,7 +3,6 @@ package entity
 import (
 	"database/sql/driver"
 	"encoding/json"
-	"errors"
 	"strings"
 	"time"
 
@@ -55,12 +54,12 @@ func (r *Ratings) Value() (driver.Value, error) {
 }
 
 func (r *Ratings) Scan(value interface{}) error {
+	var err error
 	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed for ratings")
+	if ok {
+		err = json.Unmarshal(b, &r)
 	}
-
-	return json.Unmarshal(b, &r)
+	return err
 }
 
 func (r *SingleRating) Value() (driver.Value, error) {
@@ -68,12 +67,12 @@ func (r *SingleRating) Value() (driver.Value, error) {
 }
 
 func (r *SingleRating) Scan(value interface{}) error {
+	var err error
 	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed for single rating")
+	if ok {
+		err = json.Unmarshal(b, &r)
 	}
-
-	return json.Unmarshal(b, &r)
+	return err
 }
 
 func transformLexiconName(lexiconName string) string {
