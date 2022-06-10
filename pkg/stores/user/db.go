@@ -343,40 +343,41 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 
 	for rows.Next() {
 		var UUID string
-		var username string
-		var internalBot bool
-		var countryCode string
-		var avatarUrl string
-		var firstName string
-		var lastName string
-		var birthDate string
-		if err := rows.Scan(&UUID, &username, &internalBot, &countryCode, &avatarUrl, &firstName, &lastName, &birthDate); err != nil {
+		var usernameOption sql.NullString
+		var internalBotOption sql.NullBool
+		var countryCodeOption sql.NullString
+		var avatarUrlOption sql.NullString
+		var firstNameOption sql.NullString
+		var lastNameOption sql.NullString
+		var birthDateOption sql.NullString
+		if err := rows.Scan(&UUID, &usernameOption, &internalBotOption, &countryCodeOption, &avatarUrlOption, &firstNameOption, &lastNameOption, &birthDateOption); err != nil {
 			return nil, err
 		}
 
-		if avatarUrl == "" && internalBot {
+		avatarUrl := avatarUrlOption.String
+		if avatarUrl == "" && internalBotOption.Bool {
 			// see entity/user.go
 			avatarUrl = "https://woogles-prod-assets.s3.amazonaws.com/macondog.png"
 		}
-		subjectIsAdult := entity.IsAdult(birthDate, now)
+		subjectIsAdult := entity.IsAdult(birthDateOption.String, now)
 		censoredAvatarUrl := ""
 		censoredFullName := ""
 		if subjectIsAdult {
 			censoredAvatarUrl = avatarUrl
 			// see entity/user.go RealName()
-			if firstName != "" {
-				if lastName != "" {
-					censoredFullName = firstName + " " + lastName
+			if firstNameOption.String != "" {
+				if lastNameOption.String != "" {
+					censoredFullName = firstNameOption.String + " " + lastNameOption.String
 				} else {
-					censoredFullName = firstName
+					censoredFullName = firstNameOption.String
 				}
 			} else {
-				censoredFullName = lastName
+				censoredFullName = lastNameOption.String
 			}
 		}
 		response[UUID] = &pb.BriefProfile{
-			Username:    username,
-			CountryCode: countryCode,
+			Username:    usernameOption.String,
+			CountryCode: countryCodeOption.String,
 			AvatarUrl:   censoredAvatarUrl,
 			FullName:    censoredFullName,
 		}
