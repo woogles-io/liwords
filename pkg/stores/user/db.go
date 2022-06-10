@@ -343,14 +343,14 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 
 	for rows.Next() {
 		var UUID string
-		var usernameOption sql.NullString
+		var username string
 		var internalBotOption sql.NullBool
 		var countryCodeOption sql.NullString
 		var avatarUrlOption sql.NullString
 		var firstNameOption sql.NullString
 		var lastNameOption sql.NullString
 		var birthDateOption sql.NullString
-		if err := rows.Scan(&UUID, &usernameOption, &internalBotOption, &countryCodeOption, &avatarUrlOption, &firstNameOption, &lastNameOption, &birthDateOption); err != nil {
+		if err := rows.Scan(&UUID, &username, &internalBotOption, &countryCodeOption, &avatarUrlOption, &firstNameOption, &lastNameOption, &birthDateOption); err != nil {
 			return nil, err
 		}
 
@@ -376,7 +376,7 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 			}
 		}
 		response[UUID] = &pb.BriefProfile{
-			Username:    usernameOption.String,
+			Username:    username,
 			CountryCode: countryCodeOption.String,
 			AvatarUrl:   censoredAvatarUrl,
 			FullName:    censoredFullName,
