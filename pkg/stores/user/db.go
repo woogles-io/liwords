@@ -325,7 +325,7 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 
 	query := fmt.Sprintf(`SELECT uuid, username, internal_bot, country_code, avatar_url, first_name, last_name, birth_date
 		FROM users LEFT JOIN profiles ON users.id = profiles.user_id
-		WHERE uuid IN (%s)`, common.BuildIn(len(uuids)))
+		WHERE uuid IN (%s)`, common.BuildIn(len(uuids), 1))
 
 	args := make([]interface{}, len(uuids))
 	for i := range uuids {

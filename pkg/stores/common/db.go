@@ -385,10 +385,10 @@ func OpenDB(host, port, name, user, password, sslmode string) (*pgxpool.Pool, er
 	return dbPool, nil
 }
 
-func BuildIn(num int) string {
+func BuildIn(num int, start int) string {
 	var stmt strings.Builder
-	fmt.Fprintf(&stmt, "$%d", 1)
-	for i := 2; i <= num; i++ {
+	fmt.Fprintf(&stmt, "$%d", start)
+	for i := start + 1; i < start+num; i++ {
 		fmt.Fprintf(&stmt, ", $%d", i)
 	}
 	return stmt.String()
