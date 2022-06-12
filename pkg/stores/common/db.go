@@ -62,8 +62,11 @@ var SelectByTypeToString = map[SelectByType]string{
 }
 
 var TableTypeToString = map[TableType]string{
-	UsersTable:    "users",
-	ProfilesTable: "profiles",
+	UsersTable:       "users",
+	ProfilesTable:    "profiles",
+	GamesTable:       "games",
+	PuzzlesTable:     "puzzles",
+	SoughtGamesTable: "soughtgames",
 }
 
 var DefaultTxOptions = pgx.TxOptions{
@@ -258,7 +261,7 @@ func Delete(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) error {
 		return err
 	}
 	if result.RowsAffected() != 1 {
-		return fmt.Errorf("value %v not found for %v in delete for table %s", cfg.Value, SelectByTypeToString[cfg.SelectByType], TableTypeToString[cfg.TableType])
+		return fmt.Errorf("not exactly one value %v for %v in delete for table %s (%d rows)", cfg.Value, SelectByTypeToString[cfg.SelectByType], TableTypeToString[cfg.TableType], result.RowsAffected())
 	}
 	return nil
 }

@@ -6,37 +6,28 @@ import (
 	"strings"
 
 	"github.com/domino14/liwords/pkg/entity"
-	"github.com/jinzhu/gorm"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/rs/zerolog/log"
 )
 
 // A ListStatStore stores "list-based" statistics (for example, lists of player
 // bingos).
-type ListStatStore struct {
-	db *gorm.DB
+type DBStore struct {
+	dbPool *pgxpool.Pool
 }
 
-type liststat struct {
-	GameID    string `gorm:"index"`
-	PlayerID  string `gorm:"index"`
-	Timestamp int64  `gorm:"index"` // unix timestamp in milliseconds
-
-	StatType int
-	Item     postgres.Jsonb
+func NewDBStore(p *pgxpool.Pool) (*DBStore, error) {
+	return &DBStore{dbPool: p}, nil
 }
 
-func NewListStatStore(dbURL string) (*ListStatStore, error) {
-	db, err := gorm.Open("postgres", dbURL)
-	if err != nil {
-		return nil, err
-	}
-	return &ListStatStore{db: db}, nil
+func (s *DBStore) Disconnect() {
+	s.dbPool.Close()
 }
 
 // XXX: This should be a transaction that queues up many inserts.
 // Fix before beta.
-func (l *ListStatStore) AddListItem(gameID string, playerID string, statType int,
+func (s *DBStore) AddListItem(gameID string, playerID string, statType int,
 	time int64, item entity.ListDatum) error {
 
 	jsonitem, err := json.Marshal(item)
@@ -58,7 +49,7 @@ func (l *ListStatStore) AddListItem(gameID string, playerID string, statType int
 // player ID.
 // XXX: This function will need to be modified a bit to work with a player ID of
 // "opponent" -- that is when we want to get user list stats for arbitrary opponents.
-func (l *ListStatStore) GetListItems(statType int, gameIds []string, playerID string) ([]*entity.ListItem, error) {
+func (s *DBStore) GetListItems(statType int, gameIds []string, playerID string) ([]*entity.ListItem, error) {
 	var stats []liststat
 
 	// playerID is optional
@@ -108,8 +99,4 @@ func (l *ListStatStore) GetListItems(statType int, gameIds []string, playerID st
 	}
 
 	return items, nil
-}
-
-func (l *ListStatStore) Disconnect() {
-	l.db.Close()
 }

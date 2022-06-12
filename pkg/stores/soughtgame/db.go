@@ -43,7 +43,7 @@ func (s *DBStore) New(ctx context.Context, game *entity.SoughtGame) error {
 	receiver, _ := game.ReceiverUserID()
 	receiverConnID, _ := game.ReceiverConnID()
 
-	_, err = tx.Exec(ctx, `INSERT INTO sought_games (uuid, seeker, seeker_conn_id, receiver, receiver_conn_id, request) VALUES ($1, $2, $3, $4, $5, $6)`,
+	_, err = tx.Exec(ctx, `INSERT INTO soughtgames (uuid, seeker, seeker_conn_id, receiver, receiver_conn_id, request) VALUES ($1, $2, $3, $4, $5, $6)`,
 		id, seeker, seekerConnID, receiver, receiverConnID, game.SeekRequest)
 	if err != nil {
 		return err
@@ -189,12 +189,13 @@ func (s *DBStore) UpdateForReceiver(ctx context.Context, receiverID string) (*en
 		return nil, err
 	}
 
+	sg.SeekRequest.ReceiverState = pb.SeekState_ABSENT
 	result, err := tx.Exec(ctx, `UPDATE soughtgames SET request = jsonb_set(request, array['receiver_state'], $1) WHERE receiver = $2`, pb.SeekState_ABSENT, receiverID)
 	if err != nil {
 		return nil, err
 	}
 	if result.RowsAffected() != 1 {
-		return nil, fmt.Errorf("failed to update receiver status: %s", receiverID)
+		return nil, fmt.Errorf("failed to update receiver status: %s (%d rows affected)", receiverID, result.RowsAffected())
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -240,12 +241,13 @@ func (s *DBStore) UpdateForReceiverConnID(ctx context.Context, connID string) (*
 		return nil, err
 	}
 
+	sg.SeekRequest.ReceiverState = pb.SeekState_ABSENT
 	result, err := tx.Exec(ctx, `UPDATE soughtgames SET request = jsonb_set(request, array['receiver_state'], $1) WHERE receiver_conn_id = $2`, pb.SeekState_ABSENT, connID)
 	if err != nil {
 		return nil, err
 	}
 	if result.RowsAffected() != 1 {
-		return nil, fmt.Errorf("failed to update receiver status: %s", connID)
+		return nil, fmt.Errorf("failed to update receiver status: %s (%d rows affected)", connID, result.RowsAffected())
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -333,7 +335,7 @@ func (s *DBStore) UserMatchedBy(ctx context.Context, userID, matcher string) (bo
 
 func getSoughtGameBy(ctx context.Context, tx pgx.Tx, cfg *common.CommonDBConfig) (*entity.SoughtGame, error) {
 	var req pb.SeekRequest
-	err := tx.QueryRow(ctx, fmt.Sprintf("SELECT request FROM users WHERE %s = $1", common.SelectByTypeToString[cfg.SelectByType]), cfg.Value).Scan(&req)
+	err := tx.QueryRow(ctx, fmt.Sprintf("SELECT request FROM soughtgames WHERE %s = $1", common.SelectByTypeToString[cfg.SelectByType]), cfg.Value).Scan(&req)
 	if err == pgx.ErrNoRows {
 		return nil, errors.New("sought game not found")
 	} else if err != nil {
