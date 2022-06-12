@@ -54,6 +54,7 @@ func recreateDB() (*DBStore, *pgxpool.Pool) {
 		{Username: "child", Email: "child@woogles.io", UUID: "child_uuid", Profile: &entity.Profile{AvatarUrl: "child_avatar_url", BirthDate: "2015-01-01", LastName: "kid"}},
 		{Username: "winter", Email: "winter@woogles.io", UUID: "winter_uuid", IsMod: true, Profile: &entity.Profile{AvatarUrl: "winter_avatar_url", BirthDate: "1972-03-20", FirstName: "winter"}},
 		{Username: "smith", Email: "smith@woogles.io", UUID: "smith_uuid", IsAdmin: true, Profile: &entity.Profile{AvatarUrl: "smith_avatar_url", BirthDate: "1950-07-08", LastName: "smith"}},
+		{Username: "noprofile", Email: "noprofile@woogles.io", UUID: "noprofile_uuid", Profile: &entity.Profile{}},
 		{Username: "mo", Email: "mo@woogles.io", UUID: "mo_uuid"},
 		{Username: "mod", Email: "mod@woogles.io", UUID: "mod_uuid", Actions: &entity.Actions{History: []*mod_service.ModAction{{Type: mod_service.ModActionType_SUSPEND_ACCOUNT}}}},
 		{Username: "mot", Email: "mot@woogles.io", UUID: "mot_uuid"},
@@ -64,13 +65,6 @@ func recreateDB() (*DBStore, *pgxpool.Pool) {
 		{Username: "moderns", Email: "moderns@woogles.io", UUID: "moderns_uuid"},
 		{Username: "modernes", Email: "modernes@woogles.io", UUID: "modernes_uuid", Actions: &entity.Actions{Current: map[string]*mod_service.ModAction{mod_service.ModActionType_SUSPEND_ACCOUNT.String(): {Type: mod_service.ModActionType_SUSPEND_ACCOUNT}}}},
 		{Username: "modernest", Email: "modernest@woogles.io", UUID: "modernest_uuid"},
-
-		// is/is not bot
-		// no actions
-		// action history
-		// suspended games
-		// suspended account with end time
-		// suspended account no end time
 	} {
 		err = ustore.New(context.Background(), u)
 		if err != nil {
@@ -110,7 +104,7 @@ func TestGet(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(cesarByUsername.UUID, cesarByAPIKey.UUID)
 
-	profileUUIDs := []string{"hasty_bot_uuid", "adult_uuid", "child_uuid", "winter_uuid", "smith_uuid"}
+	profileUUIDs := []string{"hasty_bot_uuid", "adult_uuid", "child_uuid", "winter_uuid", "smith_uuid", "noprofile_uuid"}
 	profiles, err := ustore.GetBriefProfiles(ctx, profileUUIDs)
 	is.NoErr(err)
 	is.Equal(profiles["hasty_bot_uuid"].AvatarUrl, "https://woogles-prod-assets.s3.amazonaws.com/macondog.png")
@@ -123,6 +117,10 @@ func TestGet(t *testing.T) {
 	is.Equal(profiles["winter_uuid"].FullName, "winter")
 	is.Equal(profiles["smith_uuid"].AvatarUrl, "smith_avatar_url")
 	is.Equal(profiles["smith_uuid"].FullName, "smith")
+	is.Equal(profiles["noprofile_uuid"].Username, "noprofile")
+	is.Equal(profiles["noprofile_uuid"].FullName, "")
+	is.Equal(profiles["noprofile_uuid"].CountryCode, "")
+	is.Equal(profiles["noprofile_uuid"].AvatarUrl, "")
 
 	bot, err := ustore.GetBot(ctx, macondopb.BotRequest_HASTY_BOT)
 	is.NoErr(err)
@@ -141,6 +139,59 @@ func TestGet(t *testing.T) {
 	sort.Strings(modList.AdminUserIds)
 	sort.Strings(modList.ModUserIds)
 	is.Equal(modList.AdminUserIds, []string{"adult_uuid", "smith_uuid"})
+	is.Equal(modList.ModUserIds, []string{"adult_uuid", "winter_uuid"})
+	ustore.Disconnect()
+}
+
+func TestGetNullValues(t *testing.T) {
+	is := is.New(t)
+	ustore, pool := recreateDB()
+	ctx := context.Background()
+
+	cesarByUsername, err := ustore.Get(ctx, "cesar")
+	is.NoErr(err)
+
+	setNullValues(ctx, pool, cesarByUsername.UUID)
+
+	cesarByUsername, err = ustore.Get(ctx, "cesar")
+	is.NoErr(err)
+
+	cesarByUUID, err := ustore.GetByUUID(ctx, cesarByUsername.UUID)
+	is.NoErr(err)
+	is.Equal(cesarByUsername.UUID, cesarByUUID.UUID)
+
+	cesarEmail := "cesar@woogles.io"
+	err = common.UpdateWithPool(ctx, pool, []string{"email"}, []interface{}{cesarEmail}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: cesarByUsername.UUID})
+	is.NoErr(err)
+
+	cesarByEmail, err := ustore.GetByEmail(ctx, cesarEmail)
+	is.NoErr(err)
+	is.Equal(cesarByUsername.UUID, cesarByEmail.UUID)
+
+	apiKey := "somekey"
+	err = common.UpdateWithPool(ctx, pool, []string{"api_key"}, []interface{}{apiKey}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: cesarByUsername.UUID})
+	is.NoErr(err)
+
+	cesarByAPIKey, err := ustore.GetByAPIKey(ctx, apiKey)
+	is.NoErr(err)
+	is.Equal(cesarByUsername.UUID, cesarByAPIKey.UUID)
+
+	profileUUIDs := []string{cesarByUsername.UUID}
+	profiles, err := ustore.GetBriefProfiles(ctx, profileUUIDs)
+	is.NoErr(err)
+	is.Equal(profiles[cesarByUsername.UUID].Username, "cesar")
+	is.Equal(profiles[cesarByUsername.UUID].FullName, "")
+	is.Equal(profiles[cesarByUsername.UUID].CountryCode, "")
+	is.Equal(profiles[cesarByUsername.UUID].AvatarUrl, "")
+
+	err = common.UpdateWithPool(ctx, pool, []string{"is_mod", "is_admin"}, []interface{}{nil, true}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: cesarByUsername.UUID})
+	is.NoErr(err)
+	// GetModList
+	modList, err := ustore.GetModList(ctx)
+	is.NoErr(err)
+	sort.Strings(modList.AdminUserIds)
+	sort.Strings(modList.ModUserIds)
+	is.Equal(modList.AdminUserIds, []string{"adult_uuid", cesarByUsername.UUID, "smith_uuid"})
 	is.Equal(modList.ModUserIds, []string{"adult_uuid", "winter_uuid"})
 	ustore.Disconnect()
 }
@@ -398,7 +449,7 @@ func TestMisc(t *testing.T) {
 	// ListAllIDs
 	allUsers, err := ustore.ListAllIDs(ctx)
 	is.NoErr(err)
-	is.Equal(len(allUsers), 18)
+	is.Equal(len(allUsers), 19)
 
 	winterUsername, err := ustore.Username(ctx, "winter_uuid")
 	is.NoErr(err)
@@ -406,7 +457,7 @@ func TestMisc(t *testing.T) {
 
 	count, err := ustore.Count(ctx)
 	is.NoErr(err)
-	is.Equal(count, int64(18))
+	is.Equal(count, int64(19))
 	ustore.Disconnect()
 }
 
@@ -641,6 +692,33 @@ func TestRemoveNonexistentFollower(t *testing.T) {
 	// Doesn't throw an error...
 
 	ustore.Disconnect()
+}
+
+func setNullValues(ctx context.Context, pool *pgxpool.Pool, uuid string) {
+	tx, err := pool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		panic(err)
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, `UPDATE users SET password = NULL, internal_bot = NULL, is_admin = NULL, api_key = NULL, is_director = NULL, is_mod = NULL, actions = NULL, notoriety = NULL WHERE uuid = $1`, uuid)
+	if err != nil {
+		panic(err)
+	}
+
+	id, err := common.GetUserDBIDFromUUID(ctx, tx, uuid)
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = tx.Exec(ctx, `UPDATE profiles SET first_name = NULL, last_name = NULL, country_code = NULL, title = NULL, about = NULL, ratings = NULL, stats = NULL, avatar_url = NULL, birth_date = NULL WHERE id = $1`, id)
+	if err != nil {
+		panic(err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		panic(err)
+	}
 }
 
 func getUsernamesFromBasicUsers(basicUsers []*user_service.BasicUser) []string {

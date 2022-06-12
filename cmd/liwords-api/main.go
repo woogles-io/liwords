@@ -93,7 +93,11 @@ func pingEndpoint(w http.ResponseWriter, r *http.Request) {
 func NewLoggingServerHooks() *twirp.ServerHooks {
 	return &twirp.ServerHooks{
 		Error: func(ctx context.Context, twerr twirp.Error) context.Context {
-			log.Err(twerr).Str("code", string(twerr.Code())).Msg("api-error")
+			method, _ := twirp.MethodName(ctx)
+			log.Err(twerr).
+				Str("code", string(twerr.Code())).
+				Str("method", method).
+				Msg("api-error")
 			// Currently the only Woogles Errors are tournament errors
 			// so this will need to be changed later.
 			if len(twerr.Msg()) > 0 &&

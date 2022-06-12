@@ -270,14 +270,14 @@ func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.Use
 	var id uint
 	var username string
 	var uuid string
-	var email string
-	var password string
-	internal_bot := &sql.NullBool{}
-	is_admin := &sql.NullBool{}
-	is_director := &sql.NullBool{}
-	is_mod := &sql.NullBool{}
-	var notoriety int
-	var actions *entity.Actions
+	var email sql.NullString
+	var password sql.NullString
+	var internal_bot sql.NullBool
+	var is_admin sql.NullBool
+	var is_director sql.NullBool
+	var is_mod sql.NullBool
+	var notoriety sql.NullInt64
+	var actions entity.Actions
 
 	placeholder := "$1"
 
@@ -286,7 +286,7 @@ func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.Use
 	}
 
 	query := fmt.Sprintf("SELECT id, username, uuid, email, password, internal_bot, is_admin, is_director, is_mod, notoriety, actions FROM users WHERE %s = %s", SelectByTypeToString[cfg.SelectByType], placeholder)
-	err := tx.QueryRow(ctx, query, cfg.Value).Scan(&id, &username, &uuid, &email, &password, internal_bot, is_admin, is_director, is_mod, &notoriety, &actions)
+	err := tx.QueryRow(ctx, query, cfg.Value).Scan(&id, &username, &uuid, &email, &password, &internal_bot, &is_admin, &is_director, &is_mod, &notoriety, &actions)
 	if err == pgx.ErrNoRows {
 		return nil, errors.New("user not found")
 	} else if err != nil {
@@ -297,25 +297,25 @@ func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.Use
 		ID:         id,
 		Username:   username,
 		UUID:       uuid,
-		Email:      email,
-		Password:   password,
+		Email:      email.String,
+		Password:   password.String,
 		IsBot:      internal_bot.Bool,
 		Anonymous:  false,
 		IsAdmin:    is_admin.Bool,
 		IsDirector: is_director.Bool,
 		IsMod:      is_mod.Bool,
-		Notoriety:  notoriety,
-		Actions:    actions,
+		Notoriety:  int(notoriety.Int64),
+		Actions:    &actions,
 	}
 
 	if cfg.IncludeProfile {
-		var firstName string
-		var lastName string
-		var birthDate string
-		var countryCode string
-		var title string
-		var about string
-		var avatar_url string
+		var firstName sql.NullString
+		var lastName sql.NullString
+		var birthDate sql.NullString
+		var countryCode sql.NullString
+		var title sql.NullString
+		var about sql.NullString
+		var avatar_url sql.NullString
 		var rdata entity.Ratings
 		var sdata entity.ProfileStats
 
@@ -327,15 +327,15 @@ func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.Use
 		}
 
 		entp := &entity.Profile{
-			FirstName:   firstName,
-			LastName:    lastName,
-			BirthDate:   birthDate,
-			CountryCode: countryCode,
-			Title:       title,
-			About:       about,
+			FirstName:   firstName.String,
+			LastName:    lastName.String,
+			BirthDate:   birthDate.String,
+			CountryCode: countryCode.String,
+			Title:       title.String,
+			About:       about.String,
 			Ratings:     rdata,
 			Stats:       sdata,
-			AvatarUrl:   avatar_url,
+			AvatarUrl:   avatar_url.String,
 		}
 
 		entu.Profile = entp

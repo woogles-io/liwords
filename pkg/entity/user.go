@@ -222,12 +222,12 @@ func (a *Actions) Value() (driver.Value, error) {
 }
 
 func (a *Actions) Scan(value interface{}) error {
+	var err error
 	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed for actions")
+	if ok {
+		err = json.Unmarshal(b, &a)
 	}
-
-	return json.Unmarshal(b, &a)
+	return err
 }
 
 func (p *Profile) Value() (driver.Value, error) {
@@ -235,10 +235,10 @@ func (p *Profile) Value() (driver.Value, error) {
 }
 
 func (p *Profile) Scan(value interface{}) error {
+	var err error
 	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed for single rating")
+	if ok {
+		err = json.Unmarshal(b, &p)
 	}
-
-	return json.Unmarshal(b, &p)
+	return err
 }
