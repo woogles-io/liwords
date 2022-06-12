@@ -70,6 +70,8 @@ func TestListStats(t *testing.T) {
 	stats, err = store.GetListItems(ctx, 2, []string{"game2", "game3"}, "")
 	is.NoErr(err)
 	is.Equal(len(stats), 3)
+
+	store.Disconnect()
 }
 
 func setNullValues(ctx context.Context, pool *pgxpool.Pool, gameIds []interface{}) {

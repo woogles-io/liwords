@@ -2,6 +2,7 @@ package soughtgame
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -9,33 +10,20 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	commondb "github.com/domino14/liwords/pkg/stores/common"
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lithammer/shortuuid"
 	"github.com/matryer/is"
 	"google.golang.org/protobuf/proto"
 )
 
 func TestSoughtGame(t *testing.T) {
-	err := commondb.RecreateTestDB()
-	if err != nil {
-		panic(err)
-	}
-
-	pool, err := commondb.OpenTestingDB()
-	if err != nil {
-		panic(err)
-	}
-
-	store, err := NewDBStore(pool)
-	if err != nil {
-		panic(err)
-	}
-
+	pool, store := recreateDB()
 	is := is.New(t)
 	ctx := context.Background()
 
 	sg := newSoughtGame()
 
-	err = store.New(ctx, sg)
+	err := store.New(ctx, sg)
 	is.NoErr(err)
 
 	sgID, err := sg.ID()
@@ -173,10 +161,79 @@ func TestSoughtGame(t *testing.T) {
 	listedSoughtGames, err = store.ListOpenSeeks(ctx, common.DefaultSeekRequest.ReceivingUser.UserId, "")
 	is.NoErr(err)
 	is.Equal(len(listedSoughtGames), 2)
+
+	store.Disconnect()
+}
+
+func TestSoughtGameNullValues(t *testing.T) {
+	pool, store := recreateDB()
+	is := is.New(t)
+	ctx := context.Background()
+
+	sg := newSoughtGame()
+
+	err := store.New(ctx, sg)
+	is.NoErr(err)
+
+	sgID, err := sg.ID()
+	is.NoErr(err)
+
+	setNullValues(ctx, pool, []interface{}{sgID})
+
+	sgGet, err := store.Get(ctx, sgID)
+	is.NoErr(err)
+	is.Equal(&entity.SoughtGame{SeekRequest: &pb.SeekRequest{}}, sgGet)
+
+	soughtGames, err := store.ListOpenSeeks(ctx, common.DefaultSeekRequest.ReceivingUser.UserId, "")
+	is.NoErr(err)
+	is.Equal(len(soughtGames), 0)
+
+	store.Disconnect()
 }
 
 func newSoughtGame() *entity.SoughtGame {
 	sg := &entity.SoughtGame{SeekRequest: proto.Clone(&common.DefaultSeekRequest).(*pb.SeekRequest)}
 	sg.SeekRequest.GameRequest.RequestId = shortuuid.New()
 	return sg
+}
+
+func setNullValues(ctx context.Context, pool *pgxpool.Pool, sgIds []interface{}) {
+	tx, err := pool.BeginTx(ctx, commondb.DefaultTxOptions)
+	if err != nil {
+		panic(err)
+	}
+	defer tx.Rollback(ctx)
+
+	inClause := commondb.BuildIn(len(sgIds), 1)
+
+	updateStmt := fmt.Sprintf("UPDATE soughtgames SET seeker = NULL, conn_id = NULL, receiver = NULL, receiver_conn_id = NULL, seeker_conn_id = NULL, request = NULL WHERE uuid IN (%s)", inClause)
+	result, err := tx.Exec(ctx, updateStmt, sgIds...)
+	if err != nil {
+		panic(err)
+	}
+	if result.RowsAffected() == 0 {
+		panic(fmt.Sprintf("no rows affected: %v", sgIds))
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		panic(err)
+	}
+}
+
+func recreateDB() (*pgxpool.Pool, *DBStore) {
+	err := commondb.RecreateTestDB()
+	if err != nil {
+		panic(err)
+	}
+
+	pool, err := commondb.OpenTestingDB()
+	if err != nil {
+		panic(err)
+	}
+
+	store, err := NewDBStore(pool)
+	if err != nil {
+		panic(err)
+	}
+	return pool, store
 }

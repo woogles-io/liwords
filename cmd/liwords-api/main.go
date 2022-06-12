@@ -191,7 +191,7 @@ func main() {
 		panic(err)
 	}
 	stores.ConfigStore = cfgstore.NewRedisConfigStore(redisPool)
-	stores.ListStatStore, err = stats.NewListStatStore(cfg.DBConnDSN)
+	stores.ListStatStore, err = stats.NewDBStore(dbPool)
 	if err != nil {
 		panic(err)
 	}

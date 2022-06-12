@@ -110,27 +110,7 @@ func (ec *evtConsumer) consumeEventChan(ctx context.Context,
 	}
 }
 
-func userStore() (pkguser.Store, *user.DBStore) {
-	pool, err := common.OpenTestingDB()
-	if err != nil {
-		panic(err)
-	}
-	tmp, err := user.NewDBStore(pool)
-	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-	return user.NewCache(tmp), tmp
-}
-
-func listStatStore() pkgstats.ListStatStore {
-	s, err := stats.NewListStatStore(common.TestingPostgresConnDSN())
-	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-	return s
-}
-
-func recreateDB() *pgxpool.Pool {
+func recreateDB() (*pgxpool.Pool, *user.Cache, *stats.DBStore, *mod.DBStore) {
 	err := common.RecreateTestDB()
 	if err != nil {
 		panic(err)
@@ -142,7 +122,21 @@ func recreateDB() *pgxpool.Pool {
 	}
 
 	// Create a user table. Initialize the user store.
-	ustore, _ := userStore()
+	tmp, err := user.NewDBStore(pool)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error")
+	}
+	ustore := user.NewCache(tmp)
+
+	lsstore, err := stats.NewDBStore(pool)
+	if err != nil {
+		panic(err)
+	}
+
+	nstore, err := mod.NewDBStore(pool)
+	if err != nil {
+		panic(err)
+	}
 
 	// Insert a couple of users into the table.
 
@@ -155,7 +149,7 @@ func recreateDB() *pgxpool.Pool {
 			log.Fatal().Err(err).Msg("error")
 		}
 	}
-	return pool
+	return pool, ustore, lsstore, nstore
 }
 
 func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStore, initialTime int, ratingMode pb.RatingMode) (
@@ -322,13 +316,10 @@ func comparePlayerNotorieties(pnrs []*ms.NotorietyReport, ustore pkguser.Store, 
 func TestNotoriety(t *testing.T) {
 	//zerolog.SetGlobalLevel(zerolog.Disabled)
 	is := is.New(t)
-	pool := recreateDB()
+	_, ustore, lstore, nstore := recreateDB()
 
 	ctx := context.WithValue(context.Background(), config.CtxKeyword, &config.Config{MacondoConfig: DefaultConfig})
 
-	ustore, uDBstore := userStore()
-	lstore := listStatStore()
-	nstore := notorietyStore(pool)
 	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
 
@@ -806,8 +797,7 @@ func TestNotoriety(t *testing.T) {
 			{Type: ms.NotoriousGameType_EXCESSIVE_PHONIES}}}}, ustore, nstore)
 	is.NoErr(err)
 
-	uDBstore.Disconnect()
-	lstore.(*stats.ListStatStore).Disconnect()
+	lstore.Disconnect()
 	nstore.Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
