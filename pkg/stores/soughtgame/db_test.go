@@ -165,6 +165,32 @@ func TestSoughtGame(t *testing.T) {
 	store.Disconnect()
 }
 
+func TestNonexistingSoughtGames(t *testing.T) {
+	_, store := recreateDB()
+	is := is.New(t)
+	ctx := context.Background()
+
+	nonexistentValue := "nonexistent value"
+
+	sg, err := store.DeleteForUser(ctx, nonexistentValue)
+	is.NoErr(err)
+	is.Equal(sg, nil)
+
+	sg, err = store.UpdateForReceiver(ctx, nonexistentValue)
+	is.NoErr(err)
+	is.Equal(sg, nil)
+
+	sg, err = store.DeleteForSeekerConnID(ctx, nonexistentValue)
+	is.NoErr(err)
+	is.Equal(sg, nil)
+
+	sg, err = store.UpdateForReceiverConnID(ctx, nonexistentValue)
+	is.NoErr(err)
+	is.Equal(sg, nil)
+
+	store.Disconnect()
+}
+
 func TestSoughtGameNullValues(t *testing.T) {
 	pool, store := recreateDB()
 	is := is.New(t)

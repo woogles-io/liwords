@@ -41,12 +41,22 @@ const (
 	SoughtGamesTable
 )
 
+type RowsAffectedType int
+
+const (
+	AnyRowsAffected RowsAffectedType = iota
+	AtMostOneRowAffected
+	ExactlyOneRowAffected
+	AtLeastOneRowAffected
+)
+
 type CommonDBConfig struct {
-	SelectByType   SelectByType
-	TableType      TableType
-	Value          interface{}
-	SetUpdatedAt   bool
-	IncludeProfile bool
+	SelectByType     SelectByType
+	TableType        TableType
+	RowsAffectedType RowsAffectedType
+	Value            interface{}
+	SetUpdatedAt     bool
+	IncludeProfile   bool
 }
 
 var SelectByTypeToString = map[SelectByType]string{
@@ -260,10 +270,8 @@ func Delete(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) error {
 	if err != nil {
 		return err
 	}
-	if result.RowsAffected() != 1 {
-		return fmt.Errorf("not exactly one value %v for %v in delete for table %s (%d rows)", cfg.Value, SelectByTypeToString[cfg.SelectByType], TableTypeToString[cfg.TableType], result.RowsAffected())
-	}
-	return nil
+
+	return checkRowsAffected(int(result.RowsAffected()), cfg)
 }
 
 func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.User, error) {
@@ -403,4 +411,21 @@ func PostgresConnUri(host, port, name, user, password, sslmode string) string {
 func PostgresConnDSN(host, port, name, user, password, sslmode string) string {
 	return fmt.Sprintf("host=%s port=%s dbname=%s user=%s password=%s sslmode=%s",
 		host, port, name, user, password, sslmode)
+}
+
+func checkRowsAffected(rowsAffected int, cfg *CommonDBConfig) error {
+	if cfg.RowsAffectedType != AnyRowsAffected {
+		errType := ""
+		if cfg.RowsAffectedType == AtMostOneRowAffected && rowsAffected > 1 {
+			errType = "at most"
+		} else if cfg.RowsAffectedType == ExactlyOneRowAffected && rowsAffected != 1 {
+			errType = "exactly"
+		} else if cfg.RowsAffectedType == AtLeastOneRowAffected && rowsAffected < 1 {
+			errType = "at least"
+		}
+		if errType != "" {
+			return fmt.Errorf("not %s row with value %v for %v in delete for table %s (%d rows)", errType, cfg.Value, SelectByTypeToString[cfg.SelectByType], TableTypeToString[cfg.TableType], rowsAffected)
+		}
+	}
+	return nil
 }

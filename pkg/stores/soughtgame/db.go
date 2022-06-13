@@ -2,7 +2,6 @@ package soughtgame
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/domino14/liwords/pkg/entity"
@@ -119,7 +118,7 @@ func (s *DBStore) Delete(ctx context.Context, id string) error {
 	}
 	defer tx.Rollback(ctx)
 
-	err = common.Delete(ctx, tx, &common.CommonDBConfig{TableType: common.SoughtGamesTable, SelectByType: common.SelectByUUID, Value: id})
+	err = common.Delete(ctx, tx, &common.CommonDBConfig{TableType: common.SoughtGamesTable, SelectByType: common.SelectByUUID, RowsAffectedType: common.AnyRowsAffected, Value: id})
 	if err != nil {
 		return err
 	}
@@ -162,10 +161,13 @@ func (s *DBStore) DeleteForUser(ctx context.Context, userID string) (*entity.Sou
 
 	sg, err := getSoughtGameBy(ctx, tx, &common.CommonDBConfig{SelectByType: common.SelectBySeekerID, Value: userID})
 	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 
-	err = common.Delete(ctx, tx, &common.CommonDBConfig{TableType: common.SoughtGamesTable, SelectByType: common.SelectBySeekerID, Value: userID})
+	err = common.Delete(ctx, tx, &common.CommonDBConfig{TableType: common.SoughtGamesTable, SelectByType: common.SelectBySeekerID, RowsAffectedType: common.AnyRowsAffected, Value: userID})
 	if err != nil {
 		return nil, err
 	}
@@ -186,6 +188,9 @@ func (s *DBStore) UpdateForReceiver(ctx context.Context, receiverID string) (*en
 
 	sg, err := getSoughtGameBy(ctx, tx, &common.CommonDBConfig{SelectByType: common.SelectByReceiverID, Value: receiverID})
 	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -215,10 +220,13 @@ func (s *DBStore) DeleteForSeekerConnID(ctx context.Context, connID string) (*en
 
 	sg, err := getSoughtGameBy(ctx, tx, &common.CommonDBConfig{SelectByType: common.SelectBySeekerConnID, Value: connID})
 	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 
-	err = common.Delete(ctx, tx, &common.CommonDBConfig{TableType: common.SoughtGamesTable, SelectByType: common.SelectBySeekerConnID, Value: connID})
+	err = common.Delete(ctx, tx, &common.CommonDBConfig{TableType: common.SoughtGamesTable, SelectByType: common.SelectBySeekerConnID, RowsAffectedType: common.AnyRowsAffected, Value: connID})
 	if err != nil {
 		return nil, err
 	}
@@ -238,6 +246,9 @@ func (s *DBStore) UpdateForReceiverConnID(ctx context.Context, connID string) (*
 
 	sg, err := getSoughtGameBy(ctx, tx, &common.CommonDBConfig{SelectByType: common.SelectByReceiverConnID, Value: connID})
 	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -334,11 +345,9 @@ func (s *DBStore) UserMatchedBy(ctx context.Context, userID, matcher string) (bo
 }
 
 func getSoughtGameBy(ctx context.Context, tx pgx.Tx, cfg *common.CommonDBConfig) (*entity.SoughtGame, error) {
-	var req pb.SeekRequest
+	req := pb.SeekRequest{}
 	err := tx.QueryRow(ctx, fmt.Sprintf("SELECT request FROM soughtgames WHERE %s = $1", common.SelectByTypeToString[cfg.SelectByType]), cfg.Value).Scan(&req)
-	if err == pgx.ErrNoRows {
-		return nil, errors.New("sought game not found")
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 	return &entity.SoughtGame{SeekRequest: &req}, nil
