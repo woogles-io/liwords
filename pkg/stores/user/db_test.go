@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"sort"
 	"testing"
@@ -24,7 +25,7 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
-func recreateDB() (*DBStore, *pgxpool.Pool) {
+func recreateDB() (*DBStore, *pgxpool.Pool, context.Context) {
 	err := common.RecreateTestDB()
 	if err != nil {
 		panic(err)
@@ -45,6 +46,13 @@ func recreateDB() (*DBStore, *pgxpool.Pool) {
 	if err != nil {
 		panic(err)
 	}
+	ctx := context.Background()
+	// Insert some dummy profiles into the database so that
+	// user_id != id for profiles
+	for i := 1; i <= 10; i++ {
+		createDummyProfile(ctx, pool, 1)
+	}
+
 	for _, u := range []*entity.User{
 		{Username: "cesar", Email: "cesar@woogles.io", UUID: "mozEwaVMvTfUA2oxZfYN8k"},
 		{Username: "mina", Email: "mina@gmail.com", UUID: "iW7AaqNJDuaxgcYnrFfcJF"},
@@ -72,7 +80,7 @@ func recreateDB() (*DBStore, *pgxpool.Pool) {
 		}
 	}
 
-	return ustore, pool
+	return ustore, pool, ctx
 }
 
 func TestMain(m *testing.M) {
@@ -82,8 +90,7 @@ func TestMain(m *testing.M) {
 
 func TestGet(t *testing.T) {
 	is := is.New(t)
-	ustore, pool := recreateDB()
-	ctx := context.Background()
+	ustore, pool, ctx := recreateDB()
 
 	cesarByUsername, err := ustore.Get(ctx, "cesar")
 	is.NoErr(err)
@@ -145,8 +152,7 @@ func TestGet(t *testing.T) {
 
 func TestGetNullValues(t *testing.T) {
 	is := is.New(t)
-	ustore, pool := recreateDB()
-	ctx := context.Background()
+	ustore, pool, ctx := recreateDB()
 
 	cesarByUsername, err := ustore.Get(ctx, "cesar")
 	is.NoErr(err)
@@ -198,8 +204,7 @@ func TestGetNullValues(t *testing.T) {
 
 func TestSet(t *testing.T) {
 	is := is.New(t)
-	ustore, pool := recreateDB()
-	ctx := context.Background()
+	ustore, pool, ctx := recreateDB()
 
 	cesar, err := ustore.Get(ctx, "cesar")
 	is.NoErr(err)
@@ -385,8 +390,7 @@ func TestSet(t *testing.T) {
 
 func TestMisc(t *testing.T) {
 	is := is.New(t)
-	ustore, _ := recreateDB()
-	ctx := context.Background()
+	ustore, _, ctx := recreateDB()
 
 	users, err := ustore.UsersByPrefix(ctx, "m")
 	is.NoErr(err)
@@ -463,8 +467,8 @@ func TestMisc(t *testing.T) {
 
 func TestBlocks(t *testing.T) {
 	is := is.New(t)
-	ustore, _ := recreateDB()
-	ctx := context.Background()
+	ustore, _, ctx := recreateDB()
+
 	adult, err := ustore.Get(ctx, "adult")
 	is.NoErr(err)
 	smith, err := ustore.Get(ctx, "smith")
@@ -585,8 +589,8 @@ func TestBlocks(t *testing.T) {
 
 func TestAddFollower(t *testing.T) {
 	is := is.New(t)
-	ustore, _ := recreateDB()
-	ctx := context.Background()
+	ustore, _, ctx := recreateDB()
+
 	cesar, err := ustore.Get(ctx, "cesar")
 	is.NoErr(err)
 	mina, err := ustore.Get(ctx, "mina")
@@ -628,8 +632,7 @@ func TestAddFollower(t *testing.T) {
 
 func TestRemoveFollower(t *testing.T) {
 	is := is.New(t)
-	ustore, _ := recreateDB()
-	ctx := context.Background()
+	ustore, _, ctx := recreateDB()
 	cesar, err := ustore.Get(ctx, "cesar")
 	is.NoErr(err)
 	mina, err := ustore.Get(ctx, "mina")
@@ -654,8 +657,7 @@ func TestRemoveFollower(t *testing.T) {
 
 func TestAddDuplicateFollower(t *testing.T) {
 	is := is.New(t)
-	ustore, _ := recreateDB()
-	ctx := context.Background()
+	ustore, _, ctx := recreateDB()
 	cesar, err := ustore.Get(ctx, "cesar")
 	is.NoErr(err)
 	mina, err := ustore.Get(ctx, "mina")
@@ -674,8 +676,7 @@ func TestAddDuplicateFollower(t *testing.T) {
 
 func TestRemoveNonexistentFollower(t *testing.T) {
 	is := is.New(t)
-	ustore, _ := recreateDB()
-	ctx := context.Background()
+	ustore, _, ctx := recreateDB()
 	cesar, err := ustore.Get(ctx, "cesar")
 	is.NoErr(err)
 	mina, err := ustore.Get(ctx, "mina")
@@ -733,4 +734,24 @@ func sortUsers(users []*entity.User) {
 	sort.Slice(users, func(i, j int) bool {
 		return users[i].Username < users[j].Username
 	})
+}
+
+func createDummyProfile(ctx context.Context, pool *pgxpool.Pool, userId int) error {
+	tx, err := pool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, `INSERT INTO profiles (user_id, first_name, ratings, stats, created_at, updated_at) VALUES ($1, $2, $3, $4, NOW(), NOW())`,
+		userId, fmt.Sprintf("firstname-%d", userId), entity.Ratings{}, entity.ProfileStats{})
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
