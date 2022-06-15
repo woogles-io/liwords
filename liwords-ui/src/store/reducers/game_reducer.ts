@@ -12,6 +12,7 @@ import {
   Blank,
   PlayedTiles,
   PlayerOfTiles,
+  EmptySpace,
 } from '../../utils/cwgame/common';
 import { PlayerOrder } from '../constants';
 import { ClockController, Millis } from '../timer_controller';
@@ -222,7 +223,7 @@ const placeOnBoard = (
         ? evt.getColumn() + i
         : evt.getColumn();
     const tile = { row, col, rune };
-    if (rune !== ThroughTileMarker) {
+    if (rune !== ThroughTileMarker && board.letterAt(row, col) === EmptySpace) {
       board.addTile(tile);
       if (isBlank(tile.rune)) {
         newPool[Blank] -= 1;
@@ -253,7 +254,7 @@ const unplaceOnBoard = (
         ? evt.getColumn() + i
         : evt.getColumn();
     const tile = { row, col, rune };
-    if (rune !== ThroughTileMarker) {
+    if (rune !== ThroughTileMarker && board.letterAt(row, col) !== EmptySpace) {
       // Remove the tile from the board and place it back in the pool.
       board.removeTile(tile);
       if (isBlank(tile.rune)) {
