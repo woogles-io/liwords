@@ -287,3 +287,59 @@ it('tests challenge with challenge event afterwards', () => {
   expect(newState.onturn).toBe(1);
   expect(newState.turns.length).toBe(2);
 });
+
+const historyRefresherWithPlay = () => {
+  const ghr = new GameHistoryRefresher();
+  const his = new GameHistory();
+  const player1 = new PlayerInfo();
+  const player2 = new PlayerInfo();
+  player1.setNickname('césar');
+  player2.setNickname('mina');
+  player1.setUserId('cesar123');
+  player2.setUserId('mina123');
+  his.setPlayersList([player1, player2]);
+  his.setLastKnownRacksList(['', 'DEIMNRU']);
+  const gevent = new GameEvent();
+  gevent.setColumn(6);
+  gevent.setRow(7);
+  gevent.setScore(12);
+  gevent.setPosition('8G');
+  gevent.setPlayedTiles('WIT');
+  gevent.setNickname('césar');
+  gevent.setCumulative(12);
+  his.setEventsList([gevent]);
+  his.setUid('game42');
+  ghr.setHistory(his);
+
+  return ghr;
+};
+
+it('tests deduplication of event', () => {
+  const state = startingGameState(StandardEnglishAlphabet, [], '');
+  let newState = GameReducer(state, {
+    actionType: ActionType.RefreshHistory,
+    payload: historyRefresherWithPlay(),
+  });
+
+  const sge = new ServerGameplayEvent();
+  const evt = new GameEvent();
+  evt.setNickname('césar');
+  evt.setCumulative(12);
+  evt.setRow(7);
+  evt.setColumn(6);
+  evt.setPosition('8G');
+  evt.setPlayedTiles('WIT');
+  evt.setScore(12);
+  sge.setNewRack('');
+  sge.setEvent(evt);
+  sge.setGameId('game42');
+
+  newState = GameReducer(newState, {
+    actionType: ActionType.AddGameEvent,
+    payload: sge,
+  });
+  expect(newState.pool['W']).toBe(1);
+  expect(newState.pool['I']).toBe(8);
+  expect(newState.pool['T']).toBe(5);
+  expect(newState.onturn).toBe(1);
+});

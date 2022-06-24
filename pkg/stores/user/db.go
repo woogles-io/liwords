@@ -304,7 +304,7 @@ func (s *DBStore) SetAvatarUrl(ctx context.Context, uuid string, avatarUrl strin
 		return err
 	}
 
-	err = common.Update(ctx, tx, []string{"avatar_url"}, []interface{}{avatarUrl}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByID, Value: id})
+	err = common.Update(ctx, tx, []string{"avatar_url"}, []interface{}{avatarUrl}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByUserID, Value: id})
 	if err != nil {
 		return err
 	}
@@ -402,7 +402,7 @@ func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string
 		return err
 	}
 
-	err = common.Update(ctx, tx, []string{"first_name", "last_name", "birth_date", "country_code", "about"}, []interface{}{firstName, lastName, birthDate, countryCode, about}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByID, Value: id})
+	err = common.Update(ctx, tx, []string{"first_name", "last_name", "birth_date", "country_code", "about"}, []interface{}{firstName, lastName, birthDate, countryCode, about}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByUserID, Value: id})
 	if err != nil {
 		return err
 	}
@@ -796,7 +796,7 @@ func (s *DBStore) ResetStats(ctx context.Context, uuid string) error {
 		return err
 	}
 
-	err = common.Update(ctx, tx, []string{"stats"}, []interface{}{&entity.Stats{}}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByID, Value: id})
+	err = common.Update(ctx, tx, []string{"stats"}, []interface{}{&entity.Stats{}}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByUserID, Value: id})
 	if err != nil {
 		return err
 	}
@@ -820,7 +820,7 @@ func (s *DBStore) ResetRatings(ctx context.Context, uuid string) error {
 		return err
 	}
 
-	err = common.Update(ctx, tx, []string{"ratings"}, []interface{}{&entity.Ratings{}}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByID, Value: id})
+	err = common.Update(ctx, tx, []string{"ratings"}, []interface{}{&entity.Ratings{}}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByUserID, Value: id})
 	if err != nil {
 		return err
 	}
@@ -844,7 +844,7 @@ func (s *DBStore) ResetStatsAndRatings(ctx context.Context, uuid string) error {
 		return err
 	}
 
-	err = common.Update(ctx, tx, []string{"stats", "ratings"}, []interface{}{&entity.Stats{}, &entity.Ratings{}}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByID, Value: id})
+	err = common.Update(ctx, tx, []string{"stats", "ratings"}, []interface{}{&entity.Stats{}, &entity.Ratings{}}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByUserID, Value: id})
 	if err != nil {
 		return err
 	}
@@ -868,7 +868,7 @@ func (s *DBStore) ResetPersonalInfo(ctx context.Context, uuid string) error {
 		return err
 	}
 
-	err = common.Update(ctx, tx, []string{"first_name", "last_name", "about", "title", "avatar_url", "country_code"}, []interface{}{"", "", "", "", "", ""}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByID, Value: id})
+	err = common.Update(ctx, tx, []string{"first_name", "last_name", "about", "title", "avatar_url", "country_code"}, []interface{}{"", "", "", "", "", ""}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByUserID, Value: id})
 	if err != nil {
 		return err
 	}
