@@ -61,7 +61,8 @@ mau_puzzles AS
 (SELECT
    created_at,
    user_id AS player
-FROM public.puzzle_attempts),
+FROM public.puzzle_attempts
+WHERE correct IS NOT NULL),
 
 mau_puzzles_report AS
 (SELECT
@@ -87,7 +88,8 @@ UNION ALL
 (SELECT
    created_at,
    user_id AS player
-FROM public.puzzle_attempts)),
+FROM public.puzzle_attempts
+WHERE correct IS NOT NULL)),
 
 omgwords_plus_puzzles_report AS
 (SELECT
@@ -102,7 +104,8 @@ SELECT
   mau_omgwords_report.month,
   mau_omgwords_report.mau_omgwords,
   mau_omgwords_vs_human_report.mau_omgwords_vs_human,
-  TRUNC(100.0*mau_omgwords_vs_human_report.mau_omgwords_vs_human/mau_omgwords_report.mau_omgwords,1) AS ratio,
+  TRUNC(100.0*mau_omgwords_vs_human_report.mau_omgwords_vs_human/mau_omgwords_report.mau_omgwords,1)
+    AS pct_of_omgwords_dau_who_played_a_human,
   mau_puzzles_report.mau_puzzles,
   omgwords_plus_puzzles_report.mau
 FROM mau_omgwords_report
