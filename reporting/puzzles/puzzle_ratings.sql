@@ -22,4 +22,4 @@ SELECT
     THEN ROUND(100.0*times_correct/times_attempted,1)
 	ELSE 0 END AS correct_attempt_pct
 FROM base_query
-ORDER BY skip_pct DESC
+ORDER BY times_attempted DESC
