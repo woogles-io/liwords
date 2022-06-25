@@ -364,7 +364,8 @@ export const Table = React.memo((props: Props) => {
       gameContext,
       gameDone,
       gameID,
-      gameInfo,
+      lexicon: gameInfo.game_request.lexicon,
+      variant: gameInfo.game_request.rules.variant_name,
     });
 
   const acceptRematch = useCallback(

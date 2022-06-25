@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
-import { DefineWordsResponse, GameMetadata } from '../gameroom/game_info';
+import { DefineWordsResponse } from '../gameroom/game_info';
 import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { GameState } from '../store/reducers/game_reducer';
 import { ChatEntityType, ChatEntityObj } from '../store/store';
@@ -44,14 +44,16 @@ export const useDefinitionAndPhonyChecker = ({
   gameContext,
   gameDone,
   gameID,
-  gameInfo,
+  lexicon,
+  variant,
 }: {
   addChat: (chat: ChatEntityObj) => void;
   enableHoverDefine: boolean;
   gameContext: GameState;
   gameDone: boolean;
   gameID?: string;
-  gameInfo: GameMetadata;
+  lexicon: string;
+  variant: string;
 }) => {
   const { useState } = useMountedState();
 
@@ -73,7 +75,7 @@ export const useDefinitionAndPhonyChecker = ({
   >(undefined);
   const [willHideDefinitionHover, setWillHideDefinitionHover] = useState(false);
 
-  const anagrams = gameInfo.game_request.rules.variant_name === 'wordsmog';
+  const anagrams = variant === 'wordsmog';
   const [definedAnagram, setDefinedAnagram] = useState(0);
   const definedAnagramRef = useRef(definedAnagram);
   definedAnagramRef.current = definedAnagram;
@@ -242,7 +244,7 @@ export const useDefinitionAndPhonyChecker = ({
     setUnrace(new Unrace());
     setPhonies(undefined);
     setShowDefinitionHover(undefined);
-  }, [gameID, gameInfo.game_request.lexicon]);
+  }, [gameID, lexicon]);
 
   useEffect(() => {
     if (gameDone || showDefinitionHover) {
@@ -291,7 +293,6 @@ export const useDefinitionAndPhonyChecker = ({
       }
       if (!wordsToDefine.length) return;
       wordsToDefine.sort(); // mitigate OCD
-      const lexicon = gameInfo.game_request.lexicon;
       try {
         const defineResp = await axios.post<DefineWordsResponse>(
           toAPIUrl('word_service.WordService', 'DefineWords'),
@@ -357,13 +358,7 @@ export const useDefinitionAndPhonyChecker = ({
     return () => {
       cancelTokenSource.cancel();
     };
-  }, [
-    anagrams,
-    showDefinitionHover,
-    gameInfo.game_request.lexicon,
-    wordInfo,
-    unrace,
-  ]);
+  }, [anagrams, showDefinitionHover, lexicon, wordInfo, unrace]);
 
   useEffect(() => {
     if (phonies === null) {

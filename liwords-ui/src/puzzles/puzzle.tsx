@@ -54,7 +54,7 @@ import {
 import { computeLeave } from '../utils/cwgame/game_event';
 import { EphemeralTile } from '../utils/cwgame/common';
 import { usePlaceMoveCallback } from '../gameroom/analyzer';
-import { useFirefoxPatch } from '../utils/hooks';
+import { useDefinitionAndPhonyChecker, useFirefoxPatch } from '../utils/hooks';
 import { useMountedState } from '../utils/mounted';
 import { BoopSounds } from '../sound/boop';
 import { GameInfoRequest } from '../gen/api/proto/game_service/game_service_pb';
@@ -148,8 +148,17 @@ export const SinglePuzzle = (props: Props) => {
 
   useFirefoxPatch();
 
-  // add definitions stuff here. We should make common library instead of
-  // copy-pasting from table.tsx
+  // add definitions stuff here.
+  const { handleSetHover, hideDefinitionHover, definitionPopover } =
+    useDefinitionAndPhonyChecker({
+      addChat: doNothing,
+      enableHoverDefine: puzzleInfo.solved !== PuzzleStatus.UNANSWERED,
+      gameContext,
+      gameDone: false,
+      gameID: puzzleInfo.gameId,
+      lexicon: puzzleInfo.lexicon,
+      variant: puzzleInfo.variantName,
+    });
 
   // Figure out what rack we should display
   const rack = gameContext.players.find((p) => p.onturn)?.currentRack ?? '';
@@ -749,9 +758,9 @@ export const SinglePuzzle = (props: Props) => {
               handleAcceptAbort={doNothing}
               puzzleMode
               puzzleSolved={puzzleInfo.solved}
-              // handleSetHover={handleSetHover}   // fix later with definitions.
-              // handleUnsetHover={hideDefinitionHover}
-              // definitionPopover={definitionPopover}
+              handleSetHover={handleSetHover}
+              handleUnsetHover={hideDefinitionHover}
+              definitionPopover={definitionPopover}
             />
           )}
         </div>
