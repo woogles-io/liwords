@@ -2,6 +2,7 @@ import React from 'react';
 
 import BoardSpaces from './board_spaces';
 import { useDrawing } from './drawing';
+import { useExamineStoreContext } from '../store/store';
 import { PlacementArrow } from '../utils/cwgame/tile_placement';
 import BoardCoordLabels from './board_coord_labels';
 import Tiles from './tiles';
@@ -50,6 +51,7 @@ const Board = React.memo((props: Props) => {
   // board squares as necessary.
 
   const { outerDivProps, svgDrawing } = useDrawing();
+  const { isExamining } = useExamineStoreContext();
 
   return (
     <div className="board">
@@ -67,7 +69,7 @@ const Board = React.memo((props: Props) => {
           placementArrow={props.placementArrowProperties}
           squareClicked={props.squareClicked}
         />
-        <LearnOverlay gridDim={props.gridSize} />
+        {!isExamining && <LearnOverlay gridDim={props.gridSize} />}
         <Tiles
           tileColorId={props.tileColorId}
           gridDim={props.gridSize}
