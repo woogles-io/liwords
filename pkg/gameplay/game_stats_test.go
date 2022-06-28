@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 
@@ -15,9 +16,9 @@ import (
 	"github.com/domino14/liwords/pkg/gameplay"
 	pkgstats "github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/stores/common"
+	"github.com/domino14/liwords/pkg/stores/mod"
 	"github.com/domino14/liwords/pkg/stores/stats"
 	"github.com/domino14/liwords/pkg/stores/user"
-	pkguser "github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	macondoconfig "github.com/domino14/macondo/config"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -56,34 +57,32 @@ var gameEndedEventObj = &pb.GameEndedEvent{
 	Tie:       false,
 }
 
-func userStore() pkguser.Store {
-	pool, err := common.OpenTestingDB()
-	if err != nil {
-		panic(err)
-	}
-	ustore, err := user.NewDBStore(pool)
-	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-	return ustore
-}
-
-func listStatStore() pkgstats.ListStatStore {
-	s, err := stats.NewListStatStore(common.TestingPostgresConnDSN())
-	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-	return s
-}
-
-func recreateDB() {
+func recreateDB() (*pgxpool.Pool, *user.DBStore, *stats.DBStore, *mod.DBStore) {
 	// Create a database.
 	err := common.RecreateTestDB()
 	if err != nil {
 		panic(err)
 	}
+	pool, err := common.OpenTestingDB()
+	if err != nil {
+		panic(err)
+	}
+
 	// Create a user table. Initialize the user store.
-	ustore := userStore()
+	ustore, err := user.NewDBStore(pool)
+	if err != nil {
+		panic(err)
+	}
+
+	lstore, err := stats.NewDBStore(pool)
+	if err != nil {
+		panic(err)
+	}
+
+	nstore, err := mod.NewDBStore(pool)
+	if err != nil {
+		panic(err)
+	}
 
 	// Insert a couple of users into the table.
 
@@ -97,7 +96,7 @@ func recreateDB() {
 			log.Fatal().Err(err).Msg("error")
 		}
 	}
-	ustore.(*user.DBStore).Disconnect()
+	return pool, ustore, lstore, nstore
 }
 
 func TestMain(m *testing.M) {
@@ -115,9 +114,7 @@ func variantKey(req *pb.GameRequest) entity.VariantKey {
 
 func TestComputeGameStats(t *testing.T) {
 	is := is.New(t)
-	recreateDB()
-	ustore := userStore()
-	lstore := listStatStore()
+	_, ustore, lstore, _ := recreateDB()
 
 	histjson, err := ioutil.ReadFile("./testdata/game1/history.json")
 	is.NoErr(err)
@@ -134,7 +131,7 @@ func TestComputeGameStats(t *testing.T) {
 	ctx := context.WithValue(context.Background(), config.CtxKeyword, &config.Config{MacondoConfig: DefaultConfig})
 	s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 	is.NoErr(err)
-	pkgstats.Finalize(s, lstore, []string{"m5ktbp4qPVTqaAhg6HJMsb"},
+	pkgstats.Finalize(ctx, s, lstore, []string{"m5ktbp4qPVTqaAhg6HJMsb"},
 		"qUQkST8CendYA3baHNoPjk", "xjCWug7EZtDxDHX5fRZTLo",
 	)
 
@@ -163,15 +160,13 @@ func TestComputeGameStats(t *testing.T) {
 		},
 	})
 
-	ustore.(*user.DBStore).Disconnect()
-	lstore.(*stats.ListStatStore).Disconnect()
+	ustore.Disconnect()
+	lstore.Disconnect()
 }
 
 func TestComputeGameStats2(t *testing.T) {
 	is := is.New(t)
-	recreateDB()
-	ustore := userStore()
-	lstore := listStatStore()
+	_, ustore, lstore, _ := recreateDB()
 
 	histjson, err := ioutil.ReadFile("./testdata/game2/history.json")
 	is.NoErr(err)
@@ -189,7 +184,7 @@ func TestComputeGameStats2(t *testing.T) {
 	s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 	is.NoErr(err)
 
-	pkgstats.Finalize(s, lstore, []string{"ycj5de5gArFF3ap76JyiUA"},
+	pkgstats.Finalize(ctx, s, lstore, []string{"ycj5de5gArFF3ap76JyiUA"},
 		"xjCWug7EZtDxDHX5fRZTLo", "qUQkST8CendYA3baHNoPjk",
 	)
 	log.Info().Interface("bingos", s.PlayerOneData[entity.BINGOS_STAT].List).Msg("player one bingos")
@@ -212,16 +207,14 @@ func TestComputeGameStats2(t *testing.T) {
 		},
 	})
 
-	ustore.(*user.DBStore).Disconnect()
-	lstore.(*stats.ListStatStore).Disconnect()
+	ustore.Disconnect()
+	lstore.Disconnect()
 
 }
 
 func TestComputePlayerStats(t *testing.T) {
 	is := is.New(t)
-	recreateDB()
-	ustore := userStore()
-	lstore := listStatStore()
+	_, ustore, lstore, _ := recreateDB()
 
 	histjson, err := ioutil.ReadFile("./testdata/game1/history.json")
 	is.NoErr(err)
@@ -249,7 +242,7 @@ func TestComputePlayerStats(t *testing.T) {
 	stats0, ok := u0.Profile.Stats.Data["CSW19.classic.ultrablitz"]
 	is.True(ok)
 
-	err = pkgstats.Finalize(stats0, lstore, []string{"m5ktbp4qPVTqaAhg6HJMsb"},
+	err = pkgstats.Finalize(ctx, stats0, lstore, []string{"m5ktbp4qPVTqaAhg6HJMsb"},
 		"qUQkST8CendYA3baHNoPjk", "xjCWug7EZtDxDHX5fRZTLo",
 	)
 	is.NoErr(err)
@@ -274,15 +267,14 @@ func TestComputePlayerStats(t *testing.T) {
 	stats1, ok := u1.Profile.Stats.Data["CSW19.classic.ultrablitz"]
 	is.True(ok)
 	is.Equal(stats1.PlayerOneData[entity.WINS_STAT].Total, 0)
-	ustore.(*user.DBStore).Disconnect()
-	lstore.(*stats.ListStatStore).Disconnect()
+	ustore.Disconnect()
+	lstore.Disconnect()
 }
 
 func TestComputePlayerStatsMultipleGames(t *testing.T) {
 	is := is.New(t)
-	recreateDB()
-	ustore := userStore()
-	lstore := listStatStore()
+	_, ustore, lstore, _ := recreateDB()
+	ctx := context.Background()
 
 	for _, g := range []string{"game1", "game2"} {
 		histjson, err := ioutil.ReadFile("./testdata/" + g + "/history.json")
@@ -313,7 +305,7 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 	is.Equal(stats0.PlayerOneData[entity.WINS_STAT].Total, 1)
 
 	log.Debug().Interface("li", stats0.PlayerOneData[entity.BINGOS_STAT].List).Msg("--")
-	err = pkgstats.Finalize(stats0, lstore, []string{
+	err = pkgstats.Finalize(ctx, stats0, lstore, []string{
 		// Aggregate across two games
 		"m5ktbp4qPVTqaAhg6HJMsb", "ycj5de5gArFF3ap76JyiUA"},
 		// Mina then cesar4
@@ -345,7 +337,7 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 	stats1, ok := u1.Profile.Stats.Data["CSW19.classic.ultrablitz"]
 	is.True(ok)
 
-	err = pkgstats.Finalize(stats1, lstore, []string{
+	err = pkgstats.Finalize(ctx, stats1, lstore, []string{
 		"m5ktbp4qPVTqaAhg6HJMsb", "ycj5de5gArFF3ap76JyiUA",
 	},
 		// cesar4 then mina
@@ -362,6 +354,6 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 
 	is.Equal(stats1.PlayerOneData[entity.SCORE_STAT].Total, 307)
 	is.Equal(stats1.PlayerOneData[entity.WINS_STAT].Total, 1)
-	ustore.(*user.DBStore).Disconnect()
-	lstore.(*stats.ListStatStore).Disconnect()
+	ustore.Disconnect()
+	lstore.Disconnect()
 }

@@ -52,6 +52,32 @@ var DefaultPlayerTwoInfo = ipc.PlayerInfo{
 	First:    false,
 }
 
+var DefaultSeeker = ipc.MatchUser{
+	UserId:         "seeker_id",
+	RelevantRating: "1500",
+	IsAnonymous:    false,
+	DisplayName:    "seeker",
+}
+
+var DefaultReceiver = ipc.MatchUser{
+	UserId:         "receiver_id",
+	RelevantRating: "2000",
+	IsAnonymous:    false,
+	DisplayName:    "receiver",
+}
+
+var DefaultSeekRequest = ipc.SeekRequest{
+	GameRequest:          DefaultGameReq,
+	User:                 &DefaultSeeker,
+	MinimumRatingRange:   0,
+	MaximumRatingRange:   3000,
+	SeekerConnectionId:   "seeker_conn_id",
+	ReceivingUser:        &DefaultReceiver,
+	UserState:            ipc.SeekState_ABSENT,
+	ReceiverState:        ipc.SeekState_ABSENT,
+	ReceiverConnectionId: "receiver_conn_id",
+}
+
 const epsilon = 1e-4
 
 func WithinEpsilon(a, b float64) bool {

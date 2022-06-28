@@ -15,7 +15,7 @@ var errAlreadyOpenReq = errors.New("You already have an open match or seek reque
 type SoughtGameStore interface {
 	Get(ctx context.Context, id string) (*entity.SoughtGame, error)
 	GetBySeekerConnID(ctx context.Context, connID string) (*entity.SoughtGame, error)
-	Set(context.Context, *entity.SoughtGame) error
+	New(context.Context, *entity.SoughtGame) error
 	Delete(ctx context.Context, id string) error
 	ListOpenSeeks(ctx context.Context, receiverID, tourneyID string) ([]*entity.SoughtGame, error)
 	ExistsForUser(ctx context.Context, userID string) (bool, error)
@@ -39,7 +39,7 @@ func NewSoughtGame(ctx context.Context, gameStore SoughtGameStore,
 	}
 
 	sg := entity.NewSoughtGame(req)
-	if err := gameStore.Set(ctx, sg); err != nil {
+	if err := gameStore.New(ctx, sg); err != nil {
 		return nil, err
 	}
 	return sg, nil

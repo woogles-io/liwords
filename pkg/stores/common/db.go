@@ -26,6 +26,10 @@ const (
 	SelectByUsername
 	SelectByEmail
 	SelectByAPIKey
+	SelectBySeekerID
+	SelectBySeekerConnID
+	SelectByReceiverID
+	SelectByReceiverConnID
 )
 
 type TableType int
@@ -35,28 +39,46 @@ const (
 	ProfilesTable
 	GamesTable
 	PuzzlesTable
+	SoughtGamesTable
+)
+
+type RowsAffectedType int
+
+const (
+	AnyRowsAffected RowsAffectedType = iota
+	AtMostOneRowAffected
+	ExactlyOneRowAffected
+	AtLeastOneRowAffected
 )
 
 type CommonDBConfig struct {
-	SelectByType   SelectByType
-	TableType      TableType
-	Value          interface{}
-	SetUpdatedAt   bool
-	IncludeProfile bool
+	SelectByType     SelectByType
+	TableType        TableType
+	RowsAffectedType RowsAffectedType
+	Value            interface{}
+	SetUpdatedAt     bool
+	IncludeProfile   bool
 }
 
 var SelectByTypeToString = map[SelectByType]string{
-	SelectByUUID:     "uuid",
-	SelectByID:       "id",
-	SelectByUserID:   "user_id",
-	SelectByUsername: "lower(username)",
-	SelectByEmail:    "lower(email)",
-	SelectByAPIKey:   "api_key",
+	SelectByUUID:           "uuid",
+	SelectByID:             "id",
+	SelectByUserID:         "user_id",
+	SelectByUsername:       "lower(username)",
+	SelectByEmail:          "lower(email)",
+	SelectByAPIKey:         "api_key",
+	SelectBySeekerID:       "seeker",
+	SelectBySeekerConnID:   "seeker_conn_id",
+	SelectByReceiverID:     "receiver",
+	SelectByReceiverConnID: "receiver_conn_id",
 }
 
 var TableTypeToString = map[TableType]string{
-	UsersTable:    "users",
-	ProfilesTable: "profiles",
+	UsersTable:       "users",
+	ProfilesTable:    "profiles",
+	GamesTable:       "games",
+	PuzzlesTable:     "puzzles",
+	SoughtGamesTable: "soughtgames",
 }
 
 var DefaultTxOptions = pgx.TxOptions{
@@ -244,6 +266,16 @@ func Update(ctx context.Context, tx pgx.Tx, columns []string, args []interface{}
 	return nil
 }
 
+func Delete(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) error {
+	query := fmt.Sprintf(`DELETE FROM %s WHERE %s = $1`, TableTypeToString[cfg.TableType], SelectByTypeToString[cfg.SelectByType])
+	result, err := tx.Exec(ctx, query, cfg.Value)
+	if err != nil {
+		return err
+	}
+
+	return checkRowsAffected(int(result.RowsAffected()), cfg)
+}
+
 func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.User, error) {
 	var id uint
 	var username string
@@ -363,10 +395,10 @@ func OpenDB(host, port, name, user, password, sslmode string) (*pgxpool.Pool, er
 	return dbPool, nil
 }
 
-func BuildIn(num int) string {
+func BuildIn(num int, start int) string {
 	var stmt strings.Builder
-	fmt.Fprintf(&stmt, "$%d", 1)
-	for i := 2; i <= num; i++ {
+	fmt.Fprintf(&stmt, "$%d", start)
+	for i := start + 1; i < start+num; i++ {
 		fmt.Fprintf(&stmt, ", $%d", i)
 	}
 	return stmt.String()
@@ -381,4 +413,21 @@ func PostgresConnUri(host, port, name, user, password, sslmode string) string {
 func PostgresConnDSN(host, port, name, user, password, sslmode string) string {
 	return fmt.Sprintf("host=%s port=%s dbname=%s user=%s password=%s sslmode=%s",
 		host, port, name, user, password, sslmode)
+}
+
+func checkRowsAffected(rowsAffected int, cfg *CommonDBConfig) error {
+	if cfg.RowsAffectedType != AnyRowsAffected {
+		errType := ""
+		if cfg.RowsAffectedType == AtMostOneRowAffected && rowsAffected > 1 {
+			errType = "at most"
+		} else if cfg.RowsAffectedType == ExactlyOneRowAffected && rowsAffected != 1 {
+			errType = "exactly"
+		} else if cfg.RowsAffectedType == AtLeastOneRowAffected && rowsAffected < 1 {
+			errType = "at least"
+		}
+		if errType != "" {
+			return fmt.Errorf("not %s row with value %v for %v in delete for table %s (%d rows)", errType, cfg.Value, SelectByTypeToString[cfg.SelectByType], TableTypeToString[cfg.TableType], rowsAffected)
+		}
+	}
+	return nil
 }

@@ -1,80 +1,78 @@
 package stats
 
 import (
-	"encoding/json"
+	"context"
+	"database/sql"
 	"errors"
-	"strings"
+	"fmt"
 
 	"github.com/domino14/liwords/pkg/entity"
-	"github.com/jinzhu/gorm"
-	"github.com/jinzhu/gorm/dialects/postgres"
+	"github.com/domino14/liwords/pkg/stores/common"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rs/zerolog/log"
 )
 
 // A ListStatStore stores "list-based" statistics (for example, lists of player
 // bingos).
-type ListStatStore struct {
-	db *gorm.DB
+type DBStore struct {
+	dbPool *pgxpool.Pool
 }
 
-type liststat struct {
-	GameID    string `gorm:"index"`
-	PlayerID  string `gorm:"index"`
-	Timestamp int64  `gorm:"index"` // unix timestamp in milliseconds
-
-	StatType int
-	Item     postgres.Jsonb
+func NewDBStore(p *pgxpool.Pool) (*DBStore, error) {
+	return &DBStore{dbPool: p}, nil
 }
 
-func NewListStatStore(dbURL string) (*ListStatStore, error) {
-	db, err := gorm.Open("postgres", dbURL)
-	if err != nil {
-		return nil, err
-	}
-	return &ListStatStore{db: db}, nil
+func (s *DBStore) Disconnect() {
+	s.dbPool.Close()
 }
 
 // XXX: This should be a transaction that queues up many inserts.
 // Fix before beta.
-func (l *ListStatStore) AddListItem(gameID string, playerID string, statType int,
+func (s *DBStore) AddListItem(ctx context.Context, gameID string, playerID string, statType int,
 	time int64, item entity.ListDatum) error {
-
-	jsonitem, err := json.Marshal(item)
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
 		return err
 	}
-	dbi := &liststat{
-		GameID:    gameID,
-		PlayerID:  playerID,
-		Timestamp: time,
-		StatType:  statType,
-		Item:      postgres.Jsonb{RawMessage: jsonitem},
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, `INSERT INTO liststats (game_id, player_id, timestamp, stat_type, item) VALUES ($1, $2, $3, $4, $5)`,
+		gameID, playerID, time, statType, item)
+	if err != nil {
+		return err
 	}
-	result := l.db.Create(dbi)
-	return result.Error
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	return nil
 }
 
 // GetListItems gets list items for a stat type, a list of game IDs, and an optional
 // player ID.
 // XXX: This function will need to be modified a bit to work with a player ID of
 // "opponent" -- that is when we want to get user list stats for arbitrary opponents.
-func (l *ListStatStore) GetListItems(statType int, gameIds []string, playerID string) ([]*entity.ListItem, error) {
-	var stats []liststat
-
+func (s *DBStore) GetListItems(ctx context.Context, statType int, gameIds []string, playerID string) ([]*entity.ListItem, error) {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
 	// playerID is optional
 	// gameIds should have at least one item.
 	if len(gameIds) == 0 {
 		return nil, errors.New("need to provide a game id")
 	}
-	where := "stat_type = ?"
+	where := " stat_type = $1 "
 	args := []interface{}{statType}
+	nextPosArgCounter := 2
 	if playerID != "" {
-		where += " AND player_id = ?"
+		nextPosArgCounter = 3
+		where += " AND player_id = $2 "
 		args = append(args, playerID)
 	}
 
-	inClause := strings.Repeat("?,", len(gameIds))
-	inClause = strings.TrimSuffix(inClause, ",")
+	inClause := common.BuildIn(len(gameIds), nextPosArgCounter)
 
 	where += " AND game_id IN (" + inClause + ")"
 	for _, gid := range gameIds {
@@ -83,33 +81,28 @@ func (l *ListStatStore) GetListItems(statType int, gameIds []string, playerID st
 
 	log.Info().Str("where", where).Interface("args", args).Msg("query")
 
-	result := l.db.Table("liststats").
-		Select("game_id, player_id, timestamp, item").
-		Where(where, args...).
-		Order("timestamp").Scan(&stats)
-	if result.Error != nil {
-		return nil, result.Error
+	query := fmt.Sprintf("SELECT game_id, player_id, timestamp, item FROM liststats WHERE %s ORDER BY timestamp", where)
+	rows, err := tx.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
 	}
+	defer rows.Close()
 
-	items := make([]*entity.ListItem, len(stats))
-	for idx, dbstat := range stats {
-		datum := entity.ListDatum{}
-		err := json.Unmarshal(dbstat.Item.RawMessage, &datum)
-		if err != nil {
+	listItems := []*entity.ListItem{}
+	for rows.Next() {
+		var gameID sql.NullString
+		var playerID sql.NullString
+		var timestamp sql.NullInt64
+		var item entity.ListDatum
+		if err := rows.Scan(&gameID, &playerID, &timestamp, &item); err != nil {
 			return nil, err
 		}
-
-		items[idx] = &entity.ListItem{
-			GameId:   dbstat.GameID,
-			PlayerId: dbstat.PlayerID,
-			Time:     dbstat.Timestamp,
-			Item:     datum,
-		}
+		listItems = append(listItems, &entity.ListItem{
+			GameId:   gameID.String,
+			PlayerId: playerID.String,
+			Time:     timestamp.Int64,
+			Item:     item,
+		})
 	}
-
-	return items, nil
-}
-
-func (l *ListStatStore) Disconnect() {
-	l.db.Close()
+	return listItems, nil
 }

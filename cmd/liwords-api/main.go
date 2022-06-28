@@ -154,7 +154,7 @@ func main() {
 		panic(err)
 	}
 
-	stores.SessionStore, err = session.NewDBStore(cfg.DBConnDSN)
+	stores.SessionStore, err = session.NewDBStore(dbPool)
 	if err != nil {
 		panic(err)
 	}
@@ -186,17 +186,17 @@ func main() {
 	}
 	stores.TournamentStore = tournamentstore.NewCache(tmpTournamentStore)
 
-	stores.SoughtGameStore, err = soughtgame.NewDBStore(cfg)
+	stores.SoughtGameStore, err = soughtgame.NewDBStore(dbPool)
 	if err != nil {
 		panic(err)
 	}
 	stores.ConfigStore = cfgstore.NewRedisConfigStore(redisPool)
-	stores.ListStatStore, err = stats.NewListStatStore(cfg.DBConnDSN)
+	stores.ListStatStore, err = stats.NewDBStore(dbPool)
 	if err != nil {
 		panic(err)
 	}
 
-	stores.NotorietyStore, err = modstore.NewNotorietyStore(cfg.DBConnDSN)
+	stores.NotorietyStore, err = modstore.NewDBStore(dbPool)
 	if err != nil {
 		panic(err)
 	}

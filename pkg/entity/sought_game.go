@@ -2,6 +2,8 @@ package entity
 
 import (
 	"context"
+	"database/sql/driver"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -138,4 +140,17 @@ func ValidateGameRequest(ctx context.Context, req *pb.GameRequest) error {
 		}
 	}
 	return fmt.Errorf("%s is not a supported lexicon", req.Lexicon)
+}
+
+func (sg *SoughtGame) Value() (driver.Value, error) {
+	return json.Marshal(sg)
+}
+
+func (sg *SoughtGame) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed for sought game")
+	}
+
+	return json.Unmarshal(b, &sg)
 }

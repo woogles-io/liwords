@@ -2,25 +2,18 @@ package session
 
 import (
 	"context"
+	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
-	"gorm.io/datatypes"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
-
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lithammer/shortuuid"
-	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/stores/common"
 )
-
-type dbSession struct {
-	UUID      string    `gorm:"type:varchar(24);primary_key"`
-	ExpiresAt time.Time `gorm:"index"`
-	Data      datatypes.JSON
-}
 
 // The data inside the session's Data object.
 type sessionInfo struct {
@@ -28,69 +21,67 @@ type sessionInfo struct {
 	UserUUID string `json:"uuid"`
 }
 
-// DBStore is a postgres-backed store for user sessions.
 type DBStore struct {
-	db *gorm.DB
+	dbPool *pgxpool.Pool
 }
 
-// NewDBStore creates a new DB store
-func NewDBStore(dbURL string) (*DBStore, error) {
-	db, err := gorm.Open(postgres.Open(dbURL), &gorm.Config{})
-	if err != nil {
-		return nil, err
-	}
+func NewDBStore(p *pgxpool.Pool) (*DBStore, error) {
+	return &DBStore{dbPool: p}, nil
+}
 
-	return &DBStore{db: db}, nil
+func (s *DBStore) Disconnect() {
+	s.dbPool.Close()
 }
 
 // Get gets a session by session ID
 func (s *DBStore) Get(ctx context.Context, sessionID string) (*entity.Session, error) {
-	u := &dbSession{}
-	if result := s.db.Where("uuid = ?", sessionID).First(u); result.Error != nil {
-		return nil, result.Error
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
 	}
-	if time.Now().After(u.ExpiresAt) {
-		log.Debug().Interface("expires", u.ExpiresAt).Msg("expired?")
-		return nil, errors.New("session expired, log in again")
-	}
+	defer tx.Rollback(ctx)
 
-	// Parse JSONB session data.
+	var expiry time.Time
 	var data sessionInfo
-	err := json.Unmarshal(u.Data, &data)
+	err = tx.QueryRow(ctx, `SELECT expires_at, data FROM db_sessions WHERE uuid = $1`, sessionID).Scan(&expiry, &data)
 	if err != nil {
 		return nil, err
 	}
 
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
 	return &entity.Session{
-		ID:       u.UUID, // the session ID
+		ID:       sessionID,
 		Username: data.Username,
 		UserUUID: data.UserUUID,
-		Expiry:   u.ExpiresAt,
+		Expiry:   expiry,
 	}, nil
 }
 
 // New should be called when a user logs in. It'll create a new session.
 func (s *DBStore) New(ctx context.Context, user *entity.User) (*entity.Session, error) {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
 
-	data := sessionInfo{user.Username, user.UUID}
+	newSessionID := shortuuid.New()
+	expiresAt := time.Now().Add(entity.SessionExpiration)
+	data := sessionInfo{Username: user.Username, UserUUID: user.UUID}
 
-	bytes, err := json.Marshal(data)
+	_, err = tx.Exec(ctx, `INSERT INTO db_sessions (uuid, expires_at, data) VALUES ($1, $2, $3)`, newSessionID, expiresAt, data)
 	if err != nil {
 		return nil, err
 	}
 
-	sess := &dbSession{
-		UUID:      shortuuid.New(),
-		ExpiresAt: time.Now().Add(entity.SessionExpiration),
-		Data:      bytes,
-	}
-
-	result := s.db.Create(sess)
-	if result.Error != nil {
-		return nil, result.Error
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
 	}
 	return &entity.Session{
-		ID:       sess.UUID,
+		ID:       newSessionID,
 		Username: user.Username,
 		UserUUID: user.UUID,
 	}, nil
@@ -98,16 +89,54 @@ func (s *DBStore) New(ctx context.Context, user *entity.User) (*entity.Session, 
 
 // Delete deletes the session with the given ID, essentially logging the user out.
 func (s *DBStore) Delete(ctx context.Context, sess *entity.Session) error {
-	if sess.ID == "" {
-		return errors.New("session has a blank ID, cannot be deleted")
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
 	}
-	// We want to delete from db_sessions, not delete from sessions
-	return s.db.Delete(&dbSession{UUID: sess.ID}).Error
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, `DELETE FROM db_sessions WHERE uuid = $1`, sess.ID)
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	return nil
 }
 
 // ExtendExpiry extends the expiry of the given cookie.
 func (s *DBStore) ExtendExpiry(ctx context.Context, sess *entity.Session) error {
-	result := s.db.Table("db_sessions").Where("uuid = ?", sess.ID).Updates(
-		map[string]interface{}{"expires_at": time.Now().Add(entity.SessionExpiration)})
-	return result.Error
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	result, err := tx.Exec(ctx, `UPDATE db_sessions SET expires_at = $1 WHERE uuid = $2`, time.Now().Add(entity.SessionExpiration), sess.ID)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() != 1 {
+		return fmt.Errorf("could not extend expiry of session %s", sess.ID)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (si *sessionInfo) Value() (driver.Value, error) {
+	return json.Marshal(si)
+}
+
+func (si *sessionInfo) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed for session info")
+	}
+
+	return json.Unmarshal(b, &si)
 }

@@ -27,6 +27,7 @@ import (
 	"github.com/domino14/macondo/alphabet"
 	macondoconfig "github.com/domino14/macondo/config"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lithammer/shortuuid"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
@@ -79,8 +80,8 @@ func tournamentStore(cfg *config.Config, gs gameplay.GameStore) tournament.Tourn
 	return tournamentStore
 }
 
-func notorietyStore() pkgmod.NotorietyStore {
-	n, err := mod.NewNotorietyStore(common.TestingPostgresConnDSN())
+func notorietyStore(pool *pgxpool.Pool) *mod.DBStore {
+	n, err := mod.NewDBStore(pool)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
@@ -109,33 +110,33 @@ func (ec *evtConsumer) consumeEventChan(ctx context.Context,
 	}
 }
 
-func userStore() (pkguser.Store, *user.DBStore) {
-	pool, err := common.OpenTestingDB()
-	if err != nil {
-		panic(err)
-	}
-	tmp, err := user.NewDBStore(pool)
-	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-	return user.NewCache(tmp), tmp
-}
-
-func listStatStore() pkgstats.ListStatStore {
-	s, err := stats.NewListStatStore(common.TestingPostgresConnDSN())
-	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-	return s
-}
-
-func recreateDB() {
+func recreateDB() (*pgxpool.Pool, *user.Cache, *stats.DBStore, *mod.DBStore) {
 	err := common.RecreateTestDB()
 	if err != nil {
 		panic(err)
 	}
+
+	pool, err := common.OpenTestingDB()
+	if err != nil {
+		panic(err)
+	}
+
 	// Create a user table. Initialize the user store.
-	ustore, _ := userStore()
+	tmp, err := user.NewDBStore(pool)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error")
+	}
+	ustore := user.NewCache(tmp)
+
+	lsstore, err := stats.NewDBStore(pool)
+	if err != nil {
+		panic(err)
+	}
+
+	nstore, err := mod.NewDBStore(pool)
+	if err != nil {
+		panic(err)
+	}
 
 	// Insert a couple of users into the table.
 
@@ -148,6 +149,7 @@ func recreateDB() {
 			log.Fatal().Err(err).Msg("error")
 		}
 	}
+	return pool, ustore, lsstore, nstore
 }
 
 func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStore, initialTime int, ratingMode pb.RatingMode) (
@@ -186,7 +188,7 @@ func playGame(ctx context.Context,
 	g *entity.Game,
 	ustore pkguser.Store,
 	lstore pkgstats.ListStatStore,
-	nstore pkgmod.NotorietyStore,
+	nstore *mod.DBStore,
 	tstore tournament.TournamentStore,
 	gstore gameplay.GameStore,
 	turns []*pb.ClientGameplayEvent,
@@ -314,13 +316,10 @@ func comparePlayerNotorieties(pnrs []*ms.NotorietyReport, ustore pkguser.Store, 
 func TestNotoriety(t *testing.T) {
 	//zerolog.SetGlobalLevel(zerolog.Disabled)
 	is := is.New(t)
-	recreateDB()
+	_, ustore, lstore, nstore := recreateDB()
 
 	ctx := context.WithValue(context.Background(), config.CtxKeyword, &config.Config{MacondoConfig: DefaultConfig})
 
-	ustore, uDBstore := userStore()
-	lstore := listStatStore()
-	nstore := notorietyStore()
 	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
 
@@ -798,9 +797,8 @@ func TestNotoriety(t *testing.T) {
 			{Type: ms.NotoriousGameType_EXCESSIVE_PHONIES}}}}, ustore, nstore)
 	is.NoErr(err)
 
-	uDBstore.Disconnect()
-	lstore.(*stats.ListStatStore).Disconnect()
-	nstore.(*mod.NotorietyStore).Disconnect()
+	lstore.Disconnect()
+	nstore.Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
 }
