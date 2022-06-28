@@ -22,6 +22,7 @@ type SelectByType int
 const (
 	SelectByUUID SelectByType = iota
 	SelectByID
+	SelectByUserID
 	SelectByUsername
 	SelectByEmail
 	SelectByAPIKey
@@ -62,6 +63,7 @@ type CommonDBConfig struct {
 var SelectByTypeToString = map[SelectByType]string{
 	SelectByUUID:           "uuid",
 	SelectByID:             "id",
+	SelectByUserID:         "user_id",
 	SelectByUsername:       "lower(username)",
 	SelectByEmail:          "lower(email)",
 	SelectByAPIKey:         "api_key",
