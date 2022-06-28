@@ -57,11 +57,14 @@ FROM duplicated_games_between_humans
 GROUP BY 1),
 
 -- Puzzles
+-- note that seeing a puzzle creates a row in  puzzle attempts table,
+-- even if the user never inputs a solution. Query now accounts for this.
 dau_puzzles AS
 (SELECT
    created_at,
    user_id AS player
-FROM public.puzzle_attempts),
+FROM public.puzzle_attempts
+WHERE correct IS NOT NULL),
 
 dau_puzzles_report AS
 (SELECT
@@ -87,7 +90,8 @@ UNION ALL
 (SELECT
    created_at,
    user_id AS player
-FROM public.puzzle_attempts)),
+FROM public.puzzle_attempts
+WHERE correct IS NOT NULL)),
 
 omgwords_plus_puzzles_report AS
 (SELECT
@@ -102,7 +106,8 @@ SELECT
   dau_omgwords_report.day,
   dau_omgwords_report.dau_omgwords,
   dau_omgwords_vs_human_report.dau_omgwords_vs_human,
-  TRUNC(100.0*dau_omgwords_vs_human_report.dau_omgwords_vs_human/dau_omgwords_report.dau_omgwords,1) AS ratio,
+  TRUNC(100.0*dau_omgwords_vs_human_report.dau_omgwords_vs_human/dau_omgwords_report.dau_omgwords,1)
+    AS pct_of_omgwords_dau_who_played_a_human,
   dau_puzzles_report.dau_puzzles,
   omgwords_plus_puzzles_report.dau
 FROM dau_omgwords_report
