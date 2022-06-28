@@ -7,6 +7,8 @@ import { Chat } from '../chat/chat';
 import { alphabetFromName } from '../constants/alphabets';
 import { TopBar } from '../navigation/topbar';
 import {
+  useExaminableGameContextStoreContext,
+  useExamineStoreContext,
   useGameContextStoreContext,
   useLoginStateStoreContext,
   // usePoolFormatStoreContext,
@@ -36,6 +38,11 @@ import {
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { sortTiles } from '../store/constants';
 import { Notepad, NotepadContextProvider } from '../gameroom/notepad';
+import {
+  Analyzer,
+  AnalyzerContextProvider,
+  usePlaceMoveCallback,
+} from '../gameroom/analyzer';
 // Put the player cards back when we have strategy puzzles.
 // import { StaticPlayerCards } from './static_player_cards';
 
@@ -53,8 +60,7 @@ import {
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { computeLeave } from '../utils/cwgame/game_event';
 import { EphemeralTile } from '../utils/cwgame/common';
-import { usePlaceMoveCallback } from '../gameroom/analyzer';
-import { useFirefoxPatch } from '../utils/hooks';
+import { useDefinitionAndPhonyChecker, useFirefoxPatch } from '../utils/hooks';
 import { useMountedState } from '../utils/mounted';
 import { BoopSounds } from '../sound/boop';
 import { GameInfoRequest } from '../gen/api/proto/game_service/game_service_pb';
@@ -130,6 +136,9 @@ export const SinglePuzzle = (props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const { username, loggedIn } = loginState;
   // const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
+  const { gameContext: examinableGameContext } =
+    useExaminableGameContextStoreContext();
+  const { isExamining } = useExamineStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const {
     setDisplayedRack,
@@ -148,15 +157,25 @@ export const SinglePuzzle = (props: Props) => {
 
   useFirefoxPatch();
 
-  // add definitions stuff here. We should make common library instead of
-  // copy-pasting from table.tsx
+  // add definitions stuff here.
+  const { handleSetHover, hideDefinitionHover, definitionPopover } =
+    useDefinitionAndPhonyChecker({
+      addChat: doNothing,
+      enableHoverDefine: puzzleInfo.solved !== PuzzleStatus.UNANSWERED,
+      gameContext, // the final gameContext, not examinableGameContext
+      gameDone: false,
+      gameID: puzzleInfo.gameId,
+      lexicon: puzzleInfo.lexicon,
+      variant: puzzleInfo.variantName,
+    });
 
   // Figure out what rack we should display
-  const rack = gameContext.players.find((p) => p.onturn)?.currentRack ?? '';
+  const rack =
+    examinableGameContext.players.find((p) => p.onturn)?.currentRack ?? '';
   const sortedRack = useMemo(() => sortTiles(rack), [rack]);
   const userIDOnTurn = useMemo(
-    () => gameContext.players.find((p) => p.onturn)?.userID,
-    [gameContext]
+    () => examinableGameContext.players.find((p) => p.onturn)?.userID,
+    [examinableGameContext]
   );
   // Play sound here.
 
@@ -290,7 +309,11 @@ export const SinglePuzzle = (props: Props) => {
     req.setShowSolution(true);
     req.setPuzzleId(puzzleID);
     BoopSounds.playSound('puzzleWrongSound');
-    console.log('showing solution?', userIDOnTurn, gameContext.players);
+    console.log(
+      'showing solution?',
+      userIDOnTurn,
+      examinableGameContext.players
+    );
     try {
       const resp = await postProto(
         SubmissionResponse,
@@ -325,7 +348,7 @@ export const SinglePuzzle = (props: Props) => {
         duration: 5,
       });
     }
-  }, [puzzleID, userIDOnTurn, gameContext.players]);
+  }, [puzzleID, userIDOnTurn, examinableGameContext.players]);
 
   useEffect(() => {
     if (puzzleInfo.gameId) {
@@ -611,9 +634,10 @@ export const SinglePuzzle = (props: Props) => {
 
   useEffect(() => {
     if (checkWordsPending) {
-      const wordsFormed = getWordsFormed(gameContext.board, placedTiles).map(
-        (w) => w.toUpperCase()
-      );
+      const wordsFormed = getWordsFormed(
+        examinableGameContext.board,
+        placedTiles
+      ).map((w) => w.toUpperCase());
       setCheckWordsPending(false);
       //Todo: Now run them by the endpoint
       axios
@@ -635,7 +659,12 @@ export const SinglePuzzle = (props: Props) => {
           setPhoniesPlayed(phonies);
         });
     }
-  }, [checkWordsPending, placedTiles, gameContext.board, puzzleInfo.lexicon]);
+  }, [
+    checkWordsPending,
+    placedTiles,
+    examinableGameContext.board,
+    puzzleInfo.lexicon,
+  ]);
 
   const responseModalCorrect = useMemo(() => {
     //TODO: different title for different scores
@@ -697,11 +726,14 @@ export const SinglePuzzle = (props: Props) => {
 
   const allowAttempt = useMemo(() => {
     return (
-      isLegalPlay(Array.from(placedTiles.values()), gameContext.board) &&
+      isLegalPlay(
+        Array.from(placedTiles.values()),
+        examinableGameContext.board
+      ) &&
       loggedIn &&
       puzzleInfo.solved === PuzzleStatus.UNANSWERED
     );
-  }, [placedTiles, gameContext.board, loggedIn, puzzleInfo.solved]);
+  }, [placedTiles, examinableGameContext.board, loggedIn, puzzleInfo.solved]);
 
   let ret = (
     <div className="game-container puzzle-container">
@@ -721,9 +753,17 @@ export const SinglePuzzle = (props: Props) => {
             channelTypeOverride="puzzle"
             suppressDefault
           />
-          <React.Fragment key="not-examining">
-            <Notepad includeCard />
-          </React.Fragment>
+          {isExamining ? (
+            <Analyzer
+              includeCard
+              lexicon={puzzleInfo.lexicon}
+              variant={puzzleInfo.variantName}
+            />
+          ) : (
+            <React.Fragment key="not-examining">
+              <Notepad includeCard />
+            </React.Fragment>
+          )}
         </div>
         <div className="play-area puzzle-area">
           {lexiconModal}
@@ -733,9 +773,9 @@ export const SinglePuzzle = (props: Props) => {
             <BoardPanel
               anonymousViewer={!loggedIn}
               username={username}
-              board={gameContext.board}
+              board={examinableGameContext.board}
               currentRack={sortedRack}
-              events={gameContext.turns}
+              events={examinableGameContext.turns}
               gameID={''} /* no game id for a puzzle */
               sendSocketMsg={doNothing}
               sendGameplayEvent={allowAttempt ? attemptPuzzle : doNothing}
@@ -749,9 +789,9 @@ export const SinglePuzzle = (props: Props) => {
               handleAcceptAbort={doNothing}
               puzzleMode
               puzzleSolved={puzzleInfo.solved}
-              // handleSetHover={handleSetHover}   // fix later with definitions.
-              // handleUnsetHover={hideDefinitionHover}
-              // definitionPopover={definitionPopover}
+              handleSetHover={handleSetHover}
+              handleUnsetHover={hideDefinitionHover}
+              definitionPopover={definitionPopover}
             />
           )}
         </div>
@@ -783,7 +823,7 @@ export const SinglePuzzle = (props: Props) => {
           />
           {/* alphabet && (
             <Pool
-              pool={gameContext.pool}
+              pool={examinableGameContext.pool}
               currentRack={sortedRack}
               poolFormat={poolFormat}
               setPoolFormat={setPoolFormat}
@@ -792,15 +832,16 @@ export const SinglePuzzle = (props: Props) => {
           ) */}
           <Notepad includeCard />
           {/*<StaticPlayerCards
-            playerOnTurn={gameContext.onturn}
-            p0Score={gameContext?.players[0]?.score || 0}
-            p1Score={gameContext?.players[1]?.score || 0}
+            playerOnTurn={examinableGameContext.onturn}
+            p0Score={examinableGameContext?.players[0]?.score || 0}
+            p1Score={examinableGameContext?.players[1]?.score || 0}
           />*/}
         </div>
       </div>
     </div>
   );
   ret = <NotepadContextProvider children={ret} />;
+  ret = <AnalyzerContextProvider children={ret} />;
   ret = <LearnContextProvider children={ret} />;
   return ret;
 };
