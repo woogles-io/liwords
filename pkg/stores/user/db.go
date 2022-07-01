@@ -10,8 +10,6 @@ import (
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/jinzhu/gorm"
-	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
 
@@ -40,28 +38,6 @@ var botNames = map[macondopb.BotRequest_BotCode]string{
 // DBStore is a postgres-backed store for users.
 type DBStore struct {
 	dbPool *pgxpool.Pool
-}
-
-// User should be a minimal object. All information such as user profile,
-// awards, ratings, records, etc should be in a profile object that
-// joins 1-1 with this User object.
-// User is exported as a Game has Foreign Keys to it.
-type User struct {
-	gorm.Model
-
-	UUID     string `gorm:"type:varchar(24);index"`
-	Username string `gorm:"type:varchar(32)"`
-	Email    string `gorm:"type:varchar(100)"`
-	// Password will be hashed.
-	Password    string `gorm:"type:varchar(128)"`
-	InternalBot bool   `gorm:"default:false;index"`
-	IsAdmin     bool   `gorm:"default:false;index"`
-	IsDirector  bool   `gorm:"default:false"`
-	IsMod       bool   `gorm:"default:false;index"`
-	ApiKey      string
-
-	Notoriety int
-	Actions   postgres.Jsonb
 }
 
 func NewDBStore(p *pgxpool.Pool) (*DBStore, error) {
