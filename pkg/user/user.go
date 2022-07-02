@@ -23,7 +23,7 @@ type Store interface {
 	SetPassword(ctx context.Context, uuid string, hashpass string) error
 	SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string) error
 	GetBriefProfiles(ctx context.Context, uuids []string) (map[string]*upb.BriefProfile, error)
-	SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, birthDate string, countryCode string, about string) error
+	SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, birthDate string, countryCode string, about string, silentMode bool) error
 	SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p1Rating *entity.SingleRating, p2Rating *entity.SingleRating) error
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,

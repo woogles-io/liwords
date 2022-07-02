@@ -42,6 +42,7 @@ type PersonalInfoResponse = {
   country_code: string;
   email: string;
   about: string;
+  silent_mode: boolean;
 };
 
 const getInitialCategory = (categoryShortcut: string, loggedIn: boolean) => {
@@ -134,6 +135,7 @@ export const Settings = React.memo(() => {
           lastName: resp.data.last_name,
           countryCode: resp.data.country_code,
           about: resp.data.about,
+          silentMode: resp.data.silent_mode,
         });
       })
       .catch(errorCatcher);

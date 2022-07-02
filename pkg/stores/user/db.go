@@ -234,8 +234,8 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 		prof = &entity.Profile{}
 	}
 
-	_, err = tx.Exec(ctx, `INSERT INTO profiles (user_id, first_name, last_name, country_code, title, about, ratings, stats, avatar_url, birth_date, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())`,
-		userId, prof.FirstName, prof.LastName, prof.CountryCode, prof.Title, prof.About, entity.Ratings{}, entity.ProfileStats{}, prof.AvatarUrl, prof.BirthDate)
+	_, err = tx.Exec(ctx, `INSERT INTO profiles (user_id, first_name, last_name, country_code, title, about, ratings, stats, avatar_url, birth_date, silent_mode, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())`,
+		userId, prof.FirstName, prof.LastName, prof.CountryCode, prof.Title, prof.About, entity.Ratings{}, entity.ProfileStats{}, prof.AvatarUrl, prof.BirthDate, prof.SilentMode)
 	if err != nil {
 		return err
 	}
@@ -299,7 +299,8 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 	}
 	defer tx.Rollback(ctx)
 
-	query := fmt.Sprintf(`SELECT uuid, username, internal_bot, country_code, avatar_url, first_name, last_name, birth_date
+	query := fmt.Sprintf(`SELECT uuid, username, internal_bot, country_code, avatar_url, first_name, last_name, birth_date,
+	silent_mode
 		FROM users LEFT JOIN profiles ON users.id = profiles.user_id
 		WHERE uuid IN (%s)`, common.BuildIn(len(uuids), 1))
 
@@ -326,7 +327,8 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 		var firstNameOption sql.NullString
 		var lastNameOption sql.NullString
 		var birthDateOption sql.NullString
-		if err := rows.Scan(&UUID, &username, &internalBotOption, &countryCodeOption, &avatarUrlOption, &firstNameOption, &lastNameOption, &birthDateOption); err != nil {
+		var silentModeOption sql.NullBool
+		if err := rows.Scan(&UUID, &username, &internalBotOption, &countryCodeOption, &avatarUrlOption, &firstNameOption, &lastNameOption, &birthDateOption, &silentModeOption); err != nil {
 			return nil, err
 		}
 
@@ -356,6 +358,7 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 			CountryCode: countryCodeOption.String,
 			AvatarUrl:   censoredAvatarUrl,
 			FullName:    censoredFullName,
+			SilentMode:  silentModeOption.Bool,
 		}
 	}
 
@@ -366,7 +369,7 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 	return response, nil
 }
 
-func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, birthDate string, countryCode string, about string) error {
+func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, birthDate string, countryCode string, about string, silentMode bool) error {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
 		return err
@@ -378,7 +381,7 @@ func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string
 		return err
 	}
 
-	err = common.Update(ctx, tx, []string{"first_name", "last_name", "birth_date", "country_code", "about"}, []interface{}{firstName, lastName, birthDate, countryCode, about}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByUserID, Value: id})
+	err = common.Update(ctx, tx, []string{"first_name", "last_name", "birth_date", "country_code", "about", "silent_mode"}, []interface{}{firstName, lastName, birthDate, countryCode, about, silentMode}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByUserID, Value: id})
 	if err != nil {
 		return err
 	}
@@ -844,7 +847,7 @@ func (s *DBStore) ResetPersonalInfo(ctx context.Context, uuid string) error {
 		return err
 	}
 
-	err = common.Update(ctx, tx, []string{"first_name", "last_name", "about", "title", "avatar_url", "country_code"}, []interface{}{"", "", "", "", "", ""}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByUserID, Value: id})
+	err = common.Update(ctx, tx, []string{"first_name", "last_name", "about", "title", "avatar_url", "country_code", "silent_mode"}, []interface{}{"", "", "", "", "", "", false}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByUserID, Value: id})
 	if err != nil {
 		return err
 	}

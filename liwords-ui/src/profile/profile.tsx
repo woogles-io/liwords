@@ -234,7 +234,6 @@ export const PlayerProfile = React.memo(() => {
   const [userFetched, setUserFetched] = useState(false);
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
-  const [avatarsEditable, setAvatarsEditable] = useState(false);
   const [bio, setBio] = useState('');
   const [showGameTable, setShowGameTable] = useState(false);
   const [countryCode, setCountryCode] = useState('');
@@ -267,7 +266,6 @@ export const PlayerProfile = React.memo(() => {
         setCountryCode(resp.data.country_code);
         setFullName(resp.data.full_name);
         setAvatarUrl(resp.data.avatar_url);
-        setAvatarsEditable(resp.data.avatars_editable);
         setBio(resp.data.about);
         setBioLoaded(true);
       })
@@ -393,7 +391,7 @@ export const PlayerProfile = React.memo(() => {
     full_name: fullName,
     user_id: userID, // for name-based avatar initial to work
   };
-  const avatarEditable = avatarsEditable && viewer === username;
+  const avatarEditable = viewer === username;
 
   const variantCards = useMemo(() => {
     const data = [];

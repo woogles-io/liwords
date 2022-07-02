@@ -328,8 +328,9 @@ func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.Use
 		var avatar_url sql.NullString
 		var rdata entity.Ratings
 		var sdata entity.ProfileStats
+		var silentMode sql.NullBool
 
-		err = tx.QueryRow(ctx, "SELECT first_name, last_name, birth_date, country_code, title, about, avatar_url, ratings, stats FROM profiles WHERE user_id = $1", id).Scan(&firstName, &lastName, &birthDate, &countryCode, &title, &about, &avatar_url, &rdata, &sdata)
+		err = tx.QueryRow(ctx, "SELECT first_name, last_name, birth_date, country_code, title, about, avatar_url, silent_mode, ratings, stats FROM profiles WHERE user_id = $1", id).Scan(&firstName, &lastName, &birthDate, &countryCode, &title, &about, &avatar_url, &silentMode, &rdata, &sdata)
 		if err == pgx.ErrNoRows {
 			return nil, errors.New("profile not found")
 		} else if err != nil {
@@ -346,6 +347,7 @@ func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.Use
 			Ratings:     rdata,
 			Stats:       sdata,
 			AvatarUrl:   avatar_url.String,
+			SilentMode:  silentMode.Bool,
 		}
 
 		entu.Profile = entp

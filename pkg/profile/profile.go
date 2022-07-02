@@ -123,18 +123,18 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 	childProof := func(s string) string { return concealIf(!(subjectIsMe || subjectIsAdult), s) }
 
 	return &pb.ProfileResponse{
-		FirstName:       childProof(user.Profile.FirstName),
-		LastName:        childProof(user.Profile.LastName),
-		BirthDate:       concealIf(!subjectIsMe, user.Profile.BirthDate),
-		FullName:        childProof(user.RealName()),
-		CountryCode:     user.Profile.CountryCode,
-		Title:           user.Profile.Title,
-		About:           childProof(user.Profile.About),
-		RatingsJson:     string(ratjson),
-		StatsJson:       string(statjson),
-		UserId:          user.UUID,
-		AvatarUrl:       childProof(user.AvatarUrl()),
-		AvatarsEditable: ps.avatarService != nil,
+		FirstName:   childProof(user.Profile.FirstName),
+		LastName:    childProof(user.Profile.LastName),
+		BirthDate:   concealIf(!subjectIsMe, user.Profile.BirthDate),
+		FullName:    childProof(user.RealName()),
+		CountryCode: user.Profile.CountryCode,
+		Title:       user.Profile.Title,
+		About:       childProof(user.Profile.About),
+		RatingsJson: string(ratjson),
+		StatsJson:   string(statjson),
+		UserId:      user.UUID,
+		AvatarUrl:   childProof(user.AvatarUrl()),
+		SilentMode:  user.Profile.SilentMode,
 	}, nil
 }
 
@@ -162,6 +162,7 @@ func (ps *ProfileService) GetPersonalInfo(ctx context.Context, r *pb.PersonalInf
 		AvatarUrl:   user.AvatarUrl(),
 		FullName:    user.RealName(),
 		About:       user.Profile.About,
+		SilentMode:  user.Profile.SilentMode,
 	}, nil
 }
 
@@ -180,7 +181,7 @@ func (ps *ProfileService) UpdatePersonalInfo(ctx context.Context, r *pb.UpdatePe
 		return nil, twirp.InternalErrorWith(err)
 	}
 
-	updateErr := ps.userStore.SetPersonalInfo(ctx, user.UUID, r.Email, r.FirstName, r.LastName, r.BirthDate, r.CountryCode, r.About)
+	updateErr := ps.userStore.SetPersonalInfo(ctx, user.UUID, r.Email, r.FirstName, r.LastName, r.BirthDate, r.CountryCode, r.About, r.SilentMode)
 	if updateErr != nil {
 		return nil, twirp.InternalErrorWith(updateErr)
 	}

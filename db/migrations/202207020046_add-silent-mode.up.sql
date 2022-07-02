@@ -1,0 +1,5 @@
+BEGIN;
+
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS "silent_mode" BOOLEAN;
+
+COMMIT;

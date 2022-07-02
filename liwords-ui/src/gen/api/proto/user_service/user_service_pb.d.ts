@@ -613,6 +613,9 @@ export class ProfileResponse extends jspb.Message {
   getBirthDate(): string;
   setBirthDate(value: string): void;
 
+  getSilentMode(): boolean;
+  setSilentMode(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): ProfileResponse.AsObject;
   static toObject(includeInstance: boolean, msg: ProfileResponse): ProfileResponse.AsObject;
@@ -637,6 +640,7 @@ export namespace ProfileResponse {
     fullName: string,
     avatarsEditable: boolean,
     birthDate: string,
+    silentMode: boolean,
   }
 }
 
@@ -681,6 +685,9 @@ export class PersonalInfoResponse extends jspb.Message {
   getBirthDate(): string;
   setBirthDate(value: string): void;
 
+  getSilentMode(): boolean;
+  setSilentMode(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): PersonalInfoResponse.AsObject;
   static toObject(includeInstance: boolean, msg: PersonalInfoResponse): PersonalInfoResponse.AsObject;
@@ -701,6 +708,7 @@ export namespace PersonalInfoResponse {
     fullName: string,
     about: string,
     birthDate: string,
+    silentMode: boolean,
   }
 }
 
@@ -729,6 +737,9 @@ export class UpdatePersonalInfoRequest extends jspb.Message {
   getBirthDate(): string;
   setBirthDate(value: string): void;
 
+  getSilentMode(): boolean;
+  setSilentMode(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): UpdatePersonalInfoRequest.AsObject;
   static toObject(includeInstance: boolean, msg: UpdatePersonalInfoRequest): UpdatePersonalInfoRequest.AsObject;
@@ -749,6 +760,7 @@ export namespace UpdatePersonalInfoRequest {
     fullName: string,
     about: string,
     birthDate: string,
+    silentMode: boolean,
   }
 }
 
@@ -877,6 +889,9 @@ export class BriefProfile extends jspb.Message {
   getAvatarUrl(): string;
   setAvatarUrl(value: string): void;
 
+  getSilentMode(): boolean;
+  setSilentMode(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): BriefProfile.AsObject;
   static toObject(includeInstance: boolean, msg: BriefProfile): BriefProfile.AsObject;
@@ -893,6 +908,7 @@ export namespace BriefProfile {
     fullName: string,
     countryCode: string,
     avatarUrl: string,
+    silentMode: boolean,
   }
 }
 

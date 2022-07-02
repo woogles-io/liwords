@@ -10,6 +10,8 @@ import {
   Select,
   notification,
   DatePicker,
+  Switch,
+  Divider,
 } from 'antd';
 import { Modal } from '../utils/focus_modal';
 import moment from 'moment';
@@ -31,6 +33,7 @@ export type PersonalInfo = {
   lastName: string;
   countryCode: string;
   about: string;
+  silentMode: boolean;
 };
 
 type Props = {
@@ -373,6 +376,18 @@ export const PersonalInfo = React.memo((props: Props) => {
           </Form.Item>
         </Col>
       </Row>
+      <Row>
+        <Col span={11}>
+          <Form.Item
+            name="silentMode"
+            label="Silent Mode (turn off all private chat)"
+            valuePropName="checked"
+          >
+            <Switch />
+          </Form.Item>
+        </Col>
+      </Row>
+      <Divider />
       <Row align="middle">
         <Col
           span={8}

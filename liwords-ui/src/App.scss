@@ -159,17 +159,17 @@ a.plain,
     }
   }
 }
-.ant-modal-body .readable-text-color {
+.readable-text-color {
   @include colorModed() {
     color: m($gray-extreme);
   }
 }
-.tourney-editor .readable-text-color {
+.readable-text-color {
   @include colorModed() {
     color: m($gray-extreme);
   }
 }
-.ant-list-items .readable-text-color {
+.readable-text-color {
   @include colorModed() {
     color: m($gray-extreme);
   }

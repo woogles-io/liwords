@@ -19,11 +19,18 @@ export const CloseAccount = React.memo((props: Props) => {
         <div className="full-name">{props.player?.full_name}</div>
       </div>
       <div className="deletion-rules">
-        If you choose to delete your account, it will no longer be accessible.
+        If you choose to delete your account, it will{' '}
+        <strong>no longer be accessible.</strong>
       </div>
       <div className="deletion-rules">
         All of your data will be deleted, except for past games, per the Woogles
         Terms of Service.
+      </div>
+      <div className="deletion-rules">
+        <strong>
+          Note: Account deletion is not a way to change usernames. It will not
+          work.
+        </strong>
       </div>
       <Form
         onFinish={(values: { [key: string]: string }) => {
@@ -58,7 +65,7 @@ export const CloseAccount = React.memo((props: Props) => {
           >
             <Checkbox>
               <div className="i-understand">
-                I understand that closing my account is an irreversible action
+                I understand that closing my account is an irreversible action.
               </div>
             </Checkbox>
           </Form.Item>

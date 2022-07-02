@@ -5157,7 +5157,8 @@ proto.user_service.ProfileResponse.toObject = function(includeInstance, msg) {
     avatarUrl: jspb.Message.getFieldWithDefault(msg, 9, ""),
     fullName: jspb.Message.getFieldWithDefault(msg, 10, ""),
     avatarsEditable: jspb.Message.getBooleanFieldWithDefault(msg, 11, false),
-    birthDate: jspb.Message.getFieldWithDefault(msg, 12, "")
+    birthDate: jspb.Message.getFieldWithDefault(msg, 12, ""),
+    silentMode: jspb.Message.getBooleanFieldWithDefault(msg, 13, false)
   };
 
   if (includeInstance) {
@@ -5241,6 +5242,10 @@ proto.user_service.ProfileResponse.deserializeBinaryFromReader = function(msg, r
     case 12:
       var value = /** @type {string} */ (reader.readString());
       msg.setBirthDate(value);
+      break;
+    case 13:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setSilentMode(value);
       break;
     default:
       reader.skipField();
@@ -5352,6 +5357,13 @@ proto.user_service.ProfileResponse.serializeBinaryToWriter = function(message, w
   if (f.length > 0) {
     writer.writeString(
       12,
+      f
+    );
+  }
+  f = message.getSilentMode();
+  if (f) {
+    writer.writeBool(
+      13,
       f
     );
   }
@@ -5574,6 +5586,24 @@ proto.user_service.ProfileResponse.prototype.setBirthDate = function(value) {
 };
 
 
+/**
+ * optional bool silent_mode = 13;
+ * @return {boolean}
+ */
+proto.user_service.ProfileResponse.prototype.getSilentMode = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 13, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.user_service.ProfileResponse} returns this
+ */
+proto.user_service.ProfileResponse.prototype.setSilentMode = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 13, value);
+};
+
+
 
 
 
@@ -5714,7 +5744,8 @@ proto.user_service.PersonalInfoResponse.toObject = function(includeInstance, msg
     avatarUrl: jspb.Message.getFieldWithDefault(msg, 5, ""),
     fullName: jspb.Message.getFieldWithDefault(msg, 6, ""),
     about: jspb.Message.getFieldWithDefault(msg, 7, ""),
-    birthDate: jspb.Message.getFieldWithDefault(msg, 8, "")
+    birthDate: jspb.Message.getFieldWithDefault(msg, 8, ""),
+    silentMode: jspb.Message.getBooleanFieldWithDefault(msg, 9, false)
   };
 
   if (includeInstance) {
@@ -5782,6 +5813,10 @@ proto.user_service.PersonalInfoResponse.deserializeBinaryFromReader = function(m
     case 8:
       var value = /** @type {string} */ (reader.readString());
       msg.setBirthDate(value);
+      break;
+    case 9:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setSilentMode(value);
       break;
     default:
       reader.skipField();
@@ -5865,6 +5900,13 @@ proto.user_service.PersonalInfoResponse.serializeBinaryToWriter = function(messa
   if (f.length > 0) {
     writer.writeString(
       8,
+      f
+    );
+  }
+  f = message.getSilentMode();
+  if (f) {
+    writer.writeBool(
+      9,
       f
     );
   }
@@ -6015,6 +6057,24 @@ proto.user_service.PersonalInfoResponse.prototype.setBirthDate = function(value)
 };
 
 
+/**
+ * optional bool silent_mode = 9;
+ * @return {boolean}
+ */
+proto.user_service.PersonalInfoResponse.prototype.getSilentMode = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 9, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.user_service.PersonalInfoResponse} returns this
+ */
+proto.user_service.PersonalInfoResponse.prototype.setSilentMode = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 9, value);
+};
+
+
 
 
 
@@ -6054,7 +6114,8 @@ proto.user_service.UpdatePersonalInfoRequest.toObject = function(includeInstance
     avatarUrl: jspb.Message.getFieldWithDefault(msg, 5, ""),
     fullName: jspb.Message.getFieldWithDefault(msg, 6, ""),
     about: jspb.Message.getFieldWithDefault(msg, 7, ""),
-    birthDate: jspb.Message.getFieldWithDefault(msg, 8, "")
+    birthDate: jspb.Message.getFieldWithDefault(msg, 8, ""),
+    silentMode: jspb.Message.getBooleanFieldWithDefault(msg, 9, false)
   };
 
   if (includeInstance) {
@@ -6122,6 +6183,10 @@ proto.user_service.UpdatePersonalInfoRequest.deserializeBinaryFromReader = funct
     case 8:
       var value = /** @type {string} */ (reader.readString());
       msg.setBirthDate(value);
+      break;
+    case 9:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setSilentMode(value);
       break;
     default:
       reader.skipField();
@@ -6205,6 +6270,13 @@ proto.user_service.UpdatePersonalInfoRequest.serializeBinaryToWriter = function(
   if (f.length > 0) {
     writer.writeString(
       8,
+      f
+    );
+  }
+  f = message.getSilentMode();
+  if (f) {
+    writer.writeBool(
+      9,
       f
     );
   }
@@ -6352,6 +6424,24 @@ proto.user_service.UpdatePersonalInfoRequest.prototype.getBirthDate = function()
  */
 proto.user_service.UpdatePersonalInfoRequest.prototype.setBirthDate = function(value) {
   return jspb.Message.setProto3StringField(this, 8, value);
+};
+
+
+/**
+ * optional bool silent_mode = 9;
+ * @return {boolean}
+ */
+proto.user_service.UpdatePersonalInfoRequest.prototype.getSilentMode = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 9, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.user_service.UpdatePersonalInfoRequest} returns this
+ */
+proto.user_service.UpdatePersonalInfoRequest.prototype.setSilentMode = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 9, value);
 };
 
 
@@ -7133,7 +7223,8 @@ proto.user_service.BriefProfile.toObject = function(includeInstance, msg) {
     username: jspb.Message.getFieldWithDefault(msg, 1, ""),
     fullName: jspb.Message.getFieldWithDefault(msg, 2, ""),
     countryCode: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    avatarUrl: jspb.Message.getFieldWithDefault(msg, 9, "")
+    avatarUrl: jspb.Message.getFieldWithDefault(msg, 9, ""),
+    silentMode: jspb.Message.getBooleanFieldWithDefault(msg, 13, false)
   };
 
   if (includeInstance) {
@@ -7185,6 +7276,10 @@ proto.user_service.BriefProfile.deserializeBinaryFromReader = function(msg, read
     case 9:
       var value = /** @type {string} */ (reader.readString());
       msg.setAvatarUrl(value);
+      break;
+    case 13:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setSilentMode(value);
       break;
     default:
       reader.skipField();
@@ -7240,6 +7335,13 @@ proto.user_service.BriefProfile.serializeBinaryToWriter = function(message, writ
   if (f.length > 0) {
     writer.writeString(
       9,
+      f
+    );
+  }
+  f = message.getSilentMode();
+  if (f) {
+    writer.writeBool(
+      13,
       f
     );
   }
@@ -7315,6 +7417,24 @@ proto.user_service.BriefProfile.prototype.getAvatarUrl = function() {
  */
 proto.user_service.BriefProfile.prototype.setAvatarUrl = function(value) {
   return jspb.Message.setProto3StringField(this, 9, value);
+};
+
+
+/**
+ * optional bool silent_mode = 13;
+ * @return {boolean}
+ */
+proto.user_service.BriefProfile.prototype.getSilentMode = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 13, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.user_service.BriefProfile} returns this
+ */
+proto.user_service.BriefProfile.prototype.setSilentMode = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 13, value);
 };
 
 

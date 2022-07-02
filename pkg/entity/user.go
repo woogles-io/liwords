@@ -41,9 +41,13 @@ type User struct {
 	// CurrentChannel tracks presence; where is the user currently?
 	CurrentChannel string
 	IsBot          bool
-	IsDirector     bool
-	IsMod          bool
-	IsAdmin        bool
+	// Note: a "Director" in this case is someone who can create tournaments.
+	// It might be better named something like IsTournamentCreator.
+	// Directors of specific tournaments can be assigned at tournament
+	// creation, and these users do not need any special permission flags.
+	IsDirector bool
+	IsMod      bool
+	IsAdmin    bool
 
 	Actions   *Actions
 	Notoriety int
@@ -78,6 +82,7 @@ type Profile struct {
 	Ratings     Ratings
 	Stats       ProfileStats
 	AvatarUrl   string
+	SilentMode  bool
 }
 
 // If the RD is <= this number, the rating is "known"

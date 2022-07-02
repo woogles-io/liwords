@@ -86,7 +86,8 @@ service AuthenticationService {
       returns (NotifyAccountClosureResponse);
   // These two temporary endpoints for migrating everyone to naked domain:
   rpc GetSignedCookie(GetSignedCookieRequest) returns (SignedCookieResponse);
-  rpc InstallSignedCookie(SignedCookieResponse) returns (InstallSignedCookieResponse);
+  rpc InstallSignedCookie(SignedCookieResponse)
+      returns (InstallSignedCookieResponse);
 }
 
 message GetSignedCookieRequest {}
@@ -135,12 +136,18 @@ message ProfileResponse {
   string user_id = 8;
   string avatar_url = 9;
   string full_name = 10;
-  bool avatars_editable = 11;
+  bool avatars_editable = 11 [ deprecated = true ];
   string birth_date = 12;
+  bool silent_mode = 13;
 }
 
 message PersonalInfoRequest {}
 
+// PersonalInfoResponse is sent when we query our own
+// profile (in order to modify it) on the front end. It contains
+// a field that is not part of the profile model/table itself -- email
+// We should consider combining this with the ProfileResponse message,
+// and just leaving the email field blank when making a profile request.
 message PersonalInfoResponse {
   string email = 1;
   string first_name = 2;
@@ -150,6 +157,7 @@ message PersonalInfoResponse {
   string full_name = 6;
   string about = 7;
   string birth_date = 8;
+  bool silent_mode = 9;
 }
 
 message UpdatePersonalInfoRequest {
@@ -161,6 +169,7 @@ message UpdatePersonalInfoRequest {
   string full_name = 6;
   string about = 7;
   string birth_date = 8;
+  bool silent_mode = 9;
 }
 
 message UpdatePersonalInfoResponse {}
@@ -181,6 +190,7 @@ message BriefProfile {
   string full_name = 2; // omitted for non-adults
   string country_code = 3;
   string avatar_url = 9;
+  bool silent_mode = 13;
 }
 
 message BriefProfilesResponse { map<string, BriefProfile> response = 1; }
