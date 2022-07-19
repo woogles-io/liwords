@@ -205,6 +205,15 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 
 	// send each player their new profile with updated ratings.
 	sendProfileUpdate(ctx, g, users)
+
+	// Asynchronously write the game stats to the db the new way:
+	// go func() {
+	// 	err := omgwords.HandleGameEnded(ctx, g)
+	// 	if err != nil {
+	// 		log.Info().Err(err)
+	// 	}
+	// }()
+
 	return nil
 }
 

@@ -1,0 +1,10 @@
+BEGIN;
+
+DROP TABLE IF EXISTS omgwords CASCADE;
+DROP TABLE IF EXISTS omgwords_turns CASCADE;
+DROP TABLE IF EXISTS omgwords_requests CASCADE;
+DROP TABLE IF EXISTS omgwords_tournament_data CASCADE;
+DROP TABLE IF EXISTS omgwords_meta_events CASCADE;
+DROP TABLE IF EXISTS omgwords_stats CASCADE;
+
+COMMIT;

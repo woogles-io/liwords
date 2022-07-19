@@ -508,6 +508,14 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 	result := ctxDB.Model(&game{}).Clauses(clause.Locking{Strength: "UPDATE"}).
 		Where("uuid = ?", g.GameID()).Updates(dbg)
 
+	// Asynchronously write the game to the db the new way:
+	// go func() {
+	// 	err := omgwords.Set(ctx, g)
+	// 	if err != nil {
+	// 		log.Info().Err(err)
+	// 	}
+	// }()
+
 	return result.Error
 }
 
