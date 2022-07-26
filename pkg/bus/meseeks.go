@@ -15,6 +15,7 @@ import (
 	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
+	"github.com/domino14/macondo/board"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 
 	"github.com/domino14/macondo/game"
@@ -104,6 +105,15 @@ func (b *Bus) newSeekRequest(ctx context.Context, auth, userID, connID string,
 	err := entity.ValidateGameRequest(ctx, gameRequest)
 	if err != nil {
 		return err
+	}
+
+	// Modify the game request if the variant calls for it.
+	if gameRequest.Rules.VariantName == game.VarClassicSuper {
+		if !isEnglish(gameRequest.Lexicon) {
+			return errors.New("non-english lexica not supported for this variant")
+		}
+		gameRequest.Rules.BoardLayoutName = board.SuperCrosswordGameLayout
+		gameRequest.Rules.LetterDistributionName = "english_super"
 	}
 
 	// Look up user.
@@ -338,6 +348,12 @@ func (b *Bus) gameRequestForSeek(ctx context.Context, req *pb.SeekRequest,
 		gameRequest.RequestId = ""
 	}
 	return gameRequest, lastOpp, nil
+}
+
+func isEnglish(lexicon string) bool {
+	return strings.HasPrefix(lexicon, "NWL") ||
+		strings.HasPrefix(lexicon, "CSW") ||
+		strings.HasPrefix(lexicon, "ECWL")
 }
 
 func validateCELLexicon(lexicon string, botType macondopb.BotRequest_BotCode) error {

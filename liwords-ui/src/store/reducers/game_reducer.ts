@@ -27,6 +27,10 @@ import {
   GameHistoryRefresher,
   ServerGameplayEvent,
 } from '../../gen/api/proto/ipc/omgwords_pb';
+import {
+  CrosswordGameGridLayout,
+  SuperCrosswordGameGridLayout,
+} from '../../constants/board_layout';
 
 type TileDistribution = { [rune: string]: number };
 
@@ -85,10 +89,11 @@ const makePool = (alphabet: Alphabet): TileDistribution => {
 export const startingGameState = (
   alphabet: Alphabet,
   players: Array<RawPlayerInfo>,
-  gameID: string
+  gameID: string,
+  layout = CrosswordGameGridLayout
 ): GameState => {
   const gs = {
-    board: new Board(),
+    board: new Board(layout),
     alphabet,
     pool: makePool(alphabet),
     turns: new Array<GameEvent>(),
@@ -326,7 +331,10 @@ const stateFromHistory = (history: GameHistory): GameState => {
   const gs = startingGameState(
     alphabet,
     initialExpandToFull(playerList),
-    history.getUid()
+    history.getUid(),
+    history.getBoardLayout() === 'SuperCrosswordGame'
+      ? SuperCrosswordGameGridLayout
+      : CrosswordGameGridLayout
   );
   gs.nickToPlayerOrder = nickToPlayerOrder;
   gs.uidToPlayerOrder = uidToPlayerOrder;

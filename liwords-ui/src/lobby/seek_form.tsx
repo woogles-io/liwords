@@ -547,6 +547,9 @@ export const SeekForm = (props: Props) => {
             <Select.Option value="wordsmog">
               <VariantIcon vcode="wordsmog" withName />
             </Select.Option>
+            <Select.Option value="classic_super">
+              <VariantIcon vcode="classic_super" withName />
+            </Select.Option>
           </Select>
         </Form.Item>
       )}

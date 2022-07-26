@@ -69,10 +69,12 @@ const BoardSpaces = React.memo((props: Props) => {
     }
   }, [isTouchDeviceResult, drop]);
   // y row, x col
+  const midway = Math.trunc(props.gridDim / 2);
+
   for (let y = 0; y < props.gridDim; y += 1) {
     for (let x = 0; x < props.gridDim; x += 1) {
       const sq = props.gridLayout[y][x];
-      const startingSquare = x === 7 && y === 7;
+      const startingSquare = x === midway && y === midway;
       const showArrow =
         props.placementArrow.show &&
         props.placementArrow.row === y &&

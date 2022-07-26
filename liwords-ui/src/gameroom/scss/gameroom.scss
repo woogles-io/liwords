@@ -347,6 +347,7 @@ p.streak-loss {
   height: $board-size-mobile;
   min-width: 360px;
   display: grid;
+  /* fix -- can't hardcode! */
   grid-template-columns: repeat(15, 1fr);
   grid-template-rows: repeat(15, 1fr);
   gap: 1px;
