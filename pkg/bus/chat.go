@@ -14,6 +14,12 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+var (
+	errNoPrivateChatAllowed = errors.New("you are in silent mode, so can not chat")
+
+	errReceiverNoPrivateChat = errors.New("this user does not receive chats")
+)
+
 // chat-related functionality should be here. Chat should be mostly ephemeral,
 // but will use Redis to keep a short history of previous chats in every channel.
 
@@ -35,14 +41,25 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	if err != nil {
 		return err
 	}
+	// check if the sending user is a child or has silent mode on.
+	isChild := sendingUser.IsChild() == pb.ChildStatus_UNKNOWN ||
+		sendingUser.IsChild() == pb.ChildStatus_CHILD
+	// Do not allow chat in a private channel
+
+	disallowPrivate := isChild || sendingUser.Profile.SilentMode
+	privateChannel := strings.HasPrefix(evt.Channel, "chat.pm.") ||
+		strings.HasPrefix(evt.Channel, "chat.game.")
 
 	// Regulate chat only if the user is not privileged and the
 	// chat is not a private chat or a game chat
 	regulateChat := !(sendingUser.IsAdmin ||
 		sendingUser.IsMod ||
 		sendingUser.IsDirector ||
-		strings.HasPrefix(evt.Channel, "chat.pm.") ||
-		strings.HasPrefix(evt.Channel, "chat.game."))
+		privateChannel)
+
+	if privateChannel && disallowPrivate {
+		return errNoPrivateChatAllowed
+	}
 
 	userFriendlyChannelName := ""
 	if strings.HasPrefix(evt.Channel, "chat.pm.") {
@@ -54,6 +71,11 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		if err != nil {
 			return err
 		}
+		if recUser.IsChild() == pb.ChildStatus_UNKNOWN ||
+			recUser.IsChild() == pb.ChildStatus_CHILD || recUser.Profile.SilentMode {
+			return errReceiverNoPrivateChat
+		}
+
 		block, err := b.blockExists(ctx, recUser, sendingUser)
 		if err != nil {
 			return err
