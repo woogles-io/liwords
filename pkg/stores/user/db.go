@@ -358,7 +358,9 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 			CountryCode: countryCodeOption.String,
 			AvatarUrl:   censoredAvatarUrl,
 			FullName:    censoredFullName,
-			SilentMode:  silentModeOption.Bool,
+			// Silent mode for the purposes of the brief profile should
+			// check both the "silent mode" setting and the user's birthdate.
+			SilentMode: silentModeOption.Bool || !subjectIsAdult,
 		}
 	}
 
