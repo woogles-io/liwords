@@ -108,7 +108,6 @@ export const Rack = React.memo((props: Props) => {
           lastPlayed={false}
           playerOfTile={props.tileColorId}
           key={`tile_${n}`}
-          scale={false}
           selected={props.selected && props.selected.has(n)}
           grabbable={props.grabbable}
           rackIndex={n}

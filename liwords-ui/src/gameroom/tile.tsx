@@ -104,7 +104,6 @@ type TileProps = {
   playerOfTile: number;
   rune: string;
   value: number;
-  scale?: boolean;
   tentative?: boolean;
   tentativeScore?: number;
   tentativeScoreIsHorizontal?: boolean | undefined;
@@ -136,7 +135,6 @@ type TileProps = {
 };
 
 const Tile = React.memo((props: TileProps) => {
-  console.log('Tile called with props', props);
   const { useState } = useMountedState();
 
   const [isMouseDragging, setIsMouseDragging] = useState(false);

@@ -273,10 +273,10 @@ export const isLegalPlay = (
   if (!touches && !board.isEmpty) {
     return false;
   }
-
+  const centerSquare = Math.floor(board.dim / 2);
   if (board.isEmpty) {
     // Must touch center square
-    if (!(rows.has(7) && cols.has(7))) {
+    if (!(rows.has(centerSquare) && cols.has(centerSquare))) {
       return false;
     }
   }

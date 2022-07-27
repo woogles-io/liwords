@@ -10,6 +10,7 @@ import {
 } from '../utils/cwgame/common';
 import { PlacementArrow } from '../utils/cwgame/tile_placement';
 import { Alphabet, runeToValues } from '../constants/alphabets';
+import { colRowGridStyle } from '../constants/grid';
 
 type Props = {
   tileColorId: number;
@@ -20,7 +21,6 @@ type Props = {
   playerOfTileAt: PlayerOfTiles;
   onClick: (rune: string) => void;
   placementArrow: PlacementArrow;
-  scaleTiles: boolean;
   tentativeTiles: Set<EphemeralTile>;
   tentativeTileScore: number | undefined;
   returnToRack?: (
@@ -200,7 +200,6 @@ const Tiles = React.memo((props: Props) => {
             lastPlayed={lastPlayed}
             playerOfTile={playerOfTile}
             key={`tile_${x}_${y}`}
-            scale={props.scaleTiles}
             tentativeScore={tentativeScoreHere}
             tentativeScoreIsHorizontal={tentativeScoreHereIsHorizontal}
             grabbable={false}
@@ -235,7 +234,6 @@ const Tiles = React.memo((props: Props) => {
               lastPlayed={false}
               playerOfTile={props.tileColorId}
               key={`tileT_${tentativeTile.col}_${tentativeTile.row}`}
-              scale={false}
               tentative={true}
               x={x}
               y={y}
@@ -257,7 +255,11 @@ const Tiles = React.memo((props: Props) => {
     }
   }
 
-  return <div className="tiles">{tiles}</div>;
+  return (
+    <div className="tiles" style={colRowGridStyle(props.gridDim)}>
+      {tiles}
+    </div>
+  );
 });
 
 export default Tiles;

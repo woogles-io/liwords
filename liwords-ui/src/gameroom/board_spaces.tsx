@@ -5,6 +5,7 @@ import { BonusType } from '../constants/board_layout';
 import { isTouchDevice } from '../utils/cwgame/common';
 import { useDrop, XYCoord } from 'react-dnd';
 import { TILE_TYPE } from './tile';
+import { colRowGridStyle } from '../constants/grid';
 
 type Props = {
   gridDim: number;
@@ -103,7 +104,12 @@ const BoardSpaces = React.memo((props: Props) => {
     }
   }
   return (
-    <div className="board-spaces" ref={boardRef} id="board-spaces">
+    <div
+      className="board-spaces"
+      ref={boardRef}
+      id="board-spaces"
+      style={colRowGridStyle(props.gridDim)}
+    >
       {spaces}
     </div>
   );

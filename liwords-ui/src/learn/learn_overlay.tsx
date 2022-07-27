@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useMemo } from 'react';
+import { colRowGridStyle } from '../constants/grid';
 import { useMountedState } from '../utils/mounted';
 
 export const LearnContext = React.createContext<{
@@ -89,5 +90,12 @@ export const LearnOverlay = React.memo((props: LearnOverlayProps) => {
     ));
   }, [learnLayout]);
 
-  return <div className="learn-spaces board-spaces">{renderSpaces}</div>;
+  return (
+    <div
+      className="learn-spaces board-spaces"
+      style={colRowGridStyle(props.gridDim)}
+    >
+      {renderSpaces}
+    </div>
+  );
 });

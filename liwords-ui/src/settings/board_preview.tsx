@@ -57,7 +57,6 @@ export const BoardPreview = React.memo((props: Props) => {
               row: 0,
               show: false,
             }}
-            scaleTiles={true}
             tentativeTiles={new Set<EphemeralTile>()}
             tentativeTileScore={undefined}
           />
