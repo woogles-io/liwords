@@ -144,7 +144,7 @@
     order: initial;
     flex-grow: 1;
     .ant-card {
-      height: $main-container-width-tablet + 60px;
+      height: calc($main-container-width-tablet + 60px);
     }
   }
   .lobby .game-lists {

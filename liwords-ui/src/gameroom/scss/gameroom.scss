@@ -325,7 +325,7 @@ p.streak-loss {
 
 /* Board spaces */
 
-.board-spaces-container, {
+.board-spaces-container {
   position: relative;
   display: flex;
   flex-wrap: wrap;
@@ -752,7 +752,7 @@ p.streak-loss {
   justify-content: center;
   align-items: center;
   margin: 20px 0;
-  width: ($tile-size-mobile * 8);
+  width: calc($tile-size-mobile * 8);
   height: $tile-size-mobile;
   min-height: $tile-size-mobile;
 }
@@ -776,7 +776,7 @@ p.streak-loss {
     background-color: m($background);
   }
   .rack {
-    width: $tile-size-desktop * 8.5;
+    width: calc($tile-size-desktop * 8.5);
   }
   .ant-btn.ant-btn-primary.ant-btn-circle {
     border-radius: 50%;
@@ -859,7 +859,7 @@ p.streak-loss {
   border-radius: 50%;
   text-transform: capitalize;
   transform: rotate(-10deg);
-  font-size: $tile-font-size-mobile * 0.95;
+  font-size: calc($tile-font-size-mobile * 0.95);
   @include colorModed() {
     color: m($tile-blank-text);
     background-color: m($tile-background-secondary);
@@ -980,7 +980,7 @@ p.rune {
   }
 }
 .tile.blank p.rune {
-  font-size: $tile-font-size-mobile * 0.9;
+  font-size: calc($tile-font-size-mobile * 0.9);
 }
 .tile .point-value {
   position: absolute;
@@ -1377,9 +1377,9 @@ p.rune {
     }
     &.play {
       order: 1;
-      min-width: $board-size-mobile * 0.25;
-      width: $board-size-mobile * 0.25;
-      height: $board-size-mobile * 0.25;
+      min-width: calc($board-size-mobile * 0.25);
+      width: calc($board-size-mobile * 0.25);
+      height: calc($board-size-mobile * 0.25);
       margin: 0 6px;
     }
   }
@@ -1476,7 +1476,7 @@ p.rune {
     width: $board-size-mobile;
   }
   .rack {
-    width: (48 + $tile-size-mobile * 8);
+    width: calc(48 + $tile-size-mobile * 8);
   }
 }
 @media (min-width: $screen-tablet-min) {
@@ -1505,7 +1505,7 @@ p.rune {
     }
   }
   .rack {
-    width: (48 + $tile-size-tablet * 8);
+    width: calc(48 + $tile-size-tablet * 8);
   }
   .rack .tile {
     width: $tile-size-desktop;
@@ -1522,7 +1522,7 @@ p.rune {
     position: relative;
   }
   .tile.blank p.rune {
-    font-size: $tile-font-size-tablet * 0.9;
+    font-size: calc($tile-font-size-tablet * 0.9);
   }
   .tile .point-value {
     font-size: $point-size-tablet;
@@ -1723,14 +1723,14 @@ p.rune {
     font-size: $tile-font-size-laptop;
   }
   .tile.blank p.rune {
-    font-size: $tile-font-size-laptop * 0.9;
+    font-size: calc($tile-font-size-laptop * 0.9);
   }
   .tile .point-value {
     font-size: $point-size-laptop;
     padding: 5px 3px;
   }
   .rack {
-    width: (48 + $tile-size-laptop * 8);
+    width: calc(48 + $tile-size-laptop * 8);
   }
   .rack .tile {
     height: $tile-size-laptop;
@@ -1782,7 +1782,7 @@ p.rune {
     width: $tile-size-desktop;
   }
   .rack {
-    width: (48 + $tile-size-desktop * 8);
+    width: calc(48 + $tile-size-desktop * 8);
   }
   .rack .tile {
     height: $tile-size-desktop;
@@ -1801,7 +1801,7 @@ p.rune {
     font-size: $tile-font-size-desktop;
   }
   .tile.blank p.rune {
-    font-size: $tile-font-size-desktop * 0.9;
+    font-size: calc($tile-font-size-desktop * 0.9);
   }
   .tile .point-value {
     font-size: $point-size-desktop;

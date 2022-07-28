@@ -32,6 +32,14 @@ $screen-desktop-l-min: 1600px;
   screenSizeDesktop: strip-unit($screen-desktop-min);
 }
 
+@function board-size($tile-size) {
+  @return calc($tile-size * var(--dim, 15));
+}
+
+@function container-size($tile-size) {
+  @return calc(($tile-size * var(--dim, 15)) + 24px);
+}
+
 $screen-min-height-laptop-min: 680px;
 $screen-min-height-desktop-min: 830px;
 $screen-min-height-desktop-max: 910px;
@@ -41,20 +49,20 @@ $font-default: 'Mulish', sans-serif;
 $font-monospaced: 'Courier Prime', monospace;
 $font-tile: 'Roboto Mono', monospace;
 
-$tile-size-mobile: 34px;
-$tile-size-tablet: 34px;
-$tile-size-laptop: 34px;
-$tile-size-desktop: 44px;
+$tile-size-mobile: calc(34px * 15 / var(--dim, 15));
+$tile-size-tablet: calc(34px * 15 / var(--dim, 15));
+$tile-size-laptop: calc(34px * 15 / var(--dim, 15));
+$tile-size-desktop: calc(44px * 15 / var(--dim, 15));
 
-$board-size-mobile: $tile-size-mobile * 15;
-$board-size-tablet: $tile-size-tablet * 15;
-$board-size-laptop: $tile-size-laptop * 15;
-$board-size-desktop: $tile-size-desktop * 15;
+$board-size-mobile: board-size($tile-size-mobile);
+$board-size-tablet: board-size($tile-size-tablet);
+$board-size-laptop: board-size($tile-size-laptop);
+$board-size-desktop: board-size($tile-size-desktop);
 
-$main-container-width-mobile: $board-size-mobile + 24px;
-$main-container-width-tablet: $board-size-tablet + 24px;
-$main-container-width-laptop: $board-size-laptop + 24px;
-$main-container-width-desktop: $board-size-desktop + 24px;
+$main-container-width-mobile: calc($board-size-mobile + 24px);
+$main-container-width-tablet: calc($board-size-tablet + 24px);
+$main-container-width-laptop: calc($board-size-laptop + 24px);
+$main-container-width-desktop: calc($board-size-desktop + 24px);
 
 $sidebar-width-tablet: calc((100% - #{$main-container-width-laptop}) - 24px);
 $sidebar-width-laptop: calc(
@@ -66,15 +74,15 @@ $sidebar-width-desktop: calc(
 
 $settings-width: calc(35%);
 
-$tile-font-size-mobile: $tile-size-mobile * 0.68;
-$tile-font-size-tablet: $tile-size-tablet * 0.68;
-$tile-font-size-laptop: $tile-size-laptop * 0.68;
-$tile-font-size-desktop: $tile-size-desktop * 0.68;
+$tile-font-size-mobile: calc($tile-size-mobile * 0.68);
+$tile-font-size-tablet: calc($tile-size-tablet * 0.68);
+$tile-font-size-laptop: calc($tile-size-laptop * 0.68);
+$tile-font-size-desktop: calc($tile-size-desktop * 0.68);
 
-$point-size-mobile: math.div($tile-font-size-mobile, 3.1);
-$point-size-tablet: math.div($tile-font-size-tablet, 2.6);
-$point-size-laptop: math.div($tile-font-size-laptop, 2.8);
-$point-size-desktop: math.div($tile-font-size-desktop, 2.8);
+$point-size-mobile: calc($tile-font-size-mobile / 3.1);
+$point-size-tablet: calc($tile-font-size-tablet / 2.6);
+$point-size-laptop: calc($tile-font-size-laptop / 2.8);
+$point-size-desktop: calc($tile-font-size-desktop / 2.8);
 
 @mixin container {
   width: 100%;
@@ -83,7 +91,7 @@ $point-size-desktop: math.div($tile-font-size-desktop, 2.8);
   margin: 0 auto;
   padding: 0 12px;
   @media (min-width: $screen-tablet-min) {
-    max-width: $main-container-width-tablet * 2;
+    max-width: calc($main-container-width-tablet * 2);
   }
   @media (min-width: $screen-laptop-min) {
     max-width: $screen-desktop-l-min;
