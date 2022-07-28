@@ -10,7 +10,6 @@ import {
 } from '../utils/cwgame/common';
 import { PlacementArrow } from '../utils/cwgame/tile_placement';
 import { Alphabet, runeToValues } from '../constants/alphabets';
-import { colRowGridStyle } from '../constants/grid';
 
 type Props = {
   tileColorId: number;
@@ -255,11 +254,7 @@ const Tiles = React.memo((props: Props) => {
     }
   }
 
-  return (
-    <div className="tiles" style={colRowGridStyle(props.gridDim)}>
-      {tiles}
-    </div>
-  );
+  return <div className="tiles">{tiles}</div>;
 });
 
 export default Tiles;

@@ -338,6 +338,11 @@ p.streak-loss {
     background: ub($grid);
   }
 }
+
+.zomgboard {
+  --dim: 21;
+}
+
 .board-spaces,
 .tiles,
 .learn-spaces
@@ -347,8 +352,8 @@ p.streak-loss {
   height: $board-size-mobile;
   min-width: 360px;
   display: grid;
-//   grid-template-columns: repeat(15, 1fr);
-//   grid-template-rows: repeat(15, 1fr);
+  grid-template-columns: repeat(var(--dim, 15), 1fr);
+  grid-template-rows: repeat(var(--dim, 15) , 1fr);
   gap: 1px;
 }
 .board-spaces:not(.learn-spaces) {
@@ -506,9 +511,6 @@ p.streak-loss {
         @include userboard() {
           color: ub($board-selection-color);
         }
-      }
-      .anticon-star {
-        display: none;
       }
     }
   }

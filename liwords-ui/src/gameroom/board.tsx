@@ -13,6 +13,7 @@ import {
 } from '../utils/cwgame/common';
 import { Alphabet } from '../constants/alphabets';
 import { LearnOverlay } from '../learn/learn_overlay';
+import { SuperCrosswordGameGridLayout } from '../constants/board_layout';
 
 type Props = {
   tileColorId: number;
@@ -52,9 +53,13 @@ const Board = React.memo((props: Props) => {
 
   const { outerDivProps, svgDrawing } = useDrawing();
   const { isExamining } = useExamineStoreContext();
+  let zomgClass = '';
+  if (props.gridSize === SuperCrosswordGameGridLayout.length) {
+    zomgClass = ' zomgboard';
+  }
 
   return (
-    <div className="board">
+    <div className={`board${zomgClass}`}>
       <BoardCoordLabels gridDim={props.gridSize} />
       <div
         className="board-spaces-container"
