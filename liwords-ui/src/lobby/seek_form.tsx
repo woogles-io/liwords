@@ -188,8 +188,8 @@ export const SeekForm = (props: Props) => {
   );
 
   const enableWordSmog = React.useMemo(
-    () => localStorage.getItem('enableWordSmog') === 'true' && !props.vsBot,
-    [props.vsBot]
+    () => localStorage.getItem('enableWordSmog') === 'true',
+    []
   );
 
   let storageKey = 'lastSeekForm';

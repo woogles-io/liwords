@@ -89,7 +89,7 @@ export const GameCard = React.memo((props: GameCardProps) => {
 
   const getDetails = (
     <div className="detail-icons">
-      <VariantIcon vcode="game_request.rules.variant_name" />
+      <VariantIcon vcode={game_request.rules.variant_name} />
       {game_request.rating_mode === 'RATED' ? (
         <Tooltip title="Rated">
           <FundOutlined />
