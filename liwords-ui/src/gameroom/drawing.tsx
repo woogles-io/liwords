@@ -309,7 +309,7 @@ export const useDrawing = (dim: number) => {
       }
       return x;
     });
-  }, [scaledXYStr, boardSize.width, boardSize.height]);
+  }, [scaledXYStr, dim, boardSize.width, boardSize.height]);
 
   const scheduleRepaint = React.useCallback(() => {
     if (plannedRepaintRef.current != null) {
