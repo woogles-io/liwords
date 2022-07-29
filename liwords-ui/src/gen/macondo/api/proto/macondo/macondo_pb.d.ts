@@ -66,9 +66,6 @@ export class GameHistory extends jspb.Message {
   getLetterDistribution(): string;
   setLetterDistribution(value: string): void;
 
-  getStartingCgp(): string;
-  setStartingCgp(value: string): void;
-
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameHistory.AsObject;
   static toObject(includeInstance: boolean, msg: GameHistory): GameHistory.AsObject;
@@ -99,7 +96,6 @@ export namespace GameHistory {
     winner: number,
     boardLayout: string,
     letterDistribution: string,
-    startingCgp: string,
   }
 }
 
@@ -160,9 +156,6 @@ export class GameEvent extends jspb.Message {
   getMillisRemaining(): number;
   setMillisRemaining(value: number): void;
 
-  getPlayerIndex(): number;
-  setPlayerIndex(value: number): void;
-
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameEvent.AsObject;
   static toObject(includeInstance: boolean, msg: GameEvent): GameEvent.AsObject;
@@ -193,7 +186,6 @@ export namespace GameEvent {
     isBingo: boolean,
     wordsFormedList: Array<string>,
     millisRemaining: number,
-    playerIndex: number,
   }
 
   export interface TypeMap {
