@@ -65,10 +65,10 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
   const bonusTypes = [
     BonusType.DoubleWord,
     BonusType.TripleWord,
-    //BonusType.QuadrupleWord,
+    BonusType.QuadrupleWord,
     BonusType.DoubleLetter,
     BonusType.TripleLetter,
-    //BonusType.QuadrupleLetter,
+    BonusType.QuadrupleLetter,
     BonusType.StartingSquare,
     BonusType.NoBonus,
   ];
@@ -137,43 +137,54 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
   commitLine(`const monospacedFontDimY = ${monospacedFontDimY}`);
   commitLine('');
   ++indentLevel;
-  commitLine(`${JSON.stringify(groupName)}: {`);
-  ++indentLevel;
-  commitLine(`TilesBytes: ${groupName}TilesBytes,`);
-  commitLine('Tile0Src: map[rune][2]int{');
-  for (const c of shownRunes) recordPos(c);
-  commitLine('},');
-  commitLine('Tile1Src: map[rune][2]int{');
-  for (const c of shownRunes) recordPos(c);
-  commitLine('},');
-  commitLine('BoardSrc: map[rune][2]int{');
-  for (const c of bonusTypes) recordPos(c);
-  commitLine('},');
-  if (x !== 0) {
-    ++y;
-    x = 0;
+  const orig = { yOffset, y, x, curDimY, curDimX, curNumCols };
+  let numTextCols = 0;
+  for (const [letterDistributionName, boardConfig] of [
+    [groupName, 'standardBoardConfig'],
+    ...(groupName === 'english'
+      ? [[`${groupName}_super`, 'superBoardConfig']]
+      : []),
+  ]) {
+    ({ yOffset, y, x, curDimY, curDimX, curNumCols } = orig);
+    commitLine(`${JSON.stringify(letterDistributionName)}: {`);
+    ++indentLevel;
+    commitLine(`TilesBytes: ${groupName}TilesBytes,`);
+    commitLine('Tile0Src: map[rune][2]int{');
+    for (const c of shownRunes) recordPos(c);
+    commitLine('},');
+    commitLine('Tile1Src: map[rune][2]int{');
+    for (const c of shownRunes) recordPos(c);
+    commitLine('},');
+    commitLine('BoardSrc: map[rune][2]int{');
+    for (const c of bonusTypes) recordPos(c);
+    commitLine('},');
+    if (x !== 0) {
+      ++y;
+      x = 0;
+    }
+    yOffset = y * squareDim;
+    y = 0;
+    curDimY = monospacedFontDimY;
+    curDimX = monospacedFontDimX;
+    curNumCols = Math.floor(expectedWidth / curDimX);
+    numTextCols = curNumCols;
+    commitLine('TextXSrc: map[rune][2]int{');
+    for (const c of textChars) recordPos(c);
+    commitLine('},');
+    commitLine('Text0Src: map[rune][2]int{');
+    for (const c of textChars) recordPos(c);
+    commitLine('},');
+    commitLine('Text1Src: map[rune][2]int{');
+    for (const c of textChars) recordPos(c);
+    commitLine('},');
+    const nRows = y + (x !== 0 ? 1 : 0);
+    commitLine(
+      `ExpDimXY: [2]int{${expectedWidth}, ${yOffset + nRows * curDimY}},`
+    );
+    commitLine(`BoardConfig: ${boardConfig},`);
+    --indentLevel;
+    commitLine('},');
   }
-  yOffset = y * squareDim;
-  y = 0;
-  curDimY = monospacedFontDimY;
-  curDimX = monospacedFontDimX;
-  curNumCols = Math.floor(expectedWidth / curDimX);
-  const numTextCols = curNumCols;
-  commitLine('TextXSrc: map[rune][2]int{');
-  for (const c of textChars) recordPos(c);
-  commitLine('},');
-  commitLine('Text0Src: map[rune][2]int{');
-  for (const c of textChars) recordPos(c);
-  commitLine('},');
-  commitLine('Text1Src: map[rune][2]int{');
-  for (const c of textChars) recordPos(c);
-  commitLine('},');
-  const nRows = y + (x !== 0 ? 1 : 0);
-  commitLine(
-    `ExpDimXY: [2]int{${expectedWidth}, ${yOffset + nRows * curDimY}},`
-  );
-  --indentLevel;
-  commitLine('},');
   console.log(golang.join('\n'));
 
   return (

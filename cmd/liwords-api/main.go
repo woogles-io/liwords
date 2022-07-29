@@ -292,7 +292,7 @@ func main() {
 	srv := &http.Server{
 		Addr:         cfg.ListenAddr,
 		Handler:      router,
-		WriteTimeout: 30 * time.Second,
+		WriteTimeout: 120 * time.Second,
 		ReadTimeout:  10 * time.Second}
 
 	idleConnsClosed := make(chan struct{})
