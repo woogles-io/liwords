@@ -51,7 +51,7 @@ const Board = React.memo((props: Props) => {
   // Keep frames the same size, and shrink or grow the
   // board squares as necessary.
 
-  const { outerDivProps, svgDrawing } = useDrawing();
+  const { outerDivProps, svgDrawing } = useDrawing(props.gridSize);
   const { isExamining } = useExamineStoreContext();
   let zomgClass = '';
   if (props.gridSize === SuperCrosswordGameGridLayout.length) {
