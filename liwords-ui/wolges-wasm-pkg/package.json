@@ -13,6 +13,7 @@
   "files": [
     "wolges_wasm_bg.wasm",
     "wolges_wasm.js",
+    "wolges_wasm_bg.js",
     "wolges_wasm.d.ts",
     "LICENSE.txt"
   ],
