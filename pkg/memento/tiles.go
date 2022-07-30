@@ -1420,7 +1420,9 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 		if wf.Version == 2 {
 			paintCumes(len(evts))
 			paintSpread(len(evts))
-			for _, elt := range buildHomeRack(len(evts), flyingSpritesBuf[:0]) {
+			flyingSpritesBuf = buildHomeRack(len(evts), flyingSpritesBuf[:0])
+			for k := range flyingSpritesBuf {
+				elt := &flyingSpritesBuf[k]
 				pt := elt.pt0
 				fastSpriteDrawOver(canvasPalImg, pt, elt.src)
 			}
@@ -1558,7 +1560,8 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			spreadRect := paintSpread(i)
 			tilesRect := image.Rectangle{}
 			// Slicing for [:lenRack] keep only tiles on rack and excludes tiles affected by PHONY_TILES_RETURNED.
-			for _, elt := range flyingSpritesBuf[:lenRack] {
+			for k := range flyingSpritesBuf[:lenRack] {
+				elt := &flyingSpritesBuf[k]
 				pt := elt.pt0
 				fastSpriteDrawOver(canvasPalImg, pt, elt.src)
 				tilesRect = tilesRect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
@@ -1599,7 +1602,8 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 					// Non-moving tiles are below.
 					// Note that this is actually inefficient because we keep drawing the same non-moving tiles.
 					// Maybe this could be sped up.
-					for _, elt := range flyingSpritesBuf {
+					for k := range flyingSpritesBuf {
+						elt := &flyingSpritesBuf[k]
 						if elt.pt0 == elt.pt1 {
 							pt := elt.pt0
 							fastSpriteDrawOver(canvasPalImg, pt, elt.src)
@@ -1607,7 +1611,8 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 						}
 					}
 					// Moving tiles are above. This ordering matters in the few frames when they overlap.
-					for _, elt := range flyingSpritesBuf {
+					for k := range flyingSpritesBuf {
+						elt := &flyingSpritesBuf[k]
 						if elt.pt0 != elt.pt1 {
 							pt := image.Pt(elt.pt0.X+int(math.RoundToEven(float64(elt.pt1.X-elt.pt0.X)*dpr)), elt.pt0.Y+int(math.RoundToEven(float64(elt.pt1.Y-elt.pt0.Y)*dpr)))
 							fastSpriteDrawOver(canvasPalImg, pt, elt.src)
@@ -1615,7 +1620,8 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 						}
 					}
 					// Check if non-moving tiles need to be drawn. They tend to be further away from moving tiles, that this optimization is worth it.
-					for _, elt := range flyingSpritesBuf {
+					for k := range flyingSpritesBuf {
+						elt := &flyingSpritesBuf[k]
 						if elt.pt0 == elt.pt1 {
 							pt := elt.pt0
 							tilesRect = tilesRect.Union(croppedBoundsDiff(canvasPalImg, image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim), lastFramePalImg, pt))
@@ -1627,7 +1633,8 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 					rect = tilesRect
 				}
 				// Include non-moving tiles in tilesRect so they can be erased.
-				for _, elt := range flyingSpritesBuf {
+				for k := range flyingSpritesBuf {
+					elt := &flyingSpritesBuf[k]
 					if elt.pt0 == elt.pt1 {
 						pt := elt.pt0
 						tilesRect = tilesRect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
@@ -1660,7 +1667,9 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 
 		// The final frame.
 		rect = rect.Union(paintCumes(len(evts))).Union(paintSpread(len(evts)))
-		for _, elt := range buildHomeRack(len(evts), flyingSpritesBuf[:0]) {
+		flyingSpritesBuf = buildHomeRack(len(evts), flyingSpritesBuf[:0])
+		for k := range flyingSpritesBuf {
+			elt := &flyingSpritesBuf[k]
 			pt := elt.pt0
 			fastSpriteDrawOver(canvasPalImg, pt, elt.src)
 			rect = rect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
