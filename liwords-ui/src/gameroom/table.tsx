@@ -4,7 +4,8 @@ import { HomeOutlined } from '@ant-design/icons/lib';
 import axios from 'axios';
 
 import { Link, useSearchParams, useParams } from 'react-router-dom';
-import { useDefinitionAndPhonyChecker, useFirefoxPatch } from '../utils/hooks';
+import { useFirefoxPatch } from '../utils/hooks/firefox';
+import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
 import { useMountedState } from '../utils/mounted';
 import { BoardPanel } from './board_panel';
 import { TopBar } from '../navigation/topbar';
