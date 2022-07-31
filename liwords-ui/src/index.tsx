@@ -19,6 +19,16 @@ window.console.info(
   'Woogles.io is open source! https://github.com/domino14/liwords'
 );
 
+if (localStorage.getItem('enableWordSmog')) {
+  if (!localStorage.getItem('enableVariants')) {
+    localStorage.setItem(
+      'enableVariants',
+      localStorage.getItem('enableWordSmog')
+    );
+  }
+  localStorage.removeItem('enableWordSmog');
+}
+
 // Scope the variables declared here.
 {
   // Adjust this constant accordingly.
