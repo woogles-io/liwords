@@ -85,11 +85,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       const getDetails = () => {
         return (
           <>
-            {item.game_request.rules.variant_name === 'wordsmog' ? (
-              <>
-                <VariantIcon vcode="wordsmog" />{' '}
-              </>
-            ) : null}
+            <VariantIcon vcode={item.game_request.rules.variant_name} />{' '}
             <span className={`challenge-rule mode_${challenge}`}>
               {challenge}
             </span>

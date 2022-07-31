@@ -948,6 +948,8 @@ func countBonusSquares(info *IncrementInfo,
 	switch boardLayout {
 	case "", board.CrosswordGameLayout:
 		bd = board.CrosswordGameBoard
+	case board.SuperCrosswordGameLayout:
+		bd = board.SuperCrosswordGameBoard
 	default:
 		return 0, errors.New("board not supported")
 	}

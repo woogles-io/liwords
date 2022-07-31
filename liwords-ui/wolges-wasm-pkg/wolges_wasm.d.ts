@@ -15,9 +15,9 @@ export function precache_kwg(key: string, value: Uint8Array): void;
 export function precache_klv(key: string, value: Uint8Array): void;
 /**
 * @param {string} req_str
-* @returns {any}
+* @returns {Promise<any>}
 */
-export function analyze(req_str: string): any;
+export function analyze(req_str: string): Promise<any>;
 /**
 * @param {string} req_str
 * @returns {any}

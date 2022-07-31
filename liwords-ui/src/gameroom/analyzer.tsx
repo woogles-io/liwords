@@ -255,6 +255,11 @@ const parseExaminableGameContext = (
   if (variant === 'wordsmog') {
     effectiveLexicon = `${lexicon}.WordSmog`;
     rules = 'WordSmog';
+  } else if (variant === 'classic_super') {
+    rules = 'CrosswordGameSuper';
+  } else if (variant === 'wordsmog_super') {
+    effectiveLexicon = `${lexicon}.WordSmog`;
+    rules = 'WordSmogSuper';
   }
   if (letterDistribution !== 'english') {
     rules += `/${letterDistribution}`;

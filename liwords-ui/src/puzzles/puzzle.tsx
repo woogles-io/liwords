@@ -60,7 +60,8 @@ import {
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { computeLeave } from '../utils/cwgame/game_event';
 import { EphemeralTile } from '../utils/cwgame/common';
-import { useDefinitionAndPhonyChecker, useFirefoxPatch } from '../utils/hooks';
+import { useFirefoxPatch } from '../utils/hooks/firefox';
+import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
 import { useMountedState } from '../utils/mounted';
 import { BoopSounds } from '../sound/boop';
 import { GameInfoRequest } from '../gen/api/proto/game_service/game_service_pb';
