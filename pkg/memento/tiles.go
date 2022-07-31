@@ -811,23 +811,34 @@ func isImageOneColor(src *image.Paletted) bool {
 	return true
 }
 
-var displacementRatio []float64
+var displacementRatioVerA []float64
+var displacementRatioVerB []float64
 
 func init() {
 	// For animation.
-	numSteps := 10
-	displacementRatio = make([]float64, numSteps+1)
-	for i := 1; i < numSteps; i++ {
-		// These numbers range from 0.0 (start point) to 1.0 (end point).
-		// There are some choices here, such as:
-		// "linear": float64(i) / float64(numSteps)
-		// "ease-out": math.Sin(float64(math.Pi/2) * float64(i) / float64(numSteps))
-		// "ease-in-out": (1 - math.Cos(float64(math.Pi) * float64(i) / float64(numSteps)))/2
-		// Reference: https://developers.google.com/web/fundamentals/design-and-ux/animations/the-basics-of-easing
-		// This reference explains why ease-out is preferred.
-		displacementRatio[i] = math.Sin(float64(math.Pi/2) * float64(i) / float64(numSteps))
+	{
+		numSteps := 10
+		displacementRatioVerA = make([]float64, numSteps+1)
+		for i := 1; i < numSteps; i++ {
+			// These numbers range from 0.0 (start point) to 1.0 (end point).
+			// There are some choices here, such as:
+			// "linear": float64(i) / float64(numSteps)
+			// "ease-out": math.Sin(float64(math.Pi/2) * float64(i) / float64(numSteps))
+			// "ease-in-out": (1 - math.Cos(float64(math.Pi) * float64(i) / float64(numSteps)))/2
+			// Reference: https://developers.google.com/web/fundamentals/design-and-ux/animations/the-basics-of-easing
+			// This reference explains why ease-out is preferred.
+			displacementRatioVerA[i] = math.Sin(float64(math.Pi/2) * float64(i) / float64(numSteps))
+		}
+		displacementRatioVerA[numSteps] = 1
 	}
-	displacementRatio[numSteps] = 1
+	{
+		numSteps := 5
+		displacementRatioVerB = make([]float64, numSteps+1)
+		for i := 1; i < numSteps; i++ {
+			displacementRatioVerB[i] = math.Sin(float64(math.Pi/2) * float64(i) / float64(numSteps))
+		}
+		displacementRatioVerB[numSteps] = 1
+	}
 
 	if err := validateBoardConfig(standardBoardConfig); err != nil {
 		panic(fmt.Errorf("invalid boardConfig: %v", err))
@@ -1029,11 +1040,13 @@ func reblank(r rune) rune {
 }
 
 func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
-	if wf.Version == 2 && history.PlayState != macondopb.PlayState_GAME_OVER {
+	ver2Board := wf.Version == 2
+	if ver2Board && history.PlayState != macondopb.PlayState_GAME_OVER {
 		return nil, fmt.Errorf("game is not over yet")
 	}
 
-	isAnimated := wf.FileType == "animated-gif"
+	isAnimatedB := wf.FileType == "animated-gif-b"
+	isAnimated := isAnimatedB || wf.FileType == "animated-gif"
 	numEvents := math.MaxInt
 	if wf.HasNextEventNum {
 		numEvents = wf.NextEventNum - 1
@@ -1198,7 +1211,7 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 
 	boardOrigin := image.Pt(bd.PadLeft, bd.PadTop+bd.HeaderHeight+bd.PadHeader+1)
 	twiceHeaderAreaMiddle := 2*bd.PadTop + bd.HeaderHeight
-	if wf.Version == 2 {
+	if ver2Board {
 		// Ensure enough height for 1 line of text.
 		addHeight := monospacedFontDimY - bd.HeaderHeight
 		if addHeight > 0 {
@@ -1207,7 +1220,7 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 		}
 	}
 	desiredBounds := image.Rect(0, 0, boardOrigin.X+emptyBoardPalImg.Bounds().Dx()+bd.PadRight, boardOrigin.Y+emptyBoardPalImg.Bounds().Dy()+bd.PadBottom)
-	if wf.Version == 2 {
+	if ver2Board {
 		desiredBounds.Max.Y += bd.PadRack + squareDim + bd.PadSpread + bd.SpreadHeight
 	}
 	canvasPalImg := image.NewPaletted(desiredBounds, bd.Colors)
@@ -1417,10 +1430,12 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 		}
 		setLastPlaceIndex(-1)
 
-		if wf.Version == 2 {
+		if ver2Board {
 			paintCumes(len(evts))
 			paintSpread(len(evts))
-			for _, elt := range buildHomeRack(len(evts), flyingSpritesBuf[:0]) {
+			flyingSpritesBuf = buildHomeRack(len(evts), flyingSpritesBuf[:0])
+			for k := range flyingSpritesBuf {
+				elt := &flyingSpritesBuf[k]
 				pt := elt.pt0
 				fastSpriteDrawOver(canvasPalImg, pt, elt.src)
 			}
@@ -1491,7 +1506,7 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 	}
 
 	rect := canvasPalImg.Bounds()
-	if wf.Version == 2 {
+	if ver2Board {
 		lastPlaceIndex := -1
 		for i, evt := range evts {
 			flyingSpritesBuf = buildHomeRack(i, flyingSpritesBuf[:0])
@@ -1558,16 +1573,31 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			spreadRect := paintSpread(i)
 			tilesRect := image.Rectangle{}
 			// Slicing for [:lenRack] keep only tiles on rack and excludes tiles affected by PHONY_TILES_RETURNED.
-			for _, elt := range flyingSpritesBuf[:lenRack] {
+			for k := range flyingSpritesBuf[:lenRack] {
+				elt := &flyingSpritesBuf[k]
 				pt := elt.pt0
 				fastSpriteDrawOver(canvasPalImg, pt, elt.src)
 				tilesRect = tilesRect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
 			}
 
 			// Each event takes 50 centiseconds. The first 30 centiseconds is a still frame.
-			addFrame(rect.Union(cumesRect.Union(spreadRect).Union(tilesRect)), 30)
+			thisDelay := 30
+			if isAnimatedB {
+				// Version B delays for 70 centiseconds, then spends 30 centiseconds on the animation.
+				thisDelay = 70
+			}
+			addFrame(rect.Union(cumesRect.Union(spreadRect).Union(tilesRect)), thisDelay)
 			scoreDiffRect := paintScoreDiff(i)
 			if hasAnimation {
+				displacementRatio := displacementRatioVerA
+				if isAnimatedB {
+					displacementRatio = displacementRatioVerB
+				}
+				thisDelay = 2
+				if isAnimatedB {
+					// In version B, displacementRatio has 5 steps, and it should take 30 centiseconds here.
+					thisDelay = 6
+				}
 				// With animation, animate every 2 centiseconds.
 				// When displacementRatio has 10 steps (len() == 11), this works out to be 20 centiseconds.
 
@@ -1599,7 +1629,8 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 					// Non-moving tiles are below.
 					// Note that this is actually inefficient because we keep drawing the same non-moving tiles.
 					// Maybe this could be sped up.
-					for _, elt := range flyingSpritesBuf {
+					for k := range flyingSpritesBuf {
+						elt := &flyingSpritesBuf[k]
 						if elt.pt0 == elt.pt1 {
 							pt := elt.pt0
 							fastSpriteDrawOver(canvasPalImg, pt, elt.src)
@@ -1607,7 +1638,8 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 						}
 					}
 					// Moving tiles are above. This ordering matters in the few frames when they overlap.
-					for _, elt := range flyingSpritesBuf {
+					for k := range flyingSpritesBuf {
+						elt := &flyingSpritesBuf[k]
 						if elt.pt0 != elt.pt1 {
 							pt := image.Pt(elt.pt0.X+int(math.RoundToEven(float64(elt.pt1.X-elt.pt0.X)*dpr)), elt.pt0.Y+int(math.RoundToEven(float64(elt.pt1.Y-elt.pt0.Y)*dpr)))
 							fastSpriteDrawOver(canvasPalImg, pt, elt.src)
@@ -1615,7 +1647,8 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 						}
 					}
 					// Check if non-moving tiles need to be drawn. They tend to be further away from moving tiles, that this optimization is worth it.
-					for _, elt := range flyingSpritesBuf {
+					for k := range flyingSpritesBuf {
+						elt := &flyingSpritesBuf[k]
 						if elt.pt0 == elt.pt1 {
 							pt := elt.pt0
 							tilesRect = tilesRect.Union(croppedBoundsDiff(canvasPalImg, image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim), lastFramePalImg, pt))
@@ -1623,11 +1656,12 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 					}
 					// tilesRect bounds the tiles in this frame only.
 					// rect bounds the other changes (erasure of previous tilesRect, and adding score diff for the first frame).
-					addFrame(rect.Union(tilesRect), 2)
+					addFrame(rect.Union(tilesRect), thisDelay)
 					rect = tilesRect
 				}
 				// Include non-moving tiles in tilesRect so they can be erased.
-				for _, elt := range flyingSpritesBuf {
+				for k := range flyingSpritesBuf {
+					elt := &flyingSpritesBuf[k]
 					if elt.pt0 == elt.pt1 {
 						pt := elt.pt0
 						tilesRect = tilesRect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
@@ -1660,18 +1694,25 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 
 		// The final frame.
 		rect = rect.Union(paintCumes(len(evts))).Union(paintSpread(len(evts)))
-		for _, elt := range buildHomeRack(len(evts), flyingSpritesBuf[:0]) {
+		flyingSpritesBuf = buildHomeRack(len(evts), flyingSpritesBuf[:0])
+		for k := range flyingSpritesBuf {
+			elt := &flyingSpritesBuf[k]
 			pt := elt.pt0
 			fastSpriteDrawOver(canvasPalImg, pt, elt.src)
 			rect = rect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
 		}
 	} else {
+		thisDelay := 50
+		if isAnimatedB {
+			// Version B delays for 100 centiseconds.
+			thisDelay = 100
+		}
 		// In the original version, only TILE_PLACEMENT_MOVE and PHONY_TILES_RETURNED generate a frame.
 		lastPlaceIndex := -1
 		for i, evt := range evts {
 			switch evt.Type {
 			case macondopb.GameEvent_TILE_PLACEMENT_MOVE:
-				addFrame(rect, 50)
+				addFrame(rect, thisDelay)
 				rect = image.Rectangle{}
 				lastPlaceIndex = i
 				which := whoseTurn[lastPlaceIndex]
@@ -1682,7 +1723,7 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 					rect = rect.Union(image.Rect(pt.X, pt.Y, pt.X+squareDim, pt.Y+squareDim))
 				})
 			case macondopb.GameEvent_PHONY_TILES_RETURNED:
-				addFrame(rect, 50)
+				addFrame(rect, thisDelay)
 				rect = image.Rectangle{}
 				patchImage(evts[lastPlaceIndex], func(r, c int, ch rune) {
 					pt := image.Pt(boardOrigin.X+c*squareDim, boardOrigin.Y+r*squareDim)
