@@ -34,7 +34,7 @@ type WhichFile struct {
 	GameId          string
 	HasNextEventNum bool
 	NextEventNum    int
-	FileType        string // "png", "gif", "animated-gif"
+	FileType        string // "png", "gif", "animated-gif", "animated-gif-b"
 	WhichColor      int    // 0, 1, or -1
 	Version         int
 }
@@ -48,7 +48,7 @@ func determineWhichFile(s string) (WhichFile, error) {
 	nextEventNum := -1
 	ver := 0
 
-	// GAMEID, optional "-vVERSION", optional "-a" for gif, optional "-NEXTEVENTNUM", ".png"/".gif"
+	// GAMEID, optional "-vVERSION", optional "-a"/"-b" for gif, optional "-NEXTEVENTNUM", ".png"/".gif"
 
 	v := strings.LastIndexByte(s, '.')
 	if v < 0 {
@@ -85,8 +85,8 @@ func determineWhichFile(s string) (WhichFile, error) {
 	if strings.HasPrefix(s, "v") {
 		tok := nextToken()[1:]
 		ver, err = strconv.Atoi(tok)
-		// Only -v2 supported. Default (v0) should not be specified.
-		if err != nil || tok != strconv.Itoa(ver) || ver != 2 {
+		// Only -v2 and -v3 supported. Default (v0) should not be specified.
+		if err != nil || tok != strconv.Itoa(ver) || (ver != 2 && ver != 3) {
 			// Fail because there's leading zero.
 			return WhichFile{}, errInvalidFilename
 		}
@@ -95,6 +95,12 @@ func determineWhichFile(s string) (WhichFile, error) {
 	if strings.HasPrefix(s, "a") {
 		if fileType == "gif" && nextToken() == "a" {
 			fileType = "animated-gif"
+		} else {
+			return WhichFile{}, errInvalidFilename
+		}
+	} else if strings.HasPrefix(s, "b") {
+		if fileType == "gif" && nextToken() == "b" {
+			fileType = "animated-gif-b"
 		} else {
 			return WhichFile{}, errInvalidFilename
 		}
