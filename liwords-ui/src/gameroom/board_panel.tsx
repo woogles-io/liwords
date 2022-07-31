@@ -1084,7 +1084,8 @@ export const BoardPanel = React.memo((props: Props) => {
               const board = { ...gameContext.board };
               const existingTile =
                 board.letters[
-                  blindfoldCoordinates.row * 15 + blindfoldCoordinates.col
+                  blindfoldCoordinates.row * board.dim +
+                    blindfoldCoordinates.col
                 ].trim();
               if (!existingTile) {
                 setArrowProperties({

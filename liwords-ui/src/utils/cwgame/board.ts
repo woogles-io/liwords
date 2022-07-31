@@ -7,9 +7,8 @@ export type Tile = {
   rune: string; // why doesn't Javascript have runes.
 };
 
-/* TODO: should be dependent on board dimensions in future.  */
-export function blankLayout() {
-  return repeatChar(225, EmptySpace);
+export function blankLayout(gridlayout: string[]) {
+  return repeatChar(gridlayout.length * gridlayout.length, EmptySpace);
 }
 
 function repeatChar(count: number, ch: string) {
@@ -36,10 +35,10 @@ export class Board {
 
   dim: number;
 
-  constructor() {
-    this.letters = blankLayout();
+  constructor(gridLayout = CrosswordGameGridLayout) {
+    this.letters = blankLayout(gridLayout);
     this.isEmpty = true;
-    this.gridLayout = CrosswordGameGridLayout;
+    this.gridLayout = gridLayout;
     this.dim = this.gridLayout.length;
   }
 
@@ -47,13 +46,13 @@ export class Board {
    * do not use for interactive boards */
   setTileLayout(layout: Array<string>) {
     this.isEmpty = true;
-    for (let row = 0; row < 15; row += 1) {
-      for (let col = 0; col < 15; col += 1) {
+    for (let row = 0; row < this.dim; row += 1) {
+      for (let col = 0; col < this.dim; col += 1) {
         const letter = layout[row][col];
         if (letter !== EmptySpace) {
           this.isEmpty = false;
         }
-        this.letters = setCharAt(this.letters, row * 15 + col, letter);
+        this.letters = setCharAt(this.letters, row * this.dim + col, letter);
       }
     }
   }
@@ -65,16 +64,20 @@ export class Board {
     if (row > this.dim - 1 || row < 0 || col > this.dim - 1 || col < 0) {
       return null;
     }
-    return this.letters[row * 15 + col];
+    return this.letters[row * this.dim + col];
   }
 
   addTile(t: Tile) {
-    this.letters = setCharAt(this.letters, t.row * 15 + t.col, t.rune);
+    this.letters = setCharAt(this.letters, t.row * this.dim + t.col, t.rune);
     this.isEmpty = false;
   }
 
   removeTile(t: Tile) {
-    this.letters = setCharAt(this.letters, t.row * 15 + t.col, EmptySpace);
+    this.letters = setCharAt(
+      this.letters,
+      t.row * this.dim + t.col,
+      EmptySpace
+    );
     // don't know how else to check, annoyingly
     this.isEmpty = true;
     for (let i = 0; i < this.letters.length; i++) {

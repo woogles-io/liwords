@@ -70,7 +70,7 @@ export const AllLexica: { [code: string]: Lexicon } = {
     shortDescription: 'CEL (Common English Lexicon)',
     matchName: 'CEL',
     longDescription:
-      'Common English Lexicon, Copyright (c) 2021 Fj00. Used with permission',
+      'Common English Lexicon, Copyright (c) 2021-2022 Fj00. Used with permission',
   },
   RD28: {
     code: 'RD28',

@@ -408,7 +408,7 @@ export const TourneyEditor = (props: Props) => {
                   Rated / Unrated
                 </Select.Option>
                 <Select.Option value="variant_name">
-                  Classic / WordSmog
+                  Classic / WordSmog / ZOMGWords
                 </Select.Option>
               </Select>
             </Form.Item>
