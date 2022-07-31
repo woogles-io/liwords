@@ -57,7 +57,7 @@ export const SuperCrosswordGameGridLayout = [
   `=      -     -      =`,
   ` -  "   "   "   "  - `,
   `  -  '   ' '   '  -  `,
-  `'  =  '   -   '  =   `,
+  `'  =  '   -   '  =  '`,
   `  -  '   ' '   '  -  `,
   ` -  "   "   "   "  - `,
   `=      -     -      =`,
