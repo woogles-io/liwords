@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { Link } from 'react-router-dom';
-import { Dropdown } from 'antd';
+import { Dropdown, Tooltip } from 'antd';
 import { TheBlocker } from './blocker';
 import {
   useContextMatchContext,
@@ -11,10 +11,12 @@ import { DisplayUserFlag } from './display_flag';
 import { SettingOutlined } from '@ant-design/icons';
 import { TheFollower } from './follower';
 import { PettableContext } from './player_avatar';
+import { useBriefProfile } from '../utils/brief_profiles';
 
 type UsernameWithContextProps = {
   additionalMenuItems?: React.ReactNode;
   includeFlag?: boolean;
+  showSilentMode?: boolean;
   fullName?: string;
   omitProfileLink?: boolean;
   omitSendMessage?: boolean;
@@ -41,6 +43,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
   const { handleContextMatches } = useContextMatchContext();
   const { loginState } = useLoginStateStoreContext();
   const { loggedIn, userID, perms } = loginState;
+  const briefProfile = useBriefProfile(props.userID);
   const contextualLink = React.useMemo(() => {
     if (currentActiveGames && currentActiveGames.length > 0) {
       const gameID =
@@ -95,7 +98,8 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
       !props.omitSendMessage &&
       props.userID &&
       props.userID !== userID &&
-      props.sendMessage ? (
+      props.sendMessage &&
+      !briefProfile?.getSilentMode() ? (
         <li
           className="link plain"
           onClick={() => {
@@ -174,6 +178,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
       {props.additionalMenuItems}
     </ul>
   );
+  console.warn(briefProfile?.toObject());
   return (
     <Dropdown
       overlayClassName="user-menu"
@@ -188,6 +193,13 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
         ) : (
           <>
             {props.fullName || props.username}
+            {props.showSilentMode && briefProfile?.getSilentMode() && (
+              <Tooltip
+                title={`${props.fullName || props.username} is in silent mode`}
+              >
+                <i className="fa-solid fa-comment-slash"></i>
+              </Tooltip>
+            )}
             {props.includeFlag && <DisplayUserFlag uuid={props.userID} />}
           </>
         )}

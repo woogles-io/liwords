@@ -97,6 +97,7 @@ const Player = React.memo((props: PlayerProps) => {
               userID={props.uuid}
               moderate={moderateUser}
               includeFlag
+              showSilentMode
               omitBlock={props.className === 'friends'}
               showModTools
               sendMessage={props.sendMessage}

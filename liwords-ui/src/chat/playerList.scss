@@ -94,6 +94,12 @@
     .country-flag {
       margin-left: 9px;
     }
+    .ant-dropdown-trigger {
+      i {
+        margin-left: 0.5em;
+        opacity: 0.5;
+      }
+    }
     &.offline {
       .player-name {
         @include colorModed() {
