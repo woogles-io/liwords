@@ -368,9 +368,10 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.SeekRequest, botUserID str
 	var accUser *entity.User
 
 	if req.GameRequest != nil && req.GameRequest.Rules != nil &&
-		req.GameRequest.Rules.VariantName == string(game.VarWordSmog) {
+		req.GameRequest.Rules.VariantName == string(game.VarWordSmog) &&
+		req.GameRequest.BotType != macondopb.BotRequest_HASTY_BOT {
 
-		return errors.New("the WordSmog variant is currently not supported by our bot")
+		return errors.New("only HastyBot can play WordSmog at this time")
 	}
 
 	if botUserID == "" {
