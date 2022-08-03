@@ -6,8 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/domino14/macondo/board"
+	"github.com/domino14/macondo/game"
 	"github.com/lithammer/shortuuid"
 )
 
@@ -114,6 +117,12 @@ func getSeekRequest(sg *SoughtGame) (*pb.SeekRequest, error) {
 	return nil, errors.New("nil seek request on sought game")
 }
 
+func isEnglish(lexicon string) bool {
+	return strings.HasPrefix(lexicon, "NWL") ||
+		strings.HasPrefix(lexicon, "CSW") ||
+		strings.HasPrefix(lexicon, "ECWL")
+}
+
 // ValidateGameRequest validates a generic game request.
 func ValidateGameRequest(ctx context.Context, req *pb.GameRequest) error {
 	if req == nil {
@@ -134,11 +143,22 @@ func ValidateGameRequest(ctx context.Context, req *pb.GameRequest) error {
 	if req.MaxOvertimeMinutes > 0 && req.IncrementSeconds > 0 {
 		return errors.New("you can have increments or max overtime, but not both")
 	}
+
+	// Modify the game request if the variant calls for it.
+	if req.Rules.VariantName == game.VarClassicSuper {
+		if !isEnglish(req.Lexicon) {
+			return errors.New("non-english lexica not supported for this variant")
+		}
+		req.Rules.BoardLayoutName = board.SuperCrosswordGameLayout
+		req.Rules.LetterDistributionName = "english_super"
+	}
+
 	for _, lex := range AllowedNewGameLexica {
 		if req.Lexicon == lex {
 			return nil
 		}
 	}
+
 	return fmt.Errorf("%s is not a supported lexicon", req.Lexicon)
 }
 
