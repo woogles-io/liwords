@@ -57,7 +57,7 @@ func NewWordService(cfg *macondoconfig.Config) *WordService {
 
 var daPool = sync.Pool{
 	New: func() interface{} {
-		return gaddag.DawgAnagrammer{}
+		return &gaddag.DawgAnagrammer{}
 	},
 }
 
@@ -76,7 +76,7 @@ func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsReque
 	var anagrams map[string][]string
 	if req.Anagrams {
 		anagrams = make(map[string][]string)
-		da := daPool.Get().(gaddag.DawgAnagrammer)
+		da := daPool.Get().(*gaddag.DawgAnagrammer)
 		defer daPool.Put(da)
 		for _, query := range req.Words {
 			if _, found := anagrams[query]; found {
