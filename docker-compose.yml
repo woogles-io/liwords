@@ -76,16 +76,16 @@ services:
   # Needed for bot to play wordsmog. Comment out if not using.
   # Requires https://github.com/andy-k/wolges-awsm to be cloned
   # at the level of `liwords`.
-  wolges_awsm:
-    build:
-      context: ../wolges-awsm
-      dockerfile: Dockerfile
-    volumes:
-      - ./data/lexica/gaddag:/app/data
-    ports:
-      - "4500:4500"
-    networks:
-      - aeronet
+  # wolges_awsm:
+  #   build:
+  #     context: ../wolges-awsm
+  #     dockerfile: Dockerfile
+  #   volumes:
+  #     - ./data/lexica/gaddag:/app/data
+  #   ports:
+  #     - "4500:4500"
+  #   networks:
+  #     - aeronet
 
   socket:
     &socketsetup
