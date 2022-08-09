@@ -85,7 +85,7 @@ jobs:
     docker:
       - image: amazon/aws-cli
     steps:
-      - run: yum install -y tar gzip md5sum
+      - run: yum install -y tar gzip md5sum which
       - attach_workspace:
           at: /tmp/liwords-ui
       - run: >
