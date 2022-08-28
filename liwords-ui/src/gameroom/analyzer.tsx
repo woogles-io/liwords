@@ -271,10 +271,12 @@ const parseExaminableGameContext = (
     ),
     lexicon: effectiveLexicon,
     leave:
-      letterDistribution === 'english' ||
-      letterDistribution === 'german' ||
-      letterDistribution === 'norwegian' ||
-      letterDistribution === 'french'
+      lexicon === 'CSW21'
+        ? lexicon
+        : letterDistribution === 'english' ||
+          letterDistribution === 'german' ||
+          letterDistribution === 'norwegian' ||
+          letterDistribution === 'french'
         ? letterDistribution
         : 'noleave',
     rules,
