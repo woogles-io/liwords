@@ -55,17 +55,16 @@ const loadablesByLexicon: { [key: string]: Array<Loadable> } = {};
 
 for (const { lexicons, cacheKey, path } of [
   {
-    lexicons: [
-      'CSW19',
-      'CSW19X',
-      'CSW21',
-      'NWL20',
-      'NWL18',
-      'NSWL20',
-      'ECWL',
-    ].flatMap((name) => [name, `${name}.WordSmog`]),
+    lexicons: ['CSW19', 'CSW19X', 'NWL20', 'NWL18', 'NSWL20', 'ECWL'].flatMap(
+      (name) => [name, `${name}.WordSmog`]
+    ),
     cacheKey: 'klv/english',
     path: '/wasm/english.klv',
+  },
+  {
+    lexicons: ['CSW21'].flatMap((name) => [name, `${name}.WordSmog`]),
+    cacheKey: 'klv/CSW21',
+    path: '/wasm/CSW21.klv',
   },
   {
     lexicons: ['FRA20'].flatMap((name) => [name, `${name}.WordSmog`]),
