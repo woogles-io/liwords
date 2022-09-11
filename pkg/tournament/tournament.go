@@ -2,8 +2,11 @@ package tournament
 
 import (
 	"context"
+	"crypto/md5"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
+	"io"
 	"os"
 	"sort"
 	"strconv"
@@ -38,6 +41,12 @@ type TournamentStore interface {
 	RemoveRegistrants(ctx context.Context, tid string, userIDs []string, division string) error
 	RemoveRegistrantsForTournament(ctx context.Context, tid string) error
 	ActiveTournamentsFor(ctx context.Context, userID string) ([][2]string, error)
+}
+
+func md5hash(s string) string {
+	h := md5.New()
+	io.WriteString(h, s)
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func HandleTournamentGameEnded(ctx context.Context, ts TournamentStore, us user.Store,
@@ -185,6 +194,8 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 			t.ExtraMeta.Color, meta.Color),
 		PrivateAnalysis: ternary(merge && !meta.PrivateAnalysis && t.ExtraMeta != nil,
 			t.ExtraMeta.PrivateAnalysis, meta.PrivateAnalysis),
+		IRLMode: ternary(merge && !meta.IrlMode && t.ExtraMeta != nil,
+			t.ExtraMeta.IRLMode, meta.IrlMode),
 	}
 	err = ts.Set(ctx, t)
 	if err != nil {
@@ -529,9 +540,18 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 
 	userUUIDs := []string{}
 	for _, player := range players.Persons {
-		fullID, UUID, err := constructFullID(t.Name, division, ctx, us, player.Id)
-		if err != nil {
-			return err
+		var UUID string
+		var fullID string
+		var err error
+		if t.ExtraMeta.IRLMode {
+			// Use a deterministic "uuid"
+			UUID = md5hash(player.Id)
+			fullID = UUID + ":" + player.Id
+		} else {
+			fullID, UUID, err = constructFullID(t.Name, division, ctx, us, player.Id)
+			if err != nil {
+				return err
+			}
 		}
 		player.Id = fullID
 		userUUIDs = append(userUUIDs, UUID)
@@ -544,9 +564,11 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 
 	allCurrentPlayers := divisionObject.DivisionManager.GetPlayers()
 
-	err = ts.AddRegistrants(ctx, t.UUID, userUUIDs, division)
-	if err != nil {
-		return err
+	if !t.ExtraMeta.IRLMode {
+		err = ts.AddRegistrants(ctx, t.UUID, userUUIDs, division)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = ts.Set(ctx, t)
@@ -588,12 +610,20 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
 	}
 
-	// Only perform the add operation if all persons can be added.
+	// Only perform the remove operation if all persons can be removed.
 	userUUIDs := []string{}
 	for _, player := range players.Persons {
-		fullID, UUID, err := constructFullID(t.Name, division, ctx, us, player.Id)
-		if err != nil {
-			return err
+		var UUID string
+		var fullID string
+		var err error
+		if t.ExtraMeta.IRLMode {
+			UUID = md5hash(player.Id)
+			fullID = UUID + ":" + player.Id
+		} else {
+			fullID, UUID, err = constructFullID(t.Name, division, ctx, us, player.Id)
+			if err != nil {
+				return err
+			}
 		}
 		player.Id = fullID
 		userUUIDs = append(userUUIDs, UUID)
@@ -606,9 +636,11 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 
 	allCurrentPlayers := divisionObject.DivisionManager.GetPlayers()
 
-	err = ts.RemoveRegistrants(ctx, t.UUID, userUUIDs, division)
-	if err != nil {
-		return err
+	if !t.ExtraMeta.IRLMode {
+		err = ts.RemoveRegistrants(ctx, t.UUID, userUUIDs, division)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = ts.Set(ctx, t)
@@ -773,16 +805,26 @@ func SetResult(ctx context.Context,
 	}
 
 	// We need to send the division manager the "full" user ID, so look that up here.
-	p1, err := us.GetByUUID(ctx, playerOneId)
-	if err != nil {
-		return err
+	var p1TID, p2TID string
+	if t.ExtraMeta.IRLMode {
+		// note this is only the first part of the full tournamentt ID in this case
+		// we do not look up the player in the DB since IRLMode does not use
+		// Woogles IDs
+		p1TID = playerOneId
+		p2TID = playerTwoId
+	} else {
+		p1, err := us.GetByUUID(ctx, playerOneId)
+		if err != nil {
+			return err
+		}
+		p2, err := us.GetByUUID(ctx, playerTwoId)
+		if err != nil {
+			return err
+		}
+		log.Debug().Str("p1", p1.Username).Str("p2", p2.Username).Msg("after-get-by-uuid")
+		p1TID = p1.TournamentID()
+		p2TID = p2.TournamentID()
 	}
-	p2, err := us.GetByUUID(ctx, playerTwoId)
-	if err != nil {
-		return err
-	}
-
-	log.Debug().Str("p1", p1.Username).Str("p2", p2.Username).Msg("after-get-by-uuid")
 
 	gid := ""
 	if g != nil {
@@ -790,8 +832,8 @@ func SetResult(ctx context.Context,
 	}
 
 	pairingsResp, err := divisionObject.DivisionManager.SubmitResult(round,
-		p1.TournamentID(),
-		p2.TournamentID(),
+		p1TID,
+		p2TID,
 		playerOneScore,
 		playerTwoScore,
 		playerOneResult,
