@@ -1126,7 +1126,8 @@ proto.tournament_service.TournamentMetadata.toObject = function(includeInstance,
     password: jspb.Message.getFieldWithDefault(msg, 11, ""),
     logo: jspb.Message.getFieldWithDefault(msg, 12, ""),
     color: jspb.Message.getFieldWithDefault(msg, 13, ""),
-    privateAnalysis: jspb.Message.getBooleanFieldWithDefault(msg, 14, false)
+    privateAnalysis: jspb.Message.getBooleanFieldWithDefault(msg, 14, false),
+    irlMode: jspb.Message.getBooleanFieldWithDefault(msg, 15, false)
   };
 
   if (includeInstance) {
@@ -1219,6 +1220,10 @@ proto.tournament_service.TournamentMetadata.deserializeBinaryFromReader = functi
     case 14:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setPrivateAnalysis(value);
+      break;
+    case 15:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setIrlMode(value);
       break;
     default:
       reader.skipField();
@@ -1345,6 +1350,13 @@ proto.tournament_service.TournamentMetadata.serializeBinaryToWriter = function(m
   if (f) {
     writer.writeBool(
       14,
+      f
+    );
+  }
+  f = message.getIrlMode();
+  if (f) {
+    writer.writeBool(
+      15,
       f
     );
   }
@@ -1638,6 +1650,24 @@ proto.tournament_service.TournamentMetadata.prototype.getPrivateAnalysis = funct
  */
 proto.tournament_service.TournamentMetadata.prototype.setPrivateAnalysis = function(value) {
   return jspb.Message.setProto3BooleanField(this, 14, value);
+};
+
+
+/**
+ * optional bool irl_mode = 15;
+ * @return {boolean}
+ */
+proto.tournament_service.TournamentMetadata.prototype.getIrlMode = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 15, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.tournament_service.TournamentMetadata} returns this
+ */
+proto.tournament_service.TournamentMetadata.prototype.setIrlMode = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 15, value);
 };
 
 
