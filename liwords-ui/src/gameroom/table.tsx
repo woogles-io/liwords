@@ -40,12 +40,7 @@ import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { endGameMessageFromGameInfo } from '../store/end_of_game';
 import { Notepad, NotepadContextProvider } from './notepad';
 import { Analyzer, AnalyzerContextProvider } from './analyzer';
-import {
-  ChatEntityType,
-  isClubType,
-  isPairedMode,
-  sortTiles,
-} from '../store/constants';
+import { isClubType, isPairedMode, sortTiles } from '../store/constants';
 import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
 import { CompetitorStatus } from '../tournament/competitor_status';
 import { MetaEventControl } from './meta_event_control';
