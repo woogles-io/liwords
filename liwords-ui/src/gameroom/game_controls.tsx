@@ -40,6 +40,7 @@ const ExamineGameControls = React.memo(
     darkMode: boolean;
     onExportGCG: () => void;
     gameDone: boolean;
+    puzzleMode: boolean;
   }) => {
     const { useState } = useMountedState();
     const { gameContext: examinableGameContext } =
@@ -161,6 +162,7 @@ const ExamineGameControls = React.memo(
             trigger={['click']}
             visible={exportMenuVisible}
             placement="topLeft"
+            disabled={props.puzzleMode}
           >
             <Button onClick={() => setExportMenuVisible((v) => !v)}>
               Export
@@ -384,6 +386,7 @@ const GameControls = React.memo((props: Props) => {
         darkMode={darkMode}
         onExportGCG={props.onExportGCG}
         gameDone={gameDone}
+        puzzleMode={!!props.puzzleMode}
       />
     );
   }
@@ -398,6 +401,7 @@ const GameControls = React.memo((props: Props) => {
         tournamentPairedMode={props.tournamentPairedMode}
         onExit={handleExitToLobby}
         darkMode={darkMode}
+        puzzleMode={!!props.puzzleMode}
       />
     );
   }
@@ -589,6 +593,7 @@ type EGCProps = {
   onExit: () => void;
   tournamentPairedMode?: boolean;
   darkMode: boolean;
+  puzzleMode: boolean;
 };
 
 const EndGameControls = (props: EGCProps) => {
@@ -651,22 +656,24 @@ const EndGameControls = (props: EGCProps) => {
   return (
     <div className="game-controls">
       <div className="secondary-controls">
-        <Dropdown
-          overlay={exportMenu}
-          trigger={['click']}
-          visible={exportMenuVisible}
-          placement="topLeft"
-        >
-          <Button onClick={() => setExportMenuVisible((v) => !v)}>
-            Export
-          </Button>
-        </Dropdown>
+        {!props.puzzleMode && (
+          <Dropdown
+            overlay={exportMenu}
+            trigger={['click']}
+            visible={exportMenuVisible}
+            placement="topLeft"
+          >
+            <Button onClick={() => setExportMenuVisible((v) => !v)}>
+              Export
+            </Button>
+          </Dropdown>
+        )}
         <Button onClick={props.onExamine} disabled={gameHasNotStarted}>
           Examine
         </Button>
       </div>
       <div className="secondary-controls">
-        <Button onClick={props.onExit}>Exit</Button>
+        {!props.puzzleMode && <Button onClick={props.onExit}>Exit</Button>}
       </div>
       {props.showRematch && !props.tournamentPairedMode && !rematchDisabled && (
         <Button

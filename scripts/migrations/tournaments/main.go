@@ -22,6 +22,7 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
+	"github.com/domino14/liwords/pkg/stores/common"
 	"github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkgtournament "github.com/domino14/liwords/pkg/tournament"
@@ -361,7 +362,12 @@ func main() {
 
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
-	userStore, err := user.NewDBStore(cfg.DBConnDSN)
+	pool, err := common.OpenDB(cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBUser, cfg.DBPassword, cfg.DBSSLMode)
+	if err != nil {
+		panic(err)
+	}
+
+	userStore, err := user.NewDBStore(pool)
 	if err != nil {
 		panic(err)
 	}

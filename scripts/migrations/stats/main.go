@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/config"
+	"github.com/domino14/liwords/pkg/stores/common"
 	"github.com/domino14/liwords/pkg/stores/user"
 )
 
@@ -18,7 +19,12 @@ func main() {
 
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
-	userStore, err := user.NewDBStore(cfg.DBConnDSN)
+	pool, err := common.OpenDB(cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBUser, cfg.DBPassword, cfg.DBSSLMode)
+	if err != nil {
+		panic(err)
+	}
+
+	userStore, err := user.NewDBStore(pool)
 	if err != nil {
 		panic(err)
 	}

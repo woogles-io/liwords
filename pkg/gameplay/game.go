@@ -402,6 +402,8 @@ func PlayMove(ctx context.Context,
 	timeRemaining int,
 	m *move.Move) error {
 
+	log := zerolog.Ctx(ctx)
+
 	log.Debug().Msg("validating")
 
 	_, err := entGame.Game.ValidateMove(m)

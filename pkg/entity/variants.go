@@ -58,6 +58,8 @@ func VariantFromGameReq(gamereq *pb.GameRequest) (TimeControl, game.Variant, err
 		variant = game.VarClassic
 	case string(game.VarWordSmog):
 		variant = game.VarWordSmog
+	case string(game.VarClassicSuper):
+		variant = game.VarClassicSuper
 	default:
 		return "", "", errors.New("unsupported game type")
 	}

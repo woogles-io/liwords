@@ -45,7 +45,7 @@ span.user-context-menu.ant-dropdown-trigger {
 
 .lobby {
   .ant-card {
-    height: $main-container-width-tablet + 60px;
+    height: calc($main-container-width-tablet + 60px);
   }
   .announcements {
     .ant-card.puzzle-preview {
@@ -61,11 +61,11 @@ span.user-context-menu.ant-dropdown-trigger {
     }
     .ant-card.announcements-card {
       margin-bottom: 9px;
-      height: $main-container-width-tablet + 52px - $puzzleCardHeight;
+      height: calc($main-container-width-tablet + 52px - $puzzleCardHeight);
       .ant-card-body {
         padding: 12px 24px;
-        height: $main-container-width-tablet + 48px - $puzzleCardHeight - 52px;
-        max-height: $main-container-width-tablet + 48px - $puzzleCardHeight - 52px;
+        height: calc($main-container-width-tablet + 48px - $puzzleCardHeight - 52px);
+        max-height: calc($main-container-width-tablet + 48px - $puzzleCardHeight - 52px);
         overflow-y: auto;
       }
       .ant-card-head-title {

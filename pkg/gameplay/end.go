@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
@@ -200,7 +199,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 		return err
 	}
 
-	log.Info().Str("gameID", g.GameID()).Msg("game-ended-unload-cache")
+	log.Info().Msg("game-ended-unload-cache")
 	gameStore.Unload(ctx, g.GameID())
 	g.SendChange(g.NewActiveGameEntry(false))
 
@@ -237,7 +236,7 @@ func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 	p0id, p1id := history.Players[0].UserId, history.Players[1].UserId
 	gameStats := stats.InstantiateNewStats(p0id, p1id)
 
-	err = stats.AddGame(gameStats, listStatStore, history, req, macondoConfig, evt, history.Uid)
+	err = stats.AddGame(ctx, gameStats, listStatStore, history, req, macondoConfig, evt, history.Uid)
 	if err != nil {
 		return nil, err
 	}
@@ -288,6 +287,8 @@ func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 
 func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore GameStore,
 	userStore user.Store, notorietyStore mod.NotorietyStore, listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore) error {
+
+	log := zerolog.Ctx(ctx)
 	log.Debug().Interface("playing", entGame.Game.Playing()).Msg("timed out!")
 
 	// The losing player always overtimes by the maximum amount.
@@ -304,6 +305,8 @@ func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore 
 
 func redoCancelledGamePairings(ctx context.Context, tstore tournament.TournamentStore,
 	g *entity.Game) error {
+
+	log := zerolog.Ctx(ctx)
 
 	tid := g.TournamentData.Id
 	t, err := tstore.Get(ctx, tid)
@@ -332,6 +335,8 @@ func redoCancelledGamePairings(ctx context.Context, tstore tournament.Tournament
 func AbortGame(ctx context.Context, gameStore GameStore, tournamentStore tournament.TournamentStore,
 	g *entity.Game, gameEndReason pb.GameEndReason) error {
 
+	log := zerolog.Ctx(ctx)
+
 	g.SetGameEndReason(gameEndReason)
 	g.History().PlayState = macondopb.PlayState_GAME_OVER
 	g.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
@@ -342,7 +347,7 @@ func AbortGame(ctx context.Context, gameStore GameStore, tournamentStore tournam
 		return err
 	}
 	// Unload the game
-	log.Info().Str("gameID", g.GameID()).Msg("game-aborted-unload-cache")
+	log.Info().Msg("game-aborted-unload-cache")
 	gameStore.Unload(ctx, g.GameID())
 
 	// We use this instead of the game's event channel directly because there's
@@ -386,6 +391,8 @@ func AbortGame(ctx context.Context, gameStore GameStore, tournamentStore tournam
 func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *pb.GameEndedEvent {
 	var winner, loser string
 	var tie bool
+	log := zerolog.Ctx(ctx)
+
 	winnerIdx := g.GetWinnerIdx()
 	if winnerIdx == 0 || winnerIdx == -1 {
 		winner = g.History().Players[0].Nickname

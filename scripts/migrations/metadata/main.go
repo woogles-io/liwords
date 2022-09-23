@@ -10,6 +10,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/stores/common"
 	"github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/stores/user"
 	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
@@ -22,8 +23,12 @@ func main() {
 	log.Info().Msgf("Loaded config: %v", cfg)
 
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	pool, err := common.OpenDB(cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBUser, cfg.DBPassword, cfg.DBSSLMode)
+	if err != nil {
+		panic(err)
+	}
 
-	userStore, err := user.NewDBStore(cfg.DBConnDSN)
+	userStore, err := user.NewDBStore(pool)
 	if err != nil {
 		panic(err)
 	}

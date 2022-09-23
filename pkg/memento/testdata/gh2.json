@@ -1,0 +1,744 @@
+{
+    "events": [
+        {
+            "nickname": "botty",
+            "rack": "AEGHLNS",
+            "cumulative": 28,
+            "row": 10,
+            "column": 9,
+            "position": "11J",
+            "played_tiles": "SEALGH",
+            "score": 28,
+            "words_formed": [
+                "SEALGH"
+            ],
+            "millis_remaining": 898805
+        },
+        {
+            "nickname": "cesar",
+            "rack": "???IKUX",
+            "cumulative": 36,
+            "row": 11,
+            "column": 11,
+            "position": "12L",
+            "played_tiles": "XI",
+            "score": 36,
+            "words_formed": [
+                "XI",
+                "AX",
+                "LI"
+            ],
+            "millis_remaining": 827418
+        },
+        {
+            "nickname": "botty",
+            "rack": "CHMMNQV",
+            "cumulative": 56,
+            "row": 9,
+            "column": 10,
+            "position": "10K",
+            "played_tiles": "MM",
+            "score": 28,
+            "words_formed": [
+                "MM",
+                "ME",
+                "MAX"
+            ],
+            "millis_remaining": 898779
+        },
+        {
+            "nickname": "cesar",
+            "rack": "???KRUW",
+            "cumulative": 103,
+            "row": 10,
+            "column": 9,
+            "direction": 1,
+            "position": "J11",
+            "played_tiles": ".qUaWKeR",
+            "score": 67,
+            "is_bingo": true,
+            "words_formed": [
+                "SQUAWKER"
+            ],
+            "millis_remaining": 662981
+        },
+        {
+            "nickname": "botty",
+            "rack": "CFHNQTV",
+            "cumulative": 84,
+            "row": 16,
+            "column": 8,
+            "position": "17I",
+            "played_tiles": "V.TCH",
+            "score": 28,
+            "words_formed": [
+                "VETCH"
+            ],
+            "millis_remaining": 898753
+        },
+        {
+            "nickname": "cesar",
+            "rack": "EFINOOT",
+            "cumulative": 122,
+            "row": 8,
+            "column": 8,
+            "position": "9I",
+            "played_tiles": "FOE",
+            "score": 19,
+            "words_formed": [
+                "FOE",
+                "EME"
+            ],
+            "millis_remaining": 638541
+        },
+        {
+            "nickname": "botty",
+            "rack": "CFNOQST",
+            "cumulative": 148,
+            "row": 18,
+            "column": 5,
+            "position": "19F",
+            "played_tiles": "CONFS",
+            "score": 64,
+            "words_formed": [
+                "CONFS",
+                "SQUAWKERS"
+            ],
+            "millis_remaining": 898718
+        },
+        {
+            "nickname": "cesar",
+            "rack": "ADINOTV",
+            "cumulative": 150,
+            "row": 12,
+            "column": 11,
+            "position": "13L",
+            "played_tiles": "ID",
+            "score": 28,
+            "words_formed": [
+                "ID",
+                "MAXI",
+                "LID"
+            ],
+            "millis_remaining": 603735
+        },
+        {
+            "nickname": "botty",
+            "rack": "EENOQRT",
+            "cumulative": 171,
+            "row": 7,
+            "column": 7,
+            "position": "8H",
+            "played_tiles": "RONTE",
+            "score": 23,
+            "words_formed": [
+                "RONTE",
+                "OF",
+                "NO",
+                "TEME"
+            ],
+            "millis_remaining": 898702
+        },
+        {
+            "nickname": "cesar",
+            "rack": "AENORTV",
+            "cumulative": 224,
+            "column": 11,
+            "direction": 1,
+            "position": "L1",
+            "played_tiles": "RENOVAT.",
+            "score": 74,
+            "is_bingo": true,
+            "words_formed": [
+                "RENOVATE"
+            ],
+            "millis_remaining": 565844
+        },
+        {
+            "nickname": "botty",
+            "rack": "EELOQTU",
+            "cumulative": 261,
+            "row": 2,
+            "column": 5,
+            "position": "3F",
+            "played_tiles": "ELOQUE.T",
+            "score": 90,
+            "is_bingo": true,
+            "words_formed": [
+                "ELOQUENT"
+            ],
+            "millis_remaining": 898684
+        },
+        {
+            "nickname": "cesar",
+            "rack": "GOPRRTY",
+            "cumulative": 268,
+            "row": 3,
+            "column": 10,
+            "position": "4K",
+            "played_tiles": "R.OTY",
+            "score": 44,
+            "words_formed": [
+                "ROOTY",
+                "ER",
+                "TO"
+            ],
+            "millis_remaining": 552985
+        },
+        {
+            "nickname": "botty",
+            "rack": "AAACNOS",
+            "cumulative": 288,
+            "column": 7,
+            "position": "1H",
+            "played_tiles": "ANCO.A",
+            "score": 27,
+            "words_formed": [
+                "ANCORA"
+            ],
+            "millis_remaining": 898665
+        },
+        {
+            "nickname": "cesar",
+            "rack": "DEGLPRU",
+            "cumulative": 296,
+            "row": 5,
+            "column": 9,
+            "position": "6J",
+            "played_tiles": "PL.GUED",
+            "score": 28,
+            "words_formed": [
+                "PLAGUED"
+            ],
+            "millis_remaining": 521185
+        },
+        {
+            "nickname": "botty",
+            "rack": "AEIMNST",
+            "cumulative": 379,
+            "row": 17,
+            "column": 12,
+            "position": "18M",
+            "played_tiles": "INMATES",
+            "score": 91,
+            "is_bingo": true,
+            "words_formed": [
+                "INMATES",
+                "HI"
+            ],
+            "millis_remaining": 898594
+        },
+        {
+            "nickname": "cesar",
+            "rack": "AEEENRU",
+            "cumulative": 316,
+            "row": 18,
+            "column": 14,
+            "position": "19O",
+            "played_tiles": "UREA",
+            "score": 20,
+            "words_formed": [
+                "UREA",
+                "MU",
+                "AR",
+                "TE",
+                "EA"
+            ],
+            "millis_remaining": 498636
+        },
+        {
+            "nickname": "botty",
+            "rack": "AIIJNVW",
+            "cumulative": 423,
+            "row": 3,
+            "column": 3,
+            "position": "4D",
+            "played_tiles": "JAW",
+            "score": 44,
+            "words_formed": [
+                "JAW",
+                "EW"
+            ],
+            "millis_remaining": 898575
+        },
+        {
+            "nickname": "cesar",
+            "rack": "AEEHNRS",
+            "cumulative": 342,
+            "row": 4,
+            "column": 4,
+            "position": "5E",
+            "played_tiles": "HE",
+            "score": 26,
+            "words_formed": [
+                "HE",
+                "AH",
+                "EWE"
+            ],
+            "millis_remaining": 420898
+        },
+        {
+            "nickname": "botty",
+            "rack": "AIIIINV",
+            "cumulative": 443,
+            "row": 14,
+            "column": 5,
+            "direction": 1,
+            "position": "F15",
+            "played_tiles": "VINI.",
+            "score": 20,
+            "words_formed": [
+                "VINIC"
+            ],
+            "millis_remaining": 898545
+        },
+        {
+            "nickname": "cesar",
+            "rack": "AEENPRS",
+            "cumulative": 424,
+            "row": 15,
+            "column": 12,
+            "position": "16M",
+            "played_tiles": "PANEERS",
+            "score": 82,
+            "is_bingo": true,
+            "words_formed": [
+                "PANEERS",
+                "PHI"
+            ],
+            "millis_remaining": 404550
+        },
+        {
+            "nickname": "botty",
+            "rack": "ABCDIIT",
+            "cumulative": 487,
+            "column": 8,
+            "direction": 1,
+            "position": "I1",
+            "played_tiles": ".I.AB",
+            "score": 44,
+            "words_formed": [
+                "NIQAB"
+            ],
+            "millis_remaining": 898513
+        },
+        {
+            "nickname": "cesar",
+            "rack": "DEFIPRS",
+            "cumulative": 466,
+            "row": 19,
+            "column": 11,
+            "position": "20L",
+            "played_tiles": "PRISED",
+            "score": 42,
+            "words_formed": [
+                "PRISED",
+                "MUS",
+                "ARE",
+                "TED"
+            ],
+            "millis_remaining": 362865
+        },
+        {
+            "nickname": "botty",
+            "rack": "CDEIMST",
+            "cumulative": 535,
+            "row": 5,
+            "column": 2,
+            "position": "6C",
+            "played_tiles": "DEISM",
+            "score": 48,
+            "words_formed": [
+                "DEISM",
+                "AHI",
+                "EWES"
+            ],
+            "millis_remaining": 898464
+        },
+        {
+            "nickname": "cesar",
+            "rack": "?FILMOT",
+            "cumulative": 551,
+            "row": 6,
+            "column": 14,
+            "position": "7O",
+            "played_tiles": "FILeMOT",
+            "score": 85,
+            "is_bingo": true,
+            "words_formed": [
+                "FILEMOT",
+                "EF",
+                "DI"
+            ],
+            "millis_remaining": 302577
+        },
+        {
+            "nickname": "botty",
+            "rack": "CDELRST",
+            "cumulative": 573,
+            "row": 17,
+            "column": 1,
+            "position": "18B",
+            "played_tiles": "CLER.D",
+            "score": 38,
+            "words_formed": [
+                "CLERID",
+                "DO"
+            ],
+            "millis_remaining": 898416
+        },
+        {
+            "nickname": "cesar",
+            "rack": "HNPRTTT",
+            "cumulative": 595,
+            "row": 5,
+            "column": 17,
+            "position": "6R",
+            "played_tiles": "PHT",
+            "score": 44,
+            "words_formed": [
+                "PHT",
+                "PE",
+                "HM",
+                "TO"
+            ],
+            "millis_remaining": 282705
+        },
+        {
+            "nickname": "botty",
+            "rack": "BEEEKST",
+            "cumulative": 634,
+            "row": 20,
+            "column": 16,
+            "position": "21Q",
+            "played_tiles": "SKEET",
+            "score": 61,
+            "words_formed": [
+                "SKEET",
+                "TEDS"
+            ],
+            "millis_remaining": 898375
+        },
+        {
+            "nickname": "cesar",
+            "rack": "DNRSSTT",
+            "cumulative": 617,
+            "row": 13,
+            "column": 7,
+            "position": "14H",
+            "played_tiles": "TR.NS",
+            "score": 22,
+            "words_formed": [
+                "TRANS",
+                "MAXIS"
+            ],
+            "millis_remaining": 258438
+        },
+        {
+            "nickname": "botty",
+            "rack": "BEENOSW",
+            "cumulative": 674,
+            "row": 14,
+            "column": 13,
+            "position": "15N",
+            "played_tiles": "BOWNE",
+            "score": 40,
+            "words_formed": [
+                "BOWNE",
+                "BA",
+                "ON",
+                "WE",
+                "NE",
+                "ER"
+            ],
+            "millis_remaining": 898344
+        },
+        {
+            "nickname": "cesar",
+            "rack": "DEORSTZ",
+            "cumulative": 703,
+            "row": 15,
+            "column": 2,
+            "direction": 1,
+            "position": "C16",
+            "played_tiles": "ZE.S",
+            "score": 86,
+            "words_formed": [
+                "ZELS"
+            ],
+            "millis_remaining": 238711
+        },
+        {
+            "nickname": "botty",
+            "rack": "AEEGINS",
+            "cumulative": 762,
+            "row": 9,
+            "column": 3,
+            "direction": 1,
+            "position": "D10",
+            "played_tiles": "AGENISE",
+            "score": 88,
+            "is_bingo": true,
+            "words_formed": [
+                "AGENISE",
+                "ZE"
+            ],
+            "millis_remaining": 898287
+        },
+        {
+            "nickname": "cesar",
+            "rack": "DDORTYZ",
+            "cumulative": 740,
+            "row": 9,
+            "column": 4,
+            "direction": 1,
+            "position": "E10",
+            "played_tiles": "TODY",
+            "score": 37,
+            "words_formed": [
+                "TODY",
+                "AT",
+                "GO",
+                "ED",
+                "NY"
+            ],
+            "millis_remaining": 221768
+        },
+        {
+            "nickname": "botty",
+            "rack": "ABELMNR",
+            "cumulative": 826,
+            "row": 9,
+            "column": 2,
+            "direction": 1,
+            "position": "C10",
+            "played_tiles": "BEMA",
+            "score": 64,
+            "words_formed": [
+                "BEMA",
+                "BAT",
+                "EGO",
+                "MED",
+                "ANY"
+            ],
+            "millis_remaining": 898241
+        },
+        {
+            "nickname": "cesar",
+            "rack": "CDORTUZ",
+            "cumulative": 794,
+            "row": 12,
+            "column": 1,
+            "direction": 1,
+            "position": "B13",
+            "played_tiles": "ZO",
+            "score": 54,
+            "words_formed": [
+                "ZO",
+                "ZANY"
+            ],
+            "millis_remaining": 190605
+        },
+        {
+            "nickname": "botty",
+            "rack": "BCILNNR",
+            "cumulative": 856,
+            "row": 13,
+            "direction": 1,
+            "position": "A14",
+            "played_tiles": "BLIN",
+            "score": 30,
+            "words_formed": [
+                "BLIN",
+                "BO"
+            ],
+            "millis_remaining": 898192
+        },
+        {
+            "nickname": "cesar",
+            "rack": "CDERTTU",
+            "cumulative": 828,
+            "row": 20,
+            "column": 7,
+            "position": "21H",
+            "played_tiles": "CRUDE",
+            "score": 34,
+            "words_formed": [
+                "CRUDE",
+                "PE"
+            ],
+            "millis_remaining": 138148
+        },
+        {
+            "nickname": "botty",
+            "rack": "CLNNORW",
+            "cumulative": 892,
+            "row": 9,
+            "column": 17,
+            "direction": 1,
+            "position": "R10",
+            "played_tiles": "CROWN..",
+            "score": 36,
+            "words_formed": [
+                "CROWNER"
+            ],
+            "millis_remaining": 898165
+        },
+        {
+            "nickname": "cesar",
+            "rack": "AFGIOTT",
+            "cumulative": 853,
+            "row": 7,
+            "column": 13,
+            "position": "8N",
+            "played_tiles": "OFT",
+            "score": 25,
+            "words_formed": [
+                "OFT",
+                "EFF",
+                "DIT"
+            ],
+            "millis_remaining": 115310
+        },
+        {
+            "nickname": "botty",
+            "rack": "HLNQRUX",
+            "cumulative": 918,
+            "row": 11,
+            "column": 16,
+            "position": "12Q",
+            "played_tiles": "H.X",
+            "score": 26,
+            "words_formed": [
+                "HOX"
+            ],
+            "millis_remaining": 898127
+        },
+        {
+            "nickname": "cesar",
+            "rack": "AAGIOTT",
+            "cumulative": 936,
+            "row": 2,
+            "column": 14,
+            "position": "3O",
+            "played_tiles": "AGITATO",
+            "score": 83,
+            "is_bingo": true,
+            "words_formed": [
+                "AGITATO",
+                "AY"
+            ],
+            "millis_remaining": 106457
+        },
+        {
+            "nickname": "botty",
+            "rack": "AILNQRU",
+            "cumulative": 1121,
+            "row": 6,
+            "column": 20,
+            "direction": 1,
+            "position": "U7",
+            "played_tiles": ".RANQUIL",
+            "score": 203,
+            "is_bingo": true,
+            "words_formed": [
+                "TRANQUIL"
+            ],
+            "millis_remaining": 898074
+        },
+        {
+            "nickname": "cesar",
+            "rack": "AEGRTYY",
+            "cumulative": 980,
+            "column": 20,
+            "direction": 1,
+            "position": "U1",
+            "played_tiles": "TR.Y",
+            "score": 44,
+            "words_formed": [
+                "TROY"
+            ],
+            "millis_remaining": 84480
+        },
+        {
+            "nickname": "botty",
+            "rack": "ADJOU",
+            "cumulative": 1178,
+            "column": 17,
+            "direction": 1,
+            "position": "R1",
+            "played_tiles": "JO.A",
+            "score": 57,
+            "words_formed": [
+                "JOTA"
+            ],
+            "millis_remaining": 898047
+        },
+        {
+            "nickname": "cesar",
+            "rack": "AEGY",
+            "cumulative": 1002,
+            "row": 12,
+            "column": 19,
+            "direction": 1,
+            "position": "T13",
+            "played_tiles": "GAY",
+            "score": 22,
+            "words_formed": [
+                "GAY",
+                "GI",
+                "AL"
+            ],
+            "millis_remaining": 61088
+        },
+        {
+            "nickname": "botty",
+            "rack": "DU",
+            "cumulative": 1196,
+            "row": 1,
+            "column": 15,
+            "position": "2P",
+            "played_tiles": "UD.",
+            "score": 18,
+            "words_formed": [
+                "UDO",
+                "UG",
+                "DI"
+            ],
+            "millis_remaining": 898003
+        },
+        {
+            "nickname": "botty",
+            "rack": "E",
+            "type": 5,
+            "cumulative": 1198,
+            "end_rack_points": 2
+        }
+    ],
+    "players": [
+        {
+            "nickname": "botty",
+            "user_id": "FDHvxexaC5QNMfiJnpcnUZ"
+        },
+        {
+            "nickname": "cesar",
+            "user_id": "2gJGaYnchL6LbQVTNQ6mjT"
+        }
+    ],
+    "lexicon": "CSW21",
+    "id_auth": "io.woogles",
+    "uid": "qgM6Jnsp",
+    "description": "Created with Macondo",
+    "last_known_racks": [
+        "",
+        "E"
+    ],
+    "play_state": 2,
+    "final_scores": [
+        1198,
+        1002
+    ],
+    "variant": "classic_super",
+    "board_layout": "SuperCrosswordGame",
+    "letter_distribution": "english_super"
+}

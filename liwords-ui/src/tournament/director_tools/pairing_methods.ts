@@ -77,13 +77,13 @@ export const fieldsForMethod = (
           'number',
           'repeatRelativeWeight',
           'Repeat Relative Weight',
-          'The larger this number, the less likely a repeat will be.',
+          'The larger this number relative to other weights, the less likely a repeat will be.',
         ],
         [
           'number',
           'winDifferenceRelativeWeight',
           'Win Difference Relative Weight',
-          'The larger this number, the more mismatched your pairings will be, in terms of win difference.',
+          'The smaller this number relative to other weights, the more mismatched your pairings will be, in terms of win difference.',
         ]
       );
       break;

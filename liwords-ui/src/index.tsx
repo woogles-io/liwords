@@ -21,6 +21,17 @@ window.console.info(
 
 // Scope the variables declared here.
 {
+  const oldValue = localStorage.getItem('enableWordSmog');
+  if (oldValue) {
+    if (!localStorage.getItem('enableVariants')) {
+      localStorage.setItem('enableVariants', oldValue);
+    }
+    localStorage.removeItem('enableWordSmog');
+  }
+}
+
+// Scope the variables declared here.
+{
   // Adjust this constant accordingly.
   const minimumViableWidth = 558;
   const metaViewport = document.querySelector("meta[name='viewport']");

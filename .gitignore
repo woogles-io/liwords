@@ -20,3 +20,5 @@ local.env
 
 cmd/convert-pb/convert-pb
 liwords-ui/public/wasm/macondo.wasm
+
+*.out

@@ -48,7 +48,8 @@ params can be prefixed with these flags:
 
 	var colorFlag = flag.String("color", "", "0 = use player 0's colors, 1 = use player 1's colors")
 	var gifFlag = flag.Bool("gif", false, "generate static gif")
-	var agifFlag = flag.Bool("agif", false, "generate animated gif")
+	var agifFlag = flag.Bool("agif", false, "generate animated gif (version A)")
+	var bgifFlag = flag.Bool("bgif", false, "generate animated gif (version B)")
 	var verFlag = flag.Int("ver", 0, "specify version")
 	var urlFlag = flag.String("url", "https://woogles.io", "specify url, -url local for http://localhost")
 	flag.Parse()
@@ -97,6 +98,10 @@ params can be prefixed with these flags:
 	if *agifFlag {
 		wf.FileType = "animated-gif"
 		outputFilename += "-a"
+		outputFilenameSuffix += ".gif"
+	} else if *bgifFlag {
+		wf.FileType = "animated-gif-b"
+		outputFilename += "-b"
 		outputFilenameSuffix += ".gif"
 	} else if *gifFlag {
 		wf.FileType = "gif"

@@ -1,5 +1,10 @@
 package entity
 
+import (
+	"database/sql/driver"
+	"encoding/json"
+)
+
 // A ListDatum is the individual datum that is stored in a list. It is
 // a sort of "union" of various struct types. Depending on the type of stat,
 // only some of thees fields will be filled in.
@@ -199,4 +204,17 @@ var StatName_value = map[string]int{
 	ONE_PLAYER_PLAYS_EVERY_E_STAT:          35,
 	MANY_CHALLENGES_STAT:                   36,
 	FOUR_OR_MORE_CONSECUTIVE_BINGOS_STAT:   37,
+}
+
+func (ld *ListDatum) Value() (driver.Value, error) {
+	return json.Marshal(ld)
+}
+
+func (ld *ListDatum) Scan(value interface{}) error {
+	var err error
+	b, ok := value.([]byte)
+	if ok {
+		err = json.Unmarshal(b, &ld)
+	}
+	return err
 }

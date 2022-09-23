@@ -20,7 +20,6 @@ type Props = {
   playerOfTileAt: PlayerOfTiles;
   onClick: (rune: string) => void;
   placementArrow: PlacementArrow;
-  scaleTiles: boolean;
   tentativeTiles: Set<EphemeralTile>;
   tentativeTileScore: number | undefined;
   returnToRack?: (
@@ -200,7 +199,6 @@ const Tiles = React.memo((props: Props) => {
             lastPlayed={lastPlayed}
             playerOfTile={playerOfTile}
             key={`tile_${x}_${y}`}
-            scale={props.scaleTiles}
             tentativeScore={tentativeScoreHere}
             tentativeScoreIsHorizontal={tentativeScoreHereIsHorizontal}
             grabbable={false}
@@ -235,7 +233,6 @@ const Tiles = React.memo((props: Props) => {
               lastPlayed={false}
               playerOfTile={props.tileColorId}
               key={`tileT_${tentativeTile.col}_${tentativeTile.row}`}
-              scale={false}
               tentative={true}
               x={x}
               y={y}

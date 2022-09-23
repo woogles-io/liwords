@@ -125,7 +125,7 @@ func GetActions(ctx context.Context, us user.Store, uuid string) (map[string]*ms
 	}
 
 	if updated {
-		err = us.Set(ctx, user)
+		err = us.SetActions(ctx, user.UUID, user.Actions)
 		if err != nil {
 			return nil, err
 		}
@@ -148,7 +148,7 @@ func GetActionHistory(ctx context.Context, us user.Store, uuid string) ([]*ms.Mo
 	}
 
 	if updated {
-		err = us.Set(ctx, user)
+		err = us.SetActions(ctx, user.UUID, user.Actions)
 		if err != nil {
 			return nil, err
 		}
@@ -286,7 +286,7 @@ func removeAction(ctx context.Context, us user.Store, action *ms.ModAction, remo
 		return err
 	}
 
-	return us.Set(ctx, user)
+	return us.SetActions(ctx, user.UUID, user.Actions)
 }
 
 func applyAction(ctx context.Context, us user.Store, cs user.ChatStore, action *ms.ModAction) error {
@@ -316,7 +316,7 @@ func applyAction(ctx context.Context, us user.Store, cs user.ChatStore, action *
 		}
 	}
 
-	err = us.Set(ctx, user)
+	err = us.SetActions(ctx, user.UUID, user.Actions)
 	if err != nil {
 		return err
 	}

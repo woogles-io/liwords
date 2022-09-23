@@ -482,7 +482,8 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
         onturn: false,
         currentRack: '',
       })),
-      gameContext.gameID
+      gameContext.gameID,
+      gameContext.board.gridLayout
     );
     ret.nickToPlayerOrder = gameContext.nickToPlayerOrder;
     ret.uidToPlayerOrder = gameContext.uidToPlayerOrder;

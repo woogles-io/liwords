@@ -65,6 +65,10 @@ message TournamentMetadata {
   string color = 13;
 
   bool private_analysis = 14;
+  // irl_mode allows tournament mode to be used for pairings for an
+  // over-the-board tournament, and will not enforce that usernames
+  // are registered on the site.
+  bool irl_mode = 15;
 }
 
 message SetTournamentMetadataRequest {
@@ -215,7 +219,8 @@ service TournamentService {
   // CheckIn allows players to check themselves in.
   rpc CheckIn(CheckinRequest) returns (TournamentResponse);
 
-  rpc ExportTournament(ExportTournamentRequest) returns (ExportTournamentResponse);
+  rpc ExportTournament(ExportTournamentRequest)
+      returns (ExportTournamentResponse);
 }
 
 message ExportTournamentRequest {
@@ -223,9 +228,7 @@ message ExportTournamentRequest {
   string format = 2;
 }
 
-message ExportTournamentResponse {
-  string exported = 1;
-}
+message ExportTournamentResponse { string exported = 1; }
 
 message NewClubSessionRequest {
   // date is the date of the session

@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"database/sql/driver"
+	"encoding/json"
 	"errors"
 	"math"
 	"strconv"
@@ -116,11 +118,7 @@ func (u *User) GetRating(ratingKey VariantKey) (*SingleRating, error) {
 	if u.Profile == nil {
 		return nil, errors.New("anonymous user has no rating")
 	}
-	defaultRating := &SingleRating{
-		Rating:          float64(glicko.InitialRating),
-		RatingDeviation: float64(glicko.InitialRatingDeviation),
-		Volatility:      glicko.InitialVolatility,
-	}
+	defaultRating := NewDefaultRating(false)
 	if u.Profile.Ratings.Data == nil {
 		return defaultRating, nil
 	}
@@ -217,4 +215,30 @@ func (u *User) IsChild() pb.ChildStatus {
 		return pb.ChildStatus_UNKNOWN
 	}
 	return InferChildStatus(u.Profile.BirthDate, time.Now())
+}
+
+func (a *Actions) Value() (driver.Value, error) {
+	return json.Marshal(a)
+}
+
+func (a *Actions) Scan(value interface{}) error {
+	var err error
+	b, ok := value.([]byte)
+	if ok {
+		err = json.Unmarshal(b, &a)
+	}
+	return err
+}
+
+func (p *Profile) Value() (driver.Value, error) {
+	return json.Marshal(p)
+}
+
+func (p *Profile) Scan(value interface{}) error {
+	var err error
+	b, ok := value.([]byte)
+	if ok {
+		err = json.Unmarshal(b, &p)
+	}
+	return err
 }

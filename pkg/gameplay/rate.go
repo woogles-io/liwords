@@ -90,13 +90,13 @@ func Rate(ctx context.Context, scores map[string]int32, g *entity.Game,
 	g.Quickdata.OriginalRatings = []float64{rat0.Rating, rat1.Rating}
 	g.Quickdata.NewRatings = []float64{p0rat, p1rat}
 
-	p0SingleRating := entity.SingleRating{
+	p0SingleRating := &entity.SingleRating{
 		Rating:            p0rat,
 		RatingDeviation:   p0rd,
 		Volatility:        p0v,
 		LastGameTimestamp: now,
 	}
-	p1SingleRating := entity.SingleRating{
+	p1SingleRating := &entity.SingleRating{
 		Rating:            p1rat,
 		RatingDeviation:   p1rd,
 		Volatility:        p1v,

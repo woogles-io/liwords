@@ -29,6 +29,7 @@ import {
   GameRules,
   RatingMode,
 } from '../../gen/api/proto/ipc/omgwords_pb';
+import { defaultLetterDistribution } from '../../lobby/sought_game_interactions';
 
 type Props = {
   setGameRequest: (gr: GameRequest) => void;
@@ -109,7 +110,7 @@ export const SettingsForm = (props: Props) => {
     const gr = new GameRequest();
     const rules = new GameRules();
     rules.setBoardLayoutName('CrosswordGame');
-    rules.setLetterDistributionName('English');
+    rules.setLetterDistributionName(defaultLetterDistribution(values.lexicon));
     rules.setVariantName(values.variant);
     gr.setRules(rules);
 
@@ -147,6 +148,9 @@ export const SettingsForm = (props: Props) => {
           <Select.Option value="classic">Classic</Select.Option>
           <Select.Option value="wordsmog">
             <VariantIcon vcode="wordsmog" withName />
+          </Select.Option>
+          <Select.Option value="classic_super">
+            <VariantIcon vcode="classic_super" withName />
           </Select.Option>
         </Select>
       </Form.Item>

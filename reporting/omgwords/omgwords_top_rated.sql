@@ -66,7 +66,7 @@ SELECT
   username,
   r,
   rd
-FROM nwl18_ultrablitz_ratings
+FROM csw19_regular_ratings
 WHERE r IS NOT NULL
 AND rd::FLOAT < 100.0
 ORDER BY r::FLOAT DESC
