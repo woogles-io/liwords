@@ -58,12 +58,12 @@ var DefaultConfig = macondoconfig.Config{
 
 var playerIds = []string{"xjCWug7EZtDxDHX5fRZTLo", "qUQkST8CendYA3baHNoPjk"}
 
-func gameStore(userStore pkguser.Store) (*config.Config, gameplay.GameStore) {
+func gameStore(userStore pkguser.Store, p *pgxpool.Pool) (*config.Config, gameplay.GameStore) {
 	cfg := &config.Config{}
 	cfg.MacondoConfig = DefaultConfig
 	cfg.DBConnDSN = common.TestingPostgresConnDSN()
 
-	tmp, err := game.NewDBStore(cfg, userStore)
+	tmp, err := game.NewDBStore(cfg, userStore, p)
 	if err != nil {
 		panic(err)
 	}
@@ -316,11 +316,11 @@ func comparePlayerNotorieties(pnrs []*ms.NotorietyReport, ustore pkguser.Store, 
 func TestNotoriety(t *testing.T) {
 	//zerolog.SetGlobalLevel(zerolog.Disabled)
 	is := is.New(t)
-	_, ustore, lstore, nstore := recreateDB()
+	pool, ustore, lstore, nstore := recreateDB()
 
 	ctx := context.WithValue(context.Background(), config.CtxKeyword, &config.Config{MacondoConfig: DefaultConfig})
 
-	cfg, gstore := gameStore(ustore)
+	cfg, gstore := gameStore(ustore, pool)
 	tstore := tournamentStore(cfg, gstore)
 
 	defaultTurns := []*pb.ClientGameplayEvent{

@@ -173,7 +173,7 @@ func main() {
 		}),
 	)
 
-	tmpGameStore, err := game.NewDBStore(cfg, stores.UserStore)
+	tmpGameStore, err := game.NewDBStore(cfg, stores.UserStore, dbPool)
 	if err != nil {
 		panic(err)
 	}

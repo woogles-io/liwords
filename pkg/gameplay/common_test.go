@@ -30,8 +30,8 @@ type gamesetup struct {
 }
 
 func setupNewGame() *gamesetup {
-	_, ustore, lstore, nstore := recreateDB()
-	cfg, gstore := gameStore(ustore)
+	pool, ustore, lstore, nstore := recreateDB()
+	cfg, gstore := gameStore(ustore, pool)
 	tstore := tournamentStore(cfg, gstore)
 
 	g, nower, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)

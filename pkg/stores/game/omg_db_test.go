@@ -12,7 +12,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/macondo/board"
-	macondoconfig "github.com/domino14/macondo/config"
 	macondogame "github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 
@@ -24,15 +23,7 @@ import (
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
-var DefaultConfig = macondoconfig.Config{
-	StrategyParamsPath:        os.Getenv("STRATEGY_PARAMS_PATH"),
-	LexiconPath:               os.Getenv("LEXICON_PATH"),
-	LetterDistributionPath:    os.Getenv("LETTER_DISTRIBUTION_PATH"),
-	DefaultLexicon:            "NWL18",
-	DefaultLetterDistribution: "English",
-}
-
-func newMacondoGame(users [2]*entity.User) *macondogame.Game {
+func OMGnewMacondoGame(users [2]*entity.User) *macondogame.Game {
 	rules, err := macondogame.NewBasicGameRules(
 		&DefaultConfig, DefaultConfig.DefaultLexicon,
 		board.CrosswordGameLayout, DefaultConfig.DefaultLetterDistribution,
@@ -57,7 +48,7 @@ func newMacondoGame(users [2]*entity.User) *macondogame.Game {
 	return mcg
 }
 
-func userStore(dbURL string) pkguser.Store {
+func OMGuserStore(dbURL string) pkguser.Store {
 	pool, err := common.OpenTestingDB()
 	if err != nil {
 		panic(err)
@@ -69,7 +60,7 @@ func userStore(dbURL string) pkguser.Store {
 	return ustore
 }
 
-func recreateDB() pkguser.Store {
+func OMGrecreateDB() pkguser.Store {
 	err := common.RecreateTestDB()
 	if err != nil {
 		panic(err)
@@ -99,7 +90,7 @@ func recreateDB() pkguser.Store {
 	return ustore
 }
 
-func addfakeGames(ustore pkguser.Store, p *pgxpool.Pool) {
+func OMGaddfakeGames(ustore pkguser.Store, p *pgxpool.Pool) {
 	protocts, err := ioutil.ReadFile("./testdata/game1/history.pb")
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
@@ -136,21 +127,21 @@ func addfakeGames(ustore pkguser.Store, p *pgxpool.Pool) {
 
 }
 
-func teardown() {
+func OMGteardown() {
 	err := common.TeardownTestDB()
 	if err != nil {
 		panic(err)
 	}
 }
 
-func TestMain(m *testing.M) {
+func OMGTestMain(m *testing.M) {
 
 	code := m.Run()
 	//teardown()
 	os.Exit(code)
 }
 
-func createGame(p0, p1 string, initTime int32, is *is.I) *entity.Game {
+func OMGcreateGame(p0, p1 string, initTime int32, is *is.I) *entity.Game {
 	ustore := userStore(common.TestingPostgresConnDSN())
 	pool, err := common.OpenTestingDB()
 	is.NoErr(err)
@@ -196,7 +187,7 @@ func createGame(p0, p1 string, initTime int32, is *is.I) *entity.Game {
 	return entGame
 }
 
-func TestCreate(t *testing.T) {
+func OMGTestCreate(t *testing.T) {
 	log.Info().Msg("TestCreate")
 	recreateDB()
 	is := is.New(t)
@@ -224,7 +215,7 @@ func TestCreate(t *testing.T) {
 
 }
 
-func TestSet(t *testing.T) {
+func OMGTestSet(t *testing.T) {
 	log.Info().Msg("TestSet")
 	recreateDB()
 
@@ -269,7 +260,7 @@ func TestSet(t *testing.T) {
 	store.Disconnect()
 }
 
-func TestGet(t *testing.T) {
+func OMGTestGet(t *testing.T) {
 	log.Info().Msg("TestGet")
 	recreateDB()
 
@@ -304,7 +295,7 @@ func TestGet(t *testing.T) {
 	store.Disconnect()
 }
 
-func TestListActive(t *testing.T) {
+func OMGTestListActive(t *testing.T) {
 	log.Info().Msg("TestListActive")
 	recreateDB()
 	is := is.New(t)

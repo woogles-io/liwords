@@ -48,7 +48,7 @@ func main() {
 		panic(err)
 	}
 
-	tempgs, err := gamestore.NewDBStore(cfg, us)
+	tempgs, err := gamestore.NewDBStore(cfg, us, pool)
 	if err != nil {
 		panic(err)
 	}

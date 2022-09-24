@@ -24,12 +24,12 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
-func gameStore(userStore pkguser.Store) (*config.Config, gameplay.GameStore) {
+func gameStore(userStore pkguser.Store, p *pgxpool.Pool) (*config.Config, gameplay.GameStore) {
 	cfg := &config.Config{}
 	cfg.MacondoConfig = DefaultConfig
 	cfg.DBConnDSN = common.TestingPostgresConnDSN()
 
-	tmp, err := game.NewDBStore(cfg, userStore)
+	tmp, err := game.NewDBStore(cfg, userStore, p)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
@@ -108,8 +108,8 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStor
 
 func TestInitializeGame(t *testing.T) {
 	is := is.New(t)
-	_, ustore, lstore, _ := recreateDB()
-	cfg, gstore := gameStore(ustore)
+	pool, ustore, lstore, _ := recreateDB()
+	cfg, gstore := gameStore(ustore, pool)
 
 	g, _, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
 
@@ -125,8 +125,8 @@ func TestInitializeGame(t *testing.T) {
 
 func TestWrongTurn(t *testing.T) {
 	is := is.New(t)
-	_, ustore, lstore, nstore := recreateDB()
-	cfg, gstore := gameStore(ustore)
+	pool, ustore, lstore, nstore := recreateDB()
+	cfg, gstore := gameStore(ustore, pool)
 	tstore := tournamentStore(cfg, gstore)
 
 	g, _, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
@@ -159,8 +159,8 @@ func TestWrongTurn(t *testing.T) {
 
 func Test5ptBadWord(t *testing.T) {
 	is := is.New(t)
-	_, ustore, lstore, nstore := recreateDB()
-	cfg, gstore := gameStore(ustore)
+	pool, ustore, lstore, nstore := recreateDB()
+	cfg, gstore := gameStore(ustore, pool)
 	tstore := tournamentStore(cfg, gstore)
 
 	g, nower, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
@@ -204,8 +204,8 @@ func Test5ptBadWord(t *testing.T) {
 
 func TestDoubleChallengeBadWord(t *testing.T) {
 	is := is.New(t)
-	_, ustore, lstore, nstore := recreateDB()
-	cfg, gstore := gameStore(ustore)
+	pool, ustore, lstore, nstore := recreateDB()
+	cfg, gstore := gameStore(ustore, pool)
 	tstore := tournamentStore(cfg, gstore)
 
 	g, nower, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
@@ -266,8 +266,8 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 
 func TestDoubleChallengeGoodWord(t *testing.T) {
 	is := is.New(t)
-	_, ustore, lstore, nstore := recreateDB()
-	cfg, gstore := gameStore(ustore)
+	pool, ustore, lstore, nstore := recreateDB()
+	cfg, gstore := gameStore(ustore, pool)
 	tstore := tournamentStore(cfg, gstore)
 
 	g, nower, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
@@ -326,8 +326,8 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 
 func TestQuickdata(t *testing.T) {
 	is := is.New(t)
-	_, ustore, lstore, nstore := recreateDB()
-	cfg, gstore := gameStore(ustore)
+	pool, ustore, lstore, nstore := recreateDB()
+	cfg, gstore := gameStore(ustore, pool)
 	tstore := tournamentStore(cfg, gstore)
 
 	g, nower, cancel, donechan, _ := makeGame(cfg, ustore, gstore)

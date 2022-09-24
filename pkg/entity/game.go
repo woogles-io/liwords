@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"database/sql/driver"
+	"encoding/json"
 	"sync"
 	"time"
 
@@ -399,4 +401,45 @@ func (g *Game) WinnerWasSet() bool {
 	// This is the only case in which the winner has not yet been set,
 	// when both winnerIdx and loserIdx are 0.
 	return !(g.WinnerIdx == 0 && g.LoserIdx == 0)
+}
+
+// Scan/Value functions needed for the DB
+
+func (t *Timers) Value() (driver.Value, error) {
+	return json.Marshal(t)
+}
+
+func (t *Timers) Scan(value interface{}) error {
+	var err error
+	b, ok := value.([]byte)
+	if ok {
+		err = json.Unmarshal(b, &t)
+	}
+	return err
+}
+
+func (mdata *MetaEventData) Value() (driver.Value, error) {
+	return json.Marshal(mdata)
+}
+
+func (mdata *MetaEventData) Scan(value interface{}) error {
+	var err error
+	b, ok := value.([]byte)
+	if ok {
+		err = json.Unmarshal(b, &mdata)
+	}
+	return err
+}
+
+func (tdata *TournamentData) Value() (driver.Value, error) {
+	return json.Marshal(tdata)
+}
+
+func (tdata *TournamentData) Scan(value interface{}) error {
+	var err error
+	b, ok := value.([]byte)
+	if ok {
+		err = json.Unmarshal(b, &tdata)
+	}
+	return err
 }

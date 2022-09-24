@@ -953,7 +953,7 @@ func RecreateDB() (*DBController, int, int) {
 		panic(err)
 	}
 
-	tempGameStore, err := gamestore.NewDBStore(cfg, userStore)
+	tempGameStore, err := gamestore.NewDBStore(cfg, userStore, pool)
 	if err != nil {
 		panic(err)
 	}

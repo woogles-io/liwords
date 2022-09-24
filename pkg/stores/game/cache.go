@@ -32,6 +32,24 @@ type backingStore interface {
 	Disconnect()
 	SetReady(ctx context.Context, gid string, pidx int) (int, error)
 	GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error)
+
+	OMGGet(ctx context.Context, id string) (*entity.Game, error)
+	OMGGetMetadata(ctx context.Context, id string) (*pb.GameInfoResponse, error)
+	OMGGetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error)
+	OMGGetRecentGames(ctx context.Context, username string, numGames int, offset int) (*pb.GameInfoResponses, error)
+	OMGGetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error)
+	OMGSet(context.Context, *entity.Game) error
+	OMGCreate(context.Context, *entity.Game) error
+	OMGCreateRaw(context.Context, *entity.Game, pb.GameType) error
+	OMGExists(ctx context.Context, id string) (bool, error)
+	OMGListActive(context.Context, string, bool) (*pb.GameInfoResponses, error)
+	OMGCount(ctx context.Context) (int64, error)
+	OMGCachedCount(ctx context.Context) int
+	OMGGameEventChan() chan<- *entity.EventWrapper
+	OMGSetGameEventChan(c chan<- *entity.EventWrapper)
+	OMGUnload(context.Context, string)
+	OMGSetReady(ctx context.Context, gid string, pidx int) (int, error)
+	OMGGetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error)
 }
 
 const (

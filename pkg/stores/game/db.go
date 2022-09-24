@@ -9,6 +9,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rs/zerolog/log"
 
 	"google.golang.org/protobuf/proto"
@@ -43,6 +44,8 @@ type DBStore struct {
 	// from the database.
 	// All game events go down the same channel.
 	gameEventChan chan<- *entity.EventWrapper
+
+	dbPool *pgxpool.Pool
 }
 
 type game struct {
@@ -82,7 +85,7 @@ type game struct {
 }
 
 // NewDBStore creates a new DB store for games.
-func NewDBStore(config *config.Config, userStore pkguser.Store) (*DBStore, error) {
+func NewDBStore(config *config.Config, userStore pkguser.Store, p *pgxpool.Pool) (*DBStore, error) {
 
 	db, err := gorm.Open(postgres.Open(config.DBConnDSN), &gorm.Config{})
 	if err != nil {
@@ -93,7 +96,7 @@ func NewDBStore(config *config.Config, userStore pkguser.Store) (*DBStore, error
 	// I don't know how to do this with GORM. This makes the GetRematchStreak function
 	// much faster.
 
-	return &DBStore{db: db, cfg: config, userStore: userStore}, nil
+	return &DBStore{db: db, cfg: config, userStore: userStore, dbPool: p}, nil
 }
 
 // SetGameEventChan sets the game event channel to the passed in channel.

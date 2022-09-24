@@ -30,6 +30,7 @@ const (
 	SelectBySeekerConnID
 	SelectByReceiverID
 	SelectByReceiverConnID
+	SelectByGameID
 )
 
 type TableType int
@@ -40,6 +41,9 @@ const (
 	GamesTable
 	PuzzlesTable
 	SoughtGamesTable
+	OmgwordsTable
+	OmgwordsHistoryTable
+	OmgwordsGamesTable
 )
 
 type RowsAffectedType int
@@ -71,14 +75,18 @@ var SelectByTypeToString = map[SelectByType]string{
 	SelectBySeekerConnID:   "seeker_conn_id",
 	SelectByReceiverID:     "receiver",
 	SelectByReceiverConnID: "receiver_conn_id",
+	SelectByGameID:         "game_id",
 }
 
 var TableTypeToString = map[TableType]string{
-	UsersTable:       "users",
-	ProfilesTable:    "profiles",
-	GamesTable:       "games",
-	PuzzlesTable:     "puzzles",
-	SoughtGamesTable: "soughtgames",
+	UsersTable:           "users",
+	ProfilesTable:        "profiles",
+	GamesTable:           "games",
+	PuzzlesTable:         "puzzles",
+	SoughtGamesTable:     "soughtgames",
+	OmgwordsTable:        "omgwords",
+	OmgwordsHistoryTable: "omgwords_histories",
+	OmgwordsGamesTable:   "omgwords_games",
 }
 
 var DefaultTxOptions = pgx.TxOptions{
@@ -134,6 +142,18 @@ func GetGameDBIDFromUUID(ctx context.Context, tx pgx.Tx, uuid string) (int64, er
 	err := tx.QueryRow(ctx, "SELECT id FROM games WHERE uuid = $1", uuid).Scan(&id)
 	if err == pgx.ErrNoRows {
 		return 0, fmt.Errorf("cannot get id from uuid %s: no rows for table games", uuid)
+	}
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
+func GetOmgwordsDBIDFromUUID(ctx context.Context, tx pgx.Tx, uuid string) (int64, error) {
+	var id int64
+	err := tx.QueryRow(ctx, "SELECT id FROM omgwords WHERE uuid = $1", uuid).Scan(&id)
+	if err == pgx.ErrNoRows {
+		return 0, fmt.Errorf("cannot get id from uuid %s: no rows for table omgwords", uuid)
 	}
 	if err != nil {
 		return 0, err

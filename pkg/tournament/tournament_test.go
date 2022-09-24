@@ -95,7 +95,7 @@ func recreateDB() (*DBController, *config.Config) {
 		panic(err)
 	}
 	us := userStore(pool)
-	_, gs := gameStore(us)
+	_, gs := gameStore(us, pool)
 	cfg, tstore := tournamentStore(gs)
 	return &DBController{
 		us: us, gs: gs, ts: tstore,
@@ -185,12 +185,12 @@ func userStore(pool *pgxpool.Pool) pkguser.Store {
 	return ustore
 }
 
-func gameStore(userStore pkguser.Store) (*config.Config, gameplay.GameStore) {
+func gameStore(userStore pkguser.Store, p *pgxpool.Pool) (*config.Config, gameplay.GameStore) {
 	cfg := &config.Config{}
 	cfg.MacondoConfig = DefaultConfig
 	cfg.DBConnDSN = common.TestingPostgresConnDSN()
 
-	tmp, err := game.NewDBStore(cfg, userStore)
+	tmp, err := game.NewDBStore(cfg, userStore, p)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
