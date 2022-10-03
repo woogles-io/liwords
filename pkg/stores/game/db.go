@@ -470,7 +470,10 @@ func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 	}
 	// This won't save back to the database. Need to save back.
 
-	hist = common.MigrateGameHistory(hist)
+	hist, migrated := common.MigrateGameHistory(hist)
+	if migrated {
+		log.Info().Str("id", hist.Uid).Msg("migrated-history")
+	}
 
 	lexicon := hist.Lexicon
 	if lexicon == "" {
@@ -726,6 +729,9 @@ func (s *DBStore) GetHistory(ctx context.Context, id string) (*macondopb.GameHis
 	if err != nil {
 		return nil, err
 	}
-	hist = common.MigrateGameHistory(hist)
+	hist, migrated := common.MigrateGameHistory(hist)
+	if migrated {
+		log.Info().Str("id", id).Msg("get-history-migrated")
+	}
 	return hist, nil
 }

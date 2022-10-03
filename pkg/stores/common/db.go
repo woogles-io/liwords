@@ -10,6 +10,7 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/glicko"
@@ -170,8 +171,10 @@ func GetGameInfo(ctx context.Context, tx pgx.Tx, gameId int) (*macondopb.GameHis
 	if err != nil {
 		return nil, nil, "", err
 	}
-	hist = MigrateGameHistory(hist)
-
+	hist, migrated := MigrateGameHistory(hist)
+	if migrated {
+		log.Info().Str("gameId", uuid).Msg("migrated-get-game-info")
+	}
 	req := &ipc.GameRequest{}
 	err = proto.Unmarshal(requestBytes, req)
 	if err != nil {

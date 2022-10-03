@@ -15,14 +15,14 @@ const (
 // change schemas, and thus we need to be able to migrate when these
 // change.
 
-func MigrateGameHistory(gh *macondo.GameHistory) *macondo.GameHistory {
+func MigrateGameHistory(gh *macondo.GameHistory) (*macondo.GameHistory, bool) {
 	if gh.Version < 2 {
 		// Either 0 (unspecified) or 1
 		// Migrate to v2.
-		return migrateToV2(gh)
+		return migrateToV2(gh), true
 	}
 	// Otherwise, return the history as is.
-	return gh
+	return gh, false
 }
 
 func migrateToV2(gh *macondo.GameHistory) *macondo.GameHistory {

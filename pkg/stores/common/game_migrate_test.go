@@ -76,8 +76,8 @@ func TestMigrateHistory(t *testing.T) {
 		hist := &macondopb.GameHistory{}
 		err = protojson.Unmarshal(cts, hist)
 		is.NoErr(err)
-		hist2 := MigrateGameHistory(hist)
-
+		hist2, migrated := MigrateGameHistory(hist)
+		is.True(migrated)
 		marshaller := &protojson.MarshalOptions{
 			Multiline: true,
 			Indent:    "  ",
