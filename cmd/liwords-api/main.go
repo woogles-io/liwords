@@ -289,12 +289,6 @@ func main() {
 		return fmt.Sprintf("%d", ct)
 	}))
 
-	srv := &http.Server{
-		Addr:         cfg.ListenAddr,
-		Handler:      router,
-		WriteTimeout: 120 * time.Second,
-		ReadTimeout:  10 * time.Second}
-
 	idleConnsClosed := make(chan struct{})
 	sig := make(chan os.Signal, 1)
 
@@ -305,7 +299,16 @@ func main() {
 	}
 	tournamentService.SetEventChannel(pubsubBus.TournamentEventChannel())
 
+	router.Handle(bus.GameEventStreamPrefix,
+		middlewares.Then(pubsubBus.EventAPIServerInstance()))
+
 	ctx, pubsubCancel := context.WithCancel(context.Background())
+
+	srv := &http.Server{
+		Addr:         cfg.ListenAddr,
+		Handler:      router,
+		WriteTimeout: 120 * time.Second,
+		ReadTimeout:  10 * time.Second}
 
 	go pubsubBus.ProcessMessages(ctx)
 
