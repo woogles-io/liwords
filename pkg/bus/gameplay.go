@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/tournament"
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/domino14/macondo/alphabet"
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
@@ -161,6 +163,74 @@ func (b *Bus) goHandleBotMove(ctx context.Context, g *entity.Game) {
 	go b.handleBotMoveInternally(ctx, g, onTurn, userID)
 }
 
+func writeOpcode(b *strings.Builder, opcode string, param string) {
+	b.WriteString(opcode)
+	b.WriteRune(' ')
+	b.WriteString(param)
+	b.WriteString("; ")
+}
+
+func getHistWithCGP(g *entity.Game) (*macondopb.GameHistory, error) {
+	// Turn the entity game into a state string and update the history
+	// with it.
+	// XXX: this function should eventually be moved into Macondo in another
+	// form.
+	letters := new(strings.Builder)
+	alph := g.Game.Alphabet()
+	for r := 0; r < g.Board().Dim(); r++ {
+		emptyCt := 0
+		for c := 0; c < g.Board().Dim(); c++ {
+
+			letter := g.Board().GetSquare(r, c).Letter()
+			switch letter {
+			case alphabet.EmptySquareMarker:
+				emptyCt++
+			default:
+				// it's a letter
+				if emptyCt > 0 {
+					letters.WriteString(strconv.Itoa(emptyCt))
+					emptyCt = 0
+				}
+				letters.WriteRune(letter.UserVisible(alph))
+			}
+		}
+		if emptyCt > 0 {
+			letters.WriteString(strconv.Itoa(emptyCt))
+		}
+		if r != g.Board().Dim()-1 {
+			letters.WriteRune('/')
+		}
+	}
+	letters.WriteRune(' ')
+	// What is my rack?
+	letters.WriteString(g.RackFor(g.PlayerOnTurn()).TilesOn().UserVisible(alph))
+	letters.WriteString("/ ")
+	// scores:
+	letters.WriteString(strconv.Itoa(g.PointsFor(g.PlayerOnTurn())))
+	letters.WriteString("/")
+	letters.WriteString(strconv.Itoa(g.PointsFor(g.NextPlayer())))
+	letters.WriteRune(' ')
+	// 0-turns
+	letters.WriteString(strconv.Itoa(g.ScorelessTurns()))
+	letters.WriteRune(' ')
+	writeOpcode(letters, "lex", g.History().Lexicon)
+	if g.History().BoardLayout != "" {
+		writeOpcode(letters, "bdn", g.History().BoardLayout)
+	}
+	if g.History().LetterDistribution != "" {
+		writeOpcode(letters, "ld", g.History().LetterDistribution)
+	}
+	if g.History().Variant != "" {
+		writeOpcode(letters, "var", g.History().Variant)
+	}
+
+	hist := proto.Clone(g.History()).(*macondopb.GameHistory)
+	hist.Events = nil
+	hist.StartingCgp = letters.String()
+	log.Debug().Str("starting-cgp", hist.StartingCgp).Msg("generated-cgp-for-bot")
+	return hist, nil
+}
+
 func (b *Bus) handleBotMoveInternally(ctx context.Context, g *entity.Game, onTurn int, userID string) {
 	// This function should only be called by goHandleBotMove.
 	// Caller should pass the bot's onTurn and userID.
@@ -169,7 +239,11 @@ func (b *Bus) handleBotMoveInternally(ctx context.Context, g *entity.Game, onTur
 	// We check if that game is not over because a triple challenge
 	// could have ended it
 	for g.PlayerOnTurn() == onTurn && g.Game.Playing() != macondopb.PlayState_GAME_OVER {
-		hist := g.History()
+		hist, err := getHistWithCGP(g)
+		if err != nil {
+			log.Err(err).Msg("bot-cant-move-update-with-cgp-err")
+			return
+		}
 		log.Debug().Interface("bot-type", g.GameReq.BotType).Msg("bot-type")
 		req := macondopb.BotRequest{GameHistory: hist, BotType: g.GameReq.BotType}
 		data, err := proto.Marshal(&req)
