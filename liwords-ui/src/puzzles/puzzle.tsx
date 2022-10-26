@@ -841,7 +841,7 @@ export const SinglePuzzle = (props: Props) => {
       </div>
     </div>
   );
-  ret = <NotepadContextProvider children={ret} />;
+  ret = <NotepadContextProvider children={ret} feRackInfo />;
   ret = <AnalyzerContextProvider children={ret} />;
   ret = <LearnContextProvider children={ret} />;
   return ret;
