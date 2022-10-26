@@ -31,6 +31,7 @@ import { MetaEventState, MetaStates } from './meta_game_events';
 import { StandardEnglishAlphabet } from '../constants/alphabets';
 import { SeekRequest } from '../gen/api/proto/ipc/omgseeks_pb';
 import { ServerChallengeResultEvent } from '../gen/api/proto/ipc/omgwords_pb';
+import { message } from 'antd';
 
 export enum ChatEntityType {
   UserChat,
@@ -512,8 +513,15 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     ret.nickToPlayerOrder = gameContext.nickToPlayerOrder;
     ret.uidToPlayerOrder = gameContext.uidToPlayerOrder;
     const replayedTurns = gameContext.turns.slice(0, examinedTurn);
-    pushTurns(ret, replayedTurns);
-
+    try {
+      pushTurns(ret, replayedTurns);
+    } catch (e) {
+      message.error({
+        content:
+          'Error pushing turns. The app may have updated. Please refresh the app.',
+        duration: 10,
+      });
+    }
     // Fix players and clockController.
     const times = { p0: 0, p1: 0, lastUpdate: 0 };
     for (let i = 0; i < ret.players.length; ++i) {
@@ -830,7 +838,19 @@ const RealStore = ({ children, ...props }: Props) => {
     gameStateInitializer(clockController, onClockTick, onClockTimeout)
   );
   const dispatchGameContext = useCallback(
-    (action) => setGameContext((state) => GameReducer(state, action)),
+    (action) =>
+      setGameContext((state) => {
+        try {
+          return GameReducer(state, action);
+        } catch (e) {
+          message.error({
+            content:
+              'Error setting game context. The app may have updated. Please refresh the app.',
+            duration: 10,
+          });
+          return state;
+        }
+      }),
     []
   );
 
