@@ -845,7 +845,9 @@ const RealStore = ({ children, ...props }: Props) => {
         } catch (e) {
           message.error({
             content:
-              'Error setting game context. The app may have updated. Please refresh the app.',
+              'Error setting game context. The app may have updated. Please refresh the app. (Error: ' +
+              (e as { message: string }).message +
+              ')',
             duration: 10,
           });
           return state;

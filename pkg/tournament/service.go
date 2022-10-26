@@ -592,6 +592,7 @@ func (ts *TournamentService) UnstartTournament(ctx context.Context, req *pb.Unst
 		}
 	}
 	t.IsStarted = false
+	t.IsFinished = false
 
 	err = ts.tournamentStore.Set(ctx, t)
 	if err != nil {
