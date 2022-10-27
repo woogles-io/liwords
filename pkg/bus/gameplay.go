@@ -71,11 +71,11 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 		if sg.SeekRequest.RematchFor != "" {
 			// Assign firsts to be the other player.
 			gameID := sg.SeekRequest.RematchFor
-			g, err := b.gameStore.Get(ctx, gameID)
+			gh, err := b.gameStore.GetHistory(ctx, gameID)
 			if err != nil {
 				return err
 			}
-			players := g.History().Players
+			players := gh.Players
 			log.Debug().Str("went-first", players[0].Nickname).Msg("determining-first")
 
 			// These are indices in the array passed to InstantiateNewGame

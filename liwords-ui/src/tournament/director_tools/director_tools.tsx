@@ -149,6 +149,8 @@ export const DirectorTools = React.memo((props: DTProps) => {
       <>
         <Divider />
         <GhettoTools tournamentID={props.tournamentID} />
+        <Divider />
+        <small>Internal tournament ID: {props.tournamentID}</small>
       </>
     );
   };
