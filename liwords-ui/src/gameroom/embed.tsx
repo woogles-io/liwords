@@ -116,7 +116,6 @@ export const Embed = () => {
     return <div>Invalid game ID</div>;
   }
 
-  console.log('turns', examinableGameContext.turns);
   return (
     <div className="game-container">
       <div className="game-table">
@@ -127,7 +126,6 @@ export const Embed = () => {
             playerMeta={gameInfo.players}
           />
         </div>
-        ;
         <div className="play-area">
           <BoardPanel
             anonymousViewer={true}
