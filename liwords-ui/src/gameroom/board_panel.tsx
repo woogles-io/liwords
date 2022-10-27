@@ -116,6 +116,7 @@ type Props = {
     | { x: number; y: number; content: React.ReactNode }
     | undefined;
   vsBot: boolean;
+  exitableExaminer?: boolean;
 };
 
 const shuffleString = (a: string): string => {
@@ -1697,6 +1698,7 @@ export const BoardPanel = React.memo((props: Props) => {
           setHandlePassShortcut={setHandlePassShortcut}
           setHandleChallengeShortcut={setHandleChallengeShortcut}
           setHandleNeitherShortcut={setHandleNeitherShortcut}
+          exitableExaminer={props.exitableExaminer}
         />
       )}
       {props.puzzleMode && !props.anonymousViewer && (

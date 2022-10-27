@@ -41,6 +41,7 @@ const ExamineGameControls = React.memo(
     onExportGCG: () => void;
     gameDone: boolean;
     puzzleMode: boolean;
+    exitable: boolean;
   }) => {
     const { useState } = useMountedState();
     const { gameContext: examinableGameContext } =
@@ -196,7 +197,11 @@ const ExamineGameControls = React.memo(
             onClick={handleExamineLast}
             disabled={examinedTurn >= numberOfTurns}
           />
-          <Button onClick={handleExamineEnd} ref={doneButtonRef}>
+          <Button
+            onClick={handleExamineEnd}
+            ref={doneButtonRef}
+            hidden={!props.exitable}
+          >
             Done
           </Button>
         </div>
@@ -260,6 +265,7 @@ export type Props = {
   tournamentPairedMode?: boolean;
   showNudge: boolean;
   showAbort: boolean;
+  exitableExaminer?: boolean;
 };
 
 const GameControls = React.memo((props: Props) => {
@@ -387,6 +393,7 @@ const GameControls = React.memo((props: Props) => {
         onExportGCG={props.onExportGCG}
         gameDone={gameDone}
         puzzleMode={!!props.puzzleMode}
+        exitable={props.exitableExaminer ?? true}
       />
     );
   }
