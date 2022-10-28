@@ -34,6 +34,7 @@ type Props = {
   poolFormat: PoolFormatType;
   playerMeta: Array<PlayerMetadata>;
   gameEpilog: React.ReactElement;
+  hideExtraInteractions?: boolean;
 };
 
 type turnProps = {
@@ -239,7 +240,7 @@ export const ScoreCard = React.memo((props: Props) => {
   const resizeListener = useCallback(() => {
     const currentEl = el.current;
 
-    if (isTablet()) {
+    if (isTablet() && !props.hideExtraInteractions) {
       setEnableFlip(true);
     } else {
       setEnableFlip(false);

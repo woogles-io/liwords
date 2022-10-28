@@ -1,27 +1,24 @@
 import React, { useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import {
-  GameHistory,
-  PlayState,
-} from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import {
   useExaminableGameContextStoreContext,
   useExamineStoreContext,
   useGameContextStoreContext,
 } from '../store/store';
 import { useMountedState } from '../utils/mounted';
-import { defaultGameInfo, GameMetadata } from './game_info';
-import { postJsonObj, postProto, toAPIUrl } from '../api/api';
+import { defaultGameInfo, GameMetadata } from '../gameroom/game_info';
+import { postJsonObj, postProto } from '../api/api';
 import {
   GameHistoryRequest,
   GameHistoryResponse,
 } from '../gen/api/proto/game_service/game_service_pb';
-import { BoardPanel } from './board_panel';
+import { BoardPanel } from '../gameroom/board_panel';
 import { sortTiles } from '../store/constants';
 import { alphabetFromName } from '../constants/alphabets';
 import { ActionType } from '../actions/actions';
 import { GameHistoryRefresher } from '../gen/api/proto/ipc/omgwords_pb';
-import { PlayerCards } from './player_cards';
+import { PlayerCards } from '../gameroom/player_cards';
 
 const doNothing = () => {};
 
@@ -32,6 +29,7 @@ export const Embed = () => {
   const { gameID } = useParams();
   const { gameContext: examinableGameContext } =
     useExaminableGameContextStoreContext();
+
   const { isExamining, handleExamineStart, handleExamineGoTo } =
     useExamineStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
@@ -117,7 +115,7 @@ export const Embed = () => {
   }
 
   return (
-    <div className="game-container">
+    <div className="game-container board-embed">
       <div className="game-table">
         <div className="sticky-player-card-container">
           <PlayerCards
@@ -126,7 +124,7 @@ export const Embed = () => {
             playerMeta={gameInfo.players}
           />
         </div>
-        <div className="play-area">
+        <div className="play-area ">
           <BoardPanel
             anonymousViewer={true}
             username={''}
@@ -148,6 +146,20 @@ export const Embed = () => {
             exitableExaminer={false}
           />
         </div>
+        {/* <div className="data-area" id="right-sidebar">
+          <ScoreCard
+            username={''}
+            playing={false}
+            lexicon={gameInfo.game_request.lexicon}
+            variant={gameInfo.game_request.rules.variant_name}
+            events={examinableGameContext.turns}
+            board={examinableGameContext.board}
+            playerMeta={gameInfo.players}
+            poolFormat={PoolFormatType.Alphabet} // not used, I think.
+            gameEpilog={<></>}
+            hideExtraInteractions
+          />
+        </div> */}
       </div>
     </div>
   );

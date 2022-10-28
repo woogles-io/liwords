@@ -42,7 +42,7 @@ import { TermsOfService } from './about/termsOfService';
 import { ChatMessage } from './gen/api/proto/ipc/chat_pb';
 import { MessageType } from './gen/api/proto/ipc/ipc_pb';
 import Footer from './navigation/footer';
-import { Embed } from './gameroom/embed';
+import { Embed } from './embed/embed';
 
 type Blocks = {
   user_ids: Array<string>;
@@ -322,7 +322,7 @@ const App = React.memo(() => {
           />
         </Route>
 
-        <Route path="embed/game/:gameID" element={<Embed />} />
+        {/* <Route path="embed/game/:gameID" element={<Embed />} /> */}
 
         <Route path="about" element={<Team />} />
         <Route path="team" element={<Team />} />
