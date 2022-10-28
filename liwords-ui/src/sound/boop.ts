@@ -73,31 +73,33 @@ class Booper {
 
 const playableSounds: { [key: string]: Booper } = {};
 
-for (const booper of [
-  new Booper('makeMoveSound', require('../assets/makemove.mp3')),
-  new Booper('oppMoveSound', require('../assets/oppmove.mp3')),
-  new Booper('matchReqSound', require('../assets/matchreq.mp3')),
-  new Booper('startgameSound', require('../assets/startgame.mp3')),
-  new Booper('endgameSound', require('../assets/endgame.mp3')),
-  new Booper('woofSound', require('../assets/woof.mp3')),
-  new Booper('meowSound', require('../assets/meow.mp3')),
-  new Booper('receiveMsgSound', require('../assets/receivechat.mp3')),
-  new Booper(
-    'startTourneyRoundSound',
-    require('../assets/newtourneyround.mp3')
-  ),
-  new Booper('wolgesSound', require('../assets/wolges.mp3')),
-  new Booper('abortnudgeSound', require('../assets/abortnudge.mp3')),
-  new Booper('puzzleStartSound', require('../assets/newpuzzle.mp3')),
-  new Booper(
-    'puzzleCorrectSound',
-    require('../assets/puzzlecorrect-acoustic-fast.mp3')
-  ),
-  new Booper('puzzleWrongSound', require('../assets/puzzlewrong.mp3')),
-]) {
-  playableSounds[booper.soundName] = booper;
+// Only load sounds if this is not an embed page. This is a bit of a hack.
+if (!window.location.pathname.startsWith('/embed/')) {
+  for (const booper of [
+    new Booper('makeMoveSound', require('../assets/makemove.mp3')),
+    new Booper('oppMoveSound', require('../assets/oppmove.mp3')),
+    new Booper('matchReqSound', require('../assets/matchreq.mp3')),
+    new Booper('startgameSound', require('../assets/startgame.mp3')),
+    new Booper('endgameSound', require('../assets/endgame.mp3')),
+    new Booper('woofSound', require('../assets/woof.mp3')),
+    new Booper('meowSound', require('../assets/meow.mp3')),
+    new Booper('receiveMsgSound', require('../assets/receivechat.mp3')),
+    new Booper(
+      'startTourneyRoundSound',
+      require('../assets/newtourneyround.mp3')
+    ),
+    new Booper('wolgesSound', require('../assets/wolges.mp3')),
+    new Booper('abortnudgeSound', require('../assets/abortnudge.mp3')),
+    new Booper('puzzleStartSound', require('../assets/newpuzzle.mp3')),
+    new Booper(
+      'puzzleCorrectSound',
+      require('../assets/puzzlecorrect-acoustic-fast.mp3')
+    ),
+    new Booper('puzzleWrongSound', require('../assets/puzzlewrong.mp3')),
+  ]) {
+    playableSounds[booper.soundName] = booper;
+  }
 }
-
 const unlockSounds = () => {
   // Browser settings may disallow autoplay until user interacts with document.
   // Use that chance to play() all known sounds muted.

@@ -19,6 +19,7 @@ import { alphabetFromName } from '../constants/alphabets';
 import { ActionType } from '../actions/actions';
 import { GameHistoryRefresher } from '../gen/api/proto/ipc/omgwords_pb';
 import { PlayerCards } from '../gameroom/player_cards';
+import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
 
 const doNothing = () => {};
 
@@ -32,7 +33,18 @@ export const Embed = () => {
 
   const { isExamining, handleExamineStart, handleExamineGoTo } =
     useExamineStoreContext();
+
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
+  const { handleSetHover, hideDefinitionHover, definitionPopover } =
+    useDefinitionAndPhonyChecker({
+      addChat: doNothing,
+      enableHoverDefine: true,
+      gameContext,
+      gameDone: true,
+      gameID,
+      lexicon: gameInfo.game_request.lexicon,
+      variant: gameInfo.game_request.rules.variant_name,
+    });
 
   const gameDone =
     gameContext.playState === PlayState.GAME_OVER && !!gameContext.gameID;
@@ -120,6 +132,7 @@ export const Embed = () => {
         <div className="sticky-player-card-container">
           <PlayerCards
             horizontal
+            hideProfileLink
             gameMeta={gameInfo}
             playerMeta={gameInfo.players}
           />
@@ -141,6 +154,9 @@ export const Embed = () => {
             lexicon={gameInfo.game_request.lexicon}
             alphabet={alphabet}
             challengeRule={gameInfo.game_request.challenge_rule}
+            handleSetHover={handleSetHover}
+            handleUnsetHover={hideDefinitionHover}
+            definitionPopover={definitionPopover}
             handleAcceptAbort={doNothing}
             handleAcceptRematch={doNothing}
             exitableExaminer={false}

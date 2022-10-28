@@ -98,35 +98,19 @@ window.console.info(
     );
   }
 }
-if (process.env.REACT_APP_BUILD_TARGET === 'embedapp') {
-  ReactDOM.render(
-    <React.StrictMode>
-      <BrowserRouter>
-        <Store>
-          <BriefProfiles>
-            <Routes>
-              <Route path="embed/game/:gameID" element={<Embed />} />
-            </Routes>
-          </BriefProfiles>
-        </Store>
-      </BrowserRouter>
-    </React.StrictMode>,
-    document.getElementById('root')
-  );
-} else {
-  ReactDOM.render(
-    <React.StrictMode>
-      <BrowserRouter>
-        <Store>
-          <BriefProfiles>
-            <App />
-          </BriefProfiles>
-        </Store>
-      </BrowserRouter>
-    </React.StrictMode>,
-    document.getElementById('root')
-  );
-}
+
+ReactDOM.render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <Store>
+        <BriefProfiles>
+          <App />
+        </BriefProfiles>
+      </Store>
+    </BrowserRouter>
+  </React.StrictMode>,
+  document.getElementById('root')
+);
 
 // If you want your app to work offline and load faster, you can change
 // unregister() to register() below. Note this comes with some pitfalls.

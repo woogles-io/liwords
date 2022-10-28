@@ -322,7 +322,7 @@ const App = React.memo(() => {
           />
         </Route>
 
-        {/* <Route path="embed/game/:gameID" element={<Embed />} /> */}
+        <Route path="embed/game/:gameID" element={<Embed />} />
 
         <Route path="about" element={<Team />} />
         <Route path="team" element={<Team />} />
