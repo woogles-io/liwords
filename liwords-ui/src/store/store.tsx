@@ -20,6 +20,7 @@ import { ClockController, Times, Millis } from './timer_controller';
 import {
   ChatEntityObj,
   ChatEntityType,
+  indexToPlayerOrder,
   PlayerOrder,
   PresenceEntity,
   randomID,
@@ -501,10 +502,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     // Fix players and clockController.
     const times = { p0: 0, p1: 0, lastUpdate: 0 };
     for (let i = 0; i < ret.players.length; ++i) {
-      const { userID } = ret.players[i];
-      // XXX: We can probably even change this to p{i} once we fully remove
-      // secondWentFirst.
-      const playerOrder = gameContext.uidToPlayerOrder[userID];
+      const playerOrder = indexToPlayerOrder(i);
       // Score comes from the most recent past.
       let score = 0;
       for (let j = replayedTurns.length; --j >= 0; ) {

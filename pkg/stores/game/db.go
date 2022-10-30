@@ -444,6 +444,9 @@ func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 		return nil, err
 	}
 	log.Debug().Interface("hist", hist).Msg("hist-unmarshal")
+
+	// XXX: Get rid of this at some point in the future. We don't need it
+	// anymore, but maybe some developers with unmigrated databases may.
 	if hist.SecondWentFirst {
 		// This game has not been migrated yet. Flip some relevant fields.
 		if len(g.Quickdata.PlayerInfo) == 2 {

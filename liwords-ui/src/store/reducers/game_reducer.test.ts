@@ -183,33 +183,6 @@ const historyRefresher3AfterChallenge = () => {
   return ghr;
 };
 
-/*
-
-{"players":[{"nickname":"césar","real_name":"césar"},{"nickname":"mina","real_name":"mina"}],"id_auth":"org.aerolith","uid":"kqVFQ7PXG3Es3gn9jNX5p9","description":"Created with
-Macondo","last_known_racks":["EFMPRST","AEELRX?"],"flip_players":true,"challenge_rule":3}
-
-*/
-
-it('tests flip players', () => {
-  const state = startingGameState(StandardEnglishAlphabet, [], '');
-  const payload = historyRefresher2();
-  expect(payload.getHistory()?.getSecondWentFirst()).toBe(false);
-  // Testing flipping logic of secondWentFirst.
-  // XXX: This is going away after backend deploy, and so should this test.
-  payload.getHistory()?.setSecondWentFirst(true);
-  expect(payload.getHistory()?.getSecondWentFirst()).toBe(true);
-  const newState = GameReducer(state, {
-    actionType: ActionType.RefreshHistory,
-    payload,
-  });
-  expect(newState.players[0].currentRack).toBe('AEELRX?');
-  expect(newState.players[0].userID).toBe('mina123');
-  expect(newState.players[1].currentRack).toBe('EFMPRST');
-  expect(newState.players[1].userID).toBe('cesar123');
-  expect(newState.onturn).toBe(0);
-  expect(newState.turns.length).toBe(0);
-});
-
 it('tests challenge with refresher event afterwards', () => {
   const state = startingGameState(StandardEnglishAlphabet, [], '');
   let newState = GameReducer(state, {
