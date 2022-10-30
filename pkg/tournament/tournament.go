@@ -58,10 +58,6 @@ func HandleTournamentGameEnded(ctx context.Context, ts TournamentStore, us user.
 
 	p1idx, p2idx := 0, 1
 	p1result, p2result := Results[g.WinnerIdx+1], Results[g.LoserIdx+1]
-	if g.History().SecondWentFirst {
-		p1idx, p2idx = p2idx, p1idx
-		p1result, p2result = p2result, p1result
-	}
 
 	return SetResult(ctx,
 		ts,

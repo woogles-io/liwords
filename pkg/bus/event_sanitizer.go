@@ -39,17 +39,15 @@ func sanitize(us user.Store, evt *entity.EventWrapper, userID string) (*entity.E
 			// no need to sanitize if the game is over.
 			return entity.WrapEvent(cloned, pb.MessageType_GAME_HISTORY_REFRESHER), nil
 		}
-		mynick := nicknameFromUserID(userID, subevt.History.Players)
-		if mynick == "" {
-			// No need to sanitize if we don't have a nickname IN THE GAME;
+		myPlayerIndex := playerIndexFromUserID(userID, subevt.History.Players)
+		if myPlayerIndex == -1 {
 			// this only happens if we are not playing the game.
 			return entity.WrapEvent(cloned, pb.MessageType_GAME_HISTORY_REFRESHER), nil
 		}
 
-		// Only sanitize if the nickname is not empty. The nickname is
-		// empty if they are not playing in this game.
+		// Only sanitize if we are in the game.
 		for _, evt := range cloned.History.Events {
-			if evt.Nickname != mynick {
+			if evt.GetPlayerIndex() != uint32(myPlayerIndex) {
 				evt.Rack = ""
 				if evt.Type == macondopb.GameEvent_EXCHANGE {
 					evt.Exchanged = strconv.Itoa(utf8.RuneCountInString(evt.Exchanged))
@@ -92,13 +90,13 @@ func sanitize(us user.Store, evt *entity.EventWrapper, userID string) (*entity.E
 	}
 }
 
-func nicknameFromUserID(userid string, playerinfo []*macondopb.PlayerInfo) string {
-	// given a user id, return the nickname of the given user.
-	nick := ""
-	for _, p := range playerinfo {
+func playerIndexFromUserID(userid string, playerinfo []*macondopb.PlayerInfo) int {
+	// given a user id, return the index in playerinfo for the given user.
+	// If the user id is not found, return -1.
+	for i, p := range playerinfo {
 		if p.UserId == userid {
-			return p.Nickname
+			return i
 		}
 	}
-	return nick
+	return -1
 }

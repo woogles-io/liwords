@@ -76,13 +76,8 @@ func TestHandleAbortTooManyTurns(t *testing.T) {
 	is.NoErr(err)
 
 	// Overwrite this test history a bit.
-	for _, e := range hist.Events {
-		if e.Nickname == "Mina" {
-			e.Nickname = "jesse"
-		}
-	}
-	hist.Players[0].Nickname = "jesse"
-	hist.Players[0].UserId = "3xpEkpRAy3AizbVmDg3kdi"
+	hist.Players[1].Nickname = "jesse"
+	hist.Players[1].UserId = "3xpEkpRAy3AizbVmDg3kdi"
 	hist.Uid = gsetup.g.GameID()
 
 	gsetup.g.SetHistory(hist)

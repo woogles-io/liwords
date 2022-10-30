@@ -3,6 +3,7 @@ import { gameEventsToTurns } from './turns';
 
 it('test turns simple', () => {
   const evt1 = new GameEvent();
+  // XXX: we need to rewrite these tests, there's no more nicknames in events.
   evt1.setNickname('mina');
   evt1.setRack('?AEELRX');
   evt1.setCumulative(92);
