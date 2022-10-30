@@ -42,26 +42,30 @@ const NotepadContext = React.createContext({
   setCurNotepad: ((a: string) => {}) as React.Dispatch<
     React.SetStateAction<string>
   >,
+  feRackInfo: true,
 });
 
 export const NotepadContextProvider = ({
   children,
+  feRackInfo,
 }: {
   children: React.ReactNode;
+  feRackInfo: boolean;
 }) => {
   const { useState } = useMountedState();
   const [curNotepad, setCurNotepad] = useState('');
   const contextValue = useMemo(
-    () => ({ curNotepad, setCurNotepad }),
-    [curNotepad, setCurNotepad]
+    () => ({ curNotepad, setCurNotepad, feRackInfo }),
+    [curNotepad, setCurNotepad, feRackInfo]
   );
 
   return <NotepadContext.Provider value={contextValue} children={children} />;
 };
+const defaultFunction = () => {};
 
 export const Notepad = React.memo((props: NotepadProps) => {
   const notepadEl = useRef<HTMLTextAreaElement>(null);
-  const { curNotepad, setCurNotepad } = useContext(NotepadContext);
+  const { curNotepad, setCurNotepad, feRackInfo } = useContext(NotepadContext);
   const { displayedRack, placedTiles, placedTilesTempScore } =
     useTentativeTileContext();
   const { gameContext } = useGameContextStoreContext();
@@ -156,11 +160,11 @@ export const Notepad = React.memo((props: NotepadProps) => {
           shape="circle"
           icon={<PlusOutlined />}
           type="primary"
-          onClick={addPlay}
+          onClick={feRackInfo ? addPlay : defaultFunction}
         />
       </React.Fragment>
     ),
-    [easterEggEnabled, notepadIsNotEmpty, clearNotepad, addPlay]
+    [easterEggEnabled, feRackInfo, notepadIsNotEmpty, clearNotepad, addPlay]
   );
   const notepadContainer = (
     <div className="notepad-container" style={props.style}>

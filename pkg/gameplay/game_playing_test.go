@@ -87,8 +87,8 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStor
 
 	gr.IncrementSeconds = 5
 	gr.MaxOvertimeMinutes = 0
-	g, _ := gameplay.InstantiateNewGame(ctx, gstore, cfg, [2]*entity.User{cesar, jesse},
-		1, gr, nil)
+	g, _ := gameplay.InstantiateNewGame(ctx, gstore, cfg, [2]*entity.User{jesse, cesar},
+		gr, nil)
 
 	ch := make(chan *entity.EventWrapper)
 	donechan := make(chan bool)
@@ -113,7 +113,7 @@ func TestInitializeGame(t *testing.T) {
 
 	g, _, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
 
-	is.Equal(g.PlayerOnTurn(), 1)
+	is.Equal(g.PlayerOnTurn(), 0)
 	cancel()
 	<-donechan
 	// It should just be a single GameHistory event.
@@ -131,7 +131,7 @@ func TestWrongTurn(t *testing.T) {
 
 	g, _, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
 
-	is.Equal(g.PlayerOnTurn(), 1)
+	is.Equal(g.PlayerOnTurn(), 0)
 
 	cge := &pb.ClientGameplayEvent{
 		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
@@ -172,8 +172,8 @@ func Test5ptBadWord(t *testing.T) {
 		Tiles:          "BANJO",
 	}
 	g.SetRacksForBoth([]*alphabet.Rack{
-		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
 		alphabet.RackFromString("ABEJNOR", g.Alphabet()),
+		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
@@ -218,8 +218,8 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 	}
 	g.SetChallengeRule(macondopb.ChallengeRule_DOUBLE)
 	g.SetRacksForBoth([]*alphabet.Rack{
-		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
 		alphabet.RackFromString("ABEJNOR", g.Alphabet()),
+		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
@@ -280,8 +280,8 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 	}
 	g.SetChallengeRule(macondopb.ChallengeRule_DOUBLE)
 	g.SetRacksForBoth([]*alphabet.Rack{
-		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
 		alphabet.RackFromString("ABEJNOR", g.Alphabet()),
+		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
@@ -347,8 +347,8 @@ func TestQuickdata(t *testing.T) {
 	}
 	g.SetChallengeRule(macondopb.ChallengeRule_TRIPLE)
 	g.SetRacksForBoth([]*alphabet.Rack{
-		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
 		alphabet.RackFromString("ABEJNOR", g.Alphabet()),
+		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
@@ -375,11 +375,11 @@ func TestQuickdata(t *testing.T) {
 
 	// Check the quickdata
 	is.Equal(entGame.Quickdata.PlayerInfo, []*pb.PlayerInfo{
-		{UserId: "xjCWug7EZtDxDHX5fRZTLo", Nickname: "cesar4", First: false, Rating: "1500?"},
 		{UserId: "3xpEkpRAy3AizbVmDg3kdi", Nickname: "jesse", First: true, Rating: "1500?"},
+		{UserId: "xjCWug7EZtDxDHX5fRZTLo", Nickname: "cesar4", First: false, Rating: "1500?"},
 	})
-	is.Equal(entGame.Quickdata.FinalScores[0], int32(93))
-	is.Equal(entGame.Quickdata.FinalScores[1], int32(34))
+	is.Equal(entGame.Quickdata.FinalScores[0], int32(34))
+	is.Equal(entGame.Quickdata.FinalScores[1], int32(93))
 	is.Equal(entGame.Quickdata.OriginalRequestId, gameReq.OriginalRequestId)
 
 	// Kill the go-routine

@@ -241,6 +241,7 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.
 		Logo:                      t.ExtraMeta.Logo,
 		Color:                     t.ExtraMeta.Color,
 		PrivateAnalysis:           t.ExtraMeta.PrivateAnalysis,
+		IrlMode:                   t.ExtraMeta.IRLMode,
 	}
 
 	return &pb.TournamentMetadataResponse{
@@ -591,6 +592,7 @@ func (ts *TournamentService) UnstartTournament(ctx context.Context, req *pb.Unst
 		}
 	}
 	t.IsStarted = false
+	t.IsFinished = false
 
 	err = ts.tournamentStore.Set(ctx, t)
 	if err != nil {

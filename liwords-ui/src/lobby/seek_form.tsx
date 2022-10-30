@@ -187,9 +187,9 @@ export const SeekForm = (props: Props) => {
     []
   );
 
-  const enableWordSmog = React.useMemo(
-    () => localStorage.getItem('enableWordSmog') === 'true' && !props.vsBot,
-    [props.vsBot]
+  const enableVariants = React.useMemo(
+    () => localStorage.getItem('enableVariants') === 'true',
+    []
   );
 
   let storageKey = 'lastSeekForm';
@@ -539,13 +539,16 @@ export const SeekForm = (props: Props) => {
       )}
       {/* if variant controls are disabled it means we have hardcoded settings
       for it, so show them if not classic */}
-      {(enableWordSmog ||
+      {(enableVariants ||
         (disableVariantControls && initialValues.variant !== 'classic')) && (
         <Form.Item label="Game type" name="variant">
           <Select disabled={disableVariantControls}>
             <Select.Option value="classic">Classic</Select.Option>
             <Select.Option value="wordsmog">
               <VariantIcon vcode="wordsmog" withName />
+            </Select.Option>
+            <Select.Option value="classic_super">
+              <VariantIcon vcode="classic_super" withName />
             </Select.Option>
           </Select>
         </Form.Item>

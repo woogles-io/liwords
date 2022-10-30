@@ -4,7 +4,8 @@ import { HomeOutlined } from '@ant-design/icons/lib';
 import axios from 'axios';
 
 import { Link, useSearchParams, useParams } from 'react-router-dom';
-import { useDefinitionAndPhonyChecker, useFirefoxPatch } from '../utils/hooks';
+import { useFirefoxPatch } from '../utils/hooks/firefox';
+import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
 import { useMountedState } from '../utils/mounted';
 import { BoardPanel } from './board_panel';
 import { TopBar } from '../navigation/topbar';
@@ -202,7 +203,13 @@ export const Table = React.memo((props: Props) => {
     playersInfo: [],
   });
   const [isObserver, setIsObserver] = useState(false);
-
+  const tournamentNonDirectorObserver = useMemo(() => {
+    return (
+      isObserver &&
+      !tournamentContext.directors?.includes(username) &&
+      !loginState.perms.includes('adm')
+    );
+  }, [isObserver, loginState.perms, username, tournamentContext.directors]);
   useFirefoxPatch();
 
   const gameDone =
@@ -493,6 +500,28 @@ export const Table = React.memo((props: Props) => {
   );
   const showingFinalTurn =
     gameContext.turns.length === examinableGameContext.turns.length;
+
+  const feRackInfo = useMemo(() => {
+    // Enable rack info to be available to all widgets all the time,
+    // except in some private situations.
+    if (gameDone) {
+      // If the game is done, it's fine to always allow rack info
+      return true;
+    }
+    // If we are not a director, but are observing, and private analysis is off:
+    // if (
+    //   tournamentNonDirectorObserver &&
+    //   tournamentContext.metadata?.getPrivateAnalysis()
+    // ) {
+    //   return false;
+    // }
+    // If we are an anonymous observer, and this is a tournament, don't
+    // allow rack info.
+    if (!loggedIn && gameInfo.tournament_id) {
+      return false;
+    }
+    return true;
+  }, [gameDone, gameInfo.tournament_id, loggedIn]);
   const gameEpilog = useMemo(() => {
     // XXX: this doesn't get updated when game ends, only when refresh?
 
@@ -630,11 +659,7 @@ export const Table = React.memo((props: Props) => {
             tournamentPairedMode={isPairedMode(
               tournamentContext.metadata?.getType()
             )}
-            tournamentNonDirectorObserver={
-              isObserver &&
-              !tournamentContext.directors?.includes(username) &&
-              !loginState.perms.includes('adm')
-            }
+            tournamentNonDirectorObserver={tournamentNonDirectorObserver}
             // why does my linter keep overwriting this?
             // eslint-disable-next-line max-len
             tournamentPrivateAnalysis={tournamentContext.metadata?.getPrivateAnalysis()}
@@ -713,7 +738,7 @@ export const Table = React.memo((props: Props) => {
       </div>
     </div>
   );
-  ret = <NotepadContextProvider children={ret} />;
+  ret = <NotepadContextProvider children={ret} feRackInfo={feRackInfo} />;
   ret = <AnalyzerContextProvider children={ret} />;
   return ret;
 });

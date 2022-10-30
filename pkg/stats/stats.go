@@ -149,7 +149,7 @@ func AddGame(ctx context.Context, stats *entity.Stats, lss ListStatStore, histor
 
 	for i := 0; i < len(events); i++ {
 		event := events[i]
-		if history.Players[0].Nickname == event.Nickname {
+		if event.PlayerIndex == 0 {
 			err := incrementStatItems(info, stats.PlayerOneData, stats.PlayerTwoData, i, true)
 			if err != nil {
 				return err
@@ -531,7 +531,7 @@ func addConsecutiveBingos(info *IncrementInfo) error {
 	events := info.History.GetEvents()
 	event := events[info.EventIndex]
 	player := "player_one_streak"
-	if !info.IsPlayerOne && info.History.Players[1].Nickname == event.Nickname {
+	if !info.IsPlayerOne && event.PlayerIndex == 1 {
 		player = "player_two_streak"
 	}
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE ||
@@ -564,8 +564,7 @@ func addEveryE(info *IncrementInfo) error {
 		succEvent = events[info.EventIndex+1]
 	}
 	multiplier := 1
-	if !info.IsPlayerOne &&
-		info.History.Players[1].Nickname == event.Nickname {
+	if !info.IsPlayerOne && event.PlayerIndex == 1 {
 		multiplier = -1
 	}
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE &&
@@ -587,7 +586,7 @@ func addEveryPowerTile(info *IncrementInfo) error {
 		succEvent = events[info.EventIndex+1]
 	}
 	multiplier := 1
-	if !info.IsPlayerOne && info.History.Players[1].Nickname == event.Nickname {
+	if !info.IsPlayerOne && event.PlayerIndex == 1 {
 		multiplier = -1
 	}
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE &&
@@ -701,8 +700,8 @@ func addNoBingos(info *IncrementInfo) error {
 	// SAD! (have to loop through events again, should not do this, is the big not good)
 	for i := 0; i < len(events); i++ {
 		event := events[i]
-		if (info.History.Players[0].Nickname == event.Nickname && info.IsPlayerOne) ||
-			(info.History.Players[1].Nickname == event.Nickname && !info.IsPlayerOne) {
+		if (event.PlayerIndex == 0 && info.IsPlayerOne) ||
+			(event.PlayerIndex == 1 && !info.IsPlayerOne) {
 			atLeastOneBingo = true
 			break
 		}
@@ -770,8 +769,8 @@ func addTilesStuckWith(info *IncrementInfo) error {
 	events := info.History.GetEvents()
 	event := events[len(events)-1]
 	if event.Type == pb.GameEvent_END_RACK_PTS &&
-		((info.IsPlayerOne && event.Nickname == info.History.Players[0].Nickname) ||
-			(!info.IsPlayerOne && event.Nickname == info.History.Players[1].Nickname)) {
+		((info.IsPlayerOne && event.PlayerIndex == 0) ||
+			(!info.IsPlayerOne && event.PlayerIndex == 1)) {
 		tilesStuckWith := event.Rack
 		for _, char := range tilesStuckWith {
 			info.StatItem.Total++
@@ -785,8 +784,8 @@ func addTime(info *IncrementInfo) error {
 	events := info.History.GetEvents()
 	for i := len(events) - 1; i >= 0; i-- {
 		event := events[i]
-		if (event.Nickname == info.History.Players[0].Nickname && info.IsPlayerOne) ||
-			(event.Nickname == info.History.Players[1].Nickname && !info.IsPlayerOne) {
+		if (event.PlayerIndex == 0 && info.IsPlayerOne) ||
+			(event.PlayerIndex == 1 && !info.IsPlayerOne) {
 			info.StatItem.Total += int((info.Req.InitialTimeSeconds * 1000) - event.MillisRemaining)
 		}
 	}
@@ -948,6 +947,8 @@ func countBonusSquares(info *IncrementInfo,
 	switch boardLayout {
 	case "", board.CrosswordGameLayout:
 		bd = board.CrosswordGameBoard
+	case board.SuperCrosswordGameLayout:
+		bd = board.SuperCrosswordGameBoard
 	default:
 		return 0, errors.New("board not supported")
 	}

@@ -9,7 +9,7 @@ export type BlindfoldCoordinates = {
 export const parseBlindfoldCoordinates = (
   coordinates: string
 ): BlindfoldCoordinates | undefined => {
-  const horizontalRegex = /^([0-9][0-9]?)([A-O])$/;
+  const horizontalRegex = /^([0-9][0-9]?)([A-U])$/;
   const matches = coordinates.match(horizontalRegex);
   let row = -1;
   let col = -1;
@@ -19,7 +19,7 @@ export const parseBlindfoldCoordinates = (
     col = matches[2].charCodeAt(0) - 65;
     horizontal = true;
   } else {
-    const verticalRegex = /^([A-O])([0-9][0-9]?)$/;
+    const verticalRegex = /^([A-U])([0-9][0-9]?)$/;
     const matches = coordinates.match(verticalRegex);
     if (matches && matches[1] !== undefined && matches[2] !== undefined) {
       row = parseInt(matches[2]) - 1;

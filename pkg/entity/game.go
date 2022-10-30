@@ -3,6 +3,7 @@ package entity
 import (
 	"database/sql/driver"
 	"encoding/json"
+	"errors"
 	"sync"
 	"time"
 
@@ -27,6 +28,18 @@ type Timers struct {
 	TimeRemaining []int `json:"tr"`
 	// MaxOvertime is in minutes. All others are in milliseconds.
 	MaxOvertime int `json:"mo"`
+}
+
+func (t *Timers) Value() (driver.Value, error) {
+	return json.Marshal(t)
+}
+
+func (t *Timers) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+	return json.Unmarshal(b, &t)
 }
 
 // Nower is an interface for determining the current time
@@ -65,6 +78,18 @@ type Quickdata struct {
 	NewRatings        []float64
 }
 
+func (q *Quickdata) Value() (driver.Value, error) {
+	return json.Marshal(q)
+}
+
+func (q *Quickdata) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+	return json.Unmarshal(b, &q)
+}
+
 // TournamentData holds the tournament data for a game.
 // This is nil if the game is not a tournament game.
 type TournamentData struct {
@@ -77,6 +102,22 @@ type TournamentData struct {
 // MetaEventData holds a list of meta events, such as requesting aborts, adjourns, etc.
 type MetaEventData struct {
 	Events []*pb.GameMetaEvent `json:"events"`
+}
+
+type GameHistory struct {
+	macondopb.GameHistory
+}
+
+func (h *GameHistory) Value() (driver.Value, error) {
+	return proto.Marshal(&h.GameHistory)
+}
+
+func (h *GameHistory) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+	return proto.Unmarshal(b, &h.GameHistory)
 }
 
 // A Game should be saved to the database or store. It wraps a macondo.Game,

@@ -115,6 +115,9 @@ export class TournamentMetadata extends jspb.Message {
   getPrivateAnalysis(): boolean;
   setPrivateAnalysis(value: boolean): void;
 
+  getIrlMode(): boolean;
+  setIrlMode(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): TournamentMetadata.AsObject;
   static toObject(includeInstance: boolean, msg: TournamentMetadata): TournamentMetadata.AsObject;
@@ -141,6 +144,7 @@ export namespace TournamentMetadata {
     logo: string,
     color: string,
     privateAnalysis: boolean,
+    irlMode: boolean,
   }
 }
 

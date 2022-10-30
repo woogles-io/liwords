@@ -62,6 +62,7 @@ services:
       STRATEGY_PARAMS_PATH: /opt/program/data/strategy
       NATS_URL: nats://nats:4222
       DEBUG: 1
+      WOLGES_AWSM_URL: http://wolges_awsm:4500
     volumes:
       - ../macondo:/opt/program:rw
       # Use the same gaddag files we use for the WASM integration.
@@ -71,6 +72,20 @@ services:
     depends_on: [ "nats" ]
     networks:
       - aeronet
+
+  # Needed for bot to play wordsmog. Comment out if not using.
+  # Requires https://github.com/andy-k/wolges-awsm to be cloned
+  # at the level of `liwords`.
+  # wolges_awsm:
+  #   build:
+  #     context: ../wolges-awsm
+  #     dockerfile: Dockerfile
+  #   volumes:
+  #     - ./data/lexica/gaddag:/app/data
+  #   ports:
+  #     - "4500:4500"
+  #   networks:
+  #     - aeronet
 
   socket:
     &socketsetup

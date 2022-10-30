@@ -7,9 +7,17 @@ export const gameEventsToTurns = (evts: Array<GameEvent>) => {
   const turns = new Array<Turn>();
   let lastTurn: Turn = new Array<GameEvent>();
   evts.forEach((evt) => {
+    // XXX: remove when we get rid of nicknames fully
+    let playersDiffer = false;
+    if (lastTurn.length !== 0) {
+      if (lastTurn[0].getNickname() !== '') {
+        playersDiffer = lastTurn[0].getNickname() !== evt.getNickname();
+      } else {
+        playersDiffer = lastTurn[0].getPlayerIndex() !== evt.getPlayerIndex();
+      }
+    }
     if (
-      (lastTurn.length !== 0 &&
-        lastTurn[0].getNickname() !== evt.getNickname()) ||
+      (lastTurn.length !== 0 && playersDiffer) ||
       evt.getType() === GameEvent.Type.TIME_PENALTY ||
       evt.getType() === GameEvent.Type.END_RACK_PENALTY
     ) {

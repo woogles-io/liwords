@@ -2,7 +2,6 @@ import React, { ReactNode, useCallback, useEffect } from 'react';
 import { AutoComplete } from 'antd';
 import axios from 'axios';
 import {
-  ChatEntityObj,
   useChatStoreContext,
   useExcludedPlayersStoreContext,
   useLoginStateStoreContext,
@@ -14,6 +13,7 @@ import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_p
 import { PlayerAvatar } from '../shared/player_avatar';
 import { DisplayUserFlag } from '../shared/display_flag';
 import { TrophyOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons';
+import { ChatEntityObj } from '../store/constants';
 
 type Props = {
   defaultChannel: string;

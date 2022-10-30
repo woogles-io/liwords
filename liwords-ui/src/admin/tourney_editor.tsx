@@ -156,6 +156,7 @@ export const TourneyEditor = (props: Props) => {
         logo: metadata.getLogo(),
         color: metadata.getColor(),
         privateAnalysis: metadata.getPrivateAnalysis() || false,
+        irlMode: metadata.getIrlMode() || false,
       });
     } catch (err) {
       message.error({
@@ -214,6 +215,7 @@ export const TourneyEditor = (props: Props) => {
           logo: vals.logo,
           color: vals.color,
           privateAnalysis: vals.privateAnalysis,
+          irlMode: vals.irlMode,
         },
       };
     }
@@ -408,7 +410,7 @@ export const TourneyEditor = (props: Props) => {
                   Rated / Unrated
                 </Select.Option>
                 <Select.Option value="variant_name">
-                  Classic / WordSmog
+                  Classic / WordSmog / ZOMGWords
                 </Select.Option>
               </Select>
             </Form.Item>
@@ -455,6 +457,15 @@ export const TourneyEditor = (props: Props) => {
             <Form.Item
               name="privateAnalysis"
               label="Private Analysis (optional)"
+              hidden={props.mode === 'new'}
+              valuePropName="checked"
+            >
+              <Switch />
+            </Form.Item>
+
+            <Form.Item
+              name="irlMode"
+              label="Use tournament mode for IRL games"
               hidden={props.mode === 'new'}
               valuePropName="checked"
             >

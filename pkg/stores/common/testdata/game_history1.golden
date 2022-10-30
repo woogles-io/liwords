@@ -1,0 +1,104 @@
+{
+  "events":  [
+    {
+      "rack":  "ADEINPR",
+      "cumulative":  76,
+      "row":  7,
+      "column":  3,
+      "position":  "8D",
+      "playedTiles":  "PARDINE",
+      "score":  76,
+      "isBingo":  true,
+      "wordsFormed":  [
+        "PARDINE"
+      ],
+      "millisRemaining":  25374
+    },
+    {
+      "rack":  "AEEGNRW",
+      "cumulative":  22,
+      "row":  6,
+      "column":  4,
+      "direction":  "VERTICAL",
+      "position":  "E7",
+      "playedTiles":  "N.GWARE",
+      "score":  22,
+      "wordsFormed":  [
+        "NAGWARE"
+      ],
+      "millisRemaining":  13207,
+      "playerIndex":  1
+    },
+    {
+      "rack":  "AEEKLNU",
+      "cumulative":  92,
+      "row":  6,
+      "column":  7,
+      "position":  "7H",
+      "playedTiles":  "LUNK",
+      "score":  16,
+      "wordsFormed":  [
+        "LUNK",
+        "LI",
+        "UN",
+        "NE"
+      ],
+      "millisRemaining":  19374
+    },
+    {
+      "rack":  "AAAEEOV",
+      "cumulative":  34,
+      "row":  11,
+      "column":  3,
+      "position":  "12D",
+      "playedTiles":  "A.EAE",
+      "score":  12,
+      "wordsFormed":  [
+        "AREAE"
+      ],
+      "millisRemaining":  4091,
+      "playerIndex":  1
+    },
+    {
+      "rack":  "AAEEHRT",
+      "cumulative":  183,
+      "row":  12,
+      "column":  6,
+      "position":  "13G",
+      "playedTiles":  "HETAERA",
+      "score":  91,
+      "isBingo":  true,
+      "wordsFormed":  [
+        "HETAERA",
+        "AH",
+        "EE"
+      ],
+      "millisRemaining":  12168
+    }
+  ],
+  "players":  [
+    {
+      "nickname":  "Mina",
+      "userId":  "qUQkST8CendYA3baHNoPjk"
+    },
+    {
+      "nickname":  "cesar4",
+      "userId":  "xjCWug7EZtDxDHX5fRZTLo"
+    }
+  ],
+  "version":  2,
+  "lexicon":  "CSW21",
+  "idAuth":  "io.woogles",
+  "uid":  "m5ktbp4qPVTqaAhg6HJMsb",
+  "description":  "Created with Macondo",
+  "lastKnownRacks":  [
+    "DFIIOT?",
+    "AEEORRV"
+  ],
+  "challengeRule":  "FIVE_POINT",
+  "playState":  "GAME_OVER",
+  "finalScores":  [
+    183,
+    34
+  ]
+}

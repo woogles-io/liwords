@@ -65,13 +65,8 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 	history := g.History()
 	// Perhaps too cute, but solves cases where g.LoserIdex is -1
 	nonNegativeLoserIdx := g.LoserIdx * g.LoserIdx
-	loserNickname := history.Players[nonNegativeLoserIdx].Nickname
 	loserId := history.Players[nonNegativeLoserIdx].UserId
-	winnerNickname := history.Players[1-nonNegativeLoserIdx].Nickname
-	// This should not even be possible but might as well check
-	if u0.Username != loserNickname && u1.Username != loserNickname {
-		return fmt.Errorf("loser (%s) not found in players (%s, %s)", loserNickname, u0.Username, u1.Username)
-	}
+	winnerIdx := 1 - nonNegativeLoserIdx
 
 	macondoConfig, err := config.GetMacondoConfig(ctx)
 	if err != nil {
@@ -91,7 +86,7 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 		var loserLastEvent *pb.GameEvent
 		for i := len(history.Events) - 1; i >= 0; i-- {
 			evt := history.Events[i]
-			if evt.Nickname == loserNickname && (evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE ||
+			if evt.PlayerIndex == uint32(nonNegativeLoserIdx) && (evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE ||
 				evt.Type == pb.GameEvent_EXCHANGE ||
 				evt.Type == pb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS ||
 				evt.Type == pb.GameEvent_CHALLENGE) {
@@ -122,7 +117,7 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 
 	// Check for excessive phonies
 	if wngt == ms.NotoriousGameType_GOOD {
-		excessive, err := excessivePhonies(history, macondoConfig, winnerNickname)
+		excessive, err := excessivePhonies(history, macondoConfig, winnerIdx)
 		if err != nil {
 			return err
 		}
@@ -132,7 +127,7 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 	}
 
 	if lngt == ms.NotoriousGameType_GOOD {
-		excessive, err := excessivePhonies(history, macondoConfig, loserNickname)
+		excessive, err := excessivePhonies(history, macondoConfig, nonNegativeLoserIdx)
 		if err != nil {
 			return err
 		}
@@ -147,7 +142,7 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 		totalMoves := 0
 		for i := 0; i < len(history.Events); i++ {
 			evt := history.Events[i]
-			if evt.Nickname == loserNickname && (evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE ||
+			if evt.PlayerIndex == uint32(nonNegativeLoserIdx) && (evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE ||
 				evt.Type == pb.GameEvent_EXCHANGE) {
 				totalMoves++
 			}
@@ -162,7 +157,7 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 	luser := u0
 	wuser := u1
 
-	if u1.Username == loserNickname {
+	if nonNegativeLoserIdx == 1 {
 		luser, wuser = wuser, luser
 	}
 
@@ -276,12 +271,12 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 	return nil
 }
 
-func excessivePhonies(history *pb.GameHistory, cfg *macondoconfig.Config, nickname string) (bool, error) {
+func excessivePhonies(history *pb.GameHistory, cfg *macondoconfig.Config, pidx int) (bool, error) {
 	totalTileMoves := 0
 	totalPhonies := 0
 	for i := 0; i < len(history.Events); i++ {
 		evt := history.Events[i]
-		if evt.Nickname == nickname && evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE {
+		if evt.PlayerIndex == uint32(pidx) && evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE {
 			totalTileMoves++
 			isPhony, err := isPhonyEvent(evt, history, cfg)
 			if err != nil {

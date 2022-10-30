@@ -222,7 +222,6 @@ func IsCensorable(ctx context.Context, us user.Store, uuid string) bool {
 }
 
 func censorPlayerInHistory(hist *macondopb.GameHistory, playerIndex int, bothCensorable bool) {
-	uncensoredNickname := hist.Players[playerIndex].Nickname
 	censoredUsername := utilities.CensoredUsername
 	if bothCensorable && playerIndex == 1 {
 		censoredUsername = utilities.AnotherCensoredUsername
@@ -230,11 +229,6 @@ func censorPlayerInHistory(hist *macondopb.GameHistory, playerIndex int, bothCen
 	hist.Players[playerIndex].UserId = censoredUsername
 	hist.Players[playerIndex].RealName = censoredUsername
 	hist.Players[playerIndex].Nickname = censoredUsername
-	for idx, _ := range hist.Events {
-		if hist.Events[idx].Nickname == uncensoredNickname {
-			hist.Events[idx].Nickname = censoredUsername
-		}
-	}
 }
 
 func CensorHistory(ctx context.Context, us user.Store, hist *macondopb.GameHistory) *macondopb.GameHistory {

@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/pair"
@@ -406,11 +407,41 @@ func (t *ClassicDivision) SubmitResult(round int,
 
 	pk1, err := t.getPairingKey(p1, round)
 	if err != nil {
-		return nil, err
+		found := false
+		for k := range t.PlayerIndexMap {
+			// XXX This is a hack for IRLMode. Sorry, future us.
+			if strings.HasPrefix(k, p1+":") {
+				p1 = k
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, err
+		}
+		pk1, err = t.getPairingKey(p1, round)
+		if err != nil {
+			return nil, err
+		}
 	}
 	pk2, err := t.getPairingKey(p2, round)
 	if err != nil {
-		return nil, err
+		found := false
+		for k := range t.PlayerIndexMap {
+			// XXX This is a hack for IRLMode. Sorry, future us.
+			if strings.HasPrefix(k, p2+":") {
+				p2 = k
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, err
+		}
+		pk2, err = t.getPairingKey(p2, round)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Ensure that this is the current round

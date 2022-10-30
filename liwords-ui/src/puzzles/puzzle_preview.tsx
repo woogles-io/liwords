@@ -128,7 +128,6 @@ export const PuzzlePreview = React.memo(() => {
           lastPlayed={false}
           playerOfTile={0}
           key={`tile_${n}`}
-          scale={false}
           selected={false}
           grabbable={false}
           rackIndex={n}

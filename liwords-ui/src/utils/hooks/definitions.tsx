@@ -1,42 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import axios from 'axios';
-import { toAPIUrl } from '../api/api';
-import { DefineWordsResponse } from '../gameroom/game_info';
-import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
-import { GameState } from '../store/reducers/game_reducer';
-import { ChatEntityType, ChatEntityObj } from '../store/store';
-import { Blank } from '../utils/cwgame/common';
-import { useMountedState } from '../utils/mounted';
-import { Unrace } from '../utils/unrace';
-
-export const useFirefoxPatch = () => {
-  useEffect(() => {
-    // Prevent backspace unless we're in an input element. We don't want to
-    // leave if we're on Firefox.
-
-    const rx = /INPUT|SELECT|TEXTAREA/i;
-    const evtHandler = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement;
-      if (e.which === 8) {
-        if (
-          !rx.test(el.tagName) ||
-          (el as HTMLInputElement).disabled ||
-          (el as HTMLInputElement).readOnly
-        ) {
-          e.preventDefault();
-        }
-      }
-    };
-
-    document.addEventListener('keydown', evtHandler);
-    document.addEventListener('keypress', evtHandler);
-
-    return () => {
-      document.removeEventListener('keydown', evtHandler);
-      document.removeEventListener('keypress', evtHandler);
-    };
-  }, []);
-};
+import { toAPIUrl } from '../../api/api';
+import { DefineWordsResponse } from '../../gameroom/game_info';
+import { GameEvent } from '../../gen/macondo/api/proto/macondo/macondo_pb';
+import { GameState } from '../../store/reducers/game_reducer';
+import { ChatEntityType, ChatEntityObj } from '../../store/constants';
+import { Blank } from '../../utils/cwgame/common';
+import { useMountedState } from '../../utils/mounted';
+import { Unrace } from '../../utils/unrace';
 
 export const useDefinitionAndPhonyChecker = ({
   addChat,

@@ -31,21 +31,21 @@ func TestSoughtGame(t *testing.T) {
 
 	sgGet, err := store.Get(ctx, sgID)
 	is.NoErr(err)
-	is.Equal(sg, sgGet)
+	is.True(proto.Equal(sg.SeekRequest, sgGet.SeekRequest))
 
 	seekerConnId, err := sg.SeekerConnID()
 	is.NoErr(err)
 
 	sgGetBySeekerConnId, err := store.GetBySeekerConnID(ctx, seekerConnId)
 	is.NoErr(err)
-	is.Equal(sg, sgGetBySeekerConnId)
+	is.True(proto.Equal(sg.SeekRequest, sgGetBySeekerConnId.SeekRequest))
 
 	receiverConnId, err := sg.ReceiverConnID()
 	is.NoErr(err)
 
 	sgGetByReceiverConnId, err := store.GetByReceiverConnID(ctx, receiverConnId)
 	is.NoErr(err)
-	is.Equal(sg, sgGetByReceiverConnId)
+	is.True(proto.Equal(sg.SeekRequest, sgGetByReceiverConnId.SeekRequest))
 
 	newReceiverId := "new_receiver_id"
 	sgPresentReceiver := newSoughtGame()

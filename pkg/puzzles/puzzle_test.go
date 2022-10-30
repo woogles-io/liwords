@@ -21,6 +21,7 @@ import (
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/lithammer/shortuuid"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -1011,6 +1012,9 @@ func RecreateDB() (*DBController, int, int) {
 		// Set the correct challenge rule to allow games with
 		// lost challenges.
 		gameHistory.ChallengeRule = pb.ChallengeRule_FIVE_POINT
+		// Overwrite the UUID that macondo generates for this game so that
+		// it fits in the database.
+		gameHistory.Uid = shortuuid.New()
 		game, err := game.NewFromHistory(gameHistory, rules, 0)
 		if err != nil {
 			panic(err)

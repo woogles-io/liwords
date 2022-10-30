@@ -5,8 +5,6 @@ import { useMountedState } from '../utils/mounted';
 import { singularCount } from '../utils/plural';
 import { ChatEntity } from './chat_entity';
 import {
-  ChatEntityObj,
-  ChatEntityType,
   useChatStoreContext,
   useLoginStateStoreContext,
   usePresenceStoreContext,
@@ -18,6 +16,8 @@ import { ChatChannels } from './chat_channels';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 import {
+  ChatEntityObj,
+  ChatEntityType,
   ChatMessageFromJSON,
   chatMessageToChatEntity,
 } from '../store/constants';

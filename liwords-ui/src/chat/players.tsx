@@ -1,11 +1,11 @@
 import React, { ReactNode, useCallback, useEffect, useMemo } from 'react';
 import {
   FriendUser,
-  PresenceEntity,
   useFriendsStoreContext,
   useLoginStateStoreContext,
   usePresenceStoreContext,
 } from '../store/store';
+import { PresenceEntity } from '../store/constants';
 import { PettableAvatar, PlayerAvatar } from '../shared/player_avatar';
 import { moderateUser } from '../mod/moderate';
 import { Form, Input } from 'antd';

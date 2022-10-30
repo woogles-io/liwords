@@ -27,7 +27,7 @@ export const DrawingHandlersSetterContext = React.createContext(
   makeDrawingHandlersSetterContext()
 );
 
-export const useDrawing = () => {
+export const useDrawing = (dim: number) => {
   const { useState } = useMountedState();
 
   // Drawing functionalities.
@@ -140,7 +140,7 @@ export const useDrawing = () => {
         let { x: x1, y: y1 } = stroke.points[0];
         let { x: x2, y: y2 } = stroke.points[stroke.points.length - 1];
         if (stroke.snap) {
-          const dimX = 15; // FIXME: should get the actual board dimensions
+          const dimX = dim;
           const dimY = dimX; // allow for non-square boards eventually
           const dimXReciprocal = 1 / dimX;
           const dimYReciprocal = 1 / dimY;
@@ -309,7 +309,7 @@ export const useDrawing = () => {
       }
       return x;
     });
-  }, [scaledXYStr, boardSize.width, boardSize.height]);
+  }, [scaledXYStr, dim, boardSize.width, boardSize.height]);
 
   const scheduleRepaint = React.useCallback(() => {
     if (plannedRepaintRef.current != null) {

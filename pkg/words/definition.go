@@ -38,7 +38,8 @@ func loadDefinitionSource(filename string) (*defSource, error) {
 
 var bufPool = sync.Pool{
 	New: func() interface{} {
-		return []byte(nil)
+		var x []byte
+		return &x
 	},
 }
 
@@ -47,12 +48,13 @@ func (ds *defSource) bulkDefine(sortedWords []string) (map[string]string, error)
 	fileSize := ds.fileSize
 	blkSize := ds.blkSize
 
-	pooledBuf := bufPool.Get().([]byte)
-	if cap(pooledBuf) < int(blkSize) {
-		pooledBuf = make([]byte, int(blkSize))
+	pooledBuf := bufPool.Get().(*[]byte)
+	if cap(*pooledBuf) < int(blkSize) {
+		newPooledBuf := make([]byte, int(blkSize))
+		pooledBuf = &newPooledBuf
 	}
 	defer bufPool.Put(pooledBuf)
-	buf := pooledBuf[:blkSize]
+	buf := (*pooledBuf)[:blkSize]
 	bufMin := int64(0)
 	bufMax := int64(0)
 	numBlks := (fileSize + blkSize - 1) / blkSize

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 
 	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -17,11 +18,11 @@ import (
 func main() {
 	protofile := flag.String("protofile", "macondo", "the name of the protofile: macondo or ipc")
 	messageName := flag.String("messagename", "", "the name of the pb message")
-	convertfrom := flag.String("convertfrom", "hex", "hex: hex->json,  b64: b64->json,  json: json->hex")
+	convertfrom := flag.String("convertfrom", "hex", "hex: hex->json,  b64: b64->json,  json: json->hex,  binaryfile: binaryfile->json")
 	// pb packets that get sent through the socket have two bytes for length and one for msg type; skip these in this case.
 	skipheader := flag.Bool("skipheader", false, "if the format is a binary one, and this flag is enabled, skip the first three bytes of the packet")
 
-	msg := flag.String("msg", "", "the message, in hexadecimal, base64, or json")
+	msg := flag.String("msg", "", "the message, in hexadecimal, base64, json, or a filename")
 	flag.Parse()
 
 	var pbmsg proto.Message
@@ -34,6 +35,11 @@ func main() {
 		}
 	} else if *convertfrom == "b64" {
 		raw, err = base64.StdEncoding.DecodeString(*msg)
+		if err != nil {
+			panic(err)
+		}
+	} else if *convertfrom == "binaryfile" {
+		raw, err = ioutil.ReadFile(*msg)
 		if err != nil {
 			panic(err)
 		}
@@ -67,7 +73,7 @@ func main() {
 	var b []byte
 	var bstr string
 
-	if *convertfrom == "hex" || *convertfrom == "b64" {
+	if *convertfrom == "hex" || *convertfrom == "b64" || *convertfrom == "binaryfile" {
 		if *skipheader {
 			raw = raw[3:]
 		}
