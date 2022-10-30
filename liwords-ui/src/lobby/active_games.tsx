@@ -171,7 +171,7 @@ export const ActiveGames = (props: Props) => {
           value: l,
         })
       ),
-      defaultFilteredValue: lobbyFilterByLexiconArray,
+      filteredValue: lobbyFilterByLexiconArray,
       filterMultiple: true,
       onFilter: (
         value: string | number | boolean,
