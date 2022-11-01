@@ -117,7 +117,6 @@ export const startingGameState = (
 
 const onturnFromEvt = (state: GameState, evt: GameEvent) => {
   const po = playerOrderFromEvt(evt, state.nickToPlayerOrder);
-  console.log('po', po, 'evt', evt.getPlayerIndex(), evt);
   let onturn;
   if (po === 'p0') {
     onturn = 0;
@@ -310,14 +309,7 @@ export const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
 };
 
 const stateFromHistory = (history: GameHistory): GameState => {
-  let playerList = history.getPlayersList();
-  const flipPlayers = history.getSecondWentFirst();
-  // If flipPlayers is on, we want to flip the players in the playerList.
-  // The backend doesn't do this because of Reasons.
-  // XXX: remove secondWentFirst after backend deploy.
-  if (flipPlayers) {
-    playerList = [...playerList].reverse();
-  }
+  const playerList = history.getPlayersList();
 
   const nickToPlayerOrder = {
     [playerList[0].getNickname()]: 'p0' as PlayerOrder,
@@ -347,11 +339,8 @@ const stateFromHistory = (history: GameHistory): GameState => {
   // racks are given in the original order that the playerList came in.
   // so if we reversed the player list, we must reverse the racks.
 
-  let racks = history.getLastKnownRacksList();
-  if (flipPlayers) {
-    racks = [...racks].reverse();
-    // timers = timers.reverse();
-  }
+  const racks = history.getLastKnownRacksList();
+
   // Assign racks. Remember that the player listed first goes first.
   [gs.players[0].currentRack, gs.players[1].currentRack] = racks;
   // [gs.players[0].timeMillis, gs.players[1].timeMillis] = timers;
@@ -437,18 +426,11 @@ const initializeTimerController = (
     return;
   }
 
-  let [t1, t2] = [ghr.getTimePlayer1(), ghr.getTimePlayer2()];
-  // Note that p0 is always first, even when "secondWentFirst", as p0 refers
-  // to the order in the playerList, which always has the first player in that list
-  // going first. (See flipPlayers in stateFromHistory)
-  // XXX: This is going away after we deploy the removal of secondWentFirst.
-  let onturn = 'p0' as PlayerOrder;
-  if (history.getSecondWentFirst()) {
-    [t1, t2] = [t2, t1];
-  }
+  const [t1, t2] = [ghr.getTimePlayer1(), ghr.getTimePlayer2()];
 
-  // Note that p0 and p1 correspond to the new indices (after flipping first and second
-  // players, if that happened)
+  let onturn = 'p0' as PlayerOrder;
+
+  // Note that p0 and p1 correspond to the new indices
   const evts = history.getEventsList();
   if (evts.length > 0) {
     // determine onturn from the last event.

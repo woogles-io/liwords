@@ -3,8 +3,7 @@ import { gameEventsToTurns } from './turns';
 
 it('test turns simple', () => {
   const evt1 = new GameEvent();
-  // XXX: we need to rewrite these tests, there's no more nicknames in events.
-  evt1.setNickname('mina');
+  evt1.setPlayerIndex(1);
   evt1.setRack('?AEELRX');
   evt1.setCumulative(92);
   evt1.setRow(7);
@@ -14,7 +13,7 @@ it('test turns simple', () => {
   evt1.setScore(92);
 
   const evt2 = new GameEvent();
-  evt2.setNickname('mina');
+  evt2.setPlayerIndex(1);
   evt2.setType(GameEvent.Type.CHALLENGE_BONUS);
   evt2.setCumulative(97);
   evt2.setBonus(5);
@@ -25,7 +24,7 @@ it('test turns simple', () => {
 
 it('test turns simple 2', () => {
   const evt1 = new GameEvent();
-  evt1.setNickname('mina');
+  evt1.setPlayerIndex(1);
   evt1.setRack('?AEELRX');
   evt1.setCumulative(92);
   evt1.setRow(7);
@@ -35,13 +34,13 @@ it('test turns simple 2', () => {
   evt1.setScore(92);
 
   const evt2 = new GameEvent();
-  evt2.setNickname('mina');
+  evt2.setPlayerIndex(1);
   evt2.setType(GameEvent.Type.CHALLENGE_BONUS);
   evt2.setCumulative(97);
   evt2.setBonus(5);
 
   const evt3 = new GameEvent();
-  evt3.setNickname('césar');
+  evt3.setPlayerIndex(0);
   evt3.setRack('ABCDEFG');
   evt3.setCumulative(38);
   evt3.setRow(6);
@@ -57,7 +56,7 @@ it('test turns simple 2', () => {
 
 it('test turns simple 3', () => {
   const evt1 = new GameEvent();
-  evt1.setNickname('mina');
+  evt1.setPlayerIndex(1);
   evt1.setRack('?AEELRX');
   evt1.setCumulative(92);
   evt1.setRow(7);
@@ -67,13 +66,13 @@ it('test turns simple 3', () => {
   evt1.setScore(92);
 
   const evt2 = new GameEvent();
-  evt2.setNickname('mina');
+  evt2.setPlayerIndex(1);
   evt2.setType(GameEvent.Type.CHALLENGE_BONUS);
   evt2.setCumulative(97);
   evt2.setBonus(5);
 
   const evt3 = new GameEvent();
-  evt3.setNickname('césar');
+  evt3.setPlayerIndex(0);
   evt3.setRack('ABCDEFG');
   evt3.setCumulative(40);
   evt3.setRow(6);
@@ -83,7 +82,7 @@ it('test turns simple 3', () => {
   evt3.setScore(40);
 
   const evt4 = new GameEvent();
-  evt4.setNickname('césar');
+  evt4.setPlayerIndex(0);
   evt4.setType(GameEvent.Type.PHONY_TILES_RETURNED);
   evt4.setCumulative(0);
 
