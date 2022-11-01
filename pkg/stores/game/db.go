@@ -21,7 +21,6 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/stores/common"
 
 	pkguser "github.com/domino14/liwords/pkg/user"
 	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
@@ -445,39 +444,6 @@ func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 	}
 	log.Debug().Interface("hist", hist).Msg("hist-unmarshal")
 
-	// XXX: Get rid of this at some point in the future. We don't need it
-	// anymore, but maybe some developers with unmigrated databases may.
-	if hist.SecondWentFirst {
-		// This game has not been migrated yet. Flip some relevant fields.
-		if len(g.Quickdata.PlayerInfo) == 2 {
-			g.Quickdata.PlayerInfo[0], g.Quickdata.PlayerInfo[1] =
-				g.Quickdata.PlayerInfo[1], g.Quickdata.PlayerInfo[0]
-		}
-		if len(g.Quickdata.FinalScores) == 2 {
-			g.Quickdata.FinalScores[0], g.Quickdata.FinalScores[1] =
-				g.Quickdata.FinalScores[1], g.Quickdata.FinalScores[0]
-		}
-		if len(g.Quickdata.NewRatings) == 2 {
-			g.Quickdata.NewRatings[0], g.Quickdata.NewRatings[1] =
-				g.Quickdata.NewRatings[1], g.Quickdata.NewRatings[0]
-		}
-		if len(g.Quickdata.OriginalRatings) == 2 {
-			g.Quickdata.OriginalRatings[0], g.Quickdata.OriginalRatings[1] =
-				g.Quickdata.OriginalRatings[1], g.Quickdata.OriginalRatings[0]
-		}
-		if len(g.Timers.TimeRemaining) == 2 {
-			g.Timers.TimeRemaining[0], g.Timers.TimeRemaining[1] =
-				g.Timers.TimeRemaining[1], g.Timers.TimeRemaining[0]
-		}
-		g.WinnerIdx, g.LoserIdx = g.LoserIdx, g.WinnerIdx
-	}
-	// This won't save back to the database. Need to save back.
-
-	hist, migrated := common.MigrateGameHistory(hist)
-	if migrated {
-		log.Info().Str("id", hist.Uid).Msg("migrated-history")
-	}
-
 	lexicon := hist.Lexicon
 	if lexicon == "" {
 		// This can happen for some early games where we didn't migrate this.
@@ -731,10 +697,6 @@ func (s *DBStore) GetHistory(ctx context.Context, id string) (*macondopb.GameHis
 	err := proto.Unmarshal(g.History, hist)
 	if err != nil {
 		return nil, err
-	}
-	hist, migrated := common.MigrateGameHistory(hist)
-	if migrated {
-		log.Info().Str("id", id).Msg("get-history-migrated")
 	}
 	return hist, nil
 }
