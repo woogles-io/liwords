@@ -3,7 +3,7 @@ import axios from 'axios';
 
 import { Link } from 'react-router-dom';
 import './topbar.scss';
-import { DisconnectOutlined, SettingOutlined } from '@ant-design/icons/lib';
+import { DisconnectOutlined, SettingOutlined } from '@ant-design/icons';
 import { notification, Dropdown } from 'antd';
 import {
   useLoginStateStoreContext,

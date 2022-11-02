@@ -16,7 +16,7 @@ import {
 } from '../store/store';
 import { getWolges } from '../wasm/loader';
 import { useMountedState } from '../utils/mounted';
-import { RedoOutlined } from '@ant-design/icons/lib';
+import { RedoOutlined } from '@ant-design/icons';
 import { EmptySpace, EphemeralTile } from '../utils/cwgame/common';
 import { Unrace } from '../utils/unrace';
 import { sortTiles } from '../store/constants';

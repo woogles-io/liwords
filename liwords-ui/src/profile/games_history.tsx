@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import moment from 'moment';
 import { Button, Card, InputNumber, Table, Tag, Tooltip } from 'antd';
 import { CheckCircleTwoTone } from '@ant-design/icons';
-import { FundOutlined } from '@ant-design/icons/lib';
+import { FundOutlined } from '@ant-design/icons';
 import { GameMetadata } from '../gameroom/game_info';
 import { timeToString } from '../store/constants';
 import { VariantIcon } from '../shared/variant_icons';

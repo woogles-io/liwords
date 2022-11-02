@@ -6,7 +6,7 @@ import {
   TablePaginationConfig,
 } from 'antd/lib/table/interface';
 import React, { ReactNode, useCallback, useMemo } from 'react';
-import { FundOutlined, ExportOutlined } from '@ant-design/icons/lib';
+import { FundOutlined, ExportOutlined } from '@ant-design/icons';
 import {
   calculateTotalTime,
   challRuleToStr,

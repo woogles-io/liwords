@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Card, message, Popconfirm } from 'antd';
-import { HomeOutlined } from '@ant-design/icons/lib';
+import { HomeOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 import { Link, useSearchParams, useParams } from 'react-router-dom';
