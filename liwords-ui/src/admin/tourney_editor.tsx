@@ -31,9 +31,9 @@ import {
   GetTournamentMetadataRequest,
   TournamentMetadataResponse,
   TType,
-  TTypeMap,
 } from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { GameRequest } from '../gen/api/proto/ipc/omgwords_pb';
+import { proto3 } from '@bufbuild/protobuf';
 
 type DProps = {
   description: string;
@@ -123,7 +123,7 @@ export const TourneyEditor = (props: Props) => {
 
   const onSearch = async (val: string) => {
     const tmreq = new GetTournamentMetadataRequest();
-    tmreq.setSlug(val);
+    tmreq.slug = val;
 
     try {
       const m = await postProto(
@@ -132,31 +132,31 @@ export const TourneyEditor = (props: Props) => {
         'GetTournamentMetadata',
         tmreq
       );
-      const metadata = m.getMetadata();
+      const metadata = m.metadata;
       if (!metadata) {
         throw new Error('undefined tournament metadata');
       }
-      setDescription(metadata.getDescription());
-      setDisclaimer(metadata.getDisclaimer() || '');
-      setName(metadata.getName());
-      setColor(metadata.getColor() || '');
-      setLogo(metadata.getLogo() || '');
-      setSelectedGameRequest(metadata.getDefaultClubSettings() || undefined);
+      setDescription(metadata.description);
+      setDisclaimer(metadata.disclaimer || '');
+      setName(metadata.name);
+      setColor(metadata.color || '');
+      setLogo(metadata.logo || '');
+      setSelectedGameRequest(metadata.defaultClubSettings || undefined);
       form.setFieldsValue({
-        name: metadata.getName(),
-        description: metadata.getDescription(),
-        slug: metadata.getSlug(),
-        id: metadata.getId(),
-        type: metadata.getType(),
-        directors: m.getDirectorsList().join(', '),
-        freeformItems: metadata.getFreeformClubSettingFieldsList(),
-        boardStyle: metadata.getBoardStyle(),
-        tileStyle: metadata.getTileStyle(),
-        disclaimer: metadata.getDisclaimer(),
-        logo: metadata.getLogo(),
-        color: metadata.getColor(),
-        privateAnalysis: metadata.getPrivateAnalysis() || false,
-        irlMode: metadata.getIrlMode() || false,
+        name: metadata.name,
+        description: metadata.description,
+        slug: metadata.slug,
+        id: metadata.id,
+        type: metadata.type,
+        directors: m.directors.join(', '),
+        freeformItems: metadata.freeformClubSettingFields,
+        boardStyle: metadata.boardStyle,
+        tileStyle: metadata.tileStyle,
+        disclaimer: metadata.disclaimer,
+        logo: metadata.logo,
+        color: metadata.color,
+        privateAnalysis: metadata.privateAnalysis || false,
+        irlMode: metadata.irlMode || false,
       });
     } catch (err) {
       message.error({
@@ -177,7 +177,7 @@ export const TourneyEditor = (props: Props) => {
       [TType.LEGACY]: 'LEGACY',
     };
 
-    const jsontype = reverseTypeMap[vals.type as TTypeMap[keyof TTypeMap]];
+    const jsontype = proto3.getEnumType(TType).findNumber(vals.type)?.name;
 
     if (props.mode === 'new') {
       apicall = 'NewTournament';
@@ -192,9 +192,7 @@ export const TourneyEditor = (props: Props) => {
         type: jsontype,
         director_usernames: directors,
         freeformClubSettingFields: vals.freeformItems,
-        defaultClubSettings: selectedGameRequest
-          ? selectedGameRequest.toObject()
-          : undefined,
+        defaultClubSettings: selectedGameRequest,
       };
     } else if (props.mode === 'edit') {
       apicall = 'SetTournamentMetadata';
@@ -205,9 +203,7 @@ export const TourneyEditor = (props: Props) => {
           description: vals.description,
           slug: vals.slug,
           type: jsontype,
-          defaultClubSettings: selectedGameRequest
-            ? selectedGameRequest.toObject()
-            : undefined,
+          defaultClubSettings: selectedGameRequest,
           freeformClubSettingFields: vals.freeformItems,
           boardStyle: vals.boardStyle,
           tileStyle: vals.tileStyle,

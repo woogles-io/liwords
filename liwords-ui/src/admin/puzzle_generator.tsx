@@ -18,7 +18,6 @@ import {
   PuzzleBucket,
   PuzzleGenerationRequest,
   PuzzleTag,
-  PuzzleTagMap,
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import {
@@ -30,6 +29,7 @@ import {
   PuzzleJobLogsResponse,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import moment from 'moment';
+import { proto3 } from '@bufbuild/protobuf';
 
 const layout = {
   labelCol: {
@@ -40,34 +40,10 @@ const layout = {
   },
 };
 
-// don't code like this:
-const bucketToProto = (strlist: Array<keyof PuzzleTagMap>) => {
-  return strlist?.map((val) => {
-    switch (val) {
-      case 'EQUITY':
-        return PuzzleTag.EQUITY;
-      case 'BINGO':
-        return PuzzleTag.BINGO;
-      case 'ONLY_BINGO':
-        return PuzzleTag.ONLY_BINGO;
-      case 'BLANK_BINGO':
-        return PuzzleTag.BLANK_BINGO;
-      case 'NON_BINGO':
-        return PuzzleTag.NON_BINGO;
-      case 'POWER_TILE':
-        return PuzzleTag.POWER_TILE;
-      case 'BINGO_NINE_OR_ABOVE':
-        return PuzzleTag.BINGO_NINE_OR_ABOVE;
-      case 'CEL_ONLY':
-        return PuzzleTag.CEL_ONLY;
-    }
-  });
-};
-
 type formBucket = {
   size: number;
-  includes: Array<keyof PuzzleTagMap>;
-  excludes: Array<keyof PuzzleTagMap>;
+  includes: Array<PuzzleTag>;
+  excludes: Array<PuzzleTag>;
 };
 
 export const PuzzleGenerator = () => {
@@ -79,8 +55,8 @@ export const PuzzleGenerator = () => {
         itemLayout="horizontal"
         dataSource={logs}
         renderItem={(item) => {
-          const createdAt = item.getCreatedAt();
-          const completedAt = item.getCompletedAt();
+          const createdAt = item.createdAt;
+          const completedAt = item.completedAt;
           let dcreate, dcomplete;
           if (createdAt) {
             dcreate = moment(createdAt.toDate()).fromNow();
@@ -92,20 +68,14 @@ export const PuzzleGenerator = () => {
           return (
             <List.Item>
               <List.Item.Meta
-                title={`Job ${item.getId()} - created: ${dcreate}`}
+                title={`Job ${item.id} - created: ${dcreate}`}
                 description={
                   <div className="readable-text-color">
                     <p>Completed: {dcomplete}</p>
-                    <p>Fulfilled: {`${item.getFulfilled()}`}</p>
-                    <p>Error status: {item.getErrorStatus()}</p>
+                    <p>Fulfilled: {`${item.fulfilled}`}</p>
+                    <p>Error status: {item.errorStatus}</p>
                     <p>Request:</p>
-                    <pre>
-                      {JSON.stringify(
-                        item.getRequest()?.toObject(),
-                        undefined,
-                        2
-                      )}
-                    </pre>
+                    <pre>{item.request?.toJsonString({ prettySpaces: 2 })}</pre>
                   </div>
                 }
               />
@@ -122,31 +92,31 @@ export const PuzzleGenerator = () => {
     const apireq = new APIPuzzleGenerationJobRequest();
 
     const req = new PuzzleGenerationJobRequest();
-    req.setBotVsBot(vals.bvb);
-    req.setLexicon(vals.lexicon);
-    req.setLetterDistribution(vals.letterdist);
-    req.setSqlOffset(vals.sqlOffset);
-    req.setGameConsiderationLimit(vals.gameConsiderationLimit);
-    req.setGameCreationLimit(vals.gameCreationLimit);
+    req.botVsBot = vals.bvb;
+    req.lexicon = vals.lexicon;
+    req.letterDistribution = vals.letterdist;
+    req.sqlOffset = vals.sqlOffset;
+    req.gameConsiderationLimit = vals.gameConsiderationLimit;
+    req.gameCreationLimit = vals.gameCreationLimit;
 
     const bucketReq = new PuzzleGenerationRequest();
 
     const buckets = new Array<PuzzleBucket>();
     vals.buckets.forEach((bucket: formBucket) => {
       const pb = new PuzzleBucket();
-      pb.setSize(bucket.size);
+      pb.size = bucket.size;
 
-      pb.setIncludesList(bucketToProto(bucket.includes));
-      pb.setExcludesList(bucketToProto(bucket.excludes));
+      pb.includes = bucket.includes;
+      pb.excludes = bucket.excludes;
       buckets.push(pb);
     });
 
-    bucketReq.setBucketsList(buckets);
+    bucketReq.buckets = buckets;
 
-    req.setRequest(bucketReq);
+    req.request = bucketReq;
 
-    apireq.setSecretKey(vals.secretKey);
-    apireq.setRequest(req);
+    apireq.secretKey = vals.secretKey;
+    apireq.request = req;
 
     try {
       await postProto(
@@ -166,8 +136,8 @@ export const PuzzleGenerator = () => {
 
   const fetchRecentLogs = useCallback(async () => {
     const req = new PuzzleJobLogsRequest();
-    req.setOffset(0);
-    req.setLimit(20);
+    req.offset = 0;
+    req.limit = 20;
     // Add pagination later.
     try {
       const resp = await postProto(
@@ -176,7 +146,7 @@ export const PuzzleGenerator = () => {
         'GetPuzzleJobLogs',
         req
       );
-      setLogs(resp.getLogsList());
+      setLogs(resp.logs);
     } catch (e) {
       message.error({
         content: (e as LiwordsAPIError).message,
@@ -185,20 +155,10 @@ export const PuzzleGenerator = () => {
     }
   }, []);
 
-  // TODO: figure out how to import this from the protobuf.
   const puzzleTags = useMemo(
     () =>
-      [
-        'EQUITY',
-        'BINGO',
-        'ONLY_BINGO',
-        'BLANK_BINGO',
-        'NON_BINGO',
-        'POWER_TILE',
-        'BINGO_NINE_OR_ABOVE',
-        'CEL_ONLY',
-      ].map((name) => {
-        return <Select.Option key={name}>{name}</Select.Option>;
+      proto3.getEnumType(PuzzleTag).values.map((val) => {
+        return <Select.Option key={val.no}>{val.name}</Select.Option>;
       }),
     []
   );
@@ -315,4 +275,3 @@ export const PuzzleGenerator = () => {
     </div>
   );
 };
-// postJsonObj
