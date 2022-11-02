@@ -10,8 +10,6 @@ import {
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
 import { GameRules } from '../gen/api/proto/ipc/omgwords_pb';
-import { BotTypesEnum } from '../lobby/bots';
-import { BotRequest } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { challengeRuleNames } from '../constants/challenge_rules';
 
 // At some point we should get this from the pb but then we have to use

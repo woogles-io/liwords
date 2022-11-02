@@ -7,7 +7,6 @@ import React, {
 } from 'react';
 import { useMountedState } from '../utils/mounted';
 
-import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { LobbyState, LobbyReducer } from './reducers/lobby_reducer';
 import { Action } from '../actions/actions';
 import {

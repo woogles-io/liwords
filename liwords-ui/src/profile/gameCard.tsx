@@ -7,7 +7,6 @@ import { VariantIcon } from '../shared/variant_icons';
 import { FundOutlined } from '@ant-design/icons';
 import { timeToString } from '../store/constants';
 import { GameMetadata } from '../gameroom/game_info';
-import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
 import { challengeRuleNamesShort } from '../constants/challenge_rules';
 import { GameEndReason } from '../gen/api/proto/ipc/omgwords_pb';

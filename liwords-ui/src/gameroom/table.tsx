@@ -47,7 +47,11 @@ import { MetaEventControl } from './meta_event_control';
 import { useTourneyMetadata } from '../tournament/utils';
 import { Disclaimer } from './disclaimer';
 import { alphabetFromName } from '../constants/alphabets';
-import { ReadyForGame, TimedOut } from '../gen/api/proto/ipc/omgwords_pb';
+import {
+  GameEndReason,
+  ReadyForGame,
+  TimedOut,
+} from '../gen/api/proto/ipc/omgwords_pb';
 import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
 import {
   DeclineSeekRequest,
@@ -252,7 +256,7 @@ export const Table = React.memo((props: Props) => {
             parseInt(localStorage.getItem('poolFormat') || '0', 10)
           );
         }
-        if (resp.data.game_end_reason !== 'NONE') {
+        if (resp.data.game_end_reason !== GameEndReason.NONE) {
           // Basically if we are here, we've reloaded the page after the game
           // ended. We want to synthesize a new GameEnd message
           setGameEndMessage(endGameMessageFromGameInfo(resp.data));
@@ -350,7 +354,7 @@ export const Table = React.memo((props: Props) => {
     setIsObserver(observer);
     setPlayerNames(gameInfo.players.map((p) => p.nickname));
     // If we are not the observer, tell the server we're ready for the game to start.
-    if (gameInfo.game_end_reason === 'NONE' && !observer) {
+    if (gameInfo.game_end_reason === GameEndReason.NONE && !observer) {
       const evt = new ReadyForGame();
       evt.gameId = gameID;
       sendSocketMsg(
@@ -518,12 +522,12 @@ export const Table = React.memo((props: Props) => {
       <React.Fragment>
         {showingFinalTurn && (
           <React.Fragment>
-            {gameInfo.game_end_reason === 'FORCE_FORFEIT' && (
+            {gameInfo.game_end_reason === GameEndReason.FORCE_FORFEIT && (
               <React.Fragment>
                 Game ended in forfeit.{/* XXX: How to get winners? */}
               </React.Fragment>
             )}
-            {gameInfo.game_end_reason === 'ABORTED' && (
+            {gameInfo.game_end_reason === GameEndReason.ABORTED && (
               <React.Fragment>
                 The game was cancelled. Rating and statistics were not affected.
               </React.Fragment>
@@ -646,7 +650,7 @@ export const Table = React.memo((props: Props) => {
             vsBot={gameInfo.game_request.playerVsBot}
             tournamentSlug={tournamentContext.metadata?.slug}
             tournamentPairedMode={isPairedMode(
-              tournamentContext.metadata?.getType()
+              tournamentContext.metadata?.type
             )}
             tournamentNonDirectorObserver={tournamentNonDirectorObserver}
             // why does my linter keep overwriting this?

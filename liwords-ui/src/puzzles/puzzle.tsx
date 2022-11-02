@@ -71,7 +71,6 @@ import { PuzzleShareButton } from './puzzle_share';
 import { RatingsCard } from './ratings';
 import { GameEvent_Direction } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { GameEvent_Type } from '../gen/macondo/api/proto/macondo/macondo_pb';
-import { challengeRuleNames } from '../constants/challenge_rules';
 
 const doNothing = () => {};
 

@@ -9,7 +9,6 @@ import {
   GameRules,
   RatingMode,
 } from '../gen/api/proto/ipc/omgwords_pb';
-import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { BotTypesEnumProperties } from './bots';

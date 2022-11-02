@@ -18,6 +18,7 @@ import { VariantIcon } from '../shared/variant_icons';
 import moment from 'moment';
 import { GameCard } from './gameCard';
 import { GamesHistoryCard } from './games_history';
+import { GameEndReason } from '../gen/api/proto/ipc/omgwords_pb';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const screenSizes = require('../base.scss').default;
 
@@ -461,7 +462,10 @@ export const PlayerProfile = React.memo(() => {
       return [];
     }
     const ret = recentGames?.array
-      ?.filter((g) => g.players?.length && g.game_end_reason !== 'CANCELLED')
+      ?.filter(
+        (g) =>
+          g.players?.length && g.game_end_reason !== GameEndReason.CANCELLED
+      )
       .map((g) => <GameCard game={g} key={g.game_id} userID={userID} />);
     // Mobile swipe requires an even number of cards
     if (ret.length % 2) {

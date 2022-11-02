@@ -250,7 +250,7 @@ export const LiwordsSocket = (props: {
           '%csent',
           'background: cyan',
           ReverseMessageType[msgType] ?? msgType,
-          parsedMsg.toObject(),
+          parsedMsg,
           performance.now(),
           'bytelength:',
           msg.byteLength

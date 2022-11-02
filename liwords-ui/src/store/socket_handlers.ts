@@ -489,7 +489,7 @@ export const useOnSocketMsg = () => {
 
           case MessageType.ACTIVE_GAME_ENTRY: {
             // Note: This is actually never sent out to the frontend.
-            const age = parsedMsg as ActiveGameEntry;
+            // const age = parsedMsg as ActiveGameEntry;
 
             break;
           }

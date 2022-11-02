@@ -34,7 +34,6 @@ import {
   RoundSetting,
   settingsEqual,
 } from './pairing_methods';
-import { valueof } from '../../store/constants';
 import {
   TournamentGameResult,
   DivisionControls,
@@ -1211,7 +1210,10 @@ type RdCtrlFieldsProps = {
 
 type SingleRdCtrlFieldsProps = {
   setting: RoundControl;
-  onChange: (fieldName: string, value: string | number | boolean) => void;
+  onChange: (
+    fieldName: keyof RoundControl,
+    value: string | number | boolean | PairingMethod
+  ) => void;
 };
 
 const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
@@ -1279,7 +1281,7 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
         <Select
           value={setting.pairingMethod}
           onChange={(e) => {
-            props.onChange('pairingType', e);
+            props.onChange('pairingMethod', e);
             // Show more fields potentially.
           }}
         >
@@ -1411,9 +1413,11 @@ const rdCtrlFromSetting = (rdSetting: RoundControl): RoundControl => {
 const SetSingleRoundControls = (props: { tournamentID: string }) => {
   const { useState } = useMountedState();
   const [division, setDivision] = useState('');
-  const [roundSetting, setRoundSetting] = useState<RoundControl>({
-    pairingMethod: PairingMethod.RANDOM,
-  });
+  const [roundSetting, setRoundSetting] = useState<RoundControl>(
+    new RoundControl({
+      pairingMethod: PairingMethod.RANDOM,
+    })
+  );
   const [userVisibleRound, setUserVisibleRound] = useState(1);
 
   const setRoundControls = async () => {
@@ -1484,11 +1488,11 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
         <SingleRoundControlFields
           setting={roundSetting}
           onChange={(
-            fieldName: keyof SingleRoundSetting,
-            value: string | number | boolean | pairingMethod
+            fieldName: keyof RoundControl,
+            value: string | number | boolean | PairingMethod
           ) => {
             const val = { ...roundSetting, [fieldName]: value };
-            setRoundSetting(val);
+            setRoundSetting(new RoundControl(val));
           }}
         />
         <Divider />
@@ -1511,19 +1515,19 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
   const roundControlsToDisplayArray = React.useCallback((roundControls) => {
     const settings = new Array<RoundSetting>();
 
-    let lastSetting: SingleRoundSetting | null = null;
+    let lastSetting: RoundControl | null = null;
     let min = 1;
     let max = 1;
     roundControls.forEach((v: RoundControl, rd: number) => {
-      const thisSetting = {
-        pairingType: v.pairingMethod,
+      const thisSetting = new RoundControl({
+        pairingMethod: v.pairingMethod,
         gamesPerRound: v.gamesPerRound,
         factor: v.factor,
         maxRepeats: v.maxRepeats,
         allowOverMaxRepeats: v.allowOverMaxRepeats,
         repeatRelativeWeight: v.repeatRelativeWeight,
         winDifferenceRelativeWeight: v.winDifferenceRelativeWeight,
-      };
+      });
       if (lastSetting !== null) {
         if (settingsEqual(lastSetting, thisSetting)) {
           max = rd + 1;
@@ -1688,10 +1692,10 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
             } else {
               newRdArray[idx] = {
                 ...newRdArray[idx],
-                setting: {
+                setting: new RoundControl({
                   ...newRdArray[idx].setting,
                   [fieldName]: value,
-                },
+                }),
               };
             }
             setRoundArray(newRdArray);
@@ -1710,7 +1714,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
           newRdArray.push({
             beginRound: last?.endRound ? last.endRound + 1 : 1,
             endRound: last?.endRound ? last.endRound + 1 : 1,
-            setting: { pairingMethod: PairingMethod.MANUAL },
+            setting: new RoundControl({ pairingMethod: PairingMethod.MANUAL }),
           });
           setRoundArray(newRdArray);
         }}

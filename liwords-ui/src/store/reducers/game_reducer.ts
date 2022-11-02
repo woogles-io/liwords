@@ -7,7 +7,6 @@ import {
 } from '../../gen/macondo/api/proto/macondo/macondo_pb';
 import { Action, ActionType } from '../../actions/actions';
 import {
-  Direction,
   isBlank,
   Blank,
   PlayedTiles,

@@ -327,7 +327,7 @@ const divisionDataResponseToObj = (
     newPairings.push({ roundPairings: newRoundPairings });
   }
 
-  for (const [k, v] of Object.entries(dd.pairingMap)) {
+  for (const v of Object.values(dd.pairingMap)) {
     const newPairing = {
       players: v.players.map((v) => newPlayers[v]),
       outcomes: v.outcomes,

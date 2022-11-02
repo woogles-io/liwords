@@ -5,7 +5,6 @@ import {
   GetTournamentMetadataRequest,
   GetTournamentRequest,
   TournamentMetadataResponse,
-  TournamentMetadata,
   TType,
 } from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { LoginState } from '../store/login_state';

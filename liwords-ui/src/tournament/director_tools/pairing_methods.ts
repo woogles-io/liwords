@@ -23,7 +23,7 @@ export const settingsEqual = (s1: RoundControl, s2: RoundControl): boolean => {
   );
 };
 
-export type PairingMethodField = [string, string, string, string];
+export type PairingMethodField = [string, keyof RoundControl, string, string];
 
 export const fieldsForMethod = (
   m: PairingMethod

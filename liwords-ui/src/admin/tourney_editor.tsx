@@ -170,13 +170,6 @@ export const TourneyEditor = (props: Props) => {
     let apicall = '';
     let obj = {};
 
-    const reverseTypeMap = {
-      [TType.CHILD]: 'CHILD',
-      [TType.CLUB]: 'CLUB',
-      [TType.STANDARD]: 'STANDARD',
-      [TType.LEGACY]: 'LEGACY',
-    };
-
     const jsontype = proto3.getEnumType(TType).findNumber(vals.type)?.name;
 
     if (props.mode === 'new') {

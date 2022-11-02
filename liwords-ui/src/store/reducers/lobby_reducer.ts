@@ -1,4 +1,3 @@
-import { kMaxLength } from 'buffer';
 import { Action, ActionType } from '../../actions/actions';
 import { MatchUser, SeekRequest } from '../../gen/api/proto/ipc/omgseeks_pb';
 import {
@@ -279,7 +278,7 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
       const { profile } = state;
       const p = action.payload as ProfileUpdate;
       const ratings: { [k: string]: ProfileUpdate_Rating } = {};
-      for (const [k, v] of Object.entries(ratings)) {
+      for (const [k, v] of Object.entries(p.ratings)) {
         ratings[k] = v;
       }
 
