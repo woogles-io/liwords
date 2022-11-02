@@ -58,9 +58,11 @@ import {
 import { sharedEnableAutoShuffle } from '../store/constants';
 import { BlankSelector } from './blank_selector';
 import { GameMetaMessage } from './game_meta_message';
-import { PlayerMetadata, GCGResponse, ChallengeRule } from './game_info';
+import { PlayerMetadata, GCGResponse } from './game_info';
 import {
+  ChallengeRule,
   GameEvent,
+  GameEvent_Type,
   PlayState,
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { toAPIUrl } from '../api/api';
@@ -75,6 +77,7 @@ import {
 import {
   ClientGameplayEvent,
   GameMetaEvent,
+  GameMetaEvent_EventType,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 
@@ -366,16 +369,13 @@ export const BoardPanel = React.memo((props: Props) => {
   );
 
   const sendMetaEvent = useCallback(
-    (evtType: GameMetaEvent.EventTypeMap[keyof GameMetaEvent.EventTypeMap]) => {
+    (evtType: GameMetaEvent_EventType) => {
       const metaEvt = new GameMetaEvent();
-      metaEvt.setType(evtType);
-      metaEvt.setGameId(gameID);
+      metaEvt.type = evtType;
+      metaEvt.gameId = gameID;
 
       sendSocketMsg(
-        encodeToSocketFmt(
-          MessageType.GAME_META_EVENT,
-          metaEvt.serializeBinary()
-        )
+        encodeToSocketFmt(MessageType.GAME_META_EVENT, metaEvt.toBinary())
       );
     },
     [sendSocketMsg, gameID]
@@ -722,12 +722,12 @@ export const BoardPanel = React.memo((props: Props) => {
       return;
     }
     let boardMessage = null;
-    switch (evt.getType()) {
-      case GameEvent.Type.PASS:
+    switch (evt.type) {
+      case GameEvent_Type.PASS:
         boardMessage = `${evtNickname} passed`;
         break;
-      case GameEvent.Type.EXCHANGE:
-        boardMessage = `${evtNickname} exchanged ${evt.getExchanged()}`;
+      case GameEvent_Type.EXCHANGE:
+        boardMessage = `${evtNickname} exchanged ${evt.exchanged}`;
         break;
     }
     if (boardMessage && !props.puzzleMode) {
@@ -896,14 +896,14 @@ export const BoardPanel = React.memo((props: Props) => {
         };
 
         const sayGameEvent = (ge: GameEvent) => {
-          const type = ge.getType();
+          const type = ge.type;
           let nickname = 'opponent.';
           const evtNickname = nicknameFromEvt(ge, props.playerMeta);
           if (evtNickname === props.username) {
             nickname = 'you.';
           }
-          const playedTiles = ge.getPlayedTiles();
-          const mainWord = ge.getWordsFormedList()[0];
+          const playedTiles = ge.playedTiles;
+          const mainWord = ge.wordsFormed[0];
           let blankAwareWord = '';
           for (let i = 0; i < playedTiles.length; i++) {
             const tile = playedTiles[i];
@@ -913,20 +913,20 @@ export const BoardPanel = React.memo((props: Props) => {
               blankAwareWord += mainWord[i];
             }
           }
-          if (type === GameEvent.Type.TILE_PLACEMENT_MOVE) {
+          if (type === GameEvent_Type.TILE_PLACEMENT_MOVE) {
             say(
-              nickname + ' ' + wordToSayString(ge.getPosition()),
-              wordToSayString(blankAwareWord) + ' ' + ge.getScore().toString()
+              nickname + ' ' + wordToSayString(ge.position),
+              wordToSayString(blankAwareWord) + ' ' + ge.score.toString()
             );
-          } else if (type === GameEvent.Type.PHONY_TILES_RETURNED) {
+          } else if (type === GameEvent_Type.PHONY_TILES_RETURNED) {
             say(nickname + ' lost challenge', '');
-          } else if (type === GameEvent.Type.EXCHANGE) {
-            say(nickname + ' exchanged ' + ge.getExchanged(), '');
-          } else if (type === GameEvent.Type.PASS) {
+          } else if (type === GameEvent_Type.EXCHANGE) {
+            say(nickname + ' exchanged ' + ge.exchanged, '');
+          } else if (type === GameEvent_Type.PASS) {
             say(nickname + ' passed', '');
-          } else if (type === GameEvent.Type.CHALLENGE) {
+          } else if (type === GameEvent_Type.CHALLENGE) {
             say(nickname + ' challenged', '');
-          } else if (type === GameEvent.Type.CHALLENGE_BONUS) {
+          } else if (type === GameEvent_Type.CHALLENGE_BONUS) {
             say(nickname + ' challenge bonus', '');
           } else {
             // This is a bum way to deal with all other events
@@ -1445,18 +1445,16 @@ export const BoardPanel = React.memo((props: Props) => {
       return;
     }
 
-    receiver.setDisplayName(opp);
-    evt.setReceivingUser(receiver);
-    evt.setReceiverIsPermanent(true);
-    evt.setUserState(SeekState.READY);
+    receiver.displayName = opp;
+    evt.receivingUser = receiver;
+    evt.receiverIsPermanent = true;
+    evt.userState = SeekState.READY;
 
-    evt.setRematchFor(gameID);
+    evt.rematchFor = gameID;
     if (props.tournamentID) {
-      evt.setTournamentId(props.tournamentID);
+      evt.tournamentId = props.tournamentID;
     }
-    sendSocketMsg(
-      encodeToSocketFmt(MessageType.SEEK_REQUEST, evt.serializeBinary())
-    );
+    sendSocketMsg(encodeToSocketFmt(MessageType.SEEK_REQUEST, evt.toBinary()));
 
     notification.info({
       message: 'Rematch',
@@ -1541,10 +1539,10 @@ export const BoardPanel = React.memo((props: Props) => {
     setCurrentMode('NORMAL');
   }, []);
   const handleRequestAbort = useCallback(() => {
-    sendMetaEvent(GameMetaEvent.EventType.REQUEST_ABORT);
+    sendMetaEvent(GameMetaEvent_EventType.REQUEST_ABORT);
   }, [sendMetaEvent]);
   const handleNudge = useCallback(() => {
-    sendMetaEvent(GameMetaEvent.EventType.REQUEST_ADJUDICATION);
+    sendMetaEvent(GameMetaEvent_EventType.REQUEST_ADJUDICATION);
   }, [sendMetaEvent]);
   const showAbort = useMemo(() => {
     // This hardcoded number is also on the backend.

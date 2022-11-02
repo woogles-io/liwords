@@ -4,11 +4,11 @@
   "private": true,
   "dependencies": {
     "@ant-design/icons": "^4.7.0",
+    "@bufbuild/protobuf": "^0.2.1",
     "@stripe/stripe-js": "^1.13.2",
     "@testing-library/jest-dom": "^5.16.3",
     "@testing-library/react": "^12.1.4",
     "@testing-library/user-event": "^14.0.4",
-    "@types/google-protobuf": "^3.15.0",
     "@types/jest": "^27.4.1",
     "@types/node": "^17.0.23",
     "@types/qs": "^6.9.6",
@@ -17,7 +17,6 @@
     "@types/react-router-dom": "^5.1.7",
     "antd": "^4.12.3",
     "axios": "^0.21.1",
-    "google-protobuf": "^3.15.5",
     "jwt-decode": "^3.1.2",
     "moment": "^2.29.1",
     "qs": "^6.9.6",
@@ -31,7 +30,6 @@
     "react-router-dom": "^6.3.0",
     "react-scripts": "^5.0.0",
     "react-use-websocket": "^3.0.0",
-    "ts-protoc-gen": "^0.15.0",
     "wolges-wasm": "file:wolges-wasm-pkg"
   },
   "scripts": {

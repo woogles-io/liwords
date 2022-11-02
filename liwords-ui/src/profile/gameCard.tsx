@@ -7,6 +7,10 @@ import { VariantIcon } from '../shared/variant_icons';
 import { FundOutlined } from '@ant-design/icons';
 import { timeToString } from '../store/constants';
 import { GameMetadata } from '../gameroom/game_info';
+import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
+import { challengeRuleNamesShort } from '../constants/challenge_rules';
+import { GameEndReason } from '../gen/api/proto/ipc/omgwords_pb';
 
 type GameCardProps = {
   game: GameMetadata;
@@ -51,46 +55,39 @@ export const GameCard = React.memo((props: GameCardProps) => {
     </div>
   );
 
-  const challenge = {
-    FIVE_POINT: '+5',
-    TEN_POINT: '+10',
-    SINGLE: 'x1',
-    DOUBLE: 'x2',
-    TRIPLE: 'x3',
-    VOID: 'Void',
-  }[game_request.challenge_rule as string];
+  const challenge = challengeRuleNamesShort[game_request.challengeRule];
 
   let endReason = '';
   switch (game_end_reason) {
-    case 'TIME':
+    case GameEndReason.TIME:
       endReason = 'Time out';
       break;
-    case 'CONSECUTIVE_ZEROES':
+    case GameEndReason.CONSECUTIVE_ZEROES:
       endReason = 'Six-zero rule';
       break;
-    case 'RESIGNED':
+    case GameEndReason.RESIGNED:
       endReason = 'Resignation';
       break;
-    case 'FORCE_FORFEIT':
+    case GameEndReason.FORCE_FORFEIT:
       endReason = 'Forfeit';
       break;
-    case 'ABORTED':
+    case GameEndReason.ABORTED:
       endReason = 'Aborted';
       break;
-    case 'CANCELLED':
+    case GameEndReason.CANCELLED:
       endReason = 'Cancelled';
       break;
-    case 'TRIPLE_CHALLENGE':
+    case GameEndReason.TRIPLE_CHALLENGE:
       endReason = 'Triple challenge';
       break;
-    case 'STANDARD':
+    case GameEndReason.STANDARD:
       endReason = 'Completed';
   }
 
   const getDetails = (
     <div className="detail-icons">
-      <VariantIcon vcode={game_request.rules.variant_name} />
-      {game_request.rating_mode === 'RATED' ? (
+      <VariantIcon vcode={game_request.rules?.variantName} />
+      {game_request.ratingMode === RatingMode.RATED ? (
         <Tooltip title="Rated">
           <FundOutlined />
         </Tooltip>
@@ -130,9 +127,9 @@ export const GameCard = React.memo((props: GameCardProps) => {
     </>
   );
   const time = `${time_control_name} ${timeToString(
-    game_request.initial_time_seconds,
-    game_request.increment_seconds,
-    game_request.max_overtime_minutes
+    game_request.initialTimeSeconds,
+    game_request.incrementSeconds,
+    game_request.maxOvertimeMinutes
   )}`;
   return (
     <Card

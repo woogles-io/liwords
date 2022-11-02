@@ -38,9 +38,9 @@ export const useTourneyMetadata = (
       }
       const tmreq = new GetTournamentMetadataRequest();
       if (tournamentID) {
-        tmreq.setId(tournamentID);
+        tmreq.id = tournamentID;
       } else if (path) {
-        tmreq.setSlug(path);
+        tmreq.slug = path;
       }
 
       try {
@@ -54,19 +54,19 @@ export const useTourneyMetadata = (
         dispatchTournamentContext({
           actionType: ActionType.SetTourneyMetadata,
           payload: {
-            directors: meta.getDirectorsList(),
-            metadata: meta.getMetadata(),
+            directors: meta.directors,
+            metadata: meta.metadata,
           },
         });
-        const ttype = meta.getMetadata()?.getType();
+        const ttype = meta.metadata?.type;
         if (ttype === TType.LEGACY || ttype === TType.CLUB) {
           // This tournament does not have built-in pairings, so no need to fetch
           // tournament divisions.
           return;
         }
         const treq = new GetTournamentRequest();
-        if (meta.getMetadata()) {
-          treq.setId((meta.getMetadata() as TournamentMetadata).getId());
+        if (meta.metadata) {
+          treq.id = meta.metadata.id;
         }
 
         const tresp = await postProto(

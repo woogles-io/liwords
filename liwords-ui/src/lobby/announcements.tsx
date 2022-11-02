@@ -4,18 +4,13 @@ import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 import { useMountedState } from '../utils/mounted';
 import ReactMarkdown from 'react-markdown';
-
-type Announcement = {
-  title: string;
-  link: string;
-  body: string;
-};
+import { Announcement } from '../gen/api/proto/config_service/config_service_pb';
 
 export type Announcements = {
   announcements: Array<Announcement>;
 };
 
-export const Announcements = () => {
+export const AnnouncementsWidget = () => {
   const { useState } = useMountedState();
 
   const [announcements, setAnnouncements] = useState<Array<Announcement>>([]);

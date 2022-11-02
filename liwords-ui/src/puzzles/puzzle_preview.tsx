@@ -51,7 +51,7 @@ export const PuzzlePreview = React.memo(() => {
     const req = new StartPuzzleIdRequest();
     const respType = StartPuzzleIdResponse;
     const method = 'GetStartPuzzleId';
-    req.setLexicon(userLexicon);
+    req.lexicon = userLexicon;
     try {
       const resp = await postProto(
         respType,
@@ -59,8 +59,7 @@ export const PuzzlePreview = React.memo(() => {
         method,
         req
       );
-      console.log('got resp', resp.toObject());
-      setPuzzleID(resp.getPuzzleId());
+      setPuzzleID(resp.puzzleId);
     } catch (err) {
       message.error({
         content: `Puzzle: ${(err as LiwordsAPIError).message}`,
@@ -75,8 +74,7 @@ export const PuzzlePreview = React.memo(() => {
 
   useEffect(() => {
     async function fetchPuzzleData(id: string) {
-      const req = new PuzzleRequest();
-      req.setPuzzleId(id);
+      const req = new PuzzleRequest({ puzzleId: id });
 
       try {
         const resp = await postProto(
@@ -85,11 +83,10 @@ export const PuzzlePreview = React.memo(() => {
           'GetPuzzle',
           req
         );
-        console.log('got puzzle', resp.toObject());
 
-        const gh = resp.getHistory();
-        setUserRating(resp.getAnswer()?.getNewUserRating());
-        setPuzzleRating(resp.getAnswer()?.getNewPuzzleRating());
+        const gh = resp.history;
+        setUserRating(resp.answer?.newUserRating);
+        setPuzzleRating(resp.answer?.newPuzzleRating);
         dispatchGameContext({
           actionType: ActionType.SetupStaticPosition,
           payload: gh,

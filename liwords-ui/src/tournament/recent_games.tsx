@@ -52,7 +52,7 @@ export const RecentTourneyGames = React.memo((props: Props) => {
           {item.players[0].score} - {item.players[1].score}
         </Link>
       );
-      const whenMoment = moment.unix(item.time ? item.time : 0);
+      const whenMoment = moment.unix(item.time ? Number(item.time) : 0);
 
       let when: string | JSX.Element = whenMoment.format('HH:mm');
       if (whenMoment.dayOfYear() !== moment.unix(lastDate).dayOfYear()) {
@@ -60,7 +60,7 @@ export const RecentTourneyGames = React.memo((props: Props) => {
       }
       when = <Tooltip title={whenMoment.format('LLL')}>{when}</Tooltip>;
 
-      lastDate = item.time;
+      lastDate = Number(item.time);
       let endReason = '';
       switch (item.end_reason) {
         case 'TIME':

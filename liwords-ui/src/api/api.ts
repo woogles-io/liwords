@@ -10,7 +10,7 @@ export const toAPIUrl = (service: string, method: string) => {
 };
 
 interface PBMsg {
-  serializeBinary(): Uint8Array;
+  toBinary(): Uint8Array;
 }
 
 export type LiwordsAPIError = {
@@ -63,7 +63,7 @@ const postBinary = async (service: string, method: string, msg: PBMsg) => {
     headers: {
       'Content-Type': 'application/protobuf',
     },
-    body: msg.serializeBinary(),
+    body: msg.toBinary(),
   });
 
   if (!response.ok) {
@@ -80,11 +80,11 @@ const postBinary = async (service: string, method: string, msg: PBMsg) => {
 };
 
 export const postProto: <T>(
-  responseType: { deserializeBinary(x: Uint8Array): T },
+  responseType: { fromBinary(x: Uint8Array): T },
   service: string,
   method: string,
-  msg: { serializeBinary(): Uint8Array }
+  msg: { toBinary(): Uint8Array }
 ) => Promise<T> = async (responseType, service, method, msg) =>
-  responseType.deserializeBinary(
+  responseType.fromBinary(
     new Uint8Array(await postBinary(service, method, msg))
   );

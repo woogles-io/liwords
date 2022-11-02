@@ -1,10 +1,14 @@
+import { kMaxLength } from 'buffer';
 import { Action, ActionType } from '../../actions/actions';
 import { MatchUser, SeekRequest } from '../../gen/api/proto/ipc/omgseeks_pb';
 import {
   GameInfoResponse,
   RatingMode,
 } from '../../gen/api/proto/ipc/omgwords_pb';
-import { ProfileUpdate } from '../../gen/api/proto/ipc/users_pb';
+import {
+  ProfileUpdate,
+  ProfileUpdate_Rating,
+} from '../../gen/api/proto/ipc/users_pb';
 import { BotTypesEnum } from '../../lobby/bots';
 import { StartingRating } from '../constants';
 
@@ -61,7 +65,7 @@ export type LobbyState = {
   activeGames: Array<ActiveGame>;
   profile: {
     ratings: {
-      [k: string]: ProfileUpdate.Rating;
+      [k: string]: ProfileUpdate_Rating;
     };
   };
 };
@@ -69,8 +73,8 @@ export type LobbyState = {
 export const SeekRequestToSoughtGame = (
   req: SeekRequest
 ): SoughtGame | null => {
-  const gameReq = req.getGameRequest();
-  const user = req.getUser();
+  const gameReq = req.gameRequest;
+  const user = req.user;
   if (!gameReq || !user) {
     return null;
   }
@@ -78,33 +82,33 @@ export const SeekRequestToSoughtGame = (
   let receivingUser = new MatchUser();
   let rematchFor = '';
   let tournamentID = '';
-  if (req.getReceiverIsPermanent()) {
+  if (req.receiverIsPermanent) {
     console.log('ismatchrequest');
-    receivingUser = req.getReceivingUser() ?? receivingUser;
-    rematchFor = req.getRematchFor();
-    tournamentID = req.getTournamentId();
+    receivingUser = req.receivingUser ?? receivingUser;
+    rematchFor = req.rematchFor;
+    tournamentID = req.tournamentId;
   }
 
   return {
-    seeker: user.getDisplayName(),
-    seekerID: user.getUserId(),
-    userRating: user.getRelevantRating(),
-    lexicon: gameReq.getLexicon(),
-    initialTimeSecs: gameReq.getInitialTimeSeconds(),
-    challengeRule: gameReq.getChallengeRule(),
-    seekID: gameReq.getRequestId(),
-    rated: gameReq.getRatingMode() === RatingMode.RATED,
-    minRatingRange: req.getMinimumRatingRange(),
-    maxRatingRange: req.getMaximumRatingRange(),
-    maxOvertimeMinutes: gameReq.getMaxOvertimeMinutes(),
+    seeker: user.displayName,
+    seekerID: user.userId,
+    userRating: user.relevantRating,
+    lexicon: gameReq.lexicon,
+    initialTimeSecs: gameReq.initialTimeSeconds,
+    challengeRule: gameReq.challengeRule,
+    seekID: gameReq.requestId,
+    rated: gameReq.ratingMode === RatingMode.RATED,
+    minRatingRange: req.minimumRatingRange,
+    maxRatingRange: req.maximumRatingRange,
+    maxOvertimeMinutes: gameReq.maxOvertimeMinutes,
     receiver: receivingUser,
     rematchFor,
-    incrementSecs: gameReq.getIncrementSeconds(),
-    playerVsBot: gameReq.getPlayerVsBot(),
+    incrementSecs: gameReq.incrementSeconds,
+    playerVsBot: gameReq.playerVsBot,
     tournamentID,
-    variant: gameReq.getRules()?.getVariantName() || '',
-    ratingKey: req.getRatingKey(),
-    receiverIsPermanent: req.getReceiverIsPermanent(),
+    variant: gameReq.rules?.variantName || '',
+    ratingKey: req.ratingKey,
+    receiverIsPermanent: req.receiverIsPermanent,
     // this is inconsequential as bot match requests are never shown
     // to the user. change if this becomes the case some day.
     botType: 0,
@@ -114,41 +118,41 @@ export const SeekRequestToSoughtGame = (
 export const GameInfoResponseToActiveGame = (
   gi: GameInfoResponse
 ): ActiveGame | null => {
-  const users = gi.getPlayersList();
-  const gameReq = gi.getGameRequest();
+  const users = gi.players;
+  const gameReq = gi.gameRequest;
   const players = users.map((um) => ({
-    rating: um.getRating(),
-    displayName: um.getNickname(),
-    uuid: um.getUserId(),
+    rating: um.rating,
+    displayName: um.nickname,
+    uuid: um.userId,
   }));
 
   if (!gameReq) {
     return null;
   }
-  let variant = gameReq.getRules()?.getVariantName();
+  let variant = gameReq.rules?.variantName;
   if (!variant) {
     variant = 'classic';
   }
   return {
     players,
-    lexicon: gameReq.getLexicon(),
+    lexicon: gameReq.lexicon,
     variant,
-    initialTimeSecs: gameReq.getInitialTimeSeconds(),
-    challengeRule: gameReq.getChallengeRule(),
-    rated: gameReq.getRatingMode() === RatingMode.RATED,
-    maxOvertimeMinutes: gameReq.getMaxOvertimeMinutes(),
-    gameID: gi.getGameId(),
-    incrementSecs: gameReq.getIncrementSeconds(),
-    tournamentID: gi.getTournamentId(),
-    tournamentDivision: gi.getTournamentDivision(),
-    tournamentRound: gi.getTournamentRound(),
-    tournamentGameIndex: gi.getTournamentGameIndex(),
+    initialTimeSecs: gameReq.initialTimeSeconds,
+    challengeRule: gameReq.challengeRule,
+    rated: gameReq.ratingMode === RatingMode.RATED,
+    maxOvertimeMinutes: gameReq.maxOvertimeMinutes,
+    gameID: gi.gameId,
+    incrementSecs: gameReq.incrementSeconds,
+    tournamentID: gi.tournamentId,
+    tournamentDivision: gi.tournamentDivision,
+    tournamentRound: gi.tournamentRound,
+    tournamentGameIndex: gi.tournamentGameIndex,
   };
 };
 
 export const matchesRatingFormula = (
   sg: SoughtGame,
-  ratings: { [k: string]: ProfileUpdate.Rating }
+  ratings: { [k: string]: ProfileUpdate_Rating }
 ) => {
   const ratingKey = sg.ratingKey;
   // Note that accidentally, if sg.userRating ends with a `?`, parseInt still
@@ -158,7 +162,7 @@ export const matchesRatingFormula = (
   const receiverRating = ratings[ratingKey];
   // If this rating doesn't exist, then the user has never played this variant
   // before, so their starting rating is the default starting rating.
-  const receiverRatingValue = receiverRating?.getRating() || StartingRating;
+  const receiverRatingValue = receiverRating?.rating || StartingRating;
 
   // minRatingRange should be negative for this to work:
   const minRating = seekerRating + sg.minRatingRange;
@@ -274,10 +278,11 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
     case ActionType.UpdateProfile: {
       const { profile } = state;
       const p = action.payload as ProfileUpdate;
-      const ratings: { [k: string]: ProfileUpdate.Rating } = {};
-      p.getRatingsMap().forEach((v, k) => {
+      const ratings: { [k: string]: ProfileUpdate_Rating } = {};
+      for (const [k, v] of Object.entries(ratings)) {
         ratings[k] = v;
-      });
+      }
+
       console.log('got ratings', ratings);
       return {
         ...state,

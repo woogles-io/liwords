@@ -44,7 +44,7 @@ export const CheckIn = () => {
   const checkin = () => {
     axios
       .post<{}>(toAPIUrl('tournament_service.TournamentService', 'CheckIn'), {
-        id: tournamentContext.metadata?.getId(),
+        id: tournamentContext.metadata?.id,
       })
       .then((resp) => {
         message.info({

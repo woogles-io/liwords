@@ -97,9 +97,9 @@ export const DirectorTools = React.memo((props: DTProps) => {
           <h4 className="division-name">{d.divisionID} entrants</h4>
           <ul>
             {d.players.map((p) => {
-              const [userID, playerName] = p.getId().split(':');
+              const [userID, playerName] = p.id.split(':');
               return (
-                <li key={p.getId()} className="player-name">
+                <li key={p.id} className="player-name">
                   <UsernameWithContext
                     username={playerName}
                     userID={userID}

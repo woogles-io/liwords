@@ -69,7 +69,7 @@ export const ActionsPanel = React.memo((props: Props) => {
   const { dispatchTournamentContext, tournamentContext } =
     useTournamentStoreContext();
   const itIsPairedMode = useMemo(
-    () => isPairedMode(tournamentContext.metadata?.getType()),
+    () => isPairedMode(tournamentContext.metadata?.type),
     [tournamentContext]
   );
   const { divisions } = tournamentContext;
@@ -85,7 +85,7 @@ export const ActionsPanel = React.memo((props: Props) => {
   const [selectedRound, setSelectedRound] = useState(initialRound);
   const [selectedDivision, setSelectedDivision] = useState(initialDivision);
   const { lobbyContext } = useLobbyStoreContext();
-  const tournamentID = tournamentContext.metadata?.getId();
+  const tournamentID = tournamentContext.metadata?.id;
 
   const { addHandleContextMatch, removeHandleContextMatch } =
     useContextMatchContext();
@@ -345,7 +345,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     const foundDivision = userID
       ? divisionArray.find((d) => {
           return d.players
-            .map((v) => v.getId())
+            .map((v) => v.id)
             .map(idFromPlayerEntry)
             .includes(userID);
         })
@@ -393,7 +393,7 @@ export const ActionsPanel = React.memo((props: Props) => {
       return [];
     }
     let matchButtonText = 'Start tournament game';
-    if (isClubType(tournamentContext.metadata?.getType())) {
+    if (isClubType(tournamentContext.metadata?.type)) {
       matchButtonText = 'Start club game';
     }
     const availableActions = new Array<ReactNode>();

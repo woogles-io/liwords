@@ -5,7 +5,10 @@ import React, {
   useEffect,
   useMemo,
 } from 'react';
-import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import {
+  GameEvent,
+  GameEvent_Direction,
+} from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { useMountedState } from '../utils/mounted';
 import {
   AnswerResponse,
@@ -66,8 +69,7 @@ export const Hints = (props: Props) => {
     if (!puzzleID) {
       return;
     }
-    const req = new PuzzleRequest();
-    req.setPuzzleId(puzzleID);
+    const req = new PuzzleRequest({ puzzleId: puzzleID });
     try {
       const resp = await postProto(
         AnswerResponse,
@@ -75,9 +77,8 @@ export const Hints = (props: Props) => {
         'GetPuzzleAnswer',
         req
       );
-      console.log('got resp', resp.toObject());
       // Only CorrectAnswer is filled in properly.
-      setSolution(resp.getCorrectAnswer());
+      setSolution(resp.correctAnswer);
     } catch (err) {
       // There will be an error if this endpoint is called before the user
       // has submitted a guess.
@@ -132,16 +133,16 @@ export const Hints = (props: Props) => {
         message: (
           <>
             The score for the play is{' '}
-            <span className="tentative-score">{solution.getScore()}</span>
+            <span className="tentative-score">{solution.score}</span>
           </>
         ),
         revealed: false,
       };
       // Add tiles hint
-      const tilesUsed = Array.from(solution.getPlayedTiles()).filter(
+      const tilesUsed = Array.from(solution.playedTiles).filter(
         (x) => x !== '.'
       ).length;
-      const isBingo = solution.getIsBingo();
+      const isBingo = solution.isBingo;
       const tilesMessage = isBingo ? (
         <>The play is a bingo! Use all your tiles.</>
       ) : (
@@ -161,12 +162,7 @@ export const Hints = (props: Props) => {
         message: (
           <>
             The play should be placed on{' '}
-            {readableLane(
-              solution.getRow(),
-              solution.getColumn(),
-              solution.getDirection()
-            )}
-            .
+            {readableLane(solution.row, solution.column, solution.direction)}.
           </>
         ),
         revealed: false,
@@ -183,13 +179,13 @@ export const Hints = (props: Props) => {
   useEffect(() => {
     if (boardHighlightingOn && solution) {
       const layout = generateEmptyLearnLayout(gridDim, LearnSpaceType.Faded);
-      if (solution.getDirection() === 0) {
-        layout[solution.getRow()] = new Array(gridDim).fill(
+      if (solution.direction === GameEvent_Direction.HORIZONTAL) {
+        layout[solution.row] = new Array(gridDim).fill(
           LearnSpaceType.Highlighted
         );
       } else {
         for (let i = 0; i < gridDim; i++) {
-          layout[i][solution.getColumn()] = LearnSpaceType.Highlighted;
+          layout[i][solution.column] = LearnSpaceType.Highlighted;
         }
       }
       setLearnLayout(layout);

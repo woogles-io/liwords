@@ -51,7 +51,7 @@ export const BriefProfiles = (props: {
       if (toRequestHere.size === 0) return;
       toRequest.current = new Set();
       const req = new BriefProfilesRequest();
-      req.setUserIdsList(Array.from(toRequestHere));
+      req.userIds = Array.from(toRequestHere);
       try {
         const respObj = await postProto(
           BriefProfilesResponse,
@@ -59,11 +59,11 @@ export const BriefProfiles = (props: {
           'GetBriefProfiles',
           req
         );
-        const respMap = respObj.getResponseMap();
+        const respMap = respObj.response;
         // because of the await, toRequest.current may have accumulated more items
         const expires = performance.now() + 300000; // 5 minutes
         toRequestHere.forEach((k) => {
-          cacheRef.current.set(k, { data: respMap.get(k) ?? null, expires });
+          cacheRef.current.set(k, { data: respMap[k] ?? null, expires });
           toRequest.current.delete(k); // this response also answers queries during await
         });
         triggerRefresh();

@@ -40,6 +40,7 @@ import { SeekRequest } from '../gen/api/proto/ipc/omgseeks_pb';
 import { ServerChallengeResultEvent } from '../gen/api/proto/ipc/omgwords_pb';
 import { message } from 'antd';
 import { playerOrderFromEvt } from '../utils/cwgame/game_event';
+import { GameEvent_Type } from '../gen/macondo/api/proto/macondo/macondo_pb';
 
 const MaxChatLength = 150;
 
@@ -128,8 +129,8 @@ type ChatStoreData = {
   clearChat: () => void;
   deleteChat: (id: string, channel: string) => void;
   chat: Array<ChatEntityObj>;
-  chatChannels: ActiveChatChannels.AsObject | undefined;
-  setChatChannels: (chatChannels: ActiveChatChannels.AsObject) => void;
+  chatChannels: ActiveChatChannels | undefined;
+  setChatChannels: (chatChannels: ActiveChatChannels) => void;
 };
 
 type PresenceStoreData = {
@@ -514,7 +515,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
         );
 
         if (turnPlayerOrder === playerOrder) {
-          score = turn.getCumulative();
+          score = turn.cumulative;
           break;
         }
       }
@@ -526,8 +527,8 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       for (let j = replayedTurns.length; --j >= 0; ) {
         const turn = gameContext.turns[j];
         if (
-          turn.getType() === GameEvent.Type.END_RACK_PTS ||
-          turn.getType() === GameEvent.Type.END_RACK_PENALTY
+          turn.type === GameEvent_Type.END_RACK_PTS ||
+          turn.type === GameEvent_Type.END_RACK_PENALTY
         ) {
           continue;
         }
@@ -535,8 +536,8 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
         // Logic from game_reducer setClock.
         let flipTimeRemaining = false;
         if (
-          turn.getType() === GameEvent.Type.CHALLENGE_BONUS ||
-          turn.getType() === GameEvent.Type.PHONY_TILES_RETURNED
+          turn.type === GameEvent_Type.CHALLENGE_BONUS ||
+          turn.type === GameEvent_Type.PHONY_TILES_RETURNED
         ) {
           // For these particular two events, the time remaining is for the CHALLENGER.
           // Therefore, it's not the time remaining of the player
@@ -550,7 +551,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
         );
 
         if ((turnPlayerOrder === playerOrder) !== flipTimeRemaining) {
-          time = turn.getMillisRemaining();
+          time = turn.millisRemaining;
           break;
         }
       }
@@ -563,8 +564,8 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       for (let j = replayedTurns.length; j < gameContext.turns.length; ++j) {
         const turn = gameContext.turns[j];
         if (
-          turn.getType() === GameEvent.Type.END_RACK_PTS ||
-          turn.getType() === GameEvent.Type.END_RACK_PENALTY
+          turn.type === GameEvent_Type.END_RACK_PTS ||
+          turn.type === GameEvent_Type.END_RACK_PENALTY
         ) {
           continue;
         }
@@ -573,7 +574,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
           gameContext.nickToPlayerOrder
         );
         if (turnPlayerOrder === playerOrder) {
-          rack = turn.getRack();
+          rack = turn.rack;
           break;
         }
       }
@@ -860,7 +861,7 @@ const RealStore = ({ children, ...props }: Props) => {
   const [rematchRequest, setRematchRequest] = useState(new SeekRequest());
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
   const [chatChannels, setChatChannels] = useState<
-    ActiveChatChannels.AsObject | undefined
+    ActiveChatChannels | undefined
   >(undefined);
   const [excludedPlayers, setExcludedPlayers] = useState(new Set<string>());
   const [friends, setFriends] = useState({});
@@ -894,7 +895,7 @@ const RealStore = ({ children, ...props }: Props) => {
       addChat({
         entityType: ChatEntityType.ServerMsg,
         sender: '',
-        message: sge.getValid()
+        message: sge.valid
           ? 'Challenged play was valid'
           : 'Play was challenged off the board!',
         id: randomID(),

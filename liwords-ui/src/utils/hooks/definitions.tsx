@@ -8,6 +8,7 @@ import { ChatEntityType, ChatEntityObj } from '../../store/constants';
 import { Blank } from '../../utils/cwgame/common';
 import { useMountedState } from '../../utils/mounted';
 import { Unrace } from '../../utils/unrace';
+import { GameEvent_Type } from '../../gen/macondo/api/proto/macondo/macondo_pb';
 
 export const useDefinitionAndPhonyChecker = ({
   addChat,
@@ -24,7 +25,7 @@ export const useDefinitionAndPhonyChecker = ({
   gameDone: boolean;
   gameID?: string;
   lexicon: string;
-  variant: string;
+  variant: string | undefined;
 }) => {
   const { useState } = useMountedState();
 
@@ -198,7 +199,7 @@ export const useDefinitionAndPhonyChecker = ({
     setPlayedWords((oldPlayedWords) => {
       const playedWords = new Set(oldPlayedWords);
       for (const turn of gameContext.turns) {
-        for (const word of turn.getWordsFormedList()) {
+        for (const word of turn.wordsFormed) {
           playedWords.add(word);
         }
       }
@@ -365,10 +366,10 @@ export const useDefinitionAndPhonyChecker = ({
       let returningTiles = false;
       for (let i = gameContext.turns.length; --i >= 0; ) {
         const turn = gameContext.turns[i];
-        if (turn.getType() === GameEvent.Type.PHONY_TILES_RETURNED) {
+        if (turn.type === GameEvent_Type.PHONY_TILES_RETURNED) {
           returningTiles = true;
         } else {
-          for (const word of turn.getWordsFormedList()) {
+          for (const word of turn.wordsFormed) {
             groupedWords[+returningTiles].add(word);
           }
           returningTiles = false;

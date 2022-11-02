@@ -3,10 +3,16 @@ import { Card } from 'antd';
 import { timeCtrlToDisplayName, timeToString } from '../store/constants';
 import { VariantIcon } from '../shared/variant_icons';
 import { MatchLexiconDisplay } from '../shared/lexicon_display';
+import { GameEndReason, GameRequest } from '../gen/api/proto/ipc/omgwords_pb';
 import {
-  BotRequest,
-  ChallengeRule as ProtoChallengeRule,
+  BotRequest_BotCode,
+  ChallengeRule,
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
+import { GameRules } from '../gen/api/proto/ipc/omgwords_pb';
+import { BotTypesEnum } from '../lobby/bots';
+import { BotRequest } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { challengeRuleNames } from '../constants/challenge_rules';
 
 // At some point we should get this from the pb but then we have to use
 // twirp for this and we really shouldn't need to. Wait on it probably.
@@ -15,7 +21,7 @@ export type GameMetadata = {
   players: Array<PlayerMetadata>;
   time_control_name: string;
   tournament_id: string;
-  game_end_reason: string;
+  game_end_reason: GameEndReason;
   created_at?: string;
   winner?: number;
   scores?: Array<number>;
@@ -23,74 +29,26 @@ export type GameMetadata = {
   game_request: GameRequest;
 };
 
-type GameRules = {
-  board_layout_name: string;
-  letter_distribution_name: string;
-  variant_name: string;
-};
-
-export type ChallengeRule =
-  | 'FIVE_POINT'
-  | 'TEN_POINT'
-  | 'SINGLE'
-  | 'DOUBLE'
-  | 'TRIPLE'
-  | 'VOID';
-
-export const protoChallengeRuleConvert = (cr: number): ChallengeRule => {
-  switch (cr) {
-    case ProtoChallengeRule.DOUBLE:
-      return 'DOUBLE';
-    case ProtoChallengeRule.TEN_POINT:
-      return 'TEN_POINT';
-    case ProtoChallengeRule.FIVE_POINT:
-      return 'FIVE_POINT';
-    case ProtoChallengeRule.SINGLE:
-      return 'SINGLE';
-    case ProtoChallengeRule.TRIPLE:
-      return 'TRIPLE';
-    case ProtoChallengeRule.VOID:
-      return 'VOID';
-  }
-  // This shouldn't happen:
-  return 'SINGLE';
-};
-
-export type BotType = keyof BotRequest.BotCodeMap;
-
-export type GameRequest = {
-  lexicon: string;
-  rules: GameRules;
-  initial_time_seconds: number;
-  increment_seconds: number;
-  challenge_rule: ChallengeRule;
-  rating_mode: string;
-  max_overtime_minutes: number;
-  original_request_id: string;
-  player_vs_bot: boolean;
-  bot_type: BotType;
-};
-
 export const defaultGameInfo: GameMetadata = {
   players: new Array<PlayerMetadata>(),
-  game_request: {
+  game_request: new GameRequest({
     lexicon: '',
-    rules: {
-      variant_name: '',
-      board_layout_name: 'CrosswordGame',
-      letter_distribution_name: 'english',
-    },
-    initial_time_seconds: 0,
-    increment_seconds: 0,
-    challenge_rule: 'VOID' as ChallengeRule,
-    rating_mode: 'RATED',
-    max_overtime_minutes: 0,
-    original_request_id: '',
-    player_vs_bot: false,
-    bot_type: 'HASTY_BOT',
-  },
+    rules: new GameRules({
+      variantName: '',
+      boardLayoutName: 'CrosswordGame',
+      letterDistributionName: 'english',
+    }),
+    initialTimeSeconds: 0,
+    incrementSeconds: 0,
+    challengeRule: ChallengeRule.VOID,
+    ratingMode: RatingMode.RATED,
+    maxOvertimeMinutes: 0,
+    originalRequestId: '',
+    playerVsBot: false,
+    botType: BotRequest_BotCode.HASTY_BOT,
+  }),
   tournament_id: '',
-  game_end_reason: 'NONE',
+  game_end_reason: GameEndReason.NONE,
   time_control_name: '',
 };
 
@@ -145,20 +103,16 @@ type Props = {
 export const GameInfo = React.memo((props: Props) => {
   const variant = (
     <VariantIcon
-      vcode={props.meta.game_request.rules.variant_name || 'classic'}
+      vcode={props.meta.game_request.rules?.variantName || 'classic'}
       withName
     />
   );
   const rated =
-    props.meta.game_request.rating_mode === 'RATED' ? 'Rated' : 'Unrated';
-  const challenge = {
-    FIVE_POINT: '5 point',
-    TEN_POINT: '10 point',
-    SINGLE: 'Single',
-    DOUBLE: 'Double',
-    TRIPLE: 'Triple',
-    VOID: 'Void',
-  }[props.meta.game_request.challenge_rule];
+    props.meta.game_request.ratingMode === RatingMode.RATED
+      ? 'Rated'
+      : 'Unrated';
+
+  const challenge = challengeRuleNames[props.meta.game_request.challengeRule];
 
   const card = (
     <Card className="game-info">
@@ -174,14 +128,14 @@ export const GameInfo = React.memo((props: Props) => {
         <p className="variant">
           {`${
             timeCtrlToDisplayName(
-              props.meta.game_request.initial_time_seconds,
-              props.meta.game_request.increment_seconds,
-              props.meta.game_request.max_overtime_minutes
+              props.meta.game_request.initialTimeSeconds,
+              props.meta.game_request.incrementSeconds,
+              props.meta.game_request.maxOvertimeMinutes
             )[0]
           } ${timeToString(
-            props.meta.game_request.initial_time_seconds,
-            props.meta.game_request.increment_seconds,
-            props.meta.game_request.max_overtime_minutes
+            props.meta.game_request.initialTimeSeconds,
+            props.meta.game_request.incrementSeconds,
+            props.meta.game_request.maxOvertimeMinutes
           )}`}{' '}
           • {variant} •{' '}
           <MatchLexiconDisplay lexiconCode={props.meta.game_request.lexicon} />

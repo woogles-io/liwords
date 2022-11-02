@@ -7,6 +7,10 @@ import { FundOutlined } from '@ant-design/icons/lib';
 import { GameMetadata } from '../gameroom/game_info';
 import { timeToString } from '../store/constants';
 import { VariantIcon } from '../shared/variant_icons';
+import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
+import { challengeRuleNamesShort } from '../constants/challenge_rules';
+import { GameEndReason } from '../gen/api/proto/ipc/omgwords_pb';
 
 type Props = {
   games: Array<GameMetadata>;
@@ -49,7 +53,8 @@ export const GamesHistoryCard = React.memo((props: Props) => {
   const special = ['Unwoogler', 'AnotherUnwoogler', userID];
   const formattedGames = props.games
     .filter(
-      (item) => item.players?.length && item.game_end_reason !== 'CANCELLED'
+      (item) =>
+        item.players?.length && item.game_end_reason !== GameEndReason.CANCELLED
     )
     .map((item) => {
       const userplace =
@@ -74,22 +79,17 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         ''
       );
       let result = <Tag color="blue">Loss</Tag>;
-      const challenge = {
-        FIVE_POINT: '+5',
-        TEN_POINT: '+10',
-        SINGLE: 'x1',
-        DOUBLE: 'x2',
-        TRIPLE: 'x3',
-        VOID: 'Void',
-      }[item.game_request.challenge_rule];
+      const challenge =
+        challengeRuleNamesShort[item.game_request.challengeRule];
+
       const getDetails = () => {
         return (
           <>
-            <VariantIcon vcode={item.game_request.rules.variant_name} />{' '}
+            <VariantIcon vcode={item.game_request.rules?.variantName} />{' '}
             <span className={`challenge-rule mode_${challenge}`}>
               {challenge}
             </span>
-            {item.game_request.rating_mode === 'RATED' ? (
+            {item.game_request.ratingMode === RatingMode.RATED ? (
               <Tooltip title="Rated">
                 <FundOutlined />
               </Tooltip>
@@ -114,34 +114,34 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       );
       let endReason = '';
       switch (item.game_end_reason) {
-        case 'TIME':
+        case GameEndReason.TIME:
           endReason = 'Time out';
           break;
-        case 'CONSECUTIVE_ZEROES':
+        case GameEndReason.CONSECUTIVE_ZEROES:
           endReason = 'Six-zero rule';
           break;
-        case 'RESIGNED':
+        case GameEndReason.RESIGNED:
           endReason = 'Resignation';
           break;
-        case 'FORCE_FORFEIT':
+        case GameEndReason.FORCE_FORFEIT:
           endReason = 'Forfeit';
           break;
-        case 'ABORTED':
+        case GameEndReason.ABORTED:
           endReason = 'Aborted';
           break;
-        case 'CANCELLED':
+        case GameEndReason.CANCELLED:
           endReason = 'Cancelled';
           break;
-        case 'TRIPLE_CHALLENGE':
+        case GameEndReason.TRIPLE_CHALLENGE:
           endReason = 'Triple challenge';
           break;
-        case 'STANDARD':
+        case GameEndReason.STANDARD:
           endReason = 'Completed';
       }
       const time = `${item.time_control_name} ${timeToString(
-        item.game_request.initial_time_seconds,
-        item.game_request.increment_seconds,
-        item.game_request.max_overtime_minutes
+        item.game_request.initialTimeSeconds,
+        item.game_request.incrementSeconds,
+        item.game_request.maxOvertimeMinutes
       )}`;
       return {
         game_id: item.game_id, // used by rowKey

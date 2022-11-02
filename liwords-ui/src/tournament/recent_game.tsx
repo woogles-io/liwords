@@ -8,7 +8,7 @@ export type RecentGame = {
   players: Array<player>;
   end_reason: string;
   game_id: string;
-  time: number;
+  time: bigint;
   round: number;
 };
 

@@ -46,7 +46,7 @@ export const TournamentRoom = (props: Props) => {
   );
 
   const tournamentID = useMemo(() => {
-    return tournamentContext.metadata.getId();
+    return tournamentContext.metadata.id;
   }, [tournamentContext.metadata]);
 
   // Should be more like "amdirector"
@@ -98,7 +98,7 @@ export const TournamentRoom = (props: Props) => {
           <Chat
             sendChat={props.sendChat}
             defaultChannel={`chat.tournament.${tournamentID}`}
-            defaultDescription={tournamentContext.metadata.getName()}
+            defaultDescription={tournamentContext.metadata.name}
             highlight={tournamentContext.directors}
             highlightText="Director"
             tournamentID={tournamentID}
@@ -108,7 +108,7 @@ export const TournamentRoom = (props: Props) => {
               sendReady={() =>
                 readyForTournamentGame(
                   sendSocketMsg,
-                  tournamentContext.metadata.getId(),
+                  tournamentContext.metadata.id,
                   competitorContext
                 )
               }
@@ -129,7 +129,7 @@ export const TournamentRoom = (props: Props) => {
           sendReady={() =>
             readyForTournamentGame(
               sendSocketMsg,
-              tournamentContext.metadata.getId(),
+              tournamentContext.metadata.id,
               competitorContext
             )
           }

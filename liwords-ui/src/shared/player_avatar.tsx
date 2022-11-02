@@ -46,8 +46,8 @@ export const PlayerAvatar = (props: AvatarProps) => {
   const { isPetting, setPettable } = useContext(PettableContext);
   // Do not useBriefProfile if avatar_url is explicitly passed in as "".
   const profile = useBriefProfile(props.player?.user_id);
-  const avatarUrl = props.player?.avatar_url ?? profile?.getAvatarUrl();
-  const username = props.username ?? profile?.getUsername();
+  const avatarUrl = props.player?.avatar_url ?? profile?.avatarUrl;
+  const username = props.username ?? profile?.username;
 
   let canPet = false;
 
@@ -87,7 +87,7 @@ export const PlayerAvatar = (props: AvatarProps) => {
       {!avatarUrl && props.icon}
       {!avatarUrl && !props.icon
         ? fixedCharAt(
-            profile?.getFullName() || props.player?.nickname || username || '?',
+            profile?.fullName || props.player?.nickname || username || '?',
             0,
             1
           )

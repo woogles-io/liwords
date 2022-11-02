@@ -251,15 +251,8 @@ const App = React.memo(() => {
 
   const sendChat = useCallback(
     (msg: string, chan: string) => {
-      const evt = new ChatMessage();
-      evt.setMessage(msg);
-
-      // const chan = isObserver ? 'gametv' : 'game';
-      // evt.setChannel(`chat.${chan}.${gameID}`);
-      evt.setChannel(chan);
-      sendMessage(
-        encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
-      );
+      const evt = new ChatMessage({ message: msg, channel: chan });
+      sendMessage(encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.toBinary()));
     },
     [sendMessage]
   );

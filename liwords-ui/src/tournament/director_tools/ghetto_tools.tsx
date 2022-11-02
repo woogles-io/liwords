@@ -30,16 +30,13 @@ import '../../lobby/seek_form.scss';
 
 import {
   fieldsForMethod,
-  pairingMethod,
   PairingMethodField,
   RoundSetting,
   settingsEqual,
-  SingleRoundSetting,
 } from './pairing_methods';
 import { valueof } from '../../store/constants';
 import {
   TournamentGameResult,
-  TournamentGameResultMap,
   DivisionControls,
   PairingMethod,
   RoundControl,
@@ -172,8 +169,8 @@ export const GhettoTools = (props: Props) => {
       <h3>Tournament Tools</h3>
       <h4>Edit tournament metadata</h4>
       <ul>{metadataItems}</ul>
-      {(tournamentContext.metadata.getType() === TType.STANDARD ||
-        tournamentContext.metadata.getType() === TType.CHILD) && (
+      {(tournamentContext.metadata.type === TType.STANDARD ||
+        tournamentContext.metadata.type === TType.CHILD) && (
         <>
           <h4>Pre-tournament settings</h4>
           <ul>{preListItems}</ul>
@@ -246,9 +243,9 @@ const PlayersFormItem = (props: {
     <Form.Item name={props.name} label={props.label}>
       <Select>
         {tournamentContext.divisions[props.division]?.players.map((v) => {
-          const u = username(v.getId());
+          const u = username(v.id);
           return (
-            <Select.Option value={u} key={v.getId()}>
+            <Select.Option value={u} key={v.id}>
               {u}
             </Select.Option>
           );
@@ -507,7 +504,7 @@ const userUUID = (username: string, divobj: Division) => {
     return '';
   }
   const p = divobj.players.find((p) => {
-    const parts = p.getId().split(':');
+    const parts = p.id.split(':');
     const pusername = parts[1].toLowerCase();
 
     if (username.toLowerCase() === pusername) {
@@ -518,7 +515,7 @@ const userUUID = (username: string, divobj: Division) => {
   if (!p) {
     return '';
   }
-  return p.getId().split(':')[0];
+  return p.id.split(':')[0];
 };
 
 const username = (fullID: string) => {
@@ -531,7 +528,7 @@ const fullPlayerID = (username: string, divobj: Division) => {
     return '';
   }
   const p = divobj.players.find((p) => {
-    const parts = p.getId().split(':');
+    const parts = p.id.split(':');
     const pusername = parts[1].toLowerCase();
 
     if (username.toLowerCase() === pusername) {
@@ -542,7 +539,7 @@ const fullPlayerID = (username: string, divobj: Division) => {
   if (!p) {
     return '';
   }
-  return p.getId();
+  return p.id;
 };
 
 const SetPairing = (props: { tournamentID: string }) => {
@@ -898,9 +895,9 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
   // bye max placement is 0-indexed, this is also the display variable
   const [byeMaxPlacement, setByeMaxPlacement] = useState(1);
   const [spreadCap, setSpreadCap] = useState(0);
-  const [suspendedResult, setSuspendedResult] = useState<
-    valueof<TournamentGameResultMap>
-  >(TournamentGameResult.FORFEIT_LOSS);
+  const [suspendedResult, setSuspendedResult] = useState<TournamentGameResult>(
+    TournamentGameResult.FORFEIT_LOSS
+  );
   const { tournamentContext } = useTournamentStoreContext();
 
   useEffect(() => {
@@ -909,19 +906,19 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
       return;
     }
     const div = tournamentContext.divisions[division];
-    const gameRequest = div.divisionControls?.getGameRequest();
+    const gameRequest = div.divisionControls?.gameRequest;
     if (gameRequest) {
       setSelectedGameRequest(gameRequest);
     } else {
       setSelectedGameRequest(undefined);
     }
     if (div.divisionControls) {
-      setGibsonize(div.divisionControls.getGibsonize());
-      setGibsonSpread(div.divisionControls.getGibsonSpread());
-      setGibsonMinPlacement(div.divisionControls.getMinimumPlacement() + 1);
-      setByeMaxPlacement(div.divisionControls.getMaximumByePlacement() + 1);
-      setSuspendedResult(div.divisionControls.getSuspendedResult());
-      setSpreadCap(div.divisionControls.getSpreadCap());
+      setGibsonize(div.divisionControls.gibsonize);
+      setGibsonSpread(div.divisionControls.gibsonSpread);
+      setGibsonMinPlacement(div.divisionControls.minimumPlacement + 1);
+      setByeMaxPlacement(div.divisionControls.maximumByePlacement + 1);
+      setSuspendedResult(div.divisionControls.suspendedResult);
+      setSpreadCap(div.divisionControls.spreadCap);
     }
   }, [division, tournamentContext.divisions]);
 
@@ -953,26 +950,26 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
       showError('No game request');
       return;
     }
-    const ctrls = new DivisionControls();
-    ctrls.setId(props.tournamentID);
-    ctrls.setDivision(division);
-    ctrls.setGameRequest(selectedGameRequest);
-    // can set this later to whatever values, along with a spread
-    ctrls.setSuspendedResult(suspendedResult);
-    if (suspendedResult === TournamentGameResult.BYE) {
-      ctrls.setSuspendedSpread(50);
-    } else if (suspendedResult === TournamentGameResult.FORFEIT_LOSS) {
-      ctrls.setSuspendedSpread(-50);
-    }
-    ctrls.setAutoStart(false);
-    ctrls.setGibsonize(gibsonize);
-    ctrls.setGibsonSpread(gibsonSpread);
-    ctrls.setMinimumPlacement(gibsonMinPlacement - 1);
-    ctrls.setMaximumByePlacement(byeMaxPlacement - 1);
-    ctrls.setSpreadCap(spreadCap);
+    const ctrls = new DivisionControls({
+      id: props.tournamentID,
+      division,
+      gameRequest: selectedGameRequest,
+      // can set this later to whatever values, along with a spread
+      suspendedResult,
+      autoStart: false,
+      gibsonize,
+      gibsonSpread,
+      minimumPlacement: gibsonMinPlacement - 1,
+      maximumByePlacement: byeMaxPlacement - 1,
+      spreadCap: spreadCap,
+    });
 
-    // We are posting binary here because otherwise we need to make
-    // a JSON representation of GameRequest and that's a pain.
+    if (suspendedResult === TournamentGameResult.BYE) {
+      ctrls.suspendedSpread = 50;
+    } else if (suspendedResult === TournamentGameResult.FORFEIT_LOSS) {
+      ctrls.suspendedSpread = -50;
+    }
+
     try {
       await postProto(
         TournamentResponse,
@@ -1010,18 +1007,18 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
   const copySettings = React.useCallback(() => {
     // copy settings from copyFromDivision to division
     const cd = tournamentContext.divisions[copyFromDivision];
-    const cdCopy = cd.divisionControls?.cloneMessage();
+    const cdCopy = cd.divisionControls?.clone();
     if (!cdCopy) {
       return;
     }
-    setSelectedGameRequest(cdCopy.getGameRequest());
-    setSuspendedResult(cdCopy.getSuspendedResult());
-    setGibsonize(cdCopy.getGibsonize());
-    setGibsonSpread(cdCopy.getGibsonSpread());
-    setSpreadCap(cdCopy.getSpreadCap());
+    setSelectedGameRequest(cdCopy.gameRequest);
+    setSuspendedResult(cdCopy.suspendedResult);
+    setGibsonize(cdCopy.gibsonize);
+    setGibsonSpread(cdCopy.gibsonSpread);
+    setSpreadCap(cdCopy.spreadCap);
     // These are display variables so add 1 since they're 0-indexed:
-    setGibsonMinPlacement(cdCopy.getMinimumPlacement() + 1);
-    setByeMaxPlacement(cdCopy.getMaximumByePlacement() + 1);
+    setGibsonMinPlacement(cdCopy.minimumPlacement + 1);
+    setByeMaxPlacement(cdCopy.maximumByePlacement + 1);
   }, [copyFromDivision, tournamentContext.divisions]);
 
   return (
@@ -1208,24 +1205,18 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
 
 type RdCtrlFieldsProps = {
   setting: RoundSetting;
-  onChange: (
-    fieldName: keyof SingleRoundSetting | keyof RoundSetting,
-    value: string | number | boolean | pairingMethod
-  ) => void;
+  onChange: (fieldName: string, value: string | number | boolean) => void;
   onRemove: () => void;
 };
 
 type SingleRdCtrlFieldsProps = {
-  setting: SingleRoundSetting;
-  onChange: (
-    fieldName: keyof SingleRoundSetting,
-    value: string | number | boolean | pairingMethod
-  ) => void;
+  setting: RoundControl;
+  onChange: (fieldName: string, value: string | number | boolean) => void;
 };
 
 const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
   const { setting } = props;
-  const addlFields = fieldsForMethod(setting.pairingType);
+  const addlFields = fieldsForMethod(setting.pairingMethod);
 
   const formItemLayout = {
     labelCol: {
@@ -1286,7 +1277,7 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
         }
       >
         <Select
-          value={setting.pairingType}
+          value={setting.pairingMethod}
           onChange={(e) => {
             props.onChange('pairingType', e);
             // Show more fields potentially.
@@ -1390,27 +1381,27 @@ const RoundControlFields = (props: RdCtrlFieldsProps) => {
   );
 };
 
-const rdCtrlFromSetting = (rdSetting: SingleRoundSetting): RoundControl => {
-  const rdCtrl = new RoundControl();
-  rdCtrl.setFirstMethod(FirstMethod.AUTOMATIC_FIRST);
-  rdCtrl.setGamesPerRound(1);
-  rdCtrl.setPairingMethod(rdSetting.pairingType);
+const rdCtrlFromSetting = (rdSetting: RoundControl): RoundControl => {
+  const rdCtrl = new RoundControl({
+    firstMethod: FirstMethod.AUTOMATIC_FIRST,
+    gamesPerRound: 1,
+    pairingMethod: rdSetting.pairingMethod,
+  });
 
-  switch (rdSetting.pairingType) {
+  switch (rdSetting.pairingMethod) {
     case PairingMethod.SWISS:
     case PairingMethod.FACTOR:
-      rdCtrl.setMaxRepeats(rdSetting.maxRepeats || 0);
-      rdCtrl.setAllowOverMaxRepeats(true);
-      rdCtrl.setRepeatRelativeWeight(rdSetting.repeatRelativeWeight || 0);
-      rdCtrl.setWinDifferenceRelativeWeight(
-        rdSetting.winDifferenceRelativeWeight || 0
-      );
+      rdCtrl.maxRepeats = rdSetting.maxRepeats || 0;
+      rdCtrl.allowOverMaxRepeats = true;
+      rdCtrl.repeatRelativeWeight = rdSetting.repeatRelativeWeight || 0;
+      rdCtrl.winDifferenceRelativeWeight =
+        rdSetting.winDifferenceRelativeWeight || 0;
       // This should be auto-calculated, and only for factor
-      rdCtrl.setFactor(rdSetting.factor || 0);
+      rdCtrl.factor = rdSetting.factor || 0;
       break;
 
     case PairingMethod.TEAM_ROUND_ROBIN:
-      rdCtrl.setGamesPerRound(rdSetting.gamesPerRound || 1);
+      rdCtrl.gamesPerRound = rdSetting.gamesPerRound || 1;
       break;
   }
   // Other cases don't matter, we've already set the pairing method.
@@ -1420,8 +1411,8 @@ const rdCtrlFromSetting = (rdSetting: SingleRoundSetting): RoundControl => {
 const SetSingleRoundControls = (props: { tournamentID: string }) => {
   const { useState } = useMountedState();
   const [division, setDivision] = useState('');
-  const [roundSetting, setRoundSetting] = useState<SingleRoundSetting>({
-    pairingType: PairingMethod.RANDOM,
+  const [roundSetting, setRoundSetting] = useState<RoundControl>({
+    pairingMethod: PairingMethod.RANDOM,
   });
   const [userVisibleRound, setUserVisibleRound] = useState(1);
 
@@ -1439,13 +1430,14 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
       return;
     }
 
-    const ctrls = new SingleRoundControlsRequest();
-    ctrls.setId(props.tournamentID);
-    ctrls.setDivision(division);
-    ctrls.setRound(userVisibleRound - 1); // round is 0-indexed on backend.
+    const ctrls = new SingleRoundControlsRequest({
+      id: props.tournamentID,
+      division: division,
+      round: userVisibleRound - 1, // round is 0-indexed on backend.
+    });
 
     const rdCtrl = rdCtrlFromSetting(roundSetting);
-    ctrls.setRoundControls(rdCtrl);
+    ctrls.roundControls = rdCtrl;
     try {
       await postProto(
         TournamentResponse,
@@ -1524,13 +1516,13 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
     let max = 1;
     roundControls.forEach((v: RoundControl, rd: number) => {
       const thisSetting = {
-        pairingType: v.getPairingMethod(),
-        gamesPerRound: v.getGamesPerRound(),
-        factor: v.getFactor(),
-        maxRepeats: v.getMaxRepeats(),
-        allowOverMaxRepeats: v.getAllowOverMaxRepeats(),
-        repeatRelativeWeight: v.getRepeatRelativeWeight(),
-        winDifferenceRelativeWeight: v.getWinDifferenceRelativeWeight(),
+        pairingType: v.pairingMethod,
+        gamesPerRound: v.gamesPerRound,
+        factor: v.factor,
+        maxRepeats: v.maxRepeats,
+        allowOverMaxRepeats: v.allowOverMaxRepeats,
+        repeatRelativeWeight: v.repeatRelativeWeight,
+        winDifferenceRelativeWeight: v.winDifferenceRelativeWeight,
       };
       if (lastSetting !== null) {
         if (settingsEqual(lastSetting, thisSetting)) {
@@ -1595,9 +1587,10 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
       lastRd = rdCtrl.endRound;
     }
 
-    const ctrls = new DivisionRoundControls();
-    ctrls.setId(props.tournamentID);
-    ctrls.setDivision(division);
+    const ctrls = new DivisionRoundControls({
+      id: props.tournamentID,
+      division: division,
+    });
 
     const roundControls = new Array<RoundControl>();
 
@@ -1606,7 +1599,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
         roundControls.push(rdCtrlFromSetting(v.setting));
       }
     });
-    ctrls.setRoundControlsList(roundControls);
+    ctrls.roundControls = roundControls;
     try {
       await postProto(
         TournamentResponse,
@@ -1684,10 +1677,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
         <RoundControlFields
           key={`rdctrl-${idx}`}
           setting={v}
-          onChange={(
-            fieldName: keyof RoundSetting | keyof SingleRoundSetting,
-            value: string | number | boolean | pairingMethod
-          ) => {
+          onChange={(fieldName: string, value: string | number | boolean) => {
             const newRdArray = [...roundArray];
 
             if (fieldName === 'beginRound' || fieldName === 'endRound') {
@@ -1720,7 +1710,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
           newRdArray.push({
             beginRound: last?.endRound ? last.endRound + 1 : 1,
             endRound: last?.endRound ? last.endRound + 1 : 1,
-            setting: { pairingType: PairingMethod.MANUAL },
+            setting: { pairingMethod: PairingMethod.MANUAL },
           });
           setRoundArray(newRdArray);
         }}
@@ -1762,7 +1752,7 @@ const ExportTournament = (props: { tournamentID: string }) => {
         );
         const link = document.createElement('a');
         link.href = url;
-        const tname = tournamentContext.metadata.getName();
+        const tname = tournamentContext.metadata.name;
         let extension;
         switch (vals.format) {
           case 'tsh':
@@ -1817,10 +1807,10 @@ const EditDescription = (props: { tournamentID: string }) => {
   useEffect(() => {
     const metadata = tournamentContext.metadata;
     form.setFieldsValue({
-      name: metadata.getName(),
-      description: metadata.getDescription(),
-      logo: metadata.getLogo(),
-      color: metadata.getColor(),
+      name: metadata.name,
+      description: metadata.description,
+      logo: metadata.logo,
+      color: metadata.color,
     });
   }, [form, tournamentContext.metadata]);
 

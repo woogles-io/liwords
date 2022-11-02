@@ -24,7 +24,7 @@ type EntityProps = {
   channel: string;
   msgID: string;
   message: string;
-  timestamp?: number;
+  timestamp?: bigint;
   anonymous?: boolean;
   highlight: boolean;
   highlightText?: string;
@@ -61,11 +61,11 @@ export const ChatEntity = (props: EntityProps) => {
   if (props.timestamp) {
     if (
       moment(Date.now()).format('MMM Do') !==
-      moment(props.timestamp).format('MMM Do')
+      moment(Number(props.timestamp)).format('MMM Do')
     ) {
-      ts = moment(props.timestamp).format('MMM Do - LT');
+      ts = moment(Number(props.timestamp)).format('MMM Do - LT');
     } else {
-      ts = moment(props.timestamp).format('LT');
+      ts = moment(Number(props.timestamp)).format('LT');
     }
   }
   let el;

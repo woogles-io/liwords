@@ -288,7 +288,7 @@ export const Table = React.memo((props: Props) => {
     // as soon as the game ends (so the streak updates without having to go
     // to a new game).
 
-    if (!gameInfo.game_request.original_request_id) {
+    if (!gameInfo.game_request.originalRequestId) {
       return;
     }
     if (gameDone && !gameEndMessage) {
@@ -301,7 +301,7 @@ export const Table = React.memo((props: Props) => {
         .post<StreakInfoResponse>(
           toAPIUrl('game_service.GameMetadataService', 'GetRematchStreak'),
           {
-            original_request_id: gameInfo.game_request.original_request_id,
+            original_request_id: gameInfo.game_request.originalRequestId,
           }
         )
         .then((streakresp) => {
@@ -313,7 +313,7 @@ export const Table = React.memo((props: Props) => {
 
     // Call this when a gameEndMessage comes in, so the streak updates
     // at the end of the game.
-  }, [gameInfo.game_request.original_request_id, gameEndMessage, gameDone]);
+  }, [gameInfo.game_request.originalRequestId, gameEndMessage, gameDone]);
 
   useEffect(() => {
     if (pTimedOut === undefined) return;
@@ -331,11 +331,9 @@ export const Table = React.memo((props: Props) => {
     });
 
     const to = new TimedOut();
-    to.setGameId(gameID);
-    to.setUserId(timedout);
-    sendSocketMsg(
-      encodeToSocketFmt(MessageType.TIMED_OUT, to.serializeBinary())
-    );
+    to.gameId = gameID;
+    to.userId = timedout;
+    sendSocketMsg(encodeToSocketFmt(MessageType.TIMED_OUT, to.toBinary()));
     setPTimedOut(undefined);
     // React Hook useEffect has missing dependencies: 'gameContext.uidToPlayerOrder', 'gameInfo.players', 'isObserver', 'sendSocketMsg', and 'setPTimedOut'.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -354,9 +352,9 @@ export const Table = React.memo((props: Props) => {
     // If we are not the observer, tell the server we're ready for the game to start.
     if (gameInfo.game_end_reason === 'NONE' && !observer) {
       const evt = new ReadyForGame();
-      evt.setGameId(gameID);
+      evt.gameId = gameID;
       sendSocketMsg(
-        encodeToSocketFmt(MessageType.READY_FOR_GAME, evt.serializeBinary())
+        encodeToSocketFmt(MessageType.READY_FOR_GAME, evt.toBinary())
       );
     }
     // React Hook useEffect has missing dependencies: 'gameID' and 'sendSocketMsg'.
@@ -372,49 +370,42 @@ export const Table = React.memo((props: Props) => {
       gameDone,
       gameID,
       lexicon: gameInfo.game_request.lexicon,
-      variant: gameInfo.game_request.rules.variant_name,
+      variant: gameInfo.game_request.rules?.variantName,
     });
 
   const acceptRematch = useCallback(
     (reqID: string) => {
       const evt = new SoughtGameProcessEvent();
-      evt.setRequestId(reqID);
+      evt.requestId = reqID;
       sendSocketMsg(
-        encodeToSocketFmt(
-          MessageType.SOUGHT_GAME_PROCESS_EVENT,
-          evt.serializeBinary()
-        )
+        encodeToSocketFmt(MessageType.SOUGHT_GAME_PROCESS_EVENT, evt.toBinary())
       );
     },
     [sendSocketMsg]
   );
 
   const handleAcceptRematch = useCallback(() => {
-    const gr = rematchRequest.getGameRequest();
+    const gr = rematchRequest.gameRequest;
     if (gr) {
-      acceptRematch(gr.getRequestId());
+      acceptRematch(gr.requestId);
       setRematchRequest(new SeekRequest());
     }
   }, [acceptRematch, rematchRequest, setRematchRequest]);
 
   const declineRematch = useCallback(
     (reqID: string) => {
-      const evt = new DeclineSeekRequest();
-      evt.setRequestId(reqID);
+      const evt = new DeclineSeekRequest({ requestId: reqID });
       sendSocketMsg(
-        encodeToSocketFmt(
-          MessageType.DECLINE_SEEK_REQUEST,
-          evt.serializeBinary()
-        )
+        encodeToSocketFmt(MessageType.DECLINE_SEEK_REQUEST, evt.toBinary())
       );
     },
     [sendSocketMsg]
   );
 
   const handleDeclineRematch = useCallback(() => {
-    const gr = rematchRequest.getGameRequest();
+    const gr = rematchRequest.gameRequest;
     if (gr) {
-      declineRematch(gr.getRequestId());
+      declineRematch(gr.requestId);
       setRematchRequest(new SeekRequest());
     }
   }, [declineRematch, rematchRequest, setRematchRequest]);
@@ -490,12 +481,10 @@ export const Table = React.memo((props: Props) => {
     searchedTurn,
     setSearchParams,
   ]);
-  const boardTheme =
-    'board--' + tournamentContext.metadata.getBoardStyle() || '';
-  const tileTheme = 'tile--' + tournamentContext.metadata.getTileStyle() || '';
+  const boardTheme = 'board--' + tournamentContext.metadata.boardStyle || '';
+  const tileTheme = 'tile--' + tournamentContext.metadata.tileStyle || '';
   const alphabet = useMemo(
-    () =>
-      alphabetFromName(gameInfo.game_request.rules.letter_distribution_name),
+    () => alphabetFromName(gameInfo.game_request.rules?.letterDistributionName),
     [gameInfo]
   );
   const showingFinalTurn =
@@ -559,7 +548,7 @@ export const Table = React.memo((props: Props) => {
       <div className={`game-table ${boardTheme} ${tileTheme}`}>
         <div
           className={`chat-area ${
-            !isExamining && tournamentContext.metadata.getDisclaimer()
+            !isExamining && tournamentContext.metadata.disclaimer
               ? 'has-disclaimer'
               : ''
           }`}
@@ -567,10 +556,10 @@ export const Table = React.memo((props: Props) => {
         >
           <Card className="left-menu">
             {gameInfo.tournament_id ? (
-              <Link to={tournamentContext.metadata?.getSlug()}>
+              <Link to={tournamentContext.metadata?.slug}>
                 <HomeOutlined />
                 Back to
-                {isClubType(tournamentContext.metadata?.getType())
+                {isClubType(tournamentContext.metadata?.type)
                   ? ' Club'
                   : ' Tournament'}
               </Link>
@@ -601,15 +590,15 @@ export const Table = React.memo((props: Props) => {
             <Analyzer
               includeCard
               lexicon={gameInfo.game_request.lexicon}
-              variant={gameInfo.game_request.rules.variant_name}
+              variant={gameInfo.game_request.rules?.variantName}
             />
           ) : (
             <React.Fragment key="not-examining">
               <Notepad includeCard />
-              {tournamentContext.metadata.getDisclaimer() && (
+              {tournamentContext.metadata.disclaimer && (
                 <Disclaimer
-                  disclaimer={tournamentContext.metadata.getDisclaimer()}
-                  logoUrl={tournamentContext.metadata.getLogo()}
+                  disclaimer={tournamentContext.metadata.disclaimer}
+                  logoUrl={tournamentContext.metadata.logo}
                 />
               )}
             </React.Fragment>
@@ -619,7 +608,7 @@ export const Table = React.memo((props: Props) => {
               sendReady={() =>
                 readyForTournamentGame(
                   sendSocketMsg,
-                  tournamentContext.metadata?.getId(),
+                  tournamentContext.metadata?.id,
                   competitorState
                 )
               }
@@ -647,29 +636,29 @@ export const Table = React.memo((props: Props) => {
               props.sendSocketMsg(
                 encodeToSocketFmt(
                   MessageType.CLIENT_GAMEPLAY_EVENT,
-                  evt.serializeBinary()
+                  evt.toBinary()
                 )
               )
             }
             gameDone={gameDone}
             playerMeta={gameInfo.players}
             tournamentID={gameInfo.tournament_id}
-            vsBot={gameInfo.game_request.player_vs_bot}
-            tournamentSlug={tournamentContext.metadata?.getSlug()}
+            vsBot={gameInfo.game_request.playerVsBot}
+            tournamentSlug={tournamentContext.metadata?.slug}
             tournamentPairedMode={isPairedMode(
               tournamentContext.metadata?.getType()
             )}
             tournamentNonDirectorObserver={tournamentNonDirectorObserver}
             // why does my linter keep overwriting this?
             // eslint-disable-next-line max-len
-            tournamentPrivateAnalysis={tournamentContext.metadata?.getPrivateAnalysis()}
+            tournamentPrivateAnalysis={
+              tournamentContext.metadata?.privateAnalysis
+            }
             lexicon={gameInfo.game_request.lexicon}
             alphabet={alphabet}
-            challengeRule={gameInfo.game_request.challenge_rule}
+            challengeRule={gameInfo.game_request.challengeRule}
             handleAcceptRematch={
-              rematchRequest.getRematchFor() === gameID
-                ? handleAcceptRematch
-                : null
+              rematchRequest.rematchFor === gameID ? handleAcceptRematch : null
             }
             handleAcceptAbort={() => {}}
             handleSetHover={handleSetHover}
@@ -691,7 +680,7 @@ export const Table = React.memo((props: Props) => {
               sendReady={() =>
                 readyForTournamentGame(
                   sendSocketMsg,
-                  tournamentContext.metadata?.getId(),
+                  tournamentContext.metadata?.id,
                   competitorState
                 )
               }
@@ -701,9 +690,9 @@ export const Table = React.memo((props: Props) => {
           <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
           <GameInfo
             meta={gameInfo}
-            tournamentName={tournamentContext.metadata?.getName()}
-            colorOverride={tournamentContext.metadata?.getColor()}
-            logoUrl={tournamentContext.metadata?.getLogo()}
+            tournamentName={tournamentContext.metadata?.name}
+            colorOverride={tournamentContext.metadata?.color}
+            logoUrl={tournamentContext.metadata?.logo}
           />
           <Pool
             pool={examinableGameContext?.pool}
@@ -713,10 +702,8 @@ export const Table = React.memo((props: Props) => {
             alphabet={alphabet}
           />
           <Popconfirm
-            title={`${rematchRequest
-              .getUser()
-              ?.getDisplayName()} sent you a rematch request`}
-            visible={rematchRequest.getRematchFor() !== ''}
+            title={`${rematchRequest.user?.displayName} sent you a rematch request`}
+            visible={rematchRequest.rematchFor !== ''}
             onConfirm={handleAcceptRematch}
             onCancel={handleDeclineRematch}
             okText="Accept"
@@ -727,7 +714,7 @@ export const Table = React.memo((props: Props) => {
             username={username}
             playing={us !== undefined}
             lexicon={gameInfo.game_request.lexicon}
-            variant={gameInfo.game_request.rules.variant_name}
+            variant={gameInfo.game_request.rules?.variantName}
             events={examinableGameContext.turns}
             board={examinableGameContext.board}
             playerMeta={gameInfo.players}

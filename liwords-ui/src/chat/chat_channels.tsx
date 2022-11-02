@@ -9,7 +9,7 @@ import {
 import { useMountedState } from '../utils/mounted';
 import { toAPIUrl } from '../api/api';
 import { useDebounce } from '../utils/debounce';
-import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
+import { ActiveChatChannels_Channel } from '../gen/api/proto/user_service/user_service_pb';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { DisplayUserFlag } from '../shared/display_flag';
 import { TrophyOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons';
@@ -118,7 +118,7 @@ type SearchResponse = {
 };
 
 const extractUser = (
-  ch: ActiveChatChannels.Channel.AsObject,
+  ch: ActiveChatChannels_Channel,
   userId: string,
   username: string
 ): user => {
@@ -185,9 +185,13 @@ export const ChatChannels = React.memo((props: Props) => {
     };
   }, [setHeight]);
 
-  const channelList = chatChannels?.channelsList
+  const channelList = chatChannels?.channels
     .sort((chA, chB) => {
-      return chB.lastUpdate - chA.lastUpdate;
+      return chB.lastUpdate > chA.lastUpdate
+        ? 1
+        : chA.lastUpdate > chB.lastUpdate
+        ? -1
+        : 0;
     })
     .filter((ch) => {
       let keep = true;

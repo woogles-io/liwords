@@ -20,7 +20,10 @@ import { RedoOutlined } from '@ant-design/icons/lib';
 import { EmptySpace, EphemeralTile } from '../utils/cwgame/common';
 import { Unrace } from '../utils/unrace';
 import { sortTiles } from '../store/constants';
-import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import {
+  GameEvent_Type,
+  GameEvent_Direction,
+} from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { Direction } from '../utils/cwgame/common';
 import { GameState } from '../store/reducers/game_reducer';
 
@@ -28,7 +31,7 @@ type AnalyzerProps = {
   includeCard?: boolean;
   style?: React.CSSProperties;
   lexicon: string;
-  variant: string;
+  variant?: string;
 };
 
 type JsonMove =
@@ -235,7 +238,7 @@ export const analyzerMoveFromJsonMove = (
 const parseExaminableGameContext = (
   examinableGameContext: GameState,
   lexicon: string,
-  variant: string
+  variant?: string
 ) => {
   const {
     board: { dim, letters },
@@ -361,14 +364,14 @@ const AnalyzerContext = React.createContext<{
   setAutoMode: React.Dispatch<React.SetStateAction<boolean>>;
   cachedMoves: Array<AnalyzerMove> | null;
   examinerLoading: boolean;
-  requestAnalysis: (lexicon: string, variant: string) => void;
+  requestAnalysis: (lexicon: string, variant?: string) => void;
   showMovesForTurn: number;
   setShowMovesForTurn: (a: number) => void;
 }>({
   autoMode: false,
   cachedMoves: null,
   examinerLoading: false,
-  requestAnalysis: (lexicon: string, variant: string) => {},
+  requestAnalysis: (lexicon: string, variant?: string) => {},
   showMovesForTurn: -1,
   setShowMovesForTurn: (a: number) => {},
   setAutoMode: () => {},
@@ -597,11 +600,11 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
       ++i
     ) {
       const evt = gameContext.turns[i];
-      switch (evt.getType()) {
-        case GameEvent.Type.TILE_PLACEMENT_MOVE:
-        case GameEvent.Type.PHONY_TILES_RETURNED:
-        case GameEvent.Type.PASS:
-        case GameEvent.Type.EXCHANGE:
+      switch (evt.type) {
+        case GameEvent_Type.TILE_PLACEMENT_MOVE:
+        case GameEvent_Type.PHONY_TILES_RETURNED:
+        case GameEvent_Type.PASS:
+        case GameEvent_Type.EXCHANGE:
           return evt;
       }
     }
@@ -610,28 +613,28 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   const actualMove = useMemo(() => {
     const evt = actualEvent;
     if (evt) {
-      switch (evt.getType()) {
-        case GameEvent.Type.TILE_PLACEMENT_MOVE: {
-          const down = evt.getDirection() === Direction.Vertical;
+      switch (evt.type) {
+        case GameEvent_Type.TILE_PLACEMENT_MOVE: {
+          const down = evt.direction === GameEvent_Direction.VERTICAL;
           return {
             action: 'play',
             down,
-            lane: down ? evt.getColumn() : evt.getRow(),
-            idx: down ? evt.getRow() : evt.getColumn(),
-            word: Array.from(evt.getPlayedTiles(), labelToNum),
-            score: evt.getScore(),
+            lane: down ? evt.column : evt.row,
+            idx: down ? evt.row : evt.column,
+            word: Array.from(evt.playedTiles, labelToNum),
+            score: evt.score,
           };
         }
-        case GameEvent.Type.PHONY_TILES_RETURNED: {
+        case GameEvent_Type.PHONY_TILES_RETURNED: {
           return null;
         }
-        case GameEvent.Type.PASS: {
+        case GameEvent_Type.PASS: {
           return { action: 'exchange', tiles: [] };
         }
-        case GameEvent.Type.EXCHANGE: {
+        case GameEvent_Type.EXCHANGE: {
           return {
             action: 'exchange',
-            tiles: Array.from(evt.getExchanged(), labelToNum),
+            tiles: Array.from(evt.exchanged, labelToNum),
           };
         }
       }

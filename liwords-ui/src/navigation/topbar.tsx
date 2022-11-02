@@ -199,9 +199,7 @@ export const TopBar = React.memo((props: Props) => {
     </ul>
   );
 
-  const homeLink = props.tournamentID
-    ? tournamentContext.metadata?.getSlug()
-    : '/';
+  const homeLink = props.tournamentID ? tournamentContext.metadata?.slug : '/';
 
   return (
     <nav className="top-header" id="main-nav">
@@ -218,7 +216,7 @@ export const TopBar = React.memo((props: Props) => {
           {props.tournamentID ? (
             <div className="tournament">
               Back to
-              {isClubType(tournamentContext.metadata?.getType())
+              {isClubType(tournamentContext.metadata?.type)
                 ? ' Club'
                 : ' Tournament'}
             </div>
