@@ -11,7 +11,7 @@ protoc --es_out=liwords-ui/src/gen  --proto_path=$CODE_DIR macondo/api/proto/mac
 
 for api in "user_service" "game_service" "config_service" "tournament_service" "mod_service" "word_service" "puzzle_service"
 do
-    protoc --twirp_out=rpc --go_out=rpc --proto_path=$CODE_DIR/ --proto_path=$CODE_DIR/liwords --go_opt=paths=source_relative --twirp_opt=paths=source_relative api/proto/$api/$api.proto
+    protoc --twirp_out=rpc --go_out=rpc --proto_path=$CODE_DIR/ --proto_path=$CODE_DIR/liwords --go_opt=paths=source_relative --twirp_opt=paths=source_relative --connect-web_out=liwords-ui/src/gen api/proto/$api/$api.proto
 done
 
 for esapi in "config_service" "game_service" "user_service" "tournament_service" "puzzle_service"

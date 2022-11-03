@@ -13,7 +13,6 @@ import {
 import './chat.scss';
 import { Presences } from './presences';
 import { ChatChannels } from './chat_channels';
-import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 import {
   ChatEntityObj,
@@ -23,6 +22,8 @@ import {
 import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
 import { Players } from './players';
 import { ChatMessage, ChatMessages } from '../gen/api/proto/ipc/chat_pb';
+import { useClient } from '../utils/hooks/connect';
+import { SocializeService } from '../gen/api/proto/user_service/user_service_connectweb';
 
 const { TabPane } = Tabs;
 
@@ -61,7 +62,7 @@ export const Chat = React.memo((props: Props) => {
     props.suppressDefault || !loggedIn ? 'CHAT' : 'PLAYERS'
   );
   const chatTab = selectedChatTab === 'CHAT' ? tabContainerElement : null;
-
+  const socializeClient = useClient(SocializeService);
   // Chat auto-scrolls when the last entity is visible.
   const [hasUnreadChat, setHasUnreadChat] = useState(false);
   const {
@@ -226,41 +227,34 @@ export const Chat = React.memo((props: Props) => {
     setHeight();
   }, [doChatAutoScroll, setHeight]);
 
-  const fetchChannels = useCallback(() => {
+  const fetchChannels = useCallback(async () => {
     if (loggedIn) {
       const initial = !channelsFetched;
       if (initial) {
         setChannelsFetched(true);
       }
-      axios
-        .post<ActiveChatChannels>(
-          toAPIUrl('user_service.SocializeService', 'GetActiveChatChannels'),
-          {
-            number: 20,
-            offset: 0,
-            tournament_id: props.tournamentID || '',
-          },
-          { withCredentials: true }
-        )
-        .then((res) => {
-          console.log('Fetched channels:', res.data.channels);
-          const newChannels = res.data;
-          setChatChannels(newChannels);
-          enableChatAutoScroll();
-          if (initial) {
-            // If these were set already, just return that list,
-            // otherwise respect the hasUpdate fields
-            const newUpdatedChannels = new Set(
-              newChannels?.channels
-                ?.filter((ch) => ch.hasUpdate)
-                ?.map((ch) => {
-                  return ch.name;
-                })
-            );
-            setUpdatedChannels(newUpdatedChannels);
-            setNotificationCount(newUpdatedChannels.size);
-          }
-        });
+      const resp = await socializeClient.getActiveChatChannels({
+        number: 20,
+        offset: 0,
+        tournamentId: props.tournamentID || '',
+      });
+
+      console.log('Fetched channels:', resp.channels);
+      setChatChannels(resp);
+      enableChatAutoScroll();
+      if (initial) {
+        // If these were set already, just return that list,
+        // otherwise respect the hasUpdate fields
+        const newUpdatedChannels = new Set(
+          resp?.channels
+            ?.filter((ch) => ch.hasUpdate)
+            ?.map((ch) => {
+              return ch.name;
+            })
+        );
+        setUpdatedChannels(newUpdatedChannels);
+        setNotificationCount(newUpdatedChannels.size);
+      }
     }
   }, [
     setChatChannels,
@@ -456,24 +450,19 @@ export const Chat = React.memo((props: Props) => {
     if (channel && channel !== lastChannel.current) {
       lastChannel.current = channel || '';
       setChannelSelectedTime(Date.now());
-      axios
-        .post<ChatMessages>(
-          toAPIUrl('user_service.SocializeService', 'GetChatsForChannel'),
-          {
-            channel,
-          },
-          { withCredentials: loggedIn }
-        )
-        .then((res) => {
-          clearChat();
-          const messages: Array<ChatMessage> = res.data?.messages;
-          if (messages) {
-            addChats(messages.map(chatMessageToChatEntity));
-          }
-          setHasUnreadChat(false);
-          setChatAutoScroll(true);
-          setHeight();
-        });
+      const fetchChats = async () => {
+        const chats = await socializeClient.getChatsForChannel({ channel });
+
+        clearChat();
+        const messages: Array<ChatMessage> = chats.messages;
+        if (messages) {
+          addChats(messages.map(chatMessageToChatEntity));
+        }
+        setHasUnreadChat(false);
+        setChatAutoScroll(true);
+        setHeight();
+      };
+      fetchChats();
     } else {
       setHeight();
     }

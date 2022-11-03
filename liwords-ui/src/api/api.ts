@@ -1,3 +1,5 @@
+// this file is deprecated. delete me.
+import { Message } from '@bufbuild/protobuf';
 import { message } from 'antd';
 import { parseWooglesError } from '../utils/parse_woogles_error';
 
@@ -55,6 +57,27 @@ export const postJsonObj = async (
   }
 };
 
+const postJson = async (service: string, method: string, msg: Message) => {
+  const url = toAPIUrl(service, method);
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: msg.toJsonString(),
+  });
+
+  if (!response.ok) {
+    const errJSON = await response.json();
+    const msg = parseWooglesError(errJSON.msg);
+    throw new Error(msg);
+  } else {
+    const ab = await response.text();
+    return ab;
+  }
+};
+
 const postBinary = async (service: string, method: string, msg: PBMsg) => {
   const url = toAPIUrl(service, method);
 
@@ -88,3 +111,12 @@ export const postProto: <T>(
   responseType.fromBinary(
     new Uint8Array(await postBinary(service, method, msg))
   );
+/*
+export const postProtoJson = (
+  responseType: Message,
+  service: string,
+  method: string,
+  msg: Message
+) => Promise<T> = async (responseType, service, method, msg) =>
+  responseType.fromJsonString(await postJson(service, method, msg));
+*/

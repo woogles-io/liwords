@@ -186,7 +186,7 @@ export const ChatChannels = React.memo((props: Props) => {
   }, [setHeight]);
 
   const channelList = chatChannels?.channels
-    .sort((chA, chB) => {
+    ?.sort((chA, chB) => {
       return chB.lastUpdate > chA.lastUpdate
         ? 1
         : chA.lastUpdate > chB.lastUpdate
@@ -206,6 +206,7 @@ export const ChatChannels = React.memo((props: Props) => {
       return ch.name !== props.defaultChannel;
     })
     .filter((ch) => {
+      console.log('evaluating ch', ch);
       // From the lobby, filter out channels we can't get new messages for
       // Todo: Remove this when we send tournament messages to all enrollees
       // regardless of their location
