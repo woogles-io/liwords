@@ -1,5 +1,4 @@
 import React from 'react';
-import axios from 'axios';
 
 import { Link } from 'react-router-dom';
 import './topbar.scss';
@@ -10,10 +9,11 @@ import {
   useResetStoreContext,
   useTournamentStoreContext,
 } from '../store/store';
-import { toAPIUrl } from '../api/api';
 import { LoginModal } from '../lobby/login';
 import { useMountedState } from '../utils/mounted';
 import { isClubType } from '../store/constants';
+import { flashError, useClient } from '../utils/hooks/connect';
+import { AuthenticationService } from '../gen/api/proto/user_service/user_service_connectweb';
 
 const TopMenu = React.memo((props: Props) => {
   const playMenu = (
@@ -153,23 +153,20 @@ export const TopBar = React.memo((props: Props) => {
   const { tournamentContext } = useTournamentStoreContext();
   const { username, loggedIn, connectedToSocket } = loginState;
   const [loginModalVisible, setLoginModalVisible] = useState(false);
+  const authClient = useClient(AuthenticationService);
 
-  const handleLogout = (e: React.MouseEvent) => {
+  const handleLogout = async (e: React.MouseEvent) => {
     e.preventDefault();
-    axios
-      .post(toAPIUrl('user_service.AuthenticationService', 'Logout'), {
-        withCredentials: true,
-      })
-      .then(() => {
-        notification.info({
-          message: 'Success',
-          description: 'You have been logged out.',
-        });
-        resetStore();
-      })
-      .catch((e) => {
-        console.log(e);
+    try {
+      await authClient.logout({});
+      notification.info({
+        message: 'Success',
+        description: 'You have been logged out.',
       });
+      resetStore();
+    } catch (e) {
+      flashError(e);
+    }
   };
   const userMenu = (
     <ul>

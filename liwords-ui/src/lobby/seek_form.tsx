@@ -10,8 +10,6 @@ import {
   AutoComplete,
 } from 'antd';
 
-import axios from 'axios';
-
 import { Store } from 'antd/lib/form/interface';
 import { useMountedState } from '../utils/mounted';
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
@@ -24,7 +22,6 @@ import {
   timeCtrlToDisplayName,
 } from '../store/constants';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
-import { toAPIUrl } from '../api/api';
 import { useDebounce } from '../utils/debounce';
 import { ChallengeRulesFormItem } from './challenge_rules_form_item';
 import {
@@ -40,6 +37,8 @@ import { BotTypesEnum, BotTypesEnumProperties } from './bots';
 import { GameRequest, RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
 import { MatchUser } from '../gen/api/proto/ipc/omgseeks_pb';
 import { ProfileUpdate_Rating } from '../gen/api/proto/ipc/users_pb';
+import { useClient } from '../utils/hooks/connect';
+import { AutocompleteService } from '../gen/api/proto/user_service/user_service_connectweb';
 
 const initTimeFormatter = (val?: number) => {
   return val != null ? initTimeDiscreteScale[val].label : null;
@@ -389,26 +388,16 @@ export const SeekForm = (props: Props) => {
     }
     return defaultPlayers;
   }, [friends, presences, username, tournamentID]);
-  const onUsernameSearch = useCallback(
-    (searchText: string) => {
-      axios
-        .post<SearchResponse>(
-          toAPIUrl('user_service.AutocompleteService', 'GetCompletion'),
-          {
-            prefix: searchText,
-          }
-        )
-        .then((resp) => {
-          console.log('resp', resp.data);
+  const acClient = useClient(AutocompleteService);
 
-          setUsernameOptions(
-            !searchText
-              ? defaultOptions
-              : resp.data.users.map((u) => u.username)
-          );
-        });
+  const onUsernameSearch = useCallback(
+    async (searchText: string) => {
+      const resp = await acClient.getCompletion({ prefix: searchText });
+      setUsernameOptions(
+        !searchText ? defaultOptions : resp.users.map((u) => u.username)
+      );
     },
-    [defaultOptions]
+    [defaultOptions, acClient]
   );
 
   const searchUsernameDebounced = useDebounce(onUsernameSearch, 300);

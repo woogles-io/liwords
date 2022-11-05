@@ -18,7 +18,6 @@ import {
   nicknameFromEvt,
   tilePlacementEventDisplay,
 } from '../utils/cwgame/game_event';
-import { PlayerMetadata } from './game_info';
 import { Turn, gameEventsToTurns } from '../store/reducers/turns';
 import { PoolFormatType } from '../constants/pool_formats';
 import { Notepad } from './notepad';
@@ -26,6 +25,7 @@ import { sortTiles } from '../store/constants';
 import { getVW, isTablet } from '../utils/cwgame/common';
 import { Analyzer } from './analyzer';
 import { HeartFilled } from '@ant-design/icons';
+import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const screenSizes = require('../base.scss').default;
 
@@ -38,12 +38,12 @@ type Props = {
   lexicon: string;
   variant?: string;
   poolFormat: PoolFormatType;
-  playerMeta: Array<PlayerMetadata>;
+  playerMeta: Array<PlayerInfo>;
   gameEpilog: React.ReactElement;
 };
 
 type turnProps = {
-  playerMeta: Array<PlayerMetadata>;
+  playerMeta: Array<PlayerInfo>;
   playing: boolean;
   username: string;
   turn: Turn;
@@ -51,7 +51,7 @@ type turnProps = {
 };
 
 type MoveEntityObj = {
-  player: Partial<PlayerMetadata>;
+  player: Partial<PlayerInfo>;
   coords: string;
   timeRemaining: string;
   moveType: string | ReactNode;

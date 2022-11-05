@@ -9,14 +9,14 @@ export PATH="/opt/node_modules/.bin":$PATH
 protoc --es_out=liwords-ui/src/gen  --proto_path=$CODE_DIR macondo/api/proto/macondo/macondo.proto
 
 
-for api in "user_service" "game_service" "config_service" "tournament_service" "mod_service" "word_service" "puzzle_service"
+for api in "config_service" "game_service" "mod_service" "puzzle_service" "tournament_service"  "user_service" "word_service"
 do
-    protoc --twirp_out=rpc --go_out=rpc --proto_path=$CODE_DIR/ --proto_path=$CODE_DIR/liwords --go_opt=paths=source_relative --twirp_opt=paths=source_relative --connect-web_out=liwords-ui/src/gen api/proto/$api/$api.proto
+    protoc --twirp_out=rpc --go_out=rpc --proto_path=$CODE_DIR/ --proto_path=$CODE_DIR/liwords --go_opt=paths=source_relative --twirp_opt=paths=source_relative  api/proto/$api/$api.proto
 done
 
-for esapi in "config_service" "game_service" "user_service" "tournament_service" "puzzle_service"
+for esapi in "config_service" "game_service" "mod_service" "puzzle_service" "tournament_service"  "user_service" "word_service"
 do
-    protoc  --es_out=liwords-ui/src/gen --proto_path=$CODE_DIR/ --proto_path=$CODE_DIR/liwords api/proto/$esapi/$esapi.proto
+    protoc  --es_out=liwords-ui/src/gen --proto_path=$CODE_DIR/ --proto_path=$CODE_DIR/liwords --connect-web_out=liwords-ui/src/gen api/proto/$esapi/$esapi.proto
 done
 
 for ipcapi in "chat" "errors" "ipc" "omgseeks" "omgwords" "presence" "tournament" "users"

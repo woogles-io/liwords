@@ -5,11 +5,11 @@ import {
   UpOutlined,
 } from '@ant-design/icons';
 import { Button, Divider, Form, Input, message } from 'antd';
-import axios from 'axios';
 import { Store } from 'rc-field-form/lib/interface';
 import React, { useEffect } from 'react';
-import { toAPIUrl } from '../api/api';
-import { Announcements } from '../lobby/announcements';
+import { ConnectError } from '@bufbuild/connect-web';
+import { ConfigService } from '../gen/api/proto/config_service/config_service_connectweb';
+import { useClient } from '../utils/hooks/connect';
 
 const layout = {
   labelCol: {
@@ -22,41 +22,37 @@ const layout = {
 
 export const AnnouncementEditor = () => {
   const [form] = Form.useForm();
-
+  const configService = useClient(ConfigService);
   useEffect(() => {
-    axios
-      .post<Announcements>(
-        toAPIUrl('config_service.ConfigService', 'GetAnnouncements'),
-        {}
-      )
-      .then((resp) => {
-        form.setFieldsValue({
-          announcements: resp.data.announcements,
-        });
+    const fetchAnnouncements = async () => {
+      const resp = await configService.getAnnouncements({});
+      form.setFieldsValue({
+        announcements: resp.announcements,
       });
-  }, [form]);
+    };
+    fetchAnnouncements();
+  }, [configService, form]);
 
-  const onFinish = (vals: Store) => {
+  const onFinish = async (vals: Store) => {
     console.log('vals', vals);
-    axios
-      .post<Announcements>(
-        toAPIUrl('config_service.ConfigService', 'SetAnnouncements'),
-        {
-          announcements: vals.announcements,
-        }
-      )
-      .then((resp) => {
-        message.info({
-          content: 'Updated announcements on front page',
+    try {
+      await configService.setAnnouncements({
+        announcements: vals.announcements,
+      });
+      message.info({
+        content: 'Updated announcements on front page',
+        duration: 3,
+      });
+    } catch (err) {
+      if (err instanceof ConnectError) {
+        message.error({
+          content: err.message,
           duration: 3,
         });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
-      });
+      } else {
+        console.log(err);
+      }
+    }
   };
 
   return (

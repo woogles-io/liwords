@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import axios from 'axios';
 import jwt_decode from 'jwt-decode';
 import useWebSocket from 'react-use-websocket';
 import { useLocation } from 'react-router-dom';
@@ -13,10 +12,11 @@ import {
   parseMsgs,
 } from '../store/socket_handlers';
 import { decodeToMsg } from '../utils/protobuf';
-import { toAPIUrl } from '../api/api';
 import { ActionType } from '../actions/actions';
 import { reloadAction } from './reload';
 import { birthdateWarning } from './birthdateWarning';
+import { useClient } from '../utils/hooks/connect';
+import { AuthenticationService } from '../gen/api/proto/user_service/user_service_connectweb';
 
 const getSocketURI = (): string => {
   const loc = window.location;
@@ -75,20 +75,18 @@ export const LiwordsSocket = (props: {
   // Source-of-truth must be local, not the store.
   const [isConnectedToSocket, setIsConnectedToSocket] = useState(false);
   const { dispatchLoginState } = loginStateStore;
+  const authClient = useClient(AuthenticationService);
   const getFullSocketUrlAsync = useCallback(async () => {
     console.log('About to request token');
     const failUrl = '';
     try {
-      const resp = await axios.post<TokenResponse>(
-        toAPIUrl('user_service.AuthenticationService', 'GetSocketToken'),
-        {},
-        { withCredentials: true }
-      );
+      const resp = await authClient.getSocketToken({});
+
       // Important: resetSocket does not resetStore, be very careful to avoid
-      // dispatching stuffs from a decommissioned socket after axios returns.
+      // dispatching stuffs from a decommissioned socket after client returns.
       if (!isMountedRef.current) return failUrl;
 
-      const { cid, front_end_version, token } = resp.data;
+      const { cid, frontEndVersion, token } = resp;
 
       const ret = `${socketUrl}?${new URLSearchParams({
         token,
@@ -126,16 +124,16 @@ export const LiwordsSocket = (props: {
         localStorage.setItem('birthdateWarning', Date.now().toString());
       }
       console.log('Got token, setting state, and will try to connect...');
-      if (window.RUNTIME_CONFIGURATION.appVersion !== front_end_version) {
+      if (window.RUNTIME_CONFIGURATION.appVersion !== frontEndVersion) {
         console.log(
           'app version mismatch',
           'local',
           window.RUNTIME_CONFIGURATION.appVersion,
           'remote',
-          front_end_version
+          frontEndVersion
         );
 
-        if (front_end_version !== '') {
+        if (frontEndVersion !== '') {
           message.warning({
             content: reloadAction,
             className: 'board-hud-message',
@@ -153,7 +151,7 @@ export const LiwordsSocket = (props: {
       }
       return failUrl;
     }
-  }, [dispatchLoginState, pathname]);
+  }, [dispatchLoginState, pathname, authClient]);
 
   useEffect(() => {
     if (isConnectedToSocket) {

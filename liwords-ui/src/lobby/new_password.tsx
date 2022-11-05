@@ -1,11 +1,12 @@
 import React from 'react';
 import { useMountedState } from '../utils/mounted';
 import { Row, Col, Input, Form, Alert, notification, Button } from 'antd';
-import axios from 'axios';
 import qs from 'qs';
 import { useLocation } from 'react-router-dom';
 import { TopBar } from '../navigation/topbar';
-import { toAPIUrl } from '../api/api';
+import { useClient } from '../utils/hooks/connect';
+import { AuthenticationService } from '../gen/api/proto/user_service/user_service_connectweb';
+import { ConnectError } from '@bufbuild/connect-web';
 
 const layout = {
   labelCol: {
@@ -28,34 +29,26 @@ export const NewPassword = () => {
   const [err, setErr] = useState('');
   const location = useLocation();
   const params = qs.parse(location.search, { ignoreQueryPrefix: true });
-
-  const onFinish = (values: { [key: string]: string }) => {
+  const authClient = useClient(AuthenticationService);
+  const onFinish = async (values: { [key: string]: string }) => {
     if (values.newPassword !== values.confirmnewPassword) {
       setErr('New passwords must match');
       return;
     }
     setErr('');
-    axios
-      .post(
-        toAPIUrl('user_service.AuthenticationService', 'ResetPasswordStep2'),
-        {
-          password: values.newPassword,
-          resetCode: params.t,
-        },
-        { withCredentials: true }
-      )
-      .then(() => {
-        notification.info({
-          message: 'Changed',
-          description:
-            'Your password was successfully changed. Please Log In with your new password.',
-        });
-      })
-      .catch((e) => {
-        if (e.response) {
-          setErr(e.response.data.msg);
-        }
+    try {
+      await authClient.resetPasswordStep2({
+        password: values.newPassword,
+        resetCode: typeof params.t === 'string' ? params.t : '',
       });
+      notification.info({
+        message: 'Changed',
+        description:
+          'Your password was successfully changed. Please Log In with your new password.',
+      });
+    } catch (e) {
+      setErr((e as ConnectError).message);
+    }
   };
 
   return (

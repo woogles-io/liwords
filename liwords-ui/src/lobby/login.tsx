@@ -6,8 +6,9 @@ import './accountForms.scss';
 
 import { Form, Input, Button, Alert } from 'antd';
 import { Modal } from '../utils/focus_modal';
-import axios from 'axios';
-import { toAPIUrl } from '../api/api';
+import { flashError, useClient } from '../utils/hooks/connect';
+import { AuthenticationService } from '../gen/api/proto/user_service/user_service_connectweb';
+import { ConnectError } from '@bufbuild/connect-web';
 
 export const Login = React.memo(() => {
   const { useState } = useMountedState();
@@ -15,29 +16,18 @@ export const Login = React.memo(() => {
 
   const [err, setErr] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
-  const onFinish = (values: { [key: string]: string }) => {
-    axios
-      .post(
-        toAPIUrl('user_service.AuthenticationService', 'Login'),
-        {
-          username: values.username,
-          password: values.password,
-        },
-        { withCredentials: true }
-      )
-      .then(() => {
-        // Automatically will set cookie
-        setLoggedIn(true);
-      })
-      .catch((e) => {
-        if (e.response) {
-          // From Twirp
-          setErr(e.response.data.msg);
-        } else {
-          setErr('unknown error, see console');
-          console.log(e);
-        }
+  const authClient = useClient(AuthenticationService);
+  const onFinish = async (values: { [key: string]: string }) => {
+    try {
+      await authClient.login({
+        username: values.username,
+        password: values.password,
       });
+      setLoggedIn(true);
+    } catch (e) {
+      setErr((e as ConnectError).message);
+      flashError(e);
+    }
   };
 
   React.useEffect(() => {

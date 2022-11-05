@@ -15,7 +15,6 @@ import {
   useTentativeTileContext,
 } from '../store/store';
 import { BoardPanel } from '../gameroom/board_panel';
-import { DefineWordsResponse } from '../gameroom/game_info';
 import { calculatePuzzleScore, renderStars } from './puzzle_info';
 // import Pool from '../gameroom/pool';
 import './puzzles.scss';
@@ -65,12 +64,13 @@ import { GameInfoRequest } from '../gen/api/proto/game_service/game_service_pb';
 import { isLegalPlay } from '../utils/cwgame/scoring';
 import { singularCount } from '../utils/plural';
 import { getWordsFormed } from '../utils/cwgame/tile_placement';
-import axios from 'axios';
 import { LearnContextProvider } from '../learn/learn_overlay';
 import { PuzzleShareButton } from './puzzle_share';
 import { RatingsCard } from './ratings';
 import { GameEvent_Direction } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { GameEvent_Type } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { useClient } from '../utils/hooks/connect';
+import { WordService } from '../gen/api/proto/word_service/word_service_connectweb';
 
 const doNothing = () => {};
 
@@ -612,6 +612,7 @@ export const SinglePuzzle = (props: Props) => {
     setPlacedTilesTempScore,
   ]);
 
+  const wordClient = useClient(WordService);
   useEffect(() => {
     if (checkWordsPending) {
       const wordsFormed = getWordsFormed(
@@ -620,24 +621,21 @@ export const SinglePuzzle = (props: Props) => {
       ).map((w) => w.toUpperCase());
       setCheckWordsPending(false);
       //Todo: Now run them by the endpoint
-      axios
-        .post<DefineWordsResponse>(
-          toAPIUrl('word_service.WordService', 'DefineWords'),
-          {
-            lexicon: puzzleInfo.lexicon,
-            words: wordsFormed,
-            definitions: false,
-            anagrams: false,
-          }
-        )
-        .then((resp) => {
-          const wordsChecked = resp.data.results;
-          const phonies = Object.keys(wordsChecked).filter(
-            (w) => !wordsChecked[w].v
-          );
-          console.log('Phonies played: ', phonies);
-          setPhoniesPlayed(phonies);
+
+      (async () => {
+        const resp = await wordClient.defineWords({
+          lexicon: puzzleInfo.lexicon,
+          words: wordsFormed,
+          definitions: false,
+          anagrams: false,
         });
+        const wordsChecked = resp.results;
+        const phonies = Object.keys(wordsChecked).filter(
+          (w) => !wordsChecked[w].v
+        );
+        console.log('Phonies played: ', phonies);
+        setPhoniesPlayed(phonies);
+      })();
     }
   }, [
     checkWordsPending,

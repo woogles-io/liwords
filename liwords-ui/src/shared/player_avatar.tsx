@@ -3,8 +3,9 @@ import { useMountedState } from '../utils/mounted';
 import { fixedCharAt } from '../utils/cwgame/common';
 import './avatar.scss';
 import { Tooltip } from 'antd';
-import { PlayerMetadata } from '../gameroom/game_info';
 import { useBriefProfile } from '../utils/brief_profiles';
+import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
+import { PersonalInfoResponse } from '../gen/api/proto/user_service/user_service_pb';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const colors = require('../base.scss').default;
 
@@ -34,7 +35,8 @@ export const PettableAvatar = ({ children }: { children: React.ReactNode }) => {
 };
 
 type AvatarProps = {
-  player?: Partial<PlayerMetadata>;
+  player?: Partial<PlayerInfo>;
+  avatarUrl?: string;
   username?: string;
   withTooltip?: boolean;
   editable?: boolean;
@@ -45,8 +47,8 @@ type AvatarProps = {
 export const PlayerAvatar = (props: AvatarProps) => {
   const { isPetting, setPettable } = useContext(PettableContext);
   // Do not useBriefProfile if avatar_url is explicitly passed in as "".
-  const profile = useBriefProfile(props.player?.user_id);
-  const avatarUrl = props.player?.avatar_url ?? profile?.avatarUrl;
+  const profile = useBriefProfile(props.player?.userId);
+  const avatarUrl = props.avatarUrl ?? profile?.avatarUrl;
   const username = props.username ?? profile?.username;
 
   let canPet = false;

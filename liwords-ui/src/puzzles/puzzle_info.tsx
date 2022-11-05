@@ -1,6 +1,5 @@
 import React, { ReactNode, useMemo } from 'react';
 import { Button, Card } from 'antd';
-import { PlayerMetadata } from '../gameroom/game_info';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import moment from 'moment';
 import { timeCtrlToDisplayName } from '../store/constants';
@@ -10,6 +9,7 @@ import { Hints } from './hints';
 import { PuzzleShareButton } from './puzzle_share';
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { challengeRuleNames } from '../constants/challenge_rules';
+import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
 
 type Props = {
   solved: number;
@@ -17,8 +17,8 @@ type Props = {
   gameUrl?: string;
   lexicon: string;
   variantName: string;
-  player1: Partial<PlayerMetadata> | undefined;
-  player2: Partial<PlayerMetadata> | undefined;
+  player1: Partial<PlayerInfo> | undefined;
+  player2: Partial<PlayerInfo> | undefined;
   puzzleID?: string;
   ratingMode?: string;
   challengeRule: ChallengeRule | undefined;

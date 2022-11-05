@@ -1,11 +1,11 @@
 import { Button, Col, Divider, message, Row } from 'antd';
-import axios from 'axios';
 import React, { useMemo } from 'react';
-import { toAPIUrl } from '../api/api';
+import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_connectweb';
 import {
   useLoginStateStoreContext,
   useTournamentStoreContext,
 } from '../store/store';
+import { flashError, useClient } from '../utils/hooks/connect';
 
 // I did not find a design for this, but it is trial functionality in order
 // to keep the tournament running smoothly.
@@ -40,24 +40,18 @@ export const CheckIn = () => {
   if (checkedIn) {
     return null;
   }
+  const tournamentClient = useClient(TournamentService);
 
-  const checkin = () => {
-    axios
-      .post<{}>(toAPIUrl('tournament_service.TournamentService', 'CheckIn'), {
-        id: tournamentContext.metadata?.id,
-      })
-      .then((resp) => {
-        message.info({
-          content: 'You are checked in.',
-          duration: 3,
-        });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error checking in: ' + err.response?.data?.msg,
-          duration: 5,
-        });
+  const checkin = async () => {
+    try {
+      await tournamentClient.checkIn({ id: tournamentContext.metadata?.id });
+      message.info({
+        content: 'You are checked in.',
+        duration: 3,
       });
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   return (

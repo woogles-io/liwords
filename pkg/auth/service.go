@@ -290,8 +290,10 @@ func (as *AuthenticationService) ResetPasswordStep1(ctx context.Context, r *pb.R
 	}
 	resetURL := "https://woogles.io/password/new?t=" + tokenString
 
-	id, err := emailer.SendSimpleMessage(as.mailgunKey, email, "Password reset for Woogles.io",
-		fmt.Sprintf(ResetPasswordTemplate, resetURL, u.Username))
+	emailBody := fmt.Sprintf(ResetPasswordTemplate, resetURL, u.Username)
+	log.Debug().Str("email-body", emailBody).Msg("generated-body")
+	id, err := emailer.SendSimpleMessage(
+		as.mailgunKey, email, "Password reset for Woogles.io", emailBody)
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)
 	}

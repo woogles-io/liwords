@@ -4,7 +4,6 @@ import { Button, notification, message, Tooltip, Affix } from 'antd';
 import { Modal } from '../utils/focus_modal';
 import { DndProvider } from 'react-dnd';
 import { ArrowDownOutlined, SyncOutlined } from '@ant-design/icons';
-import axios from 'axios';
 import {
   isTouchDevice,
   Blank,
@@ -58,7 +57,6 @@ import {
 import { sharedEnableAutoShuffle } from '../store/constants';
 import { BlankSelector } from './blank_selector';
 import { GameMetaMessage } from './game_meta_message';
-import { PlayerMetadata, GCGResponse } from './game_info';
 import {
   ChallengeRule,
   GameEvent,
@@ -78,8 +76,12 @@ import {
   ClientGameplayEvent,
   GameMetaEvent,
   GameMetaEvent_EventType,
+  PlayerInfo,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
+import { flashError, useClient } from '../utils/hooks/connect';
+import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connectweb';
+import { PromiseClient } from '@bufbuild/connect-web';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -98,7 +100,7 @@ type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   sendGameplayEvent: (evt: ClientGameplayEvent) => void;
   gameDone: boolean;
-  playerMeta: Array<PlayerMetadata>;
+  playerMeta: Array<PlayerInfo>;
   puzzleMode?: boolean;
   puzzleSolved?: number;
   tournamentSlug?: string;
@@ -161,49 +163,40 @@ const shuffleString = (a: string): string => {
   return alistWithGaps.map((x) => (x === EmptySpace ? x : alist[r++])).join('');
 };
 
-const gcgExport = (gameID: string, playerMeta: Array<PlayerMetadata>) => {
-  axios
-    .post<GCGResponse>(toAPIUrl('game_service.GameMetadataService', 'GetGCG'), {
-      gameId: gameID,
-    })
-    .then((resp) => {
-      const url = window.URL.createObjectURL(new Blob([resp.data.gcg]));
-      const link = document.createElement('a');
-      link.href = url;
-      let downloadFilename = `${gameID}.gcg`;
-      // TODO: allow more characters as applicable
-      // Note: does not actively prevent saving .dotfiles or nul.something
-      if (playerMeta.every((x) => /^[-0-9A-Za-z_.]+$/.test(x.nickname))) {
-        const byStarts: Array<Array<string>> = [[], []];
-        for (const x of playerMeta) {
-          byStarts[+!!x.first].push(x.nickname);
-        }
-        downloadFilename = `${[...byStarts[1], ...byStarts[0]].join(
-          '-'
-        )}-${gameID}.gcg`;
+const gcgExport = async (
+  gameID: string,
+  playerMeta: Array<PlayerInfo>,
+  gameMetadataService: PromiseClient<typeof GameMetadataService>
+) => {
+  try {
+    const resp = await gameMetadataService.getGCG({ gameId: gameID });
+    const url = window.URL.createObjectURL(new Blob([resp.gcg]));
+    const link = document.createElement('a');
+    link.href = url;
+    let downloadFilename = `${gameID}.gcg`;
+    // TODO: allow more characters as applicable
+    // Note: does not actively prevent saving .dotfiles or nul.something
+    if (playerMeta.every((x) => /^[-0-9A-Za-z_.]+$/.test(x.nickname))) {
+      const byStarts: Array<Array<string>> = [[], []];
+      for (const x of playerMeta) {
+        byStarts[+!!x.first].push(x.nickname);
       }
-      link.setAttribute('download', downloadFilename);
-      document.body.appendChild(link);
-      link.onclick = () => {
-        link.remove();
-        setTimeout(() => {
-          window.URL.revokeObjectURL(url);
-        }, 1000);
-      };
-      link.click();
-    })
-    .catch((e) => {
-      if (e.response) {
-        // From Twirp
-        notification.warning({
-          message: 'Export Error',
-          description: e.response.data.msg,
-          duration: 4,
-        });
-      } else {
-        console.log(e);
-      }
-    });
+      downloadFilename = `${[...byStarts[1], ...byStarts[0]].join(
+        '-'
+      )}-${gameID}.gcg`;
+    }
+    link.setAttribute('download', downloadFilename);
+    document.body.appendChild(link);
+    link.onclick = () => {
+      link.remove();
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 1000);
+    };
+    link.click();
+  } catch (e) {
+    flashError(e);
+  }
 };
 
 const backupKey = (letters: string, rack: string) =>
@@ -800,7 +793,7 @@ export const BoardPanel = React.memo((props: Props) => {
           let p0Time = examinableTimerContext.p0;
           let p1Time = examinableTimerContext.p1;
 
-          if (props.playerMeta[0].user_id === p1.userID) {
+          if (props.playerMeta[0].userId === p1.userID) {
             [p0, p1] = [p1, p0];
             [p0Time, p1Time] = [p1Time, p0Time];
           }
@@ -1527,13 +1520,16 @@ export const BoardPanel = React.memo((props: Props) => {
   const preventFirefoxTypeToSearch = useCallback((e) => {
     e.preventDefault();
   }, []);
+
+  const metadataService = useClient(GameMetadataService);
+
   const handlePass = useCallback(() => makeMove('pass'), [makeMove]);
   const handleResign = useCallback(() => makeMove('resign'), [makeMove]);
   const handleChallenge = useCallback(() => makeMove('challenge'), [makeMove]);
   const handleCommit = useCallback(() => makeMove('commit'), [makeMove]);
   const handleExportGCG = useCallback(
-    () => gcgExport(props.gameID, props.playerMeta),
-    [props.gameID, props.playerMeta]
+    () => gcgExport(props.gameID, props.playerMeta, metadataService),
+    [props.gameID, props.playerMeta, metadataService]
   );
   const handleExchangeTilesCancel = useCallback(() => {
     setCurrentMode('NORMAL');

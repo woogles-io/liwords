@@ -1,12 +1,12 @@
 import { Button, Form, InputNumber, Select } from 'antd';
 import React, { useCallback } from 'react';
-import axios from 'axios';
 
 import { useDebounce } from '../../utils/debounce';
-import { toAPIUrl } from '../../api/api';
 import { AutoComplete } from 'antd';
 import { useMountedState } from '../../utils/mounted';
 import { Store } from 'antd/lib/form/interface';
+import { useClient } from '../../utils/hooks/connect';
+import { AutocompleteService } from '../../gen/api/proto/user_service/user_service_connectweb';
 
 type user = {
   username: string;
@@ -39,18 +39,14 @@ export const AddPlayerForm = (props: Props) => {
   const [usernameOptions, setUsernameOptions] = useState<Array<user>>([]);
   const [playersToAdd, setPlayersToAdd] = useState<playersToAdd>({});
   const [usersAdded, setUsersAdded] = useState<Set<string>>(new Set());
-  const onUsernameSearch = useCallback((searchText: string) => {
-    axios
-      .post<SearchResponse>(
-        toAPIUrl('user_service.AutocompleteService', 'GetCompletion'),
-        {
-          prefix: searchText,
-        }
-      )
-      .then((res) => {
-        setUsernameOptions(res.data.users);
-      });
-  }, []);
+  const acClient = useClient(AutocompleteService);
+  const onUsernameSearch = useCallback(
+    async (searchText: string) => {
+      const resp = await acClient.getCompletion({ prefix: searchText });
+      setUsernameOptions(resp.users);
+    },
+    [acClient]
+  );
 
   const searchUsernameDebounced = useDebounce(onUsernameSearch, 300);
 

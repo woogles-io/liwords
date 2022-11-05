@@ -16,6 +16,9 @@ import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { moderateUser, deleteChatMessage } from '../mod/moderate';
 import { PettableAvatar, PlayerAvatar } from '../shared/player_avatar';
 import { ChatEntityType } from '../store/constants';
+import { useClient } from '../utils/hooks/connect';
+import { ModService } from '../gen/api/proto/mod_service/mod_service_connectweb';
+import { PromiseClient } from '@bufbuild/connect-web';
 
 type EntityProps = {
   entityType: ChatEntityType;
@@ -35,7 +38,8 @@ const deleteMessage = (
   sender: string,
   msgid: string,
   message: string,
-  channel: string
+  channel: string,
+  modClient: PromiseClient<typeof ModService>
 ) => {
   Modal.confirm({
     title: (
@@ -44,7 +48,7 @@ const deleteMessage = (
     icon: <ExclamationCircleOutlined />,
     content: <p className="readable-text-color">{message}</p>,
     onOk() {
-      deleteChatMessage(sender, msgid, channel);
+      deleteChatMessage(sender, msgid, channel, modClient);
     },
     onCancel() {
       console.log('no');
@@ -91,6 +95,7 @@ export const ChatEntity = (props: EntityProps) => {
   if (props.highlight || fromMod || fromAdmin) {
     senderClass = 'special-sender';
   }
+  const modClient = useClient(ModService);
   switch (props.entityType) {
     case ChatEntityType.ServerMsg:
       el = (
@@ -112,7 +117,7 @@ export const ChatEntity = (props: EntityProps) => {
           <PettableAvatar>
             <PlayerAvatar
               player={{
-                user_id: props.senderId,
+                userId: props.senderId,
               }}
               username={props.sender}
             />
@@ -133,7 +138,8 @@ export const ChatEntity = (props: EntityProps) => {
                           props.senderId,
                           props.msgID,
                           props.message,
-                          props.channel
+                          props.channel,
+                          modClient
                         );
                       }
                     }}

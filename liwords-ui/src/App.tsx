@@ -8,7 +8,6 @@ import {
 } from 'react-router-dom';
 import { useMountedState } from './utils/mounted';
 import './App.scss';
-import axios from 'axios';
 import 'antd/dist/antd.min.css';
 
 import { Table as GameTable } from './gameroom/table';
@@ -29,10 +28,9 @@ import { Team } from './about/team';
 import { Register } from './lobby/register';
 import { PlayerProfile } from './profile/profile';
 import { Settings } from './settings/settings';
-import { PasswordChange } from './lobby/password_change';
 import { PasswordReset } from './lobby/password_reset';
 import { NewPassword } from './lobby/new_password';
-import { postJsonObj, toAPIUrl } from './api/api';
+import { postJsonObj } from './api/api';
 import { encodeToSocketFmt } from './utils/protobuf';
 import { Clubs } from './clubs';
 import { TournamentRoom } from './tournament/room';
@@ -42,19 +40,8 @@ import { TermsOfService } from './about/termsOfService';
 import { ChatMessage } from './gen/api/proto/ipc/chat_pb';
 import { MessageType } from './gen/api/proto/ipc/ipc_pb';
 import Footer from './navigation/footer';
-
-type Blocks = {
-  user_ids: Array<string>;
-};
-
-type ModsResponse = {
-  admin_user_ids: Array<string>;
-  mod_user_ids: Array<string>;
-};
-
-type FriendsResponse = {
-  users: Array<FriendUser>;
-};
+import { useClient } from './utils/hooks/connect';
+import { SocializeService } from './gen/api/proto/user_service/user_service_connectweb';
 
 const useDarkMode = localStorage?.getItem('darkMode') === 'true';
 document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
@@ -153,19 +140,15 @@ const App = React.memo(() => {
       resetStore();
     }
   }, [isCurrentLocation, resetStore]);
-
+  const socializeClient = useClient(SocializeService);
   const getFullBlocks = useCallback(() => {
     void userID; // used only as effect dependency
     (async () => {
       let toExclude = new Set<string>();
       try {
         if (loggedIn) {
-          const resp = await axios.post<Blocks>(
-            toAPIUrl('user_service.SocializeService', 'GetFullBlocks'),
-            {},
-            { withCredentials: true }
-          );
-          toExclude = new Set<string>(resp.data.user_ids);
+          const resp = await socializeClient.getFullBlocks({});
+          toExclude = new Set<string>(resp.userIds);
         }
       } catch (e) {
         console.log(e);
@@ -181,6 +164,7 @@ const App = React.memo(() => {
     setExcludedPlayers,
     setExcludedPlayersFetched,
     setPendingBlockRefresh,
+    socializeClient,
   ]);
 
   useEffect(() => {
@@ -193,51 +177,38 @@ const App = React.memo(() => {
     }
   }, [getFullBlocks, pendingBlockRefresh]);
 
-  const getMods = useCallback(() => {
-    axios
-      .post<ModsResponse>(
-        toAPIUrl('user_service.SocializeService', 'GetModList'),
-        {},
-        {}
-      )
-      .then((resp) => {
-        setAdmins(new Set<string>(resp.data.admin_user_ids));
-        setModerators(new Set<string>(resp.data.mod_user_ids));
-      })
-      .catch((e) => {
-        console.log(e);
-      })
-      .finally(() => {
-        setModsFetched(true);
-      });
-  }, [setAdmins, setModerators, setModsFetched]);
+  const getMods = useCallback(async () => {
+    try {
+      const resp = await socializeClient.getModList({});
+      setAdmins(new Set<string>(resp.adminUserIds));
+      setModerators(new Set<string>(resp.modUserIds));
+    } catch (e) {
+      console.log(e);
+    } finally {
+      setModsFetched(true);
+    }
+  }, [setAdmins, setModerators, setModsFetched, socializeClient]);
 
   useEffect(() => {
     getMods();
   }, [getMods]);
 
-  const getFriends = useCallback(() => {
+  const getFriends = useCallback(async () => {
     if (loggedIn) {
-      axios
-        .post<FriendsResponse>(
-          toAPIUrl('user_service.SocializeService', 'GetFollows'),
-          {},
-          {}
-        )
-        .then((resp) => {
-          console.log('Fetched friends:', resp);
-          const friends: { [uuid: string]: FriendUser } = {};
-          resp.data.users.forEach((f: FriendUser) => {
-            friends[f.uuid] = f;
-          });
-          setFriends(friends);
-        })
-        .catch((e) => {
-          console.log(e);
-        })
-        .finally(() => setPendingFriendsRefresh(false));
+      try {
+        const resp = await socializeClient.getFollows({});
+        const friends: { [uuid: string]: FriendUser } = {};
+        resp.users.forEach((f: FriendUser) => {
+          friends[f.uuid] = f;
+        });
+        setFriends(friends);
+      } catch (e) {
+        console.log(e);
+      } finally {
+        setPendingFriendsRefresh(false);
+      }
     }
-  }, [setFriends, setPendingFriendsRefresh, loggedIn]);
+  }, [setFriends, setPendingFriendsRefresh, loggedIn, socializeClient]);
 
   useEffect(() => {
     getFriends();
@@ -309,7 +280,6 @@ const App = React.memo(() => {
         <Route path="terms" element={<TermsOfService />} />
         <Route path="register" element={<Register />} />
         <Route path="password">
-          <Route path="change" element={<PasswordChange />} />
           <Route path="reset" element={<PasswordReset />} />
           <Route path="new" element={<NewPassword />} />
         </Route>

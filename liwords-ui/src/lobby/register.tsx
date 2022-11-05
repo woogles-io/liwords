@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMountedState } from '../utils/mounted';
-import axios from 'axios';
 import { TopBar } from '../navigation/topbar';
 import {
   Input,
@@ -13,12 +12,17 @@ import {
   AutoComplete,
 } from 'antd';
 import { Rule } from 'antd/lib/form';
-import { toAPIUrl } from '../api/api';
 import './accountForms.scss';
 import woogles from '../assets/woogles.png';
 import { useLoginStateStoreContext } from '../store/store';
 import { LoginModal } from './login';
 import { countryArray } from '../settings/country_map';
+import { useClient } from '../utils/hooks/connect';
+import {
+  AuthenticationService,
+  RegistrationService,
+} from '../gen/api/proto/user_service/user_service_connectweb';
+import { ConnectError } from '@bufbuild/connect-web';
 
 const allMonthNames = [
   'January',
@@ -199,10 +203,12 @@ export const Register = () => {
     },
     []
   );
+  const authClient = useClient(AuthenticationService);
+  const registrationClient = useClient(RegistrationService);
 
-  const onFinish = (values: { [key: string]: string }) => {
-    axios
-      .post(toAPIUrl('user_service.RegistrationService', 'Register'), {
+  const onFinish = async (values: { [key: string]: string }) => {
+    try {
+      await registrationClient.register({
         username: values.username,
         password: values.password,
         email: values.email,
@@ -211,41 +217,16 @@ export const Register = () => {
         firstName: values.firstName,
         lastName: values.lastName,
         countryCode: values.countryCode,
-      })
-      .then(() => {
-        // Try logging in after registering.
-        axios
-          .post(
-            toAPIUrl('user_service.AuthenticationService', 'Login'),
-            {
-              username: values.username,
-              password: values.password,
-            },
-            { withCredentials: true }
-          )
-          .then(() => {
-            // Automatically will set cookie
-            setSignedUp(true);
-          })
-          .catch((e) => {
-            if (e.response) {
-              // From Twirp
-              setErr(e.response.data.msg);
-            } else {
-              setErr('unknown error, see console');
-              console.log(e);
-            }
-          });
-      })
-      .catch((e) => {
-        if (e.response) {
-          // From Twirp
-          setErr(e.response.data.msg);
-        } else {
-          setErr('unknown error, see console');
-          console.log(e);
-        }
       });
+
+      await authClient.login({
+        username: values.username,
+        password: values.password,
+      });
+      setSignedUp(true);
+    } catch (e) {
+      setErr((e as ConnectError).message);
+    }
   };
 
   const navigate = useNavigate();

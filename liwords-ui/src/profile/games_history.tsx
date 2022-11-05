@@ -4,15 +4,15 @@ import moment from 'moment';
 import { Button, Card, InputNumber, Table, Tag, Tooltip } from 'antd';
 import { CheckCircleTwoTone } from '@ant-design/icons';
 import { FundOutlined } from '@ant-design/icons';
-import { GameMetadata } from '../gameroom/game_info';
 import { timeToString } from '../store/constants';
 import { VariantIcon } from '../shared/variant_icons';
-import { RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
+import { GameInfoResponse, RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
 import { challengeRuleNamesShort } from '../constants/challenge_rules';
 import { GameEndReason } from '../gen/api/proto/ipc/omgwords_pb';
+import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 
 type Props = {
-  games: Array<GameMetadata>;
+  games: Array<GameInfoResponse>;
   username: string;
   fetchPrev?: () => void;
   fetchNext?: () => void;
@@ -53,12 +53,12 @@ export const GamesHistoryCard = React.memo((props: Props) => {
   const formattedGames = props.games
     .filter(
       (item) =>
-        item.players?.length && item.game_end_reason !== GameEndReason.CANCELLED
+        item.players?.length && item.gameEndReason !== GameEndReason.CANCELLED
     )
     .map((item) => {
       const userplace =
-        special.indexOf(item.players[0].user_id) >
-        special.indexOf(item.players[1].user_id)
+        special.indexOf(item.players[0].userId) >
+        special.indexOf(item.players[1].userId)
           ? 0
           : 1;
       const opponent = (
@@ -71,7 +71,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         </Link>
       );
       const scores = item.scores ? (
-        <Link to={`/game/${encodeURIComponent(String(item.game_id ?? ''))}`}>
+        <Link to={`/game/${encodeURIComponent(String(item.gameId ?? ''))}`}>
           {item.scores[userplace]} - {item.scores[1 - userplace]}
         </Link>
       ) : (
@@ -79,16 +79,18 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       );
       let result = <Tag color="blue">Loss</Tag>;
       const challenge =
-        challengeRuleNamesShort[item.game_request.challengeRule];
+        challengeRuleNamesShort[
+          item.gameRequest?.challengeRule ?? ChallengeRule.VOID
+        ];
 
       const getDetails = () => {
         return (
           <>
-            <VariantIcon vcode={item.game_request.rules?.variantName} />{' '}
+            <VariantIcon vcode={item.gameRequest?.rules?.variantName} />{' '}
             <span className={`challenge-rule mode_${challenge}`}>
               {challenge}
             </span>
-            {item.game_request.ratingMode === RatingMode.RATED ? (
+            {item.gameRequest?.ratingMode === RatingMode.RATED ? (
               <Tooltip title="Rated">
                 <FundOutlined />
               </Tooltip>
@@ -105,14 +107,14 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       if (item.players[userplace].first) {
         turnOrder = <CheckCircleTwoTone twoToneColor="#52c41a" />;
       }
-      const whenMoment = moment(item.created_at ? item.created_at : '');
+      const whenMoment = moment(item.createdAt ? item.createdAt.toDate() : '');
       const when = (
         <Tooltip title={whenMoment.format('LLL')}>
           {whenMoment.fromNow()}
         </Tooltip>
       );
       let endReason = '';
-      switch (item.game_end_reason) {
+      switch (item.gameEndReason) {
         case GameEndReason.TIME:
           endReason = 'Time out';
           break;
@@ -137,20 +139,20 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         case GameEndReason.STANDARD:
           endReason = 'Completed';
       }
-      const time = `${item.time_control_name} ${timeToString(
-        item.game_request.initialTimeSeconds,
-        item.game_request.incrementSeconds,
-        item.game_request.maxOvertimeMinutes
+      const time = `${item.timeControlName} ${timeToString(
+        item.gameRequest?.initialTimeSeconds ?? 0,
+        item.gameRequest?.incrementSeconds ?? 0,
+        item.gameRequest?.maxOvertimeMinutes ?? 0
       )}`;
       return {
-        game_id: item.game_id, // used by rowKey
+        game_id: item.gameId, // used by rowKey
         details: getDetails(),
         result,
         opponent,
         scores,
         turnOrder,
         endReason,
-        lexicon: item.game_request.lexicon,
+        lexicon: item.gameRequest?.lexicon,
         time,
         when,
       };

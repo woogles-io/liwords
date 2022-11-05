@@ -9,7 +9,6 @@ import { postJsonObj } from '../../api/api';
 import { GhettoTools } from './ghetto_tools';
 /*
 import { AddPlayerForm, playersToAdd } from './add_player_form';
-import axios from 'axios';
 import { ModifyDivisionsForm } from './modify_divisions_form';
 import { Modal } from '../utils/focus_modal';
 import { Store } from 'antd/lib/form/interface';

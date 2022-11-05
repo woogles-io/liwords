@@ -13,15 +13,13 @@ import {
 import './chat.scss';
 import { Presences } from './presences';
 import { ChatChannels } from './chat_channels';
-import { toAPIUrl } from '../api/api';
 import {
   ChatEntityObj,
   ChatEntityType,
   chatMessageToChatEntity,
 } from '../store/constants';
-import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
 import { Players } from './players';
-import { ChatMessage, ChatMessages } from '../gen/api/proto/ipc/chat_pb';
+import { ChatMessage } from '../gen/api/proto/ipc/chat_pb';
 import { useClient } from '../utils/hooks/connect';
 import { SocializeService } from '../gen/api/proto/user_service/user_service_connectweb';
 
@@ -262,6 +260,7 @@ export const Chat = React.memo((props: Props) => {
     channelsFetched,
     loggedIn,
     setNotificationCount,
+    socializeClient,
     props.tournamentID,
   ]);
 
@@ -466,7 +465,7 @@ export const Chat = React.memo((props: Props) => {
     } else {
       setHeight();
     }
-  }, [channel, addChats, clearChat, loggedIn, setHeight]);
+  }, [channel, addChats, clearChat, loggedIn, setHeight, socializeClient]);
 
   // When user is scrolling, auto-scroll may be enabled or disabled.
   // This handler is set through onScroll.

@@ -14,43 +14,26 @@ import {
 import { Modal } from '../utils/focus_modal';
 import moment from 'moment';
 import { PlayerAvatar } from '../shared/player_avatar';
-import { PlayerMetadata } from '../gameroom/game_info';
 import { useMountedState } from '../utils/mounted';
 import { AvatarRemoveModal } from './avatar_remove_modal';
-import axios, { AxiosError } from 'axios';
-import { toAPIUrl } from '../api/api';
 import { countryArray } from './country_map';
 import { MarkdownTips } from './markdown_tips';
 import { AvatarCropper } from './avatar_cropper';
 import { UploadChangeParam } from 'antd/lib/upload';
-
-export type PersonalInfo = {
-  birthDate: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  countryCode: string;
-  about: string;
-};
+import { PersonalInfoResponse } from '../gen/api/proto/user_service/user_service_pb';
+import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
+import { flashError, useClient } from '../utils/hooks/connect';
+import { ProfileService } from '../gen/api/proto/user_service/user_service_connectweb';
+import { ConnectError } from '@bufbuild/connect-web';
 
 type Props = {
-  player: Partial<PlayerMetadata> | undefined;
-  personalInfo: PersonalInfo;
+  player: Partial<PlayerInfo> | undefined;
+  personalInfo: PersonalInfoResponse;
   updatedAvatar: (avatarUrl: string) => void;
   startClosingAccount: () => void;
 };
 
-const errorCatcher = (e: AxiosError) => {
-  if (e.response) {
-    notification.warning({
-      message: 'Fetch Error',
-      description: e.response.data.msg,
-      duration: 4,
-    });
-  }
-};
-
-export const PersonalInfo = React.memo((props: Props) => {
+export const PersonalInfoWidget = React.memo((props: Props) => {
   const { useState } = useMountedState();
   const { TextArea } = Input;
 
@@ -64,17 +47,10 @@ export const PersonalInfo = React.memo((props: Props) => {
     undefined
   );
 
-  const avatarErrorCatcher = useCallback((e: AxiosError) => {
-    if (e.response) {
-      // From Twirp
-      console.log(e);
-      setAvatarErr(e.response.data.msg);
-      setUploadPending(false);
-    } else {
-      setAvatarErr('unknown error, see console');
-      console.log(e);
-      setUploadPending(false);
-    }
+  const avatarErrorCatcher = useCallback((e: unknown) => {
+    console.log(e);
+    setAvatarErr((e as ConnectError).message);
+    setUploadPending(false);
   }, []);
   const propsUpdatedAvatar = props.updatedAvatar;
   const fileProps = {
@@ -97,75 +73,61 @@ export const PersonalInfo = React.memo((props: Props) => {
     setRemoveAvatarModalVisible(false);
   }, []);
 
-  const removeAvatar = useCallback(() => {
-    axios
-      .post(
-        toAPIUrl('user_service.ProfileService', 'RemoveAvatar'),
-        {},
-        {
-          withCredentials: true,
-        }
-      )
-      .then((resp) => {
-        notification.info({
-          message: 'Success',
-          description: 'Your avatar was removed.',
-        });
-        setRemoveAvatarModalVisible(false);
-        propsUpdatedAvatar('');
-      })
-      .catch(avatarErrorCatcher);
+  const profileClient = useClient(ProfileService);
+  const removeAvatar = useCallback(async () => {
+    try {
+      await profileClient.removeAvatar({});
+      notification.info({
+        message: 'Success',
+        description: 'Your avatar was removed.',
+      });
+      setRemoveAvatarModalVisible(false);
+      propsUpdatedAvatar('');
+    } catch (e) {
+      avatarErrorCatcher(e);
+    }
   }, [propsUpdatedAvatar, avatarErrorCatcher]);
 
   const saveAvatar = useCallback(
-    (imageDataUrl: string) => {
-      const jpegString = imageDataUrl.split(',')[1];
+    async (imageDataUrl: string) => {
+      let jpegUint8 = new Uint8Array();
+
+      fetch(imageDataUrl)
+        .then((b) => b.arrayBuffer())
+        .then((buff) => (jpegUint8 = new Uint8Array(buff)))
+        .catch((e) => console.log(e));
       setUploadPending(true);
-      axios
-        .post(
-          toAPIUrl('user_service.ProfileService', 'UpdateAvatar'),
-          {
-            jpg_data: jpegString,
-          },
-          {
-            withCredentials: true,
-          }
-        )
-        .then((resp) => {
-          notification.info({
-            message: 'Success',
-            description: 'Your avatar was updated.',
-          });
-          setUploadPending(false);
-          propsUpdatedAvatar(resp.data.avatar_url);
-        })
-        .catch(avatarErrorCatcher);
+      try {
+        const resp = await profileClient.updateAvatar({ jpgData: jpegUint8 });
+        notification.info({
+          message: 'Success',
+          description: 'Your avatar was updated.',
+        });
+        setUploadPending(false);
+        propsUpdatedAvatar(resp.avatarUrl);
+      } catch (e) {
+        avatarErrorCatcher(e);
+      }
     },
-    [propsUpdatedAvatar, avatarErrorCatcher]
+    [propsUpdatedAvatar, avatarErrorCatcher, profileClient]
   );
 
-  const updateFields = (values: { [key: string]: string }) => {
+  const updateFields = async (values: { [key: string]: string }) => {
     const birthDate = values.birthDate
       ? moment(values.birthDate).format('YYYY-MM-DD')
       : '';
-    axios
-      .post(
-        toAPIUrl('user_service.ProfileService', 'UpdatePersonalInfo'),
-        {
-          ...values,
-          birthDate,
-        },
-        {
-          withCredentials: true,
-        }
-      )
-      .then(() => {
-        notification.info({
-          message: 'Success',
-          description: 'Your personal info was changed.',
-        });
-      })
-      .catch(errorCatcher);
+    try {
+      await profileClient.updatePersonalInfo({
+        ...values,
+        birthDate,
+      });
+      notification.info({
+        message: 'Success',
+        description: 'Your personal info was changed.',
+      });
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   const countrySelector = (
@@ -242,7 +204,7 @@ export const PersonalInfo = React.memo((props: Props) => {
     >
       <h3>Personal info</h3>
       <div className="section-header">Profile picture</div>
-      {props.player?.avatar_url !== '' ? (
+      {props.personalInfo?.avatarUrl !== '' ? (
         <div className="avatar-section">
           <PlayerAvatar player={props.player} />
           <Upload {...fileProps}>

@@ -61,7 +61,7 @@ export const PlayerDisplay = (props: PlayerProps) => {
     <div className="player-display">
       <PlayerAvatar
         player={{
-          user_id: props.userID,
+          userId: props.userID,
           nickname: props.username,
         }}
       />

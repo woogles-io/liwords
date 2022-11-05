@@ -21,13 +21,12 @@ import { useMountedState } from '../utils/mounted';
 import { RecentTourneyGames } from './recent_games';
 import { pageSize, RecentGame } from './recent_game';
 import { ActionType } from '../actions/actions';
-import axios from 'axios';
-import { toAPIUrl } from '../api/api';
 import { Pairings } from './pairings';
 import { isPairedMode, isClubType } from '../store/constants';
 import { Standings } from './standings';
 import { DirectorTools } from './director_tools/director_tools';
-import { parseWooglesError } from '../utils/parse_woogles_error';
+import { flashError, useClient } from '../utils/hooks/connect';
+import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_connectweb';
 // import { CheckIn } from './check_in';
 
 export type RecentTournamentGames = {
@@ -152,26 +151,30 @@ export const ActionsPanel = React.memo((props: Props) => {
     }
   };
 
+  const tournamentClient = useClient(TournamentService);
+
   useEffect(() => {
     if (!tournamentID) {
       return;
     }
-    axios
-      .post<RecentTournamentGames>(
-        toAPIUrl('tournament_service.TournamentService', 'RecentGames'),
-        {
-          id: tournamentID,
-          num_games: pageSize,
-          offset: tournamentContext.gamesOffset,
-        }
-      )
-      .then((resp) => {
-        dispatchTournamentContext({
-          actionType: ActionType.AddTourneyGameResults,
-          payload: resp.data.games,
-        });
+
+    (async () => {
+      const resp = await tournamentClient.recentGames({
+        id: tournamentID,
+        numGames: pageSize,
+        offset: tournamentContext.gamesOffset,
       });
-  }, [tournamentID, dispatchTournamentContext, tournamentContext.gamesOffset]);
+      dispatchTournamentContext({
+        actionType: ActionType.AddTourneyGameResults,
+        payload: resp.games,
+      });
+    })();
+  }, [
+    tournamentID,
+    tournamentClient,
+    dispatchTournamentContext,
+    tournamentContext.gamesOffset,
+  ]);
   const renderDivisionSelector =
     Object.values(divisions).length > 1 ? (
       <Select value={selectedDivision} onChange={setSelectedDivision}>
@@ -202,27 +205,16 @@ export const ActionsPanel = React.memo((props: Props) => {
     ) {
       return null;
     }
-    const startRound = () => {
-      axios
-        .post(
-          toAPIUrl(
-            'tournament_service.TournamentService',
-            'StartRoundCountdown'
-          ),
-          {
-            id: tournamentID,
-            division: division.divisionID,
-            round: roundToStart,
-          },
-          { withCredentials: true }
-        )
-        .catch((err) => {
-          const msg = parseWooglesError(err.response?.data?.msg);
-          message.error({
-            content: msg,
-            duration: 8,
-          });
+    const startRound = async () => {
+      try {
+        await tournamentClient.startRoundCountdown({
+          id: tournamentID,
+          division: division.divisionID,
+          round: roundToStart as number, // should already be a number.
         });
+      } catch (e) {
+        flashError(e);
+      }
     };
     return (
       <Button className="primary open-round" onClick={startRound}>

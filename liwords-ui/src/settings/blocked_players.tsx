@@ -1,25 +1,14 @@
 import React, { useCallback, useEffect } from 'react';
-import axios, { AxiosError } from 'axios';
-import { toAPIUrl } from '../api/api';
 import { useMountedState } from '../utils/mounted';
 import iconx from '../assets/icon-x.png';
 import { notification } from 'antd';
 import { Modal } from '../utils/focus_modal';
+import { flashError, useClient } from '../utils/hooks/connect';
+import { SocializeService } from '../gen/api/proto/user_service/user_service_connectweb';
 
 type user = {
   username: string;
   uuid: string;
-};
-
-const errorCatcher = (e: AxiosError) => {
-  console.log('ERROR');
-  if (e.response) {
-    notification.warning({
-      message: 'Fetch Error',
-      description: e.response.data.msg,
-      duration: 4,
-    });
-  }
 };
 
 export const BlockedPlayers = React.memo(() => {
@@ -29,39 +18,33 @@ export const BlockedPlayers = React.memo(() => {
     undefined
   );
 
+  const socializeClient = useClient(SocializeService);
+
   const refreshBlocks = useCallback(() => {
-    axios
-      .post(
-        toAPIUrl('user_service.SocializeService', 'GetBlocks'),
-        {},
-        { withCredentials: true }
-      )
-      .then((res) => {
-        setBlockedUsers(res.data.users);
-      })
-      .catch(errorCatcher);
-  }, []);
+    (async () => {
+      try {
+        const res = await socializeClient.getBlocks({});
+        setBlockedUsers(res.users);
+      } catch (e) {
+        flashError(e);
+      }
+    })();
+  }, [socializeClient]);
 
   const unblock = useCallback(
-    (user) => {
-      axios
-        .post(
-          toAPIUrl('user_service.SocializeService', `RemoveBlock`),
-          {
-            uuid: user.uuid,
-          },
-          { withCredentials: true }
-        )
-        .then(() => {
-          notification.info({
-            message: 'Success',
-            description: user.username + ' was unblocked.',
-          });
-          setBlockedUsers(
-            blockedUsers.filter((blockedUser) => blockedUser.uuid !== user.uuid)
-          );
-        })
-        .catch(errorCatcher);
+    async (user) => {
+      try {
+        await socializeClient.removeBlock({ uuid: user.uuid });
+        notification.info({
+          message: 'Success',
+          description: user.username + ' was unblocked.',
+        });
+        setBlockedUsers(
+          blockedUsers.filter((blockedUser) => blockedUser.uuid !== user.uuid)
+        );
+      } catch (e) {
+        flashError(e);
+      }
     },
     [blockedUsers]
   );
@@ -87,7 +70,7 @@ export const BlockedPlayers = React.memo(() => {
         <span className="blocked-player">{confirmModalUser.username}</span>?
         <br />
         <br />
-        If you choose to unblock them, you’ll be able to see each other
+        If you choose to unblock them, you'll be able to see each other
         throughout Woogles.io again.
       </Modal>
     ) : null;
@@ -116,8 +99,8 @@ export const BlockedPlayers = React.memo(() => {
       <div className="blocked-players">
         <h3>Blocked players list</h3>
         <div className="header">
-          This is the list of players you’ve blocked on Woogles.io. Blocked
-          players can’t see that you’re online, and you can’t see that they’re
+          This is the list of players you've blocked on Woogles.io. Blocked
+          players can't see that you're online, and you can't see that they're
           online.
           <br />
           <br />
