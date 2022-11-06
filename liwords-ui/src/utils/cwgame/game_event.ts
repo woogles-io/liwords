@@ -5,8 +5,8 @@ import { GameEvent } from '../../gen/macondo/api/proto/macondo/macondo_pb';
 import {
   ClientGameplayEvent,
   ClientGameplayEvent_EventType,
+  PlayerInfo,
 } from '../../gen/api/proto/ipc/omgwords_pb';
-import { PlayerMetadata } from '../../gameroom/game_info';
 import { indexToPlayerOrder, PlayerOrder } from '../../store/constants';
 import { GameEvent_Direction } from '../../gen/macondo/api/proto/macondo/macondo_pb';
 
@@ -130,7 +130,7 @@ export const tilePlacementEventDisplay = (evt: GameEvent, board: Board) => {
 // event.
 export const nicknameFromEvt = (
   evt: GameEvent,
-  players: Array<PlayerMetadata>
+  players: Array<PlayerInfo>
 ): string => {
   return players[evt.playerIndex]?.nickname;
 };

@@ -44,15 +44,6 @@ const initTimeFormatter = (val?: number) => {
   return val != null ? initTimeDiscreteScale[val].label : null;
 };
 
-type user = {
-  username: string;
-  uuid: string;
-};
-
-type SearchResponse = {
-  users: Array<user>;
-};
-
 type Props = {
   onFormSubmit: (g: SoughtGame, v?: Store) => void;
   loggedIn: boolean;

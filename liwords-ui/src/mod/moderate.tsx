@@ -6,7 +6,6 @@ import { useMountedState } from '../utils/mounted';
 import { flashError, useClient } from '../utils/hooks/connect';
 import { ModService } from '../gen/api/proto/mod_service/mod_service_connectweb';
 import { proto3 } from '@bufbuild/protobuf';
-import { ActionType } from '../actions/actions';
 import {
   EmailType,
   ModActionsList,
@@ -18,22 +17,6 @@ import { ModActionType } from '../gen/api/proto/mod_service/mod_service_pb';
 type ModProps = {
   userID: string;
   destroy: () => void;
-};
-
-type ModAction = {
-  userId: string;
-  type: string;
-  duration: number;
-  startTime: string;
-  endTime: string;
-  removedTime: string;
-  channel: string;
-  messageId: string;
-  applierUserId: string;
-  removerUserId: string;
-  chatText: string;
-  note: string;
-  emailType: string;
 };
 
 const Moderation = (props: ModProps) => {

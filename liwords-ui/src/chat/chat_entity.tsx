@@ -77,6 +77,7 @@ export const ChatEntity = (props: EntityProps) => {
   let fromMod = false;
   let fromAdmin = false;
   const channel = '';
+  const modClient = useClient(ModService);
 
   // Don't render until we know who's been blocked
   if (!excludedPlayersFetched) {
@@ -95,7 +96,6 @@ export const ChatEntity = (props: EntityProps) => {
   if (props.highlight || fromMod || fromAdmin) {
     senderClass = 'special-sender';
   }
-  const modClient = useClient(ModService);
   switch (props.entityType) {
     case ChatEntityType.ServerMsg:
       el = (

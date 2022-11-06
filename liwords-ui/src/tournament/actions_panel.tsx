@@ -1,4 +1,4 @@
-import { Button, Card, message, Select } from 'antd';
+import { Button, Card, Select } from 'antd';
 import { Modal } from '../utils/focus_modal';
 import React, {
   ReactNode,

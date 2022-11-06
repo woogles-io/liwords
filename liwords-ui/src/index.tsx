@@ -6,7 +6,9 @@ import App from './App';
 import * as serviceWorker from './serviceWorker';
 import { Store } from './store/store';
 import { BriefProfiles } from './utils/brief_profiles';
-import { postJsonObj } from './api/api';
+import { ConnectError, createPromiseClient } from '@bufbuild/connect-web';
+import { AuthenticationService } from './gen/api/proto/user_service/user_service_connectweb';
+import { transport } from './utils/hooks/connect';
 
 declare global {
   interface Window {
@@ -58,9 +60,6 @@ window.console.info(
 {
   const loc = window.location;
   if (loc.hostname.startsWith('www.')) {
-    type jwtresp = {
-      jwt: string;
-    };
     const redirectToHandoff = (path: string) => {
       const protocol = loc.protocol;
       const hostname = loc.hostname;
@@ -68,23 +67,20 @@ window.console.info(
       localStorage.clear();
       window.location.replace(`${protocol}//${nakedHost}${path}`);
     };
-
-    postJsonObj(
-      'user_service.AuthenticationService',
-      'GetSignedCookie',
-      {},
-      (response) => {
-        const r = response as jwtresp;
-        console.log('got jwt', r.jwt);
+    const authClient = createPromiseClient(AuthenticationService, transport);
+    authClient
+      .getSignedCookie({})
+      .then((response) => {
+        console.log('got jwt', response.jwt);
         const newPath = `/handover-signed-cookie?${new URLSearchParams({
-          jwt: r.jwt,
+          jwt: response.jwt,
           ls: JSON.stringify(localStorage),
           path: loc.pathname,
         })}`;
         redirectToHandoff(newPath);
-      },
-      (err) => {
-        if (err.message === 'need auth for this endpoint') {
+      })
+      .catch((e) => {
+        if ((e as ConnectError).message === 'need auth for this endpoint') {
           // We don't have a jwt because we're not logged in. That's ok;
           // let's hand off just the local storage then.
           const newPath = `/handover-signed-cookie?${new URLSearchParams({
@@ -93,8 +89,7 @@ window.console.info(
           })}`;
           redirectToHandoff(newPath);
         }
-      }
-    );
+      });
   }
 }
 

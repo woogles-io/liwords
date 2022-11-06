@@ -5,7 +5,6 @@ import './avatar.scss';
 import { Tooltip } from 'antd';
 import { useBriefProfile } from '../utils/brief_profiles';
 import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
-import { PersonalInfoResponse } from '../gen/api/proto/user_service/user_service_pb';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const colors = require('../base.scss').default;
 

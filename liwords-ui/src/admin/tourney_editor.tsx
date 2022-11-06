@@ -27,7 +27,6 @@ import {
 import { useMountedState } from '../utils/mounted';
 import {
   GetTournamentMetadataRequest,
-  TournamentMetadataResponse,
   TType,
 } from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { GameRequest } from '../gen/api/proto/ipc/omgwords_pb';
@@ -120,14 +119,14 @@ export const TourneyEditor = (props: Props) => {
     GameRequest | undefined
   >(undefined);
   const [form] = Form.useForm();
-  const tournamentService = useClient(TournamentService);
+  const tournamentClient = useClient(TournamentService);
 
   const onSearch = async (val: string) => {
     const tmreq = new GetTournamentMetadataRequest();
     tmreq.slug = val;
 
     try {
-      const resp = await tournamentService.getTournamentMetadata({ slug: val });
+      const resp = await tournamentClient.getTournamentMetadata({ slug: val });
       const metadata = resp.metadata;
 
       if (!metadata) {
@@ -204,7 +203,7 @@ export const TourneyEditor = (props: Props) => {
       };
     }
     try {
-      await tournamentService[apicall](obj);
+      await tournamentClient[apicall](obj);
       message.info({
         content: 'Tournament ' + (props.mode === 'new' ? 'created' : 'updated'),
         duration: 3,
@@ -235,7 +234,7 @@ export const TourneyEditor = (props: Props) => {
       return;
     }
     try {
-      await tournamentService.addDirectors({
+      await tournamentClient.addDirectors({
         id: form.getFieldValue('id'),
         // Need a non-zero "rating" for director..
         persons: [{ id: director, rating: 1 }],
@@ -255,7 +254,7 @@ export const TourneyEditor = (props: Props) => {
       return;
     }
     try {
-      await tournamentService.removeDirectors({
+      await tournamentClient.removeDirectors({
         id: form.getFieldValue('id'),
         // Need a non-zero "rating" for director..
         persons: [{ id: director }],

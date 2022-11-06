@@ -1,8 +1,8 @@
 import { proto3 } from '@bufbuild/protobuf';
-import { GameMetadata } from '../gameroom/game_info';
 import {
   GameEndedEvent,
   GameEndReason,
+  GameInfoResponse,
 } from '../gen/api/proto/ipc/omgwords_pb';
 
 export const endGameMessage = (gee: GameEndedEvent): string => {
@@ -82,18 +82,18 @@ export const endGameMessage = (gee: GameEndedEvent): string => {
   return summary.join('\n');
 };
 
-export const endGameMessageFromGameInfo = (info: GameMetadata): string => {
+export const endGameMessageFromGameInfo = (info: GameInfoResponse): string => {
   // construct an artificial GameEndedEvent
 
   const gee = new GameEndedEvent();
   const scores = gee.scores;
   if (
-    info.game_end_reason === GameEndReason.ABORTED ||
-    info.game_end_reason === GameEndReason.CANCELLED
+    info.gameEndReason === GameEndReason.ABORTED ||
+    info.gameEndReason === GameEndReason.CANCELLED
   ) {
     const endReasonText = proto3
       .getEnumType(GameEndReason)
-      .findNumber(info.game_end_reason)
+      .findNumber(info.gameEndReason)
       ?.name.toLowerCase();
     return `Game was ${endReasonText}.`;
   }
@@ -108,7 +108,7 @@ export const endGameMessageFromGameInfo = (info: GameMetadata): string => {
     gee.loser = info.players[1 - (info.winner ?? 0)].nickname;
   }
 
-  gee.endReason = info.game_end_reason;
+  gee.endReason = info.gameEndReason;
 
   return endGameMessage(gee);
 };

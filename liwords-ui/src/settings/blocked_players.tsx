@@ -46,7 +46,7 @@ export const BlockedPlayers = React.memo(() => {
         flashError(e);
       }
     },
-    [blockedUsers]
+    [blockedUsers, socializeClient]
   );
 
   useEffect(refreshBlocks, [refreshBlocks]);

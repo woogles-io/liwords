@@ -16,10 +16,8 @@ import {
 import { Modal } from '../../utils/focus_modal';
 import { Store } from 'rc-field-form/lib/interface';
 import React, { useEffect } from 'react';
-import { LiwordsAPIError, postJsonObj, postProto } from '../../api/api';
 import {
   SingleRoundControlsRequest,
-  TournamentResponse,
   TType,
 } from '../../gen/api/proto/tournament_service/tournament_service_pb';
 import { Division } from '../../store/reducers/tournament_reducer';
@@ -44,6 +42,8 @@ import {
 } from '../../gen/api/proto/ipc/tournament_pb';
 import { GameRequest } from '../../gen/api/proto/ipc/omgwords_pb';
 import { HelptipLabel } from './helptip_label';
+import { flashError, useClient } from '../../utils/hooks/connect';
+import { TournamentService } from '../../gen/api/proto/tournament_service/tournament_service_connectweb';
 
 type ModalProps = {
   title: string;
@@ -62,7 +62,7 @@ const FormModal = (props: ModalProps) => {
     'remove-division': <RemoveDivision tournamentID={props.tournamentID} />,
     'add-players': <AddPlayers tournamentID={props.tournamentID} />,
     'remove-player': <RemovePlayer tournamentID={props.tournamentID} />,
-    'clear-checked-in': <ClearCheckedIn tournamentID={props.tournamentID} />,
+    // 'clear-checked-in': <ClearCheckedIn tournamentID={props.tournamentID} />,
     'set-single-pairing': <SetPairing tournamentID={props.tournamentID} />,
     'set-game-result': <SetResult tournamentID={props.tournamentID} />,
     'pair-entire-round': <PairRound tournamentID={props.tournamentID} />,
@@ -255,22 +255,21 @@ const PlayersFormItem = (props: {
 };
 
 const AddDivision = (props: { tournamentID: string }) => {
+  const tClient = useClient(TournamentService);
   const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
       division: vals.division,
     };
-    postJsonObj(
-      'tournament_service.TournamentService',
-      'AddDivision',
-      obj,
-      () => {
-        message.info({
-          content: 'Division added',
-          duration: 3,
-        });
-      }
-    );
+    try {
+      await tClient.addDivision(obj);
+      message.info({
+        content: 'Division added',
+        duration: 3,
+      });
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   return (
@@ -288,23 +287,23 @@ const AddDivision = (props: { tournamentID: string }) => {
 };
 
 const RemoveDivision = (props: { tournamentID: string }) => {
+  const tClient = useClient(TournamentService);
+
   const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
       division: vals.division,
     };
 
-    postJsonObj(
-      'tournament_service.TournamentService',
-      'RemoveDivision',
-      obj,
-      () => {
-        message.info({
-          content: 'Division removed',
-          duration: 3,
-        });
-      }
-    );
+    try {
+      await tClient.removeDivision(obj);
+      message.info({
+        content: 'Division removed',
+        duration: 3,
+      });
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   return (
@@ -320,6 +319,7 @@ const RemoveDivision = (props: { tournamentID: string }) => {
 };
 
 const AddPlayers = (props: { tournamentID: string }) => {
+  const tClient = useClient(TournamentService);
   const onFinish = async (vals: Store) => {
     const players = [];
     // const playerMap: { [username: string]: number } = {};
@@ -354,17 +354,15 @@ const AddPlayers = (props: { tournamentID: string }) => {
     };
     console.log(obj);
 
-    postJsonObj(
-      'tournament_service.TournamentService',
-      'AddPlayers',
-      obj,
-      () => {
-        message.info({
-          content: 'Players added',
-          duration: 3,
-        });
-      }
-    );
+    try {
+      await tClient.addPlayers(obj);
+      message.info({
+        content: 'Players added',
+        duration: 3,
+      });
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   return (
@@ -423,7 +421,7 @@ const AddPlayers = (props: { tournamentID: string }) => {
 const RemovePlayer = (props: { tournamentID: string }) => {
   const { useState } = useMountedState();
   const [division, setDivision] = useState('');
-
+  const tClient = useClient(TournamentService);
   const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
@@ -435,18 +433,15 @@ const RemovePlayer = (props: { tournamentID: string }) => {
       ],
     };
     console.log(obj);
-
-    postJsonObj(
-      'tournament_service.TournamentService',
-      'RemovePlayers',
-      obj,
-      () => {
-        message.info({
-          content: 'Player removed',
-          duration: 3,
-        });
-      }
-    );
+    try {
+      await tClient.removePlayers(obj);
+      message.info({
+        content: 'Player removed',
+        duration: 3,
+      });
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   return (
@@ -467,7 +462,9 @@ const RemovePlayer = (props: { tournamentID: string }) => {
   );
 };
 
+/*
 const ClearCheckedIn = (props: { tournamentID: string }) => {
+  const tClient = useClient(TournamentService);
   const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
@@ -496,6 +493,7 @@ const ClearCheckedIn = (props: { tournamentID: string }) => {
     </Form>
   );
 };
+*/
 
 // userUUID looks up the UUID of a username
 const userUUID = (username: string, divobj: Division) => {
@@ -546,7 +544,7 @@ const SetPairing = (props: { tournamentID: string }) => {
   const { useState } = useMountedState();
   const [division, setDivision] = useState('');
   const [selfplay, setSelfplay] = useState(false);
-
+  const tClient = useClient(TournamentService);
   const onFinish = async (vals: Store) => {
     const p1id = fullPlayerID(
       vals.p1,
@@ -573,18 +571,15 @@ const SetPairing = (props: { tournamentID: string }) => {
         },
       ],
     };
-
-    postJsonObj(
-      'tournament_service.TournamentService',
-      'SetPairing',
-      obj,
-      () => {
-        message.info({
-          content: 'Pairing set',
-          duration: 3,
-        });
-      }
-    );
+    try {
+      await tClient.setPairing(obj);
+      message.info({
+        content: 'Pairing set',
+        duration: 3,
+      });
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   return (
@@ -643,7 +638,7 @@ const SetResult = (props: { tournamentID: string }) => {
   const [score1, setScore1] = useState(0);
   const [score2, setScore2] = useState(0);
   const [form] = Form.useForm();
-
+  const tClient = useClient(TournamentService);
   const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
@@ -664,18 +659,15 @@ const SetResult = (props: { tournamentID: string }) => {
       game_end_reason: vals.gameEndReason,
       amendment: vals.amendment,
     };
-
-    postJsonObj(
-      'tournament_service.TournamentService',
-      'SetResult',
-      obj,
-      () => {
-        message.info({
-          content: 'Result set',
-          duration: 3,
-        });
-      }
-    );
+    try {
+      await tClient.setResult(obj);
+      message.info({
+        content: 'Result set',
+        duration: 3,
+      });
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   useEffect(() => {
@@ -798,25 +790,23 @@ const SetResult = (props: { tournamentID: string }) => {
 };
 
 const PairRound = (props: { tournamentID: string }) => {
-  const onFinish = (vals: Store) => {
+  const tClient = useClient(TournamentService);
+  const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
       division: vals.division,
       round: vals.round - 1, // 1-indexed input
-      preserve_byes: vals.preserveByes,
+      preserveByes: vals.preserveByes,
     };
-
-    postJsonObj(
-      'tournament_service.TournamentService',
-      'PairRound',
-      obj,
-      () => {
-        message.info({
-          content: 'Pair round completed',
-          duration: 3,
-        });
-      }
-    );
+    try {
+      await tClient.pairRound(obj);
+      message.info({
+        content: 'Pair round completed',
+        duration: 3,
+      });
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   return (
@@ -841,25 +831,23 @@ const PairRound = (props: { tournamentID: string }) => {
 };
 
 const UnpairRound = (props: { tournamentID: string }) => {
-  const onFinish = (vals: Store) => {
+  const tClient = useClient(TournamentService);
+  const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
       division: vals.division,
       round: vals.round - 1, // 1-indexed input
       deletePairings: true,
     };
-
-    postJsonObj(
-      'tournament_service.TournamentService',
-      'PairRound',
-      obj,
-      () => {
-        message.info({
-          content: 'Pairings for selected round have been deleted',
-          duration: 3,
-        });
-      }
-    );
+    try {
+      await tClient.pairRound(obj);
+      message.info({
+        content: 'Pairings for selected round have been deleted',
+        duration: 3,
+      });
+    } catch (e) {
+      flashError(e);
+    }
   };
   return (
     <Form onFinish={onFinish}>
@@ -944,6 +932,8 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     );
   };
 
+  const tClient = useClient(TournamentService);
+
   const submit = async () => {
     if (!selectedGameRequest) {
       showError('No game request');
@@ -970,18 +960,13 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     }
 
     try {
-      await postProto(
-        TournamentResponse,
-        'tournament_service.TournamentService',
-        'SetDivisionControls',
-        ctrls
-      );
+      await tClient.setDivisionControls(ctrls);
       message.info({
         content: 'Controls set',
         duration: 3,
       });
     } catch (e) {
-      showError((e as LiwordsAPIError).message);
+      flashError(e);
     }
   };
 
@@ -1419,7 +1404,7 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
     })
   );
   const [userVisibleRound, setUserVisibleRound] = useState(1);
-
+  const tClient = useClient(TournamentService);
   const setRoundControls = async () => {
     if (!division) {
       showError('Division is missing');
@@ -1443,18 +1428,13 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
     const rdCtrl = rdCtrlFromSetting(roundSetting);
     ctrls.roundControls = rdCtrl;
     try {
-      await postProto(
-        TournamentResponse,
-        'tournament_service.TournamentService',
-        'SetSingleRoundControls',
-        ctrls
-      );
+      await tClient.setSingleRoundControls(ctrls);
       message.info({
         content: `Controls set for round ${userVisibleRound}`,
         duration: 3,
       });
     } catch (e) {
-      showError((e as LiwordsAPIError).message);
+      flashError(e);
     }
   };
 
@@ -1562,6 +1542,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
     const div = tournamentContext.divisions[division];
     setRoundArray(roundControlsToDisplayArray(div.roundControls));
   }, [division, roundControlsToDisplayArray, tournamentContext.divisions]);
+  const tClient = useClient(TournamentService);
 
   const setRoundControls = async () => {
     if (!division) {
@@ -1605,18 +1586,13 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
     });
     ctrls.roundControls = roundControls;
     try {
-      await postProto(
-        TournamentResponse,
-        'tournament_service.TournamentService',
-        'SetRoundControls',
-        ctrls
-      );
+      await tClient.setRoundControls(ctrls);
       message.info({
         content: 'Controls set',
         duration: 3,
       });
     } catch (e) {
-      showError((e as LiwordsAPIError).message);
+      flashError(e);
     }
   };
 
@@ -1737,47 +1713,40 @@ const ExportTournament = (props: { tournamentID: string }) => {
       span: 12,
     },
   };
-
+  const tClient = useClient(TournamentService);
   const onSubmit = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
       format: vals.format,
     };
-    await postJsonObj(
-      'tournament_service.TournamentService',
-      'ExportTournament',
-      obj,
-      (resp) => {
-        type rtype = {
-          exported: string;
-        };
-        const url = window.URL.createObjectURL(
-          new Blob([(resp as rtype).exported])
-        );
-        const link = document.createElement('a');
-        link.href = url;
-        const tname = tournamentContext.metadata.name;
-        let extension;
-        switch (vals.format) {
-          case 'tsh':
-            extension = 'tsh';
-            break;
-          case 'standingsonly':
-            extension = 'csv';
-            break;
-        }
-        const downloadFilename = `${tname}.${extension}`;
-        link.setAttribute('download', downloadFilename);
-        document.body.appendChild(link);
-        link.onclick = () => {
-          link.remove();
-          setTimeout(() => {
-            window.URL.revokeObjectURL(url);
-          }, 1000);
-        };
-        link.click();
+    try {
+      const resp = await tClient.exportTournament(obj);
+      const url = window.URL.createObjectURL(new Blob([resp.exported]));
+      const link = document.createElement('a');
+      link.href = url;
+      const tname = tournamentContext.metadata.name;
+      let extension;
+      switch (vals.format) {
+        case 'tsh':
+          extension = 'tsh';
+          break;
+        case 'standingsonly':
+          extension = 'csv';
+          break;
       }
-    );
+      const downloadFilename = `${tname}.${extension}`;
+      link.setAttribute('download', downloadFilename);
+      document.body.appendChild(link);
+      link.onclick = () => {
+        link.remove();
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+        }, 1000);
+      };
+      link.click();
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   return (
@@ -1805,6 +1774,7 @@ const ExportTournament = (props: { tournamentID: string }) => {
 
 const EditDescription = (props: { tournamentID: string }) => {
   const { tournamentContext } = useTournamentStoreContext();
+  const tClient = useClient(TournamentService);
 
   const [form] = Form.useForm();
 
@@ -1818,7 +1788,7 @@ const EditDescription = (props: { tournamentID: string }) => {
     });
   }, [form, tournamentContext.metadata]);
 
-  const onSubmit = (vals: Store) => {
+  const onSubmit = async (vals: Store) => {
     const obj = {
       metadata: {
         name: vals.name,
@@ -1827,19 +1797,17 @@ const EditDescription = (props: { tournamentID: string }) => {
         color: vals.color,
         id: props.tournamentID,
       },
-      set_only_specified: true,
+      setOnlySpecified: true,
     };
-    postJsonObj(
-      'tournament_service.TournamentService',
-      'SetTournamentMetadata',
-      obj,
-      () => {
-        message.info({
-          content: 'Set tournament metadata successfully.',
-          duration: 3,
-        });
-      }
-    );
+    try {
+      await tClient.setTournamentMetadata(obj);
+      message.info({
+        content: 'Set tournament metadata successfully.',
+        duration: 3,
+      });
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   return (

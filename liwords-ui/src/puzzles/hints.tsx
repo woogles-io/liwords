@@ -11,12 +11,10 @@ import {
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { useMountedState } from '../utils/mounted';
 import {
-  AnswerResponse,
   PuzzleRequest,
   PuzzleStatus,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
-import { LiwordsAPIError, postProto } from '../api/api';
-import { Button, message } from 'antd';
+import { Button } from 'antd';
 import { singularCount } from '../utils/plural';
 import {
   generateEmptyLearnLayout,
@@ -28,6 +26,8 @@ import {
   EyeInvisibleOutlined,
   EyeOutlined,
 } from '@ant-design/icons';
+import { flashError, useClient } from '../utils/hooks/connect';
+import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_connectweb';
 
 type Props = {
   puzzleID?: string;
@@ -64,30 +64,22 @@ export const Hints = (props: Props) => {
   const [solution, setSolution] = useState<GameEvent | undefined>(undefined);
   const { gridDim, setLearnLayout } = useContext(LearnContext);
   const [boardHighlightingOn, setBoardHighlightingOn] = useState(false);
-
+  const puzzleClient = useClient(PuzzleService);
   const fetchAnswer = useCallback(async () => {
     if (!puzzleID) {
       return;
     }
     const req = new PuzzleRequest({ puzzleId: puzzleID });
     try {
-      const resp = await postProto(
-        AnswerResponse,
-        'puzzle_service.PuzzleService',
-        'GetPuzzleAnswer',
-        req
-      );
+      const resp = await puzzleClient.getPuzzleAnswer(req);
       // Only CorrectAnswer is filled in properly.
       setSolution(resp.correctAnswer);
     } catch (err) {
       // There will be an error if this endpoint is called before the user
       // has submitted a guess.
-      message.error({
-        content: (err as LiwordsAPIError).message,
-        duration: 5,
-      });
+      flashError(err);
     }
-  }, [puzzleID]);
+  }, [puzzleID, puzzleClient]);
 
   const earnedHints = useMemo(() => {
     const usedHints = Object.values(hints).filter((h) => h.revealed).length;

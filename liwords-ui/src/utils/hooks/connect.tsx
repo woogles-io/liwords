@@ -4,7 +4,6 @@ import {
   createConnectTransport,
   createPromiseClient,
   PromiseClient,
-  Interceptor,
 } from '@bufbuild/connect-web';
 
 import { ServiceType } from '@bufbuild/protobuf';
@@ -25,21 +24,34 @@ const apiEndpoint = window.RUNTIME_CONFIGURATION?.apiEndpoint || loc.host;
 //   }
 // };
 
-const transport = createConnectTransport({
+export const transport = createConnectTransport({
   baseUrl: `${loc.protocol}//${apiEndpoint}/twirp/`,
   //   interceptors: [errorTranslator],
 });
 
-export function useClient<T extends ServiceType>(service: T): PromiseClient<T> {
-  return useMemo(() => createPromiseClient(service, transport), [service]);
+export const binaryTransport = createConnectTransport({
+  baseUrl: `${loc.protocol}//${apiEndpoint}/twirp/`,
+  useBinaryFormat: true,
+});
+
+export function useClient<T extends ServiceType>(
+  service: T,
+  binary = false
+): PromiseClient<T> {
+  const tf = binary ? binaryTransport : transport;
+  return useMemo(() => createPromiseClient(service, tf), [service, tf]);
 }
 
 export type TwirpError = {
   response: { data: { msg: string } };
 };
 
+// const twirpError = proto3.makeMessageType('TwirpError');
+
 export const flashError = (e: unknown, time = 5) => {
   if (e instanceof ConnectError) {
+    // connectErrorDetails(e);
+
     message.error({
       content: parseWooglesError(e.message),
       duration: time,

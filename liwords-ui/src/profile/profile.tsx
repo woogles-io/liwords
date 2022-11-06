@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Card, Carousel, notification } from 'antd';
+import { Card, Carousel } from 'antd';
 import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../navigation/topbar';
 import { PettableAvatar, PlayerAvatar } from '../shared/player_avatar';
@@ -212,7 +212,7 @@ export const PlayerProfile = React.memo(() => {
   const [userID, setUserID] = useState('');
   const [userFetched, setUserFetched] = useState(false);
   const [fullName, setFullName] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState('');
+  // const [avatarUrl, setAvatarUrl] = useState('');
   const [avatarsEditable, setAvatarsEditable] = useState(false);
   const [bio, setBio] = useState('');
   const [showGameTable, setShowGameTable] = useState(false);
@@ -243,7 +243,7 @@ export const PlayerProfile = React.memo(() => {
         setUserID(resp.userId);
         setCountryCode(resp.countryCode);
         setFullName(resp.fullName);
-        setAvatarUrl(resp.avatarUrl);
+        // setAvatarUrl(resp.avatarUrl);
         setAvatarsEditable(resp.avatarsEditable);
         setBio(resp.about);
         setBioLoaded(true);

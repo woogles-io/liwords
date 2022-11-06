@@ -19,6 +19,7 @@ export const TheBlocker = (props: BlockerProps) => {
     useExcludedPlayersStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { userID } = loginState;
+  const socializeClient = useClient(SocializeService);
 
   // Don't block yourself. It makes chat annoying.
   if (userID === props.target) {
@@ -38,7 +39,6 @@ export const TheBlocker = (props: BlockerProps) => {
     blockText = props.userName ? `Block ${props.userName}` : 'Block this user';
     // Add some confirmation.
   }
-  const socializeClient = useClient(SocializeService);
   const blockAction = async () => {
     try {
       await socializeClient[apiFunc]({ uuid: props.target });

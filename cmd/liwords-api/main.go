@@ -110,6 +110,21 @@ func NewLoggingServerHooks() *twirp.ServerHooks {
 	}
 }
 
+// func NewInterceptorCustomError() twirp.Interceptor {
+// 	return func(next twirp.Method) twirp.Method {
+// 		return func(ctx context.Context, req interface{}) (interface{}, error) {
+
+// 			resp, err := next(ctx, req)
+// 			if err != nil {
+// 				switch err.(type) {
+// 				case twirp.Error:
+
+// 				}
+// 			}
+// 		}
+// 	}
+// }
+
 func main() {
 
 	cfg := &config.Config{}

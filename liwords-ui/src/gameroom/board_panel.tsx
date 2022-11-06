@@ -63,7 +63,6 @@ import {
   GameEvent_Type,
   PlayState,
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
-import { toAPIUrl } from '../api/api';
 import { TilePreview } from './tile';
 import { Alphabet } from '../constants/alphabets';
 import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
@@ -166,10 +165,10 @@ const shuffleString = (a: string): string => {
 const gcgExport = async (
   gameID: string,
   playerMeta: Array<PlayerInfo>,
-  gameMetadataService: PromiseClient<typeof GameMetadataService>
+  gameMetadataClient: PromiseClient<typeof GameMetadataService>
 ) => {
   try {
-    const resp = await gameMetadataService.getGCG({ gameId: gameID });
+    const resp = await gameMetadataClient.getGCG({ gameId: gameID });
     const url = window.URL.createObjectURL(new Blob([resp.gcg]));
     const link = document.createElement('a');
     link.href = url;
@@ -1521,15 +1520,15 @@ export const BoardPanel = React.memo((props: Props) => {
     e.preventDefault();
   }, []);
 
-  const metadataService = useClient(GameMetadataService);
+  const metadataClient = useClient(GameMetadataService);
 
   const handlePass = useCallback(() => makeMove('pass'), [makeMove]);
   const handleResign = useCallback(() => makeMove('resign'), [makeMove]);
   const handleChallenge = useCallback(() => makeMove('challenge'), [makeMove]);
   const handleCommit = useCallback(() => makeMove('commit'), [makeMove]);
   const handleExportGCG = useCallback(
-    () => gcgExport(props.gameID, props.playerMeta, metadataService),
-    [props.gameID, props.playerMeta, metadataService]
+    () => gcgExport(props.gameID, props.playerMeta, metadataClient),
+    [props.gameID, props.playerMeta, metadataClient]
   );
   const handleExchangeTilesCancel = useCallback(() => {
     setCurrentMode('NORMAL');

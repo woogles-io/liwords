@@ -1,8 +1,7 @@
 import { HomeOutlined } from '@ant-design/icons';
-import { Card, Form, message, Modal, Select } from 'antd';
+import { Card, Form, Modal, Select } from 'antd';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { LiwordsAPIError, postProto, toAPIUrl } from '../api/api';
 import { Chat } from '../chat/chat';
 import { alphabetFromName } from '../constants/alphabets';
 import { TopBar } from '../navigation/topbar';
@@ -22,14 +21,10 @@ import { PuzzleInfo as PuzzleInfoWidget } from './puzzle_info';
 import { ActionType } from '../actions/actions';
 import {
   PuzzleRequest,
-  PuzzleResponse,
   PuzzleStatus,
   SubmissionRequest,
-  SubmissionResponse,
   NextClosestRatingPuzzleIdRequest,
-  NextClosestRatingPuzzleIdResponse,
   StartPuzzleIdRequest,
-  StartPuzzleIdResponse,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { sortTiles } from '../store/constants';
 import { Notepad, NotepadContextProvider } from '../gameroom/notepad';
@@ -51,7 +46,6 @@ import { Store } from 'antd/lib/form/interface';
 
 import {
   ClientGameplayEvent,
-  GameInfoResponse,
   RatingMode,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { computeLeave } from '../utils/cwgame/game_event';
@@ -69,8 +63,10 @@ import { PuzzleShareButton } from './puzzle_share';
 import { RatingsCard } from './ratings';
 import { GameEvent_Direction } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { GameEvent_Type } from '../gen/macondo/api/proto/macondo/macondo_pb';
-import { useClient } from '../utils/hooks/connect';
+import { flashError, useClient } from '../utils/hooks/connect';
 import { WordService } from '../gen/api/proto/word_service/word_service_connectweb';
+import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_connectweb';
+import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connectweb';
 
 const doNothing = () => {};
 
@@ -148,7 +144,8 @@ export const SinglePuzzle = (props: Props) => {
   } = useTentativeTileContext();
 
   const navigate = useNavigate();
-
+  const puzzleClient = useClient(PuzzleService);
+  const gameMetadataClient = useClient(GameMetadataService);
   useEffect(() => {
     if (!puzzleID) {
       setShowLexiconModal(true);
@@ -192,36 +189,27 @@ export const SinglePuzzle = (props: Props) => {
         setShowLexiconModal(true);
         return;
       }
-      let req, respType, method;
+      let req;
+      let method: 'getStartPuzzleId' | 'getNextClosestRatingPuzzleId';
       if (firstLoad === true) {
         req = new StartPuzzleIdRequest();
-        respType = StartPuzzleIdResponse;
-        method = 'GetStartPuzzleId';
+        method = 'getStartPuzzleId';
       } else {
         req = new NextClosestRatingPuzzleIdRequest();
-        respType = NextClosestRatingPuzzleIdResponse;
-        method = 'GetNextClosestRatingPuzzleId';
+        method = 'getNextClosestRatingPuzzleId';
       }
 
       req.lexicon = userLexicon;
       try {
-        const resp = await postProto(
-          respType,
-          'puzzle_service.PuzzleService',
-          method,
-          req
-        );
+        const resp = await puzzleClient[method](req);
         navigate(`/puzzle/${encodeURIComponent(resp.puzzleId)}`, {
           replace: !!firstLoad,
         });
       } catch (err) {
-        message.error({
-          content: (err as LiwordsAPIError).message,
-          duration: 5,
-        });
+        flashError(err);
       }
     },
-    [userLexicon, navigate]
+    [userLexicon, navigate, puzzleClient]
   );
 
   useEffect(() => {
@@ -259,38 +247,33 @@ export const SinglePuzzle = (props: Props) => {
     [placeMove, sortedRack]
   );
 
-  const setGameInfo = useCallback(async (gid: string, turnNumber: number) => {
-    const req = new GameInfoRequest({ gameId: gid });
-    try {
-      const resp = await postProto(
-        GameInfoResponse,
-        'game_service.GameMetadataService',
-        'GetMetadata',
-        req
-      );
-      const gameRequest = resp.gameRequest;
-      if (gameRequest) {
-        setPuzzleInfo((x) => ({
-          ...x,
-          challengeRule: gameRequest.challengeRule,
-          ratingMode:
-            gameRequest?.ratingMode === RatingMode.RATED ? 'Rated' : 'Casual',
-          gameDate: resp.createdAt?.toDate(),
-          initialTimeSeconds: gameRequest?.initialTimeSeconds,
-          incrementSeconds: gameRequest?.incrementSeconds,
-          maxOvertimeMinutes: gameRequest?.maxOvertimeMinutes,
-          gameUrl: `/game/${gid}?turn=${turnNumber + 1}`,
-          player1: { nickname: resp.players[0].nickname },
-          player2: { nickname: resp.players[1].nickname },
-        }));
+  const setGameInfo = useCallback(
+    async (gid: string, turnNumber: number) => {
+      const req = new GameInfoRequest({ gameId: gid });
+      try {
+        const resp = await gameMetadataClient.getMetadata(req);
+        const gameRequest = resp.gameRequest;
+        if (gameRequest) {
+          setPuzzleInfo((x) => ({
+            ...x,
+            challengeRule: gameRequest.challengeRule,
+            ratingMode:
+              gameRequest?.ratingMode === RatingMode.RATED ? 'Rated' : 'Casual',
+            gameDate: resp.createdAt?.toDate(),
+            initialTimeSeconds: gameRequest?.initialTimeSeconds,
+            incrementSeconds: gameRequest?.incrementSeconds,
+            maxOvertimeMinutes: gameRequest?.maxOvertimeMinutes,
+            gameUrl: `/game/${gid}?turn=${turnNumber + 1}`,
+            player1: { nickname: resp.players[0].nickname },
+            player2: { nickname: resp.players[1].nickname },
+          }));
+        }
+      } catch (err) {
+        flashError(err);
       }
-    } catch (err) {
-      message.error({
-        content: (err as LiwordsAPIError).message,
-        duration: 5,
-      });
-    }
-  }, []);
+    },
+    [gameMetadataClient]
+  );
 
   const showSolution = useCallback(async () => {
     if (!puzzleID) {
@@ -306,12 +289,7 @@ export const SinglePuzzle = (props: Props) => {
       examinableGameContext.players
     );
     try {
-      const resp = await postProto(
-        SubmissionResponse,
-        'puzzle_service.PuzzleService',
-        'SubmitAnswer',
-        req
-      );
+      const resp = await puzzleClient.submitAnswer(req);
       const answerResponse = resp.answer;
       if (!answerResponse) {
         throw new Error('Did not have an answer!');
@@ -333,12 +311,9 @@ export const SinglePuzzle = (props: Props) => {
       }
       // Also get the game metadata.
     } catch (err) {
-      message.error({
-        content: (err as LiwordsAPIError).message,
-        duration: 5,
-      });
+      flashError(err);
     }
-  }, [puzzleID, userIDOnTurn, examinableGameContext.players]);
+  }, [puzzleID, userIDOnTurn, examinableGameContext.players, puzzleClient]);
 
   useEffect(() => {
     if (puzzleInfo.gameId) {
@@ -354,12 +329,7 @@ export const SinglePuzzle = (props: Props) => {
       const req = new SubmissionRequest({ answer: evt, puzzleId: puzzleID });
 
       try {
-        const resp = await postProto(
-          SubmissionResponse,
-          'puzzle_service.PuzzleService',
-          'SubmitAnswer',
-          req
-        );
+        const resp = await puzzleClient.submitAnswer(req);
         const answerResponse = resp.answer;
         if (!answerResponse) {
           throw new Error('Did not have an answer!');
@@ -401,13 +371,10 @@ export const SinglePuzzle = (props: Props) => {
           }));
         }
       } catch (err) {
-        message.error({
-          content: (err as LiwordsAPIError).message,
-          duration: 5,
-        });
+        flashError(err);
       }
     },
-    [puzzleID, setGameInfo]
+    [puzzleID, puzzleClient, setGameInfo]
   );
 
   useEffect(() => {
@@ -418,12 +385,8 @@ export const SinglePuzzle = (props: Props) => {
       }
       const req = new PuzzleRequest({ puzzleId: puzzleID });
       try {
-        const resp = await postProto(
-          PuzzleResponse,
-          'puzzle_service.PuzzleService',
-          'GetPuzzle',
-          req
-        );
+        const resp = await puzzleClient.getPuzzle(req);
+
         /*if (localStorage?.getItem('poolFormat')) {
           setPoolFormat(
             parseInt(localStorage.getItem('poolFormat') || '0', 10)
@@ -464,10 +427,7 @@ export const SinglePuzzle = (props: Props) => {
         setInitialUserRating(answerResponse.newUserRating);
         setPendingSolution(answerResponse.status !== PuzzleStatus.UNANSWERED);
       } catch (err) {
-        message.error({
-          content: (err as LiwordsAPIError).message,
-          duration: 5,
-        });
+        flashError(err);
       }
     }
     if (puzzleID) {
@@ -479,7 +439,7 @@ export const SinglePuzzle = (props: Props) => {
 
       fetchPuzzleData();
     }
-  }, [dispatchGameContext, puzzleID]);
+  }, [dispatchGameContext, puzzleID, puzzleClient]);
 
   useEffect(() => {
     if (userLexicon && !puzzleID) {
@@ -642,6 +602,7 @@ export const SinglePuzzle = (props: Props) => {
     placedTiles,
     examinableGameContext.board,
     puzzleInfo.lexicon,
+    wordClient,
   ]);
 
   const responseModalCorrect = useMemo(() => {

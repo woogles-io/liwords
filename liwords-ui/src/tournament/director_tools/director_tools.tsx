@@ -5,8 +5,9 @@ import { useTournamentStoreContext } from '../../store/store';
 import './director_tools.scss';
 import { UsernameWithContext } from '../../shared/usernameWithContext';
 import { Button, Divider } from 'antd';
-import { postJsonObj } from '../../api/api';
 import { GhettoTools } from './ghetto_tools';
+import { TournamentService } from '../../gen/api/proto/tournament_service/tournament_service_connectweb';
+import { flashError, useClient } from '../../utils/hooks/connect';
 /*
 import { AddPlayerForm, playersToAdd } from './add_player_form';
 import { ModifyDivisionsForm } from './modify_divisions_form';
@@ -115,16 +116,18 @@ export const DirectorTools = React.memo((props: DTProps) => {
     });
   }, [tournamentContext.divisions]);
 
+  const tournamentClient = useClient(TournamentService);
+
   const renderStartButton = () => {
     const startTournament = async () => {
-      postJsonObj(
-        'tournament_service.TournamentService',
-        'StartRoundCountdown',
-        {
+      try {
+        await tournamentClient.startRoundCountdown({
           id: props.tournamentID,
-          start_all_rounds: true,
-        }
-      );
+          startAllRounds: true,
+        });
+      } catch (e) {
+        flashError(e);
+      }
     };
     if (
       Object.values(tournamentContext.divisions).length &&

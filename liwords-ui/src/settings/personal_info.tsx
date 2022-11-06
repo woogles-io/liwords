@@ -86,7 +86,7 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
     } catch (e) {
       avatarErrorCatcher(e);
     }
-  }, [propsUpdatedAvatar, avatarErrorCatcher]);
+  }, [propsUpdatedAvatar, avatarErrorCatcher, profileClient]);
 
   const saveAvatar = useCallback(
     async (imageDataUrl: string) => {

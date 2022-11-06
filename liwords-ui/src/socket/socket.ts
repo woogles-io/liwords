@@ -34,12 +34,6 @@ const getSocketURI = (): string => {
 // this only depends on protocol and host, will never change as we navigate SPA.
 const socketUrl = getSocketURI();
 
-type TokenResponse = {
-  token: string;
-  cid: string;
-  front_end_version: string;
-};
-
 type DecodedToken = {
   unn: string;
   uid: string;

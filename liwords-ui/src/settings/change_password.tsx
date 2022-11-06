@@ -20,11 +20,11 @@ export const ChangePassword = React.memo(() => {
   const [err, setErr] = useState('');
   const [form] = Form.useForm();
 
-  const authService = useClient(AuthenticationService);
+  const authClient = useClient(AuthenticationService);
 
   const onFinish = async (values: { [key: string]: string }) => {
     try {
-      await authService.changePassword({
+      await authClient.changePassword({
         oldPassword: values.oldPassword,
         newPassword: values.newPassword,
       });

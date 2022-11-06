@@ -11,7 +11,6 @@ import {
   Select,
   Switch,
 } from 'antd';
-import { LiwordsAPIError, postProto } from '../api/api';
 import { Store } from 'antd/lib/form/interface';
 import { excludedLexica, LexiconFormItem } from '../shared/lexicon_display';
 import {
@@ -22,14 +21,14 @@ import {
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   APIPuzzleGenerationJobRequest,
-  APIPuzzleGenerationJobResponse,
   PuzzleGenerationJobRequest,
   PuzzleJobLog,
   PuzzleJobLogsRequest,
-  PuzzleJobLogsResponse,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import moment from 'moment';
 import { proto3 } from '@bufbuild/protobuf';
+import { flashError, useClient } from '../utils/hooks/connect';
+import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_connectweb';
 
 const layout = {
   labelCol: {
@@ -86,74 +85,63 @@ export const PuzzleGenerator = () => {
     );
   }, [logs]);
 
-  const onFinish = useCallback(async (vals: Store) => {
-    console.log('vals', vals);
+  const puzzleClient = useClient(PuzzleService);
 
-    const apireq = new APIPuzzleGenerationJobRequest();
+  const onFinish = useCallback(
+    async (vals: Store) => {
+      console.log('vals', vals);
 
-    const req = new PuzzleGenerationJobRequest();
-    req.botVsBot = vals.bvb;
-    req.lexicon = vals.lexicon;
-    req.letterDistribution = vals.letterdist;
-    req.sqlOffset = vals.sqlOffset;
-    req.gameConsiderationLimit = vals.gameConsiderationLimit;
-    req.gameCreationLimit = vals.gameCreationLimit;
+      const apireq = new APIPuzzleGenerationJobRequest();
 
-    const bucketReq = new PuzzleGenerationRequest();
+      const req = new PuzzleGenerationJobRequest();
+      req.botVsBot = vals.bvb;
+      req.lexicon = vals.lexicon;
+      req.letterDistribution = vals.letterdist;
+      req.sqlOffset = vals.sqlOffset;
+      req.gameConsiderationLimit = vals.gameConsiderationLimit;
+      req.gameCreationLimit = vals.gameCreationLimit;
 
-    const buckets = new Array<PuzzleBucket>();
-    vals.buckets.forEach((bucket: formBucket) => {
-      const pb = new PuzzleBucket();
-      pb.size = bucket.size;
+      const bucketReq = new PuzzleGenerationRequest();
 
-      pb.includes = bucket.includes;
-      pb.excludes = bucket.excludes;
-      buckets.push(pb);
-    });
+      const buckets = new Array<PuzzleBucket>();
+      vals.buckets.forEach((bucket: formBucket) => {
+        const pb = new PuzzleBucket();
+        pb.size = bucket.size;
 
-    bucketReq.buckets = buckets;
-
-    req.request = bucketReq;
-
-    apireq.secretKey = vals.secretKey;
-    apireq.request = req;
-
-    try {
-      await postProto(
-        APIPuzzleGenerationJobResponse,
-        'puzzle_service.PuzzleService',
-        'StartPuzzleGenJob',
-        apireq
-      );
-      message.info({ content: 'Submitted job' });
-    } catch (e) {
-      message.error({
-        content: (e as LiwordsAPIError).message,
-        duration: 5,
+        pb.includes = bucket.includes;
+        pb.excludes = bucket.excludes;
+        buckets.push(pb);
       });
-    }
-  }, []);
+
+      bucketReq.buckets = buckets;
+
+      req.request = bucketReq;
+
+      apireq.secretKey = vals.secretKey;
+      apireq.request = req;
+
+      try {
+        await puzzleClient.startPuzzleGenJob(apireq);
+        message.info({ content: 'Submitted job' });
+      } catch (e) {
+        flashError(e);
+      }
+    },
+    [puzzleClient]
+  );
 
   const fetchRecentLogs = useCallback(async () => {
     const req = new PuzzleJobLogsRequest();
     req.offset = 0;
     req.limit = 20;
-    // Add pagination later.
+
     try {
-      const resp = await postProto(
-        PuzzleJobLogsResponse,
-        'puzzle_service.PuzzleService',
-        'GetPuzzleJobLogs',
-        req
-      );
+      const resp = await puzzleClient.getPuzzleJobLogs(req);
       setLogs(resp.logs);
     } catch (e) {
-      message.error({
-        content: (e as LiwordsAPIError).message,
-        duration: 5,
-      });
+      flashError(e);
     }
-  }, []);
+  }, [puzzleClient]);
 
   const puzzleTags = useMemo(
     () =>

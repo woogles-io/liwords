@@ -1,15 +1,14 @@
 import { useEffect } from 'react';
 import { Action, ActionType } from '../actions/actions';
-import { postProto } from '../api/api';
 import {
   GetTournamentMetadataRequest,
   GetTournamentRequest,
-  TournamentMetadataResponse,
   TType,
 } from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { LoginState } from '../store/login_state';
 import { message } from 'antd';
-import { FullTournamentDivisions } from '../gen/api/proto/ipc/tournament_pb';
+import { useClient } from '../utils/hooks/connect';
+import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_connectweb';
 
 export const useTourneyMetadata = (
   path: string,
@@ -18,6 +17,7 @@ export const useTourneyMetadata = (
   loginState: LoginState,
   setBadTournament: React.Dispatch<React.SetStateAction<boolean>> | undefined
 ) => {
+  const tournamentClient = useClient(TournamentService);
   useEffect(() => {
     if (!loginState.connectedToSocket) {
       return;
@@ -43,12 +43,7 @@ export const useTourneyMetadata = (
       }
 
       try {
-        const meta = await postProto(
-          TournamentMetadataResponse,
-          'tournament_service.TournamentService',
-          'GetTournamentMetadata',
-          tmreq
-        );
+        const meta = await tournamentClient.getTournamentMetadata(tmreq);
         console.log('got meta', meta);
         dispatchTournamentContext({
           actionType: ActionType.SetTourneyMetadata,
@@ -67,13 +62,7 @@ export const useTourneyMetadata = (
         if (meta.metadata) {
           treq.id = meta.metadata.id;
         }
-
-        const tresp = await postProto(
-          FullTournamentDivisions,
-          'tournament_service.TournamentService',
-          'GetTournament',
-          treq
-        );
+        const tresp = await tournamentClient.getTournament(treq);
 
         dispatchTournamentContext({
           actionType: ActionType.SetDivisionsData,
@@ -106,5 +95,6 @@ export const useTourneyMetadata = (
     path,
     setBadTournament,
     tournamentID,
+    tournamentClient,
   ]);
 };

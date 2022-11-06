@@ -30,7 +30,6 @@ import { PlayerProfile } from './profile/profile';
 import { Settings } from './settings/settings';
 import { PasswordReset } from './lobby/password_reset';
 import { NewPassword } from './lobby/new_password';
-import { postJsonObj } from './api/api';
 import { encodeToSocketFmt } from './utils/protobuf';
 import { Clubs } from './clubs';
 import { TournamentRoom } from './tournament/room';
@@ -40,8 +39,11 @@ import { TermsOfService } from './about/termsOfService';
 import { ChatMessage } from './gen/api/proto/ipc/chat_pb';
 import { MessageType } from './gen/api/proto/ipc/ipc_pb';
 import Footer from './navigation/footer';
-import { useClient } from './utils/hooks/connect';
-import { SocializeService } from './gen/api/proto/user_service/user_service_connectweb';
+import { flashError, useClient } from './utils/hooks/connect';
+import {
+  AuthenticationService,
+  SocializeService,
+} from './gen/api/proto/user_service/user_service_connectweb';
 
 const useDarkMode = localStorage?.getItem('darkMode') === 'true';
 document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
@@ -79,16 +81,18 @@ const HandoverSignedCookie = () => {
       window.location.replace(path);
     }
   }, [ls, path]);
-
+  const authClient = useClient(AuthenticationService);
   const cookieSetFunc = useCallback(async () => {
-    await postJsonObj(
-      'user_service.AuthenticationService',
-      'InstallSignedCookie',
-      { jwt },
-      // if successFn is called, it means we successfully transferred the cookie.
-      successFn
-    );
-  }, [jwt, successFn]);
+    if (!jwt) {
+      return;
+    }
+    try {
+      await authClient.installSignedCookie({ jwt });
+      successFn();
+    } catch (e) {
+      flashError(e);
+    }
+  }, [authClient, jwt, successFn]);
 
   useEffect(() => {
     if (jwt) {

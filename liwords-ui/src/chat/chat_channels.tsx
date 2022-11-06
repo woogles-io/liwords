@@ -113,10 +113,6 @@ type user = {
   uuid?: string;
 };
 
-type SearchResponse = {
-  users: Array<user>;
-};
-
 const extractUser = (
   ch: ActiveChatChannels_Channel,
   userId: string,

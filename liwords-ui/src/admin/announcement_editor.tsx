@@ -22,21 +22,21 @@ const layout = {
 
 export const AnnouncementEditor = () => {
   const [form] = Form.useForm();
-  const configService = useClient(ConfigService);
+  const configClient = useClient(ConfigService);
   useEffect(() => {
     const fetchAnnouncements = async () => {
-      const resp = await configService.getAnnouncements({});
+      const resp = await configClient.getAnnouncements({});
       form.setFieldsValue({
         announcements: resp.announcements,
       });
     };
     fetchAnnouncements();
-  }, [configService, form]);
+  }, [configClient, form]);
 
   const onFinish = async (vals: Store) => {
     console.log('vals', vals);
     try {
-      await configService.setAnnouncements({
+      await configClient.setAnnouncements({
         announcements: vals.announcements,
       });
       message.info({

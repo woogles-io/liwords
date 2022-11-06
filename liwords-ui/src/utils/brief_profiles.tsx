@@ -8,12 +8,12 @@ import React, {
 } from 'react';
 import { useMountedState } from './mounted';
 import { Unrace } from './unrace';
-import { postProto } from '../api/api';
 import {
   BriefProfile,
   BriefProfilesRequest,
-  BriefProfilesResponse,
 } from '../gen/api/proto/user_service/user_service_pb';
+import { useClient } from './hooks/connect';
+import { ProfileService } from '../gen/api/proto/user_service/user_service_connectweb';
 
 type CacheType = Map<string, { data: BriefProfile | null; expires: number }>;
 
@@ -39,6 +39,8 @@ export const BriefProfiles = (props: {
   const unrace = useRef(new Unrace());
   const timerToRequest = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toRequest = useRef(new Set<string>());
+  const profileClient = useClient(ProfileService);
+
   const performRequest = useCallback(() => {
     if (timerToRequest.current != null) {
       clearTimeout(timerToRequest.current);
@@ -53,12 +55,7 @@ export const BriefProfiles = (props: {
       const req = new BriefProfilesRequest();
       req.userIds = Array.from(toRequestHere);
       try {
-        const respObj = await postProto(
-          BriefProfilesResponse,
-          'user_service.ProfileService',
-          'GetBriefProfiles',
-          req
-        );
+        const respObj = await profileClient.getBriefProfiles(req);
         const respMap = respObj.response;
         // because of the await, toRequest.current may have accumulated more items
         const expires = performance.now() + 300000; // 5 minutes
@@ -71,7 +68,7 @@ export const BriefProfiles = (props: {
         console.error('unable to access api', e);
       }
     });
-  }, [triggerRefresh]);
+  }, [triggerRefresh, profileClient]);
   const request = useCallback(
     (s: string) => {
       const cached = cacheRef.current.get(s);

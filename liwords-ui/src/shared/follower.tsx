@@ -2,9 +2,7 @@ import {
   useFriendsStoreContext,
   useLoginStateStoreContext,
 } from '../store/store';
-import { toAPIUrl } from '../api/api';
 import React from 'react';
-import { notification } from 'antd';
 import { flashError, useClient } from '../utils/hooks/connect';
 import { SocializeService } from '../gen/api/proto/user_service/user_service_connectweb';
 

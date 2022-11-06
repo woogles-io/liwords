@@ -28,7 +28,6 @@ import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
 import { defaultGameInfo, GameInfo } from './game_info';
 import { BoopSounds } from '../sound/boop';
-import { toAPIUrl } from '../api/api';
 import { StreakWidget } from './streak_widget';
 import {
   ChallengeRule,

@@ -118,10 +118,6 @@ const Player = React.memo((props: PlayerProps) => {
   );
 });
 
-type SearchResponse = {
-  users: Array<Partial<FriendUser>>;
-};
-
 export const Players = React.memo((props: Props) => {
   const { useState } = useMountedState();
   const { friends } = useFriendsStoreContext();
@@ -144,7 +140,7 @@ export const Players = React.memo((props: Props) => {
     setHeight();
   }, [setHeight]);
 
-  const acService = useClient(AutocompleteService);
+  const acClient = useClient(AutocompleteService);
 
   const onlineAlphaComparator = useCallback(
     (a: Partial<FriendUser>, b: Partial<FriendUser>) => {
@@ -161,7 +157,7 @@ export const Players = React.memo((props: Props) => {
     async (searchText: string) => {
       if (searchText?.length > 0) {
         try {
-          const resp = await acService.getCompletion({ prefix: searchText });
+          const resp = await acClient.getCompletion({ prefix: searchText });
           setSearchResults(
             !searchText
               ? []
@@ -178,7 +174,7 @@ export const Players = React.memo((props: Props) => {
         setSearchResults([]);
       }
     },
-    [userID, friends, onlineAlphaComparator, acService]
+    [userID, friends, onlineAlphaComparator, acClient]
   );
   const searchUsernameDebounced = useDebounce(onPlayerSearch, 200);
 
