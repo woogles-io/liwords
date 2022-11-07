@@ -6,9 +6,6 @@ import App from './App';
 import * as serviceWorker from './serviceWorker';
 import { Store } from './store/store';
 import { BriefProfiles } from './utils/brief_profiles';
-import { ConnectError, createPromiseClient } from '@bufbuild/connect-web';
-import { AuthenticationService } from './gen/api/proto/user_service/user_service_connectweb';
-import { transport } from './utils/hooks/connect';
 
 declare global {
   interface Window {
@@ -53,44 +50,6 @@ window.console.info(
   };
   window.addEventListener('resize', resizeFunc);
   resizeFunc();
-}
-
-// Some magic code here to force everyone to use the naked domain before
-// using Cloudfront to redirect:
-{
-  const loc = window.location;
-  if (loc.hostname.startsWith('www.')) {
-    const redirectToHandoff = (path: string) => {
-      const protocol = loc.protocol;
-      const hostname = loc.hostname;
-      const nakedHost = hostname.replace(/www\./, '');
-      localStorage.clear();
-      window.location.replace(`${protocol}//${nakedHost}${path}`);
-    };
-    const authClient = createPromiseClient(AuthenticationService, transport);
-    authClient
-      .getSignedCookie({})
-      .then((response) => {
-        console.log('got jwt', response.jwt);
-        const newPath = `/handover-signed-cookie?${new URLSearchParams({
-          jwt: response.jwt,
-          ls: JSON.stringify(localStorage),
-          path: loc.pathname,
-        })}`;
-        redirectToHandoff(newPath);
-      })
-      .catch((e) => {
-        if ((e as ConnectError).message === 'need auth for this endpoint') {
-          // We don't have a jwt because we're not logged in. That's ok;
-          // let's hand off just the local storage then.
-          const newPath = `/handover-signed-cookie?${new URLSearchParams({
-            ls: JSON.stringify(localStorage),
-            path: loc.pathname,
-          })}`;
-          redirectToHandoff(newPath);
-        }
-      });
-  }
 }
 
 ReactDOM.render(

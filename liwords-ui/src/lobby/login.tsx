@@ -6,9 +6,12 @@ import './accountForms.scss';
 
 import { Form, Input, Button, Alert } from 'antd';
 import { Modal } from '../utils/focus_modal';
-import { flashError, useClient } from '../utils/hooks/connect';
+import {
+  connectErrorMessage,
+  flashError,
+  useClient,
+} from '../utils/hooks/connect';
 import { AuthenticationService } from '../gen/api/proto/user_service/user_service_connectweb';
-import { ConnectError } from '@bufbuild/connect-web';
 
 export const Login = React.memo(() => {
   const { useState } = useMountedState();
@@ -25,7 +28,7 @@ export const Login = React.memo(() => {
       });
       setLoggedIn(true);
     } catch (e) {
-      setErr((e as ConnectError).message);
+      setErr(connectErrorMessage(e));
       flashError(e);
     }
   };

@@ -4,9 +4,8 @@ import { Row, Col, Input, Form, Alert, notification, Button } from 'antd';
 import qs from 'qs';
 import { useLocation } from 'react-router-dom';
 import { TopBar } from '../navigation/topbar';
-import { useClient } from '../utils/hooks/connect';
+import { connectErrorMessage, useClient } from '../utils/hooks/connect';
 import { AuthenticationService } from '../gen/api/proto/user_service/user_service_connectweb';
-import { ConnectError } from '@bufbuild/connect-web';
 
 const layout = {
   labelCol: {
@@ -47,7 +46,7 @@ export const NewPassword = () => {
           'Your password was successfully changed. Please Log In with your new password.',
       });
     } catch (e) {
-      setErr((e as ConnectError).message);
+      setErr(connectErrorMessage(e));
     }
   };
 

@@ -7,9 +7,8 @@ import {
 import { Button, Divider, Form, Input, message } from 'antd';
 import { Store } from 'rc-field-form/lib/interface';
 import React, { useEffect } from 'react';
-import { ConnectError } from '@bufbuild/connect-web';
 import { ConfigService } from '../gen/api/proto/config_service/config_service_connectweb';
-import { useClient } from '../utils/hooks/connect';
+import { flashError, useClient } from '../utils/hooks/connect';
 
 const layout = {
   labelCol: {
@@ -44,14 +43,7 @@ export const AnnouncementEditor = () => {
         duration: 3,
       });
     } catch (err) {
-      if (err instanceof ConnectError) {
-        message.error({
-          content: err.message,
-          duration: 3,
-        });
-      } else {
-        console.log(err);
-      }
+      flashError(err);
     }
   };
 

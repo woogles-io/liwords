@@ -14,13 +14,16 @@ import { Support } from './support_woogles';
 import { useLoginStateStoreContext } from '../store/store';
 import { useNavigate } from 'react-router-dom';
 import { useResetStoreContext } from '../store/store';
-import { ConnectError } from '@bufbuild/connect-web';
 
 import './settings.scss';
 import { Secret } from './secret';
 import { HeartFilled } from '@ant-design/icons';
 import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
-import { flashError, useClient } from '../utils/hooks/connect';
+import {
+  connectErrorMessage,
+  flashError,
+  useClient,
+} from '../utils/hooks/connect';
 import {
   AuthenticationService,
   ProfileService,
@@ -174,12 +177,7 @@ export const Settings = React.memo(() => {
         setShowClosedAccount(true);
         handleLogout();
       } catch (e) {
-        if (e instanceof ConnectError) {
-          setAccountClosureError(e.message);
-        } else {
-          setAccountClosureError('unknown error, see console');
-          console.log(e);
-        }
+        setAccountClosureError(connectErrorMessage(e));
       }
     },
     [authClient, handleLogout]

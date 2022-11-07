@@ -17,12 +17,11 @@ import woogles from '../assets/woogles.png';
 import { useLoginStateStoreContext } from '../store/store';
 import { LoginModal } from './login';
 import { countryArray } from '../settings/country_map';
-import { useClient } from '../utils/hooks/connect';
+import { connectErrorMessage, useClient } from '../utils/hooks/connect';
 import {
   AuthenticationService,
   RegistrationService,
 } from '../gen/api/proto/user_service/user_service_connectweb';
-import { ConnectError } from '@bufbuild/connect-web';
 
 const allMonthNames = [
   'January',
@@ -225,7 +224,7 @@ export const Register = () => {
       });
       setSignedUp(true);
     } catch (e) {
-      setErr((e as ConnectError).message);
+      setErr(connectErrorMessage(e));
     }
   };
 

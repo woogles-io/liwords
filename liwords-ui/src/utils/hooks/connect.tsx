@@ -4,7 +4,7 @@ import {
   createConnectTransport,
   createPromiseClient,
   PromiseClient,
-} from '@bufbuild/connect-web';
+} from '@domino14/connect-web';
 
 import { ServiceType } from '@bufbuild/protobuf';
 import { message } from 'antd';
@@ -42,18 +42,10 @@ export function useClient<T extends ServiceType>(
   return useMemo(() => createPromiseClient(service, tf), [service, tf]);
 }
 
-export type TwirpError = {
-  response: { data: { msg: string } };
-};
-
-// const twirpError = proto3.makeMessageType('TwirpError');
-
 export const flashError = (e: unknown, time = 5) => {
   if (e instanceof ConnectError) {
-    // connectErrorDetails(e);
-
     message.error({
-      content: parseWooglesError(e.message),
+      content: parseWooglesError(e.rawMessage),
       duration: time,
     });
   } else {
@@ -63,4 +55,8 @@ export const flashError = (e: unknown, time = 5) => {
     });
     console.error(e);
   }
+};
+
+export const connectErrorMessage = (e: unknown) => {
+  return (e as ConnectError).rawMessage;
 };

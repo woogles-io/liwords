@@ -11,7 +11,7 @@ import {
   ModActionsList,
   ModActionsMap,
 } from '../gen/api/proto/mod_service/mod_service_pb';
-import { PromiseClient } from '@bufbuild/connect-web';
+import { PromiseClient } from '@domino14/connect-web';
 import { ModActionType } from '../gen/api/proto/mod_service/mod_service_pb';
 
 type ModProps = {

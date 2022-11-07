@@ -2,9 +2,8 @@ import React from 'react';
 import { useMountedState } from '../utils/mounted';
 import { Row, Col, Input, Form, Alert, notification, Button } from 'antd';
 import { TopBar } from '../navigation/topbar';
-import { useClient } from '../utils/hooks/connect';
+import { connectErrorMessage, useClient } from '../utils/hooks/connect';
 import { AuthenticationService } from '../gen/api/proto/user_service/user_service_connectweb';
-import { ConnectError } from '@bufbuild/connect-web';
 
 const layout = {
   labelCol: {
@@ -35,7 +34,7 @@ export const PasswordReset = () => {
         description: 'Please check your email; a reset code was sent.',
       });
     } catch (e) {
-      setErr((e as ConnectError).message);
+      setErr(connectErrorMessage(e));
     }
   };
 

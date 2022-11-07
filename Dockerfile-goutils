@@ -36,8 +36,6 @@ RUN useradd unprivileged
 
 WORKDIR /opt
 RUN npm install @bufbuild/protoc-gen-es
-RUN npm install @bufbuild/protobuf
-RUN npm install @bufbuild/connect-web
 RUN npm install @bufbuild/protoc-gen-connect-web
 
 COPY --from=gobuilder /go/bin/protoc-gen-go /opt

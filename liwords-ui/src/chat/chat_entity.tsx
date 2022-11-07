@@ -18,7 +18,7 @@ import { PettableAvatar, PlayerAvatar } from '../shared/player_avatar';
 import { ChatEntityType } from '../store/constants';
 import { useClient } from '../utils/hooks/connect';
 import { ModService } from '../gen/api/proto/mod_service/mod_service_connectweb';
-import { PromiseClient } from '@bufbuild/connect-web';
+import { PromiseClient } from '@domino14/connect-web';
 
 type EntityProps = {
   entityType: ChatEntityType;

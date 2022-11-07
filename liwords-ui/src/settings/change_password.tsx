@@ -2,8 +2,7 @@ import React from 'react';
 import { useMountedState } from '../utils/mounted';
 import { Button, Input, Form, Row, Col, notification } from 'antd';
 import { Link } from 'react-router-dom';
-import { ConnectError } from '@bufbuild/connect-web';
-import { useClient } from '../utils/hooks/connect';
+import { connectErrorMessage, useClient } from '../utils/hooks/connect';
 import { AuthenticationService } from '../gen/api/proto/user_service/user_service_connectweb';
 
 const layout = {
@@ -34,12 +33,7 @@ export const ChangePassword = React.memo(() => {
       });
       setErr('');
     } catch (err) {
-      if (err instanceof ConnectError) {
-        setErr(err.message);
-      } else {
-        setErr('unknown error, see console');
-        console.log(err);
-      }
+      setErr(connectErrorMessage(err));
       form.validateFields();
     }
   };

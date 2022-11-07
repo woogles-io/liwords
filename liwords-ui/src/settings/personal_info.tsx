@@ -22,9 +22,12 @@ import { AvatarCropper } from './avatar_cropper';
 import { UploadChangeParam } from 'antd/lib/upload';
 import { PersonalInfoResponse } from '../gen/api/proto/user_service/user_service_pb';
 import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
-import { flashError, useClient } from '../utils/hooks/connect';
+import {
+  connectErrorMessage,
+  flashError,
+  useClient,
+} from '../utils/hooks/connect';
 import { ProfileService } from '../gen/api/proto/user_service/user_service_connectweb';
-import { ConnectError } from '@bufbuild/connect-web';
 
 type Props = {
   player: Partial<PlayerInfo> | undefined;
@@ -49,7 +52,7 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
 
   const avatarErrorCatcher = useCallback((e: unknown) => {
     console.log(e);
-    setAvatarErr((e as ConnectError).message);
+    setAvatarErr(connectErrorMessage(e));
     setUploadPending(false);
   }, []);
   const propsUpdatedAvatar = props.updatedAvatar;
