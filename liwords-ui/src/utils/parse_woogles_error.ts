@@ -5,7 +5,6 @@ function sprintf(template: string, args: Array<string>): string {
 }
 
 export function parseWooglesError(err: string): string {
-  console.log('got err', err);
   if (err.charAt(0) !== ';') {
     return err;
   }

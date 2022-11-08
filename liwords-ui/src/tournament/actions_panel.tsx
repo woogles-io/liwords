@@ -1,4 +1,4 @@
-import { Button, Card, message, Select } from 'antd';
+import { Button, Card, Select } from 'antd';
 import { Modal } from '../utils/focus_modal';
 import React, {
   ReactNode,
@@ -19,20 +19,16 @@ import {
 } from '../store/store';
 import { useMountedState } from '../utils/mounted';
 import { RecentTourneyGames } from './recent_games';
-import { pageSize, RecentGame } from './recent_game';
 import { ActionType } from '../actions/actions';
-import axios from 'axios';
-import { toAPIUrl } from '../api/api';
 import { Pairings } from './pairings';
 import { isPairedMode, isClubType } from '../store/constants';
 import { Standings } from './standings';
 import { DirectorTools } from './director_tools/director_tools';
-import { parseWooglesError } from '../utils/parse_woogles_error';
+import { flashError, useClient } from '../utils/hooks/connect';
+import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_connectweb';
 // import { CheckIn } from './check_in';
 
-export type RecentTournamentGames = {
-  games: Array<RecentGame>;
-};
+const PAGE_SIZE = 30;
 
 type Props = {
   newGame: (seekID: string) => void;
@@ -69,7 +65,7 @@ export const ActionsPanel = React.memo((props: Props) => {
   const { dispatchTournamentContext, tournamentContext } =
     useTournamentStoreContext();
   const itIsPairedMode = useMemo(
-    () => isPairedMode(tournamentContext.metadata?.getType()),
+    () => isPairedMode(tournamentContext.metadata?.type),
     [tournamentContext]
   );
   const { divisions } = tournamentContext;
@@ -85,7 +81,7 @@ export const ActionsPanel = React.memo((props: Props) => {
   const [selectedRound, setSelectedRound] = useState(initialRound);
   const [selectedDivision, setSelectedDivision] = useState(initialDivision);
   const { lobbyContext } = useLobbyStoreContext();
-  const tournamentID = tournamentContext.metadata?.getId();
+  const tournamentID = tournamentContext.metadata?.id;
 
   const { addHandleContextMatch, removeHandleContextMatch } =
     useContextMatchContext();
@@ -152,26 +148,30 @@ export const ActionsPanel = React.memo((props: Props) => {
     }
   };
 
+  const tournamentClient = useClient(TournamentService);
+
   useEffect(() => {
     if (!tournamentID) {
       return;
     }
-    axios
-      .post<RecentTournamentGames>(
-        toAPIUrl('tournament_service.TournamentService', 'RecentGames'),
-        {
-          id: tournamentID,
-          num_games: pageSize,
-          offset: tournamentContext.gamesOffset,
-        }
-      )
-      .then((resp) => {
-        dispatchTournamentContext({
-          actionType: ActionType.AddTourneyGameResults,
-          payload: resp.data.games,
-        });
+
+    (async () => {
+      const resp = await tournamentClient.recentGames({
+        id: tournamentID,
+        numGames: PAGE_SIZE,
+        offset: tournamentContext.gamesOffset,
       });
-  }, [tournamentID, dispatchTournamentContext, tournamentContext.gamesOffset]);
+      dispatchTournamentContext({
+        actionType: ActionType.AddTourneyGameResults,
+        payload: resp.games,
+      });
+    })();
+  }, [
+    tournamentID,
+    tournamentClient,
+    dispatchTournamentContext,
+    tournamentContext.gamesOffset,
+  ]);
   const renderDivisionSelector =
     Object.values(divisions).length > 1 ? (
       <Select value={selectedDivision} onChange={setSelectedDivision}>
@@ -202,27 +202,16 @@ export const ActionsPanel = React.memo((props: Props) => {
     ) {
       return null;
     }
-    const startRound = () => {
-      axios
-        .post(
-          toAPIUrl(
-            'tournament_service.TournamentService',
-            'StartRoundCountdown'
-          ),
-          {
-            id: tournamentID,
-            division: division.divisionID,
-            round: roundToStart,
-          },
-          { withCredentials: true }
-        )
-        .catch((err) => {
-          const msg = parseWooglesError(err.response?.data?.msg);
-          message.error({
-            content: msg,
-            duration: 8,
-          });
+    const startRound = async () => {
+      try {
+        await tournamentClient.startRoundCountdown({
+          id: tournamentID,
+          division: division.divisionID,
+          round: roundToStart as number, // should already be a number.
         });
+      } catch (e) {
+        flashError(e);
+      }
     };
     return (
       <Button className="primary open-round" onClick={startRound}>
@@ -278,7 +267,7 @@ export const ActionsPanel = React.memo((props: Props) => {
               tournamentContext.gamesOffset > 0 ? fetchPrev : undefined
             }
             fetchNext={
-              tournamentContext.finishedTourneyGames.length < pageSize
+              tournamentContext.finishedTourneyGames.length < PAGE_SIZE
                 ? undefined
                 : fetchNext
             }
@@ -345,7 +334,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     const foundDivision = userID
       ? divisionArray.find((d) => {
           return d.players
-            .map((v) => v.getId())
+            .map((v) => v.id)
             .map(idFromPlayerEntry)
             .includes(userID);
         })
@@ -393,7 +382,7 @@ export const ActionsPanel = React.memo((props: Props) => {
       return [];
     }
     let matchButtonText = 'Start tournament game';
-    if (isClubType(tournamentContext.metadata?.getType())) {
+    if (isClubType(tournamentContext.metadata?.type)) {
       matchButtonText = 'Start club game';
     }
     const availableActions = new Array<ReactNode>();

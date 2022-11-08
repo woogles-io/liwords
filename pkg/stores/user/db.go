@@ -333,9 +333,11 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 		avatarUrl := avatarUrlOption.String
 		if avatarUrl == "" && internalBotOption.Bool {
 			// see entity/user.go
+			log.Debug().Str("username", username).Msg("using-default-bot-avatar")
 			avatarUrl = "https://woogles-prod-assets.s3.amazonaws.com/macondog.png"
 		}
 		subjectIsAdult := entity.IsAdult(birthDateOption.String, now)
+		log.Debug().Str("birthdate", birthDateOption.String).Bool("adult", subjectIsAdult).Msg("is-adult?")
 		censoredAvatarUrl := ""
 		censoredFullName := ""
 		if subjectIsAdult {

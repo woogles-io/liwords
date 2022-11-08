@@ -16,10 +16,8 @@ import {
 import { Modal } from '../../utils/focus_modal';
 import { Store } from 'rc-field-form/lib/interface';
 import React, { useEffect } from 'react';
-import { LiwordsAPIError, postJsonObj, postProto } from '../../api/api';
 import {
   SingleRoundControlsRequest,
-  TournamentResponse,
   TType,
 } from '../../gen/api/proto/tournament_service/tournament_service_pb';
 import { Division } from '../../store/reducers/tournament_reducer';
@@ -30,16 +28,12 @@ import '../../lobby/seek_form.scss';
 
 import {
   fieldsForMethod,
-  pairingMethod,
   PairingMethodField,
   RoundSetting,
   settingsEqual,
-  SingleRoundSetting,
 } from './pairing_methods';
-import { valueof } from '../../store/constants';
 import {
   TournamentGameResult,
-  TournamentGameResultMap,
   DivisionControls,
   PairingMethod,
   RoundControl,
@@ -48,6 +42,8 @@ import {
 } from '../../gen/api/proto/ipc/tournament_pb';
 import { GameRequest } from '../../gen/api/proto/ipc/omgwords_pb';
 import { HelptipLabel } from './helptip_label';
+import { flashError, useClient } from '../../utils/hooks/connect';
+import { TournamentService } from '../../gen/api/proto/tournament_service/tournament_service_connectweb';
 
 type ModalProps = {
   title: string;
@@ -66,7 +62,7 @@ const FormModal = (props: ModalProps) => {
     'remove-division': <RemoveDivision tournamentID={props.tournamentID} />,
     'add-players': <AddPlayers tournamentID={props.tournamentID} />,
     'remove-player': <RemovePlayer tournamentID={props.tournamentID} />,
-    'clear-checked-in': <ClearCheckedIn tournamentID={props.tournamentID} />,
+    // 'clear-checked-in': <ClearCheckedIn tournamentID={props.tournamentID} />,
     'set-single-pairing': <SetPairing tournamentID={props.tournamentID} />,
     'set-game-result': <SetResult tournamentID={props.tournamentID} />,
     'pair-entire-round': <PairRound tournamentID={props.tournamentID} />,
@@ -172,8 +168,8 @@ export const GhettoTools = (props: Props) => {
       <h3>Tournament Tools</h3>
       <h4>Edit tournament metadata</h4>
       <ul>{metadataItems}</ul>
-      {(tournamentContext.metadata.getType() === TType.STANDARD ||
-        tournamentContext.metadata.getType() === TType.CHILD) && (
+      {(tournamentContext.metadata.type === TType.STANDARD ||
+        tournamentContext.metadata.type === TType.CHILD) && (
         <>
           <h4>Pre-tournament settings</h4>
           <ul>{preListItems}</ul>
@@ -246,9 +242,9 @@ const PlayersFormItem = (props: {
     <Form.Item name={props.name} label={props.label}>
       <Select>
         {tournamentContext.divisions[props.division]?.players.map((v) => {
-          const u = username(v.getId());
+          const u = username(v.id);
           return (
-            <Select.Option value={u} key={v.getId()}>
+            <Select.Option value={u} key={v.id}>
               {u}
             </Select.Option>
           );
@@ -259,22 +255,21 @@ const PlayersFormItem = (props: {
 };
 
 const AddDivision = (props: { tournamentID: string }) => {
+  const tClient = useClient(TournamentService);
   const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
       division: vals.division,
     };
-    postJsonObj(
-      'tournament_service.TournamentService',
-      'AddDivision',
-      obj,
-      () => {
-        message.info({
-          content: 'Division added',
-          duration: 3,
-        });
-      }
-    );
+    try {
+      await tClient.addDivision(obj);
+      message.info({
+        content: 'Division added',
+        duration: 3,
+      });
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   return (
@@ -292,23 +287,23 @@ const AddDivision = (props: { tournamentID: string }) => {
 };
 
 const RemoveDivision = (props: { tournamentID: string }) => {
+  const tClient = useClient(TournamentService);
+
   const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
       division: vals.division,
     };
 
-    postJsonObj(
-      'tournament_service.TournamentService',
-      'RemoveDivision',
-      obj,
-      () => {
-        message.info({
-          content: 'Division removed',
-          duration: 3,
-        });
-      }
-    );
+    try {
+      await tClient.removeDivision(obj);
+      message.info({
+        content: 'Division removed',
+        duration: 3,
+      });
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   return (
@@ -324,6 +319,7 @@ const RemoveDivision = (props: { tournamentID: string }) => {
 };
 
 const AddPlayers = (props: { tournamentID: string }) => {
+  const tClient = useClient(TournamentService);
   const onFinish = async (vals: Store) => {
     const players = [];
     // const playerMap: { [username: string]: number } = {};
@@ -342,7 +338,7 @@ const AddPlayers = (props: { tournamentID: string }) => {
       }
       players.push({
         id: username,
-        rating: vals.players[i].rating,
+        rating: Number(vals.players[i].rating) || 1,
       });
     }
 
@@ -358,17 +354,15 @@ const AddPlayers = (props: { tournamentID: string }) => {
     };
     console.log(obj);
 
-    postJsonObj(
-      'tournament_service.TournamentService',
-      'AddPlayers',
-      obj,
-      () => {
-        message.info({
-          content: 'Players added',
-          duration: 3,
-        });
-      }
-    );
+    try {
+      await tClient.addPlayers(obj);
+      message.info({
+        content: 'Players added',
+        duration: 3,
+      });
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   return (
@@ -427,7 +421,7 @@ const AddPlayers = (props: { tournamentID: string }) => {
 const RemovePlayer = (props: { tournamentID: string }) => {
   const { useState } = useMountedState();
   const [division, setDivision] = useState('');
-
+  const tClient = useClient(TournamentService);
   const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
@@ -439,18 +433,15 @@ const RemovePlayer = (props: { tournamentID: string }) => {
       ],
     };
     console.log(obj);
-
-    postJsonObj(
-      'tournament_service.TournamentService',
-      'RemovePlayers',
-      obj,
-      () => {
-        message.info({
-          content: 'Player removed',
-          duration: 3,
-        });
-      }
-    );
+    try {
+      await tClient.removePlayers(obj);
+      message.info({
+        content: 'Player removed',
+        duration: 3,
+      });
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   return (
@@ -471,7 +462,9 @@ const RemovePlayer = (props: { tournamentID: string }) => {
   );
 };
 
+/*
 const ClearCheckedIn = (props: { tournamentID: string }) => {
+  const tClient = useClient(TournamentService);
   const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
@@ -500,6 +493,7 @@ const ClearCheckedIn = (props: { tournamentID: string }) => {
     </Form>
   );
 };
+*/
 
 // userUUID looks up the UUID of a username
 const userUUID = (username: string, divobj: Division) => {
@@ -507,7 +501,7 @@ const userUUID = (username: string, divobj: Division) => {
     return '';
   }
   const p = divobj.players.find((p) => {
-    const parts = p.getId().split(':');
+    const parts = p.id.split(':');
     const pusername = parts[1].toLowerCase();
 
     if (username.toLowerCase() === pusername) {
@@ -518,7 +512,7 @@ const userUUID = (username: string, divobj: Division) => {
   if (!p) {
     return '';
   }
-  return p.getId().split(':')[0];
+  return p.id.split(':')[0];
 };
 
 const username = (fullID: string) => {
@@ -531,7 +525,7 @@ const fullPlayerID = (username: string, divobj: Division) => {
     return '';
   }
   const p = divobj.players.find((p) => {
-    const parts = p.getId().split(':');
+    const parts = p.id.split(':');
     const pusername = parts[1].toLowerCase();
 
     if (username.toLowerCase() === pusername) {
@@ -542,7 +536,7 @@ const fullPlayerID = (username: string, divobj: Division) => {
   if (!p) {
     return '';
   }
-  return p.getId();
+  return p.id;
 };
 
 const SetPairing = (props: { tournamentID: string }) => {
@@ -550,7 +544,7 @@ const SetPairing = (props: { tournamentID: string }) => {
   const { useState } = useMountedState();
   const [division, setDivision] = useState('');
   const [selfplay, setSelfplay] = useState(false);
-
+  const tClient = useClient(TournamentService);
   const onFinish = async (vals: Store) => {
     const p1id = fullPlayerID(
       vals.p1,
@@ -569,26 +563,23 @@ const SetPairing = (props: { tournamentID: string }) => {
       division: vals.division,
       pairings: [
         {
-          player_one_id: p1id,
-          player_two_id: p2id,
+          playerOneId: p1id,
+          playerTwoId: p2id,
           round: vals.round - 1, // 1-indexed input
           // use self-play result only if it was set.
-          self_play_result: vals.selfplay ? vals.selfplayresult : undefined,
+          selfPlayResult: vals.selfplay ? vals.selfplayresult : undefined,
         },
       ],
     };
-
-    postJsonObj(
-      'tournament_service.TournamentService',
-      'SetPairing',
-      obj,
-      () => {
-        message.info({
-          content: 'Pairing set',
-          duration: 3,
-        });
-      }
-    );
+    try {
+      await tClient.setPairing(obj);
+      message.info({
+        content: 'Pairing set',
+        duration: 3,
+      });
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   return (
@@ -647,39 +638,36 @@ const SetResult = (props: { tournamentID: string }) => {
   const [score1, setScore1] = useState(0);
   const [score2, setScore2] = useState(0);
   const [form] = Form.useForm();
-
+  const tClient = useClient(TournamentService);
   const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
       division: vals.division,
-      player_one_id: userUUID(
+      playerOneId: userUUID(
         vals.p1,
         tournamentContext.divisions[vals.division]
       ),
-      player_two_id: userUUID(
+      playerTwoId: userUUID(
         vals.p2,
         tournamentContext.divisions[vals.division]
       ),
       round: vals.round - 1, // 1-indexed input
-      player_one_score: vals.p1score,
-      player_two_score: vals.p2score,
-      player_one_result: vals.p1result,
-      player_two_result: vals.p2result,
-      game_end_reason: vals.gameEndReason,
+      playerOneScore: vals.p1score,
+      playerTwoScore: vals.p2score,
+      playerOneResult: vals.p1result,
+      playerTwoResult: vals.p2result,
+      gameEndReason: vals.gameEndReason,
       amendment: vals.amendment,
     };
-
-    postJsonObj(
-      'tournament_service.TournamentService',
-      'SetResult',
-      obj,
-      () => {
-        message.info({
-          content: 'Result set',
-          duration: 3,
-        });
-      }
-    );
+    try {
+      await tClient.setResult(obj);
+      message.info({
+        content: 'Result set',
+        duration: 3,
+      });
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   useEffect(() => {
@@ -802,25 +790,23 @@ const SetResult = (props: { tournamentID: string }) => {
 };
 
 const PairRound = (props: { tournamentID: string }) => {
-  const onFinish = (vals: Store) => {
+  const tClient = useClient(TournamentService);
+  const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
       division: vals.division,
       round: vals.round - 1, // 1-indexed input
-      preserve_byes: vals.preserveByes,
+      preserveByes: vals.preserveByes,
     };
-
-    postJsonObj(
-      'tournament_service.TournamentService',
-      'PairRound',
-      obj,
-      () => {
-        message.info({
-          content: 'Pair round completed',
-          duration: 3,
-        });
-      }
-    );
+    try {
+      await tClient.pairRound(obj);
+      message.info({
+        content: 'Pair round completed',
+        duration: 3,
+      });
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   return (
@@ -845,25 +831,23 @@ const PairRound = (props: { tournamentID: string }) => {
 };
 
 const UnpairRound = (props: { tournamentID: string }) => {
-  const onFinish = (vals: Store) => {
+  const tClient = useClient(TournamentService);
+  const onFinish = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
       division: vals.division,
       round: vals.round - 1, // 1-indexed input
       deletePairings: true,
     };
-
-    postJsonObj(
-      'tournament_service.TournamentService',
-      'PairRound',
-      obj,
-      () => {
-        message.info({
-          content: 'Pairings for selected round have been deleted',
-          duration: 3,
-        });
-      }
-    );
+    try {
+      await tClient.pairRound(obj);
+      message.info({
+        content: 'Pairings for selected round have been deleted',
+        duration: 3,
+      });
+    } catch (e) {
+      flashError(e);
+    }
   };
   return (
     <Form onFinish={onFinish}>
@@ -898,9 +882,9 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
   // bye max placement is 0-indexed, this is also the display variable
   const [byeMaxPlacement, setByeMaxPlacement] = useState(1);
   const [spreadCap, setSpreadCap] = useState(0);
-  const [suspendedResult, setSuspendedResult] = useState<
-    valueof<TournamentGameResultMap>
-  >(TournamentGameResult.FORFEIT_LOSS);
+  const [suspendedResult, setSuspendedResult] = useState<TournamentGameResult>(
+    TournamentGameResult.FORFEIT_LOSS
+  );
   const { tournamentContext } = useTournamentStoreContext();
 
   useEffect(() => {
@@ -909,19 +893,19 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
       return;
     }
     const div = tournamentContext.divisions[division];
-    const gameRequest = div.divisionControls?.getGameRequest();
+    const gameRequest = div.divisionControls?.gameRequest;
     if (gameRequest) {
       setSelectedGameRequest(gameRequest);
     } else {
       setSelectedGameRequest(undefined);
     }
     if (div.divisionControls) {
-      setGibsonize(div.divisionControls.getGibsonize());
-      setGibsonSpread(div.divisionControls.getGibsonSpread());
-      setGibsonMinPlacement(div.divisionControls.getMinimumPlacement() + 1);
-      setByeMaxPlacement(div.divisionControls.getMaximumByePlacement() + 1);
-      setSuspendedResult(div.divisionControls.getSuspendedResult());
-      setSpreadCap(div.divisionControls.getSpreadCap());
+      setGibsonize(div.divisionControls.gibsonize);
+      setGibsonSpread(div.divisionControls.gibsonSpread);
+      setGibsonMinPlacement(div.divisionControls.minimumPlacement + 1);
+      setByeMaxPlacement(div.divisionControls.maximumByePlacement + 1);
+      setSuspendedResult(div.divisionControls.suspendedResult);
+      setSpreadCap(div.divisionControls.spreadCap);
     }
   }, [division, tournamentContext.divisions]);
 
@@ -948,44 +932,41 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     );
   };
 
+  const tClient = useClient(TournamentService);
+
   const submit = async () => {
     if (!selectedGameRequest) {
       showError('No game request');
       return;
     }
-    const ctrls = new DivisionControls();
-    ctrls.setId(props.tournamentID);
-    ctrls.setDivision(division);
-    ctrls.setGameRequest(selectedGameRequest);
-    // can set this later to whatever values, along with a spread
-    ctrls.setSuspendedResult(suspendedResult);
-    if (suspendedResult === TournamentGameResult.BYE) {
-      ctrls.setSuspendedSpread(50);
-    } else if (suspendedResult === TournamentGameResult.FORFEIT_LOSS) {
-      ctrls.setSuspendedSpread(-50);
-    }
-    ctrls.setAutoStart(false);
-    ctrls.setGibsonize(gibsonize);
-    ctrls.setGibsonSpread(gibsonSpread);
-    ctrls.setMinimumPlacement(gibsonMinPlacement - 1);
-    ctrls.setMaximumByePlacement(byeMaxPlacement - 1);
-    ctrls.setSpreadCap(spreadCap);
+    const ctrls = new DivisionControls({
+      id: props.tournamentID,
+      division,
+      gameRequest: selectedGameRequest,
+      // can set this later to whatever values, along with a spread
+      suspendedResult,
+      autoStart: false,
+      gibsonize,
+      gibsonSpread,
+      minimumPlacement: gibsonMinPlacement - 1,
+      maximumByePlacement: byeMaxPlacement - 1,
+      spreadCap: spreadCap,
+    });
 
-    // We are posting binary here because otherwise we need to make
-    // a JSON representation of GameRequest and that's a pain.
+    if (suspendedResult === TournamentGameResult.BYE) {
+      ctrls.suspendedSpread = 50;
+    } else if (suspendedResult === TournamentGameResult.FORFEIT_LOSS) {
+      ctrls.suspendedSpread = -50;
+    }
+
     try {
-      await postProto(
-        TournamentResponse,
-        'tournament_service.TournamentService',
-        'SetDivisionControls',
-        ctrls
-      );
+      await tClient.setDivisionControls(ctrls);
       message.info({
         content: 'Controls set',
         duration: 3,
       });
     } catch (e) {
-      showError((e as LiwordsAPIError).message);
+      flashError(e);
     }
   };
 
@@ -1010,18 +991,18 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
   const copySettings = React.useCallback(() => {
     // copy settings from copyFromDivision to division
     const cd = tournamentContext.divisions[copyFromDivision];
-    const cdCopy = cd.divisionControls?.cloneMessage();
+    const cdCopy = cd.divisionControls?.clone();
     if (!cdCopy) {
       return;
     }
-    setSelectedGameRequest(cdCopy.getGameRequest());
-    setSuspendedResult(cdCopy.getSuspendedResult());
-    setGibsonize(cdCopy.getGibsonize());
-    setGibsonSpread(cdCopy.getGibsonSpread());
-    setSpreadCap(cdCopy.getSpreadCap());
+    setSelectedGameRequest(cdCopy.gameRequest);
+    setSuspendedResult(cdCopy.suspendedResult);
+    setGibsonize(cdCopy.gibsonize);
+    setGibsonSpread(cdCopy.gibsonSpread);
+    setSpreadCap(cdCopy.spreadCap);
     // These are display variables so add 1 since they're 0-indexed:
-    setGibsonMinPlacement(cdCopy.getMinimumPlacement() + 1);
-    setByeMaxPlacement(cdCopy.getMaximumByePlacement() + 1);
+    setGibsonMinPlacement(cdCopy.minimumPlacement + 1);
+    setByeMaxPlacement(cdCopy.maximumByePlacement + 1);
   }, [copyFromDivision, tournamentContext.divisions]);
 
   return (
@@ -1208,24 +1189,21 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
 
 type RdCtrlFieldsProps = {
   setting: RoundSetting;
-  onChange: (
-    fieldName: keyof SingleRoundSetting | keyof RoundSetting,
-    value: string | number | boolean | pairingMethod
-  ) => void;
+  onChange: (fieldName: string, value: string | number | boolean) => void;
   onRemove: () => void;
 };
 
 type SingleRdCtrlFieldsProps = {
-  setting: SingleRoundSetting;
+  setting: RoundControl;
   onChange: (
-    fieldName: keyof SingleRoundSetting,
-    value: string | number | boolean | pairingMethod
+    fieldName: keyof RoundControl,
+    value: string | number | boolean | PairingMethod
   ) => void;
 };
 
 const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
   const { setting } = props;
-  const addlFields = fieldsForMethod(setting.pairingType);
+  const addlFields = fieldsForMethod(setting.pairingMethod);
 
   const formItemLayout = {
     labelCol: {
@@ -1286,9 +1264,9 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
         }
       >
         <Select
-          value={setting.pairingType}
+          value={setting.pairingMethod}
           onChange={(e) => {
-            props.onChange('pairingType', e);
+            props.onChange('pairingMethod', e);
             // Show more fields potentially.
           }}
         >
@@ -1390,27 +1368,27 @@ const RoundControlFields = (props: RdCtrlFieldsProps) => {
   );
 };
 
-const rdCtrlFromSetting = (rdSetting: SingleRoundSetting): RoundControl => {
-  const rdCtrl = new RoundControl();
-  rdCtrl.setFirstMethod(FirstMethod.AUTOMATIC_FIRST);
-  rdCtrl.setGamesPerRound(1);
-  rdCtrl.setPairingMethod(rdSetting.pairingType);
+const rdCtrlFromSetting = (rdSetting: RoundControl): RoundControl => {
+  const rdCtrl = new RoundControl({
+    firstMethod: FirstMethod.AUTOMATIC_FIRST,
+    gamesPerRound: 1,
+    pairingMethod: rdSetting.pairingMethod,
+  });
 
-  switch (rdSetting.pairingType) {
+  switch (rdSetting.pairingMethod) {
     case PairingMethod.SWISS:
     case PairingMethod.FACTOR:
-      rdCtrl.setMaxRepeats(rdSetting.maxRepeats || 0);
-      rdCtrl.setAllowOverMaxRepeats(true);
-      rdCtrl.setRepeatRelativeWeight(rdSetting.repeatRelativeWeight || 0);
-      rdCtrl.setWinDifferenceRelativeWeight(
-        rdSetting.winDifferenceRelativeWeight || 0
-      );
+      rdCtrl.maxRepeats = rdSetting.maxRepeats || 0;
+      rdCtrl.allowOverMaxRepeats = true;
+      rdCtrl.repeatRelativeWeight = rdSetting.repeatRelativeWeight || 0;
+      rdCtrl.winDifferenceRelativeWeight =
+        rdSetting.winDifferenceRelativeWeight || 0;
       // This should be auto-calculated, and only for factor
-      rdCtrl.setFactor(rdSetting.factor || 0);
+      rdCtrl.factor = rdSetting.factor || 0;
       break;
 
     case PairingMethod.TEAM_ROUND_ROBIN:
-      rdCtrl.setGamesPerRound(rdSetting.gamesPerRound || 1);
+      rdCtrl.gamesPerRound = rdSetting.gamesPerRound || 1;
       break;
   }
   // Other cases don't matter, we've already set the pairing method.
@@ -1420,11 +1398,13 @@ const rdCtrlFromSetting = (rdSetting: SingleRoundSetting): RoundControl => {
 const SetSingleRoundControls = (props: { tournamentID: string }) => {
   const { useState } = useMountedState();
   const [division, setDivision] = useState('');
-  const [roundSetting, setRoundSetting] = useState<SingleRoundSetting>({
-    pairingType: PairingMethod.RANDOM,
-  });
+  const [roundSetting, setRoundSetting] = useState<RoundControl>(
+    new RoundControl({
+      pairingMethod: PairingMethod.RANDOM,
+    })
+  );
   const [userVisibleRound, setUserVisibleRound] = useState(1);
-
+  const tClient = useClient(TournamentService);
   const setRoundControls = async () => {
     if (!division) {
       showError('Division is missing');
@@ -1439,26 +1419,22 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
       return;
     }
 
-    const ctrls = new SingleRoundControlsRequest();
-    ctrls.setId(props.tournamentID);
-    ctrls.setDivision(division);
-    ctrls.setRound(userVisibleRound - 1); // round is 0-indexed on backend.
+    const ctrls = new SingleRoundControlsRequest({
+      id: props.tournamentID,
+      division: division,
+      round: userVisibleRound - 1, // round is 0-indexed on backend.
+    });
 
     const rdCtrl = rdCtrlFromSetting(roundSetting);
-    ctrls.setRoundControls(rdCtrl);
+    ctrls.roundControls = rdCtrl;
     try {
-      await postProto(
-        TournamentResponse,
-        'tournament_service.TournamentService',
-        'SetSingleRoundControls',
-        ctrls
-      );
+      await tClient.setSingleRoundControls(ctrls);
       message.info({
         content: `Controls set for round ${userVisibleRound}`,
         duration: 3,
       });
     } catch (e) {
-      showError((e as LiwordsAPIError).message);
+      flashError(e);
     }
   };
 
@@ -1492,11 +1468,11 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
         <SingleRoundControlFields
           setting={roundSetting}
           onChange={(
-            fieldName: keyof SingleRoundSetting,
-            value: string | number | boolean | pairingMethod
+            fieldName: keyof RoundControl,
+            value: string | number | boolean | PairingMethod
           ) => {
             const val = { ...roundSetting, [fieldName]: value };
-            setRoundSetting(val);
+            setRoundSetting(new RoundControl(val));
           }}
         />
         <Divider />
@@ -1519,19 +1495,19 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
   const roundControlsToDisplayArray = React.useCallback((roundControls) => {
     const settings = new Array<RoundSetting>();
 
-    let lastSetting: SingleRoundSetting | null = null;
+    let lastSetting: RoundControl | null = null;
     let min = 1;
     let max = 1;
     roundControls.forEach((v: RoundControl, rd: number) => {
-      const thisSetting = {
-        pairingType: v.getPairingMethod(),
-        gamesPerRound: v.getGamesPerRound(),
-        factor: v.getFactor(),
-        maxRepeats: v.getMaxRepeats(),
-        allowOverMaxRepeats: v.getAllowOverMaxRepeats(),
-        repeatRelativeWeight: v.getRepeatRelativeWeight(),
-        winDifferenceRelativeWeight: v.getWinDifferenceRelativeWeight(),
-      };
+      const thisSetting = new RoundControl({
+        pairingMethod: v.pairingMethod,
+        gamesPerRound: v.gamesPerRound,
+        factor: v.factor,
+        maxRepeats: v.maxRepeats,
+        allowOverMaxRepeats: v.allowOverMaxRepeats,
+        repeatRelativeWeight: v.repeatRelativeWeight,
+        winDifferenceRelativeWeight: v.winDifferenceRelativeWeight,
+      });
       if (lastSetting !== null) {
         if (settingsEqual(lastSetting, thisSetting)) {
           max = rd + 1;
@@ -1566,6 +1542,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
     const div = tournamentContext.divisions[division];
     setRoundArray(roundControlsToDisplayArray(div.roundControls));
   }, [division, roundControlsToDisplayArray, tournamentContext.divisions]);
+  const tClient = useClient(TournamentService);
 
   const setRoundControls = async () => {
     if (!division) {
@@ -1595,9 +1572,10 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
       lastRd = rdCtrl.endRound;
     }
 
-    const ctrls = new DivisionRoundControls();
-    ctrls.setId(props.tournamentID);
-    ctrls.setDivision(division);
+    const ctrls = new DivisionRoundControls({
+      id: props.tournamentID,
+      division: division,
+    });
 
     const roundControls = new Array<RoundControl>();
 
@@ -1606,20 +1584,15 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
         roundControls.push(rdCtrlFromSetting(v.setting));
       }
     });
-    ctrls.setRoundControlsList(roundControls);
+    ctrls.roundControls = roundControls;
     try {
-      await postProto(
-        TournamentResponse,
-        'tournament_service.TournamentService',
-        'SetRoundControls',
-        ctrls
-      );
+      await tClient.setRoundControls(ctrls);
       message.info({
         content: 'Controls set',
         duration: 3,
       });
     } catch (e) {
-      showError((e as LiwordsAPIError).message);
+      flashError(e);
     }
   };
 
@@ -1684,10 +1657,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
         <RoundControlFields
           key={`rdctrl-${idx}`}
           setting={v}
-          onChange={(
-            fieldName: keyof RoundSetting | keyof SingleRoundSetting,
-            value: string | number | boolean | pairingMethod
-          ) => {
+          onChange={(fieldName: string, value: string | number | boolean) => {
             const newRdArray = [...roundArray];
 
             if (fieldName === 'beginRound' || fieldName === 'endRound') {
@@ -1698,10 +1668,10 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
             } else {
               newRdArray[idx] = {
                 ...newRdArray[idx],
-                setting: {
+                setting: new RoundControl({
                   ...newRdArray[idx].setting,
                   [fieldName]: value,
-                },
+                }),
               };
             }
             setRoundArray(newRdArray);
@@ -1720,7 +1690,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
           newRdArray.push({
             beginRound: last?.endRound ? last.endRound + 1 : 1,
             endRound: last?.endRound ? last.endRound + 1 : 1,
-            setting: { pairingType: PairingMethod.MANUAL },
+            setting: new RoundControl({ pairingMethod: PairingMethod.MANUAL }),
           });
           setRoundArray(newRdArray);
         }}
@@ -1743,47 +1713,40 @@ const ExportTournament = (props: { tournamentID: string }) => {
       span: 12,
     },
   };
-
+  const tClient = useClient(TournamentService);
   const onSubmit = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
       format: vals.format,
     };
-    await postJsonObj(
-      'tournament_service.TournamentService',
-      'ExportTournament',
-      obj,
-      (resp) => {
-        type rtype = {
-          exported: string;
-        };
-        const url = window.URL.createObjectURL(
-          new Blob([(resp as rtype).exported])
-        );
-        const link = document.createElement('a');
-        link.href = url;
-        const tname = tournamentContext.metadata.getName();
-        let extension;
-        switch (vals.format) {
-          case 'tsh':
-            extension = 'tsh';
-            break;
-          case 'standingsonly':
-            extension = 'csv';
-            break;
-        }
-        const downloadFilename = `${tname}.${extension}`;
-        link.setAttribute('download', downloadFilename);
-        document.body.appendChild(link);
-        link.onclick = () => {
-          link.remove();
-          setTimeout(() => {
-            window.URL.revokeObjectURL(url);
-          }, 1000);
-        };
-        link.click();
+    try {
+      const resp = await tClient.exportTournament(obj);
+      const url = window.URL.createObjectURL(new Blob([resp.exported]));
+      const link = document.createElement('a');
+      link.href = url;
+      const tname = tournamentContext.metadata.name;
+      let extension;
+      switch (vals.format) {
+        case 'tsh':
+          extension = 'tsh';
+          break;
+        case 'standingsonly':
+          extension = 'csv';
+          break;
       }
-    );
+      const downloadFilename = `${tname}.${extension}`;
+      link.setAttribute('download', downloadFilename);
+      document.body.appendChild(link);
+      link.onclick = () => {
+        link.remove();
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+        }, 1000);
+      };
+      link.click();
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   return (
@@ -1811,20 +1774,21 @@ const ExportTournament = (props: { tournamentID: string }) => {
 
 const EditDescription = (props: { tournamentID: string }) => {
   const { tournamentContext } = useTournamentStoreContext();
+  const tClient = useClient(TournamentService);
 
   const [form] = Form.useForm();
 
   useEffect(() => {
     const metadata = tournamentContext.metadata;
     form.setFieldsValue({
-      name: metadata.getName(),
-      description: metadata.getDescription(),
-      logo: metadata.getLogo(),
-      color: metadata.getColor(),
+      name: metadata.name,
+      description: metadata.description,
+      logo: metadata.logo,
+      color: metadata.color,
     });
   }, [form, tournamentContext.metadata]);
 
-  const onSubmit = (vals: Store) => {
+  const onSubmit = async (vals: Store) => {
     const obj = {
       metadata: {
         name: vals.name,
@@ -1833,19 +1797,17 @@ const EditDescription = (props: { tournamentID: string }) => {
         color: vals.color,
         id: props.tournamentID,
       },
-      set_only_specified: true,
+      setOnlySpecified: true,
     };
-    postJsonObj(
-      'tournament_service.TournamentService',
-      'SetTournamentMetadata',
-      obj,
-      () => {
-        message.info({
-          content: 'Set tournament metadata successfully.',
-          duration: 3,
-        });
-      }
-    );
+    try {
+      await tClient.setTournamentMetadata(obj);
+      message.info({
+        content: 'Set tournament metadata successfully.',
+        duration: 3,
+      });
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   return (

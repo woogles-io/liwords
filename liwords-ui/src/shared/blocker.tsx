@@ -2,10 +2,9 @@ import {
   useExcludedPlayersStoreContext,
   useLoginStateStoreContext,
 } from '../store/store';
-import axios from 'axios';
-import { toAPIUrl } from '../api/api';
 import React from 'react';
-import { notification } from 'antd';
+import { flashError, useClient } from '../utils/hooks/connect';
+import { SocializeService } from '../gen/api/proto/user_service/user_service_connectweb';
 
 type BlockerProps = {
   className?: string;
@@ -20,52 +19,36 @@ export const TheBlocker = (props: BlockerProps) => {
     useExcludedPlayersStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { userID } = loginState;
+  const socializeClient = useClient(SocializeService);
 
   // Don't block yourself. It makes chat annoying.
   if (userID === props.target) {
     return null;
   }
 
-  let apiFunc: string;
+  let apiFunc: 'addBlock' | 'removeBlock';
   let blockText: string;
 
   if (excludedPlayers.has(props.target)) {
-    apiFunc = 'Remove';
+    apiFunc = 'removeBlock';
     blockText = props.userName
       ? `Unblock ${props.userName}`
       : 'Unblock this user';
   } else {
-    apiFunc = 'Add';
+    apiFunc = 'addBlock';
     blockText = props.userName ? `Block ${props.userName}` : 'Block this user';
     // Add some confirmation.
   }
-
-  const blockAction = () => {
-    axios
-      .post(
-        toAPIUrl('user_service.SocializeService', `${apiFunc}Block`),
-        {
-          uuid: props.target,
-        },
-        { withCredentials: true }
-      )
-      .then(() => {
-        setPendingBlockRefresh(true);
-        if (props.blockCallback) {
-          props.blockCallback();
-        }
-      })
-      .catch((e) => {
-        if (e.response) {
-          notification.error({
-            message: 'Error',
-            description: e.response.data.msg,
-            duration: 4,
-          });
-        } else {
-          console.log(e);
-        }
-      });
+  const blockAction = async () => {
+    try {
+      await socializeClient[apiFunc]({ uuid: props.target });
+      setPendingBlockRefresh(true);
+      if (props.blockCallback) {
+        props.blockCallback();
+      }
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   const DynamicTagName = (props.tagName ||

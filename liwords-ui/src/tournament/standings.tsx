@@ -37,11 +37,9 @@ export const Standings = (props: Props) => {
 
   let formatStandings;
   if (currentRound > -1) {
-    formatStandings = division.standingsMap
-      .get(currentRound)
-      ?.getStandingsList()
-      .map((standing, index): StandingsTableData => {
-        const [playerId, playerName] = standing.getPlayerId().split(':');
+    formatStandings = division.standingsMap[currentRound]?.standings.map(
+      (standing, index): StandingsTableData => {
+        const [playerId, playerName] = standing.playerId.split(':');
         return {
           rank: index + 1,
           player: (
@@ -59,12 +57,13 @@ export const Standings = (props: Props) => {
               /> */}
             </>
           ),
-          wins: standing.getWins() + standing.getDraws() / 2,
-          losses: standing.getLosses() + standing.getDraws() / 2,
-          spread: standing.getSpread(),
+          wins: standing.wins + standing.draws / 2,
+          losses: standing.losses + standing.draws / 2,
+          spread: standing.spread,
           //actions: null, //scorecard button goes here
         };
-      });
+      }
+    );
   }
   const columns = [
     {

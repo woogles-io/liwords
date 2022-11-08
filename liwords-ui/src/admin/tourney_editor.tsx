@@ -1,6 +1,5 @@
 import React from 'react';
 
-import axios from 'axios';
 import Search from 'antd/lib/input/Search';
 import {
   Button,
@@ -26,14 +25,14 @@ import {
 } from '../tournament/director_tools/game_settings_form';
 
 import { useMountedState } from '../utils/mounted';
-import { LiwordsAPIError, postProto, toAPIUrl } from '../api/api';
 import {
   GetTournamentMetadataRequest,
-  TournamentMetadataResponse,
   TType,
-  TTypeMap,
 } from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { GameRequest } from '../gen/api/proto/ipc/omgwords_pb';
+import { proto3 } from '@bufbuild/protobuf';
+import { flashError, useClient } from '../utils/hooks/connect';
+import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_connectweb';
 
 type DProps = {
   description: string;
@@ -120,67 +119,55 @@ export const TourneyEditor = (props: Props) => {
     GameRequest | undefined
   >(undefined);
   const [form] = Form.useForm();
+  const tournamentClient = useClient(TournamentService);
 
   const onSearch = async (val: string) => {
     const tmreq = new GetTournamentMetadataRequest();
-    tmreq.setSlug(val);
+    tmreq.slug = val;
 
     try {
-      const m = await postProto(
-        TournamentMetadataResponse,
-        'tournament_service.TournamentService',
-        'GetTournamentMetadata',
-        tmreq
-      );
-      const metadata = m.getMetadata();
+      const resp = await tournamentClient.getTournamentMetadata({ slug: val });
+      const metadata = resp.metadata;
+
       if (!metadata) {
         throw new Error('undefined tournament metadata');
       }
-      setDescription(metadata.getDescription());
-      setDisclaimer(metadata.getDisclaimer() || '');
-      setName(metadata.getName());
-      setColor(metadata.getColor() || '');
-      setLogo(metadata.getLogo() || '');
-      setSelectedGameRequest(metadata.getDefaultClubSettings() || undefined);
+
+      setDescription(metadata.description);
+      setDisclaimer(metadata.disclaimer || '');
+      setName(metadata.name);
+      setColor(metadata.color || '');
+      setLogo(metadata.logo || '');
+      setSelectedGameRequest(metadata.defaultClubSettings || undefined);
       form.setFieldsValue({
-        name: metadata.getName(),
-        description: metadata.getDescription(),
-        slug: metadata.getSlug(),
-        id: metadata.getId(),
-        type: metadata.getType(),
-        directors: m.getDirectorsList().join(', '),
-        freeformItems: metadata.getFreeformClubSettingFieldsList(),
-        boardStyle: metadata.getBoardStyle(),
-        tileStyle: metadata.getTileStyle(),
-        disclaimer: metadata.getDisclaimer(),
-        logo: metadata.getLogo(),
-        color: metadata.getColor(),
-        privateAnalysis: metadata.getPrivateAnalysis() || false,
-        irlMode: metadata.getIrlMode() || false,
+        name: metadata.name,
+        description: metadata.description,
+        slug: metadata.slug,
+        id: metadata.id,
+        type: metadata.type,
+        directors: resp.directors.join(', '),
+        freeformItems: metadata.freeformClubSettingFields,
+        boardStyle: metadata.boardStyle,
+        tileStyle: metadata.tileStyle,
+        disclaimer: metadata.disclaimer,
+        logo: metadata.logo,
+        color: metadata.color,
+        privateAnalysis: metadata.privateAnalysis || false,
+        irlMode: metadata.irlMode || false,
       });
-    } catch (err) {
-      message.error({
-        content: 'Error: ' + (err as LiwordsAPIError).message,
-        duration: 5,
-      });
+    } catch (e) {
+      flashError(e);
     }
   };
-  const onFinish = (vals: Store) => {
+  const onFinish = async (vals: Store) => {
     console.log('vals', vals);
-    let apicall = '';
+    let apicall: 'newTournament' | 'setTournamentMetadata' = 'newTournament';
     let obj = {};
 
-    const reverseTypeMap = {
-      [TType.CHILD]: 'CHILD',
-      [TType.CLUB]: 'CLUB',
-      [TType.STANDARD]: 'STANDARD',
-      [TType.LEGACY]: 'LEGACY',
-    };
-
-    const jsontype = reverseTypeMap[vals.type as TTypeMap[keyof TTypeMap]];
+    const jsontype = proto3.getEnumType(TType).findNumber(vals.type)?.name;
 
     if (props.mode === 'new') {
-      apicall = 'NewTournament';
+      apicall = 'newTournament';
       const directors = (vals.directors as string)
         .split(',')
         .map((u) => u.trim());
@@ -190,14 +177,12 @@ export const TourneyEditor = (props: Props) => {
         description: vals.description,
         slug: vals.slug,
         type: jsontype,
-        director_usernames: directors,
+        directorUsernames: directors,
         freeformClubSettingFields: vals.freeformItems,
-        defaultClubSettings: selectedGameRequest
-          ? selectedGameRequest.toObject()
-          : undefined,
+        defaultClubSettings: selectedGameRequest,
       };
     } else if (props.mode === 'edit') {
-      apicall = 'SetTournamentMetadata';
+      apicall = 'setTournamentMetadata';
       obj = {
         metadata: {
           id: vals.id,
@@ -205,9 +190,7 @@ export const TourneyEditor = (props: Props) => {
           description: vals.description,
           slug: vals.slug,
           type: jsontype,
-          defaultClubSettings: selectedGameRequest
-            ? selectedGameRequest.toObject()
-            : undefined,
+          defaultClubSettings: selectedGameRequest,
           freeformClubSettingFields: vals.freeformItems,
           boardStyle: vals.boardStyle,
           tileStyle: vals.tileStyle,
@@ -219,22 +202,15 @@ export const TourneyEditor = (props: Props) => {
         },
       };
     }
-
-    axios
-      .post(toAPIUrl('tournament_service.TournamentService', apicall), obj)
-      .then(() => {
-        message.info({
-          content:
-            'Tournament ' + (props.mode === 'new' ? 'created' : 'updated'),
-          duration: 3,
-        });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
+    try {
+      await tournamentClient[apicall](obj);
+      message.info({
+        content: 'Tournament ' + (props.mode === 'new' ? 'created' : 'updated'),
+        duration: 3,
       });
+    } catch (err) {
+      flashError(err);
+    }
   };
   const onDescriptionChange = (evt: React.ChangeEvent<HTMLTextAreaElement>) => {
     setDescription(evt.target.value);
@@ -252,56 +228,44 @@ export const TourneyEditor = (props: Props) => {
     setLogo(evt.target.value);
   };
 
-  const addDirector = () => {
+  const addDirector = async () => {
     const director = prompt('Enter a new director username to add:');
     if (!director) {
       return;
     }
-    axios
-      .post(toAPIUrl('tournament_service.TournamentService', 'AddDirectors'), {
+    try {
+      await tournamentClient.addDirectors({
         id: form.getFieldValue('id'),
         // Need a non-zero "rating" for director..
         persons: [{ id: director, rating: 1 }],
-      })
-      .then(() => {
-        message.info({
-          content: 'Director successfully added',
-          duration: 3,
-        });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
       });
+      message.info({
+        content: 'Director successfully added',
+        duration: 3,
+      });
+    } catch (e) {
+      flashError(e);
+    }
   };
 
-  const removeDirector = () => {
+  const removeDirector = async () => {
     const director = prompt('Enter a director username to remove:');
     if (!director) {
       return;
     }
-    axios
-      .post(
-        toAPIUrl('tournament_service.TournamentService', 'RemoveDirectors'),
-        {
-          id: form.getFieldValue('id'),
-          persons: [{ id: director }],
-        }
-      )
-      .then((resp) => {
-        message.info({
-          content: 'Director successfully removed',
-          duration: 3,
-        });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
+    try {
+      await tournamentClient.removeDirectors({
+        id: form.getFieldValue('id'),
+        // Need a non-zero "rating" for director..
+        persons: [{ id: director }],
       });
+      message.info({
+        content: 'Director successfully removed',
+        duration: 3,
+      });
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   return (

@@ -7,7 +7,10 @@ import React, {
 } from 'react';
 import { useMountedState } from '../utils/mounted';
 import { Card } from 'antd';
-import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import {
+  GameEvent,
+  GameEvent_Type,
+} from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { Board } from '../utils/cwgame/board';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { millisToTimeStr } from '../store/timer_controller';
@@ -15,7 +18,6 @@ import {
   nicknameFromEvt,
   tilePlacementEventDisplay,
 } from '../utils/cwgame/game_event';
-import { PlayerMetadata } from './game_info';
 import { Turn, gameEventsToTurns } from '../store/reducers/turns';
 import { PoolFormatType } from '../constants/pool_formats';
 import { Notepad } from './notepad';
@@ -23,6 +25,7 @@ import { sortTiles } from '../store/constants';
 import { getVW, isTablet } from '../utils/cwgame/common';
 import { Analyzer } from './analyzer';
 import { HeartFilled } from '@ant-design/icons';
+import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const screenSizes = require('../base.scss').default;
 
@@ -33,14 +36,14 @@ type Props = {
   events: Array<GameEvent>;
   board: Board;
   lexicon: string;
-  variant: string;
+  variant?: string;
   poolFormat: PoolFormatType;
-  playerMeta: Array<PlayerMetadata>;
+  playerMeta: Array<PlayerInfo>;
   gameEpilog: React.ReactElement;
 };
 
 type turnProps = {
-  playerMeta: Array<PlayerMetadata>;
+  playerMeta: Array<PlayerInfo>;
   playing: boolean;
   username: string;
   turn: Turn;
@@ -48,7 +51,7 @@ type turnProps = {
 };
 
 type MoveEntityObj = {
-  player: Partial<PlayerMetadata>;
+  player: Partial<PlayerInfo>;
   coords: string;
   timeRemaining: string;
   moveType: string | ReactNode;
@@ -66,34 +69,32 @@ type MoveEntityObj = {
 const displaySummary = (evt: GameEvent, board: Board) => {
   // Handle just a subset of the possible moves here. These may be modified
   // later on.
-  switch (evt.getType()) {
-    case GameEvent.Type.EXCHANGE:
-      return (
-        <span className="exchanged">-{sortTiles(evt.getExchanged())}</span>
-      );
+  switch (evt.type) {
+    case GameEvent_Type.EXCHANGE:
+      return <span className="exchanged">-{sortTiles(evt.exchanged)}</span>;
 
-    case GameEvent.Type.PASS:
+    case GameEvent_Type.PASS:
       return <span className="pass">Passed turn</span>;
 
-    case GameEvent.Type.TILE_PLACEMENT_MOVE:
+    case GameEvent_Type.TILE_PLACEMENT_MOVE:
       return tilePlacementEventDisplay(evt, board);
-    case GameEvent.Type.UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
+    case GameEvent_Type.UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
       return <span className="challenge unsuccessful">Challenged</span>;
-    case GameEvent.Type.END_RACK_PENALTY:
+    case GameEvent_Type.END_RACK_PENALTY:
       return <span className="final-rack">Tiles on rack</span>;
-    case GameEvent.Type.TIME_PENALTY:
+    case GameEvent_Type.TIME_PENALTY:
       return <span className="time-penalty">Time penalty</span>;
   }
   return '';
 };
 
 const displayType = (evt: GameEvent) => {
-  switch (evt.getType()) {
-    case GameEvent.Type.EXCHANGE:
+  switch (evt.type) {
+    case GameEvent_Type.EXCHANGE:
       return <span className="exchanged">EXCH</span>;
-    case GameEvent.Type.CHALLENGE:
-    case GameEvent.Type.CHALLENGE_BONUS:
-    case GameEvent.Type.UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
+    case GameEvent_Type.CHALLENGE:
+    case GameEvent_Type.CHALLENGE_BONUS:
+    case GameEvent_Type.UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
       return <span className="challenge">&nbsp;</span>;
     default:
       return <span className="other">&nbsp;</span>;
@@ -107,19 +108,19 @@ const ScorecardTurn = (props: turnProps) => {
     const evts = props.turn;
 
     let oldScore;
-    if (evts[0].getLostScore()) {
-      oldScore = evts[0].getCumulative() + evts[0].getLostScore();
-    } else if (evts[0].getEndRackPoints()) {
-      oldScore = evts[0].getCumulative() - evts[0].getEndRackPoints();
+    if (evts[0].lostScore) {
+      oldScore = evts[0].cumulative + evts[0].lostScore;
+    } else if (evts[0].endRackPoints) {
+      oldScore = evts[0].cumulative - evts[0].endRackPoints;
     } else {
-      oldScore = evts[0].getCumulative() - evts[0].getScore();
+      oldScore = evts[0].cumulative - evts[0].score;
     }
     let timeRemaining = '';
     if (
-      evts[0].getType() !== GameEvent.Type.END_RACK_PTS &&
-      evts[0].getType() !== GameEvent.Type.END_RACK_PENALTY
+      evts[0].type !== GameEvent_Type.END_RACK_PTS &&
+      evts[0].type !== GameEvent_Type.END_RACK_PENALTY
     ) {
-      timeRemaining = millisToTimeStr(evts[0].getMillisRemaining(), false);
+      timeRemaining = millisToTimeStr(evts[0].millisRemaining, false);
     }
 
     const turnNickname = nicknameFromEvt(evts[0], props.playerMeta);
@@ -129,30 +130,30 @@ const ScorecardTurn = (props: turnProps) => {
       ) ?? {
         nickname: turnNickname,
         // XXX: FIX THIS. avatar url should be set.
-        full_name: '',
-        avatar_url: '',
+        fullName: '',
+        avatarUrl: '',
       },
-      coords: evts[0].getPosition(),
+      coords: evts[0].position,
       timeRemaining: timeRemaining,
-      rack: evts[0].getRack(),
+      rack: evts[0].rack,
       play: displaySummary(evts[0], props.board),
-      score: `${evts[0].getScore()}`,
-      lostScore: evts[0].getLostScore(),
+      score: `${evts[0].score}`,
+      lostScore: evts[0].lostScore,
       moveType: displayType(evts[0]),
-      cumulative: evts[0].getCumulative(),
-      bonus: evts[0].getBonus(),
-      endRackPts: evts[0].getEndRackPoints(),
+      cumulative: evts[0].cumulative,
+      bonus: evts[0].bonus,
+      endRackPts: evts[0].endRackPoints,
       oldScore: oldScore,
-      isBingo: evts[0].getIsBingo(),
+      isBingo: evts[0].isBingo,
     };
     if (evts.length === 1) {
       turn.rack = sortTiles(turn.rack);
       return turn;
     }
     // Otherwise, we have to make some modifications.
-    if (evts[1].getType() === GameEvent.Type.PHONY_TILES_RETURNED) {
+    if (evts[1].type === GameEvent_Type.PHONY_TILES_RETURNED) {
       turn.score = '0';
-      turn.cumulative = evts[1].getCumulative();
+      turn.cumulative = evts[1].cumulative;
       turn.play = (
         <>
           <span className="challenge successful">Challenge!</span>
@@ -163,8 +164,8 @@ const ScorecardTurn = (props: turnProps) => {
       );
       turn.rack = 'Play is invalid';
     } else {
-      if (evts[1].getType() === GameEvent.Type.CHALLENGE_BONUS) {
-        turn.cumulative = evts[1].getCumulative();
+      if (evts[1].type === GameEvent_Type.CHALLENGE_BONUS) {
+        turn.cumulative = evts[1].cumulative;
         turn.play = (
           <>
             <span className="challenge unsuccessful">Challenge!</span>
@@ -173,22 +174,22 @@ const ScorecardTurn = (props: turnProps) => {
             </span>
           </>
         );
-        turn.rack = `Play is valid ${sortTiles(evts[0].getRack())}`;
+        turn.rack = `Play is valid ${sortTiles(evts[0].rack)}`;
       } else {
         // Void challenge combines the end rack points.
         turn.rack = sortTiles(turn.rack);
       }
       // Otherwise, just add/subtract as needed.
       for (let i = 1; i < evts.length; i++) {
-        switch (evts[i].getType()) {
-          case GameEvent.Type.CHALLENGE_BONUS:
-            turn.score = `${turn.score} +${evts[i].getBonus()}`;
+        switch (evts[i].type) {
+          case GameEvent_Type.CHALLENGE_BONUS:
+            turn.score = `${turn.score} +${evts[i].bonus}`;
             break;
-          case GameEvent.Type.END_RACK_PTS:
-            turn.score = `${turn.score} +${evts[i].getEndRackPoints()}`;
+          case GameEvent_Type.END_RACK_PTS:
+            turn.score = `${turn.score} +${evts[i].endRackPoints}`;
             break;
         }
-        turn.cumulative = evts[i].getCumulative();
+        turn.cumulative = evts[i].cumulative;
       }
     }
     return turn;

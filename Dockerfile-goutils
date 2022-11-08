@@ -32,8 +32,11 @@ RUN mv /tmp/migrate /opt
 
 FROM node:latest
 
+RUN useradd unprivileged
+
 WORKDIR /opt
-RUN npm install ts-protoc-gen
+RUN npm install @bufbuild/protoc-gen-es
+RUN npm install @bufbuild/protoc-gen-connect-web
 
 COPY --from=gobuilder /go/bin/protoc-gen-go /opt
 COPY --from=gobuilder /go/bin/protoc-gen-twirp /opt

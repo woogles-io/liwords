@@ -9,7 +9,6 @@ import {
   GameRules,
   RatingMode,
 } from '../gen/api/proto/ipc/omgwords_pb';
-import { ChallengeRuleMap } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { BotTypesEnumProperties } from './bots';
@@ -34,43 +33,39 @@ export const sendSeek = (
   const sr = new SeekRequest();
   const gr = new GameRequest();
   const rules = new GameRules();
-  rules.setBoardLayoutName('CrosswordGame');
-  rules.setVariantName(game.variant);
-  rules.setLetterDistributionName(defaultLetterDistribution(game.lexicon));
+  rules.boardLayoutName = 'CrosswordGame';
+  rules.variantName = game.variant;
+  rules.letterDistributionName = defaultLetterDistribution(game.lexicon);
 
-  gr.setChallengeRule(
-    game.challengeRule as ChallengeRuleMap[keyof ChallengeRuleMap]
-  );
-  gr.setLexicon(game.lexicon);
-  gr.setInitialTimeSeconds(game.initialTimeSecs);
-  gr.setMaxOvertimeMinutes(game.maxOvertimeMinutes);
-  gr.setIncrementSeconds(game.incrementSecs);
-  gr.setRules(rules);
-  gr.setRatingMode(game.rated ? RatingMode.RATED : RatingMode.CASUAL);
-  gr.setPlayerVsBot(game.playerVsBot);
+  gr.challengeRule = game.challengeRule;
+  gr.lexicon = game.lexicon;
+  gr.initialTimeSeconds = game.initialTimeSecs;
+  gr.maxOvertimeMinutes = game.maxOvertimeMinutes;
+  gr.incrementSeconds = game.incrementSecs;
+  gr.rules = rules;
+  gr.ratingMode = game.rated ? RatingMode.RATED : RatingMode.CASUAL;
+  gr.playerVsBot = game.playerVsBot;
   if (game.playerVsBot) {
-    gr.setBotType(BotTypesEnumProperties[game.botType].botCode(game.lexicon));
+    gr.botType = BotTypesEnumProperties[game.botType].botCode(game.lexicon);
   }
 
-  sr.setUserState(SeekState.READY);
-  sr.setMinimumRatingRange(game.minRatingRange);
-  sr.setMaximumRatingRange(game.maxRatingRange);
+  sr.userState = SeekState.READY;
+  sr.minimumRatingRange = game.minRatingRange;
+  sr.maximumRatingRange = game.maxRatingRange;
 
   if (!game.receiverIsPermanent) {
-    sr.setGameRequest(gr);
+    sr.gameRequest = gr;
     console.log('this is a seek request');
   } else {
     // We make it a match request if the receiver is non-empty, or if playerVsBot.
-    sr.setGameRequest(gr);
-    sr.setReceivingUser(game.receiver);
-    sr.setTournamentId(game.tournamentID);
-    sr.setReceiverIsPermanent(true);
+    sr.gameRequest = gr;
+    sr.receivingUser = game.receiver;
+    sr.tournamentId = game.tournamentID;
+    sr.receiverIsPermanent = true;
     console.log('this is a match request');
   }
   console.log('sr: ', sr);
-  sendSocketMsg(
-    encodeToSocketFmt(MessageType.SEEK_REQUEST, sr.serializeBinary())
-  );
+  sendSocketMsg(encodeToSocketFmt(MessageType.SEEK_REQUEST, sr.toBinary()));
 };
 
 export const sendAccept = (
@@ -79,11 +74,8 @@ export const sendAccept = (
 ): void => {
   // Eventually use the ID.
   const sa = new SoughtGameProcessEvent();
-  sa.setRequestId(seekID);
+  sa.requestId = seekID;
   sendSocketMsg(
-    encodeToSocketFmt(
-      MessageType.SOUGHT_GAME_PROCESS_EVENT,
-      sa.serializeBinary()
-    )
+    encodeToSocketFmt(MessageType.SOUGHT_GAME_PROCESS_EVENT, sa.toBinary())
   );
 };

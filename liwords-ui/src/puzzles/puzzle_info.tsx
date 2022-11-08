@@ -1,6 +1,5 @@
 import React, { ReactNode, useMemo } from 'react';
 import { Button, Card } from 'antd';
-import { ChallengeRule, PlayerMetadata } from '../gameroom/game_info';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import moment from 'moment';
 import { timeCtrlToDisplayName } from '../store/constants';
@@ -8,15 +7,9 @@ import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb'
 import { StarFilled, StarOutlined } from '@ant-design/icons';
 import { Hints } from './hints';
 import { PuzzleShareButton } from './puzzle_share';
-
-export const challengeMap = {
-  FIVE_POINT: '5 point',
-  TEN_POINT: '10 point',
-  SINGLE: 'Single',
-  DOUBLE: 'Double',
-  TRIPLE: 'Triple',
-  VOID: 'Void',
-};
+import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { challengeRuleNames } from '../constants/challenge_rules';
+import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
 
 type Props = {
   solved: number;
@@ -24,14 +17,14 @@ type Props = {
   gameUrl?: string;
   lexicon: string;
   variantName: string;
-  player1: Partial<PlayerMetadata> | undefined;
-  player2: Partial<PlayerMetadata> | undefined;
+  player1: Partial<PlayerInfo> | undefined;
+  player2: Partial<PlayerInfo> | undefined;
   puzzleID?: string;
   ratingMode?: string;
   challengeRule: ChallengeRule | undefined;
-  initial_time_seconds?: number;
-  increment_seconds?: number;
-  max_overtime_minutes?: number;
+  initialTimeSeconds?: number;
+  incrementSeconds?: number;
+  maxOvertimeMinutes?: number;
   attempts: number;
   userRating?: number;
   puzzleRating?: number;
@@ -73,9 +66,9 @@ export const PuzzleInfo = React.memo((props: Props) => {
     gameUrl,
     challengeRule,
     ratingMode,
-    initial_time_seconds,
-    increment_seconds,
-    max_overtime_minutes,
+    initialTimeSeconds,
+    incrementSeconds,
+    maxOvertimeMinutes,
     lexicon,
     variantName,
     player1,
@@ -169,7 +162,9 @@ export const PuzzleInfo = React.memo((props: Props) => {
     }
   }, [gameUrl]);
 
-  const challengeDisplay = challengeRule ? challengeMap[challengeRule] : '';
+  const challengeDisplay = challengeRule
+    ? challengeRuleNames[challengeRule]
+    : '';
 
   const player1NameDisplay = player1?.nickname ? (
     <UsernameWithContext username={player1?.nickname || ''} />
@@ -202,9 +197,9 @@ export const PuzzleInfo = React.memo((props: Props) => {
         )}
         <p className="game-settings">{`${
           timeCtrlToDisplayName(
-            initial_time_seconds || 0,
-            increment_seconds || 0,
-            max_overtime_minutes || 0
+            initialTimeSeconds || 0,
+            incrementSeconds || 0,
+            maxOvertimeMinutes || 0
           )[0]
         } • ${variantName || 'classic'} • ${lexicon}`}</p>
         <div>

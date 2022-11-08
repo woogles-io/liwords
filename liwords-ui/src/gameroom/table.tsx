@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Card, message, Popconfirm } from 'antd';
-import { HomeOutlined } from '@ant-design/icons/lib';
-import axios from 'axios';
+import { HomeOutlined } from '@ant-design/icons';
 
 import { Link, useSearchParams, useParams } from 'react-router-dom';
 import { useFirefoxPatch } from '../utils/hooks/firefox';
@@ -27,16 +26,13 @@ import Pool from './pool';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
-import {
-  defaultGameInfo,
-  GameInfo,
-  GameMetadata,
-  StreakInfoResponse,
-} from './game_info';
+import { defaultGameInfo, GameInfo } from './game_info';
 import { BoopSounds } from '../sound/boop';
-import { toAPIUrl } from '../api/api';
 import { StreakWidget } from './streak_widget';
-import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import {
+  ChallengeRule,
+  PlayState,
+} from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { endGameMessageFromGameInfo } from '../store/end_of_game';
 import { Notepad, NotepadContextProvider } from './notepad';
 import { Analyzer, AnalyzerContextProvider } from './analyzer';
@@ -47,13 +43,21 @@ import { MetaEventControl } from './meta_event_control';
 import { useTourneyMetadata } from '../tournament/utils';
 import { Disclaimer } from './disclaimer';
 import { alphabetFromName } from '../constants/alphabets';
-import { ReadyForGame, TimedOut } from '../gen/api/proto/ipc/omgwords_pb';
+import {
+  GameEndReason,
+  GameInfoResponse,
+  ReadyForGame,
+  TimedOut,
+} from '../gen/api/proto/ipc/omgwords_pb';
 import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
 import {
   DeclineSeekRequest,
   SeekRequest,
   SoughtGameProcessEvent,
 } from '../gen/api/proto/ipc/omgseeks_pb';
+import { StreakInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
+import { useClient } from '../utils/hooks/connect';
+import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connectweb';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -197,11 +201,13 @@ export const Table = React.memo((props: Props) => {
   const isRegistered = competitorState.isRegistered;
   const [playerNames, setPlayerNames] = useState(new Array<string>());
   const { sendSocketMsg } = props;
-  const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
-  const [streakGameInfo, setStreakGameInfo] = useState<StreakInfoResponse>({
-    streak: [],
-    playersInfo: [],
-  });
+  const [gameInfo, setGameInfo] = useState<GameInfoResponse>(defaultGameInfo);
+  const [streakGameInfo, setStreakGameInfo] = useState<StreakInfoResponse>(
+    new StreakInfoResponse({
+      streak: [],
+      playersInfo: [],
+    })
+  );
   const [isObserver, setIsObserver] = useState(false);
   const tournamentNonDirectorObserver = useMemo(() => {
     return (
@@ -211,7 +217,7 @@ export const Table = React.memo((props: Props) => {
     );
   }, [isObserver, loginState.perms, username, tournamentContext.directors]);
   useFirefoxPatch();
-
+  const gmClient = useClient(GameMetadataService);
   const gameDone =
     gameContext.playState === PlayState.GAME_OVER && !!gameContext.gameID;
 
@@ -237,33 +243,33 @@ export const Table = React.memo((props: Props) => {
 
   useEffect(() => {
     // Request game API to get info about the game at the beginning.
-    console.log('gonna fetch metadata, game id is', gameID);
-    axios
-      .post<GameMetadata>(
-        toAPIUrl('game_service.GameMetadataService', 'GetMetadata'),
-        {
-          gameId: gameID,
-        }
-      )
-      .then((resp) => {
-        setGameInfo(resp.data);
+
+    const fetchGameMetadata = async () => {
+      console.log('gonna fetch metadata, game id is', gameID);
+
+      try {
+        const resp = await gmClient.getMetadata({ gameId: gameID });
+        setGameInfo(resp);
         if (localStorage?.getItem('poolFormat')) {
           setPoolFormat(
             parseInt(localStorage.getItem('poolFormat') || '0', 10)
           );
         }
-        if (resp.data.game_end_reason !== 'NONE') {
+
+        if (resp.gameEndReason !== GameEndReason.NONE) {
           // Basically if we are here, we've reloaded the page after the game
           // ended. We want to synthesize a new GameEnd message
-          setGameEndMessage(endGameMessageFromGameInfo(resp.data));
+          setGameEndMessage(endGameMessageFromGameInfo(resp));
         }
-      })
-      .catch((err) => {
+      } catch (e) {
         message.error({
-          content: `Failed to fetch game information; please refresh. (Error: ${err.message})`,
+          content: `Failed to fetch game information; please refresh. (Error: ${e})`,
           duration: 10,
         });
-      });
+      }
+    };
+
+    fetchGameMetadata();
 
     return () => {
       setGameInfo(defaultGameInfo);
@@ -275,7 +281,7 @@ export const Table = React.memo((props: Props) => {
 
   useTourneyMetadata(
     '',
-    gameInfo.tournament_id,
+    gameInfo.tournamentId,
     dispatchTournamentContext,
     loginState,
     undefined
@@ -288,7 +294,7 @@ export const Table = React.memo((props: Props) => {
     // as soon as the game ends (so the streak updates without having to go
     // to a new game).
 
-    if (!gameInfo.game_request.original_request_id) {
+    if (!gameInfo.gameRequest?.originalRequestId) {
       return;
     }
     if (gameDone && !gameEndMessage) {
@@ -296,24 +302,25 @@ export const Table = React.memo((props: Props) => {
       // when we are going to play a game (or observe), or when the game just ended.
       return;
     }
-    setTimeout(() => {
-      axios
-        .post<StreakInfoResponse>(
-          toAPIUrl('game_service.GameMetadataService', 'GetRematchStreak'),
-          {
-            original_request_id: gameInfo.game_request.original_request_id,
-          }
-        )
-        .then((streakresp) => {
-          setStreakGameInfo(streakresp.data);
-        });
+    setTimeout(async () => {
+      const resp = await gmClient.getRematchStreak({
+        originalRequestId: gameInfo.gameRequest?.originalRequestId,
+      });
+
+      setStreakGameInfo(resp);
+
       // Put this on a delay. Otherwise the game might not be saved to the
       // db as having finished before the gameEndMessage comes in.
     }, StreakFetchDelay);
 
     // Call this when a gameEndMessage comes in, so the streak updates
     // at the end of the game.
-  }, [gameInfo.game_request.original_request_id, gameEndMessage, gameDone]);
+  }, [
+    gameInfo.gameRequest?.originalRequestId,
+    gameEndMessage,
+    gameDone,
+    gmClient,
+  ]);
 
   useEffect(() => {
     if (pTimedOut === undefined) return;
@@ -325,17 +332,15 @@ export const Table = React.memo((props: Props) => {
     let timedout = '';
 
     gameInfo.players.forEach((p) => {
-      if (gameContext.uidToPlayerOrder[p.user_id] === pTimedOut) {
-        timedout = p.user_id;
+      if (gameContext.uidToPlayerOrder[p.userId] === pTimedOut) {
+        timedout = p.userId;
       }
     });
 
     const to = new TimedOut();
-    to.setGameId(gameID);
-    to.setUserId(timedout);
-    sendSocketMsg(
-      encodeToSocketFmt(MessageType.TIMED_OUT, to.serializeBinary())
-    );
+    to.gameId = gameID;
+    to.userId = timedout;
+    sendSocketMsg(encodeToSocketFmt(MessageType.TIMED_OUT, to.toBinary()));
     setPTimedOut(undefined);
     // React Hook useEffect has missing dependencies: 'gameContext.uidToPlayerOrder', 'gameInfo.players', 'isObserver', 'sendSocketMsg', and 'setPTimedOut'.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -345,18 +350,18 @@ export const Table = React.memo((props: Props) => {
     if (!gameID) return;
     let observer = true;
     gameInfo.players.forEach((p) => {
-      if (userID === p.user_id) {
+      if (userID === p.userId) {
         observer = false;
       }
     });
     setIsObserver(observer);
     setPlayerNames(gameInfo.players.map((p) => p.nickname));
     // If we are not the observer, tell the server we're ready for the game to start.
-    if (gameInfo.game_end_reason === 'NONE' && !observer) {
+    if (gameInfo.gameEndReason === GameEndReason.NONE && !observer) {
       const evt = new ReadyForGame();
-      evt.setGameId(gameID);
+      evt.gameId = gameID;
       sendSocketMsg(
-        encodeToSocketFmt(MessageType.READY_FOR_GAME, evt.serializeBinary())
+        encodeToSocketFmt(MessageType.READY_FOR_GAME, evt.toBinary())
       );
     }
     // React Hook useEffect has missing dependencies: 'gameID' and 'sendSocketMsg'.
@@ -371,50 +376,43 @@ export const Table = React.memo((props: Props) => {
       gameContext,
       gameDone,
       gameID,
-      lexicon: gameInfo.game_request.lexicon,
-      variant: gameInfo.game_request.rules.variant_name,
+      lexicon: gameInfo.gameRequest?.lexicon ?? '',
+      variant: gameInfo.gameRequest?.rules?.variantName,
     });
 
   const acceptRematch = useCallback(
     (reqID: string) => {
       const evt = new SoughtGameProcessEvent();
-      evt.setRequestId(reqID);
+      evt.requestId = reqID;
       sendSocketMsg(
-        encodeToSocketFmt(
-          MessageType.SOUGHT_GAME_PROCESS_EVENT,
-          evt.serializeBinary()
-        )
+        encodeToSocketFmt(MessageType.SOUGHT_GAME_PROCESS_EVENT, evt.toBinary())
       );
     },
     [sendSocketMsg]
   );
 
   const handleAcceptRematch = useCallback(() => {
-    const gr = rematchRequest.getGameRequest();
+    const gr = rematchRequest.gameRequest;
     if (gr) {
-      acceptRematch(gr.getRequestId());
+      acceptRematch(gr.requestId);
       setRematchRequest(new SeekRequest());
     }
   }, [acceptRematch, rematchRequest, setRematchRequest]);
 
   const declineRematch = useCallback(
     (reqID: string) => {
-      const evt = new DeclineSeekRequest();
-      evt.setRequestId(reqID);
+      const evt = new DeclineSeekRequest({ requestId: reqID });
       sendSocketMsg(
-        encodeToSocketFmt(
-          MessageType.DECLINE_SEEK_REQUEST,
-          evt.serializeBinary()
-        )
+        encodeToSocketFmt(MessageType.DECLINE_SEEK_REQUEST, evt.toBinary())
       );
     },
     [sendSocketMsg]
   );
 
   const handleDeclineRematch = useCallback(() => {
-    const gr = rematchRequest.getGameRequest();
+    const gr = rematchRequest.gameRequest;
     if (gr) {
-      declineRematch(gr.getRequestId());
+      declineRematch(gr.requestId);
       setRematchRequest(new SeekRequest());
     }
   }, [declineRematch, rematchRequest, setRematchRequest]);
@@ -425,12 +423,12 @@ export const Table = React.memo((props: Props) => {
   // the player on turn.
   let rack: string;
   const us = useMemo(
-    () => gameInfo.players.find((p) => p.user_id === userID),
+    () => gameInfo.players.find((p) => p.userId === userID),
     [gameInfo.players, userID]
   );
   if (us && !(gameDone && isExamining)) {
     rack =
-      examinableGameContext.players.find((p) => p.userID === us.user_id)
+      examinableGameContext.players.find((p) => p.userID === us.userId)
         ?.currentRack ?? '';
   } else {
     rack =
@@ -490,12 +488,10 @@ export const Table = React.memo((props: Props) => {
     searchedTurn,
     setSearchParams,
   ]);
-  const boardTheme =
-    'board--' + tournamentContext.metadata.getBoardStyle() || '';
-  const tileTheme = 'tile--' + tournamentContext.metadata.getTileStyle() || '';
+  const boardTheme = 'board--' + tournamentContext.metadata.boardStyle || '';
+  const tileTheme = 'tile--' + tournamentContext.metadata.tileStyle || '';
   const alphabet = useMemo(
-    () =>
-      alphabetFromName(gameInfo.game_request.rules.letter_distribution_name),
+    () => alphabetFromName(gameInfo.gameRequest?.rules?.letterDistributionName),
     [gameInfo]
   );
   const showingFinalTurn =
@@ -517,11 +513,11 @@ export const Table = React.memo((props: Props) => {
     // }
     // If we are an anonymous observer, and this is a tournament, don't
     // allow rack info.
-    if (!loggedIn && gameInfo.tournament_id) {
+    if (!loggedIn && gameInfo.tournamentId) {
       return false;
     }
     return true;
-  }, [gameDone, gameInfo.tournament_id, loggedIn]);
+  }, [gameDone, gameInfo.tournamentId, loggedIn]);
   const gameEpilog = useMemo(() => {
     // XXX: this doesn't get updated when game ends, only when refresh?
 
@@ -529,12 +525,12 @@ export const Table = React.memo((props: Props) => {
       <React.Fragment>
         {showingFinalTurn && (
           <React.Fragment>
-            {gameInfo.game_end_reason === 'FORCE_FORFEIT' && (
+            {gameInfo.gameEndReason === GameEndReason.FORCE_FORFEIT && (
               <React.Fragment>
                 Game ended in forfeit.{/* XXX: How to get winners? */}
               </React.Fragment>
             )}
-            {gameInfo.game_end_reason === 'ABORTED' && (
+            {gameInfo.gameEndReason === GameEndReason.ABORTED && (
               <React.Fragment>
                 The game was cancelled. Rating and statistics were not affected.
               </React.Fragment>
@@ -543,7 +539,7 @@ export const Table = React.memo((props: Props) => {
         )}
       </React.Fragment>
     );
-  }, [gameInfo.game_end_reason, showingFinalTurn]);
+  }, [gameInfo.gameEndReason, showingFinalTurn]);
 
   if (!gameID) {
     return (
@@ -555,22 +551,22 @@ export const Table = React.memo((props: Props) => {
   let ret = (
     <div className={`game-container${isRegistered ? ' competitor' : ''}`}>
       <ManageWindowTitleAndTurnSound />
-      <TopBar tournamentID={gameInfo.tournament_id} />
+      <TopBar tournamentID={gameInfo.tournamentId} />
       <div className={`game-table ${boardTheme} ${tileTheme}`}>
         <div
           className={`chat-area ${
-            !isExamining && tournamentContext.metadata.getDisclaimer()
+            !isExamining && tournamentContext.metadata.disclaimer
               ? 'has-disclaimer'
               : ''
           }`}
           id="left-sidebar"
         >
           <Card className="left-menu">
-            {gameInfo.tournament_id ? (
-              <Link to={tournamentContext.metadata?.getSlug()}>
+            {gameInfo.tournamentId ? (
+              <Link to={tournamentContext.metadata?.slug}>
                 <HomeOutlined />
                 Back to
-                {isClubType(tournamentContext.metadata?.getType())
+                {isClubType(tournamentContext.metadata?.type)
                   ? ' Club'
                   : ' Tournament'}
               </Link>
@@ -594,22 +590,22 @@ export const Table = React.memo((props: Props) => {
                 username,
                 isObserver
               )}
-              tournamentID={gameInfo.tournament_id}
+              tournamentID={gameInfo.tournamentId}
             />
           ) : null}
           {isExamining ? (
             <Analyzer
               includeCard
-              lexicon={gameInfo.game_request.lexicon}
-              variant={gameInfo.game_request.rules.variant_name}
+              lexicon={gameInfo.gameRequest?.lexicon ?? ''}
+              variant={gameInfo.gameRequest?.rules?.variantName}
             />
           ) : (
             <React.Fragment key="not-examining">
               <Notepad includeCard />
-              {tournamentContext.metadata.getDisclaimer() && (
+              {tournamentContext.metadata.disclaimer && (
                 <Disclaimer
-                  disclaimer={tournamentContext.metadata.getDisclaimer()}
-                  logoUrl={tournamentContext.metadata.getLogo()}
+                  disclaimer={tournamentContext.metadata.disclaimer}
+                  logoUrl={tournamentContext.metadata.logo}
                 />
               )}
             </React.Fragment>
@@ -619,7 +615,7 @@ export const Table = React.memo((props: Props) => {
               sendReady={() =>
                 readyForTournamentGame(
                   sendSocketMsg,
-                  tournamentContext.metadata?.getId(),
+                  tournamentContext.metadata?.id,
                   competitorState
                 )
               }
@@ -647,29 +643,31 @@ export const Table = React.memo((props: Props) => {
               props.sendSocketMsg(
                 encodeToSocketFmt(
                   MessageType.CLIENT_GAMEPLAY_EVENT,
-                  evt.serializeBinary()
+                  evt.toBinary()
                 )
               )
             }
             gameDone={gameDone}
             playerMeta={gameInfo.players}
-            tournamentID={gameInfo.tournament_id}
-            vsBot={gameInfo.game_request.player_vs_bot}
-            tournamentSlug={tournamentContext.metadata?.getSlug()}
+            tournamentID={gameInfo.tournamentId}
+            vsBot={gameInfo.gameRequest?.playerVsBot ?? false}
+            tournamentSlug={tournamentContext.metadata?.slug}
             tournamentPairedMode={isPairedMode(
-              tournamentContext.metadata?.getType()
+              tournamentContext.metadata?.type
             )}
             tournamentNonDirectorObserver={tournamentNonDirectorObserver}
             // why does my linter keep overwriting this?
             // eslint-disable-next-line max-len
-            tournamentPrivateAnalysis={tournamentContext.metadata?.getPrivateAnalysis()}
-            lexicon={gameInfo.game_request.lexicon}
+            tournamentPrivateAnalysis={
+              tournamentContext.metadata?.privateAnalysis
+            }
+            lexicon={gameInfo.gameRequest?.lexicon ?? ''}
             alphabet={alphabet}
-            challengeRule={gameInfo.game_request.challenge_rule}
+            challengeRule={
+              gameInfo.gameRequest?.challengeRule ?? ChallengeRule.VOID
+            }
             handleAcceptRematch={
-              rematchRequest.getRematchFor() === gameID
-                ? handleAcceptRematch
-                : null
+              rematchRequest.rematchFor === gameID ? handleAcceptRematch : null
             }
             handleAcceptAbort={() => {}}
             handleSetHover={handleSetHover}
@@ -691,7 +689,7 @@ export const Table = React.memo((props: Props) => {
               sendReady={() =>
                 readyForTournamentGame(
                   sendSocketMsg,
-                  tournamentContext.metadata?.getId(),
+                  tournamentContext.metadata?.id,
                   competitorState
                 )
               }
@@ -701,9 +699,9 @@ export const Table = React.memo((props: Props) => {
           <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
           <GameInfo
             meta={gameInfo}
-            tournamentName={tournamentContext.metadata?.getName()}
-            colorOverride={tournamentContext.metadata?.getColor()}
-            logoUrl={tournamentContext.metadata?.getLogo()}
+            tournamentName={tournamentContext.metadata?.name}
+            colorOverride={tournamentContext.metadata?.color}
+            logoUrl={tournamentContext.metadata?.logo}
           />
           <Pool
             pool={examinableGameContext?.pool}
@@ -713,10 +711,8 @@ export const Table = React.memo((props: Props) => {
             alphabet={alphabet}
           />
           <Popconfirm
-            title={`${rematchRequest
-              .getUser()
-              ?.getDisplayName()} sent you a rematch request`}
-            visible={rematchRequest.getRematchFor() !== ''}
+            title={`${rematchRequest.user?.displayName} sent you a rematch request`}
+            visible={rematchRequest.rematchFor !== ''}
             onConfirm={handleAcceptRematch}
             onCancel={handleDeclineRematch}
             okText="Accept"
@@ -726,8 +722,8 @@ export const Table = React.memo((props: Props) => {
             isExamining={isExamining}
             username={username}
             playing={us !== undefined}
-            lexicon={gameInfo.game_request.lexicon}
-            variant={gameInfo.game_request.rules.variant_name}
+            lexicon={gameInfo.gameRequest?.lexicon ?? ''}
+            variant={gameInfo.gameRequest?.rules?.variantName}
             events={examinableGameContext.turns}
             board={examinableGameContext.board}
             playerMeta={gameInfo.players}
