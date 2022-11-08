@@ -32,7 +32,7 @@ import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_co
 
 const layout = {
   labelCol: {
-    span: 3,
+    span: 6,
   },
   wrapperCol: {
     span: 16,
@@ -108,8 +108,8 @@ export const PuzzleGenerator = () => {
         const pb = new PuzzleBucket();
         pb.size = bucket.size;
 
-        pb.includes = bucket.includes;
-        pb.excludes = bucket.excludes;
+        pb.includes = bucket.includes ?? new Array<PuzzleTag>();
+        pb.excludes = bucket.excludes ?? new Array<PuzzleTag>();
         buckets.push(pb);
       });
 
