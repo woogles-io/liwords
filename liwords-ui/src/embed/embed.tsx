@@ -1,14 +1,16 @@
 import React, { useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import {
+  ChallengeRule,
+  PlayState,
+} from '../gen/macondo/api/proto/macondo/macondo_pb';
 import {
   useExaminableGameContextStoreContext,
   useExamineStoreContext,
   useGameContextStoreContext,
 } from '../store/store';
 import { useMountedState } from '../utils/mounted';
-import { defaultGameInfo, GameMetadata } from '../gameroom/game_info';
-import { postJsonObj, postProto } from '../api/api';
+import { defaultGameInfo } from '../gameroom/game_info';
 import {
   GameHistoryRequest,
   GameHistoryResponse,
@@ -17,16 +19,21 @@ import { BoardPanel } from '../gameroom/board_panel';
 import { sortTiles } from '../store/constants';
 import { alphabetFromName } from '../constants/alphabets';
 import { ActionType } from '../actions/actions';
-import { GameHistoryRefresher } from '../gen/api/proto/ipc/omgwords_pb';
+import {
+  GameHistoryRefresher,
+  GameInfoResponse,
+} from '../gen/api/proto/ipc/omgwords_pb';
 import { PlayerCards } from '../gameroom/player_cards';
 import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
+import { flashError, useClient } from '../utils/hooks/connect';
+import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connectweb';
 
 const doNothing = () => {};
 
 export const Embed = () => {
   const { useState } = useMountedState();
 
-  const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
+  const [gameInfo, setGameInfo] = useState<GameInfoResponse>(defaultGameInfo);
   const { gameID } = useParams();
   const { gameContext: examinableGameContext } =
     useExaminableGameContextStoreContext();
@@ -42,12 +49,14 @@ export const Embed = () => {
       gameContext,
       gameDone: true,
       gameID,
-      lexicon: gameInfo.game_request.lexicon,
-      variant: gameInfo.game_request.rules.variant_name,
+      lexicon: gameInfo.gameRequest?.lexicon ?? '',
+      variant: gameInfo.gameRequest?.rules?.variantName,
     });
 
   const gameDone =
     gameContext.playState === PlayState.GAME_OVER && !!gameContext.gameID;
+
+  const gameMetadataClient = useClient(GameMetadataService);
 
   useEffect(() => {
     if (!gameID) {
@@ -55,48 +64,35 @@ export const Embed = () => {
     }
     // Request game API to get info about the game at the beginning.
     console.log('gonna fetch metadata, game id is', gameID);
-    postJsonObj(
-      'game_service.GameMetadataService',
-      'GetMetadata',
-      {
-        gameId: gameID,
-      },
-      (resp) => {
-        const meta = resp as GameMetadata;
-        setGameInfo(meta);
-        // if (meta.data.game_end_reason !== 'NONE') {
-        //   // Basically if we are here, we've reloaded the page after the game
-        //   // ended. We want to synthesize a new GameEnd message
-        //   setGameEndMessage(endGameMessageFromGameInfo(resp.data));
-        // }
-        console.log(meta);
+
+    (async () => {
+      try {
+        const resp = await gameMetadataClient.getMetadata({ gameId: gameID });
+        setGameInfo(resp);
+      } catch (e) {
+        flashError(e);
       }
-    );
+    })();
 
-    const fetchGameHistory = async () => {
-      const hreq = new GameHistoryRequest();
-      hreq.setGameId(gameID);
+    (async () => {
+      try {
+        const resp = await gameMetadataClient.getGameHistory({
+          gameId: gameID,
+        });
+        const ghr = new GameHistoryRefresher({ history: resp.history });
+        dispatchGameContext({
+          actionType: ActionType.RefreshHistory,
+          payload: ghr,
+        });
+      } catch (e) {
+        flashError(e);
+      }
+    })();
 
-      const resp = await postProto(
-        GameHistoryResponse,
-        'game_service.GameMetadataService',
-        'GetGameHistory',
-        hreq
-      );
-      const ghr = new GameHistoryRefresher();
-      ghr.setHistory(resp.getHistory());
-      dispatchGameContext({
-        actionType: ActionType.RefreshHistory,
-        payload: ghr,
-      });
-      console.log('handling start');
-    };
-
-    fetchGameHistory();
     return () => {
       setGameInfo(defaultGameInfo);
     };
-  }, [gameID, dispatchGameContext]);
+  }, [gameID, dispatchGameContext, gameMetadataClient]);
 
   useEffect(() => {
     if (gameContext.turns.length > 0) {
@@ -117,8 +113,7 @@ export const Embed = () => {
 
   const sortedRack = useMemo(() => sortTiles(rack), [rack]);
   const alphabet = useMemo(
-    () =>
-      alphabetFromName(gameInfo.game_request.rules.letter_distribution_name),
+    () => alphabetFromName(gameInfo.gameRequest?.rules?.letterDistributionName),
     [gameInfo]
   );
 
@@ -149,11 +144,13 @@ export const Embed = () => {
             sendGameplayEvent={doNothing}
             gameDone={gameDone}
             playerMeta={gameInfo.players}
-            tournamentID={gameInfo.tournament_id}
-            vsBot={gameInfo.game_request.player_vs_bot}
-            lexicon={gameInfo.game_request.lexicon}
+            tournamentID={gameInfo.tournamentId}
+            vsBot={gameInfo.gameRequest?.playerVsBot ?? false}
+            lexicon={gameInfo.gameRequest?.lexicon ?? ''}
             alphabet={alphabet}
-            challengeRule={gameInfo.game_request.challenge_rule}
+            challengeRule={
+              gameInfo.gameRequest?.challengeRule ?? ChallengeRule.VOID
+            }
             handleSetHover={handleSetHover}
             handleUnsetHover={hideDefinitionHover}
             definitionPopover={definitionPopover}
