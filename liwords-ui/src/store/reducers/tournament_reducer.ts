@@ -1,4 +1,3 @@
-import { proto3 } from '@bufbuild/protobuf';
 import { Action, ActionType } from '../../actions/actions';
 import { MessageType } from '../../gen/api/proto/ipc/ipc_pb';
 import { GameEndReason } from '../../gen/api/proto/ipc/omgwords_pb';
@@ -27,7 +26,6 @@ import {
   TournamentMetadata,
   TType,
 } from '../../gen/api/proto/tournament_service/tournament_service_pb';
-import { RecentGame } from '../../tournament/recent_game';
 import { encodeToSocketFmt } from '../../utils/protobuf';
 import { LoginState } from '../login_state';
 import { ActiveGame } from './lobby_reducer';
@@ -89,7 +87,7 @@ export type TournamentState = {
   // activeGames in this tournament.
   activeGames: Array<ActiveGame>;
 
-  finishedTourneyGames: Array<RecentGame>;
+  finishedTourneyGames: Array<TournamentGameEndedEvent>;
   gamesPageSize: number;
   gamesOffset: number;
   finished: boolean;
@@ -105,7 +103,7 @@ export const defaultTournamentState = {
   divisions: {},
   competitorState: defaultCompetitorState,
   activeGames: new Array<ActiveGame>(),
-  finishedTourneyGames: new Array<RecentGame>(),
+  finishedTourneyGames: new Array<TournamentGameEndedEvent>(),
   gamesPageSize: 20,
   gamesOffset: 0,
   finished: false,
@@ -351,30 +349,6 @@ const divisionDataResponseToObj = (
   ret.pairings = newPairings;
 
   return ret;
-};
-
-export const TourneyGameEndedEvtToRecentGame = (
-  evt: TournamentGameEndedEvent
-): RecentGame => {
-  const evtPlayers = evt.players;
-
-  const players = evtPlayers.map((ep) => ({
-    username: ep.username,
-    score: ep.score,
-    result:
-      proto3.getEnumType(TournamentGameResult).findNumber(ep.result)?.name ??
-      'NO_RESULT',
-  }));
-
-  return {
-    players,
-    endReason:
-      proto3.getEnumType(GameEndReason).findNumber(evt.endReason)?.name ??
-      'NONE',
-    gameId: evt.gameId,
-    time: evt.time,
-    round: evt.round,
-  };
 };
 
 const getPairing = (
@@ -1110,7 +1084,6 @@ export function TournamentReducer(
     case ActionType.AddTourneyGameResult: {
       const { finishedTourneyGames, gamesOffset, gamesPageSize } = state;
       const evt = action.payload as TournamentGameEndedEvent;
-      const game = TourneyGameEndedEvtToRecentGame(evt);
       // If a tourney game comes in while we're looking at another page,
       // do nothing.
       if (gamesOffset > 0) {
@@ -1118,7 +1091,7 @@ export function TournamentReducer(
       }
 
       // Bring newest game to the top.
-      const newGames = [game, ...finishedTourneyGames];
+      const newGames = [evt, ...finishedTourneyGames];
       if (newGames.length > gamesPageSize) {
         newGames.length = gamesPageSize;
       }
@@ -1130,7 +1103,8 @@ export function TournamentReducer(
     }
 
     case ActionType.AddTourneyGameResults: {
-      const finishedTourneyGames = action.payload as Array<RecentGame>;
+      const finishedTourneyGames =
+        action.payload as Array<TournamentGameEndedEvent>;
       return {
         ...state,
         finishedTourneyGames,

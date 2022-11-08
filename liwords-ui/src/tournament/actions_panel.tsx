@@ -19,7 +19,6 @@ import {
 } from '../store/store';
 import { useMountedState } from '../utils/mounted';
 import { RecentTourneyGames } from './recent_games';
-import { pageSize } from './recent_game';
 import { ActionType } from '../actions/actions';
 import { Pairings } from './pairings';
 import { isPairedMode, isClubType } from '../store/constants';
@@ -28,6 +27,8 @@ import { DirectorTools } from './director_tools/director_tools';
 import { flashError, useClient } from '../utils/hooks/connect';
 import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_connectweb';
 // import { CheckIn } from './check_in';
+
+const PAGE_SIZE = 30;
 
 type Props = {
   newGame: (seekID: string) => void;
@@ -157,7 +158,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     (async () => {
       const resp = await tournamentClient.recentGames({
         id: tournamentID,
-        numGames: pageSize,
+        numGames: PAGE_SIZE,
         offset: tournamentContext.gamesOffset,
       });
       dispatchTournamentContext({
@@ -266,7 +267,7 @@ export const ActionsPanel = React.memo((props: Props) => {
               tournamentContext.gamesOffset > 0 ? fetchPrev : undefined
             }
             fetchNext={
-              tournamentContext.finishedTourneyGames.length < pageSize
+              tournamentContext.finishedTourneyGames.length < PAGE_SIZE
                 ? undefined
                 : fetchNext
             }
