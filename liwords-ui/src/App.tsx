@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Navigate,
   Route,
@@ -39,6 +39,8 @@ import { TermsOfService } from './about/termsOfService';
 import { ChatMessage } from './gen/api/proto/ipc/chat_pb';
 import { MessageType } from './gen/api/proto/ipc/ipc_pb';
 import Footer from './navigation/footer';
+import { Embed } from './embed/embed';
+
 import {
   connectErrorMessage,
   flashError,
@@ -142,12 +144,19 @@ const App = React.memo(() => {
 
   const location = useLocation();
   const knownLocation = useRef(location.pathname); // Remember the location on first render.
+  console.log('loc pathname', location.pathname);
   const isCurrentLocation = knownLocation.current === location.pathname;
   useEffect(() => {
     if (!isCurrentLocation) {
       resetStore();
     }
   }, [isCurrentLocation, resetStore]);
+
+  const isEmbeddedPath = useMemo(() => {
+    const embedPrefixes = ['/embed'];
+    return embedPrefixes.some((v) => location.pathname.startsWith(v));
+  }, [location.pathname]);
+
   const socializeClient = useClient(SocializeService);
   const getFullBlocks = useCallback(() => {
     void userID; // used only as effect dependency
@@ -198,8 +207,10 @@ const App = React.memo(() => {
   }, [setAdmins, setModerators, setModsFetched, socializeClient]);
 
   useEffect(() => {
-    getMods();
-  }, [getMods]);
+    if (!isEmbeddedPath) {
+      getMods();
+    }
+  }, [getMods, isEmbeddedPath]);
 
   const getFriends = useCallback(async () => {
     if (loggedIn) {
@@ -279,11 +290,13 @@ const App = React.memo(() => {
 
   return (
     <div className="App">
-      <LiwordsSocket
-        key={socketId}
-        resetSocket={resetSocket}
-        setValues={setLiwordsSocketValues}
-      />
+      {!isEmbeddedPath && (
+        <LiwordsSocket
+          key={socketId}
+          resetSocket={resetSocket}
+          setValues={setLiwordsSocketValues}
+        />
+      )}
       <Routes>
         <Route
           path="/"
@@ -321,6 +334,8 @@ const App = React.memo(() => {
           />
         </Route>
 
+        <Route path="embed/game/:gameID" element={<Embed />} />
+
         <Route path="about" element={<Team />} />
         <Route path="team" element={<Team />} />
         <Route path="terms" element={<TermsOfService />} />
@@ -348,7 +363,7 @@ const App = React.memo(() => {
           element={<HandoverSignedCookie />}
         />
       </Routes>
-      <Footer />
+      {!isEmbeddedPath && <Footer />}
     </div>
   );
 });

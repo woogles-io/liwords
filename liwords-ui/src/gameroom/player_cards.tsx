@@ -26,6 +26,7 @@ type CardProps = {
   playing: boolean;
   score: number;
   spread: number;
+  hideProfileLink?: boolean;
 };
 
 const timepenalty = (time: Millis) => {
@@ -68,13 +69,18 @@ const PlayerCard = React.memo((props: CardProps) => {
           </p>
           <div className="player-details">
             <DisplayUserFlag uuid={props.player?.userID} />
-            {meta?.rating || 'Unrated'} •{' '}
-            <Link
-              target="_blank"
-              to={`/profile/${encodeURIComponent(meta?.nickname ?? '')}`}
-            >
-              View profile
-            </Link>
+            {meta?.rating || 'Unrated'}
+            {props.hideProfileLink ? null : (
+              <>
+                •{' '}
+                <Link
+                  target="_blank"
+                  to={`/profile/${encodeURIComponent(meta?.nickname ?? '')}`}
+                >
+                  View profile
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </Row>
@@ -100,6 +106,7 @@ type Props = {
   gameMeta: GameInfoResponse;
   playerMeta: Array<PlayerInfo>;
   horizontal?: boolean;
+  hideProfileLink?: boolean;
 };
 
 export const PlayerCards = React.memo((props: Props) => {
@@ -165,6 +172,7 @@ export const PlayerCards = React.memo((props: Props) => {
         score={p0Score}
         spread={p0Spread}
         playing={playing}
+        hideProfileLink={props.hideProfileLink}
       />
       <PlayerCard
         player={p1}
@@ -174,6 +182,7 @@ export const PlayerCards = React.memo((props: Props) => {
         score={p1Score}
         spread={-p0Spread}
         playing={playing}
+        hideProfileLink={props.hideProfileLink}
       />
     </Card>
   );
