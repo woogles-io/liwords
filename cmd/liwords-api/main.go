@@ -110,6 +110,21 @@ func NewLoggingServerHooks() *twirp.ServerHooks {
 	}
 }
 
+// func NewInterceptorCustomError() twirp.Interceptor {
+// 	return func(next twirp.Method) twirp.Method {
+// 		return func(ctx context.Context, req interface{}) (interface{}, error) {
+
+// 			resp, err := next(ctx, req)
+// 			if err != nil {
+// 				switch err.(type) {
+// 				case twirp.Error:
+
+// 				}
+// 			}
+// 		}
+// 	}
+// }
+
 func main() {
 
 	cfg := &config.Config{}
@@ -289,12 +304,6 @@ func main() {
 		return fmt.Sprintf("%d", ct)
 	}))
 
-	srv := &http.Server{
-		Addr:         cfg.ListenAddr,
-		Handler:      router,
-		WriteTimeout: 120 * time.Second,
-		ReadTimeout:  10 * time.Second}
-
 	idleConnsClosed := make(chan struct{})
 	sig := make(chan os.Signal, 1)
 
@@ -305,7 +314,16 @@ func main() {
 	}
 	tournamentService.SetEventChannel(pubsubBus.TournamentEventChannel())
 
+	router.Handle(bus.GameEventStreamPrefix,
+		middlewares.Then(pubsubBus.EventAPIServerInstance()))
+
 	ctx, pubsubCancel := context.WithCancel(context.Background())
+
+	srv := &http.Server{
+		Addr:         cfg.ListenAddr,
+		Handler:      router,
+		WriteTimeout: 120 * time.Second,
+		ReadTimeout:  10 * time.Second}
 
 	go pubsubBus.ProcessMessages(ctx)
 

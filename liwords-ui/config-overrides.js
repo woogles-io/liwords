@@ -1,6 +1,13 @@
 const path = require('path');
 
 module.exports = {
+  // reduce bundle size by only including antd icons we need
+  resolve: {
+    alias: {
+      "@ant-design/icons$": path.resolve(__dirname, "./src/icons.js")
+    }
+  },
+
   webpack: function(config, env) {
     const wasmExtensionRegExp = /\.wasm$/;
     config.module.rules.forEach((rule) => {

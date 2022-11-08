@@ -1014,21 +1014,16 @@ func init() {
 }
 
 // The previous index. Should work for any number of players.
-func previousNicknameIndex(history *macondopb.GameHistory, which int) int {
+func previousPlayerIndex(history *macondopb.GameHistory, which int) int {
 	if which == 0 {
 		return len(history.Players) - 1
 	}
 	return which - 1
 }
 
-// Nickname index within history.Players. Not adjusted for SecondWentFirst.
-func nicknameIndex(history *macondopb.GameHistory, evt *macondopb.GameEvent) int {
-	for k, v := range history.Players {
-		if evt.Nickname == v.Nickname {
-			return k
-		}
-	}
-	return -1
+// Player index within history.Players.
+func playerIndex(history *macondopb.GameHistory, evt *macondopb.GameEvent) int {
+	return int(evt.PlayerIndex)
 }
 
 // Blank tiles are undeclared unless they are on board.
@@ -1064,18 +1059,14 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 		return nil, fmt.Errorf("invalid len(lastKnownRacks): %v racks for %v players", len(history.LastKnownRacks), numPlayers)
 	}
 
-	// Nothing is adjusted for SecondWentFirst.
 	// For 0 <= turn < len(history.Events), [turn] is pre-turn and [turn+1] is post-turn.
 	whoseTurn := make([]int, len(history.Events)+1) // [0] == 0.
-	if history.SecondWentFirst && numPlayers > 1 {
-		whoseTurn[0] = 1
-	}
 	{
 		canHaveActiveAction := true
 		contestedTilePlacementMoveIdx := -1
 		for i, evt := range history.Events {
-			expectedNicknameIndex := whoseTurn[i]
-			whoseTurn[i+1] = expectedNicknameIndex
+			expectedPlayerIndex := whoseTurn[i]
+			whoseTurn[i+1] = expectedPlayerIndex
 			isActiveAction := true
 			switch evt.Type {
 			case
@@ -1084,12 +1075,12 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 				macondopb.GameEvent_EXCHANGE,
 				macondopb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
 				// The player spends the turn.
-				whoseTurn[i+1] = (expectedNicknameIndex + 1) % numPlayers
+				whoseTurn[i+1] = (expectedPlayerIndex + 1) % numPlayers
 			case
 				macondopb.GameEvent_PHONY_TILES_RETURNED,
 				macondopb.GameEvent_CHALLENGE_BONUS:
 				// The player on turn keeps the turn, but the event is attributed to the previous player.
-				expectedNicknameIndex = previousNicknameIndex(history, expectedNicknameIndex)
+				expectedPlayerIndex = previousPlayerIndex(history, expectedPlayerIndex)
 			case
 				macondopb.GameEvent_END_RACK_PTS,
 				macondopb.GameEvent_TIME_PENALTY,
@@ -1097,8 +1088,8 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 				// These are not actual actions.
 				// Nonetheless, the event should still be attributed to one of the players.
 				isActiveAction = false
-				expectedNicknameIndex = nicknameIndex(history, evt)
-				if expectedNicknameIndex < 0 || expectedNicknameIndex > numPlayers {
+				expectedPlayerIndex = playerIndex(history, evt)
+				if expectedPlayerIndex < 0 || expectedPlayerIndex > numPlayers {
 					return nil, fmt.Errorf("invalid nickname in event[%v]: %v", i, evt)
 				}
 				// For TIME_PENALTY, whose turn it is does not change.
@@ -1107,20 +1098,16 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 				switch evt.Type {
 				case macondopb.GameEvent_END_RACK_PTS:
 					// For END_RACK_PTS, assume the rack belongs to the immediately preceding player.
-					whoseTurn[i] = (expectedNicknameIndex + numPlayers - 1) % numPlayers
+					whoseTurn[i] = (expectedPlayerIndex + numPlayers - 1) % numPlayers
 					whoseTurn[i+1] = whoseTurn[i]
 				case macondopb.GameEvent_END_RACK_PENALTY:
-					whoseTurn[i] = expectedNicknameIndex
+					whoseTurn[i] = expectedPlayerIndex
 					whoseTurn[i+1] = whoseTurn[i]
 				}
 			default:
 				// Mistake-proof in case the jigglypuff evolves.
 				// * protobuf
 				return nil, fmt.Errorf("unknown event[%v]: %v", i, evt)
-			}
-			expectedNickname := history.Players[expectedNicknameIndex].Nickname
-			if evt.Nickname != expectedNickname {
-				return nil, fmt.Errorf("unexpected nickname in event[%v] (should be %v): %v", i, expectedNickname, evt)
 			}
 			if isActiveAction {
 				if !canHaveActiveAction {
@@ -1162,7 +1149,7 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 	for i, evt := range history.Events {
 		cumes[i+1] = make([]int32, numPlayers)
 		copy(cumes[i+1], cumes[i])
-		cumes[i+1][nicknameIndex(history, evt)] = evt.Cumulative
+		cumes[i+1][playerIndex(history, evt)] = evt.Cumulative
 	}
 
 	// For 0 <= turn < len(history.Events), [turn] is pre-turn and [turn+1] is post-turn.
@@ -1195,7 +1182,7 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			sort.Slice(rack, func(i, j int) bool {
 				return bd.LetterDistribution.SortOrder[rack[i]] < bd.LetterDistribution.SortOrder[rack[j]]
 			})
-			racki[nicknameIndex(history, evt)] = rack
+			racki[playerIndex(history, evt)] = rack
 			racks[t] = racki
 		}
 	}
@@ -1302,10 +1289,6 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			cumeBuf1 = strconv.AppendInt(cumeBuf1, int64(cumes[turn][1]), 10)
 		}
 		cumeBuf0Index := 0
-		if history.SecondWentFirst && numPlayers > 1 {
-			cumeBuf0, cumeBuf1 = cumeBuf1, cumeBuf0
-			cumeBuf0Index = 1
-		}
 		gap := 2
 		if numPlayers > 1 {
 			gap += 3
@@ -1350,10 +1333,6 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			return image.Rectangle{}
 		}
 		negativeIndex := 0
-		if history.SecondWentFirst && numPlayers > 1 {
-			negativeIndex = 1
-			spread = -spread
-		}
 		twiceSpreadMidX := bd.PadLeft + canvasPalImg.Bounds().Dx() - bd.PadRight
 		twiceSpreadWidth := canvasPalImg.Bounds().Dx() - (bd.PadLeft + bd.PadRight)
 		spreadBottomY := canvasPalImg.Bounds().Dy() - bd.PadBottom
@@ -1383,7 +1362,7 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 		// Score difference always belongs to stated nickname.
 		// Score diff refers to the difference to the next turn's cumulative score (not spread).
 		// The protobuf does not dedicate one specific field for this purpose.
-		which := nicknameIndex(history, history.Events[turn])
+		which := playerIndex(history, history.Events[turn])
 		scoreDiff := int64(cumes[turn+1][which] - cumes[turn][which])
 		cumeBuf0 = cumeBuf0[:0]
 		if scoreDiff >= 0 {

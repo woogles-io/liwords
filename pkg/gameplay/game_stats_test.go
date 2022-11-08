@@ -290,8 +290,9 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 		is.NoErr(err)
 
 		ctx := context.WithValue(context.Background(), config.CtxKeyword, &config.Config{MacondoConfig: DefaultConfig})
-		_, err = gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
+		s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 		is.NoErr(err)
+		log.Debug().Interface("stats", s).Msg("computed-stats")
 	}
 
 	u0, err := ustore.Get(context.Background(), "Mina")

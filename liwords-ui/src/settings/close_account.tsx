@@ -1,11 +1,11 @@
 import React from 'react';
 import { Alert, Button, Checkbox, Col, Form, Input, Row } from 'antd';
 import { PlayerAvatar } from '../shared/player_avatar';
-import { PlayerMetadata } from '../gameroom/game_info';
+import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
 
 type Props = {
   cancel: () => void;
-  player: Partial<PlayerMetadata> | undefined;
+  player: Partial<PlayerInfo> | undefined;
   closeAccountNow: (password: string) => void;
   err: string;
 };
@@ -16,7 +16,7 @@ export const CloseAccount = React.memo((props: Props) => {
       <h3>Delete account</h3>
       <div className="avatar-container">
         <PlayerAvatar player={props.player} />
-        <div className="full-name">{props.player?.full_name}</div>
+        <div className="full-name">{props.player?.fullName}</div>
       </div>
       <div className="deletion-rules">
         If you choose to delete your account, it will no longer be accessible.

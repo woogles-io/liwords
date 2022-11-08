@@ -6,7 +6,7 @@ import {
   TablePaginationConfig,
 } from 'antd/lib/table/interface';
 import React, { ReactNode, useCallback, useMemo } from 'react';
-import { FundOutlined, ExportOutlined } from '@ant-design/icons/lib';
+import { FundOutlined, ExportOutlined } from '@ant-design/icons';
 import {
   calculateTotalTime,
   challRuleToStr,
@@ -23,7 +23,7 @@ import { DisplayUserFlag } from '../shared/display_flag';
 import { RatingBadge } from './rating_badge';
 import { VariantIcon } from '../shared/variant_icons';
 import { MatchLexiconDisplay } from '../shared/lexicon_display';
-import { ProfileUpdate } from '../gen/api/proto/ipc/users_pb';
+import { ProfileUpdate_Rating } from '../gen/api/proto/ipc/users_pb';
 
 export const timeFormat = (
   initialTimeSecs: number,
@@ -61,7 +61,7 @@ export const PlayerDisplay = (props: PlayerProps) => {
     <div className="player-display">
       <PlayerAvatar
         player={{
-          user_id: props.userID,
+          userId: props.userID,
           nickname: props.username,
         }}
       />
@@ -77,7 +77,7 @@ type Props = {
   userID?: string;
   username?: string;
   requests: Array<SoughtGame>;
-  ratings?: { [key: string]: ProfileUpdate.Rating };
+  ratings?: { [key: string]: ProfileUpdate_Rating };
 };
 export const SoughtGames = (props: Props) => {
   const { useState } = useMountedState();
@@ -225,7 +225,7 @@ export const SoughtGames = (props: Props) => {
             >
               <div>
                 <ExportOutlined />
-                {` ${sg.receiver?.getDisplayName() || 'Seeking...'}`}
+                {` ${sg.receiver?.displayName || 'Seeking...'}`}
               </div>
             </Popconfirm>
           ) : (

@@ -7,7 +7,6 @@ import React, {
 } from 'react';
 import { useMountedState } from '../utils/mounted';
 
-import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { LobbyState, LobbyReducer } from './reducers/lobby_reducer';
 import { Action } from '../actions/actions';
 import {
@@ -17,7 +16,14 @@ import {
   GameReducer,
 } from './reducers/game_reducer';
 import { ClockController, Times, Millis } from './timer_controller';
-import { PlayerOrder } from './constants';
+import {
+  ChatEntityObj,
+  ChatEntityType,
+  indexToPlayerOrder,
+  PlayerOrder,
+  PresenceEntity,
+  randomID,
+} from './constants';
 import { PoolFormatType } from '../constants/pool_formats';
 import { LoginState, LoginStateReducer } from './login_state';
 import { EphemeralTile } from '../utils/cwgame/common';
@@ -32,30 +38,8 @@ import { StandardEnglishAlphabet } from '../constants/alphabets';
 import { SeekRequest } from '../gen/api/proto/ipc/omgseeks_pb';
 import { ServerChallengeResultEvent } from '../gen/api/proto/ipc/omgwords_pb';
 import { message } from 'antd';
-
-export enum ChatEntityType {
-  UserChat,
-  ServerMsg,
-  ErrorMsg,
-}
-
-export type ChatEntityObj = {
-  entityType: ChatEntityType;
-  sender: string;
-  message: string;
-  id?: string;
-  timestamp?: number;
-  senderId?: string;
-  channel: string;
-};
-
-export type PresenceEntity = {
-  uuid: string;
-  username: string;
-  channel: string;
-  anon: boolean;
-  deleting: boolean;
-};
+import { playerOrderFromEvt } from '../utils/cwgame/game_event';
+import { GameEvent_Type } from '../gen/macondo/api/proto/macondo/macondo_pb';
 
 const MaxChatLength = 150;
 
@@ -144,8 +128,8 @@ type ChatStoreData = {
   clearChat: () => void;
   deleteChat: (id: string, channel: string) => void;
   chat: Array<ChatEntityObj>;
-  chatChannels: ActiveChatChannels.AsObject | undefined;
-  setChatChannels: (chatChannels: ActiveChatChannels.AsObject) => void;
+  chatChannels: ActiveChatChannels | undefined;
+  setChatChannels: (chatChannels: ActiveChatChannels) => void;
 };
 
 type PresenceStoreData = {
@@ -390,13 +374,6 @@ type Props = {
   children: React.ReactNode;
 };
 
-export const randomID = () => {
-  // Math.random should be unique because of its seeding algorithm.
-  // Convert it to base 36 (numbers + letters), and grab the first 9 characters
-  // after the decimal.
-  return `_${Math.random().toString(36).substr(2, 9)}`;
-};
-
 const gameStateInitializer = (
   clockController: React.MutableRefObject<ClockController | null>,
   onClockTick: (p: PlayerOrder, t: Millis) => void,
@@ -525,22 +502,19 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     // Fix players and clockController.
     const times = { p0: 0, p1: 0, lastUpdate: 0 };
     for (let i = 0; i < ret.players.length; ++i) {
-      const { userID } = ret.players[i];
-      const playerOrder = gameContext.uidToPlayerOrder[userID];
-      let nickname = '';
-      for (const nick in gameContext.nickToPlayerOrder) {
-        if (playerOrder === gameContext.nickToPlayerOrder[nick]) {
-          nickname = nick;
-          break;
-        }
-      }
-
+      const playerOrder = indexToPlayerOrder(i);
       // Score comes from the most recent past.
       let score = 0;
       for (let j = replayedTurns.length; --j >= 0; ) {
         const turn = gameContext.turns[j];
-        if (turn.getNickname() === nickname) {
-          score = turn.getCumulative();
+
+        const turnPlayerOrder = playerOrderFromEvt(
+          turn,
+          gameContext.nickToPlayerOrder
+        );
+
+        if (turnPlayerOrder === playerOrder) {
+          score = turn.cumulative;
           break;
         }
       }
@@ -552,8 +526,8 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       for (let j = replayedTurns.length; --j >= 0; ) {
         const turn = gameContext.turns[j];
         if (
-          turn.getType() === GameEvent.Type.END_RACK_PTS ||
-          turn.getType() === GameEvent.Type.END_RACK_PENALTY
+          turn.type === GameEvent_Type.END_RACK_PTS ||
+          turn.type === GameEvent_Type.END_RACK_PENALTY
         ) {
           continue;
         }
@@ -561,17 +535,22 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
         // Logic from game_reducer setClock.
         let flipTimeRemaining = false;
         if (
-          turn.getType() === GameEvent.Type.CHALLENGE_BONUS ||
-          turn.getType() === GameEvent.Type.PHONY_TILES_RETURNED
+          turn.type === GameEvent_Type.CHALLENGE_BONUS ||
+          turn.type === GameEvent_Type.PHONY_TILES_RETURNED
         ) {
           // For these particular two events, the time remaining is for the CHALLENGER.
-          // Therefore, it's not the time remaining of the player whose nickname is
+          // Therefore, it's not the time remaining of the player
           // in the event, so we must flip the times here.
           flipTimeRemaining = true;
         }
 
-        if ((turn.getNickname() === nickname) !== flipTimeRemaining) {
-          time = turn.getMillisRemaining();
+        const turnPlayerOrder = playerOrderFromEvt(
+          turn,
+          gameContext.nickToPlayerOrder
+        );
+
+        if ((turnPlayerOrder === playerOrder) !== flipTimeRemaining) {
+          time = turn.millisRemaining;
           break;
         }
       }
@@ -584,14 +563,17 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       for (let j = replayedTurns.length; j < gameContext.turns.length; ++j) {
         const turn = gameContext.turns[j];
         if (
-          turn.getType() === GameEvent.Type.END_RACK_PTS ||
-          turn.getType() === GameEvent.Type.END_RACK_PENALTY
+          turn.type === GameEvent_Type.END_RACK_PTS ||
+          turn.type === GameEvent_Type.END_RACK_PENALTY
         ) {
           continue;
         }
-
-        if (turn.getNickname() === nickname) {
-          rack = turn.getRack();
+        const turnPlayerOrder = playerOrderFromEvt(
+          turn,
+          gameContext.nickToPlayerOrder
+        );
+        if (turnPlayerOrder === playerOrder) {
+          rack = turn.rack;
           break;
         }
       }
@@ -878,7 +860,7 @@ const RealStore = ({ children, ...props }: Props) => {
   const [rematchRequest, setRematchRequest] = useState(new SeekRequest());
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
   const [chatChannels, setChatChannels] = useState<
-    ActiveChatChannels.AsObject | undefined
+    ActiveChatChannels | undefined
   >(undefined);
   const [excludedPlayers, setExcludedPlayers] = useState(new Set<string>());
   const [friends, setFriends] = useState({});
@@ -912,7 +894,7 @@ const RealStore = ({ children, ...props }: Props) => {
       addChat({
         entityType: ChatEntityType.ServerMsg,
         sender: '',
-        message: sge.getValid()
+        message: sge.valid
           ? 'Challenged play was valid'
           : 'Play was challenged off the board!',
         id: randomID(),

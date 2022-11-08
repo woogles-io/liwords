@@ -2,10 +2,14 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import moment from 'moment';
 import { Button, Table, Tag, Tooltip } from 'antd';
-import { RecentGame } from './recent_game';
+import {
+  TournamentGameEndedEvent,
+  TournamentGameResult,
+} from '../gen/api/proto/ipc/tournament_pb';
+import { GameEndReason } from '../gen/api/proto/ipc/omgwords_pb';
 
 type Props = {
-  games: Array<RecentGame>;
+  games: Array<TournamentGameEndedEvent>;
   fetchPrev?: () => void;
   fetchNext?: () => void;
 };
@@ -31,28 +35,31 @@ const PlayerLink = (props: playerLinkProps) => {
 export const RecentTourneyGames = React.memo((props: Props) => {
   let lastDate = 0;
   const formattedGames = props.games
-    .filter((item) => item.players?.length && item.end_reason !== 'CANCELLED')
+    .filter(
+      (item) =>
+        item.players?.length && item.endReason !== GameEndReason.CANCELLED
+    )
     .map((item) => {
       const p1 = (
         <PlayerLink
           username={item.players[0].username}
-          winner={item.players[0].result === 'WIN'}
-          loser={item.players[0].result === 'LOSS'}
+          winner={item.players[0].result === TournamentGameResult.WIN}
+          loser={item.players[0].result === TournamentGameResult.LOSS}
         />
       );
       const p2 = (
         <PlayerLink
           username={item.players[1].username}
-          winner={item.players[0].result === 'LOSS'}
-          loser={item.players[0].result === 'WIN'}
+          winner={item.players[0].result === TournamentGameResult.LOSS}
+          loser={item.players[0].result === TournamentGameResult.WIN}
         />
       );
       const scores = (
-        <Link to={`/game/${encodeURIComponent(String(item.game_id ?? ''))}`}>
+        <Link to={`/game/${encodeURIComponent(String(item.gameId ?? ''))}`}>
           {item.players[0].score} - {item.players[1].score}
         </Link>
       );
-      const whenMoment = moment.unix(item.time ? item.time : 0);
+      const whenMoment = moment.unix(item.time ? Number(item.time) : 0);
 
       let when: string | JSX.Element = whenMoment.format('HH:mm');
       if (whenMoment.dayOfYear() !== moment.unix(lastDate).dayOfYear()) {
@@ -60,33 +67,33 @@ export const RecentTourneyGames = React.memo((props: Props) => {
       }
       when = <Tooltip title={whenMoment.format('LLL')}>{when}</Tooltip>;
 
-      lastDate = item.time;
+      lastDate = Number(item.time);
       let endReason = '';
-      switch (item.end_reason) {
-        case 'TIME':
+      switch (item.endReason) {
+        case GameEndReason.TIME:
           endReason = 'Time';
           break;
-        case 'CONSECUTIVE_ZEROES':
+        case GameEndReason.CONSECUTIVE_ZEROES:
           endReason = 'Six 0';
           break;
-        case 'RESIGNED':
+        case GameEndReason.RESIGNED:
           endReason = 'Resign';
           break;
-        case 'ABORTED':
+        case GameEndReason.ABORTED:
           endReason = 'Abort';
           break;
-        case 'CANCELLED':
+        case GameEndReason.CANCELLED:
           endReason = 'Cancel';
           break;
-        case 'TRIPLE_CHALLENGE':
+        case GameEndReason.TRIPLE_CHALLENGE:
           endReason = 'Triple';
           break;
-        case 'STANDARD':
+        case GameEndReason.STANDARD:
           endReason = 'Complete';
       }
 
       return {
-        game_id: item.game_id, // used by rowKey
+        gameId: item.gameId, // used by rowKey
         p1,
         p2,
         scores,
@@ -132,7 +139,7 @@ export const RecentTourneyGames = React.memo((props: Props) => {
         columns={columns}
         dataSource={formattedGames}
         pagination={false}
-        rowKey="game_id"
+        rowKey="gameId"
       />
       <div className="game-history-controls">
         {props.fetchPrev && <Button onClick={props.fetchPrev}>Prev</Button>}

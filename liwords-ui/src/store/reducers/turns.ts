@@ -1,3 +1,4 @@
+import { GameEvent_Type } from '../../gen/macondo/api/proto/macondo/macondo_pb';
 import { GameEvent } from '../../gen/macondo/api/proto/macondo/macondo_pb';
 
 export type Turn = Array<GameEvent>;
@@ -7,11 +8,15 @@ export const gameEventsToTurns = (evts: Array<GameEvent>) => {
   const turns = new Array<Turn>();
   let lastTurn: Turn = new Array<GameEvent>();
   evts.forEach((evt) => {
+    let playersDiffer = false;
+    if (lastTurn.length !== 0) {
+      playersDiffer = lastTurn[0].playerIndex !== evt.playerIndex;
+    }
+
     if (
-      (lastTurn.length !== 0 &&
-        lastTurn[0].getNickname() !== evt.getNickname()) ||
-      evt.getType() === GameEvent.Type.TIME_PENALTY ||
-      evt.getType() === GameEvent.Type.END_RACK_PENALTY
+      (lastTurn.length !== 0 && playersDiffer) ||
+      evt.type === GameEvent_Type.TIME_PENALTY ||
+      evt.type === GameEvent_Type.END_RACK_PENALTY
     ) {
       // time to add a new turn.
       turns.push(lastTurn);

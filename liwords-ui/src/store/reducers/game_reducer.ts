@@ -7,7 +7,6 @@ import {
 } from '../../gen/macondo/api/proto/macondo/macondo_pb';
 import { Action, ActionType } from '../../actions/actions';
 import {
-  Direction,
   isBlank,
   Blank,
   PlayedTiles,
@@ -16,7 +15,10 @@ import {
 } from '../../utils/cwgame/common';
 import { PlayerOrder } from '../constants';
 import { ClockController, Millis } from '../timer_controller';
-import { ThroughTileMarker } from '../../utils/cwgame/game_event';
+import {
+  playerOrderFromEvt,
+  ThroughTileMarker,
+} from '../../utils/cwgame/game_event';
 import {
   Alphabet,
   alphabetFromName,
@@ -31,6 +33,8 @@ import {
   CrosswordGameGridLayout,
   SuperCrosswordGameGridLayout,
 } from '../../constants/board_layout';
+import { GameEvent_Type } from '../../gen/macondo/api/proto/macondo/macondo_pb';
+import { GameEvent_Direction } from '../../gen/macondo/api/proto/macondo/macondo_pb';
 
 type TileDistribution = { [rune: string]: number };
 
@@ -47,7 +51,7 @@ export type RawPlayerInfo = {
 const initialExpandToFull = (playerList: PlayerInfo[]): RawPlayerInfo[] => {
   return playerList.map((pi, idx) => {
     return {
-      userID: pi.getUserId(),
+      userID: pi.userId,
       score: 0,
       onturn: idx === 0,
       currentRack: '',
@@ -113,7 +117,7 @@ export const startingGameState = (
 };
 
 const onturnFromEvt = (state: GameState, evt: GameEvent) => {
-  const po = state.nickToPlayerOrder[evt.getNickname()];
+  const po = playerOrderFromEvt(evt, state.nickToPlayerOrder);
   let onturn;
   if (po === 'p0') {
     onturn = 0;
@@ -121,9 +125,9 @@ const onturnFromEvt = (state: GameState, evt: GameEvent) => {
     onturn = 1;
   } else {
     throw new Error(
-      `unexpected player order; nick:${evt.getNickname()}, ntpo:${JSON.stringify(
-        state.nickToPlayerOrder
-      )} `
+      `unexpected player order; po:${po}, evt:${
+        evt.playerIndex
+      }, ntpo:${JSON.stringify(state.nickToPlayerOrder)} `
     );
   }
   return onturn;
@@ -145,19 +149,20 @@ const newGameStateFromGameplayEvent = (
   let { board, lastPlayedTiles, playerOfTileAt, pool } = state;
   const turns = [...state.turns];
   // let currentTurn;
-  const evt = sge.getEvent();
+  const evt = sge.event;
   if (!evt) {
     throw new Error('missing event');
   }
 
   // Append the event.
-  turns.push(GameEvent.deserializeBinary(evt.serializeBinary()));
+
+  turns.push(evt.clone());
   const players = clonePlayers(state.players);
 
   // onturn should be set to the player that came with the event.
   let onturn = onturnFromEvt(state, evt);
-  switch (evt.getType()) {
-    case GameEvent.Type.TILE_PLACEMENT_MOVE: {
+  switch (evt.type) {
+    case GameEvent_Type.TILE_PLACEMENT_MOVE: {
       board = state.board.deepCopy();
       [lastPlayedTiles, pool] = placeOnBoard(board, pool, evt);
       playerOfTileAt = { ...playerOfTileAt };
@@ -166,25 +171,25 @@ const newGameStateFromGameplayEvent = (
       }
       break;
     }
-    case GameEvent.Type.PHONY_TILES_RETURNED: {
+    case GameEvent_Type.PHONY_TILES_RETURNED: {
       board = state.board.deepCopy();
       // Unplace the move BEFORE this one.
       const toUnplace = turns[turns.length - 2];
       pool = unplaceOnBoard(board, pool, toUnplace);
       // Set the user's rack back to what it used to be.
-      players[onturn].currentRack = toUnplace.getRack();
+      players[onturn].currentRack = toUnplace.rack;
       break;
     }
   }
 
   if (
-    evt.getType() === GameEvent.Type.TILE_PLACEMENT_MOVE ||
-    evt.getType() === GameEvent.Type.EXCHANGE
+    evt.type === GameEvent_Type.TILE_PLACEMENT_MOVE ||
+    evt.type === GameEvent_Type.EXCHANGE
   ) {
-    players[onturn].currentRack = sge.getNewRack();
+    players[onturn].currentRack = sge.newRack;
   }
 
-  players[onturn].score = evt.getCumulative();
+  players[onturn].score = evt.cumulative;
   players[onturn].onturn = false;
   players[1 - onturn].onturn = true;
   onturn = 1 - onturn;
@@ -194,7 +199,7 @@ const newGameStateFromGameplayEvent = (
     gameID: state.gameID,
     nickToPlayerOrder: state.nickToPlayerOrder,
     uidToPlayerOrder: state.uidToPlayerOrder,
-    playState: sge.getPlaying(),
+    playState: sge.playing,
     clockController: state.clockController,
     onClockTick: state.onClockTick,
     onClockTimeout: state.onClockTimeout,
@@ -214,19 +219,17 @@ const placeOnBoard = (
   pool: TileDistribution,
   evt: GameEvent
 ): [PlayedTiles, TileDistribution] => {
-  const play = evt.getPlayedTiles();
+  const play = evt.playedTiles;
   const playedTiles: PlayedTiles = {};
   const newPool = { ...pool };
   for (let i = 0; i < play.length; i += 1) {
     const rune = play[i];
     const row =
-      evt.getDirection() === Direction.Vertical
-        ? evt.getRow() + i
-        : evt.getRow();
+      evt.direction === GameEvent_Direction.VERTICAL ? evt.row + i : evt.row;
     const col =
-      evt.getDirection() === Direction.Horizontal
-        ? evt.getColumn() + i
-        : evt.getColumn();
+      evt.direction === GameEvent_Direction.HORIZONTAL
+        ? evt.column + i
+        : evt.column;
     const tile = { row, col, rune };
     if (rune !== ThroughTileMarker && board.letterAt(row, col) === EmptySpace) {
       board.addTile(tile);
@@ -246,18 +249,16 @@ const unplaceOnBoard = (
   pool: TileDistribution,
   evt: GameEvent
 ): TileDistribution => {
-  const play = evt.getPlayedTiles();
+  const play = evt.playedTiles;
   const newPool = { ...pool };
   for (let i = 0; i < play.length; i += 1) {
     const rune = play[i];
     const row =
-      evt.getDirection() === Direction.Vertical
-        ? evt.getRow() + i
-        : evt.getRow();
+      evt.direction === GameEvent_Direction.VERTICAL ? evt.row + i : evt.row;
     const col =
-      evt.getDirection() === Direction.Horizontal
-        ? evt.getColumn() + i
-        : evt.getColumn();
+      evt.direction === GameEvent_Direction.HORIZONTAL
+        ? evt.column + i
+        : evt.column;
     const tile = { row, col, rune };
     if (rune !== ThroughTileMarker && board.letterAt(row, col) !== EmptySpace) {
       // Remove the tile from the board and place it back in the pool.
@@ -278,15 +279,15 @@ export const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
     // determine turn from event.
     const onturn = onturnFromEvt(gs, evt);
     // We only care about placement and unplacement events here:
-    switch (evt.getType()) {
-      case GameEvent.Type.TILE_PLACEMENT_MOVE:
+    switch (evt.type) {
+      case GameEvent_Type.TILE_PLACEMENT_MOVE:
         // eslint-disable-next-line no-param-reassign
         [gs.lastPlayedTiles, gs.pool] = placeOnBoard(gs.board, gs.pool, evt);
         for (const k in gs.lastPlayedTiles) {
           gs.playerOfTileAt[k] = onturn;
         }
         break;
-      case GameEvent.Type.PHONY_TILES_RETURNED: {
+      case GameEvent_Type.PHONY_TILES_RETURNED: {
         // Unplace the move BEFORE this one.
         const toUnplace = events[idx - 1];
         // eslint-disable-next-line no-param-reassign
@@ -297,62 +298,51 @@ export const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
     }
 
     // Push a deep clone of the turn.
-    gs.turns.push(GameEvent.deserializeBinary(evt.serializeBinary()));
+    gs.turns.push(evt.clone());
     // eslint-disable-next-line no-param-reassign
-    gs.players[onturn].score = events[idx].getCumulative();
+    gs.players[onturn].score = events[idx].cumulative;
     // eslint-disable-next-line no-param-reassign
     gs.onturn = (onturn + 1) % 2;
   });
 };
 
 const stateFromHistory = (history: GameHistory): GameState => {
-  let playerList = history.getPlayersList();
-  const flipPlayers = history.getSecondWentFirst();
-  // If flipPlayers is on, we want to flip the players in the playerList.
-  // The backend doesn't do this because of Reasons.
-  if (flipPlayers) {
-    playerList = [...playerList].reverse();
-  }
+  const playerList = history.players;
 
   const nickToPlayerOrder = {
-    [playerList[0].getNickname()]: 'p0' as PlayerOrder,
-    [playerList[1].getNickname()]: 'p1' as PlayerOrder,
+    [playerList[0].nickname]: 'p0' as PlayerOrder,
+    [playerList[1].nickname]: 'p1' as PlayerOrder,
   };
 
   const uidToPlayerOrder = {
-    [playerList[0].getUserId()]: 'p0' as PlayerOrder,
-    [playerList[1].getUserId()]: 'p1' as PlayerOrder,
+    [playerList[0].userId]: 'p0' as PlayerOrder,
+    [playerList[1].userId]: 'p1' as PlayerOrder,
   };
 
-  const alphabet = alphabetFromName(
-    history.getLetterDistribution().toLowerCase()
-  );
+  const alphabet = alphabetFromName(history.letterDistribution.toLowerCase());
 
   const gs = startingGameState(
     alphabet,
     initialExpandToFull(playerList),
-    history.getUid(),
-    history.getBoardLayout() === 'SuperCrosswordGame'
+    history.uid,
+    history.boardLayout === 'SuperCrosswordGame'
       ? SuperCrosswordGameGridLayout
       : CrosswordGameGridLayout
   );
   gs.nickToPlayerOrder = nickToPlayerOrder;
   gs.uidToPlayerOrder = uidToPlayerOrder;
-  pushTurns(gs, history.getEventsList());
+  pushTurns(gs, history.events);
   // racks are given in the original order that the playerList came in.
   // so if we reversed the player list, we must reverse the racks.
 
-  let racks = history.getLastKnownRacksList();
-  if (flipPlayers) {
-    racks = [...racks].reverse();
-    // timers = timers.reverse();
-  }
+  const racks = history.lastKnownRacks;
+
   // Assign racks. Remember that the player listed first goes first.
   [gs.players[0].currentRack, gs.players[1].currentRack] = racks;
   // [gs.players[0].timeMillis, gs.players[1].timeMillis] = timers;
   gs.players[gs.onturn].onturn = true;
   gs.players[1 - gs.onturn].onturn = false;
-  gs.playState = history.getPlayState();
+  gs.playState = history.playState;
   console.log('gs id', gs.gameID);
   return gs;
 };
@@ -367,21 +357,22 @@ const setClock = (newState: GameState, sge: ServerGameplayEvent) => {
   // If either of the above happened, we have an issue. But these should only
   // happen in some tests.
   // Set the clock
-  const rem = sge.getTimeRemaining(); // time remaining for the player who just played
-  const evt = sge.getEvent();
+  const rem = sge.timeRemaining; // time remaining for the player who just played
+  const evt = sge.event;
   if (!evt) {
     throw new Error('missing event in setclock');
   }
-  const justPlayed = newState.nickToPlayerOrder[evt.getNickname()];
+
+  const justPlayed = playerOrderFromEvt(evt, newState.nickToPlayerOrder);
+
   let { p0, p1 } = newState.clockController.current.times;
   let activePlayer;
   let flipTimeRemaining = false;
-  console.log('just played', justPlayed, evt.getNickname());
   console.log('player times are currently', p0, p1, 'from evt:', rem);
 
   if (
-    evt.getType() === GameEvent.Type.CHALLENGE_BONUS ||
-    evt.getType() === GameEvent.Type.PHONY_TILES_RETURNED
+    evt.type === GameEvent_Type.CHALLENGE_BONUS ||
+    evt.type === GameEvent_Type.PHONY_TILES_RETURNED
   ) {
     // For these particular two events, the time remaining is for the CHALLENGER.
     // Therefore, it's not the time remaining of the player whose nickname is
@@ -423,7 +414,7 @@ const initializeTimerController = (
   newState: GameState,
   ghr: GameHistoryRefresher
 ) => {
-  const history = ghr.getHistory();
+  const history = ghr.history;
   if (!history) {
     throw new Error('missing history in initialize');
   }
@@ -431,18 +422,12 @@ const initializeTimerController = (
     return;
   }
 
-  let [t1, t2] = [ghr.getTimePlayer1(), ghr.getTimePlayer2()];
-  // Note that p0 is always first, even when "secondWentFirst", as p0 refers
-  // to the order in the playerList, which always has the first player in that list
-  // going first. (See flipPlayers in stateFromHistory)
-  let onturn = 'p0' as PlayerOrder;
-  if (history.getSecondWentFirst()) {
-    [t1, t2] = [t2, t1];
-  }
+  const [t1, t2] = [ghr.timePlayer1, ghr.timePlayer2];
 
-  // Note that p0 and p1 correspond to the new indices (after flipping first and second
-  // players, if that happened)
-  const evts = history.getEventsList();
+  let onturn = 'p0' as PlayerOrder;
+
+  // Note that p0 and p1 correspond to the new indices
+  const evts = history.events;
   if (evts.length > 0) {
     // determine onturn from the last event.
     const lastWent = onturnFromEvt(newState, evts[evts.length - 1]);
@@ -476,7 +461,7 @@ const initializeTimerController = (
     onturn,
     newState.clockController.current.millisOf(onturn)
   );
-  newState.clockController.current.setMaxOvertime(ghr.getMaxOvertimeMinutes());
+  newState.clockController.current.setMaxOvertime(ghr.maxOvertimeMinutes);
 };
 
 // Here we are mixing declarative code with imperative code (needed for the timer).
@@ -519,10 +504,9 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       // Check to make sure the game ID matches, and then hand off processing
       // to the newGameState function above.
       const sge = action.payload as ServerGameplayEvent;
-      if (sge.getGameId() !== state.gameID) {
+      if (sge.gameId !== state.gameID) {
         return state; // no change
       }
-
       const ngs = newGameStateFromGameplayEvent(state, sge);
 
       // Always pass the clock ref along. Begin imperative section:
@@ -533,7 +517,7 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
 
     case ActionType.RefreshHistory: {
       const ghr = action.payload as GameHistoryRefresher;
-      const history = ghr.getHistory();
+      const history = ghr.history;
       if (!history) {
         throw new Error('missing history in refresh');
       }
@@ -561,7 +545,7 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       // already been set. This can happen if it ends in an "abnormal" way
       // like a resignation or a timeout -- these aren't ServerGamePlayEvents per se.
       const gee = action.payload as GameEndedEvent;
-      const history = gee.getHistory();
+      const history = gee.history;
       if (!history) {
         throw new Error('missing history in end game event');
       }

@@ -1,10 +1,10 @@
 import React from 'react';
 import { Button } from 'antd';
 import { PlayerAvatar } from '../shared/player_avatar';
-import { PlayerMetadata } from '../gameroom/game_info';
+import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
 
 type Props = {
-  player: Partial<PlayerMetadata> | undefined;
+  player: Partial<PlayerInfo> | undefined;
   handleLogout?: () => void;
 };
 
@@ -14,7 +14,7 @@ export const LogOut = React.memo((props: Props) => {
       <h3>Log out</h3>
       <div className="avatar-container">
         <PlayerAvatar player={props.player} />
-        <div className="full-name">{props.player?.full_name}</div>
+        <div className="full-name">{props.player?.fullName}</div>
       </div>
       <div>
         You’ll have to log back in to your account to play games or see tiles

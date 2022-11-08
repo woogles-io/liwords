@@ -5,11 +5,11 @@ import { useTournamentStoreContext } from '../../store/store';
 import './director_tools.scss';
 import { UsernameWithContext } from '../../shared/usernameWithContext';
 import { Button, Divider } from 'antd';
-import { postJsonObj } from '../../api/api';
 import { GhettoTools } from './ghetto_tools';
+import { TournamentService } from '../../gen/api/proto/tournament_service/tournament_service_connectweb';
+import { flashError, useClient } from '../../utils/hooks/connect';
 /*
 import { AddPlayerForm, playersToAdd } from './add_player_form';
-import axios from 'axios';
 import { ModifyDivisionsForm } from './modify_divisions_form';
 import { Modal } from '../utils/focus_modal';
 import { Store } from 'antd/lib/form/interface';
@@ -97,9 +97,9 @@ export const DirectorTools = React.memo((props: DTProps) => {
           <h4 className="division-name">{d.divisionID} entrants</h4>
           <ul>
             {d.players.map((p) => {
-              const [userID, playerName] = p.getId().split(':');
+              const [userID, playerName] = p.id.split(':');
               return (
-                <li key={p.getId()} className="player-name">
+                <li key={p.id} className="player-name">
                   <UsernameWithContext
                     username={playerName}
                     userID={userID}
@@ -116,16 +116,18 @@ export const DirectorTools = React.memo((props: DTProps) => {
     });
   }, [tournamentContext.divisions]);
 
+  const tournamentClient = useClient(TournamentService);
+
   const renderStartButton = () => {
     const startTournament = async () => {
-      postJsonObj(
-        'tournament_service.TournamentService',
-        'StartRoundCountdown',
-        {
+      try {
+        await tournamentClient.startRoundCountdown({
           id: props.tournamentID,
-          start_all_rounds: true,
-        }
-      );
+          startAllRounds: true,
+        });
+      } catch (e) {
+        flashError(e);
+      }
     };
     if (
       Object.values(tournamentContext.divisions).length &&

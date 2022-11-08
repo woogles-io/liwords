@@ -1,20 +1,20 @@
 import React, { ReactNode, useCallback, useEffect, useMemo } from 'react';
 import {
   FriendUser,
-  PresenceEntity,
   useFriendsStoreContext,
   useLoginStateStoreContext,
   usePresenceStoreContext,
 } from '../store/store';
+import { PresenceEntity } from '../store/constants';
 import { PettableAvatar, PlayerAvatar } from '../shared/player_avatar';
 import { moderateUser } from '../mod/moderate';
 import { Form, Input } from 'antd';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import './playerList.scss';
-import axios from 'axios';
-import { toAPIUrl } from '../api/api';
 import { useDebounce } from '../utils/debounce';
 import { useMountedState } from '../utils/mounted';
+import { flashError, useClient } from '../utils/hooks/connect';
+import { AutocompleteService } from '../gen/api/proto/user_service/user_service_connectweb';
 
 type Props = {
   defaultChannelType?: string;
@@ -86,7 +86,7 @@ const Player = React.memo((props: PlayerProps) => {
       <PettableAvatar>
         <PlayerAvatar
           player={{
-            user_id: props.uuid,
+            userId: props.uuid,
             nickname: props.username,
           }}
         />
@@ -118,10 +118,6 @@ const Player = React.memo((props: PlayerProps) => {
   );
 });
 
-type SearchResponse = {
-  users: Array<Partial<FriendUser>>;
-};
-
 export const Players = React.memo((props: Props) => {
   const { useState } = useMountedState();
   const { friends } = useFriendsStoreContext();
@@ -144,6 +140,8 @@ export const Players = React.memo((props: Props) => {
     setHeight();
   }, [setHeight]);
 
+  const acClient = useClient(AutocompleteService);
+
   const onlineAlphaComparator = useCallback(
     (a: Partial<FriendUser>, b: Partial<FriendUser>) => {
       const countA = (a.channel || []).length > 0 ? 1 : -1;
@@ -156,32 +154,27 @@ export const Players = React.memo((props: Props) => {
   );
 
   const onPlayerSearch = useCallback(
-    (searchText: string) => {
+    async (searchText: string) => {
       if (searchText?.length > 0) {
-        axios
-          .post<SearchResponse>(
-            toAPIUrl('user_service.AutocompleteService', 'GetCompletion'),
-            {
-              prefix: searchText,
-            }
-          )
-          .then((resp) => {
-            // Exclude yourself and your friends
-            setSearchResults(
-              !searchText
-                ? []
-                : resp.data.users
-                    .filter(
-                      (u) => u.uuid && u.uuid !== userID && !(u.uuid in friends)
-                    )
-                    .sort(onlineAlphaComparator)
-            );
-          });
+        try {
+          const resp = await acClient.getCompletion({ prefix: searchText });
+          setSearchResults(
+            !searchText
+              ? []
+              : resp.users
+                  .filter(
+                    (u) => u.uuid && u.uuid !== userID && !(u.uuid in friends)
+                  )
+                  .sort(onlineAlphaComparator)
+          );
+        } catch (e) {
+          flashError(e);
+        }
       } else {
         setSearchResults([]);
       }
     },
-    [userID, friends, onlineAlphaComparator]
+    [userID, friends, onlineAlphaComparator, acClient]
   );
   const searchUsernameDebounced = useDebounce(onPlayerSearch, 200);
 

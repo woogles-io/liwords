@@ -6,26 +6,29 @@ import { Link } from 'react-router-dom';
 import { VariantIcon } from '../shared/variant_icons';
 import { FundOutlined } from '@ant-design/icons';
 import { timeToString } from '../store/constants';
-import { GameMetadata } from '../gameroom/game_info';
+import { GameInfoResponse, RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
+import { challengeRuleNamesShort } from '../constants/challenge_rules';
+import { GameEndReason } from '../gen/api/proto/ipc/omgwords_pb';
+import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 
 type GameCardProps = {
-  game: GameMetadata;
+  game: GameInfoResponse;
   userID: string;
 };
 export const GameCard = React.memo((props: GameCardProps) => {
   const { game, userID } = props;
   const special = ['Unwoogler', 'AnotherUnwoogler', userID];
   const {
-    created_at,
-    game_id,
+    createdAt,
+    gameId,
     players,
     winner,
     scores,
-    game_request,
-    game_end_reason,
-    time_control_name,
+    gameRequest,
+    gameEndReason,
+    timeControlName,
   } = game;
-  const whenMoment = moment(created_at || '');
+  const whenMoment = moment(createdAt?.toDate() || '');
   const when = (
     <Tooltip title={whenMoment.format('LLL')}>{whenMoment.fromNow()}</Tooltip>
   );
@@ -33,7 +36,7 @@ export const GameCard = React.memo((props: GameCardProps) => {
     return null;
   }
   const userplace =
-    special.indexOf(players[0].user_id) > special.indexOf(players[1].user_id)
+    special.indexOf(players[0].userId) > special.indexOf(players[1].userId)
       ? 0
       : 1;
   const opponent = players[1 - userplace];
@@ -41,7 +44,7 @@ export const GameCard = React.memo((props: GameCardProps) => {
     <div className="opponent-link">
       <PlayerAvatar
         player={{
-          user_id: opponent.user_id,
+          userId: opponent.userId,
           nickname: opponent.nickname,
         }}
       />
@@ -51,46 +54,40 @@ export const GameCard = React.memo((props: GameCardProps) => {
     </div>
   );
 
-  const challenge = {
-    FIVE_POINT: '+5',
-    TEN_POINT: '+10',
-    SINGLE: 'x1',
-    DOUBLE: 'x2',
-    TRIPLE: 'x3',
-    VOID: 'Void',
-  }[game_request.challenge_rule as string];
+  const challenge =
+    challengeRuleNamesShort[gameRequest?.challengeRule ?? ChallengeRule.VOID];
 
   let endReason = '';
-  switch (game_end_reason) {
-    case 'TIME':
+  switch (gameEndReason) {
+    case GameEndReason.TIME:
       endReason = 'Time out';
       break;
-    case 'CONSECUTIVE_ZEROES':
+    case GameEndReason.CONSECUTIVE_ZEROES:
       endReason = 'Six-zero rule';
       break;
-    case 'RESIGNED':
+    case GameEndReason.RESIGNED:
       endReason = 'Resignation';
       break;
-    case 'FORCE_FORFEIT':
+    case GameEndReason.FORCE_FORFEIT:
       endReason = 'Forfeit';
       break;
-    case 'ABORTED':
+    case GameEndReason.ABORTED:
       endReason = 'Aborted';
       break;
-    case 'CANCELLED':
+    case GameEndReason.CANCELLED:
       endReason = 'Cancelled';
       break;
-    case 'TRIPLE_CHALLENGE':
+    case GameEndReason.TRIPLE_CHALLENGE:
       endReason = 'Triple challenge';
       break;
-    case 'STANDARD':
+    case GameEndReason.STANDARD:
       endReason = 'Completed';
   }
 
   const getDetails = (
     <div className="detail-icons">
-      <VariantIcon vcode={game_request.rules.variant_name} />
-      {game_request.rating_mode === 'RATED' ? (
+      <VariantIcon vcode={gameRequest?.rules?.variantName} />
+      {gameRequest?.ratingMode === RatingMode.RATED ? (
         <Tooltip title="Rated">
           <FundOutlined />
         </Tooltip>
@@ -111,7 +108,7 @@ export const GameCard = React.memo((props: GameCardProps) => {
   const actions = [
     <Link
       key="examine-action"
-      to={`/game/${encodeURIComponent(String(game_id ?? ''))}`}
+      to={`/game/${encodeURIComponent(String(gameId ?? ''))}`}
     >
       Examine
     </Link>,
@@ -129,10 +126,10 @@ export const GameCard = React.memo((props: GameCardProps) => {
       <Tag className={`ant-tag-${result.toLowerCase()}`}>{result}</Tag>
     </>
   );
-  const time = `${time_control_name} ${timeToString(
-    game_request.initial_time_seconds,
-    game_request.increment_seconds,
-    game_request.max_overtime_minutes
+  const time = `${timeControlName} ${timeToString(
+    gameRequest?.initialTimeSeconds ?? 0,
+    gameRequest?.incrementSeconds ?? 0,
+    gameRequest?.maxOvertimeMinutes ?? 0
   )}`;
   return (
     <Card
@@ -142,7 +139,7 @@ export const GameCard = React.memo((props: GameCardProps) => {
     >
       {opponentLink}
       <div className="variant-info">
-        {game_request.lexicon} - <span className="time-control">{time}</span>
+        {gameRequest?.lexicon} - <span className="time-control">{time}</span>
       </div>
       <p>{endReason}</p>
       {getDetails}

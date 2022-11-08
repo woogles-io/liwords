@@ -2,8 +2,8 @@ import React from 'react';
 import { useMountedState } from '../utils/mounted';
 import { Button, Input, Form, Row, Col, notification } from 'antd';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
-import { toAPIUrl } from '../api/api';
+import { connectErrorMessage, useClient } from '../utils/hooks/connect';
+import { AuthenticationService } from '../gen/api/proto/user_service/user_service_connectweb';
 
 const layout = {
   labelCol: {
@@ -19,36 +19,23 @@ export const ChangePassword = React.memo(() => {
   const [err, setErr] = useState('');
   const [form] = Form.useForm();
 
-  const onFinish = (values: { [key: string]: string }) => {
-    axios
-      .post(
-        toAPIUrl('user_service.AuthenticationService', 'ChangePassword'),
-        {
-          oldPassword: values.oldPassword,
-          newPassword: values.newPassword,
-        },
-        {
-          withCredentials: true,
-        }
-      )
-      .then(() => {
-        notification.info({
-          message: 'Success',
-          description: 'Your password was changed.',
-        });
-        form.resetFields();
-        setErr('');
-      })
-      .catch((e) => {
-        if (e.response) {
-          // From Twirp
-          setErr(e.response.data.msg);
-        } else {
-          setErr('unknown error, see console');
-          console.log(e);
-        }
-        form.validateFields();
+  const authClient = useClient(AuthenticationService);
+
+  const onFinish = async (values: { [key: string]: string }) => {
+    try {
+      await authClient.changePassword({
+        oldPassword: values.oldPassword,
+        newPassword: values.newPassword,
       });
+      notification.info({
+        message: 'Success',
+        description: 'Your password was changed.',
+      });
+      setErr('');
+    } catch (err) {
+      setErr(connectErrorMessage(err));
+      form.validateFields();
+    }
   };
 
   return (

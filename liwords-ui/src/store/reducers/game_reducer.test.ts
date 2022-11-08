@@ -11,22 +11,19 @@ import {
   GameHistoryRefresher,
   ServerGameplayEvent,
 } from '../../gen/api/proto/ipc/omgwords_pb';
+import { GameEvent_Type } from '../../gen/macondo/api/proto/macondo/macondo_pb';
 
 const historyRefresher = () => {
-  const ghr = new GameHistoryRefresher();
-  const his = new GameHistory();
-  const player1 = new PlayerInfo();
-  const player2 = new PlayerInfo();
-  player1.setNickname('césar');
-  player2.setNickname('mina');
-  player1.setUserId('cesar123');
-  player2.setUserId('mina123');
-  his.setPlayersList([player1, player2]);
-  his.setLastKnownRacksList(['CDEIPTV', 'FIMRSUU']);
-  his.setUid('game42');
-  ghr.setHistory(his);
-
-  return ghr;
+  return new GameHistoryRefresher({
+    history: new GameHistory({
+      players: [
+        new PlayerInfo({ nickname: 'césar', userId: 'cesar123' }),
+        new PlayerInfo({ nickname: 'mina', userId: 'mina123' }),
+      ],
+      lastKnownRacks: ['CDEIPTV', 'FIMRSUU'],
+      uid: 'game42',
+    }),
+  });
 };
 
 it('tests refresher', () => {
@@ -50,20 +47,22 @@ it('tests addevent', () => {
     payload: historyRefresher(),
   });
 
-  const sge = new ServerGameplayEvent();
-  const evt = new GameEvent();
-  evt.setNickname('césar');
-  evt.setRack('CDEIPTV');
-  evt.setCumulative(26);
-  evt.setRow(7);
-  evt.setColumn(3);
-  evt.setPosition('8D');
-  evt.setPlayedTiles('DEPICT');
-  evt.setScore(26);
-  sge.setNewRack('EFIKNNV');
-  sge.setEvent(evt);
-  sge.setGameId('game42');
+  const evt = new GameEvent({
+    playerIndex: 0,
+    rack: 'CDEIPTV',
+    cumulative: 26,
+    row: 7,
+    column: 3,
+    position: '8D',
+    playedTiles: 'DEPICT',
+    score: 26,
+  });
 
+  const sge = new ServerGameplayEvent({
+    newRack: 'EFIKNNV',
+    event: evt,
+    gameId: 'game42',
+  });
   const newState2 = GameReducer(newState, {
     actionType: ActionType.AddGameEvent,
     payload: sge,
@@ -83,20 +82,22 @@ it('tests addevent with different id', () => {
     payload: historyRefresher(),
   });
 
-  const sge = new ServerGameplayEvent();
-  const evt = new GameEvent();
-  evt.setType(GameEvent.Type.TILE_PLACEMENT_MOVE);
-  evt.setNickname('césar');
-  evt.setRack('CDEIPTV');
-  evt.setCumulative(26);
-  evt.setRow(7);
-  evt.setColumn(3);
-  evt.setPosition('8D');
-  evt.setPlayedTiles('DEPICT');
-  evt.setScore(26);
-  sge.setNewRack('EFIKNNV');
-  sge.setEvent(evt);
-  sge.setGameId('anotherone'); // This ID is not the same as the historyRefresher's
+  const evt = new GameEvent({
+    type: GameEvent_Type.TILE_PLACEMENT_MOVE,
+    playerIndex: 0,
+    rack: 'CDEIPTV',
+    cumulative: 26,
+    row: 7,
+    column: 3,
+    position: '8D',
+    playedTiles: 'DEPICT',
+    score: 26,
+  });
+  const sge = new ServerGameplayEvent({
+    newRack: 'EFIKNNV',
+    event: evt,
+    gameId: 'anotherone',
+  });
 
   const newState2 = GameReducer(newState, {
     actionType: ActionType.AddGameEvent,
@@ -111,105 +112,75 @@ it('tests addevent with different id', () => {
   expect(newState2.turns.length).toBe(0);
 });
 
-const historyRefresher2 = () => {
-  const ghr = new GameHistoryRefresher();
-  const his = new GameHistory();
-  const player1 = new PlayerInfo();
-  const player2 = new PlayerInfo();
-  player1.setUserId('cesar123');
-  player1.setNickname('césar');
-  player2.setUserId('mina123');
-  player2.setNickname('mina');
-  his.setPlayersList([player1, player2]);
-  his.setLastKnownRacksList(['EFMPRST', 'AEELRX?']);
-  his.setUid('game63');
-  his.setSecondWentFirst(true);
-  ghr.setHistory(his);
-  return ghr;
+const historyRefresher3 = () => {
+  return new GameHistoryRefresher({
+    history: new GameHistory({
+      players: [
+        new PlayerInfo({ nickname: 'mina', userId: 'mina123' }),
+        new PlayerInfo({ nickname: 'césar', userId: 'cesar123' }),
+      ],
+      lastKnownRacks: ['AEELRX?', 'EFMPRST'],
+      uid: 'game63',
+    }),
+  });
 };
 
-const historyRefresher2AfterChallenge = () => {
+const historyRefresher3AfterChallenge = () => {
   // {"history":{"turns":[{"events":[{"nickname":"mina","rack":"?AEELRX","cumulative":92,"row":7,"column":7,
   // "position": "8H", "played_tiles": "RELAXEs", "score": 92
   // }, { "nickname":"mina", "type":3, "cumulative":97, "bonus":5}]}], "players": [{ "nickname": "césar", "real_name": "césar" }, { "nickname": "mina", "real_name": "mina" }], "id_auth": "org.aerolith", "uid": "kqVFQ7PXG3Es3gn9jNX5p9", "description": "Created with Macondo", "last_known_racks": ["EFMPRST", "EEJNNOQ"]
 
-  const ghr = new GameHistoryRefresher();
-  const his = new GameHistory();
-  const player1 = new PlayerInfo();
-  const player2 = new PlayerInfo();
-  player1.setUserId('cesar123');
-  player1.setNickname('césar');
-  player2.setUserId('mina123');
-  player2.setNickname('mina');
-  his.setPlayersList([player1, player2]);
-  his.setLastKnownRacksList(['EFMPRST', 'EEJNNOQ']);
-  his.setUid('game63');
-  his.setSecondWentFirst(true);
-
-  const evt1 = new GameEvent();
-  evt1.setNickname('mina');
-  evt1.setRack('?AEELRX');
-  evt1.setCumulative(92);
-  evt1.setRow(7);
-  evt1.setColumn(7);
-  evt1.setPosition('8H');
-  evt1.setPlayedTiles('RELAXEs');
-  evt1.setScore(92);
-
-  const evt2 = new GameEvent();
-  evt2.setNickname('mina');
-  evt2.setType(GameEvent.Type.CHALLENGE_BONUS);
-  evt2.setCumulative(97);
-  evt2.setBonus(5);
-
-  his.addEvents(evt1);
-  his.addEvents(evt2);
-
-  ghr.setHistory(his);
-  return ghr;
-};
-
-/*
-
-{"players":[{"nickname":"césar","real_name":"césar"},{"nickname":"mina","real_name":"mina"}],"id_auth":"org.aerolith","uid":"kqVFQ7PXG3Es3gn9jNX5p9","description":"Created with
-Macondo","last_known_racks":["EFMPRST","AEELRX?"],"flip_players":true,"challenge_rule":3}
-
-*/
-
-it('tests flip players', () => {
-  const state = startingGameState(StandardEnglishAlphabet, [], '');
-  const newState = GameReducer(state, {
-    actionType: ActionType.RefreshHistory,
-    payload: historyRefresher2(),
+  return new GameHistoryRefresher({
+    history: new GameHistory({
+      players: [
+        new PlayerInfo({ nickname: 'mina', userId: 'mina123' }),
+        new PlayerInfo({ nickname: 'césar', userId: 'cesar123' }),
+      ],
+      lastKnownRacks: ['EEJNNOQ', 'EFMPRST'],
+      uid: 'game63',
+      events: [
+        new GameEvent({
+          playerIndex: 0,
+          rack: '?AEELRX',
+          cumulative: 92,
+          row: 7,
+          column: 7,
+          position: '8H',
+          playedTiles: 'RELAXEs',
+          score: 92,
+        }),
+        new GameEvent({
+          playerIndex: 0,
+          type: GameEvent_Type.CHALLENGE_BONUS,
+          cumulative: 97,
+          bonus: 5,
+        }),
+      ],
+    }),
   });
-  expect(newState.players[0].currentRack).toBe('AEELRX?');
-  expect(newState.players[0].userID).toBe('mina123');
-  expect(newState.players[1].currentRack).toBe('EFMPRST');
-  expect(newState.players[1].userID).toBe('cesar123');
-  expect(newState.onturn).toBe(0);
-  expect(newState.turns.length).toBe(0);
-});
+};
 
 it('tests challenge with refresher event afterwards', () => {
   const state = startingGameState(StandardEnglishAlphabet, [], '');
   let newState = GameReducer(state, {
     actionType: ActionType.RefreshHistory,
-    payload: historyRefresher2(),
+    payload: historyRefresher3(),
   });
 
-  const sge = new ServerGameplayEvent();
-  const evt = new GameEvent();
-  evt.setNickname('mina');
-  evt.setRack('?AEELRX');
-  evt.setCumulative(92);
-  evt.setRow(7);
-  evt.setColumn(7);
-  evt.setPosition('8H');
-  evt.setPlayedTiles('RELAXEs');
-  evt.setScore(92);
-  sge.setNewRack('EEJNNOQ');
-  sge.setEvent(evt);
-  sge.setGameId('game63');
+  const sge = new ServerGameplayEvent({
+    newRack: 'EEJNNOQ',
+    gameId: 'game63',
+    event: new GameEvent({
+      playerIndex: 0,
+      rack: '?AEELRX',
+      cumulative: 92,
+      row: 7,
+      column: 7,
+      position: '8H',
+      playedTiles: 'RELAXEs',
+      score: 92,
+    }),
+  });
 
   newState = GameReducer(newState, {
     actionType: ActionType.AddGameEvent,
@@ -224,7 +195,7 @@ it('tests challenge with refresher event afterwards', () => {
   // Now césar challenges RELAXEs (who knows why, it looks phony)
   newState = GameReducer(newState, {
     actionType: ActionType.RefreshHistory,
-    payload: historyRefresher2AfterChallenge(),
+    payload: historyRefresher3AfterChallenge(),
   });
   expect(newState.players[0].currentRack).toBe('EEJNNOQ');
   expect(newState.players[0].userID).toBe('mina123');
@@ -241,22 +212,23 @@ it('tests challenge with challenge event afterwards', () => {
   const state = startingGameState(StandardEnglishAlphabet, [], '');
   let newState = GameReducer(state, {
     actionType: ActionType.RefreshHistory,
-    payload: historyRefresher2(),
+    payload: historyRefresher3(),
   });
 
-  const sge = new ServerGameplayEvent();
-  const evt = new GameEvent();
-  evt.setNickname('mina');
-  evt.setRack('?AEELRX');
-  evt.setCumulative(92);
-  evt.setRow(7);
-  evt.setColumn(7);
-  evt.setPosition('8H');
-  evt.setPlayedTiles('RELAXEs');
-  evt.setScore(92);
-  sge.setNewRack('EEJNNOQ');
-  sge.setEvent(evt);
-  sge.setGameId('game63');
+  const sge = new ServerGameplayEvent({
+    newRack: 'EEJNNOQ',
+    event: new GameEvent({
+      playerIndex: 0,
+      rack: '?AEELRX',
+      cumulative: 92,
+      row: 7,
+      column: 7,
+      position: '8H',
+      playedTiles: 'RELAXEs',
+      score: 92,
+    }),
+    gameId: 'game63',
+  });
 
   newState = GameReducer(newState, {
     actionType: ActionType.AddGameEvent,
@@ -264,14 +236,15 @@ it('tests challenge with challenge event afterwards', () => {
   });
 
   // Now add a challenge event.
-  const sge2 = new ServerGameplayEvent();
-  const evt2 = new GameEvent();
-  evt2.setNickname('mina');
-  evt2.setType(GameEvent.Type.CHALLENGE_BONUS);
-  evt2.setCumulative(97);
-  evt2.setBonus(5);
-  sge2.setEvent(evt2);
-  sge2.setGameId('game63');
+  const sge2 = new ServerGameplayEvent({
+    event: new GameEvent({
+      playerIndex: 0,
+      type: GameEvent_Type.CHALLENGE_BONUS,
+      cumulative: 97,
+      bonus: 5,
+    }),
+    gameId: 'game63',
+  });
 
   newState = GameReducer(newState, {
     actionType: ActionType.AddGameEvent,
@@ -289,29 +262,27 @@ it('tests challenge with challenge event afterwards', () => {
 });
 
 const historyRefresherWithPlay = () => {
-  const ghr = new GameHistoryRefresher();
-  const his = new GameHistory();
-  const player1 = new PlayerInfo();
-  const player2 = new PlayerInfo();
-  player1.setNickname('césar');
-  player2.setNickname('mina');
-  player1.setUserId('cesar123');
-  player2.setUserId('mina123');
-  his.setPlayersList([player1, player2]);
-  his.setLastKnownRacksList(['', 'DEIMNRU']);
-  const gevent = new GameEvent();
-  gevent.setColumn(6);
-  gevent.setRow(7);
-  gevent.setScore(12);
-  gevent.setPosition('8G');
-  gevent.setPlayedTiles('WIT');
-  gevent.setNickname('césar');
-  gevent.setCumulative(12);
-  his.setEventsList([gevent]);
-  his.setUid('game42');
-  ghr.setHistory(his);
-
-  return ghr;
+  return new GameHistoryRefresher({
+    history: new GameHistory({
+      players: [
+        new PlayerInfo({ nickname: 'césar', userId: 'cesar123' }),
+        new PlayerInfo({ nickname: 'mina', userId: 'mina123' }),
+      ],
+      lastKnownRacks: ['', 'DEIMNRU'],
+      events: [
+        new GameEvent({
+          column: 6,
+          row: 7,
+          score: 12,
+          position: '8G',
+          playedTiles: 'WIT',
+          playerIndex: 0,
+          cumulative: 12,
+        }),
+      ],
+      uid: 'game42',
+    }),
+  });
 };
 
 it('tests deduplication of event', () => {
@@ -321,18 +292,19 @@ it('tests deduplication of event', () => {
     payload: historyRefresherWithPlay(),
   });
 
-  const sge = new ServerGameplayEvent();
-  const evt = new GameEvent();
-  evt.setNickname('césar');
-  evt.setCumulative(12);
-  evt.setRow(7);
-  evt.setColumn(6);
-  evt.setPosition('8G');
-  evt.setPlayedTiles('WIT');
-  evt.setScore(12);
-  sge.setNewRack('');
-  sge.setEvent(evt);
-  sge.setGameId('game42');
+  const sge = new ServerGameplayEvent({
+    event: new GameEvent({
+      cumulative: 12,
+      row: 7,
+      column: 6,
+      position: '8G',
+      playedTiles: 'WIT',
+      score: 12,
+      playerIndex: 0,
+    }),
+    newRack: '',
+    gameId: 'game42',
+  });
 
   newState = GameReducer(newState, {
     actionType: ActionType.AddGameEvent,

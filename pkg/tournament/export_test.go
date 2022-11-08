@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
-	"io/ioutil"
 	"os"
 	"testing"
 
+	"github.com/domino14/liwords/pkg/common/testutils"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/tournament"
 	"github.com/matryer/is"
@@ -17,29 +17,6 @@ var goldenFileUpdate bool
 
 func init() {
 	flag.BoolVar(&goldenFileUpdate, "update", false, "update golden files")
-}
-
-func slurp(filename string) string {
-	contents, err := ioutil.ReadFile(filename)
-	if err != nil {
-		panic(err)
-	}
-	return string(contents)
-}
-
-func updateGolden(filename string, bts []byte) {
-	// write the bts to filename
-	os.WriteFile(filename, bts, 0600)
-}
-
-func compareGolden(t *testing.T, goldenFile string, actualRepr []byte) {
-	is := is.New(t)
-	if goldenFileUpdate {
-		updateGolden(goldenFile, actualRepr)
-	} else {
-		expected := slurp(goldenFile)
-		is.Equal(expected, string(actualRepr))
-	}
 }
 
 func TestExport(t *testing.T) {
@@ -64,7 +41,7 @@ func TestExport(t *testing.T) {
 	is.NoErr(err)
 
 	for _, tc := range testcases {
-		cts, err := ioutil.ReadFile("./testdata/" + tc.divisionfile)
+		cts, err := os.ReadFile("./testdata/" + tc.divisionfile)
 		is.NoErr(err)
 		var divisions map[string]*entity.TournamentDivision
 		err = json.Unmarshal([]byte(cts), &divisions)
@@ -81,6 +58,6 @@ func TestExport(t *testing.T) {
 		ty.Divisions = divisions
 		ret, err := tournament.ExportTournament(ctx, ty, us, tc.format)
 		is.NoErr(err)
-		compareGolden(t, "./testdata/"+tc.goldenfile, []byte(ret))
+		testutils.CompareGolden(t, "./testdata/"+tc.goldenfile, []byte(ret), goldenFileUpdate)
 	}
 }

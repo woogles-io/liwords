@@ -7,8 +7,11 @@ import (
 	"os"
 	"testing"
 
+	"github.com/lithammer/shortuuid"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/macondo/board"
 	macondoconfig "github.com/domino14/macondo/config"
@@ -94,13 +97,18 @@ func recreateDB() pkguser.Store {
 }
 
 func addfakeGames(ustore pkguser.Store) {
-	protocts, err := ioutil.ReadFile("./testdata/game1/history.pb")
+	protocts, err := ioutil.ReadFile("./testdata/game1/history.json")
 	if err != nil {
-		log.Fatal().Err(err).Msg("error")
+		panic(err)
 	}
-	protocts, err = hex.DecodeString(string(protocts))
+	gh := &macondopb.GameHistory{}
+	err = protojson.Unmarshal(protocts, gh)
 	if err != nil {
-		log.Fatal().Err(err).Msg("error")
+		panic(err)
+	}
+	histbts, err := proto.Marshal(gh)
+	if err != nil {
+		panic(err)
 	}
 
 	req, err := hex.DecodeString("12180a0d43726f7373776f726447616d651207656e676c697368183c2803")
@@ -119,7 +127,7 @@ func addfakeGames(ustore pkguser.Store) {
 		"2020-07-27 04:33:45.938304+00", "2020-07-27 04:33:45.938304+00",
 		"wJxURccCgSAPivUvj4QdYL", 2, 1,
 		`{"lu": 1595824425928, "mo": 0, "tr": [60000, 60000], "ts": 1595824425928}`,
-		true, 0, 0, 0, req, protocts,
+		true, 0, 0, 0, req, histbts,
 		`{"pi":[{"nickname":"mina","rating":"1600?"},{"nickname":"cesar","rating":"500?"}]}`)
 
 	if db.Error != nil {
@@ -158,6 +166,9 @@ func createGame(p0, p1 string, initTime int32, is *is.I) *entity.Game {
 
 	mcg := newMacondoGame([2]*entity.User{u1, u2})
 	mcg.StartGame()
+	// Overwrite Uid to make it liwords-compatible (short). This is probably
+	// a code smell to do it here.
+	mcg.History().Uid = shortuuid.New()[2:10]
 	mcg.SetChallengeRule(macondopb.ChallengeRule_FIVE_POINT)
 	mcg.SetBackupMode(macondogame.InteractiveGameplayMode)
 	mcg.SetStateStackLength(1)
@@ -246,11 +257,9 @@ func TestSet(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(g.Turn(), 1)
 	is.Equal(g.NickOnTurn(), "cesar")
-	// cesar is player 0, mina is player 1, but mina went first because of
-	// the second_went_first flag in the history.
-	is.Equal(g.RackLettersFor(0), "AEIJVVW")
+	is.Equal(g.RackLettersFor(1), "AEIJVVW")
 	// AGUE was worth 10. The spread for cesar is therefore -10.
-	is.Equal(g.SpreadFor(0), -10)
+	is.Equal(g.SpreadFor(1), -10)
 
 	// Clean up connections
 	ustore.(*user.DBStore).Disconnect()
@@ -281,8 +290,8 @@ func TestGet(t *testing.T) {
 	is.Equal(entGame.GameID(), "wJxURccCgSAPivUvj4QdYL")
 	is.Equal(entGame.NickOnTurn(), "mina")
 	is.Equal(entGame.PlayerIDOnTurn(), mina.UUID)
-	is.Equal(entGame.RackLettersFor(0), "AEIJVVW")
-	is.Equal(entGame.RackLettersFor(1), "AEEGOUU")
+	is.Equal(entGame.RackLettersFor(0), "AEEGOUU")
+	is.Equal(entGame.RackLettersFor(1), "AEIJVVW")
 	is.Equal(entGame.ChallengeRule(), macondopb.ChallengeRule_FIVE_POINT)
 	is.Equal(entGame.History().ChallengeRule, macondopb.ChallengeRule_FIVE_POINT)
 	// Clean up connections

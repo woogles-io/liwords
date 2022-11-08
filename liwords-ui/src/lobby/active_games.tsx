@@ -7,7 +7,7 @@ import {
 } from 'antd/lib/table/interface';
 import React, { ReactNode, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FundOutlined } from '@ant-design/icons/lib';
+import { FundOutlined } from '@ant-design/icons';
 import { RatingBadge } from './rating_badge';
 import { challengeFormat, PlayerDisplay, timeFormat } from './sought_games';
 import { ActiveGame } from '../store/reducers/lobby_reducer';

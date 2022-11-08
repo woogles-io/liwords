@@ -11,6 +11,7 @@ import (
 	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
+	"lukechampine.com/frand"
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
@@ -74,17 +75,13 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 			if err != nil {
 				return err
 			}
-			wentFirst := 0
 			players := gh.Players
-			if gh.SecondWentFirst {
-				wentFirst = 1
-			}
-			log.Debug().Str("went-first", players[wentFirst].Nickname).Msg("determining-first")
+			log.Debug().Str("went-first", players[0].Nickname).Msg("determining-first")
 
 			// These are indices in the array passed to InstantiateNewGame
-			if accUser.UUID == players[wentFirst].UserId {
+			if accUser.UUID == players[0].UserId {
 				assignedFirst = 1 // reqUser should go first
-			} else if reqUser.UUID == players[wentFirst].UserId {
+			} else if reqUser.UUID == players[0].UserId {
 				assignedFirst = 0 // accUser should go first
 			}
 		}
@@ -101,9 +98,19 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 	trdata := &entity.TournamentData{
 		Id: tournamentID,
 	}
+	if assignedFirst == -1 {
+		assignedFirst = frand.Intn(2)
+		log.Debug().Int("first", assignedFirst).Msg("assigned-first-randomly")
+	}
+	var users [2]*entity.User
+	if assignedFirst == 0 {
+		users = [2]*entity.User{accUser, reqUser}
+	} else {
+		users = [2]*entity.User{reqUser, accUser}
+	}
 
 	g, err := gameplay.InstantiateNewGame(ctx, b.gameStore, b.config,
-		[2]*entity.User{accUser, reqUser}, assignedFirst, gameReq, trdata)
+		users, gameReq, trdata)
 	if err != nil {
 		return err
 	}
@@ -385,7 +392,7 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 	}
 
 	g, err := gameplay.InstantiateNewGame(ctx, b.gameStore, b.config,
-		users, 0, gameReq, tdata)
+		users, gameReq, tdata)
 	if err != nil {
 		return err
 	}

@@ -2,8 +2,6 @@ import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { message, notification } from 'antd';
 import {
-  ChatEntityType,
-  PresenceEntity,
   useChallengeResultEventStoreContext,
   useChatStoreContext,
   useExamineStoreContext,
@@ -34,7 +32,6 @@ import { parseWooglesError } from '../utils/parse_woogles_error';
 import {
   LagMeasurement,
   MessageType,
-  MessageTypeMap,
   ServerMessage,
 } from '../gen/api/proto/ipc/ipc_pb';
 import {
@@ -82,6 +79,7 @@ import {
   TournamentDivisionDataResponse,
 } from '../gen/api/proto/ipc/tournament_pb';
 import { ProfileUpdate } from '../gen/api/proto/ipc/users_pb';
+import { ChatEntityType, PresenceEntity } from './constants';
 // Feature flag.
 export const enableShowSocket =
   localStorage?.getItem('enableShowSocket') === 'true';
@@ -92,7 +90,7 @@ export const parseMsgs = (msg: Uint8Array) => {
 
   while (msg.length > 0) {
     const msgLength = msg[0] * 256 + msg[1];
-    const msgType = msg[2] as MessageTypeMap[keyof MessageTypeMap];
+    const msgType = msg[2] as MessageType;
     const msgBytes = msg.slice(3, 3 + (msgLength - 1));
 
     const msgTypes = {
@@ -149,7 +147,7 @@ export const parseMsgs = (msg: Uint8Array) => {
     const parsedMsg = msgTypes[msgType];
     const topush = {
       msgType,
-      parsedMsg: parsedMsg?.deserializeBinary(msgBytes),
+      parsedMsg: parsedMsg?.fromBinary(msgBytes),
       msgLength,
     };
     msgs.push(topush);
@@ -204,7 +202,7 @@ export const useOnSocketMsg = () => {
             '%crcvd',
             'background: pink',
             ReverseMessageType[msgType] ?? msgType,
-            parsedMsg?.toObject(),
+            parsedMsg,
             performance.now(),
             'bytelength:',
             msgLength
@@ -215,10 +213,10 @@ export const useOnSocketMsg = () => {
           case MessageType.SEEK_REQUEST: {
             const sr = parsedMsg as SeekRequest;
 
-            if (!sr.getReceiverIsPermanent()) {
+            if (!sr.receiverIsPermanent) {
               console.log('Got a seek request', sr);
 
-              const userID = sr.getUser()?.getUserId();
+              const userID = sr.user?.userId;
               if (!userID || excludedPlayers.has(userID)) {
                 break;
               }
@@ -235,12 +233,12 @@ export const useOnSocketMsg = () => {
 
               break;
             } else {
-              const userID = sr.getUser()?.getUserId();
+              const userID = sr.user?.userId;
               if (!userID || excludedPlayers.has(userID)) {
                 break;
               }
 
-              const receiver = sr.getReceivingUser()?.getDisplayName();
+              const receiver = sr.receivingUser?.displayName;
               const soughtGame = SeekRequestToSoughtGame(sr);
               if (soughtGame === null) {
                 break;
@@ -249,7 +247,7 @@ export const useOnSocketMsg = () => {
               let inReceiverGameList = false;
               if (receiver === loginState.username) {
                 BoopSounds.playSound('matchReqSound');
-                const rematchFor = sr.getRematchFor();
+                const rematchFor = sr.rematchFor;
                 console.log(
                   'sg',
                   soughtGame.tournamentID,
@@ -262,7 +260,7 @@ export const useOnSocketMsg = () => {
                   // This is a match game attached to a tourney.
                   console.log('match attached to tourney');
                   if (
-                    tournamentContext.metadata?.getId() ===
+                    tournamentContext.metadata?.id ===
                       soughtGame.tournamentID &&
                     !gameContext.gameID
                   ) {
@@ -315,8 +313,8 @@ export const useOnSocketMsg = () => {
 
             const soughtGames = new Array<SoughtGame>();
 
-            sr.getRequestsList().forEach((r) => {
-              const userID = r.getUser()?.getUserId();
+            sr.requests.forEach((r) => {
+              const userID = r.user?.userId;
               if (!userID || excludedPlayers.has(userID)) {
                 return;
               }
@@ -337,7 +335,7 @@ export const useOnSocketMsg = () => {
           case MessageType.SERVER_MESSAGE: {
             const sm = parsedMsg as ServerMessage;
             message.warning({
-              content: sm.getMessage(),
+              content: sm.message,
               duration: 3,
               key: 'server-message',
             });
@@ -346,7 +344,7 @@ export const useOnSocketMsg = () => {
 
           case MessageType.REMATCH_STARTED: {
             const rs = parsedMsg as RematchStartedEvent;
-            const gid = rs.getRematchGameId();
+            const gid = rs.rematchGameId;
             const url = `/game/${encodeURIComponent(gid)}`;
             if (isExamining) {
               notification.info({
@@ -368,13 +366,13 @@ export const useOnSocketMsg = () => {
 
           case MessageType.LAG_MEASUREMENT: {
             const lag = parsedMsg as LagMeasurement;
-            setCurrentLagMs(lag.getLagMs());
+            setCurrentLagMs(lag.lagMs);
             break;
           }
 
           case MessageType.ERROR_MESSAGE: {
             const err = parsedMsg as ErrorMessage;
-            const errorMessage = parseWooglesError(err.getMessage());
+            const errorMessage = parseWooglesError(err.message);
             notification.open({
               message: 'Error',
               description: errorMessage,
@@ -390,20 +388,20 @@ export const useOnSocketMsg = () => {
 
           case MessageType.CHAT_MESSAGE: {
             const cm = parsedMsg as ChatMessage;
-            if (excludedPlayers.has(cm.getUserId())) {
+            if (excludedPlayers.has(cm.userId)) {
               break;
             }
             addChat({
               entityType: ChatEntityType.UserChat,
-              sender: cm.getUsername(),
-              message: cm.getMessage(),
-              timestamp: cm.getTimestamp(),
-              senderId: cm.getUserId(),
-              channel: cm.getChannel(),
-              id: cm.getId(),
+              sender: cm.username,
+              message: cm.message,
+              timestamp: cm.timestamp,
+              senderId: cm.userId,
+              channel: cm.channel,
+              id: cm.id,
             });
-            if (cm.getUsername() !== loginState.username) {
-              const tokenizedName = cm.getChannel().split('.');
+            if (cm.username !== loginState.username) {
+              const tokenizedName = cm.channel.split('.');
               if (tokenizedName.length > 1 && tokenizedName[1] === 'pm') {
                 BoopSounds.playSound('receiveMsgSound');
               }
@@ -413,7 +411,7 @@ export const useOnSocketMsg = () => {
 
           case MessageType.CHAT_MESSAGE_DELETED: {
             const cm = parsedMsg as ChatMessageDeleted;
-            deleteChat(cm.getId(), cm.getChannel());
+            deleteChat(cm.id, cm.channel);
 
             break;
           }
@@ -421,16 +419,16 @@ export const useOnSocketMsg = () => {
           case MessageType.USER_PRESENCE: {
             // Note: UserPresence is for chats. Not for follows.
             const up = parsedMsg as UserPresence;
-            if (excludedPlayers.has(up.getUserId())) {
+            if (excludedPlayers.has(up.userId)) {
               break;
             }
 
             setPresence({
-              uuid: up.getUserId(),
-              username: up.getUsername(),
-              channel: up.getChannel(),
-              anon: up.getIsAnonymous(),
-              deleting: up.getDeleting(),
+              uuid: up.userId,
+              username: up.username,
+              channel: up.channel,
+              anon: up.isAnonymous,
+              deleting: up.deleting,
             });
             break;
           }
@@ -441,14 +439,14 @@ export const useOnSocketMsg = () => {
 
             const toAdd = new Array<PresenceEntity>();
 
-            ups.getPresencesList().forEach((p) => {
-              if (!excludedPlayers.has(p.getUserId())) {
+            ups.presences.forEach((p) => {
+              if (!excludedPlayers.has(p.userId)) {
                 toAdd.push({
-                  uuid: p.getUserId(),
-                  username: p.getUsername(),
-                  channel: p.getChannel(),
-                  anon: p.getIsAnonymous(),
-                  deleting: p.getDeleting(),
+                  uuid: p.userId,
+                  username: p.username,
+                  channel: p.channel,
+                  anon: p.isAnonymous,
+                  deleting: p.deleting,
                 });
               }
             });
@@ -461,14 +459,12 @@ export const useOnSocketMsg = () => {
             // Note: PresenceEntry is for follows. Not for chats.
             const pe = parsedMsg as PresenceEntry;
 
-            console.log('got presence entry', pe.toObject());
-
             setFriends({
               ...friends,
-              [pe.getUserId()]: {
-                uuid: pe.getUserId(),
-                username: pe.getUsername(),
-                channel: pe.getChannelList(),
+              [pe.userId]: {
+                uuid: pe.userId,
+                username: pe.username,
+                channel: pe.channel,
               },
             });
 
@@ -493,9 +489,7 @@ export const useOnSocketMsg = () => {
 
           case MessageType.ACTIVE_GAME_ENTRY: {
             // Note: This is actually never sent out to the frontend.
-            const age = parsedMsg as ActiveGameEntry;
-
-            console.log('got active game entry', age.toObject());
+            // const age = parsedMsg as ActiveGameEntry;
 
             break;
           }
@@ -529,9 +523,7 @@ export const useOnSocketMsg = () => {
                 loginState,
               },
             });
-            if (
-              tournamentContext.competitorState?.division === trs.getDivision()
-            ) {
+            if (tournamentContext.competitorState?.division === trs.division) {
               BoopSounds.playSound('startTourneyRoundSound');
             }
             break;
@@ -547,7 +539,7 @@ export const useOnSocketMsg = () => {
 
             dispatchTournamentContext({
               actionType: ActionType.RemoveActiveGame,
-              payload: gee.getGameId(),
+              payload: gee.gameId,
             });
 
             break;
@@ -642,14 +634,14 @@ export const useOnSocketMsg = () => {
 
             // Determine if this is the tab that should accept the game.
             if (
-              nge.getAccepterCid() !== loginState.connID &&
-              nge.getRequesterCid() !== loginState.connID
+              nge.accepterCid !== loginState.connID &&
+              nge.requesterCid !== loginState.connID
             ) {
               console.log(
                 'ignoring on this tab...',
-                nge.getAccepterCid(),
+                nge.accepterCid,
                 '-',
-                nge.getRequesterCid(),
+                nge.requesterCid,
                 '-',
                 loginState.connID
               );
@@ -660,7 +652,7 @@ export const useOnSocketMsg = () => {
               actionType: ActionType.ClearHistory,
               payload: '',
             });
-            const gid = nge.getGameId();
+            const gid = nge.gameId;
             navigate(`/game/${encodeURIComponent(gid)}`, { replace: true });
             setGameEndMessage('');
             break;
@@ -675,7 +667,7 @@ export const useOnSocketMsg = () => {
 
             // If the history refresher contains a meta event,
             // set it properly.
-            const gme = ghr.getOutstandingEvent();
+            const gme = ghr.outstandingEvent;
             if (gme) {
               setGameMetaEventContext(
                 metaStateFromMetaEvent(
@@ -705,7 +697,7 @@ export const useOnSocketMsg = () => {
           case MessageType.SERVER_CHALLENGE_RESULT_EVENT: {
             const sge = parsedMsg as ServerChallengeResultEvent;
             challengeResultEvent(sge);
-            if (!sge.getValid()) {
+            if (!sge.valid) {
               BoopSounds.playSound('woofSound');
             } else {
               BoopSounds.playSound('meowSound');
@@ -717,7 +709,7 @@ export const useOnSocketMsg = () => {
             const gae = parsedMsg as SoughtGameProcessEvent;
             dispatchLobbyContext({
               actionType: ActionType.RemoveSoughtGame,
-              payload: gae.getRequestId(),
+              payload: gae.requestId,
             });
 
             break;
@@ -727,7 +719,7 @@ export const useOnSocketMsg = () => {
             const dec = parsedMsg as DeclineSeekRequest;
             dispatchLobbyContext({
               actionType: ActionType.RemoveSoughtGame,
-              payload: dec.getRequestId(),
+              payload: dec.requestId,
             });
             notification.info({
               message: 'Declined',
@@ -755,12 +747,12 @@ export const useOnSocketMsg = () => {
             const gde = parsedMsg as GameDeletion;
             dispatchLobbyContext({
               actionType: ActionType.RemoveActiveGame,
-              payload: gde.getId(),
+              payload: gde.id,
             });
-            if (!!tournamentContext.metadata?.getId()) {
+            if (!!tournamentContext.metadata?.id) {
               dispatchTournamentContext({
                 actionType: ActionType.RemoveActiveGame,
-                payload: gde.getId(),
+                payload: gde.id,
               });
             }
 
@@ -774,7 +766,7 @@ export const useOnSocketMsg = () => {
             if (!activeGame) {
               return;
             }
-            const dispatchFn = tournamentContext.metadata?.getId()
+            const dispatchFn = tournamentContext.metadata?.id
               ? dispatchTournamentContext
               : dispatchLobbyContext;
             dispatchFn({
@@ -791,15 +783,13 @@ export const useOnSocketMsg = () => {
             const age = parsedMsg as GameInfoResponses;
             console.log('got active games', age, 'tc', tournamentContext);
 
-            let inTourney = !!tournamentContext.metadata?.getId();
+            let inTourney = !!tournamentContext.metadata?.id;
             if (!inTourney) {
-              const gil = age.getGameInfoList();
+              const gil = age.gameInfo;
               if (
                 gil.length &&
-                gil[0].getTournamentId() &&
-                gil.every(
-                  (g) => g.getTournamentId() === gil[0].getTournamentId()
-                )
+                gil[0].tournamentId &&
+                gil.every((g) => g.tournamentId === gil[0].tournamentId)
               ) {
                 console.log('in a tourney');
                 inTourney = true;
@@ -815,9 +805,9 @@ export const useOnSocketMsg = () => {
             dispatchFn({
               actionType: ActionType.AddActiveGames,
               payload: {
-                activeGames: age
-                  .getGameInfoList()
-                  .map((g) => GameInfoResponseToActiveGame(g)),
+                activeGames: age.gameInfo.map((g) =>
+                  GameInfoResponseToActiveGame(g)
+                ),
                 loginState,
               },
             });
@@ -826,9 +816,7 @@ export const useOnSocketMsg = () => {
 
           case MessageType.READY_FOR_TOURNAMENT_GAME: {
             const ready = parsedMsg as ReadyForTournamentGame;
-            if (
-              tournamentContext.metadata?.getId() !== ready.getTournamentId()
-            ) {
+            if (tournamentContext.metadata?.id !== ready.tournamentId) {
               // Ignore this message (for now -- we may actually want to display
               // this in other contexts, like the lobby, an unrelated game, etc).
               break;

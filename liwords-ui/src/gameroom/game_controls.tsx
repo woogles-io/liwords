@@ -18,7 +18,7 @@ import {
   useTentativeTileContext,
 } from '../store/store';
 import { EphemeralTile } from '../utils/cwgame/common';
-import { ChallengeRule } from './game_info';
+import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 
 const downloadGameImg = (downloadFilename: string) => {
   const link = document.createElement('a');
@@ -281,7 +281,7 @@ const GameControls = React.memo((props: Props) => {
   // This should match disabled= and/or hidden= props.
   const currentPopUp =
     (actualCurrentPopUp === 'CHALLENGE' &&
-      (!props.myTurn || props.challengeRule === 'VOID')) ||
+      (!props.myTurn || props.challengeRule === ChallengeRule.VOID)) ||
     (actualCurrentPopUp === 'PASS' && !props.myTurn)
       ? 'NONE'
       : actualCurrentPopUp;
@@ -565,7 +565,7 @@ const GameControls = React.memo((props: Props) => {
                 }
               }}
               disabled={!props.myTurn}
-              hidden={props.challengeRule === 'VOID'}
+              hidden={props.challengeRule === ChallengeRule.VOID}
             >
               Challenge
               <span className="key-command">3</span>

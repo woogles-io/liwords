@@ -1,19 +1,19 @@
 import React, { ReactNode, useCallback, useEffect } from 'react';
 import { AutoComplete } from 'antd';
-import axios from 'axios';
 import {
-  ChatEntityObj,
   useChatStoreContext,
   useExcludedPlayersStoreContext,
   useLoginStateStoreContext,
 } from '../store/store';
 import { useMountedState } from '../utils/mounted';
-import { toAPIUrl } from '../api/api';
 import { useDebounce } from '../utils/debounce';
-import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
+import { ActiveChatChannels_Channel } from '../gen/api/proto/user_service/user_service_pb';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { DisplayUserFlag } from '../shared/display_flag';
 import { TrophyOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons';
+import { ChatEntityObj } from '../store/constants';
+import { useClient } from '../utils/hooks/connect';
+import { AutocompleteService } from '../gen/api/proto/user_service/user_service_connectweb';
 
 type Props = {
   defaultChannel: string;
@@ -113,12 +113,8 @@ type user = {
   uuid?: string;
 };
 
-type SearchResponse = {
-  users: Array<user>;
-};
-
 const extractUser = (
-  ch: ActiveChatChannels.Channel.AsObject,
+  ch: ActiveChatChannels_Channel,
   userId: string,
   username: string
 ): user => {
@@ -143,18 +139,14 @@ export const ChatChannels = React.memo((props: Props) => {
   const [showSearch, setShowSearch] = useState(false);
   const [maxHeight, setMaxHeight] = useState<number | undefined>(0);
   const [usernameOptions, setUsernameOptions] = useState<Array<user>>([]);
-  const onUsernameSearch = useCallback((searchText: string) => {
-    axios
-      .post<SearchResponse>(
-        toAPIUrl('user_service.AutocompleteService', 'GetCompletion'),
-        {
-          prefix: searchText,
-        }
-      )
-      .then((res) => {
-        setUsernameOptions(res.data.users);
-      });
-  }, []);
+  const acClient = useClient(AutocompleteService);
+  const onUsernameSearch = useCallback(
+    async (searchText: string) => {
+      const resp = await acClient.getCompletion({ prefix: searchText });
+      setUsernameOptions(resp.users);
+    },
+    [acClient]
+  );
 
   const searchUsernameDebounced = useDebounce(onUsernameSearch, 300);
 
@@ -185,9 +177,13 @@ export const ChatChannels = React.memo((props: Props) => {
     };
   }, [setHeight]);
 
-  const channelList = chatChannels?.channelsList
-    .sort((chA, chB) => {
-      return chB.lastUpdate - chA.lastUpdate;
+  const channelList = chatChannels?.channels
+    ?.sort((chA, chB) => {
+      return chB.lastUpdate > chA.lastUpdate
+        ? 1
+        : chA.lastUpdate > chB.lastUpdate
+        ? -1
+        : 0;
     })
     .filter((ch) => {
       let keep = true;
@@ -202,6 +198,7 @@ export const ChatChannels = React.memo((props: Props) => {
       return ch.name !== props.defaultChannel;
     })
     .filter((ch) => {
+      console.log('evaluating ch', ch);
       // From the lobby, filter out channels we can't get new messages for
       // Todo: Remove this when we send tournament messages to all enrollees
       // regardless of their location
@@ -245,7 +242,7 @@ export const ChatChannels = React.memo((props: Props) => {
           {channelType === 'pm' && chatUser.username ? (
             <PlayerAvatar
               player={{
-                user_id: chatUser.uuid,
+                userId: chatUser.uuid,
                 nickname: chatUser.username,
               }}
             />

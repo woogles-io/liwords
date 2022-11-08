@@ -6,8 +6,6 @@ import App from './App';
 import * as serviceWorker from './serviceWorker';
 import { Store } from './store/store';
 import { BriefProfiles } from './utils/brief_profiles';
-import { postJsonObj } from './api/api';
-import { Embed } from './embed/embed';
 
 declare global {
   interface Window {
@@ -52,51 +50,6 @@ window.console.info(
   };
   window.addEventListener('resize', resizeFunc);
   resizeFunc();
-}
-
-// Some magic code here to force everyone to use the naked domain before
-// using Cloudfront to redirect:
-{
-  const loc = window.location;
-  if (loc.hostname.startsWith('www.')) {
-    type jwtresp = {
-      jwt: string;
-    };
-    const redirectToHandoff = (path: string) => {
-      const protocol = loc.protocol;
-      const hostname = loc.hostname;
-      const nakedHost = hostname.replace(/www\./, '');
-      localStorage.clear();
-      window.location.replace(`${protocol}//${nakedHost}${path}`);
-    };
-
-    postJsonObj(
-      'user_service.AuthenticationService',
-      'GetSignedCookie',
-      {},
-      (response) => {
-        const r = response as jwtresp;
-        console.log('got jwt', r.jwt);
-        const newPath = `/handover-signed-cookie?${new URLSearchParams({
-          jwt: r.jwt,
-          ls: JSON.stringify(localStorage),
-          path: loc.pathname,
-        })}`;
-        redirectToHandoff(newPath);
-      },
-      (err) => {
-        if (err.message === 'need auth for this endpoint') {
-          // We don't have a jwt because we're not logged in. That's ok;
-          // let's hand off just the local storage then.
-          const newPath = `/handover-signed-cookie?${new URLSearchParams({
-            ls: JSON.stringify(localStorage),
-            path: loc.pathname,
-          })}`;
-          redirectToHandoff(newPath);
-        }
-      }
-    );
-  }
 }
 
 ReactDOM.render(

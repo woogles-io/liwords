@@ -21,6 +21,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
+
 	pkguser "github.com/domino14/liwords/pkg/user"
 	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
@@ -697,6 +698,5 @@ func (s *DBStore) GetHistory(ctx context.Context, id string) (*macondopb.GameHis
 	if err != nil {
 		return nil, err
 	}
-
 	return hist, nil
 }
