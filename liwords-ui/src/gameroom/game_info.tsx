@@ -40,10 +40,6 @@ export const defaultGameInfo = new GameInfoResponse({
   timeControlName: '',
 });
 
-export type RecentGamesResponse = {
-  game_info: Array<GameInfoResponse>;
-};
-
 type Props = {
   meta: GameInfoResponse;
   tournamentName: string;

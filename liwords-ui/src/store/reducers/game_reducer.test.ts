@@ -112,19 +112,6 @@ it('tests addevent with different id', () => {
   expect(newState2.turns.length).toBe(0);
 });
 
-const historyRefresher2 = () => {
-  return new GameHistoryRefresher({
-    history: new GameHistory({
-      players: [
-        new PlayerInfo({ nickname: 'césar', userId: 'cesar123' }),
-        new PlayerInfo({ nickname: 'mina', userId: 'mina123' }),
-      ],
-      lastKnownRacks: ['EFMPRST', 'AEELRX?'],
-      uid: 'game63',
-    }),
-  });
-};
-
 const historyRefresher3 = () => {
   return new GameHistoryRefresher({
     history: new GameHistory({

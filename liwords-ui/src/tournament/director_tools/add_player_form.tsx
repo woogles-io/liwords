@@ -13,10 +13,6 @@ type user = {
   uuid: string;
 };
 
-type SearchResponse = {
-  users: Array<user>;
-};
-
 // Players are added to a division
 type playerToAdd = {
   userID: string;

@@ -145,7 +145,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         item.gameRequest?.maxOvertimeMinutes ?? 0
       )}`;
       return {
-        game_id: item.gameId, // used by rowKey
+        gameId: item.gameId, // used by rowKey
         details: getDetails(),
         result,
         opponent,
@@ -223,7 +223,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
           hideOnSinglePage: true,
           defaultPageSize: Infinity,
         }}
-        rowKey="game_id"
+        rowKey="gameId"
       />
       <div className="game-history-controls">
         <InputNumber

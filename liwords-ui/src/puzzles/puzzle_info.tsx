@@ -22,9 +22,9 @@ type Props = {
   puzzleID?: string;
   ratingMode?: string;
   challengeRule: ChallengeRule | undefined;
-  initial_time_seconds?: number;
-  increment_seconds?: number;
-  max_overtime_minutes?: number;
+  initialTimeSeconds?: number;
+  incrementSeconds?: number;
+  maxOvertimeMinutes?: number;
   attempts: number;
   userRating?: number;
   puzzleRating?: number;
@@ -66,9 +66,9 @@ export const PuzzleInfo = React.memo((props: Props) => {
     gameUrl,
     challengeRule,
     ratingMode,
-    initial_time_seconds,
-    increment_seconds,
-    max_overtime_minutes,
+    initialTimeSeconds,
+    incrementSeconds,
+    maxOvertimeMinutes,
     lexicon,
     variantName,
     player1,
@@ -197,9 +197,9 @@ export const PuzzleInfo = React.memo((props: Props) => {
         )}
         <p className="game-settings">{`${
           timeCtrlToDisplayName(
-            initial_time_seconds || 0,
-            increment_seconds || 0,
-            max_overtime_minutes || 0
+            initialTimeSeconds || 0,
+            incrementSeconds || 0,
+            maxOvertimeMinutes || 0
           )[0]
         } • ${variantName || 'classic'} • ${lexicon}`}</p>
         <div>

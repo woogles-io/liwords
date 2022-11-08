@@ -31,7 +31,7 @@ const PlayerLink = (props: playerLinkProps) => {
 export const RecentTourneyGames = React.memo((props: Props) => {
   let lastDate = 0;
   const formattedGames = props.games
-    .filter((item) => item.players?.length && item.end_reason !== 'CANCELLED')
+    .filter((item) => item.players?.length && item.endReason !== 'CANCELLED')
     .map((item) => {
       const p1 = (
         <PlayerLink
@@ -48,7 +48,7 @@ export const RecentTourneyGames = React.memo((props: Props) => {
         />
       );
       const scores = (
-        <Link to={`/game/${encodeURIComponent(String(item.game_id ?? ''))}`}>
+        <Link to={`/game/${encodeURIComponent(String(item.gameId ?? ''))}`}>
           {item.players[0].score} - {item.players[1].score}
         </Link>
       );
@@ -62,7 +62,7 @@ export const RecentTourneyGames = React.memo((props: Props) => {
 
       lastDate = Number(item.time);
       let endReason = '';
-      switch (item.end_reason) {
+      switch (item.endReason) {
         case 'TIME':
           endReason = 'Time';
           break;
@@ -86,7 +86,7 @@ export const RecentTourneyGames = React.memo((props: Props) => {
       }
 
       return {
-        game_id: item.game_id, // used by rowKey
+        gameId: item.gameId, // used by rowKey
         p1,
         p2,
         scores,
@@ -132,7 +132,7 @@ export const RecentTourneyGames = React.memo((props: Props) => {
         columns={columns}
         dataSource={formattedGames}
         pagination={false}
-        rowKey="game_id"
+        rowKey="gameId"
       />
       <div className="game-history-controls">
         {props.fetchPrev && <Button onClick={props.fetchPrev}>Prev</Button>}

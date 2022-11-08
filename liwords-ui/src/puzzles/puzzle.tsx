@@ -751,9 +751,9 @@ export const SinglePuzzle = (props: Props) => {
             player2={puzzleInfo.player2}
             ratingMode={puzzleInfo.ratingMode}
             challengeRule={puzzleInfo.challengeRule}
-            initial_time_seconds={puzzleInfo.initialTimeSeconds}
-            increment_seconds={puzzleInfo.incrementSeconds}
-            max_overtime_minutes={puzzleInfo.maxOvertimeMinutes}
+            initialTimeSeconds={puzzleInfo.initialTimeSeconds}
+            incrementSeconds={puzzleInfo.incrementSeconds}
+            maxOvertimeMinutes={puzzleInfo.maxOvertimeMinutes}
             attempts={puzzleInfo.attempts}
             dateSolved={puzzleInfo.dateSolved}
             loadNewPuzzle={loadNewPuzzle}

@@ -130,8 +130,8 @@ const ScorecardTurn = (props: turnProps) => {
       ) ?? {
         nickname: turnNickname,
         // XXX: FIX THIS. avatar url should be set.
-        full_name: '',
-        avatar_url: '',
+        fullName: '',
+        avatarUrl: '',
       },
       coords: evts[0].position,
       timeRemaining: timeRemaining,

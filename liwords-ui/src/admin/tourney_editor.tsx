@@ -177,7 +177,7 @@ export const TourneyEditor = (props: Props) => {
         description: vals.description,
         slug: vals.slug,
         type: jsontype,
-        director_usernames: directors,
+        directorUsernames: directors,
         freeformClubSettingFields: vals.freeformItems,
         defaultClubSettings: selectedGameRequest,
       };

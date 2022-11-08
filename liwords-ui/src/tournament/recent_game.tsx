@@ -6,8 +6,8 @@ type player = {
 
 export type RecentGame = {
   players: Array<player>;
-  end_reason: string;
-  game_id: string;
+  endReason: string;
+  gameId: string;
   time: bigint;
   round: number;
 };

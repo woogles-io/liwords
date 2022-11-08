@@ -368,10 +368,10 @@ export const TourneyGameEndedEvtToRecentGame = (
 
   return {
     players,
-    end_reason:
+    endReason:
       proto3.getEnumType(GameEndReason).findNumber(evt.endReason)?.name ??
       'NONE',
-    game_id: evt.gameId,
+    gameId: evt.gameId,
     time: evt.time,
     round: evt.round,
   };

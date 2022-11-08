@@ -19,7 +19,7 @@ import {
 } from '../store/store';
 import { useMountedState } from '../utils/mounted';
 import { RecentTourneyGames } from './recent_games';
-import { pageSize, RecentGame } from './recent_game';
+import { pageSize } from './recent_game';
 import { ActionType } from '../actions/actions';
 import { Pairings } from './pairings';
 import { isPairedMode, isClubType } from '../store/constants';
@@ -28,10 +28,6 @@ import { DirectorTools } from './director_tools/director_tools';
 import { flashError, useClient } from '../utils/hooks/connect';
 import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_connectweb';
 // import { CheckIn } from './check_in';
-
-export type RecentTournamentGames = {
-  games: Array<RecentGame>;
-};
 
 type Props = {
   newGame: (seekID: string) => void;

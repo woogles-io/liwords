@@ -338,7 +338,7 @@ const AddPlayers = (props: { tournamentID: string }) => {
       }
       players.push({
         id: username,
-        rating: vals.players[i].rating,
+        rating: Number(vals.players[i].rating) || 1,
       });
     }
 
@@ -563,11 +563,11 @@ const SetPairing = (props: { tournamentID: string }) => {
       division: vals.division,
       pairings: [
         {
-          player_one_id: p1id,
-          player_two_id: p2id,
+          playerOneId: p1id,
+          playerTwoId: p2id,
           round: vals.round - 1, // 1-indexed input
           // use self-play result only if it was set.
-          self_play_result: vals.selfplay ? vals.selfplayresult : undefined,
+          selfPlayResult: vals.selfplay ? vals.selfplayresult : undefined,
         },
       ],
     };
@@ -643,20 +643,20 @@ const SetResult = (props: { tournamentID: string }) => {
     const obj = {
       id: props.tournamentID,
       division: vals.division,
-      player_one_id: userUUID(
+      playerOneId: userUUID(
         vals.p1,
         tournamentContext.divisions[vals.division]
       ),
-      player_two_id: userUUID(
+      playerTwoId: userUUID(
         vals.p2,
         tournamentContext.divisions[vals.division]
       ),
       round: vals.round - 1, // 1-indexed input
-      player_one_score: vals.p1score,
-      player_two_score: vals.p2score,
-      player_one_result: vals.p1result,
-      player_two_result: vals.p2result,
-      game_end_reason: vals.gameEndReason,
+      playerOneScore: vals.p1score,
+      playerTwoScore: vals.p2score,
+      playerOneResult: vals.p1result,
+      playerTwoResult: vals.p2result,
+      gameEndReason: vals.gameEndReason,
       amendment: vals.amendment,
     };
     try {

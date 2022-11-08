@@ -13,7 +13,8 @@ import { flashError, useClient } from '../utils/hooks/connect';
 export const CheckIn = () => {
   const { tournamentContext } = useTournamentStoreContext();
 
-  const { loginState } = useLoginStateStoreContext();
+  // const { loginState } = useLoginStateStoreContext();
+  const tournamentClient = useClient(TournamentService);
 
   // Only registered players can check in.
   const checkedIn = useMemo(() => {
@@ -27,12 +28,7 @@ export const CheckIn = () => {
     // );
     // XXX: TEMP CODE so this thing compiles -- FIX ME!!
     return division !== null;
-  }, [
-    loginState.username,
-    loginState.userID,
-    tournamentContext.competitorState.division,
-    tournamentContext.divisions,
-  ]);
+  }, [tournamentContext.competitorState.division, tournamentContext.divisions]);
 
   if (!tournamentContext.competitorState.isRegistered) {
     return null;
@@ -40,7 +36,6 @@ export const CheckIn = () => {
   if (checkedIn) {
     return null;
   }
-  const tournamentClient = useClient(TournamentService);
 
   const checkin = async () => {
     try {
