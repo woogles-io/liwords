@@ -95,10 +95,14 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
     async (imageDataUrl: string) => {
       let jpegUint8 = new Uint8Array();
 
-      fetch(imageDataUrl)
-        .then((b) => b.arrayBuffer())
-        .then((buff) => (jpegUint8 = new Uint8Array(buff)))
-        .catch((e) => console.log(e));
+      try {
+        const b = await fetch(imageDataUrl);
+        const buff = await b.arrayBuffer();
+        jpegUint8 = new Uint8Array(buff);
+      } catch (e) {
+        avatarErrorCatcher(e);
+      }
+
       setUploadPending(true);
       try {
         const resp = await profileClient.updateAvatar({ jpgData: jpegUint8 });
@@ -209,7 +213,10 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
       <div className="section-header">Profile picture</div>
       {props.personalInfo?.avatarUrl !== '' ? (
         <div className="avatar-section">
-          <PlayerAvatar player={props.player} />
+          <PlayerAvatar
+            player={props.player}
+            avatarUrl={props.personalInfo.avatarUrl}
+          />
           <Upload {...fileProps}>
             <Button className="change-avatar">
               {uploadPending ? 'Uploading...' : 'Change'}
