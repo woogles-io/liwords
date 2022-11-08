@@ -11,10 +11,6 @@ import {
 } from '../store/store';
 import { useMountedState } from '../utils/mounted';
 import { defaultGameInfo } from '../gameroom/game_info';
-import {
-  GameHistoryRequest,
-  GameHistoryResponse,
-} from '../gen/api/proto/game_service/game_service_pb';
 import { BoardPanel } from '../gameroom/board_panel';
 import { sortTiles } from '../store/constants';
 import { alphabetFromName } from '../constants/alphabets';
@@ -38,8 +34,7 @@ export const Embed = () => {
   const { gameContext: examinableGameContext } =
     useExaminableGameContextStoreContext();
 
-  const { isExamining, handleExamineStart, handleExamineGoTo } =
-    useExamineStoreContext();
+  const { handleExamineStart, handleExamineGoTo } = useExamineStoreContext();
 
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const { handleSetHover, hideDefinitionHover, definitionPopover } =

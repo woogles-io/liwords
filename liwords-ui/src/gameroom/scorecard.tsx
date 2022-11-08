@@ -285,7 +285,7 @@ export const ScoreCard = React.memo((props: Props) => {
         setCardHeight(0);
       }
     }
-  }, []);
+  }, [props.hideExtraInteractions]);
   useEffect(() => {
     resizeListener();
   }, [props.events, props.poolFormat, resizeListener]);
