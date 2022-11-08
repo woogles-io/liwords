@@ -174,6 +174,32 @@ func GetPuzzleDBIDFromUUID(ctx context.Context, tx pgx.Tx, uuid string) (int64, 
 	return id, nil
 }
 
+func GetUsernameAndUUIDFromDBID(ctx context.Context, tx pgx.Tx, id int) (string, string, error) {
+	var username string
+	var uuid string
+	err := tx.QueryRow(ctx, "SELECT username, uuid FROM users WHERE id = $1", id).Scan(&username, &uuid)
+	if err == pgx.ErrNoRows {
+		return "", "", fmt.Errorf("cannot get username and uuid from id %d: no rows", id)
+	}
+	if err != nil {
+		return "", "", err
+	}
+	return username, uuid, nil
+}
+
+func GetUUIDAndDBIDFromUsername(ctx context.Context, tx pgx.Tx, username string) (int, string, error) {
+	var id int
+	var uuid string
+	err := tx.QueryRow(ctx, "SELECT id, uuid FROM users WHERE username = $1", username).Scan(&id, &uuid)
+	if err == pgx.ErrNoRows {
+		return 0, "", fmt.Errorf("cannot get id and uuid from username %s: no rows", username)
+	}
+	if err != nil {
+		return 0, "", err
+	}
+	return id, uuid, nil
+}
+
 func GetGameInfo(ctx context.Context, tx pgx.Tx, gameId int) (*macondopb.GameHistory, *ipc.GameRequest, string, error) {
 	var uuid string
 	var historyBytes []byte

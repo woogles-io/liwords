@@ -444,21 +444,6 @@ func (g *Game) WinnerWasSet() bool {
 	return !(g.WinnerIdx == 0 && g.LoserIdx == 0)
 }
 
-// Scan/Value functions needed for the DB
-
-func (t *Timers) Value() (driver.Value, error) {
-	return json.Marshal(t)
-}
-
-func (t *Timers) Scan(value interface{}) error {
-	var err error
-	b, ok := value.([]byte)
-	if ok {
-		err = json.Unmarshal(b, &t)
-	}
-	return err
-}
-
 func (mdata *MetaEventData) Value() (driver.Value, error) {
 	return json.Marshal(mdata)
 }
