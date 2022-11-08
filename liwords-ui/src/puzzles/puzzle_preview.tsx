@@ -80,7 +80,6 @@ export const PuzzlePreview = React.memo(() => {
       }
     }
     if (puzzleID) {
-      console.log('fetching puzzle info');
       fetchPuzzleData(puzzleID);
     }
   }, [puzzleID, puzzleRating, puzzleClient, dispatchGameContext]);

@@ -343,7 +343,6 @@ const stateFromHistory = (history: GameHistory): GameState => {
   gs.players[gs.onturn].onturn = true;
   gs.players[1 - gs.onturn].onturn = false;
   gs.playState = history.playState;
-  console.log('gs id', gs.gameID);
   return gs;
 };
 
