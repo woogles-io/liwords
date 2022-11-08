@@ -431,7 +431,6 @@ export const SinglePuzzle = (props: Props) => {
       }
     }
     if (puzzleID) {
-      console.log('fetching puzzle info');
       dispatchGameContext({
         actionType: ActionType.ClearHistory,
         payload: 'noclock',
