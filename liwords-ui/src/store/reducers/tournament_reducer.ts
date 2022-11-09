@@ -327,7 +327,7 @@ const divisionDataResponseToObj = (
 
   for (const v of Object.values(dd.pairingMap)) {
     const newPairing = {
-      players: v.players.map((v) => newPlayers[v]),
+      players: v.players.map((idx) => newPlayers[idx]),
       outcomes: v.outcomes,
       readyStates: v.readyStates,
       games: v.games.map((g) => ({
@@ -345,7 +345,6 @@ const divisionDataResponseToObj = (
       playerIndexMap[newPairing.players[1].id]
     ] = newPairing;
   }
-
   ret.pairings = newPairings;
 
   return ret;
@@ -482,7 +481,6 @@ export function TournamentReducer(
         directors: Array<string>;
         metadata: TournamentMetadata;
       };
-      console.log('gonna set metadata', m);
       return {
         ...state,
         directors: m.directors,
@@ -491,7 +489,6 @@ export function TournamentReducer(
     }
     case ActionType.SetTourneyReducedMetadata: {
       const m = action.payload as TournamentDataResponse;
-      console.log('merging metadata', m);
       const newMetadata = state.metadata.clone();
       newMetadata.name = m.name;
       newMetadata.description = m.description;
@@ -734,17 +731,11 @@ export function TournamentReducer(
 
       const fullLoggedInID = `${dp.loginState.userID}:${dp.loginState.username}`;
       const myPreviousDivision = state.competitorState.division;
-      console.log('divisions are', state.divisions);
       let myRegisteredDivision: Division | undefined;
       if (fullLoggedInID in newPlayerIndexMap) {
         myRegisteredDivision = state.divisions[division];
       }
-      console.log(
-        'registered division',
-        myRegisteredDivision,
-        fullLoggedInID,
-        newPlayerIndexMap
-      );
+
       let competitorState: CompetitorState = state.competitorState;
 
       if (myRegisteredDivision) {
@@ -857,12 +848,6 @@ export function TournamentReducer(
 
       let competitorState: CompetitorState = state.competitorState;
       if (registeredDivision) {
-        console.log(
-          'registereddiv',
-          registeredDivision,
-          'stateactivegames',
-          state.activeGames
-        );
         competitorState = {
           isRegistered: true,
           division: registeredDivision.divisionID,
