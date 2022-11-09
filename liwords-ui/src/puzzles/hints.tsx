@@ -5,15 +5,16 @@ import React, {
   useEffect,
   useMemo,
 } from 'react';
-import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import {
+  GameEvent,
+  GameEvent_Direction,
+} from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { useMountedState } from '../utils/mounted';
 import {
-  AnswerResponse,
   PuzzleRequest,
   PuzzleStatus,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
-import { LiwordsAPIError, postProto } from '../api/api';
-import { Button, message } from 'antd';
+import { Button } from 'antd';
 import { singularCount } from '../utils/plural';
 import {
   generateEmptyLearnLayout,
@@ -25,6 +26,8 @@ import {
   EyeInvisibleOutlined,
   EyeOutlined,
 } from '@ant-design/icons';
+import { flashError, useClient } from '../utils/hooks/connect';
+import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_connectweb';
 
 type Props = {
   puzzleID?: string;
@@ -61,32 +64,22 @@ export const Hints = (props: Props) => {
   const [solution, setSolution] = useState<GameEvent | undefined>(undefined);
   const { gridDim, setLearnLayout } = useContext(LearnContext);
   const [boardHighlightingOn, setBoardHighlightingOn] = useState(false);
-
+  const puzzleClient = useClient(PuzzleService);
   const fetchAnswer = useCallback(async () => {
     if (!puzzleID) {
       return;
     }
-    const req = new PuzzleRequest();
-    req.setPuzzleId(puzzleID);
+    const req = new PuzzleRequest({ puzzleId: puzzleID });
     try {
-      const resp = await postProto(
-        AnswerResponse,
-        'puzzle_service.PuzzleService',
-        'GetPuzzleAnswer',
-        req
-      );
-      console.log('got resp', resp.toObject());
+      const resp = await puzzleClient.getPuzzleAnswer(req);
       // Only CorrectAnswer is filled in properly.
-      setSolution(resp.getCorrectAnswer());
+      setSolution(resp.correctAnswer);
     } catch (err) {
       // There will be an error if this endpoint is called before the user
       // has submitted a guess.
-      message.error({
-        content: (err as LiwordsAPIError).message,
-        duration: 5,
-      });
+      flashError(err);
     }
-  }, [puzzleID]);
+  }, [puzzleID, puzzleClient]);
 
   const earnedHints = useMemo(() => {
     const usedHints = Object.values(hints).filter((h) => h.revealed).length;
@@ -132,16 +125,16 @@ export const Hints = (props: Props) => {
         message: (
           <>
             The score for the play is{' '}
-            <span className="tentative-score">{solution.getScore()}</span>
+            <span className="tentative-score">{solution.score}</span>
           </>
         ),
         revealed: false,
       };
       // Add tiles hint
-      const tilesUsed = Array.from(solution.getPlayedTiles()).filter(
+      const tilesUsed = Array.from(solution.playedTiles).filter(
         (x) => x !== '.'
       ).length;
-      const isBingo = solution.getIsBingo();
+      const isBingo = solution.isBingo;
       const tilesMessage = isBingo ? (
         <>The play is a bingo! Use all your tiles.</>
       ) : (
@@ -161,12 +154,7 @@ export const Hints = (props: Props) => {
         message: (
           <>
             The play should be placed on{' '}
-            {readableLane(
-              solution.getRow(),
-              solution.getColumn(),
-              solution.getDirection()
-            )}
-            .
+            {readableLane(solution.row, solution.column, solution.direction)}.
           </>
         ),
         revealed: false,
@@ -183,13 +171,13 @@ export const Hints = (props: Props) => {
   useEffect(() => {
     if (boardHighlightingOn && solution) {
       const layout = generateEmptyLearnLayout(gridDim, LearnSpaceType.Faded);
-      if (solution.getDirection() === 0) {
-        layout[solution.getRow()] = new Array(gridDim).fill(
+      if (solution.direction === GameEvent_Direction.HORIZONTAL) {
+        layout[solution.row] = new Array(gridDim).fill(
           LearnSpaceType.Highlighted
         );
       } else {
         for (let i = 0; i < gridDim; i++) {
-          layout[i][solution.getColumn()] = LearnSpaceType.Highlighted;
+          layout[i][solution.column] = LearnSpaceType.Highlighted;
         }
       }
       setLearnLayout(layout);

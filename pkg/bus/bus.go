@@ -83,7 +83,8 @@ type Bus struct {
 	gameEventChan       chan *entity.EventWrapper
 	tournamentEventChan chan *entity.EventWrapper
 
-	genericEventChan chan *entity.EventWrapper
+	genericEventChan   chan *entity.EventWrapper
+	gameEventAPIServer *EventAPIServer
 }
 
 func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, error) {
@@ -112,6 +113,7 @@ func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, err
 		tournamentEventChan: make(chan *entity.EventWrapper, 64),
 		genericEventChan:    make(chan *entity.EventWrapper, 64),
 		redisPool:           redisPool,
+		gameEventAPIServer:  NewEventApiServer(stores.UserStore, stores.GameStore),
 	}
 	bus.gameStore.SetGameEventChan(bus.gameEventChan)
 	bus.tournamentStore.SetTournamentEventChan(bus.tournamentEventChan)
@@ -123,6 +125,11 @@ func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, err
 		"ipc.pb.>",
 		// ipc.request are NATS requests. also uses protobuf
 		"ipc.request.>",
+
+		// The socket server should handle these events, but we also want to handle them
+		// here for the purposes of providing an event stream to users of our event api.
+		"user.>",
+		"game.>",
 	}
 
 	for _, topic := range topics {
@@ -144,6 +151,10 @@ func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, err
 		bus.subchans[topic] = ch
 	}
 	return bus, nil
+}
+
+func (b *Bus) EventAPIServerInstance() *EventAPIServer {
+	return b.gameEventAPIServer
 }
 
 // ProcessMessages is very similar to the PubsubProcess in liwords-socket,
@@ -212,6 +223,20 @@ outerfor:
 				}
 			}()
 
+		case msg := <-b.subchans["user.>"]:
+			log := log.With().Interface("msg-user.>", msg.Subject).Logger()
+			log.Debug().Msg("got-user-event")
+			err := b.gameEventAPIServer.processEvent(msg.Subject, msg.Data)
+			if err != nil {
+				log.Err(err).Msg("user-event-process-error")
+			}
+		case msg := <-b.subchans["game.>"]:
+			log := log.With().Interface("msg-game.>", msg.Subject).Logger()
+			log.Debug().Msg("got-game-event")
+			err := b.gameEventAPIServer.processEvent(msg.Subject, msg.Data)
+			if err != nil {
+				log.Err(err).Msg("game-event-process-error")
+			}
 		case msg := <-b.gameEventChan:
 			if msg.Type == pb.MessageType_ACTIVE_GAME_ENTRY {
 				// This message usually has no audience.

@@ -4,23 +4,31 @@ import { notification } from 'antd';
 import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../navigation/topbar';
 import { ChangePassword } from './change_password';
-import { PersonalInfo } from './personal_info';
+import { PersonalInfoWidget } from './personal_info';
 import { CloseAccount } from './close_account';
 import { ClosedAccount } from './closed_account';
 import { Preferences } from './preferences';
 import { BlockedPlayers } from './blocked_players';
 import { LogOut } from './log_out_woogles';
 import { Support } from './support_woogles';
-import axios, { AxiosError } from 'axios';
-import { toAPIUrl } from '../api/api';
 import { useLoginStateStoreContext } from '../store/store';
-import { PlayerMetadata } from '../gameroom/game_info';
 import { useNavigate } from 'react-router-dom';
 import { useResetStoreContext } from '../store/store';
 
 import './settings.scss';
 import { Secret } from './secret';
 import { HeartFilled } from '@ant-design/icons';
+import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
+import {
+  connectErrorMessage,
+  flashError,
+  useClient,
+} from '../utils/hooks/connect';
+import {
+  AuthenticationService,
+  ProfileService,
+} from '../gen/api/proto/user_service/user_service_connectweb';
+import { PersonalInfoResponse } from '../gen/api/proto/user_service/user_service_pb';
 
 enum Category {
   PersonalInfo = 1,
@@ -32,17 +40,6 @@ enum Category {
   Support,
   NoUser,
 }
-
-type PersonalInfoResponse = {
-  avatar_url: string;
-  birth_date: string;
-  full_name: string;
-  first_name: string;
-  last_name: string;
-  country_code: string;
-  email: string;
-  about: string;
-};
 
 const getInitialCategory = (categoryShortcut: string, loggedIn: boolean) => {
   // We don't want to keep /donate or any other shortcuts in the url after reading it on first load
@@ -86,27 +83,19 @@ export const Settings = React.memo(() => {
   const [category, setCategory] = useState(
     getInitialCategory(section, loggedIn)
   );
-  const [player, setPlayer] = useState<Partial<PlayerMetadata> | undefined>(
+  const [player, setPlayer] = useState<Partial<PlayerInfo> | undefined>(
     undefined
   );
-  const [personalInfo, setPersonalInfo] = useState<PersonalInfo | undefined>(
-    undefined
-  );
+  const [personalInfo, setPersonalInfo] = useState<
+    PersonalInfoResponse | undefined
+  >(undefined);
   const [showCloseAccount, setShowCloseAccount] = useState(false);
   const [showClosedAccount, setShowClosedAccount] = useState(false);
   const [accountClosureError, setAccountClosureError] = useState('');
   const navigate = useNavigate();
 
-  const errorCatcher = (e: AxiosError) => {
-    console.log(e);
-    if (e.response) {
-      notification.warning({
-        message: 'Fetch Error',
-        description: e.response.data.msg,
-        duration: 4,
-      });
-    }
-  };
+  const profileClient = useClient(ProfileService);
+  const authClient = useClient(AuthenticationService);
 
   useEffect(() => {
     if (viewer === '' || (!loggedIn && category === Category.Support)) return;
@@ -114,30 +103,21 @@ export const Settings = React.memo(() => {
       setCategory(Category.NoUser);
       return;
     }
-    axios
-      .post<PersonalInfoResponse>(
-        toAPIUrl('user_service.ProfileService', 'GetPersonalInfo'),
-        {
-          username: viewer,
-        }
-      )
-      .then((resp) => {
+    (async () => {
+      try {
+        const resp = await profileClient.getPersonalInfo({ username: viewer });
+
         setPlayer({
-          avatar_url: resp.data.avatar_url,
-          full_name: resp.data.full_name,
-          user_id: userID, // for name-based avatar initial to work
+          fullName: resp.fullName,
+          userId: userID,
         });
-        setPersonalInfo({
-          birthDate: resp.data.birth_date,
-          email: resp.data.email,
-          firstName: resp.data.first_name,
-          lastName: resp.data.last_name,
-          countryCode: resp.data.country_code,
-          about: resp.data.about,
-        });
-      })
-      .catch(errorCatcher);
-  }, [viewer, loggedIn, category, userID]);
+
+        setPersonalInfo(resp);
+      } catch (e) {
+        flashError(e);
+      }
+    })();
+  }, [viewer, loggedIn, category, profileClient, userID]);
 
   type CategoryProps = {
     title: string | React.ReactNode;
@@ -161,29 +141,27 @@ export const Settings = React.memo(() => {
     navigate('/settings');
   }, [navigate]);
 
-  const handleLogout = useCallback(() => {
-    axios
-      .post(toAPIUrl('user_service.AuthenticationService', 'Logout'), {
-        withCredentials: true,
-      })
-      .then(() => {
-        notification.info({
-          message: 'Success',
-          description: 'You have been logged out.',
-        });
-        resetStore();
-        navigate('/');
-      })
-      .catch((e) => {
-        console.log(e);
+  const handleLogout = useCallback(async () => {
+    try {
+      await authClient.logout({});
+      notification.info({
+        message: 'Success',
+        description: 'You have been logged out.',
       });
-  }, [navigate, resetStore]);
+      resetStore();
+      navigate('/');
+    } catch (e) {
+      flashError(e);
+    }
+  }, [authClient, navigate, resetStore]);
 
   const updatedAvatar = useCallback(
     (avatarUrl: string) => {
-      setPlayer({ ...player, avatar_url: avatarUrl });
+      setPersonalInfo(
+        new PersonalInfoResponse({ ...personalInfo, avatarUrl: avatarUrl })
+      );
     },
-    [player]
+    [personalInfo]
   );
 
   const startClosingAccount = useCallback(() => {
@@ -192,34 +170,17 @@ export const Settings = React.memo(() => {
   }, []);
 
   const closeAccountNow = useCallback(
-    (pw: string) => {
-      axios
-        .post(
-          toAPIUrl(
-            'user_service.AuthenticationService',
-            'NotifyAccountClosure'
-          ),
-          { password: pw },
-          {
-            withCredentials: true,
-          }
-        )
-        .then(() => {
-          setShowCloseAccount(false);
-          setShowClosedAccount(true);
-          handleLogout();
-        })
-        .catch((e) => {
-          if (e.response) {
-            // From Twirp
-            setAccountClosureError(e.response.data.msg);
-          } else {
-            setAccountClosureError('unknown error, see console');
-            console.log(e);
-          }
-        });
+    async (pw: string) => {
+      try {
+        await authClient.notifyAccountClosure({ password: pw });
+        setShowCloseAccount(false);
+        setShowClosedAccount(true);
+        handleLogout();
+      } catch (e) {
+        setAccountClosureError(connectErrorMessage(e));
+      }
     },
-    [handleLogout]
+    [authClient, handleLogout]
   );
 
   const logIn = <div className="log-in">Log in to see your settings</div>;
@@ -270,7 +231,7 @@ export const Settings = React.memo(() => {
               ) : showClosedAccount ? (
                 <ClosedAccount />
               ) : personalInfo ? (
-                <PersonalInfo
+                <PersonalInfoWidget
                   player={player}
                   personalInfo={personalInfo}
                   updatedAvatar={updatedAvatar}

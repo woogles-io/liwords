@@ -1,14 +1,17 @@
 import { Card, Col, Row } from 'antd';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { SingleGameStreakInfo, StreakInfoResponse } from './game_info';
+import {
+  StreakInfoResponse,
+  StreakInfoResponse_SingleGameInfo,
+} from '../gen/api/proto/game_service/game_service_pb';
 
 type Props = {
   streakInfo: StreakInfoResponse;
 };
 
 type SGProps = {
-  game: SingleGameStreakInfo;
+  game: StreakInfoResponse_SingleGameInfo;
   p0win: number;
   p1win: number;
 };
@@ -49,9 +52,7 @@ const SingleGame = (props: SGProps) => {
 
   return (
     <span>
-      <Link
-        to={`/game/${encodeURIComponent(String(props.game.game_id ?? ''))}`}
-      >
+      <Link to={`/game/${encodeURIComponent(String(props.game.gameId ?? ''))}`}>
         {innerel}
       </Link>
     </span>
@@ -92,10 +93,7 @@ export const StreakWidget = React.memo((props: Props) => {
       }
       p0wins += p0win;
       p1wins += p1win;
-
-      return (
-        <SingleGame game={g} key={g.game_id} p0win={p0win} p1win={p1win} />
-      );
+      return <SingleGame game={g} key={g.gameId} p0win={p0win} p1win={p1win} />;
     });
 
   const pStyle = {

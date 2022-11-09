@@ -5,11 +5,10 @@ import {
   UpOutlined,
 } from '@ant-design/icons';
 import { Button, Divider, Form, Input, message } from 'antd';
-import axios from 'axios';
 import { Store } from 'rc-field-form/lib/interface';
 import React, { useEffect } from 'react';
-import { toAPIUrl } from '../api/api';
-import { Announcements } from '../lobby/announcements';
+import { ConfigService } from '../gen/api/proto/config_service/config_service_connectweb';
+import { flashError, useClient } from '../utils/hooks/connect';
 
 const layout = {
   labelCol: {
@@ -22,41 +21,30 @@ const layout = {
 
 export const AnnouncementEditor = () => {
   const [form] = Form.useForm();
-
+  const configClient = useClient(ConfigService);
   useEffect(() => {
-    axios
-      .post<Announcements>(
-        toAPIUrl('config_service.ConfigService', 'GetAnnouncements'),
-        {}
-      )
-      .then((resp) => {
-        form.setFieldsValue({
-          announcements: resp.data.announcements,
-        });
+    const fetchAnnouncements = async () => {
+      const resp = await configClient.getAnnouncements({});
+      form.setFieldsValue({
+        announcements: resp.announcements,
       });
-  }, [form]);
+    };
+    fetchAnnouncements();
+  }, [configClient, form]);
 
-  const onFinish = (vals: Store) => {
+  const onFinish = async (vals: Store) => {
     console.log('vals', vals);
-    axios
-      .post<Announcements>(
-        toAPIUrl('config_service.ConfigService', 'SetAnnouncements'),
-        {
-          announcements: vals.announcements,
-        }
-      )
-      .then((resp) => {
-        message.info({
-          content: 'Updated announcements on front page',
-          duration: 3,
-        });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error ' + err.response?.data?.msg,
-          duration: 5,
-        });
+    try {
+      await configClient.setAnnouncements({
+        announcements: vals.announcements,
       });
+      message.info({
+        content: 'Updated announcements on front page',
+        duration: 3,
+      });
+    } catch (err) {
+      flashError(err);
+    }
   };
 
   return (

@@ -125,6 +125,8 @@ func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 	msgBytes := make([]byte, msglen-1)
 	msgType := pb.MessageType(msgtypeint)
 	switch msgType {
+	case pb.MessageType_SERVER_GAMEPLAY_EVENT:
+		message = &pb.ServerGameplayEvent{}
 	case pb.MessageType_CLIENT_GAMEPLAY_EVENT:
 		message = &pb.ClientGameplayEvent{}
 	case pb.MessageType_GAME_ENDED_EVENT:
@@ -137,8 +139,10 @@ func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 		message = &pb.SoughtGameProcessEvent{}
 	case pb.MessageType_TIMED_OUT:
 		message = &pb.TimedOut{}
+	case pb.MessageType_GAME_META_EVENT:
+		message = &pb.GameMetaEvent{}
 	default:
-		return nil, fmt.Errorf("event of type %d not handled", msgType)
+		return nil, fmt.Errorf("event of type %s not handled", msgType.String())
 	}
 	_, err := io.ReadFull(b, msgBytes)
 	if err != nil {

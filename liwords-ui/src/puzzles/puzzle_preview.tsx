@@ -1,15 +1,12 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
-import { Card, message } from 'antd';
+import { Card } from 'antd';
 import { BoardPreview } from '../settings/board_preview';
 import './puzzle_preview.scss';
 import { useMountedState } from '../utils/mounted';
 import {
   StartPuzzleIdRequest,
-  StartPuzzleIdResponse,
   PuzzleRequest,
-  PuzzleResponse,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
-import { LiwordsAPIError, postProto } from '../api/api';
 import { ActionType } from '../actions/actions';
 import {
   useGameContextStoreContext,
@@ -26,6 +23,8 @@ import { TouchBackend } from 'react-dnd-touch-backend';
 import { DndProvider } from 'react-dnd';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { RatingBadge } from '../lobby/rating_badge';
+import { flashError, useClient } from '../utils/hooks/connect';
+import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_connectweb';
 
 export const PuzzlePreview = React.memo(() => {
   const userLexicon = localStorage?.getItem('puzzleLexicon');
@@ -40,6 +39,7 @@ export const PuzzlePreview = React.memo(() => {
   const [puzzleRating, setPuzzleRating] = useState<number | undefined>(
     undefined
   );
+  const puzzleClient = useClient(PuzzleService);
 
   const loadNewPuzzle = useCallback(async () => {
     if (!userLexicon) {
@@ -49,25 +49,14 @@ export const PuzzlePreview = React.memo(() => {
       return;
     }
     const req = new StartPuzzleIdRequest();
-    const respType = StartPuzzleIdResponse;
-    const method = 'GetStartPuzzleId';
-    req.setLexicon(userLexicon);
+    req.lexicon = userLexicon;
     try {
-      const resp = await postProto(
-        respType,
-        'puzzle_service.PuzzleService',
-        method,
-        req
-      );
-      console.log('got resp', resp.toObject());
-      setPuzzleID(resp.getPuzzleId());
+      const resp = await puzzleClient.getStartPuzzleId(req);
+      setPuzzleID(resp.puzzleId);
     } catch (err) {
-      message.error({
-        content: `Puzzle: ${(err as LiwordsAPIError).message}`,
-        duration: 5,
-      });
+      flashError(err);
     }
-  }, [userLexicon]);
+  }, [userLexicon, puzzleClient]);
 
   useEffect(() => {
     loadNewPuzzle();
@@ -75,37 +64,25 @@ export const PuzzlePreview = React.memo(() => {
 
   useEffect(() => {
     async function fetchPuzzleData(id: string) {
-      const req = new PuzzleRequest();
-      req.setPuzzleId(id);
+      const req = new PuzzleRequest({ puzzleId: id });
 
       try {
-        const resp = await postProto(
-          PuzzleResponse,
-          'puzzle_service.PuzzleService',
-          'GetPuzzle',
-          req
-        );
-        console.log('got puzzle', resp.toObject());
-
-        const gh = resp.getHistory();
-        setUserRating(resp.getAnswer()?.getNewUserRating());
-        setPuzzleRating(resp.getAnswer()?.getNewPuzzleRating());
+        const resp = await puzzleClient.getPuzzle(req);
+        const gh = resp.history;
+        setUserRating(resp.answer?.newUserRating);
+        setPuzzleRating(resp.answer?.newPuzzleRating);
         dispatchGameContext({
           actionType: ActionType.SetupStaticPosition,
           payload: gh,
         });
       } catch (err) {
-        message.error({
-          content: (err as LiwordsAPIError).message,
-          duration: 5,
-        });
+        flashError(err);
       }
     }
     if (puzzleID) {
-      console.log('fetching puzzle info');
       fetchPuzzleData(puzzleID);
     }
-  }, [puzzleID, puzzleRating, dispatchGameContext]);
+  }, [puzzleID, puzzleRating, puzzleClient, dispatchGameContext]);
 
   useEffect(() => {
     const rack = gameContext.players.find((p) => p.onturn)?.currentRack ?? '';

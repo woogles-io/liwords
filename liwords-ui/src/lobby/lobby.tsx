@@ -8,7 +8,7 @@ import { GameLists } from './gameLists';
 import { Chat } from '../chat/chat';
 import { useLoginStateStoreContext } from '../store/store';
 import './lobby.scss';
-import { Announcements } from './announcements';
+import { AnnouncementsWidget } from './announcements';
 import { sendAccept, sendSeek } from './sought_game_interactions';
 import { PuzzlePreview } from '../puzzles/puzzle_preview';
 
@@ -69,7 +69,7 @@ export const Lobby = (props: Props) => {
           onSeekSubmit={onSeekSubmit}
         />
         <div className="announcements">
-          <Announcements />
+          <AnnouncementsWidget />
           <PuzzlePreview />
         </div>
       </div>

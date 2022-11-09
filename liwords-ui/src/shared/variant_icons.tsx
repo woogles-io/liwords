@@ -3,7 +3,7 @@ import { Tooltip } from 'antd';
 import React from 'react';
 
 type Props = {
-  vcode: string;
+  vcode?: string;
   withName?: boolean;
 };
 

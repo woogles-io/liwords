@@ -1,13 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import axios from 'axios';
-import { toAPIUrl } from '../../api/api';
-import { DefineWordsResponse } from '../../gameroom/game_info';
-import { GameEvent } from '../../gen/macondo/api/proto/macondo/macondo_pb';
 import { GameState } from '../../store/reducers/game_reducer';
 import { ChatEntityType, ChatEntityObj } from '../../store/constants';
 import { Blank } from '../../utils/cwgame/common';
 import { useMountedState } from '../../utils/mounted';
 import { Unrace } from '../../utils/unrace';
+import { GameEvent_Type } from '../../gen/macondo/api/proto/macondo/macondo_pb';
+import { useClient } from './connect';
+import { WordService } from '../../gen/api/proto/word_service/word_service_connectweb';
 
 export const useDefinitionAndPhonyChecker = ({
   addChat,
@@ -24,7 +23,7 @@ export const useDefinitionAndPhonyChecker = ({
   gameDone: boolean;
   gameID?: string;
   lexicon: string;
-  variant: string;
+  variant: string | undefined;
 }) => {
   const { useState } = useMountedState();
 
@@ -198,7 +197,7 @@ export const useDefinitionAndPhonyChecker = ({
     setPlayedWords((oldPlayedWords) => {
       const playedWords = new Set(oldPlayedWords);
       for (const turn of gameContext.turns) {
-        for (const word of turn.getWordsFormedList()) {
+        for (const word of turn.wordsFormed) {
           playedWords.add(word);
         }
       }
@@ -248,8 +247,9 @@ export const useDefinitionAndPhonyChecker = ({
     }
   }, [playedWords, gameDone, showDefinitionHover]);
 
+  const wordClient = useClient(WordService);
+
   useEffect(() => {
-    const cancelTokenSource = axios.CancelToken.source();
     unrace.run(async () => {
       const wordInfo = wordInfoRef.current; // take the latest version after unrace
       const wordsToDefine: Array<string> = [];
@@ -265,16 +265,13 @@ export const useDefinitionAndPhonyChecker = ({
       if (!wordsToDefine.length) return;
       wordsToDefine.sort(); // mitigate OCD
       try {
-        const defineResp = await axios.post<DefineWordsResponse>(
-          toAPIUrl('word_service.WordService', 'DefineWords'),
-          {
-            lexicon,
-            words: wordsToDefine,
-            definitions: !!showDefinitionHover,
-            anagrams,
-          },
-          { cancelToken: cancelTokenSource.token }
-        );
+        const defineResp = await wordClient.defineWords({
+          lexicon,
+          words: wordsToDefine,
+          definitions: !!showDefinitionHover,
+          anagrams,
+        });
+
         if (showDefinitionHover) {
           // for certain lexicons, try getting definitions from other sources
           for (const otherLexicon of lexicon === 'ECWL'
@@ -285,27 +282,23 @@ export const useDefinitionAndPhonyChecker = ({
             const wordsToRedefine = [];
             for (const word of wordsToDefine) {
               if (
-                defineResp.data.results[word]?.v &&
-                defineResp.data.results[word].d === word
+                defineResp.results[word]?.v &&
+                defineResp.results[word].d === word
               ) {
                 wordsToRedefine.push(word);
               }
             }
             if (!wordsToRedefine.length) break;
-            const otherDefineResp = await axios.post<DefineWordsResponse>(
-              toAPIUrl('word_service.WordService', 'DefineWords'),
-              {
-                lexicon: otherLexicon,
-                words: wordsToRedefine,
-                definitions: !!showDefinitionHover,
-                anagrams,
-              },
-              { cancelToken: cancelTokenSource.token }
-            );
+            const otherDefineResp = await wordClient.defineWords({
+              lexicon: otherLexicon,
+              words: wordsToRedefine,
+              definitions: !!showDefinitionHover,
+              anagrams,
+            });
             for (const word of wordsToRedefine) {
-              const newDefinition = otherDefineResp.data.results[word].d;
+              const newDefinition = otherDefineResp.results[word].d;
               if (newDefinition && newDefinition !== word) {
-                defineResp.data.results[word].d = newDefinition;
+                defineResp.results[word].d = newDefinition;
               }
             }
           }
@@ -313,23 +306,16 @@ export const useDefinitionAndPhonyChecker = ({
         setWordInfo((oldWordInfo) => {
           const wordInfo = { ...oldWordInfo };
           for (const word of wordsToDefine) {
-            wordInfo[word] = defineResp.data.results[word];
+            wordInfo[word] = defineResp.results[word];
           }
           return wordInfo;
         });
       } catch (e) {
-        if (axios.isCancel(e)) {
-          // request canceled because it is no longer relevant.
-        } else {
-          // no definitions then... sadpepe.
-          console.log('cannot check words', e);
-        }
+        // no definitions then... sadpepe.
+        console.log('cannot check words', e);
       }
     });
-    return () => {
-      cancelTokenSource.cancel();
-    };
-  }, [anagrams, showDefinitionHover, lexicon, wordInfo, unrace]);
+  }, [anagrams, showDefinitionHover, lexicon, wordClient, wordInfo, unrace]);
 
   useEffect(() => {
     if (phonies === null) {
@@ -365,10 +351,10 @@ export const useDefinitionAndPhonyChecker = ({
       let returningTiles = false;
       for (let i = gameContext.turns.length; --i >= 0; ) {
         const turn = gameContext.turns[i];
-        if (turn.getType() === GameEvent.Type.PHONY_TILES_RETURNED) {
+        if (turn.type === GameEvent_Type.PHONY_TILES_RETURNED) {
           returningTiles = true;
         } else {
-          for (const word of turn.getWordsFormedList()) {
+          for (const word of turn.wordsFormed) {
             groupedWords[+returningTiles].add(word);
           }
           returningTiles = false;

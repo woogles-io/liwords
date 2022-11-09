@@ -1,6 +1,7 @@
 import React from 'react';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import GameControls, { Props } from './game_controls';
+import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 
 const mockedUsedNavigate = jest.fn();
 
@@ -14,7 +15,7 @@ function renderGameControls(props: Partial<Props> = {}) {
     return;
   };
   const defaultProps: Props = {
-    challengeRule: 'FIVE_POINT',
+    challengeRule: ChallengeRule.FIVE_POINT,
     exchangeAllowed: false,
     isExamining: false,
     finalPassOrChallenge: false,

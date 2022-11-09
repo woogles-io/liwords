@@ -21,10 +21,10 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
       <UsernameWithContext username={username} omitSendMessage />
     </span>
   ));
-  const type = isClubType(metadata.getType()) ? 'Club' : 'Tournament';
+  const type = isClubType(metadata.type) ? 'Club' : 'Tournament';
   const title = (
-    <span style={{ color: tournamentContext.metadata.getColor() }}>
-      {tournamentContext.metadata.getName()}
+    <span style={{ color: tournamentContext.metadata.color }}>
+      {tournamentContext.metadata.name}
     </span>
   );
   return (
@@ -35,17 +35,17 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
           sendReady={() =>
             readyForTournamentGame(
               props.sendSocketMsg,
-              tournamentContext.metadata.getId(),
+              tournamentContext.metadata.id,
               competitorContext
             )
           }
         />
       )}
       <Card title={title} className="tournament">
-        {tournamentContext.metadata.getLogo() && (
+        {tournamentContext.metadata.logo && (
           <img
-            src={tournamentContext.metadata.getLogo()}
-            alt={tournamentContext.metadata.getName()}
+            src={tournamentContext.metadata.logo}
+            alt={tournamentContext.metadata.name}
             style={{
               width: 150,
               textAlign: 'center',
@@ -57,13 +57,13 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
         <h4>Directed by: {directors}</h4>
         <h5 className="section-header">{type} Details</h5>
         <ReactMarkdown linkTarget="_blank">
-          {tournamentContext.metadata.getDescription()}
+          {tournamentContext.metadata.description}
         </ReactMarkdown>
-        {tournamentContext.metadata.getDisclaimer() && (
+        {tournamentContext.metadata.disclaimer && (
           <>
             <h5 className="section-header">{type} Notice</h5>
             <ReactMarkdown linkTarget="_blank">
-              {tournamentContext.metadata.getDisclaimer()}
+              {tournamentContext.metadata.disclaimer}
             </ReactMarkdown>
           </>
         )}

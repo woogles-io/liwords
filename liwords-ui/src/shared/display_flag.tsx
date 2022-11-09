@@ -24,9 +24,7 @@ export const DisplayUserFlag = ({ uuid }: { uuid: string | undefined }) => {
 
   return (
     <React.Fragment>
-      {briefProfile && (
-        <DisplayFlag countryCode={briefProfile.getCountryCode()} />
-      )}
+      {briefProfile && <DisplayFlag countryCode={briefProfile.countryCode} />}
     </React.Fragment>
   );
 };

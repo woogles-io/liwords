@@ -2,10 +2,9 @@ import {
   useFriendsStoreContext,
   useLoginStateStoreContext,
 } from '../store/store';
-import axios from 'axios';
-import { toAPIUrl } from '../api/api';
 import React from 'react';
-import { notification } from 'antd';
+import { flashError, useClient } from '../utils/hooks/connect';
+import { SocializeService } from '../gen/api/proto/user_service/user_service_connectweb';
 
 type FollowerProps = {
   className?: string;
@@ -18,50 +17,33 @@ export const TheFollower = (props: FollowerProps) => {
   const { friends, setPendingFriendsRefresh } = useFriendsStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { userID } = loginState;
-
+  const socializeClient = useClient(SocializeService);
   if (userID === props.target) {
     return null;
   }
 
-  let apiFunc: string;
+  let apiFunc: 'addFollow' | 'removeFollow';
   let friendText: string;
   if (friends[props.target]) {
-    apiFunc = 'Remove';
+    apiFunc = 'removeFollow';
     friendText = 'Remove from friends';
   } else {
-    apiFunc = 'Add';
+    apiFunc = 'addFollow';
     friendText = 'Add friend';
     // Add some confirmation.
   }
 
-  const friendAction = () => {
-    axios
-      .post(
-        toAPIUrl('user_service.SocializeService', `${apiFunc}Follow`),
-        {
-          uuid: props.target,
-        },
-        { withCredentials: true }
-      )
-      .then(() => {
-        if (props.friendCallback) {
-          props.friendCallback();
-        }
-      })
-      .catch((e) => {
-        if (e.response) {
-          notification.error({
-            message: 'Error',
-            description: e.response.data.msg,
-            duration: 4,
-          });
-        } else {
-          console.log(e);
-        }
-      })
-      .finally(() => {
-        setPendingFriendsRefresh(true);
-      });
+  const friendAction = async () => {
+    try {
+      await socializeClient[apiFunc]({ uuid: props.target });
+      if (props.friendCallback) {
+        props.friendCallback();
+      }
+    } catch (e) {
+      flashError(e);
+    } finally {
+      setPendingFriendsRefresh(true);
+    }
   };
 
   const DynamicTagName = (props.tagName ||

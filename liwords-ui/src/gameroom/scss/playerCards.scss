@@ -1,6 +1,11 @@
 @use '../../base.scss' as *;
 @use '../../color_modes' as *;
 
+.board-embed .player-cards.vertical {
+  display: flex;
+  order: 4;
+}
+
 .player-cards.vertical {
   display: none;
   @media (min-width: $screen-tablet-min) {

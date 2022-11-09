@@ -45,8 +45,7 @@ export const CompetitorStatus = (props: Props) => {
           <>
             <ClockCircleOutlined />
             <p>
-              Thanks for registering for the{' '}
-              {tournamentContext.metadata.getName()}.
+              Thanks for registering for the {tournamentContext.metadata.name}.
             </p>
           </>
         );
@@ -179,7 +178,7 @@ export const CompetitorStatus = (props: Props) => {
             <ClockCircleOutlined />
             <p>
               Thanks so much for playing in the{' '}
-              {tournamentContext.metadata.getName()}!
+              {tournamentContext.metadata.name}!
             </p>
           </>
         );
@@ -189,8 +188,7 @@ export const CompetitorStatus = (props: Props) => {
           <>
             <ClockCircleOutlined />
             <p>
-              Thanks for registering for the{' '}
-              {tournamentContext.metadata.getName()}.
+              Thanks for registering for the {tournamentContext.metadata.name}.
             </p>
           </>
         );

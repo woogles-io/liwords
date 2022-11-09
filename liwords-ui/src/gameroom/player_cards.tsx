@@ -10,10 +10,10 @@ import {
 import { Millis, millisToTimeStr } from '../store/timer_controller';
 import { PlayerAvatar } from '../shared/player_avatar';
 import './scss/playerCards.scss';
-import { GameMetadata, PlayerMetadata } from './game_info';
 import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { DisplayUserFlag } from '../shared/display_flag';
 import { useBriefProfile } from '../utils/brief_profiles';
+import { GameInfoResponse, PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const colors = require('../base.scss').default;
@@ -22,10 +22,11 @@ type CardProps = {
   player: RawPlayerInfo | undefined;
   time: Millis;
   initialTimeSeconds: Millis;
-  meta: Array<PlayerMetadata>;
+  meta: Array<PlayerInfo>;
   playing: boolean;
   score: number;
   spread: number;
+  hideProfileLink?: boolean;
 };
 
 const timepenalty = (time: Millis) => {
@@ -48,7 +49,7 @@ const PlayerCard = React.memo((props: CardProps) => {
     return <Card />;
   }
   // Find the metadata for this player.
-  const meta = props.meta.find((pi) => pi.user_id === props.player?.userID);
+  const meta = props.meta.find((pi) => pi.userId === props.player?.userID);
   const timeStr =
     isExamining || props.playing ? millisToTimeStr(props.time) : '--:--';
   // TODO: what we consider low time likely be set somewhere and not a magic number
@@ -64,17 +65,22 @@ const PlayerCard = React.memo((props: CardProps) => {
         <PlayerAvatar player={meta} />
         <div className="player-info">
           <p className="player-name">
-            {briefProfile?.getFullName() || meta?.nickname}
+            {briefProfile?.fullName || meta?.nickname}
           </p>
           <div className="player-details">
             <DisplayUserFlag uuid={props.player?.userID} />
-            {meta?.rating || 'Unrated'} •{' '}
-            <Link
-              target="_blank"
-              to={`/profile/${encodeURIComponent(meta?.nickname ?? '')}`}
-            >
-              View profile
-            </Link>
+            {meta?.rating || 'Unrated'}
+            {props.hideProfileLink ? null : (
+              <>
+                •{' '}
+                <Link
+                  target="_blank"
+                  to={`/profile/${encodeURIComponent(meta?.nickname ?? '')}`}
+                >
+                  View profile
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </Row>
@@ -97,9 +103,10 @@ const PlayerCard = React.memo((props: CardProps) => {
 });
 
 type Props = {
-  gameMeta: GameMetadata;
-  playerMeta: Array<PlayerMetadata>;
+  gameMeta: GameInfoResponse;
+  playerMeta: Array<PlayerInfo>;
   horizontal?: boolean;
+  hideProfileLink?: boolean;
 };
 
 export const PlayerCards = React.memo((props: Props) => {
@@ -116,7 +123,7 @@ export const PlayerCards = React.memo((props: Props) => {
   if (!p0) {
     if (props.playerMeta[0]) {
       p0 = {
-        userID: props.playerMeta[0].user_id,
+        userID: props.playerMeta[0].userId,
         score: 0,
         onturn: false,
         currentRack: '',
@@ -127,7 +134,7 @@ export const PlayerCards = React.memo((props: Props) => {
   if (!p1) {
     if (props.playerMeta[1]) {
       p1 = {
-        userID: props.playerMeta[1].user_id,
+        userID: props.playerMeta[1].userId,
         score: 0,
         onturn: false,
         currentRack: '',
@@ -136,7 +143,7 @@ export const PlayerCards = React.memo((props: Props) => {
   }
 
   const initialTimeSeconds =
-    props.gameMeta.game_request.initial_time_seconds * 1000;
+    (props.gameMeta.gameRequest?.initialTimeSeconds ?? 0) * 1000;
   let p0Time = examinableTimerContext.p0;
   if (p0Time === Infinity) p0Time = initialTimeSeconds;
   let p1Time = examinableTimerContext.p1;
@@ -165,6 +172,7 @@ export const PlayerCards = React.memo((props: Props) => {
         score={p0Score}
         spread={p0Spread}
         playing={playing}
+        hideProfileLink={props.hideProfileLink}
       />
       <PlayerCard
         player={p1}
@@ -174,6 +182,7 @@ export const PlayerCards = React.memo((props: Props) => {
         score={p1Score}
         spread={-p0Spread}
         playing={playing}
+        hideProfileLink={props.hideProfileLink}
       />
     </Card>
   );

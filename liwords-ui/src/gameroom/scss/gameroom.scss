@@ -1467,6 +1467,11 @@ p.rune {
   }
 }
 
+.board-embed {
+  padding-bottom: 0px;
+}
+
+
 @media (min-width: $screen-mobile-min) {
   .board-spaces-container, .board-spaces, .tiles {
     width: $board-size-mobile;

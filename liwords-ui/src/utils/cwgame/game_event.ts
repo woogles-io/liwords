@@ -2,9 +2,13 @@ import { EphemeralTile, Direction, Blank, EmptySpace, isBlank } from './common';
 import { contiguousTilesFromTileSet } from './scoring';
 import { Board } from './board';
 import { GameEvent } from '../../gen/macondo/api/proto/macondo/macondo_pb';
-import { ClientGameplayEvent } from '../../gen/api/proto/ipc/omgwords_pb';
-import { PlayerMetadata } from '../../gameroom/game_info';
+import {
+  ClientGameplayEvent,
+  ClientGameplayEvent_EventType,
+  PlayerInfo,
+} from '../../gen/api/proto/ipc/omgwords_pb';
 import { indexToPlayerOrder, PlayerOrder } from '../../store/constants';
+import { GameEvent_Direction } from '../../gen/macondo/api/proto/macondo/macondo_pb';
 
 export const ThroughTileMarker = '.';
 // convert a set of ephemeral tiles to a protobuf game event.
@@ -43,62 +47,65 @@ export const tilesetToMoveEvent = (
     wordPos = col + row;
   }
 
-  const evt = new ClientGameplayEvent();
-  evt.setPositionCoords(wordPos);
-  evt.setTiles(wordStr);
-  evt.setType(ClientGameplayEvent.EventType.TILE_PLACEMENT);
-  evt.setGameId(gameID);
+  const evt = new ClientGameplayEvent({
+    positionCoords: wordPos,
+    tiles: wordStr,
+    type: ClientGameplayEvent_EventType.TILE_PLACEMENT,
+    gameId: gameID,
+  });
+
   return evt;
 };
 
 export const exchangeMoveEvent = (rack: string, gameID: string) => {
-  const evt = new ClientGameplayEvent();
-  evt.setTiles(rack);
-  evt.setType(ClientGameplayEvent.EventType.EXCHANGE);
-  evt.setGameId(gameID);
+  const evt = new ClientGameplayEvent({
+    tiles: rack,
+    type: ClientGameplayEvent_EventType.EXCHANGE,
+    gameId: gameID,
+  });
 
   return evt;
 };
 
 export const passMoveEvent = (gameID: string) => {
-  const evt = new ClientGameplayEvent();
-  evt.setType(ClientGameplayEvent.EventType.PASS);
-  evt.setGameId(gameID);
-
+  const evt = new ClientGameplayEvent({
+    type: ClientGameplayEvent_EventType.PASS,
+    gameId: gameID,
+  });
   return evt;
 };
 
 export const resignMoveEvent = (gameID: string) => {
-  const evt = new ClientGameplayEvent();
-  evt.setType(ClientGameplayEvent.EventType.RESIGN);
-  evt.setGameId(gameID);
-
+  const evt = new ClientGameplayEvent({
+    type: ClientGameplayEvent_EventType.RESIGN,
+    gameId: gameID,
+  });
   return evt;
 };
 
 export const challengeMoveEvent = (gameID: string) => {
-  const evt = new ClientGameplayEvent();
-  evt.setType(ClientGameplayEvent.EventType.CHALLENGE_PLAY);
-  evt.setGameId(gameID);
-
+  const evt = new ClientGameplayEvent({
+    type: ClientGameplayEvent_EventType.CHALLENGE_PLAY,
+    gameId: gameID,
+  });
   return evt;
 };
 
 export const tilePlacementEventDisplay = (evt: GameEvent, board: Board) => {
   // modify a tile placement move for display purposes.
-  const row = evt.getRow();
-  const col = evt.getColumn();
-  const ri = evt.getDirection() === GameEvent.Direction.HORIZONTAL ? 0 : 1;
+  const row = evt.row;
+  const col = evt.column;
+  const ri = evt.direction === GameEvent_Direction.HORIZONTAL ? 0 : 1;
   const ci = 1 - ri;
 
   let m = '';
   let openParen = false;
   for (
     let i = 0, r = row, c = col;
-    i < evt.getPlayedTiles().length;
+    i < evt.playedTiles.length;
     i += 1, r += ri, c += ci
   ) {
-    const t = evt.getPlayedTiles()[i];
+    const t = evt.playedTiles[i];
     if (t === ThroughTileMarker) {
       if (!openParen) {
         m += '(';
@@ -121,27 +128,18 @@ export const tilePlacementEventDisplay = (evt: GameEvent, board: Board) => {
 
 // nicknameFromEvt gets the nickname of the user who performed an
 // event.
-// XXX: Remove the `evt.getNickname()` part of this once we migrate all games
-// over to use playerIndex.
 export const nicknameFromEvt = (
   evt: GameEvent,
-  players: Array<PlayerMetadata>
+  players: Array<PlayerInfo>
 ): string => {
-  return evt.getNickname() || players[evt.getPlayerIndex()]?.nickname;
+  return players[evt.playerIndex]?.nickname;
 };
 
-// playerOrderFromEvt gets the player order from the event. (p0 | p1 etc)
-// XXX: Remove the nickname logic from this once we migrate games to use
-// playerIndex only.
 export const playerOrderFromEvt = (
   evt: GameEvent,
   nickToPlayerOrder: { [nick: string]: PlayerOrder }
 ): PlayerOrder => {
-  const nickname = evt.getNickname();
-  if (nickname) {
-    return nickToPlayerOrder[nickname];
-  }
-  return indexToPlayerOrder(evt.getPlayerIndex());
+  return indexToPlayerOrder(evt.playerIndex);
 };
 
 export const computeLeave = (tilesPlayed: string, rack: string) => {

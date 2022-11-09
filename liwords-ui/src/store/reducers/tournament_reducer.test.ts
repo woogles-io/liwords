@@ -1,3 +1,7 @@
+/**
+ * @jest-environment node
+ */
+// ^^ see https://github.com/jsdom/jsdom/issues/2524#issuecomment-902027138
 import { ActionType } from '../../actions/actions';
 import {
   defaultTournamentState,
@@ -30,7 +34,7 @@ import {
 const toArr = (s: string) => {
   const bytes = new Uint8Array(Math.ceil(s.length / 2));
   for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(s.substr(i * 2, 2), 16);
+    bytes[i] = parseInt(s.substring(i * 2, i * 2 + 2), 16);
   }
   return bytes;
 };
@@ -38,16 +42,17 @@ const toArr = (s: string) => {
 // This is a fairly complex tourney
 const initialTourneyXHRMessage = () => {
   const msg = toArr(ftData);
-  return FullTournamentDivisions.deserializeBinary(msg);
+  return FullTournamentDivisions.fromBinary(msg);
 };
 
 const tourneyMetadataPayload = () => {
-  const metadata = new TournamentMetadata();
-  metadata.setName('Wolges Incorporated');
-  metadata.setDescription('Welcome to Wolges: population: You');
-  metadata.setSlug('/tournament/wolges');
-  metadata.setId('qzqWHsGVBrAgiuAZp9nJJm');
-  metadata.setType(TType.STANDARD);
+  const metadata = new TournamentMetadata({
+    name: 'Wolges Incorporated',
+    description: 'Welcome to Wolges: population: You',
+    slug: '/tournament/wolges',
+    id: 'qzqWHsGVBrAgiuAZp9nJJm',
+    type: TType.STANDARD,
+  });
 
   return {
     directors: ['cesar', 'thedirector'],
@@ -56,9 +61,10 @@ const tourneyMetadataPayload = () => {
 };
 
 const startTourneyMessage = () => {
-  const msg = new TournamentRoundStarted();
-  msg.setTournamentId('qzqWHsGVBrAgiuAZp9nJJm');
-  msg.setDivision('CSW');
+  const msg = new TournamentRoundStarted({
+    tournamentId: 'qzqWHsGVBrAgiuAZp9nJJm',
+    division: 'CSW',
+  });
 
   return msg;
 };
@@ -142,82 +148,87 @@ it('tests tourneystart', () => {
 });
 
 const newDivisionMessage = () => {
-  const msg = new TournamentDivisionDataResponse();
-  msg.setId('qzqWHsGVBrAgiuAZp9nJJm');
-  msg.setDivision('NWL B');
-  msg.setCurrentRound(-1);
+  const msg = new TournamentDivisionDataResponse({
+    id: 'qzqWHsGVBrAgiuAZp9nJJm',
+    division: 'NWL B',
+    currentRound: -1,
+  });
   return msg;
 };
 
 const newPlayersMessage = () => {
-  const msg = new PlayersAddedOrRemovedResponse();
-  msg.setId('qzqWHsGVBrAgiuAZp9nJJm');
-  msg.setDivision('NWL B');
-
-  const tp = new TournamentPersons();
-  const personsList = new Array<TournamentPerson>();
-  const p1 = new TournamentPerson();
-  p1.setId('ViSLeuyqNcSA3GcHJP5rA5:nigel');
-  p1.setRating(2344);
-  const p2 = new TournamentPerson();
-  p2.setId('JkW7MXvVPfj7HdgAwLQzJ4:will');
-  p2.setRating(1234);
-  personsList.push(p1, p2);
-  tp.setPersonsList(personsList);
-  msg.setPlayers(tp);
+  const msg = new PlayersAddedOrRemovedResponse({
+    id: 'qzqWHsGVBrAgiuAZp9nJJm',
+    division: 'NWL B',
+    players: new TournamentPersons({
+      persons: [
+        new TournamentPerson({
+          id: 'ViSLeuyqNcSA3GcHJP5rA5:nigel',
+          rating: 2344,
+        }),
+        new TournamentPerson({
+          id: 'JkW7MXvVPfj7HdgAwLQzJ4:will',
+          rating: 1234,
+        }),
+      ],
+    }),
+  });
 
   return msg;
 };
 
 const newTournamentControlsMessage = () => {
-  const gameReq = new GameRequest();
-  const rules = new GameRules();
-  rules.setBoardLayoutName('CrosswordGame');
-  rules.setLetterDistributionName('English');
-  gameReq.setLexicon('NWL20');
+  const rules = new GameRules({
+    boardLayoutName: 'CrosswordGame',
+    letterDistributionName: 'English',
+  });
+  const gameReq = new GameRequest({
+    lexicon: 'NWL20',
+    rules: rules,
+    initialTimeSeconds: 180,
+    challengeRule: ChallengeRule.DOUBLE,
+  });
 
-  gameReq.setRules(rules);
-  gameReq.setInitialTimeSeconds(180);
-  gameReq.setChallengeRule(ChallengeRule.DOUBLE);
+  const divControls = new DivisionControls({
+    id: 'qzqWHsGVBrAgiuAZp9nJJm',
+    division: 'NWL B',
+    gameRequest: gameReq,
+    suspendedResult: TournamentGameResult.BYE,
+  });
 
-  const divControls = new DivisionControls();
-  divControls.setId('qzqWHsGVBrAgiuAZp9nJJm');
-  divControls.setDivision('NWL B');
-  divControls.setGameRequest(gameReq);
-  divControls.setSuspendedResult(TournamentGameResult.BYE);
-
-  const msg = new DivisionControlsResponse();
-  msg.setDivision('NWL B');
-  msg.setId('qzqWHsGVBrAgiuAZp9nJJm');
-  msg.setDivisionControls(divControls);
+  const msg = new DivisionControlsResponse({
+    division: 'NWL B',
+    id: 'qzqWHsGVBrAgiuAZp9nJJm',
+    divisionControls: divControls,
+  });
 
   return msg;
 };
 
 const newDivisionRoundControlsMessage = () => {
-  const msg = new DivisionRoundControls();
-  msg.setId('qzqWHsGVBrAgiuAZp9nJJm');
-  msg.setDivision('NWL B');
+  const msg = new DivisionRoundControls({
+    id: 'qzqWHsGVBrAgiuAZp9nJJm',
+    division: 'NWL B',
+  });
+  const rcl = new RoundControl({
+    firstMethod: FirstMethod.AUTOMATIC_FIRST,
+    gamesPerRound: 1,
+  });
 
-  const rcl = new RoundControl();
-  const pairing = new Pairing();
+  const game = new TournamentGame({
+    scores: [0, 0],
+    results: [0, 0],
+  });
+  const pairing = new Pairing({
+    players: [1, 0],
+    round: 0,
+    games: [game],
+    outcomes: [0, 0],
+    readyStates: ['', ''],
+  });
 
-  rcl.setFirstMethod(FirstMethod.AUTOMATIC_FIRST);
-  rcl.setGamesPerRound(1);
-
-  pairing.setPlayersList([1, 0]);
-  pairing.setRound(0);
-
-  const game = new TournamentGame();
-  game.setScoresList([0, 0]);
-  game.setResultsList([0, 0]);
-
-  pairing.setGamesList([game]);
-  pairing.setOutcomesList([0, 0]);
-  pairing.setReadyStatesList(['', '']);
-
-  msg.setRoundControlsList([rcl]);
-  msg.setDivisionPairingsList([pairing]);
+  msg.roundControls = [rcl];
+  msg.divisionPairings = [pairing];
   return msg;
 };
 
@@ -263,14 +274,10 @@ it('adds new divisions and pairings', () => {
   console.log('the final state', finalState);
   expect(finalState.divisions['NWL B'].pairings.length).toBe(1);
   expect(
-    finalState.divisions[
-      'NWL B'
-    ].pairings[0].roundPairings[0].players[0].getId()
+    finalState.divisions['NWL B'].pairings[0].roundPairings[0].players[0].id
   ).toBe('JkW7MXvVPfj7HdgAwLQzJ4:will');
   expect(
-    finalState.divisions[
-      'NWL B'
-    ].pairings[0].roundPairings[0].players[1].getId()
+    finalState.divisions['NWL B'].pairings[0].roundPairings[0].players[1].id
   ).toBe('ViSLeuyqNcSA3GcHJP5rA5:nigel');
 });
 

@@ -211,7 +211,9 @@ export const SuperEnglishAlphabet: Alphabet = {
   });
 });
 
-export const alphabetFromName = (letterDistribution: string): Alphabet => {
+export const alphabetFromName = (
+  letterDistribution: string | undefined
+): Alphabet => {
   switch (letterDistribution) {
     case 'norwegian':
       return StandardNorwegianAlphabet;

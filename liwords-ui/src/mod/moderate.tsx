@@ -1,110 +1,79 @@
 import React, { useCallback, useEffect } from 'react';
 
-import {
-  message,
-  Modal,
-  notification,
-  Form,
-  Select,
-  InputNumber,
-  Input,
-  Button,
-} from 'antd';
+import { message, Modal, Form, Select, InputNumber, Input, Button } from 'antd';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
-import axios from 'axios';
-import { toAPIUrl } from '../api/api';
 import { useMountedState } from '../utils/mounted';
+import { flashError, useClient } from '../utils/hooks/connect';
+import { ModService } from '../gen/api/proto/mod_service/mod_service_connectweb';
+import { proto3 } from '@bufbuild/protobuf';
+import {
+  EmailType,
+  ModActionsList,
+  ModActionsMap,
+} from '../gen/api/proto/mod_service/mod_service_pb';
+import { PromiseClient } from '@domino14/connect-web';
+import { ModActionType } from '../gen/api/proto/mod_service/mod_service_pb';
 
 type ModProps = {
   userID: string;
   destroy: () => void;
 };
 
-type ModAction = {
-  userId: string;
-  type: string;
-  duration: number;
-  startTime: string;
-  endTime: string;
-  removedTime: string;
-  channel: string;
-  messageId: string;
-  applierUserId: string;
-  removerUserId: string;
-  chatText: string;
-  note: string;
-  emailType: string;
-};
-
-type ActionsMap = { actions: { [name: string]: ModAction } };
-type ActionsList = { actions: Array<ModAction> };
-
 const Moderation = (props: ModProps) => {
   const { useState } = useMountedState();
 
-  const [activeActions, setActiveActions] = useState<ActionsMap>({
-    actions: {},
-  });
-  const [actionsHistory, setActionsHistory] = useState<ActionsList>({
-    actions: [],
-  });
+  const [activeActions, setActiveActions] = useState<ModActionsMap>(
+    new ModActionsMap()
+  );
+  const [actionsHistory, setActionsHistory] = useState<ModActionsList>(
+    new ModActionsList()
+  );
 
-  const onFinish = (values: { [key: string]: string | number }) => {
+  const modClient = useClient(ModService);
+
+  const onFinish = async (values: { [key: string]: string | number }) => {
+    const actionType = proto3
+      .getEnumType(ModActionType)
+      .findName(values.action as string)?.no;
+    const emailType = proto3
+      .getEnumType(EmailType)
+      .findName(values.emailType as string)?.no;
     const obj = {
       actions: [
         {
           userId: props.userID,
-          type: values.action,
-          note: values.note,
+          type: actionType,
+          note: values.note as string,
           duration: Math.round((values.duration as number) * 3600),
-          emailType: values.emailType,
+          emailType: emailType,
         },
       ],
     };
 
-    axios
-      .post(toAPIUrl('mod_service.ModService', 'ApplyActions'), obj)
-      .then((e) => {
-        message.info({
-          content: 'Applied mod action',
-          duration: 2,
-        });
-        props.destroy();
-      })
-      .catch((e) => {
-        if (e.response) {
-          notification.error({
-            message: 'Error',
-            description: e.response.data.msg,
-            duration: 4,
-          });
-        } else {
-          console.log(e);
-        }
+    try {
+      await modClient.applyActions(obj);
+      message.info({
+        content: 'Applied mod action',
+        duration: 2,
       });
+      props.destroy();
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   useEffect(() => {
     const obj = {
-      user_id: props.userID,
+      userId: props.userID,
     };
-
-    axios
-      .post<ActionsMap>(toAPIUrl('mod_service.ModService', 'GetActions'), obj)
-      .then((a) => {
-        setActiveActions(a.data);
-        axios
-          .post<ActionsList>(
-            toAPIUrl('mod_service.ModService', 'GetActionHistory'),
-            obj
-          )
-          .then((a) => {
-            // newest first
-            a.data.actions.reverse();
-            setActionsHistory(a.data);
-          });
-      });
-  }, [props.userID]);
+    (async () => {
+      const actions = await modClient.getActions(obj);
+      setActiveActions(actions);
+      const actionHistory = await modClient.getActionHistory(obj);
+      actionHistory.actions.reverse();
+      setActionsHistory(actionHistory);
+    })();
+  }, [modClient, props.userID]);
 
   const [form] = Form.useForm();
 
@@ -174,14 +143,14 @@ const Moderation = (props: ModProps) => {
 
       <h3>Active mod actions</h3>
       <pre className="readable-text-color">
-        {JSON.stringify(activeActions, null, 2)}
+        {activeActions.toJsonString({ prettySpaces: 2 })}
       </pre>
       <h3>Moderation history</h3>
       <pre
         className="readable-text-color"
         style={{ maxHeight: 200, overflowY: 'scroll' }}
       >
-        {JSON.stringify(actionsHistory, null, 2)}
+        {actionsHistory.toJsonString({ prettySpaces: 2 })}
       </pre>
     </div>
   );
@@ -205,38 +174,29 @@ export const moderateUser = (uuid: string, username: string) => {
   });
 };
 
-export const deleteChatMessage = (
+export const deleteChatMessage = async (
   userid: string,
   msgid: string,
-  channel: string
+  channel: string,
+  modClient: PromiseClient<typeof ModService>
 ) => {
   const obj = {
     actions: [
       {
-        user_id: userid,
-        type: 'REMOVE_CHAT',
+        userId: userid,
+        type: ModActionType.REMOVE_CHAT,
         channel: channel,
-        message_id: msgid,
+        messageId: msgid,
       },
     ],
   };
-  axios
-    .post(toAPIUrl('mod_service.ModService', 'ApplyActions'), obj)
-    .then(() => {
-      message.info({
-        content: 'Removed chat',
-        duration: 2,
-      });
-    })
-    .catch((e) => {
-      if (e.response) {
-        notification.error({
-          message: 'Error',
-          description: e.response.data.msg,
-          duration: 4,
-        });
-      } else {
-        console.log(e);
-      }
+  try {
+    await modClient.applyActions(obj);
+    message.info({
+      content: 'Removed chat',
+      duration: 2,
     });
+  } catch (e) {
+    flashError(e);
+  }
 };
