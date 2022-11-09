@@ -30,9 +30,9 @@ const pairingsForRound = (
   const unpairedPlayers = new Set(division.players.map((tp) => tp.id));
 
   const key = (persons: TournamentPerson[]): string => {
-    let k = persons[0] + ':' + persons[1];
-    if (persons[1] < persons[0]) {
-      k = persons[1] + ':' + persons[0];
+    let k = persons[0].id + '-' + persons[1].id;
+    if (persons[1].id < persons[0].id) {
+      k = persons[1].id + '-' + persons[0].id;
     }
     return k;
   };
