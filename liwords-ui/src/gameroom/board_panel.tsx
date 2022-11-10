@@ -102,6 +102,7 @@ type Props = {
   playerMeta: Array<PlayerInfo>;
   puzzleMode?: boolean;
   puzzleSolved?: number;
+  boardEditingMode?: boolean;
   tournamentSlug?: string;
   tournamentID?: string;
   tournamentPairedMode?: boolean;
@@ -266,6 +267,10 @@ export const BoardPanel = React.memo((props: Props) => {
       // it is always my turn in puzzle mode.
       return true;
     }
+    if (props.boardEditingMode) {
+      // it is also always "my" turn in board editing mode.
+      return true;
+    }
     const iam = gameContext.nickToPlayerOrder[props.username];
     return iam && iam === `p${examinableGameContext.onturn}`;
   }, [
@@ -283,11 +288,12 @@ export const BoardPanel = React.memo((props: Props) => {
     sendGameplayEvent,
     handleUnsetHover,
     username,
+    boardEditingMode,
   } = props;
 
   const makeMove = useCallback(
     (move: string, addl?: string) => {
-      if (isExamining) return;
+      if (isExamining && !boardEditingMode) return;
       let moveEvt;
       if (move !== 'resign' && !isMyTurn) {
         console.log(
@@ -1576,6 +1582,70 @@ export const BoardPanel = React.memo((props: Props) => {
   const tileColorId =
     (props.gameDone ? null : myId) ?? examinableGameContext.onturn;
 
+  const showControlsForGame = !anonymousTourneyViewer && !props.puzzleMode;
+  const authedSolvingPuzzle = props.puzzleMode && !props.anonymousViewer;
+
+  let gameControls = null;
+
+  if (showControlsForGame || authedSolvingPuzzle || boardEditingMode) {
+    gameControls = (
+      <GameControls
+        isExamining={isExamining}
+        myTurn={authedSolvingPuzzle || boardEditingMode ? true : isMyTurn}
+        finalPassOrChallenge={
+          examinableGameContext.playState === PlayState.WAITING_FOR_FINAL_PASS
+        }
+        allowAnalysis={
+          authedSolvingPuzzle
+            ? props.puzzleSolved !== PuzzleStatus.UNANSWERED
+            : nonDirectorAnalyzerDisallowed
+            ? examinableGameContext.playState === PlayState.GAME_OVER
+            : true
+        }
+        exchangeAllowed={exchangeAllowed}
+        observer={authedSolvingPuzzle || boardEditingMode ? false : observer}
+        onRecall={recallTiles}
+        showExchangeModal={showExchangeModal}
+        onPass={handlePass}
+        onResign={handleResign}
+        onRequestAbort={handleRequestAbort}
+        onNudge={handleNudge}
+        onChallenge={handleChallenge}
+        onCommit={handleCommit}
+        onRematch={props.handleAcceptRematch ?? rematch}
+        onExamine={handleExamineStart}
+        onExportGCG={handleExportGCG}
+        showNudge={authedSolvingPuzzle ? false : showNudge}
+        showAbort={authedSolvingPuzzle ? false : showAbort}
+        showRematch={
+          authedSolvingPuzzle ? false : examinableGameEndMessage !== ''
+        }
+        gameEndControls={
+          authedSolvingPuzzle
+            ? props.puzzleSolved !== PuzzleStatus.UNANSWERED
+            : examinableGameEndMessage !== '' || props.gameDone
+        }
+        currentRack={props.currentRack}
+        tournamentSlug={props.tournamentSlug}
+        tournamentPairedMode={props.tournamentPairedMode}
+        lexicon={props.lexicon}
+        challengeRule={props.challengeRule}
+        setHandlePassShortcut={setHandlePassShortcut}
+        setHandleChallengeShortcut={setHandleChallengeShortcut}
+        setHandleNeitherShortcut={setHandleNeitherShortcut}
+        exitableExaminer={props.exitableExaminer}
+        puzzleMode={props.puzzleMode}
+      />
+    );
+  }
+  if (authedSolvingPuzzle) {
+    gameControls = (
+      <Affix offsetTop={126} className="rack-affix">
+        {gameControls}
+      </Affix>
+    );
+  }
+
   const gameBoard = (
     <div
       id="board-container"
@@ -1657,85 +1727,7 @@ export const BoardPanel = React.memo((props: Props) => {
         <GameMetaMessage message={gameMetaMessage} />
       )}
       {isTouchDevice() ? <TilePreview gridDim={props.board.dim} /> : null}
-      {!anonymousTourneyViewer && !props.puzzleMode && (
-        <GameControls
-          isExamining={isExamining}
-          myTurn={isMyTurn}
-          finalPassOrChallenge={
-            examinableGameContext.playState === PlayState.WAITING_FOR_FINAL_PASS
-          }
-          allowAnalysis={
-            nonDirectorAnalyzerDisallowed
-              ? examinableGameContext.playState === PlayState.GAME_OVER
-              : true
-          }
-          exchangeAllowed={exchangeAllowed}
-          observer={observer}
-          onRecall={recallTiles}
-          showExchangeModal={showExchangeModal}
-          onPass={handlePass}
-          onResign={handleResign}
-          onRequestAbort={handleRequestAbort}
-          onNudge={handleNudge}
-          onChallenge={handleChallenge}
-          onCommit={handleCommit}
-          onRematch={props.handleAcceptRematch ?? rematch}
-          onExamine={handleExamineStart}
-          onExportGCG={handleExportGCG}
-          showNudge={showNudge}
-          showAbort={showAbort}
-          showRematch={examinableGameEndMessage !== ''}
-          gameEndControls={examinableGameEndMessage !== '' || props.gameDone}
-          currentRack={props.currentRack}
-          tournamentSlug={props.tournamentSlug}
-          tournamentPairedMode={props.tournamentPairedMode}
-          lexicon={props.lexicon}
-          challengeRule={props.challengeRule}
-          setHandlePassShortcut={setHandlePassShortcut}
-          setHandleChallengeShortcut={setHandleChallengeShortcut}
-          setHandleNeitherShortcut={setHandleNeitherShortcut}
-          exitableExaminer={props.exitableExaminer}
-        />
-      )}
-      {props.puzzleMode && !props.anonymousViewer && (
-        <Affix offsetTop={126} className="rack-affix">
-          <GameControls
-            isExamining={isExamining}
-            myTurn={true}
-            finalPassOrChallenge={
-              examinableGameContext.playState ===
-              PlayState.WAITING_FOR_FINAL_PASS
-            }
-            allowAnalysis={props.puzzleSolved !== PuzzleStatus.UNANSWERED}
-            exchangeAllowed={exchangeAllowed}
-            observer={false}
-            onRecall={recallTiles}
-            showExchangeModal={showExchangeModal}
-            onPass={handlePass}
-            onResign={handleResign}
-            onRequestAbort={handleRequestAbort}
-            onNudge={handleNudge}
-            onChallenge={handleChallenge}
-            onCommit={handleCommit}
-            onRematch={props.handleAcceptRematch ?? rematch}
-            onExamine={handleExamineStart}
-            onExportGCG={handleExportGCG}
-            showNudge={false}
-            showAbort={false}
-            showRematch={false}
-            gameEndControls={props.puzzleSolved !== PuzzleStatus.UNANSWERED}
-            currentRack={props.currentRack}
-            tournamentSlug={props.tournamentSlug}
-            tournamentPairedMode={props.tournamentPairedMode}
-            lexicon={props.lexicon}
-            challengeRule={props.challengeRule}
-            setHandlePassShortcut={setHandlePassShortcut}
-            setHandleChallengeShortcut={setHandleChallengeShortcut}
-            setHandleNeitherShortcut={setHandleNeitherShortcut}
-            puzzleMode={true}
-          />
-        </Affix>
-      )}
+      {gameControls}
       <ExchangeTiles
         tileColorId={tileColorId}
         alphabet={props.alphabet}

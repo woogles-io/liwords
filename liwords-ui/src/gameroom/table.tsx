@@ -717,8 +717,6 @@ export const Table = React.memo((props: Props) => {
           />
           <ScoreCard
             isExamining={isExamining}
-            username={username}
-            playing={us !== undefined}
             lexicon={gameInfo.gameRequest?.lexicon ?? ''}
             variant={gameInfo.gameRequest?.rules?.variantName}
             events={examinableGameContext.turns}
