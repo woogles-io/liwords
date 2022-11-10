@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS omgwords_player_stats (
 
 CREATE INDEX idx_omgwords_player_stats_player_id ON omgwords USING btree (player_id);
 
-CREATE TABLE IF NOT EXISTS omgwords_games (
+CREATE TABLE IF NOT EXISTS omgwords_games_players (
     game_id bigint NOT NULL,
     player_id bigint NOT NULL,
     player_score int,
@@ -105,8 +105,8 @@ CREATE TABLE IF NOT EXISTS omgwords_games (
     FOREIGN KEY (player_id) REFERENCES users(id),
 );
 
-CREATE INDEX idx_omgwords_games_game_id ON omgwords USING btree (game_id);
-CREATE INDEX idx_omgwords_games_player_id ON omgwords USING btree (player_id);
+CREATE INDEX idx_omgwords_games_players_game_id ON omgwords USING btree (game_id);
+CREATE INDEX idx_omgwords_games_players_player_id ON omgwords USING btree (player_id);
 
 CREATE TABLE IF NOT EXISTS omgwords_histories (
     game_id bigint NOT NULL,

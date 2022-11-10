@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stores/common"
 	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
@@ -18,6 +19,7 @@ import (
 	macondogame "github.com/domino14/macondo/game"
 	macondoipc "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/jackc/pgx/v4"
+	"github.com/rs/zerolog/log"
 )
 
 type play struct {
@@ -54,10 +56,42 @@ func (s *DBStore) OMGGet(ctx context.Context, uuid string) (*entity.Game, error)
 	}
 	defer tx.Rollback(ctx)
 
+	rows, err := tx.Query(ctx, `SELECT
+	omgwords.id,
+	omgwords.created_at,
+	omgwords.timers,
+	omgwords.history,
+	omgwords.request,
+	omgwords.meta_events,
+	omgwords.tournament_data,
+	omgwords.tournament_id,
+	omgwords.started,
+	omgwords.game_end_reason,
+	omgwords.type,
+	omgwords_games_players.player_id,
+	omgwords_games_players.won
+	omgwords_games_players.player_old_rating,
+	omgwords_games_players.player_new_rating,
+	users.username,
+	users.uuid,
+	users.internal_bot,
+	profiles.ratings
+	FROM omgwords
+	INNER JOIN omgwords_histories ON omgwords.id = omgwords_histories.game_id
+	INNER JOIN omgwords_games_players ON omgwords.id = omgwords_games_players.game_id
+	INNER JOIN users ON users.id = omgwords_games_players.player_id
+	INNER JOIN profiles ON users.id = profiles.user_id
+	WHERE omgwords.uuid = $1
+	ORDER BY omgwords_games_players.first`, uuid)
+	if err != nil {
+		return nil, err
+	}
+
 	var gameDBID uint
 	var createdAt time.Time
 	var timers entity.Timers
-	var requestBytes []byte
+	var history macondoipc.GameHistory
+	var request ipc.GameRequest
 	var metaEvents entity.MetaEventData
 	var tournamentData entity.TournamentData
 	var tournamentID string
@@ -65,64 +99,42 @@ func (s *DBStore) OMGGet(ctx context.Context, uuid string) (*entity.Game, error)
 	var gameEndReason int
 	var gameType int
 
-	err = tx.QueryRow(ctx, `SELECT id, create_at, timers, request, meta_events,
-	tournament_data, tournament_id, started, game_end_reason,
-	type FROM omgwords WHERE uuid = $1`, uuid).Scan(
-		&gameDBID, &createdAt, &timers, &requestBytes, &metaEvents, &tournamentData, &tournamentID, &started, &gameEndReason, &gameType)
-	if err != nil {
-		return nil, err
-	}
-
-	var historyBytes []byte
-
-	err = tx.QueryRow(ctx, `SELECT history FROM omgwords_histories WHERE game_id = $1`, gameDBID).Scan(&historyBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	var history macondoipc.GameHistory
-	err = json.Unmarshal(historyBytes, &history)
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := tx.Query(ctx, `SELECT player_id, first, won, player_old_rating, player_new_rating FROM omgwords_games WHERE game_id = $1`, gameDBID)
-	if err == pgx.ErrNoRows {
-		return nil, fmt.Errorf("no rows found for omgwords id: %d", gameDBID)
-	} else if err != nil {
-		return nil, err
-	}
-
 	var p0id uint
 	var p0won bool
 	var p0OldRating float64
 	var p0NewRating float64
+	var p0Nickname string
+	var p0UserId string
+	var p0IsBot bool
+	var p0Rating entity.Ratings
+
 	var p1id uint
 	var p1won bool
 	var p1OldRating float64
 	var p1NewRating float64
+	var p1Nickname string
+	var p1UserId string
+	var p1IsBot bool
+	var p1Rating entity.Ratings
 
+	idx := 0
 	for rows.Next() {
-		var playerID uint
-		var first bool
-		var won bool
-		var playerOldRating float64
-		var playerNewRating float64
-		if err := rows.Scan(&playerID, &first, &won, &playerOldRating, &playerNewRating); err != nil {
-			rows.Close()
-			return nil, err
-		}
-		if first {
-			p0id = playerID
-			p0won = won
-			p0OldRating = playerOldRating
-			p0NewRating = playerNewRating
+		if idx == 0 {
+			if err := rows.Scan(&gameDBID, &createdAt, &timers, &history, &request, &metaEvents, &tournamentData, &tournamentID, &started, &gameEndReason, &gameType,
+				&p0id, &p0won, &p0OldRating, &p0NewRating,
+				&p0Nickname, &p0UserId, &p0IsBot, &p0Rating); err != nil {
+				rows.Close()
+				return nil, err
+			}
 		} else {
-			p1id = playerID
-			p1won = won
-			p1OldRating = playerOldRating
-			p1NewRating = playerNewRating
+			if err := rows.Scan(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
+				&p1id, &p1won, &p1OldRating, &p1NewRating,
+				&p1Nickname, &p1UserId, &p1IsBot, &p1Rating); err != nil {
+				rows.Close()
+				return nil, err
+			}
 		}
+		idx++
 	}
 	rows.Close()
 
@@ -141,56 +153,38 @@ func (s *DBStore) OMGGet(ctx context.Context, uuid string) (*entity.Game, error)
 		loserIdx = 0
 	}
 
-	var req ipc.GameRequest
-	err = json.Unmarshal(requestBytes, &req)
+	timefmt, variant, err := entity.VariantFromGameReq(&request)
 	if err != nil {
 		return nil, err
 	}
+	variantKey := entity.ToVariantKey(request.Lexicon, variant, timefmt)
 
-	qdata := &entity.Quickdata{}
+	qdata := entity.Quickdata{
+		OriginalRequestId: request.OriginalRequestId,
+		FinalScores:       history.FinalScores,
+		OriginalRatings:   []float64{p0OldRating, p1OldRating},
+		NewRatings:        []float64{p0NewRating, p1NewRating},
+		PlayerInfo: []*pb.PlayerInfo{
+			{Nickname: p0Nickname,
+				UserId: p0UserId,
+				Rating: entity.RelevantRating(p0Rating, variantKey),
+				IsBot:  p0IsBot,
+				First:  true},
+			{Nickname: p1Nickname,
+				UserId: p1UserId,
+				Rating: entity.RelevantRating(p1Rating, variantKey),
+				IsBot:  p1IsBot,
+				First:  false},
+		},
+	}
 
-	stats := &entity.Stats{}
+	stats := entity.Stats{}
 
-	entGame, err := fromState(timers, qdata, started, gameEndReason, p0id, p1id, winnerIdx, loserIdx,
-		requestBytes, historyBytes, stats, &metaEvents, s.gameEventChan, s.cfg, createdAt, ipc.GameType(gameType), gameDBID)
+	entGame, err := fromStateOMG(timers, &qdata, started, gameEndReason, p0id, p1id, winnerIdx, loserIdx,
+		&request, &history, &stats, &metaEvents, s.gameEventChan, s.cfg, createdAt, ipc.GameType(gameType), gameDBID)
 	if err != nil {
 		return nil, err
 	}
-
-	// In the future we will probably get rid of quickdata
-	// but for now we populate it here so that the underlying
-	// DB store for a game is consistent across the migration.
-	entGame.Quickdata.OriginalRequestId = entGame.GameReq.OriginalRequestId
-	entGame.Quickdata.FinalScores = entGame.History().FinalScores
-	entGame.Quickdata.OriginalRatings = []float64{p0OldRating, p1OldRating}
-	entGame.Quickdata.NewRatings = []float64{p0NewRating, p1NewRating}
-
-	playerDBIDs := []uint{p0id, p1id}
-	playerInfos := make([]*pb.PlayerInfo, 2)
-
-	for idx, playerDBID := range playerDBIDs {
-		user, err := common.GetUserBy(ctx, tx,
-			&common.CommonDBConfig{TableType: common.UsersTable,
-				SelectByType:   common.SelectByID,
-				Value:          playerDBID,
-				IncludeProfile: false})
-		if err != nil {
-			return nil, err
-		}
-		ratingKey, err := entGame.RatingKey()
-		if err != nil {
-			return nil, err
-		}
-		playerInfos = append(playerInfos, &pb.PlayerInfo{
-			Nickname: user.Username,
-			UserId:   user.UUID,
-			Rating:   user.GetRelevantRating(ratingKey),
-			IsBot:    user.IsBot,
-			First:    idx == 0,
-		})
-	}
-
-	entGame.Quickdata.PlayerInfo = playerInfos
 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
@@ -230,7 +224,7 @@ func (s *DBStore) OMGGetRematchStreak(ctx context.Context, originalRequestId str
 	// will allow us to order by username later.
 	rows, err := tx.Query(ctx, `SELECT omgwords.uuid AS game_uuid, won, player_id
 	FROM omgwords 
-	INNER JOIN omgwords_games ON omgwords.id = omgwords_games.game_id
+	INNER JOIN omgwords_games_players ON omgwords.id = omgwords_games_players.game_id
 	WHERE request->>'original_request_id' = $1 AND game_end_reason not in ($2, $3, $4) ORDER BY omgwords.created_at, player_id DESC`,
 		originalRequestId, pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED)
 	if err == pgx.ErrNoRows {
@@ -314,7 +308,7 @@ func (s *DBStore) OMGGetRecentGames(ctx context.Context, username string, numGam
 	userDBID, _, err := common.GetUUIDAndDBIDFromUsername(ctx, tx, username)
 
 	rows, err := tx.Query(ctx, `SELECT uuid
-	FROM omgwords_games INNER JOIN omgwords ON omgwords_games.game_id = omgwords.id
+	FROM omgwords_games_players INNER JOIN omgwords ON omgwords_games_players.game_id = omgwords.id
 	WHERE player_id = $1
 	AND game_end_reason NOT IN ($2, $3, $4) ORDER BY created_at DESC LIMIT $5 OFFSET $6`,
 		userDBID,
@@ -381,61 +375,62 @@ func (s *DBStore) OMGSet(ctx context.Context, g *entity.Game) error {
 		return err
 	}
 
-	winner := ""
-	if g.WinnerIdx != -1 {
-		winner = g.History().Players[g.WinnerIdx].UserId
-	}
-	first := g.History().Players[0].UserId
-
-	for playerIdx, playerInfo := range g.History().Players {
-		err = common.Update(ctx, tx, []string{"player_score", "player_old_rating", "player_new_rating", "won", "first"},
-			[]interface{}{g.History().FinalScores[playerIdx], g.Quickdata.OriginalRatings[playerIdx], g.Quickdata.NewRatings[playerIdx], playerInfo.UserId == winner, playerInfo.UserId == first},
-			&common.CommonDBConfig{TableType: common.OmgwordsGamesTable, SelectByType: common.SelectByGameID, Value: g.GameID()})
-
-		if err != nil {
-			return err
+	if g.GameEndReason != ipc.GameEndReason_NONE {
+		winner := ""
+		if g.WinnerIdx != -1 {
+			winner = g.History().Players[g.WinnerIdx].UserId
 		}
-	}
+		first := g.History().Players[0].UserId
 
-	if g.GameEndReason != ipc.GameEndReason_NONE && g.RatingMode() == ipc.RatingMode_RATED {
-		// The game has ended set the stats
-		// Check if game stats exist, skip if they already exist
-		var statsExist bool
-		err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM omgwords_stats WHERE game_id = $1)`, gameDBID).Scan(&statsExist)
-		if err != nil {
-			return err
-		}
-		if !statsExist {
-			// Get stats
-			pStats, err := setStats(ctx, tx, g)
+		for playerIdx, playerInfo := range g.History().Players {
+			err = common.Update(ctx, tx, []string{"player_score", "player_old_rating", "player_new_rating", "won", "first"},
+				[]interface{}{g.History().FinalScores[playerIdx], g.Quickdata.OriginalRatings[playerIdx], g.Quickdata.NewRatings[playerIdx], playerInfo.UserId == winner, playerInfo.UserId == first},
+				&common.CommonDBConfig{TableType: common.OmgwordsGamesTable, SelectByType: common.SelectByGameID, Value: g.GameID()})
+
 			if err != nil {
 				return err
 			}
-			variant, timeControl, err := entity.VariantFromGameReq(g.GameReq)
+		}
+
+		if g.RatingMode() == ipc.RatingMode_RATED {
+			// The game has ended set the stats
+			// Check if game stats exist, skip if they already exist
+			var statsExist bool
+			err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM omgwords_stats WHERE game_id = $1)`, gameDBID).Scan(&statsExist)
 			if err != nil {
 				return err
 			}
-			lexicon := g.History().Lexicon
-			for playerIdx, ps := range pStats {
-				playerUUID := g.History().Players[playerIdx].UserId
-				playerDBID, err := common.GetUserDBIDFromUUID(ctx, tx, playerUUID)
+			if !statsExist {
+				// Get stats
+				pStats, err := setStats(ctx, tx, g)
 				if err != nil {
 					return err
 				}
-
-				var numRows int
-				err = tx.QueryRow(ctx, `SELECT COUNT(*) FROM omgwords_player_stats WHERE variant = $1 AND lexicon = $2 AND time_control = $3`, variant, lexicon, timeControl).Scan(&numRows)
+				variant, timeControl, err := entity.VariantFromGameReq(g.GameReq)
 				if err != nil {
 					return err
 				}
+				lexicon := g.History().Lexicon
+				for playerIdx, ps := range pStats {
+					playerUUID := g.History().Players[playerIdx].UserId
+					playerDBID, err := common.GetUserDBIDFromUUID(ctx, tx, playerUUID)
+					if err != nil {
+						return err
+					}
 
-				if numRows > 1 {
-					return fmt.Errorf("multiple omgwords_player_stats rows (%d) for player %d: %s, %s, %s", numRows, playerDBID, variant, lexicon, timeControl)
-				}
+					var numRows int
+					err = tx.QueryRow(ctx, `SELECT COUNT(*) FROM omgwords_player_stats WHERE variant = $1 AND lexicon = $2 AND time_control = $3`, variant, lexicon, timeControl).Scan(&numRows)
+					if err != nil {
+						return err
+					}
 
-				if numRows == 0 {
-					oppps := pStats[1-playerIdx]
-					_, err = tx.Exec(ctx, `INSERT INTO omgwords_player_stats
+					if numRows > 1 {
+						return fmt.Errorf("multiple omgwords_player_stats rows (%d) for player %d: %s, %s, %s", numRows, playerDBID, variant, lexicon, timeControl)
+					}
+
+					if numRows == 0 {
+						oppps := pStats[1-playerIdx]
+						_, err = tx.Exec(ctx, `INSERT INTO omgwords_player_stats
 					(player_id, variant, lexicon, time_control,
 						games, bingos, exchanges,
 						challenged_phonies, opp_challenged_phonies,
@@ -444,19 +439,19 @@ func (s *DBStore) OMGSet(ctx context.Context, g *entity.Game) error {
 						score, wins, losses, draws, turns, tiles_played,
 						high_game_score, high_game_id, high_play_score, high_play_game_id
 						VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-						playerDBID, variant, lexicon, timeControl,
-						1, ps.bingos, ps.exchanges,
-						ps.challengedPhonies, oppps.challengedPhonies,
-						ps.unchallengedPhonies, oppps.unchallengedPhonies,
-						ps.challengedWords, oppps.challengedWords,
-						ps.score, ps.wins, ps.losses, ps.draws, ps.turns, ps.tilesPlayed,
-						ps.score, gameDBID, ps.highPlay, gameDBID)
-					if err != nil {
-						return err
-					}
-				} else if numRows == 1 {
-					oppps := pStats[1-playerIdx]
-					_, err = tx.Exec(ctx, `UPDATE omgwords_player_stats SET
+							playerDBID, variant, lexicon, timeControl,
+							1, ps.bingos, ps.exchanges,
+							ps.challengedPhonies, oppps.challengedPhonies,
+							ps.unchallengedPhonies, oppps.unchallengedPhonies,
+							ps.challengedWords, oppps.challengedWords,
+							ps.score, ps.wins, ps.losses, ps.draws, ps.turns, ps.tilesPlayed,
+							ps.score, gameDBID, ps.highPlay, gameDBID)
+						if err != nil {
+							return err
+						}
+					} else if numRows == 1 {
+						oppps := pStats[1-playerIdx]
+						_, err = tx.Exec(ctx, `UPDATE omgwords_player_stats SET
 					   (games = games + 1,
 						bingos = bingos + $1,
 						exchanges = exchanges + $2,
@@ -477,40 +472,41 @@ func (s *DBStore) OMGSet(ctx context.Context, g *entity.Game) error {
 						high_play_score = CASE WHEN high_play_score < $17 THEN $17 ELSE high_play_score,
 						high_play_game_id = CASE WHEN high_play_score < $17 THEN $16 ELSE high_play_game_id,
 						WHERE player_id = $18 AND variant = $19 AND lexicon = $20 AND time_control = $21`,
-						ps.bingos, ps.exchanges,
-						ps.challengedPhonies, oppps.challengedPhonies,
-						ps.unchallengedPhonies, oppps.unchallengedPhonies,
-						ps.challengedWords, oppps.challengedWords,
-						ps.score, ps.wins, ps.losses, ps.draws, ps.turns, ps.tilesPlayed,
-						ps.score, gameDBID, ps.highPlay,
-						playerDBID, variant, lexicon, timeControl)
-					if err != nil {
-						return err
+							ps.bingos, ps.exchanges,
+							ps.challengedPhonies, oppps.challengedPhonies,
+							ps.unchallengedPhonies, oppps.unchallengedPhonies,
+							ps.challengedWords, oppps.challengedWords,
+							ps.score, ps.wins, ps.losses, ps.draws, ps.turns, ps.tilesPlayed,
+							ps.score, gameDBID, ps.highPlay,
+							playerDBID, variant, lexicon, timeControl)
+						if err != nil {
+							return err
+						}
+					} else {
+						return fmt.Errorf("invalid number of omgwords_player_stats rows (%d) for player %d: %s, %s, %s", numRows, playerDBID, variant, lexicon, timeControl)
 					}
-				} else {
-					return fmt.Errorf("invalid number of omgwords_player_stats rows (%d) for player %d: %s, %s, %s", numRows, playerDBID, variant, lexicon, timeControl)
-				}
 
-				_, err = tx.Exec(ctx, `INSERT INTO omgwords_stats
+					_, err = tx.Exec(ctx, `INSERT INTO omgwords_stats
 				(game_id, player_id, bingo, exchanges, challenged_phonies,
 					unchallenged_phonies, challenged_words, successful_challenges,
 					unsuccessful_challenges, score, wins, losses,
 					draws, turns, tiles_played) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-					gameDBID, playerDBID, ps.bingos, ps.exchanges, ps.challengedPhonies, ps.unchallengedPhonies,
-					ps.challengedWords, ps.successfulChallenges, ps.unsuccessfulChallenges, ps.score, ps.wins, ps.losses,
-					ps.draws, ps.turns, ps.tilesPlayed)
-				if err != nil {
-					return err
-				}
-
-				for _, wp := range ps.wordList {
-					_, err = tx.Exec(ctx, `INSERT INTO omgwords_word_stats
-					(game_id, player_id, is_bingo, is_unchallenged_phony,
-						is_challenged_phony, is_challenged_word, word, score) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-						gameDBID, playerDBID, wp.isBingo, wp.isUnchallengedPhony, wp.isChallengedPhony,
-						wp.isChallengedWord, wp.word, wp.score)
+						gameDBID, playerDBID, ps.bingos, ps.exchanges, ps.challengedPhonies, ps.unchallengedPhonies,
+						ps.challengedWords, ps.successfulChallenges, ps.unsuccessfulChallenges, ps.score, ps.wins, ps.losses,
+						ps.draws, ps.turns, ps.tilesPlayed)
 					if err != nil {
 						return err
+					}
+
+					for _, wp := range ps.wordList {
+						_, err = tx.Exec(ctx, `INSERT INTO omgwords_word_stats
+					(game_id, player_id, is_bingo, is_unchallenged_phony,
+						is_challenged_phony, is_challenged_word, word, score) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+							gameDBID, playerDBID, wp.isBingo, wp.isUnchallengedPhony, wp.isChallengedPhony,
+							wp.isChallengedWord, wp.word, wp.score)
+						if err != nil {
+							return err
+						}
 					}
 				}
 			}
@@ -566,6 +562,73 @@ func (s *DBStore) OMGSetReady(ctx context.Context, gid string, pidx int) (int, e
 
 func (s *DBStore) OMGGetHistory(ctx context.Context, id string) (*macondoipc.GameHistory, error) {
 	return nil, nil
+}
+
+// fromState returns an entity.Game from a DB State.
+func fromStateOMG(timers entity.Timers, qdata *entity.Quickdata, Started bool,
+	GameEndReason int, p0id, p1id uint, WinnerIdx, LoserIdx int, req *ipc.GameRequest, hist *macondoipc.GameHistory,
+	stats *entity.Stats, mdata *entity.MetaEventData,
+	gameEventChan chan<- *entity.EventWrapper, cfg *config.Config, createdAt time.Time, gameType pb.GameType, DBID uint) (*entity.Game, error) {
+
+	g := &entity.Game{
+		Started:       Started,
+		Timers:        timers,
+		GameReq:       req,
+		GameEndReason: pb.GameEndReason(GameEndReason),
+		WinnerIdx:     WinnerIdx,
+		LoserIdx:      LoserIdx,
+		ChangeHook:    gameEventChan,
+		PlayerDBIDs:   [2]uint{p0id, p1id},
+		Stats:         stats,
+		MetaEvents:    mdata,
+		Quickdata:     qdata,
+		CreatedAt:     createdAt,
+		Type:          gameType,
+		DBID:          DBID,
+	}
+	g.SetTimerModule(&entity.GameTimer{})
+
+	g.GameReq = req
+
+	lexicon := hist.Lexicon
+	if lexicon == "" {
+		// This can happen for some early games where we didn't migrate this.
+		lexicon = req.Lexicon
+	}
+
+	rules, err := macondogame.NewBasicGameRules(
+		&cfg.MacondoConfig, lexicon, req.Rules.BoardLayoutName,
+		req.Rules.LetterDistributionName, macondogame.CrossScoreOnly,
+		macondogame.Variant(req.Rules.VariantName))
+	if err != nil {
+		return nil, err
+	}
+
+	// There's a chance the game is over, so we want to get that state before
+	// the following function modifies it.
+	histPlayState := hist.GetPlayState()
+	log.Debug().Interface("old-play-state", histPlayState).Msg("play-state-loading-hist")
+	// This function modifies the history. (XXX it probably shouldn't)
+	// It modifies the play state as it plays the game from the beginning.
+	mcg, err := macondogame.NewFromHistory(hist, rules, len(hist.Events))
+	if err != nil {
+		return nil, err
+	}
+	// XXX: We should probably move this to `NewFromHistory`:
+	mcg.SetBackupMode(macondogame.InteractiveGameplayMode)
+	// Note: we don't need to set the stack length here, as NewFromHistory
+	// above does it.
+
+	g.Game = *mcg
+	log.Debug().Interface("history", g.History()).Msg("from-state")
+	// Finally, restore the play state from the passed-in history. This
+	// might immediately end the game (for example, the game could have timed
+	// out, but the NewFromHistory function doesn't actually handle that).
+	// We could consider changing NewFromHistory, but we want it to be as
+	// flexible as possible for things like analysis mode.
+	g.SetPlaying(histPlayState)
+	g.History().PlayState = histPlayState
+	return g, nil
 }
 
 func getGameInfoResponseFromUUID(ctx context.Context, tx pgx.Tx, uuid string) (*pb.GameInfoResponse, error) {

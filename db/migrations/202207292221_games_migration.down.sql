@@ -4,6 +4,6 @@ DROP TABLE IF EXISTS omgwords CASCADE;
 DROP TABLE IF EXISTS omgwords_stats CASCADE;
 DROP TABLE IF EXISTS omgwords_omgwords_word_stats CASCADE;
 DROP TABLE IF EXISTS omgwords_player_stats CASCADE;
-DROP TABLE IF EXISTS omgwords_games CASCADE;
+DROP TABLE IF EXISTS omgwords_games_players CASCADE;
 
 COMMIT;

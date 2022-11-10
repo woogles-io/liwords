@@ -86,7 +86,7 @@ var TableTypeToString = map[TableType]string{
 	SoughtGamesTable:     "soughtgames",
 	OmgwordsTable:        "omgwords",
 	OmgwordsHistoryTable: "omgwords_histories",
-	OmgwordsGamesTable:   "omgwords_games",
+	OmgwordsGamesTable:   "omgwords_games_players",
 }
 
 var DefaultTxOptions = pgx.TxOptions{
