@@ -227,7 +227,14 @@ func main() {
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
 		cfg.SecretKey, cfg.MailgunKey, cfg.DiscordToken, cfg.ArgonConfig)
 	registrationService := registration.NewRegistrationService(stores.UserStore, cfg.ArgonConfig)
-	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore, cfg)
+	gameService := gameplay.NewGameService(
+		stores.UserStore,
+		stores.GameStore,
+		stores.NotorietyStore,
+		stores.ListStatStore,
+		stores.TournamentStore,
+		cfg,
+	)
 	profileService := pkgprofile.NewProfileService(stores.UserStore, pkguser.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET")))
 	wordService := words.NewWordService(&cfg.MacondoConfig)
 	autocompleteService := pkguser.NewAutocompleteService(stores.UserStore)
@@ -249,6 +256,9 @@ func main() {
 
 	router.Handle(gameservice.GameMetadataServicePathPrefix,
 		middlewares.Then(gameservice.NewGameMetadataServiceServer(gameService, NewLoggingServerHooks())))
+
+	router.Handle(gameservice.GameEventServicePathPrefix,
+		middlewares.Then(gameservice.NewGameEventServiceServer(gameService, NewLoggingServerHooks())))
 
 	router.Handle(wordservice.WordServicePathPrefix,
 		middlewares.Then(wordservice.NewWordServiceServer(wordService, NewLoggingServerHooks())))

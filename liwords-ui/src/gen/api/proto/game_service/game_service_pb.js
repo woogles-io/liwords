@@ -136,3 +136,24 @@ export const RematchStreakRequest = proto3.makeMessageType(
   ],
 );
 
+/**
+ * GameEventResponse doesn't need to have any extra data. The GameEvent API
+ * will still use sockets to broadcast game information.
+ *
+ * @generated from message game_service.GameEventResponse
+ */
+export const GameEventResponse = proto3.makeMessageType(
+  "game_service.GameEventResponse",
+  [],
+);
+
+/**
+ * @generated from message game_service.TimePenaltyEvent
+ */
+export const TimePenaltyEvent = proto3.makeMessageType(
+  "game_service.TimePenaltyEvent",
+  () => [
+    { no: 1, name: "points_lost", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ],
+);
+

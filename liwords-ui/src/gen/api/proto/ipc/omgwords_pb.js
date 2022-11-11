@@ -100,6 +100,8 @@ export const ClientGameplayEvent = proto3.makeMessageType(
     { no: 2, name: "game_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "position_coords", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "tiles", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "full_rack", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "event_index", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ],
 );
 

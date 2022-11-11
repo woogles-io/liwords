@@ -52,3 +52,16 @@ service GameMetadataService {
   // GetGameHistory.
   rpc GetGameDocument(GameDocumentRequest) returns (GameDocumentResponse);
 }
+
+// GameEventResponse doesn't need to have any extra data. The GameEvent API
+// will still use sockets to broadcast game information.
+message GameEventResponse {}
+
+message TimePenaltyEvent { int32 points_lost = 1; }
+
+// GameEventService will handle our game event API. We can connect bots to this
+// API, or use it for sandbox mode, or for live annotations, etc.
+service GameEventService {
+  rpc SendGameEvent(ipc.ClientGameplayEvent) returns (GameEventResponse);
+  rpc SendTimePenaltyEvent(TimePenaltyEvent) returns (GameEventResponse);
+}

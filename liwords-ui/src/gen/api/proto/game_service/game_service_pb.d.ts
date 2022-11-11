@@ -327,3 +327,49 @@ export declare class RematchStreakRequest extends Message<RematchStreakRequest> 
   static equals(a: RematchStreakRequest | PlainMessage<RematchStreakRequest> | undefined, b: RematchStreakRequest | PlainMessage<RematchStreakRequest> | undefined): boolean;
 }
 
+/**
+ * GameEventResponse doesn't need to have any extra data. The GameEvent API
+ * will still use sockets to broadcast game information.
+ *
+ * @generated from message game_service.GameEventResponse
+ */
+export declare class GameEventResponse extends Message<GameEventResponse> {
+  constructor(data?: PartialMessage<GameEventResponse>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "game_service.GameEventResponse";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GameEventResponse;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GameEventResponse;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GameEventResponse;
+
+  static equals(a: GameEventResponse | PlainMessage<GameEventResponse> | undefined, b: GameEventResponse | PlainMessage<GameEventResponse> | undefined): boolean;
+}
+
+/**
+ * @generated from message game_service.TimePenaltyEvent
+ */
+export declare class TimePenaltyEvent extends Message<TimePenaltyEvent> {
+  /**
+   * @generated from field: int32 points_lost = 1;
+   */
+  pointsLost: number;
+
+  constructor(data?: PartialMessage<TimePenaltyEvent>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "game_service.TimePenaltyEvent";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TimePenaltyEvent;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TimePenaltyEvent;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TimePenaltyEvent;
+
+  static equals(a: TimePenaltyEvent | PlainMessage<TimePenaltyEvent> | undefined, b: TimePenaltyEvent | PlainMessage<TimePenaltyEvent> | undefined): boolean;
+}
+

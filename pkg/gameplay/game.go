@@ -483,8 +483,6 @@ func PlayMove(ctx context.Context,
 func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store, notorietyStore mod.NotorietyStore,
 	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore, userID string, cge *pb.ClientGameplayEvent) (*entity.Game, error) {
 
-	// XXX: VERIFY THAT THE CLIENT GAME ID CORRESPONDS TO THE GAME
-	// THE PLAYER IS PLAYING!
 	entGame, err := gameStore.Get(ctx, cge.GameId)
 	if err != nil {
 		return nil, err

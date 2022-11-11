@@ -45,6 +45,17 @@ message ClientGameplayEvent {
   // tiles that are being played (or exchanged). The `.` character is used
   // for thru, and lowercase characters are used for blanks.
   string tiles = 4;
+  // full_rack is the rack that the play is being made from. Note that the
+  // server already knows the full rack, so this does not need to be provided,
+  // unless our game is a broadcast/"sandbox" game where we can modify racks.
+  // Of course, special care should be taken to ignore this value if this
+  // is a regular game!
+  string full_rack = 5;
+  // event_index is the index of the event. This value should not be used for
+  // anything other than broadcast/"sandbox" games, and it will be used for
+  // editing previous moves. If used, the entire game until event_index will
+  // be truncated, so this must also be used with care!
+  int32 event_index = 6;
 }
 
 // A GameRules is just the name of a board layout + the name of a letter

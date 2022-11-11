@@ -3,8 +3,8 @@
 /* eslint-disable */
 /* @ts-nocheck */
 
-import {GameDocumentRequest, GameDocumentResponse, GameHistoryRequest, GameHistoryResponse, GameInfoRequest, GCGRequest, GCGResponse, RecentGamesRequest, RematchStreakRequest, StreakInfoResponse} from "./game_service_pb.js";
-import {GameInfoResponse, GameInfoResponses} from "../ipc/omgwords_pb.js";
+import {GameDocumentRequest, GameDocumentResponse, GameEventResponse, GameHistoryRequest, GameHistoryResponse, GameInfoRequest, GCGRequest, GCGResponse, RecentGamesRequest, RematchStreakRequest, StreakInfoResponse, TimePenaltyEvent} from "./game_service_pb.js";
+import {ClientGameplayEvent, GameInfoResponse, GameInfoResponses} from "../ipc/omgwords_pb.js";
 import {MethodKind} from "@bufbuild/protobuf";
 
 /**
@@ -75,6 +75,36 @@ export declare const GameMetadataService: {
       readonly name: "GetGameDocument",
       readonly I: typeof GameDocumentRequest,
       readonly O: typeof GameDocumentResponse,
+      readonly kind: MethodKind.Unary,
+    },
+  }
+};
+
+/**
+ * GameEventService will handle our game event API. We can connect bots to this
+ * API, or use it for sandbox mode, or for live annotations, etc.
+ *
+ * @generated from service game_service.GameEventService
+ */
+export declare const GameEventService: {
+  readonly typeName: "game_service.GameEventService",
+  readonly methods: {
+    /**
+     * @generated from rpc game_service.GameEventService.SendGameEvent
+     */
+    readonly sendGameEvent: {
+      readonly name: "SendGameEvent",
+      readonly I: typeof ClientGameplayEvent,
+      readonly O: typeof GameEventResponse,
+      readonly kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc game_service.GameEventService.SendTimePenaltyEvent
+     */
+    readonly sendTimePenaltyEvent: {
+      readonly name: "SendTimePenaltyEvent",
+      readonly I: typeof TimePenaltyEvent,
+      readonly O: typeof GameEventResponse,
       readonly kind: MethodKind.Unary,
     },
   }

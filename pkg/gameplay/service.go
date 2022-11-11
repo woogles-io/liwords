@@ -7,6 +7,8 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	entityutils "github.com/domino14/liwords/pkg/entity/utilities"
 	"github.com/domino14/liwords/pkg/mod"
+	"github.com/domino14/liwords/pkg/stats"
+	"github.com/domino14/liwords/pkg/tournament"
 	"github.com/domino14/liwords/pkg/utilities"
 	"github.com/domino14/macondo/gcgio"
 	"github.com/rs/zerolog/log"
@@ -22,14 +24,18 @@ import (
 // metadata, stats, etc. All real-time functionality is handled in
 // gameplay/game.go and related files.
 type GameService struct {
-	userStore user.Store
-	gameStore GameStore
-	cfg       *config.Config
+	userStore       user.Store
+	gameStore       GameStore
+	notorietyStore  mod.NotorietyStore
+	listStatStore   stats.ListStatStore
+	tournamentStore tournament.TournamentStore
+	cfg             *config.Config
 }
 
 // NewGameService creates a Twirp GameService
-func NewGameService(u user.Store, gs GameStore, cfg *config.Config) *GameService {
-	return &GameService{u, gs, cfg}
+func NewGameService(u user.Store, gs GameStore, ns mod.NotorietyStore,
+	lss stats.ListStatStore, ts tournament.TournamentStore, cfg *config.Config) *GameService {
+	return &GameService{u, gs, ns, lss, ts, cfg}
 }
 
 // GetMetadata gets metadata for the given game.
@@ -131,6 +137,35 @@ func (gs *GameService) GetGameDocument(ctx context.Context, req *pb.GameDocument
 		return nil, twirp.NewError(twirp.Internal, err.Error())
 	}
 	return &pb.GameDocumentResponse{Document: gdoc}, nil
+}
+
+func (gs *GameService) SendGameEvent(ctx context.Context, req *ipc.ClientGameplayEvent) (
+	*pb.GameEventResponse, error) {
+
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := gs.userStore.Get(ctx, sess.Username)
+	if err != nil {
+		log.Err(err).Msg("getting-user")
+		return nil, twirp.InternalErrorWith(err)
+	}
+
+	err = handleEventFromAPI(ctx, user.UUID, req, gs.gameStore,
+		gs.userStore, gs.notorietyStore,
+		gs.listStatStore, gs.tournamentStore)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	return &pb.GameEventResponse{}, nil
+}
+
+func (gs *GameService) SendTimePenaltyEvent(ctx context.Context, req *pb.TimePenaltyEvent) (
+	*pb.GameEventResponse, error) {
+
+	return nil, nil
 }
 
 func censorPlayer(gir *ipc.GameInfoResponse, playerIndex int, censoredUsername string) {

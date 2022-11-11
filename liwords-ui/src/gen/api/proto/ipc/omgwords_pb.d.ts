@@ -216,6 +216,27 @@ export declare class ClientGameplayEvent extends Message<ClientGameplayEvent> {
    */
   tiles: string;
 
+  /**
+   * full_rack is the rack that the play is being made from. Note that the
+   * server already knows the full rack, so this does not need to be provided,
+   * unless our game is a broadcast/"sandbox" game where we can modify racks.
+   * Of course, special care should be taken to ignore this value if this
+   * is a regular game!
+   *
+   * @generated from field: string full_rack = 5;
+   */
+  fullRack: string;
+
+  /**
+   * event_index is the index of the event. This value should not be used for
+   * anything other than broadcast/"sandbox" games, and it will be used for
+   * editing previous moves. If used, the entire game until event_index will
+   * be truncated, so this must also be used with care!
+   *
+   * @generated from field: int32 event_index = 6;
+   */
+  eventIndex: number;
+
   constructor(data?: PartialMessage<ClientGameplayEvent>);
 
   static readonly runtime: typeof proto3;
