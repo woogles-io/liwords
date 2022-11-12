@@ -62,7 +62,7 @@ import {
   GameEvent,
   GameEvent_Type,
   PlayState,
-} from '../gen/macondo/api/proto/macondo/macondo_pb';
+} from '../gen/api/proto/macondo/macondo_pb';
 import { TilePreview } from './tile';
 import { Alphabet } from '../constants/alphabets';
 import { MessageType } from '../gen/api/proto/ipc/ipc_pb';

@@ -8,7 +8,7 @@ import {
   TournamentReducer,
 } from './tournament_reducer';
 import { ftData } from './testdata/tourney_1_divisions';
-import { ChallengeRule } from '../../gen/macondo/api/proto/macondo/macondo_pb';
+import { ChallengeRule } from '../../gen/api/proto/macondo/macondo_pb';
 import {
   TournamentMetadata,
   TType,

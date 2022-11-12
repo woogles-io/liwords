@@ -3,7 +3,7 @@ syntax = "proto3";
 package ipc;
 option go_package = "github.com/domino14/liwords/rpc/api/proto/ipc";
 
-import "api/proto/ipc/omgwords.proto";
+import "ipc/omgwords.proto";
 
 // A MatchUser requests or receives a match via a seek or a match request.
 message MatchUser {

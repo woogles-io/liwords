@@ -5,13 +5,13 @@ import {
   GameHistory,
   PlayerInfo,
   GameEvent,
-} from '../../gen/macondo/api/proto/macondo/macondo_pb';
+  GameEvent_Type,
+} from '../../gen/api/proto/macondo/macondo_pb';
 import { StandardEnglishAlphabet } from '../../constants/alphabets';
 import {
   GameHistoryRefresher,
   ServerGameplayEvent,
 } from '../../gen/api/proto/ipc/omgwords_pb';
-import { GameEvent_Type } from '../../gen/macondo/api/proto/macondo/macondo_pb';
 
 const historyRefresher = () => {
   return new GameHistoryRefresher({

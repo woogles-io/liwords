@@ -12,7 +12,7 @@ import {
 
 import { Store } from 'antd/lib/form/interface';
 import { useMountedState } from '../utils/mounted';
-import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { ChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
 import {
   initialTimeMinutesToSlider,
   initialTimeSecondsToSlider,

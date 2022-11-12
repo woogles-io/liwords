@@ -10,7 +10,7 @@ import {
 import { Millis, millisToTimeStr } from '../store/timer_controller';
 import { PlayerAvatar } from '../shared/player_avatar';
 import './scss/playerCards.scss';
-import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { PlayState } from '../gen/api/proto/macondo/macondo_pb';
 import { DisplayUserFlag } from '../shared/display_flag';
 import { useBriefProfile } from '../utils/brief_profiles';
 import { GameInfoResponse, PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';

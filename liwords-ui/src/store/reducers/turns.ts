@@ -1,5 +1,7 @@
-import { GameEvent_Type } from '../../gen/macondo/api/proto/macondo/macondo_pb';
-import { GameEvent } from '../../gen/macondo/api/proto/macondo/macondo_pb';
+import {
+  GameEvent,
+  GameEvent_Type,
+} from '../../gen/api/proto/macondo/macondo_pb';
 
 export type Turn = Array<GameEvent>;
 

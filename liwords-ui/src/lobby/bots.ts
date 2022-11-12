@@ -1,4 +1,4 @@
-import { BotRequest_BotCode } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { BotRequest_BotCode } from '../gen/api/proto/macondo/macondo_pb';
 
 export enum BotTypesEnum {
   MASTER,

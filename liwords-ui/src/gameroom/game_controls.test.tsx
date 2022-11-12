@@ -1,7 +1,7 @@
 import React from 'react';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import GameControls, { Props } from './game_controls';
-import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { ChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
 
 const mockedUsedNavigate = jest.fn();
 

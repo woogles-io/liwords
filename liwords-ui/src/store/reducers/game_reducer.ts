@@ -4,7 +4,9 @@ import {
   GameEvent,
   PlayState,
   GameHistory,
-} from '../../gen/macondo/api/proto/macondo/macondo_pb';
+  GameEvent_Type,
+  GameEvent_Direction,
+} from '../../gen/api/proto/macondo/macondo_pb';
 import { Action, ActionType } from '../../actions/actions';
 import {
   isBlank,
@@ -33,8 +35,6 @@ import {
   CrosswordGameGridLayout,
   SuperCrosswordGameGridLayout,
 } from '../../constants/board_layout';
-import { GameEvent_Type } from '../../gen/macondo/api/proto/macondo/macondo_pb';
-import { GameEvent_Direction } from '../../gen/macondo/api/proto/macondo/macondo_pb';
 
 type TileDistribution = { [rune: string]: number };
 

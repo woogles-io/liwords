@@ -11,7 +11,7 @@ import {
 import {
   BotRequest_BotCode,
   ChallengeRule,
-} from '../gen/macondo/api/proto/macondo/macondo_pb';
+} from '../gen/api/proto/macondo/macondo_pb';
 import { RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
 import { GameRules } from '../gen/api/proto/ipc/omgwords_pb';
 import { challengeRuleNames } from '../constants/challenge_rules';

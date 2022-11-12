@@ -2,13 +2,13 @@ import { parseMsgs } from './socket_handlers';
 import {
   GameEvent,
   ChallengeRule,
-} from '../gen/macondo/api/proto/macondo/macondo_pb';
+  GameEvent_Type,
+} from '../gen/api/proto/macondo/macondo_pb';
 import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
 import {
   ServerChallengeResultEvent,
   ServerGameplayEvent,
 } from '../gen/api/proto/ipc/omgwords_pb';
-import { GameEvent_Type } from '../gen/macondo/api/proto/macondo/macondo_pb';
 
 const toArr = (s: string) => {
   const bytes = new Uint8Array(Math.ceil(s.length / 2));

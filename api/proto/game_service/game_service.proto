@@ -2,8 +2,8 @@ syntax = "proto3";
 package game_service;
 option go_package = "github.com/domino14/liwords/rpc/api/proto/game_service";
 
-import "macondo/api/proto/macondo/macondo.proto";
-import "api/proto/ipc/omgwords.proto";
+import "macondo/macondo.proto";
+import "ipc/omgwords.proto";
 
 // Meta information about a game, including its players.
 message GameInfoRequest { string game_id = 1; }
@@ -38,8 +38,12 @@ message RematchStreakRequest { string original_request_id = 1; }
 
 service GameMetadataService {
   rpc GetMetadata(GameInfoRequest) returns (ipc.GameInfoResponse);
+  // GetGCG gets a GCG string for the given game ID.
   rpc GetGCG(GCGRequest) returns (GCGResponse);
+  // GetGameHistory gets a GameHistory for the given game ID. GameHistory
+  // is our internal representation of a game's state.
   rpc GetGameHistory(GameHistoryRequest) returns (GameHistoryResponse);
+  // GetRecentGames gets recent games for a user.
   rpc GetRecentGames(RecentGamesRequest) returns (ipc.GameInfoResponses);
   rpc GetRematchStreak(RematchStreakRequest) returns (StreakInfoResponse);
 }

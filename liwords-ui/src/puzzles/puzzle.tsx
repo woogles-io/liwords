@@ -40,7 +40,9 @@ import {
   ChallengeRule,
   GameEvent,
   GameHistory,
-} from '../gen/macondo/api/proto/macondo/macondo_pb';
+  GameEvent_Direction,
+  GameEvent_Type,
+} from '../gen/api/proto/macondo/macondo_pb';
 import { MatchLexiconDisplay, puzzleLexica } from '../shared/lexicon_display';
 import { Store } from 'antd/lib/form/interface';
 
@@ -61,8 +63,6 @@ import { getWordsFormed } from '../utils/cwgame/tile_placement';
 import { LearnContextProvider } from '../learn/learn_overlay';
 import { PuzzleShareButton } from './puzzle_share';
 import { RatingsCard } from './ratings';
-import { GameEvent_Direction } from '../gen/macondo/api/proto/macondo/macondo_pb';
-import { GameEvent_Type } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { flashError, useClient } from '../utils/hooks/connect';
 import { WordService } from '../gen/api/proto/word_service/word_service_connectweb';
 import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_connectweb';
