@@ -5,7 +5,7 @@ syntax = "proto3";
 package ipc;
 option go_package = "github.com/domino14/liwords/rpc/api/proto/ipc";
 
-import "macondo/api/proto/macondo/macondo.proto";
+import "macondo/macondo.proto";
 import "google/protobuf/timestamp.proto";
 
 enum GameEndReason {
@@ -202,7 +202,6 @@ message GameInfoResponse {
 }
 
 message GameInfoResponses { repeated GameInfoResponse game_info = 1; }
-
 
 // InstantiateGame is an internal message passed to gamesvc in order to
 // instantiate a game.

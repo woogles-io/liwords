@@ -2,8 +2,8 @@ syntax = "proto3";
 package tournament_service;
 option go_package = "github.com/domino14/liwords/rpc/api/proto/tournament_service";
 
-import "api/proto/ipc/omgwords.proto";
-import "api/proto/ipc/tournament.proto";
+import "ipc/omgwords.proto";
+import "ipc/tournament.proto";
 import "google/protobuf/timestamp.proto";
 
 message StartRoundRequest {

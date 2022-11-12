@@ -1,9 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import {
-  ChallengeRule,
-  PlayState,
-} from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { ChallengeRule, PlayState } from '../gen/api/proto/macondo/macondo_pb';
 import {
   useExaminableGameContextStoreContext,
   useExamineStoreContext,

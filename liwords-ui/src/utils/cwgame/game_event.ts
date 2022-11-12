@@ -1,14 +1,16 @@
 import { EphemeralTile, Direction, Blank, EmptySpace, isBlank } from './common';
 import { contiguousTilesFromTileSet } from './scoring';
 import { Board } from './board';
-import { GameEvent } from '../../gen/macondo/api/proto/macondo/macondo_pb';
+import {
+  GameEvent,
+  GameEvent_Direction,
+} from '../../gen/api/proto/macondo/macondo_pb';
 import {
   ClientGameplayEvent,
   ClientGameplayEvent_EventType,
   PlayerInfo,
 } from '../../gen/api/proto/ipc/omgwords_pb';
 import { indexToPlayerOrder, PlayerOrder } from '../../store/constants';
-import { GameEvent_Direction } from '../../gen/macondo/api/proto/macondo/macondo_pb';
 
 export const ThroughTileMarker = '.';
 // convert a set of ephemeral tiles to a protobuf game event.

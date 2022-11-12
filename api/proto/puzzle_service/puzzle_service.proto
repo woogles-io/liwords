@@ -2,9 +2,9 @@ syntax = "proto3";
 package puzzle_service;
 option go_package = "github.com/domino14/liwords/rpc/api/proto/puzzle_service";
 
-import "macondo/api/proto/macondo/macondo.proto";
+import "macondo/macondo.proto";
 import "google/protobuf/timestamp.proto";
-import "api/proto/ipc/omgwords.proto";
+import "ipc/omgwords.proto";
 
 enum PuzzleQueryResult {
   UNSEEN = 0;
@@ -95,9 +95,7 @@ message PuzzleGenerationJobRequest {
   macondo.PuzzleGenerationRequest request = 7;
 }
 
-message APIPuzzleGenerationJobResponse {
-  bool started = 1;
-}
+message APIPuzzleGenerationJobResponse { bool started = 1; }
 
 message APIPuzzleGenerationJobRequest {
   PuzzleGenerationJobRequest request = 1;
@@ -118,22 +116,23 @@ message PuzzleJobLog {
   google.protobuf.Timestamp completed_at = 6;
 }
 
-message PuzzleJobLogsResponse {
-  repeated PuzzleJobLog logs = 1;
-}
+message PuzzleJobLogsResponse { repeated PuzzleJobLog logs = 1; }
 
 service PuzzleService {
   rpc GetStartPuzzleId(StartPuzzleIdRequest) returns (StartPuzzleIdResponse);
   rpc GetNextPuzzleId(NextPuzzleIdRequest) returns (NextPuzzleIdResponse);
-  rpc GetNextClosestRatingPuzzleId(NextClosestRatingPuzzleIdRequest) returns (NextClosestRatingPuzzleIdResponse);
+  rpc GetNextClosestRatingPuzzleId(NextClosestRatingPuzzleIdRequest)
+      returns (NextClosestRatingPuzzleIdResponse);
   rpc GetPuzzle(PuzzleRequest) returns (PuzzleResponse);
   rpc SubmitAnswer(SubmissionRequest) returns (SubmissionResponse);
   // GetPuzzleAnswer just gets the answer of the puzzle without a submission.
   // It will not work if the user has not tried the puzzle at least once.
   rpc GetPuzzleAnswer(PuzzleRequest) returns (AnswerResponse);
-  rpc GetPreviousPuzzleId(PreviousPuzzleRequest) returns (PreviousPuzzleResponse);
+  rpc GetPreviousPuzzleId(PreviousPuzzleRequest)
+      returns (PreviousPuzzleResponse);
   rpc SetPuzzleVote(PuzzleVoteRequest) returns (PuzzleVoteResponse);
 
-  rpc StartPuzzleGenJob(APIPuzzleGenerationJobRequest) returns (APIPuzzleGenerationJobResponse);
+  rpc StartPuzzleGenJob(APIPuzzleGenerationJobRequest)
+      returns (APIPuzzleGenerationJobResponse);
   rpc GetPuzzleJobLogs(PuzzleJobLogsRequest) returns (PuzzleJobLogsResponse);
 }

@@ -8,7 +8,7 @@ import React, {
 import {
   GameEvent,
   GameEvent_Direction,
-} from '../gen/macondo/api/proto/macondo/macondo_pb';
+} from '../gen/api/proto/macondo/macondo_pb';
 import { useMountedState } from '../utils/mounted';
 import {
   PuzzleRequest,

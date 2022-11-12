@@ -39,7 +39,7 @@ import { SeekRequest } from '../gen/api/proto/ipc/omgseeks_pb';
 import { ServerChallengeResultEvent } from '../gen/api/proto/ipc/omgwords_pb';
 import { message } from 'antd';
 import { playerOrderFromEvt } from '../utils/cwgame/game_event';
-import { GameEvent_Type } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { GameEvent_Type } from '../gen/api/proto/macondo/macondo_pb';
 
 const MaxChatLength = 150;
 

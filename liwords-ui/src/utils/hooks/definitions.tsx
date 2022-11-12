@@ -4,7 +4,7 @@ import { ChatEntityType, ChatEntityObj } from '../../store/constants';
 import { Blank } from '../../utils/cwgame/common';
 import { useMountedState } from '../../utils/mounted';
 import { Unrace } from '../../utils/unrace';
-import { GameEvent_Type } from '../../gen/macondo/api/proto/macondo/macondo_pb';
+import { GameEvent_Type } from '../../gen/api/proto/macondo/macondo_pb';
 import { useClient } from './connect';
 import { WordService } from '../../gen/api/proto/word_service/word_service_connectweb';
 

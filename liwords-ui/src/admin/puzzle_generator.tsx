@@ -17,7 +17,7 @@ import {
   PuzzleBucket,
   PuzzleGenerationRequest,
   PuzzleTag,
-} from '../gen/macondo/api/proto/macondo/macondo_pb';
+} from '../gen/api/proto/macondo/macondo_pb';
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   APIPuzzleGenerationJobRequest,

@@ -7,10 +7,7 @@ import React, {
 } from 'react';
 import { useMountedState } from '../utils/mounted';
 import { Card } from 'antd';
-import {
-  GameEvent,
-  GameEvent_Type,
-} from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { GameEvent, GameEvent_Type } from '../gen/api/proto/macondo/macondo_pb';
 import { Board } from '../utils/cwgame/board';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { millisToTimeStr } from '../store/timer_controller';

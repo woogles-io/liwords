@@ -29,10 +29,7 @@ import { ScoreCard } from './scorecard';
 import { defaultGameInfo, GameInfo } from './game_info';
 import { BoopSounds } from '../sound/boop';
 import { StreakWidget } from './streak_widget';
-import {
-  ChallengeRule,
-  PlayState,
-} from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { ChallengeRule, PlayState } from '../gen/api/proto/macondo/macondo_pb';
 import { endGameMessageFromGameInfo } from '../store/end_of_game';
 import { Notepad, NotepadContextProvider } from './notepad';
 import { Analyzer, AnalyzerContextProvider } from './analyzer';
