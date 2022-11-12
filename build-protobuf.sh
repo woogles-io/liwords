@@ -2,9 +2,9 @@
 
 export PATH="/opt/node_modules/.bin":$PATH
 
-cd api/proto
-buf generate
-buf generate buf.build/domino14/macondo --template buf.gen.macondo.yaml
+cd api
+buf generate --exclude-path vendor/macondo/macondo/macondo.proto
+buf generate --path vendor/macondo/macondo/macondo.proto --template buf.gen.macondo.yaml
 cd -
 
 chown -R unprivileged:unprivileged liwords-ui/src/gen
