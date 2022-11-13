@@ -259,8 +259,8 @@ func StartGame(ctx context.Context, gameStore GameStore, userStore user.Store, e
 			entGame.SendChange(wrappedRematch)
 		}
 	}
+	return potentiallySendBotMoveRequest(ctx, userStore, entGame)
 
-	return nil
 }
 
 func players(entGame *entity.Game) []string {
@@ -386,6 +386,8 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 		if err != nil {
 			return err
 		}
+	} else {
+		return potentiallySendBotMoveRequest(ctx, userStore, entGame)
 	}
 
 	return nil
@@ -470,7 +472,10 @@ func PlayMove(ctx context.Context,
 		if err != nil {
 			return err
 		}
+	} else {
+		return potentiallySendBotMoveRequest(ctx, userStore, entGame)
 	}
+
 	return nil
 }
 
@@ -581,6 +586,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 			log.Err(err).Msg("error-saving")
 			return entGame, err
 		}
+
 	}
 	return entGame, nil
 }
@@ -658,4 +664,31 @@ func statsForUser(ctx context.Context, id string, userStore user.Store,
 	}
 
 	return userStats, nil
+}
+
+// send a request to the internal Macondo bot to move.
+func potentiallySendBotMoveRequest(ctx context.Context, userStore user.Store, g *entity.Game) error {
+	userOnTurn, err := userStore.GetByUUID(ctx, g.PlayerIDOnTurn())
+	if err != nil {
+		return err
+	}
+
+	if !userOnTurn.IsBot {
+		return nil
+	}
+
+	evt := &macondopb.BotRequest{
+		GameHistory: g.History(),
+		BotType:     g.GameReq.BotType,
+	}
+	// message type doesn't matter here; we're going to make sure
+	// this doesn't get serialized with a message type.
+	wrapped := entity.WrapEvent(evt, 0)
+	wrapped.SetAudience(entity.AudBotCommands)
+	// serialize without any length/type headers! This is an internal
+	// message, and not meant for the socket.
+	wrapped.SetSerializationProtocol(entity.EvtSerializationProto)
+	g.SendChange(wrapped)
+
+	return nil
 }

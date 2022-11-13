@@ -12,21 +12,31 @@ import (
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
+type SerializationProtocol int
+
+const (
+	EvtSerializationProtoWithHeader SerializationProtocol = iota
+	EvtSerializationProto
+	EvtSerializationJSONWithHeader
+	EvtSerializationJSON
+)
+
 const (
 	// MaxNameLength is the maximum length that a proto message can be.
 	MaxNameLength = 64
 
-	protobufSerializationProtocol = "proto"
+	DefaultSerializationProtocol = EvtSerializationProtoWithHeader
 )
 
 type EventAudienceType string
 
 const (
-	AudGame       EventAudienceType = "game"
-	AudGameTV                       = "gametv"
-	AudUser                         = "user"
-	AudLobby                        = "lobby"
-	AudTournament                   = "tournament"
+	AudGame        EventAudienceType = "game"
+	AudGameTV                        = "gametv"
+	AudUser                          = "user"
+	AudLobby                         = "lobby"
+	AudTournament                    = "tournament"
+	AudBotCommands                   = "bot.commands"
 	// AudChannel is used for a general channel.
 	AudChannel = "channel"
 )
@@ -39,7 +49,7 @@ type EventWrapper struct {
 	Event proto.Message
 
 	// Serialization protocol
-	protocol     string
+	protocol     SerializationProtocol
 	audience     []string
 	excludeUsers []string
 }
@@ -49,13 +59,13 @@ func WrapEvent(event proto.Message, messageType pb.MessageType) *EventWrapper {
 	return &EventWrapper{
 		Type:     messageType,
 		Event:    event,
-		protocol: protobufSerializationProtocol,
+		protocol: DefaultSerializationProtocol,
 	}
 }
 
 // SetSerializationProtocol sets the serialization protocol of the protobuf
 // object.
-func (e *EventWrapper) SetSerializationProtocol(protocol string) {
+func (e *EventWrapper) SetSerializationProtocol(protocol SerializationProtocol) {
 	e.protocol = protocol
 }
 
@@ -97,24 +107,34 @@ func (e *EventWrapper) Serialize() ([]byte, error) {
 
 	var data []byte
 	var err error
-	if e.protocol == "proto" {
+	switch e.protocol {
+	case EvtSerializationProtoWithHeader, EvtSerializationProto:
 		data, err = proto.Marshal(e.Event)
 		if err != nil {
 			return nil, err
 		}
-	} else {
+		if e.protocol == EvtSerializationProtoWithHeader {
+			binary.Write(&b, binary.BigEndian, int16(len(data)+1))
+			binary.Write(&b, binary.BigEndian, int8(e.Type))
+		}
+
+	case EvtSerializationJSON, EvtSerializationJSONWithHeader:
 		data, err = json.Marshal(e.Event)
 		if err != nil {
 			return nil, err
 		}
+		if e.protocol == EvtSerializationJSONWithHeader {
+			binary.Write(&b, binary.BigEndian, int16(len(data)+1))
+			binary.Write(&b, binary.BigEndian, int8(e.Type))
+		}
 	}
-	binary.Write(&b, binary.BigEndian, int16(len(data)+1))
-	binary.Write(&b, binary.BigEndian, int8(e.Type))
+
 	b.Write(data)
 	return b.Bytes(), nil
 }
 
 // EventFromByteArray takes in a serialized event and deserializes it.
+// The event must have been serialized with an extra header.
 func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 	b := bytes.NewReader(arr)
 	var msgtypeint int8
