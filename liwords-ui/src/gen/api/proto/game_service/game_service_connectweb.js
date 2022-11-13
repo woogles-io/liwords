@@ -3,7 +3,7 @@
 /* eslint-disable */
 /* @ts-nocheck */
 
-import {GameDocumentRequest, GameDocumentResponse, GameEventResponse, GameHistoryRequest, GameHistoryResponse, GameInfoRequest, GCGRequest, GCGResponse, RecentGamesRequest, RematchStreakRequest, StreakInfoResponse, TimePenaltyEvent} from "./game_service_pb.js";
+import {BroadcastGamePrivacy, ChallengeBonusPointsEvent, CreateBroadcastGameRequest, CreateBroadcastGameResponse, GameDocumentRequest, GameDocumentResponse, GameEventResponse, GameHistoryRequest, GameHistoryResponse, GameInfoRequest, GCGRequest, GCGResponse, RecentGamesRequest, RematchStreakRequest, StreakInfoResponse, TimePenaltyEvent} from "./game_service_pb.js";
 import {ClientGameplayEvent, GameInfoResponse, GameInfoResponses} from "../ipc/omgwords_pb.js";
 import {MethodKind} from "@bufbuild/protobuf";
 
@@ -90,6 +90,17 @@ export const GameEventService = {
   typeName: "game_service.GameEventService",
   methods: {
     /**
+     * CreateBroadcastGame will create a game for Woogles broadcast
+     *
+     * @generated from rpc game_service.GameEventService.CreateBroadcastGame
+     */
+    createBroadcastGame: {
+      name: "CreateBroadcastGame",
+      I: CreateBroadcastGameRequest,
+      O: CreateBroadcastGameResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
      * @generated from rpc game_service.GameEventService.SendGameEvent
      */
     sendGameEvent: {
@@ -99,11 +110,38 @@ export const GameEventService = {
       kind: MethodKind.Unary,
     },
     /**
+     * SendTimePenaltyEvent sends a time penalty event. It should be the
+     * last event right before a game ends.
+     *
      * @generated from rpc game_service.GameEventService.SendTimePenaltyEvent
      */
     sendTimePenaltyEvent: {
       name: "SendTimePenaltyEvent",
       I: TimePenaltyEvent,
+      O: GameEventResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * SendChallengeBonusEvent sends a bonus points event. When challenging
+     * a play that is good, depending on the challenge rule a certain number
+     * of points may be added to the play. Since broadcast games can reflect
+     * real-life games, the number of points can be variable (for example,
+     * 15 points for 5-pt challenge if 3 plays are challenged)
+     *
+     * @generated from rpc game_service.GameEventService.SendChallengeBonusEvent
+     */
+    sendChallengeBonusEvent: {
+      name: "SendChallengeBonusEvent",
+      I: ChallengeBonusPointsEvent,
+      O: GameEventResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc game_service.GameEventService.SetBroadcastGamePrivacy
+     */
+    setBroadcastGamePrivacy: {
+      name: "SetBroadcastGamePrivacy",
+      I: BroadcastGamePrivacy,
       O: GameEventResponse,
       kind: MethodKind.Unary,
     },

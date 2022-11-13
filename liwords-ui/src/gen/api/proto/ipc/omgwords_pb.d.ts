@@ -112,11 +112,18 @@ export declare enum RatingMode {
  */
 export declare enum GameType {
   /**
+   * A NATIVE game is the default OMGWords game (or its variants)
+   * created on the woogles site, between two players or between a player
+   * and a bot.
+   *
    * @generated from enum value: NATIVE = 0;
    */
   NATIVE = 0,
 
   /**
+   * An ANNOTATED game does not feature Woogles players, but is instead
+   * created by a broadcaster/annotator to represent a real-life game.
+   *
    * @generated from enum value: ANNOTATED = 1;
    */
   ANNOTATED = 1,

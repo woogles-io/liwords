@@ -197,7 +197,12 @@ func (RatingMode) EnumDescriptor() ([]byte, []int) {
 type GameType int32
 
 const (
-	GameType_NATIVE     GameType = 0
+	// A NATIVE game is the default OMGWords game (or its variants)
+	// created on the woogles site, between two players or between a player
+	// and a bot.
+	GameType_NATIVE GameType = 0
+	// An ANNOTATED game does not feature Woogles players, but is instead
+	// created by a broadcaster/annotator to represent a real-life game.
 	GameType_ANNOTATED  GameType = 1
 	GameType_BOT_VS_BOT GameType = 2
 )

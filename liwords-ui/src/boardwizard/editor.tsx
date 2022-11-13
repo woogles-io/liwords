@@ -14,9 +14,11 @@ import Pool from '../gameroom/pool';
 import { ScoreCard } from '../gameroom/scorecard';
 import { GameHistoryRefresher } from '../gen/api/proto/ipc/omgwords_pb';
 import { GameInfoResponse } from '../gen/api/proto/ipc/omgwords_pb';
-import { GameHistory } from '../gen/macondo/api/proto/macondo/macondo_pb';
-import { PlayerInfo } from '../gen/macondo/api/proto/macondo/macondo_pb';
-import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import {
+  GameHistory,
+  PlayerInfo,
+  ChallengeRule,
+} from '../gen/api/proto/macondo/macondo_pb';
 import { TopBar } from '../navigation/topbar';
 import { sortTiles } from '../store/constants';
 import {
