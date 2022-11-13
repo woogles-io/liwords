@@ -3,7 +3,6 @@ package game
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
@@ -20,6 +19,7 @@ import (
 	macondoipc "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/jackc/pgx/v4"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type play struct {
@@ -82,7 +82,7 @@ func (s *DBStore) OMGGet(ctx context.Context, uuid string) (*entity.Game, error)
 	INNER JOIN users ON users.id = omgwords_games_players.player_id
 	INNER JOIN profiles ON users.id = profiles.user_id
 	WHERE omgwords.uuid = $1
-	ORDER BY omgwords_games_players.first`, uuid)
+	ORDER BY omgwords_games_players.first DESC`, uuid)
 	if err != nil {
 		return nil, err
 	}
@@ -193,6 +193,54 @@ func (s *DBStore) OMGGet(ctx context.Context, uuid string) (*entity.Game, error)
 	return entGame, nil
 }
 
+// For use in pkg/bus/bus.go:381
+func (s *DBStore) GetTournamentIdAndPlayerUserIds(ctx context.Context, uuid string) (string, []string, error) {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return "", nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	rows, err := tx.Query(ctx, `SELECT
+	omgwords.tournament_id,
+	users.uuid,
+	FROM omgwords
+	INNER JOIN omgwords_games_players ON omgwords.id = omgwords_games_players.game_id
+	INNER JOIN users ON users.id = omgwords_games_players.player_id
+	WHERE omgwords.uuid = $1
+	ORDER BY omgwords_games_players.first DESC`, uuid)
+	if err != nil {
+		return "", nil, err
+	}
+
+	var tournamentID string
+	var p0UserId string
+	var p1UserId string
+
+	idx := 0
+	for rows.Next() {
+		if idx == 0 {
+			if err := rows.Scan(&tournamentID, &p0UserId); err != nil {
+				rows.Close()
+				return "", nil, err
+			}
+		} else {
+			if err := rows.Scan(nil, &p1UserId); err != nil {
+				rows.Close()
+				return "", nil, err
+			}
+		}
+		idx++
+	}
+	rows.Close()
+
+	if err := tx.Commit(ctx); err != nil {
+		return "", nil, err
+	}
+
+	return tournamentID, []string{p0UserId, p1UserId}, nil
+}
+
 func (s *DBStore) OMGGetMetadata(ctx context.Context, uuid string) (*ipc.GameInfoResponse, error) {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
@@ -200,16 +248,86 @@ func (s *DBStore) OMGGetMetadata(ctx context.Context, uuid string) (*ipc.GameInf
 	}
 	defer tx.Rollback(ctx)
 
-	info, err := getGameInfoResponseFromUUID(ctx, tx, uuid)
+	rows, err := tx.Query(ctx, `SELECT
+	omgwords.request,
+	omgwords.tournament_id,
+	omgwords.game_end_reason,
+	omgwords.created_at,
+	omgwords_games_players.won
+	omgwords_games_players.player_old_rating,
+	omgwords_games_players.player_new_rating,
+	users.username,
+	users.uuid,
+	users.internal_bot
+	FROM omgwords
+	INNER JOIN omgwords_games_players ON omgwords.id = omgwords_games_players.game_id
+	INNER JOIN users ON users.id = omgwords_games_players.player_id
+	WHERE omgwords.uuid = $1
+	ORDER BY omgwords_games_players.first DESC`, uuid)
 	if err != nil {
 		return nil, err
 	}
+
+	var request ipc.GameRequest
+	var tournamentID string
+	var gameEndReason int
+	var createdAt time.Time
+
+	var p0won bool
+	var p0Nickname string
+	var p0UserId string
+	var p0IsBot bool
+
+	var p1won bool
+	var p1Nickname string
+	var p1UserId string
+	var p1IsBot bool
+
+	idx := 0
+	for rows.Next() {
+		if idx == 0 {
+			if err := rows.Scan(&request, &tournamentID, &gameEndReason, &createdAt,
+				&p0won, &p0Nickname, &p0UserId, &p0IsBot); err != nil {
+				rows.Close()
+				return nil, err
+			}
+		} else {
+			if err := rows.Scan(nil, nil, nil, nil,
+				&p1won, &p1Nickname, &p1UserId, &p1IsBot); err != nil {
+				rows.Close()
+				return nil, err
+			}
+		}
+		idx++
+	}
+	rows.Close()
+
+	if p0won && p1won {
+		return nil, fmt.Errorf("both players won for game %s", uuid)
+	}
+
+	playerInfo :=
+		[]*pb.PlayerInfo{
+			{Nickname: p0Nickname,
+				UserId: p0UserId,
+				IsBot:  p0IsBot,
+				First:  true},
+			{Nickname: p1Nickname,
+				UserId: p1UserId,
+				IsBot:  p1IsBot,
+				First:  false},
+		}
 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
 
-	return info, nil
+	return &pb.GameInfoResponse{
+		Players:       playerInfo,
+		GameEndReason: pb.GameEndReason(gameEndReason),
+		CreatedAt:     timestamppb.New(createdAt),
+		TournamentId:  tournamentID,
+		GameRequest:   &request}, nil
 }
 
 func (s *DBStore) OMGGetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error) {
@@ -219,13 +337,15 @@ func (s *DBStore) OMGGetRematchStreak(ctx context.Context, originalRequestId str
 	}
 	defer tx.Rollback(ctx)
 
-	// This query enforces a player_id DESC order for each
-	// game pair. The arbitrary but consistent ordering
-	// will allow us to order by username later.
-	rows, err := tx.Query(ctx, `SELECT omgwords.uuid AS game_uuid, won, player_id
+	rows, err := tx.Query(ctx, `SELECT
+	omgwords.uuid AS game_uuid,
+	omgwords_games_players.won,
+	users.username,
+	users.uuid AS player_uuid
 	FROM omgwords 
 	INNER JOIN omgwords_games_players ON omgwords.id = omgwords_games_players.game_id
-	WHERE request->>'original_request_id' = $1 AND game_end_reason not in ($2, $3, $4) ORDER BY omgwords.created_at, player_id DESC`,
+	INNER JOIN users ON omgwords_games_players.player_id = users.id
+	WHERE request->>'original_request_id' = $1 AND game_end_reason not in ($2, $3, $4) ORDER BY omgwords.created_at, username DESC`,
 		originalRequestId, pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED)
 	if err == pgx.ErrNoRows {
 		return &gs.StreakInfoResponse{Streak: make([]*gs.StreakInfoResponse_SingleGameInfo, 0)}, nil
@@ -234,50 +354,49 @@ func (s *DBStore) OMGGetRematchStreak(ctx context.Context, originalRequestId str
 		return nil, err
 	}
 
+	resp := &gs.StreakInfoResponse{
+		Streak:      []*gs.StreakInfoResponse_SingleGameInfo{},
+		PlayersInfo: []*gs.StreakInfoResponse_PlayerInfo{},
+	}
+
+	playerWonArr := [2]bool{false, false}
+
 	idx := 0
-	resp := &gs.StreakInfoResponse{Streak: []*gs.StreakInfoResponse_SingleGameInfo{}}
-	playerWonArr := []bool{false, false}
-	playerDBIDArr := []int{-1, -1}
-	var playerDBIDArrCheck []int
-	var playerDBIDSAreAlphabeticallyOrdered bool
 	for rows.Next() {
 		var gameUUID string
 		var playerWon bool
-		var playerDBID int
-		if err = rows.Scan(gameUUID, playerWon, playerDBID); err != nil {
-			rows.Close()
-			return nil, err
-		}
-		playerWonArr[idx%2] = playerWon
-		playerDBIDArr[idx%2] = playerDBID
-		if idx == 1 {
-			var playersInfo []*gs.StreakInfoResponse_PlayerInfo
-			playersInfo, playerDBIDSAreAlphabeticallyOrdered, err = createPlayersInfo(ctx, tx, playerDBIDArr[0], playerDBIDArr[1])
-			if err != nil {
+		var playerUsername string
+		var playerUUID string
+		if idx < 2 {
+			if err = rows.Scan(&gameUUID, &playerWon, &playerUsername, &playerUUID); err != nil {
+				rows.Close()
 				return nil, err
 			}
-			resp.PlayersInfo = playersInfo
-			playerDBIDArrCheck = []int{playerDBIDArr[0], playerDBIDArr[1]}
-		} else if idx > 1 {
-			if resp.PlayersInfo == nil {
-				return nil, fmt.Errorf("players info nil for original request id %s", originalRequestId)
-			}
-			if playerDBID != playerDBIDArrCheck[idx%2] {
-				return nil, fmt.Errorf("player id %d is not consistent for streak with original request id %s", playerDBID, originalRequestId)
+			resp.PlayersInfo = append(resp.PlayersInfo, &gs.StreakInfoResponse_PlayerInfo{
+				Nickname: playerUsername,
+				Uuid:     playerUUID,
+			})
+		} else {
+			if err = rows.Scan(&gameUUID, &playerWon, nil, nil, nil); err != nil {
+				rows.Close()
+				return nil, err
 			}
 		}
+
+		playerWonArr[idx%2] = playerWon
+
 		if idx%2 == 1 {
+			if playerWonArr[0] && playerWonArr[1] {
+				return nil, fmt.Errorf("both players won in game %s for rematch streak %s", gameUUID, originalRequestId)
+			}
 			// Assume a tie
 			winner := -1
-			if playerWonArr[idx-1] && !playerWonArr[idx] {
+			if playerWonArr[0] {
 				// First player in the game pairs won
 				winner = 0
-			} else if !playerWonArr[idx-1] && playerWonArr[idx] {
+			} else if playerWonArr[1] {
 				// Second player in the game pairs won
 				winner = 1
-			}
-			if winner != -1 && !playerDBIDSAreAlphabeticallyOrdered {
-				winner = winner - 1
 			}
 			resp.Streak = append(resp.Streak, &gs.StreakInfoResponse_SingleGameInfo{
 				GameId: gameUUID,
@@ -296,42 +415,243 @@ func (s *DBStore) OMGGetRematchStreak(ctx context.Context, originalRequestId str
 
 func (s *DBStore) OMGGetRecentGames(ctx context.Context, username string, numGames int, offset int) (*ipc.GameInfoResponses, error) {
 	if numGames > MaxRecentGames {
-		return nil, errors.New("too many games")
+		return nil, fmt.Errorf("too many games requested: %d", numGames)
 	}
-
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
 
-	userDBID, _, err := common.GetUUIDAndDBIDFromUsername(ctx, tx, username)
+	rows, err := tx.Query(ctx, `SELECT
+	omgwords.uuid,
+	omgwords.created_at,
+	omgwords.request,
+	omgwords.tournament_id,
+	omgwords.game_end_reason,
+	omgwords_games_players.won
+	omgwords_games_players.score
+	users.username,
+	users.uuid,
+	users.internal_bot,
+	profiles.ratings
+	FROM omgwords
+	INNER JOIN omgwords_games_players ON omgwords.id = omgwords_games_players.game_id
+	INNER JOIN users ON users.id = omgwords_games_players.player_id
+	INNER JOIN profiles ON users.id = profiles.user_id
+	WHERE users.username = $1
+	ORDER BY omgwords.created_at, omgwords_games_players.first DESC limit $2 offset $3`, username, numGames, offset)
+	if err != nil {
+		return nil, err
+	}
 
-	rows, err := tx.Query(ctx, `SELECT uuid
-	FROM omgwords_games_players INNER JOIN omgwords ON omgwords_games_players.game_id = omgwords.id
-	WHERE player_id = $1
-	AND game_end_reason NOT IN ($2, $3, $4) ORDER BY created_at DESC LIMIT $5 OFFSET $6`,
-		userDBID,
-		pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED, numGames, offset)
+	var gameUUID string
+	var createdAt time.Time
+	var request ipc.GameRequest
+	var tournamentID string
+	var gameEndReason int
 
+	var p0Won bool
+	var p0Score int
+	var p0Username string
+	var p0UUID string
+	var p0IsBot bool
+	var p0Ratings entity.Ratings
+
+	var p1Won bool
+	var p1Score int
+	var p1Username string
+	var p1UUID string
+	var p1IsBot bool
+	var p1Ratings entity.Ratings
+
+	responses := []*pb.GameInfoResponse{}
+
+	idx := 0
 	for rows.Next() {
-		var gameUUID string
-		var playerWon bool
-		var playerDBID int
-		if err = rows.Scan(gameUUID, playerWon, playerDBID); err != nil {
-			rows.Close()
+		if idx%2 == 0 {
+			if err := rows.Scan(&gameUUID, &createdAt, &request, &tournamentID, &gameEndReason,
+				&p0Won, &p0Score, &p0Username, &p0UUID, &p0IsBot, &p0Ratings); err != nil {
+				rows.Close()
+				return nil, err
+			}
+		} else {
+			if err := rows.Scan(nil, nil, nil, nil, nil,
+				&p1Won, &p1Score, &p1Username, &p1UUID, &p1IsBot, &p1Ratings); err != nil {
+				rows.Close()
+				return nil, err
+			}
+		}
+		if p0Won && p1Won {
+			return nil, fmt.Errorf("both players won for game %s", gameUUID)
+		}
+
+		winnerIdx := -1
+
+		if p0Won {
+			winnerIdx = 0
+		} else if p1Won {
+			winnerIdx = 1
+		}
+
+		timefmt, variant, err := entity.VariantFromGameReq(&request)
+		if err != nil {
 			return nil, err
 		}
+		variantKey := entity.ToVariantKey(request.Lexicon, variant, timefmt)
+
+		playerInfo := []*pb.PlayerInfo{
+			{Nickname: p0Username,
+				UserId: p0UUID,
+				Rating: entity.RelevantRating(p0Ratings, variantKey),
+				IsBot:  p0IsBot,
+				First:  true},
+			{Nickname: p1Username,
+				UserId: p1UUID,
+				Rating: entity.RelevantRating(p1Ratings, variantKey),
+				IsBot:  p1IsBot,
+				First:  false},
+		}
+
+		responses = append(responses, &pb.GameInfoResponse{
+			Players:         playerInfo,
+			TimeControlName: string(timefmt),
+			TournamentId:    tournamentID,
+			GameEndReason:   pb.GameEndReason(gameEndReason),
+			CreatedAt:       timestamppb.New(createdAt),
+			Winner:          int32(winnerIdx),
+			Scores:          []int32{int32(p0Score), int32(p1Score)},
+			GameId:          gameUUID,
+			GameRequest:     &request})
+		idx++
 	}
+	rows.Close()
 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
-	return nil, nil
+
+	return &pb.GameInfoResponses{GameInfo: responses}, nil
 }
 
 func (s *DBStore) OMGGetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*ipc.GameInfoResponses, error) {
-	return nil, nil
+	if numGames > MaxRecentGames {
+		return nil, fmt.Errorf("too many games requested: %d", numGames)
+	}
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	rows, err := tx.Query(ctx, `SELECT
+	omgwords.uuid,
+	omgwords.updated_at,
+	omgwords.request,
+	omgwords.tournament_id,
+	omgwords.game_end_reason,
+	omgwords.tournament_data,
+	omgwords_games_players.won
+	omgwords_games_players.score
+	users.username,
+	users.uuid,
+	users.internal_bot,
+	profiles.ratings
+	FROM omgwords
+	INNER JOIN omgwords_games_players ON omgwords.id = omgwords_games_players.game_id
+	INNER JOIN users ON users.id = omgwords_games_players.player_id
+	WHERE omgwords.tournament_id = $1
+	ORDER BY omgwords.updated_at, omgwords_games_players.first DESC limit $2 offset $3`, tourneyID, numGames, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	var gameUUID string
+	var updatedAt time.Time
+	var request ipc.GameRequest
+	var tournamentID string
+	var gameEndReason int
+	var tournamentData entity.TournamentData
+
+	var p0Won bool
+	var p0Score int
+	var p0Username string
+	var p0UUID string
+	var p0IsBot bool
+
+	var p1Won bool
+	var p1Score int
+	var p1Username string
+	var p1UUID string
+	var p1IsBot bool
+
+	responses := []*pb.GameInfoResponse{}
+
+	idx := 0
+	for rows.Next() {
+		if idx%2 == 0 {
+			if err := rows.Scan(&gameUUID, &updatedAt, &request, &tournamentID, &gameEndReason, &tournamentData,
+				&p0Won, &p0Score, &p0Username, &p0UUID, &p0IsBot); err != nil {
+				rows.Close()
+				return nil, err
+			}
+		} else {
+			if err := rows.Scan(nil, nil, nil, nil, nil,
+				&p1Won, &p1Score, &p1Username, &p1UUID, &p1IsBot); err != nil {
+				rows.Close()
+				return nil, err
+			}
+		}
+		if p0Won && p1Won {
+			return nil, fmt.Errorf("both players won for game %s", gameUUID)
+		}
+
+		winnerIdx := -1
+
+		if p0Won {
+			winnerIdx = 0
+		} else if p1Won {
+			winnerIdx = 1
+		}
+
+		timefmt, _, err := entity.VariantFromGameReq(&request)
+		if err != nil {
+			return nil, err
+		}
+
+		playerInfo := []*pb.PlayerInfo{
+			{Nickname: p0Username,
+				UserId: p0UUID,
+				IsBot:  p0IsBot,
+				First:  true},
+			{Nickname: p1Username,
+				UserId: p1UUID,
+				IsBot:  p1IsBot,
+				First:  false},
+		}
+
+		responses = append(responses, &pb.GameInfoResponse{
+			Players:             playerInfo,
+			TimeControlName:     string(timefmt),
+			TournamentId:        tournamentID,
+			GameEndReason:       pb.GameEndReason(gameEndReason),
+			LastUpdate:          timestamppb.New(updatedAt),
+			Winner:              int32(winnerIdx),
+			Scores:              []int32{int32(p0Score), int32(p1Score)},
+			GameId:              gameUUID,
+			TournamentDivision:  tournamentData.Division,
+			TournamentRound:     int32(tournamentData.Round),
+			TournamentGameIndex: int32(tournamentData.GameIndex),
+			GameRequest:         &request})
+		idx++
+	}
+	rows.Close()
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	return &pb.GameInfoResponses{GameInfo: responses}, nil
 }
 
 func (s *DBStore) OMGSet(ctx context.Context, g *entity.Game) error {

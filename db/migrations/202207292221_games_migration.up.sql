@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS omgwords (
     type int,
 );
 
+CREATE INDEX idx_omgwords_created_at ON omgwords USING btree (created_at);
 CREATE INDEX idx_omgwords_game_end_reason ON omgwords USING btree (game_end_reason);
 CREATE INDEX idx_omgwords_tournament_id ON omgwords USING btree (tournament_id);
 CREATE INDEX idx_omgwords_uuid ON omgwords USING btree (uuid);
