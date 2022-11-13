@@ -10,7 +10,6 @@ import (
 
 	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
-	"google.golang.org/protobuf/proto"
 	"lukechampine.com/frand"
 
 	"github.com/domino14/liwords/pkg/entity"
@@ -19,6 +18,7 @@ import (
 	"github.com/domino14/liwords/pkg/tournament"
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/macondo/game"
+	"github.com/domino14/macondo/gen/api/proto/macondo"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
@@ -159,52 +159,29 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 	return nil
 }
 
-func (b *Bus) goHandleBotMove(ctx context.Context, g *entity.Game) {
-	// This function should only be called if it's the bot's turn.
-	// Call it while holding at least a read lock!
-	onTurn := g.Game.PlayerOnTurn()
-	userID := g.Game.PlayerIDOnTurn()
+func (b *Bus) goHandleBotMove(ctx context.Context, resp *macondo.BotResponse,
+	gid, replyChan string) {
 
-	go b.handleBotMoveInternally(ctx, g, onTurn, userID)
-}
-
-func (b *Bus) handleBotMoveInternally(ctx context.Context, g *entity.Game, onTurn int, userID string) {
-	// This function should only be called by goHandleBotMove.
-	// Caller should pass the bot's onTurn and userID.
-	g.Lock()
-	defer g.Unlock()
-	// We check if that game is not over because a triple challenge
-	// could have ended it
-	for g.PlayerOnTurn() == onTurn && g.Game.Playing() != macondopb.PlayState_GAME_OVER {
-		hist := g.History()
-		log.Debug().Interface("bot-type", g.GameReq.BotType).Msg("bot-type")
-		req := macondopb.BotRequest{GameHistory: hist, BotType: g.GameReq.BotType}
-		data, err := proto.Marshal(&req)
-		if err != nil {
-			log.Err(err).Msg("bot-cant-move")
-			return
-		}
-		// XXX: Putting this in a Lock is bad. We need to rework this, or
-		// we can't have bots that sim.
-		res, err := b.natsconn.Request("macondo.bot", data, 10*time.Second)
-
-		if err != nil {
-			if b.natsconn.LastError() != nil {
-				log.Error().Msgf("bot-cant-move %v for request", b.natsconn.LastError())
+	go func() {
+		defer func() {
+			// acknowledge the NATS message - empty response is fine.
+			err := b.natsconn.Publish(replyChan, []byte{})
+			if err != nil {
+				log.Err(err).Str("gid", gid).Msg("error-acknowledging")
 			}
-			log.Error().Msgf("bot-cant-move %v for request", err)
-			return
-		}
-		log.Debug().Msgf("res: %v", string(res.Data))
-
-		resp := macondopb.BotResponse{}
-		err = proto.Unmarshal(res.Data, &resp)
+		}()
+		g, err := b.gameStore.Get(ctx, gid)
 		if err != nil {
-			log.Err(err).Msg("bot-cant-move-unmarshal-error")
+			log.Err(err).Str("gid", gid).Msg("cant-handle-bot-move")
 			return
 		}
+		g.Lock()
+		defer g.Unlock()
+		// These should both be the bot:
+		onTurn := g.Game.PlayerOnTurn()
+		userID := g.Game.PlayerIDOnTurn()
 		switch r := resp.Response.(type) {
-		case *macondopb.BotResponse_Move:
+		case *macondo.BotResponse_Move:
 			timeRemaining := g.TimeRemaining(onTurn)
 
 			m, err := game.MoveFromEvent(r.Move, g.Alphabet(), g.Board())
@@ -212,7 +189,9 @@ func (b *Bus) handleBotMoveInternally(ctx context.Context, g *entity.Game, onTur
 				log.Err(err).Msg("move-from-event-error")
 				return
 			}
-			err = gameplay.PlayMove(ctx, g, b.gameStore, b.userStore, b.notorietyStore, b.listStatStore, b.tournamentStore, userID, onTurn, timeRemaining, m)
+			err = gameplay.PlayMove(ctx, g, b.gameStore, b.userStore,
+				b.notorietyStore, b.listStatStore, b.tournamentStore,
+				userID, onTurn, timeRemaining, m)
 			if err != nil {
 				log.Err(err).Msg("bot-cant-move-play-error")
 				return
@@ -220,16 +199,8 @@ func (b *Bus) handleBotMoveInternally(ctx context.Context, g *entity.Game, onTur
 		case *macondopb.BotResponse_Error:
 			log.Error().Str("error", r.Error).Msg("bot-error")
 			return
-		default:
-			log.Err(errors.New("should never happen")).Msg("bot-cant-move")
 		}
-	}
-
-	err := b.gameStore.Set(ctx, g)
-	if err != nil {
-		log.Err(err).Msg("setting-game-after-bot-move")
-	}
-
+	}()
 }
 
 func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID string) error {
@@ -272,10 +243,6 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 		// Note: for PlayerVsBot, readyForGame is called twice when player is ready and every time player refreshes, why? :-(
 		g.SendChange(g.NewActiveGameEntry(true))
 
-		if g.GameReq.PlayerVsBot && g.PlayerIDOnTurn() != userID {
-			// Make a bot move if it's the bot's turn at the beginning.
-			b.goHandleBotMove(ctx, g)
-		}
 	}
 	return nil
 }

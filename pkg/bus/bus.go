@@ -27,9 +27,9 @@ import (
 	"github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/tournament"
 	"github.com/domino14/liwords/pkg/user"
+	"github.com/domino14/macondo/gen/api/proto/macondo"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
-	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
 const (
@@ -130,6 +130,9 @@ func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, err
 		// here for the purposes of providing an event stream to users of our event api.
 		"user.>",
 		"game.>",
+
+		// A NATS-compatible bot will publish events on this channel.
+		"bot.publish_event.>",
 	}
 
 	for _, topic := range topics {
@@ -222,6 +225,23 @@ outerfor:
 					}
 				}
 			}()
+
+		case msg := <-b.subchans["bot.publish_event.>"]:
+			log := log.With().Interface("msg-subject", msg.Subject).Logger()
+			log.Debug().Msg("got-bot-publish")
+			subtopics := strings.Split(msg.Subject, ".")
+			if len(subtopics) != 3 {
+				log.Error().Msg("no-game-id")
+				break
+			}
+			gid := subtopics[2]
+			resp := &macondo.BotResponse{}
+			err := proto.Unmarshal(msg.Data, resp)
+			if err != nil {
+				log.Err(err).Msg("unmarshal-bot-response-error")
+				break
+			}
+			b.goHandleBotMove(ctx, resp, gid, msg.Reply)
 
 		case msg := <-b.subchans["user.>"]:
 			log := log.With().Interface("msg-user.>", msg.Subject).Logger()
@@ -521,23 +541,9 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
-		entGame, err := gameplay.HandleEvent(ctx, b.gameStore, b.userStore, b.notorietyStore, b.listStatStore,
+		_, err = gameplay.HandleEvent(ctx, b.gameStore, b.userStore, b.notorietyStore, b.listStatStore,
 			b.tournamentStore, userID, evt)
-		if err != nil {
-			return err
-		}
-		entGame.RLock()
-		defer entGame.RUnlock()
-		// Determine if one of our players is a bot (no bot-vs-bot supported yet?)
-		// and if it is the bot's turn.
-		if entGame.GameReq != nil &&
-			entGame.GameReq.PlayerVsBot &&
-			entGame.Game.Playing() != macondopb.PlayState_GAME_OVER &&
-			entGame.PlayerIDOnTurn() != userID {
-
-			b.goHandleBotMove(ctx, entGame)
-		}
-		return nil
+		return err
 
 	case pb.MessageType_TIMED_OUT.String():
 		evt := &pb.TimedOut{}

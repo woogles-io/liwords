@@ -11,7 +11,8 @@ import (
 func TestDeserialize(t *testing.T) {
 	is := is.New(t)
 
-	for _, protocol := range []string{"proto", "json"} {
+	for _, protocol := range []SerializationProtocol{EvtSerializationProtoWithHeader,
+		EvtSerializationJSONWithHeader} {
 
 		w := WrapEvent(&pb.ClientGameplayEvent{
 			Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
