@@ -192,7 +192,21 @@ func (gs *GameService) CreateBroadcastGame(ctx context.Context, req *pb.CreateBr
 	// via the API.
 	entGame := entity.NewGame(&gameRunner.Game, nil)
 	entGame.Type = ipc.GameType_ANNOTATED
-	// no quickdata for anno games
+
+	// Create player info in entGame.Quickdata
+	playerinfos := make([]*ipc.PlayerInfo, len(players))
+
+	for idx, u := range players {
+		playerinfos[idx] = &ipc.PlayerInfo{
+			Nickname: u.Nickname,
+			UserId:   u.Nickname,
+			First:    idx == 0,
+		}
+	}
+	entGame.Quickdata = &entity.Quickdata{
+		PlayerInfo: playerinfos,
+	}
+
 	entGame.CreatedAt = time.Now()
 	if err = gs.gameStore.Create(ctx, entGame); err != nil {
 		return nil, err

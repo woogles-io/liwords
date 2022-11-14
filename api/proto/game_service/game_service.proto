@@ -83,9 +83,26 @@ message CreateBroadcastGameResponse { string game_id = 1; }
 
 message BroadcastGamePrivacy { bool public = 1; }
 
+message GetGamesForEditorRequest {
+  string user_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+  bool unfinished = 4;
+}
+
+message BroadcastGamesResponse {
+  message BroadcastGame {
+    string game_id = 1;
+    string creator_id = 2;
+    bool private = 3;
+    bool finished = 4;
+  }
+  repeated BroadcastGame games = 1;
+}
+
 // GameEventService will handle our game event API. We can connect bots to this
 // API, or use it for sandbox mode, or for live annotations, etc.
-service GameEventService {
+service GameBroadcastService {
   // CreateBroadcastGame will create a game for Woogles broadcast
   rpc CreateBroadcastGame(CreateBroadcastGameRequest)
       returns (CreateBroadcastGameResponse);
@@ -102,4 +119,7 @@ service GameEventService {
       returns (GameEventResponse);
 
   rpc SetBroadcastGamePrivacy(BroadcastGamePrivacy) returns (GameEventResponse);
+
+  rpc GetGamesForEditor(GetGamesForEditorRequest)
+      returns (BroadcastGamesResponse);
 }
