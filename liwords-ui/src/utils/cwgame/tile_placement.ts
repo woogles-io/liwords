@@ -198,10 +198,10 @@ export const handleKeyPress = (
   if (normalizedKey === NormalizedBackspace) {
     // Don't allow the arrow to go off-screen when backspacing.
     if (newrow < 0) {
-      newrow = 0;
+      newrow = arrowProperty.row;
     }
     if (newcol < 0) {
-      newcol = 0;
+      newcol = arrowProperty.col;
     }
     return handleTileDeletion(
       {
@@ -219,15 +219,10 @@ export const handleKeyPress = (
 
   if (normalizedKey === NormalizedSpace) {
     if (newrow > board.dim - 1) {
-      newrow = board.dim - 1;
+      newrow = arrowProperty.row;
     }
     if (newcol > board.dim - 1) {
-      newcol = board.dim - 1;
-    }
-    if (ephTileMap[uniqueTileIdx(newrow, newcol)] !== undefined) {
-      // Just after placing a tile at the right or bottom edge,
-      // pressing Space should not place the newArrow on the tile.
-      return null;
+      newcol = arrowProperty.col;
     }
     return {
       newArrow: {
