@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/domino14/liwords/pkg/apiserver"
+	"github.com/domino14/liwords/pkg/config"
+	entityutils "github.com/domino14/liwords/pkg/entity/utilities"
 	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/utilities"
 	"github.com/domino14/macondo/gcgio"
@@ -22,11 +24,12 @@ import (
 type GameService struct {
 	userStore user.Store
 	gameStore GameStore
+	cfg       *config.Config
 }
 
 // NewGameService creates a Twirp GameService
-func NewGameService(u user.Store, gs GameStore) *GameService {
-	return &GameService{u, gs}
+func NewGameService(u user.Store, gs GameStore, cfg *config.Config) *GameService {
+	return &GameService{u, gs, cfg}
 }
 
 // GetMetadata gets metadata for the given game.
@@ -42,7 +45,7 @@ func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest)
 	return gir, nil
 }
 
-//  GetRematchStreak gets quickdata for the given rematch streak.
+// GetRematchStreak gets quickdata for the given rematch streak.
 func (gs *GameService) GetRematchStreak(ctx context.Context, req *pb.RematchStreakRequest) (*pb.StreakInfoResponse, error) {
 	resp, err := gs.gameStore.GetRematchStreak(ctx, req.OriginalRequestId)
 	if err != nil {
@@ -53,7 +56,8 @@ func (gs *GameService) GetRematchStreak(ctx context.Context, req *pb.RematchStre
 	return resp, nil
 }
 
-//  GetRecentGames gets quickdata for the numGames most recent games of the player
+//	GetRecentGames gets quickdata for the numGames most recent games of the player
+//
 // offset by offset.
 func (gs *GameService) GetRecentGames(ctx context.Context, req *pb.RecentGamesRequest) (*ipc.GameInfoResponses, error) {
 	resp, err := gs.gameStore.GetRecentGames(ctx, req.Username, int(req.NumGames), int(req.Offset))
@@ -112,6 +116,21 @@ func (gs *GameService) GetGameHistory(ctx context.Context, req *pb.GameHistoryRe
 		return nil, twirp.NewError(twirp.InvalidArgument, "please wait until the game is over to download GCG")
 	}
 	return &pb.GameHistoryResponse{History: hist}, nil
+}
+
+func (gs *GameService) GetGameDocument(ctx context.Context, req *pb.GameDocumentRequest) (*pb.GameDocumentResponse, error) {
+	g, err := gs.gameStore.Get(ctx, req.GameId)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	if g.History().PlayState != macondopb.PlayState_GAME_OVER {
+		return nil, twirp.NewError(twirp.InvalidArgument, "please wait until the game is over to download GCG")
+	}
+	gdoc, err := entityutils.ToGameDocument(g, gs.cfg)
+	if err != nil {
+		return nil, twirp.NewError(twirp.Internal, err.Error())
+	}
+	return &pb.GameDocumentResponse{Document: gdoc}, nil
 }
 
 func censorPlayer(gir *ipc.GameInfoResponse, playerIndex int, censoredUsername string) {

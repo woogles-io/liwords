@@ -9,6 +9,7 @@ services:
       STRATEGY_PARAMS_PATH: /opt/program/data/strategy
       LEXICON_PATH: /opt/program/data/lexica
       LETTER_DISTRIBUTION_PATH: /opt/program/data/letterdistributions
+      DATA_PATH: /opt/program/data
       DB_HOST: db
       DB_PORT: "5432"
       DB_USER: postgres

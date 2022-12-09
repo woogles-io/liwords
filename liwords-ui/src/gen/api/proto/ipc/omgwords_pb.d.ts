@@ -9,7 +9,7 @@
 
 import type {BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage, Timestamp} from "@bufbuild/protobuf";
 import {Message, proto3} from "@bufbuild/protobuf";
-import type {BotRequest_BotCode, ChallengeRule, GameEvent, GameHistory, PlayState} from "../macondo/macondo_pb.js";
+import type {BotRequest_BotCode, ChallengeRule as ChallengeRule$1, GameEvent as GameEvent$1, GameHistory, PlayState as PlayState$1} from "../macondo/macondo_pb.js";
 
 /**
  * @generated from enum ipc.GameEndReason
@@ -125,6 +125,66 @@ export declare enum GameType {
    * @generated from enum value: BOT_VS_BOT = 2;
    */
   BOT_VS_BOT = 2,
+}
+
+/**
+ * @generated from enum ipc.PlayState
+ */
+export declare enum PlayState {
+  /**
+   * @generated from enum value: PLAYING = 0;
+   */
+  PLAYING = 0,
+
+  /**
+   * @generated from enum value: WAITING_FOR_FINAL_PASS = 1;
+   */
+  WAITING_FOR_FINAL_PASS = 1,
+
+  /**
+   * @generated from enum value: GAME_OVER = 2;
+   */
+  GAME_OVER = 2,
+
+  /**
+   * @generated from enum value: UNSTARTED = 3;
+   */
+  UNSTARTED = 3,
+}
+
+/**
+ * @generated from enum ipc.ChallengeRule
+ */
+export declare enum ChallengeRule {
+  /**
+   * @generated from enum value: ChallengeRule_VOID = 0;
+   */
+  ChallengeRule_VOID = 0,
+
+  /**
+   * @generated from enum value: ChallengeRule_SINGLE = 1;
+   */
+  ChallengeRule_SINGLE = 1,
+
+  /**
+   * @generated from enum value: ChallengeRule_DOUBLE = 2;
+   */
+  ChallengeRule_DOUBLE = 2,
+
+  /**
+   * @generated from enum value: ChallengeRule_FIVE_POINT = 3;
+   */
+  ChallengeRule_FIVE_POINT = 3,
+
+  /**
+   * @generated from enum value: ChallengeRule_TEN_POINT = 4;
+   */
+  ChallengeRule_TEN_POINT = 4,
+
+  /**
+   * @generated from enum value: ChallengeRule_TRIPLE = 5;
+   */
+  ChallengeRule_TRIPLE = 5,
 }
 
 /**
@@ -268,7 +328,7 @@ export declare class GameRequest extends Message<GameRequest> {
   /**
    * @generated from field: macondo.ChallengeRule challenge_rule = 5;
    */
-  challengeRule: ChallengeRule;
+  challengeRule: ChallengeRule$1;
 
   /**
    * @generated from field: ipc.GameMode game_mode = 6;
@@ -923,9 +983,11 @@ export declare class ReadyForGame extends Message<ReadyForGame> {
  */
 export declare class ServerGameplayEvent extends Message<ServerGameplayEvent> {
   /**
+   * XXX: move to ipc.GameEvent
+   *
    * @generated from field: macondo.GameEvent event = 1;
    */
-  event?: GameEvent;
+  event?: GameEvent$1;
 
   /**
    * @generated from field: string game_id = 2;
@@ -943,9 +1005,11 @@ export declare class ServerGameplayEvent extends Message<ServerGameplayEvent> {
   timeRemaining: number;
 
   /**
+   * XXX: move to ipc.PlayState
+   *
    * @generated from field: macondo.PlayState playing = 5;
    */
-  playing: PlayState;
+  playing: PlayState$1;
 
   /**
    * the event has the nickname, but not the userid.
@@ -995,7 +1059,7 @@ export declare class ServerChallengeResultEvent extends Message<ServerChallengeR
   /**
    * @generated from field: macondo.ChallengeRule challenge_rule = 3;
    */
-  challengeRule: ChallengeRule;
+  challengeRule: ChallengeRule$1;
 
   /**
    * @generated from field: string returned_tiles = 4;
@@ -1187,5 +1251,573 @@ export declare class TimedOut extends Message<TimedOut> {
   static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TimedOut;
 
   static equals(a: TimedOut | PlainMessage<TimedOut> | undefined, b: TimedOut | PlainMessage<TimedOut> | undefined): boolean;
+}
+
+/**
+ * GameEvent is an internal game event, saved in the GameHistory
+ *
+ * @generated from message ipc.GameEvent
+ */
+export declare class GameEvent extends Message<GameEvent> {
+  /**
+   * @generated from field: string note = 2;
+   */
+  note: string;
+
+  /**
+   * @generated from field: bytes rack = 3;
+   */
+  rack: Uint8Array;
+
+  /**
+   * @generated from field: ipc.GameEvent.Type type = 4;
+   */
+  type: GameEvent_Type;
+
+  /**
+   * @generated from field: int32 cumulative = 5;
+   */
+  cumulative: number;
+
+  /**
+   * @generated from field: int32 row = 6;
+   */
+  row: number;
+
+  /**
+   * @generated from field: int32 column = 7;
+   */
+  column: number;
+
+  /**
+   * @generated from field: ipc.GameEvent.Direction direction = 8;
+   */
+  direction: GameEvent_Direction;
+
+  /**
+   * @generated from field: string position = 9;
+   */
+  position: string;
+
+  /**
+   * @generated from field: bytes played_tiles = 10;
+   */
+  playedTiles: Uint8Array;
+
+  /**
+   * An event will not have all of these; it depends on the type of the event.
+   *
+   * @generated from field: bytes exchanged = 11;
+   */
+  exchanged: Uint8Array;
+
+  /**
+   * @generated from field: int32 score = 12;
+   */
+  score: number;
+
+  /**
+   * @generated from field: int32 bonus = 13;
+   */
+  bonus: number;
+
+  /**
+   * @generated from field: int32 end_rack_points = 14;
+   */
+  endRackPoints: number;
+
+  /**
+   * @generated from field: int32 lost_score = 15;
+   */
+  lostScore: number;
+
+  /**
+   * @generated from field: bool is_bingo = 16;
+   */
+  isBingo: boolean;
+
+  /**
+   * words_formed is a list of all words made by this play
+   *
+   * @generated from field: repeated bytes words_formed = 17;
+   */
+  wordsFormed: Uint8Array[];
+
+  /**
+   * @generated from field: int32 millis_remaining = 18;
+   */
+  millisRemaining: number;
+
+  /**
+   * The player who played this move is encoded in player_index. This should
+   * be the index in GameDocument.players.
+   *
+   * @generated from field: uint32 player_index = 19;
+   */
+  playerIndex: number;
+
+  /**
+   * The leave from rack after played_tiles.
+   *
+   * @generated from field: bytes leave = 20;
+   */
+  leave: Uint8Array;
+
+  constructor(data?: PartialMessage<GameEvent>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "ipc.GameEvent";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GameEvent;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GameEvent;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GameEvent;
+
+  static equals(a: GameEvent | PlainMessage<GameEvent> | undefined, b: GameEvent | PlainMessage<GameEvent> | undefined): boolean;
+}
+
+/**
+ * @generated from enum ipc.GameEvent.Type
+ */
+export declare enum GameEvent_Type {
+  /**
+   * @generated from enum value: TILE_PLACEMENT_MOVE = 0;
+   */
+  TILE_PLACEMENT_MOVE = 0,
+
+  /**
+   * @generated from enum value: PHONY_TILES_RETURNED = 1;
+   */
+  PHONY_TILES_RETURNED = 1,
+
+  /**
+   * @generated from enum value: PASS = 2;
+   */
+  PASS = 2,
+
+  /**
+   * @generated from enum value: CHALLENGE_BONUS = 3;
+   */
+  CHALLENGE_BONUS = 3,
+
+  /**
+   * @generated from enum value: EXCHANGE = 4;
+   */
+  EXCHANGE = 4,
+
+  /**
+   * @generated from enum value: END_RACK_PTS = 5;
+   */
+  END_RACK_PTS = 5,
+
+  /**
+   * @generated from enum value: TIME_PENALTY = 6;
+   */
+  TIME_PENALTY = 6,
+
+  /**
+   * Only for international rules (or after 6 zeroes)
+   *
+   * @generated from enum value: END_RACK_PENALTY = 7;
+   */
+  END_RACK_PENALTY = 7,
+
+  /**
+   * Lose a turn for challenging a word incorrectly (only for double
+   * challenge)
+   *
+   * @generated from enum value: UNSUCCESSFUL_CHALLENGE_TURN_LOSS = 8;
+   */
+  UNSUCCESSFUL_CHALLENGE_TURN_LOSS = 8,
+
+  /**
+   * Issue a challenge
+   *
+   * @generated from enum value: CHALLENGE = 9;
+   */
+  CHALLENGE = 9,
+}
+
+/**
+ * @generated from enum ipc.GameEvent.Direction
+ */
+export declare enum GameEvent_Direction {
+  /**
+   * @generated from enum value: HORIZONTAL = 0;
+   */
+  HORIZONTAL = 0,
+
+  /**
+   * @generated from enum value: VERTICAL = 1;
+   */
+  VERTICAL = 1,
+}
+
+/**
+ * @generated from message ipc.Timers
+ */
+export declare class Timers extends Message<Timers> {
+  /**
+   * time_of_last_update is the timestamp of the last update, in milliseconds
+   * If no update has been made, this defaults to timeStarted.
+   *
+   * @generated from field: int64 time_of_last_update = 1;
+   */
+  timeOfLastUpdate: bigint;
+
+  /**
+   * time_started is a unix timestamp, in milliseconds.
+   *
+   * @generated from field: int64 time_started = 2;
+   */
+  timeStarted: bigint;
+
+  /**
+   * time_remaining is an array of remaining time per player, in milliseconds
+   *
+   * @generated from field: repeated int64 time_remaining = 3;
+   */
+  timeRemaining: bigint[];
+
+  /**
+   * max_overtime is the number of minutes that the game is allowed to go
+   * overtime
+   *
+   * @generated from field: int32 max_overtime = 4;
+   */
+  maxOvertime: number;
+
+  /**
+   * increment_seconds is the amount of seconds that is added to the timer
+   * after every move
+   *
+   * @generated from field: int32 increment_seconds = 5;
+   */
+  incrementSeconds: number;
+
+  /**
+   * reset_to_increment_after_turn sets the timer for the player to
+   * increment_seconds. this can be used for correspondence games; for example,
+   * time_remaining and increment_seconds can be set to the same number of
+   * seconds (let's say 5 days) at the beginning, and this flag can be set to
+   * on. Then we should always have 5 days to make any move.
+   *
+   * @generated from field: bool reset_to_increment_after_turn = 6;
+   */
+  resetToIncrementAfterTurn: boolean;
+
+  constructor(data?: PartialMessage<Timers>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "ipc.Timers";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Timers;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Timers;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Timers;
+
+  static equals(a: Timers | PlainMessage<Timers> | undefined, b: Timers | PlainMessage<Timers> | undefined): boolean;
+}
+
+/**
+ * @generated from message ipc.MetaEventData
+ */
+export declare class MetaEventData extends Message<MetaEventData> {
+  /**
+   * @generated from field: repeated ipc.GameMetaEvent events = 1;
+   */
+  events: GameMetaEvent[];
+
+  constructor(data?: PartialMessage<MetaEventData>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "ipc.MetaEventData";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MetaEventData;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): MetaEventData;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): MetaEventData;
+
+  static equals(a: MetaEventData | PlainMessage<MetaEventData> | undefined, b: MetaEventData | PlainMessage<MetaEventData> | undefined): boolean;
+}
+
+/**
+ * @generated from message ipc.GameBoard
+ */
+export declare class GameBoard extends Message<GameBoard> {
+  /**
+   * @generated from field: int32 num_rows = 1;
+   */
+  numRows: number;
+
+  /**
+   * @generated from field: int32 num_cols = 2;
+   */
+  numCols: number;
+
+  /**
+   * tiles are laid out in row-major form
+   *
+   * @generated from field: bytes tiles = 3;
+   */
+  tiles: Uint8Array;
+
+  /**
+   *   repeated int32 h_cross_scores = 4;
+   *   repeated int32 v_cross_scores = 5;
+   *
+   * @generated from field: bool is_empty = 4;
+   */
+  isEmpty: boolean;
+
+  constructor(data?: PartialMessage<GameBoard>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "ipc.GameBoard";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GameBoard;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GameBoard;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GameBoard;
+
+  static equals(a: GameBoard | PlainMessage<GameBoard> | undefined, b: GameBoard | PlainMessage<GameBoard> | undefined): boolean;
+}
+
+/**
+ * @generated from message ipc.Bag
+ */
+export declare class Bag extends Message<Bag> {
+  /**
+   * @generated from field: bytes tiles = 1;
+   */
+  tiles: Uint8Array;
+
+  constructor(data?: PartialMessage<Bag>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "ipc.Bag";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Bag;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Bag;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Bag;
+
+  static equals(a: Bag | PlainMessage<Bag> | undefined, b: Bag | PlainMessage<Bag> | undefined): boolean;
+}
+
+/**
+ * A GameDocument encodes the entire state of a game. It includes a history
+ * of events, as well as information about the current state of the bag,
+ * timers, etc. It should be possible to recreate an entire omgwords game
+ * from a GameDocument state at any given time.
+ *
+ * @generated from message ipc.GameDocument
+ */
+export declare class GameDocument extends Message<GameDocument> {
+  /**
+   * players are in order of who went first.
+   *
+   * @generated from field: repeated ipc.GameDocument.MinimalPlayerInfo players = 1;
+   */
+  players: GameDocument_MinimalPlayerInfo[];
+
+  /**
+   * @generated from field: repeated ipc.GameEvent events = 2;
+   */
+  events: GameEvent[];
+
+  /**
+   * @generated from field: int32 version = 3;
+   */
+  version: number;
+
+  /**
+   * @generated from field: string lexicon = 4;
+   */
+  lexicon: string;
+
+  /**
+   * @generated from field: string uid = 5;
+   */
+  uid: string;
+
+  /**
+   * @generated from field: string description = 6;
+   */
+  description: string;
+
+  /**
+   * @generated from field: repeated bytes racks = 7;
+   */
+  racks: Uint8Array[];
+
+  /**
+   * @generated from field: ipc.ChallengeRule challenge_rule = 8;
+   */
+  challengeRule: ChallengeRule;
+
+  /**
+   * @generated from field: ipc.PlayState play_state = 9;
+   */
+  playState: PlayState;
+
+  /**
+   * @generated from field: repeated int32 current_scores = 10;
+   */
+  currentScores: number[];
+
+  /**
+   * @generated from field: string variant = 11;
+   */
+  variant: string;
+
+  /**
+   * @generated from field: int32 winner = 12;
+   */
+  winner: number;
+
+  /**
+   * The board layout is just the name for the layout of the board.
+   * It should have a sensible default, if blank.
+   *
+   * @generated from field: string board_layout = 13;
+   */
+  boardLayout: string;
+
+  /**
+   * The letter distribution is the name of the distribution of tiles used for
+   * this game. If blank, should default to "english".
+   *
+   * @generated from field: string letter_distribution = 14;
+   */
+  letterDistribution: string;
+
+  /**
+   * @generated from field: ipc.GameType type = 15;
+   */
+  type: GameType;
+
+  /**
+   * @generated from field: bool timers_started = 16;
+   */
+  timersStarted: boolean;
+
+  /**
+   * @generated from field: ipc.GameEndReason end_reason = 17;
+   */
+  endReason: GameEndReason;
+
+  /**
+   * @generated from field: ipc.MetaEventData meta_event_data = 18;
+   */
+  metaEventData?: MetaEventData;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 19;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * gameplay-specific structures:
+   * board is the current state of the board
+   *
+   * @generated from field: ipc.GameBoard board = 20;
+   */
+  board?: GameBoard;
+
+  /**
+   * bag is the current tiles in the bag.
+   *
+   * @generated from field: ipc.Bag bag = 21;
+   */
+  bag?: Bag;
+
+  /**
+   * @generated from field: int32 scoreless_turns = 22;
+   */
+  scorelessTurns: number;
+
+  /**
+   * The index of the player on turn
+   *
+   * @generated from field: int32 player_on_turn = 23;
+   */
+  playerOnTurn: number;
+
+  /**
+   * current_scores is in the same order as the player info structure inside
+   * GameHistory
+   *
+   * @generated from field: ipc.Timers timers = 24;
+   */
+  timers?: Timers;
+
+  /**
+   * real time or correspondence?
+   *
+   * @generated from field: ipc.GameMode game_mode = 25;
+   */
+  gameMode: GameMode;
+
+  constructor(data?: PartialMessage<GameDocument>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "ipc.GameDocument";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GameDocument;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GameDocument;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GameDocument;
+
+  static equals(a: GameDocument | PlainMessage<GameDocument> | undefined, b: GameDocument | PlainMessage<GameDocument> | undefined): boolean;
+}
+
+/**
+ * @generated from message ipc.GameDocument.MinimalPlayerInfo
+ */
+export declare class GameDocument_MinimalPlayerInfo extends Message<GameDocument_MinimalPlayerInfo> {
+  /**
+   * @generated from field: string nickname = 1;
+   */
+  nickname: string;
+
+  /**
+   * @generated from field: string real_name = 2;
+   */
+  realName: string;
+
+  /**
+   * user_id is an internal, unchangeable user ID, whereas the other two user
+   * identifiers might possibly be mutable.
+   *
+   * @generated from field: string user_id = 3;
+   */
+  userId: string;
+
+  constructor(data?: PartialMessage<GameDocument_MinimalPlayerInfo>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "ipc.GameDocument.MinimalPlayerInfo";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GameDocument_MinimalPlayerInfo;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GameDocument_MinimalPlayerInfo;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GameDocument_MinimalPlayerInfo;
+
+  static equals(a: GameDocument_MinimalPlayerInfo | PlainMessage<GameDocument_MinimalPlayerInfo> | undefined, b: GameDocument_MinimalPlayerInfo | PlainMessage<GameDocument_MinimalPlayerInfo> | undefined): boolean;
 }
 

@@ -232,11 +232,11 @@ message ReadyForGame { string game_id = 1; }
 // The server will also send these asynchronously for opponent gameplay
 // events.
 message ServerGameplayEvent {
-  macondo.GameEvent event = 1;
+  macondo.GameEvent event = 1; // XXX: move to ipc.GameEvent
   string game_id = 2;
   string new_rack = 3;
   int32 time_remaining = 4;
-  macondo.PlayState playing = 5;
+  macondo.PlayState playing = 5; // XXX: move to ipc.PlayState
   string user_id = 6; // the event has the nickname, but not the userid.
 }
 
@@ -293,4 +293,160 @@ message NewGameEvent {
 message TimedOut {
   string game_id = 1;
   string user_id = 2;
+}
+
+// GameEvent is an internal game event, saved in the GameHistory
+message GameEvent {
+  enum Type {
+    TILE_PLACEMENT_MOVE = 0;
+    PHONY_TILES_RETURNED = 1;
+    PASS = 2;
+    CHALLENGE_BONUS = 3;
+    EXCHANGE = 4;
+    END_RACK_PTS = 5;
+    TIME_PENALTY = 6;
+    // Only for international rules (or after 6 zeroes)
+    END_RACK_PENALTY = 7;
+    // Lose a turn for challenging a word incorrectly (only for double
+    // challenge)
+    UNSUCCESSFUL_CHALLENGE_TURN_LOSS = 8;
+    // Issue a challenge
+    CHALLENGE = 9;
+  }
+
+  enum Direction {
+    HORIZONTAL = 0;
+    VERTICAL = 1;
+  }
+  string note = 2;
+  bytes rack = 3;
+  Type type = 4;
+  int32 cumulative = 5;
+  int32 row = 6;
+  int32 column = 7;
+  Direction direction = 8;
+  string position = 9;
+  bytes played_tiles = 10;
+  // An event will not have all of these; it depends on the type of the event.
+  bytes exchanged = 11;
+  int32 score = 12;
+  int32 bonus = 13;
+  int32 end_rack_points = 14;
+  int32 lost_score = 15;
+
+  bool is_bingo = 16;
+  // words_formed is a list of all words made by this play
+  repeated bytes words_formed = 17;
+  int32 millis_remaining = 18;
+  // The player who played this move is encoded in player_index. This should
+  // be the index in GameDocument.players.
+  uint32 player_index = 19;
+  // The leave from rack after played_tiles.
+  bytes leave = 20;
+}
+
+enum PlayState {
+  PLAYING = 0;
+  WAITING_FOR_FINAL_PASS = 1;
+  GAME_OVER = 2;
+  UNSTARTED = 3;
+}
+
+enum ChallengeRule {
+  ChallengeRule_VOID = 0;
+  ChallengeRule_SINGLE = 1;
+  ChallengeRule_DOUBLE = 2;
+  ChallengeRule_FIVE_POINT = 3;
+  ChallengeRule_TEN_POINT = 4;
+  ChallengeRule_TRIPLE = 5;
+}
+
+message Timers {
+  // time_of_last_update is the timestamp of the last update, in milliseconds
+  // If no update has been made, this defaults to timeStarted.
+  int64 time_of_last_update = 1;
+  // time_started is a unix timestamp, in milliseconds.
+  int64 time_started = 2;
+  // time_remaining is an array of remaining time per player, in milliseconds
+  repeated int64 time_remaining = 3;
+  // max_overtime is the number of minutes that the game is allowed to go
+  // overtime
+  int32 max_overtime = 4;
+  // increment_seconds is the amount of seconds that is added to the timer
+  // after every move
+  int32 increment_seconds = 5;
+  // reset_to_increment_after_turn sets the timer for the player to
+  // increment_seconds. this can be used for correspondence games; for example,
+  // time_remaining and increment_seconds can be set to the same number of
+  // seconds (let's say 5 days) at the beginning, and this flag can be set to
+  // on. Then we should always have 5 days to make any move.
+  bool reset_to_increment_after_turn = 6;
+}
+
+message MetaEventData { repeated GameMetaEvent events = 1; }
+
+message GameBoard {
+  int32 num_rows = 1;
+  int32 num_cols = 2;
+  // tiles are laid out in row-major form
+  bytes tiles = 3;
+  bool is_empty = 4;
+  //   repeated int32 h_cross_scores = 4;
+  //   repeated int32 v_cross_scores = 5;
+}
+
+message Bag { bytes tiles = 1; }
+
+// A GameDocument encodes the entire state of a game. It includes a history
+// of events, as well as information about the current state of the bag,
+// timers, etc. It should be possible to recreate an entire omgwords game
+// from a GameDocument state at any given time.
+message GameDocument {
+  message MinimalPlayerInfo {
+    string nickname = 1;
+    string real_name = 2;
+    // user_id is an internal, unchangeable user ID, whereas the other two user
+    // identifiers might possibly be mutable.
+    string user_id = 3;
+  }
+  // players are in order of who went first.
+  repeated MinimalPlayerInfo players = 1;
+
+  repeated GameEvent events = 2;
+
+  int32 version = 3;
+  string lexicon = 4;
+  string uid = 5;
+  string description = 6;
+  repeated bytes racks = 7;
+  ChallengeRule challenge_rule = 8;
+  PlayState play_state = 9;
+  repeated int32 current_scores = 10;
+  string variant = 11;
+  int32 winner = 12;
+  // The board layout is just the name for the layout of the board.
+  // It should have a sensible default, if blank.
+  string board_layout = 13;
+  // The letter distribution is the name of the distribution of tiles used for
+  // this game. If blank, should default to "english".
+  string letter_distribution = 14;
+  GameType type = 15;
+  bool timers_started = 16;
+  GameEndReason end_reason = 17;
+  MetaEventData meta_event_data = 18;
+  google.protobuf.Timestamp created_at = 19;
+
+  // gameplay-specific structures:
+  // board is the current state of the board
+  GameBoard board = 20;
+  // bag is the current tiles in the bag.
+  Bag bag = 21;
+  int32 scoreless_turns = 22;
+  // The index of the player on turn
+  int32 player_on_turn = 23;
+  // current_scores is in the same order as the player info structure inside
+  // GameHistory
+  Timers timers = 24;
+  // real time or correspondence?
+  GameMode game_mode = 25;
 }

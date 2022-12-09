@@ -123,6 +123,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Debug().Interface("timers", g.Timers).Msg("TIMERS")
 
 	var sdata entity.Stats
 	err = json.Unmarshal(g.Stats, &sdata)

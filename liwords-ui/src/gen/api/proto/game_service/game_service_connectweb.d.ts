@@ -3,7 +3,7 @@
 /* eslint-disable */
 /* @ts-nocheck */
 
-import {GameHistoryRequest, GameHistoryResponse, GameInfoRequest, GCGRequest, GCGResponse, RecentGamesRequest, RematchStreakRequest, StreakInfoResponse} from "./game_service_pb.js";
+import {GameDocumentRequest, GameDocumentResponse, GameHistoryRequest, GameHistoryResponse, GameInfoRequest, GCGRequest, GCGResponse, RecentGamesRequest, RematchStreakRequest, StreakInfoResponse} from "./game_service_pb.js";
 import {GameInfoResponse, GameInfoResponses} from "../ipc/omgwords_pb.js";
 import {MethodKind} from "@bufbuild/protobuf";
 
@@ -63,6 +63,18 @@ export declare const GameMetadataService: {
       readonly name: "GetRematchStreak",
       readonly I: typeof RematchStreakRequest,
       readonly O: typeof StreakInfoResponse,
+      readonly kind: MethodKind.Unary,
+    },
+    /**
+     * GetGameDocument gets a Game Document. This will eventually obsolete
+     * GetGameHistory.
+     *
+     * @generated from rpc game_service.GameMetadataService.GetGameDocument
+     */
+    readonly getGameDocument: {
+      readonly name: "GetGameDocument",
+      readonly I: typeof GameDocumentRequest,
+      readonly O: typeof GameDocumentResponse,
       readonly kind: MethodKind.Unary,
     },
   }

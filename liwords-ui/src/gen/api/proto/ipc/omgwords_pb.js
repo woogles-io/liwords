@@ -8,7 +8,7 @@
 /* @ts-nocheck */
 
 import {proto3, Timestamp} from "@bufbuild/protobuf";
-import {BotRequest_BotCode, ChallengeRule, GameEvent, GameHistory, PlayState} from "../macondo/macondo_pb.js";
+import {BotRequest_BotCode, ChallengeRule as ChallengeRule$1, GameEvent as GameEvent$1, GameHistory, PlayState as PlayState$1} from "../macondo/macondo_pb.js";
 
 /**
  * @generated from enum ipc.GameEndReason
@@ -59,6 +59,34 @@ export const GameType = proto3.makeEnum(
     {no: 0, name: "NATIVE"},
     {no: 1, name: "ANNOTATED"},
     {no: 2, name: "BOT_VS_BOT"},
+  ],
+);
+
+/**
+ * @generated from enum ipc.PlayState
+ */
+export const PlayState = proto3.makeEnum(
+  "ipc.PlayState",
+  [
+    {no: 0, name: "PLAYING"},
+    {no: 1, name: "WAITING_FOR_FINAL_PASS"},
+    {no: 2, name: "GAME_OVER"},
+    {no: 3, name: "UNSTARTED"},
+  ],
+);
+
+/**
+ * @generated from enum ipc.ChallengeRule
+ */
+export const ChallengeRule = proto3.makeEnum(
+  "ipc.ChallengeRule",
+  [
+    {no: 0, name: "ChallengeRule_VOID"},
+    {no: 1, name: "ChallengeRule_SINGLE"},
+    {no: 2, name: "ChallengeRule_DOUBLE"},
+    {no: 3, name: "ChallengeRule_FIVE_POINT"},
+    {no: 4, name: "ChallengeRule_TEN_POINT"},
+    {no: 5, name: "ChallengeRule_TRIPLE"},
   ],
 );
 
@@ -114,7 +142,7 @@ export const GameRequest = proto3.makeMessageType(
     { no: 2, name: "rules", kind: "message", T: GameRules },
     { no: 3, name: "initial_time_seconds", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 4, name: "increment_seconds", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 5, name: "challenge_rule", kind: "enum", T: proto3.getEnumType(ChallengeRule) },
+    { no: 5, name: "challenge_rule", kind: "enum", T: proto3.getEnumType(ChallengeRule$1) },
     { no: 6, name: "game_mode", kind: "enum", T: proto3.getEnumType(GameMode) },
     { no: 7, name: "rating_mode", kind: "enum", T: proto3.getEnumType(RatingMode) },
     { no: 8, name: "request_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
@@ -315,11 +343,11 @@ export const ReadyForGame = proto3.makeMessageType(
 export const ServerGameplayEvent = proto3.makeMessageType(
   "ipc.ServerGameplayEvent",
   () => [
-    { no: 1, name: "event", kind: "message", T: GameEvent },
+    { no: 1, name: "event", kind: "message", T: GameEvent$1 },
     { no: 2, name: "game_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "new_rack", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "time_remaining", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 5, name: "playing", kind: "enum", T: proto3.getEnumType(PlayState) },
+    { no: 5, name: "playing", kind: "enum", T: proto3.getEnumType(PlayState$1) },
     { no: 6, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ],
 );
@@ -341,7 +369,7 @@ export const ServerChallengeResultEvent = proto3.makeMessageType(
   () => [
     { no: 1, name: "valid", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 2, name: "challenger", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "challenge_rule", kind: "enum", T: proto3.getEnumType(ChallengeRule) },
+    { no: 3, name: "challenge_rule", kind: "enum", T: proto3.getEnumType(ChallengeRule$1) },
     { no: 4, name: "returned_tiles", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ],
 );
@@ -403,5 +431,165 @@ export const TimedOut = proto3.makeMessageType(
     { no: 1, name: "game_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ],
+);
+
+/**
+ * GameEvent is an internal game event, saved in the GameHistory
+ *
+ * @generated from message ipc.GameEvent
+ */
+export const GameEvent = proto3.makeMessageType(
+  "ipc.GameEvent",
+  () => [
+    { no: 2, name: "note", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "rack", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
+    { no: 4, name: "type", kind: "enum", T: proto3.getEnumType(GameEvent_Type) },
+    { no: 5, name: "cumulative", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 6, name: "row", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 7, name: "column", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 8, name: "direction", kind: "enum", T: proto3.getEnumType(GameEvent_Direction) },
+    { no: 9, name: "position", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 10, name: "played_tiles", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
+    { no: 11, name: "exchanged", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
+    { no: 12, name: "score", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 13, name: "bonus", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 14, name: "end_rack_points", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 15, name: "lost_score", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 16, name: "is_bingo", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 17, name: "words_formed", kind: "scalar", T: 12 /* ScalarType.BYTES */, repeated: true },
+    { no: 18, name: "millis_remaining", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 19, name: "player_index", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
+    { no: 20, name: "leave", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
+  ],
+);
+
+/**
+ * @generated from enum ipc.GameEvent.Type
+ */
+export const GameEvent_Type = proto3.makeEnum(
+  "ipc.GameEvent.Type",
+  [
+    {no: 0, name: "TILE_PLACEMENT_MOVE"},
+    {no: 1, name: "PHONY_TILES_RETURNED"},
+    {no: 2, name: "PASS"},
+    {no: 3, name: "CHALLENGE_BONUS"},
+    {no: 4, name: "EXCHANGE"},
+    {no: 5, name: "END_RACK_PTS"},
+    {no: 6, name: "TIME_PENALTY"},
+    {no: 7, name: "END_RACK_PENALTY"},
+    {no: 8, name: "UNSUCCESSFUL_CHALLENGE_TURN_LOSS"},
+    {no: 9, name: "CHALLENGE"},
+  ],
+);
+
+/**
+ * @generated from enum ipc.GameEvent.Direction
+ */
+export const GameEvent_Direction = proto3.makeEnum(
+  "ipc.GameEvent.Direction",
+  [
+    {no: 0, name: "HORIZONTAL"},
+    {no: 1, name: "VERTICAL"},
+  ],
+);
+
+/**
+ * @generated from message ipc.Timers
+ */
+export const Timers = proto3.makeMessageType(
+  "ipc.Timers",
+  () => [
+    { no: 1, name: "time_of_last_update", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 2, name: "time_started", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 3, name: "time_remaining", kind: "scalar", T: 3 /* ScalarType.INT64 */, repeated: true },
+    { no: 4, name: "max_overtime", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "increment_seconds", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 6, name: "reset_to_increment_after_turn", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ],
+);
+
+/**
+ * @generated from message ipc.MetaEventData
+ */
+export const MetaEventData = proto3.makeMessageType(
+  "ipc.MetaEventData",
+  () => [
+    { no: 1, name: "events", kind: "message", T: GameMetaEvent, repeated: true },
+  ],
+);
+
+/**
+ * @generated from message ipc.GameBoard
+ */
+export const GameBoard = proto3.makeMessageType(
+  "ipc.GameBoard",
+  () => [
+    { no: 1, name: "num_rows", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "num_cols", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "tiles", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
+    { no: 4, name: "is_empty", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ],
+);
+
+/**
+ * @generated from message ipc.Bag
+ */
+export const Bag = proto3.makeMessageType(
+  "ipc.Bag",
+  () => [
+    { no: 1, name: "tiles", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
+  ],
+);
+
+/**
+ * A GameDocument encodes the entire state of a game. It includes a history
+ * of events, as well as information about the current state of the bag,
+ * timers, etc. It should be possible to recreate an entire omgwords game
+ * from a GameDocument state at any given time.
+ *
+ * @generated from message ipc.GameDocument
+ */
+export const GameDocument = proto3.makeMessageType(
+  "ipc.GameDocument",
+  () => [
+    { no: 1, name: "players", kind: "message", T: GameDocument_MinimalPlayerInfo, repeated: true },
+    { no: 2, name: "events", kind: "message", T: GameEvent, repeated: true },
+    { no: 3, name: "version", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "lexicon", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "uid", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "description", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "racks", kind: "scalar", T: 12 /* ScalarType.BYTES */, repeated: true },
+    { no: 8, name: "challenge_rule", kind: "enum", T: proto3.getEnumType(ChallengeRule) },
+    { no: 9, name: "play_state", kind: "enum", T: proto3.getEnumType(PlayState) },
+    { no: 10, name: "current_scores", kind: "scalar", T: 5 /* ScalarType.INT32 */, repeated: true },
+    { no: 11, name: "variant", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 12, name: "winner", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 13, name: "board_layout", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 14, name: "letter_distribution", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 15, name: "type", kind: "enum", T: proto3.getEnumType(GameType) },
+    { no: 16, name: "timers_started", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 17, name: "end_reason", kind: "enum", T: proto3.getEnumType(GameEndReason) },
+    { no: 18, name: "meta_event_data", kind: "message", T: MetaEventData },
+    { no: 19, name: "created_at", kind: "message", T: Timestamp },
+    { no: 20, name: "board", kind: "message", T: GameBoard },
+    { no: 21, name: "bag", kind: "message", T: Bag },
+    { no: 22, name: "scoreless_turns", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 23, name: "player_on_turn", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 24, name: "timers", kind: "message", T: Timers },
+    { no: 25, name: "game_mode", kind: "enum", T: proto3.getEnumType(GameMode) },
+  ],
+);
+
+/**
+ * @generated from message ipc.GameDocument.MinimalPlayerInfo
+ */
+export const GameDocument_MinimalPlayerInfo = proto3.makeMessageType(
+  "ipc.GameDocument.MinimalPlayerInfo",
+  () => [
+    { no: 1, name: "nickname", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "real_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ],
+  {localName: "GameDocument_MinimalPlayerInfo"},
 );
 
