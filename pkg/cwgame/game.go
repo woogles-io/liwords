@@ -81,12 +81,22 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, m move, tr int64) err
 
 		if gdoc.PlayState == ipc.PlayState_WAITING_FOR_FINAL_PASS {
 			gdoc.PlayState = ipc.PlayState_GAME_OVER
+			gdoc.EndReason = ipc.GameEndReason_STANDARD
 			dist, err := tiles.GetDistribution(cfg, gdoc.LetterDistribution)
 			if err != nil {
 				return err
 			}
-			// xxx check this, turn may have changed?
-			endOfGameCalcs(gdoc, dist)
+			// search for the person who went out (they have no rack)
+			wentout := -1
+			for idx, p := range gdoc.Racks {
+				if len(p) == 0 {
+					wentout = idx
+				}
+			}
+			if wentout == -1 {
+				return errors.New("no empty rack but player went out")
+			}
+			endRackCalcs(gdoc, dist, wentout)
 			addWinnerToHistory(gdoc)
 		} else {
 			gdoc.ScorelessTurns += 1
@@ -178,7 +188,7 @@ func playTilePlacementMove(cfg *config.Config, m move, gdoc *ipc.GameDocument, t
 	evt.MillisRemaining = int32(tr)
 	evt.Leave = runemapping.MachineWord(m.leave).ToByteArr()
 
-	gdoc.Racks[gdoc.PlayerOnTurn] = runemapping.MachineWord(placeholder).ToByteArr()
+	gdoc.Racks[gdoc.PlayerOnTurn] = runemapping.MachineWord(newRack).ToByteArr()
 	evt.WordsFormed = make([][]byte, len(wordsFormed))
 	for i, w := range wordsFormed {
 		evt.WordsFormed[i] = w.ToByteArr()
@@ -190,7 +200,8 @@ func playTilePlacementMove(cfg *config.Config, m move, gdoc *ipc.GameDocument, t
 			gdoc.PlayState = ipc.PlayState_WAITING_FOR_FINAL_PASS
 		} else {
 			gdoc.PlayState = ipc.PlayState_GAME_OVER
-			err = endOfGameCalcs(gdoc, dist)
+			gdoc.EndReason = ipc.GameEndReason_STANDARD
+			err = endRackCalcs(gdoc, dist, int(gdoc.PlayerOnTurn))
 			if err != nil {
 				return err
 			}
@@ -363,16 +374,11 @@ func Leave(rack, tilesUsed []runemapping.MachineLetter) ([]runemapping.MachineLe
 	return leave, nil
 }
 
-func endOfGameCalcs(gdoc *ipc.GameDocument, dist *tiles.LetterDistribution) error {
-
+func endRackCalcs(gdoc *ipc.GameDocument, dist *tiles.LetterDistribution, wentout int) error {
 	unplayedPts := 0
 	var otherRack bytes.Buffer
 
-	for idx, r := range gdoc.Racks {
-		if idx == int(gdoc.PlayerOnTurn) {
-			continue
-			// their rack should be blank anyway, but let's be robust about it.
-		}
+	for _, r := range gdoc.Racks {
 		_, err := otherRack.Write(r)
 		if err != nil {
 			return err
@@ -380,10 +386,11 @@ func endOfGameCalcs(gdoc *ipc.GameDocument, dist *tiles.LetterDistribution) erro
 		unplayedPts += dist.WordScore(runemapping.FromByteArr(r))
 	}
 	unplayedPts *= 2
-	gdoc.CurrentScores[gdoc.PlayerOnTurn] += int32(unplayedPts)
+
+	gdoc.CurrentScores[wentout] += int32(unplayedPts)
 	gdoc.Events = append(gdoc.Events, &ipc.GameEvent{
-		PlayerIndex:   uint32(gdoc.PlayerOnTurn),
-		Cumulative:    gdoc.CurrentScores[gdoc.PlayerOnTurn],
+		PlayerIndex:   uint32(wentout),
+		Cumulative:    gdoc.CurrentScores[wentout],
 		Rack:          otherRack.Bytes(),
 		EndRackPoints: int32(unplayedPts),
 		Type:          ipc.GameEvent_END_RACK_PTS,
@@ -485,10 +492,8 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 			gdoc.Racks[challengee] = lastEvent.Rack
 		}
 		gdoc.Winner = winner
-
-		// Don't call addWinnerToHistory, this will
-		// overwrite the correct winner
 		gdoc.PlayState = ipc.PlayState_GAME_OVER
+		gdoc.EndReason = ipc.GameEndReason_TRIPLE_CHALLENGE
 
 	} else if !playLegal {
 		log.Debug().Msg("Successful challenge")
@@ -572,18 +577,13 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 
 		if gdoc.PlayState == ipc.PlayState_WAITING_FOR_FINAL_PASS {
 			gdoc.PlayState = ipc.PlayState_GAME_OVER
-			// Game is actually over now, after the failed challenge.
-			// do calculations with the player on turn being the player who
-			// didn't challenge, as this is a special event where the turn
-			// did not _actually_ change.
+			gdoc.EndReason = ipc.GameEndReason_STANDARD
 
-			err = endOfGameCalcs(gdoc, dist)
+			// Game is actually over now, after the failed challenge.
+			err = endRackCalcs(gdoc, dist, int(challengee))
 			if err != nil {
 				return err
 			}
-
-			// XXX: check this:
-			// g.endOfGameCalcs(otherPlayer(g.onturn), true)
 		}
 
 	}

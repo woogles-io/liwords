@@ -706,11 +706,139 @@ func TestTimeRanOut(t *testing.T) {
 }
 
 func TestChallengeBadWordEndOfGame(t *testing.T) {
+	is := is.New(t)
+	ctx := ctxForTests()
+	documentfile := "document-game-almost-over.json"
 
+	gdoc := loadGDoc(documentfile)
+
+	// Let's say we're 5000 ms after the last time of update
+	globalNower = &FakeNower{
+		fakeMeow: gdoc.Timers.TimeOfLastUpdate + 5000}
+	defer restoreGlobalNower()
+
+	cge := &ipc.ClientGameplayEvent{
+		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
+		GameId:         "9zaaSuN5",
+		PositionCoords: "12A",
+		Tiles:          "AER.OITh",
+	}
+
+	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	is.NoErr(err)
+
+	is.Equal(len(gdoc.Events), 25)
+	is.Equal(gdoc.PlayState, ipc.PlayState_WAITING_FOR_FINAL_PASS)
+	is.Equal(gdoc.CurrentScores, []int32{446, 303})
+
+	cge2 := &ipc.ClientGameplayEvent{
+		Type:   ipc.ClientGameplayEvent_CHALLENGE_PLAY,
+		GameId: "9zaaSuN5",
+	}
+
+	err = ProcessGameplayEvent(ctx, cge2, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	is.NoErr(err)
+
+	is.Equal(len(gdoc.Events), 26)
+	is.Equal(gdoc.PlayState, ipc.PlayState_PLAYING)
+	is.Equal(gdoc.PlayerOnTurn, uint32(0))
+	is.Equal(gdoc.Events[25].Type, ipc.GameEvent_PHONY_TILES_RETURNED)
+	// CEPRT and ?AEILOR
+	is.Equal(gdoc.Racks, [][]byte{{3, 5, 16, 18, 20}, {0, 1, 5, 9, 15, 18, 20}})
+
+	cge3 := &ipc.ClientGameplayEvent{
+		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
+		GameId:         "9zaaSuN5",
+		PositionCoords: "14J",
+		Tiles:          "PR..CE",
+	}
+	err = ProcessGameplayEvent(ctx, cge3, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	is.NoErr(err)
+	is.Equal(gdoc.PlayState, ipc.PlayState_PLAYING)
+	is.Equal(gdoc.PlayerOnTurn, uint32(1))
+	is.Equal(gdoc.CurrentScores, []int32{478, 245})
 }
 
 func TestChallengeGoodWordEndOfGame(t *testing.T) {
+	ctx := ctxForTests()
+	documentfile := "document-game-almost-over.json"
 
+	for _, chrule := range []ipc.ChallengeRule{
+		ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
+		ipc.ChallengeRule_ChallengeRule_SINGLE,
+		ipc.ChallengeRule_ChallengeRule_DOUBLE,
+	} {
+		t.Run(ipc.ChallengeRule_name[int32(chrule)], func(t *testing.T) {
+			is := is.New(t)
+
+			gdoc := loadGDoc(documentfile)
+
+			// Let's say we're 5000 ms after the last time of update
+			globalNower = &FakeNower{
+				fakeMeow: gdoc.Timers.TimeOfLastUpdate + 5000}
+			defer restoreGlobalNower()
+			gdoc.ChallengeRule = chrule
+
+			cge := &ipc.ClientGameplayEvent{
+				Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
+				GameId:         "9zaaSuN5",
+				PositionCoords: "12F",
+				Tiles:          "TRIAlO..E",
+			}
+
+			err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+			is.NoErr(err)
+
+			is.Equal(len(gdoc.Events), 25)
+			is.Equal(gdoc.PlayState, ipc.PlayState_WAITING_FOR_FINAL_PASS)
+			is.Equal(gdoc.CurrentScores, []int32{446, 305})
+
+			cge2 := &ipc.ClientGameplayEvent{
+				Type:   ipc.ClientGameplayEvent_CHALLENGE_PLAY,
+				GameId: "9zaaSuN5",
+			}
+
+			err = ProcessGameplayEvent(ctx, cge2, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+			is.NoErr(err)
+
+			is.Equal(len(gdoc.Events), 27)
+			is.Equal(gdoc.PlayState, ipc.PlayState_GAME_OVER)
+			bonus := 0
+			if chrule == ipc.ChallengeRule_ChallengeRule_FIVE_POINT {
+				bonus = 5
+			}
+			if chrule != ipc.ChallengeRule_ChallengeRule_DOUBLE {
+				is.Equal(gdoc.Events[25], &ipc.GameEvent{
+					Type:            ipc.GameEvent_CHALLENGE_BONUS,
+					PlayerIndex:     1, // the person being challenged
+					Bonus:           int32(bonus),
+					Rack:            []byte{},
+					Cumulative:      305 + int32(bonus),
+					MillisRemaining: 899671,
+				})
+			} else {
+				is.Equal(gdoc.Events[25], &ipc.GameEvent{
+					Type:            ipc.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS,
+					PlayerIndex:     0,
+					Rack:            []byte{3, 5, 16, 18, 20},
+					Cumulative:      446,
+					MillisRemaining: 899671,
+				})
+			}
+
+			is.Equal(gdoc.Events[26], &ipc.GameEvent{
+				Type:          ipc.GameEvent_END_RACK_PTS,
+				EndRackPoints: 18,
+				PlayerIndex:   1,
+				Rack:          []byte{3, 5, 16, 18, 20},
+				Cumulative:    323 + int32(bonus),
+			})
+
+			is.Equal(gdoc.CurrentScores, []int32{446, 323 + int32(bonus)})
+			is.Equal(gdoc.Winner, int32(0))
+			is.Equal(gdoc.EndReason, ipc.GameEndReason_STANDARD)
+		})
+	}
 }
 
 // Load a document that has a challenge or pass state, it should work properly.
