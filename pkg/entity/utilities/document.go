@@ -123,8 +123,8 @@ func ToGameDocument(g *entity.Game, cfg *config.Config) (*ipc.GameDocument, erro
 		CreatedAt:          timestamppb.New(g.CreatedAt),
 		Board:              &ipc.GameBoard{},
 		Bag:                &ipc.Bag{},
-		ScorelessTurns:     int32(g.ScorelessTurns()),
-		PlayerOnTurn:       int32(g.PlayerOnTurn()),
+		ScorelessTurns:     uint32(g.ScorelessTurns()),
+		PlayerOnTurn:       uint32(g.PlayerOnTurn()),
 		Timers: &ipc.Timers{
 			TimeOfLastUpdate: g.Timers.TimeOfLastUpdate,
 			TimeStarted:      g.TimeStarted(),

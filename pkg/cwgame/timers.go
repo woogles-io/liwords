@@ -41,7 +41,7 @@ func (f *FakeNower) Sleep(t int64) {
 	f.fakeMeow += t
 }
 
-func getTimeRemaining(gdoc *ipc.GameDocument, nower Nower, onTurn int32) int64 {
+func getTimeRemaining(gdoc *ipc.GameDocument, nower Nower, onTurn uint32) int64 {
 	if gdoc.PlayerOnTurn == onTurn {
 		return gdoc.Timers.TimeRemaining[onTurn] - (nower.Now() - gdoc.Timers.TimeOfLastUpdate)
 	}
@@ -49,7 +49,7 @@ func getTimeRemaining(gdoc *ipc.GameDocument, nower Nower, onTurn int32) int64 {
 	return int64(gdoc.Timers.TimeRemaining[onTurn])
 }
 
-func timeRanOut(gdoc *ipc.GameDocument, nower Nower, pidx int32) bool {
+func timeRanOut(gdoc *ipc.GameDocument, nower Nower, pidx uint32) bool {
 	if gdoc.PlayerOnTurn != pidx {
 		return false
 	}
@@ -57,25 +57,25 @@ func timeRanOut(gdoc *ipc.GameDocument, nower Nower, pidx int32) bool {
 	return tr < (-int64(gdoc.Timers.MaxOvertime) * 60000)
 }
 
-func recordTimeOfMove(gdoc *ipc.GameDocument, nower Nower, pidx int32) {
+func recordTimeOfMove(gdoc *ipc.GameDocument, nower Nower, pidx uint32, applyIncrement bool) {
 	now := nower.Now()
-	calculateAndSetTimeRemaining(gdoc, now, pidx, true)
+	calculateAndSetTimeRemaining(gdoc, now, pidx, applyIncrement)
 }
 
-func calculateAndSetTimeRemaining(gdoc *ipc.GameDocument, now int64, pidx int32, accountForIncrement bool) {
+func calculateAndSetTimeRemaining(gdoc *ipc.GameDocument, now int64, pidx uint32, applyIncrement bool) {
 	if gdoc.PlayerOnTurn != pidx {
 		// player is not on turn, so their time should not have changed
 		return
 	}
 
-	if gdoc.Timers.ResetToIncrementAfterTurn {
+	if applyIncrement && gdoc.Timers.ResetToIncrementAfterTurn {
 		gdoc.Timers.TimeRemaining[pidx] = int64(gdoc.Timers.IncrementSeconds * 1000)
 		gdoc.Timers.TimeOfLastUpdate = now
 		return
 	}
 
 	gdoc.Timers.TimeRemaining[pidx] -= (now - gdoc.Timers.TimeOfLastUpdate)
-	if accountForIncrement {
+	if applyIncrement {
 		gdoc.Timers.TimeRemaining[pidx] += (int64(gdoc.Timers.IncrementSeconds) * 1000)
 	}
 	// Cap the overtime, because auto-passing always happens after time has expired.

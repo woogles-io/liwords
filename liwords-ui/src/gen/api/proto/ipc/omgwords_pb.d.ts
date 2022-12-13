@@ -1438,6 +1438,16 @@ export declare enum GameEvent_Type {
    * @generated from enum value: CHALLENGE = 9;
    */
   CHALLENGE = 9,
+
+  /**
+   * @generated from enum value: TIMED_OUT = 10;
+   */
+  TIMED_OUT = 10,
+
+  /**
+   * @generated from enum value: RESIGNED = 11;
+   */
+  RESIGNED = 11,
 }
 
 /**
@@ -1637,7 +1647,7 @@ export declare class GameDocument extends Message<GameDocument> {
   events: GameEvent[];
 
   /**
-   * @generated from field: int32 version = 3;
+   * @generated from field: uint32 version = 3;
    */
   version: number;
 
@@ -1682,6 +1692,8 @@ export declare class GameDocument extends Message<GameDocument> {
   variant: string;
 
   /**
+   * The index of the player who won, or -1 if it was a tie.
+   *
    * @generated from field: int32 winner = 12;
    */
   winner: number;
@@ -1743,14 +1755,14 @@ export declare class GameDocument extends Message<GameDocument> {
   bag?: Bag;
 
   /**
-   * @generated from field: int32 scoreless_turns = 22;
+   * @generated from field: uint32 scoreless_turns = 22;
    */
   scorelessTurns: number;
 
   /**
    * The index of the player on turn
    *
-   * @generated from field: int32 player_on_turn = 23;
+   * @generated from field: uint32 player_on_turn = 23;
    */
   playerOnTurn: number;
 
@@ -1805,6 +1817,11 @@ export declare class GameDocument_MinimalPlayerInfo extends Message<GameDocument
    * @generated from field: string user_id = 3;
    */
   userId: string;
+
+  /**
+   * @generated from field: bool quit = 4;
+   */
+  quit: boolean;
 
   constructor(data?: PartialMessage<GameDocument_MinimalPlayerInfo>);
 

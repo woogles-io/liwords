@@ -17,6 +17,17 @@ import (
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
+var (
+	errGameNotActive             = errors.New("game not active")
+	errNotOnTurn                 = errors.New("not on turn")
+	errOnlyPassOrChallenge       = errors.New("can only pass or challenge")
+	errExchangeNotPermitted      = errors.New("you can only exchange with 7 or more tiles in the bag")
+	errMoveTypeNotUserInputtable = errors.New("that move type is not available")
+	errResignNotValid            = errors.New("you are not allowed to resign")
+	errStartNotPermitted         = errors.New("game has already been started")
+	errUnmatchedGameId           = errors.New("game ids do not match")
+)
+
 // move is an intermediate type used by this package, to aid in the conversion from
 // a frontend-generated ClientGameplayEvent into a GameEvent that gets saved in a
 // GameHistory.
@@ -120,24 +131,24 @@ func StartGame(ctx context.Context, gdoc *ipc.GameDocument) error {
 // from wherever. This function can modify the document in-place. The caller
 // should be responsible for saving it back to whatever store is required if
 // there is no error.
-// It returns gameEnded, a boolean that is true if this event ended up causing
-// the game to end.
 func ProcessGameplayEvent(ctx context.Context, evt *ipc.ClientGameplayEvent,
-	userID string, gdoc *ipc.GameDocument) (gameEnded bool, err error) {
+	userID string, gdoc *ipc.GameDocument) error {
 
 	log := zerolog.Ctx(ctx)
 
 	if gdoc.PlayState == ipc.PlayState_GAME_OVER {
-		return false, errGameNotActive
+		return errGameNotActive
+	}
+	if evt.GameId != gdoc.GetUid() {
+		return errUnmatchedGameId
 	}
 	onTurn := gdoc.PlayerOnTurn
 
 	if evt.Type != ipc.ClientGameplayEvent_RESIGN && gdoc.Players[onTurn].UserId != userID {
-		return false, errNotOnTurn
+		return errNotOnTurn
 	}
-
 	tr := getTimeRemaining(gdoc, globalNower, onTurn)
-	log.Debug().Interface("cge", evt).Int64("time-remaining", tr).Msg("process-gameplay-event")
+	log.Debug().Interface("cge", evt).Int64("now", globalNower.Now()).Int64("time-remaining", tr).Msg("process-gameplay-event")
 
 	if !(gdoc.PlayState == ipc.PlayState_WAITING_FOR_FINAL_PASS &&
 		evt.Type == ipc.ClientGameplayEvent_PASS) && timeRanOut(gdoc, globalNower, onTurn) {
@@ -153,39 +164,41 @@ func ProcessGameplayEvent(ctx context.Context, evt *ipc.ClientGameplayEvent,
 				GameId: evt.GameId,
 			}
 		} else {
-
-			// XX: return setTimedOut(...)
+			return setTimedOut(ctx, gdoc, onTurn)
 		}
 	}
 
 	if evt.Type == ipc.ClientGameplayEvent_RESIGN {
-		if len(gdoc.Players) != 2 {
-			return false, errResignNotValid
-		}
-		gdoc.EndReason = ipc.GameEndReason_RESIGNED
-		recordTimeOfMove(gdoc, globalNower, onTurn)
-		winner := 1 - onTurn
-		// If opponent is the one who resigned, current player wins.
-		if gdoc.Players[onTurn].UserId != userID {
-			winner = onTurn
-		}
-		gdoc.Winner = winner
+		recordTimeOfMove(gdoc, globalNower, onTurn, false)
+		gdoc.Players[onTurn].Quit = true
+		winner, found := findOnlyNonquitter(gdoc)
+		if found {
+			gdoc.Winner = int32(winner)
+			gdoc.EndReason = ipc.GameEndReason_RESIGNED
 
-		// XXX perform endgame duties -- this is definitely outside the scope
-		// of this package.
+			// XXX perform endgame duties -- this is definitely outside the scope
+			// of this package.
+		} else {
+			// assign next turn
+			err := assignTurnToNextNonquitter(gdoc, onTurn)
+			if err != nil {
+				return err
+			}
+		}
+
 	} else {
 		// convt to internal move
 		m, err := clientEventToMove(ctx, evt, gdoc)
 		if err != nil {
-			return false, err
+			return err
 		}
 		err = playMove(ctx, gdoc, m, tr)
 		if err != nil {
-			return false, err
+			return err
 		}
 	}
 
-	return false, nil
+	return nil
 }
 
 func clientEventToMove(ctx context.Context, evt *ipc.ClientGameplayEvent, gdoc *ipc.GameDocument) (move, error) {
@@ -275,4 +288,63 @@ func fromBoardGameCoords(c string) (int, int, ipc.GameEvent_Direction) {
 	return 0, 0, ipc.GameEvent_HORIZONTAL
 }
 
+func setTimedOut(ctx context.Context, gdoc *ipc.GameDocument, onturn uint32) error {
+	log := zerolog.Ctx(ctx)
+	log.Debug().Interface("playstate", gdoc.PlayState).Msg("timed out!")
+	// The losing player always overtimes by the maximum amount.
+	// Not less, even if no moves in the final minute.
+	// Not more, even if game is abandoned and resumed/adjudicated much later.
+	gdoc.Timers.TimeRemaining[onturn] = int64(gdoc.Timers.MaxOvertime * -60000)
+	gdoc.Events = append(gdoc.Events, &ipc.GameEvent{
+		Type:            ipc.GameEvent_TIMED_OUT,
+		PlayerIndex:     onturn,
+		MillisRemaining: int32(gdoc.Timers.TimeRemaining[onturn]),
+	})
+	gdoc.Players[onturn].Quit = true
+	winner, found := findOnlyNonquitter(gdoc)
+	if found {
+		gdoc.Winner = int32(winner)
+		gdoc.EndReason = ipc.GameEndReason_TIME
+		gdoc.PlayState = ipc.PlayState_GAME_OVER
+	} else {
+		err := assignTurnToNextNonquitter(gdoc, onturn)
+		if err != nil {
+			return err
+		}
+	}
+	// perform endgame duties outside of the scope of this
+	return nil
+}
+
+func findOnlyNonquitter(gdoc *ipc.GameDocument) (int, bool) {
+	numQuit := 0
+	nPlayers := len(gdoc.Players)
+	winner := 0
+	for i := range gdoc.Players {
+		if gdoc.Players[i].Quit {
+			numQuit++
+		} else {
+			winner = i
+		}
+	}
+	if nPlayers == numQuit+1 {
+		return winner, true
+	}
+	return -1, false
+}
+
+func assignTurnToNextNonquitter(gdoc *ipc.GameDocument, start uint32) error {
+	i := (start + uint32(1)) % uint32(len(gdoc.Players))
+	for i != start {
+		if !gdoc.Players[i].Quit {
+			gdoc.PlayerOnTurn = i
+			return nil
+		}
+		i = (i + uint32(1)) % uint32(len(gdoc.Players))
+	}
+	return errors.New("everyone quit")
+
+}
+
 // XXX need a TimedOut function here as well.
+// XXX: no, put it in the top level.

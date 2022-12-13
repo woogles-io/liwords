@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/domino14/liwords/pkg/config"
@@ -24,16 +25,6 @@ const (
 	RackTileLimit                = 7
 	ExchangePermittedTilesInBag  = 7
 	MaxConsecutiveScorelessTurns = 6
-)
-
-var (
-	errGameNotActive             = errors.New("game not active")
-	errNotOnTurn                 = errors.New("not on turn")
-	errOnlyPassOrChallenge       = errors.New("can only pass or challenge")
-	errExchangeNotPermitted      = errors.New("you can only exchange with 7 or more tiles in the bag")
-	errMoveTypeNotUserInputtable = errors.New("that move type is not available")
-	errResignNotValid            = errors.New("you are not allowed to resign")
-	errStartNotPermitted         = errors.New("game has already been started")
 )
 
 var globalNower Nower = GameTimer{}
@@ -61,6 +52,7 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, m move, tr int64) err
 	if !ok {
 		return errors.New("config does not exist in context")
 	}
+
 	if m.mtype == ipc.GameEvent_CHALLENGE {
 		return challengeEvent(ctx, cfg, gdoc, tr)
 	}
@@ -69,6 +61,9 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, m move, tr int64) err
 	if err != nil {
 		return err
 	}
+
+	// register time before playing the move
+	recordTimeOfMove(gdoc, globalNower, gdoc.PlayerOnTurn, true)
 
 	// Note: in case of error, anything that modifies gdoc should not save
 	// gdoc back to the store; this must be enforced.
@@ -126,7 +121,7 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, m move, tr int64) err
 			return err
 		}
 	} else {
-		gdoc.PlayerOnTurn = int32(int(gdoc.PlayerOnTurn+1) % len(gdoc.Players))
+		assignTurnToNextNonquitter(gdoc, gdoc.PlayerOnTurn)
 	}
 	return nil
 }
@@ -362,6 +357,9 @@ func Leave(rack, tilesUsed []runemapping.MachineLetter) ([]runemapping.MachineLe
 			}
 		}
 	}
+	sort.Slice(leave, func(i, j int) bool {
+		return leave[i] < leave[j]
+	})
 	return leave, nil
 }
 
@@ -427,6 +425,9 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 	if len(lastWordsFormed) == 0 {
 		return errors.New("there are no words to challenge")
 	}
+	// record time of the challenge, but do not account for increments;
+	// a challenge event shouldn't modify the clock per se.
+	recordTimeOfMove(gdoc, globalNower, gdoc.PlayerOnTurn, false)
 
 	dist, err := tiles.GetDistribution(cfg, gdoc.LetterDistribution)
 	if err != nil {

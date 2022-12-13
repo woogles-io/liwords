@@ -58,7 +58,27 @@ func bonusToEnum(c rune) BonusSquare {
 	default:
 		panic("unrecognized char")
 	}
+}
 
+func enumToBonus(b BonusSquare) rune {
+	switch b {
+	case Bonus4WS:
+		return '~'
+	case Bonus3WS:
+		return '='
+	case Bonus2WS:
+		return '-'
+	case Bonus4LS:
+		return '^'
+	case Bonus3LS:
+		return '"'
+	case Bonus2LS:
+		return '\''
+	case EmptySpace:
+		return ' '
+	default:
+		panic("unrecognized bonus")
+	}
 }
 
 func NewBoard(bl *BoardLayout) *ipc.GameBoard {
@@ -342,7 +362,8 @@ func placeMoveTiles(board *ipc.GameBoard, layout *BoardLayout, dist *tiles.Lette
 		newrow, newcol := row+(ri*idx), col+(ci*idx)
 
 		sqIdx := (newrow * int(board.NumCols)) + newcol
-
+		letterMultiplier := 1
+		thisWordMultiplier := 1
 		if tile == 0 {
 			// a play-through marker, hopefully.
 			tile = runemapping.MachineLetter(board.Tiles[sqIdx])
@@ -350,34 +371,33 @@ func placeMoveTiles(board *ipc.GameBoard, layout *BoardLayout, dist *tiles.Lette
 			freshTile = true
 			tilesUsed++
 			board.Tiles[sqIdx] = byte(tile)
-		}
 
-		bonusSq := BonusSquare(layout.Layout[sqIdx])
-		letterMultiplier := 1
-		thisWordMultiplier := 1
-
-		switch bonusSq {
-		case Bonus4WS:
-			wordMultiplier *= 4
-			thisWordMultiplier = 4
-		case Bonus3WS:
-			wordMultiplier *= 3
-			thisWordMultiplier = 3
-		case Bonus2WS:
-			wordMultiplier *= 2
-			thisWordMultiplier = 2
-		case Bonus2LS:
-			letterMultiplier = 2
-		case Bonus3LS:
-			letterMultiplier = 3
-		case Bonus4LS:
-			letterMultiplier = 4
+			bonusSq := BonusSquare(layout.Layout[sqIdx])
+			switch bonusSq {
+			case Bonus4WS:
+				wordMultiplier *= 4
+				thisWordMultiplier = 4
+			case Bonus3WS:
+				wordMultiplier *= 3
+				thisWordMultiplier = 3
+			case Bonus2WS:
+				wordMultiplier *= 2
+				thisWordMultiplier = 2
+			case Bonus2LS:
+				letterMultiplier = 2
+			case Bonus3LS:
+				letterMultiplier = 3
+			case Bonus4LS:
+				letterMultiplier = 4
+			}
 		}
 		// else all the multipliers are 1.
 
 		cs := getCrossScore(board, dist, newrow, newcol, csDirection)
 		ls := 0
 		if tile > 0 {
+			// Count the score of a tile, even if it's a played-through one
+			// see `if tile == 0` case above.
 			ls = dist.Score(tile)
 		}
 		mainWordScore += ls * letterMultiplier
@@ -414,8 +434,8 @@ func UnplaceMoveTiles(board *ipc.GameBoard, mls []runemapping.MachineLetter, row
 
 		if tile == 0 {
 			// nothing to unplace, tile was already there.
-			if board.Tiles[sqIdx] != byte(0) {
-				return errors.New("tried to unplace a tile that was already on the board before this play")
+			if board.Tiles[sqIdx] == byte(0) {
+				return errors.New("mismatch with played-through marker")
 			}
 			continue
 		} else {

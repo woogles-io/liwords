@@ -312,6 +312,8 @@ message GameEvent {
     UNSUCCESSFUL_CHALLENGE_TURN_LOSS = 8;
     // Issue a challenge
     CHALLENGE = 9;
+    TIMED_OUT = 10;
+    RESIGNED = 11;
   }
 
   enum Direction {
@@ -408,13 +410,14 @@ message GameDocument {
     // user_id is an internal, unchangeable user ID, whereas the other two user
     // identifiers might possibly be mutable.
     string user_id = 3;
+    bool quit = 4;
   }
   // players are in order of who went first.
   repeated MinimalPlayerInfo players = 1;
 
   repeated GameEvent events = 2;
 
-  int32 version = 3;
+  uint32 version = 3;
   string lexicon = 4;
   string uid = 5;
   string description = 6;
@@ -423,6 +426,7 @@ message GameDocument {
   PlayState play_state = 9;
   repeated int32 current_scores = 10;
   string variant = 11;
+  // The index of the player who won, or -1 if it was a tie.
   int32 winner = 12;
   // The board layout is just the name for the layout of the board.
   // It should have a sensible default, if blank.
@@ -441,9 +445,9 @@ message GameDocument {
   GameBoard board = 20;
   // bag is the current tiles in the bag.
   Bag bag = 21;
-  int32 scoreless_turns = 22;
+  uint32 scoreless_turns = 22;
   // The index of the player on turn
-  int32 player_on_turn = 23;
+  uint32 player_on_turn = 23;
   // current_scores is in the same order as the player info structure inside
   // GameHistory
   Timers timers = 24;

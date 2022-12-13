@@ -479,6 +479,8 @@ export const GameEvent_Type = proto3.makeEnum(
     {no: 7, name: "END_RACK_PENALTY"},
     {no: 8, name: "UNSUCCESSFUL_CHALLENGE_TURN_LOSS"},
     {no: 9, name: "CHALLENGE"},
+    {no: 10, name: "TIMED_OUT"},
+    {no: 11, name: "RESIGNED"},
   ],
 );
 
@@ -554,7 +556,7 @@ export const GameDocument = proto3.makeMessageType(
   () => [
     { no: 1, name: "players", kind: "message", T: GameDocument_MinimalPlayerInfo, repeated: true },
     { no: 2, name: "events", kind: "message", T: GameEvent, repeated: true },
-    { no: 3, name: "version", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "version", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
     { no: 4, name: "lexicon", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 5, name: "uid", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 6, name: "description", kind: "scalar", T: 9 /* ScalarType.STRING */ },
@@ -573,8 +575,8 @@ export const GameDocument = proto3.makeMessageType(
     { no: 19, name: "created_at", kind: "message", T: Timestamp },
     { no: 20, name: "board", kind: "message", T: GameBoard },
     { no: 21, name: "bag", kind: "message", T: Bag },
-    { no: 22, name: "scoreless_turns", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 23, name: "player_on_turn", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 22, name: "scoreless_turns", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
+    { no: 23, name: "player_on_turn", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
     { no: 24, name: "timers", kind: "message", T: Timers },
     { no: 25, name: "game_mode", kind: "enum", T: proto3.getEnumType(GameMode) },
   ],
@@ -589,6 +591,7 @@ export const GameDocument_MinimalPlayerInfo = proto3.makeMessageType(
     { no: 1, name: "nickname", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "real_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "quit", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ],
   {localName: "GameDocument_MinimalPlayerInfo"},
 );
