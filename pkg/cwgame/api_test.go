@@ -7,12 +7,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/domino14/liwords/pkg/config"
+	"github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
 var DataDir = os.Getenv("DATA_PATH")

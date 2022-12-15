@@ -24,7 +24,6 @@ var (
 	errOnlyPassOrChallenge       = errors.New("can only pass or challenge")
 	errExchangeNotPermitted      = errors.New("you can only exchange with 7 or more tiles in the bag")
 	errMoveTypeNotUserInputtable = errors.New("that move type is not available")
-	errResignNotValid            = errors.New("you are not allowed to resign")
 	errStartNotPermitted         = errors.New("game has already been started")
 	errUnmatchedGameId           = errors.New("game ids do not match")
 	errPlayerNotInGame           = errors.New("player not in this game")
