@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/rs/zerolog"
+	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/domino14/liwords/pkg/config"
@@ -26,6 +27,7 @@ var (
 	errResignNotValid            = errors.New("you are not allowed to resign")
 	errStartNotPermitted         = errors.New("game has already been started")
 	errUnmatchedGameId           = errors.New("game ids do not match")
+	errPlayerNotInGame           = errors.New("player not in this game")
 )
 
 // move is an intermediate type used by this package, to aid in the conversion from
@@ -169,12 +171,25 @@ func ProcessGameplayEvent(ctx context.Context, evt *ipc.ClientGameplayEvent,
 	}
 
 	if evt.Type == ipc.ClientGameplayEvent_RESIGN {
+		_, resigneridx, found := lo.FindIndexOf(gdoc.Players, func(p *ipc.GameDocument_MinimalPlayerInfo) bool {
+			return p.UserId == userID
+		})
+		if !found {
+			return errPlayerNotInGame
+		}
+
 		recordTimeOfMove(gdoc, globalNower, onTurn, false)
-		gdoc.Players[onTurn].Quit = true
+		gdoc.Events = append(gdoc.Events, &ipc.GameEvent{
+			Type:            ipc.GameEvent_RESIGNED,
+			PlayerIndex:     uint32(resigneridx),
+			MillisRemaining: int32(gdoc.Timers.TimeRemaining[resigneridx]),
+		})
+		gdoc.Players[resigneridx].Quit = true
 		winner, found := findOnlyNonquitter(gdoc)
 		if found {
 			gdoc.Winner = int32(winner)
 			gdoc.EndReason = ipc.GameEndReason_RESIGNED
+			gdoc.PlayState = ipc.PlayState_GAME_OVER
 
 			// XXX perform endgame duties -- this is definitely outside the scope
 			// of this package.

@@ -306,7 +306,9 @@ func eventFromMove(m move, gdoc *ipc.GameDocument) *ipc.GameEvent {
 }
 
 func handleConsecutiveScorelessTurns(gdoc *ipc.GameDocument, dist *tiles.LetterDistribution) error {
+
 	gdoc.PlayState = ipc.PlayState_GAME_OVER
+	gdoc.EndReason = ipc.GameEndReason_CONSECUTIVE_ZEROES
 
 	toIterate := make([]int, len(gdoc.Players))
 	for idx := range toIterate {
@@ -511,16 +513,6 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 		// We must also set the last known rack of the challengee back to
 		// their rack before they played the phony.
 		gdoc.Racks[challengee] = lastEvent.Rack
-		// Explicitly set racks for both players. This prevents a bug where
-		// part of the game may have been loaded from a GameHistory (through the
-		// PlayGameToTurn flow) and the racks continually get reset.
-		// g.SetRacksForBoth([]*alphabet.Rack{
-		// 	alphabet.RackFromString(g.history.LastKnownRacks[0], g.alph),
-		// 	alphabet.RackFromString(g.history.LastKnownRacks[1], g.alph),
-		// })
-
-		// and we must add one to scoreless turns:
-		gdoc.ScorelessTurns++
 		if gdoc.ScorelessTurns == MaxConsecutiveScorelessTurns {
 			err = handleConsecutiveScorelessTurns(gdoc, dist)
 			if err != nil {
@@ -638,5 +630,36 @@ func unplayLastMove(ctx context.Context, gdoc *ipc.GameDocument, dist *tiles.Let
 	tiles.PutBack(gdoc.Bag, drewPostPhony)
 	gdoc.PlayState = ipc.PlayState_PLAYING
 	gdoc.CurrentScores[offboardEvent.PlayerIndex] = offboardEvent.Cumulative
+
+	// recalculate number of scoreless turns by going back in the history
+	// and applying some heuristics.
+	scorelessTurns := 0
+	sawReturnedPhony := false
+
+evtCounter:
+	for i := len(gdoc.Events) - 1; i >= 0; i-- {
+		evt := gdoc.Events[i]
+		switch evt.Type {
+		case ipc.GameEvent_TILE_PLACEMENT_MOVE:
+			if sawReturnedPhony {
+				// This can only be associated with this tile placement move
+				sawReturnedPhony = false
+				scorelessTurns++
+			} else {
+				break evtCounter
+			}
+		case ipc.GameEvent_PHONY_TILES_RETURNED:
+			sawReturnedPhony = true
+		case ipc.GameEvent_EXCHANGE, ipc.GameEvent_PASS, ipc.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
+			scorelessTurns++
+			sawReturnedPhony = false
+		default:
+			sawReturnedPhony = false
+
+		}
+	}
+
+	gdoc.ScorelessTurns = uint32(scorelessTurns)
+
 	return nil
 }

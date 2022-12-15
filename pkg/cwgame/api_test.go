@@ -3,6 +3,7 @@ package cwgame
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"testing"
 
@@ -203,6 +204,7 @@ func TestProcessGameplayEventSanityChecks(t *testing.T) {
 	ctx := ctxForTests()
 
 	for _, tc := range testcases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			is := is.New(t)
 			gdoc := loadGDoc(documentfile)
@@ -843,7 +845,311 @@ func TestChallengeGoodWordEndOfGame(t *testing.T) {
 
 // Load a document that has a challenge or pass state, it should work properly.
 func TestLoadChallengeOrPassState(t *testing.T) {
+	ctx := ctxForTests()
+	documentfile := "document-challenge-or-pass.json"
 
+	for _, finalmove := range []ipc.ClientGameplayEvent_EventType{
+		ipc.ClientGameplayEvent_CHALLENGE_PLAY,
+		ipc.ClientGameplayEvent_PASS,
+	} {
+		t.Run(ipc.ClientGameplayEvent_EventType_name[int32(finalmove)], func(t *testing.T) {
+			is := is.New(t)
+
+			gdoc := loadGDoc(documentfile)
+
+			// Let's say we're 5000 ms after the last time of update
+			globalNower = &FakeNower{
+				fakeMeow: gdoc.Timers.TimeOfLastUpdate + 5000}
+			defer restoreGlobalNower()
+
+			cge := &ipc.ClientGameplayEvent{
+				Type:   finalmove,
+				GameId: "9zaaSuN5",
+			}
+
+			err := ProcessGameplayEvent(ctx, cge, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+			is.NoErr(err)
+
+			is.Equal(len(gdoc.Events), 27)
+			is.Equal(gdoc.PlayState, ipc.PlayState_GAME_OVER)
+
+			is.Equal(gdoc.Events[26], &ipc.GameEvent{
+				Type:          ipc.GameEvent_END_RACK_PTS,
+				EndRackPoints: 18,
+				PlayerIndex:   1,
+				Rack:          []byte{3, 5, 16, 18, 20},
+				Cumulative:    322,
+			})
+
+			is.Equal(gdoc.CurrentScores, []int32{446, 322})
+			is.Equal(gdoc.Winner, int32(0))
+			is.Equal(gdoc.EndReason, ipc.GameEndReason_STANDARD)
+		})
+	}
+}
+
+func TestRejectNonChallOrPass(t *testing.T) {
+	ctx := ctxForTests()
+	documentfile := "document-challenge-or-pass.json"
+
+	is := is.New(t)
+
+	gdoc := loadGDoc(documentfile)
+
+	// Let's say we're 5000 ms after the last time of update
+	globalNower = &FakeNower{
+		fakeMeow: gdoc.Timers.TimeOfLastUpdate + 5000}
+	defer restoreGlobalNower()
+
+	cge := &ipc.ClientGameplayEvent{
+		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
+		PositionCoords: "14J",
+		Tiles:          "PR..CE",
+		GameId:         "9zaaSuN5",
+	}
+
+	err := ProcessGameplayEvent(ctx, cge, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	is.Equal(err, errOnlyPassOrChallenge)
+}
+
+func TestConsecutiveScorelessTurns(t *testing.T) {
+	ctx := ctxForTests()
+	documentfile := "document-earlygame.json"
+
+	is := is.New(t)
+	gdoc := loadGDoc(documentfile)
+
+	// Let's say we're 5000 ms after the last time of update
+	globalNower = &FakeNower{
+		fakeMeow: gdoc.Timers.TimeOfLastUpdate + 5000}
+	defer restoreGlobalNower()
+
+	passCGE := &ipc.ClientGameplayEvent{
+		Type:   ipc.ClientGameplayEvent_PASS,
+		GameId: "9aK3YgVk",
+	}
+	err := ProcessGameplayEvent(ctx, passCGE, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	is.NoErr(err)
+	is.Equal(gdoc.ScorelessTurns, uint32(1))
+	err = ProcessGameplayEvent(ctx, passCGE, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	is.NoErr(err)
+	is.Equal(gdoc.ScorelessTurns, uint32(2))
+
+	phonyCGE := &ipc.ClientGameplayEvent{
+		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
+		GameId:         "9aK3YgVk",
+		PositionCoords: "1D",
+		Tiles:          "KNI.EW",
+	}
+
+	err = ProcessGameplayEvent(ctx, phonyCGE, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	is.NoErr(err)
+	is.Equal(gdoc.ScorelessTurns, uint32(0))
+	err = ProcessGameplayEvent(ctx, &ipc.ClientGameplayEvent{
+		Type:   ipc.ClientGameplayEvent_CHALLENGE_PLAY,
+		GameId: "9aK3YgVk",
+	}, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	is.NoErr(err)
+	is.Equal(gdoc.ScorelessTurns, uint32(3))
+	err = ProcessGameplayEvent(ctx, passCGE, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	is.NoErr(err)
+	is.Equal(gdoc.ScorelessTurns, uint32(4))
+	exchangeCGE := &ipc.ClientGameplayEvent{
+		Type:   ipc.ClientGameplayEvent_EXCHANGE,
+		GameId: "9aK3YgVk",
+		Tiles:  "KW",
+	}
+	err = ProcessGameplayEvent(ctx, exchangeCGE, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	is.NoErr(err)
+	is.Equal(gdoc.ScorelessTurns, uint32(5))
+	// now play a phony and challenge it off
+	phonyCGE = &ipc.ClientGameplayEvent{
+		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
+		GameId:         "9aK3YgVk",
+		PositionCoords: "15C",
+		Tiles:          "S.HERIOD",
+	}
+	err = ProcessGameplayEvent(ctx, phonyCGE, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	is.NoErr(err)
+	is.Equal(gdoc.ScorelessTurns, uint32(0))
+	chCGE := &ipc.ClientGameplayEvent{
+		Type:   ipc.ClientGameplayEvent_CHALLENGE_PLAY,
+		GameId: "9aK3YgVk",
+	}
+	err = ProcessGameplayEvent(ctx, chCGE, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	is.NoErr(err)
+	is.Equal(gdoc.ScorelessTurns, uint32(6))
+	is.Equal(gdoc.EndReason, ipc.GameEndReason_CONSECUTIVE_ZEROES)
+	// player 1 loses some random amount due to their exchange.
+	// player 2 loses 11 pts (DEHIORS)
+	is.True(gdoc.CurrentScores[0] < int32(57))
+	is.Equal(gdoc.CurrentScores[1], int32(126))
+}
+
+func TestResign(t *testing.T) {
+	ctx := ctxForTests()
+	documentfile := "document-earlygame.json"
+
+	testcases := []struct {
+		name        string
+		resignerid  string
+		resigneridx int
+		winneridx   int32
+		millisrem   int
+		expectedErr error
+	}{
+		{
+			name:        "player on turn resigns",
+			resignerid:  "2gJGaYnchL6LbQVTNQ6mjT",
+			resigneridx: 0,
+			winneridx:   1,
+			millisrem:   883808,
+		},
+		{
+			name:        "player not on turn resigns",
+			resignerid:  "FDHvxexaC5QNMfiJnpcnUZ",
+			resigneridx: 1,
+			winneridx:   0,
+			millisrem:   899914,
+		},
+		{
+			name:        "some observer resigns",
+			resignerid:  "foo",
+			resigneridx: -1,
+			expectedErr: errPlayerNotInGame,
+		},
+	}
+
+	for _, tc := range testcases {
+		tc := tc
+		t.Run(fmt.Sprintf(tc.name), func(t *testing.T) {
+			is := is.New(t)
+			gdoc := loadGDoc(documentfile)
+
+			// Let's say we're 5000 ms after the last time of update
+			globalNower = &FakeNower{
+				fakeMeow: gdoc.Timers.TimeOfLastUpdate + 5000}
+			defer restoreGlobalNower()
+
+			resignCGE := &ipc.ClientGameplayEvent{
+				Type:   ipc.ClientGameplayEvent_RESIGN,
+				GameId: "9aK3YgVk",
+			}
+			err := ProcessGameplayEvent(ctx, resignCGE, tc.resignerid, gdoc)
+			if err != nil {
+				is.Equal(err, tc.expectedErr)
+				return
+			}
+			is.NoErr(err)
+			is.Equal(gdoc.EndReason, ipc.GameEndReason_RESIGNED)
+			is.Equal(gdoc.PlayState, ipc.PlayState_GAME_OVER)
+			is.Equal(gdoc.Winner, tc.winneridx)
+			is.Equal(gdoc.CurrentScores, []int32{62, 137})
+			is.Equal(len(gdoc.Events), 5)
+			is.Equal(gdoc.Events[4], &ipc.GameEvent{
+				Type:            ipc.GameEvent_RESIGNED,
+				MillisRemaining: int32(tc.millisrem),
+				PlayerIndex:     uint32(tc.resigneridx),
+			})
+		})
+	}
+}
+
+func TestVoidChallenge(t *testing.T) {
+	is := is.New(t)
+	ctx := ctxForTests()
+	documentfile := "document-earlygame.json"
+
+	gdoc := loadGDoc(documentfile)
+	gdoc.ChallengeRule = ipc.ChallengeRule_ChallengeRule_VOID
+	// Let's say we're 5000 ms after the last time of update
+	globalNower = &FakeNower{
+		fakeMeow: gdoc.Timers.TimeOfLastUpdate + 5000}
+	defer restoreGlobalNower()
+
+	cge := &ipc.ClientGameplayEvent{
+		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
+		GameId:         "9aK3YgVk",
+		PositionCoords: "1D",
+		Tiles:          "KNI.EW",
+	}
+
+	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	is.Equal(err.Error(), "invalid words: KNIVEW")
+
+	cge2 := &ipc.ClientGameplayEvent{
+		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
+		GameId:         "9aK3YgVk",
+		PositionCoords: "1D",
+		Tiles:          "KNI.E",
+	}
+	err = ProcessGameplayEvent(ctx, cge2, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	is.NoErr(err)
+	is.Equal(gdoc.CurrentScores, []int32{113, 137})
+}
+
+func TestVoidChallengeEndOfGame(t *testing.T) {
+	is := is.New(t)
+	ctx := ctxForTests()
+	documentfile := "document-game-almost-over.json"
+
+	gdoc := loadGDoc(documentfile)
+	gdoc.ChallengeRule = ipc.ChallengeRule_ChallengeRule_VOID
+	// Let's say we're 5000 ms after the last time of update
+	globalNower = &FakeNower{
+		fakeMeow: gdoc.Timers.TimeOfLastUpdate + 5000}
+	defer restoreGlobalNower()
+
+	cge := &ipc.ClientGameplayEvent{
+		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
+		GameId:         "9zaaSuN5",
+		PositionCoords: "12F",
+		Tiles:          "TRIAlO..E",
+	}
+
+	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	is.NoErr(err)
+	is.Equal(gdoc.EndReason, ipc.GameEndReason_STANDARD)
+	is.Equal(gdoc.PlayState, ipc.PlayState_GAME_OVER)
+	is.Equal(gdoc.CurrentScores, []int32{446, 323})
+	is.Equal(gdoc.Winner, int32(0))
+}
+
+func TestTripleChallenge(t *testing.T) {
+	is := is.New(t)
+	ctx := ctxForTests()
+	documentfile := "document-game-almost-over.json"
+
+	gdoc := loadGDoc(documentfile)
+	gdoc.ChallengeRule = ipc.ChallengeRule_ChallengeRule_TRIPLE
+	// Let's say we're 5000 ms after the last time of update
+	globalNower = &FakeNower{
+		fakeMeow: gdoc.Timers.TimeOfLastUpdate + 5000}
+	defer restoreGlobalNower()
+
+	cge := &ipc.ClientGameplayEvent{
+		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
+		GameId:         "9zaaSuN5",
+		PositionCoords: "12F",
+		Tiles:          "TRIAlO..E",
+	}
+
+	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	is.NoErr(err)
+
+	cge2 := &ipc.ClientGameplayEvent{
+		Type:   ipc.ClientGameplayEvent_CHALLENGE_PLAY,
+		GameId: "9zaaSuN5",
+	}
+	err = ProcessGameplayEvent(ctx, cge2, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	is.NoErr(err)
+
+	is.Equal(gdoc.EndReason, ipc.GameEndReason_TRIPLE_CHALLENGE)
+	is.Equal(gdoc.PlayState, ipc.PlayState_GAME_OVER)
+	is.Equal(gdoc.CurrentScores, []int32{446, 305})
+	// Player indexed 1 wins even though they had fewer points, because of
+	// the triple challenge rule
+	is.Equal(gdoc.Winner, int32(1))
 }
 
 func BenchmarkLoadDocumentJSON(b *testing.B) {
@@ -854,8 +1160,7 @@ func BenchmarkLoadDocumentJSON(b *testing.B) {
 	// ~41.7 us per op on themonolith (12th-gen intel box)
 	for i := 0; i < b.N; i++ {
 		gdoc := &ipc.GameDocument{}
-		err = protojson.Unmarshal(content, gdoc)
-		is.NoErr(err)
+		protojson.Unmarshal(content, gdoc)
 	}
 }
 
@@ -867,7 +1172,6 @@ func BenchmarkLoadDocumentProto(b *testing.B) {
 	// ~4.3 us per op on themonolith (12th-gen intel box)
 	for i := 0; i < b.N; i++ {
 		gdoc := &ipc.GameDocument{}
-		err = proto.Unmarshal(content, gdoc)
-		is.NoErr(err)
+		proto.Unmarshal(content, gdoc)
 	}
 }
