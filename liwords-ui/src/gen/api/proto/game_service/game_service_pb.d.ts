@@ -6,6 +6,7 @@
 import type {BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage} from "@bufbuild/protobuf";
 import {Message, proto3} from "@bufbuild/protobuf";
 import type {GameHistory} from "../macondo/macondo_pb.js";
+import type {GameDocument} from "../ipc/omgwords_pb.js";
 
 /**
  * Meta information about a game, including its players.
@@ -82,6 +83,30 @@ export declare class GameHistoryRequest extends Message<GameHistoryRequest> {
 }
 
 /**
+ * @generated from message game_service.GameDocumentRequest
+ */
+export declare class GameDocumentRequest extends Message<GameDocumentRequest> {
+  /**
+   * @generated from field: string game_id = 1;
+   */
+  gameId: string;
+
+  constructor(data?: PartialMessage<GameDocumentRequest>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "game_service.GameDocumentRequest";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GameDocumentRequest;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GameDocumentRequest;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GameDocumentRequest;
+
+  static equals(a: GameDocumentRequest | PlainMessage<GameDocumentRequest> | undefined, b: GameDocumentRequest | PlainMessage<GameDocumentRequest> | undefined): boolean;
+}
+
+/**
  * @generated from message game_service.GCGResponse
  */
 export declare class GCGResponse extends Message<GCGResponse> {
@@ -127,6 +152,30 @@ export declare class GameHistoryResponse extends Message<GameHistoryResponse> {
   static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GameHistoryResponse;
 
   static equals(a: GameHistoryResponse | PlainMessage<GameHistoryResponse> | undefined, b: GameHistoryResponse | PlainMessage<GameHistoryResponse> | undefined): boolean;
+}
+
+/**
+ * @generated from message game_service.GameDocumentResponse
+ */
+export declare class GameDocumentResponse extends Message<GameDocumentResponse> {
+  /**
+   * @generated from field: ipc.GameDocument document = 1;
+   */
+  document?: GameDocument;
+
+  constructor(data?: PartialMessage<GameDocumentResponse>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "game_service.GameDocumentResponse";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GameDocumentResponse;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GameDocumentResponse;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GameDocumentResponse;
+
+  static equals(a: GameDocumentResponse | PlainMessage<GameDocumentResponse> | undefined, b: GameDocumentResponse | PlainMessage<GameDocumentResponse> | undefined): boolean;
 }
 
 /**

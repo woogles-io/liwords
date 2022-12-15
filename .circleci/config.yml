@@ -4,6 +4,7 @@ orbs:
 jobs:
   build_api_srv:
     environment:
+      DATA_PATH: /opt/liwords/data
       LEXICON_PATH: /opt/liwords/data/lexica
       LETTER_DISTRIBUTION_PATH: /opt/liwords/data/letterdistributions/
       STRATEGY_PARAMS_PATH: /opt/macondo/data/strategy

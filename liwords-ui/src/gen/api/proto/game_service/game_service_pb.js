@@ -5,6 +5,7 @@
 
 import {proto3} from "@bufbuild/protobuf";
 import {GameHistory} from "../macondo/macondo_pb.js";
+import {GameDocument} from "../ipc/omgwords_pb.js";
 
 /**
  * Meta information about a game, including its players.
@@ -39,6 +40,16 @@ export const GameHistoryRequest = proto3.makeMessageType(
 );
 
 /**
+ * @generated from message game_service.GameDocumentRequest
+ */
+export const GameDocumentRequest = proto3.makeMessageType(
+  "game_service.GameDocumentRequest",
+  () => [
+    { no: 1, name: "game_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ],
+);
+
+/**
  * @generated from message game_service.GCGResponse
  */
 export const GCGResponse = proto3.makeMessageType(
@@ -55,6 +66,16 @@ export const GameHistoryResponse = proto3.makeMessageType(
   "game_service.GameHistoryResponse",
   () => [
     { no: 1, name: "history", kind: "message", T: GameHistory },
+  ],
+);
+
+/**
+ * @generated from message game_service.GameDocumentResponse
+ */
+export const GameDocumentResponse = proto3.makeMessageType(
+  "game_service.GameDocumentResponse",
+  () => [
+    { no: 1, name: "document", kind: "message", T: GameDocument },
   ],
 );
 
