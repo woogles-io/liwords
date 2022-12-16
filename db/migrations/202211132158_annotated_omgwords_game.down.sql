@@ -1,5 +1,5 @@
 BEGIN;
 
-DROP TABLE IF EXISTS annotated_game_editors;
+DROP TABLE IF EXISTS annotated_game_metadata;
 
 COMMIT;

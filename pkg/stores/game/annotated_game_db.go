@@ -41,7 +41,7 @@ func (s *AnnotatedDBStore) AddAnnotatedGame(ctx context.Context, gid, uid string
 func (s *AnnotatedDBStore) GetGamesForEditor(ctx context.Context, uid string, limit, offset int) error {
 	// if we want to get the player names we do need quick data,
 	// or the new game service db structures.
-	rows, err := s.dbPool.Query(ctx)
+	// rows, err := s.dbPool.Query(ctx)
 
 	return nil
 }

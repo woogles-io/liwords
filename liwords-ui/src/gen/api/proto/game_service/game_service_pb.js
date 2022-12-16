@@ -4,8 +4,8 @@
 /* @ts-nocheck */
 
 import {proto3} from "@bufbuild/protobuf";
-import {ChallengeRule, GameHistory} from "../macondo/macondo_pb.js";
-import {GameDocument, GameRules} from "../ipc/omgwords_pb.js";
+import {GameHistory} from "../macondo/macondo_pb.js";
+import {GameDocument} from "../ipc/omgwords_pb.js";
 
 /**
  * Meta information about a game, including its players.
@@ -133,89 +133,6 @@ export const RematchStreakRequest = proto3.makeMessageType(
   "game_service.RematchStreakRequest",
   () => [
     { no: 1, name: "original_request_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ],
-);
-
-/**
- * GameEventResponse doesn't need to have any extra data. The GameEvent API
- * will still use sockets to broadcast game information.
- *
- * @generated from message game_service.GameEventResponse
- */
-export const GameEventResponse = proto3.makeMessageType(
-  "game_service.GameEventResponse",
-  [],
-);
-
-/**
- * @generated from message game_service.TimePenaltyEvent
- */
-export const TimePenaltyEvent = proto3.makeMessageType(
-  "game_service.TimePenaltyEvent",
-  () => [
-    { no: 1, name: "points_lost", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-  ],
-);
-
-/**
- * @generated from message game_service.ChallengeBonusPointsEvent
- */
-export const ChallengeBonusPointsEvent = proto3.makeMessageType(
-  "game_service.ChallengeBonusPointsEvent",
-  () => [
-    { no: 1, name: "points_gained", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-  ],
-);
-
-/**
- * metadata
- *
- * @generated from message game_service.CreateBroadcastGameRequest
- */
-export const CreateBroadcastGameRequest = proto3.makeMessageType(
-  "game_service.CreateBroadcastGameRequest",
-  () => [
-    { no: 1, name: "playersInfo", kind: "message", T: CreateBroadcastGameRequest_PlayerInfo, repeated: true },
-    { no: 2, name: "lexicon", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "rules", kind: "message", T: GameRules },
-    { no: 4, name: "challenge_rule", kind: "enum", T: proto3.getEnumType(ChallengeRule) },
-    { no: 5, name: "public", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-  ],
-);
-
-/**
- * PlayerInfo for broadcast games do not need to be tied to a Woogles
- * UUID. These games are meant for sandbox/annotation/broadcast of
- * a typically IRL game.
- *
- * @generated from message game_service.CreateBroadcastGameRequest.PlayerInfo
- */
-export const CreateBroadcastGameRequest_PlayerInfo = proto3.makeMessageType(
-  "game_service.CreateBroadcastGameRequest.PlayerInfo",
-  () => [
-    { no: 1, name: "nickname", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "real_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ],
-  {localName: "CreateBroadcastGameRequest_PlayerInfo"},
-);
-
-/**
- * @generated from message game_service.CreateBroadcastGameResponse
- */
-export const CreateBroadcastGameResponse = proto3.makeMessageType(
-  "game_service.CreateBroadcastGameResponse",
-  () => [
-    { no: 1, name: "game_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ],
-);
-
-/**
- * @generated from message game_service.BroadcastGamePrivacy
- */
-export const BroadcastGamePrivacy = proto3.makeMessageType(
-  "game_service.BroadcastGamePrivacy",
-  () => [
-    { no: 1, name: "public", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ],
 );
 
