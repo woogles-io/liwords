@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/domino14/liwords/pkg/utilities"
 	"github.com/lithammer/shortuuid"
 )
 
@@ -27,12 +29,17 @@ func NewS3Uploader(bucket string) *S3Uploader {
 }
 
 func (s *S3Uploader) urlprefix() string {
+	if os.Getenv("USE_LOCALSTACK_S3") == "1" {
+		return "http://localhost:4566/" + s.bucket + "/"
+	}
 	return "https://" + s.bucket + ".s3.amazonaws.com/"
 }
 
 // Upload takes in JPG bytes
 func (s *S3Uploader) Upload(ctx context.Context, prefix string, data []byte) (string, error) {
-	cfg, err := config.LoadDefaultConfig(ctx)
+	cfg, err := config.LoadDefaultConfig(
+		ctx, config.WithEndpointResolverWithOptions(
+			aws.EndpointResolverWithOptionsFunc(utilities.CustomResolver)))
 	if err != nil {
 		return "", err
 	}
@@ -41,7 +48,7 @@ func (s *S3Uploader) Upload(ctx context.Context, prefix string, data []byte) (st
 		return "", fmt.Errorf("file size is too big; avatar must be a square JPG < %dKB", MaxFilesize/1024)
 	}
 
-	client := s3.NewFromConfig(cfg)
+	client := s3.NewFromConfig(cfg, utilities.CustomClientOptions)
 	uploader := manager.NewUploader(client)
 
 	// create a unique id

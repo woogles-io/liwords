@@ -12,6 +12,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -26,6 +29,7 @@ import (
 	"github.com/domino14/liwords/pkg/memento"
 	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/notify"
+	"github.com/domino14/liwords/pkg/omgwords"
 	"github.com/domino14/liwords/pkg/puzzles"
 	cfgstore "github.com/domino14/liwords/pkg/stores/config"
 	"github.com/domino14/liwords/pkg/stores/game"
@@ -35,6 +39,7 @@ import (
 	"github.com/domino14/liwords/pkg/stores/soughtgame"
 	"github.com/domino14/liwords/pkg/stores/stats"
 	"github.com/domino14/liwords/pkg/tournament"
+	"github.com/domino14/liwords/pkg/utilities"
 	"github.com/domino14/liwords/pkg/words"
 
 	"github.com/domino14/liwords/pkg/registration"
@@ -55,6 +60,7 @@ import (
 	configservice "github.com/domino14/liwords/rpc/api/proto/config_service"
 	gameservice "github.com/domino14/liwords/rpc/api/proto/game_service"
 	modservice "github.com/domino14/liwords/rpc/api/proto/mod_service"
+	omgwordsservice "github.com/domino14/liwords/rpc/api/proto/omgwords_service"
 	puzzleservice "github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	tournamentservice "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 	userservice "github.com/domino14/liwords/rpc/api/proto/user_service"
@@ -142,6 +148,11 @@ func main() {
 	}
 	log.Debug().Msg("debug log is on")
 
+	if os.Getenv("USE_LOCALSTACK_S3") == "1" {
+		// pre-create buckets
+		precreateLocalStackBuckets()
+	}
+
 	m, err := migrate.New(cfg.DBMigrationsPath, cfg.DBConnUri)
 	if err != nil {
 		panic(err)
@@ -227,14 +238,7 @@ func main() {
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
 		cfg.SecretKey, cfg.MailgunKey, cfg.DiscordToken, cfg.ArgonConfig)
 	registrationService := registration.NewRegistrationService(stores.UserStore, cfg.ArgonConfig)
-	gameService := gameplay.NewGameService(
-		stores.UserStore,
-		stores.GameStore,
-		stores.NotorietyStore,
-		stores.ListStatStore,
-		stores.TournamentStore,
-		cfg,
-	)
+	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore, cfg)
 	profileService := pkgprofile.NewProfileService(stores.UserStore, pkguser.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET")))
 	wordService := words.NewWordService(&cfg.MacondoConfig)
 	autocompleteService := pkguser.NewAutocompleteService(stores.UserStore)
@@ -243,6 +247,7 @@ func main() {
 	tournamentService := tournament.NewTournamentService(stores.TournamentStore, stores.UserStore)
 	modService := mod.NewModService(stores.UserStore, stores.ChatStore)
 	puzzleService := puzzles.NewPuzzleService(stores.PuzzleStore, stores.UserStore, cfg.PuzzleGenerationSecretKey, cfg.ECSClusterName, cfg.PuzzleGenerationTaskDefinition)
+	omgwordsService := omgwords.NewOMGWordsService(stores.UserStore, cfg)
 
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
@@ -257,8 +262,8 @@ func main() {
 	router.Handle(gameservice.GameMetadataServicePathPrefix,
 		middlewares.Then(gameservice.NewGameMetadataServiceServer(gameService, NewLoggingServerHooks())))
 
-	router.Handle(gameservice.GameEventServicePathPrefix,
-		middlewares.Then(gameservice.NewGameEventServiceServer(gameService, NewLoggingServerHooks())))
+	router.Handle(omgwordsservice.GameEventServicePathPrefix,
+		middlewares.Then(omgwordsservice.NewGameEventServiceServer(omgwordsService, NewLoggingServerHooks())))
 
 	router.Handle(wordservice.WordServicePathPrefix,
 		middlewares.Then(wordservice.NewWordServiceServer(wordService, NewLoggingServerHooks())))
@@ -358,4 +363,22 @@ func main() {
 	// etc.
 	<-idleConnsClosed
 	log.Info().Msg("server gracefully shutting down")
+}
+
+func precreateLocalStackBuckets() {
+	ctx := context.Background()
+	cfg, err := awsconfig.LoadDefaultConfig(
+		ctx, awsconfig.WithEndpointResolverWithOptions(
+			aws.EndpointResolverWithOptionsFunc(utilities.CustomResolver)))
+	if err != nil {
+		log.Err(err).Msg("unable-to-load-awsconfig")
+		return
+	}
+
+	client := s3.NewFromConfig(cfg, utilities.CustomClientOptions)
+
+	out, err := client.CreateBucket(ctx, &s3.CreateBucketInput{
+		Bucket: aws.String(os.Getenv("AVATAR_UPLOAD_BUCKET")),
+	})
+	log.Err(err).Interface("out", out).Msg("created-bucket?")
 }
