@@ -12,7 +12,8 @@ func CustomResolver(service, region string, options ...interface{}) (aws.Endpoin
 	if service == s3.ServiceID && os.Getenv("USE_LOCALSTACK_S3") == "1" {
 		log.Debug().Str("service", "s3").Msg("using-localstack-endpoint")
 		return aws.Endpoint{
-			URL: "http://localstack:4566",
+			// Locally this should be set to something like http://localhost:4566
+			URL: os.Getenv("LOCALSTACK_S3_ENDPOINT"),
 		}, nil
 	}
 	return aws.Endpoint{}, &aws.EndpointNotFoundError{}

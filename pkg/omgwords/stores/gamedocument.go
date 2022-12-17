@@ -1,18 +1,26 @@
 package stores
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
+	"os"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-redsync/redsync/v4"
 	"github.com/go-redsync/redsync/v4/redis/redigo"
 	"github.com/golang/protobuf/proto"
 	"github.com/gomodule/redigo/redis"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 )
+
+var GameDocBucket = os.Getenv("GAMEDOC_UPLOAD_BUCKET")
 
 const MaxExpirationSeconds = 5 * 24 * 60 * 60 // 5 days
 const RedisExpirationSeconds = 15 * 60        // 15 minutes
@@ -101,7 +109,24 @@ func (gs *GameDocumentStore) GetDocument(ctx context.Context, uuid string, lock 
 }
 
 func (gs *GameDocumentStore) getFromS3(ctx context.Context, uuid string) (*ipc.GameDocument, error) {
-	return nil, errors.New("getFromS3 not implemented")
+	result, err := gs.s3Client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(GameDocBucket),
+		Key:    aws.String(uuid),
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer result.Body.Close()
+	body, err := io.ReadAll(result.Body)
+	if err != nil {
+		return nil, err
+	}
+	gdoc := &ipc.GameDocument{}
+	err = protojson.Unmarshal(body, gdoc)
+	if err != nil {
+		return nil, err
+	}
+	return gdoc, nil
 }
 
 // SetDocument should be called to set the initial document in redis.
@@ -139,36 +164,64 @@ func (gs *GameDocumentStore) UpdateDocument(ctx context.Context, doc *MaybeLocke
 	conn := gs.redisPool.Get()
 	defer conn.Close()
 
-	defer func() {
+	unlockMutex := func() {
 		mutex := gs.redsync.NewMutex(RedisMutexPrefix+gid,
 			redsync.WithValue(doc.LockValue))
 		if ok, err := mutex.Unlock(); !ok || err != nil {
 			// The unlock failed. Maybe it wasn't locked?
 			log.Err(err).Str("mutexname", mutex.Name()).Str("val", mutex.Value()).Msg("redsync-unlock-failed")
 		}
-
-		if saveToS3 {
-			gs.saveToS3(ctx, doc.GameDocument)
-		}
-	}()
-
-	expTimer := MaxExpirationSeconds
-	if saveToS3 {
-		expTimer = RedisExpirationSeconds
 	}
 
-	r, err := redis.String(conn.Do("SET", RedisDocPrefix+gid, bts, "EX", expTimer))
+	r, err := redis.String(conn.Do("SET", RedisDocPrefix+gid, bts, "EX", MaxExpirationSeconds))
 	if err != nil {
+		unlockMutex()
 		return err
 	}
 	if r != "OK" {
+		unlockMutex()
 		return errors.New("wrong return for SET: " + r)
 	}
+	unlockMutex()
 
+	if saveToS3 {
+		err = gs.saveToS3(ctx, doc.GameDocument)
+		if err == nil {
+			// If we saved the game permanently, now we can expire the game from Redis
+			// relatively soon.
+			r, err := redis.Int(conn.Do("EXPIRE", RedisDocPrefix+gid, RedisExpirationSeconds))
+			if err != nil {
+				log.Err(err).Str("gid", doc.Uid).Msg("error expiring")
+			}
+			if r != 1 {
+				log.Err(errors.New("unexpected expire return")).Str("gid", doc.Uid).Msg("saving-doc")
+			}
+			return nil
+		} else {
+			// Log to Discord or somewhere that this game failed to be permanently
+			// backed up!
+		}
+		return err
+	}
 	return nil
 }
 
 func (gs *GameDocumentStore) saveToS3(ctx context.Context, gdoc *ipc.GameDocument) error {
 	// save as protojson
-	return errors.New("saveToS3 not implemented")
+
+	data, err := protojson.Marshal(gdoc)
+	if err != nil {
+		return err
+	}
+
+	uploader := manager.NewUploader(gs.s3Client)
+
+	_, err = uploader.Upload(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(GameDocBucket),
+		Key:         aws.String(gdoc.Uid),
+		Body:        bytes.NewReader(data),
+		ContentType: aws.String("application/json"),
+	})
+
+	return err
 }

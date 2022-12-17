@@ -27,10 +27,12 @@ services:
       ARGON_MEMORY: 1024
       AWS_REGION: "us-east-2"
       USE_LOCALSTACK_S3: 1
+      LOCALSTACK_S3_ENDPOINT: "http://localstack:4566",
       # localstack still requires some value for these:
       AWS_ACCESS_KEY_ID: '123'
       AWS_SECRET_KEY: 'xyz'
       AVATAR_UPLOAD_BUCKET: woogles-uploads
+      GAMEDOC_UPLOAD_BUCKET: woogles-gamedocs
       DB_MIGRATIONS_PATH: file:///opt/program/db/migrations
       PUZZLE_GENERATION_SECRET_KEY: perplexemes
       ECS_CLUSTER_NAME: ${ECS_CLUSTER_NAME:-}

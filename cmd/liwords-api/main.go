@@ -234,12 +234,22 @@ func main() {
 		panic(err)
 	}
 
+	// s3 config
+
+	awscfg, err := awsconfig.LoadDefaultConfig(
+		context.Background(), awsconfig.WithEndpointResolverWithOptions(
+			aws.EndpointResolverWithOptionsFunc(utilities.CustomResolver)))
+	if err != nil {
+		panic(err)
+	}
+	s3Client := s3.NewFromConfig(awscfg, utilities.CustomClientOptions)
+
 	mementoService := memento.NewMementoService(stores.UserStore, stores.GameStore)
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
 		cfg.SecretKey, cfg.MailgunKey, cfg.DiscordToken, cfg.ArgonConfig)
 	registrationService := registration.NewRegistrationService(stores.UserStore, cfg.ArgonConfig)
 	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore, cfg)
-	profileService := pkgprofile.NewProfileService(stores.UserStore, pkguser.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET")))
+	profileService := pkgprofile.NewProfileService(stores.UserStore, pkguser.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET"), s3Client))
 	wordService := words.NewWordService(&cfg.MacondoConfig)
 	autocompleteService := pkguser.NewAutocompleteService(stores.UserStore)
 	socializeService := pkguser.NewSocializeService(stores.UserStore, stores.ChatStore, stores.PresenceStore)
@@ -377,8 +387,14 @@ func precreateLocalStackBuckets() {
 
 	client := s3.NewFromConfig(cfg, utilities.CustomClientOptions)
 
-	out, err := client.CreateBucket(ctx, &s3.CreateBucketInput{
+	_, err = client.CreateBucket(ctx, &s3.CreateBucketInput{
 		Bucket: aws.String(os.Getenv("AVATAR_UPLOAD_BUCKET")),
 	})
-	log.Err(err).Interface("out", out).Msg("created-bucket?")
+	log.Err(err).Msg("trying to create avatar upload bucket")
+
+	_, err = client.CreateBucket(ctx, &s3.CreateBucketInput{
+		Bucket: aws.String(os.Getenv("GAMEDOC_UPLOAD_BUCKET")),
+	})
+	log.Err(err).Msg("trying to create gamedoc upload bucket")
+
 }

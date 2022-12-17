@@ -7,11 +7,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/golang/protobuf/proto"
 	"github.com/gomodule/redigo/redis"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/encoding/protojson"
+
+	"github.com/domino14/liwords/pkg/utilities"
+	"github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
 var RedisUrl = os.Getenv("REDIS_URL")
@@ -35,8 +41,8 @@ func TestNewAndGet(t *testing.T) {
 	content, err := os.ReadFile("../../cwgame/testdata/" + documentfile)
 	is.NoErr(err)
 	gdoc := &ipc.GameDocument{}
-	proto.Unmarshal(content, gdoc)
-
+	err = proto.Unmarshal(content, gdoc)
+	is.NoErr(err)
 	err = store.SetDocument(ctx, gdoc)
 	is.NoErr(err)
 
@@ -55,8 +61,8 @@ func TestRedisLocking(t *testing.T) {
 	content, err := os.ReadFile("../../cwgame/testdata/" + documentfile)
 	is.NoErr(err)
 	origDoc := &ipc.GameDocument{}
-	proto.Unmarshal(content, origDoc)
-
+	err = proto.Unmarshal(content, origDoc)
+	is.NoErr(err)
 	err = store.SetDocument(ctx, origDoc)
 	is.NoErr(err)
 
@@ -108,8 +114,8 @@ func TestRedisLockingWithTurnLogic(t *testing.T) {
 	content, err := os.ReadFile("../../cwgame/testdata/" + documentfile)
 	is.NoErr(err)
 	origDoc := &ipc.GameDocument{}
-	proto.Unmarshal(content, origDoc)
-
+	err = proto.Unmarshal(content, origDoc)
+	is.NoErr(err)
 	err = store.SetDocument(ctx, origDoc)
 	is.NoErr(err)
 
@@ -152,4 +158,46 @@ func TestRedisLockingWithTurnLogic(t *testing.T) {
 
 	// Only 1 pass gets added to the document.
 	is.True(proto.Equal(doc2, origDoc))
+}
+
+func s3Client() *s3.Client {
+	awscfg, err := awsconfig.LoadDefaultConfig(
+		context.Background(), awsconfig.WithEndpointResolverWithOptions(
+			aws.EndpointResolverWithOptionsFunc(utilities.CustomResolver)))
+	if err != nil {
+		panic(err)
+	}
+	s3Client := s3.NewFromConfig(awscfg, utilities.CustomClientOptions)
+	return s3Client
+}
+
+func TestS3GetAndSet(t *testing.T) {
+	// Can re-enable this if we set up localstack on circleci
+	t.Skip()
+	is := is.New(t)
+	c := s3Client()
+	store, err := NewGameDocumentStore(newPool(RedisUrl), c)
+	is.NoErr(err)
+	ctx := context.Background()
+
+	documentfile := "document-gameover.json"
+	content, err := os.ReadFile("../../cwgame/testdata/" + documentfile)
+	is.NoErr(err)
+	origDoc := &ipc.GameDocument{}
+	err = protojson.Unmarshal(content, origDoc)
+	is.NoErr(err)
+
+	_, err = c.CreateBucket(ctx, &s3.CreateBucketInput{
+		Bucket: aws.String(os.Getenv("GAMEDOC_UPLOAD_BUCKET")),
+	})
+	is.NoErr(err)
+
+	// Lock value doesn't matter. The mutex unlock will fail, but that's ok,
+	// we're not testing that part.
+	err = store.UpdateDocument(ctx, &MaybeLockedDocument{GameDocument: origDoc, LockValue: "foo"})
+	is.NoErr(err)
+
+	fromS3, err := store.getFromS3(ctx, origDoc.Uid)
+	is.NoErr(err)
+	is.True(proto.Equal(fromS3, origDoc))
 }
