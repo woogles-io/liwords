@@ -41,6 +41,8 @@ export declare enum MessageType {
   CLIENT_GAMEPLAY_EVENT = 3,
 
   /**
+   * deprecate soon
+   *
    * @generated from enum value: SERVER_GAMEPLAY_EVENT = 4;
    */
   SERVER_GAMEPLAY_EVENT = 4,
@@ -231,6 +233,16 @@ export declare enum MessageType {
    * @generated from enum value: PROFILE_UPDATE_EVENT = 43;
    */
   PROFILE_UPDATE_EVENT = 43,
+
+  /**
+   * Add more events here. The total number of events should fit in a byte.
+   * We should definitely not be using anywhere close to 255 events, and
+   * in order to enforce that I'll be forcing the event type header to just be
+   * a byte long.
+   *
+   * @generated from enum value: OMGWORDS_GAMEPLAY_EVENT = 44;
+   */
+  OMGWORDS_GAMEPLAY_EVENT = 44,
 }
 
 /**

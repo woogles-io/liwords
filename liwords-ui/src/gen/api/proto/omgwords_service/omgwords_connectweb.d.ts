@@ -3,9 +3,9 @@
 /* eslint-disable */
 /* @ts-nocheck */
 
-import {BroadcastGamePrivacy, BroadcastGamesResponse, ChallengeBonusPointsEvent, CreateBroadcastGameRequest, CreateBroadcastGameResponse, GameEventResponse, GetGamesForEditorRequest, TimePenaltyEvent} from "./omgwords_pb.js";
+import {AnnotatedGameEvent, BroadcastGamePrivacy, BroadcastGamesResponse, ChallengeBonusPointsEvent, CreateBroadcastGameRequest, CreateBroadcastGameResponse, GameEventResponse, GetGameDocumentRequest, GetGamesForEditorRequest, TimePenaltyEvent} from "./omgwords_pb.js";
 import {MethodKind} from "@bufbuild/protobuf";
-import {ClientGameplayEvent} from "../ipc/omgwords_pb.js";
+import {GameDocument} from "../ipc/omgwords_pb.js";
 
 /**
  * GameEventService will handle our game event API. We can connect bots to
@@ -32,7 +32,7 @@ export declare const GameEventService: {
      */
     readonly sendGameEvent: {
       readonly name: "SendGameEvent",
-      readonly I: typeof ClientGameplayEvent,
+      readonly I: typeof AnnotatedGameEvent,
       readonly O: typeof GameEventResponse,
       readonly kind: MethodKind.Unary,
     },
@@ -79,6 +79,15 @@ export declare const GameEventService: {
       readonly name: "GetGamesForEditor",
       readonly I: typeof GetGamesForEditorRequest,
       readonly O: typeof BroadcastGamesResponse,
+      readonly kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc game_service.GameEventService.GetGameDocument
+     */
+    readonly getGameDocument: {
+      readonly name: "GetGameDocument",
+      readonly I: typeof GetGameDocumentRequest,
+      readonly O: typeof GameDocument,
       readonly kind: MethodKind.Unary,
     },
   }

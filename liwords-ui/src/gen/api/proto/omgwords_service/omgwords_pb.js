@@ -4,7 +4,7 @@
 /* @ts-nocheck */
 
 import {proto3} from "@bufbuild/protobuf";
-import {ChallengeRule, GameRules} from "../ipc/omgwords_pb.js";
+import {ChallengeRule, ClientGameplayEvent, GameRules, PlayerInfo} from "../ipc/omgwords_pb.js";
 
 /**
  * GameEventResponse doesn't need to have any extra data. The GameEvent API
@@ -45,28 +45,12 @@ export const ChallengeBonusPointsEvent = proto3.makeMessageType(
 export const CreateBroadcastGameRequest = proto3.makeMessageType(
   "game_service.CreateBroadcastGameRequest",
   () => [
-    { no: 1, name: "playersInfo", kind: "message", T: CreateBroadcastGameRequest_PlayerInfo, repeated: true },
+    { no: 1, name: "playersInfo", kind: "message", T: PlayerInfo, repeated: true },
     { no: 2, name: "lexicon", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "rules", kind: "message", T: GameRules },
     { no: 4, name: "challenge_rule", kind: "enum", T: proto3.getEnumType(ChallengeRule) },
     { no: 5, name: "public", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ],
-);
-
-/**
- * PlayerInfo for broadcast games do not need to be tied to a Woogles
- * UUID. These games are meant for sandbox/annotation/broadcast of
- * a typically IRL game.
- *
- * @generated from message game_service.CreateBroadcastGameRequest.PlayerInfo
- */
-export const CreateBroadcastGameRequest_PlayerInfo = proto3.makeMessageType(
-  "game_service.CreateBroadcastGameRequest.PlayerInfo",
-  () => [
-    { no: 1, name: "nickname", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "real_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ],
-  {localName: "CreateBroadcastGameRequest_PlayerInfo"},
 );
 
 /**
@@ -124,5 +108,26 @@ export const BroadcastGamesResponse_BroadcastGame = proto3.makeMessageType(
     { no: 4, name: "finished", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ],
   {localName: "BroadcastGamesResponse_BroadcastGame"},
+);
+
+/**
+ * @generated from message game_service.AnnotatedGameEvent
+ */
+export const AnnotatedGameEvent = proto3.makeMessageType(
+  "game_service.AnnotatedGameEvent",
+  () => [
+    { no: 1, name: "event", kind: "message", T: ClientGameplayEvent },
+    { no: 2, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ],
+);
+
+/**
+ * @generated from message game_service.GetGameDocumentRequest
+ */
+export const GetGameDocumentRequest = proto3.makeMessageType(
+  "game_service.GetGameDocumentRequest",
+  () => [
+    { no: 1, name: "game_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ],
 );
 

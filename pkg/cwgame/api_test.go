@@ -46,7 +46,7 @@ func loadGDoc(testfilename string) *ipc.GameDocument {
 func TestNewGame(t *testing.T) {
 	is := is.New(t)
 	rules := NewBasicGameRules("NWL20", "CrosswordGame", "english", "classic",
-		[]int{300, 300}, 1, 0)
+		[]int{300, 300}, 1, 0, false)
 	g, err := NewGame(DefaultConfig, rules, []*ipc.GameDocument_MinimalPlayerInfo{
 		{Nickname: "Cesitar", RealName: "Cesar", UserId: "cesar1"},
 		{Nickname: "Lucas", RealName: "Lucas", UserId: "lucas1"},
@@ -63,7 +63,7 @@ func TestStartGame(t *testing.T) {
 	defer restoreGlobalNower()
 
 	rules := NewBasicGameRules("NWL20", "CrosswordGame", "english", "classic",
-		[]int{300, 300}, 1, 0)
+		[]int{300, 300}, 1, 0, false)
 	g, _ := NewGame(DefaultConfig, rules, []*ipc.GameDocument_MinimalPlayerInfo{
 		{Nickname: "Cesitar", RealName: "Cesar", UserId: "cesar1"},
 		{Nickname: "Lucas", RealName: "Lucas", UserId: "lucas1"},

@@ -19,10 +19,11 @@ type GameRules struct {
 	secondsPerPlayer []int
 	maxOvertimeMins  int
 	incrementSeconds int
+	untimed          bool
 }
 
 func NewBasicGameRules(lexicon, boardLayout, letterDist string, variant Variant,
-	seconds []int, overtimeMins int, increment int) *GameRules {
+	seconds []int, overtimeMins int, increment int, untimed bool) *GameRules {
 	return &GameRules{
 		boardLayout:      boardLayout,
 		lexicon:          lexicon,
@@ -31,5 +32,6 @@ func NewBasicGameRules(lexicon, boardLayout, letterDist string, variant Variant,
 		secondsPerPlayer: seconds,
 		maxOvertimeMins:  overtimeMins,
 		incrementSeconds: increment,
+		untimed:          untimed,
 	}
 }

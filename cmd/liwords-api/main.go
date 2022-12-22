@@ -257,7 +257,7 @@ func main() {
 	tournamentService := tournament.NewTournamentService(stores.TournamentStore, stores.UserStore)
 	modService := mod.NewModService(stores.UserStore, stores.ChatStore)
 	puzzleService := puzzles.NewPuzzleService(stores.PuzzleStore, stores.UserStore, cfg.PuzzleGenerationSecretKey, cfg.ECSClusterName, cfg.PuzzleGenerationTaskDefinition)
-	omgwordsService := omgwords.NewOMGWordsService(stores.UserStore, cfg)
+	omgwordsService := omgwords.NewOMGWordsService(stores.UserStore, cfg, dbPool, redisPool, s3Client)
 
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 

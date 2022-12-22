@@ -439,6 +439,11 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			// 2. Chat realms are the only ones that are compatible with
 			// presence at this moment.
 			resp.Realms = append(resp.Realms, "chat-puzzlelobby")
+		} else if strings.HasPrefix(path, "/annotated/") {
+			// annotated games are always in TV mode for viewers
+			gameID := strings.TrimPrefix(path, "/annotated/")
+			realm := "gametv-" + gameID
+			resp.Realms = append(resp.Realms, realm, "chat-"+realm)
 		} else {
 			log.Debug().Str("path", path).Msg("realm-req-not-handled")
 		}
@@ -599,6 +604,10 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 
 func (b *Bus) TournamentEventChannel() chan *entity.EventWrapper {
 	return b.tournamentEventChan
+}
+
+func (b *Bus) GameEventChannel() chan *entity.EventWrapper {
+	return b.gameEventChan
 }
 
 func (b *Bus) broadcastPresence(username, userID string, anon bool,

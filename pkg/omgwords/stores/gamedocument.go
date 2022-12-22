@@ -108,6 +108,25 @@ func (gs *GameDocumentStore) GetDocument(ctx context.Context, uuid string, lock 
 	return &MaybeLockedDocument{GameDocument: gdoc, LockValue: mv}, nil
 }
 
+func (gs *GameDocumentStore) UnlockDocument(ctx context.Context, doc *MaybeLockedDocument) error {
+	if doc.LockValue == "" {
+		// wasn't locked
+		log.Debug().Str("gid", doc.Uid).Msg("not-locked")
+		return nil
+	}
+	conn := gs.redisPool.Get()
+	defer conn.Close()
+
+	mutex := gs.redsync.NewMutex(RedisMutexPrefix+doc.Uid,
+		redsync.WithValue(doc.LockValue))
+
+	if ok, err := mutex.Unlock(); !ok || err != nil {
+		// The unlock failed. Maybe it wasn't locked?
+		log.Err(err).Str("mutexname", mutex.Name()).Str("val", mutex.Value()).Msg("redsync-unlock-failed")
+	}
+	return nil
+}
+
 func (gs *GameDocumentStore) getFromS3(ctx context.Context, uuid string) (*ipc.GameDocument, error) {
 	result, err := gs.s3Client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(GameDocBucket),
@@ -198,7 +217,7 @@ func (gs *GameDocumentStore) UpdateDocument(ctx context.Context, doc *MaybeLocke
 			}
 			return nil
 		} else {
-			// Log to Discord or somewhere that this game failed to be permanently
+			// XXX Log to Discord or somewhere that this game failed to be permanently
 			// backed up!
 		}
 		return err

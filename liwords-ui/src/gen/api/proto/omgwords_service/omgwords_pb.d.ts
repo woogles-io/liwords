@@ -5,7 +5,7 @@
 
 import type {BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage} from "@bufbuild/protobuf";
 import {Message, proto3} from "@bufbuild/protobuf";
-import type {ChallengeRule, GameRules} from "../ipc/omgwords_pb.js";
+import type {ChallengeRule, ClientGameplayEvent, GameRules, PlayerInfo} from "../ipc/omgwords_pb.js";
 
 /**
  * GameEventResponse doesn't need to have any extra data. The GameEvent API
@@ -84,9 +84,9 @@ export declare class ChallengeBonusPointsEvent extends Message<ChallengeBonusPoi
  */
 export declare class CreateBroadcastGameRequest extends Message<CreateBroadcastGameRequest> {
   /**
-   * @generated from field: repeated game_service.CreateBroadcastGameRequest.PlayerInfo playersInfo = 1;
+   * @generated from field: repeated ipc.PlayerInfo playersInfo = 1;
    */
-  playersInfo: CreateBroadcastGameRequest_PlayerInfo[];
+  playersInfo: PlayerInfo[];
 
   /**
    * @generated from field: string lexicon = 2;
@@ -124,39 +124,6 @@ export declare class CreateBroadcastGameRequest extends Message<CreateBroadcastG
   static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateBroadcastGameRequest;
 
   static equals(a: CreateBroadcastGameRequest | PlainMessage<CreateBroadcastGameRequest> | undefined, b: CreateBroadcastGameRequest | PlainMessage<CreateBroadcastGameRequest> | undefined): boolean;
-}
-
-/**
- * PlayerInfo for broadcast games do not need to be tied to a Woogles
- * UUID. These games are meant for sandbox/annotation/broadcast of
- * a typically IRL game.
- *
- * @generated from message game_service.CreateBroadcastGameRequest.PlayerInfo
- */
-export declare class CreateBroadcastGameRequest_PlayerInfo extends Message<CreateBroadcastGameRequest_PlayerInfo> {
-  /**
-   * @generated from field: string nickname = 1;
-   */
-  nickname: string;
-
-  /**
-   * @generated from field: string real_name = 2;
-   */
-  realName: string;
-
-  constructor(data?: PartialMessage<CreateBroadcastGameRequest_PlayerInfo>);
-
-  static readonly runtime: typeof proto3;
-  static readonly typeName = "game_service.CreateBroadcastGameRequest.PlayerInfo";
-  static readonly fields: FieldList;
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateBroadcastGameRequest_PlayerInfo;
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateBroadcastGameRequest_PlayerInfo;
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateBroadcastGameRequest_PlayerInfo;
-
-  static equals(a: CreateBroadcastGameRequest_PlayerInfo | PlainMessage<CreateBroadcastGameRequest_PlayerInfo> | undefined, b: CreateBroadcastGameRequest_PlayerInfo | PlainMessage<CreateBroadcastGameRequest_PlayerInfo> | undefined): boolean;
 }
 
 /**
@@ -307,5 +274,58 @@ export declare class BroadcastGamesResponse_BroadcastGame extends Message<Broadc
   static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): BroadcastGamesResponse_BroadcastGame;
 
   static equals(a: BroadcastGamesResponse_BroadcastGame | PlainMessage<BroadcastGamesResponse_BroadcastGame> | undefined, b: BroadcastGamesResponse_BroadcastGame | PlainMessage<BroadcastGamesResponse_BroadcastGame> | undefined): boolean;
+}
+
+/**
+ * @generated from message game_service.AnnotatedGameEvent
+ */
+export declare class AnnotatedGameEvent extends Message<AnnotatedGameEvent> {
+  /**
+   * @generated from field: ipc.ClientGameplayEvent event = 1;
+   */
+  event?: ClientGameplayEvent;
+
+  /**
+   * @generated from field: string user_id = 2;
+   */
+  userId: string;
+
+  constructor(data?: PartialMessage<AnnotatedGameEvent>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "game_service.AnnotatedGameEvent";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AnnotatedGameEvent;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AnnotatedGameEvent;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AnnotatedGameEvent;
+
+  static equals(a: AnnotatedGameEvent | PlainMessage<AnnotatedGameEvent> | undefined, b: AnnotatedGameEvent | PlainMessage<AnnotatedGameEvent> | undefined): boolean;
+}
+
+/**
+ * @generated from message game_service.GetGameDocumentRequest
+ */
+export declare class GetGameDocumentRequest extends Message<GetGameDocumentRequest> {
+  /**
+   * @generated from field: string game_id = 1;
+   */
+  gameId: string;
+
+  constructor(data?: PartialMessage<GetGameDocumentRequest>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "game_service.GetGameDocumentRequest";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetGameDocumentRequest;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetGameDocumentRequest;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetGameDocumentRequest;
+
+  static equals(a: GetGameDocumentRequest | PlainMessage<GetGameDocumentRequest> | undefined, b: GetGameDocumentRequest | PlainMessage<GetGameDocumentRequest> | undefined): boolean;
 }
 

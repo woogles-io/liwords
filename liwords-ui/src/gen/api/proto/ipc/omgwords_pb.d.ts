@@ -706,9 +706,11 @@ export declare class PlayerInfo extends Message<PlayerInfo> {
   isBot: boolean;
 
   /**
-   * first is true if the player went first
+   * first is true if the player went first. This is deprecated because it
+   * is assumed the player listed first went first.
    *
-   * @generated from field: bool first = 9;
+   * @generated from field: bool first = 9 [deprecated = true];
+   * @deprecated
    */
   first: boolean;
 
@@ -1006,6 +1008,8 @@ export declare class ReadyForGame extends Message<ReadyForGame> {
  * The server will send back a ServerGameplayEvent to a ClientGameplayEvent.
  * The server will also send these asynchronously for opponent gameplay
  * events.
+ * XXX: This message type is obsolete and will be replaced by
+ * ServerOMGWordsEvent
  *
  * @generated from message ipc.ServerGameplayEvent
  */
@@ -1062,6 +1066,57 @@ export declare class ServerGameplayEvent extends Message<ServerGameplayEvent> {
 }
 
 /**
+ * ServerOMGWordsEvent is a new event type.
+ *
+ * @generated from message ipc.ServerOMGWordsEvent
+ */
+export declare class ServerOMGWordsEvent extends Message<ServerOMGWordsEvent> {
+  /**
+   * @generated from field: ipc.GameEvent event = 1;
+   */
+  event?: GameEvent;
+
+  /**
+   * @generated from field: string game_id = 2;
+   */
+  gameId: string;
+
+  /**
+   * @generated from field: bytes new_rack = 3;
+   */
+  newRack: Uint8Array;
+
+  /**
+   * @generated from field: int32 time_remaining = 4;
+   */
+  timeRemaining: number;
+
+  /**
+   * @generated from field: ipc.PlayState playing = 5;
+   */
+  playing: PlayState;
+
+  /**
+   * @generated from field: string user_id = 6;
+   */
+  userId: string;
+
+  constructor(data?: PartialMessage<ServerOMGWordsEvent>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "ipc.ServerOMGWordsEvent";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ServerOMGWordsEvent;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ServerOMGWordsEvent;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ServerOMGWordsEvent;
+
+  static equals(a: ServerOMGWordsEvent | PlainMessage<ServerOMGWordsEvent> | undefined, b: ServerOMGWordsEvent | PlainMessage<ServerOMGWordsEvent> | undefined): boolean;
+}
+
+/**
  * The server will send back a challenge result event only in the case of
  * a challenge. In all other cases, the server will send back a
  * ServerGameplayEvent.
@@ -1070,6 +1125,8 @@ export declare class ServerGameplayEvent extends Message<ServerGameplayEvent> {
  * right incremental events. The reason is that the logic is complex and
  * has many special cases, and is already fully implemented in Macondo.
  * We don't wish to re-implement it both in this repo's backend and frontend.
+ * XXX: This message type is obsolete, and will be replaced by
+ * OMGWordsChallengeResultEvent
  *
  * @generated from message ipc.ServerChallengeResultEvent
  */
@@ -1107,6 +1164,45 @@ export declare class ServerChallengeResultEvent extends Message<ServerChallengeR
   static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ServerChallengeResultEvent;
 
   static equals(a: ServerChallengeResultEvent | PlainMessage<ServerChallengeResultEvent> | undefined, b: ServerChallengeResultEvent | PlainMessage<ServerChallengeResultEvent> | undefined): boolean;
+}
+
+/**
+ * @generated from message ipc.OMGWordsChallengeResultEvent
+ */
+export declare class OMGWordsChallengeResultEvent extends Message<OMGWordsChallengeResultEvent> {
+  /**
+   * @generated from field: bool valid = 1;
+   */
+  valid: boolean;
+
+  /**
+   * @generated from field: string challenger = 2;
+   */
+  challenger: string;
+
+  /**
+   * @generated from field: ipc.ChallengeRule challenge_rule = 3;
+   */
+  challengeRule: ChallengeRule;
+
+  /**
+   * @generated from field: bytes returned_tiles = 4;
+   */
+  returnedTiles: Uint8Array;
+
+  constructor(data?: PartialMessage<OMGWordsChallengeResultEvent>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "ipc.OMGWordsChallengeResultEvent";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OMGWordsChallengeResultEvent;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): OMGWordsChallengeResultEvent;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): OMGWordsChallengeResultEvent;
+
+  static equals(a: OMGWordsChallengeResultEvent | PlainMessage<OMGWordsChallengeResultEvent> | undefined, b: OMGWordsChallengeResultEvent | PlainMessage<OMGWordsChallengeResultEvent> | undefined): boolean;
 }
 
 /**
@@ -1545,6 +1641,13 @@ export declare class Timers extends Message<Timers> {
    * @generated from field: bool reset_to_increment_after_turn = 6;
    */
   resetToIncrementAfterTurn: boolean;
+
+  /**
+   * If untimed is true, then Timers are not updated at all.
+   *
+   * @generated from field: bool untimed = 7;
+   */
+  untimed: boolean;
 
   constructor(data?: PartialMessage<Timers>);
 

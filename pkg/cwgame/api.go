@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog"
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -82,6 +83,7 @@ func NewGame(cfg *config.Config, rules *GameRules, playerinfo []*ipc.GameDocumen
 	}
 
 	gdoc := &ipc.GameDocument{
+		Uid:                shortuuid.New(),
 		Events:             make([]*ipc.GameEvent, 0),
 		Players:            playerinfo,
 		Lexicon:            rules.lexicon,

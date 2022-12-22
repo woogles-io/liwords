@@ -125,28 +125,26 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	// Enforce an arbitrary locking order to ensure no deadlocks
 	// occur between threads.
 	var users []*entity.User
-	if g.Type == pb.GameType_NATIVE {
 
-		u0, err := userStore.GetByUUID(ctx, g.History().Players[0].UserId)
-		if err != nil {
-			return err
-		}
-		u1, err := userStore.GetByUUID(ctx, g.History().Players[1].UserId)
-		if err != nil {
-			return err
-		}
-		users = []*entity.User{u0, u1}
-
-		firstLockingIndex := 0
-		if users[0].UUID > users[1].UUID {
-			firstLockingIndex = 1
-		}
-
-		users[firstLockingIndex].Lock()
-		defer users[firstLockingIndex].Unlock()
-		users[1-firstLockingIndex].Lock()
-		defer users[1-firstLockingIndex].Unlock()
+	u0, err := userStore.GetByUUID(ctx, g.History().Players[0].UserId)
+	if err != nil {
+		return err
 	}
+	u1, err := userStore.GetByUUID(ctx, g.History().Players[1].UserId)
+	if err != nil {
+		return err
+	}
+	users = []*entity.User{u0, u1}
+
+	firstLockingIndex := 0
+	if users[0].UUID > users[1].UUID {
+		firstLockingIndex = 1
+	}
+
+	users[firstLockingIndex].Lock()
+	defer users[firstLockingIndex].Unlock()
+	users[1-firstLockingIndex].Lock()
+	defer users[1-firstLockingIndex].Unlock()
 
 	// Send a gameEndedEvent, which rates the game.
 	evt := gameEndedEvent(ctx, g, userStore)
@@ -186,8 +184,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 		if err != nil {
 			log.Err(err).Msg("error-tourney-game-ended")
 		}
-	} else if g.GameReq.RatingMode == pb.RatingMode_RATED &&
-		g.Type == pb.GameType_NATIVE {
+	} else if g.GameReq.RatingMode == pb.RatingMode_RATED {
 		// Applies penalties to players who have misbehaved during the game
 		// Does not apply for tournament games
 		err = mod.Automod(ctx, userStore, notorietyStore, users[0], users[1], g)
@@ -208,9 +205,8 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	g.SendChange(g.NewActiveGameEntry(false))
 
 	// send each player their new profile with updated ratings.
-	if g.Type == pb.GameType_NATIVE {
-		sendProfileUpdate(ctx, g, users)
-	}
+	sendProfileUpdate(ctx, g, users)
+
 	return nil
 }
 
@@ -420,7 +416,7 @@ func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *
 	newRatings := map[string]int32{}
 	var err error
 	var now = time.Now().Unix()
-	if g.CreationRequest().RatingMode == pb.RatingMode_RATED && g.Type == pb.GameType_NATIVE {
+	if g.CreationRequest().RatingMode == pb.RatingMode_RATED {
 		ratings, err = Rate(ctx, scores, g, winner, userStore, now)
 		if err != nil {
 			log.Err(err).Msg("rating-error")

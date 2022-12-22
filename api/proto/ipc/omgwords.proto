@@ -192,8 +192,9 @@ message PlayerInfo {
   string title = 6;
   // string avatar_url = 7; // the UserService now offers Avatar info
   bool is_bot = 8;
-  // first is true if the player went first
-  bool first = 9;
+  // first is true if the player went first. This is deprecated because it
+  // is assumed the player listed first went first.
+  bool first = 9 [ deprecated = true ];
 }
 
 message GameInfoResponse {
@@ -247,6 +248,8 @@ message ReadyForGame { string game_id = 1; }
 // The server will send back a ServerGameplayEvent to a ClientGameplayEvent.
 // The server will also send these asynchronously for opponent gameplay
 // events.
+// XXX: This message type is obsolete and will be replaced by
+// ServerOMGWordsEvent
 message ServerGameplayEvent {
   macondo.GameEvent event = 1; // XXX: move to ipc.GameEvent
   string game_id = 2;
@@ -254,6 +257,16 @@ message ServerGameplayEvent {
   int32 time_remaining = 4;
   macondo.PlayState playing = 5; // XXX: move to ipc.PlayState
   string user_id = 6; // the event has the nickname, but not the userid.
+}
+
+// ServerOMGWordsEvent is a new event type.
+message ServerOMGWordsEvent {
+  GameEvent event = 1;
+  string game_id = 2;
+  bytes new_rack = 3;
+  int32 time_remaining = 4;
+  PlayState playing = 5;
+  string user_id = 6;
 }
 
 // The server will send back a challenge result event only in the case of
@@ -264,11 +277,20 @@ message ServerGameplayEvent {
 // right incremental events. The reason is that the logic is complex and
 // has many special cases, and is already fully implemented in Macondo.
 // We don't wish to re-implement it both in this repo's backend and frontend.
+// XXX: This message type is obsolete, and will be replaced by
+// OMGWordsChallengeResultEvent
 message ServerChallengeResultEvent {
   bool valid = 1;
   string challenger = 2;
   macondo.ChallengeRule challenge_rule = 3;
   string returned_tiles = 4;
+}
+
+message OMGWordsChallengeResultEvent {
+  bool valid = 1;
+  string challenger = 2;
+  ChallengeRule challenge_rule = 3;
+  bytes returned_tiles = 4;
 }
 
 // GameEndedEvent is always sent from the server to both clients.
@@ -399,6 +421,8 @@ message Timers {
   // seconds (let's say 5 days) at the beginning, and this flag can be set to
   // on. Then we should always have 5 days to make any move.
   bool reset_to_increment_after_turn = 6;
+  // If untimed is true, then Timers are not updated at all.
+  bool untimed = 7;
 }
 
 message MetaEventData { repeated GameMetaEvent events = 1; }
