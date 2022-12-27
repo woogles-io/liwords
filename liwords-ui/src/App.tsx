@@ -334,6 +334,16 @@ const App = React.memo(() => {
             element={<SinglePuzzle sendChat={sendChat} />}
           />
         </Route>
+        <Route
+          path="annotated/:gameID"
+          element={
+            <GameTable
+              sendSocketMsg={sendMessage}
+              sendChat={sendChat}
+              annotated
+            />
+          }
+        />
 
         <Route path="embed/game/:gameID" element={<Embed />} />
         <Route path="editor" element={<BoardEditor />} />

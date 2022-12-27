@@ -55,10 +55,13 @@ import {
 import { StreakInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
 import { useClient } from '../utils/hooks/connect';
 import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connectweb';
+import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_connectweb';
+import { ActionType } from '../actions/actions';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   sendChat: (msg: string, chan: string) => void;
+  annotated?: boolean;
 };
 
 const StreakFetchDelay = 2000;
@@ -185,7 +188,7 @@ export const Table = React.memo((props: Props) => {
     useExaminableGameContextStoreContext();
   const { isExamining, handleExamineStart, handleExamineGoTo } =
     useExamineStoreContext();
-  const { gameContext } = useGameContextStoreContext();
+  const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const { gameEndMessage, setGameEndMessage } = useGameEndMessageStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
@@ -215,6 +218,7 @@ export const Table = React.memo((props: Props) => {
   }, [isObserver, loginState.perms, username, tournamentContext.directors]);
   useFirefoxPatch();
   const gmClient = useClient(GameMetadataService);
+  const omgClient = useClient(GameEventService);
   const gameDone =
     gameContext.playState === PlayState.GAME_OVER && !!gameContext.gameID;
 
@@ -275,6 +279,32 @@ export const Table = React.memo((props: Props) => {
     // React Hook useEffect has missing dependencies: 'setGameEndMessage' and 'setPoolFormat'.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameID]);
+
+  useEffect(() => {
+    // If we are in annotated mode, we must explicitly fetch the GameDocument
+    // from the backend. This is a temporary thing that we will eventually
+    // undo when we unite GameDocuments across the app.
+    if (!props.annotated) {
+      return;
+    }
+    const fetchGameDocument = async () => {
+      console.log('fetching game document');
+
+      try {
+        const resp = await omgClient.getGameDocument({ gameId: gameID });
+        dispatchGameContext({
+          actionType: ActionType.InitFromDocument,
+          payload: resp,
+        });
+      } catch (e) {
+        message.error({
+          content: `Failed to fetch initial game information; please refresh. (Error: ${e})`,
+          duration: 10,
+        });
+      }
+    };
+    fetchGameDocument();
+  }, [gameID, omgClient, dispatchGameContext, props.annotated]);
 
   useTourneyMetadata(
     '',

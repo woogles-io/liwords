@@ -38,7 +38,6 @@ import { StandardEnglishAlphabet } from '../constants/alphabets';
 import { SeekRequest } from '../gen/api/proto/ipc/omgseeks_pb';
 import { ServerChallengeResultEvent } from '../gen/api/proto/ipc/omgwords_pb';
 import { message } from 'antd';
-import { playerOrderFromEvt } from '../utils/cwgame/game_event';
 import { GameEvent_Type } from '../gen/api/proto/macondo/macondo_pb';
 
 const MaxChatLength = 150;
@@ -507,11 +506,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       let score = 0;
       for (let j = replayedTurns.length; --j >= 0; ) {
         const turn = gameContext.turns[j];
-
-        const turnPlayerOrder = playerOrderFromEvt(
-          turn,
-          gameContext.nickToPlayerOrder
-        );
+        const turnPlayerOrder = indexToPlayerOrder(turn.playerIndex);
 
         if (turnPlayerOrder === playerOrder) {
           score = turn.cumulative;
@@ -544,10 +539,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
           flipTimeRemaining = true;
         }
 
-        const turnPlayerOrder = playerOrderFromEvt(
-          turn,
-          gameContext.nickToPlayerOrder
-        );
+        const turnPlayerOrder = indexToPlayerOrder(turn.playerIndex);
 
         if ((turnPlayerOrder === playerOrder) !== flipTimeRemaining) {
           time = turn.millisRemaining;
@@ -568,10 +560,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
         ) {
           continue;
         }
-        const turnPlayerOrder = playerOrderFromEvt(
-          turn,
-          gameContext.nickToPlayerOrder
-        );
+        const turnPlayerOrder = indexToPlayerOrder(turn.playerIndex);
         if (turnPlayerOrder === playerOrder) {
           rack = turn.rack;
           break;

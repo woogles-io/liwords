@@ -10,7 +10,6 @@ import {
   ClientGameplayEvent_EventType,
   PlayerInfo,
 } from '../../gen/api/proto/ipc/omgwords_pb';
-import { indexToPlayerOrder, PlayerOrder } from '../../store/constants';
 
 export const ThroughTileMarker = '.';
 // convert a set of ephemeral tiles to a protobuf game event.
@@ -135,13 +134,6 @@ export const nicknameFromEvt = (
   players: Array<PlayerInfo>
 ): string => {
   return players[evt.playerIndex]?.nickname;
-};
-
-export const playerOrderFromEvt = (
-  evt: GameEvent,
-  nickToPlayerOrder: { [nick: string]: PlayerOrder }
-): PlayerOrder => {
-  return indexToPlayerOrder(evt.playerIndex);
 };
 
 export const computeLeave = (tilesPlayed: string, rack: string) => {

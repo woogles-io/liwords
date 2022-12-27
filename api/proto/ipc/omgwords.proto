@@ -333,7 +333,7 @@ message TimedOut {
   string user_id = 2;
 }
 
-// GameEvent is an internal game event, saved in the GameHistory
+// GameEvent is an internal game event, saved in the GameDocument.
 message GameEvent {
   enum Type {
     TILE_PLACEMENT_MOVE = 0;
@@ -488,8 +488,6 @@ message GameDocument {
   uint32 scoreless_turns = 22;
   // The index of the player on turn
   uint32 player_on_turn = 23;
-  // current_scores is in the same order as the player info structure inside
-  // GameHistory
   Timers timers = 24;
   // real time or correspondence?
   GameMode game_mode = 25;

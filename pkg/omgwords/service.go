@@ -4,9 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/gomodule/redigo/redis"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -30,17 +27,17 @@ type OMGWordsService struct {
 }
 
 // NewGameService creates a Twirp GameService
-func NewOMGWordsService(u user.Store, cfg *config.Config, p *pgxpool.Pool, r *redis.Pool, s *s3.Client,
-	gec chan *entity.EventWrapper) *OMGWordsService {
-	gs, err := stores.NewGameDocumentStore(r, s)
-	if err != nil {
-		panic(err)
-	}
-	ms, err := stores.NewDBStore(p)
-	if err != nil {
-		panic(err)
-	}
-	return &OMGWordsService{u, cfg, gs, ms, gec}
+func NewOMGWordsService(u user.Store, cfg *config.Config, gs *stores.GameDocumentStore,
+	ms *stores.DBStore) *OMGWordsService {
+	return &OMGWordsService{
+		userStore:     u,
+		cfg:           cfg,
+		gameStore:     gs,
+		metadataStore: ms}
+}
+
+func (gs *OMGWordsService) SetEventChannel(c chan *entity.EventWrapper) {
+	gs.gameEventChan = c
 }
 
 func (gs *OMGWordsService) CreateBroadcastGame(ctx context.Context, req *pb.CreateBroadcastGameRequest) (

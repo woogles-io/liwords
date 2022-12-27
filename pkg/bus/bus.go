@@ -22,6 +22,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/mod"
+	"github.com/domino14/liwords/pkg/omgwords/stores"
 	"github.com/domino14/liwords/pkg/puzzles"
 	"github.com/domino14/liwords/pkg/sessions"
 	"github.com/domino14/liwords/pkg/stats"
@@ -58,6 +59,10 @@ type Stores struct {
 	ConfigStore     config.ConfigStore
 	SessionStore    sessions.SessionStore
 	PuzzleStore     puzzles.PuzzleStore
+
+	// Refactor this soon:
+	GameDocumentStore  *stores.GameDocumentStore
+	AnnotatedGameStore *stores.DBStore
 }
 
 // Bus is the struct; it should contain all the stores to verify messages, etc.

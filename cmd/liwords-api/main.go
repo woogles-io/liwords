@@ -30,6 +30,7 @@ import (
 	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/notify"
 	"github.com/domino14/liwords/pkg/omgwords"
+	omgstores "github.com/domino14/liwords/pkg/omgwords/stores"
 	"github.com/domino14/liwords/pkg/puzzles"
 	cfgstore "github.com/domino14/liwords/pkg/stores/config"
 	"github.com/domino14/liwords/pkg/stores/game"
@@ -244,6 +245,15 @@ func main() {
 	}
 	s3Client := s3.NewFromConfig(awscfg, utilities.CustomClientOptions)
 
+	stores.GameDocumentStore, err = omgstores.NewGameDocumentStore(redisPool, s3Client)
+	if err != nil {
+		panic(err)
+	}
+	stores.AnnotatedGameStore, err = omgstores.NewDBStore(dbPool)
+	if err != nil {
+		panic(err)
+	}
+
 	mementoService := memento.NewMementoService(stores.UserStore, stores.GameStore)
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
 		cfg.SecretKey, cfg.MailgunKey, cfg.DiscordToken, cfg.ArgonConfig)
@@ -257,7 +267,7 @@ func main() {
 	tournamentService := tournament.NewTournamentService(stores.TournamentStore, stores.UserStore)
 	modService := mod.NewModService(stores.UserStore, stores.ChatStore)
 	puzzleService := puzzles.NewPuzzleService(stores.PuzzleStore, stores.UserStore, cfg.PuzzleGenerationSecretKey, cfg.ECSClusterName, cfg.PuzzleGenerationTaskDefinition)
-	omgwordsService := omgwords.NewOMGWordsService(stores.UserStore, cfg, dbPool, redisPool, s3Client)
+	omgwordsService := omgwords.NewOMGWordsService(stores.UserStore, cfg, stores.GameDocumentStore, stores.AnnotatedGameStore)
 
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
@@ -338,6 +348,7 @@ func main() {
 		panic(err)
 	}
 	tournamentService.SetEventChannel(pubsubBus.TournamentEventChannel())
+	omgwordsService.SetEventChannel(pubsubBus.GameEventChannel())
 
 	router.Handle(bus.GameEventStreamPrefix,
 		middlewares.Then(pubsubBus.EventAPIServerInstance()))

@@ -242,3 +242,24 @@ export const runeToValues = (
   }
   return 0;
 };
+
+export const uint8ToRune = (i: number, alphabet: Alphabet): string => {
+  // Our internal encoding has the blank at 0 and everything begins at 1.
+  // This is not the order the runes are listed in above; let's make the
+  // change here.
+  if (i === 0) {
+    return Blank;
+  }
+  return alphabet.letters[i + 1]?.rune ?? '';
+};
+
+export const uint8ArrayToRunes = (
+  arr: Uint8Array,
+  alphabet: Alphabet
+): string => {
+  let s = '';
+  arr.forEach((v) => {
+    s += uint8ToRune(v, alphabet);
+  });
+  return s;
+};
