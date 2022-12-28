@@ -3,7 +3,7 @@
 /* eslint-disable */
 /* @ts-nocheck */
 
-import {AnnotatedGameEvent, BroadcastGamePrivacy, BroadcastGamesResponse, ChallengeBonusPointsEvent, CreateBroadcastGameRequest, CreateBroadcastGameResponse, DeleteBroadcastGameRequest, DeleteBroadcastGameResponse, GameEventResponse, GetGameDocumentRequest, GetGamesForEditorRequest, GetMyUnfinishedGamesRequest, TimePenaltyEvent} from "./omgwords_pb.js";
+import {AnnotatedGameEvent, BroadcastGamePrivacy, BroadcastGamesResponse, CreateBroadcastGameRequest, CreateBroadcastGameResponse, DeleteBroadcastGameRequest, DeleteBroadcastGameResponse, GameEventResponse, GetGameDocumentRequest, GetGamesForEditorRequest, GetMyUnfinishedGamesRequest, UpdateDocumentRequest} from "./omgwords_pb.js";
 import {MethodKind} from "@bufbuild/protobuf";
 import {GameDocument} from "../ipc/omgwords_pb.js";
 
@@ -46,29 +46,11 @@ export declare const GameEventService: {
       readonly kind: MethodKind.Unary,
     },
     /**
-     * SendTimePenaltyEvent sends a time penalty event. It should be the
-     * last event right before a game ends.
-     *
-     * @generated from rpc game_service.GameEventService.SendTimePenaltyEvent
+     * @generated from rpc game_service.GameEventService.UpdateGameDocument
      */
-    readonly sendTimePenaltyEvent: {
-      readonly name: "SendTimePenaltyEvent",
-      readonly I: typeof TimePenaltyEvent,
-      readonly O: typeof GameEventResponse,
-      readonly kind: MethodKind.Unary,
-    },
-    /**
-     * SendChallengeBonusEvent sends a bonus points event. When challenging
-     * a play that is good, depending on the challenge rule a certain number
-     * of points may be added to the play. Since broadcast games can reflect
-     * real-life games, the number of points can be variable (for example,
-     * 15 points for 5-pt challenge if 3 plays are challenged)
-     *
-     * @generated from rpc game_service.GameEventService.SendChallengeBonusEvent
-     */
-    readonly sendChallengeBonusEvent: {
-      readonly name: "SendChallengeBonusEvent",
-      readonly I: typeof ChallengeBonusPointsEvent,
+    readonly updateGameDocument: {
+      readonly name: "UpdateGameDocument",
+      readonly I: typeof UpdateDocumentRequest,
       readonly O: typeof GameEventResponse,
       readonly kind: MethodKind.Unary,
     },

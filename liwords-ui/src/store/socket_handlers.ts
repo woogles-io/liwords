@@ -81,6 +81,7 @@ import {
 import { ProfileUpdate } from '../gen/api/proto/ipc/users_pb';
 import { ChatEntityType, PresenceEntity } from './constants';
 import { ServerOMGWordsEvent } from '../gen/api/proto/ipc/omgwords_pb';
+import { GameDocumentEvent } from '../gen/api/proto/ipc/omgwords_pb';
 // Feature flag.
 export const enableShowSocket =
   localStorage?.getItem('enableShowSocket') === 'true';
@@ -144,6 +145,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.ACTIVE_GAME_ENTRY]: ActiveGameEntry,
       [MessageType.PROFILE_UPDATE_EVENT]: ProfileUpdate,
       [MessageType.OMGWORDS_GAMEPLAY_EVENT]: ServerOMGWordsEvent,
+      [MessageType.OMGWORDS_GAMEDOCUMENT]: GameDocumentEvent,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -682,6 +684,15 @@ export const useOnSocketMsg = () => {
 
             // If there is an Antd message about "waiting for game", destroy it.
             message.destroy('server-message');
+            break;
+          }
+
+          case MessageType.OMGWORDS_GAMEDOCUMENT: {
+            const d = parsedMsg as GameDocumentEvent;
+            dispatchGameContext({
+              actionType: ActionType.InitFromDocument,
+              payload: d,
+            });
             break;
           }
 

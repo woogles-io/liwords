@@ -212,6 +212,19 @@ export const GameHistoryRefresher = proto3.makeMessageType(
 );
 
 /**
+ * A GameDocumentEvent should eventually replace the GameHistoryRefresher. For
+ * now, it will be used for annotated games.
+ *
+ * @generated from message ipc.GameDocumentEvent
+ */
+export const GameDocumentEvent = proto3.makeMessageType(
+  "ipc.GameDocumentEvent",
+  () => [
+    { no: 1, name: "doc", kind: "message", T: GameDocument },
+  ],
+);
+
+/**
  * @generated from message ipc.TournamentDataForGame
  */
 export const TournamentDataForGame = proto3.makeMessageType(

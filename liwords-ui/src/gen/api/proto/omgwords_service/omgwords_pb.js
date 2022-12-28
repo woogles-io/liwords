@@ -4,7 +4,7 @@
 /* @ts-nocheck */
 
 import {proto3} from "@bufbuild/protobuf";
-import {ChallengeRule, ClientGameplayEvent, GameRules, PlayerInfo} from "../ipc/omgwords_pb.js";
+import {ChallengeRule, ClientGameplayEvent, GameDocument, GameRules, PlayerInfo} from "../ipc/omgwords_pb.js";
 
 /**
  * GameEventResponse doesn't need to have any extra data. The GameEvent API
@@ -159,5 +159,15 @@ export const DeleteBroadcastGameRequest = proto3.makeMessageType(
 export const DeleteBroadcastGameResponse = proto3.makeMessageType(
   "game_service.DeleteBroadcastGameResponse",
   [],
+);
+
+/**
+ * @generated from message game_service.UpdateDocumentRequest
+ */
+export const UpdateDocumentRequest = proto3.makeMessageType(
+  "game_service.UpdateDocumentRequest",
+  () => [
+    { no: 1, name: "document", kind: "message", T: GameDocument },
+  ],
 );
 

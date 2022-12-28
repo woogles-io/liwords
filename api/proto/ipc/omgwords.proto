@@ -172,6 +172,10 @@ message GameHistoryRefresher {
   GameMetaEvent outstanding_event = 5;
 }
 
+// A GameDocumentEvent should eventually replace the GameHistoryRefresher. For
+// now, it will be used for annotated games.
+message GameDocumentEvent { ipc.GameDocument doc = 1; }
+
 message TournamentDataForGame {
   // The ID of the tournament
   string tid = 1;

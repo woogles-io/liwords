@@ -62,6 +62,7 @@ enum MessageType {
   // in order to enforce that I'll be forcing the event type header to just be
   // a byte long.
   OMGWORDS_GAMEPLAY_EVENT = 44;
+  OMGWORDS_GAMEDOCUMENT = 45;
 }
 
 message RegisterRealmRequest {

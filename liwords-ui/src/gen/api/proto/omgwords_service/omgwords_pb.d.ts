@@ -5,7 +5,7 @@
 
 import type {BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage} from "@bufbuild/protobuf";
 import {Message, proto3} from "@bufbuild/protobuf";
-import type {ChallengeRule, ClientGameplayEvent, GameRules, PlayerInfo} from "../ipc/omgwords_pb.js";
+import type {ChallengeRule, ClientGameplayEvent, GameDocument, GameRules, PlayerInfo} from "../ipc/omgwords_pb.js";
 
 /**
  * GameEventResponse doesn't need to have any extra data. The GameEvent API
@@ -393,5 +393,29 @@ export declare class DeleteBroadcastGameResponse extends Message<DeleteBroadcast
   static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteBroadcastGameResponse;
 
   static equals(a: DeleteBroadcastGameResponse | PlainMessage<DeleteBroadcastGameResponse> | undefined, b: DeleteBroadcastGameResponse | PlainMessage<DeleteBroadcastGameResponse> | undefined): boolean;
+}
+
+/**
+ * @generated from message game_service.UpdateDocumentRequest
+ */
+export declare class UpdateDocumentRequest extends Message<UpdateDocumentRequest> {
+  /**
+   * @generated from field: ipc.GameDocument document = 1;
+   */
+  document?: GameDocument;
+
+  constructor(data?: PartialMessage<UpdateDocumentRequest>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "game_service.UpdateDocumentRequest";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateDocumentRequest;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateDocumentRequest;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateDocumentRequest;
+
+  static equals(a: UpdateDocumentRequest | PlainMessage<UpdateDocumentRequest> | undefined, b: UpdateDocumentRequest | PlainMessage<UpdateDocumentRequest> | undefined): boolean;
 }
 

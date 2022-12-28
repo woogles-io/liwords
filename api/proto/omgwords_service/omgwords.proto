@@ -63,6 +63,8 @@ message DeleteBroadcastGameRequest { string game_id = 1; }
 
 message DeleteBroadcastGameResponse {}
 
+message UpdateDocumentRequest { ipc.GameDocument document = 1; }
+
 // GameEventService will handle our game event API. We can connect bots to
 // this API, or use it for sandbox mode, or for live annotations, etc.
 service GameEventService {
@@ -72,16 +74,7 @@ service GameEventService {
   rpc DeleteBroadcastGame(DeleteBroadcastGameRequest)
       returns (DeleteBroadcastGameResponse);
   rpc SendGameEvent(AnnotatedGameEvent) returns (GameEventResponse);
-  // SendTimePenaltyEvent sends a time penalty event. It should be the
-  // last event right before a game ends.
-  rpc SendTimePenaltyEvent(TimePenaltyEvent) returns (GameEventResponse);
-  // SendChallengeBonusEvent sends a bonus points event. When challenging
-  // a play that is good, depending on the challenge rule a certain number
-  // of points may be added to the play. Since broadcast games can reflect
-  // real-life games, the number of points can be variable (for example,
-  // 15 points for 5-pt challenge if 3 plays are challenged)
-  rpc SendChallengeBonusEvent(ChallengeBonusPointsEvent)
-      returns (GameEventResponse);
+  rpc UpdateGameDocument(UpdateDocumentRequest) returns (GameEventResponse);
 
   rpc SetBroadcastGamePrivacy(BroadcastGamePrivacy) returns (GameEventResponse);
 

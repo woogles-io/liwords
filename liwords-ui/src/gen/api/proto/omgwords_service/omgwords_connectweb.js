@@ -3,7 +3,7 @@
 /* eslint-disable */
 /* @ts-nocheck */
 
-import {AnnotatedGameEvent, BroadcastGamePrivacy, BroadcastGamesResponse, ChallengeBonusPointsEvent, CreateBroadcastGameRequest, CreateBroadcastGameResponse, DeleteBroadcastGameRequest, DeleteBroadcastGameResponse, GameEventResponse, GetGameDocumentRequest, GetGamesForEditorRequest, GetMyUnfinishedGamesRequest, TimePenaltyEvent} from "./omgwords_pb.js";
+import {AnnotatedGameEvent, BroadcastGamePrivacy, BroadcastGamesResponse, CreateBroadcastGameRequest, CreateBroadcastGameResponse, DeleteBroadcastGameRequest, DeleteBroadcastGameResponse, GameEventResponse, GetGameDocumentRequest, GetGamesForEditorRequest, GetMyUnfinishedGamesRequest, UpdateDocumentRequest} from "./omgwords_pb.js";
 import {MethodKind} from "@bufbuild/protobuf";
 import {GameDocument} from "../ipc/omgwords_pb.js";
 
@@ -46,29 +46,11 @@ export const GameEventService = {
       kind: MethodKind.Unary,
     },
     /**
-     * SendTimePenaltyEvent sends a time penalty event. It should be the
-     * last event right before a game ends.
-     *
-     * @generated from rpc game_service.GameEventService.SendTimePenaltyEvent
+     * @generated from rpc game_service.GameEventService.UpdateGameDocument
      */
-    sendTimePenaltyEvent: {
-      name: "SendTimePenaltyEvent",
-      I: TimePenaltyEvent,
-      O: GameEventResponse,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * SendChallengeBonusEvent sends a bonus points event. When challenging
-     * a play that is good, depending on the challenge rule a certain number
-     * of points may be added to the play. Since broadcast games can reflect
-     * real-life games, the number of points can be variable (for example,
-     * 15 points for 5-pt challenge if 3 plays are challenged)
-     *
-     * @generated from rpc game_service.GameEventService.SendChallengeBonusEvent
-     */
-    sendChallengeBonusEvent: {
-      name: "SendChallengeBonusEvent",
-      I: ChallengeBonusPointsEvent,
+    updateGameDocument: {
+      name: "UpdateGameDocument",
+      I: UpdateDocumentRequest,
       O: GameEventResponse,
       kind: MethodKind.Unary,
     },

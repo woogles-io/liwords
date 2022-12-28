@@ -165,16 +165,39 @@ func (gs *OMGWordsService) SendGameEvent(ctx context.Context, req *pb.AnnotatedG
 	return &pb.GameEventResponse{}, nil
 }
 
-func (gs *OMGWordsService) SendTimePenaltyEvent(ctx context.Context, req *pb.TimePenaltyEvent) (
-	*pb.GameEventResponse, error) {
+// UpdateGameDocument updates a game document for an annotated game. It doesn't
+// really have meaning outside annotated games, as players should instead use an
+// individual event update call.
+func (gs *OMGWordsService) UpdateGameDocument(ctx context.Context, req *pb.UpdateDocumentRequest) (*pb.GameEventResponse, error) {
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if req.Document == nil {
+		return nil, errors.New("nil game document")
+	}
+	gid := req.Document.Uid
+	owns, err := gs.metadataStore.GameOwnedBy(ctx, gid, sess.UserUUID)
+	if err != nil {
+		return nil, err
+	}
+	if !owns {
+		return nil, twirp.NewError(twirp.InvalidArgument, "user does not own this game")
+	}
+	// Just willy-nilly update the thing. Kind of scary.
+	err = gs.gameStore.UpdateDocument(ctx, &stores.MaybeLockedDocument{GameDocument: req.Document})
+	if err != nil {
+		return nil, err
+	}
+	// And send an event.
+	evt := &ipc.GameDocumentEvent{
+		Doc: req.Document,
+	}
+	wrapped := entity.WrapEvent(evt, ipc.MessageType_OMGWORDS_GAMEDOCUMENT)
+	wrapped.AddAudience(entity.AudGameTV, gid)
+	gs.gameEventChan <- wrapped
 
-	return nil, nil
-}
-
-func (gs *OMGWordsService) SendChallengeBonusEvent(ctx context.Context, req *pb.ChallengeBonusPointsEvent) (
-	*pb.GameEventResponse, error) {
-
-	return nil, nil
+	return &pb.GameEventResponse{}, nil
 }
 
 func (gs *OMGWordsService) SetBroadcastGamePrivacy(ctx context.Context, req *pb.BroadcastGamePrivacy) (

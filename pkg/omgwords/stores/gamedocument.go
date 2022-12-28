@@ -184,7 +184,6 @@ func (gs *GameDocumentStore) SetDocument(ctx context.Context, gdoc *ipc.GameDocu
 // UpdateDocument makes an atomic update to document in the Redis store.
 // If the game is done, though, it will write it to S3 and expire it from the Redis
 // store.
-// UpdateDocument should never be called without a previous lock.
 func (gs *GameDocumentStore) UpdateDocument(ctx context.Context, doc *MaybeLockedDocument) error {
 	saveToS3 := doc.PlayState == ipc.PlayState_GAME_OVER
 
@@ -197,6 +196,9 @@ func (gs *GameDocumentStore) UpdateDocument(ctx context.Context, doc *MaybeLocke
 	defer conn.Close()
 
 	unlockMutex := func() {
+		if doc.LockValue == "" {
+			return
+		}
 		mutex := gs.redsync.NewMutex(RedisMutexPrefix+gid,
 			redsync.WithValue(doc.LockValue))
 		if ok, err := mutex.Unlock(); !ok || err != nil {

@@ -2,7 +2,7 @@
 
 import { HomeOutlined } from '@ant-design/icons';
 import { Card } from 'antd';
-import React, { useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ActionType } from '../actions/actions';
 import { alphabetFromName } from '../constants/alphabets';
@@ -39,6 +39,19 @@ import { EditorControl } from './editor_control';
 
 const doNothing = () => {};
 
+const blankGamePayload = new GameDocument({
+  players: [
+    new GameDocument_MinimalPlayerInfo({
+      nickname: 'player1',
+      userId: 'player1',
+    }),
+    new GameDocument_MinimalPlayerInfo({
+      nickname: 'player2',
+      userId: 'player2',
+    }),
+  ],
+});
+
 export const BoardEditor = () => {
   const { useState } = useMountedState();
   const [gameInfo, setGameInfo] = useState<GameInfoResponse>(defaultGameInfo);
@@ -69,6 +82,24 @@ export const BoardEditor = () => {
   //   handleExamineGoTo(0);
   // }, [handleExamineGoTo, handleExamineStart]);
 
+  const fetchAndDispatchDocument = useCallback(
+    async (gid: string) => {
+      try {
+        const resp = await eventClient.getGameDocument({
+          gameId: gid,
+        });
+        dispatchGameContext({
+          actionType: ActionType.InitFromDocument,
+          payload: resp,
+        });
+      } catch (e) {
+        flashError(e);
+      }
+    },
+    [dispatchGameContext, eventClient]
+  );
+
+  // Initialize on mount with unfinished game or new game.
   useEffect(() => {
     const initFromDoc = async () => {
       let continuedGame;
@@ -86,37 +117,17 @@ export const BoardEditor = () => {
         // Just dispatch a blank game.
         dispatchGameContext({
           actionType: ActionType.InitFromDocument,
-          payload: new GameDocument({
-            players: [
-              new GameDocument_MinimalPlayerInfo({
-                nickname: 'player1',
-                userId: 'player1',
-              }),
-              new GameDocument_MinimalPlayerInfo({
-                nickname: 'player2',
-                userId: 'player2',
-              }),
-            ],
-          }),
+          payload: blankGamePayload,
         });
         return;
       }
       // Otherwise, fetch the game from the server and try to continue it.
-      try {
-        const resp = await eventClient.getGameDocument({
-          gameId: continuedGame.gameId,
-        });
-        dispatchGameContext({
-          actionType: ActionType.InitFromDocument,
-          payload: resp,
-        });
-      } catch (e) {
-        flashError(e);
-      }
+      fetchAndDispatchDocument(continuedGame.gameId);
     };
 
     initFromDoc();
-  }, [dispatchGameContext]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const sortedRack = useMemo(() => {
     const rack =
@@ -170,7 +181,7 @@ export const BoardEditor = () => {
         challengeRule: chrule,
         public: false,
       });
-      console.log(resp);
+      fetchAndDispatchDocument(resp.gameId);
     } catch (e) {
       flashError(e);
     }
@@ -179,6 +190,10 @@ export const BoardEditor = () => {
   const deleteGame = async (gid: string) => {
     try {
       await eventClient.deleteBroadcastGame({ gameId: gid });
+      dispatchGameContext({
+        actionType: ActionType.InitFromDocument,
+        payload: blankGamePayload,
+      });
     } catch (e) {
       flashError(e);
     }

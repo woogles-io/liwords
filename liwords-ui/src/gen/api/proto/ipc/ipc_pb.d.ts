@@ -243,6 +243,11 @@ export declare enum MessageType {
    * @generated from enum value: OMGWORDS_GAMEPLAY_EVENT = 44;
    */
   OMGWORDS_GAMEPLAY_EVENT = 44,
+
+  /**
+   * @generated from enum value: OMGWORDS_GAMEDOCUMENT = 45;
+   */
+  OMGWORDS_GAMEDOCUMENT = 45,
 }
 
 /**

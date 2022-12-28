@@ -619,6 +619,33 @@ export declare class GameHistoryRefresher extends Message<GameHistoryRefresher> 
 }
 
 /**
+ * A GameDocumentEvent should eventually replace the GameHistoryRefresher. For
+ * now, it will be used for annotated games.
+ *
+ * @generated from message ipc.GameDocumentEvent
+ */
+export declare class GameDocumentEvent extends Message<GameDocumentEvent> {
+  /**
+   * @generated from field: ipc.GameDocument doc = 1;
+   */
+  doc?: GameDocument;
+
+  constructor(data?: PartialMessage<GameDocumentEvent>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "ipc.GameDocumentEvent";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GameDocumentEvent;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GameDocumentEvent;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GameDocumentEvent;
+
+  static equals(a: GameDocumentEvent | PlainMessage<GameDocumentEvent> | undefined, b: GameDocumentEvent | PlainMessage<GameDocumentEvent> | undefined): boolean;
+}
+
+/**
  * @generated from message ipc.TournamentDataForGame
  */
 export declare class TournamentDataForGame extends Message<TournamentDataForGame> {
