@@ -250,7 +250,7 @@ export const uint8ToRune = (i: number, alphabet: Alphabet): string => {
   if (i === 0) {
     return Blank;
   }
-  return alphabet.letters[i + 1]?.rune ?? '';
+  return alphabet.letters[i - 1]?.rune ?? '';
 };
 
 export const uint8ArrayToRunes = (

@@ -87,6 +87,18 @@ export const GetGamesForEditorRequest = proto3.makeMessageType(
 );
 
 /**
+ * Assume we can never have so many unfinished games that we'd need limits and
+ * offsets. Ideally we should only have one unfinished game per authed player at
+ * a time.
+ *
+ * @generated from message game_service.GetMyUnfinishedGamesRequest
+ */
+export const GetMyUnfinishedGamesRequest = proto3.makeMessageType(
+  "game_service.GetMyUnfinishedGamesRequest",
+  [],
+);
+
+/**
  * @generated from message game_service.BroadcastGamesResponse
  */
 export const BroadcastGamesResponse = proto3.makeMessageType(
@@ -129,5 +141,23 @@ export const GetGameDocumentRequest = proto3.makeMessageType(
   () => [
     { no: 1, name: "game_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ],
+);
+
+/**
+ * @generated from message game_service.DeleteBroadcastGameRequest
+ */
+export const DeleteBroadcastGameRequest = proto3.makeMessageType(
+  "game_service.DeleteBroadcastGameRequest",
+  () => [
+    { no: 1, name: "game_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ],
+);
+
+/**
+ * @generated from message game_service.DeleteBroadcastGameResponse
+ */
+export const DeleteBroadcastGameResponse = proto3.makeMessageType(
+  "game_service.DeleteBroadcastGameResponse",
+  [],
 );
 

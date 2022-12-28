@@ -37,6 +37,11 @@ message GetGamesForEditorRequest {
   bool unfinished = 4;
 }
 
+// Assume we can never have so many unfinished games that we'd need limits and
+// offsets. Ideally we should only have one unfinished game per authed player at
+// a time.
+message GetMyUnfinishedGamesRequest {}
+
 message BroadcastGamesResponse {
   message BroadcastGame {
     string game_id = 1;
@@ -54,12 +59,18 @@ message AnnotatedGameEvent {
 
 message GetGameDocumentRequest { string game_id = 1; }
 
+message DeleteBroadcastGameRequest { string game_id = 1; }
+
+message DeleteBroadcastGameResponse {}
+
 // GameEventService will handle our game event API. We can connect bots to
 // this API, or use it for sandbox mode, or for live annotations, etc.
 service GameEventService {
   // CreateBroadcastGame will create a game for Woogles broadcast
   rpc CreateBroadcastGame(CreateBroadcastGameRequest)
       returns (CreateBroadcastGameResponse);
+  rpc DeleteBroadcastGame(DeleteBroadcastGameRequest)
+      returns (DeleteBroadcastGameResponse);
   rpc SendGameEvent(AnnotatedGameEvent) returns (GameEventResponse);
   // SendTimePenaltyEvent sends a time penalty event. It should be the
   // last event right before a game ends.
@@ -75,6 +86,8 @@ service GameEventService {
   rpc SetBroadcastGamePrivacy(BroadcastGamePrivacy) returns (GameEventResponse);
 
   rpc GetGamesForEditor(GetGamesForEditorRequest)
+      returns (BroadcastGamesResponse);
+  rpc GetMyUnfinishedGames(GetMyUnfinishedGamesRequest)
       returns (BroadcastGamesResponse);
 
   rpc GetGameDocument(GetGameDocumentRequest) returns (ipc.GameDocument);

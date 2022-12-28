@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	"github.com/twitchtv/twirp"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/domino14/liwords/pkg/user"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	pb "github.com/domino14/liwords/rpc/api/proto/omgwords_service"
+	"github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
 type OMGWordsService struct {
@@ -72,6 +74,7 @@ func (gs *OMGWordsService) CreateBroadcastGame(ctx context.Context, req *pb.Crea
 	if err != nil {
 		return nil, err
 	}
+	log.Debug().Int("unfinished", len(unfinished)).Str("userID", sess.UserUUID).Msg("unfinished-anno-games")
 	if len(unfinished) > 0 {
 		return nil, twirp.NewError(twirp.InvalidArgument, "please finish or delete your unfinished games before starting a new one")
 	}
@@ -86,7 +89,7 @@ func (gs *OMGWordsService) CreateBroadcastGame(ctx context.Context, req *pb.Crea
 	// Create an untimed game:
 	cwgameRules := cwgame.NewBasicGameRules(
 		req.Lexicon, req.Rules.BoardLayoutName, req.Rules.LetterDistributionName,
-		cwgame.Variant(req.Rules.VariantName), nil, 0, 0, true,
+		cwgame.Variant(req.Rules.VariantName), []int{0, 0}, 0, 0, true,
 	)
 
 	g, err := cwgame.NewGame(gs.cfg, cwgameRules, mcplayers)
@@ -98,7 +101,24 @@ func (gs *OMGWordsService) CreateBroadcastGame(ctx context.Context, req *pb.Crea
 
 	qd := &entity.Quickdata{PlayerInfo: req.PlayersInfo}
 	g.CreatedAt = timestamppb.Now()
-	if err = gs.metadataStore.CreateAnnotatedGame(ctx, sess.UserUUID, g.Uid, true, qd); err != nil {
+
+	// Create a legacy game request. Sadly, we need this for now in order to
+	// get the old game paths to work properly. In the future we should use
+	// the GameDocument as the single source of truth for as many things as possible.
+	greq := &ipc.GameRequest{
+		Lexicon:            req.Lexicon,
+		Rules:              req.Rules,
+		InitialTimeSeconds: 0,
+		IncrementSeconds:   0,
+		ChallengeRule:      macondo.ChallengeRule(req.ChallengeRule),
+		GameMode:           ipc.GameMode_REAL_TIME,
+		RatingMode:         ipc.RatingMode_CASUAL,
+		RequestId:          "dummy",
+		MaxOvertimeMinutes: 0,
+		OriginalRequestId:  "dummy",
+	}
+
+	if err = gs.metadataStore.CreateAnnotatedGame(ctx, sess.UserUUID, g.Uid, true, qd, greq); err != nil {
 		return nil, err
 	}
 	if err = gs.gameStore.SetDocument(ctx, g); err != nil {
@@ -169,6 +189,34 @@ func (gs *OMGWordsService) GetGamesForEditor(ctx context.Context, req *pb.GetGam
 	return nil, nil
 }
 
+func (gs *OMGWordsService) GetMyUnfinishedGames(ctx context.Context, req *pb.GetMyUnfinishedGamesRequest) (
+	*pb.BroadcastGamesResponse, error) {
+
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	unfinished, err := gs.metadataStore.OutstandingGames(ctx, sess.UserUUID)
+	if err != nil {
+		return nil, err
+	}
+	log.Debug().Interface("unfinished", unfinished).Str("userID", sess.UserUUID).Msg("unfinished-anno-games")
+
+	games := lo.Map(unfinished, func(item *stores.BroadcastGame, idx int) *pb.BroadcastGamesResponse_BroadcastGame {
+		return &pb.BroadcastGamesResponse_BroadcastGame{
+			GameId:    item.GameUUID,
+			CreatorId: item.CreatorUUID,
+			Private:   item.Private,
+			Finished:  item.Finished,
+		}
+	})
+
+	return &pb.BroadcastGamesResponse{
+		Games: games,
+	}, nil
+}
+
 func (gs *OMGWordsService) GetGameDocument(ctx context.Context, req *pb.GetGameDocumentRequest) (*ipc.GameDocument, error) {
 	// sess, err := apiserver.GetSession(ctx)
 	// if err != nil {
@@ -188,4 +236,36 @@ func (gs *OMGWordsService) GetGameDocument(ctx context.Context, req *pb.GetGameD
 	// Otherwise, we need to "censor" the game document by deleting information
 	// this user should not have, if they're a player in this game.
 	return nil, errors.New("not implemented for non-annotated games")
+}
+
+func (gs *OMGWordsService) DeleteBroadcastGame(ctx context.Context, req *pb.DeleteBroadcastGameRequest) (*pb.DeleteBroadcastGameResponse, error) {
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	gid := req.GameId
+	owns, err := gs.metadataStore.GameOwnedBy(ctx, gid, sess.UserUUID)
+	if err != nil {
+		return nil, err
+	}
+	if !owns {
+		return nil, twirp.NewError(twirp.InvalidArgument, "user does not own this game")
+	}
+	done, err := gs.metadataStore.GameIsDone(ctx, gid)
+	if err != nil {
+		return nil, err
+	}
+	if done {
+		return nil, twirp.NewError(twirp.InvalidArgument, "you cannot delete a game that is already done")
+	}
+	err = gs.metadataStore.DeleteAnnotatedGame(ctx, gid)
+	if err != nil {
+		return nil, err
+	}
+	err = gs.gameStore.DeleteDocument(ctx, gid)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.DeleteBroadcastGameResponse{}, nil
 }

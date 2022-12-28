@@ -1,9 +1,22 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { TouchBackend } from 'react-dnd-touch-backend';
-import { Button, notification, message, Tooltip, Affix } from 'antd';
+import {
+  Button,
+  notification,
+  message,
+  Tooltip,
+  Affix,
+  Input,
+  Form,
+} from 'antd';
 import { Modal } from '../utils/focus_modal';
 import { DndProvider } from 'react-dnd';
-import { ArrowDownOutlined, SyncOutlined } from '@ant-design/icons';
+import {
+  ArrowDownOutlined,
+  EditOutlined,
+  EditTwoTone,
+  SyncOutlined,
+} from '@ant-design/icons';
 import {
   isTouchDevice,
   Blank,
@@ -81,6 +94,7 @@ import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb'
 import { flashError, useClient } from '../utils/hooks/connect';
 import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connectweb';
 import { PromiseClient } from '@domino14/connect-web';
+import { RackEditor } from './rack_editor';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -123,6 +137,7 @@ type Props = {
     | undefined;
   vsBot: boolean;
   exitableExaminer?: boolean;
+  changeCurrentRack?: (rack: string) => void;
 };
 
 const shuffleString = (a: string): string => {
@@ -208,7 +223,12 @@ export const BoardPanel = React.memo((props: Props) => {
 
   // Poka-yoke against accidentally having multiple modes active.
   const [currentMode, setCurrentMode] = useState<
-    'BLANK_MODAL' | 'DRAWING_HOTKEY' | 'EXCHANGE_MODAL' | 'NORMAL' | 'BLIND'
+    | 'BLANK_MODAL'
+    | 'DRAWING_HOTKEY'
+    | 'EXCHANGE_MODAL'
+    | 'NORMAL'
+    | 'BLIND'
+    | 'EDITING_RACK'
   >('NORMAL');
 
   const { drawingCanBeEnabled, handleKeyDown: handleDrawingKeyDown } =
@@ -276,6 +296,7 @@ export const BoardPanel = React.memo((props: Props) => {
   }, [
     gameContext.nickToPlayerOrder,
     props.username,
+    props.boardEditingMode,
     examinableGameContext.onturn,
     props.puzzleMode,
   ]);
@@ -311,12 +332,7 @@ export const BoardPanel = React.memo((props: Props) => {
         });
         return;
       }
-      console.log(
-        'making move',
-        gameContext.nickToPlayerOrder,
-        username,
-        examinableGameContext.onturn
-      );
+
       switch (move) {
         case 'exchange':
           if (addl) {
@@ -356,6 +372,7 @@ export const BoardPanel = React.memo((props: Props) => {
     },
     [
       gameContext.nickToPlayerOrder,
+      boardEditingMode,
       examinableGameContext.onturn,
       isExamining,
       isMyTurn,
@@ -545,6 +562,10 @@ export const BoardPanel = React.memo((props: Props) => {
     } else if (props.puzzleMode) {
       // XXX: Without this, when exiting from examining an earlier turn on
       // puzzle mode, it does not reset the rack to the latest rack. Why?
+      fullReset = true;
+    } else if (props.boardEditingMode) {
+      // See comment above. I don't know why it doesn't show the latest rack
+      // when we edit more than once.
       fullReset = true;
     } else if (
       props.currentRack &&
@@ -1523,9 +1544,14 @@ export const BoardPanel = React.memo((props: Props) => {
   );
   // Just put this in onKeyPress to block all typeable keys so that typos from
   // placing a tile not on rack also do not trigger type-to-find on firefox.
-  const preventFirefoxTypeToSearch = useCallback((e) => {
-    e.preventDefault();
-  }, []);
+  const preventFirefoxTypeToSearch = useCallback(
+    (e) => {
+      if (currentMode !== 'EDITING_RACK') {
+        e.preventDefault();
+      }
+    },
+    [currentMode]
+  );
 
   const metadataClient = useClient(GameMetadataService);
 
@@ -1561,7 +1587,8 @@ export const BoardPanel = React.memo((props: Props) => {
   const stillWaitingForGameToStart =
     props.currentRack === '' &&
     !props.gameDone &&
-    examinableGameContext.playState !== PlayState.WAITING_FOR_FINAL_PASS;
+    examinableGameContext.playState !== PlayState.WAITING_FOR_FINAL_PASS &&
+    !props.boardEditingMode;
   let gameMetaMessage;
   if (examinableGameEndMessage) {
     gameMetaMessage = examinableGameEndMessage;
@@ -1579,6 +1606,7 @@ export const BoardPanel = React.memo((props: Props) => {
     // eslint-disable-next-line no-nested-ternary
     return myPlayerOrder === 'p0' ? 0 : myPlayerOrder === 'p1' ? 1 : null;
   }, [gameContext.nickToPlayerOrder, props.username]);
+
   const tileColorId =
     (props.gameDone ? null : myId) ?? examinableGameContext.onturn;
 
@@ -1696,15 +1724,44 @@ export const BoardPanel = React.memo((props: Props) => {
                 onClick={recallTiles}
               />
             </Tooltip>
-            <Rack
-              tileColorId={tileColorId}
-              letters={displayedRack}
-              grabbable
-              returnToRack={returnToRack}
-              onTileClick={clickToBoard}
-              moveRackTile={moveRackTile}
-              alphabet={props.alphabet}
-            />
+            {props.boardEditingMode && (
+              <Tooltip
+                title="Edit Rack"
+                placement="bottomRight"
+                mouseEnterDelay={0.1}
+                mouseLeaveDelay={0.01}
+                color={colors.colorPrimary}
+              >
+                <Button
+                  shape="circle"
+                  icon={<EditOutlined />}
+                  type="primary"
+                  onClick={() => {
+                    setCurrentMode('EDITING_RACK');
+                  }}
+                />
+              </Tooltip>
+            )}
+            {currentMode === 'EDITING_RACK' ? (
+              <RackEditor
+                rackCallback={(rack: string) => {
+                  if (props.changeCurrentRack) {
+                    props.changeCurrentRack(rack);
+                  }
+                  setCurrentMode('NORMAL');
+                }}
+              />
+            ) : (
+              <Rack
+                tileColorId={tileColorId}
+                letters={displayedRack}
+                grabbable
+                returnToRack={returnToRack}
+                onTileClick={clickToBoard}
+                moveRackTile={moveRackTile}
+                alphabet={props.alphabet}
+              />
+            )}
             <Tooltip
               title="Shuffle &uarr;"
               placement="bottomLeft"

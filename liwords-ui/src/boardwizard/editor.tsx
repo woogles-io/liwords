@@ -12,13 +12,18 @@ import { defaultGameInfo, GameInfo } from '../gameroom/game_info';
 import { PlayerCards } from '../gameroom/player_cards';
 import Pool from '../gameroom/pool';
 import { ScoreCard } from '../gameroom/scorecard';
-import { GameHistoryRefresher } from '../gen/api/proto/ipc/omgwords_pb';
-import { GameInfoResponse } from '../gen/api/proto/ipc/omgwords_pb';
+import { GameRules } from '../gen/api/proto/ipc/omgwords_pb';
 import {
-  GameHistory,
-  PlayerInfo,
-  ChallengeRule,
-} from '../gen/api/proto/macondo/macondo_pb';
+  ClientGameplayEvent,
+  GameDocument_MinimalPlayerInfo,
+  PlayerInfo as OMGPlayerInfo,
+  ChallengeRule as OMGChallengeRule,
+} from '../gen/api/proto/ipc/omgwords_pb';
+import { GameDocument } from '../gen/api/proto/ipc/omgwords_pb';
+import { GameInfoResponse } from '../gen/api/proto/ipc/omgwords_pb';
+import { ChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
+import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_connectweb';
+import { defaultLetterDistribution } from '../lobby/sought_game_interactions';
 import { TopBar } from '../navigation/topbar';
 import { sortTiles } from '../store/constants';
 import {
@@ -27,8 +32,10 @@ import {
   useGameContextStoreContext,
   usePoolFormatStoreContext,
 } from '../store/store';
+import { useClient, flashError } from '../utils/hooks/connect';
 import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
 import { useMountedState } from '../utils/mounted';
+import { EditorControl } from './editor_control';
 
 const doNothing = () => {};
 
@@ -55,35 +62,127 @@ export const BoardEditor = () => {
       variant: gameInfo.gameRequest?.rules?.variantName,
     });
 
+  const eventClient = useClient(GameEventService);
+
   // useEffect(() => {
   //   handleExamineStart();
   //   handleExamineGoTo(0);
   // }, [handleExamineGoTo, handleExamineStart]);
 
   useEffect(() => {
-    dispatchGameContext({
-      actionType: ActionType.RefreshHistory,
-      payload: new GameHistoryRefresher({
-        history: new GameHistory({
-          players: [
-            new PlayerInfo({ nickname: 'player1', userId: 'player1' }),
-            new PlayerInfo({ nickname: 'player2', userId: 'player2' }),
-          ],
-          lastKnownRacks: ['EGLOOSW', 'EGGHEAD'],
-          uid: 'uid',
-        }),
-      }),
-    });
-  }, []);
+    const initFromDoc = async () => {
+      let continuedGame;
 
-  const rack =
-    examinableGameContext.players.find((p) => p.onturn)?.currentRack ?? '';
-  const sortedRack = useMemo(() => sortTiles(rack), [rack]);
+      try {
+        const resp = await eventClient.getMyUnfinishedGames({});
+        if (resp.games.length > 0) {
+          continuedGame = resp.games[resp.games.length - 1];
+        }
+      } catch (e) {
+        flashError(e);
+      }
+
+      if (!continuedGame) {
+        // Just dispatch a blank game.
+        dispatchGameContext({
+          actionType: ActionType.InitFromDocument,
+          payload: new GameDocument({
+            players: [
+              new GameDocument_MinimalPlayerInfo({
+                nickname: 'player1',
+                userId: 'player1',
+              }),
+              new GameDocument_MinimalPlayerInfo({
+                nickname: 'player2',
+                userId: 'player2',
+              }),
+            ],
+          }),
+        });
+        return;
+      }
+      // Otherwise, fetch the game from the server and try to continue it.
+      try {
+        const resp = await eventClient.getGameDocument({
+          gameId: continuedGame.gameId,
+        });
+        dispatchGameContext({
+          actionType: ActionType.InitFromDocument,
+          payload: resp,
+        });
+      } catch (e) {
+        flashError(e);
+      }
+    };
+
+    initFromDoc();
+  }, [dispatchGameContext]);
+
+  const sortedRack = useMemo(() => {
+    const rack =
+      examinableGameContext.players.find((p) => p.onturn)?.currentRack ?? '';
+    return sortTiles(rack);
+  }, [examinableGameContext]);
 
   const alphabet = useMemo(
     () => alphabetFromName(gameInfo.gameRequest?.rules?.letterDistributionName),
     [gameInfo]
   );
+
+  const changeCurrentRack = (rack: string) => {
+    dispatchGameContext({
+      actionType: ActionType.ChangePlayerRack,
+      payload: {
+        rack: rack,
+      },
+    });
+  };
+
+  const sendGameplayEvent = (evt: ClientGameplayEvent) => {
+    eventClient.createBroadcastGame;
+  };
+
+  const createNewGame = async (
+    p1name: string,
+    p2name: string,
+    lex: string,
+    chrule: OMGChallengeRule
+  ) => {
+    // the lexicon and letter distribution are tied together.
+    const ld = defaultLetterDistribution(lex);
+    try {
+      const resp = await eventClient.createBroadcastGame({
+        playersInfo: [p1name, p2name].map((v, idx) => {
+          const collapsed = v.replaceAll(' ', '');
+          return new OMGPlayerInfo({
+            nickname: collapsed,
+            fullName: v,
+            userId: collapsed,
+            first: idx === 0,
+          });
+        }),
+        lexicon: lex,
+        rules: new GameRules({
+          boardLayoutName: 'CrosswordGame', // for now
+          letterDistributionName: ld,
+          variantName: 'classic', // for now
+        }),
+        challengeRule: chrule,
+        public: false,
+      });
+      console.log(resp);
+    } catch (e) {
+      flashError(e);
+    }
+  };
+
+  const deleteGame = async (gid: string) => {
+    try {
+      await eventClient.deleteBroadcastGame({ gameId: gid });
+    } catch (e) {
+      flashError(e);
+    }
+  };
 
   return (
     <div className="game-container">
@@ -107,6 +206,17 @@ export const BoardEditor = () => {
             lexicon={gameInfo.gameRequest?.lexicon ?? ''}
             variant={gameInfo.gameRequest?.rules?.variantName}
           />
+          <Card
+            title="Editor controls"
+            className="editor-control"
+            style={{ marginTop: 12 }}
+          >
+            <EditorControl
+              createNewGame={createNewGame}
+              gameID={gameContext.gameID}
+              deleteGame={deleteGame}
+            />
+          </Card>
         </div>
         <div className="sticky-player-card-container">
           <PlayerCards
@@ -126,7 +236,7 @@ export const BoardEditor = () => {
             events={examinableGameContext.turns}
             gameID={''} // tbd
             sendSocketMsg={doNothing}
-            sendGameplayEvent={(evt) => console.log(evt)}
+            sendGameplayEvent={(evt) => sendGameplayEvent(evt)}
             gameDone={false} // tbd
             playerMeta={gameInfo.players}
             tournamentID={gameInfo.tournamentId}
@@ -144,6 +254,7 @@ export const BoardEditor = () => {
             handleSetHover={handleSetHover}
             handleUnsetHover={hideDefinitionHover}
             definitionPopover={definitionPopover}
+            changeCurrentRack={changeCurrentRack}
           />
         </div>
 

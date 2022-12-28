@@ -43,6 +43,7 @@ export enum ActionType {
   SetupStaticPosition,
   InitFromDocument,
   AddOMGWordsEvent,
+  ChangePlayerRack,
 
   /* login state actions */
   SetAuthentication,

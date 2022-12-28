@@ -1868,3 +1868,25 @@ p.rune {
     display: none;
   }
 }
+
+.editor-control {
+  padding: 6px;
+  .ant-select-selector,
+  .ant-select-item,
+  .ant-dropdown-menu,
+  .ant-select-dropdown,
+  .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+
+    @include colorModed() {
+      background: m($background);
+      color: m($gray-extreme);
+    }
+    z-index: 0;
+  }
+  
+  .readable-text-color {
+    @include colorModed() {
+        color: m($gray-extreme);
+    }
+  }
+}

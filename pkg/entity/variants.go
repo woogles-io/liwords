@@ -40,7 +40,12 @@ func TotalTimeEstimate(gamereq *pb.GameRequest) int32 {
 func VariantFromGameReq(gamereq *pb.GameRequest) (TimeControl, game.Variant, error) {
 	// hardcoded values here; fix sometime
 	var timefmt TimeControl
-
+	if gamereq == nil {
+		return "", "", errors.New("nil GameRequest")
+	}
+	if gamereq.Rules == nil {
+		return "", "", errors.New("nil GameRequest rules")
+	}
 	totalTime := TotalTimeEstimate(gamereq)
 
 	if totalTime <= CutoffUltraBlitz {

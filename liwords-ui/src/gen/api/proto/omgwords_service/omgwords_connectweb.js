@@ -3,7 +3,7 @@
 /* eslint-disable */
 /* @ts-nocheck */
 
-import {AnnotatedGameEvent, BroadcastGamePrivacy, BroadcastGamesResponse, ChallengeBonusPointsEvent, CreateBroadcastGameRequest, CreateBroadcastGameResponse, GameEventResponse, GetGameDocumentRequest, GetGamesForEditorRequest, TimePenaltyEvent} from "./omgwords_pb.js";
+import {AnnotatedGameEvent, BroadcastGamePrivacy, BroadcastGamesResponse, ChallengeBonusPointsEvent, CreateBroadcastGameRequest, CreateBroadcastGameResponse, DeleteBroadcastGameRequest, DeleteBroadcastGameResponse, GameEventResponse, GetGameDocumentRequest, GetGamesForEditorRequest, GetMyUnfinishedGamesRequest, TimePenaltyEvent} from "./omgwords_pb.js";
 import {MethodKind} from "@bufbuild/protobuf";
 import {GameDocument} from "../ipc/omgwords_pb.js";
 
@@ -25,6 +25,15 @@ export const GameEventService = {
       name: "CreateBroadcastGame",
       I: CreateBroadcastGameRequest,
       O: CreateBroadcastGameResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc game_service.GameEventService.DeleteBroadcastGame
+     */
+    deleteBroadcastGame: {
+      name: "DeleteBroadcastGame",
+      I: DeleteBroadcastGameRequest,
+      O: DeleteBroadcastGameResponse,
       kind: MethodKind.Unary,
     },
     /**
@@ -78,6 +87,15 @@ export const GameEventService = {
     getGamesForEditor: {
       name: "GetGamesForEditor",
       I: GetGamesForEditorRequest,
+      O: BroadcastGamesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc game_service.GameEventService.GetMyUnfinishedGames
+     */
+    getMyUnfinishedGames: {
+      name: "GetMyUnfinishedGames",
+      I: GetMyUnfinishedGamesRequest,
       O: BroadcastGamesResponse,
       kind: MethodKind.Unary,
     },

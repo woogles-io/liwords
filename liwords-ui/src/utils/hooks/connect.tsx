@@ -24,8 +24,10 @@ const apiEndpoint = window.RUNTIME_CONFIGURATION?.apiEndpoint || loc.host;
 //   }
 // };
 
+export const baseURL = `${loc.protocol}//${apiEndpoint}`;
+
 export const transport = createConnectTransport({
-  baseUrl: `${loc.protocol}//${apiEndpoint}/twirp/`,
+  baseUrl: `${baseURL}/twirp/`,
   //   interceptors: [errorTranslator],
 });
 

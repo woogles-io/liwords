@@ -127,6 +127,19 @@ func (gs *GameDocumentStore) UnlockDocument(ctx context.Context, doc *MaybeLocke
 	return nil
 }
 
+func (gs *GameDocumentStore) DeleteDocument(ctx context.Context, uuid string) error {
+	conn := gs.redisPool.Get()
+	defer conn.Close()
+	delkeys, err := redis.Int(conn.Do("DEL", RedisDocPrefix+uuid))
+	if err != nil {
+		return err
+	}
+	if delkeys != 1 {
+		return errors.New("wrong number of keys deleted")
+	}
+	return nil
+}
+
 func (gs *GameDocumentStore) getFromS3(ctx context.Context, uuid string) (*ipc.GameDocument, error) {
 	result, err := gs.s3Client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(GameDocBucket),

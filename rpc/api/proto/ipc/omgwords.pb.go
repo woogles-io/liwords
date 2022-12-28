@@ -2405,7 +2405,7 @@ func (x *TimedOut) GetUserId() string {
 	return ""
 }
 
-// GameEvent is an internal game event, saved in the GameHistory
+// GameEvent is an internal game event, saved in the GameDocument.
 type GameEvent struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -2918,10 +2918,8 @@ type GameDocument struct {
 	Bag            *Bag   `protobuf:"bytes,21,opt,name=bag,proto3" json:"bag,omitempty"`
 	ScorelessTurns uint32 `protobuf:"varint,22,opt,name=scoreless_turns,json=scorelessTurns,proto3" json:"scoreless_turns,omitempty"`
 	// The index of the player on turn
-	PlayerOnTurn uint32 `protobuf:"varint,23,opt,name=player_on_turn,json=playerOnTurn,proto3" json:"player_on_turn,omitempty"`
-	// current_scores is in the same order as the player info structure inside
-	// GameHistory
-	Timers *Timers `protobuf:"bytes,24,opt,name=timers,proto3" json:"timers,omitempty"`
+	PlayerOnTurn uint32  `protobuf:"varint,23,opt,name=player_on_turn,json=playerOnTurn,proto3" json:"player_on_turn,omitempty"`
+	Timers       *Timers `protobuf:"bytes,24,opt,name=timers,proto3" json:"timers,omitempty"`
 	// real time or correspondence?
 	GameMode GameMode `protobuf:"varint,25,opt,name=game_mode,json=gameMode,proto3,enum=ipc.GameMode" json:"game_mode,omitempty"`
 }

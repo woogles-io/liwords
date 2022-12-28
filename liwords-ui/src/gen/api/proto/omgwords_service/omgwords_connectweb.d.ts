@@ -3,7 +3,7 @@
 /* eslint-disable */
 /* @ts-nocheck */
 
-import {AnnotatedGameEvent, BroadcastGamePrivacy, BroadcastGamesResponse, ChallengeBonusPointsEvent, CreateBroadcastGameRequest, CreateBroadcastGameResponse, GameEventResponse, GetGameDocumentRequest, GetGamesForEditorRequest, TimePenaltyEvent} from "./omgwords_pb.js";
+import {AnnotatedGameEvent, BroadcastGamePrivacy, BroadcastGamesResponse, ChallengeBonusPointsEvent, CreateBroadcastGameRequest, CreateBroadcastGameResponse, DeleteBroadcastGameRequest, DeleteBroadcastGameResponse, GameEventResponse, GetGameDocumentRequest, GetGamesForEditorRequest, GetMyUnfinishedGamesRequest, TimePenaltyEvent} from "./omgwords_pb.js";
 import {MethodKind} from "@bufbuild/protobuf";
 import {GameDocument} from "../ipc/omgwords_pb.js";
 
@@ -25,6 +25,15 @@ export declare const GameEventService: {
       readonly name: "CreateBroadcastGame",
       readonly I: typeof CreateBroadcastGameRequest,
       readonly O: typeof CreateBroadcastGameResponse,
+      readonly kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc game_service.GameEventService.DeleteBroadcastGame
+     */
+    readonly deleteBroadcastGame: {
+      readonly name: "DeleteBroadcastGame",
+      readonly I: typeof DeleteBroadcastGameRequest,
+      readonly O: typeof DeleteBroadcastGameResponse,
       readonly kind: MethodKind.Unary,
     },
     /**
@@ -78,6 +87,15 @@ export declare const GameEventService: {
     readonly getGamesForEditor: {
       readonly name: "GetGamesForEditor",
       readonly I: typeof GetGamesForEditorRequest,
+      readonly O: typeof BroadcastGamesResponse,
+      readonly kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc game_service.GameEventService.GetMyUnfinishedGames
+     */
+    readonly getMyUnfinishedGames: {
+      readonly name: "GetMyUnfinishedGames",
+      readonly I: typeof GetMyUnfinishedGamesRequest,
       readonly O: typeof BroadcastGamesResponse,
       readonly kind: MethodKind.Unary,
     },

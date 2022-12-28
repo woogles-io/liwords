@@ -214,6 +214,29 @@ export declare class GetGamesForEditorRequest extends Message<GetGamesForEditorR
 }
 
 /**
+ * Assume we can never have so many unfinished games that we'd need limits and
+ * offsets. Ideally we should only have one unfinished game per authed player at
+ * a time.
+ *
+ * @generated from message game_service.GetMyUnfinishedGamesRequest
+ */
+export declare class GetMyUnfinishedGamesRequest extends Message<GetMyUnfinishedGamesRequest> {
+  constructor(data?: PartialMessage<GetMyUnfinishedGamesRequest>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "game_service.GetMyUnfinishedGamesRequest";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetMyUnfinishedGamesRequest;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetMyUnfinishedGamesRequest;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetMyUnfinishedGamesRequest;
+
+  static equals(a: GetMyUnfinishedGamesRequest | PlainMessage<GetMyUnfinishedGamesRequest> | undefined, b: GetMyUnfinishedGamesRequest | PlainMessage<GetMyUnfinishedGamesRequest> | undefined): boolean;
+}
+
+/**
  * @generated from message game_service.BroadcastGamesResponse
  */
 export declare class BroadcastGamesResponse extends Message<BroadcastGamesResponse> {
@@ -327,5 +350,48 @@ export declare class GetGameDocumentRequest extends Message<GetGameDocumentReque
   static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetGameDocumentRequest;
 
   static equals(a: GetGameDocumentRequest | PlainMessage<GetGameDocumentRequest> | undefined, b: GetGameDocumentRequest | PlainMessage<GetGameDocumentRequest> | undefined): boolean;
+}
+
+/**
+ * @generated from message game_service.DeleteBroadcastGameRequest
+ */
+export declare class DeleteBroadcastGameRequest extends Message<DeleteBroadcastGameRequest> {
+  /**
+   * @generated from field: string game_id = 1;
+   */
+  gameId: string;
+
+  constructor(data?: PartialMessage<DeleteBroadcastGameRequest>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "game_service.DeleteBroadcastGameRequest";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteBroadcastGameRequest;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteBroadcastGameRequest;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteBroadcastGameRequest;
+
+  static equals(a: DeleteBroadcastGameRequest | PlainMessage<DeleteBroadcastGameRequest> | undefined, b: DeleteBroadcastGameRequest | PlainMessage<DeleteBroadcastGameRequest> | undefined): boolean;
+}
+
+/**
+ * @generated from message game_service.DeleteBroadcastGameResponse
+ */
+export declare class DeleteBroadcastGameResponse extends Message<DeleteBroadcastGameResponse> {
+  constructor(data?: PartialMessage<DeleteBroadcastGameResponse>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "game_service.DeleteBroadcastGameResponse";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteBroadcastGameResponse;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteBroadcastGameResponse;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteBroadcastGameResponse;
+
+  static equals(a: DeleteBroadcastGameResponse | PlainMessage<DeleteBroadcastGameResponse> | undefined, b: DeleteBroadcastGameResponse | PlainMessage<DeleteBroadcastGameResponse> | undefined): boolean;
 }
 

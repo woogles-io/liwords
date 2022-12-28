@@ -3,6 +3,7 @@ import { useDrop, XYCoord } from 'react-dnd';
 import Tile, { TILE_TYPE } from './tile';
 import { isTouchDevice } from '../utils/cwgame/common';
 import { Alphabet, runeToValues } from '../constants/alphabets';
+import { EditOutlined, EditTwoTone } from '@ant-design/icons';
 
 // const TileSpacing = 6;
 

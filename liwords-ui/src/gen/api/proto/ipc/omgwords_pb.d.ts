@@ -1378,7 +1378,7 @@ export declare class TimedOut extends Message<TimedOut> {
 }
 
 /**
- * GameEvent is an internal game event, saved in the GameHistory
+ * GameEvent is an internal game event, saved in the GameDocument.
  *
  * @generated from message ipc.GameEvent
  */
@@ -1898,9 +1898,6 @@ export declare class GameDocument extends Message<GameDocument> {
   playerOnTurn: number;
 
   /**
-   * current_scores is in the same order as the player info structure inside
-   * GameHistory
-   *
    * @generated from field: ipc.Timers timers = 24;
    */
   timers?: Timers;

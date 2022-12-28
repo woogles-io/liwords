@@ -470,7 +470,7 @@ export const TimedOut = proto3.makeMessageType(
 );
 
 /**
- * GameEvent is an internal game event, saved in the GameHistory
+ * GameEvent is an internal game event, saved in the GameDocument.
  *
  * @generated from message ipc.GameEvent
  */
