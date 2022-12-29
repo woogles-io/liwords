@@ -84,6 +84,7 @@ export type GameState = {
   uidToPlayerOrder: { [uid: string]: PlayerOrder };
   playState: number;
   clockController: React.MutableRefObject<ClockController | null> | null;
+  // gameDocument: GameDocument;
   onClockTick: (p: PlayerOrder, t: Millis) => void;
   onClockTimeout: (p: PlayerOrder) => void;
 };
@@ -118,6 +119,7 @@ export const startingGameState = (
     clockController: null,
     onClockTick: () => {},
     onClockTimeout: () => {},
+    // gameDocument: new GameDocument(),
   };
   return gs;
 };

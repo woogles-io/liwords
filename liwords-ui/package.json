@@ -17,6 +17,7 @@
         "@types/react-dom": "^17.0.14",
         "@types/react-router-dom": "^5.1.7",
         "antd": "^4.12.3",
+        "immer": "^9.0.16",
         "jwt-decode": "^3.1.2",
         "moment": "^2.29.1",
         "qs": "^6.9.6",

@@ -20,6 +20,10 @@ export type Alphabet = {
   letters: Array<AlphabetLetter>;
   // letterMap creates a structure that is faster to access than a list
   letterMap: { [key: string]: AlphabetLetter };
+  machineLetterMap: { [key: string]: number };
+  // For Catalan we will have L·L, NY, etc. Spanish also has a couple of two-
+  // character tiles.
+  longestPossibleTileRune: number;
 };
 
 export const StandardEnglishAlphabet: Alphabet = {
@@ -53,6 +57,8 @@ export const StandardEnglishAlphabet: Alphabet = {
     { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
   ],
   letterMap: {},
+  machineLetterMap: {},
+  longestPossibleTileRune: 1,
 };
 
 export const StandardGermanAlphabet: Alphabet = {
@@ -89,6 +95,9 @@ export const StandardGermanAlphabet: Alphabet = {
     { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
   ],
   letterMap: {},
+  machineLetterMap: {},
+
+  longestPossibleTileRune: 1,
 };
 
 export const StandardNorwegianAlphabet: Alphabet = {
@@ -130,6 +139,9 @@ export const StandardNorwegianAlphabet: Alphabet = {
     { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
   ],
   letterMap: {},
+  machineLetterMap: {},
+
+  longestPossibleTileRune: 1,
 };
 
 export const StandardFrenchAlphabet: Alphabet = {
@@ -163,6 +175,9 @@ export const StandardFrenchAlphabet: Alphabet = {
     { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
   ],
   letterMap: {},
+  machineLetterMap: {},
+
+  longestPossibleTileRune: 1,
 };
 
 export const SuperEnglishAlphabet: Alphabet = {
@@ -196,6 +211,44 @@ export const SuperEnglishAlphabet: Alphabet = {
     { rune: Blank, score: 0, count: 4, vowel: false, category: 3 },
   ],
   letterMap: {},
+  machineLetterMap: {},
+
+  longestPossibleTileRune: 1,
+};
+
+export const StandardCatalanAlphabet: Alphabet = {
+  letters: [
+    { rune: 'A', score: 1, count: 12, vowel: true, category: 0 },
+    { rune: 'B', score: 3, count: 2, vowel: false, category: 2 },
+    { rune: 'C', score: 2, count: 3, vowel: false, category: 2 },
+    { rune: 'Ç', score: 10, count: 1, vowel: false, category: 3 },
+    { rune: 'D', score: 2, count: 3, vowel: false, category: 1 },
+    { rune: 'E', score: 1, count: 13, vowel: true, category: 0 },
+    { rune: 'F', score: 4, count: 1, vowel: false, category: 2 },
+    { rune: 'G', score: 3, count: 2, vowel: false, category: 1 },
+    { rune: 'H', score: 8, count: 1, vowel: false, category: 2 },
+    { rune: 'I', score: 1, count: 8, vowel: true, category: 0 },
+    { rune: 'J', score: 8, count: 1, vowel: false, category: 3 },
+    { rune: 'L', score: 1, count: 4, vowel: false, category: 1 },
+    { rune: 'L·L', score: 10, count: 1, vowel: false, category: 3 },
+    { rune: 'M', score: 2, count: 3, vowel: false, category: 2 },
+    { rune: 'N', score: 1, count: 6, vowel: false, category: 1 },
+    { rune: 'NY', score: 10, count: 1, vowel: false, category: 3 },
+    { rune: 'O', score: 1, count: 5, vowel: true, category: 0 },
+    { rune: 'P', score: 3, count: 2, vowel: false, category: 2 },
+    { rune: 'QU', score: 8, count: 1, vowel: false, category: 3 },
+    { rune: 'R', score: 1, count: 8, vowel: false, category: 1 },
+    { rune: 'S', score: 1, count: 8, vowel: false, category: 3 },
+    { rune: 'T', score: 1, count: 5, vowel: false, category: 1 },
+    { rune: 'U', score: 1, count: 4, vowel: true, category: 0 },
+    { rune: 'V', score: 4, count: 1, vowel: false, category: 2 },
+    { rune: 'X', score: 10, count: 1, vowel: false, category: 3 },
+    { rune: 'Z', score: 8, count: 1, vowel: false, category: 3 },
+    { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
+  ],
+  letterMap: {},
+  machineLetterMap: {},
+  longestPossibleTileRune: 3,
 };
 
 // Create letter maps for faster access.
@@ -205,9 +258,15 @@ export const SuperEnglishAlphabet: Alphabet = {
   StandardNorwegianAlphabet,
   StandardFrenchAlphabet,
   SuperEnglishAlphabet,
+  StandardCatalanAlphabet,
 ].forEach((alph) => {
-  alph.letters.forEach((letter) => {
+  alph.letters.forEach((letter, idx) => {
     alph.letterMap[letter.rune] = letter;
+    if (letter.rune !== Blank) {
+      alph.machineLetterMap[letter.rune] = idx + 1;
+    } else {
+      alph.machineLetterMap[letter.rune] = 0;
+    }
   });
 });
 
@@ -250,6 +309,7 @@ export const uint8ToRune = (i: number, alphabet: Alphabet): string => {
   if (i === 0) {
     return Blank;
   }
+  // handle negative numbers (i.e. > 128 for uint8)
   return alphabet.letters[i - 1]?.rune ?? '';
 };
 
@@ -262,4 +322,36 @@ export const uint8ArrayToRunes = (
     s += uint8ToRune(v, alphabet);
   });
   return s;
+};
+
+export const runesToUint8Array = (
+  runes: string,
+  alphabet: Alphabet
+): Uint8Array => {
+  let bts = [];
+  let chars = Array.from(runes);
+
+  let i = 0;
+  let match;
+  while (i < chars.length) {
+    match = false;
+    for (let j = i + alphabet.longestPossibleTileRune; j > i; j--) {
+      let rune = chars.slice(i, j).join('');
+      if (alphabet.machineLetterMap[rune]) {
+        bts.push(alphabet.machineLetterMap[rune]);
+        i = j;
+        match = true;
+        break;
+      } else if (alphabet.machineLetterMap[rune.toUpperCase()]) {
+        bts.push(256 - alphabet.machineLetterMap[rune.toUpperCase()]);
+        i = j;
+        match = true;
+      }
+    }
+    if (!match) {
+      throw new Error('cannot convert ' + runes + ' to uint8array');
+    }
+  }
+
+  return Uint8Array.from(bts);
 };

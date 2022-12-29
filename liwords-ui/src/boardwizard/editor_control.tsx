@@ -118,7 +118,7 @@ export const EditorControl = (props: Props) => {
           <Input maxLength={50} />
         </Form.Item>
         <Form.Item label="Game description" name="description">
-          <Input.TextArea maxLength={140} rows={3} />
+          <Input.TextArea maxLength={140} rows={2} />
         </Form.Item>
         <Form.Item label="Show in lobby" name="private">
           <Switch />
