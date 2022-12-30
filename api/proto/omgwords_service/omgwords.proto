@@ -63,7 +63,9 @@ message DeleteBroadcastGameRequest { string game_id = 1; }
 
 message DeleteBroadcastGameResponse {}
 
-message UpdateDocumentRequest { ipc.GameDocument document = 1; }
+message ReplaceDocumentRequest { ipc.GameDocument document = 1; }
+
+message PatchDocumentRequest { ipc.GameDocument document = 1; }
 
 // GameEventService will handle our game event API. We can connect bots to
 // this API, or use it for sandbox mode, or for live annotations, etc.
@@ -74,8 +76,10 @@ service GameEventService {
   rpc DeleteBroadcastGame(DeleteBroadcastGameRequest)
       returns (DeleteBroadcastGameResponse);
   rpc SendGameEvent(AnnotatedGameEvent) returns (GameEventResponse);
-  rpc UpdateGameDocument(UpdateDocumentRequest) returns (GameEventResponse);
-
+  rpc ReplaceGameDocument(ReplaceDocumentRequest) returns (GameEventResponse);
+  // PatchGameDocument merges in the passed-in GameDocument with what's on the
+  // server. The passed-in GameDocument should be a partial document
+  rpc PatchGameDocument(PatchDocumentRequest) returns (GameEventResponse);
   rpc SetBroadcastGamePrivacy(BroadcastGamePrivacy) returns (GameEventResponse);
 
   rpc GetGamesForEditor(GetGamesForEditorRequest)

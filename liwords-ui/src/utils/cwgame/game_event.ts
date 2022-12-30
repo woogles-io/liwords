@@ -136,7 +136,7 @@ export const nicknameFromEvt = (
   return players[evt.playerIndex]?.nickname;
 };
 
-export const computeLeave = (tilesPlayed: string, rack: string) => {
+export const computeLeaveWithGaps = (tilesPlayed: string, rack: string) => {
   // tilesPlayed is either from evt.getPlayedTiles(), which is like "TRUNCa.E",
   // or from evt.getExchanged(), which is like "AE?".
   // rack is a pre-sorted rack; spaces will be returned where gaps should be.
@@ -159,4 +159,9 @@ export const computeLeave = (tilesPlayed: string, rack: string) => {
     }
   }
   return leave.join('');
+};
+
+export const computeLeave = (tilesPlayed: string, rack: string): string => {
+  const lwg = computeLeaveWithGaps(tilesPlayed, rack);
+  return Array.from(lwg.replaceAll(' ', '')).sort().join('');
 };

@@ -3,7 +3,7 @@
 /* eslint-disable */
 /* @ts-nocheck */
 
-import {AnnotatedGameEvent, BroadcastGamePrivacy, BroadcastGamesResponse, CreateBroadcastGameRequest, CreateBroadcastGameResponse, DeleteBroadcastGameRequest, DeleteBroadcastGameResponse, GameEventResponse, GetGameDocumentRequest, GetGamesForEditorRequest, GetMyUnfinishedGamesRequest, UpdateDocumentRequest} from "./omgwords_pb.js";
+import {AnnotatedGameEvent, BroadcastGamePrivacy, BroadcastGamesResponse, CreateBroadcastGameRequest, CreateBroadcastGameResponse, DeleteBroadcastGameRequest, DeleteBroadcastGameResponse, GameEventResponse, GetGameDocumentRequest, GetGamesForEditorRequest, GetMyUnfinishedGamesRequest, PatchDocumentRequest, ReplaceDocumentRequest} from "./omgwords_pb.js";
 import {MethodKind} from "@bufbuild/protobuf";
 import {GameDocument} from "../ipc/omgwords_pb.js";
 
@@ -46,11 +46,20 @@ export const GameEventService = {
       kind: MethodKind.Unary,
     },
     /**
-     * @generated from rpc game_service.GameEventService.UpdateGameDocument
+     * @generated from rpc game_service.GameEventService.ReplaceGameDocument
      */
-    updateGameDocument: {
-      name: "UpdateGameDocument",
-      I: UpdateDocumentRequest,
+    replaceGameDocument: {
+      name: "ReplaceGameDocument",
+      I: ReplaceDocumentRequest,
+      O: GameEventResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc game_service.GameEventService.PatchGameDocument
+     */
+    patchGameDocument: {
+      name: "PatchGameDocument",
+      I: PatchDocumentRequest,
       O: GameEventResponse,
       kind: MethodKind.Unary,
     },

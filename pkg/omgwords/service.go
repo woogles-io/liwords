@@ -38,6 +38,21 @@ func NewOMGWordsService(u user.Store, cfg *config.Config, gs *stores.GameDocumen
 		metadataStore: ms}
 }
 
+func (gs *OMGWordsService) failIfSessionDoesntOwn(ctx context.Context, gameID string) error {
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return err
+	}
+	owns, err := gs.metadataStore.GameOwnedBy(ctx, gameID, sess.UserUUID)
+	if err != nil {
+		return err
+	}
+	if !owns {
+		return twirp.NewError(twirp.InvalidArgument, "user does not own this game")
+	}
+	return nil
+}
+
 func (gs *OMGWordsService) SetEventChannel(c chan *entity.EventWrapper) {
 	gs.gameEventChan = c
 }
@@ -143,20 +158,10 @@ func (gs *OMGWordsService) CreateBroadcastGame(ctx context.Context, req *pb.Crea
 
 func (gs *OMGWordsService) SendGameEvent(ctx context.Context, req *pb.AnnotatedGameEvent) (
 	*pb.GameEventResponse, error) {
-
-	sess, err := apiserver.GetSession(ctx)
+	err := gs.failIfSessionDoesntOwn(ctx, req.Event.GameId)
 	if err != nil {
 		return nil, err
 	}
-	gid := req.Event.GameId
-	owns, err := gs.metadataStore.GameOwnedBy(ctx, gid, sess.UserUUID)
-	if err != nil {
-		return nil, err
-	}
-	if !owns {
-		return nil, twirp.NewError(twirp.InvalidArgument, "user does not own this game")
-	}
-
 	err = handleEvent(ctx, req.UserId, req.Event, gs.gameStore, gs.gameEventChan)
 	if err != nil {
 		return nil, err
@@ -168,22 +173,18 @@ func (gs *OMGWordsService) SendGameEvent(ctx context.Context, req *pb.AnnotatedG
 // UpdateGameDocument updates a game document for an annotated game. It doesn't
 // really have meaning outside annotated games, as players should instead use an
 // individual event update call.
-func (gs *OMGWordsService) UpdateGameDocument(ctx context.Context, req *pb.UpdateDocumentRequest) (*pb.GameEventResponse, error) {
-	sess, err := apiserver.GetSession(ctx)
-	if err != nil {
-		return nil, err
-	}
+func (gs *OMGWordsService) ReplaceGameDocument(ctx context.Context, req *pb.ReplaceDocumentRequest) (*pb.GameEventResponse, error) {
+
 	if req.Document == nil {
 		return nil, errors.New("nil game document")
 	}
 	gid := req.Document.Uid
-	owns, err := gs.metadataStore.GameOwnedBy(ctx, gid, sess.UserUUID)
+
+	err := gs.failIfSessionDoesntOwn(ctx, gid)
 	if err != nil {
 		return nil, err
 	}
-	if !owns {
-		return nil, twirp.NewError(twirp.InvalidArgument, "user does not own this game")
-	}
+
 	// Just willy-nilly update the thing. Kind of scary.
 	err = gs.gameStore.UpdateDocument(ctx, &stores.MaybeLockedDocument{GameDocument: req.Document})
 	if err != nil {
@@ -192,6 +193,40 @@ func (gs *OMGWordsService) UpdateGameDocument(ctx context.Context, req *pb.Updat
 	// And send an event.
 	evt := &ipc.GameDocumentEvent{
 		Doc: req.Document,
+	}
+	wrapped := entity.WrapEvent(evt, ipc.MessageType_OMGWORDS_GAMEDOCUMENT)
+	wrapped.AddAudience(entity.AudGameTV, gid)
+	gs.gameEventChan <- wrapped
+
+	return &pb.GameEventResponse{}, nil
+}
+
+func (gs *OMGWordsService) PatchGameDocument(ctx context.Context, req *pb.PatchDocumentRequest) (*pb.GameEventResponse, error) {
+	if req.Document == nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, "nil game document")
+	}
+	gid := req.Document.Uid
+
+	err := gs.failIfSessionDoesntOwn(ctx, gid)
+	if err != nil {
+		return nil, err
+	}
+	g, err := gs.gameStore.GetDocument(ctx, gid, true)
+	if err != nil {
+		return nil, err
+	}
+	err = MergeGameDocuments(g.GameDocument, req.Document)
+	if err != nil {
+		return nil, err
+	}
+	err = gs.gameStore.UpdateDocument(ctx, g)
+	if err != nil {
+		return nil, err
+	}
+
+	// And send an event.
+	evt := &ipc.GameDocumentEvent{
+		Doc: g.GameDocument,
 	}
 	wrapped := entity.WrapEvent(evt, ipc.MessageType_OMGWORDS_GAMEDOCUMENT)
 	wrapped.AddAudience(entity.AudGameTV, gid)
@@ -262,18 +297,12 @@ func (gs *OMGWordsService) GetGameDocument(ctx context.Context, req *pb.GetGameD
 }
 
 func (gs *OMGWordsService) DeleteBroadcastGame(ctx context.Context, req *pb.DeleteBroadcastGameRequest) (*pb.DeleteBroadcastGameResponse, error) {
-	sess, err := apiserver.GetSession(ctx)
-	if err != nil {
-		return nil, err
-	}
 	gid := req.GameId
-	owns, err := gs.metadataStore.GameOwnedBy(ctx, gid, sess.UserUUID)
+	err := gs.failIfSessionDoesntOwn(ctx, gid)
 	if err != nil {
 		return nil, err
 	}
-	if !owns {
-		return nil, twirp.NewError(twirp.InvalidArgument, "user does not own this game")
-	}
+
 	done, err := gs.metadataStore.GameIsDone(ctx, gid)
 	if err != nil {
 		return nil, err

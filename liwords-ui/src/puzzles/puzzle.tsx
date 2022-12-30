@@ -50,7 +50,7 @@ import {
   ClientGameplayEvent,
   RatingMode,
 } from '../gen/api/proto/ipc/omgwords_pb';
-import { computeLeave } from '../utils/cwgame/game_event';
+import { computeLeaveWithGaps } from '../utils/cwgame/game_event';
 import { EphemeralTile } from '../utils/cwgame/common';
 import { useFirefoxPatch } from '../utils/hooks/firefox';
 import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
@@ -237,7 +237,7 @@ export const SinglePuzzle = (props: Props) => {
         tiles: evt.playedTiles || evt.exchanged,
         isExchange: evt.type === GameEvent_Type.EXCHANGE,
         leave: '',
-        leaveWithGaps: computeLeave(
+        leaveWithGaps: computeLeaveWithGaps(
           evt.playedTiles || evt.exchanged,
           sortedRack
         ),

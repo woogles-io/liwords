@@ -43,7 +43,9 @@ type GameEventService interface {
 
 	SendGameEvent(context.Context, *AnnotatedGameEvent) (*GameEventResponse, error)
 
-	UpdateGameDocument(context.Context, *UpdateDocumentRequest) (*GameEventResponse, error)
+	ReplaceGameDocument(context.Context, *ReplaceDocumentRequest) (*GameEventResponse, error)
+
+	PatchGameDocument(context.Context, *PatchDocumentRequest) (*GameEventResponse, error)
 
 	SetBroadcastGamePrivacy(context.Context, *BroadcastGamePrivacy) (*GameEventResponse, error)
 
@@ -60,7 +62,7 @@ type GameEventService interface {
 
 type gameEventServiceProtobufClient struct {
 	client      HTTPClient
-	urls        [8]string
+	urls        [9]string
 	interceptor twirp.Interceptor
 	opts        twirp.ClientOptions
 }
@@ -88,11 +90,12 @@ func NewGameEventServiceProtobufClient(baseURL string, client HTTPClient, opts .
 	// Build method URLs: <baseURL>[<prefix>]/<package>.<Service>/<Method>
 	serviceURL := sanitizeBaseURL(baseURL)
 	serviceURL += baseServicePath(pathPrefix, "game_service", "GameEventService")
-	urls := [8]string{
+	urls := [9]string{
 		serviceURL + "CreateBroadcastGame",
 		serviceURL + "DeleteBroadcastGame",
 		serviceURL + "SendGameEvent",
-		serviceURL + "UpdateGameDocument",
+		serviceURL + "ReplaceGameDocument",
+		serviceURL + "PatchGameDocument",
 		serviceURL + "SetBroadcastGamePrivacy",
 		serviceURL + "GetGamesForEditor",
 		serviceURL + "GetMyUnfinishedGames",
@@ -245,20 +248,20 @@ func (c *gameEventServiceProtobufClient) callSendGameEvent(ctx context.Context, 
 	return out, nil
 }
 
-func (c *gameEventServiceProtobufClient) UpdateGameDocument(ctx context.Context, in *UpdateDocumentRequest) (*GameEventResponse, error) {
+func (c *gameEventServiceProtobufClient) ReplaceGameDocument(ctx context.Context, in *ReplaceDocumentRequest) (*GameEventResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "game_service")
 	ctx = ctxsetters.WithServiceName(ctx, "GameEventService")
-	ctx = ctxsetters.WithMethodName(ctx, "UpdateGameDocument")
-	caller := c.callUpdateGameDocument
+	ctx = ctxsetters.WithMethodName(ctx, "ReplaceGameDocument")
+	caller := c.callReplaceGameDocument
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *UpdateDocumentRequest) (*GameEventResponse, error) {
+		caller = func(ctx context.Context, req *ReplaceDocumentRequest) (*GameEventResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*UpdateDocumentRequest)
+					typedReq, ok := req.(*ReplaceDocumentRequest)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*UpdateDocumentRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*ReplaceDocumentRequest) when calling interceptor")
 					}
-					return c.callUpdateGameDocument(ctx, typedReq)
+					return c.callReplaceGameDocument(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
@@ -274,9 +277,55 @@ func (c *gameEventServiceProtobufClient) UpdateGameDocument(ctx context.Context,
 	return caller(ctx, in)
 }
 
-func (c *gameEventServiceProtobufClient) callUpdateGameDocument(ctx context.Context, in *UpdateDocumentRequest) (*GameEventResponse, error) {
+func (c *gameEventServiceProtobufClient) callReplaceGameDocument(ctx context.Context, in *ReplaceDocumentRequest) (*GameEventResponse, error) {
 	out := new(GameEventResponse)
 	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[3], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
+func (c *gameEventServiceProtobufClient) PatchGameDocument(ctx context.Context, in *PatchDocumentRequest) (*GameEventResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "game_service")
+	ctx = ctxsetters.WithServiceName(ctx, "GameEventService")
+	ctx = ctxsetters.WithMethodName(ctx, "PatchGameDocument")
+	caller := c.callPatchGameDocument
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *PatchDocumentRequest) (*GameEventResponse, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*PatchDocumentRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*PatchDocumentRequest) when calling interceptor")
+					}
+					return c.callPatchGameDocument(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*GameEventResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*GameEventResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *gameEventServiceProtobufClient) callPatchGameDocument(ctx context.Context, in *PatchDocumentRequest) (*GameEventResponse, error) {
+	out := new(GameEventResponse)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[4], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -322,7 +371,7 @@ func (c *gameEventServiceProtobufClient) SetBroadcastGamePrivacy(ctx context.Con
 
 func (c *gameEventServiceProtobufClient) callSetBroadcastGamePrivacy(ctx context.Context, in *BroadcastGamePrivacy) (*GameEventResponse, error) {
 	out := new(GameEventResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[4], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[5], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -368,7 +417,7 @@ func (c *gameEventServiceProtobufClient) GetGamesForEditor(ctx context.Context, 
 
 func (c *gameEventServiceProtobufClient) callGetGamesForEditor(ctx context.Context, in *GetGamesForEditorRequest) (*BroadcastGamesResponse, error) {
 	out := new(BroadcastGamesResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[5], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[6], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -414,7 +463,7 @@ func (c *gameEventServiceProtobufClient) GetMyUnfinishedGames(ctx context.Contex
 
 func (c *gameEventServiceProtobufClient) callGetMyUnfinishedGames(ctx context.Context, in *GetMyUnfinishedGamesRequest) (*BroadcastGamesResponse, error) {
 	out := new(BroadcastGamesResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[6], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[7], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -460,7 +509,7 @@ func (c *gameEventServiceProtobufClient) GetGameDocument(ctx context.Context, in
 
 func (c *gameEventServiceProtobufClient) callGetGameDocument(ctx context.Context, in *GetGameDocumentRequest) (*ipc.GameDocument, error) {
 	out := new(ipc.GameDocument)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[7], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[8], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -481,7 +530,7 @@ func (c *gameEventServiceProtobufClient) callGetGameDocument(ctx context.Context
 
 type gameEventServiceJSONClient struct {
 	client      HTTPClient
-	urls        [8]string
+	urls        [9]string
 	interceptor twirp.Interceptor
 	opts        twirp.ClientOptions
 }
@@ -509,11 +558,12 @@ func NewGameEventServiceJSONClient(baseURL string, client HTTPClient, opts ...tw
 	// Build method URLs: <baseURL>[<prefix>]/<package>.<Service>/<Method>
 	serviceURL := sanitizeBaseURL(baseURL)
 	serviceURL += baseServicePath(pathPrefix, "game_service", "GameEventService")
-	urls := [8]string{
+	urls := [9]string{
 		serviceURL + "CreateBroadcastGame",
 		serviceURL + "DeleteBroadcastGame",
 		serviceURL + "SendGameEvent",
-		serviceURL + "UpdateGameDocument",
+		serviceURL + "ReplaceGameDocument",
+		serviceURL + "PatchGameDocument",
 		serviceURL + "SetBroadcastGamePrivacy",
 		serviceURL + "GetGamesForEditor",
 		serviceURL + "GetMyUnfinishedGames",
@@ -666,20 +716,20 @@ func (c *gameEventServiceJSONClient) callSendGameEvent(ctx context.Context, in *
 	return out, nil
 }
 
-func (c *gameEventServiceJSONClient) UpdateGameDocument(ctx context.Context, in *UpdateDocumentRequest) (*GameEventResponse, error) {
+func (c *gameEventServiceJSONClient) ReplaceGameDocument(ctx context.Context, in *ReplaceDocumentRequest) (*GameEventResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "game_service")
 	ctx = ctxsetters.WithServiceName(ctx, "GameEventService")
-	ctx = ctxsetters.WithMethodName(ctx, "UpdateGameDocument")
-	caller := c.callUpdateGameDocument
+	ctx = ctxsetters.WithMethodName(ctx, "ReplaceGameDocument")
+	caller := c.callReplaceGameDocument
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *UpdateDocumentRequest) (*GameEventResponse, error) {
+		caller = func(ctx context.Context, req *ReplaceDocumentRequest) (*GameEventResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*UpdateDocumentRequest)
+					typedReq, ok := req.(*ReplaceDocumentRequest)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*UpdateDocumentRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*ReplaceDocumentRequest) when calling interceptor")
 					}
-					return c.callUpdateGameDocument(ctx, typedReq)
+					return c.callReplaceGameDocument(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
@@ -695,9 +745,55 @@ func (c *gameEventServiceJSONClient) UpdateGameDocument(ctx context.Context, in 
 	return caller(ctx, in)
 }
 
-func (c *gameEventServiceJSONClient) callUpdateGameDocument(ctx context.Context, in *UpdateDocumentRequest) (*GameEventResponse, error) {
+func (c *gameEventServiceJSONClient) callReplaceGameDocument(ctx context.Context, in *ReplaceDocumentRequest) (*GameEventResponse, error) {
 	out := new(GameEventResponse)
 	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[3], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
+func (c *gameEventServiceJSONClient) PatchGameDocument(ctx context.Context, in *PatchDocumentRequest) (*GameEventResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "game_service")
+	ctx = ctxsetters.WithServiceName(ctx, "GameEventService")
+	ctx = ctxsetters.WithMethodName(ctx, "PatchGameDocument")
+	caller := c.callPatchGameDocument
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *PatchDocumentRequest) (*GameEventResponse, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*PatchDocumentRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*PatchDocumentRequest) when calling interceptor")
+					}
+					return c.callPatchGameDocument(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*GameEventResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*GameEventResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *gameEventServiceJSONClient) callPatchGameDocument(ctx context.Context, in *PatchDocumentRequest) (*GameEventResponse, error) {
+	out := new(GameEventResponse)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[4], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -743,7 +839,7 @@ func (c *gameEventServiceJSONClient) SetBroadcastGamePrivacy(ctx context.Context
 
 func (c *gameEventServiceJSONClient) callSetBroadcastGamePrivacy(ctx context.Context, in *BroadcastGamePrivacy) (*GameEventResponse, error) {
 	out := new(GameEventResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[4], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[5], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -789,7 +885,7 @@ func (c *gameEventServiceJSONClient) GetGamesForEditor(ctx context.Context, in *
 
 func (c *gameEventServiceJSONClient) callGetGamesForEditor(ctx context.Context, in *GetGamesForEditorRequest) (*BroadcastGamesResponse, error) {
 	out := new(BroadcastGamesResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[5], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[6], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -835,7 +931,7 @@ func (c *gameEventServiceJSONClient) GetMyUnfinishedGames(ctx context.Context, i
 
 func (c *gameEventServiceJSONClient) callGetMyUnfinishedGames(ctx context.Context, in *GetMyUnfinishedGamesRequest) (*BroadcastGamesResponse, error) {
 	out := new(BroadcastGamesResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[6], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[7], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -881,7 +977,7 @@ func (c *gameEventServiceJSONClient) GetGameDocument(ctx context.Context, in *Ge
 
 func (c *gameEventServiceJSONClient) callGetGameDocument(ctx context.Context, in *GetGameDocumentRequest) (*ipc.GameDocument, error) {
 	out := new(ipc.GameDocument)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[7], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[8], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -1002,8 +1098,11 @@ func (s *gameEventServiceServer) ServeHTTP(resp http.ResponseWriter, req *http.R
 	case "SendGameEvent":
 		s.serveSendGameEvent(ctx, resp, req)
 		return
-	case "UpdateGameDocument":
-		s.serveUpdateGameDocument(ctx, resp, req)
+	case "ReplaceGameDocument":
+		s.serveReplaceGameDocument(ctx, resp, req)
+		return
+	case "PatchGameDocument":
+		s.servePatchGameDocument(ctx, resp, req)
 		return
 	case "SetBroadcastGamePrivacy":
 		s.serveSetBroadcastGamePrivacy(ctx, resp, req)
@@ -1564,7 +1663,7 @@ func (s *gameEventServiceServer) serveSendGameEventProtobuf(ctx context.Context,
 	callResponseSent(ctx, s.hooks)
 }
 
-func (s *gameEventServiceServer) serveUpdateGameDocument(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *gameEventServiceServer) serveReplaceGameDocument(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	header := req.Header.Get("Content-Type")
 	i := strings.Index(header, ";")
 	if i == -1 {
@@ -1572,9 +1671,9 @@ func (s *gameEventServiceServer) serveUpdateGameDocument(ctx context.Context, re
 	}
 	switch strings.TrimSpace(strings.ToLower(header[:i])) {
 	case "application/json":
-		s.serveUpdateGameDocumentJSON(ctx, resp, req)
+		s.serveReplaceGameDocumentJSON(ctx, resp, req)
 	case "application/protobuf":
-		s.serveUpdateGameDocumentProtobuf(ctx, resp, req)
+		s.serveReplaceGameDocumentProtobuf(ctx, resp, req)
 	default:
 		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
 		twerr := badRouteError(msg, req.Method, req.URL.Path)
@@ -1582,9 +1681,9 @@ func (s *gameEventServiceServer) serveUpdateGameDocument(ctx context.Context, re
 	}
 }
 
-func (s *gameEventServiceServer) serveUpdateGameDocumentJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *gameEventServiceServer) serveReplaceGameDocumentJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "UpdateGameDocument")
+	ctx = ctxsetters.WithMethodName(ctx, "ReplaceGameDocument")
 	ctx, err = callRequestRouted(ctx, s.hooks)
 	if err != nil {
 		s.writeError(ctx, resp, err)
@@ -1597,23 +1696,23 @@ func (s *gameEventServiceServer) serveUpdateGameDocumentJSON(ctx context.Context
 		s.handleRequestBodyError(ctx, resp, "the json request could not be decoded", err)
 		return
 	}
-	reqContent := new(UpdateDocumentRequest)
+	reqContent := new(ReplaceDocumentRequest)
 	unmarshaler := protojson.UnmarshalOptions{DiscardUnknown: true}
 	if err = unmarshaler.Unmarshal(rawReqBody, reqContent); err != nil {
 		s.handleRequestBodyError(ctx, resp, "the json request could not be decoded", err)
 		return
 	}
 
-	handler := s.GameEventService.UpdateGameDocument
+	handler := s.GameEventService.ReplaceGameDocument
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *UpdateDocumentRequest) (*GameEventResponse, error) {
+		handler = func(ctx context.Context, req *ReplaceDocumentRequest) (*GameEventResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*UpdateDocumentRequest)
+					typedReq, ok := req.(*ReplaceDocumentRequest)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*UpdateDocumentRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*ReplaceDocumentRequest) when calling interceptor")
 					}
-					return s.GameEventService.UpdateGameDocument(ctx, typedReq)
+					return s.GameEventService.ReplaceGameDocument(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
@@ -1639,7 +1738,7 @@ func (s *gameEventServiceServer) serveUpdateGameDocumentJSON(ctx context.Context
 		return
 	}
 	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *GameEventResponse and nil error while calling UpdateGameDocument. nil responses are not supported"))
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *GameEventResponse and nil error while calling ReplaceGameDocument. nil responses are not supported"))
 		return
 	}
 
@@ -1665,9 +1764,9 @@ func (s *gameEventServiceServer) serveUpdateGameDocumentJSON(ctx context.Context
 	callResponseSent(ctx, s.hooks)
 }
 
-func (s *gameEventServiceServer) serveUpdateGameDocumentProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *gameEventServiceServer) serveReplaceGameDocumentProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "UpdateGameDocument")
+	ctx = ctxsetters.WithMethodName(ctx, "ReplaceGameDocument")
 	ctx, err = callRequestRouted(ctx, s.hooks)
 	if err != nil {
 		s.writeError(ctx, resp, err)
@@ -1679,22 +1778,22 @@ func (s *gameEventServiceServer) serveUpdateGameDocumentProtobuf(ctx context.Con
 		s.handleRequestBodyError(ctx, resp, "failed to read request body", err)
 		return
 	}
-	reqContent := new(UpdateDocumentRequest)
+	reqContent := new(ReplaceDocumentRequest)
 	if err = proto.Unmarshal(buf, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
 		return
 	}
 
-	handler := s.GameEventService.UpdateGameDocument
+	handler := s.GameEventService.ReplaceGameDocument
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *UpdateDocumentRequest) (*GameEventResponse, error) {
+		handler = func(ctx context.Context, req *ReplaceDocumentRequest) (*GameEventResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*UpdateDocumentRequest)
+					typedReq, ok := req.(*ReplaceDocumentRequest)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*UpdateDocumentRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*ReplaceDocumentRequest) when calling interceptor")
 					}
-					return s.GameEventService.UpdateGameDocument(ctx, typedReq)
+					return s.GameEventService.ReplaceGameDocument(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
@@ -1720,7 +1819,187 @@ func (s *gameEventServiceServer) serveUpdateGameDocumentProtobuf(ctx context.Con
 		return
 	}
 	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *GameEventResponse and nil error while calling UpdateGameDocument. nil responses are not supported"))
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *GameEventResponse and nil error while calling ReplaceGameDocument. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	respBytes, err := proto.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/protobuf")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *gameEventServiceServer) servePatchGameDocument(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	header := req.Header.Get("Content-Type")
+	i := strings.Index(header, ";")
+	if i == -1 {
+		i = len(header)
+	}
+	switch strings.TrimSpace(strings.ToLower(header[:i])) {
+	case "application/json":
+		s.servePatchGameDocumentJSON(ctx, resp, req)
+	case "application/protobuf":
+		s.servePatchGameDocumentProtobuf(ctx, resp, req)
+	default:
+		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
+		twerr := badRouteError(msg, req.Method, req.URL.Path)
+		s.writeError(ctx, resp, twerr)
+	}
+}
+
+func (s *gameEventServiceServer) servePatchGameDocumentJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "PatchGameDocument")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	d := json.NewDecoder(req.Body)
+	rawReqBody := json.RawMessage{}
+	if err := d.Decode(&rawReqBody); err != nil {
+		s.handleRequestBodyError(ctx, resp, "the json request could not be decoded", err)
+		return
+	}
+	reqContent := new(PatchDocumentRequest)
+	unmarshaler := protojson.UnmarshalOptions{DiscardUnknown: true}
+	if err = unmarshaler.Unmarshal(rawReqBody, reqContent); err != nil {
+		s.handleRequestBodyError(ctx, resp, "the json request could not be decoded", err)
+		return
+	}
+
+	handler := s.GameEventService.PatchGameDocument
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *PatchDocumentRequest) (*GameEventResponse, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*PatchDocumentRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*PatchDocumentRequest) when calling interceptor")
+					}
+					return s.GameEventService.PatchGameDocument(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*GameEventResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*GameEventResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *GameEventResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *GameEventResponse and nil error while calling PatchGameDocument. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	marshaler := &protojson.MarshalOptions{UseProtoNames: !s.jsonCamelCase, EmitUnpopulated: !s.jsonSkipDefaults}
+	respBytes, err := marshaler.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *gameEventServiceServer) servePatchGameDocumentProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "PatchGameDocument")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	buf, err := io.ReadAll(req.Body)
+	if err != nil {
+		s.handleRequestBodyError(ctx, resp, "failed to read request body", err)
+		return
+	}
+	reqContent := new(PatchDocumentRequest)
+	if err = proto.Unmarshal(buf, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
+		return
+	}
+
+	handler := s.GameEventService.PatchGameDocument
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *PatchDocumentRequest) (*GameEventResponse, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*PatchDocumentRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*PatchDocumentRequest) when calling interceptor")
+					}
+					return s.GameEventService.PatchGameDocument(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*GameEventResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*GameEventResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *GameEventResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *GameEventResponse and nil error while calling PatchGameDocument. nil responses are not supported"))
 		return
 	}
 
@@ -3045,55 +3324,56 @@ func callClientError(ctx context.Context, h *twirp.ClientHooks, err twirp.Error)
 }
 
 var twirpFileDescriptor0 = []byte{
-	// 793 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x56, 0xdd, 0x4e, 0xeb, 0x46,
-	0x10, 0x96, 0xa1, 0x0e, 0x61, 0x42, 0xf8, 0x59, 0x28, 0xb8, 0x46, 0x94, 0xc8, 0xa0, 0x2a, 0x5c,
-	0xd4, 0x11, 0xa1, 0xad, 0xd4, 0xaa, 0x17, 0x2d, 0x7f, 0x69, 0xaa, 0x56, 0x8a, 0x4c, 0xb9, 0x41,
-	0x6a, 0x91, 0xb1, 0x37, 0x61, 0x91, 0xbd, 0xeb, 0x7a, 0xd7, 0xb4, 0xb9, 0x38, 0x17, 0xe7, 0x15,
-	0xce, 0x1b, 0x9e, 0xf3, 0x24, 0x47, 0xde, 0x75, 0x2c, 0xdb, 0x71, 0x80, 0xbb, 0xcc, 0xb7, 0x33,
-	0x3b, 0x3b, 0xdf, 0x37, 0x33, 0x0e, 0x1c, 0xb2, 0x70, 0xf2, 0x1f, 0x8b, 0x7d, 0x7e, 0xcf, 0x71,
-	0xfc, 0x4c, 0x3c, 0xdc, 0x9b, 0x01, 0x76, 0x14, 0x33, 0xc1, 0xd0, 0xda, 0xc4, 0x0d, 0xf1, 0xec,
-	0xd0, 0x44, 0x24, 0xf2, 0x2a, 0x1e, 0xd6, 0x36, 0x6c, 0x0d, 0xdc, 0x10, 0x5f, 0x3d, 0x63, 0x2a,
-	0x1c, 0xcc, 0x23, 0x46, 0x39, 0xb6, 0xce, 0x60, 0xf3, 0x2f, 0x12, 0xe2, 0x11, 0xa6, 0x6e, 0x20,
-	0xa6, 0xf2, 0x0c, 0x1d, 0x42, 0x2b, 0x62, 0x84, 0x0a, 0x7e, 0x1f, 0x30, 0x2e, 0x0c, 0xad, 0xa3,
-	0x75, 0x75, 0x07, 0x14, 0xf4, 0x07, 0xe3, 0xc2, 0xfa, 0x05, 0xbe, 0xba, 0x78, 0x74, 0x83, 0x00,
-	0xd3, 0x09, 0x3e, 0x67, 0x34, 0xe1, 0x23, 0x79, 0xa6, 0xa2, 0x8f, 0xa0, 0x9d, 0x45, 0x4f, 0x5c,
-	0x42, 0xb1, 0x9f, 0xc5, 0xaf, 0x29, 0x70, 0x20, 0x31, 0xeb, 0x93, 0x06, 0xe6, 0x45, 0x8c, 0x5d,
-	0x81, 0xcf, 0x63, 0xe6, 0xfa, 0x9e, 0xcb, 0x45, 0xfa, 0x36, 0x07, 0xff, 0x9b, 0x60, 0x2e, 0xd0,
-	0x29, 0xb4, 0xa2, 0xc0, 0x9d, 0xe2, 0x98, 0x0f, 0xe9, 0x98, 0x19, 0x5a, 0x67, 0xb9, 0xdb, 0xea,
-	0x6f, 0xd8, 0x24, 0xf2, 0xec, 0x91, 0xc4, 0x53, 0xd8, 0x29, 0xfa, 0x20, 0x03, 0x56, 0x02, 0xfc,
-	0x3f, 0xf1, 0x18, 0x35, 0x96, 0x3a, 0x5a, 0x77, 0xd5, 0x99, 0x99, 0xe8, 0x18, 0xf4, 0x38, 0x09,
-	0x30, 0x37, 0x96, 0x3b, 0x5a, 0xb7, 0xd5, 0x5f, 0x97, 0xd7, 0xc8, 0x6c, 0x29, 0xea, 0xa8, 0x43,
-	0xf4, 0x23, 0xac, 0x7b, 0xb3, 0x9a, 0xee, 0x53, 0xc8, 0xf8, 0xa2, 0xa3, 0x75, 0xd7, 0xfb, 0x48,
-	0xba, 0xe7, 0xe5, 0xa6, 0x31, 0x4e, 0xdb, 0x2b, 0x9a, 0x68, 0x17, 0x1a, 0x51, 0xf2, 0x10, 0x10,
-	0xcf, 0xd0, 0x3b, 0x5a, 0xb7, 0xe9, 0x64, 0x96, 0xf5, 0x03, 0xec, 0xd7, 0xd6, 0xa8, 0xa8, 0x47,
-	0x7b, 0xb0, 0x22, 0x35, 0x23, 0x8a, 0xa2, 0x55, 0xa7, 0x91, 0x9a, 0x43, 0xdf, 0xb2, 0x61, 0xa7,
-	0x14, 0x31, 0x8a, 0xc9, 0xb3, 0xeb, 0x4d, 0x0b, 0x79, 0xb4, 0x52, 0x9e, 0xf7, 0x1a, 0x18, 0x03,
-	0x2c, 0x5d, 0xf9, 0x35, 0x8b, 0xaf, 0x7c, 0x22, 0x58, 0x3c, 0xa3, 0x72, 0x0f, 0x56, 0x12, 0x8e,
-	0xe3, 0x42, 0x96, 0xd4, 0x1c, 0xfa, 0x68, 0x07, 0xf4, 0x80, 0x84, 0x44, 0x48, 0xba, 0x74, 0x47,
-	0x19, 0x69, 0x0e, 0x36, 0x1e, 0x73, 0x2c, 0x24, 0x5b, 0xba, 0x93, 0x59, 0xe8, 0x6b, 0x80, 0x84,
-	0x8e, 0x09, 0x25, 0xfc, 0x11, 0xfb, 0x92, 0x9a, 0xa6, 0x53, 0x40, 0xac, 0x03, 0xd8, 0x1f, 0x60,
-	0xf1, 0xe7, 0xf4, 0x36, 0x87, 0xe4, 0x73, 0xb2, 0x57, 0x58, 0x1f, 0x35, 0xd8, 0x2d, 0xd5, 0xc4,
-	0x73, 0x1a, 0x7e, 0x03, 0x3d, 0xad, 0x9b, 0x67, 0x2a, 0xf7, 0xed, 0x62, 0x23, 0xdb, 0xf5, 0x41,
-	0x65, 0xd8, 0x51, 0x17, 0x98, 0xef, 0xa0, 0x5d, 0xc2, 0x17, 0x32, 0x8c, 0x0e, 0x00, 0xbc, 0x54,
-	0x19, 0x26, 0x79, 0x51, 0xfd, 0xb2, 0x9a, 0x21, 0x43, 0x3f, 0xed, 0xa5, 0x28, 0xe5, 0x5c, 0x60,
-	0xc9, 0x42, 0xd3, 0x99, 0x99, 0xc8, 0x84, 0x66, 0x85, 0x84, 0xdc, 0xb6, 0xfe, 0x06, 0xf4, 0x2b,
-	0xa5, 0x4c, 0xb8, 0x42, 0x15, 0xaf, 0xc6, 0xc1, 0x06, 0x1d, 0xa7, 0x3f, 0xe4, 0x0b, 0x5a, 0x7d,
-	0x43, 0xb5, 0x53, 0x40, 0x30, 0x95, 0x6f, 0x4c, 0x5b, 0x58, 0x4d, 0xa4, 0x72, 0x2b, 0xea, 0xb5,
-	0x54, 0xd4, 0xcb, 0x3a, 0x85, 0xdd, 0x4c, 0xe4, 0x4b, 0xe6, 0x25, 0xa1, 0x1c, 0xe2, 0x5c, 0xe2,
-	0xfa, 0x46, 0xfa, 0x1e, 0xcc, 0x4b, 0x1c, 0xe0, 0x05, 0x43, 0xb6, 0x30, 0xec, 0x00, 0xf6, 0x6b,
-	0xc3, 0xb2, 0x95, 0x71, 0x0d, 0x5f, 0xde, 0x46, 0xbe, 0x2b, 0xe6, 0xde, 0xf1, 0x2d, 0x34, 0xfd,
-	0x0c, 0xca, 0xaa, 0xdd, 0xca, 0x67, 0x2d, 0xf7, 0xcd, 0x5d, 0xfa, 0x1f, 0x1a, 0xb0, 0x99, 0xf3,
-	0x74, 0xa3, 0xf4, 0x46, 0x4f, 0xb0, 0x5d, 0x33, 0x33, 0xa8, 0x5b, 0xee, 0x8a, 0xc5, 0xab, 0xc3,
-	0x3c, 0x79, 0x83, 0x67, 0xd6, 0x79, 0x4f, 0xb0, 0x5d, 0x53, 0x67, 0x35, 0xd7, 0x62, 0x06, 0xab,
-	0xb9, 0x5e, 0x20, 0x0d, 0x39, 0xd0, 0xbe, 0xc1, 0xb4, 0xd0, 0x17, 0x9d, 0x72, 0xec, 0x7c, 0xe7,
-	0x98, 0x87, 0x65, 0x8f, 0xb9, 0xdd, 0x8d, 0xee, 0x00, 0x29, 0x21, 0x8a, 0x04, 0xa3, 0xa3, 0x72,
-	0x58, 0xad, 0x54, 0xaf, 0xdf, 0xfd, 0x0f, 0xec, 0xdd, 0x60, 0x51, 0xbb, 0x86, 0xac, 0x17, 0x26,
-	0x34, 0xf3, 0x79, 0xfd, 0x7e, 0x17, 0xb6, 0xe6, 0x56, 0x16, 0xfa, 0xa6, 0x12, 0xb5, 0x60, 0xa7,
-	0x99, 0xc7, 0x6f, 0xd9, 0x11, 0x68, 0x02, 0x3b, 0x75, 0x2b, 0x09, 0x9d, 0xcc, 0x65, 0x59, 0xb4,
-	0xb6, 0xde, 0x98, 0xe8, 0x77, 0xd8, 0xa8, 0x4c, 0x26, 0x3a, 0xae, 0xad, 0xa4, 0xaa, 0xc2, 0xfc,
-	0x78, 0x9c, 0xff, 0x7c, 0xf7, 0xd3, 0x84, 0x88, 0xc7, 0xe4, 0xc1, 0xf6, 0x58, 0xd8, 0xf3, 0x59,
-	0x48, 0x28, 0x3b, 0xfd, 0xae, 0x17, 0x10, 0xf9, 0x25, 0xef, 0xc5, 0x91, 0xd7, 0x73, 0x23, 0xd2,
-	0x93, 0x5f, 0xf4, 0x5e, 0xf5, 0x3f, 0xc1, 0x43, 0x43, 0xe2, 0x67, 0x9f, 0x03, 0x00, 0x00, 0xff,
-	0xff, 0x2b, 0x7a, 0xa5, 0x92, 0x2e, 0x08, 0x00, 0x00,
+	// 815 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x56, 0xcb, 0x6e, 0xf3, 0x44,
+	0x14, 0x96, 0xff, 0x1f, 0xa7, 0xe9, 0x49, 0xd3, 0x36, 0x93, 0x28, 0x35, 0xae, 0x4a, 0x23, 0x53,
+	0xa1, 0x74, 0x81, 0xa3, 0xa6, 0x80, 0x04, 0x62, 0x01, 0xbd, 0x10, 0x82, 0x40, 0x8a, 0xa6, 0x20,
+	0x21, 0x04, 0x54, 0xae, 0x3d, 0x49, 0xa6, 0xb2, 0x67, 0x8c, 0x67, 0x5c, 0xc8, 0x82, 0x05, 0x8f,
+	0x0a, 0x0f, 0xc0, 0x33, 0x20, 0x8f, 0x1d, 0xcb, 0x76, 0x9c, 0xb6, 0x12, 0xbb, 0x9c, 0x6f, 0xce,
+	0xf5, 0x3b, 0x97, 0x18, 0x4e, 0x79, 0xb0, 0xf8, 0x9d, 0x47, 0x9e, 0xb8, 0x17, 0x24, 0x7a, 0xa2,
+	0x2e, 0x19, 0xad, 0x01, 0x3b, 0x8c, 0xb8, 0xe4, 0x68, 0x6f, 0xe1, 0x04, 0x64, 0xfd, 0x68, 0x22,
+	0x1a, 0xba, 0x15, 0x0d, 0xab, 0x0b, 0x9d, 0x89, 0x13, 0x90, 0xdb, 0x27, 0xc2, 0x24, 0x26, 0x22,
+	0xe4, 0x4c, 0x10, 0xeb, 0x12, 0x0e, 0xbf, 0xa7, 0x01, 0x99, 0x11, 0xe6, 0xf8, 0x72, 0xa5, 0xde,
+	0xd0, 0x29, 0xb4, 0x42, 0x4e, 0x99, 0x14, 0xf7, 0x3e, 0x17, 0xd2, 0xd0, 0x06, 0xda, 0x50, 0xc7,
+	0x90, 0x42, 0xdf, 0x72, 0x21, 0xad, 0x2f, 0xe0, 0xdd, 0xeb, 0xa5, 0xe3, 0xfb, 0x84, 0x2d, 0xc8,
+	0x15, 0x67, 0xb1, 0x98, 0xa9, 0xb7, 0xd4, 0xfa, 0x7d, 0x68, 0x67, 0xd6, 0x0b, 0x87, 0x32, 0xe2,
+	0x65, 0xf6, 0x7b, 0x29, 0x38, 0x51, 0x98, 0xf5, 0x8f, 0x06, 0xe6, 0x75, 0x44, 0x1c, 0x49, 0xae,
+	0x22, 0xee, 0x78, 0xae, 0x23, 0x64, 0x92, 0x1b, 0x26, 0xbf, 0xc5, 0x44, 0x48, 0x74, 0x01, 0xad,
+	0xd0, 0x77, 0x56, 0x24, 0x12, 0x53, 0x36, 0xe7, 0x86, 0x36, 0x78, 0x3b, 0x6c, 0x8d, 0x0f, 0x6c,
+	0x1a, 0xba, 0xf6, 0x4c, 0xe1, 0x09, 0x8c, 0x8b, 0x3a, 0xc8, 0x80, 0x1d, 0x9f, 0xfc, 0x41, 0x5d,
+	0xce, 0x8c, 0x37, 0x03, 0x6d, 0xb8, 0x8b, 0xd7, 0x22, 0x3a, 0x03, 0x3d, 0x8a, 0x7d, 0x22, 0x8c,
+	0xb7, 0x03, 0x6d, 0xd8, 0x1a, 0xef, 0x2b, 0x37, 0x2a, 0x5a, 0x82, 0xe2, 0xf4, 0x11, 0x7d, 0x0a,
+	0xfb, 0xee, 0xba, 0xa6, 0xfb, 0x04, 0x32, 0xde, 0x19, 0x68, 0xc3, 0xfd, 0x31, 0x52, 0xea, 0x79,
+	0xb9, 0x89, 0x0d, 0x6e, 0xbb, 0x45, 0x11, 0xf5, 0xa1, 0x11, 0xc6, 0x0f, 0x3e, 0x75, 0x0d, 0x7d,
+	0xa0, 0x0d, 0x9b, 0x38, 0x93, 0xac, 0x4f, 0xe0, 0xb8, 0xb6, 0xc6, 0x94, 0x7a, 0x74, 0x04, 0x3b,
+	0xaa, 0x67, 0x34, 0xa5, 0x68, 0x17, 0x37, 0x12, 0x71, 0xea, 0x59, 0x36, 0xf4, 0x4a, 0x16, 0xb3,
+	0x88, 0x3e, 0x39, 0xee, 0xaa, 0x10, 0x47, 0x2b, 0xc5, 0xf9, 0x4b, 0x03, 0x63, 0x42, 0x94, 0xaa,
+	0xf8, 0x8a, 0x47, 0xb7, 0x1e, 0x95, 0x3c, 0x5a, 0x53, 0x79, 0x04, 0x3b, 0xb1, 0x20, 0x51, 0x21,
+	0x4a, 0x22, 0x4e, 0x3d, 0xd4, 0x03, 0xdd, 0xa7, 0x01, 0x95, 0x8a, 0x2e, 0x1d, 0xa7, 0x42, 0x12,
+	0x83, 0xcf, 0xe7, 0x82, 0x48, 0xc5, 0x96, 0x8e, 0x33, 0x09, 0xbd, 0x07, 0x10, 0xb3, 0x39, 0x65,
+	0x54, 0x2c, 0x89, 0xa7, 0xa8, 0x69, 0xe2, 0x02, 0x62, 0x9d, 0xc0, 0xf1, 0x84, 0xc8, 0xef, 0x56,
+	0x3f, 0xe4, 0x90, 0x4a, 0x27, 0xcb, 0xc2, 0xfa, 0x5b, 0x83, 0x7e, 0xa9, 0x26, 0x91, 0xd3, 0xf0,
+	0x35, 0xe8, 0x49, 0xdd, 0x22, 0xeb, 0xf2, 0xd8, 0x2e, 0x0e, 0xb2, 0x5d, 0x6f, 0x54, 0x86, 0x71,
+	0xea, 0xc0, 0xfc, 0x13, 0xda, 0x25, 0x7c, 0x2b, 0xc3, 0xe8, 0x04, 0xc0, 0x4d, 0x3a, 0xc3, 0x15,
+	0x2f, 0xe9, 0xbc, 0xec, 0x66, 0xc8, 0xd4, 0x4b, 0x66, 0x29, 0x4c, 0x38, 0x97, 0x44, 0xb1, 0xd0,
+	0xc4, 0x6b, 0x11, 0x99, 0xd0, 0xac, 0x90, 0x90, 0xcb, 0xd6, 0x2f, 0x80, 0xbe, 0x64, 0x8c, 0x4b,
+	0x47, 0xa6, 0xc5, 0xa7, 0xeb, 0x60, 0x83, 0x4e, 0x92, 0x1f, 0x2a, 0x83, 0xd6, 0xd8, 0x48, 0xc7,
+	0xc9, 0xa7, 0x84, 0xa9, 0x1c, 0x93, 0x11, 0x4e, 0x37, 0x32, 0x55, 0x2b, 0xf6, 0xeb, 0x4d, 0xb1,
+	0x5f, 0xd6, 0x05, 0xf4, 0xb3, 0x26, 0xdf, 0x70, 0x37, 0x0e, 0xd4, 0x12, 0xe7, 0x2d, 0xae, 0x1f,
+	0xa4, 0x8f, 0xc1, 0xbc, 0x21, 0x3e, 0xd9, 0xb2, 0x64, 0x5b, 0xcd, 0x4e, 0xe0, 0xb8, 0xd6, 0x2c,
+	0x3b, 0x19, 0x13, 0xe8, 0xe3, 0x24, 0x6f, 0x77, 0x23, 0x91, 0x0f, 0xa1, 0xe9, 0x65, 0x50, 0x56,
+	0x6e, 0x27, 0x5f, 0xb6, 0x5c, 0x37, 0x57, 0xb1, 0x6e, 0xa1, 0x37, 0x73, 0xa4, 0xbb, 0xfc, 0x7f,
+	0x6e, 0xc6, 0xff, 0x36, 0xe0, 0x30, 0xe7, 0xfb, 0x2e, 0x9d, 0x1b, 0xf4, 0x08, 0xdd, 0x9a, 0xdd,
+	0x43, 0xc3, 0xf2, 0x74, 0x6d, 0x3f, 0x41, 0xe6, 0xf9, 0x2b, 0x34, 0xb3, 0x09, 0x7e, 0x84, 0x6e,
+	0x0d, 0x5f, 0xd5, 0x58, 0xdb, 0x3b, 0x51, 0x8d, 0xf5, 0x0c, 0xf9, 0x08, 0x43, 0xfb, 0x8e, 0xb0,
+	0xc2, 0x7c, 0x0d, 0xca, 0xb6, 0x9b, 0x13, 0x68, 0x9e, 0x96, 0x35, 0x36, 0xfe, 0x03, 0xd0, 0xcf,
+	0xd0, 0xcd, 0x1a, 0x5a, 0x64, 0x18, 0x9d, 0x95, 0xed, 0xea, 0x7b, 0xfe, 0xb2, 0xf7, 0x1f, 0xa1,
+	0xa3, 0xba, 0x5c, 0xf2, 0x6d, 0x95, 0xad, 0xea, 0xc6, 0xe0, 0x65, 0xcf, 0xbf, 0xc2, 0xd1, 0x1d,
+	0x91, 0xb5, 0xa7, 0xd2, 0x7a, 0xe6, 0x8a, 0x64, 0x3a, 0x2f, 0xfb, 0x77, 0xa0, 0xb3, 0x71, 0x56,
+	0xd1, 0x07, 0x15, 0xab, 0x2d, 0x77, 0xd7, 0x3c, 0x7b, 0xcd, 0x1d, 0x43, 0x0b, 0xe8, 0xd5, 0x9d,
+	0x4d, 0x74, 0xbe, 0x11, 0x65, 0xdb, 0x69, 0x7d, 0x65, 0xa0, 0x6f, 0xe0, 0xa0, 0x72, 0x3d, 0xaa,
+	0xfd, 0xad, 0x3f, 0x2e, 0xe6, 0xe6, 0xea, 0x5d, 0x7d, 0xfe, 0xd3, 0x67, 0x0b, 0x2a, 0x97, 0xf1,
+	0x83, 0xed, 0xf2, 0x60, 0xe4, 0xf1, 0x80, 0x32, 0x7e, 0xf1, 0xd1, 0xc8, 0xa7, 0xea, 0x6b, 0x63,
+	0x14, 0x85, 0xee, 0xc8, 0x09, 0xe9, 0x48, 0x7d, 0x75, 0x8c, 0xaa, 0xdf, 0x2d, 0x0f, 0x0d, 0x85,
+	0x5f, 0xfe, 0x17, 0x00, 0x00, 0xff, 0xff, 0x7e, 0x6d, 0xcb, 0xa3, 0xd2, 0x08, 0x00, 0x00,
 }

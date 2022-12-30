@@ -309,7 +309,10 @@ export const uint8ToRune = (i: number, alphabet: Alphabet): string => {
   if (i === 0) {
     return Blank;
   }
-  // handle negative numbers (i.e. > 128 for uint8)
+  // 2's complement
+  if (i > 127) {
+    return alphabet.letters[256 - (i + 1)]?.rune?.toLowerCase() ?? '';
+  }
   return alphabet.letters[i - 1]?.rune ?? '';
 };
 

@@ -396,26 +396,50 @@ export declare class DeleteBroadcastGameResponse extends Message<DeleteBroadcast
 }
 
 /**
- * @generated from message game_service.UpdateDocumentRequest
+ * @generated from message game_service.ReplaceDocumentRequest
  */
-export declare class UpdateDocumentRequest extends Message<UpdateDocumentRequest> {
+export declare class ReplaceDocumentRequest extends Message<ReplaceDocumentRequest> {
   /**
    * @generated from field: ipc.GameDocument document = 1;
    */
   document?: GameDocument;
 
-  constructor(data?: PartialMessage<UpdateDocumentRequest>);
+  constructor(data?: PartialMessage<ReplaceDocumentRequest>);
 
   static readonly runtime: typeof proto3;
-  static readonly typeName = "game_service.UpdateDocumentRequest";
+  static readonly typeName = "game_service.ReplaceDocumentRequest";
   static readonly fields: FieldList;
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateDocumentRequest;
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ReplaceDocumentRequest;
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateDocumentRequest;
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ReplaceDocumentRequest;
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateDocumentRequest;
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ReplaceDocumentRequest;
 
-  static equals(a: UpdateDocumentRequest | PlainMessage<UpdateDocumentRequest> | undefined, b: UpdateDocumentRequest | PlainMessage<UpdateDocumentRequest> | undefined): boolean;
+  static equals(a: ReplaceDocumentRequest | PlainMessage<ReplaceDocumentRequest> | undefined, b: ReplaceDocumentRequest | PlainMessage<ReplaceDocumentRequest> | undefined): boolean;
+}
+
+/**
+ * @generated from message game_service.PatchDocumentRequest
+ */
+export declare class PatchDocumentRequest extends Message<PatchDocumentRequest> {
+  /**
+   * @generated from field: ipc.GameDocument document = 1;
+   */
+  document?: GameDocument;
+
+  constructor(data?: PartialMessage<PatchDocumentRequest>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "game_service.PatchDocumentRequest";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PatchDocumentRequest;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): PatchDocumentRequest;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): PatchDocumentRequest;
+
+  static equals(a: PatchDocumentRequest | PlainMessage<PatchDocumentRequest> | undefined, b: PatchDocumentRequest | PlainMessage<PatchDocumentRequest> | undefined): boolean;
 }
 

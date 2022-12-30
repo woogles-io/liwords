@@ -3,7 +3,7 @@
 /* eslint-disable */
 /* @ts-nocheck */
 
-import {AnnotatedGameEvent, BroadcastGamePrivacy, BroadcastGamesResponse, CreateBroadcastGameRequest, CreateBroadcastGameResponse, DeleteBroadcastGameRequest, DeleteBroadcastGameResponse, GameEventResponse, GetGameDocumentRequest, GetGamesForEditorRequest, GetMyUnfinishedGamesRequest, UpdateDocumentRequest} from "./omgwords_pb.js";
+import {AnnotatedGameEvent, BroadcastGamePrivacy, BroadcastGamesResponse, CreateBroadcastGameRequest, CreateBroadcastGameResponse, DeleteBroadcastGameRequest, DeleteBroadcastGameResponse, GameEventResponse, GetGameDocumentRequest, GetGamesForEditorRequest, GetMyUnfinishedGamesRequest, PatchDocumentRequest, ReplaceDocumentRequest} from "./omgwords_pb.js";
 import {MethodKind} from "@bufbuild/protobuf";
 import {GameDocument} from "../ipc/omgwords_pb.js";
 
@@ -46,11 +46,20 @@ export declare const GameEventService: {
       readonly kind: MethodKind.Unary,
     },
     /**
-     * @generated from rpc game_service.GameEventService.UpdateGameDocument
+     * @generated from rpc game_service.GameEventService.ReplaceGameDocument
      */
-    readonly updateGameDocument: {
-      readonly name: "UpdateGameDocument",
-      readonly I: typeof UpdateDocumentRequest,
+    readonly replaceGameDocument: {
+      readonly name: "ReplaceGameDocument",
+      readonly I: typeof ReplaceDocumentRequest,
+      readonly O: typeof GameEventResponse,
+      readonly kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc game_service.GameEventService.PatchGameDocument
+     */
+    readonly patchGameDocument: {
+      readonly name: "PatchGameDocument",
+      readonly I: typeof PatchDocumentRequest,
       readonly O: typeof GameEventResponse,
       readonly kind: MethodKind.Unary,
     },

@@ -162,10 +162,20 @@ export const DeleteBroadcastGameResponse = proto3.makeMessageType(
 );
 
 /**
- * @generated from message game_service.UpdateDocumentRequest
+ * @generated from message game_service.ReplaceDocumentRequest
  */
-export const UpdateDocumentRequest = proto3.makeMessageType(
-  "game_service.UpdateDocumentRequest",
+export const ReplaceDocumentRequest = proto3.makeMessageType(
+  "game_service.ReplaceDocumentRequest",
+  () => [
+    { no: 1, name: "document", kind: "message", T: GameDocument },
+  ],
+);
+
+/**
+ * @generated from message game_service.PatchDocumentRequest
+ */
+export const PatchDocumentRequest = proto3.makeMessageType(
+  "game_service.PatchDocumentRequest",
   () => [
     { no: 1, name: "document", kind: "message", T: GameDocument },
   ],
