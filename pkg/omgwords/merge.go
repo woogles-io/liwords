@@ -19,7 +19,12 @@ func MergeGameDocuments(dst *ipc.GameDocument, src *ipc.GameDocument) error {
 		dst.Players = nil
 
 	}
-	// for Events, it's ok to append, so let's not change the logic.
+	if len(dst.Events) > 0 && len(src.Events) > 0 {
+		// # of events don't need to match here. If both specify it, do a complete
+		// replacement. This allows us to overwrite history if the annotator
+		// makes a mistake and wants to fix it.
+		dst.Events = nil
+	}
 	if len(dst.Racks) > 0 && len(src.Racks) > 0 {
 		if len(src.Racks) != len(dst.Racks) {
 			return errors.New("must have same number of racks if specified")
