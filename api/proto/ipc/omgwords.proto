@@ -493,6 +493,4 @@ message GameDocument {
   // The index of the player on turn
   uint32 player_on_turn = 23;
   Timers timers = 24;
-  // real time or correspondence?
-  GameMode game_mode = 25;
 }

@@ -22,6 +22,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/mod"
+	"github.com/domino14/liwords/pkg/omgwords"
 	"github.com/domino14/liwords/pkg/omgwords/stores"
 	"github.com/domino14/liwords/pkg/puzzles"
 	"github.com/domino14/liwords/pkg/sessions"
@@ -444,10 +445,19 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			// 2. Chat realms are the only ones that are compatible with
 			// presence at this moment.
 			resp.Realms = append(resp.Realms, "chat-puzzlelobby")
+		} else if strings.HasPrefix(path, "/editor/") {
+			gameID := strings.TrimPrefix(path, "/editor/")
+			// Use the `channel-` generic realm for now.
+			realm := "channel-" + omgwords.AnnotatedChannelName(gameID)
+			// Append a chat realm for presence
+			// XXX: check if this is required
+
+			resp.Realms = append(resp.Realms, realm, "chat-game-editor", "chat-"+realm)
+
 		} else if strings.HasPrefix(path, "/annotated/") {
 			// annotated games are always in TV mode for viewers
 			gameID := strings.TrimPrefix(path, "/annotated/")
-			realm := "gametv-" + gameID
+			realm := "channel-" + omgwords.AnnotatedChannelName(gameID)
 			resp.Realms = append(resp.Realms, realm, "chat-"+realm)
 		} else {
 			log.Debug().Str("path", path).Msg("realm-req-not-handled")

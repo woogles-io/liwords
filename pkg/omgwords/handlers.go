@@ -11,12 +11,13 @@ import (
 )
 
 // handlers handle events from either the HTTP API or from the websocket/bus
+// The return boolean indicates if the game ended as a result of this event.
 func handleEvent(ctx context.Context, userID string, evt *ipc.ClientGameplayEvent,
-	gs *stores.GameDocumentStore, evtChan chan *entity.EventWrapper) error {
+	gs *stores.GameDocumentStore, evtChan chan *entity.EventWrapper) (bool, error) {
 
 	g, err := gs.GetDocument(ctx, evt.GameId, true)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// Pretty much anything in the game document can change after the event
@@ -36,7 +37,7 @@ func handleEvent(ctx context.Context, userID string, evt *ipc.ClientGameplayEven
 	err = cwgame.ProcessGameplayEvent(ctx, evt, userID, g.GameDocument)
 	if err != nil {
 		gs.UnlockDocument(ctx, g)
-		return err
+		return false, err
 	}
 
 	// Now check for changes and send events accordingly.
@@ -53,10 +54,14 @@ func handleEvent(ctx context.Context, userID string, evt *ipc.ClientGameplayEven
 			sge.UserId = g.Players[evt.PlayerIndex].UserId
 
 			wrapped := entity.WrapEvent(sge, ipc.MessageType_OMGWORDS_GAMEPLAY_EVENT)
-			wrapped.AddAudience(entity.AudGameTV, g.Uid)
-			for _, p := range g.Players {
-				wrapped.AddAudience(entity.AudUser,
-					fmt.Sprintf("%s.game.%s", p.UserId, g.Uid))
+			if g.Type == ipc.GameType_ANNOTATED {
+				wrapped.AddAudience(entity.AudChannel, AnnotatedChannelName(g.Uid))
+			} else {
+				wrapped.AddAudience(entity.AudGameTV, g.Uid)
+				for _, p := range g.Players {
+					wrapped.AddAudience(entity.AudUser,
+						fmt.Sprintf("%s.game.%s", p.UserId, g.Uid))
+				}
 			}
 			evtChan <- wrapped
 		}
@@ -64,16 +69,16 @@ func handleEvent(ctx context.Context, userID string, evt *ipc.ClientGameplayEven
 
 	err = gs.UpdateDocument(ctx, g)
 	if err != nil {
-		return err
+		return false, err
 	}
-
+	gameEnded := false
 	if g.PlayState == ipc.PlayState_GAME_OVER {
 		// rate the game and send such and such.
 		// performendgameduties
-
+		gameEnded = true
 	} else {
 		// potentially send bot move request
 	}
-	return nil
+	return gameEnded, nil
 
 }

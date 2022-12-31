@@ -45,8 +45,8 @@ func loadGDoc(testfilename string) *ipc.GameDocument {
 
 func TestNewGame(t *testing.T) {
 	is := is.New(t)
-	rules := NewBasicGameRules("NWL20", "CrosswordGame", "english", "classic",
-		[]int{300, 300}, 1, 0, false)
+	rules := NewBasicGameRules("NWL20", "CrosswordGame", "english", ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
+		"classic", []int{300, 300}, 1, 0, false)
 	g, err := NewGame(DefaultConfig, rules, []*ipc.GameDocument_MinimalPlayerInfo{
 		{Nickname: "Cesitar", RealName: "Cesar", UserId: "cesar1"},
 		{Nickname: "Lucas", RealName: "Lucas", UserId: "lucas1"},
@@ -62,8 +62,8 @@ func TestStartGame(t *testing.T) {
 	globalNower = &FakeNower{fakeMeow: 12345}
 	defer restoreGlobalNower()
 
-	rules := NewBasicGameRules("NWL20", "CrosswordGame", "english", "classic",
-		[]int{300, 300}, 1, 0, false)
+	rules := NewBasicGameRules("NWL20", "CrosswordGame", "english", ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
+		"classic", []int{300, 300}, 1, 0, false)
 	g, _ := NewGame(DefaultConfig, rules, []*ipc.GameDocument_MinimalPlayerInfo{
 		{Nickname: "Cesitar", RealName: "Cesar", UserId: "cesar1"},
 		{Nickname: "Lucas", RealName: "Lucas", UserId: "lucas1"},
@@ -1151,6 +1151,38 @@ func TestTripleChallenge(t *testing.T) {
 	// Player indexed 1 wins even though they had fewer points, because of
 	// the triple challenge rule
 	is.Equal(gdoc.Winner, int32(1))
+}
+
+func TestExchange(t *testing.T) {
+	is := is.New(t)
+	documentfile := "document-earlygame.json"
+	gdoc := loadGDoc(documentfile)
+	// use a timestamp that's a little bit later than the
+	// time_of_last_update in the doc.
+	globalNower = &FakeNower{
+		fakeMeow: gdoc.Timers.TimeOfLastUpdate + 5000}
+	defer restoreGlobalNower()
+	ctx := ctxForTests()
+
+	// This player's rack is EEIKNTW
+	cge := &ipc.ClientGameplayEvent{
+		Type:   ipc.ClientGameplayEvent_EXCHANGE,
+		GameId: "9aK3YgVk",
+		Tiles:  "EKW",
+	}
+	userID := "2gJGaYnchL6LbQVTNQ6mjT"
+
+	err := ProcessGameplayEvent(ctx, cge, userID, gdoc)
+	is.NoErr(err)
+	fmt.Println(gdoc.Events[len(gdoc.Events)-1])
+	is.True(proto.Equal(gdoc.Events[len(gdoc.Events)-1], &ipc.GameEvent{
+		Rack:            []byte{5, 5, 9, 11, 14, 20, 23},
+		Type:            ipc.GameEvent_EXCHANGE,
+		Cumulative:      62,
+		Exchanged:       []byte{5, 11, 23},
+		Leave:           []byte{5, 9, 14, 20},
+		MillisRemaining: 883808,
+	}))
 }
 
 func BenchmarkLoadDocumentJSON(b *testing.B) {

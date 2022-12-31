@@ -691,7 +691,7 @@ export const useOnSocketMsg = () => {
             const d = parsedMsg as GameDocumentEvent;
             dispatchGameContext({
               actionType: ActionType.InitFromDocument,
-              payload: d,
+              payload: d.doc,
             });
             break;
           }

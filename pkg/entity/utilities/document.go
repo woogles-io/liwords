@@ -134,7 +134,6 @@ func ToGameDocument(g *entity.Game, cfg *config.Config) (*ipc.GameDocument, erro
 			MaxOvertime:      int32(g.Timers.MaxOvertime),
 			IncrementSeconds: g.GameReq.IncrementSeconds,
 		},
-		GameMode: g.GameReq.GameMode,
 	}
 
 	populateBoard(g, gdoc, letterdist)

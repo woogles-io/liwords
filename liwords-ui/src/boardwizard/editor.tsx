@@ -3,16 +3,20 @@
 import { HomeOutlined } from '@ant-design/icons';
 import { Card } from 'antd';
 import React, { useCallback, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ActionType } from '../actions/actions';
-import { alphabetFromName } from '../constants/alphabets';
+import { alphabetFromName, runesToUint8Array } from '../constants/alphabets';
 import { Analyzer } from '../gameroom/analyzer';
 import { BoardPanel } from '../gameroom/board_panel';
-import { defaultGameInfo, GameInfo } from '../gameroom/game_info';
 import { PlayerCards } from '../gameroom/player_cards';
 import Pool from '../gameroom/pool';
 import { ScoreCard } from '../gameroom/scorecard';
 import { GameRules } from '../gen/api/proto/ipc/omgwords_pb';
+import { GameRequest } from '../gen/api/proto/ipc/omgwords_pb';
+import { RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
+import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
+import { GameInfo } from '../gameroom/game_info';
+
 import {
   ClientGameplayEvent,
   GameDocument_MinimalPlayerInfo,
@@ -21,7 +25,7 @@ import {
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { GameDocument } from '../gen/api/proto/ipc/omgwords_pb';
 import { GameInfoResponse } from '../gen/api/proto/ipc/omgwords_pb';
-import { ChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
+import { ChallengeRule as MacondoChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
 import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_connectweb';
 import { defaultLetterDistribution } from '../lobby/sought_game_interactions';
 import { TopBar } from '../navigation/topbar';
@@ -54,7 +58,8 @@ const blankGamePayload = new GameDocument({
 
 export const BoardEditor = () => {
   const { useState } = useMountedState();
-  const [gameInfo, setGameInfo] = useState<GameInfoResponse>(defaultGameInfo);
+  const { gameID } = useParams();
+  const navigate = useNavigate();
 
   const { gameContext: examinableGameContext } =
     useExaminableGameContextStoreContext();
@@ -70,9 +75,9 @@ export const BoardEditor = () => {
       enableHoverDefine: true,
       gameContext,
       gameDone: true,
-      gameID: undefined,
-      lexicon: gameInfo.gameRequest?.lexicon ?? '',
-      variant: gameInfo.gameRequest?.rules?.variantName,
+      gameID: gameID,
+      lexicon: '',
+      variant: '',
     });
 
   const eventClient = useClient(GameEventService);
@@ -83,15 +88,21 @@ export const BoardEditor = () => {
   // }, [handleExamineGoTo, handleExamineStart]);
 
   const fetchAndDispatchDocument = useCallback(
-    async (gid: string) => {
+    async (gid: string, redirect: boolean) => {
       try {
         const resp = await eventClient.getGameDocument({
           gameId: gid,
         });
+        console.log('got a game document, dispatching, redirect is', redirect);
         dispatchGameContext({
           actionType: ActionType.InitFromDocument,
           payload: resp,
         });
+        if (redirect) {
+          // Also, redirect the URL so we can subscribe to the right channel
+          // on the socket.
+          navigate(`/editor/${encodeURIComponent(gid)}`, { replace: true });
+        }
       } catch (e) {
         flashError(e);
       }
@@ -99,8 +110,12 @@ export const BoardEditor = () => {
     [dispatchGameContext, eventClient]
   );
 
-  // Initialize on mount with unfinished game or new game.
+  // Initialize on mount with unfinished game, new game, or existing game:
   useEffect(() => {
+    if (gameID) {
+      fetchAndDispatchDocument(gameID, false);
+      return;
+    }
     const initFromDoc = async () => {
       let continuedGame;
 
@@ -122,12 +137,11 @@ export const BoardEditor = () => {
         return;
       }
       // Otherwise, fetch the game from the server and try to continue it.
-      fetchAndDispatchDocument(continuedGame.gameId);
+      fetchAndDispatchDocument(continuedGame.gameId, true);
     };
 
     initFromDoc();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [gameID]);
 
   const sortedRack = useMemo(() => {
     const rack =
@@ -136,21 +150,49 @@ export const BoardEditor = () => {
   }, [examinableGameContext]);
 
   const alphabet = useMemo(
-    () => alphabetFromName(gameInfo.gameRequest?.rules?.letterDistributionName),
-    [gameInfo]
+    () => alphabetFromName(gameContext.gameDocument.letterDistribution),
+    [gameContext.gameDocument.letterDistribution]
   );
 
-  const changeCurrentRack = (rack: string) => {
-    dispatchGameContext({
-      actionType: ActionType.ChangePlayerRack,
-      payload: {
-        rack: rack,
-      },
-    });
+  const changeCurrentRack = async (rack: string) => {
+    const onturn = gameContext.onturn;
+    const racks: [Uint8Array, Uint8Array] = [
+      new Uint8Array(),
+      new Uint8Array(),
+    ];
+    racks[onturn] = Uint8Array.from(
+      runesToUint8Array(rack, gameContext.alphabet)
+    );
+
+    try {
+      await eventClient.patchGameDocument({
+        document: {
+          uid: gameContext.gameID,
+          racks: racks,
+        },
+      });
+      // This should send an event back via the socket
+      // dispatchGameContext({
+      //   actionType: ActionType.ChangePlayerRack,
+      //   payload: {
+      //     rack: rack,
+      //   },
+      // });
+    } catch (e) {
+      flashError(e);
+    }
   };
 
-  const sendGameplayEvent = (evt: ClientGameplayEvent) => {
-    eventClient.createBroadcastGame;
+  const sendGameplayEvent = async (evt: ClientGameplayEvent) => {
+    console.log('sendGameplayEvent', evt);
+    try {
+      await eventClient.sendGameEvent({
+        event: evt,
+        userId: gameContext.players[gameContext.onturn].userID,
+      });
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   const createNewGame = async (
@@ -181,7 +223,7 @@ export const BoardEditor = () => {
         challengeRule: chrule,
         public: false,
       });
-      fetchAndDispatchDocument(resp.gameId);
+      fetchAndDispatchDocument(resp.gameId, true);
     } catch (e) {
       flashError(e);
     }
@@ -198,6 +240,50 @@ export const BoardEditor = () => {
       flashError(e);
     }
   };
+
+  const macChallengeRule = useMemo(
+    () => gameContext.gameDocument.challengeRule.valueOf(),
+    [gameContext.gameDocument.challengeRule]
+  );
+  // Create a GameInfoResponse for the purposes of rendering a few of our widgets.
+  console.log('macChallengeRule', macChallengeRule);
+  const gameInfo = useMemo(() => {
+    const d = gameContext.gameDocument;
+
+    return new GameInfoResponse({
+      players: d.players.map(
+        (p) =>
+          new PlayerInfo({
+            userId: p.userId,
+            nickname: p.nickname,
+            fullName: p.realName,
+          })
+      ),
+      timeControlName: 'Annotated',
+      tournamentId: '', // maybe can populate from a description later
+      gameEndReason: d.endReason,
+      scores: d.currentScores,
+      winner: d.winner,
+      createdAt: d.createdAt,
+      gameId: d.uid,
+      // no last update
+      type: d.type,
+      gameRequest: new GameRequest({
+        lexicon: d.lexicon,
+        rules: new GameRules({
+          boardLayoutName: d.boardLayout,
+          letterDistributionName: d.letterDistribution,
+          variantName: d.variant,
+        }),
+        incrementSeconds: d.timers?.incrementSeconds,
+        challengeRule: macChallengeRule,
+        ratingMode: RatingMode.CASUAL,
+        requestId: 'none',
+        maxOvertimeMinutes: d.timers?.maxOvertime,
+        originalRequestId: 'none',
+      }),
+    });
+  }, [gameContext.gameDocument]);
 
   return (
     <div className="game-container">
@@ -218,8 +304,8 @@ export const BoardEditor = () => {
           /> */}
           <Analyzer
             includeCard
-            lexicon={gameInfo.gameRequest?.lexicon ?? ''}
-            variant={gameInfo.gameRequest?.rules?.variantName}
+            lexicon={gameContext.gameDocument.lexicon}
+            variant={gameContext.gameDocument.variant}
           />
           <Card
             title="Editor controls"
@@ -238,6 +324,7 @@ export const BoardEditor = () => {
             horizontal
             gameMeta={gameInfo}
             playerMeta={gameInfo.players}
+            hideProfileLink
           />
         </div>
 
@@ -249,21 +336,19 @@ export const BoardEditor = () => {
             board={examinableGameContext.board}
             currentRack={sortedRack}
             events={examinableGameContext.turns}
-            gameID={''} // tbd
+            gameID={gameContext.gameID}
             sendSocketMsg={doNothing}
             sendGameplayEvent={(evt) => sendGameplayEvent(evt)}
             gameDone={false} // tbd
             playerMeta={gameInfo.players}
-            tournamentID={gameInfo.tournamentId}
+            tournamentID={''}
             vsBot={false}
             tournamentPairedMode={false}
             // why does my linter keep overwriting this?
             // eslint-disable-next-line max-len
-            lexicon={gameInfo.gameRequest?.lexicon ?? ''}
+            lexicon={gameContext.gameDocument.lexicon}
             alphabet={alphabet}
-            challengeRule={
-              gameInfo.gameRequest?.challengeRule ?? ChallengeRule.VOID
-            }
+            challengeRule={macChallengeRule}
             handleAcceptRematch={doNothing}
             handleAcceptAbort={doNothing}
             handleSetHover={handleSetHover}
@@ -276,7 +361,11 @@ export const BoardEditor = () => {
         <div className="data-area" id="right-sidebar">
           {/* There are two competitor cards, css hides one of them. */}
           {/* There are two player cards, css hides one of them. */}
-          <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
+          <PlayerCards
+            gameMeta={gameInfo}
+            playerMeta={gameInfo.players}
+            hideProfileLink
+          />
           <GameInfo meta={gameInfo} tournamentName={''} />
           <Pool
             pool={examinableGameContext?.pool}
@@ -287,8 +376,8 @@ export const BoardEditor = () => {
           />
           <ScoreCard
             isExamining={isExamining}
-            lexicon={gameInfo.gameRequest?.lexicon ?? ''}
-            variant={gameInfo.gameRequest?.rules?.variantName}
+            lexicon={gameContext.gameDocument.lexicon}
+            variant={gameContext.gameDocument.variant}
             events={examinableGameContext.turns}
             board={examinableGameContext.board}
             playerMeta={gameInfo.players}

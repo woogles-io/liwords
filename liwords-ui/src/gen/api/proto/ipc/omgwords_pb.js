@@ -628,7 +628,6 @@ export const GameDocument = proto3.makeMessageType(
     { no: 22, name: "scoreless_turns", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
     { no: 23, name: "player_on_turn", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
     { no: 24, name: "timers", kind: "message", T: Timers },
-    { no: 25, name: "game_mode", kind: "enum", T: proto3.getEnumType(GameMode) },
   ],
 );
 

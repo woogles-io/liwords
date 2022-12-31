@@ -55,6 +55,9 @@ export const GameEventService = {
       kind: MethodKind.Unary,
     },
     /**
+     * PatchGameDocument merges in the passed-in GameDocument with what's on the
+     * server. The passed-in GameDocument should be a partial document
+     *
      * @generated from rpc game_service.GameEventService.PatchGameDocument
      */
     patchGameDocument: {

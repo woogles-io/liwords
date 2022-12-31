@@ -67,8 +67,12 @@ export const isClubType = (type: TType) => {
 export const timeCtrlToDisplayName = (
   secs: number,
   incrementSecs: number,
-  maxOvertime: number
+  maxOvertime: number,
+  overrideDisplay?: string
 ) => {
+  if (overrideDisplay) {
+    return [overrideDisplay, overrideDisplay, 'white'];
+  }
   const totalTime = calculateTotalTime(secs, incrementSecs, maxOvertime);
 
   if (totalTime <= 2 * 60) {
@@ -148,8 +152,12 @@ export const initialTimeMinutesToSlider = (mins: number) =>
 export const timeToString = (
   secs: number,
   incrementSecs: number,
-  maxOvertimeMinutes: number
+  maxOvertimeMinutes: number,
+  untimed?: boolean
 ) => {
+  if (untimed) {
+    return '';
+  }
   return `${initialTimeLabel(secs)}${
     maxOvertimeMinutes ? '/' + maxOvertimeMinutes : ''
   }${incrementSecs ? '+' + incrementSecs : ''}`;

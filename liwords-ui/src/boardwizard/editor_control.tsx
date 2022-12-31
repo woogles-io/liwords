@@ -12,14 +12,12 @@ import {
   Typography,
 } from 'antd';
 import { Store } from 'antd/lib/form/interface';
-import Paragraph from 'antd/lib/skeleton/Paragraph';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { ChallengeRule } from '../gen/api/proto/ipc/omgwords_pb';
 import { LexiconFormItem } from '../shared/lexicon_display';
 import { useGameContextStoreContext } from '../store/store';
 import { baseURL } from '../utils/hooks/connect';
 import { useMountedState } from '../utils/mounted';
-const colors = require('../base.scss').default;
 
 type Props = {
   gameID?: string;
@@ -36,7 +34,7 @@ export const EditorControl = (props: Props) => {
   let form;
   const { useState } = useMountedState();
   const [confirmDelVisible, setConfirmDelVisible] = useState(false);
-
+  const { gameContext } = useGameContextStoreContext();
   if (!props.gameID) {
     form = (
       <Form
@@ -109,8 +107,15 @@ export const EditorControl = (props: Props) => {
       </Form>
     );
   } else {
+    console.log(gameContext.gameDocument.players[0].realName);
     form = (
-      <Form>
+      <Form
+        initialValues={{
+          p1name: gameContext.gameDocument.players[0].realName,
+          p2name: gameContext.gameDocument.players[1].realName,
+          description: gameContext.gameDocument.description,
+        }}
+      >
         <Form.Item label="Player 1 name" name="p1name">
           <Input maxLength={50} />
         </Form.Item>
@@ -135,7 +140,7 @@ export const EditorControl = (props: Props) => {
   let gameURL = '';
 
   if (props.gameID) {
-    gameURL = `${baseURL}/game/${props.gameID}`;
+    gameURL = `${baseURL}/annotated/${props.gameID}`;
   }
 
   return (

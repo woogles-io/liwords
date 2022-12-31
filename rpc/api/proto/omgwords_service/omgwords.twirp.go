@@ -45,6 +45,8 @@ type GameEventService interface {
 
 	ReplaceGameDocument(context.Context, *ReplaceDocumentRequest) (*GameEventResponse, error)
 
+	// PatchGameDocument merges in the passed-in GameDocument with what's on the
+	// server. The passed-in GameDocument should be a partial document
 	PatchGameDocument(context.Context, *PatchDocumentRequest) (*GameEventResponse, error)
 
 	SetBroadcastGamePrivacy(context.Context, *BroadcastGamePrivacy) (*GameEventResponse, error)

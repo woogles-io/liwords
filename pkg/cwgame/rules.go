@@ -1,5 +1,7 @@
 package cwgame
 
+import "github.com/domino14/liwords/rpc/api/proto/ipc"
+
 type Variant string
 
 const (
@@ -16,18 +18,20 @@ type GameRules struct {
 	lexicon          string
 	distname         string
 	variant          Variant
+	challengeRule    ipc.ChallengeRule
 	secondsPerPlayer []int
 	maxOvertimeMins  int
 	incrementSeconds int
 	untimed          bool
 }
 
-func NewBasicGameRules(lexicon, boardLayout, letterDist string, variant Variant,
-	seconds []int, overtimeMins int, increment int, untimed bool) *GameRules {
+func NewBasicGameRules(lexicon, boardLayout, letterDist string, challengeRule ipc.ChallengeRule,
+	variant Variant, seconds []int, overtimeMins int, increment int, untimed bool) *GameRules {
 	return &GameRules{
 		boardLayout:      boardLayout,
 		lexicon:          lexicon,
 		distname:         letterDist,
+		challengeRule:    challengeRule,
 		variant:          variant,
 		secondsPerPlayer: seconds,
 		maxOvertimeMins:  overtimeMins,

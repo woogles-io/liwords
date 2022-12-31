@@ -92,6 +92,28 @@ func (s *DBStore) DeleteAnnotatedGame(ctx context.Context, uuid string) error {
 	return nil
 }
 
+func (s *DBStore) MarkAnnotatedGameDone(ctx context.Context, uuid string) error {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	_, err = tx.Exec(ctx, `UPDATE annotated_game_metadata SET done = TRUE 
+					WHERE game_uuid = $1`, uuid)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `UPDATE games SET updated_at = NOW() where uuid = $1`,
+		uuid)
+	if err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
 // OutstandingGames returns a list of game IDs for games that are not yet done being
 // annotated. The system will only allow a certain number of games to remain
 // undone for an annotator.

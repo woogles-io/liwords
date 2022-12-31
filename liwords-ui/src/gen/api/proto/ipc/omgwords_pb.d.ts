@@ -1929,13 +1929,6 @@ export declare class GameDocument extends Message<GameDocument> {
    */
   timers?: Timers;
 
-  /**
-   * real time or correspondence?
-   *
-   * @generated from field: ipc.GameMode game_mode = 25;
-   */
-  gameMode: GameMode;
-
   constructor(data?: PartialMessage<GameDocument>);
 
   static readonly runtime: typeof proto3;

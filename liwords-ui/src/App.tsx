@@ -346,7 +346,9 @@ const App = React.memo(() => {
         />
 
         <Route path="embed/game/:gameID" element={<Embed />} />
-        <Route path="editor" element={<BoardEditor />} />
+        <Route path="editor" element={<BoardEditor />}>
+          <Route path=":gameID" element={<BoardEditor />} />
+        </Route>
         <Route path="about" element={<Team />} />
         <Route path="team" element={<Team />} />
         <Route path="terms" element={<TermsOfService />} />

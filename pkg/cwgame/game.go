@@ -111,10 +111,10 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, m move, tr int64) err
 		}
 		copy(placeholder[len(m.tilesUsed):], m.leave)
 
+		evt := eventFromMove(m, gdoc)
+
 		gdoc.Racks[gdoc.PlayerOnTurn] = runemapping.MachineWord(placeholder).ToByteArr()
 		gdoc.ScorelessTurns += 1
-
-		evt := eventFromMove(m, gdoc)
 		evt.MillisRemaining = int32(tr)
 		evt.Exchanged = runemapping.MachineWord(m.tilesUsed).ToByteArr()
 		evt.Leave = runemapping.MachineWord(m.leave).ToByteArr()

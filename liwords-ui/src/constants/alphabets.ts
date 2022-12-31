@@ -5,6 +5,7 @@
  */
 
 import { Blank } from '../utils/cwgame/common';
+import { ThroughTileMarker } from '../utils/cwgame/game_event';
 
 type AlphabetLetter = {
   rune: string; // the physical displayed character(s)
@@ -302,12 +303,16 @@ export const runeToValues = (
   return 0;
 };
 
-export const uint8ToRune = (i: number, alphabet: Alphabet): string => {
+export const uint8ToRune = (
+  i: number,
+  alphabet: Alphabet,
+  usePlaythrough?: boolean
+): string => {
   // Our internal encoding has the blank at 0 and everything begins at 1.
   // This is not the order the runes are listed in above; let's make the
   // change here.
   if (i === 0) {
-    return Blank;
+    return usePlaythrough ? ThroughTileMarker : Blank;
   }
   // 2's complement
   if (i > 127) {
@@ -318,11 +323,12 @@ export const uint8ToRune = (i: number, alphabet: Alphabet): string => {
 
 export const uint8ArrayToRunes = (
   arr: Uint8Array,
-  alphabet: Alphabet
+  alphabet: Alphabet,
+  usePlaythrough?: boolean
 ): string => {
   let s = '';
   arr.forEach((v) => {
-    s += uint8ToRune(v, alphabet);
+    s += uint8ToRune(v, alphabet, usePlaythrough);
   });
   return s;
 };

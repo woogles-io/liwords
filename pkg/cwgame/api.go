@@ -102,8 +102,10 @@ func NewGame(cfg *config.Config, rules *GameRules, playerinfo []*ipc.GameDocumen
 			TimeRemaining:    timeRemaining,
 			MaxOvertime:      int32(rules.maxOvertimeMins),
 			IncrementSeconds: int32(rules.incrementSeconds),
+			Untimed:          rules.untimed,
 		},
-		PlayState: ipc.PlayState_UNSTARTED,
+		PlayState:     ipc.PlayState_UNSTARTED,
+		ChallengeRule: rules.challengeRule,
 	}
 
 	return gdoc, nil

@@ -38,7 +38,14 @@ func NewOMGWordsService(u user.Store, cfg *config.Config, gs *stores.GameDocumen
 		metadataStore: ms}
 }
 
+func AnnotatedChannelName(gameID string) string {
+	return "anno" + gameID
+}
+
 func (gs *OMGWordsService) failIfSessionDoesntOwn(ctx context.Context, gameID string) error {
+	if gameID == "" {
+		return errors.New("game ID must be provided")
+	}
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
 		return err
@@ -104,7 +111,7 @@ func (gs *OMGWordsService) CreateBroadcastGame(ctx context.Context, req *pb.Crea
 	// Create an untimed game:
 	cwgameRules := cwgame.NewBasicGameRules(
 		req.Lexicon, req.Rules.BoardLayoutName, req.Rules.LetterDistributionName,
-		cwgame.Variant(req.Rules.VariantName), []int{0, 0}, 0, 0, true,
+		req.ChallengeRule, cwgame.Variant(req.Rules.VariantName), []int{0, 0}, 0, 0, true,
 	)
 
 	g, err := cwgame.NewGame(gs.cfg, cwgameRules, mcplayers)
@@ -158,13 +165,19 @@ func (gs *OMGWordsService) CreateBroadcastGame(ctx context.Context, req *pb.Crea
 
 func (gs *OMGWordsService) SendGameEvent(ctx context.Context, req *pb.AnnotatedGameEvent) (
 	*pb.GameEventResponse, error) {
-	err := gs.failIfSessionDoesntOwn(ctx, req.Event.GameId)
+	if err := gs.failIfSessionDoesntOwn(ctx, req.Event.GameId); err != nil {
+		return nil, err
+	}
+	justEnded, err := handleEvent(ctx, req.UserId, req.Event, gs.gameStore, gs.gameEventChan)
 	if err != nil {
 		return nil, err
 	}
-	err = handleEvent(ctx, req.UserId, req.Event, gs.gameStore, gs.gameEventChan)
-	if err != nil {
-		return nil, err
+	// justEnded indicates if the handled event resulted in the game ending.
+	// Since this is an annotated game, we must mark it as done.
+	if justEnded {
+		if err = gs.metadataStore.MarkAnnotatedGameDone(ctx, req.Event.GameId); err != nil {
+			return nil, err
+		}
 	}
 
 	return &pb.GameEventResponse{}, nil
@@ -195,7 +208,7 @@ func (gs *OMGWordsService) ReplaceGameDocument(ctx context.Context, req *pb.Repl
 		Doc: req.Document,
 	}
 	wrapped := entity.WrapEvent(evt, ipc.MessageType_OMGWORDS_GAMEDOCUMENT)
-	wrapped.AddAudience(entity.AudGameTV, gid)
+	wrapped.AddAudience(entity.AudChannel, AnnotatedChannelName(gid))
 	gs.gameEventChan <- wrapped
 
 	return &pb.GameEventResponse{}, nil
@@ -229,7 +242,7 @@ func (gs *OMGWordsService) PatchGameDocument(ctx context.Context, req *pb.PatchD
 		Doc: g.GameDocument,
 	}
 	wrapped := entity.WrapEvent(evt, ipc.MessageType_OMGWORDS_GAMEDOCUMENT)
-	wrapped.AddAudience(entity.AudGameTV, gid)
+	wrapped.AddAudience(entity.AudChannel, AnnotatedChannelName(gid))
 	gs.gameEventChan <- wrapped
 
 	return &pb.GameEventResponse{}, nil

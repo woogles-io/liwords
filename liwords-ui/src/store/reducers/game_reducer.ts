@@ -32,6 +32,7 @@ import {
   GameEvent as OMGWordsGameEvent,
   GameEvent_Type as OMGWordsGameEventType,
   ServerOMGWordsEvent,
+  GameDocumentEvent,
 } from '../../gen/api/proto/ipc/omgwords_pb';
 import {
   CrosswordGameGridLayout,
@@ -84,7 +85,7 @@ export type GameState = {
   uidToPlayerOrder: { [uid: string]: PlayerOrder };
   playState: number;
   clockController: React.MutableRefObject<ClockController | null> | null;
-  // gameDocument: GameDocument;
+  gameDocument: GameDocument;
   onClockTick: (p: PlayerOrder, t: Millis) => void;
   onClockTimeout: (p: PlayerOrder) => void;
 };
@@ -119,7 +120,7 @@ export const startingGameState = (
     clockController: null,
     onClockTick: () => {},
     onClockTimeout: () => {},
-    // gameDocument: new GameDocument(),
+    gameDocument: new GameDocument(),
   };
   return gs;
 };
@@ -194,6 +195,7 @@ const newGameStateFromGameplayEvent = (
     clockController: state.clockController,
     onClockTick: state.onClockTick,
     onClockTimeout: state.onClockTimeout,
+    gameDocument: state.gameDocument,
     // Potential changes:
     board,
     pool,
@@ -291,7 +293,7 @@ const convertToGameEvt = (
     column: evt.column,
     direction: evt.direction,
     position: evt.position,
-    playedTiles: uint8ArrayToRunes(evt.playedTiles, alphabet),
+    playedTiles: uint8ArrayToRunes(evt.playedTiles, alphabet, true),
     exchanged: uint8ArrayToRunes(evt.exchanged, alphabet),
     score: evt.score,
     bonus: evt.bonus,
@@ -455,6 +457,7 @@ const stateFromDocument = (gdoc: GameDocument): GameState => {
   gs.players[gdoc.playerOnTurn].onturn = true;
   gs.players[1 - gdoc.playerOnTurn].onturn = false;
   gs.playState = gdoc.playState;
+  gs.gameDocument = gdoc;
   return gs;
 };
 
