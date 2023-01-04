@@ -1,12 +1,12 @@
 // boardwizard is our board editor
 
 import { HomeOutlined } from '@ant-design/icons';
-import { Card } from 'antd';
+import { Button, Card } from 'antd';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ActionType } from '../actions/actions';
 import { alphabetFromName, runesToUint8Array } from '../constants/alphabets';
-import { Analyzer } from '../gameroom/analyzer';
+import { Analyzer, AnalyzerContextProvider } from '../gameroom/analyzer';
 import { BoardPanel } from '../gameroom/board_panel';
 import { PlayerCards } from '../gameroom/player_cards';
 import Pool from '../gameroom/pool';
@@ -40,6 +40,7 @@ import { useClient, flashError } from '../utils/hooks/connect';
 import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
 import { useMountedState } from '../utils/mounted';
 import { EditorControl } from './editor_control';
+import { Notepad, NotepadContextProvider } from '../gameroom/notepad';
 
 const doNothing = () => {};
 
@@ -165,19 +166,10 @@ export const BoardEditor = () => {
     );
 
     try {
-      await eventClient.patchGameDocument({
-        document: {
-          uid: gameContext.gameID,
-          racks: racks,
-        },
+      await eventClient.setRacks({
+        gameId: gameContext.gameID,
+        racks: racks,
       });
-      // This should send an event back via the socket
-      // dispatchGameContext({
-      //   actionType: ActionType.ChangePlayerRack,
-      //   payload: {
-      //     rack: rack,
-      //   },
-      // });
     } catch (e) {
       flashError(e);
     }
@@ -195,6 +187,16 @@ export const BoardEditor = () => {
     }
   };
 
+  const omgPlayerInfo = (pname: string, idx: number) => {
+    const collapsed = pname.replaceAll(' ', '');
+    return new OMGPlayerInfo({
+      nickname: collapsed,
+      fullName: pname,
+      userId: collapsed,
+      first: idx === 0,
+    });
+  };
+
   const createNewGame = async (
     p1name: string,
     p2name: string,
@@ -205,15 +207,7 @@ export const BoardEditor = () => {
     const ld = defaultLetterDistribution(lex);
     try {
       const resp = await eventClient.createBroadcastGame({
-        playersInfo: [p1name, p2name].map((v, idx) => {
-          const collapsed = v.replaceAll(' ', '');
-          return new OMGPlayerInfo({
-            nickname: collapsed,
-            fullName: v,
-            userId: collapsed,
-            first: idx === 0,
-          });
-        }),
+        playersInfo: [p1name, p2name].map(omgPlayerInfo),
         lexicon: lex,
         rules: new GameRules({
           boardLayoutName: 'CrosswordGame', // for now
@@ -224,6 +218,32 @@ export const BoardEditor = () => {
         public: false,
       });
       fetchAndDispatchDocument(resp.gameId, true);
+    } catch (e) {
+      flashError(e);
+    }
+  };
+
+  const editGame = async (
+    p1name: string,
+    p2name: string,
+    description: string
+  ) => {
+    try {
+      await eventClient.patchGameDocument({
+        document: new GameDocument({
+          players: [p1name, p2name].map((p, idx) => {
+            const collapsed = p.replaceAll(' ', '');
+            return new GameDocument_MinimalPlayerInfo({
+              nickname: collapsed,
+              realName: p,
+              userId: collapsed,
+              quit: gameContext.gameDocument.players[idx].quit,
+            });
+          }),
+          description: description,
+          uid: gameContext.gameID,
+        }),
+      });
     } catch (e) {
       flashError(e);
     }
@@ -285,7 +305,7 @@ export const BoardEditor = () => {
     });
   }, [gameContext.gameDocument]);
 
-  return (
+  let ret = (
     <div className="game-container">
       <TopBar />
       <div className="game-table">
@@ -302,11 +322,19 @@ export const BoardEditor = () => {
             defaultDescription={getChatTitle(playerNames, username, isObserver)}
             tournamentID={gameInfo.tournamentId}
           /> */}
-          <Analyzer
-            includeCard
-            lexicon={gameContext.gameDocument.lexicon}
-            variant={gameContext.gameDocument.variant}
-          />
+          <Card></Card>
+          {isExamining ? (
+            <Analyzer
+              includeCard
+              lexicon={gameContext.gameDocument.lexicon}
+              variant={gameContext.gameDocument.variant}
+            />
+          ) : (
+            <React.Fragment key="not-examining">
+              <Notepad includeCard />
+            </React.Fragment>
+          )}
+
           <Card
             title="Editor controls"
             className="editor-control"
@@ -316,6 +344,7 @@ export const BoardEditor = () => {
               createNewGame={createNewGame}
               gameID={gameContext.gameID}
               deleteGame={deleteGame}
+              editGame={editGame}
             />
           </Card>
         </div>
@@ -359,7 +388,6 @@ export const BoardEditor = () => {
         </div>
 
         <div className="data-area" id="right-sidebar">
-          {/* There are two competitor cards, css hides one of them. */}
           {/* There are two player cards, css hides one of them. */}
           <PlayerCards
             gameMeta={gameInfo}
@@ -387,4 +415,7 @@ export const BoardEditor = () => {
       </div>
     </div>
   );
+  ret = <NotepadContextProvider children={ret} feRackInfo />;
+  ret = <AnalyzerContextProvider children={ret} />;
+  return ret;
 };

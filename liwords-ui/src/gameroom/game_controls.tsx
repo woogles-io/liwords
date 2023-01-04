@@ -266,6 +266,7 @@ export type Props = {
   showNudge: boolean;
   showAbort: boolean;
   exitableExaminer?: boolean;
+  boardEditingMode?: boolean;
 };
 
 const GameControls = React.memo((props: Props) => {
@@ -486,7 +487,10 @@ const GameControls = React.memo((props: Props) => {
   return (
     <div className="game-controls">
       <div className="secondary-controls">
-        {!props.puzzleMode && (
+        {props.boardEditingMode && (
+          <Button onClick={props.onExamine}>Examine</Button>
+        )}
+        {!props.puzzleMode && !props.boardEditingMode && (
           <Dropdown
             overlay={optionsMenu}
             trigger={['click']}

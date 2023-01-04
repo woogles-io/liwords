@@ -1663,6 +1663,7 @@ export const BoardPanel = React.memo((props: Props) => {
         setHandleNeitherShortcut={setHandleNeitherShortcut}
         exitableExaminer={props.exitableExaminer}
         puzzleMode={props.puzzleMode}
+        boardEditingMode={props.boardEditingMode}
       />
     );
   }

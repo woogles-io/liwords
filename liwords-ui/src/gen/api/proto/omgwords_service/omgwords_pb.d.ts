@@ -443,3 +443,42 @@ export declare class PatchDocumentRequest extends Message<PatchDocumentRequest> 
   static equals(a: PatchDocumentRequest | PlainMessage<PatchDocumentRequest> | undefined, b: PatchDocumentRequest | PlainMessage<PatchDocumentRequest> | undefined): boolean;
 }
 
+/**
+ * @generated from message game_service.SetRacksEvent
+ */
+export declare class SetRacksEvent extends Message<SetRacksEvent> {
+  /**
+   * @generated from field: string game_id = 1;
+   */
+  gameId: string;
+
+  /**
+   * @generated from field: repeated bytes racks = 2;
+   */
+  racks: Uint8Array[];
+
+  /**
+   * @generated from field: uint32 event_number = 3;
+   */
+  eventNumber: number;
+
+  /**
+   * @generated from field: bool amendment = 4;
+   */
+  amendment: boolean;
+
+  constructor(data?: PartialMessage<SetRacksEvent>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "game_service.SetRacksEvent";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SetRacksEvent;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SetRacksEvent;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SetRacksEvent;
+
+  static equals(a: SetRacksEvent | PlainMessage<SetRacksEvent> | undefined, b: SetRacksEvent | PlainMessage<SetRacksEvent> | undefined): boolean;
+}
+

@@ -335,7 +335,7 @@ const App = React.memo(() => {
           />
         </Route>
         <Route
-          path="annotated/:gameID"
+          path="anno/:gameID"
           element={
             <GameTable
               sendSocketMsg={sendMessage}

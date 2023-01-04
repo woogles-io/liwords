@@ -67,6 +67,12 @@ message ReplaceDocumentRequest { ipc.GameDocument document = 1; }
 
 message PatchDocumentRequest { ipc.GameDocument document = 1; }
 
+message SetRacksEvent {
+  string game_id = 1;
+  repeated bytes racks = 2;
+  uint32 event_number = 3;
+  bool amendment = 4;
+}
 // GameEventService will handle our game event API. We can connect bots to
 // this API, or use it for sandbox mode, or for live annotations, etc.
 service GameEventService {
@@ -76,6 +82,7 @@ service GameEventService {
   rpc DeleteBroadcastGame(DeleteBroadcastGameRequest)
       returns (DeleteBroadcastGameResponse);
   rpc SendGameEvent(AnnotatedGameEvent) returns (GameEventResponse);
+  rpc SetRacks(SetRacksEvent) returns (GameEventResponse);
   rpc ReplaceGameDocument(ReplaceDocumentRequest) returns (GameEventResponse);
   // PatchGameDocument merges in the passed-in GameDocument with what's on the
   // server. The passed-in GameDocument should be a partial document

@@ -3,7 +3,7 @@
 /* eslint-disable */
 /* @ts-nocheck */
 
-import {AnnotatedGameEvent, BroadcastGamePrivacy, BroadcastGamesResponse, CreateBroadcastGameRequest, CreateBroadcastGameResponse, DeleteBroadcastGameRequest, DeleteBroadcastGameResponse, GameEventResponse, GetGameDocumentRequest, GetGamesForEditorRequest, GetMyUnfinishedGamesRequest, PatchDocumentRequest, ReplaceDocumentRequest} from "./omgwords_pb.js";
+import {AnnotatedGameEvent, BroadcastGamePrivacy, BroadcastGamesResponse, CreateBroadcastGameRequest, CreateBroadcastGameResponse, DeleteBroadcastGameRequest, DeleteBroadcastGameResponse, GameEventResponse, GetGameDocumentRequest, GetGamesForEditorRequest, GetMyUnfinishedGamesRequest, PatchDocumentRequest, ReplaceDocumentRequest, SetRacksEvent} from "./omgwords_pb.js";
 import {MethodKind} from "@bufbuild/protobuf";
 import {GameDocument} from "../ipc/omgwords_pb.js";
 
@@ -42,6 +42,15 @@ export declare const GameEventService: {
     readonly sendGameEvent: {
       readonly name: "SendGameEvent",
       readonly I: typeof AnnotatedGameEvent,
+      readonly O: typeof GameEventResponse,
+      readonly kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc game_service.GameEventService.SetRacks
+     */
+    readonly setRacks: {
+      readonly name: "SetRacks",
+      readonly I: typeof SetRacksEvent,
       readonly O: typeof GameEventResponse,
       readonly kind: MethodKind.Unary,
     },

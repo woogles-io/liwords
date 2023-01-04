@@ -12,6 +12,8 @@ import (
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/cwgame"
+	"github.com/domino14/liwords/pkg/cwgame/runemapping"
+	"github.com/domino14/liwords/pkg/cwgame/tiles"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/omgwords/stores"
 	"github.com/domino14/liwords/pkg/user"
@@ -214,6 +216,10 @@ func (gs *OMGWordsService) ReplaceGameDocument(ctx context.Context, req *pb.Repl
 	return &pb.GameEventResponse{}, nil
 }
 
+// PatchGameDocument merges the requested game document into the existing one.
+// For now, we just use this to update various metadata (like description, player names, etc).
+// Disallow updating game structures directly until the front end can implement
+// GameDocument on its own.
 func (gs *OMGWordsService) PatchGameDocument(ctx context.Context, req *pb.PatchDocumentRequest) (*pb.GameEventResponse, error) {
 	if req.Document == nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, "nil game document")
@@ -224,14 +230,29 @@ func (gs *OMGWordsService) PatchGameDocument(ctx context.Context, req *pb.PatchD
 	if err != nil {
 		return nil, err
 	}
+
+	// For now don't allow direct patches to these fields. Maybe we can allow this
+	// kind of stuff later.
+	if len(req.Document.Events) > 0 || req.Document.Board != nil || req.Document.Bag != nil || req.Document.Racks != nil {
+		return nil, errors.New("patch operation not supported at this time for these fields")
+	}
+
 	g, err := gs.gameStore.GetDocument(ctx, gid, true)
 	if err != nil {
 		return nil, err
 	}
+
 	err = MergeGameDocuments(g.GameDocument, req.Document)
 	if err != nil {
+		// Since we acquired a lock in the GetDocument call above,
+		// we must unlock explicitly in any error case.
+		uerr := gs.gameStore.UnlockDocument(ctx, g)
+		if uerr != nil {
+			log.Err(err).Msg("error-unlocking")
+		}
 		return nil, err
 	}
+
 	err = gs.gameStore.UpdateDocument(ctx, g)
 	if err != nil {
 		return nil, err
@@ -289,14 +310,6 @@ func (gs *OMGWordsService) GetMyUnfinishedGames(ctx context.Context, req *pb.Get
 }
 
 func (gs *OMGWordsService) GetGameDocument(ctx context.Context, req *pb.GetGameDocumentRequest) (*ipc.GameDocument, error) {
-	// sess, err := apiserver.GetSession(ctx)
-	// if err != nil {
-	// 	log.Debug().Msg("probably-not-logged-in")
-	// }
-	// var userId string
-	// if sess != nil {
-	// 	userId = sess.UserUUID
-	// }
 	doc, err := gs.gameStore.GetDocument(ctx, req.GameId, false)
 	if err != nil {
 		return nil, err
@@ -307,6 +320,67 @@ func (gs *OMGWordsService) GetGameDocument(ctx context.Context, req *pb.GetGameD
 	// Otherwise, we need to "censor" the game document by deleting information
 	// this user should not have, if they're a player in this game.
 	return nil, errors.New("not implemented for non-annotated games")
+}
+
+// SetRacks sets the player racks per user. It checks to make sure that the
+// rack can be set before actually setting it.
+func (gs *OMGWordsService) SetRacks(ctx context.Context, req *pb.SetRacksEvent) (*pb.GameEventResponse, error) {
+	err := gs.failIfSessionDoesntOwn(ctx, req.GameId)
+	if err != nil {
+		return nil, err
+	}
+
+	g, err := gs.gameStore.GetDocument(ctx, req.GameId, true)
+	if err != nil {
+		return nil, err
+	}
+	if len(req.Racks) != len(g.Players) {
+		gs.gameStore.UnlockDocument(ctx, g)
+		return nil, twirp.NewError(twirp.InvalidArgument, "number of racks must match number of players")
+	}
+	if req.Amendment && len(g.Events)-1 < int(req.EventNumber) {
+		gs.gameStore.UnlockDocument(ctx, g)
+		return nil, twirp.NewError(twirp.InvalidArgument, "tried to amend a rack for a non-existing event")
+	}
+	// Put back the current racks, if any.
+	// Note that tiles.PutBack assumes the player racks are not adulterated in any way.
+	// This should be the case, because only cwgame is responsible for dealing
+	// racks.
+	if req.Amendment {
+		g.Events = g.Events[:req.EventNumber]
+	}
+
+	for _, r := range g.Racks {
+		mls := runemapping.FromByteArr(r)
+		tiles.PutBack(g.Bag, mls)
+	}
+	for _, r := range req.Racks {
+		mls := runemapping.FromByteArr(r)
+		err = tiles.RemoveTiles(g.Bag, mls)
+		if err != nil {
+			gs.gameStore.UnlockDocument(ctx, g)
+			return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		}
+	}
+	// Now that everything matches, assign the racks back to the users
+	for i, r := range req.Racks {
+		g.Racks[i] = r
+	}
+
+	err = gs.gameStore.UpdateDocument(ctx, g)
+	if err != nil {
+		return nil, err
+	}
+
+	// And send an event.
+	evt := &ipc.GameDocumentEvent{
+		Doc: g.GameDocument,
+	}
+	wrapped := entity.WrapEvent(evt, ipc.MessageType_OMGWORDS_GAMEDOCUMENT)
+	wrapped.AddAudience(entity.AudChannel, AnnotatedChannelName(g.Uid))
+	gs.gameEventChan <- wrapped
+
+	return &pb.GameEventResponse{}, nil
 }
 
 func (gs *OMGWordsService) DeleteBroadcastGame(ctx context.Context, req *pb.DeleteBroadcastGameRequest) (*pb.DeleteBroadcastGameResponse, error) {

@@ -454,9 +454,9 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 
 			resp.Realms = append(resp.Realms, realm, "chat-game-editor", "chat-"+realm)
 
-		} else if strings.HasPrefix(path, "/annotated/") {
+		} else if strings.HasPrefix(path, "/anno/") {
 			// annotated games are always in TV mode for viewers
-			gameID := strings.TrimPrefix(path, "/annotated/")
+			gameID := strings.TrimPrefix(path, "/anno/")
 			realm := "channel-" + omgwords.AnnotatedChannelName(gameID)
 			resp.Realms = append(resp.Realms, realm, "chat-"+realm)
 		} else {

@@ -339,19 +339,18 @@ export const runesToUint8Array = (
 ): Uint8Array => {
   let bts = [];
   let chars = Array.from(runes);
-
   let i = 0;
   let match;
   while (i < chars.length) {
     match = false;
     for (let j = i + alphabet.longestPossibleTileRune; j > i; j--) {
       let rune = chars.slice(i, j).join('');
-      if (alphabet.machineLetterMap[rune]) {
+      if (alphabet.machineLetterMap[rune] != undefined) {
         bts.push(alphabet.machineLetterMap[rune]);
         i = j;
         match = true;
         break;
-      } else if (alphabet.machineLetterMap[rune.toUpperCase()]) {
+      } else if (alphabet.machineLetterMap[rune.toUpperCase()] != undefined) {
         bts.push(256 - alphabet.machineLetterMap[rune.toUpperCase()]);
         i = j;
         match = true;

@@ -181,3 +181,16 @@ export const PatchDocumentRequest = proto3.makeMessageType(
   ],
 );
 
+/**
+ * @generated from message game_service.SetRacksEvent
+ */
+export const SetRacksEvent = proto3.makeMessageType(
+  "game_service.SetRacksEvent",
+  () => [
+    { no: 1, name: "game_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "racks", kind: "scalar", T: 12 /* ScalarType.BYTES */, repeated: true },
+    { no: 3, name: "event_number", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
+    { no: 4, name: "amendment", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ],
+);
+
