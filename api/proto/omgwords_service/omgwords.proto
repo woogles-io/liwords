@@ -1,5 +1,5 @@
 syntax = "proto3";
-package game_service;
+package omgwords_service;
 option go_package = "github.com/domino14/liwords/rpc/api/proto/omgwords_service";
 
 import "ipc/omgwords.proto";

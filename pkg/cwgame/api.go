@@ -131,6 +131,33 @@ func StartGame(ctx context.Context, gdoc *ipc.GameDocument) error {
 	return nil
 }
 
+// ReplayEvents plays the events on the game document. For simplicity,
+// assume these events replace every event in the game document; i.e.,
+// initialize from scratch.
+func ReplayEvents(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocument, evts []*ipc.GameEvent) error {
+
+	dist, err := tiles.GetDistribution(cfg, gdoc.LetterDistribution)
+	if err != nil {
+		return err
+	}
+
+	layout, err := board.GetBoardLayout(gdoc.BoardLayout)
+	if err != nil {
+		return err
+	}
+
+	gdoc.PlayState = ipc.PlayState_PLAYING
+	gdoc.CurrentScores = make([]int32, len(gdoc.Players))
+
+	gdoc.Board = board.NewBoard(layout)
+	gdoc.Bag = tiles.TileBag(dist)
+	for _, evt := range evts {
+
+	}
+
+	return nil
+}
+
 // ProcessGameplayEvent processes a ClientGameplayEvent submitted by userID.
 // The game document is also passed in; the caller should take care to load it
 // from wherever. This function can modify the document in-place. The caller
