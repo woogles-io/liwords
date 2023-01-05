@@ -30,18 +30,6 @@ var (
 	errPlayerNotInGame           = errors.New("player not in this game")
 )
 
-// move is an intermediate type used by this package, to aid in the conversion from
-// a frontend-generated ClientGameplayEvent into a GameEvent that gets saved in a
-// GameHistory.
-type move struct {
-	row, col  int
-	direction ipc.GameEvent_Direction
-	mtype     ipc.GameEvent_Type
-	leave     []runemapping.MachineLetter
-	tilesUsed []runemapping.MachineLetter
-	clientEvt *ipc.ClientGameplayEvent
-}
-
 var reVertical, reHorizontal *regexp.Regexp
 
 func init() {
@@ -148,11 +136,35 @@ func ReplayEvents(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocumen
 
 	gdoc.PlayState = ipc.PlayState_PLAYING
 	gdoc.CurrentScores = make([]int32, len(gdoc.Players))
-
+	gdoc.Events = []*ipc.GameEvent{}
 	gdoc.Board = board.NewBoard(layout)
 	gdoc.Bag = tiles.TileBag(dist)
+	gdoc.ScorelessTurns = 0
 	for _, evt := range evts {
+		switch evt.Type {
+		case ipc.GameEvent_TILE_PLACEMENT_MOVE:
+			gdoc.Racks[gdoc.PlayerOnTurn] = evt.Rack
+			err = tiles.RemoveTiles(gdoc.Bag, runemapping.FromByteArr(evt.Rack))
+			if err != nil {
+				return err
+			}
+			playedTiles := runemapping.FromByteArr(evt.PlayedTiles)
+			_, err = board.PlayMove(gdoc.Board, gdoc.BoardLayout, dist, playedTiles,
+				int(evt.Row), int(evt.Column), evt.Direction == ipc.GameEvent_VERTICAL)
+			if err != nil {
+				return err
+			}
+			gdoc.ScorelessTurns = 0
+		case ipc.GameEvent_EXCHANGE:
+			gdoc.Racks[gdoc.PlayerOnTurn] = evt.Rack
+			err = tiles.RemoveTiles(gdoc.Bag, runemapping.FromByteArr(evt.Rack))
+			if err != nil {
+				return err
+			}
 
+		}
+		gdoc.Events = append(gdoc.Events, evt)
+		gdoc.CurrentScores[evt.PlayerIndex] = evt.Cumulative
 	}
 
 	return nil
@@ -233,11 +245,11 @@ func ProcessGameplayEvent(ctx context.Context, evt *ipc.ClientGameplayEvent,
 
 	} else {
 		// convt to internal move
-		m, err := clientEventToMove(ctx, evt, gdoc)
+		gevt, err := clientEventToGameEvent(ctx, evt, gdoc)
 		if err != nil {
 			return err
 		}
-		err = playMove(ctx, gdoc, m, tr)
+		err = playMove(ctx, gdoc, gevt, tr)
 		if err != nil {
 			return err
 		}
@@ -246,18 +258,17 @@ func ProcessGameplayEvent(ctx context.Context, evt *ipc.ClientGameplayEvent,
 	return nil
 }
 
-func clientEventToMove(ctx context.Context, evt *ipc.ClientGameplayEvent, gdoc *ipc.GameDocument) (move, error) {
+func clientEventToGameEvent(ctx context.Context, evt *ipc.ClientGameplayEvent, gdoc *ipc.GameDocument) (*ipc.GameEvent, error) {
 	playerid := gdoc.PlayerOnTurn
 	rackmw := runemapping.FromByteArr(gdoc.Racks[playerid])
 	cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
-	m := move{}
 	if !ok {
-		return m, errors.New("config does not exist in context")
+		return nil, errors.New("config does not exist in context")
 	}
 
 	dist, err := tiles.GetDistribution(cfg, gdoc.LetterDistribution)
 	if err != nil {
-		return m, err
+		return nil, err
 	}
 
 	switch evt.Type {
@@ -265,52 +276,57 @@ func clientEventToMove(ctx context.Context, evt *ipc.ClientGameplayEvent, gdoc *
 		row, col, dir := fromBoardGameCoords(evt.PositionCoords)
 		mw, err := runemapping.ToMachineLetters(evt.Tiles, dist.RuneMapping())
 		if err != nil {
-			return m, err
+			return nil, err
 		}
 		leave, err := Leave(rackmw, mw)
 		if err != nil {
-			return m, err
+			return nil, err
 		}
-		return move{
-			row:       row,
-			col:       col,
-			direction: dir,
-			mtype:     ipc.GameEvent_TILE_PLACEMENT_MOVE,
-			tilesUsed: mw,
-			leave:     leave,
-			clientEvt: evt,
+		return &ipc.GameEvent{
+			Row:         int32(row),
+			Column:      int32(col),
+			Direction:   dir,
+			Type:        ipc.GameEvent_TILE_PLACEMENT_MOVE,
+			Rack:        gdoc.Racks[playerid],
+			PlayedTiles: runemapping.MachineWord(mw).ToByteArr(),
+			Leave:       runemapping.MachineWord(leave).ToByteArr(),
+			Position:    evt.PositionCoords,
+			PlayerIndex: gdoc.PlayerOnTurn,
 		}, nil
 
 	case ipc.ClientGameplayEvent_PASS:
-		return move{
-			mtype:     ipc.GameEvent_PASS,
-			leave:     rackmw,
-			clientEvt: evt,
+		return &ipc.GameEvent{
+			Type:        ipc.GameEvent_PASS,
+			Leave:       gdoc.Racks[playerid],
+			Rack:        gdoc.Racks[playerid],
+			PlayerIndex: gdoc.PlayerOnTurn,
 		}, nil
 	case ipc.ClientGameplayEvent_EXCHANGE:
 		mw, err := runemapping.ToMachineLetters(evt.Tiles, dist.RuneMapping())
 		if err != nil {
-			return m, err
+			return nil, err
 		}
 		leave, err := Leave(rackmw, mw)
 		if err != nil {
-			return m, err
+			return nil, err
 		}
-
-		return move{
-			mtype:     ipc.GameEvent_EXCHANGE,
-			tilesUsed: mw,
-			leave:     leave,
-			clientEvt: evt,
+		return &ipc.GameEvent{
+			Type:        ipc.GameEvent_EXCHANGE,
+			Rack:        gdoc.Racks[playerid],
+			Exchanged:   runemapping.MachineWord(mw).ToByteArr(),
+			Leave:       runemapping.MachineWord(leave).ToByteArr(),
+			PlayerIndex: gdoc.PlayerOnTurn,
 		}, nil
 	case ipc.ClientGameplayEvent_CHALLENGE_PLAY:
-		return move{
-			mtype:     ipc.GameEvent_CHALLENGE,
-			leave:     rackmw,
-			clientEvt: evt}, nil
+		return &ipc.GameEvent{
+			Type:        ipc.GameEvent_CHALLENGE,
+			Leave:       gdoc.Racks[playerid],
+			PlayerIndex: gdoc.PlayerOnTurn,
+			Rack:        gdoc.Racks[playerid],
+		}, nil
 
 	}
-	return m, errors.New("unhandled evt type: " + evt.Type.String())
+	return nil, errors.New("unhandled evt type: " + evt.Type.String())
 }
 
 func fromBoardGameCoords(c string) (int, int, ipc.GameEvent_Direction) {

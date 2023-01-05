@@ -47,17 +47,17 @@ func (e *InvalidWordsError) Error() string {
 	return errString.String()
 }
 
-func playMove(ctx context.Context, gdoc *ipc.GameDocument, m move, tr int64) error {
+func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, tr int64) error {
 	cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
 	if !ok {
 		return errors.New("config does not exist in context")
 	}
 
-	if m.mtype == ipc.GameEvent_CHALLENGE {
+	if gevt.Type == ipc.GameEvent_CHALLENGE {
 		return challengeEvent(ctx, cfg, gdoc, tr)
 	}
 
-	err := validateMove(cfg, m, gdoc)
+	err := validateMove(cfg, gevt, gdoc)
 	if err != nil {
 		return err
 	}
@@ -67,17 +67,18 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, m move, tr int64) err
 
 	// Note: in case of error, anything that modifies gdoc should not save
 	// gdoc back to the store; this must be enforced.
-	switch m.mtype {
+	switch gevt.Type {
 	case ipc.GameEvent_TILE_PLACEMENT_MOVE:
-		err := playTilePlacementMove(cfg, m, gdoc, tr)
+		err := playTilePlacementMove(cfg, gevt, gdoc, tr)
 		if err != nil {
 			return err
 		}
 
 	case ipc.GameEvent_PASS, ipc.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
-		evt := eventFromMove(m, gdoc)
-		evt.MillisRemaining = int32(tr)
-		gdoc.Events = append(gdoc.Events, evt)
+		gevt.MillisRemaining = int32(tr)
+		gevt.Cumulative = gdoc.CurrentScores[gdoc.PlayerOnTurn]
+		gevt.Rack = gdoc.Racks[gdoc.PlayerOnTurn]
+		gdoc.Events = append(gdoc.Events, gevt)
 
 		if gdoc.PlayState == ipc.PlayState_WAITING_FOR_FINAL_PASS {
 			gdoc.PlayState = ipc.PlayState_GAME_OVER
@@ -105,20 +106,17 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, m move, tr int64) err
 	case ipc.GameEvent_EXCHANGE:
 
 		placeholder := make([]runemapping.MachineLetter, RackTileLimit)
-		err := tiles.Exchange(gdoc.Bag, m.tilesUsed, placeholder)
+		err := tiles.Exchange(gdoc.Bag, runemapping.FromByteArr(gevt.Exchanged), placeholder)
 		if err != nil {
 			return err
 		}
-		copy(placeholder[len(m.tilesUsed):], m.leave)
-
-		evt := eventFromMove(m, gdoc)
+		copy(placeholder[len(gevt.Exchanged):], runemapping.FromByteArr(gevt.Leave))
 
 		gdoc.Racks[gdoc.PlayerOnTurn] = runemapping.MachineWord(placeholder).ToByteArr()
 		gdoc.ScorelessTurns += 1
-		evt.MillisRemaining = int32(tr)
-		evt.Exchanged = runemapping.MachineWord(m.tilesUsed).ToByteArr()
-		evt.Leave = runemapping.MachineWord(m.leave).ToByteArr()
-		gdoc.Events = append(gdoc.Events, evt)
+		gevt.MillisRemaining = int32(tr)
+		gevt.Cumulative = gdoc.CurrentScores[gdoc.PlayerOnTurn]
+		gdoc.Events = append(gdoc.Events, gevt)
 
 	}
 	if gdoc.ScorelessTurns == MaxConsecutiveScorelessTurns {
@@ -136,7 +134,7 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, m move, tr int64) err
 	return nil
 }
 
-func playTilePlacementMove(cfg *config.Config, m move, gdoc *ipc.GameDocument, tr int64) error {
+func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.GameDocument, tr int64) error {
 	dist, err := tiles.GetDistribution(cfg, gdoc.LetterDistribution)
 	if err != nil {
 		return err
@@ -148,17 +146,18 @@ func playTilePlacementMove(cfg *config.Config, m move, gdoc *ipc.GameDocument, t
 		return err
 	}
 
-	wordsFormed, err := validateTilePlayMove(dawg, dist.RuneMapping(), m, gdoc)
+	wordsFormed, err := validateTilePlayMove(dawg, dist.RuneMapping(), gevt, gdoc)
 	if err != nil {
 		return err
 	}
+	tilesUsed := runemapping.FromByteArr(gevt.PlayedTiles)
 	score, err := board.PlayMove(gdoc.Board, gdoc.BoardLayout, dist,
-		m.tilesUsed, m.row, m.col, m.direction == ipc.GameEvent_VERTICAL)
+		tilesUsed, int(gevt.Row), int(gevt.Column), gevt.Direction == ipc.GameEvent_VERTICAL)
 	if err != nil {
 		return err
 	}
 	tilesPlayed := 0
-	for _, t := range m.tilesUsed {
+	for _, t := range tilesUsed {
 		if t != 0 {
 			tilesPlayed++
 		}
@@ -178,22 +177,20 @@ func playTilePlacementMove(cfg *config.Config, m move, gdoc *ipc.GameDocument, t
 	if err != nil {
 		return err
 	}
-	copy(placeholder[drew:], m.leave)
-	newRack := placeholder[:drew+len(m.leave)]
+	copy(placeholder[drew:], runemapping.FromByteArr(gevt.Leave))
+	newRack := placeholder[:drew+len(gevt.Leave)]
 
-	evt := eventFromMove(m, gdoc)
-
-	evt.Score = score
-	evt.IsBingo = tilesPlayed == RackTileLimit
-	evt.MillisRemaining = int32(tr)
-	evt.Leave = runemapping.MachineWord(m.leave).ToByteArr()
+	gevt.Score = score
+	gevt.IsBingo = tilesPlayed == RackTileLimit
+	gevt.MillisRemaining = int32(tr)
 
 	gdoc.Racks[gdoc.PlayerOnTurn] = runemapping.MachineWord(newRack).ToByteArr()
-	evt.WordsFormed = make([][]byte, len(wordsFormed))
+	gevt.WordsFormed = make([][]byte, len(wordsFormed))
+	gevt.Cumulative = gdoc.CurrentScores[gdoc.PlayerOnTurn]
 	for i, w := range wordsFormed {
-		evt.WordsFormed[i] = w.ToByteArr()
+		gevt.WordsFormed[i] = w.ToByteArr()
 	}
-	gdoc.Events = append(gdoc.Events, evt)
+	gdoc.Events = append(gdoc.Events, gevt)
 
 	if len(newRack) == 0 {
 		if gdoc.ChallengeRule != ipc.ChallengeRule_ChallengeRule_VOID {
@@ -211,11 +208,11 @@ func playTilePlacementMove(cfg *config.Config, m move, gdoc *ipc.GameDocument, t
 	return nil
 }
 
-func validateMove(cfg *config.Config, m move, gdoc *ipc.GameDocument) error {
+func validateMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.GameDocument) error {
 	if gdoc.PlayState == ipc.PlayState_GAME_OVER {
 		return errGameNotActive
 	}
-	if m.mtype == ipc.GameEvent_EXCHANGE {
+	if gevt.Type == ipc.GameEvent_EXCHANGE {
 		if gdoc.PlayState == ipc.PlayState_WAITING_FOR_FINAL_PASS {
 			return errOnlyPassOrChallenge
 		}
@@ -223,11 +220,11 @@ func validateMove(cfg *config.Config, m move, gdoc *ipc.GameDocument) error {
 			return errExchangeNotPermitted
 		}
 		return nil
-	} else if m.mtype == ipc.GameEvent_PASS || m.mtype == ipc.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS {
+	} else if gevt.Type == ipc.GameEvent_PASS || gevt.Type == ipc.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS {
 		return nil
-	} else if m.mtype == ipc.GameEvent_CHALLENGE {
+	} else if gevt.Type == ipc.GameEvent_CHALLENGE {
 		return nil
-	} else if m.mtype == ipc.GameEvent_TILE_PLACEMENT_MOVE {
+	} else if gevt.Type == ipc.GameEvent_TILE_PLACEMENT_MOVE {
 		if gdoc.PlayState == ipc.PlayState_WAITING_FOR_FINAL_PASS {
 			return errOnlyPassOrChallenge
 		}
@@ -237,20 +234,20 @@ func validateMove(cfg *config.Config, m move, gdoc *ipc.GameDocument) error {
 
 }
 
-func validateTilePlayMove(dawg *dawg.SimpleDawg, rm *runemapping.RuneMapping, m move, gdoc *ipc.GameDocument) (
+func validateTilePlayMove(dawg *dawg.SimpleDawg, rm *runemapping.RuneMapping, gevt *ipc.GameEvent, gdoc *ipc.GameDocument) (
 	[]runemapping.MachineWord, error) {
 
 	// convert play to machine letters
-
-	err := board.ErrorIfIllegalPlay(gdoc.Board, m.row, m.col,
-		m.direction == ipc.GameEvent_VERTICAL, m.tilesUsed)
+	playedTiles := runemapping.FromByteArr(gevt.PlayedTiles)
+	err := board.ErrorIfIllegalPlay(gdoc.Board, int(gevt.Row), int(gevt.Column),
+		gevt.Direction == ipc.GameEvent_VERTICAL, playedTiles)
 	if err != nil {
 		return nil, err
 	}
 
 	// The play is legal. What words does it form?
-	formedWords, err := board.FormedWords(gdoc.Board, m.row, m.col,
-		m.direction == ipc.GameEvent_VERTICAL, m.tilesUsed)
+	formedWords, err := board.FormedWords(gdoc.Board, int(gevt.Row), int(gevt.Column),
+		gevt.Direction == ipc.GameEvent_VERTICAL, playedTiles)
 	if err != nil {
 		return nil, err
 	}
@@ -281,28 +278,6 @@ func validateWords(dawg *dawg.SimpleDawg, words []runemapping.MachineWord,
 		}
 	}
 	return illegalWords
-}
-
-func eventFromMove(m move, gdoc *ipc.GameDocument) *ipc.GameEvent {
-	evt := &ipc.GameEvent{}
-
-	evt.Type = m.mtype
-	evt.PlayerIndex = uint32(gdoc.PlayerOnTurn)
-	evt.Cumulative = gdoc.CurrentScores[gdoc.PlayerOnTurn]
-	evt.Rack = gdoc.Racks[gdoc.PlayerOnTurn]
-
-	switch m.mtype {
-	case ipc.GameEvent_TILE_PLACEMENT_MOVE:
-		evt.Position = m.clientEvt.PositionCoords
-		evt.PlayedTiles = runemapping.MachineWord(m.tilesUsed).ToByteArr()
-		evt.Row = int32(m.row)
-		evt.Column = int32(m.col)
-		evt.Direction = m.direction
-
-	case ipc.GameEvent_EXCHANGE:
-		evt.Exchanged = runemapping.MachineWord(m.tilesUsed).ToByteArr()
-	}
-	return evt
 }
 
 func handleConsecutiveScorelessTurns(gdoc *ipc.GameDocument, dist *tiles.LetterDistribution) error {
@@ -542,9 +517,11 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 			// This "draconian" American system makes it so someone always loses
 			// their turn.
 			// challenger was wrong. They lose their turn.
-			err = playMove(ctx, gdoc, move{
-				mtype: ipc.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS,
-			}, tr)
+			err = playMove(ctx, gdoc,
+				&ipc.GameEvent{
+					Type:        ipc.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS,
+					PlayerIndex: gdoc.PlayerOnTurn,
+				}, tr)
 
 		case ipc.ChallengeRule_ChallengeRule_FIVE_POINT:
 			// Append a bonus to the event.

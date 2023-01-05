@@ -531,7 +531,7 @@ func TestChallengeGoodWordDoubleWithTimeIncrement(t *testing.T) {
 
 	is.Equal(len(gdoc.Events), 6)
 
-	is.Equal(gdoc.Events[4], &ipc.GameEvent{
+	is.True(proto.Equal(gdoc.Events[4], &ipc.GameEvent{
 		Rack:        []byte{5, 5, 9, 11, 14, 20, 23}, // EEIKNTW
 		Type:        ipc.GameEvent_TILE_PLACEMENT_MOVE,
 		Cumulative:  113,
@@ -546,15 +546,15 @@ func TestChallengeGoodWordDoubleWithTimeIncrement(t *testing.T) {
 		MillisRemaining: 883808,
 		PlayerIndex:     0,
 		Leave:           []byte{5, 20, 23}, // ETW
-	})
-	is.Equal(gdoc.Events[5], &ipc.GameEvent{
+	}))
+	is.True(proto.Equal(gdoc.Events[5], &ipc.GameEvent{
 		Type:       ipc.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS,
 		Cumulative: 137,
 		// 2.5 second sleep.
 		MillisRemaining: 897414,
 		PlayerIndex:     1,
 		Rack:            []byte{4, 5, 8, 9, 15, 18, 19}, // DEHIORS
-	})
+	}))
 
 	is.Equal(gdoc.CurrentScores, []int32{113, 137})
 	is.Equal(gdoc.ScorelessTurns, uint32(1))
@@ -811,22 +811,22 @@ func TestChallengeGoodWordEndOfGame(t *testing.T) {
 				bonus = 5
 			}
 			if chrule != ipc.ChallengeRule_ChallengeRule_DOUBLE {
-				is.Equal(gdoc.Events[25], &ipc.GameEvent{
+				is.True(proto.Equal(gdoc.Events[25], &ipc.GameEvent{
 					Type:            ipc.GameEvent_CHALLENGE_BONUS,
 					PlayerIndex:     1, // the person being challenged
 					Bonus:           int32(bonus),
 					Rack:            []byte{},
 					Cumulative:      305 + int32(bonus),
 					MillisRemaining: 899671,
-				})
+				}))
 			} else {
-				is.Equal(gdoc.Events[25], &ipc.GameEvent{
+				is.True(proto.Equal(gdoc.Events[25], &ipc.GameEvent{
 					Type:            ipc.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS,
 					PlayerIndex:     0,
 					Rack:            []byte{3, 5, 16, 18, 20},
 					Cumulative:      446,
 					MillisRemaining: 899671,
-				})
+				}))
 			}
 
 			is.Equal(gdoc.Events[26], &ipc.GameEvent{
