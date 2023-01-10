@@ -45,7 +45,7 @@ func (s *DBStore) GetNotoriousGames(ctx context.Context, playerID string, limit 
 	}
 	defer tx.Rollback(ctx)
 
-	rows, err := tx.Query(ctx, `SELECT game_id, type FROM notoriousgames WHERE player_id = $1 ORDER BY timestamp ASC LIMIT $2`, playerID, limit)
+	rows, err := tx.Query(ctx, `SELECT game_id, type FROM notoriousgames WHERE player_id = $1 ORDER BY timestamp DESC LIMIT $2`, playerID, limit)
 	if err != nil {
 		return nil, err
 	}
