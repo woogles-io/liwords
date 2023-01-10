@@ -48,6 +48,7 @@ func (e *InvalidWordsError) Error() string {
 }
 
 func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, tr int64) error {
+	log.Debug().Interface("gevt", gevt).Msg("play-move")
 	cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
 	if !ok {
 		return errors.New("config does not exist in context")
@@ -118,6 +119,23 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 		gevt.Cumulative = gdoc.CurrentScores[gdoc.PlayerOnTurn]
 		gdoc.Events = append(gdoc.Events, gevt)
 
+		// XXX: maybe do this another way.
+		// For the next events, assume they are fully populated with the data that we
+		// need. There is no way to play these events from the user API, only
+		// from ReplayEvents.
+		// case ipc.GameEvent_CHALLENGE_BONUS, ipc.GameEvent_END_RACK_PTS,
+		// 	ipc.GameEvent_TIME_PENALTY:
+
+		// 	gdoc.Racks[gdoc.PlayerOnTurn] = gevt.Rack
+		// 	gdoc.CurrentScores[gdoc.PlayerOnTurn] = gevt.Cumulative
+		// 	gdoc.Events = append(gdoc.Events, gevt)
+
+		// case ipc.GameEvent_PHONY_TILES_RETURNED:
+
+		// 	gdoc.Racks[gevt.PlayerIndex] = gevt.Rack
+		// 	gdoc.CurrentScores[gevt.PlayerIndex] = gevt.Cumulative
+		// 	// Unplay tiles and return to bag.
+
 	}
 	if gdoc.ScorelessTurns == MaxConsecutiveScorelessTurns {
 		dist, err := tiles.GetDistribution(cfg, gdoc.LetterDistribution)
@@ -183,7 +201,6 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 	gevt.Score = score
 	gevt.IsBingo = tilesPlayed == RackTileLimit
 	gevt.MillisRemaining = int32(tr)
-
 	gdoc.Racks[gdoc.PlayerOnTurn] = runemapping.MachineWord(newRack).ToByteArr()
 	gevt.WordsFormed = make([][]byte, len(wordsFormed))
 	gevt.Cumulative = gdoc.CurrentScores[gdoc.PlayerOnTurn]
@@ -220,17 +237,13 @@ func validateMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.GameDocumen
 			return errExchangeNotPermitted
 		}
 		return nil
-	} else if gevt.Type == ipc.GameEvent_PASS || gevt.Type == ipc.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS {
-		return nil
-	} else if gevt.Type == ipc.GameEvent_CHALLENGE {
-		return nil
 	} else if gevt.Type == ipc.GameEvent_TILE_PLACEMENT_MOVE {
 		if gdoc.PlayState == ipc.PlayState_WAITING_FOR_FINAL_PASS {
 			return errOnlyPassOrChallenge
 		}
 		return nil
 	}
-	return errMoveTypeNotUserInputtable
+	return nil
 
 }
 

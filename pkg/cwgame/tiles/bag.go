@@ -114,3 +114,22 @@ func RemoveTiles(bag *ipc.Bag, letters []runemapping.MachineLetter) error {
 	}
 	return nil
 }
+
+func Count(bag *ipc.Bag, letter runemapping.MachineLetter) int {
+	ct := 0
+	for _, t := range bag.Tiles {
+		if t == byte(letter) {
+			ct++
+		}
+	}
+	return ct
+}
+
+// Sort sorts the bag. Normally there is no need to do this, since we always
+// draw randomly from the bag, but this can be used for determinism (for
+// example in tests)
+func Sort(bag *ipc.Bag) {
+	sort.Slice(bag.Tiles, func(i, j int) bool {
+		return bag.Tiles[i] < bag.Tiles[j]
+	})
+}

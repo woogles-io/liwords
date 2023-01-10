@@ -690,7 +690,6 @@
     "bag": {
         "tiles": ""
     },
-    "scoreless_turns": 1,
     "player_on_turn": 0,
     "timers": {
         "time_of_last_update": "1670886431488",

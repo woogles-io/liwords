@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/liwords/pkg/config"
+	"github.com/domino14/liwords/pkg/cwgame/tiles"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
@@ -1183,6 +1184,80 @@ func TestExchange(t *testing.T) {
 		Leave:           []byte{5, 9, 14, 20},
 		MillisRemaining: 883808,
 	}))
+}
+
+func TestAssignRacks(t *testing.T) {
+	is := is.New(t)
+
+	dist, err := tiles.GetDistribution(DefaultConfig, "English")
+	is.NoErr(err)
+
+	doc := &ipc.GameDocument{
+		Players: []*ipc.GameDocument_MinimalPlayerInfo{
+			{Nickname: "abc", RealName: "abc", UserId: "abc"},
+			{Nickname: "ijk", RealName: "ijk", UserId: "ijk"},
+		},
+		Racks: make([][]byte, 2),
+		Bag:   tiles.TileBag(dist),
+	}
+	err = AssignRacks(doc, [][]byte{
+		{1, 1, 1, 1, 1, 1, 1},
+		{5, 5, 5, 5, 5, 5, 5},
+	}, true)
+	is.NoErr(err)
+	is.Equal(len(doc.Bag.Tiles), 86)
+	is.Equal(tiles.Count(doc.Bag, 1), 2)
+	is.Equal(tiles.Count(doc.Bag, 5), 5)
+}
+
+func TestAssignRacksEmptyRack(t *testing.T) {
+	is := is.New(t)
+
+	dist, err := tiles.GetDistribution(DefaultConfig, "English")
+	is.NoErr(err)
+
+	doc := &ipc.GameDocument{
+		Players: []*ipc.GameDocument_MinimalPlayerInfo{
+			{Nickname: "abc", RealName: "abc", UserId: "abc"},
+			{Nickname: "ijk", RealName: "ijk", UserId: "ijk"},
+		},
+		Racks: make([][]byte, 2),
+		Bag:   tiles.TileBag(dist),
+	}
+	err = AssignRacks(doc, [][]byte{
+		nil,
+		{5, 5, 5, 5, 5, 5, 5},
+	}, true)
+	is.NoErr(err)
+	is.Equal(len(doc.Bag.Tiles), 86)
+	is.True(tiles.Count(doc.Bag, 5) <= 5)
+}
+
+func TestReplayEvents(t *testing.T) {
+	is := is.New(t)
+
+	testcases := []string{
+		"document-game-almost-over.json",
+		"document-challenge-or-pass.json",
+		"document-earlygame.json",
+		"document-gameover.json",
+	}
+	for _, tc := range testcases {
+		tc := tc
+		t.Run(tc, func(t *testing.T) {
+			gdoc := loadGDoc(tc)
+			gdocClone := loadGDoc(tc)
+
+			ctx := ctxForTests()
+			err := ReplayEvents(ctx, DefaultConfig, gdoc, gdocClone.Events)
+			is.NoErr(err)
+			tiles.Sort(gdoc.Bag)
+			tiles.Sort(gdocClone.Bag)
+
+			is.True(proto.Equal(gdoc, gdocClone))
+
+		})
+	}
 }
 
 func BenchmarkLoadDocumentJSON(b *testing.B) {

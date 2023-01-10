@@ -3,12 +3,17 @@ package cwgame
 import (
 	"context"
 	"errors"
+	"fmt"
+	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
 
 	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/domino14/liwords/pkg/config"
@@ -119,6 +124,91 @@ func StartGame(ctx context.Context, gdoc *ipc.GameDocument) error {
 	return nil
 }
 
+// AssignRacks assigns racks to the players. If assignEmpty is true, it will
+// assign a random rack to any players with empty racks in the racks array.
+func AssignRacks(gdoc *ipc.GameDocument, racks [][]byte, assignEmpty bool) error {
+	if len(racks) != len(gdoc.Players) {
+		return errors.New("racks length must match players length")
+	}
+	// Throw in existing racks.
+	for i := range gdoc.Players {
+		if len(gdoc.Racks[i]) > 0 {
+			log.Debug().Interface("rack", gdoc.Racks[i]).Int("player", i).Msg("throwing in rack for player")
+		}
+		mls := runemapping.FromByteArr(gdoc.Racks[i])
+		tiles.PutBack(gdoc.Bag, mls)
+		gdoc.Racks[i] = nil
+	}
+	empties := []int{}
+	for i, r := range racks {
+		if len(r) == 0 {
+			// empty
+			empties = append(empties, i)
+		} else {
+			rackml := runemapping.FromByteArr(r)
+			err := tiles.RemoveTiles(gdoc.Bag, rackml)
+			if err != nil {
+				return err
+			}
+			gdoc.Racks[i] = r
+		}
+	}
+	// Conditionally draw new tiles for empty racks
+	if assignEmpty {
+		for _, i := range empties {
+			placeholder := make([]runemapping.MachineLetter, RackTileLimit)
+			drew, err := tiles.DrawAtMost(gdoc.Bag, RackTileLimit, placeholder)
+			if err != nil {
+				return err
+			}
+			drawn := placeholder[:drew]
+			gdoc.Racks[i] = runemapping.MachineWord(drawn).ToByteArr()
+		}
+	}
+	return nil
+}
+
+// ReconcileAllTiles throws an error if the tiles on the board and on
+// player racks do not match the letter distribution. It is not meant to
+// be used in production, but for debugging purposes only.
+func ReconcileAllTiles(dist *tiles.LetterDistribution, gdoc *ipc.GameDocument) error {
+
+	bag := tiles.TileBag(dist)
+
+	for _, t := range gdoc.Board.Tiles {
+		toRm := []byte{t}
+		if int8(t) < 0 {
+			toRm = []byte{0}
+		} else if t == 0 {
+			continue
+		}
+		err := tiles.RemoveTiles(bag, runemapping.FromByteArr(toRm))
+		if err != nil {
+			return fmt.Errorf("removing-from-board error: %w", err)
+		}
+	}
+	for idx, rack := range gdoc.Racks {
+		err := tiles.RemoveTiles(bag, runemapping.FromByteArr(rack))
+		if err != nil {
+			return fmt.Errorf("removing-from-rack-%d error: %w", idx, err)
+		}
+	}
+	if len(gdoc.Bag.Tiles) != len(bag.Tiles) {
+		return fmt.Errorf("lengths dont match %d %d", len(gdoc.Bag.Tiles), len(bag.Tiles))
+	}
+	sort.Slice(gdoc.Bag.Tiles, func(i, j int) bool {
+		return gdoc.Bag.Tiles[i] < gdoc.Bag.Tiles[j]
+	})
+	sort.Slice(bag.Tiles, func(i, j int) bool {
+		return bag.Tiles[i] < bag.Tiles[j]
+	})
+
+	if !reflect.DeepEqual(bag.Tiles, gdoc.Bag.Tiles) {
+		return fmt.Errorf("bags aren't equal: (%v) (%v)", bag.Tiles, gdoc.Bag.Tiles)
+	}
+	return nil
+}
+
 // ReplayEvents plays the events on the game document. For simplicity,
 // assume these events replace every event in the game document; i.e.,
 // initialize from scratch.
@@ -140,32 +230,82 @@ func ReplayEvents(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocumen
 	gdoc.Board = board.NewBoard(layout)
 	gdoc.Bag = tiles.TileBag(dist)
 	gdoc.ScorelessTurns = 0
-	for _, evt := range evts {
+	gdoc.PlayerOnTurn = 0
+	savedRacks := gdoc.Racks
+	savedTimers := proto.Clone(gdoc.Timers)
+	gdoc.Racks = make([][]byte, len(gdoc.Players))
+
+	// Replaying events is not as simple as just calling playMove with the event.
+	// Because of the randomness factor, the drawn tiles after each play/exchange
+	// etc won't be the same. We have to set the racks manually before each play.
+	for idx, evt := range evts {
+		if evt.Type == ipc.GameEvent_END_RACK_PTS {
+			// don't append this. This event should be automatically generated
+			// and appended by the regular gameplay events.
+			continue
+		}
+		toAssign := make([][]byte, len(gdoc.Players))
+		toAssign[evt.PlayerIndex] = evt.Rack
+
+		err = AssignRacks(gdoc, toAssign, true)
+		if err != nil {
+			return err
+		}
+
+		err = ReconcileAllTiles(dist, gdoc)
+		if err != nil {
+			return err
+		}
+		gdoc.PlayerOnTurn = evt.PlayerIndex
+
 		switch evt.Type {
-		case ipc.GameEvent_TILE_PLACEMENT_MOVE:
-			gdoc.Racks[gdoc.PlayerOnTurn] = evt.Rack
-			err = tiles.RemoveTiles(gdoc.Bag, runemapping.FromByteArr(evt.Rack))
-			if err != nil {
-				return err
-			}
-			playedTiles := runemapping.FromByteArr(evt.PlayedTiles)
-			_, err = board.PlayMove(gdoc.Board, gdoc.BoardLayout, dist, playedTiles,
-				int(evt.Row), int(evt.Column), evt.Direction == ipc.GameEvent_VERTICAL)
-			if err != nil {
-				return err
-			}
-			gdoc.ScorelessTurns = 0
-		case ipc.GameEvent_EXCHANGE:
-			gdoc.Racks[gdoc.PlayerOnTurn] = evt.Rack
-			err = tiles.RemoveTiles(gdoc.Bag, runemapping.FromByteArr(evt.Rack))
-			if err != nil {
-				return err
+		case ipc.GameEvent_TILE_PLACEMENT_MOVE,
+			ipc.GameEvent_EXCHANGE,
+			ipc.GameEvent_PASS, ipc.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
+
+			if idx+1 <= len(evts)-1 {
+				if evt.Type == ipc.GameEvent_TILE_PLACEMENT_MOVE &&
+					evts[idx+1].Type == ipc.GameEvent_PHONY_TILES_RETURNED {
+
+					// In this case, do not play the move since it will be
+					// taken back. No need to calculate the bag/board for this event.
+					// We still want to append the event, however.
+					gdoc.Events = append(gdoc.Events, evt)
+					break
+					// Go on to the next event.
+
+				}
 			}
 
+			tr := evt.MillisRemaining
+			// Use playMove to just play the event. This should apply all relevant
+			// changes to the doc (scores, keeping track of scoreless turns, etc)
+			err = playMove(ctx, gdoc, evt, int64(tr))
+			if err != nil {
+				return err
+			}
+			err = ReconcileAllTiles(dist, gdoc)
+			if err != nil {
+				return fmt.Errorf("reconciling-after-play: %w", err)
+			}
+
+		default:
+			// If it's another type of game event, all we care about is the cumulative
+			// score.
+			gdoc.CurrentScores[evt.PlayerIndex] = evt.Cumulative
+			gdoc.Events = append(gdoc.Events, evt)
+
+			// XXX not handling 6-consecutive zeroes case
 		}
-		gdoc.Events = append(gdoc.Events, evt)
-		gdoc.CurrentScores[evt.PlayerIndex] = evt.Cumulative
+
 	}
+	// At the end, make sure to set the racks to whatever they are in the doc.
+	log.Debug().Interface("savedRacks", savedRacks).Msg("call-assign-racks")
+	err = AssignRacks(gdoc, savedRacks, true)
+	if err != nil {
+		return err
+	}
+	gdoc.Timers = savedTimers.(*ipc.Timers)
 
 	return nil
 }
@@ -249,6 +389,10 @@ func ProcessGameplayEvent(ctx context.Context, evt *ipc.ClientGameplayEvent,
 		if err != nil {
 			return err
 		}
+		// At this point, we have validated the play can be made from
+		// the player's rack, but we haven't validated the play itself
+		// (adherence to rules, valid words if applicable, etc)
+
 		err = playMove(ctx, gdoc, gevt, tr)
 		if err != nil {
 			return err
@@ -395,10 +539,15 @@ func findOnlyNonquitter(gdoc *ipc.GameDocument) (int, bool) {
 }
 
 func assignTurnToNextNonquitter(gdoc *ipc.GameDocument, start uint32) error {
+	if gdoc.PlayState == ipc.PlayState_GAME_OVER {
+		// Game is already over, don't bother changing on-turn
+		return nil
+	}
 	i := (start + uint32(1)) % uint32(len(gdoc.Players))
 	for i != start {
 		if !gdoc.Players[i].Quit {
 			gdoc.PlayerOnTurn = i
+			log.Debug().Uint32("on-turn", i).Msg("assign-turn")
 			return nil
 		}
 		i = (i + uint32(1)) % uint32(len(gdoc.Players))
