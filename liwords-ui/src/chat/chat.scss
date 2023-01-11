@@ -62,6 +62,9 @@ p {
     .entities {
       overflow-y: auto;
     }
+    .ant-tabs-content {
+      position: static;
+    }
   }
 
   p.disabled-message {
@@ -426,7 +429,6 @@ p {
 .chat input[name='chat-input'] {
   position: absolute;
   bottom: 0;
-  left: 0;
   left: 0;
   width: calc(100% - 12px);
   margin: 6px;
