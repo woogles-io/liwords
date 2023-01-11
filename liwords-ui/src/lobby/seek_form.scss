@@ -94,7 +94,6 @@
   }
   .extra-time-setter,
   .initial {
-    display: flex;
     align-items: center;
     .ant-form-item-control-input {
       width: auto;
@@ -103,9 +102,6 @@
 
   .initial {
     margin-top: 48px;
-  }
-  .extra-time-setter {
-    margin-bottom: 48px;
   }
   .ant-form-item .ant-form-item-label {
     text-align: left;
@@ -140,6 +136,7 @@
   }
 
   .ant-form-item-control {
+    display: flex;
     flex-direction: row;
     align-items: center;
     width: calc(100% - 24px);
