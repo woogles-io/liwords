@@ -441,8 +441,8 @@ func TestNotoriety(t *testing.T) {
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
 		{Score: 0, Games: []*ms.NotoriousGame{}},
 		{Score: 7, Games: []*ms.NotoriousGame{
-			{Type: ms.NotoriousGameType_NO_PLAY},
-			{Type: ms.NotoriousGameType_SITTING}}},
+			{Type: ms.NotoriousGameType_SITTING},
+			{Type: ms.NotoriousGameType_NO_PLAY}}},
 	}, ustore, nstore)
 	is.NoErr(err)
 
@@ -454,8 +454,8 @@ func TestNotoriety(t *testing.T) {
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
 		{Score: 0, Games: []*ms.NotoriousGame{}},
 		{Score: 7, Games: []*ms.NotoriousGame{
-			{Type: ms.NotoriousGameType_NO_PLAY},
-			{Type: ms.NotoriousGameType_SITTING}}},
+			{Type: ms.NotoriousGameType_SITTING},
+			{Type: ms.NotoriousGameType_NO_PLAY}}},
 	}, ustore, nstore)
 	is.NoErr(err)
 
@@ -467,8 +467,8 @@ func TestNotoriety(t *testing.T) {
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
 		{Score: 0, Games: []*ms.NotoriousGame{}},
 		{Score: 6, Games: []*ms.NotoriousGame{
-			{Type: ms.NotoriousGameType_NO_PLAY},
-			{Type: ms.NotoriousGameType_SITTING}}},
+			{Type: ms.NotoriousGameType_SITTING},
+			{Type: ms.NotoriousGameType_NO_PLAY}}},
 	}, ustore, nstore)
 	is.NoErr(err)
 
@@ -480,9 +480,9 @@ func TestNotoriety(t *testing.T) {
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
 		{Score: 0, Games: []*ms.NotoriousGame{}},
 		{Score: 10, Games: []*ms.NotoriousGame{
-			{Type: ms.NotoriousGameType_NO_PLAY},
 			{Type: ms.NotoriousGameType_SITTING},
-			{Type: ms.NotoriousGameType_SITTING}}},
+			{Type: ms.NotoriousGameType_SITTING},
+			{Type: ms.NotoriousGameType_NO_PLAY}}},
 	}, ustore, nstore)
 	is.NoErr(err)
 
@@ -517,9 +517,9 @@ func TestNotoriety(t *testing.T) {
 		{Score: 0, Games: []*ms.NotoriousGame{}},
 		{Score: 22, Games: []*ms.NotoriousGame{
 			{Type: ms.NotoriousGameType_NO_PLAY},
-			{Type: ms.NotoriousGameType_SITTING},
-			{Type: ms.NotoriousGameType_SITTING},
 			{Type: ms.NotoriousGameType_NO_PLAY},
+			{Type: ms.NotoriousGameType_SITTING},
+			{Type: ms.NotoriousGameType_SITTING},
 			{Type: ms.NotoriousGameType_NO_PLAY}}},
 	}, ustore, nstore)
 	is.NoErr(err)
@@ -542,9 +542,9 @@ func TestNotoriety(t *testing.T) {
 		{Score: 0, Games: []*ms.NotoriousGame{}},
 		{Score: 21, Games: []*ms.NotoriousGame{
 			{Type: ms.NotoriousGameType_NO_PLAY},
-			{Type: ms.NotoriousGameType_SITTING},
-			{Type: ms.NotoriousGameType_SITTING},
 			{Type: ms.NotoriousGameType_NO_PLAY},
+			{Type: ms.NotoriousGameType_SITTING},
+			{Type: ms.NotoriousGameType_SITTING},
 			{Type: ms.NotoriousGameType_NO_PLAY}}},
 	}, ustore, nstore)
 	is.NoErr(err)
@@ -560,9 +560,9 @@ func TestNotoriety(t *testing.T) {
 			{Type: ms.NotoriousGameType_NO_PLAY}}},
 		{Score: 20, Games: []*ms.NotoriousGame{
 			{Type: ms.NotoriousGameType_NO_PLAY},
-			{Type: ms.NotoriousGameType_SITTING},
-			{Type: ms.NotoriousGameType_SITTING},
 			{Type: ms.NotoriousGameType_NO_PLAY},
+			{Type: ms.NotoriousGameType_SITTING},
+			{Type: ms.NotoriousGameType_SITTING},
 			{Type: ms.NotoriousGameType_NO_PLAY}}},
 	}, ustore, nstore)
 	is.NoErr(err)
@@ -577,10 +577,10 @@ func TestNotoriety(t *testing.T) {
 			{Type: ms.NotoriousGameType_NO_PLAY}}},
 		{Score: 26, Games: []*ms.NotoriousGame{
 			{Type: ms.NotoriousGameType_NO_PLAY},
-			{Type: ms.NotoriousGameType_SITTING},
-			{Type: ms.NotoriousGameType_SITTING},
 			{Type: ms.NotoriousGameType_NO_PLAY},
 			{Type: ms.NotoriousGameType_NO_PLAY},
+			{Type: ms.NotoriousGameType_SITTING},
+			{Type: ms.NotoriousGameType_SITTING},
 			{Type: ms.NotoriousGameType_NO_PLAY}}},
 	}, ustore, nstore)
 	is.NoErr(err)
@@ -603,10 +603,10 @@ func TestNotoriety(t *testing.T) {
 			{Type: ms.NotoriousGameType_NO_PLAY}}},
 		{Score: 25, Games: []*ms.NotoriousGame{
 			{Type: ms.NotoriousGameType_NO_PLAY},
-			{Type: ms.NotoriousGameType_SITTING},
-			{Type: ms.NotoriousGameType_SITTING},
 			{Type: ms.NotoriousGameType_NO_PLAY},
 			{Type: ms.NotoriousGameType_NO_PLAY},
+			{Type: ms.NotoriousGameType_SITTING},
+			{Type: ms.NotoriousGameType_SITTING},
 			{Type: ms.NotoriousGameType_NO_PLAY}}},
 	}, ustore, nstore)
 	is.NoErr(err)
@@ -664,13 +664,13 @@ func TestNotoriety(t *testing.T) {
 		{Score: 3, Games: []*ms.NotoriousGame{
 			{Type: ms.NotoriousGameType_NO_PLAY}}},
 		{Score: 35, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_NO_PLAY_DENIED_NUDGE},
+			{Type: ms.NotoriousGameType_NO_PLAY},
+			{Type: ms.NotoriousGameType_NO_PLAY},
 			{Type: ms.NotoriousGameType_NO_PLAY},
 			{Type: ms.NotoriousGameType_SITTING},
 			{Type: ms.NotoriousGameType_SITTING},
-			{Type: ms.NotoriousGameType_NO_PLAY},
-			{Type: ms.NotoriousGameType_NO_PLAY},
-			{Type: ms.NotoriousGameType_NO_PLAY},
-			{Type: ms.NotoriousGameType_NO_PLAY_DENIED_NUDGE}}},
+			{Type: ms.NotoriousGameType_NO_PLAY}}},
 	}, ustore, nstore)
 	is.NoErr(err)
 
