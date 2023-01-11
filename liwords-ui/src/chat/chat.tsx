@@ -23,8 +23,6 @@ import { ChatMessage } from '../gen/api/proto/ipc/chat_pb';
 import { useClient } from '../utils/hooks/connect';
 import { SocializeService } from '../gen/api/proto/user_service/user_service_connectweb';
 
-const { TabPane } = Tabs;
-
 export type Props = {
   sendChat: (msg: string, chan: string) => void;
   defaultChannel: string;
@@ -636,6 +634,151 @@ export const Chat = React.memo((props: Props) => {
     [channel, presenceCount]
   );
 
+  const tabItems = [
+    {
+      label: 'Players',
+      key: 'PLAYERS',
+      children: (
+        <div className="player-pane">
+          <Players
+            sendMessage={sendNewMessage}
+            defaultChannelType={
+              props.channelTypeOverride || defaultChannel.split('.')[1] || ''
+            }
+          />
+        </div>
+      ),
+    },
+    {
+      label: (
+        <>
+          Chat
+          {notificationCount > 0 && (
+            <span className="notification">
+              {notificationCount < 10 ? notificationCount : '!'}
+            </span>
+          )}
+        </>
+      ),
+      key: 'CHAT',
+      children: showChannels ? (
+        <ChatChannels
+          defaultChannel={defaultChannel}
+          defaultDescription={defaultDescription}
+          defaultLastMessage={defaultLastMessage}
+          updatedChannels={updatedChannels}
+          unseenMessages={unseenMessages}
+          onChannelSelect={(ch: string, desc: string) => {
+            if (channel !== ch) {
+              setChannel(ch);
+              setDescription(desc);
+            }
+            setShowChannels(false);
+          }}
+          sendMessage={sendNewMessage}
+          suppressDefault={props.suppressDefault}
+          tournamentID={props.tournamentID}
+        />
+      ) : (
+        channel && (
+          <>
+            <div
+              id="chat-context"
+              className={`chat-context${hasScroll ? ' scrolling' : ''}`}
+            >
+              {loggedIn ? (
+                <p
+                  className={`breadcrumb clickable${
+                    (updatedChannels && updatedChannels.size > 0) ||
+                    unseenMessages.length > 0
+                      ? ' unread'
+                      : ''
+                  }`}
+                  onClick={() => {
+                    setChannel(undefined);
+                    setChannelSelectedTime(Date.now());
+                    setShowChannels(true);
+                    fetchChannels();
+                  }}
+                >
+                  <LeftOutlined /> All chats
+                  {((updatedChannels && updatedChannels.size > 0) ||
+                    unseenMessages.length > 0) && (
+                    <span className="unread-marker">•</span>
+                  )}
+                </p>
+              ) : null}
+              <p data-testid="description" className="description">
+                {decoratedDescription}
+                {hasUnreadChat && (
+                  <span className="unread-marker" data-testid="description">
+                    •
+                  </span>
+                )}
+              </p>
+              {presenceCount && !channel.startsWith('chat.pm.') ? (
+                <>
+                  <p className="presence-count">
+                    <span>{peopleOnlineCounter}</span>
+                    {presenceVisible ? (
+                      <span className="list-trigger" onClick={handleHideList}>
+                        Hide list
+                      </span>
+                    ) : (
+                      <span className="list-trigger" onClick={handleShowList}>
+                        Show list
+                      </span>
+                    )}
+                  </p>
+                  {presenceVisible ? (
+                    <p className="presence">
+                      <Presences
+                        players={presences}
+                        channel={channel}
+                        sendMessage={sendNewMessage}
+                      />
+                    </p>
+                  ) : null}
+                </>
+              ) : null}
+            </div>
+            <div
+              className={`entities ${channelType}`}
+              style={
+                maxEntitiesHeight
+                  ? {
+                      maxHeight: maxEntitiesHeight,
+                    }
+                  : undefined
+              }
+              ref={setTabContainerElement}
+              onScroll={handleChatScrolled}
+            >
+              {entities}
+            </div>
+            <form>
+              <Input
+                autoFocus={!defaultChannel.startsWith('chat.game')}
+                autoComplete="off"
+                placeholder={
+                  channel === 'chat.lobby'
+                    ? 'Ask or answer question...'
+                    : 'chat...'
+                }
+                name="chat-input"
+                disabled={!loggedIn}
+                onKeyDown={onKeyDown}
+                onChange={onChange}
+                value={curMsg}
+                spellCheck={false}
+              />
+            </form>
+          </>
+        )
+      ),
+    },
+  ];
+
   return (
     <Card className="chat" id="chat">
       <Tabs
@@ -643,152 +786,8 @@ export const Chat = React.memo((props: Props) => {
         centered
         onTabClick={handleTabClick}
         animated={false}
-      >
-        <TabPane tab={<>Players</>} key="PLAYERS" className="player-pane">
-          <Players
-            sendMessage={sendNewMessage}
-            defaultChannelType={
-              props.channelTypeOverride || defaultChannel.split('.')[1] || ''
-            }
-          />
-        </TabPane>
-        <TabPane
-          tab={
-            <>
-              Chat
-              {notificationCount > 0 && (
-                <span className="notification">
-                  {notificationCount < 10 ? notificationCount : '!'}
-                </span>
-              )}
-            </>
-          }
-          key="CHAT"
-        >
-          {showChannels ? (
-            <ChatChannels
-              defaultChannel={defaultChannel}
-              defaultDescription={defaultDescription}
-              defaultLastMessage={defaultLastMessage}
-              updatedChannels={updatedChannels}
-              unseenMessages={unseenMessages}
-              onChannelSelect={(ch: string, desc: string) => {
-                if (channel !== ch) {
-                  setChannel(ch);
-                  setDescription(desc);
-                }
-                setShowChannels(false);
-              }}
-              sendMessage={sendNewMessage}
-              suppressDefault={props.suppressDefault}
-              tournamentID={props.tournamentID}
-            />
-          ) : (
-            channel && (
-              <>
-                <div
-                  id="chat-context"
-                  className={`chat-context${hasScroll ? ' scrolling' : ''}`}
-                >
-                  {loggedIn ? (
-                    <p
-                      className={`breadcrumb clickable${
-                        (updatedChannels && updatedChannels.size > 0) ||
-                        unseenMessages.length > 0
-                          ? ' unread'
-                          : ''
-                      }`}
-                      onClick={() => {
-                        setChannel(undefined);
-                        setChannelSelectedTime(Date.now());
-                        setShowChannels(true);
-                        fetchChannels();
-                      }}
-                    >
-                      <LeftOutlined /> All chats
-                      {((updatedChannels && updatedChannels.size > 0) ||
-                        unseenMessages.length > 0) && (
-                        <span className="unread-marker">•</span>
-                      )}
-                    </p>
-                  ) : null}
-                  <p data-testid="description" className="description">
-                    {decoratedDescription}
-                    {hasUnreadChat && (
-                      <span className="unread-marker" data-testid="description">
-                        •
-                      </span>
-                    )}
-                  </p>
-                  {presenceCount && !channel.startsWith('chat.pm.') ? (
-                    <>
-                      <p className="presence-count">
-                        <span>{peopleOnlineCounter}</span>
-                        {presenceVisible ? (
-                          <span
-                            className="list-trigger"
-                            onClick={handleHideList}
-                          >
-                            Hide list
-                          </span>
-                        ) : (
-                          <span
-                            className="list-trigger"
-                            onClick={handleShowList}
-                          >
-                            Show list
-                          </span>
-                        )}
-                      </p>
-                      {presenceVisible ? (
-                        <p className="presence">
-                          <Presences
-                            players={presences}
-                            channel={channel}
-                            sendMessage={sendNewMessage}
-                          />
-                        </p>
-                      ) : null}
-                    </>
-                  ) : null}
-                </div>
-                <div
-                  className={`entities ${channelType}`}
-                  style={
-                    maxEntitiesHeight
-                      ? {
-                          maxHeight: maxEntitiesHeight,
-                        }
-                      : undefined
-                  }
-                  ref={setTabContainerElement}
-                  onScroll={handleChatScrolled}
-                >
-                  {entities}
-                </div>
-                <form>
-                  <Input
-                    autoFocus={!defaultChannel.startsWith('chat.game')}
-                    autoComplete="off"
-                    placeholder={
-                      channel === 'chat.lobby'
-                        ? 'Ask or answer question...'
-                        : 'chat...'
-                    }
-                    name="chat-input"
-                    disabled={!loggedIn}
-                    onKeyDown={onKeyDown}
-                    onChange={onChange}
-                    value={curMsg}
-                    spellCheck={false}
-                  />
-                </form>
-              </>
-            )
-          )}
-          {/* <Button onClick={props.DISCONNECT}>DISCONNECT</Button> */}
-        </TabPane>
-      </Tabs>
+        items={tabItems}
+      />
     </Card>
   );
 });
