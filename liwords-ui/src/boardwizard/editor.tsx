@@ -156,16 +156,20 @@ export const BoardEditor = () => {
   );
 
   const changeCurrentRack = async (rack: string, evtIdx: number) => {
-    if (evtIdx !== gameContext.turns.length) {
-      // We're trying to edit an old event's rack.
-      // not onturn here
-    }
-
-    const onturn = gameContext.onturn;
+    let onturn = gameContext.onturn;
+    let amendment = false;
     const racks: [Uint8Array, Uint8Array] = [
       new Uint8Array(),
       new Uint8Array(),
     ];
+
+    if (evtIdx !== gameContext.turns.length) {
+      // We're trying to edit an old event's rack.
+      // not onturn here
+      onturn = gameContext.turns[evtIdx].playerIndex;
+      amendment = true;
+    }
+
     racks[onturn] = Uint8Array.from(
       runesToUint8Array(rack, gameContext.alphabet)
     );
@@ -173,7 +177,9 @@ export const BoardEditor = () => {
     try {
       await eventClient.setRacks({
         gameId: gameContext.gameID,
-        racks: racks,
+        racks,
+        eventNumber: evtIdx,
+        amendment,
       });
     } catch (e) {
       flashError(e);
