@@ -1249,7 +1249,7 @@ func TestReplayEvents(t *testing.T) {
 			gdocClone := loadGDoc(tc)
 
 			ctx := ctxForTests()
-			err := ReplayEvents(ctx, DefaultConfig, gdoc, gdocClone.Events)
+			err := ReplayEvents(ctx, gdoc, gdocClone.Events)
 			is.NoErr(err)
 			tiles.Sort(gdoc.Bag)
 			tiles.Sort(gdocClone.Bag)
@@ -1258,6 +1258,30 @@ func TestReplayEvents(t *testing.T) {
 
 		})
 	}
+}
+
+func TestEditOldRack(t *testing.T) {
+	is := is.New(t)
+	gdoc := loadGDoc("document-game-almost-over.json")
+	ctx := ctxForTests()
+
+	err := EditOldRack(ctx, gdoc, 0, []byte{1, 2, 3, 4, 5, 6, 7})
+	is.NoErr(err)
+	is.Equal(gdoc.Events[0].Rack, []byte{1, 2, 3, 4, 5, 6, 7})
+	is.Equal(gdoc.Events[0].PlayedTiles, []byte{1, 18, 5, 14, 15, 19, 5})
+	// The rack doesn't match the played tiles, but this is fine. I can't
+	// think of another way to edit an old play.
+}
+
+func TestEditOldRackDisallowed(t *testing.T) {
+	is := is.New(t)
+	gdoc := loadGDoc("document-game-almost-over.json")
+	ctx := ctxForTests()
+
+	// Try to set the rack for event indexed 8 to JKL. It shouldn't
+	// let you, because event index 7 already used a J.
+	err := EditOldRack(ctx, gdoc, 8, []byte{10, 11, 12})
+	is.Equal(err.Error(), "tried to remove tile 10 from bag that was not there")
 }
 
 func BenchmarkLoadDocumentJSON(b *testing.B) {

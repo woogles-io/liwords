@@ -209,10 +209,44 @@ func ReconcileAllTiles(dist *tiles.LetterDistribution, gdoc *ipc.GameDocument) e
 	return nil
 }
 
+func EditOldRack(ctx context.Context, gdoc *ipc.GameDocument, evtNumber uint32, rack []byte) error {
+
+	// Determine whether it is possible to edit the rack to the passed-in rack at this point in the game.
+	// First clone and truncate the document.
+	gc := proto.Clone(gdoc).(*ipc.GameDocument)
+	evt := gdoc.Events[evtNumber]
+
+	// replay until the event before evt.
+	err := ReplayEvents(ctx, gc, gc.Events[:evtNumber])
+	if err != nil {
+		return err
+	}
+	evtTurn := evt.PlayerIndex
+	racks := make([][]byte, len(gdoc.Players))
+	racks[evtTurn] = rack
+	err = AssignRacks(gc, racks, false)
+	if err != nil {
+		return err
+	}
+	// If it is possible to assign racks without issue, then do it on the
+	// real document.
+	evt.Rack = rack
+	// Don't bother recalculating leave right now.
+	// XXX: Strongly reconsider removing the Leave from an event. It can
+	// be calculated on the fly from the rack and played tiles if needed,
+	// and it just complicates matters in situations like this.
+	return nil
+}
+
 // ReplayEvents plays the events on the game document. For simplicity,
 // assume these events replace every event in the game document; i.e.,
 // initialize from scratch.
-func ReplayEvents(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocument, evts []*ipc.GameEvent) error {
+func ReplayEvents(ctx context.Context, gdoc *ipc.GameDocument, evts []*ipc.GameEvent) error {
+
+	cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
+	if !ok {
+		return errors.New("config does not exist in context")
+	}
 
 	dist, err := tiles.GetDistribution(cfg, gdoc.LetterDistribution)
 	if err != nil {
@@ -252,10 +286,6 @@ func ReplayEvents(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocumen
 			return err
 		}
 
-		err = ReconcileAllTiles(dist, gdoc)
-		if err != nil {
-			return err
-		}
 		gdoc.PlayerOnTurn = evt.PlayerIndex
 
 		switch evt.Type {
@@ -283,10 +313,6 @@ func ReplayEvents(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocumen
 			err = playMove(ctx, gdoc, evt, int64(tr))
 			if err != nil {
 				return err
-			}
-			err = ReconcileAllTiles(dist, gdoc)
-			if err != nil {
-				return fmt.Errorf("reconciling-after-play: %w", err)
 			}
 
 		default:

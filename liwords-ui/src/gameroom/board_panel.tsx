@@ -137,7 +137,7 @@ type Props = {
     | undefined;
   vsBot: boolean;
   exitableExaminer?: boolean;
-  changeCurrentRack?: (rack: string) => void;
+  changeCurrentRack?: (rack: string, evtIdx: number) => void;
 };
 
 const shuffleString = (a: string): string => {
@@ -1747,7 +1747,10 @@ export const BoardPanel = React.memo((props: Props) => {
               <RackEditor
                 rackCallback={(rack: string) => {
                   if (props.changeCurrentRack) {
-                    props.changeCurrentRack(rack);
+                    props.changeCurrentRack(
+                      rack,
+                      examinableGameContext.turns.length
+                    );
                   }
                   setCurrentMode('NORMAL');
                 }}

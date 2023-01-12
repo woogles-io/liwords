@@ -12,8 +12,6 @@ import (
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/cwgame"
-	"github.com/domino14/liwords/pkg/cwgame/runemapping"
-	"github.com/domino14/liwords/pkg/cwgame/tiles"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/omgwords/stores"
 	"github.com/domino14/liwords/pkg/user"
@@ -312,6 +310,14 @@ func (gs *OMGWordsService) GetMyUnfinishedGames(ctx context.Context, req *pb.Get
 func (gs *OMGWordsService) GetGameDocument(ctx context.Context, req *pb.GetGameDocumentRequest) (*ipc.GameDocument, error) {
 	doc, err := gs.gameStore.GetDocument(ctx, req.GameId, false)
 	if err != nil {
+		if err == stores.ErrDoesNotExist {
+			// Clean up the game if it is still in a store.
+			derr := gs.metadataStore.DeleteAnnotatedGame(ctx, req.GameId)
+			if derr != nil {
+				return nil, derr
+			}
+			return nil, twirp.NotFoundError(err.Error())
+		}
 		return nil, err
 	}
 	if doc.Type == ipc.GameType_ANNOTATED {
@@ -347,24 +353,19 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *pb.SetRacksEvent) 
 	// This should be the case, because only cwgame is responsible for dealing
 	// racks.
 	if req.Amendment {
-		g.Events = g.Events[:req.EventNumber]
-	}
+		evt := g.Events[req.EventNumber]
+		err = cwgame.EditOldRack(ctx, g.GameDocument, req.EventNumber, req.Racks[evt.PlayerIndex])
+		if err != nil {
+			gs.gameStore.UnlockDocument(ctx, g)
+			return nil, err
+		}
+	} else {
 
-	for _, r := range g.Racks {
-		mls := runemapping.FromByteArr(r)
-		tiles.PutBack(g.Bag, mls)
-	}
-	for _, r := range req.Racks {
-		mls := runemapping.FromByteArr(r)
-		err = tiles.RemoveTiles(g.Bag, mls)
+		err = cwgame.AssignRacks(g.GameDocument, req.Racks, false)
 		if err != nil {
 			gs.gameStore.UnlockDocument(ctx, g)
 			return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 		}
-	}
-	// Now that everything matches, assign the racks back to the users
-	for i, r := range req.Racks {
-		g.Racks[i] = r
 	}
 
 	err = gs.gameStore.UpdateDocument(ctx, g)

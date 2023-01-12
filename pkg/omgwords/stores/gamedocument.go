@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/smithy-go"
 	"github.com/go-redsync/redsync/v4"
 	"github.com/go-redsync/redsync/v4/redis/redigo"
 	"github.com/golang/protobuf/proto"
@@ -19,6 +20,8 @@ import (
 
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 )
+
+var ErrDoesNotExist = errors.New("does not exist")
 
 var GameDocBucket = os.Getenv("GAMEDOC_UPLOAD_BUCKET")
 
@@ -67,6 +70,12 @@ func (gs *GameDocumentStore) GetDocument(ctx context.Context, uuid string, lock 
 		// Does not exist in Redis. Try S3.
 		doc, err := gs.getFromS3(ctx, uuid)
 		if err != nil {
+			var ae smithy.APIError
+			if errors.As(err, &ae) {
+				if ae.ErrorCode() == "NoSuchKey" {
+					return nil, ErrDoesNotExist
+				}
+			}
 			return nil, err
 		}
 		return &MaybeLockedDocument{GameDocument: doc}, nil
