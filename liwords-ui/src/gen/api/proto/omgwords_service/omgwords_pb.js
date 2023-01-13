@@ -130,6 +130,8 @@ export const AnnotatedGameEvent = proto3.makeMessageType(
   () => [
     { no: 1, name: "event", kind: "message", T: ClientGameplayEvent },
     { no: 2, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "event_number", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
+    { no: 4, name: "amendment", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ],
 );
 

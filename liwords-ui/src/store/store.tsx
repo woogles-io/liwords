@@ -193,6 +193,7 @@ type ExamineStoreData = {
   handleExamineNext: () => void;
   handleExamineLast: () => void;
   handleExamineGoTo: (x: number) => void;
+  handleExamineDisableShortcuts: () => void;
   addHandleExaminer: (x: () => void) => void;
   removeHandleExaminer: (x: () => void) => void;
   doneButtonRef: React.MutableRefObject<HTMLElement | null>;
@@ -364,6 +365,7 @@ const ExamineContext = createContext<ExamineStoreData>({
   handleExamineNext: defaultFunction,
   handleExamineLast: defaultFunction,
   handleExamineGoTo: defaultFunction,
+  handleExamineDisableShortcuts: defaultFunction,
   addHandleExaminer: defaultFunction,
   removeHandleExaminer: defaultFunction,
   doneButtonRef: { current: null },
@@ -401,19 +403,26 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   const gameContextStore = useGameContextStoreContext();
   const gameEndMessageStore = useGameEndMessageStoreContext();
   const timerStore = useTimerStoreContext();
+  const [shortcutsDisabled, setShortcutsDisabled] = useState(false);
 
-  const shouldTrigger = useCallback((where) => {
-    try {
-      return (
-        where &&
-        WHERE_TO_ENABLE_EXAMINE_SHORTCUTS.some((selector) =>
-          where.closest(selector)
-        )
-      );
-    } catch (e) {
-      return false;
-    }
-  }, []);
+  const shouldTrigger = useCallback(
+    (where) => {
+      if (shortcutsDisabled) {
+        return false;
+      }
+      try {
+        return (
+          where &&
+          WHERE_TO_ENABLE_EXAMINE_SHORTCUTS.some((selector) =>
+            where.closest(selector)
+          )
+        );
+      } catch (e) {
+        return false;
+      }
+    },
+    [shortcutsDisabled]
+  );
 
   const { gameContext } = gameContextStore;
   const numberOfTurns = gameContext.turns.length;
@@ -677,6 +686,10 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     ]
   );
 
+  const handleExamineDisableShortcuts = useCallback(() => {
+    setShortcutsDisabled(true);
+  }, []);
+
   React.useEffect(() => {
     if (isExamining) {
       document.addEventListener('keydown', handleExamineShortcuts);
@@ -697,6 +710,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       handleExamineNext,
       handleExamineLast,
       handleExamineGoTo,
+      handleExamineDisableShortcuts,
       addHandleExaminer,
       removeHandleExaminer,
       doneButtonRef,
@@ -711,6 +725,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       handleExamineNext,
       handleExamineLast,
       handleExamineGoTo,
+      handleExamineDisableShortcuts,
       addHandleExaminer,
       removeHandleExaminer,
       doneButtonRef,

@@ -55,6 +55,8 @@ message BroadcastGamesResponse {
 message AnnotatedGameEvent {
   ipc.ClientGameplayEvent event = 1;
   string user_id = 2;
+  uint32 event_number = 3;
+  bool amendment = 4;
 }
 
 message GetGameDocumentRequest { string game_id = 1; }

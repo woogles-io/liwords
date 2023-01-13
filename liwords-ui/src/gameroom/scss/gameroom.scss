@@ -1335,6 +1335,11 @@ p.rune {
     }
   }
 }
+
+.board-editor-controls .game-controls {
+  padding: 5px 0px;
+}
+
 .game-controls {
   display: flex;
   position: relative;

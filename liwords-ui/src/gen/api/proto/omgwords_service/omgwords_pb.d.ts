@@ -313,6 +313,16 @@ export declare class AnnotatedGameEvent extends Message<AnnotatedGameEvent> {
    */
   userId: string;
 
+  /**
+   * @generated from field: uint32 event_number = 3;
+   */
+  eventNumber: number;
+
+  /**
+   * @generated from field: bool amendment = 4;
+   */
+  amendment: boolean;
+
   constructor(data?: PartialMessage<AnnotatedGameEvent>);
 
   static readonly runtime: typeof proto3;

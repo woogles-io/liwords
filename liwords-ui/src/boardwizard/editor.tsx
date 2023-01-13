@@ -65,8 +65,14 @@ export const BoardEditor = () => {
   const { gameContext: examinableGameContext } =
     useExaminableGameContextStoreContext();
 
-  const { isExamining, handleExamineStart, handleExamineGoTo } =
-    useExamineStoreContext();
+  // const [previousNumberEvents, setPreviousNumberEvents] = useState(0);
+
+  const {
+    handleExamineStart,
+    handleExamineLast,
+    handleExamineGoTo,
+    handleExamineDisableShortcuts,
+  } = useExamineStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
 
@@ -77,16 +83,19 @@ export const BoardEditor = () => {
       gameContext,
       gameDone: true,
       gameID: gameID,
-      lexicon: '',
-      variant: '',
+      lexicon: gameContext.gameDocument.lexicon,
+      variant: gameContext.gameDocument.variant,
     });
 
   const eventClient = useClient(GameEventService);
 
-  // useEffect(() => {
-  //   handleExamineStart();
-  //   handleExamineGoTo(0);
-  // }, [handleExamineGoTo, handleExamineStart]);
+  useEffect(() => {
+    if (gameContext.gameID) {
+      handleExamineStart();
+      handleExamineGoTo(0);
+      handleExamineDisableShortcuts();
+    }
+  }, [gameContext.gameID]);
 
   const fetchAndDispatchDocument = useCallback(
     async (gid: string, redirect: boolean) => {
@@ -187,12 +196,25 @@ export const BoardEditor = () => {
   };
 
   const sendGameplayEvent = async (evt: ClientGameplayEvent) => {
-    console.log('sendGameplayEvent', evt);
+    let amendment = false;
+    let evtIdx = gameContext.turns.length;
+
+    if (examinableGameContext.turns.length !== gameContext.turns.length) {
+      // We're trying to edit an old event.
+      amendment = true;
+      evtIdx = examinableGameContext.turns.length;
+    }
+
     try {
       await eventClient.sendGameEvent({
         event: evt,
-        userId: gameContext.players[gameContext.onturn].userID,
+        userId:
+          examinableGameContext.players[examinableGameContext.onturn].userID,
+        amendment,
+        eventNumber: evtIdx,
       });
+      // If we're sending a gameplay event, always skip the examiner to the end.
+      handleExamineLast();
     } catch (e) {
       flashError(e);
     }
@@ -277,7 +299,6 @@ export const BoardEditor = () => {
     [gameContext.gameDocument.challengeRule]
   );
   // Create a GameInfoResponse for the purposes of rendering a few of our widgets.
-  console.log('macChallengeRule', macChallengeRule);
   const gameInfo = useMemo(() => {
     const d = gameContext.gameDocument;
 
@@ -334,17 +355,11 @@ export const BoardEditor = () => {
             tournamentID={gameInfo.tournamentId}
           /> */}
           <Card></Card>
-          {isExamining ? (
-            <Analyzer
-              includeCard
-              lexicon={gameContext.gameDocument.lexicon}
-              variant={gameContext.gameDocument.variant}
-            />
-          ) : (
-            <React.Fragment key="not-examining">
-              <Notepad includeCard />
-            </React.Fragment>
-          )}
+          <Analyzer
+            includeCard
+            lexicon={gameContext.gameDocument.lexicon}
+            variant={gameContext.gameDocument.variant}
+          />
 
           <Card
             title="Editor controls"
@@ -395,6 +410,7 @@ export const BoardEditor = () => {
             handleUnsetHover={hideDefinitionHover}
             definitionPopover={definitionPopover}
             changeCurrentRack={changeCurrentRack}
+            exitableExaminer={false}
           />
         </div>
 
@@ -414,7 +430,7 @@ export const BoardEditor = () => {
             alphabet={alphabet}
           />
           <ScoreCard
-            isExamining={isExamining}
+            isExamining={true}
             lexicon={gameContext.gameDocument.lexicon}
             variant={gameContext.gameDocument.variant}
             events={examinableGameContext.turns}

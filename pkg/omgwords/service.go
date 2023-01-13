@@ -168,7 +168,11 @@ func (gs *OMGWordsService) SendGameEvent(ctx context.Context, req *pb.AnnotatedG
 	if err := gs.failIfSessionDoesntOwn(ctx, req.Event.GameId); err != nil {
 		return nil, err
 	}
-	justEnded, err := handleEvent(ctx, req.UserId, req.Event, gs.gameStore, gs.gameEventChan)
+	if req.Event == nil {
+		return nil, errors.New("event is required")
+	}
+
+	justEnded, err := handleEvent(ctx, req.UserId, req.Event, req.Amendment, req.EventNumber, gs.gameStore, gs.gameEventChan)
 	if err != nil {
 		return nil, err
 	}

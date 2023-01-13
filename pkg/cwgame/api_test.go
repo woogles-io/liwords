@@ -1282,6 +1282,9 @@ func TestEditOldRackDisallowed(t *testing.T) {
 	// let you, because event index 7 already used a J.
 	err := EditOldRack(ctx, gdoc, 8, []byte{10, 11, 12})
 	is.Equal(err.Error(), "tried to remove tile 10 from bag that was not there")
+	err = EditOldRack(ctx, gdoc, 7, []byte{10, 11, 12})
+	is.NoErr(err)
+	is.Equal(gdoc.Events[7].Rack, []byte{10, 11, 12})
 }
 
 func BenchmarkLoadDocumentJSON(b *testing.B) {
