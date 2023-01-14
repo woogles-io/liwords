@@ -1,6 +1,7 @@
 package stats
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -14,6 +15,7 @@ import (
 	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/domino14/macondo/gcgio"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
 )
@@ -30,15 +32,21 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func recreateDB() {
+func recreateDB() *pgxpool.Pool {
 	// Create a database.
 	err := common.RecreateTestDB()
 	if err != nil {
 		panic(err)
 	}
+
+	pool, err := common.OpenTestingDB()
+	if err != nil {
+		panic(err)
+	}
+	return pool
 }
 
-func InstantiateNewStatsWithHistory(filename string, listStatStore ListStatStore) (*entity.Stats, error) {
+func InstantiateNewStatsWithHistory(ctx context.Context, filename string, listStatStore ListStatStore) (*entity.Stats, error) {
 
 	history, err := gcgio.ParseGCG(&DefaultConfig, filename)
 	if err != nil {
@@ -81,18 +89,18 @@ func InstantiateNewStatsWithHistory(filename string, listStatStore ListStatStore
 		Tie:       history.FinalScores[0] != history.FinalScores[1],
 	}
 
-	AddGame(stats, listStatStore, history, req, &DefaultConfig, gameEndedEvent, filename)
+	AddGame(ctx, stats, listStatStore, history, req, &DefaultConfig, gameEndedEvent, filename)
 
 	return stats, nil
 }
 
-func JoshNationalsFromGames(useJSON bool, listStatStore ListStatStore) (*entity.Stats, []string, error) {
+func JoshNationalsFromGames(ctx context.Context, useJSON bool, listStatStore ListStatStore) (*entity.Stats, []string, error) {
 	annotatedGamePrefix := "josh_nationals_round_"
 	stats := InstantiateNewStats("1", "2")
 	files := []string{}
 	for i := 1; i <= 31; i++ {
 		annotatedGame := fmt.Sprintf("./testdata/%s%d.gcg", annotatedGamePrefix, i)
-		otherStats, err := InstantiateNewStatsWithHistory(annotatedGame, listStatStore)
+		otherStats, err := InstantiateNewStatsWithHistory(ctx, annotatedGame, listStatStore)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -121,17 +129,18 @@ func JoshNationalsFromGames(useJSON bool, listStatStore ListStatStore) (*entity.
 func TestStatsFromJson(t *testing.T) {
 	is := is.New(t)
 
-	recreateDB()
-	listStatStore, err := statstore.NewListStatStore(common.TestingPostgresConnDSN())
+	pool := recreateDB()
+	ctx := context.Background()
+	listStatStore, err := statstore.NewDBStore(pool)
 	is.NoErr(err)
-	stats, gameIds, err := JoshNationalsFromGames(false, listStatStore)
+	stats, _, err := JoshNationalsFromGames(ctx, false, listStatStore)
 	is.NoErr(err)
-	statsJSON, gameIds, err := JoshNationalsFromGames(true, listStatStore)
+	statsJSON, gameIds, err := JoshNationalsFromGames(ctx, true, listStatStore)
 	is.NoErr(err)
 
-	err = Finalize(stats, listStatStore, gameIds, "", "")
+	err = Finalize(ctx, stats, listStatStore, gameIds, "", "")
 	is.NoErr(err)
-	err = Finalize(statsJSON, listStatStore, gameIds, "", "")
+	err = Finalize(ctx, statsJSON, listStatStore, gameIds, "", "")
 	is.NoErr(err)
 	is.True(isEqual(stats, statsJSON))
 	listStatStore.Disconnect()
@@ -140,13 +149,14 @@ func TestStatsFromJson(t *testing.T) {
 func TestStats(t *testing.T) {
 	is := is.New(t)
 
-	recreateDB()
-	listStatStore, err := statstore.NewListStatStore(common.TestingPostgresConnDSN())
+	pool := recreateDB()
+	ctx := context.Background()
+	listStatStore, err := statstore.NewDBStore(pool)
 	is.NoErr(err)
-	stats, gameIds, err := JoshNationalsFromGames(false, listStatStore)
+	stats, gameIds, err := JoshNationalsFromGames(ctx, false, listStatStore)
 	is.NoErr(err)
 
-	err = Finalize(stats, listStatStore, gameIds, "", "")
+	err = Finalize(ctx, stats, listStatStore, gameIds, "", "")
 	is.NoErr(err)
 
 	// fmt.Println(StatsToString(stats))
@@ -223,21 +233,22 @@ func TestStats(t *testing.T) {
 
 func TestNotable(t *testing.T) {
 	is := is.New(t)
-	recreateDB()
+	pool := recreateDB()
+	ctx := context.Background()
 
 	stats := InstantiateNewStats("1", "2")
-	listStatStore, err := statstore.NewListStatStore(common.TestingPostgresConnDSN())
+	listStatStore, err := statstore.NewDBStore(pool)
 	is.NoErr(err)
 
-	manyDoubleWordsCoveredStats, _ := InstantiateNewStatsWithHistory("./testdata/many_double_words_covered.gcg", listStatStore)
-	allTripleLettersCoveredStats, _ := InstantiateNewStatsWithHistory("./testdata/all_triple_letters_covered.gcg", listStatStore)
-	allTripleWordsCoveredStats, _ := InstantiateNewStatsWithHistory("./testdata/all_triple_words_covered.gcg", listStatStore)
-	combinedHighScoringStats, _ := InstantiateNewStatsWithHistory("./testdata/combined_high_scoring.gcg", listStatStore)
-	combinedLowScoringStats, _ := InstantiateNewStatsWithHistory("./testdata/combined_low_scoring.gcg", listStatStore)
-	everyPowerTileStats, _ := InstantiateNewStatsWithHistory("./testdata/every_power_tile.gcg", listStatStore)
-	everyEStats, _ := InstantiateNewStatsWithHistory("./testdata/every_e.gcg", listStatStore)
-	manyChallengesStats, _ := InstantiateNewStatsWithHistory("./testdata/many_challenges.gcg", listStatStore)
-	fourOrMoreConsecutiveBingosStats, _ := InstantiateNewStatsWithHistory("./testdata/four_or_more_consecutive_bingos.gcg", listStatStore)
+	manyDoubleWordsCoveredStats, _ := InstantiateNewStatsWithHistory(ctx, "./testdata/many_double_words_covered.gcg", listStatStore)
+	allTripleLettersCoveredStats, _ := InstantiateNewStatsWithHistory(ctx, "./testdata/all_triple_letters_covered.gcg", listStatStore)
+	allTripleWordsCoveredStats, _ := InstantiateNewStatsWithHistory(ctx, "./testdata/all_triple_words_covered.gcg", listStatStore)
+	combinedHighScoringStats, _ := InstantiateNewStatsWithHistory(ctx, "./testdata/combined_high_scoring.gcg", listStatStore)
+	combinedLowScoringStats, _ := InstantiateNewStatsWithHistory(ctx, "./testdata/combined_low_scoring.gcg", listStatStore)
+	everyPowerTileStats, _ := InstantiateNewStatsWithHistory(ctx, "./testdata/every_power_tile.gcg", listStatStore)
+	everyEStats, _ := InstantiateNewStatsWithHistory(ctx, "./testdata/every_e.gcg", listStatStore)
+	manyChallengesStats, _ := InstantiateNewStatsWithHistory(ctx, "./testdata/many_challenges.gcg", listStatStore)
+	fourOrMoreConsecutiveBingosStats, _ := InstantiateNewStatsWithHistory(ctx, "./testdata/four_or_more_consecutive_bingos.gcg", listStatStore)
 
 	AddStats(stats, manyDoubleWordsCoveredStats)
 	AddStats(stats, allTripleLettersCoveredStats)
@@ -249,7 +260,7 @@ func TestNotable(t *testing.T) {
 	AddStats(stats, everyPowerTileStats)
 	AddStats(stats, everyEStats)
 
-	err = Finalize(stats, listStatStore, []string{
+	err = Finalize(ctx, stats, listStatStore, []string{
 		"./testdata/many_double_words_covered.gcg",
 		"./testdata/all_triple_letters_covered.gcg",
 		"./testdata/all_triple_words_covered.gcg",
@@ -278,17 +289,18 @@ func TestNotable(t *testing.T) {
 func TestPhonyHooks(t *testing.T) {
 	is := is.New(t)
 
-	recreateDB()
-	listStatStore, err := statstore.NewListStatStore(common.TestingPostgresConnDSN())
+	pool := recreateDB()
+	ctx := context.Background()
+	listStatStore, err := statstore.NewDBStore(pool)
 	is.NoErr(err)
 	stats := InstantiateNewStats("1", "2")
 
-	phonyHooks, err := InstantiateNewStatsWithHistory("./testdata/phonies_formed.gcg", listStatStore)
+	phonyHooks, err := InstantiateNewStatsWithHistory(ctx, "./testdata/phonies_formed.gcg", listStatStore)
 	is.NoErr(err)
 
 	AddStats(stats, phonyHooks)
 
-	err = Finalize(stats, listStatStore, []string{
+	err = Finalize(ctx, stats, listStatStore, []string{
 		"./testdata/phonies_formed.gcg",
 	}, "", "")
 	is.NoErr(err)
@@ -326,18 +338,6 @@ func isStatItemEqual(statItemOne *entity.StatItem, statItemTwo *entity.StatItem)
 		isStatItemSubitemsEqual(statItemOne.Subitems, statItemTwo.Subitems)
 }
 
-func isStatItemAveragesEqual(arrOne []float64, arrTwo []float64) bool {
-	if len(arrOne) != len(arrTwo) {
-		return false
-	}
-	for i := 0; i < len(arrOne); i++ {
-		if arrOne[i] != arrTwo[i] {
-			return false
-		}
-	}
-	return true
-}
-
 func isStatItemSubitemsEqual(mapOne map[string]int, mapTwo map[string]int) bool {
 	for key, value := range mapOne {
 		if value != mapTwo[key] {
@@ -373,14 +373,6 @@ func statItemToString(key string, statItem *entity.StatItem) string {
 		subitemString = subitemsToString(statItem.Subitems)
 	}
 	return fmt.Sprintf("  %s:\n    Total: %d\n    Subitems:\n%s\n    List:\n%s", key, statItem.Total, subitemString, listItemToString(statItem.List))
-}
-
-func averagesToString(averages []float64) string {
-	s := ""
-	for i := 0; i < len(averages); i++ {
-		s += fmt.Sprintf("%.2f", averages[i])
-	}
-	return s
 }
 
 func subitemsToString(subitems map[string]int) string {

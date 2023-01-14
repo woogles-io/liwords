@@ -1,9 +1,9 @@
 import React from 'react';
 import { useMountedState } from '../utils/mounted';
 import { Row, Col, Input, Form, Alert, notification, Button } from 'antd';
-import axios from 'axios';
-import { toAPIUrl } from '../api/api';
 import { TopBar } from '../navigation/topbar';
+import { connectErrorMessage, useClient } from '../utils/hooks/connect';
+import { AuthenticationService } from '../gen/api/proto/user_service/user_service_connectweb';
 
 const layout = {
   labelCol: {
@@ -24,26 +24,18 @@ export const PasswordReset = () => {
   const { useState } = useMountedState();
 
   const [err, setErr] = useState('');
+  const authClient = useClient(AuthenticationService);
 
-  const onFinish = (values: { [key: string]: string }) => {
-    axios
-      .post(
-        toAPIUrl('user_service.AuthenticationService', 'ResetPasswordStep1'),
-        {
-          email: values.email,
-        }
-      )
-      .then(() => {
-        notification.info({
-          message: 'Sent',
-          description: 'Please check your email; a reset code was sent.',
-        });
-      })
-      .catch((e) => {
-        if (e.response) {
-          setErr(e.response.data.msg);
-        }
+  const onFinish = async (values: { [key: string]: string }) => {
+    try {
+      await authClient.resetPasswordStep1({ email: values.email });
+      notification.info({
+        message: 'Sent',
+        description: 'Please check your email; a reset code was sent.',
       });
+    } catch (e) {
+      setErr(connectErrorMessage(e));
+    }
   };
 
   return (

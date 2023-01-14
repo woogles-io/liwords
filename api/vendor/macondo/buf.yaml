@@ -1,0 +1,8 @@
+version: v1
+name: buf.build/domino14/macondo
+breaking:
+  use:
+    - FILE
+lint:
+  use:
+    - DEFAULT

@@ -1,32 +1,19 @@
 // Different pairing methods should show different options to the director.
 
 import {
-  PairingMethodMap,
   PairingMethod,
+  RoundControl,
 } from '../../gen/api/proto/ipc/tournament_pb';
 
 export type RoundSetting = {
   beginRound: number;
   endRound: number;
-  setting: SingleRoundSetting;
+  setting: RoundControl;
 };
 
-export type SingleRoundSetting = {
-  pairingType: pairingMethod;
-  gamesPerRound?: number;
-  factor?: number;
-  maxRepeats?: number;
-  allowOverMaxRepeats?: boolean;
-  repeatRelativeWeight?: number;
-  winDifferenceRelativeWeight?: number;
-};
-
-export const settingsEqual = (
-  s1: SingleRoundSetting,
-  s2: SingleRoundSetting
-): boolean => {
+export const settingsEqual = (s1: RoundControl, s2: RoundControl): boolean => {
   return (
-    s1.pairingType === s2.pairingType &&
+    s1.pairingMethod === s2.pairingMethod &&
     s1.gamesPerRound === s2.gamesPerRound &&
     s1.factor === s2.factor &&
     s1.maxRepeats === s2.maxRepeats &&
@@ -36,17 +23,10 @@ export const settingsEqual = (
   );
 };
 
-type valueof<T> = T[keyof T];
-export type pairingMethod = valueof<PairingMethodMap>;
-export type PairingMethodField = [
-  string,
-  keyof SingleRoundSetting,
-  string,
-  string
-];
+export type PairingMethodField = [string, keyof RoundControl, string, string];
 
 export const fieldsForMethod = (
-  m: pairingMethod
+  m: PairingMethod
 ): Array<PairingMethodField> => {
   const fields = new Array<PairingMethodField>();
   switch (m) {
@@ -77,13 +57,13 @@ export const fieldsForMethod = (
           'number',
           'repeatRelativeWeight',
           'Repeat Relative Weight',
-          'The larger this number, the less likely a repeat will be.',
+          'The larger this number relative to other weights, the less likely a repeat will be.',
         ],
         [
           'number',
           'winDifferenceRelativeWeight',
           'Win Difference Relative Weight',
-          'The larger this number, the more mismatched your pairings will be, in terms of win difference.',
+          'The smaller this number relative to other weights, the more mismatched your pairings will be, in terms of win difference.',
         ]
       );
       break;

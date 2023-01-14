@@ -4,7 +4,7 @@ import {
   ArrowRightOutlined,
   ArrowDownOutlined,
   StarOutlined,
-} from '@ant-design/icons/lib';
+} from '@ant-design/icons';
 interface BonusProperties {
   bonusText: string;
   bonusClass: string;
@@ -16,10 +16,14 @@ function getBonusProperties(bt: BonusType): BonusProperties {
       return { bonusText: '2x word', bonusClass: '2WS' };
     case BonusType.TripleWord:
       return { bonusText: '3x word', bonusClass: '3WS' };
+    case BonusType.QuadrupleWord:
+      return { bonusText: '4x word', bonusClass: '4WS' };
     case BonusType.DoubleLetter:
       return { bonusText: '2x letter', bonusClass: '2LS' };
     case BonusType.TripleLetter:
       return { bonusText: '3x letter', bonusClass: '3LS' };
+    case BonusType.QuadrupleLetter:
+      return { bonusText: '4x letter', bonusClass: '4LS' };
   }
   return { bonusText: '', bonusClass: '' };
 }

@@ -11,8 +11,8 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
-	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
+	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	"github.com/domino14/macondo/alphabet"
 	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/domino14/macondo/gaddag"
@@ -23,9 +23,9 @@ import (
 )
 
 type NotorietyStore interface {
-	AddNotoriousGame(gameID string, playerID string, gameType int, time int64) error
-	GetNotoriousGames(playerID string, limit int) ([]*ms.NotoriousGame, error)
-	DeleteNotoriousGames(playerID string) error
+	AddNotoriousGame(ctx context.Context, gameID string, playerID string, gameType int, time int64) error
+	GetNotoriousGames(ctx context.Context, playerID string, limit int) ([]*ms.NotoriousGame, error)
+	DeleteNotoriousGames(ctx context.Context, playerID string) error
 }
 
 var BehaviorToScore map[ms.NotoriousGameType]int = map[ms.NotoriousGameType]int{
@@ -65,13 +65,8 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 	history := g.History()
 	// Perhaps too cute, but solves cases where g.LoserIdex is -1
 	nonNegativeLoserIdx := g.LoserIdx * g.LoserIdx
-	loserNickname := history.Players[nonNegativeLoserIdx].Nickname
 	loserId := history.Players[nonNegativeLoserIdx].UserId
-	winnerNickname := history.Players[1-nonNegativeLoserIdx].Nickname
-	// This should not even be possible but might as well check
-	if u0.Username != loserNickname && u1.Username != loserNickname {
-		return fmt.Errorf("loser (%s) not found in players (%s, %s)", loserNickname, u0.Username, u1.Username)
-	}
+	winnerIdx := 1 - nonNegativeLoserIdx
 
 	macondoConfig, err := config.GetMacondoConfig(ctx)
 	if err != nil {
@@ -91,7 +86,7 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 		var loserLastEvent *pb.GameEvent
 		for i := len(history.Events) - 1; i >= 0; i-- {
 			evt := history.Events[i]
-			if evt.Nickname == loserNickname && (evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE ||
+			if evt.PlayerIndex == uint32(nonNegativeLoserIdx) && (evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE ||
 				evt.Type == pb.GameEvent_EXCHANGE ||
 				evt.Type == pb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS ||
 				evt.Type == pb.GameEvent_CHALLENGE) {
@@ -122,7 +117,7 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 
 	// Check for excessive phonies
 	if wngt == ms.NotoriousGameType_GOOD {
-		excessive, err := excessivePhonies(history, macondoConfig, winnerNickname)
+		excessive, err := excessivePhonies(history, macondoConfig, winnerIdx)
 		if err != nil {
 			return err
 		}
@@ -132,7 +127,7 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 	}
 
 	if lngt == ms.NotoriousGameType_GOOD {
-		excessive, err := excessivePhonies(history, macondoConfig, loserNickname)
+		excessive, err := excessivePhonies(history, macondoConfig, nonNegativeLoserIdx)
 		if err != nil {
 			return err
 		}
@@ -147,7 +142,7 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 		totalMoves := 0
 		for i := 0; i < len(history.Events); i++ {
 			evt := history.Events[i]
-			if evt.Nickname == loserNickname && (evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE ||
+			if evt.PlayerIndex == uint32(nonNegativeLoserIdx) && (evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE ||
 				evt.Type == pb.GameEvent_EXCHANGE) {
 				totalMoves++
 			}
@@ -162,7 +157,7 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 	luser := u0
 	wuser := u1
 
-	if u1.Username == loserNickname {
+	if nonNegativeLoserIdx == 1 {
 		luser, wuser = wuser, luser
 	}
 
@@ -188,15 +183,15 @@ func GetNotorietyReport(ctx context.Context, us user.Store, ns NotorietyStore, u
 	if err != nil {
 		return 0, nil, err
 	}
-	games, err := ns.GetNotoriousGames(uuid, limit)
+	games, err := ns.GetNotoriousGames(ctx, uuid, limit)
 	if err != nil {
 		return 0, nil, err
 	}
 	return user.Notoriety, games, nil
 }
 
-func FormatNotorietyReport(ns NotorietyStore, uuid string, limit int) (string, error) {
-	games, err := ns.GetNotoriousGames(uuid, limit)
+func FormatNotorietyReport(ctx context.Context, ns NotorietyStore, uuid string, limit int) (string, error) {
+	games, err := ns.GetNotoriousGames(ctx, uuid, limit)
 	if err != nil {
 		return "", err
 	}
@@ -213,11 +208,11 @@ func ResetNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, uuid 
 	if err != nil {
 		return err
 	}
-	err = ns.DeleteNotoriousGames(user.UUID)
+	err = ns.DeleteNotoriousGames(ctx, user.UUID)
 	if err != nil {
 		return err
 	}
-	return us.SetNotoriety(ctx, user, 0)
+	return us.SetNotoriety(ctx, user.UUID, 0)
 }
 
 func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user *entity.User, guid string, ngt ms.NotoriousGameType) error {
@@ -227,7 +222,7 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 	if ngt != ms.NotoriousGameType_GOOD {
 
 		// The user misbehaved, add this game to the list of notorious games
-		err := ns.AddNotoriousGame(user.UUID, guid, int(ngt), notoriousGameTimestamp())
+		err := ns.AddNotoriousGame(ctx, user.UUID, guid, int(ngt), notoriousGameTimestamp())
 		if err != nil {
 			return err
 		}
@@ -245,11 +240,11 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 			if err != nil {
 				return err
 			}
-			err = us.Set(ctx, user)
+			err = us.SetActions(ctx, user.UUID, user.Actions)
 			if err != nil {
 				return err
 			}
-			notorietyReport, err := FormatNotorietyReport(ns, user.UUID, 10)
+			notorietyReport, err := FormatNotorietyReport(ctx, ns, user.UUID, 10)
 			// Failing to get the report should not be fatal since it would just be
 			// an inconvenience for the moderators, so just log the error and move on
 			if err != nil {
@@ -271,17 +266,17 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 			Int("previous-notoriety", previousNotorietyScore).
 			Int32("notorious-game-type", int32(ngt)).
 			Int("new-notoriety", newNotoriety).Msg("updating")
-		return us.SetNotoriety(ctx, user, newNotoriety)
+		return us.SetNotoriety(ctx, user.UUID, newNotoriety)
 	}
 	return nil
 }
 
-func excessivePhonies(history *pb.GameHistory, cfg *macondoconfig.Config, nickname string) (bool, error) {
+func excessivePhonies(history *pb.GameHistory, cfg *macondoconfig.Config, pidx int) (bool, error) {
 	totalTileMoves := 0
 	totalPhonies := 0
 	for i := 0; i < len(history.Events); i++ {
 		evt := history.Events[i]
-		if evt.Nickname == nickname && evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE {
+		if evt.PlayerIndex == uint32(pidx) && evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE {
 			totalTileMoves++
 			isPhony, err := isPhonyEvent(evt, history, cfg)
 			if err != nil {

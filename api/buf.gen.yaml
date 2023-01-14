@@ -1,0 +1,12 @@
+version: v1
+plugins:
+  - name: go
+    out: ../rpc/api/proto
+    opt: paths=source_relative
+  - name: twirp
+    out: ../rpc/api/proto
+    opt: paths=source_relative
+  - name: es
+    out: ../liwords-ui/src/gen/api/proto
+  - name: connect-web
+    out: ../liwords-ui/src/gen/api/proto

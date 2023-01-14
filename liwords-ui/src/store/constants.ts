@@ -1,12 +1,47 @@
-import {
-  TType,
-  TTypeMap,
-} from '../gen/api/proto/tournament_service/tournament_service_pb';
-import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { ChatMessage } from '../gen/api/proto/ipc/chat_pb';
+import { TType } from '../gen/api/proto/tournament_service/tournament_service_pb';
+import { ChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
 import { Blank } from '../utils/cwgame/common';
-import { ChatEntityObj, ChatEntityType, randomID } from './store';
 
 export type PlayerOrder = 'p0' | 'p1';
+
+export enum ChatEntityType {
+  UserChat,
+  ServerMsg,
+  ErrorMsg,
+}
+
+export type ChatEntityObj = {
+  entityType: ChatEntityType;
+  sender: string;
+  message: string;
+  id?: string;
+  timestamp?: bigint;
+  senderId?: string;
+  channel: string;
+};
+
+export type PresenceEntity = {
+  uuid: string;
+  username: string;
+  channel: string;
+  anon: boolean;
+  deleting: boolean;
+};
+
+export const randomID = () => {
+  // Math.random should be unique because of its seeding algorithm.
+  // Convert it to base 36 (numbers + letters), and grab the first 9 characters
+  // after the decimal.
+  return `_${Math.random().toString(36).substring(2, 11)}`;
+};
+
+export const indexToPlayerOrder = (idx: number): PlayerOrder => {
+  if (!(idx >= 0 && idx <= 1)) {
+    throw new Error('unexpected player index');
+  }
+  return `p${idx}` as PlayerOrder;
+};
 
 // number of turns in a game, this is just an estimate. See `variants.go`
 const turnsPerGame = 16;
@@ -21,11 +56,11 @@ export const calculateTotalTime = (
 
 export type valueof<T> = T[keyof T];
 
-export const isPairedMode = (type: valueof<TTypeMap>) => {
+export const isPairedMode = (type: TType) => {
   return type === TType.CHILD || type === TType.STANDARD;
 };
 
-export const isClubType = (type: valueof<TTypeMap>) => {
+export const isClubType = (type: TType) => {
   return type === TType.CHILD || type === TType.CLUB;
 };
 // See cutoffs in variants.go. XXX: Try to tie these together better.
@@ -120,25 +155,14 @@ export const timeToString = (
   }${incrementSecs ? '+' + incrementSecs : ''}`;
 };
 
-export type ChatMessageFromJSON = {
-  username: string;
-  channel: string;
-  message: string;
-  timestamp: string;
-  user_id: string;
-  id: string;
-};
-
-export const chatMessageToChatEntity = (
-  cm: ChatMessageFromJSON
-): ChatEntityObj => {
+export const chatMessageToChatEntity = (cm: ChatMessage): ChatEntityObj => {
   return {
     entityType: ChatEntityType.UserChat,
     id: cm.id || randomID(),
     sender: cm.username,
     message: cm.message,
-    timestamp: parseInt(cm.timestamp, 10),
-    senderId: cm.user_id,
+    timestamp: cm.timestamp,
+    senderId: cm.userId,
     channel: cm.channel,
   };
 };
@@ -191,7 +215,7 @@ export const challRuleToStr = (n: number): string => {
 };
 
 export let sharedEnableAutoShuffle =
-  localStorage.getItem('enableAutoShuffle') === 'true';
+  localStorage?.getItem('enableAutoShuffle') === 'true';
 
 export const setSharedEnableAutoShuffle = (value: boolean) => {
   if (value) {

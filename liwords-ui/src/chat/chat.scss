@@ -1,8 +1,5 @@
-@import '../base';
-@include button;
-@include tabs;
-/* hide at mobile for now,
- expand board */
+@use '../base.scss' as *;
+
 p {
   margin: 0;
 }
@@ -62,11 +59,11 @@ p {
   }
   font-family: $font-default;
   .ant-card.chat {
-    height: $main-container-width-tablet + 60px;
-    margin-bottom: 12px;
     .entities {
       overflow-y: auto;
-      max-height: $main-container-width-tablet - 122px;
+    }
+    .ant-tabs-content {
+      position: static;
     }
   }
 
@@ -432,7 +429,6 @@ p {
 .chat input[name='chat-input'] {
   position: absolute;
   bottom: 0;
-  left: 0;
   left: 0;
   width: calc(100% - 12px);
   margin: 6px;

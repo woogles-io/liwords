@@ -8,8 +8,9 @@ import { GameLists } from './gameLists';
 import { Chat } from '../chat/chat';
 import { useLoginStateStoreContext } from '../store/store';
 import './lobby.scss';
-import { Announcements } from './announcements';
+import { AnnouncementsWidget } from './announcements';
 import { sendAccept, sendSeek } from './sought_game_interactions';
+import { PuzzlePreview } from '../puzzles/puzzle_preview';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -67,7 +68,10 @@ export const Lobby = (props: Props) => {
           setSelectedGameTab={setSelectedGameTab}
           onSeekSubmit={onSeekSubmit}
         />
-        <Announcements />
+        <div className="announcements">
+          <AnnouncementsWidget />
+          <PuzzlePreview />
+        </div>
       </div>
     </>
   );

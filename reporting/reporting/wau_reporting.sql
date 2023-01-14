@@ -61,7 +61,8 @@ wau_puzzles AS
 (SELECT
    created_at,
    user_id AS player
-FROM public.puzzle_attempts),
+FROM public.puzzle_attempts
+WHERE correct IS NOT NULL),
 
 wau_puzzles_report AS
 (SELECT
@@ -87,7 +88,8 @@ UNION ALL
 (SELECT
    created_at,
    user_id AS player
-FROM public.puzzle_attempts)),
+FROM public.puzzle_attempts
+WHERE correct IS NOT NULL)),
 
 omgwords_plus_puzzles_report AS
 (SELECT
@@ -102,7 +104,8 @@ SELECT
   wau_omgwords_report.week,
   wau_omgwords_report.wau_omgwords,
   wau_omgwords_vs_human_report.wau_omgwords_vs_human,
-  TRUNC(100.0*wau_omgwords_vs_human_report.wau_omgwords_vs_human/wau_omgwords_report.wau_omgwords,1) AS ratio,
+  TRUNC(100.0*wau_omgwords_vs_human_report.wau_omgwords_vs_human/wau_omgwords_report.wau_omgwords,1)
+    AS pct_of_omgwords_dau_who_played_a_human,
   wau_puzzles_report.wau_puzzles,
   omgwords_plus_puzzles_report.wau
 FROM wau_omgwords_report

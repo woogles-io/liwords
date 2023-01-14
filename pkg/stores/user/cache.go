@@ -30,10 +30,11 @@ type backingStore interface {
 	GetBriefProfiles(ctx context.Context, uuids []string) (map[string]*pb.BriefProfile, error)
 	SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, birthDate string, countryCode string, about string) error
 	SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
-		p1Rating entity.SingleRating, p2Rating entity.SingleRating) error
+		p1Rating *entity.SingleRating, p2Rating *entity.SingleRating) error
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p0stats *entity.Stats, p1stats *entity.Stats) error
-	SetNotoriety(ctx context.Context, u *entity.User, notoriety int) error
+	SetNotoriety(ctx context.Context, uuid string, notoriety int) error
+	SetActions(ctx context.Context, uuid string, actions *entity.Actions) error
 	ResetRatings(ctx context.Context, uuid string) error
 	ResetStats(ctx context.Context, uuid string) error
 	ResetProfile(ctx context.Context, uuid string) error
@@ -55,7 +56,6 @@ type backingStore interface {
 
 	UsersByPrefix(ctx context.Context, prefix string) ([]*pb.BasicUser, error)
 	Count(ctx context.Context) (int64, error)
-	Set(ctx context.Context, u *entity.User) error
 	SetPermissions(ctx context.Context, req *cpb.PermissionsRequest) error
 
 	GetModList(ctx context.Context) (*pb.GetModListResponse, error)
@@ -276,7 +276,7 @@ func (c *Cache) ResetPersonalInfo(ctx context.Context, uuid string) error {
 	return nil
 }
 
-func (c *Cache) SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey, p0Rating entity.SingleRating, p1Rating entity.SingleRating) error {
+func (c *Cache) SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey, p0Rating *entity.SingleRating, p1Rating *entity.SingleRating) error {
 	u0, err := c.GetByUUID(ctx, p0uuid)
 	if err != nil {
 		return err
@@ -299,8 +299,8 @@ func (c *Cache) SetRatings(ctx context.Context, p0uuid string, p1uuid string, va
 		u1.Profile.Ratings.Data = make(map[entity.VariantKey]entity.SingleRating)
 	}
 
-	u0.Profile.Ratings.Data[variant] = p0Rating
-	u1.Profile.Ratings.Data[variant] = p1Rating
+	u0.Profile.Ratings.Data[variant] = *p0Rating
+	u1.Profile.Ratings.Data[variant] = *p1Rating
 
 	return nil
 }
@@ -423,20 +423,26 @@ func (c *Cache) CachedCount(ctx context.Context) int {
 	return c.cache.Len()
 }
 
-func (c *Cache) Set(ctx context.Context, u *entity.User) error {
-
-	err := c.backing.Set(ctx, u)
+func (c *Cache) SetActions(ctx context.Context, uuid string, actions *entity.Actions) error {
+	err := c.backing.SetActions(ctx, uuid, actions)
 	if err != nil {
 		return err
 	}
-	// readd to cache
-	c.cache.Add(u.UUID, u)
+	u, err := c.GetByUUID(ctx, uuid)
+	if err != nil {
+		return err
+	}
+	u.Actions = actions
 	return nil
 }
 
 // This was written to avoid the zero value trap
-func (c *Cache) SetNotoriety(ctx context.Context, u *entity.User, notoriety int) error {
-	err := c.backing.SetNotoriety(ctx, u, notoriety)
+func (c *Cache) SetNotoriety(ctx context.Context, uuid string, notoriety int) error {
+	err := c.backing.SetNotoriety(ctx, uuid, notoriety)
+	if err != nil {
+		return err
+	}
+	u, err := c.GetByUUID(ctx, uuid)
 	if err != nil {
 		return err
 	}

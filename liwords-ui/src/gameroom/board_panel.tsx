@@ -4,7 +4,6 @@ import { Button, notification, message, Tooltip, Affix } from 'antd';
 import { Modal } from '../utils/focus_modal';
 import { DndProvider } from 'react-dnd';
 import { ArrowDownOutlined, SyncOutlined } from '@ant-design/icons';
-import axios from 'axios';
 import {
   isTouchDevice,
   Blank,
@@ -42,6 +41,7 @@ import {
   passMoveEvent,
   resignMoveEvent,
   challengeMoveEvent,
+  nicknameFromEvt,
 } from '../utils/cwgame/game_event';
 import { Board } from '../utils/cwgame/board';
 import { encodeToSocketFmt } from '../utils/protobuf';
@@ -57,12 +57,12 @@ import {
 import { sharedEnableAutoShuffle } from '../store/constants';
 import { BlankSelector } from './blank_selector';
 import { GameMetaMessage } from './game_meta_message';
-import { PlayerMetadata, GCGResponse, ChallengeRule } from './game_info';
 import {
+  ChallengeRule,
   GameEvent,
+  GameEvent_Type,
   PlayState,
-} from '../gen/macondo/api/proto/macondo/macondo_pb';
-import { toAPIUrl } from '../api/api';
+} from '../gen/api/proto/macondo/macondo_pb';
 import { TilePreview } from './tile';
 import { Alphabet } from '../constants/alphabets';
 import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
@@ -74,8 +74,13 @@ import {
 import {
   ClientGameplayEvent,
   GameMetaEvent,
+  GameMetaEvent_EventType,
+  PlayerInfo,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
+import { flashError, useClient } from '../utils/hooks/connect';
+import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connectweb';
+import { PromiseClient } from '@domino14/connect-web';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -94,7 +99,7 @@ type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   sendGameplayEvent: (evt: ClientGameplayEvent) => void;
   gameDone: boolean;
-  playerMeta: Array<PlayerMetadata>;
+  playerMeta: Array<PlayerInfo>;
   puzzleMode?: boolean;
   puzzleSolved?: number;
   tournamentSlug?: string;
@@ -116,6 +121,7 @@ type Props = {
     | { x: number; y: number; content: React.ReactNode }
     | undefined;
   vsBot: boolean;
+  exitableExaminer?: boolean;
 };
 
 const shuffleString = (a: string): string => {
@@ -157,49 +163,40 @@ const shuffleString = (a: string): string => {
   return alistWithGaps.map((x) => (x === EmptySpace ? x : alist[r++])).join('');
 };
 
-const gcgExport = (gameID: string, playerMeta: Array<PlayerMetadata>) => {
-  axios
-    .post<GCGResponse>(toAPIUrl('game_service.GameMetadataService', 'GetGCG'), {
-      gameId: gameID,
-    })
-    .then((resp) => {
-      const url = window.URL.createObjectURL(new Blob([resp.data.gcg]));
-      const link = document.createElement('a');
-      link.href = url;
-      let downloadFilename = `${gameID}.gcg`;
-      // TODO: allow more characters as applicable
-      // Note: does not actively prevent saving .dotfiles or nul.something
-      if (playerMeta.every((x) => /^[-0-9A-Za-z_.]+$/.test(x.nickname))) {
-        const byStarts: Array<Array<string>> = [[], []];
-        for (const x of playerMeta) {
-          byStarts[+!!x.first].push(x.nickname);
-        }
-        downloadFilename = `${[...byStarts[1], ...byStarts[0]].join(
-          '-'
-        )}-${gameID}.gcg`;
+const gcgExport = async (
+  gameID: string,
+  playerMeta: Array<PlayerInfo>,
+  gameMetadataClient: PromiseClient<typeof GameMetadataService>
+) => {
+  try {
+    const resp = await gameMetadataClient.getGCG({ gameId: gameID });
+    const url = window.URL.createObjectURL(new Blob([resp.gcg]));
+    const link = document.createElement('a');
+    link.href = url;
+    let downloadFilename = `${gameID}.gcg`;
+    // TODO: allow more characters as applicable
+    // Note: does not actively prevent saving .dotfiles or nul.something
+    if (playerMeta.every((x) => /^[-0-9A-Za-z_.]+$/.test(x.nickname))) {
+      const byStarts: Array<Array<string>> = [[], []];
+      for (const x of playerMeta) {
+        byStarts[+!!x.first].push(x.nickname);
       }
-      link.setAttribute('download', downloadFilename);
-      document.body.appendChild(link);
-      link.onclick = () => {
-        link.remove();
-        setTimeout(() => {
-          window.URL.revokeObjectURL(url);
-        }, 1000);
-      };
-      link.click();
-    })
-    .catch((e) => {
-      if (e.response) {
-        // From Twirp
-        notification.warning({
-          message: 'Export Error',
-          description: e.response.data.msg,
-          duration: 4,
-        });
-      } else {
-        console.log(e);
-      }
-    });
+      downloadFilename = `${[...byStarts[1], ...byStarts[0]].join(
+        '-'
+      )}-${gameID}.gcg`;
+    }
+    link.setAttribute('download', downloadFilename);
+    document.body.appendChild(link);
+    link.onclick = () => {
+      link.remove();
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 1000);
+    };
+    link.click();
+  } catch (e) {
+    flashError(e);
+  }
 };
 
 const backupKey = (letters: string, rack: string) =>
@@ -365,16 +362,13 @@ export const BoardPanel = React.memo((props: Props) => {
   );
 
   const sendMetaEvent = useCallback(
-    (evtType: GameMetaEvent.EventTypeMap[keyof GameMetaEvent.EventTypeMap]) => {
+    (evtType: GameMetaEvent_EventType) => {
       const metaEvt = new GameMetaEvent();
-      metaEvt.setType(evtType);
-      metaEvt.setGameId(gameID);
+      metaEvt.type = evtType;
+      metaEvt.gameId = gameID;
 
       sendSocketMsg(
-        encodeToSocketFmt(
-          MessageType.GAME_META_EVENT,
-          metaEvt.serializeBinary()
-        )
+        encodeToSocketFmt(MessageType.GAME_META_EVENT, metaEvt.toBinary())
       );
     },
     [sendSocketMsg, gameID]
@@ -542,6 +536,10 @@ export const BoardPanel = React.memo((props: Props) => {
     if (lastLetters === undefined) {
       // First load.
       fullReset = true;
+    } else if (props.puzzleMode) {
+      // XXX: Without this, when exiting from examining an earlier turn on
+      // puzzle mode, it does not reset the rack to the latest rack. Why?
+      fullReset = true;
     } else if (
       props.currentRack &&
       !dep.displayedRack &&
@@ -642,6 +640,7 @@ export const BoardPanel = React.memo((props: Props) => {
     isExamining,
     props.board.letters,
     props.currentRack,
+    props.puzzleMode,
     setDisplayedRack,
     setPlacedTiles,
     setPlacedTilesTempScore,
@@ -711,16 +710,17 @@ export const BoardPanel = React.memo((props: Props) => {
       return;
     }
     const evt = props.events[props.events.length - 1];
-    if (evt.getNickname() === props.username) {
+    const evtNickname = nicknameFromEvt(evt, props.playerMeta);
+    if (evtNickname === props.username) {
       return;
     }
     let boardMessage = null;
-    switch (evt.getType()) {
-      case GameEvent.Type.PASS:
-        boardMessage = `${evt.getNickname()} passed`;
+    switch (evt.type) {
+      case GameEvent_Type.PASS:
+        boardMessage = `${evtNickname} passed`;
         break;
-      case GameEvent.Type.EXCHANGE:
-        boardMessage = `${evt.getNickname()} exchanged ${evt.getExchanged()}`;
+      case GameEvent_Type.EXCHANGE:
+        boardMessage = `${evtNickname} exchanged ${evt.exchanged}`;
         break;
     }
     if (boardMessage && !props.puzzleMode) {
@@ -734,7 +734,7 @@ export const BoardPanel = React.memo((props: Props) => {
         undefined
       );
     }
-  }, [props.events, props.username, props.puzzleMode]);
+  }, [props.events, props.playerMeta, props.username, props.puzzleMode]);
 
   const squareClicked = useCallback(
     (row: number, col: number) => {
@@ -793,7 +793,7 @@ export const BoardPanel = React.memo((props: Props) => {
           let p0Time = examinableTimerContext.p0;
           let p1Time = examinableTimerContext.p1;
 
-          if (props.playerMeta[0].user_id === p1.userID) {
+          if (props.playerMeta[0].userId === p1.userID) {
             [p0, p1] = [p1, p0];
             [p0Time, p1Time] = [p1Time, p0Time];
           }
@@ -889,13 +889,14 @@ export const BoardPanel = React.memo((props: Props) => {
         };
 
         const sayGameEvent = (ge: GameEvent) => {
-          const type = ge.getType();
+          const type = ge.type;
           let nickname = 'opponent.';
-          if (ge.getNickname() === props.username) {
+          const evtNickname = nicknameFromEvt(ge, props.playerMeta);
+          if (evtNickname === props.username) {
             nickname = 'you.';
           }
-          const playedTiles = ge.getPlayedTiles();
-          const mainWord = ge.getWordsFormedList()[0];
+          const playedTiles = ge.playedTiles;
+          const mainWord = ge.wordsFormed[0];
           let blankAwareWord = '';
           for (let i = 0; i < playedTiles.length; i++) {
             const tile = playedTiles[i];
@@ -905,20 +906,20 @@ export const BoardPanel = React.memo((props: Props) => {
               blankAwareWord += mainWord[i];
             }
           }
-          if (type === GameEvent.Type.TILE_PLACEMENT_MOVE) {
+          if (type === GameEvent_Type.TILE_PLACEMENT_MOVE) {
             say(
-              nickname + ' ' + wordToSayString(ge.getPosition()),
-              wordToSayString(blankAwareWord) + ' ' + ge.getScore().toString()
+              nickname + ' ' + wordToSayString(ge.position),
+              wordToSayString(blankAwareWord) + ' ' + ge.score.toString()
             );
-          } else if (type === GameEvent.Type.PHONY_TILES_RETURNED) {
+          } else if (type === GameEvent_Type.PHONY_TILES_RETURNED) {
             say(nickname + ' lost challenge', '');
-          } else if (type === GameEvent.Type.EXCHANGE) {
-            say(nickname + ' exchanged ' + ge.getExchanged(), '');
-          } else if (type === GameEvent.Type.PASS) {
+          } else if (type === GameEvent_Type.EXCHANGE) {
+            say(nickname + ' exchanged ' + ge.exchanged, '');
+          } else if (type === GameEvent_Type.PASS) {
             say(nickname + ' passed', '');
-          } else if (type === GameEvent.Type.CHALLENGE) {
+          } else if (type === GameEvent_Type.CHALLENGE) {
             say(nickname + ' challenged', '');
-          } else if (type === GameEvent.Type.CHALLENGE_BONUS) {
+          } else if (type === GameEvent_Type.CHALLENGE_BONUS) {
             say(nickname + ' challenge bonus', '');
           } else {
             // This is a bum way to deal with all other events
@@ -1079,7 +1080,8 @@ export const BoardPanel = React.memo((props: Props) => {
               const board = { ...gameContext.board };
               const existingTile =
                 board.letters[
-                  blindfoldCoordinates.row * 15 + blindfoldCoordinates.col
+                  blindfoldCoordinates.row * board.dim +
+                    blindfoldCoordinates.col
                 ].trim();
               if (!existingTile) {
                 setArrowProperties({
@@ -1436,18 +1438,16 @@ export const BoardPanel = React.memo((props: Props) => {
       return;
     }
 
-    receiver.setDisplayName(opp);
-    evt.setReceivingUser(receiver);
-    evt.setReceiverIsPermanent(true);
-    evt.setUserState(SeekState.READY);
+    receiver.displayName = opp;
+    evt.receivingUser = receiver;
+    evt.receiverIsPermanent = true;
+    evt.userState = SeekState.READY;
 
-    evt.setRematchFor(gameID);
+    evt.rematchFor = gameID;
     if (props.tournamentID) {
-      evt.setTournamentId(props.tournamentID);
+      evt.tournamentId = props.tournamentID;
     }
-    sendSocketMsg(
-      encodeToSocketFmt(MessageType.SEEK_REQUEST, evt.serializeBinary())
-    );
+    sendSocketMsg(encodeToSocketFmt(MessageType.SEEK_REQUEST, evt.toBinary()));
 
     notification.info({
       message: 'Rematch',
@@ -1520,22 +1520,25 @@ export const BoardPanel = React.memo((props: Props) => {
   const preventFirefoxTypeToSearch = useCallback((e) => {
     e.preventDefault();
   }, []);
+
+  const metadataClient = useClient(GameMetadataService);
+
   const handlePass = useCallback(() => makeMove('pass'), [makeMove]);
   const handleResign = useCallback(() => makeMove('resign'), [makeMove]);
   const handleChallenge = useCallback(() => makeMove('challenge'), [makeMove]);
   const handleCommit = useCallback(() => makeMove('commit'), [makeMove]);
   const handleExportGCG = useCallback(
-    () => gcgExport(props.gameID, props.playerMeta),
-    [props.gameID, props.playerMeta]
+    () => gcgExport(props.gameID, props.playerMeta, metadataClient),
+    [props.gameID, props.playerMeta, metadataClient]
   );
   const handleExchangeTilesCancel = useCallback(() => {
     setCurrentMode('NORMAL');
   }, []);
   const handleRequestAbort = useCallback(() => {
-    sendMetaEvent(GameMetaEvent.EventType.REQUEST_ABORT);
+    sendMetaEvent(GameMetaEvent_EventType.REQUEST_ABORT);
   }, [sendMetaEvent]);
   const handleNudge = useCallback(() => {
-    sendMetaEvent(GameMetaEvent.EventType.REQUEST_ADJUDICATION);
+    sendMetaEvent(GameMetaEvent_EventType.REQUEST_ADJUDICATION);
   }, [sendMetaEvent]);
   const showAbort = useMemo(() => {
     // This hardcoded number is also on the backend.
@@ -1691,49 +1694,48 @@ export const BoardPanel = React.memo((props: Props) => {
           setHandlePassShortcut={setHandlePassShortcut}
           setHandleChallengeShortcut={setHandleChallengeShortcut}
           setHandleNeitherShortcut={setHandleNeitherShortcut}
+          exitableExaminer={props.exitableExaminer}
         />
       )}
-      {props.puzzleMode &&
-        props.puzzleSolved === PuzzleStatus.UNANSWERED &&
-        !props.anonymousViewer && (
-          <Affix offsetTop={126} className="rack-affix">
-            <GameControls
-              isExamining={false}
-              myTurn={true}
-              finalPassOrChallenge={
-                examinableGameContext.playState ===
-                PlayState.WAITING_FOR_FINAL_PASS
-              }
-              allowAnalysis={false}
-              exchangeAllowed={exchangeAllowed}
-              observer={false}
-              onRecall={recallTiles}
-              showExchangeModal={showExchangeModal}
-              onPass={handlePass}
-              onResign={handleResign}
-              onRequestAbort={handleRequestAbort}
-              onNudge={handleNudge}
-              onChallenge={handleChallenge}
-              onCommit={handleCommit}
-              onRematch={props.handleAcceptRematch ?? rematch}
-              onExamine={() => {}}
-              onExportGCG={() => {}}
-              showNudge={false}
-              showAbort={false}
-              showRematch={false}
-              gameEndControls={false}
-              currentRack={props.currentRack}
-              tournamentSlug={props.tournamentSlug}
-              tournamentPairedMode={props.tournamentPairedMode}
-              lexicon={props.lexicon}
-              challengeRule={props.challengeRule}
-              setHandlePassShortcut={setHandlePassShortcut}
-              setHandleChallengeShortcut={setHandleChallengeShortcut}
-              setHandleNeitherShortcut={setHandleNeitherShortcut}
-              puzzleMode={true}
-            />
-          </Affix>
-        )}
+      {props.puzzleMode && !props.anonymousViewer && (
+        <Affix offsetTop={126} className="rack-affix">
+          <GameControls
+            isExamining={isExamining}
+            myTurn={true}
+            finalPassOrChallenge={
+              examinableGameContext.playState ===
+              PlayState.WAITING_FOR_FINAL_PASS
+            }
+            allowAnalysis={props.puzzleSolved !== PuzzleStatus.UNANSWERED}
+            exchangeAllowed={exchangeAllowed}
+            observer={false}
+            onRecall={recallTiles}
+            showExchangeModal={showExchangeModal}
+            onPass={handlePass}
+            onResign={handleResign}
+            onRequestAbort={handleRequestAbort}
+            onNudge={handleNudge}
+            onChallenge={handleChallenge}
+            onCommit={handleCommit}
+            onRematch={props.handleAcceptRematch ?? rematch}
+            onExamine={handleExamineStart}
+            onExportGCG={handleExportGCG}
+            showNudge={false}
+            showAbort={false}
+            showRematch={false}
+            gameEndControls={props.puzzleSolved !== PuzzleStatus.UNANSWERED}
+            currentRack={props.currentRack}
+            tournamentSlug={props.tournamentSlug}
+            tournamentPairedMode={props.tournamentPairedMode}
+            lexicon={props.lexicon}
+            challengeRule={props.challengeRule}
+            setHandlePassShortcut={setHandlePassShortcut}
+            setHandleChallengeShortcut={setHandleChallengeShortcut}
+            setHandleNeitherShortcut={setHandleNeitherShortcut}
+            puzzleMode={true}
+          />
+        </Affix>
+      )}
       <ExchangeTiles
         tileColorId={tileColorId}
         alphabet={props.alphabet}

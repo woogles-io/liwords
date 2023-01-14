@@ -42,6 +42,8 @@ message GetAnnouncementsRequest {}
 
 message AnnouncementsResponse { repeated Announcement announcements = 1; }
 
+// ConfigService requires admin authentication, except for the GetAnnouncements
+// endpoint.
 service ConfigService {
   rpc SetGamesEnabled(EnableGamesRequest) returns (ConfigResponse);
 

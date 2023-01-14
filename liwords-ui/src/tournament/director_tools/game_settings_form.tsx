@@ -29,6 +29,7 @@ import {
   GameRules,
   RatingMode,
 } from '../../gen/api/proto/ipc/omgwords_pb';
+import { defaultLetterDistribution } from '../../lobby/sought_game_interactions';
 
 type Props = {
   setGameRequest: (gr: GameRequest) => void;
@@ -107,25 +108,25 @@ export const SettingsForm = (props: Props) => {
 
   const submitGameReq = (values: Store) => {
     const gr = new GameRequest();
-    const rules = new GameRules();
-    rules.setBoardLayoutName('CrosswordGame');
-    rules.setLetterDistributionName('English');
-    rules.setVariantName(values.variant);
-    gr.setRules(rules);
+    const rules = new GameRules({
+      boardLayoutName: 'CrosswordGame',
+      letterDistributionName: defaultLetterDistribution(values.lexicon),
+      variantName: values.variant,
+    });
+    gr.rules = rules;
 
-    gr.setLexicon(values.lexicon);
-    gr.setInitialTimeSeconds(
-      initTimeDiscreteScale[values.initialtimeslider].seconds
-    );
+    gr.lexicon = values.lexicon;
+    gr.initialTimeSeconds =
+      initTimeDiscreteScale[values.initialtimeslider].seconds;
 
     if (values.incOrOT === 'increment') {
-      gr.setIncrementSeconds(values.extratime);
+      gr.incrementSeconds = values.extratime;
     } else {
-      gr.setMaxOvertimeMinutes(values.extratime);
+      gr.maxOvertimeMinutes = values.extratime;
     }
-    gr.setChallengeRule(values.challengerule);
-    gr.setGameMode(GameMode.REAL_TIME);
-    gr.setRatingMode(values.rated ? RatingMode.RATED : RatingMode.CASUAL);
+    gr.challengeRule = values.challengerule;
+    gr.gameMode = GameMode.REAL_TIME;
+    gr.ratingMode = values.rated ? RatingMode.RATED : RatingMode.CASUAL;
     props.setGameRequest(gr);
   };
 
@@ -147,6 +148,9 @@ export const SettingsForm = (props: Props) => {
           <Select.Option value="classic">Classic</Select.Option>
           <Select.Option value="wordsmog">
             <VariantIcon vcode="wordsmog" withName />
+          </Select.Option>
+          <Select.Option value="classic_super">
+            <VariantIcon vcode="classic_super" withName />
           </Select.Option>
         </Select>
       </Form.Item>
@@ -200,19 +204,19 @@ export const DisplayedGameSetting = (gr: GameRequest | undefined) => {
   return gr ? (
     <dl className="ant-form-text readable-text-color">
       <dt>Initial Time (Minutes)</dt>
-      <dd>{gr.getInitialTimeSeconds() / 60}</dd>
+      <dd>{gr.initialTimeSeconds / 60}</dd>
       <dt>Variant</dt>
-      <dd>{gr.getRules()?.getVariantName()}</dd>
+      <dd>{gr.rules?.variantName}</dd>
       <dt>Lexicon</dt>
-      <dd>{gr.getLexicon()}</dd>
+      <dd>{gr.lexicon}</dd>
       <dt>Max Overtime (Minutes)</dt>
-      <dd>{gr.getMaxOvertimeMinutes()}</dd>
+      <dd>{gr.maxOvertimeMinutes}</dd>
       <dt>Increment (Seconds)</dt>
-      <dd>{gr.getIncrementSeconds()}</dd>
+      <dd>{gr.incrementSeconds}</dd>
       <dt>Challenge Rule</dt>
-      <dd>{challRuleToStr(gr.getChallengeRule())}</dd>
+      <dd>{challRuleToStr(gr.challengeRule)}</dd>
       <dt>Rated</dt>
-      <dd>{gr.getRatingMode() === RatingMode.RATED ? 'Yes' : 'No'}</dd>
+      <dd>{gr.ratingMode === RatingMode.RATED ? 'Yes' : 'No'}</dd>
     </dl>
   ) : (
     <Typography.Text

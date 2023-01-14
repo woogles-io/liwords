@@ -11,63 +11,38 @@ import {
   Select,
   Switch,
 } from 'antd';
-import { LiwordsAPIError, postProto } from '../api/api';
 import { Store } from 'antd/lib/form/interface';
 import { excludedLexica, LexiconFormItem } from '../shared/lexicon_display';
 import {
   PuzzleBucket,
   PuzzleGenerationRequest,
   PuzzleTag,
-  PuzzleTagMap,
-} from '../gen/macondo/api/proto/macondo/macondo_pb';
+} from '../gen/api/proto/macondo/macondo_pb';
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   APIPuzzleGenerationJobRequest,
-  APIPuzzleGenerationJobResponse,
   PuzzleGenerationJobRequest,
   PuzzleJobLog,
   PuzzleJobLogsRequest,
-  PuzzleJobLogsResponse,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import moment from 'moment';
+import { proto3 } from '@bufbuild/protobuf';
+import { flashError, useClient } from '../utils/hooks/connect';
+import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_connectweb';
 
 const layout = {
   labelCol: {
-    span: 3,
+    span: 6,
   },
   wrapperCol: {
     span: 16,
   },
 };
 
-// don't code like this:
-const bucketToProto = (strlist: Array<keyof PuzzleTagMap>) => {
-  return strlist?.map((val) => {
-    switch (val) {
-      case 'EQUITY':
-        return PuzzleTag.EQUITY;
-      case 'BINGO':
-        return PuzzleTag.BINGO;
-      case 'ONLY_BINGO':
-        return PuzzleTag.ONLY_BINGO;
-      case 'BLANK_BINGO':
-        return PuzzleTag.BLANK_BINGO;
-      case 'NON_BINGO':
-        return PuzzleTag.NON_BINGO;
-      case 'POWER_TILE':
-        return PuzzleTag.POWER_TILE;
-      case 'BINGO_NINE_OR_ABOVE':
-        return PuzzleTag.BINGO_NINE_OR_ABOVE;
-      case 'CEL_ONLY':
-        return PuzzleTag.CEL_ONLY;
-    }
-  });
-};
-
 type formBucket = {
   size: number;
-  includes: Array<keyof PuzzleTagMap>;
-  excludes: Array<keyof PuzzleTagMap>;
+  includes: Array<PuzzleTag>;
+  excludes: Array<PuzzleTag>;
 };
 
 export const PuzzleGenerator = () => {
@@ -79,8 +54,8 @@ export const PuzzleGenerator = () => {
         itemLayout="horizontal"
         dataSource={logs}
         renderItem={(item) => {
-          const createdAt = item.getCreatedAt();
-          const completedAt = item.getCompletedAt();
+          const createdAt = item.createdAt;
+          const completedAt = item.completedAt;
           let dcreate, dcomplete;
           if (createdAt) {
             dcreate = moment(createdAt.toDate()).fromNow();
@@ -92,20 +67,14 @@ export const PuzzleGenerator = () => {
           return (
             <List.Item>
               <List.Item.Meta
-                title={`Job ${item.getId()} - created: ${dcreate}`}
+                title={`Job ${item.id} - created: ${dcreate}`}
                 description={
                   <div className="readable-text-color">
                     <p>Completed: {dcomplete}</p>
-                    <p>Fulfilled: {`${item.getFulfilled()}`}</p>
-                    <p>Error status: {item.getErrorStatus()}</p>
+                    <p>Fulfilled: {`${item.fulfilled}`}</p>
+                    <p>Error status: {item.errorStatus}</p>
                     <p>Request:</p>
-                    <pre>
-                      {JSON.stringify(
-                        item.getRequest()?.toObject(),
-                        undefined,
-                        2
-                      )}
-                    </pre>
+                    <pre>{item.request?.toJsonString({ prettySpaces: 2 })}</pre>
                   </div>
                 }
               />
@@ -116,89 +85,68 @@ export const PuzzleGenerator = () => {
     );
   }, [logs]);
 
-  const onFinish = useCallback(async (vals: Store) => {
-    console.log('vals', vals);
+  const puzzleClient = useClient(PuzzleService);
 
-    const apireq = new APIPuzzleGenerationJobRequest();
+  const onFinish = useCallback(
+    async (vals: Store) => {
+      console.log('vals', vals);
 
-    const req = new PuzzleGenerationJobRequest();
-    req.setBotVsBot(vals.bvb);
-    req.setLexicon(vals.lexicon);
-    req.setLetterDistribution(vals.letterdist);
-    req.setSqlOffset(vals.sqlOffset);
-    req.setGameConsiderationLimit(vals.gameConsiderationLimit);
-    req.setGameCreationLimit(vals.gameCreationLimit);
+      const apireq = new APIPuzzleGenerationJobRequest();
 
-    const bucketReq = new PuzzleGenerationRequest();
+      const req = new PuzzleGenerationJobRequest();
+      req.botVsBot = vals.bvb;
+      req.lexicon = vals.lexicon;
+      req.letterDistribution = vals.letterdist;
+      req.sqlOffset = vals.sqlOffset;
+      req.gameConsiderationLimit = vals.gameConsiderationLimit;
+      req.gameCreationLimit = vals.gameCreationLimit;
 
-    const buckets = new Array<PuzzleBucket>();
-    vals.buckets.forEach((bucket: formBucket) => {
-      const pb = new PuzzleBucket();
-      pb.setSize(bucket.size);
+      const bucketReq = new PuzzleGenerationRequest();
 
-      pb.setIncludesList(bucketToProto(bucket.includes));
-      pb.setExcludesList(bucketToProto(bucket.excludes));
-      buckets.push(pb);
-    });
+      const buckets = new Array<PuzzleBucket>();
+      vals.buckets.forEach((bucket: formBucket) => {
+        const pb = new PuzzleBucket();
+        pb.size = bucket.size;
 
-    bucketReq.setBucketsList(buckets);
-
-    req.setRequest(bucketReq);
-
-    apireq.setSecretKey(vals.secretKey);
-    apireq.setRequest(req);
-
-    try {
-      await postProto(
-        APIPuzzleGenerationJobResponse,
-        'puzzle_service.PuzzleService',
-        'StartPuzzleGenJob',
-        apireq
-      );
-      message.info({ content: 'Submitted job' });
-    } catch (e) {
-      message.error({
-        content: (e as LiwordsAPIError).message,
-        duration: 5,
+        pb.includes = bucket.includes ?? new Array<PuzzleTag>();
+        pb.excludes = bucket.excludes ?? new Array<PuzzleTag>();
+        buckets.push(pb);
       });
-    }
-  }, []);
+
+      bucketReq.buckets = buckets;
+
+      req.request = bucketReq;
+
+      apireq.secretKey = vals.secretKey;
+      apireq.request = req;
+
+      try {
+        await puzzleClient.startPuzzleGenJob(apireq);
+        message.info({ content: 'Submitted job' });
+      } catch (e) {
+        flashError(e);
+      }
+    },
+    [puzzleClient]
+  );
 
   const fetchRecentLogs = useCallback(async () => {
     const req = new PuzzleJobLogsRequest();
-    req.setOffset(0);
-    req.setLimit(20);
-    // Add pagination later.
-    try {
-      const resp = await postProto(
-        PuzzleJobLogsResponse,
-        'puzzle_service.PuzzleService',
-        'GetPuzzleJobLogs',
-        req
-      );
-      setLogs(resp.getLogsList());
-    } catch (e) {
-      message.error({
-        content: (e as LiwordsAPIError).message,
-        duration: 5,
-      });
-    }
-  }, []);
+    req.offset = 0;
+    req.limit = 20;
 
-  // TODO: figure out how to import this from the protobuf.
+    try {
+      const resp = await puzzleClient.getPuzzleJobLogs(req);
+      setLogs(resp.logs);
+    } catch (e) {
+      flashError(e);
+    }
+  }, [puzzleClient]);
+
   const puzzleTags = useMemo(
     () =>
-      [
-        'EQUITY',
-        'BINGO',
-        'ONLY_BINGO',
-        'BLANK_BINGO',
-        'NON_BINGO',
-        'POWER_TILE',
-        'BINGO_NINE_OR_ABOVE',
-        'CEL_ONLY',
-      ].map((name) => {
-        return <Select.Option key={name}>{name}</Select.Option>;
+      proto3.getEnumType(PuzzleTag).values.map((val) => {
+        return <Select.Option key={val.no}>{val.name}</Select.Option>;
       }),
     []
   );
@@ -315,4 +263,3 @@ export const PuzzleGenerator = () => {
     </div>
   );
 };
-// postJsonObj

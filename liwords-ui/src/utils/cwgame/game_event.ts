@@ -1,8 +1,16 @@
-import { EphemeralTile, Direction, Blank } from './common';
+import { EphemeralTile, Direction, Blank, EmptySpace, isBlank } from './common';
 import { contiguousTilesFromTileSet } from './scoring';
 import { Board } from './board';
-import { GameEvent } from '../../gen/macondo/api/proto/macondo/macondo_pb';
-import { ClientGameplayEvent } from '../../gen/api/proto/ipc/omgwords_pb';
+import {
+  GameEvent,
+  GameEvent_Direction,
+} from '../../gen/api/proto/macondo/macondo_pb';
+import {
+  ClientGameplayEvent,
+  ClientGameplayEvent_EventType,
+  PlayerInfo,
+} from '../../gen/api/proto/ipc/omgwords_pb';
+import { indexToPlayerOrder, PlayerOrder } from '../../store/constants';
 
 export const ThroughTileMarker = '.';
 // convert a set of ephemeral tiles to a protobuf game event.
@@ -41,62 +49,65 @@ export const tilesetToMoveEvent = (
     wordPos = col + row;
   }
 
-  const evt = new ClientGameplayEvent();
-  evt.setPositionCoords(wordPos);
-  evt.setTiles(wordStr);
-  evt.setType(ClientGameplayEvent.EventType.TILE_PLACEMENT);
-  evt.setGameId(gameID);
+  const evt = new ClientGameplayEvent({
+    positionCoords: wordPos,
+    tiles: wordStr,
+    type: ClientGameplayEvent_EventType.TILE_PLACEMENT,
+    gameId: gameID,
+  });
+
   return evt;
 };
 
 export const exchangeMoveEvent = (rack: string, gameID: string) => {
-  const evt = new ClientGameplayEvent();
-  evt.setTiles(rack);
-  evt.setType(ClientGameplayEvent.EventType.EXCHANGE);
-  evt.setGameId(gameID);
+  const evt = new ClientGameplayEvent({
+    tiles: rack,
+    type: ClientGameplayEvent_EventType.EXCHANGE,
+    gameId: gameID,
+  });
 
   return evt;
 };
 
 export const passMoveEvent = (gameID: string) => {
-  const evt = new ClientGameplayEvent();
-  evt.setType(ClientGameplayEvent.EventType.PASS);
-  evt.setGameId(gameID);
-
+  const evt = new ClientGameplayEvent({
+    type: ClientGameplayEvent_EventType.PASS,
+    gameId: gameID,
+  });
   return evt;
 };
 
 export const resignMoveEvent = (gameID: string) => {
-  const evt = new ClientGameplayEvent();
-  evt.setType(ClientGameplayEvent.EventType.RESIGN);
-  evt.setGameId(gameID);
-
+  const evt = new ClientGameplayEvent({
+    type: ClientGameplayEvent_EventType.RESIGN,
+    gameId: gameID,
+  });
   return evt;
 };
 
 export const challengeMoveEvent = (gameID: string) => {
-  const evt = new ClientGameplayEvent();
-  evt.setType(ClientGameplayEvent.EventType.CHALLENGE_PLAY);
-  evt.setGameId(gameID);
-
+  const evt = new ClientGameplayEvent({
+    type: ClientGameplayEvent_EventType.CHALLENGE_PLAY,
+    gameId: gameID,
+  });
   return evt;
 };
 
 export const tilePlacementEventDisplay = (evt: GameEvent, board: Board) => {
   // modify a tile placement move for display purposes.
-  const row = evt.getRow();
-  const col = evt.getColumn();
-  const ri = evt.getDirection() === GameEvent.Direction.HORIZONTAL ? 0 : 1;
+  const row = evt.row;
+  const col = evt.column;
+  const ri = evt.direction === GameEvent_Direction.HORIZONTAL ? 0 : 1;
   const ci = 1 - ri;
 
   let m = '';
   let openParen = false;
   for (
     let i = 0, r = row, c = col;
-    i < evt.getPlayedTiles().length;
+    i < evt.playedTiles.length;
     i += 1, r += ri, c += ci
   ) {
-    const t = evt.getPlayedTiles()[i];
+    const t = evt.playedTiles[i];
     if (t === ThroughTileMarker) {
       if (!openParen) {
         m += '(';
@@ -117,30 +128,43 @@ export const tilePlacementEventDisplay = (evt: GameEvent, board: Board) => {
   return m;
 };
 
+// nicknameFromEvt gets the nickname of the user who performed an
+// event.
+export const nicknameFromEvt = (
+  evt: GameEvent,
+  players: Array<PlayerInfo>
+): string => {
+  return players[evt.playerIndex]?.nickname;
+};
+
+export const playerOrderFromEvt = (
+  evt: GameEvent,
+  nickToPlayerOrder: { [nick: string]: PlayerOrder }
+): PlayerOrder => {
+  return indexToPlayerOrder(evt.playerIndex);
+};
+
 export const computeLeave = (tilesPlayed: string, rack: string) => {
-  const tileDict: { [k: string]: number } = {};
-  for (let i = 0; i < rack.length; i++) {
-    const tile = rack[i];
-    if (!tileDict[tile]) {
-      tileDict[tile] = 1;
-    } else {
-      tileDict[tile] += 1;
+  // tilesPlayed is either from evt.getPlayedTiles(), which is like "TRUNCa.E",
+  // or from evt.getExchanged(), which is like "AE?".
+  // rack is a pre-sorted rack; spaces will be returned where gaps should be.
+
+  const leave: Array<string | null> = Array.from(rack);
+  for (const letter of tilesPlayed) {
+    if (letter !== ThroughTileMarker) {
+      const t = isBlank(letter) ? Blank : letter;
+      const usedTileIndex = leave.lastIndexOf(t);
+      if (usedTileIndex >= 0) {
+        // make it a non-string to disqualify multiple matches in this loop.
+        leave[usedTileIndex] = null;
+      }
     }
   }
-  const leave = [];
-  for (let i = 0; i < tilesPlayed.length; i++) {
-    let tile = tilesPlayed[i];
-    if (tile.toLowerCase() === tile) {
-      tile = Blank;
-    }
-    tileDict[tile] -= 1;
-  }
-  for (const tile in tileDict) {
-    const n = tileDict[tile];
-    for (let i = 0; i < n; i++) {
-      leave.push(tile);
+  for (let i = 0; i < leave.length; ++i) {
+    if (leave[i] === null) {
+      // this is intentionally done in a separate pass.
+      leave[i] = EmptySpace;
     }
   }
-  leave.sort();
   return leave.join('');
 };

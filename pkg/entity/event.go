@@ -12,21 +12,31 @@ import (
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
+type SerializationProtocol int
+
+const (
+	EvtSerializationProtoWithHeader SerializationProtocol = iota
+	EvtSerializationProto
+	EvtSerializationJSONWithHeader
+	EvtSerializationJSON
+)
+
 const (
 	// MaxNameLength is the maximum length that a proto message can be.
 	MaxNameLength = 64
 
-	protobufSerializationProtocol = "proto"
+	DefaultSerializationProtocol = EvtSerializationProtoWithHeader
 )
 
 type EventAudienceType string
 
 const (
-	AudGame       EventAudienceType = "game"
-	AudGameTV                       = "gametv"
-	AudUser                         = "user"
-	AudLobby                        = "lobby"
-	AudTournament                   = "tournament"
+	AudGame        EventAudienceType = "game"
+	AudGameTV                        = "gametv"
+	AudUser                          = "user"
+	AudLobby                         = "lobby"
+	AudTournament                    = "tournament"
+	AudBotCommands                   = "bot.commands"
 	// AudChannel is used for a general channel.
 	AudChannel = "channel"
 )
@@ -39,7 +49,7 @@ type EventWrapper struct {
 	Event proto.Message
 
 	// Serialization protocol
-	protocol     string
+	protocol     SerializationProtocol
 	audience     []string
 	excludeUsers []string
 }
@@ -49,13 +59,13 @@ func WrapEvent(event proto.Message, messageType pb.MessageType) *EventWrapper {
 	return &EventWrapper{
 		Type:     messageType,
 		Event:    event,
-		protocol: protobufSerializationProtocol,
+		protocol: DefaultSerializationProtocol,
 	}
 }
 
 // SetSerializationProtocol sets the serialization protocol of the protobuf
 // object.
-func (e *EventWrapper) SetSerializationProtocol(protocol string) {
+func (e *EventWrapper) SetSerializationProtocol(protocol SerializationProtocol) {
 	e.protocol = protocol
 }
 
@@ -97,24 +107,34 @@ func (e *EventWrapper) Serialize() ([]byte, error) {
 
 	var data []byte
 	var err error
-	if e.protocol == "proto" {
+	switch e.protocol {
+	case EvtSerializationProtoWithHeader, EvtSerializationProto:
 		data, err = proto.Marshal(e.Event)
 		if err != nil {
 			return nil, err
 		}
-	} else {
+		if e.protocol == EvtSerializationProtoWithHeader {
+			binary.Write(&b, binary.BigEndian, int16(len(data)+1))
+			binary.Write(&b, binary.BigEndian, int8(e.Type))
+		}
+
+	case EvtSerializationJSON, EvtSerializationJSONWithHeader:
 		data, err = json.Marshal(e.Event)
 		if err != nil {
 			return nil, err
 		}
+		if e.protocol == EvtSerializationJSONWithHeader {
+			binary.Write(&b, binary.BigEndian, int16(len(data)+1))
+			binary.Write(&b, binary.BigEndian, int8(e.Type))
+		}
 	}
-	binary.Write(&b, binary.BigEndian, int16(len(data)+1))
-	binary.Write(&b, binary.BigEndian, int8(e.Type))
+
 	b.Write(data)
 	return b.Bytes(), nil
 }
 
 // EventFromByteArray takes in a serialized event and deserializes it.
+// The event must have been serialized with an extra header.
 func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 	b := bytes.NewReader(arr)
 	var msgtypeint int8
@@ -125,6 +145,8 @@ func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 	msgBytes := make([]byte, msglen-1)
 	msgType := pb.MessageType(msgtypeint)
 	switch msgType {
+	case pb.MessageType_SERVER_GAMEPLAY_EVENT:
+		message = &pb.ServerGameplayEvent{}
 	case pb.MessageType_CLIENT_GAMEPLAY_EVENT:
 		message = &pb.ClientGameplayEvent{}
 	case pb.MessageType_GAME_ENDED_EVENT:
@@ -137,8 +159,10 @@ func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 		message = &pb.SoughtGameProcessEvent{}
 	case pb.MessageType_TIMED_OUT:
 		message = &pb.TimedOut{}
+	case pb.MessageType_GAME_META_EVENT:
+		message = &pb.GameMetaEvent{}
 	default:
-		return nil, fmt.Errorf("event of type %d not handled", msgType)
+		return nil, fmt.Errorf("event of type %s not handled", msgType.String())
 	}
 	_, err := io.ReadFull(b, msgBytes)
 	if err != nil {

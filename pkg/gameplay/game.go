@@ -13,6 +13,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/domino14/macondo/runner"
+	"github.com/lithammer/shortuuid"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -39,6 +40,10 @@ var (
 	errTimeDidntRunOut = errors.New("got time ran out, but it did not actually")
 )
 
+const (
+	IdentificationAuthority = "io.woogles"
+)
+
 // GameStore is an interface for getting a full game.
 type GameStore interface {
 	Get(ctx context.Context, id string) (*entity.Game, error)
@@ -61,8 +66,9 @@ type GameStore interface {
 }
 
 // InstantiateNewGame instantiates a game and returns it.
+// Users must be in order of who goes first.
 func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Config,
-	users [2]*entity.User, assignedFirst int, req *pb.GameRequest, tdata *entity.TournamentData) (*entity.Game, error) {
+	users [2]*entity.User, req *pb.GameRequest, tdata *entity.TournamentData) (*entity.Game, error) {
 
 	var players []*macondopb.PlayerInfo
 	var dbids [2]uint
@@ -82,11 +88,6 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 
 	log.Debug().Interface("req-rules", req.Rules).Msg("new-game-rules")
 
-	firstAssigned := false
-	if assignedFirst != -1 {
-		firstAssigned = true
-	}
-
 	rules, err := game.NewBasicGameRules(
 		&cfg.MacondoConfig, req.Lexicon, req.Rules.BoardLayoutName,
 		req.Rules.LetterDistributionName, game.CrossScoreOnly,
@@ -96,24 +97,28 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	}
 
 	var gameRunner *runner.GameRunner
+	gameRunner, err = runner.NewGameRunnerFromRules(&runner.GameOptions{
+		ChallengeRule: req.ChallengeRule,
+	}, players, rules)
+	if err != nil {
+		return nil, err
+	}
+
 	for {
-		gameRunner, err = runner.NewGameRunnerFromRules(&runner.GameOptions{
-			FirstIsAssigned: firstAssigned,
-			GoesFirst:       assignedFirst,
-			ChallengeRule:   req.ChallengeRule,
-		}, players, rules)
-		if err != nil {
-			return nil, err
-		}
+		// Overwrite the randomly generated macondo long UUID with a shorter
+		// uuid for Woogles usage.
+		gameRunner.Game.History().Uid = shortuuid.New()[2:10]
+		gameRunner.Game.History().IdAuth = IdentificationAuthority
 
 		exists, err := gameStore.Exists(ctx, gameRunner.Game.Uid())
 		if err != nil {
 			return nil, err
 		}
 		if exists {
+			log.Info().Str("uid", gameRunner.Game.History().Uid).Msg("game-uid-collision")
 			continue
 			// This UUID exists in the database. This is only possible because
-			// we are purposely shortening the UUID in macondo for nicer URLs.
+			// we are purposely shortening the UUID for nicer URLs.
 			// 57^8 should still give us 111 trillion games. (and we can add more
 			// characters if we get close to that number)
 		}
@@ -141,7 +146,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 			UserId:   u.UUID,
 			Rating:   u.GetRelevantRating(ratingKey),
 			IsBot:    u.IsBot,
-			First:    gameRunner.FirstPlayer().UserId == u.UUID,
+			First:    idx == 0,
 		}
 	}
 
@@ -254,8 +259,8 @@ func StartGame(ctx context.Context, gameStore GameStore, userStore user.Store, e
 			entGame.SendChange(wrappedRematch)
 		}
 	}
+	return potentiallySendBotMoveRequest(ctx, userStore, entGame)
 
-	return nil
 }
 
 func players(entGame *entity.Game) []string {
@@ -381,6 +386,8 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 		if err != nil {
 			return err
 		}
+	} else {
+		return potentiallySendBotMoveRequest(ctx, userStore, entGame)
 	}
 
 	return nil
@@ -396,6 +403,8 @@ func PlayMove(ctx context.Context,
 	userID string, onTurn,
 	timeRemaining int,
 	m *move.Move) error {
+
+	log := zerolog.Ctx(ctx)
 
 	log.Debug().Msg("validating")
 
@@ -463,7 +472,10 @@ func PlayMove(ctx context.Context,
 		if err != nil {
 			return err
 		}
+	} else {
+		return potentiallySendBotMoveRequest(ctx, userStore, entGame)
 	}
+
 	return nil
 }
 
@@ -574,6 +586,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 			log.Err(err).Msg("error-saving")
 			return entGame, err
 		}
+
 	}
 	return entGame, nil
 }
@@ -651,4 +664,31 @@ func statsForUser(ctx context.Context, id string, userStore user.Store,
 	}
 
 	return userStats, nil
+}
+
+// send a request to the internal Macondo bot to move.
+func potentiallySendBotMoveRequest(ctx context.Context, userStore user.Store, g *entity.Game) error {
+	userOnTurn, err := userStore.GetByUUID(ctx, g.PlayerIDOnTurn())
+	if err != nil {
+		return err
+	}
+
+	if !userOnTurn.IsBot {
+		return nil
+	}
+
+	evt := &macondopb.BotRequest{
+		GameHistory: g.History(),
+		BotType:     g.GameReq.BotType,
+	}
+	// message type doesn't matter here; we're going to make sure
+	// this doesn't get serialized with a message type.
+	wrapped := entity.WrapEvent(evt, 0)
+	wrapped.SetAudience(entity.AudBotCommands)
+	// serialize without any length/type headers! This is an internal
+	// message, and not meant for the socket.
+	wrapped.SetSerializationProtocol(entity.EvtSerializationProto)
+	g.SendChange(wrapped)
+
+	return nil
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/lithammer/shortuuid"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -81,9 +82,12 @@ func TestPuzzlesMain(t *testing.T) {
 
 	ctx := context.Background()
 
-	rk := ratingKey(common.DefaultGameReq.Lexicon)
+	rk := entity.LexiconToPuzzleVariantKey(common.DefaultGameReq.Lexicon)
 
-	pcid, err := transactGetDBIDFromUUID(ctx, pool, "users", PuzzleCreatorUUID)
+	pcid, err := commondb.GetDBIDFromUUID(ctx, pool, &commondb.CommonDBConfig{
+		TableType: commondb.UsersTable,
+		Value:     PuzzleCreatorUUID,
+	})
 	is.NoErr(err)
 
 	var curatedPuzzles int
@@ -104,12 +108,12 @@ func TestPuzzlesMain(t *testing.T) {
 	// 7     - Correct
 
 	// This should work for users who are not logged in
-	_, err = GetNextPuzzleId(ctx, ps, "", common.DefaultGameReq.Lexicon)
+	_, _, err = GetNextPuzzleId(ctx, ps, "", common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
 	// Path 1
 	// Submit an incorrect answer
-	puzzleUUID, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	puzzleUUID, _, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
 	hist, _, attempts, status, firstAttemptTime, lastAttemptTime, newPuzzleRating, newUserRating, err := GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
@@ -121,8 +125,25 @@ func TestPuzzlesMain(t *testing.T) {
 	is.Equal(hist.Uid, "")
 	is.True(firstAttemptTime.Equal(time.Time{}))
 	is.True(lastAttemptTime.Equal(time.Time{}))
-	is.True(newUserRating == nil)
-	is.True(newPuzzleRating == nil)
+	is.True(newPuzzleRating != nil)
+	is.True(newUserRating != nil)
+	is.True(common.WithinEpsilon(newPuzzleRating.Rating, commondb.InitialRating.Rating))
+	is.True(common.WithinEpsilon(newUserRating.Rating, commondb.InitialRating.Rating))
+
+	// Reloading should return the same values except for attempt times
+	hist, _, attempts, status, firstAttemptTime, lastAttemptTime, newPuzzleRating, newUserRating, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
+	is.NoErr(err)
+	is.Equal(attempts, int32(0))
+	is.True(status == nil)
+	is.Equal(hist.OriginalGcg, "")
+	is.Equal(hist.IdAuth, "")
+	is.Equal(hist.Uid, "")
+	is.True(!firstAttemptTime.Equal(time.Time{}))
+	is.True(!lastAttemptTime.Equal(time.Time{}))
+	is.True(newPuzzleRating != nil)
+	is.True(newUserRating != nil)
+	is.True(common.WithinEpsilon(newPuzzleRating.Rating, commondb.InitialRating.Rating))
+	is.True(common.WithinEpsilon(newUserRating.Rating, commondb.InitialRating.Rating))
 
 	userIsCorrect, status, correctAnswer, gameId, _, _, attempts, _, _, newPuzzleRating, newUserRating, err := SubmitAnswer(ctx, ps, PuzzlerUUID, puzzleUUID, &ipc.ClientGameplayEvent{}, false)
 	is.NoErr(err)
@@ -217,7 +238,7 @@ func TestPuzzlesMain(t *testing.T) {
 
 	// Path 3
 	// Submit a correct answer
-	puzzleUUID, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	puzzleUUID, _, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
 	_, _, attempts, status, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
@@ -259,7 +280,7 @@ func TestPuzzlesMain(t *testing.T) {
 	is.True(recordedCorrect.Bool)
 
 	// Check that the rating transaction rolls back correctly
-	puzzleUUID, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	puzzleUUID, _, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
 	correctAnswer, _, _, _, _, oldPuzzleRating, err = ps.GetAnswer(ctx, puzzleUUID)
@@ -343,7 +364,7 @@ func TestPuzzlesMain(t *testing.T) {
 	is.True(answersAreEqual(correctCGE, answerFromGet))
 
 	// The status should be the same for an incorrect answer
-	correctAnswer.PlayedTiles += "Z"
+	correctAnswer.Type = pb.GameEvent_EXCHANGE
 	userIsCorrect, status, correctAnswer, gameId, _, _, attempts, _, _, _, _, err = SubmitAnswer(ctx, ps, PuzzlerUUID, puzzleUUID, gameEventToClientGameplayEvent(correctAnswer), false)
 	is.NoErr(err)
 	is.True(!userIsCorrect)
@@ -354,7 +375,7 @@ func TestPuzzlesMain(t *testing.T) {
 
 	// Path 5 and 6
 	// Submit incorrect answers and then give up
-	puzzleUUID, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	puzzleUUID, _, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
 	_, _, attempts, status, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
@@ -428,7 +449,7 @@ func TestPuzzlesMain(t *testing.T) {
 
 	// Path 2
 	// Give up immediately without submitting any answers
-	puzzleUUID, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	puzzleUUID, _, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
 	_, _, attempts, status, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzleUUID)
@@ -456,7 +477,7 @@ func TestPuzzlesMain(t *testing.T) {
 	is.NoErr(err)
 
 	for i := 0; i < unseenPuzzles; i++ {
-		puzzleUUID, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+		puzzleUUID, _, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 		is.NoErr(err)
 
 		puzzleLexicon, err := getPuzzleLexicon(ctx, pool, puzzleUUID)
@@ -467,7 +488,10 @@ func TestPuzzlesMain(t *testing.T) {
 		is.NoErr(err)
 		is.Equal(attempts, int32(0))
 
-		puzzleDBID, err := transactGetDBIDFromUUID(ctx, pool, "puzzles", puzzleUUID)
+		puzzleDBID, err := commondb.GetDBIDFromUUID(ctx, pool, &commondb.CommonDBConfig{
+			TableType: commondb.PuzzlesTable,
+			Value:     puzzleUUID,
+		})
 		is.NoErr(err)
 
 		var turnNumber int
@@ -497,8 +521,8 @@ func TestPuzzlesMain(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(totalPuzzles, attemptedPuzzles+unattemptedPuzzles)
 
-	for i := 0; i < totalPuzzles*10; i++ {
-		puzzleUUID, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	for i := 0; i < totalPuzzles*3; i++ {
+		puzzleUUID, _, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 		is.NoErr(err)
 		_, _, _, _, _, _, _, _, _, _, _, err = SubmitAnswer(ctx, ps, PuzzlerUUID, puzzleUUID, &ipc.ClientGameplayEvent{}, false)
 		is.NoErr(err)
@@ -545,7 +569,7 @@ func TestPuzzlesPrevious(t *testing.T) {
 	// Ensure that getting the previous puzzle works
 	// for attempted and unattempted puzzles
 
-	puzzle1, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	puzzle1, _, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 	_, err = GetPreviousPuzzleId(ctx, ps, PuzzlerUUID, puzzle1)
 	is.Equal(err.Error(), entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_PREVIOUS_PUZZLE_NO_ATTEMPTS, PuzzlerUUID, puzzle1).Error())
@@ -556,19 +580,19 @@ func TestPuzzlesPrevious(t *testing.T) {
 	_, _, _, _, _, _, _, _, _, _, _, err = SubmitAnswer(ctx, ps, PuzzlerUUID, puzzle1, &ipc.ClientGameplayEvent{}, true)
 	is.NoErr(err)
 
-	puzzle2, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	puzzle2, _, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 	_, _, _, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzle2)
 	is.NoErr(err)
 	_, _, _, _, _, _, _, _, _, _, _, err = SubmitAnswer(ctx, ps, PuzzlerUUID, puzzle2, &ipc.ClientGameplayEvent{}, false)
 	is.NoErr(err)
 
-	puzzle3, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	puzzle3, _, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 	_, _, _, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzle3)
 	is.NoErr(err)
 
-	puzzle4, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	puzzle4, _, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 	_, _, _, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzle4)
 	is.NoErr(err)
@@ -578,7 +602,7 @@ func TestPuzzlesPrevious(t *testing.T) {
 	_, _, _, _, _, _, _, _, _, _, _, err = SubmitAnswer(ctx, ps, PuzzlerUUID, puzzle4, &ipc.ClientGameplayEvent{}, false)
 	is.NoErr(err)
 
-	puzzle5, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	puzzle5, _, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 	_, _, _, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzle5)
 	is.NoErr(err)
@@ -591,7 +615,7 @@ func TestPuzzlesPrevious(t *testing.T) {
 	_, _, _, _, _, _, _, _, _, _, _, err = SubmitAnswer(ctx, ps, PuzzleCreatorUUID, puzzle5, &ipc.ClientGameplayEvent{}, false)
 	is.NoErr(err)
 	for i := 0; i < 5; i++ {
-		otherPuzzle, err := GetNextPuzzleId(ctx, ps, PuzzleCreatorUUID, common.DefaultGameReq.Lexicon)
+		otherPuzzle, _, err := GetNextPuzzleId(ctx, ps, PuzzleCreatorUUID, common.DefaultGameReq.Lexicon)
 		is.NoErr(err)
 		_, _, _, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzleCreatorUUID, otherPuzzle)
 		is.NoErr(err)
@@ -614,19 +638,19 @@ func TestPuzzlesStart(t *testing.T) {
 	ctx := context.Background()
 
 	// This should work for users who are not logged in
-	_, err := GetStartPuzzleId(ctx, ps, "", common.DefaultGameReq.Lexicon)
+	_, _, err := GetStartPuzzleId(ctx, ps, "", common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
-	_, err = GetStartPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	_, _, err = GetStartPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
-	puzzle1, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	puzzle1, _, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 
 	_, _, _, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzle1)
 	is.NoErr(err)
 
-	actualStartPuzzle, err := GetStartPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	actualStartPuzzle, _, err := GetStartPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 	is.Equal(puzzle1, actualStartPuzzle)
 
@@ -634,19 +658,19 @@ func TestPuzzlesStart(t *testing.T) {
 	is.NoErr(err)
 
 	// Other users doing puzzles should not affect the original user's start puzzle
-	actualStartPuzzle, err = GetStartPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	actualStartPuzzle, _, err = GetStartPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 	is.Equal(puzzle1, actualStartPuzzle)
 
 	// The user using a different lexicon should not affect
 	// the start puzzle for that lexicon
-	puzzle2, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, OtherLexicon)
+	puzzle2, _, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, OtherLexicon)
 	is.NoErr(err)
 
 	_, _, _, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzle2)
 	is.NoErr(err)
 
-	actualStartPuzzle, err = GetStartPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	actualStartPuzzle, _, err = GetStartPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 	is.Equal(puzzle1, actualStartPuzzle)
 
@@ -655,7 +679,7 @@ func TestPuzzlesStart(t *testing.T) {
 
 	// Since the most recent puzzle was completed, the
 	// start puzzle for the user should just be a random puzzle
-	actualStartPuzzle, err = GetStartPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	actualStartPuzzle, _, err = GetStartPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
 	is.True(puzzle1 != actualStartPuzzle)
 
@@ -671,11 +695,11 @@ func TestPuzzlesNextClosestRating(t *testing.T) {
 
 	playerRating := 10000.0
 
-	dbc.us.SetRatings(ctx, PuzzlerUUID, PuzzleCreatorUUID, "CSW19.puzzle.corres", entity.SingleRating{
+	dbc.us.SetRatings(ctx, PuzzlerUUID, PuzzleCreatorUUID, "CSW19.puzzle.corres", &entity.SingleRating{
 		Volatility:      glicko.InitialVolatility,
 		Rating:          playerRating,
 		RatingDeviation: 40.0,
-	}, entity.SingleRating{
+	}, &entity.SingleRating{
 		Volatility:      glicko.InitialVolatility,
 		Rating:          playerRating,
 		RatingDeviation: 40.0,
@@ -704,7 +728,7 @@ func TestPuzzlesNextClosestRating(t *testing.T) {
 	currentDiff := 0.0
 
 	for range puzzleRatingDiffs {
-		puzzleUUID, err := GetNextClosestRatingPuzzleId(ctx, dbc.ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+		puzzleUUID, _, err := GetNextClosestRatingPuzzleId(ctx, dbc.ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 		is.NoErr(err)
 
 		_, _, _, _, _, _, _, _, err = GetPuzzle(ctx, dbc.ps, PuzzlerUUID, puzzleUUID)
@@ -717,6 +741,131 @@ func TestPuzzlesNextClosestRating(t *testing.T) {
 		thisDiff := math.Abs(playerRating - puzzleRating)
 		is.True(thisDiff > currentDiff)
 		currentDiff = thisDiff
+	}
+}
+
+func TestPuzzlesQueryResult(t *testing.T) {
+	is := is.New(t)
+	dbc, _, _ := RecreateDB()
+	defer func() {
+		dbc.cleanup()
+	}()
+	ps := dbc.ps
+	ctx := context.Background()
+
+	totalPuzzles, err := getNumUnattemptedPuzzlesInLexicon(ctx, dbc.pool, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
+
+	_, pqr, err := GetStartPuzzleId(ctx, ps, "", common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
+	is.Equal(pqr, puzzle_service.PuzzleQueryResult_RANDOM)
+
+	_, pqr, err = GetStartPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
+	is.Equal(pqr, puzzle_service.PuzzleQueryResult_UNSEEN)
+
+	puzzle, _, err := GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
+
+	_, _, _, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzle)
+	is.NoErr(err)
+
+	actualStartPuzzle, pqr, err := GetStartPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
+	is.Equal(puzzle, actualStartPuzzle)
+	is.Equal(pqr, puzzle_service.PuzzleQueryResult_START)
+
+	_, pqr, err = GetNextPuzzleId(ctx, ps, "", common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
+	is.Equal(pqr, puzzle_service.PuzzleQueryResult_RANDOM)
+
+	_, pqr, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+	is.NoErr(err)
+	is.Equal(pqr, puzzle_service.PuzzleQueryResult_UNSEEN)
+
+	// See all of the puzzles
+	for i := 0; i < totalPuzzles-1; i++ {
+		puzzle, pqr, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+		is.NoErr(err)
+		is.Equal(pqr, puzzle_service.PuzzleQueryResult_UNSEEN)
+		_, _, _, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzle)
+		is.NoErr(err)
+	}
+
+	// All of these puzzles should now be UNRATED
+	for i := 0; i < totalPuzzles*2; i++ {
+		puzzle, pqr, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+		is.NoErr(err)
+		is.Equal(pqr, puzzle_service.PuzzleQueryResult_UNRATED)
+		_, _, _, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzle)
+		is.NoErr(err)
+	}
+
+	// Rate all of the puzzles
+	for i := 0; i < totalPuzzles; i++ {
+		puzzle, pqr, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+		is.NoErr(err)
+		is.Equal(pqr, puzzle_service.PuzzleQueryResult_UNRATED)
+		_, _, _, _, _, _, _, _, _, _, _, err = SubmitAnswer(ctx, ps, PuzzlerUUID, puzzle, &ipc.ClientGameplayEvent{}, false)
+		is.NoErr(err)
+	}
+
+	// Finish all of the puzzles
+	for i := 0; i < totalPuzzles; i++ {
+		puzzle, pqr, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+		is.NoErr(err)
+		is.Equal(pqr, puzzle_service.PuzzleQueryResult_UNFINISHED)
+		_, _, _, _, _, _, _, _, _, _, _, err = SubmitAnswer(ctx, ps, PuzzlerUUID, puzzle, &ipc.ClientGameplayEvent{}, true)
+		is.NoErr(err)
+	}
+
+	// All puzzles should be exhausted
+	for i := 0; i < totalPuzzles; i++ {
+		_, pqr, err = GetNextPuzzleId(ctx, ps, PuzzlerUUID, common.DefaultGameReq.Lexicon)
+		is.NoErr(err)
+		is.Equal(pqr, puzzle_service.PuzzleQueryResult_EXHAUSTED)
+	}
+
+	// Repeat with GetClosest
+	totalPuzzles, err = getNumUnattemptedPuzzlesInLexicon(ctx, dbc.pool, PuzzlerUUID, OtherLexicon)
+	is.NoErr(err)
+
+	for i := 0; i < totalPuzzles; i++ {
+		puzzle, pqr, err = GetNextClosestRatingPuzzleId(ctx, ps, PuzzlerUUID, OtherLexicon)
+		is.NoErr(err)
+		is.Equal(pqr, puzzle_service.PuzzleQueryResult_UNSEEN)
+		_, _, _, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzle)
+		is.NoErr(err)
+	}
+
+	for i := 0; i < totalPuzzles*2; i++ {
+		puzzle, pqr, err = GetNextClosestRatingPuzzleId(ctx, ps, PuzzlerUUID, OtherLexicon)
+		is.NoErr(err)
+		is.Equal(pqr, puzzle_service.PuzzleQueryResult_UNRATED)
+		_, _, _, _, _, _, _, _, err = GetPuzzle(ctx, ps, PuzzlerUUID, puzzle)
+		is.NoErr(err)
+	}
+
+	for i := 0; i < totalPuzzles; i++ {
+		puzzle, pqr, err = GetNextClosestRatingPuzzleId(ctx, ps, PuzzlerUUID, OtherLexicon)
+		is.NoErr(err)
+		is.Equal(pqr, puzzle_service.PuzzleQueryResult_UNRATED)
+		_, _, _, _, _, _, _, _, _, _, _, err = SubmitAnswer(ctx, ps, PuzzlerUUID, puzzle, &ipc.ClientGameplayEvent{}, false)
+		is.NoErr(err)
+	}
+
+	for i := 0; i < totalPuzzles; i++ {
+		puzzle, pqr, err = GetNextClosestRatingPuzzleId(ctx, ps, PuzzlerUUID, OtherLexicon)
+		is.NoErr(err)
+		is.Equal(pqr, puzzle_service.PuzzleQueryResult_UNFINISHED)
+		_, _, _, _, _, _, _, _, _, _, _, err = SubmitAnswer(ctx, ps, PuzzlerUUID, puzzle, &ipc.ClientGameplayEvent{}, true)
+		is.NoErr(err)
+	}
+
+	for i := 0; i < totalPuzzles; i++ {
+		_, pqr, err = GetNextClosestRatingPuzzleId(ctx, ps, PuzzlerUUID, OtherLexicon)
+		is.NoErr(err)
+		is.Equal(pqr, puzzle_service.PuzzleQueryResult_EXHAUSTED)
 	}
 }
 
@@ -791,7 +940,7 @@ func RecreateDB() (*DBController, int, int) {
 		panic(err)
 	}
 
-	userStore, err := user.NewDBStore(commondb.TestingPostgresConnDSN())
+	userStore, err := user.NewDBStore(pool)
 	if err != nil {
 		panic(err)
 	}
@@ -863,6 +1012,9 @@ func RecreateDB() (*DBController, int, int) {
 		// Set the correct challenge rule to allow games with
 		// lost challenges.
 		gameHistory.ChallengeRule = pb.ChallengeRule_FIVE_POINT
+		// Overwrite the UUID that macondo generates for this game so that
+		// it fits in the database.
+		gameHistory.Uid = shortuuid.New()
 		game, err := game.NewFromHistory(gameHistory, rules, 0)
 		if err != nil {
 			panic(err)
@@ -891,7 +1043,10 @@ func RecreateDB() (*DBController, int, int) {
 }
 
 func getUserRating(ctx context.Context, pool *pgxpool.Pool, userUUID string, rk entity.VariantKey) (*entity.SingleRating, error) {
-	id, err := transactGetDBIDFromUUID(ctx, pool, "users", userUUID)
+	id, err := commondb.GetDBIDFromUUID(ctx, pool, &commondb.CommonDBConfig{
+		TableType: commondb.UsersTable,
+		Value:     userUUID,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -900,13 +1055,8 @@ func getUserRating(ctx context.Context, pool *pgxpool.Pool, userUUID string, rk 
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
-	initialRating := &entity.SingleRating{
-		Rating:            float64(glicko.InitialRating),
-		RatingDeviation:   float64(glicko.InitialRatingDeviation),
-		Volatility:        glicko.InitialVolatility,
-		LastGameTimestamp: time.Now().Unix()}
 
-	userRating, err := commondb.GetUserRating(ctx, tx, id, rk, initialRating)
+	userRating, err := commondb.GetUserRating(ctx, tx, id, rk)
 
 	if err != nil {
 		return nil, err
@@ -958,7 +1108,10 @@ func getPuzzleUUIDByAnswer(ctx context.Context, pool *pgxpool.Pool, playedTiles 
 }
 
 func getPuzzlePopularity(ctx context.Context, pool *pgxpool.Pool, puzzleUUID string) (int, error) {
-	pid, err := transactGetDBIDFromUUID(ctx, pool, "puzzles", puzzleUUID)
+	pid, err := commondb.GetDBIDFromUUID(ctx, pool, &commondb.CommonDBConfig{
+		TableType: commondb.PuzzlesTable,
+		Value:     puzzleUUID,
+	})
 	if err != nil {
 		return 0, err
 	}
@@ -968,12 +1121,18 @@ func getPuzzlePopularity(ctx context.Context, pool *pgxpool.Pool, puzzleUUID str
 }
 
 func getPuzzleAttempt(ctx context.Context, pool *pgxpool.Pool, userUUID string, puzzleUUID string) (int32, *sql.NullBool, error) {
-	pid, err := transactGetDBIDFromUUID(ctx, pool, "puzzles", puzzleUUID)
+	pid, err := commondb.GetDBIDFromUUID(ctx, pool, &commondb.CommonDBConfig{
+		TableType: commondb.PuzzlesTable,
+		Value:     puzzleUUID,
+	})
 	if err != nil {
 		return 0, nil, err
 	}
 
-	uid, err := transactGetDBIDFromUUID(ctx, pool, "users", userUUID)
+	uid, err := commondb.GetDBIDFromUUID(ctx, pool, &commondb.CommonDBConfig{
+		TableType: commondb.UsersTable,
+		Value:     userUUID,
+	})
 	if err != nil {
 		return 0, nil, err
 	}
@@ -987,7 +1146,10 @@ func getPuzzleAttempt(ctx context.Context, pool *pgxpool.Pool, userUUID string, 
 }
 
 func getNumUnattemptedPuzzles(ctx context.Context, pool *pgxpool.Pool, userUUID string) (int, error) {
-	uid, err := transactGetDBIDFromUUID(ctx, pool, "users", userUUID)
+	uid, err := commondb.GetDBIDFromUUID(ctx, pool, &commondb.CommonDBConfig{
+		TableType: commondb.UsersTable,
+		Value:     userUUID,
+	})
 	if err != nil {
 		return -1, err
 	}
@@ -1000,7 +1162,10 @@ func getNumUnattemptedPuzzles(ctx context.Context, pool *pgxpool.Pool, userUUID 
 }
 
 func getNumAttemptedPuzzles(ctx context.Context, pool *pgxpool.Pool, userUUID string) (int, error) {
-	uid, err := transactGetDBIDFromUUID(ctx, pool, "users", userUUID)
+	uid, err := commondb.GetDBIDFromUUID(ctx, pool, &commondb.CommonDBConfig{
+		TableType: commondb.UsersTable,
+		Value:     userUUID,
+	})
 	if err != nil {
 		return -1, err
 	}
@@ -1013,7 +1178,10 @@ func getNumAttemptedPuzzles(ctx context.Context, pool *pgxpool.Pool, userUUID st
 }
 
 func getNumUnattemptedPuzzlesInLexicon(ctx context.Context, pool *pgxpool.Pool, userUUID string, lexicon string) (int, error) {
-	uid, err := transactGetDBIDFromUUID(ctx, pool, "users", userUUID)
+	uid, err := commondb.GetDBIDFromUUID(ctx, pool, &commondb.CommonDBConfig{
+		TableType: commondb.UsersTable,
+		Value:     userUUID,
+	})
 	if err != nil {
 		return -1, err
 	}
@@ -1032,31 +1200,4 @@ func getPuzzleLexicon(ctx context.Context, pool *pgxpool.Pool, puzzleUUID string
 		return "", err
 	}
 	return lexicon, nil
-}
-
-func transactGetDBIDFromUUID(ctx context.Context, pool *pgxpool.Pool, table string, uuid string) (int64, error) {
-	tx, err := pool.BeginTx(ctx, commondb.DefaultTxOptions)
-	if err != nil {
-		return 0, err
-	}
-	defer tx.Rollback(ctx)
-
-	var id int64
-	if table == "users" {
-		id, err = commondb.GetUserDBIDFromUUID(ctx, tx, uuid)
-	} else if table == "games" {
-		id, err = commondb.GetGameDBIDFromUUID(ctx, tx, uuid)
-	} else if table == "puzzles" {
-		id, err = commondb.GetPuzzleDBIDFromUUID(ctx, tx, uuid)
-	} else {
-		return 0, fmt.Errorf("unknown table: %s", table)
-	}
-	if err != nil {
-		return 0, err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return 0, err
-	}
-	return id, nil
 }

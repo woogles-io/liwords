@@ -3,9 +3,10 @@ package entity
 import (
 	"database/sql/driver"
 	"encoding/json"
-	"errors"
 	"strings"
+	"time"
 
+	"github.com/domino14/liwords/pkg/glicko"
 	"github.com/domino14/macondo/game"
 )
 
@@ -25,8 +26,27 @@ type Ratings struct {
 
 type VariantKey string
 
+func NewDefaultRating(lastGameIsNow bool) *SingleRating {
+	lastGameTimeStamp := int64(0)
+	if lastGameIsNow {
+		lastGameTimeStamp = time.Now().Unix()
+	}
+	return &SingleRating{
+		Rating:            float64(glicko.InitialRating),
+		RatingDeviation:   float64(glicko.InitialRatingDeviation),
+		Volatility:        glicko.InitialVolatility,
+		LastGameTimestamp: int64(lastGameTimeStamp),
+	}
+}
+
+const PuzzleVariant = "puzzle"
+
 func ToVariantKey(lexiconName string, variantName game.Variant, timeControl TimeControl) VariantKey {
 	return VariantKey(transformLexiconName(lexiconName) + "." + string(variantName) + "." + string(timeControl))
+}
+
+func LexiconToPuzzleVariantKey(lexicon string) VariantKey {
+	return ToVariantKey(lexicon, PuzzleVariant, TCCorres)
 }
 
 func (r *Ratings) Value() (driver.Value, error) {
@@ -34,12 +54,12 @@ func (r *Ratings) Value() (driver.Value, error) {
 }
 
 func (r *Ratings) Scan(value interface{}) error {
+	var err error
 	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed for ratings")
+	if ok {
+		err = json.Unmarshal(b, &r)
 	}
-
-	return json.Unmarshal(b, &r)
+	return err
 }
 
 func (r *SingleRating) Value() (driver.Value, error) {
@@ -47,12 +67,12 @@ func (r *SingleRating) Value() (driver.Value, error) {
 }
 
 func (r *SingleRating) Scan(value interface{}) error {
+	var err error
 	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed for single rating")
+	if ok {
+		err = json.Unmarshal(b, &r)
 	}
-
-	return json.Unmarshal(b, &r)
+	return err
 }
 
 func transformLexiconName(lexiconName string) string {

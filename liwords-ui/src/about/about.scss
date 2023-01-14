@@ -1,5 +1,5 @@
-@import '../base.scss';
-@import '../color_modes.scss';
+@use '../base.scss' as *;
+
 .section-head {
   position: relative;
   top: -1px;

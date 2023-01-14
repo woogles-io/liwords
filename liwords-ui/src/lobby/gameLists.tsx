@@ -10,6 +10,7 @@ import { useContextMatchContext, useLobbyStoreContext } from '../store/store';
 import { ActiveGame, SoughtGame } from '../store/reducers/lobby_reducer';
 import { ActionType } from '../actions/actions';
 import './seek_form.scss';
+import '../shared/gameLists.scss';
 
 type Props = {
   loggedIn: boolean;
@@ -82,19 +83,20 @@ export const GameLists = React.memo((props: Props) => {
     (p) => p.displayName !== username
   )?.displayName;
 
-  const enableWordSmog = React.useMemo(
-    () => localStorage.getItem('enableWordSmog') === 'true',
+  const enableVariants = React.useMemo(
+    () => localStorage.getItem('enableVariants') === 'true',
     []
   );
   const unsanitizedSoughtGames = lobbyContext.soughtGames;
   const sanitizedSoughtGames = React.useMemo(
     () =>
       (unsanitizedSoughtGames || []).filter((soughtGame) => {
-        if (!enableWordSmog && soughtGame.variant === 'wordsmog') return false;
+        if (!enableVariants && (soughtGame.variant || 'classic') !== 'classic')
+          return false;
         return true;
       }),
 
-    [enableWordSmog, unsanitizedSoughtGames]
+    [enableVariants, unsanitizedSoughtGames]
   );
 
   const matchButtonText = 'Match a friend';

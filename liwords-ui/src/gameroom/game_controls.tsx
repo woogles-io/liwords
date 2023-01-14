@@ -18,7 +18,7 @@ import {
   useTentativeTileContext,
 } from '../store/store';
 import { EphemeralTile } from '../utils/cwgame/common';
-import { ChallengeRule } from './game_info';
+import { ChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
 
 const downloadGameImg = (downloadFilename: string) => {
   const link = document.createElement('a');
@@ -40,6 +40,8 @@ const ExamineGameControls = React.memo(
     darkMode: boolean;
     onExportGCG: () => void;
     gameDone: boolean;
+    puzzleMode: boolean;
+    exitable: boolean;
   }) => {
     const { useState } = useMountedState();
     const { gameContext: examinableGameContext } =
@@ -161,6 +163,7 @@ const ExamineGameControls = React.memo(
             trigger={['click']}
             visible={exportMenuVisible}
             placement="topLeft"
+            disabled={props.puzzleMode}
           >
             <Button onClick={() => setExportMenuVisible((v) => !v)}>
               Export
@@ -194,7 +197,11 @@ const ExamineGameControls = React.memo(
             onClick={handleExamineLast}
             disabled={examinedTurn >= numberOfTurns}
           />
-          <Button onClick={handleExamineEnd} ref={doneButtonRef}>
+          <Button
+            onClick={handleExamineEnd}
+            ref={doneButtonRef}
+            hidden={!props.exitable}
+          >
             Done
           </Button>
         </div>
@@ -258,6 +265,7 @@ export type Props = {
   tournamentPairedMode?: boolean;
   showNudge: boolean;
   showAbort: boolean;
+  exitableExaminer?: boolean;
 };
 
 const GameControls = React.memo((props: Props) => {
@@ -273,7 +281,7 @@ const GameControls = React.memo((props: Props) => {
   // This should match disabled= and/or hidden= props.
   const currentPopUp =
     (actualCurrentPopUp === 'CHALLENGE' &&
-      (!props.myTurn || props.challengeRule === 'VOID')) ||
+      (!props.myTurn || props.challengeRule === ChallengeRule.VOID)) ||
     (actualCurrentPopUp === 'PASS' && !props.myTurn)
       ? 'NONE'
       : actualCurrentPopUp;
@@ -384,6 +392,8 @@ const GameControls = React.memo((props: Props) => {
         darkMode={darkMode}
         onExportGCG={props.onExportGCG}
         gameDone={gameDone}
+        puzzleMode={!!props.puzzleMode}
+        exitable={props.exitableExaminer ?? true}
       />
     );
   }
@@ -398,6 +408,7 @@ const GameControls = React.memo((props: Props) => {
         tournamentPairedMode={props.tournamentPairedMode}
         onExit={handleExitToLobby}
         darkMode={darkMode}
+        puzzleMode={!!props.puzzleMode}
       />
     );
   }
@@ -554,7 +565,7 @@ const GameControls = React.memo((props: Props) => {
                 }
               }}
               disabled={!props.myTurn}
-              hidden={props.challengeRule === 'VOID'}
+              hidden={props.challengeRule === ChallengeRule.VOID}
             >
               Challenge
               <span className="key-command">3</span>
@@ -589,6 +600,7 @@ type EGCProps = {
   onExit: () => void;
   tournamentPairedMode?: boolean;
   darkMode: boolean;
+  puzzleMode: boolean;
 };
 
 const EndGameControls = (props: EGCProps) => {
@@ -651,22 +663,24 @@ const EndGameControls = (props: EGCProps) => {
   return (
     <div className="game-controls">
       <div className="secondary-controls">
-        <Dropdown
-          overlay={exportMenu}
-          trigger={['click']}
-          visible={exportMenuVisible}
-          placement="topLeft"
-        >
-          <Button onClick={() => setExportMenuVisible((v) => !v)}>
-            Export
-          </Button>
-        </Dropdown>
+        {!props.puzzleMode && (
+          <Dropdown
+            overlay={exportMenu}
+            trigger={['click']}
+            visible={exportMenuVisible}
+            placement="topLeft"
+          >
+            <Button onClick={() => setExportMenuVisible((v) => !v)}>
+              Export
+            </Button>
+          </Dropdown>
+        )}
         <Button onClick={props.onExamine} disabled={gameHasNotStarted}>
           Examine
         </Button>
       </div>
       <div className="secondary-controls">
-        <Button onClick={props.onExit}>Exit</Button>
+        {!props.puzzleMode && <Button onClick={props.onExit}>Exit</Button>}
       </div>
       {props.showRematch && !props.tournamentPairedMode && !rematchDisabled && (
         <Button

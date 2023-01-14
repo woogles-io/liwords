@@ -1,0 +1,255 @@
+{
+  "events":  [
+    {
+      "rack":  "AEIJNOP",
+      "cumulative":  24,
+      "row":  7,
+      "column":  6,
+      "position":  "8G",
+      "playedTiles":  "JAP",
+      "score":  24,
+      "wordsFormed":  [
+        "JAP"
+      ],
+      "millisRemaining":  53676
+    },
+    {
+      "rack":  "BDDEFGT",
+      "cumulative":  13,
+      "row":  6,
+      "column":  7,
+      "direction":  "VERTICAL",
+      "position":  "H7",
+      "playedTiles":  "B.DGED",
+      "score":  13,
+      "wordsFormed":  [
+        "BADGED"
+      ],
+      "millisRemaining":  55867,
+      "playerIndex":  1
+    },
+    {
+      "rack":  "AEEINOX",
+      "cumulative":  46,
+      "row":  8,
+      "column":  6,
+      "position":  "9G",
+      "playedTiles":  "O.EA",
+      "score":  22,
+      "wordsFormed":  [
+        "ODEA",
+        "JO",
+        "PE"
+      ],
+      "millisRemaining":  48213
+    },
+    {
+      "rack":  "FGLRTTT",
+      "cumulative":  20,
+      "row":  10,
+      "column":  6,
+      "position":  "11G",
+      "playedTiles":  "F.LT",
+      "score":  7,
+      "wordsFormed":  [
+        "FELT"
+      ],
+      "millisRemaining":  45024,
+      "playerIndex":  1
+    },
+    {
+      "rack":  "BEINOTX",
+      "cumulative":  81,
+      "row":  11,
+      "column":  3,
+      "position":  "12D",
+      "playedTiles":  "BOXE.",
+      "score":  35,
+      "wordsFormed":  [
+        "BOXED",
+        "FE"
+      ],
+      "millisRemaining":  43423
+    },
+    {
+      "rack":  "EGNNRTT",
+      "cumulative":  28,
+      "row":  10,
+      "column":  4,
+      "direction":  "VERTICAL",
+      "position":  "E11",
+      "playedTiles":  "G.N",
+      "score":  8,
+      "wordsFormed":  [
+        "GON"
+      ],
+      "millisRemaining":  39707,
+      "playerIndex":  1
+    },
+    {
+      "rack":  "?GIMNTY",
+      "cumulative":  151,
+      "row":  13,
+      "column":  4,
+      "position":  "14E",
+      "playedTiles":  "sTYMING",
+      "score":  70,
+      "isBingo":  true,
+      "wordsFormed":  [
+        "STYMING",
+        "GONS"
+      ],
+      "millisRemaining":  37649
+    },
+    {
+      "rack":  "ALDQ?IO",
+      "type":  "CHALLENGE_BONUS",
+      "cumulative":  156,
+      "bonus":  5,
+      "millisRemaining":  37712
+    },
+    {
+      "rack":  "ENRRSTT",
+      "cumulative":  39,
+      "row":  9,
+      "column":  9,
+      "position":  "10J",
+      "playedTiles":  "RENT",
+      "score":  11,
+      "wordsFormed":  [
+        "RENT",
+        "ART"
+      ],
+      "millisRemaining":  32665,
+      "playerIndex":  1
+    },
+    {
+      "rack":  "?ADILOQ",
+      "cumulative":  206,
+      "row":  7,
+      "column":  11,
+      "direction":  "VERTICAL",
+      "position":  "L8",
+      "playedTiles":  "QI.DAr",
+      "score":  50,
+      "wordsFormed":  [
+        "QINDAR"
+      ],
+      "millisRemaining":  31960
+    },
+    {
+      "rack":  "EINRRST",
+      "cumulative":  41,
+      "row":  11,
+      "column":  11,
+      "position":  "12L",
+      "playedTiles":  ".R",
+      "score":  2,
+      "wordsFormed":  [
+        "AR"
+      ],
+      "millisRemaining":  16459,
+      "playerIndex":  1
+    },
+    {
+      "rack":  "AEHLNOU",
+      "cumulative":  230,
+      "row":  12,
+      "column":  8,
+      "position":  "13I",
+      "playedTiles":  "HOA.",
+      "score":  24,
+      "wordsFormed":  [
+        "HOAR",
+        "HI",
+        "ON",
+        "AG"
+      ],
+      "millisRemaining":  25517
+    },
+    {
+      "rack":  "EINRSTU",
+      "cumulative":  109,
+      "row":  3,
+      "column":  13,
+      "direction":  "VERTICAL",
+      "position":  "N4",
+      "playedTiles":  "UNITERS",
+      "score":  68,
+      "isBingo":  true,
+      "wordsFormed":  [
+        "UNITERS",
+        "RENTS"
+      ],
+      "millisRemaining":  11933,
+      "playerIndex":  1
+    },
+    {
+      "rack":  "EILNUVZ",
+      "cumulative":  257,
+      "column":  14,
+      "direction":  "VERTICAL",
+      "position":  "O1",
+      "playedTiles":  "VEIN",
+      "score":  27,
+      "wordsFormed":  [
+        "VEIN",
+        "UN"
+      ],
+      "millisRemaining":  17149
+    },
+    {
+      "rack":  "ACILRSS",
+      "cumulative":  131,
+      "row":  4,
+      "column":  10,
+      "position":  "5K",
+      "playedTiles":  "CAI.S",
+      "score":  22,
+      "wordsFormed":  [
+        "CAINS",
+        "VEINS"
+      ],
+      "millisRemaining":  6701,
+      "playerIndex":  1
+    },
+    {
+      "rack":  "ELOUUVZ",
+      "cumulative":  273,
+      "row":  1,
+      "column":  10,
+      "position":  "2K",
+      "playedTiles":  "OVUL.",
+      "score":  16,
+      "wordsFormed":  [
+        "OVULE"
+      ],
+      "millisRemaining":  7623
+    }
+  ],
+  "players":  [
+    {
+      "nickname":  "cesar4",
+      "userId":  "xjCWug7EZtDxDHX5fRZTLo"
+    },
+    {
+      "nickname":  "Mina",
+      "userId":  "qUQkST8CendYA3baHNoPjk"
+    }
+  ],
+  "version":  2,
+  "lexicon":  "CSW21",
+  "idAuth":  "io.woogles",
+  "uid":  "ycj5de5gArFF3ap76JyiUA",
+  "description":  "Created with Macondo",
+  "lastKnownRacks":  [
+    "EEEKRUZ",
+    "DILORSU"
+  ],
+  "challengeRule":  "FIVE_POINT",
+  "playState":  "GAME_OVER",
+  "finalScores":  [
+    273,
+    131
+  ]
+}

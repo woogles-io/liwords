@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Navigate,
   Route,
@@ -8,7 +8,6 @@ import {
 } from 'react-router-dom';
 import { useMountedState } from './utils/mounted';
 import './App.scss';
-import axios from 'axios';
 import 'antd/dist/antd.min.css';
 
 import { Table as GameTable } from './gameroom/table';
@@ -29,10 +28,8 @@ import { Team } from './about/team';
 import { Register } from './lobby/register';
 import { PlayerProfile } from './profile/profile';
 import { Settings } from './settings/settings';
-import { PasswordChange } from './lobby/password_change';
 import { PasswordReset } from './lobby/password_reset';
 import { NewPassword } from './lobby/new_password';
-import { postJsonObj, toAPIUrl } from './api/api';
 import { encodeToSocketFmt } from './utils/protobuf';
 import { Clubs } from './clubs';
 import { TournamentRoom } from './tournament/room';
@@ -42,19 +39,17 @@ import { TermsOfService } from './about/termsOfService';
 import { ChatMessage } from './gen/api/proto/ipc/chat_pb';
 import { MessageType } from './gen/api/proto/ipc/ipc_pb';
 import Footer from './navigation/footer';
+import { Embed } from './embed/embed';
 
-type Blocks = {
-  user_ids: Array<string>;
-};
-
-type ModsResponse = {
-  admin_user_ids: Array<string>;
-  mod_user_ids: Array<string>;
-};
-
-type FriendsResponse = {
-  users: Array<FriendUser>;
-};
+import {
+  connectErrorMessage,
+  flashError,
+  useClient,
+} from './utils/hooks/connect';
+import {
+  AuthenticationService,
+  SocializeService,
+} from './gen/api/proto/user_service/user_service_connectweb';
 
 const useDarkMode = localStorage?.getItem('darkMode') === 'true';
 document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
@@ -92,16 +87,18 @@ const HandoverSignedCookie = () => {
       window.location.replace(path);
     }
   }, [ls, path]);
-
+  const authClient = useClient(AuthenticationService);
   const cookieSetFunc = useCallback(async () => {
-    await postJsonObj(
-      'user_service.AuthenticationService',
-      'InstallSignedCookie',
-      { jwt },
-      // if successFn is called, it means we successfully transferred the cookie.
-      successFn
-    );
-  }, [jwt, successFn]);
+    if (!jwt) {
+      return;
+    }
+    try {
+      await authClient.installSignedCookie({ jwt });
+      successFn();
+    } catch (e) {
+      flashError(e);
+    }
+  }, [authClient, jwt, successFn]);
 
   useEffect(() => {
     if (jwt) {
@@ -147,6 +144,7 @@ const App = React.memo(() => {
 
   const location = useLocation();
   const knownLocation = useRef(location.pathname); // Remember the location on first render.
+  console.log('loc pathname', location.pathname);
   const isCurrentLocation = knownLocation.current === location.pathname;
   useEffect(() => {
     if (!isCurrentLocation) {
@@ -154,18 +152,20 @@ const App = React.memo(() => {
     }
   }, [isCurrentLocation, resetStore]);
 
+  const isEmbeddedPath = useMemo(() => {
+    const embedPrefixes = ['/embed'];
+    return embedPrefixes.some((v) => location.pathname.startsWith(v));
+  }, [location.pathname]);
+
+  const socializeClient = useClient(SocializeService);
   const getFullBlocks = useCallback(() => {
     void userID; // used only as effect dependency
     (async () => {
       let toExclude = new Set<string>();
       try {
         if (loggedIn) {
-          const resp = await axios.post<Blocks>(
-            toAPIUrl('user_service.SocializeService', 'GetFullBlocks'),
-            {},
-            { withCredentials: true }
-          );
-          toExclude = new Set<string>(resp.data.user_ids);
+          const resp = await socializeClient.getFullBlocks({});
+          toExclude = new Set<string>(resp.userIds);
         }
       } catch (e) {
         console.log(e);
@@ -181,6 +181,7 @@ const App = React.memo(() => {
     setExcludedPlayers,
     setExcludedPlayersFetched,
     setPendingBlockRefresh,
+    socializeClient,
   ]);
 
   useEffect(() => {
@@ -193,51 +194,40 @@ const App = React.memo(() => {
     }
   }, [getFullBlocks, pendingBlockRefresh]);
 
-  const getMods = useCallback(() => {
-    axios
-      .post<ModsResponse>(
-        toAPIUrl('user_service.SocializeService', 'GetModList'),
-        {},
-        {}
-      )
-      .then((resp) => {
-        setAdmins(new Set<string>(resp.data.admin_user_ids));
-        setModerators(new Set<string>(resp.data.mod_user_ids));
-      })
-      .catch((e) => {
-        console.log(e);
-      })
-      .finally(() => {
-        setModsFetched(true);
-      });
-  }, [setAdmins, setModerators, setModsFetched]);
+  const getMods = useCallback(async () => {
+    try {
+      const resp = await socializeClient.getModList({});
+      setAdmins(new Set<string>(resp.adminUserIds));
+      setModerators(new Set<string>(resp.modUserIds));
+    } catch (e) {
+      console.log(e);
+    } finally {
+      setModsFetched(true);
+    }
+  }, [setAdmins, setModerators, setModsFetched, socializeClient]);
 
   useEffect(() => {
-    getMods();
-  }, [getMods]);
-
-  const getFriends = useCallback(() => {
-    if (loggedIn) {
-      axios
-        .post<FriendsResponse>(
-          toAPIUrl('user_service.SocializeService', 'GetFollows'),
-          {},
-          {}
-        )
-        .then((resp) => {
-          console.log('Fetched friends:', resp);
-          const friends: { [uuid: string]: FriendUser } = {};
-          resp.data.users.forEach((f: FriendUser) => {
-            friends[f.uuid] = f;
-          });
-          setFriends(friends);
-        })
-        .catch((e) => {
-          console.log(e);
-        })
-        .finally(() => setPendingFriendsRefresh(false));
+    if (!isEmbeddedPath) {
+      getMods();
     }
-  }, [setFriends, setPendingFriendsRefresh, loggedIn]);
+  }, [getMods, isEmbeddedPath]);
+
+  const getFriends = useCallback(async () => {
+    if (loggedIn) {
+      try {
+        const resp = await socializeClient.getFollows({});
+        const friends: { [uuid: string]: FriendUser } = {};
+        resp.users.forEach((f: FriendUser) => {
+          friends[f.uuid] = f;
+        });
+        setFriends(friends);
+      } catch (e) {
+        console.log(e);
+      } finally {
+        setPendingFriendsRefresh(false);
+      }
+    }
+  }, [setFriends, setPendingFriendsRefresh, loggedIn, socializeClient]);
 
   useEffect(() => {
     getFriends();
@@ -251,29 +241,62 @@ const App = React.memo(() => {
 
   const sendChat = useCallback(
     (msg: string, chan: string) => {
-      const evt = new ChatMessage();
-      evt.setMessage(msg);
-
-      // const chan = isObserver ? 'gametv' : 'game';
-      // evt.setChannel(`chat.${chan}.${gameID}`);
-      evt.setChannel(chan);
-      sendMessage(
-        encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
-      );
+      const evt = new ChatMessage({ message: msg, channel: chan });
+      sendMessage(encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.toBinary()));
     },
     [sendMessage]
   );
+
+  const authClient = useClient(AuthenticationService);
+  // Some magic code here to force everyone to use the naked domain before
+  // using Cloudfront to redirect:
+  {
+    const loc = window.location;
+    if (loc.hostname.startsWith('www.')) {
+      const redirectToHandoff = (path: string) => {
+        const protocol = loc.protocol;
+        const hostname = loc.hostname;
+        const nakedHost = hostname.replace(/www\./, '');
+        localStorage.clear();
+        window.location.replace(`${protocol}//${nakedHost}${path}`);
+      };
+      authClient
+        .getSignedCookie({})
+        .then((response) => {
+          console.log('got jwt', response.jwt);
+          const newPath = `/handover-signed-cookie?${new URLSearchParams({
+            jwt: response.jwt,
+            ls: JSON.stringify(localStorage),
+            path: loc.pathname,
+          })}`;
+          redirectToHandoff(newPath);
+        })
+        .catch((e) => {
+          if (connectErrorMessage(e) === 'need auth for this endpoint') {
+            // We don't have a jwt because we're not logged in. That's ok;
+            // let's hand off just the local storage then.
+            const newPath = `/handover-signed-cookie?${new URLSearchParams({
+              ls: JSON.stringify(localStorage),
+              path: loc.pathname,
+            })}`;
+            redirectToHandoff(newPath);
+          }
+        });
+    }
+  }
 
   // Avoid useEffect in the new path triggering xhr twice.
   if (!isCurrentLocation) return null;
 
   return (
     <div className="App">
-      <LiwordsSocket
-        key={socketId}
-        resetSocket={resetSocket}
-        setValues={setLiwordsSocketValues}
-      />
+      {!isEmbeddedPath && (
+        <LiwordsSocket
+          key={socketId}
+          resetSocket={resetSocket}
+          setValues={setLiwordsSocketValues}
+        />
+      )}
       <Routes>
         <Route
           path="/"
@@ -311,16 +334,18 @@ const App = React.memo(() => {
           />
         </Route>
 
+        <Route path="embed/game/:gameID" element={<Embed />} />
+
         <Route path="about" element={<Team />} />
         <Route path="team" element={<Team />} />
         <Route path="terms" element={<TermsOfService />} />
         <Route path="register" element={<Register />} />
         <Route path="password">
-          <Route path="change" element={<PasswordChange />} />
           <Route path="reset" element={<PasswordReset />} />
           <Route path="new" element={<NewPassword />} />
         </Route>
         <Route path="profile/:username" element={<PlayerProfile />} />
+        <Route path="profile/" element={<PlayerProfile />} />
         <Route path="settings" element={<Settings />}>
           <Route path=":section" element={<Settings />} />
         </Route>
@@ -338,7 +363,7 @@ const App = React.memo(() => {
           element={<HandoverSignedCookie />}
         />
       </Routes>
-      <Footer />
+      {!isEmbeddedPath && <Footer />}
     </div>
   );
 });

@@ -10,14 +10,9 @@ import {
   AutoComplete,
 } from 'antd';
 
-import axios from 'axios';
-
 import { Store } from 'antd/lib/form/interface';
 import { useMountedState } from '../utils/mounted';
-import {
-  ChallengeRule,
-  ChallengeRuleMap,
-} from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { ChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
 import {
   initialTimeMinutesToSlider,
   initialTimeSecondsToSlider,
@@ -27,7 +22,6 @@ import {
   timeCtrlToDisplayName,
 } from '../store/constants';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
-import { toAPIUrl } from '../api/api';
 import { useDebounce } from '../utils/debounce';
 import { ChallengeRulesFormItem } from './challenge_rules_form_item';
 import {
@@ -42,19 +36,12 @@ import { AllLexica } from '../shared/lexica';
 import { BotTypesEnum, BotTypesEnumProperties } from './bots';
 import { GameRequest, RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
 import { MatchUser } from '../gen/api/proto/ipc/omgseeks_pb';
-import { ProfileUpdate } from '../gen/api/proto/ipc/users_pb';
+import { ProfileUpdate_Rating } from '../gen/api/proto/ipc/users_pb';
+import { useClient } from '../utils/hooks/connect';
+import { AutocompleteService } from '../gen/api/proto/user_service/user_service_connectweb';
 
 const initTimeFormatter = (val?: number) => {
   return val != null ? initTimeDiscreteScale[val].label : null;
-};
-
-type user = {
-  username: string;
-  uuid: string;
-};
-
-type SearchResponse = {
-  users: Array<user>;
 };
 
 type Props = {
@@ -72,7 +59,7 @@ type Props = {
 
 export type seekPropVals = {
   lexicon: string;
-  challengerule: ChallengeRuleMap[keyof ChallengeRuleMap];
+  challengerule: ChallengeRule;
   initialtimeslider: number;
   rated: boolean;
   extratime: number;
@@ -112,16 +99,16 @@ export const GameRequestToFormValues: (
   }
 
   const vals: mandatoryFormValues = {
-    lexicon: gameRequest.getLexicon(),
-    variant: gameRequest.getRules()?.getVariantName() ?? '',
-    challengerule: gameRequest.getChallengeRule(),
-    rated: gameRequest.getRatingMode() === RatingMode.RATED,
+    lexicon: gameRequest.lexicon,
+    variant: gameRequest.rules?.variantName ?? '',
+    challengerule: gameRequest.challengeRule,
+    rated: gameRequest.ratingMode === RatingMode.RATED,
     initialtimeslider: 0,
     extratime: 0,
     incOrOT: 'overtime',
   };
 
-  const secs = gameRequest.getInitialTimeSeconds();
+  const secs = gameRequest.initialTimeSeconds;
   try {
     vals.initialtimeslider = initialTimeSecondsToSlider(secs);
   } catch (e) {
@@ -130,11 +117,11 @@ export const GameRequestToFormValues: (
     alert(msg);
     vals.initialtimeslider = 0;
   }
-  if (gameRequest.getMaxOvertimeMinutes()) {
-    vals.extratime = gameRequest.getMaxOvertimeMinutes();
+  if (gameRequest.maxOvertimeMinutes) {
+    vals.extratime = gameRequest.maxOvertimeMinutes;
     vals.incOrOT = 'overtime';
-  } else if (gameRequest.getIncrementSeconds()) {
-    vals.extratime = gameRequest.getIncrementSeconds();
+  } else if (gameRequest.incrementSeconds) {
+    vals.extratime = gameRequest.incrementSeconds;
     vals.incOrOT = 'increment';
   }
   return vals;
@@ -154,7 +141,7 @@ const incUnitLabel = (
 );
 
 const myDisplayRating = (
-  ratings: { [k: string]: ProfileUpdate.Rating },
+  ratings: { [k: string]: ProfileUpdate_Rating },
   secs: number,
   incrementSecs: number,
   maxOvertime: number,
@@ -164,7 +151,7 @@ const myDisplayRating = (
   const r =
     ratings[ratingKey(secs, incrementSecs, maxOvertime, variant, lexicon)];
   if (r) {
-    return Math.round(r.getRating());
+    return Math.round(r.rating);
   }
   return `${StartingRating}?`;
 };
@@ -187,9 +174,9 @@ export const SeekForm = (props: Props) => {
     []
   );
 
-  const enableWordSmog = React.useMemo(
-    () => localStorage.getItem('enableWordSmog') === 'true' && !props.vsBot,
-    [props.vsBot]
+  const enableVariants = React.useMemo(
+    () => localStorage.getItem('enableVariants') === 'true',
+    []
   );
 
   let storageKey = 'lastSeekForm';
@@ -239,15 +226,11 @@ export const SeekForm = (props: Props) => {
   let disableRatedControls = false;
   let initialValues;
 
-  if (
-    props.tournamentID &&
-    tournamentContext.metadata.getDefaultClubSettings()
-  ) {
-    const fixedClubSettings =
-      tournamentContext.metadata.getDefaultClubSettings();
+  if (props.tournamentID && tournamentContext.metadata.defaultClubSettings) {
+    const fixedClubSettings = tournamentContext.metadata.defaultClubSettings;
     const initFormValues = GameRequestToFormValues(fixedClubSettings);
     const freeformItems =
-      tournamentContext.metadata.getFreeformClubSettingFieldsList() || [];
+      tournamentContext.metadata.freeformClubSettingFields || [];
     disableVariantControls = !freeformItems.includes('variant_name');
     disableLexiconControls = !freeformItems.includes('lexicon');
     disableChallengeControls = !freeformItems.includes('challenge_rule');
@@ -396,33 +379,22 @@ export const SeekForm = (props: Props) => {
     }
     return defaultPlayers;
   }, [friends, presences, username, tournamentID]);
-  const onUsernameSearch = useCallback(
-    (searchText: string) => {
-      axios
-        .post<SearchResponse>(
-          toAPIUrl('user_service.AutocompleteService', 'GetCompletion'),
-          {
-            prefix: searchText,
-          }
-        )
-        .then((resp) => {
-          console.log('resp', resp.data);
+  const acClient = useClient(AutocompleteService);
 
-          setUsernameOptions(
-            !searchText
-              ? defaultOptions
-              : resp.data.users.map((u) => u.username)
-          );
-        });
+  const onUsernameSearch = useCallback(
+    async (searchText: string) => {
+      const resp = await acClient.getCompletion({ prefix: searchText });
+      setUsernameOptions(
+        !searchText ? defaultOptions : resp.users.map((u) => u.username)
+      );
     },
-    [defaultOptions]
+    [defaultOptions, acClient]
   );
 
   const searchUsernameDebounced = useDebounce(onUsernameSearch, 300);
 
   const onFormSubmit = (val: Store) => {
-    const receiver = new MatchUser();
-    receiver.setDisplayName(val.friend as string);
+    const receiver = new MatchUser({ displayName: val.friend as string });
     const obj = {
       // These items are assigned by the server:
       seeker: '',
@@ -447,7 +419,7 @@ export const SeekForm = (props: Props) => {
       botType: val.botType,
       tournamentID: props.tournamentID || '',
       variant: val.variant as string,
-      receiverIsPermanent: receiver.getDisplayName() !== '',
+      receiverIsPermanent: receiver.displayName !== '',
       // these are independent values in the backend but for now will be
       // modified together on the front end.
       minRatingRange: -val.ratingRange || 0,
@@ -539,13 +511,16 @@ export const SeekForm = (props: Props) => {
       )}
       {/* if variant controls are disabled it means we have hardcoded settings
       for it, so show them if not classic */}
-      {(enableWordSmog ||
+      {(enableVariants ||
         (disableVariantControls && initialValues.variant !== 'classic')) && (
         <Form.Item label="Game type" name="variant">
           <Select disabled={disableVariantControls}>
             <Select.Option value="classic">Classic</Select.Option>
             <Select.Option value="wordsmog">
               <VariantIcon vcode="wordsmog" withName />
+            </Select.Option>
+            <Select.Option value="classic_super">
+              <VariantIcon vcode="classic_super" withName />
             </Select.Option>
           </Select>
         </Form.Item>
@@ -566,6 +541,9 @@ export const SeekForm = (props: Props) => {
         <Slider
           disabled={disableTimeControls}
           tipFormatter={initTimeFormatter}
+          getTooltipPopupContainer={() =>
+            document.getElementById(props.id) as HTMLElement
+          }
           min={0}
           max={initTimeDiscreteScale.length - 1}
           tooltipVisible={sliderTooltipVisible || usernameOptions.length === 0}

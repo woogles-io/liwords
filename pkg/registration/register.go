@@ -10,7 +10,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
 	"github.com/domino14/liwords/pkg/utilities"
-	"github.com/lib/pq"
+	"github.com/jackc/pgconn"
 )
 
 // RegisterUser registers a user.
@@ -66,12 +66,12 @@ func RegisterUser(ctx context.Context, username string, password string, email s
 		IsBot: bot,
 	})
 	if err != nil {
-		if err, ok := err.(*pq.Error); ok {
+		if err, ok := err.(*pgconn.PgError); ok {
 			// https://www.postgresql.org/docs/current/errcodes-appendix.html
 			if err.Code == "23505" {
-				if err.Constraint == "username_idx" {
+				if err.ConstraintName == "username_idx" {
 					return errors.New("That username has already been signed up, please log in")
-				} else if err.Constraint == "email_idx" {
+				} else if err.ConstraintName == "email_idx" {
 					return errors.New("That email address has already been signed up, please log in with your existing username")
 				}
 			}

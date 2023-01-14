@@ -1,23 +1,19 @@
 import { HomeOutlined } from '@ant-design/icons';
-import { Card, Form, message, Modal, Select } from 'antd';
+import { Card, Form, Modal, Select } from 'antd';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { LiwordsAPIError, postProto, toAPIUrl } from '../api/api';
 import { Chat } from '../chat/chat';
 import { alphabetFromName } from '../constants/alphabets';
 import { TopBar } from '../navigation/topbar';
 import {
+  useExaminableGameContextStoreContext,
+  useExamineStoreContext,
   useGameContextStoreContext,
   useLoginStateStoreContext,
   // usePoolFormatStoreContext,
   useTentativeTileContext,
 } from '../store/store';
 import { BoardPanel } from '../gameroom/board_panel';
-import {
-  ChallengeRule,
-  DefineWordsResponse,
-  protoChallengeRuleConvert,
-} from '../gameroom/game_info';
 import { calculatePuzzleScore, renderStars } from './puzzle_info';
 // import Pool from '../gameroom/pool';
 import './puzzles.scss';
@@ -25,45 +21,52 @@ import { PuzzleInfo as PuzzleInfoWidget } from './puzzle_info';
 import { ActionType } from '../actions/actions';
 import {
   PuzzleRequest,
-  PuzzleResponse,
   PuzzleStatus,
-  NextPuzzleIdRequest,
-  NextPuzzleIdResponse,
   SubmissionRequest,
-  SubmissionResponse,
+  NextClosestRatingPuzzleIdRequest,
   StartPuzzleIdRequest,
-  StartPuzzleIdResponse,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { sortTiles } from '../store/constants';
 import { Notepad, NotepadContextProvider } from '../gameroom/notepad';
+import {
+  Analyzer,
+  AnalyzerContextProvider,
+  usePlaceMoveCallback,
+} from '../gameroom/analyzer';
 // Put the player cards back when we have strategy puzzles.
 // import { StaticPlayerCards } from './static_player_cards';
 
 import {
+  ChallengeRule,
   GameEvent,
   GameHistory,
-} from '../gen/macondo/api/proto/macondo/macondo_pb';
+  GameEvent_Direction,
+  GameEvent_Type,
+} from '../gen/api/proto/macondo/macondo_pb';
 import { MatchLexiconDisplay, puzzleLexica } from '../shared/lexicon_display';
 import { Store } from 'antd/lib/form/interface';
 
 import {
   ClientGameplayEvent,
-  GameInfoResponse,
   RatingMode,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { computeLeave } from '../utils/cwgame/game_event';
 import { EphemeralTile } from '../utils/cwgame/common';
-import { usePlaceMoveCallback } from '../gameroom/analyzer';
-import { useFirefoxPatch } from '../utils/hooks';
+import { useFirefoxPatch } from '../utils/hooks/firefox';
+import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
 import { useMountedState } from '../utils/mounted';
 import { BoopSounds } from '../sound/boop';
 import { GameInfoRequest } from '../gen/api/proto/game_service/game_service_pb';
 import { isLegalPlay } from '../utils/cwgame/scoring';
 import { singularCount } from '../utils/plural';
 import { getWordsFormed } from '../utils/cwgame/tile_placement';
-import axios from 'axios';
 import { LearnContextProvider } from '../learn/learn_overlay';
 import { PuzzleShareButton } from './puzzle_share';
+import { RatingsCard } from './ratings';
+import { flashError, useClient } from '../utils/hooks/connect';
+import { WordService } from '../gen/api/proto/word_service/word_service_connectweb';
+import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_connectweb';
+import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connectweb';
 
 const doNothing = () => {};
 
@@ -111,6 +114,9 @@ export const SinglePuzzle = (props: Props) => {
   const { useState } = useMountedState();
   const { puzzleID } = useParams();
   const [puzzleInfo, setPuzzleInfo] = useState<PuzzleInfo>(defaultPuzzleInfo);
+  const [initialUserRating, setInitialUserRating] = useState<
+    number | undefined
+  >(undefined);
   const [userLexicon, setUserLexicon] = useState<string | undefined>(
     localStorage?.getItem('puzzleLexicon') || undefined
   );
@@ -126,6 +132,9 @@ export const SinglePuzzle = (props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const { username, loggedIn } = loginState;
   // const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
+  const { gameContext: examinableGameContext } =
+    useExaminableGameContextStoreContext();
+  const { isExamining } = useExamineStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const {
     setDisplayedRack,
@@ -135,7 +144,8 @@ export const SinglePuzzle = (props: Props) => {
   } = useTentativeTileContext();
 
   const navigate = useNavigate();
-
+  const puzzleClient = useClient(PuzzleService);
+  const gameMetadataClient = useClient(GameMetadataService);
   useEffect(() => {
     if (!puzzleID) {
       setShowLexiconModal(true);
@@ -144,23 +154,31 @@ export const SinglePuzzle = (props: Props) => {
 
   useFirefoxPatch();
 
-  // add definitions stuff here. We should make common library instead of
-  // copy-pasting from table.tsx
+  // add definitions stuff here.
+  const { handleSetHover, hideDefinitionHover, definitionPopover } =
+    useDefinitionAndPhonyChecker({
+      addChat: doNothing,
+      enableHoverDefine: puzzleInfo.solved !== PuzzleStatus.UNANSWERED,
+      gameContext, // the final gameContext, not examinableGameContext
+      gameDone: false,
+      gameID: puzzleInfo.gameId,
+      lexicon: puzzleInfo.lexicon,
+      variant: puzzleInfo.variantName,
+    });
 
   // Figure out what rack we should display
-  const rack = gameContext.players.find((p) => p.onturn)?.currentRack ?? '';
+  const rack =
+    examinableGameContext.players.find((p) => p.onturn)?.currentRack ?? '';
   const sortedRack = useMemo(() => sortTiles(rack), [rack]);
   const userIDOnTurn = useMemo(
-    () => gameContext.players.find((p) => p.onturn)?.userID,
-    [gameContext]
+    () => examinableGameContext.players.find((p) => p.onturn)?.userID,
+    [examinableGameContext]
   );
   // Play sound here.
 
   const alphabet = useMemo(() => {
     if (gameHistory) {
-      return alphabetFromName(
-        gameHistory?.getLetterDistribution().toLowerCase()
-      );
+      return alphabetFromName(gameHistory?.letterDistribution.toLowerCase());
     }
     return undefined;
   }, [gameHistory]);
@@ -171,36 +189,27 @@ export const SinglePuzzle = (props: Props) => {
         setShowLexiconModal(true);
         return;
       }
-      let req, respType, method;
+      let req;
+      let method: 'getStartPuzzleId' | 'getNextClosestRatingPuzzleId';
       if (firstLoad === true) {
         req = new StartPuzzleIdRequest();
-        respType = StartPuzzleIdResponse;
-        method = 'GetStartPuzzleId';
+        method = 'getStartPuzzleId';
       } else {
-        req = new NextPuzzleIdRequest();
-        respType = NextPuzzleIdResponse;
-        method = 'GetNextPuzzleId';
+        req = new NextClosestRatingPuzzleIdRequest();
+        method = 'getNextClosestRatingPuzzleId';
       }
-      req.setLexicon(userLexicon);
+
+      req.lexicon = userLexicon;
       try {
-        const resp = await postProto(
-          respType,
-          'puzzle_service.PuzzleService',
-          method,
-          req
-        );
-        console.log('got resp', resp.toObject());
-        navigate(`/puzzle/${encodeURIComponent(resp.getPuzzleId())}`, {
+        const resp = await puzzleClient[method](req);
+        navigate(`/puzzle/${encodeURIComponent(resp.puzzleId)}`, {
           replace: !!firstLoad,
         });
       } catch (err) {
-        message.error({
-          content: (err as LiwordsAPIError).message,
-          duration: 5,
-        });
+        flashError(err);
       }
     },
-    [userLexicon, navigate]
+    [userLexicon, navigate, puzzleClient]
   );
 
   useEffect(() => {
@@ -220,91 +229,81 @@ export const SinglePuzzle = (props: Props) => {
         jsonKey: '',
         displayMove: '',
         coordinates: '',
-        vertical: evt.getDirection() === GameEvent.Direction.VERTICAL,
-        col: evt.getColumn(),
-        row: evt.getRow(),
-        score: evt.getScore(),
+        vertical: evt.direction === GameEvent_Direction.VERTICAL,
+        col: evt.column,
+        row: evt.row,
+        score: evt.score,
         equity: 0.0, // not shown yet
-        tiles: evt.getPlayedTiles() || evt.getExchanged(),
-        isExchange: evt.getType() === GameEvent.Type.EXCHANGE,
+        tiles: evt.playedTiles || evt.exchanged,
+        isExchange: evt.type === GameEvent_Type.EXCHANGE,
         leave: '',
-        leaveWithGaps: computeLeave(evt.getPlayedTiles(), sortedRack),
+        leaveWithGaps: computeLeave(
+          evt.playedTiles || evt.exchanged,
+          sortedRack
+        ),
       };
       placeMove(m);
     },
     [placeMove, sortedRack]
   );
 
-  const setGameInfo = useCallback(async (gid: string, turnNumber: number) => {
-    const req = new GameInfoRequest();
-    req.setGameId(gid);
-    try {
-      const resp = await postProto(
-        GameInfoResponse,
-        'game_service.GameMetadataService',
-        'GetMetadata',
-        req
-      );
-      console.log('got game info', resp.toObject());
-      const gameRequest = resp.getGameRequest();
-      if (gameRequest) {
-        setPuzzleInfo((x) => ({
-          ...x,
-          challengeRule: protoChallengeRuleConvert(
-            gameRequest.getChallengeRule()
-          ),
-          ratingMode:
-            gameRequest?.getRatingMode() === RatingMode.RATED
-              ? 'Rated'
-              : 'Casual',
-          gameDate: resp.getCreatedAt()?.toDate(),
-          initialTimeSeconds: gameRequest?.getInitialTimeSeconds(),
-          incrementSeconds: gameRequest?.getIncrementSeconds(),
-          maxOvertimeMinutes: gameRequest?.getMaxOvertimeMinutes(),
-          gameUrl: `/game/${gid}?turn=${turnNumber + 1}`,
-          player1: { nickname: resp.getPlayersList()[0].getNickname() },
-          player2: { nickname: resp.getPlayersList()[1].getNickname() },
-        }));
+  const setGameInfo = useCallback(
+    async (gid: string, turnNumber: number) => {
+      const req = new GameInfoRequest({ gameId: gid });
+      try {
+        const resp = await gameMetadataClient.getMetadata(req);
+        const gameRequest = resp.gameRequest;
+        if (gameRequest) {
+          setPuzzleInfo((x) => ({
+            ...x,
+            challengeRule: gameRequest.challengeRule,
+            ratingMode:
+              gameRequest?.ratingMode === RatingMode.RATED ? 'Rated' : 'Casual',
+            gameDate: resp.createdAt?.toDate(),
+            initialTimeSeconds: gameRequest?.initialTimeSeconds,
+            incrementSeconds: gameRequest?.incrementSeconds,
+            maxOvertimeMinutes: gameRequest?.maxOvertimeMinutes,
+            gameUrl: `/game/${gid}?turn=${turnNumber + 1}`,
+            player1: { nickname: resp.players[0].nickname },
+            player2: { nickname: resp.players[1].nickname },
+          }));
+        }
+      } catch (err) {
+        flashError(err);
       }
-    } catch (err) {
-      message.error({
-        content: (err as LiwordsAPIError).message,
-        duration: 5,
-      });
-    }
-  }, []);
+    },
+    [gameMetadataClient]
+  );
 
   const showSolution = useCallback(async () => {
     if (!puzzleID) {
       return;
     }
     const req = new SubmissionRequest();
-    req.setShowSolution(true);
-    req.setPuzzleId(puzzleID);
+    req.showSolution = true;
+    req.puzzleId = puzzleID;
     BoopSounds.playSound('puzzleWrongSound');
-    console.log('showing solution?', userIDOnTurn, gameContext.players);
+    console.log(
+      'showing solution?',
+      userIDOnTurn,
+      examinableGameContext.players
+    );
     try {
-      const resp = await postProto(
-        SubmissionResponse,
-        'puzzle_service.PuzzleService',
-        'SubmitAnswer',
-        req
-      );
-      console.log('got resp', resp.toObject());
-      const answerResponse = resp.getAnswer();
+      const resp = await puzzleClient.submitAnswer(req);
+      const answerResponse = resp.answer;
       if (!answerResponse) {
         throw new Error('Did not have an answer!');
       }
-      const solution = answerResponse.getCorrectAnswer();
+      const solution = answerResponse.correctAnswer;
       setPuzzleInfo((x) => ({
         ...x,
-        attempts: answerResponse.getAttempts(),
+        attempts: answerResponse.attempts,
         solved: PuzzleStatus.INCORRECT,
         solution: solution,
-        gameId: answerResponse.getGameId(),
-        turn: answerResponse.getTurnNumber(),
-        puzzleRating: answerResponse.getNewPuzzleRating(),
-        userRating: answerResponse.getNewUserRating(),
+        gameId: answerResponse.gameId,
+        turn: answerResponse.turnNumber,
+        puzzleRating: answerResponse.newPuzzleRating,
+        userRating: answerResponse.newUserRating,
       }));
       // Place the tiles from the event.
       if (solution) {
@@ -312,12 +311,9 @@ export const SinglePuzzle = (props: Props) => {
       }
       // Also get the game metadata.
     } catch (err) {
-      message.error({
-        content: (err as LiwordsAPIError).message,
-        duration: 5,
-      });
+      flashError(err);
     }
-  }, [puzzleID, userIDOnTurn, gameContext.players]);
+  }, [puzzleID, userIDOnTurn, examinableGameContext.players, puzzleClient]);
 
   useEffect(() => {
     if (puzzleInfo.gameId) {
@@ -330,39 +326,29 @@ export const SinglePuzzle = (props: Props) => {
       if (!puzzleID) {
         return;
       }
-      const req = new SubmissionRequest();
-      req.setAnswer(evt);
-      req.setPuzzleId(puzzleID);
+      const req = new SubmissionRequest({ answer: evt, puzzleId: puzzleID });
+
       try {
-        const resp = await postProto(
-          SubmissionResponse,
-          'puzzle_service.PuzzleService',
-          'SubmitAnswer',
-          req
-        );
-        console.log('got resp', resp.toObject());
-        const answerResponse = resp.getAnswer();
+        const resp = await puzzleClient.submitAnswer(req);
+        const answerResponse = resp.answer;
         if (!answerResponse) {
           throw new Error('Did not have an answer!');
         }
-        if (resp.getUserIsCorrect()) {
+        if (resp.userIsCorrect) {
           BoopSounds.playSound('puzzleCorrectSound');
-          setGameInfo(
-            answerResponse.getGameId(),
-            answerResponse.getTurnNumber()
-          );
+          setGameInfo(answerResponse.gameId, answerResponse.turnNumber);
           setPuzzleInfo((x) => ({
             ...x,
-            turn: answerResponse.getTurnNumber(),
-            gameId: answerResponse.getGameId(),
+            turn: answerResponse.turnNumber,
+            gameId: answerResponse.gameId,
             dateSolved:
-              answerResponse.getStatus() === PuzzleStatus.CORRECT
-                ? answerResponse.getLastAttemptTime()?.toDate()
+              answerResponse.status === PuzzleStatus.CORRECT
+                ? answerResponse.lastAttemptTime?.toDate()
                 : undefined,
-            attempts: answerResponse.getAttempts(),
-            solved: answerResponse.getStatus(),
-            puzzleRating: answerResponse.getNewPuzzleRating(),
-            userRating: answerResponse.getNewUserRating(),
+            attempts: answerResponse.attempts,
+            solved: answerResponse.status,
+            puzzleRating: answerResponse.newPuzzleRating,
+            userRating: answerResponse.newUserRating,
           }));
           setShowResponseModalCorrect(true);
         } else {
@@ -372,26 +358,23 @@ export const SinglePuzzle = (props: Props) => {
           setCheckWordsPending(true);
           setPuzzleInfo((x) => ({
             ...x,
-            turn: answerResponse.getTurnNumber(),
-            gameId: answerResponse.getGameId(),
+            turn: answerResponse.turnNumber,
+            gameId: answerResponse.gameId,
             dateSolved:
-              answerResponse.getStatus() === PuzzleStatus.CORRECT
-                ? answerResponse.getLastAttemptTime()?.toDate()
+              answerResponse.status === PuzzleStatus.CORRECT
+                ? answerResponse.lastAttemptTime?.toDate()
                 : undefined,
-            attempts: answerResponse.getAttempts(),
-            solved: answerResponse.getStatus(),
-            puzzleRating: answerResponse.getNewPuzzleRating(),
-            userRating: answerResponse.getNewUserRating(),
+            attempts: answerResponse.attempts,
+            solved: answerResponse.status,
+            puzzleRating: answerResponse.newPuzzleRating,
+            userRating: answerResponse.newUserRating,
           }));
         }
       } catch (err) {
-        message.error({
-          content: (err as LiwordsAPIError).message,
-          duration: 5,
-        });
+        flashError(err);
       }
     },
-    [puzzleID, setGameInfo]
+    [puzzleID, puzzleClient, setGameInfo]
   );
 
   useEffect(() => {
@@ -400,21 +383,16 @@ export const SinglePuzzle = (props: Props) => {
       if (!puzzleID) {
         return;
       }
-      const req = new PuzzleRequest();
-      req.setPuzzleId(puzzleID);
+      const req = new PuzzleRequest({ puzzleId: puzzleID });
       try {
-        const resp = await postProto(
-          PuzzleResponse,
-          'puzzle_service.PuzzleService',
-          'GetPuzzle',
-          req
-        );
+        const resp = await puzzleClient.getPuzzle(req);
+
         /*if (localStorage?.getItem('poolFormat')) {
           setPoolFormat(
             parseInt(localStorage.getItem('poolFormat') || '0', 10)
           );
         }*/
-        const gh = resp.getHistory();
+        const gh = resp.history;
         if (gh === null || gh === undefined) {
           throw new Error('Did not receive a valid puzzle position!');
         }
@@ -423,42 +401,36 @@ export const SinglePuzzle = (props: Props) => {
           payload: gh,
         });
         setGameHistory(gh);
-        console.log('got game history', gh.toObject());
-        const answerResponse = resp.getAnswer();
+        const answerResponse = resp.answer;
         if (!answerResponse) {
           throw new Error('Fetch puzzle returned a null response!');
         }
-        if (answerResponse.getStatus() === PuzzleStatus.UNANSWERED) {
+        if (answerResponse.status === PuzzleStatus.UNANSWERED) {
           BoopSounds.playSound('puzzleStartSound');
         }
         setPuzzleInfo({
-          attempts: answerResponse.getAttempts(),
+          attempts: answerResponse.attempts,
           // XXX: add dateSolved to backend, in the meantime...
           dateSolved:
-            answerResponse.getStatus() === PuzzleStatus.CORRECT
-              ? answerResponse.getLastAttemptTime()?.toDate()
+            answerResponse.status === PuzzleStatus.CORRECT
+              ? answerResponse.lastAttemptTime?.toDate()
               : undefined,
-          lexicon: gh.getLexicon(),
-          variantName: gh.getVariant(),
-          solved: answerResponse.getStatus(),
-          solution: answerResponse.getCorrectAnswer(),
-          gameId: answerResponse.getGameId(),
-          turn: answerResponse.getTurnNumber(),
-          puzzleRating: answerResponse.getNewPuzzleRating(),
-          userRating: answerResponse.getNewUserRating(),
+          lexicon: gh.lexicon,
+          variantName: gh.variant,
+          solved: answerResponse.status,
+          solution: answerResponse.correctAnswer,
+          gameId: answerResponse.gameId,
+          turn: answerResponse.turnNumber,
+          puzzleRating: answerResponse.newPuzzleRating,
+          userRating: answerResponse.newUserRating,
         });
-        setPendingSolution(
-          answerResponse.getStatus() !== PuzzleStatus.UNANSWERED
-        );
+        setInitialUserRating(answerResponse.newUserRating);
+        setPendingSolution(answerResponse.status !== PuzzleStatus.UNANSWERED);
       } catch (err) {
-        message.error({
-          content: (err as LiwordsAPIError).message,
-          duration: 5,
-        });
+        flashError(err);
       }
     }
     if (puzzleID) {
-      console.log('fetching puzzle info');
       dispatchGameContext({
         actionType: ActionType.ClearHistory,
         payload: 'noclock',
@@ -466,7 +438,7 @@ export const SinglePuzzle = (props: Props) => {
 
       fetchPuzzleData();
     }
-  }, [dispatchGameContext, puzzleID]);
+  }, [dispatchGameContext, puzzleID, puzzleClient]);
 
   useEffect(() => {
     if (userLexicon && !puzzleID) {
@@ -542,7 +514,7 @@ export const SinglePuzzle = (props: Props) => {
 
   const responseModalWrong = useMemo(() => {
     const reset = () => {
-      setDisplayedRack(rack);
+      setDisplayedRack(sortedRack);
       setPlacedTiles(new Set<EphemeralTile>());
       setPlacedTilesTempScore(undefined);
       setPhoniesPlayed([]);
@@ -584,7 +556,6 @@ export const SinglePuzzle = (props: Props) => {
         )}
         {!!puzzleInfo.puzzleRating && !!puzzleInfo.userRating && (
           <>
-            <p>The puzzle is now rated {puzzleInfo.puzzleRating}.</p>
             <p>Your puzzle rating is now {puzzleInfo.userRating}.</p>
           </>
         )}
@@ -594,39 +565,44 @@ export const SinglePuzzle = (props: Props) => {
     showResponseModalWrong,
     phoniesPlayed,
     puzzleInfo,
-    rack,
+    sortedRack,
     setDisplayedRack,
     setPlacedTiles,
     setPlacedTilesTempScore,
   ]);
 
+  const wordClient = useClient(WordService);
   useEffect(() => {
     if (checkWordsPending) {
-      const wordsFormed = getWordsFormed(gameContext.board, placedTiles).map(
-        (w) => w.toUpperCase()
-      );
+      const wordsFormed = getWordsFormed(
+        examinableGameContext.board,
+        placedTiles
+      ).map((w) => w.toUpperCase());
       setCheckWordsPending(false);
       //Todo: Now run them by the endpoint
-      axios
-        .post<DefineWordsResponse>(
-          toAPIUrl('word_service.WordService', 'DefineWords'),
-          {
-            lexicon: puzzleInfo.lexicon,
-            words: wordsFormed,
-            definitions: false,
-            anagrams: false,
-          }
-        )
-        .then((resp) => {
-          const wordsChecked = resp.data.results;
-          const phonies = Object.keys(wordsChecked).filter(
-            (w) => !wordsChecked[w].v
-          );
-          console.log('Phonies played: ', phonies);
-          setPhoniesPlayed(phonies);
+
+      (async () => {
+        const resp = await wordClient.defineWords({
+          lexicon: puzzleInfo.lexicon,
+          words: wordsFormed,
+          definitions: false,
+          anagrams: false,
         });
+        const wordsChecked = resp.results;
+        const phonies = Object.keys(wordsChecked).filter(
+          (w) => !wordsChecked[w].v
+        );
+        console.log('Phonies played: ', phonies);
+        setPhoniesPlayed(phonies);
+      })();
     }
-  }, [checkWordsPending, placedTiles, gameContext.board, puzzleInfo.lexicon]);
+  }, [
+    checkWordsPending,
+    placedTiles,
+    examinableGameContext.board,
+    puzzleInfo.lexicon,
+    wordClient,
+  ]);
 
   const responseModalCorrect = useMemo(() => {
     //TODO: different title for different scores
@@ -679,7 +655,6 @@ export const SinglePuzzle = (props: Props) => {
         </p>
         {!!puzzleInfo.puzzleRating && !!puzzleInfo.userRating && (
           <>
-            <p>The puzzle is now rated {puzzleInfo.puzzleRating}.</p>
             <p>Your puzzle rating is now {puzzleInfo.userRating}.</p>
           </>
         )}
@@ -689,11 +664,14 @@ export const SinglePuzzle = (props: Props) => {
 
   const allowAttempt = useMemo(() => {
     return (
-      isLegalPlay(Array.from(placedTiles.values()), gameContext.board) &&
+      isLegalPlay(
+        Array.from(placedTiles.values()),
+        examinableGameContext.board
+      ) &&
       loggedIn &&
       puzzleInfo.solved === PuzzleStatus.UNANSWERED
     );
-  }, [placedTiles, gameContext.board, loggedIn, puzzleInfo.solved]);
+  }, [placedTiles, examinableGameContext.board, loggedIn, puzzleInfo.solved]);
 
   let ret = (
     <div className="game-container puzzle-container">
@@ -713,42 +691,55 @@ export const SinglePuzzle = (props: Props) => {
             channelTypeOverride="puzzle"
             suppressDefault
           />
-          <React.Fragment key="not-examining">
-            <Notepad includeCard />
-          </React.Fragment>
+          {isExamining ? (
+            <Analyzer
+              includeCard
+              lexicon={puzzleInfo.lexicon}
+              variant={puzzleInfo.variantName}
+            />
+          ) : (
+            <React.Fragment key="not-examining">
+              <Notepad includeCard />
+            </React.Fragment>
+          )}
         </div>
         <div className="play-area puzzle-area">
           {lexiconModal}
           {responseModalWrong}
           {responseModalCorrect}
-          {gameHistory?.getLexicon() && alphabet && (
+          {gameHistory?.lexicon && alphabet && (
             <BoardPanel
               anonymousViewer={!loggedIn}
               username={username}
-              board={gameContext.board}
+              board={examinableGameContext.board}
               currentRack={sortedRack}
-              events={gameContext.turns}
+              events={examinableGameContext.turns}
               gameID={''} /* no game id for a puzzle */
               sendSocketMsg={doNothing}
               sendGameplayEvent={allowAttempt ? attemptPuzzle : doNothing}
               gameDone={false}
               playerMeta={[]}
               vsBot={false} /* doesn't matter */
-              lexicon={gameHistory?.getLexicon()}
+              lexicon={gameHistory?.lexicon}
               alphabet={alphabet}
-              challengeRule={'SINGLE' as ChallengeRule} /* doesn't matter */
+              challengeRule={ChallengeRule.SINGLE} /* doesn't matter */
               handleAcceptRematch={doNothing}
               handleAcceptAbort={doNothing}
               puzzleMode
               puzzleSolved={puzzleInfo.solved}
-              // handleSetHover={handleSetHover}   // fix later with definitions.
-              // handleUnsetHover={hideDefinitionHover}
-              // definitionPopover={definitionPopover}
+              handleSetHover={handleSetHover}
+              handleUnsetHover={hideDefinitionHover}
+              definitionPopover={definitionPopover}
             />
           )}
         </div>
 
         <div className="data-area" id="right-sidebar">
+          <RatingsCard
+            userRating={puzzleInfo.userRating || initialUserRating}
+            puzzleRating={puzzleInfo.puzzleRating}
+            initialUserRating={initialUserRating}
+          />
           <PuzzleInfoWidget
             solved={puzzleInfo.solved}
             gameDate={puzzleInfo.gameDate}
@@ -759,20 +750,18 @@ export const SinglePuzzle = (props: Props) => {
             player2={puzzleInfo.player2}
             ratingMode={puzzleInfo.ratingMode}
             challengeRule={puzzleInfo.challengeRule}
-            initial_time_seconds={puzzleInfo.initialTimeSeconds}
-            increment_seconds={puzzleInfo.incrementSeconds}
-            max_overtime_minutes={puzzleInfo.maxOvertimeMinutes}
+            initialTimeSeconds={puzzleInfo.initialTimeSeconds}
+            incrementSeconds={puzzleInfo.incrementSeconds}
+            maxOvertimeMinutes={puzzleInfo.maxOvertimeMinutes}
             attempts={puzzleInfo.attempts}
             dateSolved={puzzleInfo.dateSolved}
             loadNewPuzzle={loadNewPuzzle}
             puzzleID={puzzleID}
             showSolution={showSolution}
-            userRating={puzzleInfo.userRating}
-            puzzleRating={puzzleInfo.puzzleRating}
           />
           {/* alphabet && (
             <Pool
-              pool={gameContext.pool}
+              pool={examinableGameContext.pool}
               currentRack={sortedRack}
               poolFormat={poolFormat}
               setPoolFormat={setPoolFormat}
@@ -781,15 +770,16 @@ export const SinglePuzzle = (props: Props) => {
           ) */}
           <Notepad includeCard />
           {/*<StaticPlayerCards
-            playerOnTurn={gameContext.onturn}
-            p0Score={gameContext?.players[0]?.score || 0}
-            p1Score={gameContext?.players[1]?.score || 0}
+            playerOnTurn={examinableGameContext.onturn}
+            p0Score={examinableGameContext?.players[0]?.score || 0}
+            p1Score={examinableGameContext?.players[1]?.score || 0}
           />*/}
         </div>
       </div>
     </div>
   );
-  ret = <NotepadContextProvider children={ret} />;
+  ret = <NotepadContextProvider children={ret} feRackInfo />;
+  ret = <AnalyzerContextProvider children={ret} />;
   ret = <LearnContextProvider children={ret} />;
   return ret;
 };

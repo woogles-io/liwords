@@ -1,4 +1,8 @@
 syntax = "proto3";
+// Package ipc describes all the messages used for inter-process
+// communication between the different microservices in liwords
+// (so far, just the API and the socket server).
+// Many of these messages end up being transmitted to the front-end.
 package ipc;
 option go_package = "github.com/domino14/liwords/rpc/api/proto/ipc";
 

@@ -3,13 +3,16 @@ import { Link } from 'react-router-dom';
 import moment from 'moment';
 import { Button, Card, InputNumber, Table, Tag, Tooltip } from 'antd';
 import { CheckCircleTwoTone } from '@ant-design/icons';
-import { FundOutlined } from '@ant-design/icons/lib';
-import { GameMetadata } from '../gameroom/game_info';
+import { FundOutlined } from '@ant-design/icons';
 import { timeToString } from '../store/constants';
 import { VariantIcon } from '../shared/variant_icons';
+import { GameInfoResponse, RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
+import { challengeRuleNamesShort } from '../constants/challenge_rules';
+import { GameEndReason } from '../gen/api/proto/ipc/omgwords_pb';
+import { ChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
 
 type Props = {
-  games: Array<GameMetadata>;
+  games: Array<GameInfoResponse>;
   username: string;
   fetchPrev?: () => void;
   fetchNext?: () => void;
@@ -49,12 +52,13 @@ export const GamesHistoryCard = React.memo((props: Props) => {
   const special = ['Unwoogler', 'AnotherUnwoogler', userID];
   const formattedGames = props.games
     .filter(
-      (item) => item.players?.length && item.game_end_reason !== 'CANCELLED'
+      (item) =>
+        item.players?.length && item.gameEndReason !== GameEndReason.CANCELLED
     )
     .map((item) => {
       const userplace =
-        special.indexOf(item.players[0].user_id) >
-        special.indexOf(item.players[1].user_id)
+        special.indexOf(item.players[0].userId) >
+        special.indexOf(item.players[1].userId)
           ? 0
           : 1;
       const opponent = (
@@ -67,33 +71,26 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         </Link>
       );
       const scores = item.scores ? (
-        <Link to={`/game/${encodeURIComponent(String(item.game_id ?? ''))}`}>
+        <Link to={`/game/${encodeURIComponent(String(item.gameId ?? ''))}`}>
           {item.scores[userplace]} - {item.scores[1 - userplace]}
         </Link>
       ) : (
         ''
       );
       let result = <Tag color="blue">Loss</Tag>;
-      const challenge = {
-        FIVE_POINT: '+5',
-        TEN_POINT: '+10',
-        SINGLE: 'x1',
-        DOUBLE: 'x2',
-        TRIPLE: 'x3',
-        VOID: 'Void',
-      }[item.game_request.challenge_rule];
+      const challenge =
+        challengeRuleNamesShort[
+          item.gameRequest?.challengeRule ?? ChallengeRule.VOID
+        ];
+
       const getDetails = () => {
         return (
           <>
-            {item.game_request.rules.variant_name === 'wordsmog' ? (
-              <>
-                <VariantIcon vcode="wordsmog" />{' '}
-              </>
-            ) : null}
+            <VariantIcon vcode={item.gameRequest?.rules?.variantName} />{' '}
             <span className={`challenge-rule mode_${challenge}`}>
               {challenge}
             </span>
-            {item.game_request.rating_mode === 'RATED' ? (
+            {item.gameRequest?.ratingMode === RatingMode.RATED ? (
               <Tooltip title="Rated">
                 <FundOutlined />
               </Tooltip>
@@ -110,52 +107,52 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       if (item.players[userplace].first) {
         turnOrder = <CheckCircleTwoTone twoToneColor="#52c41a" />;
       }
-      const whenMoment = moment(item.created_at ? item.created_at : '');
+      const whenMoment = moment(item.createdAt ? item.createdAt.toDate() : '');
       const when = (
         <Tooltip title={whenMoment.format('LLL')}>
           {whenMoment.fromNow()}
         </Tooltip>
       );
       let endReason = '';
-      switch (item.game_end_reason) {
-        case 'TIME':
+      switch (item.gameEndReason) {
+        case GameEndReason.TIME:
           endReason = 'Time out';
           break;
-        case 'CONSECUTIVE_ZEROES':
+        case GameEndReason.CONSECUTIVE_ZEROES:
           endReason = 'Six-zero rule';
           break;
-        case 'RESIGNED':
+        case GameEndReason.RESIGNED:
           endReason = 'Resignation';
           break;
-        case 'FORCE_FORFEIT':
+        case GameEndReason.FORCE_FORFEIT:
           endReason = 'Forfeit';
           break;
-        case 'ABORTED':
+        case GameEndReason.ABORTED:
           endReason = 'Aborted';
           break;
-        case 'CANCELLED':
+        case GameEndReason.CANCELLED:
           endReason = 'Cancelled';
           break;
-        case 'TRIPLE_CHALLENGE':
+        case GameEndReason.TRIPLE_CHALLENGE:
           endReason = 'Triple challenge';
           break;
-        case 'STANDARD':
+        case GameEndReason.STANDARD:
           endReason = 'Completed';
       }
-      const time = `${item.time_control_name} ${timeToString(
-        item.game_request.initial_time_seconds,
-        item.game_request.increment_seconds,
-        item.game_request.max_overtime_minutes
+      const time = `${item.timeControlName} ${timeToString(
+        item.gameRequest?.initialTimeSeconds ?? 0,
+        item.gameRequest?.incrementSeconds ?? 0,
+        item.gameRequest?.maxOvertimeMinutes ?? 0
       )}`;
       return {
-        game_id: item.game_id, // used by rowKey
+        gameId: item.gameId, // used by rowKey
         details: getDetails(),
         result,
         opponent,
         scores,
         turnOrder,
         endReason,
-        lexicon: item.game_request.lexicon,
+        lexicon: item.gameRequest?.lexicon,
         time,
         when,
       };
@@ -226,7 +223,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
           hideOnSinglePage: true,
           defaultPageSize: Infinity,
         }}
-        rowKey="game_id"
+        rowKey="gameId"
       />
       <div className="game-history-controls">
         <InputNumber

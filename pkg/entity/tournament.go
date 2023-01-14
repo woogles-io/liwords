@@ -80,6 +80,7 @@ type TournamentMeta struct {
 	Logo                      string          `json:"logo"`
 	Color                     string          `json:"color"`
 	PrivateAnalysis           bool            `json:"privateAnalysis"`
+	IRLMode                   bool            `json:"irlMode"`
 }
 
 type Tournament struct {

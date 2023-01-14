@@ -93,7 +93,11 @@ func pingEndpoint(w http.ResponseWriter, r *http.Request) {
 func NewLoggingServerHooks() *twirp.ServerHooks {
 	return &twirp.ServerHooks{
 		Error: func(ctx context.Context, twerr twirp.Error) context.Context {
-			log.Err(twerr).Str("code", string(twerr.Code())).Msg("api-error")
+			method, _ := twirp.MethodName(ctx)
+			log.Err(twerr).
+				Str("code", string(twerr.Code())).
+				Str("method", method).
+				Msg("api-error")
 			// Currently the only Woogles Errors are tournament errors
 			// so this will need to be changed later.
 			if len(twerr.Msg()) > 0 &&
@@ -105,6 +109,21 @@ func NewLoggingServerHooks() *twirp.ServerHooks {
 		},
 	}
 }
+
+// func NewInterceptorCustomError() twirp.Interceptor {
+// 	return func(next twirp.Method) twirp.Method {
+// 		return func(ctx context.Context, req interface{}) (interface{}, error) {
+
+// 			resp, err := next(ctx, req)
+// 			if err != nil {
+// 				switch err.(type) {
+// 				case twirp.Error:
+
+// 				}
+// 			}
+// 		}
+// 	}
+// }
 
 func main() {
 
@@ -143,15 +162,14 @@ func main() {
 
 	router := http.NewServeMux() // here you could also go with third party packages to create a router
 
-	tmpUserStore, err := user.NewDBStore(cfg.DBConnDSN)
+	stores := bus.Stores{}
+
+	stores.UserStore, err = user.NewDBStore(dbPool)
 	if err != nil {
 		panic(err)
 	}
-	stores := bus.Stores{}
 
-	stores.UserStore = user.NewCache(tmpUserStore)
-
-	stores.SessionStore, err = session.NewDBStore(cfg.DBConnDSN)
+	stores.SessionStore, err = session.NewDBStore(dbPool)
 	if err != nil {
 		panic(err)
 	}
@@ -183,17 +201,17 @@ func main() {
 	}
 	stores.TournamentStore = tournamentstore.NewCache(tmpTournamentStore)
 
-	stores.SoughtGameStore, err = soughtgame.NewDBStore(cfg)
+	stores.SoughtGameStore, err = soughtgame.NewDBStore(dbPool)
 	if err != nil {
 		panic(err)
 	}
 	stores.ConfigStore = cfgstore.NewRedisConfigStore(redisPool)
-	stores.ListStatStore, err = stats.NewListStatStore(cfg.DBConnDSN)
+	stores.ListStatStore, err = stats.NewDBStore(dbPool)
 	if err != nil {
 		panic(err)
 	}
 
-	stores.NotorietyStore, err = modstore.NewNotorietyStore(cfg.DBConnDSN)
+	stores.NotorietyStore, err = modstore.NewDBStore(dbPool)
 	if err != nil {
 		panic(err)
 	}
@@ -209,7 +227,7 @@ func main() {
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
 		cfg.SecretKey, cfg.MailgunKey, cfg.DiscordToken, cfg.ArgonConfig)
 	registrationService := registration.NewRegistrationService(stores.UserStore, cfg.ArgonConfig)
-	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore)
+	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore, cfg)
 	profileService := pkgprofile.NewProfileService(stores.UserStore, pkguser.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET")))
 	wordService := words.NewWordService(&cfg.MacondoConfig)
 	autocompleteService := pkguser.NewAutocompleteService(stores.UserStore)
@@ -286,12 +304,6 @@ func main() {
 		return fmt.Sprintf("%d", ct)
 	}))
 
-	srv := &http.Server{
-		Addr:         cfg.ListenAddr,
-		Handler:      router,
-		WriteTimeout: 30 * time.Second,
-		ReadTimeout:  10 * time.Second}
-
 	idleConnsClosed := make(chan struct{})
 	sig := make(chan os.Signal, 1)
 
@@ -302,7 +314,16 @@ func main() {
 	}
 	tournamentService.SetEventChannel(pubsubBus.TournamentEventChannel())
 
+	router.Handle(bus.GameEventStreamPrefix,
+		middlewares.Then(pubsubBus.EventAPIServerInstance()))
+
 	ctx, pubsubCancel := context.WithCancel(context.Background())
+
+	srv := &http.Server{
+		Addr:         cfg.ListenAddr,
+		Handler:      router,
+		WriteTimeout: 120 * time.Second,
+		ReadTimeout:  10 * time.Second}
 
 	go pubsubBus.ProcessMessages(ctx)
 

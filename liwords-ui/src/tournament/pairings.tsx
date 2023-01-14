@@ -27,12 +27,12 @@ const pairingsForRound = (
   if (!division.pairings[round]) {
     return [n, new Set<string>()];
   }
-  const unpairedPlayers = new Set(division.players.map((tp) => tp.getId()));
+  const unpairedPlayers = new Set(division.players.map((tp) => tp.id));
 
   const key = (persons: TournamentPerson[]): string => {
-    let k = persons[0] + ':' + persons[1];
-    if (persons[1] < persons[0]) {
-      k = persons[1] + ':' + persons[0];
+    let k = persons[0].id + '-' + persons[1].id;
+    if (persons[1].id < persons[0].id) {
+      k = persons[1].id + '-' + persons[0].id;
     }
     return k;
   };
@@ -43,8 +43,8 @@ const pairingsForRound = (
       if (k && !m.has(k)) {
         n.push(value);
         m.add(k);
-        unpairedPlayers.delete(value.players[0].getId());
-        unpairedPlayers.delete(value.players[1].getId());
+        unpairedPlayers.delete(value.players[0].id);
+        unpairedPlayers.delete(value.players[1].id);
         // count repeats.
         let pairingCt = 1;
         for (let i = 0; i < round; i++) {
@@ -92,14 +92,13 @@ const getPerformance = (
   if (roundOfRecord < 0) {
     roundOfRecord = 0;
   }
-  const results = division.standingsMap
-    .get(roundOfRecord)
-    ?.getStandingsList()
-    .find((s) => s.getPlayerId().endsWith(`:${playerName}`));
+  const results = division.standingsMap[roundOfRecord]?.standings.find((s) =>
+    s.playerId.endsWith(`:${playerName}`)
+  );
 
-  const wins = results?.getWins() || 0;
-  const losses = results?.getLosses() || 0;
-  const draws = results?.getDraws() || 0;
+  const wins = results?.wins || 0;
+  const losses = results?.losses || 0;
+  const draws = results?.draws || 0;
 
   const totalGames = wins + losses + draws;
   let weightedPts = 0;
@@ -112,15 +111,13 @@ const getPerformance = (
     wins,
     losses,
     draws,
-    spread: results?.getSpread() || 0,
+    spread: results?.spread || 0,
     sortKey: weightedPts,
   };
 };
 
 const getScores = (playerName: string, pairing: SinglePairing) => {
-  const playerIndex = pairing.players[0].getId().endsWith(`:${playerName}`)
-    ? 0
-    : 1;
+  const playerIndex = pairing.players[0].id.endsWith(`:${playerName}`) ? 0 : 1;
   const results = pairing.outcomes;
   if (
     pairing.games.length &&
@@ -196,7 +193,7 @@ export const Pairings = React.memo((props: Props) => {
     };
     const pairingsData = pairings.map(
       (pairing: SinglePairing): PairingTableData => {
-        const playerFullIDs = pairing.players.map((v) => v.getId());
+        const playerFullIDs = pairing.players.map((v) => v.id);
         const playerNames = playerFullIDs.map(usernameFromPlayerEntry);
         const isBye = pairing.outcomes[0] === TournamentGameResult.BYE;
         const isForfeit =
@@ -218,16 +215,13 @@ export const Pairings = React.memo((props: Props) => {
           sortPriority = 2;
         }
         const isRemoved = (playerID: string) =>
-          division.players[division.playerIndexMap[playerID]]?.getSuspended();
+          division.players[division.playerIndexMap[playerID]]?.suspended;
 
         const isGibsonized = (playerID: string) => {
           return (
-            division.standingsMap
-              ?.get(round)
-              ?.getStandingsList()
-              ?.find(
-                (p) => p.getPlayerId() === playerID && p.getGibsonized()
-              ) !== undefined
+            division.standingsMap[round]?.standings?.find(
+              (p) => p.playerId === playerID && p.gibsonized
+            ) !== undefined
           );
         };
 

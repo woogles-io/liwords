@@ -21,7 +21,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/stores/user"
+
 	pkguser "github.com/domino14/liwords/pkg/user"
 	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
@@ -52,10 +52,10 @@ type game struct {
 
 	Type      pb.GameType
 	Player0ID uint `gorm:"foreignKey;index"`
-	Player0   user.User
+	// Player0   user.User
 
 	Player1ID uint `gorm:"foreignKey;index"`
-	Player1   user.User
+	// Player1   user.User
 
 	ReadyFlag uint // When both players are ready, this game starts.
 
@@ -123,6 +123,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Debug().Interface("timers", g.Timers).Msg("TIMERS")
 
 	var sdata entity.Stats
 	err = json.Unmarshal(g.Stats, &sdata)
@@ -698,6 +699,5 @@ func (s *DBStore) GetHistory(ctx context.Context, id string) (*macondopb.GameHis
 	if err != nil {
 		return nil, err
 	}
-
 	return hist, nil
 }

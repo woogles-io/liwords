@@ -1,4 +1,4 @@
-@import '../base';
+@use '../base.scss' as *;
 
 .ant-card.competitor-status {
   height: 64px;

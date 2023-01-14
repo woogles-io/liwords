@@ -9,6 +9,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	pkgmod "github.com/domino14/liwords/pkg/mod"
+	"github.com/domino14/liwords/pkg/stores/common"
 	"github.com/domino14/liwords/pkg/stores/mod"
 	"github.com/domino14/liwords/pkg/stores/user"
 )
@@ -20,11 +21,16 @@ func main() {
 
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
-	userStore, err := user.NewDBStore(cfg.DBConnDSN)
+	pool, err := common.OpenDB(cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBUser, cfg.DBPassword, cfg.DBSSLMode)
 	if err != nil {
 		panic(err)
 	}
-	notorietyStore, err := mod.NewNotorietyStore(cfg.DBConnDSN)
+
+	userStore, err := user.NewDBStore(pool)
+	if err != nil {
+		panic(err)
+	}
+	notorietyStore, err := mod.NewDBStore(pool)
 	if err != nil {
 		panic(err)
 	}

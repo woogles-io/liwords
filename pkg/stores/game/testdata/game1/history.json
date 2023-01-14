@@ -1,0 +1,12 @@
+{
+  "players": [
+    { "nickname": "mina", "user_id": "iW7AaqNJDuaxgcYnrFfcJF" },
+    { "nickname": "cesar", "user_id": "mozEwaVMvTfUA2oxZfYN8k" }
+  ],
+  "lexicon": "CSW19",
+  "id_auth": "org.aerolith",
+  "uid": "wJxURccCgSAPivUvj4QdYL",
+  "description": "Created with Macondo",
+  "last_known_racks": ["AEEGOUU", "AEIJVVW"],
+  "challenge_rule": 3
+}

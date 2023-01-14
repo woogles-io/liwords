@@ -1,4 +1,4 @@
-import { BotRequest } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { BotRequest_BotCode } from '../gen/api/proto/macondo/macondo_pb';
 
 export enum BotTypesEnum {
   MASTER,
@@ -19,7 +19,7 @@ export const BotTypesEnumProperties = {
     shortDescription: '460 point average',
     description: (lexicon: string) =>
       'The Bot, the myth, the legend. HastyBot always finds the best play.',
-    botCode: (lexicon: string) => BotRequest.BotCode.HASTY_BOT,
+    botCode: (lexicon: string) => BotRequest_BotCode.HASTY_BOT,
   },
   [BotTypesEnum.EXPERT]: {
     userVisible: 'Expert',
@@ -29,7 +29,7 @@ export const BotTypesEnumProperties = {
       isEnglish(lexicon)
         ? 'Ready for the weird words? Not quite an expert, STEEBot knows all the words but will make some mistakes.'
         : 'Not quite an expert, STEEBot knows all the words but will make mistakes.',
-    botCode: (lexicon: string) => BotRequest.BotCode.LEVEL4_PROBABILISTIC,
+    botCode: (lexicon: string) => BotRequest_BotCode.LEVEL4_PROBABILISTIC,
   },
   [BotTypesEnum.INTERMEDIATE]: {
     userVisible: 'Intermediate',
@@ -41,8 +41,8 @@ export const BotTypesEnumProperties = {
         : 'BetterBot. A bit better than BasicBot.',
     botCode: (lexicon: string) =>
       isEnglish(lexicon)
-        ? BotRequest.BotCode.LEVEL4_CEL_BOT
-        : BotRequest.BotCode.LEVEL3_PROBABILISTIC,
+        ? BotRequest_BotCode.LEVEL4_CEL_BOT
+        : BotRequest_BotCode.LEVEL3_PROBABILISTIC,
   },
   [BotTypesEnum.EASY]: {
     userVisible: 'Basic',
@@ -54,8 +54,8 @@ export const BotTypesEnumProperties = {
         : 'Beating BeginnerBot? Basicbot is your next frenemy, scoring more.',
     botCode: (lexicon: string) =>
       isEnglish(lexicon)
-        ? BotRequest.BotCode.LEVEL2_CEL_BOT
-        : BotRequest.BotCode.LEVEL2_PROBABILISTIC,
+        ? BotRequest_BotCode.LEVEL2_CEL_BOT
+        : BotRequest_BotCode.LEVEL2_PROBABILISTIC,
   },
   [BotTypesEnum.BEGINNER]: {
     userVisible: 'Beginner',
@@ -67,7 +67,7 @@ export const BotTypesEnumProperties = {
         : 'New to OMGWords? BeginnerBot sticks to lower-scoring plays.',
     botCode: (lexicon: string) =>
       isEnglish(lexicon)
-        ? BotRequest.BotCode.LEVEL1_CEL_BOT
-        : BotRequest.BotCode.LEVEL1_PROBABILISTIC,
+        ? BotRequest_BotCode.LEVEL1_CEL_BOT
+        : BotRequest_BotCode.LEVEL1_PROBABILISTIC,
   },
 };

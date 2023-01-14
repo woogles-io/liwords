@@ -1,0 +1,157 @@
+{
+    "players": [
+        {
+            "nickname": "cesar",
+            "real_name": "",
+            "user_id": "2gJGaYnchL6LbQVTNQ6mjT"
+        },
+        {
+            "nickname": "botty",
+            "real_name": "",
+            "user_id": "FDHvxexaC5QNMfiJnpcnUZ"
+        }
+    ],
+    "events": [
+        {
+            "note": "",
+            "rack": "AQYJDA8TEw==",
+            "type": "TILE_PLACEMENT_MOVE",
+            "cumulative": 26,
+            "row": 7,
+            "column": 3,
+            "direction": "HORIZONTAL",
+            "position": "8D",
+            "played_tiles": "Bg8TEwkM",
+            "exchanged": "",
+            "score": 26,
+            "bonus": 0,
+            "end_rack_points": 0,
+            "lost_score": 0,
+            "is_bingo": false,
+            "words_formed": [
+                "Bg8TEwkM"
+            ],
+            "millis_remaining": 896991,
+            "player_index": 0,
+            "leave": "AQ=="
+        },
+        {
+            "note": "",
+            "rack": "AQUGCQwSFA==",
+            "type": "TILE_PLACEMENT_MOVE",
+            "cumulative": 72,
+            "row": 5,
+            "column": 4,
+            "direction": "VERTICAL",
+            "position": "E6",
+            "played_tiles": "BgwAARQJBRI=",
+            "exchanged": "",
+            "score": 72,
+            "bonus": 0,
+            "end_rack_points": 0,
+            "lost_score": 0,
+            "is_bingo": true,
+            "words_formed": [
+                "BgwPARQJBRI="
+            ],
+            "millis_remaining": 899965,
+            "player_index": 1,
+            "leave": ""
+        },
+        {
+            "note": "",
+            "rack": "AQUJDhAVGQ==",
+            "type": "TILE_PLACEMENT_MOVE",
+            "cumulative": 62,
+            "row": 11,
+            "column": 3,
+            "direction": "VERTICAL",
+            "position": "D12",
+            "played_tiles": "GQEVEA==",
+            "exchanged": "",
+            "score": 36,
+            "bonus": 0,
+            "end_rack_points": 0,
+            "lost_score": 0,
+            "is_bingo": false,
+            "words_formed": [
+                "GQEVEA==",
+                "GQU=",
+                "ARI="
+            ],
+            "millis_remaining": 893992,
+            "player_index": 0,
+            "leave": "BQkO"
+        },
+        {
+            "note": "",
+            "rack": "AAUJDw8WFg==",
+            "type": "TILE_PLACEMENT_MOVE",
+            "cumulative": 137,
+            "row": 0,
+            "column": 6,
+            "direction": "VERTICAL",
+            "position": "G1",
+            "played_tiles": "Fg8JFg/8BQA=",
+            "exchanged": "",
+            "score": 65,
+            "bonus": 0,
+            "end_rack_points": 0,
+            "lost_score": 0,
+            "is_bingo": true,
+            "words_formed": [
+                "Fg8JFg8EBRM="
+            ],
+            "millis_remaining": 899914,
+            "player_index": 1,
+            "leave": ""
+        }
+    ],
+    "version": 1,
+    "lexicon": "CSW21",
+    "uid": "9aK3YgVk",
+    "description": "",
+    "racks": [
+        "BQUJCw4UFw==",
+        "BAUICQ8SEw=="
+    ],
+    "challenge_rule": "ChallengeRule_SINGLE",
+    "play_state": "PLAYING",
+    "current_scores": [
+        62,
+        137
+    ],
+    "variant": "classic",
+    "board_layout": "CrosswordGame",
+    "letter_distribution": "english",
+    "type": "NATIVE",
+    "timers_started": true,
+    "end_reason": "NONE",
+    "meta_event_data": {
+        "events": []
+    },
+    "created_at": "2022-11-12T03:24:16.389775Z",
+    "board": {
+        "num_rows": 15,
+        "num_cols": 15,
+        "tiles": "AAAAAAAAFgAAAAAAAAAAAAAAAAAADwAAAAAAAAAAAAAAAAAACQAAAAAAAAAAAAAAAAAAFgAAAAAAAAAAAAAAAAAADwAAAAAAAAAAAAAAAAYA/AAAAAAAAAAAAAAAAAwABQAAAAAAAAAAAAAABg8TEwkMAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAkAAAAAAAAAAAAAAAAAGQUAAAAAAAAAAAAAAAAAARIAAAAAAAAAAAAAAAAAFQAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAA",
+        "is_empty": false
+    },
+    "bag": {
+        "tiles": "AwQNDhIBABEBBAkJBRQHFBgUDBUFDRQJDw8XAg4FBRkIEgoBARUBBRUHDhoJDhIFBwwEDxIFEw8QAwIOAQE="
+    },
+    "scoreless_turns": 0,
+    "player_on_turn": 0,
+    "timers": {
+        "time_of_last_update": "1668223467851",
+        "time_started": "1668223456573",
+        "time_remaining": [
+            "888808",
+            "899914"
+        ],
+        "max_overtime": 1,
+        "increment_seconds": 0,
+        "reset_to_increment_after_turn": false
+    },
+    "game_mode": "REAL_TIME"
+}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { cleanup, render } from '@testing-library/react';
 import { Chat, Props } from './chat';
-import axios from '../__mocks__/axios';
+import socializeClient from '../__mocks__/socialize_client';
 
 window.RUNTIME_CONFIGURATION = {};
 
@@ -19,12 +19,13 @@ function renderChat(props: Partial<Props> = {}) {
 }
 
 afterEach(() => {
-  axios.post.mockClear();
+  socializeClient.getActiveChatChannels.mockClear();
+  socializeClient.getChatsForChannel.mockClear();
   cleanup();
 });
 
 it('renders the default description', async () => {
-  axios.post.mockResolvedValueOnce({
+  socializeClient.getChatsForChannel.mockResolvedValueOnce({
     data: {
       messages: [],
     },
@@ -38,7 +39,7 @@ it('renders the default description', async () => {
 });
 
 it('renders an appropriate in game description', async () => {
-  axios.post.mockResolvedValueOnce({
+  socializeClient.getChatsForChannel.mockResolvedValueOnce({
     data: {
       messages: [],
     },
@@ -52,7 +53,7 @@ it('renders an appropriate in game description', async () => {
 });
 
 it('renders an appropriate gameTV description', async () => {
-  axios.post.mockResolvedValueOnce({
+  socializeClient.getChatsForChannel.mockResolvedValueOnce({
     data: {
       messages: [],
     },

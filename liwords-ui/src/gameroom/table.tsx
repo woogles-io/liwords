@@ -1,16 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Card, message, Popconfirm } from 'antd';
-import { HomeOutlined } from '@ant-design/icons/lib';
-import axios from 'axios';
+import { HomeOutlined } from '@ant-design/icons';
 
 import { Link, useSearchParams, useParams } from 'react-router-dom';
-import { useFirefoxPatch } from '../utils/hooks';
+import { useFirefoxPatch } from '../utils/hooks/firefox';
+import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
 import { useMountedState } from '../utils/mounted';
 import { BoardPanel } from './board_panel';
 import { TopBar } from '../navigation/topbar';
 import { Chat } from '../chat/chat';
 import {
-  ChatEntityType,
   useChatStoreContext,
   useExaminableGameContextStoreContext,
   useExamineStoreContext,
@@ -27,39 +26,35 @@ import Pool from './pool';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
-import {
-  defaultGameInfo,
-  DefineWordsResponse,
-  GameInfo,
-  GameMetadata,
-  StreakInfoResponse,
-} from './game_info';
+import { defaultGameInfo, GameInfo } from './game_info';
 import { BoopSounds } from '../sound/boop';
-import { toAPIUrl } from '../api/api';
 import { StreakWidget } from './streak_widget';
-import {
-  GameEvent,
-  PlayState,
-} from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { ChallengeRule, PlayState } from '../gen/api/proto/macondo/macondo_pb';
 import { endGameMessageFromGameInfo } from '../store/end_of_game';
 import { Notepad, NotepadContextProvider } from './notepad';
 import { Analyzer, AnalyzerContextProvider } from './analyzer';
 import { isClubType, isPairedMode, sortTiles } from '../store/constants';
 import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
 import { CompetitorStatus } from '../tournament/competitor_status';
-import { Unrace } from '../utils/unrace';
 import { MetaEventControl } from './meta_event_control';
-import { Blank } from '../utils/cwgame/common';
 import { useTourneyMetadata } from '../tournament/utils';
 import { Disclaimer } from './disclaimer';
 import { alphabetFromName } from '../constants/alphabets';
-import { ReadyForGame, TimedOut } from '../gen/api/proto/ipc/omgwords_pb';
+import {
+  GameEndReason,
+  GameInfoResponse,
+  ReadyForGame,
+  TimedOut,
+} from '../gen/api/proto/ipc/omgwords_pb';
 import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
 import {
   DeclineSeekRequest,
   SeekRequest,
   SoughtGameProcessEvent,
 } from '../gen/api/proto/ipc/omgseeks_pb';
+import { StreakInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
+import { useClient } from '../utils/hooks/connect';
+import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connectweb';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -203,15 +198,23 @@ export const Table = React.memo((props: Props) => {
   const isRegistered = competitorState.isRegistered;
   const [playerNames, setPlayerNames] = useState(new Array<string>());
   const { sendSocketMsg } = props;
-  const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
-  const [streakGameInfo, setStreakGameInfo] = useState<StreakInfoResponse>({
-    streak: [],
-    playersInfo: [],
-  });
+  const [gameInfo, setGameInfo] = useState<GameInfoResponse>(defaultGameInfo);
+  const [streakGameInfo, setStreakGameInfo] = useState<StreakInfoResponse>(
+    new StreakInfoResponse({
+      streak: [],
+      playersInfo: [],
+    })
+  );
   const [isObserver, setIsObserver] = useState(false);
-
+  const tournamentNonDirectorObserver = useMemo(() => {
+    return (
+      isObserver &&
+      !tournamentContext.directors?.includes(username) &&
+      !loginState.perms.includes('adm')
+    );
+  }, [isObserver, loginState.perms, username, tournamentContext.directors]);
   useFirefoxPatch();
-
+  const gmClient = useClient(GameMetadataService);
   const gameDone =
     gameContext.playState === PlayState.GAME_OVER && !!gameContext.gameID;
 
@@ -237,33 +240,33 @@ export const Table = React.memo((props: Props) => {
 
   useEffect(() => {
     // Request game API to get info about the game at the beginning.
-    console.log('gonna fetch metadata, game id is', gameID);
-    axios
-      .post<GameMetadata>(
-        toAPIUrl('game_service.GameMetadataService', 'GetMetadata'),
-        {
-          gameId: gameID,
-        }
-      )
-      .then((resp) => {
-        setGameInfo(resp.data);
+
+    const fetchGameMetadata = async () => {
+      console.log('gonna fetch metadata, game id is', gameID);
+
+      try {
+        const resp = await gmClient.getMetadata({ gameId: gameID });
+        setGameInfo(resp);
         if (localStorage?.getItem('poolFormat')) {
           setPoolFormat(
             parseInt(localStorage.getItem('poolFormat') || '0', 10)
           );
         }
-        if (resp.data.game_end_reason !== 'NONE') {
+
+        if (resp.gameEndReason !== GameEndReason.NONE) {
           // Basically if we are here, we've reloaded the page after the game
           // ended. We want to synthesize a new GameEnd message
-          setGameEndMessage(endGameMessageFromGameInfo(resp.data));
+          setGameEndMessage(endGameMessageFromGameInfo(resp));
         }
-      })
-      .catch((err) => {
+      } catch (e) {
         message.error({
-          content: `Failed to fetch game information; please refresh. (Error: ${err.message})`,
+          content: `Failed to fetch game information; please refresh. (Error: ${e})`,
           duration: 10,
         });
-      });
+      }
+    };
+
+    fetchGameMetadata();
 
     return () => {
       setGameInfo(defaultGameInfo);
@@ -275,7 +278,7 @@ export const Table = React.memo((props: Props) => {
 
   useTourneyMetadata(
     '',
-    gameInfo.tournament_id,
+    gameInfo.tournamentId,
     dispatchTournamentContext,
     loginState,
     undefined
@@ -288,7 +291,7 @@ export const Table = React.memo((props: Props) => {
     // as soon as the game ends (so the streak updates without having to go
     // to a new game).
 
-    if (!gameInfo.game_request.original_request_id) {
+    if (!gameInfo.gameRequest?.originalRequestId) {
       return;
     }
     if (gameDone && !gameEndMessage) {
@@ -296,24 +299,25 @@ export const Table = React.memo((props: Props) => {
       // when we are going to play a game (or observe), or when the game just ended.
       return;
     }
-    setTimeout(() => {
-      axios
-        .post<StreakInfoResponse>(
-          toAPIUrl('game_service.GameMetadataService', 'GetRematchStreak'),
-          {
-            original_request_id: gameInfo.game_request.original_request_id,
-          }
-        )
-        .then((streakresp) => {
-          setStreakGameInfo(streakresp.data);
-        });
+    setTimeout(async () => {
+      const resp = await gmClient.getRematchStreak({
+        originalRequestId: gameInfo.gameRequest?.originalRequestId,
+      });
+
+      setStreakGameInfo(resp);
+
       // Put this on a delay. Otherwise the game might not be saved to the
       // db as having finished before the gameEndMessage comes in.
     }, StreakFetchDelay);
 
     // Call this when a gameEndMessage comes in, so the streak updates
     // at the end of the game.
-  }, [gameInfo.game_request.original_request_id, gameEndMessage, gameDone]);
+  }, [
+    gameInfo.gameRequest?.originalRequestId,
+    gameEndMessage,
+    gameDone,
+    gmClient,
+  ]);
 
   useEffect(() => {
     if (pTimedOut === undefined) return;
@@ -325,17 +329,15 @@ export const Table = React.memo((props: Props) => {
     let timedout = '';
 
     gameInfo.players.forEach((p) => {
-      if (gameContext.uidToPlayerOrder[p.user_id] === pTimedOut) {
-        timedout = p.user_id;
+      if (gameContext.uidToPlayerOrder[p.userId] === pTimedOut) {
+        timedout = p.userId;
       }
     });
 
     const to = new TimedOut();
-    to.setGameId(gameID);
-    to.setUserId(timedout);
-    sendSocketMsg(
-      encodeToSocketFmt(MessageType.TIMED_OUT, to.serializeBinary())
-    );
+    to.gameId = gameID;
+    to.userId = timedout;
+    sendSocketMsg(encodeToSocketFmt(MessageType.TIMED_OUT, to.toBinary()));
     setPTimedOut(undefined);
     // React Hook useEffect has missing dependencies: 'gameContext.uidToPlayerOrder', 'gameInfo.players', 'isObserver', 'sendSocketMsg', and 'setPTimedOut'.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -345,467 +347,69 @@ export const Table = React.memo((props: Props) => {
     if (!gameID) return;
     let observer = true;
     gameInfo.players.forEach((p) => {
-      if (userID === p.user_id) {
+      if (userID === p.userId) {
         observer = false;
       }
     });
     setIsObserver(observer);
     setPlayerNames(gameInfo.players.map((p) => p.nickname));
     // If we are not the observer, tell the server we're ready for the game to start.
-    if (gameInfo.game_end_reason === 'NONE' && !observer) {
+    if (gameInfo.gameEndReason === GameEndReason.NONE && !observer) {
       const evt = new ReadyForGame();
-      evt.setGameId(gameID);
+      evt.gameId = gameID;
       sendSocketMsg(
-        encodeToSocketFmt(MessageType.READY_FOR_GAME, evt.serializeBinary())
+        encodeToSocketFmt(MessageType.READY_FOR_GAME, evt.toBinary())
       );
     }
     // React Hook useEffect has missing dependencies: 'gameID' and 'sendSocketMsg'.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userID, gameInfo]);
 
-  // undefined = not known
-  const [wordInfo, setWordInfo] = useState<{
-    [key: string]: undefined | { v: boolean; d: string };
-  }>({});
-  const wordInfoRef = useRef(wordInfo);
-  wordInfoRef.current = wordInfo;
-  const [unrace, setUnrace] = useState(new Unrace());
-  // undefined = not ready to report
-  // null = game may have ended, check if ready to report
-  const [phonies, setPhonies] = useState<undefined | null | Array<string>>(
-    undefined
-  );
-
-  const [showDefinitionHover, setShowDefinitionHover] = useState<
-    { x: number; y: number; words: Array<string> } | undefined
-  >(undefined);
-  const [willHideDefinitionHover, setWillHideDefinitionHover] = useState(false);
-
-  const anagrams = gameInfo.game_request.rules.variant_name === 'wordsmog';
-  const [definedAnagram, setDefinedAnagram] = useState(0);
-  const definedAnagramRef = useRef(definedAnagram);
-  definedAnagramRef.current = definedAnagram;
-
-  const definitionPopover = useMemo(() => {
-    if (!showDefinitionHover) return undefined;
-    const entries = [];
-    const numAnagramsEach = [];
-    for (const word of showDefinitionHover.words) {
-      const uppercasedWord = word.toUpperCase();
-      const definition = wordInfo[uppercasedWord];
-      // if phony-checker returned {v:true,d:""}, wait for definition to load
-      if (definition && !(definition.v && !definition.d)) {
-        if (anagrams && definition.v) {
-          const shortList = []; // list of words and invalid entries
-          const anagramDefinitions = []; // defined words
-          for (const singleEntry of definition.d.split('\n')) {
-            const m = singleEntry.match(/^([^-]*) - (.*)$/m);
-            if (m) {
-              const [, actualWord, actualDefinition] = m;
-              anagramDefinitions.push({
-                word: actualWord,
-                definition: (
-                  <React.Fragment>
-                    <span className="defined-word">{actualWord}</span> -{' '}
-                    {actualDefinition}
-                  </React.Fragment>
-                ),
-              });
-              shortList.push(actualWord);
-            } else {
-              shortList.push(singleEntry);
-            }
-          }
-          const defineWhich =
-            anagramDefinitions.length > 0
-              ? definedAnagramRef.current % anagramDefinitions.length
-              : 0;
-          const anagramDefinition = anagramDefinitions[defineWhich];
-          entries.push(
-            <li key={entries.length} className="definition-entry">
-              {uppercasedWord} -{' '}
-              {shortList.map((word, idx) => (
-                <React.Fragment key={idx}>
-                  {idx > 0 && ', '}
-                  {word === anagramDefinition?.word ? (
-                    <span className="defined-word">{word}</span>
-                  ) : (
-                    word
-                  )}
-                </React.Fragment>
-              ))}
-            </li>
-          );
-          if (anagramDefinitions.length > 0) {
-            numAnagramsEach.push(anagramDefinitions.length);
-            entries.push(
-              <li key={entries.length} className="definition-entry">
-                {anagramDefinition.definition}
-              </li>
-            );
-          }
-        } else {
-          entries.push(
-            <li key={entries.length} className="definition-entry">
-              <span className="defined-word">
-                {uppercasedWord}
-                {definition.v ? '' : '*'}
-              </span>{' '}
-              -{' '}
-              {definition.v ? (
-                <span className="definition">{String(definition.d)}</span>
-              ) : (
-                <span className="invalid-word">
-                  {anagrams ? 'no valid words' : 'not a word'}
-                </span>
-              )}
-            </li>
-          );
-        }
-      }
-    }
-    if (numAnagramsEach.length > 0) {
-      const numAnagramsLCM = numAnagramsEach.reduce((a, b) => {
-        const ab = a * b;
-        while (b !== 0) {
-          const t = b;
-          b = a % b;
-          a = t;
-        }
-        return ab / a; // a = gcd, so ab/a = lcm
-      });
-      setDefinedAnagram((definedAnagramRef.current + 1) % numAnagramsLCM);
-    } else {
-      setDefinedAnagram(0);
-    }
-    if (!entries.length) return undefined;
-    return {
-      x: showDefinitionHover.x,
-      y: showDefinitionHover.y,
-      content: <ul className="definitions">{entries}</ul>,
-    };
-  }, [anagrams, showDefinitionHover, wordInfo]);
-
-  const hideDefinitionHover = useCallback(() => {
-    setShowDefinitionHover(undefined);
-  }, []);
-
-  useEffect(() => {
-    if (willHideDefinitionHover) {
-      // if the pointer is moved out of a tile, the definition is not hidden
-      // immediately. this is an intentional design decision to improve
-      // usability and responsiveness, and it enables smoother transition if
-      // the pointer is moved to a nearby tile.
-      const t = setTimeout(() => {
-        hideDefinitionHover();
-      }, 1000);
-      return () => clearTimeout(t);
-    }
-  }, [willHideDefinitionHover, hideDefinitionHover]);
-
   const enableHoverDefine = gameDone || isObserver;
-
-  const handleSetHover = useCallback(
-    (x: number, y: number, words: Array<string> | undefined) => {
-      if (enableHoverDefine && words) {
-        setWillHideDefinitionHover(false);
-        setShowDefinitionHover((oldValue) => {
-          const newValue = {
-            x,
-            y,
-            words,
-            definedAnagram,
-          };
-          // if the pointer is moved out of a tile and back in, and the words
-          // formed have not changed, reuse the object to avoid rerendering.
-          if (JSON.stringify(oldValue) === JSON.stringify(newValue)) {
-            return oldValue;
-          }
-          return newValue;
-        });
-      } else {
-        setWillHideDefinitionHover(true);
-      }
-    },
-    [enableHoverDefine, definedAnagram]
-  );
-
-  const [playedWords, setPlayedWords] = useState(new Set<string>());
-  useEffect(() => {
-    setPlayedWords((oldPlayedWords) => {
-      const playedWords = new Set(oldPlayedWords);
-      for (const turn of gameContext.turns) {
-        for (const word of turn.getWordsFormedList()) {
-          playedWords.add(word);
-        }
-      }
-      return playedWords.size === oldPlayedWords.size
-        ? oldPlayedWords
-        : playedWords;
+  const { handleSetHover, hideDefinitionHover, definitionPopover } =
+    useDefinitionAndPhonyChecker({
+      addChat,
+      enableHoverDefine,
+      gameContext,
+      gameDone,
+      gameID,
+      lexicon: gameInfo.gameRequest?.lexicon ?? '',
+      variant: gameInfo.gameRequest?.rules?.variantName,
     });
-  }, [gameContext]);
-
-  useEffect(() => {
-    // forget everything if it goes to a new game
-    setWordInfo({});
-    setPlayedWords(new Set());
-    setUnrace(new Unrace());
-    setPhonies(undefined);
-    setShowDefinitionHover(undefined);
-  }, [gameID, gameInfo.game_request.lexicon]);
-
-  useEffect(() => {
-    if (gameDone || showDefinitionHover) {
-      // when definition is requested, get definitions for all words (up to
-      // that point) that have not yet been defined. this is an intentional
-      // design decision to improve usability and responsiveness.
-      setWordInfo((oldWordInfo) => {
-        let wordInfo = oldWordInfo;
-        playedWords.forEach((word) => {
-          if (!(word in wordInfo)) {
-            if (wordInfo === oldWordInfo) wordInfo = { ...oldWordInfo };
-            wordInfo[word] = undefined;
-          }
-        });
-        if (showDefinitionHover) {
-          // also define tentative words (mostly from examiner) if no undesignated blanks.
-          for (const word of showDefinitionHover.words) {
-            if (!word.includes(Blank)) {
-              const uppercasedWord = word.toUpperCase();
-              if (!(uppercasedWord in wordInfo)) {
-                if (wordInfo === oldWordInfo) wordInfo = { ...oldWordInfo };
-                wordInfo[uppercasedWord] = undefined;
-              }
-            }
-          }
-        }
-        setPhonies((oldValue) => oldValue ?? null);
-        return wordInfo;
-      });
-    }
-  }, [playedWords, gameDone, showDefinitionHover]);
-
-  useEffect(() => {
-    const cancelTokenSource = axios.CancelToken.source();
-    unrace.run(async () => {
-      const wordInfo = wordInfoRef.current; // take the latest version after unrace
-      const wordsToDefine: Array<string> = [];
-      for (const word in wordInfo) {
-        const definition = wordInfo[word];
-        if (
-          definition === undefined ||
-          (showDefinitionHover && definition.v && !definition.d)
-        ) {
-          wordsToDefine.push(word);
-        }
-      }
-      if (!wordsToDefine.length) return;
-      wordsToDefine.sort(); // mitigate OCD
-      const lexicon = gameInfo.game_request.lexicon;
-      try {
-        const defineResp = await axios.post<DefineWordsResponse>(
-          toAPIUrl('word_service.WordService', 'DefineWords'),
-          {
-            lexicon,
-            words: wordsToDefine,
-            definitions: !!showDefinitionHover,
-            anagrams,
-          },
-          { cancelToken: cancelTokenSource.token }
-        );
-        if (showDefinitionHover) {
-          // for certain lexicons, try getting definitions from other sources
-          for (const otherLexicon of lexicon === 'ECWL'
-            ? ['CSW21', 'NWL20']
-            : lexicon === 'CSW19X'
-            ? ['CSW21']
-            : []) {
-            const wordsToRedefine = [];
-            for (const word of wordsToDefine) {
-              if (
-                defineResp.data.results[word]?.v &&
-                defineResp.data.results[word].d === word
-              ) {
-                wordsToRedefine.push(word);
-              }
-            }
-            if (!wordsToRedefine.length) break;
-            const otherDefineResp = await axios.post<DefineWordsResponse>(
-              toAPIUrl('word_service.WordService', 'DefineWords'),
-              {
-                lexicon: otherLexicon,
-                words: wordsToRedefine,
-                definitions: !!showDefinitionHover,
-                anagrams,
-              },
-              { cancelToken: cancelTokenSource.token }
-            );
-            for (const word of wordsToRedefine) {
-              const newDefinition = otherDefineResp.data.results[word].d;
-              if (newDefinition && newDefinition !== word) {
-                defineResp.data.results[word].d = newDefinition;
-              }
-            }
-          }
-        }
-        setWordInfo((oldWordInfo) => {
-          const wordInfo = { ...oldWordInfo };
-          for (const word of wordsToDefine) {
-            wordInfo[word] = defineResp.data.results[word];
-          }
-          return wordInfo;
-        });
-      } catch (e) {
-        if (axios.isCancel(e)) {
-          // request canceled because it is no longer relevant.
-        } else {
-          // no definitions then... sadpepe.
-          console.log('cannot check words', e);
-        }
-      }
-    });
-    return () => {
-      cancelTokenSource.cancel();
-    };
-  }, [
-    anagrams,
-    showDefinitionHover,
-    gameInfo.game_request.lexicon,
-    wordInfo,
-    unrace,
-  ]);
-
-  useEffect(() => {
-    if (phonies === null) {
-      if (gameDone) {
-        const phonies: Array<string> = [];
-        let hasWords = false; // avoid running this before the first GameHistoryRefresher event
-        for (const word of Array.from(playedWords)) {
-          hasWords = true;
-          const definition = wordInfo[word];
-          if (definition === undefined) {
-            // not ready (this should not happen though)
-            return;
-          } else if (!definition.v) {
-            phonies.push(word);
-          }
-        }
-        if (hasWords) {
-          phonies.sort();
-          setPhonies(phonies);
-          return;
-        }
-      }
-      setPhonies(undefined); // not ready to display
-    }
-  }, [gameDone, phonies, playedWords, wordInfo]);
-
-  const lastPhonyReport = useRef('');
-  useEffect(() => {
-    if (!phonies) return;
-    if (phonies.length) {
-      // since +false === 0 and +true === 1, this is [unchallenged, challenged]
-      const groupedWords = [new Set(), new Set()];
-      let returningTiles = false;
-      for (let i = gameContext.turns.length; --i >= 0; ) {
-        const turn = gameContext.turns[i];
-        if (turn.getType() === GameEvent.Type.PHONY_TILES_RETURNED) {
-          returningTiles = true;
-        } else {
-          for (const word of turn.getWordsFormedList()) {
-            groupedWords[+returningTiles].add(word);
-          }
-          returningTiles = false;
-        }
-      }
-      // note that a phony can appear in both lists
-      const unchallengedPhonies = phonies.filter((word) =>
-        groupedWords[0].has(word)
-      );
-      const challengedPhonies = phonies.filter((word) =>
-        groupedWords[1].has(word)
-      );
-      const thisPhonyReport = JSON.stringify({
-        challengedPhonies,
-        unchallengedPhonies,
-      });
-      if (lastPhonyReport.current !== thisPhonyReport) {
-        lastPhonyReport.current = thisPhonyReport;
-        if (challengedPhonies.length) {
-          addChat({
-            entityType: ChatEntityType.ErrorMsg,
-            sender: '',
-            message: `Invalid words challenged off: ${challengedPhonies
-              .map((x) => `${x}*`)
-              .join(', ')}`,
-            channel: 'server',
-          });
-        }
-        if (unchallengedPhonies.length) {
-          addChat({
-            entityType: ChatEntityType.ErrorMsg,
-            sender: '',
-            message: `Invalid words played and not challenged: ${unchallengedPhonies
-              .map((x) => `${x}*`)
-              .join(', ')}`,
-            channel: 'server',
-          });
-        }
-      }
-    } else {
-      const thisPhonyReport = 'all valid';
-      if (lastPhonyReport.current !== thisPhonyReport) {
-        lastPhonyReport.current = thisPhonyReport;
-        addChat({
-          entityType: ChatEntityType.ServerMsg,
-          sender: '',
-          message: 'All words played are valid',
-          channel: 'server',
-        });
-      }
-    }
-  }, [gameContext, phonies, addChat]);
 
   const acceptRematch = useCallback(
     (reqID: string) => {
       const evt = new SoughtGameProcessEvent();
-      evt.setRequestId(reqID);
+      evt.requestId = reqID;
       sendSocketMsg(
-        encodeToSocketFmt(
-          MessageType.SOUGHT_GAME_PROCESS_EVENT,
-          evt.serializeBinary()
-        )
+        encodeToSocketFmt(MessageType.SOUGHT_GAME_PROCESS_EVENT, evt.toBinary())
       );
     },
     [sendSocketMsg]
   );
 
   const handleAcceptRematch = useCallback(() => {
-    const gr = rematchRequest.getGameRequest();
+    const gr = rematchRequest.gameRequest;
     if (gr) {
-      acceptRematch(gr.getRequestId());
+      acceptRematch(gr.requestId);
       setRematchRequest(new SeekRequest());
     }
   }, [acceptRematch, rematchRequest, setRematchRequest]);
 
   const declineRematch = useCallback(
     (reqID: string) => {
-      const evt = new DeclineSeekRequest();
-      evt.setRequestId(reqID);
+      const evt = new DeclineSeekRequest({ requestId: reqID });
       sendSocketMsg(
-        encodeToSocketFmt(
-          MessageType.DECLINE_SEEK_REQUEST,
-          evt.serializeBinary()
-        )
+        encodeToSocketFmt(MessageType.DECLINE_SEEK_REQUEST, evt.toBinary())
       );
     },
     [sendSocketMsg]
   );
 
   const handleDeclineRematch = useCallback(() => {
-    const gr = rematchRequest.getGameRequest();
+    const gr = rematchRequest.gameRequest;
     if (gr) {
-      declineRematch(gr.getRequestId());
+      declineRematch(gr.requestId);
       setRematchRequest(new SeekRequest());
     }
   }, [declineRematch, rematchRequest, setRematchRequest]);
@@ -816,12 +420,12 @@ export const Table = React.memo((props: Props) => {
   // the player on turn.
   let rack: string;
   const us = useMemo(
-    () => gameInfo.players.find((p) => p.user_id === userID),
+    () => gameInfo.players.find((p) => p.userId === userID),
     [gameInfo.players, userID]
   );
   if (us && !(gameDone && isExamining)) {
     rack =
-      examinableGameContext.players.find((p) => p.userID === us.user_id)
+      examinableGameContext.players.find((p) => p.userID === us.userId)
         ?.currentRack ?? '';
   } else {
     rack =
@@ -881,16 +485,36 @@ export const Table = React.memo((props: Props) => {
     searchedTurn,
     setSearchParams,
   ]);
-  const boardTheme =
-    'board--' + tournamentContext.metadata.getBoardStyle() || '';
-  const tileTheme = 'tile--' + tournamentContext.metadata.getTileStyle() || '';
+  const boardTheme = 'board--' + tournamentContext.metadata.boardStyle || '';
+  const tileTheme = 'tile--' + tournamentContext.metadata.tileStyle || '';
   const alphabet = useMemo(
-    () =>
-      alphabetFromName(gameInfo.game_request.rules.letter_distribution_name),
+    () => alphabetFromName(gameInfo.gameRequest?.rules?.letterDistributionName),
     [gameInfo]
   );
   const showingFinalTurn =
     gameContext.turns.length === examinableGameContext.turns.length;
+
+  const feRackInfo = useMemo(() => {
+    // Enable rack info to be available to all widgets all the time,
+    // except in some private situations.
+    if (gameDone) {
+      // If the game is done, it's fine to always allow rack info
+      return true;
+    }
+    // If we are not a director, but are observing, and private analysis is off:
+    // if (
+    //   tournamentNonDirectorObserver &&
+    //   tournamentContext.metadata?.getPrivateAnalysis()
+    // ) {
+    //   return false;
+    // }
+    // If we are an anonymous observer, and this is a tournament, don't
+    // allow rack info.
+    if (!loggedIn && gameInfo.tournamentId) {
+      return false;
+    }
+    return true;
+  }, [gameDone, gameInfo.tournamentId, loggedIn]);
   const gameEpilog = useMemo(() => {
     // XXX: this doesn't get updated when game ends, only when refresh?
 
@@ -898,12 +522,12 @@ export const Table = React.memo((props: Props) => {
       <React.Fragment>
         {showingFinalTurn && (
           <React.Fragment>
-            {gameInfo.game_end_reason === 'FORCE_FORFEIT' && (
+            {gameInfo.gameEndReason === GameEndReason.FORCE_FORFEIT && (
               <React.Fragment>
                 Game ended in forfeit.{/* XXX: How to get winners? */}
               </React.Fragment>
             )}
-            {gameInfo.game_end_reason === 'ABORTED' && (
+            {gameInfo.gameEndReason === GameEndReason.ABORTED && (
               <React.Fragment>
                 The game was cancelled. Rating and statistics were not affected.
               </React.Fragment>
@@ -912,7 +536,7 @@ export const Table = React.memo((props: Props) => {
         )}
       </React.Fragment>
     );
-  }, [gameInfo.game_end_reason, showingFinalTurn]);
+  }, [gameInfo.gameEndReason, showingFinalTurn]);
 
   if (!gameID) {
     return (
@@ -924,22 +548,22 @@ export const Table = React.memo((props: Props) => {
   let ret = (
     <div className={`game-container${isRegistered ? ' competitor' : ''}`}>
       <ManageWindowTitleAndTurnSound />
-      <TopBar tournamentID={gameInfo.tournament_id} />
+      <TopBar tournamentID={gameInfo.tournamentId} />
       <div className={`game-table ${boardTheme} ${tileTheme}`}>
         <div
           className={`chat-area ${
-            !isExamining && tournamentContext.metadata.getDisclaimer()
+            !isExamining && tournamentContext.metadata.disclaimer
               ? 'has-disclaimer'
               : ''
           }`}
           id="left-sidebar"
         >
           <Card className="left-menu">
-            {gameInfo.tournament_id ? (
-              <Link to={tournamentContext.metadata?.getSlug()}>
+            {gameInfo.tournamentId ? (
+              <Link to={tournamentContext.metadata?.slug}>
                 <HomeOutlined />
                 Back to
-                {isClubType(tournamentContext.metadata?.getType())
+                {isClubType(tournamentContext.metadata?.type)
                   ? ' Club'
                   : ' Tournament'}
               </Link>
@@ -963,22 +587,22 @@ export const Table = React.memo((props: Props) => {
                 username,
                 isObserver
               )}
-              tournamentID={gameInfo.tournament_id}
+              tournamentID={gameInfo.tournamentId}
             />
           ) : null}
           {isExamining ? (
             <Analyzer
               includeCard
-              lexicon={gameInfo.game_request.lexicon}
-              variant={gameInfo.game_request.rules.variant_name}
+              lexicon={gameInfo.gameRequest?.lexicon ?? ''}
+              variant={gameInfo.gameRequest?.rules?.variantName}
             />
           ) : (
             <React.Fragment key="not-examining">
               <Notepad includeCard />
-              {tournamentContext.metadata.getDisclaimer() && (
+              {tournamentContext.metadata.disclaimer && (
                 <Disclaimer
-                  disclaimer={tournamentContext.metadata.getDisclaimer()}
-                  logoUrl={tournamentContext.metadata.getLogo()}
+                  disclaimer={tournamentContext.metadata.disclaimer}
+                  logoUrl={tournamentContext.metadata.logo}
                 />
               )}
             </React.Fragment>
@@ -988,7 +612,7 @@ export const Table = React.memo((props: Props) => {
               sendReady={() =>
                 readyForTournamentGame(
                   sendSocketMsg,
-                  tournamentContext.metadata?.getId(),
+                  tournamentContext.metadata?.id,
                   competitorState
                 )
               }
@@ -1016,33 +640,31 @@ export const Table = React.memo((props: Props) => {
               props.sendSocketMsg(
                 encodeToSocketFmt(
                   MessageType.CLIENT_GAMEPLAY_EVENT,
-                  evt.serializeBinary()
+                  evt.toBinary()
                 )
               )
             }
             gameDone={gameDone}
             playerMeta={gameInfo.players}
-            tournamentID={gameInfo.tournament_id}
-            vsBot={gameInfo.game_request.player_vs_bot}
-            tournamentSlug={tournamentContext.metadata?.getSlug()}
+            tournamentID={gameInfo.tournamentId}
+            vsBot={gameInfo.gameRequest?.playerVsBot ?? false}
+            tournamentSlug={tournamentContext.metadata?.slug}
             tournamentPairedMode={isPairedMode(
-              tournamentContext.metadata?.getType()
+              tournamentContext.metadata?.type
             )}
-            tournamentNonDirectorObserver={
-              isObserver &&
-              !tournamentContext.directors?.includes(username) &&
-              !loginState.perms.includes('adm')
-            }
+            tournamentNonDirectorObserver={tournamentNonDirectorObserver}
             // why does my linter keep overwriting this?
             // eslint-disable-next-line max-len
-            tournamentPrivateAnalysis={tournamentContext.metadata?.getPrivateAnalysis()}
-            lexicon={gameInfo.game_request.lexicon}
+            tournamentPrivateAnalysis={
+              tournamentContext.metadata?.privateAnalysis
+            }
+            lexicon={gameInfo.gameRequest?.lexicon ?? ''}
             alphabet={alphabet}
-            challengeRule={gameInfo.game_request.challenge_rule}
+            challengeRule={
+              gameInfo.gameRequest?.challengeRule ?? ChallengeRule.VOID
+            }
             handleAcceptRematch={
-              rematchRequest.getRematchFor() === gameID
-                ? handleAcceptRematch
-                : null
+              rematchRequest.rematchFor === gameID ? handleAcceptRematch : null
             }
             handleAcceptAbort={() => {}}
             handleSetHover={handleSetHover}
@@ -1064,7 +686,7 @@ export const Table = React.memo((props: Props) => {
               sendReady={() =>
                 readyForTournamentGame(
                   sendSocketMsg,
-                  tournamentContext.metadata?.getId(),
+                  tournamentContext.metadata?.id,
                   competitorState
                 )
               }
@@ -1074,9 +696,9 @@ export const Table = React.memo((props: Props) => {
           <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
           <GameInfo
             meta={gameInfo}
-            tournamentName={tournamentContext.metadata?.getName()}
-            colorOverride={tournamentContext.metadata?.getColor()}
-            logoUrl={tournamentContext.metadata?.getLogo()}
+            tournamentName={tournamentContext.metadata?.name}
+            colorOverride={tournamentContext.metadata?.color}
+            logoUrl={tournamentContext.metadata?.logo}
           />
           <Pool
             pool={examinableGameContext?.pool}
@@ -1086,10 +708,8 @@ export const Table = React.memo((props: Props) => {
             alphabet={alphabet}
           />
           <Popconfirm
-            title={`${rematchRequest
-              .getUser()
-              ?.getDisplayName()} sent you a rematch request`}
-            visible={rematchRequest.getRematchFor() !== ''}
+            title={`${rematchRequest.user?.displayName} sent you a rematch request`}
+            visible={rematchRequest.rematchFor !== ''}
             onConfirm={handleAcceptRematch}
             onCancel={handleDeclineRematch}
             okText="Accept"
@@ -1099,8 +719,8 @@ export const Table = React.memo((props: Props) => {
             isExamining={isExamining}
             username={username}
             playing={us !== undefined}
-            lexicon={gameInfo.game_request.lexicon}
-            variant={gameInfo.game_request.rules.variant_name}
+            lexicon={gameInfo.gameRequest?.lexicon ?? ''}
+            variant={gameInfo.gameRequest?.rules?.variantName}
             events={examinableGameContext.turns}
             board={examinableGameContext.board}
             playerMeta={gameInfo.players}
@@ -1111,7 +731,7 @@ export const Table = React.memo((props: Props) => {
       </div>
     </div>
   );
-  ret = <NotepadContextProvider children={ret} />;
+  ret = <NotepadContextProvider children={ret} feRackInfo={feRackInfo} />;
   ret = <AnalyzerContextProvider children={ret} />;
   return ret;
 });

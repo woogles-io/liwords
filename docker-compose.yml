@@ -9,6 +9,7 @@ services:
       STRATEGY_PARAMS_PATH: /opt/program/data/strategy
       LEXICON_PATH: /opt/program/data/lexica
       LETTER_DISTRIBUTION_PATH: /opt/program/data/letterdistributions
+      DATA_PATH: /opt/program/data
       DB_HOST: db
       DB_PORT: "5432"
       DB_USER: postgres
@@ -48,7 +49,7 @@ services:
     labels:
       - "traefik.http.middlewares.floc.headers.customresponseheaders.Permissions-Policy=interest-cohort=()"
       - "traefik.http.routers.liwords.middlewares=floc"
-      - "traefik.http.routers.liwords.rule=PathPrefix(`/twirp/`, `/gameimg/`, `/debug/`)"
+      - "traefik.http.routers.liwords.rule=PathPrefix(`/twirp/`, `/gameimg/`, `/debug/`, `/api/`)"
       - "traefik.http.routers.liwords.entrypoints=web"
       - "traefik.http.services.liwords.loadbalancer.server.port=8001"
       - traefik.enable=true
@@ -62,6 +63,7 @@ services:
       STRATEGY_PARAMS_PATH: /opt/program/data/strategy
       NATS_URL: nats://nats:4222
       DEBUG: 1
+      WOLGES_AWSM_URL: http://wolges_awsm:4500
     volumes:
       - ../macondo:/opt/program:rw
       # Use the same gaddag files we use for the WASM integration.
@@ -71,6 +73,20 @@ services:
     depends_on: [ "nats" ]
     networks:
       - aeronet
+
+  # Needed for bot to play wordsmog. Comment out if not using.
+  # Requires https://github.com/andy-k/wolges-awsm to be cloned
+  # at the level of `liwords`.
+  # wolges_awsm:
+  #   build:
+  #     context: ../wolges-awsm
+  #     dockerfile: Dockerfile
+  #   volumes:
+  #     - ./data/lexica/gaddag:/app/data
+  #   ports:
+  #     - "4500:4500"
+  #   networks:
+  #     - aeronet
 
   socket:
     &socketsetup

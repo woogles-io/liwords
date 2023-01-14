@@ -125,7 +125,7 @@ func GetActions(ctx context.Context, us user.Store, uuid string) (map[string]*ms
 	}
 
 	if updated {
-		err = us.Set(ctx, user)
+		err = us.SetActions(ctx, user.UUID, user.Actions)
 		if err != nil {
 			return nil, err
 		}
@@ -148,7 +148,7 @@ func GetActionHistory(ctx context.Context, us user.Store, uuid string) ([]*ms.Mo
 	}
 
 	if updated {
-		err = us.Set(ctx, user)
+		err = us.SetActions(ctx, user.UUID, user.Actions)
 		if err != nil {
 			return nil, err
 		}
@@ -222,7 +222,6 @@ func IsCensorable(ctx context.Context, us user.Store, uuid string) bool {
 }
 
 func censorPlayerInHistory(hist *macondopb.GameHistory, playerIndex int, bothCensorable bool) {
-	uncensoredNickname := hist.Players[playerIndex].Nickname
 	censoredUsername := utilities.CensoredUsername
 	if bothCensorable && playerIndex == 1 {
 		censoredUsername = utilities.AnotherCensoredUsername
@@ -230,11 +229,6 @@ func censorPlayerInHistory(hist *macondopb.GameHistory, playerIndex int, bothCen
 	hist.Players[playerIndex].UserId = censoredUsername
 	hist.Players[playerIndex].RealName = censoredUsername
 	hist.Players[playerIndex].Nickname = censoredUsername
-	for idx, _ := range hist.Events {
-		if hist.Events[idx].Nickname == uncensoredNickname {
-			hist.Events[idx].Nickname = censoredUsername
-		}
-	}
 }
 
 func CensorHistory(ctx context.Context, us user.Store, hist *macondopb.GameHistory) *macondopb.GameHistory {
@@ -292,7 +286,7 @@ func removeAction(ctx context.Context, us user.Store, action *ms.ModAction, remo
 		return err
 	}
 
-	return us.Set(ctx, user)
+	return us.SetActions(ctx, user.UUID, user.Actions)
 }
 
 func applyAction(ctx context.Context, us user.Store, cs user.ChatStore, action *ms.ModAction) error {
@@ -322,7 +316,7 @@ func applyAction(ctx context.Context, us user.Store, cs user.ChatStore, action *
 		}
 	}
 
-	err = us.Set(ctx, user)
+	err = us.SetActions(ctx, user.UUID, user.Actions)
 	if err != nil {
 		return err
 	}

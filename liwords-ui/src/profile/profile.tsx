@@ -1,16 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
-import { Card, Carousel, notification } from 'antd';
-import axios, { AxiosError } from 'axios';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Card, Carousel } from 'antd';
 import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../navigation/topbar';
 import { PettableAvatar, PlayerAvatar } from '../shared/player_avatar';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import { moderateUser } from '../mod/moderate';
 import { DisplayFlag } from '../shared/display_flag';
-import { GameMetadata, RecentGamesResponse } from '../gameroom/game_info';
 import { useLoginStateStoreContext } from '../store/store';
-import { toAPIUrl } from '../api/api';
 import './profile.scss';
 import { BioCard } from './bio';
 import { lexiconCodeToProfileRatingName } from '../shared/lexica';
@@ -18,6 +15,13 @@ import { VariantIcon } from '../shared/variant_icons';
 import moment from 'moment';
 import { GameCard } from './gameCard';
 import { GamesHistoryCard } from './games_history';
+import {
+  GameEndReason,
+  GameInfoResponse,
+} from '../gen/api/proto/ipc/omgwords_pb';
+import { flashError, useClient } from '../utils/hooks/connect';
+import { ProfileService } from '../gen/api/proto/user_service/user_service_connectweb';
+import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connectweb';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const screenSizes = require('../base.scss').default;
 
@@ -170,31 +174,6 @@ const AggregateStatsCard = React.memo((props: AggregateStatsProps) => {
   );
 });
 
-type ProfileResponse = {
-  birth_date: string;
-  first_name: string;
-  last_name: string;
-  country_code: string;
-  title: string;
-  about: string;
-  ratings_json: string;
-  stats_json: string;
-  user_id: string;
-  full_name: string;
-  avatar_url: string;
-  avatars_editable: boolean;
-};
-
-const errorCatcher = (e: AxiosError) => {
-  if (e.response) {
-    notification.warning({
-      message: 'Fetch Error',
-      description: e.response.data.msg,
-      duration: 4,
-    });
-  }
-};
-
 const variantToName = (variant: string) => {
   const arr = variant.split('.');
   let lex = arr[0];
@@ -219,7 +198,13 @@ export const PlayerProfile = React.memo(() => {
   const { useState } = useMountedState();
 
   const gamesPageSize = 24;
+  const { loginState } = useLoginStateStoreContext();
   const { username } = useParams();
+  const navigate = useNavigate();
+  const viewer = loginState.loggedIn ? loginState.username : undefined;
+  if (viewer && !username) {
+    navigate(`/profile/${viewer}`, { replace: true });
+  }
   const location = useLocation();
   // Show username's profile
   const [ratings, setRatings] = useState<ProfileRatings | null>(null);
@@ -227,7 +212,7 @@ export const PlayerProfile = React.memo(() => {
   const [userID, setUserID] = useState('');
   const [userFetched, setUserFetched] = useState(false);
   const [fullName, setFullName] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState('');
+  // const [avatarUrl, setAvatarUrl] = useState('');
   const [avatarsEditable, setAvatarsEditable] = useState(false);
   const [bio, setBio] = useState('');
   const [showGameTable, setShowGameTable] = useState(false);
@@ -236,63 +221,67 @@ export const PlayerProfile = React.memo(() => {
   const [recentGames, setRecentGames] = useState<{
     numGames: number;
     offset: number;
-    array: Array<GameMetadata>;
+    array: Array<GameInfoResponse>;
   }>({ numGames: gamesPageSize, offset: 0, array: [] });
-  const { loginState } = useLoginStateStoreContext();
-  const { username: viewer } = loginState;
   const [recentGamesOffset, setRecentGamesOffset] = useState(0);
   const [missingBirthdate, setMissingBirthdate] = useState(true); // always true except for self
+  const profileClient = useClient(ProfileService);
+  const gameMetadataClient = useClient(GameMetadataService);
 
   useEffect(() => {
-    axios
-      .post<ProfileResponse>(
-        toAPIUrl('user_service.ProfileService', 'GetProfile'),
-        {
-          username,
-        }
-      )
-      .then((resp) => {
+    if (!username) {
+      return;
+    }
+
+    const getProfile = async () => {
+      try {
+        const resp = await profileClient.getProfile({ username });
         setUserFetched(true);
-        setMissingBirthdate(!resp.data.birth_date);
-        setRatings(JSON.parse(resp.data.ratings_json).Data);
-        setStats(JSON.parse(resp.data.stats_json).Data);
-        setUserID(resp.data.user_id);
-        setCountryCode(resp.data.country_code);
-        setFullName(resp.data.full_name);
-        setAvatarUrl(resp.data.avatar_url);
-        setAvatarsEditable(resp.data.avatars_editable);
-        setBio(resp.data.about);
+        setMissingBirthdate(!resp.birthDate);
+        setRatings(JSON.parse(resp.ratingsJson).Data);
+        setStats(JSON.parse(resp.statsJson).Data);
+        setUserID(resp.userId);
+        setCountryCode(resp.countryCode);
+        setFullName(resp.fullName);
+        // setAvatarUrl(resp.avatarUrl);
+        setAvatarsEditable(resp.avatarsEditable);
+        setBio(resp.about);
         setBioLoaded(true);
-      })
-      .catch((e: AxiosError) => {
+      } catch (e) {
         setUserFetched(true);
-        errorCatcher(e);
-      });
-  }, [username, location.pathname]);
+        flashError(e);
+      }
+    };
+
+    getProfile();
+  }, [username, location.pathname, profileClient]);
 
   const [queriedRecentGamesOffset, setQueriedRecentGamesOffset] =
     useState(recentGamesOffset);
   const reentrancyCheck = useRef<Record<string, never>>();
 
   useEffect(() => {
+    if (!username) {
+      return;
+    }
     const hiddenObject = {}; // allocate a new thing every time
     reentrancyCheck.current = hiddenObject;
     (async () => {
       try {
         let queriedOffset = queriedRecentGamesOffset;
-        const resp = await axios.post<RecentGamesResponse>(
-          toAPIUrl('game_service.GameMetadataService', 'GetRecentGames'),
-          {
-            username,
-            numGames: gamesPageSize,
-            offset: queriedOffset,
-          }
-        );
+        const resp = await gameMetadataClient.getRecentGames({
+          username,
+          numGames: gamesPageSize,
+          offset: queriedOffset,
+        });
+
+        // XXX: connect should support AbortController, but I'm not sure
+        // what to do here.
         // Outdated axios does not support fetch()-compatible AbortController.
         if (reentrancyCheck.current !== hiddenObject) return;
         // If the array is empty and it is not the first page,
         // use binary search to find the last page with content.
-        if (!resp.data.game_info.length && queriedOffset > 0) {
+        if (!resp.gameInfo.length && queriedOffset > 0) {
           // The maximum valid page number is before the empty page retrieved.
           const maxGuess = Math.max(
             Math.floor(queriedOffset / gamesPageSize - 1),
@@ -304,16 +293,14 @@ export const PlayerProfile = React.memo(() => {
           for (; guessBit >= 1; guessBit /= 2) {
             const newGuess = guess + guessBit;
             if (newGuess <= maxGuess) {
-              const resp2 = await axios.post<RecentGamesResponse>(
-                toAPIUrl('game_service.GameMetadataService', 'GetRecentGames'),
-                {
-                  username,
-                  numGames: gamesPageSize,
-                  offset: newGuess * gamesPageSize,
-                }
-              );
+              const resp2 = await gameMetadataClient.getRecentGames({
+                username,
+                numGames: gamesPageSize,
+                offset: newGuess * gamesPageSize,
+              });
+
               if (reentrancyCheck.current !== hiddenObject) return;
-              if (resp2.data.game_info.length) {
+              if (resp2.gameInfo.length) {
                 // This is within range.
                 guess = newGuess;
               }
@@ -329,15 +316,14 @@ export const PlayerProfile = React.memo(() => {
           setRecentGames({
             numGames: gamesPageSize,
             offset: queriedOffset,
-            array: resp.data.game_info,
+            array: resp.gameInfo,
           });
         }
       } catch (e) {
-        // This dangerous-looking cast should be fine...
-        errorCatcher(e as AxiosError);
+        flashError(e);
       }
     })();
-  }, [username, queriedRecentGamesOffset]);
+  }, [username, queriedRecentGamesOffset, gameMetadataClient]);
 
   useEffect(() => {
     // offset and numGames are int32 in the protobuf.
@@ -379,9 +365,8 @@ export const PlayerProfile = React.memo(() => {
   );
 
   const player = {
-    avatar_url: avatarUrl,
-    full_name: fullName,
-    user_id: userID, // for name-based avatar initial to work
+    fullName: fullName,
+    userId: userID, // for name-based avatar initial to work
   };
   const avatarEditable = avatarsEditable && viewer === username;
 
@@ -451,8 +436,10 @@ export const PlayerProfile = React.memo(() => {
       return [];
     }
     const ret = recentGames?.array
-      ?.filter((g) => g.players?.length && g.game_end_reason !== 'CANCELLED')
-      .map((g) => <GameCard game={g} key={g.game_id} userID={userID} />);
+      ?.filter(
+        (g) => g.players?.length && g.gameEndReason !== GameEndReason.CANCELLED
+      )
+      .map((g) => <GameCard game={g} key={g.gameId} userID={userID} />);
     // Mobile swipe requires an even number of cards
     if (ret.length % 2) {
       ret.push(<div key={`empty-${ret.length}`} />);
@@ -615,8 +602,11 @@ export const PlayerProfile = React.memo(() => {
         </div>
       )}
 
-      {userFetched && !userID && (
+      {userFetched && !userID && username && (
         <div className="not-found">User not found.</div>
+      )}
+      {!username && (
+        <div className="not-found">Login or register to view your profile.</div>
       )}
     </>
   );

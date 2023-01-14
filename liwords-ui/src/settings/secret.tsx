@@ -43,13 +43,13 @@ export const Secret = React.memo(() => {
     setBlindfold((x) => !x);
   }, []);
 
-  const [wordSmog, setWordSmog] = useState(
-    localStorage?.getItem('enableWordSmog') === 'true'
+  const [variantsEnabled, setVariantsEnabled] = useState(
+    localStorage?.getItem('enableVariants') === 'true'
   );
-  const toggleWordSmog = useCallback(() => {
-    const useWordSmog = localStorage?.getItem('enableWordSmog') !== 'true';
-    localStorage.setItem('enableWordSmog', useWordSmog ? 'true' : 'false');
-    setWordSmog((x) => !x);
+  const toggleVariants = useCallback(() => {
+    const useVariants = localStorage?.getItem('enableVariants') !== 'true';
+    localStorage.setItem('enableVariants', useVariants ? 'true' : 'false');
+    setVariantsEnabled((x) => !x);
   }, []);
   const [showEquityLoss, setShowEquityLoss] = useState(
     localStorage?.getItem('enableShowEquityLoss') === 'true'
@@ -143,12 +143,12 @@ export const Secret = React.memo(() => {
           />
         </div>
         <div className="toggle-section">
-          <div className="title">WordSmog</div>
-          <div>Enable WordSmog</div>
+          <div className="title">Variants</div>
+          <div>Enable Variants, such as WordSmog and ZOMGWords</div>
           <Switch
-            defaultChecked={wordSmog}
-            onChange={toggleWordSmog}
-            className="wordsmog-toggle"
+            defaultChecked={variantsEnabled}
+            onChange={toggleVariants}
+            className="variants-toggle"
           />
         </div>
         <div className="toggle-section">

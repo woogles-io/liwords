@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 
@@ -15,9 +16,7 @@ import (
 	"github.com/domino14/liwords/pkg/stores/common"
 	"github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/stores/mod"
-	"github.com/domino14/liwords/pkg/stores/stats"
 	ts "github.com/domino14/liwords/pkg/stores/tournament"
-	"github.com/domino14/liwords/pkg/stores/user"
 	"github.com/domino14/liwords/pkg/tournament"
 	pkguser "github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
@@ -47,8 +46,8 @@ func tournamentStore(cfg *config.Config, gs gameplay.GameStore) tournament.Tourn
 	return tournamentStore
 }
 
-func notorietyStore() pkgmod.NotorietyStore {
-	n, err := mod.NewNotorietyStore(common.TestingPostgresConnDSN())
+func notorietyStore(pool *pgxpool.Pool) pkgmod.NotorietyStore {
+	n, err := mod.NewDBStore(pool)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
@@ -88,8 +87,8 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStor
 
 	gr.IncrementSeconds = 5
 	gr.MaxOvertimeMinutes = 0
-	g, _ := gameplay.InstantiateNewGame(ctx, gstore, cfg, [2]*entity.User{cesar, jesse},
-		1, gr, nil)
+	g, _ := gameplay.InstantiateNewGame(ctx, gstore, cfg, [2]*entity.User{jesse, cesar},
+		gr, nil)
 
 	ch := make(chan *entity.EventWrapper)
 	donechan := make(chan bool)
@@ -109,37 +108,30 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStor
 
 func TestInitializeGame(t *testing.T) {
 	is := is.New(t)
-	recreateDB()
-
-	ustore := userStore()
-	lstore := listStatStore()
+	_, ustore, lstore, _ := recreateDB()
 	cfg, gstore := gameStore(ustore)
 
 	g, _, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
 
-	is.Equal(g.PlayerOnTurn(), 1)
+	is.Equal(g.PlayerOnTurn(), 0)
 	cancel()
 	<-donechan
 	// It should just be a single GameHistory event.
 	is.Equal(len(consumer.evts), 1)
-	ustore.(*user.DBStore).Disconnect()
-	lstore.(*stats.ListStatStore).Disconnect()
+	ustore.Disconnect()
+	lstore.Disconnect()
 	gstore.(*game.Cache).Disconnect()
 }
 
 func TestWrongTurn(t *testing.T) {
 	is := is.New(t)
-	recreateDB()
-
-	ustore := userStore()
-	lstore := listStatStore()
-	nstore := notorietyStore()
+	_, ustore, lstore, nstore := recreateDB()
 	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
 
 	g, _, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
 
-	is.Equal(g.PlayerOnTurn(), 1)
+	is.Equal(g.PlayerOnTurn(), 0)
 
 	cge := &pb.ClientGameplayEvent{
 		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
@@ -158,20 +150,16 @@ func TestWrongTurn(t *testing.T) {
 	<-donechan
 	// It should just be a single GameHistory event.
 	is.Equal(len(consumer.evts), 1)
-	ustore.(*user.DBStore).Disconnect()
-	lstore.(*stats.ListStatStore).Disconnect()
-	nstore.(*mod.NotorietyStore).Disconnect()
+	ustore.Disconnect()
+	lstore.Disconnect()
+	nstore.Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
 }
 
 func Test5ptBadWord(t *testing.T) {
 	is := is.New(t)
-	recreateDB()
-
-	ustore := userStore()
-	lstore := listStatStore()
-	nstore := notorietyStore()
+	_, ustore, lstore, nstore := recreateDB()
 	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
 
@@ -184,8 +172,8 @@ func Test5ptBadWord(t *testing.T) {
 		Tiles:          "BANJO",
 	}
 	g.SetRacksForBoth([]*alphabet.Rack{
-		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
 		alphabet.RackFromString("ABEJNOR", g.Alphabet()),
+		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
@@ -207,19 +195,16 @@ func Test5ptBadWord(t *testing.T) {
 	// TimeRemaining is in ms.
 	is.Equal(evt.TimeRemaining, int32((25*60000)+1250))
 
-	ustore.(*user.DBStore).Disconnect()
-	lstore.(*stats.ListStatStore).Disconnect()
-	nstore.(*mod.NotorietyStore).Disconnect()
+	ustore.Disconnect()
+	lstore.Disconnect()
+	nstore.Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
 }
 
 func TestDoubleChallengeBadWord(t *testing.T) {
 	is := is.New(t)
-	recreateDB()
-	ustore := userStore()
-	lstore := listStatStore()
-	nstore := notorietyStore()
+	_, ustore, lstore, nstore := recreateDB()
 	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
 
@@ -233,8 +218,8 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 	}
 	g.SetChallengeRule(macondopb.ChallengeRule_DOUBLE)
 	g.SetRacksForBoth([]*alphabet.Rack{
-		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
 		alphabet.RackFromString("ABEJNOR", g.Alphabet()),
+		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
@@ -272,20 +257,16 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 	// make some valid move, after challenging the play off.
 	is.Equal(evt.TimeRemaining, int32((25*60000)-7620))
 
-	ustore.(*user.DBStore).Disconnect()
-	lstore.(*stats.ListStatStore).Disconnect()
-	nstore.(*mod.NotorietyStore).Disconnect()
+	ustore.Disconnect()
+	lstore.Disconnect()
+	nstore.Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
 }
 
 func TestDoubleChallengeGoodWord(t *testing.T) {
 	is := is.New(t)
-	recreateDB()
-
-	ustore := userStore()
-	lstore := listStatStore()
-	nstore := notorietyStore()
+	_, ustore, lstore, nstore := recreateDB()
 	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
 
@@ -299,8 +280,8 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 	}
 	g.SetChallengeRule(macondopb.ChallengeRule_DOUBLE)
 	g.SetRacksForBoth([]*alphabet.Rack{
-		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
 		alphabet.RackFromString("ABEJNOR", g.Alphabet()),
+		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
@@ -336,20 +317,16 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 	// They lose their turn but still get 5 seconds back.
 	is.Equal(evt.TimeRemaining, int32((25*60000)-2620))
 
-	ustore.(*user.DBStore).Disconnect()
-	lstore.(*stats.ListStatStore).Disconnect()
-	nstore.(*mod.NotorietyStore).Disconnect()
+	ustore.Disconnect()
+	lstore.Disconnect()
+	nstore.Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
 }
 
 func TestQuickdata(t *testing.T) {
 	is := is.New(t)
-	recreateDB()
-
-	ustore := userStore()
-	lstore := listStatStore()
-	nstore := notorietyStore()
+	_, ustore, lstore, nstore := recreateDB()
 	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
 
@@ -370,8 +347,8 @@ func TestQuickdata(t *testing.T) {
 	}
 	g.SetChallengeRule(macondopb.ChallengeRule_TRIPLE)
 	g.SetRacksForBoth([]*alphabet.Rack{
-		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
 		alphabet.RackFromString("ABEJNOR", g.Alphabet()),
+		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
@@ -398,19 +375,19 @@ func TestQuickdata(t *testing.T) {
 
 	// Check the quickdata
 	is.Equal(entGame.Quickdata.PlayerInfo, []*pb.PlayerInfo{
-		{UserId: "xjCWug7EZtDxDHX5fRZTLo", Nickname: "cesar4", First: false, Rating: "1500?"},
 		{UserId: "3xpEkpRAy3AizbVmDg3kdi", Nickname: "jesse", First: true, Rating: "1500?"},
+		{UserId: "xjCWug7EZtDxDHX5fRZTLo", Nickname: "cesar4", First: false, Rating: "1500?"},
 	})
-	is.Equal(entGame.Quickdata.FinalScores[0], int32(93))
-	is.Equal(entGame.Quickdata.FinalScores[1], int32(34))
+	is.Equal(entGame.Quickdata.FinalScores[0], int32(34))
+	is.Equal(entGame.Quickdata.FinalScores[1], int32(93))
 	is.Equal(entGame.Quickdata.OriginalRequestId, gameReq.OriginalRequestId)
 
 	// Kill the go-routine
 	cancel()
 	<-donechan
-	ustore.(*user.DBStore).Disconnect()
-	nstore.(*mod.NotorietyStore).Disconnect()
-	lstore.(*stats.ListStatStore).Disconnect()
+	ustore.Disconnect()
+	nstore.Disconnect()
+	lstore.Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
 }
