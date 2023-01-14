@@ -217,6 +217,7 @@ const LobbyContext = createContext<LobbyStoreData>({
     activeGames: [],
     matchRequests: [],
     profile: { ratings: {} },
+    lobbyFilterByLexicon: localStorage.getItem('lobbyFilterByLexicon'),
   },
   dispatchLobbyContext: defaultFunction,
 });
@@ -777,6 +778,7 @@ const RealStore = ({ children, ...props }: Props) => {
     activeGames: [],
     matchRequests: [],
     profile: { ratings: {} },
+    lobbyFilterByLexicon: localStorage.getItem('lobbyFilterByLexicon'),
   });
   const dispatchLobbyContext = useCallback(
     (action) => setLobbyContext((state) => LobbyReducer(state, action)),
