@@ -378,8 +378,10 @@ const AnalyzerContext = React.createContext<{
 
 export const AnalyzerContextProvider = ({
   children,
+  nocache,
 }: {
   children: React.ReactNode;
+  nocache: boolean;
 }) => {
   const { useState } = useMountedState();
 
@@ -407,6 +409,9 @@ export const AnalyzerContextProvider = ({
     (lexicon, variant) => {
       const examinerIdAtStart = examinerId.current;
       const turn = examinableGameContext.turns.length;
+      if (nocache) {
+        movesCacheRef.current = [];
+      }
       const movesCache = movesCacheRef.current;
       // null = loading. undefined = not yet requested.
       if (movesCache[turn] !== undefined) return;

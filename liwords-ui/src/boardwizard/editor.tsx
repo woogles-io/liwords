@@ -443,6 +443,6 @@ export const BoardEditor = () => {
     </div>
   );
   ret = <NotepadContextProvider children={ret} feRackInfo />;
-  ret = <AnalyzerContextProvider children={ret} />;
+  ret = <AnalyzerContextProvider children={ret} nocache />;
   return ret;
 };
