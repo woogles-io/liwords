@@ -365,7 +365,7 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *pb.SetRacksEvent) 
 		}
 	} else {
 
-		err = cwgame.AssignRacks(g.GameDocument, req.Racks, false)
+		err = cwgame.AssignRacks(g.GameDocument, req.Racks, true)
 		if err != nil {
 			gs.gameStore.UnlockDocument(ctx, g)
 			return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
