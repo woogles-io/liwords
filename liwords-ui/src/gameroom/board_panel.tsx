@@ -763,6 +763,17 @@ export const BoardPanel = React.memo((props: Props) => {
     }
   }, [props.events, props.playerMeta, props.username, props.puzzleMode]);
 
+  const numTurns = examinableGameContext.turns.length;
+
+  useEffect(() => {
+    // Set the current mode to "NORMAL" if we are editing the board,
+    // and the user is moving around the analyzer. This prevents keeping
+    // the rack editor or other modals open.
+    if (props.boardEditingMode) {
+      setCurrentMode('NORMAL');
+    }
+  }, [numTurns, props.boardEditingMode]);
+
   const squareClicked = useCallback(
     (row: number, col: number) => {
       if (board.letterAt(row, col) !== EmptySpace) {

@@ -381,7 +381,7 @@ export const AnalyzerContextProvider = ({
   nocache,
 }: {
   children: React.ReactNode;
-  nocache: boolean;
+  nocache?: boolean;
 }) => {
   const { useState } = useMountedState();
 
@@ -443,7 +443,7 @@ export const AnalyzerContextProvider = ({
         rerenderMoves();
       });
     },
-    [examinableGameContext, rerenderMoves, unrace]
+    [examinableGameContext, nocache, rerenderMoves, unrace]
   );
 
   const cachedMoves = movesCacheRef.current[examinableGameContext.turns.length];
