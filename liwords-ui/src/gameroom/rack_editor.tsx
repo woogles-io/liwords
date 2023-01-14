@@ -6,15 +6,22 @@ import { useMountedState } from '../utils/mounted';
 
 type Props = {
   rackCallback: (rack: string) => void;
+  cancelCallback: () => void;
+  currentRack: string;
 };
 
 export const RackEditor = (props: Props) => {
   const { useState } = useMountedState();
-  const [currentRack, setCurrentRack] = useState('');
+  const [currentRack, setCurrentRack] = useState(props.currentRack);
 
-  const onFinishedEditingRack = (vals: Store) => {
-    props.rackCallback(currentRack);
+  const handleKeyDown = (evt: React.KeyboardEvent) => {
+    if (evt.key === 'Enter') {
+      props.rackCallback(currentRack);
+    } else if (evt.key === 'Escape') {
+      props.cancelCallback();
+    }
   };
+
   const handleRackEditChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
     // strip out any spaces, fix max length, etc.
     const raw = evt.target.value;
@@ -28,17 +35,12 @@ export const RackEditor = (props: Props) => {
   };
 
   return (
-    <Form onFinish={onFinishedEditingRack}>
-      <Form.Item name="rack">
-        <Input
-          placeholder="Enter rack. Use ? for blank"
-          // antd doesn't seem to have controlled forms, so this
-          // doesn't work as expected??
-          value={currentRack}
-          onChange={handleRackEditChange}
-          autoFocus
-        />
-      </Form.Item>
-    </Form>
+    <Input
+      placeholder="Enter rack. Use ? for blank"
+      value={currentRack}
+      onChange={handleRackEditChange}
+      onKeyDown={handleKeyDown}
+      autoFocus
+    />
   );
 };

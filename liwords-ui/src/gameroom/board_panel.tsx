@@ -1745,6 +1745,7 @@ export const BoardPanel = React.memo((props: Props) => {
             )}
             {currentMode === 'EDITING_RACK' ? (
               <RackEditor
+                currentRack={displayedRack}
                 rackCallback={(rack: string) => {
                   if (props.changeCurrentRack) {
                     props.changeCurrentRack(
@@ -1754,6 +1755,7 @@ export const BoardPanel = React.memo((props: Props) => {
                   }
                   setCurrentMode('NORMAL');
                 }}
+                cancelCallback={() => setCurrentMode('NORMAL')}
               />
             ) : (
               <Rack

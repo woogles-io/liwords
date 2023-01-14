@@ -92,7 +92,7 @@ export const BoardEditor = () => {
   useEffect(() => {
     if (gameContext.gameID) {
       handleExamineStart();
-      handleExamineGoTo(0);
+      handleExamineLast();
       handleExamineDisableShortcuts();
     }
   }, [gameContext.gameID]);
