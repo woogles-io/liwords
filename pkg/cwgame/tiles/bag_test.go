@@ -46,6 +46,43 @@ func TestBag(t *testing.T) {
 	}
 }
 
+func TestNorwegianBag(t *testing.T) {
+	is := is.New(t)
+
+	ld, err := NamedLetterDistribution(DefaultConfig, "norwegian")
+	is.NoErr(err)
+	bag := TileBag(ld)
+	if len(bag.Tiles) != ld.numLetters {
+		t.Error("Tile bag and letter distribution do not match.")
+	}
+	tileMap := make(map[rune]uint8)
+	numTiles := 0
+	ml := make([]runemapping.MachineLetter, 1)
+
+	for range bag.Tiles {
+		err := Draw(bag, 1, ml)
+		numTiles++
+		uv := ml[0].UserVisible(ld.runemapping)
+		t.Logf("Drew a %c! , %v", uv, numTiles)
+		if err != nil {
+			t.Error("Error drawing from tile bag.", err)
+		}
+		tileMap[uv]++
+	}
+	for k, v := range ld.Distribution {
+		if v == 0 {
+			delete(ld.Distribution, k)
+		}
+	}
+	if !reflect.DeepEqual(tileMap, ld.Distribution) {
+		t.Error("Distribution and tilemap were not identical.")
+	}
+	err = Draw(bag, 1, ml)
+	if err == nil {
+		t.Error("Should not have been able to draw from an empty bag.")
+	}
+}
+
 func TestDraw(t *testing.T) {
 	is := is.New(t)
 
@@ -122,6 +159,19 @@ func TestRemoveTiles(t *testing.T) {
 	is.NoErr(err)
 	sort.Slice(todraw, func(i, j int) bool { return todraw[i] < todraw[j] })
 	is.Equal(todraw, []runemapping.MachineLetter{0, 1, 5, 14, 14, 16, 18, 18, 19})
+}
+
+func TestRemoveNorwegianTile(t *testing.T) {
+	is := is.New(t)
+
+	ld, err := NamedLetterDistribution(DefaultConfig, "norwegian")
+	is.NoErr(err)
+	bag := TileBag(ld)
+	is.Equal(len(bag.Tiles), 100)
+	toRemove := []runemapping.MachineLetter{30}
+	err = RemoveTiles(bag, toRemove)
+	is.NoErr(err)
+	is.Equal(len(bag.Tiles), 99)
 }
 
 func TestPutBack(t *testing.T) {

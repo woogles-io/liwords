@@ -63,8 +63,9 @@ func ScanLetterDistribution(data io.Reader) (*LetterDistribution, error) {
 			alph.Update(string(letter))
 		}
 	}
-	alph.Reconcile()
-	return newLetterDistribution(alph, dist, ptValues, makeSortMap(sortOrder), vowels), nil
+	sortMap := makeSortMap(sortOrder)
+	alph.Reconcile(sortMap)
+	return newLetterDistribution(alph, dist, ptValues, sortMap, vowels), nil
 }
 
 func newLetterDistribution(alph *runemapping.RuneMapping, dist map[rune]uint8,

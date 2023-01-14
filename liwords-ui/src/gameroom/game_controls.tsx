@@ -398,6 +398,7 @@ const GameControls = React.memo((props: Props) => {
         gameDone={gameDone}
         puzzleMode={!!props.puzzleMode}
         exitable={props.exitableExaminer ?? true}
+        editMode={false}
       />
     );
   }

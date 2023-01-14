@@ -181,12 +181,14 @@ func ToMachineLetters(word string, rm *RuneMapping) ([]MachineLetter, error) {
 	return letters, nil
 }
 
-func (rm *RuneMapping) genLetterSlice() {
+func (rm *RuneMapping) genLetterSlice(sortMap map[rune]int) {
 	rm.letterSlice = []rune{}
 	for rn := range rm.vals {
 		rm.letterSlice = append(rm.letterSlice, rn)
 	}
-	sort.Sort(rm.letterSlice)
+	sort.Slice(rm.letterSlice, func(i, j int) bool {
+		return sortMap[rm.letterSlice[i]] < sortMap[rm.letterSlice[j]]
+	})
 	log.Debug().Msgf("After sorting: %v", rm.letterSlice)
 	// These maps are now deterministic. Renumber them according to
 	// sort order.
@@ -202,9 +204,9 @@ func (rm *RuneMapping) genLetterSlice() {
 
 // Reconcile will take a populated alphabet, sort the glyphs, and re-index
 // the numbers.
-func (rm *RuneMapping) Reconcile() {
+func (rm *RuneMapping) Reconcile(sortMap map[rune]int) {
 	log.Debug().Msg("Reconciling alphabet")
-	rm.genLetterSlice()
+	rm.genLetterSlice(sortMap)
 }
 
 // FromSlice creates an alphabet from a serialized array. It is the
