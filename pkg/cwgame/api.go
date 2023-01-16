@@ -168,10 +168,19 @@ func AssignRacks(gdoc *ipc.GameDocument, racks [][]byte, assignEmpty bool) error
 	return nil
 }
 
-// ReconcileAllTiles throws an error if the tiles on the board and on
+// ReconcileAllTiles returns an error if the tiles on the board and on
 // player racks do not match the letter distribution. It is not meant to
 // be used in production, but for debugging purposes only.
-func ReconcileAllTiles(dist *tiles.LetterDistribution, gdoc *ipc.GameDocument) error {
+func ReconcileAllTiles(ctx context.Context, gdoc *ipc.GameDocument) error {
+	cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
+	if !ok {
+		return errors.New("config does not exist in context")
+	}
+
+	dist, err := tiles.GetDistribution(cfg, gdoc.LetterDistribution)
+	if err != nil {
+		return err
+	}
 
 	bag := tiles.TileBag(dist)
 

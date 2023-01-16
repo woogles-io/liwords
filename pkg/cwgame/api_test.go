@@ -1184,6 +1184,45 @@ func TestExchange(t *testing.T) {
 		Leave:           []byte{5, 9, 14, 20},
 		MillisRemaining: 883808,
 	}))
+	err = ReconcileAllTiles(ctx, gdoc)
+	is.NoErr(err)
+}
+
+func TestExchangePartialRack(t *testing.T) {
+	is := is.New(t)
+	documentfile := "document-earlygame.json"
+	gdoc := loadGDoc(documentfile)
+	// use a timestamp that's a little bit later than the
+	// time_of_last_update in the doc.
+	globalNower = &FakeNower{
+		fakeMeow: gdoc.Timers.TimeOfLastUpdate + 5000}
+	defer restoreGlobalNower()
+	ctx := ctxForTests()
+
+	err := AssignRacks(gdoc, [][]byte{{9, 9, 9, 9, 9}, nil}, false)
+	is.NoErr(err)
+
+	// This player's rack is IIIII
+	cge := &ipc.ClientGameplayEvent{
+		Type:   ipc.ClientGameplayEvent_EXCHANGE,
+		GameId: "9aK3YgVk",
+		Tiles:  "IIIII",
+	}
+	userID := "2gJGaYnchL6LbQVTNQ6mjT"
+
+	err = ProcessGameplayEvent(ctx, cge, userID, gdoc)
+	is.NoErr(err)
+	fmt.Println(gdoc.Events[len(gdoc.Events)-1])
+	is.True(proto.Equal(gdoc.Events[len(gdoc.Events)-1], &ipc.GameEvent{
+		Rack:            []byte{9, 9, 9, 9, 9},
+		Type:            ipc.GameEvent_EXCHANGE,
+		Cumulative:      62,
+		Exchanged:       []byte{9, 9, 9, 9, 9},
+		Leave:           []byte{},
+		MillisRemaining: 883808,
+	}))
+	err = ReconcileAllTiles(ctx, gdoc)
+	is.NoErr(err)
 }
 
 func TestAssignRacks(t *testing.T) {

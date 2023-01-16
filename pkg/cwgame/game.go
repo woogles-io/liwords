@@ -112,29 +112,25 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 			return err
 		}
 		copy(placeholder[len(gevt.Exchanged):], runemapping.FromByteArr(gevt.Leave))
+		// // A partial rack could have been provided.
+		newRackLength := len(gdoc.Racks[gdoc.PlayerOnTurn])
+		if newRackLength < RackTileLimit {
+			// draw enough tiles to fill the rack.
+			err = tiles.Draw(gdoc.Bag, RackTileLimit-newRackLength,
+				placeholder[newRackLength:])
+			if err != nil {
+				return err
+			}
+		}
 
 		gdoc.Racks[gdoc.PlayerOnTurn] = runemapping.MachineWord(placeholder).ToByteArr()
 		gdoc.ScorelessTurns += 1
 		gevt.MillisRemaining = int32(tr)
 		gevt.Cumulative = gdoc.CurrentScores[gdoc.PlayerOnTurn]
 		gdoc.Events = append(gdoc.Events, gevt)
-
-		// XXX: maybe do this another way.
-		// For the next events, assume they are fully populated with the data that we
-		// need. There is no way to play these events from the user API, only
-		// from ReplayEvents.
-		// case ipc.GameEvent_CHALLENGE_BONUS, ipc.GameEvent_END_RACK_PTS,
-		// 	ipc.GameEvent_TIME_PENALTY:
-
-		// 	gdoc.Racks[gdoc.PlayerOnTurn] = gevt.Rack
-		// 	gdoc.CurrentScores[gdoc.PlayerOnTurn] = gevt.Cumulative
-		// 	gdoc.Events = append(gdoc.Events, gevt)
-
-		// case ipc.GameEvent_PHONY_TILES_RETURNED:
-
-		// 	gdoc.Racks[gevt.PlayerIndex] = gevt.Rack
-		// 	gdoc.CurrentScores[gevt.PlayerIndex] = gevt.Cumulative
-		// 	// Unplay tiles and return to bag.
+		log.Debug().Interface("new-rack", gdoc.Racks[gdoc.PlayerOnTurn]).
+			Uint32("onturn", gdoc.PlayerOnTurn).
+			Msg("exchanged")
 
 	}
 	if gdoc.ScorelessTurns == MaxConsecutiveScorelessTurns {
@@ -197,6 +193,11 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 	}
 	copy(placeholder[drew:], runemapping.FromByteArr(gevt.Leave))
 	newRack := placeholder[:drew+len(gevt.Leave)]
+	// Fill the rack if possible. This can happen if we only had partial
+	// rack info for this play.
+	// if len(newRack) < RackTileLimit {
+	// 	drew, err := tiles.DrawAtMost(gdoc.Bag, RackTileLimit-len(newRack), placeholder[])
+	// }
 
 	gevt.Score = score
 	gevt.IsBingo = tilesPlayed == RackTileLimit

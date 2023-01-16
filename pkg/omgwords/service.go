@@ -392,6 +392,14 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *pb.SetRacksEvent) 
 		}
 	}
 
+	// TODO: REMOVE ME BEFORE DEPLOY
+	err = cwgame.ReconcileAllTiles(ctx, g.GameDocument)
+	if err != nil {
+		gs.gameStore.UnlockDocument(ctx, g)
+		return nil, twirp.NewError(twirp.InvalidArgument, "failed-to-reconcile-setracks")
+	}
+	// END-TODO
+
 	err = gs.gameStore.UpdateDocument(ctx, g)
 	if err != nil {
 		return nil, err
