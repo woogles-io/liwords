@@ -1,7 +1,7 @@
 import { Form } from 'antd';
 import { Store } from 'antd/lib/form/interface';
-import Input from 'rc-input';
-import React from 'react';
+import Input, { InputRef } from 'rc-input';
+import React, { useEffect, useRef } from 'react';
 import { useMountedState } from '../utils/mounted';
 
 type Props = {
@@ -13,7 +13,7 @@ type Props = {
 export const RackEditor = (props: Props) => {
   const { useState } = useMountedState();
   const [currentRack, setCurrentRack] = useState(props.currentRack);
-
+  const inputRef = useRef<InputRef>(null);
   const handleKeyDown = (evt: React.KeyboardEvent) => {
     if (evt.key === 'Enter') {
       props.rackCallback(currentRack);
@@ -21,6 +21,11 @@ export const RackEditor = (props: Props) => {
       props.cancelCallback();
     }
   };
+  useEffect(() => {
+    inputRef.current?.focus({
+      cursor: 'all',
+    });
+  }, [inputRef]);
 
   const handleRackEditChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
     // strip out any spaces, fix max length, etc.
@@ -36,11 +41,12 @@ export const RackEditor = (props: Props) => {
 
   return (
     <Input
+      ref={inputRef}
       placeholder="Enter rack. Use ? for blank"
+      className="rack"
       value={currentRack}
       onChange={handleRackEditChange}
       onKeyDown={handleKeyDown}
-      autoFocus
     />
   );
 };

@@ -3,7 +3,7 @@
 /* eslint-disable */
 /* @ts-nocheck */
 
-import type {BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage} from "@bufbuild/protobuf";
+import type {BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage, Timestamp} from "@bufbuild/protobuf";
 import {Message, proto3} from "@bufbuild/protobuf";
 import type {ChallengeRule, ClientGameplayEvent, GameDocument, GameRules, PlayerInfo} from "../ipc/omgwords_pb.js";
 
@@ -84,7 +84,7 @@ export declare class ChallengeBonusPointsEvent extends Message<ChallengeBonusPoi
  */
 export declare class CreateBroadcastGameRequest extends Message<CreateBroadcastGameRequest> {
   /**
-   * @generated from field: repeated ipc.PlayerInfo playersInfo = 1;
+   * @generated from field: repeated ipc.PlayerInfo players_info = 1;
    */
   playersInfo: PlayerInfo[];
 
@@ -283,6 +283,21 @@ export declare class BroadcastGamesResponse_BroadcastGame extends Message<Broadc
    * @generated from field: bool finished = 4;
    */
   finished: boolean;
+
+  /**
+   * @generated from field: repeated ipc.PlayerInfo players_info = 5;
+   */
+  playersInfo: PlayerInfo[];
+
+  /**
+   * @generated from field: string lexicon = 6;
+   */
+  lexicon: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 7;
+   */
+  createdAt?: Timestamp;
 
   constructor(data?: PartialMessage<BroadcastGamesResponse_BroadcastGame>);
 

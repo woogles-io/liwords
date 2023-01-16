@@ -235,6 +235,7 @@ func EditOldRack(ctx context.Context, gdoc *ipc.GameDocument, evtNumber uint32, 
 	// XXX: Strongly reconsider removing the Leave from an event. It can
 	// be calculated on the fly from the rack and played tiles if needed,
 	// and it just complicates matters in situations like this.
+
 	return nil
 }
 

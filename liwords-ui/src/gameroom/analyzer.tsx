@@ -418,29 +418,41 @@ export const AnalyzerContextProvider = ({
       movesCache[turn] = null;
 
       unrace.run(async () => {
-        const {
-          dim,
-          letters,
-          rackNum,
-          effectiveLexicon,
-          boardObj: bareBoardObj,
-          numToLabel,
-        } = parseExaminableGameContext(examinableGameContext, lexicon, variant);
-        const boardObj = { ...bareBoardObj, count: 15 };
+        try {
+          const {
+            dim,
+            letters,
+            rackNum,
+            effectiveLexicon,
+            boardObj: bareBoardObj,
+            numToLabel,
+          } = parseExaminableGameContext(
+            examinableGameContext,
+            lexicon,
+            variant
+          );
+          const boardObj = { ...bareBoardObj, count: 15 };
 
-        const wolges = await getWolges(effectiveLexicon);
-        if (examinerIdAtStart !== examinerId.current) return;
+          const wolges = await getWolges(effectiveLexicon);
+          if (examinerIdAtStart !== examinerId.current) return;
 
-        const boardStr = JSON.stringify(boardObj);
-        const movesStr = await wolges.analyze(boardStr);
-        if (examinerIdAtStart !== examinerId.current) return;
-        const movesObj = JSON.parse(movesStr) as Array<JsonMove>;
+          const boardStr = JSON.stringify(boardObj);
+          const movesStr = await wolges.analyze(boardStr);
+          if (examinerIdAtStart !== examinerId.current) return;
+          const movesObj = JSON.parse(movesStr) as Array<JsonMove>;
 
-        const formattedMoves = movesObj.map((move) =>
-          analyzerMoveFromJsonMove(move, dim, letters, rackNum, numToLabel)
-        );
-        movesCache[turn] = formattedMoves;
-        rerenderMoves();
+          const formattedMoves = movesObj.map((move) =>
+            analyzerMoveFromJsonMove(move, dim, letters, rackNum, numToLabel)
+          );
+          movesCache[turn] = formattedMoves;
+          rerenderMoves();
+        } catch (e) {
+          if (examinerIdAtStart === examinerId.current) {
+            movesCache[turn] = [];
+            rerenderMoves();
+          }
+          throw e;
+        }
       });
     },
     [examinableGameContext, nocache, rerenderMoves, unrace]

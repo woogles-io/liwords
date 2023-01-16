@@ -421,7 +421,7 @@ type StreakInfoResponse struct {
 	unknownFields protoimpl.UnknownFields
 
 	Streak      []*StreakInfoResponse_SingleGameInfo `protobuf:"bytes,1,rep,name=streak,proto3" json:"streak,omitempty"`
-	PlayersInfo []*StreakInfoResponse_PlayerInfo     `protobuf:"bytes,3,rep,name=playersInfo,proto3" json:"playersInfo,omitempty"`
+	PlayersInfo []*StreakInfoResponse_PlayerInfo     `protobuf:"bytes,3,rep,name=playersInfo,proto3" json:"playersInfo,omitempty"` // XXX make this camel_case
 }
 
 func (x *StreakInfoResponse) Reset() {

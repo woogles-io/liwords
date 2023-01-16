@@ -449,16 +449,15 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			gameID := strings.TrimPrefix(path, "/editor/")
 			// Use the `channel-` generic realm for now.
 			realm := "channel-" + omgwords.AnnotatedChannelName(gameID)
-			// Append a chat realm for presence
-			// XXX: check if this is required
-
-			resp.Realms = append(resp.Realms, realm, "chat-game-editor", "chat-"+realm)
+			// Appending chat-gametv-gameID for presence
+			resp.Realms = append(resp.Realms,
+				realm, "chat-gametv-"+gameID)
 
 		} else if strings.HasPrefix(path, "/anno/") {
 			// annotated games are always in TV mode for viewers
 			gameID := strings.TrimPrefix(path, "/anno/")
 			realm := "channel-" + omgwords.AnnotatedChannelName(gameID)
-			resp.Realms = append(resp.Realms, realm, "chat-"+realm)
+			resp.Realms = append(resp.Realms, realm, "chat-gametv-"+gameID)
 		} else {
 			log.Debug().Str("path", path).Msg("realm-req-not-handled")
 		}

@@ -280,7 +280,23 @@ func (gs *OMGWordsService) SetBroadcastGamePrivacy(ctx context.Context, req *pb.
 func (gs *OMGWordsService) GetGamesForEditor(ctx context.Context, req *pb.GetGamesForEditorRequest) (
 	*pb.BroadcastGamesResponse, error) {
 
-	return nil, nil
+	games, err := gs.metadataStore.GamesForEditor(ctx, req.UserId, req.Unfinished, int(req.Limit), int(req.Offset))
+	if err != nil {
+		return nil, err
+	}
+	return &pb.BroadcastGamesResponse{
+		Games: lo.Map(games, func(bg *stores.BroadcastGame, i int) *pb.BroadcastGamesResponse_BroadcastGame {
+			return &pb.BroadcastGamesResponse_BroadcastGame{
+				GameId:      bg.GameUUID,
+				CreatorId:   bg.CreatorUUID,
+				Private:     bg.Private,
+				Finished:    bg.Finished,
+				PlayersInfo: bg.Players,
+				Lexicon:     bg.Lexicon,
+				CreatedAt:   timestamppb.New(bg.Created),
+			}
+		}),
+	}, nil
 }
 
 func (gs *OMGWordsService) GetMyUnfinishedGames(ctx context.Context, req *pb.GetMyUnfinishedGamesRequest) (
@@ -343,6 +359,10 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *pb.SetRacksEvent) 
 	g, err := gs.gameStore.GetDocument(ctx, req.GameId, true)
 	if err != nil {
 		return nil, err
+	}
+	if g.PlayState == ipc.PlayState_GAME_OVER {
+		gs.gameStore.UnlockDocument(ctx, g)
+		return nil, twirp.NewError(twirp.InvalidArgument, "game is over")
 	}
 	if len(req.Racks) != len(g.Players) {
 		gs.gameStore.UnlockDocument(ctx, g)

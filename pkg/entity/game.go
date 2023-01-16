@@ -122,6 +122,22 @@ func (h *GameHistory) Scan(value interface{}) error {
 	return proto.Unmarshal(b, &h.GameHistory)
 }
 
+type GameRequest struct {
+	pb.GameRequest
+}
+
+func (g *GameRequest) Value() (driver.Value, error) {
+	return proto.Marshal(&g.GameRequest)
+}
+
+func (g *GameRequest) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+	return proto.Unmarshal(b, &g.GameRequest)
+}
+
 // A Game should be saved to the database or store. It wraps a macondo.Game,
 // and we should save most of the included fields here, especially the
 // macondo.game.History (which can be exported as GCG, etc in the future)

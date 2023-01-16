@@ -22,6 +22,9 @@ import {
 import { flashError, useClient } from '../utils/hooks/connect';
 import { ProfileService } from '../gen/api/proto/user_service/user_service_connectweb';
 import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connectweb';
+import { BroadcastGamesResponse_BroadcastGame } from '../gen/api/proto/omgwords_service/omgwords_pb';
+import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_connectweb';
+import { AnnotatedGamesHistoryCard } from './annotated_games_history';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const screenSizes = require('../base.scss').default;
 
@@ -198,6 +201,7 @@ export const PlayerProfile = React.memo(() => {
   const { useState } = useMountedState();
 
   const gamesPageSize = 24;
+  const annotatedPageSize = 20;
   const { loginState } = useLoginStateStoreContext();
   const { username } = useParams();
   const navigate = useNavigate();
@@ -223,10 +227,16 @@ export const PlayerProfile = React.memo(() => {
     offset: number;
     array: Array<GameInfoResponse>;
   }>({ numGames: gamesPageSize, offset: 0, array: [] });
+  const [recentAnnotatedGames, setRecentAnnotatedGames] = useState<
+    Array<BroadcastGamesResponse_BroadcastGame>
+  >([]);
   const [recentGamesOffset, setRecentGamesOffset] = useState(0);
+  const [recentAnnotatedGamesOffset, setRecentAnnotatedGamesOffset] =
+    useState(0);
   const [missingBirthdate, setMissingBirthdate] = useState(true); // always true except for self
   const profileClient = useClient(ProfileService);
   const gameMetadataClient = useClient(GameMetadataService);
+  const gameEventClient = useClient(GameEventService);
 
   useEffect(() => {
     if (!username) {
@@ -351,6 +361,14 @@ export const PlayerProfile = React.memo(() => {
   const fetchNext = useCallback(() => {
     setRecentGamesOffset((r) => r + gamesPageSize);
   }, []);
+
+  const fetchPrevAnnotatedGames = useCallback(() => {
+    setRecentAnnotatedGamesOffset((r) => Math.max(r - annotatedPageSize, 0));
+  }, []);
+  const fetchNextAnnotatedGames = useCallback(() => {
+    setRecentAnnotatedGamesOffset((r) => r + annotatedPageSize);
+  }, []);
+
   const handleChangePageNumber = useCallback(
     (value: number | string | null) => {
       if (
@@ -363,6 +381,24 @@ export const PlayerProfile = React.memo(() => {
     },
     []
   );
+
+  useEffect(() => {
+    if (!userID) {
+      return;
+    }
+    (async () => {
+      try {
+        const resp = await gameEventClient.getGamesForEditor({
+          userId: userID,
+          limit: annotatedPageSize,
+          offset: recentAnnotatedGamesOffset,
+        });
+        setRecentAnnotatedGames(resp.games);
+      } catch (e) {
+        console.log(e);
+      }
+    })();
+  }, [gameEventClient, userID, recentAnnotatedGamesOffset]);
 
   const player = {
     fullName: fullName,
@@ -597,6 +633,15 @@ export const PlayerProfile = React.memo(() => {
               desiredOffset={recentGamesOffset}
               desiredPageSize={gamesPageSize}
               onChangePageNumber={handleChangePageNumber}
+            />
+          )}
+
+          {username && (
+            <AnnotatedGamesHistoryCard
+              games={recentAnnotatedGames}
+              fetchPrev={fetchPrevAnnotatedGames}
+              fetchNext={fetchNextAnnotatedGames}
+              loggedInUserID={loginState.userID}
             />
           )}
         </div>

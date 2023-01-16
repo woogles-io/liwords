@@ -88,7 +88,7 @@ func TestRedisLocking(t *testing.T) {
 	}
 
 	wg.Wait()
-	doc2, err := store.GetDocument(ctx, origDoc.Uid, true)
+	doc2, err := store.GetDocument(ctx, origDoc.Uid, false)
 	is.NoErr(err)
 
 	for i := 0; i < 25; i++ {

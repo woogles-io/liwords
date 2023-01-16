@@ -3,7 +3,7 @@
 /* eslint-disable */
 /* @ts-nocheck */
 
-import {proto3} from "@bufbuild/protobuf";
+import {proto3, Timestamp} from "@bufbuild/protobuf";
 import {ChallengeRule, ClientGameplayEvent, GameDocument, GameRules, PlayerInfo} from "../ipc/omgwords_pb.js";
 
 /**
@@ -45,7 +45,7 @@ export const ChallengeBonusPointsEvent = proto3.makeMessageType(
 export const CreateBroadcastGameRequest = proto3.makeMessageType(
   "omgwords_service.CreateBroadcastGameRequest",
   () => [
-    { no: 1, name: "playersInfo", kind: "message", T: PlayerInfo, repeated: true },
+    { no: 1, name: "players_info", kind: "message", T: PlayerInfo, repeated: true },
     { no: 2, name: "lexicon", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "rules", kind: "message", T: GameRules },
     { no: 4, name: "challenge_rule", kind: "enum", T: proto3.getEnumType(ChallengeRule) },
@@ -118,6 +118,9 @@ export const BroadcastGamesResponse_BroadcastGame = proto3.makeMessageType(
     { no: 2, name: "creator_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "private", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 4, name: "finished", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 5, name: "players_info", kind: "message", T: PlayerInfo, repeated: true },
+    { no: 6, name: "lexicon", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "created_at", kind: "message", T: Timestamp },
   ],
   {localName: "BroadcastGamesResponse_BroadcastGame"},
 );

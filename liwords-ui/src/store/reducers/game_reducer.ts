@@ -145,7 +145,6 @@ const newGameStateFromGameplayEvent = (
   if (!evt) {
     throw new Error('missing event');
   }
-
   // Append the event.
 
   turns.push(evt.clone());

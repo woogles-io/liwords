@@ -2,6 +2,7 @@ syntax = "proto3";
 package omgwords_service;
 option go_package = "github.com/domino14/liwords/rpc/api/proto/omgwords_service";
 
+import "google/protobuf/timestamp.proto";
 import "ipc/omgwords.proto";
 
 // GameEventResponse doesn't need to have any extra data. The GameEvent API
@@ -17,7 +18,7 @@ message CreateBroadcastGameRequest {
   // UUID. These games are meant for sandbox/annotation/broadcast of
   // a typically IRL game.
 
-  repeated ipc.PlayerInfo playersInfo = 1;
+  repeated ipc.PlayerInfo players_info = 1;
   string lexicon = 2;
   ipc.GameRules rules = 3;
   ipc.ChallengeRule challenge_rule = 4;
@@ -48,6 +49,9 @@ message BroadcastGamesResponse {
     string creator_id = 2;
     bool private = 3;
     bool finished = 4;
+    repeated ipc.PlayerInfo players_info = 5;
+    string lexicon = 6;
+    google.protobuf.Timestamp created_at = 7;
   }
   repeated BroadcastGame games = 1;
 }

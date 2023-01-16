@@ -186,9 +186,13 @@ func (rm *RuneMapping) genLetterSlice(sortMap map[rune]int) {
 	for rn := range rm.vals {
 		rm.letterSlice = append(rm.letterSlice, rn)
 	}
-	sort.Slice(rm.letterSlice, func(i, j int) bool {
-		return sortMap[rm.letterSlice[i]] < sortMap[rm.letterSlice[j]]
-	})
+	if sortMap != nil {
+		sort.Slice(rm.letterSlice, func(i, j int) bool {
+			return sortMap[rm.letterSlice[i]] < sortMap[rm.letterSlice[j]]
+		})
+	} else {
+		sort.Sort(rm.letterSlice)
+	}
 	log.Debug().Msgf("After sorting: %v", rm.letterSlice)
 	// These maps are now deterministic. Renumber them according to
 	// sort order.

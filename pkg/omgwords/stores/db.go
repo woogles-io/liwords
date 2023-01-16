@@ -2,6 +2,7 @@ package stores
 
 import (
 	"context"
+	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stores/common"
@@ -21,6 +22,9 @@ type BroadcastGame struct {
 	CreatorUUID string
 	Private     bool
 	Finished    bool
+	Players     []*ipc.PlayerInfo
+	Lexicon     string
+	Created     time.Time
 }
 
 func NewDBStore(p *pgxpool.Pool) (*DBStore, error) {
@@ -169,6 +173,52 @@ func (s *DBStore) GameOwnedBy(ctx context.Context, gid, uid string) (bool, error
 		return true, nil
 	}
 	return false, nil
+}
+
+func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinished bool, limit, offset int) ([]*BroadcastGame, error) {
+	query := `
+		SELECT game_uuid, private_broadcast, quickdata, request, created_at FROM annotated_game_metadata 
+		JOIN games ON games.uuid = annotated_game_metadata.game_uuid
+		WHERE creator_uuid = $1 AND done = $2
+		ORDER BY created_at DESC
+		LIMIT $3 OFFSET $4
+	`
+	var rows pgx.Rows
+	var err error
+	if rows, err = s.dbPool.Query(ctx, query, editorID, !unfinished, limit, offset); err != nil {
+		if err == pgx.ErrNoRows {
+			log.Debug().Str("creatorUUID", editorID).Msg("no games for this editor")
+			return nil, nil
+		}
+		return nil, err
+	}
+	defer rows.Close()
+
+	games := []*BroadcastGame{}
+	for rows.Next() {
+		var uuid string
+		var private bool
+		var quickdata *entity.Quickdata
+		var request *entity.GameRequest
+		var created time.Time
+
+		if err := rows.Scan(&uuid, &private, &quickdata, &request, &created); err != nil {
+			return nil, err
+		}
+		if quickdata == nil || request == nil {
+			continue // although this shouldn't happen
+		}
+		games = append(games, &BroadcastGame{
+			GameUUID:    uuid,
+			CreatorUUID: editorID,
+			Private:     private,
+			Finished:    true,
+			Players:     quickdata.PlayerInfo,
+			Lexicon:     request.Lexicon,
+			Created:     created,
+		})
+	}
+	return games, nil
 }
 
 func (s *DBStore) GameIsDone(ctx context.Context, gid string) (bool, error) {
