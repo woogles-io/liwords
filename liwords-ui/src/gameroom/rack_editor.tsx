@@ -25,7 +25,7 @@ export const RackEditor = (props: Props) => {
     inputRef.current?.focus({
       cursor: 'all',
     });
-  }, [inputRef]);
+  }, [inputRef.current]);
 
   const handleRackEditChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
     // strip out any spaces, fix max length, etc.

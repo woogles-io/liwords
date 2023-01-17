@@ -205,6 +205,13 @@ func ReconcileAllTiles(ctx context.Context, gdoc *ipc.GameDocument) error {
 	if len(gdoc.Bag.Tiles) != len(bag.Tiles) {
 		return fmt.Errorf("lengths dont match %d %d", len(gdoc.Bag.Tiles), len(bag.Tiles))
 	}
+
+	// No error if both bags are empty
+	if len(bag.Tiles) == 0 && len(gdoc.Bag.Tiles) == 0 {
+		return nil
+	}
+	// Otherwise sort and check the tile bags.
+
 	sort.Slice(gdoc.Bag.Tiles, func(i, j int) bool {
 		return gdoc.Bag.Tiles[i] < gdoc.Bag.Tiles[j]
 	})

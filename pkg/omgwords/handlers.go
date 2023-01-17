@@ -78,7 +78,8 @@ func handleEvent(ctx context.Context, userID string, evt *ipc.ClientGameplayEven
 	err = cwgame.ReconcileAllTiles(ctx, g.GameDocument)
 	if err != nil {
 		gs.UnlockDocument(ctx, g)
-		return false, twirp.NewError(twirp.InvalidArgument, "failed-to-reconcile-handleevent")
+		err = fmt.Errorf("failed-to-reconcile-handleevent: %w", err)
+		return false, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	// END-TODO
 
