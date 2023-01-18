@@ -110,8 +110,11 @@ func (rm *RuneMapping) Val(r rune) (MachineLetter, error) {
 }
 
 // UserVisible turns the passed-in machine letter into a user-visible rune.
-func (ml MachineLetter) UserVisible(rm *RuneMapping) rune {
+func (ml MachineLetter) UserVisible(rm *RuneMapping, zeroForPlayedThrough bool) rune {
 	if ml == 0 {
+		if zeroForPlayedThrough {
+			return ASCIIPlayedThrough
+		}
 		return BlankToken
 	}
 	return rm.Letter(ml)
@@ -134,7 +137,18 @@ func (ml MachineLetter) IsBlanked() bool {
 func (mw MachineWord) UserVisible(rm *RuneMapping) string {
 	runes := make([]rune, len(mw))
 	for i, l := range mw {
-		runes[i] = l.UserVisible(rm)
+		runes[i] = l.UserVisible(rm, false)
+	}
+	return string(runes)
+}
+
+// UserVisiblePlayedTiles turns the passed-in machine word into a user-visible string.
+// It assumes that the MachineWord represents played tiles and not just
+// tiles on a rack, so it uses the PlayedThrough character for 0.
+func (mw MachineWord) UserVisiblePlayedTiles(rm *RuneMapping) string {
+	runes := make([]rune, len(mw))
+	for i, l := range mw {
+		runes[i] = l.UserVisible(rm, true)
 	}
 	return string(runes)
 }

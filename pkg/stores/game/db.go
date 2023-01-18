@@ -699,5 +699,6 @@ func (s *DBStore) GetHistory(ctx context.Context, id string) (*macondopb.GameHis
 	if err != nil {
 		return nil, err
 	}
+	log.Debug().Interface("hist", hist).Msg("got-history")
 	return hist, nil
 }

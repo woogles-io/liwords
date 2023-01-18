@@ -1,12 +1,11 @@
 package utilities
 
 import (
-	"fmt"
-
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/domino14/macondo/alphabet"
+	"github.com/domino14/macondo/game"
 	"github.com/domino14/macondo/gen/api/proto/macondo"
 
 	"github.com/domino14/liwords/pkg/config"
@@ -19,38 +18,6 @@ import (
 
 // helper functions to convert from the old GameHistory etc structs to
 // GameDocuments. We can delete this after some time.
-
-func leave(rack, tilesUsed []byte) []byte {
-	rackletters := map[byte]int{}
-	for _, l := range rack {
-		rackletters[l]++
-	}
-	leave := make([]byte, 0)
-	for _, t := range tilesUsed {
-		if t == 0 {
-			// play-through
-			continue
-		}
-		if int8(t) < 0 {
-			// it's a blank
-			t = 0
-		}
-		if rackletters[t] != 0 {
-			rackletters[t]--
-		} else {
-			panic(fmt.Sprintf("tile in play but not in rack: %v", t))
-		}
-	}
-
-	for k, v := range rackletters {
-		if v > 0 {
-			for i := 0; i < v; i++ {
-				leave = append(leave, k)
-			}
-		}
-	}
-	return leave
-}
 
 func ToGameDocument(g *entity.Game, cfg *config.Config) (*ipc.GameDocument, error) {
 	letterdist, err := tiles.GetDistribution(cfg, g.History().LetterDistribution)
@@ -163,4 +130,71 @@ func populateBag(g *entity.Game, gdoc *ipc.GameDocument, ld *tiles.LetterDistrib
 		}
 		return byte(1 + ml)
 	})
+}
+
+// ToGameHistory is a helper function to convert a GameDocument back to a game history.
+// Eventually we will not have GameHistory's anymore.
+func ToGameHistory(doc *ipc.GameDocument, cfg *config.Config) (*macondo.GameHistory, error) {
+	letterdist, err := tiles.GetDistribution(cfg, doc.LetterDistribution)
+	if err != nil {
+		return nil, err
+	}
+
+	rackConverter := func(bts []byte, idx int) string {
+		mw := runemapping.FromByteArr(bts)
+		return mw.UserVisible(letterdist.RuneMapping())
+	}
+
+	rackConverterForPlay := func(bts []byte, idx int) string {
+		mw := runemapping.FromByteArr(bts)
+		return mw.UserVisiblePlayedTiles(letterdist.RuneMapping())
+	}
+
+	eventConverter := func(evt *ipc.GameEvent, index int) *macondo.GameEvent {
+		cvt := &macondo.GameEvent{
+			Rack:            rackConverter(evt.Rack, 0),
+			Type:            macondo.GameEvent_Type(evt.Type),
+			Cumulative:      evt.Cumulative,
+			Row:             evt.Row,
+			Column:          evt.Column,
+			Direction:       macondo.GameEvent_Direction(evt.Direction),
+			Position:        evt.Position,
+			PlayedTiles:     rackConverterForPlay(evt.PlayedTiles, 0),
+			Exchanged:       rackConverterForPlay(evt.Exchanged, 0),
+			Score:           evt.Score,
+			Bonus:           evt.Bonus,
+			EndRackPoints:   evt.EndRackPoints,
+			LostScore:       evt.LostScore,
+			IsBingo:         evt.IsBingo,
+			WordsFormed:     lo.Map(evt.WordsFormed, rackConverter),
+			MillisRemaining: evt.MillisRemaining,
+			PlayerIndex:     evt.PlayerIndex,
+		}
+
+		return cvt
+	}
+
+	history := &macondo.GameHistory{
+		Players: lo.Map(doc.Players, func(p *ipc.GameDocument_MinimalPlayerInfo, idx int) *macondo.PlayerInfo {
+			return &macondo.PlayerInfo{
+				Nickname: p.Nickname,
+				RealName: p.RealName,
+				UserId:   p.UserId,
+			}
+		}),
+		Events:         lo.Map(doc.Events, eventConverter),
+		Version:        game.CurrentGameHistoryVersion,
+		Lexicon:        doc.Lexicon,
+		Uid:            doc.Uid,
+		LastKnownRacks: lo.Map(doc.Racks, rackConverter),
+		ChallengeRule:  macondo.ChallengeRule(doc.ChallengeRule),
+		PlayState:      macondo.PlayState(doc.PlayState),
+		// current scores not in history!
+		Variant:            doc.Variant,
+		Winner:             doc.Winner,
+		BoardLayout:        doc.BoardLayout,
+		LetterDistribution: doc.LetterDistribution,
+	}
+	return history, nil
+
 }

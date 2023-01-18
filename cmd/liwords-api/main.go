@@ -254,7 +254,8 @@ func main() {
 		panic(err)
 	}
 
-	mementoService := memento.NewMementoService(stores.UserStore, stores.GameStore)
+	mementoService := memento.NewMementoService(stores.UserStore, stores.GameStore,
+		stores.GameDocumentStore, cfg)
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
 		cfg.SecretKey, cfg.MailgunKey, cfg.DiscordToken, cfg.ArgonConfig)
 	registrationService := registration.NewRegistrationService(stores.UserStore, cfg.ArgonConfig)
