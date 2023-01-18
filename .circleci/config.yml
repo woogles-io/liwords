@@ -68,7 +68,7 @@ jobs:
   build_fe:
     working_directory: /opt/liwords
     docker:
-      - image: node:14-alpine3.10
+      - image: node:alpine
     steps:
       - run: apk add --update openssh-client git
       - checkout
