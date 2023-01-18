@@ -317,8 +317,10 @@ export const Table = React.memo((props: Props) => {
   }, [gameID, omgClient, dispatchGameContext, props.annotated]);
 
   useEffect(() => {
-    const gi = syntheticGameInfo(gameContext.gameDocument);
-    setGameInfo(gi);
+    if (gameContext.gameDocument.uid) {
+      const gi = syntheticGameInfo(gameContext.gameDocument);
+      setGameInfo(gi);
+    }
   }, [gameContext.gameDocument]);
 
   useTourneyMetadata(
