@@ -1,7 +1,7 @@
 // boardwizard is our board editor
 
-import { HomeOutlined, IconProvider } from '@ant-design/icons';
-import { Button, Card, message, notification } from 'antd';
+import { HomeOutlined } from '@ant-design/icons';
+import { Card, notification } from 'antd';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ActionType } from '../actions/actions';
@@ -12,9 +12,6 @@ import { PlayerCards } from '../gameroom/player_cards';
 import Pool from '../gameroom/pool';
 import { ScoreCard } from '../gameroom/scorecard';
 import { GameRules } from '../gen/api/proto/ipc/omgwords_pb';
-import { GameRequest } from '../gen/api/proto/ipc/omgwords_pb';
-import { RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
-import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
 import { GameInfo } from '../gameroom/game_info';
 
 import {
@@ -24,8 +21,6 @@ import {
   ChallengeRule as OMGChallengeRule,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { GameDocument } from '../gen/api/proto/ipc/omgwords_pb';
-import { GameInfoResponse } from '../gen/api/proto/ipc/omgwords_pb';
-import { ChallengeRule as MacondoChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
 import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_connectweb';
 import { defaultLetterDistribution } from '../lobby/sought_game_interactions';
 import { TopBar } from '../navigation/topbar';
@@ -38,9 +33,7 @@ import {
 } from '../store/store';
 import { useClient, flashError } from '../utils/hooks/connect';
 import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
-import { useMountedState } from '../utils/mounted';
 import { EditorControl } from './editor_control';
-import { Notepad, NotepadContextProvider } from '../gameroom/notepad';
 import { PlayState } from '../gen/api/proto/ipc/omgwords_pb';
 import { syntheticGameInfo } from './synthetic_game_info';
 
@@ -60,7 +53,6 @@ const blankGamePayload = new GameDocument({
 });
 
 export const BoardEditor = () => {
-  const { useState } = useMountedState();
   const { gameID } = useParams();
   const navigate = useNavigate();
 
@@ -72,7 +64,6 @@ export const BoardEditor = () => {
   const {
     handleExamineStart,
     handleExamineLast,
-    handleExamineGoTo,
     handleExamineDisableShortcuts,
   } = useExamineStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
@@ -97,7 +88,12 @@ export const BoardEditor = () => {
       handleExamineLast();
       handleExamineDisableShortcuts();
     }
-  }, [gameContext.gameID]);
+  }, [
+    handleExamineStart,
+    handleExamineLast,
+    handleExamineDisableShortcuts,
+    gameContext.gameID,
+  ]);
 
   const fetchAndDispatchDocument = useCallback(
     async (gid: string, redirect: boolean) => {
@@ -119,7 +115,7 @@ export const BoardEditor = () => {
         flashError(e);
       }
     },
-    [dispatchGameContext, eventClient]
+    [dispatchGameContext, eventClient, navigate]
   );
 
   // Initialize on mount with unfinished game, new game, or existing game:
@@ -153,7 +149,7 @@ export const BoardEditor = () => {
     };
 
     initFromDoc();
-  }, [gameID]);
+  }, [gameID, eventClient, fetchAndDispatchDocument, dispatchGameContext]);
 
   useEffect(() => {
     if (gameContext.playState === PlayState.WAITING_FOR_FINAL_PASS) {
@@ -420,7 +416,6 @@ export const BoardEditor = () => {
       </div>
     </div>
   );
-  ret = <NotepadContextProvider children={ret} feRackInfo />;
   ret = <AnalyzerContextProvider children={ret} nocache />;
   return ret;
 };

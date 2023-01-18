@@ -58,7 +58,6 @@ import { useClient } from '../utils/hooks/connect';
 import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connectweb';
 import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_connectweb';
 import { ActionType } from '../actions/actions';
-import { Type } from '@bufbuild/protobuf';
 import { syntheticGameInfo } from '../boardwizard/synthetic_game_info';
 
 type Props = {

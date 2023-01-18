@@ -1,20 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { TouchBackend } from 'react-dnd-touch-backend';
-import {
-  Button,
-  notification,
-  message,
-  Tooltip,
-  Affix,
-  Input,
-  Form,
-} from 'antd';
+import { Button, notification, message, Tooltip, Affix } from 'antd';
 import { Modal } from '../utils/focus_modal';
 import { DndProvider } from 'react-dnd';
 import {
   ArrowDownOutlined,
   EditOutlined,
-  EditTwoTone,
   SyncOutlined,
 } from '@ant-design/icons';
 import {
@@ -666,6 +657,7 @@ export const BoardPanel = React.memo((props: Props) => {
   }, [
     isExamining,
     props.board.letters,
+    props.boardEditingMode,
     props.currentRack,
     props.puzzleMode,
     setDisplayedRack,

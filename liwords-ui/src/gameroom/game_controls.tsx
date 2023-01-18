@@ -144,7 +144,7 @@ const ExamineGameControls = React.memo(
             Animated GIF of complete game
           </Menu.Item>
         )}
-        {gameDone && (
+        {(gameDone || props.editMode) && (
           <Menu.Item
             key="download-gcg"
             disabled={gameHasNotStarted}
@@ -159,19 +159,18 @@ const ExamineGameControls = React.memo(
     return (
       <Affix offsetTop={210} className="examiner-controls">
         <div className="game-controls">
-          {!props.editMode && (
-            <Dropdown
-              overlay={exportMenu}
-              trigger={['click']}
-              visible={exportMenuVisible}
-              placement="topLeft"
-              disabled={props.puzzleMode}
-            >
-              <Button onClick={() => setExportMenuVisible((v) => !v)}>
-                Export
-              </Button>
-            </Dropdown>
-          )}
+          <Dropdown
+            overlay={exportMenu}
+            trigger={['click']}
+            visible={exportMenuVisible}
+            placement="topLeft"
+            disabled={props.puzzleMode}
+          >
+            <Button onClick={() => setExportMenuVisible((v) => !v)}>
+              Export
+            </Button>
+          </Dropdown>
+
           <Button
             shape="circle"
             icon={<DoubleLeftOutlined />}

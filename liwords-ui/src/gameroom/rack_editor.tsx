@@ -1,5 +1,3 @@
-import { Form } from 'antd';
-import { Store } from 'antd/lib/form/interface';
 import Input, { InputRef } from 'rc-input';
 import React, { useEffect, useRef } from 'react';
 import { useMountedState } from '../utils/mounted';

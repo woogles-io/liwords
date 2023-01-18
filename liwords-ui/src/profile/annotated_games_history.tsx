@@ -1,4 +1,4 @@
-import { Button, Card, InputNumber, Table, Tooltip } from 'antd';
+import { Button, Card, Table, Tooltip } from 'antd';
 import moment from 'moment';
 import React from 'react';
 import { Link } from 'react-router-dom';

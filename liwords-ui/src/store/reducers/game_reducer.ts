@@ -32,7 +32,6 @@ import {
   GameEvent as OMGWordsGameEvent,
   GameEvent_Type as OMGWordsGameEventType,
   ServerOMGWordsEvent,
-  GameDocumentEvent,
 } from '../../gen/api/proto/ipc/omgwords_pb';
 import {
   CrosswordGameGridLayout,
@@ -281,9 +280,12 @@ const unplaceOnBoard = (
 // convert to a Macondo GameEvent. This function should be obsoleted eventually,
 // but it will be a pain. We need a GameEvent that contains user-visible rack info.
 const convertToGameEvt = (
-  evt: OMGWordsGameEvent,
+  evt: OMGWordsGameEvent | undefined,
   alphabet: Alphabet
 ): GameEvent => {
+  if (!evt) {
+    return new GameEvent();
+  }
   return new GameEvent({
     rack: uint8ArrayToRunes(evt.rack, alphabet),
     type: evt.type.valueOf(),
@@ -312,7 +314,7 @@ const convertToServerGameplayEvent = (
   alphabet: Alphabet
 ): ServerGameplayEvent => {
   return new ServerGameplayEvent({
-    event: convertToGameEvt(evt.event!, alphabet),
+    event: convertToGameEvt(evt.event, alphabet),
     gameId: evt.gameId,
     newRack: uint8ArrayToRunes(evt.newRack, alphabet),
     timeRemaining: evt.timeRemaining,
