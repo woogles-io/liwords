@@ -43,6 +43,7 @@ import { alphabetFromName } from '../constants/alphabets';
 import {
   GameEndReason,
   GameInfoResponse,
+  GameType,
   ReadyForGame,
   TimedOut,
 } from '../gen/api/proto/ipc/omgwords_pb';
@@ -57,6 +58,8 @@ import { useClient } from '../utils/hooks/connect';
 import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connectweb';
 import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_connectweb';
 import { ActionType } from '../actions/actions';
+import { Type } from '@bufbuild/protobuf';
+import { syntheticGameInfo } from '../boardwizard/synthetic_game_info';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -250,12 +253,20 @@ export const Table = React.memo((props: Props) => {
 
       try {
         const resp = await gmClient.getMetadata({ gameId: gameID });
-        setGameInfo(resp);
+
         if (localStorage?.getItem('poolFormat')) {
           setPoolFormat(
             parseInt(localStorage.getItem('poolFormat') || '0', 10)
           );
         }
+
+        if (resp.type === GameType.ANNOTATED) {
+          // If this is an annotated game, leave early. We will use
+          // a synthetic GameInfo constructed from the annotated game's
+          // GameDocument.
+          return;
+        }
+        setGameInfo(resp);
 
         if (resp.gameEndReason !== GameEndReason.NONE) {
           // Basically if we are here, we've reloaded the page after the game
@@ -305,6 +316,11 @@ export const Table = React.memo((props: Props) => {
     };
     fetchGameDocument();
   }, [gameID, omgClient, dispatchGameContext, props.annotated]);
+
+  useEffect(() => {
+    const gi = syntheticGameInfo(gameContext.gameDocument);
+    setGameInfo(gi);
+  }, [gameContext.gameDocument]);
 
   useTourneyMetadata(
     '',
@@ -655,6 +671,7 @@ export const Table = React.memo((props: Props) => {
             horizontal
             gameMeta={gameInfo}
             playerMeta={gameInfo.players}
+            hideProfileLink={gameInfo.type === GameType.ANNOTATED}
           />
         </div>
         <div className="play-area">
@@ -723,7 +740,11 @@ export const Table = React.memo((props: Props) => {
             />
           )}
           {/* There are two player cards, css hides one of them. */}
-          <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
+          <PlayerCards
+            gameMeta={gameInfo}
+            playerMeta={gameInfo.players}
+            hideProfileLink={gameInfo.type === GameType.ANNOTATED}
+          />
           <GameInfo
             meta={gameInfo}
             tournamentName={tournamentContext.metadata?.name}

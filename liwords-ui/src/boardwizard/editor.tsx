@@ -1,7 +1,7 @@
 // boardwizard is our board editor
 
-import { HomeOutlined } from '@ant-design/icons';
-import { Button, Card } from 'antd';
+import { HomeOutlined, IconProvider } from '@ant-design/icons';
+import { Button, Card, message, notification } from 'antd';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ActionType } from '../actions/actions';
@@ -41,6 +41,8 @@ import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
 import { useMountedState } from '../utils/mounted';
 import { EditorControl } from './editor_control';
 import { Notepad, NotepadContextProvider } from '../gameroom/notepad';
+import { PlayState } from '../gen/api/proto/ipc/omgwords_pb';
+import { syntheticGameInfo } from './synthetic_game_info';
 
 const doNothing = () => {};
 
@@ -152,6 +154,16 @@ export const BoardEditor = () => {
 
     initFromDoc();
   }, [gameID]);
+
+  useEffect(() => {
+    if (gameContext.playState === PlayState.WAITING_FOR_FINAL_PASS) {
+      notification.info({
+        message: 'Pass or challenge',
+        description:
+          'The bag is now empty; please Pass or Challenge to end the game.',
+      });
+    }
+  }, [gameContext.playState]);
 
   const sortedRack = useMemo(() => {
     const rack =
@@ -300,41 +312,7 @@ export const BoardEditor = () => {
   );
   // Create a GameInfoResponse for the purposes of rendering a few of our widgets.
   const gameInfo = useMemo(() => {
-    const d = gameContext.gameDocument;
-
-    return new GameInfoResponse({
-      players: d.players.map(
-        (p) =>
-          new PlayerInfo({
-            userId: p.userId,
-            nickname: p.nickname,
-            fullName: p.realName,
-          })
-      ),
-      timeControlName: 'Annotated',
-      tournamentId: '', // maybe can populate from a description later
-      gameEndReason: d.endReason,
-      scores: d.currentScores,
-      winner: d.winner,
-      createdAt: d.createdAt,
-      gameId: d.uid,
-      // no last update
-      type: d.type,
-      gameRequest: new GameRequest({
-        lexicon: d.lexicon,
-        rules: new GameRules({
-          boardLayoutName: d.boardLayout,
-          letterDistributionName: d.letterDistribution,
-          variantName: d.variant,
-        }),
-        incrementSeconds: d.timers?.incrementSeconds,
-        challengeRule: macChallengeRule,
-        ratingMode: RatingMode.CASUAL,
-        requestId: 'none',
-        maxOvertimeMinutes: d.timers?.maxOvertime,
-        originalRequestId: 'none',
-      }),
-    });
+    return syntheticGameInfo(gameContext.gameDocument);
   }, [gameContext.gameDocument]);
 
   let ret = (

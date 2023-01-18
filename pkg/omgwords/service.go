@@ -361,10 +361,10 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *pb.SetRacksEvent) 
 	if err != nil {
 		return nil, err
 	}
-	if g.PlayState == ipc.PlayState_GAME_OVER {
-		gs.gameStore.UnlockDocument(ctx, g)
-		return nil, twirp.NewError(twirp.InvalidArgument, "game is over")
-	}
+	// if g.PlayState == ipc.PlayState_GAME_OVER {
+	// 	gs.gameStore.UnlockDocument(ctx, g)
+	// 	return nil, twirp.NewError(twirp.InvalidArgument, "game is over")
+	// }
 	if len(req.Racks) != len(g.Players) {
 		gs.gameStore.UnlockDocument(ctx, g)
 		return nil, twirp.NewError(twirp.InvalidArgument, "number of racks must match number of players")

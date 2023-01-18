@@ -163,7 +163,11 @@ func (gs *GameDocumentStore) getFromS3(ctx context.Context, uuid string) (*ipc.G
 		return nil, err
 	}
 	gdoc := &ipc.GameDocument{}
-	err = protojson.Unmarshal(body, gdoc)
+	uo := protojson.UnmarshalOptions{
+		DiscardUnknown: true,
+	}
+
+	err = uo.Unmarshal(body, gdoc)
 	if err != nil {
 		return nil, err
 	}
