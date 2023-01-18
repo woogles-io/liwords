@@ -74,14 +74,13 @@ func handleEvent(ctx context.Context, userID string, evt *ipc.ClientGameplayEven
 		return false, err
 	}
 
-	// TODO: REMOVE ME BEFORE DEPLOY
-	err = cwgame.ReconcileAllTiles(ctx, g.GameDocument)
-	if err != nil {
-		gs.UnlockDocument(ctx, g)
-		err = fmt.Errorf("failed-to-reconcile-handleevent: %w", err)
-		return false, twirp.NewError(twirp.InvalidArgument, err.Error())
-	}
-	// END-TODO
+	// REMOVE ME BEFORE DEPLOY
+	// err = cwgame.ReconcileAllTiles(ctx, g.GameDocument)
+	// if err != nil {
+	// 	gs.UnlockDocument(ctx, g)
+	// 	err = fmt.Errorf("failed-to-reconcile-handleevent: %w", err)
+	// 	return false, twirp.NewError(twirp.InvalidArgument, err.Error())
+	// }
 
 	if amendment {
 		// Send an entire document event.

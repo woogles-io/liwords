@@ -3,7 +3,6 @@ package omgwords
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
@@ -393,14 +392,13 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *pb.SetRacksEvent) 
 		}
 	}
 
-	// TODO: REMOVE ME BEFORE DEPLOY
-	err = cwgame.ReconcileAllTiles(ctx, g.GameDocument)
-	if err != nil {
-		gs.gameStore.UnlockDocument(ctx, g)
-		err = fmt.Errorf("failed-to-reconcile-setracks: %w", err)
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
-	}
-	// END-TODO
+	// REMOVE ME BEFORE DEPLOY
+	// err = cwgame.ReconcileAllTiles(ctx, g.GameDocument)
+	// if err != nil {
+	// 	gs.gameStore.UnlockDocument(ctx, g)
+	// 	err = fmt.Errorf("failed-to-reconcile-setracks: %w", err)
+	// 	return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	// }
 
 	err = gs.gameStore.UpdateDocument(ctx, g)
 	if err != nil {
