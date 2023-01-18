@@ -247,10 +247,6 @@ func EditOldRack(ctx context.Context, gdoc *ipc.GameDocument, evtNumber uint32, 
 	// If it is possible to assign racks without issue, then do it on the
 	// real document.
 	evt.Rack = rack
-	// Don't bother recalculating leave right now.
-	// XXX: Strongly reconsider removing the Leave from an event. It can
-	// be calculated on the fly from the rack and played tiles if needed,
-	// and it just complicates matters in situations like this.
 
 	return nil
 }
@@ -465,7 +461,7 @@ func clientEventToGameEvent(ctx context.Context, evt *ipc.ClientGameplayEvent, g
 		if err != nil {
 			return nil, err
 		}
-		leave, err := Leave(rackmw, mw)
+		_, err = Leave(rackmw, mw)
 		if err != nil {
 			return nil, err
 		}
@@ -476,7 +472,6 @@ func clientEventToGameEvent(ctx context.Context, evt *ipc.ClientGameplayEvent, g
 			Type:        ipc.GameEvent_TILE_PLACEMENT_MOVE,
 			Rack:        gdoc.Racks[playerid],
 			PlayedTiles: runemapping.MachineWord(mw).ToByteArr(),
-			Leave:       runemapping.MachineWord(leave).ToByteArr(),
 			Position:    evt.PositionCoords,
 			PlayerIndex: gdoc.PlayerOnTurn,
 		}, nil
@@ -484,7 +479,6 @@ func clientEventToGameEvent(ctx context.Context, evt *ipc.ClientGameplayEvent, g
 	case ipc.ClientGameplayEvent_PASS:
 		return &ipc.GameEvent{
 			Type:        ipc.GameEvent_PASS,
-			Leave:       gdoc.Racks[playerid],
 			Rack:        gdoc.Racks[playerid],
 			PlayerIndex: gdoc.PlayerOnTurn,
 		}, nil
@@ -493,7 +487,7 @@ func clientEventToGameEvent(ctx context.Context, evt *ipc.ClientGameplayEvent, g
 		if err != nil {
 			return nil, err
 		}
-		leave, err := Leave(rackmw, mw)
+		_, err = Leave(rackmw, mw)
 		if err != nil {
 			return nil, err
 		}
@@ -501,13 +495,11 @@ func clientEventToGameEvent(ctx context.Context, evt *ipc.ClientGameplayEvent, g
 			Type:        ipc.GameEvent_EXCHANGE,
 			Rack:        gdoc.Racks[playerid],
 			Exchanged:   runemapping.MachineWord(mw).ToByteArr(),
-			Leave:       runemapping.MachineWord(leave).ToByteArr(),
 			PlayerIndex: gdoc.PlayerOnTurn,
 		}, nil
 	case ipc.ClientGameplayEvent_CHALLENGE_PLAY:
 		return &ipc.GameEvent{
 			Type:        ipc.GameEvent_CHALLENGE,
-			Leave:       gdoc.Racks[playerid],
 			PlayerIndex: gdoc.PlayerOnTurn,
 			Rack:        gdoc.Racks[playerid],
 		}, nil

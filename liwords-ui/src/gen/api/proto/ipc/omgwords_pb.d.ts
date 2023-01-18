@@ -1507,13 +1507,6 @@ export declare class GameEvent extends Message<GameEvent> {
    */
   playerIndex: number;
 
-  /**
-   * The leave from rack after played_tiles.
-   *
-   * @generated from field: bytes leave = 20;
-   */
-  leave: Uint8Array;
-
   constructor(data?: PartialMessage<GameEvent>);
 
   static readonly runtime: typeof proto3;

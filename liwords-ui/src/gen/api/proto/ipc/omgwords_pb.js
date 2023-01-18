@@ -508,7 +508,6 @@ export const GameEvent = proto3.makeMessageType(
     { no: 17, name: "words_formed", kind: "scalar", T: 12 /* ScalarType.BYTES */, repeated: true },
     { no: 18, name: "millis_remaining", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 19, name: "player_index", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
-    { no: 20, name: "leave", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
   ],
 );
 

@@ -286,7 +286,6 @@ func TestChallengeBadWord(t *testing.T) {
 		WordsFormed:     [][]byte{{11, 14, 9, 22, 5, 23}}, // KNIVEW
 		MillisRemaining: 883808,                           // 5000 ms after their last time remaining
 		PlayerIndex:     0,
-		Leave:           []byte{5, 20}, // ET
 	})
 	is.Equal(gdoc.Events[5], &ipc.GameEvent{
 		Type:            ipc.GameEvent_PHONY_TILES_RETURNED,
@@ -310,7 +309,6 @@ func TestChallengeBadWord(t *testing.T) {
 		WordsFormed:     [][]byte{{19, 16, 8, 5, 18, 15, 9, 4}}, // SPHEROID
 		MillisRemaining: 895914,                                 // 5000 ms after their last time remaining
 		PlayerIndex:     1,
-		Leave:           []byte{},
 		IsBingo:         true,
 	})
 	is.Equal(gdoc.CurrentScores, []int32{62, 229})
@@ -381,7 +379,6 @@ func TestChallengeGoodWordSingle(t *testing.T) {
 		WordsFormed:     [][]byte{{11, 14, 9, 22, 5}}, // KNIVE
 		MillisRemaining: 883808,                       // 5000 ms after their last time remaining
 		PlayerIndex:     0,
-		Leave:           []byte{5, 20, 23}, // ETW
 	})
 
 	// Don't compare this event exactly because this event has a new random rack.
@@ -404,7 +401,6 @@ func TestChallengeGoodWordSingle(t *testing.T) {
 		WordsFormed:     [][]byte{{19, 16, 8, 5, 18, 15, 9, 4}}, // SPHEROID
 		MillisRemaining: 895914,                                 // 5000 ms after their last time remaining
 		PlayerIndex:     1,
-		Leave:           []byte{},
 		IsBingo:         true,
 	})
 	is.Equal(gdoc.CurrentScores, []int32{113, 229})
@@ -471,7 +467,6 @@ func TestChallengeGoodWordDouble(t *testing.T) {
 		WordsFormed:     [][]byte{{11, 14, 9, 22, 5}}, // KNIVE
 		MillisRemaining: 883808,                       // 5000 ms after their last time remaining
 		PlayerIndex:     0,
-		Leave:           []byte{5, 20, 23}, // ETW
 	})
 	is.Equal(gdoc.Events[5], &ipc.GameEvent{
 		Type:            ipc.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS,
@@ -546,7 +541,6 @@ func TestChallengeGoodWordDoubleWithTimeIncrement(t *testing.T) {
 		// 5000 ms after their last time remaining
 		MillisRemaining: 883808,
 		PlayerIndex:     0,
-		Leave:           []byte{5, 20, 23}, // ETW
 	}))
 	is.True(proto.Equal(gdoc.Events[5], &ipc.GameEvent{
 		Type:       ipc.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS,
@@ -614,7 +608,6 @@ func TestChallengeBadWordWithTimeIncrement(t *testing.T) {
 		// 5000 ms after their last time remaining
 		MillisRemaining: 883808,
 		PlayerIndex:     0,
-		Leave:           []byte{5, 20}, // ET
 	})
 	is.Equal(gdoc.Events[5], &ipc.GameEvent{
 		Type:       ipc.GameEvent_PHONY_TILES_RETURNED,
@@ -684,7 +677,6 @@ func TestTimeRanOut(t *testing.T) {
 		WordsFormed:     [][]byte{{11, 14, 9, 22, 5, 23}}, // KNIVEW
 		MillisRemaining: 883808,                           // 5000 ms after their last time remaining
 		PlayerIndex:     0,
-		Leave:           []byte{5, 20}, // ET
 	})
 
 	is.Equal(gdoc.Events[5], &ipc.GameEvent{
@@ -1181,7 +1173,6 @@ func TestExchange(t *testing.T) {
 		Type:            ipc.GameEvent_EXCHANGE,
 		Cumulative:      62,
 		Exchanged:       []byte{5, 11, 23},
-		Leave:           []byte{5, 9, 14, 20},
 		MillisRemaining: 883808,
 	}))
 	err = ReconcileAllTiles(ctx, gdoc)
@@ -1218,7 +1209,6 @@ func TestExchangePartialRack(t *testing.T) {
 		Type:            ipc.GameEvent_EXCHANGE,
 		Cumulative:      62,
 		Exchanged:       []byte{9, 9, 9, 9, 9},
-		Leave:           []byte{},
 		MillisRemaining: 883808,
 	}))
 	err = ReconcileAllTiles(ctx, gdoc)

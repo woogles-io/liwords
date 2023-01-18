@@ -385,8 +385,6 @@ message GameEvent {
   // The player who played this move is encoded in player_index. This should
   // be the index in GameDocument.players.
   uint32 player_index = 19;
-  // The leave from rack after played_tiles.
-  bytes leave = 20;
 }
 
 enum PlayState {

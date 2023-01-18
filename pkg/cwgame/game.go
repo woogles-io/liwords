@@ -111,7 +111,13 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 		if err != nil {
 			return err
 		}
-		copy(placeholder[len(gevt.Exchanged):], runemapping.FromByteArr(gevt.Leave))
+		leave, err := Leave(runemapping.FromByteArr(gevt.Rack),
+			runemapping.FromByteArr(gevt.Exchanged))
+		if err != nil {
+			return err
+		}
+
+		copy(placeholder[len(gevt.Exchanged):], leave)
 		// // A partial rack could have been provided.
 		newRackLength := len(gdoc.Racks[gdoc.PlayerOnTurn])
 		if newRackLength < RackTileLimit {
@@ -191,8 +197,14 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 	if err != nil {
 		return err
 	}
-	copy(placeholder[drew:], runemapping.FromByteArr(gevt.Leave))
-	newRack := placeholder[:drew+len(gevt.Leave)]
+
+	leave, err := Leave(runemapping.FromByteArr(gevt.Rack), tilesUsed)
+	if err != nil {
+		return err
+	}
+
+	copy(placeholder[drew:], leave)
+	newRack := placeholder[:drew+len(leave)]
 	// Fill the rack if possible. This can happen if we only had partial
 	// rack info for this play.
 	// if len(newRack) < RackTileLimit {
@@ -610,10 +622,14 @@ func unplayLastMove(ctx context.Context, gdoc *ipc.GameDocument, dist *tiles.Let
 		return err
 	}
 
-	leaveAfterPhony := originalEvent.Leave
-	drewPostPhony, err := Leave(
-		runemapping.FromByteArr(postPhonyRack),
-		runemapping.FromByteArr(leaveAfterPhony))
+	leaveAfterPhony, err := Leave(
+		runemapping.FromByteArr(originalEvent.Rack), mw)
+	if err != nil {
+		return err
+	}
+
+	drewPostPhony, err := Leave(runemapping.FromByteArr(postPhonyRack),
+		leaveAfterPhony)
 	if err != nil {
 		return err
 	}
@@ -653,4 +669,45 @@ evtCounter:
 	gdoc.ScorelessTurns = uint32(scorelessTurns)
 
 	return nil
+}
+
+// Return a user-friendly event description. Used for debugging.
+func EventDescription(evt *ipc.GameEvent, rm *runemapping.RuneMapping) string {
+	switch evt.Type {
+
+	case ipc.GameEvent_PASS:
+		return fmt.Sprintf("(Pass) +0 %d", evt.Cumulative)
+
+	case ipc.GameEvent_TILE_PLACEMENT_MOVE:
+		return fmt.Sprintf("%s %s %s +%d %d",
+			evt.Position,
+			runemapping.FromByteArr(evt.Rack).UserVisible(rm),
+			runemapping.FromByteArr(evt.PlayedTiles).UserVisible(rm),
+			evt.Score,
+			evt.Cumulative,
+		)
+
+	case ipc.GameEvent_EXCHANGE:
+		return fmt.Sprintf("%s [exch %s]  +0 %d",
+			runemapping.FromByteArr(evt.Rack).UserVisible(rm),
+			runemapping.FromByteArr(evt.Exchanged).UserVisible(rm),
+			evt.Cumulative,
+		)
+
+	case ipc.GameEvent_CHALLENGE_BONUS:
+		return fmt.Sprintf("+%d %d", evt.Bonus, evt.Cumulative)
+
+	case ipc.GameEvent_PHONY_TILES_RETURNED:
+		return fmt.Sprintf("[phony tiles returned %s] -%d %d",
+			runemapping.FromByteArr(evt.Rack).UserVisible(rm),
+			evt.LostScore,
+			evt.Cumulative)
+	case ipc.GameEvent_END_RACK_PTS:
+		return fmt.Sprintf("[end rack pts %s] +%d %d",
+			runemapping.FromByteArr(evt.Rack).UserVisible(rm),
+			evt.EndRackPoints,
+			evt.Cumulative)
+	default:
+		return fmt.Sprintf("Unknown event %s", evt.Type.String())
+	}
 }

@@ -86,11 +86,7 @@ func ToGameDocument(g *entity.Game, cfg *config.Config) (*ipc.GameDocument, erro
 			MillisRemaining: evt.MillisRemaining,
 			PlayerIndex:     evt.PlayerIndex,
 		}
-		if cvt.Type == ipc.GameEvent_TILE_PLACEMENT_MOVE {
-			cvt.Leave = leave(cvt.Rack, cvt.PlayedTiles)
-		} else if cvt.Type == ipc.GameEvent_EXCHANGE {
-			cvt.Leave = leave(cvt.Rack, cvt.Exchanged)
-		}
+
 		return cvt
 	}
 

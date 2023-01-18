@@ -32,8 +32,7 @@
                 "ARIFDg8TBQ=="
             ],
             "millis_remaining": 899980,
-            "player_index": 0,
-            "leave": ""
+            "player_index": 0
         },
         {
             "note": "",
@@ -55,8 +54,7 @@
                 "DxUSCQU="
             ],
             "millis_remaining": 868595,
-            "player_index": 1,
-            "leave": "DhMJ"
+            "player_index": 1
         },
         {
             "note": "",
@@ -82,8 +80,7 @@
                 "BQg="
             ],
             "millis_remaining": 899952,
-            "player_index": 0,
-            "leave": "DA4="
+            "player_index": 0
         },
         {
             "note": "",
@@ -108,8 +105,7 @@
                 "GQU="
             ],
             "millis_remaining": 841584,
-            "player_index": 1,
-            "leave": "CQwOEw=="
+            "player_index": 1
         },
         {
             "note": "",
@@ -132,8 +128,7 @@
                 "EA8VEgkF"
             ],
             "millis_remaining": 899925,
-            "player_index": 0,
-            "leave": "CQ4="
+            "player_index": 0
         },
         {
             "note": "",
@@ -156,8 +151,7 @@
                 "AhUZEw=="
             ],
             "millis_remaining": 826748,
-            "player_index": 1,
-            "leave": "DAQE"
+            "player_index": 1
         },
         {
             "note": "",
@@ -181,8 +175,7 @@
                 "CRQ="
             ],
             "millis_remaining": 899900,
-            "player_index": 0,
-            "leave": "DhIU"
+            "player_index": 0
         },
         {
             "note": "",
@@ -204,8 +197,7 @@
                 "CgEHBw=="
             ],
             "millis_remaining": 815752,
-            "player_index": 1,
-            "leave": "BAQMDA=="
+            "player_index": 1
         },
         {
             "note": "",
@@ -228,8 +220,7 @@
                 "BA8O"
             ],
             "millis_remaining": 899892,
-            "player_index": 0,
-            "leave": "FAkOEg=="
+            "player_index": 0
         },
         {
             "note": "",
@@ -252,8 +243,7 @@
                 "CgEHBwE="
             ],
             "millis_remaining": 806210,
-            "player_index": 1,
-            "leave": "Gg=="
+            "player_index": 1
         },
         {
             "note": "",
@@ -273,8 +263,7 @@
             "is_bingo": false,
             "words_formed": [],
             "millis_remaining": 899884,
-            "player_index": 1,
-            "leave": ""
+            "player_index": 1
         },
         {
             "note": "",
@@ -297,8 +286,7 @@
                 "BxU="
             ],
             "millis_remaining": 899873,
-            "player_index": 0,
-            "leave": "FAkPEg=="
+            "player_index": 0
         },
         {
             "note": "",
@@ -320,8 +308,7 @@
                 "DAEaGQ=="
             ],
             "millis_remaining": 796406,
-            "player_index": 1,
-            "leave": "BAQFDA=="
+            "player_index": 1
         },
         {
             "note": "",
@@ -343,8 +330,7 @@
                 "DgkUEg8Y"
             ],
             "millis_remaining": 899863,
-            "player_index": 0,
-            "leave": "DwE="
+            "player_index": 0
         },
         {
             "note": "",
@@ -367,8 +353,7 @@
                 "DQUI"
             ],
             "millis_remaining": 789233,
-            "player_index": 1,
-            "leave": "Aw=="
+            "player_index": 1
         },
         {
             "note": "",
@@ -390,8 +375,7 @@
                 "BAESAQY="
             ],
             "millis_remaining": 899836,
-            "player_index": 0,
-            "leave": "FQEP"
+            "player_index": 0
         },
         {
             "note": "",
@@ -416,8 +400,7 @@
                 "BRg="
             ],
             "millis_remaining": 780679,
-            "player_index": 1,
-            "leave": "AwUUAQ=="
+            "player_index": 1
         },
         {
             "note": "",
@@ -440,8 +423,7 @@
                 "EwUY"
             ],
             "millis_remaining": 899755,
-            "player_index": 0,
-            "leave": ""
+            "player_index": 0
         },
         {
             "note": "",
@@ -465,8 +447,7 @@
                 "BRI="
             ],
             "millis_remaining": 773693,
-            "player_index": 1,
-            "leave": "BRc="
+            "player_index": 1
         },
         {
             "note": "",
@@ -491,8 +472,7 @@
                 "CQ4="
             ],
             "millis_remaining": 899723,
-            "player_index": 0,
-            "leave": "BRIW"
+            "player_index": 0
         },
         {
             "note": "",
@@ -515,8 +495,7 @@
                 "DwQ="
             ],
             "millis_remaining": 750984,
-            "player_index": 1,
-            "leave": "AAEFCQ=="
+            "player_index": 1
         },
         {
             "note": "",
@@ -538,8 +517,7 @@
                 "Cw4PFw=="
             ],
             "millis_remaining": 899710,
-            "player_index": 0,
-            "leave": "EhQWBQ=="
+            "player_index": 0
         },
         {
             "note": "",
@@ -562,8 +540,7 @@
                 "CA8E"
             ],
             "millis_remaining": 727814,
-            "player_index": 1,
-            "leave": "CQ8SAAEF"
+            "player_index": 1
         },
         {
             "note": "",
@@ -587,8 +564,7 @@
                 "FAE="
             ],
             "millis_remaining": 899700,
-            "player_index": 0,
-            "leave": "AwUSFA=="
+            "player_index": 0
         }
     ],
     "version": 1,
