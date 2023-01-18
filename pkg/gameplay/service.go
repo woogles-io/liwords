@@ -13,6 +13,7 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	entityutils "github.com/domino14/liwords/pkg/entity/utilities"
 	"github.com/domino14/liwords/pkg/mod"
+	"github.com/domino14/liwords/pkg/omgwords/stores"
 	"github.com/domino14/liwords/pkg/user"
 	"github.com/domino14/liwords/pkg/utilities"
 	pb "github.com/domino14/liwords/rpc/api/proto/game_service"
@@ -26,12 +27,14 @@ type GameService struct {
 	userStore user.Store
 	gameStore GameStore
 	cfg       *config.Config
+	// New stores. These will replace the game store eventually.
+	gameDocumentStore *stores.GameDocumentStore
 }
 
 // NewGameService creates a Twirp GameService
-func NewGameService(u user.Store, gs GameStore,
+func NewGameService(u user.Store, gs GameStore, gds *stores.GameDocumentStore,
 	cfg *config.Config) *GameService {
-	return &GameService{u, gs, cfg}
+	return &GameService{u, gs, cfg, gds}
 }
 
 // GetMetadata gets metadata for the given game.
@@ -91,14 +94,29 @@ func (gs *GameService) GetRecentGames(ctx context.Context, req *pb.RecentGamesRe
 	return resp, nil
 }
 
-// GetGCG downloads a GCG for a finished game.
+// GetGCG downloads a GCG for a full native game, or a partial GCG
+// for an annotated game.
 func (gs *GameService) GetGCG(ctx context.Context, req *pb.GCGRequest) (*pb.GCGResponse, error) {
 	hist, err := gs.gameStore.GetHistory(ctx, req.GameId)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
+	anno := false
+	if hist.Version == 0 {
+		// A shortcut for a blank history. Look in the game document store.
+		gdoc, err := gs.gameDocumentStore.GetDocument(ctx, req.GameId, false)
+		if err != nil {
+			return nil, err
+		}
+		hist, err = entityutils.ToGameHistory(gdoc.GameDocument, gs.cfg)
+		if err != nil {
+			return nil, err
+		}
+		anno = true
+	}
+
 	hist = mod.CensorHistory(ctx, gs.userStore, hist)
-	if hist.PlayState != macondopb.PlayState_GAME_OVER {
+	if hist.PlayState != macondopb.PlayState_GAME_OVER && !anno {
 		return nil, twirp.NewError(twirp.InvalidArgument, "please wait until the game is over to download GCG")
 	}
 	gcg, err := gcgio.GameHistoryToGCG(hist, true)
