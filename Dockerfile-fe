@@ -1,7 +1,6 @@
 
 FROM node:latest
 
-RUN apk add --no-cache git
 # RUN git config --global url."https://github.com/".insteadOf git@github.com:
 # RUN git config --global url."https://".insteadOf git+ssh://git@github.com/
 
@@ -10,7 +9,8 @@ WORKDIR /opt/liwords-ui/
 ENV PATH /opt/liwords-ui/node_modules/.bin:$PATH
 
 COPY ./liwords-ui/package.json ./liwords-ui/package-lock.json ./
-RUN mkdir -p wolges-wasm-pkg && echo '{}' > wolges-wasm-pkg/package.json
+RUN mkdir -p wolges-wasm-pkg 
+COPY ./liwords-ui/wolges-wasm-pkg/package.json ./wolges-wasm-pkg
 
 RUN ["npm", "ci"]
 
