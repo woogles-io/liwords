@@ -30,7 +30,7 @@ func TestBag(t *testing.T) {
 	for range bag.Tiles {
 		err := Draw(bag, 1, ml)
 		numTiles++
-		uv := ml[0].UserVisible(ld.runemapping)
+		uv := ml[0].UserVisible(ld.runemapping, false)
 		t.Logf("Drew a %c! , %v", uv, numTiles)
 		if err != nil {
 			t.Error("Error drawing from tile bag.", err)
@@ -62,7 +62,7 @@ func TestNorwegianBag(t *testing.T) {
 	for range bag.Tiles {
 		err := Draw(bag, 1, ml)
 		numTiles++
-		uv := ml[0].UserVisible(ld.runemapping)
+		uv := ml[0].UserVisible(ld.runemapping, false)
 		t.Logf("Drew a %c! , %v", uv, numTiles)
 		if err != nil {
 			t.Error("Error drawing from tile bag.", err)
