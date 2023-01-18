@@ -337,14 +337,14 @@ export const runesToUint8Array = (
   runes: string,
   alphabet: Alphabet
 ): Uint8Array => {
-  let bts = [];
-  let chars = Array.from(runes);
+  const bts = [];
+  const chars = Array.from(runes);
   let i = 0;
   let match;
   while (i < chars.length) {
     match = false;
     for (let j = i + alphabet.longestPossibleTileRune; j > i; j--) {
-      let rune = chars.slice(i, j).join('');
+      const rune = chars.slice(i, j).join('');
       if (alphabet.machineLetterMap[rune] != undefined) {
         bts.push(alphabet.machineLetterMap[rune]);
         i = j;

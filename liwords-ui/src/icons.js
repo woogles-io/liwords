@@ -93,6 +93,6 @@ export { default as SmileOutlined } from '@ant-design/icons/lib/icons/SmileOutli
 
 export { default as QuestionCircleOutlined } from '@ant-design/icons/lib/icons/QuestionCircleOutlined';
 
-export { default as EditTwoTone } from '@ant-design/icons/lib/icons/EditTwoTone';
+export { default as EditOutlined } from '@ant-design/icons/lib/icons/EditOutlined';
 
 export { default as CopyOutlined } from '@ant-design/icons/lib/icons/CopyOutlined';

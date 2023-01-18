@@ -1,18 +1,8 @@
 // Control the editor
 
-import { CopyOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Form,
-  Input,
-  Popconfirm,
-  Select,
-  Switch,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Form, Input, Popconfirm, Select, Typography } from 'antd';
 import { Store } from 'antd/lib/form/interface';
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import { ChallengeRule } from '../gen/api/proto/ipc/omgwords_pb';
 import { LexiconFormItem } from '../shared/lexicon_display';
 import { useGameContextStoreContext } from '../store/store';
@@ -62,6 +52,7 @@ export const EditorControl = (props: Props) => {
             <Popconfirm
               title="Are you sure you wish to delete this game? This action can not be undone!"
               onConfirm={() => {
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 props.deleteGame(props.gameID!);
                 setConfirmDelVisible(false);
               }}
@@ -172,10 +163,11 @@ type EditFormProps = {
 
 const EditForm = (props: EditFormProps) => {
   const { gameContext } = useGameContextStoreContext();
+  const [formref] = Form.useForm();
+
   useEffect(() => {
     formref.resetFields();
-  }, [gameContext.gameDocument]);
-  const [formref] = Form.useForm();
+  }, [gameContext.gameDocument, formref]);
 
   return (
     <Form
