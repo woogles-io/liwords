@@ -407,6 +407,16 @@ func (b *Bus) sendGameRefresher(ctx context.Context, gameID, connID, userID stri
 	}
 	entGame.RLock()
 	defer entGame.RUnlock()
+
+	if entGame.Type == pb.GameType_ANNOTATED {
+		// Temporary solution for using a different game store to fetch these.
+		// In the future, we will use the same game store for all games,
+		// as all games will be GameDocuments.
+		// For now we will not send a game refresher for annotated games, but
+		// instead the front-end should request the GameDocument in this case.
+		return nil
+	}
+
 	var evt *entity.EventWrapper
 	log.Debug().Str("gameid", entGame.History().Uid).Msg("sent-refresher")
 

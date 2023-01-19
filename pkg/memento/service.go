@@ -11,8 +11,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/domino14/liwords/pkg/config"
+	"github.com/domino14/liwords/pkg/entity/utilities"
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/mod"
+	"github.com/domino14/liwords/pkg/omgwords/stores"
 	"github.com/domino14/liwords/pkg/user"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/lithammer/shortuuid"
@@ -24,10 +27,14 @@ var RenderMutex sync.Mutex
 type MementoService struct {
 	userStore user.Store
 	gameStore gameplay.GameStore
+	// New stores. These will replace the game store eventually. Or something.
+	gameDocumentStore *stores.GameDocumentStore
+	cfg               *config.Config
 }
 
-func NewMementoService(u user.Store, gs gameplay.GameStore) *MementoService {
-	return &MementoService{u, gs}
+func NewMementoService(u user.Store, gs gameplay.GameStore, gds *stores.GameDocumentStore,
+	cfg *config.Config) *MementoService {
+	return &MementoService{u, gs, gds, cfg}
 }
 
 type WhichFile struct {
@@ -135,6 +142,17 @@ func (ms *MementoService) loadAndRender(name string) ([]byte, error) {
 	hist, err := ms.gameStore.GetHistory(ctx, wf.GameId)
 	if err != nil {
 		return nil, err
+	}
+	if hist.Version == 0 {
+		// A shortcut for a blank history. Look in the game document store.
+		gdoc, err := ms.gameDocumentStore.GetDocument(ctx, wf.GameId, false)
+		if err != nil {
+			return nil, err
+		}
+		hist, err = utilities.ToGameHistory(gdoc.GameDocument, ms.cfg)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Just following GameService.GetGameHistory although it doesn't matter.

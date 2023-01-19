@@ -1,0 +1,104 @@
+syntax = "proto3";
+package omgwords_service;
+option go_package = "github.com/domino14/liwords/rpc/api/proto/omgwords_service";
+
+import "google/protobuf/timestamp.proto";
+import "ipc/omgwords.proto";
+
+// GameEventResponse doesn't need to have any extra data. The GameEvent API
+// will still use sockets to broadcast game information.
+message GameEventResponse {}
+
+message TimePenaltyEvent { int32 points_lost = 1; }
+message ChallengeBonusPointsEvent { int32 points_gained = 1; }
+message CreateBroadcastGameRequest {
+  // metadata
+
+  // PlayerInfo for broadcast games do not need to be tied to a Woogles
+  // UUID. These games are meant for sandbox/annotation/broadcast of
+  // a typically IRL game.
+
+  repeated ipc.PlayerInfo players_info = 1;
+  string lexicon = 2;
+  ipc.GameRules rules = 3;
+  ipc.ChallengeRule challenge_rule = 4;
+  // public will make this game public upon creation - i.e., findable
+  // within the interface. Otherwise, a game ID is required.
+  bool public = 5;
+}
+
+message CreateBroadcastGameResponse { string game_id = 1; }
+
+message BroadcastGamePrivacy { bool public = 1; }
+
+message GetGamesForEditorRequest {
+  string user_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+  bool unfinished = 4;
+}
+
+// Assume we can never have so many unfinished games that we'd need limits and
+// offsets. Ideally we should only have one unfinished game per authed player at
+// a time.
+message GetMyUnfinishedGamesRequest {}
+
+message BroadcastGamesResponse {
+  message BroadcastGame {
+    string game_id = 1;
+    string creator_id = 2;
+    bool private = 3;
+    bool finished = 4;
+    repeated ipc.PlayerInfo players_info = 5;
+    string lexicon = 6;
+    google.protobuf.Timestamp created_at = 7;
+  }
+  repeated BroadcastGame games = 1;
+}
+
+message AnnotatedGameEvent {
+  ipc.ClientGameplayEvent event = 1;
+  string user_id = 2;
+  uint32 event_number = 3;
+  bool amendment = 4;
+}
+
+message GetGameDocumentRequest { string game_id = 1; }
+
+message DeleteBroadcastGameRequest { string game_id = 1; }
+
+message DeleteBroadcastGameResponse {}
+
+message ReplaceDocumentRequest { ipc.GameDocument document = 1; }
+
+message PatchDocumentRequest { ipc.GameDocument document = 1; }
+
+message SetRacksEvent {
+  string game_id = 1;
+  repeated bytes racks = 2;
+  uint32 event_number = 3;
+  bool amendment = 4;
+}
+// GameEventService will handle our game event API. We can connect bots to
+// this API, or use it for sandbox mode, or for live annotations, etc.
+service GameEventService {
+  // CreateBroadcastGame will create a game for Woogles broadcast
+  rpc CreateBroadcastGame(CreateBroadcastGameRequest)
+      returns (CreateBroadcastGameResponse);
+  rpc DeleteBroadcastGame(DeleteBroadcastGameRequest)
+      returns (DeleteBroadcastGameResponse);
+  rpc SendGameEvent(AnnotatedGameEvent) returns (GameEventResponse);
+  rpc SetRacks(SetRacksEvent) returns (GameEventResponse);
+  rpc ReplaceGameDocument(ReplaceDocumentRequest) returns (GameEventResponse);
+  // PatchGameDocument merges in the passed-in GameDocument with what's on the
+  // server. The passed-in GameDocument should be a partial document
+  rpc PatchGameDocument(PatchDocumentRequest) returns (GameEventResponse);
+  rpc SetBroadcastGamePrivacy(BroadcastGamePrivacy) returns (GameEventResponse);
+
+  rpc GetGamesForEditor(GetGamesForEditorRequest)
+      returns (BroadcastGamesResponse);
+  rpc GetMyUnfinishedGames(GetMyUnfinishedGamesRequest)
+      returns (BroadcastGamesResponse);
+
+  rpc GetGameDocument(GetGameDocumentRequest) returns (ipc.GameDocument);
+}

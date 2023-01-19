@@ -80,12 +80,16 @@ export const GameInfo = React.memo((props: Props) => {
             timeCtrlToDisplayName(
               props.meta.gameRequest?.initialTimeSeconds ?? 0,
               props.meta.gameRequest?.incrementSeconds ?? 0,
-              props.meta.gameRequest?.maxOvertimeMinutes ?? 0
+              props.meta.gameRequest?.maxOvertimeMinutes ?? 0,
+              props.meta.timeControlName === 'Annotated'
+                ? props.meta.timeControlName
+                : undefined
             )[0]
           } ${timeToString(
             props.meta.gameRequest?.initialTimeSeconds ?? 0,
             props.meta.gameRequest?.incrementSeconds ?? 0,
-            props.meta.gameRequest?.maxOvertimeMinutes ?? 0
+            props.meta.gameRequest?.maxOvertimeMinutes ?? 0,
+            props.meta.timeControlName === 'Annotated'
           )}`}{' '}
           • {variant} •{' '}
           <MatchLexiconDisplay

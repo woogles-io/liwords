@@ -1,0 +1,167 @@
+// a WIP. This is not going to be used yet.
+// A new game reducer based on immer and the GameDocument structure.
+import { Server } from 'http';
+import produce from 'immer';
+import { WritableDraft } from 'immer/dist/internal';
+import { Action, ActionType } from '../../actions/actions';
+import { Alphabet, runesToUint8Array } from '../../constants/alphabets';
+import {
+  Bag,
+  GameBoard,
+  GameDocument,
+  GameEvent,
+  GameEvent_Direction,
+  GameEvent_Type,
+  ServerGameplayEvent,
+} from '../../gen/api/proto/ipc/omgwords_pb';
+import { GameEvent as MacondoGameEvent } from '../../gen/api/proto/macondo/macondo_pb';
+import {
+  Direction,
+  isBlank,
+  PlayedTiles,
+  PlayerOfTiles,
+} from '../../utils/cwgame/common';
+import { computeLeave } from '../../utils/cwgame/game_event';
+import { PlayerOrder } from '../constants';
+import { ClockController, Millis } from '../timer_controller';
+
+export type GameState = {
+  document: GameDocument;
+  alphabet: Alphabet;
+  pool: TileDistribution; // There is a bag structure in document, but we need a map here for speed.
+  lastPlayedTiles: PlayedTiles;
+  playerOfTileAt: PlayerOfTiles;
+  clockController: React.MutableRefObject<ClockController | null> | null;
+  onClockTick: (p: PlayerOrder, t: Millis) => void;
+  onClockTimeout: (p: PlayerOrder) => void;
+};
+
+type Tile = {
+  row: number;
+  col: number;
+  ml: number;
+};
+
+type TileDistribution = { [ml: number]: number };
+
+const macondoEventToOMGWordsEvent = (
+  mevt: MacondoGameEvent,
+  alphabet: Alphabet
+): GameEvent => {
+  return new GameEvent({
+    rack: runesToUint8Array(mevt.rack, alphabet),
+    type: mevt.type,
+    cumulative: mevt.cumulative,
+    row: mevt.row,
+    column: mevt.column,
+    direction: mevt.direction,
+    position: mevt.position,
+    playedTiles: runesToUint8Array(mevt.playedTiles, alphabet),
+    exchanged: runesToUint8Array(mevt.exchanged, alphabet),
+    score: mevt.score,
+    bonus: mevt.bonus,
+    endRackPoints: mevt.endRackPoints,
+    lostScore: mevt.lostScore,
+    isBingo: mevt.isBingo,
+    wordsFormed: mevt.wordsFormed.map((v) => runesToUint8Array(v, alphabet)),
+    millisRemaining: mevt.millisRemaining,
+    playerIndex: mevt.playerIndex,
+    leave: runesToUint8Array(
+      computeLeave(mevt.playedTiles || mevt.exchanged, mevt.rack),
+      alphabet
+    ),
+  });
+};
+
+const letterAt = (board: GameBoard, row: number, col: number) => {
+  const idx = row * board.numCols + col;
+  return board.tiles.at(idx);
+};
+
+const addLetter = (board: GameBoard, tile: Tile) => {
+  const idx = tile.row * board.numCols + tile.col;
+  board.tiles[idx] = tile.ml;
+};
+
+const isBlanked = (ml: number) => {
+  return ml > 127;
+};
+
+const placeOnBoard = (
+  board: GameBoard,
+  bag: Bag,
+  pool: TileDistribution,
+  evt: GameEvent
+): PlayedTiles => {
+  const play = evt.playedTiles;
+  const playedTiles: PlayedTiles = {};
+
+  for (let i = 0; i < play.length; i += 1) {
+    const ml = play[i];
+    const row =
+      evt.direction === GameEvent_Direction.VERTICAL ? evt.row + i : evt.row;
+    const col =
+      evt.direction === GameEvent_Direction.HORIZONTAL
+        ? evt.column + i
+        : evt.column;
+    const tile = { row, col, ml };
+    if (ml !== 0 && letterAt(board, row, col) === 0) {
+      addLetter(board, tile);
+      if (isBlanked(tile.ml)) {
+        pool[0]--;
+      } else {
+        pool[tile.ml]--;
+      }
+      playedTiles[`R${row}C${col}`] = true;
+    }
+  }
+  return playedTiles;
+};
+
+const addGameEvent = (state: GameState, sge: ServerGameplayEvent) => {
+  return produce(state, (draft) => {
+    if (!sge.event) {
+      return;
+    }
+    if (!draft.document.board || !draft.document.bag) {
+      console.error('no board or bag?');
+      return;
+    }
+    const evt = macondoEventToOMGWordsEvent(sge.event, state.alphabet);
+    draft.document.events.push(evt);
+
+    switch (evt.type) {
+      case GameEvent_Type.TILE_PLACEMENT_MOVE: {
+        const lastPlayedTiles = placeOnBoard(
+          draft.document.board,
+          draft.document.bag,
+          draft.pool,
+          evt
+        );
+        for (const k in lastPlayedTiles) {
+          draft.playerOfTileAt[k] = draft.document.playerOnTurn;
+        }
+      }
+    }
+  });
+};
+
+export const GameReducer = (state: GameState, action: Action): GameState => {
+  switch (action.actionType) {
+    // case ActionType.ClearHistory: {
+
+    // }
+    case ActionType.AddGameEvent: {
+      const sge = action.payload as ServerGameplayEvent;
+      if (sge.gameId !== state.document.uid) {
+        return state;
+      }
+
+      // const ngs = newGameStateFromGameplayEvent(state, sge);
+      // ngs.clockController = state.clockController;
+      // setClock(ngs, sge);
+      // return ngs;
+      return addGameEvent(state, sge);
+    }
+  }
+};

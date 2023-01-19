@@ -28,22 +28,18 @@ const screenSizes = require('../base.scss').default;
 
 type Props = {
   isExamining?: boolean;
-  playing: boolean;
-  username: string;
   events: Array<GameEvent>;
   board: Board;
   lexicon: string;
   variant?: string;
   poolFormat: PoolFormatType;
   playerMeta: Array<PlayerInfo>;
-  gameEpilog: React.ReactElement;
+  gameEpilog?: React.ReactElement;
   hideExtraInteractions?: boolean;
 };
 
 type turnProps = {
   playerMeta: Array<PlayerInfo>;
-  playing: boolean;
-  username: string;
   turn: Turn;
   board: Board;
 };
@@ -366,8 +362,6 @@ export const ScoreCard = React.memo((props: Props) => {
                   board={props.board}
                   key={`t_${idx + 0}`}
                   playerMeta={props.playerMeta}
-                  playing={props.playing}
-                  username={props.username}
                 />
               )
             )}

@@ -63,6 +63,8 @@ export const MessageType = proto3.makeEnum(
     {no: 41, name: "ACTIVE_GAME_ENTRY"},
     {no: 42, name: "GAME_META_EVENT"},
     {no: 43, name: "PROFILE_UPDATE_EVENT"},
+    {no: 44, name: "OMGWORDS_GAMEPLAY_EVENT"},
+    {no: 45, name: "OMGWORDS_GAMEDOCUMENT"},
   ],
 );
 

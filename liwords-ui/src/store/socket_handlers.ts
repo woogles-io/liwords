@@ -80,6 +80,8 @@ import {
 } from '../gen/api/proto/ipc/tournament_pb';
 import { ProfileUpdate } from '../gen/api/proto/ipc/users_pb';
 import { ChatEntityType, PresenceEntity } from './constants';
+import { ServerOMGWordsEvent } from '../gen/api/proto/ipc/omgwords_pb';
+import { GameDocumentEvent } from '../gen/api/proto/ipc/omgwords_pb';
 // Feature flag.
 export const enableShowSocket =
   localStorage?.getItem('enableShowSocket') === 'true';
@@ -142,6 +144,8 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.PRESENCE_ENTRY]: PresenceEntry,
       [MessageType.ACTIVE_GAME_ENTRY]: ActiveGameEntry,
       [MessageType.PROFILE_UPDATE_EVENT]: ProfileUpdate,
+      [MessageType.OMGWORDS_GAMEPLAY_EVENT]: ServerOMGWordsEvent,
+      [MessageType.OMGWORDS_GAMEDOCUMENT]: GameDocumentEvent,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -683,6 +687,15 @@ export const useOnSocketMsg = () => {
             break;
           }
 
+          case MessageType.OMGWORDS_GAMEDOCUMENT: {
+            const d = parsedMsg as GameDocumentEvent;
+            dispatchGameContext({
+              actionType: ActionType.InitFromDocument,
+              payload: d.doc,
+            });
+            break;
+          }
+
           case MessageType.SERVER_GAMEPLAY_EVENT: {
             const sge = parsedMsg as ServerGameplayEvent;
             dispatchGameContext({
@@ -691,6 +704,15 @@ export const useOnSocketMsg = () => {
             });
             // play sound
             // (moved to ../gameroom/table.tsx to avoid challenge sounds)
+            break;
+          }
+
+          case MessageType.OMGWORDS_GAMEPLAY_EVENT: {
+            const sge = parsedMsg as ServerOMGWordsEvent;
+            dispatchGameContext({
+              actionType: ActionType.AddOMGWordsEvent,
+              payload: sge,
+            });
             break;
           }
 

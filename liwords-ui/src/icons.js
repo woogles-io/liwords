@@ -92,3 +92,7 @@ export { default as ClockCircleOutlined } from '@ant-design/icons/lib/icons/Cloc
 export { default as SmileOutlined } from '@ant-design/icons/lib/icons/SmileOutlined';
 
 export { default as QuestionCircleOutlined } from '@ant-design/icons/lib/icons/QuestionCircleOutlined';
+
+export { default as EditOutlined } from '@ant-design/icons/lib/icons/EditOutlined';
+
+export { default as CopyOutlined } from '@ant-design/icons/lib/icons/CopyOutlined';

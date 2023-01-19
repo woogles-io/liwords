@@ -43,6 +43,7 @@ import { alphabetFromName } from '../constants/alphabets';
 import {
   GameEndReason,
   GameInfoResponse,
+  GameType,
   ReadyForGame,
   TimedOut,
 } from '../gen/api/proto/ipc/omgwords_pb';
@@ -55,10 +56,14 @@ import {
 import { StreakInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
 import { useClient } from '../utils/hooks/connect';
 import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connectweb';
+import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_connectweb';
+import { ActionType } from '../actions/actions';
+import { syntheticGameInfo } from '../boardwizard/synthetic_game_info';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   sendChat: (msg: string, chan: string) => void;
+  annotated?: boolean;
 };
 
 const StreakFetchDelay = 2000;
@@ -185,7 +190,7 @@ export const Table = React.memo((props: Props) => {
     useExaminableGameContextStoreContext();
   const { isExamining, handleExamineStart, handleExamineGoTo } =
     useExamineStoreContext();
-  const { gameContext } = useGameContextStoreContext();
+  const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const { gameEndMessage, setGameEndMessage } = useGameEndMessageStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
@@ -215,6 +220,7 @@ export const Table = React.memo((props: Props) => {
   }, [isObserver, loginState.perms, username, tournamentContext.directors]);
   useFirefoxPatch();
   const gmClient = useClient(GameMetadataService);
+  const omgClient = useClient(GameEventService);
   const gameDone =
     gameContext.playState === PlayState.GAME_OVER && !!gameContext.gameID;
 
@@ -246,12 +252,20 @@ export const Table = React.memo((props: Props) => {
 
       try {
         const resp = await gmClient.getMetadata({ gameId: gameID });
-        setGameInfo(resp);
+
         if (localStorage?.getItem('poolFormat')) {
           setPoolFormat(
             parseInt(localStorage.getItem('poolFormat') || '0', 10)
           );
         }
+
+        if (resp.type === GameType.ANNOTATED) {
+          // If this is an annotated game, leave early. We will use
+          // a synthetic GameInfo constructed from the annotated game's
+          // GameDocument.
+          return;
+        }
+        setGameInfo(resp);
 
         if (resp.gameEndReason !== GameEndReason.NONE) {
           // Basically if we are here, we've reloaded the page after the game
@@ -275,6 +289,39 @@ export const Table = React.memo((props: Props) => {
     // React Hook useEffect has missing dependencies: 'setGameEndMessage' and 'setPoolFormat'.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameID]);
+
+  useEffect(() => {
+    // If we are in annotated mode, we must explicitly fetch the GameDocument
+    // from the backend. This is a temporary thing that we will eventually
+    // undo when we unite GameDocuments across the app.
+    if (!props.annotated) {
+      return;
+    }
+    const fetchGameDocument = async () => {
+      console.log('fetching game document');
+
+      try {
+        const resp = await omgClient.getGameDocument({ gameId: gameID });
+        dispatchGameContext({
+          actionType: ActionType.InitFromDocument,
+          payload: resp,
+        });
+      } catch (e) {
+        message.error({
+          content: `Failed to fetch initial game information; please refresh. (Error: ${e})`,
+          duration: 10,
+        });
+      }
+    };
+    fetchGameDocument();
+  }, [gameID, omgClient, dispatchGameContext, props.annotated]);
+
+  useEffect(() => {
+    if (gameContext.gameDocument.uid) {
+      const gi = syntheticGameInfo(gameContext.gameDocument);
+      setGameInfo(gi);
+    }
+  }, [gameContext.gameDocument]);
 
   useTourneyMetadata(
     '',
@@ -625,6 +672,7 @@ export const Table = React.memo((props: Props) => {
             horizontal
             gameMeta={gameInfo}
             playerMeta={gameInfo.players}
+            hideProfileLink={gameInfo.type === GameType.ANNOTATED}
           />
         </div>
         <div className="play-area">
@@ -693,7 +741,11 @@ export const Table = React.memo((props: Props) => {
             />
           )}
           {/* There are two player cards, css hides one of them. */}
-          <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
+          <PlayerCards
+            gameMeta={gameInfo}
+            playerMeta={gameInfo.players}
+            hideProfileLink={gameInfo.type === GameType.ANNOTATED}
+          />
           <GameInfo
             meta={gameInfo}
             tournamentName={tournamentContext.metadata?.name}
@@ -717,8 +769,6 @@ export const Table = React.memo((props: Props) => {
           />
           <ScoreCard
             isExamining={isExamining}
-            username={username}
-            playing={us !== undefined}
             lexicon={gameInfo.gameRequest?.lexicon ?? ''}
             variant={gameInfo.gameRequest?.rules?.variantName}
             events={examinableGameContext.turns}

@@ -378,8 +378,10 @@ const AnalyzerContext = React.createContext<{
 
 export const AnalyzerContextProvider = ({
   children,
+  nocache,
 }: {
   children: React.ReactNode;
+  nocache?: boolean;
 }) => {
   const { useState } = useMountedState();
 
@@ -407,38 +409,53 @@ export const AnalyzerContextProvider = ({
     (lexicon, variant) => {
       const examinerIdAtStart = examinerId.current;
       const turn = examinableGameContext.turns.length;
+      if (nocache) {
+        movesCacheRef.current = [];
+      }
       const movesCache = movesCacheRef.current;
       // null = loading. undefined = not yet requested.
       if (movesCache[turn] !== undefined) return;
       movesCache[turn] = null;
 
       unrace.run(async () => {
-        const {
-          dim,
-          letters,
-          rackNum,
-          effectiveLexicon,
-          boardObj: bareBoardObj,
-          numToLabel,
-        } = parseExaminableGameContext(examinableGameContext, lexicon, variant);
-        const boardObj = { ...bareBoardObj, count: 15 };
+        try {
+          const {
+            dim,
+            letters,
+            rackNum,
+            effectiveLexicon,
+            boardObj: bareBoardObj,
+            numToLabel,
+          } = parseExaminableGameContext(
+            examinableGameContext,
+            lexicon,
+            variant
+          );
+          const boardObj = { ...bareBoardObj, count: 15 };
 
-        const wolges = await getWolges(effectiveLexicon);
-        if (examinerIdAtStart !== examinerId.current) return;
+          const wolges = await getWolges(effectiveLexicon);
+          if (examinerIdAtStart !== examinerId.current) return;
 
-        const boardStr = JSON.stringify(boardObj);
-        const movesStr = await wolges.analyze(boardStr);
-        if (examinerIdAtStart !== examinerId.current) return;
-        const movesObj = JSON.parse(movesStr) as Array<JsonMove>;
+          const boardStr = JSON.stringify(boardObj);
+          const movesStr = await wolges.analyze(boardStr);
+          if (examinerIdAtStart !== examinerId.current) return;
+          const movesObj = JSON.parse(movesStr) as Array<JsonMove>;
 
-        const formattedMoves = movesObj.map((move) =>
-          analyzerMoveFromJsonMove(move, dim, letters, rackNum, numToLabel)
-        );
-        movesCache[turn] = formattedMoves;
-        rerenderMoves();
+          const formattedMoves = movesObj.map((move) =>
+            analyzerMoveFromJsonMove(move, dim, letters, rackNum, numToLabel)
+          );
+          movesCache[turn] = formattedMoves;
+          rerenderMoves();
+        } catch (e) {
+          if (examinerIdAtStart === examinerId.current) {
+            movesCache[turn] = [];
+            rerenderMoves();
+          }
+          throw e;
+        }
       });
     },
-    [examinableGameContext, rerenderMoves, unrace]
+    [examinableGameContext, nocache, rerenderMoves, unrace]
   );
 
   const cachedMoves = movesCacheRef.current[examinableGameContext.turns.length];

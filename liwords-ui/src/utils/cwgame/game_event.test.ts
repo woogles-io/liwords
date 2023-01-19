@@ -1,5 +1,5 @@
 import { EphemeralTile } from './common';
-import { tilesetToMoveEvent } from './game_event';
+import { computeLeave, tilesetToMoveEvent } from './game_event';
 import { Board } from './board';
 
 const oxyTilesLayout = [
@@ -150,4 +150,9 @@ it('tests event with blank', () => {
   expect(evt).not.toBeNull();
   expect(evt?.positionCoords).toEqual('5C');
   expect(evt?.tiles).toEqual('.ImB');
+});
+
+it('tests computeLeave', () => {
+  expect(computeLeave('DOGS', 'GOURDES')).toBe('ERU');
+  expect(computeLeave('DOgS', '?OURDES')).toBe('ERU');
 });

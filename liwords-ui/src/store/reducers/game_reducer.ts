@@ -17,19 +17,21 @@ import {
 } from '../../utils/cwgame/common';
 import { PlayerOrder } from '../constants';
 import { ClockController, Millis } from '../timer_controller';
-import {
-  playerOrderFromEvt,
-  ThroughTileMarker,
-} from '../../utils/cwgame/game_event';
+import { ThroughTileMarker } from '../../utils/cwgame/game_event';
 import {
   Alphabet,
   alphabetFromName,
   StandardEnglishAlphabet,
+  uint8ArrayToRunes,
 } from '../../constants/alphabets';
 import {
+  GameDocument,
   GameEndedEvent,
   GameHistoryRefresher,
   ServerGameplayEvent,
+  GameEvent as OMGWordsGameEvent,
+  GameEvent_Type as OMGWordsGameEventType,
+  ServerOMGWordsEvent,
 } from '../../gen/api/proto/ipc/omgwords_pb';
 import {
   CrosswordGameGridLayout,
@@ -37,6 +39,10 @@ import {
 } from '../../constants/board_layout';
 
 type TileDistribution = { [rune: string]: number };
+
+type PlayerRackChange = {
+  rack: string;
+};
 
 export type RawPlayerInfo = {
   userID: string;
@@ -78,6 +84,7 @@ export type GameState = {
   uidToPlayerOrder: { [uid: string]: PlayerOrder };
   playState: number;
   clockController: React.MutableRefObject<ClockController | null> | null;
+  gameDocument: GameDocument;
   onClockTick: (p: PlayerOrder, t: Millis) => void;
   onClockTimeout: (p: PlayerOrder) => void;
 };
@@ -112,25 +119,9 @@ export const startingGameState = (
     clockController: null,
     onClockTick: () => {},
     onClockTimeout: () => {},
+    gameDocument: new GameDocument(),
   };
   return gs;
-};
-
-const onturnFromEvt = (state: GameState, evt: GameEvent) => {
-  const po = playerOrderFromEvt(evt, state.nickToPlayerOrder);
-  let onturn;
-  if (po === 'p0') {
-    onturn = 0;
-  } else if (po === 'p1') {
-    onturn = 1;
-  } else {
-    throw new Error(
-      `unexpected player order; po:${po}, evt:${
-        evt.playerIndex
-      }, ntpo:${JSON.stringify(state.nickToPlayerOrder)} `
-    );
-  }
-  return onturn;
 };
 
 const clonePlayers = (players: Array<RawPlayerInfo>) => {
@@ -153,14 +144,13 @@ const newGameStateFromGameplayEvent = (
   if (!evt) {
     throw new Error('missing event');
   }
-
   // Append the event.
 
   turns.push(evt.clone());
   const players = clonePlayers(state.players);
 
   // onturn should be set to the player that came with the event.
-  let onturn = onturnFromEvt(state, evt);
+  let onturn = evt.playerIndex;
   switch (evt.type) {
     case GameEvent_Type.TILE_PLACEMENT_MOVE: {
       board = state.board.deepCopy();
@@ -203,6 +193,7 @@ const newGameStateFromGameplayEvent = (
     clockController: state.clockController,
     onClockTick: state.onClockTick,
     onClockTimeout: state.onClockTimeout,
+    gameDocument: state.gameDocument,
     // Potential changes:
     board,
     pool,
@@ -211,6 +202,19 @@ const newGameStateFromGameplayEvent = (
     onturn,
     lastPlayedTiles,
     playerOfTileAt,
+  };
+};
+
+const newStateFromRackChange = (
+  state: GameState,
+  rackChange: PlayerRackChange
+): GameState => {
+  const players = [...state.players];
+  players[state.onturn].currentRack = rackChange.rack;
+
+  return {
+    ...state,
+    players,
   };
 };
 
@@ -273,11 +277,57 @@ const unplaceOnBoard = (
   return newPool;
 };
 
+// convert to a Macondo GameEvent. This function should be obsoleted eventually,
+// but it will be a pain. We need a GameEvent that contains user-visible rack info.
+const convertToGameEvt = (
+  evt: OMGWordsGameEvent | undefined,
+  alphabet: Alphabet
+): GameEvent => {
+  if (!evt) {
+    return new GameEvent();
+  }
+  return new GameEvent({
+    rack: uint8ArrayToRunes(evt.rack, alphabet),
+    type: evt.type.valueOf(),
+    cumulative: evt.cumulative,
+    row: evt.row,
+    column: evt.column,
+    direction: evt.direction,
+    position: evt.position,
+    playedTiles: uint8ArrayToRunes(evt.playedTiles, alphabet, true),
+    exchanged: uint8ArrayToRunes(evt.exchanged, alphabet),
+    score: evt.score,
+    bonus: evt.bonus,
+    endRackPoints: evt.endRackPoints,
+    lostScore: evt.lostScore,
+    isBingo: evt.isBingo,
+    wordsFormed: evt.wordsFormed.map((v) => uint8ArrayToRunes(v, alphabet)),
+    millisRemaining: evt.millisRemaining,
+    playerIndex: evt.playerIndex,
+  });
+};
+
+// convert to a legacy ServerGameplayEvent. We will eventually remove this
+// and have a single server event type.
+const convertToServerGameplayEvent = (
+  evt: ServerOMGWordsEvent,
+  alphabet: Alphabet
+): ServerGameplayEvent => {
+  return new ServerGameplayEvent({
+    event: convertToGameEvt(evt.event, alphabet),
+    gameId: evt.gameId,
+    newRack: uint8ArrayToRunes(evt.newRack, alphabet),
+    timeRemaining: evt.timeRemaining,
+    playing: evt.playing.valueOf(),
+    userId: evt.userId,
+  });
+};
+
 // pushTurns mutates the gs (GameState).
 export const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
   events.forEach((evt, idx) => {
     // determine turn from event.
-    const onturn = onturnFromEvt(gs, evt);
+    const onturn = evt.playerIndex;
     // We only care about placement and unplacement events here:
     switch (evt.type) {
       case GameEvent_Type.TILE_PLACEMENT_MOVE:
@@ -299,6 +349,39 @@ export const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
 
     // Push a deep clone of the turn.
     gs.turns.push(evt.clone());
+    // eslint-disable-next-line no-param-reassign
+    gs.players[onturn].score = events[idx].cumulative;
+    // eslint-disable-next-line no-param-reassign
+    gs.onturn = (onturn + 1) % 2;
+  });
+};
+
+// pushTurnsNew mutates the gs (GameState). This will supplant pushTurns
+// when we move over fully to GameDocument.
+const pushTurnsNew = (gs: GameState, events: Array<OMGWordsGameEvent>) => {
+  events.forEach((oevt, idx) => {
+    const evt = convertToGameEvt(oevt, gs.alphabet);
+
+    const onturn = evt.playerIndex;
+    // We only care about placement and unplacement events here:
+    switch (evt.type) {
+      case OMGWordsGameEventType.TILE_PLACEMENT_MOVE:
+        // eslint-disable-next-line no-param-reassign
+        [gs.lastPlayedTiles, gs.pool] = placeOnBoard(gs.board, gs.pool, evt);
+        for (const k in gs.lastPlayedTiles) {
+          gs.playerOfTileAt[k] = onturn;
+        }
+        break;
+      case OMGWordsGameEventType.PHONY_TILES_RETURNED: {
+        // Unplace the move BEFORE this one.
+        const toUnplace = convertToGameEvt(events[idx - 1], gs.alphabet);
+        // eslint-disable-next-line no-param-reassign
+        gs.pool = unplaceOnBoard(gs.board, gs.pool, toUnplace);
+        // Set the user's rack back to what it used to be.
+        break;
+      }
+    }
+    gs.turns.push(evt);
     // eslint-disable-next-line no-param-reassign
     gs.players[onturn].score = events[idx].cumulative;
     // eslint-disable-next-line no-param-reassign
@@ -332,9 +415,6 @@ const stateFromHistory = (history: GameHistory): GameState => {
   gs.nickToPlayerOrder = nickToPlayerOrder;
   gs.uidToPlayerOrder = uidToPlayerOrder;
   pushTurns(gs, history.events);
-  // racks are given in the original order that the playerList came in.
-  // so if we reversed the player list, we must reverse the racks.
-
   const racks = history.lastKnownRacks;
 
   // Assign racks. Remember that the player listed first goes first.
@@ -343,6 +423,42 @@ const stateFromHistory = (history: GameHistory): GameState => {
   gs.players[gs.onturn].onturn = true;
   gs.players[1 - gs.onturn].onturn = false;
   gs.playState = history.playState;
+  return gs;
+};
+
+const stateFromDocument = (gdoc: GameDocument): GameState => {
+  const playerList = gdoc.players;
+
+  const nickToPlayerOrder = {
+    [playerList[0].nickname]: 'p0' as PlayerOrder,
+    [playerList[1].nickname]: 'p1' as PlayerOrder,
+  };
+  const uidToPlayerOrder = {
+    [playerList[0].userId]: 'p0' as PlayerOrder,
+    [playerList[1].userId]: 'p1' as PlayerOrder,
+  };
+
+  const alphabet = alphabetFromName(gdoc.letterDistribution.toLowerCase());
+  const gs = startingGameState(
+    alphabet,
+    initialExpandToFull(playerList),
+    gdoc.uid,
+    gdoc.boardLayout === 'SuperCrosswordGame'
+      ? SuperCrosswordGameGridLayout
+      : CrosswordGameGridLayout
+  );
+  gs.nickToPlayerOrder = nickToPlayerOrder;
+  gs.uidToPlayerOrder = uidToPlayerOrder;
+  pushTurnsNew(gs, gdoc.events);
+  const racks = gdoc.racks;
+
+  racks.forEach((rack, idx) => {
+    gs.players[idx].currentRack = uint8ArrayToRunes(rack, alphabet);
+  });
+  gs.players[gdoc.playerOnTurn].onturn = true;
+  gs.players[1 - gdoc.playerOnTurn].onturn = false;
+  gs.playState = gdoc.playState;
+  gs.gameDocument = gdoc;
   return gs;
 };
 
@@ -362,7 +478,7 @@ const setClock = (newState: GameState, sge: ServerGameplayEvent) => {
     throw new Error('missing event in setclock');
   }
 
-  const justPlayed = playerOrderFromEvt(evt, newState.nickToPlayerOrder);
+  const justPlayed = evt.playerIndex;
 
   let { p0, p1 } = newState.clockController.current.times;
   let activePlayer;
@@ -380,10 +496,10 @@ const setClock = (newState: GameState, sge: ServerGameplayEvent) => {
     console.log('flipTimeRemaining = true');
   }
 
-  if (justPlayed === 'p0') {
+  if (justPlayed === 0) {
     flipTimeRemaining ? (p1 = rem) : (p0 = rem);
     activePlayer = 'p1';
-  } else if (justPlayed === 'p1') {
+  } else if (justPlayed === 1) {
     flipTimeRemaining ? (p0 = rem) : (p1 = rem);
     activePlayer = 'p0';
   } else {
@@ -429,7 +545,7 @@ const initializeTimerController = (
   const evts = history.events;
   if (evts.length > 0) {
     // determine onturn from the last event.
-    const lastWent = onturnFromEvt(newState, evts[evts.length - 1]);
+    const lastWent = evts[evts.length - 1].playerIndex;
     if (lastWent === 1) {
       onturn = 'p0' as PlayerOrder;
     } else if (lastWent === 0) {
@@ -514,6 +630,21 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       return ngs;
     }
 
+    case ActionType.AddOMGWordsEvent: {
+      const evt = action.payload as ServerOMGWordsEvent;
+      if (evt.gameId !== state.gameID) {
+        return state;
+      }
+      if (!evt.event) {
+        return state;
+      }
+      const sge = convertToServerGameplayEvent(evt, state.alphabet);
+      const ngs = newGameStateFromGameplayEvent(state, sge);
+      ngs.clockController = state.clockController;
+      setClock(ngs, sge);
+      return ngs;
+    }
+
     case ActionType.RefreshHistory: {
       const ghr = action.payload as GameHistoryRefresher;
       const history = ghr.history;
@@ -528,6 +659,29 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       }
       // Otherwise if it is null, we have an issue, but there's no need to
       // throw an Error..
+      return newState;
+    }
+
+    case ActionType.InitFromDocument: {
+      const d = action.payload as GameDocument;
+      const newState = stateFromDocument(d);
+      // TODO: once we start moving all games to GameDocument, handle timer
+      // here.
+      // if (state.clockController !== null) {
+      //   newState.clockController = state.clockController;
+      //   initializeTimerController(state, newState, ghr);
+      // }
+      // stateFromDocument should initialize the clock controller as well.
+      // Otherwise if it is null, we have an issue, but there's no need to
+      // throw an Error..
+      return newState;
+    }
+
+    case ActionType.ChangePlayerRack: {
+      const p = action.payload as PlayerRackChange;
+      const newState = newStateFromRackChange(state, p);
+
+      console.log('newState', newState);
       return newState;
     }
 

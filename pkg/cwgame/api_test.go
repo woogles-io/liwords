@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/liwords/pkg/config"
+	"github.com/domino14/liwords/pkg/cwgame/tiles"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
@@ -45,8 +46,8 @@ func loadGDoc(testfilename string) *ipc.GameDocument {
 
 func TestNewGame(t *testing.T) {
 	is := is.New(t)
-	rules := NewBasicGameRules("NWL20", "CrosswordGame", "english", "classic",
-		[]int{300, 300}, 1, 0)
+	rules := NewBasicGameRules("NWL20", "CrosswordGame", "english", ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
+		"classic", []int{300, 300}, 1, 0, false)
 	g, err := NewGame(DefaultConfig, rules, []*ipc.GameDocument_MinimalPlayerInfo{
 		{Nickname: "Cesitar", RealName: "Cesar", UserId: "cesar1"},
 		{Nickname: "Lucas", RealName: "Lucas", UserId: "lucas1"},
@@ -62,8 +63,8 @@ func TestStartGame(t *testing.T) {
 	globalNower = &FakeNower{fakeMeow: 12345}
 	defer restoreGlobalNower()
 
-	rules := NewBasicGameRules("NWL20", "CrosswordGame", "english", "classic",
-		[]int{300, 300}, 1, 0)
+	rules := NewBasicGameRules("NWL20", "CrosswordGame", "english", ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
+		"classic", []int{300, 300}, 1, 0, false)
 	g, _ := NewGame(DefaultConfig, rules, []*ipc.GameDocument_MinimalPlayerInfo{
 		{Nickname: "Cesitar", RealName: "Cesar", UserId: "cesar1"},
 		{Nickname: "Lucas", RealName: "Lucas", UserId: "lucas1"},
@@ -285,7 +286,6 @@ func TestChallengeBadWord(t *testing.T) {
 		WordsFormed:     [][]byte{{11, 14, 9, 22, 5, 23}}, // KNIVEW
 		MillisRemaining: 883808,                           // 5000 ms after their last time remaining
 		PlayerIndex:     0,
-		Leave:           []byte{5, 20}, // ET
 	})
 	is.Equal(gdoc.Events[5], &ipc.GameEvent{
 		Type:            ipc.GameEvent_PHONY_TILES_RETURNED,
@@ -309,7 +309,6 @@ func TestChallengeBadWord(t *testing.T) {
 		WordsFormed:     [][]byte{{19, 16, 8, 5, 18, 15, 9, 4}}, // SPHEROID
 		MillisRemaining: 895914,                                 // 5000 ms after their last time remaining
 		PlayerIndex:     1,
-		Leave:           []byte{},
 		IsBingo:         true,
 	})
 	is.Equal(gdoc.CurrentScores, []int32{62, 229})
@@ -380,7 +379,6 @@ func TestChallengeGoodWordSingle(t *testing.T) {
 		WordsFormed:     [][]byte{{11, 14, 9, 22, 5}}, // KNIVE
 		MillisRemaining: 883808,                       // 5000 ms after their last time remaining
 		PlayerIndex:     0,
-		Leave:           []byte{5, 20, 23}, // ETW
 	})
 
 	// Don't compare this event exactly because this event has a new random rack.
@@ -403,7 +401,6 @@ func TestChallengeGoodWordSingle(t *testing.T) {
 		WordsFormed:     [][]byte{{19, 16, 8, 5, 18, 15, 9, 4}}, // SPHEROID
 		MillisRemaining: 895914,                                 // 5000 ms after their last time remaining
 		PlayerIndex:     1,
-		Leave:           []byte{},
 		IsBingo:         true,
 	})
 	is.Equal(gdoc.CurrentScores, []int32{113, 229})
@@ -470,7 +467,6 @@ func TestChallengeGoodWordDouble(t *testing.T) {
 		WordsFormed:     [][]byte{{11, 14, 9, 22, 5}}, // KNIVE
 		MillisRemaining: 883808,                       // 5000 ms after their last time remaining
 		PlayerIndex:     0,
-		Leave:           []byte{5, 20, 23}, // ETW
 	})
 	is.Equal(gdoc.Events[5], &ipc.GameEvent{
 		Type:            ipc.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS,
@@ -531,7 +527,7 @@ func TestChallengeGoodWordDoubleWithTimeIncrement(t *testing.T) {
 
 	is.Equal(len(gdoc.Events), 6)
 
-	is.Equal(gdoc.Events[4], &ipc.GameEvent{
+	is.True(proto.Equal(gdoc.Events[4], &ipc.GameEvent{
 		Rack:        []byte{5, 5, 9, 11, 14, 20, 23}, // EEIKNTW
 		Type:        ipc.GameEvent_TILE_PLACEMENT_MOVE,
 		Cumulative:  113,
@@ -545,16 +541,15 @@ func TestChallengeGoodWordDoubleWithTimeIncrement(t *testing.T) {
 		// 5000 ms after their last time remaining
 		MillisRemaining: 883808,
 		PlayerIndex:     0,
-		Leave:           []byte{5, 20, 23}, // ETW
-	})
-	is.Equal(gdoc.Events[5], &ipc.GameEvent{
+	}))
+	is.True(proto.Equal(gdoc.Events[5], &ipc.GameEvent{
 		Type:       ipc.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS,
 		Cumulative: 137,
 		// 2.5 second sleep.
 		MillisRemaining: 897414,
 		PlayerIndex:     1,
 		Rack:            []byte{4, 5, 8, 9, 15, 18, 19}, // DEHIORS
-	})
+	}))
 
 	is.Equal(gdoc.CurrentScores, []int32{113, 137})
 	is.Equal(gdoc.ScorelessTurns, uint32(1))
@@ -613,7 +608,6 @@ func TestChallengeBadWordWithTimeIncrement(t *testing.T) {
 		// 5000 ms after their last time remaining
 		MillisRemaining: 883808,
 		PlayerIndex:     0,
-		Leave:           []byte{5, 20}, // ET
 	})
 	is.Equal(gdoc.Events[5], &ipc.GameEvent{
 		Type:       ipc.GameEvent_PHONY_TILES_RETURNED,
@@ -683,7 +677,6 @@ func TestTimeRanOut(t *testing.T) {
 		WordsFormed:     [][]byte{{11, 14, 9, 22, 5, 23}}, // KNIVEW
 		MillisRemaining: 883808,                           // 5000 ms after their last time remaining
 		PlayerIndex:     0,
-		Leave:           []byte{5, 20}, // ET
 	})
 
 	is.Equal(gdoc.Events[5], &ipc.GameEvent{
@@ -811,22 +804,22 @@ func TestChallengeGoodWordEndOfGame(t *testing.T) {
 				bonus = 5
 			}
 			if chrule != ipc.ChallengeRule_ChallengeRule_DOUBLE {
-				is.Equal(gdoc.Events[25], &ipc.GameEvent{
+				is.True(proto.Equal(gdoc.Events[25], &ipc.GameEvent{
 					Type:            ipc.GameEvent_CHALLENGE_BONUS,
 					PlayerIndex:     1, // the person being challenged
 					Bonus:           int32(bonus),
 					Rack:            []byte{},
 					Cumulative:      305 + int32(bonus),
 					MillisRemaining: 899671,
-				})
+				}))
 			} else {
-				is.Equal(gdoc.Events[25], &ipc.GameEvent{
+				is.True(proto.Equal(gdoc.Events[25], &ipc.GameEvent{
 					Type:            ipc.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS,
 					PlayerIndex:     0,
 					Rack:            []byte{3, 5, 16, 18, 20},
 					Cumulative:      446,
 					MillisRemaining: 899671,
-				})
+				}))
 			}
 
 			is.Equal(gdoc.Events[26], &ipc.GameEvent{
@@ -1151,6 +1144,176 @@ func TestTripleChallenge(t *testing.T) {
 	// Player indexed 1 wins even though they had fewer points, because of
 	// the triple challenge rule
 	is.Equal(gdoc.Winner, int32(1))
+}
+
+func TestExchange(t *testing.T) {
+	is := is.New(t)
+	documentfile := "document-earlygame.json"
+	gdoc := loadGDoc(documentfile)
+	// use a timestamp that's a little bit later than the
+	// time_of_last_update in the doc.
+	globalNower = &FakeNower{
+		fakeMeow: gdoc.Timers.TimeOfLastUpdate + 5000}
+	defer restoreGlobalNower()
+	ctx := ctxForTests()
+
+	// This player's rack is EEIKNTW
+	cge := &ipc.ClientGameplayEvent{
+		Type:   ipc.ClientGameplayEvent_EXCHANGE,
+		GameId: "9aK3YgVk",
+		Tiles:  "EKW",
+	}
+	userID := "2gJGaYnchL6LbQVTNQ6mjT"
+
+	err := ProcessGameplayEvent(ctx, cge, userID, gdoc)
+	is.NoErr(err)
+	fmt.Println(gdoc.Events[len(gdoc.Events)-1])
+	is.True(proto.Equal(gdoc.Events[len(gdoc.Events)-1], &ipc.GameEvent{
+		Rack:            []byte{5, 5, 9, 11, 14, 20, 23},
+		Type:            ipc.GameEvent_EXCHANGE,
+		Cumulative:      62,
+		Exchanged:       []byte{5, 11, 23},
+		MillisRemaining: 883808,
+	}))
+	err = ReconcileAllTiles(ctx, gdoc)
+	is.NoErr(err)
+}
+
+func TestExchangePartialRack(t *testing.T) {
+	is := is.New(t)
+	documentfile := "document-earlygame.json"
+	gdoc := loadGDoc(documentfile)
+	// use a timestamp that's a little bit later than the
+	// time_of_last_update in the doc.
+	globalNower = &FakeNower{
+		fakeMeow: gdoc.Timers.TimeOfLastUpdate + 5000}
+	defer restoreGlobalNower()
+	ctx := ctxForTests()
+
+	err := AssignRacks(gdoc, [][]byte{{9, 9, 9, 9, 9}, nil}, false)
+	is.NoErr(err)
+
+	// This player's rack is IIIII
+	cge := &ipc.ClientGameplayEvent{
+		Type:   ipc.ClientGameplayEvent_EXCHANGE,
+		GameId: "9aK3YgVk",
+		Tiles:  "IIIII",
+	}
+	userID := "2gJGaYnchL6LbQVTNQ6mjT"
+
+	err = ProcessGameplayEvent(ctx, cge, userID, gdoc)
+	is.NoErr(err)
+	fmt.Println(gdoc.Events[len(gdoc.Events)-1])
+	is.True(proto.Equal(gdoc.Events[len(gdoc.Events)-1], &ipc.GameEvent{
+		Rack:            []byte{9, 9, 9, 9, 9},
+		Type:            ipc.GameEvent_EXCHANGE,
+		Cumulative:      62,
+		Exchanged:       []byte{9, 9, 9, 9, 9},
+		MillisRemaining: 883808,
+	}))
+	err = ReconcileAllTiles(ctx, gdoc)
+	is.NoErr(err)
+}
+
+func TestAssignRacks(t *testing.T) {
+	is := is.New(t)
+
+	dist, err := tiles.GetDistribution(DefaultConfig, "English")
+	is.NoErr(err)
+
+	doc := &ipc.GameDocument{
+		Players: []*ipc.GameDocument_MinimalPlayerInfo{
+			{Nickname: "abc", RealName: "abc", UserId: "abc"},
+			{Nickname: "ijk", RealName: "ijk", UserId: "ijk"},
+		},
+		Racks: make([][]byte, 2),
+		Bag:   tiles.TileBag(dist),
+	}
+	err = AssignRacks(doc, [][]byte{
+		{1, 1, 1, 1, 1, 1, 1},
+		{5, 5, 5, 5, 5, 5, 5},
+	}, true)
+	is.NoErr(err)
+	is.Equal(len(doc.Bag.Tiles), 86)
+	is.Equal(tiles.Count(doc.Bag, 1), 2)
+	is.Equal(tiles.Count(doc.Bag, 5), 5)
+}
+
+func TestAssignRacksEmptyRack(t *testing.T) {
+	is := is.New(t)
+
+	dist, err := tiles.GetDistribution(DefaultConfig, "English")
+	is.NoErr(err)
+
+	doc := &ipc.GameDocument{
+		Players: []*ipc.GameDocument_MinimalPlayerInfo{
+			{Nickname: "abc", RealName: "abc", UserId: "abc"},
+			{Nickname: "ijk", RealName: "ijk", UserId: "ijk"},
+		},
+		Racks: make([][]byte, 2),
+		Bag:   tiles.TileBag(dist),
+	}
+	err = AssignRacks(doc, [][]byte{
+		nil,
+		{5, 5, 5, 5, 5, 5, 5},
+	}, true)
+	is.NoErr(err)
+	is.Equal(len(doc.Bag.Tiles), 86)
+	is.True(tiles.Count(doc.Bag, 5) <= 5)
+}
+
+func TestReplayEvents(t *testing.T) {
+	is := is.New(t)
+
+	testcases := []string{
+		"document-game-almost-over.json",
+		"document-challenge-or-pass.json",
+		"document-earlygame.json",
+		"document-gameover.json",
+	}
+	for _, tc := range testcases {
+		tc := tc
+		t.Run(tc, func(t *testing.T) {
+			gdoc := loadGDoc(tc)
+			gdocClone := loadGDoc(tc)
+
+			ctx := ctxForTests()
+			err := ReplayEvents(ctx, gdoc, gdocClone.Events)
+			is.NoErr(err)
+			tiles.Sort(gdoc.Bag)
+			tiles.Sort(gdocClone.Bag)
+
+			is.True(proto.Equal(gdoc, gdocClone))
+
+		})
+	}
+}
+
+func TestEditOldRack(t *testing.T) {
+	is := is.New(t)
+	gdoc := loadGDoc("document-game-almost-over.json")
+	ctx := ctxForTests()
+
+	err := EditOldRack(ctx, gdoc, 0, []byte{1, 2, 3, 4, 5, 6, 7})
+	is.NoErr(err)
+	is.Equal(gdoc.Events[0].Rack, []byte{1, 2, 3, 4, 5, 6, 7})
+	is.Equal(gdoc.Events[0].PlayedTiles, []byte{1, 18, 5, 14, 15, 19, 5})
+	// The rack doesn't match the played tiles, but this is fine. I can't
+	// think of another way to edit an old play.
+}
+
+func TestEditOldRackDisallowed(t *testing.T) {
+	is := is.New(t)
+	gdoc := loadGDoc("document-game-almost-over.json")
+	ctx := ctxForTests()
+
+	// Try to set the rack for event indexed 8 to JKL. It shouldn't
+	// let you, because event index 7 already used a J.
+	err := EditOldRack(ctx, gdoc, 8, []byte{10, 11, 12})
+	is.Equal(err.Error(), "tried to remove tile 10 from bag that was not there")
+	err = EditOldRack(ctx, gdoc, 7, []byte{10, 11, 12})
+	is.NoErr(err)
+	is.Equal(gdoc.Events[7].Rack, []byte{10, 11, 12})
 }
 
 func BenchmarkLoadDocumentJSON(b *testing.B) {

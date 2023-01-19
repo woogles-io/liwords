@@ -31,7 +31,11 @@ export const Embed = () => {
   const { gameContext: examinableGameContext } =
     useExaminableGameContextStoreContext();
 
-  const { handleExamineStart, handleExamineGoTo } = useExamineStoreContext();
+  const {
+    handleExamineStart,
+    handleExamineGoTo,
+    handleExamineDisableShortcuts,
+  } = useExamineStoreContext();
 
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const { handleSetHover, hideDefinitionHover, definitionPopover } =
@@ -90,8 +94,14 @@ export const Embed = () => {
     if (gameContext.turns.length > 0) {
       handleExamineStart();
       handleExamineGoTo(0);
+      handleExamineDisableShortcuts();
     }
-  }, [gameContext.turns.length, handleExamineGoTo, handleExamineStart]);
+  }, [
+    gameContext.turns.length,
+    handleExamineGoTo,
+    handleExamineStart,
+    handleExamineDisableShortcuts,
+  ]);
 
   //   if (!gameHistory) {
   //     return <div>Could not load game history</div>;

@@ -22,6 +22,8 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/mod"
+	"github.com/domino14/liwords/pkg/omgwords"
+	"github.com/domino14/liwords/pkg/omgwords/stores"
 	"github.com/domino14/liwords/pkg/puzzles"
 	"github.com/domino14/liwords/pkg/sessions"
 	"github.com/domino14/liwords/pkg/stats"
@@ -58,6 +60,10 @@ type Stores struct {
 	ConfigStore     config.ConfigStore
 	SessionStore    sessions.SessionStore
 	PuzzleStore     puzzles.PuzzleStore
+
+	// Refactor this soon:
+	GameDocumentStore  *stores.GameDocumentStore
+	AnnotatedGameStore *stores.DBStore
 }
 
 // Bus is the struct; it should contain all the stores to verify messages, etc.
@@ -439,6 +445,19 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			// 2. Chat realms are the only ones that are compatible with
 			// presence at this moment.
 			resp.Realms = append(resp.Realms, "chat-puzzlelobby")
+		} else if strings.HasPrefix(path, "/editor/") {
+			gameID := strings.TrimPrefix(path, "/editor/")
+			// Use the `channel-` generic realm for now.
+			realm := "channel-" + omgwords.AnnotatedChannelName(gameID)
+			// Appending chat-gametv-gameID for presence
+			resp.Realms = append(resp.Realms,
+				realm, "chat-gametv-"+gameID)
+
+		} else if strings.HasPrefix(path, "/anno/") {
+			// annotated games are always in TV mode for viewers
+			gameID := strings.TrimPrefix(path, "/anno/")
+			realm := "channel-" + omgwords.AnnotatedChannelName(gameID)
+			resp.Realms = append(resp.Realms, realm, "chat-gametv-"+gameID)
 		} else {
 			log.Debug().Str("path", path).Msg("realm-req-not-handled")
 		}
@@ -599,6 +618,10 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 
 func (b *Bus) TournamentEventChannel() chan *entity.EventWrapper {
 	return b.tournamentEventChan
+}
+
+func (b *Bus) GameEventChannel() chan *entity.EventWrapper {
+	return b.gameEventChan
 }
 
 func (b *Bus) broadcastPresence(username, userID string, anon bool,

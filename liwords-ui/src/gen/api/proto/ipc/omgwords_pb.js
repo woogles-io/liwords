@@ -100,6 +100,8 @@ export const ClientGameplayEvent = proto3.makeMessageType(
     { no: 2, name: "game_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "position_coords", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "tiles", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "full_rack", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "event_index", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ],
 );
 
@@ -206,6 +208,19 @@ export const GameHistoryRefresher = proto3.makeMessageType(
     { no: 3, name: "time_player2", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 4, name: "max_overtime_minutes", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 5, name: "outstanding_event", kind: "message", T: GameMetaEvent },
+  ],
+);
+
+/**
+ * A GameDocumentEvent should eventually replace the GameHistoryRefresher. For
+ * now, it will be used for annotated games.
+ *
+ * @generated from message ipc.GameDocumentEvent
+ */
+export const GameDocumentEvent = proto3.makeMessageType(
+  "ipc.GameDocumentEvent",
+  () => [
+    { no: 1, name: "doc", kind: "message", T: GameDocument },
   ],
 );
 
@@ -337,6 +352,8 @@ export const ReadyForGame = proto3.makeMessageType(
  * The server will send back a ServerGameplayEvent to a ClientGameplayEvent.
  * The server will also send these asynchronously for opponent gameplay
  * events.
+ * XXX: This message type is obsolete and will be replaced by
+ * ServerOMGWordsEvent
  *
  * @generated from message ipc.ServerGameplayEvent
  */
@@ -353,6 +370,23 @@ export const ServerGameplayEvent = proto3.makeMessageType(
 );
 
 /**
+ * ServerOMGWordsEvent is a new event type.
+ *
+ * @generated from message ipc.ServerOMGWordsEvent
+ */
+export const ServerOMGWordsEvent = proto3.makeMessageType(
+  "ipc.ServerOMGWordsEvent",
+  () => [
+    { no: 1, name: "event", kind: "message", T: GameEvent },
+    { no: 2, name: "game_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "new_rack", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
+    { no: 4, name: "time_remaining", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "playing", kind: "enum", T: proto3.getEnumType(PlayState) },
+    { no: 6, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ],
+);
+
+/**
  * The server will send back a challenge result event only in the case of
  * a challenge. In all other cases, the server will send back a
  * ServerGameplayEvent.
@@ -361,6 +395,8 @@ export const ServerGameplayEvent = proto3.makeMessageType(
  * right incremental events. The reason is that the logic is complex and
  * has many special cases, and is already fully implemented in Macondo.
  * We don't wish to re-implement it both in this repo's backend and frontend.
+ * XXX: This message type is obsolete, and will be replaced by
+ * OMGWordsChallengeResultEvent
  *
  * @generated from message ipc.ServerChallengeResultEvent
  */
@@ -371,6 +407,19 @@ export const ServerChallengeResultEvent = proto3.makeMessageType(
     { no: 2, name: "challenger", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "challenge_rule", kind: "enum", T: proto3.getEnumType(ChallengeRule$1) },
     { no: 4, name: "returned_tiles", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ],
+);
+
+/**
+ * @generated from message ipc.OMGWordsChallengeResultEvent
+ */
+export const OMGWordsChallengeResultEvent = proto3.makeMessageType(
+  "ipc.OMGWordsChallengeResultEvent",
+  () => [
+    { no: 1, name: "valid", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "challenger", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "challenge_rule", kind: "enum", T: proto3.getEnumType(ChallengeRule) },
+    { no: 4, name: "returned_tiles", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
   ],
 );
 
@@ -434,7 +483,7 @@ export const TimedOut = proto3.makeMessageType(
 );
 
 /**
- * GameEvent is an internal game event, saved in the GameHistory
+ * GameEvent is an internal game event, saved in the GameDocument.
  *
  * @generated from message ipc.GameEvent
  */
@@ -459,7 +508,6 @@ export const GameEvent = proto3.makeMessageType(
     { no: 17, name: "words_formed", kind: "scalar", T: 12 /* ScalarType.BYTES */, repeated: true },
     { no: 18, name: "millis_remaining", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 19, name: "player_index", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
-    { no: 20, name: "leave", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
   ],
 );
 
@@ -507,6 +555,7 @@ export const Timers = proto3.makeMessageType(
     { no: 4, name: "max_overtime", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 5, name: "increment_seconds", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 6, name: "reset_to_increment_after_turn", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 7, name: "untimed", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ],
 );
 
@@ -578,7 +627,6 @@ export const GameDocument = proto3.makeMessageType(
     { no: 22, name: "scoreless_turns", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
     { no: 23, name: "player_on_turn", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
     { no: 24, name: "timers", kind: "message", T: Timers },
-    { no: 25, name: "game_mode", kind: "enum", T: proto3.getEnumType(GameMode) },
   ],
 );
 

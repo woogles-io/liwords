@@ -3,11 +3,17 @@ package cwgame
 import (
 	"context"
 	"errors"
+	"fmt"
+	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
 
+	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/domino14/liwords/pkg/config"
@@ -28,18 +34,6 @@ var (
 	errUnmatchedGameId           = errors.New("game ids do not match")
 	errPlayerNotInGame           = errors.New("player not in this game")
 )
-
-// move is an intermediate type used by this package, to aid in the conversion from
-// a frontend-generated ClientGameplayEvent into a GameEvent that gets saved in a
-// GameHistory.
-type move struct {
-	row, col  int
-	direction ipc.GameEvent_Direction
-	mtype     ipc.GameEvent_Type
-	leave     []runemapping.MachineLetter
-	tilesUsed []runemapping.MachineLetter
-	clientEvt *ipc.ClientGameplayEvent
-}
 
 var reVertical, reHorizontal *regexp.Regexp
 
@@ -82,6 +76,7 @@ func NewGame(cfg *config.Config, rules *GameRules, playerinfo []*ipc.GameDocumen
 	}
 
 	gdoc := &ipc.GameDocument{
+		Uid:                shortuuid.New(),
 		Events:             make([]*ipc.GameEvent, 0),
 		Players:            playerinfo,
 		Lexicon:            rules.lexicon,
@@ -100,8 +95,10 @@ func NewGame(cfg *config.Config, rules *GameRules, playerinfo []*ipc.GameDocumen
 			TimeRemaining:    timeRemaining,
 			MaxOvertime:      int32(rules.maxOvertimeMins),
 			IncrementSeconds: int32(rules.incrementSeconds),
+			Untimed:          rules.untimed,
 		},
-		PlayState: ipc.PlayState_UNSTARTED,
+		PlayState:     ipc.PlayState_UNSTARTED,
+		ChallengeRule: rules.challengeRule,
 	}
 
 	return gdoc, nil
@@ -124,6 +121,231 @@ func StartGame(ctx context.Context, gdoc *ipc.GameDocument) error {
 	// XXX: send changes to channel(s); see StartGame in gameplay package.
 	// XXX: outside of this, send rematch event
 	// XXX: potentially send bot move request?
+	return nil
+}
+
+// AssignRacks assigns racks to the players. If assignEmpty is true, it will
+// assign a random rack to any players with empty racks in the racks array.
+func AssignRacks(gdoc *ipc.GameDocument, racks [][]byte, assignEmpty bool) error {
+	if len(racks) != len(gdoc.Players) {
+		return errors.New("racks length must match players length")
+	}
+	// Throw in existing racks.
+	for i := range gdoc.Players {
+		if len(gdoc.Racks[i]) > 0 {
+			log.Debug().Interface("rack", gdoc.Racks[i]).Int("player", i).Msg("throwing in rack for player")
+		}
+		mls := runemapping.FromByteArr(gdoc.Racks[i])
+		tiles.PutBack(gdoc.Bag, mls)
+		gdoc.Racks[i] = nil
+	}
+	empties := []int{}
+	for i, r := range racks {
+		if len(r) == 0 {
+			// empty
+			empties = append(empties, i)
+		} else {
+			rackml := runemapping.FromByteArr(r)
+			err := tiles.RemoveTiles(gdoc.Bag, rackml)
+			if err != nil {
+				return err
+			}
+			gdoc.Racks[i] = r
+		}
+	}
+	// Conditionally draw new tiles for empty racks
+	if assignEmpty {
+		for _, i := range empties {
+			placeholder := make([]runemapping.MachineLetter, RackTileLimit)
+			drew, err := tiles.DrawAtMost(gdoc.Bag, RackTileLimit, placeholder)
+			if err != nil {
+				return err
+			}
+			drawn := placeholder[:drew]
+			gdoc.Racks[i] = runemapping.MachineWord(drawn).ToByteArr()
+		}
+	}
+	return nil
+}
+
+// ReconcileAllTiles returns an error if the tiles on the board and on
+// player racks do not match the letter distribution. It is not meant to
+// be used in production, but for debugging purposes only.
+func ReconcileAllTiles(ctx context.Context, gdoc *ipc.GameDocument) error {
+	cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
+	if !ok {
+		return errors.New("config does not exist in context")
+	}
+
+	dist, err := tiles.GetDistribution(cfg, gdoc.LetterDistribution)
+	if err != nil {
+		return err
+	}
+
+	bag := tiles.TileBag(dist)
+
+	for _, t := range gdoc.Board.Tiles {
+		toRm := []byte{t}
+		if int8(t) < 0 {
+			toRm = []byte{0}
+		} else if t == 0 {
+			continue
+		}
+		err := tiles.RemoveTiles(bag, runemapping.FromByteArr(toRm))
+		if err != nil {
+			return fmt.Errorf("removing-from-board error: %w", err)
+		}
+	}
+	for idx, rack := range gdoc.Racks {
+		err := tiles.RemoveTiles(bag, runemapping.FromByteArr(rack))
+		if err != nil {
+			return fmt.Errorf("removing-from-rack-%d error: %w", idx, err)
+		}
+	}
+	if len(gdoc.Bag.Tiles) != len(bag.Tiles) {
+		return fmt.Errorf("lengths dont match %d %d", len(gdoc.Bag.Tiles), len(bag.Tiles))
+	}
+
+	// No error if both bags are empty
+	if len(bag.Tiles) == 0 && len(gdoc.Bag.Tiles) == 0 {
+		return nil
+	}
+	// Otherwise sort and check the tile bags.
+
+	sort.Slice(gdoc.Bag.Tiles, func(i, j int) bool {
+		return gdoc.Bag.Tiles[i] < gdoc.Bag.Tiles[j]
+	})
+	sort.Slice(bag.Tiles, func(i, j int) bool {
+		return bag.Tiles[i] < bag.Tiles[j]
+	})
+
+	if !reflect.DeepEqual(bag.Tiles, gdoc.Bag.Tiles) {
+		return fmt.Errorf("bags aren't equal: (%v) (%v)", bag.Tiles, gdoc.Bag.Tiles)
+	}
+	return nil
+}
+
+func EditOldRack(ctx context.Context, gdoc *ipc.GameDocument, evtNumber uint32, rack []byte) error {
+
+	// Determine whether it is possible to edit the rack to the passed-in rack at this point in the game.
+	// First clone and truncate the document.
+	gc := proto.Clone(gdoc).(*ipc.GameDocument)
+	evt := gdoc.Events[evtNumber]
+
+	// replay until the event before evt.
+	err := ReplayEvents(ctx, gc, gc.Events[:evtNumber])
+	if err != nil {
+		return err
+	}
+	evtTurn := evt.PlayerIndex
+	racks := make([][]byte, len(gdoc.Players))
+	racks[evtTurn] = rack
+	err = AssignRacks(gc, racks, false)
+	if err != nil {
+		return err
+	}
+	// If it is possible to assign racks without issue, then do it on the
+	// real document.
+	evt.Rack = rack
+
+	return nil
+}
+
+// ReplayEvents plays the events on the game document. For simplicity,
+// assume these events replace every event in the game document; i.e.,
+// initialize from scratch.
+func ReplayEvents(ctx context.Context, gdoc *ipc.GameDocument, evts []*ipc.GameEvent) error {
+
+	cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
+	if !ok {
+		return errors.New("config does not exist in context")
+	}
+
+	dist, err := tiles.GetDistribution(cfg, gdoc.LetterDistribution)
+	if err != nil {
+		return err
+	}
+
+	layout, err := board.GetBoardLayout(gdoc.BoardLayout)
+	if err != nil {
+		return err
+	}
+
+	gdoc.PlayState = ipc.PlayState_PLAYING
+	gdoc.CurrentScores = make([]int32, len(gdoc.Players))
+	gdoc.Events = []*ipc.GameEvent{}
+	gdoc.Board = board.NewBoard(layout)
+	gdoc.Bag = tiles.TileBag(dist)
+	gdoc.ScorelessTurns = 0
+	gdoc.PlayerOnTurn = 0
+	savedRacks := gdoc.Racks
+	savedTimers := proto.Clone(gdoc.Timers)
+	gdoc.Racks = make([][]byte, len(gdoc.Players))
+
+	// Replaying events is not as simple as just calling playMove with the event.
+	// Because of the randomness factor, the drawn tiles after each play/exchange
+	// etc won't be the same. We have to set the racks manually before each play.
+	for idx, evt := range evts {
+		if evt.Type == ipc.GameEvent_END_RACK_PTS {
+			// don't append this. This event should be automatically generated
+			// and appended by the regular gameplay events.
+			continue
+		}
+		toAssign := make([][]byte, len(gdoc.Players))
+		toAssign[evt.PlayerIndex] = evt.Rack
+
+		err = AssignRacks(gdoc, toAssign, true)
+		if err != nil {
+			return err
+		}
+
+		gdoc.PlayerOnTurn = evt.PlayerIndex
+
+		switch evt.Type {
+		case ipc.GameEvent_TILE_PLACEMENT_MOVE,
+			ipc.GameEvent_EXCHANGE,
+			ipc.GameEvent_PASS, ipc.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
+
+			if idx+1 <= len(evts)-1 {
+				if evt.Type == ipc.GameEvent_TILE_PLACEMENT_MOVE &&
+					evts[idx+1].Type == ipc.GameEvent_PHONY_TILES_RETURNED {
+
+					// In this case, do not play the move since it will be
+					// taken back. No need to calculate the bag/board for this event.
+					// We still want to append the event, however.
+					gdoc.Events = append(gdoc.Events, evt)
+					break
+					// Go on to the next event.
+
+				}
+			}
+
+			tr := evt.MillisRemaining
+			// Use playMove to just play the event. This should apply all relevant
+			// changes to the doc (scores, keeping track of scoreless turns, etc)
+			err = playMove(ctx, gdoc, evt, int64(tr))
+			if err != nil {
+				return err
+			}
+
+		default:
+			// If it's another type of game event, all we care about is the cumulative
+			// score.
+			gdoc.CurrentScores[evt.PlayerIndex] = evt.Cumulative
+			gdoc.Events = append(gdoc.Events, evt)
+
+			// XXX not handling 6-consecutive zeroes case
+		}
+
+	}
+	// At the end, make sure to set the racks to whatever they are in the doc.
+	log.Debug().Interface("savedRacks", savedRacks).Msg("call-assign-racks")
+	err = AssignRacks(gdoc, savedRacks, true)
+	if err != nil {
+		return err
+	}
+	gdoc.Timers = savedTimers.(*ipc.Timers)
+
 	return nil
 }
 
@@ -202,11 +424,15 @@ func ProcessGameplayEvent(ctx context.Context, evt *ipc.ClientGameplayEvent,
 
 	} else {
 		// convt to internal move
-		m, err := clientEventToMove(ctx, evt, gdoc)
+		gevt, err := clientEventToGameEvent(ctx, evt, gdoc)
 		if err != nil {
 			return err
 		}
-		err = playMove(ctx, gdoc, m, tr)
+		// At this point, we have validated the play can be made from
+		// the player's rack, but we haven't validated the play itself
+		// (adherence to rules, valid words if applicable, etc)
+
+		err = playMove(ctx, gdoc, gevt, tr)
 		if err != nil {
 			return err
 		}
@@ -215,18 +441,17 @@ func ProcessGameplayEvent(ctx context.Context, evt *ipc.ClientGameplayEvent,
 	return nil
 }
 
-func clientEventToMove(ctx context.Context, evt *ipc.ClientGameplayEvent, gdoc *ipc.GameDocument) (move, error) {
+func clientEventToGameEvent(ctx context.Context, evt *ipc.ClientGameplayEvent, gdoc *ipc.GameDocument) (*ipc.GameEvent, error) {
 	playerid := gdoc.PlayerOnTurn
 	rackmw := runemapping.FromByteArr(gdoc.Racks[playerid])
 	cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
-	m := move{}
 	if !ok {
-		return m, errors.New("config does not exist in context")
+		return nil, errors.New("config does not exist in context")
 	}
 
 	dist, err := tiles.GetDistribution(cfg, gdoc.LetterDistribution)
 	if err != nil {
-		return m, err
+		return nil, err
 	}
 
 	switch evt.Type {
@@ -234,52 +459,53 @@ func clientEventToMove(ctx context.Context, evt *ipc.ClientGameplayEvent, gdoc *
 		row, col, dir := fromBoardGameCoords(evt.PositionCoords)
 		mw, err := runemapping.ToMachineLetters(evt.Tiles, dist.RuneMapping())
 		if err != nil {
-			return m, err
+			return nil, err
 		}
-		leave, err := Leave(rackmw, mw)
+		_, err = Leave(rackmw, mw)
 		if err != nil {
-			return m, err
+			return nil, err
 		}
-		return move{
-			row:       row,
-			col:       col,
-			direction: dir,
-			mtype:     ipc.GameEvent_TILE_PLACEMENT_MOVE,
-			tilesUsed: mw,
-			leave:     leave,
-			clientEvt: evt,
+		return &ipc.GameEvent{
+			Row:         int32(row),
+			Column:      int32(col),
+			Direction:   dir,
+			Type:        ipc.GameEvent_TILE_PLACEMENT_MOVE,
+			Rack:        gdoc.Racks[playerid],
+			PlayedTiles: runemapping.MachineWord(mw).ToByteArr(),
+			Position:    evt.PositionCoords,
+			PlayerIndex: gdoc.PlayerOnTurn,
 		}, nil
 
 	case ipc.ClientGameplayEvent_PASS:
-		return move{
-			mtype:     ipc.GameEvent_PASS,
-			leave:     rackmw,
-			clientEvt: evt,
+		return &ipc.GameEvent{
+			Type:        ipc.GameEvent_PASS,
+			Rack:        gdoc.Racks[playerid],
+			PlayerIndex: gdoc.PlayerOnTurn,
 		}, nil
 	case ipc.ClientGameplayEvent_EXCHANGE:
 		mw, err := runemapping.ToMachineLetters(evt.Tiles, dist.RuneMapping())
 		if err != nil {
-			return m, err
+			return nil, err
 		}
-		leave, err := Leave(rackmw, mw)
+		_, err = Leave(rackmw, mw)
 		if err != nil {
-			return m, err
+			return nil, err
 		}
-
-		return move{
-			mtype:     ipc.GameEvent_EXCHANGE,
-			tilesUsed: mw,
-			leave:     leave,
-			clientEvt: evt,
+		return &ipc.GameEvent{
+			Type:        ipc.GameEvent_EXCHANGE,
+			Rack:        gdoc.Racks[playerid],
+			Exchanged:   runemapping.MachineWord(mw).ToByteArr(),
+			PlayerIndex: gdoc.PlayerOnTurn,
 		}, nil
 	case ipc.ClientGameplayEvent_CHALLENGE_PLAY:
-		return move{
-			mtype:     ipc.GameEvent_CHALLENGE,
-			leave:     rackmw,
-			clientEvt: evt}, nil
+		return &ipc.GameEvent{
+			Type:        ipc.GameEvent_CHALLENGE,
+			PlayerIndex: gdoc.PlayerOnTurn,
+			Rack:        gdoc.Racks[playerid],
+		}, nil
 
 	}
-	return m, errors.New("unhandled evt type: " + evt.Type.String())
+	return nil, errors.New("unhandled evt type: " + evt.Type.String())
 }
 
 func fromBoardGameCoords(c string) (int, int, ipc.GameEvent_Direction) {
@@ -348,10 +574,15 @@ func findOnlyNonquitter(gdoc *ipc.GameDocument) (int, bool) {
 }
 
 func assignTurnToNextNonquitter(gdoc *ipc.GameDocument, start uint32) error {
+	if gdoc.PlayState == ipc.PlayState_GAME_OVER {
+		// Game is already over, don't bother changing on-turn
+		return nil
+	}
 	i := (start + uint32(1)) % uint32(len(gdoc.Players))
 	for i != start {
 		if !gdoc.Players[i].Quit {
 			gdoc.PlayerOnTurn = i
+			log.Debug().Uint32("on-turn", i).Msg("assign-turn")
 			return nil
 		}
 		i = (i + uint32(1)) % uint32(len(gdoc.Players))

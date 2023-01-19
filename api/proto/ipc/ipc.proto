@@ -18,7 +18,7 @@ enum MessageType {
   MATCH_REQUEST = 1;
   SOUGHT_GAME_PROCESS_EVENT = 2;
   CLIENT_GAMEPLAY_EVENT = 3;
-  SERVER_GAMEPLAY_EVENT = 4;
+  SERVER_GAMEPLAY_EVENT = 4; // deprecate soon
   GAME_ENDED_EVENT = 5;
   GAME_HISTORY_REFRESHER = 6;
   ERROR_MESSAGE = 7;
@@ -61,6 +61,8 @@ enum MessageType {
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
   // a byte long.
+  OMGWORDS_GAMEPLAY_EVENT = 44;
+  OMGWORDS_GAMEDOCUMENT = 45;
 }
 
 message RegisterRealmRequest {

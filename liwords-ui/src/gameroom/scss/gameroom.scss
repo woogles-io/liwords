@@ -1335,6 +1335,11 @@ p.rune {
     }
   }
 }
+
+.board-editor-controls .game-controls {
+  padding: 5px 0px;
+}
+
 .game-controls {
   display: flex;
   position: relative;
@@ -1866,5 +1871,27 @@ p.rune {
 .cancel-notification {
   .ant-notification-close-x {
     display: none;
+  }
+}
+
+.editor-control {
+  padding: 6px;
+  .ant-select-selector,
+  .ant-select-item,
+  .ant-dropdown-menu,
+  .ant-select-dropdown,
+  .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+
+    @include colorModed() {
+      background: m($background);
+      color: m($gray-extreme);
+    }
+    z-index: 0;
+  }
+  
+  .readable-text-color {
+    @include colorModed() {
+        color: m($gray-extreme);
+    }
   }
 }

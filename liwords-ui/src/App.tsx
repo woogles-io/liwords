@@ -50,6 +50,7 @@ import {
   AuthenticationService,
   SocializeService,
 } from './gen/api/proto/user_service/user_service_connectweb';
+import { BoardEditor } from './boardwizard/editor';
 
 const useDarkMode = localStorage?.getItem('darkMode') === 'true';
 document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
@@ -333,9 +334,21 @@ const App = React.memo(() => {
             element={<SinglePuzzle sendChat={sendChat} />}
           />
         </Route>
+        <Route
+          path="anno/:gameID"
+          element={
+            <GameTable
+              sendSocketMsg={sendMessage}
+              sendChat={sendChat}
+              annotated
+            />
+          }
+        />
 
         <Route path="embed/game/:gameID" element={<Embed />} />
-
+        <Route path="editor" element={<BoardEditor />}>
+          <Route path=":gameID" element={<BoardEditor />} />
+        </Route>
         <Route path="about" element={<Team />} />
         <Route path="team" element={<Team />} />
         <Route path="terms" element={<TermsOfService />} />

@@ -37,13 +37,15 @@ export enum ActionType {
   SetReadyForGame,
 
   /* game actions */
-  AddGameEvent,
-  RefreshTurns,
-  RefreshHistory,
+  AddGameEvent, // will be obsolete when we move to OMGWordsEVent
+  RefreshHistory, // will be obsolete when we move to GameDocument fully
   ClearHistory,
   EndGame,
   ProcessGameMetaEvent,
   SetupStaticPosition,
+  InitFromDocument,
+  AddOMGWordsEvent,
+  ChangePlayerRack,
 
   /* login state actions */
   SetAuthentication,

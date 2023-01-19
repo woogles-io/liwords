@@ -222,6 +222,8 @@ export declare class StreakInfoResponse extends Message<StreakInfoResponse> {
   streak: StreakInfoResponse_SingleGameInfo[];
 
   /**
+   * XXX make this snake_case
+   *
    * @generated from field: repeated game_service.StreakInfoResponse.PlayerInfo playersInfo = 3;
    */
   playersInfo: StreakInfoResponse_PlayerInfo[];

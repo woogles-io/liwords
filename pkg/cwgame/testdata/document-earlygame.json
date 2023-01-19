@@ -32,8 +32,7 @@
                 "Bg8TEwkM"
             ],
             "millis_remaining": 896991,
-            "player_index": 0,
-            "leave": "AQ=="
+            "player_index": 0
         },
         {
             "note": "",
@@ -55,8 +54,7 @@
                 "BgwPARQJBRI="
             ],
             "millis_remaining": 899965,
-            "player_index": 1,
-            "leave": ""
+            "player_index": 1
         },
         {
             "note": "",
@@ -80,8 +78,7 @@
                 "ARI="
             ],
             "millis_remaining": 893992,
-            "player_index": 0,
-            "leave": "BQkO"
+            "player_index": 0
         },
         {
             "note": "",
@@ -103,8 +100,7 @@
                 "Fg8JFg8EBRM="
             ],
             "millis_remaining": 899914,
-            "player_index": 1,
-            "leave": ""
+            "player_index": 1
         }
     ],
     "version": 1,
@@ -152,6 +148,5 @@
         "max_overtime": 1,
         "increment_seconds": 0,
         "reset_to_increment_after_turn": false
-    },
-    "game_mode": "REAL_TIME"
+    }
 }

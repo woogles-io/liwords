@@ -124,6 +124,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	// ratings calculations are not interleaved across threads.
 	// Enforce an arbitrary locking order to ensure no deadlocks
 	// occur between threads.
+	var users []*entity.User
 
 	u0, err := userStore.GetByUUID(ctx, g.History().Players[0].UserId)
 	if err != nil {
@@ -133,7 +134,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	if err != nil {
 		return err
 	}
-	users := []*entity.User{u0, u1}
+	users = []*entity.User{u0, u1}
 
 	firstLockingIndex := 0
 	if users[0].UUID > users[1].UUID {
@@ -186,7 +187,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	} else if g.GameReq.RatingMode == pb.RatingMode_RATED {
 		// Applies penalties to players who have misbehaved during the game
 		// Does not apply for tournament games
-		err = mod.Automod(ctx, userStore, notorietyStore, u0, u1, g)
+		err = mod.Automod(ctx, userStore, notorietyStore, users[0], users[1], g)
 		if err != nil {
 			log.Err(err).Msg("automod-error")
 		}
@@ -205,6 +206,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 
 	// send each player their new profile with updated ratings.
 	sendProfileUpdate(ctx, g, users)
+
 	return nil
 }
 

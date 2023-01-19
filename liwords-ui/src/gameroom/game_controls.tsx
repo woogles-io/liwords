@@ -42,6 +42,7 @@ const ExamineGameControls = React.memo(
     gameDone: boolean;
     puzzleMode: boolean;
     exitable: boolean;
+    editMode: boolean;
   }) => {
     const { useState } = useMountedState();
     const { gameContext: examinableGameContext } =
@@ -143,7 +144,7 @@ const ExamineGameControls = React.memo(
             Animated GIF of complete game
           </Menu.Item>
         )}
-        {gameDone && (
+        {(gameDone || props.editMode) && (
           <Menu.Item
             key="download-gcg"
             disabled={gameHasNotStarted}
@@ -169,6 +170,7 @@ const ExamineGameControls = React.memo(
               Export
             </Button>
           </Dropdown>
+
           <Button
             shape="circle"
             icon={<DoubleLeftOutlined />}
@@ -266,6 +268,7 @@ export type Props = {
   showNudge: boolean;
   showAbort: boolean;
   exitableExaminer?: boolean;
+  boardEditingMode?: boolean;
 };
 
 const GameControls = React.memo((props: Props) => {
@@ -385,7 +388,7 @@ const GameControls = React.memo((props: Props) => {
   // but it's good enough, otherwise we need to prop-drill further.
   const gameDone = !!gameEndControls;
 
-  if (isExamining) {
+  if (isExamining && !props.boardEditingMode) {
     return (
       <ExamineGameControls
         lexicon={props.lexicon}
@@ -394,6 +397,7 @@ const GameControls = React.memo((props: Props) => {
         gameDone={gameDone}
         puzzleMode={!!props.puzzleMode}
         exitable={props.exitableExaminer ?? true}
+        editMode={false}
       />
     );
   }
@@ -484,110 +488,125 @@ const GameControls = React.memo((props: Props) => {
   );
 
   return (
-    <div className="game-controls">
-      <div className="secondary-controls">
-        {!props.puzzleMode && (
-          <Dropdown
-            overlay={optionsMenu}
-            trigger={['click']}
-            visible={optionsMenuVisible}
-            disabled={gameHasNotStarted}
-            placement="topLeft"
-          >
-            <Button onClick={() => setOptionsMenuVisible((v) => !v)}>
-              Options
-            </Button>
-          </Dropdown>
-        )}
-        {!props.puzzleMode && (
-          <Popconfirm
-            title="Are you sure you wish to pass?"
-            onCancel={() => {
-              setCurrentPopUp('NONE');
-            }}
-            onConfirm={() => {
-              props.onPass();
-              setCurrentPopUp('NONE');
-            }}
-            onVisibleChange={(visible) => {
-              setCurrentPopUp(visible ? 'PASS' : 'NONE');
-            }}
-            okText="Yes"
-            cancelText="No"
-            visible={currentPopUp === 'PASS'}
-          >
-            <Button
-              ref={passButton}
-              onClick={() => {
-                if (currentPopUp === 'PASS') {
-                  props.onPass();
-                  setCurrentPopUp('NONE');
-                }
-              }}
-              danger
-              disabled={!props.myTurn}
-              type={
-                props.finalPassOrChallenge && props.myTurn
-                  ? 'primary'
-                  : 'default'
-              }
+    <div className={props.boardEditingMode ? 'board-editor-controls' : ''}>
+      <div className="game-controls">
+        <div className="secondary-controls">
+          {!props.puzzleMode && !props.boardEditingMode && (
+            <Dropdown
+              overlay={optionsMenu}
+              trigger={['click']}
+              visible={optionsMenuVisible}
+              disabled={gameHasNotStarted}
+              placement="topLeft"
             >
-              Pass
-              <span className="key-command">2</span>
-            </Button>
-          </Popconfirm>
-        )}
-      </div>
-      <div className="secondary-controls">
-        {!props.puzzleMode && (
-          <Popconfirm
-            title="Are you sure you wish to challenge?"
-            onCancel={() => {
-              setCurrentPopUp('NONE');
-            }}
-            onConfirm={() => {
-              props.onChallenge();
-              setCurrentPopUp('NONE');
-            }}
-            onVisibleChange={(visible) => {
-              setCurrentPopUp(visible ? 'CHALLENGE' : 'NONE');
-            }}
-            okText="Yes"
-            cancelText="No"
-            visible={currentPopUp === 'CHALLENGE'}
-          >
-            <Button
-              ref={challengeButton}
-              onClick={() => {
-                if (currentPopUp === 'CHALLENGE') {
-                  props.onChallenge();
-                  setCurrentPopUp('NONE');
-                }
+              <Button onClick={() => setOptionsMenuVisible((v) => !v)}>
+                Options
+              </Button>
+            </Dropdown>
+          )}
+          {!props.puzzleMode && (
+            <Popconfirm
+              title="Are you sure you wish to pass?"
+              onCancel={() => {
+                setCurrentPopUp('NONE');
               }}
-              disabled={!props.myTurn}
-              hidden={props.challengeRule === ChallengeRule.VOID}
+              onConfirm={() => {
+                props.onPass();
+                setCurrentPopUp('NONE');
+              }}
+              onVisibleChange={(visible) => {
+                setCurrentPopUp(visible ? 'PASS' : 'NONE');
+              }}
+              okText="Yes"
+              cancelText="No"
+              visible={currentPopUp === 'PASS'}
             >
-              Challenge
-              <span className="key-command">3</span>
-            </Button>
-          </Popconfirm>
-        )}
+              <Button
+                ref={passButton}
+                onClick={() => {
+                  if (currentPopUp === 'PASS') {
+                    props.onPass();
+                    setCurrentPopUp('NONE');
+                  }
+                }}
+                danger
+                disabled={!props.myTurn}
+                type={
+                  props.finalPassOrChallenge && props.myTurn
+                    ? 'primary'
+                    : 'default'
+                }
+              >
+                Pass
+                <span className="key-command">2</span>
+              </Button>
+            </Popconfirm>
+          )}
+        </div>
+        <div className="secondary-controls">
+          {!props.puzzleMode && (
+            <Popconfirm
+              title="Are you sure you wish to challenge?"
+              onCancel={() => {
+                setCurrentPopUp('NONE');
+              }}
+              onConfirm={() => {
+                props.onChallenge();
+                setCurrentPopUp('NONE');
+              }}
+              onVisibleChange={(visible) => {
+                setCurrentPopUp(visible ? 'CHALLENGE' : 'NONE');
+              }}
+              okText="Yes"
+              cancelText="No"
+              visible={currentPopUp === 'CHALLENGE'}
+            >
+              <Button
+                ref={challengeButton}
+                onClick={() => {
+                  if (currentPopUp === 'CHALLENGE') {
+                    props.onChallenge();
+                    setCurrentPopUp('NONE');
+                  }
+                }}
+                disabled={!props.myTurn}
+                hidden={props.challengeRule === ChallengeRule.VOID}
+              >
+                Challenge
+                <span className="key-command">3</span>
+              </Button>
+            </Popconfirm>
+          )}
+          <Button
+            onClick={props.showExchangeModal}
+            disabled={!(props.myTurn && props.exchangeAllowed)}
+          >
+            Exchange
+            <span className="key-command">4</span>
+          </Button>
+        </div>
         <Button
-          onClick={props.showExchangeModal}
-          disabled={!(props.myTurn && props.exchangeAllowed)}
+          type="primary"
+          className="play"
+          onClick={props.onCommit}
+          disabled={!props.myTurn || props.finalPassOrChallenge}
         >
-          Exchange
-          <span className="key-command">4</span>
+          {props.puzzleMode ? 'Solve' : 'Play'}
         </Button>
       </div>
-      <Button
-        type="primary"
-        className="play"
-        onClick={props.onCommit}
-        disabled={!props.myTurn || props.finalPassOrChallenge}
-      >
-        {props.puzzleMode ? 'Solve' : 'Play'}
-      </Button>
+      {props.boardEditingMode && (
+        <div className="secondary-controls">
+          <ExamineGameControls
+            lexicon={props.lexicon}
+            darkMode={darkMode}
+            onExportGCG={props.onExportGCG}
+            gameDone={gameDone}
+            puzzleMode={!!props.puzzleMode}
+            exitable={props.exitableExaminer ?? true}
+            editMode={!!props.boardEditingMode}
+          />
+        </div>
+      )}
     </div>
   );
 });

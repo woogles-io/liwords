@@ -45,6 +45,17 @@ message ClientGameplayEvent {
   // tiles that are being played (or exchanged). The `.` character is used
   // for thru, and lowercase characters are used for blanks.
   string tiles = 4;
+  // full_rack is the rack that the play is being made from. Note that the
+  // server already knows the full rack, so this does not need to be provided,
+  // unless our game is a broadcast/"sandbox" game where we can modify racks.
+  // Of course, special care should be taken to ignore this value if this
+  // is a regular game!
+  string full_rack = 5;
+  // event_index is the index of the event. This value should not be used for
+  // anything other than broadcast/"sandbox" games, and it will be used for
+  // editing previous moves. If used, the entire game until event_index will
+  // be truncated, so this must also be used with care!
+  int32 event_index = 6;
 }
 
 // A GameRules is just the name of a board layout + the name of a letter
@@ -68,7 +79,12 @@ enum RatingMode {
 }
 
 enum GameType {
+  // A NATIVE game is the default OMGWords game (or its variants)
+  // created on the woogles site, between two players or between a player
+  // and a bot.
   NATIVE = 0;
+  // An ANNOTATED game does not feature Woogles players, but is instead
+  // created by a broadcaster/annotator to represent a real-life game.
   ANNOTATED = 1;
   BOT_VS_BOT = 2;
 }
@@ -156,6 +172,10 @@ message GameHistoryRefresher {
   GameMetaEvent outstanding_event = 5;
 }
 
+// A GameDocumentEvent should eventually replace the GameHistoryRefresher. For
+// now, it will be used for annotated games.
+message GameDocumentEvent { ipc.GameDocument doc = 1; }
+
 message TournamentDataForGame {
   // The ID of the tournament
   string tid = 1;
@@ -176,8 +196,9 @@ message PlayerInfo {
   string title = 6;
   // string avatar_url = 7; // the UserService now offers Avatar info
   bool is_bot = 8;
-  // first is true if the player went first
-  bool first = 9;
+  // first is true if the player went first. This is deprecated because it
+  // is assumed the player listed first went first.
+  bool first = 9 [ deprecated = true ];
 }
 
 message GameInfoResponse {
@@ -231,6 +252,8 @@ message ReadyForGame { string game_id = 1; }
 // The server will send back a ServerGameplayEvent to a ClientGameplayEvent.
 // The server will also send these asynchronously for opponent gameplay
 // events.
+// XXX: This message type is obsolete and will be replaced by
+// ServerOMGWordsEvent
 message ServerGameplayEvent {
   macondo.GameEvent event = 1; // XXX: move to ipc.GameEvent
   string game_id = 2;
@@ -238,6 +261,16 @@ message ServerGameplayEvent {
   int32 time_remaining = 4;
   macondo.PlayState playing = 5; // XXX: move to ipc.PlayState
   string user_id = 6; // the event has the nickname, but not the userid.
+}
+
+// ServerOMGWordsEvent is a new event type.
+message ServerOMGWordsEvent {
+  GameEvent event = 1;
+  string game_id = 2;
+  bytes new_rack = 3;
+  int32 time_remaining = 4;
+  PlayState playing = 5;
+  string user_id = 6;
 }
 
 // The server will send back a challenge result event only in the case of
@@ -248,11 +281,20 @@ message ServerGameplayEvent {
 // right incremental events. The reason is that the logic is complex and
 // has many special cases, and is already fully implemented in Macondo.
 // We don't wish to re-implement it both in this repo's backend and frontend.
+// XXX: This message type is obsolete, and will be replaced by
+// OMGWordsChallengeResultEvent
 message ServerChallengeResultEvent {
   bool valid = 1;
   string challenger = 2;
   macondo.ChallengeRule challenge_rule = 3;
   string returned_tiles = 4;
+}
+
+message OMGWordsChallengeResultEvent {
+  bool valid = 1;
+  string challenger = 2;
+  ChallengeRule challenge_rule = 3;
+  bytes returned_tiles = 4;
 }
 
 // GameEndedEvent is always sent from the server to both clients.
@@ -295,7 +337,7 @@ message TimedOut {
   string user_id = 2;
 }
 
-// GameEvent is an internal game event, saved in the GameHistory
+// GameEvent is an internal game event, saved in the GameDocument.
 message GameEvent {
   enum Type {
     TILE_PLACEMENT_MOVE = 0;
@@ -343,8 +385,6 @@ message GameEvent {
   // The player who played this move is encoded in player_index. This should
   // be the index in GameDocument.players.
   uint32 player_index = 19;
-  // The leave from rack after played_tiles.
-  bytes leave = 20;
 }
 
 enum PlayState {
@@ -383,6 +423,8 @@ message Timers {
   // seconds (let's say 5 days) at the beginning, and this flag can be set to
   // on. Then we should always have 5 days to make any move.
   bool reset_to_increment_after_turn = 6;
+  // If untimed is true, then Timers are not updated at all.
+  bool untimed = 7;
 }
 
 message MetaEventData { repeated GameMetaEvent events = 1; }
@@ -448,9 +490,5 @@ message GameDocument {
   uint32 scoreless_turns = 22;
   // The index of the player on turn
   uint32 player_on_turn = 23;
-  // current_scores is in the same order as the player info structure inside
-  // GameHistory
   Timers timers = 24;
-  // real time or correspondence?
-  GameMode game_mode = 25;
 }

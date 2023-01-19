@@ -16,6 +16,8 @@ import (
 
 const (
 	CrosswordGame string = "CrosswordGame"
+
+	LargeTime int = 1000000000
 )
 
 type Timers struct {
@@ -120,6 +122,22 @@ func (h *GameHistory) Scan(value interface{}) error {
 	return proto.Unmarshal(b, &h.GameHistory)
 }
 
+type GameRequest struct {
+	pb.GameRequest
+}
+
+func (g *GameRequest) Value() (driver.Value, error) {
+	return proto.Marshal(&g.GameRequest)
+}
+
+func (g *GameRequest) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+	return proto.Unmarshal(b, &g.GameRequest)
+}
+
 // A Game should be saved to the database or store. It wraps a macondo.Game,
 // and we should save most of the included fields here, especially the
 // macondo.game.History (which can be exported as GCG, etc in the future)
@@ -218,6 +236,9 @@ func (g *Game) RatingKey() (VariantKey, error) {
 
 // TimeRemaining calculates the time remaining, but does NOT update it.
 func (g *Game) TimeRemaining(idx int) int {
+	if g.Type == pb.GameType_ANNOTATED {
+		return LargeTime
+	}
 	if g.Game.PlayerOnTurn() == idx {
 		now := g.nower.Now()
 		return g.Timers.TimeRemaining[idx] - int(now-g.Timers.TimeOfLastUpdate)
@@ -227,12 +248,19 @@ func (g *Game) TimeRemaining(idx int) int {
 }
 
 func (g *Game) CachedTimeRemaining(idx int) int {
+	if g.Type == pb.GameType_ANNOTATED {
+		return LargeTime
+	}
 	return g.Timers.TimeRemaining[idx]
 }
 
 // TimeRanOut calculates if time ran out for the given player. Assumes player is
 // on turn, otherwise it always returns false.
 func (g *Game) TimeRanOut(idx int) bool {
+	if g.Type == pb.GameType_ANNOTATED {
+		// time never runs out for annotated games
+		return false
+	}
 	if g.Game.PlayerOnTurn() != idx {
 		return false
 	}
@@ -262,7 +290,9 @@ func (g *Game) calculateAndSetTimeRemaining(pidx int, now int64, accountForIncre
 		Int("player", pidx).
 		Int("remaining", g.Timers.TimeRemaining[pidx]).
 		Msg("calculate-and-set-remaining")
-
+	if g.Type == pb.GameType_ANNOTATED {
+		return
+	}
 	if g.Game.PlayerOnTurn() == pidx {
 		// Time has passed since this was calculated.
 		g.Timers.TimeRemaining[pidx] -= int(now - g.Timers.TimeOfLastUpdate)

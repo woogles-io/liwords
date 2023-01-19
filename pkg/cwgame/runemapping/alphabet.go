@@ -110,8 +110,11 @@ func (rm *RuneMapping) Val(r rune) (MachineLetter, error) {
 }
 
 // UserVisible turns the passed-in machine letter into a user-visible rune.
-func (ml MachineLetter) UserVisible(rm *RuneMapping) rune {
+func (ml MachineLetter) UserVisible(rm *RuneMapping, zeroForPlayedThrough bool) rune {
 	if ml == 0 {
+		if zeroForPlayedThrough {
+			return ASCIIPlayedThrough
+		}
 		return BlankToken
 	}
 	return rm.Letter(ml)
@@ -134,7 +137,18 @@ func (ml MachineLetter) IsBlanked() bool {
 func (mw MachineWord) UserVisible(rm *RuneMapping) string {
 	runes := make([]rune, len(mw))
 	for i, l := range mw {
-		runes[i] = l.UserVisible(rm)
+		runes[i] = l.UserVisible(rm, false)
+	}
+	return string(runes)
+}
+
+// UserVisiblePlayedTiles turns the passed-in machine word into a user-visible string.
+// It assumes that the MachineWord represents played tiles and not just
+// tiles on a rack, so it uses the PlayedThrough character for 0.
+func (mw MachineWord) UserVisiblePlayedTiles(rm *RuneMapping) string {
+	runes := make([]rune, len(mw))
+	for i, l := range mw {
+		runes[i] = l.UserVisible(rm, true)
 	}
 	return string(runes)
 }
@@ -181,12 +195,18 @@ func ToMachineLetters(word string, rm *RuneMapping) ([]MachineLetter, error) {
 	return letters, nil
 }
 
-func (rm *RuneMapping) genLetterSlice() {
+func (rm *RuneMapping) genLetterSlice(sortMap map[rune]int) {
 	rm.letterSlice = []rune{}
 	for rn := range rm.vals {
 		rm.letterSlice = append(rm.letterSlice, rn)
 	}
-	sort.Sort(rm.letterSlice)
+	if sortMap != nil {
+		sort.Slice(rm.letterSlice, func(i, j int) bool {
+			return sortMap[rm.letterSlice[i]] < sortMap[rm.letterSlice[j]]
+		})
+	} else {
+		sort.Sort(rm.letterSlice)
+	}
 	log.Debug().Msgf("After sorting: %v", rm.letterSlice)
 	// These maps are now deterministic. Renumber them according to
 	// sort order.
@@ -202,9 +222,9 @@ func (rm *RuneMapping) genLetterSlice() {
 
 // Reconcile will take a populated alphabet, sort the glyphs, and re-index
 // the numbers.
-func (rm *RuneMapping) Reconcile() {
+func (rm *RuneMapping) Reconcile(sortMap map[rune]int) {
 	log.Debug().Msg("Reconciling alphabet")
-	rm.genLetterSlice()
+	rm.genLetterSlice(sortMap)
 }
 
 // FromSlice creates an alphabet from a serialized array. It is the

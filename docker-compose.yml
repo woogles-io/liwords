@@ -25,8 +25,12 @@ services:
       REDIS_URL: "redis://redis:6379"
       GORACE: history_size=7
       ARGON_MEMORY: 1024
-      AWS_PROFILE: ${AWS_PROFILE:-default}
-      AWS_REGION: ${AWS_REGION:-}
+      AWS_REGION: "us-east-2"
+      USE_LOCALSTACK_S3: 1
+      LOCALSTACK_S3_ENDPOINT: "http://localstack:4566"
+      # localstack still requires some value for these:
+      AWS_ACCESS_KEY_ID: '123'
+      AWS_SECRET_KEY: 'xyz'
       AVATAR_UPLOAD_BUCKET: woogles-uploads
       DB_MIGRATIONS_PATH: file:///opt/program/db/migrations
       PUZZLE_GENERATION_SECRET_KEY: perplexemes
@@ -41,7 +45,15 @@ services:
       - ./data/lexica/dawg:/opt/program/data/lexica/dawg
       - ${AWS_CREDENTIALS_PATH:-~/.aws}:/root/.aws:ro
     command: sh -c "go run -race cmd/liwords-api/*.go"
-    depends_on: [ "db", "proxy", "nats", "socket", "redis" ]
+    depends_on:
+      [
+        "db",
+        "proxy",
+        "nats",
+        "socket",
+        "redis",
+        "localstack"
+      ]
     networks:
       - aeronet
     ports:
@@ -111,7 +123,7 @@ services:
       - "traefik.http.services.liwords-socket.loadbalancer.server.port=8087"
       - traefik.enable=true
 
-  socket2: *socketsetup
+  # socket2: *socketsetup
 
   proxy:
     image: "traefik:v2.2"
@@ -156,6 +168,19 @@ services:
       # - /Users/cesar:/opt/cesar
     ports:
       - 5432:5432
+    networks:
+      - aeronet
+
+  localstack:
+    image: localstack/localstack
+    ports:
+      - 4566:4566
+    environment:
+      - SERVICES=s3
+      - DEBUG=true
+      - DATA_DIR=/tmp/localstack/data
+    volumes:
+      - localstack-volume:/tmp/localstack
     networks:
       - aeronet
 
@@ -205,3 +230,4 @@ volumes:
     external: false
   redis-data-volume:
     external: false
+  localstack-volume:

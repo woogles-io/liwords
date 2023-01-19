@@ -160,7 +160,6 @@ export const TourneyEditor = (props: Props) => {
     }
   };
   const onFinish = async (vals: Store) => {
-    console.log('vals', vals);
     let apicall: 'newTournament' | 'setTournamentMetadata' = 'newTournament';
     let obj = {};
 

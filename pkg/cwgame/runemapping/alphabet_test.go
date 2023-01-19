@@ -13,7 +13,7 @@ func TestUserVisible(t *testing.T) {
 	rm.Update("HOMEMADE")
 	rm.Update("GAMODEME")
 	rm.Update("XU")
-	rm.Reconcile()
+	rm.Reconcile(nil)
 	expected := LetterSlice([]rune{
 		'A', 'D', 'E', 'G', 'H', 'I', 'L', 'M', 'O', 'R', 'T', 'U', 'X'})
 	if !reflect.DeepEqual(rm.letterSlice, expected) {
@@ -40,7 +40,7 @@ func TestUserVisibleWithBlank(t *testing.T) {
 	rm.Update("HOMEMADE")
 	rm.Update("GAMODEME")
 	rm.Update("XU")
-	rm.Reconcile()
+	rm.Reconcile(nil)
 
 	mw := MachineWord([]MachineLetter{251, 247, 248, 250, 253})
 	uv := mw.UserVisible(rm)

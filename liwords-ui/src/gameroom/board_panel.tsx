@@ -3,7 +3,11 @@ import { TouchBackend } from 'react-dnd-touch-backend';
 import { Button, notification, message, Tooltip, Affix } from 'antd';
 import { Modal } from '../utils/focus_modal';
 import { DndProvider } from 'react-dnd';
-import { ArrowDownOutlined, SyncOutlined } from '@ant-design/icons';
+import {
+  ArrowDownOutlined,
+  EditOutlined,
+  SyncOutlined,
+} from '@ant-design/icons';
 import {
   isTouchDevice,
   Blank,
@@ -81,6 +85,7 @@ import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb'
 import { flashError, useClient } from '../utils/hooks/connect';
 import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connectweb';
 import { PromiseClient } from '@domino14/connect-web';
+import { RackEditor } from './rack_editor';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -102,6 +107,7 @@ type Props = {
   playerMeta: Array<PlayerInfo>;
   puzzleMode?: boolean;
   puzzleSolved?: number;
+  boardEditingMode?: boolean;
   tournamentSlug?: string;
   tournamentID?: string;
   tournamentPairedMode?: boolean;
@@ -122,6 +128,7 @@ type Props = {
     | undefined;
   vsBot: boolean;
   exitableExaminer?: boolean;
+  changeCurrentRack?: (rack: string, evtIdx: number) => void;
 };
 
 const shuffleString = (a: string): string => {
@@ -207,7 +214,12 @@ export const BoardPanel = React.memo((props: Props) => {
 
   // Poka-yoke against accidentally having multiple modes active.
   const [currentMode, setCurrentMode] = useState<
-    'BLANK_MODAL' | 'DRAWING_HOTKEY' | 'EXCHANGE_MODAL' | 'NORMAL' | 'BLIND'
+    | 'BLANK_MODAL'
+    | 'DRAWING_HOTKEY'
+    | 'EXCHANGE_MODAL'
+    | 'NORMAL'
+    | 'BLIND'
+    | 'EDITING_RACK'
   >('NORMAL');
 
   const { drawingCanBeEnabled, handleKeyDown: handleDrawingKeyDown } =
@@ -266,11 +278,16 @@ export const BoardPanel = React.memo((props: Props) => {
       // it is always my turn in puzzle mode.
       return true;
     }
+    if (props.boardEditingMode) {
+      // it is also always "my" turn in board editing mode.
+      return true;
+    }
     const iam = gameContext.nickToPlayerOrder[props.username];
     return iam && iam === `p${examinableGameContext.onturn}`;
   }, [
     gameContext.nickToPlayerOrder,
     props.username,
+    props.boardEditingMode,
     examinableGameContext.onturn,
     props.puzzleMode,
   ]);
@@ -283,11 +300,12 @@ export const BoardPanel = React.memo((props: Props) => {
     sendGameplayEvent,
     handleUnsetHover,
     username,
+    boardEditingMode,
   } = props;
 
   const makeMove = useCallback(
     (move: string, addl?: string) => {
-      if (isExamining) return;
+      if (isExamining && !boardEditingMode) return;
       let moveEvt;
       if (move !== 'resign' && !isMyTurn) {
         console.log(
@@ -305,12 +323,7 @@ export const BoardPanel = React.memo((props: Props) => {
         });
         return;
       }
-      console.log(
-        'making move',
-        gameContext.nickToPlayerOrder,
-        username,
-        examinableGameContext.onturn
-      );
+
       switch (move) {
         case 'exchange':
           if (addl) {
@@ -350,6 +363,7 @@ export const BoardPanel = React.memo((props: Props) => {
     },
     [
       gameContext.nickToPlayerOrder,
+      boardEditingMode,
       examinableGameContext.onturn,
       isExamining,
       isMyTurn,
@@ -540,6 +554,10 @@ export const BoardPanel = React.memo((props: Props) => {
       // XXX: Without this, when exiting from examining an earlier turn on
       // puzzle mode, it does not reset the rack to the latest rack. Why?
       fullReset = true;
+    } else if (props.boardEditingMode) {
+      // See comment above. I don't know why it doesn't show the latest rack
+      // when we edit more than once.
+      fullReset = true;
     } else if (
       props.currentRack &&
       !dep.displayedRack &&
@@ -639,6 +657,7 @@ export const BoardPanel = React.memo((props: Props) => {
   }, [
     isExamining,
     props.board.letters,
+    props.boardEditingMode,
     props.currentRack,
     props.puzzleMode,
     setDisplayedRack,
@@ -664,8 +683,8 @@ export const BoardPanel = React.memo((props: Props) => {
       }, 0) - 7;
     // Subtract 7 for opponent rack, won't matter when the
     // rack is smaller than that because past the threshold by then
-    setexchangeAllowed(tilesRemaining >= 7);
-  }, [gameContext.pool, props.currentRack]);
+    setexchangeAllowed(tilesRemaining >= 7 || props.boardEditingMode === true);
+  }, [gameContext.pool, props.currentRack, props.boardEditingMode]);
 
   useEffect(() => {
     if (
@@ -735,6 +754,17 @@ export const BoardPanel = React.memo((props: Props) => {
       );
     }
   }, [props.events, props.playerMeta, props.username, props.puzzleMode]);
+
+  const numTurns = examinableGameContext.turns.length;
+
+  useEffect(() => {
+    // Set the current mode to "NORMAL" if we are editing the board,
+    // and the user is moving around the analyzer. This prevents keeping
+    // the rack editor or other modals open.
+    if (props.boardEditingMode) {
+      setCurrentMode('NORMAL');
+    }
+  }, [numTurns, props.boardEditingMode]);
 
   const squareClicked = useCallback(
     (row: number, col: number) => {
@@ -1517,9 +1547,14 @@ export const BoardPanel = React.memo((props: Props) => {
   );
   // Just put this in onKeyPress to block all typeable keys so that typos from
   // placing a tile not on rack also do not trigger type-to-find on firefox.
-  const preventFirefoxTypeToSearch = useCallback((e) => {
-    e.preventDefault();
-  }, []);
+  const preventFirefoxTypeToSearch = useCallback(
+    (e) => {
+      if (currentMode !== 'EDITING_RACK') {
+        e.preventDefault();
+      }
+    },
+    [currentMode]
+  );
 
   const metadataClient = useClient(GameMetadataService);
 
@@ -1555,7 +1590,8 @@ export const BoardPanel = React.memo((props: Props) => {
   const stillWaitingForGameToStart =
     props.currentRack === '' &&
     !props.gameDone &&
-    examinableGameContext.playState !== PlayState.WAITING_FOR_FINAL_PASS;
+    examinableGameContext.playState !== PlayState.WAITING_FOR_FINAL_PASS &&
+    !props.boardEditingMode;
   let gameMetaMessage;
   if (examinableGameEndMessage) {
     gameMetaMessage = examinableGameEndMessage;
@@ -1573,8 +1609,74 @@ export const BoardPanel = React.memo((props: Props) => {
     // eslint-disable-next-line no-nested-ternary
     return myPlayerOrder === 'p0' ? 0 : myPlayerOrder === 'p1' ? 1 : null;
   }, [gameContext.nickToPlayerOrder, props.username]);
+
   const tileColorId =
     (props.gameDone ? null : myId) ?? examinableGameContext.onturn;
+
+  const showControlsForGame = !anonymousTourneyViewer && !props.puzzleMode;
+  const authedSolvingPuzzle = props.puzzleMode && !props.anonymousViewer;
+
+  let gameControls = null;
+
+  if (showControlsForGame || authedSolvingPuzzle || boardEditingMode) {
+    gameControls = (
+      <GameControls
+        isExamining={isExamining}
+        myTurn={authedSolvingPuzzle || boardEditingMode ? true : isMyTurn}
+        finalPassOrChallenge={
+          examinableGameContext.playState === PlayState.WAITING_FOR_FINAL_PASS
+        }
+        allowAnalysis={
+          authedSolvingPuzzle
+            ? props.puzzleSolved !== PuzzleStatus.UNANSWERED
+            : nonDirectorAnalyzerDisallowed
+            ? examinableGameContext.playState === PlayState.GAME_OVER
+            : true
+        }
+        exchangeAllowed={exchangeAllowed}
+        observer={authedSolvingPuzzle || boardEditingMode ? false : observer}
+        onRecall={recallTiles}
+        showExchangeModal={showExchangeModal}
+        onPass={handlePass}
+        onResign={handleResign}
+        onRequestAbort={handleRequestAbort}
+        onNudge={handleNudge}
+        onChallenge={handleChallenge}
+        onCommit={handleCommit}
+        onRematch={props.handleAcceptRematch ?? rematch}
+        onExamine={handleExamineStart}
+        onExportGCG={handleExportGCG}
+        showNudge={authedSolvingPuzzle ? false : showNudge}
+        showAbort={authedSolvingPuzzle ? false : showAbort}
+        showRematch={
+          authedSolvingPuzzle ? false : examinableGameEndMessage !== ''
+        }
+        gameEndControls={
+          authedSolvingPuzzle
+            ? props.puzzleSolved !== PuzzleStatus.UNANSWERED
+            : examinableGameEndMessage !== '' || props.gameDone
+        }
+        currentRack={props.currentRack}
+        tournamentSlug={props.tournamentSlug}
+        tournamentPairedMode={props.tournamentPairedMode}
+        lexicon={props.lexicon}
+        challengeRule={props.challengeRule}
+        setHandlePassShortcut={setHandlePassShortcut}
+        setHandleChallengeShortcut={setHandleChallengeShortcut}
+        setHandleNeitherShortcut={setHandleNeitherShortcut}
+        exitableExaminer={props.exitableExaminer}
+        puzzleMode={props.puzzleMode}
+        boardEditingMode={props.boardEditingMode}
+      />
+    );
+  }
+  if (authedSolvingPuzzle) {
+    gameControls = (
+      <Affix offsetTop={126} className="rack-affix">
+        {gameControls}
+      </Affix>
+    );
+  }
 
   const gameBoard = (
     <div
@@ -1626,15 +1728,49 @@ export const BoardPanel = React.memo((props: Props) => {
                 onClick={recallTiles}
               />
             </Tooltip>
-            <Rack
-              tileColorId={tileColorId}
-              letters={displayedRack}
-              grabbable
-              returnToRack={returnToRack}
-              onTileClick={clickToBoard}
-              moveRackTile={moveRackTile}
-              alphabet={props.alphabet}
-            />
+            {props.boardEditingMode && (
+              <Tooltip
+                title="Edit Rack"
+                placement="bottomRight"
+                mouseEnterDelay={0.1}
+                mouseLeaveDelay={0.01}
+                color={colors.colorPrimary}
+              >
+                <Button
+                  shape="circle"
+                  icon={<EditOutlined />}
+                  type="primary"
+                  onClick={() => {
+                    setCurrentMode('EDITING_RACK');
+                  }}
+                />
+              </Tooltip>
+            )}
+            {currentMode === 'EDITING_RACK' ? (
+              <RackEditor
+                currentRack={displayedRack}
+                rackCallback={(rack: string) => {
+                  if (props.changeCurrentRack) {
+                    props.changeCurrentRack(
+                      rack,
+                      examinableGameContext.turns.length
+                    );
+                  }
+                  setCurrentMode('NORMAL');
+                }}
+                cancelCallback={() => setCurrentMode('NORMAL')}
+              />
+            ) : (
+              <Rack
+                tileColorId={tileColorId}
+                letters={displayedRack}
+                grabbable
+                returnToRack={returnToRack}
+                onTileClick={clickToBoard}
+                moveRackTile={moveRackTile}
+                alphabet={props.alphabet}
+              />
+            )}
             <Tooltip
               title="Shuffle &uarr;"
               placement="bottomLeft"
@@ -1657,85 +1793,7 @@ export const BoardPanel = React.memo((props: Props) => {
         <GameMetaMessage message={gameMetaMessage} />
       )}
       {isTouchDevice() ? <TilePreview gridDim={props.board.dim} /> : null}
-      {!anonymousTourneyViewer && !props.puzzleMode && (
-        <GameControls
-          isExamining={isExamining}
-          myTurn={isMyTurn}
-          finalPassOrChallenge={
-            examinableGameContext.playState === PlayState.WAITING_FOR_FINAL_PASS
-          }
-          allowAnalysis={
-            nonDirectorAnalyzerDisallowed
-              ? examinableGameContext.playState === PlayState.GAME_OVER
-              : true
-          }
-          exchangeAllowed={exchangeAllowed}
-          observer={observer}
-          onRecall={recallTiles}
-          showExchangeModal={showExchangeModal}
-          onPass={handlePass}
-          onResign={handleResign}
-          onRequestAbort={handleRequestAbort}
-          onNudge={handleNudge}
-          onChallenge={handleChallenge}
-          onCommit={handleCommit}
-          onRematch={props.handleAcceptRematch ?? rematch}
-          onExamine={handleExamineStart}
-          onExportGCG={handleExportGCG}
-          showNudge={showNudge}
-          showAbort={showAbort}
-          showRematch={examinableGameEndMessage !== ''}
-          gameEndControls={examinableGameEndMessage !== '' || props.gameDone}
-          currentRack={props.currentRack}
-          tournamentSlug={props.tournamentSlug}
-          tournamentPairedMode={props.tournamentPairedMode}
-          lexicon={props.lexicon}
-          challengeRule={props.challengeRule}
-          setHandlePassShortcut={setHandlePassShortcut}
-          setHandleChallengeShortcut={setHandleChallengeShortcut}
-          setHandleNeitherShortcut={setHandleNeitherShortcut}
-          exitableExaminer={props.exitableExaminer}
-        />
-      )}
-      {props.puzzleMode && !props.anonymousViewer && (
-        <Affix offsetTop={126} className="rack-affix">
-          <GameControls
-            isExamining={isExamining}
-            myTurn={true}
-            finalPassOrChallenge={
-              examinableGameContext.playState ===
-              PlayState.WAITING_FOR_FINAL_PASS
-            }
-            allowAnalysis={props.puzzleSolved !== PuzzleStatus.UNANSWERED}
-            exchangeAllowed={exchangeAllowed}
-            observer={false}
-            onRecall={recallTiles}
-            showExchangeModal={showExchangeModal}
-            onPass={handlePass}
-            onResign={handleResign}
-            onRequestAbort={handleRequestAbort}
-            onNudge={handleNudge}
-            onChallenge={handleChallenge}
-            onCommit={handleCommit}
-            onRematch={props.handleAcceptRematch ?? rematch}
-            onExamine={handleExamineStart}
-            onExportGCG={handleExportGCG}
-            showNudge={false}
-            showAbort={false}
-            showRematch={false}
-            gameEndControls={props.puzzleSolved !== PuzzleStatus.UNANSWERED}
-            currentRack={props.currentRack}
-            tournamentSlug={props.tournamentSlug}
-            tournamentPairedMode={props.tournamentPairedMode}
-            lexicon={props.lexicon}
-            challengeRule={props.challengeRule}
-            setHandlePassShortcut={setHandlePassShortcut}
-            setHandleChallengeShortcut={setHandleChallengeShortcut}
-            setHandleNeitherShortcut={setHandleNeitherShortcut}
-            puzzleMode={true}
-          />
-        </Affix>
-      )}
+      {gameControls}
       <ExchangeTiles
         tileColorId={tileColorId}
         alphabet={props.alphabet}

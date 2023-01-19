@@ -33,7 +33,7 @@ message StreakInfoResponse {
     string uuid = 2; // player uuid needed for censoring
   }
   repeated SingleGameInfo streak = 1;
-  repeated PlayerInfo playersInfo = 3;
+  repeated PlayerInfo playersInfo = 3; // XXX make this snake_case
 }
 
 message RematchStreakRequest { string original_request_id = 1; }

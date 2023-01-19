@@ -7,6 +7,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const UntimedTime = 0
+
 // Nower is an interface for determining the current time
 type Nower interface {
 	// Now returns a timestamp in milliseconds
@@ -42,6 +44,9 @@ func (f *FakeNower) Sleep(t int64) {
 }
 
 func getTimeRemaining(gdoc *ipc.GameDocument, nower Nower, onTurn uint32) int64 {
+	if gdoc.Timers.Untimed {
+		return UntimedTime
+	}
 	if gdoc.PlayerOnTurn == onTurn {
 		return gdoc.Timers.TimeRemaining[onTurn] - (nower.Now() - gdoc.Timers.TimeOfLastUpdate)
 	}
@@ -50,6 +55,9 @@ func getTimeRemaining(gdoc *ipc.GameDocument, nower Nower, onTurn uint32) int64 
 }
 
 func timeRanOut(gdoc *ipc.GameDocument, nower Nower, pidx uint32) bool {
+	if gdoc.Timers.Untimed {
+		return false
+	}
 	if gdoc.PlayerOnTurn != pidx {
 		return false
 	}
@@ -65,6 +73,9 @@ func recordTimeOfMove(gdoc *ipc.GameDocument, nower Nower, pidx uint32, applyInc
 func calculateAndSetTimeRemaining(gdoc *ipc.GameDocument, now int64, pidx uint32, applyIncrement bool) {
 	if gdoc.PlayerOnTurn != pidx {
 		// player is not on turn, so their time should not have changed
+		return
+	}
+	if gdoc.Timers.Untimed {
 		return
 	}
 

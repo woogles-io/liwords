@@ -7,6 +7,7 @@ import { DisplayFlag } from './display_flag';
 type Props = {
   excludedLexica?: Set<string>;
   disabled?: boolean;
+  hideRequired?: boolean;
 };
 
 export const MatchLexiconDisplay = (props: {
@@ -59,7 +60,7 @@ export const LexiconFormItem = React.memo((props: Props) => {
       name="lexicon"
       rules={[
         {
-          required: true,
+          required: props.hideRequired ? false : true,
         },
       ]}
     >

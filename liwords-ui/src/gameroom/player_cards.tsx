@@ -65,7 +65,7 @@ const PlayerCard = React.memo((props: CardProps) => {
         <PlayerAvatar player={meta} />
         <div className="player-info">
           <p className="player-name">
-            {briefProfile?.fullName || meta?.nickname}
+            {briefProfile?.fullName || meta?.fullName || meta?.nickname}
           </p>
           <div className="player-details">
             <DisplayUserFlag uuid={props.player?.userID} />

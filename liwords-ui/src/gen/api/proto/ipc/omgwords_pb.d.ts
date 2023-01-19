@@ -112,11 +112,18 @@ export declare enum RatingMode {
  */
 export declare enum GameType {
   /**
+   * A NATIVE game is the default OMGWords game (or its variants)
+   * created on the woogles site, between two players or between a player
+   * and a bot.
+   *
    * @generated from enum value: NATIVE = 0;
    */
   NATIVE = 0,
 
   /**
+   * An ANNOTATED game does not feature Woogles players, but is instead
+   * created by a broadcaster/annotator to represent a real-life game.
+   *
    * @generated from enum value: ANNOTATED = 1;
    */
   ANNOTATED = 1,
@@ -215,6 +222,27 @@ export declare class ClientGameplayEvent extends Message<ClientGameplayEvent> {
    * @generated from field: string tiles = 4;
    */
   tiles: string;
+
+  /**
+   * full_rack is the rack that the play is being made from. Note that the
+   * server already knows the full rack, so this does not need to be provided,
+   * unless our game is a broadcast/"sandbox" game where we can modify racks.
+   * Of course, special care should be taken to ignore this value if this
+   * is a regular game!
+   *
+   * @generated from field: string full_rack = 5;
+   */
+  fullRack: string;
+
+  /**
+   * event_index is the index of the event. This value should not be used for
+   * anything other than broadcast/"sandbox" games, and it will be used for
+   * editing previous moves. If used, the entire game until event_index will
+   * be truncated, so this must also be used with care!
+   *
+   * @generated from field: int32 event_index = 6;
+   */
+  eventIndex: number;
 
   constructor(data?: PartialMessage<ClientGameplayEvent>);
 
@@ -591,6 +619,33 @@ export declare class GameHistoryRefresher extends Message<GameHistoryRefresher> 
 }
 
 /**
+ * A GameDocumentEvent should eventually replace the GameHistoryRefresher. For
+ * now, it will be used for annotated games.
+ *
+ * @generated from message ipc.GameDocumentEvent
+ */
+export declare class GameDocumentEvent extends Message<GameDocumentEvent> {
+  /**
+   * @generated from field: ipc.GameDocument doc = 1;
+   */
+  doc?: GameDocument;
+
+  constructor(data?: PartialMessage<GameDocumentEvent>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "ipc.GameDocumentEvent";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GameDocumentEvent;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GameDocumentEvent;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GameDocumentEvent;
+
+  static equals(a: GameDocumentEvent | PlainMessage<GameDocumentEvent> | undefined, b: GameDocumentEvent | PlainMessage<GameDocumentEvent> | undefined): boolean;
+}
+
+/**
  * @generated from message ipc.TournamentDataForGame
  */
 export declare class TournamentDataForGame extends Message<TournamentDataForGame> {
@@ -678,9 +733,11 @@ export declare class PlayerInfo extends Message<PlayerInfo> {
   isBot: boolean;
 
   /**
-   * first is true if the player went first
+   * first is true if the player went first. This is deprecated because it
+   * is assumed the player listed first went first.
    *
-   * @generated from field: bool first = 9;
+   * @generated from field: bool first = 9 [deprecated = true];
+   * @deprecated
    */
   first: boolean;
 
@@ -978,6 +1035,8 @@ export declare class ReadyForGame extends Message<ReadyForGame> {
  * The server will send back a ServerGameplayEvent to a ClientGameplayEvent.
  * The server will also send these asynchronously for opponent gameplay
  * events.
+ * XXX: This message type is obsolete and will be replaced by
+ * ServerOMGWordsEvent
  *
  * @generated from message ipc.ServerGameplayEvent
  */
@@ -1034,6 +1093,57 @@ export declare class ServerGameplayEvent extends Message<ServerGameplayEvent> {
 }
 
 /**
+ * ServerOMGWordsEvent is a new event type.
+ *
+ * @generated from message ipc.ServerOMGWordsEvent
+ */
+export declare class ServerOMGWordsEvent extends Message<ServerOMGWordsEvent> {
+  /**
+   * @generated from field: ipc.GameEvent event = 1;
+   */
+  event?: GameEvent;
+
+  /**
+   * @generated from field: string game_id = 2;
+   */
+  gameId: string;
+
+  /**
+   * @generated from field: bytes new_rack = 3;
+   */
+  newRack: Uint8Array;
+
+  /**
+   * @generated from field: int32 time_remaining = 4;
+   */
+  timeRemaining: number;
+
+  /**
+   * @generated from field: ipc.PlayState playing = 5;
+   */
+  playing: PlayState;
+
+  /**
+   * @generated from field: string user_id = 6;
+   */
+  userId: string;
+
+  constructor(data?: PartialMessage<ServerOMGWordsEvent>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "ipc.ServerOMGWordsEvent";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ServerOMGWordsEvent;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ServerOMGWordsEvent;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ServerOMGWordsEvent;
+
+  static equals(a: ServerOMGWordsEvent | PlainMessage<ServerOMGWordsEvent> | undefined, b: ServerOMGWordsEvent | PlainMessage<ServerOMGWordsEvent> | undefined): boolean;
+}
+
+/**
  * The server will send back a challenge result event only in the case of
  * a challenge. In all other cases, the server will send back a
  * ServerGameplayEvent.
@@ -1042,6 +1152,8 @@ export declare class ServerGameplayEvent extends Message<ServerGameplayEvent> {
  * right incremental events. The reason is that the logic is complex and
  * has many special cases, and is already fully implemented in Macondo.
  * We don't wish to re-implement it both in this repo's backend and frontend.
+ * XXX: This message type is obsolete, and will be replaced by
+ * OMGWordsChallengeResultEvent
  *
  * @generated from message ipc.ServerChallengeResultEvent
  */
@@ -1079,6 +1191,45 @@ export declare class ServerChallengeResultEvent extends Message<ServerChallengeR
   static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ServerChallengeResultEvent;
 
   static equals(a: ServerChallengeResultEvent | PlainMessage<ServerChallengeResultEvent> | undefined, b: ServerChallengeResultEvent | PlainMessage<ServerChallengeResultEvent> | undefined): boolean;
+}
+
+/**
+ * @generated from message ipc.OMGWordsChallengeResultEvent
+ */
+export declare class OMGWordsChallengeResultEvent extends Message<OMGWordsChallengeResultEvent> {
+  /**
+   * @generated from field: bool valid = 1;
+   */
+  valid: boolean;
+
+  /**
+   * @generated from field: string challenger = 2;
+   */
+  challenger: string;
+
+  /**
+   * @generated from field: ipc.ChallengeRule challenge_rule = 3;
+   */
+  challengeRule: ChallengeRule;
+
+  /**
+   * @generated from field: bytes returned_tiles = 4;
+   */
+  returnedTiles: Uint8Array;
+
+  constructor(data?: PartialMessage<OMGWordsChallengeResultEvent>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "ipc.OMGWordsChallengeResultEvent";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OMGWordsChallengeResultEvent;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): OMGWordsChallengeResultEvent;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): OMGWordsChallengeResultEvent;
+
+  static equals(a: OMGWordsChallengeResultEvent | PlainMessage<OMGWordsChallengeResultEvent> | undefined, b: OMGWordsChallengeResultEvent | PlainMessage<OMGWordsChallengeResultEvent> | undefined): boolean;
 }
 
 /**
@@ -1254,7 +1405,7 @@ export declare class TimedOut extends Message<TimedOut> {
 }
 
 /**
- * GameEvent is an internal game event, saved in the GameHistory
+ * GameEvent is an internal game event, saved in the GameDocument.
  *
  * @generated from message ipc.GameEvent
  */
@@ -1355,13 +1506,6 @@ export declare class GameEvent extends Message<GameEvent> {
    * @generated from field: uint32 player_index = 19;
    */
   playerIndex: number;
-
-  /**
-   * The leave from rack after played_tiles.
-   *
-   * @generated from field: bytes leave = 20;
-   */
-  leave: Uint8Array;
 
   constructor(data?: PartialMessage<GameEvent>);
 
@@ -1517,6 +1661,13 @@ export declare class Timers extends Message<Timers> {
    * @generated from field: bool reset_to_increment_after_turn = 6;
    */
   resetToIncrementAfterTurn: boolean;
+
+  /**
+   * If untimed is true, then Timers are not updated at all.
+   *
+   * @generated from field: bool untimed = 7;
+   */
+  untimed: boolean;
 
   constructor(data?: PartialMessage<Timers>);
 
@@ -1767,19 +1918,9 @@ export declare class GameDocument extends Message<GameDocument> {
   playerOnTurn: number;
 
   /**
-   * current_scores is in the same order as the player info structure inside
-   * GameHistory
-   *
    * @generated from field: ipc.Timers timers = 24;
    */
   timers?: Timers;
-
-  /**
-   * real time or correspondence?
-   *
-   * @generated from field: ipc.GameMode game_mode = 25;
-   */
-  gameMode: GameMode;
 
   constructor(data?: PartialMessage<GameDocument>);
 
