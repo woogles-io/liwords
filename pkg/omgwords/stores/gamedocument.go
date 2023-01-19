@@ -1,29 +1,22 @@
 package stores
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"io"
-	"os"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/smithy-go"
 	"github.com/go-redsync/redsync/v4"
 	"github.com/go-redsync/redsync/v4/redis/redigo"
 	"github.com/golang/protobuf/proto"
 	"github.com/gomodule/redigo/redis"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/encoding/protojson"
 
+	"github.com/domino14/liwords/pkg/stores/common"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
 var ErrDoesNotExist = errors.New("does not exist")
-
-var GameDocBucket = os.Getenv("GAMEDOC_UPLOAD_BUCKET")
 
 const MaxExpirationSeconds = 5 * 24 * 60 * 60 // 5 days
 const RedisExpirationSeconds = 15 * 60        // 15 minutes
@@ -39,14 +32,14 @@ type MaybeLockedDocument struct {
 
 type GameDocumentStore struct {
 	redisPool *redis.Pool
-	s3Client  *s3.Client
+	dbPool    *pgxpool.Pool
 	redsync   *redsync.Redsync
 }
 
-func NewGameDocumentStore(r *redis.Pool, s *s3.Client) (*GameDocumentStore, error) {
+func NewGameDocumentStore(r *redis.Pool, db *pgxpool.Pool) (*GameDocumentStore, error) {
 	pool := redigo.NewPool(r)
 	rs := redsync.New(pool)
-	return &GameDocumentStore{redisPool: r, s3Client: s, redsync: rs}, nil
+	return &GameDocumentStore{redisPool: r, dbPool: db, redsync: rs}, nil
 }
 
 // GetDocument gets a game document from the store. It tries Redis first,
@@ -67,15 +60,9 @@ func (gs *GameDocumentStore) GetDocument(ctx context.Context, uuid string, lock 
 		return nil, err
 	}
 	if res == 0 {
-		// Does not exist in Redis. Try S3.
-		doc, err := gs.getFromS3(ctx, uuid)
+		// Does not exist in Redis. Try database.
+		doc, err := gs.getFromDatabase(ctx, uuid)
 		if err != nil {
-			var ae smithy.APIError
-			if errors.As(err, &ae) {
-				if ae.ErrorCode() == "NoSuchKey" {
-					return nil, ErrDoesNotExist
-				}
-			}
 			return nil, err
 		}
 		return &MaybeLockedDocument{GameDocument: doc}, nil
@@ -149,16 +136,11 @@ func (gs *GameDocumentStore) DeleteDocument(ctx context.Context, uuid string) er
 	return nil
 }
 
-func (gs *GameDocumentStore) getFromS3(ctx context.Context, uuid string) (*ipc.GameDocument, error) {
-	result, err := gs.s3Client.GetObject(ctx, &s3.GetObjectInput{
-		Bucket: aws.String(GameDocBucket),
-		Key:    aws.String(uuid),
-	})
-	if err != nil {
-		return nil, err
-	}
-	defer result.Body.Close()
-	body, err := io.ReadAll(result.Body)
+func (gs *GameDocumentStore) getFromDatabase(ctx context.Context, uuid string) (*ipc.GameDocument, error) {
+	var bts []byte
+
+	err := gs.dbPool.QueryRow(ctx, `SELECT document FROM game_documents WHERE game_id = $1`, uuid).
+		Scan(&bts)
 	if err != nil {
 		return nil, err
 	}
@@ -166,8 +148,7 @@ func (gs *GameDocumentStore) getFromS3(ctx context.Context, uuid string) (*ipc.G
 	uo := protojson.UnmarshalOptions{
 		DiscardUnknown: true,
 	}
-
-	err = uo.Unmarshal(body, gdoc)
+	err = uo.Unmarshal(bts, gdoc)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +179,7 @@ func (gs *GameDocumentStore) SetDocument(ctx context.Context, gdoc *ipc.GameDocu
 // If the game is done, though, it will write it to S3 and expire it from the Redis
 // store.
 func (gs *GameDocumentStore) UpdateDocument(ctx context.Context, doc *MaybeLockedDocument) error {
-	saveToS3 := doc.PlayState == ipc.PlayState_GAME_OVER
+	saveToDatabase := doc.PlayState == ipc.PlayState_GAME_OVER
 
 	bts, err := proto.Marshal(doc.GameDocument)
 	if err != nil {
@@ -231,8 +212,8 @@ func (gs *GameDocumentStore) UpdateDocument(ctx context.Context, doc *MaybeLocke
 	}
 	unlockMutex()
 
-	if saveToS3 {
-		err = gs.saveToS3(ctx, doc.GameDocument)
+	if saveToDatabase {
+		err = gs.saveToDatabase(ctx, doc.GameDocument)
 		if err == nil {
 			// If we saved the game permanently, now we can expire the game from Redis
 			// relatively soon.
@@ -253,22 +234,23 @@ func (gs *GameDocumentStore) UpdateDocument(ctx context.Context, doc *MaybeLocke
 	return nil
 }
 
-func (gs *GameDocumentStore) saveToS3(ctx context.Context, gdoc *ipc.GameDocument) error {
+func (gs *GameDocumentStore) saveToDatabase(ctx context.Context, gdoc *ipc.GameDocument) error {
 	// save as protojson
-
 	data, err := protojson.Marshal(gdoc)
 	if err != nil {
 		return err
 	}
+	tx, err := gs.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	_, err = tx.Exec(ctx,
+		`INSERT INTO game_documents (game_id, document) VALUES ($1, $2)`,
+		gdoc.Uid, data)
+	if err != nil {
+		return err
+	}
 
-	uploader := manager.NewUploader(gs.s3Client)
-
-	_, err = uploader.Upload(ctx, &s3.PutObjectInput{
-		Bucket:      aws.String(GameDocBucket),
-		Key:         aws.String(gdoc.Uid),
-		Body:        bytes.NewReader(data),
-		ContentType: aws.String("application/json"),
-	})
-
-	return err
+	return tx.Commit(ctx)
 }

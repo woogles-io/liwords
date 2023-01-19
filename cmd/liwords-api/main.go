@@ -245,7 +245,7 @@ func main() {
 	}
 	s3Client := s3.NewFromConfig(awscfg, utilities.CustomClientOptions)
 
-	stores.GameDocumentStore, err = omgstores.NewGameDocumentStore(redisPool, s3Client)
+	stores.GameDocumentStore, err = omgstores.NewGameDocumentStore(redisPool, dbPool)
 	if err != nil {
 		panic(err)
 	}
