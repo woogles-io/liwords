@@ -683,8 +683,8 @@ export const BoardPanel = React.memo((props: Props) => {
       }, 0) - 7;
     // Subtract 7 for opponent rack, won't matter when the
     // rack is smaller than that because past the threshold by then
-    setexchangeAllowed(tilesRemaining >= 7);
-  }, [gameContext.pool, props.currentRack]);
+    setexchangeAllowed(tilesRemaining >= 7 || props.boardEditingMode === true);
+  }, [gameContext.pool, props.currentRack, props.boardEditingMode]);
 
   useEffect(() => {
     if (
