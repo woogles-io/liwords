@@ -7,16 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	awsconfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/golang/protobuf/proto"
 	"github.com/gomodule/redigo/redis"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/encoding/protojson"
 
-	"github.com/domino14/liwords/pkg/utilities"
+	commondb "github.com/domino14/liwords/pkg/stores/common"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
@@ -160,23 +158,17 @@ func TestRedisLockingWithTurnLogic(t *testing.T) {
 	is.True(proto.Equal(doc2, origDoc))
 }
 
-func s3Client() *s3.Client {
-	awscfg, err := awsconfig.LoadDefaultConfig(
-		context.Background(), awsconfig.WithEndpointResolverWithOptions(
-			aws.EndpointResolverWithOptionsFunc(utilities.CustomResolver)))
+func TestDBGetAndSet(t *testing.T) {
+	is := is.New(t)
+
+	err := commondb.RecreateTestDB()
 	if err != nil {
 		panic(err)
 	}
-	s3Client := s3.NewFromConfig(awscfg, utilities.CustomClientOptions)
-	return s3Client
-}
 
-func TestS3GetAndSet(t *testing.T) {
-	// Can re-enable this if we set up localstack on circleci
-	t.Skip()
-	is := is.New(t)
-	c := s3Client()
-	store, err := NewGameDocumentStore(newPool(RedisUrl), c)
+	dbPool, err := pgxpool.Connect(context.Background(), commondb.TestingPostgresConnUri())
+	is.NoErr(err)
+	store, err := NewGameDocumentStore(newPool(RedisUrl), dbPool)
 	is.NoErr(err)
 	ctx := context.Background()
 
@@ -187,17 +179,12 @@ func TestS3GetAndSet(t *testing.T) {
 	err = protojson.Unmarshal(content, origDoc)
 	is.NoErr(err)
 
-	_, err = c.CreateBucket(ctx, &s3.CreateBucketInput{
-		Bucket: aws.String(os.Getenv("GAMEDOC_UPLOAD_BUCKET")),
-	})
-	is.NoErr(err)
-
 	// Lock value doesn't matter. The mutex unlock will fail, but that's ok,
 	// we're not testing that part.
 	err = store.UpdateDocument(ctx, &MaybeLockedDocument{GameDocument: origDoc, LockValue: "foo"})
 	is.NoErr(err)
 
-	fromS3, err := store.getFromS3(ctx, origDoc.Uid)
+	fromS3, err := store.getFromDatabase(ctx, origDoc.Uid)
 	is.NoErr(err)
 	is.True(proto.Equal(fromS3, origDoc))
 }
