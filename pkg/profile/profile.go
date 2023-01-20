@@ -10,6 +10,8 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/user"
+	userservices "github.com/domino14/liwords/pkg/user/services"
+
 	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
 
@@ -19,10 +21,10 @@ import (
 
 type ProfileService struct {
 	userStore     user.Store
-	avatarService user.UploadService
+	avatarService userservices.UploadService
 }
 
-func NewProfileService(u user.Store, us user.UploadService) *ProfileService {
+func NewProfileService(u user.Store, us userservices.UploadService) *ProfileService {
 	return &ProfileService{userStore: u, avatarService: us}
 }
 

@@ -1,18 +1,19 @@
-package user
+package services
 
 import (
 	"context"
 
 	"github.com/twitchtv/twirp"
 
+	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
 type AutocompleteService struct {
-	userStore Store
+	userStore user.Store
 }
 
-func NewAutocompleteService(u Store) *AutocompleteService {
+func NewAutocompleteService(u user.Store) *AutocompleteService {
 	return &AutocompleteService{userStore: u}
 }
 

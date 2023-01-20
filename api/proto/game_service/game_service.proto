@@ -49,6 +49,6 @@ service GameMetadataService {
   rpc GetRecentGames(RecentGamesRequest) returns (ipc.GameInfoResponses);
   rpc GetRematchStreak(RematchStreakRequest) returns (StreakInfoResponse);
   // GetGameDocument gets a Game Document. This will eventually obsolete
-  // GetGameHistory.
+  // GetGameHistory. Does not work with annotated games for now.
   rpc GetGameDocument(GameDocumentRequest) returns (GameDocumentResponse);
 }

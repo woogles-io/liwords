@@ -512,3 +512,15 @@
     position: absolute;
   }
 }
+.api-settings {
+  .anticon-eye {
+    @include colorModed() {
+      color: m($primary-dark);
+    }
+  }
+  .anticon-reload {
+    @include colorModed() {
+        color: m($primary-midDark);
+      }
+  }
+}

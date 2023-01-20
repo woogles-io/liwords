@@ -222,6 +222,9 @@ const ScorecardTurn = (props: turnProps) => {
           <p className="cumulative">{memoizedTurn.cumulative}</p>
         </div>
       </div>
+      {/* <div>
+        <MessageOutlined onClick={() => console.log('clicked', props.turn)} />
+      </div> */}
     </>
   );
 };

@@ -46,11 +46,11 @@ func (gs *OMGWordsService) failIfSessionDoesntOwn(ctx context.Context, gameID st
 	if gameID == "" {
 		return errors.New("game ID must be provided")
 	}
-	sess, err := apiserver.GetSession(ctx)
+	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, gs.userStore)
 	if err != nil {
 		return err
 	}
-	owns, err := gs.metadataStore.GameOwnedBy(ctx, gameID, sess.UserUUID)
+	owns, err := gs.metadataStore.GameOwnedBy(ctx, gameID, u.UUID)
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func (gs *OMGWordsService) SetEventChannel(c chan *entity.EventWrapper) {
 func (gs *OMGWordsService) CreateBroadcastGame(ctx context.Context, req *pb.CreateBroadcastGameRequest) (
 	*pb.CreateBroadcastGameResponse, error) {
 
-	sess, err := apiserver.GetSession(ctx)
+	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, gs.userStore)
 	if err != nil {
 		return nil, err
 	}
@@ -92,11 +92,11 @@ func (gs *OMGWordsService) CreateBroadcastGame(ctx context.Context, req *pb.Crea
 	if req.Lexicon == "" {
 		return nil, twirp.NewError(twirp.InvalidArgument, "lexicon is empty")
 	}
-	unfinished, err := gs.metadataStore.OutstandingGames(ctx, sess.UserUUID)
+	unfinished, err := gs.metadataStore.OutstandingGames(ctx, u.UUID)
 	if err != nil {
 		return nil, err
 	}
-	log.Debug().Int("unfinished", len(unfinished)).Str("userID", sess.UserUUID).Msg("unfinished-anno-games")
+	log.Debug().Int("unfinished", len(unfinished)).Str("userID", u.UUID).Msg("unfinished-anno-games")
 	if len(unfinished) > 0 {
 		return nil, twirp.NewError(twirp.InvalidArgument, "please finish or delete your unfinished games before starting a new one")
 	}
@@ -140,7 +140,7 @@ func (gs *OMGWordsService) CreateBroadcastGame(ctx context.Context, req *pb.Crea
 		OriginalRequestId:  "dummy",
 	}
 
-	if err = gs.metadataStore.CreateAnnotatedGame(ctx, sess.UserUUID, g.Uid, true, qd, greq); err != nil {
+	if err = gs.metadataStore.CreateAnnotatedGame(ctx, u.UUID, g.Uid, true, qd, greq); err != nil {
 		return nil, err
 	}
 	if err = gs.gameStore.SetDocument(ctx, g); err != nil {
@@ -302,16 +302,16 @@ func (gs *OMGWordsService) GetGamesForEditor(ctx context.Context, req *pb.GetGam
 func (gs *OMGWordsService) GetMyUnfinishedGames(ctx context.Context, req *pb.GetMyUnfinishedGamesRequest) (
 	*pb.BroadcastGamesResponse, error) {
 
-	sess, err := apiserver.GetSession(ctx)
+	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, gs.userStore)
 	if err != nil {
 		return nil, err
 	}
 
-	unfinished, err := gs.metadataStore.OutstandingGames(ctx, sess.UserUUID)
+	unfinished, err := gs.metadataStore.OutstandingGames(ctx, u.UUID)
 	if err != nil {
 		return nil, err
 	}
-	log.Debug().Interface("unfinished", unfinished).Str("userID", sess.UserUUID).Msg("unfinished-anno-games")
+	log.Debug().Interface("unfinished", unfinished).Str("userID", u.UUID).Msg("unfinished-anno-games")
 
 	games := lo.Map(unfinished, func(item *stores.BroadcastGame, idx int) *pb.BroadcastGamesResponse_BroadcastGame {
 		return &pb.BroadcastGamesResponse_BroadcastGame{

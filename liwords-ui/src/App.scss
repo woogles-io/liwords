@@ -526,3 +526,8 @@ ul {
   cursor: pointer;
 }
 
+.readable-text-color {
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+}

@@ -57,7 +57,7 @@ import (
 	pkgredis "github.com/domino14/liwords/pkg/stores/redis"
 	tournamentstore "github.com/domino14/liwords/pkg/stores/tournament"
 	"github.com/domino14/liwords/pkg/stores/user"
-	pkguser "github.com/domino14/liwords/pkg/user"
+	userservices "github.com/domino14/liwords/pkg/user/services"
 	configservice "github.com/domino14/liwords/rpc/api/proto/config_service"
 	gameservice "github.com/domino14/liwords/rpc/api/proto/game_service"
 	modservice "github.com/domino14/liwords/rpc/api/proto/mod_service"
@@ -260,10 +260,10 @@ func main() {
 		cfg.SecretKey, cfg.MailgunKey, cfg.DiscordToken, cfg.ArgonConfig)
 	registrationService := registration.NewRegistrationService(stores.UserStore, cfg.ArgonConfig)
 	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore, stores.GameDocumentStore, cfg)
-	profileService := pkgprofile.NewProfileService(stores.UserStore, pkguser.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET"), s3Client))
+	profileService := pkgprofile.NewProfileService(stores.UserStore, userservices.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET"), s3Client))
 	wordService := words.NewWordService(&cfg.MacondoConfig)
-	autocompleteService := pkguser.NewAutocompleteService(stores.UserStore)
-	socializeService := pkguser.NewSocializeService(stores.UserStore, stores.ChatStore, stores.PresenceStore)
+	autocompleteService := userservices.NewAutocompleteService(stores.UserStore)
+	socializeService := userservices.NewSocializeService(stores.UserStore, stores.ChatStore, stores.PresenceStore)
 	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore)
 	tournamentService := tournament.NewTournamentService(stores.TournamentStore, stores.UserStore)
 	modService := mod.NewModService(stores.UserStore, stores.ChatStore)

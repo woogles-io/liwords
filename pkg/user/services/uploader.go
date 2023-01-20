@@ -1,4 +1,4 @@
-package user
+package services
 
 import (
 	"bytes"
@@ -77,4 +77,3 @@ func (s *XTUploadService) Upload(ctx context.Context, prefix string, data []byte
 func (s *XTUploadService) Delete(ctx context.Context, url string) error {
 	return nil
 }
-

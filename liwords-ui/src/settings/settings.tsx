@@ -29,6 +29,7 @@ import {
   ProfileService,
 } from '../gen/api/proto/user_service/user_service_connectweb';
 import { PersonalInfoResponse } from '../gen/api/proto/user_service/user_service_pb';
+import { API } from './api';
 
 enum Category {
   PersonalInfo = 1,
@@ -39,6 +40,7 @@ enum Category {
   LogOut,
   Support,
   NoUser,
+  API,
 }
 
 const getInitialCategory = (categoryShortcut: string, loggedIn: boolean) => {
@@ -66,6 +68,8 @@ const getInitialCategory = (categoryShortcut: string, loggedIn: boolean) => {
       return Category.BlockedPlayers;
     case 'logout':
       return Category.LogOut;
+    case 'api':
+      return Category.API;
   }
   // to be streaming-friendly, PersonalInfo should not be the default tab.
   return Category.Preferences;
@@ -198,6 +202,7 @@ export const Settings = React.memo(() => {
         category={Category.BlockedPlayers}
       />
       <CategoryChoice title="Secret features" category={Category.Secret} />
+      <CategoryChoice title="API" category={Category.API} />
       <CategoryChoice title="Log out" category={Category.LogOut} />
       <CategoryChoice
         title={
@@ -243,6 +248,7 @@ export const Settings = React.memo(() => {
             {category === Category.Preferences ? <Preferences /> : null}
             {category === Category.Secret ? <Secret /> : null}
             {category === Category.BlockedPlayers ? <BlockedPlayers /> : null}
+            {category === Category.API ? <API /> : null}
             {category === Category.LogOut ? (
               <LogOut player={player} handleLogout={handleLogout} />
             ) : null}

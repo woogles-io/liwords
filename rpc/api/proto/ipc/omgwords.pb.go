@@ -733,9 +733,12 @@ type GameRules struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	BoardLayoutName        string `protobuf:"bytes,1,opt,name=board_layout_name,json=boardLayoutName,proto3" json:"board_layout_name,omitempty"`
+	// The supported board layout names are CrosswordGame and SuperCrosswordGame
+	BoardLayoutName string `protobuf:"bytes,1,opt,name=board_layout_name,json=boardLayoutName,proto3" json:"board_layout_name,omitempty"`
+	// The supported letter distributions are english, french, norwegian, german.
+	// There are more to come!
 	LetterDistributionName string `protobuf:"bytes,2,opt,name=letter_distribution_name,json=letterDistributionName,proto3" json:"letter_distribution_name,omitempty"`
-	// If blank, variant is classic, otherwise it could be some other game
+	// Use "classic" for our classic game, otherwise it could be some other game
 	// (a is worth 100, dogworms, etc.)
 	VariantName string `protobuf:"bytes,3,opt,name=variant_name,json=variantName,proto3" json:"variant_name,omitempty"`
 }

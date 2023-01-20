@@ -78,17 +78,23 @@ export declare class ChallengeBonusPointsEvent extends Message<ChallengeBonusPoi
 }
 
 /**
- * metadata
- *
  * @generated from message omgwords_service.CreateBroadcastGameRequest
  */
 export declare class CreateBroadcastGameRequest extends Message<CreateBroadcastGameRequest> {
   /**
+   * PlayerInfo for broadcast games do not need to be tied to a Woogles
+   * UUID. These games are meant for sandbox/annotation/broadcast of
+   * a typically IRL game. The order that the players are sent in
+   * must be the order in which they play.
+   *
    * @generated from field: repeated ipc.PlayerInfo players_info = 1;
    */
   playersInfo: PlayerInfo[];
 
   /**
+   * The lexicon is a string such as NWL20, CSW21. It must be supported by
+   * Woogles.
+   *
    * @generated from field: string lexicon = 2;
    */
   lexicon: string;
@@ -106,6 +112,7 @@ export declare class CreateBroadcastGameRequest extends Message<CreateBroadcastG
   /**
    * public will make this game public upon creation - i.e., findable
    * within the interface. Otherwise, a game ID is required.
+   * (Not yet implemented)
    *
    * @generated from field: bool public = 5;
    */
@@ -319,21 +326,38 @@ export declare class BroadcastGamesResponse_BroadcastGame extends Message<Broadc
  */
 export declare class AnnotatedGameEvent extends Message<AnnotatedGameEvent> {
   /**
+   * event is the client gameplay event that represents a player's move.
+   * A move can be a tile placement, a pass, an exchange, a challenge, or
+   * a resign. Maybe other types in the future. This event is validated,
+   * processed, and turned into one or more ipc.GameEvents, for storage
+   * in a GameDocument.
+   *
    * @generated from field: ipc.ClientGameplayEvent event = 1;
    */
   event?: ClientGameplayEvent;
 
   /**
+   * The user_id for this gameplay event.
+   *
    * @generated from field: string user_id = 2;
    */
   userId: string;
 
   /**
+   * The event_number is ignored unless the amendment flag is on.
+   *
    * @generated from field: uint32 event_number = 3;
    */
   eventNumber: number;
 
   /**
+   * Amendment is ture if we are amending a previous, already played move.
+   * In that case, the event number is the index of the event that we
+   * wish to edit. Note: not every ClientGameplayEvent maps 1-to-1 with
+   * internal event indexes. In order to be sure you are editing the right
+   * event, you should fetch the latest version of the GameDocument first (use
+   * the GetGameDocument call).
+   *
    * @generated from field: bool amendment = 4;
    */
   amendment: boolean;
@@ -469,6 +493,8 @@ export declare class PatchDocumentRequest extends Message<PatchDocumentRequest> 
 }
 
 /**
+ * SetRacksEvent is the event used for sending player racks.
+ *
  * @generated from message omgwords_service.SetRacksEvent
  */
 export declare class SetRacksEvent extends Message<SetRacksEvent> {
@@ -478,16 +504,30 @@ export declare class SetRacksEvent extends Message<SetRacksEvent> {
   gameId: string;
 
   /**
+   * racks are sent as byte arrays, in the same order as the players.
+   * If you only have partial or unknown rack info, send a partial or
+   * empty rack for that user.
+   * Note: internally, every letter is represented by a single byte. The
+   * letters A-Z map to 1-26, and the blank (?) maps to 0, for the English
+   * letter distribution. For other letter distributions, the mapping orders
+   * can be found in the letter distribution files in this repo.
+   *
    * @generated from field: repeated bytes racks = 2;
    */
   racks: Uint8Array[];
 
   /**
+   * The event_number is ignored unless the `amendment` flag is set.
+   *
    * @generated from field: uint32 event_number = 3;
    */
   eventNumber: number;
 
   /**
+   * `amendment` should be true if we are amending a previous, already played
+   * rack. In that case, the event number is the index of the event whose
+   * rack we wish to edit.
+   *
    * @generated from field: bool amendment = 4;
    */
   amendment: boolean;

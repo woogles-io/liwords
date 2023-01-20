@@ -49,7 +49,7 @@ type GameMetadataService interface {
 	GetRematchStreak(context.Context, *RematchStreakRequest) (*StreakInfoResponse, error)
 
 	// GetGameDocument gets a Game Document. This will eventually obsolete
-	// GetGameHistory.
+	// GetGameHistory. Does not work with annotated games for now.
 	GetGameDocument(context.Context, *GameDocumentRequest) (*GameDocumentResponse, error)
 }
 

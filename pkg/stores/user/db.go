@@ -949,3 +949,36 @@ func (s *DBStore) Username(ctx context.Context, uuid string) (string, error) {
 
 	return username, nil
 }
+
+func (s *DBStore) GetAPIKey(ctx context.Context, uuid string) (string, error) {
+	var apikey string
+	err := s.dbPool.QueryRow(ctx, `SELECT api_key FROM users where uuid = $1`, uuid).Scan(
+		&apikey)
+	if err != nil {
+		// Ignore errors, but just return a blank API key.
+		return "", nil
+	}
+	return apikey, err
+}
+
+func (s *DBStore) ResetAPIKey(ctx context.Context, uuid string) (string, error) {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return "", err
+	}
+	defer tx.Rollback(ctx)
+	apikey := shortuuid.New() + shortuuid.New()
+
+	result, err := tx.Exec(ctx, `
+		UPDATE users SET api_key = $1 WHERE uuid = $2`, apikey, uuid)
+	if result.RowsAffected() != 1 {
+		return "", fmt.Errorf("unable to reset api key")
+	}
+	if err != nil {
+		return "", err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return "", err
+	}
+	return apikey, nil
+}

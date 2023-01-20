@@ -59,6 +59,8 @@ type backingStore interface {
 	SetPermissions(ctx context.Context, req *cpb.PermissionsRequest) error
 
 	GetModList(ctx context.Context) (*pb.GetModListResponse, error)
+	GetAPIKey(ctx context.Context, uuid string) (string, error)
+	ResetAPIKey(ctx context.Context, uuid string) (string, error)
 }
 
 const (
@@ -421,6 +423,14 @@ func (c *Cache) Count(ctx context.Context) (int64, error) {
 
 func (c *Cache) CachedCount(ctx context.Context) int {
 	return c.cache.Len()
+}
+
+func (c *Cache) GetAPIKey(ctx context.Context, uuid string) (string, error) {
+	return c.backing.GetAPIKey(ctx, uuid)
+}
+
+func (c *Cache) ResetAPIKey(ctx context.Context, uuid string) (string, error) {
+	return c.backing.ResetAPIKey(ctx, uuid)
 }
 
 func (c *Cache) SetActions(ctx context.Context, uuid string, actions *entity.Actions) error {

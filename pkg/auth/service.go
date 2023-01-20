@@ -150,17 +150,13 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 		// Continue anyway.
 	}
 
-	sess, err := apiserver.GetSession(ctx)
+	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, as.userStore)
 	if err != nil {
 		return as.unauthedToken(ctx, feHash)
 	} else {
 		authed = true
-		uuid = sess.UserUUID
-		unn = sess.Username
-	}
-	u, err := as.userStore.GetByUUID(ctx, uuid)
-	if err != nil {
-		return nil, err
+		uuid = u.UUID
+		unn = u.Username
 	}
 	perms := []string{}
 	if u.IsAdmin {
@@ -428,4 +424,23 @@ func (as *AuthenticationService) NotifyAccountClosure(ctx context.Context, r *pb
 	}
 
 	return &pb.NotifyAccountClosureResponse{}, nil
+}
+
+func (as *AuthenticationService) GetAPIKey(ctx context.Context, req *pb.GetAPIKeyRequest) (*pb.GetAPIKeyResponse, error) {
+	user, err := apiserver.AuthUser(ctx, apiserver.CookieOnly, as.userStore)
+	if err != nil {
+		return nil, twirp.NewError(twirp.Unauthenticated, "did not authenticate")
+	}
+	var apikey string
+	if req.Reset_ {
+		apikey, err = as.userStore.ResetAPIKey(ctx, user.UUID)
+	} else {
+		apikey, err = as.userStore.GetAPIKey(ctx, user.UUID)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &pb.GetAPIKeyResponse{
+		Key: apikey,
+	}, nil
 }

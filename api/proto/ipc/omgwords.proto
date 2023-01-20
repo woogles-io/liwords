@@ -61,9 +61,12 @@ message ClientGameplayEvent {
 // A GameRules is just the name of a board layout + the name of a letter
 // distribution. These must exist in a database or file somewhere.
 message GameRules {
+  // The supported board layout names are CrosswordGame and SuperCrosswordGame
   string board_layout_name = 1;
+  // The supported letter distributions are english, french, norwegian, german.
+  // There are more to come!
   string letter_distribution_name = 2;
-  // If blank, variant is classic, otherwise it could be some other game
+  // Use "classic" for our classic game, otherwise it could be some other game
   // (a is worth 100, dogworms, etc.)
   string variant_name = 3;
 }

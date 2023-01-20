@@ -1283,7 +1283,7 @@ p.rune {
       }
     }
     &.bingo {
-      .anticon {
+      .anticon-heart {
         position: relative;
         margin: 0 6px;
         @include colorModed() {
@@ -1291,6 +1291,7 @@ p.rune {
         }
       }
     }
+
     &:hover {
       @include colorModed() {
         background: m($primary-light);
@@ -1332,6 +1333,12 @@ p.rune {
     }
     .scores {
       text-align: right;
+    }
+  }
+  .anticon-message {
+    margin: 0px 15px;
+    @include colorModed() {
+      color: m($gray-dark);
     }
   }
 }

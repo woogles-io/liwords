@@ -297,17 +297,22 @@ export declare enum ClientGameplayEvent_EventType {
  */
 export declare class GameRules extends Message<GameRules> {
   /**
+   * The supported board layout names are CrosswordGame and SuperCrosswordGame
+   *
    * @generated from field: string board_layout_name = 1;
    */
   boardLayoutName: string;
 
   /**
+   * The supported letter distributions are english, french, norwegian, german.
+   * There are more to come!
+   *
    * @generated from field: string letter_distribution_name = 2;
    */
   letterDistributionName: string;
 
   /**
-   * If blank, variant is classic, otherwise it could be some other game
+   * Use "classic" for our classic game, otherwise it could be some other game
    * (a is worth 100, dogworms, etc.)
    *
    * @generated from field: string variant_name = 3;

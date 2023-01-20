@@ -442,6 +442,54 @@ export declare class NotifyAccountClosureResponse extends Message<NotifyAccountC
 }
 
 /**
+ * @generated from message user_service.GetAPIKeyRequest
+ */
+export declare class GetAPIKeyRequest extends Message<GetAPIKeyRequest> {
+  /**
+   * @generated from field: bool reset = 1;
+   */
+  reset: boolean;
+
+  constructor(data?: PartialMessage<GetAPIKeyRequest>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "user_service.GetAPIKeyRequest";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAPIKeyRequest;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAPIKeyRequest;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAPIKeyRequest;
+
+  static equals(a: GetAPIKeyRequest | PlainMessage<GetAPIKeyRequest> | undefined, b: GetAPIKeyRequest | PlainMessage<GetAPIKeyRequest> | undefined): boolean;
+}
+
+/**
+ * @generated from message user_service.GetAPIKeyResponse
+ */
+export declare class GetAPIKeyResponse extends Message<GetAPIKeyResponse> {
+  /**
+   * @generated from field: string key = 1;
+   */
+  key: string;
+
+  constructor(data?: PartialMessage<GetAPIKeyResponse>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "user_service.GetAPIKeyResponse";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAPIKeyResponse;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAPIKeyResponse;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAPIKeyResponse;
+
+  static equals(a: GetAPIKeyResponse | PlainMessage<GetAPIKeyResponse> | undefined, b: GetAPIKeyResponse | PlainMessage<GetAPIKeyResponse> | undefined): boolean;
+}
+
+/**
  * @generated from message user_service.GetSignedCookieRequest
  */
 export declare class GetSignedCookieRequest extends Message<GetSignedCookieRequest> {
