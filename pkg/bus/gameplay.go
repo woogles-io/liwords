@@ -200,6 +200,12 @@ func (b *Bus) goHandleBotMove(ctx context.Context, resp *macondo.BotResponse,
 			log.Error().Str("error", r.Error).Msg("bot-error")
 			return
 		}
+		// And save the game after playing the move. Note that PlayMove doesn't do
+		// this.
+		err = b.gameStore.Set(ctx, g)
+		if err != nil {
+			log.Err(err).Msg("setting-game-after-bot-move")
+		}
 	}()
 }
 
