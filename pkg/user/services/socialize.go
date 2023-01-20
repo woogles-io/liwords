@@ -1,4 +1,4 @@
-package user
+package services
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/domino14/liwords/pkg/apiserver"
+	"github.com/domino14/liwords/pkg/user"
 	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 	"github.com/rs/zerolog/log"
@@ -15,12 +16,12 @@ import (
 )
 
 type SocializeService struct {
-	userStore     Store
-	chatStore     ChatStore
-	presenceStore PresenceStore
+	userStore     user.Store
+	chatStore     user.ChatStore
+	presenceStore user.PresenceStore
 }
 
-func NewSocializeService(u Store, c ChatStore, p PresenceStore) *SocializeService {
+func NewSocializeService(u user.Store, c user.ChatStore, p user.PresenceStore) *SocializeService {
 	return &SocializeService{userStore: u, chatStore: c, presenceStore: p}
 }
 

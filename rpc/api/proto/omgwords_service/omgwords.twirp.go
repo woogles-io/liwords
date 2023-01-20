@@ -39,10 +39,13 @@ type GameEventService interface {
 	// CreateBroadcastGame will create a game for Woogles broadcast
 	CreateBroadcastGame(context.Context, *CreateBroadcastGameRequest) (*CreateBroadcastGameResponse, error)
 
+	// DeleteBroadcastGame deletes a Woogles annotated game.
 	DeleteBroadcastGame(context.Context, *DeleteBroadcastGameRequest) (*DeleteBroadcastGameResponse, error)
 
+	// SendGameEvent is how one sends game events to the Woogles API.
 	SendGameEvent(context.Context, *AnnotatedGameEvent) (*GameEventResponse, error)
 
+	// SetRacks sets the rack for the players of the game.
 	SetRacks(context.Context, *SetRacksEvent) (*GameEventResponse, error)
 
 	ReplaceGameDocument(context.Context, *ReplaceDocumentRequest) (*GameEventResponse, error)
@@ -57,6 +60,7 @@ type GameEventService interface {
 
 	GetMyUnfinishedGames(context.Context, *GetMyUnfinishedGamesRequest) (*BroadcastGamesResponse, error)
 
+	// GetGameDocument fetches the latest GameDocument for the passed-in ID.
 	GetGameDocument(context.Context, *GetGameDocumentRequest) (*ipc.GameDocument, error)
 }
 

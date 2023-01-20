@@ -55,6 +55,8 @@ type Store interface {
 	SetPermissions(ctx context.Context, req *cpb.PermissionsRequest) error
 
 	GetModList(ctx context.Context) (*upb.GetModListResponse, error)
+	GetAPIKey(ctx context.Context, uuid string) (string, error)
+	ResetAPIKey(ctx context.Context, uuid string) (string, error)
 }
 
 // PresenceStore stores user presence. Since it is meant to be easily user-visible,

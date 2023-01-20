@@ -28,6 +28,8 @@ export const GameEventService = {
       kind: MethodKind.Unary,
     },
     /**
+     * DeleteBroadcastGame deletes a Woogles annotated game.
+     *
      * @generated from rpc omgwords_service.GameEventService.DeleteBroadcastGame
      */
     deleteBroadcastGame: {
@@ -37,6 +39,8 @@ export const GameEventService = {
       kind: MethodKind.Unary,
     },
     /**
+     * SendGameEvent is how one sends game events to the Woogles API.
+     *
      * @generated from rpc omgwords_service.GameEventService.SendGameEvent
      */
     sendGameEvent: {
@@ -46,6 +50,8 @@ export const GameEventService = {
       kind: MethodKind.Unary,
     },
     /**
+     * SetRacks sets the rack for the players of the game.
+     *
      * @generated from rpc omgwords_service.GameEventService.SetRacks
      */
     setRacks: {
@@ -103,6 +109,8 @@ export const GameEventService = {
       kind: MethodKind.Unary,
     },
     /**
+     * GetGameDocument fetches the latest GameDocument for the passed-in ID.
+     *
      * @generated from rpc omgwords_service.GameEventService.GetGameDocument
      */
     getGameDocument: {

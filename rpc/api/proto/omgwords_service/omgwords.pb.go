@@ -161,12 +161,19 @@ type CreateBroadcastGameRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	PlayersInfo   []*ipc.PlayerInfo `protobuf:"bytes,1,rep,name=players_info,json=playersInfo,proto3" json:"players_info,omitempty"`
+	// PlayerInfo for broadcast games do not need to be tied to a Woogles
+	// UUID. These games are meant for sandbox/annotation/broadcast of
+	// a typically IRL game. The order that the players are sent in
+	// must be the order in which they play.
+	PlayersInfo []*ipc.PlayerInfo `protobuf:"bytes,1,rep,name=players_info,json=playersInfo,proto3" json:"players_info,omitempty"`
+	// The lexicon is a string such as NWL20, CSW21. It must be supported by
+	// Woogles.
 	Lexicon       string            `protobuf:"bytes,2,opt,name=lexicon,proto3" json:"lexicon,omitempty"`
 	Rules         *ipc.GameRules    `protobuf:"bytes,3,opt,name=rules,proto3" json:"rules,omitempty"`
 	ChallengeRule ipc.ChallengeRule `protobuf:"varint,4,opt,name=challenge_rule,json=challengeRule,proto3,enum=ipc.ChallengeRule" json:"challenge_rule,omitempty"`
 	// public will make this game public upon creation - i.e., findable
 	// within the interface. Otherwise, a game ID is required.
+	// (Not yet implemented)
 	Public bool `protobuf:"varint,5,opt,name=public,proto3" json:"public,omitempty"`
 }
 
@@ -495,10 +502,23 @@ type AnnotatedGameEvent struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Event       *ipc.ClientGameplayEvent `protobuf:"bytes,1,opt,name=event,proto3" json:"event,omitempty"`
-	UserId      string                   `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	EventNumber uint32                   `protobuf:"varint,3,opt,name=event_number,json=eventNumber,proto3" json:"event_number,omitempty"`
-	Amendment   bool                     `protobuf:"varint,4,opt,name=amendment,proto3" json:"amendment,omitempty"`
+	// event is the client gameplay event that represents a player's move.
+	// A move can be a tile placement, a pass, an exchange, a challenge, or
+	// a resign. Maybe other types in the future. This event is validated,
+	// processed, and turned into one or more ipc.GameEvents, for storage
+	// in a GameDocument.
+	Event *ipc.ClientGameplayEvent `protobuf:"bytes,1,opt,name=event,proto3" json:"event,omitempty"`
+	// The user_id for this gameplay event.
+	UserId string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// The event_number is ignored unless the amendment flag is on.
+	EventNumber uint32 `protobuf:"varint,3,opt,name=event_number,json=eventNumber,proto3" json:"event_number,omitempty"`
+	// Amendment is ture if we are amending a previous, already played move.
+	// In that case, the event number is the index of the event that we
+	// wish to edit. Note: not every ClientGameplayEvent maps 1-to-1 with
+	// internal event indexes. In order to be sure you are editing the right
+	// event, you should fetch the latest version of the GameDocument first (use
+	// the GetGameDocument call).
+	Amendment bool `protobuf:"varint,4,opt,name=amendment,proto3" json:"amendment,omitempty"`
 }
 
 func (x *AnnotatedGameEvent) Reset() {
@@ -787,15 +807,27 @@ func (x *PatchDocumentRequest) GetDocument() *ipc.GameDocument {
 	return nil
 }
 
+// SetRacksEvent is the event used for sending player racks.
 type SetRacksEvent struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	GameId      string   `protobuf:"bytes,1,opt,name=game_id,json=gameId,proto3" json:"game_id,omitempty"`
-	Racks       [][]byte `protobuf:"bytes,2,rep,name=racks,proto3" json:"racks,omitempty"`
-	EventNumber uint32   `protobuf:"varint,3,opt,name=event_number,json=eventNumber,proto3" json:"event_number,omitempty"`
-	Amendment   bool     `protobuf:"varint,4,opt,name=amendment,proto3" json:"amendment,omitempty"`
+	GameId string `protobuf:"bytes,1,opt,name=game_id,json=gameId,proto3" json:"game_id,omitempty"`
+	// racks are sent as byte arrays, in the same order as the players.
+	// If you only have partial or unknown rack info, send a partial or
+	// empty rack for that user.
+	// Note: internally, every letter is represented by a single byte. The
+	// letters A-Z map to 1-26, and the blank (?) maps to 0, for the English
+	// letter distribution. For other letter distributions, the mapping orders
+	// can be found in the letter distribution files in this repo.
+	Racks [][]byte `protobuf:"bytes,2,rep,name=racks,proto3" json:"racks,omitempty"`
+	// The event_number is ignored unless the `amendment` flag is set.
+	EventNumber uint32 `protobuf:"varint,3,opt,name=event_number,json=eventNumber,proto3" json:"event_number,omitempty"`
+	// `amendment` should be true if we are amending a previous, already played
+	// rack. In that case, the event number is the index of the event whose
+	// rack we wish to edit.
+	Amendment bool `protobuf:"varint,4,opt,name=amendment,proto3" json:"amendment,omitempty"`
 }
 
 func (x *SetRacksEvent) Reset() {

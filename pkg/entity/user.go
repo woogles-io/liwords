@@ -19,6 +19,13 @@ const (
 	SessionExpiration = time.Hour * 24 * 30
 )
 
+type AuthMethod string
+
+const (
+	AuthMethodCookie = "cookie"
+	AuthMethodAPIKey = "apikey"
+)
+
 type Actions struct {
 	Current map[string]*ms.ModAction
 	History []*ms.ModAction
@@ -45,8 +52,9 @@ type User struct {
 	IsMod          bool
 	IsAdmin        bool
 
-	Actions   *Actions
-	Notoriety int
+	Actions      *Actions
+	Notoriety    int
+	AuthedMethod AuthMethod
 }
 
 type UserPermission int

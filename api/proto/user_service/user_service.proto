@@ -73,6 +73,9 @@ message LogoutResponse {}
 message NotifyAccountClosureRequest { string password = 1; }
 message NotifyAccountClosureResponse {}
 
+message GetAPIKeyRequest { bool reset = 1; }
+message GetAPIKeyResponse { string key = 1; }
+
 service AuthenticationService {
   rpc Login(UserLoginRequest) returns (LoginResponse);
   rpc Logout(UserLogoutRequest) returns (LogoutResponse);
@@ -88,6 +91,7 @@ service AuthenticationService {
   rpc GetSignedCookie(GetSignedCookieRequest) returns (SignedCookieResponse);
   rpc InstallSignedCookie(SignedCookieResponse)
       returns (InstallSignedCookieResponse);
+  rpc GetAPIKey(GetAPIKeyRequest) returns (GetAPIKeyResponse);
 }
 
 message GetSignedCookieRequest {}

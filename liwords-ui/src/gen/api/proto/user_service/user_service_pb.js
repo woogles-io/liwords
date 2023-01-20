@@ -176,6 +176,26 @@ export const NotifyAccountClosureResponse = proto3.makeMessageType(
 );
 
 /**
+ * @generated from message user_service.GetAPIKeyRequest
+ */
+export const GetAPIKeyRequest = proto3.makeMessageType(
+  "user_service.GetAPIKeyRequest",
+  () => [
+    { no: 1, name: "reset", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ],
+);
+
+/**
+ * @generated from message user_service.GetAPIKeyResponse
+ */
+export const GetAPIKeyResponse = proto3.makeMessageType(
+  "user_service.GetAPIKeyResponse",
+  () => [
+    { no: 1, name: "key", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ],
+);
+
+/**
  * @generated from message user_service.GetSignedCookieRequest
  */
 export const GetSignedCookieRequest = proto3.makeMessageType(

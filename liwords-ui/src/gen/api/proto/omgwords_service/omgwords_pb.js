@@ -38,8 +38,6 @@ export const ChallengeBonusPointsEvent = proto3.makeMessageType(
 );
 
 /**
- * metadata
- *
  * @generated from message omgwords_service.CreateBroadcastGameRequest
  */
 export const CreateBroadcastGameRequest = proto3.makeMessageType(
@@ -187,6 +185,8 @@ export const PatchDocumentRequest = proto3.makeMessageType(
 );
 
 /**
+ * SetRacksEvent is the event used for sending player racks.
+ *
  * @generated from message omgwords_service.SetRacksEvent
  */
 export const SetRacksEvent = proto3.makeMessageType(

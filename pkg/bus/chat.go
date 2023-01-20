@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/domino14/liwords/pkg/mod"
-	"github.com/domino14/liwords/pkg/user"
+	userservices "github.com/domino14/liwords/pkg/user/services"
 
 	"github.com/domino14/liwords/pkg/entity"
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
@@ -46,7 +46,7 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 
 	userFriendlyChannelName := ""
 	if strings.HasPrefix(evt.Channel, "chat.pm.") {
-		receiver, err := user.ChatChannelReceiver(userID, evt.Channel)
+		receiver, err := userservices.ChatChannelReceiver(userID, evt.Channel)
 		if err != nil {
 			return err
 		}

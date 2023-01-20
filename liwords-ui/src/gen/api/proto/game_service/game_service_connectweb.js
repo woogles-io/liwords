@@ -67,7 +67,7 @@ export const GameMetadataService = {
     },
     /**
      * GetGameDocument gets a Game Document. This will eventually obsolete
-     * GetGameHistory.
+     * GetGameHistory. Does not work with annotated games for now.
      *
      * @generated from rpc game_service.GameMetadataService.GetGameDocument
      */
