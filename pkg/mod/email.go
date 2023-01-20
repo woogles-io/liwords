@@ -8,7 +8,6 @@ import (
 	"time"
 
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
-	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -42,18 +41,12 @@ var ModActionEmailMap = map[ms.ModActionType]string{
 
 func instantiateEmail(username, actionTaken, note string, starttime, endtime *timestamppb.Timestamp, emailType ms.EmailType) (string, string, error) {
 
-	golangStartTime, err := ptypes.Timestamp(starttime)
-	if err != nil {
-		return "", "", err
-	}
+	golangStartTime := starttime.AsTime()
 	startTimeString := golangStartTime.UTC().Format(time.UnixDate)
-
-	golangEndTime, err := ptypes.Timestamp(endtime)
-	var endTimeString string
-	if err == nil {
-		endTimeString = golangEndTime.UTC().Format(time.UnixDate)
+	endTimeString := ""
+	if endtime != nil {
+		endTimeString = endtime.AsTime().UTC().Format(time.UnixDate)
 	}
-
 	emailTemplate, err := template.New(EmailTemplateName).Parse(EmailTemplate)
 	if err != nil {
 		return "", "", err

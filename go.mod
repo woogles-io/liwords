@@ -13,7 +13,6 @@ require (
 	github.com/domino14/macondo v0.4.12
 	github.com/go-redsync/redsync/v4 v4.7.1
 	github.com/golang-migrate/migrate/v4 v4.15.2
-	github.com/golang/protobuf v1.5.2
 	github.com/gomodule/redigo v1.8.9
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/jackc/pgconn v1.13.0

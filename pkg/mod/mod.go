@@ -11,8 +11,8 @@ import (
 	"github.com/domino14/liwords/pkg/user"
 	"github.com/domino14/liwords/pkg/utilities"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
-	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -74,10 +74,7 @@ func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLo
 				permaban = true
 				break
 			}
-			golangEndTime, err := ptypes.Timestamp(action.EndTime)
-			if err != nil {
-				return false, err
-			}
+			golangEndTime := action.EndTime.AsTime()
 			latestTime, secondTimeIsLater = getLaterTime(latestTime, golangEndTime)
 			if secondTimeIsLater {
 				relevantActionType = actionType
@@ -262,11 +259,13 @@ func updateActions(user *entity.User) (bool, error) {
 	now := time.Now()
 	updated := false
 	for _, action := range user.Actions.Current {
-		// This conversion will throw an error if action.EndTime
-		// is nil. This means that the action is permanent
+		// An action endTime being nil means that the action is permanent
 		// and should never be removed by this function.
-		convertedEndTime, err := ptypes.Timestamp(action.EndTime)
-		if err == nil && now.After(convertedEndTime) {
+		if action.EndTime == nil {
+			continue
+		}
+		convertedEndTime := action.EndTime.AsTime()
+		if now.After(convertedEndTime) {
 			removeCurrentAction(user, action.Type, "")
 			updated = true
 		}
@@ -294,7 +293,7 @@ func applyAction(ctx context.Context, us user.Store, cs user.ChatStore, action *
 	if err != nil {
 		return err
 	}
-	action.StartTime = ptypes.TimestampNow()
+	action.StartTime = timestamppb.Now()
 	modActionFunc, actionExists := ModActionDispatching[action.Type]
 	if actionExists { // This ModAction is transient
 		err := modActionFunc(ctx, us, cs, action)
@@ -339,15 +338,9 @@ func setCurrentAction(user *entity.User, action *ms.ModAction) error {
 	if action.Duration == 0 {
 		action.EndTime = nil
 	} else {
-		golangStartTime, err := ptypes.Timestamp(action.StartTime)
-		if err != nil {
-			return err
-		}
+		golangStartTime := action.StartTime.AsTime()
 		golangEndTime := golangStartTime.Add(time.Second * time.Duration(action.Duration))
-		protoEndTime, err := ptypes.TimestampProto(golangEndTime)
-		if err != nil {
-			return err
-		}
+		protoEndTime := timestamppb.New(golangEndTime)
 		action.EndTime = protoEndTime
 	}
 
@@ -380,10 +373,7 @@ func removeCurrentAction(user *entity.User, actionType ms.ModActionType, remover
 	if removerUserId == "" {
 		existingCurrentAction.RemovedTime = existingCurrentAction.EndTime
 	} else {
-		currentTime, err := ptypes.TimestampProto(time.Now())
-		if err != nil {
-			return err
-		}
+		currentTime := timestamppb.Now()
 		existingCurrentAction.RemovedTime = currentTime
 	}
 

@@ -5,8 +5,8 @@ import (
 
 	"github.com/domino14/liwords/pkg/omgwords/stores"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
-	"github.com/golang/protobuf/proto"
 	"github.com/matryer/is"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestMergeDocs(t *testing.T) {
