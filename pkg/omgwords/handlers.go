@@ -45,7 +45,7 @@ func handleEvent(ctx context.Context, userID string, evt *ipc.ClientGameplayEven
 		// Remember the rack we just saved. We need to re-assign it.
 		racks := make([][]byte, len(g.Players))
 		racks[pidx] = rack
-		err = cwgame.AssignRacks(g.GameDocument, racks, true)
+		err = cwgame.AssignRacks(g.GameDocument, racks, cwgame.AssignEmptyIfUnambiguous)
 		if err != nil {
 			gs.UnlockDocument(ctx, g)
 			return false, err

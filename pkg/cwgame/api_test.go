@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"testing"
 
 	"github.com/matryer/is"
@@ -1190,7 +1191,7 @@ func TestExchangePartialRack(t *testing.T) {
 	defer restoreGlobalNower()
 	ctx := ctxForTests()
 
-	err := AssignRacks(gdoc, [][]byte{{9, 9, 9, 9, 9}, nil}, false)
+	err := AssignRacks(gdoc, [][]byte{{9, 9, 9, 9, 9}, nil}, NeverAssignEmpty)
 	is.NoErr(err)
 
 	// This player's rack is IIIII
@@ -1232,7 +1233,7 @@ func TestAssignRacks(t *testing.T) {
 	err = AssignRacks(doc, [][]byte{
 		{1, 1, 1, 1, 1, 1, 1},
 		{5, 5, 5, 5, 5, 5, 5},
-	}, true)
+	}, AlwaysAssignEmpty)
 	is.NoErr(err)
 	is.Equal(len(doc.Bag.Tiles), 86)
 	is.Equal(tiles.Count(doc.Bag, 1), 2)
@@ -1256,10 +1257,49 @@ func TestAssignRacksEmptyRack(t *testing.T) {
 	err = AssignRacks(doc, [][]byte{
 		nil,
 		{5, 5, 5, 5, 5, 5, 5},
-	}, true)
+	}, AlwaysAssignEmpty)
 	is.NoErr(err)
 	is.Equal(len(doc.Bag.Tiles), 86)
 	is.True(tiles.Count(doc.Bag, 5) <= 5)
+}
+
+func TestAssignRacksIfBagEmpty(t *testing.T) {
+	is := is.New(t)
+
+	gdoc := loadGDoc("document-game-almost-over.json")
+
+	err := AssignRacks(gdoc, [][]byte{
+		nil,
+		{1, 3, 5, 9, 15, 18, 20},
+	}, AssignEmptyIfUnambiguous)
+	is.NoErr(err)
+	is.Equal(len(gdoc.Bag.Tiles), 0)
+	sort.Slice(gdoc.Racks[0], func(i, j int) bool { return gdoc.Racks[0][i] < gdoc.Racks[0][j] })
+	is.Equal(gdoc.Racks, [][]byte{
+		{0, 5, 16, 18, 20},
+		{1, 3, 5, 9, 15, 18, 20},
+	})
+	is.NoErr(ReconcileAllTiles(ctxForTests(), gdoc))
+}
+
+func TestAssignRacksIfBagAmbiguous(t *testing.T) {
+	is := is.New(t)
+
+	gdoc := loadGDoc("document-game-almost-over.json")
+
+	err := AssignRacks(gdoc, [][]byte{
+		nil,
+		{1, 3, 5, 9},
+	}, AssignEmptyIfUnambiguous)
+	is.NoErr(err)
+	// There are 8 tiles in the bag. We don't know which ones to assign to P1,
+	// so we will not assign any.
+	is.Equal(len(gdoc.Bag.Tiles), 8)
+	is.Equal(gdoc.Racks, [][]byte{
+		nil,
+		{1, 3, 5, 9},
+	})
+	is.NoErr(ReconcileAllTiles(ctxForTests(), gdoc))
 }
 
 func TestReplayEvents(t *testing.T) {

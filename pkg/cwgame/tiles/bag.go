@@ -133,3 +133,7 @@ func Sort(bag *ipc.Bag) {
 		return bag.Tiles[i] < bag.Tiles[j]
 	})
 }
+
+func InBag(bag *ipc.Bag) int {
+	return len(bag.Tiles)
+}
