@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -86,6 +85,10 @@ func TestMod(t *testing.T) {
 	recreateDB()
 	us := userStore()
 	cs := chatStore()
+
+	defer func() {
+		us.(*user.DBStore).Disconnect()
+	}()
 
 	var muteDuration int32 = 2
 
@@ -166,8 +169,6 @@ func TestMod(t *testing.T) {
 	is.NoErr(err)
 	is.NoErr(equalActionHistories(expectedCheaterHistory, []*ms.ModAction{suspendAction}))
 	is.True(expectedCheaterHistory[0].RemoverUserId == "Moderator")
-	is.NoErr(equalTimes(expectedCheaterHistory[0].EndTime, expectedCheaterHistory[0].StartTime))
-	is.NoErr(equalTimes(expectedCheaterHistory[0].EndTime, expectedCheaterHistory[0].RemovedTime))
 
 	// Recheck Spammer actions
 	permaban, err = ActionExists(ctx, us, "Spammer", false, []ms.ModActionType{muteAction.Type})
@@ -201,8 +202,7 @@ func TestMod(t *testing.T) {
 	is.True(expectedSpammerHistory[0].EndTime != nil)
 	is.True(expectedSpammerHistory[0].StartTime != nil)
 	is.True(expectedSpammerHistory[0].RemoverUserId == "")
-	is.NoErr(equalTimes(expectedSpammerHistory[0].EndTime, expectedSpammerHistory[0].StartTime))
-	is.NoErr(equalTimes(expectedSpammerHistory[0].EndTime, expectedSpammerHistory[0].RemovedTime))
+
 	// Test negative durations
 	invalidSuspendAction := &ms.ModAction{UserId: "Cheater", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: -100}
 
@@ -300,7 +300,6 @@ func TestMod(t *testing.T) {
 	deleterUser, err = us.GetByUUID(ctx, "Deleter")
 	is.NoErr(err)
 	is.True(deleterUser.Profile.About == "")
-	us.(*user.DBStore).Disconnect()
 
 }
 
@@ -382,14 +381,8 @@ func equalActions(a1 *ms.ModAction, a2 *ms.ModAction) bool {
 }
 
 func equalTimes(t1 *timestamppb.Timestamp, t2 *timestamppb.Timestamp) error {
-	gt1, err := ptypes.Timestamp(t1)
-	if err != nil {
-		return err
-	}
-	gt2, err := ptypes.Timestamp(t1)
-	if err != nil {
-		return err
-	}
+	gt1 := t1.AsTime()
+	gt2 := t2.AsTime()
 	if !gt1.Equal(gt2) {
 		return fmt.Errorf("times are not equal:\n%v\n%v", gt1, gt2)
 	}

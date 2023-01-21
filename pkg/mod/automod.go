@@ -18,8 +18,8 @@ import (
 	"github.com/domino14/macondo/gaddag"
 	"github.com/domino14/macondo/game"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type NotorietyStore interface {
@@ -233,7 +233,7 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 		if newNotoriety > NotorietyThreshold {
 			action := &ms.ModAction{UserId: user.UUID,
 				Type:          ms.ModActionType_SUSPEND_RATED_GAMES,
-				StartTime:     ptypes.TimestampNow(),
+				StartTime:     timestamppb.Now(),
 				ApplierUserId: AutomodUserId,
 				Duration:      int32(DurationMultiplier * (newNotoriety - NotorietyThreshold))}
 			err = setCurrentAction(user, action)

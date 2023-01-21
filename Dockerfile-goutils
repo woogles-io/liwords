@@ -8,7 +8,7 @@ RUN curl -L https://github.com/bufbuild/buf/releases/download/v1.9.0/buf-Linux-x
 RUN chmod +x buf
 
 # Install protoc-gen-go
-RUN go install github.com/golang/protobuf/protoc-gen-go@latest \
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest \
     && go install github.com/twitchtv/twirp/protoc-gen-twirp@latest
 
 # Detect arch for migrate

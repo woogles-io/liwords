@@ -12,7 +12,6 @@ import (
 	"github.com/domino14/liwords/pkg/notify"
 	"github.com/domino14/liwords/pkg/user"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/rs/zerolog/log"
 )
 
@@ -81,12 +80,8 @@ func sendNotification(ctx context.Context, us user.Store, user *entity.User, act
 				} else if action.EndTime == nil {
 					log.Err(err).Str("userID", user.UUID).Msg("mod-action-endtime-nil")
 				} else {
-					golangActionEndTime, err := ptypes.Timestamp(action.EndTime)
-					if err != nil {
-						log.Err(err).Str("error", err.Error()).Msg("mod-action-endtime-conversion")
-					} else {
-						message += fmt.Sprintf(" This %s on %s.", actionExpiration, golangActionEndTime.UTC().Format(time.UnixDate))
-					}
+					golangActionEndTime := action.EndTime.AsTime()
+					message += fmt.Sprintf(" This %s on %s.", actionExpiration, golangActionEndTime.UTC().Format(time.UnixDate))
 				}
 			}
 		}
