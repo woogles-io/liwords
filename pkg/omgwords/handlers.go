@@ -100,7 +100,7 @@ func handleEvent(ctx context.Context, userID string, evt *ipc.ClientGameplayEven
 				sge.Event = evt
 				sge.GameId = g.Uid
 				sge.TimeRemaining = int32(g.Timers.TimeRemaining[g.PlayerOnTurn])
-				sge.NewRack = g.Racks[g.PlayerOnTurn]
+				sge.NewRack = g.Racks[evt.PlayerIndex]
 				sge.Playing = g.PlayState
 				sge.UserId = g.Players[evt.PlayerIndex].UserId
 
