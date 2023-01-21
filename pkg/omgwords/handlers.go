@@ -40,7 +40,7 @@ func handleEvent(ctx context.Context, userID string, evt *ipc.ClientGameplayEven
 		err = cwgame.ReplayEvents(ctx, g.GameDocument, evts)
 		if err != nil {
 			gs.UnlockDocument(ctx, g)
-			return false, err
+			return false, twirp.NewError(twirp.InvalidArgument, err.Error())
 		}
 		// Remember the rack we just saved. We need to re-assign it.
 		racks := make([][]byte, len(g.Players))
@@ -71,7 +71,7 @@ func handleEvent(ctx context.Context, userID string, evt *ipc.ClientGameplayEven
 	err = cwgame.ProcessGameplayEvent(ctx, evt, userID, g.GameDocument)
 	if err != nil {
 		gs.UnlockDocument(ctx, g)
-		return false, err
+		return false, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 
 	// REMOVE ME BEFORE DEPLOY

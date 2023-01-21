@@ -44,15 +44,15 @@ func AnnotatedChannelName(gameID string) string {
 
 func (gs *OMGWordsService) failIfSessionDoesntOwn(ctx context.Context, gameID string) error {
 	if gameID == "" {
-		return errors.New("game ID must be provided")
+		return twirp.NewError(twirp.InvalidArgument, "game ID must be provided")
 	}
 	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, gs.userStore)
 	if err != nil {
-		return err
+		return twirp.NewError(twirp.Unauthenticated, err.Error())
 	}
 	owns, err := gs.metadataStore.GameOwnedBy(ctx, gameID, u.UUID)
 	if err != nil {
-		return err
+		return twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	if !owns {
 		return twirp.NewError(twirp.InvalidArgument, "user does not own this game")
@@ -169,7 +169,7 @@ func (gs *OMGWordsService) SendGameEvent(ctx context.Context, req *pb.AnnotatedG
 		return nil, err
 	}
 	if req.Event == nil {
-		return nil, errors.New("event is required")
+		return nil, twirp.NewError(twirp.InvalidArgument, "event is required")
 	}
 
 	justEnded, err := handleEvent(ctx, req.UserId, req.Event, req.Amendment, req.EventNumber, gs.gameStore, gs.gameEventChan)
