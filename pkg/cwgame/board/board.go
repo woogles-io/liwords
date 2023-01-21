@@ -333,9 +333,6 @@ func PlayMove(board *ipc.GameBoard, layoutName string, dist *tiles.LetterDistrib
 	}
 
 	score := placeMoveTiles(board, layout, dist, mls, row, col, vertical)
-	if board.IsEmpty {
-		board.IsEmpty = false
-	}
 	return score, nil
 
 }
@@ -392,7 +389,9 @@ func placeMoveTiles(board *ipc.GameBoard, layout *BoardLayout, dist *tiles.Lette
 			}
 		}
 		// else all the multipliers are 1.
-
+		if freshTile && board.IsEmpty {
+			board.IsEmpty = false
+		}
 		cs := getCrossScore(board, dist, newrow, newcol, csDirection)
 		ls := 0
 		if tile > 0 {
@@ -440,6 +439,11 @@ func UnplaceMoveTiles(board *ipc.GameBoard, mls []runemapping.MachineLetter, row
 			continue
 		} else {
 			board.Tiles[sqIdx] = byte(0)
+			if newrow == int(board.NumRows)>>1 && newcol == int(board.NumCols)>>1 {
+				// If we are unplaying a tile that was in the center square,
+				// that is a good proxy for whether the board is now empty.
+				board.IsEmpty = true
+			}
 		}
 	}
 	return nil
