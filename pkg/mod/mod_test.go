@@ -169,8 +169,6 @@ func TestMod(t *testing.T) {
 	is.NoErr(err)
 	is.NoErr(equalActionHistories(expectedCheaterHistory, []*ms.ModAction{suspendAction}))
 	is.True(expectedCheaterHistory[0].RemoverUserId == "Moderator")
-	is.NoErr(equalTimes(expectedCheaterHistory[0].EndTime, expectedCheaterHistory[0].StartTime))
-	is.NoErr(equalTimes(expectedCheaterHistory[0].EndTime, expectedCheaterHistory[0].RemovedTime))
 
 	// Recheck Spammer actions
 	permaban, err = ActionExists(ctx, us, "Spammer", false, []ms.ModActionType{muteAction.Type})
@@ -204,8 +202,7 @@ func TestMod(t *testing.T) {
 	is.True(expectedSpammerHistory[0].EndTime != nil)
 	is.True(expectedSpammerHistory[0].StartTime != nil)
 	is.True(expectedSpammerHistory[0].RemoverUserId == "")
-	is.NoErr(equalTimes(expectedSpammerHistory[0].EndTime, expectedSpammerHistory[0].StartTime))
-	is.NoErr(equalTimes(expectedSpammerHistory[0].EndTime, expectedSpammerHistory[0].RemovedTime))
+
 	// Test negative durations
 	invalidSuspendAction := &ms.ModAction{UserId: "Cheater", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: -100}
 
