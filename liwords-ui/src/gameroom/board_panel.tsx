@@ -1599,6 +1599,9 @@ export const BoardPanel = React.memo((props: Props) => {
     gameMetaMessage = 'Log in or register to see player tiles';
   } else if (stillWaitingForGameToStart) {
     gameMetaMessage = 'Waiting for game to start...';
+    if (gameContext.gameDocument?.uid) {
+      gameMetaMessage = 'Waiting for rack information...';
+    }
   } else if (props.puzzleMode && props.anonymousViewer) {
     gameMetaMessage = 'Log in or register to start solving puzzles';
   }
