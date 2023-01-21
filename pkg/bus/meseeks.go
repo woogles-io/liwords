@@ -148,9 +148,11 @@ func (b *Bus) newSeekRequest(ctx context.Context, auth, userID, connID string,
 		if err != nil {
 			return err
 		}
-		err = checkForBlock(ctx, b, connID, requester, receiver)
+		blockingState, err := checkForBlock(ctx, b, connID, requester, receiver)
 		if err != nil {
 			return err
+		} else if blockingState == 0 || blockingState == 1 {
+			return nil
 		}
 		req.ReceivingUser.UserId = receiver.UUID
 	}
@@ -204,9 +206,11 @@ func (b *Bus) updateSeekRequest(ctx context.Context, auth, userID, connID string
 		return err
 	}
 
-	err = checkForBlock(ctx, b, connID, receiver, requester)
+	blockingState, err := checkForBlock(ctx, b, connID, receiver, requester)
 	if err != nil {
 		return err
+	} else if blockingState == 0 || blockingState == 1 {
+		return nil
 	}
 
 	if userID == seekerUserID {
@@ -464,6 +468,18 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 		}
 	}
 
+	reqUser, err := b.userStore.GetByUUID(ctx, requester)
+	if err != nil {
+		return err
+	}
+
+	blockingState, err := checkForBlock(ctx, b, connID, accUser, reqUser)
+	if err != nil {
+		return err
+	} else if blockingState == 0 || blockingState == 1 {
+		return nil
+	}
+
 	// Otherwise create a game
 	// If the ACCEPTOR of the seek has a seek request open, we must cancel it.
 	err = b.deleteSoughtForUser(ctx, userID)
@@ -474,10 +490,12 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 	return b.instantiateAndStartGame(ctx, accUser, requester, gameReq, sg, evt.RequestId, connID)
 }
 
-func checkForBlock(ctx context.Context, b *Bus, connID string, accUser *entity.User, reqUser *entity.User) error {
+// Return 0 if uid1 blocks uid2, 1 if uid2 blocks uid1, and -1 if neither blocks
+// the other. Note, if they both block each other it will return 0.
+func checkForBlock(ctx context.Context, b *Bus, connID string, accUser *entity.User, reqUser *entity.User) (int, error) {
 	block, err := b.blockExists(ctx, reqUser, accUser)
 	if err != nil {
-		return err
+		return -1, err
 	}
 	if block == 0 {
 		// requesting user is blocking the accepting user.
@@ -485,7 +503,7 @@ func checkForBlock(ctx context.Context, b *Bus, connID string, accUser *entity.U
 			Message: "You are not able to accept " + reqUser.Username + "'s requests.",
 		}, pb.MessageType_ERROR_MESSAGE)
 		b.pubToConnectionID(connID, accUser.UUID, evt)
-		return nil
+		return 0, nil
 	} else if block == 1 {
 		// accepting user is blocking requesting user. They should not be able to
 		// see their requests but maybe they didn't refresh after blocking.
@@ -493,8 +511,9 @@ func checkForBlock(ctx context.Context, b *Bus, connID string, accUser *entity.U
 			Message: reqUser.Username + " is on your block list, thus you cannot play against them.",
 		}, pb.MessageType_ERROR_MESSAGE)
 		b.pubToConnectionID(connID, accUser.UUID, evt)
+		return 1, nil
 	}
-	return nil
+	return -1, nil
 }
 
 func (b *Bus) seekDeclined(ctx context.Context, evt *pb.DeclineSeekRequest, userID string) error {
