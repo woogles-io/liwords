@@ -1,7 +1,7 @@
 // boardwizard is our board editor
 
 import { HomeOutlined } from '@ant-design/icons';
-import { Card, notification } from 'antd';
+import { Card, Col, notification, Row } from 'antd';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ActionType } from '../actions/actions';
@@ -310,6 +310,30 @@ export const BoardEditor = () => {
   const gameInfo = useMemo(() => {
     return syntheticGameInfo(gameContext.gameDocument);
   }, [gameContext.gameDocument]);
+
+  if (!gameContext.gameID) {
+    return (
+      <div className="game-container">
+        <TopBar />
+        <Row>
+          <Col span={12} offset={6}>
+            <Card
+              title="Editor controls"
+              className="editor-control"
+              style={{ marginTop: 12 }}
+            >
+              <EditorControl
+                createNewGame={createNewGame}
+                gameID={gameContext.gameID}
+                deleteGame={deleteGame}
+                editGame={editGame}
+              />
+            </Card>
+          </Col>
+        </Row>
+      </div>
+    );
+  }
 
   let ret = (
     <div className="game-container">
