@@ -246,7 +246,10 @@ func (gs *GameDocumentStore) saveToDatabase(ctx context.Context, gdoc *ipc.GameD
 	}
 	defer tx.Rollback(ctx)
 	_, err = tx.Exec(ctx,
-		`INSERT INTO game_documents (game_id, document) VALUES ($1, $2)`,
+		`INSERT INTO game_documents (game_id, document) VALUES ($1, $2)
+		 ON CONFLICT (game_id) DO UPDATE
+		 SET document = $2
+		`,
 		gdoc.Uid, data)
 	if err != nil {
 		return err
