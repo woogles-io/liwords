@@ -682,7 +682,7 @@ func EventDescription(evt *ipc.GameEvent, rm *runemapping.RuneMapping) string {
 		return fmt.Sprintf("%s %s %s +%d %d",
 			evt.Position,
 			runemapping.FromByteArr(evt.Rack).UserVisible(rm),
-			runemapping.FromByteArr(evt.PlayedTiles).UserVisible(rm),
+			runemapping.FromByteArr(evt.PlayedTiles).UserVisiblePlayedTiles(rm),
 			evt.Score,
 			evt.Cumulative,
 		)
@@ -690,7 +690,7 @@ func EventDescription(evt *ipc.GameEvent, rm *runemapping.RuneMapping) string {
 	case ipc.GameEvent_EXCHANGE:
 		return fmt.Sprintf("%s [exch %s]  +0 %d",
 			runemapping.FromByteArr(evt.Rack).UserVisible(rm),
-			runemapping.FromByteArr(evt.Exchanged).UserVisible(rm),
+			runemapping.FromByteArr(evt.Exchanged).UserVisiblePlayedTiles(rm),
 			evt.Cumulative,
 		)
 

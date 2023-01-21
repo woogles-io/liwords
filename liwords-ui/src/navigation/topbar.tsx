@@ -24,6 +24,11 @@ const TopMenu = React.memo((props: Props) => {
         </Link>
       </li>
       <li>
+        <Link to="/editor" className="plain">
+          Board editor
+        </Link>
+      </li>
+      <li>
         <a
           href="//anagrams.mynetgear.com/"
           target="_blank"

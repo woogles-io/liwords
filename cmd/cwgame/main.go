@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -24,22 +25,46 @@ var DefaultConfig = &config.Config{DataPath: DataDir}
 
 // a script to display the state of a game document
 func main() {
-	if os.Getenv("DEBUG") == "1" {
-		RemoteServer = "http://liwords.localhost"
+	gameid := flag.String("gameid", "", "the game id you wish to obtain")
+	server := flag.String("server", "prod", "the server you wish to read from: local or prod")
+	file := flag.String("file", "", "the filename you wish to read from")
+	flag.Parse()
+
+	if *gameid == "" && *file == "" {
+		panic("Need either a game ID or a file")
 	}
-	if len(os.Args) != 2 {
-		panic("need a game id argument")
+	var serverURL string
+
+	if *server == "prod" {
+		serverURL = RemoteServer
+	} else if *server == "local" {
+		serverURL = "http://liwords.localhost"
+	} else if *server == "" {
+		serverURL = ""
+	} else {
+		panic("if specifying server, values can only be prod or local")
 	}
-	url := RemoteServer + "/twirp/omgwords_service.GameEventService/GetGameDocument"
-	reader := strings.NewReader(`{"gameId": "` + os.Args[1] + `"}`)
-	resp, err := http.Post(url, "application/json", reader)
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		panic(err)
+	var body []byte
+	var err error
+
+	if *gameid != "" {
+
+		url := serverURL + "/twirp/omgwords_service.GameEventService/GetGameDocument"
+		reader := strings.NewReader(`{"gameId": "` + os.Args[1] + `"}`)
+		resp, err := http.Post(url, "application/json", reader)
+		if err != nil {
+			panic(err)
+		}
+		defer resp.Body.Close()
+		body, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			panic(err)
+		}
+	} else if *file != "" {
+		body, err = os.ReadFile(*file)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	gdoc := &ipc.GameDocument{}

@@ -37,6 +37,21 @@ var (
 
 var reVertical, reHorizontal *regexp.Regexp
 
+type RackAssignBehavior int
+
+const (
+	// NeverAssignEmpty does not assign empty racks
+	NeverAssignEmpty RackAssignBehavior = iota
+	// AlwaysAssignEmpty always assigns empty racks
+	AlwaysAssignEmpty
+	// AssignEmptyIfUnambiguous assigns empty racks if they're the only thing
+	// they can be. For example, if we assign a rack of 5 letters to player 1,
+	// and there are only 6 unassigned letters left, all 6 of these letters
+	// will be assigned to player 2. If there were 8 letters left, none of them
+	// would be assigned to player 2.
+	AssignEmptyIfUnambiguous
+)
+
 func init() {
 	reVertical = regexp.MustCompile(`^(?P<col>[A-Z])(?P<row>[0-9]+)$`)
 	reHorizontal = regexp.MustCompile(`^(?P<row>[0-9]+)(?P<col>[A-Z])$`)
@@ -126,7 +141,7 @@ func StartGame(ctx context.Context, gdoc *ipc.GameDocument) error {
 
 // AssignRacks assigns racks to the players. If assignEmpty is true, it will
 // assign a random rack to any players with empty racks in the racks array.
-func AssignRacks(gdoc *ipc.GameDocument, racks [][]byte, assignEmpty bool) error {
+func AssignRacks(gdoc *ipc.GameDocument, racks [][]byte, assignEmpty RackAssignBehavior) error {
 	if len(racks) != len(gdoc.Players) {
 		return errors.New("racks length must match players length")
 	}
@@ -153,8 +168,16 @@ func AssignRacks(gdoc *ipc.GameDocument, racks [][]byte, assignEmpty bool) error
 			gdoc.Racks[i] = r
 		}
 	}
+	bagWillBeEmpty := false
+	if tiles.InBag(gdoc.Bag) <= len(empties)*RackTileLimit {
+		// The bag is empty after assigning racks
+		bagWillBeEmpty = true
+	}
+
 	// Conditionally draw new tiles for empty racks
-	if assignEmpty {
+	if assignEmpty == AlwaysAssignEmpty ||
+		(assignEmpty == AssignEmptyIfUnambiguous && bagWillBeEmpty) {
+
 		for _, i := range empties {
 			placeholder := make([]runemapping.MachineLetter, RackTileLimit)
 			drew, err := tiles.DrawAtMost(gdoc.Bag, RackTileLimit, placeholder)
@@ -240,7 +263,7 @@ func EditOldRack(ctx context.Context, gdoc *ipc.GameDocument, evtNumber uint32, 
 	evtTurn := evt.PlayerIndex
 	racks := make([][]byte, len(gdoc.Players))
 	racks[evtTurn] = rack
-	err = AssignRacks(gc, racks, false)
+	err = AssignRacks(gc, racks, AssignEmptyIfUnambiguous)
 	if err != nil {
 		return err
 	}
@@ -294,7 +317,7 @@ func ReplayEvents(ctx context.Context, gdoc *ipc.GameDocument, evts []*ipc.GameE
 		toAssign := make([][]byte, len(gdoc.Players))
 		toAssign[evt.PlayerIndex] = evt.Rack
 
-		err = AssignRacks(gdoc, toAssign, true)
+		err = AssignRacks(gdoc, toAssign, AssignEmptyIfUnambiguous)
 		if err != nil {
 			return err
 		}
@@ -340,7 +363,7 @@ func ReplayEvents(ctx context.Context, gdoc *ipc.GameDocument, evts []*ipc.GameE
 	}
 	// At the end, make sure to set the racks to whatever they are in the doc.
 	log.Debug().Interface("savedRacks", savedRacks).Msg("call-assign-racks")
-	err = AssignRacks(gdoc, savedRacks, true)
+	err = AssignRacks(gdoc, savedRacks, AssignEmptyIfUnambiguous)
 	if err != nil {
 		return err
 	}

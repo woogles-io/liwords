@@ -40,12 +40,12 @@ func handleEvent(ctx context.Context, userID string, evt *ipc.ClientGameplayEven
 		err = cwgame.ReplayEvents(ctx, g.GameDocument, evts)
 		if err != nil {
 			gs.UnlockDocument(ctx, g)
-			return false, err
+			return false, twirp.NewError(twirp.InvalidArgument, err.Error())
 		}
 		// Remember the rack we just saved. We need to re-assign it.
 		racks := make([][]byte, len(g.Players))
 		racks[pidx] = rack
-		err = cwgame.AssignRacks(g.GameDocument, racks, true)
+		err = cwgame.AssignRacks(g.GameDocument, racks, cwgame.AssignEmptyIfUnambiguous)
 		if err != nil {
 			gs.UnlockDocument(ctx, g)
 			return false, err
@@ -71,7 +71,7 @@ func handleEvent(ctx context.Context, userID string, evt *ipc.ClientGameplayEven
 	err = cwgame.ProcessGameplayEvent(ctx, evt, userID, g.GameDocument)
 	if err != nil {
 		gs.UnlockDocument(ctx, g)
-		return false, err
+		return false, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 
 	// REMOVE ME BEFORE DEPLOY
@@ -100,7 +100,7 @@ func handleEvent(ctx context.Context, userID string, evt *ipc.ClientGameplayEven
 				sge.Event = evt
 				sge.GameId = g.Uid
 				sge.TimeRemaining = int32(g.Timers.TimeRemaining[g.PlayerOnTurn])
-				sge.NewRack = g.Racks[g.PlayerOnTurn]
+				sge.NewRack = g.Racks[evt.PlayerIndex]
 				sge.Playing = g.PlayState
 				sge.UserId = g.Players[evt.PlayerIndex].UserId
 

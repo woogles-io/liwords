@@ -96,3 +96,5 @@ export { default as QuestionCircleOutlined } from '@ant-design/icons/lib/icons/Q
 export { default as EditOutlined } from '@ant-design/icons/lib/icons/EditOutlined';
 
 export { default as CopyOutlined } from '@ant-design/icons/lib/icons/CopyOutlined';
+
+export { default as ReloadOutlined } from '@ant-design/icons/lib/icons/ReloadOutlined';
