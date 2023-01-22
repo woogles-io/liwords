@@ -148,10 +148,10 @@ func (b *Bus) newSeekRequest(ctx context.Context, auth, userID, connID string,
 		if err != nil {
 			return err
 		}
-		blockingState, err := checkForBlock(ctx, b, connID, requester, receiver)
+		block, err := checkForBlock(ctx, b, connID, requester, receiver)
 		if err != nil {
 			return err
-		} else if blockingState == 0 || blockingState == 1 {
+		} else if block == 0 || block == 1 {
 			return nil
 		}
 		req.ReceivingUser.UserId = receiver.UUID
@@ -206,10 +206,10 @@ func (b *Bus) updateSeekRequest(ctx context.Context, auth, userID, connID string
 		return err
 	}
 
-	blockingState, err := checkForBlock(ctx, b, connID, receiver, requester)
+	block, err := checkForBlock(ctx, b, connID, receiver, requester)
 	if err != nil {
 		return err
-	} else if blockingState == 0 || blockingState == 1 {
+	} else if block == 0 || block == 1 {
 		return nil
 	}
 
@@ -249,17 +249,17 @@ func publishSeek(ctx context.Context, b *Bus, sg *entity.SoughtGame, userID stri
 			return err
 		}
 
-		seekerConnId, err := sg.SeekerConnID()
+		seekerConnID, err := sg.SeekerConnID()
 		if err != nil {
 			return err
 		}
 
-		receiverConnId, err := sg.ReceiverConnID()
+		receiverConnID, err := sg.ReceiverConnID()
 		if err != nil {
 			return err
 		}
 
-		publishSeekToPlayers(b, sg, seekerUserID, seekerConnId, receiverUserID, receiverConnId)
+		publishSeekToPlayers(b, sg, seekerUserID, seekerConnID, receiverUserID, receiverConnID)
 	} else {
 		log.Debug().Interface("sought-game", sg).Msg("publishing to lobby")
 		// If the receiver is absent or not permanent and this is not a match request, resend or send to everyone to let them
@@ -473,10 +473,10 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 		return err
 	}
 
-	blockingState, err := checkForBlock(ctx, b, connID, accUser, reqUser)
+	block, err := checkForBlock(ctx, b, connID, accUser, reqUser)
 	if err != nil {
 		return err
-	} else if blockingState == 0 || blockingState == 1 {
+	} else if block == 0 || block == 1 {
 		return nil
 	}
 
@@ -490,7 +490,7 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 	return b.instantiateAndStartGame(ctx, accUser, requester, gameReq, sg, evt.RequestId, connID)
 }
 
-// Return 0 if uid1 blocks uid2, 1 if uid2 blocks uid1, and -1 if neither blocks
+// Return 0 if reqUser blocks accUser, 1 if accUser blocks reqUser, and -1 if neither blocks
 // the other. Note, if they both block each other it will return 0.
 func checkForBlock(ctx context.Context, b *Bus, connID string, accUser *entity.User, reqUser *entity.User) (int, error) {
 	block, err := b.blockExists(ctx, reqUser, accUser)
@@ -718,10 +718,29 @@ func (b *Bus) openSeeks(ctx context.Context, receiverID string, tourneyID string
 	if len(sgs) == 0 {
 		return nil, nil
 	}
+
+	receiver, err := b.userStore.GetByUUID(ctx, receiverID)
+	if err != nil {
+		return nil, err
+	}
+
 	log.Debug().Str("receiver", receiverID).Interface("open-matches", sgs).Msg("open-matches")
 	pbobj := &pb.SeekRequests{Requests: []*pb.SeekRequest{}}
 	for _, sg := range sgs {
-		pbobj.Requests = append(pbobj.Requests, sg.SeekRequest)
+		seeker, err := b.userStore.GetByUUID(ctx, sg.SeekRequest.User.UserId)
+		if err != nil {
+			return nil, err
+		}
+
+		block, err := b.blockExists(ctx, seeker, receiver)
+		if err != nil {
+			return nil, err
+		}
+
+		// only append game if the receiver is not being blocked
+		if block != 0 {
+			pbobj.Requests = append(pbobj.Requests, sg.SeekRequest)
+		}
 	}
 	evt := entity.WrapEvent(pbobj, pb.MessageType_SEEK_REQUESTS)
 	return evt, nil
