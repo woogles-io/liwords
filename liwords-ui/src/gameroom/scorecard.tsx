@@ -21,7 +21,7 @@ import { Notepad } from './notepad';
 import { sortTiles } from '../store/constants';
 import { getVW, isTablet } from '../utils/cwgame/common';
 import { Analyzer } from './analyzer';
-import { HeartFilled } from '@ant-design/icons';
+import { HeartFilled, CommentOutlined } from '@ant-design/icons';
 import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const screenSizes = require('../base.scss').default;
@@ -36,12 +36,14 @@ type Props = {
   playerMeta: Array<PlayerInfo>;
   gameEpilog?: React.ReactElement;
   hideExtraInteractions?: boolean;
+  showComments?: boolean;
 };
 
 type turnProps = {
   playerMeta: Array<PlayerInfo>;
   turn: Turn;
   board: Board;
+  comments: 
 };
 
 type MoveEntityObj = {
@@ -221,10 +223,11 @@ const ScorecardTurn = (props: turnProps) => {
           <p className="score-change">{scoreChange}</p>
           <p className="cumulative">{memoizedTurn.cumulative}</p>
         </div>
+        <div>
+          <CommentOutlined onClick={() => console.log('clicked', props.turn)} />
+        </div>
       </div>
-      {/* <div>
-        <MessageOutlined onClick={() => console.log('clicked', props.turn)} />
-      </div> */}
+
     </>
   );
 };

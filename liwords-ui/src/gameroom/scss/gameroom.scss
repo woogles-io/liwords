@@ -6,818 +6,991 @@
 $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ease-in 100ms;
 
 .ant-modal-footer {
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  .ant-btn {
-    margin: 0 0 0 12px;
-  }
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+
+    .ant-btn {
+        margin: 0 0 0 12px;
+    }
 }
 
 p.streak-win {
-  @include colorModed() {
-    color: m($timer-dark);
-  }
+    @include colorModed() {
+        color: m($timer-dark);
+    }
 }
+
 p.streak-loss {
-  @include colorModed() {
-    color: m($primary-dark);
-  }
+    @include colorModed() {
+        color: m($primary-dark);
+    }
 }
+
 .game-table {
-  .chat-area {
-    .ant-card.left-menu {
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      font-weight: bold;
-      padding: 3px 12px;
-      height: 50px;
-      margin-bottom: 12px;
-      .ant-card-body {
+    .chat-area {
+        .ant-card.left-menu {
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: bold;
+            padding: 3px 12px;
+            height: 50px;
+            margin-bottom: 12px;
+
+            .ant-card-body {
+                padding: 12px;
+            }
+
+            .anticon {
+                font-size: 16px;
+                margin-right: 9px;
+            }
+        }
+    }
+
+    .end-message {
+        width: 100%;
         padding: 12px;
-      }
-      .anticon {
-        font-size: 16px;
-        margin-right: 9px;
-      }
     }
-  }
-  .end-message {
-    width: 100%;
-    padding: 12px;
-  }
 }
+
 .game-container {
-  padding-bottom: 24px;
-  .ant-card {
-    border-radius: 8px;
-    .ant-card-body {
-      padding: 0;
-    }
+    padding-bottom: 24px;
 
-    .ant-card-head {
-      min-height: auto;
-      padding: 0 12px;
-      .ant-card-head-title,
-      .ant-card-extra {
-        padding: 6px 3px;
-        font-size: 13px;
-        line-height: 1em;
-      }
-      .ant-card-extra {
-        @include type-default;
-        font-weight: bold;
-        line-height: 2em;
-        font-size: 13px;
-      }
-    }
-  }
-  .notepad-container {
-    display: flex;
-    align-items: center;
-    button.ant-btn-icon-only > * {
-      font-size: inherit;
-    }
-    .controls {
-      display: flex;
-      flex-direction: row;
-    }
-    .notepad {
-      resize: none;
-      width: 100%;
-      height: 176px;
-      @include type-monospace;
-      font-size: 15px;
-      line-height: 1.8em;
-      letter-spacing: 0.05em;
-      padding: 12px;
-      margin: 6px 12px 0 0;
-      @include colorModed() {
-        background: m($background);
-        border: 1px solid m($gray-extreme);
-        outline: 0;
-      }
-      &:focus {
+    .ant-card {
+        border-radius: 8px;
 
-        @include colorModed() {
-          border: 1px solid m($primary-midDark);
-          outline: 1px solid m($primary-midDark);
+        .ant-card-body {
+            padding: 0;
         }
-      }
-    }
-  }
-  .score-card {
-    .analyzer-container {
-      display: none;
-    }
-  }
-  .notepad-card, .analyzer-card {
-    .ant-card-head .ant-card-head-wrapper {
-      padding: 0;
-      .ant-card-extra {
-        padding: 0;
-        button.ant-btn-icon-only {
-          font-size: 18px;
+
+        .ant-card-head {
+            min-height: auto;
+            padding: 0 12px;
+
+            .ant-card-head-title,
+            .ant-card-extra {
+                padding: 6px 3px;
+                font-size: 13px;
+                line-height: 1em;
+            }
+
+            .ant-card-extra {
+                @include type-default;
+                font-weight: bold;
+                line-height: 2em;
+                font-size: 13px;
+            }
         }
-      }
-    }
-    .ant-card-extra {
-      .analyzer-controls {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        .analyze-trigger {
-          order: 2;
-        }
-      }
-    }
-    .ant-card-body {
-      padding: 12px;
-      height: 240px;
     }
 
     .notepad-container {
-      height: 100%;
-      padding: 3px 0 9px 6px;
-      .notepad {
-        height: 100%;
-      }
-      button {
-        display: none;
-      }
-    }
-  }
-  .analyzer-card {
-    .ant-card-body {
-      padding: 0;
-      .analyzer-container {
         display: flex;
-        width: 100%;
-        height: 100%;
         align-items: center;
-        justify-content: center;
-        .analyze-trigger {
-          margin-left: 0px;
+
+        button.ant-btn-icon-only>* {
+            font-size: inherit;
         }
-        .suggestions {
-          max-height: 244px;
-          overflow-y: auto;
+
+        .controls {
+            display: flex;
+            flex-direction: row;
         }
-      }
-    }
-  }
-  .auto-label {
-    display: inline-block;
-    font-size: 14px;
-    margin-right: 6px;
-    @include colorModed() {
-      color: m($gray-medium);
-    }
-  }
-  .analyze-trigger {
-    margin-left: 12px;
-  }
-  .analyzer-container {
-    .anticon.anticon-redo {
-      font-size: 28px;
-      margin-bottom: 18px;
-      @include colorModed() {
-        color: m($gray-medium);
-      }
+
+        .notepad {
+            resize: none;
+            width: 100%;
+            height: 176px;
+            @include type-monospace;
+            font-size: 15px;
+            line-height: 1.8em;
+            letter-spacing: 0.05em;
+            padding: 12px;
+            margin: 6px 12px 0 0;
+
+            @include colorModed() {
+                background: m($background);
+                border: 1px solid m($gray-extreme);
+                outline: 0;
+            }
+
+            &:focus {
+
+                @include colorModed() {
+                    border: 1px solid m($primary-midDark);
+                    outline: 1px solid m($primary-midDark);
+                }
+            }
+        }
     }
 
-    .suggestions {
-      font-family: $font-monospaced;
-      width: 100%;
-      text-align: center;
-      align-items: center;
-      justify-content: center;
-      table {
-        width: 100%;
-      }
-      tr {
-        cursor: pointer;
-        text-align: left;
-        vertical-align: top;
-        &:hover {
-          @include colorModed() {
-            background-color: m($off-background);
-          }
+    .score-card {
+        .analyzer-container {
+            display: none;
         }
-      }
-      tr.move-chosen:not(:hover) {
+    }
+
+    .notepad-card,
+    .analyzer-card {
+        .ant-card-head .ant-card-head-wrapper {
+            padding: 0;
+
+            .ant-card-extra {
+                padding: 0;
+
+                button.ant-btn-icon-only {
+                    font-size: 18px;
+                }
+            }
+        }
+
+        .ant-card-extra {
+            .analyzer-controls {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+
+                .analyze-trigger {
+                    order: 2;
+                }
+            }
+        }
+
+        .ant-card-body {
+            padding: 12px;
+            height: 240px;
+        }
+
+        .notepad-container {
+            height: 100%;
+            padding: 3px 0 9px 6px;
+
+            .notepad {
+                height: 100%;
+            }
+
+            button {
+                display: none;
+            }
+        }
+    }
+
+    .analyzer-card {
+        .ant-card-body {
+            padding: 0;
+
+            .analyzer-container {
+                display: flex;
+                width: 100%;
+                height: 100%;
+                align-items: center;
+                justify-content: center;
+
+                .analyze-trigger {
+                    margin-left: 0px;
+                }
+
+                .suggestions {
+                    max-height: 244px;
+                    overflow-y: auto;
+                }
+            }
+        }
+    }
+
+    .auto-label {
+        display: inline-block;
+        font-size: 14px;
+        margin-right: 6px;
+
         @include colorModed() {
-          background-color: m($gray-subtle);
+            color: m($gray-medium);
         }
-      }
-      td {
-        padding: 6px 3px;
-        &:first-child {
-          padding-left: 12px;
-        }
-        &:last-child {
-          padding-right: 12px;
-        }
-      }
-      td.move {
-        min-width: 110px;
-        font-weight: bold;
-      }
-      td.move-score {
-        font-weight: bold;
-      }
-      td.move-leave {
-        min-width: 66px;
-      }
-      td.move-equity {
-        width: 60px;
-        text-align: right;
-      }
     }
-  }
+
+    .analyze-trigger {
+        margin-left: 12px;
+    }
+
+    .analyzer-container {
+        .anticon.anticon-redo {
+            font-size: 28px;
+            margin-bottom: 18px;
+
+            @include colorModed() {
+                color: m($gray-medium);
+            }
+        }
+
+        .suggestions {
+            font-family: $font-monospaced;
+            width: 100%;
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+
+            table {
+                width: 100%;
+            }
+
+            tr {
+                cursor: pointer;
+                text-align: left;
+                vertical-align: top;
+
+                &:hover {
+                    @include colorModed() {
+                        background-color: m($off-background);
+                    }
+                }
+            }
+
+            tr.move-chosen:not(:hover) {
+                @include colorModed() {
+                    background-color: m($gray-subtle);
+                }
+            }
+
+            td {
+                padding: 6px 3px;
+
+                &:first-child {
+                    padding-left: 12px;
+                }
+
+                &:last-child {
+                    padding-right: 12px;
+                }
+            }
+
+            td.move {
+                min-width: 110px;
+                font-weight: bold;
+            }
+
+            td.move-score {
+                font-weight: bold;
+            }
+
+            td.move-leave {
+                min-width: 66px;
+            }
+
+            td.move-equity {
+                width: 60px;
+                text-align: right;
+            }
+        }
+    }
 }
+
 .definitions {
-  font-family: $font-monospaced;
-  @include colorModed() {
-    background-color: m($card-background);
-  }
-  .definition-entry {
-    max-width: 13em;
-    &:nth-child(n + 2) {
-      margin-top: 1em;
-    }
+    font-family: $font-monospaced;
+
     @include colorModed() {
-      color: m($gray-extreme);
+        background-color: m($card-background);
     }
-    .defined-word {
-      font-weight: bold;
+
+    .definition-entry {
+        max-width: 13em;
+
+        &:nth-child(n + 2) {
+            margin-top: 1em;
+        }
+
+        @include colorModed() {
+            color: m($gray-extreme);
+        }
+
+        .defined-word {
+            font-weight: bold;
+        }
+
+        .definition {}
+
+        .invalid-word {
+            @include colorModed() {
+                color: m($timer-out-dark);
+            }
+        }
     }
-    .definition {
-    }
-    .invalid-word {
-      @include colorModed() {
-        color: m($timer-out-dark);
-      }
-    }
-  }
 }
+
 .ant-dropdown-menu {
-  padding: 0;
+    padding: 0;
 }
 
 .board-container {
-  user-select: none;
-  text-align: center;
-  padding: 0;
-  outline-style: none;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  height: 100%;
-  position: relative;
-  left: 12px;
-  .tile.preview {
-    position: absolute;
-    pointer-events: none;
-    margin-top: 10px;
-    z-index: 5;
-    transition: $tile-transition;
-    @include colorModed() {
-      background: m($tile-background);
-      color: m($background);
+    user-select: none;
+    text-align: center;
+    padding: 0;
+    outline-style: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    position: relative;
+    left: 12px;
+
+    .tile.preview {
+        position: absolute;
+        pointer-events: none;
+        margin-top: 10px;
+        z-index: 5;
+        transition: $tile-transition;
+
+        @include colorModed() {
+            background: m($tile-background);
+            color: m($background);
+        }
+
+        @include userTile() {
+            background: ut($tile-background);
+            color: ut($tile-text);
+        }
+
+        p.rune {
+            @include colorModed() {
+                color: m($background);
+            }
+
+            @include userTile() {
+                background: ut($tile-background);
+            }
+        }
     }
-    @include userTile() {
-      background: ut($tile-background);
-      color: ut($tile-text);
-    }
-    p.rune {
-      @include colorModed() {
-        color: m($background);
-      }
-      @include userTile() {
-        background: ut($tile-background);
-      }
-    }
-  }
 }
 
 .board {
-  position: relative;
+    position: relative;
 }
 
 .data-area {
-  display: flex;
-  flex-direction: column;
-  text-align: left;
-  .ant-card {
-    margin-bottom: 12px;
-  }
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+
+    .ant-card {
+        margin-bottom: 12px;
+    }
 }
 
 .ant-card {
-  border-radius: 8px;
+    border-radius: 8px;
 }
 
 .play-area {
-  margin: 0 12px;
-  flex-grow: 2;
+    margin: 0 12px;
+    flex-grow: 2;
 }
 
 /* Board spaces */
 
 .board-spaces-container {
-  position: relative;
-  display: flex;
-  flex-wrap: wrap;
-  width: $board-size-mobile;
-  height: $board-size-mobile;
-  @include colorModed() {
-    background: m($grid);
-  }
-  @include userboard() {
-    background: ub($grid);
-  }
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    width: $board-size-mobile;
+    height: $board-size-mobile;
+
+    @include colorModed() {
+        background: m($grid);
+    }
+
+    @include userboard() {
+        background: ub($grid);
+    }
 }
 
 .zomgboard {
-  --dim: 21;
+    --dim: 21;
 }
 
 .board-spaces,
 .tiles,
-.learn-spaces
-{
-  touch-action: manipulation;
-  width: $board-size-mobile;
-  height: $board-size-mobile;
-  min-width: 360px;
-  display: grid;
-  grid-template-columns: repeat(var(--dim, 15), 1fr);
-  grid-template-rows: repeat(var(--dim, 15) , 1fr);
-  gap: 1px;
-}
-.board-spaces:not(.learn-spaces) {
-  // Using a box shadow that looks like a border to not mess up the grid
-  @include colorModed() {
-    box-shadow: m($board-shadow);
-  }
-  @include userboard() {
-    background: ub($board-fill);
-  }
-}
 .learn-spaces {
-  position: absolute;
-  pointer-events: none;
-  &:focus,
-  &:focus-within {
-    visibility: hidden;
-  }
+    touch-action: manipulation;
+    width: $board-size-mobile;
+    height: $board-size-mobile;
+    min-width: 360px;
+    display: grid;
+    grid-template-columns: repeat(var(--dim, 15), 1fr);
+    grid-template-rows: repeat(var(--dim, 15), 1fr);
+    gap: 1px;
+}
+
+.board-spaces:not(.learn-spaces) {
+
+    // Using a box shadow that looks like a border to not mess up the grid
+    @include colorModed() {
+        box-shadow: m($board-shadow);
+    }
+
+    @include userboard() {
+        background: ub($board-fill);
+    }
+}
+
+.learn-spaces {
+    position: absolute;
+    pointer-events: none;
+
+    &:focus,
+    &:focus-within {
+        visibility: hidden;
+    }
 }
 
 .tiles {
-  position: absolute;
-  background-color: transparent;
-  border-color: transparent;
-  gap: 0;
-  border: 0;
-  pointer-events: none;
-  p {
-    @include colorModed() {
-      color: m($tile-text);
+    position: absolute;
+    background-color: transparent;
+    border-color: transparent;
+    gap: 0;
+    border: 0;
+    pointer-events: none;
+
+    p {
+        @include colorModed() {
+            color: m($tile-text);
+        }
     }
-  }
 }
 
 .board-space {
-  box-sizing: border-box;
-  touch-action: manipulation;
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border: transparent 1px solid;
-  @include colorModed() {
-    background-color: m($background);
-    border-color: transparent transparent m($grid) m($grid);
-  }
-  @include userboard() {
-    opacity: ub($board-space-opacity);
-    mix-blend-mode: ub($board-space-mix-mode);
-    background-color: ub($board-empty);
-    border-color: transparent transparent ub($grid) ub($grid);
-  }
+    box-sizing: border-box;
+    touch-action: manipulation;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: transparent 1px solid;
+
+    @include colorModed() {
+        background-color: m($background);
+        border-color: transparent transparent m($grid) m($grid);
+    }
+
+    @include userboard() {
+        opacity: ub($board-space-opacity);
+        mix-blend-mode: ub($board-space-mix-mode);
+        background-color: ub($board-empty);
+        border-color: transparent transparent ub($grid) ub($grid);
+    }
 
 
 }
 
 .board-space::before {
-  content: '';
-  padding-bottom: 100%;
-  display: inline-block;
-  vertical-align: top;
+    content: '';
+    padding-bottom: 100%;
+    display: inline-block;
+    vertical-align: top;
 }
+
 .board-space {
-  display: flex;
-  .anticon {
-    position: absolute;
-    font-size: $tile-font-size-mobile;
-    @include colorModed() {
-      color: m($timer-dark);
+    display: flex;
+
+    .anticon {
+        position: absolute;
+        font-size: $tile-font-size-mobile;
+
+        @include colorModed() {
+            color: m($timer-dark);
+        }
+
+        @include userboard() {
+            color: ub($board-selection-color);
+        }
     }
-    @include userboard() {
-      color: ub($board-selection-color);
-    }
-  }
-  .bonus-label {
-    text-align: center;
-    font-family: $font-default;
-    font-size: 10px;
-    font-weight: 800;
-    max-width: 30px;
-    position: absolute;
-    line-height: 1em;
-    padding: 0 0 1px;
-    opacity: 0;
-    @include colorModed() {
-      color: m($background);
-    }
-    @include userboard() {
-      color: ub($board-bonus-text);
-    }
-   }
-  &:hover {
+
     .bonus-label {
-      animation: fadeIn 700ms cubic-bezier(.17,.67,.29, 1) 400ms forwards;
-    }
-  }
-  &.selected {
-    .bonus-label {
-      display: none;
-    }
-  }
-  &.learn-space {
-    background: transparent;
-    opacity: 0;
-    &.faded {
-      background: black;
-      opacity: 0;
-      mix-blend-mode: multiply;
-      animation: learnFadeIn 300ms ease-out 200ms forwards;
-    }
-    &.highlighted {
-        background: white;
+        text-align: center;
+        font-family: $font-default;
+        font-size: 10px;
+        font-weight: 800;
+        max-width: 30px;
+        position: absolute;
+        line-height: 1em;
+        padding: 0 0 1px;
         opacity: 0;
-        mix-blend-mode: screen;
-        animation: learnFadeIn 300ms ease-out 200ms forwards;
-      }
-  }
-  &.bonus-none {
-    @include colorModed() {
-      background: m($board-empty);
-    }
-    @include userboard() {
-      background: ub($board-empty);
-    }
-  }
 
-  &.bonus-4WS {
-    @include colorModed() {
-      background-color: m($board-qws);
-    }
-    @include userboard() {
-      background-color: ub($board-qws);
+        @include colorModed() {
+            color: m($background);
+        }
+
+        @include userboard() {
+            color: ub($board-bonus-text);
+        }
     }
 
-    .bonus-label {
-      @include colorModed() {
-        color: mix(m($board-qws), m($gray-extreme), $weight: 30%);
-      };
-      @include userboard() {
-        color: ub($board-bonus-text);
-      }
-    }
-    &.selected {
-      @include colorModed() {
-        background-color: mix(m($board-qws), m($timer-light), $weight: 60%);
-      };
-      @include userboard() {
-        background-color: blender(ub($board-qws), ub($board-empty));
-        border-color: lightener(ub($board-selection-color));
-      }
-      .anticon {
-        @include colorModed() {
-          color: m($timer-dark);
+    &:hover {
+        .bonus-label {
+            animation: fadeIn 700ms cubic-bezier(.17, .67, .29, 1) 400ms forwards;
         }
-        @include userboard() {
-          color: ub($board-selection-color);
-        }
-      }
     }
-  }
-  
-  &.bonus-3WS {
-    @include colorModed() {
-      background-color: m($board-tws);
-    }
-    @include userboard() {
-      background-color: ub($board-tws);
-    }
-    .bonus-label {
-      @include colorModed() {
-        color: m($white);
-      }
-      @include userboard() {
-        color: ub($board-bonus-text);
-      }
-    }
-    &.selected {
-      @include colorModed() {
-        background-color: mix(m($board-tws), m($white), $weight: 70%);
-        border-color: scale-color(m($timer-light), $lightness: -10%);
-      };
-      @include userboard() {
-        background-color: blender(ub($board-tws), ub($board-empty));
-        border-color: lightener(ub($board-selection-color));
-      }
-      .anticon {
-        @include colorModed() {
-          color: scale-color(m($timer-light), $lightness: -10%);
-        }
-        @include userboard() {
-          color: ub($board-selection-color);
-        }
-      }
-    }
-  }
-  &.bonus-2WS {
-    @include colorModed() {
-      background-color: m($board-dws);
-    }
-    @include userboard() {
-      background-color: ub($board-dws);
-    }
-    .anticon-star {
-      @include colorModed() {
-        color: m($board-tws);
-      }
-      @include userboard() {
-        color: ub($board-center-icon);
-      }
-    }
-    .bonus-label {
-      @include colorModed() {
-        color: mix(m($board-tws), m($gray-extreme), $weight: 30%);
-      };
-      @include userboard() {
-        color: ub($board-bonus-text);
-      }
-    }
-    &.selected {
-      @include colorModed() {
-        background-color: mix(m($board-dws), m($timer-light), $weight: 60%);
-      };
-      @include userboard() {
-        background-color: blender(ub($board-dws), ub($board-empty));
-        border-color: lightener(ub($board-selection-color));
-      }
-      .anticon {
-        @include colorModed() {
-          color: m($timer-dark);
-        }
-        @include userboard() {
-          color: ub($board-selection-color);
-        }
-      }
-      .anticon-star {
-        display: none;
-      }
-    }
-  }
 
-  &.bonus-4LS {
-    @include colorModed() {
-      background-color: m($board-qls);
-    };
-    @include userboard() {
-      background-color: ub($board-qls);
-    }
     &.selected {
-      @include colorModed() {
-        background-color: mix(m($board-qls), m($timer-light), $weight: 30%);
-      };
-      @include userboard() {
-        background-color: blender(ub($board-qls), ub($board-empty));
-        border-color: lightener(ub($board-selection-color));
-      }
+        .bonus-label {
+            display: none;
+        }
     }
-    .bonus-label {
-      @include colorModed() {
-        color: mix(m($board-qls), m($gray-extreme), $weight: 20%);
-      };
-      @include userboard() {
-        color: ub($board-bonus-text);
-      }
-    }
-  }
 
-  &.bonus-3LS {
-    @include colorModed() {
-      background-color: m($board-tls);
-    };
-    @include userboard() {
-      background-color: ub($board-tls);
+    &.learn-space {
+        background: transparent;
+        opacity: 0;
+
+        &.faded {
+            background: black;
+            opacity: 0;
+            mix-blend-mode: multiply;
+            animation: learnFadeIn 300ms ease-out 200ms forwards;
+        }
+
+        &.highlighted {
+            background: white;
+            opacity: 0;
+            mix-blend-mode: screen;
+            animation: learnFadeIn 300ms ease-out 200ms forwards;
+        }
     }
-    .bonus-label {
-      @include colorModed() {
-        color: m($white);
-      };
-      @include userboard() {
-        color: ub($board-bonus-text);
-      };
-    }
-    &.selected {
-      @include colorModed() {
-        background-color: mix(m($board-tls), m($white), $weight: 70%);
-        border-color: scale-color(m($timer-light), $lightness: -10%);
-      };
-      @include userboard() {
-        background-color: blender(ub($board-tls), ub($board-empty));
-        border-color: lightener(ub($board-selection-color));
-      }
-      .anticon {
+
+    &.bonus-none {
         @include colorModed() {
-          color: scale-color(m($timer-light), $lightness: -10%);
+            background: m($board-empty);
         }
+
         @include userboard() {
-          color: ub($board-selection-color);
+            background: ub($board-empty);
         }
-      }
     }
-  }
-  &.bonus-2LS {
-    @include colorModed() {
-      background-color: m($board-dls);
-    };
-    @include userboard() {
-      background-color: ub($board-dls);
+
+    &.bonus-4WS {
+        @include colorModed() {
+            background-color: m($board-qws);
+        }
+
+        @include userboard() {
+            background-color: ub($board-qws);
+        }
+
+        .bonus-label {
+            @include colorModed() {
+                color: mix(m($board-qws), m($gray-extreme), $weight: 30%);
+            }
+
+            ;
+
+            @include userboard() {
+                color: ub($board-bonus-text);
+            }
+        }
+
+        &.selected {
+            @include colorModed() {
+                background-color: mix(m($board-qws), m($timer-light), $weight: 60%);
+            }
+
+            ;
+
+            @include userboard() {
+                background-color: blender(ub($board-qws), ub($board-empty));
+                border-color: lightener(ub($board-selection-color));
+            }
+
+            .anticon {
+                @include colorModed() {
+                    color: m($timer-dark);
+                }
+
+                @include userboard() {
+                    color: ub($board-selection-color);
+                }
+            }
+        }
     }
+
+    &.bonus-3WS {
+        @include colorModed() {
+            background-color: m($board-tws);
+        }
+
+        @include userboard() {
+            background-color: ub($board-tws);
+        }
+
+        .bonus-label {
+            @include colorModed() {
+                color: m($white);
+            }
+
+            @include userboard() {
+                color: ub($board-bonus-text);
+            }
+        }
+
+        &.selected {
+            @include colorModed() {
+                background-color: mix(m($board-tws), m($white), $weight: 70%);
+                border-color: scale-color(m($timer-light), $lightness: -10%);
+            }
+
+            ;
+
+            @include userboard() {
+                background-color: blender(ub($board-tws), ub($board-empty));
+                border-color: lightener(ub($board-selection-color));
+            }
+
+            .anticon {
+                @include colorModed() {
+                    color: scale-color(m($timer-light), $lightness: -10%);
+                }
+
+                @include userboard() {
+                    color: ub($board-selection-color);
+                }
+            }
+        }
+    }
+
+    &.bonus-2WS {
+        @include colorModed() {
+            background-color: m($board-dws);
+        }
+
+        @include userboard() {
+            background-color: ub($board-dws);
+        }
+
+        .anticon-star {
+            @include colorModed() {
+                color: m($board-tws);
+            }
+
+            @include userboard() {
+                color: ub($board-center-icon);
+            }
+        }
+
+        .bonus-label {
+            @include colorModed() {
+                color: mix(m($board-tws), m($gray-extreme), $weight: 30%);
+            }
+
+            ;
+
+            @include userboard() {
+                color: ub($board-bonus-text);
+            }
+        }
+
+        &.selected {
+            @include colorModed() {
+                background-color: mix(m($board-dws), m($timer-light), $weight: 60%);
+            }
+
+            ;
+
+            @include userboard() {
+                background-color: blender(ub($board-dws), ub($board-empty));
+                border-color: lightener(ub($board-selection-color));
+            }
+
+            .anticon {
+                @include colorModed() {
+                    color: m($timer-dark);
+                }
+
+                @include userboard() {
+                    color: ub($board-selection-color);
+                }
+            }
+
+            .anticon-star {
+                display: none;
+            }
+        }
+    }
+
+    &.bonus-4LS {
+        @include colorModed() {
+            background-color: m($board-qls);
+        }
+
+        ;
+
+        @include userboard() {
+            background-color: ub($board-qls);
+        }
+
+        &.selected {
+            @include colorModed() {
+                background-color: mix(m($board-qls), m($timer-light), $weight: 30%);
+            }
+
+            ;
+
+            @include userboard() {
+                background-color: blender(ub($board-qls), ub($board-empty));
+                border-color: lightener(ub($board-selection-color));
+            }
+        }
+
+        .bonus-label {
+            @include colorModed() {
+                color: mix(m($board-qls), m($gray-extreme), $weight: 20%);
+            }
+
+            ;
+
+            @include userboard() {
+                color: ub($board-bonus-text);
+            }
+        }
+    }
+
+    &.bonus-3LS {
+        @include colorModed() {
+            background-color: m($board-tls);
+        }
+
+        ;
+
+        @include userboard() {
+            background-color: ub($board-tls);
+        }
+
+        .bonus-label {
+            @include colorModed() {
+                color: m($white);
+            }
+
+            ;
+
+            @include userboard() {
+                color: ub($board-bonus-text);
+            }
+
+            ;
+        }
+
+        &.selected {
+            @include colorModed() {
+                background-color: mix(m($board-tls), m($white), $weight: 70%);
+                border-color: scale-color(m($timer-light), $lightness: -10%);
+            }
+
+            ;
+
+            @include userboard() {
+                background-color: blender(ub($board-tls), ub($board-empty));
+                border-color: lightener(ub($board-selection-color));
+            }
+
+            .anticon {
+                @include colorModed() {
+                    color: scale-color(m($timer-light), $lightness: -10%);
+                }
+
+                @include userboard() {
+                    color: ub($board-selection-color);
+                }
+            }
+        }
+    }
+
+    &.bonus-2LS {
+        @include colorModed() {
+            background-color: m($board-dls);
+        }
+
+        ;
+
+        @include userboard() {
+            background-color: ub($board-dls);
+        }
+
+        &.selected {
+            @include colorModed() {
+                background-color: mix(m($board-dls), m($timer-light), $weight: 30%);
+            }
+
+            ;
+
+            @include userboard() {
+                background-color: blender(ub($board-dls), ub($board-empty));
+                border-color: lightener(ub($board-selection-color));
+            }
+        }
+
+        .bonus-label {
+            @include colorModed() {
+                color: mix(m($board-tls), m($gray-extreme), $weight: 20%);
+            }
+
+            ;
+
+            @include userboard() {
+                color: ub($board-bonus-text);
+            }
+        }
+    }
+
     &.selected {
-      @include colorModed() {
-        background-color: mix(m($board-dls), m($timer-light), $weight: 30%);
-      };
-      @include userboard() {
-        background-color: blender(ub($board-dls), ub($board-empty));
-        border-color: lightener(ub($board-selection-color));
-      }
+        @include colorModed() {
+            border: 1px solid m($timer-dark);
+            background-color: m($timer-light);
+        }
+
+        ;
+
+        @include userboard() {
+            border: 1px solid ub($board-selection-color);
+            background-color: blender(ub($board-empty), ub($board-selection-color), );
+        }
     }
-    .bonus-label {
-      @include colorModed() {
-        color: mix(m($board-tls), m($gray-extreme), $weight: 20%);
-      };
-      @include userboard() {
-        color: ub($board-bonus-text);
-      }
-    }
-  }
-  &.selected {
-    @include colorModed() {
-      border: 1px solid m($timer-dark);
-      background-color: m($timer-light);
-    };
-    @include userboard() {
-      border: 1px solid ub($board-selection-color);
-      background-color: blender(ub($board-empty), ub($board-selection-color), );
-    }
-  }
 }
+
 @keyframes fadeIn {
-  0% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 1;
-  }
+    0% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 1;
+    }
 }
 
 @keyframes learnFadeIn {
-  0% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 0.35;
-  }
+    0% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 0.35;
+    }
 }
+
 /* Coordinate labels */
 
 .coord-labels {
-  display: flex;
-  justify-content: space-around;
-  width: $board-size-mobile;
-  font-size: 18px;
-  padding-top: 5px;
-  p {
-    @include colorModed() {
-      color: m($gray-extreme);
+    display: flex;
+    justify-content: space-around;
+    width: $board-size-mobile;
+    font-size: 18px;
+    padding-top: 5px;
+
+    p {
+        @include colorModed() {
+            color: m($gray-extreme);
+        }
     }
-  }
 }
 
 .coord-labels.vert {
-  position: absolute;
-  left: -30px;
-  bottom: 0;
-  flex-direction: column;
-  padding-top: 0;
-  width: auto;
-  height: calc(100% - 24px);
+    position: absolute;
+    left: -30px;
+    bottom: 0;
+    flex-direction: column;
+    padding-top: 0;
+    width: auto;
+    height: calc(100% - 24px);
 }
 
 .coord-label {
-  text-align: right;
-  margin: 0;
-  font-size: 14px;
-  font-weight: normal;
-  font-family: $font-monospaced;
-  letter-spacing: -0.05em;
-  @include colorModed() {
-    color: m($gray-extreme);
-  }
+    text-align: right;
+    margin: 0;
+    font-size: 14px;
+    font-weight: normal;
+    font-family: $font-monospaced;
+    letter-spacing: -0.05em;
+
+    @include colorModed() {
+        color: m($gray-extreme);
+    }
 }
 
 /* Rack */
 
 .rack {
-  touch-action: manipulation;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin: 20px 0;
-  width: calc($tile-size-mobile * 8);
-  height: $tile-size-mobile;
-  min-height: $tile-size-mobile;
+    touch-action: manipulation;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 20px 0;
+    width: calc($tile-size-mobile * 8);
+    height: $tile-size-mobile;
+    min-height: $tile-size-mobile;
 }
 
 .ant-modal .rack {
-  height: auto;
+    height: auto;
 }
+
 .ant-modal-header {
-  border: 0;
+    border: 0;
 }
 
 .rack-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  outline-style: none;
-  margin: 12px 0;
-  position: relative;
-  left: -12px;
-  @include colorModed() {
-    background-color: m($background);
-  }
-  .rack {
-    width: calc($tile-size-desktop * 8.5);
-  }
-  .ant-btn.ant-btn-primary.ant-btn-circle {
-    border-radius: 50%;
-    width: $tile-size-desktop;
-    height: $tile-size-desktop;
-    margin: 0 6px;
-    padding: 1px 0 0;
-    line-height: 0;
-    span {
-      font-family: $font-tile;
-      font-weight: normal;
-      font-size: 28px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    outline-style: none;
+    margin: 12px 0;
+    position: relative;
+    left: -12px;
+
+    @include colorModed() {
+        background-color: m($background);
     }
 
-    .anticon {
-      font-size: 20px;
+    .rack {
+        width: calc($tile-size-desktop * 8.5);
     }
-  }
-  .empty-rack {
-    height: 100%;
-    flex-grow: 2;
-  }
+
+    .ant-btn.ant-btn-primary.ant-btn-circle {
+        border-radius: 50%;
+        width: $tile-size-desktop;
+        height: $tile-size-desktop;
+        margin: 0 6px;
+        padding: 1px 0 0;
+        line-height: 0;
+
+        span {
+            font-family: $font-tile;
+            font-weight: normal;
+            font-size: 28px;
+        }
+
+        .anticon {
+            font-size: 20px;
+        }
+    }
+
+    .empty-rack {
+        height: 100%;
+        flex-grow: 2;
+    }
 }
 
 /* Tiles - defaults that may be overridden by customization */
 .tile,
 .empty-space {
-  position: relative;
-  display: flex;
-  align-items: center;
-  border-radius: 7%;
-  line-height: 0;
-  text-align: center;
-  width: $tile-size-mobile;
-  height: $tile-size-mobile;
+    position: relative;
+    display: flex;
+    align-items: center;
+    border-radius: 7%;
+    line-height: 0;
+    text-align: center;
+    width: $tile-size-mobile;
+    height: $tile-size-mobile;
 }
+
 .tile {
-  @include colorModed() {
-    background: m($tile-background);
-    border: m($tile-border);
-    /* TODO
+    @include colorModed() {
+        background: m($tile-background);
+        border: m($tile-border);
+        /* TODO
     &.tile-p0.tile-p0 {
       background-color: #0000ff;
     }
@@ -825,16 +998,18 @@ p.streak-loss {
       background-color: #ff0000;
     }
     */
-  }
-  @include userTile() {
-    background: ut($tile-background);
-    border: ut($tile-border);
-  }
+    }
+
+    @include userTile() {
+        background: ut($tile-background);
+        border: ut($tile-border);
+    }
 }
+
 .tile.blank {
-  display: flex;
-  justify-content: center;
-  /* TODO
+    display: flex;
+    justify-content: center;
+    /* TODO
   &.blank.tile-p0 p.rune {
     @include colorModed() {
       background-color: #c0c0ff;
@@ -849,32 +1024,36 @@ p.streak-loss {
   }
   */
 }
+
 .tile.blank p.rune {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding-top: 2px;
-  width: 70%;
-  height: 70%;
-  border-radius: 50%;
-  text-transform: capitalize;
-  transform: rotate(-10deg);
-  font-size: calc($tile-font-size-mobile * 0.95);
-  @include colorModed() {
-    color: m($tile-blank-text);
-    background-color: m($tile-background-secondary);
-  }
-  @include userTile() {
-    color: ut($tile-blank-text);
-    background: ut($tile-background-secondary);
-  }
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 2px;
+    width: 70%;
+    height: 70%;
+    border-radius: 50%;
+    text-transform: capitalize;
+    transform: rotate(-10deg);
+    font-size: calc($tile-font-size-mobile * 0.95);
+
+    @include colorModed() {
+        color: m($tile-blank-text);
+        background-color: m($tile-background-secondary);
+    }
+
+    @include userTile() {
+        color: ut($tile-blank-text);
+        background: ut($tile-background-secondary);
+    }
 }
+
 /* This used to be .tile.last-played, and doubling seems necessary. */
 .tile.second-color.second-color {
-  @include colorModed() {
-    border: 1px solid m($tile-last-background);
-    background: m($tile-last-background);
-    /* TODO
+    @include colorModed() {
+        border: 1px solid m($tile-last-background);
+        background: m($tile-last-background);
+        /* TODO
     &.tile-p0 {
       border: 1px solid m($someColor);
       box-shadow: inset 0px 0px 0px 2px m($someColor);
@@ -884,38 +1063,45 @@ p.streak-loss {
       box-shadow: inset 0px 0px 0px 2px m($someColor);;
     }
     */
-  }
-  @include userTile() {
-    border: 0px solid transparent; // Fallback if border is a gradient
-    border: ut($tile-border);
-    background: ut($tile-last-background);
-  }
-  &.blank {
-    p.rune {
-      @include colorModed() {
-        background-color: m($tile-last-blank);
-        color: m($tile-last-background);
-      }
-      @include userTile() {
-        color: ut($tile-blank-text); // Fallback if border is a gradient
-        color: ut($tile-last-background);
-        background: ut($tile-last-blank);
-      }
     }
-  }
-  p.rune, p.point-value {
-    @include colorModed() {
-      color: m($tile-last-text);
-    }
+
     @include userTile() {
-      color: ut($tile-last-text);
+        border: 0px solid transparent; // Fallback if border is a gradient
+        border: ut($tile-border);
+        background: ut($tile-last-background);
     }
-  }
+
+    &.blank {
+        p.rune {
+            @include colorModed() {
+                background-color: m($tile-last-blank);
+                color: m($tile-last-background);
+            }
+
+            @include userTile() {
+                color: ut($tile-blank-text); // Fallback if border is a gradient
+                color: ut($tile-last-background);
+                background: ut($tile-last-blank);
+            }
+        }
+    }
+
+    p.rune,
+    p.point-value {
+        @include colorModed() {
+            color: m($tile-last-text);
+        }
+
+        @include userTile() {
+            color: ut($tile-last-text);
+        }
+    }
 }
+
 .tile.tentative {
-  @include colorModed() {
-    background: m($tile-background-tertiary);
-    /* TODO
+    @include colorModed() {
+        background: m($tile-background-tertiary);
+        /* TODO
 
     &.tile-p0 {
      @include colorModed() {
@@ -928,977 +1114,1179 @@ p.streak-loss {
       }
     }
     */
-  }
-  @include userTile() {
-      background: ut($tile-background-tertiary);
-  }
-  &.blank p.rune {
-    @include colorModed() {
-      background-color: m($tile-background-quaternary);
-      color: m($tile-background);
     }
+
     @include userTile() {
-      background-color: ut($tile-background-quaternary);
-      color: ut($tile-blank-text);
+        background: ut($tile-background-tertiary);
     }
-  }
+
+    &.blank p.rune {
+        @include colorModed() {
+            background-color: m($tile-background-quaternary);
+            color: m($tile-background);
+        }
+
+        @include userTile() {
+            background-color: ut($tile-background-quaternary);
+            color: ut($tile-blank-text);
+        }
+    }
 }
 
 // squareness fix
 .tile::before {
-  content: '';
-  padding-bottom: 100%;
-  display: inline-block;
-  vertical-align: top;
+    content: '';
+    padding-bottom: 100%;
+    display: inline-block;
+    vertical-align: top;
 }
+
 .empty-space {
-  pointer-events: none;
+    pointer-events: none;
 }
 
 .tile {
-  pointer-events: all;
+    pointer-events: all;
 }
 
 .tile.dragging {
-  opacity: 0.4;
+    opacity: 0.4;
 }
 
 p.rune {
-  @include type-monospace;
-  font-family: $font-tile;
-  margin: 0;
-  line-height: 0;
-  font-size: $tile-font-size-mobile;
-  font-weight: 800;
-  width: 100%;
-  padding-bottom: 3px;
-  @include colorModed() {
-    color: m($background);
-  }
-  @include userTile() {
-    color: ut($tile-text);
-  }
-}
-.tile.blank p.rune {
-  font-size: calc($tile-font-size-mobile * 0.9);
-}
-.tile .point-value {
-  position: absolute;
-  bottom: 5px;
-  right: 0.05em;
-  padding: 3px 2px;
-  line-height: 0;
-  margin: 0;
-  letter-spacing: -0.13em;
-  font-size: $point-size-mobile;
-  font-weight: 600;
-  @include colorModed() {
-    color: m($background);
-  }
-  @include userTile() {
-    color: ut($tile-text);
-  }
+    @include type-monospace;
+    font-family: $font-tile;
+    margin: 0;
+    line-height: 0;
+    font-size: $tile-font-size-mobile;
+    font-weight: 800;
+    width: 100%;
+    padding-bottom: 3px;
+
+    @include colorModed() {
+        color: m($background);
+    }
+
+    @include userTile() {
+        color: ut($tile-text);
+    }
 }
 
-.rack .tile, .tile.preview:not(.over-board) {
-  width: $tile-size-desktop;
-  height: $tile-size-desktop;
-  @include colorModed() {
-    background: m($tile-background);
-  }
-  @include userTile() {
-    background: ut($tile-background);
-  }
-  margin: 2px;
-  p.rune {
-    font-size: $tile-font-size-desktop;
+.tile.blank p.rune {
+    font-size: calc($tile-font-size-mobile * 0.9);
+}
+
+.tile .point-value {
+    position: absolute;
+    bottom: 5px;
+    right: 0.05em;
+    padding: 3px 2px;
+    line-height: 0;
+    margin: 0;
+    letter-spacing: -0.13em;
+    font-size: $point-size-mobile;
+    font-weight: 600;
+
     @include colorModed() {
-      color: m($background);
+        color: m($background);
     }
+
     @include userTile() {
-      color: ut($tile-text);
+        color: ut($tile-text);
     }
-  }
-  .point-value {
-    font-size: $point-size-desktop;
-  }
-  &.dragging {
-    opacity: 0.4;
-  }
-  @include colorModed() {
-    background: m($tile-background);
-  }
-  @include userTile() {
-    background: ut($tile-background);
-  }
-  transition: $tile-transition;
+}
+
+.rack .tile,
+.tile.preview:not(.over-board) {
+    width: $tile-size-desktop;
+    height: $tile-size-desktop;
+
+    @include colorModed() {
+        background: m($tile-background);
+    }
+
+    @include userTile() {
+        background: ut($tile-background);
+    }
+
+    margin: 2px;
+
+    p.rune {
+        font-size: $tile-font-size-desktop;
+
+        @include colorModed() {
+            color: m($background);
+        }
+
+        @include userTile() {
+            color: ut($tile-text);
+        }
+    }
+
+    .point-value {
+        font-size: $point-size-desktop;
+    }
+
+    &.dragging {
+        opacity: 0.4;
+    }
+
+    @include colorModed() {
+        background: m($tile-background);
+    }
+
+    @include userTile() {
+        background: ut($tile-background);
+    }
+
+    transition: $tile-transition;
 }
 
 .exchange .rack .tile {
-  width: $tile-size-laptop;
-  height: $tile-size-laptop;
-  &.selected {
-    position: relative;
-    top: -30px;
-    box-shadow: $card-shadow;
-  }
-  p.rune {
-    font-size: $tile-font-size-laptop;
-    line-height: 35px;
-  }
-  .point-value {
-    font-size: $point-size-laptop;
-    padding: 0 2px 5px;
-  }
+    width: $tile-size-laptop;
+    height: $tile-size-laptop;
+
+    &.selected {
+        position: relative;
+        top: -30px;
+        box-shadow: $card-shadow;
+    }
+
+    p.rune {
+        font-size: $tile-font-size-laptop;
+        line-height: 35px;
+    }
+
+    .point-value {
+        font-size: $point-size-laptop;
+        padding: 0 2px 5px;
+    }
 }
 
 .blank-selector {
-  display: flex;
-  flex-wrap: wrap;
-  width: 326px;
-  .tile {
-    width: $tile-size-desktop;
-    height: $tile-size-desktop;
-    margin: 0 2px 2px 0;
-    p.rune {
-      font-size: 30px;
+    display: flex;
+    flex-wrap: wrap;
+    width: 326px;
+
+    .tile {
+        width: $tile-size-desktop;
+        height: $tile-size-desktop;
+        margin: 0 2px 2px 0;
+
+        p.rune {
+            font-size: 30px;
+        }
     }
-  }
 }
 
-.tile .tentative-score, .puzzle-info .tentative-score {
-  position: absolute;
-  display: flex;
-  pointer-events: none;
-  align-items: center;
-  justify-content: center;
-  width: calc(100% - 4px);
-  height: calc(100% - 12px);
-  border-radius: 10%;
-  font-size: 12px;
-  font-weight: bold;
-  @include colorModed() {
-    background-color: m($timer-light);
-    border: 1px solid m($timer-dark);
-    color: m($timer-dark);
-  }
+.tile .tentative-score,
+.puzzle-info .tentative-score {
+    position: absolute;
+    display: flex;
+    pointer-events: none;
+    align-items: center;
+    justify-content: center;
+    width: calc(100% - 4px);
+    height: calc(100% - 12px);
+    border-radius: 10%;
+    font-size: 12px;
+    font-weight: bold;
+
+    @include colorModed() {
+        background-color: m($timer-light);
+        border: 1px solid m($timer-dark);
+        color: m($timer-dark);
+    }
 
 }
 
 .tile .tentative-score.tentative-score-horizontal {
-  right: calc(100% + 2px);
+    right: calc(100% + 2px);
 }
 
 .tile .tentative-score.tentative-score-vertical {
-  right: 2px;
-  bottom: calc(100% + 4px);
+    right: 2px;
+    bottom: calc(100% + 4px);
 }
 
 .tile:hover {
-  .tentative-score {
-  }
+    .tentative-score {}
 }
 
 .tile.dragging .tentative-score {
-  opacity: 0;
+    opacity: 0;
 }
 
 
 // Pool
 .pool {
-  order: -1;
-  @media (min-width: $screen-tablet-min) {
-    order: 3;
-  }
-  header {
-    @include type-title;
-  }
-  .ant-card .ant-card-body {
-    padding: 0;
-  }
-  .vc-distribution {
-    @include type-default;
-    text-transform: uppercase;
-    letter-spacing: 0.16em;
-    font-size: 11px;
-    font-weight: bold;
-    display: flex;
-    border-radius: 0 0 8px 8px;
-    @include colorModed() {
-      background: m($primary-dark);
-      color: m($background);
+    order: -1;
+
+    @media (min-width: $screen-tablet-min) {
+        order: 3;
     }
-    div {
-      width: 50%;
-      text-align: center;
-      padding: 4px;
-      &:first-child {
-        @include colorModed() {
-          background: m($primary-light);
-          color: m($gray-extreme);
-        }
-      }
+
+    header {
+        @include type-title;
     }
-  }
-  .tiles-remaining {
-    @include type-monospace;
-    font-size: 15px;
-    padding: 6px 24px 12px;
-    line-height: 1.3em;
-    letter-spacing: 0.26em;
-    max-height: 150px;
-    overflow-y: auto;
-    .pool-section {
-      word-break: break-word;
+
+    .ant-card .ant-card-body {
+        padding: 0;
     }
-    .letter-group {
-      // white-space: pre would lock each rune group to a single line if we ever want that
-      white-space: normal;
-    }
-  }
-}
-.exchange {
-  .rack {
-    width: 100%;
-  }
-  .pool {
-    .label {
-      margin: 0;
-    }
+
     .vc-distribution {
-      border-radius: 0;
-      background: transparent;
-      justify-content: space-between;
-      div {
-        border-radius: 8px;
-        width: calc(50% - 4px);
-        letter-spacing: 1px;
+        @include type-default;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        font-size: 11px;
+        font-weight: bold;
+        display: flex;
+        border-radius: 0 0 8px 8px;
+
         @include colorModed() {
-          background: m($primary-dark);
+            background: m($primary-dark);
+            color: m($background);
         }
-        &:first-child {
-          @include colorModed() {
-            background: m($primary-middle);
-          }
+
+        div {
+            width: 50%;
+            text-align: center;
+            padding: 4px;
+
+            &:first-child {
+                @include colorModed() {
+                    background: m($primary-light);
+                    color: m($gray-extreme);
+                }
+            }
         }
-      }
     }
 
     .tiles-remaining {
-      padding: 12px 0;
-      max-height: none;
-      font-size: 16px;
-      font-weight: 500;
-      line-height: 28px;
-      overflow-y: visible;
-      font-weight: bold;
-    }
-  }
-}
-.format-dropdown {
-  .ant-dropdown-menu {
-    top: -28px;
-    li.ant-dropdown-menu-item {
-      @include type-default;
-      font-weight: bold;
-      font-size: 12px;
-      height: 24px;
-      padding: 0px 12px;
-      width: 100px;
-      line-height: 2.3em;
-      @include colorModed() {
-        color: m($gray-extreme);
-      }
-      &:hover {
-        @include colorModed() {
-          background: m($primary-light);
+        @include type-monospace;
+        font-size: 15px;
+        padding: 6px 24px 12px;
+        line-height: 1.3em;
+        letter-spacing: 0.26em;
+        max-height: 150px;
+        overflow-y: auto;
+
+        .pool-section {
+            word-break: break-word;
         }
-      }
+
+        .letter-group {
+            // white-space: pre would lock each rune group to a single line if we ever want that
+            white-space: normal;
+        }
     }
-  }
 }
-.game-info {
-  font-size: 14px;
-  .tournament-name {
-    @include colorModed() {
-      color: m($secondary);
+
+.exchange {
+    .rack {
+        width: 100%;
     }
-    font-size: 13px;
-    letter-spacing: 1.2px;
-    text-transform: uppercase;
-  }
-  &.ant-card .ant-card-body {
-    padding: 12px;
-    display: flex;
-    justify-content: space-around;
-  }
-  .variant {
-    font-weight: 600;
-    font-size: 16px;
-  }
-  .metadata {
-    flex-grow: 2;
-  }
-  .club-logo {
-    height: 5em;
-  }
+
+    .pool {
+        .label {
+            margin: 0;
+        }
+
+        .vc-distribution {
+            border-radius: 0;
+            background: transparent;
+            justify-content: space-between;
+
+            div {
+                border-radius: 8px;
+                width: calc(50% - 4px);
+                letter-spacing: 1px;
+
+                @include colorModed() {
+                    background: m($primary-dark);
+                }
+
+                &:first-child {
+                    @include colorModed() {
+                        background: m($primary-middle);
+                    }
+                }
+            }
+        }
+
+        .tiles-remaining {
+            padding: 12px 0;
+            max-height: none;
+            font-size: 16px;
+            font-weight: 500;
+            line-height: 28px;
+            overflow-y: visible;
+            font-weight: bold;
+        }
+    }
+}
+
+.format-dropdown {
+    .ant-dropdown-menu {
+        top: -28px;
+
+        li.ant-dropdown-menu-item {
+            @include type-default;
+            font-weight: bold;
+            font-size: 12px;
+            height: 24px;
+            padding: 0px 12px;
+            width: 100px;
+            line-height: 2.3em;
+
+            @include colorModed() {
+                color: m($gray-extreme);
+            }
+
+            &:hover {
+                @include colorModed() {
+                    background: m($primary-light);
+                }
+            }
+        }
+    }
+}
+
+.game-info {
+    font-size: 14px;
+
+    .tournament-name {
+        @include colorModed() {
+            color: m($secondary);
+        }
+
+        font-size: 13px;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+    }
+
+    &.ant-card .ant-card-body {
+        padding: 12px;
+        display: flex;
+        justify-content: space-around;
+    }
+
+    .variant {
+        font-weight: 600;
+        font-size: 16px;
+    }
+
+    .metadata {
+        flex-grow: 2;
+    }
+
+    .club-logo {
+        height: 5em;
+    }
 }
 
 // Scorecard
 .score-card {
-  order: 2;
-  .ant-card-body {
-    padding: 0;
-    & > div {
-      min-height: 300px;
-      max-height: 300px;
-      padding: 8px 0px 16px;
-      overflow-y: auto;
-    }
-    .notepad-container {
-      display: none;
-      height: 100%;
-    }
-  }
-  .player-avatar {
-    margin-right: 12px;
-    width: 36px;
-    min-width: 36px;
-    height: 36px;
-    font-size: 27px;
-  }
+    order: 2;
 
-  .turn {
-    @include type-monospace;
-    font-size: 14px;
-    display: flex;
-    padding: 6px 16px;
-    justify-content: space-between;
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
-    &:hover {
-      @include colorModed() {
-        background: m($primary-light);
-      }
-    }
-    &.bingo {
-      .anticon-heart {
-        position: relative;
-        margin: 0 6px;
-        @include colorModed() {
-          color: m($timer-out-dark);
+    .ant-card-body {
+        padding: 0;
+
+        &>div {
+            min-height: 300px;
+            max-height: 300px;
+            padding: 8px 0px 16px;
+            overflow-y: auto;
         }
-      }
+
+        .notepad-container {
+            display: none;
+            height: 100%;
+        }
     }
 
-    &:hover {
-      @include colorModed() {
-        background: m($primary-light);
-      }
-    }
-    p {
-      line-height: 1.2em;
-      margin-bottom: 3px;
-    }
-    .coord, .main-word, .cumulative, .exchanged {
-      font-weight: 800;
-    }
-    .main-word {
-      display: inline-block;
-      @include colorModed() {
-        color: m($gray-extreme);
-      }
-    }
-    .pass, .exchanged, .time-penalty, .tiles-left, .challenge {
-      @include colorModed() {
-        color: m($timer-out-dark);
-      }
-      display: block;
-      margin-bottom: 3px;
+    .player-avatar {
+        margin-right: 12px;
+        width: 36px;
+        min-width: 36px;
+        height: 36px;
+        font-size: 27px;
     }
 
-    .challenge.unsuccessful {
-      @include colorModed() {
-        color: m($timer-dark);
-      }
+    .turn {
+        @include type-monospace;
+        font-size: 14px;
+        display: flex;
+        padding: 6px 16px;
+        justify-content: space-between;
+
+        @include colorModed() {
+            color: m($gray-extreme);
+        }
+
+        &:hover {
+            @include colorModed() {
+                background: m($primary-light);
+            }
+        }
+
+        &.bingo {
+            .anticon-heart {
+                position: relative;
+                margin: 0 6px;
+
+                @include colorModed() {
+                    color: m($timer-out-dark);
+                }
+            }
+        }
+
+        &:hover {
+            @include colorModed() {
+                background: m($primary-light);
+            }
+        }
+
+        p {
+            line-height: 1.2em;
+            margin-bottom: 3px;
+        }
+
+        .coord,
+        .main-word,
+        .cumulative,
+        .exchanged {
+            font-weight: 800;
+        }
+
+        .main-word {
+            display: inline-block;
+
+            @include colorModed() {
+                color: m($gray-extreme);
+            }
+        }
+
+        .pass,
+        .exchanged,
+        .time-penalty,
+        .tiles-left,
+        .challenge {
+            @include colorModed() {
+                color: m($timer-out-dark);
+            }
+
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .challenge.unsuccessful {
+            @include colorModed() {
+                color: m($timer-dark);
+            }
+        }
+
+        .coords-time {
+            flex: 2;
+            min-width: 66px;
+            max-width: 66px;
+        }
+
+        .play {
+            flex: 3;
+        }
+
+        .scores {
+            text-align: right;
+        }
     }
-    .coords-time {
-      flex: 2;
-      min-width: 66px;
-      max-width: 66px;
+
+    .anticon-comment {
+        margin: 0px 15px;
+
+        @include colorModed() {
+            color: m($gray-medium);
+        }
     }
-    .play {
-      flex: 3;
-    }
-    .scores {
-      text-align: right;
-    }
-  }
-  .anticon-message {
-    margin: 0px 15px;
-    @include colorModed() {
-      color: m($gray-dark);
-    }
-  }
 }
 
 .board-editor-controls .game-controls {
-  padding: 5px 0px;
+    padding: 5px 0px;
 }
 
 .game-controls {
-  display: flex;
-  position: relative;
-  left: -24px;
-  width: 98vw;
-  max-width: 560px;
-  min-height: 32px;
-  padding: 15px 45px;
-  margin: 0 auto 12px;
-  justify-content: space-evenly;
-  white-space: nowrap;
-  .secondary-controls {
-    display: inline-flex;
-    justify-content: space-between;
-    flex-direction: column;
-    width: 100%;
-    &:nth-child(2) {
-      order: 2;
-    }
-    .ant-popover-disabled-compatible-wrapper {
-      display: flex !important;
-      button {
+    display: flex;
+    position: relative;
+    left: -24px;
+    width: 98vw;
+    max-width: 560px;
+    min-height: 32px;
+    padding: 15px 45px;
+    margin: 0 auto 12px;
+    justify-content: space-evenly;
+    white-space: nowrap;
+
+    .secondary-controls {
+        display: inline-flex;
+        justify-content: space-between;
+        flex-direction: column;
         width: 100%;
-      }
+
+        &:nth-child(2) {
+            order: 2;
+        }
+
+        .ant-popover-disabled-compatible-wrapper {
+            display: flex !important;
+
+            button {
+                width: 100%;
+            }
+        }
+
+        button {
+            height: calc((#{$board-size-mobile} / 8) - 9px);
+        }
     }
-    button {
-      height: calc((#{$board-size-mobile} / 8) - 9px);
+
+    button.ant-btn {
+        margin: 0 12px;
+        font-size: 16px;
+        touch-action: manipulation;
+
+        &.ant-btn-circle {
+            border-radius: 50%;
+            width: $tile-size-laptop;
+            height: $tile-size-laptop;
+            padding: 1px 0 0;
+            line-height: 0;
+        }
+
+        &.play {
+            order: 1;
+            min-width: calc($board-size-mobile * 0.25);
+            width: calc($board-size-mobile * 0.25);
+            height: calc($board-size-mobile * 0.25);
+            margin: 0 6px;
+        }
     }
-  }
-  button.ant-btn {
-    margin: 0 12px;
-    font-size: 16px;
-    touch-action: manipulation;
-    &.ant-btn-circle {
-      border-radius: 50%;
-      width: $tile-size-laptop;
-      height: $tile-size-laptop;
-      padding: 1px 0 0;
-      line-height: 0;
+
+    &> :first-child {
+        margin-left: 0;
     }
-    &.play {
-      order: 1;
-      min-width: calc($board-size-mobile * 0.25);
-      width: calc($board-size-mobile * 0.25);
-      height: calc($board-size-mobile * 0.25);
-      margin: 0 6px;
+
+    &> :last-child {
+        margin-right: 0;
     }
-  }
-  & > :first-child {
-    margin-left: 0;
-  }
-  & > :last-child {
-    margin-right: 0;
-  }
 }
+
 .examiner-controls .ant-affix {
-  transform: translateX(-6px);
-  @include colorModed() {
-    background-color: m($background);
-    border-bottom: 1px solid m($gray-subtle);
-  }
-}
-.end-message + .examiner-controls {
-  div[aria-hidden="true"] {
-    display: none;
-  }
-  .ant-affix {
-    position: static !important;
-    height: auto !important;
+    transform: translateX(-6px);
+
     @include colorModed() {
-      border-bottom: 0;
+        background-color: m($background);
+        border-bottom: 1px solid m($gray-subtle);
     }
-  }
 }
-.examiner-controls, .rack-affix  {
-  @media (min-width: $screen-tablet-min) {
+
+.end-message+.examiner-controls {
     div[aria-hidden="true"] {
-      display: none;
+        display: none;
     }
+
     .ant-affix {
-      transform: translateX(0);
-      position: static !important;
-      height: auto !important;
-      border-bottom: transparent;
-      @include colorModed() {
-        border-bottom: 0;
-      }
+        position: static !important;
+        height: auto !important;
+
+        @include colorModed() {
+            border-bottom: 0;
+        }
     }
-  }
 }
-.end-message {
-  margin-bottom: 12px;
-  padding: 12px;
-  .ant-card-body {
-    p {
-      @include colorModed() {
-        background-color: m($gray-extreme);
-      }
+
+.examiner-controls,
+.rack-affix {
+    @media (min-width: $screen-tablet-min) {
+        div[aria-hidden="true"] {
+            display: none;
+        }
+
+        .ant-affix {
+            transform: translateX(0);
+            position: static !important;
+            height: auto !important;
+            border-bottom: transparent;
+
+            @include colorModed() {
+                border-bottom: 0;
+            }
+        }
     }
-  }
+}
+
+.end-message {
+    margin-bottom: 12px;
+    padding: 12px;
+
+    .ant-card-body {
+        p {
+            @include colorModed() {
+                background-color: m($gray-extreme);
+            }
+        }
+    }
 }
 
 // tile images
 .tile-images.chars {
-  @include type-monospace;
-  // from .ant-card (base.scss)
-  @include colorModed() {
-    background-color: m($card-background);
-    color: m($gray-extreme);
-  }
+    @include type-monospace;
+
+    // from .ant-card (base.scss)
+    @include colorModed() {
+        background-color: m($card-background);
+        color: m($gray-extreme);
+    }
 }
+
 .tile-images.chars.p0 {
-  @include colorModed() {
-    background: m($tile-background);
-    color: m($background);
-  }
-  @include userTile() {
-    background: ut($tile-background);
-    color: ut($tile-text);
-  }
+    @include colorModed() {
+        background: m($tile-background);
+        color: m($background);
+    }
+
+    @include userTile() {
+        background: ut($tile-background);
+        color: ut($tile-text);
+    }
 }
+
 .tile-images.chars.p1 {
-  @include colorModed() {
-    background: m($tile-last-background);
-    color: m($tile-last-text);
-  }
-  @include userTile() {
-    background: ut($tile-last-background);
-    color: ut($tile-last-text);
-  }
+    @include colorModed() {
+        background: m($tile-last-background);
+        color: m($tile-last-text);
+    }
+
+    @include userTile() {
+        background: ut($tile-last-background);
+        color: ut($tile-last-text);
+    }
 }
 
 .board-embed {
-  padding-bottom: 0px;
+    padding-bottom: 0px;
 }
 
 
 @media (min-width: $screen-mobile-min) {
-  .board-spaces-container, .board-spaces, .tiles {
-    width: $board-size-mobile;
-    height: $board-size-mobile;
-  }
-  .coord-labels {
-    width: $board-size-mobile;
-  }
-  .rack {
-    width: calc(48 + $tile-size-mobile * 8);
-  }
+
+    .board-spaces-container,
+    .board-spaces,
+    .tiles {
+        width: $board-size-mobile;
+        height: $board-size-mobile;
+    }
+
+    .coord-labels {
+        width: $board-size-mobile;
+    }
+
+    .rack {
+        width: calc(48 + $tile-size-mobile * 8);
+    }
 }
+
 @media (min-width: $screen-tablet-min) {
-  .board-container {
-    left: 0;
-    .tile.preview {
-      margin-top: 0;
-    }
-  }
-  .board-spaces-container, .board-spaces, .tiles {
-    width: $board-size-tablet;
-    height: $board-size-tablet;
-  }
-  .coord-labels {
-    width: $board-size-tablet;
-    font-size: 15px;
-    padding-top: 0;
-  }
-  .coord-labels.vert {
-    left: -24px;
-  }
-  .rack-container {
-    left: 0;
-    @include colorModed() {
-      background: transparent;
-    }
-  }
-  .rack {
-    width: calc(48 + $tile-size-tablet * 8);
-  }
-  .rack .tile {
-    width: $tile-size-desktop;
-    height: $tile-size-desktop;
-  }
-  .tile,
-  .empty-space {
-    height: $tile-size-tablet;
-    width: $tile-size-tablet;
-  }
-  .tile p.rune {
-    font-size: $tile-font-size-tablet;
-    line-height: 1.2em;
-    position: relative;
-  }
-  .tile.blank p.rune {
-    font-size: calc($tile-font-size-tablet * 0.9);
-  }
-  .tile .point-value {
-    font-size: $point-size-tablet;
-    padding: 5px 2px;
-    bottom: 2px;
-  }
-  .notepad-card, .analyzer-card {
-    display: none;
-  }
-  .score-card {
-    .ant-card-body {
-      & > div {
-        max-height: 140px;
-        min-height: 140px;
-      }
-      .notepad {
-        height: 100px;
-      }
-      .analyzer-container {
-        display: none;
-      }
-    }
-    &.flipped {
-      .ant-card-body > div {
-        padding: 0;
-      }
-      .analyzer-container {
-        display: flex;
-        position: relative;
-        align-items: center;
-        justify-content: space-between;
-        .anticon.anticon-redo {
-          margin-bottom: 0;
-        }
-        .analyzer-controls {
-          align-items: center;
-          display: flex;
-          flex-direction: column;
-        }
-        .suggestions {
-          width: calc(100% - 90px);
-          overflow-y: auto;
-          table {
-            align-self: flex-start;
-          }
-        }
-        button {
-          margin-right: 12px;
-        }
-      }
-    }
-  }
-  .game-controls {
-    justify-content: center;
-    left: 0;
-    width: 100%;
-    .secondary-controls {
-      flex-direction: row;
-      width: auto;
-      button {
-        height: 36px;
-      }
-      &:nth-child(2) {
-        order: 1;
-      }
-    }
-    button.ant-btn {
-      font-size: 15px;
-      margin: 0 6px;
-      &.play {
-        order: 2;
-        min-width: auto;
-        width: auto;
-        height: 36px;
-      }
-    }
-  }
+    .board-container {
+        left: 0;
 
-}
-@media (min-width: $screen-tablet-min) and (max-width: $screen-laptop-min - 1)  {
-  .game-container.competitor {
-    // Steal some space for the tournament view
-    .data-area .ant-card {
-      margin-bottom: 6px;
-    }
-    .ant-card.competitor-status .ant-card-body p .secondary-message {
-      font-size: 12px;
-      display: inline;
-      padding-left: 6px;
-    }
-    .tiles-remaining {
-      padding: 3px 24px 6px;
-    }
-    .game-info {
-      font-size: 12px;
-      display: block;
-      p {
-        font-size: 12px;
-        .secondary-message {
-          display: none;
+        .tile.preview {
+            margin-top: 0;
         }
-      }
-      .ant-row {
-        display: inline-block;
-        &.tournament-name {
-          display: block;
-        }
-      }
-      .variant {
-        font-size: 14px;
-        margin-right: 6px;
-      }
     }
-  }
-}
-@media (min-width: $screen-laptop-min) {
-  .game-container {
-    .ant-card {
-      .ant-card-head {
-        .ant-card-head-title,
-        .ant-card-extra {
-          padding: 12px 3px;
-          line-height: 1.5em;
-          font-size: 14px;
-        }
-      }
+
+    .board-spaces-container,
+    .board-spaces,
+    .tiles {
+        width: $board-size-tablet;
+        height: $board-size-tablet;
     }
-    .notepad-card, .analyzer-card {
-      display: block;
-      .ant-card-head-wrapper {
-        padding: 0;
-      }
-      .ant-card-body {
-        padding: 12px;
-        height: 190px;
-      }
-      .notepad {
-        height: 120px;
-      }
-    }
-    .notepad-card {
-      .ant-card-body {
+
+    .coord-labels {
+        width: $board-size-tablet;
+        font-size: 15px;
         padding-top: 0;
-      }
     }
+
+    .coord-labels.vert {
+        left: -24px;
+    }
+
+    .rack-container {
+        left: 0;
+
+        @include colorModed() {
+            background: transparent;
+        }
+    }
+
+    .rack {
+        width: calc(48 + $tile-size-tablet * 8);
+    }
+
+    .rack .tile {
+        width: $tile-size-desktop;
+        height: $tile-size-desktop;
+    }
+
+    .tile,
+    .empty-space {
+        height: $tile-size-tablet;
+        width: $tile-size-tablet;
+    }
+
+    .tile p.rune {
+        font-size: $tile-font-size-tablet;
+        line-height: 1.2em;
+        position: relative;
+    }
+
+    .tile.blank p.rune {
+        font-size: calc($tile-font-size-tablet * 0.9);
+    }
+
+    .tile .point-value {
+        font-size: $point-size-tablet;
+        padding: 5px 2px;
+        bottom: 2px;
+    }
+
+    .notepad-card,
     .analyzer-card {
-      .ant-card-body {
-        padding: 0;
+        display: none;
+    }
 
-        .analyzer-container {
-          .suggestions {
-            font-size: 13px;
-            max-height: 182px;
-            overflow-y: auto;
-          }
-        }
-      }
-    }
-  }
-
-  .play-area {
-    flex: 0 0 0;
-    padding: 12px 12px 0 30px;
-  }
-  .board-spaces-container, .board-spaces, .tiles {
-    width: $board-size-laptop;
-    height: $board-size-laptop;
-  }
-  .coord-labels {
-    width: $board-size-laptop;
-  }
-  .format-dropdown {
-    .ant-dropdown-menu {
-      li.ant-dropdown-menu-item {
-        height: 32px;
-        padding: 0px 16px;
-        width: 120px;
-        line-height: 2.3em;
-        &:hover {
-          @include colorModed() {
-            background: m($primary-light);
-            color: m($gray-extreme);
-          }
-        }
-      }
-    }
-  }
-  .tile,
-  .empty-space {
-    height: $tile-size-laptop;
-    width: $tile-size-laptop;
-  }
-  .tile.droppable {
-    pointer-events: all;
-    cursor: grab;
-  }
-  .tile p.rune {
-    font-size: $tile-font-size-laptop;
-  }
-  .tile.blank p.rune {
-    font-size: calc($tile-font-size-laptop * 0.9);
-  }
-  .tile .point-value {
-    font-size: $point-size-laptop;
-    padding: 5px 3px;
-  }
-  .rack {
-    width: calc(48 + $tile-size-laptop * 8);
-  }
-  .rack .tile {
-    height: $tile-size-laptop;
-    width: $tile-size-laptop;
-    p.rune {
-      font-size: $tile-font-size-laptop;
-    }
-    .point-value {
-      font-size: $point-size-laptop;
-      bottom: 1px;
-    }
-  }
-  .game-info {
-    font-size: 12px;
-    .variant {
-      font-size: 14px;
-    }
-  }
     .score-card {
-      .ant-card-body {
-        padding: 0;
+        .ant-card-body {
+            &>div {
+                max-height: 140px;
+                min-height: 140px;
+            }
 
-        & > div {
-          min-height: 110px;
-          max-height: 110px;
+            .notepad {
+                height: 100px;
+            }
+
+            .analyzer-container {
+                display: none;
+            }
         }
-      }
+
+        &.flipped {
+            .ant-card-body>div {
+                padding: 0;
+            }
+
+            .analyzer-container {
+                display: flex;
+                position: relative;
+                align-items: center;
+                justify-content: space-between;
+
+                .anticon.anticon-redo {
+                    margin-bottom: 0;
+                }
+
+                .analyzer-controls {
+                    align-items: center;
+                    display: flex;
+                    flex-direction: column;
+                }
+
+                .suggestions {
+                    width: calc(100% - 90px);
+                    overflow-y: auto;
+
+                    table {
+                        align-self: flex-start;
+                    }
+                }
+
+                button {
+                    margin-right: 12px;
+                }
+            }
+        }
     }
 
-  .game-controls {
-    max-width: none;
-  }
+    .game-controls {
+        justify-content: center;
+        left: 0;
+        width: 100%;
+
+        .secondary-controls {
+            flex-direction: row;
+            width: auto;
+
+            button {
+                height: 36px;
+            }
+
+            &:nth-child(2) {
+                order: 1;
+            }
+        }
+
+        button.ant-btn {
+            font-size: 15px;
+            margin: 0 6px;
+
+            &.play {
+                order: 2;
+                min-width: auto;
+                width: auto;
+                height: 36px;
+            }
+        }
+    }
+
+}
+
+@media (min-width: $screen-tablet-min) and (max-width: $screen-laptop-min - 1) {
+    .game-container.competitor {
+
+        // Steal some space for the tournament view
+        .data-area .ant-card {
+            margin-bottom: 6px;
+        }
+
+        .ant-card.competitor-status .ant-card-body p .secondary-message {
+            font-size: 12px;
+            display: inline;
+            padding-left: 6px;
+        }
+
+        .tiles-remaining {
+            padding: 3px 24px 6px;
+        }
+
+        .game-info {
+            font-size: 12px;
+            display: block;
+
+            p {
+                font-size: 12px;
+
+                .secondary-message {
+                    display: none;
+                }
+            }
+
+            .ant-row {
+                display: inline-block;
+
+                &.tournament-name {
+                    display: block;
+                }
+            }
+
+            .variant {
+                font-size: 14px;
+                margin-right: 6px;
+            }
+        }
+    }
+}
+
+@media (min-width: $screen-laptop-min) {
+    .game-container {
+        .ant-card {
+            .ant-card-head {
+
+                .ant-card-head-title,
+                .ant-card-extra {
+                    padding: 12px 3px;
+                    line-height: 1.5em;
+                    font-size: 14px;
+                }
+            }
+        }
+
+        .notepad-card,
+        .analyzer-card {
+            display: block;
+
+            .ant-card-head-wrapper {
+                padding: 0;
+            }
+
+            .ant-card-body {
+                padding: 12px;
+                height: 190px;
+            }
+
+            .notepad {
+                height: 120px;
+            }
+        }
+
+        .notepad-card {
+            .ant-card-body {
+                padding-top: 0;
+            }
+        }
+
+        .analyzer-card {
+            .ant-card-body {
+                padding: 0;
+
+                .analyzer-container {
+                    .suggestions {
+                        font-size: 13px;
+                        max-height: 182px;
+                        overflow-y: auto;
+                    }
+                }
+            }
+        }
+    }
+
+    .play-area {
+        flex: 0 0 0;
+        padding: 12px 12px 0 30px;
+    }
+
+    .board-spaces-container,
+    .board-spaces,
+    .tiles {
+        width: $board-size-laptop;
+        height: $board-size-laptop;
+    }
+
+    .coord-labels {
+        width: $board-size-laptop;
+    }
+
+    .format-dropdown {
+        .ant-dropdown-menu {
+            li.ant-dropdown-menu-item {
+                height: 32px;
+                padding: 0px 16px;
+                width: 120px;
+                line-height: 2.3em;
+
+                &:hover {
+                    @include colorModed() {
+                        background: m($primary-light);
+                        color: m($gray-extreme);
+                    }
+                }
+            }
+        }
+    }
+
+    .tile,
+    .empty-space {
+        height: $tile-size-laptop;
+        width: $tile-size-laptop;
+    }
+
+    .tile.droppable {
+        pointer-events: all;
+        cursor: grab;
+    }
+
+    .tile p.rune {
+        font-size: $tile-font-size-laptop;
+    }
+
+    .tile.blank p.rune {
+        font-size: calc($tile-font-size-laptop * 0.9);
+    }
+
+    .tile .point-value {
+        font-size: $point-size-laptop;
+        padding: 5px 3px;
+    }
+
+    .rack {
+        width: calc(48 + $tile-size-laptop * 8);
+    }
+
+    .rack .tile {
+        height: $tile-size-laptop;
+        width: $tile-size-laptop;
+
+        p.rune {
+            font-size: $tile-font-size-laptop;
+        }
+
+        .point-value {
+            font-size: $point-size-laptop;
+            bottom: 1px;
+        }
+    }
+
+    .game-info {
+        font-size: 12px;
+
+        .variant {
+            font-size: 14px;
+        }
+    }
+
+    .score-card {
+        .ant-card-body {
+            padding: 0;
+
+            &>div {
+                min-height: 110px;
+                max-height: 110px;
+            }
+        }
+    }
+
+    .game-controls {
+        max-width: none;
+    }
 }
 
 @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
-  .data-area .ant-card {
-    margin-bottom: 12px;
-  }
-  .board-spaces-container, .board-spaces, .tiles {
-    width: $board-size-desktop;
-    height: $board-size-desktop;
-  }
-  .coord-labels {
-    width: $board-size-desktop;
-  }
-  .tile,
-  .empty-space {
-    height: $tile-size-desktop;
-    width: $tile-size-desktop;
-  }
-  .rack {
-    width: calc(48 + $tile-size-desktop * 8);
-  }
-  .rack .tile {
-    height: $tile-size-desktop;
-    width: $tile-size-desktop;
-    p.rune {
-      font-size: $tile-font-size-desktop;
-      top: 0px;
+    .data-area .ant-card {
+        margin-bottom: 12px;
     }
-    .point-value {
-      font-size: $point-size-desktop;
-      bottom: 2px;
-    }
-  }
 
-  .tile p.rune {
-    font-size: $tile-font-size-desktop;
-  }
-  .tile.blank p.rune {
-    font-size: calc($tile-font-size-desktop * 0.9);
-  }
-  .tile .point-value {
-    font-size: $point-size-desktop;
-    padding: 7px 3px;
-  }
-  .game-info {
-    font-size: 14px;
-    .variant {
-      font-weight: 600;
-      font-size: 16px;
+    .board-spaces-container,
+    .board-spaces,
+    .tiles {
+        width: $board-size-desktop;
+        height: $board-size-desktop;
     }
-  }
-  .score-card {
-    .turn {
-      font-size: 15px;
+
+    .coord-labels {
+        width: $board-size-desktop;
     }
-    .ant-card-body {
-      & > div {
-        max-height: 152px;
-        min-height: 152px;
-      }
-      .notepad {
-        height: 128px;
-      }
+
+    .tile,
+    .empty-space {
+        height: $tile-size-desktop;
+        width: $tile-size-desktop;
     }
-  }
+
+    .rack {
+        width: calc(48 + $tile-size-desktop * 8);
+    }
+
+    .rack .tile {
+        height: $tile-size-desktop;
+        width: $tile-size-desktop;
+
+        p.rune {
+            font-size: $tile-font-size-desktop;
+            top: 0px;
+        }
+
+        .point-value {
+            font-size: $point-size-desktop;
+            bottom: 2px;
+        }
+    }
+
+    .tile p.rune {
+        font-size: $tile-font-size-desktop;
+    }
+
+    .tile.blank p.rune {
+        font-size: calc($tile-font-size-desktop * 0.9);
+    }
+
+    .tile .point-value {
+        font-size: $point-size-desktop;
+        padding: 7px 3px;
+    }
+
+    .game-info {
+        font-size: 14px;
+
+        .variant {
+            font-weight: 600;
+            font-size: 16px;
+        }
+    }
+
+    .score-card {
+        .turn {
+            font-size: 15px;
+        }
+
+        .ant-card-body {
+            &>div {
+                max-height: 152px;
+                min-height: 152px;
+            }
+
+            .notepad {
+                height: 128px;
+            }
+        }
+    }
 }
 
 @media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-min) {
-  .chat-area .ant-card.left-menu {
-    display: none;
-  }
-  .score-card {
-    .ant-card-body {
-      & > div {
-        max-height: 241px;
-        min-height: 241px;
-      }
-      .notepad {
-        height: 217px;
-      }
+    .chat-area .ant-card.left-menu {
+        display: none;
     }
-  }
+
+    .score-card {
+        .ant-card-body {
+            &>div {
+                max-height: 241px;
+                min-height: 241px;
+            }
+
+            .notepad {
+                height: 217px;
+            }
+        }
+    }
 }
 
 .timed-notification {
-  & > p:nth-of-type(n + 2) {
-    margin-top: 1em;
-  }
+    &>p:nth-of-type(n + 2) {
+        margin-top: 1em;
+    }
 
-  & > .row-of-buttons {
-    margin-top: 24px;
-    text-align: right;
-  }
+    &>.row-of-buttons {
+        margin-top: 24px;
+        text-align: right;
+    }
 }
 
 .cancel-notification {
-  .ant-notification-close-x {
-    display: none;
-  }
+    .ant-notification-close-x {
+        display: none;
+    }
 }
 
 .editor-control {
-  padding: 6px;
-  .ant-select-selector,
-  .ant-select-item,
-  .ant-dropdown-menu,
-  .ant-select-dropdown,
-  .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+    padding: 6px;
 
-    @include colorModed() {
-      background: m($background);
-      color: m($gray-extreme);
+    .ant-select-selector,
+    .ant-select-item,
+    .ant-dropdown-menu,
+    .ant-select-dropdown,
+    .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+
+        @include colorModed() {
+            background: m($background);
+            color: m($gray-extreme);
+        }
+
+        z-index: 0;
     }
-    z-index: 0;
-  }
-  
-  .readable-text-color {
-    @include colorModed() {
-        color: m($gray-extreme);
+
+    .readable-text-color {
+        @include colorModed() {
+            color: m($gray-extreme);
+        }
     }
-  }
 }

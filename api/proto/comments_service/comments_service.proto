@@ -1,0 +1,44 @@
+syntax = "proto3";
+package comments_service;
+option go_package = "github.com/domino14/liwords/rpc/api/proto/comments_service";
+
+import "google/protobuf/timestamp.proto";
+
+message GameComment {
+  string comment_id = 1;
+  string game_id = 2;
+  string user_id = 3;
+  string username = 4;
+  uint32 event_number = 5;
+  string comment = 6;
+  google.protobuf.Timestamp last_edited = 7;
+}
+
+message AddCommentRequest {
+  string game_id = 1;
+  uint32 event_number = 2;
+  string comment = 3;
+}
+
+message AddCommentResponse { string comment_id = 1; }
+
+message GetCommentsRequest { string game_id = 1; }
+
+message GetCommentsResponse { repeated GameComment comments = 1; }
+
+message EditCommentRequest {
+  string comment_id = 1;
+  string comment = 2;
+}
+
+message EditCommentResponse {}
+
+message DeleteCommentRequest { string comment_id = 1; }
+message DeleteCommentResponse {}
+
+service GameCommentService {
+  rpc AddGameComment(AddCommentRequest) returns (AddCommentResponse);
+  rpc GetGameComments(GetCommentsRequest) returns (GetCommentsResponse);
+  rpc EditGameComment(EditCommentRequest) returns (EditCommentResponse);
+  rpc DeleteGameComment(DeleteCommentRequest) returns (DeleteCommentResponse);
+}

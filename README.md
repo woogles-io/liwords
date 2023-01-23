@@ -102,6 +102,12 @@ To do so, run in this directory:
 
 `docker-compose run --rm goutils ./build-protobuf.sh`
 
+### sqlc
+
+We use `sqlc` for generating Go code from our `.sql` files. If you create new `.sql` files in `db/migrations` or `db/queries` you can rerun sqlc as follows:
+
+`docker-compose run --rm goutils sqlc generate`
+
 ### Attributions
 
 #### Sounds
