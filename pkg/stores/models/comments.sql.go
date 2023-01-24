@@ -17,8 +17,7 @@ const addComment = `-- name: AddComment :one
 INSERT INTO game_comments (
     id, game_id, author_id, event_number, comment
 ) SELECT gen_random_uuid(), games.id, $2, $3, $4
-FROM games
-JOIN games on games.uuid = $1
+FROM games WHERE games.uuid = $1
 RETURNING game_comments.id
 `
 
@@ -43,11 +42,16 @@ func (q *Queries) AddComment(ctx context.Context, arg AddCommentParams) (uuid.UU
 
 const deleteComment = `-- name: DeleteComment :exec
 DELETE FROM game_comments
-WHERE id = $1
+WHERE id = $1 and author_id = $2
 `
 
-func (q *Queries) DeleteComment(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteComment, id)
+type DeleteCommentParams struct {
+	ID       uuid.UUID
+	AuthorID int32
+}
+
+func (q *Queries) DeleteComment(ctx context.Context, arg DeleteCommentParams) error {
+	_, err := q.db.Exec(ctx, deleteComment, arg.ID, arg.AuthorID)
 	return err
 }
 
@@ -58,7 +62,7 @@ from game_comments
 join games on game_comments.game_id = games.id
 join users on game_comments.author_id = users.id
 where games.uuid = $1
-ORDER BY created_at ASC
+ORDER BY game_comments.created_at ASC
 `
 
 type GetCommentsForGameRow struct {
@@ -101,15 +105,16 @@ func (q *Queries) GetCommentsForGame(ctx context.Context, uuid sql.NullString) (
 
 const updateComment = `-- name: UpdateComment :exec
 UPDATE game_comments SET comment = $1
-WHERE id = $2
+WHERE id = $2 and author_id = $3
 `
 
 type UpdateCommentParams struct {
-	Comment string
-	ID      uuid.UUID
+	Comment  string
+	ID       uuid.UUID
+	AuthorID int32
 }
 
 func (q *Queries) UpdateComment(ctx context.Context, arg UpdateCommentParams) error {
-	_, err := q.db.Exec(ctx, updateComment, arg.Comment, arg.ID)
+	_, err := q.db.Exec(ctx, updateComment, arg.Comment, arg.ID, arg.AuthorID)
 	return err
 }

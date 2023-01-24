@@ -24,6 +24,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/bus"
+	"github.com/domino14/liwords/pkg/comments"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/memento"
@@ -32,6 +33,7 @@ import (
 	"github.com/domino14/liwords/pkg/omgwords"
 	omgstores "github.com/domino14/liwords/pkg/omgwords/stores"
 	"github.com/domino14/liwords/pkg/puzzles"
+	commentsstore "github.com/domino14/liwords/pkg/stores/comments"
 	cfgstore "github.com/domino14/liwords/pkg/stores/config"
 	"github.com/domino14/liwords/pkg/stores/game"
 	modstore "github.com/domino14/liwords/pkg/stores/mod"
@@ -58,6 +60,7 @@ import (
 	tournamentstore "github.com/domino14/liwords/pkg/stores/tournament"
 	"github.com/domino14/liwords/pkg/stores/user"
 	userservices "github.com/domino14/liwords/pkg/user/services"
+	"github.com/domino14/liwords/rpc/api/proto/comments_service"
 	configservice "github.com/domino14/liwords/rpc/api/proto/config_service"
 	gameservice "github.com/domino14/liwords/rpc/api/proto/game_service"
 	modservice "github.com/domino14/liwords/rpc/api/proto/mod_service"
@@ -253,6 +256,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	commentsStore, err := commentsstore.NewDBStore(dbPool)
+	if err != nil {
+		panic(err)
+	}
 
 	mementoService := memento.NewMementoService(stores.UserStore, stores.GameStore,
 		stores.GameDocumentStore, cfg)
@@ -269,6 +276,7 @@ func main() {
 	modService := mod.NewModService(stores.UserStore, stores.ChatStore)
 	puzzleService := puzzles.NewPuzzleService(stores.PuzzleStore, stores.UserStore, cfg.PuzzleGenerationSecretKey, cfg.ECSClusterName, cfg.PuzzleGenerationTaskDefinition)
 	omgwordsService := omgwords.NewOMGWordsService(stores.UserStore, cfg, stores.GameDocumentStore, stores.AnnotatedGameStore)
+	commentService := comments.NewCommentsService(stores.UserStore, stores.GameStore, commentsStore)
 
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
@@ -309,6 +317,9 @@ func main() {
 
 	router.Handle(puzzleservice.PuzzleServicePathPrefix,
 		middlewares.Then(puzzleservice.NewPuzzleServiceServer(puzzleService, NewLoggingServerHooks())))
+
+	router.Handle(comments_service.GameCommentServicePathPrefix,
+		middlewares.Then(comments_service.NewGameCommentServiceServer(commentService, NewLoggingServerHooks())))
 
 	router.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
 	router.Handle(

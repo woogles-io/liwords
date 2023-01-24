@@ -44,21 +44,25 @@ func (s *DBStore) GetComments(ctx context.Context, gameID string) ([]models.GetC
 	return s.queries.GetCommentsForGame(ctx, sql.NullString{gameID, true})
 }
 
-func (s *DBStore) UpdateComment(ctx context.Context, commentID string, comment string) error {
+func (s *DBStore) UpdateComment(ctx context.Context, authorID int, commentID, comment string) error {
 	uuid, err := uuid.Parse(commentID)
 	if err != nil {
 		return err
 	}
 	return s.queries.UpdateComment(ctx, models.UpdateCommentParams{
-		Comment: comment,
-		ID:      uuid,
+		Comment:  comment,
+		ID:       uuid,
+		AuthorID: int32(authorID),
 	})
 }
 
-func (s *DBStore) DeleteComment(ctx context.Context, commentID string) error {
+func (s *DBStore) DeleteComment(ctx context.Context, commentID string, authorID int) error {
 	uuid, err := uuid.Parse(commentID)
 	if err != nil {
 		return err
 	}
-	return s.queries.DeleteComment(ctx, uuid)
+	return s.queries.DeleteComment(ctx, models.DeleteCommentParams{
+		ID:       uuid,
+		AuthorID: int32(authorID),
+	})
 }

@@ -43,7 +43,7 @@ type turnProps = {
   playerMeta: Array<PlayerInfo>;
   turn: Turn;
   board: Board;
-  comments: 
+//   comments: 
 };
 
 type MoveEntityObj = {
