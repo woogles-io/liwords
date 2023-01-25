@@ -47,6 +47,12 @@ export enum ActionType {
   AddOMGWordsEvent,
   ChangePlayerRack,
 
+  /* game comment actions */
+  ReloadComments,
+  AddComment,
+  DeleteComment,
+  EditComment,
+
   /* login state actions */
   SetAuthentication,
   SetConnectedToSocket,

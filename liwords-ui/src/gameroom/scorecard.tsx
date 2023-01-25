@@ -23,6 +23,7 @@ import { getVW, isTablet } from '../utils/cwgame/common';
 import { Analyzer } from './analyzer';
 import { HeartFilled, CommentOutlined } from '@ant-design/icons';
 import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
+import { GameComment } from '../gen/api/proto/comments_service/comments_service_pb';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const screenSizes = require('../base.scss').default;
 
@@ -37,13 +38,15 @@ type Props = {
   gameEpilog?: React.ReactElement;
   hideExtraInteractions?: boolean;
   showComments?: boolean;
+  comments?: Array<GameComment>;
 };
 
 type turnProps = {
   playerMeta: Array<PlayerInfo>;
   turn: Turn;
   board: Board;
-//   comments: 
+  showComments: boolean;
+  comments: Array<GameComment>;
 };
 
 type MoveEntityObj = {
@@ -101,7 +104,7 @@ const ScorecardTurn = (props: turnProps) => {
   const memoizedTurn: MoveEntityObj = useMemo(() => {
     // Create a base turn, and modify it accordingly. This is memoized as we
     // don't want to do this relatively expensive computation all the time.
-    const evts = props.turn;
+    const evts = props.turn.events;
 
     let oldScore;
     if (evts[0].lostScore) {
@@ -189,7 +192,10 @@ const ScorecardTurn = (props: turnProps) => {
       }
     }
     return turn;
-  }, [props.board, props.playerMeta, props.turn]);
+    // props.board might not need to be a dependency here. Later board moves
+    // shouldn't influence the display of previous turns.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.playerMeta, props.turn]);
 
   let scoreChange;
   if (memoizedTurn.lostScore > 0) {
@@ -223,18 +229,31 @@ const ScorecardTurn = (props: turnProps) => {
           <p className="score-change">{scoreChange}</p>
           <p className="cumulative">{memoizedTurn.cumulative}</p>
         </div>
-        <div>
-          <CommentOutlined onClick={() => console.log('clicked', props.turn)} />
-        </div>
+        {props.showComments && (
+          <div>
+            <CommentOutlined
+              onClick={() => console.log('clicked', props.turn)}
+            />
+          </div>
+        )}
       </div>
-
+      {props.showComments && (
+        <div className="turn-comments">
+          {props.comments.map((c) => {
+            return (
+              <div key={c.commentId}>
+                {c.username}: {c.comment}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </>
   );
 };
 
 export const ScoreCard = React.memo((props: Props) => {
   const { useState } = useMountedState();
-
   const el = useRef<HTMLDivElement>(null);
   const [cardHeight, setCardHeight] = useState(0);
   const [flipHidden, setFlipHidden] = useState(true);
@@ -337,6 +356,41 @@ export const ScoreCard = React.memo((props: Props) => {
       extra = !flipHidden ? 'View Scorecard' : 'View Notepad';
     }
   }
+  let contents = null;
+  if (flipHidden) {
+    const turnDisplay = (t: Turn, idx: number) => {
+      if (t.events.length === 0) {
+        return null;
+      }
+      // for each turn, show only the relevant comments - comments for
+      // event indexes encompassed by those turns.
+      return (
+        <ScorecardTurn
+          turn={t}
+          board={props.board}
+          key={`t_${idx + 0}`}
+          playerMeta={props.playerMeta}
+          showComments={props.showComments ?? false}
+          comments={
+            props.comments
+              ? props.comments.filter(
+                  (c) =>
+                    c.eventNumber >= t.firstEvtIdx &&
+                    c.eventNumber < t.firstEvtIdx + t.events.length
+                )
+              : []
+          }
+        />
+      );
+    };
+    contents = (
+      <>
+        {turns.map(turnDisplay)}
+        {props.gameEpilog}
+      </>
+    );
+  }
+
   return (
     <Card
       className={`score-card${flipHidden ? '' : ' flipped'}`}
@@ -359,21 +413,7 @@ export const ScoreCard = React.memo((props: Props) => {
         ) : (
           <Notepad style={notepadStyle} />
         )}
-        {flipHidden ? (
-          <React.Fragment>
-            {turns.map((t, idx) =>
-              t.length === 0 ? null : (
-                <ScorecardTurn
-                  turn={t}
-                  board={props.board}
-                  key={`t_${idx + 0}`}
-                  playerMeta={props.playerMeta}
-                />
-              )
-            )}
-            {props.gameEpilog}
-          </React.Fragment>
-        ) : null}
+        {contents}
       </div>
     </Card>
   );

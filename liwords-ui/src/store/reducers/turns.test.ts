@@ -24,7 +24,12 @@ it('test turns simple', () => {
   });
 
   const turns = gameEventsToTurns([evt1, evt2]);
-  expect(turns).toStrictEqual([[evt1, evt2]]);
+  expect(turns).toStrictEqual([
+    {
+      events: [evt1, evt2],
+      firstEvtIdx: 0,
+    },
+  ]);
 });
 
 it('test turns simple 2', () => {
@@ -59,7 +64,16 @@ it('test turns simple 2', () => {
 
   const turns = gameEventsToTurns([evt1, evt2, evt3]);
   expect(turns.length).toBe(2);
-  expect(turns).toStrictEqual([[evt1, evt2], [evt3]]);
+  expect(turns).toStrictEqual([
+    {
+      events: [evt1, evt2],
+      firstEvtIdx: 0,
+    },
+    {
+      events: [evt3],
+      firstEvtIdx: 2,
+    },
+  ]);
 });
 
 it('test turns simple 3', () => {
@@ -101,7 +115,13 @@ it('test turns simple 3', () => {
   const turns = gameEventsToTurns([evt1, evt2, evt3, evt4]);
   expect(turns.length).toBe(2);
   expect(turns).toStrictEqual([
-    [evt1, evt2],
-    [evt3, evt4],
+    {
+      events: [evt1, evt2],
+      firstEvtIdx: 0,
+    },
+    {
+      events: [evt3, evt4],
+      firstEvtIdx: 2,
+    },
   ]);
 });

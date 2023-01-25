@@ -3,15 +3,16 @@ package comments
 import (
 	"context"
 
+	"github.com/samber/lo"
+	"github.com/twitchtv/twirp"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/stores/comments"
 	"github.com/domino14/liwords/pkg/stores/models"
 	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/comments_service"
-	"github.com/samber/lo"
-	"github.com/twitchtv/twirp"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type CommentsService struct {

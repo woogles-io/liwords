@@ -36,6 +36,7 @@ import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
 import { EditorControl } from './editor_control';
 import { PlayState } from '../gen/api/proto/ipc/omgwords_pb';
 import { syntheticGameInfo } from './synthetic_game_info';
+import { GameCommentService } from '../gen/api/proto/comments_service/comments_service_connectweb';
 
 const doNothing = () => {};
 
@@ -171,6 +172,27 @@ export const BoardEditor = () => {
     () => alphabetFromName(gameContext.gameDocument.letterDistribution),
     [gameContext.gameDocument.letterDistribution]
   );
+  const commentsClient = useClient(GameCommentService);
+
+  useEffect(() => {
+    if (!gameContext.gameID) {
+      return;
+    }
+
+    (async () => {
+      try {
+        const comments = await commentsClient.getGameComments({
+          gameId: gameContext.gameID,
+        });
+        dispatchGameContext({
+          actionType: ActionType.ReloadComments,
+          payload: comments,
+        });
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  }, [commentsClient, dispatchGameContext, gameContext.gameID]);
 
   const changeCurrentRack = async (rack: string, evtIdx: number) => {
     let onturn = gameContext.onturn;
@@ -436,6 +458,7 @@ export const BoardEditor = () => {
             playerMeta={gameInfo.players}
             poolFormat={poolFormat}
             showComments={true}
+            comments={gameContext.comments}
           />
         </div>
       </div>

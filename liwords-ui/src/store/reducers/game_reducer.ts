@@ -37,6 +37,7 @@ import {
   CrosswordGameGridLayout,
   SuperCrosswordGameGridLayout,
 } from '../../constants/board_layout';
+import { GameComment } from '../../gen/api/proto/comments_service/comments_service_pb';
 
 type TileDistribution = { [rune: string]: number };
 
@@ -87,6 +88,7 @@ export type GameState = {
   gameDocument: GameDocument;
   onClockTick: (p: PlayerOrder, t: Millis) => void;
   onClockTimeout: (p: PlayerOrder) => void;
+  comments: Array<GameComment>;
 };
 
 const makePool = (alphabet: Alphabet): TileDistribution => {
@@ -120,6 +122,7 @@ export const startingGameState = (
     onClockTick: () => {},
     onClockTimeout: () => {},
     gameDocument: new GameDocument(),
+    comments: [],
   };
   return gs;
 };
@@ -194,6 +197,7 @@ const newGameStateFromGameplayEvent = (
     onClockTick: state.onClockTick,
     onClockTimeout: state.onClockTimeout,
     gameDocument: state.gameDocument,
+    comments: state.comments,
     // Potential changes:
     board,
     pool,
@@ -706,6 +710,53 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       if (newState.clockController) {
         newState.clockController.current?.stopClock();
       }
+      return newState;
+    }
+
+    // Should these actions maybe be in their own reducer?
+    case ActionType.ReloadComments: {
+      const comments = action.payload as Array<GameComment>;
+      // assume comments are already sorted chronologically.
+      const newState = {
+        ...state,
+        ...comments,
+      };
+      return newState;
+    }
+
+    case ActionType.AddComment: {
+      const comment = action.payload as GameComment;
+      // Since comments are already sorted chronologically, this
+      // one should always be the newest.
+      const newState = {
+        ...state,
+        comments: [...state.comments, comment],
+      };
+      return newState;
+    }
+
+    case ActionType.DeleteComment: {
+      const deletedID = action.payload as string;
+      const newState = {
+        ...state,
+        comments: state.comments.filter(
+          (comment) => comment.commentId !== deletedID
+        ),
+      };
+      return newState;
+    }
+
+    case ActionType.EditComment: {
+      const editedComment = action.payload as GameComment;
+      const newState = {
+        ...state,
+        comments: state.comments.map((cmt) => {
+          if (cmt.commentId === editedComment.commentId) {
+            return editedComment.clone();
+          }
+          return cmt.clone();
+        }),
+      };
       return newState;
     }
   }

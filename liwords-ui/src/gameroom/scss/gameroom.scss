@@ -1608,6 +1608,11 @@ p.rune {
             color: m($gray-medium);
         }
     }
+
+    .turn-comments {
+        font-size: 14px;
+        padding: 6px 16px;
+    }
 }
 
 .board-editor-controls .game-controls {
