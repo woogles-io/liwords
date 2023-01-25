@@ -241,9 +241,9 @@ const ScorecardTurn = (props: turnProps) => {
         <div className="turn-comments">
           {props.comments.map((c) => {
             return (
-              <div key={c.commentId}>
-                {c.username}: {c.comment}
-              </div>
+              <Card key={c.commentId} size="small" title={c.username}>
+                <p>{c.comment}</p>
+              </Card>
             );
           })}
         </div>

@@ -1612,6 +1612,9 @@ p.rune {
     .turn-comments {
         font-size: 14px;
         padding: 6px 16px;
+        .ant-card-body {
+            padding: 0px 6px;
+        }
     }
 }
 

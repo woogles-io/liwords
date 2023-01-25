@@ -21,6 +21,8 @@ type CommentsService struct {
 	commentsStore *comments.DBStore
 }
 
+const MaxCommentLength = 1023
+
 func NewCommentsService(u user.Store, g gameplay.GameStore, c *comments.DBStore) *CommentsService {
 	return &CommentsService{u, g, c}
 }
@@ -29,6 +31,9 @@ func (cs *CommentsService) AddGameComment(ctx context.Context, req *pb.AddCommen
 	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, cs.userStore)
 	if err != nil {
 		return nil, twirp.NewError(twirp.Unauthenticated, err.Error())
+	}
+	if len(req.Comment) > MaxCommentLength {
+		return nil, twirp.NewError(twirp.InvalidArgument, "your comment is too long")
 	}
 
 	cid, err := cs.commentsStore.AddComment(ctx, req.GameId, int(u.ID), int(req.EventNumber), req.Comment)
@@ -64,6 +69,10 @@ func (cs *CommentsService) EditGameComment(ctx context.Context, req *pb.EditComm
 	if err != nil {
 		return nil, twirp.NewError(twirp.Unauthenticated, err.Error())
 	}
+	if len(req.Comment) > MaxCommentLength {
+		return nil, twirp.NewError(twirp.InvalidArgument, "your new comment is too long")
+	}
+
 	err = cs.commentsStore.UpdateComment(ctx, int(u.ID), req.CommentId, req.Comment)
 	if err != nil {
 		return nil, twirp.NewError(twirp.Unauthenticated, err.Error())
