@@ -42,6 +42,8 @@ func AnnotatedChannelName(gameID string) string {
 	return "anno" + gameID
 }
 
+const GamesLimit = 50
+
 func (gs *OMGWordsService) failIfSessionDoesntOwn(ctx context.Context, gameID string) error {
 	if gameID == "" {
 		return twirp.NewError(twirp.InvalidArgument, "game ID must be provided")
@@ -260,6 +262,20 @@ func (gs *OMGWordsService) PatchGameDocument(ctx context.Context, req *pb.PatchD
 		return nil, err
 	}
 
+	err = gs.metadataStore.UpdateAnnotatedGameQuickdata(
+		ctx, gid, &entity.Quickdata{
+			PlayerInfo: lo.Map(req.Document.Players,
+				func(p *ipc.GameDocument_MinimalPlayerInfo, idx int) *ipc.PlayerInfo {
+					return &ipc.PlayerInfo{
+						UserId:   p.UserId,
+						Nickname: p.Nickname,
+						FullName: p.RealName,
+					}
+				}),
+		})
+	if err != nil {
+		return nil, err
+	}
 	// And send an event.
 	evt := &ipc.GameDocumentEvent{
 		Doc: g.GameDocument,
@@ -280,6 +296,10 @@ func (gs *OMGWordsService) SetBroadcastGamePrivacy(ctx context.Context, req *pb.
 func (gs *OMGWordsService) GetGamesForEditor(ctx context.Context, req *pb.GetGamesForEditorRequest) (
 	*pb.BroadcastGamesResponse, error) {
 
+	if req.Limit > GamesLimit {
+		return nil, twirp.NewError(twirp.InvalidArgument, "too many games")
+	}
+
 	games, err := gs.metadataStore.GamesForEditor(ctx, req.UserId, req.Unfinished, int(req.Limit), int(req.Offset))
 	if err != nil {
 		return nil, err
@@ -297,6 +317,34 @@ func (gs *OMGWordsService) GetGamesForEditor(ctx context.Context, req *pb.GetGam
 			}
 		}),
 	}, nil
+}
+
+func (gs *OMGWordsService) GetRecentAnnotatedGames(ctx context.Context, req *pb.GetRecentAnnotatedGamesRequest) (
+	*pb.BroadcastGamesResponse, error) {
+
+	if req.Limit > GamesLimit {
+		return nil, twirp.NewError(twirp.InvalidArgument, "too many games")
+	}
+
+	games, err := gs.metadataStore.GamesForEditor(ctx, "", req.Unfinished, int(req.Limit), int(req.Offset))
+	if err != nil {
+		return nil, err
+	}
+	return &pb.BroadcastGamesResponse{
+		Games: lo.Map(games, func(bg *stores.BroadcastGame, i int) *pb.BroadcastGamesResponse_BroadcastGame {
+			return &pb.BroadcastGamesResponse_BroadcastGame{
+				GameId:          bg.GameUUID,
+				CreatorId:       bg.CreatorUUID,
+				Private:         bg.Private,
+				Finished:        bg.Finished,
+				PlayersInfo:     bg.Players,
+				Lexicon:         bg.Lexicon,
+				CreatedAt:       timestamppb.New(bg.Created),
+				CreatorUsername: bg.CreatorUsername,
+			}
+		}),
+	}, nil
+
 }
 
 func (gs *OMGWordsService) GetMyUnfinishedGames(ctx context.Context, req *pb.GetMyUnfinishedGamesRequest) (

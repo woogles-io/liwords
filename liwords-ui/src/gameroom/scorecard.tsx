@@ -59,6 +59,8 @@ type turnProps = {
   editComment: (cid: string, comment: string) => void;
   deleteComment: (cid: string) => void;
   addComment: (comment: string) => void;
+  toggleCommentEditorVisible: () => void;
+  commentEditorVisible: boolean;
 };
 
 type MoveEntityObj = {
@@ -206,9 +208,6 @@ const ScorecardTurn = (props: turnProps) => {
     return turn;
   }, [props.board, props.playerMeta, props.turn]);
 
-  const { useState } = useMountedState();
-  const [addNewCommentVisible, setAddNewCommentVisible] = useState(false);
-
   let scoreChange;
   if (memoizedTurn.lostScore > 0) {
     scoreChange = `${memoizedTurn.oldScore} -${memoizedTurn.lostScore}`;
@@ -226,7 +225,7 @@ const ScorecardTurn = (props: turnProps) => {
   };
 
   if (props.showComments) {
-    divProps['onClick'] = () => setAddNewCommentVisible((v) => !v);
+    divProps['onClick'] = () => props.toggleCommentEditorVisible();
   }
 
   return (
@@ -253,7 +252,8 @@ const ScorecardTurn = (props: turnProps) => {
           <p className="cumulative">{memoizedTurn.cumulative}</p>
         </div>
       </div>
-      {props.showComments && (props.comments.length || addNewCommentVisible) ? (
+      {props.showComments &&
+      (props.comments.length || props.commentEditorVisible) ? (
         <Comments
           comments={props.comments}
           loggedInUserID={props.loggedInUserID}
@@ -378,6 +378,8 @@ export const ScoreCard = React.memo((props: Props) => {
     commentsClient,
     props.showComments ?? false
   );
+  const [commentEditorVisibleForTurn, setCommentEditorVisibleForTurn] =
+    useState<number | undefined>(undefined);
 
   if (flipHidden) {
     const turnDisplay = (t: Turn, idx: number) => {
@@ -402,6 +404,10 @@ export const ScoreCard = React.memo((props: Props) => {
                 )
               : []
           }
+          commentEditorVisible={commentEditorVisibleForTurn === idx}
+          toggleCommentEditorVisible={() => {
+            setCommentEditorVisibleForTurn((v) => (v === idx ? -1 : idx));
+          }}
           loggedInUserID={loginState.userID}
           editComment={editComment}
           deleteComment={deleteComment}

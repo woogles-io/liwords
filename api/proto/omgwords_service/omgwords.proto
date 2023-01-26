@@ -39,6 +39,12 @@ message GetGamesForEditorRequest {
   bool unfinished = 4;
 }
 
+message GetRecentAnnotatedGamesRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+  bool unfinished = 3;
+}
+
 // Assume we can never have so many unfinished games that we'd need limits and
 // offsets. Ideally we should only have one unfinished game per authed player at
 // a time.
@@ -53,6 +59,7 @@ message BroadcastGamesResponse {
     repeated ipc.PlayerInfo players_info = 5;
     string lexicon = 6;
     google.protobuf.Timestamp created_at = 7;
+    string creator_username = 8;
   }
   repeated BroadcastGame games = 1;
 }
@@ -131,4 +138,7 @@ service GameEventService {
 
   // GetGameDocument fetches the latest GameDocument for the passed-in ID.
   rpc GetGameDocument(GetGameDocumentRequest) returns (ipc.GameDocument);
+
+  rpc GetRecentAnnotatedGames(GetRecentAnnotatedGamesRequest)
+      returns (BroadcastGamesResponse);
 }

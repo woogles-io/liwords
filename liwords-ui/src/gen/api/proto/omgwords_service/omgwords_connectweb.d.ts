@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AnnotatedGameEvent, BroadcastGamePrivacy, BroadcastGamesResponse, CreateBroadcastGameRequest, CreateBroadcastGameResponse, DeleteBroadcastGameRequest, DeleteBroadcastGameResponse, GameEventResponse, GetGameDocumentRequest, GetGamesForEditorRequest, GetMyUnfinishedGamesRequest, PatchDocumentRequest, ReplaceDocumentRequest, SetRacksEvent } from "./omgwords_pb.js";
+import { AnnotatedGameEvent, BroadcastGamePrivacy, BroadcastGamesResponse, CreateBroadcastGameRequest, CreateBroadcastGameResponse, DeleteBroadcastGameRequest, DeleteBroadcastGameResponse, GameEventResponse, GetGameDocumentRequest, GetGamesForEditorRequest, GetMyUnfinishedGamesRequest, GetRecentAnnotatedGamesRequest, PatchDocumentRequest, ReplaceDocumentRequest, SetRacksEvent } from "./omgwords_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 import { GameDocument } from "../ipc/omgwords_pb.js";
 
@@ -117,6 +117,15 @@ export declare const GameEventService: {
       readonly name: "GetGameDocument",
       readonly I: typeof GetGameDocumentRequest,
       readonly O: typeof GameDocument,
+      readonly kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc omgwords_service.GameEventService.GetRecentAnnotatedGames
+     */
+    readonly getRecentAnnotatedGames: {
+      readonly name: "GetRecentAnnotatedGames",
+      readonly I: typeof GetRecentAnnotatedGamesRequest,
+      readonly O: typeof BroadcastGamesResponse,
       readonly kind: MethodKind.Unary,
     },
   }

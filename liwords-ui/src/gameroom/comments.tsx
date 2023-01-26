@@ -1,7 +1,7 @@
 import { DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { Card, Input, Popconfirm } from 'antd';
 import moment from 'moment';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { GameComment } from '../gen/api/proto/comments_service/comments_service_pb';
 import { useMountedState } from '../utils/mounted';
 
@@ -29,14 +29,20 @@ type EditProps = {
 
 export const CommentEditor = (props: EditProps) => {
   const { useState } = useMountedState();
+  const myRef = useRef<HTMLDivElement | null>(null);
 
+  useEffect(() => {
+    console.log(myRef.current);
+    myRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, []);
   const [inputValue, setInputValue] = useState(props.initialValue);
   return (
-    <>
+    <div>
       <Input.TextArea
         value={inputValue}
         onChange={(evt) => setInputValue(evt.target.value)}
         rows={4}
+        autoFocus
       ></Input.TextArea>
       <span
         className="add-cmt-pseudo-btn"
@@ -49,7 +55,9 @@ export const CommentEditor = (props: EditProps) => {
       >
         {props.buttonCaption}
       </span>
-    </>
+      {/* a lil hack for scrolling into view */}
+      <div style={{ position: 'relative', top: 80 }} ref={myRef} />
+    </div>
   );
 };
 
@@ -64,6 +72,7 @@ export const Comment = (props: SingleCommentProps) => {
   useEffect(() => {
     setCommentDisplay(initialCommentDisplay);
   }, [initialCommentDisplay]);
+
   return (
     <Card
       size="small"
@@ -121,8 +130,18 @@ export const Comment = (props: SingleCommentProps) => {
 export const Comments = (props: Props) => {
   const { useState } = useMountedState();
   const [newEditorVisible, setNewEditorVisible] = useState(false);
-
+  const myRef = useRef<HTMLDivElement | null>(null);
   let footer = <></>;
+
+  useEffect(() => {
+    if (props.comments.length === 0) {
+      // This shouldn't be showing at all if there are no comments,
+      // unless the user clicked and interacted with the scorecard.
+      // In this case, we want to make sure the "add new comment" button
+      // is visible.
+      myRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }, [props.comments]);
 
   if (newEditorVisible) {
     footer = (
@@ -135,12 +154,18 @@ export const Comments = (props: Props) => {
     );
   } else {
     footer = (
-      <span
-        className="add-cmt-pseudo-btn"
-        onClick={() => setNewEditorVisible(true)}
-      >
-        Add a comment
-      </span>
+      <>
+        <span
+          ref={myRef}
+          className="add-cmt-pseudo-btn"
+          onClick={() => {
+            setNewEditorVisible(true);
+          }}
+        >
+          Add a comment
+        </span>
+        <div style={{ position: 'relative', top: 50 }} ref={myRef} />
+      </>
     );
   }
 

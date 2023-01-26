@@ -1,7 +1,7 @@
 // boardwizard is our board editor
 
 import { HomeOutlined } from '@ant-design/icons';
-import { Card, Col, notification, Row } from 'antd';
+import { Card, notification } from 'antd';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ActionType } from '../actions/actions';
@@ -36,6 +36,7 @@ import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
 import { EditorControl } from './editor_control';
 import { PlayState } from '../gen/api/proto/ipc/omgwords_pb';
 import { syntheticGameInfo } from './synthetic_game_info';
+import { EditorLandingPage } from './new_game';
 
 const doNothing = () => {};
 
@@ -285,6 +286,9 @@ export const BoardEditor = () => {
           uid: gameContext.gameID,
         }),
       });
+      notification.success({
+        message: 'Saved game information',
+      });
     } catch (e) {
       flashError(e);
     }
@@ -312,27 +316,7 @@ export const BoardEditor = () => {
   }, [gameContext.gameDocument]);
 
   if (!gameContext.gameID) {
-    return (
-      <div className="game-container">
-        <TopBar />
-        <Row>
-          <Col span={12} offset={6}>
-            <Card
-              title="Editor controls"
-              className="editor-control"
-              style={{ marginTop: 12 }}
-            >
-              <EditorControl
-                createNewGame={createNewGame}
-                gameID={gameContext.gameID}
-                deleteGame={deleteGame}
-                editGame={editGame}
-              />
-            </Card>
-          </Col>
-        </Row>
-      </div>
-    );
+    return <EditorLandingPage createNewGame={createNewGame} />;
   }
 
   let ret = (
@@ -365,7 +349,7 @@ export const BoardEditor = () => {
             style={{ marginTop: 12 }}
           >
             <EditorControl
-              createNewGame={createNewGame}
+              createNewGame={() => {}}
               gameID={gameContext.gameID}
               deleteGame={deleteGame}
               editGame={editGame}
