@@ -1610,12 +1610,39 @@ p.rune {
     }
 
     .turn-comments {
-        font-size: 14px;
-        padding: 6px 16px;
-        .ant-card-body {
-            padding: 0px 6px;
+        font-size: 0.9em;
+        padding: 12px;
+        .ant-card {
+            .ant-card-head {
+                .ant-card-head-title {
+                    padding: 6px 0px 0px 0px;
+                }
+                .timeago {
+                    @include colorModed() {
+                        color: m($gray-subtle);
+                    } 
+                    padding-left: 12px;
+                }
+                .anticon-delete {
+                    padding-left: 12px;
+                }
+            }
+            .ant-card-body {
+                padding: 0px 12px 12px 12px;
+            }
         }
+        .add-cmt-pseudo-btn {
+            cursor: pointer;
+            margin-left: 6px;
+            margin-top: 6px;
+            @include colorModed() {
+                color: m($button);
+                background-color: m($card-background);
+            } 
+        }
+
     }
+
 }
 
 .board-editor-controls .game-controls {

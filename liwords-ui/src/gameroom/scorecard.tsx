@@ -1,4 +1,5 @@
 import React, {
+  MouseEventHandler,
   ReactNode,
   useCallback,
   useEffect,
@@ -21,9 +22,17 @@ import { Notepad } from './notepad';
 import { sortTiles } from '../store/constants';
 import { getVW, isTablet } from '../utils/cwgame/common';
 import { Analyzer } from './analyzer';
-import { HeartFilled, CommentOutlined } from '@ant-design/icons';
+import { HeartFilled } from '@ant-design/icons';
 import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
 import { GameComment } from '../gen/api/proto/comments_service/comments_service_pb';
+import {
+  useGameContextStoreContext,
+  useLoginStateStoreContext,
+} from '../store/store';
+import { Comments } from './comments';
+import { useClient } from '../utils/hooks/connect';
+import { GameCommentService } from '../gen/api/proto/comments_service/comments_service_connectweb';
+import { useComments } from '../utils/hooks/comments';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const screenSizes = require('../base.scss').default;
 
@@ -38,7 +47,6 @@ type Props = {
   gameEpilog?: React.ReactElement;
   hideExtraInteractions?: boolean;
   showComments?: boolean;
-  comments?: Array<GameComment>;
 };
 
 type turnProps = {
@@ -47,6 +55,10 @@ type turnProps = {
   board: Board;
   showComments: boolean;
   comments: Array<GameComment>;
+  loggedInUserID: string;
+  editComment: (cid: string, comment: string) => void;
+  deleteComment: (cid: string) => void;
+  addComment: (comment: string) => void;
 };
 
 type MoveEntityObj = {
@@ -192,10 +204,10 @@ const ScorecardTurn = (props: turnProps) => {
       }
     }
     return turn;
-    // props.board might not need to be a dependency here. Later board moves
-    // shouldn't influence the display of previous turns.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.playerMeta, props.turn]);
+  }, [props.board, props.playerMeta, props.turn]);
+
+  const { useState } = useMountedState();
+  const [addNewCommentVisible, setAddNewCommentVisible] = useState(false);
 
   let scoreChange;
   if (memoizedTurn.lostScore > 0) {
@@ -206,9 +218,20 @@ const ScorecardTurn = (props: turnProps) => {
     scoreChange = `${memoizedTurn.oldScore} +${memoizedTurn.score}`;
   }
 
+  const divProps: {
+    className: string;
+    onClick?: MouseEventHandler<HTMLDivElement>;
+  } = {
+    className: `turn${memoizedTurn.isBingo ? ' bingo' : ''}`,
+  };
+
+  if (props.showComments) {
+    divProps['onClick'] = () => setAddNewCommentVisible((v) => !v);
+  }
+
   return (
     <>
-      <div className={`turn${memoizedTurn.isBingo ? ' bingo' : ''}`}>
+      <div {...divProps}>
         <PlayerAvatar player={memoizedTurn.player} withTooltip />
         <div className="coords-time">
           {memoizedTurn.coords ? (
@@ -229,25 +252,16 @@ const ScorecardTurn = (props: turnProps) => {
           <p className="score-change">{scoreChange}</p>
           <p className="cumulative">{memoizedTurn.cumulative}</p>
         </div>
-        {props.showComments && (
-          <div>
-            <CommentOutlined
-              onClick={() => console.log('clicked', props.turn)}
-            />
-          </div>
-        )}
       </div>
-      {props.showComments && (
-        <div className="turn-comments">
-          {props.comments.map((c) => {
-            return (
-              <Card key={c.commentId} size="small" title={c.username}>
-                <p>{c.comment}</p>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+      {props.showComments && (props.comments.length || addNewCommentVisible) ? (
+        <Comments
+          comments={props.comments}
+          loggedInUserID={props.loggedInUserID}
+          deleteComment={props.deleteComment}
+          editComment={props.editComment}
+          addComment={props.addComment}
+        />
+      ) : null}
     </>
   );
 };
@@ -261,9 +275,9 @@ export const ScoreCard = React.memo((props: Props) => {
   const toggleFlipVisibility = useCallback(() => {
     setFlipHidden((x) => !x);
   }, []);
+  const { loginState } = useLoginStateStoreContext();
   const resizeListener = useCallback(() => {
     const currentEl = el.current;
-
     if (isTablet() && !props.hideExtraInteractions) {
       setEnableFlip(true);
     } else {
@@ -357,6 +371,14 @@ export const ScoreCard = React.memo((props: Props) => {
     }
   }
   let contents = null;
+  const { gameContext } = useGameContextStoreContext();
+
+  const commentsClient = useClient(GameCommentService);
+  const { comments, editComment, addNewComment, deleteComment } = useComments(
+    commentsClient,
+    props.showComments ?? false
+  );
+
   if (flipHidden) {
     const turnDisplay = (t: Turn, idx: number) => {
       if (t.events.length === 0) {
@@ -372,13 +394,23 @@ export const ScoreCard = React.memo((props: Props) => {
           playerMeta={props.playerMeta}
           showComments={props.showComments ?? false}
           comments={
-            props.comments
-              ? props.comments.filter(
+            comments
+              ? comments.filter(
                   (c) =>
                     c.eventNumber >= t.firstEvtIdx &&
                     c.eventNumber < t.firstEvtIdx + t.events.length
                 )
               : []
+          }
+          loggedInUserID={loginState.userID}
+          editComment={editComment}
+          deleteComment={deleteComment}
+          addComment={(comment: string) =>
+            addNewComment(
+              gameContext.gameID,
+              t.firstEvtIdx + t.events.length - 1,
+              comment
+            )
           }
         />
       );

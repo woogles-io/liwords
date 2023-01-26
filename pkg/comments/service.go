@@ -21,7 +21,7 @@ type CommentsService struct {
 	commentsStore *comments.DBStore
 }
 
-const MaxCommentLength = 1023
+const MaxCommentLength = 2048
 
 func NewCommentsService(u user.Store, g gameplay.GameStore, c *comments.DBStore) *CommentsService {
 	return &CommentsService{u, g, c}

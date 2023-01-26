@@ -13,7 +13,7 @@ export const gameEventsToTurns = (evts: Array<GameEvent>) => {
   // Compute the turns based on the game events.
   const turns = new Array<Turn>();
   let lastTurn: Turn = {
-    events: new Array<GameEvent>,
+    events: new Array<GameEvent>(),
     firstEvtIdx: 0,
   };
   evts.forEach((evt, idx) => {
@@ -30,7 +30,7 @@ export const gameEventsToTurns = (evts: Array<GameEvent>) => {
       // time to add a new turn.
       turns.push(lastTurn);
       lastTurn = {
-        events: new Array<GameEvent>,
+        events: new Array<GameEvent>(),
         firstEvtIdx: idx,
       };
     }

@@ -104,7 +104,7 @@ func (q *Queries) GetCommentsForGame(ctx context.Context, uuid sql.NullString) (
 }
 
 const updateComment = `-- name: UpdateComment :exec
-UPDATE game_comments SET comment = $1
+UPDATE game_comments SET comment = $1, edited_at = now()
 WHERE id = $2 and author_id = $3
 `
 

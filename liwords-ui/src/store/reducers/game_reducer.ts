@@ -37,7 +37,6 @@ import {
   CrosswordGameGridLayout,
   SuperCrosswordGameGridLayout,
 } from '../../constants/board_layout';
-import { GameComment } from '../../gen/api/proto/comments_service/comments_service_pb';
 
 type TileDistribution = { [rune: string]: number };
 
@@ -88,7 +87,6 @@ export type GameState = {
   gameDocument: GameDocument;
   onClockTick: (p: PlayerOrder, t: Millis) => void;
   onClockTimeout: (p: PlayerOrder) => void;
-  comments: Array<GameComment>;
 };
 
 const makePool = (alphabet: Alphabet): TileDistribution => {
@@ -122,7 +120,6 @@ export const startingGameState = (
     onClockTick: () => {},
     onClockTimeout: () => {},
     gameDocument: new GameDocument(),
-    comments: [],
   };
   return gs;
 };
@@ -197,7 +194,6 @@ const newGameStateFromGameplayEvent = (
     onClockTick: state.onClockTick,
     onClockTimeout: state.onClockTimeout,
     gameDocument: state.gameDocument,
-    comments: state.comments,
     // Potential changes:
     board,
     pool,
@@ -713,6 +709,7 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       return newState;
     }
 
+    /*
     // Should these actions maybe be in their own reducer?
     case ActionType.ReloadComments: {
       const comments = action.payload as Array<GameComment>;
@@ -759,6 +756,7 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       };
       return newState;
     }
+    */
   }
   // This should never be reached, but the compiler is complaining.
   throw new Error(`Unhandled action type ${action.actionType}`);
