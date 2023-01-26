@@ -776,6 +776,7 @@ export const Table = React.memo((props: Props) => {
             playerMeta={gameInfo.players}
             poolFormat={poolFormat}
             gameEpilog={gameEpilog}
+            showComments={props.annotated ?? false}
           />
         </div>
       </div>

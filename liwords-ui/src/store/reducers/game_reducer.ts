@@ -708,6 +708,55 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       }
       return newState;
     }
+
+    /*
+    // Should these actions maybe be in their own reducer?
+    case ActionType.ReloadComments: {
+      const comments = action.payload as Array<GameComment>;
+      // assume comments are already sorted chronologically.
+      const newState = {
+        ...state,
+        ...comments,
+      };
+      return newState;
+    }
+
+    case ActionType.AddComment: {
+      const comment = action.payload as GameComment;
+      // Since comments are already sorted chronologically, this
+      // one should always be the newest.
+      const newState = {
+        ...state,
+        comments: [...state.comments, comment],
+      };
+      return newState;
+    }
+
+    case ActionType.DeleteComment: {
+      const deletedID = action.payload as string;
+      const newState = {
+        ...state,
+        comments: state.comments.filter(
+          (comment) => comment.commentId !== deletedID
+        ),
+      };
+      return newState;
+    }
+
+    case ActionType.EditComment: {
+      const editedComment = action.payload as GameComment;
+      const newState = {
+        ...state,
+        comments: state.comments.map((cmt) => {
+          if (cmt.commentId === editedComment.commentId) {
+            return editedComment.clone();
+          }
+          return cmt.clone();
+        }),
+      };
+      return newState;
+    }
+    */
   }
   // This should never be reached, but the compiler is complaining.
   throw new Error(`Unhandled action type ${action.actionType}`);

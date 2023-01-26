@@ -435,6 +435,7 @@ export const BoardEditor = () => {
             board={examinableGameContext.board}
             playerMeta={gameInfo.players}
             poolFormat={poolFormat}
+            showComments={true}
           />
         </div>
       </div>

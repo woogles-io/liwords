@@ -98,3 +98,5 @@ export { default as EditOutlined } from '@ant-design/icons/lib/icons/EditOutline
 export { default as CopyOutlined } from '@ant-design/icons/lib/icons/CopyOutlined';
 
 export { default as ReloadOutlined } from '@ant-design/icons/lib/icons/ReloadOutlined';
+
+export { default as CommentOutlined } from '@ant-design/icons/lib/icons/CommentOutlined';

@@ -26,6 +26,10 @@ RUN curl -L https://github.com/golang-migrate/migrate/releases/download/${MIGRAT
 RUN mv /tmp/migrate /opt
 RUN mv /tmp/buf /opt
 
+# Install sqlc
+
+RUN go install github.com/kyleconroy/sqlc/cmd/sqlc@latest
+
 FROM node:latest
 
 RUN useradd unprivileged
@@ -38,6 +42,7 @@ COPY --from=base /go/bin/protoc-gen-go /opt
 COPY --from=base /go/bin/protoc-gen-twirp /opt
 COPY --from=base /opt/buf /opt
 COPY --from=base /opt/migrate /opt
+COPY --from=base /go/bin/sqlc /opt
 
 ENV PATH /opt:$PATH
 

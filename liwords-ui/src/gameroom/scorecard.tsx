@@ -1,4 +1,5 @@
 import React, {
+  MouseEventHandler,
   ReactNode,
   useCallback,
   useEffect,
@@ -23,6 +24,15 @@ import { getVW, isTablet } from '../utils/cwgame/common';
 import { Analyzer } from './analyzer';
 import { HeartFilled } from '@ant-design/icons';
 import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
+import { GameComment } from '../gen/api/proto/comments_service/comments_service_pb';
+import {
+  useGameContextStoreContext,
+  useLoginStateStoreContext,
+} from '../store/store';
+import { Comments } from './comments';
+import { useClient } from '../utils/hooks/connect';
+import { GameCommentService } from '../gen/api/proto/comments_service/comments_service_connectweb';
+import { useComments } from '../utils/hooks/comments';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const screenSizes = require('../base.scss').default;
 
@@ -36,12 +46,19 @@ type Props = {
   playerMeta: Array<PlayerInfo>;
   gameEpilog?: React.ReactElement;
   hideExtraInteractions?: boolean;
+  showComments?: boolean;
 };
 
 type turnProps = {
   playerMeta: Array<PlayerInfo>;
   turn: Turn;
   board: Board;
+  showComments: boolean;
+  comments: Array<GameComment>;
+  loggedInUserID: string;
+  editComment: (cid: string, comment: string) => void;
+  deleteComment: (cid: string) => void;
+  addComment: (comment: string) => void;
 };
 
 type MoveEntityObj = {
@@ -99,7 +116,7 @@ const ScorecardTurn = (props: turnProps) => {
   const memoizedTurn: MoveEntityObj = useMemo(() => {
     // Create a base turn, and modify it accordingly. This is memoized as we
     // don't want to do this relatively expensive computation all the time.
-    const evts = props.turn;
+    const evts = props.turn.events;
 
     let oldScore;
     if (evts[0].lostScore) {
@@ -189,6 +206,9 @@ const ScorecardTurn = (props: turnProps) => {
     return turn;
   }, [props.board, props.playerMeta, props.turn]);
 
+  const { useState } = useMountedState();
+  const [addNewCommentVisible, setAddNewCommentVisible] = useState(false);
+
   let scoreChange;
   if (memoizedTurn.lostScore > 0) {
     scoreChange = `${memoizedTurn.oldScore} -${memoizedTurn.lostScore}`;
@@ -198,9 +218,20 @@ const ScorecardTurn = (props: turnProps) => {
     scoreChange = `${memoizedTurn.oldScore} +${memoizedTurn.score}`;
   }
 
+  const divProps: {
+    className: string;
+    onClick?: MouseEventHandler<HTMLDivElement>;
+  } = {
+    className: `turn${memoizedTurn.isBingo ? ' bingo' : ''}`,
+  };
+
+  if (props.showComments) {
+    divProps['onClick'] = () => setAddNewCommentVisible((v) => !v);
+  }
+
   return (
     <>
-      <div className={`turn${memoizedTurn.isBingo ? ' bingo' : ''}`}>
+      <div {...divProps}>
         <PlayerAvatar player={memoizedTurn.player} withTooltip />
         <div className="coords-time">
           {memoizedTurn.coords ? (
@@ -222,16 +253,21 @@ const ScorecardTurn = (props: turnProps) => {
           <p className="cumulative">{memoizedTurn.cumulative}</p>
         </div>
       </div>
-      {/* <div>
-        <MessageOutlined onClick={() => console.log('clicked', props.turn)} />
-      </div> */}
+      {props.showComments && (props.comments.length || addNewCommentVisible) ? (
+        <Comments
+          comments={props.comments}
+          loggedInUserID={props.loggedInUserID}
+          deleteComment={props.deleteComment}
+          editComment={props.editComment}
+          addComment={props.addComment}
+        />
+      ) : null}
     </>
   );
 };
 
 export const ScoreCard = React.memo((props: Props) => {
   const { useState } = useMountedState();
-
   const el = useRef<HTMLDivElement>(null);
   const [cardHeight, setCardHeight] = useState(0);
   const [flipHidden, setFlipHidden] = useState(true);
@@ -239,9 +275,9 @@ export const ScoreCard = React.memo((props: Props) => {
   const toggleFlipVisibility = useCallback(() => {
     setFlipHidden((x) => !x);
   }, []);
+  const { loginState } = useLoginStateStoreContext();
   const resizeListener = useCallback(() => {
     const currentEl = el.current;
-
     if (isTablet() && !props.hideExtraInteractions) {
       setEnableFlip(true);
     } else {
@@ -334,6 +370,59 @@ export const ScoreCard = React.memo((props: Props) => {
       extra = !flipHidden ? 'View Scorecard' : 'View Notepad';
     }
   }
+  let contents = null;
+  const { gameContext } = useGameContextStoreContext();
+
+  const commentsClient = useClient(GameCommentService);
+  const { comments, editComment, addNewComment, deleteComment } = useComments(
+    commentsClient,
+    props.showComments ?? false
+  );
+
+  if (flipHidden) {
+    const turnDisplay = (t: Turn, idx: number) => {
+      if (t.events.length === 0) {
+        return null;
+      }
+      // for each turn, show only the relevant comments - comments for
+      // event indexes encompassed by those turns.
+      return (
+        <ScorecardTurn
+          turn={t}
+          board={props.board}
+          key={`t_${idx + 0}`}
+          playerMeta={props.playerMeta}
+          showComments={props.showComments ?? false}
+          comments={
+            comments
+              ? comments.filter(
+                  (c) =>
+                    c.eventNumber >= t.firstEvtIdx &&
+                    c.eventNumber < t.firstEvtIdx + t.events.length
+                )
+              : []
+          }
+          loggedInUserID={loginState.userID}
+          editComment={editComment}
+          deleteComment={deleteComment}
+          addComment={(comment: string) =>
+            addNewComment(
+              gameContext.gameID,
+              t.firstEvtIdx + t.events.length - 1,
+              comment
+            )
+          }
+        />
+      );
+    };
+    contents = (
+      <>
+        {turns.map(turnDisplay)}
+        {props.gameEpilog}
+      </>
+    );
+  }
+
   return (
     <Card
       className={`score-card${flipHidden ? '' : ' flipped'}`}
@@ -356,21 +445,7 @@ export const ScoreCard = React.memo((props: Props) => {
         ) : (
           <Notepad style={notepadStyle} />
         )}
-        {flipHidden ? (
-          <React.Fragment>
-            {turns.map((t, idx) =>
-              t.length === 0 ? null : (
-                <ScorecardTurn
-                  turn={t}
-                  board={props.board}
-                  key={`t_${idx + 0}`}
-                  playerMeta={props.playerMeta}
-                />
-              )
-            )}
-            {props.gameEpilog}
-          </React.Fragment>
-        ) : null}
+        {contents}
       </div>
     </Card>
   );

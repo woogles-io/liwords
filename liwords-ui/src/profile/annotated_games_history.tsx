@@ -19,7 +19,7 @@ export const AnnotatedGamesHistoryCard = React.memo((props: Props) => {
         return v.fullName;
       })
       .join(' vs ');
-    const url = `/anno/${encodeURIComponent(item.gameId)}`;
+    const url = `/anno/${encodeURIComponent(item.gameId)}?turn=1`;
     const whenMoment = moment(item.createdAt ? item.createdAt.toDate() : '');
     const when = (
       <Tooltip title={whenMoment.format('LLL')}>{whenMoment.fromNow()}</Tooltip>
