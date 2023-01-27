@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddCommentRequest, AddCommentResponse, DeleteCommentRequest, DeleteCommentResponse, EditCommentRequest, EditCommentResponse, GetCommentsRequest, GetCommentsResponse } from "./comments_service_pb.js";
+import { AddCommentRequest, AddCommentResponse, DeleteCommentRequest, DeleteCommentResponse, EditCommentRequest, EditCommentResponse, GetCommentsAllGamesRequest, GetCommentsRequest, GetCommentsResponse } from "./comments_service_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -46,6 +46,15 @@ export const GameCommentService = {
       name: "DeleteGameComment",
       I: DeleteCommentRequest,
       O: DeleteCommentResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc comments_service.GameCommentService.GetCommentsForAllGames
+     */
+    getCommentsForAllGames: {
+      name: "GetCommentsForAllGames",
+      I: GetCommentsAllGamesRequest,
+      O: GetCommentsResponse,
       kind: MethodKind.Unary,
     },
   }

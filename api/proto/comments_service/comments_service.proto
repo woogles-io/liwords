@@ -12,6 +12,8 @@ message GameComment {
   uint32 event_number = 5;
   string comment = 6;
   google.protobuf.Timestamp last_edited = 7;
+  // game_meta is for optional display of game metadata.
+  map<string, string> game_meta = 8;
 }
 
 message AddCommentRequest {
@@ -36,9 +38,16 @@ message EditCommentResponse {}
 message DeleteCommentRequest { string comment_id = 1; }
 message DeleteCommentResponse {}
 
+message GetCommentsAllGamesRequest {
+  uint32 limit = 1;
+  uint32 offset = 2;
+}
+
 service GameCommentService {
   rpc AddGameComment(AddCommentRequest) returns (AddCommentResponse);
   rpc GetGameComments(GetCommentsRequest) returns (GetCommentsResponse);
   rpc EditGameComment(EditCommentRequest) returns (EditCommentResponse);
   rpc DeleteGameComment(DeleteCommentRequest) returns (DeleteCommentResponse);
+  rpc GetCommentsForAllGames(GetCommentsAllGamesRequest)
+      returns (GetCommentsResponse);
 }

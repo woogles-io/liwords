@@ -16,6 +16,7 @@ import {
   nicknameFromEvt,
   tilePlacementEventDisplay,
 } from '../utils/cwgame/game_event';
+import { canMod } from '../mod/perms';
 import { Turn, gameEventsToTurns } from '../store/reducers/turns';
 import { PoolFormatType } from '../constants/pool_formats';
 import { Notepad } from './notepad';
@@ -55,7 +56,6 @@ type turnProps = {
   board: Board;
   showComments: boolean;
   comments: Array<GameComment>;
-  loggedInUserID: string;
   editComment: (cid: string, comment: string) => void;
   deleteComment: (cid: string) => void;
   addComment: (comment: string) => void;
@@ -256,7 +256,6 @@ const ScorecardTurn = (props: turnProps) => {
       (props.comments.length || props.commentEditorVisible) ? (
         <Comments
           comments={props.comments}
-          loggedInUserID={props.loggedInUserID}
           deleteComment={props.deleteComment}
           editComment={props.editComment}
           addComment={props.addComment}
@@ -275,7 +274,6 @@ export const ScoreCard = React.memo((props: Props) => {
   const toggleFlipVisibility = useCallback(() => {
     setFlipHidden((x) => !x);
   }, []);
-  const { loginState } = useLoginStateStoreContext();
   const resizeListener = useCallback(() => {
     const currentEl = el.current;
     if (isTablet() && !props.hideExtraInteractions) {
@@ -408,7 +406,6 @@ export const ScoreCard = React.memo((props: Props) => {
           toggleCommentEditorVisible={() => {
             setCommentEditorVisibleForTurn((v) => (v === idx ? -1 : idx));
           }}
-          loggedInUserID={loginState.userID}
           editComment={editComment}
           deleteComment={deleteComment}
           addComment={(comment: string) =>

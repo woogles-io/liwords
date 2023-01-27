@@ -3,11 +3,12 @@ import { Card, Input, Popconfirm } from 'antd';
 import moment from 'moment';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { GameComment } from '../gen/api/proto/comments_service/comments_service_pb';
+import { canMod } from '../mod/perms';
+import { useLoginStateStoreContext } from '../store/store';
 import { useMountedState } from '../utils/mounted';
 
 type Props = {
   comments: Array<GameComment>;
-  loggedInUserID: string;
   deleteComment: (commentID: string) => void;
   editComment: (commentID: string, comment: string) => void;
   addComment: (comment: string) => void;
@@ -16,6 +17,7 @@ type Props = {
 type SingleCommentProps = {
   comment: GameComment;
   mine: boolean;
+  canMod: boolean;
   deleteComment: (commentID: string) => void;
   editComment: (commentID: string, comment: string) => void;
 };
@@ -87,24 +89,26 @@ export const Comment = (props: SingleCommentProps) => {
         </>
       }
       extra={
-        props.mine ? (
+        props.mine || props.canMod ? (
           <>
-            <EditOutlined
-              onClick={() => {
-                setCommentDisplay(
-                  <CommentEditor
-                    initialValue={props.comment.comment}
-                    buttonCaption="Submit"
-                    setNotEditing={() =>
-                      setCommentDisplay(initialCommentDisplay)
-                    }
-                    updateComment={(cmt: string) =>
-                      props.editComment(props.comment.commentId, cmt)
-                    }
-                  />
-                );
-              }}
-            />
+            {props.mine && (
+              <EditOutlined
+                onClick={() => {
+                  setCommentDisplay(
+                    <CommentEditor
+                      initialValue={props.comment.comment}
+                      buttonCaption="Submit"
+                      setNotEditing={() =>
+                        setCommentDisplay(initialCommentDisplay)
+                      }
+                      updateComment={(cmt: string) =>
+                        props.editComment(props.comment.commentId, cmt)
+                      }
+                    />
+                  );
+                }}
+              />
+            )}
             <Popconfirm
               title="Are you sure you wish to delete this comment?"
               onCancel={() => setPopupOpen(false)}
@@ -132,6 +136,7 @@ export const Comments = (props: Props) => {
   const [newEditorVisible, setNewEditorVisible] = useState(false);
   const myRef = useRef<HTMLDivElement | null>(null);
   let footer = <></>;
+  const { loginState } = useLoginStateStoreContext();
 
   useEffect(() => {
     if (props.comments.length === 0) {
@@ -176,9 +181,10 @@ export const Comments = (props: Props) => {
           <Comment
             key={c.commentId}
             comment={c}
-            mine={c.userId === props.loggedInUserID}
+            mine={c.userId === loginState.userID}
             deleteComment={props.deleteComment}
             editComment={props.editComment}
+            canMod={canMod(loginState.perms)}
           />
         );
       })}

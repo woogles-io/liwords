@@ -191,12 +191,12 @@ export declare class GetGamesForEditorRequest extends Message<GetGamesForEditorR
   userId: string;
 
   /**
-   * @generated from field: int32 limit = 2;
+   * @generated from field: uint32 limit = 2;
    */
   limit: number;
 
   /**
-   * @generated from field: int32 offset = 3;
+   * @generated from field: uint32 offset = 3;
    */
   offset: number;
 
@@ -225,12 +225,12 @@ export declare class GetGamesForEditorRequest extends Message<GetGamesForEditorR
  */
 export declare class GetRecentAnnotatedGamesRequest extends Message<GetRecentAnnotatedGamesRequest> {
   /**
-   * @generated from field: int32 limit = 1;
+   * @generated from field: uint32 limit = 1;
    */
   limit: number;
 
   /**
-   * @generated from field: int32 offset = 2;
+   * @generated from field: uint32 offset = 2;
    */
   offset: number;
 

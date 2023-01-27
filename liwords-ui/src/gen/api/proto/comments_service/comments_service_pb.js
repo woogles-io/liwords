@@ -18,6 +18,7 @@ export const GameComment = proto3.makeMessageType(
     { no: 5, name: "event_number", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
     { no: 6, name: "comment", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 7, name: "last_edited", kind: "message", T: Timestamp },
+    { no: 8, name: "game_meta", kind: "map", K: 9 /* ScalarType.STRING */, V: {kind: "scalar", T: 9 /* ScalarType.STRING */} },
   ],
 );
 
@@ -98,5 +99,16 @@ export const DeleteCommentRequest = proto3.makeMessageType(
 export const DeleteCommentResponse = proto3.makeMessageType(
   "comments_service.DeleteCommentResponse",
   [],
+);
+
+/**
+ * @generated from message comments_service.GetCommentsAllGamesRequest
+ */
+export const GetCommentsAllGamesRequest = proto3.makeMessageType(
+  "comments_service.GetCommentsAllGamesRequest",
+  () => [
+    { no: 1, name: "limit", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
+    { no: 2, name: "offset", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
+  ],
 );
 

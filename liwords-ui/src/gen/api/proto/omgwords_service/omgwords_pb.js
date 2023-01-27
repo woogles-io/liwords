@@ -78,8 +78,8 @@ export const GetGamesForEditorRequest = proto3.makeMessageType(
   "omgwords_service.GetGamesForEditorRequest",
   () => [
     { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 3, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "limit", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
+    { no: 3, name: "offset", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
     { no: 4, name: "unfinished", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ],
 );
@@ -90,8 +90,8 @@ export const GetGamesForEditorRequest = proto3.makeMessageType(
 export const GetRecentAnnotatedGamesRequest = proto3.makeMessageType(
   "omgwords_service.GetRecentAnnotatedGamesRequest",
   () => [
-    { no: 1, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 2, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 1, name: "limit", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
+    { no: 2, name: "offset", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
     { no: 3, name: "unfinished", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ],
 );
