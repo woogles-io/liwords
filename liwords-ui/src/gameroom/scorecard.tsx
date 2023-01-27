@@ -16,7 +16,6 @@ import {
   nicknameFromEvt,
   tilePlacementEventDisplay,
 } from '../utils/cwgame/game_event';
-import { canMod } from '../mod/perms';
 import { Turn, gameEventsToTurns } from '../store/reducers/turns';
 import { PoolFormatType } from '../constants/pool_formats';
 import { Notepad } from './notepad';
@@ -26,10 +25,7 @@ import { Analyzer } from './analyzer';
 import { HeartFilled } from '@ant-design/icons';
 import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
 import { GameComment } from '../gen/api/proto/comments_service/comments_service_pb';
-import {
-  useGameContextStoreContext,
-  useLoginStateStoreContext,
-} from '../store/store';
+import { useGameContextStoreContext } from '../store/store';
 import { Comments } from './comments';
 import { useClient } from '../utils/hooks/connect';
 import { GameCommentService } from '../gen/api/proto/comments_service/comments_service_connectweb';
