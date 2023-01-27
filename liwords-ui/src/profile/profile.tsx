@@ -642,6 +642,7 @@ export const PlayerProfile = React.memo(() => {
               fetchPrev={fetchPrevAnnotatedGames}
               fetchNext={fetchNextAnnotatedGames}
               loggedInUserID={loginState.userID}
+              showAnnotator={false}
             />
           )}
         </div>

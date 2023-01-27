@@ -25,10 +25,7 @@ import { Analyzer } from './analyzer';
 import { HeartFilled } from '@ant-design/icons';
 import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
 import { GameComment } from '../gen/api/proto/comments_service/comments_service_pb';
-import {
-  useGameContextStoreContext,
-  useLoginStateStoreContext,
-} from '../store/store';
+import { useGameContextStoreContext } from '../store/store';
 import { Comments } from './comments';
 import { useClient } from '../utils/hooks/connect';
 import { GameCommentService } from '../gen/api/proto/comments_service/comments_service_connectweb';
@@ -55,10 +52,11 @@ type turnProps = {
   board: Board;
   showComments: boolean;
   comments: Array<GameComment>;
-  loggedInUserID: string;
   editComment: (cid: string, comment: string) => void;
   deleteComment: (cid: string) => void;
   addComment: (comment: string) => void;
+  toggleCommentEditorVisible: () => void;
+  commentEditorVisible: boolean;
 };
 
 type MoveEntityObj = {
@@ -206,9 +204,6 @@ const ScorecardTurn = (props: turnProps) => {
     return turn;
   }, [props.board, props.playerMeta, props.turn]);
 
-  const { useState } = useMountedState();
-  const [addNewCommentVisible, setAddNewCommentVisible] = useState(false);
-
   let scoreChange;
   if (memoizedTurn.lostScore > 0) {
     scoreChange = `${memoizedTurn.oldScore} -${memoizedTurn.lostScore}`;
@@ -226,7 +221,7 @@ const ScorecardTurn = (props: turnProps) => {
   };
 
   if (props.showComments) {
-    divProps['onClick'] = () => setAddNewCommentVisible((v) => !v);
+    divProps['onClick'] = () => props.toggleCommentEditorVisible();
   }
 
   return (
@@ -253,10 +248,10 @@ const ScorecardTurn = (props: turnProps) => {
           <p className="cumulative">{memoizedTurn.cumulative}</p>
         </div>
       </div>
-      {props.showComments && (props.comments.length || addNewCommentVisible) ? (
+      {props.showComments &&
+      (props.comments.length || props.commentEditorVisible) ? (
         <Comments
           comments={props.comments}
-          loggedInUserID={props.loggedInUserID}
           deleteComment={props.deleteComment}
           editComment={props.editComment}
           addComment={props.addComment}
@@ -275,7 +270,6 @@ export const ScoreCard = React.memo((props: Props) => {
   const toggleFlipVisibility = useCallback(() => {
     setFlipHidden((x) => !x);
   }, []);
-  const { loginState } = useLoginStateStoreContext();
   const resizeListener = useCallback(() => {
     const currentEl = el.current;
     if (isTablet() && !props.hideExtraInteractions) {
@@ -378,6 +372,8 @@ export const ScoreCard = React.memo((props: Props) => {
     commentsClient,
     props.showComments ?? false
   );
+  const [commentEditorVisibleForTurn, setCommentEditorVisibleForTurn] =
+    useState<number | undefined>(undefined);
 
   if (flipHidden) {
     const turnDisplay = (t: Turn, idx: number) => {
@@ -402,7 +398,10 @@ export const ScoreCard = React.memo((props: Props) => {
                 )
               : []
           }
-          loggedInUserID={loginState.userID}
+          commentEditorVisible={commentEditorVisibleForTurn === idx}
+          toggleCommentEditorVisible={() => {
+            setCommentEditorVisibleForTurn((v) => (v === idx ? -1 : idx));
+          }}
           editComment={editComment}
           deleteComment={deleteComment}
           addComment={(comment: string) =>

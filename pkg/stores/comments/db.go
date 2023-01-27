@@ -44,6 +44,13 @@ func (s *DBStore) GetComments(ctx context.Context, gameID string) ([]models.GetC
 	return s.queries.GetCommentsForGame(ctx, sql.NullString{gameID, true})
 }
 
+func (s *DBStore) GetCommentsForAllGames(ctx context.Context, limit, offset int) ([]models.GetCommentsForAllGamesRow, error) {
+	return s.queries.GetCommentsForAllGames(ctx, models.GetCommentsForAllGamesParams{
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+}
+
 func (s *DBStore) UpdateComment(ctx context.Context, authorID int, commentID, comment string) error {
 	uuid, err := uuid.Parse(commentID)
 	if err != nil {
@@ -60,6 +67,9 @@ func (s *DBStore) DeleteComment(ctx context.Context, commentID string, authorID 
 	uuid, err := uuid.Parse(commentID)
 	if err != nil {
 		return err
+	}
+	if authorID == -1 {
+		return s.queries.DeleteCommentNoAuthorSpecified(ctx, uuid)
 	}
 	return s.queries.DeleteComment(ctx, models.DeleteCommentParams{
 		ID:       uuid,

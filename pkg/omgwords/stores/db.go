@@ -18,13 +18,14 @@ type DBStore struct {
 }
 
 type BroadcastGame struct {
-	GameUUID    string
-	CreatorUUID string
-	Private     bool
-	Finished    bool
-	Players     []*ipc.PlayerInfo
-	Lexicon     string
-	Created     time.Time
+	GameUUID        string
+	CreatorUUID     string
+	CreatorUsername string
+	Private         bool
+	Finished        bool
+	Players         []*ipc.PlayerInfo
+	Lexicon         string
+	Created         time.Time
 }
 
 func NewDBStore(p *pgxpool.Pool) (*DBStore, error) {
@@ -71,6 +72,16 @@ func (s *DBStore) CreateAnnotatedGame(ctx context.Context, creatorUUID string, g
 		return err
 	}
 
+	return nil
+}
+
+func (s *DBStore) UpdateAnnotatedGameQuickdata(ctx context.Context, uuid string, quickdata *entity.Quickdata) error {
+	_, err := s.dbPool.Exec(ctx, `
+		UPDATE games SET quickdata = $1, updated_at = NOW() 
+		WHERE uuid = $2`, quickdata, uuid)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -176,46 +187,72 @@ func (s *DBStore) GameOwnedBy(ctx context.Context, gid, uid string) (bool, error
 }
 
 func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinished bool, limit, offset int) ([]*BroadcastGame, error) {
-	query := `
-		SELECT game_uuid, private_broadcast, quickdata, request, created_at FROM annotated_game_metadata 
+
+	var rows pgx.Rows
+	var err error
+	var query string
+	if editorID == "" {
+		query = `
+		SELECT game_uuid, creator_uuid, username, 
+			private_broadcast, quickdata, request, games.created_at 
+		FROM annotated_game_metadata 
+		JOIN games ON games.uuid = annotated_game_metadata.game_uuid
+		JOIN users ON users.uuid = annotated_game_metadata.creator_uuid
+		WHERE done = $1
+		ORDER BY games.created_at DESC
+		LIMIT $2 OFFSET $3
+		`
+		if rows, err = s.dbPool.Query(ctx, query, !unfinished, limit, offset); err != nil {
+			if err == pgx.ErrNoRows {
+				log.Debug().Msg("no games!")
+				return nil, nil
+			}
+			return nil, err
+		}
+	} else {
+		query = `
+		SELECT game_uuid, creator_uuid, 'dummyusername', private_broadcast, quickdata, request, created_at FROM annotated_game_metadata 
 		JOIN games ON games.uuid = annotated_game_metadata.game_uuid
 		WHERE creator_uuid = $1 AND done = $2
 		ORDER BY created_at DESC
 		LIMIT $3 OFFSET $4
 	`
-	var rows pgx.Rows
-	var err error
-	if rows, err = s.dbPool.Query(ctx, query, editorID, !unfinished, limit, offset); err != nil {
-		if err == pgx.ErrNoRows {
-			log.Debug().Str("creatorUUID", editorID).Msg("no games for this editor")
-			return nil, nil
+		if rows, err = s.dbPool.Query(ctx, query, editorID, !unfinished, limit, offset); err != nil {
+			if err == pgx.ErrNoRows {
+				log.Debug().Str("creatorUUID", editorID).Msg("no games for this editor")
+				return nil, nil
+			}
+			return nil, err
 		}
-		return nil, err
 	}
+
 	defer rows.Close()
 
 	games := []*BroadcastGame{}
 	for rows.Next() {
 		var uuid string
+		var creatorUUID string
+		var creatorUsername string
 		var private bool
 		var quickdata *entity.Quickdata
 		var request *entity.GameRequest
 		var created time.Time
 
-		if err := rows.Scan(&uuid, &private, &quickdata, &request, &created); err != nil {
+		if err := rows.Scan(&uuid, &creatorUUID, &creatorUsername, &private, &quickdata, &request, &created); err != nil {
 			return nil, err
 		}
 		if quickdata == nil || request == nil {
 			continue // although this shouldn't happen
 		}
 		games = append(games, &BroadcastGame{
-			GameUUID:    uuid,
-			CreatorUUID: editorID,
-			Private:     private,
-			Finished:    true,
-			Players:     quickdata.PlayerInfo,
-			Lexicon:     request.Lexicon,
-			Created:     created,
+			GameUUID:        uuid,
+			CreatorUUID:     creatorUUID,
+			CreatorUsername: creatorUsername,
+			Private:         private,
+			Finished:        !unfinished,
+			Players:         quickdata.PlayerInfo,
+			Lexicon:         request.Lexicon,
+			Created:         created,
 		})
 	}
 	return games, nil

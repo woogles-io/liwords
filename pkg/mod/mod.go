@@ -460,14 +460,9 @@ func instantiateActionsHistory(u *entity.User) {
 }
 
 func sessionUserId(ctx context.Context, us user.Store) (string, error) {
-	sess, err := apiserver.GetSession(ctx)
+	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, us)
 	if err != nil {
 		return "", err
 	}
-
-	user, err := us.Get(ctx, sess.Username)
-	if err != nil {
-		return "", err
-	}
-	return user.UUID, nil
+	return u.UUID, nil
 }

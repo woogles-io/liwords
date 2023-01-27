@@ -10,6 +10,7 @@ type Props = {
   fetchPrev?: () => void;
   fetchNext?: () => void;
   loggedInUserID: string;
+  showAnnotator: boolean;
 };
 
 export const AnnotatedGamesHistoryCard = React.memo((props: Props) => {
@@ -36,6 +37,11 @@ export const AnnotatedGamesHistoryCard = React.memo((props: Props) => {
       when,
       link: <Link to={url}>{players}</Link>,
       edit,
+      creator: (
+        <Link to={`/profile/${item.creatorUsername}`}>
+          {item.creatorUsername}
+        </Link>
+      ),
     };
   });
   const columns = [
@@ -59,6 +65,13 @@ export const AnnotatedGamesHistoryCard = React.memo((props: Props) => {
       dataIndex: 'edit',
     },
   ];
+  if (props.showAnnotator) {
+    columns.splice(2, 0, {
+      title: 'Annotator',
+      key: 'annotator',
+      dataIndex: 'creator',
+    });
+  }
 
   return (
     <Card title="Annotated game history" className="game-history-card">

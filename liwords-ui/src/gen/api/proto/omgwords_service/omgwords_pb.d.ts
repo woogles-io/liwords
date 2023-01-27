@@ -191,12 +191,12 @@ export declare class GetGamesForEditorRequest extends Message<GetGamesForEditorR
   userId: string;
 
   /**
-   * @generated from field: int32 limit = 2;
+   * @generated from field: uint32 limit = 2;
    */
   limit: number;
 
   /**
-   * @generated from field: int32 offset = 3;
+   * @generated from field: uint32 offset = 3;
    */
   offset: number;
 
@@ -218,6 +218,40 @@ export declare class GetGamesForEditorRequest extends Message<GetGamesForEditorR
   static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetGamesForEditorRequest;
 
   static equals(a: GetGamesForEditorRequest | PlainMessage<GetGamesForEditorRequest> | undefined, b: GetGamesForEditorRequest | PlainMessage<GetGamesForEditorRequest> | undefined): boolean;
+}
+
+/**
+ * @generated from message omgwords_service.GetRecentAnnotatedGamesRequest
+ */
+export declare class GetRecentAnnotatedGamesRequest extends Message<GetRecentAnnotatedGamesRequest> {
+  /**
+   * @generated from field: uint32 limit = 1;
+   */
+  limit: number;
+
+  /**
+   * @generated from field: uint32 offset = 2;
+   */
+  offset: number;
+
+  /**
+   * @generated from field: bool unfinished = 3;
+   */
+  unfinished: boolean;
+
+  constructor(data?: PartialMessage<GetRecentAnnotatedGamesRequest>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "omgwords_service.GetRecentAnnotatedGamesRequest";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetRecentAnnotatedGamesRequest;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetRecentAnnotatedGamesRequest;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetRecentAnnotatedGamesRequest;
+
+  static equals(a: GetRecentAnnotatedGamesRequest | PlainMessage<GetRecentAnnotatedGamesRequest> | undefined, b: GetRecentAnnotatedGamesRequest | PlainMessage<GetRecentAnnotatedGamesRequest> | undefined): boolean;
 }
 
 /**
@@ -305,6 +339,11 @@ export declare class BroadcastGamesResponse_BroadcastGame extends Message<Broadc
    * @generated from field: google.protobuf.Timestamp created_at = 7;
    */
   createdAt?: Timestamp;
+
+  /**
+   * @generated from field: string creator_username = 8;
+   */
+  creatorUsername: string;
 
   constructor(data?: PartialMessage<BroadcastGamesResponse_BroadcastGame>);
 

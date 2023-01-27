@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgtype"
 )
 
 const addComment = `-- name: AddComment :one
@@ -53,6 +54,68 @@ type DeleteCommentParams struct {
 func (q *Queries) DeleteComment(ctx context.Context, arg DeleteCommentParams) error {
 	_, err := q.db.Exec(ctx, deleteComment, arg.ID, arg.AuthorID)
 	return err
+}
+
+const deleteCommentNoAuthorSpecified = `-- name: DeleteCommentNoAuthorSpecified :exec
+DELETE FROM game_comments WHERE id = $1
+`
+
+func (q *Queries) DeleteCommentNoAuthorSpecified(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteCommentNoAuthorSpecified, id)
+	return err
+}
+
+const getCommentsForAllGames = `-- name: GetCommentsForAllGames :many
+SELECT game_comments.id, games.uuid as game_uuid, users.uuid as user_uuid,
+    users.username, event_number, edited_at, quickdata
+FROM game_comments
+JOIN games on game_comments.game_id = games.id
+JOIN users on game_comments.author_id = users.id
+ORDER BY game_comments.created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type GetCommentsForAllGamesParams struct {
+	Limit  int32
+	Offset int32
+}
+
+type GetCommentsForAllGamesRow struct {
+	ID          uuid.UUID
+	GameUuid    sql.NullString
+	UserUuid    sql.NullString
+	Username    sql.NullString
+	EventNumber int32
+	EditedAt    time.Time
+	Quickdata   pgtype.JSONB
+}
+
+func (q *Queries) GetCommentsForAllGames(ctx context.Context, arg GetCommentsForAllGamesParams) ([]GetCommentsForAllGamesRow, error) {
+	rows, err := q.db.Query(ctx, getCommentsForAllGames, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCommentsForAllGamesRow
+	for rows.Next() {
+		var i GetCommentsForAllGamesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.GameUuid,
+			&i.UserUuid,
+			&i.Username,
+			&i.EventNumber,
+			&i.EditedAt,
+			&i.Quickdata,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getCommentsForGame = `-- name: GetCommentsForGame :many

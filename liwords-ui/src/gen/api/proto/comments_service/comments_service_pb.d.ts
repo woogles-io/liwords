@@ -45,6 +45,13 @@ export declare class GameComment extends Message<GameComment> {
    */
   lastEdited?: Timestamp;
 
+  /**
+   * game_meta is for optional display of game metadata.
+   *
+   * @generated from field: map<string, string> game_meta = 8;
+   */
+  gameMeta: { [key: string]: string };
+
   constructor(data?: PartialMessage<GameComment>);
 
   static readonly runtime: typeof proto3;
@@ -255,5 +262,34 @@ export declare class DeleteCommentResponse extends Message<DeleteCommentResponse
   static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteCommentResponse;
 
   static equals(a: DeleteCommentResponse | PlainMessage<DeleteCommentResponse> | undefined, b: DeleteCommentResponse | PlainMessage<DeleteCommentResponse> | undefined): boolean;
+}
+
+/**
+ * @generated from message comments_service.GetCommentsAllGamesRequest
+ */
+export declare class GetCommentsAllGamesRequest extends Message<GetCommentsAllGamesRequest> {
+  /**
+   * @generated from field: uint32 limit = 1;
+   */
+  limit: number;
+
+  /**
+   * @generated from field: uint32 offset = 2;
+   */
+  offset: number;
+
+  constructor(data?: PartialMessage<GetCommentsAllGamesRequest>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "comments_service.GetCommentsAllGamesRequest";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetCommentsAllGamesRequest;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetCommentsAllGamesRequest;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetCommentsAllGamesRequest;
+
+  static equals(a: GetCommentsAllGamesRequest | PlainMessage<GetCommentsAllGamesRequest> | undefined, b: GetCommentsAllGamesRequest | PlainMessage<GetCommentsAllGamesRequest> | undefined): boolean;
 }
 
