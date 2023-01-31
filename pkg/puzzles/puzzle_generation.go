@@ -85,60 +85,54 @@ func GetJobInfoString(ctx context.Context, ps *puzzlesstore.DBStore, genId int) 
 	return report.String(), nil
 }
 
-func processJob(ctx context.Context, cfg *config.Config, req *pb.PuzzleGenerationJobRequest, genId int, gs gameplay.GameStore, ps PuzzleStore) (bool, error) {
-	if req == nil {
-		return false, errors.New("request is nil")
+func processWithRealGames(ctx context.Context, cfg *config.Config, req *pb.PuzzleGenerationJobRequest, ps PuzzleStore, gs gameplay.GameStore, genId int) (bool, error) {
+	numProcessedGames := 0
+	if req.DaysPerChunk < 1 {
+		return false, errors.New("must have more than 1 day per chunk")
 	}
-	err := macondopuzzles.InitializePuzzleGenerationRequest(req.Request)
+	startTime, err := time.Parse("2006-01-02", req.StartDate)
 	if err != nil {
 		return false, err
 	}
-	numProcessedGames := 0
-	if !req.BotVsBot {
-		rows, err := ps.GetPotentialPuzzleGames(ctx, int(req.GameConsiderationLimit), int(req.SqlOffset))
-		if err != nil {
-			return false, err
-		}
-		defer rows.Close()
 
-		// For non-bot-v-bot games we need to "hydrate" the game we get back
-		// from the database with the right data structures in order for it
-		// to generate moves properly.
-		gd, err := gaddag.Get(&cfg.MacondoConfig, req.Lexicon)
-		if err != nil {
-			return false, err
-		}
-		dist, err := alphabet.Get(&cfg.MacondoConfig, req.LetterDistribution)
-		if err != nil {
-			return false, err
-		}
-		csgen := cross_set.GaddagCrossSetGenerator{Dist: dist, Gaddag: gd}
+	// For non-bot-v-bot games we need to "hydrate" the game we get back
+	// from the database with the right data structures in order for it
+	// to generate moves properly.
+	gd, err := gaddag.Get(&cfg.MacondoConfig, req.Lexicon)
+	if err != nil {
+		return false, err
+	}
+	dist, err := alphabet.Get(&cfg.MacondoConfig, req.LetterDistribution)
+	if err != nil {
+		return false, err
+	}
+	csgen := cross_set.GaddagCrossSetGenerator{Dist: dist, Gaddag: gd}
 
-		for rows.Next() {
-			var UUID string
-			if err := rows.Scan(&UUID); err != nil {
-				return false, err
-			}
-			entGame, err := gs.Get(ctx, UUID)
+	for {
+		createdBeginning := startTime.Add(-time.Hour * 24 * time.Duration(req.DaysPerChunk))
+		createdEnd := startTime
+		log.Info().Time("start", createdBeginning).Time("end", createdEnd).Msg("searching...")
+		gameIDs, err := ps.GetPotentialPuzzleGames(
+			ctx, createdBeginning, createdEnd, int(req.GameConsiderationLimit),
+			req.Lexicon, req.AvoidBotGames)
+
+		if err != nil {
+			return false, err
+		}
+		if len(gameIDs) == 0 {
+			return false, errors.New("ran out of games")
+		}
+		log.Info().Int("ct", len(gameIDs)).Msg("potential-games")
+
+		for _, gid := range gameIDs {
+			uuid := gid.String
+
+			entGame, err := gs.Get(ctx, uuid)
 			if err != nil {
 				return false, err
 			}
-			if entGame.GameReq.Lexicon != req.Lexicon {
-				continue
-			}
-			if entGame.GameReq.Rules.LetterDistributionName != req.LetterDistribution {
-				continue
-			}
-			_, variant, err := entity.VariantFromGameReq(entGame.GameReq)
-			if err != nil {
-				return false, err
-			}
-			if variant != macondogame.VarClassic {
-				continue
-			}
-			// Set cross-set generator so that it can actually generate moves.
 			entGame.Game.SetCrossSetGen(csgen)
-			_, fulfilled, err := processGame(ctx, req.Request, genId, gs, ps, entGame, "", ipc.GameType_NATIVE)
+			_, fulfilled, err := processGame(ctx, req.EquityLossTotalLimit, req.Request, genId, gs, ps, entGame, "", ipc.GameType_NATIVE)
 			if err != nil {
 				return false, err
 			}
@@ -146,11 +140,28 @@ func processJob(ctx context.Context, cfg *config.Config, req *pb.PuzzleGeneratio
 			if numProcessedGames%1000 == 0 {
 				log.Info().Msgf("processed %d games...", numProcessedGames)
 			}
-			gs.Unload(ctx, UUID)
+			gs.Unload(ctx, uuid)
 			if fulfilled {
 				return true, nil
 			}
 		}
+		startTime = createdBeginning
+	}
+
+}
+
+func processJob(ctx context.Context, cfg *config.Config, req *pb.PuzzleGenerationJobRequest,
+	genId int, gs gameplay.GameStore, ps PuzzleStore) (bool, error) {
+
+	if req == nil {
+		return false, errors.New("request is nil")
+	}
+	err := macondopuzzles.InitializePuzzleGenerationRequest(req.Request)
+	if err != nil {
+		return false, err
+	}
+	if !req.BotVsBot {
+		return processWithRealGames(ctx, cfg, req, ps, gs, genId)
 	} else {
 		gamesCreated := 0
 		for i := 0; i < int(req.GameConsiderationLimit); i++ {
@@ -160,7 +171,8 @@ func processJob(ctx context.Context, cfg *config.Config, req *pb.PuzzleGeneratio
 				return false, err
 			}
 			g := newBotvBotPuzzleGame(r.Game(), req.Lexicon, req.LetterDistribution)
-			gameCreated, fulfilled, err := processGame(ctx, req.Request, genId, gs, ps, g, "", ipc.GameType_BOT_VS_BOT)
+			// equity loss total limit is some big number for this, don't worry about it.
+			gameCreated, fulfilled, err := processGame(ctx, 1000, req.Request, genId, gs, ps, g, "", ipc.GameType_BOT_VS_BOT)
 			if err != nil {
 				return false, err
 			}
@@ -178,9 +190,10 @@ func processJob(ctx context.Context, cfg *config.Config, req *pb.PuzzleGeneratio
 	return false, nil
 }
 
-func processGame(ctx context.Context, req *macondopb.PuzzleGenerationRequest, genId int, gs gameplay.GameStore, ps PuzzleStore,
+func processGame(ctx context.Context, eqLossLimit uint32, req *macondopb.PuzzleGenerationRequest, genId int, gs gameplay.GameStore, ps PuzzleStore,
 	g *entity.Game, authorId string, gameType ipc.GameType) (bool, bool, error) {
-	pzls, err := CreatePuzzlesFromGame(ctx, req, genId, gs, ps, g, "", gameType)
+
+	pzls, err := CreatePuzzlesFromGame(ctx, eqLossLimit, req, genId, gs, ps, g, "", gameType, false)
 	if err != nil {
 		return false, false, err
 	}

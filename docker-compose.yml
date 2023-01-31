@@ -13,7 +13,8 @@ services:
       DB_HOST: db
       DB_PORT: "5432"
       DB_USER: postgres
-      DB_NAME: liwords
+      # If loading another db, we can change db_name below
+      DB_NAME: liwords_prod
       DB_PASSWORD: pass
       DB_SSL_MODE: disable
       SECRET_KEY: jqxztripletriple
@@ -165,7 +166,9 @@ services:
       POSTGRES_DB: liwords
     volumes:
       - pg-data-volume:/var/lib/postgresql/data
-      # - /Users/cesar:/opt/cesar
+      # Uncomment out below to possibly load a db dump
+      # see https://github.com/domino14/liwords/wiki/Loading-a-db-dump
+      - $HOME/data:/opt/data
     ports:
       - 5432:5432
     networks:

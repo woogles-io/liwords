@@ -1,0 +1,5 @@
+BEGIN;
+
+ALTER TABLE ONLY public.puzzles ADD IF NOT EXISTS "valid" boolean NOT NULL DEFAULT true;
+
+COMMIT;

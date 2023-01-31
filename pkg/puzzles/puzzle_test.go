@@ -1027,7 +1027,7 @@ func RecreateDB() (*DBController, int, int) {
 			gameReq.Lexicon = OtherLexicon
 		}
 		entGame := entity.NewGame(game, gameReq)
-		pzls, err := CreatePuzzlesFromGame(ctx, pgrjReq.Request, reqId, gameStore, puzzlesStore, entGame, pcUUID, ipc.GameType_ANNOTATED)
+		pzls, err := CreatePuzzlesFromGame(ctx, 1000, pgrjReq.Request, reqId, gameStore, puzzlesStore, entGame, pcUUID, ipc.GameType_ANNOTATED, true)
 		if err != nil {
 			panic(err)
 		}
