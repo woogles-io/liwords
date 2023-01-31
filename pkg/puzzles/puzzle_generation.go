@@ -108,7 +108,12 @@ func processWithRealGames(ctx context.Context, cfg *config.Config, req *pb.Puzzl
 	}
 	csgen := cross_set.GaddagCrossSetGenerator{Dist: dist, Gaddag: gd}
 
-	for {
+	minimumStartTime, err := time.Parse("2006-01-02", "2021-01-01")
+	if err != nil {
+		return false, err
+	}
+
+	for startTime.After(minimumStartTime) {
 		createdBeginning := startTime.Add(-time.Hour * 24 * time.Duration(req.DaysPerChunk))
 		createdEnd := startTime
 		log.Info().Time("start", createdBeginning).Time("end", createdEnd).Msg("searching...")
@@ -119,9 +124,7 @@ func processWithRealGames(ctx context.Context, cfg *config.Config, req *pb.Puzzl
 		if err != nil {
 			return false, err
 		}
-		if len(gameIDs) == 0 {
-			return false, errors.New("ran out of games")
-		}
+
 		log.Info().Int("ct", len(gameIDs)).Msg("potential-games")
 
 		for _, gid := range gameIDs {
@@ -147,6 +150,7 @@ func processWithRealGames(ctx context.Context, cfg *config.Config, req *pb.Puzzl
 		}
 		startTime = createdBeginning
 	}
+	return false, errors.New("ran out of games")
 
 }
 

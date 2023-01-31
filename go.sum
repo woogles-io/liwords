@@ -427,8 +427,6 @@ github.com/docker/go-units v0.4.0/go.mod h1:fgPhTUdO+D/Jk86RDLlptpiXQzgHJF7gydDD
 github.com/docker/libtrust v0.0.0-20150114040149-fa567046d9b1/go.mod h1:cyGadeNEkKy96OOhEzfZl+yxihPEzKnqJwvfuSUqbZE=
 github.com/docker/spdystream v0.0.0-20160310174837-449fdfce4d96/go.mod h1:Qh8CwZgvJUkLughtfhJv5dyTYa91l1fOUCrgjqmcifM=
 github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815/go.mod h1:WwZ+bS3ebgob9U8Nd0kOddGdZWjyMGR8Wziv+TBNwSE=
-github.com/domino14/macondo v0.4.12 h1:2Of1h83Haz0rWcnSmWOHQMr3xh+Kx8Kbi8BZZ1z3OTg=
-github.com/domino14/macondo v0.4.12/go.mod h1:Wik7NqHVGu+EzSx+sVlB9bQRBuCRZeseIdrRQ3dV45E=
 github.com/domino14/macondo v0.4.13 h1:bA4iz58SLiAOD5wGQBKC+hkSGDGv6V/WhSINoD0tUq4=
 github.com/domino14/macondo v0.4.13/go.mod h1:X+K9tZuTLmB8bVtqZSlaTR1HHgPp+4U5kfvMP3mksKw=
 github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=

@@ -182,6 +182,25 @@ export const PuzzleInfo = React.memo((props: Props) => {
     </span>
   );
   const stillSolving = solved === PuzzleStatus.UNANSWERED;
+  let settingsDisplay;
+  if (!initialTimeSeconds && !incrementSeconds && !maxOvertimeMinutes) {
+    settingsDisplay = (
+      <p className="game-settings">{`${
+        variantName || 'classic'
+      } • ${lexicon}`}</p>
+    );
+  } else {
+    settingsDisplay = (
+      <p className="game-settings">{`${
+        timeCtrlToDisplayName(
+          initialTimeSeconds || 0,
+          incrementSeconds || 0,
+          maxOvertimeMinutes || 0
+        )[0]
+      } • ${variantName || 'classic'} • ${lexicon}`}</p>
+    );
+  }
+
   return (
     <Card className="puzzle-info" title={`Puzzle Mode`} extra={puzzleType}>
       <div className="puzzle-details">
@@ -195,13 +214,7 @@ export const PuzzleInfo = React.memo((props: Props) => {
             </p>
           </>
         )}
-        <p className="game-settings">{`${
-          timeCtrlToDisplayName(
-            initialTimeSeconds || 0,
-            incrementSeconds || 0,
-            maxOvertimeMinutes || 0
-          )[0]
-        } • ${variantName || 'classic'} • ${lexicon}`}</p>
+        {settingsDisplay}
         <div>
           {challengeDisplay}
           {challengeDisplay && ratingMode ? ' • ' : ''}
