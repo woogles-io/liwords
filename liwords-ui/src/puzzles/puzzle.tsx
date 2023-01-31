@@ -48,6 +48,7 @@ import { Store } from 'antd/lib/form/interface';
 
 import {
   ClientGameplayEvent,
+  ClientGameplayEvent_EventType,
   RatingMode,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { computeLeaveWithGaps } from '../utils/cwgame/game_event';
@@ -326,6 +327,15 @@ export const SinglePuzzle = (props: Props) => {
       if (!puzzleID) {
         return;
       }
+      if (
+        evt.type === ClientGameplayEvent_EventType.TILE_PLACEMENT &&
+        !isLegalPlay(
+          Array.from(placedTiles.values()),
+          examinableGameContext.board
+        )
+      ) {
+        return;
+      }
       const req = new SubmissionRequest({ answer: evt, puzzleId: puzzleID });
 
       try {
@@ -374,7 +384,13 @@ export const SinglePuzzle = (props: Props) => {
         flashError(err);
       }
     },
-    [puzzleID, puzzleClient, setGameInfo]
+    [
+      placedTiles,
+      examinableGameContext.board,
+      puzzleID,
+      puzzleClient,
+      setGameInfo,
+    ]
   );
 
   useEffect(() => {
@@ -663,15 +679,8 @@ export const SinglePuzzle = (props: Props) => {
   }, [showResponseModalCorrect, puzzleInfo, loadNewPuzzle, puzzleID]);
 
   const allowAttempt = useMemo(() => {
-    return (
-      isLegalPlay(
-        Array.from(placedTiles.values()),
-        examinableGameContext.board
-      ) &&
-      loggedIn &&
-      puzzleInfo.solved === PuzzleStatus.UNANSWERED
-    );
-  }, [placedTiles, examinableGameContext.board, loggedIn, puzzleInfo.solved]);
+    return loggedIn && puzzleInfo.solved === PuzzleStatus.UNANSWERED;
+  }, [loggedIn, puzzleInfo.solved]);
 
   let ret = (
     <div className="game-container puzzle-container">
