@@ -1,4 +1,4 @@
-import { Card, Col, Row } from 'antd';
+import { Card, Col, Layout, Row } from 'antd';
 import React, { useCallback, useEffect } from 'react';
 import { TopBar } from '../navigation/topbar';
 import { EditorControl } from './editor_control';
@@ -10,6 +10,7 @@ import { useClient } from '../utils/hooks/connect';
 import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_connectweb';
 import { AnnotatedGamesHistoryCard } from '../profile/annotated_games_history';
 import { useLoginStateStoreContext } from '../store/store';
+import { Content } from 'antd/lib/layout/layout';
 // When no game is visible, this is the page that is visible.
 
 type Props = {
@@ -56,28 +57,31 @@ export const EditorLandingPage = (props: Props) => {
   return (
     <div className="game-container">
       <TopBar />
-      <Row style={{ marginTop: 48 }}>
-        <Col lg={6} offset={4}>
-          <Card title="Editor controls" className="editor-new">
+
+      <Layout>
+        <Content>
+          <Card
+            title="Create a new annotated game"
+            className="editor-new"
+            style={{ maxWidth: 400, margin: 'auto', marginTop: 24 }}
+          >
             <EditorControl
               createNewGame={props.createNewGame}
               deleteGame={() => {}}
               editGame={() => {}}
             />
           </Card>
-        </Col>
-      </Row>
-      <Row style={{ marginTop: 48 }}>
-        <Col lg={16} offset={4}>
-          <AnnotatedGamesHistoryCard
-            games={recentAnnotatedGames}
-            fetchPrev={fetchPrevAnnotatedGames}
-            fetchNext={fetchNextAnnotatedGames}
-            loggedInUserID={loginState.userID}
-            showAnnotator
-          />
-        </Col>
-      </Row>
+          <div style={{ paddingTop: 24, paddingLeft: 24, paddingRight: 24 }}>
+            <AnnotatedGamesHistoryCard
+              games={recentAnnotatedGames}
+              fetchPrev={fetchPrevAnnotatedGames}
+              fetchNext={fetchNextAnnotatedGames}
+              loggedInUserID={loginState.userID}
+              showAnnotator
+            />
+          </div>
+        </Content>
+      </Layout>
     </div>
   );
 };
