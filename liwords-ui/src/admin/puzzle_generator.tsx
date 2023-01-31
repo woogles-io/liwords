@@ -61,7 +61,7 @@ export const PuzzleGenerator = () => {
             dcreate = moment(createdAt.toDate()).fromNow();
           }
           if (completedAt) {
-            dcomplete = moment(completedAt.toDate()).fromNow();
+            dcomplete = moment(completedAt.toDate()).toISOString();
           }
 
           return (
@@ -97,9 +97,12 @@ export const PuzzleGenerator = () => {
       req.botVsBot = vals.bvb;
       req.lexicon = vals.lexicon;
       req.letterDistribution = vals.letterdist;
-      req.sqlOffset = vals.sqlOffset;
       req.gameConsiderationLimit = vals.gameConsiderationLimit;
       req.gameCreationLimit = vals.gameCreationLimit;
+      req.avoidBotGames = vals.avoidBotGames;
+      req.daysPerChunk = vals.daysPerChunk;
+      req.equityLossTotalLimit = vals.equityLossTotalLimit;
+      req.startDate = vals.startDate;
 
       const bucketReq = new PuzzleGenerationRequest();
 
@@ -152,14 +155,15 @@ export const PuzzleGenerator = () => {
   );
 
   return (
-    <div className="puzzle-generator">
+    <div className="puzzle-generator" style={{ padding: 24 }}>
       <Form
-        {...layout}
+        // {...layout}
         onFinish={onFinish}
         initialValues={{
           letterdist: 'english',
           lexicon: 'CSW21',
         }}
+        layout="vertical"
       >
         <Form.Item name="secretKey" label="Secret Key for Puzzle Generation">
           <Input type="password" />
@@ -180,18 +184,47 @@ export const PuzzleGenerator = () => {
             <Select.Option value="norwegian">Norwegian</Select.Option>
           </Select>
         </Form.Item>
-        <Form.Item name="sqlOffset" label="SQL Offset">
-          <InputNumber />
-        </Form.Item>
         <Form.Item
           name="gameConsiderationLimit"
-          label="Game Consideration Limit"
+          label="Game Consideration Limit (total for bots, per chunk for real games)"
+          initialValue={6000}
         >
           <InputNumber />
         </Form.Item>
         <Form.Item
           name="gameCreationLimit"
           label="Game Creation Limit (only for bot v bot games)"
+        >
+          <InputNumber />
+        </Form.Item>
+
+        <Form.Item
+          name="startDate"
+          label="Start date in YYYY-MM-DD format. Puzzles will be created with this date as the latest date."
+        >
+          <Input />
+        </Form.Item>
+
+        <Form.Item
+          name="equityLossTotalLimit"
+          label="Total equity loss limit"
+          initialValue={150}
+        >
+          <InputNumber />
+        </Form.Item>
+
+        <Form.Item
+          name="avoidBotGames"
+          label="Avoid games where a bot is involved"
+          initialValue="checked"
+        >
+          <Switch />
+        </Form.Item>
+
+        <Form.Item
+          name="daysPerChunk"
+          label="How many days to search at a time"
+          initialValue={1}
         >
           <InputNumber />
         </Form.Item>

@@ -1,0 +1,5 @@
+BEGIN;
+
+ALTER TABLE ONLY public.puzzles DROP IF EXISTS "valid" BOOLEAN;
+
+COMMIT;

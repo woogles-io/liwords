@@ -89,10 +89,17 @@ message PuzzleGenerationJobRequest {
   bool bot_vs_bot = 1;
   string lexicon = 2;
   string letter_distribution = 3;
-  int32 sql_offset = 4;
+  int32 sql_offset = 4 [ deprecated = true ];
   int32 game_consideration_limit = 5;
   int32 game_creation_limit = 6;
   macondo.PuzzleGenerationRequest request = 7;
+  // start_date is just a YYYY-MM-DD date at which we should
+  // start looking for games (in non bot_v_bot), and go backwards
+  // from there.
+  string start_date = 8;
+  uint32 equity_loss_total_limit = 9;
+  bool avoid_bot_games = 10;
+  uint32 days_per_chunk = 11;
 }
 
 message APIPuzzleGenerationJobResponse { bool started = 1; }

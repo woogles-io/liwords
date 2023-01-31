@@ -12,6 +12,7 @@ import (
 	commontest "github.com/domino14/liwords/pkg/common"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stores/common"
+	"github.com/domino14/liwords/pkg/stores/models"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -23,7 +24,8 @@ import (
 )
 
 type DBStore struct {
-	dbPool *pgxpool.Pool
+	dbPool  *pgxpool.Pool
+	queries *models.Queries
 }
 
 type answer struct {
@@ -43,7 +45,8 @@ var UnratedCondition = " AND (correct IS NOT NULL OR attempts != 0)"
 var UnansweredCondition = " AND (correct IS NOT NULL)"
 
 func NewDBStore(p *pgxpool.Pool) (*DBStore, error) {
-	return &DBStore{dbPool: p}, nil
+	queries := models.New(p)
+	return &DBStore{dbPool: p, queries: queries}, nil
 }
 
 func (s *DBStore) Disconnect() {
@@ -103,8 +106,8 @@ func (s *DBStore) UpdateGenerationLogStatus(ctx context.Context, id int, fulfill
 }
 
 func (s *DBStore) GetJobLogs(ctx context.Context, limit, offset int) ([]*puzzle_service.PuzzleJobLog, error) {
-	var createdAt time.Time
-	var completedAt time.Time
+	var createdAt sql.NullTime
+	var completedAt sql.NullTime
 	rows, err := s.dbPool.Query(ctx,
 		`SELECT id, request, fulfilled, error_status, created_at, completed_at
 	 FROM puzzle_generation_logs
@@ -134,8 +137,12 @@ func (s *DBStore) GetJobLogs(ctx context.Context, limit, offset int) ([]*puzzle_
 		} else {
 			jobLog.ErrorStatus = ""
 		}
-		jobLog.CreatedAt = timestamppb.New(createdAt)
-		jobLog.CompletedAt = timestamppb.New(completedAt)
+		if createdAt.Valid {
+			jobLog.CreatedAt = timestamppb.New(createdAt.Time)
+		}
+		if completedAt.Valid {
+			jobLog.CompletedAt = timestamppb.New(completedAt.Time)
+		}
 		jobLogs = append(jobLogs, &jobLog)
 	}
 	rows.Close()
@@ -219,7 +226,11 @@ func (s *DBStore) GetStartPuzzleId(ctx context.Context, userUUID string, lexicon
 		getNext := false
 		var pid int
 		status := &sql.NullBool{}
-		err = tx.QueryRow(ctx, `SELECT puzzle_id, correct FROM puzzle_attempts WHERE user_id = $1 AND (SELECT lexicon FROM puzzles WHERE id = puzzle_id) = $2 ORDER BY updated_at DESC LIMIT 1`, uid, lexicon).Scan(&pid, status)
+		// This query gets the most recently updated puzzle for this lexicon.
+		err = tx.QueryRow(ctx, `
+			SELECT puzzle_id, correct FROM puzzle_attempts WHERE user_id = $1 AND 
+			(SELECT lexicon FROM puzzles WHERE id = puzzle_id AND valid) = $2 
+			ORDER BY updated_at DESC LIMIT 1`, uid, lexicon).Scan(&pid, status)
 		if err == pgx.ErrNoRows {
 			// User has not seen any puzzles, just get the next puzzle
 			getNext = true
@@ -237,6 +248,7 @@ func (s *DBStore) GetStartPuzzleId(ctx context.Context, userUUID string, lexicon
 				return "", pqr, err
 			}
 		} else {
+			// Continue a puzzle if we haven't solved it yet.
 			err = tx.QueryRow(ctx, `SELECT uuid FROM puzzles WHERE id = $1`, pid).Scan(&startPuzzleUUID)
 			pqr = puzzle_service.PuzzleQueryResult_START
 			if err != nil {
@@ -664,8 +676,8 @@ func (s *DBStore) GetJobInfo(ctx context.Context, genId int) (time.Time, time.Ti
 	}
 	defer tx.Rollback(ctx)
 
-	createdAtTime := time.Time{}
-	completedAtTime := time.Time{}
+	var createdAtTime sql.NullTime
+	var completedAtTime sql.NullTime
 	fulfilled := &sql.NullBool{}
 	errorStatus := &sql.NullString{}
 	err = tx.QueryRow(ctx, `SELECT created_at, completed_at, fulfilled, error_status FROM puzzle_generation_logs WHERE id = $1`, genId).Scan(&createdAtTime, &completedAtTime, fulfilled, errorStatus)
@@ -735,26 +747,30 @@ func (s *DBStore) GetJobInfo(ctx context.Context, genId int) (time.Time, time.Ti
 		return time.Time{}, time.Time{}, -1, nil, nil, -1, -1, nil, err
 	}
 
-	return createdAtTime, completedAtTime, completedAtTime.Sub(createdAtTime), fulfilledOption, errorStatusOption, numTotalPuzzles, numTotalGames, breakdowns, nil
+	return createdAtTime.Time, completedAtTime.Time, completedAtTime.Time.Sub(createdAtTime.Time), fulfilledOption, errorStatusOption, numTotalPuzzles, numTotalGames, breakdowns, nil
 }
 
-func (s *DBStore) GetPotentialPuzzleGames(ctx context.Context, limit int, offset int) (common.RowIterator, error) {
-	// Only look at the last 20K games played when this query is run.
-	rows, err := s.dbPool.Query(ctx,
-		`SELECT games.uuid FROM (select * from games order by id desc limit 20000) games
-		left join puzzles on puzzles.game_id = games.id
-		where puzzles.id is null AND (stats->'d1'->'Challenged Phonies'->'t' = '0')
-		AND (stats->'d2'->'Challenged Phonies'->'t' = '0')
-		AND (stats->'d1'->'Unchallenged Phonies'->'t' = '0')
-		AND (stats->'d2'->'Unchallenged Phonies'->'t' = '0')
-		AND game_end_reason not in ($1, $2, $3)
-		ORDER BY games.id DESC LIMIT $4 OFFSET $5`,
-		ipc.GameEndReason_NONE, ipc.GameEndReason_ABORTED, ipc.GameEndReason_CANCELLED, limit, offset)
+func (s *DBStore) GetPotentialPuzzleGames(ctx context.Context, time1, time2 time.Time,
+	limit int, lexicon string, avoidBots bool) ([]sql.NullString, error) {
 
-	if err != nil {
-		return nil, err
+	if avoidBots {
+		ids, err := s.queries.GetPotentialPuzzleGamesAvoidBots(ctx, models.GetPotentialPuzzleGamesAvoidBotsParams{
+			CreatedAt:   sql.NullTime{Valid: true, Time: time1},
+			CreatedAt_2: sql.NullTime{Valid: true, Time: time2},
+			Request:     []byte(`%` + lexicon + `%`),
+			Limit:       int32(limit),
+			Offset:      0,
+		})
+		return ids, err
 	}
-	return rows, nil
+	ids, err := s.queries.GetPotentialPuzzleGames(ctx, models.GetPotentialPuzzleGamesParams{
+		CreatedAt:   sql.NullTime{Valid: true, Time: time1},
+		CreatedAt_2: sql.NullTime{Valid: true, Time: time2},
+		Request:     []byte(`%` + lexicon + `%`),
+		Limit:       int32(limit),
+		Offset:      0,
+	})
+	return ids, err
 }
 
 func getUserRating(ctx context.Context, tx pgx.Tx, userID string, ratingKey entity.VariantKey) (*entity.SingleRating, error) {
@@ -860,6 +876,7 @@ func getNextClosestRatingPuzzleId(ctx context.Context, tx pgx.Tx, userId string,
 									  FROM   puzzle_attempts
 									  WHERE  user_id = $1 %s)
 					   AND ( rating -> 'r' ) :: FLOAT >= $3
+					   AND valid
 				ORDER  BY ( rating -> 'r' ) :: FLOAT
 				LIMIT  1)
 			   UNION ALL
@@ -871,6 +888,7 @@ func getNextClosestRatingPuzzleId(ctx context.Context, tx pgx.Tx, userId string,
 									  FROM   puzzle_attempts
 									  WHERE  user_id = $1 %s)
 					   AND ( rating -> 'r' ) :: FLOAT < $3
+					   AND valid
 				ORDER  BY ( rating -> 'r' ) :: FLOAT DESC
 				LIMIT  1)) AS rating_query
 		ORDER  BY ABS(( $3 ) :: FLOAT - ( puzzle_rating ) :: FLOAT)
@@ -922,8 +940,18 @@ func getNextPuzzleId(ctx context.Context, tx pgx.Tx, userUUID string, lexicon st
 		return "", pqr, entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_RANDOM_PUZZLE_ID_NOT_FOUND, userUUID, lexicon)
 	}
 
-	gtQueryTemplate := `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $2 %s) AND id > $3 ORDER BY id LIMIT 1`
-	lteQueryTemplate := `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $2 %s) AND id <= $3 ORDER BY id DESC LIMIT 1`
+	gtQueryTemplate := `
+		SELECT uuid FROM puzzles WHERE lexicon = $1 
+			AND valid 
+			AND id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $2 %s) 
+			AND id > $3 
+			ORDER BY id LIMIT 1`
+	lteQueryTemplate := `
+		SELECT uuid FROM puzzles WHERE lexicon = $1 
+			AND valid
+			AND id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $2 %s) 
+			AND id <= $3 
+			ORDER BY id DESC LIMIT 1`
 	gtUnseenQuery := fmt.Sprintf(gtQueryTemplate, UnseenCondition)
 	var puzzleUUID string
 	err = tx.QueryRow(ctx, gtUnseenQuery, lexicon, uid, randomId.Int64).Scan(&puzzleUUID)
@@ -980,9 +1008,14 @@ func getRandomPuzzleUUID(ctx context.Context, tx pgx.Tx, lexicon string, randomI
 		}
 	}
 	var puzzleUUID string
-	err = tx.QueryRow(ctx, `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id > $2 ORDER BY id LIMIT 1`, lexicon, randomId.Int64).Scan(&puzzleUUID)
+	err = tx.QueryRow(ctx, `
+		SELECT uuid FROM puzzles WHERE lexicon = $1 
+			AND valid 
+			AND id > $2 
+			ORDER BY id LIMIT 1`, lexicon, randomId.Int64).Scan(&puzzleUUID)
 	if err == pgx.ErrNoRows {
-		err = tx.QueryRow(ctx, `SELECT uuid FROM puzzles WHERE lexicon = $1 AND id <= $2 ORDER BY id DESC LIMIT 1`, lexicon, randomId.Int64).Scan(&puzzleUUID)
+		err = tx.QueryRow(ctx, `
+			SELECT uuid FROM puzzles WHERE lexicon = $1 AND valid AND id <= $2 ORDER BY id DESC LIMIT 1`, lexicon, randomId.Int64).Scan(&puzzleUUID)
 	}
 	if err == pgx.ErrNoRows {
 		return "", entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_RANDOM_PUZZLE_NOT_FOUND, "", lexicon)

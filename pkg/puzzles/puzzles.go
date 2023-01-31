@@ -2,6 +2,7 @@ package puzzles
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strconv"
 	"time"
@@ -13,8 +14,8 @@ import (
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	pb "github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	"github.com/domino14/macondo/alphabet"
+	"lukechampine.com/frand"
 
-	commondb "github.com/domino14/liwords/pkg/stores/common"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/macondo/move"
 	macondopuzzles "github.com/domino14/macondo/puzzles"
@@ -38,14 +39,14 @@ type PuzzleStore interface {
 	GetUserRating(ctx context.Context, userId string, ratingKey entity.VariantKey) (*entity.SingleRating, error)
 	SetPuzzleVote(ctx context.Context, userId string, puzzleUUID string, vote int) error
 	GetJobInfo(ctx context.Context, genId int) (time.Time, time.Time, time.Duration, *bool, *string, int, int, [][]int, error)
-	GetPotentialPuzzleGames(ctx context.Context, limit int, offset int) (commondb.RowIterator, error)
+	GetPotentialPuzzleGames(ctx context.Context, time1, time2 time.Time, limit int, lexicon string, avoidBots bool) ([]sql.NullString, error)
 	GetJobLogs(ctx context.Context, limit, offset int) ([]*pb.PuzzleJobLog, error)
 }
 
-func CreatePuzzlesFromGame(ctx context.Context, req *macondopb.PuzzleGenerationRequest, reqId int, gs gameplay.GameStore, ps PuzzleStore,
-	g *entity.Game, authorId string, gt ipc.GameType) ([]*macondopb.PuzzleCreationResponse, error) {
+func CreatePuzzlesFromGame(ctx context.Context, eqLossLimit uint32, req *macondopb.PuzzleGenerationRequest, reqId int, gs gameplay.GameStore, ps PuzzleStore,
+	g *entity.Game, authorId string, gt ipc.GameType, multiple bool) ([]*macondopb.PuzzleCreationResponse, error) {
 
-	pzls, err := macondopuzzles.CreatePuzzlesFromGame(g.Config(), &g.Game, req)
+	pzls, err := macondopuzzles.CreatePuzzlesFromGame(g.Config(), int(eqLossLimit), &g.Game, req)
 	if err != nil {
 		return nil, err
 	}
@@ -60,6 +61,13 @@ func CreatePuzzlesFromGame(ctx context.Context, req *macondopb.PuzzleGenerationR
 	if len(pzls) > 0 {
 		// If the mcg game is not from a game that already
 		// exists in the database, then create the game
+
+		if !multiple {
+			i := frand.Intn(len(pzls))
+			pzls = []*macondopb.PuzzleCreationResponse{pzls[i]}
+			// Select a puzzle randomly from the list. We have enough games
+			// so that we don't show two puzzles from the same game.
+		}
 
 		for _, pzl := range pzls {
 			arrIndex, exists := bucketIndexToArrayIndex[pzl.BucketIndex]

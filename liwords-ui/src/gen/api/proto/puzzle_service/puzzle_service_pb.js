@@ -213,6 +213,10 @@ export const PuzzleGenerationJobRequest = proto3.makeMessageType(
     { no: 5, name: "game_consideration_limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 6, name: "game_creation_limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 7, name: "request", kind: "message", T: PuzzleGenerationRequest },
+    { no: 8, name: "start_date", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 9, name: "equity_loss_total_limit", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
+    { no: 10, name: "avoid_bot_games", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 11, name: "days_per_chunk", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
   ],
 );
 

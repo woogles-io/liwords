@@ -156,7 +156,7 @@ func main() {
 		// pre-create buckets
 		precreateLocalStackBuckets()
 	}
-
+	log.Info().Msg("setting up migration")
 	m, err := migrate.New(cfg.DBMigrationsPath, cfg.DBConnUri)
 	if err != nil {
 		panic(err)
@@ -415,9 +415,9 @@ func precreateLocalStackBuckets() {
 	})
 	log.Err(err).Msg("trying to create avatar upload bucket")
 
-	_, err = client.CreateBucket(ctx, &s3.CreateBucketInput{
-		Bucket: aws.String(os.Getenv("GAMEDOC_UPLOAD_BUCKET")),
-	})
-	log.Err(err).Msg("trying to create gamedoc upload bucket")
+	// 	_, err = client.CreateBucket(ctx, &s3.CreateBucketInput{
+	// 		Bucket: aws.String(os.Getenv("GAMEDOC_UPLOAD_BUCKET")),
+	// 	})
+	// 	log.Err(err).Msg("trying to create gamedoc upload bucket")
 
 }

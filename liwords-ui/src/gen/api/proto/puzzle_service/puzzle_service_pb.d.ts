@@ -528,7 +528,8 @@ export declare class PuzzleGenerationJobRequest extends Message<PuzzleGeneration
   letterDistribution: string;
 
   /**
-   * @generated from field: int32 sql_offset = 4;
+   * @generated from field: int32 sql_offset = 4 [deprecated = true];
+   * @deprecated
    */
   sqlOffset: number;
 
@@ -546,6 +547,30 @@ export declare class PuzzleGenerationJobRequest extends Message<PuzzleGeneration
    * @generated from field: macondo.PuzzleGenerationRequest request = 7;
    */
   request?: PuzzleGenerationRequest;
+
+  /**
+   * start_date is just a YYYY-MM-DD date at which we should
+   * start looking for games (in non bot_v_bot), and go backwards
+   * from there.
+   *
+   * @generated from field: string start_date = 8;
+   */
+  startDate: string;
+
+  /**
+   * @generated from field: uint32 equity_loss_total_limit = 9;
+   */
+  equityLossTotalLimit: number;
+
+  /**
+   * @generated from field: bool avoid_bot_games = 10;
+   */
+  avoidBotGames: boolean;
+
+  /**
+   * @generated from field: uint32 days_per_chunk = 11;
+   */
+  daysPerChunk: number;
 
   constructor(data?: PartialMessage<PuzzleGenerationJobRequest>);
 
