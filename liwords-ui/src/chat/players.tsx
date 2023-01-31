@@ -4,6 +4,7 @@ import {
   useFriendsStoreContext,
   useLoginStateStoreContext,
   usePresenceStoreContext,
+  useExcludedPlayersStoreContext,
 } from '../store/store';
 import { PresenceEntity } from '../store/constants';
 import { PettableAvatar, PlayerAvatar } from '../shared/player_avatar';
@@ -130,6 +131,7 @@ export const Players = React.memo((props: Props) => {
   >([]);
   const [searchText, setSearchText] = useState('');
   const { presences } = usePresenceStoreContext();
+  const { excludedPlayers } = useExcludedPlayersStoreContext();
 
   const setHeight = useCallback(() => {
     const tabPaneHeight = document.getElementById('chat')?.clientHeight;
@@ -191,9 +193,15 @@ export const Players = React.memo((props: Props) => {
 
   const renderPlayerList = useCallback(
     (userList: Partial<FriendUser>[], className = ''): ReactNode => {
+      const nonExcludedUsers = userList.filter((p) => {
+        if (p.uuid) {
+          return !excludedPlayers.has(p.uuid);
+        }
+      });
+
       return (
         <>
-          {userList.map((p) => (
+          {nonExcludedUsers.map((p) => (
             <Player
               sendMessage={sendMessage}
               className={className}
@@ -204,7 +212,7 @@ export const Players = React.memo((props: Props) => {
         </>
       );
     },
-    [sendMessage]
+    [sendMessage, excludedPlayers]
   );
 
   const filterPlayerListBySearch = useCallback(
