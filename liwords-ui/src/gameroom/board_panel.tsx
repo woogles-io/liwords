@@ -220,6 +220,7 @@ export const BoardPanel = React.memo((props: Props) => {
     | 'NORMAL'
     | 'BLIND'
     | 'EDITING_RACK'
+    | 'WAITING_FOR_RACK_EDIT'
   >('NORMAL');
 
   const { drawingCanBeEnabled, handleKeyDown: handleDrawingKeyDown } =
@@ -1545,6 +1546,27 @@ export const BoardPanel = React.memo((props: Props) => {
     },
     [currentMode, drawingCanBeEnabled, handleDrawingKeyDown, keydown]
   );
+
+  useEffect(() => {
+    if (
+      currentMode !== 'EDITING_RACK' &&
+      currentMode !== 'WAITING_FOR_RACK_EDIT' &&
+      props.boardEditingMode &&
+      props.currentRack.trim().length === 0
+    ) {
+      setCurrentMode('EDITING_RACK');
+    }
+  }, [currentMode, props.boardEditingMode, props.currentRack]);
+
+  useEffect(() => {
+    if (
+      currentMode === 'WAITING_FOR_RACK_EDIT' &&
+      props.currentRack.trim().length > 0
+    ) {
+      setCurrentMode('NORMAL');
+    }
+  }, [currentMode, props.currentRack]);
+
   // Just put this in onKeyPress to block all typeable keys so that typos from
   // placing a tile not on rack also do not trigger type-to-find on firefox.
   const preventFirefoxTypeToSearch = useCallback(
@@ -1759,7 +1781,7 @@ export const BoardPanel = React.memo((props: Props) => {
                       examinableGameContext.turns.length
                     );
                   }
-                  setCurrentMode('NORMAL');
+                  setCurrentMode('WAITING_FOR_RACK_EDIT');
                 }}
                 cancelCallback={() => setCurrentMode('NORMAL')}
               />
