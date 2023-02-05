@@ -64,6 +64,9 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.SoughtGame, error
 
 	sg, err := getSoughtGameBy(ctx, tx, &common.CommonDBConfig{SelectByType: common.SelectByUUID, Value: id})
 	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, entity.NewWooglesError(pb.WooglesError_GAME_NO_LONGER_AVAILABLE)
+		}
 		return nil, err
 	}
 

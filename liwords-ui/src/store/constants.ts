@@ -432,6 +432,7 @@ export const errorMap: Map<number, string> = new Map<number, string>([
   [1086, 'Puzzle attempt does not exist for user $1 and puzzle $2.'],
   [
     1087,
-    'Internal error: cound not find puzzle attempt for user $1 and puzzle $2.',
+    'Internal error: could not find puzzle attempt for user $1 and puzzle $2.',
   ],
+  [1089, 'Game is no longer available.'],
 ]);

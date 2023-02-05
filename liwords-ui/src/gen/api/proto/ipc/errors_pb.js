@@ -100,6 +100,7 @@ export const WooglesError = proto3.makeEnum(
     {no: 1086, name: "PUZZLE_GET_PUZZLE_UPDATE_ATTEMPT"},
     {no: 1087, name: "PUZZLE_GET_ANSWER_NOT_YET_RATED"},
     {no: 1088, name: "USER_UPDATE_NOT_FOUND"},
+    {no: 1089, name: "GAME_NO_LONGER_AVAILABLE"},
   ],
 );
 
