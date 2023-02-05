@@ -454,6 +454,11 @@ export declare enum WooglesError {
    * @generated from enum value: USER_UPDATE_NOT_FOUND = 1088;
    */
   USER_UPDATE_NOT_FOUND = 1088,
+
+  /**
+   * @generated from enum value: GAME_NO_LONGER_AVAILABLE = 1089;
+   */
+  GAME_NO_LONGER_AVAILABLE = 1089,
 }
 
 /**
