@@ -4,8 +4,8 @@
     "private": true,
     "dependencies": {
         "@ant-design/icons": "^4.7.0",
-        "@bufbuild/protobuf": "^0.2.1",
-        "@domino14/connect-web": "^0.3.1",
+        "@bufbuild/protobuf": "^1.0.0",
+        "@domino14/connect-web": "^0.7.0",
         "@stripe/stripe-js": "^1.13.2",
         "@testing-library/jest-dom": "^5.16.3",
         "@testing-library/react": "^12.1.4",
