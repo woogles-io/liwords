@@ -180,7 +180,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
       overlay={userMenu}
       getPopupContainer={() => document.getElementById('root') as HTMLElement}
       placement="bottomLeft"
-      trigger={['click']}
+      trigger={!loggedIn && props.omitProfileLink ? [] : ['click']}
     >
       <span className="user-context-menu">
         {props.iconOnly ? ( // Not yet used
