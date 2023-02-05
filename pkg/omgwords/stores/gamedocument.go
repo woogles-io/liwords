@@ -7,6 +7,7 @@ import (
 	"github.com/go-redsync/redsync/v4"
 	"github.com/go-redsync/redsync/v4/redis/redigo"
 	"github.com/gomodule/redigo/redis"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -18,8 +19,8 @@ import (
 
 var ErrDoesNotExist = errors.New("does not exist")
 
-const MaxExpirationSeconds = 5 * 24 * 60 * 60 // 5 days
-const RedisExpirationSeconds = 15 * 60        // 15 minutes
+const MaxExpirationSeconds = 10 * 24 * 60 * 60 // 10 days
+const RedisExpirationSeconds = 15 * 60         // 15 minutes
 const RedisDocPrefix = "gdoc:"
 const RedisMutexPrefix = "gdocmutex:"
 
@@ -142,6 +143,9 @@ func (gs *GameDocumentStore) getFromDatabase(ctx context.Context, uuid string) (
 	err := gs.dbPool.QueryRow(ctx, `SELECT document FROM game_documents WHERE game_id = $1`, uuid).
 		Scan(&bts)
 	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, ErrDoesNotExist
+		}
 		return nil, err
 	}
 	gdoc := &ipc.GameDocument{}
