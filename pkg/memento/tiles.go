@@ -65,6 +65,7 @@ var superBoardConfig = [][]rune{
 }
 
 // These files must be kept in sync with macondo's data/letterdistribution/.
+//
 //go:embed letterdistributions/english.csv
 var englishLetterDistributionCSVBytes []byte
 
@@ -81,10 +82,12 @@ var germanLetterDistributionCSVBytes []byte
 var norwegianLetterDistributionCSVBytes []byte
 
 // header should be pre-quantized to very few colors (ideally 8)
+//
 //go:embed header.png
 var headerBytes []byte
 
 // tiles should be pre-quantized to very few colors (ideally 48)
+//
 //go:embed tiles-english.png
 var englishTilesBytes []byte
 
@@ -1560,9 +1563,11 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			}
 
 			// Each event takes 50 centiseconds. The first 30 centiseconds is a still frame.
+			// So: 30 centiseconds of still frame, then 10-step animation at 2 centiseconds each, for a total of 50 centiseconds.
 			thisDelay := 30
 			if isAnimatedB {
 				// Version B delays for 70 centiseconds, then spends 30 centiseconds on the animation.
+				// So: 70 centiseconds of still frame, then 5-step animation at 6 centiseconds each, for a total of 100 centiseconds.
 				thisDelay = 70
 			}
 			addFrame(rect.Union(cumesRect.Union(spreadRect).Union(tilesRect)), thisDelay)
@@ -1648,7 +1653,12 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 				}
 			} else {
 				// With no animation, the remaining 20 centiseconds is the same still frame, with the score diff.
-				addFrame(scoreDiffRect, 20)
+				thisDelay = 20
+				if isAnimatedB {
+					// In version B, this delay should be 30 centiseconds.
+					thisDelay = 30
+				}
+				addFrame(scoreDiffRect, thisDelay)
 			}
 			// Erase stuffs.
 			fastDrawSrc(canvasPalImg, cumesRect, boardPalImg, cumesRect.Min)
