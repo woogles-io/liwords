@@ -636,15 +636,18 @@ export const PlayerProfile = React.memo(() => {
             />
           )}
 
-          {username && (
-            <AnnotatedGamesHistoryCard
-              games={recentAnnotatedGames}
-              fetchPrev={fetchPrevAnnotatedGames}
-              fetchNext={fetchNextAnnotatedGames}
-              loggedInUserID={loginState.userID}
-              showAnnotator={false}
-            />
-          )}
+          {username &&
+            !(
+              recentAnnotatedGamesOffset === 0 && !recentAnnotatedGames?.length
+            ) && (
+              <AnnotatedGamesHistoryCard
+                games={recentAnnotatedGames}
+                fetchPrev={fetchPrevAnnotatedGames}
+                fetchNext={fetchNextAnnotatedGames}
+                loggedInUserID={loginState.userID}
+                showAnnotator={false}
+              />
+            )}
         </div>
       )}
 
