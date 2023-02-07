@@ -20,6 +20,15 @@ import {
 import { EphemeralTile } from '../utils/cwgame/common';
 import { ChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
 
+// single place to adjust if we want to check this more often or less often
+const useEnableAlternativeGifs = () => {
+  const ret = useMemo(
+    () => localStorage.getItem('enableAlternativeGifs') === 'true',
+    []
+  );
+  return ret;
+};
+
 const downloadGameImg = (downloadFilename: string) => {
   const link = document.createElement('a');
   link.href = new URL(
@@ -59,6 +68,7 @@ const ExamineGameControls = React.memo(
     const { gameContext } = useGameContextStoreContext();
     const { setPlacedTiles, setPlacedTilesTempScore } =
       useTentativeTileContext();
+    const enableAlternativeGifs = useEnableAlternativeGifs();
     useEffect(() => {
       setPlacedTilesTempScore(undefined);
       setPlacedTiles(new Set<EphemeralTile>());
@@ -109,9 +119,33 @@ const ExamineGameControls = React.memo(
                 }.gif`
               );
               break;
+            case 'download-animated-gif-b-turn':
+              downloadGameImg(
+                `${gameContext.gameID}${gameDone ? '-v2' : ''}-b-${
+                  examinableGameContext.turns.length + 1
+                }.gif`
+              );
+              break;
+            case 'download-animated-gif-c-turn':
+              downloadGameImg(
+                `${gameContext.gameID}${gameDone ? '-v2' : ''}-c-${
+                  examinableGameContext.turns.length + 1
+                }.gif`
+              );
+              break;
             case 'download-animated-gif':
               downloadGameImg(
                 `${gameContext.gameID}${gameDone ? '-v2' : ''}-a.gif`
+              );
+              break;
+            case 'download-animated-gif-b':
+              downloadGameImg(
+                `${gameContext.gameID}${gameDone ? '-v2' : ''}-b.gif`
+              );
+              break;
+            case 'download-animated-gif-c':
+              downloadGameImg(
+                `${gameContext.gameID}${gameDone ? '-v2' : ''}-c.gif`
               );
               break;
           }
@@ -131,7 +165,22 @@ const ExamineGameControls = React.memo(
             PNG
           </Menu.Item>
         )}
-        {!isAtLastTurn && (
+        {!isAtLastTurn && enableAlternativeGifs && (
+          <Menu.SubMenu
+            key="download-animated-gif-turn-menu"
+            disabled={gameHasNotStarted}
+            title="Animated GIF to this position"
+          >
+            <Menu.Item key="download-animated-gif-turn">Classic</Menu.Item>
+            <Menu.Item key="download-animated-gif-b-turn">
+              Slower (smaller file)
+            </Menu.Item>
+            <Menu.Item key="download-animated-gif-c-turn">
+              Slower (smoother)
+            </Menu.Item>
+          </Menu.SubMenu>
+        )}
+        {!isAtLastTurn && !enableAlternativeGifs && (
           <Menu.Item
             key="download-animated-gif-turn"
             disabled={gameHasNotStarted}
@@ -139,7 +188,22 @@ const ExamineGameControls = React.memo(
             Animated GIF to this position
           </Menu.Item>
         )}
-        {gameDone && (
+        {gameDone && enableAlternativeGifs && (
+          <Menu.SubMenu
+            key="download-animated-gif-menu"
+            disabled={gameHasNotStarted}
+            title="Animated GIF of complete game"
+          >
+            <Menu.Item key="download-animated-gif">Classic</Menu.Item>
+            <Menu.Item key="download-animated-gif-b">
+              Slower (smaller file)
+            </Menu.Item>
+            <Menu.Item key="download-animated-gif-c">
+              Slower (smoother)
+            </Menu.Item>
+          </Menu.SubMenu>
+        )}
+        {gameDone && !enableAlternativeGifs && (
           <Menu.Item key="download-animated-gif" disabled={gameHasNotStarted}>
             Animated GIF of complete game
           </Menu.Item>
@@ -220,21 +284,40 @@ type OptionsMenuProps = {
   darkMode: boolean;
 };
 
-const OptionsGameMenu = (props: OptionsMenuProps) => (
-  <Menu
-    onClick={props.handleOptionsClick}
-    onMouseLeave={props.hideMe}
-    theme={props.darkMode ? 'dark' : 'light'}
-  >
-    <Menu.Item key="resign">Resign</Menu.Item>
-    {props.showAbort && <Menu.Item key="abort">Cancel game</Menu.Item>}
-    {props.showNudge && <Menu.Item key="nudge">Nudge</Menu.Item>}
-    <Menu.Item key="download-png-turn">PNG</Menu.Item>
-    <Menu.Item key="download-animated-gif-turn">
-      Animated GIF to this position
-    </Menu.Item>
-  </Menu>
-);
+const OptionsGameMenu = (props: OptionsMenuProps) => {
+  const enableAlternativeGifs = useEnableAlternativeGifs();
+  return (
+    <Menu
+      onClick={props.handleOptionsClick}
+      onMouseLeave={props.hideMe}
+      theme={props.darkMode ? 'dark' : 'light'}
+    >
+      <Menu.Item key="resign">Resign</Menu.Item>
+      {props.showAbort && <Menu.Item key="abort">Cancel game</Menu.Item>}
+      {props.showNudge && <Menu.Item key="nudge">Nudge</Menu.Item>}
+      <Menu.Item key="download-png-turn">PNG</Menu.Item>
+      {enableAlternativeGifs && (
+        <Menu.SubMenu
+          key="download-animated-gif-turn-menu"
+          title="Animated GIF to this position"
+        >
+          <Menu.Item key="download-animated-gif-turn">Classic</Menu.Item>
+          <Menu.Item key="download-animated-gif-b-turn">
+            Slower (smaller file)
+          </Menu.Item>
+          <Menu.Item key="download-animated-gif-c-turn">
+            Slower (smoother)
+          </Menu.Item>
+        </Menu.SubMenu>
+      )}
+      {!enableAlternativeGifs && (
+        <Menu.Item key="download-animated-gif-turn">
+          Animated GIF to this position
+        </Menu.Item>
+      )}
+    </Menu>
+  );
+};
 
 export type Props = {
   isExamining: boolean;
@@ -481,6 +564,20 @@ const GameControls = React.memo((props: Props) => {
               }.gif`
             );
             break;
+          case 'download-animated-gif-b-turn':
+            downloadGameImg(
+              `${gameContext.gameID}${gameDone ? '-v2' : ''}-b-${
+                gameContext.turns.length + 1
+              }.gif`
+            );
+            break;
+          case 'download-animated-gif-c-turn':
+            downloadGameImg(
+              `${gameContext.gameID}${gameDone ? '-v2' : ''}-c-${
+                gameContext.turns.length + 1
+              }.gif`
+            );
+            break;
         }
       }}
       darkMode={darkMode}
@@ -626,6 +723,7 @@ const EndGameControls = (props: EGCProps) => {
   const { useState } = useMountedState();
   const [rematchDisabled, setRematchDisabled] = useState(false);
   const { gameContext } = useGameContextStoreContext();
+  const enableAlternativeGifs = useEnableAlternativeGifs();
   const gameHasNotStarted = gameContext.players.length === 0; // :shrug:
   const gameDone = true; // it is endgame controls after all
 
@@ -656,6 +754,16 @@ const EndGameControls = (props: EGCProps) => {
               `${gameContext.gameID}${gameDone ? '-v2' : ''}-a.gif`
             );
             break;
+          case 'download-animated-gif-b':
+            downloadGameImg(
+              `${gameContext.gameID}${gameDone ? '-v2' : ''}-b.gif`
+            );
+            break;
+          case 'download-animated-gif-c':
+            downloadGameImg(
+              `${gameContext.gameID}${gameDone ? '-v2' : ''}-c.gif`
+            );
+            break;
         }
       }}
       onMouseLeave={(e) => {
@@ -666,9 +774,24 @@ const EndGameControls = (props: EGCProps) => {
       <Menu.Item key="download-png" disabled={gameHasNotStarted}>
         PNG
       </Menu.Item>
-      <Menu.Item key="download-animated-gif" disabled={gameHasNotStarted}>
-        Animated GIF of complete game
-      </Menu.Item>
+      {enableAlternativeGifs && (
+        <Menu.SubMenu
+          key="download-animated-gif-menu"
+          disabled={gameHasNotStarted}
+          title="Animated GIF of complete game"
+        >
+          <Menu.Item key="download-animated-gif">Classic</Menu.Item>
+          <Menu.Item key="download-animated-gif-b">
+            Slower (smaller file)
+          </Menu.Item>
+          <Menu.Item key="download-animated-gif-c">Slower (smoother)</Menu.Item>
+        </Menu.SubMenu>
+      )}
+      {!enableAlternativeGifs && (
+        <Menu.Item key="download-animated-gif" disabled={gameHasNotStarted}>
+          Animated GIF of complete game
+        </Menu.Item>
+      )}
       <Menu.Item
         key="download-gcg"
         disabled={gameHasNotStarted}
