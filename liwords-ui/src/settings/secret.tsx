@@ -99,20 +99,6 @@ export const Secret = React.memo(() => {
     setEnableBicolorMode((x) => !x);
   }, []);
 
-  // why is there no common function yet for all these...
-  const [enableAlternativeGifs, setEnableAlternativeGifs] = useState(
-    localStorage?.getItem('enableAlternativeGifs') === 'true'
-  );
-  const toggleEnableAlternativeGifs = useCallback(() => {
-    const wantEnableAlternativeGifs =
-      localStorage?.getItem('enableAlternativeGifs') !== 'true';
-    localStorage.setItem(
-      'enableAlternativeGifs',
-      wantEnableAlternativeGifs ? 'true' : 'false'
-    );
-    setEnableAlternativeGifs((x) => !x);
-  }, []);
-
   return (
     <div className="preferences secret">
       <h3>Secret features</h3>
@@ -205,15 +191,6 @@ export const Secret = React.memo(() => {
             defaultChecked={enableBicolorMode}
             onChange={toggleEnableBicolorMode}
             className="bicolor-toggle"
-          />
-        </div>
-        <div className="toggle-section">
-          <div className="title">Alternative GIFs</div>
-          <div>Allow downloading of alternative GIFs</div>
-          <Switch
-            defaultChecked={enableAlternativeGifs}
-            onChange={toggleEnableAlternativeGifs}
-            className="alternative-gifs-toggle"
           />
         </div>
       </div>
