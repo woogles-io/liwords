@@ -78,113 +78,133 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
       return null;
     }
   }, [currentActiveGames, currentWatchedGames, currentlyPuzzling]);
-  const userMenu = (
-    <ul>
-      {isPettable && (
-        <li
-          className="link plain"
-          onClick={() => {
-            setPetting((x) => !x);
-          }}
-        >
-          {!isPetting && 'Pet'}
-          {isPetting && 'Stop petting'}
-        </li>
-      )}
-      {loggedIn &&
-      !props.omitSendMessage &&
-      props.userID &&
-      props.userID !== userID &&
-      props.sendMessage ? (
-        <li
-          className="link plain"
-          onClick={() => {
-            if (props.sendMessage && props.userID) {
-              props.sendMessage(props.userID, props.username);
-            }
-          }}
-        >
-          Chat
-        </li>
-      ) : null}
-      {!props.omitProfileLink && (
-        <li>
-          <Link
-            className="plain"
-            to={`/profile/${encodeURIComponent(props.username)}`}
-            target="_blank"
-          >
-            View profile
-          </Link>
-        </li>
-      )}
-      {contextualLink}
-      {loggedIn &&
-        props.userID &&
-        props.userID !== userID &&
-        props.username &&
-        handleContextMatches.length > 0 && (
-          <li
-            className="link plain"
-            onClick={() => {
-              for (const handleContextMatch of handleContextMatches) {
-                handleContextMatch(props.username);
-              }
-            }}
-          >
-            Match user
-          </li>
-        )}
-      {loggedIn && props.userID && !props.omitFriend ? (
-        <TheFollower
-          friendCallback={props.friendCallback}
-          className="link plain"
-          target={props.userID}
-          tagName="li"
-        />
-      ) : null}
 
-      {loggedIn && props.userID && !props.omitBlock ? (
-        <TheBlocker
-          blockCallback={props.blockCallback}
-          className="link plain"
-          target={props.userID}
-          tagName="li"
-          userName={props.username}
-        />
-      ) : null}
-
-      {props.showModTools && canMod(perms) && props.userID !== userID ? (
-        <li
-          className="link plain"
-          onClick={() =>
-            props.moderate && props.userID
-              ? props.moderate(props.userID, props.username)
-              : void 0
+  const userMenuOptions: JSX.Element[] = [];
+  if (isPettable) {
+    userMenuOptions.push(
+      <li
+        className="link plain"
+        onClick={() => {
+          setPetting((x) => !x);
+        }}
+      >
+        {!isPetting && 'Pet'}
+        {isPetting && 'Stop petting'}
+      </li>
+    );
+  }
+  if (
+    loggedIn &&
+    !props.omitSendMessage &&
+    props.userID &&
+    props.userID !== userID &&
+    props.sendMessage
+  ) {
+    userMenuOptions.push(
+      <li
+        className="link plain"
+        onClick={() => {
+          if (props.sendMessage && props.userID) {
+            props.sendMessage(props.userID, props.username);
           }
+        }}
+      >
+        Chat
+      </li>
+    );
+  }
+  if (!props.omitProfileLink) {
+    userMenuOptions.push(
+      <li>
+        <Link
+          className="plain"
+          to={`/profile/${encodeURIComponent(props.username)}`}
+          target="_blank"
         >
-          Moderate
-        </li>
-      ) : null}
-      {props.showDeleteMessage && canMod(perms) && props.userID !== userID ? (
-        <li className="link plain" onClick={props.deleteMessage}>
-          Delete this message
-        </li>
-      ) : null}
-      {props.additionalMenuItems}
-    </ul>
-  );
+          View profile
+        </Link>
+      </li>
+    );
+  }
+  if (contextualLink) {
+    userMenuOptions.push(contextualLink);
+  }
+  if (
+    loggedIn &&
+    props.userID &&
+    props.userID !== userID &&
+    props.username &&
+    handleContextMatches.length > 0
+  ) {
+    userMenuOptions.push(
+      <li
+        className="link plain"
+        onClick={() => {
+          for (const handleContextMatch of handleContextMatches) {
+            handleContextMatch(props.username);
+          }
+        }}
+      >
+        Match user
+      </li>
+    );
+  }
+  if (loggedIn && props.userID && !props.omitFriend) {
+    userMenuOptions.push(
+      <TheFollower
+        friendCallback={props.friendCallback}
+        className="link plain"
+        target={props.userID}
+        tagName="li"
+      />
+    );
+  }
+  if (loggedIn && props.userID && !props.omitBlock) {
+    userMenuOptions.push(
+      <TheBlocker
+        blockCallback={props.blockCallback}
+        className="link plain"
+        target={props.userID}
+        tagName="li"
+        userName={props.username}
+      />
+    );
+  }
+  if (props.showModTools && canMod(perms) && props.userID !== userID) {
+    userMenuOptions.push(
+      <li
+        className="link plain"
+        onClick={() =>
+          props.moderate && props.userID
+            ? props.moderate(props.userID, props.username)
+            : void 0
+        }
+      >
+        Moderate
+      </li>
+    );
+  }
+  if (props.showDeleteMessage && canMod(perms) && props.userID !== userID) {
+    userMenuOptions.push(
+      <li className="link plain" onClick={props.deleteMessage}>
+        Delete this message
+      </li>
+    );
+  }
+  const userMenu = <ul>{userMenuOptions}</ul>;
   return (
     <Dropdown
       overlayClassName="user-menu"
       overlay={userMenu}
       getPopupContainer={() => document.getElementById('root') as HTMLElement}
       placement="bottomLeft"
-      trigger={
-        !loggedIn && props.omitProfileLink && !isPettable ? [] : ['click']
-      }
+      trigger={userMenuOptions.length > 0 ? ['click'] : []}
     >
-      <span className="user-context-menu">
+      <span
+        className={`user-context-menu ${
+          userMenuOptions.length > 0 ? '' : 'auto-cursor'
+        }`}
+      >
         {props.iconOnly ? ( // Not yet used
           <SettingOutlined />
         ) : (
