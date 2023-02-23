@@ -41,7 +41,7 @@ type WhichFile struct {
 	GameId          string
 	HasNextEventNum bool
 	NextEventNum    int
-	FileType        string // "png", "gif", "animated-gif", "animated-gif-b"
+	FileType        string // "png", "gif", "animated-gif", "animated-gif-b", "animated-gif-c"
 	WhichColor      int    // 0, 1, or -1
 	Version         int
 }
@@ -55,7 +55,7 @@ func determineWhichFile(s string) (WhichFile, error) {
 	nextEventNum := -1
 	ver := 0
 
-	// GAMEID, optional "-vVERSION", optional "-a"/"-b" for gif, optional "-NEXTEVENTNUM", ".png"/".gif"
+	// GAMEID, optional "-vVERSION", optional "-a"/"-b"/"-c" for gif, optional "-NEXTEVENTNUM", ".png"/".gif"
 
 	v := strings.LastIndexByte(s, '.')
 	if v < 0 {
@@ -108,6 +108,12 @@ func determineWhichFile(s string) (WhichFile, error) {
 	} else if strings.HasPrefix(s, "b") {
 		if fileType == "gif" && nextToken() == "b" {
 			fileType = "animated-gif-b"
+		} else {
+			return WhichFile{}, errInvalidFilename
+		}
+	} else if strings.HasPrefix(s, "c") {
+		if fileType == "gif" && nextToken() == "c" {
+			fileType = "animated-gif-c"
 		} else {
 			return WhichFile{}, errInvalidFilename
 		}

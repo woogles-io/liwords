@@ -104,14 +104,14 @@ const ExamineGameControls = React.memo(
               break;
             case 'download-animated-gif-turn':
               downloadGameImg(
-                `${gameContext.gameID}${gameDone ? '-v2' : ''}-a-${
+                `${gameContext.gameID}${gameDone ? '-v2-b' : '-a'}-${
                   examinableGameContext.turns.length + 1
                 }.gif`
               );
               break;
             case 'download-animated-gif':
               downloadGameImg(
-                `${gameContext.gameID}${gameDone ? '-v2' : ''}-a.gif`
+                `${gameContext.gameID}${gameDone ? '-v2-b' : '-a'}.gif`
               );
               break;
           }
@@ -476,7 +476,7 @@ const GameControls = React.memo((props: Props) => {
             break;
           case 'download-animated-gif-turn':
             downloadGameImg(
-              `${gameContext.gameID}${gameDone ? '-v2' : ''}-a-${
+              `${gameContext.gameID}${gameDone ? '-v2-b' : '-a'}-${
                 gameContext.turns.length + 1
               }.gif`
             );
@@ -653,7 +653,7 @@ const EndGameControls = (props: EGCProps) => {
             break;
           case 'download-animated-gif':
             downloadGameImg(
-              `${gameContext.gameID}${gameDone ? '-v2' : ''}-a.gif`
+              `${gameContext.gameID}${gameDone ? '-v2-b' : '-a'}.gif`
             );
             break;
         }

@@ -65,6 +65,7 @@ var superBoardConfig = [][]rune{
 }
 
 // These files must be kept in sync with macondo's data/letterdistribution/.
+//
 //go:embed letterdistributions/english.csv
 var englishLetterDistributionCSVBytes []byte
 
@@ -81,10 +82,12 @@ var germanLetterDistributionCSVBytes []byte
 var norwegianLetterDistributionCSVBytes []byte
 
 // header should be pre-quantized to very few colors (ideally 8)
+//
 //go:embed header.png
 var headerBytes []byte
 
 // tiles should be pre-quantized to very few colors (ideally 48)
+//
 //go:embed tiles-english.png
 var englishTilesBytes []byte
 
@@ -813,6 +816,7 @@ func isImageOneColor(src *image.Paletted) bool {
 
 var displacementRatioVerA []float64
 var displacementRatioVerB []float64
+var displacementRatioVerC []float64
 
 func init() {
 	// For animation.
@@ -838,6 +842,14 @@ func init() {
 			displacementRatioVerB[i] = math.Sin(float64(math.Pi/2) * float64(i) / float64(numSteps))
 		}
 		displacementRatioVerB[numSteps] = 1
+	}
+	{
+		numSteps := 15
+		displacementRatioVerC = make([]float64, numSteps+1)
+		for i := 1; i < numSteps; i++ {
+			displacementRatioVerC[i] = math.Sin(float64(math.Pi/2) * float64(i) / float64(numSteps))
+		}
+		displacementRatioVerC[numSteps] = 1
 	}
 
 	if err := validateBoardConfig(standardBoardConfig); err != nil {
@@ -1041,7 +1053,8 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 	}
 
 	isAnimatedB := wf.FileType == "animated-gif-b"
-	isAnimated := isAnimatedB || wf.FileType == "animated-gif"
+	isAnimatedC := wf.FileType == "animated-gif-c"
+	isAnimated := isAnimatedB || isAnimatedC || wf.FileType == "animated-gif"
 	numEvents := math.MaxInt
 	if wf.HasNextEventNum {
 		numEvents = wf.NextEventNum - 1
@@ -1560,9 +1573,13 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			}
 
 			// Each event takes 50 centiseconds. The first 30 centiseconds is a still frame.
+			// So: 30 centiseconds of still frame, then 10-step animation at 2 centiseconds each, for a total of 50 centiseconds.
 			thisDelay := 30
-			if isAnimatedB {
+			if isAnimatedB || isAnimatedC {
 				// Version B delays for 70 centiseconds, then spends 30 centiseconds on the animation.
+				// So: 70 centiseconds of still frame, then 5-step animation at 6 centiseconds each, for a total of 100 centiseconds.
+				// Version C delays for 70 centiseconds, then spends 30 centiseconds on the animation.
+				// So: 70 centiseconds of still frame, then 15-step animation at 2 centiseconds each, for a total of 100 centiseconds.
 				thisDelay = 70
 			}
 			addFrame(rect.Union(cumesRect.Union(spreadRect).Union(tilesRect)), thisDelay)
@@ -1571,7 +1588,11 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 				displacementRatio := displacementRatioVerA
 				if isAnimatedB {
 					displacementRatio = displacementRatioVerB
+				} else if isAnimatedC {
+					displacementRatio = displacementRatioVerC
 				}
+				// In version A, displacementRatio has 10 steps, and it should take 20 centiseconds here.
+				// In version C, displacementRatio has 15 steps, and it should take 30 centiseconds here.
 				thisDelay = 2
 				if isAnimatedB {
 					// In version B, displacementRatio has 5 steps, and it should take 30 centiseconds here.
@@ -1648,7 +1669,12 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 				}
 			} else {
 				// With no animation, the remaining 20 centiseconds is the same still frame, with the score diff.
-				addFrame(scoreDiffRect, 20)
+				thisDelay = 20
+				if isAnimatedB || isAnimatedC {
+					// In versions B and C, this delay should be 30 centiseconds.
+					thisDelay = 30
+				}
+				addFrame(scoreDiffRect, thisDelay)
 			}
 			// Erase stuffs.
 			fastDrawSrc(canvasPalImg, cumesRect, boardPalImg, cumesRect.Min)
@@ -1682,8 +1708,8 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 		}
 	} else {
 		thisDelay := 50
-		if isAnimatedB {
-			// Version B delays for 100 centiseconds.
+		if isAnimatedB || isAnimatedC {
+			// Versions B and C delay for 100 centiseconds.
 			thisDelay = 100
 		}
 		// In the original version, only TILE_PLACEMENT_MOVE and PHONY_TILES_RETURNED generate a frame.
