@@ -88,6 +88,12 @@ func transformLexiconName(lexiconName string) string {
 		// This is user-visible as CEL, but we still call it ECWL internally.
 		// This is the Common English List.
 		newlex = "ECWL"
+	case strings.HasPrefix(lexiconName, "NSF"):
+		newlex = "NSF21"
+	case strings.HasPrefix(lexiconName, "RD"):
+		newlex = "RD28"
+	case strings.HasPrefix(lexiconName, "FRA"):
+		newlex = "FRA20"
 	default:
 		newlex = lexiconName
 	}

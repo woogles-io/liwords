@@ -4,11 +4,13 @@
 
 // internal rating name is saved in db (select ratings->'Data' from profiles).
 // it follows pkg/entity/ratings.go ToVariantKey.
-// XXX: foreign ratings aren't grouped by family.
 const lexiconCodeToInternalRatingName = (code: string) => {
   if (code.startsWith('NWL')) return 'NWL18';
   if (code.startsWith('CSW')) return 'CSW19';
   if (code.startsWith('ECWL')) return 'ECWL';
+  if (code.startsWith('NSF')) return 'NSF21';
+  if (code.startsWith('RD')) return 'RD28';
+  if (code.startsWith('FRA')) return 'FRA20';
   return code;
 };
 
@@ -16,6 +18,8 @@ const lexiconCodeToInternalRatingName = (code: string) => {
 const InternalRatingNameToProfileRatingName: {
   [code: string]: string;
 } = {
+  // Internal rating names are old versions of the lexica. Not ideal,
+  // but we can redo this later, maybe.
   NWL18: 'NWL',
   NSWL20: 'NSWL',
   CSW19: 'CSW',
@@ -80,8 +84,8 @@ export const AllLexica: { [code: string]: Lexicon } = {
       'The “Scrabble®-Turnierliste” used as the German Lexicon is subject to copyright and related rights of Scrabble® Deutschland e.V. With the friendly assistance of Gero Illings SuperDic.',
     flagCode: 'de',
   },
-  NSF21: {
-    code: 'NSF21',
+  NSF22: {
+    code: 'NSF22',
     shortDescription: 'Norsk (Norwegian)',
     matchName: 'Norsk',
     longDescription:
