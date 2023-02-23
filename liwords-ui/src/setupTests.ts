@@ -1,3 +1,7 @@
+/**
+ * @jest-environment jsdom
+ */
+
 // jest-dom adds custom jest matchers for asserting on DOM nodes.
 // allows you to do things like:
 // expect(element).toHaveTextContent(/react/i)
@@ -21,14 +25,14 @@ const mocks = {
   },
 };
 
-global.localStorage = mocks.localStorage;
-
-global.Audio = jest.fn().mockImplementation(() => ({
+const audio = jest.fn().mockImplementation(() => ({
   pause: mocks.Audio.pause,
   play: mocks.Audio.play,
   load: mocks.Audio.load,
   addEventListener: mocks.Audio.addEventListener,
 }));
 
-global.TextEncoder = TextEncoder;
-global.TextDecoder = TextDecoder;
+Object.defineProperty(window, 'localStorage', { value: mocks.localStorage });
+Object.defineProperty(window, 'Audio', { value: audio });
+Object.defineProperty(window, 'TextEncoder', { value: TextEncoder });
+Object.defineProperty(window, 'TextDecoder', { value: TextDecoder });
