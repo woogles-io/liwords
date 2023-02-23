@@ -142,7 +142,7 @@ func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, err
 	}
 
 	for _, topic := range topics {
-		ch := make(chan *nats.Msg, 64)
+		ch := make(chan *nats.Msg, 512)
 		var err error
 		var sub *nats.Subscription
 		if strings.Contains(topic, ".request.") {
