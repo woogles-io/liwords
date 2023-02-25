@@ -80,6 +80,7 @@ Upon receipt of a `followersof.>` message:
 
 **Note**: We currently login to the socket every time we switch pages in the app, very quickly after logging out from a previous session. 
 
+The user needs information on the channel they just joined. We make a query to `public.user_channel_presences` table and get the list of users also in this channel. This gets sent back through the socket.
 
 
 ### Logout
@@ -117,9 +118,6 @@ This usually happens right after opening a new app tab.
 
 We want the user to get information about what the people they follow are up to. We will make a batch query to the `public.user_channel_presences` table for every user_id they follow, and send this data back through HTTP.
 
-The user needs information on the channel they just joined. We make a query to `public.user_channel_presences` table and get the list of users also in this channel. This gets sent back through HTTP.
-
-XXX:  how does the user know what channel they're in? through the socket?
 
 
 ### A user is followed
@@ -208,12 +206,19 @@ We send the ChannelPresence via HTTP whenever we are requesting initial informat
 ```proto
 message ChannelPresences {
     repeated ChannelPresence presences = 1;
+    // Are we sending people the user follows, or are we sending people
+    // in a channel?
+    enum PresenceType {
+        FOLLOWED = 0;
+        CHANNEL = 1;
+    }
+    PresenceType presence_type = 2;
 }
 ```
 
 - When a user follows another user, they should get an initial `ChannelPresences` message with the user's channels. After that, they can just parse `FolloweeActivity` messages. Note that the initial message can be empty if the user is not logged in when followed.
-- When a user logs in and they get a list of people in their channel, that is also a `ChannelPresences` message.
-- When a user logs in and they get a list of their followees and what they're doing, this is another `ChannelPresences` message.
+- When a user logs in and they get a list of people in their channel, through the socket, that is also a `ChannelPresences` message.
+- When a user logs in and they get a list of their followees and what they're doing, this is another `ChannelPresences` message. This request can be done through the API.
 
 ### Channels
 
@@ -221,10 +226,12 @@ Our channels are for presence. These are not the same channels as the internal N
 
 For separating logical parts of a presence channel, we can use a pleasing symbol not in the base64 set, such as #.
 
-`lobby#omgwords`
-`game#ABCDEF`
-`gametv#ABCDEF`
-`lobby#puzzles`
-`anno#ABCDEF`
-`activegame#ABCDEF`
-`lobby#tournament#ABCDEF`
+* `lobby#omgwords`
+* `game#ABCDEF`
+* `gametv#ABCDEF`
+* `lobby#puzzles`
+* `anno#ABCDEF`
+* `activegame#ABCDEF`
+* `lobby#tournament#ABCDEF`
+
+etc.
