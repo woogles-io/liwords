@@ -43,39 +43,19 @@ In order to make things more scalable, and to avoid sending so many messages on 
 
 ## New database tables
 
-We need a table to hold user presences.
-
-```sql
-CREATE TABLE public.user_presences (
-    user_id int,
-    last_seen timestamp with time zone
-);
-
-CREATE UNIQUE INDEX idx_user_presences_id ON public.user_presences USING btree(user_id);
-```
-
-We need another table for channel presences:
-
-```sql
-CREATE TABLE public.channel_presences (
-    channel_name string,
-    last_updated timestamp with time zone
-);
-
-CREATE UNIQUE INDEX idx_channel_presences_channel ON public.channel_presences USING btree(channel_name);
-```
-
-We need a table to tie the two together:
+We need a table to tie users and channel presences together:
 
 ```sql
 CREATE TABLE public.user_channel_presences (
     user_id int,
     channel_name string,
-    connection_id string
+    connection_id string,
+    last_seen timestamp with time zone
 );
 
 CREATE UNIQUE INDEX idx_user_channel_presences ON public.user_channel_presences USING btree(user_id, channel_name, connection_id);
 CREATE INDEX idx_uc_presences_connid ON public.user_channel_presences USING btree(connection_id);
+CREATE INDEX idx_last_seen ON public.user_channel_presences USING btree(date_trunc('hour', last_seen));
 ```
 
 
@@ -85,14 +65,9 @@ CREATE INDEX idx_uc_presences_connid ON public.user_channel_presences USING btre
 
 When a user logs in to the socket, we will subscribe them to their regular channels/realms as we do now.
 
-We will modify the `user_presences` (and perhaps other presences tables) in a transaction, adding this connection ID and to the relevant channel.
+We will modify the `user_channel_presences` table, adding this connection ID to the relevant channel.
 
 **Note**: For legacy purposes the user connection ID is not of full UUID length. We should either lengthen it, or handle the rare collision case by prompting the user to log in again.
-
-The user also needs to get information about what the people they follow are up to. We will make a batch query to the `public.user_channel_presences` table for every user_id they follow, and send this data out via the socket as well.
-
-Finally, the user needs information on the channel they just joined. We make a query to `public.user_channel_presences` table and get the list of users also in this channel. This can get sent out via the socket as well.
-
 
 We can then send a message on NATS with the channel `followersof.<UserID>` and the user's presence information (lobby? tournament room? etc).
 
@@ -111,7 +86,7 @@ Upon receipt of a `followersof.>` message:
 
 When a user logs out of the socket, we can send a NATS message to `followersof.<UserID>` as in the above flow. 
 
-We also do the reverse of the above -- modify the `user_presences` and other tables to remove the player's connection ID.
+We also do the reverse of the above -- modify the `user_channel_presences` to remove the player's connection ID.
 
 If a user is switching pages, they rapidly log out and in again to another "realm". They can also log out of one `socketsvc` node and log in to another one.
 
@@ -131,10 +106,21 @@ On every login, we just add more rows to the `user_channel_presences` table with
 
 `socketsrv` sends a websocket ping for every connection every few seconds, and then reads a pong back from the client.
 
-Every few pongs, we should update the `last_seen` column for this user.
+Every few pongs, we should update the `last_seen` column for this connection ID.
 
 
 ## liwords-api patterns
+
+### A user makes an API request for their followers
+
+This usually happens right after opening a new app tab.
+
+We want the user to get information about what the people they follow are up to. We will make a batch query to the `public.user_channel_presences` table for every user_id they follow, and send this data back through HTTP.
+
+The user needs information on the channel they just joined. We make a query to `public.user_channel_presences` table and get the list of users also in this channel. This gets sent back through HTTP.
+
+XXX:  how does the user know what channel they're in? through the socket?
+
 
 ### A user is followed
 
@@ -172,13 +158,13 @@ For both cases:
 
 We need a cronjob to keep the table clean. It is possible to run into a situation where a presence is stale (in the database but not actually connected to the socket). We can run a daily or hourly job to clear all presences where `last_seen` is older than some amount of time.
 
-Note that we should always update the `user_presences` and `channel_presences` together, in a transaction. That way, there is no chance those two are out of sync with each other. When the cronjob deletes from the `user_presences` table, then, it should find every channel that user is in, and delete the user from the relevant `channel_presences` item. Of course, this should also be done in a transaction.
-
 The cronjob should be a periodic ECS task.
 
 ## Data structures
 
 ### Messages
+
+#### UserActivity
 
 We should make a UserActivityType proto:
 
@@ -207,6 +193,27 @@ message FolloweeActivity {
 
 **Note**: receivers of these messages may get multiple conflicting messages. For example, a player can be doing puzzles, then they can get an EndedGame message, because they were playing a game in another tab. It is up to the receiver to decide how to depict this. Typically the receiver is the front-end and it can prioritize which `UserActivityType`s to show over others.
 
+
+#### ChannelPresence
+
+```proto
+message ChannelPresence {
+    string user_id = 1;
+    string channel_name = 2;
+}
+```
+
+We send the ChannelPresence via HTTP whenever we are requesting initial information about a channel.
+
+```proto
+message ChannelPresences {
+    repeated ChannelPresence presences = 1;
+}
+```
+
+- When a user follows another user, they should get an initial `ChannelPresences` message with the user's channels. After that, they can just parse `FolloweeActivity` messages. Note that the initial message can be empty if the user is not logged in when followed.
+- When a user logs in and they get a list of people in their channel, that is also a `ChannelPresences` message.
+- When a user logs in and they get a list of their followees and what they're doing, this is another `ChannelPresences` message.
 
 ### Channels
 
