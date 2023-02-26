@@ -719,9 +719,12 @@ func (b *Bus) openSeeks(ctx context.Context, receiverID string, tourneyID string
 		return nil, nil
 	}
 
-	receiver, err := b.userStore.GetByUUID(ctx, receiverID)
-	if err != nil {
-		return nil, err
+	var receiver *entity.User
+	if !userIsAnon(receiverID) {
+		receiver, err = b.userStore.GetByUUID(ctx, receiverID)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	log.Debug().Str("receiver", receiverID).Interface("open-matches", sgs).Msg("open-matches")
@@ -732,9 +735,12 @@ func (b *Bus) openSeeks(ctx context.Context, receiverID string, tourneyID string
 			return nil, err
 		}
 
-		block, err := b.blockExists(ctx, seeker, receiver)
-		if err != nil {
-			return nil, err
+		block := -1
+		if receiver != nil {
+			block, err = b.blockExists(ctx, seeker, receiver)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		// only append game if the receiver is not being blocked
