@@ -360,10 +360,12 @@ outerfor:
 			}()
 
 		case <-seekExpirer.C:
-			err := b.soughtGameStore.ExpireOld(ctx)
-			if err != nil {
-				log.Err(err).Msg("expiration-error")
-			}
+			go func() {
+				err := b.soughtGameStore.ExpireOld(ctx)
+				if err != nil {
+					log.Err(err).Msg("expiration-error")
+				}
+			}()
 		}
 	}
 
