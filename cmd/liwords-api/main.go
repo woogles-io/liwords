@@ -37,6 +37,7 @@ import (
 	cfgstore "github.com/domino14/liwords/pkg/stores/config"
 	"github.com/domino14/liwords/pkg/stores/game"
 	modstore "github.com/domino14/liwords/pkg/stores/mod"
+	"github.com/domino14/liwords/pkg/stores/presence"
 	puzzlestore "github.com/domino14/liwords/pkg/stores/puzzles"
 	"github.com/domino14/liwords/pkg/stores/session"
 	"github.com/domino14/liwords/pkg/stores/soughtgame"
@@ -231,6 +232,10 @@ func main() {
 		panic(err)
 	}
 	stores.PresenceStore = pkgredis.NewRedisPresenceStore(redisPool)
+	stores.BackupPresenceStore, err = presence.NewDBStore(dbPool)
+	if err != nil {
+		panic(err)
+	}
 	stores.ChatStore = pkgredis.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore)
 
 	stores.PuzzleStore, err = puzzlestore.NewDBStore(dbPool)
@@ -355,7 +360,7 @@ func main() {
 	sig := make(chan os.Signal, 1)
 
 	// Handle bus.
-	pubsubBus, err := bus.NewBus(cfg, stores, redisPool)
+	pubsubBus, err := bus.NewBus(cfg, stores, redisPool, dbPool)
 	if err != nil {
 		panic(err)
 	}

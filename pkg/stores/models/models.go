@@ -120,6 +120,7 @@ type Puzzle struct {
 	GenerationID int64
 	BucketIndex  int32
 	CreatedAt    time.Time
+	Valid        bool
 }
 
 type PuzzleAttempt struct {
@@ -215,4 +216,11 @@ type User struct {
 	IsMod       sql.NullBool
 	Actions     pgtype.JSONB
 	Notoriety   sql.NullInt32
+}
+
+type UserChannelPresence struct {
+	UserID       string
+	ChannelName  string
+	ConnectionID string
+	LastSeenAt   time.Time
 }

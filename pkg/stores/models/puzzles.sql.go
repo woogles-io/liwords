@@ -24,6 +24,8 @@ WHERE puzzles.id IS NULL
     AND games.request NOT LIKE '%wordsmog%'
     -- 0: none, 5: aborted, 7: canceled
     AND game_end_reason not in (0, 5, 7)
+    AND type = 0
+    
     ORDER BY games.id DESC 
     LIMIT $4 OFFSET $5
 `
@@ -78,6 +80,8 @@ WHERE puzzles.id IS NULL
     -- 0: none, 5: aborted, 7: canceled
     AND game_end_reason not in (0, 5, 7)
     AND NOT (quickdata @> '{"pi": [{"is_bot": true}]}'::jsonb)
+    AND type = 0
+
     ORDER BY games.id DESC 
     LIMIT $4 OFFSET $5
 `

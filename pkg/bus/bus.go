@@ -61,6 +61,8 @@ type Stores struct {
 	SessionStore    sessions.SessionStore
 	PuzzleStore     puzzles.PuzzleStore
 
+	BackupPresenceStore user.PresenceStore
+
 	// Refactor this soon:
 	GameDocumentStore  *stores.GameDocumentStore
 	AnnotatedGameStore *stores.DBStore
@@ -80,6 +82,9 @@ type Bus struct {
 	configStore     config.ConfigStore
 	chatStore       user.ChatStore
 	puzzleStore     puzzles.PuzzleStore
+
+	// O_O - write to both stores for a bit.
+	backupPresenceStore user.PresenceStore
 
 	redisPool *redis.Pool
 
@@ -112,6 +117,7 @@ func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, err
 		configStore:         stores.ConfigStore,
 		chatStore:           stores.ChatStore,
 		puzzleStore:         stores.PuzzleStore,
+		backupPresenceStore: stores.BackupPresenceStore,
 		subscriptions:       []*nats.Subscription{},
 		subchans:            map[string]chan *nats.Msg{},
 		config:              cfg,
@@ -119,7 +125,8 @@ func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, err
 		tournamentEventChan: make(chan *entity.EventWrapper, 64),
 		genericEventChan:    make(chan *entity.EventWrapper, 64),
 		redisPool:           redisPool,
-		gameEventAPIServer:  NewEventApiServer(stores.UserStore, stores.GameStore),
+
+		gameEventAPIServer: NewEventApiServer(stores.UserStore, stores.GameStore),
 	}
 	bus.gameStore.SetGameEventChan(bus.gameEventChan)
 	bus.tournamentStore.SetTournamentEventChan(bus.tournamentEventChan)

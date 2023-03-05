@@ -7,11 +7,14 @@ The version numbers are UTC timestamps in YYYYMMDDHHmm format.
 To create a set of migrations use the following command:
 
 ```
-docker-compose run --rm goutils migrate -database "postgres://postgres:pass@db:5432/liwords?sslmode=disable" -verbose  create -dir db/migrations -format 200601021504 -ext sql {name-of-migration}
+docker-compose run --rm goutils migrate -database "postgres://postgres:pass@db:5432/liwords?sslmode=disable" -verbose  create -dir db/migrations -format 200601021504 -ext sql NAME_OF_MIGRATION
 ```
 
-Replacing `{name-of-migration}` with your chosen name.
+Replacing `NAME_OF_MIGRATION` with your chosen name.
 
+If you're using Linux you may need to change the permissions of the generated file. You can do so with:
+
+`sudo chown -R ${USER}:${USER} db/migrations`
 
 ### Down migration
 
