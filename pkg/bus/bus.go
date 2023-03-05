@@ -177,9 +177,6 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 	adjudicator := time.NewTicker(AdjudicateInterval)
 	defer adjudicator.Stop()
 
-	gameCounter := time.NewTicker(GamesCounterInterval)
-	defer gameCounter.Stop()
-
 	seekExpirer := time.NewTicker(SeeksExpireInterval)
 	defer seekExpirer.Stop()
 
@@ -362,19 +359,13 @@ outerfor:
 				}
 			}()
 
-		case <-gameCounter.C:
-			n, err := b.gameStore.Count(ctx)
-			if err != nil {
-				log.Err(err).Msg("count-error")
-				break
-			}
-			log.Info().Int64("game-count", n).Msg("game-stats")
-
 		case <-seekExpirer.C:
-			err := b.soughtGameStore.ExpireOld(ctx)
-			if err != nil {
-				log.Err(err).Msg("expiration-error")
-			}
+			go func() {
+				err := b.soughtGameStore.ExpireOld(ctx)
+				if err != nil {
+					log.Err(err).Msg("expiration-error")
+				}
+			}()
 		}
 	}
 
