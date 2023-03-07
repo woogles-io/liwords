@@ -113,3 +113,45 @@ func TestFindMachineWord(t *testing.T) {
 		})
 	}
 }
+
+var findNorwegianWordTests = []testpair{
+	{"ABACAER", true},
+	{"ÅMA", true},
+	{"AMÅ", false},
+	{"ÜBERKUL", true}, // takes an E and a T!
+}
+
+func TestFindMachineWordNorwegian(t *testing.T) {
+	is := is.New(t)
+	d, _ := LoadDawg(filepath.Join(DefaultConfig.DataPath, "lexica", "dawg", "NSF22.dawg"))
+	for _, pair := range findNorwegianWordTests {
+		t.Run(pair.prefix, func(t *testing.T) {
+			mw, err := runemapping.ToMachineLetters(pair.prefix, d.GetRuneMapping())
+			is.NoErr(err)
+			found := d.HasWord(mw)
+			is.Equal(found, pair.found)
+		})
+	}
+}
+
+var hasAnagramNorwegianTests = []testpair{
+	{"BRACEAA", true},
+	{"MÅA", true},
+	{"AMÅA", false},
+	{"BELRÜUK", true},
+	{"BELRSÜUK", false},
+	{"BELRTÜUK", true},
+}
+
+func TestHasAnagramNorwegian(t *testing.T) {
+	is := is.New(t)
+	d, _ := LoadDawg(filepath.Join(DefaultConfig.DataPath, "lexica", "dawg", "NSF22.dawg"))
+	for _, pair := range hasAnagramNorwegianTests {
+		t.Run(pair.prefix, func(t *testing.T) {
+			mw, err := runemapping.ToMachineLetters(pair.prefix, d.GetRuneMapping())
+			is.NoErr(err)
+			found := d.HasAnagram(mw)
+			is.Equal(found, pair.found)
+		})
+	}
+}

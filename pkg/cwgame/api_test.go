@@ -14,6 +14,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/liwords/pkg/config"
+	"github.com/domino14/liwords/pkg/cwgame/runemapping"
 	"github.com/domino14/liwords/pkg/cwgame/tiles"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 )
@@ -489,6 +490,71 @@ func TestChallengeGoodWordDouble(t *testing.T) {
 	is.Equal(gdoc.CurrentScores, []int32{143, 137})
 	is.Equal(gdoc.ScorelessTurns, uint32(0))
 	is.Equal(gdoc.PlayerOnTurn, uint32(1))
+}
+
+func TestChallengeGoodWordNorwegian(t *testing.T) {
+	is := is.New(t)
+	globalNower = &FakeNower{fakeMeow: 12345}
+	defer restoreGlobalNower()
+	ctx := ctxForTests()
+	rules := NewBasicGameRules("NSF22", "CrosswordGame", "norwegian", ipc.ChallengeRule_ChallengeRule_TEN_POINT,
+		"classic", []int{300, 300}, 1, 0, false)
+	g, _ := NewGame(DefaultConfig, rules, []*ipc.GameDocument_MinimalPlayerInfo{
+		{Nickname: "Cesitar", RealName: "Cesar", UserId: "cesar1"},
+		{Nickname: "Lucas", RealName: "Lucas", UserId: "lucas1"},
+	})
+	err := StartGame(ctxForTests(), g)
+	is.NoErr(err)
+	is.True(g.TimersStarted)
+	is.Equal(g.Timers, &ipc.Timers{
+		TimeOfLastUpdate: 12345,
+		TimeStarted:      12345,
+		TimeRemaining:    []int64{300000, 300000},
+		MaxOvertime:      1,
+		IncrementSeconds: 0,
+	})
+
+	// Let's say we're 5000 ms after the last time of update
+	globalNower = &FakeNower{
+		fakeMeow: g.Timers.TimeOfLastUpdate + 5000}
+	defer restoreGlobalNower()
+
+	cge := &ipc.ClientGameplayEvent{
+		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
+		GameId:         g.Uid,
+		PositionCoords: "8G",
+		Tiles:          "ÅMA",
+	}
+	ld, err := tiles.GetDistribution(DefaultConfig, "norwegian")
+	is.NoErr(err)
+	rack, err := runemapping.ToMachineLetters("AÅM", ld.RuneMapping())
+	is.NoErr(err)
+
+	err = AssignRacks(g, [][]byte{
+		runemapping.MachineWord(rack).ToByteArr(),
+		{},
+	}, AlwaysAssignEmpty)
+	is.NoErr(err)
+
+	err = ProcessGameplayEvent(ctx, cge, "cesar1", g)
+	is.NoErr(err)
+
+	globalNower.(*FakeNower).Sleep(2500)
+	// second player challenges after 2500 ms, and first player should gain 10 pts
+	cge2 := &ipc.ClientGameplayEvent{
+		Type:   ipc.ClientGameplayEvent_CHALLENGE_PLAY,
+		GameId: g.Uid,
+	}
+	err = ProcessGameplayEvent(ctx, cge2, "lucas1", g)
+	is.NoErr(err)
+
+	fmt.Println(g.Events)
+	is.Equal(len(g.Events), 2)
+	// Play was worth 14 but P1 got a 10-pt bonus
+	is.Equal(g.CurrentScores, []int32{24, 0})
+	// Player 2 is still on turn. (0-indexed)
+	is.Equal(g.PlayerOnTurn, uint32(1))
+
 }
 
 func TestChallengeGoodWordDoubleWithTimeIncrement(t *testing.T) {

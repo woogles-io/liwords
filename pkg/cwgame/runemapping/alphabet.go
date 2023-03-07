@@ -200,6 +200,7 @@ func (rm *RuneMapping) genLetterSlice(sortMap map[rune]int) {
 	for rn := range rm.vals {
 		rm.letterSlice = append(rm.letterSlice, rn)
 	}
+
 	if sortMap != nil {
 		sort.Slice(rm.letterSlice, func(i, j int) bool {
 			return sortMap[rm.letterSlice[i]] < sortMap[rm.letterSlice[j]]
