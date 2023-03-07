@@ -40,10 +40,7 @@ func findMachineWord(d *SimpleDawg, nodeIdx uint32, word runemapping.MachineWord
 	var numArcs, i byte
 	var letter runemapping.MachineLetter
 	var nextNodeIdx uint32
-
 	if curIdx == uint8(len(word)-1) {
-		// log.Println("checking letter set last Letter", string(letter),
-		// 	"nodeIdx", nodeIdx, "word", string(word))
 		ml := word[curIdx]
 		return d.InLetterSet(ml, nodeIdx), nodeIdx
 	}
@@ -54,8 +51,6 @@ func findMachineWord(d *SimpleDawg, nodeIdx uint32, word runemapping.MachineWord
 		nextNodeIdx, letter = d.ArcToIdxLetter(nodeIdx + uint32(i))
 		curml := word[curIdx]
 		if letter == curml {
-			// log.Println("Letter", string(letter), "this node idx", nodeIdx,
-			// 	"next node idx", nextNodeIdx, "word", string(word))
 			found = true
 			break
 		}

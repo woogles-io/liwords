@@ -270,7 +270,6 @@ func validateTilePlayMove(dawg *dawg.SimpleDawg, rm *runemapping.RuneMapping, ge
 	if err != nil {
 		return nil, err
 	}
-
 	// The play is legal. What words does it form?
 	formedWords, err := board.FormedWords(gdoc.Board, int(gevt.Row), int(gevt.Column),
 		gevt.Direction == ipc.GameEvent_VERTICAL, playedTiles)
@@ -279,7 +278,7 @@ func validateTilePlayMove(dawg *dawg.SimpleDawg, rm *runemapping.RuneMapping, ge
 	}
 	if gdoc.ChallengeRule == ipc.ChallengeRule_ChallengeRule_VOID {
 		// Actually check the validity of the words.
-		illegalWords := validateWords(dawg, formedWords, gdoc.Variant)
+		illegalWords := validateWords(dawg, rm, formedWords, gdoc.Variant)
 
 		if len(illegalWords) > 0 {
 			return nil, &InvalidWordsError{rm: rm, words: illegalWords}
@@ -288,16 +287,33 @@ func validateTilePlayMove(dawg *dawg.SimpleDawg, rm *runemapping.RuneMapping, ge
 	return formedWords, nil
 }
 
-func validateWords(dawg *dawg.SimpleDawg, words []runemapping.MachineWord,
-	variant string) []runemapping.MachineWord {
+func hackyConvertToUnicodeOrdering(word runemapping.MachineWord, rm *runemapping.RuneMapping,
+	dawg *dawg.SimpleDawg) runemapping.MachineWord {
+	// The passed-in word is going to be in canonical alphabet ordering
+	// (whatever is in the letter distribution csv)
+	// However, our DAWGs currently sort all their letters by unicode,
+	// and thus the alphabets do not match.
+	// XXX: This is a slow, bad function, and it needs to be replaced.
+	unicodeSorted := dawg.GetRuneMapping()
 
+	w := make([]runemapping.MachineLetter, len(word))
+	for i, ml := range word {
+		r := ml.UserVisible(rm, false)
+		nml, _ := unicodeSorted.Val(r)
+		w[i] = nml
+	}
+	return w
+}
+
+func validateWords(dawg *dawg.SimpleDawg, rm *runemapping.RuneMapping, words []runemapping.MachineWord,
+	variant string) []runemapping.MachineWord {
 	var illegalWords []runemapping.MachineWord
 	for _, word := range words {
 		var valid bool
 		if variant == VarWordSmog || variant == VarWordSmogSuper {
-			valid = dawg.HasAnagram(word)
+			valid = dawg.HasAnagram(hackyConvertToUnicodeOrdering(word, rm, dawg))
 		} else {
-			valid = dawg.HasWord(word)
+			valid = dawg.HasWord(hackyConvertToUnicodeOrdering(word, rm, dawg))
 		}
 		if !valid {
 			illegalWords = append(illegalWords, word)
@@ -455,7 +471,7 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 		lastMWs[i] = runemapping.FromByteArr(w)
 	}
 
-	illegalWords := validateWords(dawg, lastMWs, gdoc.Variant)
+	illegalWords := validateWords(dawg, dist.RuneMapping(), lastMWs, gdoc.Variant)
 	playLegal := len(illegalWords) == 0
 
 	lastEvent := gdoc.Events[len(gdoc.Events)-1]
