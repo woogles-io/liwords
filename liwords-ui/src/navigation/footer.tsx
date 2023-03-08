@@ -99,7 +99,12 @@ const Footer = React.memo(() => {
           >
             Word Tree
           </a>
+          <h4>Blog site</h4>
+          <a href="https://blog.woogles.io/articles">Articles</a>
+          <a href="https://blog.woogles.io/posts">Blog posts</a>
+          <a href="https://blog.woogles.io/guides">Guides</a>
         </div>
+
         <div className="links-about-resources link-group">
           <h4>About</h4>
           <a href="/team">Meet the Woogles team</a>

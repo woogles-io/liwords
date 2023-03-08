@@ -129,6 +129,9 @@ const TopMenu = React.memo((props: Props) => {
           <p>Study</p>
         </Dropdown>
       </div>
+      <div>
+        <a href="https://blog.woogles.io">Blog</a>
+      </div>
       <div className="top-header-left-frame-special-land">
         <Dropdown
           overlayClassName="user-menu"
