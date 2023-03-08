@@ -300,7 +300,236 @@ func TestMod(t *testing.T) {
 	deleterUser, err = us.GetByUUID(ctx, "Deleter")
 	is.NoErr(err)
 	is.True(deleterUser.Profile.About == "")
+}
 
+// TestModDB is identical to the test above, except it uses the DB methods
+// This can be deleted once the migration is complete
+func TestModDB(t *testing.T) {
+	is := is.New(t)
+	session := &entity.Session{
+		ID:       "abcdef",
+		Username: "Moderator",
+		UserUUID: "Moderator",
+		Expiry:   time.Now().Add(time.Second * 100)}
+	ctx := context.Background()
+	ctx = apiserver.PlaceInContext(ctx, session)
+	recreateDB()
+	us := userStore()
+
+	defer func() {
+		us.(*user.DBStore).Disconnect()
+	}()
+
+	var muteDuration int32 = 2
+
+	muteAction := &ms.ModAction{UserId: "Spammer", Type: ms.ModActionType_MUTE, Duration: muteDuration}
+	// Negative value for duration should not matter for transient actions
+	resetAction := &ms.ModAction{UserId: "Sandbagger", Type: ms.ModActionType_RESET_STATS_AND_RATINGS, Duration: -10}
+	suspendAction := &ms.ModAction{UserId: "Cheater", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: 100}
+
+	// Remove an action that does not exist
+	err := us.RemoveActionsDB(ctx, []*ms.ModAction{muteAction})
+	errString := fmt.Sprintf("user does not have current action %s", muteAction.Type.String())
+	is.True(err.Error() == errString)
+
+	// Apply Actions
+	err = us.ApplyActionsDB(ctx, []*ms.ModAction{muteAction, resetAction, suspendAction})
+	is.NoErr(err)
+
+	permaban, err := ActionExistsDB(ctx, us, "Spammer", false, []ms.ModActionType{muteAction.Type})
+	is.True(!permaban)
+	is.True(err != nil)
+	permaban, err = ActionExistsDB(ctx, us, "Sandbagger", false, []ms.ModActionType{resetAction.Type})
+	is.True(!permaban)
+	is.NoErr(err)
+	permaban, err = ActionExistsDB(ctx, us, "Cheater", false, []ms.ModActionType{suspendAction.Type})
+	is.True(!permaban)
+	is.True(err != nil)
+
+	// Check Actions
+	expectedSpammerActions, err := GetActions(ctx, us, "Spammer")
+	is.NoErr(err)
+	is.NoErr(equalActionMaps(expectedSpammerActions, makeActionMap([]*ms.ModAction{muteAction})))
+	is.True(expectedSpammerActions[muteAction.Type.String()].EndTime != nil)
+	is.True(expectedSpammerActions[muteAction.Type.String()].StartTime != nil)
+
+	expectedSpammerHistory, err := GetActionHistory(ctx, us, "Spammer")
+	is.NoErr(err)
+	is.NoErr(equalActionHistories(expectedSpammerHistory, []*ms.ModAction{}))
+
+	expectedSandbaggerActions, err := GetActions(ctx, us, "Sandbagger")
+	is.NoErr(err)
+	is.NoErr(equalActionMaps(expectedSandbaggerActions, makeActionMap([]*ms.ModAction{})))
+
+	expectedSandbaggerHistory, err := GetActionHistory(ctx, us, "Sandbagger")
+	is.NoErr(err)
+	is.NoErr(equalActionHistories(expectedSandbaggerHistory, []*ms.ModAction{resetAction}))
+	is.True(expectedSandbaggerHistory[0] != nil)
+	is.True(expectedSandbaggerHistory[0].EndTime != nil)
+	is.True(expectedSandbaggerHistory[0].StartTime != nil)
+	is.True(expectedSandbaggerHistory[0].RemoverUserId == "")
+	is.NoErr(equalTimes(expectedSandbaggerHistory[0].EndTime, expectedSandbaggerHistory[0].StartTime))
+	is.NoErr(equalTimes(expectedSandbaggerHistory[0].EndTime, expectedSandbaggerHistory[0].RemovedTime))
+	is.NoErr(equalTimes(expectedSandbaggerHistory[0].StartTime, expectedSandbaggerHistory[0].EndTime))
+
+	expectedCheaterActions, err := GetActions(ctx, us, "Cheater")
+	is.NoErr(err)
+	is.NoErr(equalActionMaps(expectedCheaterActions, makeActionMap([]*ms.ModAction{suspendAction})))
+	is.True(expectedCheaterActions[suspendAction.Type.String()].EndTime != nil)
+	is.True(expectedCheaterActions[suspendAction.Type.String()].StartTime != nil)
+
+	expectedCheaterHistory, err := GetActionHistory(ctx, us, "Cheater")
+	is.NoErr(err)
+	is.NoErr(equalActionHistories(expectedCheaterHistory, []*ms.ModAction{}))
+
+	longerSuspendAction := &ms.ModAction{UserId: "Cheater", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: 200}
+
+	// Overwrite some actions
+	err = us.ApplyActionsDB(ctx, []*ms.ModAction{longerSuspendAction})
+	is.NoErr(err)
+
+	expectedCheaterActions, err = GetActions(ctx, us, "Cheater")
+	is.NoErr(err)
+	is.NoErr(equalActionMaps(expectedCheaterActions, makeActionMap([]*ms.ModAction{longerSuspendAction})))
+	is.True(expectedCheaterActions[suspendAction.Type.String()].EndTime != nil)
+	is.True(expectedCheaterActions[suspendAction.Type.String()].StartTime != nil)
+	is.True(expectedCheaterActions[suspendAction.Type.String()].Duration == 200)
+
+	expectedCheaterHistory, err = GetActionHistory(ctx, us, "Cheater")
+	is.NoErr(err)
+	is.NoErr(equalActionHistories(expectedCheaterHistory, []*ms.ModAction{suspendAction}))
+	is.True(expectedCheaterHistory[0].RemoverUserId == "Moderator")
+
+	// Recheck Spammer actions
+	permaban, err = ActionExistsDB(ctx, us, "Spammer", false, []ms.ModActionType{muteAction.Type})
+	is.True(!permaban)
+	is.True(err != nil)
+
+	expectedSpammerActions, err = GetActions(ctx, us, "Spammer")
+	is.NoErr(err)
+	is.NoErr(equalActionMaps(expectedSpammerActions, makeActionMap([]*ms.ModAction{muteAction})))
+	is.True(expectedSpammerActions[muteAction.Type.String()].EndTime != nil)
+	is.True(expectedSpammerActions[muteAction.Type.String()].StartTime != nil)
+
+	expectedSpammerHistory, err = GetActionHistory(ctx, us, "Spammer")
+	is.NoErr(err)
+	is.NoErr(equalActionHistories(expectedSpammerHistory, []*ms.ModAction{}))
+
+	// Wait
+	time.Sleep(time.Duration(muteDuration+1) * time.Second)
+
+	// Recheck Spammer actions
+	permaban, err = ActionExistsDB(ctx, us, "Spammer", false, []ms.ModActionType{muteAction.Type})
+	is.True(!permaban)
+	is.NoErr(err)
+	expectedSpammerActions, err = GetActions(ctx, us, "Spammer")
+	is.NoErr(err)
+	is.NoErr(equalActionMaps(expectedSpammerActions, makeActionMap([]*ms.ModAction{})))
+
+	expectedSpammerHistory, err = GetActionHistory(ctx, us, "Spammer")
+	is.NoErr(err)
+	is.NoErr(equalActionHistories(expectedSpammerHistory, []*ms.ModAction{muteAction}))
+	is.True(expectedSpammerHistory[0].EndTime != nil)
+	is.True(expectedSpammerHistory[0].StartTime != nil)
+	is.True(expectedSpammerHistory[0].RemoverUserId == "")
+
+	// Test negative durations
+	invalidSuspendAction := &ms.ModAction{UserId: "Cheater", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: -100}
+
+	err = us.ApplyActionsDB(ctx, []*ms.ModAction{invalidSuspendAction})
+	is.True(err.Error() == "nontransient moderator action has a negative duration: -100")
+
+	// Apply a permanent action
+
+	permanentSuspendAction := &ms.ModAction{UserId: "Sandbagger", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: 0}
+
+	err = us.ApplyActionsDB(ctx, []*ms.ModAction{permanentSuspendAction})
+	is.NoErr(err)
+
+	permaban, err = ActionExistsDB(ctx, us, "Sandbagger", false, []ms.ModActionType{permanentSuspendAction.Type})
+	is.True(permaban)
+	is.True(err.Error() == "This account has been deactivated. If you think this is an error, contact conduct@woogles.io.")
+	permaban, err = ActionExistsDB(ctx, us, "Sandbagger", true, []ms.ModActionType{permanentSuspendAction.Type})
+	is.True(permaban)
+	is.True(err.Error() == "Whoops, something went wrong! Please log out and try logging in again.")
+
+	expectedSandbaggerActions, err = GetActions(ctx, us, "Sandbagger")
+	is.NoErr(err)
+	is.NoErr(equalActionMaps(expectedSandbaggerActions, makeActionMap([]*ms.ModAction{permanentSuspendAction})))
+	is.True(expectedSandbaggerActions[permanentSuspendAction.Type.String()].EndTime == nil)
+	is.True(expectedSandbaggerActions[permanentSuspendAction.Type.String()].StartTime != nil)
+
+	expectedSandbaggerHistory, err = GetActionHistory(ctx, us, "Sandbagger")
+	is.NoErr(err)
+	is.NoErr(equalActionHistories(expectedSandbaggerHistory, []*ms.ModAction{resetAction}))
+
+	// Remove an action
+	err = us.RemoveActionsDB(ctx, []*ms.ModAction{permanentSuspendAction})
+	is.NoErr(err)
+
+	permaban, err = ActionExistsDB(ctx, us, "Sandbagger", false, []ms.ModActionType{permanentSuspendAction.Type})
+	is.True(!permaban)
+	is.NoErr(err)
+
+	expectedSandbaggerActions, err = GetActions(ctx, us, "Sandbagger")
+	is.NoErr(err)
+	is.NoErr(equalActionMaps(expectedSandbaggerActions, makeActionMap([]*ms.ModAction{})))
+
+	expectedSandbaggerHistory, err = GetActionHistory(ctx, us, "Sandbagger")
+	is.NoErr(err)
+	is.NoErr(equalActionHistories(expectedSandbaggerHistory, []*ms.ModAction{resetAction, permanentSuspendAction}))
+	is.True(expectedSandbaggerHistory[1].RemoverUserId == "Moderator")
+	is.True(expectedSandbaggerHistory[1].RemovedTime != nil)
+	is.True(expectedSandbaggerHistory[1].StartTime != nil)
+	is.True(expectedSandbaggerHistory[1].EndTime == nil)
+
+	// Apply one than one action and confirm that the longer action is being applied
+
+	now := time.Now()
+	futureDate := now.Add(time.Duration(60 * 60 * time.Second))
+	longerDuration := int32(time.Until(futureDate).Seconds()) + 1
+	shorterDuration := longerDuration - (60 * 5)
+
+	longerHackerAction := &ms.ModAction{UserId: "Hacker", Type: ms.ModActionType_SUSPEND_RATED_GAMES, Duration: longerDuration}
+	hackerAction := &ms.ModAction{UserId: "Hacker", Type: ms.ModActionType_SUSPEND_GAMES, Duration: shorterDuration}
+
+	err = us.ApplyActionsDB(ctx, []*ms.ModAction{hackerAction, longerHackerAction})
+	is.NoErr(err)
+
+	_, err = ActionExistsDB(ctx, us, "Hacker", false, []ms.ModActionType{hackerAction.Type, longerHackerAction.Type})
+	year, month, day := futureDate.UTC().Date()
+	errString = fmt.Sprintf("You are suspended from playing rated games until %v %v, %v.", month, day, year)
+	is.True(err.Error() == errString)
+
+	// Apply a permanent action and confirm that the permanent action is being applied
+
+	permanentHackerAction := &ms.ModAction{UserId: "Hacker", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: 0}
+
+	err = us.ApplyActionsDB(ctx, []*ms.ModAction{permanentHackerAction})
+	is.NoErr(err)
+
+	_, err = ActionExistsDB(ctx, us, "Hacker", false, []ms.ModActionType{hackerAction.Type, longerHackerAction.Type, permanentHackerAction.Type})
+	is.True(err.Error() == "Whoops, something went wrong! Please log out and try logging in again.")
+
+	// Apply a delete action and ensure that the profile is deleted and the account is suspended
+	deleteAbout := "plz delet this"
+	err = us.SetPersonalInfo(ctx, "Deleter", "email", "firstname", "lastname", "2000-01-01", "USA", deleteAbout)
+	is.NoErr(err)
+
+	deleterUser, err := us.GetByUUID(ctx, "Deleter")
+	is.NoErr(err)
+	is.True(deleteAbout == deleterUser.Profile.About)
+
+	deleteAction := &ms.ModAction{UserId: "Deleter", Type: ms.ModActionType_DELETE_ACCOUNT, Duration: 9}
+	err = us.ApplyActionsDB(ctx, []*ms.ModAction{deleteAction})
+	is.NoErr(err)
+
+	permaban, err = ActionExistsDB(ctx, us, "Deleter", false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	is.True(permaban)
+	is.True(err.Error() == "This account has been deactivated. If you think this is an error, contact conduct@woogles.io.")
+	deleterUser, err = us.GetByUUID(ctx, "Deleter")
+	is.NoErr(err)
+	is.True(deleterUser.Profile.About == "")
 }
 
 func TestNotifications(t *testing.T) {
