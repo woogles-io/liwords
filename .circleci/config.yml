@@ -42,6 +42,7 @@ jobs:
       - run: go test -race -p 1 ./...
       # Make sure puzzle generator builds too, since we're deploying that docker image.
       - run: cd cmd/puzzlegen && go build
+      - run: cd cmd/maintenance && go build
       - discord/status: &discord-webhook-setting
           webhook: "${DISCORD_WEBHOOK}"
           success_message: ":tada: A $CIRCLE_JOB job has succeeded! (Branch: $CIRCLE_BRANCH)"
@@ -63,6 +64,7 @@ jobs:
           -t ghcr.io/domino14/liwords-puzzlegen:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
           -f Dockerfile-puzzlegen .
       - run: docker push ghcr.io/domino14/liwords-puzzlegen:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
+      - run: docker push ghcr.io/domino14/liwords-maintenance:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
       - discord/status: *discord-webhook-setting
 
   build_fe:

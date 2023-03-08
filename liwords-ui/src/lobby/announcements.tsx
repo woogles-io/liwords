@@ -26,7 +26,13 @@ export const AnnouncementsWidget = () => {
       <li>
         <h4>{a.title}</h4>
         <div>
-          <ReactMarkdown>{a.body}</ReactMarkdown>
+          <ReactMarkdown
+            components={{
+              img: ({ src }) => <img src={src} style={{ maxWidth: 300 }} />,
+            }}
+          >
+            {a.body}
+          </ReactMarkdown>
         </div>
       </li>
     </a>
