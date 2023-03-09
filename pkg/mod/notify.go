@@ -22,7 +22,7 @@ func sendNotification(ctx context.Context, us user.Store, user *entity.User, act
 	}
 	config, ok := ctx.Value(config.CtxKeyword).(*config.Config)
 	if !ok {
-		log.Err(errors.New("config does not exist in notify")).Str("userID", user.UUID).Msg("nil-config")
+		log.Err(errors.New("config does not exist in notify")).Str("userID", user.UUID).Msg("notification-nil-config")
 		return
 	}
 	if config.MailgunKey != "" && !IsRemoval(action) {

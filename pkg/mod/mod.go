@@ -11,6 +11,7 @@ import (
 	"github.com/domino14/liwords/pkg/user"
 	"github.com/domino14/liwords/pkg/utilities"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
+	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -115,7 +116,9 @@ func ActionExistsDB(ctx context.Context, us user.Store, uuid string, forceInsist
 	if err != nil {
 		return false, err
 	}
-
+	for key, action := range currentActions {
+		fmt.Printf("%s: %v\n", key, action)
+	}
 	// We want to show the user longest ban out of all the actions,
 	// so we want the time furthest in the future. Initialize the latestTime
 	// to be the unix epoch. Any valid times that come from
@@ -260,7 +263,12 @@ func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore, actions
 
 	// This is the new, better way to apply actions.
 	// It writes actions to the DB and is atomic, not sad!
-	us.ApplyActionsDB(ctx, actionsToApply)
+	err = us.ApplyActionsDB(ctx, actionsToApply)
+	if err != nil {
+		// For now just log the error to debug later
+		// since we are not using the DB in prod yet.
+		log.Err(err).Msg("apply-actions-db")
+	}
 
 	return nil
 }
@@ -283,6 +291,14 @@ func RemoveActions(ctx context.Context, us user.Store, actions []*ms.ModAction) 
 			return err
 		}
 	}
+
+	err = us.RemoveActionsDB(ctx, actions)
+	if err != nil {
+		// For now just log the error to debug later
+		// since we are not using the DB in prod yet.
+		log.Err(err).Msg("remove-actions-db")
+	}
+
 	return nil
 }
 
