@@ -116,9 +116,6 @@ func ActionExistsDB(ctx context.Context, us user.Store, uuid string, forceInsist
 	if err != nil {
 		return false, err
 	}
-	for key, action := range currentActions {
-		fmt.Printf("%s: %v\n", key, action)
-	}
 	// We want to show the user longest ban out of all the actions,
 	// so we want the time furthest in the future. Initialize the latestTime
 	// to be the unix epoch. Any valid times that come from

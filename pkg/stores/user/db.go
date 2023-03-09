@@ -1059,8 +1059,6 @@ func scanRowsIntoModActions(ctx context.Context, tx pgx.Tx, rows pgx.Rows) ([]*m
 			removerDBID: remover_dbid,
 		}
 
-		fmt.Printf("row values %d, %d, %s, %d\n", action_dbid, user_dbid, ms.ModActionType(action_type).String(), applier_dbid)
-
 		actions = append(actions, modAction)
 		dbUniqueValues = append(dbUniqueValues, dbUnique)
 	}
@@ -1109,23 +1107,15 @@ func getActionsDB(ctx context.Context, tx pgx.Tx, userUUID string) (map[string]*
 	if err != nil {
 		return nil, nil, err
 	}
-	fmt.Printf("about to scan rows for %s\n", userUUID)
 
 	modActions, dbUniqueValues, err := scanRowsIntoModActions(ctx, tx, rows)
 	if err != nil {
-		fmt.Printf("error for scanning %s: %s\n", userUUID, err.Error())
 		return nil, nil, err
 	}
 
 	err = addUserUUIDsToActions(ctx, tx, modActions, dbUniqueValues)
 	if err != nil {
 		return nil, nil, err
-	}
-
-	fmt.Printf("scanned %d rows into actions\n", len(modActions))
-
-	for _, action := range modActions {
-		fmt.Println(action)
 	}
 
 	modActionsMap := map[string]*ms.ModAction{}
@@ -1151,18 +1141,19 @@ func applySingleActionDB(ctx context.Context, tx pgx.Tx, userUUIDtoDBID map[stri
 	if !exists {
 		return fmt.Errorf("applier id not in map: %s", action.ApplierUserId)
 	}
-	fmt.Printf("inserting action %s for user %s (%d) by %s (%d)\n", action.Type.String(), action.UserId, userDBID, action.ApplierUserId, applierDBID)
+	var endTime sql.NullTime
+	endTime.Valid = false
+	if action.EndTime != nil {
+		endTime.Time = action.EndTime.AsTime()
+		endTime.Valid = true
+	}
+
 	_, err := tx.Exec(ctx, `INSERT INTO user_actions
 	(user_id, action_type, start_time, end_time, message_id, applier_id, chat_text, note, email_type)
 		VALUES
 		($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-		userDBID, action.Type, action.StartTime.AsTime(), action.EndTime.AsTime(),
+		userDBID, action.Type, action.StartTime.AsTime(), endTime,
 		action.MessageId, applierDBID, action.ChatText, action.Note, action.EmailType)
-	if err != nil {
-		fmt.Println("BIG ERROR: " + err.Error())
-	} else {
-		fmt.Printf("successfully inserted action %s for %s\n", action.Type.String(), action.UserId)
-	}
 	return err
 }
 
@@ -1249,7 +1240,6 @@ func addUserUUIDsToActions(ctx context.Context, tx pgx.Tx, actions []*ms.ModActi
 }
 
 func (s *DBStore) GetActionsDB(ctx context.Context, userUUID string) (map[string]*ms.ModAction, error) {
-	fmt.Printf("getting actions for %s\n", userUUID)
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
 		return nil, err
@@ -1257,8 +1247,6 @@ func (s *DBStore) GetActionsDB(ctx context.Context, userUUID string) (map[string
 	defer tx.Rollback(ctx)
 
 	actions, _, err := getActionsDB(ctx, tx, userUUID)
-
-	fmt.Printf("there are %d actions\n", len(actions))
 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
@@ -1278,51 +1266,21 @@ func (s *DBStore) GetActionHistoryDB(ctx context.Context, userUUID string) ([]*m
 		return nil, err
 	}
 
-	fmt.Printf("\n\n\nDB STATE BEFORE QUERY for user %s (%d):\n", userUUID, userDBID)
-	query := fmt.Sprintf(`SELECT %s	FROM user_actions`, userActionsSQLSelection)
-	rows, err := tx.Query(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Printf("\nscanning:\n")
-	modActions, dbUniqueValues, err := scanRowsIntoModActions(ctx, tx, rows)
-
-	fmt.Printf("\nmod actions are:\n")
-	for _, action := range modActions {
-		fmt.Println(action)
-	}
-
-	query = fmt.Sprintf(`SELECT %s	FROM user_actions
+	query := fmt.Sprintf(`SELECT %s	FROM user_actions
 	WHERE user_actions.user_id = $1 AND (user_actions.removed_time IS NOT NULL OR (user_actions.end_time IS NOT NULL AND user_actions.end_time < NOW()))
-	ORDER BY start_time DESC`, userActionsSQLSelection)
-	fmt.Printf("\nthe query:\n%s\n", query)
-	rows, err = tx.Query(ctx, query, userDBID)
+	ORDER BY start_time ASC`, userActionsSQLSelection)
+	rows, err := tx.Query(ctx, query, userDBID)
 	// query := fmt.Sprintf(`SELECT %s	FROM user_actions`, userActionsSQLSelection)
 	// rows, err := tx.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Printf("\nscanning:\n")
-	modActions, dbUniqueValues, err = scanRowsIntoModActions(ctx, tx, rows)
-
-	fmt.Printf("BEFORE: %d actions found in history for user %s\n", len(modActions), userUUID)
-
-	fmt.Printf("\nmod actions are:\n")
-	for _, action := range modActions {
-		fmt.Println(action)
-	}
+	modActions, dbUniqueValues, err := scanRowsIntoModActions(ctx, tx, rows)
 
 	err = addUserUUIDsToActions(ctx, tx, modActions, dbUniqueValues)
 	if err != nil {
 		return nil, err
-	}
-
-	fmt.Printf("AFTER: %d actions found in history for user %s\n", len(modActions), userUUID)
-
-	for _, action := range modActions {
-		fmt.Println(action)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -1344,23 +1302,21 @@ func applyOrRemoveActionsDB(ctx context.Context, s *DBStore, actions []*ms.ModAc
 		return err
 	}
 
-	now := time.Now().Unix()
 	for _, action := range actions {
 		currentAction, dbUniqueValues, err := getSingleActionDB(ctx, tx, action.UserId, action.Type)
 		if err != nil {
 			return err
 		}
 
-		if currentAction != nil && currentAction.RemovedTime == nil && (currentAction.EndTime == nil || currentAction.EndTime.Seconds > now) {
+		if currentAction != nil {
 			note := action.Note
 			if apply {
 				// This action is being supplanted by a more recent action
 				// so the note is only relevant to the new action. Create
 				// an automatic removal note in that case
 				note = "REMOVED BY NEW ACTION: " + note
-			} else {
-				return fmt.Errorf("could not remove action %s for user %s because it does not exist", action.Type.String(), action.UserId)
 			}
+
 			err = updateActionForRemoval(ctx, tx, dbUniqueValues.actionDBID, userDBIDs[action.ApplierUserId], note)
 			if err != nil {
 				return err

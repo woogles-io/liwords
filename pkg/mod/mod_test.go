@@ -357,10 +357,6 @@ func TestModDB(t *testing.T) {
 
 	actualSpammerHistory, err := us.GetActionHistoryDB(ctx, "Spammer")
 	is.NoErr(err)
-	fmt.Println("actual spammer history")
-	for _, action := range actualSpammerHistory {
-		fmt.Println(action)
-	}
 	is.NoErr(equalActionHistories(actualSpammerHistory, []*ms.ModAction{}))
 
 	actualSandbaggerActions, err := us.GetActionsDB(ctx, "Sandbagger")
@@ -473,7 +469,6 @@ func TestModDB(t *testing.T) {
 	// Remove an action
 	err = RemoveActions(ctx, us, []*ms.ModAction{permanentSuspendAction})
 	is.NoErr(err)
-
 	permaban, err = ActionExistsDB(ctx, us, "Sandbagger", false, []ms.ModActionType{permanentSuspendAction.Type})
 	is.True(!permaban)
 	is.NoErr(err)
