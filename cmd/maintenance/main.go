@@ -16,7 +16,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const BlogURL = "http://localhost:1313"
+const BlogURL = "https://blog.woogles.io"
 
 const (
 	BlogRSSFeedURL   = BlogURL + "/index.xml"
