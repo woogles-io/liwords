@@ -354,6 +354,7 @@ export const runesToUint8Array = (
         bts.push(256 - alphabet.machineLetterMap[rune.toUpperCase()]);
         i = j;
         match = true;
+        break;
       }
     }
     if (!match) {
