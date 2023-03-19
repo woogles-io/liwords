@@ -64,6 +64,11 @@ jobs:
           -t ghcr.io/domino14/liwords-puzzlegen:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
           -f Dockerfile-puzzlegen .
       - run: docker push ghcr.io/domino14/liwords-puzzlegen:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
+      - run: >
+          docker build --build-arg BUILD_HASH=${CIRCLE_SHA1}
+          --build-arg BUILD_DATE=$(date -Iseconds -u)
+          -t ghcr.io/domino14/liwords-maintenance:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
+          -f Dockerfile-maintenance .
       - run: docker push ghcr.io/domino14/liwords-maintenance:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
       - discord/status: *discord-webhook-setting
 

@@ -74,6 +74,7 @@ services:
       LEXICON_PATH: /opt/program/data/lexica
       LETTER_DISTRIBUTION_PATH: /opt/program/data/letterdistributions
       STRATEGY_PARAMS_PATH: /opt/program/data/strategy
+      DATA_PATH: /opt/program/data
       NATS_URL: nats://nats:4222
       DEBUG: 1
       WOLGES_AWSM_URL: http://wolges_awsm:4500
