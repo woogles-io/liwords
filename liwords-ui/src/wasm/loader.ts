@@ -59,27 +59,27 @@ for (const { lexicons, cacheKey, path } of [
       (name) => [name, `${name}.WordSmog`]
     ),
     cacheKey: 'klv/english',
-    path: '/wasm/english.klv',
+    path: '/wasm/english.klv2',
   },
   {
     lexicons: ['CSW21'].flatMap((name) => [name, `${name}.WordSmog`]),
     cacheKey: 'klv/CSW21',
-    path: '/wasm/CSW21.klv',
+    path: '/wasm/CSW21.klv2',
   },
   {
     lexicons: ['FRA20'].flatMap((name) => [name, `${name}.WordSmog`]),
     cacheKey: 'klv/french',
-    path: '/wasm/french.klv',
+    path: '/wasm/french.klv2',
   },
   {
     lexicons: ['RD28'].flatMap((name) => [name, `${name}.WordSmog`]),
     cacheKey: 'klv/german',
-    path: '/wasm/german.klv',
+    path: '/wasm/german.klv2',
   },
   {
     lexicons: ['NSF21', 'NSF22'].flatMap((name) => [name, `${name}.WordSmog`]),
     cacheKey: 'klv/norwegian',
-    path: '/wasm/norwegian.klv',
+    path: '/wasm/norwegian.klv2',
   },
   ...[
     'CSW19',
