@@ -28,7 +28,7 @@ func TestAuthenticateMod(t *testing.T) {
 	us := userStore()
 	ms := &ModService{userStore: us}
 
-	err := authenticateMod(ctx, ms, &pb.ModActionsList{
+	_, err := authenticateMod(ctx, ms, &pb.ModActionsList{
 		Actions: []*pb.ModAction{},
 	})
 	is.NoErr(err)
@@ -50,7 +50,7 @@ func TestAuthenticateModNoAuth(t *testing.T) {
 	us := userStore()
 	ms := &ModService{userStore: us}
 
-	err := authenticateMod(ctx, ms, &pb.ModActionsList{
+	_, err := authenticateMod(ctx, ms, &pb.ModActionsList{
 		Actions: []*pb.ModAction{},
 	})
 	is.Equal(err, twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error()))

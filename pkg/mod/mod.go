@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
 	"github.com/domino14/liwords/pkg/utilities"
@@ -218,12 +217,7 @@ func GetActionHistory(ctx context.Context, us user.Store, uuid string) ([]*ms.Mo
 	return user.Actions.History, nil
 }
 
-func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore, actions []*ms.ModAction) error {
-	applierUserId, err := sessionUserId(ctx, us)
-	if err != nil {
-		return err
-	}
-
+func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore, applierUserId string, actions []*ms.ModAction) error {
 	// For phase 1 of the user action migrations,
 	// we write the user actions in both the old way
 	// and new way. Once we confirm that actions are
@@ -260,7 +254,7 @@ func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore, actions
 
 	// This is the new, better way to apply actions.
 	// It writes actions to the DB and is atomic, not sad!
-	err = us.ApplyActionsDB(ctx, actionsToApply)
+	err := us.ApplyActionsDB(ctx, actionsToApply)
 	if err != nil {
 		// For now just log the error to debug later
 		// since we are not using the DB in prod yet.
@@ -270,11 +264,7 @@ func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore, actions
 	return nil
 }
 
-func RemoveActions(ctx context.Context, us user.Store, actions []*ms.ModAction) error {
-	removerUserId, err := sessionUserId(ctx, us)
-	if err != nil {
-		return err
-	}
+func RemoveActions(ctx context.Context, us user.Store, removerUserId string, actions []*ms.ModAction) error {
 	for _, action := range actions {
 		// This call will update the user actions
 		// so that actions that have already expired
@@ -289,7 +279,7 @@ func RemoveActions(ctx context.Context, us user.Store, actions []*ms.ModAction) 
 		}
 	}
 
-	err = us.RemoveActionsDB(ctx, actions)
+	err := us.RemoveActionsDB(ctx, actions)
 	if err != nil {
 		// For now just log the error to debug later
 		// since we are not using the DB in prod yet.
@@ -552,12 +542,4 @@ func instantiateActionsHistory(u *entity.User) {
 	if u.Actions.History == nil {
 		u.Actions.History = []*ms.ModAction{}
 	}
-}
-
-func sessionUserId(ctx context.Context, us user.Store) (string, error) {
-	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, us)
-	if err != nil {
-		return "", err
-	}
-	return u.UUID, nil
 }

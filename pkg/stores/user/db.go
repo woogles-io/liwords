@@ -43,7 +43,7 @@ type DBUniqueValues struct {
 	actionDBID  int64
 	removalNote string
 	userDBID    int64
-	applierDBID int64
+	applierDBID sql.NullInt64
 	removerDBID sql.NullInt64
 }
 
@@ -1007,7 +1007,7 @@ func scanRowsIntoModActions(ctx context.Context, tx pgx.Tx, rows pgx.Rows) ([]*m
 		var end_time sql.NullTime
 		var removed_time sql.NullTime
 		var message_id sql.NullString
-		var applier_dbid int64
+		var applier_dbid sql.NullInt64
 		var remover_dbid sql.NullInt64
 		var chat_text sql.NullString
 		var note sql.NullString
@@ -1132,15 +1132,7 @@ func getActionsDB(ctx context.Context, tx pgx.Tx, userUUID string) (map[string]*
 	return modActionsMap, dbUniqueValuesMap, nil
 }
 
-func applySingleActionDB(ctx context.Context, tx pgx.Tx, userUUIDtoDBID map[string]int64, action *ms.ModAction) error {
-	userDBID, exists := userUUIDtoDBID[action.UserId]
-	if !exists {
-		return fmt.Errorf("user id not in map: %s", action.UserId)
-	}
-	applierDBID, exists := userUUIDtoDBID[action.ApplierUserId]
-	if !exists {
-		return fmt.Errorf("applier id not in map: %s", action.ApplierUserId)
-	}
+func applySingleActionDB(ctx context.Context, tx pgx.Tx, userDBID int64, applierDBID sql.NullInt64, action *ms.ModAction) error {
 	var endTime sql.NullTime
 	endTime.Valid = false
 	if action.EndTime != nil {
@@ -1157,7 +1149,7 @@ func applySingleActionDB(ctx context.Context, tx pgx.Tx, userUUIDtoDBID map[stri
 	return err
 }
 
-func updateActionForRemoval(ctx context.Context, tx pgx.Tx, removedActionDBID int64, removerDBID int64, removalNote string) error {
+func updateActionForRemoval(ctx context.Context, tx pgx.Tx, removedActionDBID int64, removerDBID sql.NullInt64, removalNote string) error {
 	result, err := tx.Exec(ctx, `UPDATE user_actions SET removed_time = NOW(), remover_id = $1, removal_note = $2
 	WHERE id = $3`, removerDBID, removalNote, removedActionDBID)
 	if result.RowsAffected() != 1 {
@@ -1202,12 +1194,11 @@ func getUserDBIDsFromActions(ctx context.Context, tx pgx.Tx, actions []*ms.ModAc
 		if err != nil {
 			return nil, err
 		}
-		if action.ApplierUserId == "" {
-			return nil, fmt.Errorf("applier id missing for action %s", action.Type.String())
-		}
-		err = addUserUUID(ctx, tx, action.ApplierUserId, userUUIDtoDBID)
-		if err != nil {
-			return nil, err
+		if action.ApplierUserId != "" {
+			err = addUserUUID(ctx, tx, action.ApplierUserId, userUUIDtoDBID)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	return userUUIDtoDBID, nil
@@ -1220,13 +1211,16 @@ func addUserUUIDsToActions(ctx context.Context, tx pgx.Tx, actions []*ms.ModActi
 		if err != nil {
 			return err
 		}
-		err = addUserDBID(ctx, tx, dbVals[idx].applierDBID, userDBIDtoUUID)
-		if err != nil {
-			return err
-		}
 
 		action.UserId = userDBIDtoUUID[dbVals[idx].userDBID]
-		action.ApplierUserId = userDBIDtoUUID[dbVals[idx].applierDBID]
+
+		if dbVals[idx].applierDBID.Valid {
+			err = addUserDBID(ctx, tx, dbVals[idx].applierDBID.Int64, userDBIDtoUUID)
+			if err != nil {
+				return err
+			}
+			action.ApplierUserId = userDBIDtoUUID[dbVals[idx].applierDBID.Int64]
+		}
 
 		if dbVals[idx].removerDBID.Valid {
 			err = addUserDBID(ctx, tx, dbVals[idx].removerDBID.Int64, userDBIDtoUUID)
@@ -1308,6 +1302,22 @@ func applyOrRemoveActionsDB(ctx context.Context, s *DBStore, actions []*ms.ModAc
 			return err
 		}
 
+		userDBID, exists := userDBIDs[action.UserId]
+		if !exists {
+			return fmt.Errorf("DBID not found for user: %s", action.UserId)
+		}
+
+		var nullOrAppliererDBID sql.NullInt64
+		nullOrAppliererDBID.Valid = false
+		if action.ApplierUserId != "" {
+			removerDBID, exists := userDBIDs[action.ApplierUserId]
+			if !exists {
+				return fmt.Errorf("DBID not found for applier user: %s", action.UserId)
+			}
+			nullOrAppliererDBID.Int64 = removerDBID
+			nullOrAppliererDBID.Valid = true
+		}
+
 		if currentAction != nil {
 			note := action.Note
 			if apply {
@@ -1317,14 +1327,14 @@ func applyOrRemoveActionsDB(ctx context.Context, s *DBStore, actions []*ms.ModAc
 				note = "REMOVED BY NEW ACTION: " + note
 			}
 
-			err = updateActionForRemoval(ctx, tx, dbUniqueValues.actionDBID, userDBIDs[action.ApplierUserId], note)
+			err = updateActionForRemoval(ctx, tx, dbUniqueValues.actionDBID, nullOrAppliererDBID, note)
 			if err != nil {
 				return err
 			}
 		}
 
 		if apply {
-			err := applySingleActionDB(ctx, tx, userDBIDs, action)
+			err := applySingleActionDB(ctx, tx, userDBID, nullOrAppliererDBID, action)
 			if err != nil {
 				return err
 			}

@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS user_actions (
     end_time timestamptz,
     removed_time timestamptz,
     message_id text,
-    applier_id bigint NOT NULL,
+    applier_id bigint,
     remover_id bigint,
     chat_text text,
     note text,
