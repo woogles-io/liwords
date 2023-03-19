@@ -3,6 +3,8 @@ package config
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"strings"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/rs/zerolog/log"
@@ -102,4 +104,54 @@ func (s *RedisConfigStore) GetAnnouncements(ctx context.Context) ([]*pb.Announce
 	}
 
 	return announcements, nil
+}
+
+func (s *RedisConfigStore) SetAnnouncement(ctx context.Context, linkSearchString string, announcement *pb.Announcement) error {
+	conn := s.redisPool.Get()
+	defer conn.Close()
+	_, err := conn.Do("WATCH", AnnouncementsKey)
+	if err != nil {
+		return err
+	}
+
+	annos, err := s.GetAnnouncements(ctx)
+	if err != nil {
+		return err
+	}
+	var anno *pb.Announcement
+	var idx int
+	found := false
+	for idx, anno = range annos {
+		if strings.Contains(anno.Link, linkSearchString) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return errors.New("link search string not found in announcements")
+	}
+	if annos[idx].Body == announcement.Body && annos[idx].Link == announcement.Link &&
+		annos[idx].Title == announcement.Title {
+
+		log.Debug().Msg("posts-match-not-replacing")
+		_, err = conn.Do("UNWATCH")
+		return err
+	}
+
+	annos[idx] = announcement
+
+	_, err = conn.Do("MULTI")
+	if err != nil {
+		return err
+	}
+
+	err = s.SetAnnouncements(ctx, annos)
+	if err != nil {
+		return err
+	}
+	_, err = conn.Do("EXEC")
+	if err != nil {
+		return err
+	}
+	return nil
 }

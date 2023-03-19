@@ -42,6 +42,11 @@ message GetAnnouncementsRequest {}
 
 message AnnouncementsResponse { repeated Announcement announcements = 1; }
 
+message SetSingleAnnouncementRequest {
+  Announcement announcement = 1;
+  string link_search_string = 2;
+}
+
 // ConfigService requires admin authentication, except for the GetAnnouncements
 // endpoint.
 service ConfigService {
@@ -53,4 +58,6 @@ service ConfigService {
 
   rpc SetAnnouncements(SetAnnouncementsRequest) returns (ConfigResponse);
   rpc GetAnnouncements(GetAnnouncementsRequest) returns (AnnouncementsResponse);
+  rpc SetSingleAnnouncement(SetSingleAnnouncementRequest)
+      returns (ConfigResponse);
 }

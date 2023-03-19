@@ -1,0 +1,1 @@
+These are a set of maintenance functions for Woogles. These will not run automatically. We will create various ECS jobs that run at some given cadence and take in, as arguments, the function names to run.

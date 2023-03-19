@@ -26,6 +26,7 @@ type ConfigStore interface {
 
 	SetAnnouncements(context.Context, []*pb.Announcement) error
 	GetAnnouncements(context.Context) ([]*pb.Announcement, error)
+	SetAnnouncement(context.Context, string, *pb.Announcement) error
 }
 
 type ConfigService struct {
@@ -168,4 +169,23 @@ func (cs *ConfigService) GetAnnouncements(ctx context.Context, req *pb.GetAnnoun
 		return nil, err
 	}
 	return &pb.AnnouncementsResponse{Announcements: announcements}, nil
+}
+
+func (cs *ConfigService) SetSingleAnnouncement(ctx context.Context, req *pb.SetSingleAnnouncementRequest) (*pb.ConfigResponse, error) {
+	allowed, err := isAdmin(ctx, cs.userStore)
+	if err != nil {
+		return nil, err
+	}
+	if !allowed {
+		return nil, twirp.NewError(twirp.Unauthenticated, errRequiresAdmin.Error())
+	}
+	if req.LinkSearchString == "" {
+		return nil, twirp.NewError(twirp.InvalidArgument, "need a link search string")
+	}
+	err = cs.store.SetAnnouncement(ctx, req.LinkSearchString, req.Announcement)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.ConfigResponse{}, nil
 }
