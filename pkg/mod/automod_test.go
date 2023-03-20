@@ -490,6 +490,10 @@ func TestNotoriety(t *testing.T) {
 	_, err = pkgmod.ActionExists(context.Background(), ustore, playerIds[1], false, []ms.ModActionType{ms.ModActionType_SUSPEND_RATED_GAMES})
 	is.NoErr(err)
 
+	// Check the DB as well
+	_, err = pkgmod.ActionExistsDB(context.Background(), ustore, playerIds[1], false, []ms.ModActionType{ms.ModActionType_SUSPEND_RATED_GAMES})
+	is.NoErr(err)
+
 	// Add these additional misbehaved games bring the user over the threshold
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
 	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, nil, 1, pb.GameEndReason_RESIGNED, false)
@@ -507,6 +511,9 @@ func TestNotoriety(t *testing.T) {
 
 	// Check mod actions here
 	_, err = pkgmod.ActionExists(context.Background(), ustore, playerIds[1], false, []ms.ModActionType{ms.ModActionType_SUSPEND_RATED_GAMES})
+	is.True(err != nil)
+
+	_, err = pkgmod.ActionExistsDB(context.Background(), ustore, playerIds[1], false, []ms.ModActionType{ms.ModActionType_SUSPEND_RATED_GAMES})
 	is.True(err != nil)
 
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
@@ -529,7 +536,13 @@ func TestNotoriety(t *testing.T) {
 	actionGames := &ms.ModAction{UserId: playerIds[1], Type: ms.ModActionType_SUSPEND_RATED_GAMES, Duration: 60 * 60 * 24 * 6}
 	_, err = pkgmod.ActionExists(context.Background(), ustore, playerIds[1], false, []ms.ModActionType{ms.ModActionType_SUSPEND_RATED_GAMES})
 	is.True(err != nil)
+	_, err = pkgmod.ActionExistsDB(context.Background(), ustore, playerIds[1], false, []ms.ModActionType{ms.ModActionType_SUSPEND_RATED_GAMES})
+	is.True(err != nil)
 	history, err := pkgmod.GetActionHistory(context.Background(), ustore, playerIds[1])
+	is.NoErr(err)
+	is.NoErr(equalActionHistories(history, []*ms.ModAction{actionGames}))
+
+	history, err = ustore.GetActionHistoryDB(context.Background(), playerIds[1])
 	is.NoErr(err)
 	is.NoErr(equalActionHistories(history, []*ms.ModAction{actionGames}))
 
@@ -589,7 +602,12 @@ func TestNotoriety(t *testing.T) {
 	actionGames2 := &ms.ModAction{UserId: playerIds[1], Type: ms.ModActionType_SUSPEND_RATED_GAMES, Duration: 60 * 60 * 24 * 12}
 	_, err = pkgmod.ActionExists(context.Background(), ustore, playerIds[1], false, []ms.ModActionType{ms.ModActionType_SUSPEND_RATED_GAMES})
 	is.True(err != nil)
+
 	history, err = pkgmod.GetActionHistory(context.Background(), ustore, playerIds[1])
+	is.NoErr(err)
+	is.NoErr(equalActionHistories(history, []*ms.ModAction{actionGames1, actionGames2}))
+
+	history, err = ustore.GetActionHistoryDB(context.Background(), playerIds[1])
 	is.NoErr(err)
 	is.NoErr(equalActionHistories(history, []*ms.ModAction{actionGames1, actionGames2}))
 
