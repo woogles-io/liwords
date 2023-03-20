@@ -10,7 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.27.11
 	github.com/aws/smithy-go v1.13.3
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/domino14/macondo v0.4.13
+	github.com/domino14/macondo v0.6.1
 	github.com/go-redsync/redsync/v4 v4.7.1
 	github.com/golang-migrate/migrate/v4 v4.15.2
 	github.com/gomodule/redigo v1.8.9
@@ -25,12 +25,12 @@ require (
 	github.com/matryer/is v1.4.0
 	github.com/mmcdole/gofeed v1.2.1
 	github.com/namsral/flag v1.7.4-pre
-	github.com/nats-io/nats.go v1.17.0
-	github.com/rs/zerolog v1.28.0
-	github.com/samber/lo v1.36.0
+	github.com/nats-io/nats.go v1.24.0
+	github.com/rs/zerolog v1.29.0
+	github.com/samber/lo v1.37.0
 	github.com/twitchtv/twirp v8.1.2+incompatible
-	golang.org/x/crypto v0.0.0-20220919173607-35f4265a4bc0
-	google.golang.org/protobuf v1.28.1
+	golang.org/x/crypto v0.7.0
+	google.golang.org/protobuf v1.29.1
 	gorm.io/datatypes v1.0.7
 	gorm.io/driver/postgres v1.3.10
 	gorm.io/gorm v1.23.10
@@ -71,7 +71,7 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/lib/pq v1.10.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.16 // indirect
+	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mmcdole/goxpp v1.1.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
@@ -80,11 +80,11 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rs/xid v1.4.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
-	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17 // indirect
-	golang.org/x/net v0.7.0 // indirect
-	golang.org/x/sync v0.0.0-20220907140024-f12130a52804 // indirect
-	golang.org/x/sys v0.5.0 // indirect
-	golang.org/x/text v0.7.0 // indirect
+	golang.org/x/exp v0.0.0-20230307190834-24139beb5833 // indirect
+	golang.org/x/net v0.8.0 // indirect
+	golang.org/x/sync v0.1.0 // indirect
+	golang.org/x/sys v0.6.0 // indirect
+	golang.org/x/text v0.8.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gorm.io/driver/mysql v1.3.6 // indirect
 )
