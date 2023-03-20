@@ -437,6 +437,10 @@ github.com/domino14/macondo v0.6.0 h1:MwM7jl94eaJrYc5g4vMc2/NeJWQe6zENu2iMHP/Wk7
 github.com/domino14/macondo v0.6.0/go.mod h1:UPjRYLXfuVtlS2YFKOTKDNcTf6cTfCrGIvBuU3RLr6g=
 github.com/domino14/macondo v0.6.1 h1:RAzbm9o4j/hxIsEs4XialaVrjac8j2PPIKce71BSDYY=
 github.com/domino14/macondo v0.6.1/go.mod h1:UPjRYLXfuVtlS2YFKOTKDNcTf6cTfCrGIvBuU3RLr6g=
+github.com/domino14/macondo v0.6.2 h1:1/iVhJ8arIVk1M07t8OhaqtHDj6RPl5hf+Ct5vl/5Wo=
+github.com/domino14/macondo v0.6.2/go.mod h1:UPjRYLXfuVtlS2YFKOTKDNcTf6cTfCrGIvBuU3RLr6g=
+github.com/domino14/macondo v0.6.3-0.20230320035731-da31d5b08c20 h1:aB/67MuH2Gp0sVDgg81egcni10/MXbp3tKz/vsBFyaA=
+github.com/domino14/macondo v0.6.3-0.20230320035731-da31d5b08c20/go.mod h1:UPjRYLXfuVtlS2YFKOTKDNcTf6cTfCrGIvBuU3RLr6g=
 github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
 github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
 github.com/edsrzf/mmap-go v0.0.0-20170320065105-0bce6a688712/go.mod h1:YO35OhQPt3KJa3ryjFM5Bs14WD66h8eGKpfaBNrHW5M=
