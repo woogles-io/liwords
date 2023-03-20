@@ -117,6 +117,18 @@ func GetUserDBIDFromUUID(ctx context.Context, tx pgx.Tx, uuid string) (int64, er
 	return id, nil
 }
 
+func GetUserUUIDFromDBID(ctx context.Context, tx pgx.Tx, DBID int64) (string, error) {
+	var UUID string
+	err := tx.QueryRow(ctx, "SELECT uuid FROM users WHERE id = $1", DBID).Scan(&UUID)
+	if err == pgx.ErrNoRows {
+		return "", fmt.Errorf("cannot get uuid from DBID %d: no rows for table users", DBID)
+	}
+	if err != nil {
+		return "", err
+	}
+	return UUID, nil
+}
+
 func GetUsernameFromUUID(ctx context.Context, tx pgx.Tx, uuid string) (string, error) {
 	var username string
 	err := tx.QueryRow(ctx, "SELECT username FROM users WHERE uuid = $1", uuid).Scan(&username)

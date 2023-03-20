@@ -109,11 +109,11 @@ func (ms *ModService) GetActionHistory(ctx context.Context, req *pb.GetActionsRe
 }
 
 func (ms *ModService) RemoveActions(ctx context.Context, req *pb.ModActionsList) (*pb.ModActionResponse, error) {
-	err := authenticateMod(ctx, ms, req)
+	removerUserId, err := authenticateMod(ctx, ms, req)
 	if err != nil {
 		return nil, err
 	}
-	err = RemoveActions(ctx, ms.userStore, req.Actions)
+	err = RemoveActions(ctx, ms.userStore, removerUserId, req.Actions)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -121,11 +121,11 @@ func (ms *ModService) RemoveActions(ctx context.Context, req *pb.ModActionsList)
 }
 
 func (ms *ModService) ApplyActions(ctx context.Context, req *pb.ModActionsList) (*pb.ModActionResponse, error) {
-	err := authenticateMod(ctx, ms, req)
+	applierUserId, err := authenticateMod(ctx, ms, req)
 	if err != nil {
 		return nil, err
 	}
-	err = ApplyActions(ctx, ms.userStore, ms.chatStore, req.Actions)
+	err = ApplyActions(ctx, ms.userStore, ms.chatStore, applierUserId, req.Actions)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -146,10 +146,10 @@ func sessionUser(ctx context.Context, ms *ModService) (*entity.User, error) {
 	return user, nil
 }
 
-func authenticateMod(ctx context.Context, ms *ModService, req *pb.ModActionsList) error {
+func authenticateMod(ctx context.Context, ms *ModService, req *pb.ModActionsList) (string, error) {
 	user, err := sessionUser(ctx, ms)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	isAdminRequired := false
@@ -161,7 +161,7 @@ func authenticateMod(ctx context.Context, ms *ModService, req *pb.ModActionsList
 	}
 
 	if !user.IsAdmin && (isAdminRequired || !user.IsMod) {
-		return twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
+		return "", twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
 	}
-	return nil
+	return user.UUID, nil
 }

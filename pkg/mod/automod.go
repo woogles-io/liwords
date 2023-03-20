@@ -236,11 +236,7 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 				StartTime:     timestamppb.Now(),
 				ApplierUserId: AutomodUserId,
 				Duration:      int32(DurationMultiplier * (newNotoriety - NotorietyThreshold))}
-			err = setCurrentAction(user, action)
-			if err != nil {
-				return err
-			}
-			err = us.SetActions(ctx, user.UUID, user.Actions)
+			err = ApplyActions(ctx, us, nil, "", []*ms.ModAction{action})
 			if err != nil {
 				return err
 			}

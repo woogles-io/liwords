@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
+	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
@@ -61,6 +62,10 @@ type backingStore interface {
 	GetModList(ctx context.Context) (*pb.GetModListResponse, error)
 	GetAPIKey(ctx context.Context, uuid string) (string, error)
 	ResetAPIKey(ctx context.Context, uuid string) (string, error)
+	GetActionsDB(ctx context.Context, userUUID string) (map[string]*ms.ModAction, error)
+	GetActionHistoryDB(ctx context.Context, userUUID string) ([]*ms.ModAction, error)
+	ApplyActionsDB(ctx context.Context, actions []*ms.ModAction) error
+	RemoveActionsDB(ctx context.Context, actions []*ms.ModAction) error
 }
 
 const (
@@ -479,4 +484,20 @@ func (c *Cache) GetModList(ctx context.Context) (*pb.GetModListResponse, error) 
 	c.cachedModList.response = resp
 	c.cachedModList.expiry = time.Now().Add(time.Minute)
 	return resp, nil
+}
+
+func (c *Cache) GetActionsDB(ctx context.Context, userUUID string) (map[string]*ms.ModAction, error) {
+	return c.backing.GetActionsDB(ctx, userUUID)
+}
+
+func (c *Cache) GetActionHistoryDB(ctx context.Context, userUUID string) ([]*ms.ModAction, error) {
+	return c.backing.GetActionHistoryDB(ctx, userUUID)
+}
+
+func (c *Cache) ApplyActionsDB(ctx context.Context, actions []*ms.ModAction) error {
+	return c.backing.ApplyActionsDB(ctx, actions)
+}
+
+func (c *Cache) RemoveActionsDB(ctx context.Context, actions []*ms.ModAction) error {
+	return c.backing.RemoveActionsDB(ctx, actions)
 }

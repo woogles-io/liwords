@@ -12,11 +12,13 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stores/common"
 
 	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
+	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
@@ -33,6 +35,16 @@ var botNames = map[macondopb.BotRequest_BotCode]string{
 	macondopb.BotRequest_LEVEL1_CEL_BOT: "BeginnerBot",
 	macondopb.BotRequest_LEVEL2_CEL_BOT: "BasicBot",
 	macondopb.BotRequest_LEVEL4_CEL_BOT: "BetterBot",
+}
+
+var userActionsSQLSelection = "user_actions.id, user_actions.user_id, user_actions.action_type, user_actions.start_time, user_actions.end_time, user_actions.removed_time, user_actions.message_id, user_actions.applier_id, user_actions.remover_id, user_actions.note, user_actions.removal_note, user_actions.chat_text, user_actions.email_type"
+
+type DBUniqueValues struct {
+	actionDBID  int64
+	removalNote string
+	userDBID    int64
+	applierDBID sql.NullInt64
+	removerDBID sql.NullInt64
 }
 
 // DBStore is a postgres-backed store for users.
@@ -981,4 +993,364 @@ func (s *DBStore) ResetAPIKey(ctx context.Context, uuid string) (string, error) 
 		return "", err
 	}
 	return apikey, nil
+}
+
+func scanRowsIntoModActions(ctx context.Context, tx pgx.Tx, rows pgx.Rows) ([]*ms.ModAction, []*DBUniqueValues, error) {
+	defer rows.Close()
+	actions := []*ms.ModAction{}
+	dbUniqueValues := []*DBUniqueValues{}
+	for rows.Next() {
+		var action_dbid int64
+		var user_dbid int64
+		var action_type int
+		var start_time sql.NullTime
+		var end_time sql.NullTime
+		var removed_time sql.NullTime
+		var message_id sql.NullString
+		var applier_dbid sql.NullInt64
+		var remover_dbid sql.NullInt64
+		var chat_text sql.NullString
+		var note sql.NullString
+		var removal_note sql.NullString
+		var email_type int
+
+		if err := rows.Scan(&action_dbid, &user_dbid, &action_type, &start_time,
+			&end_time, &removed_time, &message_id, &applier_dbid,
+			&remover_dbid, &note, &removal_note, &chat_text, &email_type); err != nil {
+			return nil, nil, err
+		}
+
+		var startTime *timestamppb.Timestamp = nil
+		if start_time.Valid {
+			startTime = timestamppb.New(start_time.Time)
+		}
+
+		var endTime *timestamppb.Timestamp = nil
+		if end_time.Valid {
+			endTime = timestamppb.New(end_time.Time)
+		}
+
+		var removedTime *timestamppb.Timestamp = nil
+		if removed_time.Valid {
+			removedTime = timestamppb.New(removed_time.Time)
+		}
+
+		var duration int32 = 0
+		if start_time.Valid && end_time.Valid {
+			duration = int32(endTime.Seconds) - int32(startTime.Seconds)
+		}
+
+		modAction := &ms.ModAction{
+			Type:        ms.ModActionType(action_type),
+			Duration:    duration,
+			StartTime:   startTime,
+			EndTime:     endTime,
+			RemovedTime: removedTime,
+			MessageId:   message_id.String,
+			ChatText:    chat_text.String,
+			Note:        note.String,
+			EmailType:   ms.EmailType(email_type),
+		}
+		dbUnique := &DBUniqueValues{
+			actionDBID:  action_dbid,
+			userDBID:    user_dbid,
+			removalNote: removal_note.String,
+			applierDBID: applier_dbid,
+			removerDBID: remover_dbid,
+		}
+
+		actions = append(actions, modAction)
+		dbUniqueValues = append(dbUniqueValues, dbUnique)
+	}
+	return actions, dbUniqueValues, nil
+}
+
+func getSingleActionDB(ctx context.Context, tx pgx.Tx, userUUID string, actionType ms.ModActionType) (*ms.ModAction, *DBUniqueValues, error) {
+
+	query := fmt.Sprintf(`SELECT %s FROM users JOIN user_actions ON users.id = user_actions.user_id
+	WHERE users.uuid = $1 AND user_actions.action_type = $2
+	  AND user_actions.removed_time IS NULL AND (user_actions.end_time IS NULL OR user_actions.end_time > NOW())
+	ORDER BY start_time DESC LIMIT 1`, userActionsSQLSelection)
+	rows, err := tx.Query(ctx, query, userUUID, actionType)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	modActions, dbUniqueValues, err := scanRowsIntoModActions(ctx, tx, rows)
+
+	if len(modActions) != len(dbUniqueValues) {
+		return nil, nil, fmt.Errorf("lengths different for user %s, action %s, %d != %d", userUUID, actionType.String(), len(modActions), len(dbUniqueValues))
+	}
+
+	if len(modActions) == 0 {
+		return nil, nil, nil
+	}
+
+	if len(modActions) > 1 {
+		return nil, nil, fmt.Errorf("not exactly one action %s found for user %s, found %d", actionType.String(), userUUID, len(modActions))
+	}
+
+	err = addUserUUIDsToActions(ctx, tx, modActions, dbUniqueValues)
+	if err != nil {
+		return nil, nil, err
+	}
+	return modActions[0], dbUniqueValues[0], nil
+}
+
+func getActionsDB(ctx context.Context, tx pgx.Tx, userUUID string) (map[string]*ms.ModAction, map[string]*DBUniqueValues, error) {
+	// Only get current actions that are in effect.
+	query := fmt.Sprintf(`SELECT DISTINCT ON (action_type) %s 
+	FROM users JOIN user_actions ON users.id = user_actions.user_id
+	WHERE users.uuid = $1 AND user_actions.removed_time IS NULL AND (user_actions.end_time IS NULL OR user_actions.end_time > NOW())
+	ORDER BY action_type, start_time DESC`, userActionsSQLSelection)
+	rows, err := tx.Query(ctx, query, userUUID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	modActions, dbUniqueValues, err := scanRowsIntoModActions(ctx, tx, rows)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = addUserUUIDsToActions(ctx, tx, modActions, dbUniqueValues)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	modActionsMap := map[string]*ms.ModAction{}
+	dbUniqueValuesMap := map[string]*DBUniqueValues{}
+
+	for idx, modAction := range modActions {
+		_, exists := modActionsMap[modAction.Type.String()]
+		if exists {
+			return nil, nil, fmt.Errorf("mod action %s already exists for user %s", modAction.Type.String(), userUUID)
+		}
+		modActionsMap[modAction.Type.String()] = modAction
+		dbUniqueValuesMap[modAction.Type.String()] = dbUniqueValues[idx]
+	}
+	return modActionsMap, dbUniqueValuesMap, nil
+}
+
+func applySingleActionDB(ctx context.Context, tx pgx.Tx, userDBID int64, applierDBID sql.NullInt64, action *ms.ModAction) error {
+	var endTime sql.NullTime
+	endTime.Valid = false
+	if action.EndTime != nil {
+		endTime.Time = action.EndTime.AsTime()
+		endTime.Valid = true
+	}
+
+	_, err := tx.Exec(ctx, `INSERT INTO user_actions
+	(user_id, action_type, start_time, end_time, message_id, applier_id, chat_text, note, email_type)
+		VALUES
+		($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		userDBID, action.Type, action.StartTime.AsTime(), endTime,
+		action.MessageId, applierDBID, action.ChatText, action.Note, action.EmailType)
+	return err
+}
+
+func updateActionForRemoval(ctx context.Context, tx pgx.Tx, removedActionDBID int64, removerDBID sql.NullInt64, removalNote string) error {
+	result, err := tx.Exec(ctx, `UPDATE user_actions SET removed_time = NOW(), remover_id = $1, removal_note = $2
+	WHERE id = $3`, removerDBID, removalNote, removedActionDBID)
+	if result.RowsAffected() != 1 {
+		return fmt.Errorf("failed to update action %d", removedActionDBID)
+	}
+	return err
+}
+
+func addUserUUID(ctx context.Context, tx pgx.Tx, userUUID string, userUUIDtoDBID map[string]int64) error {
+	_, exists := userUUIDtoDBID[userUUID]
+	if exists {
+		return nil
+	}
+	userDBID, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
+	if err != nil {
+		return err
+	}
+	userUUIDtoDBID[userUUID] = userDBID
+	return nil
+}
+
+func addUserDBID(ctx context.Context, tx pgx.Tx, userDBID int64, userDBIDtoUUID map[int64]string) error {
+	_, exists := userDBIDtoUUID[userDBID]
+	if exists {
+		return nil
+	}
+	userUUID, err := common.GetUserUUIDFromDBID(ctx, tx, userDBID)
+	if err != nil {
+		return err
+	}
+	userDBIDtoUUID[userDBID] = userUUID
+	return nil
+}
+
+func getUserDBIDsFromActions(ctx context.Context, tx pgx.Tx, actions []*ms.ModAction) (map[string]int64, error) {
+	userUUIDtoDBID := map[string]int64{}
+	for _, action := range actions {
+		if action.UserId == "" {
+			return nil, fmt.Errorf("user id missing for action %s", action.Type.String())
+		}
+		err := addUserUUID(ctx, tx, action.UserId, userUUIDtoDBID)
+		if err != nil {
+			return nil, err
+		}
+		if action.ApplierUserId != "" {
+			err = addUserUUID(ctx, tx, action.ApplierUserId, userUUIDtoDBID)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return userUUIDtoDBID, nil
+}
+
+func addUserUUIDsToActions(ctx context.Context, tx pgx.Tx, actions []*ms.ModAction, dbVals []*DBUniqueValues) error {
+	userDBIDtoUUID := map[int64]string{}
+	for idx, action := range actions {
+		err := addUserDBID(ctx, tx, dbVals[idx].userDBID, userDBIDtoUUID)
+		if err != nil {
+			return err
+		}
+
+		action.UserId = userDBIDtoUUID[dbVals[idx].userDBID]
+
+		if dbVals[idx].applierDBID.Valid {
+			err = addUserDBID(ctx, tx, dbVals[idx].applierDBID.Int64, userDBIDtoUUID)
+			if err != nil {
+				return err
+			}
+			action.ApplierUserId = userDBIDtoUUID[dbVals[idx].applierDBID.Int64]
+		}
+
+		if dbVals[idx].removerDBID.Valid {
+			err = addUserDBID(ctx, tx, dbVals[idx].removerDBID.Int64, userDBIDtoUUID)
+			if err != nil {
+				return err
+			}
+			action.RemoverUserId = userDBIDtoUUID[dbVals[idx].removerDBID.Int64]
+		}
+	}
+	return nil
+}
+
+func (s *DBStore) GetActionsDB(ctx context.Context, userUUID string) (map[string]*ms.ModAction, error) {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	actions, _, err := getActionsDB(ctx, tx, userUUID)
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return actions, nil
+}
+
+func (s *DBStore) GetActionHistoryDB(ctx context.Context, userUUID string) ([]*ms.ModAction, error) {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	userDBID, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	query := fmt.Sprintf(`SELECT %s	FROM user_actions
+	WHERE user_actions.user_id = $1 AND (user_actions.removed_time IS NOT NULL OR (user_actions.end_time IS NOT NULL AND user_actions.end_time < NOW()))
+	ORDER BY start_time ASC`, userActionsSQLSelection)
+	rows, err := tx.Query(ctx, query, userDBID)
+	// query := fmt.Sprintf(`SELECT %s	FROM user_actions`, userActionsSQLSelection)
+	// rows, err := tx.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	modActions, dbUniqueValues, err := scanRowsIntoModActions(ctx, tx, rows)
+
+	err = addUserUUIDsToActions(ctx, tx, modActions, dbUniqueValues)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	return modActions, nil
+}
+
+func applyOrRemoveActionsDB(ctx context.Context, s *DBStore, actions []*ms.ModAction, apply bool) error {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	userDBIDs, err := getUserDBIDsFromActions(ctx, tx, actions)
+	if err != nil {
+		return err
+	}
+
+	for _, action := range actions {
+		currentAction, dbUniqueValues, err := getSingleActionDB(ctx, tx, action.UserId, action.Type)
+		if err != nil {
+			return err
+		}
+
+		userDBID, exists := userDBIDs[action.UserId]
+		if !exists {
+			return fmt.Errorf("DBID not found for user: %s", action.UserId)
+		}
+
+		var nullOrAppliererDBID sql.NullInt64
+		nullOrAppliererDBID.Valid = false
+		if action.ApplierUserId != "" {
+			removerDBID, exists := userDBIDs[action.ApplierUserId]
+			if !exists {
+				return fmt.Errorf("DBID not found for applier user: %s", action.UserId)
+			}
+			nullOrAppliererDBID.Int64 = removerDBID
+			nullOrAppliererDBID.Valid = true
+		}
+
+		if currentAction != nil {
+			note := action.Note
+			if apply {
+				// This action is being supplanted by a more recent action
+				// so the note is only relevant to the new action. Create
+				// an automatic removal note in that case
+				note = "REMOVED BY NEW ACTION: " + note
+			}
+
+			err = updateActionForRemoval(ctx, tx, dbUniqueValues.actionDBID, nullOrAppliererDBID, note)
+			if err != nil {
+				return err
+			}
+		}
+
+		if apply {
+			err := applySingleActionDB(ctx, tx, userDBID, nullOrAppliererDBID, action)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *DBStore) ApplyActionsDB(ctx context.Context, actions []*ms.ModAction) error {
+	return applyOrRemoveActionsDB(ctx, s, actions, true)
+}
+
+func (s *DBStore) RemoveActionsDB(ctx context.Context, actions []*ms.ModAction) error {
+	return applyOrRemoveActionsDB(ctx, s, actions, false)
 }

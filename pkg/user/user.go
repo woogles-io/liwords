@@ -7,6 +7,7 @@ import (
 
 	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
+	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	upb "github.com/domino14/liwords/rpc/api/proto/user_service"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
@@ -57,6 +58,10 @@ type Store interface {
 	GetModList(ctx context.Context) (*upb.GetModListResponse, error)
 	GetAPIKey(ctx context.Context, uuid string) (string, error)
 	ResetAPIKey(ctx context.Context, uuid string) (string, error)
+	GetActionsDB(ctx context.Context, userUUID string) (map[string]*ms.ModAction, error)
+	GetActionHistoryDB(ctx context.Context, userUUID string) ([]*ms.ModAction, error)
+	ApplyActionsDB(ctx context.Context, actions []*ms.ModAction) error
+	RemoveActionsDB(ctx context.Context, actions []*ms.ModAction) error
 }
 
 // PresenceStore stores user presence. Since it is meant to be easily user-visible,
