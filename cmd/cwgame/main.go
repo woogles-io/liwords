@@ -11,9 +11,8 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/cwgame"
 	"github.com/domino14/liwords/pkg/cwgame/board"
-	"github.com/domino14/liwords/pkg/cwgame/runemapping"
-	"github.com/domino14/liwords/pkg/cwgame/tiles"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/domino14/macondo/tilemapping"
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -73,7 +72,7 @@ func main() {
 		panic(err)
 	}
 
-	dist, err := tiles.GetDistribution(DefaultConfig, gdoc.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(&DefaultConfig.MacondoConfig, gdoc.LetterDistribution)
 	if err != nil {
 		panic(err)
 	}
@@ -88,12 +87,12 @@ func main() {
 			if s1 != "" {
 				s1 += "\n"
 			}
-			s1 += cwgame.EventDescription(evt, dist.RuneMapping())
+			s1 += cwgame.EventDescription(evt, dist.TileMapping())
 		} else {
 			if s2 != "" {
 				s2 += "\n"
 			}
-			s2 += cwgame.EventDescription(evt, dist.RuneMapping())
+			s2 += cwgame.EventDescription(evt, dist.TileMapping())
 			fullLine = true
 		}
 		if fullLine {
@@ -104,7 +103,7 @@ func main() {
 		}
 	}
 	fmt.Println()
-	s, err := board.ToUserVisibleString(gdoc.Board, gdoc.BoardLayout, dist.RuneMapping())
+	s, err := board.ToUserVisibleString(gdoc.Board, gdoc.BoardLayout, dist.TileMapping())
 	if err != nil {
 		panic(err)
 	}
@@ -112,12 +111,12 @@ func main() {
 	fmt.Println(lo.Map(gdoc.Players, func(p *ipc.GameDocument_MinimalPlayerInfo, idx int) string {
 		pname := p.RealName
 		pscore := gdoc.CurrentScores[idx]
-		prack := runemapping.FromByteArr(gdoc.Racks[idx]).UserVisible(dist.RuneMapping())
+		prack := tilemapping.FromByteArr(gdoc.Racks[idx]).UserVisible(dist.TileMapping())
 		onturn := ""
 		if int(gdoc.PlayerOnTurn) == idx {
 			onturn = "*"
 		}
 		return fmt.Sprintf("<%s (rack [%s], score [%d])>%s", pname, prack, pscore, onturn)
 	}))
-	fmt.Printf("Bag: %v (%d)\n", runemapping.FromByteArr(gdoc.Bag.Tiles).UserVisible(dist.RuneMapping()), len(gdoc.Bag.Tiles))
+	fmt.Printf("Bag: %v (%d)\n", tilemapping.FromByteArr(gdoc.Bag.Tiles).UserVisible(dist.TileMapping()), len(gdoc.Bag.Tiles))
 }

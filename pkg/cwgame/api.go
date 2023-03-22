@@ -18,10 +18,10 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/cwgame/board"
-	"github.com/domino14/liwords/pkg/cwgame/dawg"
-	"github.com/domino14/liwords/pkg/cwgame/runemapping"
 	"github.com/domino14/liwords/pkg/cwgame/tiles"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/domino14/macondo/kwg"
+	"github.com/domino14/macondo/tilemapping"
 )
 
 var (
@@ -62,11 +62,11 @@ func init() {
 func NewGame(cfg *config.Config, rules *GameRules, playerinfo []*ipc.GameDocument_MinimalPlayerInfo) (*ipc.GameDocument, error) {
 	// try to instantiate all aspects of the game from the given rules.
 
-	dist, err := tiles.GetDistribution(cfg, rules.distname)
+	dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, rules.distname)
 	if err != nil {
 		return nil, err
 	}
-	_, err = dawg.GetDawg(cfg, rules.lexicon)
+	_, err = kwg.Get(&cfg.MacondoConfig, rules.lexicon)
 	if err != nil {
 		return nil, err
 	}
@@ -124,12 +124,12 @@ func StartGame(ctx context.Context, gdoc *ipc.GameDocument) error {
 		return errStartNotPermitted
 	}
 	for idx := range gdoc.Players {
-		t := make([]runemapping.MachineLetter, RackTileLimit)
+		t := make([]tilemapping.MachineLetter, RackTileLimit)
 		err := tiles.Draw(gdoc.Bag, RackTileLimit, t)
 		if err != nil {
 			return err
 		}
-		gdoc.Racks[idx] = runemapping.MachineWord(t).ToByteArr()
+		gdoc.Racks[idx] = tilemapping.MachineWord(t).ToByteArr()
 	}
 	resetTimersAndStart(gdoc, globalNower)
 	// Outside of this:
@@ -150,7 +150,7 @@ func AssignRacks(gdoc *ipc.GameDocument, racks [][]byte, assignEmpty RackAssignB
 		if len(gdoc.Racks[i]) > 0 {
 			log.Debug().Interface("rack", gdoc.Racks[i]).Int("player", i).Msg("throwing in rack for player")
 		}
-		mls := runemapping.FromByteArr(gdoc.Racks[i])
+		mls := tilemapping.FromByteArr(gdoc.Racks[i])
 		tiles.PutBack(gdoc.Bag, mls)
 		gdoc.Racks[i] = nil
 	}
@@ -160,7 +160,7 @@ func AssignRacks(gdoc *ipc.GameDocument, racks [][]byte, assignEmpty RackAssignB
 			// empty
 			empties = append(empties, i)
 		} else {
-			rackml := runemapping.FromByteArr(r)
+			rackml := tilemapping.FromByteArr(r)
 			err := tiles.RemoveTiles(gdoc.Bag, rackml)
 			if err != nil {
 				return err
@@ -179,13 +179,13 @@ func AssignRacks(gdoc *ipc.GameDocument, racks [][]byte, assignEmpty RackAssignB
 		(assignEmpty == AssignEmptyIfUnambiguous && bagWillBeEmpty) {
 
 		for _, i := range empties {
-			placeholder := make([]runemapping.MachineLetter, RackTileLimit)
+			placeholder := make([]tilemapping.MachineLetter, RackTileLimit)
 			drew, err := tiles.DrawAtMost(gdoc.Bag, RackTileLimit, placeholder)
 			if err != nil {
 				return err
 			}
 			drawn := placeholder[:drew]
-			gdoc.Racks[i] = runemapping.MachineWord(drawn).ToByteArr()
+			gdoc.Racks[i] = tilemapping.MachineWord(drawn).ToByteArr()
 		}
 	}
 	return nil
@@ -200,7 +200,7 @@ func ReconcileAllTiles(ctx context.Context, gdoc *ipc.GameDocument) error {
 		return errors.New("config does not exist in context")
 	}
 
-	dist, err := tiles.GetDistribution(cfg, gdoc.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, gdoc.LetterDistribution)
 	if err != nil {
 		return err
 	}
@@ -214,13 +214,13 @@ func ReconcileAllTiles(ctx context.Context, gdoc *ipc.GameDocument) error {
 		} else if t == 0 {
 			continue
 		}
-		err := tiles.RemoveTiles(bag, runemapping.FromByteArr(toRm))
+		err := tiles.RemoveTiles(bag, tilemapping.FromByteArr(toRm))
 		if err != nil {
 			return fmt.Errorf("removing-from-board error: %w", err)
 		}
 	}
 	for idx, rack := range gdoc.Racks {
-		err := tiles.RemoveTiles(bag, runemapping.FromByteArr(rack))
+		err := tiles.RemoveTiles(bag, tilemapping.FromByteArr(rack))
 		if err != nil {
 			return fmt.Errorf("removing-from-rack-%d error: %w", idx, err)
 		}
@@ -284,7 +284,7 @@ func ReplayEvents(ctx context.Context, gdoc *ipc.GameDocument, evts []*ipc.GameE
 		return errors.New("config does not exist in context")
 	}
 
-	dist, err := tiles.GetDistribution(cfg, gdoc.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, gdoc.LetterDistribution)
 	if err != nil {
 		return err
 	}
@@ -466,13 +466,13 @@ func ProcessGameplayEvent(ctx context.Context, evt *ipc.ClientGameplayEvent,
 
 func clientEventToGameEvent(ctx context.Context, evt *ipc.ClientGameplayEvent, gdoc *ipc.GameDocument) (*ipc.GameEvent, error) {
 	playerid := gdoc.PlayerOnTurn
-	rackmw := runemapping.FromByteArr(gdoc.Racks[playerid])
+	rackmw := tilemapping.FromByteArr(gdoc.Racks[playerid])
 	cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
 	if !ok {
 		return nil, errors.New("config does not exist in context")
 	}
 
-	dist, err := tiles.GetDistribution(cfg, gdoc.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, gdoc.LetterDistribution)
 	if err != nil {
 		return nil, err
 	}
@@ -480,7 +480,7 @@ func clientEventToGameEvent(ctx context.Context, evt *ipc.ClientGameplayEvent, g
 	switch evt.Type {
 	case ipc.ClientGameplayEvent_TILE_PLACEMENT:
 		row, col, dir := fromBoardGameCoords(evt.PositionCoords)
-		mw, err := runemapping.ToMachineLetters(evt.Tiles, dist.RuneMapping())
+		mw, err := tilemapping.ToMachineLetters(evt.Tiles, dist.TileMapping())
 		if err != nil {
 			return nil, err
 		}
@@ -494,7 +494,7 @@ func clientEventToGameEvent(ctx context.Context, evt *ipc.ClientGameplayEvent, g
 			Direction:   dir,
 			Type:        ipc.GameEvent_TILE_PLACEMENT_MOVE,
 			Rack:        gdoc.Racks[playerid],
-			PlayedTiles: runemapping.MachineWord(mw).ToByteArr(),
+			PlayedTiles: tilemapping.MachineWord(mw).ToByteArr(),
 			Position:    evt.PositionCoords,
 			PlayerIndex: gdoc.PlayerOnTurn,
 		}, nil
@@ -506,7 +506,7 @@ func clientEventToGameEvent(ctx context.Context, evt *ipc.ClientGameplayEvent, g
 			PlayerIndex: gdoc.PlayerOnTurn,
 		}, nil
 	case ipc.ClientGameplayEvent_EXCHANGE:
-		mw, err := runemapping.ToMachineLetters(evt.Tiles, dist.RuneMapping())
+		mw, err := tilemapping.ToMachineLetters(evt.Tiles, dist.TileMapping())
 		if err != nil {
 			return nil, err
 		}
@@ -517,7 +517,7 @@ func clientEventToGameEvent(ctx context.Context, evt *ipc.ClientGameplayEvent, g
 		return &ipc.GameEvent{
 			Type:        ipc.GameEvent_EXCHANGE,
 			Rack:        gdoc.Racks[playerid],
-			Exchanged:   runemapping.MachineWord(mw).ToByteArr(),
+			Exchanged:   tilemapping.MachineWord(mw).ToByteArr(),
 			PlayerIndex: gdoc.PlayerOnTurn,
 		}, nil
 	case ipc.ClientGameplayEvent_CHALLENGE_PLAY:

@@ -4,14 +4,12 @@ import (
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/domino14/macondo/alphabet"
 	"github.com/domino14/macondo/game"
 	"github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/domino14/macondo/tilemapping"
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/cwgame"
-	"github.com/domino14/liwords/pkg/cwgame/runemapping"
-	"github.com/domino14/liwords/pkg/cwgame/tiles"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 )
@@ -20,17 +18,17 @@ import (
 // GameDocuments. We can delete this after some time.
 
 func ToGameDocument(g *entity.Game, cfg *config.Config) (*ipc.GameDocument, error) {
-	letterdist, err := tiles.GetDistribution(cfg, g.History().LetterDistribution)
+	letterdist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, g.History().LetterDistribution)
 	if err != nil {
 		return nil, err
 	}
 
 	rackConverter := func(rack string, index int) []byte {
-		mls, err := runemapping.ToMachineLetters(rack, letterdist.RuneMapping())
+		mls, err := tilemapping.ToMachineLetters(rack, letterdist.TileMapping())
 		if err != nil {
 			panic(err)
 		}
-		return runemapping.MachineWord(mls).ToByteArr()
+		return tilemapping.MachineWord(mls).ToByteArr()
 	}
 
 	eventConverter := func(evt *macondo.GameEvent, index int) *ipc.GameEvent {
@@ -105,49 +103,38 @@ func ToGameDocument(g *entity.Game, cfg *config.Config) (*ipc.GameDocument, erro
 	return gdoc, nil
 }
 
-func populateBoard(g *entity.Game, gdoc *ipc.GameDocument, ld *tiles.LetterDistribution) {
+func populateBoard(g *entity.Game, gdoc *ipc.GameDocument, ld *tilemapping.LetterDistribution) {
 	gdoc.Board.NumCols = int32(g.Board().Dim())
 	gdoc.Board.NumRows = int32(g.Board().Dim())
 	gdoc.Board.IsEmpty = g.Board().IsEmpty()
 
-	gdoc.Board.Tiles = lo.Map(g.Board().GetSquares(), func(ml alphabet.MachineLetter, idx int) byte {
-		// ml is an old-style MachineLetter (from Macondo), numbered from 0 to 255
-		// (A through Z, plus a BlankOffset)
-		if ml >= alphabet.BlankOffset {
-			return byte(-int8(1 + ml - alphabet.BlankOffset))
-		} else if ml == alphabet.EmptySquareMarker {
-			return byte(0)
-		} else {
-			return byte(1 + ml) // 1-indexed in the new regime
-		}
+	gdoc.Board.Tiles = lo.Map(g.Board().GetSquares(), func(ml tilemapping.MachineLetter, idx int) byte {
+		return byte(ml)
 	})
 }
 
-func populateBag(g *entity.Game, gdoc *ipc.GameDocument, ld *tiles.LetterDistribution) {
-	gdoc.Bag.Tiles = lo.Map(g.Bag().Peek(), func(ml alphabet.MachineLetter, idx int) byte {
-		if ml == alphabet.BlankMachineLetter {
-			return byte(0)
-		}
-		return byte(1 + ml)
+func populateBag(g *entity.Game, gdoc *ipc.GameDocument, ld *tilemapping.LetterDistribution) {
+	gdoc.Bag.Tiles = lo.Map(g.Bag().Peek(), func(ml tilemapping.MachineLetter, idx int) byte {
+		return byte(ml)
 	})
 }
 
 // ToGameHistory is a helper function to convert a GameDocument back to a game history.
 // Eventually we will not have GameHistory's anymore.
 func ToGameHistory(doc *ipc.GameDocument, cfg *config.Config) (*macondo.GameHistory, error) {
-	letterdist, err := tiles.GetDistribution(cfg, doc.LetterDistribution)
+	letterdist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, doc.LetterDistribution)
 	if err != nil {
 		return nil, err
 	}
 
 	rackConverter := func(bts []byte, idx int) string {
-		mw := runemapping.FromByteArr(bts)
-		return mw.UserVisible(letterdist.RuneMapping())
+		mw := tilemapping.FromByteArr(bts)
+		return mw.UserVisible(letterdist.TileMapping())
 	}
 
 	rackConverterForPlay := func(bts []byte, idx int) string {
-		mw := runemapping.FromByteArr(bts)
-		return mw.UserVisiblePlayedTiles(letterdist.RuneMapping())
+		mw := tilemapping.FromByteArr(bts)
+		return mw.UserVisiblePlayedTiles(letterdist.TileMapping())
 	}
 
 	eventConverter := func(evt *ipc.GameEvent, index int) *macondo.GameEvent {

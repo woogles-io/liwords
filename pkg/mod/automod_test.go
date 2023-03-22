@@ -24,9 +24,9 @@ import (
 	pkguser "github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
-	"github.com/domino14/macondo/alphabet"
 	macondoconfig "github.com/domino14/macondo/config"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/domino14/macondo/tilemapping"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lithammer/shortuuid"
 	"github.com/matryer/is"
@@ -216,7 +216,7 @@ func playGame(ctx context.Context,
 		turn.GameId = g.GameID()
 		playerIdx := i % 2
 		fmt.Println("on turn now", g.NickOnTurn())
-		g.SetRackFor(playerIdx, alphabet.RackFromString(turn.Tiles, g.Alphabet()))
+		g.SetRackFor(playerIdx, tilemapping.RackFromString(turn.Tiles, g.Alphabet()))
 
 		_, err := gameplay.HandleEvent(ctx, gstore, ustore, nstore, lstore, tstore,
 			playerIds[playerIdx], turn)

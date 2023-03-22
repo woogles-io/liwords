@@ -5,18 +5,18 @@ import (
 	"os"
 	"strings"
 
-	"github.com/domino14/liwords/pkg/cwgame/runemapping"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/domino14/macondo/tilemapping"
 )
 
 var (
 	ColorSupport = os.Getenv("LIWORDS_DISABLE_COLOR") != "on"
 )
 
-func sqDisplayStr(board *ipc.GameBoard, layout *BoardLayout, i, j int, rm *runemapping.RuneMapping) string {
+func sqDisplayStr(board *ipc.GameBoard, layout *BoardLayout, i, j int, rm *tilemapping.TileMapping) string {
 	idx := i*int(board.NumCols) + j
 	if board.Tiles[idx] != 0 {
-		return string(rm.Letter(runemapping.MachineLetter(board.Tiles[idx])))
+		return string(rm.Letter(tilemapping.MachineLetter(board.Tiles[idx])))
 	}
 	repr := string(enumToBonus(BonusSquare(layout.Layout[idx])))
 	if !ColorSupport {
@@ -42,7 +42,7 @@ func sqDisplayStr(board *ipc.GameBoard, layout *BoardLayout, i, j int, rm *runem
 	}
 }
 
-func ToUserVisibleString(board *ipc.GameBoard, layoutName string, rm *runemapping.RuneMapping) (string, error) {
+func ToUserVisibleString(board *ipc.GameBoard, layoutName string, rm *tilemapping.TileMapping) (string, error) {
 	layout, err := GetBoardLayout(layoutName)
 	if err != nil {
 		return "", err

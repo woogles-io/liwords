@@ -17,11 +17,11 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
 	puzzlesstore "github.com/domino14/liwords/pkg/stores/puzzles"
-	"github.com/domino14/macondo/alphabet"
 	"github.com/domino14/macondo/cross_set"
-	"github.com/domino14/macondo/gaddag"
 	macondogame "github.com/domino14/macondo/game"
+	"github.com/domino14/macondo/kwg"
 	macondopuzzles "github.com/domino14/macondo/puzzles"
+	"github.com/domino14/macondo/tilemapping"
 
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	pb "github.com/domino14/liwords/rpc/api/proto/puzzle_service"
@@ -98,15 +98,15 @@ func processWithRealGames(ctx context.Context, cfg *config.Config, req *pb.Puzzl
 	// For non-bot-v-bot games we need to "hydrate" the game we get back
 	// from the database with the right data structures in order for it
 	// to generate moves properly.
-	gd, err := gaddag.Get(&cfg.MacondoConfig, req.Lexicon)
+	gd, err := kwg.Get(&cfg.MacondoConfig, req.Lexicon)
 	if err != nil {
 		return false, err
 	}
-	dist, err := alphabet.Get(&cfg.MacondoConfig, req.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, req.LetterDistribution)
 	if err != nil {
 		return false, err
 	}
-	csgen := cross_set.GaddagCrossSetGenerator{Dist: dist, Gaddag: gd}
+	csgen := &cross_set.GaddagCrossSetGenerator{Dist: dist, Gaddag: gd}
 
 	minimumStartTime, err := time.Parse("2006-01-02", "2021-01-01")
 	if err != nil {

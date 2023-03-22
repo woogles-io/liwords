@@ -9,9 +9,9 @@ import (
 	"sync"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/word_service"
-	"github.com/domino14/macondo/alphabet"
 	macondoconfig "github.com/domino14/macondo/config"
-	"github.com/domino14/macondo/gaddag"
+	"github.com/domino14/macondo/kwg"
+	"github.com/domino14/macondo/tilemapping"
 	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
 )
@@ -57,12 +57,12 @@ func NewWordService(cfg *macondoconfig.Config) *WordService {
 
 var daPool = sync.Pool{
 	New: func() interface{} {
-		return &gaddag.DawgAnagrammer{}
+		return &kwg.KWGAnagrammer{}
 	},
 }
 
 func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsRequest) (*pb.DefineWordsResponse, error) {
-	gd, err := gaddag.GetDawg(ws.cfg, req.Lexicon)
+	gd, err := kwg.Get(ws.cfg, req.Lexicon)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -76,14 +76,14 @@ func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsReque
 	var anagrams map[string][]string
 	if req.Anagrams {
 		anagrams = make(map[string][]string)
-		da := daPool.Get().(*gaddag.DawgAnagrammer)
+		da := daPool.Get().(*kwg.KWGAnagrammer)
 		defer daPool.Put(da)
 		for _, query := range req.Words {
 			if _, found := anagrams[query]; found {
 				continue
 			}
 
-			if strings.IndexByte(query, alphabet.BlankToken) >= 0 {
+			if strings.IndexByte(query, tilemapping.BlankToken) >= 0 {
 				return nil, twirp.NewError(twirp.InvalidArgument, "word cannot have blanks")
 			}
 			if err = da.InitForString(gd, query); err != nil {
@@ -91,7 +91,7 @@ func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsReque
 			}
 
 			var words []string
-			da.Anagram(gd, func(word alphabet.MachineWord) error {
+			da.Anagram(gd, func(word tilemapping.MachineWord) error {
 				words = append(words, word.UserVisible(alph))
 				return nil
 			})
@@ -117,7 +117,7 @@ func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsReque
 		}
 	} else {
 		for _, word := range req.Words {
-			machineWord, err := alphabet.ToMachineWord(word, alph)
+			machineWord, err := tilemapping.ToMachineWord(word, alph)
 			if err != nil {
 				return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 			}
@@ -126,7 +126,7 @@ func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsReque
 				continue
 			}
 
-			if gaddag.FindMachineWord(gd, machineWord) {
+			if kwg.FindMachineWord(gd, machineWord) {
 				definition := ""
 				if req.Definitions {
 					// IMPORTANT: "" will make frontend do infinite loop

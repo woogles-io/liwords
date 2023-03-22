@@ -8,19 +8,22 @@ import (
 	"sort"
 	"testing"
 
+	macondoconfig "github.com/domino14/macondo/config"
+	"github.com/domino14/macondo/tilemapping"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/cwgame/runemapping"
+
 	"github.com/domino14/liwords/pkg/cwgame/tiles"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
 var DataDir = os.Getenv("DATA_PATH")
-var DefaultConfig = &config.Config{DataPath: DataDir}
+var DefaultConfig = &config.Config{
+	MacondoConfig: macondoconfig.Config{DataPath: DataDir}}
 
 func restoreGlobalNower() {
 	globalNower = GameTimer{}
@@ -318,7 +321,7 @@ func TestChallengeBadWord(t *testing.T) {
 	is.Equal(gdoc.Racks[0], []byte{5, 5, 9, 11, 14, 20, 23})
 	is.Equal(gdoc.PlayerOnTurn, uint32(0))
 	/*
-		dist, err := tiles.GetDistribution(DefaultConfig, gdoc.LetterDistribution)
+		dist, err := tilemapping.GetDistribution(DefaultConfig, gdoc.LetterDistribution)
 		is.NoErr(err)
 		fmt.Println(board.ToUserVisibleString(gdoc.Board, gdoc.BoardLayout, dist.RuneMapping()))*/
 }
@@ -525,13 +528,13 @@ func TestChallengeGoodWordNorwegian(t *testing.T) {
 		PositionCoords: "8G",
 		Tiles:          "ÅMA",
 	}
-	ld, err := tiles.GetDistribution(DefaultConfig, "norwegian")
+	ld, err := tilemapping.GetDistribution(&DefaultConfig.MacondoConfig, "norwegian")
 	is.NoErr(err)
-	rack, err := runemapping.ToMachineLetters("AÅM", ld.RuneMapping())
+	rack, err := tilemapping.ToMachineLetters("AÅM", ld.TileMapping())
 	is.NoErr(err)
 
 	err = AssignRacks(g, [][]byte{
-		runemapping.MachineWord(rack).ToByteArr(),
+		tilemapping.MachineWord(rack).ToByteArr(),
 		{},
 	}, AlwaysAssignEmpty)
 	is.NoErr(err)
@@ -1285,7 +1288,7 @@ func TestExchangePartialRack(t *testing.T) {
 func TestAssignRacks(t *testing.T) {
 	is := is.New(t)
 
-	dist, err := tiles.GetDistribution(DefaultConfig, "English")
+	dist, err := tilemapping.GetDistribution(&DefaultConfig.MacondoConfig, "English")
 	is.NoErr(err)
 
 	doc := &ipc.GameDocument{
@@ -1309,7 +1312,7 @@ func TestAssignRacks(t *testing.T) {
 func TestAssignRacksEmptyRack(t *testing.T) {
 	is := is.New(t)
 
-	dist, err := tiles.GetDistribution(DefaultConfig, "English")
+	dist, err := tilemapping.GetDistribution(&DefaultConfig.MacondoConfig, "English")
 	is.NoErr(err)
 
 	doc := &ipc.GameDocument{

@@ -9,12 +9,12 @@ import (
 
 	"github.com/domino14/liwords/pkg/entity"
 	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
-	"github.com/domino14/macondo/alphabet"
 	"github.com/domino14/macondo/board"
 	macondoconfig "github.com/domino14/macondo/config"
-	"github.com/domino14/macondo/gaddag"
 	"github.com/domino14/macondo/game"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/domino14/macondo/kwg"
+	"github.com/domino14/macondo/tilemapping"
 	"github.com/rs/zerolog/log"
 )
 
@@ -752,10 +752,10 @@ func addTilesPlayed(info *IncrementInfo) error {
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE &&
 		(succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED) {
 		for _, char := range event.PlayedTiles {
-			if char != alphabet.ASCIIPlayedThrough {
+			if char != tilemapping.ASCIIPlayedThrough {
 				info.StatItem.Total++
 				if unicode.IsLower(char) {
-					info.StatItem.Subitems[string(alphabet.BlankToken)]++
+					info.StatItem.Subitems[string(tilemapping.BlankToken)]++
 				} else {
 					info.StatItem.Subitems[string(char)]++
 				}
@@ -833,7 +833,7 @@ func addTurnsWithBlank(info *IncrementInfo) error {
 		event.Type == pb.GameEvent_EXCHANGE ||
 		event.Type == pb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS { // Do we want this last one?
 		for _, char := range event.Rack {
-			if char == alphabet.BlankToken {
+			if char == tilemapping.BlankToken {
 				incrementStatItem(info.Ctx, info.StatItem, info.Lss, event, info.GameId, info.PlayerId, info.Evt.Time)
 				break
 			}
@@ -926,7 +926,7 @@ func getOccupiedIndexes(event *pb.GameEvent) [][]int {
 	row := int(event.Row)
 	column := int(event.Column)
 	for _, char := range event.PlayedTiles {
-		if char != alphabet.ASCIIPlayedThrough {
+		if char != tilemapping.ASCIIPlayedThrough {
 			occupied = append(occupied, []int{row, column})
 		}
 		if event.Direction == pb.GameEvent_VERTICAL {
@@ -971,12 +971,12 @@ func isUnchallengedPhonyEvent(event *pb.GameEvent,
 	cfg *macondoconfig.Config) (bool, error) {
 	phony := false
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE {
-		dawg, err := gaddag.GetDawg(cfg, history.Lexicon)
+		kwg, err := kwg.Get(cfg, history.Lexicon)
 		if err != nil {
 			return phony, err
 		}
 		for _, word := range event.WordsFormed {
-			phony, err := isPhony(dawg, word, history.Variant)
+			phony, err := isPhony(kwg, word, history.Variant)
 			if err != nil {
 				return false, err
 			}
@@ -989,9 +989,9 @@ func isUnchallengedPhonyEvent(event *pb.GameEvent,
 	return false, nil
 }
 
-func isPhony(gd gaddag.GenericDawg, word, variant string) (bool, error) {
-	lex := gaddag.Lexicon{GenericDawg: gd}
-	machineWord, err := alphabet.ToMachineWord(word, lex.GetAlphabet())
+func isPhony(gd *kwg.KWG, word, variant string) (bool, error) {
+	lex := kwg.Lexicon{KWG: *gd}
+	machineWord, err := tilemapping.ToMachineWord(word, lex.GetAlphabet())
 	if err != nil {
 		return false, err
 	}
@@ -1236,7 +1236,7 @@ func makeAlphabetSubitems() map[string]int {
 	for i := 0; i < 26; i++ {
 		alphabetSubitems[string('A'+rune(i))] = 0
 	}
-	alphabetSubitems[string(alphabet.BlankToken)] = 0
+	alphabetSubitems[string(tilemapping.BlankToken)] = 0
 	return alphabetSubitems
 }
 

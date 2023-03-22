@@ -136,9 +136,11 @@ func NewLoggingServerHooks() *twirp.ServerHooks {
 // }
 
 func main() {
-
+	log.Info().Msg("before load")
 	cfg := &config.Config{}
+	log.Info().Msg("after cfg")
 	cfg.Load(os.Args[1:])
+	log.Info().Msg("after load")
 	log.Info().Interface("config", cfg).
 		Str("build-date", BuildDate).Str("build-hash", BuildHash).Msg("started")
 

@@ -11,10 +11,10 @@ import (
 	"github.com/domino14/liwords/pkg/stores/common"
 	statstore "github.com/domino14/liwords/pkg/stores/stats"
 	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
-	"github.com/domino14/macondo/alphabet"
 	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/domino14/macondo/gcgio"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/domino14/macondo/tilemapping"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
@@ -217,7 +217,7 @@ func TestStats(t *testing.T) {
 	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["X"] == 16)
 	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["Y"] == 33)
 	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["Z"] == 19)
-	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems[string(alphabet.BlankToken)] == 39)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems[string(tilemapping.BlankToken)] == 39)
 
 	is.True(len(stats.NotableData[entity.MANY_DOUBLE_WORDS_COVERED_STAT].List) == 0)
 	is.True(len(stats.NotableData[entity.ALL_TRIPLE_LETTERS_COVERED_STAT].List) == 0)
