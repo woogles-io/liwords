@@ -23,6 +23,7 @@ import (
 var DefaultConfig = macondoconfig.Config{
 	LexiconPath:               os.Getenv("LEXICON_PATH"),
 	LetterDistributionPath:    os.Getenv("LETTER_DISTRIBUTION_PATH"),
+	DataPath:                  os.Getenv("DATA_PATH"),
 	DefaultLexicon:            "CSW19",
 	DefaultLetterDistribution: "English",
 }
