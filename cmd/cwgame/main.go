@@ -12,6 +12,7 @@ import (
 	"github.com/domino14/liwords/pkg/cwgame"
 	"github.com/domino14/liwords/pkg/cwgame/board"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
+	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/domino14/macondo/tilemapping"
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -20,7 +21,8 @@ import (
 var RemoteServer = "https://woogles.io"
 
 var DataDir = os.Getenv("DATA_PATH")
-var DefaultConfig = &config.Config{DataPath: DataDir}
+var DefaultConfig = &config.Config{
+	MacondoConfig: macondoconfig.Config{DataPath: DataDir}}
 
 // a script to display the state of a game document
 func main() {

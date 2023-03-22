@@ -21,9 +21,11 @@ import (
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
-var DataDir = os.Getenv("DATA_PATH")
 var DefaultConfig = &config.Config{
-	MacondoConfig: macondoconfig.Config{DataPath: DataDir}}
+	MacondoConfig: macondoconfig.Config{
+		DataPath:    os.Getenv("DATA_PATH"),
+		LexiconPath: os.Getenv("LEXICON_PATH"),
+	}}
 
 func restoreGlobalNower() {
 	globalNower = GameTimer{}
