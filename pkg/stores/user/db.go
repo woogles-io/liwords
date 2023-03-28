@@ -1132,7 +1132,7 @@ func getActionsDB(ctx context.Context, tx pgx.Tx, userUUID string) (map[string]*
 	return modActionsMap, dbUniqueValuesMap, nil
 }
 
-func applySingleActionDB(ctx context.Context, tx pgx.Tx, userDBID int64, applierDBID sql.NullInt64, action *ms.ModAction) error {
+func ApplySingleActionDB(ctx context.Context, tx pgx.Tx, userDBID int64, applierDBID sql.NullInt64, removerDBID sql.NullInt64, action *ms.ModAction) error {
 	var endTime sql.NullTime
 	endTime.Valid = false
 	if action.EndTime != nil {
@@ -1141,11 +1141,11 @@ func applySingleActionDB(ctx context.Context, tx pgx.Tx, userDBID int64, applier
 	}
 
 	_, err := tx.Exec(ctx, `INSERT INTO user_actions
-	(user_id, action_type, start_time, end_time, message_id, applier_id, chat_text, note, email_type)
+	(user_id, action_type, start_time, end_time, message_id, applier_id, remover_id, chat_text, note, email_type)
 		VALUES
-		($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 		userDBID, action.Type, action.StartTime.AsTime(), endTime,
-		action.MessageId, applierDBID, action.ChatText, action.Note, action.EmailType)
+		action.MessageId, applierDBID, removerDBID, action.ChatText, action.Note, action.EmailType)
 	return err
 }
 
@@ -1334,7 +1334,7 @@ func applyOrRemoveActionsDB(ctx context.Context, s *DBStore, actions []*ms.ModAc
 		}
 
 		if apply {
-			err := applySingleActionDB(ctx, tx, userDBID, nullOrAppliererDBID, action)
+			err := ApplySingleActionDB(ctx, tx, userDBID, nullOrAppliererDBID, sql.NullInt64{Valid: false}, action)
 			if err != nil {
 				return err
 			}
