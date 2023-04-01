@@ -20,8 +20,6 @@ import (
 )
 
 const (
-	GameDocumentVersion = 1
-
 	RackTileLimit                = 7
 	ExchangePermittedTilesInBag  = 7
 	MaxConsecutiveScorelessTurns = 6

@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/stores/common"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 )
@@ -35,12 +36,13 @@ type GameDocumentStore struct {
 	redisPool *redis.Pool
 	dbPool    *pgxpool.Pool
 	redsync   *redsync.Redsync
+	cfg       *config.Config
 }
 
-func NewGameDocumentStore(r *redis.Pool, db *pgxpool.Pool) (*GameDocumentStore, error) {
+func NewGameDocumentStore(cfg *config.Config, r *redis.Pool, db *pgxpool.Pool) (*GameDocumentStore, error) {
 	pool := redigo.NewPool(r)
 	rs := redsync.New(pool)
-	return &GameDocumentStore{redisPool: r, dbPool: db, redsync: rs}, nil
+	return &GameDocumentStore{cfg: cfg, redisPool: r, dbPool: db, redsync: rs}, nil
 }
 
 // GetDocument gets a game document from the store. It tries Redis first,
@@ -95,7 +97,13 @@ func (gs *GameDocumentStore) GetDocument(ctx context.Context, uuid string, lock 
 		return nil, err
 	}
 	log.Debug().Msg("returning document")
-
+	err = MigrateGameDocument(gs.cfg, gdoc)
+	if err != nil {
+		if lock {
+			mutex.Unlock()
+		}
+		return nil, err
+	}
 	// Don't unlock the mutex when we leave. We will unlock it after the
 	// SetDocument operation. (Or it will expire if there is no such operation)
 	var mv string
@@ -153,6 +161,10 @@ func (gs *GameDocumentStore) getFromDatabase(ctx context.Context, uuid string) (
 		DiscardUnknown: true,
 	}
 	err = uo.Unmarshal(bts, gdoc)
+	if err != nil {
+		return nil, err
+	}
+	err = MigrateGameDocument(gs.cfg, gdoc)
 	if err != nil {
 		return nil, err
 	}

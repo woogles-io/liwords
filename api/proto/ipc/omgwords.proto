@@ -388,6 +388,7 @@ message GameEvent {
   // The player who played this move is encoded in player_index. This should
   // be the index in GameDocument.players.
   uint32 player_index = 19;
+  repeated string words_formed_friendly = 20;
 }
 
 enum PlayState {

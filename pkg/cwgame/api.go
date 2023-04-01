@@ -19,6 +19,7 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/cwgame/board"
 	"github.com/domino14/liwords/pkg/cwgame/tiles"
+	"github.com/domino14/liwords/pkg/omgwords/stores"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/macondo/kwg"
 	"github.com/domino14/macondo/tilemapping"
@@ -95,7 +96,7 @@ func NewGame(cfg *config.Config, rules *GameRules, playerinfo []*ipc.GameDocumen
 		Events:             make([]*ipc.GameEvent, 0),
 		Players:            playerinfo,
 		Lexicon:            rules.lexicon,
-		Version:            GameDocumentVersion,
+		Version:            stores.CurrentGameDocumentVersion,
 		Variant:            string(rules.variant),
 		BoardLayout:        rules.boardLayout,
 		LetterDistribution: rules.distname,

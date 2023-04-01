@@ -9,8 +9,8 @@ import (
 	"github.com/domino14/macondo/tilemapping"
 
 	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/cwgame"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/omgwords/stores"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
@@ -64,7 +64,7 @@ func ToGameDocument(g *entity.Game, cfg *config.Config) (*ipc.GameDocument, erro
 			}
 		}),
 		Events:        lo.Map(g.History().Events, eventConverter),
-		Version:       cwgame.GameDocumentVersion,
+		Version:       stores.CurrentGameDocumentVersion,
 		Lexicon:       g.LexiconName(),
 		Uid:           g.GameID(),
 		Racks:         lo.Map(g.History().LastKnownRacks, rackConverter),
