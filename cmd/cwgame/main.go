@@ -11,9 +11,11 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/cwgame"
 	"github.com/domino14/liwords/pkg/cwgame/board"
+	"github.com/domino14/liwords/pkg/omgwords/stores"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/domino14/macondo/tilemapping"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -72,6 +74,20 @@ func main() {
 	err = protojson.Unmarshal(body, gdoc)
 	if err != nil {
 		panic(err)
+	}
+	v := gdoc.Version
+	err = stores.MigrateGameDocument(DefaultConfig, gdoc)
+	if err != nil {
+		panic(err)
+	}
+	if gdoc.Version != v {
+		log.Info().Msg("migrated-document")
+		bts, err := protojson.Marshal(gdoc)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(string(bts))
+		fmt.Println()
 	}
 
 	dist, err := tilemapping.GetDistribution(&DefaultConfig.MacondoConfig, gdoc.LetterDistribution)

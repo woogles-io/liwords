@@ -113,6 +113,12 @@ func migrateToV2(cfg *config.Config, gdoc *ipc.GameDocument) error {
 		}
 	}
 
+	for idx, t := range gdoc.Bag.Tiles {
+		if isNorwegian {
+			gdoc.Bag.Tiles[idx] = convertNorway(t)
+		}
+	}
+
 	for _, evt := range gdoc.Events {
 		if isNorwegian {
 			for idx := range evt.Rack {
