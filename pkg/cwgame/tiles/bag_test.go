@@ -37,7 +37,7 @@ func TestBag(t *testing.T) {
 		}
 		tileMap[ml[0]]++
 	}
-	if !reflect.DeepEqual(tileMap, ld.Distribution) {
+	if !reflect.DeepEqual(tileMap, ld.Distribution()) {
 		t.Error("Distribution and tilemap were not identical.")
 	}
 	err = Draw(bag, 1, ml)
@@ -70,7 +70,7 @@ func TestNorwegianBag(t *testing.T) {
 		tileMap[ml[0]]++
 	}
 
-	if !reflect.DeepEqual(tileMap, ld.Distribution) {
+	if !reflect.DeepEqual(tileMap, ld.Distribution()) {
 		t.Error("Distribution and tilemap were not identical.")
 	}
 	err = Draw(bag, 1, ml)
