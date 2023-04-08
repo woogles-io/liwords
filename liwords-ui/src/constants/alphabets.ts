@@ -263,11 +263,7 @@ export const StandardCatalanAlphabet: Alphabet = {
 ].forEach((alph) => {
   alph.letters.forEach((letter, idx) => {
     alph.letterMap[letter.rune] = letter;
-    if (letter.rune !== Blank) {
-      alph.machineLetterMap[letter.rune] = idx + 1;
-    } else {
-      alph.machineLetterMap[letter.rune] = 0;
-    }
+    alph.machineLetterMap[letter.rune] = idx;
   });
 });
 
@@ -308,17 +304,13 @@ export const uint8ToRune = (
   alphabet: Alphabet,
   usePlaythrough?: boolean
 ): string => {
-  // Our internal encoding has the blank at 0 and everything begins at 1.
-  // This is not the order the runes are listed in above; let's make the
-  // change here.
   if (i === 0) {
     return usePlaythrough ? ThroughTileMarker : Blank;
   }
-  // 2's complement
-  if (i > 127) {
-    return alphabet.letters[256 - (i + 1)]?.rune?.toLowerCase() ?? '';
+  if (i > 0x80) {
+    return alphabet.letters[i & 0x7f]?.rune?.toLowerCase() ?? '';
   }
-  return alphabet.letters[i - 1]?.rune ?? '';
+  return alphabet.letters[i]?.rune ?? '';
 };
 
 export const uint8ArrayToRunes = (
@@ -351,7 +343,7 @@ export const runesToUint8Array = (
         match = true;
         break;
       } else if (alphabet.machineLetterMap[rune.toUpperCase()] != undefined) {
-        bts.push(256 - alphabet.machineLetterMap[rune.toUpperCase()]);
+        bts.push(0x80 | alphabet.machineLetterMap[rune.toUpperCase()]);
         i = j;
         match = true;
         break;
