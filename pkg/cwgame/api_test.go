@@ -281,18 +281,19 @@ func TestChallengeBadWord(t *testing.T) {
 	is.Equal(len(gdoc.Events), 7)
 
 	is.Equal(gdoc.Events[4], &ipc.GameEvent{
-		Rack:            []byte{5, 5, 9, 11, 14, 20, 23}, // EEIKNTW
-		Type:            ipc.GameEvent_TILE_PLACEMENT_MOVE,
-		Cumulative:      125,
-		Row:             0,
-		Column:          3,
-		Direction:       ipc.GameEvent_HORIZONTAL,
-		Position:        "1D",
-		PlayedTiles:     []byte{11, 14, 9, 0, 5, 23}, // KNI.EW
-		Score:           63,
-		WordsFormed:     [][]byte{{11, 14, 9, 22, 5, 23}}, // KNIVEW
-		MillisRemaining: 883808,                           // 5000 ms after their last time remaining
-		PlayerIndex:     0,
+		Rack:                []byte{5, 5, 9, 11, 14, 20, 23}, // EEIKNTW
+		Type:                ipc.GameEvent_TILE_PLACEMENT_MOVE,
+		Cumulative:          125,
+		Row:                 0,
+		Column:              3,
+		Direction:           ipc.GameEvent_HORIZONTAL,
+		Position:            "1D",
+		PlayedTiles:         []byte{11, 14, 9, 0, 5, 23}, // KNI.EW
+		Score:               63,
+		WordsFormed:         [][]byte{{11, 14, 9, 22, 5, 23}}, // KNIVEW
+		WordsFormedFriendly: []string{"KNIVEW"},
+		MillisRemaining:     883808, // 5000 ms after their last time remaining
+		PlayerIndex:         0,
 	})
 	is.Equal(gdoc.Events[5], &ipc.GameEvent{
 		Type:            ipc.GameEvent_PHONY_TILES_RETURNED,
@@ -304,19 +305,20 @@ func TestChallengeBadWord(t *testing.T) {
 		MillisRemaining: 897414,                          // 2500 ms after
 	})
 	is.Equal(gdoc.Events[6], &ipc.GameEvent{
-		Rack:            []byte{4, 5, 8, 9, 15, 18, 19}, // DEHIORS
-		Type:            ipc.GameEvent_TILE_PLACEMENT_MOVE,
-		Cumulative:      229,
-		Row:             14,
-		Column:          2,
-		Direction:       ipc.GameEvent_HORIZONTAL,
-		Position:        "15C",
-		PlayedTiles:     []byte{19, 0, 8, 5, 18, 15, 9, 4}, // S.HEROID
-		Score:           92,
-		WordsFormed:     [][]byte{{19, 16, 8, 5, 18, 15, 9, 4}}, // SPHEROID
-		MillisRemaining: 895914,                                 // 5000 ms after their last time remaining
-		PlayerIndex:     1,
-		IsBingo:         true,
+		Rack:                []byte{4, 5, 8, 9, 15, 18, 19}, // DEHIORS
+		Type:                ipc.GameEvent_TILE_PLACEMENT_MOVE,
+		Cumulative:          229,
+		Row:                 14,
+		Column:              2,
+		Direction:           ipc.GameEvent_HORIZONTAL,
+		Position:            "15C",
+		PlayedTiles:         []byte{19, 0, 8, 5, 18, 15, 9, 4}, // S.HEROID
+		Score:               92,
+		WordsFormed:         [][]byte{{19, 16, 8, 5, 18, 15, 9, 4}}, // SPHEROID
+		WordsFormedFriendly: []string{"SPHEROID"},
+		MillisRemaining:     895914, // 5000 ms after their last time remaining
+		PlayerIndex:         1,
+		IsBingo:             true,
 	})
 	is.Equal(gdoc.CurrentScores, []int32{62, 229})
 	is.Equal(gdoc.ScorelessTurns, uint32(0))
@@ -374,18 +376,19 @@ func TestChallengeGoodWordSingle(t *testing.T) {
 	is.Equal(len(gdoc.Events), 7)
 
 	is.Equal(gdoc.Events[4], &ipc.GameEvent{
-		Rack:            []byte{5, 5, 9, 11, 14, 20, 23}, // EEIKNTW
-		Type:            ipc.GameEvent_TILE_PLACEMENT_MOVE,
-		Cumulative:      113,
-		Row:             0,
-		Column:          3,
-		Direction:       ipc.GameEvent_HORIZONTAL,
-		Position:        "1D",
-		PlayedTiles:     []byte{11, 14, 9, 0, 5}, // KNI.E
-		Score:           51,
-		WordsFormed:     [][]byte{{11, 14, 9, 22, 5}}, // KNIVE
-		MillisRemaining: 883808,                       // 5000 ms after their last time remaining
-		PlayerIndex:     0,
+		Rack:                []byte{5, 5, 9, 11, 14, 20, 23}, // EEIKNTW
+		Type:                ipc.GameEvent_TILE_PLACEMENT_MOVE,
+		Cumulative:          113,
+		Row:                 0,
+		Column:              3,
+		Direction:           ipc.GameEvent_HORIZONTAL,
+		Position:            "1D",
+		PlayedTiles:         []byte{11, 14, 9, 0, 5}, // KNI.E
+		Score:               51,
+		WordsFormed:         [][]byte{{11, 14, 9, 22, 5}}, // KNIVE
+		WordsFormedFriendly: []string{"KNIVE"},
+		MillisRemaining:     883808, // 5000 ms after their last time remaining
+		PlayerIndex:         0,
 	})
 
 	// Don't compare this event exactly because this event has a new random rack.
@@ -396,19 +399,20 @@ func TestChallengeGoodWordSingle(t *testing.T) {
 	is.Equal(gdoc.Events[5].MillisRemaining, int32(897414))
 
 	is.Equal(gdoc.Events[6], &ipc.GameEvent{
-		Rack:            []byte{4, 5, 8, 9, 15, 18, 19}, // DEHIORS
-		Type:            ipc.GameEvent_TILE_PLACEMENT_MOVE,
-		Cumulative:      229,
-		Row:             14,
-		Column:          2,
-		Direction:       ipc.GameEvent_HORIZONTAL,
-		Position:        "15C",
-		PlayedTiles:     []byte{19, 0, 8, 5, 18, 15, 9, 4}, // S.HEROID
-		Score:           92,
-		WordsFormed:     [][]byte{{19, 16, 8, 5, 18, 15, 9, 4}}, // SPHEROID
-		MillisRemaining: 895914,                                 // 5000 ms after their last time remaining
-		PlayerIndex:     1,
-		IsBingo:         true,
+		Rack:                []byte{4, 5, 8, 9, 15, 18, 19}, // DEHIORS
+		Type:                ipc.GameEvent_TILE_PLACEMENT_MOVE,
+		Cumulative:          229,
+		Row:                 14,
+		Column:              2,
+		Direction:           ipc.GameEvent_HORIZONTAL,
+		Position:            "15C",
+		PlayedTiles:         []byte{19, 0, 8, 5, 18, 15, 9, 4}, // S.HEROID
+		Score:               92,
+		WordsFormed:         [][]byte{{19, 16, 8, 5, 18, 15, 9, 4}}, // SPHEROID
+		WordsFormedFriendly: []string{"SPHEROID"},
+		MillisRemaining:     895914, // 5000 ms after their last time remaining
+		PlayerIndex:         1,
+		IsBingo:             true,
 	})
 	is.Equal(gdoc.CurrentScores, []int32{113, 229})
 	is.Equal(gdoc.ScorelessTurns, uint32(0))
@@ -462,18 +466,19 @@ func TestChallengeGoodWordDouble(t *testing.T) {
 	is.Equal(len(gdoc.Events), 7)
 
 	is.Equal(gdoc.Events[4], &ipc.GameEvent{
-		Rack:            []byte{5, 5, 9, 11, 14, 20, 23}, // EEIKNTW
-		Type:            ipc.GameEvent_TILE_PLACEMENT_MOVE,
-		Cumulative:      113,
-		Row:             0,
-		Column:          3,
-		Direction:       ipc.GameEvent_HORIZONTAL,
-		Position:        "1D",
-		PlayedTiles:     []byte{11, 14, 9, 0, 5}, // KNI.E
-		Score:           51,
-		WordsFormed:     [][]byte{{11, 14, 9, 22, 5}}, // KNIVE
-		MillisRemaining: 883808,                       // 5000 ms after their last time remaining
-		PlayerIndex:     0,
+		Rack:                []byte{5, 5, 9, 11, 14, 20, 23}, // EEIKNTW
+		Type:                ipc.GameEvent_TILE_PLACEMENT_MOVE,
+		Cumulative:          113,
+		Row:                 0,
+		Column:              3,
+		Direction:           ipc.GameEvent_HORIZONTAL,
+		Position:            "1D",
+		PlayedTiles:         []byte{11, 14, 9, 0, 5}, // KNI.E
+		Score:               51,
+		WordsFormed:         [][]byte{{11, 14, 9, 22, 5}}, // KNIVE
+		WordsFormedFriendly: []string{"KNIVE"},
+		MillisRemaining:     883808, // 5000 ms after their last time remaining
+		PlayerIndex:         0,
 	})
 	is.Equal(gdoc.Events[5], &ipc.GameEvent{
 		Type:            ipc.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS,
@@ -600,16 +605,17 @@ func TestChallengeGoodWordDoubleWithTimeIncrement(t *testing.T) {
 	is.Equal(len(gdoc.Events), 6)
 
 	is.True(proto.Equal(gdoc.Events[4], &ipc.GameEvent{
-		Rack:        []byte{5, 5, 9, 11, 14, 20, 23}, // EEIKNTW
-		Type:        ipc.GameEvent_TILE_PLACEMENT_MOVE,
-		Cumulative:  113,
-		Row:         0,
-		Column:      3,
-		Direction:   ipc.GameEvent_HORIZONTAL,
-		Position:    "1D",
-		PlayedTiles: []byte{11, 14, 9, 0, 5}, // KNI.E
-		Score:       51,
-		WordsFormed: [][]byte{{11, 14, 9, 22, 5}}, // KNIVE
+		Rack:                []byte{5, 5, 9, 11, 14, 20, 23}, // EEIKNTW
+		Type:                ipc.GameEvent_TILE_PLACEMENT_MOVE,
+		Cumulative:          113,
+		Row:                 0,
+		Column:              3,
+		Direction:           ipc.GameEvent_HORIZONTAL,
+		Position:            "1D",
+		PlayedTiles:         []byte{11, 14, 9, 0, 5}, // KNI.E
+		Score:               51,
+		WordsFormed:         [][]byte{{11, 14, 9, 22, 5}}, // KNIVE
+		WordsFormedFriendly: []string{"KNIVE"},
 		// 5000 ms after their last time remaining
 		MillisRemaining: 883808,
 		PlayerIndex:     0,
@@ -667,16 +673,17 @@ func TestChallengeBadWordWithTimeIncrement(t *testing.T) {
 	is.Equal(len(gdoc.Events), 6)
 
 	is.Equal(gdoc.Events[4], &ipc.GameEvent{
-		Rack:        []byte{5, 5, 9, 11, 14, 20, 23}, // EEIKNTW
-		Type:        ipc.GameEvent_TILE_PLACEMENT_MOVE,
-		Cumulative:  125,
-		Row:         0,
-		Column:      3,
-		Direction:   ipc.GameEvent_HORIZONTAL,
-		Position:    "1D",
-		PlayedTiles: []byte{11, 14, 9, 0, 5, 23}, // KNI.EW
-		Score:       63,
-		WordsFormed: [][]byte{{11, 14, 9, 22, 5, 23}}, // KNIVEW
+		Rack:                []byte{5, 5, 9, 11, 14, 20, 23}, // EEIKNTW
+		Type:                ipc.GameEvent_TILE_PLACEMENT_MOVE,
+		Cumulative:          125,
+		Row:                 0,
+		Column:              3,
+		Direction:           ipc.GameEvent_HORIZONTAL,
+		Position:            "1D",
+		PlayedTiles:         []byte{11, 14, 9, 0, 5, 23}, // KNI.EW
+		Score:               63,
+		WordsFormed:         [][]byte{{11, 14, 9, 22, 5, 23}}, // KNIVEW
+		WordsFormedFriendly: []string{"KNIVEW"},
 		// 5000 ms after their last time remaining
 		MillisRemaining: 883808,
 		PlayerIndex:     0,
@@ -737,18 +744,19 @@ func TestTimeRanOut(t *testing.T) {
 	is.Equal(len(gdoc.Events), 6)
 
 	is.Equal(gdoc.Events[4], &ipc.GameEvent{
-		Rack:            []byte{5, 5, 9, 11, 14, 20, 23}, // EEIKNTW
-		Type:            ipc.GameEvent_TILE_PLACEMENT_MOVE,
-		Cumulative:      125,
-		Row:             0,
-		Column:          3,
-		Direction:       ipc.GameEvent_HORIZONTAL,
-		Position:        "1D",
-		PlayedTiles:     []byte{11, 14, 9, 0, 5, 23}, // KNI.EW
-		Score:           63,
-		WordsFormed:     [][]byte{{11, 14, 9, 22, 5, 23}}, // KNIVEW
-		MillisRemaining: 883808,                           // 5000 ms after their last time remaining
-		PlayerIndex:     0,
+		Rack:                []byte{5, 5, 9, 11, 14, 20, 23}, // EEIKNTW
+		Type:                ipc.GameEvent_TILE_PLACEMENT_MOVE,
+		Cumulative:          125,
+		Row:                 0,
+		Column:              3,
+		Direction:           ipc.GameEvent_HORIZONTAL,
+		Position:            "1D",
+		PlayedTiles:         []byte{11, 14, 9, 0, 5, 23}, // KNI.EW
+		Score:               63,
+		WordsFormed:         [][]byte{{11, 14, 9, 22, 5, 23}}, // KNIVEW
+		MillisRemaining:     883808,                           // 5000 ms after their last time remaining
+		PlayerIndex:         0,
+		WordsFormedFriendly: []string{"KNIVEW"},
 	})
 
 	is.Equal(gdoc.Events[5], &ipc.GameEvent{
