@@ -25,8 +25,14 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool) error {
 	defer tx.Rollback(ctx)
 	// Note: rewrite this if we get more than a few hundred rows and we need to
 	// run this again! Do it in batches. This locks the whole table!
-	query := "SELECT game_id, document FROM game_documents WHERE document->>'version' = '1' FOR UPDATE"
+	query := "SELECT document FROM game_documents WHERE document->>'version' = '1' FOR UPDATE"
 	updateQuery := "UPDATE game_documents SET document = $1 WHERE game_id = $2"
+
+	updateStmt, err := tx.Prepare(ctx, "update", updateQuery)
+	if err != nil {
+		return err
+	}
+
 	rows, err := tx.Query(ctx, query)
 	if err != nil {
 		return err
@@ -37,11 +43,11 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool) error {
 		DiscardUnknown: true,
 	}
 	ct := 0
+	docs := []*ipc.GameDocument{}
 	for rows.Next() {
 		gdoc := &ipc.GameDocument{}
 		var bts []byte
-		var gid string
-		if err := rows.Scan(&gid, &bts); err != nil {
+		if err := rows.Scan(&bts); err != nil {
 			return err
 		}
 		err = uo.Unmarshal(bts, gdoc)
@@ -52,11 +58,17 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool) error {
 		if err != nil {
 			return err
 		}
-		remarshalled, err := protojson.Marshal(gdoc)
+
+		docs = append(docs, gdoc)
+	}
+
+	for idx := range docs {
+		remarshalled, err := protojson.Marshal(docs[idx])
 		if err != nil {
 			return err
 		}
-		_, err = tx.Exec(ctx, updateQuery, remarshalled, gid)
+		_, err = tx.Exec(ctx, updateStmt.Name, remarshalled, docs[idx].Uid)
+
 		if err != nil {
 			return err
 		}
