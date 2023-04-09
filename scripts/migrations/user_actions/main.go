@@ -20,7 +20,7 @@ import (
 )
 
 func createActionKey(action *ms.ModAction) string {
-	return fmt.Sprintf("%s:%d:%s", action.UserId, action.StartTime.Seconds, action.Type.String())
+	return fmt.Sprintf("%s:%d:%d:%s", action.UserId, action.StartTime.Seconds, action.StartTime.Nanos, action.Type.String())
 }
 
 func getAllActions(ctx context.Context, dbPool *pgxpool.Pool) (map[string]bool, error) {
@@ -107,7 +107,7 @@ func migrateActions(ctx context.Context, dbPool *pgxpool.Pool, actionsToMigrate 
 
 		applierDBIDOption := sql.NullInt64{Valid: false}
 
-		if action.ApplierUserId != "" {
+		if action.ApplierUserId != "" && action.ApplierUserId != "AUTOMOD" {
 			err = addUserUUID(ctx, tx, action.ApplierUserId, userUUIDtoDBIDs)
 			if err != nil {
 				return err
@@ -122,7 +122,7 @@ func migrateActions(ctx context.Context, dbPool *pgxpool.Pool, actionsToMigrate 
 
 		removerDBIDOption := sql.NullInt64{Valid: false}
 
-		if action.RemoverUserId != "" {
+		if action.RemoverUserId != "" && action.RemoverUserId != "AUTOMOD" {
 			err = addUserUUID(ctx, tx, action.RemoverUserId, userUUIDtoDBIDs)
 			if err != nil {
 				return err
