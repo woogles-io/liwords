@@ -171,11 +171,21 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	log.Info().Interface("ids", ids).Msg("listed-user-ids")
+	log.Info().Int("ids", len(ids)).Msg("count-user-ids")
 
 	jsonActions := map[string]*ms.ModAction{}
+	tx, err := pool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		panic(err)
+	}
+
 	for _, uid := range ids {
-		user, err := userStore.GetByUUID(ctx, uid)
+		user, err := common.GetUserBy(
+			ctx, tx, &common.CommonDBConfig{
+				TableType:      common.UsersTable,
+				SelectByType:   common.SelectByUUID,
+				Value:          uid,
+				IncludeProfile: false})
 		if err != nil {
 			panic(err)
 		}
@@ -196,6 +206,7 @@ func main() {
 			jsonActions[actionKey] = historicAction
 		}
 	}
+	tx.Rollback(ctx)
 
 	dbActions, err := getAllActions(ctx, pool)
 	if err != nil {
