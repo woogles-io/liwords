@@ -214,9 +214,11 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 	gevt.MillisRemaining = int32(tr)
 	gdoc.Racks[gdoc.PlayerOnTurn] = tilemapping.MachineWord(newRack).ToByteArr()
 	gevt.WordsFormed = make([][]byte, len(wordsFormed))
+	gevt.WordsFormedFriendly = make([]string, len(wordsFormed))
 	gevt.Cumulative = gdoc.CurrentScores[gdoc.PlayerOnTurn]
 	for i, w := range wordsFormed {
 		gevt.WordsFormed[i] = w.ToByteArr()
+		gevt.WordsFormedFriendly[i] = w.UserVisiblePlayedTiles(dist.TileMapping())
 	}
 	gdoc.Events = append(gdoc.Events, gevt)
 
