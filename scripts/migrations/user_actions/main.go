@@ -20,7 +20,7 @@ import (
 )
 
 func createActionKey(action *ms.ModAction) string {
-	return fmt.Sprintf("%s:%d:%d:%s", action.UserId, action.StartTime.Seconds, action.StartTime.Nanos, action.Type.String())
+	return fmt.Sprintf("%s:%d:%s", action.UserId, action.StartTime.Seconds, action.Type.String())
 }
 
 func getAllActions(ctx context.Context, dbPool *pgxpool.Pool) (map[string]bool, error) {
@@ -60,7 +60,8 @@ func getAllActions(ctx context.Context, dbPool *pgxpool.Pool) (map[string]bool, 
 
 		_, exists := allActions[createActionKey(modAction)]
 		if exists {
-			return nil, fmt.Errorf("duplicate actions in database: %s, %d, %s", modAction.UserId, modAction.StartTime.Seconds, modAction.Type.String())
+			log.Info().Msgf("duplicate actions in database: %s, %d, %s", modAction.UserId, modAction.StartTime.Seconds, modAction.Type.String())
+			continue
 		}
 		allActions[createActionKey(modAction)] = true
 	}
@@ -193,7 +194,8 @@ func main() {
 			actionKey := createActionKey(currentAction)
 			existingAction, exists := jsonActions[actionKey]
 			if exists {
-				panic(fmt.Errorf("current action already exists: %v\n%v", currentAction, existingAction))
+				log.Info().Msgf("current action already exists: %v\n%v", currentAction, existingAction)
+				continue
 			}
 			jsonActions[actionKey] = currentAction
 		}
@@ -201,7 +203,8 @@ func main() {
 			actionKey := createActionKey(historicAction)
 			existingAction, exists := jsonActions[actionKey]
 			if exists {
-				panic(fmt.Errorf("historic action already exists: %v\n%v", historicAction, existingAction))
+				log.Info().Msgf("historic action already exists: %v\n%v", historicAction, existingAction)
+				continue
 			}
 			jsonActions[actionKey] = historicAction
 		}
