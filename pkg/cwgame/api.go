@@ -305,7 +305,6 @@ func ReplayEvents(ctx context.Context, gdoc *ipc.GameDocument, evts []*ipc.GameE
 	savedRacks := gdoc.Racks
 	savedTimers := proto.Clone(gdoc.Timers)
 	gdoc.Racks = make([][]byte, len(gdoc.Players))
-
 	// Replaying events is not as simple as just calling playMove with the event.
 	// Because of the randomness factor, the drawn tiles after each play/exchange
 	// etc won't be the same. We have to set the racks manually before each play.
@@ -360,7 +359,6 @@ func ReplayEvents(ctx context.Context, gdoc *ipc.GameDocument, evts []*ipc.GameE
 
 			// XXX not handling 6-consecutive zeroes case
 		}
-
 	}
 	// At the end, make sure to set the racks to whatever they are in the doc.
 	log.Debug().Interface("savedRacks", savedRacks).Msg("call-assign-racks")
@@ -369,6 +367,21 @@ func ReplayEvents(ctx context.Context, gdoc *ipc.GameDocument, evts []*ipc.GameE
 		return err
 	}
 	gdoc.Timers = savedTimers.(*ipc.Timers)
+	// Based on the very last game event, we may potentially have to change
+	// the "on-turn" player.
+	if len(evts) > 0 {
+		switch evts[len(evts)-1].Type {
+		// If it's one of the four types handled above, we already changed the turn.
+
+		case ipc.GameEvent_PHONY_TILES_RETURNED,
+			ipc.GameEvent_CHALLENGE_BONUS:
+			// Switch the turn.
+			err = assignTurnToNextNonquitter(gdoc, gdoc.PlayerOnTurn)
+			if err != nil {
+				return err
+			}
+		}
+	}
 
 	return nil
 }

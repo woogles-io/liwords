@@ -287,24 +287,6 @@ func validateTilePlayMove(gd *kwg.KWG, rm *tilemapping.TileMapping, gevt *ipc.Ga
 	return formedWords, nil
 }
 
-// func hackyConvertToUnicodeOrdering(word tilemapping.MachineWord, rm *tilemapping.TileMapping,
-// 	gd *kwg.KWG) tilemapping.MachineWord {
-// 	// The passed-in word is going to be in canonical alphabet ordering
-// 	// (whatever is in the letter distribution csv)
-// 	// However, our DAWGs currently sort all their letters by unicode,
-// 	// and thus the alphabets do not match.
-// 	// XXX: This is a slow, bad function, and it needs to be replaced.
-// 	unicodeSorted := gd.GetTileMapping()
-
-// 	w := make([]tilemapping.MachineLetter, len(word))
-// 	for i, ml := range word {
-// 		r := ml.UserVisible(rm, false)
-// 		nml, _ := unicodeSorted.Val(r)
-// 		w[i] = nml
-// 	}
-// 	return w
-// }
-
 func validateWords(gd *kwg.KWG, rm *tilemapping.TileMapping, words []tilemapping.MachineWord,
 	variant string) []tilemapping.MachineWord {
 	var illegalWords []tilemapping.MachineWord

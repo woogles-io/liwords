@@ -273,3 +273,7 @@ func (gs *GameDocumentStore) saveToDatabase(ctx context.Context, gdoc *ipc.GameD
 
 	return tx.Commit(ctx)
 }
+
+func (gs *GameDocumentStore) DisconnectRDB() {
+	gs.dbPool.Close()
+}
