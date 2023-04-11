@@ -281,6 +281,8 @@ export const alphabetFromName = (
       return StandardFrenchAlphabet;
     case 'english_super':
       return SuperEnglishAlphabet;
+    case 'catalan':
+      return StandardCatalanAlphabet;
     default:
       return StandardEnglishAlphabet;
   }

@@ -278,7 +278,8 @@ const parseExaminableGameContext = (
         : letterDistribution === 'english' ||
           letterDistribution === 'german' ||
           letterDistribution === 'norwegian' ||
-          letterDistribution === 'french'
+          letterDistribution === 'french' ||
+          letterDistribution === 'catalan'
         ? letterDistribution
         : 'noleave',
     rules,
@@ -327,6 +328,7 @@ const labelToNumFor = (letterDistribution: string) => {
       return germanLabelToNum;
     case 'norwegian':
       return norwegianLabelToNum;
+    // XXX need catalan case
   }
   return englishLabelToNum;
 };
@@ -354,6 +356,7 @@ const numToLabelFor = (letterDistribution: string) => {
       return germanNumToLabel;
     case 'norwegian':
       return norwegianNumToLabel;
+    // XXX need catalan case
   }
   return englishNumToLabel;
 };
