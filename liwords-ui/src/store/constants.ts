@@ -1,7 +1,12 @@
 import { ChatMessage } from '../gen/api/proto/ipc/chat_pb';
 import { TType } from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { ChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
-import { Blank } from '../utils/cwgame/common';
+import {
+  Blank,
+  BlankMachineLetter,
+  EmptyMachineLetter,
+} from '../utils/cwgame/common';
+import { Alphabet, uint8ToRune } from '../constants/alphabets';
 
 export type PlayerOrder = 'p0' | 'p1';
 
@@ -247,13 +252,19 @@ export const setPreferredSortOrder = (value: string) => {
   }
 };
 
-export const sortTiles = (rack: string) => {
+export const sortTiles = (rack: Uint8Array, alphabet: Alphabet): Uint8Array => {
   const effectiveSortOrder = preferredSortOrder ?? '';
-  return Array.from(rack, (tile) => {
-    let index = effectiveSortOrder.indexOf(tile);
-    if (index < 0) index = effectiveSortOrder.length + (tile === Blank ? 1 : 0);
-    return [index, tile];
-  })
+  const arr = Array.from(rack);
+  const sorted = arr
+    .filter((tile) => {
+      tile !== EmptyMachineLetter;
+    })
+    .map((tile) => {
+      let rune = uint8ToRune(tile, alphabet);
+      let index = effectiveSortOrder.indexOf(rune);
+      if (index < 0) index = effectiveSortOrder.length + (tile === 0 ? 1 : 0);
+      return [index, tile];
+    })
     .sort(([aIndex, aTile], [bIndex, bTile]) =>
       aIndex < bIndex
         ? -1
@@ -265,7 +276,9 @@ export const sortTiles = (rack: string) => {
         ? 1
         : 0
     )
-    .reduce((s, [index, tile]) => s + tile, '');
+    .map((s) => s[1]);
+
+  return Uint8Array.from(sorted);
 };
 
 // Can skip error codes for now.

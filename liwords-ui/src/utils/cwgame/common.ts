@@ -1,15 +1,20 @@
-export const EmptySpace = ' ';
 export const Blank = '?';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const screenSizes = require('../../base.scss').default;
+
+export type MachineLetter = number;
 
 export type EphemeralTile = {
   // ephemeron <3 you are missed
   row: number;
   col: number;
-  letter: string; // lowercase for blank
+  letter: MachineLetter;
 };
 
+// An EmptyMachineLetter is an empty space on a rack. We don't make it
+// a 0 because that is a blank.
+export const EmptyMachineLetter: MachineLetter = 0xff;
+export const BlankMachineLetter: MachineLetter = 0;
 // PlayedTiles is made for quick indexing of a recently placed tile.
 export type PlayedTiles = { [tilecoords: string]: boolean };
 
@@ -46,6 +51,10 @@ export const uniqueTileIdx = (row: number, col: number): number => {
 
 export const isBlank = (letter: string): boolean => {
   return letter.toLowerCase() === letter;
+};
+
+export const isBlankMachineLetter = (ml: MachineLetter): boolean => {
+  return (ml & 0x80) > 0;
 };
 
 export const getVW = () =>

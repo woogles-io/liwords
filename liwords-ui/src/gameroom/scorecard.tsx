@@ -30,6 +30,7 @@ import { Comments } from './comments';
 import { useClient } from '../utils/hooks/connect';
 import { GameCommentService } from '../gen/api/proto/comments_service/comments_service_connectweb';
 import { useComments } from '../utils/hooks/comments';
+import { Alphabet } from '../constants/alphabets';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const screenSizes = require('../base.scss').default;
 
@@ -57,6 +58,7 @@ type turnProps = {
   addComment: (comment: string) => void;
   toggleCommentEditorVisible: () => void;
   commentEditorVisible: boolean;
+  alphabet: Alphabet;
 };
 
 type MoveEntityObj = {
@@ -75,12 +77,14 @@ type MoveEntityObj = {
   isBingo: boolean;
 };
 
-const displaySummary = (evt: GameEvent, board: Board) => {
+const displaySummary = (evt: GameEvent, board: Board, alphabet: Alphabet) => {
   // Handle just a subset of the possible moves here. These may be modified
   // later on.
   switch (evt.type) {
     case GameEvent_Type.EXCHANGE:
-      return <span className="exchanged">-{sortTiles(evt.exchanged)}</span>;
+      return (
+        <span className="exchanged">-{sortTiles(evt.exchanged, alphabet)}</span>
+      );
 
     case GameEvent_Type.PASS:
       return <span className="pass">Passed turn</span>;
@@ -145,7 +149,7 @@ const ScorecardTurn = (props: turnProps) => {
       coords: evts[0].position,
       timeRemaining: timeRemaining,
       rack: evts[0].rack,
-      play: displaySummary(evts[0], props.board),
+      play: displaySummary(evts[0], props.board, props.alphabet),
       score: `${evts[0].score}`,
       lostScore: evts[0].lostScore,
       moveType: displayType(evts[0]),
@@ -156,7 +160,7 @@ const ScorecardTurn = (props: turnProps) => {
       isBingo: evts[0].isBingo,
     };
     if (evts.length === 1) {
-      turn.rack = sortTiles(turn.rack);
+      turn.rack = sortTiles(turn.rack, props.alphabet);
       return turn;
     }
     // Otherwise, we have to make some modifications.
@@ -167,7 +171,7 @@ const ScorecardTurn = (props: turnProps) => {
         <>
           <span className="challenge successful">Challenge!</span>
           <span className="main-word">
-            {displaySummary(evts[0], props.board)}
+            {displaySummary(evts[0], props.board, props.alphabet)}
           </span>
         </>
       );
@@ -179,14 +183,14 @@ const ScorecardTurn = (props: turnProps) => {
           <>
             <span className="challenge unsuccessful">Challenge!</span>
             <span className="main-word">
-              {displaySummary(evts[0], props.board)}
+              {displaySummary(evts[0], props.board, props.alphabet)}
             </span>
           </>
         );
-        turn.rack = `Play is valid ${sortTiles(evts[0].rack)}`;
+        turn.rack = `Play is valid ${sortTiles(evts[0].rack, props.alphabet)}`;
       } else {
         // Void challenge combines the end rack points.
-        turn.rack = sortTiles(turn.rack);
+        turn.rack = sortTiles(turn.rack, props.alphabet);
       }
       // Otherwise, just add/subtract as needed.
       for (let i = 1; i < evts.length; i++) {
@@ -411,6 +415,7 @@ export const ScoreCard = React.memo((props: Props) => {
               comment
             )
           }
+          alphabet={gameContext.alphabet}
         />
       );
     };

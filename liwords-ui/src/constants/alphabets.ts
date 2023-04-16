@@ -327,6 +327,18 @@ export const uint8ArrayToRunes = (
   return s;
 };
 
+export const uint8ArrayToRuneArray = (
+  arr: Uint8Array,
+  alphabet: Alphabet,
+  usePlaythrough?: boolean
+): string[] => {
+  const s: string[] = [];
+  arr.forEach((v) => {
+    s.push(uint8ToRune(v, alphabet, usePlaythrough));
+  });
+  return s;
+};
+
 export const runesToUint8Array = (
   runes: string,
   alphabet: Alphabet
@@ -338,8 +350,16 @@ export const runesToUint8Array = (
   while (i < chars.length) {
     match = false;
     for (let j = i + alphabet.longestPossibleTileRune; j > i; j--) {
+      if (j > chars.length) {
+        continue;
+      }
       const rune = chars.slice(i, j).join('');
-      if (alphabet.machineLetterMap[rune] != undefined) {
+      if (rune === ThroughTileMarker) {
+        bts.push(0);
+        i = j;
+        match = true;
+        break;
+      } else if (alphabet.machineLetterMap[rune] != undefined) {
         bts.push(alphabet.machineLetterMap[rune]);
         i = j;
         match = true;
@@ -364,4 +384,38 @@ export const runesToUint8Array = (
   }
 
   return Uint8Array.from(bts);
+};
+
+export const runesToRuneArray = (
+  runes: string,
+  alphabet: Alphabet
+): string[] => {
+  const arr = [];
+  const chars = Array.from(runes);
+  let i = 0;
+  let match;
+  while (i < chars.length) {
+    match = false;
+    for (let j = i + alphabet.longestPossibleTileRune; j > i; j--) {
+      if (j > chars.length) {
+        continue;
+      }
+      const rune = chars.slice(i, j).join('');
+      if (
+        rune === ThroughTileMarker ||
+        alphabet.machineLetterMap[rune] != undefined ||
+        alphabet.machineLetterMap[rune.toUpperCase()] != undefined
+      ) {
+        arr.push(rune);
+        i = j;
+        match = true;
+        break;
+      }
+    }
+    if (!match) {
+      throw new Error('cannot convert ' + runes + ' to rune array');
+    }
+  }
+
+  return arr;
 };

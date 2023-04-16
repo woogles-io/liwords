@@ -96,7 +96,7 @@ const colors = require('../base.scss').default;
 type Props = {
   anonymousViewer: boolean;
   username: string;
-  currentRack: string;
+  currentRack: Uint8Array;
   events: Array<GameEvent>;
   gameID: string;
   challengeRule: ChallengeRule;

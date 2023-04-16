@@ -164,8 +164,9 @@ export const BoardEditor = () => {
 
   const sortedRack = useMemo(() => {
     const rack =
-      examinableGameContext.players.find((p) => p.onturn)?.currentRack ?? '';
-    return sortTiles(rack);
+      examinableGameContext.players.find((p) => p.onturn)?.currentRack ??
+      new Uint8Array();
+    return sortTiles(rack, examinableGameContext.alphabet);
   }, [examinableGameContext]);
 
   const alphabet = useMemo(

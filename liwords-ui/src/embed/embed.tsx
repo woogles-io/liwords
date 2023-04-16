@@ -111,9 +111,13 @@ export const Embed = () => {
   //   }
 
   const rack =
-    examinableGameContext.players.find((p) => p.onturn)?.currentRack ?? '';
+    examinableGameContext.players.find((p) => p.onturn)?.currentRack ??
+    new Uint8Array();
 
-  const sortedRack = useMemo(() => sortTiles(rack), [rack]);
+  const sortedRack = useMemo(
+    () => sortTiles(rack, examinableGameContext.alphabet),
+    [rack, examinableGameContext]
+  );
   const alphabet = useMemo(
     () => alphabetFromName(gameInfo.gameRequest?.rules?.letterDistributionName),
     [gameInfo]

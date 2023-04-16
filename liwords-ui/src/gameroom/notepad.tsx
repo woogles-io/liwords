@@ -16,7 +16,7 @@ import {
   contiguousTilesFromTileSet,
   simpletile,
 } from '../utils/cwgame/scoring';
-import { Direction, EmptySpace, isMobile } from '../utils/cwgame/common';
+import { Direction, isMobile } from '../utils/cwgame/common';
 import { useMountedState } from '../utils/mounted';
 import { BoopSounds } from '../sound/boop';
 
@@ -74,11 +74,7 @@ export const Notepad = React.memo((props: NotepadProps) => {
     const contiguousTiles = contiguousTilesFromTileSet(placedTiles, board);
     let play = '';
     let position = '';
-    const leave = sortTiles(
-      Array.from(displayedRack)
-        .filter((x) => x !== EmptySpace)
-        .join('')
-    );
+    const leave = sortTiles(displayedRack, gameContext.alphabet);
     if (contiguousTiles?.length === 2) {
       position = humanReadablePosition(
         contiguousTiles[1],

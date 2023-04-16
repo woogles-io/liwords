@@ -34,7 +34,11 @@ import {
   TournamentState,
 } from './reducers/tournament_reducer';
 import { MetaEventState, MetaStates } from './meta_game_events';
-import { StandardEnglishAlphabet } from '../constants/alphabets';
+import {
+  StandardEnglishAlphabet,
+  runesToRuneArray,
+  runesToUint8Array,
+} from '../constants/alphabets';
 import { SeekRequest } from '../gen/api/proto/ipc/omgseeks_pb';
 import { ServerChallengeResultEvent } from '../gen/api/proto/ipc/omgwords_pb';
 import { message } from 'antd';
@@ -168,12 +172,12 @@ type TimerStoreData = {
 type TentativePlayData = {
   placedTilesTempScore: number | undefined;
   placedTiles: Set<EphemeralTile>;
-  displayedRack: string;
+  displayedRack: Uint8Array;
   blindfoldCommand: string;
   blindfoldUseNPA: boolean;
   setPlacedTilesTempScore: (s: number | undefined) => void;
   setPlacedTiles: (t: Set<EphemeralTile>) => void;
-  setDisplayedRack: (l: string) => void;
+  setDisplayedRack: (l: Uint8Array) => void;
   setBlindfoldCommand: (l: string) => void;
   setBlindfoldUseNPA: (l: boolean) => void;
 };
@@ -243,7 +247,7 @@ const LagContext = createContext<LagStoreData>({
 const TentativePlayContext = createContext<TentativePlayData>({
   placedTilesTempScore: undefined,
   placedTiles: new Set<EphemeralTile>(),
-  displayedRack: '',
+  displayedRack: new Uint8Array(),
   blindfoldCommand: '',
   blindfoldUseNPA: false,
   setPlacedTilesTempScore: defaultFunction,
@@ -491,7 +495,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
         userID,
         score: 0,
         onturn: false,
-        currentRack: '',
+        currentRack: new Uint8Array(),
       })),
       gameContext.gameID,
       gameContext.board.gridLayout
@@ -572,7 +576,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
         }
         const turnPlayerOrder = indexToPlayerOrder(turn.playerIndex);
         if (turnPlayerOrder === playerOrder) {
-          rack = turn.rack;
+          rack = runesToUint8Array(turn.rack, gameContext.alphabet);
           break;
         }
       }
@@ -818,7 +822,7 @@ const RealStore = ({ children, ...props }: Props) => {
     number | undefined
   >(undefined);
   const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
-  const [displayedRack, setDisplayedRack] = useState('');
+  const [displayedRack, setDisplayedRack] = useState(new Uint8Array());
   const [blindfoldCommand, setBlindfoldCommand] = useState('');
   const [blindfoldUseNPA, setBlindfoldUseNPA] = useState(false);
 

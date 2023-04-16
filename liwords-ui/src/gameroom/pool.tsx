@@ -70,7 +70,7 @@ type Props = {
   pool: poolType;
   poolFormat: PoolFormatType;
   setPoolFormat: (format: PoolFormatType) => void;
-  currentRack: string;
+  currentRack: Uint8Array;
   alphabet: Alphabet;
 };
 

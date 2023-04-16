@@ -465,7 +465,7 @@ export const Table = React.memo((props: Props) => {
   // If we are one of the players, display our rack.
   // If we are NOT one of the players (so an observer), display the rack of
   // the player on turn.
-  let rack: string;
+  let rack: Uint8Array;
   const us = useMemo(
     () => gameInfo.players.find((p) => p.userId === userID),
     [gameInfo.players, userID]
@@ -473,12 +473,16 @@ export const Table = React.memo((props: Props) => {
   if (us && !(gameDone && isExamining)) {
     rack =
       examinableGameContext.players.find((p) => p.userID === us.userId)
-        ?.currentRack ?? '';
+        ?.currentRack ?? new Uint8Array();
   } else {
     rack =
-      examinableGameContext.players.find((p) => p.onturn)?.currentRack ?? '';
+      examinableGameContext.players.find((p) => p.onturn)?.currentRack ??
+      new Uint8Array();
   }
-  const sortedRack = useMemo(() => sortTiles(rack), [rack]);
+  const sortedRack = useMemo(
+    () => sortTiles(rack, gameContext.alphabet),
+    [rack]
+  );
 
   // The game "starts" when the GameHistoryRefresher object comes in via the socket.
   // At that point gameID will be filled in.
