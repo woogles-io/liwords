@@ -20,8 +20,8 @@ import (
 	"github.com/domino14/liwords/pkg/tournament"
 	pkguser "github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
-	"github.com/domino14/macondo/alphabet"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/domino14/macondo/tilemapping"
 )
 
 func gameStore(userStore pkguser.Store) (*config.Config, gameplay.GameStore) {
@@ -171,9 +171,9 @@ func Test5ptBadWord(t *testing.T) {
 		PositionCoords: "8D",
 		Tiles:          "BANJO",
 	}
-	g.SetRacksForBoth([]*alphabet.Rack{
-		alphabet.RackFromString("ABEJNOR", g.Alphabet()),
-		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
+	g.SetRacksForBoth([]*tilemapping.Rack{
+		tilemapping.RackFromString("ABEJNOR", g.Alphabet()),
+		tilemapping.RackFromString("AGLSYYZ", g.Alphabet()),
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
@@ -217,9 +217,9 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 		Tiles:          "BANJOER",
 	}
 	g.SetChallengeRule(macondopb.ChallengeRule_DOUBLE)
-	g.SetRacksForBoth([]*alphabet.Rack{
-		alphabet.RackFromString("ABEJNOR", g.Alphabet()),
-		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
+	g.SetRacksForBoth([]*tilemapping.Rack{
+		tilemapping.RackFromString("ABEJNOR", g.Alphabet()),
+		tilemapping.RackFromString("AGLSYYZ", g.Alphabet()),
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
@@ -279,9 +279,9 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 		Tiles:          "BANJO",
 	}
 	g.SetChallengeRule(macondopb.ChallengeRule_DOUBLE)
-	g.SetRacksForBoth([]*alphabet.Rack{
-		alphabet.RackFromString("ABEJNOR", g.Alphabet()),
-		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
+	g.SetRacksForBoth([]*tilemapping.Rack{
+		tilemapping.RackFromString("ABEJNOR", g.Alphabet()),
+		tilemapping.RackFromString("AGLSYYZ", g.Alphabet()),
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
@@ -346,9 +346,9 @@ func TestQuickdata(t *testing.T) {
 		Tiles:          "SYZYGAL",
 	}
 	g.SetChallengeRule(macondopb.ChallengeRule_TRIPLE)
-	g.SetRacksForBoth([]*alphabet.Rack{
-		alphabet.RackFromString("ABEJNOR", g.Alphabet()),
-		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
+	g.SetRacksForBoth([]*tilemapping.Rack{
+		tilemapping.RackFromString("ABEJNOR", g.Alphabet()),
+		tilemapping.RackFromString("AGLSYYZ", g.Alphabet()),
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs

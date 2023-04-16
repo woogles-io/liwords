@@ -6,11 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/cwgame/cache"
-	"github.com/domino14/liwords/pkg/cwgame/runemapping"
-	"github.com/domino14/liwords/pkg/cwgame/tiles"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/domino14/macondo/cache"
+	macondoconfig "github.com/domino14/macondo/config"
+	"github.com/domino14/macondo/tilemapping"
 )
 
 type BonusSquare byte
@@ -34,7 +33,7 @@ const (
 var CacheKeyPrefix = "boardlayout:"
 
 // CacheLoadFunc is the function that loads an object into the global cache.
-func CacheLoadFunc(cfg *config.Config, key string) (interface{}, error) {
+func CacheLoadFunc(cfg *macondoconfig.Config, key string) (interface{}, error) {
 	dist := strings.TrimPrefix(key, CacheKeyPrefix)
 	return NamedBoardLayout(dist)
 }
@@ -133,9 +132,9 @@ func GetBoardLayout(name string) (*BoardLayout, error) {
 	return ret, nil
 }
 
-func GetLetter(board *ipc.GameBoard, row, col int) runemapping.MachineLetter {
+func GetLetter(board *ipc.GameBoard, row, col int) tilemapping.MachineLetter {
 	idx := row*int(board.NumCols) + col
-	return runemapping.MachineLetter(board.Tiles[idx])
+	return tilemapping.MachineLetter(board.Tiles[idx])
 }
 
 func PosExists(board *ipc.GameBoard, row, col int) bool {
@@ -147,7 +146,7 @@ func HasLetter(board *ipc.GameBoard, row, col int) bool {
 }
 
 func ErrorIfIllegalPlay(board *ipc.GameBoard, row, col int, vertical bool,
-	word []runemapping.MachineLetter) error {
+	word []tilemapping.MachineLetter) error {
 
 	ri, ci := 0, 1
 	if vertical {
@@ -228,10 +227,10 @@ func ErrorIfIllegalPlay(board *ipc.GameBoard, row, col int, vertical bool,
 
 // FormedWords returns an array of all machine words formed by this move.
 // The move is assumed to be of type Play
-func FormedWords(board *ipc.GameBoard, row, col int, vertical bool, mls []runemapping.MachineLetter) ([]runemapping.MachineWord, error) {
+func FormedWords(board *ipc.GameBoard, row, col int, vertical bool, mls []tilemapping.MachineLetter) ([]tilemapping.MachineWord, error) {
 	// Reserve space for main word.
-	words := []runemapping.MachineWord{nil}
-	mainWord := []runemapping.MachineLetter{}
+	words := []tilemapping.MachineWord{nil}
+	mainWord := []tilemapping.MachineLetter{}
 
 	ri, ci := 0, 1
 	if vertical {
@@ -267,8 +266,8 @@ func FormedWords(board *ipc.GameBoard, row, col int, vertical bool, mls []runema
 	return words, nil
 }
 
-func formedCrossWord(board *ipc.GameBoard, crossVertical bool, letter runemapping.MachineLetter,
-	row, col int) runemapping.MachineWord {
+func formedCrossWord(board *ipc.GameBoard, crossVertical bool, letter tilemapping.MachineLetter,
+	row, col int) tilemapping.MachineWord {
 
 	ri, ci := 0, 1
 	if crossVertical {
@@ -278,7 +277,7 @@ func formedCrossWord(board *ipc.GameBoard, crossVertical bool, letter runemappin
 	// Given the cross-word direction (crossVertical) and a letter located at row, col
 	// find the cross-word that contains this letter (if any)
 	// Look in the cross direction for newly played tiles.
-	crossword := []runemapping.MachineLetter{}
+	crossword := []tilemapping.MachineLetter{}
 
 	newrow := row - ri
 	newcol := col - ci
@@ -324,8 +323,8 @@ func formedCrossWord(board *ipc.GameBoard, crossVertical bool, letter runemappin
 }
 
 // PlayMove plays the move on the board and returns the score of the move.
-func PlayMove(board *ipc.GameBoard, layoutName string, dist *tiles.LetterDistribution,
-	mls []runemapping.MachineLetter, row, col int, vertical bool) (int32, error) {
+func PlayMove(board *ipc.GameBoard, layoutName string, dist *tilemapping.LetterDistribution,
+	mls []tilemapping.MachineLetter, row, col int, vertical bool) (int32, error) {
 
 	layout, err := GetBoardLayout(layoutName)
 	if err != nil {
@@ -337,8 +336,8 @@ func PlayMove(board *ipc.GameBoard, layoutName string, dist *tiles.LetterDistrib
 
 }
 
-func placeMoveTiles(board *ipc.GameBoard, layout *BoardLayout, dist *tiles.LetterDistribution,
-	mls []runemapping.MachineLetter, row, col int, vertical bool) int32 {
+func placeMoveTiles(board *ipc.GameBoard, layout *BoardLayout, dist *tilemapping.LetterDistribution,
+	mls []tilemapping.MachineLetter, row, col int, vertical bool) int32 {
 
 	ri, ci := 0, 1
 	// The cross direction is opposite the play direction.
@@ -363,7 +362,7 @@ func placeMoveTiles(board *ipc.GameBoard, layout *BoardLayout, dist *tiles.Lette
 		thisWordMultiplier := 1
 		if tile == 0 {
 			// a play-through marker, hopefully.
-			tile = runemapping.MachineLetter(board.Tiles[sqIdx])
+			tile = tilemapping.MachineLetter(board.Tiles[sqIdx])
 		} else {
 			freshTile = true
 			tilesUsed++
@@ -421,7 +420,7 @@ func placeMoveTiles(board *ipc.GameBoard, layout *BoardLayout, dist *tiles.Lette
 }
 
 // UnplaceMoveTiles unplaces the tiles -- that is, removes them from the board
-func UnplaceMoveTiles(board *ipc.GameBoard, mls []runemapping.MachineLetter, row, col int, vertical bool) error {
+func UnplaceMoveTiles(board *ipc.GameBoard, mls []tilemapping.MachineLetter, row, col int, vertical bool) error {
 	ri, ci := 0, 1
 	if vertical {
 		ri, ci = ci, ri
@@ -449,7 +448,7 @@ func UnplaceMoveTiles(board *ipc.GameBoard, mls []runemapping.MachineLetter, row
 	return nil
 }
 
-func getCrossScore(board *ipc.GameBoard, dist *tiles.LetterDistribution,
+func getCrossScore(board *ipc.GameBoard, dist *tilemapping.LetterDistribution,
 	row, col int, direction ipc.GameEvent_Direction) int {
 	// look both ways along direction from row, col
 	ri, ci := 0, 1

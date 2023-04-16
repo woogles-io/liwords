@@ -31,7 +31,7 @@ func newPool(addr string) *redis.Pool {
 
 func TestNewAndGet(t *testing.T) {
 	is := is.New(t)
-	store, err := NewGameDocumentStore(newPool(RedisUrl), nil)
+	store, err := NewGameDocumentStore(DefaultConfig, newPool(RedisUrl), nil)
 	is.NoErr(err)
 	ctx := context.Background()
 
@@ -51,7 +51,7 @@ func TestNewAndGet(t *testing.T) {
 
 func TestRedisLocking(t *testing.T) {
 	is := is.New(t)
-	store, err := NewGameDocumentStore(newPool(RedisUrl), nil)
+	store, err := NewGameDocumentStore(DefaultConfig, newPool(RedisUrl), nil)
 	is.NoErr(err)
 	ctx := context.Background()
 
@@ -104,7 +104,7 @@ func TestRedisLocking(t *testing.T) {
 
 func TestRedisLockingWithTurnLogic(t *testing.T) {
 	is := is.New(t)
-	store, err := NewGameDocumentStore(newPool(RedisUrl), nil)
+	store, err := NewGameDocumentStore(DefaultConfig, newPool(RedisUrl), nil)
 	is.NoErr(err)
 	ctx := context.Background()
 
@@ -168,7 +168,7 @@ func TestDBGetAndSet(t *testing.T) {
 
 	dbPool, err := pgxpool.Connect(context.Background(), commondb.TestingPostgresConnUri())
 	is.NoErr(err)
-	store, err := NewGameDocumentStore(newPool(RedisUrl), dbPool)
+	store, err := NewGameDocumentStore(DefaultConfig, newPool(RedisUrl), dbPool)
 	is.NoErr(err)
 	ctx := context.Background()
 

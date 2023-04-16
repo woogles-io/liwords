@@ -29,6 +29,7 @@ export type Alphabet = {
 
 export const StandardEnglishAlphabet: Alphabet = {
   letters: [
+    { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
     { rune: 'A', score: 1, count: 9, vowel: true, category: 0 },
     { rune: 'B', score: 3, count: 2, vowel: false, category: 2 },
     { rune: 'C', score: 3, count: 2, vowel: false, category: 2 },
@@ -55,7 +56,6 @@ export const StandardEnglishAlphabet: Alphabet = {
     { rune: 'X', score: 8, count: 1, vowel: false, category: 3 },
     { rune: 'Y', score: 4, count: 2, vowel: false, category: 2 },
     { rune: 'Z', score: 10, count: 1, vowel: false, category: 3 },
-    { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
   ],
   letterMap: {},
   machineLetterMap: {},
@@ -64,6 +64,7 @@ export const StandardEnglishAlphabet: Alphabet = {
 
 export const StandardGermanAlphabet: Alphabet = {
   letters: [
+    { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
     { rune: 'A', score: 1, count: 5, vowel: true, category: 0 },
     { rune: 'Ä', score: 6, count: 1, vowel: true, category: 3 },
     { rune: 'B', score: 3, count: 2, vowel: false, category: 2 },
@@ -93,7 +94,6 @@ export const StandardGermanAlphabet: Alphabet = {
     { rune: 'X', score: 8, count: 1, vowel: false, category: 3 },
     { rune: 'Y', score: 10, count: 1, vowel: false, category: 3 },
     { rune: 'Z', score: 3, count: 1, vowel: false, category: 2 },
-    { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
   ],
   letterMap: {},
   machineLetterMap: {},
@@ -103,10 +103,8 @@ export const StandardGermanAlphabet: Alphabet = {
 
 export const StandardNorwegianAlphabet: Alphabet = {
   letters: [
+    { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
     { rune: 'A', score: 1, count: 7, vowel: true, category: 0 },
-    // Norwegian has several letters in its alphabet that there are zero of
-    // (we need to show them here for the blank designation panel)
-    { rune: 'Ä', score: 0, count: 0, vowel: true, category: -1 },
     { rune: 'B', score: 4, count: 3, vowel: false, category: 2 },
     { rune: 'C', score: 10, count: 1, vowel: false, category: 3 },
     { rune: 'D', score: 1, count: 5, vowel: false, category: 1 },
@@ -121,23 +119,25 @@ export const StandardNorwegianAlphabet: Alphabet = {
     { rune: 'M', score: 2, count: 3, vowel: false, category: 1 },
     { rune: 'N', score: 1, count: 6, vowel: false, category: 1 },
     { rune: 'O', score: 2, count: 4, vowel: true, category: 0 },
-    { rune: 'Ö', score: 0, count: 0, vowel: true, category: -1 },
     { rune: 'P', score: 4, count: 2, vowel: false, category: 2 },
     { rune: 'Q', score: 0, count: 0, vowel: false, category: -1 },
     { rune: 'R', score: 1, count: 6, vowel: false, category: 1 },
     { rune: 'S', score: 1, count: 6, vowel: false, category: 1 },
     { rune: 'T', score: 1, count: 6, vowel: false, category: 1 },
     { rune: 'U', score: 4, count: 3, vowel: true, category: 0 },
-    { rune: 'Ü', score: 0, count: 0, vowel: true, category: -1 },
     { rune: 'V', score: 4, count: 3, vowel: false, category: 2 },
     { rune: 'W', score: 8, count: 1, vowel: false, category: 3 },
     { rune: 'X', score: 0, count: 0, vowel: false, category: -1 },
     { rune: 'Y', score: 6, count: 1, vowel: false, category: 3 },
+    { rune: 'Ü', score: 0, count: 0, vowel: true, category: -1 },
     { rune: 'Z', score: 0, count: 0, vowel: false, category: -1 },
     { rune: 'Æ', score: 6, count: 1, vowel: true, category: 3 },
+    // Norwegian has several letters in its alphabet that there are zero of
+    // (we need to show them here for the blank designation panel)
+    { rune: 'Ä', score: 0, count: 0, vowel: true, category: -1 },
     { rune: 'Ø', score: 5, count: 2, vowel: true, category: 3 },
+    { rune: 'Ö', score: 0, count: 0, vowel: true, category: -1 },
     { rune: 'Å', score: 4, count: 2, vowel: true, category: 2 },
-    { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
   ],
   letterMap: {},
   machineLetterMap: {},
@@ -147,6 +147,7 @@ export const StandardNorwegianAlphabet: Alphabet = {
 
 export const StandardFrenchAlphabet: Alphabet = {
   letters: [
+    { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
     { rune: 'A', score: 1, count: 9, vowel: true, category: 0 },
     { rune: 'B', score: 3, count: 2, vowel: false, category: 2 },
     { rune: 'C', score: 3, count: 2, vowel: false, category: 2 },
@@ -173,7 +174,6 @@ export const StandardFrenchAlphabet: Alphabet = {
     { rune: 'X', score: 10, count: 1, vowel: false, category: 3 },
     { rune: 'Y', score: 10, count: 1, vowel: true, category: 3 },
     { rune: 'Z', score: 10, count: 1, vowel: false, category: 3 },
-    { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
   ],
   letterMap: {},
   machineLetterMap: {},
@@ -183,6 +183,7 @@ export const StandardFrenchAlphabet: Alphabet = {
 
 export const SuperEnglishAlphabet: Alphabet = {
   letters: [
+    { rune: Blank, score: 0, count: 4, vowel: false, category: 3 },
     { rune: 'A', score: 1, count: 16, vowel: true, category: 0 },
     { rune: 'B', score: 3, count: 4, vowel: false, category: 2 },
     { rune: 'C', score: 3, count: 6, vowel: false, category: 2 },
@@ -209,7 +210,6 @@ export const SuperEnglishAlphabet: Alphabet = {
     { rune: 'X', score: 8, count: 2, vowel: false, category: 3 },
     { rune: 'Y', score: 4, count: 4, vowel: false, category: 2 },
     { rune: 'Z', score: 10, count: 2, vowel: false, category: 3 },
-    { rune: Blank, score: 0, count: 4, vowel: false, category: 3 },
   ],
   letterMap: {},
   machineLetterMap: {},
@@ -219,6 +219,7 @@ export const SuperEnglishAlphabet: Alphabet = {
 
 export const StandardCatalanAlphabet: Alphabet = {
   letters: [
+    { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
     { rune: 'A', score: 1, count: 12, vowel: true, category: 0 },
     { rune: 'B', score: 3, count: 2, vowel: false, category: 2 },
     { rune: 'C', score: 2, count: 3, vowel: false, category: 2 },
@@ -245,7 +246,6 @@ export const StandardCatalanAlphabet: Alphabet = {
     { rune: 'V', score: 4, count: 1, vowel: false, category: 2 },
     { rune: 'X', score: 10, count: 1, vowel: false, category: 3 },
     { rune: 'Z', score: 8, count: 1, vowel: false, category: 3 },
-    { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
   ],
   letterMap: {},
   machineLetterMap: {},
@@ -263,11 +263,7 @@ export const StandardCatalanAlphabet: Alphabet = {
 ].forEach((alph) => {
   alph.letters.forEach((letter, idx) => {
     alph.letterMap[letter.rune] = letter;
-    if (letter.rune !== Blank) {
-      alph.machineLetterMap[letter.rune] = idx + 1;
-    } else {
-      alph.machineLetterMap[letter.rune] = 0;
-    }
+    alph.machineLetterMap[letter.rune] = idx;
   });
 });
 
@@ -308,17 +304,13 @@ export const uint8ToRune = (
   alphabet: Alphabet,
   usePlaythrough?: boolean
 ): string => {
-  // Our internal encoding has the blank at 0 and everything begins at 1.
-  // This is not the order the runes are listed in above; let's make the
-  // change here.
   if (i === 0) {
     return usePlaythrough ? ThroughTileMarker : Blank;
   }
-  // 2's complement
-  if (i > 127) {
-    return alphabet.letters[256 - (i + 1)]?.rune?.toLowerCase() ?? '';
+  if (i > 0x80) {
+    return alphabet.letters[i & 0x7f]?.rune?.toLowerCase() ?? '';
   }
-  return alphabet.letters[i - 1]?.rune ?? '';
+  return alphabet.letters[i]?.rune ?? '';
 };
 
 export const uint8ArrayToRunes = (
@@ -351,7 +343,7 @@ export const runesToUint8Array = (
         match = true;
         break;
       } else if (alphabet.machineLetterMap[rune.toUpperCase()] != undefined) {
-        bts.push(256 - alphabet.machineLetterMap[rune.toUpperCase()]);
+        bts.push(0x80 | alphabet.machineLetterMap[rune.toUpperCase()]);
         i = j;
         match = true;
         break;

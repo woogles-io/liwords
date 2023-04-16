@@ -12,16 +12,14 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/cwgame/board"
-	"github.com/domino14/liwords/pkg/cwgame/dawg"
-	"github.com/domino14/liwords/pkg/cwgame/runemapping"
 	"github.com/domino14/liwords/pkg/cwgame/tiles"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/domino14/macondo/kwg"
+	"github.com/domino14/macondo/tilemapping"
 	"github.com/rs/zerolog/log"
 )
 
 const (
-	GameDocumentVersion = 1
-
 	RackTileLimit                = 7
 	ExchangePermittedTilesInBag  = 7
 	MaxConsecutiveScorelessTurns = 6
@@ -30,8 +28,8 @@ const (
 var globalNower Nower = GameTimer{}
 
 type InvalidWordsError struct {
-	rm    *runemapping.RuneMapping
-	words []runemapping.MachineWord
+	rm    *tilemapping.TileMapping
+	words []tilemapping.MachineWord
 }
 
 func (e *InvalidWordsError) Error() string {
@@ -84,7 +82,7 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 		if gdoc.PlayState == ipc.PlayState_WAITING_FOR_FINAL_PASS {
 			gdoc.PlayState = ipc.PlayState_GAME_OVER
 			gdoc.EndReason = ipc.GameEndReason_STANDARD
-			dist, err := tiles.GetDistribution(cfg, gdoc.LetterDistribution)
+			dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, gdoc.LetterDistribution)
 			if err != nil {
 				return err
 			}
@@ -106,13 +104,13 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 
 	case ipc.GameEvent_EXCHANGE:
 
-		placeholder := make([]runemapping.MachineLetter, RackTileLimit)
-		err := tiles.Exchange(gdoc.Bag, runemapping.FromByteArr(gevt.Exchanged), placeholder)
+		placeholder := make([]tilemapping.MachineLetter, RackTileLimit)
+		err := tiles.Exchange(gdoc.Bag, tilemapping.FromByteArr(gevt.Exchanged), placeholder)
 		if err != nil {
 			return err
 		}
-		leave, err := Leave(runemapping.FromByteArr(gevt.Rack),
-			runemapping.FromByteArr(gevt.Exchanged))
+		leave, err := Leave(tilemapping.FromByteArr(gevt.Rack),
+			tilemapping.FromByteArr(gevt.Exchanged))
 		if err != nil {
 			return err
 		}
@@ -129,7 +127,7 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 			}
 		}
 
-		gdoc.Racks[gdoc.PlayerOnTurn] = runemapping.MachineWord(placeholder).ToByteArr()
+		gdoc.Racks[gdoc.PlayerOnTurn] = tilemapping.MachineWord(placeholder).ToByteArr()
 		gdoc.ScorelessTurns += 1
 		gevt.MillisRemaining = int32(tr)
 		gevt.Cumulative = gdoc.CurrentScores[gdoc.PlayerOnTurn]
@@ -140,7 +138,7 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 
 	}
 	if gdoc.ScorelessTurns == MaxConsecutiveScorelessTurns {
-		dist, err := tiles.GetDistribution(cfg, gdoc.LetterDistribution)
+		dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, gdoc.LetterDistribution)
 		if err != nil {
 			return err
 		}
@@ -155,22 +153,22 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 }
 
 func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.GameDocument, tr int64) error {
-	dist, err := tiles.GetDistribution(cfg, gdoc.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, gdoc.LetterDistribution)
 	if err != nil {
 		return err
 	}
 
 	// validate the tile play move
-	dawg, err := dawg.GetDawg(cfg, gdoc.Lexicon)
+	gd, err := kwg.Get(&cfg.MacondoConfig, gdoc.Lexicon)
 	if err != nil {
 		return err
 	}
 
-	wordsFormed, err := validateTilePlayMove(dawg, dist.RuneMapping(), gevt, gdoc)
+	wordsFormed, err := validateTilePlayMove(gd, dist.TileMapping(), gevt, gdoc)
 	if err != nil {
 		return err
 	}
-	tilesUsed := runemapping.FromByteArr(gevt.PlayedTiles)
+	tilesUsed := tilemapping.FromByteArr(gevt.PlayedTiles)
 	score, err := board.PlayMove(gdoc.Board, gdoc.BoardLayout, dist,
 		tilesUsed, int(gevt.Row), int(gevt.Column), gevt.Direction == ipc.GameEvent_VERTICAL)
 	if err != nil {
@@ -192,13 +190,13 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 	gdoc.ScorelessTurns = 0
 	gdoc.CurrentScores[gdoc.PlayerOnTurn] += score
 
-	placeholder := make([]runemapping.MachineLetter, RackTileLimit)
+	placeholder := make([]tilemapping.MachineLetter, RackTileLimit)
 	drew, err := tiles.DrawAtMost(gdoc.Bag, tilesPlayed, placeholder)
 	if err != nil {
 		return err
 	}
 
-	leave, err := Leave(runemapping.FromByteArr(gevt.Rack), tilesUsed)
+	leave, err := Leave(tilemapping.FromByteArr(gevt.Rack), tilesUsed)
 	if err != nil {
 		return err
 	}
@@ -214,11 +212,13 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 	gevt.Score = score
 	gevt.IsBingo = tilesPlayed == RackTileLimit
 	gevt.MillisRemaining = int32(tr)
-	gdoc.Racks[gdoc.PlayerOnTurn] = runemapping.MachineWord(newRack).ToByteArr()
+	gdoc.Racks[gdoc.PlayerOnTurn] = tilemapping.MachineWord(newRack).ToByteArr()
 	gevt.WordsFormed = make([][]byte, len(wordsFormed))
+	gevt.WordsFormedFriendly = make([]string, len(wordsFormed))
 	gevt.Cumulative = gdoc.CurrentScores[gdoc.PlayerOnTurn]
 	for i, w := range wordsFormed {
 		gevt.WordsFormed[i] = w.ToByteArr()
+		gevt.WordsFormedFriendly[i] = w.UserVisiblePlayedTiles(dist.TileMapping())
 	}
 	gdoc.Events = append(gdoc.Events, gevt)
 
@@ -260,11 +260,11 @@ func validateMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.GameDocumen
 
 }
 
-func validateTilePlayMove(dawg *dawg.SimpleDawg, rm *runemapping.RuneMapping, gevt *ipc.GameEvent, gdoc *ipc.GameDocument) (
-	[]runemapping.MachineWord, error) {
+func validateTilePlayMove(gd *kwg.KWG, rm *tilemapping.TileMapping, gevt *ipc.GameEvent, gdoc *ipc.GameDocument) (
+	[]tilemapping.MachineWord, error) {
 
 	// convert play to machine letters
-	playedTiles := runemapping.FromByteArr(gevt.PlayedTiles)
+	playedTiles := tilemapping.FromByteArr(gevt.PlayedTiles)
 	err := board.ErrorIfIllegalPlay(gdoc.Board, int(gevt.Row), int(gevt.Column),
 		gevt.Direction == ipc.GameEvent_VERTICAL, playedTiles)
 	if err != nil {
@@ -278,7 +278,7 @@ func validateTilePlayMove(dawg *dawg.SimpleDawg, rm *runemapping.RuneMapping, ge
 	}
 	if gdoc.ChallengeRule == ipc.ChallengeRule_ChallengeRule_VOID {
 		// Actually check the validity of the words.
-		illegalWords := validateWords(dawg, rm, formedWords, gdoc.Variant)
+		illegalWords := validateWords(gd, rm, formedWords, gdoc.Variant)
 
 		if len(illegalWords) > 0 {
 			return nil, &InvalidWordsError{rm: rm, words: illegalWords}
@@ -287,33 +287,16 @@ func validateTilePlayMove(dawg *dawg.SimpleDawg, rm *runemapping.RuneMapping, ge
 	return formedWords, nil
 }
 
-func hackyConvertToUnicodeOrdering(word runemapping.MachineWord, rm *runemapping.RuneMapping,
-	dawg *dawg.SimpleDawg) runemapping.MachineWord {
-	// The passed-in word is going to be in canonical alphabet ordering
-	// (whatever is in the letter distribution csv)
-	// However, our DAWGs currently sort all their letters by unicode,
-	// and thus the alphabets do not match.
-	// XXX: This is a slow, bad function, and it needs to be replaced.
-	unicodeSorted := dawg.GetRuneMapping()
-
-	w := make([]runemapping.MachineLetter, len(word))
-	for i, ml := range word {
-		r := ml.UserVisible(rm, false)
-		nml, _ := unicodeSorted.Val(r)
-		w[i] = nml
-	}
-	return w
-}
-
-func validateWords(dawg *dawg.SimpleDawg, rm *runemapping.RuneMapping, words []runemapping.MachineWord,
-	variant string) []runemapping.MachineWord {
-	var illegalWords []runemapping.MachineWord
+func validateWords(gd *kwg.KWG, rm *tilemapping.TileMapping, words []tilemapping.MachineWord,
+	variant string) []tilemapping.MachineWord {
+	var illegalWords []tilemapping.MachineWord
+	lex := kwg.Lexicon{KWG: *gd}
 	for _, word := range words {
 		var valid bool
 		if variant == VarWordSmog || variant == VarWordSmogSuper {
-			valid = dawg.HasAnagram(hackyConvertToUnicodeOrdering(word, rm, dawg))
+			valid = lex.HasAnagram(word)
 		} else {
-			valid = dawg.HasWord(hackyConvertToUnicodeOrdering(word, rm, dawg))
+			valid = lex.HasWord(word)
 		}
 		if !valid {
 			illegalWords = append(illegalWords, word)
@@ -322,7 +305,7 @@ func validateWords(dawg *dawg.SimpleDawg, rm *runemapping.RuneMapping, words []r
 	return illegalWords
 }
 
-func handleConsecutiveScorelessTurns(gdoc *ipc.GameDocument, dist *tiles.LetterDistribution) error {
+func handleConsecutiveScorelessTurns(gdoc *ipc.GameDocument, dist *tilemapping.LetterDistribution) error {
 
 	gdoc.PlayState = ipc.PlayState_GAME_OVER
 	gdoc.EndReason = ipc.GameEndReason_CONSECUTIVE_ZEROES
@@ -336,7 +319,7 @@ func handleConsecutiveScorelessTurns(gdoc *ipc.GameDocument, dist *tiles.LetterD
 		toIterate[0], toIterate[gdoc.PlayerOnTurn] = toIterate[gdoc.PlayerOnTurn], toIterate[0]
 	}
 	for _, p := range toIterate {
-		ptsOnRack := dist.WordScore(runemapping.FromByteArr(gdoc.Racks[p]))
+		ptsOnRack := dist.WordScore(tilemapping.FromByteArr(gdoc.Racks[p]))
 		gdoc.CurrentScores[p] -= int32(ptsOnRack)
 		penaltyEvt := endRackPenaltyEvt(gdoc, uint32(p), ptsOnRack)
 		gdoc.Events = append(gdoc.Events, penaltyEvt)
@@ -357,12 +340,12 @@ func endRackPenaltyEvt(gdoc *ipc.GameDocument, pidx uint32, penalty int) *ipc.Ga
 // Leave returns the leave after playing or using `tiles` in `rack`.
 // It returns an error if the tile is in the play but not in the rack
 // XXX: This function needs to allocate less.
-func Leave(rack, tilesUsed []runemapping.MachineLetter) ([]runemapping.MachineLetter, error) {
-	rackletters := map[runemapping.MachineLetter]int{}
+func Leave(rack, tilesUsed []tilemapping.MachineLetter) ([]tilemapping.MachineLetter, error) {
+	rackletters := map[tilemapping.MachineLetter]int{}
 	for _, l := range rack {
 		rackletters[l]++
 	}
-	leave := make([]runemapping.MachineLetter, 0)
+	leave := make([]tilemapping.MachineLetter, 0)
 
 	for _, t := range tilesUsed {
 		if t == 0 {
@@ -393,7 +376,7 @@ func Leave(rack, tilesUsed []runemapping.MachineLetter) ([]runemapping.MachineLe
 	return leave, nil
 }
 
-func endRackCalcs(gdoc *ipc.GameDocument, dist *tiles.LetterDistribution, wentout int) error {
+func endRackCalcs(gdoc *ipc.GameDocument, dist *tilemapping.LetterDistribution, wentout int) error {
 	unplayedPts := 0
 	var otherRack bytes.Buffer
 
@@ -402,7 +385,7 @@ func endRackCalcs(gdoc *ipc.GameDocument, dist *tiles.LetterDistribution, wentou
 		if err != nil {
 			return err
 		}
-		unplayedPts += dist.WordScore(runemapping.FromByteArr(r))
+		unplayedPts += dist.WordScore(tilemapping.FromByteArr(r))
 	}
 	unplayedPts *= 2
 
@@ -455,23 +438,23 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 	// a challenge event shouldn't modify the clock per se.
 	recordTimeOfMove(gdoc, globalNower, gdoc.PlayerOnTurn, false)
 
-	dist, err := tiles.GetDistribution(cfg, gdoc.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, gdoc.LetterDistribution)
 	if err != nil {
 		return err
 	}
-	dawg, err := dawg.GetDawg(cfg, gdoc.Lexicon)
+	gd, err := kwg.Get(&cfg.MacondoConfig, gdoc.Lexicon)
 	if err != nil {
 		return err
 	}
 
 	// Note that the player on turn right now needs to be the player
 	// who is making the challenge.
-	lastMWs := make([]runemapping.MachineWord, len(lastWordsFormed))
+	lastMWs := make([]tilemapping.MachineWord, len(lastWordsFormed))
 	for i, w := range lastWordsFormed {
-		lastMWs[i] = runemapping.FromByteArr(w)
+		lastMWs[i] = tilemapping.FromByteArr(w)
 	}
 
-	illegalWords := validateWords(dawg, dist.RuneMapping(), lastMWs, gdoc.Variant)
+	illegalWords := validateWords(gd, dist.TileMapping(), lastMWs, gdoc.Variant)
 	playLegal := len(illegalWords) == 0
 
 	lastEvent := gdoc.Events[len(gdoc.Events)-1]
@@ -602,7 +585,7 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 	return err
 }
 
-func unplayLastMove(ctx context.Context, gdoc *ipc.GameDocument, dist *tiles.LetterDistribution) error {
+func unplayLastMove(ctx context.Context, gdoc *ipc.GameDocument, dist *tilemapping.LetterDistribution) error {
 	// unplay the last move. This function already assumes the off-board event
 	// exists in the gdoc's History.
 
@@ -630,7 +613,7 @@ func unplayLastMove(ctx context.Context, gdoc *ipc.GameDocument, dist *tiles.Let
 		return errors.New("player indexes don't match")
 	}
 
-	mw := runemapping.FromByteArr(originalEvent.PlayedTiles)
+	mw := tilemapping.FromByteArr(originalEvent.PlayedTiles)
 
 	err := board.UnplaceMoveTiles(gdoc.Board, mw, int(originalEvent.Row),
 		int(originalEvent.Column), originalEvent.Direction == ipc.GameEvent_VERTICAL)
@@ -639,12 +622,12 @@ func unplayLastMove(ctx context.Context, gdoc *ipc.GameDocument, dist *tiles.Let
 	}
 
 	leaveAfterPhony, err := Leave(
-		runemapping.FromByteArr(originalEvent.Rack), mw)
+		tilemapping.FromByteArr(originalEvent.Rack), mw)
 	if err != nil {
 		return err
 	}
 
-	drewPostPhony, err := Leave(runemapping.FromByteArr(postPhonyRack),
+	drewPostPhony, err := Leave(tilemapping.FromByteArr(postPhonyRack),
 		leaveAfterPhony)
 	if err != nil {
 		return err
@@ -688,7 +671,7 @@ evtCounter:
 }
 
 // Return a user-friendly event description. Used for debugging.
-func EventDescription(evt *ipc.GameEvent, rm *runemapping.RuneMapping) string {
+func EventDescription(evt *ipc.GameEvent, rm *tilemapping.TileMapping) string {
 	switch evt.Type {
 
 	case ipc.GameEvent_PASS:
@@ -697,16 +680,16 @@ func EventDescription(evt *ipc.GameEvent, rm *runemapping.RuneMapping) string {
 	case ipc.GameEvent_TILE_PLACEMENT_MOVE:
 		return fmt.Sprintf("%s %s %s +%d %d",
 			evt.Position,
-			runemapping.FromByteArr(evt.Rack).UserVisible(rm),
-			runemapping.FromByteArr(evt.PlayedTiles).UserVisiblePlayedTiles(rm),
+			tilemapping.FromByteArr(evt.Rack).UserVisible(rm),
+			tilemapping.FromByteArr(evt.PlayedTiles).UserVisiblePlayedTiles(rm),
 			evt.Score,
 			evt.Cumulative,
 		)
 
 	case ipc.GameEvent_EXCHANGE:
 		return fmt.Sprintf("%s [exch %s]  +0 %d",
-			runemapping.FromByteArr(evt.Rack).UserVisible(rm),
-			runemapping.FromByteArr(evt.Exchanged).UserVisiblePlayedTiles(rm),
+			tilemapping.FromByteArr(evt.Rack).UserVisible(rm),
+			tilemapping.FromByteArr(evt.Exchanged).UserVisiblePlayedTiles(rm),
 			evt.Cumulative,
 		)
 
@@ -715,12 +698,12 @@ func EventDescription(evt *ipc.GameEvent, rm *runemapping.RuneMapping) string {
 
 	case ipc.GameEvent_PHONY_TILES_RETURNED:
 		return fmt.Sprintf("[phony tiles returned %s] -%d %d",
-			runemapping.FromByteArr(evt.Rack).UserVisible(rm),
+			tilemapping.FromByteArr(evt.Rack).UserVisible(rm),
 			evt.LostScore,
 			evt.Cumulative)
 	case ipc.GameEvent_END_RACK_PTS:
 		return fmt.Sprintf("[end rack pts %s] +%d %d",
-			runemapping.FromByteArr(evt.Rack).UserVisible(rm),
+			tilemapping.FromByteArr(evt.Rack).UserVisible(rm),
 			evt.EndRackPoints,
 			evt.Cumulative)
 	default:

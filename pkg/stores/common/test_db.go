@@ -32,11 +32,12 @@ func RecreateTestDB() error {
 		return err
 	}
 	defer db.Close(ctx)
+	log.Info().Msg("dropping db")
 	_, err = db.Exec(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS %s", TestDBName))
 	if err != nil {
 		return err
 	}
-
+	log.Info().Msg("creating db")
 	_, err = db.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s", TestDBName))
 	if err != nil {
 		return err

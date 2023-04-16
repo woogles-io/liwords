@@ -13,11 +13,11 @@ import (
 	"github.com/domino14/liwords/pkg/user"
 	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
-	"github.com/domino14/macondo/alphabet"
 	macondoconfig "github.com/domino14/macondo/config"
-	"github.com/domino14/macondo/gaddag"
 	"github.com/domino14/macondo/game"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/domino14/macondo/kwg"
+	"github.com/domino14/macondo/tilemapping"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -305,12 +305,12 @@ func isPhonyEvent(event *pb.GameEvent,
 	history *pb.GameHistory,
 	cfg *macondoconfig.Config) (bool, error) {
 	phony := false
-	dawg, err := gaddag.GetDawg(cfg, history.Lexicon)
+	gd, err := kwg.Get(cfg, history.Lexicon)
 	if err != nil {
 		return phony, err
 	}
 	for _, word := range event.WordsFormed {
-		phony, err := isPhony(dawg, word, history.Variant)
+		phony, err := isPhony(gd, word, history.Variant)
 		if err != nil {
 			return false, err
 		}
@@ -321,9 +321,9 @@ func isPhonyEvent(event *pb.GameEvent,
 	return false, nil
 }
 
-func isPhony(gd gaddag.GenericDawg, word, variant string) (bool, error) {
-	lex := gaddag.Lexicon{GenericDawg: gd}
-	machineWord, err := alphabet.ToMachineWord(word, lex.GetAlphabet())
+func isPhony(gd *kwg.KWG, word, variant string) (bool, error) {
+	lex := kwg.Lexicon{KWG: *gd}
+	machineWord, err := tilemapping.ToMachineWord(word, lex.GetAlphabet())
 	if err != nil {
 		return false, err
 	}

@@ -12,14 +12,14 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/domino14/macondo/runner"
+	"github.com/domino14/macondo/tilemapping"
+	"github.com/domino14/macondo/turnplayer"
 	"github.com/lithammer/shortuuid"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/domino14/macondo/alphabet"
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/macondo/move"
@@ -96,8 +96,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		return nil, err
 	}
 
-	var gameRunner *runner.GameRunner
-	gameRunner, err = runner.NewGameRunnerFromRules(&runner.GameOptions{
+	turnplayer, err := turnplayer.BaseTurnPlayerFromRules(&turnplayer.GameOptions{
 		ChallengeRule: req.ChallengeRule,
 	}, players, rules)
 	if err != nil {
@@ -107,15 +106,15 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	for {
 		// Overwrite the randomly generated macondo long UUID with a shorter
 		// uuid for Woogles usage.
-		gameRunner.Game.History().Uid = shortuuid.New()[2:10]
-		gameRunner.Game.History().IdAuth = IdentificationAuthority
+		turnplayer.Game.History().Uid = shortuuid.New()[2:10]
+		turnplayer.Game.History().IdAuth = IdentificationAuthority
 
-		exists, err := gameStore.Exists(ctx, gameRunner.Game.Uid())
+		exists, err := gameStore.Exists(ctx, turnplayer.Game.Uid())
 		if err != nil {
 			return nil, err
 		}
 		if exists {
-			log.Info().Str("uid", gameRunner.Game.History().Uid).Msg("game-uid-collision")
+			log.Info().Str("uid", turnplayer.Game.History().Uid).Msg("game-uid-collision")
 			continue
 			// This UUID exists in the database. This is only possible because
 			// we are purposely shortening the UUID for nicer URLs.
@@ -128,7 +127,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		// of that are so astronomically unlikely we won't bother.
 	}
 
-	entGame := entity.NewGame(&gameRunner.Game, req)
+	entGame := entity.NewGame(turnplayer.Game, req)
 	entGame.PlayerDBIDs = dbids
 	entGame.TournamentData = tdata
 
@@ -190,11 +189,11 @@ func clientEventToMove(cge *pb.ClientGameplayEvent, g *game.Game) (*move.Move, e
 		m := move.NewPassMove(rack.TilesOn(), g.Alphabet())
 		return m, nil
 	case pb.ClientGameplayEvent_EXCHANGE:
-		tiles, err := alphabet.ToMachineWord(cge.Tiles, g.Alphabet())
+		tiles, err := tilemapping.ToMachineWord(cge.Tiles, g.Alphabet())
 		if err != nil {
 			return nil, err
 		}
-		leaveMW, err := game.Leave(rack.TilesOn(), tiles)
+		leaveMW, err := tilemapping.Leave(rack.TilesOn(), tiles, true)
 		if err != nil {
 			return nil, err
 		}
@@ -314,7 +313,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 		// this must be done before ChallengeEvent irreversibly modifies the history
 		lastEvent := entGame.Game.LastEvent()
 		numPlayers := entGame.Game.NumPlayers() // if this is always 2, we can just do PlayerOnTurn() ^ 1
-		// there is no need to remove alphabet.ASCIIPlayedThrough from playedTiles because it should not appear on Rack
+		// there is no need to remove tilemapping.ASCIIPlayedThrough from playedTiles because it should not appear on Rack
 		returnedTiles = string(minusRunes(sortedRunes(entGame.Game.History().LastKnownRacks[(entGame.Game.PlayerOnTurn()+numPlayers-1)%numPlayers]), minusRunes(sortedRunes(lastEvent.Rack), sortedRunes(lastEvent.PlayedTiles))))
 	}
 

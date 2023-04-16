@@ -13,12 +13,12 @@ import (
 	"github.com/domino14/liwords/pkg/utilities"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	pb "github.com/domino14/liwords/rpc/api/proto/puzzle_service"
-	"github.com/domino14/macondo/alphabet"
 	"lukechampine.com/frand"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/macondo/move"
 	macondopuzzles "github.com/domino14/macondo/puzzles"
+	"github.com/domino14/macondo/tilemapping"
 	"github.com/rs/zerolog/log"
 )
 
@@ -293,13 +293,13 @@ func answerHitsCenterSquare(answer *macondopb.GameEvent) bool {
 	runeTiles := []rune(answer.PlayedTiles)
 
 	return int(centerTileIndex) < len(runeTiles) &&
-		runeTiles[centerTileIndex] != alphabet.ASCIIPlayedThrough
+		runeTiles[centerTileIndex] != tilemapping.ASCIIPlayedThrough
 }
 
 func countPlayedTiles(ge *macondopb.GameEvent) int {
 	sum := 0
 	for _, tile := range ge.PlayedTiles {
-		if tile != alphabet.ASCIIPlayedThrough {
+		if tile != tilemapping.ASCIIPlayedThrough {
 			sum++
 		}
 	}
@@ -311,7 +311,7 @@ func uniqueSingleTileKey(ge *macondopb.GameEvent) int {
 	var idx int
 	var tile rune
 	for idx, tile = range ge.PlayedTiles {
-		if tile != alphabet.ASCIIPlayedThrough {
+		if tile != tilemapping.ASCIIPlayedThrough {
 			break
 		}
 	}
@@ -326,6 +326,6 @@ func uniqueSingleTileKey(ge *macondopb.GameEvent) int {
 		col += idx
 	}
 	// A unique, fast to compute key for this play.
-	return row + alphabet.MaxAlphabetSize*col +
-		alphabet.MaxAlphabetSize*alphabet.MaxAlphabetSize*int(tile)
+	return row + tilemapping.MaxAlphabetSize*col +
+		tilemapping.MaxAlphabetSize*tilemapping.MaxAlphabetSize*int(tile)
 }

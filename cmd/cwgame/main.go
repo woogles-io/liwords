@@ -11,9 +11,11 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/cwgame"
 	"github.com/domino14/liwords/pkg/cwgame/board"
-	"github.com/domino14/liwords/pkg/cwgame/runemapping"
-	"github.com/domino14/liwords/pkg/cwgame/tiles"
+	"github.com/domino14/liwords/pkg/omgwords/stores"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
+	macondoconfig "github.com/domino14/macondo/config"
+	"github.com/domino14/macondo/tilemapping"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -21,7 +23,8 @@ import (
 var RemoteServer = "https://woogles.io"
 
 var DataDir = os.Getenv("DATA_PATH")
-var DefaultConfig = &config.Config{DataPath: DataDir}
+var DefaultConfig = &config.Config{
+	MacondoConfig: macondoconfig.Config{DataPath: DataDir}}
 
 // a script to display the state of a game document
 func main() {
@@ -72,8 +75,22 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	v := gdoc.Version
+	err = stores.MigrateGameDocument(DefaultConfig, gdoc)
+	if err != nil {
+		panic(err)
+	}
+	if gdoc.Version != v {
+		log.Info().Msg("migrated-document")
+		bts, err := protojson.Marshal(gdoc)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(string(bts))
+		fmt.Println()
+	}
 
-	dist, err := tiles.GetDistribution(DefaultConfig, gdoc.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(&DefaultConfig.MacondoConfig, gdoc.LetterDistribution)
 	if err != nil {
 		panic(err)
 	}
@@ -88,12 +105,12 @@ func main() {
 			if s1 != "" {
 				s1 += "\n"
 			}
-			s1 += cwgame.EventDescription(evt, dist.RuneMapping())
+			s1 += cwgame.EventDescription(evt, dist.TileMapping())
 		} else {
 			if s2 != "" {
 				s2 += "\n"
 			}
-			s2 += cwgame.EventDescription(evt, dist.RuneMapping())
+			s2 += cwgame.EventDescription(evt, dist.TileMapping())
 			fullLine = true
 		}
 		if fullLine {
@@ -104,7 +121,7 @@ func main() {
 		}
 	}
 	fmt.Println()
-	s, err := board.ToUserVisibleString(gdoc.Board, gdoc.BoardLayout, dist.RuneMapping())
+	s, err := board.ToUserVisibleString(gdoc.Board, gdoc.BoardLayout, dist.TileMapping())
 	if err != nil {
 		panic(err)
 	}
@@ -112,12 +129,12 @@ func main() {
 	fmt.Println(lo.Map(gdoc.Players, func(p *ipc.GameDocument_MinimalPlayerInfo, idx int) string {
 		pname := p.RealName
 		pscore := gdoc.CurrentScores[idx]
-		prack := runemapping.FromByteArr(gdoc.Racks[idx]).UserVisible(dist.RuneMapping())
+		prack := tilemapping.FromByteArr(gdoc.Racks[idx]).UserVisible(dist.TileMapping())
 		onturn := ""
 		if int(gdoc.PlayerOnTurn) == idx {
 			onturn = "*"
 		}
 		return fmt.Sprintf("<%s (rack [%s], score [%d])>%s", pname, prack, pscore, onturn)
 	}))
-	fmt.Printf("Bag: %v (%d)\n", runemapping.FromByteArr(gdoc.Bag.Tiles).UserVisible(dist.RuneMapping()), len(gdoc.Bag.Tiles))
+	fmt.Printf("Bag: %v (%d)\n", tilemapping.FromByteArr(gdoc.Bag.Tiles).UserVisible(dist.TileMapping()), len(gdoc.Bag.Tiles))
 }

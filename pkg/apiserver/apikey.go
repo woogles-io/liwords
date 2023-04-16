@@ -13,6 +13,11 @@ import (
 const ApiKeyHeader = "X-Api-Key"
 const apikeykey ctxkey = "apikey"
 
+func StoreAPIKeyInContext(ctx context.Context, apikey string) context.Context {
+	ctx = context.WithValue(ctx, apikeykey, apikey)
+	return ctx
+}
+
 // APIKeyMiddlewareGenerator creates a middleware to fetch an API key from
 // a header and store it in a context key.
 func APIKeyMiddlewareGenerator() (mw func(http.Handler) http.Handler) {
@@ -32,7 +37,7 @@ func APIKeyMiddlewareGenerator() (mw func(http.Handler) http.Handler) {
 				return
 			}
 			// Otherwise, an API key was provided. Store it in the context.
-			ctx = context.WithValue(ctx, apikeykey, apikey[0])
+			ctx = StoreAPIKeyInContext(ctx, apikey[0])
 			r = r.WithContext(ctx)
 			h.ServeHTTP(w, r)
 		})

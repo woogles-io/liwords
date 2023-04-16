@@ -4,27 +4,22 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/rs/zerolog/log"
 	"lukechampine.com/frand"
 
-	"github.com/domino14/liwords/pkg/cwgame/runemapping"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/domino14/macondo/tilemapping"
 )
 
 // TileBag returns a list of bytes rather than MachineLetters to keep
 // it as compatible with the protobuf object as possible. A byte is just
 // an unsigned MachineLetter, but bit-identical.
-func TileBag(d *LetterDistribution) *ipc.Bag {
-	tiles := make([]byte, d.numLetters)
+func TileBag(d *tilemapping.LetterDistribution) *ipc.Bag {
+	tiles := make([]byte, d.NumTotalLetters())
 
 	idx := 0
-	for rn, ct := range d.Distribution {
-		val, err := d.runemapping.Val(rn)
-		if err != nil {
-			log.Fatal().Msgf("attempt to initialize bag failed: %v", err)
-		}
+	for ml, ct := range d.Distribution() {
 		for j := uint8(0); j < ct; j++ {
-			tiles[idx] = byte(val)
+			tiles[idx] = byte(ml)
 			idx++
 		}
 	}
@@ -35,7 +30,7 @@ func TileBag(d *LetterDistribution) *ipc.Bag {
 // Draw draws n tiles from the bag into the passed-in ml MachineLetter array.
 // The receiving array must be properly sized!
 // The bag will be modified.
-func Draw(bag *ipc.Bag, n int, ml []runemapping.MachineLetter) error {
+func Draw(bag *ipc.Bag, n int, ml []tilemapping.MachineLetter) error {
 	if n > len(bag.Tiles) {
 		return fmt.Errorf("tried to draw %v tiles, tile bag has %v",
 			n, len(bag.Tiles))
@@ -48,7 +43,7 @@ func Draw(bag *ipc.Bag, n int, ml []runemapping.MachineLetter) error {
 		bag.Tiles[i-1], bag.Tiles[xi] = bag.Tiles[xi], bag.Tiles[i-1]
 	}
 	for i := k; i < l; i++ {
-		ml[i-k] = runemapping.MachineLetter(bag.Tiles[i])
+		ml[i-k] = tilemapping.MachineLetter(bag.Tiles[i])
 	}
 	bag.Tiles = bag.Tiles[:k]
 	return nil
@@ -57,7 +52,7 @@ func Draw(bag *ipc.Bag, n int, ml []runemapping.MachineLetter) error {
 // DrawAtMost draws at most n tiles from the bag. It can draw fewer if there
 // are fewer tiles than n, and even draw no tiles at all :o
 // This is a zero-alloc draw into the passed-in slice.
-func DrawAtMost(bag *ipc.Bag, n int, ml []runemapping.MachineLetter) (int, error) {
+func DrawAtMost(bag *ipc.Bag, n int, ml []tilemapping.MachineLetter) (int, error) {
 	if n > len(bag.Tiles) {
 		n = len(bag.Tiles)
 	}
@@ -66,7 +61,7 @@ func DrawAtMost(bag *ipc.Bag, n int, ml []runemapping.MachineLetter) (int, error
 }
 
 // Exchange exchanges the junk in your rack with new tiles.
-func Exchange(bag *ipc.Bag, letters []runemapping.MachineLetter, ml []runemapping.MachineLetter) error {
+func Exchange(bag *ipc.Bag, letters []tilemapping.MachineLetter, ml []tilemapping.MachineLetter) error {
 	err := Draw(bag, len(letters), ml)
 	if err != nil {
 		return err
@@ -78,7 +73,7 @@ func Exchange(bag *ipc.Bag, letters []runemapping.MachineLetter, ml []runemappin
 }
 
 // PutBack puts the tiles back in the bag.
-func PutBack(bag *ipc.Bag, letters []runemapping.MachineLetter) {
+func PutBack(bag *ipc.Bag, letters []tilemapping.MachineLetter) {
 	if len(letters) == 0 {
 		return
 	}
@@ -87,7 +82,7 @@ func PutBack(bag *ipc.Bag, letters []runemapping.MachineLetter) {
 	}
 }
 
-func RemoveTiles(bag *ipc.Bag, letters []runemapping.MachineLetter) error {
+func RemoveTiles(bag *ipc.Bag, letters []tilemapping.MachineLetter) error {
 
 	// Create a temporary map for speed (well, maybe)
 	ntiles := 0
@@ -115,7 +110,7 @@ func RemoveTiles(bag *ipc.Bag, letters []runemapping.MachineLetter) error {
 	return nil
 }
 
-func Count(bag *ipc.Bag, letter runemapping.MachineLetter) int {
+func Count(bag *ipc.Bag, letter tilemapping.MachineLetter) int {
 	ct := 0
 	for _, t := range bag.Tiles {
 		if t == byte(letter) {

@@ -11,10 +11,10 @@ it('test simple runestoarr', () => {
     Uint8Array.from([3, 15, 15, 11, 9, 5])
   );
   expect(runesToUint8Array('COoKIE', alphabet)).toEqual(
-    Uint8Array.from([3, 15, 241, 11, 9, 5])
+    Uint8Array.from([3, 15, 15 | 0x80, 11, 9, 5])
   );
   expect(
-    uint8ArrayToRunes(Uint8Array.from([3, 15, 241, 11, 9, 5]), alphabet)
+    uint8ArrayToRunes(Uint8Array.from([3, 15, 15 | 0x80, 11, 9, 5]), alphabet)
   ).toEqual('COoKIE');
 });
 
@@ -27,7 +27,7 @@ it('test catalan runestoarr', () => {
     Uint8Array.from([1, 13, 17, 19, 10, 14, 10, 19, 6, 21])
   );
   expect(runesToUint8Array('Al·lOQUIMIquES', alphabet)).toEqual(
-    Uint8Array.from([1, 243, 17, 19, 10, 14, 10, 237, 6, 21])
+    Uint8Array.from([1, 13 | 0x80, 17, 19, 10, 14, 10, 19 | 0x80, 6, 21])
   );
 
   expect(runesToUint8Array('ARQUEGESSIU', alphabet)).toEqual(
@@ -37,6 +37,17 @@ it('test catalan runestoarr', () => {
 
 it('test catalan uint8ArrayToRunes', () => {
   const alphabet = StandardCatalanAlphabet;
-  const arr = Uint8Array.from([1, 243, 17, 19, 10, 14, 10, 237, 6, 21]);
+  const arr = Uint8Array.from([
+    1,
+    13 | 0x80,
+    17,
+    19,
+    10,
+    14,
+    10,
+    19 | 0x80,
+    6,
+    21,
+  ]);
   expect(uint8ArrayToRunes(arr, alphabet)).toEqual('Al·lOQUIMIquES');
 });

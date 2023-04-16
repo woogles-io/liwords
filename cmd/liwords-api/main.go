@@ -136,9 +136,11 @@ func NewLoggingServerHooks() *twirp.ServerHooks {
 // }
 
 func main() {
-
+	log.Info().Msg("before load")
 	cfg := &config.Config{}
+	log.Info().Msg("after cfg")
 	cfg.Load(os.Args[1:])
+	log.Info().Msg("after load")
 	log.Info().Interface("config", cfg).
 		Str("build-date", BuildDate).Str("build-hash", BuildHash).Msg("started")
 
@@ -248,7 +250,7 @@ func main() {
 	}
 	s3Client := s3.NewFromConfig(awscfg, utilities.CustomClientOptions)
 
-	stores.GameDocumentStore, err = omgstores.NewGameDocumentStore(redisPool, dbPool)
+	stores.GameDocumentStore, err = omgstores.NewGameDocumentStore(cfg, redisPool, dbPool)
 	if err != nil {
 		panic(err)
 	}

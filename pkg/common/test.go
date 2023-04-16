@@ -19,6 +19,7 @@ var DefaultConfig = macondoconfig.Config{
 	LetterDistributionPath:    os.Getenv("LETTER_DISTRIBUTION_PATH"),
 	DefaultLexicon:            DefaultLexicon,
 	DefaultLetterDistribution: DefaultLetterDistribution,
+	DataPath:                  os.Getenv("DATA_PATH"),
 }
 
 var DefaultGameReq = &ipc.GameRequest{Lexicon: DefaultLexicon,

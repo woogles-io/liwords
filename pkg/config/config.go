@@ -43,8 +43,7 @@ type Config struct {
 	ECSClusterName                 string
 	PuzzleGenerationTaskDefinition string
 
-	Debug    bool
-	DataPath string
+	Debug bool
 }
 
 type CtxKey string
@@ -62,8 +61,8 @@ func (c *Config) Load(args []string) error {
 	fs.StringVar(&c.MacondoConfig.LexiconPath, "lexicon-path", "../macondo/data/lexica", "directory holding lexicon files")
 	fs.StringVar(&c.MacondoConfig.DefaultLexicon, "default-lexicon", "NWL20", "the default lexicon to use")
 	fs.StringVar(&c.MacondoConfig.DefaultLetterDistribution, "default-letter-distribution", "English", "the default letter distribution to use. English, EnglishSuper, Spanish, Polish, etc.")
+	fs.StringVar(&c.MacondoConfig.DataPath, "data-path", "../macondo/data", "the default data path")
 
-	fs.StringVar(&c.DataPath, "data-path", "../data", "directory holding lexicon data files")
 	fs.StringVar(&c.DBHost, "db-host", "", "the database host")
 	fs.StringVar(&c.DBPort, "db-port", "", "the database port")
 	fs.StringVar(&c.DBUser, "db-user", "", "the database user")

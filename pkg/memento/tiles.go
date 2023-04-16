@@ -15,8 +15,8 @@ import (
 	"unicode"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/domino14/macondo/tilemapping"
 
-	"github.com/domino14/macondo/alphabet"
 	"github.com/domino14/macondo/game"
 )
 
@@ -66,19 +66,19 @@ var superBoardConfig = [][]rune{
 
 // These files must be kept in sync with macondo's data/letterdistribution/.
 //
-//go:embed letterdistributions/english.csv
+//go:embed letterdistributions/english
 var englishLetterDistributionCSVBytes []byte
 
-//go:embed letterdistributions/english_super.csv
+//go:embed letterdistributions/english_super
 var englishSuperLetterDistributionCSVBytes []byte
 
-//go:embed letterdistributions/french.csv
+//go:embed letterdistributions/french
 var frenchLetterDistributionCSVBytes []byte
 
-//go:embed letterdistributions/german.csv
+//go:embed letterdistributions/german
 var germanLetterDistributionCSVBytes []byte
 
-//go:embed letterdistributions/norwegian.csv
+//go:embed letterdistributions/norwegian
 var norwegianLetterDistributionCSVBytes []byte
 
 // header should be pre-quantized to very few colors (ideally 8)
@@ -768,7 +768,7 @@ type BoardDrawer struct {
 	BackXColorIndex    byte
 	Back0ColorIndex    byte
 	Back1ColorIndex    byte
-	LetterDistribution *alphabet.LetterDistribution
+	LetterDistribution *tilemapping.LetterDistribution
 }
 
 var BoardDrawers map[string]*BoardDrawer
@@ -859,7 +859,7 @@ func init() {
 		panic(fmt.Errorf("invalid boardConfig: %v", err))
 	}
 
-	lds := make(map[string]*alphabet.LetterDistribution)
+	lds := make(map[string]*tilemapping.LetterDistribution)
 	for _, entry := range []struct {
 		name     string
 		csvBytes []byte
@@ -870,7 +870,7 @@ func init() {
 		{name: "german", csvBytes: germanLetterDistributionCSVBytes},
 		{name: "norwegian", csvBytes: norwegianLetterDistributionCSVBytes},
 	} {
-		ld, err := alphabet.ScanLetterDistribution(bytes.NewReader(entry.csvBytes))
+		ld, err := tilemapping.ScanLetterDistribution(bytes.NewReader(entry.csvBytes))
 		if err != nil {
 			panic(fmt.Errorf("invalid letterDistribution for %s: %v", entry.name, err))
 		}
@@ -1046,6 +1046,19 @@ func reblank(r rune) rune {
 	return r
 }
 
+func sortRack(rack string, tm *tilemapping.TileMapping) (string, error) {
+	// Sort the rack according to its letter distribution's ordering.
+	mls, err := tilemapping.ToMachineLetters(rack, tm)
+	if err != nil {
+		return "", err
+	}
+	sort.Slice(mls, func(i, j int) bool {
+		return mls[i] < mls[j]
+	})
+	// convert back to user-visible
+	return tilemapping.MachineWord(mls).UserVisible(tm), nil
+}
+
 func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 	ver2Board := wf.Version == 2
 	if ver2Board && history.PlayState != macondopb.PlayState_GAME_OVER {
@@ -1170,12 +1183,12 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 	{
 		racki := make([][]rune, numPlayers)
 		for p := 0; p < numPlayers; p++ {
-			rack := []rune(history.LastKnownRacks[p])
 			// Racks may not always be pre-sorted.
-			sort.Slice(rack, func(i, j int) bool {
-				return bd.LetterDistribution.SortOrder[rack[i]] < bd.LetterDistribution.SortOrder[rack[j]]
-			})
-			racki[p] = rack
+			sorted, err := sortRack(history.LastKnownRacks[p], bd.LetterDistribution.TileMapping())
+			if err != nil {
+				return nil, err
+			}
+			racki[p] = []rune(sorted)
 		}
 		racks[len(history.Events)] = racki
 	}
@@ -1190,12 +1203,13 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 		default:
 			racki := make([][]rune, numPlayers)
 			copy(racki, racks[t+1])
-			rack := []rune(evt.Rack)
+
 			// Racks may not always be pre-sorted.
-			sort.Slice(rack, func(i, j int) bool {
-				return bd.LetterDistribution.SortOrder[rack[i]] < bd.LetterDistribution.SortOrder[rack[j]]
-			})
-			racki[playerIndex(history, evt)] = rack
+			sorted, err := sortRack(evt.Rack, bd.LetterDistribution.TileMapping())
+			if err != nil {
+				return nil, err
+			}
+			racki[playerIndex(history, evt)] = []rune(sorted)
 			racks[t] = racki
 		}
 	}
@@ -1244,7 +1258,7 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 			dr, dc = 1, 0
 		}
 		for _, ch := range evt.PlayedTiles {
-			if ch != alphabet.ASCIIPlayedThrough && onBoard(r, c) {
+			if ch != tilemapping.ASCIIPlayedThrough && onBoard(r, c) {
 				callback(r, c, ch)
 			}
 			r, c = r+dr, c+dc
