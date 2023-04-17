@@ -14,7 +14,9 @@ type AlphabetLetter = {
   vowel: boolean;
   category: number; // for detailed view, we split letters into groups.
   // for example:  'AEIOU,DGLNRT,BCFHMPVWY,JKQXZS?'
-  shortcut?: string; // how is this letter represented internally?
+  // XXX: displayAlias is a hack. This will be rewritten and handled properly
+  // in the future.
+  displayAlias?: string; // how is this letter represented internally?
   // This should be a single character.
 };
 
@@ -235,32 +237,32 @@ export const StandardCatalanAlphabet: Alphabet = {
     { rune: 'J', score: 8, count: 1, vowel: false, category: 3 },
     { rune: 'L', score: 1, count: 4, vowel: false, category: 1 },
     {
-      rune: 'L·L',
+      rune: 'W',
       score: 10,
       count: 1,
       vowel: false,
       category: 3,
-      shortcut: 'W',
+      displayAlias: 'L·L',
     },
     { rune: 'M', score: 2, count: 3, vowel: false, category: 2 },
     { rune: 'N', score: 1, count: 6, vowel: false, category: 1 },
     {
-      rune: 'NY',
+      rune: 'Y',
       score: 10,
       count: 1,
       vowel: false,
       category: 3,
-      shortcut: 'Y',
+      displayAlias: 'NY',
     },
     { rune: 'O', score: 1, count: 5, vowel: true, category: 0 },
     { rune: 'P', score: 3, count: 2, vowel: false, category: 2 },
     {
-      rune: 'QU',
+      rune: 'Q',
       score: 8,
       count: 1,
       vowel: false,
       category: 3,
-      shortcut: 'Q',
+      displayAlias: 'QU',
     },
     { rune: 'R', score: 1, count: 8, vowel: false, category: 1 },
     { rune: 'S', score: 1, count: 8, vowel: false, category: 3 },

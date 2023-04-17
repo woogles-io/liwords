@@ -205,19 +205,6 @@ const newGameStateFromGameplayEvent = (
   };
 };
 
-const newStateFromRackChange = (
-  state: GameState,
-  rackChange: PlayerRackChange
-): GameState => {
-  const players = [...state.players];
-  players[state.onturn].currentRack = rackChange.rack;
-
-  return {
-    ...state,
-    players,
-  };
-};
-
 const placeOnBoard = (
   board: Board,
   pool: TileDistribution,
@@ -674,14 +661,6 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       // stateFromDocument should initialize the clock controller as well.
       // Otherwise if it is null, we have an issue, but there's no need to
       // throw an Error..
-      return newState;
-    }
-
-    case ActionType.ChangePlayerRack: {
-      const p = action.payload as PlayerRackChange;
-      const newState = newStateFromRackChange(state, p);
-
-      console.log('newState', newState);
       return newState;
     }
 
