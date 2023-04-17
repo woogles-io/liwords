@@ -182,6 +182,7 @@ export const PuzzleGenerator = () => {
             <Select.Option value="french">French</Select.Option>;
             <Select.Option value="german">German</Select.Option>
             <Select.Option value="norwegian">Norwegian</Select.Option>
+            <Select.Option value="catalan">Catalan</Select.Option>
           </Select>
         </Form.Item>
         <Form.Item

@@ -81,6 +81,9 @@ var germanLetterDistributionCSVBytes []byte
 //go:embed letterdistributions/norwegian
 var norwegianLetterDistributionCSVBytes []byte
 
+//go:embed letterdistributions/catalan
+var catalanLetterDistributionCSVBytes []byte
+
 // header should be pre-quantized to very few colors (ideally 8)
 //
 //go:embed header.png
@@ -99,6 +102,8 @@ var germanTilesBytes []byte
 
 //go:embed tiles-norwegian.png
 var norwegianTilesBytes []byte
+
+// XXX NEED CATALAN catalanTilesBytes
 
 const squareDim = 68
 const monospacedFontDimX = 24
@@ -869,6 +874,7 @@ func init() {
 		{name: "french", csvBytes: frenchLetterDistributionCSVBytes},
 		{name: "german", csvBytes: germanLetterDistributionCSVBytes},
 		{name: "norwegian", csvBytes: norwegianLetterDistributionCSVBytes},
+		{name: "catalan", csvBytes: catalanLetterDistributionCSVBytes},
 	} {
 		ld, err := tilemapping.ScanLetterDistribution(bytes.NewReader(entry.csvBytes))
 		if err != nil {

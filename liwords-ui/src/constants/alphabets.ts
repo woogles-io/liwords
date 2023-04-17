@@ -14,6 +14,8 @@ type AlphabetLetter = {
   vowel: boolean;
   category: number; // for detailed view, we split letters into groups.
   // for example:  'AEIOU,DGLNRT,BCFHMPVWY,JKQXZS?'
+  shortcut?: string; // how is this letter represented internally?
+  // This should be a single character.
 };
 
 export type Alphabet = {
@@ -232,13 +234,34 @@ export const StandardCatalanAlphabet: Alphabet = {
     { rune: 'I', score: 1, count: 8, vowel: true, category: 0 },
     { rune: 'J', score: 8, count: 1, vowel: false, category: 3 },
     { rune: 'L', score: 1, count: 4, vowel: false, category: 1 },
-    { rune: 'L·L', score: 10, count: 1, vowel: false, category: 3 },
+    {
+      rune: 'L·L',
+      score: 10,
+      count: 1,
+      vowel: false,
+      category: 3,
+      shortcut: 'W',
+    },
     { rune: 'M', score: 2, count: 3, vowel: false, category: 2 },
     { rune: 'N', score: 1, count: 6, vowel: false, category: 1 },
-    { rune: 'NY', score: 10, count: 1, vowel: false, category: 3 },
+    {
+      rune: 'NY',
+      score: 10,
+      count: 1,
+      vowel: false,
+      category: 3,
+      shortcut: 'Y',
+    },
     { rune: 'O', score: 1, count: 5, vowel: true, category: 0 },
     { rune: 'P', score: 3, count: 2, vowel: false, category: 2 },
-    { rune: 'QU', score: 8, count: 1, vowel: false, category: 3 },
+    {
+      rune: 'QU',
+      score: 8,
+      count: 1,
+      vowel: false,
+      category: 3,
+      shortcut: 'Q',
+    },
     { rune: 'R', score: 1, count: 8, vowel: false, category: 1 },
     { rune: 'S', score: 1, count: 8, vowel: false, category: 3 },
     { rune: 'T', score: 1, count: 5, vowel: false, category: 1 },
@@ -281,6 +304,8 @@ export const alphabetFromName = (
       return StandardFrenchAlphabet;
     case 'english_super':
       return SuperEnglishAlphabet;
+    case 'catalan':
+      return StandardCatalanAlphabet;
     default:
       return StandardEnglishAlphabet;
   }
@@ -325,6 +350,18 @@ export const uint8ArrayToRunes = (
   return s;
 };
 
+export const uint8ArrayToRuneArray = (
+  arr: Uint8Array,
+  alphabet: Alphabet,
+  usePlaythrough?: boolean
+): string[] => {
+  const s: string[] = [];
+  arr.forEach((v) => {
+    s.push(uint8ToRune(v, alphabet, usePlaythrough));
+  });
+  return s;
+};
+
 export const runesToUint8Array = (
   runes: string,
   alphabet: Alphabet
@@ -336,8 +373,16 @@ export const runesToUint8Array = (
   while (i < chars.length) {
     match = false;
     for (let j = i + alphabet.longestPossibleTileRune; j > i; j--) {
+      if (j > chars.length) {
+        continue;
+      }
       const rune = chars.slice(i, j).join('');
-      if (alphabet.machineLetterMap[rune] != undefined) {
+      if (rune === ThroughTileMarker) {
+        bts.push(0);
+        i = j;
+        match = true;
+        break;
+      } else if (alphabet.machineLetterMap[rune] != undefined) {
         bts.push(alphabet.machineLetterMap[rune]);
         i = j;
         match = true;
@@ -355,4 +400,38 @@ export const runesToUint8Array = (
   }
 
   return Uint8Array.from(bts);
+};
+
+export const runesToRuneArray = (
+  runes: string,
+  alphabet: Alphabet
+): string[] => {
+  const arr = [];
+  const chars = Array.from(runes);
+  let i = 0;
+  let match;
+  while (i < chars.length) {
+    match = false;
+    for (let j = i + alphabet.longestPossibleTileRune; j > i; j--) {
+      if (j > chars.length) {
+        continue;
+      }
+      const rune = chars.slice(i, j).join('');
+      if (
+        rune === ThroughTileMarker ||
+        alphabet.machineLetterMap[rune] != undefined ||
+        alphabet.machineLetterMap[rune.toUpperCase()] != undefined
+      ) {
+        arr.push(rune);
+        i = j;
+        match = true;
+        break;
+      }
+    }
+    if (!match) {
+      throw new Error('cannot convert ' + runes + ' to rune array');
+    }
+  }
+
+  return arr;
 };
