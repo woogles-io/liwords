@@ -11,7 +11,7 @@ const lexiconCodeToInternalRatingName = (code: string) => {
   if (code.startsWith('NSF')) return 'NSF21';
   if (code.startsWith('RD')) return 'RD28';
   if (code.startsWith('FRA')) return 'FRA20';
-  if (code.startsWith('DISC')) return 'DISC2';
+  if (code.startsWith('DISC')) return 'DISC';
   return code;
 };
 

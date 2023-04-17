@@ -390,7 +390,7 @@ export declare class AnnotatedGameEvent extends Message<AnnotatedGameEvent> {
   eventNumber: number;
 
   /**
-   * Amendment is ture if we are amending a previous, already played move.
+   * Amendment is true if we are amending a previous, already played move.
    * In that case, the event number is the index of the event that we
    * wish to edit. Note: not every ClientGameplayEvent maps 1-to-1 with
    * internal event indexes. In order to be sure you are editing the right
