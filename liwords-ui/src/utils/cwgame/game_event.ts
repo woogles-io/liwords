@@ -10,13 +10,16 @@ import {
   ClientGameplayEvent_EventType,
   PlayerInfo,
 } from '../../gen/api/proto/ipc/omgwords_pb';
+import { runesToUint8Array } from '../../constants/alphabets';
+import { Alphabet } from '../../constants/alphabets';
 
 export const ThroughTileMarker = '.';
 // convert a set of ephemeral tiles to a protobuf game event.
 export const tilesetToMoveEvent = (
   tiles: Set<EphemeralTile>,
   board: Board,
-  gameID: string
+  gameID: string,
+  alphabet: Alphabet
 ) => {
   const ret = contiguousTilesFromTileSet(tiles, board);
   if (ret === null) {
@@ -50,7 +53,7 @@ export const tilesetToMoveEvent = (
 
   const evt = new ClientGameplayEvent({
     positionCoords: wordPos,
-    tiles: wordStr,
+    machineLetters: runesToUint8Array(wordStr, alphabet),
     type: ClientGameplayEvent_EventType.TILE_PLACEMENT,
     gameId: gameID,
   });
@@ -58,9 +61,13 @@ export const tilesetToMoveEvent = (
   return evt;
 };
 
-export const exchangeMoveEvent = (rack: string, gameID: string) => {
+export const exchangeMoveEvent = (
+  rack: string,
+  gameID: string,
+  alphabet: Alphabet
+) => {
   const evt = new ClientGameplayEvent({
-    tiles: rack,
+    machineLetters: runesToUint8Array(rack, alphabet),
     type: ClientGameplayEvent_EventType.EXCHANGE,
     gameId: gameID,
   });

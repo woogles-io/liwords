@@ -328,7 +328,7 @@ export const BoardPanel = React.memo((props: Props) => {
       switch (move) {
         case 'exchange':
           if (addl) {
-            moveEvt = exchangeMoveEvent(addl, gameID);
+            moveEvt = exchangeMoveEvent(addl, gameID, gameContext.alphabet);
           }
           break;
         case 'pass':
@@ -341,7 +341,12 @@ export const BoardPanel = React.memo((props: Props) => {
           moveEvt = challengeMoveEvent(gameID);
           break;
         case 'commit':
-          moveEvt = tilesetToMoveEvent(placedTiles, board, gameID);
+          moveEvt = tilesetToMoveEvent(
+            placedTiles,
+            board,
+            gameID,
+            gameContext.alphabet
+          );
           if (!moveEvt) {
             // this is an invalid play
             return;
