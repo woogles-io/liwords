@@ -368,6 +368,7 @@ export const BoardPanel = React.memo((props: Props) => {
       }
     },
     [
+      gameContext.alphabet,
       gameContext.nickToPlayerOrder,
       boardEditingMode,
       examinableGameContext.onturn,
