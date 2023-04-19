@@ -206,6 +206,7 @@ func playGame(ctx context.Context,
 	gameEndReason pb.GameEndReason,
 	sitResign bool) error {
 
+	fmt.Println("turns", turns)
 	nower := entity.NewFakeNower(1234)
 	g.SetTimerModule(nower)
 	g.ResetTimersAndStart()
@@ -217,7 +218,9 @@ func playGame(ctx context.Context,
 		turn.GameId = g.GameID()
 		playerIdx := i % 2
 		fmt.Println("on turn now", g.NickOnTurn())
-		g.SetRackFor(playerIdx, tilemapping.RackFromString(turn.Tiles, g.Alphabet()))
+		r := tilemapping.NewRack(g.Alphabet())
+		r.Set(tilemapping.FromByteArr(turn.MachineLetters))
+		g.SetRackFor(playerIdx, r)
 
 		_, err := gameplay.HandleEvent(ctx, gstore, ustore, nstore, lstore, tstore,
 			playerIds[playerIdx], turn)
@@ -323,6 +326,18 @@ func comparePlayerNotorieties(pnrs []*ms.NotorietyReport, ustore pkguser.Store, 
 	return nil
 }
 
+func englishBytes(tiles string) []byte {
+	ld, err := tilemapping.GetDistribution(&DefaultConfig, "english")
+	if err != nil {
+		panic(err)
+	}
+	mw, err := tilemapping.ToMachineWord(tiles, ld.TileMapping())
+	if err != nil {
+		panic(err)
+	}
+	return mw.ToByteArr()
+}
+
 func TestNotoriety(t *testing.T) {
 	//zerolog.SetGlobalLevel(zerolog.Disabled)
 	is := is.New(t)
@@ -337,32 +352,32 @@ func TestNotoriety(t *testing.T) {
 		{
 			Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 			PositionCoords: "8D",
-			Tiles:          "BANJO",
+			MachineLetters: englishBytes("BANJO"),
 		},
 		{
 			Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 			PositionCoords: "7H",
-			Tiles:          "BUSUUTI",
+			MachineLetters: englishBytes("BUSUUTI"),
 		},
 		{
 			Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 			PositionCoords: "O1",
-			Tiles:          "MAYPOPS",
+			MachineLetters: englishBytes("MAYPOPS"),
 		},
 		{
 			Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 			PositionCoords: "9H",
-			Tiles:          "RETINAS",
+			MachineLetters: englishBytes("RETINAS"),
 		},
 		{
 			Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 			PositionCoords: "10B",
-			Tiles:          "RETINAS",
+			MachineLetters: englishBytes("RETINAS"),
 		},
 		{
 			Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 			PositionCoords: "11H",
-			Tiles:          "ZI",
+			MachineLetters: englishBytes("ZI"),
 		},
 	}
 
@@ -370,7 +385,7 @@ func TestNotoriety(t *testing.T) {
 		{
 			Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 			PositionCoords: "8D",
-			Tiles:          "BANJO",
+			MachineLetters: englishBytes("BANJO"),
 		},
 		{
 			Type: pb.ClientGameplayEvent_PASS,
@@ -378,7 +393,7 @@ func TestNotoriety(t *testing.T) {
 		{
 			Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 			PositionCoords: "7H",
-			Tiles:          "BUSUUTI",
+			MachineLetters: englishBytes("BUSUUTI"),
 		},
 		{
 			Type: pb.ClientGameplayEvent_PASS,
@@ -386,23 +401,22 @@ func TestNotoriety(t *testing.T) {
 		{
 			Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 			PositionCoords: "O1",
-			Tiles:          "MAYPOPS",
+			MachineLetters: englishBytes("MAYPOPS"),
 		},
 		{
 			Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 			PositionCoords: "9H",
-			Tiles:          "RETINAS",
+			MachineLetters: englishBytes("RETINAS"),
 		},
 		{
 			Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 			PositionCoords: "10B",
-			Tiles:          "RETINAS",
+			MachineLetters: englishBytes("RETINAS"),
 		},
 		{
 			Type: pb.ClientGameplayEvent_PASS,
 		},
 	}
-
 	// No play
 	g, _, _, _, _ := makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
 	err := playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, defaultTurns[:1], 1, pb.GameEndReason_TIME, false)
@@ -785,9 +799,9 @@ func TestNotoriety(t *testing.T) {
 	is.NoErr(err)
 
 	// Excessive phonies
-	defaultTurns[0].Tiles = "ABNJO"
-	defaultTurns[2].Tiles = "MAYPPOS"
-	defaultTurns[4].Tiles = "RETIANS"
+	defaultTurns[0].MachineLetters = englishBytes("ABNJO")
+	defaultTurns[2].MachineLetters = englishBytes("MAYPPOS")
+	defaultTurns[4].MachineLetters = englishBytes("RETIANS")
 
 	// Winner and loser should not matter
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
@@ -813,11 +827,11 @@ func TestNotoriety(t *testing.T) {
 	is.NoErr(err)
 
 	// Now the other player phonies too much
-	defaultTurns[0].Tiles = "BANJO"
-	defaultTurns[2].Tiles = "MAYPOPS"
-	defaultTurns[4].Tiles = "RETINAS"
-	defaultTurns[1].Tiles = "BUSUTUI"
-	defaultTurns[3].Tiles = "RETIANS"
+	defaultTurns[0].MachineLetters = englishBytes("BANJO")
+	defaultTurns[2].MachineLetters = englishBytes("MAYPOPS")
+	defaultTurns[4].MachineLetters = englishBytes("RETINAS")
+	defaultTurns[1].MachineLetters = englishBytes("BUSUTUI")
+	defaultTurns[3].MachineLetters = englishBytes("RETIANS")
 
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
 	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, defaultTurns, 0, pb.GameEndReason_RESIGNED, false)
@@ -832,7 +846,7 @@ func TestNotoriety(t *testing.T) {
 	}, ustore, nstore)
 	is.NoErr(err)
 
-	defaultTurns[1].Tiles = "BUSUUTI"
+	defaultTurns[1].MachineLetters = englishBytes("BUSUUTI")
 
 	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
 	err = playGame(ctx, g, ustore, lstore, nstore, tstore, gstore, defaultTurns, 0, pb.GameEndReason_RESIGNED, false)

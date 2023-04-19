@@ -32,25 +32,44 @@ import (
 	"github.com/domino14/macondo/gcgio"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/macondo/move"
+	"github.com/domino14/macondo/tilemapping"
 )
 
 const PuzzlerUUID = "puzzler"
 const PuzzleCreatorUUID = "kenji"
 const OtherLexicon = "CSW19"
 
+func ctxForTests() context.Context {
+	ctx := context.Background()
+	ctx = log.Logger.WithContext(ctx)
+	ctx = context.WithValue(ctx, config.CtxKeyword, &config.Config{
+		MacondoConfig: common.DefaultConfig,
+	})
+	return ctx
+}
+
 func gameEventToClientGameplayEvent(evt *pb.GameEvent) *ipc.ClientGameplayEvent {
 	cge := &ipc.ClientGameplayEvent{}
-
+	// use hard-coded english alphabet for this test
+	eng := tilemapping.EnglishAlphabet()
 	switch evt.Type {
 	case pb.GameEvent_TILE_PLACEMENT_MOVE:
 		cge.Type = ipc.ClientGameplayEvent_TILE_PLACEMENT
-		cge.Tiles = evt.PlayedTiles
+		bts, err := tilemapping.ToMachineWord(evt.PlayedTiles, eng)
+		if err != nil {
+			panic(err)
+		}
+		cge.MachineLetters = bts.ToByteArr()
 		cge.PositionCoords = move.ToBoardGameCoords(int(evt.Row), int(evt.Column),
 			evt.Direction == pb.GameEvent_VERTICAL)
 
 	case pb.GameEvent_EXCHANGE:
 		cge.Type = ipc.ClientGameplayEvent_EXCHANGE
-		cge.Tiles = evt.Exchanged
+		bts, err := tilemapping.ToMachineWord(evt.Exchanged, eng)
+		if err != nil {
+			panic(err)
+		}
+		cge.MachineLetters = bts.ToByteArr()
 	case pb.GameEvent_PASS:
 		cge.Type = ipc.ClientGameplayEvent_PASS
 	}
@@ -80,8 +99,9 @@ func TestPuzzlesMain(t *testing.T) {
 	}()
 	pool, ps := dbc.pool, dbc.ps
 
-	ctx := context.Background()
-
+	ctx := ctxForTests()
+	engDist, err := tilemapping.GetDistribution(&common.DefaultConfig, "english")
+	is.NoErr(err)
 	rk := entity.LexiconToPuzzleVariantKey(common.DefaultGameReq.Lexicon)
 
 	pcid, err := commondb.GetDBIDFromUUID(ctx, pool, &commondb.CommonDBConfig{
@@ -225,7 +245,7 @@ func TestPuzzlesMain(t *testing.T) {
 	is.NoErr(err)
 	is.True(userIsCorrect)
 	is.True(*status)
-	is.True(answersAreEqual(correctCGE, correctAnswer))
+	is.True(answersAreEqual(correctCGE, correctAnswer, engDist))
 	is.True(gameId != "")
 	is.Equal(attempts, int32(2))
 	is.True(newUserRating.Rating != 0)
@@ -361,7 +381,7 @@ func TestPuzzlesMain(t *testing.T) {
 	answerFromGet, err := GetPuzzleAnswer(ctx, ps, PuzzlerUUID, puzzleUUID)
 	is.NoErr(err)
 	is.True(answerFromGet != nil)
-	is.True(answersAreEqual(correctCGE, answerFromGet))
+	is.True(answersAreEqual(correctCGE, answerFromGet, engDist))
 
 	// The status should be the same for an incorrect answer
 	correctAnswer.Type = pb.GameEvent_EXCHANGE
@@ -564,7 +584,7 @@ func TestPuzzlesPrevious(t *testing.T) {
 		dbc.cleanup()
 	}()
 	ps := dbc.ps
-	ctx := context.Background()
+	ctx := ctxForTests()
 
 	// Ensure that getting the previous puzzle works
 	// for attempted and unattempted puzzles
@@ -635,7 +655,7 @@ func TestPuzzlesStart(t *testing.T) {
 		dbc.cleanup()
 	}()
 	ps := dbc.ps
-	ctx := context.Background()
+	ctx := ctxForTests()
 
 	// This should work for users who are not logged in
 	_, _, err := GetStartPuzzleId(ctx, ps, "", common.DefaultGameReq.Lexicon)
@@ -691,7 +711,7 @@ func TestPuzzlesNextClosestRating(t *testing.T) {
 	defer func() {
 		dbc.cleanup()
 	}()
-	ctx := context.Background()
+	ctx := ctxForTests()
 
 	playerRating := 10000.0
 
@@ -751,7 +771,7 @@ func TestPuzzlesQueryResult(t *testing.T) {
 		dbc.cleanup()
 	}()
 	ps := dbc.ps
-	ctx := context.Background()
+	ctx := ctxForTests()
 
 	totalPuzzles, err := getNumUnattemptedPuzzlesInLexicon(ctx, dbc.pool, PuzzlerUUID, common.DefaultGameReq.Lexicon)
 	is.NoErr(err)
@@ -876,7 +896,7 @@ func TestPuzzlesVerticalPlays(t *testing.T) {
 		dbc.cleanup()
 	}()
 	pool, ps := dbc.pool, dbc.ps
-	ctx := context.Background()
+	ctx := ctxForTests()
 
 	correct, err := transposedPlayByAnswerIsCorrect(ctx, pool, ps, "ZINNIA", PuzzlerUUID)
 	is.NoErr(err)

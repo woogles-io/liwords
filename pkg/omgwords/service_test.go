@@ -179,7 +179,7 @@ func TestEditMoveAfterMaking(t *testing.T) {
 			Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 			GameId:         gid,
 			PositionCoords: "8D",
-			Tiles:          "VOYAGE",
+			MachineLetters: []byte{22, 15, 25, 1, 7, 5}, // voyage
 		},
 		UserId: "internal-cesar",
 	})
@@ -198,7 +198,7 @@ func TestEditMoveAfterMaking(t *testing.T) {
 			Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 			GameId:         gid,
 			PositionCoords: "7G",
-			Tiles:          "ZA",
+			MachineLetters: []byte{26, 1}, // za
 		},
 		UserId: "internal-someone",
 	})
@@ -221,7 +221,7 @@ func TestEditMoveAfterMaking(t *testing.T) {
 			Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 			GameId:         gid,
 			PositionCoords: "7G",
-			Tiles:          "FA",
+			MachineLetters: []byte{6, 1}, // FA
 		},
 		UserId:      "internal-someone",
 		EventNumber: 1,
@@ -279,7 +279,7 @@ func TestEditMoveAfterChallenge(t *testing.T) {
 			Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 			GameId:         gid,
 			PositionCoords: "8D",
-			Tiles:          "VOYAGE",
+			MachineLetters: []byte{22, 15, 25, 1, 7, 5}, // voyage
 		},
 		UserId: "internal-cesar",
 	})
@@ -300,7 +300,7 @@ func TestEditMoveAfterChallenge(t *testing.T) {
 			Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 			GameId:         gid,
 			PositionCoords: "7F",
-			Tiles:          "ZA",
+			MachineLetters: []byte{26, 1}, // za
 		},
 		UserId: "internal-someone",
 	})
@@ -330,7 +330,7 @@ func TestEditMoveAfterChallenge(t *testing.T) {
 			Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 			GameId:         gid,
 			PositionCoords: "7I",
-			Tiles:          "BA",
+			MachineLetters: []byte{2, 1}, // ba
 		},
 		UserId: "internal-cesar",
 	})
@@ -343,7 +343,7 @@ func TestEditMoveAfterChallenge(t *testing.T) {
 			Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 			GameId:         gid,
 			PositionCoords: "F6",
-			Tiles:          "BA.",
+			MachineLetters: []byte{2, 1, 0}, // BA.
 		},
 		UserId:      "internal-cesar",
 		EventNumber: 3,

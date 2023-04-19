@@ -175,9 +175,17 @@ func clientEventToMove(cge *pb.ClientGameplayEvent, g *game.Game) (*move.Move, e
 	playerid := g.PlayerOnTurn()
 	rack := g.RackFor(playerid)
 
+	if len(cge.Tiles) > 0 && len(cge.MachineLetters) > 0 {
+		return nil, errors.New("cannot specify both tiles and MachineLetters")
+	}
+
 	switch cge.Type {
 	case pb.ClientGameplayEvent_TILE_PLACEMENT:
-		m, err := g.CreateAndScorePlacementMove(cge.PositionCoords, cge.Tiles, rack.String())
+		evtTiles := cge.Tiles
+		if len(cge.MachineLetters) > 0 {
+			evtTiles = tilemapping.FromByteArr(cge.MachineLetters).UserVisiblePlayedTiles(g.Alphabet())
+		}
+		m, err := g.CreateAndScorePlacementMove(cge.PositionCoords, evtTiles, rack.String())
 		if err != nil {
 			return nil, err
 		}
@@ -189,7 +197,13 @@ func clientEventToMove(cge *pb.ClientGameplayEvent, g *game.Game) (*move.Move, e
 		m := move.NewPassMove(rack.TilesOn(), g.Alphabet())
 		return m, nil
 	case pb.ClientGameplayEvent_EXCHANGE:
-		tiles, err := tilemapping.ToMachineWord(cge.Tiles, g.Alphabet())
+		evtTiles := cge.Tiles
+		if len(cge.MachineLetters) > 0 {
+			// convert to cge.Tiles for now.
+			// this whole file will be obsolete later.
+			evtTiles = tilemapping.FromByteArr(cge.MachineLetters).UserVisible(g.Alphabet())
+		}
+		tiles, err := tilemapping.ToMachineWord(evtTiles, g.Alphabet())
 		if err != nil {
 			return nil, err
 		}

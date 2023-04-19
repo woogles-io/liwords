@@ -219,30 +219,17 @@ export declare class ClientGameplayEvent extends Message<ClientGameplayEvent> {
    * tiles that are being played (or exchanged). The `.` character is used
    * for thru, and lowercase characters are used for blanks.
    *
-   * @generated from field: string tiles = 4;
+   * @generated from field: string tiles = 4 [deprecated = true];
+   * @deprecated
    */
   tiles: string;
 
   /**
-   * full_rack is the rack that the play is being made from. Note that the
-   * server already knows the full rack, so this does not need to be provided,
-   * unless our game is a broadcast/"sandbox" game where we can modify racks.
-   * Of course, special care should be taken to ignore this value if this
-   * is a regular game!
+   * machine_letters is tiles, but in binary.
    *
-   * @generated from field: string full_rack = 5;
+   * @generated from field: bytes machine_letters = 5;
    */
-  fullRack: string;
-
-  /**
-   * event_index is the index of the event. This value should not be used for
-   * anything other than broadcast/"sandbox" games, and it will be used for
-   * editing previous moves. If used, the entire game until event_index will
-   * be truncated, so this must also be used with care!
-   *
-   * @generated from field: int32 event_index = 6;
-   */
-  eventIndex: number;
+  machineLetters: Uint8Array;
 
   constructor(data?: PartialMessage<ClientGameplayEvent>);
 
@@ -304,8 +291,8 @@ export declare class GameRules extends Message<GameRules> {
   boardLayoutName: string;
 
   /**
-   * The supported letter distributions are english, french, norwegian, german,
-   * catalan. There are more to come!
+   * The supported letter distributions are english, french, norwegian, german.
+   * There are more to come!
    *
    * @generated from field: string letter_distribution_name = 2;
    */

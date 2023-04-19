@@ -490,13 +490,21 @@ func clientEventToGameEvent(ctx context.Context, evt *ipc.ClientGameplayEvent, g
 	if err != nil {
 		return nil, err
 	}
-
+	if len(evt.Tiles) > 0 && len(evt.MachineLetters) > 0 {
+		return nil, errors.New("cannot specify both tiles and machineletters")
+	}
 	switch evt.Type {
 	case ipc.ClientGameplayEvent_TILE_PLACEMENT:
 		row, col, dir := fromBoardGameCoords(evt.PositionCoords)
-		mw, err := tilemapping.ToMachineLetters(evt.Tiles, dist.TileMapping())
-		if err != nil {
-			return nil, err
+		var mw []tilemapping.MachineLetter
+		var err error
+		if len(evt.Tiles) > 0 {
+			mw, err = tilemapping.ToMachineLetters(evt.Tiles, dist.TileMapping())
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			mw = tilemapping.FromByteArr(evt.MachineLetters)
 		}
 		_, err = Leave(rackmw, mw)
 		if err != nil {
@@ -520,9 +528,15 @@ func clientEventToGameEvent(ctx context.Context, evt *ipc.ClientGameplayEvent, g
 			PlayerIndex: gdoc.PlayerOnTurn,
 		}, nil
 	case ipc.ClientGameplayEvent_EXCHANGE:
-		mw, err := tilemapping.ToMachineLetters(evt.Tiles, dist.TileMapping())
-		if err != nil {
-			return nil, err
+		var mw []tilemapping.MachineLetter
+		var err error
+		if len(evt.Tiles) > 0 {
+			mw, err = tilemapping.ToMachineLetters(evt.Tiles, dist.TileMapping())
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			mw = tilemapping.FromByteArr(evt.MachineLetters)
 		}
 		_, err = Leave(rackmw, mw)
 		if err != nil {

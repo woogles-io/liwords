@@ -91,6 +91,30 @@ func TestStartGame(t *testing.T) {
 	is.Equal(len(g.Bag.Tiles), 86)
 }
 
+func englishBytes(tiles string) []byte {
+	ld, err := tilemapping.GetDistribution(&DefaultConfig.MacondoConfig, "english")
+	if err != nil {
+		panic(err)
+	}
+	mw, err := tilemapping.ToMachineWord(tiles, ld.TileMapping())
+	if err != nil {
+		panic(err)
+	}
+	return mw.ToByteArr()
+}
+
+func norwegianBytes(tiles string) []byte {
+	ld, err := tilemapping.GetDistribution(&DefaultConfig.MacondoConfig, "norwegian")
+	if err != nil {
+		panic(err)
+	}
+	mw, err := tilemapping.ToMachineWord(tiles, ld.TileMapping())
+	if err != nil {
+		panic(err)
+	}
+	return mw.ToByteArr()
+}
+
 // Try a few simple moves and make sure that basic flows work
 func TestProcessGameplayEventSanityChecks(t *testing.T) {
 	documentfile := "document-earlygame.json"
@@ -107,7 +131,7 @@ func TestProcessGameplayEventSanityChecks(t *testing.T) {
 				Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 				GameId:         "9aK3YgVk",
 				PositionCoords: "1D",
-				Tiles:          "KNI.E",
+				MachineLetters: englishBytes("KNI.E"),
 			},
 			userID:         "2gJGaYnchL6LbQVTNQ6mjT",
 			expectedScores: []int32{113, 137},
@@ -115,9 +139,9 @@ func TestProcessGameplayEventSanityChecks(t *testing.T) {
 		{
 			name: "Exchange",
 			cge: &ipc.ClientGameplayEvent{
-				Type:   ipc.ClientGameplayEvent_EXCHANGE,
-				GameId: "9aK3YgVk",
-				Tiles:  "EEIKNTW",
+				Type:           ipc.ClientGameplayEvent_EXCHANGE,
+				GameId:         "9aK3YgVk",
+				MachineLetters: englishBytes("EEIKNTW"),
 			},
 			userID:         "2gJGaYnchL6LbQVTNQ6mjT",
 			expectedScores: []int32{62, 137},
@@ -137,7 +161,7 @@ func TestProcessGameplayEventSanityChecks(t *testing.T) {
 				Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 				GameId:         "9aK3YgVk",
 				PositionCoords: "8D",
-				Tiles:          "TWEEN",
+				MachineLetters: englishBytes("TWEEN"),
 			},
 			userID: "2gJGaYnchL6LbQVTNQ6mjT",
 			expectedErr: errors.New("tried to play through a letter already on " +
@@ -150,7 +174,7 @@ func TestProcessGameplayEventSanityChecks(t *testing.T) {
 				Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 				GameId:         "9aK3YgVk",
 				PositionCoords: "1D",
-				Tiles:          "KNI..",
+				MachineLetters: englishBytes("KNI.."),
 			},
 			userID: "2gJGaYnchL6LbQVTNQ6mjT",
 			expectedErr: errors.New("a played-through marker was specified, but " +
@@ -162,7 +186,7 @@ func TestProcessGameplayEventSanityChecks(t *testing.T) {
 				Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 				GameId:         "9aK3YgVk",
 				PositionCoords: "14H",
-				Tiles:          "WEEK",
+				MachineLetters: englishBytes("WEEK"),
 			},
 			userID:      "2gJGaYnchL6LbQVTNQ6mjT",
 			expectedErr: errors.New("your play must border a tile already on the board"),
@@ -173,7 +197,7 @@ func TestProcessGameplayEventSanityChecks(t *testing.T) {
 				Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 				GameId:         "9aK3YgVk",
 				PositionCoords: "1D",
-				Tiles:          "KNI.ES",
+				MachineLetters: englishBytes("KNI.ES"),
 			},
 			userID:      "2gJGaYnchL6LbQVTNQ6mjT",
 			expectedErr: errors.New("tile in play but not in rack: 19"),
@@ -181,9 +205,9 @@ func TestProcessGameplayEventSanityChecks(t *testing.T) {
 		{
 			name: "Try exchanging a tile we don't have",
 			cge: &ipc.ClientGameplayEvent{
-				Type:   ipc.ClientGameplayEvent_EXCHANGE,
-				GameId: "9aK3YgVk",
-				Tiles:  "Q",
+				Type:           ipc.ClientGameplayEvent_EXCHANGE,
+				GameId:         "9aK3YgVk",
+				MachineLetters: englishBytes("Q"),
 			},
 			userID:      "2gJGaYnchL6LbQVTNQ6mjT",
 			expectedErr: errors.New("tile in play but not in rack: 17"),
@@ -191,9 +215,9 @@ func TestProcessGameplayEventSanityChecks(t *testing.T) {
 		{
 			name: "Try playing as another player not on turn",
 			cge: &ipc.ClientGameplayEvent{
-				Type:   ipc.ClientGameplayEvent_EXCHANGE,
-				GameId: "9aK3YgVk",
-				Tiles:  "EEIKNTW",
+				Type:           ipc.ClientGameplayEvent_EXCHANGE,
+				GameId:         "9aK3YgVk",
+				MachineLetters: englishBytes("EEIKNTW"),
 			},
 			userID:      "foo",
 			expectedErr: errors.New("not on turn"),
@@ -201,9 +225,9 @@ func TestProcessGameplayEventSanityChecks(t *testing.T) {
 		{
 			name: "Try another game id",
 			cge: &ipc.ClientGameplayEvent{
-				Type:   ipc.ClientGameplayEvent_EXCHANGE,
-				GameId: "abc",
-				Tiles:  "EEIKNTW",
+				Type:           ipc.ClientGameplayEvent_EXCHANGE,
+				GameId:         "abc",
+				MachineLetters: englishBytes("EEIKNTW"),
 			},
 			userID:      "2gJGaYnchL6LbQVTNQ6mjT",
 			expectedErr: errors.New("game ids do not match"),
@@ -253,7 +277,7 @@ func TestChallengeBadWord(t *testing.T) {
 		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         "9aK3YgVk",
 		PositionCoords: "1D",
-		Tiles:          "KNI.EW",
+		MachineLetters: englishBytes("KNI.EW"),
 	}
 
 	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
@@ -274,7 +298,7 @@ func TestChallengeBadWord(t *testing.T) {
 		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         "9aK3YgVk",
 		PositionCoords: "15C",
-		Tiles:          "S.HEROID",
+		MachineLetters: englishBytes("S.HEROID"),
 	}
 	err = ProcessGameplayEvent(ctx, cge3, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
 	is.NoErr(err)
@@ -346,7 +370,7 @@ func TestChallengeGoodWordSingle(t *testing.T) {
 		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         "9aK3YgVk",
 		PositionCoords: "1D",
-		Tiles:          "KNI.E",
+		MachineLetters: englishBytes("KNI.E"),
 	}
 
 	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
@@ -369,7 +393,7 @@ func TestChallengeGoodWordSingle(t *testing.T) {
 		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         "9aK3YgVk",
 		PositionCoords: "15C",
-		Tiles:          "S.HEROID",
+		MachineLetters: englishBytes("S.HEROID"),
 	}
 	err = ProcessGameplayEvent(ctx, cge3, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
 	is.NoErr(err)
@@ -437,7 +461,7 @@ func TestChallengeGoodWordDouble(t *testing.T) {
 		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         "9aK3YgVk",
 		PositionCoords: "1D",
-		Tiles:          "KNI.E",
+		MachineLetters: englishBytes("KNI.E"),
 	}
 
 	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
@@ -459,7 +483,7 @@ func TestChallengeGoodWordDouble(t *testing.T) {
 		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         "9aK3YgVk",
 		PositionCoords: "C11",
-		Tiles:          "TEW", // this is their leave from their last move.
+		MachineLetters: englishBytes("TEW"), // this is their leave from their last move.
 	}
 	err = ProcessGameplayEvent(ctx, cge3, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
 	is.NoErr(err)
@@ -533,7 +557,7 @@ func TestChallengeGoodWordNorwegian(t *testing.T) {
 		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         g.Uid,
 		PositionCoords: "8G",
-		Tiles:          "ÅMA",
+		MachineLetters: norwegianBytes("ÅMA"),
 	}
 	ld, err := tilemapping.GetDistribution(&DefaultConfig.MacondoConfig, "norwegian")
 	is.NoErr(err)
@@ -586,7 +610,7 @@ func TestChallengeGoodWordDoubleWithTimeIncrement(t *testing.T) {
 		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         "9aK3YgVk",
 		PositionCoords: "1D",
-		Tiles:          "KNI.E",
+		MachineLetters: englishBytes("KNI.E"),
 	}
 
 	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
@@ -654,7 +678,7 @@ func TestChallengeBadWordWithTimeIncrement(t *testing.T) {
 		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         "9aK3YgVk",
 		PositionCoords: "1D",
-		Tiles:          "KNI.EW",
+		MachineLetters: englishBytes("KNI.EW"),
 	}
 
 	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
@@ -724,7 +748,7 @@ func TestTimeRanOut(t *testing.T) {
 		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         "9aK3YgVk",
 		PositionCoords: "1D",
-		Tiles:          "KNI.EW",
+		MachineLetters: englishBytes("KNI.EW"),
 	}
 
 	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
@@ -774,7 +798,7 @@ func TestTimeRanOut(t *testing.T) {
 		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         "9aK3YgVk",
 		PositionCoords: "1D",
-		Tiles:          "FOO", // doesn't matter
+		MachineLetters: englishBytes("FOO"), // doesn't matter
 	}
 
 	err = ProcessGameplayEvent(ctx, cge3, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
@@ -797,7 +821,7 @@ func TestChallengeBadWordEndOfGame(t *testing.T) {
 		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         "9zaaSuN5",
 		PositionCoords: "12A",
-		Tiles:          "AER.OITh",
+		MachineLetters: englishBytes("AER.OITh"),
 	}
 
 	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
@@ -826,7 +850,7 @@ func TestChallengeBadWordEndOfGame(t *testing.T) {
 		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         "9zaaSuN5",
 		PositionCoords: "14J",
-		Tiles:          "PR..CE",
+		MachineLetters: englishBytes("PR..CE"),
 	}
 	err = ProcessGameplayEvent(ctx, cge3, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
 	is.NoErr(err)
@@ -859,7 +883,7 @@ func TestChallengeGoodWordEndOfGame(t *testing.T) {
 				Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 				GameId:         "9zaaSuN5",
 				PositionCoords: "12F",
-				Tiles:          "TRIAlO..E",
+				MachineLetters: englishBytes("TRIAlO..E"),
 			}
 
 			err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
@@ -978,7 +1002,7 @@ func TestRejectNonChallOrPass(t *testing.T) {
 	cge := &ipc.ClientGameplayEvent{
 		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 		PositionCoords: "14J",
-		Tiles:          "PR..CE",
+		MachineLetters: englishBytes("PR..CE"),
 		GameId:         "9zaaSuN5",
 	}
 
@@ -1013,7 +1037,7 @@ func TestConsecutiveScorelessTurns(t *testing.T) {
 		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         "9aK3YgVk",
 		PositionCoords: "1D",
-		Tiles:          "KNI.EW",
+		MachineLetters: englishBytes("KNI.EW"),
 	}
 
 	err = ProcessGameplayEvent(ctx, phonyCGE, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
@@ -1029,9 +1053,9 @@ func TestConsecutiveScorelessTurns(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(gdoc.ScorelessTurns, uint32(4))
 	exchangeCGE := &ipc.ClientGameplayEvent{
-		Type:   ipc.ClientGameplayEvent_EXCHANGE,
-		GameId: "9aK3YgVk",
-		Tiles:  "KW",
+		Type:           ipc.ClientGameplayEvent_EXCHANGE,
+		GameId:         "9aK3YgVk",
+		MachineLetters: englishBytes("KW"),
 	}
 	err = ProcessGameplayEvent(ctx, exchangeCGE, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
 	is.NoErr(err)
@@ -1041,7 +1065,7 @@ func TestConsecutiveScorelessTurns(t *testing.T) {
 		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         "9aK3YgVk",
 		PositionCoords: "15C",
-		Tiles:          "S.HERIOD",
+		MachineLetters: englishBytes("S.HERIOD"),
 	}
 	err = ProcessGameplayEvent(ctx, phonyCGE, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
 	is.NoErr(err)
@@ -1145,7 +1169,7 @@ func TestVoidChallenge(t *testing.T) {
 		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         "9aK3YgVk",
 		PositionCoords: "1D",
-		Tiles:          "KNI.EW",
+		MachineLetters: englishBytes("KNI.EW"),
 	}
 
 	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
@@ -1155,7 +1179,7 @@ func TestVoidChallenge(t *testing.T) {
 		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         "9aK3YgVk",
 		PositionCoords: "1D",
-		Tiles:          "KNI.E",
+		MachineLetters: englishBytes("KNI.E"),
 	}
 	err = ProcessGameplayEvent(ctx, cge2, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
 	is.NoErr(err)
@@ -1178,7 +1202,7 @@ func TestVoidChallengeEndOfGame(t *testing.T) {
 		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         "9zaaSuN5",
 		PositionCoords: "12F",
-		Tiles:          "TRIAlO..E",
+		MachineLetters: englishBytes("TRIAlO..E"),
 	}
 
 	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
@@ -1205,7 +1229,7 @@ func TestTripleChallenge(t *testing.T) {
 		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         "9zaaSuN5",
 		PositionCoords: "12F",
-		Tiles:          "TRIAlO..E",
+		MachineLetters: englishBytes("TRIAlO..E"),
 	}
 
 	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
@@ -1239,9 +1263,9 @@ func TestExchange(t *testing.T) {
 
 	// This player's rack is EEIKNTW
 	cge := &ipc.ClientGameplayEvent{
-		Type:   ipc.ClientGameplayEvent_EXCHANGE,
-		GameId: "9aK3YgVk",
-		Tiles:  "EKW",
+		Type:           ipc.ClientGameplayEvent_EXCHANGE,
+		GameId:         "9aK3YgVk",
+		MachineLetters: englishBytes("EKW"),
 	}
 	userID := "2gJGaYnchL6LbQVTNQ6mjT"
 
@@ -1275,9 +1299,9 @@ func TestExchangePartialRack(t *testing.T) {
 
 	// This player's rack is IIIII
 	cge := &ipc.ClientGameplayEvent{
-		Type:   ipc.ClientGameplayEvent_EXCHANGE,
-		GameId: "9aK3YgVk",
-		Tiles:  "IIIII",
+		Type:           ipc.ClientGameplayEvent_EXCHANGE,
+		GameId:         "9aK3YgVk",
+		MachineLetters: englishBytes("IIIII"),
 	}
 	userID := "2gJGaYnchL6LbQVTNQ6mjT"
 

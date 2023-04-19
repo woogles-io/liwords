@@ -137,7 +137,7 @@ func TestWrongTurn(t *testing.T) {
 		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         g.GameID(),
 		PositionCoords: "8D",
-		Tiles:          "BANJO",
+		MachineLetters: []byte{2, 1, 14, 10, 15},
 	}
 
 	// User ID below is "cesar4" who's not on turn.
@@ -169,7 +169,7 @@ func Test5ptBadWord(t *testing.T) {
 		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         g.GameID(),
 		PositionCoords: "8D",
-		Tiles:          "BANJO",
+		MachineLetters: []byte{2, 1, 14, 10, 15},
 	}
 	g.SetRacksForBoth([]*tilemapping.Rack{
 		tilemapping.RackFromString("ABEJNOR", g.Alphabet()),
@@ -214,7 +214,7 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         g.GameID(),
 		PositionCoords: "8D",
-		Tiles:          "BANJOER",
+		MachineLetters: []byte{2, 1, 14, 10, 15, 5, 18}, // BANJOER
 	}
 	g.SetChallengeRule(macondopb.ChallengeRule_DOUBLE)
 	g.SetRacksForBoth([]*tilemapping.Rack{
@@ -276,7 +276,7 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         g.GameID(),
 		PositionCoords: "8D",
-		Tiles:          "BANJO",
+		MachineLetters: []byte{2, 1, 14, 10, 15},
 	}
 	g.SetChallengeRule(macondopb.ChallengeRule_DOUBLE)
 	g.SetRacksForBoth([]*tilemapping.Rack{
@@ -337,13 +337,13 @@ func TestQuickdata(t *testing.T) {
 		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         g.GameID(),
 		PositionCoords: "8D",
-		Tiles:          "BANJO",
+		MachineLetters: []byte{2, 1, 14, 10, 15}, // BANJO
 	}
 	cge2 := &pb.ClientGameplayEvent{
 		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         g.GameID(),
 		PositionCoords: "I8",
-		Tiles:          "SYZYGAL",
+		MachineLetters: []byte{19, 25, 26, 25, 7, 1, 12}, // SYZYGAL
 	}
 	g.SetChallengeRule(macondopb.ChallengeRule_TRIPLE)
 	g.SetRacksForBoth([]*tilemapping.Rack{
