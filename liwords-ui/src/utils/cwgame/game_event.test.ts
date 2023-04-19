@@ -1,6 +1,7 @@
 import { EphemeralTile } from './common';
 import { computeLeave, tilesetToMoveEvent } from './game_event';
 import { Board } from './board';
+import { StandardEnglishAlphabet } from '../../constants/alphabets';
 
 const oxyTilesLayout = [
   ' PACIFYING     ',
@@ -59,10 +60,17 @@ it('tests complex event', () => {
   });
   const board = new Board();
   board.setTileLayout(oxyTilesLayout);
-  const evt = tilesetToMoveEvent(placedTiles, board, '');
+  const evt = tilesetToMoveEvent(
+    placedTiles,
+    board,
+    '',
+    StandardEnglishAlphabet
+  );
   expect(evt).not.toBeNull();
   expect(evt?.positionCoords).toEqual('A1');
-  expect(evt?.tiles).toEqual('OX.P...B..AZ..E');
+  expect(evt?.machineLetters).toEqual(
+    Uint8Array.from([15, 24, 0, 16, 0, 0, 0, 2, 0, 0, 1, 26, 0, 0, 5])
+  ); // 'OX.P...B..AZ..E'
 });
 
 it('tests invalid play', () => {
@@ -100,7 +108,12 @@ it('tests invalid play', () => {
   });
   const board = new Board();
   board.setTileLayout(oxyTilesLayout);
-  const evt = tilesetToMoveEvent(placedTiles, board, '');
+  const evt = tilesetToMoveEvent(
+    placedTiles,
+    board,
+    '',
+    StandardEnglishAlphabet
+  );
   expect(evt).toBeNull();
 });
 
@@ -123,7 +136,12 @@ it('should not commit undesignated blank', () => {
   });
   const board = new Board();
   board.setTileLayout(oxyTilesLayout);
-  const evt = tilesetToMoveEvent(placedTiles, board, '');
+  const evt = tilesetToMoveEvent(
+    placedTiles,
+    board,
+    '',
+    StandardEnglishAlphabet
+  );
   expect(evt).toBeNull();
 });
 
@@ -146,10 +164,15 @@ it('tests event with blank', () => {
   });
   const board = new Board();
   board.setTileLayout(oxyTilesLayout);
-  const evt = tilesetToMoveEvent(placedTiles, board, '');
+  const evt = tilesetToMoveEvent(
+    placedTiles,
+    board,
+    '',
+    StandardEnglishAlphabet
+  );
   expect(evt).not.toBeNull();
   expect(evt?.positionCoords).toEqual('5C');
-  expect(evt?.tiles).toEqual('.ImB');
+  expect(evt?.machineLetters).toEqual(Uint8Array.from([0, 9, 0x80 | 13, 2]));
 });
 
 it('tests computeLeave', () => {

@@ -350,7 +350,14 @@ export const runesToUint8Array = (
       }
     }
     if (!match) {
-      throw new Error('cannot convert ' + runes + ' to uint8array');
+      // Check if it's a through play.
+      // This is not very clean.
+      if (chars[i] === ThroughTileMarker) {
+        bts.push(0);
+        i++;
+      } else {
+        throw new Error('cannot convert ' + runes + ' to uint8array');
+      }
     }
   }
 

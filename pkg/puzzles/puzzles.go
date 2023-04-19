@@ -3,10 +3,12 @@ package puzzles
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
 
+	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/glicko"
@@ -141,7 +143,18 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID
 	if err != nil {
 		return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, nil, nil, err
 	}
-	userIsCorrect := answersAreEqual(userAnswer, correctAnswer)
+	if req.Rules == nil {
+		return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, nil, nil, errors.New("nil-game-rules")
+	}
+	cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
+	if !ok {
+		return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, nil, nil, errors.New("missing-config-in-context")
+	}
+	ld, err := tilemapping.GetDistribution(&cfg.MacondoConfig, req.Rules.LetterDistributionName)
+	if err != nil {
+		return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, nil, nil, err
+	}
+	userIsCorrect := answersAreEqual(userAnswer, correctAnswer, ld)
 	// Check if user has already seen this puzzle
 	rated, _, attempts, status, _, _, _, _, err := ps.GetAttempts(ctx, userId, puzzleUUID)
 	if err != nil {
@@ -222,7 +235,7 @@ func GetJobInfo(ctx context.Context, ps PuzzleStore, genId int) (time.Time, time
 	return ps.GetJobInfo(ctx, genId)
 }
 
-func answersAreEqual(userAnswer *ipc.ClientGameplayEvent, correctAnswer *macondopb.GameEvent) bool {
+func answersAreEqual(userAnswer *ipc.ClientGameplayEvent, correctAnswer *macondopb.GameEvent, ld *tilemapping.LetterDistribution) bool {
 	if userAnswer == nil {
 		// The user answer is nil when they have given up
 		// and just want the answer without making an attempt
@@ -231,10 +244,19 @@ func answersAreEqual(userAnswer *ipc.ClientGameplayEvent, correctAnswer *macondo
 	// Convert the ClientGameplayEvent to a macondo GameEvent:
 	converted := &macondopb.GameEvent{}
 
+	if len(userAnswer.Tiles) > 0 && len(userAnswer.MachineLetters) > 0 {
+		log.Error().Msg("puzzle-tiles-and-machineletters")
+		return false
+	}
+
 	switch userAnswer.Type {
 	case ipc.ClientGameplayEvent_TILE_PLACEMENT:
 		converted.Type = macondopb.GameEvent_TILE_PLACEMENT_MOVE
-		converted.PlayedTiles = userAnswer.Tiles
+		if len(userAnswer.MachineLetters) > 0 {
+			converted.PlayedTiles = tilemapping.FromByteArr(userAnswer.MachineLetters).UserVisiblePlayedTiles(ld.TileMapping())
+		} else {
+			converted.PlayedTiles = userAnswer.Tiles
+		}
 		row, col, vertical := move.FromBoardGameCoords(userAnswer.PositionCoords)
 
 		converted.Row = int32(row)
@@ -245,8 +267,12 @@ func answersAreEqual(userAnswer *ipc.ClientGameplayEvent, correctAnswer *macondo
 			converted.Direction = macondopb.GameEvent_HORIZONTAL
 		}
 	case ipc.ClientGameplayEvent_EXCHANGE:
+		if len(userAnswer.MachineLetters) > 0 {
+			converted.Exchanged = tilemapping.FromByteArr(userAnswer.MachineLetters).UserVisible(ld.TileMapping())
+		} else {
+			converted.Exchanged = userAnswer.Tiles
+		}
 		converted.Type = macondopb.GameEvent_EXCHANGE
-		converted.Exchanged = userAnswer.Tiles
 	case ipc.ClientGameplayEvent_PASS:
 		converted.Type = macondopb.GameEvent_PASS
 	}
