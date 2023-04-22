@@ -12,7 +12,7 @@ import {
   PlayedTiles,
   PlayerOfTiles,
   MachineLetter,
-  isBlankMachineLetter,
+  isDesignatedBlankMachineLetter,
 } from '../../utils/cwgame/common';
 import { PlayerOrder } from '../constants';
 import { ClockController, Millis } from '../timer_controller';
@@ -228,7 +228,7 @@ const placeOnBoard = (
     const tile = { row, col, ml };
     if (ml !== 0 && board.letterAt(row, col) === 0) {
       board.addTile(tile);
-      if (isBlankMachineLetter(tile.ml)) {
+      if (isDesignatedBlankMachineLetter(tile.ml)) {
         newPool[0] -= 1;
       } else {
         newPool[tile.ml] -= 1;
@@ -260,7 +260,7 @@ const unplaceOnBoard = (
     if (ml !== 0 && board.letterAt(row, col) !== 0) {
       // Remove the tile from the board and place it back in the pool.
       board.removeTile(tile);
-      if (isBlankMachineLetter(tile.ml)) {
+      if (isDesignatedBlankMachineLetter(tile.ml)) {
         newPool[0] += 1;
       } else {
         newPool[tile.ml] += 1;

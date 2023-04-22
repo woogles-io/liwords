@@ -4,7 +4,7 @@
  * for now.
  */
 
-import { Blank } from '../utils/cwgame/common';
+import { Blank, MachineLetter } from '../utils/cwgame/common';
 import { ThroughTileMarker } from '../utils/cwgame/game_event';
 
 type AlphabetLetter = {
@@ -13,6 +13,7 @@ type AlphabetLetter = {
   count: number; // how many of these there are in the bag
   vowel: boolean;
   category: number; // for detailed view, we split letters into groups.
+  shortcut?: string; // a character that can be used to enter this rune.
   // for example:  'AEIOU,DGLNRT,BCFHMPVWY,JKQXZS?'
 };
 
@@ -22,6 +23,7 @@ export type Alphabet = {
   // letterMap creates a structure that is faster to access than a list
   letterMap: { [key: string]: AlphabetLetter };
   machineLetterMap: { [key: string]: number };
+  shortcutMap: { [key: string]: number };
   // For Catalan we will have L·L, NY, etc. Spanish also has a couple of two-
   // character tiles.
   longestPossibleTileRune: number;
@@ -59,6 +61,7 @@ export const StandardEnglishAlphabet: Alphabet = {
   ],
   letterMap: {},
   machineLetterMap: {},
+  shortcutMap: {},
   longestPossibleTileRune: 1,
 };
 
@@ -97,7 +100,7 @@ export const StandardGermanAlphabet: Alphabet = {
   ],
   letterMap: {},
   machineLetterMap: {},
-
+  shortcutMap: {},
   longestPossibleTileRune: 1,
 };
 
@@ -141,7 +144,7 @@ export const StandardNorwegianAlphabet: Alphabet = {
   ],
   letterMap: {},
   machineLetterMap: {},
-
+  shortcutMap: {},
   longestPossibleTileRune: 1,
 };
 
@@ -177,7 +180,7 @@ export const StandardFrenchAlphabet: Alphabet = {
   ],
   letterMap: {},
   machineLetterMap: {},
-
+  shortcutMap: {},
   longestPossibleTileRune: 1,
 };
 
@@ -213,7 +216,7 @@ export const SuperEnglishAlphabet: Alphabet = {
   ],
   letterMap: {},
   machineLetterMap: {},
-
+  shortcutMap: {},
   longestPossibleTileRune: 1,
 };
 
@@ -232,13 +235,34 @@ export const StandardCatalanAlphabet: Alphabet = {
     { rune: 'I', score: 1, count: 8, vowel: true, category: 0 },
     { rune: 'J', score: 8, count: 1, vowel: false, category: 3 },
     { rune: 'L', score: 1, count: 4, vowel: false, category: 1 },
-    { rune: 'L·L', score: 10, count: 1, vowel: false, category: 3 },
+    {
+      rune: 'L·L',
+      score: 10,
+      count: 1,
+      vowel: false,
+      category: 3,
+      shortcut: 'W',
+    },
     { rune: 'M', score: 2, count: 3, vowel: false, category: 2 },
     { rune: 'N', score: 1, count: 6, vowel: false, category: 1 },
-    { rune: 'NY', score: 10, count: 1, vowel: false, category: 3 },
+    {
+      rune: 'NY',
+      score: 10,
+      count: 1,
+      vowel: false,
+      category: 3,
+      shortcut: 'Y',
+    },
     { rune: 'O', score: 1, count: 5, vowel: true, category: 0 },
     { rune: 'P', score: 3, count: 2, vowel: false, category: 2 },
-    { rune: 'QU', score: 8, count: 1, vowel: false, category: 3 },
+    {
+      rune: 'QU',
+      score: 8,
+      count: 1,
+      vowel: false,
+      category: 3,
+      shortcut: 'Q',
+    },
     { rune: 'R', score: 1, count: 8, vowel: false, category: 1 },
     { rune: 'S', score: 1, count: 8, vowel: false, category: 3 },
     { rune: 'T', score: 1, count: 5, vowel: false, category: 1 },
@@ -249,6 +273,7 @@ export const StandardCatalanAlphabet: Alphabet = {
   ],
   letterMap: {},
   machineLetterMap: {},
+  shortcutMap: {},
   longestPossibleTileRune: 3,
 };
 
@@ -264,6 +289,9 @@ export const StandardCatalanAlphabet: Alphabet = {
   alph.letters.forEach((letter, idx) => {
     alph.letterMap[letter.rune] = letter;
     alph.machineLetterMap[letter.rune] = idx;
+    if (letter.shortcut) {
+      alph.shortcutMap[letter.shortcut] = idx;
+    }
   });
 });
 
@@ -297,6 +325,19 @@ export const runeToValues = (
   }
   if (alphabet.letterMap[rune]) {
     return alphabet.letterMap[rune].score;
+  }
+  return 0;
+};
+
+export const scoreFor = (
+  alphabet: Alphabet,
+  ml: MachineLetter | null
+): number => {
+  if (ml == null) {
+    return 0;
+  }
+  if (alphabet.letters[ml]) {
+    return alphabet.letters[ml].score;
   }
   return 0;
 };

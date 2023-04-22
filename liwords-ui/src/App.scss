@@ -138,6 +138,7 @@ a.plain,
 }
 
 .bnjyMode {
+    /* XXX: fix this */
   .tile[data-rune='I'],
   .tile[data-rune='O'],
   .tile[data-rune='X'] {
@@ -302,8 +303,7 @@ ul {
   }
   .ant-tag-red,
   .ant-tag-removed,
-  .ant-tag-forfeit,
-  {
+  .ant-tag-forfeit {
     background: #8a0f23;
     color: #ffffff;
     border-color: #8a0f23;

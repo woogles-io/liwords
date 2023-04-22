@@ -4,31 +4,32 @@ import { useDrag, useDragLayer, useDrop } from 'react-dnd';
 import TentativeScore from './tentative_score';
 import {
   Blank,
-  EmptySpace,
-  isDesignatedBlank,
+  EmptyMachineLetter,
+  MachineLetter,
+  isDesignatedBlankMachineLetter,
   isTouchDevice,
   uniqueTileIdx,
 } from '../utils/cwgame/common';
 import { Popover } from 'antd';
+import { Alphabet, uint8ToRune } from '../constants/alphabets';
 
 // just refresh the page when changing the setting...
 const bicolorMode = localStorage.getItem('enableBicolorMode') === 'true';
 
 type TileLetterProps = {
-  rune: string;
+  letter: MachineLetter;
+  alphabet: Alphabet;
 };
 
 export const TILE_TYPE = 'TILE_TYPE';
 
 export const TileLetter = React.memo((props: TileLetterProps) => {
-  let { rune } = props;
-  // if (rune.toUpperCase() !== rune) {
-  //   rune = rune.toUpperCase();
-  // }
+  const { letter, alphabet } = props;
+  let rune = uint8ToRune(letter, alphabet);
+  // For display purposes, an empty blank should just look empty and not like a `?`.
   if (rune === Blank) {
     rune = ' ';
   }
-
   return <p className="rune">{rune}</p>;
 });
 
@@ -51,14 +52,16 @@ export const TilePreview = React.memo((props: TilePreviewProps) => {
   const {
     isDragging,
     xyPosition: position,
-    rune,
+    letter,
+    alphabet,
     value,
     playerOfTile,
   } = useDragLayer((monitor) => ({
     xyPosition: monitor.getClientOffset(),
     initialPosition: monitor.getInitialClientOffset(),
     isDragging: monitor.isDragging(),
-    rune: monitor.getItem()?.rune,
+    letter: monitor.getItem()?.letter as MachineLetter,
+    alphabet: monitor.getItem()?.alphabet as Alphabet,
     value: monitor.getItem()?.value,
     playerOfTile: monitor.getItem()?.playerOfTile,
   }));
@@ -86,11 +89,11 @@ export const TilePreview = React.memo((props: TilePreviewProps) => {
       left,
     };
     const computedClass = `tile preview${overBoard ? ' over-board' : ''}${
-      rune && isDesignatedBlank(rune) ? ' blank' : ''
+      letter && isDesignatedBlankMachineLetter(letter) ? ' blank' : ''
     }${playerOfTile ? ' tile-p1' : ' tile-p0'}`;
     return (
       <div className={computedClass} style={computedStyle}>
-        <TileLetter rune={rune} />
+        <TileLetter letter={letter} alphabet={alphabet} />
         <PointValue value={value} />
       </div>
     );
@@ -102,7 +105,8 @@ export const TilePreview = React.memo((props: TilePreviewProps) => {
 type TileProps = {
   lastPlayed: boolean;
   playerOfTile: number;
-  rune: string;
+  alphabet: Alphabet;
+  letter: MachineLetter;
   value: number;
   tentative?: boolean;
   tentativeScore?: number;
@@ -192,7 +196,7 @@ const Tile = React.memo((props: TileProps) => {
     e.stopPropagation();
   };
 
-  const canDrag = props.grabbable && props.rune !== EmptySpace;
+  const canDrag = props.grabbable && props.letter !== EmptyMachineLetter;
   const [{ isDragging }, drag, preview] = useDrag({
     item: {
       type: TILE_TYPE,
@@ -204,7 +208,7 @@ const Tile = React.memo((props: TileProps) => {
         typeof props.x === 'number' && typeof props.y === 'number'
           ? uniqueTileIdx(props.y, props.x).toString()
           : undefined,
-      rune: props.rune,
+      letter: props.letter,
       value: props.value,
       playerOfTile: props.playerOfTile,
     },
@@ -257,7 +261,7 @@ const Tile = React.memo((props: TileProps) => {
   }${canDrag ? ' droppable' : ''}${props.selected ? ' selected' : ''}${
     props.tentative ? ' tentative' : ''
   }${props.lastPlayed ? ' last-played' : ''}${
-    isDesignatedBlank(props.rune) ? ' blank' : ''
+    isDesignatedBlankMachineLetter(props.letter) ? ' blank' : ''
   }${props.playerOfTile ? ' tile-p1' : ' tile-p0'}${
     (bicolorMode ? props.playerOfTile : props.lastPlayed) ? ' second-color' : ''
   }`;
@@ -265,10 +269,12 @@ const Tile = React.memo((props: TileProps) => {
     <div onDragOver={handleDropOver} onDrop={handleDrop} ref={tileRef}>
       <div
         className={computedClassName}
-        data-rune={props.rune}
+        data-letter={props.letter}
         style={{
           cursor: canDrag ? 'grab' : 'default',
-          ...(props.rune === EmptySpace ? { visibility: 'hidden' } : null),
+          ...(props.letter === EmptyMachineLetter
+            ? { visibility: 'hidden' }
+            : null),
         }}
         onClick={props.onClick}
         onContextMenu={props.onContextMenu}
@@ -278,9 +284,9 @@ const Tile = React.memo((props: TileProps) => {
         onDragEnd={handleEndDrag}
         draggable={canDrag}
       >
-        {props.rune !== EmptySpace && (
+        {props.letter !== EmptyMachineLetter && (
           <React.Fragment>
-            <TileLetter rune={props.rune} />
+            <TileLetter letter={props.letter} alphabet={props.alphabet} />
             <PointValue value={props.value} />
           </React.Fragment>
         )}

@@ -51,10 +51,10 @@ export class Board {
         const letter = layout[row][col];
         if (letter !== EmptySpace) {
           this.isEmpty = false;
+          // assume english; this is only for tests!
+          const temp = runesToUint8Array(letter, StandardEnglishAlphabet);
+          setLetterAt(this.letters, row * this.dim + col, temp[0]);
         }
-        // assume english; this is only for tests!
-        const temp = runesToUint8Array(letter, StandardEnglishAlphabet);
-        setLetterAt(this.letters, row * this.dim + col, temp[0]);
       }
     }
   }

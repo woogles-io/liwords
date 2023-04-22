@@ -2,14 +2,17 @@
 
 import {
   EphemeralTile,
-  EmptySpace,
-  isBlank,
   uniqueTileIdx,
-  Blank,
+  MachineLetter,
+  makeBlank,
+  EmptyBoardSpaceMachineLetter,
 } from './common';
 import { calculateTemporaryScore } from './scoring';
 import { Board } from './board';
-import { Alphabet } from '../../constants/alphabets';
+import { Alphabet, uint8ToRune } from '../../constants/alphabets';
+import { isDesignatedBlankMachineLetter } from './common';
+import { BlankMachineLetter } from './common';
+import { EmptyMachineLetter } from './common';
 
 const NormalizedBackspace = 'BACKSPACE';
 const NormalizedSpace = ' ';
@@ -62,7 +65,7 @@ export const nextArrowPropertyState = (
 
 type PlacementHandlerReturn = {
   newPlacedTiles: Set<EphemeralTile>;
-  newDisplayedRack: string;
+  newDisplayedRack: Array<MachineLetter>;
   playScore: number | undefined; // undefined for illegal plays
   isUndesignated?: boolean;
 };
@@ -73,13 +76,13 @@ interface KeypressHandlerReturn extends PlacementHandlerReturn {
 
 export const handleTileDeletion = (
   arrowProperty: PlacementArrow,
-  unplacedTiles: string, // tiles currently still on rack
+  unplacedTiles: Array<MachineLetter>, // tiles currently still on rack
   currentlyPlacedTiles: Set<EphemeralTile>,
   board: Board,
   alphabet: Alphabet
 ): KeypressHandlerReturn => {
   // Remove any tiles.
-  let newUnplacedTiles = unplacedTiles;
+  const newUnplacedTiles = unplacedTiles;
   const newPlacedTiles = new Set(currentlyPlacedTiles);
 
   currentlyPlacedTiles.forEach((t) => {
@@ -88,18 +91,15 @@ export const handleTileDeletion = (
       newPlacedTiles.delete(t);
       // can't exit early but w/e, this is fast
       let { letter } = t;
-      if (isBlank(letter)) {
+      if (isDesignatedBlankMachineLetter(letter)) {
         // unassign the blank
-        letter = Blank;
+        letter = BlankMachineLetter;
       }
-      const emptyIndex = newUnplacedTiles.indexOf(EmptySpace);
+      const emptyIndex = newUnplacedTiles.indexOf(EmptyMachineLetter);
       if (emptyIndex >= 0) {
-        newUnplacedTiles =
-          newUnplacedTiles.substring(0, emptyIndex) +
-          letter +
-          newUnplacedTiles.substring(emptyIndex + 1);
+        newUnplacedTiles[emptyIndex] = letter;
       } else {
-        newUnplacedTiles += letter;
+        newUnplacedTiles.push(letter);
       }
     }
   });
@@ -110,6 +110,17 @@ export const handleTileDeletion = (
     newDisplayedRack: newUnplacedTiles,
     playScore: calculateTemporaryScore(newPlacedTiles, board, alphabet),
   };
+};
+
+const getMachineLetterFor = (
+  key: string,
+  alphabet: Alphabet
+): MachineLetter | null => {
+  let foundML = alphabet.machineLetterMap[key];
+  if (foundML == null) {
+    foundML = alphabet.shortcutMap[key];
+  }
+  return foundML;
 };
 
 /**
@@ -123,7 +134,7 @@ export const handleKeyPress = (
   arrowProperty: PlacementArrow,
   board: Board,
   key: string,
-  unplacedTiles: string, // tiles currently still on rack
+  unplacedTiles: Array<MachineLetter>, // tiles currently still on rack
   currentlyPlacedTiles: Set<EphemeralTile>,
   alphabet: Alphabet
 ): KeypressHandlerReturn | null => {
@@ -139,6 +150,10 @@ export const handleKeyPress = (
 
   if (
     !Object.prototype.hasOwnProperty.call(alphabet.letterMap, normalizedKey) &&
+    !Object.prototype.hasOwnProperty.call(
+      alphabet.shortcutMap,
+      normalizedKey
+    ) &&
     normalizedKey !== NormalizedBackspace &&
     normalizedKey !== NormalizedSpace
   ) {
@@ -170,7 +185,7 @@ export const handleKeyPress = (
 
   let newrow = arrowProperty.row;
   let newcol = arrowProperty.col;
-  let newUnplacedTiles = unplacedTiles;
+  const newUnplacedTiles = unplacedTiles;
 
   // First figure out where to put the arrow, no matter what.
   if (arrowProperty.horizontal) {
@@ -179,7 +194,7 @@ export const handleKeyPress = (
     } while (
       newcol < board.dim &&
       newcol >= 0 &&
-      (board.letterAt(newrow, newcol) !== EmptySpace ||
+      (board.letterAt(newrow, newcol) !== EmptyMachineLetter ||
         (increment === 1 &&
           ephTileMap[uniqueTileIdx(newrow, newcol)] !== undefined))
     );
@@ -189,7 +204,7 @@ export const handleKeyPress = (
     } while (
       newrow < board.dim &&
       newrow >= 0 &&
-      (board.letterAt(newrow, newcol) !== EmptySpace ||
+      (board.letterAt(newrow, newcol) !== EmptyMachineLetter ||
         (increment === 1 &&
           ephTileMap[uniqueTileIdx(newrow, newcol)] !== undefined))
     );
@@ -237,27 +252,30 @@ export const handleKeyPress = (
     };
   }
 
-  const blankIdx = unplacedTiles.indexOf(Blank);
+  const blankIdx = unplacedTiles.indexOf(BlankMachineLetter);
   let existed = false;
 
   if (blankIdx !== -1 && normalizedKey === key) {
     // If there is a blank, and the user specifically requested to use it
     // (by typing the letter with a Shift)
+    const foundML = getMachineLetterFor(normalizedKey, alphabet);
+    if (foundML == null) {
+      return null;
+    }
     existed = true;
     newPlacedTiles.add({
       row: arrowProperty.row,
       col: arrowProperty.col,
-      // Specifically designate it as a blanked letter by lower-casing it.
-      letter: normalizedKey.toLowerCase(),
+      // Specifically designate it as a blanked letter.
+      letter: makeBlank(foundML),
     });
-    newUnplacedTiles =
-      unplacedTiles.substring(0, blankIdx) +
-      EmptySpace +
-      unplacedTiles.substring(blankIdx + 1);
+    newUnplacedTiles[blankIdx] = EmptyMachineLetter;
   } else {
     // check if the key is in the unplaced tiles.
     for (let i = 0; i < unplacedTiles.length; i++) {
-      if (unplacedTiles[i] === normalizedKey) {
+      const ml = getMachineLetterFor(normalizedKey, alphabet);
+
+      if (ml != null) {
         // Only use the blank in one of two situations:
         // - the original letter was uppercase (typed with a Shift)
         // - last-case scenario (all tiles have been scanned first)
@@ -265,13 +283,10 @@ export const handleKeyPress = (
         newPlacedTiles.add({
           row: arrowProperty.row,
           col: arrowProperty.col,
-          letter: normalizedKey,
+          letter: ml,
         });
 
-        newUnplacedTiles =
-          unplacedTiles.substring(0, i) +
-          EmptySpace +
-          unplacedTiles.substring(i + 1);
+        newUnplacedTiles[i] = EmptyMachineLetter;
         existed = true;
         break;
       }
@@ -280,16 +295,18 @@ export const handleKeyPress = (
   if (!existed) {
     // tile did not exist on rack. Check if there's a blank we can use.
     if (blankIdx !== -1) {
-      newPlacedTiles.add({
-        row: arrowProperty.row,
-        col: arrowProperty.col,
-        letter: normalizedKey.toLowerCase(),
-      });
+      const ml = getMachineLetterFor(normalizedKey, alphabet);
+      if (ml != null) {
+        newPlacedTiles.add({
+          row: arrowProperty.row,
+          col: arrowProperty.col,
+          letter: makeBlank(ml),
+        });
 
-      newUnplacedTiles =
-        unplacedTiles.substring(0, blankIdx) +
-        EmptySpace +
-        unplacedTiles.substring(blankIdx + 1);
+        newUnplacedTiles[blankIdx] = EmptyMachineLetter;
+      } else {
+        return null;
+      }
     } else {
       // Can't place this tile at all.
       return null;
@@ -309,18 +326,21 @@ export const handleKeyPress = (
   };
 };
 
-// Insert a rune to unplacedTiles at the preferred position.
+// Insert a MachineLetter into unplacedTiles at the preferred position.
 // Remove a nearby gap if any to keep length the same.
-// Assume 0 <= rackIndex <= unplacedTiles.length and rune.length === 1.
+// Assume 0 <= rackIndex <= unplacedTiles.length.
 export const stableInsertRack = (
-  unplacedTiles: string,
+  unplacedTiles: Array<MachineLetter>,
   rackIndex: number,
-  rune: string
-): string => {
-  let newUnplacedTilesLeft = unplacedTiles.substring(0, rackIndex);
-  let newUnplacedTilesRight = unplacedTiles.substring(rackIndex);
-  let emptyIndexLeft = newUnplacedTilesLeft.lastIndexOf(EmptySpace);
-  let emptyIndexRight = newUnplacedTilesRight.indexOf(EmptySpace);
+  letter?: MachineLetter
+): Array<MachineLetter> => {
+  if (letter == null) {
+    return unplacedTiles;
+  }
+  let newUnplacedTilesLeft = unplacedTiles.slice(0, rackIndex);
+  let newUnplacedTilesRight = unplacedTiles.slice(rackIndex);
+  let emptyIndexLeft = newUnplacedTilesLeft.lastIndexOf(EmptyMachineLetter);
+  let emptyIndexRight = newUnplacedTilesRight.indexOf(EmptyMachineLetter);
   if (emptyIndexLeft >= 0 && emptyIndexRight >= 0) {
     // Determine which gap to recover.
     // Right has an advantage because it starts from 0, Left starts from 1.
@@ -332,26 +352,28 @@ export const stableInsertRack = (
     }
   }
   if (emptyIndexLeft >= 0) {
-    newUnplacedTilesLeft =
-      newUnplacedTilesLeft.substring(0, emptyIndexLeft) +
-      newUnplacedTilesLeft.substring(emptyIndexLeft + 1);
+    newUnplacedTilesLeft = newUnplacedTilesLeft
+      .slice(0, emptyIndexLeft)
+      .concat(newUnplacedTilesLeft.slice(emptyIndexLeft + 1));
     // Keep Left's length the same if possible.
     if (newUnplacedTilesRight.length > 0) {
-      newUnplacedTilesLeft += newUnplacedTilesRight[0];
-      newUnplacedTilesRight = newUnplacedTilesRight.substring(1);
+      newUnplacedTilesLeft = newUnplacedTilesLeft.concat(
+        newUnplacedTilesRight[0]
+      );
+      newUnplacedTilesRight = newUnplacedTilesRight.slice(1);
     }
   } else if (emptyIndexRight >= 0) {
-    newUnplacedTilesRight =
-      newUnplacedTilesRight.substring(0, emptyIndexRight) +
-      newUnplacedTilesRight.substring(emptyIndexRight + 1);
+    newUnplacedTilesRight = newUnplacedTilesRight
+      .slice(0, emptyIndexRight)
+      .concat(newUnplacedTilesRight.slice(emptyIndexRight + 1));
   }
   // It is also possible there are no gaps left, just insert in that case.
-  return newUnplacedTilesLeft + rune + newUnplacedTilesRight;
+  return newUnplacedTilesLeft.concat(letter).concat(newUnplacedTilesRight);
 };
 
 export const returnTileToRack = (
   board: Board,
-  unplacedTiles: string,
+  unplacedTiles: Array<MachineLetter>,
   currentlyPlacedTiles: Set<EphemeralTile>,
   alphabet: Alphabet,
   rackIndex = -1,
@@ -363,12 +385,11 @@ export const returnTileToRack = (
     ephTileMap[uniqueTileIdx(t.row, t.col)] = t;
   });
   const newPlacedTiles = new Set(currentlyPlacedTiles);
-  let rune;
+  let letter;
   if (tileIndex > -1) {
-    rune = ephTileMap[tileIndex] ? ephTileMap[tileIndex].letter : '';
-    // Reset blank
-    if (isBlank(rune)) {
-      rune = Blank;
+    letter = ephTileMap[tileIndex] ? ephTileMap[tileIndex].letter : undefined;
+    if (letter != null && isDesignatedBlankMachineLetter(letter)) {
+      letter = BlankMachineLetter;
     }
     newPlacedTiles.delete(ephTileMap[tileIndex]);
   } else {
@@ -376,7 +397,7 @@ export const returnTileToRack = (
   }
   return {
     newPlacedTiles,
-    newDisplayedRack: stableInsertRack(unplacedTiles, rackIndex, rune),
+    newDisplayedRack: stableInsertRack(unplacedTiles, rackIndex, letter),
     playScore: calculateTemporaryScore(newPlacedTiles, board, alphabet),
   };
 };
@@ -385,7 +406,7 @@ export const handleDroppedTile = (
   row: number,
   col: number,
   board: Board,
-  unplacedTiles: string,
+  unplacedTiles: Array<MachineLetter>,
   currentlyPlacedTiles: Set<EphemeralTile>,
   rackIndex: number,
   tileIndex: number,
@@ -409,19 +430,23 @@ export const handleDroppedTile = (
   });
   let newUnplacedTiles = unplacedTiles;
   const newPlacedTiles = new Set(Object.values(ephTileMap));
-  let rune;
+  let letter;
   if (rackIndex >= 0) {
-    rune = unplacedTiles[rackIndex];
+    letter = unplacedTiles[rackIndex];
     if (targetSquare) {
-      newUnplacedTiles =
-        unplacedTiles.substring(0, rackIndex) +
-        (isBlank(targetSquare.letter) ? Blank : targetSquare.letter) +
-        unplacedTiles.substring(rackIndex + 1);
+      newUnplacedTiles = unplacedTiles
+        .slice(0, rackIndex)
+        .concat(
+          isDesignatedBlankMachineLetter(targetSquare.letter)
+            ? BlankMachineLetter
+            : targetSquare.letter
+        )
+        .concat(unplacedTiles.slice(rackIndex + 1));
     } else {
-      newUnplacedTiles =
-        unplacedTiles.substring(0, rackIndex) +
-        EmptySpace +
-        unplacedTiles.substring(rackIndex + 1);
+      newUnplacedTiles = unplacedTiles
+        .slice(0, rackIndex)
+        .concat(EmptyMachineLetter)
+        .concat(unplacedTiles.slice(rackIndex + 1));
     }
   } else {
     if (!sourceSquare) {
@@ -429,7 +454,7 @@ export const handleDroppedTile = (
       // Also the case if dragging to the same spot.
       return null;
     }
-    rune = sourceSquare.letter;
+    letter = sourceSquare.letter;
     if (targetSquare) {
       // Behold this prestidigitation!
       newPlacedTiles.add({
@@ -439,37 +464,37 @@ export const handleDroppedTile = (
     }
   }
 
-  if (isBlank(rune)) {
+  if (isDesignatedBlankMachineLetter(letter)) {
     // reset moved blanks
-    rune = Blank;
+    letter = BlankMachineLetter;
   }
 
   newPlacedTiles.add({
     row: row,
     col: col,
-    letter: rune,
+    letter: letter,
   });
 
   return {
     newPlacedTiles,
     newDisplayedRack: newUnplacedTiles,
     playScore: calculateTemporaryScore(newPlacedTiles, board, alphabet),
-    isUndesignated: rune === Blank,
+    isUndesignated: letter === BlankMachineLetter,
   };
 };
 
 export const designateBlank = (
   board: Board,
   currentlyPlacedTiles: Set<EphemeralTile>,
-  displayedRack: string,
-  rune: string,
+  displayedRack: Array<MachineLetter>,
+  letter: MachineLetter,
   alphabet: Alphabet
 ): PlacementHandlerReturn | null => {
   // Find the undesignated blank
   const newPlacedTiles = new Set(currentlyPlacedTiles);
   newPlacedTiles.forEach((t) => {
-    if (t.letter === Blank) {
-      t.letter = rune.toLowerCase();
+    if (t.letter === BlankMachineLetter) {
+      t.letter = makeBlank(letter);
     }
   });
   return {
@@ -483,7 +508,8 @@ export const designateBlank = (
 // If tiles are included, results will be limited to ones formed by them
 export const getWordsFormed = (
   board: Board,
-  tiles: Set<EphemeralTile> | undefined
+  tiles: Set<EphemeralTile> | undefined,
+  alphabet: Alphabet
 ): string[] => {
   const tentativeTiles = tiles ? Array.from(tiles.values()) : [];
   const tilesLayout = board.letters;
@@ -498,7 +524,7 @@ export const getWordsFormed = (
     Array.from(new Array(boardSize), (_, x) => tilesLayout[y * boardSize + x])
   );
   const newTilesPlaced = Array.from(new Array(boardSize), (_, y) =>
-    Array.from(new Array(boardSize), (_, x) => EmptySpace)
+    Array.from(new Array(boardSize), (_, x) => EmptyBoardSpaceMachineLetter)
   );
   for (const { row, col, letter } of tentativeTiles) {
     tentativeBoard[row][col] = letter;
@@ -511,12 +537,21 @@ export const getWordsFormed = (
       let sh = '';
       {
         let i = x;
-        while (i > 0 && tentativeBoard[y][i - 1] !== EmptySpace) --i;
-        for (; i < boardSize && tentativeBoard[y][i] !== EmptySpace; ++i) {
-          if (newTilesPlaced[y][i] !== EmptySpace) {
+        while (
+          i > 0 &&
+          tentativeBoard[y][i - 1] !== EmptyBoardSpaceMachineLetter
+        )
+          --i;
+        for (
+          ;
+          i < boardSize &&
+          tentativeBoard[y][i] !== EmptyBoardSpaceMachineLetter;
+          ++i
+        ) {
+          if (newTilesPlaced[y][i] !== EmptyBoardSpaceMachineLetter) {
             usesTentativeTile = true;
           }
-          sh += tentativeBoard[y][i];
+          sh += uint8ToRune(tentativeBoard[y][i], alphabet);
         }
       }
       //Ignore if it's not a new word and new tiles were placed.
@@ -527,10 +562,19 @@ export const getWordsFormed = (
       let sv = '';
       {
         let i = y;
-        while (i > 0 && tentativeBoard[i - 1][x] !== EmptySpace) --i;
-        for (; i < boardSize && tentativeBoard[i][x] !== EmptySpace; ++i) {
-          sv += tentativeBoard[i][x];
-          if (newTilesPlaced[i][x] !== EmptySpace) {
+        while (
+          i > 0 &&
+          tentativeBoard[i - 1][x] !== EmptyBoardSpaceMachineLetter
+        )
+          --i;
+        for (
+          ;
+          i < boardSize &&
+          tentativeBoard[i][x] !== EmptyBoardSpaceMachineLetter;
+          ++i
+        ) {
+          sv += uint8ToRune(tentativeBoard[i][x], alphabet);
+          if (newTilesPlaced[i][x] !== EmptyBoardSpaceMachineLetter) {
             usesTentativeTile = true;
           }
         }

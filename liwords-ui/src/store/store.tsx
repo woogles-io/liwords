@@ -36,7 +36,6 @@ import {
 import { MetaEventState, MetaStates } from './meta_game_events';
 import {
   StandardEnglishAlphabet,
-  runesToRuneArray,
   runesToUint8Array,
 } from '../constants/alphabets';
 import { SeekRequest } from '../gen/api/proto/ipc/omgseeks_pb';

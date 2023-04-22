@@ -14,6 +14,7 @@ import {
   uniqueTileIdx,
   EphemeralTile,
   EmptySpace,
+  EmptyMachineLetter,
 } from '../utils/cwgame/common';
 import { useMountedState } from '../utils/mounted';
 
@@ -467,7 +468,10 @@ export const BoardPanel = React.memo((props: Props) => {
         let best = col;
         while (col > 0) {
           --col;
-          if (props.board.letters[row * props.board.dim + col] !== EmptySpace) {
+          if (
+            props.board.letters[row * props.board.dim + col] !==
+            EmptyMachineLetter
+          ) {
             // continue
           } else if (placedTilesArray.some(matchesLocation)) {
             best = col;
@@ -490,7 +494,10 @@ export const BoardPanel = React.memo((props: Props) => {
         let best = row;
         while (row > 0) {
           --row;
-          if (props.board.letters[row * props.board.dim + col] !== EmptySpace) {
+          if (
+            props.board.letters[row * props.board.dim + col] !==
+            EmptyMachineLetter
+          ) {
             // continue
           } else if (placedTilesArray.some(matchesLocation)) {
             best = row;
