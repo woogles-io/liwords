@@ -1,6 +1,6 @@
 import {
   StandardEnglishAlphabet,
-  runesToUint8Array,
+  runesToMachineWord,
 } from '../../constants/alphabets';
 import { CrosswordGameGridLayout } from '../../constants/board_layout';
 import { EmptySpace, MachineLetter } from './common';
@@ -52,7 +52,7 @@ export class Board {
         if (letter !== EmptySpace) {
           this.isEmpty = false;
           // assume english; this is only for tests!
-          const temp = runesToUint8Array(letter, StandardEnglishAlphabet);
+          const temp = runesToMachineWord(letter, StandardEnglishAlphabet);
           setLetterAt(this.letters, row * this.dim + col, temp[0]);
         }
       }

@@ -1,4 +1,12 @@
-import { EphemeralTile, Direction, Blank, EmptySpace, isBlank } from './common';
+import {
+  EphemeralTile,
+  Direction,
+  Blank,
+  EmptySpace,
+  isBlank,
+  BlankMachineLetter,
+  MachineLetter,
+} from './common';
 import { contiguousTilesFromTileSet } from './scoring';
 import { Board } from './board';
 import {
@@ -10,16 +18,14 @@ import {
   ClientGameplayEvent_EventType,
   PlayerInfo,
 } from '../../gen/api/proto/ipc/omgwords_pb';
-import { runesToUint8Array } from '../../constants/alphabets';
-import { Alphabet } from '../../constants/alphabets';
+import { Alphabet, runesToMachineWord } from '../../constants/alphabets';
 
 export const ThroughTileMarker = '.';
 // convert a set of ephemeral tiles to a protobuf game event.
 export const tilesetToMoveEvent = (
   tiles: Set<EphemeralTile>,
   board: Board,
-  gameID: string,
-  alphabet: Alphabet
+  gameID: string
 ) => {
   const ret = contiguousTilesFromTileSet(tiles, board);
   if (ret === null) {
@@ -28,15 +34,16 @@ export const tilesetToMoveEvent = (
   }
 
   const [wordTiles, wordDir] = ret;
-  let wordStr = '';
+  const letArr = new Array<MachineLetter>();
   let wordPos = '';
   let undesignatedBlank = false;
   wordTiles.forEach((t) => {
-    wordStr += t.fresh ? t.letter : ThroughTileMarker;
-    if (t.letter === Blank) {
+    letArr.push(t.fresh ? t.letter : 0);
+    if (t.fresh && t.letter === BlankMachineLetter) {
       undesignatedBlank = true;
     }
   });
+  // XXX: check undesignated blank behavior
   if (undesignatedBlank) {
     // Play has an undesignated blank. Not valid.
     console.log('Undesignated blank');
@@ -53,7 +60,7 @@ export const tilesetToMoveEvent = (
 
   const evt = new ClientGameplayEvent({
     positionCoords: wordPos,
-    machineLetters: runesToUint8Array(wordStr, alphabet),
+    machineLetters: Uint8Array.from(letArr),
     type: ClientGameplayEvent_EventType.TILE_PLACEMENT,
     gameId: gameID,
   });
@@ -61,13 +68,14 @@ export const tilesetToMoveEvent = (
   return evt;
 };
 
+// XXX this should take a ml
 export const exchangeMoveEvent = (
   rack: string,
   gameID: string,
   alphabet: Alphabet
 ) => {
   const evt = new ClientGameplayEvent({
-    machineLetters: runesToUint8Array(rack, alphabet),
+    machineLetters: Uint8Array.from(runesToMachineWord(rack, alphabet)),
     type: ClientGameplayEvent_EventType.EXCHANGE,
     gameId: gameID,
   });

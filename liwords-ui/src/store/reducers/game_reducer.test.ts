@@ -7,11 +7,16 @@ import {
   GameEvent,
   GameEvent_Type,
 } from '../../gen/api/proto/macondo/macondo_pb';
-import { StandardEnglishAlphabet } from '../../constants/alphabets';
+import {
+  StandardEnglishAlphabet,
+  runesToMachineWord,
+} from '../../constants/alphabets';
 import {
   GameHistoryRefresher,
   ServerGameplayEvent,
 } from '../../gen/api/proto/ipc/omgwords_pb';
+
+const rtmwEng = (s: string) => runesToMachineWord(s, StandardEnglishAlphabet);
 
 const historyRefresher = () => {
   return new GameHistoryRefresher({
@@ -32,9 +37,9 @@ it('tests refresher', () => {
     actionType: ActionType.RefreshHistory,
     payload: historyRefresher(),
   });
-  expect(newState.players[0].currentRack).toBe('CDEIPTV');
+  expect(newState.players[0].currentRack).toStrictEqual(rtmwEng('CDEIPTV'));
   expect(newState.players[0].userID).toBe('cesar123');
-  expect(newState.players[1].currentRack).toBe('FIMRSUU');
+  expect(newState.players[1].currentRack).toStrictEqual(rtmwEng('FIMRSUU'));
   expect(newState.players[1].userID).toBe('mina123');
   expect(newState.onturn).toBe(0);
   expect(newState.turns.length).toBe(0);
@@ -67,9 +72,9 @@ it('tests addevent', () => {
     actionType: ActionType.AddGameEvent,
     payload: sge,
   });
-  expect(newState2.players[0].currentRack).toBe('EFIKNNV');
+  expect(newState2.players[0].currentRack).toStrictEqual(rtmwEng('EFIKNNV'));
   expect(newState2.players[0].userID).toBe('cesar123');
-  expect(newState2.players[1].currentRack).toBe('FIMRSUU');
+  expect(newState2.players[1].currentRack).toStrictEqual(rtmwEng('FIMRSUU'));
   expect(newState2.players[1].userID).toBe('mina123');
   expect(newState2.onturn).toBe(1);
   expect(newState2.turns.length).toBe(1);
@@ -104,9 +109,9 @@ it('tests addevent with different id', () => {
     payload: sge,
   });
   // No change
-  expect(newState2.players[0].currentRack).toBe('CDEIPTV');
+  expect(newState2.players[0].currentRack).toStrictEqual(rtmwEng('CDEIPTV'));
   expect(newState2.players[0].userID).toBe('cesar123');
-  expect(newState2.players[1].currentRack).toBe('FIMRSUU');
+  expect(newState2.players[1].currentRack).toStrictEqual(rtmwEng('FIMRSUU'));
   expect(newState2.players[1].userID).toBe('mina123');
   expect(newState2.onturn).toBe(0);
   expect(newState2.turns.length).toBe(0);
@@ -186,9 +191,9 @@ it('tests challenge with refresher event afterwards', () => {
     actionType: ActionType.AddGameEvent,
     payload: sge,
   });
-  expect(newState.players[0].currentRack).toBe('EEJNNOQ');
+  expect(newState.players[0].currentRack).toStrictEqual(rtmwEng('EEJNNOQ'));
   expect(newState.players[0].userID).toBe('mina123');
-  expect(newState.players[1].currentRack).toBe('EFMPRST');
+  expect(newState.players[1].currentRack).toStrictEqual(rtmwEng('EFMPRST'));
   expect(newState.players[1].userID).toBe('cesar123');
   expect(newState.onturn).toBe(1);
   expect(newState.turns.length).toBe(1);
@@ -197,9 +202,9 @@ it('tests challenge with refresher event afterwards', () => {
     actionType: ActionType.RefreshHistory,
     payload: historyRefresher3AfterChallenge(),
   });
-  expect(newState.players[0].currentRack).toBe('EEJNNOQ');
+  expect(newState.players[0].currentRack).toStrictEqual(rtmwEng('EEJNNOQ'));
   expect(newState.players[0].userID).toBe('mina123');
-  expect(newState.players[1].currentRack).toBe('EFMPRST');
+  expect(newState.players[1].currentRack).toStrictEqual(rtmwEng('EFMPRST'));
   expect(newState.players[1].userID).toBe('cesar123');
   expect(newState.players[0].score).toBe(97);
   expect(newState.players[1].score).toBe(0);
@@ -250,9 +255,9 @@ it('tests challenge with challenge event afterwards', () => {
     actionType: ActionType.AddGameEvent,
     payload: sge2,
   });
-  expect(newState.players[0].currentRack).toBe('EEJNNOQ');
+  expect(newState.players[0].currentRack).toStrictEqual(rtmwEng('EEJNNOQ'));
   expect(newState.players[0].userID).toBe('mina123');
-  expect(newState.players[1].currentRack).toBe('EFMPRST');
+  expect(newState.players[1].currentRack).toStrictEqual(rtmwEng('EFMPRST'));
   expect(newState.players[1].userID).toBe('cesar123');
   expect(newState.players[0].score).toBe(97);
   expect(newState.players[1].score).toBe(0);
@@ -310,8 +315,8 @@ it('tests deduplication of event', () => {
     actionType: ActionType.AddGameEvent,
     payload: sge,
   });
-  expect(newState.pool['W']).toBe(1);
-  expect(newState.pool['I']).toBe(8);
-  expect(newState.pool['T']).toBe(5);
+  expect(newState.pool[23]).toBe(1); // W
+  expect(newState.pool[9]).toBe(8); // I
+  expect(newState.pool[20]).toBe(5); // T
   expect(newState.onturn).toBe(1);
 });

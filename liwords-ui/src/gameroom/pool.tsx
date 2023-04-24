@@ -4,6 +4,7 @@ import { Card, Dropdown, Menu } from 'antd';
 import { PoolFormatType, PoolFormats } from '../constants/pool_formats';
 import { singularCount } from '../utils/plural';
 import { Alphabet } from '../constants/alphabets';
+import { MachineWord } from '../utils/cwgame/common';
 
 type poolType = { [rune: string]: number };
 
@@ -70,7 +71,7 @@ type Props = {
   pool: poolType;
   poolFormat: PoolFormatType;
   setPoolFormat: (format: PoolFormatType) => void;
-  currentRack: Uint8Array;
+  currentRack: MachineWord;
   alphabet: Alphabet;
 };
 

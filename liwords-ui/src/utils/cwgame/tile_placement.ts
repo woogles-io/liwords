@@ -9,7 +9,7 @@ import {
 } from './common';
 import { calculateTemporaryScore } from './scoring';
 import { Board } from './board';
-import { Alphabet, uint8ToRune } from '../../constants/alphabets';
+import { Alphabet, machineLetterToRune } from '../../constants/alphabets';
 import { isDesignatedBlankMachineLetter } from './common';
 import { BlankMachineLetter } from './common';
 import { EmptyMachineLetter } from './common';
@@ -82,7 +82,7 @@ export const handleTileDeletion = (
   alphabet: Alphabet
 ): KeypressHandlerReturn => {
   // Remove any tiles.
-  const newUnplacedTiles = unplacedTiles;
+  const newUnplacedTiles = [...unplacedTiles];
   const newPlacedTiles = new Set(currentlyPlacedTiles);
 
   currentlyPlacedTiles.forEach((t) => {
@@ -185,7 +185,7 @@ export const handleKeyPress = (
 
   let newrow = arrowProperty.row;
   let newcol = arrowProperty.col;
-  const newUnplacedTiles = unplacedTiles;
+  const newUnplacedTiles = [...unplacedTiles];
 
   // First figure out where to put the arrow, no matter what.
   if (arrowProperty.horizontal) {
@@ -551,7 +551,7 @@ export const getWordsFormed = (
           if (newTilesPlaced[y][i] !== EmptyBoardSpaceMachineLetter) {
             usesTentativeTile = true;
           }
-          sh += uint8ToRune(tentativeBoard[y][i], alphabet);
+          sh += machineLetterToRune(tentativeBoard[y][i], alphabet);
         }
       }
       //Ignore if it's not a new word and new tiles were placed.
@@ -573,7 +573,7 @@ export const getWordsFormed = (
           tentativeBoard[i][x] !== EmptyBoardSpaceMachineLetter;
           ++i
         ) {
-          sv += uint8ToRune(tentativeBoard[i][x], alphabet);
+          sv += machineLetterToRune(tentativeBoard[i][x], alphabet);
           if (newTilesPlaced[i][x] !== EmptyBoardSpaceMachineLetter) {
             usesTentativeTile = true;
           }

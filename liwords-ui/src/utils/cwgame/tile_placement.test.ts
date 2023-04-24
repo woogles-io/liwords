@@ -1,8 +1,11 @@
-import { someTileLayout, englishLetterToML } from './scoring.test';
+import { someTileLayout } from './scoring.test';
 import { getWordsFormed } from './tile_placement';
 import { Board } from './board';
 import { EphemeralTile } from './common';
-import { StandardEnglishAlphabet } from '../../constants/alphabets';
+import {
+  StandardEnglishAlphabet,
+  englishLetterToML,
+} from '../../constants/alphabets';
 
 it('getWordsFormed lists all words on board when no tiles are passed', () => {
   const board = new Board();

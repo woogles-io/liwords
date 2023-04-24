@@ -2,6 +2,7 @@
 const screenSizes = require('../../base.scss').default;
 
 export type MachineLetter = number;
+export type MachineWord = Array<MachineLetter>;
 
 export type EphemeralTile = {
   // ephemeron <3 you are missed

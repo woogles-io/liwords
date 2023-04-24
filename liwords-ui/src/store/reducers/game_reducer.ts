@@ -13,15 +13,16 @@ import {
   PlayerOfTiles,
   MachineLetter,
   isDesignatedBlankMachineLetter,
+  MachineWord,
 } from '../../utils/cwgame/common';
 import { PlayerOrder } from '../constants';
 import { ClockController, Millis } from '../timer_controller';
 import {
   Alphabet,
   alphabetFromName,
-  runesToUint8Array,
+  machineWordToRunes,
+  runesToMachineWord,
   StandardEnglishAlphabet,
-  uint8ArrayToRunes,
 } from '../../constants/alphabets';
 import {
   GameDocument,
@@ -46,7 +47,7 @@ export type RawPlayerInfo = {
   // we will put it in its own reducer.
   // timeMillis: number;
   onturn: boolean;
-  currentRack: Uint8Array;
+  currentRack: MachineWord;
 };
 
 const initialExpandToFull = (playerList: PlayerInfo[]): RawPlayerInfo[] => {
@@ -55,7 +56,7 @@ const initialExpandToFull = (playerList: PlayerInfo[]): RawPlayerInfo[] => {
       userID: pi.userId,
       score: 0,
       onturn: idx === 0,
-      currentRack: new Uint8Array(),
+      currentRack: new Array<MachineLetter>(),
       // timeMillis: 0,
     };
   });
@@ -162,7 +163,7 @@ const newGameStateFromGameplayEvent = (
       const toUnplace = turns[turns.length - 2];
       pool = unplaceOnBoard(board, pool, toUnplace, state.alphabet);
       // Set the user's rack back to what it used to be.
-      players[onturn].currentRack = runesToUint8Array(
+      players[onturn].currentRack = runesToMachineWord(
         toUnplace.rack,
         state.alphabet
       );
@@ -174,7 +175,7 @@ const newGameStateFromGameplayEvent = (
     evt.type === GameEvent_Type.TILE_PLACEMENT_MOVE ||
     evt.type === GameEvent_Type.EXCHANGE
   ) {
-    players[onturn].currentRack = runesToUint8Array(
+    players[onturn].currentRack = runesToMachineWord(
       sge.newRack,
       state.alphabet
     );
@@ -216,7 +217,7 @@ const placeOnBoard = (
   const playedTiles: PlayedTiles = {};
   const newPool = { ...pool };
 
-  const mls = runesToUint8Array(play, alphabet);
+  const mls = runesToMachineWord(play, alphabet);
   for (let i = 0; i < mls.length; i++) {
     const ml = mls[i];
     const row =
@@ -247,7 +248,7 @@ const unplaceOnBoard = (
 ): TileDistribution => {
   const play = evt.playedTiles;
   const newPool = { ...pool };
-  const mls = runesToUint8Array(play, alphabet);
+  const mls = runesToMachineWord(play, alphabet);
   for (let i = 0; i < mls.length; i++) {
     const ml = mls[i];
     const row =
@@ -280,21 +281,27 @@ const convertToGameEvt = (
     return new GameEvent();
   }
   return new GameEvent({
-    rack: uint8ArrayToRunes(evt.rack, alphabet),
+    rack: machineWordToRunes(Array.from(evt.rack), alphabet),
     type: evt.type.valueOf(),
     cumulative: evt.cumulative,
     row: evt.row,
     column: evt.column,
     direction: evt.direction,
     position: evt.position,
-    playedTiles: uint8ArrayToRunes(evt.playedTiles, alphabet, true),
-    exchanged: uint8ArrayToRunes(evt.exchanged, alphabet),
+    playedTiles: machineWordToRunes(
+      Array.from(evt.playedTiles),
+      alphabet,
+      true
+    ),
+    exchanged: machineWordToRunes(Array.from(evt.exchanged), alphabet),
     score: evt.score,
     bonus: evt.bonus,
     endRackPoints: evt.endRackPoints,
     lostScore: evt.lostScore,
     isBingo: evt.isBingo,
-    wordsFormed: evt.wordsFormed.map((v) => uint8ArrayToRunes(v, alphabet)),
+    wordsFormed: evt.wordsFormed.map((v) =>
+      machineWordToRunes(Array.from(v), alphabet)
+    ),
     millisRemaining: evt.millisRemaining,
     playerIndex: evt.playerIndex,
   });
@@ -309,7 +316,7 @@ const convertToServerGameplayEvent = (
   return new ServerGameplayEvent({
     event: convertToGameEvt(evt.event, alphabet),
     gameId: evt.gameId,
-    newRack: uint8ArrayToRunes(evt.newRack, alphabet),
+    newRack: machineWordToRunes(Array.from(evt.newRack), alphabet),
     timeRemaining: evt.timeRemaining,
     playing: evt.playing.valueOf(),
     userId: evt.userId,
@@ -422,7 +429,7 @@ const stateFromHistory = (history: GameHistory): GameState => {
 
   // Assign racks. Remember that the player listed first goes first.
   for (let i = 0; i < gs.players.length; i++) {
-    gs.players[i].currentRack = runesToUint8Array(racks[i], alphabet);
+    gs.players[i].currentRack = runesToMachineWord(racks[i], alphabet);
   }
   // [gs.players[0].timeMillis, gs.players[1].timeMillis] = timers;
   gs.players[gs.onturn].onturn = true;
@@ -458,7 +465,7 @@ const stateFromDocument = (gdoc: GameDocument): GameState => {
   const racks = gdoc.racks;
 
   racks.forEach((rack, idx) => {
-    gs.players[idx].currentRack = rack;
+    gs.players[idx].currentRack = Array.from(rack);
   });
   gs.players[gdoc.playerOnTurn].onturn = true;
   gs.players[1 - gdoc.playerOnTurn].onturn = false;

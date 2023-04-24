@@ -1,12 +1,8 @@
 import { ChatMessage } from '../gen/api/proto/ipc/chat_pb';
 import { TType } from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { ChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
-import {
-  Blank,
-  BlankMachineLetter,
-  EmptyMachineLetter,
-} from '../utils/cwgame/common';
-import { Alphabet, uint8ToRune } from '../constants/alphabets';
+import { EmptyMachineLetter, MachineWord } from '../utils/cwgame/common';
+import { Alphabet, machineLetterToRune } from '../constants/alphabets';
 
 export type PlayerOrder = 'p0' | 'p1';
 
@@ -252,7 +248,10 @@ export const setPreferredSortOrder = (value: string) => {
   }
 };
 
-export const sortTiles = (rack: Uint8Array, alphabet: Alphabet): Uint8Array => {
+export const sortTiles = (
+  rack: MachineWord,
+  alphabet: Alphabet
+): MachineWord => {
   const effectiveSortOrder = preferredSortOrder ?? '';
   const arr = Array.from(rack);
   const sorted = arr
@@ -260,7 +259,7 @@ export const sortTiles = (rack: Uint8Array, alphabet: Alphabet): Uint8Array => {
       tile !== EmptyMachineLetter;
     })
     .map((tile) => {
-      let rune = uint8ToRune(tile, alphabet);
+      const rune = machineLetterToRune(tile, alphabet);
       let index = effectiveSortOrder.indexOf(rune);
       if (index < 0) index = effectiveSortOrder.length + (tile === 0 ? 1 : 0);
       return [index, tile];
@@ -278,7 +277,7 @@ export const sortTiles = (rack: Uint8Array, alphabet: Alphabet): Uint8Array => {
     )
     .map((s) => s[1]);
 
-  return Uint8Array.from(sorted);
+  return sorted;
 };
 
 // Can skip error codes for now.

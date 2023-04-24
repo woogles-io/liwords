@@ -4,7 +4,7 @@
  * for now.
  */
 
-import { Blank, MachineLetter } from '../utils/cwgame/common';
+import { Blank, MachineLetter, MachineWord } from '../utils/cwgame/common';
 import { ThroughTileMarker } from '../utils/cwgame/game_event';
 
 type AlphabetLetter = {
@@ -342,8 +342,8 @@ export const scoreFor = (
   return 0;
 };
 
-export const uint8ToRune = (
-  i: number,
+export const machineLetterToRune = (
+  i: MachineLetter,
   alphabet: Alphabet,
   usePlaythrough?: boolean
 ): string => {
@@ -356,35 +356,35 @@ export const uint8ToRune = (
   return alphabet.letters[i]?.rune ?? '';
 };
 
-export const uint8ArrayToRunes = (
-  arr: Uint8Array,
+export const machineWordToRunes = (
+  arr: Array<MachineLetter>,
   alphabet: Alphabet,
   usePlaythrough?: boolean
 ): string => {
   let s = '';
   arr.forEach((v) => {
-    s += uint8ToRune(v, alphabet, usePlaythrough);
+    s += machineLetterToRune(v, alphabet, usePlaythrough);
   });
   return s;
 };
 
-export const uint8ArrayToRuneArray = (
-  arr: Uint8Array,
+export const machineWordToRuneArray = (
+  arr: Array<MachineLetter>,
   alphabet: Alphabet,
   usePlaythrough?: boolean
 ): string[] => {
   const s: string[] = [];
   arr.forEach((v) => {
-    s.push(uint8ToRune(v, alphabet, usePlaythrough));
+    s.push(machineLetterToRune(v, alphabet, usePlaythrough));
   });
   return s;
 };
 
-export const runesToUint8Array = (
+export const runesToMachineWord = (
   runes: string,
   alphabet: Alphabet
-): Uint8Array => {
-  const bts = [];
+): MachineWord => {
+  const bts: Array<MachineLetter> = [];
   const chars = Array.from(runes);
   let i = 0;
   let match;
@@ -424,7 +424,7 @@ export const runesToUint8Array = (
     }
   }
 
-  return Uint8Array.from(bts);
+  return bts;
 };
 
 export const runesToRuneArray = (
@@ -459,4 +459,11 @@ export const runesToRuneArray = (
   }
 
   return arr;
+};
+
+// this function is more of a helper function for tests.
+export const englishLetterToML = (letter: string): MachineLetter => {
+  const alphabet = StandardEnglishAlphabet;
+  const arr = runesToMachineWord(letter, alphabet);
+  return arr[0];
 };

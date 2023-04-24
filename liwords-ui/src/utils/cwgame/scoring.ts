@@ -3,8 +3,6 @@ import { BonusType } from '../../constants/board_layout';
 import {
   EphemeralTile,
   Direction,
-  EmptySpace,
-  isBlank,
   uniqueTileIdx,
   EmptyBoardSpaceMachineLetter,
   MachineLetter,
@@ -12,7 +10,7 @@ import {
 } from './common';
 
 import { Board } from './board';
-import { Alphabet, runeToValues, scoreFor } from '../../constants/alphabets';
+import { Alphabet, scoreFor } from '../../constants/alphabets';
 
 export type simpletile = {
   fresh: boolean;

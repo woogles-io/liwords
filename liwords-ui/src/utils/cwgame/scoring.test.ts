@@ -1,9 +1,9 @@
 import { calculateTemporaryScore, borders, touchesBoardTile } from './scoring';
-import { EphemeralTile, MachineLetter } from './common';
+import { EphemeralTile } from './common';
 import { Board } from './board';
 import {
   StandardEnglishAlphabet,
-  runesToUint8Array,
+  englishLetterToML,
 } from '../../constants/alphabets';
 
 export const someTileLayout = [
@@ -23,12 +23,6 @@ export const someTileLayout = [
   '               ',
   '               ',
 ];
-
-export const englishLetterToML = (letter: string): MachineLetter => {
-  const alphabet = StandardEnglishAlphabet;
-  const arr = runesToUint8Array(letter, alphabet);
-  return arr[0];
-};
 
 it('tests borders', () => {
   // Check the R SI (row 3) scenario

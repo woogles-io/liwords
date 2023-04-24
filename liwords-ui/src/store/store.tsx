@@ -26,7 +26,7 @@ import {
 } from './constants';
 import { PoolFormatType } from '../constants/pool_formats';
 import { LoginState, LoginStateReducer } from './login_state';
-import { EphemeralTile } from '../utils/cwgame/common';
+import { EphemeralTile, MachineLetter } from '../utils/cwgame/common';
 import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
 import {
   defaultTournamentState,
@@ -36,7 +36,7 @@ import {
 import { MetaEventState, MetaStates } from './meta_game_events';
 import {
   StandardEnglishAlphabet,
-  runesToUint8Array,
+  runesToMachineWord,
 } from '../constants/alphabets';
 import { SeekRequest } from '../gen/api/proto/ipc/omgseeks_pb';
 import { ServerChallengeResultEvent } from '../gen/api/proto/ipc/omgwords_pb';
@@ -494,7 +494,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
         userID,
         score: 0,
         onturn: false,
-        currentRack: new Uint8Array(),
+        currentRack: new Array<MachineLetter>(),
       })),
       gameContext.gameID,
       gameContext.board.gridLayout
@@ -575,7 +575,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
         }
         const turnPlayerOrder = indexToPlayerOrder(turn.playerIndex);
         if (turnPlayerOrder === playerOrder) {
-          rack = runesToUint8Array(turn.rack, gameContext.alphabet);
+          rack = runesToMachineWord(turn.rack, gameContext.alphabet);
           break;
         }
       }

@@ -15,6 +15,7 @@ import {
   EphemeralTile,
   EmptySpace,
   EmptyMachineLetter,
+  MachineWord,
 } from '../utils/cwgame/common';
 import { useMountedState } from '../utils/mounted';
 
@@ -97,7 +98,7 @@ const colors = require('../base.scss').default;
 type Props = {
   anonymousViewer: boolean;
   username: string;
-  currentRack: Uint8Array;
+  currentRack: MachineWord;
   events: Array<GameEvent>;
   gameID: string;
   challengeRule: ChallengeRule;
@@ -342,12 +343,7 @@ export const BoardPanel = React.memo((props: Props) => {
           moveEvt = challengeMoveEvent(gameID);
           break;
         case 'commit':
-          moveEvt = tilesetToMoveEvent(
-            placedTiles,
-            board,
-            gameID,
-            gameContext.alphabet
-          );
+          moveEvt = tilesetToMoveEvent(placedTiles, board, gameID);
           if (!moveEvt) {
             // this is an invalid play
             return;
