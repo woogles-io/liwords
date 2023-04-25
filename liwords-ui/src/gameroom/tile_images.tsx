@@ -5,7 +5,11 @@ import { useParams } from 'react-router-dom';
 import BoardSpace from './board_space';
 import Tile from './tile';
 import { BonusType } from '../constants/board_layout';
-import { alphabetFromName, runeToValues } from '../constants/alphabets';
+import {
+  alphabetFromName,
+  runesToMachineWord,
+  scoreFor,
+} from '../constants/alphabets';
 import { Blank } from '../utils/cwgame/common';
 
 const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
@@ -23,6 +27,7 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
   //       http://liwords.localhost/tile_images/french
   //       http://liwords.localhost/tile_images/german
   //       http://liwords.localhost/tile_images/norwegian
+  //       http://liwords.localhost/tile_images/catalan
   //    3.1. In Inspect Elements, find the relevant node (marked in the source),
   //         right-click it, and choose "Capture node screenshot".
   //         Be sure that no selection is highlighted when capturing the screenshot.
@@ -217,18 +222,22 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
               [{ lastPlayed: false }, { lastPlayed: true }],
               (things, idx) => (
                 <React.Fragment key={idx}>
-                  {Array.from(shownRunes, (ch) => (
-                    <div key={ch}>
-                      <Tile
-                        rune={ch}
-                        value={runeToValues(alphabet, ch)}
-                        playerOfTile={0}
-                        key={ch}
-                        grabbable={false}
-                        {...things}
-                      />
-                    </div>
-                  ))}
+                  {Array.from(shownRunes, (ch) => {
+                    const letter = runesToMachineWord(ch, alphabet)[0];
+                    return (
+                      <div key={ch}>
+                        <Tile
+                          letter={letter}
+                          alphabet={alphabet}
+                          value={scoreFor(alphabet, letter)}
+                          playerOfTile={0}
+                          key={ch}
+                          grabbable={false}
+                          {...things}
+                        />
+                      </div>
+                    );
+                  })}
                 </React.Fragment>
               )
             )}

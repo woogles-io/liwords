@@ -1,10 +1,7 @@
 import { EphemeralTile } from './common';
 import { computeLeave, tilesetToMoveEvent } from './game_event';
 import { Board } from './board';
-import {
-  StandardEnglishAlphabet,
-  englishLetterToML,
-} from '../../constants/alphabets';
+import { englishLetterToML } from '../../constants/alphabets';
 
 const oxyTilesLayout = [
   ' PACIFYING     ',

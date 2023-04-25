@@ -59,6 +59,7 @@ import { GameMetadataService } from '../gen/api/proto/game_service/game_service_
 import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_connectweb';
 import { ActionType } from '../actions/actions';
 import { syntheticGameInfo } from '../boardwizard/synthetic_game_info';
+import { MachineLetter, MachineWord } from '../utils/cwgame/common';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -465,7 +466,7 @@ export const Table = React.memo((props: Props) => {
   // If we are one of the players, display our rack.
   // If we are NOT one of the players (so an observer), display the rack of
   // the player on turn.
-  let rack: Uint8Array;
+  let rack: MachineWord;
   const us = useMemo(
     () => gameInfo.players.find((p) => p.userId === userID),
     [gameInfo.players, userID]
@@ -473,15 +474,15 @@ export const Table = React.memo((props: Props) => {
   if (us && !(gameDone && isExamining)) {
     rack =
       examinableGameContext.players.find((p) => p.userID === us.userId)
-        ?.currentRack ?? new Uint8Array();
+        ?.currentRack ?? new Array<MachineLetter>();
   } else {
     rack =
       examinableGameContext.players.find((p) => p.onturn)?.currentRack ??
-      new Uint8Array();
+      new Array<MachineLetter>();
   }
   const sortedRack = useMemo(
     () => sortTiles(rack, gameContext.alphabet),
-    [rack]
+    [rack, gameContext.alphabet]
   );
 
   // The game "starts" when the GameHistoryRefresher object comes in via the socket.
