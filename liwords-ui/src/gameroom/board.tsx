@@ -8,6 +8,7 @@ import BoardCoordLabels from './board_coord_labels';
 import Tiles from './tiles';
 import {
   EphemeralTile,
+  MachineLetter,
   PlayedTiles,
   PlayerOfTiles,
 } from '../utils/cwgame/common';
@@ -26,11 +27,10 @@ type Props = {
     rackIndex: number | undefined,
     tileIndex: number | undefined
   ) => void;
-  tilesLayout: string;
+  tilesLayout: Array<MachineLetter>;
   alphabet: Alphabet;
   lastPlayedTiles: PlayedTiles;
   playerOfTileAt: PlayerOfTiles;
-  currentRack: string;
   squareClicked: (row: number, col: number) => void;
   tentativeTiles: Set<EphemeralTile>;
   tentativeTileScore: number | undefined;

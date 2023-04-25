@@ -13,13 +13,17 @@ export type Tile = {
 
 function blankLayout(gridlayout: string[]) {
   const layout = [];
-  for (let i = 0; i < gridlayout.length * gridlayout.length; i++) {
+  for (let i = 0; i < gridlayout.length * gridlayout[0].length; i++) {
     layout.push(0);
   }
-  return Uint8Array.from(layout);
+  return Array.from(layout);
 }
 
-function setLetterAt(letters: Uint8Array, index: number, ml: MachineLetter) {
+function setLetterAt(
+  letters: Array<MachineLetter>,
+  index: number,
+  ml: MachineLetter
+) {
   if (index > letters.length - 1) {
     return letters;
   }
@@ -27,7 +31,7 @@ function setLetterAt(letters: Uint8Array, index: number, ml: MachineLetter) {
 }
 
 export class Board {
-  letters: Uint8Array; // The letters on the board
+  letters: Array<MachineLetter>; // The letters on the board
 
   gridLayout: Array<string>; // the bonus squares.
 
@@ -88,7 +92,7 @@ export class Board {
 
   deepCopy() {
     const newBoard = new Board();
-    newBoard.letters = Uint8Array.from(this.letters);
+    newBoard.letters = [...this.letters];
     newBoard.gridLayout = [...this.gridLayout];
     newBoard.isEmpty = this.isEmpty;
     newBoard.dim = this.dim;

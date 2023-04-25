@@ -13,9 +13,10 @@ import {
   Blank,
   uniqueTileIdx,
   EphemeralTile,
-  EmptySpace,
-  EmptyMachineLetter,
+  EmptyRackSpaceMachineLetter,
   MachineWord,
+  MachineLetter,
+  EmptyBoardSpaceMachineLetter,
 } from '../utils/cwgame/common';
 import { useMountedState } from '../utils/mounted';
 
@@ -38,6 +39,8 @@ import {
   parseBlindfoldCoordinates,
   natoPhoneticAlphabet,
   letterPronunciations,
+  say,
+  wordToSayString,
 } from '../utils/cwgame/blindfold';
 import { singularCount } from '../utils/plural';
 
@@ -70,7 +73,11 @@ import {
   PlayState,
 } from '../gen/api/proto/macondo/macondo_pb';
 import { TilePreview } from './tile';
-import { Alphabet } from '../constants/alphabets';
+import {
+  Alphabet,
+  machineWordToRunes,
+  runesToMachineWord,
+} from '../constants/alphabets';
 import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
 import {
   MatchUser,
@@ -130,12 +137,12 @@ type Props = {
     | undefined;
   vsBot: boolean;
   exitableExaminer?: boolean;
-  changeCurrentRack?: (rack: string, evtIdx: number) => void;
+  changeCurrentRack?: (rack: MachineWord, evtIdx: number) => void;
 };
 
-const shuffleString = (a: string): string => {
-  const alistWithGaps = Array.from(a);
-  const alist = alistWithGaps.filter((x) => x !== EmptySpace);
+const shuffleLetters = (a: Array<MachineLetter>): Array<MachineLetter> => {
+  const alistWithGaps = [...a];
+  const alist = alistWithGaps.filter((x) => x !== EmptyRackSpaceMachineLetter);
   const n = alist.length;
 
   let somethingChanged = false;
@@ -169,7 +176,9 @@ const shuffleString = (a: string): string => {
 
   // Preserve the gaps.
   let r = 0;
-  return alistWithGaps.map((x) => (x === EmptySpace ? x : alist[r++])).join('');
+  return alistWithGaps.map((x) =>
+    x === EmptyRackSpaceMachineLetter ? x : alist[r++]
+  );
 };
 
 const gcgExport = async (
@@ -208,7 +217,7 @@ const gcgExport = async (
   }
 };
 
-const backupKey = (letters: string, rack: string) =>
+const backupKey = (letters: Array<MachineLetter>, rack: Array<MachineLetter>) =>
   JSON.stringify({ letters, rack });
 
 export const BoardPanel = React.memo((props: Props) => {
@@ -307,7 +316,7 @@ export const BoardPanel = React.memo((props: Props) => {
   } = props;
 
   const makeMove = useCallback(
-    (move: string, addl?: string) => {
+    (move: string, addl?: Array<MachineLetter>) => {
       if (isExamining && !boardEditingMode) return;
       let moveEvt;
       if (move !== 'resign' && !isMyTurn) {
@@ -397,7 +406,7 @@ export const BoardPanel = React.memo((props: Props) => {
     new Map<
       string,
       {
-        displayedRack: string;
+        displayedRack: Array<MachineLetter>;
         placedTiles: Set<EphemeralTile>;
         placedTilesTempScore: number | undefined;
         arrowProperties: {
@@ -466,7 +475,7 @@ export const BoardPanel = React.memo((props: Props) => {
           --col;
           if (
             props.board.letters[row * props.board.dim + col] !==
-            EmptyMachineLetter
+            EmptyBoardSpaceMachineLetter
           ) {
             // continue
           } else if (placedTilesArray.some(matchesLocation)) {
@@ -492,7 +501,7 @@ export const BoardPanel = React.memo((props: Props) => {
           --row;
           if (
             props.board.letters[row * props.board.dim + col] !==
-            EmptyMachineLetter
+            EmptyBoardSpaceMachineLetter
           ) {
             // continue
           } else if (placedTilesArray.some(matchesLocation)) {
@@ -522,14 +531,14 @@ export const BoardPanel = React.memo((props: Props) => {
   ]);
 
   const shuffleTiles = useCallback(() => {
-    setDisplayedRack(shuffleString(displayedRack));
+    setDisplayedRack(shuffleLetters(displayedRack));
   }, [setDisplayedRack, displayedRack]);
 
   const clearBackupRef = useRef<boolean>(false);
-  const lastLettersRef = useRef<string>();
-  const lastRackRef = useRef<string>();
+  const lastLettersRef = useRef<Array<MachineLetter>>();
+  const lastRackRef = useRef<Array<MachineLetter>>();
   const readOnlyEffectDependenciesRef = useRef<{
-    displayedRack: string;
+    displayedRack: Array<MachineLetter>;
     isMyTurn: boolean;
     placedTiles: Set<EphemeralTile>;
     dim: number;
@@ -584,7 +593,11 @@ export const BoardPanel = React.memo((props: Props) => {
     } else {
       // Opponent just did something. Check if it affects any premove.
       // TODO: revisit when supporting non-square boards.
-      const letterAt = (row: number, col: number, letters: string) =>
+      const letterAt = (
+        row: number,
+        col: number,
+        letters: Array<MachineLetter>
+      ) =>
         row < 0 || row >= dep.dim || col < 0 || col >= dep.dim
           ? null
           : letters[row * dep.dim + col];
@@ -602,7 +615,7 @@ export const BoardPanel = React.memo((props: Props) => {
           col += dcol;
           if (letterChanged(row, col)) return true;
           const letter = letterAt(row, col, props.board.letters);
-          if (letter === null || letter === EmptySpace) {
+          if (letter === null || letter === EmptyBoardSpaceMachineLetter) {
             return false;
           }
         }
@@ -650,7 +663,7 @@ export const BoardPanel = React.memo((props: Props) => {
         setArrowProperties(bak.arrowProperties);
       } else {
         let rack = props.currentRack;
-        if (sharedEnableAutoShuffle) rack = shuffleString(rack);
+        if (sharedEnableAutoShuffle) rack = shuffleLetters(rack);
         setDisplayedRack(rack);
         setPlacedTiles(new Set<EphemeralTile>());
         setPlacedTilesTempScore(0);
@@ -778,7 +791,7 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const squareClicked = useCallback(
     (row: number, col: number) => {
-      if (board.letterAt(row, col) !== EmptySpace) {
+      if (board.letterAt(row, col) !== EmptyBoardSpaceMachineLetter) {
         // If there is a tile on this square, ignore the click.
         return;
       }
@@ -867,67 +880,6 @@ export const BoardPanel = React.memo((props: Props) => {
           ];
         };
 
-        const say = (text: string, moreText: string) => {
-          const speech = new SpeechSynthesisUtterance(text);
-          const lang = 'en-US';
-          const rate = 0.8;
-          speech.lang = lang;
-          speech.rate = rate;
-          window.speechSynthesis.cancel();
-          speech.onend = () => {
-            if (moreText !== '') {
-              const moreSpeech = new SpeechSynthesisUtterance(moreText);
-              moreSpeech.lang = lang;
-              moreSpeech.rate = rate;
-              window.speechSynthesis.cancel();
-              speechSynthesis.speak(moreSpeech);
-            }
-          };
-          window.speechSynthesis.speak(speech);
-        };
-
-        const wordToSayString = (word: string): string => {
-          let speech = '';
-          let currentNumber = '';
-          for (let i = 0; i < word.length; i++) {
-            const natoWord = natoPhoneticAlphabet.get(word[i].toUpperCase());
-            if (natoWord !== undefined) {
-              // Single letters in their own sentences are usually
-              // fairly understandable when spoken by TTS. In some cases
-              // it is unclear and using the NATO Phonetic Alphabet
-              // will remove the ambiguity.
-              if (word[i] >= 'a' && word[i] <= 'z') {
-                speech += 'blank, ';
-              }
-              if (blindfoldUseNPA) {
-                speech += natoWord + ', ';
-              } else {
-                const pword = letterPronunciations.get(word[i].toUpperCase());
-                speech += pword + ', ';
-              }
-            } else if (word[i] === '?') {
-              speech += 'blank, ';
-            } else {
-              // It's a number
-              let middleOfNumber = false;
-              currentNumber += word[i];
-              if (i + 1 < word.length) {
-                const natoNextWord = natoPhoneticAlphabet.get(
-                  word[i + 1].toUpperCase()
-                );
-                if (natoNextWord === undefined) {
-                  middleOfNumber = true;
-                }
-              }
-              if (!middleOfNumber) {
-                speech += currentNumber + '. ';
-                currentNumber = '';
-              }
-            }
-          }
-          return speech;
-        };
-
         const sayGameEvent = (ge: GameEvent) => {
           const type = ge.type;
           let nickname = 'opponent.';
@@ -948,8 +900,10 @@ export const BoardPanel = React.memo((props: Props) => {
           }
           if (type === GameEvent_Type.TILE_PLACEMENT_MOVE) {
             say(
-              nickname + ' ' + wordToSayString(ge.position),
-              wordToSayString(blankAwareWord) + ' ' + ge.score.toString()
+              nickname + ' ' + wordToSayString(ge.position, blindfoldUseNPA),
+              wordToSayString(blankAwareWord, blindfoldUseNPA) +
+                ' ' +
+                ge.score.toString()
             );
           } else if (type === GameEvent_Type.PHONY_TILES_RETURNED) {
             say(nickname + ' lost challenge', '');
@@ -1044,7 +998,13 @@ export const BoardPanel = React.memo((props: Props) => {
             const timesay = `${p0Time} to ${p1Time}.`;
             say(timesay, '');
           } else if (blindfoldCommand.toUpperCase() === 'R') {
-            say(wordToSayString(props.currentRack), '');
+            say(
+              wordToSayString(
+                machineWordToRunes(props.currentRack, props.alphabet),
+                blindfoldUseNPA
+              ),
+              ''
+            );
           } else if (blindfoldCommand.toUpperCase() === 'B') {
             const bag = { ...gameContext.pool };
             for (let i = 0; i < props.currentRack.length; i += 1) {
@@ -1067,7 +1027,7 @@ export const BoardPanel = React.memo((props: Props) => {
             say(
               numTilesRemaining +
                 ' tiles unseen, ' +
-                wordToSayString(tilesRemaining) +
+                wordToSayString(tilesRemaining, blindfoldUseNPA) +
                 blankString,
               ''
             );
@@ -1081,13 +1041,21 @@ export const BoardPanel = React.memo((props: Props) => {
               bag[props.currentRack[i]] -= 1;
             }
             let tile = blindfoldCommand.charAt(1).toUpperCase();
-            let numTiles = bag[tile];
-            if (tile === '.') {
-              tile = '?';
-              numTiles = bag[tile];
-              say(numTiles + ', blank', '');
-            } else {
-              say(wordToSayString(numTiles + ', ' + tile), '');
+            try {
+              const letter = runesToMachineWord(tile, props.alphabet)[0];
+              let numTiles = bag[letter];
+              if (tile === '.') {
+                tile = '?';
+                numTiles = bag[letter];
+                say(numTiles + ', blank', '');
+              } else {
+                say(
+                  wordToSayString(numTiles + ', ' + tile, blindfoldUseNPA),
+                  ''
+                );
+              }
+            } catch (e) {
+              // do nothing.
             }
           } else if (blindfoldCommand.toUpperCase() === 'N') {
             setBlindfoldUseNPA(!blindfoldUseNPA);
@@ -1116,14 +1084,13 @@ export const BoardPanel = React.memo((props: Props) => {
               parseBlindfoldCoordinates(blindfoldCommand);
             if (blindfoldCoordinates !== undefined) {
               // Valid coordinates, place the arrow
-              say(wordToSayString(blindfoldCommand), '');
-              const board = { ...gameContext.board };
-              const existingTile =
-                board.letters[
-                  blindfoldCoordinates.row * board.dim +
-                    blindfoldCoordinates.col
-                ].trim();
-              if (!existingTile) {
+              say(wordToSayString(blindfoldCommand, blindfoldUseNPA), '');
+              const board = gameContext.board;
+              const existingTile = board.letterAt(
+                blindfoldCoordinates.row,
+                blindfoldCoordinates.col
+              );
+              if (existingTile === EmptyBoardSpaceMachineLetter) {
                 setArrowProperties({
                   row: blindfoldCoordinates.row,
                   col: blindfoldCoordinates.col,
@@ -1330,7 +1297,7 @@ export const BoardPanel = React.memo((props: Props) => {
         } while (
           newcol < props.board.dim &&
           newcol >= 0 &&
-          props.board.letterAt(newrow, newcol) !== EmptySpace
+          props.board.letterAt(newrow, newcol) !== EmptyBoardSpaceMachineLetter
         );
       } else {
         do {
@@ -1338,7 +1305,7 @@ export const BoardPanel = React.memo((props: Props) => {
         } while (
           newrow < props.board.dim &&
           newrow >= 0 &&
-          props.board.letterAt(newrow, newcol) !== EmptySpace
+          props.board.letterAt(newrow, newcol) !== EmptyBoardSpaceMachineLetter
         );
       }
       setArrowProperties({
@@ -1370,12 +1337,12 @@ export const BoardPanel = React.memo((props: Props) => {
   }, []);
 
   const handleBlankSelection = useCallback(
-    (rune: string) => {
+    (letter: MachineLetter) => {
       const handlerReturn = designateBlank(
         props.board,
         placedTiles,
         displayedRack,
-        rune,
+        letter,
         props.alphabet
       );
       if (handlerReturn === null) {
@@ -1436,15 +1403,19 @@ export const BoardPanel = React.memo((props: Props) => {
         // Within only the affected area, replace oldIndex with empty,
         // and then insert that removed tile at the desired place.
         setDisplayedRack(
-          displayedRack.substring(0, leftIndex) +
-            stableInsertRack(
-              displayedRack.substring(leftIndex, oldIndex) +
-                EmptySpace +
-                displayedRack.substring(oldIndex + 1, rightIndex),
-              newIndex - leftIndex,
-              displayedRack[oldIndex]
-            ) +
-            displayedRack.substring(rightIndex)
+          displayedRack
+            .slice(0, leftIndex)
+            .concat(
+              stableInsertRack(
+                displayedRack
+                  .slice(leftIndex, oldIndex)
+                  .concat(EmptyRackSpaceMachineLetter)
+                  .concat(displayedRack.slice(oldIndex + 1, rightIndex)),
+                newIndex - leftIndex,
+                displayedRack[oldIndex]
+              )
+            )
+            .concat(displayedRack.slice(rightIndex))
         );
       }
     },
@@ -1456,7 +1427,7 @@ export const BoardPanel = React.memo((props: Props) => {
   }, []);
 
   const handleExchangeModalOk = useCallback(
-    (exchangedTiles: string) => {
+    (exchangedTiles: Array<MachineLetter>) => {
       setCurrentMode('NORMAL');
       makeMove('exchange', exchangedTiles);
     },
@@ -1561,7 +1532,8 @@ export const BoardPanel = React.memo((props: Props) => {
       currentMode !== 'EDITING_RACK' &&
       currentMode !== 'WAITING_FOR_RACK_EDIT' &&
       props.boardEditingMode &&
-      props.currentRack.trim().length === 0
+      props.currentRack.filter((v) => v !== EmptyRackSpaceMachineLetter)
+        .length === 0
     ) {
       setCurrentMode('EDITING_RACK');
     }
@@ -1570,7 +1542,8 @@ export const BoardPanel = React.memo((props: Props) => {
   useEffect(() => {
     if (
       currentMode === 'WAITING_FOR_RACK_EDIT' &&
-      props.currentRack.trim().length > 0
+      props.currentRack.filter((v) => v !== EmptyRackSpaceMachineLetter)
+        .length > 0
     ) {
       setCurrentMode('NORMAL');
     }
@@ -1619,7 +1592,7 @@ export const BoardPanel = React.memo((props: Props) => {
   const nonDirectorAnalyzerDisallowed =
     props.tournamentNonDirectorObserver && props.tournamentPrivateAnalysis;
   const stillWaitingForGameToStart =
-    props.currentRack === '' &&
+    props.currentRack.length === 0 &&
     !props.gameDone &&
     examinableGameContext.playState !== PlayState.WAITING_FOR_FINAL_PASS &&
     !props.boardEditingMode;
@@ -1690,7 +1663,6 @@ export const BoardPanel = React.memo((props: Props) => {
             ? props.puzzleSolved !== PuzzleStatus.UNANSWERED
             : examinableGameEndMessage !== '' || props.gameDone
         }
-        currentRack={props.currentRack}
         tournamentSlug={props.tournamentSlug}
         tournamentPairedMode={props.tournamentPairedMode}
         lexicon={props.lexicon}
@@ -1733,7 +1705,6 @@ export const BoardPanel = React.memo((props: Props) => {
         playerOfTileAt={examinableGameContext.playerOfTileAt}
         tentativeTiles={placedTiles}
         tentativeTileScore={placedTilesTempScore}
-        currentRack={props.currentRack}
         squareClicked={squareClicked}
         placementArrowProperties={arrowProperties}
         handleSetHover={props.handleSetHover}
@@ -1783,7 +1754,8 @@ export const BoardPanel = React.memo((props: Props) => {
             {currentMode === 'EDITING_RACK' ? (
               <RackEditor
                 currentRack={displayedRack}
-                rackCallback={(rack: string) => {
+                alphabet={props.alphabet}
+                rackCallback={(rack: MachineWord) => {
                   if (props.changeCurrentRack) {
                     props.changeCurrentRack(
                       rack,

@@ -1,5 +1,8 @@
 /** @fileoverview business logic for handling blindfold events */
 
+import { Alphabet } from '../../constants/alphabets';
+import { MachineLetter } from './common';
+
 export type BlindfoldCoordinates = {
   row: number;
   col: number;
@@ -89,3 +92,64 @@ export const natoPhoneticAlphabet = new Map([
   ['Y', 'Yankee'],
   ['Z', 'Zulu'],
 ]);
+
+export const say = (text: string, moreText: string) => {
+  const speech = new SpeechSynthesisUtterance(text);
+  const lang = 'en-US';
+  const rate = 0.8;
+  speech.lang = lang;
+  speech.rate = rate;
+  window.speechSynthesis.cancel();
+  speech.onend = () => {
+    if (moreText !== '') {
+      const moreSpeech = new SpeechSynthesisUtterance(moreText);
+      moreSpeech.lang = lang;
+      moreSpeech.rate = rate;
+      window.speechSynthesis.cancel();
+      speechSynthesis.speak(moreSpeech);
+    }
+  };
+  window.speechSynthesis.speak(speech);
+};
+
+export const wordToSayString = (word: string, useNPA: boolean): string => {
+  let speech = '';
+  let currentNumber = '';
+  for (let i = 0; i < word.length; i++) {
+    const natoWord = natoPhoneticAlphabet.get(word[i].toUpperCase());
+    if (natoWord !== undefined) {
+      // Single letters in their own sentences are usually
+      // fairly understandable when spoken by TTS. In some cases
+      // it is unclear and using the NATO Phonetic Alphabet
+      // will remove the ambiguity.
+      if (word[i] >= 'a' && word[i] <= 'z') {
+        speech += 'blank, ';
+      }
+      if (useNPA) {
+        speech += natoWord + ', ';
+      } else {
+        const pword = letterPronunciations.get(word[i].toUpperCase());
+        speech += pword + ', ';
+      }
+    } else if (word[i] === '?') {
+      speech += 'blank, ';
+    } else {
+      // It's a number
+      let middleOfNumber = false;
+      currentNumber += word[i];
+      if (i + 1 < word.length) {
+        const natoNextWord = natoPhoneticAlphabet.get(
+          word[i + 1].toUpperCase()
+        );
+        if (natoNextWord === undefined) {
+          middleOfNumber = true;
+        }
+      }
+      if (!middleOfNumber) {
+        speech += currentNumber + '. ';
+        currentNumber = '';
+      }
+    }
+  }
+  return speech;
+};

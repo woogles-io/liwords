@@ -1,8 +1,8 @@
 import React, { DragEvent, useEffect, useRef } from 'react';
 import { useDrop, XYCoord } from 'react-dnd';
 import Tile, { TILE_TYPE } from './tile';
-import { isTouchDevice } from '../utils/cwgame/common';
-import { Alphabet, runeToValues } from '../constants/alphabets';
+import { MachineWord, isTouchDevice } from '../utils/cwgame/common';
+import { Alphabet, runeToValues, scoreFor } from '../constants/alphabets';
 
 // const TileSpacing = 6;
 
@@ -24,7 +24,7 @@ const calculatePosition = (
 
 type Props = {
   tileColorId: number;
-  letters: string;
+  letters: MachineWord;
   grabbable: boolean;
   alphabet: Alphabet;
   onTileClick?: (idx: number) => void;
@@ -100,11 +100,12 @@ export const Rack = React.memo((props: Props) => {
     }
 
     for (let n = 0; n < props.letters.length; n += 1) {
-      const rune = props.letters[n];
+      const letter = props.letters[n];
       tiles.push(
         <Tile
-          rune={rune}
-          value={runeToValues(props.alphabet, rune)}
+          letter={letter}
+          alphabet={props.alphabet}
+          value={scoreFor(props.alphabet, letter)}
           lastPlayed={false}
           playerOfTile={props.tileColorId}
           key={`tile_${n}`}

@@ -171,12 +171,12 @@ type TimerStoreData = {
 type TentativePlayData = {
   placedTilesTempScore: number | undefined;
   placedTiles: Set<EphemeralTile>;
-  displayedRack: Uint8Array;
+  displayedRack: Array<MachineLetter>;
   blindfoldCommand: string;
   blindfoldUseNPA: boolean;
   setPlacedTilesTempScore: (s: number | undefined) => void;
   setPlacedTiles: (t: Set<EphemeralTile>) => void;
-  setDisplayedRack: (l: Uint8Array) => void;
+  setDisplayedRack: (l: Array<MachineLetter>) => void;
   setBlindfoldCommand: (l: string) => void;
   setBlindfoldUseNPA: (l: boolean) => void;
 };
@@ -246,7 +246,7 @@ const LagContext = createContext<LagStoreData>({
 const TentativePlayContext = createContext<TentativePlayData>({
   placedTilesTempScore: undefined,
   placedTiles: new Set<EphemeralTile>(),
-  displayedRack: new Uint8Array(),
+  displayedRack: new Array<MachineLetter>(),
   blindfoldCommand: '',
   blindfoldUseNPA: false,
   setPlacedTilesTempScore: defaultFunction,
@@ -821,7 +821,9 @@ const RealStore = ({ children, ...props }: Props) => {
     number | undefined
   >(undefined);
   const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
-  const [displayedRack, setDisplayedRack] = useState(new Uint8Array());
+  const [displayedRack, setDisplayedRack] = useState(
+    new Array<MachineLetter>()
+  );
   const [blindfoldCommand, setBlindfoldCommand] = useState('');
   const [blindfoldUseNPA, setBlindfoldUseNPA] = useState(false);
 

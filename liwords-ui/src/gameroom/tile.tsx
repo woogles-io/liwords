@@ -4,7 +4,7 @@ import { useDrag, useDragLayer, useDrop } from 'react-dnd';
 import TentativeScore from './tentative_score';
 import {
   Blank,
-  EmptyMachineLetter,
+  EmptyRackSpaceMachineLetter,
   MachineLetter,
   isDesignatedBlankMachineLetter,
   isTouchDevice,
@@ -196,7 +196,8 @@ const Tile = React.memo((props: TileProps) => {
     e.stopPropagation();
   };
 
-  const canDrag = props.grabbable && props.letter !== EmptyMachineLetter;
+  const canDrag =
+    props.grabbable && props.letter !== EmptyRackSpaceMachineLetter;
   const [{ isDragging }, drag, preview] = useDrag({
     item: {
       type: TILE_TYPE,
@@ -272,7 +273,7 @@ const Tile = React.memo((props: TileProps) => {
         data-letter={props.letter}
         style={{
           cursor: canDrag ? 'grab' : 'default',
-          ...(props.letter === EmptyMachineLetter
+          ...(props.letter === EmptyRackSpaceMachineLetter
             ? { visibility: 'hidden' }
             : null),
         }}
@@ -284,7 +285,7 @@ const Tile = React.memo((props: TileProps) => {
         onDragEnd={handleEndDrag}
         draggable={canDrag}
       >
-        {props.letter !== EmptyMachineLetter && (
+        {props.letter !== EmptyRackSpaceMachineLetter && (
           <React.Fragment>
             <TileLetter letter={props.letter} alphabet={props.alphabet} />
             <PointValue value={props.value} />

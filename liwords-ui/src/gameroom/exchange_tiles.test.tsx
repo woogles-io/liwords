@@ -1,0 +1,124 @@
+import React from 'react';
+import { cleanup, fireEvent, render } from '@testing-library/react';
+
+import { ExchangeTiles } from './exchange_tiles';
+import { MachineLetter, MachineWord } from '../utils/cwgame/common';
+import {
+  StandardCatalanAlphabet,
+  StandardEnglishAlphabet,
+} from '../constants/alphabets';
+import { DndProvider } from 'react-dnd';
+import { TouchBackend } from 'react-dnd-touch-backend';
+
+function renderExchangeTiles(callback: (t: MachineWord) => void) {
+  return render(
+    <DndProvider backend={TouchBackend}>
+      <ExchangeTiles
+        tileColorId={1}
+        rack={[1, 2, 5, 8, 12, 12, 12]} // abehlll
+        alphabet={StandardEnglishAlphabet}
+        onOk={callback}
+        onCancel={() => {}}
+        modalVisible={true}
+      />
+    </DndProvider>
+  );
+}
+
+function renderExchangeCatalanTiles(callback: (t: MachineWord) => void) {
+  return render(
+    <DndProvider backend={TouchBackend}>
+      <ExchangeTiles
+        tileColorId={1}
+        rack={[1, 13, 19, 6, 21, 17, 10]} // A L·L QU E S O I
+        alphabet={StandardCatalanAlphabet}
+        onOk={callback}
+        onCancel={() => {}}
+        modalVisible={true}
+      />
+    </DndProvider>
+  );
+}
+
+afterEach(cleanup);
+
+const sleep = (m: number) => new Promise((r) => setTimeout(r, m));
+
+it('exchanges the right tiles', async () => {
+  const cb = jest.fn();
+
+  const { findByRole } = renderExchangeTiles(cb);
+
+  const exchButton = await findByRole('button', { name: 'Exchange' });
+  expect(exchButton).toBeVisible();
+
+  // wait a bit. see `delayInput` in exchange tile modal.
+  await sleep(150);
+
+  fireEvent.keyDown(document.activeElement || document.body, { key: 'B' });
+  fireEvent.keyUp(document.activeElement || document.body, { key: 'B' });
+  fireEvent.keyDown(document.activeElement || document.body, { key: 'E' });
+  fireEvent.keyUp(document.activeElement || document.body, { key: 'E' });
+  expect(exchButton).toBeEnabled();
+  fireEvent.click(exchButton);
+  expect(cb).toHaveBeenCalledWith(new Array<MachineLetter>(2, 5));
+});
+
+it('exchanges repeated tile', async () => {
+  const cb = jest.fn();
+
+  const { findByRole } = renderExchangeTiles(cb);
+
+  const exchButton = await findByRole('button', { name: 'Exchange' });
+  expect(exchButton).toBeVisible();
+
+  // wait a bit. see `delayInput` in exchange tile modal.
+  await sleep(150);
+
+  fireEvent.keyDown(document.activeElement || document.body, { key: 'L' });
+  fireEvent.keyUp(document.activeElement || document.body, { key: 'L' });
+  fireEvent.keyDown(document.activeElement || document.body, { key: 'L' });
+  fireEvent.keyUp(document.activeElement || document.body, { key: 'L' });
+  expect(exchButton).toBeEnabled();
+  fireEvent.click(exchButton);
+  expect(cb).toHaveBeenCalledWith(new Array<MachineLetter>(12, 12));
+});
+
+it('ignores non-existing tiles', async () => {
+  const cb = jest.fn();
+
+  const { findByRole } = renderExchangeTiles(cb);
+
+  const exchButton = await findByRole('button', { name: 'Exchange' });
+  expect(exchButton).toBeVisible();
+
+  // wait a bit. see `delayInput` in exchange tile modal.
+  await sleep(150);
+
+  fireEvent.keyDown(document.activeElement || document.body, { key: 'M' });
+  fireEvent.keyUp(document.activeElement || document.body, { key: 'M' });
+  expect(exchButton).toBeDisabled();
+  fireEvent.click(exchButton);
+  expect(cb).toBeCalledTimes(0);
+});
+
+it('works with multi-letter tiles and shortcut/alias', async () => {
+  const cb = jest.fn();
+
+  const { findByRole } = renderExchangeCatalanTiles(cb);
+
+  const exchButton = await findByRole('button', { name: 'Exchange' });
+  expect(exchButton).toBeVisible();
+
+  // wait a bit. see `delayInput` in exchange tile modal.
+  await sleep(150);
+
+  fireEvent.keyDown(document.activeElement || document.body, { key: 'W' });
+  fireEvent.keyUp(document.activeElement || document.body, { key: 'W' });
+  fireEvent.keyDown(document.activeElement || document.body, { key: 'Q' });
+  fireEvent.keyUp(document.activeElement || document.body, { key: 'Q' });
+
+  expect(exchButton).toBeEnabled();
+  fireEvent.click(exchButton);
+  expect(cb).toHaveBeenCalledWith(new Array<MachineLetter>(13, 19));
+});

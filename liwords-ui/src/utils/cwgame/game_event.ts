@@ -68,14 +68,13 @@ export const tilesetToMoveEvent = (
   return evt;
 };
 
-// XXX this should take a ml
 export const exchangeMoveEvent = (
-  rack: string,
+  rack: Array<MachineLetter>,
   gameID: string,
   alphabet: Alphabet
 ) => {
   const evt = new ClientGameplayEvent({
-    machineLetters: Uint8Array.from(runesToMachineWord(rack, alphabet)),
+    machineLetters: Uint8Array.from(rack),
     type: ClientGameplayEvent_EventType.EXCHANGE,
     gameId: gameID,
   });

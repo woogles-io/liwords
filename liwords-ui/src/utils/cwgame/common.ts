@@ -11,9 +11,9 @@ export type EphemeralTile = {
   letter: MachineLetter;
 };
 
-// An EmptyMachineLetter is an empty space on a rack. We don't make it
+// An EmptyRackSpaceMachineLetter is an empty space on a rack. We don't make it
 // a 0 because that is a blank.
-export const EmptyMachineLetter: MachineLetter = 0xff;
+export const EmptyRackSpaceMachineLetter: MachineLetter = 0xff;
 export const EmptySpace = ' ';
 export const EmptyBoardSpaceMachineLetter: MachineLetter = 0;
 export const BlankMachineLetter: MachineLetter = 0;

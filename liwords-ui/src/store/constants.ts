@@ -1,7 +1,10 @@
 import { ChatMessage } from '../gen/api/proto/ipc/chat_pb';
 import { TType } from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { ChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
-import { EmptyMachineLetter, MachineWord } from '../utils/cwgame/common';
+import {
+  EmptyRackSpaceMachineLetter,
+  MachineWord,
+} from '../utils/cwgame/common';
 import { Alphabet, machineLetterToRune } from '../constants/alphabets';
 
 export type PlayerOrder = 'p0' | 'p1';
@@ -256,7 +259,7 @@ export const sortTiles = (
   const arr = Array.from(rack);
   const sorted = arr
     .filter((tile) => {
-      tile !== EmptyMachineLetter;
+      tile !== EmptyRackSpaceMachineLetter;
     })
     .map((tile) => {
       const rune = machineLetterToRune(tile, alphabet);

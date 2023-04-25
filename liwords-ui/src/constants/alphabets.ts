@@ -4,7 +4,12 @@
  * for now.
  */
 
-import { Blank, MachineLetter, MachineWord } from '../utils/cwgame/common';
+import {
+  Blank,
+  EmptyRackSpaceMachineLetter,
+  MachineLetter,
+  MachineWord,
+} from '../utils/cwgame/common';
 import { ThroughTileMarker } from '../utils/cwgame/game_event';
 
 type AlphabetLetter = {
@@ -350,6 +355,9 @@ export const machineLetterToRune = (
   if (i === 0) {
     return usePlaythrough ? ThroughTileMarker : Blank;
   }
+  if (i === EmptyRackSpaceMachineLetter) {
+    return ' ';
+  }
   if (i > 0x80) {
     return alphabet.letters[i & 0x7f]?.rune?.toLowerCase() ?? '';
   }
@@ -459,6 +467,17 @@ export const runesToRuneArray = (
   }
 
   return arr;
+};
+
+export const getMachineLetterForKey = (
+  key: string,
+  alphabet: Alphabet
+): MachineLetter | null => {
+  let foundML = alphabet.machineLetterMap[key];
+  if (foundML == null) {
+    foundML = alphabet.shortcutMap[key];
+  }
+  return foundML;
 };
 
 // this function is more of a helper function for tests.

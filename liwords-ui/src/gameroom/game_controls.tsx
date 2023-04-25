@@ -17,7 +17,7 @@ import {
   useGameContextStoreContext,
   useTentativeTileContext,
 } from '../store/store';
-import { EphemeralTile } from '../utils/cwgame/common';
+import { EphemeralTile, MachineLetter } from '../utils/cwgame/common';
 import { ChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
 
 const downloadGameImg = (downloadFilename: string) => {
@@ -256,7 +256,6 @@ export type Props = {
   onRematch: () => void;
   gameEndControls: boolean;
   showRematch: boolean;
-  currentRack: string;
   tournamentSlug?: string;
   lexicon: string;
   challengeRule: ChallengeRule;
