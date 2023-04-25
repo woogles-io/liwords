@@ -5,11 +5,7 @@ import { useParams } from 'react-router-dom';
 import BoardSpace from './board_space';
 import Tile from './tile';
 import { BonusType } from '../constants/board_layout';
-import {
-  alphabetFromName,
-  runesToMachineWord,
-  scoreFor,
-} from '../constants/alphabets';
+import { alphabetFromName, scoreFor } from '../constants/alphabets';
 import { Blank } from '../utils/cwgame/common';
 
 const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
@@ -54,18 +50,11 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
   const monospacedFontDimX = monospacedFontWidth * retina;
 
   const alphabet = alphabetFromName(props.letterDistribution);
-  const letters: Array<string> = [];
-  const blankLetters: Array<string> = [];
-  const blanks: Array<string> = [];
-  for (const { rune } of alphabet.letters) {
-    if (rune !== Blank) {
-      letters.push(rune);
-      blankLetters.push(rune.toLowerCase());
-    } else {
-      blanks.push(rune);
-    }
-  }
-  const shownRunes = [...letters, ...blankLetters, ...blanks];
+  const shownLetters = [
+    ...Array.from(alphabet.letters, (_, x) => x).slice(1),
+    ...Array.from(alphabet.letters, (_, x) => x | 0x80).slice(1),
+    0,
+  ];
 
   const bonusTypes = [
     BonusType.DoubleWord,
@@ -87,9 +76,12 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
         String.fromCodePoint(48 + i)
       ),
       // runes in the alphabet
-      ...alphabet.letters.flatMap(({ rune }) =>
-        rune === Blank ? [] : [rune, rune.toLowerCase()]
-      ),
+      ...alphabet.letters
+        .slice(1)
+        .flatMap(({ rune }) => [
+          ...Array.from(rune),
+          ...Array.from(rune.toLowerCase()),
+        ]),
       // other ASCII characters (32 to 126)
       ...Array.from(new Array(1 + 126 - 32), (_, i) =>
         String.fromCodePoint(32 + i)
@@ -119,12 +111,12 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
     if (s != null) golang.push(`${'\t'.repeat(s ? indentLevel : 0)}${s}`);
     currentLine = '';
   };
-  const recordPos = (c: string) => {
+  const recordPos = (c: string | number) => {
     if (currentLine) currentLine += ' ';
     else currentLine = '\t';
-    currentLine += `'${escape(c)}': {${x * curDimX}, ${
-      yOffset + y * curDimY
-    }},`;
+    currentLine += `${typeof c === 'number' ? c : `'${escape(c)}'`}: {${
+      x * curDimX
+    }, ${yOffset + y * curDimY}},`;
     ++x;
     if (x >= curNumCols) {
       x = 0;
@@ -134,6 +126,9 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
   };
 
   const groupName = props.letterDistribution || 'english';
+  commitLine(`//go:embed letterdistributions/${groupName}`);
+  commitLine(`var ${groupName}LetterDistributionCSVBytes []byte`);
+  commitLine('');
   commitLine(`//go:embed tiles-${groupName}.png`);
   commitLine(`var ${groupName}TilesBytes []byte`);
   commitLine('');
@@ -154,11 +149,11 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
     commitLine(`${JSON.stringify(letterDistributionName)}: {`);
     ++indentLevel;
     commitLine(`TilesBytes: ${groupName}TilesBytes,`);
-    commitLine('Tile0Src: map[rune][2]int{');
-    for (const c of shownRunes) recordPos(c);
+    commitLine('Tile0Src: map[byte][2]int{');
+    for (const c of shownLetters) recordPos(c);
     commitLine('},');
-    commitLine('Tile1Src: map[rune][2]int{');
-    for (const c of shownRunes) recordPos(c);
+    commitLine('Tile1Src: map[byte][2]int{');
+    for (const c of shownLetters) recordPos(c);
     commitLine('},');
     commitLine('BoardSrc: map[rune][2]int{');
     for (const c of bonusTypes) recordPos(c);
@@ -222,16 +217,15 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
               [{ lastPlayed: false }, { lastPlayed: true }],
               (things, idx) => (
                 <React.Fragment key={idx}>
-                  {Array.from(shownRunes, (ch) => {
-                    const letter = runesToMachineWord(ch, alphabet)[0];
+                  {Array.from(shownLetters, (letter) => {
                     return (
-                      <div key={ch}>
+                      <div key={letter}>
                         <Tile
                           letter={letter}
                           alphabet={alphabet}
                           value={scoreFor(alphabet, letter)}
                           playerOfTile={0}
-                          key={ch}
+                          key={letter}
                           grabbable={false}
                           {...things}
                         />

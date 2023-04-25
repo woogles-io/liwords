@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, DragEvent } from 'react';
+import React, { useEffect, useMemo, useRef, DragEvent } from 'react';
 import { useMountedState } from '../utils/mounted';
 import { useDrag, useDragLayer, useDrop } from 'react-dnd';
 import TentativeScore from './tentative_score';
@@ -30,7 +30,11 @@ export const TileLetter = React.memo((props: TileLetterProps) => {
   if (rune === Blank) {
     rune = ' ';
   }
-  return <p className="rune">{rune}</p>;
+  return (
+    <p className="rune">
+      <span>{rune}</span>
+    </p>
+  );
 });
 
 type PointValueProps = {
@@ -140,6 +144,11 @@ type TileProps = {
 
 const Tile = React.memo((props: TileProps) => {
   const { useState } = useMountedState();
+
+  const rune = useMemo(
+    () => machineLetterToRune(props.letter, props.alphabet),
+    [props.letter, props.alphabet]
+  );
 
   const [isMouseDragging, setIsMouseDragging] = useState(false);
 
@@ -271,6 +280,7 @@ const Tile = React.memo((props: TileProps) => {
       <div
         className={computedClassName}
         data-letter={props.letter}
+        data-length={rune.length}
         style={{
           cursor: canDrag ? 'grab' : 'default',
           ...(props.letter === EmptyRackSpaceMachineLetter
