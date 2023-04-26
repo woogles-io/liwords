@@ -150,6 +150,11 @@ const Tile = React.memo((props: TileProps) => {
     [props.letter, props.alphabet]
   );
 
+  const bnjyable = useMemo(
+    () => props.alphabet.letterMap[rune.toUpperCase()].bnjyable,
+    [props.alphabet, rune]
+  );
+
   const [isMouseDragging, setIsMouseDragging] = useState(false);
 
   const handleStartDrag = (e: DragEvent<HTMLDivElement>) => {
@@ -281,6 +286,7 @@ const Tile = React.memo((props: TileProps) => {
         className={computedClassName}
         data-letter={props.letter}
         data-length={rune.length}
+        data-bnjy={bnjyable ? '1' : '0'}
         style={{
           cursor: canDrag ? 'grab' : 'default',
           ...(props.letter === EmptyRackSpaceMachineLetter
@@ -311,7 +317,7 @@ const Tile = React.memo((props: TileProps) => {
   ret = (
     <Popover
       content={<div onClick={props.onPopoverClick}>{props.popoverContent}</div>}
-      visible={props.popoverContent != null}
+      open={props.popoverContent != null}
     >
       {ret}
     </Popover>
