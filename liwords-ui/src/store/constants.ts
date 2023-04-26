@@ -2,6 +2,7 @@ import { ChatMessage } from '../gen/api/proto/ipc/chat_pb';
 import { TType } from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { ChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
 import {
+  BlankMachineLetter,
   EmptyRackSpaceMachineLetter,
   MachineWord,
 } from '../utils/cwgame/common';
@@ -258,13 +259,13 @@ export const sortTiles = (
   const effectiveSortOrder = preferredSortOrder ?? '';
   const arr = Array.from(rack);
   const sorted = arr
-    .filter((tile) => {
-      tile !== EmptyRackSpaceMachineLetter;
-    })
+    .filter((tile) => tile !== EmptyRackSpaceMachineLetter)
     .map((tile) => {
       const rune = machineLetterToRune(tile, alphabet);
       let index = effectiveSortOrder.indexOf(rune);
-      if (index < 0) index = effectiveSortOrder.length + (tile === 0 ? 1 : 0);
+      if (index < 0)
+        index =
+          effectiveSortOrder.length + (tile === BlankMachineLetter ? 1 : 0);
       return [index, tile];
     })
     .sort(([aIndex, aTile], [bIndex, bTile]) =>

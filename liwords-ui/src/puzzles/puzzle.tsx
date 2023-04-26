@@ -3,7 +3,7 @@ import { Card, Form, Modal, Select } from 'antd';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Chat } from '../chat/chat';
-import { alphabetFromName } from '../constants/alphabets';
+import { alphabetFromName, machineWordToRunes } from '../constants/alphabets';
 import { TopBar } from '../navigation/topbar';
 import {
   useExaminableGameContextStoreContext,
@@ -52,7 +52,7 @@ import {
   RatingMode,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { computeLeaveWithGaps } from '../utils/cwgame/game_event';
-import { EphemeralTile } from '../utils/cwgame/common';
+import { EphemeralTile, MachineLetter } from '../utils/cwgame/common';
 import { useFirefoxPatch } from '../utils/hooks/firefox';
 import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
 import { useMountedState } from '../utils/mounted';
@@ -168,9 +168,13 @@ export const SinglePuzzle = (props: Props) => {
     });
 
   // Figure out what rack we should display
-  const rack =
-    examinableGameContext.players.find((p) => p.onturn)?.currentRack ?? '';
-  const sortedRack = useMemo(() => sortTiles(rack), [rack]);
+
+  const sortedRack = useMemo(() => {
+    const rack =
+      examinableGameContext.players.find((p) => p.onturn)?.currentRack ??
+      new Array<MachineLetter>();
+    return sortTiles(rack, examinableGameContext.alphabet);
+  }, [examinableGameContext.alphabet]);
   const userIDOnTurn = useMemo(
     () => examinableGameContext.players.find((p) => p.onturn)?.userID,
     [examinableGameContext]
@@ -240,12 +244,12 @@ export const SinglePuzzle = (props: Props) => {
         leave: '',
         leaveWithGaps: computeLeaveWithGaps(
           evt.playedTiles || evt.exchanged,
-          sortedRack
+          machineWordToRunes(sortedRack, examinableGameContext.alphabet)
         ),
       };
       placeMove(m);
     },
-    [placeMove, sortedRack]
+    [placeMove, sortedRack, examinableGameContext.alphabet]
   );
 
   const setGameInfo = useCallback(
@@ -592,7 +596,8 @@ export const SinglePuzzle = (props: Props) => {
     if (checkWordsPending) {
       const wordsFormed = getWordsFormed(
         examinableGameContext.board,
-        placedTiles
+        placedTiles,
+        examinableGameContext.alphabet
       ).map((w) => w.toUpperCase());
       setCheckWordsPending(false);
       //Todo: Now run them by the endpoint
@@ -616,6 +621,7 @@ export const SinglePuzzle = (props: Props) => {
     checkWordsPending,
     placedTiles,
     examinableGameContext.board,
+    examinableGameContext.alphabet,
     puzzleInfo.lexicon,
     wordClient,
   ]);

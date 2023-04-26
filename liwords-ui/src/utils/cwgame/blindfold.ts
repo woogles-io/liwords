@@ -1,8 +1,5 @@
 /** @fileoverview business logic for handling blindfold events */
 
-import { Alphabet } from '../../constants/alphabets';
-import { MachineLetter } from './common';
-
 export type BlindfoldCoordinates = {
   row: number;
   col: number;

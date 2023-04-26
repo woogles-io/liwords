@@ -504,19 +504,6 @@ export const alphabetFromName = (
   }
 };
 
-export const runeToValues = (
-  alphabet: Alphabet,
-  rune: string | null
-): number => {
-  if (rune === null) {
-    return 0;
-  }
-  if (alphabet.letterMap[rune]) {
-    return alphabet.letterMap[rune].score;
-  }
-  return 0;
-};
-
 export const scoreFor = (
   alphabet: Alphabet,
   ml: MachineLetter | null
@@ -533,7 +520,8 @@ export const scoreFor = (
 export const machineLetterToRune = (
   i: MachineLetter,
   alphabet: Alphabet,
-  usePlaythrough?: boolean
+  usePlaythrough?: boolean,
+  useBracketsForMultichar?: boolean
 ): string => {
   if (i === 0) {
     return usePlaythrough ? ThroughTileMarker : Blank;
@@ -541,20 +529,32 @@ export const machineLetterToRune = (
   if (i === EmptyRackSpaceMachineLetter) {
     return ' ';
   }
+  let rn = '';
   if (i > 0x80) {
-    return alphabet.letters[i & 0x7f]?.rune?.toLowerCase() ?? '';
+    rn = alphabet.letters[i & 0x7f]?.rune?.toLowerCase() ?? '';
+  } else {
+    rn = alphabet.letters[i]?.rune ?? '';
   }
-  return alphabet.letters[i]?.rune ?? '';
+  if (useBracketsForMultichar && rn.length > 1) {
+    rn = `[${rn}]`;
+  }
+  return rn;
 };
 
 export const machineWordToRunes = (
   arr: Array<MachineLetter>,
   alphabet: Alphabet,
-  usePlaythrough?: boolean
+  usePlaythrough?: boolean,
+  useBracketsForMultichar?: boolean
 ): string => {
   let s = '';
   arr.forEach((v) => {
-    s += machineLetterToRune(v, alphabet, usePlaythrough);
+    s += machineLetterToRune(
+      v,
+      alphabet,
+      usePlaythrough,
+      useBracketsForMultichar
+    );
   });
   return s;
 };

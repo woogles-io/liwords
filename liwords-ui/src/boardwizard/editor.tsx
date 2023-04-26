@@ -175,7 +175,7 @@ export const BoardEditor = () => {
     [gameContext.gameDocument.letterDistribution]
   );
 
-  const changeCurrentRack = async (rack: string, evtIdx: number) => {
+  const changeCurrentRack = async (rack: MachineWord, evtIdx: number) => {
     let onturn = gameContext.onturn;
     let amendment = false;
     const racks: [Uint8Array, Uint8Array] = [
@@ -190,9 +190,7 @@ export const BoardEditor = () => {
       amendment = true;
     }
 
-    racks[onturn] = Uint8Array.from(
-      runesToMachineWord(rack, gameContext.alphabet)
-    );
+    racks[onturn] = Uint8Array.from(rack);
 
     try {
       await eventClient.setRacks({

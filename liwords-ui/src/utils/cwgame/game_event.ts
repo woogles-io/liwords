@@ -18,7 +18,7 @@ import {
   ClientGameplayEvent_EventType,
   PlayerInfo,
 } from '../../gen/api/proto/ipc/omgwords_pb';
-import { Alphabet, runesToMachineWord } from '../../constants/alphabets';
+import { Alphabet } from '../../constants/alphabets';
 
 export const ThroughTileMarker = '.';
 // convert a set of ephemeral tiles to a protobuf game event.

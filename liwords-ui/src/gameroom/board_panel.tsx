@@ -17,6 +17,7 @@ import {
   MachineWord,
   MachineLetter,
   EmptyBoardSpaceMachineLetter,
+  BlankMachineLetter,
 } from '../utils/cwgame/common';
 import { useMountedState } from '../utils/mounted';
 
@@ -1330,8 +1331,8 @@ export const BoardPanel = React.memo((props: Props) => {
     ]
   );
 
-  const handleBoardTileClick = useCallback((rune: string) => {
-    if (rune === Blank) {
+  const handleBoardTileClick = useCallback((ml: MachineLetter) => {
+    if (ml === BlankMachineLetter) {
       setCurrentMode('BLANK_MODAL');
     }
   }, []);
@@ -1811,7 +1812,7 @@ export const BoardPanel = React.memo((props: Props) => {
       <Modal
         className="blank-modal"
         title="Designate your blank"
-        visible={currentMode === 'BLANK_MODAL'}
+        open={currentMode === 'BLANK_MODAL'}
         onCancel={handleBlankModalCancel}
         width={360}
         footer={null}

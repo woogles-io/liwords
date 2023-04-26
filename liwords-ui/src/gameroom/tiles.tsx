@@ -12,7 +12,7 @@ import {
   PlayerOfTiles,
 } from '../utils/cwgame/common';
 import { PlacementArrow } from '../utils/cwgame/tile_placement';
-import { Alphabet, runeToValues, scoreFor } from '../constants/alphabets';
+import { Alphabet, scoreFor } from '../constants/alphabets';
 
 type Props = {
   tileColorId: number;

@@ -144,16 +144,13 @@ type TileProps = {
 
 const Tile = React.memo((props: TileProps) => {
   const { useState } = useMountedState();
-
   const rune = useMemo(
     () => machineLetterToRune(props.letter, props.alphabet),
     [props.letter, props.alphabet]
   );
-
-  const bnjyable = useMemo(
-    () => props.alphabet.letterMap[rune.toUpperCase()].bnjyable,
-    [props.alphabet, rune]
-  );
+  const bnjyable = useMemo(() => {
+    return props.alphabet.letterMap[rune.toUpperCase()]?.bnjyable;
+  }, [props.alphabet, rune]);
 
   const [isMouseDragging, setIsMouseDragging] = useState(false);
 

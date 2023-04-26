@@ -48,7 +48,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           Math.floor(Math.random() * currentActiveGames.length)
         ];
       return (
-        <li>
+        <li key={`watch-${userID}`}>
           <Link className="plain" to={`/game/${encodeURIComponent(gameID)}`}>
             Watch
           </Link>
@@ -60,7 +60,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           Math.floor(Math.random() * currentWatchedGames.length)
         ];
       return (
-        <li>
+        <li key={`join-${userID}`}>
           <Link className="plain" to={`/game/${encodeURIComponent(gameID)}`}>
             Join
           </Link>
@@ -68,7 +68,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
       );
     } else if (currentlyPuzzling) {
       return (
-        <li>
+        <li key={`puzzlejoin-${userID}`}>
           <Link className="plain" to="/puzzle">
             Join
           </Link>
@@ -87,6 +87,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
         onClick={() => {
           setPetting((x) => !x);
         }}
+        key={`pettable-${userID}`}
       >
         {!isPetting && 'Pet'}
         {isPetting && 'Stop petting'}
@@ -108,6 +109,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
             props.sendMessage(props.userID, props.username);
           }
         }}
+        key={`messageable-${props.userID}`}
       >
         Chat
       </li>
@@ -120,6 +122,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           className="plain"
           to={`/profile/${encodeURIComponent(props.username)}`}
           target="_blank"
+          key={`viewprofile-${props.userID}`}
         >
           View profile
         </Link>
@@ -144,6 +147,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
             handleContextMatch(props.username);
           }
         }}
+        key={`idontknowwhatthisdoes-${props.userID}`}
       >
         Match user
       </li>
@@ -156,6 +160,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
         className="link plain"
         target={props.userID}
         tagName="li"
+        key={`follower-${props.userID}`}
       />
     );
   }
@@ -167,6 +172,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
         target={props.userID}
         tagName="li"
         userName={props.username}
+        key={`blocker-${props.userID}`}
       />
     );
   }
@@ -179,6 +185,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
             ? props.moderate(props.userID, props.username)
             : void 0
         }
+        key={`mod-${props.userID}`}
       >
         Moderate
       </li>
@@ -186,7 +193,11 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
   }
   if (props.showDeleteMessage && canMod(perms) && props.userID !== userID) {
     userMenuOptions.push(
-      <li className="link plain" onClick={props.deleteMessage}>
+      <li
+        className="link plain"
+        onClick={props.deleteMessage}
+        key={`delete-${props.userID}`}
+      >
         Delete this message
       </li>
     );

@@ -30,7 +30,11 @@ import { Comments } from './comments';
 import { useClient } from '../utils/hooks/connect';
 import { GameCommentService } from '../gen/api/proto/comments_service/comments_service_connectweb';
 import { useComments } from '../utils/hooks/comments';
-import { Alphabet } from '../constants/alphabets';
+import {
+  Alphabet,
+  machineWordToRunes,
+  runesToMachineWord,
+} from '../constants/alphabets';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const screenSizes = require('../base.scss').default;
 
@@ -77,14 +81,36 @@ type MoveEntityObj = {
   isBingo: boolean;
 };
 
+function isPositiveNumber(value: string) {
+  return /^\d+$/.test(value);
+}
+
+function sortStringRack(rack: string, alphabet: Alphabet): string {
+  // convert to ML for sorting
+  const ml = runesToMachineWord(rack, alphabet);
+  const sorted = sortTiles(ml, alphabet);
+  return machineWordToRunes(sorted, alphabet, false, true);
+}
+
 const displaySummary = (evt: GameEvent, board: Board, alphabet: Alphabet) => {
   // Handle just a subset of the possible moves here. These may be modified
   // later on.
   switch (evt.type) {
     case GameEvent_Type.EXCHANGE:
-      return (
-        <span className="exchanged">-{sortTiles(evt.exchanged, alphabet)}</span>
-      );
+      // evt.exchanged gets modified by the backend to either be a string
+      // with the exchanged letters, or the number of exchanged tiles
+      // (for the purposes of maintaining secrecy if you're currently in a game)
+      // We must deal with these two cases. Note that this assumes that
+      // tiles cannot be numbers. This is OK for now. We will have to redo
+      // this behavior anyway once we move to OMGWordsEvents.
+      let exchStr = '';
+      if (isPositiveNumber(evt.exchanged)) {
+        exchStr = evt.exchanged;
+      } else {
+        exchStr = sortStringRack(evt.exchanged, alphabet);
+      }
+
+      return <span className="exchanged">-{exchStr}</span>;
 
     case GameEvent_Type.PASS:
       return <span className="pass">Passed turn</span>;
@@ -160,7 +186,7 @@ const ScorecardTurn = (props: turnProps) => {
       isBingo: evts[0].isBingo,
     };
     if (evts.length === 1) {
-      turn.rack = sortTiles(turn.rack, props.alphabet);
+      turn.rack = sortStringRack(turn.rack, props.alphabet);
       return turn;
     }
     // Otherwise, we have to make some modifications.
@@ -187,10 +213,13 @@ const ScorecardTurn = (props: turnProps) => {
             </span>
           </>
         );
-        turn.rack = `Play is valid ${sortTiles(evts[0].rack, props.alphabet)}`;
+        turn.rack = `Play is valid ${sortStringRack(
+          evts[0].rack,
+          props.alphabet
+        )}`;
       } else {
         // Void challenge combines the end rack points.
-        turn.rack = sortTiles(turn.rack, props.alphabet);
+        turn.rack = sortStringRack(turn.rack, props.alphabet);
       }
       // Otherwise, just add/subtract as needed.
       for (let i = 1; i < evts.length; i++) {

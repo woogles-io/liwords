@@ -2,7 +2,7 @@ import React, { DragEvent, useEffect, useRef } from 'react';
 import { useDrop, XYCoord } from 'react-dnd';
 import Tile, { TILE_TYPE } from './tile';
 import { MachineWord, isTouchDevice } from '../utils/cwgame/common';
-import { Alphabet, runeToValues, scoreFor } from '../constants/alphabets';
+import { Alphabet, scoreFor } from '../constants/alphabets';
 
 // const TileSpacing = 6;
 

@@ -20,7 +20,7 @@ type Props = {
   tileColorId: number;
   gridLayout: Array<string>;
   gridSize: number;
-  handleBoardTileClick: (rune: string) => void;
+  handleBoardTileClick: (letter: MachineLetter) => void;
   handleTileDrop?: (
     row: number,
     col: number,

@@ -1,29 +1,30 @@
 import React from 'react';
 import Tile from './tile';
 import { Alphabet } from '../constants/alphabets';
-import { Blank } from '../utils/cwgame/common';
+import { Blank, MachineLetter } from '../utils/cwgame/common';
 
 type Props = {
   tileColorId: number;
-  handleSelection: (rune: string) => void;
+  handleSelection: (letter: MachineLetter) => void;
   alphabet: Alphabet;
 };
 
 export const BlankSelector = (props: Props) => {
   return (
     <div className="blank-selector">
-      {Object.keys(props.alphabet.letterMap)
-        .filter((l) => l !== Blank)
-        .map((rune) => (
+      {props.alphabet.letters
+        .filter((l) => l.rune !== Blank)
+        .map((letter, idx) => (
           <Tile
             lastPlayed={false}
             playerOfTile={props.tileColorId}
-            rune={rune}
+            alphabet={props.alphabet}
+            letter={idx + 1} // assumes blank was filtered out and was zero
             value={0}
             grabbable={false}
-            key={`blank_${rune}`}
+            key={`blank_${letter.rune}`}
             onClick={() => {
-              props.handleSelection(rune);
+              props.handleSelection(idx + 1);
             }}
           />
         ))}
