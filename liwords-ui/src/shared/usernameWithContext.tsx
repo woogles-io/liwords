@@ -77,7 +77,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
     } else {
       return null;
     }
-  }, [currentActiveGames, currentWatchedGames, currentlyPuzzling]);
+  }, [currentActiveGames, currentWatchedGames, currentlyPuzzling, userID]);
 
   const userMenuOptions: JSX.Element[] = [];
   if (isPettable) {

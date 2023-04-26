@@ -6,7 +6,6 @@ import BoardSpace from './board_space';
 import Tile from './tile';
 import { BonusType } from '../constants/board_layout';
 import { alphabetFromName, scoreFor } from '../constants/alphabets';
-import { Blank } from '../utils/cwgame/common';
 
 const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
   // Note: We use Chrome on Mac. Other browsers and other OSes have similar

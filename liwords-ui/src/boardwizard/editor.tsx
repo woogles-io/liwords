@@ -5,7 +5,7 @@ import { Card, notification } from 'antd';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ActionType } from '../actions/actions';
-import { alphabetFromName, runesToMachineWord } from '../constants/alphabets';
+import { alphabetFromName } from '../constants/alphabets';
 import { Analyzer, AnalyzerContextProvider } from '../gameroom/analyzer';
 import { BoardPanel } from '../gameroom/board_panel';
 import { PlayerCards } from '../gameroom/player_cards';
@@ -168,7 +168,7 @@ export const BoardEditor = () => {
       examinableGameContext.players.find((p) => p.onturn)?.currentRack ??
       new Array<MachineLetter>();
     return sortTiles(rack, examinableGameContext.alphabet);
-  }, [examinableGameContext]);
+  }, [examinableGameContext.alphabet, examinableGameContext.players]);
 
   const alphabet = useMemo(
     () => alphabetFromName(gameContext.gameDocument.letterDistribution),

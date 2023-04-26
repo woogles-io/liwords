@@ -235,7 +235,7 @@ const ScorecardTurn = (props: turnProps) => {
       }
     }
     return turn;
-  }, [props.board, props.playerMeta, props.turn]);
+  }, [props.board, props.playerMeta, props.turn, props.alphabet]);
 
   let scoreChange;
   if (memoizedTurn.lostScore > 0) {

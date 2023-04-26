@@ -2,10 +2,8 @@ import React from 'react';
 
 import Tile from './tile';
 import {
-  Blank,
   BlankMachineLetter,
   EmptyBoardSpaceMachineLetter,
-  EmptySpace,
   EphemeralTile,
   MachineLetter,
   PlayedTiles,

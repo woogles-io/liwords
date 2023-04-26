@@ -111,6 +111,7 @@ export const ExchangeTiles = React.memo((props: Props) => {
       exchangedRackIndices,
       props.modalVisible,
       props.rack,
+      props.alphabet,
       propsOnOk,
     ]
   );

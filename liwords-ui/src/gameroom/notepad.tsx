@@ -109,7 +109,14 @@ export const Notepad = React.memo((props: NotepadProps) => {
     if (!isMobile()) {
       document.getElementById('board-container')?.focus();
     }
-  }, [displayedRack, placedTiles, placedTilesTempScore, setCurNotepad, board]);
+  }, [
+    displayedRack,
+    placedTiles,
+    placedTilesTempScore,
+    setCurNotepad,
+    board,
+    gameContext.alphabet,
+  ]);
   const clearNotepad = useCallback(() => {
     setCurNotepad('');
   }, [setCurNotepad]);

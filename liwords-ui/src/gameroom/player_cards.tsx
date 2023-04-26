@@ -14,6 +14,7 @@ import { PlayState } from '../gen/api/proto/macondo/macondo_pb';
 import { DisplayUserFlag } from '../shared/display_flag';
 import { useBriefProfile } from '../utils/brief_profiles';
 import { GameInfoResponse, PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
+import { MachineLetter } from '../utils/cwgame/common';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const colors = require('../base.scss').default;
@@ -126,7 +127,7 @@ export const PlayerCards = React.memo((props: Props) => {
         userID: props.playerMeta[0].userId,
         score: 0,
         onturn: false,
-        currentRack: '',
+        currentRack: new Array<MachineLetter>(),
       };
     }
   }
@@ -137,7 +138,7 @@ export const PlayerCards = React.memo((props: Props) => {
         userID: props.playerMeta[1].userId,
         score: 0,
         onturn: false,
-        currentRack: '',
+        currentRack: new Array<MachineLetter>(),
       };
     }
   }

@@ -174,7 +174,7 @@ export const SinglePuzzle = (props: Props) => {
       examinableGameContext.players.find((p) => p.onturn)?.currentRack ??
       new Array<MachineLetter>();
     return sortTiles(rack, examinableGameContext.alphabet);
-  }, [examinableGameContext.alphabet]);
+  }, [examinableGameContext.alphabet, examinableGameContext.players]);
   const userIDOnTurn = useMemo(
     () => examinableGameContext.players.find((p) => p.onturn)?.userID,
     [examinableGameContext]

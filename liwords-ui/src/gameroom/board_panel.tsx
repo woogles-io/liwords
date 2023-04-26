@@ -10,7 +10,6 @@ import {
 } from '@ant-design/icons';
 import {
   isTouchDevice,
-  Blank,
   uniqueTileIdx,
   EphemeralTile,
   EmptyRackSpaceMachineLetter,
@@ -38,8 +37,6 @@ import {
 
 import {
   parseBlindfoldCoordinates,
-  natoPhoneticAlphabet,
-  letterPronunciations,
   say,
   wordToSayString,
 } from '../utils/cwgame/blindfold';
