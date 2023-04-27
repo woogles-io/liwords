@@ -152,8 +152,6 @@ const ActualPool = React.memo((props: Props & { hidePool: boolean }) => {
     }, new Array<MachineLetter>());
   };
 
-  console.log('vowels', vowels(props.alphabet));
-
   const renderContents = (title?: string) =>
     (!props.hidePool || title) && (
       <div className="pool">

@@ -9,9 +9,11 @@ import {
 } from '../constants/alphabets';
 import { DndProvider } from 'react-dnd';
 import { TouchBackend } from 'react-dnd-touch-backend';
+import { act } from 'react-dom/test-utils';
 
 function renderExchangeTiles(callback: (t: MachineWord) => void) {
-  return render(
+  jest.useFakeTimers();
+  const ret = render(
     <DndProvider backend={TouchBackend}>
       <ExchangeTiles
         tileColorId={1}
@@ -23,10 +25,17 @@ function renderExchangeTiles(callback: (t: MachineWord) => void) {
       />
     </DndProvider>
   );
+  // there's a delay in ExchangeTiles before it becomes interactive.
+  // simulate that here.
+  act(() => {
+    jest.advanceTimersByTime(500);
+  });
+  return ret;
 }
 
 function renderExchangeCatalanTiles(callback: (t: MachineWord) => void) {
-  return render(
+  jest.useFakeTimers();
+  const ret = render(
     <DndProvider backend={TouchBackend}>
       <ExchangeTiles
         tileColorId={1}
@@ -38,6 +47,10 @@ function renderExchangeCatalanTiles(callback: (t: MachineWord) => void) {
       />
     </DndProvider>
   );
+  act(() => {
+    jest.advanceTimersByTime(500);
+  });
+  return ret;
 }
 
 afterEach(cleanup);
@@ -46,14 +59,9 @@ const sleep = (m: number) => new Promise((r) => setTimeout(r, m));
 
 it('exchanges the right tiles', async () => {
   const cb = jest.fn();
-
   const { findByRole } = renderExchangeTiles(cb);
-
   const exchButton = await findByRole('button', { name: 'Exchange' });
   expect(exchButton).toBeVisible();
-
-  // wait a bit. see `delayInput` in exchange tile modal.
-  await sleep(150);
 
   fireEvent.keyDown(document.activeElement || document.body, { key: 'B' });
   fireEvent.keyUp(document.activeElement || document.body, { key: 'B' });
@@ -72,9 +80,6 @@ it('exchanges repeated tile', async () => {
   const exchButton = await findByRole('button', { name: 'Exchange' });
   expect(exchButton).toBeVisible();
 
-  // wait a bit. see `delayInput` in exchange tile modal.
-  await sleep(150);
-
   fireEvent.keyDown(document.activeElement || document.body, { key: 'L' });
   fireEvent.keyUp(document.activeElement || document.body, { key: 'L' });
   fireEvent.keyDown(document.activeElement || document.body, { key: 'L' });
@@ -92,9 +97,6 @@ it('ignores non-existing tiles', async () => {
   const exchButton = await findByRole('button', { name: 'Exchange' });
   expect(exchButton).toBeVisible();
 
-  // wait a bit. see `delayInput` in exchange tile modal.
-  await sleep(150);
-
   fireEvent.keyDown(document.activeElement || document.body, { key: 'M' });
   fireEvent.keyUp(document.activeElement || document.body, { key: 'M' });
   expect(exchButton).toBeDisabled();
@@ -109,9 +111,6 @@ it('works with multi-letter tiles and shortcut/alias', async () => {
 
   const exchButton = await findByRole('button', { name: 'Exchange' });
   expect(exchButton).toBeVisible();
-
-  // wait a bit. see `delayInput` in exchange tile modal.
-  await sleep(150);
 
   fireEvent.keyDown(document.activeElement || document.body, { key: 'W' });
   fireEvent.keyUp(document.activeElement || document.body, { key: 'W' });
