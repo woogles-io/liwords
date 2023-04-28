@@ -521,7 +521,8 @@ export const machineLetterToRune = (
   i: MachineLetter,
   alphabet: Alphabet,
   usePlaythrough?: boolean,
-  useBracketsForMultichar?: boolean
+  useBracketsForMultichar?: boolean,
+  useWASMBlankEncoding?: boolean
 ): string => {
   if (i === 0) {
     return usePlaythrough ? ThroughTileMarker : Blank;
@@ -530,8 +531,18 @@ export const machineLetterToRune = (
     return ' ';
   }
   let rn = '';
-  if (i > 0x80) {
-    rn = alphabet.letters[i & 0x7f]?.rune?.toLowerCase() ?? '';
+  let isBlank;
+  let unblanked;
+  if (useWASMBlankEncoding) {
+    isBlank = i < 0;
+    unblanked = -i;
+  } else {
+    isBlank = i > 0x80;
+    unblanked = i & 0x07f;
+  }
+
+  if (isBlank) {
+    rn = alphabet.letters[unblanked]?.rune?.toLowerCase() ?? '';
   } else {
     rn = alphabet.letters[i]?.rune ?? '';
   }
@@ -545,7 +556,8 @@ export const machineWordToRunes = (
   arr: Array<MachineLetter>,
   alphabet: Alphabet,
   usePlaythrough?: boolean,
-  useBracketsForMultichar?: boolean
+  useBracketsForMultichar?: boolean,
+  useWASMBlankEncoding?: boolean
 ): string => {
   let s = '';
   arr.forEach((v) => {
@@ -553,7 +565,8 @@ export const machineWordToRunes = (
       v,
       alphabet,
       usePlaythrough,
-      useBracketsForMultichar
+      useBracketsForMultichar,
+      useWASMBlankEncoding
     );
   });
   return s;
@@ -573,7 +586,8 @@ export const machineWordToRuneArray = (
 
 export const runesToMachineWord = (
   runes: string,
-  alphabet: Alphabet
+  alphabet: Alphabet,
+  useWASMBlankEncoding?: boolean
 ): MachineWord => {
   const bts: Array<MachineLetter> = [];
   const chars = Array.from(runes);
@@ -597,7 +611,11 @@ export const runesToMachineWord = (
         match = true;
         break;
       } else if (alphabet.machineLetterMap[rune.toUpperCase()] != undefined) {
-        bts.push(0x80 | alphabet.machineLetterMap[rune.toUpperCase()]);
+        if (useWASMBlankEncoding) {
+          bts.push(-alphabet.machineLetterMap[rune.toUpperCase()]);
+        } else {
+          bts.push(0x80 | alphabet.machineLetterMap[rune.toUpperCase()]);
+        }
         i = j;
         match = true;
         break;
@@ -652,6 +670,7 @@ export const runesToRuneArray = (
   return arr;
 };
 
+// used for keypresses.
 export const getMachineLetterForKey = (
   key: string,
   alphabet: Alphabet

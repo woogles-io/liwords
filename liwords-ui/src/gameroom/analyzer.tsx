@@ -17,7 +17,14 @@ import {
 import { getWolges } from '../wasm/loader';
 import { useMountedState } from '../utils/mounted';
 import { RedoOutlined } from '@ant-design/icons';
-import { EmptySpace, EphemeralTile } from '../utils/cwgame/common';
+import {
+  EmptyBoardSpaceMachineLetter,
+  EmptyRackSpaceMachineLetter,
+  EmptySpace,
+  EphemeralTile,
+  MachineLetter,
+  MachineWord,
+} from '../utils/cwgame/common';
 import { Unrace } from '../utils/unrace';
 import { sortTiles } from '../store/constants';
 import {
@@ -25,6 +32,12 @@ import {
   GameEvent_Direction,
 } from '../gen/api/proto/macondo/macondo_pb';
 import { GameState } from '../store/reducers/game_reducer';
+import {
+  Alphabet,
+  machineLetterToRune,
+  machineWordToRunes,
+  runesToMachineWord,
+} from '../constants/alphabets';
 
 type AnalyzerProps = {
   includeCard?: boolean;
@@ -90,23 +103,23 @@ export type AnalyzerMove = {
   invalid_words?: Array<string>;
   displayMove: string;
   coordinates: string;
-  leave: string;
-  leaveWithGaps: string;
+  leave: MachineWord;
+  leaveWithGaps: MachineWord;
   score: number;
   equity: number;
   row: number;
   col: number;
   vertical: boolean;
-  tiles: string;
+  tiles: MachineWord;
   isExchange: boolean;
 };
 
 export const analyzerMoveFromJsonMove = (
   move: JsonMove,
   dim: number,
-  letters: string,
-  rackNum: Array<number>,
-  numToLabel: (n: number) => string
+  letters: Array<MachineLetter>,
+  rackNum: MachineWord,
+  alphabet: Alphabet
 ): AnalyzerMove => {
   const jsonKey = jsonMoveToKey(move);
   const defaultRet = {
@@ -119,38 +132,28 @@ export const analyzerMoveFromJsonMove = (
     row: 0,
     score: 0,
     equity: 0.0,
-    tiles: '',
+    tiles: new Array<MachineLetter>(),
     isExchange: false,
   };
-  const makeLeaveStr = (leaveNum: Array<number>) => {
-    let leaveStr = '';
-    for (const t of leaveNum) {
-      if (!isNaN(t)) {
-        leaveStr += numToLabel(t);
-      }
-    }
-    return leaveStr;
-  };
-  const addGapsToLeaveStr = (
-    leaveNum: Array<number>,
-    sortedLeaveStr: string
-  ) => {
-    let leaveStr = '';
-    let r = 0;
-    for (const t of leaveNum) {
-      if (!isNaN(t)) {
-        leaveStr += sortedLeaveStr[r++];
-      } else {
-        leaveStr += EmptySpace;
-      }
-    }
-    return leaveStr;
-  };
+
+  //   const addGapsToLeave = (leaveNum: MachineWord, sortedLeave: MachineWord) => {
+  //     let leaveWithGaps = new Array<MachineLetter>();
+  //     let r = 0;
+  //     for (const t of leaveNum) {
+  //       if (!isNaN(t)) {
+  //         leaveStr += sortedLeaveStr[r++];
+  //       } else {
+  //         leaveStr += EmptySpace;
+  //       }
+  //     }
+  //     return leaveStr;
+  //   };
   switch (move.action) {
     case 'play': {
-      const leaveNum = [...rackNum];
+      let leaveNum = [...rackNum];
+      const leaveWithGaps = [...rackNum];
       let displayMove = '';
-      let tilesBeingMoved = '';
+      const tilesBeingMoved = new Array<MachineLetter>();
       const vertical = move.down;
       const row = vertical ? move.idx : move.lane;
       const col = vertical ? move.lane : move.idx;
@@ -168,31 +171,41 @@ export const analyzerMoveFromJsonMove = (
             displayMove += '(';
             inParen = true;
           }
-          displayMove += letters[r * dim + c];
-          tilesBeingMoved += '.';
+          displayMove += machineLetterToRune(
+            letters[r * dim + c],
+            alphabet,
+            false,
+            true,
+            true
+          );
+          tilesBeingMoved.push(0); // through space
         } else {
           if (inParen) {
             displayMove += ')';
             inParen = false;
           }
-          const tileLabel = numToLabel(t);
+          const tileLabel = machineLetterToRune(t, alphabet, false, true, true);
           displayMove += tileLabel;
-          tilesBeingMoved += tileLabel;
+          tilesBeingMoved.push(t);
           // When t is negative, consume blank tile from rack.
           const usedTileIndex = leaveNum.lastIndexOf(Math.max(t, 0));
-          if (usedTileIndex >= 0) leaveNum[usedTileIndex] = NaN;
+          if (usedTileIndex >= 0) {
+            leaveWithGaps[usedTileIndex] = EmptyRackSpaceMachineLetter;
+            leaveNum[usedTileIndex] = EmptyRackSpaceMachineLetter;
+          }
         }
         if (vertical) ++r;
         else ++c;
       }
       if (inParen) displayMove += ')';
-      const leaveStr = sortTiles(makeLeaveStr(leaveNum));
+      // sortTiles takes out the gaps:
+      leaveNum = sortTiles(leaveNum, alphabet);
       return {
         jsonKey,
         displayMove,
         coordinates,
-        leave: leaveStr,
-        leaveWithGaps: addGapsToLeaveStr(leaveNum, leaveStr),
+        leave: leaveNum,
+        leaveWithGaps,
         vertical,
         col,
         row,
@@ -203,32 +216,45 @@ export const analyzerMoveFromJsonMove = (
       };
     }
     case 'exchange': {
-      const leaveNum = [...rackNum];
-      let tilesBeingMoved = '';
+      let leaveNum = [...rackNum];
+      const leaveWithGaps = [...rackNum];
+
+      let tilesBeingMoved = new Array<MachineLetter>();
       for (const t of move.tiles) {
-        const tileLabel = numToLabel(t);
-        tilesBeingMoved += tileLabel;
+        tilesBeingMoved.push(t);
         const usedTileIndex = leaveNum.lastIndexOf(t);
-        if (usedTileIndex >= 0) leaveNum[usedTileIndex] = NaN;
+        if (usedTileIndex >= 0) {
+          leaveWithGaps[usedTileIndex] = EmptyRackSpaceMachineLetter;
+          leaveNum[usedTileIndex] = EmptyRackSpaceMachineLetter;
+        }
       }
-      tilesBeingMoved = sortTiles(tilesBeingMoved);
-      const leaveStr = sortTiles(makeLeaveStr(leaveNum));
+      tilesBeingMoved = sortTiles(tilesBeingMoved, alphabet);
+      leaveNum = sortTiles(leaveNum, alphabet);
+
       return {
         ...defaultRet,
-        displayMove: tilesBeingMoved ? `Exch. ${tilesBeingMoved}` : 'Pass',
-        leave: leaveStr,
-        leaveWithGaps: addGapsToLeaveStr(leaveNum, leaveStr),
+        displayMove: tilesBeingMoved
+          ? `Exch. ${machineWordToRunes(
+              tilesBeingMoved,
+              alphabet,
+              false,
+              true
+            )}`
+          : 'Pass',
+        leave: leaveNum,
+        leaveWithGaps,
         equity: move.equity,
         tiles: tilesBeingMoved,
         isExchange: true,
       };
     }
     default: {
-      const leaveStr = makeLeaveStr(rackNum);
+      const leaveNum = [...rackNum];
+
       return {
         ...defaultRet,
-        leave: leaveStr,
-        leaveWithGaps: addGapsToLeaveStr(rackNum, leaveStr),
+        leave: leaveNum,
+        leaveWithGaps: leaveNum,
       };
     }
   }
@@ -243,14 +269,14 @@ const parseExaminableGameContext = (
     board: { dim, letters },
     onturn,
     players,
+    alphabet,
   } = examinableGameContext;
 
   const letterDistribution = defaultLetterDistribution(lexicon);
-  const labelToNum = labelToNumFor(letterDistribution);
-  const numToLabel = numToLabelFor(letterDistribution);
+  // const labelToNum = labelToNumFor(letterDistribution);
+  // const numToLabel = numToLabelFor(letterDistribution);
 
-  const rackStr = sortTiles(players[onturn].currentRack);
-  const rackNum = Array.from(rackStr, labelToNum);
+  const rackNum = sortTiles(players[onturn].currentRack, alphabet);
 
   let effectiveLexicon = lexicon;
   let rules = 'CrosswordGame';
@@ -269,7 +295,12 @@ const parseExaminableGameContext = (
   const boardObj = {
     rack: rackNum,
     board: Array.from(new Array(dim), (_, row) =>
-      Array.from(letters.substr(row * dim, dim), labelToNum)
+      Array.from(
+        letters
+          .slice(row * dim, row * dim + dim)
+          // I like writing write-only code.
+          .map((l) => (l & 0x80 ? -(l & 0x7f) : l))
+      )
     ),
     lexicon: effectiveLexicon,
     leave:
@@ -285,80 +316,7 @@ const parseExaminableGameContext = (
     rules,
   };
 
-  return { dim, letters, rackNum, effectiveLexicon, boardObj, numToLabel };
-};
-
-// Return 0 for both board's ' ' and rack's '?'.
-// English-only.
-const englishLabelToNum = (c: string) =>
-  c >= 'A' && c <= 'Z'
-    ? c.charCodeAt(0) - 0x40
-    : c >= 'a' && c <= 'z'
-    ? -(c.charCodeAt(0) - 0x60)
-    : 0;
-
-const GERMAN_TILES = Array.from('AÄBCDEFGHIJKLMNOÖPQRSTUÜVWXYZ');
-const GERMAN_BLANK_TILES = Array.from('aäbcdefghijklmnoöpqrstuüvwxyz');
-
-const germanLabelToNum = (c: string) => {
-  let idx = GERMAN_TILES.indexOf(c);
-  if (idx >= 0) return idx + 1;
-  idx = GERMAN_BLANK_TILES.indexOf(c);
-  if (idx >= 0) return -(idx + 1);
-  return 0;
-};
-
-// note: internal wolges ordering
-const NORWEGIAN_TILES = Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYÜZÆÄØÖÅ');
-const NORWEGIAN_BLANK_TILES = Array.from('abcdefghijklmnopqrstuvwxyüzæäøöå');
-
-const norwegianLabelToNum = (c: string) => {
-  let idx = NORWEGIAN_TILES.indexOf(c);
-  if (idx >= 0) return idx + 1;
-  idx = NORWEGIAN_BLANK_TILES.indexOf(c);
-  if (idx >= 0) return -(idx + 1);
-  return 0;
-};
-
-const labelToNumFor = (letterDistribution: string) => {
-  switch (letterDistribution) {
-    case 'english':
-      return englishLabelToNum;
-    case 'german':
-      return germanLabelToNum;
-    case 'norwegian':
-      return norwegianLabelToNum;
-    // XXX need catalan case
-  }
-  return englishLabelToNum;
-};
-
-// Return '?' for 0, because this is used for exchanges.
-// English-only.
-const englishNumToLabel = (n: number) =>
-  n > 0
-    ? String.fromCharCode(0x40 + n)
-    : n < 0
-    ? String.fromCharCode(0x60 - n)
-    : '?';
-
-const germanNumToLabel = (n: number) =>
-  n > 0 ? GERMAN_TILES[n - 1] : n < 0 ? GERMAN_BLANK_TILES[-1 - n] : '?';
-
-const norwegianNumToLabel = (n: number) =>
-  n > 0 ? NORWEGIAN_TILES[n - 1] : n < 0 ? NORWEGIAN_BLANK_TILES[-1 - n] : '?';
-
-const numToLabelFor = (letterDistribution: string) => {
-  switch (letterDistribution) {
-    case 'english':
-      return englishNumToLabel;
-    case 'german':
-      return germanNumToLabel;
-    case 'norwegian':
-      return norwegianNumToLabel;
-    // XXX need catalan case
-  }
-  return englishNumToLabel;
+  return { dim, letters, rackNum, effectiveLexicon, boardObj, alphabet };
 };
 
 const AnalyzerContext = React.createContext<{
@@ -428,7 +386,7 @@ export const AnalyzerContextProvider = ({
             rackNum,
             effectiveLexicon,
             boardObj: bareBoardObj,
-            numToLabel,
+            alphabet,
           } = parseExaminableGameContext(
             examinableGameContext,
             lexicon,
@@ -445,7 +403,7 @@ export const AnalyzerContextProvider = ({
           const movesObj = JSON.parse(movesStr) as Array<JsonMove>;
 
           const formattedMoves = movesObj.map((move) =>
-            analyzerMoveFromJsonMove(move, dim, letters, rackNum, numToLabel)
+            analyzerMoveFromJsonMove(move, dim, letters, rackNum, alphabet)
           );
           movesCache[turn] = formattedMoves;
           rerenderMoves();
@@ -509,7 +467,7 @@ export const usePlaceMoveCallback = () => {
       }
       for (const t of move.tiles) {
         if (move.isExchange) {
-          while (letters[row * dim + col] !== EmptySpace) {
+          while (letters[row * dim + col] !== EmptyBoardSpaceMachineLetter) {
             ++col;
             if (col >= dim) {
               ++row;
@@ -523,7 +481,7 @@ export const usePlaceMoveCallback = () => {
             }
           }
         }
-        if (t !== '.') {
+        if (t !== 0) {
           newPlacedTiles.add({
             row,
             col,
@@ -565,15 +523,6 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     useExaminableGameContextStoreContext();
   const { addHandleExaminer, removeHandleExaminer } = useExamineStoreContext();
   const { gameContext } = useGameContextStoreContext();
-
-  const letterDistribution = useMemo(
-    () => defaultLetterDistribution(lexicon),
-    [lexicon]
-  );
-  const labelToNum = useMemo(
-    () => labelToNumFor(letterDistribution),
-    [letterDistribution]
-  );
 
   const placeMove = usePlaceMoveCallback();
 
@@ -640,7 +589,11 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
             down,
             lane: down ? evt.column : evt.row,
             idx: down ? evt.row : evt.column,
-            word: Array.from(evt.playedTiles, labelToNum),
+            word: runesToMachineWord(
+              evt.playedTiles,
+              examinableGameContext.alphabet,
+              true
+            ),
             score: evt.score,
           };
         }
@@ -653,13 +606,16 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
         case GameEvent_Type.EXCHANGE: {
           return {
             action: 'exchange',
-            tiles: Array.from(evt.exchanged, labelToNum),
+            tiles: runesToMachineWord(
+              evt.exchanged,
+              examinableGameContext.alphabet
+            ),
           };
         }
       }
     }
     return null;
-  }, [actualEvent, labelToNum]);
+  }, [actualEvent, examinableGameContext.alphabet]);
   const evaluatedMoveId = useRef(0);
   const [evaluatedMove, setEvaluatedMove] = useState<{
     evaluatedMoveId: number;
@@ -681,7 +637,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           rackNum,
           effectiveLexicon,
           boardObj: bareBoardObj,
-          numToLabel,
+          alphabet,
         } = parseExaminableGameContext(examinableGameContext, lexicon, variant);
         const boardObj = { ...bareBoardObj, plays: [actualMove] };
 
@@ -700,7 +656,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
             dim,
             letters,
             rackNum,
-            numToLabel
+            alphabet
           );
           setEvaluatedMove({
             evaluatedMoveId: evaluatedMoveIdAtStart,
@@ -710,7 +666,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
               chosen: true,
               valid: moveObj.valid,
               invalid_words: moveObj.invalid_words?.map(
-                (tiles: Array<number>) => tiles.map((tile) => numToLabel(tile))
+                (tiles: Array<number>) => machineWordToRunes(tiles, alphabet)
               ),
             },
           });
@@ -804,14 +760,16 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
             )}
           </td>
           <td className="move-score">{m.score}</td>
-          <td className="move-leave">{m.leave}</td>
+          <td className="move-leave">
+            {machineWordToRunes(m.leave, examinableGameContext.alphabet)}
+          </td>
           <td className="move-equity">
             {(m.equity - equityBase).toFixed(2)}
             {!(m.valid ?? true) && <React.Fragment>*</React.Fragment>}
           </td>
         </tr>
       )) ?? null,
-    [equityBase, moves, placeMove]
+    [equityBase, examinableGameContext.alphabet, moves, placeMove]
   );
   const analyzerControls = (
     <div className="analyzer-controls">

@@ -116,7 +116,7 @@ const displaySummary = (evt: GameEvent, board: Board, alphabet: Alphabet) => {
       return <span className="pass">Passed turn</span>;
 
     case GameEvent_Type.TILE_PLACEMENT_MOVE:
-      return tilePlacementEventDisplay(evt, board);
+      return tilePlacementEventDisplay(evt, board, alphabet);
     case GameEvent_Type.UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
       return <span className="challenge unsuccessful">Challenged</span>;
     case GameEvent_Type.END_RACK_PENALTY:

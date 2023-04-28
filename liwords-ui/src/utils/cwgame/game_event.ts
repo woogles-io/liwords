@@ -18,7 +18,7 @@ import {
   ClientGameplayEvent_EventType,
   PlayerInfo,
 } from '../../gen/api/proto/ipc/omgwords_pb';
-import { Alphabet } from '../../constants/alphabets';
+import { Alphabet, machineLetterToRune } from '../../constants/alphabets';
 
 export const ThroughTileMarker = '.';
 // convert a set of ephemeral tiles to a protobuf game event.
@@ -106,7 +106,11 @@ export const challengeMoveEvent = (gameID: string) => {
   return evt;
 };
 
-export const tilePlacementEventDisplay = (evt: GameEvent, board: Board) => {
+export const tilePlacementEventDisplay = (
+  evt: GameEvent,
+  board: Board,
+  alphabet: Alphabet
+) => {
   // modify a tile placement move for display purposes.
   const row = evt.row;
   const col = evt.column;
@@ -126,7 +130,7 @@ export const tilePlacementEventDisplay = (evt: GameEvent, board: Board) => {
         m += '(';
         openParen = true;
       }
-      m += board.letterAt(r, c);
+      m += machineLetterToRune(board.letterAt(r, c)!, alphabet, false, true);
     } else {
       if (openParen) {
         m += ')';

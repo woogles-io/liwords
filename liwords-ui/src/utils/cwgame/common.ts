@@ -12,8 +12,9 @@ export type EphemeralTile = {
 };
 
 // An EmptyRackSpaceMachineLetter is an empty space on a rack. We don't make it
-// a 0 because that is a blank.
-export const EmptyRackSpaceMachineLetter: MachineLetter = 0xff;
+// a 0 because that is a blank. 0x80 would be a "lowercase blank", which
+// doesn't exist. This is a good "gap" letter.
+export const EmptyRackSpaceMachineLetter: MachineLetter = 0x80;
 export const EmptySpace = ' ';
 export const EmptyBoardSpaceMachineLetter: MachineLetter = 0;
 export const BlankMachineLetter: MachineLetter = 0;
