@@ -47,52 +47,56 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
         currentActiveGames[
           Math.floor(Math.random() * currentActiveGames.length)
         ];
-      return (
-        <li key={`watch-${userID}`}>
+      return {
+        key: `watch-${userID}`,
+        label: (
           <Link className="plain" to={`/game/${encodeURIComponent(gameID)}`}>
             Watch
           </Link>
-        </li>
-      );
+        ),
+      };
     } else if (currentWatchedGames && currentWatchedGames.length > 0) {
       const gameID =
         currentWatchedGames[
           Math.floor(Math.random() * currentWatchedGames.length)
         ];
-      return (
-        <li key={`join-${userID}`}>
+      return {
+        key: `join-${userID}`,
+        label: (
           <Link className="plain" to={`/game/${encodeURIComponent(gameID)}`}>
             Join
           </Link>
-        </li>
-      );
+        ),
+      };
     } else if (currentlyPuzzling) {
-      return (
-        <li key={`puzzlejoin-${userID}`}>
+      return {
+        key: `puzzlejoin-${userID}`,
+        label: (
           <Link className="plain" to="/puzzle">
             Join
           </Link>
-        </li>
-      );
+        ),
+      };
     } else {
       return null;
     }
   }, [currentActiveGames, currentWatchedGames, currentlyPuzzling, userID]);
 
-  const userMenuOptions: JSX.Element[] = [];
+  const userMenuOptions = [];
   if (isPettable) {
-    userMenuOptions.push(
-      <li
-        className="link plain"
-        onClick={() => {
-          setPetting((x) => !x);
-        }}
-        key={`pettable-${userID}`}
-      >
-        {!isPetting && 'Pet'}
-        {isPetting && 'Stop petting'}
-      </li>
-    );
+    userMenuOptions.push({
+      key: `pettable-${userID}`,
+      label: (
+        <span
+          onClick={() => {
+            setPetting((x) => !x);
+          }}
+        >
+          {!isPetting && 'Pet'}
+          {isPetting && 'Stop petting'}
+        </span>
+      ),
+    });
   }
   if (
     loggedIn &&
@@ -101,33 +105,34 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
     props.userID !== userID &&
     props.sendMessage
   ) {
-    userMenuOptions.push(
-      <li
-        className="link plain"
-        onClick={() => {
-          if (props.sendMessage && props.userID) {
-            props.sendMessage(props.userID, props.username);
-          }
-        }}
-        key={`messageable-${props.userID}`}
-      >
-        Chat
-      </li>
-    );
+    userMenuOptions.push({
+      key: `messageable-${props.userID}`,
+      label: (
+        <span
+          onClick={() => {
+            if (props.sendMessage && props.userID) {
+              props.sendMessage(props.userID, props.username);
+            }
+          }}
+        >
+          Chat
+        </span>
+      ),
+    });
   }
   if (!props.omitProfileLink) {
-    userMenuOptions.push(
-      <li>
+    userMenuOptions.push({
+      key: `viewprofile-${props.userID}`,
+      label: (
         <Link
           className="plain"
           to={`/profile/${encodeURIComponent(props.username)}`}
           target="_blank"
-          key={`viewprofile-${props.userID}`}
         >
           View profile
         </Link>
-      </li>
-    );
+      ),
+    });
   }
   if (contextualLink) {
     userMenuOptions.push(contextualLink);
@@ -139,74 +144,74 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
     props.username &&
     handleContextMatches.length > 0
   ) {
-    userMenuOptions.push(
-      <li
-        className="link plain"
-        onClick={() => {
-          for (const handleContextMatch of handleContextMatches) {
-            handleContextMatch(props.username);
-          }
-        }}
-        key={`idontknowwhatthisdoes-${props.userID}`}
-      >
-        Match user
-      </li>
-    );
+    userMenuOptions.push({
+      key: `idontknowwhatthisdoes-${props.userID}`,
+      label: (
+        <span
+          onClick={() => {
+            for (const handleContextMatch of handleContextMatches) {
+              handleContextMatch(props.username);
+            }
+          }}
+        >
+          Match user
+        </span>
+      ),
+    });
   }
   if (loggedIn && props.userID && !props.omitFriend) {
-    userMenuOptions.push(
-      <TheFollower
-        friendCallback={props.friendCallback}
-        className="link plain"
-        target={props.userID}
-        tagName="li"
-        key={`follower-${props.userID}`}
-      />
-    );
+    userMenuOptions.push({
+      key: `follower-${props.userID}`,
+      label: (
+        <TheFollower
+          friendCallback={props.friendCallback}
+          className="link plain"
+          target={props.userID}
+          tagName="li"
+        />
+      ),
+    });
   }
   if (loggedIn && props.userID && !props.omitBlock) {
-    userMenuOptions.push(
-      <TheBlocker
-        blockCallback={props.blockCallback}
-        className="link plain"
-        target={props.userID}
-        tagName="li"
-        userName={props.username}
-        key={`blocker-${props.userID}`}
-      />
-    );
+    userMenuOptions.push({
+      key: `blocker-${props.userID}`,
+      label: (
+        <TheBlocker
+          blockCallback={props.blockCallback}
+          className="link plain"
+          target={props.userID}
+          tagName="li"
+          userName={props.username}
+        />
+      ),
+    });
   }
   if (props.showModTools && canMod(perms) && props.userID !== userID) {
-    userMenuOptions.push(
-      <li
-        className="link plain"
-        onClick={() =>
-          props.moderate && props.userID
-            ? props.moderate(props.userID, props.username)
-            : void 0
-        }
-        key={`mod-${props.userID}`}
-      >
-        Moderate
-      </li>
-    );
+    userMenuOptions.push({
+      key: `mod-${props.userID}`,
+      label: (
+        <span
+          onClick={() =>
+            props.moderate && props.userID
+              ? props.moderate(props.userID, props.username)
+              : void 0
+          }
+        >
+          Moderate
+        </span>
+      ),
+    });
   }
   if (props.showDeleteMessage && canMod(perms) && props.userID !== userID) {
-    userMenuOptions.push(
-      <li
-        className="link plain"
-        onClick={props.deleteMessage}
-        key={`delete-${props.userID}`}
-      >
-        Delete this message
-      </li>
-    );
+    userMenuOptions.push({
+      key: `delete-${props.userID}`,
+      label: <span onClick={props.deleteMessage}>Delete this message</span>,
+    });
   }
-  const userMenu = <ul>{userMenuOptions}</ul>;
   return (
     <Dropdown
       overlayClassName="user-menu"
-      overlay={userMenu}
+      menu={{ items: userMenuOptions }}
       getPopupContainer={() => document.getElementById('root') as HTMLElement}
       placement="bottomLeft"
       trigger={userMenuOptions.length > 0 ? ['click'] : []}
