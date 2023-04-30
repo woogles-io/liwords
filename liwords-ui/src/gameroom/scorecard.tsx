@@ -81,10 +81,6 @@ type MoveEntityObj = {
   isBingo: boolean;
 };
 
-function isPositiveNumber(value: string) {
-  return /^\d+$/.test(value);
-}
-
 function sortStringRack(rack: string, alphabet: Alphabet): string {
   // convert to ML for sorting
   const ml = runesToMachineWord(rack, alphabet);
@@ -104,8 +100,8 @@ const displaySummary = (evt: GameEvent, board: Board, alphabet: Alphabet) => {
       // tiles cannot be numbers. This is OK for now. We will have to redo
       // this behavior anyway once we move to OMGWordsEvents.
       let exchStr = '';
-      if (isPositiveNumber(evt.exchanged)) {
-        exchStr = evt.exchanged;
+      if (evt.exchanged === '') {
+        exchStr = `${evt.numTilesFromRack}`;
       } else {
         exchStr = sortStringRack(evt.exchanged, alphabet);
       }

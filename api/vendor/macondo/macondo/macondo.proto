@@ -107,6 +107,9 @@ message GameEvent {
   // The player who played this move is encoded in player_index. This should
   // be the index in GameHistory.players.
   uint32 player_index = 19;
+  // num_tiles_from_rack lets us know how many tiles from the rack were either
+  // played or exchanged. It is only populated for those two fields.
+  uint32 num_tiles_from_rack = 20;
 }
 
 message PlayerInfo {
@@ -141,8 +144,14 @@ message BotRequest {
     LEVEL4_PROBABILISTIC = 8;
     LEVEL5_PROBABILISTIC = 9;
 
-    SIMMING_BOT = 10;
+    NO_LEAVE_BOT = 10;
+    SIMMING_BOT = 11;
+    HASTY_PLUS_ENDGAME_BOT = 12;
+    SIMMING_INFER_BOT = 13;
     // harder bots here? inference? ml, etc.
+
+    // This should have probably been number 0.
+    UNKNOWN = 100;
   }
 
   BotCode bot_type = 3;

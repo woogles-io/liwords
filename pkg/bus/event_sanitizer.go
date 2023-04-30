@@ -3,8 +3,6 @@ package bus
 import (
 	"context"
 	"errors"
-	"strconv"
-	"unicode/utf8"
 
 	"google.golang.org/protobuf/proto"
 
@@ -50,7 +48,7 @@ func sanitize(us user.Store, evt *entity.EventWrapper, userID string) (*entity.E
 			if evt.GetPlayerIndex() != uint32(myPlayerIndex) {
 				evt.Rack = ""
 				if evt.Type == macondopb.GameEvent_EXCHANGE {
-					evt.Exchanged = strconv.Itoa(utf8.RuneCountInString(evt.Exchanged))
+					evt.Exchanged = ""
 				}
 			}
 		}
@@ -81,7 +79,7 @@ func sanitize(us user.Store, evt *entity.EventWrapper, userID string) (*entity.E
 		cloned.NewRack = ""
 		cloned.Event.Rack = ""
 		if cloned.Event.Type == macondopb.GameEvent_EXCHANGE {
-			cloned.Event.Exchanged = strconv.Itoa(utf8.RuneCountInString(cloned.Event.Exchanged))
+			cloned.Event.Exchanged = ""
 		}
 		return entity.WrapEvent(cloned, pb.MessageType_SERVER_GAMEPLAY_EVENT), nil
 
