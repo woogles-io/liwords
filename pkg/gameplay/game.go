@@ -8,9 +8,7 @@ import (
 	"context"
 	"errors"
 	"sort"
-	"strconv"
 	"time"
-	"unicode/utf8"
 
 	"github.com/domino14/macondo/tilemapping"
 	"github.com/domino14/macondo/turnplayer"
@@ -18,7 +16,6 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -285,15 +282,14 @@ func players(entGame *entity.Game) []string {
 	return ps
 }
 
-// allocates sorted runes from strings
-func sortedRunes(s string) []rune {
-	a := []rune(s)
-	sort.Slice(a, func(i, j int) bool { return a[i] < a[j] })
-	return a
+// sorts MLs in place.
+func sortedMLs(mls []tilemapping.MachineLetter) []tilemapping.MachineLetter {
+	sort.Slice(mls, func(i, j int) bool { return mls[i] < mls[j] })
+	return mls
 }
 
-// given two sorted runes, overwrite a with a-b, return the shortened slice
-func minusRunes(a, b []rune) []rune {
+// given two sorted arrays of machineletters, overwrite a with a-b, return the shortened slice
+func minusMLs(a, b []tilemapping.MachineLetter) []tilemapping.MachineLetter {
 	la := len(a)
 	lb := len(b)
 	rb := 0
@@ -312,6 +308,28 @@ func minusRunes(a, b []rune) []rune {
 	return a[:wa]
 }
 
+func calculateReturnedTiles(cfg *config.Config, letdist string, playerRack string, lastEventRack string, lastEventTiles string) (string, error) {
+	dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, letdist)
+	if err != nil {
+		return "", err
+	}
+	prackml, err := tilemapping.ToMachineLetters(playerRack, dist.TileMapping())
+	if err != nil {
+		return "", err
+	}
+	lastrackml, err := tilemapping.ToMachineLetters(lastEventRack, dist.TileMapping())
+	if err != nil {
+		return "", err
+	}
+	lastevtml, err := tilemapping.ToMachineLetters(lastEventTiles, dist.TileMapping())
+	if err != nil {
+		return "", err
+	}
+
+	returnedMLs := minusMLs(sortedMLs(prackml), minusMLs(sortedMLs(lastrackml), sortedMLs(lastevtml)))
+	return tilemapping.MachineWord(returnedMLs).UserVisible(dist.TileMapping()), nil
+}
+
 func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameStore,
 	userStore user.Store, notorietyStore mod.NotorietyStore, listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore,
 	timeRemaining int, challengerID string) error {
@@ -323,12 +341,20 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 	// curTurn := entGame.Game.Turn()
 
 	var returnedTiles string
+	var err error
 	if numEvts > 0 {
 		// this must be done before ChallengeEvent irreversibly modifies the history
 		lastEvent := entGame.Game.LastEvent()
 		numPlayers := entGame.Game.NumPlayers() // if this is always 2, we can just do PlayerOnTurn() ^ 1
 		// there is no need to remove tilemapping.ASCIIPlayedThrough from playedTiles because it should not appear on Rack
-		returnedTiles = string(minusRunes(sortedRunes(entGame.Game.History().LastKnownRacks[(entGame.Game.PlayerOnTurn()+numPlayers-1)%numPlayers]), minusRunes(sortedRunes(lastEvent.Rack), sortedRunes(lastEvent.PlayedTiles))))
+		cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
+		if !ok {
+			return errors.New("config not found in ctx")
+		}
+		returnedTiles, err = calculateReturnedTiles(cfg, entGame.Game.Rules().LetterDistributionName(), entGame.Game.History().LastKnownRacks[(entGame.Game.PlayerOnTurn()+numPlayers-1)%numPlayers], lastEvent.Rack, lastEvent.PlayedTiles)
+		if err != nil {
+			return err
+		}
 	}
 
 	valid, err := entGame.Game.ChallengeEvent(0, timeRemaining)
@@ -645,19 +671,6 @@ func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store, no
 	}
 
 	return setTimedOut(ctx, entGame, onTurn, gameStore, userStore, notorietyStore, listStatStore, tournamentStore)
-}
-
-// sanitizeEvent removes rack information from the event; it is meant to be
-// sent to someone currently in a game.
-func sanitizeEvent(sge *pb.ServerGameplayEvent) *pb.ServerGameplayEvent {
-	cloned := proto.Clone(sge).(*pb.ServerGameplayEvent)
-	cloned.NewRack = ""
-	cloned.Event.Rack = ""
-	// len() > 0 is fine
-	if len(cloned.Event.Exchanged) > 0 {
-		cloned.Event.Exchanged = strconv.Itoa(utf8.RuneCountInString(cloned.Event.Exchanged))
-	}
-	return cloned
 }
 
 func statsForUser(ctx context.Context, id string, userStore user.Store,
