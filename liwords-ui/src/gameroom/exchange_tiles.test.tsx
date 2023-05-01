@@ -55,8 +55,6 @@ function renderExchangeCatalanTiles(callback: (t: MachineWord) => void) {
 
 afterEach(cleanup);
 
-const sleep = (m: number) => new Promise((r) => setTimeout(r, m));
-
 it('exchanges the right tiles', async () => {
   const cb = jest.fn();
   const { findByRole } = renderExchangeTiles(cb);

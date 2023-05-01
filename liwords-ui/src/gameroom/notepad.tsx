@@ -19,6 +19,10 @@ import {
 import { Direction, isMobile } from '../utils/cwgame/common';
 import { useMountedState } from '../utils/mounted';
 import { BoopSounds } from '../sound/boop';
+import {
+  machineLetterToRune,
+  machineWordToRunes,
+} from '../constants/alphabets';
 
 type NotepadProps = {
   style?: React.CSSProperties;
@@ -74,7 +78,10 @@ export const Notepad = React.memo((props: NotepadProps) => {
     const contiguousTiles = contiguousTilesFromTileSet(placedTiles, board);
     let play = '';
     let position = '';
-    const leave = sortTiles(displayedRack, gameContext.alphabet);
+    const leave = machineWordToRunes(
+      sortTiles(displayedRack, gameContext.alphabet),
+      gameContext.alphabet
+    );
     if (contiguousTiles?.length === 2) {
       position = humanReadablePosition(
         contiguousTiles[1],
@@ -93,7 +100,7 @@ export const Notepad = React.memo((props: NotepadProps) => {
             inParen = false;
           }
         }
-        play += tile.letter;
+        play += machineLetterToRune(tile.letter, gameContext.alphabet);
       }
       if (inParen) play += ')';
     }

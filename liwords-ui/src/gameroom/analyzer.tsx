@@ -20,7 +20,6 @@ import { RedoOutlined } from '@ant-design/icons';
 import {
   EmptyBoardSpaceMachineLetter,
   EmptyRackSpaceMachineLetter,
-  EmptySpace,
   EphemeralTile,
   MachineLetter,
   MachineWord,
@@ -136,18 +135,6 @@ export const analyzerMoveFromJsonMove = (
     isExchange: false,
   };
 
-  //   const addGapsToLeave = (leaveNum: MachineWord, sortedLeave: MachineWord) => {
-  //     let leaveWithGaps = new Array<MachineLetter>();
-  //     let r = 0;
-  //     for (const t of leaveNum) {
-  //       if (!isNaN(t)) {
-  //         leaveStr += sortedLeaveStr[r++];
-  //       } else {
-  //         leaveStr += EmptySpace;
-  //       }
-  //     }
-  //     return leaveStr;
-  //   };
   switch (move.action) {
     case 'play': {
       let leaveNum = [...rackNum];

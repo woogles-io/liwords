@@ -130,7 +130,12 @@ export const tilePlacementEventDisplay = (
         m += '(';
         openParen = true;
       }
-      m += machineLetterToRune(board.letterAt(r, c)!, alphabet, false, true);
+      m += machineLetterToRune(
+        board.letterAt(r, c) ?? 0,
+        alphabet,
+        false,
+        true
+      );
     } else {
       if (openParen) {
         m += ')';

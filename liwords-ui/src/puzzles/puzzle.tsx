@@ -224,6 +224,7 @@ export const SinglePuzzle = (props: Props) => {
     }
   }, [loadNewPuzzle, nextPending]);
 
+  // XXX: tis is all broken.
   // XXX: This is copied from analyzer.tsx. When we add the analyzer
   // to the puzzle page we should figure out another solution.
   const placeMove = usePlaceMoveCallback();

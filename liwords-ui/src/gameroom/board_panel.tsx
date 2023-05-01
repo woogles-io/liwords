@@ -73,6 +73,7 @@ import {
 import { TilePreview } from './tile';
 import {
   Alphabet,
+  machineLetterToRune,
   machineWordToRunes,
   runesToMachineWord,
 } from '../constants/alphabets';
@@ -760,7 +761,9 @@ export const BoardPanel = React.memo((props: Props) => {
         boardMessage = `${evtNickname} passed`;
         break;
       case GameEvent_Type.EXCHANGE:
-        boardMessage = `${evtNickname} exchanged ${evt.exchanged}`;
+        boardMessage = `${evtNickname} exchanged ${
+          evt.exchanged || evt.numTilesFromRack
+        }`;
         break;
     }
     if (boardMessage && !props.puzzleMode) {
@@ -1012,19 +1015,19 @@ export const BoardPanel = React.memo((props: Props) => {
             let tilesRemaining = '';
             let blankString = ' ';
             for (const [key, value] of Object.entries(bag)) {
-              const letter = key + '. ';
+              const letter =
+                machineLetterToRune(parseInt(key, 10), props.alphabet) + '. ';
               if (value > 0) {
                 numTilesRemaining += value;
-                if (key === '?') {
-                  blankString = value + ', blank';
+                if (key === '0') {
+                  blankString = `${value}, blank`;
                 } else {
-                  tilesRemaining += value + ', ' + letter;
+                  tilesRemaining += `${value}, ${letter}`;
                 }
               }
             }
             say(
-              numTilesRemaining +
-                ' tiles unseen, ' +
+              `${numTilesRemaining} tiles unseen, ` +
                 wordToSayString(tilesRemaining, blindfoldUseNPA) +
                 blankString,
               ''
@@ -1045,10 +1048,10 @@ export const BoardPanel = React.memo((props: Props) => {
               if (tile === '.') {
                 tile = '?';
                 numTiles = bag[letter];
-                say(numTiles + ', blank', '');
+                say(`${numTiles}, blank`, '');
               } else {
                 say(
-                  wordToSayString(numTiles + ', ' + tile, blindfoldUseNPA),
+                  wordToSayString(`${numTiles}, ${tile}`, blindfoldUseNPA),
                   ''
                 );
               }
