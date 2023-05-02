@@ -24,6 +24,15 @@ import (
 	"github.com/domino14/macondo/tilemapping"
 )
 
+func ctxForTests() context.Context {
+	ctx := context.Background()
+	ctx = log.Logger.WithContext(ctx)
+	ctx = context.WithValue(ctx, config.CtxKeyword, &config.Config{
+		MacondoConfig: DefaultConfig,
+	})
+	return ctx
+}
+
 func gameStore(userStore pkguser.Store) (*config.Config, gameplay.GameStore) {
 	cfg := &config.Config{}
 	cfg.MacondoConfig = DefaultConfig
@@ -79,7 +88,7 @@ func (ec *evtConsumer) consumeEventChan(ctx context.Context,
 func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStore) (
 	*entity.Game, *entity.FakeNower, context.CancelFunc, chan bool, *evtConsumer) {
 
-	ctx := context.Background()
+	ctx := ctxForTests()
 	cesar, _ := ustore.Get(ctx, "cesar4")
 	jesse, _ := ustore.Get(ctx, "jesse")
 	// see the gameReq in game_stats_test.go in this package
@@ -139,9 +148,9 @@ func TestWrongTurn(t *testing.T) {
 		PositionCoords: "8D",
 		MachineLetters: []byte{2, 1, 14, 10, 15},
 	}
-
+	ctx := ctxForTests()
 	// User ID below is "cesar4" who's not on turn.
-	_, err := gameplay.HandleEvent(context.Background(), gstore, ustore, nstore, lstore, tstore,
+	_, err := gameplay.HandleEvent(ctx, gstore, ustore, nstore, lstore, tstore,
 		"xjCWug7EZtDxDHX5fRZTLo", cge)
 
 	is.Equal(err.Error(), "player not on turn")
@@ -164,6 +173,7 @@ func Test5ptBadWord(t *testing.T) {
 	tstore := tournamentStore(cfg, gstore)
 
 	g, nower, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
+	ctx := ctxForTests()
 
 	cge := &pb.ClientGameplayEvent{
 		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
@@ -177,7 +187,7 @@ func Test5ptBadWord(t *testing.T) {
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
-	_, err := gameplay.HandleEvent(context.Background(), gstore, ustore, nstore, lstore, tstore,
+	_, err := gameplay.HandleEvent(ctx, gstore, ustore, nstore, lstore, tstore,
 		"3xpEkpRAy3AizbVmDg3kdi", cge)
 
 	is.NoErr(err)
@@ -207,6 +217,7 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 	_, ustore, lstore, nstore := recreateDB()
 	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
+	ctx := ctxForTests()
 
 	g, nower, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
 
@@ -223,13 +234,13 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
-	_, err := gameplay.HandleEvent(context.Background(), gstore, ustore, nstore, lstore, tstore,
+	_, err := gameplay.HandleEvent(ctx, gstore, ustore, nstore, lstore, tstore,
 		"3xpEkpRAy3AizbVmDg3kdi", cge)
 
 	is.NoErr(err)
 	// "cesar4" waits a while before challenging this very plausible word.
 	nower.Sleep(7620)
-	_, err = gameplay.HandleEvent(context.Background(), gstore, ustore, nstore, lstore, tstore,
+	_, err = gameplay.HandleEvent(ctx, gstore, ustore, nstore, lstore, tstore,
 		"xjCWug7EZtDxDHX5fRZTLo", &pb.ClientGameplayEvent{
 			Type:   pb.ClientGameplayEvent_CHALLENGE_PLAY,
 			GameId: g.GameID(),
@@ -269,6 +280,7 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 	_, ustore, lstore, nstore := recreateDB()
 	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
+	ctx := ctxForTests()
 
 	g, nower, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
 
@@ -285,13 +297,13 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
-	_, err := gameplay.HandleEvent(context.Background(), gstore, ustore, nstore, lstore, tstore,
+	_, err := gameplay.HandleEvent(ctx, gstore, ustore, nstore, lstore, tstore,
 		"3xpEkpRAy3AizbVmDg3kdi", cge)
 
 	is.NoErr(err)
 	// "cesar4" waits a while before challenging BANJO for some reason.
 	nower.Sleep(7620)
-	_, err = gameplay.HandleEvent(context.Background(), gstore, ustore, nstore, lstore, tstore,
+	_, err = gameplay.HandleEvent(ctx, gstore, ustore, nstore, lstore, tstore,
 		"xjCWug7EZtDxDHX5fRZTLo", &pb.ClientGameplayEvent{
 			Type:   pb.ClientGameplayEvent_CHALLENGE_PLAY,
 			GameId: g.GameID(),
@@ -329,9 +341,9 @@ func TestQuickdata(t *testing.T) {
 	_, ustore, lstore, nstore := recreateDB()
 	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
+	ctx := ctxForTests()
 
 	g, nower, cancel, donechan, _ := makeGame(cfg, ustore, gstore)
-	ctx := context.WithValue(context.Background(), config.CtxKeyword, &config.Config{MacondoConfig: DefaultConfig})
 
 	cge1 := &pb.ClientGameplayEvent{
 		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
