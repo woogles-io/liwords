@@ -7,6 +7,7 @@
 import {
   Blank,
   EmptyRackSpaceMachineLetter,
+  EmptySpace,
   MachineLetter,
   MachineWord,
 } from '../utils/cwgame/common';
@@ -626,6 +627,9 @@ export const runesToMachineWord = (
       // This is not very clean.
       if (chars[i] === ThroughTileMarker) {
         bts.push(0);
+        i++;
+      } else if (chars[i] === EmptySpace) {
+        bts.push(EmptyRackSpaceMachineLetter);
         i++;
       } else {
         throw new Error('cannot convert ' + runes + ' to uint8array');

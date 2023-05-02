@@ -3,7 +3,11 @@ import { Card, Form, Modal, Select } from 'antd';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Chat } from '../chat/chat';
-import { alphabetFromName, machineWordToRunes } from '../constants/alphabets';
+import {
+  alphabetFromName,
+  machineWordToRunes,
+  runesToMachineWord,
+} from '../constants/alphabets';
 import { TopBar } from '../navigation/topbar';
 import {
   useExaminableGameContextStoreContext,
@@ -240,12 +244,18 @@ export const SinglePuzzle = (props: Props) => {
         row: evt.row,
         score: evt.score,
         equity: 0.0, // not shown yet
-        tiles: evt.playedTiles || evt.exchanged,
-        isExchange: evt.type === GameEvent_Type.EXCHANGE,
-        leave: '',
-        leaveWithGaps: computeLeaveWithGaps(
+        tiles: runesToMachineWord(
           evt.playedTiles || evt.exchanged,
-          machineWordToRunes(sortedRack, examinableGameContext.alphabet)
+          examinableGameContext.alphabet
+        ),
+        isExchange: evt.type === GameEvent_Type.EXCHANGE,
+        leave: new Array<MachineLetter>(),
+        leaveWithGaps: runesToMachineWord(
+          computeLeaveWithGaps(
+            evt.playedTiles || evt.exchanged,
+            machineWordToRunes(sortedRack, examinableGameContext.alphabet)
+          ),
+          examinableGameContext.alphabet
         ),
       };
       placeMove(m);
