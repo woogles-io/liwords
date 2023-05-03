@@ -1,5 +1,5 @@
 import { someTileLayout } from './scoring.test';
-import { getWordsFormed } from './tile_placement';
+import { getWordsFormed, handleKeyPress } from './tile_placement';
 import { Board } from './board';
 import { EphemeralTile } from './common';
 import {
@@ -76,4 +76,58 @@ it('getWordsFormed lists only new words when tiles are passed', () => {
   expect(wordsFormedVertical).toContain('TEsT');
   expect(wordsFormedVertical).toContain('TO');
   expect(wordsFormedVertical).toContain('EN');
+});
+/*
+  '         RADIOS',
+  '         E     ',
+  '      R SI     ',
+  '      U E      ',
+  '    ZINGARO    ',
+  '    o   T      ',
+  '    N          ',
+  '   WASTE       ',
+  '    T          ',
+  '    I          ',
+  '    O          ',
+  '    N          ',
+  '               ',
+  '               ',
+  '               ',
+  */
+
+describe('handleKeyPress test suite', () => {
+  it('does nothing if arrow is not showing', () => {
+    const board = new Board();
+    board.setTileLayout(someTileLayout);
+    const arrow = { row: 7, col: 8, horizontal: true, show: false };
+    // rack is empty, empty, O, L, T, U, V
+    const resp = handleKeyPress(
+      arrow,
+      board,
+      'L',
+      [0x80, 0x80, 15, 12, 20, 21, 22],
+      new Set(),
+      StandardEnglishAlphabet
+    );
+    expect(resp).toBe(null);
+  });
+  it('places play on board properly', () => {
+    const board = new Board();
+    board.setTileLayout(someTileLayout);
+    const arrow = { row: 7, col: 8, horizontal: true, show: true };
+    const resp = handleKeyPress(
+      arrow,
+      board,
+      'L',
+      [0x80, 0x80, 15, 12, 20, 21, 22],
+      new Set(),
+      StandardEnglishAlphabet
+    );
+    expect(resp).toBe({
+      newPlacedTiles: new Set([{ row: 7, col: 8, letter: 12 }]),
+      newDisplayedRack: [0x80, 0x80, 15, 0x80, 20, 21, 22],
+      playScore: 9,
+      newArrow: { row: 7, col: 9, horizontal: true, show: true },
+    });
+  });
 });
