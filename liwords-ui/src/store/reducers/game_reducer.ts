@@ -495,7 +495,6 @@ const setClock = (newState: GameState, sge: ServerGameplayEvent) => {
   let { p0, p1 } = newState.clockController.current.times;
   let activePlayer;
   let flipTimeRemaining = false;
-  console.log('player times are currently', p0, p1, 'from evt:', rem);
 
   if (
     evt.type === GameEvent_Type.CHALLENGE_BONUS ||
@@ -517,8 +516,6 @@ const setClock = (newState: GameState, sge: ServerGameplayEvent) => {
   } else {
     throw new Error(`just played ${justPlayed} is unexpected`);
   }
-  console.log('activePlayer is', activePlayer);
-
   newState.clockController.current.setClock(
     newState.playState,
     {

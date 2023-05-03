@@ -113,8 +113,6 @@ export class ClockController {
       lastUpdate: performance.now() + delayMs,
     };
 
-    console.log('setClock', this.times);
-
     if (isClockRunning && this.times.activePlayer) {
       this.scheduleTick(this.times[this.times.activePlayer], delayMs);
     }

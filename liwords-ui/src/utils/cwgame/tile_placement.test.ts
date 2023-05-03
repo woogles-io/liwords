@@ -111,10 +111,104 @@ describe('handleKeyPress test suite', () => {
     );
     expect(resp).toBe(null);
   });
-  it('places play on board properly', () => {
+
+  it('places letter on board properly', () => {
     const board = new Board();
     board.setTileLayout(someTileLayout);
     const arrow = { row: 7, col: 8, horizontal: true, show: true };
+    const resp = handleKeyPress(
+      arrow,
+      board,
+      'l',
+      [0x80, 0x80, 15, 12, 20, 21, 22],
+      new Set(),
+      StandardEnglishAlphabet
+    );
+    // arrow should also advance
+    expect(resp).toStrictEqual({
+      newPlacedTiles: new Set([{ row: 7, col: 8, letter: 12 }]),
+      newDisplayedRack: [0x80, 0x80, 15, 0x80, 20, 21, 22],
+      playScore: 9,
+      newArrow: { row: 7, col: 9, horizontal: true, show: true },
+    });
+  });
+
+  it('places blank letter on board properly', () => {
+    const board = new Board();
+    board.setTileLayout(someTileLayout);
+    const arrow = { row: 7, col: 8, horizontal: true, show: true };
+    const resp = handleKeyPress(
+      arrow,
+      board,
+      'L',
+      [0x80, 0x80, 15, 0, 20, 21, 22],
+      new Set(),
+      StandardEnglishAlphabet
+    );
+    expect(resp).toStrictEqual({
+      newPlacedTiles: new Set([{ row: 7, col: 8, letter: 12 | 0x80 }]),
+      newDisplayedRack: [0x80, 0x80, 15, 0x80, 20, 21, 22],
+      playScore: 8,
+      newArrow: { row: 7, col: 9, horizontal: true, show: true },
+    });
+  });
+
+  it('uses blank as last resort', () => {
+    const board = new Board();
+    board.setTileLayout(someTileLayout);
+    const arrow = { row: 7, col: 8, horizontal: true, show: true };
+    const resp = handleKeyPress(
+      arrow,
+      board,
+      'l',
+      // l isn't on rack, and wasn't capitalized. but since we have a blank it should
+      // still be used.
+      [0x80, 0x80, 15, 0, 20, 21, 22],
+      new Set(),
+      StandardEnglishAlphabet
+    );
+    expect(resp).toStrictEqual({
+      newPlacedTiles: new Set([{ row: 7, col: 8, letter: 12 | 0x80 }]),
+      newDisplayedRack: [0x80, 0x80, 15, 0x80, 20, 21, 22],
+      playScore: 8,
+      newArrow: { row: 7, col: 9, horizontal: true, show: true },
+    });
+  });
+
+  it('does nothing if letter is not on rack', () => {
+    const board = new Board();
+    board.setTileLayout(someTileLayout);
+    const arrow = { row: 7, col: 8, horizontal: true, show: true };
+    // Try blank L
+    let resp = handleKeyPress(
+      arrow,
+      board,
+      'L',
+      [0x80, 0x80, 15, 0x80, 20, 21, 22],
+      new Set(),
+      StandardEnglishAlphabet
+    );
+    expect(resp).toBe(null);
+    // Try natural L, which we also don't have
+    resp = handleKeyPress(
+      arrow,
+      board,
+      'l',
+      [0x80, 0x80, 15, 0x80, 20, 21, 22],
+      new Set(),
+      StandardEnglishAlphabet
+    );
+    expect(resp).toBe(null);
+  });
+
+  it('does not place arrow under tile', () => {
+    const board = new Board();
+    board.setTileLayout(someTileLayout);
+    // Put the arrow immediately after WASTE.
+    const arrow = { row: 7, col: 8, horizontal: true, show: true };
+    // then pretend we just dragged a tile to row 7 col 9
+    board.addTile({ row: 7, col: 9, ml: 15 });
+    // arrow should jump after the O once we type in a tile
     const resp = handleKeyPress(
       arrow,
       board,
@@ -123,11 +217,34 @@ describe('handleKeyPress test suite', () => {
       new Set(),
       StandardEnglishAlphabet
     );
-    expect(resp).toBe({
+    expect(resp).toStrictEqual({
       newPlacedTiles: new Set([{ row: 7, col: 8, letter: 12 }]),
       newDisplayedRack: [0x80, 0x80, 15, 0x80, 20, 21, 22],
-      playScore: 9,
-      newArrow: { row: 7, col: 9, horizontal: true, show: true },
+      playScore: 10,
+      // arrow skips
+      newArrow: { row: 7, col: 10, horizontal: true, show: true },
+    });
+  });
+
+  it('places arrow off edge', () => {
+    const board = new Board();
+    board.setTileLayout(someTileLayout);
+    const arrow = { row: 0, col: 8, horizontal: true, show: true };
+
+    const resp = handleKeyPress(
+      arrow,
+      board,
+      'e',
+      [0x80, 0x80, 15, 5, 20, 21, 22],
+      new Set(),
+      StandardEnglishAlphabet
+    );
+    expect(resp).toStrictEqual({
+      newPlacedTiles: new Set([{ row: 0, col: 8, letter: 5 }]),
+      newDisplayedRack: [0x80, 0x80, 15, 0x80, 20, 21, 22],
+      playScore: 8,
+      // arrow goes all the way off the board. oh well.
+      newArrow: { row: 0, col: 15, horizontal: true, show: true },
     });
   });
 });

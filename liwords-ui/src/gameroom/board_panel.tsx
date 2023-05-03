@@ -33,6 +33,7 @@ import {
   returnTileToRack,
   designateBlank,
   stableInsertRack,
+  nextArrowStateAfterTilePlacement,
 } from '../utils/cwgame/tile_placement';
 
 import {
@@ -1289,38 +1290,23 @@ export const BoardPanel = React.memo((props: Props) => {
       if (handlerReturn.isUndesignated) {
         setCurrentMode('BLANK_MODAL');
       }
-      let newrow = arrowProperties.row;
-      let newcol = arrowProperties.col;
-
-      if (arrowProperties.horizontal) {
-        do {
-          newcol += 1;
-        } while (
-          newcol < props.board.dim &&
-          newcol >= 0 &&
-          props.board.letterAt(newrow, newcol) !== EmptyBoardSpaceMachineLetter
-        );
-      } else {
-        do {
-          newrow += 1;
-        } while (
-          newrow < props.board.dim &&
-          newrow >= 0 &&
-          props.board.letterAt(newrow, newcol) !== EmptyBoardSpaceMachineLetter
-        );
-      }
-      setArrowProperties({
-        col: newcol,
-        horizontal: arrowProperties.horizontal,
-        show: !(newcol === props.board.dim || newrow === props.board.dim),
-        row: newrow,
+      // Create an ephemeral tile map with unique keys.
+      const ephTileMap: { [tileIdx: number]: EphemeralTile } = {};
+      handlerReturn.newPlacedTiles.forEach((t) => {
+        ephTileMap[uniqueTileIdx(t.row, t.col)] = t;
       });
+
+      setArrowProperties(
+        nextArrowStateAfterTilePlacement(
+          arrowProperties,
+          ephTileMap,
+          1,
+          props.board
+        )
+      );
     },
     [
-      arrowProperties.col,
-      arrowProperties.horizontal,
-      arrowProperties.row,
-      arrowProperties.show,
+      arrowProperties,
       displayedRack,
       placedTiles,
       props.alphabet,
@@ -1377,6 +1363,7 @@ export const BoardPanel = React.memo((props: Props) => {
         rackIndex,
         tileIndex
       );
+      console.log('returning to rack', handlerReturn);
       if (handlerReturn === null) {
         return;
       }

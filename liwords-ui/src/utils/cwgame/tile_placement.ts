@@ -116,6 +116,40 @@ export const handleTileDeletion = (
   };
 };
 
+export const nextArrowStateAfterTilePlacement = (
+  arrowProperty: PlacementArrow,
+  ephTileMap: { [tileIdx: number]: EphemeralTile },
+  increment: 1 | -1,
+  board: Board
+) => {
+  let { col, row } = arrowProperty;
+  if (arrowProperty.horizontal) {
+    do {
+      col += increment;
+    } while (
+      col < board.dim &&
+      col >= 0 &&
+      (board.letterAt(row, col) !== EmptyBoardSpaceMachineLetter ||
+        (increment === 1 && ephTileMap[uniqueTileIdx(row, col)] !== undefined))
+    );
+  } else {
+    do {
+      row += increment;
+    } while (
+      row < board.dim &&
+      row >= 0 &&
+      (board.letterAt(row, col) !== EmptyBoardSpaceMachineLetter ||
+        (increment === 1 && ephTileMap[uniqueTileIdx(row, col)] !== undefined))
+    );
+  }
+  return {
+    row,
+    col,
+    horizontal: arrowProperty.horizontal,
+    show: true,
+  };
+};
+
 /**
  * This is a fairly important function for placing tiles with the keyboard.
  * It handles a keypress, and takes in the current direction of the placement
@@ -134,12 +168,6 @@ export const handleKeyPress = (
   const normalizedKey = key.toUpperCase();
 
   const newPlacedTiles = new Set(currentlyPlacedTiles);
-
-  // Create an ephemeral tile map with unique keys.
-  const ephTileMap: { [tileIdx: number]: EphemeralTile } = {};
-  currentlyPlacedTiles.forEach((t) => {
-    ephTileMap[uniqueTileIdx(t.row, t.col)] = t;
-  });
 
   if (
     !Object.prototype.hasOwnProperty.call(alphabet.letterMap, normalizedKey) &&
@@ -170,51 +198,41 @@ export const handleKeyPress = (
     }
   }
 
-  let increment = 1;
+  // Create an ephemeral tile map with unique keys.
+  const ephTileMap: { [tileIdx: number]: EphemeralTile } = {};
+  currentlyPlacedTiles.forEach((t) => {
+    ephTileMap[uniqueTileIdx(t.row, t.col)] = t;
+  });
+
+  let increment: 1 | -1 = 1;
   // Check the backspace and unplay any tiles if necessary.
   if (normalizedKey === NormalizedBackspace) {
     increment = -1;
   }
 
-  let newrow = arrowProperty.row;
-  let newcol = arrowProperty.col;
   const newUnplacedTiles = [...unplacedTiles];
 
   // First figure out where to put the arrow, no matter what.
-  if (arrowProperty.horizontal) {
-    do {
-      newcol += increment;
-    } while (
-      newcol < board.dim &&
-      newcol >= 0 &&
-      (board.letterAt(newrow, newcol) !== EmptyBoardSpaceMachineLetter ||
-        (increment === 1 &&
-          ephTileMap[uniqueTileIdx(newrow, newcol)] !== undefined))
-    );
-  } else {
-    do {
-      newrow += increment;
-    } while (
-      newrow < board.dim &&
-      newrow >= 0 &&
-      (board.letterAt(newrow, newcol) !== EmptyBoardSpaceMachineLetter ||
-        (increment === 1 &&
-          ephTileMap[uniqueTileIdx(newrow, newcol)] !== undefined))
-    );
-  }
+
+  const newArrowProperty = nextArrowStateAfterTilePlacement(
+    arrowProperty,
+    ephTileMap,
+    increment,
+    board
+  );
 
   if (normalizedKey === NormalizedBackspace) {
     // Don't allow the arrow to go off-screen when backspacing.
-    if (newrow < 0) {
-      newrow = arrowProperty.row;
+    if (newArrowProperty.row < 0) {
+      newArrowProperty.row = arrowProperty.row;
     }
-    if (newcol < 0) {
-      newcol = arrowProperty.col;
+    if (newArrowProperty.col < 0) {
+      newArrowProperty.col = arrowProperty.col;
     }
     return handleTileDeletion(
       {
-        row: newrow,
-        col: newcol,
+        row: newArrowProperty.row,
+        col: newArrowProperty.col,
         horizontal: arrowProperty.horizontal,
         show: true,
       },
@@ -226,19 +244,14 @@ export const handleKeyPress = (
   }
 
   if (normalizedKey === NormalizedSpace) {
-    if (newrow > board.dim - 1) {
-      newrow = arrowProperty.row;
+    if (newArrowProperty.row > board.dim - 1) {
+      newArrowProperty.row = arrowProperty.row;
     }
-    if (newcol > board.dim - 1) {
-      newcol = arrowProperty.col;
+    if (newArrowProperty.col > board.dim - 1) {
+      newArrowProperty.col = arrowProperty.col;
     }
     return {
-      newArrow: {
-        row: newrow,
-        col: newcol,
-        horizontal: arrowProperty.horizontal,
-        show: true,
-      },
+      newArrow: newArrowProperty,
       newPlacedTiles,
       newDisplayedRack: newUnplacedTiles,
       playScore: calculateTemporaryScore(newPlacedTiles, board, alphabet),
@@ -247,12 +260,12 @@ export const handleKeyPress = (
 
   const blankIdx = unplacedTiles.indexOf(BlankMachineLetter);
   let existed = false;
+  const typedML = getMachineLetterForKey(normalizedKey, alphabet);
 
   if (blankIdx !== -1 && normalizedKey === key) {
     // If there is a blank, and the user specifically requested to use it
     // (by typing the letter with a Shift)
-    const foundML = getMachineLetterForKey(normalizedKey, alphabet);
-    if (foundML == null) {
+    if (typedML == null) {
       return null;
     }
     existed = true;
@@ -260,15 +273,13 @@ export const handleKeyPress = (
       row: arrowProperty.row,
       col: arrowProperty.col,
       // Specifically designate it as a blanked letter.
-      letter: makeBlank(foundML),
+      letter: makeBlank(typedML),
     });
     newUnplacedTiles[blankIdx] = EmptyRackSpaceMachineLetter;
   } else {
     // check if the key is in the unplaced tiles.
     for (let i = 0; i < unplacedTiles.length; i++) {
-      const ml = getMachineLetterForKey(normalizedKey, alphabet);
-
-      if (ml != null) {
+      if (unplacedTiles[i] === typedML) {
         // Only use the blank in one of two situations:
         // - the original letter was uppercase (typed with a Shift)
         // - last-case scenario (all tiles have been scanned first)
@@ -276,7 +287,7 @@ export const handleKeyPress = (
         newPlacedTiles.add({
           row: arrowProperty.row,
           col: arrowProperty.col,
-          letter: ml,
+          letter: typedML,
         });
 
         newUnplacedTiles[i] = EmptyRackSpaceMachineLetter;
@@ -288,12 +299,11 @@ export const handleKeyPress = (
   if (!existed) {
     // tile did not exist on rack. Check if there's a blank we can use.
     if (blankIdx !== -1) {
-      const ml = getMachineLetterForKey(normalizedKey, alphabet);
-      if (ml != null) {
+      if (typedML != null) {
         newPlacedTiles.add({
           row: arrowProperty.row,
           col: arrowProperty.col,
-          letter: makeBlank(ml),
+          letter: makeBlank(typedML),
         });
 
         newUnplacedTiles[blankIdx] = EmptyRackSpaceMachineLetter;
@@ -307,12 +317,7 @@ export const handleKeyPress = (
   }
 
   return {
-    newArrow: {
-      row: newrow,
-      col: newcol,
-      horizontal: arrowProperty.horizontal,
-      show: true,
-    },
+    newArrow: newArrowProperty,
     newPlacedTiles,
     newDisplayedRack: newUnplacedTiles,
     playScore: calculateTemporaryScore(newPlacedTiles, board, alphabet),
@@ -425,7 +430,7 @@ export const handleDroppedTile = (
       }
     }
   });
-  let newUnplacedTiles = unplacedTiles;
+  let newUnplacedTiles = [...unplacedTiles];
   const newPlacedTiles = new Set(Object.values(ephTileMap));
   let letter;
   if (rackIndex >= 0) {
