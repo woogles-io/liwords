@@ -287,9 +287,7 @@ export const Table = React.memo((props: Props) => {
       setGameInfo(defaultGameInfo);
       message.destroy('board-messages');
     };
-    // React Hook useEffect has missing dependencies: 'setGameEndMessage' and 'setPoolFormat'.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameID]);
+  }, [gameID, gmClient, setGameEndMessage, setPoolFormat]);
 
   useEffect(() => {
     // If we are in annotated mode, we must explicitly fetch the GameDocument
@@ -387,9 +385,16 @@ export const Table = React.memo((props: Props) => {
     to.userId = timedout;
     sendSocketMsg(encodeToSocketFmt(MessageType.TIMED_OUT, to.toBinary()));
     setPTimedOut(undefined);
-    // React Hook useEffect has missing dependencies: 'gameContext.uidToPlayerOrder', 'gameInfo.players', 'isObserver', 'sendSocketMsg', and 'setPTimedOut'.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pTimedOut, gameContext.nickToPlayerOrder, gameID]);
+  }, [
+    gameContext.nickToPlayerOrder,
+    gameContext.uidToPlayerOrder,
+    gameID,
+    gameInfo.players,
+    isObserver,
+    pTimedOut,
+    sendSocketMsg,
+    setPTimedOut,
+  ]);
 
   useEffect(() => {
     if (!gameID) return;
@@ -409,9 +414,7 @@ export const Table = React.memo((props: Props) => {
         encodeToSocketFmt(MessageType.READY_FOR_GAME, evt.toBinary())
       );
     }
-    // React Hook useEffect has missing dependencies: 'gameID' and 'sendSocketMsg'.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userID, gameInfo]);
+  }, [userID, gameInfo, gameID, sendSocketMsg]);
 
   const enableHoverDefine = gameDone || isObserver;
   const { handleSetHover, hideDefinitionHover, definitionPopover } =

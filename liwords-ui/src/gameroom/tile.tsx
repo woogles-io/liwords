@@ -232,8 +232,7 @@ const Tile = React.memo((props: TileProps) => {
 
   useEffect(() => {
     preview(<div></div>);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [preview]);
 
   const [, drop] = useDrop({
     accept: TILE_TYPE,
