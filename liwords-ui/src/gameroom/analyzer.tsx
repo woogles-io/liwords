@@ -220,14 +220,15 @@ export const analyzerMoveFromJsonMove = (
 
       return {
         ...defaultRet,
-        displayMove: tilesBeingMoved
-          ? `Exch. ${machineWordToRunes(
-              tilesBeingMoved,
-              alphabet,
-              false,
-              true
-            )}`
-          : 'Pass',
+        displayMove:
+          tilesBeingMoved.length > 0
+            ? `Exch. ${machineWordToRunes(
+                tilesBeingMoved,
+                alphabet,
+                false,
+                true
+              )}`
+            : 'Pass',
         leave: leaveNum,
         leaveWithGaps,
         equity: move.equity,

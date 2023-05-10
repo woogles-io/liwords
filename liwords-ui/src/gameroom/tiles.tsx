@@ -47,7 +47,7 @@ type Props = {
 
 const Tiles = React.memo((props: Props) => {
   const tiles = [];
-  if (!props.tilesLayout || props.tilesLayout.length === 0) {
+  if (props.tilesLayout.length === 0) {
     return null;
   }
   // Sort the tentative tiles

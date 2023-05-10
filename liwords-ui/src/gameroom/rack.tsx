@@ -45,7 +45,7 @@ export const Rack = React.memo((props: Props) => {
     e.stopPropagation();
   };
   const handleDrop = (e: DragEvent<HTMLDivElement>, index: number) => {
-    if (props.moveRackTile && e.dataTransfer.getData('rackIndex')) {
+    if (e.dataTransfer.getData('rackIndex')) {
       props.moveRackTile(
         index,
         parseInt(e.dataTransfer.getData('rackIndex'), 10)
@@ -73,7 +73,7 @@ export const Rack = React.memo((props: Props) => {
           props.letters.length
         );
       }
-      if (props.moveRackTile && item.rackIndex) {
+      if (item.rackIndex) {
         props.moveRackTile(rackPosition, parseInt(item.rackIndex, 10));
       }
       if (props.returnToRack && item.tileIndex) {
@@ -95,7 +95,7 @@ export const Rack = React.memo((props: Props) => {
 
   const renderTiles = () => {
     const tiles = [];
-    if (!props.letters || props.letters.length === 0) {
+    if (props.letters.length === 0) {
       return null;
     }
 

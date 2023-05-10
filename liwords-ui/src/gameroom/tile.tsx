@@ -155,21 +155,19 @@ const Tile = React.memo((props: TileProps) => {
   const [isMouseDragging, setIsMouseDragging] = useState(false);
 
   const handleStartDrag = (e: DragEvent<HTMLDivElement>) => {
-    if (e) {
-      setIsMouseDragging(true);
-      e.dataTransfer.dropEffect = 'move';
-      if (
-        props.tentative &&
-        typeof props.x == 'number' &&
-        typeof props.y == 'number'
-      ) {
-        e.dataTransfer.setData(
-          'tileIndex',
-          uniqueTileIdx(props.y, props.x).toString()
-        );
-      } else {
-        e.dataTransfer.setData('rackIndex', props.rackIndex?.toString() || '');
-      }
+    setIsMouseDragging(true);
+    e.dataTransfer.dropEffect = 'move';
+    if (
+      props.tentative &&
+      typeof props.x == 'number' &&
+      typeof props.y == 'number'
+    ) {
+      e.dataTransfer.setData(
+        'tileIndex',
+        uniqueTileIdx(props.y, props.x).toString()
+      );
+    } else {
+      e.dataTransfer.setData('rackIndex', props.rackIndex?.toString() || '');
     }
   };
 

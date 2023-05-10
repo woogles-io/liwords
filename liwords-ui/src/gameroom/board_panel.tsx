@@ -99,8 +99,7 @@ import { RackEditor } from './rack_editor';
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
 const EnterKey = 'Enter';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const colors = require('../base.scss').default;
+import * as colors from '../base.scss';
 
 type Props = {
   anonymousViewer: boolean;
@@ -578,8 +577,8 @@ export const BoardPanel = React.memo((props: Props) => {
       // when we edit more than once.
       fullReset = true;
     } else if (
-      props.currentRack &&
-      !dep.displayedRack &&
+      props.currentRack.length > 0 &&
+      dep.displayedRack.length === 0 &&
       !dep.placedTiles.size
     ) {
       // First load after receiving rack.
@@ -663,7 +662,9 @@ export const BoardPanel = React.memo((props: Props) => {
         setArrowProperties(bak.arrowProperties);
       } else {
         let rack = props.currentRack;
-        if (sharedEnableAutoShuffle) rack = shuffleLetters(rack);
+        if (sharedEnableAutoShuffle) {
+          rack = shuffleLetters(rack);
+        }
         setDisplayedRack(rack);
         setPlacedTiles(new Set<EphemeralTile>());
         setPlacedTilesTempScore(0);
@@ -1188,6 +1189,7 @@ export const BoardPanel = React.memo((props: Props) => {
           return;
         }
         evt.preventDefault();
+
         setDisplayedRack(handlerReturn.newDisplayedRack);
         setArrowProperties(handlerReturn.newArrow);
         setPlacedTiles(handlerReturn.newPlacedTiles);
@@ -1363,7 +1365,6 @@ export const BoardPanel = React.memo((props: Props) => {
         rackIndex,
         tileIndex
       );
-      console.log('returning to rack', handlerReturn);
       if (handlerReturn === null) {
         return;
       }
@@ -1452,7 +1453,6 @@ export const BoardPanel = React.memo((props: Props) => {
       message: 'Rematch',
       description: `Sent rematch request to ${opp}`,
     });
-    console.log('rematching', evt);
   }, [
     observer,
     gameID,
@@ -1712,7 +1712,7 @@ export const BoardPanel = React.memo((props: Props) => {
               placement="bottomRight"
               mouseEnterDelay={0.1}
               mouseLeaveDelay={0.01}
-              color={colors.colorPrimary}
+              color={colors.default.colorPrimary}
             >
               <Button
                 shape="circle"
@@ -1727,7 +1727,7 @@ export const BoardPanel = React.memo((props: Props) => {
                 placement="bottomRight"
                 mouseEnterDelay={0.1}
                 mouseLeaveDelay={0.01}
-                color={colors.colorPrimary}
+                color={colors.default.colorPrimary}
               >
                 <Button
                   shape="circle"
@@ -1770,7 +1770,7 @@ export const BoardPanel = React.memo((props: Props) => {
               placement="bottomLeft"
               mouseEnterDelay={0.1}
               mouseLeaveDelay={0.01}
-              color={colors.colorPrimary}
+              color={colors.default.colorPrimary}
             >
               <Button
                 shape="circle"
@@ -1812,8 +1812,5 @@ export const BoardPanel = React.memo((props: Props) => {
       </Modal>
     </div>
   );
-  if (!isTouchDevice) {
-    return gameBoard;
-  }
   return <DndProvider backend={TouchBackend}>{gameBoard}</DndProvider>;
 });
