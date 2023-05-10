@@ -164,8 +164,8 @@ export const timeToString = (
     return '';
   }
   return `${initialTimeLabel(secs)}${
-    maxOvertimeMinutes ? '/' + maxOvertimeMinutes : ''
-  }${incrementSecs ? '+' + incrementSecs : ''}`;
+    maxOvertimeMinutes ? `/${maxOvertimeMinutes}` : ''
+  }${incrementSecs ? `+${incrementSecs}` : ''}`;
 };
 
 export const chatMessageToChatEntity = (cm: ChatMessage): ChatEntityObj => {

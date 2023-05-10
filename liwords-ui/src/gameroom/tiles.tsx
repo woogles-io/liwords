@@ -10,7 +10,7 @@ import {
   PlayerOfTiles,
 } from '../utils/cwgame/common';
 import { PlacementArrow } from '../utils/cwgame/tile_placement';
-import { Alphabet, scoreFor } from '../constants/alphabets';
+import { Alphabet, machineWordToRunes, scoreFor } from '../constants/alphabets';
 
 type Props = {
   tileColorId: number;
@@ -148,7 +148,7 @@ const Tiles = React.memo((props: Props) => {
             // pointer is moved out of the tile and back in. this is an
             // intentional design decision to improve usability and
             // responsiveness.
-            let sh = '';
+            const sh = new Array<MachineLetter>();
             {
               let i = x;
               while (
@@ -162,10 +162,10 @@ const Tiles = React.memo((props: Props) => {
                 tentativeBoard[y][i] !== EmptyBoardSpaceMachineLetter;
                 ++i
               ) {
-                sh += tentativeBoard[y][i];
+                sh.push(tentativeBoard[y][i]);
               }
             }
-            let sv = '';
+            const sv = new Array<MachineLetter>();
             {
               let i = y;
               while (
@@ -179,14 +179,16 @@ const Tiles = React.memo((props: Props) => {
                 tentativeBoard[i][x] !== EmptyBoardSpaceMachineLetter;
                 ++i
               ) {
-                sv += tentativeBoard[i][x];
+                sv.push(tentativeBoard[i][x]);
               }
             }
             const formedWords = [sh, sv].filter((word) => word.length >= 2);
             props.handleSetHover?.(
               x,
               y,
-              formedWords.length ? formedWords : undefined
+              formedWords.length
+                ? formedWords.map((w) => machineWordToRunes(w, props.alphabet))
+                : undefined
             );
           },
           onMouseLeave: (evt: React.MouseEvent<HTMLElement>) => {

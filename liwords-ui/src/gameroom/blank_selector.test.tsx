@@ -1,6 +1,6 @@
 import React from 'react';
 import { cleanup, fireEvent, render } from '@testing-library/react';
-import { MachineLetter, MachineWord } from '../utils/cwgame/common';
+import { MachineLetter } from '../utils/cwgame/common';
 import { DndProvider } from 'react-dnd';
 import { TouchBackend } from 'react-dnd-touch-backend';
 import { BlankSelector } from './blank_selector';

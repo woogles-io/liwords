@@ -126,7 +126,7 @@ export const wordToSayString = (word: string, useNPA: boolean): string => {
         speech += natoWord + ', ';
       } else {
         const pword = letterPronunciations.get(word[i].toUpperCase());
-        speech += pword + ', ';
+        speech += `${pword}, `;
       }
     } else if (word[i] === '?') {
       speech += 'blank, ';

@@ -21,7 +21,10 @@ export const PuzzleShareButton = (props: Props) => {
   const message = useMemo(() => {
     let messageBuilder = '';
     if (solved === PuzzleStatus.CORRECT && attempts !== undefined) {
-      messageBuilder += renderStars(calculatePuzzleScore(true, attempts), true);
+      messageBuilder += `${renderStars(
+        calculatePuzzleScore(true, attempts),
+        true
+      )}`;
       messageBuilder += ` I solved this puzzle at Woogles.io in ${singularCount(
         attempts,
         'try',

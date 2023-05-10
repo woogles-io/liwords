@@ -72,7 +72,6 @@ func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsReque
 
 	var wordsToDefine []string
 	results := make(map[string]*pb.DefineWordsResult)
-
 	var anagrams map[string][]string
 	if req.Anagrams {
 		anagrams = make(map[string][]string)
