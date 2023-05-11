@@ -99,25 +99,6 @@ func (s *DBStore) SetNotoriety(ctx context.Context, uuid string, notoriety int) 
 	return nil
 }
 
-func (s *DBStore) SetActions(ctx context.Context, uuid string, actions *entity.Actions) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	err = common.Update(ctx, tx, []string{"actions"}, []interface{}{actions}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: uuid})
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (s *DBStore) SetPermissions(ctx context.Context, req *cpb.PermissionsRequest) error {
 	columns := []string{}
 	values := []interface{}{}
@@ -1233,7 +1214,7 @@ func addUserUUIDsToActions(ctx context.Context, tx pgx.Tx, actions []*ms.ModActi
 	return nil
 }
 
-func (s *DBStore) GetActionsDB(ctx context.Context, userUUID string) (map[string]*ms.ModAction, error) {
+func (s *DBStore) GetActions(ctx context.Context, userUUID string) (map[string]*ms.ModAction, error) {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
 		return nil, err
@@ -1248,7 +1229,7 @@ func (s *DBStore) GetActionsDB(ctx context.Context, userUUID string) (map[string
 	return actions, nil
 }
 
-func (s *DBStore) GetActionHistoryDB(ctx context.Context, userUUID string) ([]*ms.ModAction, error) {
+func (s *DBStore) GetActionHistory(ctx context.Context, userUUID string) ([]*ms.ModAction, error) {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
 		return nil, err
@@ -1347,10 +1328,10 @@ func applyOrRemoveActionsDB(ctx context.Context, s *DBStore, actions []*ms.ModAc
 	return nil
 }
 
-func (s *DBStore) ApplyActionsDB(ctx context.Context, actions []*ms.ModAction) error {
+func (s *DBStore) ApplyActions(ctx context.Context, actions []*ms.ModAction) error {
 	return applyOrRemoveActionsDB(ctx, s, actions, true)
 }
 
-func (s *DBStore) RemoveActionsDB(ctx context.Context, actions []*ms.ModAction) error {
+func (s *DBStore) RemoveActions(ctx context.Context, actions []*ms.ModAction) error {
 	return applyOrRemoveActionsDB(ctx, s, actions, false)
 }

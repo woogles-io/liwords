@@ -20,7 +20,6 @@ import (
 	"github.com/domino14/liwords/pkg/stores/common"
 	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
 	"github.com/domino14/liwords/rpc/api/proto/mod_service"
-	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	"github.com/domino14/liwords/rpc/api/proto/user_service"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
@@ -215,20 +214,6 @@ func TestSet(t *testing.T) {
 	cesar, err = ustore.Get(ctx, "cesar")
 	is.NoErr(err)
 	is.Equal(cesar.Notoriety, newNotoriety)
-
-	newActions := &entity.Actions{
-		Current: map[string]*ms.ModAction{
-			"SUSPEND_ACCOUNT": {UserId: cesar.UUID, Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: 100},
-		},
-		History: []*ms.ModAction{
-			{UserId: cesar.UUID, Type: ms.ModActionType_MUTE, Duration: 1000},
-		},
-	}
-	err = ustore.SetActions(ctx, cesar.UUID, newActions)
-	is.NoErr(err)
-	cesar, err = ustore.Get(ctx, "cesar")
-	is.NoErr(err)
-	is.Equal(cesar.Actions, newActions)
 
 	req := &cpb.PermissionsRequest{
 		Username: "cesar",
