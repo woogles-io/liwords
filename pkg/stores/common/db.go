@@ -299,7 +299,6 @@ func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.Use
 	var is_director sql.NullBool
 	var is_mod sql.NullBool
 	var notoriety sql.NullInt64
-	var actions entity.Actions
 
 	placeholder := "$1"
 
@@ -307,8 +306,8 @@ func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.Use
 		placeholder = "lower($1)"
 	}
 
-	query := fmt.Sprintf("SELECT id, username, uuid, email, password, internal_bot, is_admin, is_director, is_mod, notoriety, actions FROM users WHERE %s = %s", SelectByTypeToString[cfg.SelectByType], placeholder)
-	err := tx.QueryRow(ctx, query, cfg.Value).Scan(&id, &username, &uuid, &email, &password, &internal_bot, &is_admin, &is_director, &is_mod, &notoriety, &actions)
+	query := fmt.Sprintf("SELECT id, username, uuid, email, password, internal_bot, is_admin, is_director, is_mod, notoriety FROM users WHERE %s = %s", SelectByTypeToString[cfg.SelectByType], placeholder)
+	err := tx.QueryRow(ctx, query, cfg.Value).Scan(&id, &username, &uuid, &email, &password, &internal_bot, &is_admin, &is_director, &is_mod, &notoriety)
 	if err == pgx.ErrNoRows {
 		return nil, errors.New("user not found")
 	} else if err != nil {
@@ -327,7 +326,6 @@ func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.Use
 		IsDirector: is_director.Bool,
 		IsMod:      is_mod.Bool,
 		Notoriety:  int(notoriety.Int64),
-		Actions:    &actions,
 	}
 
 	if cfg.IncludeProfile {

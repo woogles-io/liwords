@@ -216,8 +216,8 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 	}
 
 	var userId uint
-	err = tx.QueryRow(ctx, `INSERT INTO users (username, uuid, email, password, internal_bot, is_admin, is_director, is_mod, notoriety, actions, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW()) RETURNING id`,
-		u.Username, u.UUID, u.Email, u.Password, u.IsBot, u.IsAdmin, u.IsDirector, u.IsMod, u.Notoriety, u.Actions).Scan(&userId)
+	err = tx.QueryRow(ctx, `INSERT INTO users (username, uuid, email, password, internal_bot, is_admin, is_director, is_mod, notoriety, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()) RETURNING id`,
+		u.Username, u.UUID, u.Email, u.Password, u.IsBot, u.IsAdmin, u.IsDirector, u.IsMod, u.Notoriety).Scan(&userId)
 	if err != nil {
 		return err
 	}

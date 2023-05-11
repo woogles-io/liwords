@@ -26,6 +26,7 @@ const (
 	AuthMethodAPIKey = "apikey"
 )
 
+// DEPRECATED: use db actions
 type Actions struct {
 	Current map[string]*ms.ModAction
 	History []*ms.ModAction
@@ -52,6 +53,7 @@ type User struct {
 	IsMod          bool
 	IsAdmin        bool
 
+	// DEPRECATED: use db actions
 	Actions      *Actions
 	Notoriety    int
 	AuthedMethod AuthMethod
@@ -223,19 +225,6 @@ func (u *User) IsChild() pb.ChildStatus {
 		return pb.ChildStatus_UNKNOWN
 	}
 	return InferChildStatus(u.Profile.BirthDate, time.Now())
-}
-
-func (a *Actions) Value() (driver.Value, error) {
-	return json.Marshal(a)
-}
-
-func (a *Actions) Scan(value interface{}) error {
-	var err error
-	b, ok := value.([]byte)
-	if ok {
-		err = json.Unmarshal(b, &a)
-	}
-	return err
 }
 
 func (p *Profile) Value() (driver.Value, error) {

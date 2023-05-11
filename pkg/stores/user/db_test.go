@@ -6,12 +6,10 @@ import (
 	"os"
 	"sort"
 	"testing"
-	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	commontest "github.com/domino14/liwords/pkg/common"
@@ -19,7 +17,6 @@ import (
 	"github.com/domino14/liwords/pkg/glicko"
 	"github.com/domino14/liwords/pkg/stores/common"
 	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
-	"github.com/domino14/liwords/rpc/api/proto/mod_service"
 	"github.com/domino14/liwords/rpc/api/proto/user_service"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
@@ -63,14 +60,14 @@ func recreateDB() (*DBStore, *pgxpool.Pool, context.Context) {
 		{Username: "smith", Email: "smith@woogles.io", UUID: "smith_uuid", IsAdmin: true, Profile: &entity.Profile{AvatarUrl: "smith_avatar_url", BirthDate: "1950-07-08", LastName: "smith"}},
 		{Username: "noprofile", Email: "noprofile@woogles.io", UUID: "noprofile_uuid", Profile: &entity.Profile{}},
 		{Username: "mo", Email: "mo@woogles.io", UUID: "mo_uuid"},
-		{Username: "mod", Email: "mod@woogles.io", UUID: "mod_uuid", Actions: &entity.Actions{History: []*mod_service.ModAction{{Type: mod_service.ModActionType_SUSPEND_ACCOUNT}}}},
+		{Username: "mod", Email: "mod@woogles.io", UUID: "mod_uuid"},
 		{Username: "mot", Email: "mot@woogles.io", UUID: "mot_uuid"},
 		{Username: "mode", Email: "mode@woogles.io", UUID: "mode_uuid", IsBot: true},
-		{Username: "moder", Email: "moder@woogles.io", UUID: "moder_uuid", Actions: &entity.Actions{Current: map[string]*mod_service.ModAction{mod_service.ModActionType_SUSPEND_GAMES.String(): {Type: mod_service.ModActionType_SUSPEND_GAMES}}}},
+		{Username: "moder", Email: "moder@woogles.io", UUID: "moder_uuid"},
 		{Username: "modern", Email: "modern@woogles.io", UUID: "modern_uuid"},
-		{Username: "moderne", Email: "moderne@woogles.io", UUID: "moderne_uuid", Actions: &entity.Actions{Current: map[string]*mod_service.ModAction{mod_service.ModActionType_SUSPEND_ACCOUNT.String(): {Type: mod_service.ModActionType_SUSPEND_ACCOUNT, EndTime: timestamppb.New(time.Now())}}}},
+		{Username: "moderne", Email: "moderne@woogles.io", UUID: "moderne_uuid"},
 		{Username: "moderns", Email: "moderns@woogles.io", UUID: "moderns_uuid"},
-		{Username: "modernes", Email: "modernes@woogles.io", UUID: "modernes_uuid", Actions: &entity.Actions{Current: map[string]*mod_service.ModAction{mod_service.ModActionType_SUSPEND_ACCOUNT.String(): {Type: mod_service.ModActionType_SUSPEND_ACCOUNT}}}},
+		{Username: "modernes", Email: "modernes@woogles.io", UUID: "modernes_uuid"},
 		{Username: "modernest", Email: "modernest@woogles.io", UUID: "modernest_uuid"},
 	} {
 		err = ustore.New(context.Background(), u)
