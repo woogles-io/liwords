@@ -18,7 +18,11 @@ import {
   ClientGameplayEvent_EventType,
   PlayerInfo,
 } from '../../gen/api/proto/ipc/omgwords_pb';
-import { Alphabet, machineLetterToRune } from '../../constants/alphabets';
+import {
+  Alphabet,
+  machineLetterToRune,
+  runesToMachineWord,
+} from '../../constants/alphabets';
 
 export const ThroughTileMarker = '.';
 // convert a set of ephemeral tiles to a protobuf game event.
@@ -119,13 +123,10 @@ export const tilePlacementEventDisplay = (
 
   let m = '';
   let openParen = false;
-  for (
-    let i = 0, r = row, c = col;
-    i < evt.playedTiles.length;
-    i += 1, r += ri, c += ci
-  ) {
-    const t = evt.playedTiles[i];
-    if (t === ThroughTileMarker) {
+  const mls = runesToMachineWord(evt.playedTiles, alphabet);
+  for (let i = 0, r = row, c = col; i < mls.length; i += 1, r += ri, c += ci) {
+    const t = mls[i];
+    if (t === 0) {
       if (!openParen) {
         m += '(';
         openParen = true;
@@ -141,7 +142,7 @@ export const tilePlacementEventDisplay = (
         m += ')';
         openParen = false;
       }
-      m += t;
+      m += machineLetterToRune(t, alphabet, false, true);
     }
   }
   if (openParen) {
