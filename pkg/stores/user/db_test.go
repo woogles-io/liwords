@@ -6,10 +6,12 @@ import (
 	"os"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	commontest "github.com/domino14/liwords/pkg/common"
@@ -17,6 +19,7 @@ import (
 	"github.com/domino14/liwords/pkg/glicko"
 	"github.com/domino14/liwords/pkg/stores/common"
 	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
+	"github.com/domino14/liwords/rpc/api/proto/mod_service"
 	"github.com/domino14/liwords/rpc/api/proto/user_service"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
@@ -74,6 +77,31 @@ func recreateDB() (*DBStore, *pgxpool.Pool, context.Context) {
 		if err != nil {
 			log.Fatal().Err(err).Msg("error")
 		}
+	}
+
+	futureEndTime := timestamppb.New(time.Now().Add(10000))
+	err = ustore.ApplyActions(ctx, []*mod_service.ModAction{{UserId: "mod_uuid", Type: mod_service.ModActionType_SUSPEND_ACCOUNT, EndTime: futureEndTime}})
+	if err != nil {
+		panic(err)
+	}
+
+	err = ustore.ApplyActions(ctx, []*mod_service.ModAction{{UserId: "moder_uuid", Type: mod_service.ModActionType_SUSPEND_GAMES}})
+	if err != nil {
+		panic(err)
+	}
+
+	err = ustore.ApplyActions(ctx, []*mod_service.ModAction{{UserId: "modern_uuid", Type: mod_service.ModActionType_SUSPEND_ACCOUNT}})
+	if err != nil {
+		panic(err)
+	}
+	err = ustore.RemoveActions(ctx, []*mod_service.ModAction{{UserId: "modern_uuid", Type: mod_service.ModActionType_SUSPEND_ACCOUNT}})
+	if err != nil {
+		panic(err)
+	}
+
+	err = ustore.ApplyActions(ctx, []*mod_service.ModAction{{UserId: "modernes_uuid", Type: mod_service.ModActionType_SUSPEND_ACCOUNT}})
+	if err != nil {
+		panic(err)
 	}
 
 	return ustore, pool, ctx

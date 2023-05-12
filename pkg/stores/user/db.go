@@ -711,8 +711,16 @@ func (s *DBStore) UsersByPrefix(ctx context.Context, prefix string) ([]*pb.Basic
 	}
 	defer tx.Rollback(ctx)
 
-	// XXX: Fix this once user actions are migrated to the db
-	rows, err := tx.Query(ctx, `SELECT username, uuid FROM users WHERE substr(lower(username), 1, length($1)) = $1 AND internal_bot IS FALSE AND (actions IS NULL OR actions->'Current' IS NULL OR actions->'Current'->'SUSPEND_ACCOUNT' IS NULL OR actions->'Current'->'SUSPEND_ACCOUNT'->'end_time' IS NOT NULL)`, strings.ToLower(prefix))
+	rows, err := tx.Query(ctx, `SELECT username, uuid FROM users
+	WHERE substr(lower(users.username), 1, length($1)) = $1
+	AND users.internal_bot IS FALSE
+	AND NOT EXISTS(
+		SELECT 1 FROM user_actions
+		WHERE user_actions.user_id = users.id AND
+		user_actions.removed_time IS NULL AND
+		user_actions.end_time IS NULL AND
+		user_actions.action_type = $2
+	)`, strings.ToLower(prefix), ms.ModActionType_SUSPEND_ACCOUNT)
 	if err != nil {
 		return nil, err
 	}

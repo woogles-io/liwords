@@ -10,7 +10,6 @@ import (
 	"github.com/domino14/liwords/pkg/user"
 	"github.com/domino14/liwords/pkg/utilities"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
-	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -153,14 +152,7 @@ func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore, applier
 		actionsToApply = append(actionsToApply, action)
 	}
 
-	err := us.ApplyActions(ctx, actionsToApply)
-	if err != nil {
-		// For now just log the error to debug later
-		// since we are not using the DB in prod yet.
-		log.Err(err).Msg("apply-actions-db")
-	}
-
-	return nil
+	return us.ApplyActions(ctx, actionsToApply)
 }
 
 func prepareAction(ctx context.Context, us user.Store, cs user.ChatStore, action *ms.ModAction) error {
