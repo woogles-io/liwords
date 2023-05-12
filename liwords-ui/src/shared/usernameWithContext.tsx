@@ -117,12 +117,11 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
   }
   if (!props.omitProfileLink) {
     userMenuOptions.push(
-      <li>
+      <li key={`viewprofile-${props.userID}`}>
         <Link
           className="plain"
           to={`/profile/${encodeURIComponent(props.username)}`}
           target="_blank"
-          key={`viewprofile-${props.userID}`}
         >
           View profile
         </Link>

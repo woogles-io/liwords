@@ -921,12 +921,28 @@ func addBonusSquares(info *IncrementInfo, bonusSquare byte) error {
 	return nil
 }
 
-func getOccupiedIndexes(event *pb.GameEvent) [][]int {
+func getOccupiedIndexes(info *IncrementInfo, event *pb.GameEvent) [][]int {
 	occupied := [][]int{}
 	row := int(event.Row)
 	column := int(event.Column)
-	for _, char := range event.PlayedTiles {
-		if char != tilemapping.ASCIIPlayedThrough {
+
+	ldname := info.History.LetterDistribution
+	if ldname == "" {
+		ldname = "english"
+	}
+
+	ld, err := tilemapping.GetDistribution(info.Cfg, ldname)
+	if err != nil {
+		log.Err(err).Str("dist", ldname).Msg("get-occupied-indexes-get-dist-err")
+		return occupied
+	}
+	mls, err := tilemapping.ToMachineLetters(event.PlayedTiles, ld.TileMapping())
+	if err != nil {
+		log.Err(err).Msg("get-occupied-indexes-conv-err")
+		return occupied
+	}
+	for _, ml := range mls {
+		if ml != 0 {
 			occupied = append(occupied, []int{row, column})
 		}
 		if event.Direction == pb.GameEvent_VERTICAL {
@@ -941,7 +957,7 @@ func getOccupiedIndexes(event *pb.GameEvent) [][]int {
 func countBonusSquares(info *IncrementInfo,
 	event *pb.GameEvent,
 	bonusSquare byte) (int, error) {
-	occupiedIndexes := getOccupiedIndexes(event)
+	occupiedIndexes := getOccupiedIndexes(info, event)
 	boardLayout, _, _ := game.HistoryToVariant(info.History)
 	var bd []string
 	switch boardLayout {
@@ -1231,6 +1247,7 @@ func instantiateNotableData() map[string]*entity.StatItem {
 			Subitems:      map[string]int{"player_one_streak": 0, "player_two_streak": 0}}}
 }
 
+// XXX: This needs to be re-done to support non-English alphabets.
 func makeAlphabetSubitems() map[string]int {
 	alphabetSubitems := make(map[string]int)
 	for i := 0; i < 26; i++ {

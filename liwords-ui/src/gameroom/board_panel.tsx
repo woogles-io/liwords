@@ -1671,7 +1671,6 @@ export const BoardPanel = React.memo((props: Props) => {
       </Affix>
     );
   }
-
   const gameBoard = (
     <div
       id="board-container"

@@ -285,27 +285,27 @@ func answersAreEqual(userAnswer *ipc.ClientGameplayEvent, correctAnswer *macondo
 
 	if converted.Type == macondopb.GameEvent_TILE_PLACEMENT_MOVE &&
 		correctAnswer.Type == macondopb.GameEvent_TILE_PLACEMENT_MOVE &&
-		countPlayedTiles(converted) == 1 && countPlayedTiles(correctAnswer) == 1 {
-		return uniqueSingleTileKey(converted) == uniqueSingleTileKey(correctAnswer)
+		countPlayedTiles(converted, ld) == 1 && countPlayedTiles(correctAnswer, ld) == 1 {
+		return uniqueSingleTileKey(converted, ld) == uniqueSingleTileKey(correctAnswer, ld)
 	}
 
 	return converted.Type == correctAnswer.Type &&
-		positionsAreEqual(converted, correctAnswer) &&
+		positionsAreEqual(converted, correctAnswer, ld) &&
 		converted.PlayedTiles == correctAnswer.PlayedTiles &&
 		utilities.SortString(converted.Exchanged) == utilities.SortString(correctAnswer.Exchanged)
 }
 
-func positionsAreEqual(userAnswer *macondopb.GameEvent, correctAnswer *macondopb.GameEvent) bool {
+func positionsAreEqual(userAnswer *macondopb.GameEvent, correctAnswer *macondopb.GameEvent, ld *tilemapping.LetterDistribution) bool {
 	return (userAnswer.Row == correctAnswer.Row &&
 		userAnswer.Column == correctAnswer.Column &&
 		userAnswer.Direction == correctAnswer.Direction) ||
-		(answerHitsCenterSquare(correctAnswer) &&
+		(answerHitsCenterSquare(correctAnswer, ld) &&
 			userAnswer.Row == correctAnswer.Column &&
 			userAnswer.Column == correctAnswer.Row &&
 			userAnswer.Direction != correctAnswer.Direction)
 }
 
-func answerHitsCenterSquare(answer *macondopb.GameEvent) bool {
+func answerHitsCenterSquare(answer *macondopb.GameEvent, ld *tilemapping.LetterDistribution) bool {
 	var startSquare int32
 	if answer.Row == 7 && answer.Column <= 7 && answer.Direction == macondopb.GameEvent_HORIZONTAL {
 		startSquare = answer.Column
@@ -316,28 +316,45 @@ func answerHitsCenterSquare(answer *macondopb.GameEvent) bool {
 	}
 
 	centerTileIndex := 7 - startSquare
-	runeTiles := []rune(answer.PlayedTiles)
+	mls, err := tilemapping.ToMachineLetters(answer.PlayedTiles, ld.TileMapping())
+	if err != nil {
+		log.Err(err).Str("pt", answer.PlayedTiles).Msg("hits-center-square")
+		return false
+	}
 
-	return int(centerTileIndex) < len(runeTiles) &&
-		runeTiles[centerTileIndex] != tilemapping.ASCIIPlayedThrough
+	return int(centerTileIndex) < len(mls) && mls[centerTileIndex] != 0
 }
 
-func countPlayedTiles(ge *macondopb.GameEvent) int {
+func countPlayedTiles(ge *macondopb.GameEvent, ld *tilemapping.LetterDistribution) int {
 	sum := 0
-	for _, tile := range ge.PlayedTiles {
-		if tile != tilemapping.ASCIIPlayedThrough {
+
+	mls, err := tilemapping.ToMachineLetters(ge.PlayedTiles, ld.TileMapping())
+	if err != nil {
+		log.Err(err).Str("pt", ge.PlayedTiles).Msg("count-played-tiles")
+		return sum
+	}
+
+	for _, tile := range mls {
+		if tile != 0 {
 			sum++
 		}
 	}
 	return sum
 }
 
-func uniqueSingleTileKey(ge *macondopb.GameEvent) int {
+func uniqueSingleTileKey(ge *macondopb.GameEvent, ld *tilemapping.LetterDistribution) int {
 	// Find the tile.
 	var idx int
-	var tile rune
-	for idx, tile = range ge.PlayedTiles {
-		if tile != tilemapping.ASCIIPlayedThrough {
+	var tile tilemapping.MachineLetter
+
+	mls, err := tilemapping.ToMachineLetters(ge.PlayedTiles, ld.TileMapping())
+	if err != nil {
+		log.Err(err).Str("pt", ge.PlayedTiles).Msg("unique-single-tile-key")
+		return -1
+	}
+
+	for idx, tile = range mls {
+		if tile != 0 {
 			break
 		}
 	}
