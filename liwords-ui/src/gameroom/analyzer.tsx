@@ -162,7 +162,6 @@ export const analyzerMoveFromJsonMove = (
             letters[r * dim + c],
             alphabet,
             false,
-            true,
             true
           );
           tilesBeingMoved.push(0); // through space
