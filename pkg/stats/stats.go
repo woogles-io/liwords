@@ -5,7 +5,6 @@ import (
 	"errors"
 	"strings"
 	"unicode"
-	"unicode/utf8"
 
 	"github.com/domino14/liwords/pkg/entity"
 	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
@@ -390,7 +389,9 @@ func addBingos(info *IncrementInfo) error {
 func addBlanksPlayed(info *IncrementInfo) error {
 	events := info.History.GetEvents()
 	event := events[info.EventIndex]
+	// XXX: this needs to be fixed or removed for multi-char tiles
 	tiles := event.PlayedTiles
+
 	for _, char := range tiles {
 		if unicode.IsLower(char) {
 			info.StatItem.Total++
@@ -569,6 +570,7 @@ func addEveryE(info *IncrementInfo) error {
 	}
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE &&
 		(succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED) {
+		// XXX: this needs to be changed/removed for multi-char tiles
 		for _, char := range event.PlayedTiles {
 			if char == 'E' {
 				info.StatItem.Total += 1 * multiplier
@@ -591,6 +593,7 @@ func addEveryPowerTile(info *IncrementInfo) error {
 	}
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE &&
 		(succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED) {
+		// XXX: this needs to be changed or removed for multi-char tiles
 		for _, char := range event.PlayedTiles {
 			if char == 'J' ||
 				char == 'Q' ||
@@ -749,6 +752,7 @@ func addTilesPlayed(info *IncrementInfo) error {
 	if info.EventIndex+1 < len(events) {
 		succEvent = events[info.EventIndex+1]
 	}
+	// XXX: this needs to be fixed for multi-char tiles and non-english lexica
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE &&
 		(succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED) {
 		for _, char := range event.PlayedTiles {
@@ -976,10 +980,6 @@ func countBonusSquares(info *IncrementInfo,
 		}
 	}
 	return count, nil
-}
-
-func isBingoNineOrAbove(event *pb.GameEvent) bool {
-	return event.IsBingo && utf8.RuneCountInString(event.PlayedTiles) >= 9
 }
 
 func isUnchallengedPhonyEvent(event *pb.GameEvent,
