@@ -47,7 +47,6 @@ export const tilesetToMoveEvent = (
       undesignatedBlank = true;
     }
   });
-  // XXX: check undesignated blank behavior
   if (undesignatedBlank) {
     // Play has an undesignated blank. Not valid.
     console.log('Undesignated blank');

@@ -270,6 +270,20 @@ func validateTilePlayMove(gd *kwg.KWG, rm *tilemapping.TileMapping, gevt *ipc.Ga
 	if err != nil {
 		return nil, err
 	}
+
+	for _, t := range playedTiles {
+		if t.IsBlanked() {
+			unblanked := t.Unblank()
+			if unblanked < 1 || uint8(unblanked) > rm.NumLetters()-1 {
+				return nil, fmt.Errorf("invalid blank tile: %v", unblanked)
+			}
+		} else {
+			if uint8(t) > rm.NumLetters()-1 {
+				return nil, fmt.Errorf("tile not in lexicon: %v", t)
+			}
+		}
+	}
+
 	// The play is legal. What words does it form?
 	formedWords, err := board.FormedWords(gdoc.Board, int(gevt.Row), int(gevt.Column),
 		gevt.Direction == ipc.GameEvent_VERTICAL, playedTiles)

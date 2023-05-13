@@ -522,8 +522,7 @@ export const machineLetterToRune = (
   i: MachineLetter,
   alphabet: Alphabet,
   usePlaythrough?: boolean,
-  useBracketsForMultichar?: boolean,
-  useWASMBlankEncoding?: boolean
+  useBracketsForMultichar?: boolean
 ): string => {
   if (i === 0) {
     return usePlaythrough ? ThroughTileMarker : Blank;
@@ -532,15 +531,9 @@ export const machineLetterToRune = (
     return ' ';
   }
   let rn = '';
-  let isBlank;
-  let unblanked;
-  if (useWASMBlankEncoding) {
-    isBlank = i < 0;
-    unblanked = -i;
-  } else {
-    isBlank = i > 0x80;
-    unblanked = i & 0x07f;
-  }
+
+  const isBlank = i > 0x80;
+  const unblanked = i & 0x07f;
 
   if (isBlank) {
     rn = alphabet.letters[unblanked]?.rune?.toLowerCase() ?? '';
@@ -557,8 +550,7 @@ export const machineWordToRunes = (
   arr: Array<MachineLetter>,
   alphabet: Alphabet,
   usePlaythrough?: boolean,
-  useBracketsForMultichar?: boolean,
-  useWASMBlankEncoding?: boolean
+  useBracketsForMultichar?: boolean
 ): string => {
   let s = '';
   arr.forEach((v) => {
@@ -566,8 +558,7 @@ export const machineWordToRunes = (
       v,
       alphabet,
       usePlaythrough,
-      useBracketsForMultichar,
-      useWASMBlankEncoding
+      useBracketsForMultichar
     );
   });
   return s;
@@ -587,8 +578,7 @@ export const machineWordToRuneArray = (
 
 export const runesToMachineWord = (
   runes: string,
-  alphabet: Alphabet,
-  useWASMBlankEncoding?: boolean
+  alphabet: Alphabet
 ): MachineWord => {
   const bts: Array<MachineLetter> = [];
   const chars = Array.from(runes);
@@ -612,11 +602,7 @@ export const runesToMachineWord = (
         match = true;
         break;
       } else if (alphabet.machineLetterMap[rune.toUpperCase()] != undefined) {
-        if (useWASMBlankEncoding) {
-          bts.push(-alphabet.machineLetterMap[rune.toUpperCase()]);
-        } else {
-          bts.push(0x80 | alphabet.machineLetterMap[rune.toUpperCase()]);
-        }
+        bts.push(0x80 | alphabet.machineLetterMap[rune.toUpperCase()]);
         i = j;
         match = true;
         break;

@@ -113,6 +113,33 @@ export type AnalyzerMove = {
   isExchange: boolean;
 };
 
+const wolgesLetterToLiwordsLetter = (i: number) => {
+  if (i < 0) {
+    // wolges-wasm encodes blanks as negative numbers. Convert to our internal
+    // format.
+    i = -i | 0x80;
+  }
+  return i;
+};
+
+const liwordsLetterToWolgesLetter = (i: number) => {
+  if ((i & 0x80) > 0) {
+    // This is a blank. Convert to a wolges blank.
+    return -(i & 0x7f);
+  }
+  return i;
+};
+
+const wolgesLabelsToLetter = (runes: string, alphabet: Alphabet) => {
+  const resp = runesToMachineWord(runes, alphabet);
+  return resp.map(liwordsLetterToWolgesLetter);
+};
+
+const wolgesLetterToLabel = (i: number, alphabet: Alphabet) => {
+  i = wolgesLetterToLiwordsLetter(i);
+  return machineLetterToRune(i, alphabet, false, true);
+};
+
 export const analyzerMoveFromJsonMove = (
   move: JsonMove,
   dim: number,
@@ -170,7 +197,7 @@ export const analyzerMoveFromJsonMove = (
             displayMove += ')';
             inParen = false;
           }
-          const tileLabel = machineLetterToRune(t, alphabet, false, true, true);
+          const tileLabel = wolgesLetterToLabel(t, alphabet);
           displayMove += tileLabel;
           tilesBeingMoved.push(t);
           // When t is negative, consume blank tile from rack.
@@ -472,7 +499,7 @@ export const usePlaceMoveCallback = () => {
           newPlacedTiles.add({
             row,
             col,
-            letter: t,
+            letter: wolgesLetterToLiwordsLetter(t),
           });
         }
         if (vertical) ++row;
@@ -576,10 +603,9 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
             down,
             lane: down ? evt.column : evt.row,
             idx: down ? evt.row : evt.column,
-            word: runesToMachineWord(
+            word: wolgesLabelsToLetter(
               evt.playedTiles,
-              examinableGameContext.alphabet,
-              true
+              examinableGameContext.alphabet
             ),
             score: evt.score,
           };
