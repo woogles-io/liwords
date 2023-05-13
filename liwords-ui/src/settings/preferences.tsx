@@ -38,11 +38,11 @@ const KNOWN_TILE_ORDERS = [
   },
   {
     name: 'Vowels first',
-    value: 'AEIOU',
+    value: 'AÄEIOÖUÜÆØÅ',
   },
   {
     name: 'Consonants first',
-    value: 'BCDFGHJKLMNPQRSTVWXYZ',
+    value: 'BCÇDFGHJKLMNPQRSTVWXYZ',
   },
   {
     name: 'Descending points',
