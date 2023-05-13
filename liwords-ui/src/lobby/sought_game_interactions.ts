@@ -21,8 +21,6 @@ export const defaultLetterDistribution = (lexicon: string): string => {
     return 'norwegian';
   } else if (lowercasedLexicon.startsWith('fra')) {
     return 'french';
-  } else if (lowercasedLexicon.startsWith('disc')) {
-    return 'catalan';
   } else {
     return 'english';
   }

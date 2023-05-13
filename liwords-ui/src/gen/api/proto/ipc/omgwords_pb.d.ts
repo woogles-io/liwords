@@ -291,8 +291,8 @@ export declare class GameRules extends Message<GameRules> {
   boardLayoutName: string;
 
   /**
-   * The supported letter distributions are english, french, norwegian, german,
-   * catalan. There are more to come!
+   * The supported letter distributions are english, french, norwegian, german.
+   * There are more to come!
    *
    * @generated from field: string letter_distribution_name = 2;
    */

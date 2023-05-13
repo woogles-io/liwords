@@ -42,7 +42,6 @@ export const lexiconOrder = [
   'FRA20',
   'NSF22',
   'NSWL20',
-  'DISC2',
 ];
 
 export const puzzleLexica = ['CSW21', 'NWL20', 'RD28', 'FRA20'];

@@ -11,7 +11,6 @@ const lexiconCodeToInternalRatingName = (code: string) => {
   if (code.startsWith('NSF')) return 'NSF21';
   if (code.startsWith('RD')) return 'RD28';
   if (code.startsWith('FRA')) return 'FRA20';
-  if (code.startsWith('DISC')) return 'DISC';
   return code;
 };
 
@@ -28,7 +27,6 @@ const InternalRatingNameToProfileRatingName: {
   RD28: 'Deutsch',
   NSF21: 'Norsk',
   FRA20: 'Français',
-  DISC2: 'Català',
 };
 
 export const lexiconCodeToProfileRatingName = (code: string) => {
@@ -104,12 +102,5 @@ export const AllLexica: { [code: string]: Lexicon } = {
     code: 'CSW19X',
     shortDescription: 'CSW19X (School Expurgated)',
     matchName: 'CSW19X',
-  },
-  DISC2: {
-    code: 'DISC2',
-    shortDescription: 'Català (Catalan)',
-    matchName: 'Català',
-    longDescription:
-      "«Diccionari Informatitzat de l'Scrabble en Català» (DISC) is GPLv3-licensed. Copyright 2012 - 2022 Joan Montané.",
   },
 };

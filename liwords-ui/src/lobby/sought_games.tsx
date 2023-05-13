@@ -112,18 +112,12 @@ export const SoughtGames = (props: Props) => {
       className: 'lexicon',
       dataIndex: 'lexicon',
       key: 'lexicon',
-      filters: [
-        'CSW21',
-        'NWL20',
-        'ECWL',
-        'RD28',
-        'FRA20',
-        'NSF22',
-        'DISC2',
-      ].map((l) => ({
-        text: <MatchLexiconDisplay lexiconCode={l} />,
-        value: l,
-      })),
+      filters: ['CSW21', 'NWL20', 'ECWL', 'RD28', 'FRA20', 'NSF22'].map(
+        (l) => ({
+          text: <MatchLexiconDisplay lexiconCode={l} />,
+          value: l,
+        })
+      ),
       filteredValue: lobbyFilterByLexiconArray,
       filterMultiple: true,
       onFilter: (

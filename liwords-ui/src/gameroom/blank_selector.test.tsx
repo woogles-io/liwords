@@ -6,7 +6,6 @@ import { TouchBackend } from 'react-dnd-touch-backend';
 import { BlankSelector } from './blank_selector';
 import {
   Alphabet,
-  StandardCatalanAlphabet,
   StandardEnglishAlphabet,
   StandardNorwegianAlphabet,
 } from '../constants/alphabets';
@@ -27,26 +26,6 @@ function renderSelectTiles(
 }
 
 afterEach(cleanup);
-
-it('selects a weird tile', async () => {
-  const cb = jest.fn();
-
-  const { findByText } = renderSelectTiles(StandardCatalanAlphabet, cb);
-
-  const LLtile = await findByText('L·L');
-  fireEvent.click(LLtile);
-  expect(cb).toHaveBeenCalledWith(13);
-});
-
-it('selects last tile', async () => {
-  const cb = jest.fn();
-
-  const { findByText } = renderSelectTiles(StandardCatalanAlphabet, cb);
-
-  const ztile = await findByText('Z');
-  fireEvent.click(ztile);
-  expect(cb).toHaveBeenCalledWith(26);
-});
 
 it('selects norwegian tile', async () => {
   const cb = jest.fn();

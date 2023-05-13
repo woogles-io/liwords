@@ -81,11 +81,6 @@ for (const { lexicons, cacheKey, path } of [
     cacheKey: 'klv/norwegian',
     path: '/wasm/norwegian.klv2',
   },
-  {
-    lexicons: ['DISC2'].flatMap((name) => [name, `${name}.WordSmog`]),
-    cacheKey: 'klv/catalan',
-    path: '/wasm/catalan.klv2',
-  },
   ...[
     'CSW19',
     'CSW19X',
@@ -98,7 +93,6 @@ for (const { lexicons, cacheKey, path } of [
     'RD28',
     'NSF21',
     'NSF22',
-    'DISC2',
   ].map((name) => ({
     lexicons: [name],
     cacheKey: `kwg/${name}`,
@@ -116,7 +110,6 @@ for (const { lexicons, cacheKey, path } of [
     'RD28',
     'NSF21',
     'NSF22',
-    'DISC2',
   ].map((name) => ({
     lexicons: [`${name}.WordSmog`],
     cacheKey: `kwg/${name}.WordSmog`,

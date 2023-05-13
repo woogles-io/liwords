@@ -12,6 +12,5 @@ func init() {
 		"NSWL20",
 		"NWL20",
 		"RD28",
-		"DISC2",
 	)
 }
