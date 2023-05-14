@@ -3,17 +3,18 @@ import { BonusType } from '../../constants/board_layout';
 import {
   EphemeralTile,
   Direction,
-  EmptySpace,
-  isBlank,
   uniqueTileIdx,
+  EmptyBoardSpaceMachineLetter,
+  MachineLetter,
+  isDesignatedBlankMachineLetter,
 } from './common';
 
 import { Board } from './board';
-import { Alphabet, runeToValues } from '../../constants/alphabets';
+import { Alphabet, scoreFor } from '../../constants/alphabets';
 
 export type simpletile = {
   fresh: boolean;
-  letter: string;
+  letter: MachineLetter;
   row: number;
   col: number;
 };
@@ -55,14 +56,20 @@ const genContiguousTiles = (
   let lastSeenTile;
   let newRow = sorted[0].row;
   let newCol = sorted[0].col;
-  while (lastSeenTile !== EmptySpace && lastSeenTile !== null) {
+  while (
+    lastSeenTile !== EmptyBoardSpaceMachineLetter &&
+    lastSeenTile !== null
+  ) {
     if (wordDir === Direction.Horizontal) {
       newCol -= 1;
     } else {
       newRow -= 1;
     }
     lastSeenTile = board.letterAt(newRow, newCol);
-    if (lastSeenTile !== EmptySpace && lastSeenTile !== null) {
+    if (
+      lastSeenTile !== EmptyBoardSpaceMachineLetter &&
+      lastSeenTile !== null
+    ) {
       const u = uniqueTileIdx(newRow, newCol);
       contiguous[u] = {
         fresh: false,
@@ -77,7 +84,10 @@ const genContiguousTiles = (
   newRow = sorted[0].row;
   newCol = sorted[0].col;
   lastSeenTile = undefined;
-  while (lastSeenTile !== EmptySpace && lastSeenTile !== null) {
+  while (
+    lastSeenTile !== EmptyBoardSpaceMachineLetter &&
+    lastSeenTile !== null
+  ) {
     if (wordDir === Direction.Horizontal) {
       newCol += 1;
     } else {
@@ -85,7 +95,10 @@ const genContiguousTiles = (
     }
     lastSeenTile = board.letterAt(newRow, newCol);
     const u = uniqueTileIdx(newRow, newCol);
-    if (lastSeenTile !== EmptySpace && lastSeenTile !== null) {
+    if (
+      lastSeenTile !== EmptyBoardSpaceMachineLetter &&
+      lastSeenTile !== null
+    ) {
       contiguous[u] = {
         fresh: false,
         letter: lastSeenTile,
@@ -124,40 +137,52 @@ const getCrossScore = (
   let newRow = row;
   let newCol = col;
   let actualCrossWord = false;
-  while (lastSeenTile !== EmptySpace && lastSeenTile !== null) {
+  while (
+    lastSeenTile !== EmptyBoardSpaceMachineLetter &&
+    lastSeenTile !== null
+  ) {
     if (crossDir === Direction.Horizontal) {
       newCol -= 1;
     } else {
       newRow -= 1;
     }
     lastSeenTile = board.letterAt(newRow, newCol);
-    if (lastSeenTile !== null && lastSeenTile !== EmptySpace) {
+    if (
+      lastSeenTile !== null &&
+      lastSeenTile !== EmptyBoardSpaceMachineLetter
+    ) {
       actualCrossWord = true;
     }
-    crossScore += runeToValues(alphabet, lastSeenTile);
+    crossScore += scoreFor(alphabet, lastSeenTile);
   }
   // Now go in the other direction:
   newCol = col;
   newRow = row;
   lastSeenTile = undefined;
-  while (lastSeenTile !== EmptySpace && lastSeenTile !== null) {
+  while (
+    lastSeenTile !== EmptyBoardSpaceMachineLetter &&
+    lastSeenTile !== null
+  ) {
     if (crossDir === Direction.Horizontal) {
       newCol += 1;
     } else {
       newRow += 1;
     }
     lastSeenTile = board.letterAt(newRow, newCol);
-    if (lastSeenTile !== null && lastSeenTile !== EmptySpace) {
+    if (
+      lastSeenTile !== null &&
+      lastSeenTile !== EmptyBoardSpaceMachineLetter
+    ) {
       actualCrossWord = true;
     }
-    crossScore += runeToValues(alphabet, lastSeenTile);
+    crossScore += scoreFor(alphabet, lastSeenTile);
   }
   return [crossScore, actualCrossWord];
 };
 
 const tileOnBoard = (row: number, col: number, board: Board): boolean => {
   const letter = board.letterAt(row, col);
-  return letter !== EmptySpace && letter !== null;
+  return letter !== EmptyBoardSpaceMachineLetter && letter !== null;
 };
 
 export const borders = (
@@ -185,7 +210,7 @@ export const borders = (
       i < Math.max(t1.row, t2.row);
       i++
     ) {
-      if (board.letterAt(i, t1.col) === EmptySpace) {
+      if (board.letterAt(i, t1.col) === EmptyBoardSpaceMachineLetter) {
         return false;
       }
     }
@@ -195,7 +220,7 @@ export const borders = (
       i < Math.max(t1.col, t2.col);
       i++
     ) {
-      if (board.letterAt(t1.row, i) === EmptySpace) {
+      if (board.letterAt(t1.row, i) === EmptyBoardSpaceMachineLetter) {
         return false;
       }
     }
@@ -218,7 +243,11 @@ export const touchesBoardTile = (t1: EphemeralTile, board: Board): boolean => {
     const letter = board.letterAt(row, col);
     const isOutOfBounds = (coord: number) =>
       coord < 0 || coord > board.gridLayout.length - 1;
-    if (letter !== EmptySpace && !isOutOfBounds(row) && !isOutOfBounds(col)) {
+    if (
+      letter !== EmptyBoardSpaceMachineLetter &&
+      !isOutOfBounds(row) &&
+      !isOutOfBounds(col)
+    ) {
       return true;
     }
   }
@@ -368,10 +397,10 @@ export const calculateTemporaryScore = (
       alphabet
     );
     let ls;
-    if (isBlank(st.letter)) {
+    if (isDesignatedBlankMachineLetter(st.letter)) {
       ls = 0;
     } else {
-      ls = runeToValues(alphabet, st.letter);
+      ls = scoreFor(alphabet, st.letter);
     }
     mainWordScore += ls * letterMultiplier;
     if (realcs && st.fresh) {

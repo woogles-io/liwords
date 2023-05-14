@@ -138,9 +138,7 @@ a.plain,
 }
 
 .bnjyMode {
-  .tile[data-rune='I'],
-  .tile[data-rune='O'],
-  .tile[data-rune='X'] {
+  .tile[data-bnjy='1'] {
     transform: rotate(180deg);
 
     /* this mirrors gameroom/scss/gameroom.scss */
@@ -302,8 +300,7 @@ ul {
   }
   .ant-tag-red,
   .ant-tag-removed,
-  .ant-tag-forfeit,
-  {
+  .ant-tag-forfeit {
     background: #8a0f23;
     color: #ffffff;
     border-color: #8a0f23;

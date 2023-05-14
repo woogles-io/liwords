@@ -256,7 +256,6 @@ export type Props = {
   onRematch: () => void;
   gameEndControls: boolean;
   showRematch: boolean;
-  currentRack: string;
   tournamentSlug?: string;
   lexicon: string;
   challengeRule: ChallengeRule;

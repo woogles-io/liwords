@@ -1,10 +1,7 @@
 import { Button, Col, Divider, message, Row } from 'antd';
 import React, { useMemo } from 'react';
 import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_connectweb';
-import {
-  useLoginStateStoreContext,
-  useTournamentStoreContext,
-} from '../store/store';
+import { useTournamentStoreContext } from '../store/store';
 import { flashError, useClient } from '../utils/hooks/connect';
 
 // I did not find a design for this, but it is trial functionality in order

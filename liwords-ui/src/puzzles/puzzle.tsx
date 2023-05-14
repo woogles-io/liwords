@@ -3,7 +3,11 @@ import { Card, Form, Modal, Select } from 'antd';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Chat } from '../chat/chat';
-import { alphabetFromName } from '../constants/alphabets';
+import {
+  alphabetFromName,
+  machineWordToRunes,
+  runesToMachineWord,
+} from '../constants/alphabets';
 import { TopBar } from '../navigation/topbar';
 import {
   useExaminableGameContextStoreContext,
@@ -52,7 +56,7 @@ import {
   RatingMode,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { computeLeaveWithGaps } from '../utils/cwgame/game_event';
-import { EphemeralTile } from '../utils/cwgame/common';
+import { EphemeralTile, MachineLetter } from '../utils/cwgame/common';
 import { useFirefoxPatch } from '../utils/hooks/firefox';
 import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
 import { useMountedState } from '../utils/mounted';
@@ -168,9 +172,13 @@ export const SinglePuzzle = (props: Props) => {
     });
 
   // Figure out what rack we should display
-  const rack =
-    examinableGameContext.players.find((p) => p.onturn)?.currentRack ?? '';
-  const sortedRack = useMemo(() => sortTiles(rack), [rack]);
+
+  const sortedRack = useMemo(() => {
+    const rack =
+      examinableGameContext.players.find((p) => p.onturn)?.currentRack ??
+      new Array<MachineLetter>();
+    return sortTiles(rack, examinableGameContext.alphabet);
+  }, [examinableGameContext.alphabet, examinableGameContext.players]);
   const userIDOnTurn = useMemo(
     () => examinableGameContext.players.find((p) => p.onturn)?.userID,
     [examinableGameContext]
@@ -220,6 +228,7 @@ export const SinglePuzzle = (props: Props) => {
     }
   }, [loadNewPuzzle, nextPending]);
 
+  // XXX: tis is all broken.
   // XXX: This is copied from analyzer.tsx. When we add the analyzer
   // to the puzzle page we should figure out another solution.
   const placeMove = usePlaceMoveCallback();
@@ -235,17 +244,23 @@ export const SinglePuzzle = (props: Props) => {
         row: evt.row,
         score: evt.score,
         equity: 0.0, // not shown yet
-        tiles: evt.playedTiles || evt.exchanged,
-        isExchange: evt.type === GameEvent_Type.EXCHANGE,
-        leave: '',
-        leaveWithGaps: computeLeaveWithGaps(
+        tiles: runesToMachineWord(
           evt.playedTiles || evt.exchanged,
-          sortedRack
+          examinableGameContext.alphabet
+        ),
+        isExchange: evt.type === GameEvent_Type.EXCHANGE,
+        leave: new Array<MachineLetter>(),
+        leaveWithGaps: runesToMachineWord(
+          computeLeaveWithGaps(
+            evt.playedTiles || evt.exchanged,
+            machineWordToRunes(sortedRack, examinableGameContext.alphabet)
+          ),
+          examinableGameContext.alphabet
         ),
       };
       placeMove(m);
     },
-    [placeMove, sortedRack]
+    [placeMove, sortedRack, examinableGameContext.alphabet]
   );
 
   const setGameInfo = useCallback(
@@ -592,7 +607,8 @@ export const SinglePuzzle = (props: Props) => {
     if (checkWordsPending) {
       const wordsFormed = getWordsFormed(
         examinableGameContext.board,
-        placedTiles
+        placedTiles,
+        examinableGameContext.alphabet
       ).map((w) => w.toUpperCase());
       setCheckWordsPending(false);
       //Todo: Now run them by the endpoint
@@ -616,6 +632,7 @@ export const SinglePuzzle = (props: Props) => {
     checkWordsPending,
     placedTiles,
     examinableGameContext.board,
+    examinableGameContext.alphabet,
     puzzleInfo.lexicon,
     wordClient,
   ]);

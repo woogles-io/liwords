@@ -9,7 +9,8 @@ import Pool from './pool';
 import { singularCount } from '../utils/plural';
 import { Button } from 'antd';
 import { Modal } from '../utils/focus_modal';
-import { Alphabet } from '../constants/alphabets';
+import { Alphabet, getMachineLetterForKey } from '../constants/alphabets';
+import { MachineLetter, MachineWord } from '../utils/cwgame/common';
 
 const doNothing = () => {};
 
@@ -17,10 +18,10 @@ const doNothing = () => {};
 
 type Props = {
   tileColorId: number;
-  rack: string;
+  rack: MachineWord;
   alphabet: Alphabet;
   onCancel: () => void;
-  onOk: (tilesToExchange: string) => void;
+  onOk: (tilesToExchange: MachineWord) => void;
   modalVisible: boolean;
 };
 
@@ -30,7 +31,9 @@ export const ExchangeTiles = React.memo((props: Props) => {
   const [exchangedRackIndices, setExchangedRackIndices] = useState(
     new Set<number>()
   );
-  const [exchangedRack, setExchangedRack] = useState('');
+  const [exchangedRack, setExchangedRack] = useState(
+    new Array<MachineLetter>()
+  );
 
   const [delayInput, setDelayInput] = useState(true);
 
@@ -79,8 +82,10 @@ export const ExchangeTiles = React.memo((props: Props) => {
 
       // Select one more instance if any.
       let canDeselect = false;
+      const ml = getMachineLetterForKey(key, props.alphabet);
+
       for (let i = 0; i < props.rack.length; ++i) {
-        if (props.rack[i] === key) {
+        if (props.rack[i] === ml) {
           if (!exchangedRackIndices.has(i)) {
             setExchangedRackIndices(new Set(exchangedRackIndices).add(i));
             return;
@@ -93,7 +98,7 @@ export const ExchangeTiles = React.memo((props: Props) => {
         // Deselect all instances at once.
         const tempToExchange = new Set(exchangedRackIndices);
         for (let i = 0; i < props.rack.length; ++i) {
-          if (props.rack[i] === key) {
+          if (props.rack[i] === ml) {
             tempToExchange.delete(i);
           }
         }
@@ -106,6 +111,7 @@ export const ExchangeTiles = React.memo((props: Props) => {
       exchangedRackIndices,
       props.modalVisible,
       props.rack,
+      props.alphabet,
       propsOnOk,
     ]
   );
@@ -129,7 +135,7 @@ export const ExchangeTiles = React.memo((props: Props) => {
     const indices = Array.from(exchangedRackIndices.keys());
     indices.sort();
     const e = indices.map((idx) => props.rack[idx]);
-    setExchangedRack(e.join(''));
+    setExchangedRack(e);
   }, [exchangedRackIndices, props.rack]);
   const { gameContext } = useGameContextStoreContext();
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
@@ -153,7 +159,7 @@ export const ExchangeTiles = React.memo((props: Props) => {
     <Modal
       className="exchange"
       title="Exchange tiles"
-      visible={props.modalVisible}
+      open={props.modalVisible}
       onOk={handleOnOk}
       onCancel={props.onCancel}
       width={360}

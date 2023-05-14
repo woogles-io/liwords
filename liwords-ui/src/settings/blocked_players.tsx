@@ -37,7 +37,7 @@ export const BlockedPlayers = React.memo(() => {
         await socializeClient.removeBlock({ uuid: user.uuid });
         notification.info({
           message: 'Success',
-          description: user.username + ' was unblocked.',
+          description: `${user.username} was unblocked.`,
         });
         setBlockedUsers(
           blockedUsers.filter((blockedUser) => blockedUser.uuid !== user.uuid)

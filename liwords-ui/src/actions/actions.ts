@@ -45,7 +45,6 @@ export enum ActionType {
   SetupStaticPosition,
   InitFromDocument,
   AddOMGWordsEvent,
-  ChangePlayerRack,
 
   /* game comment actions */
   ReloadComments,

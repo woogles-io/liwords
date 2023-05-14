@@ -41,7 +41,6 @@ function renderGameControls(props: Partial<Props> = {}) {
     showAbort: false,
     gameEndControls: false,
     showRematch: false,
-    currentRack: '',
   };
   return render(<GameControls {...defaultProps} {...props} />);
 }

@@ -16,7 +16,7 @@ import { sortTiles } from '../store/constants';
 import Tile from '../gameroom/tile';
 import {
   Alphabet,
-  runeToValues,
+  scoreFor,
   StandardEnglishAlphabet,
 } from '../constants/alphabets';
 import { TouchBackend } from 'react-dnd-touch-backend';
@@ -25,6 +25,7 @@ import { PlayerAvatar } from '../shared/player_avatar';
 import { RatingBadge } from '../lobby/rating_badge';
 import { flashError, useClient } from '../utils/hooks/connect';
 import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_connectweb';
+import { MachineLetter } from '../utils/cwgame/common';
 
 export const PuzzlePreview = React.memo(() => {
   const userLexicon = localStorage?.getItem('puzzleLexicon');
@@ -32,7 +33,7 @@ export const PuzzlePreview = React.memo(() => {
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { username, loggedIn } = loginState;
-  const [rack, setRack] = useState('');
+  const [rack, setRack] = useState(new Array<MachineLetter>());
   const [alphabet, setAlphabet] = useState<Alphabet>(StandardEnglishAlphabet);
   const [puzzleID, setPuzzleID] = useState<string | null>(null);
   const [userRating, setUserRating] = useState<number | undefined>(undefined);
@@ -85,8 +86,10 @@ export const PuzzlePreview = React.memo(() => {
   }, [puzzleID, puzzleRating, puzzleClient, dispatchGameContext]);
 
   useEffect(() => {
-    const rack = gameContext.players.find((p) => p.onturn)?.currentRack ?? '';
-    setRack(sortTiles(rack));
+    const rack =
+      gameContext.players.find((p) => p.onturn)?.currentRack ??
+      new Array<MachineLetter>();
+    setRack(sortTiles(rack, gameContext.alphabet));
     setAlphabet(gameContext.alphabet);
   }, [gameContext]);
 
@@ -97,11 +100,12 @@ export const PuzzlePreview = React.memo(() => {
     }
     const noop = () => {};
     for (let n = 0; n < rack.length; n += 1) {
-      const rune = rack[n];
+      const letter = rack[n];
       tiles.push(
         <Tile
-          rune={rune}
-          value={runeToValues(alphabet, rune)}
+          letter={letter}
+          alphabet={alphabet}
+          value={scoreFor(alphabet, letter)}
           lastPlayed={false}
           playerOfTile={0}
           key={`tile_${n}`}

@@ -9,20 +9,20 @@ import {
 } from '../../gen/api/proto/macondo/macondo_pb';
 import { Action, ActionType } from '../../actions/actions';
 import {
-  isBlank,
-  Blank,
   PlayedTiles,
   PlayerOfTiles,
-  EmptySpace,
+  MachineLetter,
+  isDesignatedBlankMachineLetter,
+  MachineWord,
 } from '../../utils/cwgame/common';
 import { PlayerOrder } from '../constants';
 import { ClockController, Millis } from '../timer_controller';
-import { ThroughTileMarker } from '../../utils/cwgame/game_event';
 import {
   Alphabet,
   alphabetFromName,
+  machineWordToRunes,
+  runesToMachineWord,
   StandardEnglishAlphabet,
-  uint8ArrayToRunes,
 } from '../../constants/alphabets';
 import {
   GameDocument,
@@ -38,11 +38,7 @@ import {
   SuperCrosswordGameGridLayout,
 } from '../../constants/board_layout';
 
-type TileDistribution = { [rune: string]: number };
-
-type PlayerRackChange = {
-  rack: string;
-};
+type TileDistribution = { [ml: MachineLetter]: number };
 
 export type RawPlayerInfo = {
   userID: string;
@@ -51,7 +47,7 @@ export type RawPlayerInfo = {
   // we will put it in its own reducer.
   // timeMillis: number;
   onturn: boolean;
-  currentRack: string;
+  currentRack: MachineWord;
 };
 
 const initialExpandToFull = (playerList: PlayerInfo[]): RawPlayerInfo[] => {
@@ -60,7 +56,7 @@ const initialExpandToFull = (playerList: PlayerInfo[]): RawPlayerInfo[] => {
       userID: pi.userId,
       score: 0,
       onturn: idx === 0,
-      currentRack: '',
+      currentRack: new Array<MachineLetter>(),
       // timeMillis: 0,
     };
   });
@@ -91,8 +87,8 @@ export type GameState = {
 
 const makePool = (alphabet: Alphabet): TileDistribution => {
   const td: TileDistribution = {};
-  alphabet.letters.forEach((l) => {
-    td[l.rune] = l.count;
+  alphabet.letters.forEach((l, idx) => {
+    td[idx] = l.count;
   });
   return td;
 };
@@ -154,7 +150,7 @@ const newGameStateFromGameplayEvent = (
   switch (evt.type) {
     case GameEvent_Type.TILE_PLACEMENT_MOVE: {
       board = state.board.deepCopy();
-      [lastPlayedTiles, pool] = placeOnBoard(board, pool, evt);
+      [lastPlayedTiles, pool] = placeOnBoard(board, pool, evt, state.alphabet);
       playerOfTileAt = { ...playerOfTileAt };
       for (const k in lastPlayedTiles) {
         playerOfTileAt[k] = onturn;
@@ -165,9 +161,12 @@ const newGameStateFromGameplayEvent = (
       board = state.board.deepCopy();
       // Unplace the move BEFORE this one.
       const toUnplace = turns[turns.length - 2];
-      pool = unplaceOnBoard(board, pool, toUnplace);
+      pool = unplaceOnBoard(board, pool, toUnplace, state.alphabet);
       // Set the user's rack back to what it used to be.
-      players[onturn].currentRack = toUnplace.rack;
+      players[onturn].currentRack = runesToMachineWord(
+        toUnplace.rack,
+        state.alphabet
+      );
       break;
     }
   }
@@ -176,7 +175,10 @@ const newGameStateFromGameplayEvent = (
     evt.type === GameEvent_Type.TILE_PLACEMENT_MOVE ||
     evt.type === GameEvent_Type.EXCHANGE
   ) {
-    players[onturn].currentRack = sge.newRack;
+    players[onturn].currentRack = runesToMachineWord(
+      sge.newRack,
+      state.alphabet
+    );
   }
 
   players[onturn].score = evt.cumulative;
@@ -205,42 +207,32 @@ const newGameStateFromGameplayEvent = (
   };
 };
 
-const newStateFromRackChange = (
-  state: GameState,
-  rackChange: PlayerRackChange
-): GameState => {
-  const players = [...state.players];
-  players[state.onturn].currentRack = rackChange.rack;
-
-  return {
-    ...state,
-    players,
-  };
-};
-
 const placeOnBoard = (
   board: Board,
   pool: TileDistribution,
-  evt: GameEvent
+  evt: GameEvent,
+  alphabet: Alphabet
 ): [PlayedTiles, TileDistribution] => {
   const play = evt.playedTiles;
   const playedTiles: PlayedTiles = {};
   const newPool = { ...pool };
-  for (let i = 0; i < play.length; i += 1) {
-    const rune = play[i];
+
+  const mls = runesToMachineWord(play, alphabet);
+  for (let i = 0; i < mls.length; i++) {
+    const ml = mls[i];
     const row =
       evt.direction === GameEvent_Direction.VERTICAL ? evt.row + i : evt.row;
     const col =
       evt.direction === GameEvent_Direction.HORIZONTAL
         ? evt.column + i
         : evt.column;
-    const tile = { row, col, rune };
-    if (rune !== ThroughTileMarker && board.letterAt(row, col) === EmptySpace) {
+    const tile = { row, col, ml };
+    if (ml !== 0 && board.letterAt(row, col) === 0) {
       board.addTile(tile);
-      if (isBlank(tile.rune)) {
-        newPool[Blank] -= 1;
+      if (isDesignatedBlankMachineLetter(tile.ml)) {
+        newPool[0] -= 1;
       } else {
-        newPool[tile.rune] -= 1;
+        newPool[tile.ml] -= 1;
       }
       playedTiles[`R${row}C${col}`] = true;
     } // Otherwise, we played through a letter.
@@ -251,26 +243,28 @@ const placeOnBoard = (
 const unplaceOnBoard = (
   board: Board,
   pool: TileDistribution,
-  evt: GameEvent
+  evt: GameEvent,
+  alphabet: Alphabet
 ): TileDistribution => {
   const play = evt.playedTiles;
   const newPool = { ...pool };
-  for (let i = 0; i < play.length; i += 1) {
-    const rune = play[i];
+  const mls = runesToMachineWord(play, alphabet);
+  for (let i = 0; i < mls.length; i++) {
+    const ml = mls[i];
     const row =
       evt.direction === GameEvent_Direction.VERTICAL ? evt.row + i : evt.row;
     const col =
       evt.direction === GameEvent_Direction.HORIZONTAL
         ? evt.column + i
         : evt.column;
-    const tile = { row, col, rune };
-    if (rune !== ThroughTileMarker && board.letterAt(row, col) !== EmptySpace) {
+    const tile = { row, col, ml };
+    if (ml !== 0 && board.letterAt(row, col) !== 0) {
       // Remove the tile from the board and place it back in the pool.
       board.removeTile(tile);
-      if (isBlank(tile.rune)) {
-        newPool[Blank] += 1;
+      if (isDesignatedBlankMachineLetter(tile.ml)) {
+        newPool[0] += 1;
       } else {
-        newPool[tile.rune] += 1;
+        newPool[tile.ml] += 1;
       }
     }
   }
@@ -287,21 +281,27 @@ const convertToGameEvt = (
     return new GameEvent();
   }
   return new GameEvent({
-    rack: uint8ArrayToRunes(evt.rack, alphabet),
+    rack: machineWordToRunes(Array.from(evt.rack), alphabet),
     type: evt.type.valueOf(),
     cumulative: evt.cumulative,
     row: evt.row,
     column: evt.column,
     direction: evt.direction,
     position: evt.position,
-    playedTiles: uint8ArrayToRunes(evt.playedTiles, alphabet, true),
-    exchanged: uint8ArrayToRunes(evt.exchanged, alphabet),
+    playedTiles: machineWordToRunes(
+      Array.from(evt.playedTiles),
+      alphabet,
+      true
+    ),
+    exchanged: machineWordToRunes(Array.from(evt.exchanged), alphabet),
     score: evt.score,
     bonus: evt.bonus,
     endRackPoints: evt.endRackPoints,
     lostScore: evt.lostScore,
     isBingo: evt.isBingo,
-    wordsFormed: evt.wordsFormed.map((v) => uint8ArrayToRunes(v, alphabet)),
+    wordsFormed: evt.wordsFormed.map((v) =>
+      machineWordToRunes(Array.from(v), alphabet)
+    ),
     millisRemaining: evt.millisRemaining,
     playerIndex: evt.playerIndex,
   });
@@ -316,7 +316,7 @@ const convertToServerGameplayEvent = (
   return new ServerGameplayEvent({
     event: convertToGameEvt(evt.event, alphabet),
     gameId: evt.gameId,
-    newRack: uint8ArrayToRunes(evt.newRack, alphabet),
+    newRack: machineWordToRunes(Array.from(evt.newRack), alphabet),
     timeRemaining: evt.timeRemaining,
     playing: evt.playing.valueOf(),
     userId: evt.userId,
@@ -332,7 +332,12 @@ export const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
     switch (evt.type) {
       case GameEvent_Type.TILE_PLACEMENT_MOVE:
         // eslint-disable-next-line no-param-reassign
-        [gs.lastPlayedTiles, gs.pool] = placeOnBoard(gs.board, gs.pool, evt);
+        [gs.lastPlayedTiles, gs.pool] = placeOnBoard(
+          gs.board,
+          gs.pool,
+          evt,
+          gs.alphabet
+        );
         for (const k in gs.lastPlayedTiles) {
           gs.playerOfTileAt[k] = onturn;
         }
@@ -341,7 +346,7 @@ export const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
         // Unplace the move BEFORE this one.
         const toUnplace = events[idx - 1];
         // eslint-disable-next-line no-param-reassign
-        gs.pool = unplaceOnBoard(gs.board, gs.pool, toUnplace);
+        gs.pool = unplaceOnBoard(gs.board, gs.pool, toUnplace, gs.alphabet);
         // Set the user's rack back to what it used to be.
         break;
       }
@@ -367,7 +372,12 @@ const pushTurnsNew = (gs: GameState, events: Array<OMGWordsGameEvent>) => {
     switch (evt.type) {
       case OMGWordsGameEventType.TILE_PLACEMENT_MOVE:
         // eslint-disable-next-line no-param-reassign
-        [gs.lastPlayedTiles, gs.pool] = placeOnBoard(gs.board, gs.pool, evt);
+        [gs.lastPlayedTiles, gs.pool] = placeOnBoard(
+          gs.board,
+          gs.pool,
+          evt,
+          gs.alphabet
+        );
         for (const k in gs.lastPlayedTiles) {
           gs.playerOfTileAt[k] = onturn;
         }
@@ -376,7 +386,7 @@ const pushTurnsNew = (gs: GameState, events: Array<OMGWordsGameEvent>) => {
         // Unplace the move BEFORE this one.
         const toUnplace = convertToGameEvt(events[idx - 1], gs.alphabet);
         // eslint-disable-next-line no-param-reassign
-        gs.pool = unplaceOnBoard(gs.board, gs.pool, toUnplace);
+        gs.pool = unplaceOnBoard(gs.board, gs.pool, toUnplace, gs.alphabet);
         // Set the user's rack back to what it used to be.
         break;
       }
@@ -418,7 +428,9 @@ const stateFromHistory = (history: GameHistory): GameState => {
   const racks = history.lastKnownRacks;
 
   // Assign racks. Remember that the player listed first goes first.
-  [gs.players[0].currentRack, gs.players[1].currentRack] = racks;
+  for (let i = 0; i < gs.players.length; i++) {
+    gs.players[i].currentRack = runesToMachineWord(racks[i], alphabet);
+  }
   // [gs.players[0].timeMillis, gs.players[1].timeMillis] = timers;
   gs.players[gs.onturn].onturn = true;
   gs.players[1 - gs.onturn].onturn = false;
@@ -453,7 +465,7 @@ const stateFromDocument = (gdoc: GameDocument): GameState => {
   const racks = gdoc.racks;
 
   racks.forEach((rack, idx) => {
-    gs.players[idx].currentRack = uint8ArrayToRunes(rack, alphabet);
+    gs.players[idx].currentRack = Array.from(rack);
   });
   gs.players[gdoc.playerOnTurn].onturn = true;
   gs.players[1 - gdoc.playerOnTurn].onturn = false;
@@ -483,7 +495,6 @@ const setClock = (newState: GameState, sge: ServerGameplayEvent) => {
   let { p0, p1 } = newState.clockController.current.times;
   let activePlayer;
   let flipTimeRemaining = false;
-  console.log('player times are currently', p0, p1, 'from evt:', rem);
 
   if (
     evt.type === GameEvent_Type.CHALLENGE_BONUS ||
@@ -505,8 +516,6 @@ const setClock = (newState: GameState, sge: ServerGameplayEvent) => {
   } else {
     throw new Error(`just played ${justPlayed} is unexpected`);
   }
-  console.log('activePlayer is', activePlayer);
-
   newState.clockController.current.setClock(
     newState.playState,
     {
@@ -674,14 +683,6 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       // stateFromDocument should initialize the clock controller as well.
       // Otherwise if it is null, we have an issue, but there's no need to
       // throw an Error..
-      return newState;
-    }
-
-    case ActionType.ChangePlayerRack: {
-      const p = action.payload as PlayerRackChange;
-      const newState = newStateFromRackChange(state, p);
-
-      console.log('newState', newState);
       return newState;
     }
 

@@ -1004,6 +1004,17 @@ p.streak-loss {
         background: ut($tile-background);
         border: ut($tile-border);
     }
+
+    p.rune > span {
+      display: inline-block;
+    }
+    &[data-length="2"] p.rune > span {
+      transform: scaleX(calc(1 / 1.5));
+    }
+    &[data-length="3"] p.rune > span {
+      transform:  scaleX(calc(1 / 1.8));
+      letter-spacing: -1em;
+    }
 }
 
 .tile.blank {
@@ -1023,6 +1034,14 @@ p.streak-loss {
     }
   }
   */
+
+    &[data-length="2"] p.rune > span {
+      transform: scaleX(calc(1 / 1.5));
+    }
+    &[data-length="3"] p.rune > span {
+      transform: translate(0.05em) scaleX(calc(1 / 1.8));
+      letter-spacing: -1em;    
+    }
 }
 
 .tile.blank p.rune {
@@ -1033,7 +1052,7 @@ p.streak-loss {
     width: 70%;
     height: 70%;
     border-radius: 50%;
-    text-transform: capitalize;
+    text-transform: uppercase;
     transform: rotate(-10deg);
     font-size: calc($tile-font-size-mobile * 0.95);
 
@@ -1378,6 +1397,9 @@ p.rune {
         .letter-group {
             // white-space: pre would lock each rune group to a single line if we ever want that
             white-space: normal;
+            &[data-multichar="true"] {
+                letter-spacing: 0em;
+            }
         }
     }
 }

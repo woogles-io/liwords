@@ -5,7 +5,6 @@ import (
 	"errors"
 	"strings"
 	"unicode"
-	"unicode/utf8"
 
 	"github.com/domino14/liwords/pkg/entity"
 	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
@@ -390,7 +389,9 @@ func addBingos(info *IncrementInfo) error {
 func addBlanksPlayed(info *IncrementInfo) error {
 	events := info.History.GetEvents()
 	event := events[info.EventIndex]
+	// XXX: this needs to be fixed or removed for multi-char tiles
 	tiles := event.PlayedTiles
+
 	for _, char := range tiles {
 		if unicode.IsLower(char) {
 			info.StatItem.Total++
@@ -569,6 +570,7 @@ func addEveryE(info *IncrementInfo) error {
 	}
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE &&
 		(succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED) {
+		// XXX: this needs to be changed/removed for multi-char tiles
 		for _, char := range event.PlayedTiles {
 			if char == 'E' {
 				info.StatItem.Total += 1 * multiplier
@@ -591,6 +593,7 @@ func addEveryPowerTile(info *IncrementInfo) error {
 	}
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE &&
 		(succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED) {
+		// XXX: this needs to be changed or removed for multi-char tiles
 		for _, char := range event.PlayedTiles {
 			if char == 'J' ||
 				char == 'Q' ||
@@ -749,6 +752,7 @@ func addTilesPlayed(info *IncrementInfo) error {
 	if info.EventIndex+1 < len(events) {
 		succEvent = events[info.EventIndex+1]
 	}
+	// XXX: this needs to be fixed for multi-char tiles and non-english lexica
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE &&
 		(succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED) {
 		for _, char := range event.PlayedTiles {
@@ -921,12 +925,28 @@ func addBonusSquares(info *IncrementInfo, bonusSquare byte) error {
 	return nil
 }
 
-func getOccupiedIndexes(event *pb.GameEvent) [][]int {
+func getOccupiedIndexes(info *IncrementInfo, event *pb.GameEvent) [][]int {
 	occupied := [][]int{}
 	row := int(event.Row)
 	column := int(event.Column)
-	for _, char := range event.PlayedTiles {
-		if char != tilemapping.ASCIIPlayedThrough {
+
+	ldname := info.History.LetterDistribution
+	if ldname == "" {
+		ldname = "english"
+	}
+
+	ld, err := tilemapping.GetDistribution(info.Cfg, ldname)
+	if err != nil {
+		log.Err(err).Str("dist", ldname).Msg("get-occupied-indexes-get-dist-err")
+		return occupied
+	}
+	mls, err := tilemapping.ToMachineLetters(event.PlayedTiles, ld.TileMapping())
+	if err != nil {
+		log.Err(err).Msg("get-occupied-indexes-conv-err")
+		return occupied
+	}
+	for _, ml := range mls {
+		if ml != 0 {
 			occupied = append(occupied, []int{row, column})
 		}
 		if event.Direction == pb.GameEvent_VERTICAL {
@@ -941,7 +961,7 @@ func getOccupiedIndexes(event *pb.GameEvent) [][]int {
 func countBonusSquares(info *IncrementInfo,
 	event *pb.GameEvent,
 	bonusSquare byte) (int, error) {
-	occupiedIndexes := getOccupiedIndexes(event)
+	occupiedIndexes := getOccupiedIndexes(info, event)
 	boardLayout, _, _ := game.HistoryToVariant(info.History)
 	var bd []string
 	switch boardLayout {
@@ -960,10 +980,6 @@ func countBonusSquares(info *IncrementInfo,
 		}
 	}
 	return count, nil
-}
-
-func isBingoNineOrAbove(event *pb.GameEvent) bool {
-	return event.IsBingo && utf8.RuneCountInString(event.PlayedTiles) >= 9
 }
 
 func isUnchallengedPhonyEvent(event *pb.GameEvent,
@@ -1231,6 +1247,7 @@ func instantiateNotableData() map[string]*entity.StatItem {
 			Subitems:      map[string]int{"player_one_streak": 0, "player_two_streak": 0}}}
 }
 
+// XXX: This needs to be re-done to support non-English alphabets.
 func makeAlphabetSubitems() map[string]int {
 	alphabetSubitems := make(map[string]int)
 	for i := 0; i < 26; i++ {

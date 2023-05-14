@@ -5,7 +5,7 @@ import { Card, notification } from 'antd';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ActionType } from '../actions/actions';
-import { alphabetFromName, runesToUint8Array } from '../constants/alphabets';
+import { alphabetFromName } from '../constants/alphabets';
 import { Analyzer, AnalyzerContextProvider } from '../gameroom/analyzer';
 import { BoardPanel } from '../gameroom/board_panel';
 import { PlayerCards } from '../gameroom/player_cards';
@@ -37,6 +37,7 @@ import { EditorControl } from './editor_control';
 import { PlayState } from '../gen/api/proto/ipc/omgwords_pb';
 import { syntheticGameInfo } from './synthetic_game_info';
 import { EditorLandingPage } from './new_game';
+import { MachineLetter, MachineWord } from '../utils/cwgame/common';
 
 const doNothing = () => {};
 
@@ -164,16 +165,17 @@ export const BoardEditor = () => {
 
   const sortedRack = useMemo(() => {
     const rack =
-      examinableGameContext.players.find((p) => p.onturn)?.currentRack ?? '';
-    return sortTiles(rack);
-  }, [examinableGameContext]);
+      examinableGameContext.players.find((p) => p.onturn)?.currentRack ??
+      new Array<MachineLetter>();
+    return sortTiles(rack, examinableGameContext.alphabet);
+  }, [examinableGameContext.alphabet, examinableGameContext.players]);
 
   const alphabet = useMemo(
     () => alphabetFromName(gameContext.gameDocument.letterDistribution),
     [gameContext.gameDocument.letterDistribution]
   );
 
-  const changeCurrentRack = async (rack: string, evtIdx: number) => {
+  const changeCurrentRack = async (rack: MachineWord, evtIdx: number) => {
     let onturn = gameContext.onturn;
     let amendment = false;
     const racks: [Uint8Array, Uint8Array] = [
@@ -188,9 +190,7 @@ export const BoardEditor = () => {
       amendment = true;
     }
 
-    racks[onturn] = Uint8Array.from(
-      runesToUint8Array(rack, gameContext.alphabet)
-    );
+    racks[onturn] = Uint8Array.from(rack);
 
     try {
       await eventClient.setRacks({

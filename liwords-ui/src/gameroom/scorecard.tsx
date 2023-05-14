@@ -30,6 +30,11 @@ import { Comments } from './comments';
 import { useClient } from '../utils/hooks/connect';
 import { GameCommentService } from '../gen/api/proto/comments_service/comments_service_connectweb';
 import { useComments } from '../utils/hooks/comments';
+import {
+  Alphabet,
+  machineWordToRunes,
+  runesToMachineWord,
+} from '../constants/alphabets';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const screenSizes = require('../base.scss').default;
 
@@ -57,6 +62,7 @@ type turnProps = {
   addComment: (comment: string) => void;
   toggleCommentEditorVisible: () => void;
   commentEditorVisible: boolean;
+  alphabet: Alphabet;
 };
 
 type MoveEntityObj = {
@@ -75,18 +81,38 @@ type MoveEntityObj = {
   isBingo: boolean;
 };
 
-const displaySummary = (evt: GameEvent, board: Board) => {
+function sortStringRack(rack: string, alphabet: Alphabet): string {
+  // convert to ML for sorting
+  const ml = runesToMachineWord(rack, alphabet);
+  const sorted = sortTiles(ml, alphabet);
+  return machineWordToRunes(sorted, alphabet, false, true);
+}
+
+const displaySummary = (evt: GameEvent, board: Board, alphabet: Alphabet) => {
   // Handle just a subset of the possible moves here. These may be modified
   // later on.
   switch (evt.type) {
     case GameEvent_Type.EXCHANGE:
-      return <span className="exchanged">-{sortTiles(evt.exchanged)}</span>;
+      // evt.exchanged gets modified by the backend to either be a string
+      // with the exchanged letters, or the number of exchanged tiles
+      // (for the purposes of maintaining secrecy if you're currently in a game)
+      // We must deal with these two cases. Note that this assumes that
+      // tiles cannot be numbers. This is OK for now. We will have to redo
+      // this behavior anyway once we move to OMGWordsEvents.
+      let exchStr = '';
+      if (evt.exchanged === '') {
+        exchStr = `${evt.numTilesFromRack}`;
+      } else {
+        exchStr = sortStringRack(evt.exchanged, alphabet);
+      }
+
+      return <span className="exchanged">-{exchStr}</span>;
 
     case GameEvent_Type.PASS:
       return <span className="pass">Passed turn</span>;
 
     case GameEvent_Type.TILE_PLACEMENT_MOVE:
-      return tilePlacementEventDisplay(evt, board);
+      return tilePlacementEventDisplay(evt, board, alphabet);
     case GameEvent_Type.UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
       return <span className="challenge unsuccessful">Challenged</span>;
     case GameEvent_Type.END_RACK_PENALTY:
@@ -145,7 +171,7 @@ const ScorecardTurn = (props: turnProps) => {
       coords: evts[0].position,
       timeRemaining: timeRemaining,
       rack: evts[0].rack,
-      play: displaySummary(evts[0], props.board),
+      play: displaySummary(evts[0], props.board, props.alphabet),
       score: `${evts[0].score}`,
       lostScore: evts[0].lostScore,
       moveType: displayType(evts[0]),
@@ -156,7 +182,7 @@ const ScorecardTurn = (props: turnProps) => {
       isBingo: evts[0].isBingo,
     };
     if (evts.length === 1) {
-      turn.rack = sortTiles(turn.rack);
+      turn.rack = sortStringRack(turn.rack, props.alphabet);
       return turn;
     }
     // Otherwise, we have to make some modifications.
@@ -167,7 +193,7 @@ const ScorecardTurn = (props: turnProps) => {
         <>
           <span className="challenge successful">Challenge!</span>
           <span className="main-word">
-            {displaySummary(evts[0], props.board)}
+            {displaySummary(evts[0], props.board, props.alphabet)}
           </span>
         </>
       );
@@ -179,14 +205,17 @@ const ScorecardTurn = (props: turnProps) => {
           <>
             <span className="challenge unsuccessful">Challenge!</span>
             <span className="main-word">
-              {displaySummary(evts[0], props.board)}
+              {displaySummary(evts[0], props.board, props.alphabet)}
             </span>
           </>
         );
-        turn.rack = `Play is valid ${sortTiles(evts[0].rack)}`;
+        turn.rack = `Play is valid ${sortStringRack(
+          evts[0].rack,
+          props.alphabet
+        )}`;
       } else {
         // Void challenge combines the end rack points.
-        turn.rack = sortTiles(turn.rack);
+        turn.rack = sortStringRack(turn.rack, props.alphabet);
       }
       // Otherwise, just add/subtract as needed.
       for (let i = 1; i < evts.length; i++) {
@@ -202,7 +231,7 @@ const ScorecardTurn = (props: turnProps) => {
       }
     }
     return turn;
-  }, [props.board, props.playerMeta, props.turn]);
+  }, [props.board, props.playerMeta, props.turn, props.alphabet]);
 
   let scoreChange;
   if (memoizedTurn.lostScore > 0) {
@@ -411,6 +440,7 @@ export const ScoreCard = React.memo((props: Props) => {
               comment
             )
           }
+          alphabet={gameContext.alphabet}
         />
       );
     };

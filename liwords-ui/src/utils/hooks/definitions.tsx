@@ -170,6 +170,7 @@ export const useDefinitionAndPhonyChecker = ({
   const handleSetHover = useCallback(
     (x: number, y: number, words: Array<string> | undefined) => {
       if (enableHoverDefine && words) {
+        console.log('words', words);
         setWillHideDefinitionHover(false);
         setShowDefinitionHover((oldValue) => {
           const newValue = {

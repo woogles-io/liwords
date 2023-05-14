@@ -575,7 +575,7 @@ type AnnotatedGameEvent struct {
 	UserId string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	// The event_number is ignored unless the amendment flag is on.
 	EventNumber uint32 `protobuf:"varint,3,opt,name=event_number,json=eventNumber,proto3" json:"event_number,omitempty"`
-	// Amendment is ture if we are amending a previous, already played move.
+	// Amendment is true if we are amending a previous, already played move.
 	// In that case, the event number is the index of the event that we
 	// wish to edit. Note: not every ClientGameplayEvent maps 1-to-1 with
 	// internal event indexes. In order to be sure you are editing the right

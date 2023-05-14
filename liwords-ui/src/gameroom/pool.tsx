@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom';
 import { Card, Dropdown, Menu } from 'antd';
 import { PoolFormatType, PoolFormats } from '../constants/pool_formats';
 import { singularCount } from '../utils/plural';
-import { Alphabet } from '../constants/alphabets';
+import { Alphabet, machineLetterToRune } from '../constants/alphabets';
+import { Blank, MachineLetter, MachineWord } from '../utils/cwgame/common';
 
-type poolType = { [rune: string]: number };
+type poolType = { [ml: MachineLetter]: number };
 
-function poolMinusRack(pool: poolType, rack: string) {
+function poolMinusRack(pool: poolType, rack: MachineWord) {
   const poolCopy = { ...pool };
   for (let i = 0; i < rack.length; i += 1) {
     poolCopy[rack[i]] -= 1;
@@ -17,7 +18,9 @@ function poolMinusRack(pool: poolType, rack: string) {
 
 function renderLetters(
   pool: poolType,
-  possibleLetters: string,
+  alphabet: Alphabet,
+  possibleLetters: Array<MachineLetter>,
+  sectionIndex: number,
   maxConsecutive = 6
 ) {
   const output = [];
@@ -29,16 +32,17 @@ function renderLetters(
     const letter = possibleLetters[possibility];
     let letterGroup = '';
     if (pool[letter]) {
+      const rune = machineLetterToRune(letter, alphabet, false, true);
       for (let i = 0; i < pool[letter]; i++) {
         if (i % maxConsecutive) {
-          letterGroup += letter;
+          letterGroup += rune;
         } else {
-          letterGroup += ` ${letter}`;
+          letterGroup += ` ${rune}`;
         }
       }
       output.push(
         <React.Fragment key={`lg-${letter}-${possibility}`}>
-          <span className="letter-group" data-rune={letter}>
+          <span className="letter-group" data-multichar={rune.length > 1}>
             {letterGroup.trim()}
           </span>{' '}
         </React.Fragment>
@@ -46,7 +50,7 @@ function renderLetters(
     }
   }
   return (
-    <section className="pool-section" key={possibleLetters}>
+    <section className="pool-section" key={sectionIndex}>
       {output}
     </section>
   );
@@ -55,13 +59,11 @@ function renderLetters(
 function getPoolCount(
   pool: poolType,
   alphabet: Alphabet,
-  filterfn: (a: Alphabet) => string
+  filterfn: (a: Alphabet) => Array<MachineLetter>
 ) {
-  return Object.keys(pool).reduce((acc, cur) => {
-    if (filterfn(alphabet).lastIndexOf(cur) > -1) {
-      return acc + pool[cur];
-    }
-    return acc;
+  const letters = filterfn(alphabet);
+  return letters.reduce((acc, cur) => {
+    return acc + pool[cur];
   }, 0);
 }
 
@@ -70,7 +72,7 @@ type Props = {
   pool: poolType;
   poolFormat: PoolFormatType;
   setPoolFormat: (format: PoolFormatType) => void;
-  currentRack: string;
+  currentRack: MachineWord;
   alphabet: Alphabet;
 };
 
@@ -97,14 +99,13 @@ const Pool = React.memo((props: Props) => {
 });
 
 const ActualPool = React.memo((props: Props & { hidePool: boolean }) => {
-  const letterOrder =
-    PoolFormats.find((f) => f.poolFormatType === props.poolFormat)?.format(
-      props.alphabet
-    ) || 'ABCDEFGHIJKLMNOPQRSTUVWXYZ?';
+  const letterOrder = PoolFormats.find(
+    (f) => f.poolFormatType === props.poolFormat
+  )?.format(props.alphabet) || [props.alphabet.letters.map((_, idx) => idx)];
   const pool = poolMinusRack(props.pool, props.currentRack);
-  const letterSections = letterOrder
-    .split(',')
-    .map((letterSection) => renderLetters(pool, letterSection));
+  const letterSections = letterOrder.map((section, idx) => {
+    return renderLetters(pool, props.alphabet, section, idx);
+  });
   const poolMenu = (
     <Menu>
       {PoolFormats.map((pf) => (
@@ -133,15 +134,23 @@ const ActualPool = React.memo((props: Props & { hidePool: boolean }) => {
     </Dropdown>
   );
 
-  const vowels = (a: Alphabet): string => {
-    return a.letters.map((l) => (l.vowel ? l.rune : '')).join('');
+  const vowels = (a: Alphabet): Array<MachineLetter> => {
+    return a.letters.reduce((a, letter, idx) => {
+      if (letter.vowel) {
+        a.push(idx);
+      }
+      return a;
+    }, new Array<MachineLetter>());
   };
 
-  const consonants = (a: Alphabet): string => {
-    return a.letters.map((l) => (!l.vowel ? l.rune : '')).join('');
+  const consonants = (a: Alphabet): Array<MachineLetter> => {
+    return a.letters.reduce((a, letter, idx) => {
+      if (!letter.vowel && letter.rune !== Blank) {
+        a.push(idx);
+      }
+      return a;
+    }, new Array<MachineLetter>());
   };
-
-  console.log('vowels', vowels(props.alphabet));
 
   const renderContents = (title?: string) =>
     (!props.hidePool || title) && (
@@ -172,7 +181,7 @@ const ActualPool = React.memo((props: Props & { hidePool: boolean }) => {
     );
 
   const unseen = getPoolCount(pool, props.alphabet, (a: Alphabet) =>
-    a.letters.map((l) => l.rune).join('')
+    a.letters.map((l, idx) => idx)
   );
   const inbag = Math.max(unseen - 7, 0);
 

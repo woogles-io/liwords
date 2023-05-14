@@ -59,6 +59,7 @@ import { GameMetadataService } from '../gen/api/proto/game_service/game_service_
 import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_connectweb';
 import { ActionType } from '../actions/actions';
 import { syntheticGameInfo } from '../boardwizard/synthetic_game_info';
+import { MachineLetter, MachineWord } from '../utils/cwgame/common';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -286,9 +287,7 @@ export const Table = React.memo((props: Props) => {
       setGameInfo(defaultGameInfo);
       message.destroy('board-messages');
     };
-    // React Hook useEffect has missing dependencies: 'setGameEndMessage' and 'setPoolFormat'.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameID]);
+  }, [gameID, gmClient, setGameEndMessage, setPoolFormat]);
 
   useEffect(() => {
     // If we are in annotated mode, we must explicitly fetch the GameDocument
@@ -386,9 +385,16 @@ export const Table = React.memo((props: Props) => {
     to.userId = timedout;
     sendSocketMsg(encodeToSocketFmt(MessageType.TIMED_OUT, to.toBinary()));
     setPTimedOut(undefined);
-    // React Hook useEffect has missing dependencies: 'gameContext.uidToPlayerOrder', 'gameInfo.players', 'isObserver', 'sendSocketMsg', and 'setPTimedOut'.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pTimedOut, gameContext.nickToPlayerOrder, gameID]);
+  }, [
+    gameContext.nickToPlayerOrder,
+    gameContext.uidToPlayerOrder,
+    gameID,
+    gameInfo.players,
+    isObserver,
+    pTimedOut,
+    sendSocketMsg,
+    setPTimedOut,
+  ]);
 
   useEffect(() => {
     if (!gameID) return;
@@ -408,9 +414,7 @@ export const Table = React.memo((props: Props) => {
         encodeToSocketFmt(MessageType.READY_FOR_GAME, evt.toBinary())
       );
     }
-    // React Hook useEffect has missing dependencies: 'gameID' and 'sendSocketMsg'.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userID, gameInfo]);
+  }, [userID, gameInfo, gameID, sendSocketMsg]);
 
   const enableHoverDefine = gameDone || isObserver;
   const { handleSetHover, hideDefinitionHover, definitionPopover } =
@@ -465,7 +469,7 @@ export const Table = React.memo((props: Props) => {
   // If we are one of the players, display our rack.
   // If we are NOT one of the players (so an observer), display the rack of
   // the player on turn.
-  let rack: string;
+  let rack: MachineWord;
   const us = useMemo(
     () => gameInfo.players.find((p) => p.userId === userID),
     [gameInfo.players, userID]
@@ -473,12 +477,16 @@ export const Table = React.memo((props: Props) => {
   if (us && !(gameDone && isExamining)) {
     rack =
       examinableGameContext.players.find((p) => p.userID === us.userId)
-        ?.currentRack ?? '';
+        ?.currentRack ?? new Array<MachineLetter>();
   } else {
     rack =
-      examinableGameContext.players.find((p) => p.onturn)?.currentRack ?? '';
+      examinableGameContext.players.find((p) => p.onturn)?.currentRack ??
+      new Array<MachineLetter>();
   }
-  const sortedRack = useMemo(() => sortTiles(rack), [rack]);
+  const sortedRack = useMemo(
+    () => sortTiles(rack, gameContext.alphabet),
+    [rack, gameContext.alphabet]
+  );
 
   // The game "starts" when the GameHistoryRefresher object comes in via the socket.
   // At that point gameID will be filled in.

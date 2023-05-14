@@ -20,6 +20,7 @@ import { PlayerCards } from '../gameroom/player_cards';
 import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
 import { flashError, useClient } from '../utils/hooks/connect';
 import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connectweb';
+import { MachineLetter } from '../utils/cwgame/common';
 
 const doNothing = () => {};
 
@@ -110,10 +111,13 @@ export const Embed = () => {
   //     return <div>This game is not over.</div>;
   //   }
 
-  const rack =
-    examinableGameContext.players.find((p) => p.onturn)?.currentRack ?? '';
+  const sortedRack = useMemo(() => {
+    const rack =
+      examinableGameContext.players.find((p) => p.onturn)?.currentRack ??
+      new Array<MachineLetter>();
 
-  const sortedRack = useMemo(() => sortTiles(rack), [rack]);
+    return sortTiles(rack, examinableGameContext.alphabet);
+  }, [examinableGameContext.alphabet, examinableGameContext.players]);
   const alphabet = useMemo(
     () => alphabetFromName(gameInfo.gameRequest?.rules?.letterDistributionName),
     [gameInfo]

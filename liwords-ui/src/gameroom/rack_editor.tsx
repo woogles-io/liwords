@@ -1,12 +1,21 @@
 import Input, { InputRef } from 'rc-input';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useMountedState } from '../utils/mounted';
+import { MachineWord } from '../utils/cwgame/common';
+import {
+  Alphabet,
+  machineWordToRunes,
+  runesToMachineWord,
+} from '../constants/alphabets';
 
 type Props = {
-  rackCallback: (rack: string) => void;
+  rackCallback: (rack: MachineWord) => void;
   cancelCallback: () => void;
-  currentRack: string;
+  currentRack: MachineWord;
+  alphabet: Alphabet;
 };
+
+const MaxRackLength = 7;
 
 export const RackEditor = (props: Props) => {
   const { useState } = useMountedState();
@@ -24,17 +33,25 @@ export const RackEditor = (props: Props) => {
       cursor: 'all',
     });
   }, [inputRef]);
+  const curRackStr = useMemo(
+    () => machineWordToRunes(currentRack, props.alphabet, false),
+    [currentRack, props.alphabet]
+  );
 
   const handleRackEditChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
     // strip out any spaces, fix max length, etc.
     const raw = evt.target.value;
     let out = raw;
-    if (out.length > 7) {
-      out = out.substring(0, 7);
-    }
     out = out.toLocaleUpperCase();
-    const onlyLettersAndBlank = out.match(/[\p{Letter}\?]/gu);
-    setCurrentRack(onlyLettersAndBlank?.join('') ?? '');
+    const onlyLettersAndBlank = out.match(/[\p{Letter}·\?]/gu);
+    let curRack = runesToMachineWord(
+      onlyLettersAndBlank?.join('') ?? '',
+      props.alphabet
+    );
+    if (curRack.length > MaxRackLength) {
+      curRack = curRack.slice(0, MaxRackLength);
+    }
+    setCurrentRack(curRack);
   };
 
   return (
@@ -42,7 +59,7 @@ export const RackEditor = (props: Props) => {
       ref={inputRef}
       placeholder="Enter rack. Use ? for blank"
       className="rack"
-      value={currentRack}
+      value={curRackStr}
       onChange={handleRackEditChange}
       onKeyDown={handleKeyDown}
     />

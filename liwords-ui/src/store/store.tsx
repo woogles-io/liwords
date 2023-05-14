@@ -26,7 +26,7 @@ import {
 } from './constants';
 import { PoolFormatType } from '../constants/pool_formats';
 import { LoginState, LoginStateReducer } from './login_state';
-import { EphemeralTile } from '../utils/cwgame/common';
+import { EphemeralTile, MachineLetter } from '../utils/cwgame/common';
 import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
 import {
   defaultTournamentState,
@@ -34,7 +34,10 @@ import {
   TournamentState,
 } from './reducers/tournament_reducer';
 import { MetaEventState, MetaStates } from './meta_game_events';
-import { StandardEnglishAlphabet } from '../constants/alphabets';
+import {
+  StandardEnglishAlphabet,
+  runesToMachineWord,
+} from '../constants/alphabets';
 import { SeekRequest } from '../gen/api/proto/ipc/omgseeks_pb';
 import { ServerChallengeResultEvent } from '../gen/api/proto/ipc/omgwords_pb';
 import { message } from 'antd';
@@ -168,12 +171,12 @@ type TimerStoreData = {
 type TentativePlayData = {
   placedTilesTempScore: number | undefined;
   placedTiles: Set<EphemeralTile>;
-  displayedRack: string;
+  displayedRack: Array<MachineLetter>;
   blindfoldCommand: string;
   blindfoldUseNPA: boolean;
   setPlacedTilesTempScore: (s: number | undefined) => void;
   setPlacedTiles: (t: Set<EphemeralTile>) => void;
-  setDisplayedRack: (l: string) => void;
+  setDisplayedRack: (l: Array<MachineLetter>) => void;
   setBlindfoldCommand: (l: string) => void;
   setBlindfoldUseNPA: (l: boolean) => void;
 };
@@ -243,7 +246,7 @@ const LagContext = createContext<LagStoreData>({
 const TentativePlayContext = createContext<TentativePlayData>({
   placedTilesTempScore: undefined,
   placedTiles: new Set<EphemeralTile>(),
-  displayedRack: '',
+  displayedRack: new Array<MachineLetter>(),
   blindfoldCommand: '',
   blindfoldUseNPA: false,
   setPlacedTilesTempScore: defaultFunction,
@@ -491,7 +494,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
         userID,
         score: 0,
         onturn: false,
-        currentRack: '',
+        currentRack: new Array<MachineLetter>(),
       })),
       gameContext.gameID,
       gameContext.board.gridLayout
@@ -572,7 +575,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
         }
         const turnPlayerOrder = indexToPlayerOrder(turn.playerIndex);
         if (turnPlayerOrder === playerOrder) {
-          rack = turn.rack;
+          rack = runesToMachineWord(turn.rack, gameContext.alphabet);
           break;
         }
       }
@@ -818,7 +821,9 @@ const RealStore = ({ children, ...props }: Props) => {
     number | undefined
   >(undefined);
   const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
-  const [displayedRack, setDisplayedRack] = useState('');
+  const [displayedRack, setDisplayedRack] = useState(
+    new Array<MachineLetter>()
+  );
   const [blindfoldCommand, setBlindfoldCommand] = useState('');
   const [blindfoldUseNPA, setBlindfoldUseNPA] = useState(false);
 

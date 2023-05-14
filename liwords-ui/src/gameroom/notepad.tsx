@@ -16,9 +16,13 @@ import {
   contiguousTilesFromTileSet,
   simpletile,
 } from '../utils/cwgame/scoring';
-import { Direction, EmptySpace, isMobile } from '../utils/cwgame/common';
+import { Direction, isMobile } from '../utils/cwgame/common';
 import { useMountedState } from '../utils/mounted';
 import { BoopSounds } from '../sound/boop';
+import {
+  machineLetterToRune,
+  machineWordToRunes,
+} from '../constants/alphabets';
 
 type NotepadProps = {
   style?: React.CSSProperties;
@@ -74,10 +78,9 @@ export const Notepad = React.memo((props: NotepadProps) => {
     const contiguousTiles = contiguousTilesFromTileSet(placedTiles, board);
     let play = '';
     let position = '';
-    const leave = sortTiles(
-      Array.from(displayedRack)
-        .filter((x) => x !== EmptySpace)
-        .join('')
+    const leave = machineWordToRunes(
+      sortTiles(displayedRack, gameContext.alphabet),
+      gameContext.alphabet
     );
     if (contiguousTiles?.length === 2) {
       position = humanReadablePosition(
@@ -97,7 +100,7 @@ export const Notepad = React.memo((props: NotepadProps) => {
             inParen = false;
           }
         }
-        play += tile.letter;
+        play += machineLetterToRune(tile.letter, gameContext.alphabet);
       }
       if (inParen) play += ')';
     }
@@ -113,7 +116,14 @@ export const Notepad = React.memo((props: NotepadProps) => {
     if (!isMobile()) {
       document.getElementById('board-container')?.focus();
     }
-  }, [displayedRack, placedTiles, placedTilesTempScore, setCurNotepad, board]);
+  }, [
+    displayedRack,
+    placedTiles,
+    placedTilesTempScore,
+    setCurNotepad,
+    board,
+    gameContext.alphabet,
+  ]);
   const clearNotepad = useCallback(() => {
     setCurNotepad('');
   }, [setCurNotepad]);

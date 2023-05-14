@@ -1,4 +1,12 @@
-import { EphemeralTile, Direction, Blank, EmptySpace, isBlank } from './common';
+import {
+  EphemeralTile,
+  Direction,
+  Blank,
+  EmptySpace,
+  isBlank,
+  BlankMachineLetter,
+  MachineLetter,
+} from './common';
 import { contiguousTilesFromTileSet } from './scoring';
 import { Board } from './board';
 import {
@@ -10,16 +18,18 @@ import {
   ClientGameplayEvent_EventType,
   PlayerInfo,
 } from '../../gen/api/proto/ipc/omgwords_pb';
-import { runesToUint8Array } from '../../constants/alphabets';
-import { Alphabet } from '../../constants/alphabets';
+import {
+  Alphabet,
+  machineLetterToRune,
+  runesToMachineWord,
+} from '../../constants/alphabets';
 
 export const ThroughTileMarker = '.';
 // convert a set of ephemeral tiles to a protobuf game event.
 export const tilesetToMoveEvent = (
   tiles: Set<EphemeralTile>,
   board: Board,
-  gameID: string,
-  alphabet: Alphabet
+  gameID: string
 ) => {
   const ret = contiguousTilesFromTileSet(tiles, board);
   if (ret === null) {
@@ -28,12 +38,12 @@ export const tilesetToMoveEvent = (
   }
 
   const [wordTiles, wordDir] = ret;
-  let wordStr = '';
+  const letArr = new Array<MachineLetter>();
   let wordPos = '';
   let undesignatedBlank = false;
   wordTiles.forEach((t) => {
-    wordStr += t.fresh ? t.letter : ThroughTileMarker;
-    if (t.letter === Blank) {
+    letArr.push(t.fresh ? t.letter : 0);
+    if (t.fresh && t.letter === BlankMachineLetter) {
       undesignatedBlank = true;
     }
   });
@@ -53,7 +63,7 @@ export const tilesetToMoveEvent = (
 
   const evt = new ClientGameplayEvent({
     positionCoords: wordPos,
-    machineLetters: runesToUint8Array(wordStr, alphabet),
+    machineLetters: Uint8Array.from(letArr),
     type: ClientGameplayEvent_EventType.TILE_PLACEMENT,
     gameId: gameID,
   });
@@ -62,12 +72,12 @@ export const tilesetToMoveEvent = (
 };
 
 export const exchangeMoveEvent = (
-  rack: string,
+  rack: Array<MachineLetter>,
   gameID: string,
   alphabet: Alphabet
 ) => {
   const evt = new ClientGameplayEvent({
-    machineLetters: runesToUint8Array(rack, alphabet),
+    machineLetters: Uint8Array.from(rack),
     type: ClientGameplayEvent_EventType.EXCHANGE,
     gameId: gameID,
   });
@@ -99,7 +109,11 @@ export const challengeMoveEvent = (gameID: string) => {
   return evt;
 };
 
-export const tilePlacementEventDisplay = (evt: GameEvent, board: Board) => {
+export const tilePlacementEventDisplay = (
+  evt: GameEvent,
+  board: Board,
+  alphabet: Alphabet
+) => {
   // modify a tile placement move for display purposes.
   const row = evt.row;
   const col = evt.column;
@@ -108,24 +122,26 @@ export const tilePlacementEventDisplay = (evt: GameEvent, board: Board) => {
 
   let m = '';
   let openParen = false;
-  for (
-    let i = 0, r = row, c = col;
-    i < evt.playedTiles.length;
-    i += 1, r += ri, c += ci
-  ) {
-    const t = evt.playedTiles[i];
-    if (t === ThroughTileMarker) {
+  const mls = runesToMachineWord(evt.playedTiles, alphabet);
+  for (let i = 0, r = row, c = col; i < mls.length; i += 1, r += ri, c += ci) {
+    const t = mls[i];
+    if (t === 0) {
       if (!openParen) {
         m += '(';
         openParen = true;
       }
-      m += board.letterAt(r, c);
+      m += machineLetterToRune(
+        board.letterAt(r, c) ?? 0,
+        alphabet,
+        false,
+        true
+      );
     } else {
       if (openParen) {
         m += ')';
         openParen = false;
       }
-      m += t;
+      m += machineLetterToRune(t, alphabet, false, true);
     }
   }
   if (openParen) {

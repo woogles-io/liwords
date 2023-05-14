@@ -1,33 +1,37 @@
+import {
+  StandardEnglishAlphabet,
+  runesToMachineWord,
+} from '../../constants/alphabets';
 import { CrosswordGameGridLayout } from '../../constants/board_layout';
-import { EmptySpace } from './common';
+import { EmptySpace, MachineLetter } from './common';
 
 export type Tile = {
   row: number;
   col: number;
-  rune: string; // why doesn't Javascript have runes.
+  ml: MachineLetter;
 };
 
-export function blankLayout(gridlayout: string[]) {
-  return repeatChar(gridlayout.length * gridlayout.length, EmptySpace);
+function blankLayout(gridlayout: string[]) {
+  const layout = [];
+  for (let i = 0; i < gridlayout.length * gridlayout[0].length; i++) {
+    layout.push(0);
+  }
+  return Array.from(layout);
 }
 
-function repeatChar(count: number, ch: string) {
-  let txt = '';
-  for (let i = 0; i < count; i++) {
-    txt += ch;
+function setLetterAt(
+  letters: Array<MachineLetter>,
+  index: number,
+  ml: MachineLetter
+) {
+  if (index > letters.length - 1) {
+    return letters;
   }
-  return txt;
-}
-
-export function setCharAt(str: string, index: number, chr: string) {
-  if (index > str.length - 1) {
-    return str;
-  }
-  return str.substr(0, index) + chr + str.substr(index + 1);
+  letters[index] = ml;
 }
 
 export class Board {
-  letters: string; // The letters on the board
+  letters: Array<MachineLetter>; // The letters on the board
 
   gridLayout: Array<string>; // the bonus squares.
 
@@ -51,8 +55,10 @@ export class Board {
         const letter = layout[row][col];
         if (letter !== EmptySpace) {
           this.isEmpty = false;
+          // assume english; this is only for tests!
+          const temp = runesToMachineWord(letter, StandardEnglishAlphabet);
+          setLetterAt(this.letters, row * this.dim + col, temp[0]);
         }
-        this.letters = setCharAt(this.letters, row * this.dim + col, letter);
       }
     }
   }
@@ -68,20 +74,16 @@ export class Board {
   }
 
   addTile(t: Tile) {
-    this.letters = setCharAt(this.letters, t.row * this.dim + t.col, t.rune);
+    setLetterAt(this.letters, t.row * this.dim + t.col, t.ml);
     this.isEmpty = false;
   }
 
   removeTile(t: Tile) {
-    this.letters = setCharAt(
-      this.letters,
-      t.row * this.dim + t.col,
-      EmptySpace
-    );
+    setLetterAt(this.letters, t.row * this.dim + t.col, 0);
     // don't know how else to check, annoyingly
     this.isEmpty = true;
     for (let i = 0; i < this.letters.length; i++) {
-      if (this.letters[i] !== EmptySpace) {
+      if (this.letters[i] !== 0) {
         this.isEmpty = false;
         break;
       }
@@ -90,7 +92,7 @@ export class Board {
 
   deepCopy() {
     const newBoard = new Board();
-    newBoard.letters = this.letters;
+    newBoard.letters = [...this.letters];
     newBoard.gridLayout = [...this.gridLayout];
     newBoard.isEmpty = this.isEmpty;
     newBoard.dim = this.dim;

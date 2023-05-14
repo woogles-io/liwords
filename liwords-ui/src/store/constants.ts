@@ -1,7 +1,12 @@
 import { ChatMessage } from '../gen/api/proto/ipc/chat_pb';
 import { TType } from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { ChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
-import { Blank } from '../utils/cwgame/common';
+import {
+  BlankMachineLetter,
+  EmptyRackSpaceMachineLetter,
+  MachineWord,
+} from '../utils/cwgame/common';
+import { Alphabet, machineLetterToRune } from '../constants/alphabets';
 
 export type PlayerOrder = 'p0' | 'p1';
 
@@ -159,8 +164,8 @@ export const timeToString = (
     return '';
   }
   return `${initialTimeLabel(secs)}${
-    maxOvertimeMinutes ? '/' + maxOvertimeMinutes : ''
-  }${incrementSecs ? '+' + incrementSecs : ''}`;
+    maxOvertimeMinutes ? `/${maxOvertimeMinutes}` : ''
+  }${incrementSecs ? `+${incrementSecs}` : ''}`;
 };
 
 export const chatMessageToChatEntity = (cm: ChatMessage): ChatEntityObj => {
@@ -247,13 +252,22 @@ export const setPreferredSortOrder = (value: string) => {
   }
 };
 
-export const sortTiles = (rack: string) => {
+export const sortTiles = (
+  rack: MachineWord,
+  alphabet: Alphabet
+): MachineWord => {
   const effectiveSortOrder = preferredSortOrder ?? '';
-  return Array.from(rack, (tile) => {
-    let index = effectiveSortOrder.indexOf(tile);
-    if (index < 0) index = effectiveSortOrder.length + (tile === Blank ? 1 : 0);
-    return [index, tile];
-  })
+  const arr = Array.from(rack);
+  const sorted = arr
+    .filter((tile) => tile !== EmptyRackSpaceMachineLetter)
+    .map((tile) => {
+      const rune = machineLetterToRune(tile, alphabet);
+      let index = effectiveSortOrder.indexOf(rune);
+      if (index < 0)
+        index =
+          effectiveSortOrder.length + (tile === BlankMachineLetter ? 1 : 0);
+      return [index, tile];
+    })
     .sort(([aIndex, aTile], [bIndex, bTile]) =>
       aIndex < bIndex
         ? -1
@@ -265,7 +279,9 @@ export const sortTiles = (rack: string) => {
         ? 1
         : 0
     )
-    .reduce((s, [index, tile]) => s + tile, '');
+    .map((s) => s[1]);
+
+  return sorted;
 };
 
 // Can skip error codes for now.

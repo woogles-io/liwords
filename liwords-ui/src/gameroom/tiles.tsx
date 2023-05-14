@@ -2,23 +2,24 @@ import React from 'react';
 
 import Tile from './tile';
 import {
-  Blank,
-  EmptySpace,
+  BlankMachineLetter,
+  EmptyBoardSpaceMachineLetter,
   EphemeralTile,
+  MachineLetter,
   PlayedTiles,
   PlayerOfTiles,
 } from '../utils/cwgame/common';
 import { PlacementArrow } from '../utils/cwgame/tile_placement';
-import { Alphabet, runeToValues } from '../constants/alphabets';
+import { Alphabet, machineWordToRunes, scoreFor } from '../constants/alphabets';
 
 type Props = {
   tileColorId: number;
   gridDim: number;
-  tilesLayout: string;
+  tilesLayout: Array<MachineLetter>;
   alphabet: Alphabet;
   lastPlayedTiles: PlayedTiles;
   playerOfTileAt: PlayerOfTiles;
-  onClick: (rune: string) => void;
+  onClick: (letter: MachineLetter) => void;
   placementArrow: PlacementArrow;
   tentativeTiles: Set<EphemeralTile>;
   tentativeTileScore: number | undefined;
@@ -46,7 +47,7 @@ type Props = {
 
 const Tiles = React.memo((props: Props) => {
   const tiles = [];
-  if (!props.tilesLayout || props.tilesLayout.length === 0) {
+  if (props.tilesLayout.length === 0) {
     return null;
   }
   // Sort the tentative tiles
@@ -86,7 +87,8 @@ const Tiles = React.memo((props: Props) => {
         do ++y;
         while (
           y < props.gridDim &&
-          props.tilesLayout[y * props.gridDim + minCol] !== EmptySpace
+          props.tilesLayout[y * props.gridDim + minCol] !==
+            EmptyBoardSpaceMachineLetter
         );
         if (y === props.placementArrow.row) isHorizontal = false;
       }
@@ -99,7 +101,8 @@ const Tiles = React.memo((props: Props) => {
       do --x;
       while (
         x >= 0 &&
-        props.tilesLayout[minRow * props.gridDim + x] !== EmptySpace
+        props.tilesLayout[minRow * props.gridDim + x] !==
+          EmptyBoardSpaceMachineLetter
       );
       tentativeScoreStyle = { row: minRow, col: x + 1 };
     } else if (isHorizontal === false) {
@@ -107,7 +110,8 @@ const Tiles = React.memo((props: Props) => {
       do --y;
       while (
         y >= 0 &&
-        props.tilesLayout[y * props.gridDim + minCol] !== EmptySpace
+        props.tilesLayout[y * props.gridDim + minCol] !==
+          EmptyBoardSpaceMachineLetter
       );
       tentativeScoreStyle = { row: y + 1, col: minCol };
     }
@@ -125,7 +129,7 @@ const Tiles = React.memo((props: Props) => {
 
   for (let y = 0; y < props.gridDim; y += 1) {
     for (let x = 0; x < props.gridDim; x += 1) {
-      const rune = props.tilesLayout[y * props.gridDim + x];
+      const letter = props.tilesLayout[y * props.gridDim + x];
       const tentativeScoreIsHere =
         tentativeScoreStyle &&
         tentativeScoreStyle.row === y &&
@@ -144,35 +148,47 @@ const Tiles = React.memo((props: Props) => {
             // pointer is moved out of the tile and back in. this is an
             // intentional design decision to improve usability and
             // responsiveness.
-            let sh = '';
+            const sh = new Array<MachineLetter>();
             {
               let i = x;
-              while (i > 0 && tentativeBoard[y][i - 1] !== EmptySpace) --i;
+              while (
+                i > 0 &&
+                tentativeBoard[y][i - 1] !== EmptyBoardSpaceMachineLetter
+              )
+                --i;
               for (
                 ;
-                i < props.gridDim && tentativeBoard[y][i] !== EmptySpace;
+                i < props.gridDim &&
+                tentativeBoard[y][i] !== EmptyBoardSpaceMachineLetter;
                 ++i
               ) {
-                sh += tentativeBoard[y][i];
+                sh.push(tentativeBoard[y][i]);
               }
             }
-            let sv = '';
+            const sv = new Array<MachineLetter>();
             {
               let i = y;
-              while (i > 0 && tentativeBoard[i - 1][x] !== EmptySpace) --i;
+              while (
+                i > 0 &&
+                tentativeBoard[i - 1][x] !== EmptyBoardSpaceMachineLetter
+              )
+                --i;
               for (
                 ;
-                i < props.gridDim && tentativeBoard[i][x] !== EmptySpace;
+                i < props.gridDim &&
+                tentativeBoard[i][x] !== EmptyBoardSpaceMachineLetter;
                 ++i
               ) {
-                sv += tentativeBoard[i][x];
+                sv.push(tentativeBoard[i][x]);
               }
             }
             const formedWords = [sh, sv].filter((word) => word.length >= 2);
             props.handleSetHover?.(
               x,
               y,
-              formedWords.length ? formedWords : undefined
+              formedWords.length
+                ? formedWords.map((w) => machineWordToRunes(w, props.alphabet))
+                : undefined
             );
           },
           onMouseLeave: (evt: React.MouseEvent<HTMLElement>) => {
@@ -189,13 +205,14 @@ const Tiles = React.memo((props: Props) => {
           }),
       };
 
-      if (rune !== ' ') {
+      if (letter !== EmptyBoardSpaceMachineLetter) {
         const lastPlayed = props.lastPlayedTiles[`R${y}C${x}`] === true;
         const playerOfTile = props.playerOfTileAt[`R${y}C${x}`];
         tiles.push(
           <Tile
-            rune={rune}
-            value={runeToValues(props.alphabet, rune)}
+            letter={letter}
+            alphabet={props.alphabet}
+            value={scoreFor(props.alphabet, letter)}
             lastPlayed={lastPlayed}
             playerOfTile={playerOfTile}
             key={`tile_${x}_${y}`}
@@ -228,8 +245,8 @@ const Tiles = React.memo((props: Props) => {
                 // Definition handler will take over for other letters.
                 props.onClick(tentativeTile.letter);
               }}
-              rune={tentativeTile.letter}
-              value={runeToValues(props.alphabet, tentativeTile.letter)}
+              letter={tentativeTile.letter}
+              value={scoreFor(props.alphabet, tentativeTile.letter)}
               lastPlayed={false}
               playerOfTile={props.tileColorId}
               key={`tileT_${tentativeTile.col}_${tentativeTile.row}`}
@@ -240,7 +257,9 @@ const Tiles = React.memo((props: Props) => {
               tentativeScoreIsHorizontal={tentativeScoreHereIsHorizontal}
               grabbable={true}
               handleTileDrop={props.handleTileDrop}
-              {...(tentativeTile.letter !== Blank && definitionHandlers)}
+              alphabet={props.alphabet}
+              {...(tentativeTile.letter !== BlankMachineLetter &&
+                definitionHandlers)}
             />
           );
         } else {
