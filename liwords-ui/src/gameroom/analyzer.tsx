@@ -323,7 +323,8 @@ const parseExaminableGameContext = (
         : letterDistribution === 'english' ||
           letterDistribution === 'german' ||
           letterDistribution === 'norwegian' ||
-          letterDistribution === 'french'
+          letterDistribution === 'french' ||
+          letterDistribution === 'catalan'
         ? letterDistribution
         : 'noleave',
     rules,
