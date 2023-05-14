@@ -219,6 +219,7 @@ const Tile = React.memo((props: TileProps) => {
           ? uniqueTileIdx(props.y, props.x).toString()
           : undefined,
       letter: props.letter,
+      alphabet: props.alphabet,
       value: props.value,
       playerOfTile: props.playerOfTile,
     },
