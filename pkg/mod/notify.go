@@ -51,7 +51,7 @@ func sendNotification(ctx context.Context, us user.Store, user *entity.User, act
 	if config.DiscordToken != "" {
 		var modUsername string
 		var err error
-		if action.ApplierUserId == AutomodUserId {
+		if action.ApplierUserId == AutomodUserId || action.ApplierUserId == "" {
 			modUsername = AutomodUserId
 		} else {
 			modUser, err := us.GetByUUID(ctx, action.ApplierUserId)
