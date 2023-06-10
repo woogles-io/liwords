@@ -65,7 +65,7 @@ You can do `docker-compose up app` and `docker-compose up frontend` in two diffe
 6. Bring up the `dc-local-services.yml` file with `docker-compose -f dc-local-services.yml up` in one tab.
 7. You can bring up the other services in your other tabs:
 - For the api server, do `go run cmd/liwords-api/*.go`
-- For the socket server, do `go run cmd/socketserv/main.go` in the `liwords-socket` repo.
+- For the socket server, do `go run cmd/socketsrv/main.go` in the `liwords-socket` repo.
 - For the frontend, do `npm start` in the `liwords-ui` directory.
 - For the bot, do `go run cmd/bot/*.go` in the `macondo` directory.
 
