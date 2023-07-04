@@ -81,14 +81,14 @@ if (!window.location.pathname.startsWith('/embed/')) {
     new Booper('matchReqSound', require('../assets/matchreq.mp3')),
     new Booper('startgameSound', require('../assets/startgame.mp3')),
     new Booper('endgameSound', require('../assets/endgame.mp3')),
-    new Booper('woofSound', require('../assets/woof.mp3')),
+    new Booper('woofSound', require('../assets/woof.wav')),
     new Booper('meowSound', require('../assets/meow.mp3')),
     new Booper('receiveMsgSound', require('../assets/receivechat.mp3')),
     new Booper(
       'startTourneyRoundSound',
       require('../assets/newtourneyround.mp3')
     ),
-    new Booper('wolgesSound', require('../assets/wolges.mp3')),
+    new Booper('wolgesSound', require('../assets/wolges.wav')),
     new Booper('abortnudgeSound', require('../assets/abortnudge.mp3')),
     new Booper('puzzleStartSound', require('../assets/newpuzzle.mp3')),
     new Booper(
