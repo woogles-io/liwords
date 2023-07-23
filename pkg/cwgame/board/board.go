@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/macondo/cache"
@@ -473,4 +475,43 @@ func getCrossScore(board *ipc.GameBoard, dist *tilemapping.LetterDistribution,
 		cs += dist.Score(l)
 	}
 	return cs
+}
+
+func ToFEN(board *ipc.GameBoard, dist *tilemapping.LetterDistribution) string {
+	var bd strings.Builder
+	alph := dist.TileMapping()
+
+	for i := 0; i < int(board.NumRows); i++ {
+		var r strings.Builder
+		zeroCt := 0
+		for j := 0; j < int(board.NumCols); j++ {
+			l := GetLetter(board, i, j)
+			if l == 0 {
+				zeroCt++
+				continue
+			}
+			// Otherwise, it's a letter.
+			if zeroCt > 0 {
+				r.WriteString(strconv.Itoa(zeroCt))
+				zeroCt = 0
+			}
+			v := l.UserVisible(alph, false)
+			rc := utf8.RuneCountInString(v)
+			if rc > 1 {
+				r.WriteString("[")
+			}
+			r.WriteString(l.UserVisible(alph, false))
+			if rc > 1 {
+				r.WriteString("]")
+			}
+		}
+		if zeroCt > 0 {
+			r.WriteString(strconv.Itoa(zeroCt))
+		}
+		bd.WriteString(r.String())
+		if i != int(board.NumRows)-1 {
+			bd.WriteString("/")
+		}
+	}
+	return bd.String()
 }

@@ -464,6 +464,19 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *pb.SetRacksEvent) 
 	return &pb.GameEventResponse{}, nil
 }
 
+func (gs *OMGWordsService) GetCGP(ctx context.Context, req *pb.GetCGPRequest) (*pb.CGPResponse, error) {
+	gid := req.GameId
+	g, err := gs.gameStore.GetDocument(ctx, gid, false)
+	if err != nil {
+		return nil, err
+	}
+	cgp, err := cwgame.ToCGP(ctx, g.GameDocument)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.CGPResponse{Cgp: cgp}, nil
+}
+
 func (gs *OMGWordsService) DeleteBroadcastGame(ctx context.Context, req *pb.DeleteBroadcastGameRequest) (*pb.DeleteBroadcastGameResponse, error) {
 	gid := req.GameId
 	err := gs.failIfSessionDoesntOwn(ctx, gid)

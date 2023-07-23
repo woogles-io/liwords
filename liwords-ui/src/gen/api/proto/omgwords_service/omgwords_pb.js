@@ -198,6 +198,26 @@ export const PatchDocumentRequest = proto3.makeMessageType(
 );
 
 /**
+ * @generated from message omgwords_service.GetCGPRequest
+ */
+export const GetCGPRequest = proto3.makeMessageType(
+  "omgwords_service.GetCGPRequest",
+  () => [
+    { no: 1, name: "game_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ],
+);
+
+/**
+ * @generated from message omgwords_service.CGPResponse
+ */
+export const CGPResponse = proto3.makeMessageType(
+  "omgwords_service.CGPResponse",
+  () => [
+    { no: 1, name: "cgp", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ],
+);
+
+/**
  * SetRacksEvent is the event used for sending player racks.
  *
  * @generated from message omgwords_service.SetRacksEvent

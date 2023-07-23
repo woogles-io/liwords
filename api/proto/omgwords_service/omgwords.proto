@@ -94,6 +94,10 @@ message ReplaceDocumentRequest { ipc.GameDocument document = 1; }
 
 message PatchDocumentRequest { ipc.GameDocument document = 1; }
 
+message GetCGPRequest { string game_id = 1; }
+
+message CGPResponse { string cgp = 1; }
+
 // SetRacksEvent is the event used for sending player racks.
 message SetRacksEvent {
   string game_id = 1;
@@ -141,4 +145,6 @@ service GameEventService {
 
   rpc GetRecentAnnotatedGames(GetRecentAnnotatedGamesRequest)
       returns (BroadcastGamesResponse);
+
+  rpc GetCGP(GetCGPRequest) returns (CGPResponse);
 }

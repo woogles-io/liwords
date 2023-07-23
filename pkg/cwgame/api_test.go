@@ -1459,6 +1459,16 @@ func TestEditOldRackDisallowed(t *testing.T) {
 	is.Equal(gdoc.Events[7].Rack, []byte{10, 11, 12})
 }
 
+func TestToCGP(t *testing.T) {
+	is := is.New(t)
+	gdoc := loadGDoc("document-game-almost-over.json")
+	ctx := ctxForTests()
+
+	cgp, err := ToCGP(ctx, gdoc)
+	is.NoErr(err)
+	is.Equal(cgp, "V6K7/EL5N1JAGG2/TA1V2HO3RUIN/1Z1I2OWE1QI2I/1YELPED3IT2T/3DON4N2AR/4UM1BUYS2WO/3ARENOSE2SEX/4IS6A2/3MEH6g2/3O8O2/3L7GU2/3D7LI2/FACETE5IN2/3DARAF3B3 ?AEIORT/CEPRT 245/446 0 lex CSW21; ld english;")
+}
+
 func BenchmarkLoadDocumentJSON(b *testing.B) {
 	is := is.New(b)
 	documentfile := "document-earlygame.json"

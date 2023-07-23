@@ -84,6 +84,53 @@ func TestMoveInBetween(t *testing.T) {
 	is.Equal(score, int32(38))
 }
 
+func TestToFENEmpty(t *testing.T) {
+	is := is.New(t)
+	layout, err := GetBoardLayout("CrosswordGame")
+	is.NoErr(err)
+
+	dist, err := tilemapping.GetDistribution(&DefaultConfig, "english")
+	is.NoErr(err)
+
+	b := NewBoard(layout)
+
+	is.Equal(ToFEN(b, dist), "15/15/15/15/15/15/15/15/15/15/15/15/15/15/15")
+}
+
+func TestToFEN(t *testing.T) {
+	is := is.New(t)
+	layout, err := GetBoardLayout("CrosswordGame")
+	is.NoErr(err)
+
+	dist, err := tilemapping.GetDistribution(&DefaultConfig, "english")
+	is.NoErr(err)
+
+	b := NewBoard(layout)
+	rm := tilemapping.EnglishAlphabet()
+
+	setFromPlaintext(b, VsMatt, rm)
+
+	is.Equal(ToFEN(b, dist),
+		"7ZEP1F3/1FLUKY3R1R3/5EX2A1U3/2SCARIEST1I3/9TOT3/6GO1LO4/6OR1ETA3/6JABS1b3/5QI4A3/5I1N3N3/3ReSPOND1D3/1HOE3V3O3/1ENCOMIA3N3/7T7/3VENGED6")
+}
+
+func TestToFENCatalan(t *testing.T) {
+	is := is.New(t)
+	layout, err := GetBoardLayout("CrosswordGame")
+	is.NoErr(err)
+
+	dist, err := tilemapping.GetDistribution(&DefaultConfig, "catalan")
+	is.NoErr(err)
+
+	b := NewBoard(layout)
+
+	b.Tiles[7*15+6] = 1
+	b.Tiles[7*15+7] = 13
+	b.Tiles[7*15+8] = 1
+
+	is.Equal(ToFEN(b, dist), "15/15/15/15/15/15/15/6A[L·L]A6/15/15/15/15/15/15/15")
+}
+
 func BenchmarkPlayMove(b *testing.B) {
 	layout, _ := GetBoardLayout("CrosswordGame")
 	dist, _ := tilemapping.GetDistribution(&DefaultConfig, "english")
