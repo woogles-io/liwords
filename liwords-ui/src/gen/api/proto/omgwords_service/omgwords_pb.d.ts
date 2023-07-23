@@ -532,6 +532,54 @@ export declare class PatchDocumentRequest extends Message<PatchDocumentRequest> 
 }
 
 /**
+ * @generated from message omgwords_service.GetCGPRequest
+ */
+export declare class GetCGPRequest extends Message<GetCGPRequest> {
+  /**
+   * @generated from field: string game_id = 1;
+   */
+  gameId: string;
+
+  constructor(data?: PartialMessage<GetCGPRequest>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "omgwords_service.GetCGPRequest";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetCGPRequest;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetCGPRequest;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetCGPRequest;
+
+  static equals(a: GetCGPRequest | PlainMessage<GetCGPRequest> | undefined, b: GetCGPRequest | PlainMessage<GetCGPRequest> | undefined): boolean;
+}
+
+/**
+ * @generated from message omgwords_service.CGPResponse
+ */
+export declare class CGPResponse extends Message<CGPResponse> {
+  /**
+   * @generated from field: string cgp = 1;
+   */
+  cgp: string;
+
+  constructor(data?: PartialMessage<CGPResponse>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "omgwords_service.CGPResponse";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CGPResponse;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CGPResponse;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CGPResponse;
+
+  static equals(a: CGPResponse | PlainMessage<CGPResponse> | undefined, b: CGPResponse | PlainMessage<CGPResponse> | undefined): boolean;
+}
+
+/**
  * SetRacksEvent is the event used for sending player racks.
  *
  * @generated from message omgwords_service.SetRacksEvent

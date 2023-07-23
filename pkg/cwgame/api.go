@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog"
@@ -476,6 +478,59 @@ func ProcessGameplayEvent(ctx context.Context, evt *ipc.ClientGameplayEvent,
 	}
 
 	return nil
+}
+
+// ToCGP converts the game to a CGP string. See cgp directory.
+func ToCGP(ctx context.Context, gdoc *ipc.GameDocument) (string, error) {
+	cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
+	if !ok {
+		return "", errors.New("config does not exist in context")
+	}
+
+	dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, gdoc.LetterDistribution)
+	if err != nil {
+		return "", err
+	}
+	rm := dist.TileMapping()
+	fen := board.ToFEN(gdoc.Board, dist)
+	var ss strings.Builder
+	ss.WriteString(fen)
+	ss.WriteString(" ")
+	for i := gdoc.PlayerOnTurn; i < gdoc.PlayerOnTurn+uint32(len(gdoc.Players)); i++ {
+		rack := gdoc.Racks[int(i)%len(gdoc.Players)]
+		mls := tilemapping.FromByteArr(rack)
+		for _, ml := range mls {
+			uv := ml.UserVisible(rm, false)
+			rc := utf8.RuneCountInString(uv)
+			if rc > 1 {
+				ss.WriteString("[")
+			}
+			ss.WriteString(uv)
+			if rc > 1 {
+				ss.WriteString("]")
+			}
+		}
+		if i != gdoc.PlayerOnTurn+uint32(len(gdoc.Players))-1 {
+			ss.WriteString("/")
+		}
+	}
+	ss.WriteString(" ")
+	for i := gdoc.PlayerOnTurn; i < gdoc.PlayerOnTurn+uint32(len(gdoc.Players)); i++ {
+		score := gdoc.CurrentScores[int(i)%len(gdoc.Players)]
+		ss.WriteString(strconv.Itoa(int(score)))
+		if i != gdoc.PlayerOnTurn+uint32(len(gdoc.Players))-1 {
+			ss.WriteString("/")
+		}
+	}
+	ss.WriteString(" ")
+	ss.WriteString(strconv.Itoa(int(gdoc.ScorelessTurns)))
+	ss.WriteString(" ")
+	ss.WriteString("lex ")
+	ss.WriteString(gdoc.Lexicon)
+	ss.WriteString("; ld ")
+	ss.WriteString(gdoc.LetterDistribution)
+	ss.WriteString(";")
+	return ss.String(), nil
 }
 
 func clientEventToGameEvent(ctx context.Context, evt *ipc.ClientGameplayEvent, gdoc *ipc.GameDocument) (*ipc.GameEvent, error) {
