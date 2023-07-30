@@ -30,7 +30,6 @@ type Store interface {
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p0stats *entity.Stats, p1stats *entity.Stats) error
 	SetNotoriety(ctx context.Context, uuid string, notoriety int) error
-	SetActions(ctx context.Context, uuid string, actions *entity.Actions) error
 	ResetRatings(ctx context.Context, uuid string) error
 	ResetStats(ctx context.Context, uuid string) error
 	ResetProfile(ctx context.Context, uuid string) error
@@ -58,10 +57,10 @@ type Store interface {
 	GetModList(ctx context.Context) (*upb.GetModListResponse, error)
 	GetAPIKey(ctx context.Context, uuid string) (string, error)
 	ResetAPIKey(ctx context.Context, uuid string) (string, error)
-	GetActionsDB(ctx context.Context, userUUID string) (map[string]*ms.ModAction, error)
-	GetActionHistoryDB(ctx context.Context, userUUID string) ([]*ms.ModAction, error)
-	ApplyActionsDB(ctx context.Context, actions []*ms.ModAction) error
-	RemoveActionsDB(ctx context.Context, actions []*ms.ModAction) error
+	GetActions(ctx context.Context, userUUID string) (map[string]*ms.ModAction, error)
+	GetActionHistory(ctx context.Context, userUUID string) ([]*ms.ModAction, error)
+	ApplyActions(ctx context.Context, actions []*ms.ModAction) error
+	RemoveActions(ctx context.Context, actions []*ms.ModAction) error
 }
 
 // PresenceStore stores user presence. Since it is meant to be easily user-visible,

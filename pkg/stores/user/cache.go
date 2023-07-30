@@ -35,7 +35,6 @@ type backingStore interface {
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p0stats *entity.Stats, p1stats *entity.Stats) error
 	SetNotoriety(ctx context.Context, uuid string, notoriety int) error
-	SetActions(ctx context.Context, uuid string, actions *entity.Actions) error
 	ResetRatings(ctx context.Context, uuid string) error
 	ResetStats(ctx context.Context, uuid string) error
 	ResetProfile(ctx context.Context, uuid string) error
@@ -62,10 +61,10 @@ type backingStore interface {
 	GetModList(ctx context.Context) (*pb.GetModListResponse, error)
 	GetAPIKey(ctx context.Context, uuid string) (string, error)
 	ResetAPIKey(ctx context.Context, uuid string) (string, error)
-	GetActionsDB(ctx context.Context, userUUID string) (map[string]*ms.ModAction, error)
-	GetActionHistoryDB(ctx context.Context, userUUID string) ([]*ms.ModAction, error)
-	ApplyActionsDB(ctx context.Context, actions []*ms.ModAction) error
-	RemoveActionsDB(ctx context.Context, actions []*ms.ModAction) error
+	GetActions(ctx context.Context, userUUID string) (map[string]*ms.ModAction, error)
+	GetActionHistory(ctx context.Context, userUUID string) ([]*ms.ModAction, error)
+	ApplyActions(ctx context.Context, actions []*ms.ModAction) error
+	RemoveActions(ctx context.Context, actions []*ms.ModAction) error
 }
 
 const (
@@ -438,19 +437,6 @@ func (c *Cache) ResetAPIKey(ctx context.Context, uuid string) (string, error) {
 	return c.backing.ResetAPIKey(ctx, uuid)
 }
 
-func (c *Cache) SetActions(ctx context.Context, uuid string, actions *entity.Actions) error {
-	err := c.backing.SetActions(ctx, uuid, actions)
-	if err != nil {
-		return err
-	}
-	u, err := c.GetByUUID(ctx, uuid)
-	if err != nil {
-		return err
-	}
-	u.Actions = actions
-	return nil
-}
-
 // This was written to avoid the zero value trap
 func (c *Cache) SetNotoriety(ctx context.Context, uuid string, notoriety int) error {
 	err := c.backing.SetNotoriety(ctx, uuid, notoriety)
@@ -486,18 +472,18 @@ func (c *Cache) GetModList(ctx context.Context) (*pb.GetModListResponse, error) 
 	return resp, nil
 }
 
-func (c *Cache) GetActionsDB(ctx context.Context, userUUID string) (map[string]*ms.ModAction, error) {
-	return c.backing.GetActionsDB(ctx, userUUID)
+func (c *Cache) GetActions(ctx context.Context, userUUID string) (map[string]*ms.ModAction, error) {
+	return c.backing.GetActions(ctx, userUUID)
 }
 
-func (c *Cache) GetActionHistoryDB(ctx context.Context, userUUID string) ([]*ms.ModAction, error) {
-	return c.backing.GetActionHistoryDB(ctx, userUUID)
+func (c *Cache) GetActionHistory(ctx context.Context, userUUID string) ([]*ms.ModAction, error) {
+	return c.backing.GetActionHistory(ctx, userUUID)
 }
 
-func (c *Cache) ApplyActionsDB(ctx context.Context, actions []*ms.ModAction) error {
-	return c.backing.ApplyActionsDB(ctx, actions)
+func (c *Cache) ApplyActions(ctx context.Context, actions []*ms.ModAction) error {
+	return c.backing.ApplyActions(ctx, actions)
 }
 
-func (c *Cache) RemoveActionsDB(ctx context.Context, actions []*ms.ModAction) error {
-	return c.backing.RemoveActionsDB(ctx, actions)
+func (c *Cache) RemoveActions(ctx context.Context, actions []*ms.ModAction) error {
+	return c.backing.RemoveActions(ctx, actions)
 }

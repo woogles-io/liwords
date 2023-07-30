@@ -99,25 +99,6 @@ func (s *DBStore) SetNotoriety(ctx context.Context, uuid string, notoriety int) 
 	return nil
 }
 
-func (s *DBStore) SetActions(ctx context.Context, uuid string, actions *entity.Actions) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	err = common.Update(ctx, tx, []string{"actions"}, []interface{}{actions}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: uuid})
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (s *DBStore) SetPermissions(ctx context.Context, req *cpb.PermissionsRequest) error {
 	columns := []string{}
 	values := []interface{}{}
@@ -235,8 +216,8 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 	}
 
 	var userId uint
-	err = tx.QueryRow(ctx, `INSERT INTO users (username, uuid, email, password, internal_bot, is_admin, is_director, is_mod, notoriety, actions, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW()) RETURNING id`,
-		u.Username, u.UUID, u.Email, u.Password, u.IsBot, u.IsAdmin, u.IsDirector, u.IsMod, u.Notoriety, u.Actions).Scan(&userId)
+	err = tx.QueryRow(ctx, `INSERT INTO users (username, uuid, email, password, internal_bot, is_admin, is_director, is_mod, notoriety, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()) RETURNING id`,
+		u.Username, u.UUID, u.Email, u.Password, u.IsBot, u.IsAdmin, u.IsDirector, u.IsMod, u.Notoriety).Scan(&userId)
 	if err != nil {
 		return err
 	}
@@ -730,8 +711,16 @@ func (s *DBStore) UsersByPrefix(ctx context.Context, prefix string) ([]*pb.Basic
 	}
 	defer tx.Rollback(ctx)
 
-	// XXX: Fix this once user actions are migrated to the db
-	rows, err := tx.Query(ctx, `SELECT username, uuid FROM users WHERE substr(lower(username), 1, length($1)) = $1 AND internal_bot IS FALSE AND (actions IS NULL OR actions->'Current' IS NULL OR actions->'Current'->'SUSPEND_ACCOUNT' IS NULL OR actions->'Current'->'SUSPEND_ACCOUNT'->'end_time' IS NOT NULL)`, strings.ToLower(prefix))
+	rows, err := tx.Query(ctx, `SELECT username, uuid FROM users
+	WHERE substr(lower(users.username), 1, length($1)) = $1
+	AND users.internal_bot IS FALSE
+	AND NOT EXISTS(
+		SELECT 1 FROM user_actions
+		WHERE user_actions.user_id = users.id AND
+		user_actions.removed_time IS NULL AND
+		user_actions.end_time IS NULL AND
+		user_actions.action_type = $2
+	)`, strings.ToLower(prefix), ms.ModActionType_SUSPEND_ACCOUNT)
 	if err != nil {
 		return nil, err
 	}
@@ -1233,7 +1222,7 @@ func addUserUUIDsToActions(ctx context.Context, tx pgx.Tx, actions []*ms.ModActi
 	return nil
 }
 
-func (s *DBStore) GetActionsDB(ctx context.Context, userUUID string) (map[string]*ms.ModAction, error) {
+func (s *DBStore) GetActions(ctx context.Context, userUUID string) (map[string]*ms.ModAction, error) {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
 		return nil, err
@@ -1248,7 +1237,7 @@ func (s *DBStore) GetActionsDB(ctx context.Context, userUUID string) (map[string
 	return actions, nil
 }
 
-func (s *DBStore) GetActionHistoryDB(ctx context.Context, userUUID string) ([]*ms.ModAction, error) {
+func (s *DBStore) GetActionHistory(ctx context.Context, userUUID string) ([]*ms.ModAction, error) {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
 		return nil, err
@@ -1347,10 +1336,10 @@ func applyOrRemoveActionsDB(ctx context.Context, s *DBStore, actions []*ms.ModAc
 	return nil
 }
 
-func (s *DBStore) ApplyActionsDB(ctx context.Context, actions []*ms.ModAction) error {
+func (s *DBStore) ApplyActions(ctx context.Context, actions []*ms.ModAction) error {
 	return applyOrRemoveActionsDB(ctx, s, actions, true)
 }
 
-func (s *DBStore) RemoveActionsDB(ctx context.Context, actions []*ms.ModAction) error {
+func (s *DBStore) RemoveActions(ctx context.Context, actions []*ms.ModAction) error {
 	return applyOrRemoveActionsDB(ctx, s, actions, false)
 }
