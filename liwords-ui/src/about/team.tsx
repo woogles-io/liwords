@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { TopBar } from '../navigation/topbar';
 import './about.scss';
 import { Col, Dropdown, Row } from 'antd';
+import andy from '../assets/bio/bio_andy.jpg';
 import cesar from '../assets/bio/bio_cesar.jpg';
 import conrad from '../assets/bio/bio_conrad.jpg';
 import doug from '../assets/bio/bio_doug.jpg';
@@ -213,6 +214,7 @@ export const Team = () => {
         <Row>
           <Col span={24} className="bio">
             <div className="container">
+              <img src={andy} alt="Andy Kurnia" />
               <div className="team-info">
                 <h3>Andy Kurnia</h3>
                 <p>
