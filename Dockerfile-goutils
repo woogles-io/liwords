@@ -28,7 +28,7 @@ RUN mv /tmp/buf /opt
 
 # Install sqlc
 
-RUN go install github.com/kyleconroy/sqlc/cmd/sqlc@latest
+RUN go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 
 FROM node:latest
 
