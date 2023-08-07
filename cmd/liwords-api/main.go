@@ -120,6 +120,18 @@ func NewLoggingServerHooks() *twirp.ServerHooks {
 	}
 }
 
+// this CORS middleware is needed for SharedArrayBuffer to be enabled!
+// func corsMiddlewareGenerator() (mw func(http.Handler) http.Handler) {
+// 	mw = func(h http.Handler) http.Handler {
+// 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 			w.Header().Add("Cross-Origin-Opener-Policy", "same-origin")
+// 			w.Header().Add("Cross-Origin-Embedder-Policy", "require-corp")
+// 			h.ServeHTTP(w, r)
+// 		})
+// 	}
+// 	return
+// }
+
 // func NewInterceptorCustomError() twirp.Interceptor {
 // 	return func(next twirp.Method) twirp.Method {
 // 		return func(ctx context.Context, req interface{}) (interface{}, error) {
@@ -197,7 +209,7 @@ func main() {
 		apiserver.AuthenticationMiddlewareGenerator(stores.SessionStore),
 		apiserver.APIKeyMiddlewareGenerator(),
 		config.CtxMiddlewareGenerator(cfg),
-
+		// corsMiddlewareGenerator(),
 		hlog.AccessHandler(func(r *http.Request, status int, size int, d time.Duration) {
 			path := strings.Split(r.URL.Path, "/")
 			method := path[len(path)-1]

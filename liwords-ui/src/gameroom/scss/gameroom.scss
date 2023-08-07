@@ -150,6 +150,11 @@ p.streak-loss {
                 flex-direction: row;
                 align-items: center;
 
+                .ant-btn-link {
+                  border-color: transparent;
+                  background: transparent;
+                }
+
                 .analyze-trigger {
                     order: 2;
                 }
@@ -206,6 +211,20 @@ p.streak-loss {
         @include colorModed() {
             color: m($gray-medium);
         }
+    }
+
+    .static-only-label {
+        display: inline-block;
+        font-size: 14px;
+        margin-right: 6px;
+
+        @include colorModed() {
+            color: m($gray-medium);
+        }
+    }
+
+    .static-only-toggle {
+        margin-right: 6px;
     }
 
     .analyze-trigger {
@@ -1957,6 +1976,11 @@ p.rune {
                     align-items: center;
                     display: flex;
                     flex-direction: column;
+
+                    .ant-btn-link {
+                      border-color: transparent;
+                      background: transparent;
+                    }
                 }
 
                 .suggestions {

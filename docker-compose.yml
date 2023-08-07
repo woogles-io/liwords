@@ -102,8 +102,7 @@ services:
   #   networks:
   #     - aeronet
 
-  socket:
-    &socketsetup
+  socket: &socketsetup
     build:
       context: ../liwords-socket
       dockerfile: Dockerfile-dev
@@ -209,7 +208,9 @@ services:
       - traefik.enable=true
 
       - "traefik.http.middlewares.floc.headers.customresponseheaders.Permissions-Policy=interest-cohort=()"
-      - "traefik.http.routers.liwords-fe.middlewares=floc"
+      - "traefik.http.middlewares.cors-opener.headers.customresponseheaders.Cross-Origin-Opener-Policy=same-origin"
+      - "traefik.http.middlewares.cors-embedder.headers.customresponseheaders.Cross-Origin-Embedder-Policy=require-corp"
+      - "traefik.http.routers.liwords-fe.middlewares=floc,cors-opener,cors-embedder"
       - "traefik.http.routers.liwords-fe.rule=PathPrefix(`/`)"
       - "traefik.http.routers.liwords-fe.service=liwords-fe-service"
       - "traefik.http.routers.liwords-fe.entrypoints=web"

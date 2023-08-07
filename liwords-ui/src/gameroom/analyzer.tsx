@@ -14,7 +14,7 @@ import {
   useGameContextStoreContext,
   useTentativeTileContext,
 } from '../store/store';
-import { getWolges } from '../wasm/loader';
+import { getWolges, getMagpie } from '../wasm/loader';
 import { useMountedState } from '../utils/mounted';
 import { RedoOutlined } from '@ant-design/icons';
 import {
@@ -408,7 +408,7 @@ export const AnalyzerContextProvider = ({
           );
           const boardObj = { ...bareBoardObj, count: 15 };
 
-          const wolges = await getWolges(effectiveLexicon);
+          const wolges = await getMagpie(effectiveLexicon);
           if (examinerIdAtStart !== examinerId.current) return;
 
           const boardStr = JSON.stringify(boardObj);
@@ -643,6 +643,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     evaluatedMoveId.current = (evaluatedMoveId.current + 1) | 0;
     const evaluatedMoveIdAtStart = evaluatedMoveId.current;
     if (actualMove) {
+      console.log('actual move', actualMove, 'evaluatedMove', evaluatedMove);
       (async () => {
         const {
           dim,
@@ -654,7 +655,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
         } = parseExaminableGameContext(examinableGameContext, lexicon, variant);
         const boardObj = { ...bareBoardObj, plays: [actualMove] };
 
-        const wolges = await getWolges(effectiveLexicon);
+        const wolges = await getMagpie(effectiveLexicon);
         if (evaluatedMoveIdAtStart !== evaluatedMoveId.current) return;
 
         const boardStr = JSON.stringify(boardObj);
@@ -662,7 +663,14 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
         if (evaluatedMoveIdAtStart !== evaluatedMoveId.current) return;
         const movesObj = JSON.parse(movesStr);
         const moveObj = movesObj[0];
-
+        console.log(
+          'movesStr',
+          movesStr,
+          'boardStr',
+          boardStr,
+          'moveObj',
+          moveObj
+        );
         if (moveObj.result === 'scored') {
           const analyzerMove = analyzerMoveFromJsonMove(
             moveObj,
@@ -794,6 +802,18 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
         onClick={handleExaminer}
         disabled={autoMode || examinerLoading}
       />
+
+      <div className="analyzer-details">
+        <Button className="analyzer-details-btn" type="link">
+          Details
+        </Button>
+      </div>
+
+      <div className="static-only">
+        <p className="static-only-label">Rapid</p>
+        <Switch checked={false} className="static-only-toggle" size="small" />
+      </div>
+
       <div className="auto-controls">
         <p className="auto-label">Auto</p>
         <Switch

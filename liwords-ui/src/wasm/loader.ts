@@ -1,5 +1,9 @@
 import { Unrace } from '../utils/unrace';
 
+import magpie from '../magpie-wasm/magpie_wasm.mjs';
+
+console.log(magpie);
+
 // Good enough for now. If need to reload, just refresh the whole page.
 class Loadable {
   private whichStep = 0;
@@ -49,6 +53,8 @@ class Loadable {
       throw e;
     }
   };
+
+  getSingleUseArrayBufferWithAlloc = async () => {};
 }
 
 const loadablesByLexicon: { [key: string]: Array<Loadable> } = {};
@@ -136,6 +142,8 @@ const unrace = new Unrace();
 
 const wolgesCache = new WeakMap();
 
+const magpieCache = new WeakMap();
+
 export const getWolges = async (lexicon: string) =>
   unrace.run(async () => {
     // Allow these files to start loading.
@@ -177,4 +185,67 @@ export const getWolges = async (lexicon: string) =>
       })
     );
     return wolges;
+  });
+
+export const getMagpie = async (lexicon: string) =>
+  unrace.run(async () => {
+    // Allow these files to start loading.
+    // const magpiePromise = import('../magpie-wasm/magpie_wasm.mjs');
+    const effectiveLoadables = loadablesByLexicon[lexicon] ?? [];
+    for (const loadable of effectiveLoadables) {
+      loadable.startFetch();
+    }
+
+    // const magpie = await magpiePromise;
+    await magpie({
+      // This overrides the default path used by the wasm/hello.mjs wrapper
+      locateFile: () =>
+        require(/*'wolges-wasm/wolges_wasm_bg.wasm'*/ '../magpie-wasm/magpie_wasm.wasm'),
+    }).then((wasm) => {
+      console.log('loaded wasm', wasm);
+    });
+    let cachedStuffs = magpieCache.get(magpie);
+    if (!cachedStuffs) {
+      magpieCache.set(magpie, (cachedStuffs = {}));
+    }
+    const precacheWrapper = magpie.cwrap('precache_file_data', null, [
+      'number',
+      'number',
+      'number',
+    ]);
+    const processUCGIWrapper = magpie.cwrap('process_ucgi_command', null, [
+      'number',
+    ]);
+
+    magpie.precacheFileData = (filename: string, rawData: Uint8Array) => {
+      const buf = magpie._malloc(rawData.length * rawData.BYTES_PER_ELEMENT);
+      magpie.HEAPU8.set(rawData, buf);
+      const filenameCharArr = magpie.stringToNewUTF8(filename);
+      precacheWrapper(filenameCharArr, buf, rawData.length);
+      magpie._free(buf);
+      magpie._free(filenameCharArr);
+    };
+
+    magpie.processUCGICommand = (cmd: string) => {
+      const cmdC = magpie.stringToNewUTF8(cmd);
+      processUCGIWrapper(cmdC);
+      magpie._free(cmdC);
+    };
+
+    await Promise.all(
+      effectiveLoadables.map(async (loadable) => {
+        const cacheKey = loadable.cacheKey;
+        if (!cachedStuffs[cacheKey]) {
+          const splitAt = cacheKey.indexOf('/');
+          if (splitAt < 0) throw new Error(`invalid cache key ${cacheKey}`);
+          magpie.precacheFileData(
+            cacheKey,
+            new Uint8Array(await loadable.getSingleUseArrayBuffer())
+          );
+
+          cachedStuffs[cacheKey] = true;
+        }
+      })
+    );
+    return magpie;
   });
