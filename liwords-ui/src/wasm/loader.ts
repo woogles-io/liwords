@@ -1,9 +1,5 @@
 import { Unrace } from '../utils/unrace';
-
-import magpie from '../magpie-wasm/magpie_wasm.mjs';
-
-console.log(magpie);
-
+import MAGPIE from 'magpie-wasm';
 // Good enough for now. If need to reload, just refresh the whole page.
 class Loadable {
   private whichStep = 0;
@@ -196,14 +192,9 @@ export const getMagpie = async (lexicon: string) =>
       loadable.startFetch();
     }
 
-    // const magpie = await magpiePromise;
-    await magpie({
-      // This overrides the default path used by the wasm/hello.mjs wrapper
-      locateFile: () =>
-        require(/*'wolges-wasm/wolges_wasm_bg.wasm'*/ '../magpie-wasm/magpie_wasm.wasm'),
-    }).then((wasm) => {
-      console.log('loaded wasm', wasm);
-    });
+    const magpie = await MAGPIE();
+    console.log('magpie', magpie);
+
     let cachedStuffs = magpieCache.get(magpie);
     if (!cachedStuffs) {
       magpieCache.set(magpie, (cachedStuffs = {}));

@@ -1,0 +1,21 @@
+{
+    "name": "magpie-wasm",
+    "collaborators": [
+        "Joshua Castellano",
+        "César Del Solar"
+    ],
+    "description": "magpie as wasm",
+    "version": "0.1.0",
+    "license": "GPL3",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/jvc56/magpie"
+    },
+    "files": [
+        "magpie_wasm.wasm",
+        "magpie_wasm.mjs",
+        "magpie_wasm.worker.js"
+    ],
+    "module": "magpie_wasm.mjs",
+    "sideEffects": false
+}

@@ -10,6 +10,7 @@ ENV PATH /opt/liwords-ui/node_modules/.bin:$PATH
 
 COPY ./liwords-ui/package.json ./liwords-ui/package-lock.json ./
 COPY ./liwords-ui/wolges-wasm-pkg ./wolges-wasm-pkg
+COPY ./liwords-ui/magpie-wasm ./magpie-wasm
 
 RUN ["npm", "ci"]
 
