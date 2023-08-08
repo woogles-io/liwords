@@ -54,6 +54,7 @@ class Loadable {
 }
 
 const loadablesByLexicon: { [key: string]: Array<Loadable> } = {};
+const magpieOnlyLoadablesByLexicon: { [key: string]: Array<Loadable> } = {};
 
 for (const { lexicons, cacheKey, path } of [
   {
@@ -134,6 +135,60 @@ for (const { lexicons, cacheKey, path } of [
   }
 }
 
+for (const { lexicons, cacheKey, path } of [
+  {
+    lexicons: [
+      'CSW19',
+      'CSW19X',
+      'CSW21',
+      'NWL20',
+      'NWL18',
+      'NSWL20',
+      'ECWL',
+    ].flatMap((name) => [name]),
+    cacheKey: 'ld/english',
+    path: '/wasm/english.csv',
+  },
+  {
+    lexicons: ['FRA20'].flatMap((name) => [name]),
+    cacheKey: 'ld/french',
+    path: '/wasm/french.csv',
+  },
+  {
+    lexicons: ['RD28'].flatMap((name) => [name]),
+    cacheKey: 'ld/german',
+    path: '/wasm/german.csv',
+  },
+  {
+    lexicons: ['NSF21', 'NSF22'].flatMap((name) => [name]),
+    cacheKey: 'ld/norwegian',
+    path: '/wasm/norwegian.csv',
+  },
+  {
+    lexicons: ['DISC2'].flatMap((name) => [name]),
+    cacheKey: 'ld/catalan',
+    path: '/wasm/catalan.csv',
+  },
+]) {
+  const loadable = new Loadable(cacheKey, path);
+  for (const lexicon of lexicons) {
+    if (!(lexicon in magpieOnlyLoadablesByLexicon)) {
+      magpieOnlyLoadablesByLexicon[lexicon] = [];
+    }
+    magpieOnlyLoadablesByLexicon[lexicon].push(loadable);
+  }
+}
+
+// winpct has only been calculated for english letter distribution.
+// Just use for all lexica for now.
+const loadable = new Loadable(
+  'wpct/default_english',
+  '/wasm/english-winpct.csv'
+);
+for (const lexicon in magpieOnlyLoadablesByLexicon) {
+  magpieOnlyLoadablesByLexicon[lexicon].push(loadable);
+}
+
 const unrace = new Unrace();
 
 const wolgesCache = new WeakMap();
@@ -186,14 +241,15 @@ export const getWolges = async (lexicon: string) =>
 export const getMagpie = async (lexicon: string) =>
   unrace.run(async () => {
     // Allow these files to start loading.
-    // const magpiePromise = import('../magpie-wasm/magpie_wasm.mjs');
-    const effectiveLoadables = loadablesByLexicon[lexicon] ?? [];
+    const effectiveLoadables = [
+      ...(loadablesByLexicon[lexicon] ?? []),
+      ...(magpieOnlyLoadablesByLexicon[lexicon] ?? []),
+    ];
     for (const loadable of effectiveLoadables) {
       loadable.startFetch();
     }
 
     const magpie = await MAGPIE();
-    console.log('magpie', magpie);
 
     let cachedStuffs = magpieCache.get(magpie);
     if (!cachedStuffs) {
@@ -225,10 +281,31 @@ export const getMagpie = async (lexicon: string) =>
 
     await Promise.all(
       effectiveLoadables.map(async (loadable) => {
-        const cacheKey = loadable.cacheKey;
+        let cacheKey = loadable.cacheKey;
         if (!cachedStuffs[cacheKey]) {
           const splitAt = cacheKey.indexOf('/');
           if (splitAt < 0) throw new Error(`invalid cache key ${cacheKey}`);
+
+          const type = cacheKey.substring(0, splitAt);
+          const name = cacheKey.substring(splitAt + 1);
+
+          // magpie internal filenames follow a specific structure. For ease,
+          // we will precache using a cache key with the same file structure.
+          switch (type) {
+            case 'kwg':
+              cacheKey = `data/lexica/${name}.kwg`;
+              break;
+            case 'klv':
+              cacheKey = `data/lexica/${name}.klv2`;
+              break;
+            case 'ld':
+              cacheKey = `data/letterdistributions/${name}.csv`;
+              break;
+            case 'wpct':
+              cacheKey = `data/strategy/${name}/winpct.csv`;
+              break;
+          }
+
           magpie.precacheFileData(
             cacheKey,
             new Uint8Array(await loadable.getSingleUseArrayBuffer())
