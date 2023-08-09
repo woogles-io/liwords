@@ -1,5 +1,12 @@
 import { Unrace } from '../utils/unrace';
 import MAGPIE from 'magpie-wasm';
+
+export const enum MagpieMoveTypes {
+  Play = 0,
+  Exchange = 1,
+  Pass = 2,
+}
+
 // Good enough for now. If need to reload, just refresh the whole page.
 class Loadable {
   private whichStep = 0;
@@ -253,14 +260,31 @@ export const getMagpie = async (lexicon: string) =>
 
     let cachedStuffs = magpieCache.get(magpie);
     if (!cachedStuffs) {
+      console.log('setting brand new cachedStuffs');
       magpieCache.set(magpie, (cachedStuffs = {}));
     }
+    console.log('cachedStuffs here is', JSON.stringify(cachedStuffs));
     const precacheWrapper = magpie.cwrap('precache_file_data', null, [
       'number',
       'number',
       'number',
     ]);
     const processUCGIWrapper = magpie.cwrap('process_ucgi_command', null, [
+      'number',
+    ]);
+    /**
+     * char *score_play(char *cgpstr, int move_type, int row, int col, int vertical,
+        uint8_t *tiles, uint8_t *leave, int ntiles, int nleave) 
+     */
+    const scorePlayWrapper = magpie.cwrap('score_play', 'number', [
+      'number',
+      'number',
+      'number',
+      'number',
+      'number',
+      'array',
+      'array',
+      'number',
       'number',
     ]);
 
@@ -279,38 +303,75 @@ export const getMagpie = async (lexicon: string) =>
       magpie._free(cmdC);
     };
 
+    magpie.scorePlay = (
+      cgpstr: string,
+      moveType: MagpieMoveTypes,
+      row: number,
+      col: number,
+      vertical: boolean,
+      tiles: Uint8Array,
+      leave: Uint8Array
+    ) => {
+      const cgpC = magpie.stringToNewUTF8(cgpstr);
+      const ret = scorePlayWrapper(
+        cgpC,
+        moveType,
+        row,
+        col,
+        vertical ? 1 : 0,
+        tiles,
+        leave,
+        tiles.length,
+        leave.length
+      );
+      const jsStr = magpie.UTF8ToString(ret);
+      // Free the ret pointer, which is malloc'ed inside the C score play func
+      magpie._free(ret);
+      magpie._free(cgpC);
+
+      return jsStr;
+    };
+
     await Promise.all(
       effectiveLoadables.map(async (loadable) => {
-        let cacheKey = loadable.cacheKey;
+        const cacheKey = loadable.cacheKey;
+        console.log(
+          'the cacheKey is',
+          cacheKey,
+          JSON.stringify(cachedStuffs),
+          magpieCache
+        );
         if (!cachedStuffs[cacheKey]) {
+          console.log('i guess it wasnt cached?', cachedStuffs[cacheKey]);
           const splitAt = cacheKey.indexOf('/');
           if (splitAt < 0) throw new Error(`invalid cache key ${cacheKey}`);
 
           const type = cacheKey.substring(0, splitAt);
           const name = cacheKey.substring(splitAt + 1);
 
+          let magpieCacheKey;
           // magpie internal filenames follow a specific structure. For ease,
           // we will precache using a cache key with the same file structure.
           switch (type) {
             case 'kwg':
-              cacheKey = `data/lexica/${name}.kwg`;
+              magpieCacheKey = `data/lexica/${name}.kwg`;
               break;
             case 'klv':
-              cacheKey = `data/lexica/${name}.klv2`;
+              magpieCacheKey = `data/lexica/${name}.klv2`;
               break;
             case 'ld':
-              cacheKey = `data/letterdistributions/${name}.csv`;
+              magpieCacheKey = `data/letterdistributions/${name}.csv`;
               break;
             case 'wpct':
-              cacheKey = `data/strategy/${name}/winpct.csv`;
+              magpieCacheKey = `data/strategy/${name}/winpct.csv`;
               break;
           }
 
-          magpie.precacheFileData(
-            cacheKey,
+          await magpie.precacheFileData(
+            magpieCacheKey,
             new Uint8Array(await loadable.getSingleUseArrayBuffer())
           );
-
+          console.log('storing in cachedStuffs', cacheKey);
           cachedStuffs[cacheKey] = true;
         }
       })

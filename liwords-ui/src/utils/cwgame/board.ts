@@ -1,6 +1,8 @@
 import {
+  Alphabet,
   StandardEnglishAlphabet,
   runesToMachineWord,
+  machineLetterToRune,
 } from '../../constants/alphabets';
 import { CrosswordGameGridLayout } from '../../constants/board_layout';
 import { EmptySpace, MachineLetter } from './common';
@@ -99,3 +101,35 @@ export class Board {
     return newBoard;
   }
 }
+
+export const toFen = (b: Board, alphabet: Alphabet) => {
+  let fen = '';
+  let bidx = 0;
+  for (let r = 0; r < b.dim; r++) {
+    let row = '';
+    let emptyCt = 0;
+    for (let c = 0; c < b.dim; c++) {
+      const ml = b.letters[bidx];
+      if (ml === 0) {
+        emptyCt++;
+        bidx++;
+        continue;
+      }
+      if (emptyCt > 0) {
+        row += String(emptyCt);
+        emptyCt = 0;
+      }
+      row += machineLetterToRune(ml, alphabet, false, true);
+      bidx++;
+    }
+    if (emptyCt > 0) {
+      row += String(emptyCt);
+    }
+
+    fen += row;
+    if (r < b.dim - 1) {
+      fen += '/';
+    }
+  }
+  return fen;
+};
