@@ -39,7 +39,6 @@ import {
 } from '../constants/alphabets';
 import { toFen } from '../utils/cwgame/board';
 import { computeLeave } from '../utils/cwgame/game_event';
-import { act } from 'react-dom/test-utils';
 
 type AnalyzerProps = {
   includeCard?: boolean;
@@ -373,6 +372,10 @@ export const AnalyzerContextProvider = ({
   const [autoMode, setAutoMode] = useState(false);
   const [unrace, setUnrace] = useState(new Unrace());
 
+  const magpieProgressCallback = useCallback((s: string) => {
+    console.log('callback ' + s);
+  }, []);
+
   const { gameContext: examinableGameContext } =
     useExaminableGameContextStoreContext();
 
@@ -419,7 +422,10 @@ export const AnalyzerContextProvider = ({
             analyzerBinary = await getWolges(effectiveLexicon);
             binaryName = 'wolges';
           } else {
-            analyzerBinary = await getMagpie(effectiveLexicon);
+            analyzerBinary = await getMagpie(
+              effectiveLexicon,
+              magpieProgressCallback
+            );
             binaryName = 'magpie';
           }
           if (examinerIdAtStart !== examinerId.current) return;
@@ -683,7 +689,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           analyzerBinary = await getWolges(effectiveLexicon);
           binaryName = 'wolges';
         } else {
-          analyzerBinary = await getMagpie(effectiveLexicon);
+          analyzerBinary = await getMagpie(effectiveLexicon, () => {});
           binaryName = 'magpie';
         }
         if (evaluatedMoveIdAtStart !== evaluatedMoveId.current) return;

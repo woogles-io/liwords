@@ -31,7 +31,7 @@
         "react-use-websocket": "^3.0.0",
         "source-map-explorer": "^2.5.3",
         "wolges-wasm": "file:wolges-wasm-pkg",
-        "magpie-wasm": "file:magpie-wasm"
+        "magpie-wasm": "file:magpie-wasm-pkg"
     },
     "scripts": {
         "analyze": "source-map-explorer 'build/static/js/*.js'",
