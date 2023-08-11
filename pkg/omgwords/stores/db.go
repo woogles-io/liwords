@@ -92,7 +92,7 @@ func (s *DBStore) DeleteAnnotatedGame(ctx context.Context, uuid string) error {
 		return err
 	}
 	defer tx.Rollback(ctx)
-	err = s.dbPool.QueryRow(ctx, `SELECT id FROM games WHERE uuid = $1`, uuid).Scan(&gameID)
+	err = tx.QueryRow(ctx, `SELECT id FROM games WHERE uuid = $1`, uuid).Scan(&gameID)
 	if err != nil {
 		return err
 	}
