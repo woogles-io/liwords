@@ -86,11 +86,20 @@ func (s *DBStore) UpdateAnnotatedGameQuickdata(ctx context.Context, uuid string,
 }
 
 func (s *DBStore) DeleteAnnotatedGame(ctx context.Context, uuid string) error {
+	var gameID int
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
+	err = tx.QueryRow(ctx, `SELECT id FROM games WHERE uuid = $1`, uuid).Scan(&gameID)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `DELETE from game_comments WHERE game_id = $1`, gameID)
+	if err != nil {
+		return err
+	}
 	_, err = tx.Exec(ctx, `DELETE from annotated_game_metadata WHERE game_uuid = $1`, uuid)
 	if err != nil {
 		return err
