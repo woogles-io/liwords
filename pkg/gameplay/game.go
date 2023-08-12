@@ -13,6 +13,7 @@ import (
 	"github.com/domino14/macondo/tilemapping"
 	"github.com/domino14/macondo/turnplayer"
 	"github.com/lithammer/shortuuid"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -32,9 +33,10 @@ import (
 )
 
 var (
-	errGameNotActive   = errors.New("game is not currently active")
-	errNotOnTurn       = errors.New("player not on turn")
-	errTimeDidntRunOut = errors.New("got time ran out, but it did not actually")
+	errGameNotActive      = errors.New("game is not currently active")
+	errNotOnTurn          = errors.New("player not on turn")
+	errTimeDidntRunOut    = errors.New("got time ran out, but it did not actually")
+	errGameAlreadyStarted = errors.New("game already started")
 )
 
 const (
@@ -218,20 +220,19 @@ func clientEventToMove(cge *pb.ClientGameplayEvent, g *game.Game) (*move.Move, e
 	return nil, errors.New("client gameplay event not handled")
 }
 
-func StartGame(ctx context.Context, gameStore GameStore, userStore user.Store, eventChan chan<- *entity.EventWrapper, id string) error {
+func StartGame(ctx context.Context, gameStore GameStore, userStore user.Store, eventChan chan<- *entity.EventWrapper,
+	entGame *entity.Game) error {
 	// Note that StartGame does _not_ start the Macondo game, which
 	// has already started, but we don't "know" that. It is _this_
 	// function that will actually start the game in the user's eyes.
 	// It needs to reset the timer to now.
-	entGame, err := gameStore.Get(ctx, id)
-	if err != nil {
-		return err
-	}
-	// This should be True, see comment above.
 	if entGame.Game.Playing() != macondopb.PlayState_PLAYING {
 		return errGameNotActive
 	}
-	log.Debug().Str("gameid", id).Msg("reset timers (and start)")
+	if entGame.Started {
+		return errGameAlreadyStarted
+	}
+	log.Debug().Str("gameid", entGame.GameID()).Msg("reset timers (and start)")
 	entGame.ResetTimersAndStart()
 	log.Debug().Msg("going-to-save")
 	// Save the game back to the store always.
@@ -246,11 +247,11 @@ func StartGame(ctx context.Context, gameStore GameStore, userStore user.Store, e
 	log.Debug().Interface("history", entGame.Game.History()).Msg("game history")
 
 	evt := entGame.HistoryRefresherEvent()
-	evt.History = mod.CensorHistory(ctx, userStore, evt.History)
+	evt.History = proto.Clone(mod.CensorHistory(ctx, userStore, evt.History)).(*macondopb.GameHistory)
 	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_HISTORY_REFRESHER)
 	wrapped.AddAudience(entity.AudGameTV, entGame.GameID())
 	for _, p := range players(entGame) {
-		wrapped.AddAudience(entity.AudUser, p+".game."+id)
+		wrapped.AddAudience(entity.AudUser, p+".game."+entGame.GameID())
 	}
 	entGame.SendChange(wrapped)
 
@@ -701,16 +702,16 @@ func potentiallySendBotMoveRequest(ctx context.Context, userStore user.Store, g 
 		return nil
 	}
 
-	evt := &macondopb.BotRequest{
+	evt := proto.Clone(&macondopb.BotRequest{
 		GameHistory: g.History(),
 		BotType:     g.GameReq.BotType,
-	}
+	}).(*macondopb.BotRequest)
 	// message type doesn't matter here; we're going to make sure
 	// this doesn't get serialized with a message type.
 	wrapped := entity.WrapEvent(evt, 0)
 	wrapped.SetAudience(entity.AudBotCommands)
-	// serialize without any length/type headers! This is an internal
-	// message, and not meant for the socket.
+	// serialize without any length/type headers! This message is meant to
+	// go straight to a bot. See bus.go  `case msg := <-b.gameEventChan:`
 	wrapped.SetSerializationProtocol(entity.EvtSerializationProto)
 	g.SendChange(wrapped)
 

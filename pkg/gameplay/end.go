@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
@@ -147,7 +148,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	defer users[1-firstLockingIndex].Unlock()
 
 	// Send a gameEndedEvent, which rates the game.
-	evt := gameEndedEvent(ctx, g, userStore)
+	evt := proto.Clone(gameEndedEvent(ctx, g, userStore)).(*pb.GameEndedEvent)
 	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_ENDED_EVENT)
 	for _, p := range players(g) {
 		wrapped.AddAudience(entity.AudUser, p+".game."+g.GameID())
@@ -366,11 +367,11 @@ func AbortGame(ctx context.Context, gameStore GameStore, tournamentStore tournam
 	}
 	evtChan <- wrapped
 
-	evt := &pb.GameEndedEvent{
+	evt := proto.Clone(&pb.GameEndedEvent{
 		EndReason: gameEndReason,
 		Time:      g.Timers.TimeOfLastUpdate,
 		History:   g.History(),
-	}
+	}).(*pb.GameEndedEvent)
 
 	wrapped = entity.WrapEvent(evt, pb.MessageType_GAME_ENDED_EVENT)
 	for _, p := range players(g) {

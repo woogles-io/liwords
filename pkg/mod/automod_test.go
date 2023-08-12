@@ -187,7 +187,7 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStor
 	nower := entity.NewFakeNower(1234)
 	g.SetTimerModule(nower)
 
-	err = gameplay.StartGame(ctx, gstore, ustore, ch, g.GameID())
+	err = gameplay.StartGame(ctx, gstore, ustore, ch, g)
 	if err != nil {
 		panic(err)
 	}
