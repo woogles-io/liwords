@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/twitchtv/twirp"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/domino14/liwords/pkg/apiserver"
@@ -211,7 +212,7 @@ func (gs *OMGWordsService) ReplaceGameDocument(ctx context.Context, req *pb.Repl
 	}
 	// And send an event.
 	evt := &ipc.GameDocumentEvent{
-		Doc: req.Document,
+		Doc: proto.Clone(req.Document).(*ipc.GameDocument),
 	}
 	wrapped := entity.WrapEvent(evt, ipc.MessageType_OMGWORDS_GAMEDOCUMENT)
 	wrapped.AddAudience(entity.AudChannel, AnnotatedChannelName(gid))
@@ -278,7 +279,7 @@ func (gs *OMGWordsService) PatchGameDocument(ctx context.Context, req *pb.PatchD
 	}
 	// And send an event.
 	evt := &ipc.GameDocumentEvent{
-		Doc: g.GameDocument,
+		Doc: proto.Clone(g.GameDocument).(*ipc.GameDocument),
 	}
 	wrapped := entity.WrapEvent(evt, ipc.MessageType_OMGWORDS_GAMEDOCUMENT)
 	wrapped.AddAudience(entity.AudChannel, AnnotatedChannelName(gid))
@@ -455,7 +456,7 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *pb.SetRacksEvent) 
 
 	// And send an event.
 	evt := &ipc.GameDocumentEvent{
-		Doc: g.GameDocument,
+		Doc: proto.Clone(g.GameDocument).(*ipc.GameDocument),
 	}
 	wrapped := entity.WrapEvent(evt, ipc.MessageType_OMGWORDS_GAMEDOCUMENT)
 	wrapped.AddAudience(entity.AudChannel, AnnotatedChannelName(g.Uid))

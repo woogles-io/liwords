@@ -183,6 +183,7 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 outerfor:
 	for {
 		select {
+		// NATS message usually from socket service:
 		case msg := <-b.subchans["ipc.pb.>"]:
 			// Regular messages.
 			log := log.With().Interface("msg-subject", msg.Subject).Logger()
@@ -204,6 +205,7 @@ outerfor:
 				}
 			}(subtopics, msg.Data)
 
+		// NATS message usually from socket service:
 		case msg := <-b.subchans["ipc.request.>"]:
 			log := log.With().Interface("msg-subject", msg.Subject).Logger()
 			log.Debug().Msg("got ipc.request")
@@ -229,6 +231,7 @@ outerfor:
 				}
 			}()
 
+		// NATS message from macondo bot
 		case msg := <-b.subchans["bot.publish_event.>"]:
 			log := log.With().Interface("msg-subject", msg.Subject).Logger()
 			log.Debug().Msg("got-bot-publish")
@@ -246,6 +249,7 @@ outerfor:
 			}
 			b.goHandleBotMove(ctx, resp, gid, msg.Reply)
 
+		// NATS message from internal sources (within liwords)
 		case msg := <-b.subchans["user.>"]:
 			log := log.With().Interface("msg-user.>", msg.Subject).Logger()
 			log.Debug().Msg("got-user-event")
@@ -253,6 +257,8 @@ outerfor:
 			if err != nil {
 				log.Err(err).Msg("user-event-process-error")
 			}
+
+		// NATS message from internal sources (within liwords)
 		case msg := <-b.subchans["game.>"]:
 			log := log.With().Interface("msg-game.>", msg.Subject).Logger()
 			log.Debug().Msg("got-game-event")
@@ -260,6 +266,8 @@ outerfor:
 			if err != nil {
 				log.Err(err).Msg("game-event-process-error")
 			}
+
+		// Regular Go chan message from within liwords:
 		case msg := <-b.gameEventChan:
 			if msg.Type == pb.MessageType_ACTIVE_GAME_ENTRY {
 				// This message usually has no audience.
@@ -319,6 +327,7 @@ outerfor:
 				}
 			}
 
+		// Regular Go chan message from within liwords:
 		case msg := <-b.tournamentEventChan:
 			// A tournament event. Publish to the right realm.
 			log.Debug().Interface("msg", msg).Msg("tournament event chan")
@@ -332,6 +341,7 @@ outerfor:
 				b.natsconn.Publish(topic, data)
 			}
 
+		// Regular Go chan message from within liwords:
 		case msg := <-b.genericEventChan:
 			// a Generic event to be published via NATS.
 			// Publish to the right realm.

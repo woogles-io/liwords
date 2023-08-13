@@ -216,6 +216,7 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 	}
 	g.Lock()
 	defer g.Unlock()
+
 	log.Debug().Str("userID", userID).Interface("playing", g.Playing()).Msg("ready-for-game")
 	if g.Playing() != macondopb.PlayState_PLAYING {
 		return errors.New("game is over")
@@ -242,12 +243,13 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 	// Start the game if both players are ready (or if it's a bot game).
 	// readyflag will be (01 | 10) = 3 for two players.
 	if rf == (1<<len(g.History().Players))-1 || g.GameReq.PlayerVsBot {
-		err = gameplay.StartGame(ctx, b.gameStore, b.userStore, b.gameEventChan, g.GameID())
+		err = gameplay.StartGame(ctx, b.gameStore, b.userStore, b.gameEventChan, g)
 		if err != nil {
 			log.Err(err).Msg("starting-game")
+		} else {
+			// Note: for PlayerVsBot, readyForGame is called twice when player is ready and every time player refreshes, why? :-(
+			g.SendChange(g.NewActiveGameEntry(true))
 		}
-		// Note: for PlayerVsBot, readyForGame is called twice when player is ready and every time player refreshes, why? :-(
-		g.SendChange(g.NewActiveGameEntry(true))
 
 	}
 	return nil
@@ -437,7 +439,6 @@ func (b *Bus) sendGameRefresher(ctx context.Context, gameID, connID, userID stri
 		evt = entity.WrapEvent(hre,
 			pb.MessageType_GAME_HISTORY_REFRESHER)
 	}
-	// retain RLock() to prevent handleBotMoveInternally from making a new move not in evt
 	err = b.pubToConnectionID(connID, userID, evt)
 	if err != nil {
 		return err

@@ -9,6 +9,7 @@ import (
 	"github.com/domino14/liwords/pkg/omgwords/stores"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/twitchtv/twirp"
+	"google.golang.org/protobuf/proto"
 )
 
 // handlers handle events from either the HTTP API or from the websocket/bus
@@ -85,7 +86,7 @@ func handleEvent(ctx context.Context, userID string, evt *ipc.ClientGameplayEven
 	if amendment {
 		// Send an entire document event.
 		evt := &ipc.GameDocumentEvent{
-			Doc: g.GameDocument,
+			Doc: proto.Clone(g.GameDocument).(*ipc.GameDocument),
 		}
 		wrapped := entity.WrapEvent(evt, ipc.MessageType_OMGWORDS_GAMEDOCUMENT)
 		wrapped.AddAudience(entity.AudChannel, AnnotatedChannelName(g.Uid))

@@ -49,7 +49,6 @@ var RemovalDuration = 60
 // This can be deleted once the above function uses the DB to get the actions.
 func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLogout bool, actionTypes []ms.ModActionType) (bool, error) {
 	currentActions, err := us.GetActions(ctx, uuid)
-	fmt.Println(currentActions)
 	if err != nil {
 		return false, err
 	}
