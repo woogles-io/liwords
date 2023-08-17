@@ -36,11 +36,7 @@ import {
   nextArrowStateAfterTilePlacement,
 } from '../utils/cwgame/tile_placement';
 
-import {
-  parseBlindfoldCoordinates,
-  say,
-  wordToSayString,
-} from '../utils/cwgame/blindfold';
+import { say, wordToSayString } from '../utils/cwgame/blindfold';
 import { singularCount } from '../utils/plural';
 
 import {
@@ -51,7 +47,7 @@ import {
   challengeMoveEvent,
   nicknameFromEvt,
 } from '../utils/cwgame/game_event';
-import { Board } from '../utils/cwgame/board';
+import { Board, parseCoordinates } from '../utils/cwgame/board';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import {
   useExaminableGameContextStoreContext,
@@ -1083,8 +1079,7 @@ export const BoardPanel = React.memo((props: Props) => {
               ''
             );
           } else {
-            const blindfoldCoordinates =
-              parseBlindfoldCoordinates(blindfoldCommand);
+            const blindfoldCoordinates = parseCoordinates(blindfoldCommand);
             if (blindfoldCoordinates !== undefined) {
               // Valid coordinates, place the arrow
               say(wordToSayString(blindfoldCommand, blindfoldUseNPA), '');

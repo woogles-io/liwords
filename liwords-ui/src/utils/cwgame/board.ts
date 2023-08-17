@@ -133,3 +133,36 @@ export const toFen = (b: Board, alphabet: Alphabet) => {
   }
   return fen;
 };
+
+type Coordinates = {
+  row: number;
+  col: number;
+  horizontal: boolean;
+};
+
+export const parseCoordinates = (
+  coordinates: string
+): Coordinates | undefined => {
+  const horizontalRegex = /^([0-9][0-9]?)([A-Ua-u])$/;
+  const matches = coordinates.match(horizontalRegex);
+  let row = -1;
+  let col = -1;
+  let horizontal = false;
+  if (matches && matches[1] !== undefined && matches[2] !== undefined) {
+    row = parseInt(matches[1]) - 1;
+    col = matches[2].toUpperCase().charCodeAt(0) - 65;
+    horizontal = true;
+  } else {
+    const verticalRegex = /^([A-Ua-u])([0-9][0-9]?)$/;
+    const matches = coordinates.match(verticalRegex);
+    if (matches && matches[1] !== undefined && matches[2] !== undefined) {
+      row = parseInt(matches[2]) - 1;
+      col = matches[1].toUpperCase().charCodeAt(0) - 65;
+      horizontal = false;
+    }
+  }
+  if (row < 0) {
+    return undefined;
+  }
+  return { row: row, col: col, horizontal: horizontal };
+};

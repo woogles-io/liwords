@@ -37,8 +37,9 @@ import {
   machineWordToRunes,
   runesToMachineWord,
 } from '../constants/alphabets';
-import { toFen } from '../utils/cwgame/board';
+import { parseCoordinates, toFen } from '../utils/cwgame/board';
 import { computeLeave } from '../utils/cwgame/game_event';
+import { subscribe } from '../shared/pubsub';
 
 type AnalyzerProps = {
   includeCard?: boolean;
@@ -68,6 +69,7 @@ type JsonMove =
     };
 
 const jsonMoveToKey = (v: JsonMove) => {
+  // select just a few keys.
   switch (v.action) {
     case 'exchange': {
       return JSON.stringify(
@@ -97,10 +99,10 @@ const jsonMoveToKey = (v: JsonMove) => {
   }
 };
 
-export type AnalyzerMove = {
+type AnalyzerMove = {
   jsonKey: string;
   chosen?: boolean; // true for played, undefined for analyzer-generated moves
-  valid?: boolean; // undefined for analyzer-generated moves
+  valid?: boolean;
   invalid_words?: Array<string>;
   displayMove: string;
   coordinates: string;
@@ -113,6 +115,7 @@ export type AnalyzerMove = {
   vertical: boolean;
   tiles: MachineWord;
   isExchange: boolean;
+  winpct?: number;
 };
 
 const wolgesLetterToLiwordsLetter = (i: number) => {
@@ -142,7 +145,7 @@ const wolgesLetterToLabel = (i: number, alphabet: Alphabet) => {
   return machineLetterToRune(i, alphabet, false, true);
 };
 
-export const analyzerMoveFromJsonMove = (
+const analyzerMoveFromJsonMove = (
   move: JsonMove,
   dim: number,
   letters: Array<MachineLetter>,
@@ -276,6 +279,171 @@ export const analyzerMoveFromJsonMove = (
   }
 };
 
+const analyzerMoveFromUCGIString = (
+  ucgis: string,
+  dim: number,
+  letters: Array<MachineLetter>,
+  rackNum: MachineWord,
+  alphabet: Alphabet
+): AnalyzerMove => {
+  /**
+   * info currmove c9.ZEK sc 26 wp 70.503 wpe 4.870 eq -18.027 eqe 4.801 it 519 ig 1 ply1-scm 30.073 ply1-scd 23.176 ply1-bp 18.919 ply2-scm 19.492 ply2-scd 4.216 ply2-bp 0.000 ply3-scm 33.730 ply3-scd 23.773 ply3-bp 20.231 ply4-scm 24.286 ply4-scd 14.759 ply4-bp 6.509 ply5-scm 20.287 ply5-scd 17.196 ply5-bp 5.689
+   * currmove 6g.DIPETAZ result scored valid false invalid_words WIFAY,ZGENUINE,DIPETAZ sc 57 eq 72.947
+   */
+  if (ucgis.startsWith('info ')) {
+    ucgis = ucgis.substring(5);
+  }
+  const splitstr = ucgis.trim().split(' ');
+
+  const kv: { [x: string]: string } = {};
+  for (let i = 0; i < splitstr.length; i += 2) {
+    kv[splitstr[i]] = splitstr[i + 1];
+  }
+
+  const jsonKey = JSON.stringify({ move: kv['currmove'] });
+
+  const defaultRet = {
+    jsonKey,
+    displayMove: '',
+    coordinates: '',
+    // always leave out leave
+    vertical: false,
+    col: 0,
+    row: 0,
+    score: 0,
+    equity: 0.0,
+    winpct: 0.0,
+    tiles: new Array<MachineLetter>(),
+    isExchange: false,
+  };
+
+  if (kv['currmove'] === 'pass') {
+    return {
+      ...defaultRet,
+      leave: rackNum,
+      leaveWithGaps: rackNum,
+    };
+  }
+  if (kv['currmove'].startsWith('ex.')) {
+    let leaveNum = [...rackNum];
+    const leaveWithGaps = [...rackNum];
+
+    let tilesBeingMoved = new Array<MachineLetter>();
+
+    const parts = kv['currmove'].split('.');
+    // convert to machine letters.. only to convert back to runes. It's ok.
+    const word = runesToMachineWord(parts[1], alphabet);
+
+    for (const t of word) {
+      tilesBeingMoved.push(t);
+      const usedTileIndex = leaveNum.lastIndexOf(t);
+      if (usedTileIndex >= 0) {
+        leaveWithGaps[usedTileIndex] = EmptyRackSpaceMachineLetter;
+        leaveNum[usedTileIndex] = EmptyRackSpaceMachineLetter;
+      }
+    }
+    tilesBeingMoved = sortTiles(tilesBeingMoved, alphabet);
+    leaveNum = sortTiles(leaveNum, alphabet);
+
+    return {
+      ...defaultRet,
+      displayMove:
+        tilesBeingMoved.length > 0
+          ? `Exch. ${machineWordToRunes(
+              tilesBeingMoved,
+              alphabet,
+              false,
+              true
+            )}`
+          : 'Pass',
+      leave: leaveNum,
+      leaveWithGaps,
+      equity: parseFloat(kv['eq']),
+      tiles: tilesBeingMoved,
+      isExchange: true,
+    };
+  } else {
+    // it's a regular play
+    let leaveNum = [...rackNum];
+    const leaveWithGaps = [...rackNum];
+    let displayMove = '';
+    const tilesBeingMoved = new Array<MachineLetter>();
+
+    const parts = kv['currmove'].split('.');
+    // coordinates will be valid, since UCGI will not send invalid coordinates.
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const coords = parseCoordinates(parts[0])!;
+    const vertical = !coords.horizontal;
+    const row = coords.row;
+    const col = coords.col;
+
+    const rowStr = String(row + 1);
+    const colStr = String.fromCharCode(col + 0x41);
+    const coordinates = vertical ? `${colStr}${rowStr}` : `${rowStr}${colStr}`;
+
+    // convert to machine letters.. only to convert back to runes. It's ok.
+    const word = runesToMachineWord(parts[1], alphabet);
+
+    // copy some of this from analyzerMoveFromJsonMove
+    let r = row;
+    let c = col;
+    let inParen = false;
+    for (const t of word) {
+      if (letters[r * dim + c] !== 0) {
+        // There is already a tile in the board at this position.
+        if (!inParen) {
+          displayMove += '(';
+          inParen = true;
+        }
+        displayMove += machineLetterToRune(
+          letters[r * dim + c],
+          alphabet,
+          false,
+          true
+        );
+        tilesBeingMoved.push(0); // through space
+      } else {
+        if (inParen) {
+          displayMove += ')';
+          inParen = false;
+        }
+        const tileLabel = machineLetterToRune(t, alphabet, false, true);
+        displayMove += tileLabel;
+        tilesBeingMoved.push(t);
+        // When t is negative, consume blank tile from rack.
+        const usedTileIndex = leaveNum.lastIndexOf(Math.max(t, 0));
+        if (usedTileIndex >= 0) {
+          leaveWithGaps[usedTileIndex] = EmptyRackSpaceMachineLetter;
+          leaveNum[usedTileIndex] = EmptyRackSpaceMachineLetter;
+        }
+      }
+      if (vertical) ++r;
+      else ++c;
+    }
+    if (inParen) displayMove += ')';
+
+    // sortTiles takes out the gaps:
+    leaveNum = sortTiles(leaveNum, alphabet);
+    return {
+      jsonKey,
+      displayMove,
+      coordinates,
+      leave: leaveNum,
+      leaveWithGaps,
+      vertical,
+      col,
+      row,
+      score: parseInt(kv['sc'], 10),
+      equity: parseFloat(kv['eq']),
+      winpct: 'wp' in kv ? parseFloat(kv['wp']) : undefined,
+      tiles: tilesBeingMoved,
+      isExchange: false,
+      valid: kv['valid'] === 'true',
+      invalid_words: kv['invalid_words']?.split(',') ?? undefined,
+    };
+  }
+};
+
 const parseExaminableGameContext = (
   examinableGameContext: GameState,
   lexicon: string,
@@ -372,10 +540,6 @@ export const AnalyzerContextProvider = ({
   const [autoMode, setAutoMode] = useState(false);
   const [unrace, setUnrace] = useState(new Unrace());
 
-  const magpieProgressCallback = useCallback((s: string) => {
-    console.log('callback ' + s);
-  }, []);
-
   const { gameContext: examinableGameContext } =
     useExaminableGameContextStoreContext();
 
@@ -387,6 +551,18 @@ export const AnalyzerContextProvider = ({
     movesCacheRef.current = [];
     setUnrace(new Unrace());
   }, [examinableGameContext.gameID]);
+
+  useEffect(() => {
+    console.log('Subscribing to magpie.stdout');
+    const { unsubscribe } = subscribe('magpie.stdout', (d: string) => {
+      console.log('data', d);
+    });
+
+    return () => {
+      console.log('unsubscribing');
+      unsubscribe();
+    };
+  }, []);
 
   const requestAnalysis = useCallback(
     (lexicon, variant) => {
@@ -422,10 +598,7 @@ export const AnalyzerContextProvider = ({
             analyzerBinary = await getWolges(effectiveLexicon);
             binaryName = 'wolges';
           } else {
-            analyzerBinary = await getMagpie(
-              effectiveLexicon,
-              magpieProgressCallback
-            );
+            analyzerBinary = await getMagpie(effectiveLexicon);
             binaryName = 'magpie';
           }
           if (examinerIdAtStart !== examinerId.current) return;
@@ -442,8 +615,8 @@ export const AnalyzerContextProvider = ({
             movesCache[turn] = formattedMoves;
             rerenderMoves();
           } else if (binaryName === 'magpie') {
-            analyzerBinary.processUCGICommand(`position cgp ${cgp}`);
-            analyzerBinary.processUCGICommand(
+            await analyzerBinary.processUCGICommand(`position cgp ${cgp}`);
+            await analyzerBinary.processUCGICommand(
               `go static threads ${maxThreads} depth 5 stopcondition 99`
             );
           }
@@ -689,7 +862,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           analyzerBinary = await getWolges(effectiveLexicon);
           binaryName = 'wolges';
         } else {
-          analyzerBinary = await getMagpie(effectiveLexicon, () => {});
+          analyzerBinary = await getMagpie(effectiveLexicon);
           binaryName = 'magpie';
         }
         if (evaluatedMoveIdAtStart !== evaluatedMoveId.current) return;
@@ -742,16 +915,42 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
             actualEventNonNull.rack
           );
 
+          const tiles = runesToMachineWord(
+            actualEventNonNull.playedTiles,
+            alphabet
+          );
+
           const moveStr = await analyzerBinary.scorePlay(
             cgp,
             moveType,
             actualEventNonNull.row,
             actualEventNonNull.column,
             actualEventNonNull.direction === GameEvent_Direction.VERTICAL,
-            runesToMachineWord(actualEventNonNull.playedTiles, alphabet),
+            tiles,
             runesToMachineWord(leave, alphabet)
           );
-          console.log('moveStr is', moveStr);
+          const analyzerMove = analyzerMoveFromUCGIString(
+            moveStr,
+            dim,
+            letters,
+            rackNum,
+            alphabet
+          );
+          const moveObj = {
+            equity: analyzerMove.equity,
+            action: analyzerMove.isExchange ? 'exchange' : 'play',
+            valid: analyzerMove.valid,
+            // doesn't matter what we put for tiles here, we're not using this value:
+            tiles: new Array<number>(),
+          };
+          setEvaluatedMove({
+            evaluatedMoveId: evaluatedMoveIdAtStart,
+            moveObj: moveObj as JsonMove,
+            analyzerMove: {
+              ...analyzerMove,
+              chosen: true,
+            },
+          });
         }
       })();
     }

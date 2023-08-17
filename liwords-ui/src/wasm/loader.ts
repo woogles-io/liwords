@@ -1,3 +1,4 @@
+import { publish } from '../shared/pubsub';
 import { Unrace } from '../utils/unrace';
 import MAGPIE from 'magpie-wasm';
 
@@ -7,8 +8,6 @@ export enum MagpieMoveTypes {
   Pass = 2,
 }
 
-let magpieParams;
-
 let pleaseLoadMagpie: (value: unknown) => void;
 const canLoadMagpie = new Promise((res, rej) => {
   pleaseLoadMagpie = res;
@@ -16,8 +15,12 @@ const canLoadMagpie = new Promise((res, rej) => {
 
 const magpiePromise = (async () => {
   await canLoadMagpie;
-  const magpie = await MAGPIE(magpieParams);
-
+  const magpie = await MAGPIE({
+    print: (s: string) => {
+      publish('magpie.stdout', s);
+    },
+  });
+  console.log('I have awaited and loaded MAGPIE');
   const precacheWrapper = magpie.cwrap('precache_file_data', null, [
     'number',
     'number',
@@ -66,16 +69,6 @@ const magpiePromise = (async () => {
     tiles: Uint8Array,
     leave: Uint8Array
   ) => {
-    console.log(
-      'Got scorePlay request:',
-      cgpstr,
-      moveType,
-      row,
-      col,
-      vertical,
-      tiles,
-      leave
-    );
     const cgpC = magpie.stringToNewUTF8(cgpstr);
     const ret = scorePlayWrapper(
       cgpC,
@@ -337,10 +330,7 @@ export const getWolges = async (lexicon: string) =>
     return wolges;
   });
 
-export const getMagpie = async (
-  lexicon: string,
-  printCallback: (s: string) => void
-) =>
+export const getMagpie = async (lexicon: string) =>
   unrace.run(async () => {
     // Allow these files to start loading.
     const effectiveLoadables = [
@@ -350,13 +340,9 @@ export const getMagpie = async (
     for (const loadable of effectiveLoadables) {
       loadable.startFetch();
     }
-    magpieParams = {
-      print: printCallback,
-    };
 
     pleaseLoadMagpie(undefined);
     const magpie = await magpiePromise;
-    magpieParams = undefined;
     let cachedStuffs = magpieCache.get(magpie);
     if (!cachedStuffs) {
       magpieCache.set(magpie, (cachedStuffs = {}));

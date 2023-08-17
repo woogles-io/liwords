@@ -1,37 +1,5 @@
 /** @fileoverview business logic for handling blindfold events */
 
-export type BlindfoldCoordinates = {
-  row: number;
-  col: number;
-  horizontal: boolean;
-};
-
-export const parseBlindfoldCoordinates = (
-  coordinates: string
-): BlindfoldCoordinates | undefined => {
-  const horizontalRegex = /^([0-9][0-9]?)([A-U])$/;
-  const matches = coordinates.match(horizontalRegex);
-  let row = -1;
-  let col = -1;
-  let horizontal = false;
-  if (matches && matches[1] !== undefined && matches[2] !== undefined) {
-    row = parseInt(matches[1]) - 1;
-    col = matches[2].charCodeAt(0) - 65;
-    horizontal = true;
-  } else {
-    const verticalRegex = /^([A-U])([0-9][0-9]?)$/;
-    const matches = coordinates.match(verticalRegex);
-    if (matches && matches[1] !== undefined && matches[2] !== undefined) {
-      row = parseInt(matches[2]) - 1;
-      col = matches[1].charCodeAt(0) - 65;
-      horizontal = false;
-    }
-  }
-  if (row < 0) {
-    return undefined;
-  }
-  return { row: row, col: col, horizontal: horizontal };
-};
 export const letterPronunciations = new Map([
   ['A', 'A'],
   ['B', 'B'],
