@@ -40,7 +40,7 @@ export const lexiconOrder = [
   'ECWL',
   'RD28',
   'FRA20',
-  'NSF22',
+  'NSF23',
   'NSWL20',
   'DISC2',
 ];

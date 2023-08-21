@@ -118,7 +118,7 @@ export const SoughtGames = (props: Props) => {
         'ECWL',
         'RD28',
         'FRA20',
-        'NSF22',
+        'NSF23',
         'DISC2',
       ].map((l) => ({
         text: <MatchLexiconDisplay lexiconCode={l} />,
