@@ -43,7 +43,6 @@ services:
       - .:/opt/program:rw
       - ./data/lexica/gaddag:/opt/program/data/lexica/gaddag
       - ../macondo/data/strategy:/opt/program/data/strategy
-      - ./data/lexica/dawg:/opt/program/data/lexica/dawg
       - ${AWS_CREDENTIALS_PATH:-~/.aws}:/root/.aws:ro
     command: sh -c "go run -race cmd/liwords-api/*.go"
     depends_on:
@@ -82,7 +81,6 @@ services:
       - ../macondo:/opt/program:rw
       # Use the same gaddag files we use for the WASM integration.
       - ./data/lexica/gaddag:/opt/program/data/lexica/gaddag
-      - ./data/lexica/dawg:/opt/program/data/lexica/dawg
     command: sh -c "go run -race cmd/bot/*.go"
     depends_on: [ "nats" ]
     networks:

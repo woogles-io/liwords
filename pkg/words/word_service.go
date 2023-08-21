@@ -23,23 +23,23 @@ type WordService struct {
 
 // NewWordService creates a Twirp WordService
 func NewWordService(cfg *macondoconfig.Config) *WordService {
-	dawgPath := filepath.Join(cfg.LexiconPath, "dawg")
-	dawgDir, err := os.Open(dawgPath)
+	kwgPath := filepath.Join(cfg.LexiconPath, "gaddag")
+	kwgDir, err := os.Open(kwgPath)
 	var filenames []string
 	if err != nil {
-		log.Warn().Err(err).Msgf("cannot open directory %s", dawgPath)
+		log.Warn().Err(err).Msgf("cannot open directory %s", kwgPath)
 	} else {
-		filenames, err = dawgDir.Readdirnames(-1)
+		filenames, err = kwgDir.Readdirnames(-1)
 		if err != nil {
-			log.Warn().Err(err).Msgf("cannot readdir %s", dawgPath)
+			log.Warn().Err(err).Msgf("cannot readdir %s", kwgPath)
 		}
-		dawgDir.Close()
+		kwgDir.Close()
 	}
 
 	definitionSources := make(map[string]*defSource)
 	dictionaryPath := filepath.Join(cfg.LexiconPath, "words")
 	for _, filename := range filenames {
-		lexicon := strings.TrimSuffix(filename, ".dawg")
+		lexicon := strings.TrimSuffix(filename, ".kwg")
 		if len(lexicon) == len(filename) {
 			continue
 		}
