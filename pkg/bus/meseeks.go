@@ -371,11 +371,23 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.SeekRequest, botUserID str
 	var err error
 	var accUser *entity.User
 
-	if req.GameRequest != nil && req.GameRequest.Rules != nil &&
-		req.GameRequest.Rules.VariantName == string(game.VarWordSmog) &&
-		req.GameRequest.BotType != macondopb.BotRequest_HASTY_BOT {
-
-		return errors.New("only HastyBot can play WordSmog at this time")
+	if req.GameRequest != nil && req.GameRequest.Rules != nil {
+		if req.GameRequest.Rules.VariantName == string(game.VarWordSmog) &&
+			req.GameRequest.BotType != macondopb.BotRequest_HASTY_BOT {
+			return errors.New("only HastyBot can play WordSmog at this time")
+		}
+		if req.GameRequest.BotType == macondopb.BotRequest_SIMMING_BOT {
+			if req.GameRequest.Rules.VariantName == string(game.VarClassicSuper) {
+				return errors.New("that variant is not supported for BestBot yet")
+			}
+			if req.GameRequest.InitialTimeSeconds < 300 {
+				return errors.New("BestBot needs more time than that to play at its best.")
+			}
+			if strings.HasSuffix(req.User.RelevantRating, "?") {
+				log.Info().Str("relevant-rating", req.User.RelevantRating).Str("username", req.User.DisplayName).Msg("user-rating-not-allowed")
+				return errors.New("please play some more games first before you challenge BestBot")
+			}
+		}
 	}
 
 	if botUserID == "" {

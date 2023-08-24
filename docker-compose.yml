@@ -81,6 +81,7 @@ services:
       - ../macondo:/opt/program:rw
       # Use the same gaddag files we use for the WASM integration.
       - ./data/lexica/gaddag:/opt/program/data/lexica/gaddag
+      - ${AWS_CREDENTIALS_PATH:-~/.aws}:/root/.aws:ro
     command: sh -c "go run -race cmd/bot/*.go"
     depends_on: [ "nats" ]
     networks:
