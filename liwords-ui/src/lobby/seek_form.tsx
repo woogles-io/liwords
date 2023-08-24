@@ -179,6 +179,11 @@ export const SeekForm = (props: Props) => {
     []
   );
 
+  const enableGrandmasterBot = React.useMemo(
+    () => localStorage.getItem('enableGrandmastaP') === 'true',
+    []
+  );
+
   let storageKey = 'lastSeekForm';
   if (props.vsBot) {
     storageKey = 'lastBotForm';
@@ -438,6 +443,17 @@ export const SeekForm = (props: Props) => {
     }
   }, [defaultOptions, usernameOptions]);
 
+  const botTypes = [
+    BotTypesEnum.MASTER,
+    BotTypesEnum.EXPERT,
+    BotTypesEnum.INTERMEDIATE,
+    BotTypesEnum.EASY,
+    BotTypesEnum.BEGINNER,
+  ];
+  if (enableGrandmasterBot) {
+    botTypes.splice(0, 0, BotTypesEnum.GRANDMASTER);
+  }
+
   return (
     <Form
       id={props.id}
@@ -454,13 +470,7 @@ export const SeekForm = (props: Props) => {
       {props.vsBot && (
         <Form.Item label="Select bot level" name="botType">
           <Select listHeight={500}>
-            {[
-              BotTypesEnum.MASTER,
-              BotTypesEnum.EXPERT,
-              BotTypesEnum.INTERMEDIATE,
-              BotTypesEnum.EASY,
-              BotTypesEnum.BEGINNER,
-            ].map((v) => (
+            {botTypes.map((v) => (
               <Select.Option value={v} key={v}>
                 <span className="level">
                   {BotTypesEnumProperties[v].userVisible}{' '}

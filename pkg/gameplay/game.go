@@ -703,8 +703,9 @@ func potentiallySendBotMoveRequest(ctx context.Context, userStore user.Store, g 
 	}
 
 	evt := proto.Clone(&macondopb.BotRequest{
-		GameHistory: g.History(),
-		BotType:     g.GameReq.BotType,
+		GameHistory:     g.History(),
+		BotType:         g.GameReq.BotType,
+		MillisRemaining: int32(g.TimeRemaining(g.PlayerOnTurn())),
 	}).(*macondopb.BotRequest)
 	// message type doesn't matter here; we're going to make sure
 	// this doesn't get serialized with a message type.

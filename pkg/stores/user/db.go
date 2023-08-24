@@ -35,6 +35,8 @@ var botNames = map[macondopb.BotRequest_BotCode]string{
 	macondopb.BotRequest_LEVEL1_CEL_BOT: "BeginnerBot",
 	macondopb.BotRequest_LEVEL2_CEL_BOT: "BasicBot",
 	macondopb.BotRequest_LEVEL4_CEL_BOT: "BetterBot",
+
+	macondopb.BotRequest_SIMMING_BOT: "BestBot",
 }
 
 var userActionsSQLSelection = "user_actions.id, user_actions.user_id, user_actions.action_type, user_actions.start_time, user_actions.end_time, user_actions.removed_time, user_actions.message_id, user_actions.applier_id, user_actions.remover_id, user_actions.note, user_actions.removal_note, user_actions.chat_text, user_actions.email_type"

@@ -6,6 +6,7 @@ export enum BotTypesEnum {
   INTERMEDIATE,
   EASY,
   BEGINNER,
+  GRANDMASTER,
 }
 
 // isEnglish (but not CEL, that is handled separately)
@@ -13,6 +14,16 @@ const isEnglish = (lexicon: string) =>
   lexicon.startsWith('CSW') || lexicon.startsWith('NWL');
 
 export const BotTypesEnumProperties = {
+  [BotTypesEnum.GRANDMASTER]: {
+    userVisible: 'Grandmaster',
+    botName: 'BestBot',
+    shortDescription: '470 point average',
+    description: (lexicon: string) =>
+      'BestBot is our best bot yet, and perhaps the strongest OMGWords AI ' +
+      'ever built. It is not as fast as HastyBot, but it makes up for it by ' +
+      'playing more thoughtfully. Do you have what it takes to beat it?',
+    botCode: (lexicon: string) => BotRequest_BotCode.SIMMING_BOT,
+  },
   [BotTypesEnum.MASTER]: {
     userVisible: 'Master',
     botName: 'HastyBot',

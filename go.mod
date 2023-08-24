@@ -1,16 +1,18 @@
 module github.com/domino14/liwords
 
-go 1.20
+go 1.21
+
+toolchain go1.21.0
 
 require (
-	github.com/aws/aws-sdk-go-v2 v1.16.16
-	github.com/aws/aws-sdk-go-v2/config v1.17.7
+	github.com/aws/aws-sdk-go-v2 v1.21.0
+	github.com/aws/aws-sdk-go-v2/config v1.18.36
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.33
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.18.22
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.27.11
-	github.com/aws/smithy-go v1.13.3
+	github.com/aws/smithy-go v1.14.2
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/domino14/macondo v0.6.7
+	github.com/domino14/macondo v0.8.6-0.20230823043208-0b64d50fc08b
 	github.com/go-redsync/redsync/v4 v4.7.1
 	github.com/golang-migrate/migrate/v4 v4.15.2
 	github.com/gomodule/redigo v1.8.9
@@ -41,20 +43,20 @@ require (
 	github.com/PuerkitoBio/goquery v1.8.0 // indirect
 	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
 	github.com/andybalholm/cascadia v1.3.1 // indirect
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.8 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.12.20 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.17 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.23 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.17 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.24 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.13 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.13.35 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.11 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.41 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.35 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.42 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.0.14 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.9.9 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.1.18 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.17 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.35 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.13.17 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.11.23 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.13.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.16.19 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.13.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.15.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.21.5 // indirect
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -79,14 +81,16 @@ require (
 	github.com/nats-io/jwt/v2 v2.4.0 // indirect
 	github.com/nats-io/nkeys v0.4.4 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
+	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rs/xid v1.4.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
-	golang.org/x/exp v0.0.0-20230307190834-24139beb5833 // indirect
+	golang.org/x/exp v0.0.0-20230321023759-10a507213a29 // indirect
 	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/text v0.8.0 // indirect
+	gonum.org/v1/gonum v0.13.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gorm.io/driver/mysql v1.3.6 // indirect
 )
