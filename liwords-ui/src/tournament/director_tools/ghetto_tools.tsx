@@ -245,7 +245,8 @@ const PlayersFormItem = (props: {
     if (!thisDivPlayers) {
       return null;
     }
-    const players = thisDivPlayers.sort(
+    const playersCopy = [...thisDivPlayers];
+    const players = playersCopy.sort(
       (a: TournamentPerson, b: TournamentPerson) => {
         const usera = username(a.id);
         const userb = username(b.id);
