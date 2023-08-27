@@ -15,7 +15,7 @@ import {
 } from 'antd';
 import { Modal } from '../../utils/focus_modal';
 import { Store } from 'rc-field-form/lib/interface';
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   SingleRoundControlsRequest,
   TType,
@@ -39,6 +39,7 @@ import {
   RoundControl,
   FirstMethod,
   DivisionRoundControls,
+  TournamentPerson,
 } from '../../gen/api/proto/ipc/tournament_pb';
 import { GameRequest } from '../../gen/api/proto/ipc/omgwords_pb';
 import { HelptipLabel } from './helptip_label';
@@ -238,10 +239,30 @@ const PlayersFormItem = (props: {
   division: string;
 }) => {
   const { tournamentContext } = useTournamentStoreContext();
+  const thisDivPlayers = tournamentContext.divisions[props.division]?.players;
+  const alphabetizedUsers = useMemo(() => {
+    if (!thisDivPlayers) {
+      return null;
+    }
+    const players = thisDivPlayers.sort(
+      (a: TournamentPerson, b: TournamentPerson) => {
+        const usera = username(a.id);
+        const userb = username(b.id);
+        if (usera < userb) {
+          return -1;
+        } else if (usera > userb) {
+          return 1;
+        }
+        return 0;
+      }
+    );
+    return players;
+  }, [thisDivPlayers]);
+
   return (
     <Form.Item name={props.name} label={props.label}>
       <Select>
-        {tournamentContext.divisions[props.division]?.players.map((v) => {
+        {alphabetizedUsers?.map((v) => {
           const u = username(v.id);
           return (
             <Select.Option value={u} key={v.id}>
