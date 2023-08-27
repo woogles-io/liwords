@@ -2,6 +2,7 @@
 
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import {
+  AutoComplete,
   Button,
   Collapse,
   Divider,
@@ -240,7 +241,7 @@ const PlayersFormItem = (props: {
 }) => {
   const { tournamentContext } = useTournamentStoreContext();
   const thisDivPlayers = tournamentContext.divisions[props.division]?.players;
-  const alphabetizedUsers = useMemo(() => {
+  const alphabetizedOptions = useMemo(() => {
     if (!thisDivPlayers) {
       return null;
     }
@@ -256,21 +257,19 @@ const PlayersFormItem = (props: {
         return 0;
       }
     );
-    return players;
+    return players.map((u) => ({ value: username(u.id) }));
   }, [thisDivPlayers]);
 
   return (
     <Form.Item name={props.name} label={props.label}>
-      <Select>
-        {alphabetizedUsers?.map((v) => {
-          const u = username(v.id);
-          return (
-            <Select.Option value={u} key={v.id}>
-              {u}
-            </Select.Option>
-          );
-        })}
-      </Select>
+      {alphabetizedOptions ? (
+        <AutoComplete
+          options={alphabetizedOptions}
+          filterOption={(inputValue, option) =>
+            option?.value.toUpperCase().indexOf(inputValue.toUpperCase()) !== -1
+          }
+        />
+      ) : null}
     </Form.Item>
   );
 };
