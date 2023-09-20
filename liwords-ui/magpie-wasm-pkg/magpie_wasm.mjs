@@ -10,7 +10,7 @@ f.ready = new Promise((a, b) => {
   aa = a;
   ba = b;
 });
-"_free _main _malloc _precache_file_data _process_ucgi_command _score_play __emscripten_thread_init __emscripten_thread_exit __emscripten_thread_crashed __emscripten_thread_mailbox_await __emscripten_tls_init _pthread_self checkMailbox establishStackSpace invokeEntryPoint PThread _fflush __emscripten_check_mailbox onRuntimeInitialized".split(" ").forEach(a => {
+"_free _main _malloc _precache_file_data _process_ucgi_command_wasm _score_play _destroy_cache _ucgi_search_status_wasm _ucgi_stop_search_wasm _static_evaluation __emscripten_thread_init __emscripten_thread_exit __emscripten_thread_crashed __emscripten_thread_mailbox_await __emscripten_tls_init _pthread_self checkMailbox establishStackSpace invokeEntryPoint PThread _fflush __emscripten_check_mailbox onRuntimeInitialized".split(" ").forEach(a => {
   Object.getOwnPropertyDescriptor(f.ready, a) || Object.defineProperty(f.ready, a, {get:() => l("You are getting " + a + " on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js"), set:() => l("You are setting " + a + " on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js"),});
 });
 var ca = Object.assign({}, f), da = (a, b) => {
@@ -1881,9 +1881,13 @@ var Oc = [null, Yb, $b, lc, nc, pc, qc, Fc, Gc, Hc, Ic], Qc = {__assert_fail:(a,
 var yc = f._malloc = N("malloc");
 f._free = N("free");
 f._precache_file_data = N("precache_file_data");
+f._destroy_cache = N("destroy_cache");
 var Rc = f._fflush = N("fflush");
-f._process_ucgi_command = N("process_ucgi_command");
 f._score_play = N("score_play");
+f._static_evaluation = N("static_evaluation");
+f._process_ucgi_command_wasm = N("process_ucgi_command_wasm");
+f._ucgi_search_status_wasm = N("ucgi_search_status_wasm");
+f._ucgi_stop_search_wasm = N("ucgi_stop_search_wasm");
 var Sc = f._main = N("main");
 f.__emscripten_tls_init = N("_emscripten_tls_init");
 var ec = f._pthread_self = function() {

@@ -438,7 +438,7 @@ const analyzerMoveFromUCGIString = (
       winpct: 'wp' in kv ? parseFloat(kv['wp']) : undefined,
       tiles: tilesBeingMoved,
       isExchange: false,
-      valid: kv['valid'] === 'true',
+      valid: kv['valid'] === 'true' || kv['valid'] == undefined,
       invalid_words: kv['invalid_words']?.split(',') ?? undefined,
     };
   }
@@ -615,10 +615,27 @@ export const AnalyzerContextProvider = ({
             movesCache[turn] = formattedMoves;
             rerenderMoves();
           } else if (binaryName === 'magpie') {
-            await analyzerBinary.processUCGICommand(`position cgp ${cgp}`);
-            await analyzerBinary.processUCGICommand(
-              `go static threads ${maxThreads} depth 5 stopcondition 99`
-            );
+            const resp = await analyzerBinary.staticEvaluation(cgp, 15);
+            console.log('resp', resp);
+            const formattedMoves = resp
+              .split('\n')
+              .filter((move: string) => move && !move.startsWith('bestmove'))
+              .map((move: string) =>
+                analyzerMoveFromUCGIString(
+                  move,
+                  dim,
+                  letters,
+                  rackNum,
+                  alphabet
+                )
+              );
+            movesCache[turn] = formattedMoves;
+            rerenderMoves();
+            // setTimeout(() => {
+            //   console.log('gonna get search status');
+            //   const status = analyzerBinary.searchStatus();
+            //   console.log('status', status);
+            // }, 100);
           }
         } catch (e) {
           if (examinerIdAtStart === examinerId.current) {
@@ -929,6 +946,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
             tiles,
             runesToMachineWord(leave, alphabet)
           );
+          console.log('moveStr', moveStr);
           const analyzerMove = analyzerMoveFromUCGIString(
             moveStr,
             dim,

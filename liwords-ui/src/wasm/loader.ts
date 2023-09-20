@@ -26,7 +26,16 @@ const magpiePromise = (async () => {
     'number',
     'number',
   ]);
-  const processUCGIWrapper = magpie.cwrap('process_ucgi_command', null, [
+  const processUCGIWrapper = magpie.cwrap('process_ucgi_command_wasm', null, [
+    'number',
+  ]);
+  const searchStatusWrapper = magpie.cwrap(
+    'ucgi_search_status_wasm',
+    'number',
+    []
+  );
+  const staticEvaluationWrapper = magpie.cwrap('static_evaluation', 'number', [
+    'number',
     'number',
   ]);
   /**
@@ -58,6 +67,22 @@ const magpiePromise = (async () => {
     const cmdC = magpie.stringToNewUTF8(cmd);
     processUCGIWrapper(cmdC);
     magpie._free(cmdC);
+  };
+
+  magpie.searchStatus = () => {
+    const utf8 = searchStatusWrapper();
+    const ret = magpie.UTF8ToString(utf8);
+    magpie._free(utf8);
+    return ret;
+  };
+
+  magpie.staticEvaluation = (cgp: string, nplays: number) => {
+    const cgpC = magpie.stringToNewUTF8(cgp);
+    const respC = staticEvaluationWrapper(cgpC, nplays);
+    const jsStr = magpie.UTF8ToString(respC);
+    magpie._free(cgpC);
+    magpie._free(respC);
+    return jsStr;
   };
 
   magpie.scorePlay = (
