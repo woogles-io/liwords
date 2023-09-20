@@ -38,7 +38,7 @@ import {
   runesToMachineWord,
 } from '../constants/alphabets';
 import { parseCoordinates, toFen } from '../utils/cwgame/board';
-import { computeLeave } from '../utils/cwgame/game_event';
+import { computeLeaveML } from '../utils/cwgame/game_event';
 import { subscribe } from '../shared/pubsub';
 
 type AnalyzerProps = {
@@ -871,10 +871,6 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
         } = parseExaminableGameContext(examinableGameContext, lexicon, variant);
         const boardObj = { ...bareBoardObj, plays: [actualMove] };
         let analyzerBinary, binaryName;
-        // actualEvent can't be null here due to the if (actualMove) null
-        // check earlier in this function:
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const actualEventNonNull = actualEvent!;
         if (variant === 'wordsmog' || variant === 'classic_super') {
           analyzerBinary = await getWolges(effectiveLexicon);
           binaryName = 'wolges';
@@ -920,33 +916,29 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
             });
           }
         } else if (binaryName === 'magpie') {
+          console.log('at beginning i guess', performance.now());
           let moveType = MagpieMoveTypes.Play;
-          if (actualEventNonNull.type === GameEvent_Type.PASS) {
-            moveType = MagpieMoveTypes.Pass;
-          } else if (actualEventNonNull.type === GameEvent_Type.EXCHANGE) {
-            moveType = MagpieMoveTypes.Exchange;
+          let playedTiles = actualMove.word;
+          if (actualMove.action === 'exchange') {
+            if (actualMove.tiles?.length === 0) {
+              playedTiles = [];
+              moveType = MagpieMoveTypes.Pass;
+            } else {
+              playedTiles = actualMove.tiles;
+              moveType = MagpieMoveTypes.Exchange;
+            }
           }
-
-          const leave = computeLeave(
-            actualEventNonNull.playedTiles || actualEventNonNull.exchanged,
-            actualEventNonNull.rack
-          );
-
-          const tiles = runesToMachineWord(
-            actualEventNonNull.playedTiles,
-            alphabet
-          );
+          playedTiles = playedTiles?.map(wolgesLetterToLiwordsLetter) || [];
 
           const moveStr = await analyzerBinary.scorePlay(
             cgp,
             moveType,
-            actualEventNonNull.row,
-            actualEventNonNull.column,
-            actualEventNonNull.direction === GameEvent_Direction.VERTICAL,
-            tiles,
-            runesToMachineWord(leave, alphabet)
+            actualMove.down ? actualMove.idx : actualMove.lane,
+            actualMove.down ? actualMove.lane : actualMove.idx,
+            actualMove.down,
+            playedTiles,
+            computeLeaveML(playedTiles, rackNum)
           );
-          console.log('moveStr', moveStr);
           const analyzerMove = analyzerMoveFromUCGIString(
             moveStr,
             dim,
@@ -969,10 +961,11 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
               chosen: true,
             },
           });
+          console.log('at end i guess', performance.now());
         }
       })();
     }
-  }, [actualMove, actualEvent, examinableGameContext, lexicon, variant]);
+  }, [actualMove, examinableGameContext, lexicon, variant]);
   const currentEvaluatedMove =
     evaluatedMove.evaluatedMoveId === evaluatedMoveId.current &&
     evaluatedMove.moveObj &&

@@ -6,6 +6,7 @@ import {
   isBlank,
   BlankMachineLetter,
   MachineLetter,
+  isDesignatedBlankMachineLetter,
 } from './common';
 import { contiguousTilesFromTileSet } from './scoring';
 import { Board } from './board';
@@ -187,4 +188,21 @@ export const computeLeaveWithGaps = (tilesPlayed: string, rack: string) => {
 export const computeLeave = (tilesPlayed: string, rack: string): string => {
   const lwg = computeLeaveWithGaps(tilesPlayed, rack);
   return Array.from(lwg.replaceAll(' ', '')).sort().join('');
+};
+
+export const computeLeaveML = (
+  tilesPlayed: MachineLetter[],
+  rack: MachineLetter[]
+): MachineLetter[] => {
+  const leave: Array<number | null> = Array.from(rack);
+  for (const letter of tilesPlayed) {
+    if (letter !== 0) {
+      const t = isDesignatedBlankMachineLetter(letter) ? 0 : letter;
+      const usedTileIndex = leave.lastIndexOf(t);
+      if (usedTileIndex >= 0) {
+        leave[usedTileIndex] = null;
+      }
+    }
+  }
+  return leave.filter((n) => n !== null) as MachineLetter[];
 };
