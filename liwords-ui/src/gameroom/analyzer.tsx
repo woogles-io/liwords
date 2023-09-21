@@ -616,7 +616,6 @@ export const AnalyzerContextProvider = ({
             rerenderMoves();
           } else if (binaryName === 'magpie') {
             const resp = await analyzerBinary.staticEvaluation(cgp, 15);
-            console.log('resp', resp);
             const formattedMoves = resp
               .split('\n')
               .filter((move: string) => move && !move.startsWith('bestmove'))
@@ -855,6 +854,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     moveObj: null,
     analyzerMove: null,
   });
+
   useEffect(() => {
     evaluatedMoveId.current = (evaluatedMoveId.current + 1) | 0;
     const evaluatedMoveIdAtStart = evaluatedMoveId.current;
@@ -871,6 +871,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
         } = parseExaminableGameContext(examinableGameContext, lexicon, variant);
         const boardObj = { ...bareBoardObj, plays: [actualMove] };
         let analyzerBinary, binaryName;
+
         if (variant === 'wordsmog' || variant === 'classic_super') {
           analyzerBinary = await getWolges(effectiveLexicon);
           binaryName = 'wolges';
@@ -878,6 +879,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           analyzerBinary = await getMagpie(effectiveLexicon);
           binaryName = 'magpie';
         }
+
         if (evaluatedMoveIdAtStart !== evaluatedMoveId.current) return;
 
         if (binaryName === 'wolges') {
@@ -916,7 +918,6 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
             });
           }
         } else if (binaryName === 'magpie') {
-          console.log('at beginning i guess', performance.now());
           let moveType = MagpieMoveTypes.Play;
           let playedTiles = actualMove.word;
           if (actualMove.action === 'exchange') {
@@ -939,6 +940,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
             playedTiles,
             computeLeaveML(playedTiles, rackNum)
           );
+
           const analyzerMove = analyzerMoveFromUCGIString(
             moveStr,
             dim,
@@ -961,7 +963,6 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
               chosen: true,
             },
           });
-          console.log('at end i guess', performance.now());
         }
       })();
     }
