@@ -117,9 +117,12 @@ func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, err
 		config:              cfg,
 		gameEventChan:       make(chan *entity.EventWrapper, 64),
 		tournamentEventChan: make(chan *entity.EventWrapper, 64),
-		genericEventChan:    make(chan *entity.EventWrapper, 64),
-		redisPool:           redisPool,
-		gameEventAPIServer:  NewEventApiServer(stores.UserStore, stores.GameStore),
+		// genericEventChan needs to be made a bit bigger for now because it handles
+		// follower messages. XXX: Need to fix follower msg architecture ASAP!
+		// See https://github.com/domino14/liwords/issues/1136
+		genericEventChan:   make(chan *entity.EventWrapper, 512),
+		redisPool:          redisPool,
+		gameEventAPIServer: NewEventApiServer(stores.UserStore, stores.GameStore),
 	}
 	bus.gameStore.SetGameEventChan(bus.gameEventChan)
 	bus.tournamentStore.SetTournamentEventChan(bus.tournamentEventChan)
@@ -186,7 +189,7 @@ outerfor:
 		// NATS message usually from socket service:
 		case msg := <-b.subchans["ipc.pb.>"]:
 			// Regular messages.
-			log := log.With().Interface("msg-subject", msg.Subject).Logger()
+			log := log.With().Str("msg-subject", msg.Subject).Logger()
 			log.Debug().Msg("got ipc.pb message")
 			subtopics := strings.Split(msg.Subject, ".")
 
@@ -207,7 +210,7 @@ outerfor:
 
 		// NATS message usually from socket service:
 		case msg := <-b.subchans["ipc.request.>"]:
-			log := log.With().Interface("msg-subject", msg.Subject).Logger()
+			log := log.With().Str("msg-subject", msg.Subject).Logger()
 			log.Debug().Msg("got ipc.request")
 			// Requests. We must respond on a specific topic.
 			subtopics := strings.Split(msg.Subject, ".")
@@ -512,7 +515,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 	if err == nil {
 		msgType = pb.MessageType(pnum).String()
 	}
-	// XXX: Otherwise, ignore error for now
+	// XXX: Otherwise, ignore error for now.
 
 	switch msgType {
 	case pb.MessageType_SEEK_REQUEST.String():
@@ -588,8 +591,8 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		return b.readyForTournamentGame(ctx, evt, userID, wsConnID)
 
-		// The messages after this are messages sent only from liwords-socket to liwords,
-		// so there are no MessageType enums for these. It's ok:
+	// The messages after this are internal messages sent only from liwords-socket
+	// to liwords, so there are no MessageType enums for these. It's ok:
 	case "initRealmInfo":
 		evt := &pb.InitRealmInfo{}
 		err := proto.Unmarshal(data, evt)
