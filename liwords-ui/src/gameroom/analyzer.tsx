@@ -322,6 +322,8 @@ const analyzerMoveFromUCGIString = (
       ...defaultRet,
       leave: rackNum,
       leaveWithGaps: rackNum,
+      equity: parseFloat(kv['eq']),
+      winpct: 'wp' in kv ? parseFloat(kv['wp']) : undefined,
     };
   }
   if (kv['currmove'].startsWith('ex.')) {
@@ -359,11 +361,12 @@ const analyzerMoveFromUCGIString = (
       leave: leaveNum,
       leaveWithGaps,
       equity: parseFloat(kv['eq']),
+      winpct: 'wp' in kv ? parseFloat(kv['wp']) : undefined,
       tiles: tilesBeingMoved,
       isExchange: true,
     };
   } else {
-    // it's a regular play
+    // it's a tile move play
     let leaveNum = [...rackNum];
     const leaveWithGaps = [...rackNum];
     let displayMove = '';
@@ -507,6 +510,8 @@ const parseExaminableGameContext = (
 const AnalyzerContext = React.createContext<{
   autoMode: boolean;
   setAutoMode: React.Dispatch<React.SetStateAction<boolean>>;
+  staticOnlyMode: boolean;
+  setStaticOnlyMode: React.Dispatch<React.SetStateAction<boolean>>;
   cachedMoves: Array<AnalyzerMove> | null;
   examinerLoading: boolean;
   requestAnalysis: (lexicon: string, variant?: string) => void;
@@ -514,13 +519,20 @@ const AnalyzerContext = React.createContext<{
   setShowMovesForTurn: (a: number) => void;
 }>({
   autoMode: false,
+  staticOnlyMode: false,
   cachedMoves: null,
   examinerLoading: false,
   requestAnalysis: (lexicon: string, variant?: string) => {},
   showMovesForTurn: -1,
   setShowMovesForTurn: (a: number) => {},
   setAutoMode: () => {},
+  setStaticOnlyMode: () => {},
 });
+
+type MovesCache = { [key: string]: Array<AnalyzerMove> | null };
+
+const cacheKey = (turn: number, staticOnlyMode: boolean) =>
+  `t${turn}-st${staticOnlyMode}`;
 
 export const AnalyzerContextProvider = ({
   children,
@@ -538,17 +550,19 @@ export const AnalyzerContextProvider = ({
   );
   const [showMovesForTurn, setShowMovesForTurn] = useState(-1);
   const [autoMode, setAutoMode] = useState(false);
+  const [staticOnlyMode, setStaticOnlyMode] = useState(false);
   const [unrace, setUnrace] = useState(new Unrace());
+  const [nps, setNps] = useState(0);
 
   const { gameContext: examinableGameContext } =
     useExaminableGameContextStoreContext();
 
   const examinerId = useRef(0);
-  const movesCacheRef = useRef<Array<Array<AnalyzerMove> | null>>([]);
+  const movesCacheRef = useRef<MovesCache>({});
   const maxThreads = Math.max(navigator.hardwareConcurrency - 1, 1);
   useEffect(() => {
     examinerId.current = (examinerId.current + 1) | 0;
-    movesCacheRef.current = [];
+    movesCacheRef.current = {};
     setUnrace(new Unrace());
   }, [examinableGameContext.gameID]);
 
@@ -569,12 +583,13 @@ export const AnalyzerContextProvider = ({
       const examinerIdAtStart = examinerId.current;
       const turn = examinableGameContext.turns.length;
       if (nocache) {
-        movesCacheRef.current = [];
+        movesCacheRef.current = {};
       }
       const movesCache = movesCacheRef.current;
+      const ck = cacheKey(turn, staticOnlyMode);
       // null = loading. undefined = not yet requested.
-      if (movesCache[turn] !== undefined) return;
-      movesCache[turn] = null;
+      if (movesCache[ck] !== undefined) return;
+      movesCache[ck] = null;
 
       unrace.run(async () => {
         try {
@@ -612,24 +627,63 @@ export const AnalyzerContextProvider = ({
             const formattedMoves = movesObj.map((move) =>
               analyzerMoveFromJsonMove(move, dim, letters, rackNum, alphabet)
             );
-            movesCache[turn] = formattedMoves;
+            movesCache[ck] = formattedMoves;
             rerenderMoves();
           } else if (binaryName === 'magpie') {
-            const resp = await analyzerBinary.staticEvaluation(cgp, 15);
-            const formattedMoves = resp
-              .split('\n')
-              .filter((move: string) => move && !move.startsWith('bestmove'))
-              .map((move: string) =>
-                analyzerMoveFromUCGIString(
-                  move,
-                  dim,
-                  letters,
-                  rackNum,
-                  alphabet
-                )
+            let resp = '';
+            if (staticOnlyMode) {
+              resp = await analyzerBinary.staticEvaluation(cgp, 15);
+              const formattedMoves = resp
+                .split('\n')
+                .filter((move: string) => move && !move.startsWith('bestmove'))
+                .map((move: string) =>
+                  analyzerMoveFromUCGIString(
+                    move,
+                    dim,
+                    letters,
+                    rackNum,
+                    alphabet
+                  )
+                );
+              movesCache[ck] = formattedMoves;
+              rerenderMoves();
+            } else {
+              await analyzerBinary.processUCGICommand(`position cgp ${cgp}`);
+              await analyzerBinary.processUCGICommand(
+                `go sim threads ${maxThreads} plays 40 stopcondition 95 depth 5 i 10000 checkstop 500`
               );
-            movesCache[turn] = formattedMoves;
-            rerenderMoves();
+              const interval = setInterval(async () => {
+                const status = (await analyzerBinary.searchStatus()) as string;
+                const lines = status.split('\n');
+                const moves = [];
+                for (let i = 0; i < lines.length; i++) {
+                  if (lines[i].startsWith('info nps')) {
+                    setNps(parseFloat(lines[i].substring(9)));
+                  } else if (
+                    lines[i].startsWith('bestmove') ||
+                    lines[i].startsWith('bestsofar')
+                  ) {
+                    continue;
+                  } else if (lines[i].trim() !== '') {
+                    moves.push(
+                      analyzerMoveFromUCGIString(
+                        lines[i],
+                        dim,
+                        letters,
+                        rackNum,
+                        alphabet
+                      )
+                    );
+                  }
+                }
+                movesCache[ck] = moves;
+                rerenderMoves();
+                if (status.includes('bestmove')) {
+                  console.log('stop interval');
+                  clearInterval(interval);
+                }
+              }, 500);
+            }
             // setTimeout(() => {
             //   console.log('gonna get search status');
             //   const status = analyzerBinary.searchStatus();
@@ -638,36 +692,49 @@ export const AnalyzerContextProvider = ({
           }
         } catch (e) {
           if (examinerIdAtStart === examinerId.current) {
-            movesCache[turn] = [];
+            movesCache[ck] = [];
             rerenderMoves();
           }
           throw e;
         }
       });
     },
-    [examinableGameContext, nocache, rerenderMoves, unrace, maxThreads]
+    [
+      examinableGameContext,
+      nocache,
+      rerenderMoves,
+      staticOnlyMode,
+      unrace,
+      maxThreads,
+    ]
   );
-
-  const cachedMoves = movesCacheRef.current[examinableGameContext.turns.length];
+  const cck = cacheKey(examinableGameContext.turns.length, staticOnlyMode);
+  const cachedMoves = movesCacheRef.current[cck];
   const examinerLoading = cachedMoves === null;
   const contextValue = useMemo(
     () => ({
       autoMode,
       setAutoMode,
+      staticOnlyMode,
+      setStaticOnlyMode,
       cachedMoves,
       examinerLoading,
       requestAnalysis,
       showMovesForTurn,
       setShowMovesForTurn,
+      nps,
     }),
     [
       autoMode,
       setAutoMode,
+      staticOnlyMode,
+      setStaticOnlyMode,
       cachedMoves,
       examinerLoading,
       requestAnalysis,
       showMovesForTurn,
       setShowMovesForTurn,
+      nps,
     ]
   );
 
@@ -741,11 +808,14 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   const {
     autoMode,
     setAutoMode,
+    staticOnlyMode,
+    setStaticOnlyMode,
     cachedMoves,
     examinerLoading,
     requestAnalysis,
     showMovesForTurn,
     setShowMovesForTurn,
+    nps,
   } = useContext(AnalyzerContext);
 
   const { gameContext: examinableGameContext } =
@@ -769,6 +839,10 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   const toggleAutoMode = useCallback(() => {
     setAutoMode((autoMode) => !autoMode);
   }, [setAutoMode]);
+  const toggleStaticOnlyMode = useCallback(() => {
+    setStaticOnlyMode((staticOnlyMode) => !staticOnlyMode);
+  }, [setStaticOnlyMode]);
+
   // Let ExaminableStore activate this.
   useEffect(() => {
     addHandleExaminer(handleExaminer);
@@ -1049,8 +1123,9 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           <td className="move-leave">
             {machineWordToRunes(m.leave, examinableGameContext.alphabet)}
           </td>
-          <td className="move-equity">
-            {(m.equity - equityBase).toFixed(2)}
+          <td className="move-equity">{(m.equity - equityBase).toFixed(2)}</td>
+          <td className="move-winpct">
+            {m.winpct !== undefined ? m.winpct.toFixed(2) + '%' : ''}
             {!(m.valid ?? true) && <React.Fragment>*</React.Fragment>}
           </td>
         </tr>
@@ -1076,7 +1151,12 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
 
       <div className="static-only">
         <p className="static-only-label">Rapid</p>
-        <Switch checked={false} className="static-only-toggle" size="small" />
+        <Switch
+          checked={staticOnlyMode}
+          onChange={toggleStaticOnlyMode}
+          className="static-only-toggle"
+          size="small"
+        />
       </div>
 
       <div className="auto-controls">
@@ -1094,6 +1174,9 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     <div className="analyzer-container">
       {!examinerLoading ? (
         <div className="suggestions" style={props.style}>
+          {nps !== 0 ? (
+            <div>{`${(nps / 1000).toFixed(2)}k nodes/sec`}</div>
+          ) : null}
           <table>
             <tbody>{renderAnalyzerMoves}</tbody>
           </table>
