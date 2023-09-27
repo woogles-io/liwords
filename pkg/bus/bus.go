@@ -37,9 +37,10 @@ import (
 const (
 	MaxMessageLength = 500
 
-	AdjudicateInterval   = 10 * time.Second
-	GamesCounterInterval = 60 * time.Minute
-	SeeksExpireInterval  = 10 * time.Minute
+	AdjudicateInterval     = 10 * time.Second
+	GamesCounterInterval   = 60 * time.Minute
+	SeeksExpireInterval    = 10 * time.Minute
+	ChannelMonitorInterval = 5 * time.Second
 	// Cancel a game if it hasn't started after this much time.
 	CancelAfter = 60 * time.Second
 )
@@ -182,6 +183,9 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 
 	seekExpirer := time.NewTicker(SeeksExpireInterval)
 	defer seekExpirer.Stop()
+
+	channelMonitor := time.NewTicker(ChannelMonitorInterval)
+	defer channelMonitor.Stop()
 
 outerfor:
 	for {
@@ -379,7 +383,25 @@ outerfor:
 					log.Err(err).Msg("expiration-error")
 				}
 			}()
+
+		case <-channelMonitor.C:
+			go func() {
+				log.Info().
+					Int("generic-events", len(b.genericEventChan)).
+					Int("game-events", len(b.gameEventChan)).
+					Int("tourney-events", len(b.tournamentEventChan)).
+					Int("ipc.pb-events", len(b.subchans["ipc.pb.>"])).
+					Int("ipc.request-events", len(b.subchans["ipc.request.>"])).
+					// These next two events go out to the socket, but we are also
+					// receiving them here for our someday bot API.
+					Int("outgoing-socket-user-events", len(b.subchans["user.>"])).
+					Int("outgoing-socket-game-events", len(b.subchans["game.>"])).
+					Int("bot-publish-events", len(b.subchans["bot.publish_event.>"])).
+					Msg("channel-buffer-lengths")
+			}()
+
 		}
+
 	}
 
 	log.Info().Msg("exiting processMessages loop")
