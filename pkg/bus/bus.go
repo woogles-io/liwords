@@ -37,9 +37,10 @@ import (
 const (
 	MaxMessageLength = 500
 
-	AdjudicateInterval   = 10 * time.Second
-	GamesCounterInterval = 60 * time.Minute
-	SeeksExpireInterval  = 10 * time.Minute
+	AdjudicateInterval     = 10 * time.Second
+	GamesCounterInterval   = 60 * time.Minute
+	SeeksExpireInterval    = 10 * time.Minute
+	ChannelMonitorInterval = 5 * time.Second
 	// Cancel a game if it hasn't started after this much time.
 	CancelAfter = 60 * time.Second
 )
@@ -117,9 +118,12 @@ func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, err
 		config:              cfg,
 		gameEventChan:       make(chan *entity.EventWrapper, 64),
 		tournamentEventChan: make(chan *entity.EventWrapper, 64),
-		genericEventChan:    make(chan *entity.EventWrapper, 64),
-		redisPool:           redisPool,
-		gameEventAPIServer:  NewEventApiServer(stores.UserStore, stores.GameStore),
+		// genericEventChan needs to be made a bit bigger for now because it handles
+		// follower messages. XXX: Need to fix follower msg architecture ASAP!
+		// See https://github.com/domino14/liwords/issues/1136
+		genericEventChan:   make(chan *entity.EventWrapper, 512),
+		redisPool:          redisPool,
+		gameEventAPIServer: NewEventApiServer(stores.UserStore, stores.GameStore),
 	}
 	bus.gameStore.SetGameEventChan(bus.gameEventChan)
 	bus.tournamentStore.SetTournamentEventChan(bus.tournamentEventChan)
@@ -180,13 +184,16 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 	seekExpirer := time.NewTicker(SeeksExpireInterval)
 	defer seekExpirer.Stop()
 
+	channelMonitor := time.NewTicker(ChannelMonitorInterval)
+	defer channelMonitor.Stop()
+
 outerfor:
 	for {
 		select {
 		// NATS message usually from socket service:
 		case msg := <-b.subchans["ipc.pb.>"]:
 			// Regular messages.
-			log := log.With().Interface("msg-subject", msg.Subject).Logger()
+			log := log.With().Str("msg-subject", msg.Subject).Logger()
 			log.Debug().Msg("got ipc.pb message")
 			subtopics := strings.Split(msg.Subject, ".")
 
@@ -207,7 +214,7 @@ outerfor:
 
 		// NATS message usually from socket service:
 		case msg := <-b.subchans["ipc.request.>"]:
-			log := log.With().Interface("msg-subject", msg.Subject).Logger()
+			log := log.With().Str("msg-subject", msg.Subject).Logger()
 			log.Debug().Msg("got ipc.request")
 			// Requests. We must respond on a specific topic.
 			subtopics := strings.Split(msg.Subject, ".")
@@ -376,7 +383,25 @@ outerfor:
 					log.Err(err).Msg("expiration-error")
 				}
 			}()
+
+		case <-channelMonitor.C:
+			go func() {
+				log.Info().
+					Int("generic-events", len(b.genericEventChan)).
+					Int("game-events", len(b.gameEventChan)).
+					Int("tourney-events", len(b.tournamentEventChan)).
+					Int("ipc.pb-events", len(b.subchans["ipc.pb.>"])).
+					Int("ipc.request-events", len(b.subchans["ipc.request.>"])).
+					// These next two events go out to the socket, but we are also
+					// receiving them here for our someday bot API.
+					Int("outgoing-socket-user-events", len(b.subchans["user.>"])).
+					Int("outgoing-socket-game-events", len(b.subchans["game.>"])).
+					Int("bot-publish-events", len(b.subchans["bot.publish_event.>"])).
+					Msg("channel-buffer-lengths")
+			}()
+
 		}
+
 	}
 
 	log.Info().Msg("exiting processMessages loop")
@@ -512,7 +537,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 	if err == nil {
 		msgType = pb.MessageType(pnum).String()
 	}
-	// XXX: Otherwise, ignore error for now
+	// XXX: Otherwise, ignore error for now.
 
 	switch msgType {
 	case pb.MessageType_SEEK_REQUEST.String():
@@ -588,8 +613,8 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		return b.readyForTournamentGame(ctx, evt, userID, wsConnID)
 
-		// The messages after this are messages sent only from liwords-socket to liwords,
-		// so there are no MessageType enums for these. It's ok:
+	// The messages after this are internal messages sent only from liwords-socket
+	// to liwords, so there are no MessageType enums for these. It's ok:
 	case "initRealmInfo":
 		evt := &pb.InitRealmInfo{}
 		err := proto.Unmarshal(data, evt)
