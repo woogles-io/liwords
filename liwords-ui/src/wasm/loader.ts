@@ -137,6 +137,16 @@ for (const { lexicons, cacheKey, path } of [
     cacheKey: 'klv/super-catalan',
     path: '/wasm/2023/super-catalan.klv2',
   },
+  {
+    lexicons: ['OSPS48'].flatMap((name) => [
+      name,
+      `${name}.WordSmog`,
+      `${name}.Super`,
+      `${name}.WordSmog.Super`,
+    ]),
+    cacheKey: 'klv/polish',
+    path: '/wasm/2023/polish.klv2',
+  },
   ...[
     'CSW19',
     'CSW19X',
@@ -153,7 +163,7 @@ for (const { lexicons, cacheKey, path } of [
     cacheKey: `kwg/${name}`,
     path: `/wasm/${name}.kwg`,
   })),
-  ...['CSW21', 'NWL20', 'RD28'].map((name) => ({
+  ...['CSW21', 'NWL20', 'RD28', 'OSPS48'].map((name) => ({
     lexicons: [name, `${name}.Super`],
     cacheKey: `kwg/${name}`,
     path: `/wasm/2023/${name}.kwg`,
@@ -174,7 +184,7 @@ for (const { lexicons, cacheKey, path } of [
     cacheKey: `kwg/${name}.WordSmog`,
     path: `/wasm/${name}.kad`,
   })),
-  ...['CSW21', 'NWL20', 'RD28'].map((name) => ({
+  ...['CSW21', 'NWL20', 'RD28', 'OSPS48'].map((name) => ({
     lexicons: [`${name}.WordSmog`, `${name}.WordSmog.Super`],
     cacheKey: `kwg/${name}.WordSmog`,
     path: `/wasm/2023/${name}.kad`,
