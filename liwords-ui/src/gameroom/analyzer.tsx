@@ -293,14 +293,17 @@ const parseExaminableGameContext = (
   const rackNum = sortTiles(players[onturn].currentRack, alphabet);
 
   let effectiveLexicon = lexicon;
+  let isSuper = false;
   let rules = 'CrosswordGame';
   if (variant === 'wordsmog') {
     effectiveLexicon = `${lexicon}.WordSmog`;
     rules = 'WordSmog';
   } else if (variant === 'classic_super') {
+    isSuper = true;
     rules = 'CrosswordGameSuper';
   } else if (variant === 'wordsmog_super') {
     effectiveLexicon = `${lexicon}.WordSmog`;
+    isSuper = true;
     rules = 'WordSmogSuper';
   }
   if (letterDistribution !== 'english') {
@@ -319,18 +322,34 @@ const parseExaminableGameContext = (
     lexicon: effectiveLexicon,
     leave:
       lexicon === 'CSW21'
-        ? lexicon
+        ? isSuper
+          ? 'super-CSW21'
+          : 'CSW21'
+        : lexicon === 'ECWL'
+        ? isSuper
+          ? 'super-CEL'
+          : 'CEL'
         : letterDistribution === 'english' ||
           letterDistribution === 'german' ||
           letterDistribution === 'norwegian' ||
           letterDistribution === 'french' ||
           letterDistribution === 'catalan'
-        ? letterDistribution
+        ? isSuper
+          ? `super-${letterDistribution}`
+          : letterDistribution
         : 'noleave',
     rules,
   };
 
-  return { dim, letters, rackNum, effectiveLexicon, boardObj, alphabet };
+  return {
+    dim,
+    letters,
+    rackNum,
+    effectiveLexicon,
+    isSuper,
+    boardObj,
+    alphabet,
+  };
 };
 
 const AnalyzerContext = React.createContext<{
@@ -399,6 +418,7 @@ export const AnalyzerContextProvider = ({
             letters,
             rackNum,
             effectiveLexicon,
+            isSuper,
             boardObj: bareBoardObj,
             alphabet,
           } = parseExaminableGameContext(
@@ -408,7 +428,9 @@ export const AnalyzerContextProvider = ({
           );
           const boardObj = { ...bareBoardObj, count: 15 };
 
-          const wolges = await getWolges(effectiveLexicon);
+          const wolges = await getWolges(
+            `${effectiveLexicon}${isSuper ? '.Super' : ''}`
+          );
           if (examinerIdAtStart !== examinerId.current) return;
 
           const boardStr = JSON.stringify(boardObj);
