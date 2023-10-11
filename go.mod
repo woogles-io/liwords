@@ -31,7 +31,7 @@ require (
 	github.com/rs/zerolog v1.29.0
 	github.com/samber/lo v1.37.0
 	github.com/twitchtv/twirp v8.1.2+incompatible
-	golang.org/x/crypto v0.7.0
+	golang.org/x/crypto v0.14.0
 	google.golang.org/protobuf v1.29.1
 	gorm.io/datatypes v1.0.7
 	gorm.io/driver/postgres v1.3.10
@@ -86,10 +86,10 @@ require (
 	github.com/rs/xid v1.4.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29 // indirect
-	golang.org/x/net v0.8.0 // indirect
+	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.6.0 // indirect
-	golang.org/x/text v0.8.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
 	gonum.org/v1/gonum v0.13.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gorm.io/driver/mysql v1.3.6 // indirect
