@@ -320,23 +320,24 @@ const parseExaminableGameContext = (
       )
     ),
     lexicon: effectiveLexicon,
-    leave: lexicon.startsWith('CSW')
-      ? isSuper
-        ? 'super-CSW'
-        : 'CSW'
-      : lexicon === 'ECWL'
-      ? isSuper
-        ? 'super-CEL'
-        : 'CEL'
-      : letterDistribution === 'english' ||
-        letterDistribution === 'german' ||
-        letterDistribution === 'norwegian' ||
-        letterDistribution === 'french' ||
-        letterDistribution === 'catalan'
-      ? isSuper
-        ? `super-${letterDistribution}`
-        : letterDistribution
-      : 'noleave',
+    leave:
+      lexicon.startsWith('NWL') || lexicon.startsWith('NSWL')
+        ? isSuper
+          ? 'super-american'
+          : 'american'
+        : lexicon === 'ECWL'
+        ? isSuper
+          ? 'super-CEL'
+          : 'CEL'
+        : letterDistribution === 'english' ||
+          letterDistribution === 'german' ||
+          letterDistribution === 'norwegian' ||
+          letterDistribution === 'french' ||
+          letterDistribution === 'catalan'
+        ? isSuper
+          ? `super-${letterDistribution}`
+          : letterDistribution
+        : 'noleave',
     rules,
   };
 

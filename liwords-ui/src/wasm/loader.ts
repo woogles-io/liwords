@@ -59,16 +59,16 @@ for (const { lexicons, cacheKey, path } of [
       name,
       `${name}.WordSmog`,
     ]),
-    cacheKey: 'klv/english',
-    path: '/wasm/2023/english.klv2',
+    cacheKey: 'klv/american',
+    path: '/wasm/2023/american.klv2',
   },
   {
     lexicons: ['NWL20', 'NWL18', 'NSWL20'].flatMap((name) => [
       `${name}.Super`,
       `${name}.WordSmog.Super`,
     ]),
-    cacheKey: 'klv/super-english',
-    path: '/wasm/2023/super-english.klv2',
+    cacheKey: 'klv/super-american',
+    path: '/wasm/2023/super-american.klv2',
   },
   {
     lexicons: ['ECWL'].flatMap((name) => [name, `${name}.WordSmog`]),
@@ -88,16 +88,16 @@ for (const { lexicons, cacheKey, path } of [
       name,
       `${name}.WordSmog`,
     ]),
-    cacheKey: 'klv/CSW',
-    path: '/wasm/2023/CSW.klv2',
+    cacheKey: 'klv/english',
+    path: '/wasm/2023/english.klv2',
   },
   {
     lexicons: ['CSW19', 'CSW19X', 'CSW21'].flatMap((name) => [
       `${name}.Super`,
       `${name}.WordSmog.Super`,
     ]),
-    cacheKey: 'klv/super-CSW',
-    path: '/wasm/2023/super-CSW.klv2',
+    cacheKey: 'klv/super-english',
+    path: '/wasm/2023/super-english.klv2',
   },
   {
     lexicons: ['FRA20'].flatMap((name) => [
