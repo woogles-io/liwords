@@ -517,6 +517,7 @@ const AnalyzerContext = React.createContext<{
   requestAnalysis: (lexicon: string, variant?: string) => void;
   showMovesForTurn: number;
   setShowMovesForTurn: (a: number) => void;
+  nps: number;
 }>({
   autoMode: false,
   staticOnlyMode: false,
@@ -527,6 +528,7 @@ const AnalyzerContext = React.createContext<{
   setShowMovesForTurn: (a: number) => {},
   setAutoMode: () => {},
   setStaticOnlyMode: () => {},
+  nps: 0,
 });
 
 type MovesCache = { [key: string]: Array<AnalyzerMove> | null };
@@ -567,6 +569,7 @@ export const AnalyzerContextProvider = ({
   }, [examinableGameContext.gameID]);
 
   useEffect(() => {
+    // note this is not really used for anything other than logging
     console.log('Subscribing to magpie.stdout');
     const { unsubscribe } = subscribe('magpie.stdout', (d: string) => {
       console.log('data', d);
@@ -607,20 +610,18 @@ export const AnalyzerContextProvider = ({
             variant
           );
           const boardObj = { ...bareBoardObj, count: 15 };
-          let analyzerBinary, binaryName;
+          let wolges, magpie;
           if (variant === 'wordsmog' || variant === 'classic_super') {
             // magpie doesn't yet support these variants
-            analyzerBinary = await getWolges(effectiveLexicon);
-            binaryName = 'wolges';
+            wolges = await getWolges(effectiveLexicon);
           } else {
-            analyzerBinary = await getMagpie(effectiveLexicon);
-            binaryName = 'magpie';
+            magpie = await getMagpie(effectiveLexicon);
           }
           if (examinerIdAtStart !== examinerId.current) return;
 
           const boardStr = JSON.stringify(boardObj);
-          if (binaryName === 'wolges') {
-            const movesStr = await analyzerBinary.analyze(boardStr);
+          if (wolges) {
+            const movesStr = await wolges.analyze(boardStr);
             if (examinerIdAtStart !== examinerId.current) return;
 
             const movesObj = JSON.parse(movesStr) as Array<JsonMove>;
@@ -629,10 +630,10 @@ export const AnalyzerContextProvider = ({
             );
             movesCache[ck] = formattedMoves;
             rerenderMoves();
-          } else if (binaryName === 'magpie') {
+          } else if (magpie) {
             let resp = '';
             if (staticOnlyMode) {
-              resp = await analyzerBinary.staticEvaluation(cgp, 15);
+              resp = await magpie.staticEvaluation(cgp, 15);
               const formattedMoves = resp
                 .split('\n')
                 .filter((move: string) => move && !move.startsWith('bestmove'))
@@ -648,12 +649,12 @@ export const AnalyzerContextProvider = ({
               movesCache[ck] = formattedMoves;
               rerenderMoves();
             } else {
-              await analyzerBinary.processUCGICommand(`position cgp ${cgp}`);
-              await analyzerBinary.processUCGICommand(
-                `go sim threads ${maxThreads} plays 40 stopcondition 95 depth 5 i 10000 checkstop 500`
+              await magpie.processUCGICommand(`position cgp ${cgp}`);
+              await magpie.processUCGICommand(
+                `go sim threads ${maxThreads} plays 40 stopcondition 95 depth 5 i 5000 checkstop 500`
               );
               const interval = setInterval(async () => {
-                const status = (await analyzerBinary.searchStatus()) as string;
+                const status = (await magpie.searchStatus()) as string;
                 const lines = status.split('\n');
                 const moves = [];
                 for (let i = 0; i < lines.length; i++) {
@@ -944,21 +945,19 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           cgp,
         } = parseExaminableGameContext(examinableGameContext, lexicon, variant);
         const boardObj = { ...bareBoardObj, plays: [actualMove] };
-        let analyzerBinary, binaryName;
+        let wolges, magpie;
 
         if (variant === 'wordsmog' || variant === 'classic_super') {
-          analyzerBinary = await getWolges(effectiveLexicon);
-          binaryName = 'wolges';
+          wolges = await getWolges(effectiveLexicon);
         } else {
-          analyzerBinary = await getMagpie(effectiveLexicon);
-          binaryName = 'magpie';
+          magpie = await getMagpie(effectiveLexicon);
         }
 
         if (evaluatedMoveIdAtStart !== evaluatedMoveId.current) return;
 
-        if (binaryName === 'wolges') {
+        if (wolges) {
           const boardStr = JSON.stringify(boardObj);
-          const movesStr = await analyzerBinary.play_score(boardStr);
+          const movesStr = await wolges.play_score(boardStr);
           if (evaluatedMoveIdAtStart !== evaluatedMoveId.current) return;
           const movesObj = JSON.parse(movesStr);
           const moveObj = movesObj[0];
@@ -991,7 +990,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
               analyzerMove: null,
             });
           }
-        } else if (binaryName === 'magpie') {
+        } else if (magpie) {
           let moveType = MagpieMoveTypes.Play;
           let playedTiles = actualMove.word;
           if (actualMove.action === 'exchange') {
@@ -1005,7 +1004,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           }
           playedTiles = playedTiles?.map(wolgesLetterToLiwordsLetter) || [];
 
-          const moveStr = await analyzerBinary.scorePlay(
+          const moveStr = await magpie.scorePlay(
             cgp,
             moveType,
             actualMove.down ? actualMove.idx : actualMove.lane,
@@ -1014,7 +1013,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
             playedTiles,
             computeLeaveML(playedTiles, rackNum)
           );
-
+          console.log('scoreplay', cgp, 'ret', moveStr);
           const analyzerMove = analyzerMoveFromUCGIString(
             moveStr,
             dim,
@@ -1053,16 +1052,26 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     if (currentEvaluatedMove) {
       let found = false;
       const arr = [];
+      console.log(
+        'curMove',
+        currentEvaluatedMove,
+        'cachedMoves',
+        JSON.stringify(cachedMoves)
+      );
       for (const elt of cachedMoves) {
         if (!found) {
+          console.log('trying to add', JSON.stringify(elt));
           if (currentEvaluatedMove.analyzerMove) {
+            console.log('anmove', currentEvaluatedMove.analyzerMove);
             if (elt.jsonKey === currentEvaluatedMove.analyzerMove.jsonKey) {
-              arr.push(currentEvaluatedMove.analyzerMove);
+              const combined = { ...currentEvaluatedMove.analyzerMove, ...elt };
+              arr.push(combined);
               found = true;
               continue;
             }
           }
           if (currentEvaluatedMove.moveObj) {
+            console.log('mobj', currentEvaluatedMove.moveObj);
             if (elt.equity < currentEvaluatedMove.moveObj.equity) {
               // phonies may have better equity than valid plays
               if (currentEvaluatedMove.analyzerMove) {
