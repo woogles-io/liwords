@@ -75,7 +75,7 @@ jobs:
   build_fe:
     working_directory: /opt/liwords
     docker:
-      - image: node:latest
+      - image: node:lts
     steps:
       - checkout
       - run: cd liwords-ui && npm ci
