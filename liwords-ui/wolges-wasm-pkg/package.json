@@ -19,5 +19,8 @@
   ],
   "module": "wolges_wasm.js",
   "types": "wolges_wasm.d.ts",
-  "sideEffects": false
+  "sideEffects": [
+    "./wolges_wasm.js",
+    "./snippets/*"
+  ]
 }
