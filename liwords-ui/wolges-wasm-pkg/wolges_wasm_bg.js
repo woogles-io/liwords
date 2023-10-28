@@ -313,8 +313,8 @@ export function __wbindgen_throw(arg0, arg1) {
     throw new Error(getStringFromWasm0(arg0, arg1));
 };
 
-export function __wbindgen_closure_wrapper324(arg0, arg1, arg2) {
-    const ret = makeMutClosure(arg0, arg1, 79, __wbg_adapter_10);
+export function __wbindgen_closure_wrapper334(arg0, arg1, arg2) {
+    const ret = makeMutClosure(arg0, arg1, 78, __wbg_adapter_10);
     return addHeapObject(ret);
 };
 
