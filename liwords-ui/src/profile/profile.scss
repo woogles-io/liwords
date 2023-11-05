@@ -216,7 +216,7 @@
     }
     .ant-card-head {
       @include colorModed() {
-        background-color: m($timer-low-light);
+        background-color: m($timer-low-dark);
       }
     }
     &.win {
