@@ -216,20 +216,20 @@
     }
     .ant-card-head {
       @include colorModed() {
-        background-color: m($timer-low-light);
+        background-color: m($profile-game-tie);
       }
     }
     &.win {
       .ant-card-head {
         @include colorModed() {
-          background-color: m($timer-light);
+          background-color: m($profile-game-win);
         }
       }
     }
     &.loss {
       .ant-card-head {
         @include colorModed() {
-          background-color: m($timer-out-light);
+          background-color: m($profile-game-loss;
         }
       }
     }
