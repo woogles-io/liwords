@@ -452,7 +452,7 @@ const GameControls = React.memo((props: Props) => {
               // XXX: what if it's unrated?
               content: (
                 <p className="readable-text-color">
-                  Your rating may be affected.
+                  If this is a rated game, your rating may be affected.
                 </p>
               ),
               onOk() {
