@@ -229,7 +229,7 @@
     &.loss {
       .ant-card-head {
         @include colorModed() {
-          background-color: m($profile-game-loss;
+          background-color: m($profile-game-loss);
         }
       }
     }
