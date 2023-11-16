@@ -77,6 +77,10 @@ $timer-low-dark: 'color-timer-low-dark';
 $timer-out-light: 'color-timer-out-light';
 $timer-out-dark: 'color-timer-out-dark';
 
+$profile-game-win: 'color-profile-game-win';
+$profile-game-tie: 'color-profile-game-tie';
+$profile-game-loss: 'color-profile-game-loss';
+
 $shadow: 'shadow';
 $shadow-lower: 'shadow-lower';
 $board-shadow: 'board-shadow';
@@ -148,6 +152,10 @@ $modes: (
           color-timer-low-dark: #f4b000,
           color-timer-out-light: #ffeaea,
           color-timer-out-dark: #a92e2e,
+
+          color-profile-game-win: #e5ffdf,
+          color-profile-game-tie: #fbe5ae,
+          color-profile-game-loss: #ffeaea
         ),
         dark: (
           shadow: 0px 0px 12px rgba(0, 0, 0, 0.2),
@@ -215,6 +223,10 @@ $modes: (
           color-timer-low-dark: #f4b000,
           color-timer-out-light: #561f22,
           color-timer-out-dark: #ce5f66,
+
+          color-profile-game-win: #24542d,
+          color-profile-game-tie: #f4b000,
+          color-profile-game-loss: #561f22
         ),
 );
 
