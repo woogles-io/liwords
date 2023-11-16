@@ -19,14 +19,14 @@ export const CloseAccount = React.memo((props: Props) => {
         <div className="full-name">{props.player?.fullName}</div>
       </div>
       <div className="deletion-rules">
-        If you delete your account, it will no longer be accessible. All data 
+        If you delete your account, it will no longer be accessible. All data
         except past games will be deleted, per the Woogles Terms of Service.
       </div>
       <div className="deletion-rules">
         You will not be able to create a new account using the same email
         address. If you wish to use a different username, you must create an
-        account with a different email address. It is not possible to change
-        the username associated with your account.
+        account with a different email address. It is not possible to change the
+        username associated with your account.
       </div>
       <Form
         onFinish={(values: { [key: string]: string }) => {
