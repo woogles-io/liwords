@@ -18,6 +18,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"gorm.io/plugin/opentelemetry/tracing"
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
@@ -89,6 +90,10 @@ func NewDBStore(config *config.Config, userStore pkguser.Store) (*DBStore, error
 	if err != nil {
 		return nil, err
 	}
+	if err := db.Use(tracing.NewPlugin()); err != nil {
+		return nil, err
+	}
+
 	// Note: We need to manually add the following index on production:
 	// create index rematch_req_idx ON games using hash ((quickdata->>'o'));
 	// I don't know how to do this with GORM. This makes the GetRematchStreak function

@@ -2,11 +2,14 @@ package gameplay_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/liwords/pkg/config"
@@ -168,12 +171,31 @@ func TestWrongTurn(t *testing.T) {
 
 func Test5ptBadWord(t *testing.T) {
 	is := is.New(t)
+
+	ctx := ctxForTests()
+
+	// temp otel code for testing
+	serviceName := "gameplaytest"
+	serviceVersion := "0.0.1"
+	otelShutdown, err := setupOTelSDK(ctx, serviceName, serviceVersion)
+	if err != nil {
+		return
+	}
+
+	// Handle shutdown properly so nothing leaks.
+	defer func() {
+		err = errors.Join(err, otelShutdown(context.Background()))
+	}()
+
+	tracer := otel.Tracer("test5ptbadword")
+	ctx, span := tracer.Start(ctx, "test-start")
+	defer span.End()
+
 	_, ustore, lstore, nstore := recreateDB()
 	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)
 
 	g, nower, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
-	ctx := ctxForTests()
 
 	cge := &pb.ClientGameplayEvent{
 		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
@@ -185,9 +207,12 @@ func Test5ptBadWord(t *testing.T) {
 		tilemapping.RackFromString("ABEJNOR", g.Alphabet()),
 		tilemapping.RackFromString("AGLSYYZ", g.Alphabet()),
 	})
+	gidAttr := attribute.String("gameID", g.GameID())
+	span.SetAttributes(gidAttr)
+
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
-	_, err := gameplay.HandleEvent(ctx, gstore, ustore, nstore, lstore, tstore,
+	_, err = gameplay.HandleEvent(ctx, gstore, ustore, nstore, lstore, tstore,
 		"3xpEkpRAy3AizbVmDg3kdi", cge)
 
 	is.NoErr(err)
@@ -210,6 +235,7 @@ func Test5ptBadWord(t *testing.T) {
 	nstore.Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
+	is.True(false)
 }
 
 func TestDoubleChallengeBadWord(t *testing.T) {
