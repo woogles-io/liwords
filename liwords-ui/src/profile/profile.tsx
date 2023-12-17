@@ -26,7 +26,7 @@ import { BroadcastGamesResponse_BroadcastGame } from '../gen/api/proto/omgwords_
 import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_connectweb';
 import { AnnotatedGamesHistoryCard } from './annotated_games_history';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const screenSizes = require('../base.scss').default;
+import * as screenSizes from '../base.scss';
 
 type Rating = {
   r: number;

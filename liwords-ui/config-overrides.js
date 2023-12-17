@@ -1,3 +1,4 @@
+// XXX rewrite all of this for vite
 const path = require('path');
 
 module.exports = {

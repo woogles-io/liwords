@@ -199,9 +199,7 @@ services:
       # Install node_modules inside the docker container
       - "/opt/liwords-ui/node_modules"
     working_dir: /opt/liwords-ui
-    command: npm start
-    # Need the following else the frontend quits immediately:
-    stdin_open: true
+    command: npm start -- --host
     networks:
       - aeronet
     labels:
