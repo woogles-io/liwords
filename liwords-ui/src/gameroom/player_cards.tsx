@@ -17,7 +17,7 @@ import { GameInfoResponse, PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
 import { MachineLetter } from '../utils/cwgame/common';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const colors = require('../base.scss').default;
+import * as colors from '../base.scss';
 
 type CardProps = {
   player: RawPlayerInfo | undefined;

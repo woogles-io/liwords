@@ -6,7 +6,7 @@ import { calculatePuzzleScore, renderStars } from './puzzle_info';
 import { singularCount } from '../utils/plural';
 import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const colors = require('../base.scss').default;
+import * as colors from '../base.scss';
 
 type Props = {
   puzzleID?: string;

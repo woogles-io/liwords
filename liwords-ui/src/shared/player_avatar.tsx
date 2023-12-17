@@ -6,7 +6,8 @@ import { Tooltip } from 'antd';
 import { useBriefProfile } from '../utils/brief_profiles';
 import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const colors = require('../base.scss').default;
+import * as colors from '../base.scss';
+import petMacondog from '../assets/pet-macondog.gif';
 
 const doNothing = () => {};
 export const PettableContext = createContext<{
@@ -67,7 +68,7 @@ export const PlayerAvatar = (props: AvatarProps) => {
     ) {
       canPet = true;
       // TODO: put this in s3
-      if (isPetting) avatarCurrentUrl = require('../assets/pet-macondog.gif');
+      if (isPetting) avatarCurrentUrl = petMacondog;
     }
     avatarStyle = {
       backgroundImage: `url(${avatarCurrentUrl})`,

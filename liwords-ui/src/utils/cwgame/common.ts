@@ -1,5 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const screenSizes = require('../../base.scss').default;
+import * as screenSizes from '../../base.scss';
 
 export type MachineLetter = number;
 export type MachineWord = Array<MachineLetter>;
