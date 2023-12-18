@@ -1,7 +1,3 @@
-/**
- * @jest-environment jsdom
- */
-// ^^ see https://github.com/jsdom/jsdom/issues/2524#issuecomment-902027138
 import { ActionType } from '../../actions/actions';
 import {
   defaultTournamentState,

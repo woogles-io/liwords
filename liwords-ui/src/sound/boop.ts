@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
 import { Unrace } from '../utils/unrace';
 import makemoveSound from '../assets/makemove.mp3';
 import oppmoveSound from '../assets/oppmove.mp3';
