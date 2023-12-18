@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import ViteSassPlugin from 'vite-plugin-sass';
 import wasm from 'vite-plugin-wasm';
 import topLevelAwait from 'vite-plugin-top-level-await';
+import browserslistToEsbuild from 'browserslist-to-esbuild';
 
 export default defineConfig({
   // depending on your application, base can also be "/"
@@ -11,5 +12,8 @@ export default defineConfig({
   server: {
     // this sets a default port to 3000
     port: 3000,
+  },
+  build: {
+    target: browserslistToEsbuild(['>0.2%', 'not dead', 'not op_mini all']),
   },
 });

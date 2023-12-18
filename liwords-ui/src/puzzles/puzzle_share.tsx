@@ -5,8 +5,9 @@ import { useMountedState } from '../utils/mounted';
 import { calculatePuzzleScore, renderStars } from './puzzle_info';
 import { singularCount } from '../utils/plural';
 import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-import * as colors from '../base.scss';
+
+import variables from '../base.module.scss';
+const { colorPrimary } = variables;
 
 type Props = {
   puzzleID?: string;
@@ -58,7 +59,7 @@ export const PuzzleShareButton = (props: Props) => {
       title="Copied to clipboard"
       trigger="click"
       visible={showTooltip}
-      color={colors.colorPrimary}
+      color={colorPrimary}
     >
       <Button
         type="default"

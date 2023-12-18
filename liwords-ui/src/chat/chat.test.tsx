@@ -5,6 +5,15 @@ import socializeClient from '../__mocks__/socialize_client';
 
 window.RUNTIME_CONFIGURATION = {};
 
+vi.mock('../utils/hooks/connect', async () => {
+  const mod = await vi.importActual('../utils/hooks/connect');
+  return {
+    ...mod,
+    // replace some exports
+    useClient: () => socializeClient,
+  };
+});
+
 function renderChat(props: Partial<Props> = {}) {
   const dummyFunction = () => {
     return;

@@ -16,8 +16,8 @@ import { useBriefProfile } from '../utils/brief_profiles';
 import { GameInfoResponse, PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
 import { MachineLetter } from '../utils/cwgame/common';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-import * as colors from '../base.scss';
+import variables from '../base.module.scss';
+const { colorPrimary } = variables;
 
 type CardProps = {
   player: RawPlayerInfo | undefined;
@@ -88,7 +88,7 @@ const PlayerCard = React.memo((props: CardProps) => {
       <Row className="score-timer">
         <Tooltip
           placement="left"
-          color={colors.colorPrimary}
+          color={colorPrimary}
           title={`${props.spread >= 0 ? '+' : ''}${props.spread}`}
         >
           <Button className="score" type="primary">

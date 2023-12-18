@@ -5,8 +5,10 @@ import './avatar.scss';
 import { Tooltip } from 'antd';
 import { useBriefProfile } from '../utils/brief_profiles';
 import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-import * as colors from '../base.scss';
+
+import variables from '../base.module.scss';
+const { colorPrimary } = variables;
+
 import petMacondog from '../assets/pet-macondog.gif';
 
 const doNothing = () => {};
@@ -105,7 +107,7 @@ export const PlayerAvatar = (props: AvatarProps) => {
       placement="left"
       mouseEnterDelay={0.1}
       mouseLeaveDelay={0.01}
-      color={colors.colorPrimary}
+      color={colorPrimary}
     >
       {renderAvatar}
     </Tooltip>
