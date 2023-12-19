@@ -19,11 +19,12 @@
     "noEmit": true,
     "jsx": "react",
     "noFallthroughCasesInSwitch": true,
-    "types": ["vite/client", "jest", "vitest/globals"]
+    "types": ["vite/client", "vitest/globals"]
   },
   "include": [
     "src",
     "vite.config.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "typings"
   ]
 }

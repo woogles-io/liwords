@@ -84,7 +84,7 @@ jobs:
       - persist_to_workspace:
           root: liwords-ui
           paths:
-            - build
+            - dist
       - discord/status: *discord-webhook-setting
 
   deploy_fe:
@@ -95,26 +95,30 @@ jobs:
       - attach_workspace:
           at: /tmp/liwords-ui
       - run: >
-          UI_HASH=$(find /tmp/liwords-ui/build -type f -exec md5sum {} \; | sort -k 2 | md5sum | head -c 32) &&
+          UI_HASH=$(find /tmp/liwords-ui/dist -type f -exec md5sum {} \; | sort -k 2 | md5sum | head -c 32) &&
           echo $UI_HASH &&
-          sed -i "s:unknown:${UI_HASH}:" /tmp/liwords-ui/build/config.js &&
+          sed -i "s:unknown:${UI_HASH}:" /tmp/liwords-ui/dist/config.js &&
           echo "export UI_HASH=$UI_HASH" >> $BASH_ENV
 
       # cache everything except index.html, config files, and wasm file
       - run: >
-          cd /tmp/liwords-ui/build &&
+          cd /tmp/liwords-ui/dist &&
           aws s3 sync --cache-control 'max-age=3024000'
           --exclude index.html --exclude config.js --exclude '*.wasm'
+          --metadata FEHash=${UI_HASH}
           . s3://woogles.io
       # no-cache everything except the wasm file
       - run: >
-          cd /tmp/liwords-ui/build &&
-          aws s3 sync --cache-control 'no-cache' --exclude '*.wasm' . s3://woogles.io
+          cd /tmp/liwords-ui/dist &&
+          aws s3 sync --cache-control 'no-cache' --exclude '*.wasm' 
+          --metadata FEHash=${UI_HASH}
+          . s3://woogles.io
       # cache the wasm file separately. We can't put it in the first sync call above
       # because we require the content-type to be set properly.
       - run: >
-          cd /tmp/liwords-ui/build &&
+          cd /tmp/liwords-ui/dist &&
           aws s3 sync --cache-control 'max-age=3024000' --exclude '*' --include '*.wasm'
+          --metadata FEHash=${UI_HASH}
           --content-type 'application/wasm' . s3://woogles.io
       - run: >
           curl -X POST -H "Content-Type: application/json"
