@@ -154,10 +154,6 @@ func main() {
 	}
 	log.Debug().Msg("debug log is on")
 
-	if os.Getenv("USE_LOCALSTACK_S3") == "1" {
-		// pre-create buckets
-		precreateLocalStackBuckets()
-	}
 	log.Info().Msg("setting up migration")
 	m, err := migrate.New(cfg.DBMigrationsPath, cfg.DBConnUri)
 	if err != nil {
@@ -398,28 +394,4 @@ func main() {
 	// etc.
 	<-idleConnsClosed
 	log.Info().Msg("server gracefully shutting down")
-}
-
-func precreateLocalStackBuckets() {
-	ctx := context.Background()
-	cfg, err := awsconfig.LoadDefaultConfig(
-		ctx, awsconfig.WithEndpointResolverWithOptions(
-			aws.EndpointResolverWithOptionsFunc(utilities.CustomResolver)))
-	if err != nil {
-		log.Err(err).Msg("unable-to-load-awsconfig")
-		return
-	}
-
-	client := s3.NewFromConfig(cfg, utilities.CustomClientOptions)
-
-	_, err = client.CreateBucket(ctx, &s3.CreateBucketInput{
-		Bucket: aws.String(os.Getenv("AVATAR_UPLOAD_BUCKET")),
-	})
-	log.Err(err).Msg("trying to create avatar upload bucket")
-
-	// 	_, err = client.CreateBucket(ctx, &s3.CreateBucketInput{
-	// 		Bucket: aws.String(os.Getenv("GAMEDOC_UPLOAD_BUCKET")),
-	// 	})
-	// 	log.Err(err).Msg("trying to create gamedoc upload bucket")
-
 }
