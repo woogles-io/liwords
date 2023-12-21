@@ -1,8 +1,5 @@
 
-FROM node:lts
-
-# RUN git config --global url."https://github.com/".insteadOf git@github.com:
-# RUN git config --global url."https://".insteadOf git+ssh://git@github.com/
+FROM node:latest
 
 WORKDIR /opt/liwords-ui/
 

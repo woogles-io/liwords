@@ -1,5 +1,18 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
 import { Unrace } from '../utils/unrace';
+import makemoveSound from '../assets/makemove.mp3';
+import oppmoveSound from '../assets/oppmove.mp3';
+import matchreqSound from '../assets/matchreq.mp3';
+import startgameSound from '../assets/startgame.mp3';
+import endgameSound from '../assets/endgame.mp3';
+import woofSound from '../assets/woof.wav';
+import meowSound from '../assets/meow.mp3';
+import receivechatSound from '../assets/receivechat.mp3';
+import newtourneyroundSound from '../assets/newtourneyround.mp3';
+import wolgesSound from '../assets/wolges.wav';
+import abortnudgeSound from '../assets/abortnudge.mp3';
+import newpuzzleSound from '../assets/newpuzzle.mp3';
+import puzzlecorrectSound from '../assets/puzzlecorrect-acoustic-fast.mp3';
+import puzzlewrongSound from '../assets/puzzlewrong.mp3';
 
 const soundToggleCache: { all: boolean | undefined } = { all: undefined };
 
@@ -74,32 +87,30 @@ class Booper {
 const playableSounds: { [key: string]: Booper } = {};
 
 // Only load sounds if this is not an embed page. This is a bit of a hack.
+
 if (!window.location.pathname.startsWith('/embed/')) {
-  for (const booper of [
-    new Booper('makeMoveSound', require('../assets/makemove.mp3')),
-    new Booper('oppMoveSound', require('../assets/oppmove.mp3')),
-    new Booper('matchReqSound', require('../assets/matchreq.mp3')),
-    new Booper('startgameSound', require('../assets/startgame.mp3')),
-    new Booper('endgameSound', require('../assets/endgame.mp3')),
-    new Booper('woofSound', require('../assets/woof.wav')),
-    new Booper('meowSound', require('../assets/meow.mp3')),
-    new Booper('receiveMsgSound', require('../assets/receivechat.mp3')),
-    new Booper(
-      'startTourneyRoundSound',
-      require('../assets/newtourneyround.mp3')
-    ),
-    new Booper('wolgesSound', require('../assets/wolges.wav')),
-    new Booper('abortnudgeSound', require('../assets/abortnudge.mp3')),
-    new Booper('puzzleStartSound', require('../assets/newpuzzle.mp3')),
-    new Booper(
-      'puzzleCorrectSound',
-      require('../assets/puzzlecorrect-acoustic-fast.mp3')
-    ),
-    new Booper('puzzleWrongSound', require('../assets/puzzlewrong.mp3')),
-  ]) {
+  const booperArray = [
+    new Booper('makeMoveSound', makemoveSound),
+    new Booper('oppMoveSound', oppmoveSound),
+    new Booper('matchReqSound', matchreqSound),
+    new Booper('startgameSound', startgameSound),
+    new Booper('endgameSound', endgameSound),
+    new Booper('woofSound', woofSound),
+    new Booper('meowSound', meowSound),
+    new Booper('receiveMsgSound', receivechatSound),
+    new Booper('startTourneyRoundSound', newtourneyroundSound),
+    new Booper('wolgesSound', wolgesSound),
+    new Booper('abortnudgeSound', abortnudgeSound),
+    new Booper('puzzleStartSound', newpuzzleSound),
+    new Booper('puzzleCorrectSound', puzzlecorrectSound),
+    new Booper('puzzleWrongSound', puzzlewrongSound),
+  ];
+
+  for (const booper of booperArray) {
     playableSounds[booper.soundName] = booper;
   }
 }
+
 const unlockSounds = () => {
   // Browser settings may disallow autoplay until user interacts with document.
   // Use that chance to play() all known sounds muted.
