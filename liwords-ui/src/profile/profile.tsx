@@ -25,8 +25,8 @@ import { GameMetadataService } from '../gen/api/proto/game_service/game_service_
 import { BroadcastGamesResponse_BroadcastGame } from '../gen/api/proto/omgwords_service/omgwords_pb';
 import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_connectweb';
 import { AnnotatedGamesHistoryCard } from './annotated_games_history';
-import variables from '../base.module.scss';
-const { screenSizeTablet } = variables;
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const screenSizes = require('../base.scss').default;
 
 type Rating = {
   r: number;
@@ -545,7 +545,7 @@ export const PlayerProfile = React.memo(() => {
                 infinite={false}
                 responsive={[
                   {
-                    breakpoint: screenSizeTablet - 1,
+                    breakpoint: screenSizes.screenSizeTablet - 1,
                     settings: {
                       slidesToShow: 2,
                       slidesToScroll: 2,
@@ -570,7 +570,7 @@ export const PlayerProfile = React.memo(() => {
                 infinite={false}
                 responsive={[
                   {
-                    breakpoint: screenSizeTablet - 1,
+                    breakpoint: screenSizes.screenSizeTablet - 1,
                     settings: {
                       slidesToShow: 2,
                       slidesToScroll: 2,
@@ -596,7 +596,7 @@ export const PlayerProfile = React.memo(() => {
                 infinite={false}
                 responsive={[
                   {
-                    breakpoint: screenSizeTablet - 1,
+                    breakpoint: screenSizes.screenSizeTablet - 1,
                     settings: {
                       slidesToShow: 2,
                       slidesToScroll: 2,

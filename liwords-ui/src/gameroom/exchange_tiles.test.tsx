@@ -12,7 +12,7 @@ import { TouchBackend } from 'react-dnd-touch-backend';
 import { act } from 'react-dom/test-utils';
 
 function renderExchangeTiles(callback: (t: MachineWord) => void) {
-  vi.useFakeTimers();
+  jest.useFakeTimers();
   const ret = render(
     <DndProvider backend={TouchBackend}>
       <ExchangeTiles
@@ -28,13 +28,13 @@ function renderExchangeTiles(callback: (t: MachineWord) => void) {
   // there's a delay in ExchangeTiles before it becomes interactive.
   // simulate that here.
   act(() => {
-    vi.advanceTimersByTime(500);
+    jest.advanceTimersByTime(500);
   });
   return ret;
 }
 
 function renderExchangeCatalanTiles(callback: (t: MachineWord) => void) {
-  vi.useFakeTimers();
+  jest.useFakeTimers();
   const ret = render(
     <DndProvider backend={TouchBackend}>
       <ExchangeTiles
@@ -48,7 +48,7 @@ function renderExchangeCatalanTiles(callback: (t: MachineWord) => void) {
     </DndProvider>
   );
   act(() => {
-    vi.advanceTimersByTime(500);
+    jest.advanceTimersByTime(500);
   });
   return ret;
 }
@@ -56,7 +56,7 @@ function renderExchangeCatalanTiles(callback: (t: MachineWord) => void) {
 afterEach(cleanup);
 
 it('exchanges the right tiles', async () => {
-  const cb = vi.fn();
+  const cb = jest.fn();
   const { findByRole } = renderExchangeTiles(cb);
   const exchButton = await findByRole('button', { name: 'Exchange' });
   expect(exchButton).toBeVisible();
@@ -71,7 +71,7 @@ it('exchanges the right tiles', async () => {
 });
 
 it('exchanges repeated tile', async () => {
-  const cb = vi.fn();
+  const cb = jest.fn();
 
   const { findByRole } = renderExchangeTiles(cb);
 
@@ -88,7 +88,7 @@ it('exchanges repeated tile', async () => {
 });
 
 it('ignores non-existing tiles', async () => {
-  const cb = vi.fn();
+  const cb = jest.fn();
 
   const { findByRole } = renderExchangeTiles(cb);
 
@@ -103,7 +103,7 @@ it('ignores non-existing tiles', async () => {
 });
 
 it('works with multi-letter tiles and shortcut/alias', async () => {
-  const cb = vi.fn();
+  const cb = jest.fn();
 
   const { findByRole } = renderExchangeCatalanTiles(cb);
 

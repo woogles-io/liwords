@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "ES6",
+    "target": "es5",
     "lib": [
       "dom",
       "dom.iterable",
@@ -18,13 +18,9 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react",
-    "noFallthroughCasesInSwitch": true,
-    "types": ["vite/client", "vitest/globals"]
+    "noFallthroughCasesInSwitch": true
   },
   "include": [
-    "src",
-    "vite.config.ts",
-    "vitest.config.ts",
-    "typings"
+    "src"
   ]
 }
