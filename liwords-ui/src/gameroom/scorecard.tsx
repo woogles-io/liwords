@@ -35,8 +35,8 @@ import {
   machineWordToRunes,
   runesToMachineWord,
 } from '../constants/alphabets';
-import variables from '../base.module.scss';
-const { screenSizeDesktop, screenSizeLaptop, screenSizeTablet } = variables;
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const screenSizes = require('../base.scss').default;
 
 type Props = {
   isExamining?: boolean;
@@ -316,13 +316,16 @@ export const ScoreCard = React.memo((props: Props) => {
         document.getElementById('player-cards-vertical')?.clientHeight || 0;
       const navHeight = document.getElementById('main-nav')?.clientHeight || 0;
       let offset = 0;
-      if (getVW() > parseInt(screenSizeLaptop)) {
+      if (getVW() > parseInt(screenSizes.screenSizeLaptop)) {
         offset = 45;
       }
-      if (getVW() > parseInt(screenSizeDesktop)) {
+      if (getVW() > parseInt(screenSizes.screenSizeDesktop)) {
         offset = 25;
       }
-      if (boardHeight && getVW() >= parseInt(screenSizeTablet, 10)) {
+      if (
+        boardHeight &&
+        getVW() >= parseInt(screenSizes.screenSizeTablet, 10)
+      ) {
         setCardHeight(
           boardHeight +
             offset -

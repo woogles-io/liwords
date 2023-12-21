@@ -3,10 +3,10 @@ import { cleanup, fireEvent, render } from '@testing-library/react';
 import GameControls, { Props } from './game_controls';
 import { ChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
 
-const mockedUsedNavigate = vi.fn();
+const mockedUsedNavigate = jest.fn();
 
-vi.mock('react-router-dom', () => ({
-  ...(vi.importActual('react-router-dom') as any),
+jest.mock('react-router-dom', () => ({
+  ...(jest.requireActual('react-router-dom') as any),
   useNavigate: () => mockedUsedNavigate,
 }));
 
@@ -48,7 +48,7 @@ function renderGameControls(props: Partial<Props> = {}) {
 afterEach(cleanup);
 
 it('fires clicks on rematch only once', async () => {
-  const onRematch = vi.fn();
+  const onRematch = jest.fn();
   const { findByTestId } = renderGameControls({
     gameEndControls: true,
     onRematch: onRematch,
