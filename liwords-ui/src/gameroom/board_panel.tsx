@@ -99,7 +99,8 @@ import { RackEditor } from './rack_editor';
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
 const EnterKey = 'Enter';
-import * as colors from '../base.scss';
+import variables from '../base.module.scss';
+const { colorPrimary } = variables;
 
 type Props = {
   anonymousViewer: boolean;
@@ -1711,7 +1712,7 @@ export const BoardPanel = React.memo((props: Props) => {
               placement="bottomRight"
               mouseEnterDelay={0.1}
               mouseLeaveDelay={0.01}
-              color={colors.default.colorPrimary}
+              color={colorPrimary}
             >
               <Button
                 shape="circle"
@@ -1726,7 +1727,7 @@ export const BoardPanel = React.memo((props: Props) => {
                 placement="bottomRight"
                 mouseEnterDelay={0.1}
                 mouseLeaveDelay={0.01}
-                color={colors.default.colorPrimary}
+                color={colorPrimary}
               >
                 <Button
                   shape="circle"
@@ -1769,7 +1770,7 @@ export const BoardPanel = React.memo((props: Props) => {
               placement="bottomLeft"
               mouseEnterDelay={0.1}
               mouseLeaveDelay={0.01}
-              color={colors.default.colorPrimary}
+              color={colorPrimary}
             >
               <Button
                 shape="circle"

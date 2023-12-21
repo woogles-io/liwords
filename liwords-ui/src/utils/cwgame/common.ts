@@ -1,5 +1,5 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const screenSizes = require('../../base.scss').default;
+import variables from '../../base.module.scss';
+const { screenSizeLaptop, screenSizeTablet } = variables;
 
 export type MachineLetter = number;
 export type MachineWord = Array<MachineLetter>;
@@ -68,12 +68,11 @@ export const makeBlank = (ml: MachineLetter): MachineLetter => {
 export const getVW = () =>
   Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
 
-export const isMobile = () =>
-  getVW() < parseInt(screenSizes.screenSizeTablet, 10);
+export const isMobile = () => getVW() < parseInt(screenSizeTablet, 10);
 
 export const isTablet = () =>
-  getVW() >= parseInt(screenSizes.screenSizeTablet, 10) &&
-  getVW() < parseInt(screenSizes.screenSizeLaptop, 10);
+  getVW() >= parseInt(screenSizeTablet, 10) &&
+  getVW() < parseInt(screenSizeLaptop, 10);
 
 export const isDesignatedBlank = (letter: string): boolean => {
   return letter.toLowerCase() === letter && letter.toUpperCase() !== letter;

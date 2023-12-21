@@ -29,7 +29,7 @@ function renderSelectTiles(
 afterEach(cleanup);
 
 it('selects a weird tile', async () => {
-  const cb = jest.fn();
+  const cb = vi.fn();
 
   const { findByText } = renderSelectTiles(StandardCatalanAlphabet, cb);
 
@@ -39,7 +39,7 @@ it('selects a weird tile', async () => {
 });
 
 it('selects last tile', async () => {
-  const cb = jest.fn();
+  const cb = vi.fn();
 
   const { findByText } = renderSelectTiles(StandardCatalanAlphabet, cb);
 
@@ -49,7 +49,7 @@ it('selects last tile', async () => {
 });
 
 it('selects norwegian tile', async () => {
-  const cb = jest.fn();
+  const cb = vi.fn();
 
   const { findByText } = renderSelectTiles(StandardNorwegianAlphabet, cb);
 
@@ -59,7 +59,7 @@ it('selects norwegian tile', async () => {
 });
 
 it('selects first english tile', async () => {
-  const cb = jest.fn();
+  const cb = vi.fn();
 
   const { findByText } = renderSelectTiles(StandardEnglishAlphabet, cb);
 
