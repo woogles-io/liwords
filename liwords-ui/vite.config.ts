@@ -5,8 +5,6 @@ import topLevelAwait from 'vite-plugin-top-level-await';
 import browserslistToEsbuild from 'browserslist-to-esbuild';
 
 export default defineConfig({
-  // depending on your application, base can also be "/"
-  base: '',
   plugins: [react(), wasm(), topLevelAwait()],
   server: {
     // this sets a default port to 3000
