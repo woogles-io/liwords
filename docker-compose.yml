@@ -27,18 +27,15 @@ services:
       GORACE: history_size=7
       ARGON_MEMORY: 1024
       AWS_REGION: "us-east-2"
-      USE_LOCALSTACK_S3: 1
-      LOCALSTACK_S3_ENDPOINT: "http://localstack:4566"
-      # localstack still requires some value for these:
-      AWS_ACCESS_KEY_ID: '123'
-      AWS_SECRET_KEY: 'xyz'
+      AWS_ACCESS_KEY_ID: 'liwords'
+      AWS_SECRET_KEY: 'liwords-pass'
       AVATAR_UPLOAD_BUCKET: woogles-uploads
+      USE_MINIO_S3: 1
+      MINIO_S3_ENDPOINT: http://minio:9000
       DB_MIGRATIONS_PATH: file:///opt/program/db/migrations
       PUZZLE_GENERATION_SECRET_KEY: perplexemes
       ECS_CLUSTER_NAME: ${ECS_CLUSTER_NAME:-}
       PUZZLE_GENERATION_TASK_DEFINITION: ${PUZZLE_GENERATION_TASK_DEFINITION:-}
-      # XXX: In order to get avatar upload to work locally we need to set up localstack.
-      # For now: AWS_PROFILE=prod docker-compose up app
     volumes:
       - .:/opt/program:rw
       - ./data/lexica/gaddag:/opt/program/data/lexica/gaddag
@@ -52,7 +49,7 @@ services:
         "nats",
         "socket",
         "redis",
-        "localstack"
+        "minio"
       ]
     networks:
       - aeronet
@@ -168,26 +165,41 @@ services:
       - pg-data-volume:/var/lib/postgresql/data
       # Uncomment out below to possibly load a db dump
       # see https://github.com/domino14/liwords/wiki/Loading-a-db-dump
-      # - $HOME/data:/opt/data
+      - $HOME/data:/opt/data
     ports:
       - 5432:5432
     networks:
       - aeronet
 
-  localstack:
-    image: localstack/localstack
+  minio:
+    image: docker.io/bitnami/minio
     ports:
-      - 4566:4566
+      - 9000:9000
+      - 9001:9001
     environment:
-      - SERVICES=s3
-      - DEBUG=true
-      - DATA_DIR=/tmp/localstack/data
+      MINIO_ROOT_USER: liwords
+      MINIO_ROOT_PASSWORD: liwords-pass
     volumes:
-      - localstack-volume:/tmp/localstack
+      - minio_data:/data
+    networks:
+      - aeronet
+
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 liwords liwords-pass;
+      /usr/bin/mc mb myminio/woogles-uploads;
+      /usr/bin/mc anonymous set public myminio/woogles-uploads;
+      exit 0;
+      "
     networks:
       - aeronet
 
   frontend:
+
     build:
       context: .
       dockerfile: Dockerfile-fe
@@ -233,4 +245,5 @@ volumes:
     external: false
   redis-data-volume:
     external: false
-  localstack-volume:
+  minio_data:
+    driver: local

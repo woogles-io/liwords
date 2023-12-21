@@ -28,8 +28,8 @@ func NewS3Uploader(bucket string, s3Client *s3.Client) *S3Uploader {
 }
 
 func (s *S3Uploader) urlprefix() string {
-	if os.Getenv("USE_LOCALSTACK_S3") == "1" {
-		return "http://localhost:4566/" + s.bucket + "/"
+	if os.Getenv("USE_MINIO_S3") == "1" {
+		return "http://localhost:9000/" + s.bucket + "/"
 	}
 	return "https://" + s.bucket + ".s3.amazonaws.com/"
 }
