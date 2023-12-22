@@ -1,6 +1,7 @@
 version: 2.1
 orbs:
   discord: antonioned/discord@0.1.0
+  codecomet-orb: codecomet/codecomet-orb@0.3.1
 jobs:
   build_api_srv:
     environment:
@@ -31,8 +32,12 @@ jobs:
           name: Clone macondo
           command: git clone --depth 1 git@github.com:domino14/macondo /opt/macondo
       - run: cd cmd/liwords-api && go build
-      # Tests must not be run in parallel; postgres issues happen otherwise.
-      - run: go test -race -p 1 ./...
+      - codecomet-orb/install
+      - codecomet-orb/ingest:
+          # Tests must not be run in parallel; postgres issues happen otherwise.
+          test_command: go test -race -p 1 ./...
+          test_suite_name: liwords-backend-tests
+      # - run: for s in $(go list ./...); do if ! ./codecomet -s liwords-backend-tests -- go test -failfast -race -v -p 1 $s; then break; fi; done
       # Make sure puzzle generator builds too, since we're deploying that docker image.
       - run: cd cmd/puzzlegen && go build
       - run: cd cmd/maintenance && go build
