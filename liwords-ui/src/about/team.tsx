@@ -30,6 +30,17 @@ export const Team = () => {
     setBnjyMode((x) => !x);
   }, []);
 
+  const bnjyMenuItems = [
+    {
+      label: (
+        <span className="link plain" onClick={toggleBnjyMode}>
+          {bnjyMode ? 'Disable wonky tiles' : 'Enable wonky tiles'}
+        </span>
+      ),
+      key: 'bnjyMode',
+    },
+  ];
+
   return (
     <>
       <Row>
@@ -238,15 +249,7 @@ export const Team = () => {
                 <h3 style={{ cursor: 'pointer' }}>
                   <Dropdown
                     overlayClassName="user-menu"
-                    overlay={
-                      <ul>
-                        <li className="link plain" onClick={toggleBnjyMode}>
-                          {bnjyMode
-                            ? 'Disable wonky tiles'
-                            : 'Enable wonky tiles'}
-                        </li>
-                      </ul>
-                    }
+                    menu={{ items: bnjyMenuItems }}
                     getPopupContainer={() =>
                       document.getElementById('root') as HTMLElement
                     }

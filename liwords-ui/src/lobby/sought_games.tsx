@@ -233,10 +233,10 @@ export const SoughtGames = (props: Props) => {
                 console.log('trying', setCancelVisible, cancelVisible);
                 setCancelVisible(false);
               }}
-              onVisibleChange={(visible) => {
+              onOpenChange={(visible) => {
                 setCancelVisible(visible);
               }}
-              visible={cancelVisible}
+              open={cancelVisible}
             >
               <div>
                 <ExportOutlined />

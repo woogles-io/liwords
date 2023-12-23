@@ -58,7 +58,7 @@ export const PuzzleShareButton = (props: Props) => {
     <Tooltip
       title="Copied to clipboard"
       trigger="click"
-      visible={showTooltip}
+      open={showTooltip}
       color={colorPrimary}
     >
       <Button

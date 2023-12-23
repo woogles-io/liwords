@@ -95,7 +95,7 @@ export const LoginModal = (props: {
     <Modal
       className="login-modal"
       title="Welcome back, friend!"
-      visible={loginModalVisible}
+      open={loginModalVisible}
       onCancel={handleHideLoginModal}
       footer={null}
       width={332}

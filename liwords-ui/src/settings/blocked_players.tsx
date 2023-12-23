@@ -56,7 +56,7 @@ export const BlockedPlayers = React.memo(() => {
       <Modal
         className="confirm-unblock-modal"
         title="Unblock player"
-        visible={true}
+        open={true}
         okText="Yes, unblock"
         onCancel={() => {
           setConfirmModalUser(undefined);
