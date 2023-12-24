@@ -1,7 +1,7 @@
-import React, { useContext } from 'react';
+import React, { useContext, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Dropdown } from 'antd';
-import { TheBlocker } from './blocker';
+import { BlockerHandle, TheBlocker } from './blocker';
 import {
   useContextMatchContext,
   useLoginStateStoreContext,
@@ -9,7 +9,7 @@ import {
 import { canMod } from '../mod/perms';
 import { DisplayUserFlag } from './display_flag';
 import { SettingOutlined } from '@ant-design/icons';
-import { TheFollower } from './follower';
+import { FollowerHandle, TheFollower } from './follower';
 import { PettableContext } from './player_avatar';
 
 type UsernameWithContextProps = {
@@ -41,6 +41,9 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
   const { handleContextMatches } = useContextMatchContext();
   const { loginState } = useLoginStateStoreContext();
   const { loggedIn, userID, perms } = loginState;
+
+  const followerRef = useRef<FollowerHandle>();
+  const blockerRef = useRef<BlockerHandle>();
 
   const contextItem = React.useMemo(() => {
     if (currentActiveGames && currentActiveGames.length > 0) {
@@ -106,7 +109,6 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
     userMenuOptions.push({
       label: (
         <Link
-          className="plain"
           to={`/profile/${encodeURIComponent(props.username)}`}
           target="_blank"
         >
@@ -137,8 +139,8 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
       label: (
         <TheFollower
           friendCallback={props.friendCallback}
-          className="link plain"
           target={props.userID}
+          ref={followerRef}
         />
       ),
     });
@@ -149,9 +151,9 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
       label: (
         <TheBlocker
           blockCallback={props.blockCallback}
-          className="link plain"
           target={props.userID}
           userName={props.username}
+          ref={blockerRef}
         />
       ),
     });
@@ -172,6 +174,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
   return (
     <Dropdown
       overlayClassName="user-menu"
+      destroyPopupOnHide
       menu={{
         items: userMenuOptions,
         onClick: ({ key }) => {
@@ -195,6 +198,12 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
               break;
             case `pettable-${userID}`:
               setPetting((x) => !x);
+              break;
+            case `follower-${props.userID}`:
+              followerRef.current?.friendAction();
+              break;
+            case `blocker-${props.userID}`:
+              blockerRef.current?.blockAction();
               break;
           }
         },

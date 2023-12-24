@@ -2,7 +2,7 @@ import {
   useFriendsStoreContext,
   useLoginStateStoreContext,
 } from '../store/store';
-import React from 'react';
+import React, { forwardRef, useImperativeHandle } from 'react';
 import { flashError, useClient } from '../utils/hooks/connect';
 import { SocializeService } from '../gen/api/proto/user_service/user_service_connectweb';
 
@@ -13,11 +13,20 @@ type FollowerProps = {
   friendCallback?: () => void;
 };
 
-export const TheFollower = (props: FollowerProps) => {
+export type FollowerHandle = {
+  friendAction: () => void;
+};
+
+export const TheFollower = forwardRef((props: FollowerProps, ref) => {
   const { friends, setPendingFriendsRefresh } = useFriendsStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { userID } = loginState;
   const socializeClient = useClient(SocializeService);
+
+  useImperativeHandle(ref, () => ({
+    friendAction,
+  }));
+
   if (userID === props.target) {
     return null;
   }
@@ -49,8 +58,8 @@ export const TheFollower = (props: FollowerProps) => {
   const DynamicTagName = (props.tagName ||
     'span') as keyof JSX.IntrinsicElements;
   return (
-    <DynamicTagName onClick={friendAction} className={props.className || ''}>
+    <DynamicTagName className={props.className || ''}>
       {friendText}
     </DynamicTagName>
   );
-};
+});
