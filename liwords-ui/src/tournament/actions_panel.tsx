@@ -290,7 +290,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     <Modal
       className="seek-modal"
       title="Send match request"
-      visible={matchModalVisible}
+      open={matchModalVisible}
       destroyOnClose
       onCancel={() => {
         setMatchModalVisible(false);

@@ -87,7 +87,7 @@ const FormModal = (props: ModalProps) => {
   return (
     <Modal
       title={props.title}
-      visible={props.visible}
+      open={props.visible}
       footer={null}
       destroyOnClose={true}
       onCancel={props.handleCancel}
@@ -937,7 +937,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     return (
       <Modal
         title="Set Game Request"
-        visible={mprops.visible}
+        open={mprops.visible}
         onCancel={mprops.onCancel}
         className="seek-modal"
         okButtonProps={{ style: { display: 'none' } }}

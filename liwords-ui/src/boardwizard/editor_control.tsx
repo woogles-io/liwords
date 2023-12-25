@@ -59,7 +59,7 @@ export const EditorControl = (props: Props) => {
               onCancel={() => setConfirmDelVisible(false)}
               okText="Yes"
               cancelText="No"
-              visible={confirmDelVisible}
+              open={confirmDelVisible}
             >
               <Button
                 onClick={() => setConfirmDelVisible(true)}

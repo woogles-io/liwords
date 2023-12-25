@@ -550,13 +550,14 @@ export const SeekForm = (props: Props) => {
       >
         <Slider
           disabled={disableTimeControls}
-          tipFormatter={initTimeFormatter}
-          getTooltipPopupContainer={() =>
-            document.getElementById(props.id) as HTMLElement
-          }
+          tooltip={{
+            formatter: initTimeFormatter,
+            open: sliderTooltipVisible || usernameOptions.length === 0,
+            getPopupContainer: () =>
+              document.getElementById(props.id) as HTMLElement,
+          }}
           min={0}
           max={initTimeDiscreteScale.length - 1}
-          tooltipVisible={sliderTooltipVisible || usernameOptions.length === 0}
         />
       </Form.Item>
       <Form.Item label="Time setting" name="incOrOT">
@@ -586,9 +587,11 @@ export const SeekForm = (props: Props) => {
           <Slider
             min={50}
             max={500}
-            tipFormatter={(v) => `${myRating} ± ${v ? v : 0}`}
+            tooltip={{
+              formatter: (v) => `${myRating} ± ${v ? v : 0}`,
+              open: sliderTooltipVisible,
+            }}
             step={50}
-            tooltipVisible={sliderTooltipVisible}
           />
         </Form.Item>
       )}

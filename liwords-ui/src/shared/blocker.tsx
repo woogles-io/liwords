@@ -2,7 +2,7 @@ import {
   useExcludedPlayersStoreContext,
   useLoginStateStoreContext,
 } from '../store/store';
-import React from 'react';
+import React, { forwardRef, useImperativeHandle } from 'react';
 import { flashError, useClient } from '../utils/hooks/connect';
 import { SocializeService } from '../gen/api/proto/user_service/user_service_connectweb';
 
@@ -14,12 +14,20 @@ type BlockerProps = {
   userName?: string;
 };
 
-export const TheBlocker = (props: BlockerProps) => {
+export type BlockerHandle = {
+  blockAction: () => void;
+};
+
+export const TheBlocker = forwardRef((props: BlockerProps, ref) => {
   const { excludedPlayers, setPendingBlockRefresh } =
     useExcludedPlayersStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { userID } = loginState;
   const socializeClient = useClient(SocializeService);
+
+  useImperativeHandle(ref, () => ({
+    blockAction,
+  }));
 
   // Don't block yourself. It makes chat annoying.
   if (userID === props.target) {
@@ -54,8 +62,8 @@ export const TheBlocker = (props: BlockerProps) => {
   const DynamicTagName = (props.tagName ||
     'span') as keyof JSX.IntrinsicElements;
   return (
-    <DynamicTagName onClick={blockAction} className={props.className || ''}>
+    <DynamicTagName className={props.className || ''}>
       {blockText}
     </DynamicTagName>
   );
-};
+});

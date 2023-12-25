@@ -106,24 +106,23 @@ const ActualPool = React.memo((props: Props & { hidePool: boolean }) => {
   const letterSections = letterOrder.map((section, idx) => {
     return renderLetters(pool, props.alphabet, section, idx);
   });
-  const poolMenu = (
-    <Menu>
-      {PoolFormats.map((pf) => (
-        <Menu.Item
-          key={pf.poolFormatType}
-          onClick={() => {
-            localStorage?.setItem('poolFormat', pf.poolFormatType.toString());
-            props.setPoolFormat(pf.poolFormatType);
-          }}
-        >
-          {pf.displayName}
-        </Menu.Item>
-      ))}
-    </Menu>
-  );
+  const poolMenuItems = PoolFormats.map((pf) => ({
+    label: pf.displayName,
+    key: pf.poolFormatType.toString(),
+  }));
+
   const dropDown = !props.hidePool && (
     <Dropdown
-      overlay={poolMenu}
+      menu={{
+        items: poolMenuItems,
+        onClick: ({ key }) => {
+          localStorage?.setItem('poolFormat', key);
+          props.setPoolFormat(
+            PoolFormats.find((p) => p.poolFormatType.toString() === key)
+              ?.poolFormatType || PoolFormatType.Alphabet
+          );
+        },
+      }}
       trigger={['click']}
       placement="bottomRight"
       overlayClassName="format-dropdown"

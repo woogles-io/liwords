@@ -164,10 +164,9 @@ export const SettingsForm = (props: Props) => {
         extra={<Tag color={ttag}>{timectrl}</Tag>}
       >
         <Slider
-          tipFormatter={initTimeFormatter}
+          tooltip={{ formatter: initTimeFormatter, open: true }}
           min={0}
           max={initTimeDiscreteScale.length - 1}
-          tooltipVisible={true}
         />
       </Form.Item>
 

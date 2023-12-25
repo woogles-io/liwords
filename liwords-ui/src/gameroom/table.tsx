@@ -769,7 +769,7 @@ export const Table = React.memo((props: Props) => {
           />
           <Popconfirm
             title={`${rematchRequest.user?.displayName} sent you a rematch request`}
-            visible={rematchRequest.rematchFor !== ''}
+            open={rematchRequest.rematchFor !== ''}
             onConfirm={handleAcceptRematch}
             onCancel={handleDeclineRematch}
             okText="Accept"
