@@ -1040,7 +1040,7 @@ p.streak-loss {
     }
     &[data-length="3"] p.rune > span {
       transform: translate(0.05em) scaleX(calc(1 / 1.8));
-      letter-spacing: -1em;    
+      letter-spacing: -1em;
     }
 }
 
@@ -1642,7 +1642,7 @@ p.rune {
                 .timeago {
                     @include colorModed() {
                         color: m($gray-subtle);
-                    } 
+                    }
                     padding-left: 12px;
                 }
                 .anticon-delete {
@@ -1660,7 +1660,7 @@ p.rune {
             @include colorModed() {
                 color: m($button);
                 background-color: m($card-background);
-            } 
+            }
         }
 
     }

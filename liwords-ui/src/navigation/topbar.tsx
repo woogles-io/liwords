@@ -16,19 +16,26 @@ import { flashError, useClient } from '../utils/hooks/connect';
 import { AuthenticationService } from '../gen/api/proto/user_service/user_service_connectweb';
 
 const TopMenu = React.memo((props: Props) => {
-  const playMenu = (
-    <ul>
-      <li>
+  const playMenuItems = [
+    {
+      key: 'omgwords',
+      label: (
         <Link to="/" className="plain">
           OMGWords
         </Link>
-      </li>
-      <li>
+      ),
+    },
+    {
+      key: 'editor',
+      label: (
         <Link to="/editor" className="plain">
           Board editor
         </Link>
-      </li>
-      <li>
+      ),
+    },
+    {
+      key: 'anagrams',
+      label: (
         <a
           href="//anagrams.mynetgear.com/"
           target="_blank"
@@ -37,8 +44,11 @@ const TopMenu = React.memo((props: Props) => {
         >
           Anagrams
         </a>
-      </li>
-      <li>
+      ),
+    },
+    {
+      key: 'licensetospell',
+      label: (
         <a
           href="https://seattlephysicstutor.com/plates.html"
           className="plain"
@@ -47,12 +57,13 @@ const TopMenu = React.memo((props: Props) => {
         >
           License to Spell
         </a>
-      </li>
-    </ul>
-  );
-  const studyMenu = (
-    <ul>
-      <li>
+      ),
+    },
+  ];
+
+  const studyMenuItems = [
+    {
+      label: (
         <a
           href="https://aerolith.org"
           className="plain"
@@ -61,8 +72,11 @@ const TopMenu = React.memo((props: Props) => {
         >
           Aerolith
         </a>
-      </li>
-      <li>
+      ),
+      key: 'aerolith',
+    },
+    {
+      label: (
         <a
           href="http://randomracer.com/"
           className="plain"
@@ -71,8 +85,12 @@ const TopMenu = React.memo((props: Props) => {
         >
           Random Racer
         </a>
-      </li>
-      <li>
+      ),
+      key: 'randomracer',
+    },
+    {
+      key: 'wordtree',
+      label: (
         <a
           href="https://seattlephysicstutor.com/tree.html"
           className="plain"
@@ -81,31 +99,37 @@ const TopMenu = React.memo((props: Props) => {
         >
           Word Tree
         </a>
-      </li>
-    </ul>
-  );
-  const aboutMenu = (
-    <ul>
-      <li>
+      ),
+    },
+  ];
+
+  const aboutMenuItems = [
+    {
+      key: 'team',
+      label: (
         <Link className="plain" to="/team">
           Meet the Woogles team
         </Link>
-      </li>
-      <li>
+      ),
+    },
+    {
+      key: 'tos',
+      label: (
         <Link className="plain" to="/terms">
           Terms of Service
         </Link>
-      </li>
-    </ul>
-  );
+      ),
+    },
+  ];
+
   return (
     <div className="top-header-menu">
       <div>
         <Dropdown
           overlayClassName="user-menu"
-          overlay={playMenu}
+          menu={{ items: playMenuItems }}
           placement="bottom"
-          trigger={['click', 'hover']}
+          trigger={['click']}
           getPopupContainer={() =>
             document.getElementById('root') as HTMLElement
           }
@@ -114,14 +138,14 @@ const TopMenu = React.memo((props: Props) => {
         </Dropdown>
       </div>
       <div>
-        <a href="/puzzle">Puzzles</a>
+        <a href="/puzzle">Puzzles</a> {/* why isn't this a Link? */}
       </div>
       <div>
         <Dropdown
           overlayClassName="user-menu"
-          overlay={studyMenu}
+          menu={{ items: studyMenuItems }}
           placement="bottom"
-          trigger={['click', 'hover']}
+          trigger={['click']}
           getPopupContainer={() =>
             document.getElementById('root') as HTMLElement
           }
@@ -135,9 +159,9 @@ const TopMenu = React.memo((props: Props) => {
       <div className="top-header-left-frame-special-land">
         <Dropdown
           overlayClassName="user-menu"
-          overlay={aboutMenu}
+          menu={{ items: aboutMenuItems }}
           placement="bottom"
-          trigger={['click', 'hover']}
+          trigger={['click']}
           getPopupContainer={() =>
             document.getElementById('root') as HTMLElement
           }
@@ -163,8 +187,7 @@ export const TopBar = React.memo((props: Props) => {
   const [loginModalVisible, setLoginModalVisible] = useState(false);
   const authClient = useClient(AuthenticationService);
 
-  const handleLogout = async (e: React.MouseEvent) => {
-    e.preventDefault();
+  const handleLogout = async () => {
     try {
       await authClient.logout({});
       notification.info({
@@ -176,33 +199,45 @@ export const TopBar = React.memo((props: Props) => {
       flashError(e);
     }
   };
-  const userMenu = (
-    <ul>
-      <li>
+
+  const userMenuItems = [
+    {
+      label: (
         <Link className="plain" to={`/profile/${encodeURIComponent(username)}`}>
           Profile
         </Link>
-      </li>
-      <li>
+      ),
+      key: 'profile',
+    },
+    {
+      label: (
         <Link className="plain" to={`/settings`}>
           Settings
         </Link>
-      </li>
-      <li>
+      ),
+      key: 'settings',
+    },
+    {
+      label: (
         <a className="plain" href="/clubs">
           Clubs
         </a>
-      </li>
-      <li>
+      ),
+      key: 'clubs',
+    },
+    {
+      label: (
         <a className="plain" href="/donate">
           Donate
         </a>
-      </li>
-      <li onClick={handleLogout} className="link plain">
-        Log out
-      </li>
-    </ul>
-  );
+      ),
+      key: 'donate',
+    },
+    {
+      label: 'Log out',
+      key: 'logout',
+    },
+  ];
 
   const homeLink = props.tournamentID ? tournamentContext.metadata?.slug : '/';
 
@@ -232,8 +267,15 @@ export const TopBar = React.memo((props: Props) => {
           <div className="user-info">
             <Dropdown
               overlayClassName="user-menu"
-              overlay={userMenu}
-              trigger={['click', 'hover']}
+              menu={{
+                items: userMenuItems,
+                onClick: ({ key }) => {
+                  if (key === 'logout') {
+                    handleLogout();
+                  }
+                },
+              }}
+              trigger={['click']}
               placement="bottomRight"
               getPopupContainer={() =>
                 document.getElementById('root') as HTMLElement
