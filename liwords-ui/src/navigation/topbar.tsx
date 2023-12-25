@@ -234,7 +234,7 @@ export const TopBar = React.memo((props: Props) => {
       key: 'donate',
     },
     {
-      label: 'Log out',
+      label: <a className="plain">Log out</a>,
       key: 'logout',
     },
   ];
