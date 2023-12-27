@@ -318,7 +318,21 @@ func (ts *TournamentService) SetPairing(ctx context.Context, req *pb.TournamentP
 func (ts *TournamentService) SetResult(ctx context.Context, req *pb.TournamentResultOverrideRequest) (*pb.TournamentResponse, error) {
 	err := authenticateDirector(ctx, ts, req.Id, false, req)
 	if err != nil {
-		return nil, err
+		t, err := ts.tournamentStore.Get(ctx, req.Id)
+		if err != nil {
+			return nil, twirp.InternalErrorWith(err)
+		}
+		if t.ExtraMeta.IRLMode && !req.Amendment {
+			// For now, IRL mode will not require authentication to set results.
+			// Of course, this isn't ideal, and people can mess around and set
+			// results for ongoing tournaments. We can fix this later with a
+			// temporary session or similar. But I doubt people will be messing
+			// around too much seeing as how I can barely convince more than one
+			// or two people to ever code on this app.
+			log.Info().AnErr("auth-error", err).Msg("unauthenticated-but-irlmode")
+		} else {
+			return nil, err
+		}
 	}
 	err = SetResult(ctx,
 		ts.tournamentStore,

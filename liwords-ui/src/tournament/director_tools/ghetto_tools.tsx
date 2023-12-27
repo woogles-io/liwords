@@ -80,6 +80,9 @@ const FormModal = (props: ModalProps) => {
     ),
     'export-tournament': <ExportTournament tournamentID={props.tournamentID} />,
     'edit-description': <EditDescription tournamentID={props.tournamentID} />,
+    'unstart-tournament': (
+      <UnstartTournament tournamentID={props.tournamentID} />
+    ),
   };
 
   type FormKeys = keyof typeof forms;
@@ -87,7 +90,7 @@ const FormModal = (props: ModalProps) => {
   return (
     <Modal
       title={props.title}
-      visible={props.visible}
+      open={props.visible}
       footer={null}
       destroyOnClose={true}
       onCancel={props.handleCancel}
@@ -149,6 +152,8 @@ export const GhettoTools = (props: Props) => {
 
   const postTournamentTypes = ['Export tournament'];
 
+  const dangerousTypes = ['Unstart tournament'];
+
   const mapFn = (v: string) => {
     const key = lowerAndJoin(v);
     return (
@@ -164,6 +169,7 @@ export const GhettoTools = (props: Props) => {
   const preListItems = preTournamentTypes.map(mapFn);
   const inListItems = inTournamentTypes.map(mapFn);
   const postListItems = postTournamentTypes.map(mapFn);
+  const dangerListItems = dangerousTypes.map(mapFn);
 
   return (
     <>
@@ -181,6 +187,10 @@ export const GhettoTools = (props: Props) => {
           <Divider />
           <h4>Post-tournament utilities</h4>
           <ul>{postListItems}</ul>
+          <Divider />
+          <h4>Danger!</h4>
+          <ul>{dangerListItems}</ul>
+          <Divider />
         </>
       )}
       <FormModal
@@ -937,7 +947,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     return (
       <Modal
         title="Set Game Request"
-        visible={mprops.visible}
+        open={mprops.visible}
         onCancel={mprops.onCancel}
         className="seek-modal"
         okButtonProps={{ style: { display: 'none' } }}
@@ -1790,6 +1800,33 @@ const ExportTournament = (props: { tournamentID: string }) => {
         </Form.Item>
       </Form>
     </>
+  );
+};
+
+const UnstartTournament = (props: { tournamentID: string }) => {
+  const tClient = useClient(TournamentService);
+  const [form] = Form.useForm();
+
+  const onSubmit = async (vals: Store) => {
+    try {
+      await tClient.unstartTournament({ id: props.tournamentID });
+      window.location.reload();
+    } catch (e) {
+      flashError(e);
+    }
+  };
+
+  return (
+    <Form form={form} onFinish={onSubmit}>
+      <div className="readable-text-color">
+        This button will DELETE all tournament game results. It is as if it had
+        never started. IT IS NOT UNDOABLE. Once you click it, the tournament
+        will RESET!
+      </div>
+      <Form.Item>
+        <Button htmlType="submit">Unstart this tournament</Button>
+      </Form.Item>
+    </Form>
   );
 };
 

@@ -43,6 +43,7 @@ type Props = {
   isAdmin: boolean;
   onSeekSubmit: (g: SoughtGame) => void;
   sendReady: () => void;
+  showFirst?: boolean;
 };
 
 export const ActionsPanel = React.memo((props: Props) => {
@@ -235,6 +236,7 @@ export const ActionsPanel = React.memo((props: Props) => {
               username={username}
               sendReady={props.sendReady}
               isDirector={isDirector}
+              showFirst={props.showFirst}
             />
           </div>
         );
@@ -290,7 +292,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     <Modal
       className="seek-modal"
       title="Send match request"
-      visible={matchModalVisible}
+      open={matchModalVisible}
       destroyOnClose
       onCancel={() => {
         setMatchModalVisible(false);

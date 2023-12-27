@@ -90,7 +90,7 @@ const SettingsModalForm = (mprops: {
   return (
     <Modal
       title="Set Game Request"
-      visible={mprops.visible}
+      open={mprops.visible}
       onCancel={mprops.onCancel}
       className="seek-modal"
       okButtonProps={{ style: { display: 'none' } }}

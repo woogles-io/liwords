@@ -492,7 +492,7 @@ export const SinglePuzzle = (props: Props) => {
           className="puzzle-lexicon-modal"
           closable={false}
           destroyOnClose
-          visible={showLexiconModal}
+          open={showLexiconModal}
           title="Welcome to puzzle mode!"
           footer={[
             <button
@@ -555,7 +555,7 @@ export const SinglePuzzle = (props: Props) => {
       <Modal
         className="response-modal"
         destroyOnClose
-        visible={showResponseModalWrong}
+        open={showResponseModalWrong}
         title="Try again!"
         onCancel={() => {
           setShowResponseModalWrong(false);
@@ -656,7 +656,7 @@ export const SinglePuzzle = (props: Props) => {
       <Modal
         className="response-modal"
         destroyOnClose
-        visible={showResponseModalCorrect}
+        open={showResponseModalCorrect}
         title={correctTitle}
         onCancel={() => {
           setShowResponseModalCorrect(false);

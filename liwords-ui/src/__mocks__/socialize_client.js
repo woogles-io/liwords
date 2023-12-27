@@ -1,4 +1,4 @@
 export default {
-  getActiveChatChannels: jest.fn().mockResolvedValue({ data: {} }),
-  getChatsForChannel: jest.fn().mockResolvedValue({ data: {} }),
+  getActiveChatChannels: vi.fn().mockResolvedValue({ data: {} }),
+  getChatsForChannel: vi.fn().mockResolvedValue({ data: {} }),
 };

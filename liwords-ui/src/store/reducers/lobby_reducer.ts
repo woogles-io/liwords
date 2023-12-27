@@ -162,7 +162,8 @@ export const matchesRatingFormula = (
   const receiverRating = ratings[ratingKey];
   // If this rating doesn't exist, then the user has never played this variant
   // before, so their starting rating is the default starting rating.
-  const receiverRatingValue = receiverRating?.rating || StartingRating;
+  const receiverRatingValue =
+    receiverRating?.rating || parseInt(StartingRating, 10);
 
   // minRatingRange should be negative for this to work:
   const minRating = seekerRating + sg.minRatingRange;

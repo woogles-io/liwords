@@ -85,7 +85,7 @@ export const AvatarCropper = React.memo((props: Props) => {
       title="Edit your profile picture"
       maskClosable={false}
       onCancel={props.onCancel}
-      visible={!!dataUrl}
+      open={!!dataUrl}
       width={328}
       footer={
         <>
@@ -118,7 +118,7 @@ export const AvatarCropper = React.memo((props: Props) => {
       <div className="zoom-slider">
         -
         <Slider
-          tipFormatter={null}
+          tooltip={{ formatter: null }}
           min={1}
           max={5}
           step={0.01}

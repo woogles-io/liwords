@@ -63,7 +63,6 @@
     background-color: m($background);
     box-shadow: m($shadow);
   }
-  padding: 6px 24px 6px 12px;
   min-width: 200px;
 }
 a,
@@ -339,6 +338,12 @@ ul {
     border: 1px solid m($off-background);
   }
 }
+
+// override an ant > 4.20 setting, when moving from a Dropdown overlay to a
+// separate menu.
+// .ant-dropdown > .ant-dropdown-menu {
+//   box-shadow: none;
+// }
 
 .ant-dropdown-menu,
 .ant-select-dropdown {

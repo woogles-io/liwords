@@ -15,7 +15,7 @@ export const AvatarRemoveModal = React.memo((props: Props) => {
     <Modal
       className="avatar-update-modal"
       title="Remove avatar"
-      visible={props.visible}
+      open={props.visible}
       okText="Remove"
       onCancel={() => {
         props.onCancel();

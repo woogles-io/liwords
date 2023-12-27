@@ -165,7 +165,7 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
       className="bio-tips-modal"
       title="Tips for editing your bio"
       width="60%"
-      visible={bioTipsModalVisible}
+      open={bioTipsModalVisible}
       onCancel={() => {
         setBioTipsModalVisible(false);
       }}

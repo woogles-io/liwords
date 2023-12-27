@@ -17,6 +17,8 @@ import { CompetitorStatus } from './competitor_status';
 import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
 import './room.scss';
 import { useTourneyMetadata } from './utils';
+import { useSearchParams } from 'react-router-dom';
+import { OwnScoreEnterer } from './enter_own_scores';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -25,6 +27,7 @@ type Props = {
 
 export const TournamentRoom = (props: Props) => {
   const { useState } = useMountedState();
+  const [searchParams] = useSearchParams();
 
   const { loginState } = useLoginStateStoreContext();
   const { tournamentContext, dispatchTournamentContext } =
@@ -86,6 +89,15 @@ export const TournamentRoom = (props: Props) => {
     return (
       <>
         <TopBar />
+      </>
+    );
+  }
+
+  if (searchParams.get('es') != null) {
+    return (
+      <>
+        <OwnScoreEnterer truncatedID={searchParams.get('es') ?? ''} />
+        <div style={{ marginTop: 400 }}></div>
       </>
     );
   }
