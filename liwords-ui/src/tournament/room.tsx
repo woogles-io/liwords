@@ -94,7 +94,12 @@ export const TournamentRoom = (props: Props) => {
   }
 
   if (searchParams.get('es') != null) {
-    return <OwnScoreEnterer truncatedID={searchParams.get('es') ?? ''} />;
+    return (
+      <>
+        <OwnScoreEnterer truncatedID={searchParams.get('es') ?? ''} />
+        <div style={{ marginTop: 400 }}></div>
+      </>
+    );
   }
 
   return (
