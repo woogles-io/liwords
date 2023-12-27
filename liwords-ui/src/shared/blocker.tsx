@@ -25,15 +25,6 @@ export const TheBlocker = forwardRef((props: BlockerProps, ref) => {
   const { userID } = loginState;
   const socializeClient = useClient(SocializeService);
 
-  useImperativeHandle(ref, () => ({
-    blockAction,
-  }));
-
-  // Don't block yourself. It makes chat annoying.
-  if (userID === props.target) {
-    return null;
-  }
-
   let apiFunc: 'addBlock' | 'removeBlock';
   let blockText: string;
 
@@ -58,6 +49,15 @@ export const TheBlocker = forwardRef((props: BlockerProps, ref) => {
       flashError(e);
     }
   };
+
+  useImperativeHandle(ref, () => ({
+    blockAction,
+  }));
+
+  // Don't block yourself. It makes chat annoying.
+  if (userID === props.target) {
+    return null;
+  }
 
   const DynamicTagName = (props.tagName ||
     'span') as keyof JSX.IntrinsicElements;

@@ -23,6 +23,19 @@ export const TheFollower = forwardRef((props: FollowerProps, ref) => {
   const { userID } = loginState;
   const socializeClient = useClient(SocializeService);
 
+  const friendAction = async () => {
+    try {
+      await socializeClient[apiFunc]({ uuid: props.target });
+      if (props.friendCallback) {
+        props.friendCallback();
+      }
+    } catch (e) {
+      flashError(e);
+    } finally {
+      setPendingFriendsRefresh(true);
+    }
+  };
+
   useImperativeHandle(ref, () => ({
     friendAction,
   }));
@@ -41,19 +54,6 @@ export const TheFollower = forwardRef((props: FollowerProps, ref) => {
     friendText = 'Add friend';
     // Add some confirmation.
   }
-
-  const friendAction = async () => {
-    try {
-      await socializeClient[apiFunc]({ uuid: props.target });
-      if (props.friendCallback) {
-        props.friendCallback();
-      }
-    } catch (e) {
-      flashError(e);
-    } finally {
-      setPendingFriendsRefresh(true);
-    }
-  };
 
   const DynamicTagName = (props.tagName ||
     'span') as keyof JSX.IntrinsicElements;
