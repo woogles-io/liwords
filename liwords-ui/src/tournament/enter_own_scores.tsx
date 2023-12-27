@@ -45,6 +45,7 @@ function findPlayerByTruncatedId(data: TournamentState, truncatedId: string) {
 
 type ResultsModalProps = {
   tournamentID: string;
+  userID: string;
 };
 
 const ShowResults = (props: ResultsModalProps) => {
@@ -67,7 +68,7 @@ const ShowResults = (props: ResultsModalProps) => {
           loggedIn={false}
           newGame={() => {}}
           username=""
-          userID=""
+          userID={props.userID}
           sendReady={() => {}}
           showFirst
         />
@@ -208,6 +209,7 @@ export const OwnScoreEnterer = (props: Props) => {
   const division = tournamentContext.divisions[player.division];
   const foundPlayer = division.players[player.index];
   const fullName = foundPlayer.id.split(':')[1];
+  const md5ID = foundPlayer.id.split(':')[0];
   // determine context of what to show.
   // 1) Tourney hasn't started yet
   // 2) We are in round X, but we have not entered a score yet
@@ -282,7 +284,10 @@ export const OwnScoreEnterer = (props: Props) => {
         <h4 className="readable-text-color">Hi, {fullName}.</h4>
         {display}
         <Divider />
-        <ShowResults tournamentID={tournamentContext.metadata.id} />
+        <ShowResults
+          tournamentID={tournamentContext.metadata.id}
+          userID={md5ID}
+        />
       </div>
     );
   }
@@ -310,7 +315,10 @@ export const OwnScoreEnterer = (props: Props) => {
       </h4>
 
       <Divider />
-      <ShowResults tournamentID={tournamentContext.metadata.id} />
+      <ShowResults
+        tournamentID={tournamentContext.metadata.id}
+        userID={md5ID}
+      />
     </div>
   );
 };
