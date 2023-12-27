@@ -136,6 +136,7 @@ type Props = {
   username?: string;
   sendReady: () => void;
   isDirector: boolean;
+  showFirst?: boolean;
 };
 
 type PairingTableData = {
@@ -271,6 +272,7 @@ export const Pairings = React.memo((props: Props) => {
                     //   tournamentSlug={tournamentContext.metadata.slug}
                     // />
                   }
+                  {idx === 0 && props.showFirst && <Tag color="green">1st</Tag>}
                   {isRemoved(playerID) && (
                     <Tag className="ant-tag-removed">Removed</Tag>
                   )}
