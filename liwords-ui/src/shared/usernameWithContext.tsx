@@ -133,7 +133,12 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
       label: 'Match user',
     });
   }
-  if (loggedIn && props.userID && !props.omitFriend) {
+  if (
+    loggedIn &&
+    props.userID &&
+    props.userID !== userID &&
+    !props.omitFriend
+  ) {
     userMenuOptions.push({
       key: `follower-${props.userID}`,
       label: (
@@ -145,7 +150,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
       ),
     });
   }
-  if (loggedIn && props.userID && !props.omitBlock) {
+  if (loggedIn && props.userID && props.userID !== userID && !props.omitBlock) {
     userMenuOptions.push({
       key: `blocker-${props.userID}`,
       label: (
