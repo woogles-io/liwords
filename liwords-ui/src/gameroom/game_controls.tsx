@@ -409,7 +409,7 @@ const GameControls = React.memo((props: Props) => {
           onClick={props.onExamine}
           disabled={gameHasNotStarted || !props.allowAnalysis}
         >
-          Examine
+          Analyze
         </Button>
         <Button onClick={handleExitToLobby}>Exit</Button>
       </div>
@@ -651,7 +651,7 @@ const EndGameControls = (props: EGCProps) => {
           </Dropdown>
         )}
         <Button onClick={props.onExamine} disabled={gameHasNotStarted}>
-          Examine
+          Analyze
         </Button>
       </div>
       <div className="secondary-controls">

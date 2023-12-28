@@ -394,7 +394,7 @@ const gameStateInitializer = (
 
 const doNothing = () => {}; // defaultFunction currently is the same as this.
 
-// CSS selectors that should support Examine shortcuts.
+// CSS selectors that should support Analyze shortcuts.
 const WHERE_TO_ENABLE_EXAMINE_SHORTCUTS = [
   '.analyzer-card',
   '.analyzer-container',
