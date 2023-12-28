@@ -5,17 +5,7 @@ import {
   SinglePairing,
   TournamentState,
 } from '../store/reducers/tournament_reducer';
-import { TrophyOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Divider,
-  Form,
-  Input,
-  InputNumber,
-  Modal,
-  Typography,
-  message,
-} from 'antd';
+import { Button, Divider, Form, InputNumber, message } from 'antd';
 import { flashError, useClient } from '../utils/hooks/connect';
 import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_connectweb';
 import { TournamentGameResult } from '../gen/api/proto/ipc/tournament_pb';
@@ -43,13 +33,14 @@ function findPlayerByTruncatedId(data: TournamentState, truncatedId: string) {
   return null;
 }
 
-type ResultsModalProps = {
+type ShowResultsProps = {
   tournamentID: string;
   userID: string;
+  autoshow?: boolean;
 };
 
-const ShowResults = (props: ResultsModalProps) => {
-  const [show, setShow] = useState(false);
+const ShowResults = (props: ShowResultsProps) => {
+  const [show, setShow] = useState(props.autoshow ?? false);
   const [selectedGameTab, setSelectedGameTab] = useState('GAMES');
 
   return (
@@ -318,6 +309,7 @@ export const OwnScoreEnterer = (props: Props) => {
       <ShowResults
         tournamentID={tournamentContext.metadata.id}
         userID={md5ID}
+        autoshow
       />
     </div>
   );
