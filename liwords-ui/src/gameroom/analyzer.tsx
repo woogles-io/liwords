@@ -827,7 +827,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
         title="Analyzer"
         className="analyzer-card"
         extra={analyzerControls}
-        tabIndex={-1} /* enable Examine shortcuts on clicking card title */
+        tabIndex={-1} /* enable Analyze shortcuts on clicking card title */
       >
         {analyzerContainer}
       </Card>
