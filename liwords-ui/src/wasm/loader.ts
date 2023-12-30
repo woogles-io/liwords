@@ -93,6 +93,9 @@ const loadablesByKey: { [key: string]: Array<Loadable> } = {};
     'NWL20.kad',
     'NWL20.klv2',
     'NWL20.kwg',
+    'NWL23.kad',
+    'NWL23.klv2',
+    'NWL23.kwg',
     'OSPS48.kad',
     'OSPS48.klv2',
     'OSPS48.kwg',
@@ -107,6 +110,7 @@ const loadablesByKey: { [key: string]: Array<Loadable> } = {};
     'super-NSWL20.klv2',
     'super-NWL18.klv2',
     'super-NWL20.klv2',
+    'super-NWL23.klv2',
   ];
 
   // convention-over-configuration.
