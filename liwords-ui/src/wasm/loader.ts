@@ -114,8 +114,8 @@ const loadablesByKey: { [key: string]: Array<Loadable> } = {};
   ];
 
   // convention-over-configuration.
-  const lexicons = {};
-  const loadables = {};
+  const lexicons: { [key: string]: true } = {};
+  const loadables: { [key: string]: Loadable } = {};
   const unsupportedFilenames = [];
   for (const filename of filenames) {
     const m = filename.match(/^(super-)?(\w+)(\.klv2|\.kwg|\.kad)$/);
