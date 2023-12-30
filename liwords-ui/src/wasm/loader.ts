@@ -51,156 +51,127 @@ class Loadable {
   };
 }
 
-const loadablesByLexicon: { [key: string]: Array<Loadable> } = {};
+const loadablesByKey: { [key: string]: Array<Loadable> } = {};
+{
+  const filenames = [
+    'CSW19.kad',
+    'CSW19.klv2',
+    'CSW19.kwg',
+    'CSW19X.kad',
+    'CSW19X.klv2',
+    'CSW19X.kwg',
+    'CSW21.kad',
+    'CSW21.klv2',
+    'CSW21.kwg',
+    'DISC2.kad',
+    'DISC2.klv2',
+    'DISC2.kwg',
+    'ECWL.kad',
+    'ECWL.klv2',
+    'ECWL.kwg',
+    'FRA20.kad',
+    'FRA20.klv2',
+    'FRA20.kwg',
+    'FRA24.kad',
+    'FRA24.klv2',
+    'FRA24.kwg',
+    'NSF21.kad',
+    'NSF21.klv2',
+    'NSF21.kwg',
+    'NSF22.kad',
+    'NSF22.klv2',
+    'NSF22.kwg',
+    'NSF23.kad',
+    'NSF23.klv2',
+    'NSF23.kwg',
+    'NSWL20.kad',
+    'NSWL20.klv2',
+    'NSWL20.kwg',
+    'NWL18.kad',
+    'NWL18.klv2',
+    'NWL18.kwg',
+    'NWL20.kad',
+    'NWL20.klv2',
+    'NWL20.kwg',
+    'OSPS48.kad',
+    'OSPS48.klv2',
+    'OSPS48.kwg',
+    'RD28.kad',
+    'RD28.klv2',
+    'RD28.kwg',
+    'super-CSW19.klv2',
+    'super-CSW19X.klv2',
+    'super-CSW21.klv2',
+    'super-DISC2.klv2',
+    'super-ECWL.klv2',
+    'super-NSWL20.klv2',
+    'super-NWL18.klv2',
+    'super-NWL20.klv2',
+  ];
 
-for (const { lexicons, cacheKey, path } of [
-  {
-    lexicons: ['NWL20', 'NWL18', 'NSWL20'].flatMap((name) => [
-      name,
-      `${name}.WordSmog`,
-    ]),
-    cacheKey: 'klv/american',
-    path: '/wasm/2023/american.klv2',
-  },
-  {
-    lexicons: ['NWL20', 'NWL18', 'NSWL20'].flatMap((name) => [
-      `${name}.Super`,
-      `${name}.WordSmog.Super`,
-    ]),
-    cacheKey: 'klv/super-american',
-    path: '/wasm/2023/super-american.klv2',
-  },
-  {
-    lexicons: ['ECWL'].flatMap((name) => [name, `${name}.WordSmog`]),
-    cacheKey: 'klv/CEL',
-    path: '/wasm/2023/CEL.klv2',
-  },
-  {
-    lexicons: ['ECWL'].flatMap((name) => [
-      `${name}.Super`,
-      `${name}.WordSmog.Super`,
-    ]),
-    cacheKey: 'klv/super-CEL',
-    path: '/wasm/2023/super-CEL.klv2',
-  },
-  {
-    lexicons: ['CSW19', 'CSW19X', 'CSW21'].flatMap((name) => [
-      name,
-      `${name}.WordSmog`,
-    ]),
-    cacheKey: 'klv/english',
-    path: '/wasm/2023/english.klv2',
-  },
-  {
-    lexicons: ['CSW19', 'CSW19X', 'CSW21'].flatMap((name) => [
-      `${name}.Super`,
-      `${name}.WordSmog.Super`,
-    ]),
-    cacheKey: 'klv/super-english',
-    path: '/wasm/2023/super-english.klv2',
-  },
-  {
-    lexicons: ['FRA20'].flatMap((name) => [
-      name,
-      `${name}.WordSmog`,
-      `${name}.Super`,
-      `${name}.WordSmog.Super`,
-    ]),
-    cacheKey: 'klv/french',
-    path: '/wasm/2023/french.klv2',
-  },
-  {
-    lexicons: ['RD28'].flatMap((name) => [
-      name,
-      `${name}.WordSmog`,
-      `${name}.Super`,
-      `${name}.WordSmog.Super`,
-    ]),
-    cacheKey: 'klv/german',
-    path: '/wasm/2023/german.klv2',
-  },
-  {
-    lexicons: ['NSF21', 'NSF22', 'NSF23'].flatMap((name) => [
-      name,
-      `${name}.WordSmog`,
-      `${name}.Super`,
-      `${name}.WordSmog.Super`,
-    ]),
-    cacheKey: 'klv/norwegian',
-    path: '/wasm/2023/norwegian.klv2',
-  },
-  {
-    lexicons: ['DISC2'].flatMap((name) => [name, `${name}.WordSmog`]),
-    cacheKey: 'klv/catalan',
-    path: '/wasm/2023/catalan.klv2',
-  },
-  {
-    lexicons: ['DISC2'].flatMap((name) => [
-      `${name}.Super`,
-      `${name}.WordSmog.Super`,
-    ]),
-    cacheKey: 'klv/super-catalan',
-    path: '/wasm/2023/super-catalan.klv2',
-  },
-  {
-    lexicons: ['OSPS48'].flatMap((name) => [
-      name,
-      `${name}.WordSmog`,
-      `${name}.Super`,
-      `${name}.WordSmog.Super`,
-    ]),
-    cacheKey: 'klv/polish',
-    path: '/wasm/2023/polish.klv2',
-  },
-  ...[
-    'CSW19',
-    'CSW19X',
-    'NWL18',
-    'NSWL20',
-    'ECWL',
-    'FRA20',
-    'NSF21',
-    'NSF22',
-    'NSF23',
-    'DISC2',
-  ].map((name) => ({
-    lexicons: [name, `${name}.Super`],
-    cacheKey: `kwg/${name}`,
-    path: `/wasm/${name}.kwg`,
-  })),
-  ...['CSW21', 'NWL20', 'RD28', 'OSPS48'].map((name) => ({
-    lexicons: [name, `${name}.Super`],
-    cacheKey: `kwg/${name}`,
-    path: `/wasm/2023/${name}.kwg`,
-  })),
-  ...[
-    'CSW19',
-    'CSW19X',
-    'NWL18',
-    'NSWL20',
-    'ECWL',
-    'FRA20',
-    'NSF21',
-    'NSF22',
-    'NSF23',
-    'DISC2',
-  ].map((name) => ({
-    lexicons: [`${name}.WordSmog`, `${name}.WordSmog.Super`],
-    cacheKey: `kwg/${name}.WordSmog`,
-    path: `/wasm/${name}.kad`,
-  })),
-  ...['CSW21', 'NWL20', 'RD28', 'OSPS48'].map((name) => ({
-    lexicons: [`${name}.WordSmog`, `${name}.WordSmog.Super`],
-    cacheKey: `kwg/${name}.WordSmog`,
-    path: `/wasm/2023/${name}.kad`,
-  })),
-]) {
-  const loadable = new Loadable(cacheKey, path);
-  for (const lexicon of lexicons) {
-    if (!(lexicon in loadablesByLexicon)) {
-      loadablesByLexicon[lexicon] = [];
+  // convention-over-configuration.
+  const lexicons = {};
+  const loadables = {};
+  const unsupportedFilenames = [];
+  for (const filename of filenames) {
+    const m = filename.match(/^(super-)?(\w+)(\.klv2|\.kwg|\.kad)$/);
+    if (m) {
+      const lexicon = m[2];
+      const baseFilename = m[1] ? `super-${lexicon}` : lexicon;
+      const extension = m[3];
+      const cacheKey =
+        extension === '.kwg'
+          ? `kwg/${baseFilename}`
+          : extension === '.kad'
+          ? `kwg/${baseFilename}.WordSmog`
+          : extension === '.klv2'
+          ? `klv/${baseFilename}`
+          : null;
+      if (cacheKey) {
+        lexicons[lexicon] = true;
+        loadables[filename] = new Loadable(cacheKey, `/wasm/2024/${filename}`);
+        continue;
+      }
     }
-    loadablesByLexicon[lexicon].push(loadable);
+    unsupportedFilenames.push(filename);
+  }
+
+  for (const lexicon in lexicons) {
+    loadablesByKey[`${lexicon}`] = [
+      loadables[`${lexicon}.kwg`],
+      loadables[`${lexicon}.klv2`],
+    ];
+    loadablesByKey[`${lexicon}.WordSmog`] = [
+      loadables[`${lexicon}.kad`],
+      loadables[`${lexicon}.klv2`],
+    ];
+    loadablesByKey[`super-${lexicon}`] = [
+      loadables[`super-${lexicon}.kwg`] ?? loadables[`${lexicon}.kwg`],
+      loadables[`super-${lexicon}.klv2`] ?? loadables[`${lexicon}.klv2`],
+    ];
+    loadablesByKey[`super-${lexicon}.WordSmog`] = [
+      loadables[`super-${lexicon}.kad`] ?? loadables[`${lexicon}.kad`],
+      loadables[`super-${lexicon}.klv2`] ?? loadables[`${lexicon}.klv2`],
+    ];
+  }
+  const missingFiles = [];
+  for (const k in loadablesByKey) {
+    if (loadablesByKey[k].some((v) => !v)) {
+      missingFiles.push(k);
+    }
+  }
+
+  const errors = [];
+  if (unsupportedFilenames.length > 0) {
+    errors.push(
+      `unsupported filenames: ${unsupportedFilenames.sort().join(', ')}`
+    );
+  }
+  if (missingFiles.length > 0) {
+    errors.push(`missing files: ${missingFiles.sort().join(', ')}`);
+  }
+  if (errors.length > 0) {
+    throw new Error(errors.join('; '));
   }
 }
 
@@ -208,11 +179,17 @@ const unrace = new Unrace();
 
 const wolgesCache = new WeakMap();
 
-export const getWolges = async (lexicon: string) =>
+export const getLexiconKey = (loadableKey: string) =>
+  loadablesByKey[loadableKey]?.[0]?.cacheKey?.replace(/^kwg\//, '');
+
+export const getLeaveKey = (loadableKey: string) =>
+  loadablesByKey[loadableKey]?.[1]?.cacheKey?.replace(/^klv\//, '');
+
+export const getWolges = async (loadableKey: string) =>
   unrace.run(async () => {
     // Allow these files to start loading.
     const wolgesPromise = import('wolges-wasm');
-    const effectiveLoadables = loadablesByLexicon[lexicon] ?? [];
+    const effectiveLoadables = loadablesByKey[loadableKey] ?? [];
     for (const loadable of effectiveLoadables) {
       loadable.startFetch();
     }
