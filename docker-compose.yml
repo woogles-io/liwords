@@ -67,13 +67,10 @@ services:
       context: ../macondo
       dockerfile: Dockerfile-bot-dev
     environment:
-      LEXICON_PATH: /opt/program/data/lexica
-      LETTER_DISTRIBUTION_PATH: /opt/program/data/letterdistributions
-      STRATEGY_PARAMS_PATH: /opt/program/data/strategy
-      DATA_PATH: /opt/program/data
-      NATS_URL: nats://nats:4222
-      DEBUG: 1
-      WOLGES_AWSM_URL: http://wolges_awsm:4500
+      MACONDO_DATA_PATH: /opt/program/data
+      MACONDO_NATS_URL: nats://nats:4222
+      MACONDO_DEBUG: 1
+      MACONDO_WOLGES_AWSM_URL: http://wolges_awsm:4500
     volumes:
       - ../macondo:/opt/program:rw
       # Use the same gaddag files we use for the WASM integration.
