@@ -389,7 +389,7 @@ export const Pairings = React.memo((props: Props) => {
                   }
                 }}
               >
-                Examine
+                Analyze
               </Button>
             );
           }

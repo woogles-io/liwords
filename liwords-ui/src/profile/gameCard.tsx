@@ -110,7 +110,7 @@ export const GameCard = React.memo((props: GameCardProps) => {
       key="examine-action"
       to={`/game/${encodeURIComponent(String(gameId ?? ''))}`}
     >
-      Examine
+      Analyze
     </Link>,
   ];
   const scoreDisplay = (
