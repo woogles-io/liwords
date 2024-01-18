@@ -12,6 +12,7 @@ const lexiconCodeToInternalRatingName = (code: string) => {
   if (code.startsWith('RD')) return 'RD28';
   if (code.startsWith('FRA')) return 'FRA20';
   if (code.startsWith('DISC')) return 'DISC';
+  if (code.startsWith('OSPS')) return 'OSPS';
   return code;
 };
 
@@ -28,7 +29,8 @@ const InternalRatingNameToProfileRatingName: {
   RD28: 'Deutsch',
   NSF21: 'Norsk',
   FRA20: 'Français',
-  DISC2: 'Català',
+  DISC: 'Català',
+  OSPS: 'Polski',
 };
 
 export const lexiconCodeToProfileRatingName = (code: string) => {
@@ -94,11 +96,17 @@ export const AllLexica: { [code: string]: Lexicon } = {
       'The NSF word list is provided by the language committee of the Norwegian Scrabble Player Association. Used with permission.',
     flagCode: 'no',
   },
-  FRA20: {
-    code: 'FRA20',
+  FRA24: {
+    code: 'FRA24',
     shortDescription: 'Français (French)',
     matchName: 'Français',
     flagCode: 'fr',
+  },
+  OSPS49: {
+    code: 'OSPS49',
+    shortDescription: 'Polski (Polish)',
+    matchName: 'Polski',
+    flagCode: 'pl',
   },
   CSW19X: {
     code: 'CSW19X',
