@@ -515,7 +515,6 @@ export const StandardCatalanAlphabet: Alphabet = {
   longestPossibleTileRune: 3,
 };
 
-// TODO: Fill in categories.
 export const StandardPolishAlphabet: Alphabet = {
   letters: [
     { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },

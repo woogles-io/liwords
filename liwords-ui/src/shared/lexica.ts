@@ -106,6 +106,8 @@ export const AllLexica: { [code: string]: Lexicon } = {
     code: 'OSPS49',
     shortDescription: 'Polski (Polish)',
     matchName: 'Polski',
+    longDescription:
+      'Copyright 2024 Polska Federacja Scrabble. Used with permission.',
     flagCode: 'pl',
   },
   CSW19X: {
