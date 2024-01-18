@@ -10,6 +10,7 @@ import { GameInfoResponse, RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
 import { challengeRuleNamesShort } from '../constants/challenge_rules';
 import { GameEndReason } from '../gen/api/proto/ipc/omgwords_pb';
 import { ChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
+import { lexiconCodeToProfileRatingName } from '../shared/lexica';
 
 type Props = {
   games: Array<GameInfoResponse>;
@@ -152,7 +153,9 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         scores,
         turnOrder,
         endReason,
-        lexicon: item.gameRequest?.lexicon,
+        lexicon: lexiconCodeToProfileRatingName(
+          item.gameRequest?.lexicon ?? ''
+        ),
         time,
         when,
       };
