@@ -10,8 +10,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/domino14/macondo/tilemapping"
 	"github.com/domino14/macondo/turnplayer"
+	"github.com/domino14/word-golib/tilemapping"
 	"github.com/lithammer/shortuuid"
 	"google.golang.org/protobuf/proto"
 

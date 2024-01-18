@@ -19,9 +19,9 @@ import (
 	puzzlesstore "github.com/domino14/liwords/pkg/stores/puzzles"
 	"github.com/domino14/macondo/cross_set"
 	macondogame "github.com/domino14/macondo/game"
-	"github.com/domino14/macondo/kwg"
 	macondopuzzles "github.com/domino14/macondo/puzzles"
-	"github.com/domino14/macondo/tilemapping"
+	"github.com/domino14/word-golib/kwg"
+	"github.com/domino14/word-golib/tilemapping"
 
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	pb "github.com/domino14/liwords/rpc/api/proto/puzzle_service"

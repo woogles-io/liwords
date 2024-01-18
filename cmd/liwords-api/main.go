@@ -147,7 +147,7 @@ func main() {
 	if cfg.SecretKey == "" {
 		panic("secret key must be non blank")
 	}
-	if cfg.MacondoConfig.Debug {
+	if cfg.Debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	} else {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)

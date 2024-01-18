@@ -12,6 +12,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/encoding/protojson"
 
+	macondoconfig "github.com/domino14/macondo/config"
+
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/puzzles"
 	gamestore "github.com/domino14/liwords/pkg/stores/game"
@@ -34,8 +36,8 @@ func main() {
 	cfg := &config.Config{}
 	// Only load config from environment variables:
 	cfg.Load(nil)
-	cfg.MacondoConfig.DefaultLexicon = req.Lexicon
-	cfg.MacondoConfig.DefaultLetterDistribution = req.LetterDistribution
+	cfg.MacondoConfig.Set(macondoconfig.ConfigDefaultLexicon, req.Lexicon)
+	cfg.MacondoConfig.Set(macondoconfig.ConfigDefaultLetterDistribution, req.LetterDistribution)
 	ctx := context.Background()
 
 	pool, err := commondb.OpenDB(cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBUser, cfg.DBPassword, cfg.DBSSLMode)

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
-	"github.com/domino14/macondo/tilemapping"
+	"github.com/domino14/word-golib/tilemapping"
 )
 
 var (

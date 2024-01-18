@@ -2,11 +2,9 @@ package common
 
 import (
 	"math"
-	"os"
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
-	macondoconfig "github.com/domino14/macondo/config"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
@@ -14,13 +12,15 @@ const DefaultLexicon = "CSW21"
 const DefaultLetterDistribution = "english"
 const DefaultVariantName = "classic"
 
-var DefaultConfig = macondoconfig.Config{
-	LexiconPath:               os.Getenv("LEXICON_PATH"),
-	LetterDistributionPath:    os.Getenv("LETTER_DISTRIBUTION_PATH"),
-	DefaultLexicon:            DefaultLexicon,
-	DefaultLetterDistribution: DefaultLetterDistribution,
-	DataPath:                  os.Getenv("DATA_PATH"),
-}
+// var DefaultMacondoConfig = macondoconfig.DefaultConfig()
+
+// macondoconfig.Config{
+// 	LexiconPath:               os.Getenv("LEXICON_PATH"),
+// 	LetterDistributionPath:    os.Getenv("LETTER_DISTRIBUTION_PATH"),
+// 	DefaultLexicon:            DefaultLexicon,
+// 	DefaultLetterDistribution: DefaultLetterDistribution,
+// 	DataPath:                  os.Getenv("DATA_PATH"),
+// }
 
 var DefaultGameReq = &ipc.GameRequest{Lexicon: DefaultLexicon,
 	Rules: &ipc.GameRules{BoardLayoutName: entity.CrosswordGame,

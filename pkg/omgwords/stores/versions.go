@@ -3,7 +3,7 @@ package stores
 import (
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/rpc/api/proto/ipc"
-	"github.com/domino14/macondo/tilemapping"
+	"github.com/domino14/word-golib/tilemapping"
 	"github.com/rs/zerolog/log"
 )
 
