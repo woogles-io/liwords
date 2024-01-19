@@ -10,6 +10,7 @@ import { GameInfoResponse, RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
 import { challengeRuleNamesShort } from '../constants/challenge_rules';
 import { GameEndReason } from '../gen/api/proto/ipc/omgwords_pb';
 import { ChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
+import { lexiconCodeToProfileRatingName } from '../shared/lexica';
 
 type GameCardProps = {
   game: GameInfoResponse;
@@ -139,7 +140,8 @@ export const GameCard = React.memo((props: GameCardProps) => {
     >
       {opponentLink}
       <div className="variant-info">
-        {gameRequest?.lexicon} - <span className="time-control">{time}</span>
+        {lexiconCodeToProfileRatingName(gameRequest?.lexicon ?? '')} -{' '}
+        <span className="time-control">{time}</span>
       </div>
       <p>{endReason}</p>
       {getDetails}
