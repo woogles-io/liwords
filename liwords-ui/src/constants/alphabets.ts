@@ -515,6 +515,76 @@ export const StandardCatalanAlphabet: Alphabet = {
   longestPossibleTileRune: 3,
 };
 
+export const StandardPolishAlphabet: Alphabet = {
+  letters: [
+    { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
+    { rune: 'A', score: 1, count: 9, vowel: true, category: 0 },
+    { rune: 'Ą', score: 5, count: 1, vowel: true, category: 2 },
+    { rune: 'B', score: 3, count: 2, vowel: false, category: 1 },
+    { rune: 'C', score: 2, count: 3, vowel: false, category: 1 },
+    { rune: 'Ć', score: 6, count: 1, vowel: false, category: 3 },
+    { rune: 'D', score: 2, count: 3, vowel: false, category: 1 },
+    { rune: 'E', score: 1, count: 7, vowel: true, category: 0 },
+    { rune: 'Ę', score: 5, count: 1, vowel: true, category: 2 },
+    { rune: 'F', score: 5, count: 1, vowel: false, category: 2 },
+    { rune: 'G', score: 3, count: 2, vowel: false, category: 1 },
+    {
+      rune: 'H',
+      score: 3,
+      count: 2,
+      vowel: false,
+      category: 0,
+      bnjyable: true,
+    },
+    { rune: 'I', score: 1, count: 8, vowel: true, category: 0, bnjyable: true },
+    { rune: 'J', score: 3, count: 2, vowel: false, category: 1 },
+    { rune: 'K', score: 2, count: 3, vowel: false, category: 1 },
+    { rune: 'L', score: 2, count: 3, vowel: false, category: 1 },
+    { rune: 'Ł', score: 3, count: 2, vowel: false, category: 1 },
+    { rune: 'M', score: 2, count: 3, vowel: false, category: 1 },
+    {
+      rune: 'N',
+      score: 1,
+      count: 5,
+      vowel: false,
+      category: 0,
+      bnjyable: true,
+    },
+    { rune: 'Ń', score: 7, count: 1, vowel: false, category: 3 },
+    { rune: 'O', score: 1, count: 6, vowel: true, category: 0, bnjyable: true },
+    { rune: 'Ó', score: 5, count: 1, vowel: true, category: 2 },
+    { rune: 'P', score: 2, count: 3, vowel: false, category: 1 },
+    { rune: 'R', score: 1, count: 4, vowel: false, category: 1 },
+    {
+      rune: 'S',
+      score: 1,
+      count: 4,
+      vowel: false,
+      category: 1,
+      bnjyable: true,
+    },
+    { rune: 'Ś', score: 5, count: 1, vowel: false, category: 2 },
+    { rune: 'T', score: 2, count: 3, vowel: false, category: 1 },
+    { rune: 'U', score: 3, count: 2, vowel: true, category: 0 },
+    { rune: 'W', score: 1, count: 4, vowel: false, category: 1 },
+    { rune: 'Y', score: 2, count: 4, vowel: true, category: 1 },
+    {
+      rune: 'Z',
+      score: 1,
+      count: 5,
+      vowel: false,
+      category: 1,
+      bnjyable: true,
+    },
+    { rune: 'Ź', score: 9, count: 1, vowel: false, category: 3 },
+    { rune: 'Ż', score: 5, count: 1, vowel: false, category: 2 },
+  ],
+  letterMap: {},
+  machineLetterMap: {},
+  shortcutMap: {},
+  longestPossibleTileRune: 1,
+};
+
 // Create letter maps for faster access.
 [
   StandardEnglishAlphabet,
@@ -523,6 +593,7 @@ export const StandardCatalanAlphabet: Alphabet = {
   StandardFrenchAlphabet,
   SuperEnglishAlphabet,
   StandardCatalanAlphabet,
+  StandardPolishAlphabet,
 ].forEach((alph) => {
   alph.letters.forEach((letter, idx) => {
     alph.letterMap[letter.rune] = letter;
@@ -549,6 +620,8 @@ export const alphabetFromName = (
       return SuperEnglishAlphabet;
     case 'catalan':
       return StandardCatalanAlphabet;
+    case 'polish':
+      return StandardPolishAlphabet;
     default:
       return StandardEnglishAlphabet;
   }

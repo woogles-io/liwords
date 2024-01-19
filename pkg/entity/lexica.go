@@ -7,11 +7,12 @@ func init() {
 		"CSW19X",
 		"CSW21",
 		"ECWL",
-		"FRA20",
+		"FRA24",
 		"NSF23",
 		"NSWL20",
 		"NWL20",
 		"RD28",
 		"DISC2",
+		"OSPS49",
 	)
 }

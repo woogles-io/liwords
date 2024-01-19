@@ -14,7 +14,7 @@ import {
   useGameContextStoreContext,
   useTentativeTileContext,
 } from '../store/store';
-import { getWolges } from '../wasm/loader';
+import { getLeaveKey, getLexiconKey, getWolges } from '../wasm/loader';
 import { useMountedState } from '../utils/mounted';
 import { RedoOutlined } from '@ant-design/icons';
 import {
@@ -292,16 +292,16 @@ const parseExaminableGameContext = (
 
   const rackNum = sortTiles(players[onturn].currentRack, alphabet);
 
-  let effectiveLexicon = lexicon;
+  let loadableKey = lexicon;
   let rules = 'CrosswordGame';
-  if (variant === 'wordsmog') {
-    effectiveLexicon = `${lexicon}.WordSmog`;
+  if (variant === 'wordsmog' || variant === 'wordsmog_super') {
     rules = 'WordSmog';
-  } else if (variant === 'classic_super') {
-    rules = 'CrosswordGameSuper';
-  } else if (variant === 'wordsmog_super') {
-    effectiveLexicon = `${lexicon}.WordSmog`;
-    rules = 'WordSmogSuper';
+    loadableKey += '.WordSmog';
+  }
+  if (variant === 'classic_super' || variant === 'wordsmog_super') {
+    // only english and catalan supported.
+    rules += 'Super';
+    loadableKey = `super-${loadableKey}`;
   }
   if (letterDistribution !== 'english') {
     rules += `/${letterDistribution}`;
@@ -316,21 +316,19 @@ const parseExaminableGameContext = (
           .map((l) => (l & 0x80 ? -(l & 0x7f) : l))
       )
     ),
-    lexicon: effectiveLexicon,
-    leave:
-      lexicon === 'CSW21'
-        ? lexicon
-        : letterDistribution === 'english' ||
-          letterDistribution === 'german' ||
-          letterDistribution === 'norwegian' ||
-          letterDistribution === 'french' ||
-          letterDistribution === 'catalan'
-        ? letterDistribution
-        : 'noleave',
+    lexicon: getLexiconKey(loadableKey),
+    leave: getLeaveKey(loadableKey),
     rules,
   };
 
-  return { dim, letters, rackNum, effectiveLexicon, boardObj, alphabet };
+  return {
+    dim,
+    letters,
+    rackNum,
+    loadableKey,
+    boardObj,
+    alphabet,
+  };
 };
 
 const AnalyzerContext = React.createContext<{
@@ -398,7 +396,7 @@ export const AnalyzerContextProvider = ({
             dim,
             letters,
             rackNum,
-            effectiveLexicon,
+            loadableKey,
             boardObj: bareBoardObj,
             alphabet,
           } = parseExaminableGameContext(
@@ -408,7 +406,7 @@ export const AnalyzerContextProvider = ({
           );
           const boardObj = { ...bareBoardObj, count: 15 };
 
-          const wolges = await getWolges(effectiveLexicon);
+          const wolges = await getWolges(loadableKey);
           if (examinerIdAtStart !== examinerId.current) return;
 
           const boardStr = JSON.stringify(boardObj);
@@ -648,13 +646,13 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           dim,
           letters,
           rackNum,
-          effectiveLexicon,
+          loadableKey,
           boardObj: bareBoardObj,
           alphabet,
         } = parseExaminableGameContext(examinableGameContext, lexicon, variant);
         const boardObj = { ...bareBoardObj, plays: [actualMove] };
 
-        const wolges = await getWolges(effectiveLexicon);
+        const wolges = await getWolges(loadableKey);
         if (evaluatedMoveIdAtStart !== evaluatedMoveId.current) return;
 
         const boardStr = JSON.stringify(boardObj);
