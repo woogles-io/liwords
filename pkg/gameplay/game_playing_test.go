@@ -27,23 +27,20 @@ import (
 func ctxForTests() context.Context {
 	ctx := context.Background()
 	ctx = log.Logger.WithContext(ctx)
-	ctx = context.WithValue(ctx, config.CtxKeyword, &config.Config{
-		MacondoConfig: DefaultConfig,
-	})
+	ctx = context.WithValue(ctx, config.CtxKeyword, &DefaultConfig)
 	return ctx
 }
 
 func gameStore(userStore pkguser.Store) (*config.Config, gameplay.GameStore) {
-	cfg := &config.Config{}
-	cfg.MacondoConfig = DefaultConfig
+	cfg := DefaultConfig
 	cfg.DBConnDSN = common.TestingPostgresConnDSN()
 
-	tmp, err := game.NewDBStore(cfg, userStore)
+	tmp, err := game.NewDBStore(&cfg, userStore)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
 	gameStore := game.NewCache(tmp)
-	return cfg, gameStore
+	return &cfg, gameStore
 }
 
 func tournamentStore(cfg *config.Config, gs gameplay.GameStore) tournament.TournamentStore {

@@ -9,7 +9,6 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/macondo/board"
-	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/domino14/macondo/game"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/word-golib/kwg"
@@ -24,7 +23,7 @@ type ListStatStore interface {
 
 type IncrementInfo struct {
 	Ctx                 context.Context
-	Cfg                 *macondoconfig.Config
+	CfgMap              map[string]any
 	Req                 *ipc.GameRequest
 	Evt                 *ipc.GameEndedEvent
 	Lss                 ListStatStore
@@ -134,12 +133,12 @@ func InstantiateNewStats(playerOneId string, playerTwoId string) *entity.Stats {
 }
 
 func AddGame(ctx context.Context, stats *entity.Stats, lss ListStatStore, history *pb.GameHistory, req *ipc.GameRequest,
-	cfg *macondoconfig.Config, gameEndedEvent *ipc.GameEndedEvent, gameId string) error {
+	cfgMap map[string]any, gameEndedEvent *ipc.GameEndedEvent, gameId string) error {
 	// Josh, plz fix these asinine calls to incrementStatItem
 	events := history.GetEvents()
 
 	info := &IncrementInfo{Ctx: ctx,
-		Cfg:     cfg,
+		CfgMap:  cfgMap,
 		Req:     req,
 		Evt:     gameEndedEvent,
 		Lss:     lss,
@@ -457,7 +456,7 @@ func addChallengedPhonies(info *IncrementInfo) error {
 func addUnchallengedPhonies(info *IncrementInfo) error {
 	events := info.History.GetEvents()
 	event := events[info.EventIndex]
-	isUnchallengedPhony, err := isUnchallengedPhonyEvent(event, info.History, info.Cfg)
+	isUnchallengedPhony, err := isUnchallengedPhonyEvent(event, info.History, info.CfgMap)
 	if err != nil {
 		return err
 	}
@@ -935,7 +934,7 @@ func getOccupiedIndexes(info *IncrementInfo, event *pb.GameEvent) [][]int {
 		ldname = "english"
 	}
 
-	ld, err := tilemapping.GetDistribution(info.Cfg, ldname)
+	ld, err := tilemapping.GetDistribution(info.CfgMap, ldname)
 	if err != nil {
 		log.Err(err).Str("dist", ldname).Msg("get-occupied-indexes-get-dist-err")
 		return occupied
@@ -984,7 +983,7 @@ func countBonusSquares(info *IncrementInfo,
 
 func isUnchallengedPhonyEvent(event *pb.GameEvent,
 	history *pb.GameHistory,
-	cfg *macondoconfig.Config) (bool, error) {
+	cfg map[string]any) (bool, error) {
 	phony := false
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE {
 		kwg, err := kwg.Get(cfg, history.Lexicon)

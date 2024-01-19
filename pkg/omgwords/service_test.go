@@ -11,8 +11,6 @@ import (
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 
-	macondoconfig "github.com/domino14/macondo/config"
-
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
@@ -25,12 +23,7 @@ import (
 	pkguser "github.com/domino14/liwords/pkg/user"
 )
 
-var DefaultConfig = &config.Config{
-	MacondoConfig: macondoconfig.Config{
-		DataPath:    os.Getenv("DATA_PATH"),
-		LexiconPath: os.Getenv("LEXICON_PATH"),
-	}}
-
+var DefaultConfig = config.DefaultConfig()
 var RedisURL = os.Getenv("REDIS_URL")
 
 func newPool(addr string) *redis.Pool {
@@ -86,7 +79,7 @@ func gameStore() *stores.GameDocumentStore {
 	if err != nil {
 		panic(err)
 	}
-	gds, err := stores.NewGameDocumentStore(DefaultConfig, redisPool, pool)
+	gds, err := stores.NewGameDocumentStore(&DefaultConfig, redisPool, pool)
 	if err != nil {
 		panic(err)
 	}
@@ -117,13 +110,13 @@ func recreateDB() {
 func newService() *OMGWordsService {
 	recreateDB()
 
-	return NewOMGWordsService(userStore(), DefaultConfig, gameStore(), metaStore())
+	return NewOMGWordsService(userStore(), &DefaultConfig, gameStore(), metaStore())
 }
 
 func ctxForTests() context.Context {
 	ctx := context.Background()
 	ctx = log.Logger.WithContext(ctx)
-	ctx = context.WithValue(ctx, config.CtxKeyword, DefaultConfig)
+	ctx = context.WithValue(ctx, config.CtxKeyword, &DefaultConfig)
 	return ctx
 }
 

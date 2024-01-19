@@ -310,7 +310,7 @@ func minusMLs(a, b []tilemapping.MachineLetter) []tilemapping.MachineLetter {
 }
 
 func calculateReturnedTiles(cfg *config.Config, letdist string, playerRack string, lastEventRack string, lastEventTiles string) (string, error) {
-	dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, letdist)
+	dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, letdist)
 	if err != nil {
 		return "", err
 	}

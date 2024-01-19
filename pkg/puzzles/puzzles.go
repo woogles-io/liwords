@@ -150,7 +150,7 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID
 	if !ok {
 		return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, nil, nil, errors.New("missing-config-in-context")
 	}
-	ld, err := tilemapping.GetDistribution(&cfg.MacondoConfig, req.Rules.LetterDistributionName)
+	ld, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, req.Rules.LetterDistributionName)
 	if err != nil {
 		return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, nil, nil, err
 	}

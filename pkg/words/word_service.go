@@ -8,8 +8,10 @@ import (
 	"strings"
 	"sync"
 
-	pb "github.com/domino14/liwords/rpc/api/proto/word_service"
+	"github.com/domino14/liwords/pkg/config"
 	macondoconfig "github.com/domino14/macondo/config"
+
+	pb "github.com/domino14/liwords/rpc/api/proto/word_service"
 	"github.com/domino14/word-golib/kwg"
 	"github.com/domino14/word-golib/tilemapping"
 	"github.com/rs/zerolog/log"
@@ -17,14 +19,21 @@ import (
 )
 
 type WordService struct {
-	cfg               *macondoconfig.Config
+	cfg               *config.Config
 	definitionSources map[string]*defSource
 }
 
 // NewWordService creates a Twirp WordService
-func NewWordService(cfg *macondoconfig.Config) *WordService {
-	kwgPath := filepath.Join(cfg.LexiconPath, "gaddag")
+func NewWordService(cfg *config.Config) *WordService {
+
+	lexPath := filepath.Join(cfg.MacondoConfig.GetString(macondoconfig.ConfigDataPath), "lexica")
+	kwgPath := filepath.Join(lexPath, "gaddag")
+	pp := cfg.MacondoConfig.GetString(macondoconfig.ConfigKWGPathPrefix)
+	if pp != "" {
+		kwgPath = filepath.Join(kwgPath, pp)
+	}
 	kwgDir, err := os.Open(kwgPath)
+
 	var filenames []string
 	if err != nil {
 		log.Warn().Err(err).Msgf("cannot open directory %s", kwgPath)
@@ -37,7 +46,7 @@ func NewWordService(cfg *macondoconfig.Config) *WordService {
 	}
 
 	definitionSources := make(map[string]*defSource)
-	dictionaryPath := filepath.Join(cfg.LexiconPath, "words")
+	dictionaryPath := filepath.Join(lexPath, "words")
 	for _, filename := range filenames {
 		lexicon := strings.TrimSuffix(filename, ".kwg")
 		if len(lexicon) == len(filename) {
@@ -62,7 +71,7 @@ var daPool = sync.Pool{
 }
 
 func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsRequest) (*pb.DefineWordsResponse, error) {
-	gd, err := kwg.Get(ws.cfg, req.Lexicon)
+	gd, err := kwg.Get(ws.cfg.MacondoConfigMap, req.Lexicon)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}

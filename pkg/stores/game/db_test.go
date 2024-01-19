@@ -14,7 +14,6 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/macondo/board"
-	macondoconfig "github.com/domino14/macondo/config"
 	macondogame "github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 
@@ -26,19 +25,12 @@ import (
 	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
-var DefaultConfig = macondoconfig.Config{
-	StrategyParamsPath:        os.Getenv("STRATEGY_PARAMS_PATH"),
-	LexiconPath:               os.Getenv("LEXICON_PATH"),
-	LetterDistributionPath:    os.Getenv("LETTER_DISTRIBUTION_PATH"),
-	DataPath:                  os.Getenv("DATA_PATH"),
-	DefaultLexicon:            "NWL18",
-	DefaultLetterDistribution: "English",
-}
+var DefaultConfig = config.DefaultConfig()
 
 func newMacondoGame(users [2]*entity.User) *macondogame.Game {
 	rules, err := macondogame.NewBasicGameRules(
-		&DefaultConfig, DefaultConfig.DefaultLexicon,
-		board.CrosswordGameLayout, DefaultConfig.DefaultLetterDistribution,
+		&DefaultConfig.MacondoConfig, "NWL20",
+		board.CrosswordGameLayout, "english",
 		macondogame.CrossScoreOnly, "")
 	if err != nil {
 		panic(err)
@@ -210,7 +202,7 @@ func TestCreate(t *testing.T) {
 
 	ustore := userStore(common.TestingPostgresConnDSN())
 	store, err := NewDBStore(&config.Config{
-		MacondoConfig: DefaultConfig,
+		MacondoConfig: DefaultConfig.MacondoConfig,
 		DBConnDSN:     common.TestingPostgresConnDSN(),
 	}, ustore)
 	is.NoErr(err)
@@ -233,7 +225,7 @@ func TestSet(t *testing.T) {
 	is := is.New(t)
 	ustore := userStore(common.TestingPostgresConnDSN())
 	store, err := NewDBStore(&config.Config{
-		MacondoConfig: DefaultConfig,
+		MacondoConfig: DefaultConfig.MacondoConfig,
 		DBConnDSN:     common.TestingPostgresConnDSN()}, ustore)
 	is.NoErr(err)
 
@@ -275,7 +267,7 @@ func TestGet(t *testing.T) {
 
 	ustore := userStore(common.TestingPostgresConnDSN())
 	store, err := NewDBStore(&config.Config{
-		MacondoConfig: DefaultConfig,
+		MacondoConfig: DefaultConfig.MacondoConfig,
 		DBConnDSN:     common.TestingPostgresConnDSN(),
 	}, ustore)
 	is.NoErr(err)
@@ -311,7 +303,7 @@ func TestListActive(t *testing.T) {
 	// There should be an additional game, so 3 total, from recreateDB()
 	// The first game is cesar vs mina. (see TestGet)
 	store, err := NewDBStore(&config.Config{
-		MacondoConfig: DefaultConfig,
+		MacondoConfig: DefaultConfig.MacondoConfig,
 		DBConnDSN:     common.TestingPostgresConnDSN(),
 	}, ustore)
 	is.NoErr(err)

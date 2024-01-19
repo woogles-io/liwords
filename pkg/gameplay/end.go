@@ -231,15 +231,16 @@ func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 	// stats := entity.InstantiateNewStats(1, 2))
 
 	// Fetch the Macondo config
-	macondoConfig, err := config.GetMacondoConfig(ctx)
+	cfg, err := config.GetConfig(ctx)
 	if err != nil {
 		return nil, err
 	}
+
 	// Here, p0 went first and p1 went second, no matter what.
 	p0id, p1id := history.Players[0].UserId, history.Players[1].UserId
 	gameStats := stats.InstantiateNewStats(p0id, p1id)
 
-	err = stats.AddGame(ctx, gameStats, listStatStore, history, req, macondoConfig, evt, history.Uid)
+	err = stats.AddGame(ctx, gameStats, listStatStore, history, req, cfg.MacondoConfigMap, evt, history.Uid)
 	if err != nil {
 		return nil, err
 	}

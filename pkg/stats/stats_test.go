@@ -7,10 +7,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/stores/common"
-	statstore "github.com/domino14/liwords/pkg/stores/stats"
-	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/domino14/macondo/gcgio"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -18,18 +14,19 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
+
+	"github.com/domino14/liwords/pkg/config"
+	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/stores/common"
+	statstore "github.com/domino14/liwords/pkg/stores/stats"
+	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 )
 
-var DefaultConfig = macondoconfig.Config{
-	LexiconPath:               os.Getenv("LEXICON_PATH"),
-	LetterDistributionPath:    os.Getenv("LETTER_DISTRIBUTION_PATH"),
-	DataPath:                  os.Getenv("DATA_PATH"),
-	DefaultLexicon:            "CSW19",
-	DefaultLetterDistribution: "English",
-}
+var DefaultConfig = config.DefaultConfig()
 
 func TestMain(m *testing.M) {
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	DefaultConfig.MacondoConfig.Set(macondoconfig.ConfigDefaultLexicon, "CSW19")
 	os.Exit(m.Run())
 }
 
@@ -49,7 +46,7 @@ func recreateDB() *pgxpool.Pool {
 
 func InstantiateNewStatsWithHistory(ctx context.Context, filename string, listStatStore ListStatStore) (*entity.Stats, error) {
 
-	history, err := gcgio.ParseGCG(&DefaultConfig, filename)
+	history, err := gcgio.ParseGCG(&DefaultConfig.MacondoConfig, filename)
 	if err != nil {
 		panic(err)
 	}
@@ -90,7 +87,7 @@ func InstantiateNewStatsWithHistory(ctx context.Context, filename string, listSt
 		Tie:       history.FinalScores[0] != history.FinalScores[1],
 	}
 
-	AddGame(ctx, stats, listStatStore, history, req, &DefaultConfig, gameEndedEvent, filename)
+	AddGame(ctx, stats, listStatStore, history, req, DefaultConfig.MacondoConfigMap, gameEndedEvent, filename)
 
 	return stats, nil
 }
