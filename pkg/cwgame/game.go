@@ -82,7 +82,7 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 		if gdoc.PlayState == ipc.PlayState_WAITING_FOR_FINAL_PASS {
 			gdoc.PlayState = ipc.PlayState_GAME_OVER
 			gdoc.EndReason = ipc.GameEndReason_STANDARD
-			dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, gdoc.LetterDistribution)
+			dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, gdoc.LetterDistribution)
 			if err != nil {
 				return err
 			}
@@ -138,7 +138,7 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 
 	}
 	if gdoc.ScorelessTurns == MaxConsecutiveScorelessTurns {
-		dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, gdoc.LetterDistribution)
+		dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, gdoc.LetterDistribution)
 		if err != nil {
 			return err
 		}
@@ -153,13 +153,13 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 }
 
 func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.GameDocument, tr int64) error {
-	dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, gdoc.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, gdoc.LetterDistribution)
 	if err != nil {
 		return err
 	}
 
 	// validate the tile play move
-	gd, err := kwg.Get(&cfg.MacondoConfig, gdoc.Lexicon)
+	gd, err := kwg.Get(cfg.MacondoConfigMap, gdoc.Lexicon)
 	if err != nil {
 		return err
 	}
@@ -452,11 +452,11 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 	// a challenge event shouldn't modify the clock per se.
 	recordTimeOfMove(gdoc, globalNower, gdoc.PlayerOnTurn, false)
 
-	dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, gdoc.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, gdoc.LetterDistribution)
 	if err != nil {
 		return err
 	}
-	gd, err := kwg.Get(&cfg.MacondoConfig, gdoc.Lexicon)
+	gd, err := kwg.Get(cfg.MacondoConfigMap, gdoc.Lexicon)
 	if err != nil {
 		return err
 	}

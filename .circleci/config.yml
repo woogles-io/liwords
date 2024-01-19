@@ -4,10 +4,7 @@ orbs:
 jobs:
   build_api_srv:
     environment:
-      DATA_PATH: /opt/liwords/data
-      LEXICON_PATH: /opt/liwords/data/lexica
-      LETTER_DISTRIBUTION_PATH: /opt/liwords/data/letterdistributions/
-      STRATEGY_PARAMS_PATH: /opt/macondo/data/strategy
+      MACONDO_DATA_PATH: /opt/liwords/data
       # Needed for running local tests that use the database:
       TEST_DB_HOST: localhost
       TEST_DB_NAME: liwords_test
@@ -110,7 +107,7 @@ jobs:
       # no-cache everything except the wasm file
       - run: >
           cd /tmp/liwords-ui/dist &&
-          aws s3 sync --cache-control 'no-cache' --exclude '*.wasm' 
+          aws s3 sync --cache-control 'no-cache' --exclude '*.wasm'
           --metadata FEHash=${UI_HASH}
           . s3://woogles.io
       # cache the wasm file separately. We can't put it in the first sync call above
