@@ -23,6 +23,8 @@ export const defaultLetterDistribution = (lexicon: string): string => {
     return 'french';
   } else if (lowercasedLexicon.startsWith('disc')) {
     return 'catalan';
+  } else if (lowercasedLexicon.startsWith('osps')) {
+    return 'polish';
   } else {
     return 'english';
   }

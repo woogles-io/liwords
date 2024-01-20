@@ -8,7 +8,7 @@ This source code is AGPL-licensed. You can modify the source for this app, or fo
 
 - liwords (this repo) is an API server, written in Go.
   - liwords-ui (inside this repo) is a TypeScript front-end, built using `create-react-app`
-- liwords-socket is a socket server, written in Go. It handles all the real-time communication. It resides at https://github.com/domino14/liwords-socket.
+- liwords-socket is a socket server, written in Go. It handles all the real-time communication. It resides at https://github.com/woogles-io/liwords-socket.
 - NATS for pubsub / req-response functionality between liwords, liwords-socket, and the user.
 - PostgreSQL
 
@@ -24,7 +24,7 @@ You have two options for developing locally.
 
 1. Download Docker for your operating system
 2. Download the latest stable version of Node.js for your operating system
-3. Clone the `liwords-socket` repository from `https://github.com/domino14/liwords-socket`, and place it at the same level as this repo. For example, if your code resides at `/home/developer/code`, you should have two repos, at `/home/developer/code/liwords` (this repo) and `/home/developer/code/liwords-socket`.
+3. Clone the `liwords-socket` repository from `https://github.com/woogles-io/liwords-socket`, and place it at the same level as this repo. For example, if your code resides at `/home/developer/code`, you should have two repos, at `/home/developer/code/liwords` (this repo) and `/home/developer/code/liwords-socket`.
 4. Clone the `macondo` repository from `https://github.com/domino14/macondo`, and place it at the same level as this repo.
 5. `cd` to this directory
 

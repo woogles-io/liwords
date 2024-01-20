@@ -33,7 +33,7 @@ jobs:
           command: apk update && apk upgrade && apk add bash build-base curl
       - run:
           name: Clone macondo
-          command: git clone git@github.com:domino14/macondo /opt/macondo
+          command: git clone --depth 1 git@github.com:domino14/macondo /opt/macondo
       - run: cd cmd/liwords-api && go build
       # Tests must not be run in parallel; postgres issues happen otherwise.
       - run: go test -race -p 1 ./...
@@ -53,20 +53,20 @@ jobs:
       - run: >
           docker build --build-arg BUILD_HASH=${CIRCLE_SHA1}
           --build-arg BUILD_DATE=$(date -Iseconds -u)
-          -t ghcr.io/domino14/liwords-api:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM} .
-      - run: docker push ghcr.io/domino14/liwords-api:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
+          -t ghcr.io/woogles-io/liwords-api:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM} .
+      - run: docker push ghcr.io/woogles-io/liwords-api:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
       - run: >
           docker build --build-arg BUILD_HASH=${CIRCLE_SHA1}
           --build-arg BUILD_DATE=$(date -Iseconds -u)
-          -t ghcr.io/domino14/liwords-puzzlegen:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
+          -t ghcr.io/woogles-io/liwords-puzzlegen:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
           -f Dockerfile-puzzlegen .
-      - run: docker push ghcr.io/domino14/liwords-puzzlegen:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
+      - run: docker push ghcr.io/woogles-io/liwords-puzzlegen:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
       - run: >
           docker build --build-arg BUILD_HASH=${CIRCLE_SHA1}
           --build-arg BUILD_DATE=$(date -Iseconds -u)
-          -t ghcr.io/domino14/liwords-maintenance:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
+          -t ghcr.io/woogles-io/liwords-maintenance:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
           -f Dockerfile-maintenance .
-      - run: docker push ghcr.io/domino14/liwords-maintenance:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
+      - run: docker push ghcr.io/woogles-io/liwords-maintenance:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
       - discord/status: *discord-webhook-setting
 
   build_fe:
@@ -133,7 +133,7 @@ workflows:
       - build_fe
       - deploy_api_docker:
           context:
-            - woogles-deploy
+            - woogles-prod-deploy
           requires:
             - build_api_srv
           filters:
