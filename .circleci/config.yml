@@ -16,21 +16,17 @@ jobs:
 
       REDIS_URL: redis://localhost:6379
     docker:
-      - image: golang:alpine
+      - image: golang
       - image: circleci/postgres:12.3
         environment:
           POSTGRES_USER: postgres
           POSTGRES_DB: liwords_test
           POSTGRES_PASSWORD: pass
-      - image: circleci/redis:alpine
+      - image: circleci/redis
 
     working_directory: /opt/liwords
     steps:
-      - run: apk add --update openssh-client git
       - checkout
-      - run:
-          name: Install build-base (for tests) and bash (for discord notifier)
-          command: apk update && apk upgrade && apk add bash build-base curl
       - run:
           name: Clone macondo
           command: git clone --depth 1 git@github.com:domino14/macondo /opt/macondo

@@ -1,10 +1,7 @@
-FROM golang:alpine as build-env
+FROM golang as build-env
 
 RUN mkdir /opt/program
 WORKDIR /opt/program
-
-RUN apk update
-RUN apk add build-base ca-certificates git
 
 COPY go.mod .
 COPY go.sum .
@@ -20,10 +17,9 @@ ARG BUILD_DATE=unknown
 RUN go build -ldflags  "-X=main.BuildDate=${BUILD_DATE} -X=main.BuildHash=${BUILD_HASH}"
 
 # Build minimal image:
-FROM alpine
+FROM debian:latest
 COPY --from=build-env /opt/program/cmd/liwords-api/liwords-api /opt/liwords-api
 COPY --from=build-env /opt/program/db /opt/db
-RUN apk --no-cache add curl
 EXPOSE 8001
 
 WORKDIR /opt
