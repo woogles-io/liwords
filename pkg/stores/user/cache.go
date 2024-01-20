@@ -5,15 +5,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/utilities"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/rs/zerolog/log"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/utilities"
 
-	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
-	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
-	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	cpb "github.com/woogles-io/liwords/rpc/api/proto/config_service"
+	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
 
 // same as the GameStore in gameplay package, but this gives us a bit more flexibility

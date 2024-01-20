@@ -8,23 +8,21 @@ import (
 	"os"
 	"strings"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/cwgame"
-	"github.com/domino14/liwords/pkg/cwgame/board"
-	"github.com/domino14/liwords/pkg/omgwords/stores"
-	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	macondoconfig "github.com/domino14/macondo/config"
-	"github.com/domino14/macondo/tilemapping"
+	"github.com/domino14/word-golib/tilemapping"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/cwgame"
+	"github.com/woogles-io/liwords/pkg/cwgame/board"
+	"github.com/woogles-io/liwords/pkg/omgwords/stores"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var RemoteServer = "https://woogles.io"
 
-var DataDir = os.Getenv("DATA_PATH")
-var DefaultConfig = &config.Config{
-	MacondoConfig: macondoconfig.Config{DataPath: DataDir}}
+var DefaultMacondoConfig = macondoconfig.DefaultConfig()
 
 // a script to display the state of a game document
 func main() {
@@ -76,7 +74,7 @@ func main() {
 		panic(err)
 	}
 	v := gdoc.Version
-	err = stores.MigrateGameDocument(DefaultConfig, gdoc)
+	err = stores.MigrateGameDocument(&config.Config{MacondoConfig: DefaultMacondoConfig}, gdoc)
 	if err != nil {
 		panic(err)
 	}
@@ -90,7 +88,7 @@ func main() {
 		fmt.Println()
 	}
 
-	dist, err := tilemapping.GetDistribution(&DefaultConfig.MacondoConfig, gdoc.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(DefaultMacondoConfig.AllSettings(), gdoc.LetterDistribution)
 	if err != nil {
 		panic(err)
 	}

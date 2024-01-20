@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/domino14/liwords/pkg/memento"
-	pb "github.com/domino14/liwords/rpc/api/proto/game_service"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/woogles-io/liwords/pkg/memento"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/game_service"
 )
 
 func GetGameHistory(url string, id string) (*macondopb.GameHistory, error) {

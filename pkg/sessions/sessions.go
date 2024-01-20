@@ -3,7 +3,7 @@ package sessions
 import (
 	"context"
 
-	"github.com/domino14/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/entity"
 )
 
 // SessionStore is a session store

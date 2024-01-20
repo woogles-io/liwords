@@ -7,9 +7,9 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/stores/common"
-	"github.com/domino14/liwords/pkg/stores/user"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/user"
 )
 
 func main() {

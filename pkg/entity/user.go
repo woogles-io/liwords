@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/domino14/liwords/pkg/glicko"
-	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
-	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
+	"github.com/woogles-io/liwords/pkg/glicko"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 )
 
 const (

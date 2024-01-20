@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/domino14/liwords/pkg/cwgame"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/omgwords/stores"
-	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/twitchtv/twirp"
+	"github.com/woogles-io/liwords/pkg/cwgame"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/omgwords/stores"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"google.golang.org/protobuf/proto"
 )
 

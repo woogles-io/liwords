@@ -18,13 +18,13 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/cwgame/board"
-	"github.com/domino14/liwords/pkg/cwgame/tiles"
-	"github.com/domino14/liwords/pkg/omgwords/stores"
-	"github.com/domino14/liwords/rpc/api/proto/ipc"
-	"github.com/domino14/macondo/kwg"
-	"github.com/domino14/macondo/tilemapping"
+	"github.com/domino14/word-golib/kwg"
+	"github.com/domino14/word-golib/tilemapping"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/cwgame/board"
+	"github.com/woogles-io/liwords/pkg/cwgame/tiles"
+	"github.com/woogles-io/liwords/pkg/omgwords/stores"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 var (
@@ -65,11 +65,11 @@ func init() {
 func NewGame(cfg *config.Config, rules *GameRules, playerinfo []*ipc.GameDocument_MinimalPlayerInfo) (*ipc.GameDocument, error) {
 	// try to instantiate all aspects of the game from the given rules.
 
-	dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, rules.distname)
+	dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, rules.distname)
 	if err != nil {
 		return nil, err
 	}
-	_, err = kwg.Get(&cfg.MacondoConfig, rules.lexicon)
+	_, err = kwg.Get(cfg.MacondoConfigMap, rules.lexicon)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +203,7 @@ func ReconcileAllTiles(ctx context.Context, gdoc *ipc.GameDocument) error {
 		return errors.New("config does not exist in context")
 	}
 
-	dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, gdoc.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, gdoc.LetterDistribution)
 	if err != nil {
 		return err
 	}
@@ -287,7 +287,7 @@ func ReplayEvents(ctx context.Context, gdoc *ipc.GameDocument, evts []*ipc.GameE
 		return errors.New("config does not exist in context")
 	}
 
-	dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, gdoc.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, gdoc.LetterDistribution)
 	if err != nil {
 		return err
 	}
@@ -480,14 +480,14 @@ func ProcessGameplayEvent(ctx context.Context, evt *ipc.ClientGameplayEvent,
 	return nil
 }
 
-// ToCGP converts the game to a CGP string. See cgp directory.
+// ToCGP converts the game to a CGP string.
 func ToCGP(ctx context.Context, gdoc *ipc.GameDocument) (string, error) {
 	cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
 	if !ok {
 		return "", errors.New("config does not exist in context")
 	}
 
-	dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, gdoc.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, gdoc.LetterDistribution)
 	if err != nil {
 		return "", err
 	}
@@ -541,7 +541,7 @@ func clientEventToGameEvent(ctx context.Context, evt *ipc.ClientGameplayEvent, g
 		return nil, errors.New("config does not exist in context")
 	}
 
-	dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, gdoc.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, gdoc.LetterDistribution)
 	if err != nil {
 		return nil, err
 	}

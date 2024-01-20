@@ -6,19 +6,19 @@ import (
 
 	"github.com/domino14/macondo/game"
 	"github.com/domino14/macondo/gen/api/proto/macondo"
-	"github.com/domino14/macondo/tilemapping"
+	"github.com/domino14/word-golib/tilemapping"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/omgwords/stores"
-	"github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/omgwords/stores"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 // helper functions to convert from the old GameHistory etc structs to
 // GameDocuments. We can delete this after some time.
 
 func ToGameDocument(g *entity.Game, cfg *config.Config) (*ipc.GameDocument, error) {
-	letterdist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, g.History().LetterDistribution)
+	letterdist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, g.History().LetterDistribution)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func populateBag(g *entity.Game, gdoc *ipc.GameDocument, ld *tilemapping.LetterD
 // ToGameHistory is a helper function to convert a GameDocument back to a game history.
 // Eventually we will not have GameHistory's anymore.
 func ToGameHistory(doc *ipc.GameDocument, cfg *config.Config) (*macondo.GameHistory, error) {
-	letterdist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, doc.LetterDistribution)
+	letterdist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, doc.LetterDistribution)
 	if err != nil {
 		return nil, err
 	}

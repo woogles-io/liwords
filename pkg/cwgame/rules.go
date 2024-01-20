@@ -1,6 +1,6 @@
 package cwgame
 
-import "github.com/domino14/liwords/rpc/api/proto/ipc"
+import "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 
 type Variant string
 

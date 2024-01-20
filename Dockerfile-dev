@@ -1,6 +1,4 @@
-FROM golang:alpine
-
-RUN apk add --no-cache git make build-base
+FROM golang
 
 COPY go.sum /opt/go.sum
 COPY go.mod /opt/go.mod

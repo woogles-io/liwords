@@ -8,17 +8,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/user"
-	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
-	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
-	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/domino14/macondo/game"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
-	"github.com/domino14/macondo/kwg"
-	"github.com/domino14/macondo/tilemapping"
+	"github.com/domino14/word-golib/kwg"
+	"github.com/domino14/word-golib/tilemapping"
 	"github.com/rs/zerolog/log"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/user"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -68,10 +67,11 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 	loserId := history.Players[nonNegativeLoserIdx].UserId
 	winnerIdx := 1 - nonNegativeLoserIdx
 
-	macondoConfig, err := config.GetMacondoConfig(ctx)
+	cfg, err := config.GetConfig(ctx)
 	if err != nil {
 		return err
 	}
+	cfgmap := cfg.MacondoConfigMap
 
 	isBotGame := u0.IsBot || u1.IsBot
 
@@ -117,7 +117,7 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 
 	// Check for excessive phonies
 	if wngt == ms.NotoriousGameType_GOOD {
-		excessive, err := excessivePhonies(history, macondoConfig, winnerIdx)
+		excessive, err := excessivePhonies(history, cfgmap, winnerIdx)
 		if err != nil {
 			return err
 		}
@@ -127,7 +127,7 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 	}
 
 	if lngt == ms.NotoriousGameType_GOOD {
-		excessive, err := excessivePhonies(history, macondoConfig, nonNegativeLoserIdx)
+		excessive, err := excessivePhonies(history, cfgmap, nonNegativeLoserIdx)
 		if err != nil {
 			return err
 		}
@@ -267,14 +267,14 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 	return nil
 }
 
-func excessivePhonies(history *pb.GameHistory, cfg *macondoconfig.Config, pidx int) (bool, error) {
+func excessivePhonies(history *pb.GameHistory, cfgmap map[string]any, pidx int) (bool, error) {
 	totalTileMoves := 0
 	totalPhonies := 0
 	for i := 0; i < len(history.Events); i++ {
 		evt := history.Events[i]
 		if evt.PlayerIndex == uint32(pidx) && evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE {
 			totalTileMoves++
-			isPhony, err := isPhonyEvent(evt, history, cfg)
+			isPhony, err := isPhonyEvent(evt, history, cfgmap)
 			if err != nil {
 				return false, err
 			}
@@ -303,9 +303,9 @@ func loserDeniedNudge(g *entity.Game, userId string) bool {
 
 func isPhonyEvent(event *pb.GameEvent,
 	history *pb.GameHistory,
-	cfg *macondoconfig.Config) (bool, error) {
+	cfgmap map[string]any) (bool, error) {
 	phony := false
-	gd, err := kwg.Get(cfg, history.Lexicon)
+	gd, err := kwg.Get(cfgmap, history.Lexicon)
 	if err != nil {
 		return phony, err
 	}

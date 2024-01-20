@@ -1,23 +1,21 @@
 package tiles
 
 import (
-	"os"
 	"reflect"
 	"sort"
 	"testing"
 
 	macondoconfig "github.com/domino14/macondo/config"
-	"github.com/domino14/macondo/tilemapping"
+	"github.com/domino14/word-golib/tilemapping"
 	"github.com/matryer/is"
 )
 
-var DataDir = os.Getenv("DATA_PATH")
-var DefaultConfig = &macondoconfig.Config{DataPath: DataDir}
+var DefaultConfig = macondoconfig.DefaultConfig()
 
 func TestBag(t *testing.T) {
 	is := is.New(t)
 
-	ld, err := tilemapping.EnglishLetterDistribution(DefaultConfig)
+	ld, err := tilemapping.EnglishLetterDistribution(DefaultConfig.AllSettings())
 	is.NoErr(err)
 	bag := TileBag(ld)
 	if len(bag.Tiles) != 100 {
@@ -49,7 +47,7 @@ func TestBag(t *testing.T) {
 func TestNorwegianBag(t *testing.T) {
 	is := is.New(t)
 
-	ld, err := tilemapping.NamedLetterDistribution(DefaultConfig, "norwegian")
+	ld, err := tilemapping.NamedLetterDistribution(DefaultConfig.AllSettings(), "norwegian")
 	is.NoErr(err)
 	bag := TileBag(ld)
 	if len(bag.Tiles) != 100 {
@@ -82,7 +80,7 @@ func TestNorwegianBag(t *testing.T) {
 func TestDraw(t *testing.T) {
 	is := is.New(t)
 
-	ld, err := tilemapping.EnglishLetterDistribution(DefaultConfig)
+	ld, err := tilemapping.EnglishLetterDistribution(DefaultConfig.AllSettings())
 	is.NoErr(err)
 	bag := TileBag(ld)
 	ml := make([]tilemapping.MachineLetter, 7)
@@ -97,7 +95,7 @@ func TestDraw(t *testing.T) {
 func TestDrawAtMost(t *testing.T) {
 	is := is.New(t)
 
-	ld, err := tilemapping.EnglishLetterDistribution(DefaultConfig)
+	ld, err := tilemapping.EnglishLetterDistribution(DefaultConfig.AllSettings())
 	is.NoErr(err)
 	bag := TileBag(ld)
 	ml := make([]tilemapping.MachineLetter, 7)
@@ -120,7 +118,7 @@ func TestDrawAtMost(t *testing.T) {
 func TestExchange(t *testing.T) {
 	is := is.New(t)
 
-	ld, err := tilemapping.EnglishLetterDistribution(DefaultConfig)
+	ld, err := tilemapping.EnglishLetterDistribution(DefaultConfig.AllSettings())
 	is.NoErr(err)
 	bag := TileBag(ld)
 	ml := make([]tilemapping.MachineLetter, 7)
@@ -135,7 +133,7 @@ func TestExchange(t *testing.T) {
 func TestRemoveTiles(t *testing.T) {
 	is := is.New(t)
 
-	ld, err := tilemapping.EnglishLetterDistribution(DefaultConfig)
+	ld, err := tilemapping.EnglishLetterDistribution(DefaultConfig.AllSettings())
 	is.NoErr(err)
 	bag := TileBag(ld)
 	is.Equal(len(bag.Tiles), 100)
@@ -160,7 +158,7 @@ func TestRemoveTiles(t *testing.T) {
 func TestRemoveNorwegianTile(t *testing.T) {
 	is := is.New(t)
 
-	ld, err := tilemapping.NamedLetterDistribution(DefaultConfig, "norwegian")
+	ld, err := tilemapping.NamedLetterDistribution(DefaultConfig.AllSettings(), "norwegian")
 	is.NoErr(err)
 	bag := TileBag(ld)
 	is.Equal(len(bag.Tiles), 100)
@@ -173,7 +171,7 @@ func TestRemoveNorwegianTile(t *testing.T) {
 func TestPutBack(t *testing.T) {
 	is := is.New(t)
 
-	ld, err := tilemapping.EnglishLetterDistribution(DefaultConfig)
+	ld, err := tilemapping.EnglishLetterDistribution(DefaultConfig.AllSettings())
 	is.NoErr(err)
 	bag := TileBag(ld)
 	is.Equal(len(bag.Tiles), 100)
@@ -198,7 +196,7 @@ func TestPutBack(t *testing.T) {
 }
 
 func BenchmarkRemoveTiles(b *testing.B) {
-	ld, _ := tilemapping.EnglishLetterDistribution(DefaultConfig)
+	ld, _ := tilemapping.EnglishLetterDistribution(DefaultConfig.AllSettings())
 	// remove 14 tiles
 	toRemove := []tilemapping.MachineLetter{
 		10, 15, 25, 5, 4, 21, 5, 12, 22, 7, 23, 15, 9, 1}

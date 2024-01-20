@@ -14,13 +14,13 @@ import (
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/stores/common"
 
-	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
-	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
-	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	cpb "github.com/woogles-io/liwords/rpc/api/proto/config_service"
+	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
 
 var botNames = map[macondopb.BotRequest_BotCode]string{
@@ -1090,7 +1090,7 @@ func getSingleActionDB(ctx context.Context, tx pgx.Tx, userUUID string, actionTy
 
 func getActionsDB(ctx context.Context, tx pgx.Tx, userUUID string) (map[string]*ms.ModAction, map[string]*DBUniqueValues, error) {
 	// Only get current actions that are in effect.
-	query := fmt.Sprintf(`SELECT DISTINCT ON (action_type) %s 
+	query := fmt.Sprintf(`SELECT DISTINCT ON (action_type) %s
 	FROM users JOIN user_actions ON users.id = user_actions.user_id
 	WHERE users.uuid = $1 AND user_actions.removed_time IS NULL AND (user_actions.end_time IS NULL OR user_actions.end_time > NOW())
 	ORDER BY action_type, start_time DESC`, userActionsSQLSelection)

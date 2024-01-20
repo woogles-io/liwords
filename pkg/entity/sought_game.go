@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"strings"
 
-	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/macondo/board"
 	"github.com/domino14/macondo/game"
 	"github.com/lithammer/shortuuid"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 type SoughtGameType int

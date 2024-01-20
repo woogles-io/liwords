@@ -6,10 +6,8 @@ services:
       context: .
       dockerfile: Dockerfile-dev
     environment:
-      STRATEGY_PARAMS_PATH: /opt/program/data/strategy
-      LEXICON_PATH: /opt/program/data/lexica
-      LETTER_DISTRIBUTION_PATH: /opt/program/data/letterdistributions
-      DATA_PATH: /opt/program/data
+      MACONDO_DATA_PATH: /opt/program/data
+      MACONDO_DEBUG: 1
       DB_HOST: db
       DB_PORT: "5432"
       DB_USER: postgres
@@ -161,7 +159,7 @@ services:
     volumes:
       - pg-data-volume:/var/lib/postgresql/data
       # Uncomment out below to possibly load a db dump
-      # see https://github.com/domino14/liwords/wiki/Loading-a-db-dump
+      # see https://github.com/woogles-io/liwords/wiki/Loading-a-db-dump
       - $HOME/data:/opt/data
     ports:
       - 5432:5432

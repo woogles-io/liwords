@@ -8,8 +8,8 @@ import (
 	"io/ioutil"
 	"os"
 
-	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )

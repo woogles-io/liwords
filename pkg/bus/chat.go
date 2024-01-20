@@ -5,13 +5,13 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/domino14/liwords/pkg/mod"
-	userservices "github.com/domino14/liwords/pkg/user/services"
+	"github.com/woogles-io/liwords/pkg/mod"
+	userservices "github.com/woogles-io/liwords/pkg/user/services"
 
-	"github.com/domino14/liwords/pkg/entity"
-	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
-	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	"github.com/rs/zerolog/log"
+	"github.com/woogles-io/liwords/pkg/entity"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 )
 
 // chat-related functionality should be here. Chat should be mostly ephemeral,

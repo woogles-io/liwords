@@ -12,19 +12,19 @@ import (
 	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
 
-	"github.com/domino14/liwords/pkg/common"
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/gameplay"
-	puzzlesstore "github.com/domino14/liwords/pkg/stores/puzzles"
 	"github.com/domino14/macondo/cross_set"
 	macondogame "github.com/domino14/macondo/game"
-	"github.com/domino14/macondo/kwg"
 	macondopuzzles "github.com/domino14/macondo/puzzles"
-	"github.com/domino14/macondo/tilemapping"
+	"github.com/domino14/word-golib/kwg"
+	"github.com/domino14/word-golib/tilemapping"
+	"github.com/woogles-io/liwords/pkg/common"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/gameplay"
+	puzzlesstore "github.com/woogles-io/liwords/pkg/stores/puzzles"
 
-	"github.com/domino14/liwords/rpc/api/proto/ipc"
-	pb "github.com/domino14/liwords/rpc/api/proto/puzzle_service"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/puzzle_service"
 
 	"github.com/domino14/macondo/automatic"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -98,11 +98,11 @@ func processWithRealGames(ctx context.Context, cfg *config.Config, req *pb.Puzzl
 	// For non-bot-v-bot games we need to "hydrate" the game we get back
 	// from the database with the right data structures in order for it
 	// to generate moves properly.
-	gd, err := kwg.Get(&cfg.MacondoConfig, req.Lexicon)
+	gd, err := kwg.Get(cfg.MacondoConfigMap, req.Lexicon)
 	if err != nil {
 		return false, err
 	}
-	dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, req.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, req.LetterDistribution)
 	if err != nil {
 		return false, err
 	}

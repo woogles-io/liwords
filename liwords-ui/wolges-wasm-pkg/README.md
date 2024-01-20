@@ -17,7 +17,7 @@ Released under the MIT license.
 ## Related Projects
 
 - https://github.com/andy-k/wolges
-- https://github.com/domino14/liwords
+- https://github.com/woogles-io/liwords
 
 ## References
 

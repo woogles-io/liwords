@@ -5,17 +5,15 @@ import (
 	"os"
 	"testing"
 
-	"github.com/domino14/liwords/pkg/common/testutils"
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/rpc/api/proto/ipc"
-	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/matryer/is"
+	"github.com/woogles-io/liwords/pkg/common/testutils"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var DataDir = os.Getenv("DATA_PATH")
-var DefaultConfig = &config.Config{
-	MacondoConfig: macondoconfig.Config{DataPath: DataDir}}
+var DefaultConfig = config.DefaultConfig()
 
 var goldenFileUpdate bool
 
@@ -31,7 +29,7 @@ func TestMigrateEnglish(t *testing.T) {
 	gdoc := &ipc.GameDocument{}
 	err = protojson.Unmarshal(bts, gdoc)
 	is.NoErr(err)
-	err = MigrateGameDocument(DefaultConfig, gdoc)
+	err = MigrateGameDocument(&DefaultConfig, gdoc)
 	is.NoErr(err)
 
 	dump, err := protojson.Marshal(gdoc)

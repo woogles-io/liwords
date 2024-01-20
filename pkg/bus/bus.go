@@ -18,20 +18,20 @@ import (
 	nats "github.com/nats-io/nats.go"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/gameplay"
-	"github.com/domino14/liwords/pkg/mod"
-	"github.com/domino14/liwords/pkg/omgwords"
-	"github.com/domino14/liwords/pkg/omgwords/stores"
-	"github.com/domino14/liwords/pkg/puzzles"
-	"github.com/domino14/liwords/pkg/sessions"
-	"github.com/domino14/liwords/pkg/stats"
-	"github.com/domino14/liwords/pkg/tournament"
-	"github.com/domino14/liwords/pkg/user"
 	"github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/gameplay"
+	"github.com/woogles-io/liwords/pkg/mod"
+	"github.com/woogles-io/liwords/pkg/omgwords"
+	"github.com/woogles-io/liwords/pkg/omgwords/stores"
+	"github.com/woogles-io/liwords/pkg/puzzles"
+	"github.com/woogles-io/liwords/pkg/sessions"
+	"github.com/woogles-io/liwords/pkg/stats"
+	"github.com/woogles-io/liwords/pkg/tournament"
+	"github.com/woogles-io/liwords/pkg/user"
 
-	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 const (
@@ -120,7 +120,7 @@ func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, err
 		tournamentEventChan: make(chan *entity.EventWrapper, 64),
 		// genericEventChan needs to be made a bit bigger for now because it handles
 		// follower messages. XXX: Need to fix follower msg architecture ASAP!
-		// See https://github.com/domino14/liwords/issues/1136
+		// See https://github.com/woogles-io/liwords/issues/1136
 		genericEventChan:   make(chan *entity.EventWrapper, 512),
 		redisPool:          redisPool,
 		gameEventAPIServer: NewEventApiServer(stores.UserStore, stores.GameStore),

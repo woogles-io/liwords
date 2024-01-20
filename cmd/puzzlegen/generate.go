@@ -5,19 +5,21 @@ import (
 	"fmt"
 	"os"
 
-	commondb "github.com/domino14/liwords/pkg/stores/common"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	commondb "github.com/woogles-io/liwords/pkg/stores/common"
 	"google.golang.org/protobuf/encoding/protojson"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/puzzles"
-	gamestore "github.com/domino14/liwords/pkg/stores/game"
-	puzzlesstore "github.com/domino14/liwords/pkg/stores/puzzles"
-	"github.com/domino14/liwords/pkg/stores/user"
-	pb "github.com/domino14/liwords/rpc/api/proto/puzzle_service"
+	macondoconfig "github.com/domino14/macondo/config"
+
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/puzzles"
+	gamestore "github.com/woogles-io/liwords/pkg/stores/game"
+	puzzlesstore "github.com/woogles-io/liwords/pkg/stores/puzzles"
+	"github.com/woogles-io/liwords/pkg/stores/user"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/puzzle_service"
 )
 
 // Example:
@@ -34,8 +36,8 @@ func main() {
 	cfg := &config.Config{}
 	// Only load config from environment variables:
 	cfg.Load(nil)
-	cfg.MacondoConfig.DefaultLexicon = req.Lexicon
-	cfg.MacondoConfig.DefaultLetterDistribution = req.LetterDistribution
+	cfg.MacondoConfig.Set(macondoconfig.ConfigDefaultLexicon, req.Lexicon)
+	cfg.MacondoConfig.Set(macondoconfig.ConfigDefaultLetterDistribution, req.LetterDistribution)
 	ctx := context.Background()
 
 	pool, err := commondb.OpenDB(cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBUser, cfg.DBPassword, cfg.DBSSLMode)

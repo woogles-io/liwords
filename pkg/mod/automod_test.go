@@ -8,29 +8,28 @@ import (
 	"testing"
 	"time"
 
-	"github.com/domino14/liwords/pkg/apiserver"
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/gameplay"
-	pkgmod "github.com/domino14/liwords/pkg/mod"
-	pkgstats "github.com/domino14/liwords/pkg/stats"
-	"github.com/domino14/liwords/pkg/stores/common"
-	"github.com/domino14/liwords/pkg/stores/game"
-	"github.com/domino14/liwords/pkg/stores/mod"
-	"github.com/domino14/liwords/pkg/stores/stats"
-	ts "github.com/domino14/liwords/pkg/stores/tournament"
-	"github.com/domino14/liwords/pkg/stores/user"
-	"github.com/domino14/liwords/pkg/tournament"
-	pkguser "github.com/domino14/liwords/pkg/user"
-	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
-	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
-	macondoconfig "github.com/domino14/macondo/config"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
-	"github.com/domino14/macondo/tilemapping"
+	"github.com/domino14/word-golib/tilemapping"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lithammer/shortuuid"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
+	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/gameplay"
+	pkgmod "github.com/woogles-io/liwords/pkg/mod"
+	pkgstats "github.com/woogles-io/liwords/pkg/stats"
+	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/game"
+	"github.com/woogles-io/liwords/pkg/stores/mod"
+	"github.com/woogles-io/liwords/pkg/stores/stats"
+	ts "github.com/woogles-io/liwords/pkg/stores/tournament"
+	"github.com/woogles-io/liwords/pkg/stores/user"
+	"github.com/woogles-io/liwords/pkg/tournament"
+	pkguser "github.com/woogles-io/liwords/pkg/user"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 	"google.golang.org/protobuf/proto"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -49,27 +48,20 @@ var gameReq = &pb.GameRequest{Lexicon: "CSW21",
 	OriginalRequestId:  "originalyeet",
 	MaxOvertimeMinutes: 0}
 
-var DefaultConfig = macondoconfig.Config{
-	LexiconPath:               os.Getenv("LEXICON_PATH"),
-	LetterDistributionPath:    os.Getenv("LETTER_DISTRIBUTION_PATH"),
-	DataPath:                  os.Getenv("DATA_PATH"),
-	DefaultLexicon:            "CSW21",
-	DefaultLetterDistribution: "English",
-}
-
 var playerIds = []string{"xjCWug7EZtDxDHX5fRZTLo", "qUQkST8CendYA3baHNoPjk"}
 
+var DefaultConfig = config.DefaultConfig()
+
 func gameStore(userStore pkguser.Store) (*config.Config, gameplay.GameStore) {
-	cfg := &config.Config{}
-	cfg.MacondoConfig = DefaultConfig
+	cfg := DefaultConfig
 	cfg.DBConnDSN = common.TestingPostgresConnDSN()
 
-	tmp, err := game.NewDBStore(cfg, userStore)
+	tmp, err := game.NewDBStore(&cfg, userStore)
 	if err != nil {
 		panic(err)
 	}
 	gameStore := game.NewCache(tmp)
-	return cfg, gameStore
+	return &cfg, gameStore
 }
 
 func tournamentStore(cfg *config.Config, gs gameplay.GameStore) tournament.TournamentStore {
@@ -327,7 +319,7 @@ func comparePlayerNotorieties(pnrs []*ms.NotorietyReport, ustore pkguser.Store, 
 }
 
 func englishBytes(tiles string) []byte {
-	ld, err := tilemapping.GetDistribution(&DefaultConfig, "english")
+	ld, err := tilemapping.GetDistribution(DefaultConfig.MacondoConfigMap, "english")
 	if err != nil {
 		panic(err)
 	}
@@ -343,7 +335,7 @@ func TestNotoriety(t *testing.T) {
 	is := is.New(t)
 	_, ustore, lstore, nstore := recreateDB()
 
-	ctx := context.WithValue(context.Background(), config.CtxKeyword, &config.Config{MacondoConfig: DefaultConfig})
+	ctx := context.WithValue(context.Background(), config.CtxKeyword, &DefaultConfig)
 
 	cfg, gstore := gameStore(ustore)
 	tstore := tournamentStore(cfg, gstore)

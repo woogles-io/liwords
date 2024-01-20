@@ -1,10 +1,11 @@
 package stores
 
 import (
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/rpc/api/proto/ipc"
-	"github.com/domino14/macondo/tilemapping"
+	"github.com/domino14/word-golib/tilemapping"
 	"github.com/rs/zerolog/log"
+
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 const CurrentGameDocumentVersion = 2
@@ -99,7 +100,7 @@ func migrateToV2(cfg *config.Config, gdoc *ipc.GameDocument) error {
 		isNorwegian = true
 	}
 
-	dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, gdoc.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, gdoc.LetterDistribution)
 	if err != nil {
 		return err
 	}

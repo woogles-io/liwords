@@ -8,10 +8,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/domino14/liwords/rpc/api/proto/ipc"
-	"github.com/domino14/macondo/cache"
-	macondoconfig "github.com/domino14/macondo/config"
-	"github.com/domino14/macondo/tilemapping"
+	"github.com/domino14/word-golib/cache"
+	"github.com/domino14/word-golib/tilemapping"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 type BonusSquare byte
@@ -35,7 +34,7 @@ const (
 var CacheKeyPrefix = "boardlayout:"
 
 // CacheLoadFunc is the function that loads an object into the global cache.
-func CacheLoadFunc(cfg *macondoconfig.Config, key string) (interface{}, error) {
+func CacheLoadFunc(cfg map[string]any, key string) (interface{}, error) {
 	dist := strings.TrimPrefix(key, CacheKeyPrefix)
 	return NamedBoardLayout(dist)
 }

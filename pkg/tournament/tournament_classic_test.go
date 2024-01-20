@@ -9,10 +9,10 @@ import (
 
 	"github.com/matryer/is"
 
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/utilities"
-	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/utilities"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 var tournamentName = "testTournament"
@@ -3702,51 +3702,52 @@ func TestClassicDivisionMessages(t *testing.T) {
 	is.NoErr(equalPairingsResponses(expectedPairingsRsp, pairingsRsp.DivisionPairings))
 }
 
-/* func formatPairingsResponse(pairings []*pb.Pairing) string {
-	s := "	expectedPairingsRsp = []*pb.Pairing {\n"
-	for idx, pairing := range pairings {
-		s += formatPairing(pairing)
-		if idx != len(pairings)-1 {
-			s += ",\n"
-		}
-	}
-	s += "}"
-	return s
-}
-
-func formatPairing(pairing *pb.Pairing) string {
-	s := "  &pb.Pairing {\n"
-	if pairing.Players != nil {
-		s += fmt.Sprintf("    Players: []int32{%d, %d},\n", pairing.Players[0], pairing.Players[1])
-	}
-	s += fmt.Sprintf("    Round: %d", pairing.Round)
-	if pairing.Games != nil {
-		s += ",\n    Games: []*pb.TournamentGame {\n"
-		for idx, game := range pairing.Games {
-			s += formatTournamentGame(game)
-			if idx != len(pairing.Games)-1 {
-				s += ","
+/*
+	 func formatPairingsResponse(pairings []*pb.Pairing) string {
+		s := "	expectedPairingsRsp = []*pb.Pairing {\n"
+		for idx, pairing := range pairings {
+			s += formatPairing(pairing)
+			if idx != len(pairings)-1 {
+				s += ",\n"
 			}
 		}
 		s += "}"
+		return s
 	}
-	if pairing.Outcomes != nil {
-		s += fmt.Sprintf(",\n    Outcomes: []pb.TournamentGameResult{%d, %d}", pairing.Outcomes[0], pairing.Outcomes[1])
-	}
-	if pairing.ReadyStates != nil {
-		s += fmt.Sprintf(",\n    ReadyStates: []string{\"%s\", \"%s\"}", pairing.ReadyStates[0], pairing.ReadyStates[1])
-	}
-	s += "}"
-	return s
-}
 
-func formatTournamentGame(tg *pb.TournamentGame) string {
-	s := "      &pb.TournamentGame {\n"
-	s += fmt.Sprintf("      Scores: []int32{%d, %d},\n", tg.Scores[0], tg.Scores[1])
-	s += fmt.Sprintf("      Results: []pb.TournamentGameResult{%d, %d},\n", tg.Results[0], tg.Results[1])
-	s += fmt.Sprintf("      GameEndReason: %d}", tg.GameEndReason)
-	return s
-}
+	func formatPairing(pairing *pb.Pairing) string {
+		s := "  &pb.Pairing {\n"
+		if pairing.Players != nil {
+			s += fmt.Sprintf("    Players: []int32{%d, %d},\n", pairing.Players[0], pairing.Players[1])
+		}
+		s += fmt.Sprintf("    Round: %d", pairing.Round)
+		if pairing.Games != nil {
+			s += ",\n    Games: []*pb.TournamentGame {\n"
+			for idx, game := range pairing.Games {
+				s += formatTournamentGame(game)
+				if idx != len(pairing.Games)-1 {
+					s += ","
+				}
+			}
+			s += "}"
+		}
+		if pairing.Outcomes != nil {
+			s += fmt.Sprintf(",\n    Outcomes: []pb.TournamentGameResult{%d, %d}", pairing.Outcomes[0], pairing.Outcomes[1])
+		}
+		if pairing.ReadyStates != nil {
+			s += fmt.Sprintf(",\n    ReadyStates: []string{\"%s\", \"%s\"}", pairing.ReadyStates[0], pairing.ReadyStates[1])
+		}
+		s += "}"
+		return s
+	}
+
+	func formatTournamentGame(tg *pb.TournamentGame) string {
+		s := "      &pb.TournamentGame {\n"
+		s += fmt.Sprintf("      Scores: []int32{%d, %d},\n", tg.Scores[0], tg.Scores[1])
+		s += fmt.Sprintf("      Results: []pb.TournamentGameResult{%d, %d},\n", tg.Results[0], tg.Results[1])
+		s += fmt.Sprintf("      GameEndReason: %d}", tg.GameEndReason)
+		return s
+	}
 */
 func runFirstMethodRound(tc *ClassicDivision, playerOrder []string, fs []int, round int, useByes bool) error {
 	_, err := tc.SetPairing(playerOrder[0], playerOrder[1], round, pb.TournamentGameResult_NO_RESULT)

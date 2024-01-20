@@ -8,24 +8,19 @@ import (
 	"sort"
 	"testing"
 
-	macondoconfig "github.com/domino14/macondo/config"
-	"github.com/domino14/macondo/tilemapping"
+	"github.com/domino14/word-golib/tilemapping"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/domino14/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/config"
 
-	"github.com/domino14/liwords/pkg/cwgame/tiles"
-	"github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/woogles-io/liwords/pkg/cwgame/tiles"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
-var DefaultConfig = &config.Config{
-	MacondoConfig: macondoconfig.Config{
-		DataPath:    os.Getenv("DATA_PATH"),
-		LexiconPath: os.Getenv("LEXICON_PATH"),
-	}}
+var DefaultConfig = config.DefaultConfig()
 
 func restoreGlobalNower() {
 	globalNower = GameTimer{}
@@ -34,7 +29,7 @@ func restoreGlobalNower() {
 func ctxForTests() context.Context {
 	ctx := context.Background()
 	ctx = log.Logger.WithContext(ctx)
-	ctx = context.WithValue(ctx, config.CtxKeyword, DefaultConfig)
+	ctx = context.WithValue(ctx, config.CtxKeyword, &DefaultConfig)
 	return ctx
 }
 
@@ -55,7 +50,7 @@ func TestNewGame(t *testing.T) {
 	is := is.New(t)
 	rules := NewBasicGameRules("NWL20", "CrosswordGame", "english", ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
 		"classic", []int{300, 300}, 1, 0, false)
-	g, err := NewGame(DefaultConfig, rules, []*ipc.GameDocument_MinimalPlayerInfo{
+	g, err := NewGame(&DefaultConfig, rules, []*ipc.GameDocument_MinimalPlayerInfo{
 		{Nickname: "Cesitar", RealName: "Cesar", UserId: "cesar1"},
 		{Nickname: "Lucas", RealName: "Lucas", UserId: "lucas1"},
 	})
@@ -72,7 +67,7 @@ func TestStartGame(t *testing.T) {
 
 	rules := NewBasicGameRules("NWL20", "CrosswordGame", "english", ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
 		"classic", []int{300, 300}, 1, 0, false)
-	g, _ := NewGame(DefaultConfig, rules, []*ipc.GameDocument_MinimalPlayerInfo{
+	g, _ := NewGame(&DefaultConfig, rules, []*ipc.GameDocument_MinimalPlayerInfo{
 		{Nickname: "Cesitar", RealName: "Cesar", UserId: "cesar1"},
 		{Nickname: "Lucas", RealName: "Lucas", UserId: "lucas1"},
 	})
@@ -92,7 +87,7 @@ func TestStartGame(t *testing.T) {
 }
 
 func englishBytes(tiles string) []byte {
-	ld, err := tilemapping.GetDistribution(&DefaultConfig.MacondoConfig, "english")
+	ld, err := tilemapping.GetDistribution(DefaultConfig.MacondoConfigMap, "english")
 	if err != nil {
 		panic(err)
 	}
@@ -104,7 +99,7 @@ func englishBytes(tiles string) []byte {
 }
 
 func norwegianBytes(tiles string) []byte {
-	ld, err := tilemapping.GetDistribution(&DefaultConfig.MacondoConfig, "norwegian")
+	ld, err := tilemapping.GetDistribution(DefaultConfig.MacondoConfigMap, "norwegian")
 	if err != nil {
 		panic(err)
 	}
@@ -533,7 +528,7 @@ func TestChallengeGoodWordNorwegian(t *testing.T) {
 	ctx := ctxForTests()
 	rules := NewBasicGameRules("NSF22", "CrosswordGame", "norwegian", ipc.ChallengeRule_ChallengeRule_TEN_POINT,
 		"classic", []int{300, 300}, 1, 0, false)
-	g, _ := NewGame(DefaultConfig, rules, []*ipc.GameDocument_MinimalPlayerInfo{
+	g, _ := NewGame(&DefaultConfig, rules, []*ipc.GameDocument_MinimalPlayerInfo{
 		{Nickname: "Cesitar", RealName: "Cesar", UserId: "cesar1"},
 		{Nickname: "Lucas", RealName: "Lucas", UserId: "lucas1"},
 	})
@@ -559,7 +554,7 @@ func TestChallengeGoodWordNorwegian(t *testing.T) {
 		PositionCoords: "8G",
 		MachineLetters: norwegianBytes("ÅMA"),
 	}
-	ld, err := tilemapping.GetDistribution(&DefaultConfig.MacondoConfig, "norwegian")
+	ld, err := tilemapping.GetDistribution(DefaultConfig.MacondoConfigMap, "norwegian")
 	is.NoErr(err)
 	rack, err := tilemapping.ToMachineLetters("AÅM", ld.TileMapping())
 	is.NoErr(err)
@@ -1322,7 +1317,7 @@ func TestExchangePartialRack(t *testing.T) {
 func TestAssignRacks(t *testing.T) {
 	is := is.New(t)
 
-	dist, err := tilemapping.GetDistribution(&DefaultConfig.MacondoConfig, "English")
+	dist, err := tilemapping.GetDistribution(DefaultConfig.MacondoConfigMap, "English")
 	is.NoErr(err)
 
 	doc := &ipc.GameDocument{
@@ -1346,7 +1341,7 @@ func TestAssignRacks(t *testing.T) {
 func TestAssignRacksEmptyRack(t *testing.T) {
 	is := is.New(t)
 
-	dist, err := tilemapping.GetDistribution(&DefaultConfig.MacondoConfig, "English")
+	dist, err := tilemapping.GetDistribution(DefaultConfig.MacondoConfigMap, "English")
 	is.NoErr(err)
 
 	doc := &ipc.GameDocument{

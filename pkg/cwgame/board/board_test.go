@@ -1,19 +1,15 @@
 package board
 
 import (
-	"os"
 	"testing"
 
 	macondoconfig "github.com/domino14/macondo/config"
-	"github.com/domino14/macondo/tilemapping"
+	"github.com/domino14/word-golib/tilemapping"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
 )
 
-var DataDir = os.Getenv("DATA_PATH")
-var DefaultConfig = macondoconfig.Config{
-	DataPath: DataDir,
-}
+var DefaultMacondoConfig = macondoconfig.DefaultConfig()
 
 func TestFormedWords(t *testing.T) {
 	is := is.New(t)
@@ -21,11 +17,12 @@ func TestFormedWords(t *testing.T) {
 	is.NoErr(err)
 
 	b := NewBoard(layout)
-	rm := tilemapping.EnglishAlphabet()
+	ld, err := tilemapping.NamedLetterDistribution(DefaultMacondoConfig.AllSettings(), "english")
+	is.NoErr(err)
+	tm := ld.TileMapping()
+	setFromPlaintext(b, VsOxy, tm)
 
-	setFromPlaintext(b, VsOxy, rm)
-
-	mls, err := tilemapping.ToMachineLetters("OX.P...B..AZ..E", rm)
+	mls, err := tilemapping.ToMachineLetters("OX.P...B..AZ..E", tm)
 	is.NoErr(err)
 
 	words, err := FormedWords(b, 0, 0, true, mls)
@@ -35,7 +32,7 @@ func TestFormedWords(t *testing.T) {
 	// convert all words to user-visible
 	uvWords := make([]string, 8)
 	for idx, w := range words {
-		uvWords[idx] = w.UserVisible(rm)
+		uvWords[idx] = w.UserVisible(tm)
 	}
 	is.Equal(uvWords, []string{"OXYPHENBUTAZONE", "OPACIFYING", "XIS", "PREQUALIFIED", "BRAINWASHING",
 		"AWAKENERS", "ZONETIME", "EJACULATING"})
@@ -47,15 +44,16 @@ func TestPlayMoveGiant(t *testing.T) {
 	layout, err := GetBoardLayout("CrosswordGame")
 	is.NoErr(err)
 
-	dist, err := tilemapping.GetDistribution(&DefaultConfig, "english")
+	dist, err := tilemapping.GetDistribution(DefaultMacondoConfig.AllSettings(), "english")
 	is.NoErr(err)
 
 	b := NewBoard(layout)
-	rm := tilemapping.EnglishAlphabet()
+	ld, err := tilemapping.NamedLetterDistribution(DefaultMacondoConfig.AllSettings(), "english")
+	is.NoErr(err)
+	tm := ld.TileMapping()
+	setFromPlaintext(b, VsOxy, tm)
 
-	setFromPlaintext(b, VsOxy, rm)
-
-	mls, err := tilemapping.ToMachineLetters("OX.P...B..AZ..E", rm)
+	mls, err := tilemapping.ToMachineLetters("OX.P...B..AZ..E", tm)
 	is.NoErr(err)
 
 	score, err := PlayMove(b, "CrosswordGame", dist, mls, 0, 0, true)
@@ -68,15 +66,15 @@ func TestMoveInBetween(t *testing.T) {
 	layout, err := GetBoardLayout("CrosswordGame")
 	is.NoErr(err)
 
-	dist, err := tilemapping.GetDistribution(&DefaultConfig, "english")
+	dist, err := tilemapping.GetDistribution(DefaultMacondoConfig.AllSettings(), "english")
 	is.NoErr(err)
 
 	b := NewBoard(layout)
-	rm := tilemapping.EnglishAlphabet()
+	tm := dist.TileMapping()
 
-	setFromPlaintext(b, VsMatt, rm)
+	setFromPlaintext(b, VsMatt, tm)
 
-	mls, err := tilemapping.ToMachineLetters("TAEL", rm)
+	mls, err := tilemapping.ToMachineLetters("TAEL", tm)
 	is.NoErr(err)
 
 	score, err := PlayMove(b, "CrosswordGame", dist, mls, 8, 10, true)
@@ -89,7 +87,7 @@ func TestToFENEmpty(t *testing.T) {
 	layout, err := GetBoardLayout("CrosswordGame")
 	is.NoErr(err)
 
-	dist, err := tilemapping.GetDistribution(&DefaultConfig, "english")
+	dist, err := tilemapping.GetDistribution(DefaultMacondoConfig.AllSettings(), "english")
 	is.NoErr(err)
 
 	b := NewBoard(layout)
@@ -102,13 +100,13 @@ func TestToFEN(t *testing.T) {
 	layout, err := GetBoardLayout("CrosswordGame")
 	is.NoErr(err)
 
-	dist, err := tilemapping.GetDistribution(&DefaultConfig, "english")
+	dist, err := tilemapping.GetDistribution(DefaultMacondoConfig.AllSettings(), "english")
 	is.NoErr(err)
 
 	b := NewBoard(layout)
-	rm := tilemapping.EnglishAlphabet()
+	tm := dist.TileMapping()
 
-	setFromPlaintext(b, VsMatt, rm)
+	setFromPlaintext(b, VsMatt, tm)
 
 	is.Equal(ToFEN(b, dist),
 		"7ZEP1F3/1FLUKY3R1R3/5EX2A1U3/2SCARIEST1I3/9TOT3/6GO1LO4/6OR1ETA3/6JABS1b3/5QI4A3/5I1N3N3/3ReSPOND1D3/1HOE3V3O3/1ENCOMIA3N3/7T7/3VENGED6")
@@ -119,7 +117,7 @@ func TestToFENCatalan(t *testing.T) {
 	layout, err := GetBoardLayout("CrosswordGame")
 	is.NoErr(err)
 
-	dist, err := tilemapping.GetDistribution(&DefaultConfig, "catalan")
+	dist, err := tilemapping.GetDistribution(DefaultMacondoConfig.AllSettings(), "catalan")
 	is.NoErr(err)
 
 	b := NewBoard(layout)
@@ -133,17 +131,17 @@ func TestToFENCatalan(t *testing.T) {
 
 func BenchmarkPlayMove(b *testing.B) {
 	layout, _ := GetBoardLayout("CrosswordGame")
-	dist, _ := tilemapping.GetDistribution(&DefaultConfig, "english")
+	dist, _ := tilemapping.GetDistribution(DefaultMacondoConfig.AllSettings(), "english")
 	bd := NewBoard(layout)
-	rm := tilemapping.EnglishAlphabet()
+	tm := dist.TileMapping()
 	lv := zerolog.GlobalLevel()
 	zerolog.SetGlobalLevel(zerolog.Disabled)
 	defer zerolog.SetGlobalLevel(lv)
 
 	// ~29us per operation on themonolith
 	for i := 0; i < b.N; i++ {
-		setFromPlaintext(bd, VsMatt, rm)
-		mls, _ := tilemapping.ToMachineLetters("TAEL", rm)
+		setFromPlaintext(bd, VsMatt, tm)
+		mls, _ := tilemapping.ToMachineLetters("TAEL", tm)
 		PlayMove(bd, "CrosswordGame", dist, mls, 8, 10, true)
 	}
 }

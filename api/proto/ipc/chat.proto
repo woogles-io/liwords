@@ -4,7 +4,7 @@ syntax = "proto3";
 // (so far, just the API and the socket server).
 // Many of these messages end up being transmitted to the front-end.
 package ipc;
-option go_package = "github.com/domino14/liwords/rpc/api/proto/ipc";
+option go_package = "github.com/woogles-io/liwords/rpc/api/proto/ipc";
 
 message ChatMessage {
   string username = 1;

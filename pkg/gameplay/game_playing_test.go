@@ -9,41 +9,38 @@ import (
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/gameplay"
-	pkgmod "github.com/domino14/liwords/pkg/mod"
-	"github.com/domino14/liwords/pkg/stores/common"
-	"github.com/domino14/liwords/pkg/stores/game"
-	"github.com/domino14/liwords/pkg/stores/mod"
-	ts "github.com/domino14/liwords/pkg/stores/tournament"
-	"github.com/domino14/liwords/pkg/tournament"
-	pkguser "github.com/domino14/liwords/pkg/user"
-	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
-	"github.com/domino14/macondo/tilemapping"
+	"github.com/domino14/word-golib/tilemapping"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/gameplay"
+	pkgmod "github.com/woogles-io/liwords/pkg/mod"
+	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/game"
+	"github.com/woogles-io/liwords/pkg/stores/mod"
+	ts "github.com/woogles-io/liwords/pkg/stores/tournament"
+	"github.com/woogles-io/liwords/pkg/tournament"
+	pkguser "github.com/woogles-io/liwords/pkg/user"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 func ctxForTests() context.Context {
 	ctx := context.Background()
 	ctx = log.Logger.WithContext(ctx)
-	ctx = context.WithValue(ctx, config.CtxKeyword, &config.Config{
-		MacondoConfig: DefaultConfig,
-	})
+	ctx = context.WithValue(ctx, config.CtxKeyword, &DefaultConfig)
 	return ctx
 }
 
 func gameStore(userStore pkguser.Store) (*config.Config, gameplay.GameStore) {
-	cfg := &config.Config{}
-	cfg.MacondoConfig = DefaultConfig
+	cfg := DefaultConfig
 	cfg.DBConnDSN = common.TestingPostgresConnDSN()
 
-	tmp, err := game.NewDBStore(cfg, userStore)
+	tmp, err := game.NewDBStore(&cfg, userStore)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
 	gameStore := game.NewCache(tmp)
-	return cfg, gameStore
+	return &cfg, gameStore
 }
 
 func tournamentStore(cfg *config.Config, gs gameplay.GameStore) tournament.TournamentStore {

@@ -4,11 +4,11 @@ import (
 	"context"
 	"sync"
 
-	"github.com/domino14/liwords/pkg/entity"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/rs/zerolog/log"
+	"github.com/woogles-io/liwords/pkg/entity"
 
-	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/tournament_service"
 )
 
 type backingStore interface {

@@ -3,17 +3,17 @@ package gameplay_test
 import (
 	"context"
 
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/gameplay"
-	pkgmod "github.com/domino14/liwords/pkg/mod"
-	pkgstats "github.com/domino14/liwords/pkg/stats"
-	"github.com/domino14/liwords/pkg/stores/game"
-	"github.com/domino14/liwords/pkg/stores/mod"
-	"github.com/domino14/liwords/pkg/stores/stats"
-	ts "github.com/domino14/liwords/pkg/stores/tournament"
-	"github.com/domino14/liwords/pkg/stores/user"
-	"github.com/domino14/liwords/pkg/tournament"
-	pkguser "github.com/domino14/liwords/pkg/user"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/gameplay"
+	pkgmod "github.com/woogles-io/liwords/pkg/mod"
+	pkgstats "github.com/woogles-io/liwords/pkg/stats"
+	"github.com/woogles-io/liwords/pkg/stores/game"
+	"github.com/woogles-io/liwords/pkg/stores/mod"
+	"github.com/woogles-io/liwords/pkg/stores/stats"
+	ts "github.com/woogles-io/liwords/pkg/stores/tournament"
+	"github.com/woogles-io/liwords/pkg/stores/user"
+	"github.com/woogles-io/liwords/pkg/tournament"
+	pkguser "github.com/woogles-io/liwords/pkg/user"
 )
 
 type gamesetup struct {

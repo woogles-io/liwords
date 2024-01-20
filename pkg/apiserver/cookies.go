@@ -8,10 +8,10 @@ import (
 
 	twirp "github.com/twitchtv/twirp"
 
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/sessions"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/sessions"
 )
 
 // ExposeResponseWriterMiddleware configures an http.Handler (like any Twirp server)

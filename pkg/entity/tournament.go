@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"sync"
 
-	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 type DivisionManager interface {

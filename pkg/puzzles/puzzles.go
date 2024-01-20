@@ -8,19 +8,19 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/gameplay"
-	"github.com/domino14/liwords/pkg/glicko"
-	"github.com/domino14/liwords/pkg/utilities"
-	"github.com/domino14/liwords/rpc/api/proto/ipc"
-	pb "github.com/domino14/liwords/rpc/api/proto/puzzle_service"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/gameplay"
+	"github.com/woogles-io/liwords/pkg/glicko"
+	"github.com/woogles-io/liwords/pkg/utilities"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/puzzle_service"
 	"lukechampine.com/frand"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/macondo/move"
 	macondopuzzles "github.com/domino14/macondo/puzzles"
-	"github.com/domino14/macondo/tilemapping"
+	"github.com/domino14/word-golib/tilemapping"
 	"github.com/rs/zerolog/log"
 )
 
@@ -150,7 +150,7 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID
 	if !ok {
 		return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, nil, nil, errors.New("missing-config-in-context")
 	}
-	ld, err := tilemapping.GetDistribution(&cfg.MacondoConfig, req.Rules.LetterDistributionName)
+	ld, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, req.Rules.LetterDistributionName)
 	if err != nil {
 		return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, nil, nil, err
 	}

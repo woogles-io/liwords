@@ -6,7 +6,7 @@ import (
 
 	"github.com/matryer/is"
 
-	"github.com/domino14/liwords/pkg/utilities"
+	"github.com/woogles-io/liwords/pkg/utilities"
 )
 
 // The vast majority of pairing tests are in the tournament package

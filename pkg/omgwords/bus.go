@@ -1,8 +1,8 @@
 package omgwords
 
 import (
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 // functions for dealing with a message bus

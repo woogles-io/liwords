@@ -10,8 +10,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/domino14/macondo/tilemapping"
 	"github.com/domino14/macondo/turnplayer"
+	"github.com/domino14/word-golib/tilemapping"
 	"github.com/lithammer/shortuuid"
 	"google.golang.org/protobuf/proto"
 
@@ -22,14 +22,14 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/macondo/move"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/mod"
-	"github.com/domino14/liwords/pkg/stats"
-	"github.com/domino14/liwords/pkg/tournament"
-	"github.com/domino14/liwords/pkg/user"
-	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
-	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/mod"
+	"github.com/woogles-io/liwords/pkg/stats"
+	"github.com/woogles-io/liwords/pkg/tournament"
+	"github.com/woogles-io/liwords/pkg/user"
+	gs "github.com/woogles-io/liwords/rpc/api/proto/game_service"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 var (
@@ -310,7 +310,7 @@ func minusMLs(a, b []tilemapping.MachineLetter) []tilemapping.MachineLetter {
 }
 
 func calculateReturnedTiles(cfg *config.Config, letdist string, playerRack string, lastEventRack string, lastEventTiles string) (string, error) {
-	dist, err := tilemapping.GetDistribution(&cfg.MacondoConfig, letdist)
+	dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, letdist)
 	if err != nil {
 		return "", err
 	}

@@ -6,17 +6,17 @@ import (
 	"errors"
 	"time"
 
-	"github.com/domino14/liwords/pkg/apiserver"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/mod"
-	"github.com/domino14/liwords/pkg/user"
-	userservices "github.com/domino14/liwords/pkg/user/services"
+	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/mod"
+	"github.com/woogles-io/liwords/pkg/user"
+	userservices "github.com/woogles-io/liwords/pkg/user/services"
 
 	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
 
-	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
-	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
+	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
 
 type ProfileService struct {

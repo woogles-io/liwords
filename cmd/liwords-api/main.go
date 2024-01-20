@@ -22,53 +22,53 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/twitchtv/twirp"
 
-	"github.com/domino14/liwords/pkg/apiserver"
-	"github.com/domino14/liwords/pkg/bus"
-	"github.com/domino14/liwords/pkg/comments"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/gameplay"
-	"github.com/domino14/liwords/pkg/memento"
-	"github.com/domino14/liwords/pkg/mod"
-	"github.com/domino14/liwords/pkg/notify"
-	"github.com/domino14/liwords/pkg/omgwords"
-	omgstores "github.com/domino14/liwords/pkg/omgwords/stores"
-	"github.com/domino14/liwords/pkg/puzzles"
-	commentsstore "github.com/domino14/liwords/pkg/stores/comments"
-	cfgstore "github.com/domino14/liwords/pkg/stores/config"
-	"github.com/domino14/liwords/pkg/stores/game"
-	modstore "github.com/domino14/liwords/pkg/stores/mod"
-	puzzlestore "github.com/domino14/liwords/pkg/stores/puzzles"
-	"github.com/domino14/liwords/pkg/stores/session"
-	"github.com/domino14/liwords/pkg/stores/soughtgame"
-	"github.com/domino14/liwords/pkg/stores/stats"
-	"github.com/domino14/liwords/pkg/tournament"
-	"github.com/domino14/liwords/pkg/utilities"
-	"github.com/domino14/liwords/pkg/words"
+	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/bus"
+	"github.com/woogles-io/liwords/pkg/comments"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/gameplay"
+	"github.com/woogles-io/liwords/pkg/memento"
+	"github.com/woogles-io/liwords/pkg/mod"
+	"github.com/woogles-io/liwords/pkg/notify"
+	"github.com/woogles-io/liwords/pkg/omgwords"
+	omgstores "github.com/woogles-io/liwords/pkg/omgwords/stores"
+	"github.com/woogles-io/liwords/pkg/puzzles"
+	commentsstore "github.com/woogles-io/liwords/pkg/stores/comments"
+	cfgstore "github.com/woogles-io/liwords/pkg/stores/config"
+	"github.com/woogles-io/liwords/pkg/stores/game"
+	modstore "github.com/woogles-io/liwords/pkg/stores/mod"
+	puzzlestore "github.com/woogles-io/liwords/pkg/stores/puzzles"
+	"github.com/woogles-io/liwords/pkg/stores/session"
+	"github.com/woogles-io/liwords/pkg/stores/soughtgame"
+	"github.com/woogles-io/liwords/pkg/stores/stats"
+	"github.com/woogles-io/liwords/pkg/tournament"
+	"github.com/woogles-io/liwords/pkg/utilities"
+	"github.com/woogles-io/liwords/pkg/words"
 
-	"github.com/domino14/liwords/pkg/registration"
+	"github.com/woogles-io/liwords/pkg/registration"
 
-	"github.com/domino14/liwords/pkg/auth"
+	"github.com/woogles-io/liwords/pkg/auth"
 
 	"github.com/justinas/alice"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/domino14/liwords/pkg/config"
-	pkgprofile "github.com/domino14/liwords/pkg/profile"
-	pkgredis "github.com/domino14/liwords/pkg/stores/redis"
-	tournamentstore "github.com/domino14/liwords/pkg/stores/tournament"
-	"github.com/domino14/liwords/pkg/stores/user"
-	userservices "github.com/domino14/liwords/pkg/user/services"
-	"github.com/domino14/liwords/rpc/api/proto/comments_service"
-	configservice "github.com/domino14/liwords/rpc/api/proto/config_service"
-	gameservice "github.com/domino14/liwords/rpc/api/proto/game_service"
-	modservice "github.com/domino14/liwords/rpc/api/proto/mod_service"
-	omgwordsservice "github.com/domino14/liwords/rpc/api/proto/omgwords_service"
-	puzzleservice "github.com/domino14/liwords/rpc/api/proto/puzzle_service"
-	tournamentservice "github.com/domino14/liwords/rpc/api/proto/tournament_service"
-	userservice "github.com/domino14/liwords/rpc/api/proto/user_service"
-	wordservice "github.com/domino14/liwords/rpc/api/proto/word_service"
+	"github.com/woogles-io/liwords/pkg/config"
+	pkgprofile "github.com/woogles-io/liwords/pkg/profile"
+	pkgredis "github.com/woogles-io/liwords/pkg/stores/redis"
+	tournamentstore "github.com/woogles-io/liwords/pkg/stores/tournament"
+	"github.com/woogles-io/liwords/pkg/stores/user"
+	userservices "github.com/woogles-io/liwords/pkg/user/services"
+	"github.com/woogles-io/liwords/rpc/api/proto/comments_service"
+	configservice "github.com/woogles-io/liwords/rpc/api/proto/config_service"
+	gameservice "github.com/woogles-io/liwords/rpc/api/proto/game_service"
+	modservice "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
+	omgwordsservice "github.com/woogles-io/liwords/rpc/api/proto/omgwords_service"
+	puzzleservice "github.com/woogles-io/liwords/rpc/api/proto/puzzle_service"
+	tournamentservice "github.com/woogles-io/liwords/rpc/api/proto/tournament_service"
+	userservice "github.com/woogles-io/liwords/rpc/api/proto/user_service"
+	wordservice "github.com/woogles-io/liwords/rpc/api/proto/word_service"
 
 	"net/http/pprof"
 )
@@ -147,7 +147,7 @@ func main() {
 	if cfg.SecretKey == "" {
 		panic("secret key must be non blank")
 	}
-	if cfg.MacondoConfig.Debug {
+	if cfg.Debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	} else {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
@@ -266,7 +266,7 @@ func main() {
 	registrationService := registration.NewRegistrationService(stores.UserStore, cfg.ArgonConfig)
 	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore, stores.GameDocumentStore, cfg)
 	profileService := pkgprofile.NewProfileService(stores.UserStore, userservices.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET"), s3Client))
-	wordService := words.NewWordService(&cfg.MacondoConfig)
+	wordService := words.NewWordService(cfg)
 	autocompleteService := userservices.NewAutocompleteService(stores.UserStore)
 	socializeService := userservices.NewSocializeService(stores.UserStore, stores.ChatStore, stores.PresenceStore)
 	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore)

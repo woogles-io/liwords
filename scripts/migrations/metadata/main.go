@@ -8,12 +8,12 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/stores/common"
-	"github.com/domino14/liwords/pkg/stores/game"
-	"github.com/domino14/liwords/pkg/stores/user"
-	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/game"
+	"github.com/woogles-io/liwords/pkg/stores/user"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 func main() {

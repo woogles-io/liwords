@@ -15,17 +15,17 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/gameplay"
-	"github.com/domino14/liwords/pkg/stores/common"
-	"github.com/domino14/liwords/pkg/stores/game"
-	"github.com/domino14/liwords/pkg/stores/user"
-	pkgtournament "github.com/domino14/liwords/pkg/tournament"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/gameplay"
+	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/game"
+	"github.com/woogles-io/liwords/pkg/stores/user"
+	pkgtournament "github.com/woogles-io/liwords/pkg/tournament"
 )
 
 // Legacy ipc types that have probably since changed are

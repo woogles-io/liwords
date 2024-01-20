@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/stores/common"
 	"github.com/matryer/is"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/stores/common"
 )
 
 func TestSession(t *testing.T) {

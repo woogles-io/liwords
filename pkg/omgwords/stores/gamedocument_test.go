@@ -14,8 +14,8 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
-	commondb "github.com/domino14/liwords/pkg/stores/common"
-	"github.com/domino14/liwords/rpc/api/proto/ipc"
+	commondb "github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 var RedisUrl = os.Getenv("REDIS_URL")
@@ -31,7 +31,7 @@ func newPool(addr string) *redis.Pool {
 
 func TestNewAndGet(t *testing.T) {
 	is := is.New(t)
-	store, err := NewGameDocumentStore(DefaultConfig, newPool(RedisUrl), nil)
+	store, err := NewGameDocumentStore(&DefaultConfig, newPool(RedisUrl), nil)
 	is.NoErr(err)
 	ctx := context.Background()
 
@@ -51,7 +51,7 @@ func TestNewAndGet(t *testing.T) {
 
 func TestRedisLocking(t *testing.T) {
 	is := is.New(t)
-	store, err := NewGameDocumentStore(DefaultConfig, newPool(RedisUrl), nil)
+	store, err := NewGameDocumentStore(&DefaultConfig, newPool(RedisUrl), nil)
 	is.NoErr(err)
 	ctx := context.Background()
 
@@ -104,7 +104,7 @@ func TestRedisLocking(t *testing.T) {
 
 func TestRedisLockingWithTurnLogic(t *testing.T) {
 	is := is.New(t)
-	store, err := NewGameDocumentStore(DefaultConfig, newPool(RedisUrl), nil)
+	store, err := NewGameDocumentStore(&DefaultConfig, newPool(RedisUrl), nil)
 	is.NoErr(err)
 	ctx := context.Background()
 
@@ -168,7 +168,7 @@ func TestDBGetAndSet(t *testing.T) {
 
 	dbPool, err := pgxpool.Connect(context.Background(), commondb.TestingPostgresConnUri())
 	is.NoErr(err)
-	store, err := NewGameDocumentStore(DefaultConfig, newPool(RedisUrl), dbPool)
+	store, err := NewGameDocumentStore(&DefaultConfig, newPool(RedisUrl), dbPool)
 	is.NoErr(err)
 	ctx := context.Background()
 

@@ -284,7 +284,7 @@ export const Pairings = React.memo((props: Props) => {
                   )}
                   {/* {props.isDirector && pairing.readyStates[idx] !== '' && (
                     <CheckCircleTwoTone />
-                    Temporary for https://github.com/domino14/liwords/issues/825
+                    Temporary for https://github.com/woogles-io/liwords/issues/825
 
                     This requires a back-end change to send the ready state to
                     the directors as well as the involved players.

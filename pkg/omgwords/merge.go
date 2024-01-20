@@ -3,7 +3,7 @@ package omgwords
 import (
 	"errors"
 
-	"github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"google.golang.org/protobuf/proto"
 )
 

@@ -66,7 +66,9 @@ export const LexiconFormItem = React.memo((props: Props) => {
         },
       ]}
     >
-      <Select disabled={props.disabled}>{options}</Select>
+      <Select disabled={props.disabled} listHeight={300}>
+        {options}
+      </Select>
     </Form.Item>
   );
 });

@@ -5,10 +5,11 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/domino14/liwords/pkg/stores/common"
-	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/lithammer/shortuuid"
 	"github.com/namsral/flag"
+
+	macondoconfig "github.com/domino14/macondo/config"
+	"github.com/woogles-io/liwords/pkg/stores/common"
 )
 
 type ArgonConfig struct {
@@ -19,8 +20,13 @@ type ArgonConfig struct {
 }
 
 type Config struct {
-	MacondoConfig macondoconfig.Config // obsolete this
-	ArgonConfig   ArgonConfig
+	MacondoConfig macondoconfig.Config
+	// MacondoConfigMap is a map version of all the settings in MacondoConfig.
+	// We need to eventually obsolete MacondoConfig (and Macondo as a library).
+	// This will help a bit in making sure we only pass a map of key-value pairs
+	// to whoever can take them, while keeping MacondoConfig for legacy functions in Macondo.
+	MacondoConfigMap map[string]any
+	ArgonConfig      ArgonConfig
 
 	DBHost           string
 	DBPort           string
@@ -52,16 +58,18 @@ const CtxKeyword CtxKey = CtxKey("config")
 
 // Load loads the configs from the given arguments
 func (c *Config) Load(args []string) error {
-	fs := flag.NewFlagSet("macondo", flag.ContinueOnError)
+
+	c.MacondoConfig = macondoconfig.Config{}
+	err := c.MacondoConfig.Load(nil)
+	if err != nil {
+		return err
+	}
+
+	c.MacondoConfigMap = c.MacondoConfig.AllSettings()
+
+	fs := flag.NewFlagSet("liwords", flag.ContinueOnError)
 
 	fs.BoolVar(&c.Debug, "debug", false, "debug logging on")
-
-	fs.StringVar(&c.MacondoConfig.LetterDistributionPath, "letter-distribution-path", "../macondo/data/letterdistributions", "directory holding letter distribution files")
-	fs.StringVar(&c.MacondoConfig.StrategyParamsPath, "strategy-params-path", "../macondo/data/strategy", "directory holding strategy files")
-	fs.StringVar(&c.MacondoConfig.LexiconPath, "lexicon-path", "../macondo/data/lexica", "directory holding lexicon files")
-	fs.StringVar(&c.MacondoConfig.DefaultLexicon, "default-lexicon", "NWL20", "the default lexicon to use")
-	fs.StringVar(&c.MacondoConfig.DefaultLetterDistribution, "default-letter-distribution", "English", "the default letter distribution to use. English, EnglishSuper, Spanish, Polish, etc.")
-	fs.StringVar(&c.MacondoConfig.DataPath, "data-path", "../macondo/data", "the default data path")
 
 	fs.StringVar(&c.DBHost, "db-host", "", "the database host")
 	fs.StringVar(&c.DBPort, "db-port", "", "the database port")
@@ -84,23 +92,25 @@ func (c *Config) Load(args []string) error {
 	fs.IntVar(&c.ArgonConfig.Time, "argon-time", 1, "the Argon time")
 	fs.IntVar(&c.ArgonConfig.Memory, "argon-memory", 64*1024, "the Argon memory (KB)")
 	fs.IntVar(&c.ArgonConfig.Threads, "argon-threads", 4, "the Argon threads")
-	err := fs.Parse(args)
+	err = fs.Parse(args)
 	// build the DB conn string from the passed-in DB arguments
 	c.DBConnUri = common.PostgresConnUri(c.DBHost, c.DBPort, c.DBName, c.DBUser, c.DBPassword, c.DBSSLMode)
 	c.DBConnDSN = common.PostgresConnDSN(c.DBHost, c.DBPort, c.DBName, c.DBUser, c.DBPassword, c.DBSSLMode)
 
-	// Assign obsolete MacondoConfig variables, for now:
-	c.MacondoConfig.Debug = c.Debug
-	// c.MacondoConfig.LetterDistributionPath = c.DataPath + "/letterdistributions"
-	// c.MacondoConfig.StrategyParamsPath = c.DataPath + "/strategy"
-	// c.MacondoConfig.LexiconPath = c.DataPath + "/lexica"
-	// c.MacondoConfig.DefaultLexicon = "NWL20"              // probably doesn't matter
-	// c.MacondoConfig.DefaultLetterDistribution = "English" // probably doesn't matter
 	return err
 }
 
-// Get the Macondo config from the context
-func GetMacondoConfig(ctx context.Context) (*macondoconfig.Config, error) {
+var defaultConfig = Config{
+	MacondoConfig: macondoconfig.DefaultConfig(),
+}
+
+func DefaultConfig() Config {
+	defaultConfig.MacondoConfigMap = defaultConfig.MacondoConfig.AllSettings()
+	return defaultConfig
+}
+
+// Get the config from the context
+func GetConfig(ctx context.Context) (*Config, error) {
 	ctxConfig, ok := ctx.Value(CtxKeyword).(*Config)
 	if !ok {
 		return nil, errors.New("config is not ok")
@@ -108,7 +118,7 @@ func GetMacondoConfig(ctx context.Context) (*macondoconfig.Config, error) {
 	if ctxConfig == nil {
 		return nil, errors.New("config is nil")
 	}
-	return &ctxConfig.MacondoConfig, nil
+	return ctxConfig, nil
 }
 
 func CtxMiddlewareGenerator(config *Config) (mw func(http.Handler) http.Handler) {

@@ -3,7 +3,6 @@ package gameplay_test
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -11,17 +10,16 @@ import (
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/gameplay"
-	pkgstats "github.com/domino14/liwords/pkg/stats"
-	"github.com/domino14/liwords/pkg/stores/common"
-	"github.com/domino14/liwords/pkg/stores/mod"
-	"github.com/domino14/liwords/pkg/stores/stats"
-	"github.com/domino14/liwords/pkg/stores/user"
-	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
-	macondoconfig "github.com/domino14/macondo/config"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/gameplay"
+	pkgstats "github.com/woogles-io/liwords/pkg/stats"
+	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/mod"
+	"github.com/woogles-io/liwords/pkg/stores/stats"
+	"github.com/woogles-io/liwords/pkg/stores/user"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 var gameReq = &pb.GameRequest{Lexicon: "CSW21",
@@ -38,13 +36,7 @@ var gameReq = &pb.GameRequest{Lexicon: "CSW21",
 	OriginalRequestId:  "originalyeet",
 	MaxOvertimeMinutes: 10}
 
-var DefaultConfig = macondoconfig.Config{
-	LexiconPath:               os.Getenv("LEXICON_PATH"),
-	LetterDistributionPath:    os.Getenv("LETTER_DISTRIBUTION_PATH"),
-	DataPath:                  os.Getenv("DATA_PATH"),
-	DefaultLexicon:            "CSW21",
-	DefaultLetterDistribution: "English",
-}
+var DefaultConfig = config.DefaultConfig()
 
 // Just dummy info to test that rating stats work
 var gameEndedEventObj = &pb.GameEndedEvent{
@@ -117,19 +109,19 @@ func TestComputeGameStats(t *testing.T) {
 	is := is.New(t)
 	_, ustore, lstore, _ := recreateDB()
 
-	histjson, err := ioutil.ReadFile("./testdata/game1/history.json")
+	histjson, err := os.ReadFile("./testdata/game1/history.json")
 	is.NoErr(err)
 	hist := &macondopb.GameHistory{}
 	err = json.Unmarshal(histjson, hist)
 	is.NoErr(err)
 
-	reqjson, err := ioutil.ReadFile("./testdata/game1/game_request.json")
+	reqjson, err := os.ReadFile("./testdata/game1/game_request.json")
 	is.NoErr(err)
 	req := &pb.GameRequest{}
 	err = json.Unmarshal(reqjson, req)
 	is.NoErr(err)
 
-	ctx := context.WithValue(context.Background(), config.CtxKeyword, &config.Config{MacondoConfig: DefaultConfig})
+	ctx := context.WithValue(context.Background(), config.CtxKeyword, &DefaultConfig)
 	s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 	is.NoErr(err)
 	pkgstats.Finalize(ctx, s, lstore, []string{"m5ktbp4qPVTqaAhg6HJMsb"},
@@ -169,19 +161,19 @@ func TestComputeGameStats2(t *testing.T) {
 	is := is.New(t)
 	_, ustore, lstore, _ := recreateDB()
 
-	histjson, err := ioutil.ReadFile("./testdata/game2/history.json")
+	histjson, err := os.ReadFile("./testdata/game2/history.json")
 	is.NoErr(err)
 	hist := &macondopb.GameHistory{}
 	err = json.Unmarshal(histjson, hist)
 	is.NoErr(err)
 
-	reqjson, err := ioutil.ReadFile("./testdata/game2/game_request.json")
+	reqjson, err := os.ReadFile("./testdata/game2/game_request.json")
 	is.NoErr(err)
 	req := &pb.GameRequest{}
 	err = json.Unmarshal(reqjson, req)
 	is.NoErr(err)
 
-	ctx := context.WithValue(context.Background(), config.CtxKeyword, &config.Config{MacondoConfig: DefaultConfig})
+	ctx := context.WithValue(context.Background(), config.CtxKeyword, &DefaultConfig)
 	s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 	is.NoErr(err)
 
@@ -217,19 +209,19 @@ func TestComputePlayerStats(t *testing.T) {
 	is := is.New(t)
 	_, ustore, lstore, _ := recreateDB()
 
-	histjson, err := ioutil.ReadFile("./testdata/game1/history.json")
+	histjson, err := os.ReadFile("./testdata/game1/history.json")
 	is.NoErr(err)
 	hist := &macondopb.GameHistory{}
 	err = json.Unmarshal(histjson, hist)
 	is.NoErr(err)
 
-	reqjson, err := ioutil.ReadFile("./testdata/game1/game_request.json")
+	reqjson, err := os.ReadFile("./testdata/game1/game_request.json")
 	is.NoErr(err)
 	req := &pb.GameRequest{}
 	err = json.Unmarshal(reqjson, req)
 	is.NoErr(err)
 
-	ctx := context.WithValue(context.Background(), config.CtxKeyword, &config.Config{MacondoConfig: DefaultConfig})
+	ctx := context.WithValue(context.Background(), config.CtxKeyword, &DefaultConfig)
 	_, err = gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 	is.NoErr(err)
 
@@ -278,19 +270,19 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 	ctx := context.Background()
 
 	for _, g := range []string{"game1", "game2"} {
-		histjson, err := ioutil.ReadFile("./testdata/" + g + "/history.json")
+		histjson, err := os.ReadFile("./testdata/" + g + "/history.json")
 		is.NoErr(err)
 		hist := &macondopb.GameHistory{}
 		err = json.Unmarshal(histjson, hist)
 		is.NoErr(err)
 
-		reqjson, err := ioutil.ReadFile("./testdata/" + g + "/game_request.json")
+		reqjson, err := os.ReadFile("./testdata/" + g + "/game_request.json")
 		is.NoErr(err)
 		req := &pb.GameRequest{}
 		err = json.Unmarshal(reqjson, req)
 		is.NoErr(err)
 
-		ctx := context.WithValue(context.Background(), config.CtxKeyword, &config.Config{MacondoConfig: DefaultConfig})
+		ctx := context.WithValue(context.Background(), config.CtxKeyword, &DefaultConfig)
 		s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 		is.NoErr(err)
 		log.Debug().Interface("stats", s).Msg("computed-stats")

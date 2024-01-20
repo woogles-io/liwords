@@ -1,6 +1,6 @@
 syntax = "proto3";
 package mod_service;
-option go_package = "github.com/domino14/liwords/rpc/api/proto/mod_service";
+option go_package = "github.com/woogles-io/liwords/rpc/api/proto/mod_service";
 
 import "google/protobuf/timestamp.proto";
 

@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/pair"
-	"github.com/domino14/liwords/pkg/utilities"
-	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/rs/zerolog/log"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/pair"
+	"github.com/woogles-io/liwords/pkg/utilities"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 type PlayerSorter []*pb.TournamentPerson

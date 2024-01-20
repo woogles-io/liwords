@@ -3,26 +3,24 @@ package tournament_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/gameplay"
-	"github.com/domino14/liwords/pkg/stores/common"
-	"github.com/domino14/liwords/pkg/stores/game"
-	ts "github.com/domino14/liwords/pkg/stores/tournament"
-	"github.com/domino14/liwords/pkg/stores/user"
-	"github.com/domino14/liwords/pkg/tournament"
-	pkguser "github.com/domino14/liwords/pkg/user"
-	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
-	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
-	macondoconfig "github.com/domino14/macondo/config"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/gameplay"
+	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/game"
+	ts "github.com/woogles-io/liwords/pkg/stores/tournament"
+	"github.com/woogles-io/liwords/pkg/stores/user"
+	"github.com/woogles-io/liwords/pkg/tournament"
+	pkguser "github.com/woogles-io/liwords/pkg/user"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/tournament_service"
 )
 
 var tournamentName = "testTournament"
@@ -40,13 +38,7 @@ var gameReq = &ipc.GameRequest{Lexicon: "CSW21",
 	OriginalRequestId:  "originalyeet",
 	MaxOvertimeMinutes: 10}
 
-var DefaultConfig = macondoconfig.Config{
-	LexiconPath:               os.Getenv("LEXICON_PATH"),
-	LetterDistributionPath:    os.Getenv("LETTER_DISTRIBUTION_PATH"),
-	DataPath:                  os.Getenv("DATA_PATH"),
-	DefaultLexicon:            "CSW21",
-	DefaultLetterDistribution: "English",
-}
+var DefaultConfig = config.DefaultConfig()
 
 var divOneName = "Division 1"
 var divTwoName = "Division 2"
@@ -104,16 +96,15 @@ func recreateDB() (*DBController, *config.Config) {
 }
 
 func tournamentStore(gs gameplay.GameStore) (*config.Config, tournament.TournamentStore) {
-	cfg := &config.Config{}
-	cfg.MacondoConfig = DefaultConfig
+	cfg := DefaultConfig
 	cfg.DBConnDSN = common.TestingPostgresConnDSN()
 
-	tmp, err := ts.NewDBStore(cfg, gs)
+	tmp, err := ts.NewDBStore(&cfg, gs)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
 	tournamentStore := ts.NewCache(tmp)
-	return cfg, tournamentStore
+	return &cfg, tournamentStore
 }
 
 func makeRoundControls() []*ipc.RoundControl {
@@ -187,16 +178,15 @@ func userStore(pool *pgxpool.Pool) pkguser.Store {
 }
 
 func gameStore(userStore pkguser.Store) (*config.Config, gameplay.GameStore) {
-	cfg := &config.Config{}
-	cfg.MacondoConfig = DefaultConfig
+	cfg := DefaultConfig
 	cfg.DBConnDSN = common.TestingPostgresConnDSN()
 
-	tmp, err := game.NewDBStore(cfg, userStore)
+	tmp, err := game.NewDBStore(&cfg, userStore)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
 	gameStore := game.NewCache(tmp)
-	return cfg, gameStore
+	return &cfg, gameStore
 }
 
 type DBController struct {

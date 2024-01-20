@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/domino14/liwords/pkg/common"
-	"github.com/domino14/liwords/pkg/entity"
-	commondb "github.com/domino14/liwords/pkg/stores/common"
-	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lithammer/shortuuid"
 	"github.com/matryer/is"
+	"github.com/woogles-io/liwords/pkg/common"
+	"github.com/woogles-io/liwords/pkg/entity"
+	commondb "github.com/woogles-io/liwords/pkg/stores/common"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"google.golang.org/protobuf/proto"
 )
 

@@ -8,14 +8,14 @@ import (
 	"github.com/rs/zerolog"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/mod"
-	"github.com/domino14/liwords/pkg/stats"
-	"github.com/domino14/liwords/pkg/tournament"
-	"github.com/domino14/liwords/pkg/user"
-	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/mod"
+	"github.com/woogles-io/liwords/pkg/stats"
+	"github.com/woogles-io/liwords/pkg/tournament"
+	"github.com/woogles-io/liwords/pkg/user"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameStore,
@@ -231,15 +231,16 @@ func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 	// stats := entity.InstantiateNewStats(1, 2))
 
 	// Fetch the Macondo config
-	macondoConfig, err := config.GetMacondoConfig(ctx)
+	cfg, err := config.GetConfig(ctx)
 	if err != nil {
 		return nil, err
 	}
+
 	// Here, p0 went first and p1 went second, no matter what.
 	p0id, p1id := history.Players[0].UserId, history.Players[1].UserId
 	gameStats := stats.InstantiateNewStats(p0id, p1id)
 
-	err = stats.AddGame(ctx, gameStats, listStatStore, history, req, macondoConfig, evt, history.Uid)
+	err = stats.AddGame(ctx, gameStats, listStatStore, history, req, cfg.MacondoConfigMap, evt, history.Uid)
 	if err != nil {
 		return nil, err
 	}

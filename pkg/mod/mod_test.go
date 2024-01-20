@@ -12,23 +12,16 @@ import (
 	"github.com/rs/zerolog/log"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/domino14/liwords/pkg/apiserver"
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/stores/common"
-	"github.com/domino14/liwords/pkg/stores/user"
-	pkguser "github.com/domino14/liwords/pkg/user"
-	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
-	macondoconfig "github.com/domino14/macondo/config"
+	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/user"
+	pkguser "github.com/woogles-io/liwords/pkg/user"
+	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 )
 
-var DefaultConfig = macondoconfig.Config{
-	LexiconPath:               os.Getenv("LEXICON_PATH"),
-	LetterDistributionPath:    os.Getenv("LETTER_DISTRIBUTION_PATH"),
-	DataPath:                  os.Getenv("DATA_PATH"),
-	DefaultLexicon:            "CSW21",
-	DefaultLetterDistribution: "English",
-}
+var DefaultConfig = config.DefaultConfig()
 
 func recreateDB() {
 	// Create a database.

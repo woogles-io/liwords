@@ -1,7 +1,7 @@
 // Definitions for user-related matters
 syntax = "proto3";
 package ipc;
-option go_package = "github.com/domino14/liwords/rpc/api/proto/ipc";
+option go_package = "github.com/woogles-io/liwords/rpc/api/proto/ipc";
 
 enum ChildStatus {
   CHILD = 0;

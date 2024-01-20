@@ -1,7 +1,7 @@
 package entity
 
 import (
-	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 // These weights were made very large

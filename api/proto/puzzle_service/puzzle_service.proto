@@ -1,6 +1,6 @@
 syntax = "proto3";
 package puzzle_service;
-option go_package = "github.com/domino14/liwords/rpc/api/proto/puzzle_service";
+option go_package = "github.com/woogles-io/liwords/rpc/api/proto/puzzle_service";
 
 import "macondo/macondo.proto";
 import "google/protobuf/timestamp.proto";

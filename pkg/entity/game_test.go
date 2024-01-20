@@ -1,32 +1,24 @@
 package entity
 
 import (
-	"os"
 	"testing"
 	"time"
 
 	"github.com/domino14/macondo/board"
-	macondoconfig "github.com/domino14/macondo/config"
+	"github.com/domino14/macondo/config"
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/matryer/is"
 
-	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
-var DefaultConfig = macondoconfig.Config{
-	StrategyParamsPath:        os.Getenv("STRATEGY_PARAMS_PATH"),
-	LexiconPath:               os.Getenv("LEXICON_PATH"),
-	LetterDistributionPath:    os.Getenv("LETTER_DISTRIBUTION_PATH"),
-	DataPath:                  os.Getenv("DATA_PATH"),
-	DefaultLexicon:            "NWL18",
-	DefaultLetterDistribution: "English",
-}
+var DefaultConfig = config.DefaultConfig()
 
 func newMacondoGame() *game.Game {
 	rules, err := game.NewBasicGameRules(
 		&DefaultConfig, "", board.CrosswordGameLayout,
-		DefaultConfig.DefaultLetterDistribution, game.CrossScoreOnly, "")
+		"english", game.CrossScoreOnly, "")
 	if err != nil {
 		panic(err)
 	}
