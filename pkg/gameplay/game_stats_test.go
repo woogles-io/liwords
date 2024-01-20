@@ -10,16 +10,16 @@ import (
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/gameplay"
-	pkgstats "github.com/domino14/liwords/pkg/stats"
-	"github.com/domino14/liwords/pkg/stores/common"
-	"github.com/domino14/liwords/pkg/stores/mod"
-	"github.com/domino14/liwords/pkg/stores/stats"
-	"github.com/domino14/liwords/pkg/stores/user"
-	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/gameplay"
+	pkgstats "github.com/woogles-io/liwords/pkg/stats"
+	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/mod"
+	"github.com/woogles-io/liwords/pkg/stores/stats"
+	"github.com/woogles-io/liwords/pkg/stores/user"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 var gameReq = &pb.GameRequest{Lexicon: "CSW21",

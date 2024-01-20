@@ -26,4 +26,4 @@ COPY --from=build-env /opt/program/cmd/puzzlegen/puzzle-generator /opt/puzzle-ge
 WORKDIR /opt
 CMD ["/opt/puzzle-generator"]
 
-LABEL org.opencontainers.image.source https://github.com/domino14/liwords
+LABEL org.opencontainers.image.source https://github.com/woogles-io/liwords

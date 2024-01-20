@@ -6,14 +6,14 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/domino14/liwords/pkg/entity"
-	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/macondo/board"
 	"github.com/domino14/macondo/game"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/word-golib/kwg"
 	"github.com/domino14/word-golib/tilemapping"
 	"github.com/rs/zerolog/log"
+	"github.com/woogles-io/liwords/pkg/entity"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 type ListStatStore interface {

@@ -107,7 +107,7 @@ export const Secret = React.memo(() => {
         They may be limited in functionality and/or impact your Woogles user
         experience.{' '}
         <a
-          href="https://github.com/domino14/liwords/wiki/Secret-features"
+          href="https://github.com/woogles-io/liwords/wiki/Secret-features"
           target="_blank"
           rel="noopener noreferrer"
         >

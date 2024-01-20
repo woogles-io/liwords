@@ -3,8 +3,8 @@ package entity
 import (
 	"errors"
 
-	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/macondo/game"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 // Variants, time controls, etc.

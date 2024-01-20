@@ -5,10 +5,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/domino14/liwords/pkg/common/testutils"
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/matryer/is"
+	"github.com/woogles-io/liwords/pkg/common/testutils"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 

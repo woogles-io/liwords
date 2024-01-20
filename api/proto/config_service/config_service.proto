@@ -1,6 +1,6 @@
 syntax = "proto3";
 package config_service;
-option go_package = "github.com/domino14/liwords/rpc/api/proto/config_service";
+option go_package = "github.com/woogles-io/liwords/rpc/api/proto/config_service";
 
 import "google/protobuf/wrappers.proto";
 

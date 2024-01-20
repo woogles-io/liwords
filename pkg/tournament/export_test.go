@@ -7,10 +7,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/domino14/liwords/pkg/common/testutils"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/tournament"
 	"github.com/matryer/is"
+	"github.com/woogles-io/liwords/pkg/common/testutils"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/tournament"
 )
 
 var goldenFileUpdate bool

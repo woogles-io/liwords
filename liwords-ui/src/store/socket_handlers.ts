@@ -819,7 +819,7 @@ export const useOnSocketMsg = () => {
             }
             // XXX: This method of determining whether we're in a tourney
             // is a temporary one until we close
-            // https://github.com/domino14/liwords/issues/614
+            // https://github.com/woogles-io/liwords/issues/614
             const dispatchFn = inTourney
               ? dispatchTournamentContext
               : dispatchLobbyContext;

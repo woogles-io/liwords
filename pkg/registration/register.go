@@ -5,12 +5,12 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/domino14/liwords/pkg/auth"
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/user"
-	"github.com/domino14/liwords/pkg/utilities"
 	"github.com/jackc/pgconn"
+	"github.com/woogles-io/liwords/pkg/auth"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/user"
+	"github.com/woogles-io/liwords/pkg/utilities"
 )
 
 // RegisterUser registers a user.

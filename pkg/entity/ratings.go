@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/domino14/liwords/pkg/glicko"
 	"github.com/domino14/macondo/game"
+	"github.com/woogles-io/liwords/pkg/glicko"
 )
 
 // SingleRating encodes a whole Glicko-225 rating object.

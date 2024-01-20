@@ -7,7 +7,7 @@ import (
 	"text/template"
 	"time"
 
-	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
+	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 

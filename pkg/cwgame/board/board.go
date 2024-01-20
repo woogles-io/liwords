@@ -8,9 +8,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/word-golib/cache"
 	"github.com/domino14/word-golib/tilemapping"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 type BonusSquare byte

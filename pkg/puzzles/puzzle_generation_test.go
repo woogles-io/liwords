@@ -8,8 +8,8 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"google.golang.org/protobuf/proto"
 
-	pb "github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	"github.com/matryer/is"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/puzzle_service"
 )
 
 var DefaultPuzzleGenerationJobRequest = &pb.PuzzleGenerationJobRequest{

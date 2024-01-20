@@ -4,12 +4,12 @@ import (
 	"context"
 	"os"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/user"
 	"github.com/rs/zerolog"
 	"github.com/twitchtv/twirp"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/user"
 
-	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
 
 type RegistrationService struct {

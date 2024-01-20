@@ -311,7 +311,7 @@ export const TermsOfService = () => {
           <p>
             Woogles is licensed under the{' '}
             <a
-              href="https://github.com/domino14/liwords/blob/master/LICENSE"
+              href="https://github.com/woogles-io/liwords/blob/master/LICENSE"
               target="_blank"
               rel="noopener noreferrer"
             >

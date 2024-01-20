@@ -9,17 +9,17 @@ import (
 	"fmt"
 	"time"
 
-	commontest "github.com/domino14/liwords/pkg/common"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/stores/common"
-	"github.com/domino14/liwords/pkg/stores/models"
-	"github.com/domino14/liwords/rpc/api/proto/ipc"
-	"github.com/domino14/liwords/rpc/api/proto/puzzle_service"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
+	commontest "github.com/woogles-io/liwords/pkg/common"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/models"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	"github.com/woogles-io/liwords/rpc/api/proto/puzzle_service"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -228,8 +228,8 @@ func (s *DBStore) GetStartPuzzleId(ctx context.Context, userUUID string, lexicon
 		status := &sql.NullBool{}
 		// This query gets the most recently updated puzzle for this lexicon.
 		err = tx.QueryRow(ctx, `
-			SELECT puzzle_id, correct FROM puzzle_attempts WHERE user_id = $1 AND 
-			(SELECT lexicon FROM puzzles WHERE id = puzzle_id AND valid) = $2 
+			SELECT puzzle_id, correct FROM puzzle_attempts WHERE user_id = $1 AND
+			(SELECT lexicon FROM puzzles WHERE id = puzzle_id AND valid) = $2
 			ORDER BY updated_at DESC LIMIT 1`, uid, lexicon).Scan(&pid, status)
 		if err == pgx.ErrNoRows {
 			// User has not seen any puzzles, just get the next puzzle
@@ -941,16 +941,16 @@ func getNextPuzzleId(ctx context.Context, tx pgx.Tx, userUUID string, lexicon st
 	}
 
 	gtQueryTemplate := `
-		SELECT uuid FROM puzzles WHERE lexicon = $1 
-			AND valid 
-			AND id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $2 %s) 
-			AND id > $3 
+		SELECT uuid FROM puzzles WHERE lexicon = $1
+			AND valid
+			AND id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $2 %s)
+			AND id > $3
 			ORDER BY id LIMIT 1`
 	lteQueryTemplate := `
-		SELECT uuid FROM puzzles WHERE lexicon = $1 
+		SELECT uuid FROM puzzles WHERE lexicon = $1
 			AND valid
-			AND id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $2 %s) 
-			AND id <= $3 
+			AND id NOT IN (SELECT puzzle_id FROM puzzle_attempts WHERE user_id = $2 %s)
+			AND id <= $3
 			ORDER BY id DESC LIMIT 1`
 	gtUnseenQuery := fmt.Sprintf(gtQueryTemplate, UnseenCondition)
 	var puzzleUUID string
@@ -1009,9 +1009,9 @@ func getRandomPuzzleUUID(ctx context.Context, tx pgx.Tx, lexicon string, randomI
 	}
 	var puzzleUUID string
 	err = tx.QueryRow(ctx, `
-		SELECT uuid FROM puzzles WHERE lexicon = $1 
-			AND valid 
-			AND id > $2 
+		SELECT uuid FROM puzzles WHERE lexicon = $1
+			AND valid
+			AND id > $2
 			ORDER BY id LIMIT 1`, lexicon, randomId.Int64).Scan(&puzzleUUID)
 	if err == pgx.ErrNoRows {
 		err = tx.QueryRow(ctx, `

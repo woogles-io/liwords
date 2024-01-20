@@ -3,8 +3,8 @@ package gameplay
 import (
 	"testing"
 
-	"github.com/domino14/liwords/pkg/config"
 	"github.com/matryer/is"
+	"github.com/woogles-io/liwords/pkg/config"
 )
 
 func TestCalculateReturnedTiles(t *testing.T) {

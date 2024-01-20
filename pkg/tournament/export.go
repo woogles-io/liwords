@@ -7,10 +7,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/user"
-	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/rs/zerolog/log"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/user"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 func ExportTournament(ctx context.Context, t *entity.Tournament, us user.Store, format string) (string, error) {

@@ -7,12 +7,12 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/domino14/liwords/pkg/apiserver"
-	"github.com/domino14/liwords/pkg/user"
-	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
-	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
+	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/user"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
 
 type SocializeService struct {

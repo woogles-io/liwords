@@ -7,11 +7,11 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/domino14/liwords/pkg/config"
-	pkgmod "github.com/domino14/liwords/pkg/mod"
-	"github.com/domino14/liwords/pkg/stores/common"
-	"github.com/domino14/liwords/pkg/stores/mod"
-	"github.com/domino14/liwords/pkg/stores/user"
+	"github.com/woogles-io/liwords/pkg/config"
+	pkgmod "github.com/woogles-io/liwords/pkg/mod"
+	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/mod"
+	"github.com/woogles-io/liwords/pkg/stores/user"
 )
 
 func main() {

@@ -9,14 +9,14 @@ import (
 	"github.com/twitchtv/twirp"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/domino14/liwords/pkg/apiserver"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/gameplay"
-	"github.com/domino14/liwords/pkg/stores/comments"
-	"github.com/domino14/liwords/pkg/stores/models"
-	"github.com/domino14/liwords/pkg/user"
-	pb "github.com/domino14/liwords/rpc/api/proto/comments_service"
-	"github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/gameplay"
+	"github.com/woogles-io/liwords/pkg/stores/comments"
+	"github.com/woogles-io/liwords/pkg/stores/models"
+	"github.com/woogles-io/liwords/pkg/user"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/comments_service"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 type CommentsService struct {

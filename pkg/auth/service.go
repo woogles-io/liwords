@@ -7,25 +7,21 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt"
+	"github.com/lithammer/shortuuid"
+	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/emailer"
-	"github.com/domino14/liwords/pkg/sessions"
+	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/emailer"
+	"github.com/woogles-io/liwords/pkg/mod"
+	"github.com/woogles-io/liwords/pkg/sessions"
+	"github.com/woogles-io/liwords/pkg/user"
 
-	"github.com/rs/zerolog/log"
-
-	"github.com/lithammer/shortuuid"
-
-	"github.com/dgrijalva/jwt-go"
-	"github.com/domino14/liwords/pkg/apiserver"
-
-	"github.com/domino14/liwords/pkg/mod"
-	"github.com/domino14/liwords/pkg/user"
-
-	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
-	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
-	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
 
 // A little bit of grace period in case we have to redeploy the socket or something.

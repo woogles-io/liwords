@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 
-	"github.com/domino14/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/entity"
 )
 
 var errAlreadyOpenReq = errors.New("You already have an open match or seek request")

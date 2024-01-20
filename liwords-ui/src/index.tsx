@@ -14,7 +14,7 @@ declare global {
 }
 
 window.console.info(
-  'Woogles.io is open source! https://github.com/domino14/liwords'
+  'Woogles.io is open source! https://github.com/woogles-io/liwords'
 );
 
 // Scope the variables declared here.

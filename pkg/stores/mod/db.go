@@ -3,9 +3,9 @@ package mod
 import (
 	"context"
 
-	"github.com/domino14/liwords/pkg/stores/common"
-	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/woogles-io/liwords/pkg/stores/common"
+	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 )
 
 type DBStore struct {

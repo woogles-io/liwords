@@ -11,14 +11,14 @@ import (
 	"github.com/twitchtv/twirp"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/domino14/liwords/pkg/apiserver"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/mod"
-	"github.com/domino14/liwords/pkg/user"
-	"github.com/domino14/liwords/pkg/utilities"
+	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/mod"
+	"github.com/woogles-io/liwords/pkg/user"
+	"github.com/woogles-io/liwords/pkg/utilities"
 
-	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
-	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/tournament_service"
 )
 
 // TournamentService is a Twirp service that contains functions that

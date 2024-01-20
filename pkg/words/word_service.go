@@ -8,14 +8,14 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/domino14/liwords/pkg/config"
 	macondoconfig "github.com/domino14/macondo/config"
+	"github.com/woogles-io/liwords/pkg/config"
 
-	pb "github.com/domino14/liwords/rpc/api/proto/word_service"
 	"github.com/domino14/word-golib/kwg"
 	"github.com/domino14/word-golib/tilemapping"
 	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/word_service"
 )
 
 type WordService struct {

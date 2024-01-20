@@ -14,8 +14,8 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
-	commondb "github.com/domino14/liwords/pkg/stores/common"
-	"github.com/domino14/liwords/rpc/api/proto/ipc"
+	commondb "github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 var RedisUrl = os.Getenv("REDIS_URL")

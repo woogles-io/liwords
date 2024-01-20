@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/domino14/liwords/pkg/apiserver"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/stores/user"
-	pb "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	"github.com/matryer/is"
 	"github.com/twitchtv/twirp"
+	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/stores/user"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 )
 
 func TestAuthenticateMod(t *testing.T) {

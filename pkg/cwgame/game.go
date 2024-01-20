@@ -10,13 +10,13 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/cwgame/board"
-	"github.com/domino14/liwords/pkg/cwgame/tiles"
-	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/domino14/word-golib/kwg"
 	"github.com/domino14/word-golib/tilemapping"
 	"github.com/rs/zerolog/log"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/cwgame/board"
+	"github.com/woogles-io/liwords/pkg/cwgame/tiles"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 const (

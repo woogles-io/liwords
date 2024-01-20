@@ -9,15 +9,15 @@ import (
 	"github.com/domino14/macondo/gcgio"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 
-	"github.com/domino14/liwords/pkg/apiserver"
-	"github.com/domino14/liwords/pkg/config"
-	entityutils "github.com/domino14/liwords/pkg/entity/utilities"
-	"github.com/domino14/liwords/pkg/mod"
-	"github.com/domino14/liwords/pkg/omgwords/stores"
-	"github.com/domino14/liwords/pkg/user"
-	"github.com/domino14/liwords/pkg/utilities"
-	pb "github.com/domino14/liwords/rpc/api/proto/game_service"
-	ipc "github.com/domino14/liwords/rpc/api/proto/ipc"
+	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/config"
+	entityutils "github.com/woogles-io/liwords/pkg/entity/utilities"
+	"github.com/woogles-io/liwords/pkg/mod"
+	"github.com/woogles-io/liwords/pkg/omgwords/stores"
+	"github.com/woogles-io/liwords/pkg/user"
+	"github.com/woogles-io/liwords/pkg/utilities"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/game_service"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 // GameService is a Twirp service that contains functions relevant to a game's

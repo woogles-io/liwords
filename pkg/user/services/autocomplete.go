@@ -5,8 +5,8 @@ import (
 
 	"github.com/twitchtv/twirp"
 
-	"github.com/domino14/liwords/pkg/user"
-	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
+	"github.com/woogles-io/liwords/pkg/user"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
 
 type AutocompleteService struct {

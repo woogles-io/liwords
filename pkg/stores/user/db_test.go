@@ -14,14 +14,14 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	commontest "github.com/domino14/liwords/pkg/common"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/glicko"
-	"github.com/domino14/liwords/pkg/stores/common"
-	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
-	"github.com/domino14/liwords/rpc/api/proto/mod_service"
-	"github.com/domino14/liwords/rpc/api/proto/user_service"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	commontest "github.com/woogles-io/liwords/pkg/common"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/glicko"
+	"github.com/woogles-io/liwords/pkg/stores/common"
+	cpb "github.com/woogles-io/liwords/rpc/api/proto/config_service"
+	"github.com/woogles-io/liwords/rpc/api/proto/mod_service"
+	"github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
 
 func recreateDB() (*DBStore, *pgxpool.Pool, context.Context) {

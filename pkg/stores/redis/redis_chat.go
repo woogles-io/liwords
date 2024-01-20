@@ -12,11 +12,11 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"github.com/rs/zerolog/log"
 
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/tournament"
-	"github.com/domino14/liwords/pkg/user"
-	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
-	upb "github.com/domino14/liwords/rpc/api/proto/user_service"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/tournament"
+	"github.com/woogles-io/liwords/pkg/user"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	upb "github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
 
 //go:embed add_chat.lua

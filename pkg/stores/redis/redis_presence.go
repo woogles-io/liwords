@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/domino14/liwords/pkg/entity"
-	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/gomodule/redigo/redis"
 	"github.com/rs/zerolog/log"
+	"github.com/woogles-io/liwords/pkg/entity"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 const (
@@ -33,22 +33,27 @@ type RedisPresenceStore struct {
 // SetPresenceScript is a Lua script that handles presence in an atomic way.
 // We may want to move this to a separate file if we start adding more Lua
 // scripts.
+//
 //go:embed set_presence.lua
 var SetPresenceScript string
 
 // ClearPresenceScript clears the presence and returns the channel(s) it was in.
+//
 //go:embed clear_presence.lua
 var ClearPresenceScript string
 
 // RenewPresenceScript renews the presence
+//
 //go:embed renew_presence.lua
 var RenewPresenceScript string
 
 // GetChannelsScript gets the channels
+//
 //go:embed get_channels.lua
 var GetChannelsScript string
 
 // updateActiveGameScript gets the channels
+//
 //go:embed update_active_game.lua
 var UpdateActiveGameScript string
 

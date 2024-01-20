@@ -1,6 +1,6 @@
 syntax = "proto3";
 package game_service;
-option go_package = "github.com/domino14/liwords/rpc/api/proto/game_service";
+option go_package = "github.com/woogles-io/liwords/rpc/api/proto/game_service";
 
 import "ipc/omgwords.proto";
 import "macondo/macondo.proto";

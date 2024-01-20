@@ -3,13 +3,13 @@ package user
 import (
 	"context"
 
-	"github.com/domino14/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/entity"
 
-	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
-	pb "github.com/domino14/liwords/rpc/api/proto/ipc"
-	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
-	upb "github.com/domino14/liwords/rpc/api/proto/user_service"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	cpb "github.com/woogles-io/liwords/rpc/api/proto/config_service"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
+	upb "github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
 
 // Store is an interface that user stores should implement.

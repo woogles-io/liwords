@@ -4,9 +4,9 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/domino14/liwords/pkg/stores/models"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 )
 
 type DBStore struct {

@@ -9,7 +9,7 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"github.com/rs/zerolog/log"
 
-	pb "github.com/domino14/liwords/rpc/api/proto/config_service"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/config_service"
 )
 
 const (

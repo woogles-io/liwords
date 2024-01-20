@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	pb "github.com/domino14/liwords/rpc/api/proto/config_service"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/config_service"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/mmcdole/gofeed"

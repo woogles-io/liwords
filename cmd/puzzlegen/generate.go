@@ -5,21 +5,21 @@ import (
 	"fmt"
 	"os"
 
-	commondb "github.com/domino14/liwords/pkg/stores/common"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	commondb "github.com/woogles-io/liwords/pkg/stores/common"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	macondoconfig "github.com/domino14/macondo/config"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/puzzles"
-	gamestore "github.com/domino14/liwords/pkg/stores/game"
-	puzzlesstore "github.com/domino14/liwords/pkg/stores/puzzles"
-	"github.com/domino14/liwords/pkg/stores/user"
-	pb "github.com/domino14/liwords/rpc/api/proto/puzzle_service"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/puzzles"
+	gamestore "github.com/woogles-io/liwords/pkg/stores/game"
+	puzzlesstore "github.com/woogles-io/liwords/pkg/stores/puzzles"
+	"github.com/woogles-io/liwords/pkg/stores/user"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/puzzle_service"
 )
 
 // Example:

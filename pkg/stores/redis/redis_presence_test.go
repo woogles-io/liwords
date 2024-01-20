@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/domino14/liwords/pkg/entity"
 	"github.com/gomodule/redigo/redis"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
+	"github.com/woogles-io/liwords/pkg/entity"
 )
 
 var RedisURL = os.Getenv("REDIS_URL")

@@ -1,6 +1,6 @@
 syntax = "proto3";
 package user_service;
-option go_package = "github.com/domino14/liwords/rpc/api/proto/user_service";
+option go_package = "github.com/woogles-io/liwords/rpc/api/proto/user_service";
 
 import "ipc/chat.proto";
 

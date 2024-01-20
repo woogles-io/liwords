@@ -5,14 +5,14 @@ import (
 	"database/sql"
 	"os"
 
-	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/stores/common"
 	"github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/stores/common"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -98,7 +98,7 @@ type GameFields struct {
 
 func migrateGames(ctx context.Context, pool *pgxpool.Pool, games []*GameFields) error {
 	query := `
-	UPDATE games 
+	UPDATE games
 	SET quickdata = $1, timers = $2, winner_idx = $3, loser_idx = $4, history = $5
 	WHERE id = $6
 	`
@@ -176,7 +176,7 @@ func migrateBatches(pool *pgxpool.Pool) error {
 
 	// Only select games that have already ended
 	query := `
-	SELECT quickdata, timers, winner_idx, loser_idx, history, id 
+	SELECT quickdata, timers, winner_idx, loser_idx, history, id
 	FROM games
 	WHERE game_end_reason != 0
 	ORDER BY created_at DESC

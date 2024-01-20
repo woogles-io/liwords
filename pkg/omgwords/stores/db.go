@@ -4,12 +4,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/stores/common"
-	"github.com/domino14/liwords/rpc/api/proto/ipc"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rs/zerolog/log"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -77,7 +77,7 @@ func (s *DBStore) CreateAnnotatedGame(ctx context.Context, creatorUUID string, g
 
 func (s *DBStore) UpdateAnnotatedGameQuickdata(ctx context.Context, uuid string, quickdata *entity.Quickdata) error {
 	_, err := s.dbPool.Exec(ctx, `
-		UPDATE games SET quickdata = $1, updated_at = NOW() 
+		UPDATE games SET quickdata = $1, updated_at = NOW()
 		WHERE uuid = $2`, quickdata, uuid)
 	if err != nil {
 		return err
@@ -122,7 +122,7 @@ func (s *DBStore) MarkAnnotatedGameDone(ctx context.Context, uuid string) error 
 		return err
 	}
 	defer tx.Rollback(ctx)
-	_, err = tx.Exec(ctx, `UPDATE annotated_game_metadata SET done = TRUE 
+	_, err = tx.Exec(ctx, `UPDATE annotated_game_metadata SET done = TRUE
 					WHERE game_uuid = $1`, uuid)
 	if err != nil {
 		return err
@@ -148,7 +148,7 @@ func (s *DBStore) OutstandingGames(ctx context.Context, creatorUUID string) ([]*
 	}
 	defer tx.Rollback(ctx)
 
-	query := `SELECT game_uuid, private_broadcast FROM annotated_game_metadata 
+	query := `SELECT game_uuid, private_broadcast FROM annotated_game_metadata
 	WHERE creator_uuid = $1 AND done = 'f'`
 
 	rows, err := tx.Query(ctx, query, creatorUUID)
@@ -202,9 +202,9 @@ func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinishe
 	var query string
 	if editorID == "" {
 		query = `
-		SELECT game_uuid, creator_uuid, username, 
-			private_broadcast, quickdata, request, games.created_at 
-		FROM annotated_game_metadata 
+		SELECT game_uuid, creator_uuid, username,
+			private_broadcast, quickdata, request, games.created_at
+		FROM annotated_game_metadata
 		JOIN games ON games.uuid = annotated_game_metadata.game_uuid
 		JOIN users ON users.uuid = annotated_game_metadata.creator_uuid
 		WHERE done = $1
@@ -220,7 +220,7 @@ func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinishe
 		}
 	} else {
 		query = `
-		SELECT game_uuid, creator_uuid, 'dummyusername', private_broadcast, quickdata, request, created_at FROM annotated_game_metadata 
+		SELECT game_uuid, creator_uuid, 'dummyusername', private_broadcast, quickdata, request, created_at FROM annotated_game_metadata
 		JOIN games ON games.uuid = annotated_game_metadata.game_uuid
 		WHERE creator_uuid = $1 AND done = $2
 		ORDER BY created_at DESC

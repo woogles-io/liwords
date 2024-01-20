@@ -1,6 +1,6 @@
 syntax = "proto3";
 package word_service;
-option go_package = "github.com/domino14/liwords/rpc/api/proto/word_service";
+option go_package = "github.com/woogles-io/liwords/rpc/api/proto/word_service";
 
 message DefineWordsRequest {
   string lexicon = 1;
