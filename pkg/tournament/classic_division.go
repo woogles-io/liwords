@@ -943,6 +943,7 @@ func (t *ClassicDivision) AddPlayers(players *pb.TournamentPersons) (*pb.Divisio
 		idx, ok := t.PlayerIndexMap[player.Id]
 		// If the player exists and is not suspended or the tournament hasn't started
 		// throw an error
+		// XXX: need knowledge of other divisions of tournament!
 		if ok && (!t.Players.Persons[idx].Suspended || t.CurrentRound < 0) {
 			return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PLAYER_ALREADY_EXISTS, t.TournamentName, t.DivisionName, player.Id)
 		}
@@ -1342,7 +1343,8 @@ func (t *ClassicDivision) IsRoundReady(round int) error {
 			return err
 		}
 		if !complete {
-			return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NOT_COMPLETE, t.TournamentName, t.DivisionName, strconv.Itoa(int(i+1)))
+			pidx := t.GetNextPlayerMissingResult(i)
+			return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NOT_COMPLETE, t.TournamentName, t.DivisionName, strconv.Itoa(int(i+1)), strconv.Itoa(int(pidx)))
 		}
 	}
 	return nil
@@ -1355,7 +1357,9 @@ func (t *ClassicDivision) IsRoundStartable() error {
 			return err
 		}
 		if !roundComplete {
-			return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NOT_COMPLETE, t.TournamentName, t.DivisionName, strconv.Itoa(int(t.CurrentRound+1)))
+			pidx := t.GetNextPlayerMissingResult(int(t.CurrentRound))
+			return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NOT_COMPLETE, t.TournamentName, t.DivisionName, strconv.Itoa(int(t.CurrentRound+1)),
+				strconv.Itoa(int(pidx)))
 		}
 		isFinished, err := t.IsFinished()
 		if err != nil {
@@ -1483,6 +1487,25 @@ func (t *ClassicDivision) IsRoundComplete(round int) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+func (t *ClassicDivision) GetNextPlayerMissingResult(round int) int32 {
+	for pidx, pairingKey := range t.Matrix[round] {
+		pairing, ok := t.PairingMap[pairingKey]
+		if !ok {
+			if pairingKey == "" { // they're not even paired.
+				return int32(pidx)
+			}
+			return -1
+		}
+		if pairing.Outcomes[0] == pb.TournamentGameResult_NO_RESULT {
+			return pairing.Players[0]
+		}
+		if pairing.Outcomes[1] == pb.TournamentGameResult_NO_RESULT {
+			return pairing.Players[1]
+		}
+	}
+	return -1
 }
 
 func (t *ClassicDivision) IsFinished() (bool, error) {

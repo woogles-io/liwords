@@ -248,6 +248,7 @@ const PlayersFormItem = (props: {
   name: string;
   label: string;
   division: string;
+  required?: boolean;
 }) => {
   const { tournamentContext } = useTournamentStoreContext();
   const thisDivPlayers = tournamentContext.divisions[props.division]?.players;
@@ -272,7 +273,11 @@ const PlayersFormItem = (props: {
   }, [thisDivPlayers]);
 
   return (
-    <Form.Item name={props.name} label={props.label}>
+    <Form.Item
+      name={props.name}
+      label={props.label}
+      required={props.required ?? false}
+    >
       {alphabetizedOptions ? (
         <AutoComplete
           options={alphabetizedOptions}
@@ -483,6 +488,7 @@ const RemovePlayer = (props: { tournamentID: string }) => {
         name="username"
         label="Username to remove"
         division={division}
+        required
       />
       <Form.Item>
         <Button type="primary" htmlType="submit">
@@ -577,6 +583,15 @@ const SetPairing = (props: { tournamentID: string }) => {
   const [selfplay, setSelfplay] = useState(false);
   const tClient = useClient(TournamentService);
   const onFinish = async (vals: Store) => {
+    if (!vals.p1) {
+      message.error('Player 1 is required.');
+      return;
+    }
+    if (!vals.selfplay && !vals.p2) {
+      message.error('Player 2 is required.');
+      return;
+    }
+
     const p1id = fullPlayerID(
       vals.p1,
       tournamentContext.divisions[vals.division]
@@ -585,6 +600,10 @@ const SetPairing = (props: { tournamentID: string }) => {
 
     if (vals.selfplay) {
       p2id = p1id;
+      if (!vals.selfplayresult) {
+        message.error('Desired result for Player 1 is required.');
+        return;
+      }
     } else {
       p2id = fullPlayerID(vals.p2, tournamentContext.divisions[vals.division]);
     }
@@ -621,9 +640,10 @@ const SetPairing = (props: { tournamentID: string }) => {
         name="p1"
         label="Player 1 username"
         division={division}
+        required
       />
 
-      <Form.Item name="selfplay" label="No opponent">
+      <Form.Item name="selfplay" label="Player has no opponent">
         <Switch checked={selfplay} onChange={(c) => setSelfplay(c)} />
       </Form.Item>
 
@@ -632,9 +652,14 @@ const SetPairing = (props: { tournamentID: string }) => {
           name="p2"
           label="Player 2 username"
           division={division}
+          required
         />
       ) : (
-        <Form.Item name="selfplayresult" label="Desired result for this player">
+        <Form.Item
+          name="selfplayresult"
+          label="Desired result for this player"
+          required
+        >
           <Select>
             <Select.Option value={TournamentGameResult.BYE}>
               Bye (+50)
@@ -745,11 +770,13 @@ const SetResult = (props: { tournamentID: string }) => {
         name="p1"
         label="Player 1 username"
         division={division}
+        required
       />
       <PlayersFormItem
         name="p2"
         label="Player 2 username"
         division={division}
+        required
       />
 
       <Form.Item name="round" label="Round (1-indexed)">

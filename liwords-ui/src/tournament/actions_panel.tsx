@@ -26,6 +26,8 @@ import { Standings } from './standings';
 import { DirectorTools } from './director_tools/director_tools';
 import { flashError, useClient } from '../utils/hooks/connect';
 import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_connectweb';
+import { flashTournamentError } from './tournament_error';
+import { ConnectError } from '@domino14/connect-web';
 // import { CheckIn } from './check_in';
 
 const PAGE_SIZE = 30;
@@ -211,7 +213,7 @@ export const ActionsPanel = React.memo((props: Props) => {
           round: roundToStart as number, // should already be a number.
         });
       } catch (e) {
-        flashError(e);
+        flashTournamentError(e, tournamentContext);
       }
     };
     return (
