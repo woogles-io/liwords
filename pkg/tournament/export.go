@@ -19,6 +19,8 @@ func ExportTournament(ctx context.Context, t *entity.Tournament, us user.Store, 
 		return exportToTSH(ctx, t, us)
 	case "standingsonly":
 		return exportStandings(ctx, t)
+	// case "aupair":
+	// 	return exportToAUPair(ctx, t, us)
 	default:
 		return "", fmt.Errorf("the format %s is not supported", format)
 	}

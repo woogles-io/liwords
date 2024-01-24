@@ -13,3 +13,9 @@
     font-size: 14px;
   }
 }
+
+.anticon-minus-circle {
+  @include colorModed() {
+    color: m($timer-out-dark);
+  }
+}

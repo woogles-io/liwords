@@ -16,7 +16,7 @@ import {
 } from 'antd';
 import { Modal } from '../../utils/focus_modal';
 import { Store } from 'rc-field-form/lib/interface';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   SingleRoundControlsRequest,
   TType,
@@ -355,7 +355,12 @@ const RemoveDivision = (props: { tournamentID: string }) => {
 };
 
 const AddPlayers = (props: { tournamentID: string }) => {
+  const { tournamentContext } = useTournamentStoreContext();
+
   const tClient = useClient(TournamentService);
+  const [showRating, setShowRating] = useState(
+    tournamentContext.metadata.irlMode
+  );
   const onFinish = async (vals: Store) => {
     const players = [];
     // const playerMap: { [username: string]: number } = {};
@@ -404,6 +409,9 @@ const AddPlayers = (props: { tournamentID: string }) => {
   return (
     <Form onFinish={onFinish}>
       <DivisionFormItem />
+      <Form.Item label="Enter ratings">
+        <Switch checked={showRating} onChange={(c) => setShowRating(c)} />
+      </Form.Item>
 
       <Form.List name="players">
         {(fields, { add, remove }) => (
@@ -421,13 +429,15 @@ const AddPlayers = (props: { tournamentID: string }) => {
                 >
                   <Input placeholder="Username" />
                 </Form.Item>
-                <Form.Item
-                  {...field}
-                  name={[field.name, 'rating']}
-                  rules={[{ required: true, message: 'Missing rating' }]}
-                >
-                  <Input placeholder="Rating" />
-                </Form.Item>
+                {showRating && (
+                  <Form.Item
+                    {...field}
+                    name={[field.name, 'rating']}
+                    rules={[{ required: true, message: 'Missing rating' }]}
+                  >
+                    <Input placeholder="Rating" />
+                  </Form.Item>
+                )}
                 <MinusCircleOutlined onClick={() => remove(field.name)} />
               </Space>
             ))}
@@ -1442,7 +1452,34 @@ const rdCtrlFromSetting = (rdSetting: RoundControl): RoundControl => {
       rdCtrl.winDifferenceRelativeWeight =
         rdSetting.winDifferenceRelativeWeight || 0;
       // This should be auto-calculated, and only for factor
+      if (
+        rdSetting.pairingMethod === PairingMethod.FACTOR &&
+        rdSetting.factor <= 0
+      ) {
+        throw new Error(
+          'Factor 0 is equivalent to just Swiss for every player. Use Swiss pairings instead, or use a Factor greater than 0.'
+        );
+      }
       rdCtrl.factor = rdSetting.factor || 0;
+
+      if (rdCtrl.maxRepeats <= 0) {
+        throw new Error(
+          'Max repeats should be at least 1. A "repeat" in this case is just a single game; 0 will allow no pairings to occur.'
+        );
+      }
+
+      if (rdCtrl.repeatRelativeWeight <= 0) {
+        throw new Error(
+          'Repeat relative weight should be at least 1. Please hover on the question mark to see more info about what this means.'
+        );
+      }
+
+      if (rdCtrl.winDifferenceRelativeWeight <= 0) {
+        throw new Error(
+          'Win difference relative weight should be at least 1. Please hover on the question mark to see more info about what this means.'
+        );
+      }
+
       break;
 
     case PairingMethod.TEAM_ROUND_ROBIN:
@@ -1482,8 +1519,16 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
       division: division,
       round: userVisibleRound - 1, // round is 0-indexed on backend.
     });
-
-    const rdCtrl = rdCtrlFromSetting(roundSetting);
+    let rdCtrl;
+    try {
+      rdCtrl = rdCtrlFromSetting(roundSetting);
+    } catch (e) {
+      message.error({
+        content: (e as Error).message,
+        duration: 5,
+      });
+      return;
+    }
     ctrls.roundControls = rdCtrl;
     try {
       await tClient.setSingleRoundControls(ctrls);
@@ -1637,11 +1682,23 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
 
     const roundControls = new Array<RoundControl>();
 
-    roundArray.forEach((v) => {
+    for (let r = 0; r < roundArray.length; r++) {
+      const v = roundArray[r];
       for (let i = v.beginRound; i <= v.endRound; i++) {
-        roundControls.push(rdCtrlFromSetting(v.setting));
+        let rdCtrl;
+        try {
+          rdCtrl = rdCtrlFromSetting(v.setting);
+        } catch (e) {
+          message.error({
+            content: (e as Error).message,
+            duration: 5,
+          });
+          return;
+        }
+        roundControls.push(rdCtrl);
       }
-    });
+    }
+
     ctrls.roundControls = roundControls;
     try {
       await tClient.setRoundControls(ctrls);
@@ -1815,6 +1872,7 @@ const ExportTournament = (props: { tournamentID: string }) => {
             <Select.Option value="tsh">
               NASPA tournament submit format
             </Select.Option>
+            {/* <Select.Option value="aupair">AUPair format</Select.Option> */}
             <Select.Option value="standingsonly">
               Standings only (CSV)
             </Select.Option>

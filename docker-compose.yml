@@ -152,7 +152,6 @@ services:
 
   db:
     image: postgres
-    restart: always
     environment:
       POSTGRES_PASSWORD: pass
       POSTGRES_DB: liwords
