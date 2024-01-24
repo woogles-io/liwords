@@ -7,6 +7,7 @@ import {
   MachineWord,
 } from '../utils/cwgame/common';
 import { Alphabet, machineLetterToRune } from '../constants/alphabets';
+import { WooglesError } from '../gen/api/proto/ipc/errors_pb';
 
 export type PlayerOrder = 'p0' | 'p1';
 
@@ -292,23 +293,50 @@ export const sortTiles = (
 export const errorMap: Map<number, string> = new Map<number, string>([
   // Tournament errors
   [
-    1001,
+    WooglesError.TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT,
     'Max Bye Placement cannot be less than 1: Tournament: $1 Division: $2 Max Bye Placement you entered: $3',
   ],
-  [1002, 'Min Gibson Placement cannot be less than 1.'],
-  [1005, 'The tournament has already started.'],
+  [
+    WooglesError.TOURNAMENT_NEGATIVE_MIN_PLACEMENT,
+    'Min Gibson Placement cannot be less than 1.',
+  ],
+  [
+    WooglesError.TOURNAMENT_SET_ROUND_CONTROLS_AFTER_START,
+    'The tournament has already started.',
+  ],
   // 1006 - elimination tournament not supported yet.
-  [1007, 'You cannot have other pairings preceding Initial Fontes.'],
+  [
+    WooglesError.TOURNAMENT_DISCONTINUOUS_INITIAL_FONTES,
+    'You cannot have other pairings preceding Initial Fontes.',
+  ],
   // This is major tom to round controls
-  [1008, 'Initial Fontes must have an odd number of rounds; you entered $3.'],
+  [
+    WooglesError.TOURNAMENT_INVALID_INITIAL_FONTES_ROUNDS,
+    'Initial Fontes must have an odd number of rounds; you entered $3.',
+  ],
   // 1009 - elimination tournament not supported yet.
-  [1010, 'Round number must be between 1 and the number of rounds.'],
-  [1011, 'You must select a player.'],
+  [
+    WooglesError.TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE,
+    'Round number must be between 1 and the number of rounds.',
+  ],
+  [WooglesError.TOURNAMENT_NONEXISTENT_PLAYER, 'You must select a player.'],
   // 1012 - past rounds
-  [1012, 'Turn on Amendment to edit an already existing score.'],
-  [1013, 'You cannot enter scores for future rounds.'],
-  [1014, 'The pairing did not exist: $3, $4, $6'],
-  [1015, 'The players you selected did not play in this round.'],
+  [
+    WooglesError.TOURNAMENT_NONAMENDMENT_PAST_RESULT,
+    'Turn on Amendment to edit an already existing score.',
+  ],
+  [
+    WooglesError.TOURNAMENT_FUTURE_NONBYE_RESULT,
+    'You cannot enter scores for future rounds.',
+  ],
+  [
+    WooglesError.TOURNAMENT_NIL_PLAYER_PAIRING,
+    'The pairing did not exist: $3, $4, $6',
+  ],
+  [
+    WooglesError.TOURNAMENT_NONOPPONENTS,
+    'The players you selected did not play in this round.',
+  ],
   [1016, 'Mixed void and non-void game results; please double-check game.'],
   [1017, 'This pairing did not exist! (Division $2, Round $3, key $5)'],
   [
