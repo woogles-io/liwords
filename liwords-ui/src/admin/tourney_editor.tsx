@@ -17,7 +17,10 @@ import { Modal } from '../utils/focus_modal';
 import { Store } from 'antd/lib/form/interface';
 import '../App.scss';
 import '../lobby/lobby.scss';
-import 'antd/dist/antd.min.css';
+
+// import 'antd/dist/antd.min.css';
+
+
 import ReactMarkdown from 'react-markdown';
 import {
   DisplayedGameSetting,

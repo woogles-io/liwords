@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import jwt_decode from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 import useWebSocket from 'react-use-websocket';
 import { useLocation } from 'react-router-dom';
 import { message } from 'antd';
@@ -88,7 +88,7 @@ export const LiwordsSocket = (props: {
         cid,
       })}`;
 
-      const decoded = jwt_decode(token) as DecodedToken;
+      const decoded = jwtDecode<DecodedToken>(token);
       dispatchLoginState({
         actionType: ActionType.SetAuthentication,
         payload: {

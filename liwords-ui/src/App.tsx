@@ -8,7 +8,9 @@ import {
 } from 'react-router-dom';
 import { useMountedState } from './utils/mounted';
 import './App.scss';
-import 'antd/dist/antd.min.css';
+
+// import 'antd/dist/antd.min.css';
+
 
 import { Table as GameTable } from './gameroom/table';
 import { SinglePuzzle } from './puzzles/puzzle';
