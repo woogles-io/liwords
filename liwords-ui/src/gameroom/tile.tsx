@@ -209,7 +209,6 @@ const Tile = React.memo((props: TileProps) => {
     props.grabbable && props.letter !== EmptyRackSpaceMachineLetter;
   const [{ isDragging }, drag, preview] = useDrag({
     item: {
-      type: TILE_TYPE,
       rackIndex:
         typeof props.rackIndex === 'number'
           ? props.rackIndex.toString()
@@ -227,6 +226,7 @@ const Tile = React.memo((props: TileProps) => {
       isDragging: monitor.isDragging(),
     }),
     canDrag: (monitor) => canDrag,
+    type: TILE_TYPE,
   });
 
   useEffect(() => {

@@ -4,6 +4,7 @@
     "type": "module",
     "private": true,
     "dependencies": {
+        "@ant-design/compatible": "^5.1.2",
         "@ant-design/icons": "^5.2.6",
         "@bufbuild/protobuf": "^1.7.0",
         "@domino14/connect-web": "^0.7.0",

@@ -1,5 +1,8 @@
 import React from 'react';
 
+// XXX: This file is now obsolete as of React 18. We should replace with
+// React's useState.
+//
 // Instead of React.useState, use the useState returned from useMountedState.
 
 // This useState returns a setState that does nothing when the containing
@@ -18,8 +21,15 @@ export const useMountedState: () => {
     initialState: S | (() => S)
   ) => [S, React.Dispatch<React.SetStateAction<S>>];
 } = () => {
-  const isMountedRef = React.useRef(true);
-  React.useEffect(() => () => void (isMountedRef.current = false), []);
+  const isMountedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const identsRef = React.useRef<Array<React.Dispatch<any>>>([]);
   const idRef = React.useRef(-1);

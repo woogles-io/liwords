@@ -52,8 +52,15 @@ export const LiwordsSocket = (props: {
     justDisconnected: boolean;
   }) => void;
 }): null => {
-  const isMountedRef = useRef(true);
-  useEffect(() => () => void (isMountedRef.current = false), []);
+  const isMountedRef = useRef(false);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const { useState } = useMountedState();
 
   const { resetSocket, setValues } = props;
@@ -136,12 +143,13 @@ export const LiwordsSocket = (props: {
           });
         }
       }
-
       return ret;
     } catch (e) {
       // XXX: Fix this; figure out what type of error this can be:
       if ((e as { [response: string]: string }).response) {
         window.console.log((e as { [response: string]: string }).response);
+      } else {
+        window.console.log('Unknown error', e);
       }
       return failUrl;
     }
@@ -231,11 +239,12 @@ export const LiwordsSocket = (props: {
   );
 
   const sendMessage = useMemo(() => {
+    console.log('in here 1');
     if (!enableShowSocket) return originalSendMessage;
-
+    console.log('in here 2');
     return (msg: Uint8Array) => {
       const msgs = parseMsgs(msg);
-
+      console.log('msgs are', msgs);
       msgs.forEach((m) => {
         const { msgType, parsedMsg } = m;
         console.log(
