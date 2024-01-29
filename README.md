@@ -120,7 +120,7 @@ S: single dog bark 3 by crazymonke9 -- https://freesound.org/s/418105/
 
 Part of the front-end timer code borrows from https://github.com/ornicar/lila's code (AGPL licensed, like this app).
 
-Wolges-wasm is Copyright (C) 2020-2023 Andy Kurnia and released under the MIT license. It can be found at https://github.com/andy-k/wolges-wasm/.
+Wolges-wasm is Copyright (C) 2020-2024 Andy Kurnia and released under the MIT license. It can be found at https://github.com/andy-k/wolges-wasm/.
 
 ### Images
 
