@@ -141,7 +141,10 @@ const App = React.memo(() => {
   const resetSocket = useCallback(() => setSocketId((n) => (n + 1) | 0), []);
 
   const [liwordsSocketValues, setLiwordsSocketValues] = useState({
-    sendMessage: (msg: Uint8Array) => {},
+    sendMessage: (msg: Uint8Array) => {
+      console.log('fakesend', msg);
+    },
+
     justDisconnected: false,
   });
   const { sendMessage } = liwordsSocketValues;
@@ -246,7 +249,6 @@ const App = React.memo(() => {
   const sendChat = useCallback(
     (msg: string, chan: string) => {
       const evt = new ChatMessage({ message: msg, channel: chan });
-      console.log('message', sendMessage, msg, chan);
       sendMessage(encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.toBinary()));
     },
     [sendMessage]

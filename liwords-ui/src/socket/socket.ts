@@ -267,6 +267,7 @@ export const LiwordsSocket = (props: {
     [sendMessage, justDisconnected]
   );
   useEffect(() => {
+    console.log('goign to call setValues', ret);
     setValues(ret);
   }, [setValues, ret]);
 

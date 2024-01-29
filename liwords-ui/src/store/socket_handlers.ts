@@ -358,7 +358,7 @@ export const useOnSocketMsg = () => {
                 duration: 10, // 10 seconds,
                 onClick: () => {
                   navigate(url);
-                  notification.close('rematch-notification');
+                  notification.destroy('rematch-notification');
                 },
               });
             } else {

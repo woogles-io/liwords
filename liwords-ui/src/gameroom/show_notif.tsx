@@ -31,7 +31,7 @@ export const ShowNotif = (props: Props) => {
       duration: 0,
     });
     return () => {
-      notification.close(myId);
+      notification.destroy(myId);
     };
   }, [props, myId]);
   return null;
