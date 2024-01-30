@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Form,
   Radio,
@@ -11,7 +11,6 @@ import {
 } from 'antd';
 
 import { Store } from 'antd/lib/form/interface';
-import { useMountedState } from '../utils/mounted';
 import { ChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
 import {
   initialTimeMinutesToSlider,
@@ -157,7 +156,6 @@ const myDisplayRating = (
 };
 
 export const SeekForm = (props: Props) => {
-  const { useState } = useMountedState();
   const { friends } = useFriendsStoreContext();
   const { presences } = usePresenceStoreContext();
   const { tournamentContext } = useTournamentStoreContext();
@@ -314,7 +312,7 @@ export const SeekForm = (props: Props) => {
     initialValues.lexicon !== 'ECWL'
   );
   const [sliderTooltipVisible, setSliderTooltipVisible] = useState(true);
-  const handleDropdownVisibleChange = useCallback((open) => {
+  const handleDropdownVisibleChange = useCallback((open: boolean) => {
     setSliderTooltipVisible(!open);
   }, []);
   const [usernameOptions, setUsernameOptions] = useState<Array<string>>([]);

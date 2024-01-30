@@ -1,6 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from 'antd';
-import { useMountedState } from '../utils/mounted';
 import ReactMarkdown from 'react-markdown';
 import { Announcement } from '../gen/api/proto/config_service/config_service_pb';
 import { useClient } from '../utils/hooks/connect';
@@ -11,7 +10,6 @@ export type Announcements = {
 };
 
 export const AnnouncementsWidget = () => {
-  const { useState } = useMountedState();
   const [announcements, setAnnouncements] = useState<Array<Announcement>>([]);
   const configClient = useClient(ConfigService);
   useEffect(() => {

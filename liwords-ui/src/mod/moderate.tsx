@@ -1,8 +1,7 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 import { message, Modal, Form, Select, InputNumber, Input, Button } from 'antd';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
-import { useMountedState } from '../utils/mounted';
 import { flashError, useClient } from '../utils/hooks/connect';
 import { ModService } from '../gen/api/proto/mod_service/mod_service_connectweb';
 import { proto3 } from '@bufbuild/protobuf';
@@ -20,8 +19,6 @@ type ModProps = {
 };
 
 const Moderation = (props: ModProps) => {
-  const { useState } = useMountedState();
-
   const [activeActions, setActiveActions] = useState<ModActionsMap>(
     new ModActionsMap()
   );

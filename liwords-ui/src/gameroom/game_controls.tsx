@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Affix,
@@ -18,7 +24,6 @@ import {
   LeftOutlined,
   RightOutlined,
 } from '@ant-design/icons';
-import { useMountedState } from '../utils/mounted';
 import {
   useExaminableGameContextStoreContext,
   useExamineStoreContext,
@@ -237,7 +242,6 @@ export type Props = {
 };
 
 const GameControls = React.memo((props: Props) => {
-  const { useState } = useMountedState();
   const { gameContext } = useGameContextStoreContext();
   const gameHasNotStarted = gameContext.players.length === 0; // :shrug:
 
@@ -597,7 +601,6 @@ type EGCProps = {
 };
 
 const EndGameControls = (props: EGCProps) => {
-  const { useState } = useMountedState();
   const [rematchDisabled, setRematchDisabled] = useState(false);
   const { gameContext } = useGameContextStoreContext();
   const gameHasNotStarted = gameContext.players.length === 0; // :shrug:

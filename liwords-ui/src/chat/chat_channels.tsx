@@ -1,11 +1,10 @@
-import React, { ReactNode, useCallback, useEffect } from 'react';
+import React, { ReactNode, useCallback, useEffect, useState } from 'react';
 import { AutoComplete } from 'antd';
 import {
   useChatStoreContext,
   useExcludedPlayersStoreContext,
   useLoginStateStoreContext,
 } from '../store/store';
-import { useMountedState } from '../utils/mounted';
 import { useDebounce } from '../utils/debounce';
 import { ActiveChatChannels_Channel } from '../gen/api/proto/user_service/user_service_pb';
 import { PlayerAvatar } from '../shared/player_avatar';
@@ -130,7 +129,6 @@ const extractUser = (
 };
 
 export const ChatChannels = React.memo((props: Props) => {
-  const { useState } = useMountedState();
   const { chatChannels } = useChatStoreContext();
   const { excludedPlayers } = useExcludedPlayersStoreContext();
   const { sendMessage } = props;
@@ -151,7 +149,7 @@ export const ChatChannels = React.memo((props: Props) => {
   const searchUsernameDebounced = useDebounce(onUsernameSearch, 300);
 
   const handleUsernameSelect = useCallback(
-    (data) => {
+    (data: string) => {
       const user = data.split(':');
       if (user.length > 1 && sendMessage) {
         sendMessage(user[0], user[1]);
@@ -182,8 +180,8 @@ export const ChatChannels = React.memo((props: Props) => {
       return chB.lastUpdate > chA.lastUpdate
         ? 1
         : chA.lastUpdate > chB.lastUpdate
-        ? -1
-        : 0;
+          ? -1
+          : 0;
     })
     .filter((ch) => {
       let keep = true;

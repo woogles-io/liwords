@@ -1,7 +1,6 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Tooltip } from 'antd';
 import { ShareAltOutlined } from '@ant-design/icons';
-import { useMountedState } from '../utils/mounted';
 import { calculatePuzzleScore, renderStars } from './puzzle_info';
 import { singularCount } from '../utils/plural';
 import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
@@ -17,7 +16,6 @@ type Props = {
 
 export const PuzzleShareButton = (props: Props) => {
   const { puzzleID, attempts, solved } = props;
-  const { useState } = useMountedState();
   const [showTooltip, setShowTooltip] = useState(false);
   const message = useMemo(() => {
     let messageBuilder = '';

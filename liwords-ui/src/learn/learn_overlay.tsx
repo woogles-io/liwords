@@ -1,5 +1,4 @@
-import React, { useContext, useEffect, useMemo } from 'react';
-import { useMountedState } from '../utils/mounted';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
 
 export const LearnContext = React.createContext<{
   gridDim: number;
@@ -22,7 +21,6 @@ export const LearnContextProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const { useState } = useMountedState();
   const [gridDim, setGridDim] = useState(0);
   const [learnLayout, setLearnLayout] = useState<Array<Array<string>>>([]);
   const contextValue = useMemo(

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
 import {
   GameMetaEvent,
@@ -6,7 +6,6 @@ import {
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { MetaStates } from '../store/meta_game_events';
 import { useGameMetaEventContext } from '../store/store';
-import { useMountedState } from '../utils/mounted';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { ShowNotif } from './show_notif';
 
@@ -18,7 +17,6 @@ type Props = {
 export const MetaEventControl = (props: Props) => {
   const { gameMetaEventContext } = useGameMetaEventContext();
   const { sendSocketMsg, gameID } = props;
-  const { useState } = useMountedState();
   // can't get this to work with types:
   const [activeNotif, setActiveNotif] = useState<React.ReactElement | null>(
     null

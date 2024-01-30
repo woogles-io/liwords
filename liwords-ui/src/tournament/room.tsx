@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 import { useCallback, useMemo } from 'react';
 
@@ -6,7 +6,6 @@ import {
   useLoginStateStoreContext,
   useTournamentStoreContext,
 } from '../store/store';
-import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../navigation/topbar';
 import { Chat } from '../chat/chat';
 import { TournamentInfo } from './tournament_info';
@@ -26,7 +25,6 @@ type Props = {
 };
 
 export const TournamentRoom = (props: Props) => {
-  const { useState } = useMountedState();
   const [searchParams] = useSearchParams();
 
   const { loginState } = useLoginStateStoreContext();

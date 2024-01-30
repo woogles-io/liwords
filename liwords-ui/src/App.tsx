@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   Navigate,
   Route,
@@ -6,7 +12,6 @@ import {
   useLocation,
   useSearchParams,
 } from 'react-router-dom';
-import { useMountedState } from './utils/mounted';
 import './App.scss';
 
 // import 'antd/dist/antd.min.css';
@@ -116,8 +121,6 @@ const HandoverSignedCookie = () => {
 };
 
 const App = React.memo(() => {
-  const { useState } = useMountedState();
-
   const {
     setExcludedPlayers,
     setExcludedPlayersFetched,
@@ -148,10 +151,8 @@ const App = React.memo(() => {
     justDisconnected: false,
   });
   const { sendMessage } = liwordsSocketValues;
-
   const location = useLocation();
   const knownLocation = useRef(location.pathname); // Remember the location on first render.
-  console.log('loc pathname', location.pathname);
   const isCurrentLocation = knownLocation.current === location.pathname;
   useEffect(() => {
     if (!isCurrentLocation) {

@@ -1,5 +1,4 @@
-import React, { useCallback } from 'react';
-import { useMountedState } from '../utils/mounted';
+import React, { useCallback, useState } from 'react';
 import { Col, Row, Select, Switch } from 'antd';
 import {
   preferredSortOrder,
@@ -160,8 +159,6 @@ const makeTileOrderValue = (tileOrder: string, autoShuffle: boolean) =>
   JSON.stringify({ tileOrder, autoShuffle });
 
 export const Preferences = React.memo(() => {
-  const { useState } = useMountedState();
-
   const [darkMode, setDarkMode] = useState(
     localStorage?.getItem('darkMode') === 'true'
   );
@@ -226,7 +223,7 @@ export const Preferences = React.memo(() => {
   const [reevaluateTileOrderOptions, setReevaluateTileOrderOptions] =
     useState(0);
   const [tileOrder, setTileOrder] = useState(preferredSortOrder ?? '');
-  const handleTileOrderAndAutoShuffleChange = useCallback((value) => {
+  const handleTileOrderAndAutoShuffleChange = useCallback((value: string) => {
     try {
       const parsedStuff = JSON.parse(value);
       const { tileOrder: newTileOrder, autoShuffle: newAutoShuffle } =

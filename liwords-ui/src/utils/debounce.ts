@@ -7,7 +7,7 @@ import { useCallback, useRef } from 'react';
 export function useDebounce(func: Function, timeout: number) {
   const timer = useRef<NodeJS.Timeout>();
   const debounced = useCallback(
-    (...args) => {
+    (...args: any[]) => {
       if (timer.current != null) clearTimeout(timer.current);
       timer.current = setTimeout(() => {
         func(...args);

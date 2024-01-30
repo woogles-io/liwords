@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ReactNode, useState } from 'react';
 
 import Search from 'antd/lib/input/Search';
 import {
@@ -20,14 +20,12 @@ import '../lobby/lobby.scss';
 
 // import 'antd/dist/antd.min.css';
 
-
 import ReactMarkdown from 'react-markdown';
 import {
   DisplayedGameSetting,
   SettingsForm,
 } from '../tournament/director_tools/game_settings_form';
 
-import { useMountedState } from '../utils/mounted';
 import {
   GetTournamentMetadataRequest,
   TType,
@@ -44,6 +42,14 @@ type DProps = {
   color: string;
   logo: string;
 };
+
+function LinkRenderer(props: { href?: string; children?: ReactNode }) {
+  return (
+    <a href={props.href} target="_blank" rel="noreferrer">
+      {props.children}
+    </a>
+  );
+}
 
 const DescriptionPreview = (props: DProps) => {
   const title = <span style={{ color: props.color }}>{props.title}</span>;
@@ -62,9 +68,13 @@ const DescriptionPreview = (props: DProps) => {
             }}
           />
         )}
-        <ReactMarkdown linkTarget="_blank">{props.description}</ReactMarkdown>
+        <ReactMarkdown components={{ a: LinkRenderer }}>
+          {props.description}
+        </ReactMarkdown>
         <br />
-        <ReactMarkdown linkTarget="_blank">{props.disclaimer}</ReactMarkdown>
+        <ReactMarkdown components={{ a: LinkRenderer }}>
+          {props.disclaimer}
+        </ReactMarkdown>
       </Card>
     </div>
   );
@@ -111,7 +121,6 @@ const SettingsModalForm = (mprops: {
 };
 
 export const TourneyEditor = (props: Props) => {
-  const { useState } = useMountedState();
   const [description, setDescription] = useState('');
   const [disclaimer, setDisclaimer] = useState('');
   const [name, setName] = useState('');

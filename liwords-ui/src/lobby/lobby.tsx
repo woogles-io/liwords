@@ -1,5 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
-import { useMountedState } from '../utils/mounted';
+import React, { useCallback, useEffect, useState } from 'react';
 
 import { TopBar } from '../navigation/topbar';
 
@@ -19,7 +18,6 @@ type Props = {
 };
 
 export const Lobby = (props: Props) => {
-  const { useState } = useMountedState();
   const { sendSocketMsg } = props;
   const { loginState } = useLoginStateStoreContext();
 

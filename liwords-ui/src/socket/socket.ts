@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import useWebSocket from 'react-use-websocket';
 import { useLocation } from 'react-router-dom';
 import { message } from 'antd';
-import { useMountedState } from '../utils/mounted';
 import { useLoginStateStoreContext } from '../store/store';
 import {
   useOnSocketMsg,
@@ -60,8 +59,6 @@ export const LiwordsSocket = (props: {
       isMountedRef.current = false;
     };
   }, []);
-
-  const { useState } = useMountedState();
 
   const { resetSocket, setValues } = props;
   const onSocketMsg = useOnSocketMsg();
@@ -239,12 +236,9 @@ export const LiwordsSocket = (props: {
   );
 
   const sendMessage = useMemo(() => {
-    console.log('in here 1');
     if (!enableShowSocket) return originalSendMessage;
-    console.log('in here 2');
     return (msg: Uint8Array) => {
       const msgs = parseMsgs(msg);
-      console.log('msgs are', msgs);
       msgs.forEach((m) => {
         const { msgType, parsedMsg } = m;
         console.log(
@@ -267,7 +261,6 @@ export const LiwordsSocket = (props: {
     [sendMessage, justDisconnected]
   );
   useEffect(() => {
-    console.log('goign to call setValues', ret);
     setValues(ret);
   }, [setValues, ret]);
 

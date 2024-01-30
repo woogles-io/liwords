@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from 'react';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { ActiveGames } from '../lobby/active_games';
@@ -17,7 +18,6 @@ import {
   useLobbyStoreContext,
   useTournamentStoreContext,
 } from '../store/store';
-import { useMountedState } from '../utils/mounted';
 import { RecentTourneyGames } from './recent_games';
 import { ActionType } from '../actions/actions';
 import { Pairings } from './pairings';
@@ -49,7 +49,6 @@ type Props = {
 };
 
 export const ActionsPanel = React.memo((props: Props) => {
-  const { useState } = useMountedState();
   const [matchModalVisible, setMatchModalVisible] = useState(false);
   const [formDisabled, setFormDisabled] = useState(false);
   const {

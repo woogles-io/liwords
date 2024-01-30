@@ -5,7 +5,7 @@ import {
   TableCurrentDataSource,
   TablePaginationConfig,
 } from 'antd/lib/table/interface';
-import React, { ReactNode, useCallback, useMemo } from 'react';
+import React, { ReactNode, useCallback, useMemo, useState } from 'react';
 import { FundOutlined, ExportOutlined } from '@ant-design/icons';
 import {
   calculateTotalTime,
@@ -17,7 +17,6 @@ import {
   SoughtGame,
   matchesRatingFormula,
 } from '../store/reducers/lobby_reducer';
-import { useMountedState } from '../utils/mounted';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { DisplayUserFlag } from '../shared/display_flag';
 import { RatingBadge } from './rating_badge';
@@ -82,7 +81,6 @@ type Props = {
   ratings?: { [key: string]: ProfileUpdate_Rating };
 };
 export const SoughtGames = (props: Props) => {
-  const { useState } = useMountedState();
   const [cancelVisible, setCancelVisible] = useState(false);
   const {
     lobbyContext: { lobbyFilterByLexicon },
@@ -127,10 +125,8 @@ export const SoughtGames = (props: Props) => {
       })),
       filteredValue: lobbyFilterByLexiconArray,
       filterMultiple: true,
-      onFilter: (
-        value: string | number | boolean,
-        record: SoughtGameTableData
-      ) => typeof value === 'string' && record.lexiconCode === value,
+      onFilter: (value: React.Key | boolean, record: SoughtGameTableData) =>
+        typeof value === 'string' && record.lexiconCode === value,
     },
     {
       title: 'Time',

@@ -4,6 +4,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useState,
 } from 'react';
 import { Button, Card } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
@@ -17,7 +18,6 @@ import {
   simpletile,
 } from '../utils/cwgame/scoring';
 import { Direction, isMobile } from '../utils/cwgame/common';
-import { useMountedState } from '../utils/mounted';
 import { BoopSounds } from '../sound/boop';
 import {
   machineLetterToRune,
@@ -56,7 +56,6 @@ export const NotepadContextProvider = ({
   children: React.ReactNode;
   feRackInfo: boolean;
 }) => {
-  const { useState } = useMountedState();
   const [curNotepad, setCurNotepad] = useState('');
   const contextValue = useMemo(
     () => ({ curNotepad, setCurNotepad, feRackInfo }),

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 import { Link } from 'react-router-dom';
 import './topbar.scss';
@@ -10,7 +10,6 @@ import {
   useTournamentStoreContext,
 } from '../store/store';
 import { LoginModal } from '../lobby/login';
-import { useMountedState } from '../utils/mounted';
 import { isClubType } from '../store/constants';
 import { flashError, useClient } from '../utils/hooks/connect';
 import { AuthenticationService } from '../gen/api/proto/user_service/user_service_connectweb';
@@ -178,8 +177,6 @@ type Props = {
 };
 
 export const TopBar = React.memo((props: Props) => {
-  const { useState } = useMountedState();
-
   const { loginState } = useLoginStateStoreContext();
   const { resetStore } = useResetStoreContext();
   const { tournamentContext } = useTournamentStoreContext();
