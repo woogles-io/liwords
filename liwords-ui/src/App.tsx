@@ -14,8 +14,6 @@ import {
 } from 'react-router-dom';
 import './App.scss';
 
-// import 'antd/dist/antd.min.css';
-
 import { Table as GameTable } from './gameroom/table';
 import { SinglePuzzle } from './puzzles/puzzle';
 import TileImages from './gameroom/tile_images';
@@ -57,8 +55,6 @@ import {
   SocializeService,
 } from './gen/api/proto/user_service/user_service_connectweb';
 import { BoardEditor } from './boardwizard/editor';
-import { ConfigProvider } from 'antd';
-import { defaultTheme } from '@ant-design/compatible';
 
 const useDarkMode = localStorage?.getItem('darkMode') === 'true';
 document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
@@ -297,96 +293,94 @@ const App = React.memo(() => {
   if (!isCurrentLocation) return null;
 
   return (
-    <ConfigProvider theme={defaultTheme}>
-      <div className="App">
-        {!isEmbeddedPath && (
-          <LiwordsSocket
-            key={socketId}
-            resetSocket={resetSocket}
-            setValues={setLiwordsSocketValues}
-          />
-        )}
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <Lobby
-                sendSocketMsg={sendMessage}
-                sendChat={sendChat}
-                DISCONNECT={resetSocket}
-              />
-            }
-          />
-          <Route
-            path="tournament/:partialSlug/*"
-            element={
-              <TournamentRoom sendSocketMsg={sendMessage} sendChat={sendChat} />
-            }
-          />
-          <Route
-            path="club/:partialSlug/*"
-            element={
-              <TournamentRoom sendSocketMsg={sendMessage} sendChat={sendChat} />
-            }
-          />
-          <Route path="clubs" element={<Clubs />} />
-          <Route
-            path="game/:gameID"
-            element={
-              <GameTable sendSocketMsg={sendMessage} sendChat={sendChat} />
-            }
-          />
-          <Route path="puzzle" element={<SinglePuzzle sendChat={sendChat} />}>
-            <Route
-              path=":puzzleID"
-              element={<SinglePuzzle sendChat={sendChat} />}
+    <div className="App">
+      {!isEmbeddedPath && (
+        <LiwordsSocket
+          key={socketId}
+          resetSocket={resetSocket}
+          setValues={setLiwordsSocketValues}
+        />
+      )}
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <Lobby
+              sendSocketMsg={sendMessage}
+              sendChat={sendChat}
+              DISCONNECT={resetSocket}
             />
-          </Route>
+          }
+        />
+        <Route
+          path="tournament/:partialSlug/*"
+          element={
+            <TournamentRoom sendSocketMsg={sendMessage} sendChat={sendChat} />
+          }
+        />
+        <Route
+          path="club/:partialSlug/*"
+          element={
+            <TournamentRoom sendSocketMsg={sendMessage} sendChat={sendChat} />
+          }
+        />
+        <Route path="clubs" element={<Clubs />} />
+        <Route
+          path="game/:gameID"
+          element={
+            <GameTable sendSocketMsg={sendMessage} sendChat={sendChat} />
+          }
+        />
+        <Route path="puzzle" element={<SinglePuzzle sendChat={sendChat} />}>
           <Route
-            path="anno/:gameID"
-            element={
-              <GameTable
-                sendSocketMsg={sendMessage}
-                sendChat={sendChat}
-                annotated
-              />
-            }
+            path=":puzzleID"
+            element={<SinglePuzzle sendChat={sendChat} />}
           />
+        </Route>
+        <Route
+          path="anno/:gameID"
+          element={
+            <GameTable
+              sendSocketMsg={sendMessage}
+              sendChat={sendChat}
+              annotated
+            />
+          }
+        />
 
-          <Route path="embed/game/:gameID" element={<Embed />} />
-          <Route path="editor" element={<BoardEditor />}>
-            <Route path=":gameID" element={<BoardEditor />} />
-          </Route>
-          <Route path="about" element={<Team />} />
-          <Route path="team" element={<Team />} />
-          <Route path="terms" element={<TermsOfService />} />
-          <Route path="register" element={<Register />} />
-          <Route path="password">
-            <Route path="reset" element={<PasswordReset />} />
-            <Route path="new" element={<NewPassword />} />
-          </Route>
-          <Route path="profile/:username" element={<PlayerProfile />} />
-          <Route path="profile/" element={<PlayerProfile />} />
-          <Route path="settings" element={<Settings />}>
-            <Route path=":section" element={<Settings />} />
-          </Route>
-          <Route path="tile_images" element={<TileImages />}>
-            <Route path=":letterDistribution" element={<TileImages />} />
-          </Route>
-          <Route path="admin" element={<Admin />} />
-          <Route
-            path="donate"
-            element={<Navigate replace to="/settings/donate" />}
-          />
-          <Route path="donate_success" element={<DonateSuccess />} />
-          <Route
-            path="handover-signed-cookie"
-            element={<HandoverSignedCookie />}
-          />
-        </Routes>
-        {!isEmbeddedPath && <Footer />}
-      </div>
-    </ConfigProvider>
+        <Route path="embed/game/:gameID" element={<Embed />} />
+        <Route path="editor" element={<BoardEditor />}>
+          <Route path=":gameID" element={<BoardEditor />} />
+        </Route>
+        <Route path="about" element={<Team />} />
+        <Route path="team" element={<Team />} />
+        <Route path="terms" element={<TermsOfService />} />
+        <Route path="register" element={<Register />} />
+        <Route path="password">
+          <Route path="reset" element={<PasswordReset />} />
+          <Route path="new" element={<NewPassword />} />
+        </Route>
+        <Route path="profile/:username" element={<PlayerProfile />} />
+        <Route path="profile/" element={<PlayerProfile />} />
+        <Route path="settings" element={<Settings />}>
+          <Route path=":section" element={<Settings />} />
+        </Route>
+        <Route path="tile_images" element={<TileImages />}>
+          <Route path=":letterDistribution" element={<TileImages />} />
+        </Route>
+        <Route path="admin" element={<Admin />} />
+        <Route
+          path="donate"
+          element={<Navigate replace to="/settings/donate" />}
+        />
+        <Route path="donate_success" element={<DonateSuccess />} />
+        <Route
+          path="handover-signed-cookie"
+          element={<HandoverSignedCookie />}
+        />
+      </Routes>
+      {!isEmbeddedPath && <Footer />}
+    </div>
   );
 });
 

@@ -310,7 +310,7 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
     .ant-modal-footer {
       border: 0;
     }
-    @media (max-width: $screen-mobile-min + 1) {
+    @media (max-width: $screen-mobile-min+1) {
       .ant-modal-mask {
         @include colorModed() {
           background: m($background);
@@ -513,3 +513,4 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
     }
   }
 }
+

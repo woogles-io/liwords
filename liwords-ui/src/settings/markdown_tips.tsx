@@ -36,8 +36,8 @@ export const MarkdownTips = React.memo(() => {
       use: isMac()
         ? 'Command + control + space'
         : isWindows()
-        ? 'Windows key + .'
-        : 'use keyboard',
+          ? 'Windows key + .'
+          : 'use keyboard',
       example: '🥰',
       result: '🥰',
     },

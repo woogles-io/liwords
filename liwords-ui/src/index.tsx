@@ -1,10 +1,15 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import './index.css';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { Store } from './store/store';
 import { BriefProfiles } from './utils/brief_profiles';
+import { App as AntDApp } from 'antd';
+import { ConfigProvider } from 'antd';
+import { defaultTheme } from '@ant-design/compatible';
+
+import 'antd/dist/reset.css';
+import './index.css';
 
 declare global {
   interface Window {
@@ -59,7 +64,19 @@ root.render(
     <BrowserRouter>
       <Store>
         <BriefProfiles>
-          <App />
+          <ConfigProvider
+            theme={{
+              ...defaultTheme,
+              token: {
+                ...defaultTheme.token,
+                fontFamily: 'Mulish',
+              },
+            }}
+          >
+            <AntDApp>
+              <App />
+            </AntDApp>
+          </ConfigProvider>
         </BriefProfiles>
       </Store>
     </BrowserRouter>
