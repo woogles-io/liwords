@@ -8,6 +8,7 @@
         "@ant-design/icons": "^5.2.6",
         "@bufbuild/protobuf": "^1.7.0",
         "@domino14/connect-web": "^0.7.0",
+        "@reduxjs/toolkit": "^2.1.0",
         "@stripe/stripe-js": "^2.4.0",
         "antd": "^5.13.2",
         "browserslist-to-esbuild": "^2.1.1",
@@ -20,6 +21,7 @@
         "react-dom": "^18.2.0",
         "react-easy-crop": "^5.0.4",
         "react-markdown": "^9.0.1",
+        "react-redux": "^9.1.0",
         "react-router-dom": "^6.21.3",
         "react-use-websocket": "^4.5.0",
         "wolges-wasm": "file:wolges-wasm-pkg"

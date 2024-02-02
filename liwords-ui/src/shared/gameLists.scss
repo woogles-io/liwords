@@ -5,23 +5,23 @@
   .ant-table-filter-trigger-container {
     transition: none;
   }
-  .ant-table-filter-trigger-container-open .ant-table-filter-trigger,
-  .ant-table-filter-trigger:hover {
-    @include colorModed() {
-      background: m($off-background);
-      transition: none;
-    }
-  }
-  .ant-table-filter-trigger {
-    @include colorModed() {
-      color: m($column-sorter);
-    }
-  }
+//   .ant-table-filter-trigger-container-open .ant-table-filter-trigger,
+//   .ant-table-filter-trigger:hover {
+//     @include colorModed() {
+//       background: m($off-background);
+//       transition: none;
+//     }
+//   }
+//   .ant-table-filter-trigger {
+//     @include colorModed() {
+//       color: m($column-sorter);
+//     }
+//   }
   .ant-table-column-sorter {
     padding: 16px 0;
-    @include colorModed() {
-      color: m($column-sorter);
-    }
+    // @include colorModed() {
+    //   color: m($column-sorter);
+    // }
   }
   .ant-table-thead > tr > th:hover {
     @include colorModed() {
@@ -197,9 +197,9 @@
         }
         td.players:after {
           content: 'Resume';
-          @include colorModed() {
-            color: m($black);
-          }
+        //   @include colorModed() {
+        //     color: m($black);
+        //   }
           text-align: center;
           font-size: 12px;
           font-weight: bold;
@@ -297,9 +297,9 @@
   td.details {
     text-align: right;
     .anticon-fund {
-      @include colorModed() {
-        color: m($primary-dark);
-      }
+    //   @include colorModed() {
+    //     color: m($primary-dark);
+    //   }
       font-size: 18px;
       margin-left: 6px;
     }
@@ -307,21 +307,21 @@
       font-size: 14px;
       font-weight: bold;
       letter-spacing: 0;
-      @include colorModed() {
-        color: m($timer-dark);
-      }
-      &.mode_x2 {
-        @include colorModed() {
-          color: m($timer-out-dark);
-        }
-      }
+    //   @include colorModed() {
+    //     color: m($timer-dark);
+    //   }
+    //   &.mode_x2 {
+    //     @include colorModed() {
+    //       color: m($timer-out-dark);
+    //     }
+    //   }
       &.mode_Void {
         @include type-deco;
         font-size: 12px;
         letter-spacing: 0;
-        @include colorModed() {
-          color: m($timer-low-dark);
-        }
+        // @include colorModed() {
+        //   color: m($timer-low-dark);
+        // }
         text-transform: uppercase;
       }
     }
@@ -329,8 +329,8 @@
   .game-count {
     margin-left: 9px;
     font-size: 14px;
-    @include colorModed() {
-      color: m($gray-subtle);
-    }
+    // @include colorModed() {
+    //   color: m($gray-subtle);
+    // }
   }
 }

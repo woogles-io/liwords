@@ -2,14 +2,14 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
-import { Store } from './store/store';
+import { Store as LegacyStore } from './store/store';
 import { BriefProfiles } from './utils/brief_profiles';
-import { App as AntDApp } from 'antd';
-import { ConfigProvider } from 'antd';
-import { defaultTheme } from '@ant-design/compatible';
+
+import { Provider } from 'react-redux';
 
 import 'antd/dist/reset.css';
 import './index.css';
+import { store } from './store/redux_store';
 
 declare global {
   interface Window {
@@ -62,23 +62,14 @@ const root = createRoot(container!);
 root.render(
   <React.StrictMode>
     <BrowserRouter>
-      <Store>
-        <BriefProfiles>
-          <ConfigProvider
-            theme={{
-              ...defaultTheme,
-              token: {
-                ...defaultTheme.token,
-                fontFamily: 'Mulish',
-              },
-            }}
-          >
-            <AntDApp>
-              <App />
-            </AntDApp>
-          </ConfigProvider>
-        </BriefProfiles>
-      </Store>
+      <Provider store={store}>
+        {/* legacy store will be slowly decommissioned */}
+        <LegacyStore>
+          <BriefProfiles>
+            <App />
+          </BriefProfiles>
+        </LegacyStore>
+      </Provider>
     </BrowserRouter>
   </React.StrictMode>
 );

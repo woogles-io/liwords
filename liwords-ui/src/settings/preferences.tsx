@@ -11,6 +11,9 @@ import { BoardPreview } from './board_preview';
 import { MatchLexiconDisplay, puzzleLexica } from '../shared/lexicon_display';
 import { TouchBackend } from 'react-dnd-touch-backend';
 import { DndProvider } from 'react-dnd';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '../store/redux_store';
+import { setDarkMode } from '../store/theme';
 
 const previewTilesLayout = [
   '               ',
@@ -159,9 +162,9 @@ const makeTileOrderValue = (tileOrder: string, autoShuffle: boolean) =>
   JSON.stringify({ tileOrder, autoShuffle });
 
 export const Preferences = React.memo(() => {
-  const [darkMode, setDarkMode] = useState(
-    localStorage?.getItem('darkMode') === 'true'
-  );
+  const darkMode = useSelector((state: RootState) => state.theme.darkMode);
+  const dispatch = useDispatch();
+
   const initialTileStyle = localStorage?.getItem('userTile') || 'Default';
   const [userTile, setUserTile] = useState<string>(initialTileStyle);
 
@@ -173,19 +176,6 @@ export const Preferences = React.memo(() => {
   const [puzzleLexicon, setPuzzleLexicon] = useState<string | undefined>(
     initialPuzzleLexicon
   );
-
-  const toggleDarkMode = useCallback(() => {
-    const useDarkMode = localStorage?.getItem('darkMode') !== 'true';
-    localStorage.setItem('darkMode', useDarkMode ? 'true' : 'false');
-    if (useDarkMode) {
-      document?.body?.classList?.add('mode--dark');
-      document?.body?.classList?.remove('mode--default');
-    } else {
-      document?.body?.classList?.add('mode--default');
-      document?.body?.classList?.remove('mode--dark');
-    }
-    setDarkMode((x) => !x);
-  }, []);
 
   const handleUserTileChange = useCallback((tileStyle: string) => {
     const classes = document?.body?.className
@@ -311,7 +301,7 @@ export const Preferences = React.memo(() => {
         <p>Use the dark version of the Woogles UI on Woogles.io</p>
         <Switch
           defaultChecked={darkMode}
-          onChange={toggleDarkMode}
+          onChange={(checked: boolean) => dispatch(setDarkMode(checked))}
           className="dark-toggle"
         />
       </div>
