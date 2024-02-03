@@ -1,12 +1,23 @@
 import { defaultTheme, darkTheme } from '@ant-design/compatible';
 import { theme } from 'antd';
 
+const tokenoverrides = {
+  fontFamily: 'Mulish',
+};
+
+const componentOverrides = {
+  // Button: {
+  //   controlHeight: 36,
+  // },
+};
+
 export const liwordsDefaultTheme = {
   ...defaultTheme,
   token: {
     ...defaultTheme.token,
-    fontFamily: 'Mulish',
+    ...tokenoverrides,
   },
+  components: componentOverrides,
 };
 
 export const liwordsDarkTheme = {
@@ -14,8 +25,9 @@ export const liwordsDarkTheme = {
   algorithm: theme.darkAlgorithm,
   token: {
     ...darkTheme.token,
-    fontFamily: 'Mulish',
+    ...tokenoverrides,
     // See color_modes.scss
     // colorBgBase: '#3A3A3A',
   },
+  components: componentOverrides,
 };

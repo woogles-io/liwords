@@ -162,7 +162,12 @@ export const SettingsForm = (props: Props) => {
         extra={<Tag color={ttag}>{timectrl}</Tag>}
       >
         <Slider
-          tooltip={{ formatter: initTimeFormatter, open: true }}
+          tooltip={{
+            formatter: initTimeFormatter,
+            open: true,
+            getPopupContainer: (triggerNode) =>
+              triggerNode.parentElement ?? document.body,
+          }}
           min={0}
           max={initTimeDiscreteScale.length - 1}
         />

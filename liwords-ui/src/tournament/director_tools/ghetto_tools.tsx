@@ -1402,7 +1402,7 @@ const RoundControlFields = (props: RdCtrlFieldsProps) => {
   const { setting } = props;
   return (
     <>
-      <Form layout="inline" size="small">
+      <Form size="small">
         <Form.Item label="First round">
           <InputNumber
             min={1}
@@ -1560,7 +1560,7 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
         </Form.Item>
       </Form>
       <Divider />
-      <Form size="small">
+      <Form>
         <SingleRoundControlFields
           setting={roundSetting}
           onChange={(
@@ -1571,8 +1571,11 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
             setRoundSetting(new RoundControl(val));
           }}
         />
-        <Divider />
-        <Button onClick={() => setRoundControls()}>Submit</Button>
+        <Form.Item>
+          <Button type="primary" onClick={() => setRoundControls()}>
+            Submit
+          </Button>
+        </Form.Item>
       </Form>
     </>
   );
@@ -1904,7 +1907,9 @@ const UnstartTournament = (props: { tournamentID: string }) => {
         will RESET!
       </div>
       <Form.Item>
-        <Button htmlType="submit">Unstart this tournament</Button>
+        <Button htmlType="submit" type="primary" danger>
+          Unstart this tournament
+        </Button>
       </Form.Item>
     </Form>
   );
@@ -1968,7 +1973,6 @@ const EditDescription = (props: { tournamentID: string }) => {
             Submit
           </Button>
         </Form.Item>
-        ;
       </Form>
     </>
   );

@@ -498,6 +498,12 @@ ul {
     color: m($gray-extreme);
   }
 }
+.ant-popconfirm-inner {
+    @include colorModed() {
+      background-color: m($card-background);
+      color: m($gray-extreme);
+    }
+  }
 
 .ant-modal-close-x {
   @include colorModed() {
@@ -509,6 +515,11 @@ ul {
     color: m($gray-extreme);
   }
 }
+.ant-popconfirm-message {
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+  }
 .ant-popover-placement-top > .ant-popover-content > .ant-popover-arrow,
 .ant-popover-placement-topLeft > .ant-popover-content > .ant-popover-arrow,
 .ant-popover-placement-topRight > .ant-popover-content > .ant-popover-arrow {
@@ -517,6 +528,17 @@ ul {
     border-bottom-color: m($card-background);
   }
 }
+
+.ant-popconfirm-placement-top > .ant-popconfirm-content > .ant-popconfirm-arrow,
+.ant-popconfirm-placement-topLeft > .ant-popconfirm-content > .ant-popconfirm-arrow,
+.ant-popconfirm-placement-topRight > .ant-popconfirm-content > .ant-popconfirm-arrow {
+  @include colorModed() {
+    border-right-color: m($card-background);
+    border-bottom-color: m($card-background);
+  }
+}
+
+
 .ant-collapse, .ant-collapse-item, .ant-collapse-header, .ant-collapse-content, .ant-collapse-content-box {
   @include colorModed() {
     background-color: m($card-background);

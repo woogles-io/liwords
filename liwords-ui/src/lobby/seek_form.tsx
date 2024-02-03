@@ -551,8 +551,8 @@ export const SeekForm = (props: Props) => {
           tooltip={{
             formatter: initTimeFormatter,
             open: sliderTooltipVisible || usernameOptions.length === 0,
-            getPopupContainer: () =>
-              document.getElementById(props.id) as HTMLElement,
+            getPopupContainer: (triggerNode) =>
+              triggerNode.parentElement ?? document.body,
           }}
           min={0}
           max={initTimeDiscreteScale.length - 1}
@@ -588,6 +588,8 @@ export const SeekForm = (props: Props) => {
             tooltip={{
               formatter: (v) => `${myRating} ± ${v ? v : 0}`,
               open: sliderTooltipVisible,
+              getPopupContainer: (triggerNode) =>
+                triggerNode.parentElement ?? document.body,
             }}
             step={50}
           />

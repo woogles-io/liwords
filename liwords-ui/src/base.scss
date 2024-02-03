@@ -514,3 +514,6 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
   }
 }
 
+.ant-popconfirm-buttons > .ant-btn-sm {
+    height: 36px;
+}
