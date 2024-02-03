@@ -66,6 +66,7 @@
   min-width: 200px;
 }
 a,
+button.ant-btn-link,
 button.link {
   cursor: pointer;
   @include colorModed() {
@@ -82,7 +83,7 @@ button.link {
     }
   }
 }
-button.link {
+button.ant-btn-link, button.link {
   @include colorModed() {
     color: m($primary-dark);
   }

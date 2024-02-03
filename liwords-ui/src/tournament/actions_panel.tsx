@@ -305,6 +305,8 @@ export const ActionsPanel = React.memo((props: Props) => {
           onClick={() => {
             setMatchModalVisible(false);
           }}
+          style={{ marginBottom: 5 }}
+          type="link"
         >
           Cancel
         </Button>,

@@ -223,6 +223,7 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
           <Button
             className="remove-avatar"
             onClick={() => setRemoveAvatarModalVisible(true)}
+            type="link"
           >
             Remove
           </Button>

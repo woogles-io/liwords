@@ -6,9 +6,15 @@ const tokenoverrides = {
 };
 
 const componentOverrides = {
-  // Button: {
-  //   controlHeight: 36,
-  // },
+  Table: {
+    rowHoverBg: 'unset',
+    headerSortHoverBg: 'unset',
+    headerFilterHoverBg: 'unset',
+    rowSelectedHoverBg: 'unset',
+  },
+  Input: {
+    colorBorder: '#b9b9b9',
+  },
 };
 
 export const liwordsDefaultTheme = {

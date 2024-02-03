@@ -192,6 +192,8 @@ export const GameLists = React.memo((props: Props) => {
           onClick={() => {
             setSeekModalVisible(false);
           }}
+          type="link"
+          style={{ marginBottom: 5 }}
         >
           Cancel
         </Button>,
@@ -230,6 +232,8 @@ export const GameLists = React.memo((props: Props) => {
           onClick={() => {
             setMatchModalVisible(false);
           }}
+          type="link"
+          style={{ marginBottom: 5 }}
         >
           Cancel
         </Button>,
@@ -269,6 +273,8 @@ export const GameLists = React.memo((props: Props) => {
           onClick={() => {
             setBotModalVisible(false);
           }}
+          type="link"
+          style={{ marginBottom: 5 }}
         >
           Cancel
         </Button>,

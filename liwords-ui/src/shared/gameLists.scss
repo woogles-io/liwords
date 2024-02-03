@@ -11,11 +11,11 @@
     //   color: m($column-sorter);
     // }
   }
-  .ant-table-thead > tr > th:hover {
-    @include colorModed() {
-      background: m($off-background);
-    }
-  }
+//   .ant-table-thead > tr > th:hover {
+//     @include colorModed() {
+//       background: m($off-background);
+//     }
+//   }
   .ant-table-thead > tr,
   .ant-table-tbody > tr {
     @include colorModed() {
