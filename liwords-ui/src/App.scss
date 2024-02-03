@@ -340,15 +340,9 @@ ul {
   }
 }
 
-// override an ant > 4.20 setting, when moving from a Dropdown overlay to a
-// separate menu.
-// .ant-dropdown > .ant-dropdown-menu {
-//   box-shadow: none;
-// }
-
 .ant-dropdown-menu,
 .ant-select-dropdown {
-  padding: 0;
+//   padding: 0;
   z-index: 1100;
   @include colorModed() {
     background: m($background);

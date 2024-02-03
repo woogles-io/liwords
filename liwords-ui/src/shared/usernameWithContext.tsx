@@ -52,11 +52,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           Math.floor(Math.random() * currentActiveGames.length)
         ];
       return {
-        label: (
-          <Link className="plain" to={`/game/${encodeURIComponent(gameID)}`}>
-            Watch
-          </Link>
-        ),
+        label: <Link to={`/game/${encodeURIComponent(gameID)}`}>Watch</Link>,
         key: `watch-${userID}`,
       };
     } else if (currentWatchedGames && currentWatchedGames.length > 0) {
@@ -65,20 +61,12 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           Math.floor(Math.random() * currentWatchedGames.length)
         ];
       return {
-        label: (
-          <Link className="plain" to={`/game/${encodeURIComponent(gameID)}`}>
-            Join
-          </Link>
-        ),
+        label: <Link to={`/game/${encodeURIComponent(gameID)}`}>Join</Link>,
         key: `join-${userID}`,
       };
     } else if (currentlyPuzzling) {
       return {
-        label: (
-          <Link className="plain" to="/puzzle">
-            Join
-          </Link>
-        ),
+        label: <Link to="/puzzle">Join</Link>,
         key: `puzzlejoin-${userID}`,
       };
     } else {

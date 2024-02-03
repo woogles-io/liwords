@@ -15,6 +15,9 @@ const componentOverrides = {
   Input: {
     colorBorder: '#b9b9b9',
   },
+  Dropdown: {
+    paddingBlock: 10,
+  },
 };
 
 export const liwordsDefaultTheme = {
