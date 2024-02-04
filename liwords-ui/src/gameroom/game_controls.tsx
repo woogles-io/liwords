@@ -8,6 +8,7 @@ import React, {
 import { useNavigate } from 'react-router-dom';
 import {
   Affix,
+  App,
   Button,
   Dropdown,
   Menu,
@@ -423,7 +424,8 @@ const GameControls = React.memo((props: Props) => {
   const optionsMenuOnClick: MenuProps['onClick'] = ({ key }) => {
     switch (key) {
       case 'resign':
-        Modal.confirm({
+        const { modal } = App.useApp();
+        modal.confirm({
           title: (
             <p className="readable-text-color">
               Are you sure you wish to resign?

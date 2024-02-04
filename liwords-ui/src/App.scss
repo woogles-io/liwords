@@ -89,23 +89,23 @@ button.ant-btn-link, button.link {
   }
 }
 
-a.plain,
-.link.plain {
-  cursor: pointer;
-  font-weight: 700;
-  @include colorModed() {
-    color: m($gray-extreme);
-  }
-  transition: none;
-  font-family: $font-default;
-  line-height: 34px;
-  &:hover,
-  &:active {
-    @include colorModed() {
-      color: m($primary-dark);
-    }
-  }
-}
+// a.plain,
+// .link.plain {
+//   cursor: pointer;
+//   font-weight: 700;
+//   @include colorModed() {
+//     color: m($gray-extreme);
+//   }
+//   transition: none;
+//   font-family: $font-default;
+//   line-height: 34px;
+//   &:hover,
+//   &:active {
+//     @include colorModed() {
+//       color: m($primary-dark);
+//     }
+//   }
+// }
 .note {
   font-size: 12px;
   line-height: 18px;

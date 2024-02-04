@@ -19,13 +19,13 @@ p {
       color: m($gray-medium);
     }
   }
-  .link.plain {
-    text-transform: none;
-    font-size: 14px;
-    @include colorModed() {
-      color: m($primary-dark);
-    }
-  }
+//   .link.plain {
+//     text-transform: none;
+//     font-size: 14px;
+//     @include colorModed() {
+//       color: m($primary-dark);
+//     }
+//   }
   .anticon {
     font-size: 18px;
     margin-right: 12px;
