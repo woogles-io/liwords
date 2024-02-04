@@ -6,16 +6,7 @@ import React, {
   useState,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Affix,
-  App,
-  Button,
-  Dropdown,
-  Menu,
-  MenuProps,
-  Modal,
-  Popconfirm,
-} from 'antd';
+import { Affix, App, Button, Dropdown, MenuProps, Popconfirm } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 
 import {
@@ -344,6 +335,8 @@ const GameControls = React.memo((props: Props) => {
     setHandleNeitherShortcut(() => handleNeitherShortcut);
   }, [handleNeitherShortcut, setHandleNeitherShortcut]);
 
+  const { modal } = App.useApp();
+
   const optionsMenuItems = useMemo(() => {
     const items = [
       {
@@ -424,7 +417,6 @@ const GameControls = React.memo((props: Props) => {
   const optionsMenuOnClick: MenuProps['onClick'] = ({ key }) => {
     switch (key) {
       case 'resign':
-        const { modal } = App.useApp();
         modal.confirm({
           title: (
             <p className="readable-text-color">
