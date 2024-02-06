@@ -1,5 +1,5 @@
 import { Card, Layout } from 'antd';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { TopBar } from '../navigation/topbar';
 import { EditorControl } from './editor_control';
 

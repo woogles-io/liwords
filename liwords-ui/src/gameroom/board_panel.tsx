@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react';
 import { TouchBackend } from 'react-dnd-touch-backend';
-import { Button, notification, message, Tooltip, Affix } from 'antd';
+import { Button, Tooltip, Affix, App } from 'antd';
 import { Modal } from '../utils/focus_modal';
 import { DndProvider } from 'react-dnd';
 import {
@@ -318,6 +318,8 @@ export const BoardPanel = React.memo((props: Props) => {
     username,
     boardEditingMode,
   } = props;
+
+  const { message, notification } = App.useApp();
 
   const makeMove = useCallback(
     (move: string, addl?: Array<MachineLetter>) => {

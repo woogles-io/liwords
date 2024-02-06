@@ -469,20 +469,15 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
     .ant-notification-notice,
     .ant-message-notice-content,
     a {
-      @include type-default;
+      font-family: $font-default;
+      font-style: normal;
+      line-height: 18px;
       font-size: 15px;
       font-weight: 600;
       letter-spacing: 0.06em;
-      @include colorModed() {
-        background: m($primary-dark);
-        color: m($background);
-      }
       .ant-notification-notice-message {
         font-weight: 700;
         max-width: 80%;
-        @include colorModed() {
-          color: m($background);
-        }
       }
 
       .ant-notification-notice-description p {
@@ -493,11 +488,11 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
         text-decoration: underline;
         cursor: pointer;
       }
-      .anticon {
-        @include colorModed() {
-          color: m($primary-light);
-        }
-      }
+    //   .anticon {
+    //     @include colorModed() {
+    //       color: m($primary-light);
+    //     }
+    //   }
     }
     button.ant-btn,
     button.ant-btn-primary,
@@ -505,11 +500,11 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
     a.btn-primary {
       box-shadow: none;
       font-size: 14px;
-      @include colorModed() {
-        background-color: transparent;
-        border-color: m($background);
-        color: m($background);
-      }
+    //   @include colorModed() {
+    //     background-color: transparent;
+    //     border-color: m($background);
+    //     color: m($background);
+    //   }
     }
   }
 }

@@ -1,7 +1,5 @@
-import React from 'react';
-
 import { loadStripe, StripeError } from '@stripe/stripe-js';
-import { Button, message } from 'antd';
+import { App, Button } from 'antd';
 import { useLoginStateStoreContext } from './store/store';
 
 const PUBLISHABLE_KEY =
@@ -33,7 +31,7 @@ type StripeResult = {
 
 export const Donate = () => {
   const { loginState } = useLoginStateStoreContext();
-
+  const { message } = App.useApp();
   const handleResult = (result: StripeResult) => {
     if (result.error) {
       message.error({

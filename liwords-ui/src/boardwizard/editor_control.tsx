@@ -2,7 +2,7 @@
 
 import { Button, Form, Input, Popconfirm, Select, Typography } from 'antd';
 import { Store } from 'antd/lib/form/interface';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChallengeRule } from '../gen/api/proto/ipc/omgwords_pb';
 import { LexiconFormItem } from '../shared/lexicon_display';
 import { useGameContextStoreContext } from '../store/store';

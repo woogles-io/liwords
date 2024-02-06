@@ -1,4 +1,4 @@
-import { message } from 'antd';
+import { MessageInstance } from 'antd/lib/message/interface';
 import { GameMetaEvent_EventType } from '../gen/api/proto/ipc/omgwords_pb';
 import { GameMetaEvent } from '../gen/api/proto/ipc/omgwords_pb';
 import { Millis } from './timer_controller';
@@ -19,6 +19,7 @@ export type MetaEventState = {
 };
 
 export const metaStateFromMetaEvent = (
+  message: MessageInstance,
   oldState: MetaEventState,
   metaEvent: GameMetaEvent,
   us: string
