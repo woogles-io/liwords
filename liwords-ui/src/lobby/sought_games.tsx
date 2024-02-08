@@ -268,6 +268,7 @@ export const SoughtGames = (props: Props) => {
   return (
     <>
       {props.isMatch ? <h4>Match requests</h4> : <h4>Available games</h4>}
+
       <Table
         className={`games ${props.isMatch ? 'match' : 'seek'}`}
         dataSource={formatGameData(props.requests)}

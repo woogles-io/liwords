@@ -18,6 +18,7 @@ import './room.scss';
 import { useTourneyMetadata } from './utils';
 import { useSearchParams } from 'react-router-dom';
 import { OwnScoreEnterer } from './enter_own_scores';
+import { ConfigProvider } from 'antd';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -125,25 +126,37 @@ export const TournamentRoom = (props: Props) => {
             />
           )}
         </div>
-        <ActionsPanel
-          selectedGameTab={selectedGameTab}
-          setSelectedGameTab={setSelectedGameTab}
-          isDirector={isDirector}
-          isAdmin={isAdmin}
-          tournamentID={tournamentID}
-          onSeekSubmit={onSeekSubmit}
-          loggedIn={loggedIn}
-          newGame={handleNewGame}
-          username={username}
-          userID={userID}
-          sendReady={() =>
-            readyForTournamentGame(
-              sendSocketMsg,
-              tournamentContext.metadata.id,
-              competitorContext
-            )
-          }
-        />
+        <ConfigProvider
+          theme={{
+            components: {
+              Dropdown: {
+                paddingBlock: 5,
+                paddingXS: 0,
+                paddingXXS: 0,
+              },
+            },
+          }}
+        >
+          <ActionsPanel
+            selectedGameTab={selectedGameTab}
+            setSelectedGameTab={setSelectedGameTab}
+            isDirector={isDirector}
+            isAdmin={isAdmin}
+            tournamentID={tournamentID}
+            onSeekSubmit={onSeekSubmit}
+            loggedIn={loggedIn}
+            newGame={handleNewGame}
+            username={username}
+            userID={userID}
+            sendReady={() =>
+              readyForTournamentGame(
+                sendSocketMsg,
+                tournamentContext.metadata.id,
+                competitorContext
+              )
+            }
+          />
+        </ConfigProvider>
         <TournamentInfo
           setSelectedGameTab={setSelectedGameTab}
           sendSocketMsg={sendSocketMsg}

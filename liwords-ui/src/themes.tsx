@@ -12,17 +12,14 @@ const tokenoverrides = {
 
 // componentOverrides are for default mode
 const componentOverrides = {
-  Table: {
-    rowHoverBg: 'unset',
-    headerSortHoverBg: 'unset',
-    headerFilterHoverBg: 'unset',
-    rowSelectedHoverBg: 'unset',
-  },
   Input: {
     colorBorder: '#b9b9b9',
   },
   Dropdown: {
     paddingBlock: 10,
+  },
+  Checkbox: {
+    colorBgContainer: '#ffffff',
   },
 };
 
@@ -44,6 +41,13 @@ const lightComponentOverrides = {
   Modal: {
     colorText: '#282828',
   },
+  Table: {
+    rowHoverBg: 'unset',
+    headerSortHoverBg: 'unset',
+    headerFilterHoverBg: 'unset',
+    rowSelectedHoverBg: 'unset',
+    colorBgContainer: '#ffffff',
+  },
 };
 
 const darkComponentOverrides = {
@@ -61,6 +65,13 @@ const darkComponentOverrides = {
   },
   Modal: {
     colorText: '#000000',
+  },
+  Table: {
+    rowHoverBg: 'unset',
+    headerSortHoverBg: 'unset',
+    headerFilterHoverBg: 'unset',
+    rowSelectedHoverBg: 'unset',
+    colorBgContainer: '#3a3a3a',
   },
 };
 

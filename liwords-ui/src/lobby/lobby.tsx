@@ -10,6 +10,7 @@ import './lobby.scss';
 import { AnnouncementsWidget } from './announcements';
 import { sendAccept, sendSeek } from './sought_game_interactions';
 import { PuzzlePreview } from '../puzzles/puzzle_preview';
+import { ConfigProvider } from 'antd';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -57,15 +58,27 @@ export const Lobby = (props: Props) => {
             DISCONNECT={props.DISCONNECT}
           />
         </div>
-        <GameLists
-          loggedIn={loggedIn}
-          userID={userID}
-          username={username}
-          newGame={handleNewGame}
-          selectedGameTab={selectedGameTab}
-          setSelectedGameTab={setSelectedGameTab}
-          onSeekSubmit={onSeekSubmit}
-        />
+        <ConfigProvider
+          theme={{
+            components: {
+              Dropdown: {
+                paddingBlock: 5,
+                paddingXS: 0,
+                paddingXXS: 0,
+              },
+            },
+          }}
+        >
+          <GameLists
+            loggedIn={loggedIn}
+            userID={userID}
+            username={username}
+            newGame={handleNewGame}
+            selectedGameTab={selectedGameTab}
+            setSelectedGameTab={setSelectedGameTab}
+            onSeekSubmit={onSeekSubmit}
+          />
+        </ConfigProvider>
         <div className="announcements">
           <AnnouncementsWidget />
           <PuzzlePreview />

@@ -471,13 +471,21 @@ ul {
   }
 }
 
+// XXX: Can't find an AntD theme style thingy for this:
 .ant-table-filter-dropdown-btns {
   display: flex;
   align-items: center;
+  height: 63px;
   @include colorModed() {
     background: m($background);
     color: m($gray-extreme);
     border-top: 1px solid m($card-background);
+  }
+  .ant-btn {
+    height: 36px;
+  }
+  .ant-btn-link {
+    border: 1px solid;
   }
 }
 

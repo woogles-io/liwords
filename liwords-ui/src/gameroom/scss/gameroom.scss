@@ -88,8 +88,9 @@ p.streak-loss {
         display: flex;
         align-items: center;
 
-        button.ant-btn-icon-only>* {
-            font-size: inherit;
+        button.ant-btn-icon-only {
+            font-size: 16px;
+            color: black;
         }
 
         .controls {
@@ -139,7 +140,8 @@ p.streak-loss {
                 padding: 0;
 
                 button.ant-btn-icon-only {
-                    font-size: 18px;
+                    font-size: 16px;
+                    color: black;
                 }
             }
         }

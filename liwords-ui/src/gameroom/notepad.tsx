@@ -190,7 +190,7 @@ export const Notepad = React.memo((props: NotepadProps) => {
   );
   if (props.includeCard) {
     return (
-      <Card title="Notepad" className="notepad-card" extra={controls()}>
+      <Card title="Notepad" className="notepad-card " extra={controls()}>
         {notepadContainer}
       </Card>
     );
