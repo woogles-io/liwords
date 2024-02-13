@@ -541,7 +541,7 @@ export const SeekForm = (props: Props) => {
         <ChallengeRulesFormItem disabled={disableChallengeControls} />
       )}
       <Form.Item
-        className="initial"
+        className="initial custom-tags"
         label="Initial minutes"
         name="initialtimeslider"
         extra={<Tag color={ttag}>{timectrl}</Tag>}

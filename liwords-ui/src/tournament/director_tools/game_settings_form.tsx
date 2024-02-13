@@ -156,7 +156,7 @@ export const SettingsForm = (props: Props) => {
       <ChallengeRulesFormItem disabled={false} />
 
       <Form.Item
-        className="initial"
+        className="initial custom-tags"
         label="Initial Minutes"
         name="initialtimeslider"
         extra={<Tag color={ttag}>{timectrl}</Tag>}
