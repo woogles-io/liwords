@@ -81,7 +81,7 @@ const Pool = React.memo((props: Props) => {
     () => localStorage.getItem('hidePool') === 'true',
     []
   );
-  const [hidePool, setHidePool] = React.useState(readHidePool); // ok to not use useMountedState
+  const [hidePool, setHidePool] = React.useState(readHidePool);
   React.useEffect(() => {
     const interval = setInterval(() => {
       setHidePool(readHidePool);

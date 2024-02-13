@@ -1,15 +1,13 @@
 import { Layout, Menu } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import React from 'react';
+import React, { useState } from 'react';
 import { TopBar } from '../navigation/topbar';
 import { TourneyEditor } from './tourney_editor';
 // import { UserEditor } from './user_editor';
-import { useMountedState } from '../utils/mounted';
 import { AnnouncementEditor } from './announcement_editor';
 import './admin.scss';
 import { PuzzleGenerator } from './puzzle_generator';
 // import { TourneyManager } from './tourney_manager';
-// import 'antd/dist/antd.min.css';
 
 type SiderProps = {
   setVisibleTab: React.Dispatch<React.SetStateAction<string>>;
@@ -35,7 +33,6 @@ const Sider = (props: SiderProps) => {
 };
 
 export const Admin = () => {
-  const { useState } = useMountedState();
   const [visibleTab, setVisibleTab] = useState('');
   return (
     <>

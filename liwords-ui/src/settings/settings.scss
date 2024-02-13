@@ -257,9 +257,6 @@
       margin-left: 24px;
       border-width: 2px;
     }
-    .remove-avatar {
-      border-width: 0;
-    }
   }
 
   .no-avatar-section {
@@ -470,9 +467,10 @@
         }
       }
       .ant-slider-handle {
-        width: 24px;
-        height: 24px;
-        top: 0px;
+        // width: 24px;
+        // height: 24px;
+        // top: 0px;
+        // border-radius: 10px;
         @include colorModed() {
           background-color: m($primary-dark);
           border-color: m($primary-dark)

@@ -166,11 +166,13 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       className: 'result',
       dataIndex: 'result',
       key: 'result',
+      title: ' ',
     },
     {
       className: 'when',
       dataIndex: 'when',
       key: 'when',
+      title: ' ',
     },
     {
       className: 'opponent',

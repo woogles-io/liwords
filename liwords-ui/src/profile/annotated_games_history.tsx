@@ -63,6 +63,7 @@ export const AnnotatedGamesHistoryCard = React.memo((props: Props) => {
     {
       key: 'edit',
       dataIndex: 'edit',
+      title: ' ',
     },
   ];
   if (props.showAnnotator) {

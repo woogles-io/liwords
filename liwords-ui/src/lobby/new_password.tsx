@@ -1,5 +1,4 @@
-import React from 'react';
-import { useMountedState } from '../utils/mounted';
+import React, { useState } from 'react';
 import { Row, Col, Input, Form, Alert, notification, Button } from 'antd';
 import qs from 'qs';
 import { useLocation } from 'react-router-dom';
@@ -23,8 +22,6 @@ const tailLayout = {
 };
 
 export const NewPassword = () => {
-  const { useState } = useMountedState();
-
   const [err, setErr] = useState('');
   const location = useLocation();
   const params = qs.parse(location.search, { ignoreQueryPrefix: true });

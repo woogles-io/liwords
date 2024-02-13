@@ -1,5 +1,4 @@
-import React, { useEffect, useMemo, useRef, DragEvent } from 'react';
-import { useMountedState } from '../utils/mounted';
+import React, { useEffect, useMemo, useRef, DragEvent, useState } from 'react';
 import { useDrag, useDragLayer, useDrop } from 'react-dnd';
 import TentativeScore from './tentative_score';
 import {
@@ -143,7 +142,6 @@ type TileProps = {
 };
 
 const Tile = React.memo((props: TileProps) => {
-  const { useState } = useMountedState();
   const rune = useMemo(
     () => machineLetterToRune(props.letter, props.alphabet),
     [props.letter, props.alphabet]
@@ -209,7 +207,6 @@ const Tile = React.memo((props: TileProps) => {
     props.grabbable && props.letter !== EmptyRackSpaceMachineLetter;
   const [{ isDragging }, drag, preview] = useDrag({
     item: {
-      type: TILE_TYPE,
       rackIndex:
         typeof props.rackIndex === 'number'
           ? props.rackIndex.toString()
@@ -227,6 +224,7 @@ const Tile = React.memo((props: TileProps) => {
       isDragging: monitor.isDragging(),
     }),
     canDrag: (monitor) => canDrag,
+    type: TILE_TYPE,
   });
 
   useEffect(() => {

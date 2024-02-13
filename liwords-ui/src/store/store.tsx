@@ -4,8 +4,8 @@ import React, {
   useContext,
   useMemo,
   useRef,
+  useState,
 } from 'react';
-import { useMountedState } from '../utils/mounted';
 
 import { LobbyState, LobbyReducer } from './reducers/lobby_reducer';
 import { Action } from '../actions/actions';
@@ -402,15 +402,13 @@ const WHERE_TO_ENABLE_EXAMINE_SHORTCUTS = [
 ];
 
 const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
-  const { useState } = useMountedState();
-
   const gameContextStore = useGameContextStoreContext();
   const gameEndMessageStore = useGameEndMessageStoreContext();
   const timerStore = useTimerStoreContext();
   const [shortcutsDisabled, setShortcutsDisabled] = useState(false);
 
   const shouldTrigger = useCallback(
-    (where) => {
+    (where: Element | null) => {
       if (shortcutsDisabled) {
         return false;
       }
@@ -476,7 +474,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     setExaminedTurn(Infinity);
   }, [setExaminedTurn]);
   const handleExamineGoTo = useCallback(
-    (x) => {
+    (x: number) => {
       if (x >= numberOfTurns) {
         setExaminedTurn(Infinity);
       } else {
@@ -627,7 +625,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   const [handleExaminers, setHandleExaminers] = useState(
     new Array<() => void>()
   );
-  const addHandleExaminer = useCallback((x) => {
+  const addHandleExaminer = useCallback((x: () => void) => {
     setHandleExaminers((a: Array<() => void>) => {
       if (!a.includes(x)) {
         a = [...a, x];
@@ -635,7 +633,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       return a;
     });
   }, []);
-  const removeHandleExaminer = useCallback((x) => {
+  const removeHandleExaminer = useCallback((x: () => void) => {
     setHandleExaminers((a) => {
       const b = a.filter((y) => y !== x);
       return a.length === b.length ? a : b;
@@ -643,7 +641,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const handleExamineShortcuts = useCallback(
-    (evt) => {
+    (evt: KeyboardEvent) => {
       if (isExamining && shouldTrigger(document.activeElement)) {
         if (evt.ctrlKey || evt.altKey || evt.metaKey) {
           // If a modifier key is held, never mind.
@@ -764,8 +762,6 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
 // The Real Store.
 
 const RealStore = ({ children, ...props }: Props) => {
-  const { useState } = useMountedState();
-
   const clockController = useRef<ClockController | null>(null);
 
   const onClockTick = useCallback((p: PlayerOrder, t: Millis) => {
@@ -788,7 +784,7 @@ const RealStore = ({ children, ...props }: Props) => {
     lobbyFilterByLexicon: localStorage.getItem('lobbyFilterByLexicon'),
   });
   const dispatchLobbyContext = useCallback(
-    (action) => setLobbyContext((state) => LobbyReducer(state, action)),
+    (action: Action) => setLobbyContext((state) => LobbyReducer(state, action)),
     []
   );
   const [loginState, setLoginState] = useState({
@@ -801,14 +797,15 @@ const RealStore = ({ children, ...props }: Props) => {
     perms: new Array<string>(),
   });
   const dispatchLoginState = useCallback(
-    (action) => setLoginState((state) => LoginStateReducer(state, action)),
+    (action: Action) =>
+      setLoginState((state) => LoginStateReducer(state, action)),
     []
   );
 
   const [tournamentContext, setTournamentContext] = useState(
     defaultTournamentState
   );
-  const dispatchTournamentContext = useCallback((action) => {
+  const dispatchTournamentContext = useCallback((action: Action) => {
     setTournamentContext((state) => {
       const newState = TournamentReducer(state, action);
       return newState;
@@ -831,7 +828,7 @@ const RealStore = ({ children, ...props }: Props) => {
     gameStateInitializer(clockController, onClockTick, onClockTimeout)
   );
   const dispatchGameContext = useCallback(
-    (action) =>
+    (action: Action) =>
       setGameContext((state) => {
         try {
           return GameReducer(state, action);
@@ -966,7 +963,7 @@ const RealStore = ({ children, ...props }: Props) => {
   const [handleContextMatches, setHandleContextMatches] = useState(
     new Array<(s: string) => void>()
   );
-  const addHandleContextMatch = useCallback((x) => {
+  const addHandleContextMatch = useCallback((x: (s: string) => void) => {
     setHandleContextMatches((a: Array<(s: string) => void>) => {
       if (!a.includes(x)) {
         a = [...a, x];
@@ -974,7 +971,7 @@ const RealStore = ({ children, ...props }: Props) => {
       return a;
     });
   }, []);
-  const removeHandleContextMatch = useCallback((x) => {
+  const removeHandleContextMatch = useCallback((x: (s: string) => void) => {
     setHandleContextMatches((a) => {
       const b = a.filter((y) => y !== x);
       return a.length === b.length ? a : b;
@@ -1228,8 +1225,6 @@ const ResetStoreContext = createContext({ resetStore: defaultFunction });
 export const useResetStoreContext = () => useContext(ResetStoreContext);
 
 export const Store = ({ children }: { children: React.ReactNode }) => {
-  const { useState } = useMountedState();
-
   // In JS the | 0 loops within int32 and avoids reaching Number.MAX_SAFE_INTEGER.
   const [storeId, setStoreId] = useState(0);
   const resetStore = useCallback(() => setStoreId((n) => (n + 1) | 0), []);

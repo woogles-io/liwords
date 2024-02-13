@@ -1,5 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
-import { useMountedState } from '../utils/mounted';
+import React, { useCallback, useEffect, useState } from 'react';
 import iconx from '../assets/icon-x.png';
 import { notification } from 'antd';
 import { Modal } from '../utils/focus_modal';
@@ -12,7 +11,6 @@ type user = {
 };
 
 export const BlockedPlayers = React.memo(() => {
-  const { useState } = useMountedState();
   const [blockedUsers, setBlockedUsers] = useState<Array<user>>([]);
   const [confirmModalUser, setConfirmModalUser] = useState<user | undefined>(
     undefined
@@ -32,7 +30,7 @@ export const BlockedPlayers = React.memo(() => {
   }, [socializeClient]);
 
   const unblock = useCallback(
-    async (user) => {
+    async (user: user) => {
       try {
         await socializeClient.removeBlock({ uuid: user.uuid });
         notification.info({

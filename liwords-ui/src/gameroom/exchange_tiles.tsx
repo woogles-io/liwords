@@ -1,5 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
-import { useMountedState } from '../utils/mounted';
+import React, { useCallback, useEffect, useState } from 'react';
 import Rack from './rack';
 import {
   useGameContextStoreContext,
@@ -26,8 +25,6 @@ type Props = {
 };
 
 export const ExchangeTiles = React.memo((props: Props) => {
-  const { useState } = useMountedState();
-
   const [exchangedRackIndices, setExchangedRackIndices] = useState(
     new Set<number>()
   );
