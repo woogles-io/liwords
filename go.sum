@@ -75,10 +75,10 @@ github.com/docker/go-connections v0.4.0 h1:El9xVISelRB7BuFusrZozjnkIM5YnzCViNKoh
 github.com/docker/go-connections v0.4.0/go.mod h1:Gbd7IOopHjR8Iph03tsViu4nIes5XhDvyHbTtUxmeec=
 github.com/docker/go-units v0.5.0 h1:69rxXcBk27SvSaaxTtLh/8llcHD8vYHT7WSdRZ/jvr4=
 github.com/docker/go-units v0.5.0/go.mod h1:fgPhTUdO+D/Jk86RDLlptpiXQzgHJF7gydDDbaIK4Dk=
-github.com/domino14/macondo v0.8.10 h1:Kd/q2CDl9qcoSwmCmiaNjcnb2TYF2/1h7l3C84SAtss=
-github.com/domino14/macondo v0.8.10/go.mod h1:jdImN4rQRRGetncXy7+j0z49CFvwhIzecBB/qyaC1/U=
-github.com/domino14/word-golib v0.1.9 h1:2o5IiSal6N9903oR2WSDttsBKig8Jfvtwh1VTC0eJrk=
-github.com/domino14/word-golib v0.1.9/go.mod h1:3OMAtX5K/YA/9PQe02h2S7hPfDn6/ZKmrv8vMI2vQss=
+github.com/domino14/macondo v0.8.11-0.20240212043511-22cf1f9d305e h1:CtvlpCd4DJYXDcX+uWAb6ewcSlXWgq8H+6CKwMk0f8s=
+github.com/domino14/macondo v0.8.11-0.20240212043511-22cf1f9d305e/go.mod h1:QP2ulYY0KaPYOPcSWrCgqzHVp/6g1MSF/zWRC6e0U2Q=
+github.com/domino14/word-golib v0.1.10 h1:+l+50/cq4CzjzpqK3Uiu/cuxn1FL6aXZLSZ12XY9SZ4=
+github.com/domino14/word-golib v0.1.10/go.mod h1:3OMAtX5K/YA/9PQe02h2S7hPfDn6/ZKmrv8vMI2vQss=
 github.com/facebookgo/ensure v0.0.0-20160127193407-b4ab57deab51 h1:0JZ+dUmQeA8IIVUMzysrX4/AKuQwWhV2dYQuPZdvdSQ=
 github.com/facebookgo/ensure v0.0.0-20160127193407-b4ab57deab51/go.mod h1:Yg+htXGokKKdzcwhuNDwVvN+uBxDGXJ7G/VN1d8fa64=
 github.com/facebookgo/stack v0.0.0-20160209184415-751773369052 h1:JWuenKqqX8nojtoVVWjGfOF9635RETekkoH6Cc9SX0A=
@@ -121,8 +121,8 @@ github.com/golang-sql/sqlexp v0.1.0 h1:ZCD6MBpcuOVfGVqsEmY5/4FtYiKz6tSyUv9LPEDei
 github.com/golang-sql/sqlexp v0.1.0/go.mod h1:J4ad9Vo8ZCWQ2GMrC4UCQy1JpCbwU9m3EOqtpKwwwHI=
 github.com/gomodule/redigo v1.8.9 h1:Sl3u+2BI/kk+VEatbj0scLdrFhjPmbxOc1myhDP41ws=
 github.com/gomodule/redigo v1.8.9/go.mod h1:7ArFNvsTjH8GMMzB4uy1snslv2BwmginuMs06a1uzZE=
-github.com/google/go-cmp v0.5.9 h1:O2Tfq5qg4qc4AmwVlvv0oLiVAGB7enBSJ2x2DqQFi38=
-github.com/google/go-cmp v0.5.9/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
+github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
+github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
 github.com/google/gofuzz v1.0.0/go.mod h1:dBl0BpW6vV/+mYPU4Po3pmUjxk6FQPldtuIdl/M65Eg=
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
 github.com/google/uuid v1.4.0 h1:MtMxsa51/r9yyhkyLsVeVt0B+BGQZzpQiTQ4eHZ8bc4=

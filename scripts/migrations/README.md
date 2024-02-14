@@ -8,6 +8,6 @@ Migration scripts.
 
 3. `docker cp my-script mycontainer:/my-script`
 
-4. `docker exec mycontainer sh`
+4. `docker exec -it mycontainer bash`
 
 5. Run the script `./my-script` in the container.

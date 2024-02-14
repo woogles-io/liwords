@@ -1,6 +1,6 @@
 module github.com/woogles-io/liwords
 
-go 1.21.5
+go 1.22.0
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.24.0
@@ -9,8 +9,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.33.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.42.2
 	github.com/aws/smithy-go v1.19.0
-	github.com/domino14/macondo v0.8.10
-	github.com/domino14/word-golib v0.1.9
+	github.com/domino14/macondo v0.8.11-0.20240212043511-22cf1f9d305e
+	github.com/domino14/word-golib v0.1.10
 	github.com/go-redsync/redsync/v4 v4.11.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang-migrate/migrate/v4 v4.16.2
