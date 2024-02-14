@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { Card } from 'antd';
 import { BoardPreview } from '../settings/board_preview';
 import './puzzle_preview.scss';
+import { useMountedState } from '../utils/mounted';
 import {
   StartPuzzleIdRequest,
   PuzzleRequest,
@@ -28,6 +29,7 @@ import { MachineLetter } from '../utils/cwgame/common';
 
 export const PuzzlePreview = React.memo(() => {
   const userLexicon = localStorage?.getItem('puzzleLexicon');
+  const { useState } = useMountedState();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { username, loggedIn } = loginState;

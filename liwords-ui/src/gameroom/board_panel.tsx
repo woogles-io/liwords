@@ -1,12 +1,6 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { TouchBackend } from 'react-dnd-touch-backend';
-import { Button, Tooltip, Affix, App } from 'antd';
+import { Button, notification, message, Tooltip, Affix } from 'antd';
 import { Modal } from '../utils/focus_modal';
 import { DndProvider } from 'react-dnd';
 import {
@@ -24,6 +18,7 @@ import {
   EmptyBoardSpaceMachineLetter,
   BlankMachineLetter,
 } from '../utils/cwgame/common';
+import { useMountedState } from '../utils/mounted';
 
 import GameBoard from './board';
 import { DrawingHandlersSetterContext } from './drawing';
@@ -226,6 +221,8 @@ const backupKey = (letters: Array<MachineLetter>, rack: Array<MachineLetter>) =>
   JSON.stringify({ letters, rack });
 
 export const BoardPanel = React.memo((props: Props) => {
+  const { useState } = useMountedState();
+
   // Poka-yoke against accidentally having multiple modes active.
   const [currentMode, setCurrentMode] = useState<
     | 'BLANK_MODAL'
@@ -257,19 +254,18 @@ export const BoardPanel = React.memo((props: Props) => {
   const { gameContext } = useGameContextStoreContext();
   const { stopClock } = useTimerStoreContext();
   const [exchangeAllowed, setexchangeAllowed] = useState(true);
-  // XXX: this is complicated, it doesn't seem like we should need these:
   const handlePassShortcut = useRef<(() => void) | null>(null);
-  const setHandlePassShortcut = useCallback((x: any) => {
+  const setHandlePassShortcut = useCallback((x) => {
     handlePassShortcut.current =
       typeof x === 'function' ? x(handlePassShortcut.current) : x;
   }, []);
   const handleChallengeShortcut = useRef<(() => void) | null>(null);
-  const setHandleChallengeShortcut = useCallback((x: any) => {
+  const setHandleChallengeShortcut = useCallback((x) => {
     handleChallengeShortcut.current =
       typeof x === 'function' ? x(handleChallengeShortcut.current) : x;
   }, []);
   const handleNeitherShortcut = useRef<(() => void) | null>(null);
-  const setHandleNeitherShortcut = useCallback((x: any) => {
+  const setHandleNeitherShortcut = useCallback((x) => {
     handleNeitherShortcut.current =
       typeof x === 'function' ? x(handleNeitherShortcut.current) : x;
   }, []);
@@ -319,8 +315,6 @@ export const BoardPanel = React.memo((props: Props) => {
     boardEditingMode,
   } = props;
 
-  const { message, notification } = App.useApp();
-
   const makeMove = useCallback(
     (move: string, addl?: Array<MachineLetter>) => {
       if (isExamining && !boardEditingMode) return;
@@ -333,7 +327,7 @@ export const BoardPanel = React.memo((props: Props) => {
           examinableGameContext.onturn
         );
         // It is not my turn. Ignore this event.
-        message.warning({
+        message.warn({
           content: 'It is not your turn.',
           className: 'board-hud-message',
           key: 'board-messages',
@@ -836,7 +830,7 @@ export const BoardPanel = React.memo((props: Props) => {
           string,
           string,
           number,
-          string,
+          string
         ] => {
           const timepenalty = (time: number) => {
             // Calculate a timepenalty for speech purposes only. The backend will
@@ -1470,7 +1464,7 @@ export const BoardPanel = React.memo((props: Props) => {
   ]);
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<Element>) => {
+    (e) => {
       if (drawingCanBeEnabled) {
         // To activate a drawing hotkey, type 0, then the hotkey.
         if (currentMode === 'NORMAL' || currentMode === 'DRAWING_HOTKEY') {
@@ -1547,7 +1541,7 @@ export const BoardPanel = React.memo((props: Props) => {
   // Just put this in onKeyPress to block all typeable keys so that typos from
   // placing a tile not on rack also do not trigger type-to-find on firefox.
   const preventFirefoxTypeToSearch = useCallback(
-    (e: { preventDefault: () => void }) => {
+    (e) => {
       if (currentMode !== 'EDITING_RACK') {
         e.preventDefault();
       }
@@ -1632,8 +1626,8 @@ export const BoardPanel = React.memo((props: Props) => {
           authedSolvingPuzzle
             ? props.puzzleSolved !== PuzzleStatus.UNANSWERED
             : nonDirectorAnalyzerDisallowed
-              ? examinableGameContext.playState === PlayState.GAME_OVER
-              : true
+            ? examinableGameContext.playState === PlayState.GAME_OVER
+            : true
         }
         exchangeAllowed={exchangeAllowed}
         observer={authedSolvingPuzzle || boardEditingMode ? false : observer}

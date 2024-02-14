@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { message, notification } from 'antd';
 import {
   useChallengeResultEventStoreContext,
   useChatStoreContext,
@@ -81,7 +82,6 @@ import { ProfileUpdate } from '../gen/api/proto/ipc/users_pb';
 import { ChatEntityType, PresenceEntity } from './constants';
 import { ServerOMGWordsEvent } from '../gen/api/proto/ipc/omgwords_pb';
 import { GameDocumentEvent } from '../gen/api/proto/ipc/omgwords_pb';
-import { App } from 'antd';
 // Feature flag.
 export const enableShowSocket =
   localStorage?.getItem('enableShowSocket') === 'true';
@@ -190,7 +190,6 @@ export const useOnSocketMsg = () => {
   const { isExamining } = useExamineStoreContext();
 
   const navigate = useNavigate();
-  const { message, notification } = App.useApp();
 
   return useCallback(
     (reader: FileReader) => {
@@ -359,7 +358,7 @@ export const useOnSocketMsg = () => {
                 duration: 10, // 10 seconds,
                 onClick: () => {
                   navigate(url);
-                  notification.destroy('rematch-notification');
+                  notification.close('rematch-notification');
                 },
               });
             } else {
@@ -676,7 +675,6 @@ export const useOnSocketMsg = () => {
             if (gme) {
               setGameMetaEventContext(
                 metaStateFromMetaEvent(
-                  message,
                   gameMetaEventContext,
                   gme,
                   loginState.userID
@@ -756,7 +754,6 @@ export const useOnSocketMsg = () => {
             const gme = parsedMsg as GameMetaEvent;
             setGameMetaEventContext(
               metaStateFromMetaEvent(
-                message,
                 gameMetaEventContext,
                 gme,
                 loginState.userID

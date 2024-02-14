@@ -1,9 +1,10 @@
 import { Card, Layout } from 'antd';
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { TopBar } from '../navigation/topbar';
 import { EditorControl } from './editor_control';
 
 import { ChallengeRule } from '../gen/api/proto/ipc/omgwords_pb';
+import { useMountedState } from '../utils/mounted';
 import { BroadcastGamesResponse_BroadcastGame } from '../gen/api/proto/omgwords_service/omgwords_pb';
 import { useClient } from '../utils/hooks/connect';
 import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_connectweb';
@@ -24,6 +25,7 @@ type Props = {
 const annotatedPageSize = 40;
 
 export const EditorLandingPage = (props: Props) => {
+  const { useState } = useMountedState();
   const [recentAnnotatedGames, setRecentAnnotatedGames] = useState<
     Array<BroadcastGamesResponse_BroadcastGame>
   >([]);

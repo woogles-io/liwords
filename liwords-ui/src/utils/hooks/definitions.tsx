@@ -1,13 +1,8 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { GameState } from '../../store/reducers/game_reducer';
 import { ChatEntityType, ChatEntityObj } from '../../store/constants';
 import { Blank } from '../../utils/cwgame/common';
+import { useMountedState } from '../../utils/mounted';
 import { Unrace } from '../../utils/unrace';
 import { GameEvent_Type } from '../../gen/api/proto/macondo/macondo_pb';
 import { useClient } from './connect';
@@ -30,6 +25,8 @@ export const useDefinitionAndPhonyChecker = ({
   lexicon: string;
   variant: string | undefined;
 }) => {
+  const { useState } = useMountedState();
+
   // undefined = not known
   const [wordInfo, setWordInfo] = useState<{
     [key: string]: undefined | { v: boolean; d: string };
@@ -281,8 +278,8 @@ export const useDefinitionAndPhonyChecker = ({
           for (const otherLexicon of lexicon === 'ECWL'
             ? ['CSW21', 'NWL20']
             : lexicon === 'CSW19X'
-              ? ['CSW21']
-              : []) {
+            ? ['CSW21']
+            : []) {
             const wordsToRedefine = [];
             for (const word of wordsToDefine) {
               if (

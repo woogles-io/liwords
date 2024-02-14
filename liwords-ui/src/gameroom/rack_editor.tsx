@@ -1,5 +1,6 @@
 import Input, { InputRef } from 'rc-input';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { useMountedState } from '../utils/mounted';
 import { MachineWord } from '../utils/cwgame/common';
 import {
   Alphabet,
@@ -17,6 +18,7 @@ type Props = {
 const MaxRackLength = 7;
 
 export const RackEditor = (props: Props) => {
+  const { useState } = useMountedState();
   const [currentRack, setCurrentRack] = useState(props.currentRack);
   const inputRef = useRef<InputRef>(null);
   const handleKeyDown = (evt: React.KeyboardEvent) => {

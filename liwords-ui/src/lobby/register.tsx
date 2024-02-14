@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../navigation/topbar';
 import {
   Input,
@@ -80,6 +81,7 @@ const useBirthBox = (
   filterOptions: (s: string) => Array<Option>,
   placeholder: string
 ) => {
+  const { useState } = useMountedState();
   const [selection, setSelection] = useState<number | undefined>(undefined);
   const [searched, setSearched] = useState('');
   const [shownOptions, setShownOptions] = useState(allOptions);
@@ -87,7 +89,7 @@ const useBirthBox = (
     setShownOptions(allOptions);
   }, [allOptions]);
   const handleChange = useCallback(
-    (s: string) => {
+    (s) => {
       const selection = deduceSelection(s);
       setSelection(selection);
       if (selection != null) {
@@ -98,14 +100,14 @@ const useBirthBox = (
     [deduceSelection, formatSelection, allOptions]
   );
   const handleSearch = useCallback(
-    (s: string) => {
+    (s) => {
       setSearched(s);
       setShownOptions(filterOptions(s));
     },
     [filterOptions]
   );
   const [reformatSelection, setReformatSelection] = useState<boolean>(false);
-  const handleDropdownVisibleChange = useCallback((open: boolean) => {
+  const handleDropdownVisibleChange = useCallback((open) => {
     if (!open) {
       // the reformatting has to be in the next render,
       // otherwise it would revert to the current value instead.
@@ -131,7 +133,7 @@ const useBirthBox = (
         onSearch={handleSearch}
         onDropdownVisibleChange={handleDropdownVisibleChange}
       >
-        <Input variant="borderless" {...{ placeholder }} />
+        <Input bordered={false} {...{ placeholder }} />
       </AutoComplete>
     </Form.Item>,
     selection,
@@ -186,6 +188,8 @@ const birthDateValidator = async (rule: Rule, value: string) => {
 };
 
 export const Register = () => {
+  const { useState } = useMountedState();
+
   const [err, setErr] = useState('');
   const [signedUp, setSignedUp] = useState(false);
 

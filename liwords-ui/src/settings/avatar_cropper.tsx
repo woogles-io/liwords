@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Button, Slider } from 'antd';
 import { Modal } from '../utils/focus_modal';
 import Cropper from 'react-easy-crop';
+import { useMountedState } from '../utils/mounted';
 import { Area } from 'react-easy-crop/types';
 
 type Props = {
@@ -12,6 +13,7 @@ type Props = {
 };
 
 export const AvatarCropper = React.memo((props: Props) => {
+  const { useState } = useMountedState();
   const [dataUrl, setDataUrl] = useState<string | undefined>(undefined);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState<number | undefined>(1);

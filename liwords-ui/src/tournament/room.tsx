@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 import { useCallback, useMemo } from 'react';
 
@@ -6,6 +6,7 @@ import {
   useLoginStateStoreContext,
   useTournamentStoreContext,
 } from '../store/store';
+import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../navigation/topbar';
 import { Chat } from '../chat/chat';
 import { TournamentInfo } from './tournament_info';
@@ -18,7 +19,6 @@ import './room.scss';
 import { useTourneyMetadata } from './utils';
 import { useSearchParams } from 'react-router-dom';
 import { OwnScoreEnterer } from './enter_own_scores';
-import { ConfigProvider } from 'antd';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -26,6 +26,7 @@ type Props = {
 };
 
 export const TournamentRoom = (props: Props) => {
+  const { useState } = useMountedState();
   const [searchParams] = useSearchParams();
 
   const { loginState } = useLoginStateStoreContext();
@@ -126,37 +127,25 @@ export const TournamentRoom = (props: Props) => {
             />
           )}
         </div>
-        <ConfigProvider
-          theme={{
-            components: {
-              Dropdown: {
-                paddingBlock: 5,
-                paddingXS: 0,
-                paddingXXS: 0,
-              },
-            },
-          }}
-        >
-          <ActionsPanel
-            selectedGameTab={selectedGameTab}
-            setSelectedGameTab={setSelectedGameTab}
-            isDirector={isDirector}
-            isAdmin={isAdmin}
-            tournamentID={tournamentID}
-            onSeekSubmit={onSeekSubmit}
-            loggedIn={loggedIn}
-            newGame={handleNewGame}
-            username={username}
-            userID={userID}
-            sendReady={() =>
-              readyForTournamentGame(
-                sendSocketMsg,
-                tournamentContext.metadata.id,
-                competitorContext
-              )
-            }
-          />
-        </ConfigProvider>
+        <ActionsPanel
+          selectedGameTab={selectedGameTab}
+          setSelectedGameTab={setSelectedGameTab}
+          isDirector={isDirector}
+          isAdmin={isAdmin}
+          tournamentID={tournamentID}
+          onSeekSubmit={onSeekSubmit}
+          loggedIn={loggedIn}
+          newGame={handleNewGame}
+          username={username}
+          userID={userID}
+          sendReady={() =>
+            readyForTournamentGame(
+              sendSocketMsg,
+              tournamentContext.metadata.id,
+              competitorContext
+            )
+          }
+        />
         <TournamentInfo
           setSelectedGameTab={setSelectedGameTab}
           sendSocketMsg={sendSocketMsg}

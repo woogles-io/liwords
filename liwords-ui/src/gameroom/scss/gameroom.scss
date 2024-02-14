@@ -88,9 +88,8 @@ p.streak-loss {
         display: flex;
         align-items: center;
 
-        button.ant-btn-icon-only {
-            font-size: 16px;
-            color: black;
+        button.ant-btn-icon-only>* {
+            font-size: inherit;
         }
 
         .controls {
@@ -140,8 +139,7 @@ p.streak-loss {
                 padding: 0;
 
                 button.ant-btn-icon-only {
-                    font-size: 16px;
-                    color: black;
+                    font-size: 18px;
                 }
             }
         }
@@ -318,9 +316,9 @@ p.streak-loss {
     }
 }
 
-// .ant-dropdown-menu {
-//     padding: 0;
-// }
+.ant-dropdown-menu {
+    padding: 0;
+}
 
 .board-container {
     user-select: none;
@@ -1459,7 +1457,7 @@ p.rune {
             font-weight: bold;
             font-size: 12px;
             height: 24px;
-            // padding: 0px 12px;
+            padding: 0px 12px;
             width: 100px;
             line-height: 2.3em;
 
@@ -1786,7 +1784,6 @@ p.rune {
 .end-message {
     margin-bottom: 12px;
     padding: 12px;
-    margin-top: 16px;
 
     .ant-card-body {
         p {
@@ -2130,7 +2127,7 @@ p.rune {
         .ant-dropdown-menu {
             li.ant-dropdown-menu-item {
                 height: 32px;
-                // padding: 0px 16px;
+                padding: 0px 16px;
                 width: 120px;
                 line-height: 2.3em;
 

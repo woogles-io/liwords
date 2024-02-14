@@ -1,12 +1,7 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Card, Input, Tabs } from 'antd';
 import { LeftOutlined } from '@ant-design/icons';
+import { useMountedState } from '../utils/mounted';
 import { singularCount } from '../utils/plural';
 import { ChatEntity } from './chat_entity';
 import {
@@ -45,6 +40,7 @@ export type Props = {
 let globalUnsentChatCache: { [key: string]: { [key: string]: string } } = {};
 
 export const Chat = React.memo((props: Props) => {
+  const { useState } = useMountedState();
   const { loginState } = useLoginStateStoreContext();
   const { tournamentContext } = useTournamentStoreContext();
   const { competitorState } = tournamentContext;
@@ -363,8 +359,8 @@ export const Chat = React.memo((props: Props) => {
             return chB.timestamp > chA.timestamp
               ? 1
               : chB.timestamp < chA.timestamp
-                ? -1
-                : 0;
+              ? -1
+              : 0;
           }
           return 0;
         });
@@ -531,7 +527,7 @@ export const Chat = React.memo((props: Props) => {
     ]
   );
 
-  const handleTabClick = useCallback((key: string) => {
+  const handleTabClick = useCallback((key) => {
     setSelectedChatTab(key);
     setNotificationCount(0);
     setLastNotificationTimestamp(Date.now());

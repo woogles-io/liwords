@@ -23,6 +23,7 @@ import {
 } from '../../gen/api/proto/tournament_service/tournament_service_pb';
 import { Division } from '../../store/reducers/tournament_reducer';
 import { useTournamentStoreContext } from '../../store/store';
+import { useMountedState } from '../../utils/mounted';
 import { DisplayedGameSetting, SettingsForm } from './game_settings_form';
 import '../../lobby/seek_form.scss';
 
@@ -117,6 +118,7 @@ type Props = {
 };
 
 export const GhettoTools = (props: Props) => {
+  const { useState } = useMountedState();
   const [modalTitle, setModalTitle] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState('');
@@ -463,6 +465,7 @@ const AddPlayers = (props: { tournamentID: string }) => {
 };
 
 const RemovePlayer = (props: { tournamentID: string }) => {
+  const { useState } = useMountedState();
   const [division, setDivision] = useState('');
   const tClient = useClient(TournamentService);
   const onFinish = async (vals: Store) => {
@@ -585,6 +588,7 @@ const fullPlayerID = (username: string, divobj: Division) => {
 
 const SetPairing = (props: { tournamentID: string }) => {
   const { tournamentContext } = useTournamentStoreContext();
+  const { useState } = useMountedState();
   const [division, setDivision] = useState('');
   const [selfplay, setSelfplay] = useState(false);
   const tClient = useClient(TournamentService);
@@ -695,6 +699,7 @@ const SetPairing = (props: { tournamentID: string }) => {
 
 const SetResult = (props: { tournamentID: string }) => {
   const { tournamentContext } = useTournamentStoreContext();
+  const { useState } = useMountedState();
   const [division, setDivision] = useState('');
   const [score1, setScore1] = useState(0);
   const [score2, setScore2] = useState(0);
@@ -928,6 +933,7 @@ const UnpairRound = (props: { tournamentID: string }) => {
 };
 
 const SetTournamentControls = (props: { tournamentID: string }) => {
+  const { useState } = useMountedState();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedGameRequest, setSelectedGameRequest] = useState<
     GameRequest | undefined
@@ -1402,7 +1408,7 @@ const RoundControlFields = (props: RdCtrlFieldsProps) => {
   const { setting } = props;
   return (
     <>
-      <Form size="small">
+      <Form layout="inline" size="small">
         <Form.Item label="First round">
           <InputNumber
             min={1}
@@ -1485,6 +1491,7 @@ const rdCtrlFromSetting = (rdSetting: RoundControl): RoundControl => {
 };
 
 const SetSingleRoundControls = (props: { tournamentID: string }) => {
+  const { useState } = useMountedState();
   const [division, setDivision] = useState('');
   const [roundSetting, setRoundSetting] = useState<RoundControl>(
     new RoundControl({
@@ -1560,7 +1567,7 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
         </Form.Item>
       </Form>
       <Divider />
-      <Form>
+      <Form size="small">
         <SingleRoundControlFields
           setting={roundSetting}
           onChange={(
@@ -1571,17 +1578,15 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
             setRoundSetting(new RoundControl(val));
           }}
         />
-        <Form.Item>
-          <Button type="primary" onClick={() => setRoundControls()}>
-            Submit
-          </Button>
-        </Form.Item>
+        <Divider />
+        <Button onClick={() => setRoundControls()}>Submit</Button>
       </Form>
     </>
   );
 };
 
 const SetDivisionRoundControls = (props: { tournamentID: string }) => {
+  const { useState } = useMountedState();
   const { tournamentContext } = useTournamentStoreContext();
   // This form is too complicated to use the Ant Design built-in forms;
   // So we're just going to use form components instead.
@@ -1590,50 +1595,47 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
   const [division, setDivision] = useState('');
   const [copyFromDivision, setCopyFromDivision] = useState('');
 
-  const roundControlsToDisplayArray = React.useCallback(
-    (roundControls: RoundControl[]) => {
-      const settings = new Array<RoundSetting>();
+  const roundControlsToDisplayArray = React.useCallback((roundControls) => {
+    const settings = new Array<RoundSetting>();
 
-      let lastSetting: RoundControl | null = null;
-      let min = 1;
-      let max = 1;
-      roundControls.forEach((v: RoundControl, rd: number) => {
-        const thisSetting = new RoundControl({
-          pairingMethod: v.pairingMethod,
-          gamesPerRound: v.gamesPerRound,
-          factor: v.factor,
-          maxRepeats: v.maxRepeats,
-          allowOverMaxRepeats: v.allowOverMaxRepeats,
-          repeatRelativeWeight: v.repeatRelativeWeight,
-          winDifferenceRelativeWeight: v.winDifferenceRelativeWeight,
-        });
-        if (lastSetting !== null) {
-          if (settingsEqual(lastSetting, thisSetting)) {
-            max = rd + 1;
-          } else {
-            settings.push({
-              beginRound: min,
-              endRound: max,
-              setting: lastSetting,
-            });
-            min = max + 1;
-            max = max + 1;
-          }
-        }
-        lastSetting = thisSetting;
+    let lastSetting: RoundControl | null = null;
+    let min = 1;
+    let max = 1;
+    roundControls.forEach((v: RoundControl, rd: number) => {
+      const thisSetting = new RoundControl({
+        pairingMethod: v.pairingMethod,
+        gamesPerRound: v.gamesPerRound,
+        factor: v.factor,
+        maxRepeats: v.maxRepeats,
+        allowOverMaxRepeats: v.allowOverMaxRepeats,
+        repeatRelativeWeight: v.repeatRelativeWeight,
+        winDifferenceRelativeWeight: v.winDifferenceRelativeWeight,
       });
-
       if (lastSetting !== null) {
-        settings.push({
-          beginRound: min,
-          endRound: max,
-          setting: lastSetting,
-        });
+        if (settingsEqual(lastSetting, thisSetting)) {
+          max = rd + 1;
+        } else {
+          settings.push({
+            beginRound: min,
+            endRound: max,
+            setting: lastSetting,
+          });
+          min = max + 1;
+          max = max + 1;
+        }
       }
-      return settings;
-    },
-    []
-  );
+      lastSetting = thisSetting;
+    });
+
+    if (lastSetting !== null) {
+      settings.push({
+        beginRound: min,
+        endRound: max,
+        setting: lastSetting,
+      });
+    }
+    return settings;
+  }, []);
 
   useEffect(() => {
     if (!division) {
@@ -1907,9 +1909,7 @@ const UnstartTournament = (props: { tournamentID: string }) => {
         will RESET!
       </div>
       <Form.Item>
-        <Button htmlType="submit" type="primary" danger>
-          Unstart this tournament
-        </Button>
+        <Button htmlType="submit">Unstart this tournament</Button>
       </Form.Item>
     </Form>
   );
@@ -1973,6 +1973,7 @@ const EditDescription = (props: { tournamentID: string }) => {
             Submit
           </Button>
         </Form.Item>
+        ;
       </Form>
     </>
   );

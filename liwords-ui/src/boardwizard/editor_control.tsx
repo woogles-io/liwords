@@ -2,11 +2,12 @@
 
 import { Button, Form, Input, Popconfirm, Select, Typography } from 'antd';
 import { Store } from 'antd/lib/form/interface';
-import { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { ChallengeRule } from '../gen/api/proto/ipc/omgwords_pb';
 import { LexiconFormItem } from '../shared/lexicon_display';
 import { useGameContextStoreContext } from '../store/store';
 import { baseURL } from '../utils/hooks/connect';
+import { useMountedState } from '../utils/mounted';
 
 type Props = {
   gameID?: string;
@@ -28,6 +29,7 @@ export const EditorControl = (props: Props) => {
   } else {
     form = <EditForm editGame={props.editGame} />;
   }
+  const { useState } = useMountedState();
 
   let gameURL = '';
 

@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Millis } from '../store/timer_controller';
+import { useMountedState } from '../utils/mounted';
 
 // This magical timer was written by Andy. I am not sure how it works.
 export const SimpleTimer = ({
@@ -11,6 +12,7 @@ export const SimpleTimer = ({
   millisAtLastRefresh: Millis;
   isRunning: boolean;
 }) => {
+  const { useState } = useMountedState();
   const [, setRerender] = useState(0);
   const requestRerender = useCallback(
     () => setRerender((n) => (n + 1) | 0),

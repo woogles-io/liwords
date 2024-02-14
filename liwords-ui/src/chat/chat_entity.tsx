@@ -6,7 +6,7 @@ import {
 } from '../store/store';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import { Wooglinkify } from '../shared/wooglinkify';
-import { App, Tag } from 'antd';
+import { Modal, Tag } from 'antd';
 import {
   CrownFilled,
   SafetyCertificateFilled,
@@ -19,7 +19,6 @@ import { ChatEntityType } from '../store/constants';
 import { useClient } from '../utils/hooks/connect';
 import { ModService } from '../gen/api/proto/mod_service/mod_service_connectweb';
 import { PromiseClient } from '@domino14/connect-web';
-import { HookAPI } from 'antd/lib/modal/useModal';
 
 type EntityProps = {
   entityType: ChatEntityType;
@@ -36,14 +35,13 @@ type EntityProps = {
 };
 
 const deleteMessage = (
-  modal: HookAPI,
   sender: string,
   msgid: string,
   message: string,
   channel: string,
   modClient: PromiseClient<typeof ModService>
 ) => {
-  modal.confirm({
+  Modal.confirm({
     title: (
       <p className="readable-text-color">Do you want to delete this message</p>
     ),
@@ -80,7 +78,6 @@ export const ChatEntity = (props: EntityProps) => {
   let fromAdmin = false;
   const channel = '';
   const modClient = useClient(ModService);
-  const { modal } = App.useApp();
 
   // Don't render until we know who's been blocked
   if (!excludedPlayersFetched) {
@@ -138,7 +135,6 @@ export const ChatEntity = (props: EntityProps) => {
                     deleteMessage={() => {
                       if (props.senderId) {
                         deleteMessage(
-                          modal,
                           props.senderId,
                           props.msgID,
                           props.message,

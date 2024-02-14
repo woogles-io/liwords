@@ -1,6 +1,6 @@
 import { HomeOutlined } from '@ant-design/icons';
 import { Card, Form, Modal, Select } from 'antd';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Chat } from '../chat/chat';
 import {
@@ -59,6 +59,7 @@ import { computeLeaveWithGaps } from '../utils/cwgame/game_event';
 import { EphemeralTile, MachineLetter } from '../utils/cwgame/common';
 import { useFirefoxPatch } from '../utils/hooks/firefox';
 import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
+import { useMountedState } from '../utils/mounted';
 import { BoopSounds } from '../sound/boop';
 import { GameInfoRequest } from '../gen/api/proto/game_service/game_service_pb';
 import { isLegalPlay } from '../utils/cwgame/scoring';
@@ -115,6 +116,7 @@ const defaultPuzzleInfo = {
 };
 
 export const SinglePuzzle = (props: Props) => {
+  const { useState } = useMountedState();
   const { puzzleID } = useParams();
   const [puzzleInfo, setPuzzleInfo] = useState<PuzzleInfo>(defaultPuzzleInfo);
   const [initialUserRating, setInitialUserRating] = useState<

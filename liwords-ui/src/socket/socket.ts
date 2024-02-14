@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { jwtDecode } from 'jwt-decode';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import jwt_decode from 'jwt-decode';
 import useWebSocket from 'react-use-websocket';
 import { useLocation } from 'react-router-dom';
 import { message } from 'antd';
+import { useMountedState } from '../utils/mounted';
 import { useLoginStateStoreContext } from '../store/store';
 import {
   useOnSocketMsg,
@@ -51,14 +52,9 @@ export const LiwordsSocket = (props: {
     justDisconnected: boolean;
   }) => void;
 }): null => {
-  const isMountedRef = useRef(false);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
+  const isMountedRef = useRef(true);
+  useEffect(() => () => void (isMountedRef.current = false), []);
+  const { useState } = useMountedState();
 
   const { resetSocket, setValues } = props;
   const onSocketMsg = useOnSocketMsg();
@@ -92,7 +88,7 @@ export const LiwordsSocket = (props: {
         cid,
       })}`;
 
-      const decoded = jwtDecode<DecodedToken>(token);
+      const decoded = jwt_decode(token) as DecodedToken;
       dispatchLoginState({
         actionType: ActionType.SetAuthentication,
         payload: {
@@ -140,13 +136,12 @@ export const LiwordsSocket = (props: {
           });
         }
       }
+
       return ret;
     } catch (e) {
       // XXX: Fix this; figure out what type of error this can be:
       if ((e as { [response: string]: string }).response) {
         window.console.log((e as { [response: string]: string }).response);
-      } else {
-        window.console.log('Unknown error', e);
       }
       return failUrl;
     }
@@ -237,8 +232,10 @@ export const LiwordsSocket = (props: {
 
   const sendMessage = useMemo(() => {
     if (!enableShowSocket) return originalSendMessage;
+
     return (msg: Uint8Array) => {
       const msgs = parseMsgs(msg);
+
       msgs.forEach((m) => {
         const { msgType, parsedMsg } = m;
         console.log(

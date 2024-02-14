@@ -1,5 +1,6 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { useMountedState } from '../utils/mounted';
 import { useResetStoreContext } from '../store/store';
 import './accountForms.scss';
 
@@ -13,6 +14,7 @@ import {
 import { AuthenticationService } from '../gen/api/proto/user_service/user_service_connectweb';
 
 export const Login = React.memo(() => {
+  const { useState } = useMountedState();
   const { resetStore } = useResetStoreContext();
 
   const [err, setErr] = useState('');

@@ -129,7 +129,6 @@ export const RecentTourneyGames = React.memo((props: Props) => {
       className: 'when',
       dataIndex: 'when',
       key: 'when',
-      title: ' ',
     },
   ];
   // TODO: use the normal Ant table pagination when the backend can give us a total
