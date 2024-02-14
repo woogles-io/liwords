@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import {
   Alert,
   Button,
@@ -14,6 +14,7 @@ import {
 import { Modal } from '../utils/focus_modal';
 import moment from 'moment';
 import { PlayerAvatar } from '../shared/player_avatar';
+import { useMountedState } from '../utils/mounted';
 import { AvatarRemoveModal } from './avatar_remove_modal';
 import { countryArray } from './country_map';
 import { MarkdownTips } from './markdown_tips';
@@ -36,6 +37,7 @@ type Props = {
 };
 
 export const PersonalInfoWidget = React.memo((props: Props) => {
+  const { useState } = useMountedState();
   const { TextArea } = Input;
 
   const [removeAvatarModalVisible, setRemoveAvatarModalVisible] =
@@ -223,7 +225,6 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
           <Button
             className="remove-avatar"
             onClick={() => setRemoveAvatarModalVisible(true)}
-            type="link"
           >
             Remove
           </Button>

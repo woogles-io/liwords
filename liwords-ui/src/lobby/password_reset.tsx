@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useMountedState } from '../utils/mounted';
 import { Row, Col, Input, Form, Alert, notification, Button } from 'antd';
 import { TopBar } from '../navigation/topbar';
 import { connectErrorMessage, useClient } from '../utils/hooks/connect';
@@ -20,6 +21,8 @@ const tailLayout = {
 };
 
 export const PasswordReset = () => {
+  const { useState } = useMountedState();
+
   const [err, setErr] = useState('');
   const authClient = useClient(AuthenticationService);
 

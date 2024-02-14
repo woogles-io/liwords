@@ -1,10 +1,12 @@
 import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
 import { Popconfirm, Tooltip, Typography } from 'antd';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { AuthenticationService } from '../gen/api/proto/user_service/user_service_connectweb';
 import { flashError, useClient } from '../utils/hooks/connect';
+import { useMountedState } from '../utils/mounted';
 
 export const API = () => {
+  const { useState } = useMountedState();
   const authClient = useClient(AuthenticationService);
   const [apikey, setapikey] = useState('');
   const [keyhidden, setkeyhidden] = useState(true);

@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
 // import { toAPIUrl } from '../api/api';
+// import { useMountedState } from '../utils/mounted';
 import { useTournamentStoreContext } from '../../store/store';
 import './director_tools.scss';
 import { UsernameWithContext } from '../../shared/usernameWithContext';
@@ -20,6 +21,8 @@ type DTProps = {
 };
 
 export const DirectorTools = React.memo((props: DTProps) => {
+  // const { useState } = useMountedState();
+
   const { tournamentContext } = useTournamentStoreContext();
 
   /*   const addPlayers = (p: playersToAdd) => {

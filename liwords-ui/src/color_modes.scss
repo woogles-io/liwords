@@ -85,8 +85,6 @@ $shadow: 'shadow';
 $shadow-lower: 'shadow-lower';
 $board-shadow: 'board-shadow';
 
-$column-sorter: 'color-column-sorter';
-
 $modes: (
         default: (
           shadow: 0px 0px 12px rgba(0, 0, 0, 0.1),
@@ -157,9 +155,7 @@ $modes: (
 
           color-profile-game-win: #e5ffdf,
           color-profile-game-tie: #fbe5ae,
-          color-profile-game-loss: #ffeaea,
-
-          color-column-sorter: #414141
+          color-profile-game-loss: #ffeaea
         ),
         dark: (
           shadow: 0px 0px 12px rgba(0, 0, 0, 0.2),
@@ -230,9 +226,7 @@ $modes: (
 
           color-profile-game-win: #24542d,
           color-profile-game-tie: #f4b000,
-          color-profile-game-loss: #561f22,
-
-          color-column-sorter: #bfbfbf
+          color-profile-game-loss: #561f22
         ),
 );
 

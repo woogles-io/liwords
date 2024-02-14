@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useMountedState } from '../utils/mounted';
 import { Button, Input, Form, Row, Col, notification } from 'antd';
 import { Link } from 'react-router-dom';
 import { connectErrorMessage, useClient } from '../utils/hooks/connect';
@@ -14,6 +15,7 @@ const layout = {
 };
 
 export const ChangePassword = React.memo(() => {
+  const { useState } = useMountedState();
   const [err, setErr] = useState('');
   const [form] = Form.useForm();
 

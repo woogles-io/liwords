@@ -1,8 +1,9 @@
 import { Button, Form, InputNumber, Select } from 'antd';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 
 import { useDebounce } from '../../utils/debounce';
 import { AutoComplete } from 'antd';
+import { useMountedState } from '../../utils/mounted';
 import { Store } from 'antd/lib/form/interface';
 import { useClient } from '../../utils/hooks/connect';
 import { AutocompleteService } from '../../gen/api/proto/user_service/user_service_connectweb';
@@ -29,6 +30,8 @@ type Props = {
 };
 
 export const AddPlayerForm = (props: Props) => {
+  const { useState } = useMountedState();
+
   const [usernameOptions, setUsernameOptions] = useState<Array<user>>([]);
   const [playersToAdd, setPlayersToAdd] = useState<playersToAdd>({});
   const [usersAdded, setUsersAdded] = useState<Set<string>>(new Set());

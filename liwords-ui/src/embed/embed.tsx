@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { ChallengeRule, PlayState } from '../gen/api/proto/macondo/macondo_pb';
 import {
@@ -6,6 +6,7 @@ import {
   useExamineStoreContext,
   useGameContextStoreContext,
 } from '../store/store';
+import { useMountedState } from '../utils/mounted';
 import { defaultGameInfo } from '../gameroom/game_info';
 import { BoardPanel } from '../gameroom/board_panel';
 import { sortTiles } from '../store/constants';
@@ -24,6 +25,8 @@ import { MachineLetter } from '../utils/cwgame/common';
 const doNothing = () => {};
 
 export const Embed = () => {
+  const { useState } = useMountedState();
+
   const [gameInfo, setGameInfo] = useState<GameInfoResponse>(defaultGameInfo);
   const { gameID } = useParams();
   const { gameContext: examinableGameContext } =

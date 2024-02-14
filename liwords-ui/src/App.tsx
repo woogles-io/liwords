@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Navigate,
   Route,
@@ -12,7 +6,9 @@ import {
   useLocation,
   useSearchParams,
 } from 'react-router-dom';
+import { useMountedState } from './utils/mounted';
 import './App.scss';
+import 'antd/dist/antd.min.css';
 
 import { Table as GameTable } from './gameroom/table';
 import { SinglePuzzle } from './puzzles/puzzle';
@@ -44,11 +40,6 @@ import { ChatMessage } from './gen/api/proto/ipc/chat_pb';
 import { MessageType } from './gen/api/proto/ipc/ipc_pb';
 import Footer from './navigation/footer';
 import { Embed } from './embed/embed';
-import { useSelector, useDispatch } from 'react-redux';
-
-import { App as AntDApp } from 'antd';
-import { ConfigProvider } from 'antd';
-import { liwordsDefaultTheme, liwordsDarkTheme } from './themes';
 
 import {
   connectErrorMessage,
@@ -60,10 +51,9 @@ import {
   SocializeService,
 } from './gen/api/proto/user_service/user_service_connectweb';
 import { BoardEditor } from './boardwizard/editor';
-import { RootState } from './store/redux_store';
 
-// const useDarkMode = localStorage?.getItem('darkMode') === 'true';
-// document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
+const useDarkMode = localStorage?.getItem('darkMode') === 'true';
+document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
 
 const userTile = localStorage?.getItem('userTile');
 if (userTile) {
@@ -123,6 +113,8 @@ const HandoverSignedCookie = () => {
 };
 
 const App = React.memo(() => {
+  const { useState } = useMountedState();
+
   const {
     setExcludedPlayers,
     setExcludedPlayersFetched,
@@ -141,39 +133,19 @@ const App = React.memo(() => {
 
   const { resetStore } = useResetStoreContext();
 
-  const useDarkMode = useSelector((state: RootState) => state.theme.darkMode);
-  useEffect(() => {
-    console.log('Detected useDarkMode = ', useDarkMode);
-    localStorage.setItem('darkMode', useDarkMode ? 'true' : 'false');
-    document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
-    document?.body?.classList?.remove(
-      `mode--${useDarkMode ? 'default' : 'dark'}`
-    );
-  }, [useDarkMode]);
-
-  const antdTheme = useMemo(() => {
-    if (useDarkMode) {
-      console.log('Using antd dark theme');
-      return liwordsDarkTheme;
-    }
-    console.log('Using antd-default-theme');
-    return liwordsDefaultTheme;
-  }, [useDarkMode]);
-
   // See store.tsx for how this works.
   const [socketId, setSocketId] = useState(0);
   const resetSocket = useCallback(() => setSocketId((n) => (n + 1) | 0), []);
 
   const [liwordsSocketValues, setLiwordsSocketValues] = useState({
-    sendMessage: (msg: Uint8Array) => {
-      console.log('fakesend', msg);
-    },
-
+    sendMessage: (msg: Uint8Array) => {},
     justDisconnected: false,
   });
   const { sendMessage } = liwordsSocketValues;
+
   const location = useLocation();
   const knownLocation = useRef(location.pathname); // Remember the location on first render.
+  console.log('loc pathname', location.pathname);
   const isCurrentLocation = knownLocation.current === location.pathname;
   useEffect(() => {
     if (!isCurrentLocation) {
@@ -318,104 +290,94 @@ const App = React.memo(() => {
   if (!isCurrentLocation) return null;
 
   return (
-    <ConfigProvider theme={antdTheme}>
-      <AntDApp>
-        <div className="App">
-          {!isEmbeddedPath && (
-            <LiwordsSocket
-              key={socketId}
-              resetSocket={resetSocket}
-              setValues={setLiwordsSocketValues}
+    <div className="App">
+      {!isEmbeddedPath && (
+        <LiwordsSocket
+          key={socketId}
+          resetSocket={resetSocket}
+          setValues={setLiwordsSocketValues}
+        />
+      )}
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <Lobby
+              sendSocketMsg={sendMessage}
+              sendChat={sendChat}
+              DISCONNECT={resetSocket}
             />
-          )}
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <Lobby
-                  sendSocketMsg={sendMessage}
-                  sendChat={sendChat}
-                  DISCONNECT={resetSocket}
-                />
-              }
+          }
+        />
+        <Route
+          path="tournament/:partialSlug/*"
+          element={
+            <TournamentRoom sendSocketMsg={sendMessage} sendChat={sendChat} />
+          }
+        />
+        <Route
+          path="club/:partialSlug/*"
+          element={
+            <TournamentRoom sendSocketMsg={sendMessage} sendChat={sendChat} />
+          }
+        />
+        <Route path="clubs" element={<Clubs />} />
+        <Route
+          path="game/:gameID"
+          element={
+            <GameTable sendSocketMsg={sendMessage} sendChat={sendChat} />
+          }
+        />
+        <Route path="puzzle" element={<SinglePuzzle sendChat={sendChat} />}>
+          <Route
+            path=":puzzleID"
+            element={<SinglePuzzle sendChat={sendChat} />}
+          />
+        </Route>
+        <Route
+          path="anno/:gameID"
+          element={
+            <GameTable
+              sendSocketMsg={sendMessage}
+              sendChat={sendChat}
+              annotated
             />
-            <Route
-              path="tournament/:partialSlug/*"
-              element={
-                <TournamentRoom
-                  sendSocketMsg={sendMessage}
-                  sendChat={sendChat}
-                />
-              }
-            />
-            <Route
-              path="club/:partialSlug/*"
-              element={
-                <TournamentRoom
-                  sendSocketMsg={sendMessage}
-                  sendChat={sendChat}
-                />
-              }
-            />
-            <Route path="clubs" element={<Clubs />} />
-            <Route
-              path="game/:gameID"
-              element={
-                <GameTable sendSocketMsg={sendMessage} sendChat={sendChat} />
-              }
-            />
-            <Route path="puzzle" element={<SinglePuzzle sendChat={sendChat} />}>
-              <Route
-                path=":puzzleID"
-                element={<SinglePuzzle sendChat={sendChat} />}
-              />
-            </Route>
-            <Route
-              path="anno/:gameID"
-              element={
-                <GameTable
-                  sendSocketMsg={sendMessage}
-                  sendChat={sendChat}
-                  annotated
-                />
-              }
-            />
+          }
+        />
 
-            <Route path="embed/game/:gameID" element={<Embed />} />
-            <Route path="editor" element={<BoardEditor />}>
-              <Route path=":gameID" element={<BoardEditor />} />
-            </Route>
-            <Route path="about" element={<Team />} />
-            <Route path="team" element={<Team />} />
-            <Route path="terms" element={<TermsOfService />} />
-            <Route path="register" element={<Register />} />
-            <Route path="password">
-              <Route path="reset" element={<PasswordReset />} />
-              <Route path="new" element={<NewPassword />} />
-            </Route>
-            <Route path="profile/:username" element={<PlayerProfile />} />
-            <Route path="profile/" element={<PlayerProfile />} />
-            <Route path="settings" element={<Settings />}>
-              <Route path=":section" element={<Settings />} />
-            </Route>
-            <Route path="tile_images" element={<TileImages />}>
-              <Route path=":letterDistribution" element={<TileImages />} />
-            </Route>
-            <Route path="admin" element={<Admin />} />
-            <Route
-              path="donate"
-              element={<Navigate replace to="/settings/donate" />}
-            />
-            <Route path="donate_success" element={<DonateSuccess />} />
-            <Route
-              path="handover-signed-cookie"
-              element={<HandoverSignedCookie />}
-            />
-          </Routes>
-          {!isEmbeddedPath && <Footer />}
-        </div>
-      </AntDApp>
-    </ConfigProvider>
+        <Route path="embed/game/:gameID" element={<Embed />} />
+        <Route path="editor" element={<BoardEditor />}>
+          <Route path=":gameID" element={<BoardEditor />} />
+        </Route>
+        <Route path="about" element={<Team />} />
+        <Route path="team" element={<Team />} />
+        <Route path="terms" element={<TermsOfService />} />
+        <Route path="register" element={<Register />} />
+        <Route path="password">
+          <Route path="reset" element={<PasswordReset />} />
+          <Route path="new" element={<NewPassword />} />
+        </Route>
+        <Route path="profile/:username" element={<PlayerProfile />} />
+        <Route path="profile/" element={<PlayerProfile />} />
+        <Route path="settings" element={<Settings />}>
+          <Route path=":section" element={<Settings />} />
+        </Route>
+        <Route path="tile_images" element={<TileImages />}>
+          <Route path=":letterDistribution" element={<TileImages />} />
+        </Route>
+        <Route path="admin" element={<Admin />} />
+        <Route
+          path="donate"
+          element={<Navigate replace to="/settings/donate" />}
+        />
+        <Route path="donate_success" element={<DonateSuccess />} />
+        <Route
+          path="handover-signed-cookie"
+          element={<HandoverSignedCookie />}
+        />
+      </Routes>
+      {!isEmbeddedPath && <Footer />}
+    </div>
   );
 });
 

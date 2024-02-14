@@ -231,8 +231,8 @@ export const Pairings = React.memo((props: Props) => {
           pairingCt <= 1
             ? ''
             : pairingCt === 2
-              ? 'Repeat'
-              : `${pairingCt}-peat`;
+            ? 'Repeat'
+            : `${pairingCt}-peat`;
 
         const players =
           playerNames[0] === playerNames[1] ? (
@@ -469,7 +469,7 @@ export const Pairings = React.memo((props: Props) => {
     });
   }
   columns.push({
-    title: ' ',
+    title: '',
     dataIndex: 'actions',
     key: 'actions',
     className: 'actions',
@@ -488,8 +488,8 @@ export const Pairings = React.memo((props: Props) => {
           currentRound < props.selectedRound
             ? 'future'
             : currentRound > props.selectedRound
-              ? 'completed'
-              : 'current'
+            ? 'completed'
+            : 'current'
         }`}
         columns={columns}
         pagination={false}

@@ -1,7 +1,7 @@
+import { notification } from 'antd';
 import React from 'react';
 import { Millis } from '../store/timer_controller';
 import { TimedNotif } from './timed_notif';
-import { NotificationInstance } from 'antd/lib/notification/interface';
 
 type Props = {
   maxDuration: Millis;
@@ -12,7 +12,6 @@ type Props = {
   countdownText: string;
   acceptText: string;
   declineText: string;
-  notification: NotificationInstance;
 };
 
 export const ShowNotif = (props: Props) => {
@@ -21,7 +20,7 @@ export const ShowNotif = (props: Props) => {
     []
   );
   React.useEffect(() => {
-    props.notification.open({
+    notification.open({
       // other params, TODO
       className: 'cancel-notification',
       closeIcon: <div></div>,
@@ -32,7 +31,7 @@ export const ShowNotif = (props: Props) => {
       duration: 0,
     });
     return () => {
-      props.notification.destroy(myId);
+      notification.close(myId);
     };
   }, [props, myId]);
   return null;

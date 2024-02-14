@@ -1,16 +1,11 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Card, message, Popconfirm } from 'antd';
 import { HomeOutlined } from '@ant-design/icons';
 
 import { Link, useSearchParams, useParams } from 'react-router-dom';
 import { useFirefoxPatch } from '../utils/hooks/firefox';
 import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
+import { useMountedState } from '../utils/mounted';
 import { BoardPanel } from './board_panel';
 import { TopBar } from '../navigation/topbar';
 import { Chat } from '../chat/chat';
@@ -188,6 +183,8 @@ const getChatTitle = (
 };
 
 export const Table = React.memo((props: Props) => {
+  const { useState } = useMountedState();
+
   const { gameID } = useParams();
   const { addChat } = useChatStoreContext();
   const { gameContext: examinableGameContext } =

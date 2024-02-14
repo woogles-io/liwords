@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 import { Link } from 'react-router-dom';
 import './topbar.scss';
@@ -10,6 +10,7 @@ import {
   useTournamentStoreContext,
 } from '../store/store';
 import { LoginModal } from '../lobby/login';
+import { useMountedState } from '../utils/mounted';
 import { isClubType } from '../store/constants';
 import { flashError, useClient } from '../utils/hooks/connect';
 import { AuthenticationService } from '../gen/api/proto/user_service/user_service_connectweb';
@@ -18,11 +19,19 @@ const TopMenu = React.memo((props: Props) => {
   const playMenuItems = [
     {
       key: 'omgwords',
-      label: <Link to="/">OMGWords</Link>,
+      label: (
+        <Link to="/" className="plain">
+          OMGWords
+        </Link>
+      ),
     },
     {
       key: 'editor',
-      label: <Link to="/editor">Board editor</Link>,
+      label: (
+        <Link to="/editor" className="plain">
+          Board editor
+        </Link>
+      ),
     },
     {
       key: 'anagrams',
@@ -30,6 +39,7 @@ const TopMenu = React.memo((props: Props) => {
         <a
           href="//anagrams.mynetgear.com/"
           target="_blank"
+          className="plain"
           rel="noopener noreferrer"
         >
           Anagrams
@@ -41,6 +51,7 @@ const TopMenu = React.memo((props: Props) => {
       label: (
         <a
           href="https://seattlephysicstutor.com/plates.html"
+          className="plain"
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -55,6 +66,7 @@ const TopMenu = React.memo((props: Props) => {
       label: (
         <a
           href="https://aerolith.org"
+          className="plain"
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -67,6 +79,7 @@ const TopMenu = React.memo((props: Props) => {
       label: (
         <a
           href="http://randomracer.com/"
+          className="plain"
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -80,6 +93,7 @@ const TopMenu = React.memo((props: Props) => {
       label: (
         <a
           href="https://seattlephysicstutor.com/tree.html"
+          className="plain"
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -92,11 +106,19 @@ const TopMenu = React.memo((props: Props) => {
   const aboutMenuItems = [
     {
       key: 'team',
-      label: <Link to="/team">Meet the Woogles team</Link>,
+      label: (
+        <Link className="plain" to="/team">
+          Meet the Woogles team
+        </Link>
+      ),
     },
     {
       key: 'tos',
-      label: <Link to="/terms">Terms of Service</Link>,
+      label: (
+        <Link className="plain" to="/terms">
+          Terms of Service
+        </Link>
+      ),
     },
   ];
 
@@ -156,6 +178,8 @@ type Props = {
 };
 
 export const TopBar = React.memo((props: Props) => {
+  const { useState } = useMountedState();
+
   const { loginState } = useLoginStateStoreContext();
   const { resetStore } = useResetStoreContext();
   const { tournamentContext } = useTournamentStoreContext();
@@ -179,24 +203,38 @@ export const TopBar = React.memo((props: Props) => {
   const userMenuItems = [
     {
       label: (
-        <Link to={`/profile/${encodeURIComponent(username)}`}>Profile</Link>
+        <Link className="plain" to={`/profile/${encodeURIComponent(username)}`}>
+          Profile
+        </Link>
       ),
       key: 'profile',
     },
     {
-      label: <Link to={`/settings`}>Settings</Link>,
+      label: (
+        <Link className="plain" to={`/settings`}>
+          Settings
+        </Link>
+      ),
       key: 'settings',
     },
     {
-      label: <a href="/clubs">Clubs</a>,
+      label: (
+        <a className="plain" href="/clubs">
+          Clubs
+        </a>
+      ),
       key: 'clubs',
     },
     {
-      label: <a href="/donate">Donate</a>,
+      label: (
+        <a className="plain" href="/donate">
+          Donate
+        </a>
+      ),
       key: 'donate',
     },
     {
-      label: <a>Log out</a>,
+      label: <a className="plain">Log out</a>,
       key: 'logout',
     },
   ];

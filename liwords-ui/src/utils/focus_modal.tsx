@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Modal as AntdModal } from 'antd';
+import { useMountedState } from './mounted';
 
 // XXX: previously some Modal came from here instead:
 // import Modal from 'antd/lib/modal/Modal';
@@ -12,6 +13,7 @@ import { Modal as AntdModal } from 'antd';
 // Implementation note: It adds a div since AntdModal does not expose ref=.
 
 export const Modal = (props: React.ComponentProps<typeof AntdModal>) => {
+  const { useState } = useMountedState();
   const [divElt, setDivElt] = useState<HTMLDivElement | null>(null);
   const shownDivElt = props.visible ? divElt : null;
 

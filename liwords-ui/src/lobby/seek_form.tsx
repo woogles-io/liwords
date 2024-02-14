@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   Form,
   Radio,
@@ -11,6 +11,7 @@ import {
 } from 'antd';
 
 import { Store } from 'antd/lib/form/interface';
+import { useMountedState } from '../utils/mounted';
 import { ChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
 import {
   initialTimeMinutesToSlider,
@@ -156,6 +157,7 @@ const myDisplayRating = (
 };
 
 export const SeekForm = (props: Props) => {
+  const { useState } = useMountedState();
   const { friends } = useFriendsStoreContext();
   const { presences } = usePresenceStoreContext();
   const { tournamentContext } = useTournamentStoreContext();
@@ -312,7 +314,7 @@ export const SeekForm = (props: Props) => {
     initialValues.lexicon !== 'ECWL'
   );
   const [sliderTooltipVisible, setSliderTooltipVisible] = useState(true);
-  const handleDropdownVisibleChange = useCallback((open: boolean) => {
+  const handleDropdownVisibleChange = useCallback((open) => {
     setSliderTooltipVisible(!open);
   }, []);
   const [usernameOptions, setUsernameOptions] = useState<Array<string>>([]);
@@ -541,7 +543,7 @@ export const SeekForm = (props: Props) => {
         <ChallengeRulesFormItem disabled={disableChallengeControls} />
       )}
       <Form.Item
-        className="initial custom-tags"
+        className="initial"
         label="Initial minutes"
         name="initialtimeslider"
         extra={<Tag color={ttag}>{timectrl}</Tag>}
@@ -551,8 +553,8 @@ export const SeekForm = (props: Props) => {
           tooltip={{
             formatter: initTimeFormatter,
             open: sliderTooltipVisible || usernameOptions.length === 0,
-            getPopupContainer: (triggerNode) =>
-              triggerNode.parentElement ?? document.body,
+            getPopupContainer: () =>
+              document.getElementById(props.id) as HTMLElement,
           }}
           min={0}
           max={initTimeDiscreteScale.length - 1}
@@ -588,8 +590,6 @@ export const SeekForm = (props: Props) => {
             tooltip={{
               formatter: (v) => `${myRating} ± ${v ? v : 0}`,
               open: sliderTooltipVisible,
-              getPopupContainer: (triggerNode) =>
-                triggerNode.parentElement ?? document.body,
             }}
             step={50}
           />

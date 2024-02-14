@@ -11,12 +11,13 @@ import {
   Typography,
 } from 'antd';
 import { Store } from 'rc-field-form/lib/interface';
-import React, { useState } from 'react';
+import React from 'react';
 import {
   challRuleToStr,
   initTimeDiscreteScale,
   timeCtrlToDisplayName,
 } from '../../store/constants';
+import { useMountedState } from '../../utils/mounted';
 import { ChallengeRulesFormItem } from '../../lobby/challenge_rules_form_item';
 import { VariantIcon } from '../../shared/variant_icons';
 import { LexiconFormItem } from '../../shared/lexicon_display';
@@ -53,6 +54,7 @@ const initTimeFormatter = (val?: number) => {
 };
 
 export const SettingsForm = (props: Props) => {
+  const { useState } = useMountedState();
   const { gameRequest } = props;
   const initialValues = GameRequestToFormValues(gameRequest);
 
@@ -156,18 +158,13 @@ export const SettingsForm = (props: Props) => {
       <ChallengeRulesFormItem disabled={false} />
 
       <Form.Item
-        className="initial custom-tags"
+        className="initial"
         label="Initial Minutes"
         name="initialtimeslider"
         extra={<Tag color={ttag}>{timectrl}</Tag>}
       >
         <Slider
-          tooltip={{
-            formatter: initTimeFormatter,
-            open: true,
-            getPopupContainer: (triggerNode) =>
-              triggerNode.parentElement ?? document.body,
-          }}
+          tooltip={{ formatter: initTimeFormatter, open: true }}
           min={0}
           max={initTimeDiscreteScale.length - 1}
         />

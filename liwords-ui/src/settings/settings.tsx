@@ -1,6 +1,7 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { notification } from 'antd';
+import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../navigation/topbar';
 import { ChangePassword } from './change_password';
 import { PersonalInfoWidget } from './personal_info';
@@ -77,6 +78,7 @@ const getInitialCategory = (categoryShortcut: string, loggedIn: boolean) => {
 export const Settings = React.memo(() => {
   const { loginState } = useLoginStateStoreContext();
   const { userID, username: viewer, loggedIn } = loginState;
+  const { useState } = useMountedState();
   const { resetStore } = useResetStoreContext();
   let { section } = useParams();
   if (!section) {

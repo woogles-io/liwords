@@ -1,12 +1,14 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Affix, App, Button, Dropdown, MenuProps, Popconfirm } from 'antd';
+import {
+  Affix,
+  Button,
+  Dropdown,
+  Menu,
+  MenuProps,
+  Modal,
+  Popconfirm,
+} from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 
 import {
@@ -16,6 +18,7 @@ import {
   LeftOutlined,
   RightOutlined,
 } from '@ant-design/icons';
+import { useMountedState } from '../utils/mounted';
 import {
   useExaminableGameContextStoreContext,
   useExamineStoreContext,
@@ -234,6 +237,7 @@ export type Props = {
 };
 
 const GameControls = React.memo((props: Props) => {
+  const { useState } = useMountedState();
   const { gameContext } = useGameContextStoreContext();
   const gameHasNotStarted = gameContext.players.length === 0; // :shrug:
 
@@ -335,8 +339,6 @@ const GameControls = React.memo((props: Props) => {
     setHandleNeitherShortcut(() => handleNeitherShortcut);
   }, [handleNeitherShortcut, setHandleNeitherShortcut]);
 
-  const { modal } = App.useApp();
-
   const optionsMenuItems = useMemo(() => {
     const items = [
       {
@@ -417,7 +419,7 @@ const GameControls = React.memo((props: Props) => {
   const optionsMenuOnClick: MenuProps['onClick'] = ({ key }) => {
     switch (key) {
       case 'resign':
-        modal.confirm({
+        Modal.confirm({
           title: (
             <p className="readable-text-color">
               Are you sure you wish to resign?
@@ -595,6 +597,7 @@ type EGCProps = {
 };
 
 const EndGameControls = (props: EGCProps) => {
+  const { useState } = useMountedState();
   const [rematchDisabled, setRematchDisabled] = useState(false);
   const { gameContext } = useGameContextStoreContext();
   const gameHasNotStarted = gameContext.players.length === 0; // :shrug:

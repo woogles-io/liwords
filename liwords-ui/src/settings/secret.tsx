@@ -1,7 +1,9 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import { Switch } from 'antd';
+import { useMountedState } from '../utils/mounted';
 
 export const Secret = React.memo(() => {
+  const { useState } = useMountedState();
   const [telestrator, setTelestrator] = useState(
     localStorage?.getItem('enableScreenDrawing') === 'true'
   );

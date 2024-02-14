@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect } from 'react';
 
-import { message, Form, Select, InputNumber, Input, Button } from 'antd';
+import { message, Modal, Form, Select, InputNumber, Input, Button } from 'antd';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
+import { useMountedState } from '../utils/mounted';
 import { flashError, useClient } from '../utils/hooks/connect';
 import { ModService } from '../gen/api/proto/mod_service/mod_service_connectweb';
 import { proto3 } from '@bufbuild/protobuf';
@@ -12,13 +13,15 @@ import {
 } from '../gen/api/proto/mod_service/mod_service_pb';
 import { PromiseClient } from '@domino14/connect-web';
 import { ModActionType } from '../gen/api/proto/mod_service/mod_service_pb';
-import { HookAPI } from 'antd/lib/modal/useModal';
 
 type ModProps = {
   userID: string;
+  destroy: () => void;
 };
 
 const Moderation = (props: ModProps) => {
+  const { useState } = useMountedState();
+
   const [activeActions, setActiveActions] = useState<ModActionsMap>(
     new ModActionsMap()
   );
@@ -53,6 +56,7 @@ const Moderation = (props: ModProps) => {
         content: 'Applied mod action',
         duration: 2,
       });
+      props.destroy();
     } catch (e) {
       flashError(e);
     }
@@ -152,17 +156,13 @@ const Moderation = (props: ModProps) => {
   );
 };
 
-export const moderateUser = (
-  modal: HookAPI,
-  uuid: string,
-  username: string
-) => {
-  modal.info({
+export const moderateUser = (uuid: string, username: string) => {
+  const modal = Modal.info({
     title: (
       <p className="readable-text-color">Moderation for user {username}</p>
     ),
     icon: <ExclamationCircleOutlined />,
-    content: <Moderation userID={uuid} />,
+    content: <Moderation userID={uuid} destroy={() => modal.destroy()} />,
     onOk() {
       console.log('ok');
     },

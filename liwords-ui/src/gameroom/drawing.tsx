@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useMountedState } from '../utils/mounted';
 
 // Feature flag.
 const drawingCanBeEnabled =
@@ -27,6 +28,8 @@ export const DrawingHandlersSetterContext = React.createContext(
 );
 
 export const useDrawing = (dim: number) => {
+  const { useState } = useMountedState();
+
   // Drawing functionalities.
   // Right-drag = draw.
   // RightClick several times = clear drawing.
@@ -37,7 +40,7 @@ export const useDrawing = (dim: number) => {
   const [isEnabledState, setIsEnabled] = useState(false);
   const isEnabled = canBeEnabled && isEnabledState;
 
-  const boardEltRef = React.useRef<HTMLElement | null>();
+  const boardEltRef = React.useRef<HTMLElement>();
   const [boardSize, setBoardSize] = useState({
     left: 0,
     top: 0,
@@ -57,7 +60,7 @@ export const useDrawing = (dim: number) => {
     }
   }, []);
   const boardRef = React.useCallback(
-    (elt: HTMLElement | null) => {
+    (elt) => {
       boardEltRef.current = elt;
       resizeFunc();
     },

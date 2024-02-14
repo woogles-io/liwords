@@ -1,12 +1,7 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Card, Carousel } from 'antd';
+import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../navigation/topbar';
 import { PettableAvatar, PlayerAvatar } from '../shared/player_avatar';
 import { UsernameWithContext } from '../shared/usernameWithContext';
@@ -203,6 +198,8 @@ const variantToName = (variant: string) => {
 };
 
 export const PlayerProfile = React.memo(() => {
+  const { useState } = useMountedState();
+
   const gamesPageSize = 24;
   const annotatedPageSize = 20;
   const { loginState } = useLoginStateStoreContext();

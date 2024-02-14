@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Card, Button } from 'antd';
 import { Modal } from '../utils/focus_modal';
+import { useMountedState } from '../utils/mounted';
 import { SoughtGames } from './sought_games';
 import { ActiveGames } from './active_games';
 import { SeekForm } from './seek_form';
@@ -22,6 +23,7 @@ type Props = {
 };
 
 export const GameLists = React.memo((props: Props) => {
+  const { useState } = useMountedState();
   const navigate = useNavigate();
 
   const {
@@ -63,13 +65,10 @@ export const GameLists = React.memo((props: Props) => {
   ]);
 
   const [simultaneousModeEnabled, setSimultaneousModeEnabled] = useState(false);
-  const handleEnableSimultaneousMode = React.useCallback(
-    (evt: { preventDefault: () => void }) => {
-      evt.preventDefault();
-      setSimultaneousModeEnabled(true);
-    },
-    []
-  );
+  const handleEnableSimultaneousMode = React.useCallback((evt) => {
+    evt.preventDefault();
+    setSimultaneousModeEnabled(true);
+  }, []);
   const myCurrentGames = React.useMemo(
     () =>
       lobbyContext.activeGames.filter((ag) =>
@@ -192,8 +191,6 @@ export const GameLists = React.memo((props: Props) => {
           onClick={() => {
             setSeekModalVisible(false);
           }}
-          type="link"
-          style={{ marginBottom: 5 }}
         >
           Cancel
         </Button>,
@@ -232,8 +229,6 @@ export const GameLists = React.memo((props: Props) => {
           onClick={() => {
             setMatchModalVisible(false);
           }}
-          type="link"
-          style={{ marginBottom: 5 }}
         >
           Cancel
         </Button>,
@@ -273,8 +268,6 @@ export const GameLists = React.memo((props: Props) => {
           onClick={() => {
             setBotModalVisible(false);
           }}
-          type="link"
-          style={{ marginBottom: 5 }}
         >
           Cancel
         </Button>,

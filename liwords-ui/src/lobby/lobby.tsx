@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect } from 'react';
+import { useMountedState } from '../utils/mounted';
 
 import { TopBar } from '../navigation/topbar';
 
@@ -10,7 +11,6 @@ import './lobby.scss';
 import { AnnouncementsWidget } from './announcements';
 import { sendAccept, sendSeek } from './sought_game_interactions';
 import { PuzzlePreview } from '../puzzles/puzzle_preview';
-import { ConfigProvider } from 'antd';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -19,6 +19,7 @@ type Props = {
 };
 
 export const Lobby = (props: Props) => {
+  const { useState } = useMountedState();
   const { sendSocketMsg } = props;
   const { loginState } = useLoginStateStoreContext();
 
@@ -58,27 +59,15 @@ export const Lobby = (props: Props) => {
             DISCONNECT={props.DISCONNECT}
           />
         </div>
-        <ConfigProvider
-          theme={{
-            components: {
-              Dropdown: {
-                paddingBlock: 5,
-                paddingXS: 0,
-                paddingXXS: 0,
-              },
-            },
-          }}
-        >
-          <GameLists
-            loggedIn={loggedIn}
-            userID={userID}
-            username={username}
-            newGame={handleNewGame}
-            selectedGameTab={selectedGameTab}
-            setSelectedGameTab={setSelectedGameTab}
-            onSeekSubmit={onSeekSubmit}
-          />
-        </ConfigProvider>
+        <GameLists
+          loggedIn={loggedIn}
+          userID={userID}
+          username={username}
+          newGame={handleNewGame}
+          selectedGameTab={selectedGameTab}
+          setSelectedGameTab={setSelectedGameTab}
+          onSeekSubmit={onSeekSubmit}
+        />
         <div className="announcements">
           <AnnouncementsWidget />
           <PuzzlePreview />

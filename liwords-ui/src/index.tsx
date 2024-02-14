@@ -1,15 +1,10 @@
 import React from 'react';
-import { createRoot } from 'react-dom/client';
+import ReactDOM from 'react-dom';
+import './index.css';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
-import { Store as LegacyStore } from './store/store';
+import { Store } from './store/store';
 import { BriefProfiles } from './utils/brief_profiles';
-
-import { Provider } from 'react-redux';
-
-import 'antd/dist/reset.css';
-import './index.css';
-import { store } from './store/redux_store';
 
 declare global {
   interface Window {
@@ -56,20 +51,15 @@ window.console.info(
   resizeFunc();
 }
 
-const container = document.getElementById('root');
-const root = createRoot(container!);
-
-root.render(
+ReactDOM.render(
   <React.StrictMode>
     <BrowserRouter>
-      <Provider store={store}>
-        {/* legacy store will be slowly decommissioned */}
-        <LegacyStore>
-          <BriefProfiles>
-            <App />
-          </BriefProfiles>
-        </LegacyStore>
-      </Provider>
+      <Store>
+        <BriefProfiles>
+          <App />
+        </BriefProfiles>
+      </Store>
     </BrowserRouter>
-  </React.StrictMode>
+  </React.StrictMode>,
+  document.getElementById('root')
 );

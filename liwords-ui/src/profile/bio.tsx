@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import ReactMarkdown from 'react-markdown';
+import { useMountedState } from '../utils/mounted';
 import { useParams } from 'react-router-dom';
 import { useLoginStateStoreContext } from '../store/store';
 
@@ -9,6 +10,7 @@ type BioProps = {
 };
 
 export const BioCard = React.memo((props: BioProps) => {
+  const { useState } = useMountedState();
   const { loginState } = useLoginStateStoreContext();
   const { username: viewer } = loginState;
   const { username } = useParams();
