@@ -41,6 +41,7 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, oldLex, newLex string) erro
 	}
 	defer rows.Close()
 	invalidPuzzles := 0
+	validPuzzles := 0
 
 	for rows.Next() {
 		var puuid string
@@ -69,7 +70,7 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, oldLex, newLex string) erro
 		if err != nil {
 			return err
 		}
-		mcg, err := game.NewFromHistory(ghist, rules, 0)
+		mcg, err := game.NewFromHistory(ghist, rules, turn)
 		if err != nil {
 			return err
 		}
@@ -80,9 +81,11 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, oldLex, newLex string) erro
 		if !valid {
 			fmt.Printf("Puzzle %v no longer valid\n", puuid)
 			invalidPuzzles++
+		} else {
+			validPuzzles++
 		}
 	}
-	fmt.Printf("Invalid puzzles: %d\n", invalidPuzzles)
+	fmt.Printf("Invalid puzzles: %d, valid puzzles: %d\n", invalidPuzzles, validPuzzles)
 
 	return nil
 }
