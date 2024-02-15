@@ -1080,3 +1080,12 @@ func answerToGameEvent(a *answer) *macondopb.GameEvent {
 		IsBingo:     a.IsBingo,
 	}
 }
+
+func AnswerBytesToGameEvent(abts []byte) (*macondopb.GameEvent, error) {
+	a := &answer{}
+	err := a.Scan(abts)
+	if err != nil {
+		return nil, err
+	}
+	return answerToGameEvent(a), nil
+}

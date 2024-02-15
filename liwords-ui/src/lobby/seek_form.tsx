@@ -198,6 +198,20 @@ export const SeekForm = (props: Props) => {
   const storedValues = window.localStorage
     ? JSON.parse(window.localStorage.getItem(storageKey) || '{}')
     : {};
+
+  switch (storedValues.lexicon) {
+    case 'NWL20':
+    case 'NWL18':
+      storedValues.lexicon = 'NWL23';
+      break;
+    case 'CSW19':
+      storedValues.lexicon = 'CSW21';
+      break;
+    case 'FRA20':
+      storedValues.lexicon = 'FRA24';
+      break;
+  }
+
   const givenFriend = useMemo(
     () => props.friendRef?.current ?? '',
     [props.friendRef]
@@ -245,21 +259,27 @@ export const SeekForm = (props: Props) => {
     // (If they are disabled, we should use the hardcoded values)
     const valuesToPassThrough: Partial<seekPropVals> = {};
     if (!disableVariantControls) {
-      valuesToPassThrough.variant = storedValues.variant;
+      valuesToPassThrough.variant =
+        storedValues.variant || defaultValues.variant;
     }
     if (!disableLexiconControls) {
-      valuesToPassThrough.lexicon = storedValues.lexicon;
+      valuesToPassThrough.lexicon =
+        storedValues.lexicon || defaultValues.lexicon;
     }
     if (!disableChallengeControls) {
-      valuesToPassThrough.challengerule = storedValues.challengerule;
+      valuesToPassThrough.challengerule =
+        storedValues.challengerule || defaultValues.challengerule;
     }
     if (!disableTimeControls) {
-      valuesToPassThrough.initialtimeslider = storedValues.initialtimeslider;
-      valuesToPassThrough.extratime = storedValues.extratime;
-      valuesToPassThrough.incOrOT = storedValues.incOrOT;
+      valuesToPassThrough.initialtimeslider =
+        storedValues.initialtimeslider || defaultValues.initialtimeslider;
+      valuesToPassThrough.extratime =
+        storedValues.extratime || defaultValues.extratime;
+      valuesToPassThrough.incOrOT =
+        storedValues.incOrOT || defaultValues.incOrOT;
     }
     if (!disableRatedControls) {
-      valuesToPassThrough.rated = storedValues.rated;
+      valuesToPassThrough.rated = storedValues.rated || defaultValues.rated;
     }
     initialValues = {
       ...initFormValues,

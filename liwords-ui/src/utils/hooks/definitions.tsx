@@ -276,10 +276,10 @@ export const useDefinitionAndPhonyChecker = ({
         if (showDefinitionHover) {
           // for certain lexicons, try getting definitions from other sources
           for (const otherLexicon of lexicon === 'ECWL'
-            ? ['CSW21', 'NWL20']
+            ? ['CSW21', 'NWL23']
             : lexicon === 'CSW19X'
-            ? ['CSW21']
-            : []) {
+              ? ['CSW21']
+              : []) {
             const wordsToRedefine = [];
             for (const word of wordsToDefine) {
               if (

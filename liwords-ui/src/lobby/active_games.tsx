@@ -167,7 +167,7 @@ export const ActiveGames = (props: Props) => {
       key: 'lexicon',
       filters: [
         'CSW21',
-        'NWL20',
+        'NWL23',
         'ECWL',
         'RD28',
         'FRA24',

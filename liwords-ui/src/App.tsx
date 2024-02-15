@@ -69,6 +69,17 @@ if (bnjyTile) {
   document?.body?.classList?.add(`bnjyMode`);
 }
 
+// Migrate default lexicons on frontend.
+const puzzleLexicon = localStorage?.getItem('puzzleLexicon');
+switch (puzzleLexicon) {
+  case 'NWL20':
+    localStorage.setItem('puzzleLexicon', 'NWL23');
+    break;
+  case 'FRA20':
+    localStorage.setItem('puzzleLexicon', 'FRA24');
+    break;
+}
+
 // A temporary component until we auto-redirect with Cloudfront
 const HandoverSignedCookie = () => {
   // No render.
