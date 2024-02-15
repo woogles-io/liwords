@@ -50,12 +50,12 @@ type Lexicon = {
 };
 
 export const AllLexica: { [code: string]: Lexicon } = {
-  NWL20: {
-    code: 'NWL20',
-    shortDescription: 'NWL 20 (North American English)',
-    matchName: 'NWL20',
+  NWL23: {
+    code: 'NWL23',
+    shortDescription: 'NWL 23 (North American English)',
+    matchName: 'NWL23',
     longDescription:
-      'NASPA Word List, 2020 Edition (NWL20), © 2020 North American Word Game Players Association. All rights reserved.',
+      'NASPA Word List, 2023 Edition (NWL23), © 2023 North American Word Game Players Association. All rights reserved.',
     // us canada
     // flag: 'https://woogles-flags.s3.us-east-2.amazonaws.com/us.png',
   },

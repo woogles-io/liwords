@@ -24,24 +24,35 @@ import (
 
 func migrate(cfg *config.Config, pool *pgxpool.Pool, oldLex, newLex string) error {
 	ctx := context.Background()
-	tx, err := pool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
 
 	query := `
 	SELECT puzzles.uuid, game_id, games.history, games.request, turn_number, answer FROM puzzles
 	JOIN games on game_id = games.id
 	WHERE lexicon = $1 AND valid = true`
 
-	rows, err := tx.Query(ctx, query, oldLex)
+	qconn, err := pool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer qconn.Release()
+
+	rows, err := qconn.Query(ctx, query, oldLex)
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
 	invalidPuzzles := 0
 	validPuzzles := 0
+
+	updateQuery := `
+	UPDATE puzzles SET lexicon = $1 WHERE puzzles.uuid = $2
+	`
+
+	tx, err := pool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
 
 	for rows.Next() {
 		var puuid string
@@ -83,17 +94,24 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, oldLex, newLex string) erro
 			invalidPuzzles++
 		} else {
 			validPuzzles++
+			_, err = tx.Exec(ctx, updateQuery, newLex, puuid)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	fmt.Printf("Invalid puzzles: %d, valid puzzles: %d\n", invalidPuzzles, validPuzzles)
-
-	return nil
+	return tx.Commit(ctx)
 }
 
 func main() {
 	cfg := &config.Config{}
-	cfg.Load(os.Args[1:])
-	log.Info().Msgf("Loaded config: %v", cfg)
+	cfg.Load(nil)
+	log.Info().Msgf("Loaded config: %v", cfg.MacondoConfigMap)
+
+	if len(os.Args) < 3 {
+		panic("need 2 arguments: before and after lexica")
+	}
 
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	if cfg.Debug {
@@ -105,8 +123,9 @@ func main() {
 		panic(err)
 	}
 
-	err = migrate(cfg, pool, "NWL20", "NWL23")
+	err = migrate(cfg, pool, os.Args[1], os.Args[2])
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("Done migrating")
 }
