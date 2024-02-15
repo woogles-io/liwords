@@ -200,7 +200,8 @@ export const SeekForm = (props: Props) => {
     : {};
 
   switch (storedValues.lexicon) {
-    case 'NWL20' || 'NWL18':
+    case 'NWL20':
+    case 'NWL18':
       storedValues.lexicon = 'NWL23';
       break;
     case 'CSW19':
