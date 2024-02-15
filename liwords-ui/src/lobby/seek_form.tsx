@@ -198,6 +198,19 @@ export const SeekForm = (props: Props) => {
   const storedValues = window.localStorage
     ? JSON.parse(window.localStorage.getItem(storageKey) || '{}')
     : {};
+
+  switch (storedValues.lexicon) {
+    case 'NWL20' || 'NWL18':
+      storedValues.lexicon = 'NWL23';
+      break;
+    case 'CSW19':
+      storedValues.lexicon = 'CSW21';
+      break;
+    case 'FRA20':
+      storedValues.lexicon = 'FRA24';
+      break;
+  }
+
   const givenFriend = useMemo(
     () => props.friendRef?.current ?? '',
     [props.friendRef]
