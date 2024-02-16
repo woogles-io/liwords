@@ -5,8 +5,8 @@ import React, {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from 'react';
-import { useMountedState } from './mounted';
 import { Unrace } from './unrace';
 import {
   BriefProfile,
@@ -28,7 +28,6 @@ const BriefProfilesContext = createContext<{
 export const BriefProfiles = (props: {
   children?: JSX.Element | JSX.Element[];
 }) => {
-  const { useState } = useMountedState();
   const [profileId, setProfileId] = useState(0);
   const triggerRefresh = useCallback(
     () => setProfileId((n) => (n + 1) | 0),

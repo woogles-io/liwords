@@ -5,17 +5,17 @@
   .ant-table-filter-trigger-container {
     transition: none;
   }
-  .ant-table-filter-trigger-container-open .ant-table-filter-trigger,
-  .ant-table-filter-trigger:hover {
-    @include colorModed() {
-      background: m($off-background);
-      color: m($gray-medium);
-      transition: none;
-    }
-  }
-  .ant-table-column-sorters {
+  .ant-table-column-sorter {
     padding: 16px 0;
+    // @include colorModed() {
+    //   color: m($column-sorter);
+    // }
   }
+//   .ant-table-thead > tr > th:hover {
+//     @include colorModed() {
+//       background: m($off-background);
+//     }
+//   }
   .ant-table-thead > tr,
   .ant-table-tbody > tr {
     @include colorModed() {
@@ -158,7 +158,7 @@
         }
         &:hover {
           @include colorModed() {
-            background-color: scale-color(m($timer-low-light), $lightness: 10%);
+            background-color: scale-color(m($column-sorter), $lightness: 10%);
           }
         }
         td.ant-table-column-sort {

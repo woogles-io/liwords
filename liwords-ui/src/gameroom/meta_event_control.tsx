@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
 import {
   GameMetaEvent,
@@ -6,9 +6,9 @@ import {
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { MetaStates } from '../store/meta_game_events';
 import { useGameMetaEventContext } from '../store/store';
-import { useMountedState } from '../utils/mounted';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { ShowNotif } from './show_notif';
+import { App } from 'antd';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -18,7 +18,6 @@ type Props = {
 export const MetaEventControl = (props: Props) => {
   const { gameMetaEventContext } = useGameMetaEventContext();
   const { sendSocketMsg, gameID } = props;
-  const { useState } = useMountedState();
   // can't get this to work with types:
   const [activeNotif, setActiveNotif] = useState<React.ReactElement | null>(
     null
@@ -78,6 +77,8 @@ export const MetaEventControl = (props: Props) => {
     [sendSocketMsg, gameID]
   );
 
+  const { notification } = App.useApp();
+
   // const [renderStartTime, setRenderStartTime] = useState(performance.now());
   // const [modalVisible, setModalVisible] = useState(false);
   useEffect(() => {
@@ -90,6 +91,7 @@ export const MetaEventControl = (props: Props) => {
       case MetaStates.REQUESTED_ABORT:
         setActiveNotif(
           <ShowNotif
+            notification={notification}
             maxDuration={gameMetaEventContext.initialExpiry}
             onExpire={() => {
               eventTimeout(gameMetaEventContext.evtId);
@@ -109,6 +111,7 @@ export const MetaEventControl = (props: Props) => {
       case MetaStates.RECEIVER_ABORT_COUNTDOWN:
         setActiveNotif(
           <ShowNotif
+            notification={notification}
             maxDuration={gameMetaEventContext.initialExpiry}
             onExpire={() => {
               eventTimeout(gameMetaEventContext.evtId);
@@ -130,6 +133,7 @@ export const MetaEventControl = (props: Props) => {
       case MetaStates.REQUESTED_ADJUDICATION:
         setActiveNotif(
           <ShowNotif
+            notification={notification}
             maxDuration={gameMetaEventContext.initialExpiry}
             onExpire={() => {
               eventTimeout(gameMetaEventContext.evtId);
@@ -150,6 +154,7 @@ export const MetaEventControl = (props: Props) => {
       case MetaStates.RECEIVER_ADJUDICATION_COUNTDOWN:
         setActiveNotif(
           <ShowNotif
+            notification={notification}
             maxDuration={gameMetaEventContext.initialExpiry}
             onExpire={() => {
               eventTimeout(gameMetaEventContext.evtId);

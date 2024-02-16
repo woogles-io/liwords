@@ -1,5 +1,10 @@
-import React, { createContext, useContext, useEffect, useMemo } from 'react';
-import { useMountedState } from '../utils/mounted';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { fixedCharAt } from '../utils/cwgame/common';
 import './avatar.scss';
 import { Tooltip } from 'antd';
@@ -25,7 +30,6 @@ export const PettableContext = createContext<{
 });
 
 export const PettableAvatar = ({ children }: { children: React.ReactNode }) => {
-  const { useState } = useMountedState();
   const [isPettable, setPettable] = useState(false);
   const [isPetting, setPetting] = useState(false);
   const value = useMemo(
