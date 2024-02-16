@@ -197,15 +197,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile-fe
-    environment:
-      WDS_SOCKET_PORT: 0
-      WDS_SOCKET_PATH: "/wds-socket"
     volumes:
       - ./liwords-ui:/opt/liwords-ui
-      # Install node_modules inside the docker container
-      - "/opt/liwords-ui/node_modules"
     working_dir: /opt/liwords-ui
-    command: npm start -- --host
+    command: bash -c "npm ci && npm start -- --host"
     networks:
       - aeronet
     labels:

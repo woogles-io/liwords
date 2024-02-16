@@ -5,11 +5,4 @@ WORKDIR /opt/liwords-ui/
 
 ENV PATH /opt/liwords-ui/node_modules/.bin:$PATH
 
-COPY ./liwords-ui/package.json ./liwords-ui/package-lock.json ./
-COPY ./liwords-ui/wolges-wasm-pkg ./wolges-wasm-pkg
-
-RUN ["npm", "ci"]
-
 EXPOSE 3000
-
-CMD ["npm", "start"]
