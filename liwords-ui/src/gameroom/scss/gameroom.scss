@@ -90,7 +90,9 @@ p.streak-loss {
 
         button.ant-btn-icon-only {
             font-size: 16px;
-            color: black;
+            @include colorModed() {
+                color: m($button-text);
+            }
         }
 
         .controls {
@@ -141,7 +143,9 @@ p.streak-loss {
 
                 button.ant-btn-icon-only {
                     font-size: 16px;
-                    color: black;
+                    @include colorModed() {
+                        color: m($button-text);
+                    }
                 }
             }
         }
