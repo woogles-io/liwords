@@ -1,6 +1,8 @@
 
 FROM node:latest
 
+USER node
+
 WORKDIR /opt/liwords-ui/
 
 ENV PATH /opt/liwords-ui/node_modules/.bin:$PATH

@@ -36,14 +36,12 @@
     opacity: 0;
   }
 }
-// force fade away on phones, as they get stuck
+
 @media (hover: none) {
   .ant-tooltip-content {
     opacity: 1;
-    animation: disappear 300ms ease-out 800ms forwards;
   }
 }
-
 
 .ant-input-group-addon {
   margin: 0;
