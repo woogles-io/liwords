@@ -543,6 +543,7 @@ export const BoardPanel = React.memo((props: Props) => {
   const clearBackupRef = useRef<boolean>(false);
   const lastLettersRef = useRef<Array<MachineLetter>>();
   const lastRackRef = useRef<Array<MachineLetter>>();
+  const lastIsExaminingRef = useRef<boolean>(false);
   const readOnlyEffectDependenciesRef = useRef<{
     displayedRack: Array<MachineLetter>;
     isMyTurn: boolean;
@@ -567,6 +568,11 @@ export const BoardPanel = React.memo((props: Props) => {
 
   // Need to sync state to props here whenever the board changes.
   useEffect(() => {
+    if (lastIsExaminingRef.current !== isExamining) {
+      // Throw away all backups when toggling examiner.
+      lastIsExaminingRef.current = isExamining;
+      backupStatesRef.current.clear();
+    }
     let fullReset = false;
     const lastLetters = lastLettersRef.current;
     // XXX: please fix me:
