@@ -583,11 +583,7 @@ export const BoardPanel = React.memo((props: Props) => {
       // See comment above. I don't know why it doesn't show the latest rack
       // when we edit more than once.
       fullReset = true;
-    } else if (
-      props.currentRack.length > 0 &&
-      dep.displayedRack.length === 0 &&
-      !dep.placedTiles.size
-    ) {
+    } else if (props.currentRack.length > 0 && !dep.placedTiles.size) {
       // First load after receiving rack.
       fullReset = true;
     } else if (isExamining) {
