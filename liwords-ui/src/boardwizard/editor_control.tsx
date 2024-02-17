@@ -119,7 +119,10 @@ const CreationForm = (props: CreationFormProps) => {
         <Input maxLength={50} />
       </Form.Item>
       {/* exclude ECWL since that lexicon can't be played without VOID for now */}
-      <LexiconFormItem excludedLexica={new Set(['ECWL'])} />
+      <LexiconFormItem
+        excludedLexica={new Set(['ECWL'])}
+        additionalLexica={['NWL20', 'NWL18', 'CSW19']}
+      />
       <Form.Item
         label="Challenge rule"
         name="challengerule"
