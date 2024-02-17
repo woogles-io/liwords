@@ -501,7 +501,6 @@ const GameControls = React.memo((props: Props) => {
                     setCurrentPopUp('NONE');
                   }
                 }}
-                danger
                 disabled={!props.myTurn}
                 type={
                   props.finalPassOrChallenge && props.myTurn
