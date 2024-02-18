@@ -543,7 +543,7 @@ export const BoardPanel = React.memo((props: Props) => {
   const clearBackupRef = useRef<boolean>(false);
   const lastLettersRef = useRef<Array<MachineLetter>>();
   const lastRackRef = useRef<Array<MachineLetter>>();
-  const lastIsExaminingRef = useRef<boolean>(false);
+  const lastIsExaminingRef = useRef<boolean>();
   const readOnlyEffectDependenciesRef = useRef<{
     displayedRack: Array<MachineLetter>;
     isMyTurn: boolean;
