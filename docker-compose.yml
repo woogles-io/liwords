@@ -200,7 +200,7 @@ services:
     volumes:
       - ./liwords-ui:/opt/liwords-ui
     working_dir: /opt/liwords-ui
-    command: bash -c "npm ci && npm start -- --host"
+    command: bash -c "npm install && npm start -- --host"
     networks:
       - aeronet
     labels:
