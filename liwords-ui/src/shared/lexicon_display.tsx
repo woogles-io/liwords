@@ -8,6 +8,7 @@ type Props = {
   excludedLexica?: Set<string>;
   disabled?: boolean;
   hideRequired?: boolean;
+  additionalLexica?: Array<string>;
 };
 
 export const MatchLexiconDisplay = (props: {
@@ -56,6 +57,15 @@ export const LexiconFormItem = React.memo((props: Props) => {
         <MatchLexiconDisplay lexiconCode={k} useShortDescription />
       </Select.Option>
     ));
+
+  props.additionalLexica?.forEach((lex) => {
+    options.push(
+      <Select.Option key={lex} value={lex}>
+        <MatchLexiconDisplay lexiconCode={lex} useShortDescription />
+      </Select.Option>
+    );
+  });
+
   return (
     <Form.Item
       label="Dictionary"

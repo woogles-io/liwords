@@ -2,12 +2,11 @@
 
 import { Button, Form, Input, Popconfirm, Select, Typography } from 'antd';
 import { Store } from 'antd/lib/form/interface';
-import React, { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ChallengeRule } from '../gen/api/proto/ipc/omgwords_pb';
 import { LexiconFormItem } from '../shared/lexicon_display';
 import { useGameContextStoreContext } from '../store/store';
 import { baseURL } from '../utils/hooks/connect';
-import { useMountedState } from '../utils/mounted';
 
 type Props = {
   gameID?: string;
@@ -29,7 +28,6 @@ export const EditorControl = (props: Props) => {
   } else {
     form = <EditForm editGame={props.editGame} />;
   }
-  const { useState } = useMountedState();
 
   let gameURL = '';
 
@@ -121,7 +119,10 @@ const CreationForm = (props: CreationFormProps) => {
         <Input maxLength={50} />
       </Form.Item>
       {/* exclude ECWL since that lexicon can't be played without VOID for now */}
-      <LexiconFormItem excludedLexica={new Set(['ECWL'])} />
+      <LexiconFormItem
+        excludedLexica={new Set(['ECWL'])}
+        additionalLexica={['NWL20', 'NWL18', 'CSW19']}
+      />
       <Form.Item
         label="Challenge rule"
         name="challengerule"

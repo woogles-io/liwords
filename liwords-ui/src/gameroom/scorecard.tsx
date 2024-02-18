@@ -5,8 +5,8 @@ import React, {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from 'react';
-import { useMountedState } from '../utils/mounted';
 import { Card } from 'antd';
 import { GameEvent, GameEvent_Type } from '../gen/api/proto/macondo/macondo_pb';
 import { Board } from '../utils/cwgame/board';
@@ -291,7 +291,6 @@ const ScorecardTurn = (props: turnProps) => {
 };
 
 export const ScoreCard = React.memo((props: Props) => {
-  const { useState } = useMountedState();
   const el = useRef<HTMLDivElement>(null);
   const [cardHeight, setCardHeight] = useState(0);
   const [flipHidden, setFlipHidden] = useState(true);

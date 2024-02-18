@@ -1,4 +1,4 @@
-import { Button, Card, Select } from 'antd';
+import { App, Button, Card, Select } from 'antd';
 import { Modal } from '../utils/focus_modal';
 import React, {
   ReactNode,
@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from 'react';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { ActiveGames } from '../lobby/active_games';
@@ -17,17 +18,15 @@ import {
   useLobbyStoreContext,
   useTournamentStoreContext,
 } from '../store/store';
-import { useMountedState } from '../utils/mounted';
 import { RecentTourneyGames } from './recent_games';
 import { ActionType } from '../actions/actions';
 import { Pairings } from './pairings';
 import { isPairedMode, isClubType } from '../store/constants';
 import { Standings } from './standings';
 import { DirectorTools } from './director_tools/director_tools';
-import { flashError, useClient } from '../utils/hooks/connect';
+import { useClient } from '../utils/hooks/connect';
 import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_connectweb';
 import { flashTournamentError } from './tournament_error';
-import { ConnectError } from '@domino14/connect-web';
 // import { CheckIn } from './check_in';
 
 const PAGE_SIZE = 30;
@@ -49,7 +48,6 @@ type Props = {
 };
 
 export const ActionsPanel = React.memo((props: Props) => {
-  const { useState } = useMountedState();
   const [matchModalVisible, setMatchModalVisible] = useState(false);
   const [formDisabled, setFormDisabled] = useState(false);
   const {
@@ -153,6 +151,8 @@ export const ActionsPanel = React.memo((props: Props) => {
 
   const tournamentClient = useClient(TournamentService);
 
+  const { message, notification } = App.useApp();
+
   useEffect(() => {
     if (!tournamentID) {
       return;
@@ -213,7 +213,7 @@ export const ActionsPanel = React.memo((props: Props) => {
           round: roundToStart as number, // should already be a number.
         });
       } catch (e) {
-        flashTournamentError(e, tournamentContext);
+        flashTournamentError(message, notification, e, tournamentContext);
       }
     };
     return (
@@ -306,6 +306,8 @@ export const ActionsPanel = React.memo((props: Props) => {
           onClick={() => {
             setMatchModalVisible(false);
           }}
+          style={{ marginBottom: 5 }}
+          type="link"
         >
           Cancel
         </Button>,

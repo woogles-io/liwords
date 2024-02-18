@@ -4,12 +4,12 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useState,
 } from 'react';
 import {
   GameEvent,
   GameEvent_Direction,
 } from '../gen/api/proto/macondo/macondo_pb';
-import { useMountedState } from '../utils/mounted';
 import {
   PuzzleRequest,
   PuzzleStatus,
@@ -59,7 +59,6 @@ const readableLane = (row: number, col: number, direction: 0 | 1) => {
 
 export const Hints = (props: Props) => {
   const { puzzleID, solved, attempts } = props;
-  const { useState } = useMountedState();
   const [hints, setHints] = useState<AvailableHints>({});
   const [solution, setSolution] = useState<GameEvent | undefined>(undefined);
   const { gridDim, setLearnLayout } = useContext(LearnContext);

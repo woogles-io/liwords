@@ -1,8 +1,8 @@
 // boardwizard is our board editor
 
 import { HomeOutlined } from '@ant-design/icons';
-import { Card, notification } from 'antd';
-import React, { useCallback, useEffect, useMemo } from 'react';
+import { App, Card } from 'antd';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ActionType } from '../actions/actions';
 import { alphabetFromName } from '../constants/alphabets';
@@ -70,7 +70,7 @@ export const BoardEditor = () => {
   } = useExamineStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
-
+  const { notification } = App.useApp();
   const { handleSetHover, hideDefinitionHover, definitionPopover } =
     useDefinitionAndPhonyChecker({
       addChat: doNothing,

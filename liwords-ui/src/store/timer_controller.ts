@@ -162,6 +162,10 @@ export class ClockController {
       delay = (time % 1000) + 1000;
     }
 
+    // Some browser versions round down the timeout, this causes the same
+    // second to be displayed twice before decrementing by two at once.
+    delay = Math.ceil(delay);
+
     this.tickCallback = window.setTimeout(
       this.tick,
       delay + Math.max(extraDelay, 0)

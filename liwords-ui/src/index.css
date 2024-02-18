@@ -11,3 +11,8 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* override antd reset.css*/
+p {
+    margin-bottom: 0px;
+}

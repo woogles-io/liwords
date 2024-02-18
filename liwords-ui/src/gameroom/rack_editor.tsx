@@ -1,12 +1,12 @@
-import Input, { InputRef } from 'rc-input';
-import React, { useEffect, useMemo, useRef } from 'react';
-import { useMountedState } from '../utils/mounted';
+import { InputRef } from 'rc-input';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { MachineWord } from '../utils/cwgame/common';
 import {
   Alphabet,
   machineWordToRunes,
   runesToMachineWord,
 } from '../constants/alphabets';
+import { Input } from 'antd';
 
 type Props = {
   rackCallback: (rack: MachineWord) => void;
@@ -18,7 +18,6 @@ type Props = {
 const MaxRackLength = 7;
 
 export const RackEditor = (props: Props) => {
-  const { useState } = useMountedState();
   const [currentRack, setCurrentRack] = useState(props.currentRack);
   const inputRef = useRef<InputRef>(null);
   const handleKeyDown = (evt: React.KeyboardEvent) => {

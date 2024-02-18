@@ -1,4 +1,10 @@
-import React, { ReactNode, useCallback, useEffect, useMemo } from 'react';
+import React, {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import {
   FriendUser,
   useFriendsStoreContext,
@@ -13,7 +19,6 @@ import { Form, Input } from 'antd';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import './playerList.scss';
 import { useDebounce } from '../utils/debounce';
-import { useMountedState } from '../utils/mounted';
 import { flashError, useClient } from '../utils/hooks/connect';
 import { AutocompleteService } from '../gen/api/proto/user_service/user_service_connectweb';
 
@@ -120,7 +125,6 @@ const Player = React.memo((props: PlayerProps) => {
 });
 
 export const Players = React.memo((props: Props) => {
-  const { useState } = useMountedState();
   const { friends } = useFriendsStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { sendMessage, defaultChannelType } = props;

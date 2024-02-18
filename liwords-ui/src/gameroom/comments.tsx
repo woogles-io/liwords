@@ -1,11 +1,10 @@
 import { DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { Card, Input, Popconfirm } from 'antd';
 import moment from 'moment';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { GameComment } from '../gen/api/proto/comments_service/comments_service_pb';
 import { canMod } from '../mod/perms';
 import { useLoginStateStoreContext } from '../store/store';
-import { useMountedState } from '../utils/mounted';
 
 type Props = {
   comments: Array<GameComment>;
@@ -30,7 +29,6 @@ type EditProps = {
 };
 
 export const CommentEditor = (props: EditProps) => {
-  const { useState } = useMountedState();
   const myRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -64,7 +62,6 @@ export const CommentEditor = (props: EditProps) => {
 };
 
 export const Comment = (props: SingleCommentProps) => {
-  const { useState } = useMountedState();
   const [popupOpen, setPopupOpen] = useState(false);
   const initialCommentDisplay = useMemo(
     () => <p>{props.comment.comment}</p>,
@@ -132,7 +129,6 @@ export const Comment = (props: SingleCommentProps) => {
 };
 
 export const Comments = (props: Props) => {
-  const { useState } = useMountedState();
   const [newEditorVisible, setNewEditorVisible] = useState(false);
   const myRef = useRef<HTMLDivElement | null>(null);
   let footer = <></>;

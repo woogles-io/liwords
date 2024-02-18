@@ -36,14 +36,12 @@
     opacity: 0;
   }
 }
-// force fade away on phones, as they get stuck
+
 @media (hover: none) {
   .ant-tooltip-content {
     opacity: 1;
-    animation: disappear 300ms ease-out 800ms forwards;
   }
 }
-
 
 .ant-input-group-addon {
   margin: 0;
@@ -66,6 +64,7 @@
   min-width: 200px;
 }
 a,
+button.ant-btn-link,
 button.link {
   cursor: pointer;
   @include colorModed() {
@@ -82,29 +81,29 @@ button.link {
     }
   }
 }
-button.link {
+button.ant-btn-link, button.link {
   @include colorModed() {
     color: m($primary-dark);
   }
 }
 
-a.plain,
-.link.plain {
-  cursor: pointer;
-  font-weight: 700;
-  @include colorModed() {
-    color: m($gray-extreme);
-  }
-  transition: none;
-  font-family: $font-default;
-  line-height: 34px;
-  &:hover,
-  &:active {
-    @include colorModed() {
-      color: m($primary-dark);
-    }
-  }
-}
+// a.plain,
+// .link.plain {
+//   cursor: pointer;
+//   font-weight: 700;
+//   @include colorModed() {
+//     color: m($gray-extreme);
+//   }
+//   transition: none;
+//   font-family: $font-default;
+//   line-height: 34px;
+//   &:hover,
+//   &:active {
+//     @include colorModed() {
+//       color: m($primary-dark);
+//     }
+//   }
+// }
 .note {
   font-size: 12px;
   line-height: 18px;
@@ -223,7 +222,7 @@ ul {
     box-shadow: m($shadow);
   }
 }
-.App {
+.App, .custom-tags {
 
   .ant-tag {
     font-weight: 800;
@@ -339,15 +338,9 @@ ul {
   }
 }
 
-// override an ant > 4.20 setting, when moving from a Dropdown overlay to a
-// separate menu.
-// .ant-dropdown > .ant-dropdown-menu {
-//   box-shadow: none;
-// }
-
 .ant-dropdown-menu,
 .ant-select-dropdown {
-  padding: 0;
+//   padding: 0;
   z-index: 1100;
   @include colorModed() {
     background: m($background);
@@ -476,13 +469,21 @@ ul {
   }
 }
 
+// XXX: Can't find an AntD theme style thingy for this:
 .ant-table-filter-dropdown-btns {
   display: flex;
   align-items: center;
+  height: 63px;
   @include colorModed() {
     background: m($background);
     color: m($gray-extreme);
     border-top: 1px solid m($card-background);
+  }
+  .ant-btn {
+    height: 36px;
+  }
+  .ant-btn-link {
+    border: 1px solid;
   }
 }
 
@@ -498,6 +499,12 @@ ul {
     color: m($gray-extreme);
   }
 }
+.ant-popconfirm-inner {
+    @include colorModed() {
+      background-color: m($card-background);
+      color: m($gray-extreme);
+    }
+  }
 
 .ant-modal-close-x {
   @include colorModed() {
@@ -509,6 +516,11 @@ ul {
     color: m($gray-extreme);
   }
 }
+.ant-popconfirm-message {
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+  }
 .ant-popover-placement-top > .ant-popover-content > .ant-popover-arrow,
 .ant-popover-placement-topLeft > .ant-popover-content > .ant-popover-arrow,
 .ant-popover-placement-topRight > .ant-popover-content > .ant-popover-arrow {
@@ -517,6 +529,17 @@ ul {
     border-bottom-color: m($card-background);
   }
 }
+
+.ant-popconfirm-placement-top > .ant-popconfirm-content > .ant-popconfirm-arrow,
+.ant-popconfirm-placement-topLeft > .ant-popconfirm-content > .ant-popconfirm-arrow,
+.ant-popconfirm-placement-topRight > .ant-popconfirm-content > .ant-popconfirm-arrow {
+  @include colorModed() {
+    border-right-color: m($card-background);
+    border-bottom-color: m($card-background);
+  }
+}
+
+
 .ant-collapse, .ant-collapse-item, .ant-collapse-header, .ant-collapse-content, .ant-collapse-content-box {
   @include colorModed() {
     background-color: m($card-background);

@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from 'react';
 import { Button, Card, Switch } from 'antd';
 import { BulbOutlined } from '@ant-design/icons';
@@ -15,7 +16,6 @@ import {
   useTentativeTileContext,
 } from '../store/store';
 import { getLeaveKey, getLexiconKey, getWolges } from '../wasm/loader';
-import { useMountedState } from '../utils/mounted';
 import { RedoOutlined } from '@ant-design/icons';
 import {
   EmptyBoardSpaceMachineLetter,
@@ -356,8 +356,6 @@ export const AnalyzerContextProvider = ({
   children: React.ReactNode;
   nocache?: boolean;
 }) => {
-  const { useState } = useMountedState();
-
   const [, setMovesCacheId] = useState(0);
   const rerenderMoves = useCallback(
     () => setMovesCacheId((n) => (n + 1) | 0),
@@ -379,7 +377,7 @@ export const AnalyzerContextProvider = ({
   }, [examinableGameContext.gameID]);
 
   const requestAnalysis = useCallback(
-    (lexicon, variant) => {
+    (lexicon: string, variant?: string) => {
       const examinerIdAtStart = examinerId.current;
       const turn = examinableGameContext.turns.length;
       if (nocache) {
@@ -519,7 +517,6 @@ export const usePlaceMoveCallback = () => {
 };
 
 export const Analyzer = React.memo((props: AnalyzerProps) => {
-  const { useState } = useMountedState();
   const { lexicon, variant } = props;
   const {
     autoMode,

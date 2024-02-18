@@ -1,6 +1,6 @@
 import React, { useContext, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Dropdown } from 'antd';
+import { App, Dropdown } from 'antd';
 import { BlockerHandle, TheBlocker } from './blocker';
 import {
   useContextMatchContext,
@@ -11,6 +11,7 @@ import { DisplayUserFlag } from './display_flag';
 import { SettingOutlined } from '@ant-design/icons';
 import { FollowerHandle, TheFollower } from './follower';
 import { PettableContext } from './player_avatar';
+import { HookAPI } from 'antd/lib/modal/useModal';
 
 type UsernameWithContextProps = {
   additionalMenuItems?: React.ReactNode;
@@ -27,7 +28,7 @@ type UsernameWithContextProps = {
   blockCallback?: () => void;
   showModTools?: boolean;
   showDeleteMessage?: boolean;
-  moderate?: (uuid: string, username: string) => void;
+  moderate?: (modal: HookAPI, uuid: string, username: string) => void;
   deleteMessage?: () => void;
   iconOnly?: boolean;
   currentActiveGames?: Array<string>;
@@ -52,11 +53,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           Math.floor(Math.random() * currentActiveGames.length)
         ];
       return {
-        label: (
-          <Link className="plain" to={`/game/${encodeURIComponent(gameID)}`}>
-            Watch
-          </Link>
-        ),
+        label: <Link to={`/game/${encodeURIComponent(gameID)}`}>Watch</Link>,
         key: `watch-${userID}`,
       };
     } else if (currentWatchedGames && currentWatchedGames.length > 0) {
@@ -65,20 +62,12 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           Math.floor(Math.random() * currentWatchedGames.length)
         ];
       return {
-        label: (
-          <Link className="plain" to={`/game/${encodeURIComponent(gameID)}`}>
-            Join
-          </Link>
-        ),
+        label: <Link to={`/game/${encodeURIComponent(gameID)}`}>Join</Link>,
         key: `join-${userID}`,
       };
     } else if (currentlyPuzzling) {
       return {
-        label: (
-          <Link className="plain" to="/puzzle">
-            Join
-          </Link>
-        ),
+        label: <Link to="/puzzle">Join</Link>,
         key: `puzzlejoin-${userID}`,
       };
     } else {
@@ -175,6 +164,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
       label: 'Delete this message',
     });
   }
+  const { modal } = App.useApp();
   // const userMenu = <ul>{userMenuOptions}</ul>;
   return (
     <Dropdown
@@ -189,7 +179,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
               break;
             case `mod-${props.userID}`:
               if (props.moderate && props.userID)
-                props.moderate(props.userID, props.username);
+                props.moderate(modal, props.userID, props.username);
               break;
             case `match-${props.userID}`:
               for (const handleContextMatch of handleContextMatches) {

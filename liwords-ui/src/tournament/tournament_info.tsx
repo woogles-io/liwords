@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { Card } from 'antd';
 import ReactMarkdown from 'react-markdown';
 import { useTournamentStoreContext } from '../store/store';
@@ -11,6 +11,14 @@ type TournamentInfoProps = {
   setSelectedGameTab: (tab: string) => void;
   sendSocketMsg: (msg: Uint8Array) => void;
 };
+
+function LinkRenderer(props: { href?: string; children?: ReactNode }) {
+  return (
+    <a href={props.href} target="_blank" rel="noreferrer">
+      {props.children}
+    </a>
+  );
+}
 
 export const TournamentInfo = (props: TournamentInfoProps) => {
   const { tournamentContext } = useTournamentStoreContext();
@@ -56,13 +64,13 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
         )}
         <h4>Directed by: {directors}</h4>
         <h5 className="section-header">{type} Details</h5>
-        <ReactMarkdown linkTarget="_blank">
+        <ReactMarkdown components={{ a: LinkRenderer }}>
           {tournamentContext.metadata.description}
         </ReactMarkdown>
         {tournamentContext.metadata.disclaimer && (
           <>
             <h5 className="section-header">{type} Notice</h5>
-            <ReactMarkdown linkTarget="_blank">
+            <ReactMarkdown components={{ a: LinkRenderer }}>
               {tournamentContext.metadata.disclaimer}
             </ReactMarkdown>
           </>

@@ -180,10 +180,8 @@ export const ActiveGames = (props: Props) => {
       })),
       filteredValue: lobbyFilterByLexiconArray,
       filterMultiple: true,
-      onFilter: (
-        value: string | number | boolean,
-        record: ActiveGameTableData
-      ) => typeof value === 'string' && record.lexiconCode === value,
+      onFilter: (value: React.Key | boolean, record: ActiveGameTableData) =>
+        typeof value === 'string' && record.lexiconCode === value,
     },
     {
       title: 'Time',
