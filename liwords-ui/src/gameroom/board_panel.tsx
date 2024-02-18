@@ -654,7 +654,7 @@ export const BoardPanel = React.memo((props: Props) => {
       backupStatesRef.current.clear();
       if (!clearBackupRef.current) {
         const lastRack = lastRackRef.current;
-        if (lastLetters && lastRack) {
+        if (lastLetters && lastRack && dep.displayedRack.length) {
           backupStatesRef.current.set(backupKey(lastLetters, lastRack), {
             displayedRack: dep.displayedRack,
             placedTiles: dep.placedTiles,
