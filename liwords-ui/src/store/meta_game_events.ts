@@ -57,10 +57,13 @@ export const metaStateFromMetaEvent = (
       evtCreator = metaEvent.playerId;
       let content = 'Your opponent declined your request to cancel the game.';
       if (!evtCreator) {
-        // if this isn't filled in, the abort request is auto cancelled.
+        // if this isn't filled in, the abort request is auto cancelled, by
+        // perhaps a move being made.
         content = 'The cancel request expired.';
       } else if (evtCreator === oldState.evtCreator) {
         content = 'The cancel request was withdrawn.';
+      } else if (evtCreator === us) {
+        content = "You declined your opponent's cancel request.";
       }
 
       message.info({

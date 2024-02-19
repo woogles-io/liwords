@@ -28,7 +28,8 @@ var (
 	ErrOutstandingRequestExists     = errors.New("please respond to existing request")
 	// generic not allowed error; the front-end should disallow anything that can
 	// return this error:
-	ErrNotAllowed = errors.New("that action is not allowed")
+	ErrNotAllowed            = errors.New("that action is not allowed")
+	ErrCannotAcceptOwnEvents = errors.New("you cannot accept your own requests")
 )
 
 const (
@@ -141,6 +142,17 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 		return nil
 	}
 
+	// The event user must be one of the players in the game.
+	found := false
+	for _, u := range g.History().Players {
+		if u.UserId == evt.PlayerId {
+			found = true
+		}
+	}
+	if !found {
+		return ErrNotAllowed
+	}
+
 	now := g.TimerModule().Now()
 	tnow := time.Unix(0, now*int64(time.Millisecond)).UTC()
 
@@ -182,7 +194,7 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 			}
 		}
 
-		// XXX: Receiver may not be the one on turn, since either player may request abort.
+		// Receiver may not be the one on turn, since either player may request abort.
 		onTurn := g.Game.PlayerOnTurn()
 		timeRemaining := g.TimeRemaining(onTurn)
 		log.Debug().Int("timeRemaining", timeRemaining).Int("onturn", onTurn).Msg("timeremaining")
@@ -274,6 +286,18 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 		matchingEvt := findLastMatchingEvt(g.MetaEvents.Events, evt)
 		if matchingEvt == nil {
 			return ErrNoMatchingEvent
+		}
+		if matchingEvt.PlayerId == evt.PlayerId {
+			if evt.Type == pb.GameMetaEvent_ABORT_DENIED ||
+				evt.Type == pb.GameMetaEvent_ADJUDICATION_DENIED ||
+				evt.Type == pb.GameMetaEvent_UNDO_DENIED {
+				// this is ok. A player can cancel their own requests. They
+				// just shouldn't accept them.
+			} else {
+				// The player who created the original event is the same player
+				// who accepted it.
+				return ErrCannotAcceptOwnEvents
+			}
 		}
 		g.MetaEvents.Events = append(g.MetaEvents.Events, evt)
 
