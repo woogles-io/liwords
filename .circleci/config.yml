@@ -1,7 +1,7 @@
 version: 2.1
 orbs:
   discord: antonioned/discord@0.1.0
-  codecomet-orb: codecomet/codecomet-orb@0.3.1
+  codecomet-orb: codecomet/codecomet-orb@0.4
 jobs:
   build_api_srv:
     environment:
@@ -81,7 +81,7 @@ jobs:
       - codecomet-orb/install
       - codecomet-orb/ingest_junit:
           junit_file: liwords-ui/junit-test.xml
-          test_suite_name: liwords-frontend-tests
+          test_suite_name: Woogles FE tests
       - run: cd liwords-ui && npm run build
       - persist_to_workspace:
           root: liwords-ui
