@@ -599,3 +599,127 @@ func TestDisallowAbortAndAdjudication(t *testing.T) {
 
 	teardownGame(gsetup)
 }
+
+func TestDisallowAnonymousAbortCreation(t *testing.T) {
+	is := is.New(t)
+	gsetup := setupNewGame()
+
+	evtID := shortuuid.New()
+	// troll requests an abort.
+	metaEvt := &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_REQUEST_ABORT,
+		PlayerId:    "ANON_TROLL!",
+		GameId:      gsetup.g.GameID(),
+		OrigEventId: evtID,
+	}
+
+	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
+		gsetup.tstore)
+
+	is.Equal(err, gameplay.ErrNotAllowed)
+
+	gsetup.cancel()
+	<-gsetup.donechan
+
+	is.Equal(gsetup.g.Playing(), macondopb.PlayState_PLAYING)
+
+	// expected events: game history
+	log.Debug().Interface("evts", gsetup.consumer.evts).Msg("evts")
+	is.Equal(len(gsetup.consumer.evts), 1)
+
+	teardownGame(gsetup)
+}
+
+func TestDisallowAnonymousAbortAcceptance(t *testing.T) {
+	is := is.New(t)
+	gsetup := setupNewGame()
+
+	evtID := shortuuid.New()
+	// Jesse requests an abort.
+	metaEvt := &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_REQUEST_ABORT,
+		PlayerId:    "3xpEkpRAy3AizbVmDg3kdi", // "jesse"
+		GameId:      gsetup.g.GameID(),
+		OrigEventId: evtID,
+	}
+
+	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
+		gsetup.tstore)
+
+	is.NoErr(err)
+
+	// Some rando accepts the abort
+	metaEvt = &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_ABORT_ACCEPTED,
+		PlayerId:    "ANONYMOUS-TROLL?",
+		GameId:      gsetup.g.GameID(),
+		OrigEventId: evtID,
+	}
+
+	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
+		gsetup.tstore)
+	is.Equal(err, gameplay.ErrNotAllowed)
+
+	gsetup.cancel()
+	<-gsetup.donechan
+
+	is.Equal(gsetup.g.Playing(), macondopb.PlayState_PLAYING)
+
+	// expected events: game history, request abort
+	log.Debug().Interface("evts", gsetup.consumer.evts).Msg("evts")
+	is.Equal(len(gsetup.consumer.evts), 2)
+
+	teardownGame(gsetup)
+}
+
+func TestDisallowSamePlayerAbortAcceptance(t *testing.T) {
+	is := is.New(t)
+	gsetup := setupNewGame()
+
+	evtID := shortuuid.New()
+	// Jesse requests an abort.
+	metaEvt := &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_REQUEST_ABORT,
+		PlayerId:    "3xpEkpRAy3AizbVmDg3kdi", // "jesse"
+		GameId:      gsetup.g.GameID(),
+		OrigEventId: evtID,
+	}
+
+	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
+		gsetup.tstore)
+
+	is.NoErr(err)
+
+	// Jesse accepts the abort
+	metaEvt = &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_ABORT_ACCEPTED,
+		PlayerId:    "3xpEkpRAy3AizbVmDg3kdi", // "jesse"
+		GameId:      gsetup.g.GameID(),
+		OrigEventId: evtID,
+	}
+
+	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
+		gsetup.tstore)
+	is.Equal(err, gameplay.ErrCannotAcceptOwnEvents)
+
+	gsetup.cancel()
+	<-gsetup.donechan
+
+	is.Equal(gsetup.g.Playing(), macondopb.PlayState_PLAYING)
+
+	// expected events: game history, request abort
+	log.Debug().Interface("evts", gsetup.consumer.evts).Msg("evts")
+	is.Equal(len(gsetup.consumer.evts), 2)
+
+	teardownGame(gsetup)
+}
