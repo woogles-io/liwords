@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CheckinRequest, ClubSessionResponse, ClubSessionsResponse, ExportTournamentRequest, ExportTournamentResponse, FinishTournamentRequest, GetTournamentMetadataRequest, GetTournamentRequest, NewClubSessionRequest, NewTournamentRequest, NewTournamentResponse, PairRoundRequest, RecentClubSessionsRequest, RecentGamesRequest, RecentGamesResponse, SetTournamentMetadataRequest, SingleRoundControlsRequest, TournamentDivisionRequest, TournamentMetadataResponse, TournamentPairingsRequest, TournamentResponse, TournamentResultOverrideRequest, TournamentStartRoundCountdownRequest, UncheckInRequest, UnstartTournamentRequest } from "./tournament_service_pb.js";
+import { CheckinRequest, ClubSessionResponse, ClubSessionsResponse, DivisionRenameRequest, ExportTournamentRequest, ExportTournamentResponse, FinishTournamentRequest, GetTournamentMetadataRequest, GetTournamentRequest, NewClubSessionRequest, NewTournamentRequest, NewTournamentResponse, PairRoundRequest, RecentClubSessionsRequest, RecentGamesRequest, RecentGamesResponse, SetTournamentMetadataRequest, SingleRoundControlsRequest, TournamentDivisionRequest, TournamentMetadataResponse, TournamentPairingsRequest, TournamentResponse, TournamentResultOverrideRequest, TournamentStartRoundCountdownRequest, UncheckInRequest, UnstartTournamentRequest } from "./tournament_service_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 import { DivisionControls, DivisionRoundControls, FullTournamentDivisions, TournamentPersons } from "../ipc/tournament_pb.js";
 
@@ -122,6 +122,15 @@ export declare const TournamentService: {
     readonly addDivision: {
       readonly name: "AddDivision",
       readonly I: typeof TournamentDivisionRequest,
+      readonly O: typeof TournamentResponse,
+      readonly kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc tournament_service.TournamentService.RenameDivision
+     */
+    readonly renameDivision: {
+      readonly name: "RenameDivision",
+      readonly I: typeof DivisionRenameRequest,
       readonly O: typeof TournamentResponse,
       readonly kind: MethodKind.Unary,
     },

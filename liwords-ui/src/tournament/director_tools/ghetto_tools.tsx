@@ -60,6 +60,7 @@ const FormModal = (props: ModalProps) => {
 
   const forms = {
     'add-division': <AddDivision tournamentID={props.tournamentID} />,
+    'rename-division': <RenameDivision tournamentID={props.tournamentID} />,
     'remove-division': <RemoveDivision tournamentID={props.tournamentID} />,
     'add-players': <AddPlayers tournamentID={props.tournamentID} />,
     'remove-player': <RemovePlayer tournamentID={props.tournamentID} />,
@@ -132,6 +133,7 @@ export const GhettoTools = (props: Props) => {
 
   const preTournamentTypes = [
     'Add division',
+    'Rename division',
     'Remove division',
     'Set tournament controls',
     'Set round controls',
@@ -309,6 +311,40 @@ const AddDivision = (props: { tournamentID: string }) => {
   return (
     <Form onFinish={onFinish}>
       <Form.Item name="division" label="Division Name">
+        <Input />
+      </Form.Item>
+      <Form.Item>
+        <Button type="primary" htmlType="submit">
+          Submit
+        </Button>
+      </Form.Item>
+    </Form>
+  );
+};
+
+const RenameDivision = (props: { tournamentID: string }) => {
+  const tClient = useClient(TournamentService);
+  const onFinish = async (vals: Store) => {
+    const obj = {
+      id: props.tournamentID,
+      division: vals.division,
+      newName: vals.newName,
+    };
+    try {
+      await tClient.renameDivision(obj);
+      message.info({
+        content: 'Division name changed',
+        duration: 3,
+      });
+    } catch (e) {
+      flashError(e);
+    }
+  };
+
+  return (
+    <Form onFinish={onFinish}>
+      <DivisionFormItem />
+      <Form.Item name="newName" label="New division name">
         <Input />
       </Form.Item>
       <Form.Item>

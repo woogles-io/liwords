@@ -373,6 +373,56 @@ func AddDivision(ctx context.Context, ts TournamentStore, id string, division st
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
+func RenameDivision(ctx context.Context, ts TournamentStore, id string, division, newName string) error {
+	t, err := ts.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	t.Lock()
+	defer t.Unlock()
+
+	if t.IsFinished {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+	}
+	if t.IsStarted {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_ADD_DIVISION_AFTER_START, t.Name, division)
+	}
+
+	div, ok := t.Divisions[division]
+
+	if !ok {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+	}
+
+	div.DivisionManager.ChangeName(newName)
+	t.Divisions[newName] = div
+	delete(t.Divisions, division)
+
+	err = ts.Set(ctx, t)
+	if err != nil {
+		return err
+	}
+	// Send a deletion and then an addition.
+
+	tddevt := &ipc.TournamentDivisionDeletedResponse{Id: id, Division: division}
+	wrapped := entity.WrapEvent(tddevt, ipc.MessageType_TOURNAMENT_DIVISION_DELETED_MESSAGE)
+	err = SendTournamentMessage(ctx, ts, id, wrapped)
+	if err != nil {
+		return err
+	}
+
+	tdevt, err := t.Divisions[newName].DivisionManager.GetXHRResponse()
+	if err != nil {
+		return err
+	}
+	tdevt.Id = id
+	tdevt.Division = newName
+	wrapped = entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_DIVISION_MESSAGE)
+	return SendTournamentMessage(ctx, ts, id, wrapped)
+
+}
+
 func RemoveDivision(ctx context.Context, ts TournamentStore, id string, division string) error {
 	t, err := ts.Get(ctx, id)
 	if err != nil {

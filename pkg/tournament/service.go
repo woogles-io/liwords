@@ -62,6 +62,18 @@ func (ts *TournamentService) RemoveDivision(ctx context.Context, req *pb.Tournam
 	return &pb.TournamentResponse{}, nil
 }
 
+func (ts *TournamentService) RenameDivision(ctx context.Context, req *pb.DivisionRenameRequest) (*pb.TournamentResponse, error) {
+	err := authenticateDirector(ctx, ts, req.Id, false, req)
+	if err != nil {
+		return nil, err
+	}
+	err = RenameDivision(ctx, ts.tournamentStore, req.Id, req.Division, req.NewName)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	return &pb.TournamentResponse{}, nil
+}
+
 func (ts *TournamentService) SetTournamentMetadata(ctx context.Context, req *pb.SetTournamentMetadataRequest) (*pb.TournamentResponse, error) {
 	if req.Metadata == nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, "tournament metadata was empty")
