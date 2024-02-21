@@ -577,6 +577,16 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 	if !ok {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
+	existingPlayers := map[string]string{}
+	for k, v := range t.Divisions {
+		if k == division {
+			continue
+		}
+		dp := v.DivisionManager.GetPlayers()
+		for _, p := range dp.Persons {
+			existingPlayers[p.Id] = k
+		}
+	}
 
 	if divisionObject.DivisionManager == nil {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
@@ -598,6 +608,9 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 			if err != nil {
 				return err
 			}
+		}
+		if dname, ok := existingPlayers[fullID]; ok {
+			return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PLAYER_ALREADY_EXISTS, t.Name, dname, fullID)
 		}
 		player.Id = fullID
 		userUUIDs = append(userUUIDs, UUID)

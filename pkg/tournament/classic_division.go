@@ -947,7 +947,6 @@ func (t *ClassicDivision) AddPlayers(players *pb.TournamentPersons) (*pb.Divisio
 		idx, ok := t.PlayerIndexMap[player.Id]
 		// If the player exists and is not suspended or the tournament hasn't started
 		// throw an error
-		// XXX: need knowledge of other divisions of tournament!
 		if ok && (!t.Players.Persons[idx].Suspended || t.CurrentRound < 0) {
 			return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PLAYER_ALREADY_EXISTS, t.TournamentName, t.DivisionName, player.Id)
 		}
