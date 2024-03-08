@@ -1,7 +1,7 @@
 version: 2.1
 orbs:
   discord: antonioned/discord@0.1.0
-  codecomet-orb: codecomet/codecomet-orb@1.0.0
+  codecomet-orb: codecomet/codecomet-orb@1.1.0
 jobs:
   build_api_srv:
     environment:
