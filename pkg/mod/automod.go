@@ -40,7 +40,7 @@ var BehaviorToString map[ms.NotoriousGameType]string = map[ms.NotoriousGameType]
 	ms.NotoriousGameType_EXCESSIVE_PHONIES:    "Excessive Phonies",
 	ms.NotoriousGameType_NO_PLAY:              "No Play",
 	ms.NotoriousGameType_SITTING:              "Sitting",
-	ms.NotoriousGameType_SANDBAG:              "Sandbagging",
+	ms.NotoriousGameType_SANDBAG:              "Premature Resignation",
 }
 
 var IsTesting = strings.HasSuffix(os.Args[0], ".test")
