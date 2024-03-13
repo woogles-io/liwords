@@ -592,7 +592,7 @@ export const BoardPanel = React.memo((props: Props) => {
     } else if (
       JSON.stringify(
         [
-          ...Array.from(dep.placedTiles, (ml: MachineLetter) =>
+          ...[...dep.placedTiles].map((ml: MachineLetter) =>
             (ml & 0x80) !== 0 ? 0 : ml
           ),
           ...dep.displayedRack.filter((ml: MachineLetter) => ml !== 0x80),
