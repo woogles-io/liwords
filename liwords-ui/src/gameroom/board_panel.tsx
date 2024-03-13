@@ -590,11 +590,15 @@ export const BoardPanel = React.memo((props: Props) => {
       // when we edit more than once.
       fullReset = true;
     } else if (
-      props.currentRack.length > 0 &&
-      dep.displayedRack.length === 0 &&
-      !dep.placedTiles.size
+      JSON.stringify(
+        [
+          ...[...dep.placedTiles].map((ml) => ((ml & 0x80) !== 0 ? 0 : ml)),
+          ...dep.displayedRack.filter((ml) => ml !== 0x80),
+        ].sort()
+      ) === JSON.stringify([...props.currentRack].sort())
     ) {
       // First load after receiving rack.
+      // Or other cases where the tiles don't match up.
       fullReset = true;
     } else if (isExamining) {
       // Prevent stuck tiles.
