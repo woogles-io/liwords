@@ -108,6 +108,12 @@ message TournamentPairingRequest {
   ipc.TournamentGameResult self_play_result = 4;
 }
 
+message DivisionRenameRequest {
+  string id = 1;
+  string division = 2;
+  string new_name = 3;
+}
+
 message TournamentPairingsRequest {
   string id = 1;
   string division = 2;
@@ -196,6 +202,7 @@ service TournamentService {
   // Input to RemoveDirectors should be director usernames.
   rpc RemoveDirectors(ipc.TournamentPersons) returns (TournamentResponse);
   rpc AddDivision(TournamentDivisionRequest) returns (TournamentResponse);
+  rpc RenameDivision(DivisionRenameRequest) returns (TournamentResponse);
   rpc RemoveDivision(TournamentDivisionRequest) returns (TournamentResponse);
   // Input to AddPlayers should be player usernames
   rpc AddPlayers(ipc.TournamentPersons) returns (TournamentResponse);

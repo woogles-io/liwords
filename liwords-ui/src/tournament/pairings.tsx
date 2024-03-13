@@ -24,7 +24,7 @@ const pairingsForRound = (
 ): [Array<SinglePairing>, Set<string>] => {
   const m = new Set<string>();
   const n = new Array<SinglePairing>();
-  if (!division.pairings[round]) {
+  if (!division || !division.pairings[round]) {
     return [n, new Set<string>()];
   }
   const unpairedPlayers = new Set(division.players.map((tp) => tp.id));

@@ -32,6 +32,7 @@ type DivisionManager interface {
 	SetReadyForGame(userID, connID string, round, gameIndex int, unready bool) ([]string, bool, error)
 	ClearReadyStates(userID string, round, gameIndex int) ([]*pb.Pairing, error)
 	ResetToBeginning() error
+	ChangeName(string)
 }
 
 /**	SetCheckedIn(userID string) error

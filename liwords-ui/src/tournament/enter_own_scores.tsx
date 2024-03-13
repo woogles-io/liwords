@@ -105,6 +105,7 @@ type ScoreFormProps = {
 
 const ScoreForm = (props: ScoreFormProps) => {
   const tClient = useClient(TournamentService);
+  const [submitDisabled, setSubmitDisabled] = useState(true);
 
   return (
     <>
@@ -124,6 +125,11 @@ const ScoreForm = (props: ScoreFormProps) => {
         layout="vertical"
         size="large"
         wrapperCol={{ span: 14 }}
+        onValuesChange={(changedValues, values) => {
+          setSubmitDisabled(
+            values.ourscore == undefined || values.theirscore == undefined
+          );
+        }}
         onFinish={async (values) => {
           // if we're first, then we are player 1 (the one first listed)
           const p1score = props.first ? values.ourscore : values.theirscore;
@@ -132,14 +138,14 @@ const ScoreForm = (props: ScoreFormProps) => {
             p1score > p2score
               ? TournamentGameResult.WIN
               : p1score < p2score
-              ? TournamentGameResult.LOSS
-              : TournamentGameResult.DRAW;
+                ? TournamentGameResult.LOSS
+                : TournamentGameResult.DRAW;
           const p2Result =
             p1score > p2score
               ? TournamentGameResult.LOSS
               : p1score < p2score
-              ? TournamentGameResult.WIN
-              : TournamentGameResult.DRAW;
+                ? TournamentGameResult.WIN
+                : TournamentGameResult.DRAW;
 
           const obj = {
             id: props.division.tournamentID,
@@ -165,15 +171,28 @@ const ScoreForm = (props: ScoreFormProps) => {
           }
         }}
       >
-        <Form.Item label={`Score for ${props.ourName}`} name="ourscore">
+        <Form.Item
+          label={`Score for ${props.ourName}`}
+          name="ourscore"
+          required
+        >
           <InputNumber />
         </Form.Item>
-        <Form.Item label={`Score for ${props.opponentName}`} name="theirscore">
+        <Form.Item
+          label={`Score for ${props.opponentName}`}
+          name="theirscore"
+          required
+        >
           <InputNumber />
         </Form.Item>
 
         <Form.Item label="Please have opponent verify scores.">
-          <Button style={{ margin: 0 }} type="primary" htmlType="submit">
+          <Button
+            style={{ margin: 0 }}
+            type="primary"
+            htmlType="submit"
+            disabled={submitDisabled}
+          >
             Submit scores
           </Button>
         </Form.Item>

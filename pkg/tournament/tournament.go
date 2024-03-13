@@ -373,6 +373,56 @@ func AddDivision(ctx context.Context, ts TournamentStore, id string, division st
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
+func RenameDivision(ctx context.Context, ts TournamentStore, id string, division, newName string) error {
+	t, err := ts.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	t.Lock()
+	defer t.Unlock()
+
+	if t.IsFinished {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+	}
+	if t.IsStarted {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_ADD_DIVISION_AFTER_START, t.Name, division)
+	}
+
+	div, ok := t.Divisions[division]
+
+	if !ok {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+	}
+
+	div.DivisionManager.ChangeName(newName)
+	t.Divisions[newName] = div
+	delete(t.Divisions, division)
+
+	err = ts.Set(ctx, t)
+	if err != nil {
+		return err
+	}
+	// Send a deletion and then an addition.
+
+	tddevt := &ipc.TournamentDivisionDeletedResponse{Id: id, Division: division}
+	wrapped := entity.WrapEvent(tddevt, ipc.MessageType_TOURNAMENT_DIVISION_DELETED_MESSAGE)
+	err = SendTournamentMessage(ctx, ts, id, wrapped)
+	if err != nil {
+		return err
+	}
+
+	tdevt, err := t.Divisions[newName].DivisionManager.GetXHRResponse()
+	if err != nil {
+		return err
+	}
+	tdevt.Id = id
+	tdevt.Division = newName
+	wrapped = entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_DIVISION_MESSAGE)
+	return SendTournamentMessage(ctx, ts, id, wrapped)
+
+}
+
 func RemoveDivision(ctx context.Context, ts TournamentStore, id string, division string) error {
 	t, err := ts.Get(ctx, id)
 	if err != nil {
@@ -527,6 +577,16 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 	if !ok {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
+	existingPlayers := map[string]string{}
+	for k, v := range t.Divisions {
+		if k == division {
+			continue
+		}
+		dp := v.DivisionManager.GetPlayers()
+		for _, p := range dp.Persons {
+			existingPlayers[p.Id] = k
+		}
+	}
 
 	if divisionObject.DivisionManager == nil {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
@@ -548,6 +608,9 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 			if err != nil {
 				return err
 			}
+		}
+		if dname, ok := existingPlayers[fullID]; ok {
+			return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PLAYER_ALREADY_EXISTS, t.Name, dname, fullID)
 		}
 		player.Id = fullID
 		userUUIDs = append(userUUIDs, UUID)
