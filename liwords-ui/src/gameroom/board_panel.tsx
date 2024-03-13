@@ -589,8 +589,19 @@ export const BoardPanel = React.memo((props: Props) => {
       // See comment above. I don't know why it doesn't show the latest rack
       // when we edit more than once.
       fullReset = true;
-    } else if (props.currentRack.length > 0 && !dep.placedTiles.size) {
+    } else if (
+      JSON.stringify(
+        [
+          ...[...dep.placedTiles].map((ephemeralTile) => {
+            const ml = ephemeralTile.letter;
+            return (ml & 0x80) !== 0 ? 0 : ml;
+          }),
+          ...dep.displayedRack.filter((ml) => ml !== 0x80),
+        ].sort()
+      ) !== JSON.stringify([...props.currentRack].sort())
+    ) {
       // First load after receiving rack.
+      // Or other cases where the tiles don't match up.
       fullReset = true;
     } else if (isExamining) {
       // Prevent stuck tiles.
