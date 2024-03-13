@@ -598,7 +598,7 @@ export const BoardPanel = React.memo((props: Props) => {
           }),
           ...dep.displayedRack.filter((ml) => ml !== 0x80),
         ].sort()
-      ) === JSON.stringify([...props.currentRack].sort())
+      ) !== JSON.stringify([...props.currentRack].sort())
     ) {
       // First load after receiving rack.
       // Or other cases where the tiles don't match up.
