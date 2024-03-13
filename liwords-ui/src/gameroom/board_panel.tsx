@@ -592,8 +592,10 @@ export const BoardPanel = React.memo((props: Props) => {
     } else if (
       JSON.stringify(
         [
-          ...[...dep.placedTiles].map((ml) => ((ml & 0x80) !== 0 ? 0 : ml)),
-          ...dep.displayedRack.filter((ml) => ml !== 0x80),
+          ...Array.from(dep.placedTiles, (ml: MachineLetter) =>
+            (ml & 0x80) !== 0 ? 0 : ml
+          ),
+          ...dep.displayedRack.filter((ml: MachineLetter) => ml !== 0x80),
         ].sort()
       ) === JSON.stringify([...props.currentRack].sort())
     ) {
