@@ -30,6 +30,15 @@ message CreateBroadcastGameRequest {
 
 message CreateBroadcastGameResponse { string game_id = 1; }
 
+message ImportGCGRequest {
+  string gcg = 1;
+  string lexicon = 2;
+  ipc.GameRules rules = 3;
+  ipc.ChallengeRule challenge_rule = 4;
+}
+
+message ImportGCGResponse { string game_id = 1; }
+
 message BroadcastGamePrivacy { bool public = 1; }
 
 message GetGamesForEditorRequest {
@@ -147,4 +156,5 @@ service GameEventService {
       returns (BroadcastGamesResponse);
 
   rpc GetCGP(GetCGPRequest) returns (CGPResponse);
+  rpc ImportGCG(ImportGCGRequest) returns (ImportGCGResponse);
 }

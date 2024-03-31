@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AnnotatedGameEvent, BroadcastGamePrivacy, BroadcastGamesResponse, CGPResponse, CreateBroadcastGameRequest, CreateBroadcastGameResponse, DeleteBroadcastGameRequest, DeleteBroadcastGameResponse, GameEventResponse, GetCGPRequest, GetGameDocumentRequest, GetGamesForEditorRequest, GetMyUnfinishedGamesRequest, GetRecentAnnotatedGamesRequest, PatchDocumentRequest, ReplaceDocumentRequest, SetRacksEvent } from "./omgwords_pb.js";
+import { AnnotatedGameEvent, BroadcastGamePrivacy, BroadcastGamesResponse, CGPResponse, CreateBroadcastGameRequest, CreateBroadcastGameResponse, DeleteBroadcastGameRequest, DeleteBroadcastGameResponse, GameEventResponse, GetCGPRequest, GetGameDocumentRequest, GetGamesForEditorRequest, GetMyUnfinishedGamesRequest, GetRecentAnnotatedGamesRequest, ImportGCGRequest, ImportGCGResponse, PatchDocumentRequest, ReplaceDocumentRequest, SetRacksEvent } from "./omgwords_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 import { GameDocument } from "../ipc/omgwords_pb.js";
 
@@ -135,6 +135,15 @@ export const GameEventService = {
       name: "GetCGP",
       I: GetCGPRequest,
       O: CGPResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc omgwords_service.GameEventService.ImportGCG
+     */
+    importGCG: {
+      name: "ImportGCG",
+      I: ImportGCGRequest,
+      O: ImportGCGResponse,
       kind: MethodKind.Unary,
     },
   }

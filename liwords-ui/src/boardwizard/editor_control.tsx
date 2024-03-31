@@ -150,7 +150,7 @@ const CreationForm = (props: CreationFormProps) => {
       </Form.Item>
 
       <Form.Item>
-        <Button type="primary" htmlType="submit">
+        <Button type="default" htmlType="submit">
           Create new game
         </Button>
       </Form.Item>

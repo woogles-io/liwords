@@ -61,6 +61,7 @@ import {
 } from './gen/api/proto/user_service/user_service_connectweb';
 import { BoardEditor } from './boardwizard/editor';
 import { RootState } from './store/redux_store';
+import { CallbackHandler as ScrabblecamCallbackHandler } from './boardwizard/callback_handler';
 
 // const useDarkMode = localStorage?.getItem('darkMode') === 'true';
 // document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
@@ -396,6 +397,10 @@ const App = React.memo(() => {
             <Route path="editor" element={<BoardEditor />}>
               <Route path=":gameID" element={<BoardEditor />} />
             </Route>
+            <Route
+              path="scrabblecam/callback"
+              element={<ScrabblecamCallbackHandler />}
+            />
             <Route path="about" element={<Team />} />
             <Route path="team" element={<Team />} />
             <Route path="terms" element={<TermsOfService />} />

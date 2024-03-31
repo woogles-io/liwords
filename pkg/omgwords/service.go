@@ -3,6 +3,8 @@ package omgwords
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
@@ -10,11 +12,15 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/domino14/macondo/gcgio"
 	"github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/domino14/word-golib/tilemapping"
+
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/cwgame"
 	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/entity/utilities"
 	"github.com/woogles-io/liwords/pkg/omgwords/stores"
 	"github.com/woogles-io/liwords/pkg/user"
 	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -67,14 +73,7 @@ func (gs *OMGWordsService) SetEventChannel(c chan *entity.EventWrapper) {
 	gs.gameEventChan = c
 }
 
-func (gs *OMGWordsService) CreateBroadcastGame(ctx context.Context, req *pb.CreateBroadcastGameRequest) (
-	*pb.CreateBroadcastGameResponse, error) {
-
-	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, gs.userStore)
-	if err != nil {
-		return nil, err
-	}
-
+func (gs *OMGWordsService) createGDoc(ctx context.Context, u *entity.User, req *pb.CreateBroadcastGameRequest) (*ipc.GameDocument, error) {
 	players := req.PlayersInfo
 	if len(players) != 2 {
 		return nil, twirp.NewError(twirp.InvalidArgument, "need two players")
@@ -161,8 +160,23 @@ func (gs *OMGWordsService) CreateBroadcastGame(ctx context.Context, req *pb.Crea
 	if err != nil {
 		log.Err(err).Msg("broadcasting-game-creation")
 	}
+	return g, nil
+}
+
+func (gs *OMGWordsService) CreateBroadcastGame(ctx context.Context, req *pb.CreateBroadcastGameRequest) (
+	*pb.CreateBroadcastGameResponse, error) {
+
+	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, gs.userStore)
+	if err != nil {
+		return nil, err
+	}
+	gdoc, err := gs.createGDoc(ctx, u, req)
+	if err != nil {
+		return nil, err
+	}
+
 	return &pb.CreateBroadcastGameResponse{
-		GameId: g.Uid,
+		GameId: gdoc.Uid,
 	}, nil
 }
 
@@ -502,4 +516,59 @@ func (gs *OMGWordsService) DeleteBroadcastGame(ctx context.Context, req *pb.Dele
 	}
 
 	return &pb.DeleteBroadcastGameResponse{}, nil
+}
+
+func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *pb.ImportGCGRequest) (*pb.ImportGCGResponse, error) {
+	if len(req.Gcg) > 1.28e5 {
+		return nil, twirp.NewError(twirp.InvalidArgument, "gcg string is too long")
+	}
+	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, gs.userStore)
+	if err != nil {
+		return nil, err
+	}
+
+	r := strings.NewReader(req.Gcg)
+
+	gh, err := gcgio.ParseGCGFromReader(&gs.cfg.MacondoConfig, r)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	fmt.Println("ghh", gh)
+
+	letterdist, err := tilemapping.GetDistribution(gs.cfg.MacondoConfigMap, req.Rules.LetterDistributionName)
+	if err != nil {
+		return nil, err
+	}
+
+	cbr := &pb.CreateBroadcastGameRequest{
+		PlayersInfo: []*ipc.PlayerInfo{
+			{UserId: gh.Players[0].Nickname,
+				FullName: gh.Players[0].RealName,
+				Nickname: gh.Players[0].Nickname,
+				First:    true},
+			{UserId: gh.Players[1].Nickname,
+				FullName: gh.Players[1].RealName,
+				Nickname: gh.Players[1].Nickname},
+		},
+		Lexicon:       req.Lexicon,
+		Rules:         req.Rules,
+		ChallengeRule: req.ChallengeRule,
+	}
+
+	gdoc, err := gs.createGDoc(ctx, u, cbr)
+	if err != nil {
+		return nil, err
+	}
+
+	err = cwgame.ReplayEvents(ctx, gdoc, lo.Map(gh.Events, func(evt *macondo.GameEvent, index int) *ipc.GameEvent {
+		return utilities.MacondoEvtToOMGEvt(evt, index, letterdist)
+	}))
+	if err != nil {
+		return nil, err
+	}
+	err = gs.gameStore.UpdateDocument(ctx, &stores.MaybeLockedDocument{GameDocument: gdoc})
+	if err != nil {
+		return nil, err
+	}
+	return &pb.ImportGCGResponse{GameId: gdoc.Uid}, nil
 }

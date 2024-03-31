@@ -14,6 +14,41 @@ import (
 	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
+func rackConverter(rack string, index int, letterdist *tilemapping.LetterDistribution) []byte {
+	mls, err := tilemapping.ToMachineLetters(rack, letterdist.TileMapping())
+	if err != nil {
+		panic(err)
+	}
+	return tilemapping.MachineWord(mls).ToByteArr()
+}
+
+func MacondoEvtToOMGEvt(evt *macondo.GameEvent, index int, letterdist *tilemapping.LetterDistribution) *ipc.GameEvent {
+	cvt := &ipc.GameEvent{
+		Rack:          rackConverter(evt.Rack, 0, letterdist),
+		Type:          ipc.GameEvent_Type(evt.Type),
+		Cumulative:    evt.Cumulative,
+		Row:           evt.Row,
+		Column:        evt.Column,
+		Direction:     ipc.GameEvent_Direction(evt.Direction),
+		Position:      evt.Position,
+		PlayedTiles:   rackConverter(evt.PlayedTiles, 0, letterdist),
+		Exchanged:     rackConverter(evt.Exchanged, 0, letterdist),
+		Score:         evt.Score,
+		Bonus:         evt.Bonus,
+		EndRackPoints: evt.EndRackPoints,
+		LostScore:     evt.LostScore,
+		IsBingo:       evt.IsBingo,
+		WordsFormed: lo.Map(evt.WordsFormed, func(rack string, index int) []byte {
+			return rackConverter(rack, index, letterdist)
+		}),
+		WordsFormedFriendly: evt.WordsFormed,
+		MillisRemaining:     evt.MillisRemaining,
+		PlayerIndex:         evt.PlayerIndex,
+	}
+
+	return cvt
+}
+
 // helper functions to convert from the old GameHistory etc structs to
 // GameDocuments. We can delete this after some time.
 
@@ -21,39 +56,6 @@ func ToGameDocument(g *entity.Game, cfg *config.Config) (*ipc.GameDocument, erro
 	letterdist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, g.History().LetterDistribution)
 	if err != nil {
 		return nil, err
-	}
-
-	rackConverter := func(rack string, index int) []byte {
-		mls, err := tilemapping.ToMachineLetters(rack, letterdist.TileMapping())
-		if err != nil {
-			panic(err)
-		}
-		return tilemapping.MachineWord(mls).ToByteArr()
-	}
-
-	eventConverter := func(evt *macondo.GameEvent, index int) *ipc.GameEvent {
-		cvt := &ipc.GameEvent{
-			Rack:                rackConverter(evt.Rack, 0),
-			Type:                ipc.GameEvent_Type(evt.Type),
-			Cumulative:          evt.Cumulative,
-			Row:                 evt.Row,
-			Column:              evt.Column,
-			Direction:           ipc.GameEvent_Direction(evt.Direction),
-			Position:            evt.Position,
-			PlayedTiles:         rackConverter(evt.PlayedTiles, 0),
-			Exchanged:           rackConverter(evt.Exchanged, 0),
-			Score:               evt.Score,
-			Bonus:               evt.Bonus,
-			EndRackPoints:       evt.EndRackPoints,
-			LostScore:           evt.LostScore,
-			IsBingo:             evt.IsBingo,
-			WordsFormed:         lo.Map(evt.WordsFormed, rackConverter),
-			WordsFormedFriendly: evt.WordsFormed,
-			MillisRemaining:     evt.MillisRemaining,
-			PlayerIndex:         evt.PlayerIndex,
-		}
-
-		return cvt
 	}
 
 	gdoc := &ipc.GameDocument{
@@ -64,11 +66,15 @@ func ToGameDocument(g *entity.Game, cfg *config.Config) (*ipc.GameDocument, erro
 				UserId:   p.UserId,
 			}
 		}),
-		Events:        lo.Map(g.History().Events, eventConverter),
-		Version:       stores.CurrentGameDocumentVersion,
-		Lexicon:       g.LexiconName(),
-		Uid:           g.GameID(),
-		Racks:         lo.Map(g.History().LastKnownRacks, rackConverter),
+		Events: lo.Map(g.History().Events, func(evt *macondo.GameEvent, index int) *ipc.GameEvent {
+			return MacondoEvtToOMGEvt(evt, index, letterdist)
+		}),
+		Version: stores.CurrentGameDocumentVersion,
+		Lexicon: g.LexiconName(),
+		Uid:     g.GameID(),
+		Racks: lo.Map(g.History().LastKnownRacks, func(rack string, index int) []byte {
+			return rackConverter(rack, index, letterdist)
+		}),
 		ChallengeRule: ipc.ChallengeRule(g.GameReq.ChallengeRule),
 		PlayState:     ipc.PlayState(g.History().PlayState),
 		CurrentScores: lo.Map(lo.Range(len(g.PlayerDBIDs)), func(pidx, i int) int32 {
@@ -98,13 +104,13 @@ func ToGameDocument(g *entity.Game, cfg *config.Config) (*ipc.GameDocument, erro
 		},
 	}
 
-	populateBoard(g, gdoc, letterdist)
-	populateBag(g, gdoc, letterdist)
+	populateBoard(g, gdoc)
+	populateBag(g, gdoc)
 
 	return gdoc, nil
 }
 
-func populateBoard(g *entity.Game, gdoc *ipc.GameDocument, ld *tilemapping.LetterDistribution) {
+func populateBoard(g *entity.Game, gdoc *ipc.GameDocument) {
 	gdoc.Board.NumCols = int32(g.Board().Dim())
 	gdoc.Board.NumRows = int32(g.Board().Dim())
 	gdoc.Board.IsEmpty = g.Board().IsEmpty()
@@ -114,7 +120,7 @@ func populateBoard(g *entity.Game, gdoc *ipc.GameDocument, ld *tilemapping.Lette
 	})
 }
 
-func populateBag(g *entity.Game, gdoc *ipc.GameDocument, ld *tilemapping.LetterDistribution) {
+func populateBag(g *entity.Game, gdoc *ipc.GameDocument) {
 	gdoc.Bag.Tiles = lo.Map(g.Bag().Peek(), func(ml tilemapping.MachineLetter, idx int) byte {
 		return byte(ml)
 	})
