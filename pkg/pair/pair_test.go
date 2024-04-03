@@ -67,9 +67,6 @@ func TestTeamRoundRobin(t *testing.T) {
 
 	is := is.New(t)
 
-	// Test two teams of 5, triple round robin (15 rounds), team A vs team B.
-	// Both teams are in the same division but they only play the other team.
-
 	numberOfPlayers := 2
 	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 0, 1), []int{0, 1}))
 	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 1, 1), []int{0, 1}))
