@@ -519,10 +519,6 @@ func getRoundRobinPairings(numberOfPlayers int, round int) ([]int, error) {
 	return pairings, nil
 }
 
-func getTeamRoundRobinRotation(numberOfPlayers int, round int, gamesPerMatchup int) int {
-	return ((round / gamesPerMatchup) * 2) % (numberOfPlayers - 1)
-}
-
 func getRoundRobinRotation(numberOfPlayers int, round int) int {
 	// This has been made a separate function
 	// for ease of testing and future improvements
@@ -553,6 +549,10 @@ func getRoundRobinRotation(numberOfPlayers int, round int) int {
 	return (round * (numberOfPlayers - 3)) % (numberOfPlayers - 1)
 }
 
+func getTeamRoundRobinRotation(numberOfPlayers int, round int, gamesPerMatchup int) int {
+	return ((round / gamesPerMatchup) * (numberOfPlayers/2 - 1)) % (numberOfPlayers / 2)
+}
+
 func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int) ([]int, error) {
 	// A team round robin contains two teams: A and B
 	// Everyone in A plays everyone in B gamesPerMatchup times (in a row for speed).
@@ -565,14 +565,19 @@ func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int) ([]i
 		players = append(players, i)
 	}
 
-	rotatedPlayers := players[:]
+	l := len(players)
 
-	l := len(rotatedPlayers)
-	rotationIndex := l - getTeamRoundRobinRotation(len(players), round, gamesPerMatchup)
-	rotatedPlayers = append(rotatedPlayers[rotationIndex:l], rotatedPlayers[0:rotationIndex]...)
+	lbh := l / 2
+	rotatedBottomPlayers := players[lbh:l]
 
-	topHalf := rotatedPlayers[0 : l/2]
-	bottomHalf := rotatedPlayers[l/2 : l]
+	rotationIndex := lbh - getTeamRoundRobinRotation(l, round, gamesPerMatchup)
+	rotatedBottomPlayers = append(rotatedBottomPlayers[rotationIndex:lbh], rotatedBottomPlayers[0:rotationIndex]...)
+
+	firstSeg := rotatedBottomPlayers[0 : lbh/2]
+	secondSeg := rotatedBottomPlayers[lbh/2 : lbh]
+
+	topHalf := players[0:lbh]
+	bottomHalf := append(firstSeg, secondSeg...)
 	utilities.Reverse(bottomHalf)
 
 	pairings := []int{}
@@ -588,9 +593,9 @@ func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int) ([]i
 	// 	Int("gamesPerMatchup", gamesPerMatchup).Int("rotationIndex", rotationIndex).
 	// 	Interface("topHalf", topHalf).Interface("bottomHalf", bottomHalf).Msg("debug-pairings")
 
-	for i := 0; i < len(players)/2; i++ {
-		pairings[topHalf[i]] = bottomHalf[i]
-		pairings[bottomHalf[i]] = topHalf[i]
+	for i := 0; i < len(players); i += 2 {
+		pairings[i] = topHalf[i/2]
+		pairings[i+1] = bottomHalf[i/2]
 	}
 
 	for i := 0; i < len(pairings); i++ {
