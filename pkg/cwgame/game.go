@@ -223,7 +223,10 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 	gdoc.Events = append(gdoc.Events, gevt)
 
 	if len(newRack) == 0 {
-		if gdoc.ChallengeRule != ipc.ChallengeRule_ChallengeRule_VOID {
+		// if the challenge rule is not void we should wait for a final pass
+		// however, if the gdoc is imported, gcgs never include the final pass,
+		// so just mark the game complete.
+		if gdoc.ChallengeRule != ipc.ChallengeRule_ChallengeRule_VOID && !gdoc.IsImported {
 			gdoc.PlayState = ipc.PlayState_WAITING_FOR_FINAL_PASS
 		} else {
 			gdoc.PlayState = ipc.PlayState_GAME_OVER

@@ -383,5 +383,15 @@ func TestImportGCG(t *testing.T) {
 	})
 	is.NoErr(err)
 	gid := r.GameId
-	fmt.Println(gid)
+
+	gdoc, err := svc.GetGameDocument(ctx, &omgwords_service.GetGameDocumentRequest{
+		GameId: gid,
+	})
+	is.NoErr(err)
+
+	fmt.Println(gdoc.Events)
+
+	is.Equal(gdoc.EndReason, ipc.GameEndReason_STANDARD)
+	is.Equal(gdoc.PlayState, ipc.PlayState_GAME_OVER)
+	is.True(false)
 }

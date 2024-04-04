@@ -3,7 +3,6 @@ package omgwords
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -533,7 +532,6 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *pb.ImportGCGReque
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
-	fmt.Println("ghh", gh)
 
 	letterdist, err := tilemapping.GetDistribution(gs.cfg.MacondoConfigMap, req.Rules.LetterDistributionName)
 	if err != nil {
@@ -559,6 +557,7 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *pb.ImportGCGReque
 	if err != nil {
 		return nil, err
 	}
+	gdoc.IsImported = true
 
 	err = cwgame.ReplayEvents(ctx, gdoc, lo.Map(gh.Events, func(evt *macondo.GameEvent, index int) *ipc.GameEvent {
 		return utilities.MacondoEvtToOMGEvt(evt, index, letterdist)
