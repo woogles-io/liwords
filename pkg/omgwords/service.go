@@ -557,7 +557,8 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *pb.ImportGCGReque
 	if err != nil {
 		return nil, err
 	}
-	gdoc.IsImported = true
+
+	// XXX Add a dummy pass event at the end. GameHistory does not have this.
 
 	err = cwgame.ReplayEvents(ctx, gdoc, lo.Map(gh.Events, func(evt *macondo.GameEvent, index int) *ipc.GameEvent {
 		return utilities.MacondoEvtToOMGEvt(evt, index, letterdist)
@@ -565,9 +566,17 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *pb.ImportGCGReque
 	if err != nil {
 		return nil, err
 	}
+
+	if gdoc.PlayState == ipc.PlayState_GAME_OVER {
+		if err = gs.metadataStore.MarkAnnotatedGameDone(ctx, gdoc.Uid); err != nil {
+			return nil, err
+		}
+	}
+
 	err = gs.gameStore.UpdateDocument(ctx, &stores.MaybeLockedDocument{GameDocument: gdoc})
 	if err != nil {
 		return nil, err
 	}
+
 	return &pb.ImportGCGResponse{GameId: gdoc.Uid}, nil
 }

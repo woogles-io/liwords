@@ -45,7 +45,7 @@ func (e *InvalidWordsError) Error() string {
 	return errString.String()
 }
 
-func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, tr int64) error {
+func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, tr int64, replayMode bool) error {
 	log.Debug().Interface("gevt", gevt).Msg("play-move")
 	cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
 	if !ok {
@@ -53,7 +53,7 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 	}
 
 	if gevt.Type == ipc.GameEvent_CHALLENGE {
-		return challengeEvent(ctx, cfg, gdoc, tr)
+		return challengeEvent(ctx, cfg, gdoc, tr, replayMode)
 	}
 
 	err := validateMove(cfg, gevt, gdoc)
@@ -68,7 +68,7 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 	// gdoc back to the store; this must be enforced.
 	switch gevt.Type {
 	case ipc.GameEvent_TILE_PLACEMENT_MOVE:
-		err := playTilePlacementMove(cfg, gevt, gdoc, tr)
+		err := playTilePlacementMove(cfg, gevt, gdoc, tr, replayMode)
 		if err != nil {
 			return err
 		}
@@ -152,7 +152,7 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 	return nil
 }
 
-func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.GameDocument, tr int64) error {
+func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.GameDocument, tr int64, replayMode bool) error {
 	dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, gdoc.LetterDistribution)
 	if err != nil {
 		return err
@@ -224,9 +224,8 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 
 	if len(newRack) == 0 {
 		// if the challenge rule is not void we should wait for a final pass
-		// however, if the gdoc is imported, gcgs never include the final pass,
-		// so just mark the game complete.
-		if gdoc.ChallengeRule != ipc.ChallengeRule_ChallengeRule_VOID && !gdoc.IsImported {
+		// however, if we are in replay mode, there's no pass.
+		if gdoc.ChallengeRule != ipc.ChallengeRule_ChallengeRule_VOID && !replayMode {
 			gdoc.PlayState = ipc.PlayState_WAITING_FOR_FINAL_PASS
 		} else {
 			gdoc.PlayState = ipc.PlayState_GAME_OVER
@@ -440,7 +439,7 @@ func addWinnerToHistory(gdoc *ipc.GameDocument) {
 // Note that this event can change the history of the game, including
 // things like resetting the game ended state (for example if someone plays
 // out with a phony).
-func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocument, tr int64) error {
+func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocument, tr int64, replayMode bool) error {
 	if len(gdoc.Events) == 0 {
 		return errors.New("this game has no history")
 	}
@@ -563,7 +562,7 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 				&ipc.GameEvent{
 					Type:        ipc.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS,
 					PlayerIndex: gdoc.PlayerOnTurn,
-				}, tr)
+				}, tr, replayMode)
 
 		case ipc.ChallengeRule_ChallengeRule_FIVE_POINT:
 			// Append a bonus to the event.

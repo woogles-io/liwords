@@ -75,8 +75,8 @@ github.com/docker/go-connections v0.4.0 h1:El9xVISelRB7BuFusrZozjnkIM5YnzCViNKoh
 github.com/docker/go-connections v0.4.0/go.mod h1:Gbd7IOopHjR8Iph03tsViu4nIes5XhDvyHbTtUxmeec=
 github.com/docker/go-units v0.5.0 h1:69rxXcBk27SvSaaxTtLh/8llcHD8vYHT7WSdRZ/jvr4=
 github.com/docker/go-units v0.5.0/go.mod h1:fgPhTUdO+D/Jk86RDLlptpiXQzgHJF7gydDDbaIK4Dk=
-github.com/domino14/macondo v0.8.11-0.20240404030823-4d3a06cd5e4a h1:KcbmPOtKZYbhKh5liixhp3+bqsSkXW2ottwgMwXj4z4=
-github.com/domino14/macondo v0.8.11-0.20240404030823-4d3a06cd5e4a/go.mod h1:bAbT5z9BjuGlp7Fkp5MUCVxoFV+KK/6EFZ/U5r39xwY=
+github.com/domino14/macondo v0.9.0 h1:BvziHG6R9QOuBdBeUasRFYhjNW0wBV+GF8VGIr7knMo=
+github.com/domino14/macondo v0.9.0/go.mod h1:bAbT5z9BjuGlp7Fkp5MUCVxoFV+KK/6EFZ/U5r39xwY=
 github.com/domino14/word-golib v0.1.10 h1:+l+50/cq4CzjzpqK3Uiu/cuxn1FL6aXZLSZ12XY9SZ4=
 github.com/domino14/word-golib v0.1.10/go.mod h1:3OMAtX5K/YA/9PQe02h2S7hPfDn6/ZKmrv8vMI2vQss=
 github.com/facebookgo/ensure v0.0.0-20160127193407-b4ab57deab51 h1:0JZ+dUmQeA8IIVUMzysrX4/AKuQwWhV2dYQuPZdvdSQ=

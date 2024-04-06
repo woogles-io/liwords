@@ -348,7 +348,7 @@ func ReplayEvents(ctx context.Context, gdoc *ipc.GameDocument, evts []*ipc.GameE
 			tr := evt.MillisRemaining
 			// Use playMove to just play the event. This should apply all relevant
 			// changes to the doc (scores, keeping track of scoreless turns, etc)
-			err = playMove(ctx, gdoc, evt, int64(tr))
+			err = playMove(ctx, gdoc, evt, int64(tr), true)
 			if err != nil {
 				return err
 			}
@@ -471,7 +471,7 @@ func ProcessGameplayEvent(ctx context.Context, evt *ipc.ClientGameplayEvent,
 		// the player's rack, but we haven't validated the play itself
 		// (adherence to rules, valid words if applicable, etc)
 
-		err = playMove(ctx, gdoc, gevt, tr)
+		err = playMove(ctx, gdoc, gevt, tr, false)
 		if err != nil {
 			return err
 		}

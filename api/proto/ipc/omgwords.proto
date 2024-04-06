@@ -487,7 +487,4 @@ message GameDocument {
   // The index of the player on turn
   uint32 player_on_turn = 23;
   Timers timers = 24;
-  // is_imported is true if this GameDocument was created by a GCG or similar
-  // import.
-  bool is_imported = 25;
 }

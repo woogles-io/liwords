@@ -1920,14 +1920,6 @@ export declare class GameDocument extends Message<GameDocument> {
    */
   timers?: Timers;
 
-  /**
-   * is_imported is true if this GameDocument was created by a GCG or similar
-   * import.
-   *
-   * @generated from field: bool is_imported = 25;
-   */
-  isImported: boolean;
-
   constructor(data?: PartialMessage<GameDocument>);
 
   static readonly runtime: typeof proto3;
