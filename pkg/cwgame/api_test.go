@@ -1416,7 +1416,7 @@ func TestReplayEvents(t *testing.T) {
 			gdocClone := loadGDoc(tc)
 
 			ctx := ctxForTests()
-			err := ReplayEvents(ctx, gdoc, gdocClone.Events)
+			err := ReplayEvents(ctx, gdoc, gdocClone.Events, true)
 			is.NoErr(err)
 			tiles.Sort(gdoc.Bag)
 			tiles.Sort(gdocClone.Bag)

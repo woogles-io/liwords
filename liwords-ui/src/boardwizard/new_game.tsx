@@ -18,6 +18,7 @@ import {
 } from '@ant-design/icons';
 import { MenuProps } from 'antd/lib';
 import { LexiconFormItem } from '../shared/lexicon_display';
+import { GCGProcessForm } from './gcg_process_form';
 // When no game is visible, this is the page that is visible.
 
 type Props = {
@@ -63,7 +64,6 @@ export const EditorLandingPage = (props: Props) => {
   }, [gameEventClient, recentAnnotatedGamesOffset]);
 
   const handleMenuClick = (e: { key: string }) => {
-    console.log('selected', e.key);
     setSelectedMenu(e.key);
   };
 
@@ -79,11 +79,11 @@ export const EditorLandingPage = (props: Props) => {
       key: 'createGame',
       icon: <EditOutlined />,
     },
-    // {
-    //   label: 'Upload a GCG file',
-    //   key: 'uploadGCG',
-    //   icon: <UploadOutlined />,
-    // },
+    {
+      label: 'Upload a GCG file',
+      key: 'uploadGCG',
+      icon: <UploadOutlined />,
+    },
     {
       label: (
         <a
@@ -134,6 +134,16 @@ export const EditorLandingPage = (props: Props) => {
                   deleteGame={() => {}}
                   editGame={() => {}}
                 />
+              </div>
+            )}
+            {selectedMenu === 'uploadGCG' && (
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                }}
+              >
+                <GCGProcessForm gcg="" showUpload showPreview />
               </div>
             )}
           </div>

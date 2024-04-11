@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/domino14/macondo/gcgio"
 	"github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/word-golib/tilemapping"
@@ -526,9 +527,16 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *pb.ImportGCGReque
 		return nil, err
 	}
 
+	// XXX: eventually we need our own GCG parsing library here (in liwords) that
+	// just deals with GameDocuments or whatever their successor might be, to
+	// avoid this config ugliness:
+	cfgCopy := macondoconfig.DefaultConfig()
+	cfgCopy.SetDefault(macondoconfig.ConfigDefaultLexicon, req.Lexicon)
+	cfgCopy.SetDefault(macondoconfig.ConfigDefaultLetterDistribution, req.Rules.LetterDistributionName)
+
 	r := strings.NewReader(req.Gcg)
 
-	gh, err := gcgio.ParseGCGFromReader(&gs.cfg.MacondoConfig, r)
+	gh, err := gcgio.ParseGCGFromReader(&cfgCopy, r)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -558,11 +566,35 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *pb.ImportGCGReque
 		return nil, err
 	}
 
-	// XXX Add a dummy pass event at the end. GameHistory does not have this.
+	// Add a dummy pass event at the end. GameHistory does not have this.
+	foundEndRack := -1
+	eventOwner := -1
+	lastRack := ""
+	for i := len(gh.Events) - 1; i >= 0; i-- {
+		if gh.Events[i].Type == macondo.GameEvent_END_RACK_PTS {
+			// insert right before
+			foundEndRack = i
+			eventOwner = int(gh.Events[i].PlayerIndex)
+			lastRack = gh.Events[i].Rack
+			break
+		}
+	}
 
+	if foundEndRack > 0 && gh.Events[foundEndRack-1].Type != macondo.GameEvent_CHALLENGE_BONUS {
+		gh.Events = append(gh.Events, &macondo.GameEvent{
+			Type:        macondo.GameEvent_PASS,
+			PlayerIndex: uint32(1 - eventOwner),
+			Rack:        lastRack,
+			Cumulative:  gh.FinalScores[1-eventOwner],
+		})
+		nevt := len(gh.Events)
+		gh.Events[nevt-1], gh.Events[foundEndRack] = gh.Events[foundEndRack], gh.Events[nevt-1]
+	}
+
+	// Then replay events.
 	err = cwgame.ReplayEvents(ctx, gdoc, lo.Map(gh.Events, func(evt *macondo.GameEvent, index int) *ipc.GameEvent {
 		return utilities.MacondoEvtToOMGEvt(evt, index, letterdist)
-	}))
+	}), false)
 	if err != nil {
 		return nil, err
 	}
