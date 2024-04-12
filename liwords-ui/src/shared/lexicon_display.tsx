@@ -76,7 +76,8 @@ export const LexiconFormItem = React.memo((props: Props) => {
         },
       ]}
     >
-      <Select disabled={props.disabled} listHeight={300}>
+      {/* i don't know why this z-index is 1100 (see app.scss). reset here, figure out later */}
+      <Select disabled={props.disabled} listHeight={300} style={{ zIndex: 0 }}>
         {options}
       </Select>
     </Form.Item>

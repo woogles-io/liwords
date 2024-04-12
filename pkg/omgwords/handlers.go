@@ -38,7 +38,7 @@ func handleEvent(ctx context.Context, userID string, evt *ipc.ClientGameplayEven
 		pidx := g.Events[evtIndex].PlayerIndex
 		// Truncate the document; we are editing an old event.
 		evts := g.Events[:evtIndex]
-		err = cwgame.ReplayEvents(ctx, g.GameDocument, evts)
+		err = cwgame.ReplayEvents(ctx, g.GameDocument, evts, false)
 		if err != nil {
 			gs.UnlockDocument(ctx, g)
 			return false, twirp.NewError(twirp.InvalidArgument, err.Error())

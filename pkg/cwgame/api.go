@@ -259,7 +259,7 @@ func EditOldRack(ctx context.Context, gdoc *ipc.GameDocument, evtNumber uint32, 
 	evt := gdoc.Events[evtNumber]
 
 	// replay until the event before evt.
-	err := ReplayEvents(ctx, gc, gc.Events[:evtNumber])
+	err := ReplayEvents(ctx, gc, gc.Events[:evtNumber], false)
 	if err != nil {
 		return err
 	}
@@ -280,7 +280,7 @@ func EditOldRack(ctx context.Context, gdoc *ipc.GameDocument, evtNumber uint32, 
 // ReplayEvents plays the events on the game document. For simplicity,
 // assume these events replace every event in the game document; i.e.,
 // initialize from scratch.
-func ReplayEvents(ctx context.Context, gdoc *ipc.GameDocument, evts []*ipc.GameEvent) error {
+func ReplayEvents(ctx context.Context, gdoc *ipc.GameDocument, evts []*ipc.GameEvent, rememberRacks bool) error {
 
 	cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
 	if !ok {
@@ -304,7 +304,10 @@ func ReplayEvents(ctx context.Context, gdoc *ipc.GameDocument, evts []*ipc.GameE
 	gdoc.Bag = tiles.TileBag(dist)
 	gdoc.ScorelessTurns = 0
 	gdoc.PlayerOnTurn = 0
-	savedRacks := gdoc.Racks
+	var savedRacks [][]byte
+	if rememberRacks {
+		savedRacks = gdoc.Racks
+	}
 	savedTimers := proto.Clone(gdoc.Timers)
 	gdoc.Racks = make([][]byte, len(gdoc.Players))
 	// Replaying events is not as simple as just calling playMove with the event.
@@ -363,11 +366,14 @@ func ReplayEvents(ctx context.Context, gdoc *ipc.GameDocument, evts []*ipc.GameE
 		}
 	}
 	// At the end, make sure to set the racks to whatever they are in the doc.
-	log.Debug().Interface("savedRacks", savedRacks).Msg("call-assign-racks")
-	err = AssignRacks(gdoc, savedRacks, AssignEmptyIfUnambiguous)
-	if err != nil {
-		return err
+	// log.Debug().Interface("savedRacks", savedRacks).Msg("call-assign-racks")
+	if rememberRacks {
+		err = AssignRacks(gdoc, savedRacks, AssignEmptyIfUnambiguous)
+		if err != nil {
+			return err
+		}
 	}
+
 	gdoc.Timers = savedTimers.(*ipc.Timers)
 	// Based on the very last game event, we may potentially have to change
 	// the "on-turn" player.

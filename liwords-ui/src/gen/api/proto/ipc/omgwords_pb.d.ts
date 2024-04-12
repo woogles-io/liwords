@@ -123,6 +123,7 @@ export declare enum GameType {
   /**
    * An ANNOTATED game does not feature Woogles players, but is instead
    * created by a broadcaster/annotator to represent a real-life game.
+   * It is created using the liwords "editor" mode or by importing a GCG.
    *
    * @generated from enum value: ANNOTATED = 1;
    */

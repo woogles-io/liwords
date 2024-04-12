@@ -347,3 +347,141 @@ func TestEditMoveAfterChallenge(t *testing.T) {
 	close(c)
 	wg.Wait()
 }
+
+func TestImportGCG(t *testing.T) {
+	is := is.New(t)
+	svc := newService()
+	defer func() { cleanupConns(svc) }()
+	c := make(chan *entity.EventWrapper)
+	svc.SetEventChannel(c)
+	apikey, err := svc.userStore.GetAPIKey(context.Background(), "someuser")
+	is.NoErr(err)
+
+	ctx := ctxForTests()
+	ctx = apiserver.StoreAPIKeyInContext(ctx, apikey)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for m := range c {
+			log.Info().Interface("m", m).Msg("received")
+		}
+		log.Info().Msg("leaving channel loop")
+	}()
+
+	bts, err := os.ReadFile("../puzzles/testdata/r8_puneet.gcg")
+	is.NoErr(err)
+
+	gcg := string(bts)
+
+	r, err := svc.ImportGCG(ctx, &omgwords_service.ImportGCGRequest{
+		Gcg:           gcg,
+		Lexicon:       "CSW21",
+		Rules:         &ipc.GameRules{BoardLayoutName: "CrosswordGame", LetterDistributionName: "english", VariantName: "classic"},
+		ChallengeRule: ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
+	})
+	is.NoErr(err)
+	gid := r.GameId
+
+	gdoc, err := svc.GetGameDocument(ctx, &omgwords_service.GetGameDocumentRequest{
+		GameId: gid,
+	})
+	is.NoErr(err)
+
+	is.Equal(gdoc.EndReason, ipc.GameEndReason_STANDARD)
+	is.Equal(gdoc.PlayState, ipc.PlayState_GAME_OVER)
+	is.Equal(len(gdoc.Racks[0]), 4)
+	is.Equal(len(gdoc.Racks[1]), 0)
+}
+
+func TestImportAnotherGCG(t *testing.T) {
+	is := is.New(t)
+	svc := newService()
+	defer func() { cleanupConns(svc) }()
+	c := make(chan *entity.EventWrapper)
+	svc.SetEventChannel(c)
+	apikey, err := svc.userStore.GetAPIKey(context.Background(), "someuser")
+	is.NoErr(err)
+
+	ctx := ctxForTests()
+	ctx = apiserver.StoreAPIKeyInContext(ctx, apikey)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for m := range c {
+			log.Info().Interface("m", m).Msg("received")
+		}
+		log.Info().Msg("leaving channel loop")
+	}()
+
+	bts, err := os.ReadFile("./testdata/vs_josh.gcg")
+	is.NoErr(err)
+
+	gcg := string(bts)
+
+	r, err := svc.ImportGCG(ctx, &omgwords_service.ImportGCGRequest{
+		Gcg:           gcg,
+		Lexicon:       "NWL20",
+		Rules:         &ipc.GameRules{BoardLayoutName: "CrosswordGame", LetterDistributionName: "english", VariantName: "classic"},
+		ChallengeRule: ipc.ChallengeRule_ChallengeRule_DOUBLE,
+	})
+	is.NoErr(err)
+	gid := r.GameId
+
+	gdoc, err := svc.GetGameDocument(ctx, &omgwords_service.GetGameDocumentRequest{
+		GameId: gid,
+	})
+	is.NoErr(err)
+
+	is.Equal(gdoc.EndReason, ipc.GameEndReason_STANDARD)
+	is.Equal(gdoc.PlayState, ipc.PlayState_GAME_OVER)
+	is.Equal(len(gdoc.Racks[0]), 0)
+	is.Equal(len(gdoc.Racks[1]), 6)
+}
+
+func TestImportOneMoreGCG(t *testing.T) {
+	is := is.New(t)
+	svc := newService()
+	defer func() { cleanupConns(svc) }()
+	c := make(chan *entity.EventWrapper)
+	svc.SetEventChannel(c)
+	apikey, err := svc.userStore.GetAPIKey(context.Background(), "someuser")
+	is.NoErr(err)
+
+	ctx := ctxForTests()
+	ctx = apiserver.StoreAPIKeyInContext(ctx, apikey)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for m := range c {
+			log.Info().Interface("m", m).Msg("received")
+		}
+		log.Info().Msg("leaving channel loop")
+	}()
+
+	bts, err := os.ReadFile("../puzzles/testdata/r4_lipe.gcg")
+	is.NoErr(err)
+
+	gcg := string(bts)
+
+	r, err := svc.ImportGCG(ctx, &omgwords_service.ImportGCGRequest{
+		Gcg:           gcg,
+		Lexicon:       "CSW21",
+		Rules:         &ipc.GameRules{BoardLayoutName: "CrosswordGame", LetterDistributionName: "english", VariantName: "classic"},
+		ChallengeRule: ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
+	})
+	is.NoErr(err)
+	gid := r.GameId
+
+	gdoc, err := svc.GetGameDocument(ctx, &omgwords_service.GetGameDocumentRequest{
+		GameId: gid,
+	})
+	is.NoErr(err)
+
+	is.Equal(gdoc.EndReason, ipc.GameEndReason_STANDARD)
+	is.Equal(gdoc.PlayState, ipc.PlayState_GAME_OVER)
+	is.Equal(len(gdoc.Racks[0]), 0)
+	is.Equal(len(gdoc.Racks[1]), 5)
+}

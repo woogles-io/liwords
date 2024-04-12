@@ -196,7 +196,6 @@ func (gs *GameDocumentStore) SetDocument(ctx context.Context, gdoc *ipc.GameDocu
 // store.
 func (gs *GameDocumentStore) UpdateDocument(ctx context.Context, doc *MaybeLockedDocument) error {
 	saveToDatabase := doc.PlayState == ipc.PlayState_GAME_OVER
-
 	bts, err := proto.Marshal(doc.GameDocument)
 	if err != nil {
 		return err

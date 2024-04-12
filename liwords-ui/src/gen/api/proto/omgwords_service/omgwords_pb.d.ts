@@ -158,6 +158,69 @@ export declare class CreateBroadcastGameResponse extends Message<CreateBroadcast
 }
 
 /**
+ * @generated from message omgwords_service.ImportGCGRequest
+ */
+export declare class ImportGCGRequest extends Message<ImportGCGRequest> {
+  /**
+   * @generated from field: string gcg = 1;
+   */
+  gcg: string;
+
+  /**
+   * @generated from field: string lexicon = 2;
+   */
+  lexicon: string;
+
+  /**
+   * @generated from field: ipc.GameRules rules = 3;
+   */
+  rules?: GameRules;
+
+  /**
+   * @generated from field: ipc.ChallengeRule challenge_rule = 4;
+   */
+  challengeRule: ChallengeRule;
+
+  constructor(data?: PartialMessage<ImportGCGRequest>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "omgwords_service.ImportGCGRequest";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ImportGCGRequest;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ImportGCGRequest;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ImportGCGRequest;
+
+  static equals(a: ImportGCGRequest | PlainMessage<ImportGCGRequest> | undefined, b: ImportGCGRequest | PlainMessage<ImportGCGRequest> | undefined): boolean;
+}
+
+/**
+ * @generated from message omgwords_service.ImportGCGResponse
+ */
+export declare class ImportGCGResponse extends Message<ImportGCGResponse> {
+  /**
+   * @generated from field: string game_id = 1;
+   */
+  gameId: string;
+
+  constructor(data?: PartialMessage<ImportGCGResponse>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "omgwords_service.ImportGCGResponse";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ImportGCGResponse;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ImportGCGResponse;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ImportGCGResponse;
+
+  static equals(a: ImportGCGResponse | PlainMessage<ImportGCGResponse> | undefined, b: ImportGCGResponse | PlainMessage<ImportGCGResponse> | undefined): boolean;
+}
+
+/**
  * @generated from message omgwords_service.BroadcastGamePrivacy
  */
 export declare class BroadcastGamePrivacy extends Message<BroadcastGamePrivacy> {

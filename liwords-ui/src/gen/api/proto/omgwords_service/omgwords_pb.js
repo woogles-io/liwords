@@ -62,6 +62,29 @@ export const CreateBroadcastGameResponse = proto3.makeMessageType(
 );
 
 /**
+ * @generated from message omgwords_service.ImportGCGRequest
+ */
+export const ImportGCGRequest = proto3.makeMessageType(
+  "omgwords_service.ImportGCGRequest",
+  () => [
+    { no: 1, name: "gcg", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "lexicon", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "rules", kind: "message", T: GameRules },
+    { no: 4, name: "challenge_rule", kind: "enum", T: proto3.getEnumType(ChallengeRule) },
+  ],
+);
+
+/**
+ * @generated from message omgwords_service.ImportGCGResponse
+ */
+export const ImportGCGResponse = proto3.makeMessageType(
+  "omgwords_service.ImportGCGResponse",
+  () => [
+    { no: 1, name: "game_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ],
+);
+
+/**
  * @generated from message omgwords_service.BroadcastGamePrivacy
  */
 export const BroadcastGamePrivacy = proto3.makeMessageType(

@@ -223,6 +223,8 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 	gdoc.Events = append(gdoc.Events, gevt)
 
 	if len(newRack) == 0 {
+		// if the challenge rule is not void we should wait for a final pass
+		// however, if we are in replay mode, there's no pass.
 		if gdoc.ChallengeRule != ipc.ChallengeRule_ChallengeRule_VOID {
 			gdoc.PlayState = ipc.PlayState_WAITING_FOR_FINAL_PASS
 		} else {

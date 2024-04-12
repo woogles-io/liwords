@@ -3,6 +3,7 @@ package omgwords
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
@@ -10,11 +11,16 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	macondoconfig "github.com/domino14/macondo/config"
+	"github.com/domino14/macondo/gcgio"
 	"github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/domino14/word-golib/tilemapping"
+
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/cwgame"
 	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/entity/utilities"
 	"github.com/woogles-io/liwords/pkg/omgwords/stores"
 	"github.com/woogles-io/liwords/pkg/user"
 	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -67,14 +73,7 @@ func (gs *OMGWordsService) SetEventChannel(c chan *entity.EventWrapper) {
 	gs.gameEventChan = c
 }
 
-func (gs *OMGWordsService) CreateBroadcastGame(ctx context.Context, req *pb.CreateBroadcastGameRequest) (
-	*pb.CreateBroadcastGameResponse, error) {
-
-	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, gs.userStore)
-	if err != nil {
-		return nil, err
-	}
-
+func (gs *OMGWordsService) createGDoc(ctx context.Context, u *entity.User, req *pb.CreateBroadcastGameRequest) (*ipc.GameDocument, error) {
 	players := req.PlayersInfo
 	if len(players) != 2 {
 		return nil, twirp.NewError(twirp.InvalidArgument, "need two players")
@@ -161,8 +160,23 @@ func (gs *OMGWordsService) CreateBroadcastGame(ctx context.Context, req *pb.Crea
 	if err != nil {
 		log.Err(err).Msg("broadcasting-game-creation")
 	}
+	return g, nil
+}
+
+func (gs *OMGWordsService) CreateBroadcastGame(ctx context.Context, req *pb.CreateBroadcastGameRequest) (
+	*pb.CreateBroadcastGameResponse, error) {
+
+	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, gs.userStore)
+	if err != nil {
+		return nil, err
+	}
+	gdoc, err := gs.createGDoc(ctx, u, req)
+	if err != nil {
+		return nil, err
+	}
+
 	return &pb.CreateBroadcastGameResponse{
-		GameId: g.Uid,
+		GameId: gdoc.Uid,
 	}, nil
 }
 
@@ -502,4 +516,99 @@ func (gs *OMGWordsService) DeleteBroadcastGame(ctx context.Context, req *pb.Dele
 	}
 
 	return &pb.DeleteBroadcastGameResponse{}, nil
+}
+
+func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *pb.ImportGCGRequest) (*pb.ImportGCGResponse, error) {
+	if len(req.Gcg) > 1.28e5 {
+		return nil, twirp.NewError(twirp.InvalidArgument, "gcg string is too long")
+	}
+	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, gs.userStore)
+	if err != nil {
+		return nil, err
+	}
+
+	// XXX: eventually we need our own GCG parsing library here (in liwords) that
+	// just deals with GameDocuments or whatever their successor might be, to
+	// avoid this config ugliness:
+	cfgCopy := macondoconfig.DefaultConfig()
+	cfgCopy.SetDefault(macondoconfig.ConfigDefaultLexicon, req.Lexicon)
+	cfgCopy.SetDefault(macondoconfig.ConfigDefaultLetterDistribution, req.Rules.LetterDistributionName)
+
+	r := strings.NewReader(req.Gcg)
+
+	gh, err := gcgio.ParseGCGFromReader(&cfgCopy, r)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+
+	letterdist, err := tilemapping.GetDistribution(gs.cfg.MacondoConfigMap, req.Rules.LetterDistributionName)
+	if err != nil {
+		return nil, err
+	}
+
+	cbr := &pb.CreateBroadcastGameRequest{
+		PlayersInfo: []*ipc.PlayerInfo{
+			{UserId: gh.Players[0].Nickname,
+				FullName: gh.Players[0].RealName,
+				Nickname: gh.Players[0].Nickname,
+				First:    true},
+			{UserId: gh.Players[1].Nickname,
+				FullName: gh.Players[1].RealName,
+				Nickname: gh.Players[1].Nickname},
+		},
+		Lexicon:       req.Lexicon,
+		Rules:         req.Rules,
+		ChallengeRule: req.ChallengeRule,
+	}
+
+	gdoc, err := gs.createGDoc(ctx, u, cbr)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add a dummy pass event at the end. GameHistory does not have this.
+	foundEndRack := -1
+	eventOwner := -1
+	lastRack := ""
+	for i := len(gh.Events) - 1; i >= 0; i-- {
+		if gh.Events[i].Type == macondo.GameEvent_END_RACK_PTS {
+			// insert right before
+			foundEndRack = i
+			eventOwner = int(gh.Events[i].PlayerIndex)
+			lastRack = gh.Events[i].Rack
+			break
+		}
+	}
+
+	if foundEndRack > 0 && gh.Events[foundEndRack-1].Type != macondo.GameEvent_CHALLENGE_BONUS {
+		gh.Events = append(gh.Events, &macondo.GameEvent{
+			Type:        macondo.GameEvent_PASS,
+			PlayerIndex: uint32(1 - eventOwner),
+			Rack:        lastRack,
+			Cumulative:  gh.FinalScores[1-eventOwner],
+		})
+		nevt := len(gh.Events)
+		gh.Events[nevt-1], gh.Events[foundEndRack] = gh.Events[foundEndRack], gh.Events[nevt-1]
+	}
+
+	// Then replay events.
+	err = cwgame.ReplayEvents(ctx, gdoc, lo.Map(gh.Events, func(evt *macondo.GameEvent, index int) *ipc.GameEvent {
+		return utilities.MacondoEvtToOMGEvt(evt, index, letterdist)
+	}), false)
+	if err != nil {
+		return nil, err
+	}
+
+	if gdoc.PlayState == ipc.PlayState_GAME_OVER {
+		if err = gs.metadataStore.MarkAnnotatedGameDone(ctx, gdoc.Uid); err != nil {
+			return nil, err
+		}
+	}
+
+	err = gs.gameStore.UpdateDocument(ctx, &stores.MaybeLockedDocument{GameDocument: gdoc})
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.ImportGCGResponse{GameId: gdoc.Uid}, nil
 }

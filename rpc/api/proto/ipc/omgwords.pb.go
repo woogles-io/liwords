@@ -203,6 +203,7 @@ const (
 	GameType_NATIVE GameType = 0
 	// An ANNOTATED game does not feature Woogles players, but is instead
 	// created by a broadcaster/annotator to represent a real-life game.
+	// It is created using the liwords "editor" mode or by importing a GCG.
 	GameType_ANNOTATED  GameType = 1
 	GameType_BOT_VS_BOT GameType = 2
 )
