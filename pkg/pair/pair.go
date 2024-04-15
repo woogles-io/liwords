@@ -593,9 +593,9 @@ func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int) ([]i
 	// 	Int("gamesPerMatchup", gamesPerMatchup).Int("rotationIndex", rotationIndex).
 	// 	Interface("topHalf", topHalf).Interface("bottomHalf", bottomHalf).Msg("debug-pairings")
 
-	for i := 0; i < len(players); i += 2 {
-		pairings[i] = topHalf[i/2]
-		pairings[i+1] = bottomHalf[i/2]
+	for i := 0; i < len(players)/2; i++ {
+		pairings[topHalf[i]] = bottomHalf[i]
+		pairings[bottomHalf[i]] = topHalf[i]
 	}
 
 	for i := 0; i < len(pairings); i++ {
