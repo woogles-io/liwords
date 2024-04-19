@@ -62,7 +62,7 @@ func (r *Ratings) Scan(value interface{}) error {
 	case string:
 		b = []byte(v)
 	default:
-		return fmt.Errorf("unexpected type %T for session info", value)
+		return fmt.Errorf("unexpected type %T for ratings", value)
 	}
 
 	return json.Unmarshal(b, &r)
@@ -82,7 +82,7 @@ func (r *SingleRating) Scan(value interface{}) error {
 	case string:
 		b = []byte(v)
 	default:
-		return fmt.Errorf("unexpected type %T for session info", value)
+		return fmt.Errorf("unexpected type %T for SingleRating", value)
 	}
 
 	return json.Unmarshal(b, &r)

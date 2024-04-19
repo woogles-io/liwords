@@ -8,7 +8,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matryer/is"
 	"github.com/woogles-io/liwords/pkg/entity"
-	"github.com/woogles-io/liwords/pkg/stores/common"
 	commondb "github.com/woogles-io/liwords/pkg/stores/common"
 )
 
@@ -75,13 +74,13 @@ func TestListStats(t *testing.T) {
 }
 
 func setNullValues(ctx context.Context, pool *pgxpool.Pool, gameIds []interface{}) {
-	tx, err := pool.BeginTx(ctx, common.DefaultTxOptions)
+	tx, err := pool.BeginTx(ctx, commondb.DefaultTxOptions)
 	if err != nil {
 		panic(err)
 	}
 	defer tx.Rollback(ctx)
 
-	inClause := common.BuildIn(len(gameIds), 1)
+	inClause := commondb.BuildIn(len(gameIds), 1)
 
 	updateStmt := fmt.Sprintf("UPDATE liststats SET player_id = NULL, timestamp = NULL, item = NULL WHERE game_id IN (%s)", inClause)
 	_, err = tx.Exec(ctx, updateStmt, gameIds...)

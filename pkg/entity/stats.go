@@ -219,8 +219,10 @@ func (ld *ListDatum) Scan(value interface{}) error {
 		b = v
 	case string:
 		b = []byte(v)
+	case nil:
+		return nil
 	default:
-		return fmt.Errorf("unexpected type %T for session info", value)
+		return fmt.Errorf("unexpected type %T for listdatum", value)
 	}
 
 	return json.Unmarshal(b, &ld)

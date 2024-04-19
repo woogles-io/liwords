@@ -45,7 +45,7 @@ func (t *Timers) Scan(value interface{}) error {
 	case string:
 		b = []byte(v)
 	default:
-		return fmt.Errorf("unexpected type %T for session info", value)
+		return fmt.Errorf("unexpected type %T for timers", value)
 	}
 
 	return json.Unmarshal(b, &t)
@@ -99,7 +99,7 @@ func (q *Quickdata) Scan(value interface{}) error {
 	case string:
 		b = []byte(v)
 	default:
-		return fmt.Errorf("unexpected type %T for session info", value)
+		return fmt.Errorf("unexpected type %T for quickdata", value)
 	}
 
 	return json.Unmarshal(b, &q)
