@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"strings"
 
+	"connectrpc.com/connect"
 	"github.com/samber/lo"
-	"github.com/twitchtv/twirp"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
@@ -32,30 +32,30 @@ func NewCommentsService(u user.Store, g gameplay.GameStore, c *comments.DBStore)
 	return &CommentsService{u, g, c}
 }
 
-func (cs *CommentsService) AddGameComment(ctx context.Context, req *pb.AddCommentRequest) (*pb.AddCommentResponse, error) {
+func (cs *CommentsService) AddGameComment(ctx context.Context, req *connect.Request[pb.AddCommentRequest]) (*connect.Response[pb.AddCommentResponse], error) {
 	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, cs.userStore)
 	if err != nil {
-		return nil, twirp.NewError(twirp.Unauthenticated, err.Error())
+		return nil, apiserver.Unauthenticated(err.Error())
 	}
-	if len(req.Comment) > MaxCommentLength {
-		return nil, twirp.NewError(twirp.InvalidArgument, "your comment is too long")
+	if len(req.Msg.Comment) > MaxCommentLength {
+		return nil, apiserver.InvalidArg("your comment is too long")
 	}
 
-	cid, err := cs.commentsStore.AddComment(ctx, req.GameId, int(u.ID), int(req.EventNumber), req.Comment)
+	cid, err := cs.commentsStore.AddComment(ctx, req.Msg.GameId, int(u.ID), int(req.Msg.EventNumber), req.Msg.Comment)
 	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return nil, apiserver.InvalidArg(err.Error())
 	}
-	return &pb.AddCommentResponse{
+	return connect.NewResponse(&pb.AddCommentResponse{
 		CommentId: cid,
-	}, nil
+	}), nil
 }
 
-func (cs *CommentsService) GetGameComments(ctx context.Context, req *pb.GetCommentsRequest) (*pb.GetCommentsResponse, error) {
-	comments, err := cs.commentsStore.GetComments(ctx, req.GameId)
+func (cs *CommentsService) GetGameComments(ctx context.Context, req *connect.Request[pb.GetCommentsRequest]) (*connect.Response[pb.GetCommentsResponse], error) {
+	comments, err := cs.commentsStore.GetComments(ctx, req.Msg.GameId)
 	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return nil, apiserver.InvalidArg(err.Error())
 	}
-	return &pb.GetCommentsResponse{
+	return connect.NewResponse(&pb.GetCommentsResponse{
 		Comments: lo.Map(comments, func(c models.GetCommentsForGameRow, idx int) *pb.GameComment {
 			return &pb.GameComment{
 				CommentId:   c.ID.String(),
@@ -66,54 +66,53 @@ func (cs *CommentsService) GetGameComments(ctx context.Context, req *pb.GetComme
 				Comment:     c.Comment,
 				LastEdited:  timestamppb.New(c.EditedAt),
 			}
-		})}, nil
+		}),
+	}), nil
 }
 
-func (cs *CommentsService) EditGameComment(ctx context.Context, req *pb.EditCommentRequest) (*pb.EditCommentResponse, error) {
+func (cs *CommentsService) EditGameComment(ctx context.Context, req *connect.Request[pb.EditCommentRequest]) (*connect.Response[pb.EditCommentResponse], error) {
 	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, cs.userStore)
 	if err != nil {
-		return nil, twirp.NewError(twirp.Unauthenticated, err.Error())
+		return nil, apiserver.Unauthenticated(err.Error())
 	}
-	if len(req.Comment) > MaxCommentLength {
-		return nil, twirp.NewError(twirp.InvalidArgument, "your new comment is too long")
+	if len(req.Msg.Comment) > MaxCommentLength {
+		return nil, apiserver.InvalidArg("your new comment is too long")
 	}
 
-	err = cs.commentsStore.UpdateComment(ctx, int(u.ID), req.CommentId, req.Comment)
+	err = cs.commentsStore.UpdateComment(ctx, int(u.ID), req.Msg.CommentId, req.Msg.Comment)
 	if err != nil {
-		return nil, twirp.NewError(twirp.Unauthenticated, err.Error())
+		return nil, apiserver.Unauthenticated(err.Error()) // This seems like it could be a different error, such as a server error or bad request depending on the nature of `err`.
 	}
-	return &pb.EditCommentResponse{}, nil
+	return connect.NewResponse(&pb.EditCommentResponse{}), nil
 }
 
-func (cs *CommentsService) DeleteGameComment(ctx context.Context, req *pb.DeleteCommentRequest) (*pb.DeleteCommentResponse, error) {
+func (cs *CommentsService) DeleteGameComment(ctx context.Context, req *connect.Request[pb.DeleteCommentRequest]) (*connect.Response[pb.DeleteCommentResponse], error) {
 	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, cs.userStore)
 	if err != nil {
-		return nil, twirp.NewError(twirp.Unauthenticated, err.Error())
+		return nil, apiserver.Unauthenticated(err.Error())
 	}
-	// Allow admins to delete comments.
 
 	if u.IsAdmin || u.IsMod {
-		err = cs.commentsStore.DeleteComment(ctx, req.CommentId, -1)
+		err = cs.commentsStore.DeleteComment(ctx, req.Msg.CommentId, -1)
 	} else {
-		err = cs.commentsStore.DeleteComment(ctx, req.CommentId, int(u.ID))
+		err = cs.commentsStore.DeleteComment(ctx, req.Msg.CommentId, int(u.ID))
 	}
 	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return nil, apiserver.InvalidArg(err.Error())
 	}
-	return &pb.DeleteCommentResponse{}, nil
+	return connect.NewResponse(&pb.DeleteCommentResponse{}), nil
 }
 
-func (cs *CommentsService) GetCommentsForAllGames(ctx context.Context, req *pb.GetCommentsAllGamesRequest) (*pb.GetCommentsResponse, error) {
-	if req.Limit > MaxCommentsPerReq {
-		return nil, twirp.NewError(twirp.InvalidArgument, "too many comments")
+func (cs *CommentsService) GetCommentsForAllGames(ctx context.Context, req *connect.Request[pb.GetCommentsAllGamesRequest]) (*connect.Response[pb.GetCommentsResponse], error) {
+	if req.Msg.Limit > MaxCommentsPerReq {
+		return nil, apiserver.InvalidArg("too many comments")
 	}
-	comments, err := cs.commentsStore.GetCommentsForAllGames(ctx, int(req.Limit), int(req.Offset))
-
+	comments, err := cs.commentsStore.GetCommentsForAllGames(ctx, int(req.Msg.Limit), int(req.Msg.Offset))
 	if err != nil {
-		return nil, err
+		return nil, err // Consider using a more specific error wrapper here, depending on what `err` typically represents.
 	}
 
-	return &pb.GetCommentsResponse{
+	return connect.NewResponse(&pb.GetCommentsResponse{
 		Comments: lo.Map(comments, func(c models.GetCommentsForAllGamesRow, idx int) *pb.GameComment {
 			qd := &entity.Quickdata{}
 			err := json.Unmarshal(c.Quickdata.Bytes, qd)
@@ -133,5 +132,6 @@ func (cs *CommentsService) GetCommentsForAllGames(ctx context.Context, req *pb.G
 				LastEdited:  timestamppb.New(c.EditedAt),
 				GameMeta:    gameMeta,
 			}
-		})}, nil
+		}),
+	}), nil
 }

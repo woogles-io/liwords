@@ -3,6 +3,8 @@ module github.com/woogles-io/liwords
 go 1.22.0
 
 require (
+	connectrpc.com/connect v1.16.0
+	github.com/TwiN/go-away v1.6.13
 	github.com/aws/aws-sdk-go-v2 v1.26.0
 	github.com/aws/aws-sdk-go-v2/config v1.27.9
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.13.9
@@ -29,7 +31,6 @@ require (
 	github.com/nats-io/nats.go v1.34.0
 	github.com/rs/zerolog v1.32.0
 	github.com/samber/lo v1.39.0
-	github.com/twitchtv/twirp v8.1.3+incompatible
 	golang.org/x/crypto v0.21.0
 	google.golang.org/protobuf v1.33.0
 	gorm.io/datatypes v1.2.0

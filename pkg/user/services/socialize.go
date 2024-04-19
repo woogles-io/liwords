@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
+	"connectrpc.com/connect"
 	"github.com/rs/zerolog/log"
-	"github.com/twitchtv/twirp"
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/user"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -25,7 +25,8 @@ func NewSocializeService(u user.Store, c user.ChatStore, p user.PresenceStore) *
 	return &SocializeService{userStore: u, chatStore: c, presenceStore: p}
 }
 
-func (ss *SocializeService) AddFollow(ctx context.Context, req *pb.AddFollowRequest) (*pb.OKResponse, error) {
+func (ss *SocializeService) AddFollow(ctx context.Context, req *connect.Request[pb.AddFollowRequest],
+) (*connect.Response[pb.OKResponse], error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
 		return nil, err
@@ -34,30 +35,32 @@ func (ss *SocializeService) AddFollow(ctx context.Context, req *pb.AddFollowRequ
 	user, err := ss.userStore.Get(ctx, sess.Username)
 	if err != nil {
 		log.Err(err).Msg("getting-user")
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 
-	followed, err := ss.userStore.GetByUUID(ctx, req.Uuid)
+	followed, err := ss.userStore.GetByUUID(ctx, req.Msg.Uuid)
 	if err != nil {
 		log.Err(err).Msg("getting-followed")
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return nil, apiserver.InvalidArg(err.Error())
 	}
 
 	err = ss.userStore.AddFollower(ctx, followed.ID, user.ID)
 	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return nil, apiserver.InvalidArg(err.Error())
 	}
 
 	err = ss.presenceStore.UpdateFollower(ctx, followed, user, true)
 	if err != nil {
 		// we cannot rollback the follow
-		return nil, twirp.NewError(twirp.DataLoss, err.Error())
+		// XXX: why?
+		return nil, apiserver.InvalidArg(err.Error())
 	}
 
-	return &pb.OKResponse{}, nil
+	return connect.NewResponse(&pb.OKResponse{}), nil
 }
 
-func (ss *SocializeService) RemoveFollow(ctx context.Context, req *pb.RemoveFollowRequest) (*pb.OKResponse, error) {
+func (ss *SocializeService) RemoveFollow(ctx context.Context, req *connect.Request[pb.RemoveFollowRequest],
+) (*connect.Response[pb.OKResponse], error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
 		return nil, err
@@ -66,30 +69,31 @@ func (ss *SocializeService) RemoveFollow(ctx context.Context, req *pb.RemoveFoll
 	user, err := ss.userStore.Get(ctx, sess.Username)
 	if err != nil {
 		log.Err(err).Msg("getting-user")
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 
-	unfollowed, err := ss.userStore.GetByUUID(ctx, req.Uuid)
+	unfollowed, err := ss.userStore.GetByUUID(ctx, req.Msg.Uuid)
 	if err != nil {
 		log.Err(err).Msg("getting-unfollowed")
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return nil, apiserver.InvalidArg(err.Error())
 	}
 
 	err = ss.userStore.RemoveFollower(ctx, unfollowed.ID, user.ID)
 	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return nil, apiserver.InvalidArg(err.Error())
 	}
 
 	err = ss.presenceStore.UpdateFollower(ctx, unfollowed, user, false)
 	if err != nil {
 		// we cannot rollback the unfollow
-		return nil, twirp.NewError(twirp.DataLoss, err.Error())
+		return nil, apiserver.InvalidArg(err.Error())
 	}
 
-	return &pb.OKResponse{}, nil
+	return connect.NewResponse(&pb.OKResponse{}), nil
 }
 
-func (ss *SocializeService) GetFollows(ctx context.Context, req *pb.GetFollowsRequest) (*pb.GetFollowsResponse, error) {
+func (ss *SocializeService) GetFollows(ctx context.Context, req *connect.Request[pb.GetFollowsRequest],
+) (*connect.Response[pb.GetFollowsResponse], error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
 		return nil, err
@@ -97,12 +101,12 @@ func (ss *SocializeService) GetFollows(ctx context.Context, req *pb.GetFollowsRe
 	user, err := ss.userStore.Get(ctx, sess.Username)
 	if err != nil {
 		log.Err(err).Msg("getting-user")
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 
 	users, err := ss.userStore.GetFollows(ctx, user.ID)
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 
 	uuids := make([]string, 0, len(users))
@@ -111,7 +115,7 @@ func (ss *SocializeService) GetFollows(ctx context.Context, req *pb.GetFollowsRe
 	}
 	channels, err := ss.presenceStore.BatchGetChannels(ctx, uuids)
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 
 	basicFollowedUsers := make([]*pb.BasicFollowedUser, len(users))
@@ -123,11 +127,12 @@ func (ss *SocializeService) GetFollows(ctx context.Context, req *pb.GetFollowsRe
 		}
 	}
 
-	return &pb.GetFollowsResponse{Users: basicFollowedUsers}, nil
+	return connect.NewResponse(&pb.GetFollowsResponse{Users: basicFollowedUsers}), nil
 }
 
 // blocks
-func (ss *SocializeService) AddBlock(ctx context.Context, req *pb.AddBlockRequest) (*pb.OKResponse, error) {
+func (ss *SocializeService) AddBlock(ctx context.Context, req *connect.Request[pb.AddBlockRequest],
+) (*connect.Response[pb.OKResponse], error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
 		return nil, err
@@ -136,27 +141,28 @@ func (ss *SocializeService) AddBlock(ctx context.Context, req *pb.AddBlockReques
 	user, err := ss.userStore.Get(ctx, sess.Username)
 	if err != nil {
 		log.Err(err).Msg("getting-user")
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 
-	blocked, err := ss.userStore.GetByUUID(ctx, req.Uuid)
+	blocked, err := ss.userStore.GetByUUID(ctx, req.Msg.Uuid)
 	if err != nil {
 		log.Err(err).Msg("getting-blocked")
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return nil, apiserver.InvalidArg(err.Error())
 	}
 	if blocked.IsAdmin || blocked.IsMod {
 		log.Err(err).Msg("blocking-admin")
-		return nil, twirp.NewError(twirp.InvalidArgument, "you cannot block that user")
+		return nil, apiserver.InvalidArg("you cannot block that user")
 	}
 
 	err = ss.userStore.AddBlock(ctx, blocked.ID, user.ID)
 	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return nil, apiserver.InvalidArg(err.Error())
 	}
-	return &pb.OKResponse{}, nil
+	return connect.NewResponse(&pb.OKResponse{}), nil
 }
 
-func (ss *SocializeService) RemoveBlock(ctx context.Context, req *pb.RemoveBlockRequest) (*pb.OKResponse, error) {
+func (ss *SocializeService) RemoveBlock(ctx context.Context, req *connect.Request[pb.RemoveBlockRequest],
+) (*connect.Response[pb.OKResponse], error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
 		return nil, err
@@ -165,23 +171,24 @@ func (ss *SocializeService) RemoveBlock(ctx context.Context, req *pb.RemoveBlock
 	user, err := ss.userStore.Get(ctx, sess.Username)
 	if err != nil {
 		log.Err(err).Msg("getting-user")
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 
-	unblocked, err := ss.userStore.GetByUUID(ctx, req.Uuid)
+	unblocked, err := ss.userStore.GetByUUID(ctx, req.Msg.Uuid)
 	if err != nil {
 		log.Err(err).Msg("getting-unblocked")
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return nil, apiserver.InvalidArg(err.Error())
 	}
 
 	err = ss.userStore.RemoveBlock(ctx, unblocked.ID, user.ID)
 	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return nil, apiserver.InvalidArg(err.Error())
 	}
-	return &pb.OKResponse{}, nil
+	return connect.NewResponse(&pb.OKResponse{}), nil
 }
 
-func (ss *SocializeService) GetBlocks(ctx context.Context, req *pb.GetBlocksRequest) (*pb.GetBlocksResponse, error) {
+func (ss *SocializeService) GetBlocks(ctx context.Context, req *connect.Request[pb.GetBlocksRequest],
+) (*connect.Response[pb.GetBlocksResponse], error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
 		return nil, err
@@ -189,12 +196,12 @@ func (ss *SocializeService) GetBlocks(ctx context.Context, req *pb.GetBlocksRequ
 	user, err := ss.userStore.Get(ctx, sess.Username)
 	if err != nil {
 		log.Err(err).Msg("getting-user")
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 
 	users, err := ss.userStore.GetBlocks(ctx, user.ID)
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 
 	basicUsers := make([]*pb.BasicUser, len(users))
@@ -205,10 +212,11 @@ func (ss *SocializeService) GetBlocks(ctx context.Context, req *pb.GetBlocksRequ
 		}
 	}
 
-	return &pb.GetBlocksResponse{Users: basicUsers}, nil
+	return connect.NewResponse(&pb.GetBlocksResponse{Users: basicUsers}), nil
 }
 
-func (ss *SocializeService) GetFullBlocks(ctx context.Context, req *pb.GetFullBlocksRequest) (*pb.GetFullBlocksResponse, error) {
+func (ss *SocializeService) GetFullBlocks(ctx context.Context, req *connect.Request[pb.GetFullBlocksRequest],
+) (*connect.Response[pb.GetFullBlocksResponse], error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
 		return nil, err
@@ -216,12 +224,12 @@ func (ss *SocializeService) GetFullBlocks(ctx context.Context, req *pb.GetFullBl
 	user, err := ss.userStore.Get(ctx, sess.Username)
 	if err != nil {
 		log.Err(err).Msg("getting-user")
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 
 	users, err := ss.userStore.GetFullBlocks(ctx, user.ID)
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 
 	basicUsers := make([]string, len(users))
@@ -229,16 +237,21 @@ func (ss *SocializeService) GetFullBlocks(ctx context.Context, req *pb.GetFullBl
 		basicUsers[i] = u.UUID
 	}
 
-	return &pb.GetFullBlocksResponse{UserIds: basicUsers}, nil
+	return connect.NewResponse(&pb.GetFullBlocksResponse{UserIds: basicUsers}), nil
 }
 
-func (ss *SocializeService) GetActiveChatChannels(ctx context.Context, req *pb.GetActiveChatChannelsRequest) (*pb.ActiveChatChannels, error) {
+func (ss *SocializeService) GetActiveChatChannels(ctx context.Context, req *connect.Request[pb.GetActiveChatChannelsRequest],
+) (*connect.Response[pb.ActiveChatChannels], error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return ss.chatStore.LatestChannels(ctx, int(req.Number), int(req.Offset), sess.UserUUID, req.TournamentId)
+	resp, err := ss.chatStore.LatestChannels(ctx, int(req.Msg.Number), int(req.Msg.Offset), sess.UserUUID, req.Msg.TournamentId)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
 }
 
 func ChatChannelReceiver(uid, name string) (string, error) {
@@ -264,24 +277,25 @@ func ChatChannelReceiver(uid, name string) (string, error) {
 	return receiver, nil
 }
 
-func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *pb.GetChatsRequest) (*ipc.ChatMessages, error) {
+func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *connect.Request[pb.GetChatsRequest],
+) (*connect.Response[ipc.ChatMessages], error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
 		log.Debug().Err(err).Msg("get-session-get-chats-for-channel")
 		// Don't exit on error. We should allow unauthenticated users to get
 		// chats, just not private ones.
 	}
-	if strings.HasPrefix(req.Channel, "chat.pm.") {
+	if strings.HasPrefix(req.Msg.Channel, "chat.pm.") {
 		// Verify that this chat channel is well formed and we have access to it.
 		if sess == nil {
 			return nil, err
 		}
-		_, err := ChatChannelReceiver(sess.UserUUID, req.Channel)
+		_, err := ChatChannelReceiver(sess.UserUUID, req.Msg.Channel)
 		if err != nil {
 			return nil, err
 		}
 	}
-	chats, err := ss.chatStore.OldChats(ctx, req.Channel, 100)
+	chats, err := ss.chatStore.OldChats(ctx, req.Msg.Channel, 100)
 	if err != nil {
 		return nil, err
 	}
@@ -310,7 +324,7 @@ func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *pb.GetC
 			}
 		}
 	}
-	return &ipc.ChatMessages{Messages: chats}, nil
+	return connect.NewResponse(&ipc.ChatMessages{Messages: chats}), nil
 }
 
 // func (ss *SocializeService) GetBlockedBy(ctx context.Context, req *pb.GetBlocksRequest) (*pb.GetBlockedByResponse, error) {
@@ -340,7 +354,12 @@ func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *pb.GetC
 // 	return &pb.GetBlockedByResponse{Users: basicUsers}, nil
 // }
 
-func (ss *SocializeService) GetModList(ctx context.Context, req *pb.GetModListRequest) (*pb.GetModListResponse, error) {
+func (ss *SocializeService) GetModList(ctx context.Context, req *connect.Request[pb.GetModListRequest]) (
+	*connect.Response[pb.GetModListResponse], error) {
 	// this endpoint should work without login
-	return ss.userStore.GetModList(ctx)
+	ml, err := ss.userStore.GetModList(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(ml), nil
 }

@@ -3,8 +3,9 @@ package services
 import (
 	"context"
 
-	"github.com/twitchtv/twirp"
+	"connectrpc.com/connect"
 
+	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
@@ -17,12 +18,13 @@ func NewAutocompleteService(u user.Store) *AutocompleteService {
 	return &AutocompleteService{userStore: u}
 }
 
-func (as *AutocompleteService) GetCompletion(ctx context.Context, req *pb.UsernameSearchRequest) (*pb.UsernameSearchResponse, error) {
-	users, err := as.userStore.UsersByPrefix(ctx, req.Prefix)
+func (as *AutocompleteService) GetCompletion(ctx context.Context, req *connect.Request[pb.UsernameSearchRequest],
+) (*connect.Response[pb.UsernameSearchResponse], error) {
+	users, err := as.userStore.UsersByPrefix(ctx, req.Msg.Prefix)
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
-	return &pb.UsernameSearchResponse{
+	return connect.NewResponse(&pb.UsernameSearchResponse{
 		Users: users,
-	}, nil
+	}), nil
 }

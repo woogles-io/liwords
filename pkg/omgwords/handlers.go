@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/twitchtv/twirp"
+	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/cwgame"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/omgwords/stores"
@@ -28,11 +28,11 @@ func handleEvent(ctx context.Context, userID string, evt *ipc.ClientGameplayEven
 	if amendment {
 		if g.Type != ipc.GameType_ANNOTATED {
 			gs.UnlockDocument(ctx, g)
-			return false, twirp.NewError(twirp.InvalidArgument, "you can only amend annotated games")
+			return false, apiserver.InvalidArg("you can only amend annotated games")
 		}
 		if len(g.Events)-1 < int(evtIndex) {
 			gs.UnlockDocument(ctx, g)
-			return false, twirp.NewError(twirp.InvalidArgument, "tried to amend a rack for a non-existing event")
+			return false, apiserver.InvalidArg("tried to amend a rack for a non-existing event")
 		}
 		rack := g.Events[evtIndex].Rack
 		pidx := g.Events[evtIndex].PlayerIndex
@@ -41,7 +41,7 @@ func handleEvent(ctx context.Context, userID string, evt *ipc.ClientGameplayEven
 		err = cwgame.ReplayEvents(ctx, g.GameDocument, evts, false)
 		if err != nil {
 			gs.UnlockDocument(ctx, g)
-			return false, twirp.NewError(twirp.InvalidArgument, err.Error())
+			return false, apiserver.InvalidArg(err.Error())
 		}
 		// Remember the rack we just saved. We need to re-assign it.
 		racks := make([][]byte, len(g.Players))
@@ -72,7 +72,7 @@ func handleEvent(ctx context.Context, userID string, evt *ipc.ClientGameplayEven
 	err = cwgame.ProcessGameplayEvent(ctx, evt, userID, g.GameDocument)
 	if err != nil {
 		gs.UnlockDocument(ctx, g)
-		return false, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return false, apiserver.InvalidArg(err.Error())
 	}
 
 	// REMOVE ME BEFORE DEPLOY

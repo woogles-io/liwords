@@ -4,12 +4,11 @@ RUN apt-get update && apt-get install -y curl
 
 # protobuf executables:
 WORKDIR /tmp
-RUN curl -L https://github.com/bufbuild/buf/releases/download/v1.9.0/buf-Linux-x86_64  --output buf
-RUN chmod +x buf
 
 # Install protoc-gen-go
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest \
-    && go install github.com/twitchtv/twirp/protoc-gen-twirp@latest
+    && go install github.com/bufbuild/buf/cmd/buf@latest \
+    && go install connectrpc.com/connect/cmd/protoc-gen-connect-go@latest
 
 # Detect arch for migrate
 ENV ARCH="$(uname -m | sed 's/aarch64/aarch_64/g')"
@@ -24,7 +23,7 @@ RUN echo "Fetching from URL: https://github.com/golang-migrate/migrate/releases/
 RUN curl -L https://github.com/golang-migrate/migrate/releases/download/${MIGRATE_VERSION}/migrate.linux-$(eval echo ${MIGRATE_ARCH}).tar.gz | tar xvz
 
 RUN mv /tmp/migrate /opt
-RUN mv /tmp/buf /opt
+RUN mv /go/bin/buf /opt
 
 # Install sqlc
 
@@ -39,7 +38,7 @@ RUN npm install @bufbuild/protoc-gen-es
 RUN npm install @bufbuild/protoc-gen-connect-web
 
 COPY --from=base /go/bin/protoc-gen-go /opt
-COPY --from=base /go/bin/protoc-gen-twirp /opt
+COPY --from=base /go/bin/protoc-gen-connect-go /opt
 COPY --from=base /opt/buf /opt
 COPY --from=base /opt/migrate /opt
 COPY --from=base /go/bin/sqlc /opt

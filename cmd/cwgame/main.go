@@ -50,7 +50,7 @@ func main() {
 
 	if *gameid != "" {
 
-		url := serverURL + "/twirp/omgwords_service.GameEventService/GetGameDocument"
+		url := serverURL + "/api/omgwords_service.GameEventService/GetGameDocument"
 		reader := strings.NewReader(`{"gameId": "` + os.Args[1] + `"}`)
 		resp, err := http.Post(url, "application/json", reader)
 		if err != nil {

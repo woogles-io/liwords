@@ -3,7 +3,7 @@ plugins:
   - name: go
     out: ../rpc/api/proto
     opt: paths=source_relative
-  - name: twirp
+  - plugin: connect-go
     out: ../rpc/api/proto
     opt: paths=source_relative
   - name: es

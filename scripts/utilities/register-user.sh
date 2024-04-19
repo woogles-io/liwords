@@ -1,1 +1,1 @@
-curl -X POST -H 'Content-Type: application/json' http://liwords.localhost/twirp/user_service.RegistrationService/Register -d "{\"username\": \"$1\", \"password\": \"password123\", \"email\": \"$1@example.com\"}"
+curl -X POST -H 'Content-Type: application/json' http://liwords.localhost/api/user_service.RegistrationService/Register -d "{\"username\": \"$1\", \"password\": \"password123\", \"email\": \"$1@example.com\"}"

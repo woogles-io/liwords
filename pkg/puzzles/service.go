@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"connectrpc.com/connect"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ecs"
@@ -12,7 +13,6 @@ import (
 	"github.com/aws/smithy-go"
 	"github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"
-	"github.com/twitchtv/twirp"
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/user"
@@ -43,34 +43,34 @@ func NewPuzzleService(ps PuzzleStore, us user.Store, k, c, td string) *PuzzleSer
 	}
 }
 
-func (ps *PuzzleService) GetStartPuzzleId(ctx context.Context, req *pb.StartPuzzleIdRequest) (*pb.StartPuzzleIdResponse, error) {
-	puzzleId, pqr, err := GetStartPuzzleId(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Lexicon)
+func (ps *PuzzleService) GetStartPuzzleId(ctx context.Context, req *connect.Request[pb.StartPuzzleIdRequest]) (*connect.Response[pb.StartPuzzleIdResponse], error) {
+	puzzleId, pqr, err := GetStartPuzzleId(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Msg.Lexicon)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.StartPuzzleIdResponse{PuzzleId: puzzleId, QueryResult: pqr}, nil
+	return connect.NewResponse(&pb.StartPuzzleIdResponse{PuzzleId: puzzleId, QueryResult: pqr}), nil
 }
 
-func (ps *PuzzleService) GetNextPuzzleId(ctx context.Context, req *pb.NextPuzzleIdRequest) (*pb.NextPuzzleIdResponse, error) {
-	puzzleId, pqr, err := GetNextPuzzleId(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Lexicon)
+func (ps *PuzzleService) GetNextPuzzleId(ctx context.Context, req *connect.Request[pb.NextPuzzleIdRequest]) (*connect.Response[pb.NextPuzzleIdResponse], error) {
+	puzzleId, pqr, err := GetNextPuzzleId(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Msg.Lexicon)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.NextPuzzleIdResponse{PuzzleId: puzzleId, QueryResult: pqr}, nil
+	return connect.NewResponse(&pb.NextPuzzleIdResponse{PuzzleId: puzzleId, QueryResult: pqr}), nil
 }
 
-func (ps *PuzzleService) GetNextClosestRatingPuzzleId(ctx context.Context, req *pb.NextClosestRatingPuzzleIdRequest) (*pb.NextClosestRatingPuzzleIdResponse, error) {
-	puzzleId, pqr, err := GetNextClosestRatingPuzzleId(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Lexicon)
+func (ps *PuzzleService) GetNextClosestRatingPuzzleId(ctx context.Context, req *connect.Request[pb.NextClosestRatingPuzzleIdRequest]) (*connect.Response[pb.NextClosestRatingPuzzleIdResponse], error) {
+	puzzleId, pqr, err := GetNextClosestRatingPuzzleId(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Msg.Lexicon)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.NextClosestRatingPuzzleIdResponse{PuzzleId: puzzleId, QueryResult: pqr}, nil
+	return connect.NewResponse(&pb.NextClosestRatingPuzzleIdResponse{PuzzleId: puzzleId, QueryResult: pqr}), nil
 }
 
-func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *pb.PuzzleRequest) (*pb.PuzzleResponse, error) {
-	gameHist, beforeText, attempts, status, firstAttemptTime, lastAttemptTime, newPuzzleRating, newUserRating, err := GetPuzzle(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.PuzzleId)
+func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *connect.Request[pb.PuzzleRequest]) (*connect.Response[pb.PuzzleResponse], error) {
+	gameHist, beforeText, attempts, status, firstAttemptTime, lastAttemptTime, newPuzzleRating, newUserRating, err := GetPuzzle(ctx, ps.puzzleStore, sessionUserUUIDOption(ctx, ps), req.Msg.PuzzleId)
 	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return nil, apiserver.InvalidArg(err.Error())
 	}
 
 	var correctAnswer *macondo.GameEvent
@@ -79,9 +79,9 @@ func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *pb.PuzzleRequest) (
 	var afterText string
 
 	if status != nil {
-		correctAnswer, gameId, turnNumber, afterText, _, _, err = GetAnswer(ctx, ps.puzzleStore, req.PuzzleId)
+		correctAnswer, gameId, turnNumber, afterText, _, _, err = GetAnswer(ctx, ps.puzzleStore, req.Msg.PuzzleId)
 		if err != nil {
-			return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+			return nil, apiserver.InvalidArg(err.Error())
 		}
 	}
 
@@ -95,37 +95,42 @@ func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *pb.PuzzleRequest) (
 		nur = int32(newUserRating.Rating + 0.5)
 	}
 
-	return &pb.PuzzleResponse{History: gameHist, BeforeText: beforeText, Answer: &pb.AnswerResponse{
-		Status:           boolPtrToPuzzleStatus(status),
-		CorrectAnswer:    correctAnswer,
-		GameId:           gameId,
-		TurnNumber:       turnNumber,
-		AfterText:        afterText,
-		Attempts:         attempts,
-		NewUserRating:    nur,
-		NewPuzzleRating:  npr,
-		FirstAttemptTime: timestamppb.New(firstAttemptTime),
-		LastAttemptTime:  timestamppb.New(lastAttemptTime)}}, nil
+	return connect.NewResponse(&pb.PuzzleResponse{
+		History:    gameHist,
+		BeforeText: beforeText,
+		Answer: &pb.AnswerResponse{
+			Status:           boolPtrToPuzzleStatus(status),
+			CorrectAnswer:    correctAnswer,
+			GameId:           gameId,
+			TurnNumber:       turnNumber,
+			AfterText:        afterText,
+			Attempts:         attempts,
+			NewUserRating:    nur,
+			NewPuzzleRating:  npr,
+			FirstAttemptTime: timestamppb.New(firstAttemptTime),
+			LastAttemptTime:  timestamppb.New(lastAttemptTime),
+		},
+	}), nil
 }
 
-func (ps *PuzzleService) GetPreviousPuzzleId(ctx context.Context, req *pb.PreviousPuzzleRequest) (*pb.PreviousPuzzleResponse, error) {
+func (ps *PuzzleService) GetPreviousPuzzleId(ctx context.Context, req *connect.Request[pb.PreviousPuzzleRequest]) (*connect.Response[pb.PreviousPuzzleResponse], error) {
 	user, err := sessionUser(ctx, ps)
 	if err != nil {
 		return nil, err
 	}
-	puzzleId, err := GetPreviousPuzzleId(ctx, ps.puzzleStore, user.UUID, req.PuzzleId)
+	puzzleId, err := GetPreviousPuzzleId(ctx, ps.puzzleStore, user.UUID, req.Msg.PuzzleId)
 	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return nil, apiserver.InvalidArg(err.Error())
 	}
-	return &pb.PreviousPuzzleResponse{PuzzleId: puzzleId}, nil
+	return connect.NewResponse(&pb.PreviousPuzzleResponse{PuzzleId: puzzleId}), nil
 }
 
-func (ps *PuzzleService) SubmitAnswer(ctx context.Context, req *pb.SubmissionRequest) (*pb.SubmissionResponse, error) {
+func (ps *PuzzleService) SubmitAnswer(ctx context.Context, req *connect.Request[pb.SubmissionRequest]) (*connect.Response[pb.SubmissionResponse], error) {
 	user, err := sessionUser(ctx, ps)
 	if err != nil {
 		return nil, err
 	}
-	userIsCorrect, status, correctAnswer, gameId, turnNumber, afterText, attempts, firstAttemptTime, lastAttemptTime, newPuzzleRating, newUserRating, err := SubmitAnswer(ctx, ps.puzzleStore, user.UUID, req.PuzzleId, req.Answer, req.ShowSolution)
+	userIsCorrect, status, correctAnswer, gameId, turnNumber, afterText, attempts, firstAttemptTime, lastAttemptTime, newPuzzleRating, newUserRating, err := SubmitAnswer(ctx, ps.puzzleStore, user.UUID, req.Msg.PuzzleId, req.Msg.Answer, req.Msg.ShowSolution)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +145,8 @@ func (ps *PuzzleService) SubmitAnswer(ctx context.Context, req *pb.SubmissionReq
 		nur = int32(newUserRating.Rating + 0.5)
 	}
 
-	return &pb.SubmissionResponse{UserIsCorrect: userIsCorrect,
+	return connect.NewResponse(&pb.SubmissionResponse{
+		UserIsCorrect: userIsCorrect,
 		Answer: &pb.AnswerResponse{
 			Status:           boolPtrToPuzzleStatus(status),
 			CorrectAnswer:    correctAnswer,
@@ -151,46 +157,48 @@ func (ps *PuzzleService) SubmitAnswer(ctx context.Context, req *pb.SubmissionReq
 			NewUserRating:    nur,
 			NewPuzzleRating:  npr,
 			FirstAttemptTime: timestamppb.New(firstAttemptTime),
-			LastAttemptTime:  timestamppb.New(lastAttemptTime)}}, nil
+			LastAttemptTime:  timestamppb.New(lastAttemptTime),
+		},
+	}), nil
 }
 
-func (ps *PuzzleService) GetPuzzleAnswer(ctx context.Context, req *pb.PuzzleRequest) (*pb.AnswerResponse, error) {
+func (ps *PuzzleService) GetPuzzleAnswer(ctx context.Context, req *connect.Request[pb.PuzzleRequest]) (*connect.Response[pb.AnswerResponse], error) {
 	user, err := sessionUser(ctx, ps)
 	if err != nil {
 		return nil, err
 	}
-	answer, err := GetPuzzleAnswer(ctx, ps.puzzleStore, user.UUID, req.PuzzleId)
+	answer, err := GetPuzzleAnswer(ctx, ps.puzzleStore, user.UUID, req.Msg.PuzzleId)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.AnswerResponse{CorrectAnswer: answer}, nil
+	return connect.NewResponse(&pb.AnswerResponse{CorrectAnswer: answer}), nil
 }
 
-func (ps *PuzzleService) SetPuzzleVote(ctx context.Context, req *pb.PuzzleVoteRequest) (*pb.PuzzleVoteResponse, error) {
+func (ps *PuzzleService) SetPuzzleVote(ctx context.Context, req *connect.Request[pb.PuzzleVoteRequest]) (*connect.Response[pb.PuzzleVoteResponse], error) {
 	user, err := sessionUser(ctx, ps)
 	if err != nil {
 		return nil, err
 	}
-	err = SetPuzzleVote(ctx, ps.puzzleStore, user.UUID, req.PuzzleId, int(req.Vote))
+	err = SetPuzzleVote(ctx, ps.puzzleStore, user.UUID, req.Msg.PuzzleId, int(req.Msg.Vote))
 	if err != nil {
 		return nil, err
 	}
-	return &pb.PuzzleVoteResponse{}, nil
+	return connect.NewResponse(&pb.PuzzleVoteResponse{}), nil
 }
 
-func (ps *PuzzleService) StartPuzzleGenJob(ctx context.Context, req *pb.APIPuzzleGenerationJobRequest) (*pb.APIPuzzleGenerationJobResponse, error) {
+func (ps *PuzzleService) StartPuzzleGenJob(ctx context.Context, req *connect.Request[pb.APIPuzzleGenerationJobRequest]) (*connect.Response[pb.APIPuzzleGenerationJobResponse], error) {
 	user, err := sessionUser(ctx, ps)
 	if err != nil {
 		return nil, err
 	}
 	if !user.IsAdmin {
-		return nil, twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
+		return nil, apiserver.Unauthenticated(errNotAuthorized.Error())
 	}
-	log.Debug().Msgf("keys %s %s", req.SecretKey, ps.puzzleGenSecretKey)
-	if req.SecretKey != ps.puzzleGenSecretKey {
-		return nil, twirp.NewError(twirp.PermissionDenied, "must include puzzle generation secret key")
+	log.Debug().Msgf("keys %s %s", req.Msg.SecretKey, ps.puzzleGenSecretKey)
+	if req.Msg.SecretKey != ps.puzzleGenSecretKey {
+		return nil, apiserver.PermissionDenied("must include puzzle generation secret key")
 	}
-	bts, err := protojson.Marshal(req.Request)
+	bts, err := protojson.Marshal(req.Msg.Request)
 	if err != nil {
 		return nil, err
 	}
@@ -201,24 +209,24 @@ func (ps *PuzzleService) StartPuzzleGenJob(ctx context.Context, req *pb.APIPuzzl
 
 	err = invokeECSPuzzleGen(ctx, string(bts), ps.ecsCluster, ps.puzzleGenTaskDef)
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
-	return &pb.APIPuzzleGenerationJobResponse{}, nil
+	return connect.NewResponse(&pb.APIPuzzleGenerationJobResponse{}), nil
 }
 
-func (ps *PuzzleService) GetPuzzleJobLogs(ctx context.Context, req *pb.PuzzleJobLogsRequest) (*pb.PuzzleJobLogsResponse, error) {
+func (ps *PuzzleService) GetPuzzleJobLogs(ctx context.Context, req *connect.Request[pb.PuzzleJobLogsRequest]) (*connect.Response[pb.PuzzleJobLogsResponse], error) {
 	user, err := sessionUser(ctx, ps)
 	if err != nil {
 		return nil, err
 	}
 	if !user.IsAdmin {
-		return nil, twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
+		return nil, apiserver.Unauthenticated(errNotAuthorized.Error())
 	}
-	logs, err := GetPuzzleJobLogs(ctx, ps.puzzleStore, int(req.Limit), int(req.Offset))
+	logs, err := GetPuzzleJobLogs(ctx, ps.puzzleStore, int(req.Msg.Limit), int(req.Msg.Offset))
 	if err != nil {
 		return nil, err
 	}
-	return &pb.PuzzleJobLogsResponse{Logs: logs}, nil
+	return connect.NewResponse(&pb.PuzzleJobLogsResponse{Logs: logs}), nil
 }
 
 func invokeECSPuzzleGen(ctx context.Context, arg, cluster, taskdef string) error {
@@ -277,7 +285,7 @@ func sessionUser(ctx context.Context, ps *PuzzleService) (*entity.User, error) {
 	user, err := ps.userStore.Get(ctx, sess.Username)
 	if err != nil {
 		log.Err(err).Msg("getting-user")
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 	return user, nil
 }

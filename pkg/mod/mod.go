@@ -2,7 +2,6 @@ package mod
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -44,6 +43,14 @@ var ModActionTextMap = map[ms.ModActionType]string{
 }
 
 var RemovalDuration = 60
+
+type UserModeratedError struct {
+	description string
+}
+
+func (u *UserModeratedError) Error() string {
+	return u.description
+}
 
 // DB version of the ActionExists function above for testing purposes
 // This can be deleted once the above function uses the DB to get the actions.
@@ -88,21 +95,21 @@ func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLo
 		numberOfActionsChecked := len(actionTypes)
 		actionText, ok := ModActionTextMap[relevantActionType]
 		if !ok {
-			return false, fmt.Errorf("Action %s is unmapped. Please report this to the Woogles team immediately.", relevantActionType.String())
+			return false, &UserModeratedError{fmt.Sprintf("Action %s is unmapped. Please report this to the Woogles team immediately.", relevantActionType.String())}
 		}
 		if forceInsistLogout || (numberOfActionsChecked > 1 && relevantActionType == ms.ModActionType_SUSPEND_ACCOUNT) {
-			disabledError = errors.New("Whoops, something went wrong! Please log out and try logging in again.")
+			disabledError = &UserModeratedError{"Whoops, something went wrong! Please log out and try logging in again."}
 		} else if permaban {
 			if relevantActionType == ms.ModActionType_SUSPEND_ACCOUNT {
-				disabledError = errors.New("This account has been deactivated. If you think this is an error, contact conduct@woogles.io.")
+				disabledError = &UserModeratedError{"This account has been deactivated. If you think this is an error, contact conduct@woogles.io."}
 			} else {
-				disabledError = fmt.Errorf("You are banned from %s. If you think this is an error, contact conduct@woogles.io.", actionText)
+				disabledError = &UserModeratedError{fmt.Sprintf("You are banned from %s. If you think this is an error, contact conduct@woogles.io.", actionText)}
 			}
 		} else if latestTime.After(now) {
 			year, month, day := latestTime.Date()
-			disabledError = fmt.Errorf("You are suspended from %s until %v %v, %v.", actionText, month, day, year)
+			disabledError = &UserModeratedError{fmt.Sprintf("You are suspended from %s until %v %v, %v.", actionText, month, day, year)}
 		} else {
-			return false, errors.New("Encountered an error while checking available user actions. Please report this to the Woogles team immediately.")
+			return false, &UserModeratedError{"Encountered an error while checking available user actions. Please report this to the Woogles team immediately."}
 		}
 	}
 	return permaban, disabledError

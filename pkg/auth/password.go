@@ -53,7 +53,6 @@ func GeneratePassword(c *PasswordConfig, password string) (string, error) {
 // ComparePassword is used to compare a user-inputted password to a hash to see
 // if the password matches or not.
 func ComparePassword(password, hash string) (bool, error) {
-
 	parts := strings.Split(hash, "$")
 
 	c := &PasswordConfig{}

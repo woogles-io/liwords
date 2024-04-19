@@ -8,13 +8,14 @@ import (
 	"strings"
 	"sync"
 
+	"connectrpc.com/connect"
 	macondoconfig "github.com/domino14/macondo/config"
+	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/config"
 
 	"github.com/domino14/word-golib/kwg"
 	"github.com/domino14/word-golib/tilemapping"
 	"github.com/rs/zerolog/log"
-	"github.com/twitchtv/twirp"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/word_service"
 )
 
@@ -23,7 +24,7 @@ type WordService struct {
 	definitionSources map[string]*defSource
 }
 
-// NewWordService creates a Twirp WordService
+// NewWordService creates a WordService
 func NewWordService(cfg *config.Config) *WordService {
 
 	lexPath := filepath.Join(cfg.MacondoConfig.GetString(macondoconfig.ConfigDataPath), "lexica")
@@ -70,32 +71,33 @@ var daPool = sync.Pool{
 	},
 }
 
-func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsRequest) (*pb.DefineWordsResponse, error) {
-	gd, err := kwg.Get(ws.cfg.MacondoConfigMap, req.Lexicon)
+func (ws *WordService) DefineWords(ctx context.Context, req *connect.Request[pb.DefineWordsRequest],
+) (*connect.Response[pb.DefineWordsResponse], error) {
+	gd, err := kwg.Get(ws.cfg.MacondoConfigMap, req.Msg.Lexicon)
 	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return nil, apiserver.InvalidArg(err.Error())
 	}
 
 	alph := gd.GetAlphabet()
-	definer, hasDefiner := ws.definitionSources[req.Lexicon]
+	definer, hasDefiner := ws.definitionSources[req.Msg.Lexicon]
 
 	var wordsToDefine []string
 	results := make(map[string]*pb.DefineWordsResult)
 	var anagrams map[string][]string
-	if req.Anagrams {
+	if req.Msg.Anagrams {
 		anagrams = make(map[string][]string)
 		da := daPool.Get().(*kwg.KWGAnagrammer)
 		defer daPool.Put(da)
-		for _, query := range req.Words {
+		for _, query := range req.Msg.Words {
 			if _, found := anagrams[query]; found {
 				continue
 			}
 
 			if strings.IndexByte(query, tilemapping.BlankToken) >= 0 {
-				return nil, twirp.NewError(twirp.InvalidArgument, "word cannot have blanks")
+				return nil, apiserver.InvalidArg("word cannot have blanks")
 			}
 			if err = da.InitForString(gd, query); err != nil {
-				return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+				return nil, apiserver.InvalidArg(err.Error())
 			}
 
 			var words []string
@@ -112,7 +114,7 @@ func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsReque
 					}
 
 					definition := ""
-					if req.Definitions {
+					if req.Msg.Definitions {
 						// IMPORTANT: "" will make frontend do infinite loop
 						definition = word // lame
 						if hasDefiner {
@@ -124,10 +126,10 @@ func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsReque
 			}
 		}
 	} else {
-		for _, word := range req.Words {
+		for _, word := range req.Msg.Words {
 			machineWord, err := tilemapping.ToMachineWord(word, alph)
 			if err != nil {
-				return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+				return nil, apiserver.InvalidArg(err.Error())
 			}
 
 			if _, found := results[word]; found {
@@ -136,7 +138,7 @@ func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsReque
 
 			if kwg.FindMachineWord(gd, machineWord) {
 				definition := ""
-				if req.Definitions {
+				if req.Msg.Definitions {
 					// IMPORTANT: "" will make frontend do infinite loop
 					definition = word // lame
 					if hasDefiner {
@@ -155,7 +157,7 @@ func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsReque
 		sort.Strings(wordsToDefine)
 		definitions, err := definer.bulkDefine(wordsToDefine)
 		if err != nil {
-			log.Warn().Err(err).Msgf("cannot read %s definition", req.Lexicon)
+			log.Warn().Err(err).Msgf("cannot read %s definition", req.Msg.Lexicon)
 		} else {
 			for _, word := range wordsToDefine {
 				if definition, ok := definitions[word]; ok && definition != "" {
@@ -165,17 +167,17 @@ func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsReque
 		}
 	}
 
-	if req.Anagrams {
+	if req.Msg.Anagrams {
 		originalResults := results
 		results = make(map[string]*pb.DefineWordsResult)
-		for _, query := range req.Words {
+		for _, query := range req.Msg.Words {
 			if _, found := results[query]; found {
 				continue
 			}
 
 			if words, found := anagrams[query]; found && len(words) > 0 {
 				definitions := ""
-				if req.Definitions {
+				if req.Msg.Definitions {
 					var definitionBytes []byte
 					for _, word := range words {
 						if len(definitionBytes) > 0 {
@@ -194,5 +196,5 @@ func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsReque
 		}
 	}
 
-	return &pb.DefineWordsResponse{Results: results}, nil
+	return connect.NewResponse(&pb.DefineWordsResponse{Results: results}), nil
 }
