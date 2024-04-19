@@ -99,10 +99,10 @@ export const Team = () => {
                   competitive word gamers, and has many years of experience as a
                   professional developer. His Y Combinator startup, Leftronic
                   (S2010), was acquired in 2014, and he currently works as a
-                  Senior Software Architect at a company in NYC dedicated to
-                  fighting phone fraud. He also likes biking, playing guitar,
-                  artisanal ketchup, and hanging out with his wifie# in their
-                  Montclair home.
+                  Chief Technology Officer at a startup in the developer tools
+                  space. He also likes biking, playing guitar, artisanal
+                  ketchup, and hanging out with his wifie# in their Montclair
+                  home.
                 </p>
               </div>
             </div>
