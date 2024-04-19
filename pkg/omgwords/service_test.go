@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/gomodule/redigo/redis"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
@@ -147,7 +148,7 @@ func TestEditMoveAfterMaking(t *testing.T) {
 		log.Info().Msg("leaving channel loop")
 	}()
 
-	r, err := svc.CreateBroadcastGame(ctx, &omgwords_service.CreateBroadcastGameRequest{
+	r, err := svc.CreateBroadcastGame(ctx, connect.NewRequest(&omgwords_service.CreateBroadcastGameRequest{
 		PlayersInfo: []*ipc.PlayerInfo{
 			{Nickname: "cesar", FullName: "Cesar", First: true},
 			{Nickname: "someone", FullName: "Someone"},
@@ -155,19 +156,19 @@ func TestEditMoveAfterMaking(t *testing.T) {
 		Lexicon:       "NWL20",
 		Rules:         &ipc.GameRules{BoardLayoutName: "CrosswordGame", LetterDistributionName: "english", VariantName: "classic"},
 		ChallengeRule: ipc.ChallengeRule_ChallengeRule_DOUBLE,
-	})
+	}))
 	is.NoErr(err)
-	gid := r.GameId
+	gid := r.Msg.GameId
 
-	_, err = svc.SetRacks(ctx, &omgwords_service.SetRacksEvent{
+	_, err = svc.SetRacks(ctx, connect.NewRequest(&omgwords_service.SetRacksEvent{
 		GameId: gid,
 		Racks: [][]byte{
 			{1, 5, 7, 15, 22, 25}, // AEGOVY
 			{},
 		},
-	})
+	}))
 	is.NoErr(err)
-	_, err = svc.SendGameEvent(ctx, &omgwords_service.AnnotatedGameEvent{
+	_, err = svc.SendGameEvent(ctx, connect.NewRequest(&omgwords_service.AnnotatedGameEvent{
 		Event: &ipc.ClientGameplayEvent{
 			Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 			GameId:         gid,
@@ -175,18 +176,18 @@ func TestEditMoveAfterMaking(t *testing.T) {
 			MachineLetters: []byte{22, 15, 25, 1, 7, 5}, // voyage
 		},
 		UserId: "internal-cesar",
-	})
+	}))
 	is.NoErr(err)
 
-	_, err = svc.SetRacks(ctx, &omgwords_service.SetRacksEvent{
+	_, err = svc.SetRacks(ctx, connect.NewRequest(&omgwords_service.SetRacksEvent{
 		GameId: gid,
 		Racks: [][]byte{
 			{},
 			{26, 1},
 		},
-	})
+	}))
 	is.NoErr(err)
-	_, err = svc.SendGameEvent(ctx, &omgwords_service.AnnotatedGameEvent{
+	_, err = svc.SendGameEvent(ctx, connect.NewRequest(&omgwords_service.AnnotatedGameEvent{
 		Event: &ipc.ClientGameplayEvent{
 			Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 			GameId:         gid,
@@ -194,11 +195,11 @@ func TestEditMoveAfterMaking(t *testing.T) {
 			MachineLetters: []byte{26, 1}, // za
 		},
 		UserId: "internal-someone",
-	})
+	}))
 	is.NoErr(err)
 	// Edit ZA after making it.
 
-	_, err = svc.SetRacks(ctx, &omgwords_service.SetRacksEvent{
+	_, err = svc.SetRacks(ctx, connect.NewRequest(&omgwords_service.SetRacksEvent{
 		GameId: gid,
 		Racks: [][]byte{
 			{},
@@ -206,10 +207,10 @@ func TestEditMoveAfterMaking(t *testing.T) {
 		},
 		EventNumber: 1,
 		Amendment:   true,
-	})
+	}))
 	is.NoErr(err)
 
-	_, err = svc.SendGameEvent(ctx, &omgwords_service.AnnotatedGameEvent{
+	_, err = svc.SendGameEvent(ctx, connect.NewRequest(&omgwords_service.AnnotatedGameEvent{
 		Event: &ipc.ClientGameplayEvent{
 			Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 			GameId:         gid,
@@ -219,7 +220,7 @@ func TestEditMoveAfterMaking(t *testing.T) {
 		UserId:      "internal-someone",
 		EventNumber: 1,
 		Amendment:   true,
-	})
+	}))
 	is.NoErr(err)
 
 	close(c)
@@ -247,7 +248,7 @@ func TestEditMoveAfterChallenge(t *testing.T) {
 		log.Info().Msg("leaving channel loop")
 	}()
 
-	r, err := svc.CreateBroadcastGame(ctx, &omgwords_service.CreateBroadcastGameRequest{
+	r, err := svc.CreateBroadcastGame(ctx, connect.NewRequest(&omgwords_service.CreateBroadcastGameRequest{
 		PlayersInfo: []*ipc.PlayerInfo{
 			{Nickname: "cesar", FullName: "Cesar", First: true},
 			{Nickname: "someone", FullName: "Someone"},
@@ -255,19 +256,19 @@ func TestEditMoveAfterChallenge(t *testing.T) {
 		Lexicon:       "NWL20",
 		Rules:         &ipc.GameRules{BoardLayoutName: "CrosswordGame", LetterDistributionName: "english", VariantName: "classic"},
 		ChallengeRule: ipc.ChallengeRule_ChallengeRule_DOUBLE,
-	})
+	}))
 	is.NoErr(err)
-	gid := r.GameId
+	gid := r.Msg.GameId
 
-	_, err = svc.SetRacks(ctx, &omgwords_service.SetRacksEvent{
+	_, err = svc.SetRacks(ctx, connect.NewRequest(&omgwords_service.SetRacksEvent{
 		GameId: gid,
 		Racks: [][]byte{
 			{1, 5, 7, 15, 22, 25}, // AEGOVY
 			{},
 		},
-	})
+	}))
 	is.NoErr(err)
-	_, err = svc.SendGameEvent(ctx, &omgwords_service.AnnotatedGameEvent{
+	_, err = svc.SendGameEvent(ctx, connect.NewRequest(&omgwords_service.AnnotatedGameEvent{
 		Event: &ipc.ClientGameplayEvent{
 			Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 			GameId:         gid,
@@ -275,20 +276,20 @@ func TestEditMoveAfterChallenge(t *testing.T) {
 			MachineLetters: []byte{22, 15, 25, 1, 7, 5}, // voyage
 		},
 		UserId: "internal-cesar",
-	})
+	}))
 	is.NoErr(err)
 
-	_, err = svc.SetRacks(ctx, &omgwords_service.SetRacksEvent{
+	_, err = svc.SetRacks(ctx, connect.NewRequest(&omgwords_service.SetRacksEvent{
 		GameId: gid,
 		Racks: [][]byte{
 			{},
 			{26, 1},
 		},
-	})
+	}))
 	is.NoErr(err)
 
 	// Play ZA in the wrong spot, then challenge it off:
-	_, err = svc.SendGameEvent(ctx, &omgwords_service.AnnotatedGameEvent{
+	_, err = svc.SendGameEvent(ctx, connect.NewRequest(&omgwords_service.AnnotatedGameEvent{
 		Event: &ipc.ClientGameplayEvent{
 			Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 			GameId:         gid,
@@ -296,29 +297,29 @@ func TestEditMoveAfterChallenge(t *testing.T) {
 			MachineLetters: []byte{26, 1}, // za
 		},
 		UserId: "internal-someone",
-	})
+	}))
 	is.NoErr(err)
 
-	_, err = svc.SendGameEvent(ctx, &omgwords_service.AnnotatedGameEvent{
+	_, err = svc.SendGameEvent(ctx, connect.NewRequest(&omgwords_service.AnnotatedGameEvent{
 		Event: &ipc.ClientGameplayEvent{
 			Type:   ipc.ClientGameplayEvent_CHALLENGE_PLAY,
 			GameId: gid,
 		},
 		UserId: "internal-cesar",
-	})
+	}))
 	is.NoErr(err)
 
 	// It's still Cesar's turn since the play came off. Make another play.
 
-	_, err = svc.SetRacks(ctx, &omgwords_service.SetRacksEvent{
+	_, err = svc.SetRacks(ctx, connect.NewRequest(&omgwords_service.SetRacksEvent{
 		GameId: gid,
 		Racks: [][]byte{
 			{1, 2, 3},
 			{},
 		},
-	})
+	}))
 	is.NoErr(err)
-	_, err = svc.SendGameEvent(ctx, &omgwords_service.AnnotatedGameEvent{
+	_, err = svc.SendGameEvent(ctx, connect.NewRequest(&omgwords_service.AnnotatedGameEvent{
 		Event: &ipc.ClientGameplayEvent{
 			Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 			GameId:         gid,
@@ -326,12 +327,12 @@ func TestEditMoveAfterChallenge(t *testing.T) {
 			MachineLetters: []byte{2, 1}, // ba
 		},
 		UserId: "internal-cesar",
-	})
+	}))
 	is.NoErr(err)
 
 	// Go back a turn and make another play.
 
-	_, err = svc.SendGameEvent(ctx, &omgwords_service.AnnotatedGameEvent{
+	_, err = svc.SendGameEvent(ctx, connect.NewRequest(&omgwords_service.AnnotatedGameEvent{
 		Event: &ipc.ClientGameplayEvent{
 			Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
 			GameId:         gid,
@@ -341,7 +342,7 @@ func TestEditMoveAfterChallenge(t *testing.T) {
 		UserId:      "internal-cesar",
 		EventNumber: 3,
 		Amendment:   true,
-	})
+	}))
 	is.NoErr(err)
 
 	close(c)
@@ -374,24 +375,24 @@ func TestImportGCG(t *testing.T) {
 
 	gcg := string(bts)
 
-	r, err := svc.ImportGCG(ctx, &omgwords_service.ImportGCGRequest{
+	r, err := svc.ImportGCG(ctx, connect.NewRequest(&omgwords_service.ImportGCGRequest{
 		Gcg:           gcg,
 		Lexicon:       "CSW21",
 		Rules:         &ipc.GameRules{BoardLayoutName: "CrosswordGame", LetterDistributionName: "english", VariantName: "classic"},
 		ChallengeRule: ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
-	})
+	}))
 	is.NoErr(err)
-	gid := r.GameId
+	gid := r.Msg.GameId
 
-	gdoc, err := svc.GetGameDocument(ctx, &omgwords_service.GetGameDocumentRequest{
+	gdoc, err := svc.GetGameDocument(ctx, connect.NewRequest(&omgwords_service.GetGameDocumentRequest{
 		GameId: gid,
-	})
+	}))
 	is.NoErr(err)
 
-	is.Equal(gdoc.EndReason, ipc.GameEndReason_STANDARD)
-	is.Equal(gdoc.PlayState, ipc.PlayState_GAME_OVER)
-	is.Equal(len(gdoc.Racks[0]), 4)
-	is.Equal(len(gdoc.Racks[1]), 0)
+	is.Equal(gdoc.Msg.EndReason, ipc.GameEndReason_STANDARD)
+	is.Equal(gdoc.Msg.PlayState, ipc.PlayState_GAME_OVER)
+	is.Equal(len(gdoc.Msg.Racks[0]), 4)
+	is.Equal(len(gdoc.Msg.Racks[1]), 0)
 }
 
 func TestImportAnotherGCG(t *testing.T) {
@@ -420,24 +421,24 @@ func TestImportAnotherGCG(t *testing.T) {
 
 	gcg := string(bts)
 
-	r, err := svc.ImportGCG(ctx, &omgwords_service.ImportGCGRequest{
+	r, err := svc.ImportGCG(ctx, connect.NewRequest(&omgwords_service.ImportGCGRequest{
 		Gcg:           gcg,
 		Lexicon:       "NWL20",
 		Rules:         &ipc.GameRules{BoardLayoutName: "CrosswordGame", LetterDistributionName: "english", VariantName: "classic"},
 		ChallengeRule: ipc.ChallengeRule_ChallengeRule_DOUBLE,
-	})
+	}))
 	is.NoErr(err)
-	gid := r.GameId
+	gid := r.Msg.GameId
 
-	gdoc, err := svc.GetGameDocument(ctx, &omgwords_service.GetGameDocumentRequest{
+	gdoc, err := svc.GetGameDocument(ctx, connect.NewRequest(&omgwords_service.GetGameDocumentRequest{
 		GameId: gid,
-	})
+	}))
 	is.NoErr(err)
 
-	is.Equal(gdoc.EndReason, ipc.GameEndReason_STANDARD)
-	is.Equal(gdoc.PlayState, ipc.PlayState_GAME_OVER)
-	is.Equal(len(gdoc.Racks[0]), 0)
-	is.Equal(len(gdoc.Racks[1]), 6)
+	is.Equal(gdoc.Msg.EndReason, ipc.GameEndReason_STANDARD)
+	is.Equal(gdoc.Msg.PlayState, ipc.PlayState_GAME_OVER)
+	is.Equal(len(gdoc.Msg.Racks[0]), 0)
+	is.Equal(len(gdoc.Msg.Racks[1]), 6)
 }
 
 func TestImportOneMoreGCG(t *testing.T) {
@@ -466,22 +467,22 @@ func TestImportOneMoreGCG(t *testing.T) {
 
 	gcg := string(bts)
 
-	r, err := svc.ImportGCG(ctx, &omgwords_service.ImportGCGRequest{
+	r, err := svc.ImportGCG(ctx, connect.NewRequest(&omgwords_service.ImportGCGRequest{
 		Gcg:           gcg,
 		Lexicon:       "CSW21",
 		Rules:         &ipc.GameRules{BoardLayoutName: "CrosswordGame", LetterDistributionName: "english", VariantName: "classic"},
 		ChallengeRule: ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
-	})
+	}))
 	is.NoErr(err)
-	gid := r.GameId
+	gid := r.Msg.GameId
 
-	gdoc, err := svc.GetGameDocument(ctx, &omgwords_service.GetGameDocumentRequest{
+	gdoc, err := svc.GetGameDocument(ctx, connect.NewRequest(&omgwords_service.GetGameDocumentRequest{
 		GameId: gid,
-	})
+	}))
 	is.NoErr(err)
 
-	is.Equal(gdoc.EndReason, ipc.GameEndReason_STANDARD)
-	is.Equal(gdoc.PlayState, ipc.PlayState_GAME_OVER)
-	is.Equal(len(gdoc.Racks[0]), 0)
-	is.Equal(len(gdoc.Racks[1]), 5)
+	is.Equal(gdoc.Msg.EndReason, ipc.GameEndReason_STANDARD)
+	is.Equal(gdoc.Msg.PlayState, ipc.PlayState_GAME_OVER)
+	is.Equal(len(gdoc.Msg.Racks[0]), 0)
+	is.Equal(len(gdoc.Msg.Racks[1]), 5)
 }
