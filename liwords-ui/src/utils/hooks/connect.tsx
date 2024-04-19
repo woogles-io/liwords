@@ -27,12 +27,12 @@ const apiEndpoint = window.RUNTIME_CONFIGURATION?.apiEndpoint || loc.host;
 export const baseURL = `${loc.protocol}//${apiEndpoint}`;
 
 export const transport = createConnectTransport({
-  baseUrl: `${baseURL}/twirp/`,
+  baseUrl: `${baseURL}/api/`,
   //   interceptors: [errorTranslator],
 });
 
 export const binaryTransport = createConnectTransport({
-  baseUrl: `${loc.protocol}//${apiEndpoint}/twirp/`,
+  baseUrl: `${loc.protocol}//${apiEndpoint}/api/`,
   useBinaryFormat: true,
 });
 

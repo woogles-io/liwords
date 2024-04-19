@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/mod"
@@ -13,7 +14,6 @@ import (
 	userservices "github.com/woogles-io/liwords/pkg/user/services"
 
 	"github.com/rs/zerolog/log"
-	"github.com/twitchtv/twirp"
 
 	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/user_service"
@@ -28,51 +28,62 @@ func NewProfileService(u user.Store, us userservices.UploadService) *ProfileServ
 	return &ProfileService{userStore: u, avatarService: us}
 }
 
-func (ps *ProfileService) GetRatings(ctx context.Context, r *pb.RatingsRequest) (*pb.RatingsResponse, error) {
-	user, err := ps.userStore.Get(ctx, r.Username)
+func modActionExistsErr(err error) error {
+	if ue, ok := err.(*mod.UserModeratedError); ok {
+		return apiserver.PermissionDenied(ue.Error())
+	} else {
+		return apiserver.InternalErr(err)
+	}
+}
+
+func (ps *ProfileService) GetRatings(ctx context.Context, r *connect.Request[pb.RatingsRequest],
+) (*connect.Response[pb.RatingsResponse], error) {
+	user, err := ps.userStore.Get(ctx, r.Msg.Username)
 	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return nil, apiserver.InvalidArg(err.Error())
 	}
 	ratings := user.Profile.Ratings
 
 	b, err := json.Marshal(ratings)
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
-	return &pb.RatingsResponse{
+	return connect.NewResponse(&pb.RatingsResponse{
 		Json: string(b),
-	}, nil
+	}), nil
 }
 
-func (ps *ProfileService) GetStats(ctx context.Context, r *pb.StatsRequest) (*pb.StatsResponse, error) {
-	user, err := ps.userStore.Get(ctx, r.Username)
+func (ps *ProfileService) GetStats(ctx context.Context, r *connect.Request[pb.StatsRequest],
+) (*connect.Response[pb.StatsResponse], error) {
+	user, err := ps.userStore.Get(ctx, r.Msg.Username)
 	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return nil, apiserver.InvalidArg(err.Error())
 	}
 	stats := user.Profile.Stats
 
 	b, err := json.Marshal(stats)
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
-	return &pb.StatsResponse{
+	return connect.NewResponse(&pb.StatsResponse{
 		Json: string(b),
-	}, nil
+	}), nil
 }
 
-func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) (*pb.ProfileResponse, error) {
+func (ps *ProfileService) GetProfile(ctx context.Context, r *connect.Request[pb.ProfileRequest],
+) (*connect.Response[pb.ProfileResponse], error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
 		// This is fine. No, not that meme. It's really fine.
 		sess = nil
 	}
 
-	user, err := ps.userStore.Get(ctx, r.Username)
+	user, err := ps.userStore.Get(ctx, r.Msg.Username)
 	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return nil, apiserver.InvalidArg(err.Error())
 	}
 
-	permaban, possiblyForceLogout := mod.ActionExists(ctx, ps.userStore, user.UUID, true, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	permaban, possiblyForceLogoutErr := mod.ActionExists(ctx, ps.userStore, user.UUID, true, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 
 	subjectIsMe := sess != nil && sess.UserUUID == user.UUID
 
@@ -86,7 +97,7 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 		viewer, err := ps.userStore.Get(ctx, sess.Username)
 		if err != nil {
 			log.Err(err).Msg("getting-user")
-			return nil, twirp.InternalErrorWith(err)
+			return nil, apiserver.InternalErr(err)
 		}
 
 		if !viewer.IsMod && !viewer.IsAdmin {
@@ -95,9 +106,9 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 			// Instead, give a subtler message that is more
 			// likely to prompt a logout.
 			if subjectIsMe {
-				return nil, possiblyForceLogout
+				return nil, modActionExistsErr(possiblyForceLogoutErr)
 			} else {
-				return nil, twirp.NewError(twirp.InvalidArgument, "record not found")
+				return nil, apiserver.InvalidArg("record not found")
 			}
 		}
 	}
@@ -105,13 +116,13 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 	ratings := user.Profile.Ratings
 	ratjson, err := json.Marshal(ratings)
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 
 	stats := user.Profile.Stats
 	statjson, err := json.Marshal(stats)
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 
 	subjectIsAdult := entity.IsAdult(user.Profile.BirthDate, time.Now())
@@ -124,7 +135,7 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 	}
 	childProof := func(s string) string { return concealIf(!(subjectIsMe || subjectIsAdult), s) }
 
-	return &pb.ProfileResponse{
+	return connect.NewResponse(&pb.ProfileResponse{
 		FirstName:       childProof(user.Profile.FirstName),
 		LastName:        childProof(user.Profile.LastName),
 		BirthDate:       concealIf(!subjectIsMe, user.Profile.BirthDate),
@@ -137,10 +148,11 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 		UserId:          user.UUID,
 		AvatarUrl:       childProof(user.AvatarUrl()),
 		AvatarsEditable: ps.avatarService != nil,
-	}, nil
+	}), nil
 }
 
-func (ps *ProfileService) GetPersonalInfo(ctx context.Context, r *pb.PersonalInfoRequest) (*pb.PersonalInfoResponse, error) {
+func (ps *ProfileService) GetPersonalInfo(ctx context.Context, r *connect.Request[pb.PersonalInfoRequest],
+) (*connect.Response[pb.PersonalInfoResponse], error) {
 	// This view requires authentication.
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
@@ -152,10 +164,10 @@ func (ps *ProfileService) GetPersonalInfo(ctx context.Context, r *pb.PersonalInf
 		log.Err(err).Msg("getting-user")
 		// The username should maybe not be in the session? We can't change
 		// usernames easily.
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 
-	return &pb.PersonalInfoResponse{
+	return connect.NewResponse(&pb.PersonalInfoResponse{
 		Email:       user.Email,
 		FirstName:   user.Profile.FirstName,
 		LastName:    user.Profile.LastName,
@@ -164,10 +176,11 @@ func (ps *ProfileService) GetPersonalInfo(ctx context.Context, r *pb.PersonalInf
 		AvatarUrl:   user.AvatarUrl(),
 		FullName:    user.RealName(),
 		About:       user.Profile.About,
-	}, nil
+	}), nil
 }
 
-func (ps *ProfileService) UpdatePersonalInfo(ctx context.Context, r *pb.UpdatePersonalInfoRequest) (*pb.UpdatePersonalInfoResponse, error) {
+func (ps *ProfileService) UpdatePersonalInfo(ctx context.Context, r *connect.Request[pb.UpdatePersonalInfoRequest],
+) (*connect.Response[pb.UpdatePersonalInfoResponse], error) {
 	// This view requires authentication.
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
@@ -179,18 +192,20 @@ func (ps *ProfileService) UpdatePersonalInfo(ctx context.Context, r *pb.UpdatePe
 		log.Err(err).Msg("getting-user")
 		// The username should maybe not be in the session? We can't change
 		// usernames easily.
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 
-	updateErr := ps.userStore.SetPersonalInfo(ctx, user.UUID, r.Email, r.FirstName, r.LastName, r.BirthDate, r.CountryCode, r.About)
+	updateErr := ps.userStore.SetPersonalInfo(ctx, user.UUID, r.Msg.Email, r.Msg.FirstName,
+		r.Msg.LastName, r.Msg.BirthDate, r.Msg.CountryCode, r.Msg.About)
 	if updateErr != nil {
-		return nil, twirp.InternalErrorWith(updateErr)
+		return nil, apiserver.InternalErr(updateErr)
 	}
 
-	return &pb.UpdatePersonalInfoResponse{}, nil
+	return connect.NewResponse(&pb.UpdatePersonalInfoResponse{}), nil
 }
 
-func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *pb.UpdateAvatarRequest) (*pb.UpdateAvatarResponse, error) {
+func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *connect.Request[pb.UpdateAvatarRequest],
+) (*connect.Response[pb.UpdateAvatarResponse], error) {
 	// This view requires authentication.
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
@@ -202,30 +217,30 @@ func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *pb.UpdateAvatarRe
 		log.Err(err).Msg("getting-user")
 		// The username should maybe not be in the session? We can't change
 		// usernames easily.
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 
 	_, err = mod.ActionExists(ctx, ps.userStore, user.UUID, true, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	if err != nil {
-		return nil, err
+		return nil, modActionExistsErr(err)
 	}
 
 	avatarService := ps.avatarService
 	if avatarService == nil {
-		return nil, twirp.InternalErrorWith(errors.New("No avatar service available"))
+		return nil, apiserver.InternalErr(errors.New("no avatar service available"))
 	}
 
 	oldUrl := user.AvatarUrl()
 
-	avatarUrl, err := avatarService.Upload(ctx, user.UUID, r.JpgData)
+	avatarUrl, err := avatarService.Upload(ctx, user.UUID, r.Msg.JpgData)
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 
 	// Remember the URL in the database
 	updateErr := ps.userStore.SetAvatarUrl(ctx, user.UUID, avatarUrl)
 	if updateErr != nil {
-		return nil, twirp.InternalErrorWith(updateErr)
+		return nil, apiserver.InternalErr(updateErr)
 	}
 
 	// Delete old URL
@@ -237,12 +252,13 @@ func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *pb.UpdateAvatarRe
 		}
 	}
 
-	return &pb.UpdateAvatarResponse{
+	return connect.NewResponse(&pb.UpdateAvatarResponse{
 		AvatarUrl: avatarUrl,
-	}, nil
+	}), nil
 }
 
-func (ps *ProfileService) RemoveAvatar(ctx context.Context, r *pb.RemoveAvatarRequest) (*pb.RemoveAvatarResponse, error) {
+func (ps *ProfileService) RemoveAvatar(ctx context.Context, r *connect.Request[pb.RemoveAvatarRequest],
+) (*connect.Response[pb.RemoveAvatarResponse], error) {
 	// This view requires authentication.
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
@@ -254,18 +270,18 @@ func (ps *ProfileService) RemoveAvatar(ctx context.Context, r *pb.RemoveAvatarRe
 		log.Err(err).Msg("getting-user")
 		// The username should maybe not be in the session? We can't change
 		// usernames easily.
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 
 	avatarService := ps.avatarService
 	if avatarService == nil {
-		return nil, twirp.InternalErrorWith(errors.New("No avatar service available"))
+		return nil, apiserver.InternalErr(errors.New("No avatar service available"))
 	}
 
 	// Clear the URL in the database
 	updateErr := ps.userStore.SetAvatarUrl(ctx, user.UUID, "")
 	if updateErr != nil {
-		return nil, twirp.InternalErrorWith(updateErr)
+		return nil, apiserver.InternalErr(updateErr)
 	}
 
 	// Delete old URL
@@ -278,16 +294,17 @@ func (ps *ProfileService) RemoveAvatar(ctx context.Context, r *pb.RemoveAvatarRe
 		}
 	}
 
-	return &pb.RemoveAvatarResponse{}, nil
+	return connect.NewResponse(&pb.RemoveAvatarResponse{}), nil
 }
 
-func (ps *ProfileService) GetBriefProfiles(ctx context.Context, r *pb.BriefProfilesRequest) (*pb.BriefProfilesResponse, error) {
+func (ps *ProfileService) GetBriefProfiles(ctx context.Context, r *connect.Request[pb.BriefProfilesRequest],
+) (*connect.Response[pb.BriefProfilesResponse], error) {
 	// this endpoint should work without login
 
-	response, err := ps.userStore.GetBriefProfiles(ctx, r.UserIds)
+	response, err := ps.userStore.GetBriefProfiles(ctx, r.Msg.UserIds)
 	if err != nil {
 		return nil, err
 	}
 
-	return &pb.BriefProfilesResponse{Response: response}, nil
+	return connect.NewResponse(&pb.BriefProfilesResponse{Response: response}), nil
 }

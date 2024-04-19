@@ -20,16 +20,13 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/gomodule/redigo/redis"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/twitchtv/twirp"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/bus"
 	"github.com/woogles-io/liwords/pkg/comments"
-	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/gameplay"
 	"github.com/woogles-io/liwords/pkg/memento"
 	"github.com/woogles-io/liwords/pkg/mod"
-	"github.com/woogles-io/liwords/pkg/notify"
 	"github.com/woogles-io/liwords/pkg/omgwords"
 	omgstores "github.com/woogles-io/liwords/pkg/omgwords/stores"
 	"github.com/woogles-io/liwords/pkg/puzzles"
@@ -60,15 +57,15 @@ import (
 	tournamentstore "github.com/woogles-io/liwords/pkg/stores/tournament"
 	"github.com/woogles-io/liwords/pkg/stores/user"
 	userservices "github.com/woogles-io/liwords/pkg/user/services"
-	"github.com/woogles-io/liwords/rpc/api/proto/comments_service"
-	configservice "github.com/woogles-io/liwords/rpc/api/proto/config_service"
-	gameservice "github.com/woogles-io/liwords/rpc/api/proto/game_service"
-	modservice "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
-	omgwordsservice "github.com/woogles-io/liwords/rpc/api/proto/omgwords_service"
-	puzzleservice "github.com/woogles-io/liwords/rpc/api/proto/puzzle_service"
-	tournamentservice "github.com/woogles-io/liwords/rpc/api/proto/tournament_service"
-	userservice "github.com/woogles-io/liwords/rpc/api/proto/user_service"
-	wordservice "github.com/woogles-io/liwords/rpc/api/proto/word_service"
+	"github.com/woogles-io/liwords/rpc/api/proto/comments_service/comments_serviceconnect"
+	"github.com/woogles-io/liwords/rpc/api/proto/config_service/config_serviceconnect"
+	"github.com/woogles-io/liwords/rpc/api/proto/game_service/game_serviceconnect"
+	"github.com/woogles-io/liwords/rpc/api/proto/mod_service/mod_serviceconnect"
+	"github.com/woogles-io/liwords/rpc/api/proto/omgwords_service/omgwords_serviceconnect"
+	"github.com/woogles-io/liwords/rpc/api/proto/puzzle_service/puzzle_serviceconnect"
+	"github.com/woogles-io/liwords/rpc/api/proto/tournament_service/tournament_serviceconnect"
+	"github.com/woogles-io/liwords/rpc/api/proto/user_service/user_serviceconnect"
+	"github.com/woogles-io/liwords/rpc/api/proto/word_service/word_serviceconnect"
 
 	"net/http/pprof"
 )
@@ -97,27 +94,6 @@ func pingEndpoint(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(200)
 	w.Write([]byte(`{"status":"copacetic"}`))
-}
-
-// NewLoggingServerHooks logs request and errors to stdout in the service
-func NewLoggingServerHooks() *twirp.ServerHooks {
-	return &twirp.ServerHooks{
-		Error: func(ctx context.Context, twerr twirp.Error) context.Context {
-			method, _ := twirp.MethodName(ctx)
-			log.Err(twerr).
-				Str("code", string(twerr.Code())).
-				Str("method", method).
-				Msg("api-error")
-			// Currently the only Woogles Errors are tournament errors
-			// so this will need to be changed later.
-			if len(twerr.Msg()) > 0 &&
-				string(twerr.Msg()[0]) == entity.WooglesErrorDelimiter &&
-				os.Getenv("TournamentDiscordToken") != "" {
-				notify.Post(fmt.Sprintf("%s\n%s", twerr.Msg(), time.Now().Format(time.RFC3339)), os.Getenv("TournamentDiscordToken"))
-			}
-			return ctx
-		},
-	}
 }
 
 func main() {
@@ -182,7 +158,11 @@ func main() {
 		hlog.AccessHandler(func(r *http.Request, status int, size int, d time.Duration) {
 			path := strings.Split(r.URL.Path, "/")
 			method := path[len(path)-1]
-			hlog.FromRequest(r).Info().Str("method", method).Int("status", status).Dur("duration", d).Msg("")
+			hlog.FromRequest(r).Info().
+				Str("method", method).
+				Int("status", status).
+				Dur("duration", d).
+				Msg("")
 		}),
 		ErrorReqResLoggingMiddleware,
 	)
@@ -266,44 +246,52 @@ func main() {
 
 	router.Handle(memento.GameimgPrefix, middlewares.Then(mementoService))
 
-	router.Handle(userservice.AuthenticationServicePathPrefix,
-		middlewares.Then(userservice.NewAuthenticationServiceServer(authenticationService, NewLoggingServerHooks())))
+	connectapi := http.NewServeMux()
+	connectapi.Handle(
+		user_serviceconnect.NewAuthenticationServiceHandler(authenticationService),
+	)
+	connectapi.Handle(
+		user_serviceconnect.NewRegistrationServiceHandler(registrationService),
+	)
+	connectapi.Handle(
+		user_serviceconnect.NewProfileServiceHandler(profileService),
+	)
+	connectapi.Handle(
+		user_serviceconnect.NewAutocompleteServiceHandler(autocompleteService),
+	)
+	connectapi.Handle(
+		user_serviceconnect.NewSocializeServiceHandler(socializeService),
+	)
+	connectapi.Handle(
+		game_serviceconnect.NewGameMetadataServiceHandler(gameService),
+	)
+	connectapi.Handle(
+		omgwords_serviceconnect.NewGameEventServiceHandler(omgwordsService),
+	)
+	connectapi.Handle(
+		word_serviceconnect.NewWordServiceHandler(wordService),
+	)
+	connectapi.Handle(
+		config_serviceconnect.NewConfigServiceHandler(configService),
+	)
+	connectapi.Handle(
+		tournament_serviceconnect.NewTournamentServiceHandler(tournamentService),
+	)
+	connectapi.Handle(
+		mod_serviceconnect.NewModServiceHandler(modService),
+	)
+	connectapi.Handle(
+		puzzle_serviceconnect.NewPuzzleServiceHandler(puzzleService),
+	)
+	connectapi.Handle(
+		comments_serviceconnect.NewGameCommentServiceHandler(commentService),
+	)
 
-	router.Handle(userservice.RegistrationServicePathPrefix,
-		middlewares.Then(userservice.NewRegistrationServiceServer(registrationService, NewLoggingServerHooks())))
+	connectapichain := middlewares.Then(connectapi)
 
-	router.Handle(gameservice.GameMetadataServicePathPrefix,
-		middlewares.Then(gameservice.NewGameMetadataServiceServer(gameService, NewLoggingServerHooks())))
-
-	router.Handle(omgwordsservice.GameEventServicePathPrefix,
-		middlewares.Then(omgwordsservice.NewGameEventServiceServer(omgwordsService, NewLoggingServerHooks())))
-
-	router.Handle(wordservice.WordServicePathPrefix,
-		middlewares.Then(wordservice.NewWordServiceServer(wordService, NewLoggingServerHooks())))
-
-	router.Handle(userservice.ProfileServicePathPrefix,
-		middlewares.Then(userservice.NewProfileServiceServer(profileService, NewLoggingServerHooks())))
-
-	router.Handle(userservice.AutocompleteServicePathPrefix,
-		middlewares.Then(userservice.NewAutocompleteServiceServer(autocompleteService, NewLoggingServerHooks())))
-
-	router.Handle(userservice.SocializeServicePathPrefix,
-		middlewares.Then(userservice.NewSocializeServiceServer(socializeService, NewLoggingServerHooks())))
-
-	router.Handle(configservice.ConfigServicePathPrefix,
-		middlewares.Then(configservice.NewConfigServiceServer(configService, NewLoggingServerHooks())))
-
-	router.Handle(tournamentservice.TournamentServicePathPrefix,
-		middlewares.Then(tournamentservice.NewTournamentServiceServer(tournamentService, NewLoggingServerHooks())))
-
-	router.Handle(modservice.ModServicePathPrefix,
-		middlewares.Then(modservice.NewModServiceServer(modService, NewLoggingServerHooks())))
-
-	router.Handle(puzzleservice.PuzzleServicePathPrefix,
-		middlewares.Then(puzzleservice.NewPuzzleServiceServer(puzzleService, NewLoggingServerHooks())))
-
-	router.Handle(comments_service.GameCommentServicePathPrefix,
-		middlewares.Then(comments_service.NewGameCommentServiceServer(commentService, NewLoggingServerHooks())))
+	router.Handle("/api/", http.StripPrefix("/api", connectapichain))
+	// Handle legacy path while we migrate off of it:
+	router.Handle("/twirp/", http.StripPrefix("/twirp", connectapichain))
 
 	router.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
 	router.Handle(

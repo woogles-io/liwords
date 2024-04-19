@@ -5,8 +5,6 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/twitchtv/twirp"
-
 	"github.com/rs/zerolog"
 )
 
@@ -50,11 +48,11 @@ func APIKeyMiddlewareGenerator() (mw func(http.Handler) http.Handler) {
 func GetAPIKey(ctx context.Context) (string, error) {
 	apikey := ctx.Value(apikeykey)
 	if apikey == nil {
-		return "", twirp.NewError(twirp.Unauthenticated, "api key required")
+		return "", Unauthenticated("api key required")
 	}
 	a, ok := apikey.(string)
 	if !ok {
-		return "", twirp.InternalErrorWith(errors.New("unexpected error with apikey type inference"))
+		return "", InternalErr(errors.New("unexpected error with apikey type inference"))
 	}
 	return a, nil
 }

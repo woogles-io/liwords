@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/golang-jwt/jwt"
 	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
-	"github.com/twitchtv/twirp"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/config"
@@ -78,64 +78,75 @@ func NewAuthenticationService(u user.Store, ss sessions.SessionStore, cs config.
 		argonConfig:  cfg}
 }
 
-// Login sets a cookie.
-func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginRequest) (*pb.LoginResponse, error) {
+func modActionExistsErr(err error) error {
+	if ue, ok := err.(*mod.UserModeratedError); ok {
+		return apiserver.PermissionDenied(ue.Error())
+	} else {
+		return apiserver.InternalErr(err)
+	}
+}
 
-	r.Username = strings.TrimSpace(r.Username)
-	user, err := as.userStore.Get(ctx, r.Username)
+// Login sets a cookie.
+func (as *AuthenticationService) Login(ctx context.Context, r *connect.Request[pb.UserLoginRequest],
+) (*connect.Response[pb.LoginResponse], error) {
+
+	r.Msg.Username = strings.TrimSpace(r.Msg.Username)
+	user, err := as.userStore.Get(ctx, r.Msg.Username)
 	if err != nil {
 		log.Err(err).Msg("getting-user")
-		return nil, twirp.NewError(twirp.Unauthenticated, "bad login")
+		return nil, apiserver.Unauthenticated("bad login")
 	}
-	matches, err := ComparePassword(r.Password, user.Password)
+	matches, err := ComparePassword(r.Msg.Password, user.Password)
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 	if !matches {
-		return nil, twirp.NewError(twirp.Unauthenticated, "password incorrect")
+		return nil, apiserver.Unauthenticated("password incorrect")
 	}
 
 	_, err = mod.ActionExists(ctx, as.userStore, user.UUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	if err != nil {
-		log.Err(err).Str("username", r.Username).Str("userID", user.UUID).Msg("action-exists-login")
-		return nil, err
+		log.Err(err).Str("username", r.Msg.Username).Str("userID", user.UUID).Msg("action-exists-login")
+		return nil, modActionExistsErr(err)
 	}
 
 	sess, err := as.sessionStore.New(ctx, user)
 	if err != nil {
-		return nil, err
+		return nil, apiserver.InternalErr(err)
 	}
 
 	err = apiserver.SetDefaultCookie(ctx, sess.ID)
 
 	log.Info().Str("value", sess.ID).Msg("setting-cookie")
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
-	return &pb.LoginResponse{}, nil
+	return connect.NewResponse(&pb.LoginResponse{}), nil
 }
 
 // Logout deletes the user session from the store, and also tells the front-end
 // to ditch the cookie (yum)
-func (as *AuthenticationService) Logout(ctx context.Context, r *pb.UserLogoutRequest) (*pb.LogoutResponse, error) {
+func (as *AuthenticationService) Logout(ctx context.Context, r *connect.Request[pb.UserLogoutRequest],
+) (*connect.Response[pb.LogoutResponse], error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
 		return nil, err
 	}
 	err = as.sessionStore.Delete(ctx, sess)
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 	// Delete the cookie as well.
 	err = apiserver.ExpireCookie(ctx, sess.ID)
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 
-	return &pb.LogoutResponse{}, nil
+	return connect.NewResponse(&pb.LogoutResponse{}), nil
 }
 
-func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.SocketTokenRequest) (*pb.SocketTokenResponse, error) {
+func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *connect.Request[pb.SocketTokenRequest],
+) (*connect.Response[pb.SocketTokenResponse], error) {
 	var unn, uuid string
 	var authed bool
 
@@ -148,7 +159,11 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 
 	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, as.userStore)
 	if err != nil {
-		return as.unauthedToken(ctx, feHash)
+		ut, err := as.unauthedToken(ctx, feHash)
+		if err != nil {
+			return nil, apiserver.InternalErr(err)
+		}
+		return connect.NewResponse(ut), nil
 	} else {
 		authed = true
 		uuid = u.UUID
@@ -175,15 +190,15 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 	})
 	tokenString, err := token.SignedString([]byte(as.secretKey))
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 	// create a random connection ID.
 	cid := shortuuid.New()[1:10]
-	return &pb.SocketTokenResponse{
+	return connect.NewResponse(&pb.SocketTokenResponse{
 		Token:           tokenString,
 		Cid:             cid,
 		FrontEndVersion: feHash,
-	}, nil
+	}), nil
 }
 
 func (as *AuthenticationService) unauthedToken(ctx context.Context, feHash string) (*pb.SocketTokenResponse, error) {
@@ -199,7 +214,7 @@ func (as *AuthenticationService) unauthedToken(ctx context.Context, feHash strin
 	})
 	tokenString, err := token.SignedString([]byte(as.secretKey))
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, err
 	}
 	return &pb.SocketTokenResponse{
 		Token:           tokenString,
@@ -208,11 +223,12 @@ func (as *AuthenticationService) unauthedToken(ctx context.Context, feHash strin
 	}, nil
 }
 
-func (as *AuthenticationService) GetSignedCookie(ctx context.Context, r *pb.GetSignedCookieRequest) (*pb.SignedCookieResponse, error) {
+func (as *AuthenticationService) GetSignedCookie(ctx context.Context, r *connect.Request[pb.GetSignedCookieRequest],
+) (*connect.Response[pb.SignedCookieResponse], error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
 		// Not authed.
-		return nil, twirp.NewError(twirp.Unauthenticated, "need auth for this endpoint")
+		return nil, apiserver.Unauthenticated("need auth for this endpoint")
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -221,54 +237,56 @@ func (as *AuthenticationService) GetSignedCookie(ctx context.Context, r *pb.GetS
 	})
 	tokenString, err := token.SignedString([]byte(as.secretKey))
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 	log.Info().Str("username", sess.Username).Msg("got-signed-cookie")
-	return &pb.SignedCookieResponse{Jwt: tokenString}, nil
+	return connect.NewResponse(&pb.SignedCookieResponse{Jwt: tokenString}), nil
 }
 
-func (as *AuthenticationService) InstallSignedCookie(ctx context.Context, r *pb.SignedCookieResponse) (*pb.InstallSignedCookieResponse, error) {
-	token, err := jwt.Parse(r.Jwt, func(token *jwt.Token) (interface{}, error) {
+func (as *AuthenticationService) InstallSignedCookie(ctx context.Context, r *connect.Request[pb.SignedCookieResponse],
+) (*connect.Response[pb.InstallSignedCookieResponse], error) {
+	token, err := jwt.Parse(r.Msg.Jwt, func(token *jwt.Token) (interface{}, error) {
 		// Don't forget to validate the alg is what you expect:
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+			return nil, apiserver.InvalidArg(fmt.Sprintf("Unexpected signing method: %v", token.Header["alg"]))
 		}
 		// hmacSampleSecret is a []byte containing your secret, e.g. []byte("my_secret_key")
 		return []byte(as.secretKey), nil
 	})
 	if err != nil {
-		log.Err(err).Str("token", r.Jwt).Msg("token-failure")
-		return nil, twirp.InternalErrorWith(err)
+		log.Err(err).Str("token", r.Msg.Jwt).Msg("token-failure")
+		return nil, apiserver.InternalErr(err)
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		sessId, ok := claims["sessionID"].(string)
 		if !ok {
-			return nil, twirp.InternalError("could not convert claim")
+			return nil, apiserver.InternalErr(errors.New("could not convert claim"))
 		}
 		log.Info().Msg("install-signed-cookie")
 		err = apiserver.SetDefaultCookie(ctx, sessId)
 		if err != nil {
-			return nil, twirp.InternalErrorWith(err)
+			return nil, apiserver.InternalErr(err)
 		}
 	}
 
 	if !token.Valid {
 		return nil, errors.New("invalid token")
 	}
-	return &pb.InstallSignedCookieResponse{}, nil
+	return connect.NewResponse(&pb.InstallSignedCookieResponse{}), nil
 }
 
-func (as *AuthenticationService) ResetPasswordStep1(ctx context.Context, r *pb.ResetPasswordRequestStep1) (*pb.ResetPasswordResponse, error) {
-	email := strings.TrimSpace(r.Email)
+func (as *AuthenticationService) ResetPasswordStep1(ctx context.Context, r *connect.Request[pb.ResetPasswordRequestStep1],
+) (*connect.Response[pb.ResetPasswordResponse], error) {
+	email := strings.TrimSpace(r.Msg.Email)
 	u, err := as.userStore.GetByEmail(ctx, email)
 	if err != nil {
-		return nil, twirp.NewError(twirp.Unauthenticated, err.Error())
+		return nil, apiserver.Unauthenticated(err.Error())
 	}
 
 	_, err = mod.ActionExists(ctx, as.userStore, u.UUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	if err != nil {
 		log.Err(err).Str("userID", u.UUID).Msg("action-exists-reset-password-step-one")
-		return nil, err
+		return nil, modActionExistsErr(err)
 	}
 
 	// Create a token for the reset
@@ -278,7 +296,7 @@ func (as *AuthenticationService) ResetPasswordStep1(ctx context.Context, r *pb.R
 	})
 	tokenString, err := token.SignedString([]byte(as.secretKey))
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 	resetURL := "https://woogles.io/password/new?t=" + tokenString
 
@@ -287,16 +305,17 @@ func (as *AuthenticationService) ResetPasswordStep1(ctx context.Context, r *pb.R
 	id, err := emailer.SendSimpleMessage(
 		as.mailgunKey, email, "Password reset for Woogles.io", emailBody)
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 	log.Info().Str("id", id).Str("email", email).Msg("sent-password-reset")
 
-	return &pb.ResetPasswordResponse{}, nil
+	return connect.NewResponse(&pb.ResetPasswordResponse{}), nil
 }
 
-func (as *AuthenticationService) ResetPasswordStep2(ctx context.Context, r *pb.ResetPasswordRequestStep2) (*pb.ResetPasswordResponse, error) {
+func (as *AuthenticationService) ResetPasswordStep2(ctx context.Context, r *connect.Request[pb.ResetPasswordRequestStep2],
+) (*connect.Response[pb.ResetPasswordResponse], error) {
 
-	tokenString := r.ResetCode
+	tokenString := r.Msg.ResetCode
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		// Don't forget to validate the alg is what you expect:
@@ -308,40 +327,40 @@ func (as *AuthenticationService) ResetPasswordStep2(ctx context.Context, r *pb.R
 		return []byte(as.secretKey), nil
 	})
 	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return nil, apiserver.InvalidArg(err.Error())
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		uuid, ok := claims["uuid"].(string)
 		if !ok {
-			return nil, twirp.NewError(twirp.Malformed, "wrongly formatted uuid in token")
+			return nil, apiserver.InvalidArg("wrongly formatted uuid in token")
 		}
 
 		_, err = mod.ActionExists(ctx, as.userStore, uuid, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 		if err != nil {
 			log.Err(err).Str("userID", uuid).Msg("action-exists-reset-password-step-two")
-			return nil, err
+			return nil, modActionExistsErr(err)
 		}
 
 		config := NewPasswordConfig(as.argonConfig.Time, as.argonConfig.Memory, as.argonConfig.Threads, as.argonConfig.Keylen)
-		if len(r.Password) < 8 {
-			return nil, twirp.NewError(twirp.InvalidArgument, errPasswordTooShort.Error())
+		if len(r.Msg.Password) < 8 {
+			return nil, apiserver.InvalidArg(errPasswordTooShort.Error())
 		}
-		// XXX: do not hardcode, put in a config file
-		hashPass, err := GeneratePassword(config, r.Password)
+		hashPass, err := GeneratePassword(config, r.Msg.Password)
 		if err != nil {
-			return nil, twirp.InternalErrorWith(err)
+			return nil, apiserver.InternalErr(err)
 		}
 		err = as.userStore.SetPassword(ctx, uuid, hashPass)
 		if err != nil {
-			return nil, twirp.InternalErrorWith(err)
+			return nil, apiserver.InternalErr(err)
 		}
-		return &pb.ResetPasswordResponse{}, nil
+		return connect.NewResponse(&pb.ResetPasswordResponse{}), nil
 	}
 
-	return nil, twirp.InternalErrorWith(errors.New("reset code is invalid; please try again"))
+	return nil, apiserver.InvalidArg("reset code is invalid; please try again")
 }
 
-func (as *AuthenticationService) ChangePassword(ctx context.Context, r *pb.ChangePasswordRequest) (*pb.ChangePasswordResponse, error) {
+func (as *AuthenticationService) ChangePassword(ctx context.Context, r *connect.Request[pb.ChangePasswordRequest],
+) (*connect.Response[pb.ChangePasswordResponse], error) {
 	// This view requires authentication.
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
@@ -353,37 +372,41 @@ func (as *AuthenticationService) ChangePassword(ctx context.Context, r *pb.Chang
 		log.Err(err).Msg("getting-user")
 		// The username should maybe not be in the session? We can't change
 		// usernames easily.
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 
 	_, err = mod.ActionExists(ctx, as.userStore, user.UUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	if err != nil {
 		log.Err(err).Str("userID", user.UUID).Msg("action-exists-change-password")
+		return nil, modActionExistsErr(err)
+	}
+
+	matches, err := ComparePassword(r.Msg.OldPassword, user.Password)
+	if err != nil {
 		return nil, err
 	}
-
-	matches, err := ComparePassword(r.OldPassword, user.Password)
 	if !matches {
-		return nil, twirp.NewError(twirp.InvalidArgument, "your password is incorrect")
+		return nil, apiserver.InvalidArg("your password is incorrect")
 	}
 
-	if len(r.NewPassword) < 8 {
-		return nil, twirp.NewError(twirp.InvalidArgument, errPasswordTooShort.Error())
+	if len(r.Msg.NewPassword) < 8 {
+		return nil, apiserver.InvalidArg(errPasswordTooShort.Error())
 	}
 
 	config := NewPasswordConfig(as.argonConfig.Time, as.argonConfig.Memory, as.argonConfig.Threads, as.argonConfig.Keylen)
-	hashPass, err := GeneratePassword(config, r.NewPassword)
+	hashPass, err := GeneratePassword(config, r.Msg.NewPassword)
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 	err = as.userStore.SetPassword(ctx, user.UUID, hashPass)
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
-	return &pb.ChangePasswordResponse{}, nil
+	return connect.NewResponse(&pb.ChangePasswordResponse{}), nil
 }
 
-func (as *AuthenticationService) NotifyAccountClosure(ctx context.Context, r *pb.NotifyAccountClosureRequest) (*pb.NotifyAccountClosureResponse, error) {
+func (as *AuthenticationService) NotifyAccountClosure(ctx context.Context, r *connect.Request[pb.NotifyAccountClosureRequest],
+) (*connect.Response[pb.NotifyAccountClosureResponse], error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
 		return nil, err
@@ -392,7 +415,7 @@ func (as *AuthenticationService) NotifyAccountClosure(ctx context.Context, r *pb
 	_, err = mod.ActionExists(ctx, as.userStore, sess.UserUUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	if err != nil {
 		log.Err(err).Str("userID", sess.UserUUID).Msg("action-exists-account-closure")
-		return nil, err
+		return nil, modActionExistsErr(err)
 	}
 
 	// Get the user so we can send the notification with their email address
@@ -401,12 +424,12 @@ func (as *AuthenticationService) NotifyAccountClosure(ctx context.Context, r *pb
 		return nil, err
 	}
 
-	matches, err := ComparePassword(r.Password, user.Password)
+	matches, err := ComparePassword(r.Msg.Password, user.Password)
 	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
+		return nil, apiserver.InternalErr(err)
 	}
 	if !matches {
-		return nil, twirp.NewError(twirp.Unauthenticated, "password incorrect")
+		return nil, apiserver.Unauthenticated("password incorrect")
 	}
 
 	// This action will not need to use the chat store so we can pass the nil value
@@ -419,16 +442,17 @@ func (as *AuthenticationService) NotifyAccountClosure(ctx context.Context, r *pb
 		return nil, err
 	}
 
-	return &pb.NotifyAccountClosureResponse{}, nil
+	return connect.NewResponse(&pb.NotifyAccountClosureResponse{}), nil
 }
 
-func (as *AuthenticationService) GetAPIKey(ctx context.Context, req *pb.GetAPIKeyRequest) (*pb.GetAPIKeyResponse, error) {
+func (as *AuthenticationService) GetAPIKey(ctx context.Context, req *connect.Request[pb.GetAPIKeyRequest],
+) (*connect.Response[pb.GetAPIKeyResponse], error) {
 	user, err := apiserver.AuthUser(ctx, apiserver.CookieOnly, as.userStore)
 	if err != nil {
-		return nil, twirp.NewError(twirp.Unauthenticated, "did not authenticate")
+		return nil, apiserver.Unauthenticated("did not authenticate")
 	}
 	var apikey string
-	if req.Reset_ {
+	if req.Msg.Reset_ {
 		apikey, err = as.userStore.ResetAPIKey(ctx, user.UUID)
 	} else {
 		apikey, err = as.userStore.GetAPIKey(ctx, user.UUID)
@@ -436,7 +460,5 @@ func (as *AuthenticationService) GetAPIKey(ctx context.Context, req *pb.GetAPIKe
 	if err != nil {
 		return nil, err
 	}
-	return &pb.GetAPIKeyResponse{
-		Key: apikey,
-	}, nil
+	return connect.NewResponse(&pb.GetAPIKeyResponse{Key: apikey}), nil
 }

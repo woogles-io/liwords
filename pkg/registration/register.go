@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	goaway "github.com/TwiN/go-away"
 	"github.com/jackc/pgconn"
 	"github.com/woogles-io/liwords/pkg/auth"
 	"github.com/woogles-io/liwords/pkg/config"
@@ -40,6 +41,9 @@ func RegisterUser(ctx context.Context, username string, password string, email s
 		return errors.New("username must end with a number or a letter")
 	}
 	if strings.HasSuffix(strings.ToLower(username), "bot") {
+		return errors.New("username is not acceptable")
+	}
+	if goaway.IsProfane(username) {
 		return errors.New("username is not acceptable")
 	}
 

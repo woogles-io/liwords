@@ -4,26 +4,28 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
 
+	"connectrpc.com/connect"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/woogles-io/liwords/pkg/memento"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/game_service"
+	"github.com/woogles-io/liwords/rpc/api/proto/game_service/game_serviceconnect"
 )
 
 func GetGameHistory(url string, id string) (*macondopb.GameHistory, error) {
 
-	client := pb.NewGameMetadataServiceProtobufClient(url, &http.Client{})
-	history, err := client.GetGameHistory(context.Background(), &pb.GameHistoryRequest{GameId: id})
+	client := game_serviceconnect.NewGameMetadataServiceClient(http.DefaultClient, url+"/api")
+	history, err := client.GetGameHistory(context.Background(),
+		connect.NewRequest(&pb.GameHistoryRequest{GameId: id}))
 
 	if err != nil {
 		return &macondopb.GameHistory{}, err
 	}
-	return history.History, nil
+	return history.Msg.History, nil
 }
 
 func main() {
@@ -149,7 +151,7 @@ params can be prefixed with these flags:
 	fmt.Println("downloading history", t1.Sub(t0))
 	fmt.Println("rendering image", t2.Sub(t1))
 
-	err = ioutil.WriteFile(outputFilename, outputBytes, 0644)
+	err = os.WriteFile(outputFilename, outputBytes, 0644)
 	if err != nil {
 		panic(err)
 	}

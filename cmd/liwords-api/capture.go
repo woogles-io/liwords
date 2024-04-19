@@ -122,6 +122,7 @@ func logEvent(req *http.Request, response ResponseRecorder, rspBuf []byte, reqTi
 
 	logEvt.Str("method", req.Method).
 		Str("path", req.URL.Path).
+		Int("status", response.status).
 		Interface("headers", req.Header).
 		Time("reqTime", reqTime).
 		Time("respTime", respTime).

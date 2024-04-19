@@ -93,8 +93,8 @@ export const API = () => {
         do this unless you know exactly what you're doing.
       </Typography.Paragraph>
       <p style={{ marginBottom: 10 }}>
-        Our API is a Protobuf API, using the Twirp framework. It is used by this
-        front end (the Woogles web app) to communicate with the backend.
+        Our API is a Protobuf API, using the Connect framework. It is used by
+        this front end (the Woogles web app) to communicate with the backend.
       </p>
       <p style={{ marginBottom: 10 }}>
         You can check our API documentation at{' '}

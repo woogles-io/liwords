@@ -5,9 +5,9 @@ import (
 	"errors"
 	"strings"
 
+	"connectrpc.com/connect"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
-	"github.com/twitchtv/twirp"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -35,7 +35,6 @@ type OMGWordsService struct {
 	gameEventChan chan *entity.EventWrapper
 }
 
-// NewGameService creates a Twirp GameService
 func NewOMGWordsService(u user.Store, cfg *config.Config, gs *stores.GameDocumentStore,
 	ms *stores.DBStore) *OMGWordsService {
 	return &OMGWordsService{
@@ -53,18 +52,18 @@ const GamesLimit = 50
 
 func (gs *OMGWordsService) failIfSessionDoesntOwn(ctx context.Context, gameID string) error {
 	if gameID == "" {
-		return twirp.NewError(twirp.InvalidArgument, "game ID must be provided")
+		return apiserver.InvalidArg("game ID must be provided")
 	}
 	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, gs.userStore)
 	if err != nil {
-		return twirp.NewError(twirp.Unauthenticated, err.Error())
+		return apiserver.Unauthenticated(err.Error())
 	}
 	owns, err := gs.metadataStore.GameOwnedBy(ctx, gameID, u.UUID)
 	if err != nil {
-		return twirp.NewError(twirp.InvalidArgument, err.Error())
+		return apiserver.InvalidArg(err.Error())
 	}
 	if !owns {
-		return twirp.NewError(twirp.InvalidArgument, "user does not own this game")
+		return apiserver.InvalidArg("user does not own this game")
 	}
 	return nil
 }
@@ -76,23 +75,23 @@ func (gs *OMGWordsService) SetEventChannel(c chan *entity.EventWrapper) {
 func (gs *OMGWordsService) createGDoc(ctx context.Context, u *entity.User, req *pb.CreateBroadcastGameRequest) (*ipc.GameDocument, error) {
 	players := req.PlayersInfo
 	if len(players) != 2 {
-		return nil, twirp.NewError(twirp.InvalidArgument, "need two players")
+		return nil, apiserver.InvalidArg("need two players")
 	}
 	if players[0].Nickname == players[1].Nickname {
-		return nil, twirp.NewError(twirp.InvalidArgument, "player nicknames must be unique")
+		return nil, apiserver.InvalidArg("player nicknames must be unique")
 	}
 	if players[0].Nickname == "" || players[1].Nickname == "" {
-		return nil, twirp.NewError(twirp.InvalidArgument, "player nicknames must not be blank")
+		return nil, apiserver.InvalidArg("player nicknames must not be blank")
 	}
 	if !players[0].First || players[1].First {
-		return nil, twirp.NewError(twirp.InvalidArgument, "only first player must be marked as first")
+		return nil, apiserver.InvalidArg("only first player must be marked as first")
 	}
 
 	if req.Rules == nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, "no rules")
+		return nil, apiserver.InvalidArg("no rules")
 	}
 	if req.Lexicon == "" {
-		return nil, twirp.NewError(twirp.InvalidArgument, "lexicon is empty")
+		return nil, apiserver.InvalidArg("lexicon is empty")
 	}
 	unfinished, err := gs.metadataStore.OutstandingGames(ctx, u.UUID)
 	if err != nil {
@@ -100,7 +99,7 @@ func (gs *OMGWordsService) createGDoc(ctx context.Context, u *entity.User, req *
 	}
 	log.Debug().Int("unfinished", len(unfinished)).Str("userID", u.UUID).Msg("unfinished-anno-games")
 	if len(unfinished) > 0 {
-		return nil, twirp.NewError(twirp.InvalidArgument, "please finish or delete your unfinished games before starting a new one")
+		return nil, apiserver.InvalidArg("please finish or delete your unfinished games before starting a new one")
 	}
 
 	// We can just make the user ID the same as the nickname, as it
@@ -163,56 +162,57 @@ func (gs *OMGWordsService) createGDoc(ctx context.Context, u *entity.User, req *
 	return g, nil
 }
 
-func (gs *OMGWordsService) CreateBroadcastGame(ctx context.Context, req *pb.CreateBroadcastGameRequest) (
-	*pb.CreateBroadcastGameResponse, error) {
+func (gs *OMGWordsService) CreateBroadcastGame(ctx context.Context, req *connect.Request[pb.CreateBroadcastGameRequest],
+) (*connect.Response[pb.CreateBroadcastGameResponse], error) {
 
 	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, gs.userStore)
 	if err != nil {
 		return nil, err
 	}
-	gdoc, err := gs.createGDoc(ctx, u, req)
+	gdoc, err := gs.createGDoc(ctx, u, req.Msg)
 	if err != nil {
 		return nil, err
 	}
 
-	return &pb.CreateBroadcastGameResponse{
+	return connect.NewResponse(&pb.CreateBroadcastGameResponse{
 		GameId: gdoc.Uid,
-	}, nil
+	}), nil
 }
 
-func (gs *OMGWordsService) SendGameEvent(ctx context.Context, req *pb.AnnotatedGameEvent) (
-	*pb.GameEventResponse, error) {
-	if err := gs.failIfSessionDoesntOwn(ctx, req.Event.GameId); err != nil {
+func (gs *OMGWordsService) SendGameEvent(ctx context.Context, req *connect.Request[pb.AnnotatedGameEvent]) (
+	*connect.Response[pb.GameEventResponse], error) {
+	if err := gs.failIfSessionDoesntOwn(ctx, req.Msg.Event.GameId); err != nil {
 		return nil, err
 	}
-	if req.Event == nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, "event is required")
+	if req.Msg.Event == nil {
+		return nil, apiserver.InvalidArg("event is required")
 	}
 
-	justEnded, err := handleEvent(ctx, req.UserId, req.Event, req.Amendment, req.EventNumber, gs.gameStore, gs.gameEventChan)
+	justEnded, err := handleEvent(ctx, req.Msg.UserId, req.Msg.Event, req.Msg.Amendment, req.Msg.EventNumber, gs.gameStore, gs.gameEventChan)
 	if err != nil {
 		return nil, err
 	}
 	// justEnded indicates if the handled event resulted in the game ending.
 	// Since this is an annotated game, we must mark it as done.
 	if justEnded {
-		if err = gs.metadataStore.MarkAnnotatedGameDone(ctx, req.Event.GameId); err != nil {
+		if err = gs.metadataStore.MarkAnnotatedGameDone(ctx, req.Msg.Event.GameId); err != nil {
 			return nil, err
 		}
 	}
 
-	return &pb.GameEventResponse{}, nil
+	return connect.NewResponse(&pb.GameEventResponse{}), nil
 }
 
 // UpdateGameDocument updates a game document for an annotated game. It doesn't
 // really have meaning outside annotated games, as players should instead use an
 // individual event update call.
-func (gs *OMGWordsService) ReplaceGameDocument(ctx context.Context, req *pb.ReplaceDocumentRequest) (*pb.GameEventResponse, error) {
+func (gs *OMGWordsService) ReplaceGameDocument(ctx context.Context, req *connect.Request[pb.ReplaceDocumentRequest],
+) (*connect.Response[pb.GameEventResponse], error) {
 
-	if req.Document == nil {
+	if req.Msg.Document == nil {
 		return nil, errors.New("nil game document")
 	}
-	gid := req.Document.Uid
+	gid := req.Msg.Document.Uid
 
 	err := gs.failIfSessionDoesntOwn(ctx, gid)
 	if err != nil {
@@ -220,30 +220,31 @@ func (gs *OMGWordsService) ReplaceGameDocument(ctx context.Context, req *pb.Repl
 	}
 
 	// Just willy-nilly update the thing. Kind of scary.
-	err = gs.gameStore.UpdateDocument(ctx, &stores.MaybeLockedDocument{GameDocument: req.Document})
+	err = gs.gameStore.UpdateDocument(ctx, &stores.MaybeLockedDocument{GameDocument: req.Msg.Document})
 	if err != nil {
 		return nil, err
 	}
 	// And send an event.
 	evt := &ipc.GameDocumentEvent{
-		Doc: proto.Clone(req.Document).(*ipc.GameDocument),
+		Doc: proto.Clone(req.Msg.Document).(*ipc.GameDocument),
 	}
 	wrapped := entity.WrapEvent(evt, ipc.MessageType_OMGWORDS_GAMEDOCUMENT)
 	wrapped.AddAudience(entity.AudChannel, AnnotatedChannelName(gid))
 	gs.gameEventChan <- wrapped
 
-	return &pb.GameEventResponse{}, nil
+	return connect.NewResponse(&pb.GameEventResponse{}), nil
 }
 
 // PatchGameDocument merges the requested game document into the existing one.
 // For now, we just use this to update various metadata (like description, player names, etc).
 // Disallow updating game structures directly until the front end can implement
 // GameDocument on its own.
-func (gs *OMGWordsService) PatchGameDocument(ctx context.Context, req *pb.PatchDocumentRequest) (*pb.GameEventResponse, error) {
-	if req.Document == nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, "nil game document")
+func (gs *OMGWordsService) PatchGameDocument(ctx context.Context, req *connect.Request[pb.PatchDocumentRequest],
+) (*connect.Response[pb.GameEventResponse], error) {
+	if req.Msg.Document == nil {
+		return nil, apiserver.InvalidArg("nil game document")
 	}
-	gid := req.Document.Uid
+	gid := req.Msg.Document.Uid
 
 	err := gs.failIfSessionDoesntOwn(ctx, gid)
 	if err != nil {
@@ -252,7 +253,7 @@ func (gs *OMGWordsService) PatchGameDocument(ctx context.Context, req *pb.PatchD
 
 	// For now don't allow direct patches to these fields. Maybe we can allow this
 	// kind of stuff later.
-	if len(req.Document.Events) > 0 || req.Document.Board != nil || req.Document.Bag != nil || req.Document.Racks != nil {
+	if len(req.Msg.Document.Events) > 0 || req.Msg.Document.Board != nil || req.Msg.Document.Bag != nil || req.Msg.Document.Racks != nil {
 		return nil, errors.New("patch operation not supported at this time for these fields")
 	}
 
@@ -261,7 +262,7 @@ func (gs *OMGWordsService) PatchGameDocument(ctx context.Context, req *pb.PatchD
 		return nil, err
 	}
 
-	err = MergeGameDocuments(g.GameDocument, req.Document)
+	err = MergeGameDocuments(g.GameDocument, req.Msg.Document)
 	if err != nil {
 		// Since we acquired a lock in the GetDocument call above,
 		// we must unlock explicitly in any error case.
@@ -279,7 +280,7 @@ func (gs *OMGWordsService) PatchGameDocument(ctx context.Context, req *pb.PatchD
 
 	err = gs.metadataStore.UpdateAnnotatedGameQuickdata(
 		ctx, gid, &entity.Quickdata{
-			PlayerInfo: lo.Map(req.Document.Players,
+			PlayerInfo: lo.Map(req.Msg.Document.Players,
 				func(p *ipc.GameDocument_MinimalPlayerInfo, idx int) *ipc.PlayerInfo {
 					return &ipc.PlayerInfo{
 						UserId:   p.UserId,
@@ -299,27 +300,27 @@ func (gs *OMGWordsService) PatchGameDocument(ctx context.Context, req *pb.PatchD
 	wrapped.AddAudience(entity.AudChannel, AnnotatedChannelName(gid))
 	gs.gameEventChan <- wrapped
 
-	return &pb.GameEventResponse{}, nil
+	return connect.NewResponse(&pb.GameEventResponse{}), nil
 }
 
-func (gs *OMGWordsService) SetBroadcastGamePrivacy(ctx context.Context, req *pb.BroadcastGamePrivacy) (
-	*pb.GameEventResponse, error) {
+func (gs *OMGWordsService) SetBroadcastGamePrivacy(ctx context.Context, req *connect.Request[pb.BroadcastGamePrivacy]) (
+	*connect.Response[pb.GameEventResponse], error) {
 
 	return nil, nil
 }
 
-func (gs *OMGWordsService) GetGamesForEditor(ctx context.Context, req *pb.GetGamesForEditorRequest) (
-	*pb.BroadcastGamesResponse, error) {
+func (gs *OMGWordsService) GetGamesForEditor(ctx context.Context, req *connect.Request[pb.GetGamesForEditorRequest]) (
+	*connect.Response[pb.BroadcastGamesResponse], error) {
 
-	if req.Limit > GamesLimit {
-		return nil, twirp.NewError(twirp.InvalidArgument, "too many games")
+	if req.Msg.Limit > GamesLimit {
+		return nil, apiserver.InvalidArg("too many games")
 	}
 
-	games, err := gs.metadataStore.GamesForEditor(ctx, req.UserId, req.Unfinished, int(req.Limit), int(req.Offset))
+	games, err := gs.metadataStore.GamesForEditor(ctx, req.Msg.UserId, req.Msg.Unfinished, int(req.Msg.Limit), int(req.Msg.Offset))
 	if err != nil {
 		return nil, err
 	}
-	return &pb.BroadcastGamesResponse{
+	return connect.NewResponse(&pb.BroadcastGamesResponse{
 		Games: lo.Map(games, func(bg *stores.BroadcastGame, i int) *pb.BroadcastGamesResponse_BroadcastGame {
 			return &pb.BroadcastGamesResponse_BroadcastGame{
 				GameId:      bg.GameUUID,
@@ -331,21 +332,21 @@ func (gs *OMGWordsService) GetGamesForEditor(ctx context.Context, req *pb.GetGam
 				CreatedAt:   timestamppb.New(bg.Created),
 			}
 		}),
-	}, nil
+	}), nil
 }
 
-func (gs *OMGWordsService) GetRecentAnnotatedGames(ctx context.Context, req *pb.GetRecentAnnotatedGamesRequest) (
-	*pb.BroadcastGamesResponse, error) {
+func (gs *OMGWordsService) GetRecentAnnotatedGames(ctx context.Context, req *connect.Request[pb.GetRecentAnnotatedGamesRequest]) (
+	*connect.Response[pb.BroadcastGamesResponse], error) {
 
-	if req.Limit > GamesLimit {
-		return nil, twirp.NewError(twirp.InvalidArgument, "too many games")
+	if req.Msg.Limit > GamesLimit {
+		return nil, apiserver.InvalidArg("too many games")
 	}
 
-	games, err := gs.metadataStore.GamesForEditor(ctx, "", req.Unfinished, int(req.Limit), int(req.Offset))
+	games, err := gs.metadataStore.GamesForEditor(ctx, "", req.Msg.Unfinished, int(req.Msg.Limit), int(req.Msg.Offset))
 	if err != nil {
 		return nil, err
 	}
-	return &pb.BroadcastGamesResponse{
+	return connect.NewResponse(&pb.BroadcastGamesResponse{
 		Games: lo.Map(games, func(bg *stores.BroadcastGame, i int) *pb.BroadcastGamesResponse_BroadcastGame {
 			return &pb.BroadcastGamesResponse_BroadcastGame{
 				GameId:          bg.GameUUID,
@@ -358,12 +359,11 @@ func (gs *OMGWordsService) GetRecentAnnotatedGames(ctx context.Context, req *pb.
 				CreatorUsername: bg.CreatorUsername,
 			}
 		}),
-	}, nil
-
+	}), nil
 }
 
-func (gs *OMGWordsService) GetMyUnfinishedGames(ctx context.Context, req *pb.GetMyUnfinishedGamesRequest) (
-	*pb.BroadcastGamesResponse, error) {
+func (gs *OMGWordsService) GetMyUnfinishedGames(ctx context.Context, req *connect.Request[pb.GetMyUnfinishedGamesRequest]) (
+	*connect.Response[pb.BroadcastGamesResponse], error) {
 
 	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, gs.userStore)
 	if err != nil {
@@ -385,26 +385,27 @@ func (gs *OMGWordsService) GetMyUnfinishedGames(ctx context.Context, req *pb.Get
 		}
 	})
 
-	return &pb.BroadcastGamesResponse{
+	return connect.NewResponse(&pb.BroadcastGamesResponse{
 		Games: games,
-	}, nil
+	}), nil
 }
 
-func (gs *OMGWordsService) GetGameDocument(ctx context.Context, req *pb.GetGameDocumentRequest) (*ipc.GameDocument, error) {
-	doc, err := gs.gameStore.GetDocument(ctx, req.GameId, false)
+func (gs *OMGWordsService) GetGameDocument(ctx context.Context, req *connect.Request[pb.GetGameDocumentRequest],
+) (*connect.Response[ipc.GameDocument], error) {
+	doc, err := gs.gameStore.GetDocument(ctx, req.Msg.GameId, false)
 	if err != nil {
 		if err == stores.ErrDoesNotExist {
 			// Clean up the game if it is still in a store.
-			derr := gs.metadataStore.DeleteAnnotatedGame(ctx, req.GameId)
+			derr := gs.metadataStore.DeleteAnnotatedGame(ctx, req.Msg.GameId)
 			if derr != nil {
 				return nil, derr
 			}
-			return nil, twirp.NotFoundError(err.Error())
+			return nil, apiserver.NotFound(err.Error())
 		}
 		return nil, err
 	}
 	if doc.Type == ipc.GameType_ANNOTATED {
-		return doc.GameDocument, nil
+		return connect.NewResponse(doc.GameDocument), nil
 	}
 	// Otherwise, we need to "censor" the game document by deleting information
 	// this user should not have, if they're a player in this game.
@@ -413,13 +414,14 @@ func (gs *OMGWordsService) GetGameDocument(ctx context.Context, req *pb.GetGameD
 
 // SetRacks sets the player racks per user. It checks to make sure that the
 // rack can be set before actually setting it.
-func (gs *OMGWordsService) SetRacks(ctx context.Context, req *pb.SetRacksEvent) (*pb.GameEventResponse, error) {
-	err := gs.failIfSessionDoesntOwn(ctx, req.GameId)
+func (gs *OMGWordsService) SetRacks(ctx context.Context, req *connect.Request[pb.SetRacksEvent],
+) (*connect.Response[pb.GameEventResponse], error) {
+	err := gs.failIfSessionDoesntOwn(ctx, req.Msg.GameId)
 	if err != nil {
 		return nil, err
 	}
 
-	g, err := gs.gameStore.GetDocument(ctx, req.GameId, true)
+	g, err := gs.gameStore.GetDocument(ctx, req.Msg.GameId, true)
 	if err != nil {
 		return nil, err
 	}
@@ -427,31 +429,31 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *pb.SetRacksEvent) 
 	// 	gs.gameStore.UnlockDocument(ctx, g)
 	// 	return nil, twirp.NewError(twirp.InvalidArgument, "game is over")
 	// }
-	if len(req.Racks) != len(g.Players) {
+	if len(req.Msg.Racks) != len(g.Players) {
 		gs.gameStore.UnlockDocument(ctx, g)
-		return nil, twirp.NewError(twirp.InvalidArgument, "number of racks must match number of players")
+		return nil, apiserver.InvalidArg("number of racks must match number of players")
 	}
-	if req.Amendment && len(g.Events)-1 < int(req.EventNumber) {
+	if req.Msg.Amendment && len(g.Events)-1 < int(req.Msg.EventNumber) {
 		gs.gameStore.UnlockDocument(ctx, g)
-		return nil, twirp.NewError(twirp.InvalidArgument, "tried to amend a rack for a non-existing event")
+		return nil, apiserver.InvalidArg("tried to amend a rack for a non-existing event")
 	}
 	// Put back the current racks, if any.
 	// Note that tiles.PutBack assumes the player racks are not adulterated in any way.
 	// This should be the case, because only cwgame is responsible for dealing
 	// racks.
-	if req.Amendment {
-		evt := g.Events[req.EventNumber]
-		err = cwgame.EditOldRack(ctx, g.GameDocument, req.EventNumber, req.Racks[evt.PlayerIndex])
+	if req.Msg.Amendment {
+		evt := g.Events[req.Msg.EventNumber]
+		err = cwgame.EditOldRack(ctx, g.GameDocument, req.Msg.EventNumber, req.Msg.Racks[evt.PlayerIndex])
 		if err != nil {
 			gs.gameStore.UnlockDocument(ctx, g)
 			return nil, err
 		}
 	} else {
 
-		err = cwgame.AssignRacks(g.GameDocument, req.Racks, cwgame.AssignEmptyIfUnambiguous)
+		err = cwgame.AssignRacks(g.GameDocument, req.Msg.Racks, cwgame.AssignEmptyIfUnambiguous)
 		if err != nil {
 			gs.gameStore.UnlockDocument(ctx, g)
-			return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+			return nil, apiserver.InvalidArg(err.Error())
 		}
 	}
 
@@ -476,11 +478,12 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *pb.SetRacksEvent) 
 	wrapped.AddAudience(entity.AudChannel, AnnotatedChannelName(g.Uid))
 	gs.gameEventChan <- wrapped
 
-	return &pb.GameEventResponse{}, nil
+	return connect.NewResponse(&pb.GameEventResponse{}), nil
 }
 
-func (gs *OMGWordsService) GetCGP(ctx context.Context, req *pb.GetCGPRequest) (*pb.CGPResponse, error) {
-	gid := req.GameId
+func (gs *OMGWordsService) GetCGP(ctx context.Context, req *connect.Request[pb.GetCGPRequest],
+) (*connect.Response[pb.CGPResponse], error) {
+	gid := req.Msg.GameId
 	g, err := gs.gameStore.GetDocument(ctx, gid, false)
 	if err != nil {
 		return nil, err
@@ -489,11 +492,12 @@ func (gs *OMGWordsService) GetCGP(ctx context.Context, req *pb.GetCGPRequest) (*
 	if err != nil {
 		return nil, err
 	}
-	return &pb.CGPResponse{Cgp: cgp}, nil
+	return connect.NewResponse(&pb.CGPResponse{Cgp: cgp}), nil
 }
 
-func (gs *OMGWordsService) DeleteBroadcastGame(ctx context.Context, req *pb.DeleteBroadcastGameRequest) (*pb.DeleteBroadcastGameResponse, error) {
-	gid := req.GameId
+func (gs *OMGWordsService) DeleteBroadcastGame(ctx context.Context, req *connect.Request[pb.DeleteBroadcastGameRequest],
+) (*connect.Response[pb.DeleteBroadcastGameResponse], error) {
+	gid := req.Msg.GameId
 	err := gs.failIfSessionDoesntOwn(ctx, gid)
 	if err != nil {
 		return nil, err
@@ -504,7 +508,7 @@ func (gs *OMGWordsService) DeleteBroadcastGame(ctx context.Context, req *pb.Dele
 		return nil, err
 	}
 	if done {
-		return nil, twirp.NewError(twirp.InvalidArgument, "you cannot delete a game that is already done")
+		return nil, apiserver.InvalidArg("you cannot delete a game that is already done")
 	}
 	err = gs.metadataStore.DeleteAnnotatedGame(ctx, gid)
 	if err != nil {
@@ -515,12 +519,13 @@ func (gs *OMGWordsService) DeleteBroadcastGame(ctx context.Context, req *pb.Dele
 		return nil, err
 	}
 
-	return &pb.DeleteBroadcastGameResponse{}, nil
+	return connect.NewResponse(&pb.DeleteBroadcastGameResponse{}), nil
 }
 
-func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *pb.ImportGCGRequest) (*pb.ImportGCGResponse, error) {
-	if len(req.Gcg) > 1.28e5 {
-		return nil, twirp.NewError(twirp.InvalidArgument, "gcg string is too long")
+func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *connect.Request[pb.ImportGCGRequest],
+) (*connect.Response[pb.ImportGCGResponse], error) {
+	if len(req.Msg.Gcg) > 1.28e5 {
+		return nil, apiserver.InvalidArg("gcg string is too long")
 	}
 	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, gs.userStore)
 	if err != nil {
@@ -531,17 +536,17 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *pb.ImportGCGReque
 	// just deals with GameDocuments or whatever their successor might be, to
 	// avoid this config ugliness:
 	cfgCopy := macondoconfig.DefaultConfig()
-	cfgCopy.SetDefault(macondoconfig.ConfigDefaultLexicon, req.Lexicon)
-	cfgCopy.SetDefault(macondoconfig.ConfigDefaultLetterDistribution, req.Rules.LetterDistributionName)
+	cfgCopy.SetDefault(macondoconfig.ConfigDefaultLexicon, req.Msg.Lexicon)
+	cfgCopy.SetDefault(macondoconfig.ConfigDefaultLetterDistribution, req.Msg.Rules.LetterDistributionName)
 
-	r := strings.NewReader(req.Gcg)
+	r := strings.NewReader(req.Msg.Gcg)
 
 	gh, err := gcgio.ParseGCGFromReader(&cfgCopy, r)
 	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return nil, apiserver.InvalidArg(err.Error())
 	}
 
-	letterdist, err := tilemapping.GetDistribution(gs.cfg.MacondoConfigMap, req.Rules.LetterDistributionName)
+	letterdist, err := tilemapping.GetDistribution(gs.cfg.MacondoConfigMap, req.Msg.Rules.LetterDistributionName)
 	if err != nil {
 		return nil, err
 	}
@@ -556,9 +561,9 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *pb.ImportGCGReque
 				FullName: gh.Players[1].RealName,
 				Nickname: gh.Players[1].Nickname},
 		},
-		Lexicon:       req.Lexicon,
-		Rules:         req.Rules,
-		ChallengeRule: req.ChallengeRule,
+		Lexicon:       req.Msg.Lexicon,
+		Rules:         req.Msg.Rules,
+		ChallengeRule: req.Msg.ChallengeRule,
 	}
 
 	gdoc, err := gs.createGDoc(ctx, u, cbr)
@@ -610,5 +615,5 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *pb.ImportGCGReque
 		return nil, err
 	}
 
-	return &pb.ImportGCGResponse{GameId: gdoc.Uid}, nil
+	return connect.NewResponse(&pb.ImportGCGResponse{GameId: gdoc.Uid}), nil
 }

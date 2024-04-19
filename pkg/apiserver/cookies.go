@@ -6,15 +6,13 @@ import (
 	"net/http"
 	"time"
 
-	twirp "github.com/twitchtv/twirp"
-
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/sessions"
 )
 
-// ExposeResponseWriterMiddleware configures an http.Handler (like any Twirp server)
+// ExposeResponseWriterMiddleware configures an http.Handler (like any Connect server)
 // to place the responseWriter in its context. This should enable
 // setting cookies with the setCookie function.
 func ExposeResponseWriterMiddleware(h http.Handler) http.Handler {
@@ -121,11 +119,11 @@ func PlaceInContext(ctx context.Context, session *entity.Session) context.Contex
 func GetSession(ctx context.Context) (*entity.Session, error) {
 	sessval := ctx.Value(sesskey)
 	if sessval == nil {
-		return nil, twirp.NewError(twirp.Unauthenticated, "authentication required")
+		return nil, Unauthenticated("authentication required")
 	}
 	sess, ok := sessval.(*entity.Session)
 	if !ok {
-		return nil, twirp.InternalErrorWith(errors.New("unexpected error with session type inference"))
+		return nil, InternalErr(errors.New("unexpected error with session type inference"))
 	}
 	return sess, nil
 }

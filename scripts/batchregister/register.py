@@ -3,6 +3,7 @@ A script to batch register a list of users.
 It will provide them with passwords.
 
 """
+
 import csv
 import os
 import secrets
@@ -11,9 +12,7 @@ import sys
 import requests
 
 
-registration_api = (
-    "https://woogles.io/twirp/user_service.RegistrationService/Register"
-)
+registration_api = "https://woogles.io/api/user_service.RegistrationService/Register"
 registration_code = os.getenv("REGISTRATION_CODE")
 
 
@@ -40,7 +39,7 @@ def register(incsv, outcsv):
                 if not row:
                     continue
                 password = gen_pw()
-                # use twirp api to register
+                # use api to register
                 if row["username"] == "" or row["email"] == "":
                     print("missing info:", row["username"], row["email"])
                     continue
@@ -56,9 +55,7 @@ def register(incsv, outcsv):
                 )
                 if resp.status_code != 200:
                     print(resp.status_code, resp.text)
-                    print(
-                        "failed to register: ", row["username"], row["email"]
-                    )
+                    print("failed to register: ", row["username"], row["email"])
                     continue
 
                 csvwriter.writerow([row["username"], row["email"], password])

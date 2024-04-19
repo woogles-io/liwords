@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/matryer/is"
-	"github.com/twitchtv/twirp"
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/stores/user"
@@ -53,6 +52,6 @@ func TestAuthenticateModNoAuth(t *testing.T) {
 	_, err := authenticateMod(ctx, ms, &pb.ModActionsList{
 		Actions: []*pb.ModAction{},
 	})
-	is.Equal(err, twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error()))
+	is.Equal(err, apiserver.Unauthenticated(errNotAuthorized.Error()))
 	us.(*user.DBStore).Disconnect()
 }

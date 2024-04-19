@@ -15,7 +15,7 @@ import (
 
 	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
-	"github.com/twitchtv/twirp"
+	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/user"
 
@@ -1431,26 +1431,26 @@ func validateTournamentMeta(ttype pb.TType, slug string) (entity.CompetitionType
 	case pb.TType_CLUB:
 		tt = entity.TypeClub
 		if !strings.HasPrefix(slug, "/club/") {
-			return "", twirp.NewError(twirp.InvalidArgument, "club slug must start with /club/")
+			return "", apiserver.InvalidArg("club slug must start with /club/")
 		}
 	case pb.TType_STANDARD:
 		tt = entity.TypeStandard
 		if !strings.HasPrefix(slug, "/tournament/") {
-			return "", twirp.NewError(twirp.InvalidArgument, "tournament slug must start with /tournament/")
+			return "", apiserver.InvalidArg("tournament slug must start with /tournament/")
 		}
 	case pb.TType_LEGACY:
 		tt = entity.TypeLegacy
 		if !strings.HasPrefix(slug, "/tournament/") {
-			return "", twirp.NewError(twirp.InvalidArgument, "tournament slug must start with /tournament/")
+			return "", apiserver.InvalidArg("tournament slug must start with /tournament/")
 		}
 	case pb.TType_CHILD:
 		tt = entity.TypeChild
 		// A Club session type can also be a child tournament (it's essentially just a tournament with a parent ID)
 		if !strings.HasPrefix(slug, "/club/") && !strings.HasPrefix(slug, "/tournament/") {
-			return "", twirp.NewError(twirp.InvalidArgument, "club-session slug must start with /club/ or /tournament/")
+			return "", apiserver.InvalidArg("club-session slug must start with /club/ or /tournament/")
 		}
 	default:
-		return "", twirp.NewError(twirp.InvalidArgument, "invalid tournament type")
+		return "", apiserver.InvalidArg("invalid tournament type")
 	}
 	return tt, nil
 }

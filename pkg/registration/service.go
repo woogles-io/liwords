@@ -4,11 +4,12 @@ import (
 	"context"
 	"os"
 
+	"connectrpc.com/connect"
 	"github.com/rs/zerolog"
-	"github.com/twitchtv/twirp"
+
+	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/user"
-
 	pb "github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
 
@@ -22,9 +23,10 @@ func NewRegistrationService(u user.Store, cfg config.ArgonConfig) *RegistrationS
 }
 
 // Register registers a new user.
-func (rs *RegistrationService) Register(ctx context.Context, r *pb.UserRegistrationRequest) (*pb.RegistrationResponse, error) {
+func (rs *RegistrationService) Register(ctx context.Context, r *connect.Request[pb.UserRegistrationRequest],
+) (*connect.Response[pb.RegistrationResponse], error) {
 	log := zerolog.Ctx(ctx)
-	log.Info().Str("user", r.Username).Str("email", r.Email).Msg("new-user")
+	log.Info().Str("user", r.Msg.Username).Str("email", r.Msg.Email).Msg("new-user")
 
 	code := os.Getenv("REGISTRATION_CODE")
 	codebot := "bot" + code
@@ -32,11 +34,11 @@ func (rs *RegistrationService) Register(ctx context.Context, r *pb.UserRegistrat
 	// if r.RegistrationCode != code && r.RegistrationCode != codebot {
 	// 	return nil, errors.New("unauthorized")
 	// }
-	err := RegisterUser(ctx, r.Username, r.Password, r.Email,
-		r.FirstName, r.LastName, r.BirthDate, r.CountryCode,
-		rs.userStore, r.RegistrationCode == codebot, rs.argonConfig)
+	err := RegisterUser(ctx, r.Msg.Username, r.Msg.Password, r.Msg.Email,
+		r.Msg.FirstName, r.Msg.LastName, r.Msg.BirthDate, r.Msg.CountryCode,
+		rs.userStore, r.Msg.RegistrationCode == codebot, rs.argonConfig)
 	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return nil, apiserver.InvalidArg(err.Error())
 	}
-	return &pb.RegistrationResponse{}, nil
+	return connect.NewResponse(&pb.RegistrationResponse{}), nil
 }

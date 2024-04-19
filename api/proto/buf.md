@@ -1,21 +1,17 @@
 ## liwords
 
-This module contains all of the APIs required to interact with 
+This module contains all of the APIs required to interact with
 Woogles.io.
 
 The base URL for all of the relevant services is:
 
-`https://woogles.io/twirp/`
-
-(This will change to /api soon, but use /twirp for now).
+`https://woogles.io/api/`
 
 So for example to hit the game_service's GetGCG, you would do:
 
 ```
-curl -H 'Content-Type: application/json' https://woogles.io/twirp/game_service.GameMetadataService/GetGCG -d '{"game_id": "abcdef"}'
+curl -H 'Content-Type: application/json' https://woogles.io/api/game_service.GameMetadataService/GetGCG -d '{"game_id": "abcdef"}'
 ```
-
-Note that *all* requests to the Woogles API are HTTP POSTs. This is a requirement of the framework we use, [Twirp](https://twitchtv.github.io/twirp/).
 
 ## Errors
 
@@ -33,17 +29,17 @@ Note: not every single endpoint takes in an API Key, but most do.
 
 ## Input and Output formats
 
-Use `Content-Type: application/json` for JSON, or `Content-Type: application/protobuf` for Protobuf. 
+Use `Content-Type: application/json` for JSON, or `Content-Type: application/protobuf` for Protobuf.
 
 It's much easier to use the API with JSON + a web browser, but the protobuf option is still available and we use protobuf communication/serialization internally.
 
 Let's use as an example the `omgwords_service.GameEventService`, which you can see in the `omgwords_service/omgwords.proto` file below this directory.
 
-We want to create a new game for broadcast. We look at the `rpc CreateBroadcastGame(CreateBroadcastGameRequest) returns (CreateBroadcastGameResponse)` function call. All supported RPCs (Remote Procedure Calls) are listed in a `service` block in a `.proto` file. 
+We want to create a new game for broadcast. We look at the `rpc CreateBroadcastGame(CreateBroadcastGameRequest) returns (CreateBroadcastGameResponse)` function call. All supported RPCs (Remote Procedure Calls) are listed in a `service` block in a `.proto` file.
 
-In this case, the endpoint would be `https://woogles.io/twirp/omgwords_service.GameEventService/CreateBroadcastGame`.
+In this case, the endpoint would be `https://woogles.io/api/omgwords_service.GameEventService/CreateBroadcastGame`.
 
-You can obtain the `omgwords_service` in the URL from the package name (see the top of the `omgwords.proto` file). `GameEventService` is the name of the rpc service. And `CreateBroadcastGame` is the function name. The format of the URL is `/twirp/<package_name>.<service_name>/<rpc_name>`.
+You can obtain the `omgwords_service` in the URL from the package name (see the top of the `omgwords.proto` file). `GameEventService` is the name of the rpc service. And `CreateBroadcastGame` is the function name. The format of the URL is `/api/<package_name>.<service_name>/<rpc_name>`.
 
 We see that `CreateBroadcastName` takes in a `CreateBroadcastGameRequest`:
 

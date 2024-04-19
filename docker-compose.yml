@@ -56,7 +56,7 @@ services:
     labels:
       - "traefik.http.middlewares.floc.headers.customresponseheaders.Permissions-Policy=interest-cohort=()"
       - "traefik.http.routers.liwords.middlewares=floc"
-      - "traefik.http.routers.liwords.rule=PathPrefix(`/twirp/`, `/gameimg/`, `/debug/`, `/api/`)"
+      - "traefik.http.routers.liwords.rule=PathPrefix(`/api/`, `/gameimg/`, `/debug/`, `/twirp/`)"
       - "traefik.http.routers.liwords.entrypoints=web"
       - "traefik.http.services.liwords.loadbalancer.server.port=8001"
       - traefik.enable=true
