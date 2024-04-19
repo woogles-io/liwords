@@ -13,6 +13,8 @@ So for example to hit the game_service's GetGCG, you would do:
 curl -H 'Content-Type: application/json' https://woogles.io/api/game_service.GameMetadataService/GetGCG -d '{"game_id": "abcdef"}'
 ```
 
+Note that *all* requests to the Woogles API are HTTP POSTs. This is the default for our API framework (ConnectRPC). We may change some endpoints in the future to use GET.
+
 ## Errors
 
 If the API call returns a 200 status code it was successful. Any other code could be an error. The error text is returned in JSON format.
