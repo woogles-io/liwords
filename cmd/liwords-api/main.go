@@ -19,7 +19,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/gomodule/redigo/redis"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/bus"
@@ -129,7 +129,7 @@ func main() {
 	log.Err(e2).Msg("close-database")
 
 	redisPool := newPool(cfg.RedisURL)
-	dbPool, err := pgxpool.Connect(context.Background(), cfg.DBConnUri)
+	dbPool, err := pgxpool.New(context.Background(), cfg.DBConnUri)
 	if err != nil {
 		panic(err)
 	}

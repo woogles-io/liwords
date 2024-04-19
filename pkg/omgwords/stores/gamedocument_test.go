@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -166,7 +166,7 @@ func TestDBGetAndSet(t *testing.T) {
 		panic(err)
 	}
 
-	dbPool, err := pgxpool.Connect(context.Background(), commondb.TestingPostgresConnUri())
+	dbPool, err := pgxpool.New(context.Background(), commondb.TestingPostgresConnUri())
 	is.NoErr(err)
 	store, err := NewGameDocumentStore(&DefaultConfig, newPool(RedisUrl), dbPool)
 	is.NoErr(err)

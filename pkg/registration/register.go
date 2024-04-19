@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	goaway "github.com/TwiN/go-away"
-	"github.com/jackc/pgconn"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/woogles-io/liwords/pkg/auth"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"

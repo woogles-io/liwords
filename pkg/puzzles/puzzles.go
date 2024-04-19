@@ -2,12 +2,12 @@ package puzzles
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"strconv"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/gameplay"
@@ -41,7 +41,7 @@ type PuzzleStore interface {
 	GetUserRating(ctx context.Context, userId string, ratingKey entity.VariantKey) (*entity.SingleRating, error)
 	SetPuzzleVote(ctx context.Context, userId string, puzzleUUID string, vote int) error
 	GetJobInfo(ctx context.Context, genId int) (time.Time, time.Time, time.Duration, *bool, *string, int, int, [][]int, error)
-	GetPotentialPuzzleGames(ctx context.Context, time1, time2 time.Time, limit int, lexicon string, avoidBots bool) ([]sql.NullString, error)
+	GetPotentialPuzzleGames(ctx context.Context, time1, time2 time.Time, limit int, lexicon string, avoidBots bool) ([]pgtype.Text, error)
 	GetJobLogs(ctx context.Context, limit, offset int) ([]*pb.PuzzleJobLog, error)
 }
 

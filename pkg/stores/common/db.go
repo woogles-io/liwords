@@ -2,14 +2,14 @@ package common
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/glicko"
@@ -292,13 +292,13 @@ func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.Use
 	var id uint
 	var username string
 	var uuid string
-	var email sql.NullString
-	var password sql.NullString
-	var internal_bot sql.NullBool
-	var is_admin sql.NullBool
-	var is_director sql.NullBool
-	var is_mod sql.NullBool
-	var notoriety sql.NullInt64
+	var email pgtype.Text
+	var password pgtype.Text
+	var internal_bot pgtype.Bool
+	var is_admin pgtype.Bool
+	var is_director pgtype.Bool
+	var is_mod pgtype.Bool
+	var notoriety pgtype.Int8
 
 	placeholder := "$1"
 
@@ -329,13 +329,13 @@ func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.Use
 	}
 
 	if cfg.IncludeProfile {
-		var firstName sql.NullString
-		var lastName sql.NullString
-		var birthDate sql.NullString
-		var countryCode sql.NullString
-		var title sql.NullString
-		var about sql.NullString
-		var avatar_url sql.NullString
+		var firstName pgtype.Text
+		var lastName pgtype.Text
+		var birthDate pgtype.Text
+		var countryCode pgtype.Text
+		var title pgtype.Text
+		var about pgtype.Text
+		var avatar_url pgtype.Text
 		var rdata entity.Ratings
 		var sdata entity.ProfileStats
 
@@ -393,7 +393,7 @@ func OpenDB(host, port, name, user, password, sslmode string) (*pgxpool.Pool, er
 	connStr := PostgresConnUri(host, port, name, user, password, sslmode)
 	ctx := context.Background()
 
-	dbPool, err := pgxpool.Connect(context.Background(), connStr)
+	dbPool, err := pgxpool.New(context.Background(), connStr)
 	if err != nil {
 		return nil, err
 	}

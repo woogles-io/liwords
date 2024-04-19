@@ -2,7 +2,6 @@ package puzzles
 
 import (
 	"context"
-	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
@@ -10,8 +9,9 @@ import (
 	"time"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
 	commontest "github.com/woogles-io/liwords/pkg/common"
@@ -85,7 +85,7 @@ func (s *DBStore) UpdateGenerationLogStatus(ctx context.Context, id int, fulfill
 	}
 	defer tx.Rollback(ctx)
 
-	errorStatus := &sql.NullString{}
+	errorStatus := &pgtype.Text{}
 	if procErr != nil {
 		errorStatus.Valid = true
 		errorStatus.String = procErr.Error()
@@ -106,8 +106,8 @@ func (s *DBStore) UpdateGenerationLogStatus(ctx context.Context, id int, fulfill
 }
 
 func (s *DBStore) GetJobLogs(ctx context.Context, limit, offset int) ([]*puzzle_service.PuzzleJobLog, error) {
-	var createdAt sql.NullTime
-	var completedAt sql.NullTime
+	var createdAt pgtype.Timestamptz
+	var completedAt pgtype.Timestamptz
 	rows, err := s.dbPool.Query(ctx,
 		`SELECT id, request, fulfilled, error_status, created_at, completed_at
 	 FROM puzzle_generation_logs
@@ -119,8 +119,8 @@ func (s *DBStore) GetJobLogs(ctx context.Context, limit, offset int) ([]*puzzle_
 	jobLogs := []*puzzle_service.PuzzleJobLog{}
 	for rows.Next() {
 		jobLog := puzzle_service.PuzzleJobLog{}
-		fulfilled := &sql.NullBool{}
-		errorStatus := &sql.NullString{}
+		fulfilled := &pgtype.Bool{}
+		errorStatus := &pgtype.Text{}
 
 		err = rows.Scan(&jobLog.Id, &jobLog.Request, fulfilled, errorStatus, &createdAt, &completedAt)
 		if err != nil {
@@ -166,7 +166,7 @@ func (s *DBStore) CreatePuzzle(ctx context.Context, gameUUID string, turnNumber 
 		return err
 	}
 
-	authorId := sql.NullInt64{Valid: false}
+	authorId := pgtype.Int8{Valid: false}
 	if authorUUID != "" {
 		aid, err := common.GetUserDBIDFromUUID(ctx, tx, authorUUID)
 		if err != nil {
@@ -225,7 +225,7 @@ func (s *DBStore) GetStartPuzzleId(ctx context.Context, userUUID string, lexicon
 
 		getNext := false
 		var pid int
-		status := &sql.NullBool{}
+		status := &pgtype.Bool{}
 		// This query gets the most recently updated puzzle for this lexicon.
 		err = tx.QueryRow(ctx, `
 			SELECT puzzle_id, correct FROM puzzle_attempts WHERE user_id = $1 AND
@@ -504,7 +504,7 @@ func (s *DBStore) SubmitAnswer(ctx context.Context, userUUID string, ratingKey e
 		return err
 	}
 
-	newCorrectOption := &sql.NullBool{}
+	newCorrectOption := &pgtype.Bool{}
 	// Consider the puzzle completed if the user
 	// has gotten the answer correct or has given up
 	// by requesting the solution
@@ -552,7 +552,7 @@ func (s *DBStore) SubmitAnswer(ctx context.Context, userUUID string, ratingKey e
 		}
 	} else {
 		// Update the attempt if the puzzle is not complete
-		oldCorrectOption := &sql.NullBool{}
+		oldCorrectOption := &pgtype.Bool{}
 		err = tx.QueryRow(ctx, `SELECT correct FROM puzzle_attempts WHERE puzzle_id = $1 AND user_id = $2 FOR UPDATE`, pid, uid).Scan(oldCorrectOption)
 		if err != nil {
 			return err
@@ -676,10 +676,10 @@ func (s *DBStore) GetJobInfo(ctx context.Context, genId int) (time.Time, time.Ti
 	}
 	defer tx.Rollback(ctx)
 
-	var createdAtTime sql.NullTime
-	var completedAtTime sql.NullTime
-	fulfilled := &sql.NullBool{}
-	errorStatus := &sql.NullString{}
+	var createdAtTime pgtype.Timestamptz
+	var completedAtTime pgtype.Timestamptz
+	fulfilled := &pgtype.Bool{}
+	errorStatus := &pgtype.Text{}
 	err = tx.QueryRow(ctx, `SELECT created_at, completed_at, fulfilled, error_status FROM puzzle_generation_logs WHERE id = $1`, genId).Scan(&createdAtTime, &completedAtTime, fulfilled, errorStatus)
 	if err == pgx.ErrNoRows {
 		return time.Time{}, time.Time{}, -1, nil, nil, -1, -1, nil, fmt.Errorf("row not found while calculating job duration: %d", genId)
@@ -751,12 +751,12 @@ func (s *DBStore) GetJobInfo(ctx context.Context, genId int) (time.Time, time.Ti
 }
 
 func (s *DBStore) GetPotentialPuzzleGames(ctx context.Context, time1, time2 time.Time,
-	limit int, lexicon string, avoidBots bool) ([]sql.NullString, error) {
+	limit int, lexicon string, avoidBots bool) ([]pgtype.Text, error) {
 
 	if avoidBots {
 		ids, err := s.queries.GetPotentialPuzzleGamesAvoidBots(ctx, models.GetPotentialPuzzleGamesAvoidBotsParams{
-			CreatedAt:   sql.NullTime{Valid: true, Time: time1},
-			CreatedAt_2: sql.NullTime{Valid: true, Time: time2},
+			CreatedAt:   pgtype.Timestamptz{Valid: true, Time: time1},
+			CreatedAt_2: pgtype.Timestamptz{Valid: true, Time: time2},
 			Request:     []byte(`%` + lexicon + `%`),
 			Limit:       int32(limit),
 			Offset:      0,
@@ -764,8 +764,8 @@ func (s *DBStore) GetPotentialPuzzleGames(ctx context.Context, time1, time2 time
 		return ids, err
 	}
 	ids, err := s.queries.GetPotentialPuzzleGames(ctx, models.GetPotentialPuzzleGamesParams{
-		CreatedAt:   sql.NullTime{Valid: true, Time: time1},
-		CreatedAt_2: sql.NullTime{Valid: true, Time: time2},
+		CreatedAt:   pgtype.Timestamptz{Valid: true, Time: time1},
+		CreatedAt_2: pgtype.Timestamptz{Valid: true, Time: time2},
 		Request:     []byte(`%` + lexicon + `%`),
 		Limit:       int32(limit),
 		Offset:      0,
@@ -798,7 +798,7 @@ func getAttempts(ctx context.Context, tx pgx.Tx, userUUID string, puzzleUUID str
 	}
 
 	var attempts int32
-	correct := &sql.NullBool{}
+	correct := &pgtype.Bool{}
 	var firstAttemptTime time.Time
 	var lastAttemptTime time.Time
 	var newPuzzleRating *entity.SingleRating
@@ -999,7 +999,7 @@ func getNextPuzzleId(ctx context.Context, tx pgx.Tx, userUUID string, lexicon st
 	return puzzleUUID, pqr, nil
 }
 
-func getRandomPuzzleUUID(ctx context.Context, tx pgx.Tx, lexicon string, randomId *sql.NullInt64) (string, error) {
+func getRandomPuzzleUUID(ctx context.Context, tx pgx.Tx, lexicon string, randomId *pgtype.Int8) (string, error) {
 	var err error
 	if randomId == nil {
 		randomId, err = getRandomPuzzleDBID(ctx, tx)
@@ -1025,8 +1025,8 @@ func getRandomPuzzleUUID(ctx context.Context, tx pgx.Tx, lexicon string, randomI
 	return puzzleUUID, nil
 }
 
-func getRandomPuzzleDBID(ctx context.Context, tx pgx.Tx) (*sql.NullInt64, error) {
-	var id sql.NullInt64
+func getRandomPuzzleDBID(ctx context.Context, tx pgx.Tx) (*pgtype.Int8, error) {
+	var id pgtype.Int8
 	err := tx.QueryRow(ctx, "SELECT FLOOR(RANDOM() * MAX(id)) FROM puzzles").Scan(&id)
 	return &id, err
 }

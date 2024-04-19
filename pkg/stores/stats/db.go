@@ -2,11 +2,11 @@ package stats
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/stores/common"
@@ -90,9 +90,9 @@ func (s *DBStore) GetListItems(ctx context.Context, statType int, gameIds []stri
 
 	listItems := []*entity.ListItem{}
 	for rows.Next() {
-		var gameID sql.NullString
-		var playerID sql.NullString
-		var timestamp sql.NullInt64
+		var gameID pgtype.Text
+		var playerID pgtype.Text
+		var timestamp pgtype.Int8
 		var item entity.ListDatum
 		if err := rows.Scan(&gameID, &playerID, &timestamp, &item); err != nil {
 			return nil, err

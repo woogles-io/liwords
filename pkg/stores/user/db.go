@@ -2,14 +2,14 @@ package user
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -45,8 +45,8 @@ type DBUniqueValues struct {
 	actionDBID  int64
 	removalNote string
 	userDBID    int64
-	applierDBID sql.NullInt64
-	removerDBID sql.NullInt64
+	applierDBID pgtype.Int8
+	removerDBID pgtype.Int8
 }
 
 // DBStore is a postgres-backed store for users.
@@ -315,12 +315,12 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 	for rows.Next() {
 		var UUID string
 		var username string
-		var internalBotOption sql.NullBool
-		var countryCodeOption sql.NullString
-		var avatarUrlOption sql.NullString
-		var firstNameOption sql.NullString
-		var lastNameOption sql.NullString
-		var birthDateOption sql.NullString
+		var internalBotOption pgtype.Bool
+		var countryCodeOption pgtype.Text
+		var avatarUrlOption pgtype.Text
+		var firstNameOption pgtype.Text
+		var lastNameOption pgtype.Text
+		var birthDateOption pgtype.Text
 		if err := rows.Scan(&UUID, &username, &internalBotOption, &countryCodeOption, &avatarUrlOption, &firstNameOption, &lastNameOption, &birthDateOption); err != nil {
 			return nil, err
 		}
@@ -909,8 +909,8 @@ func (s *DBStore) GetModList(ctx context.Context) (*pb.GetModListResponse, error
 	var adminUserIds []string
 	var modUserIds []string
 	var uuid string
-	var isAdmin sql.NullBool
-	var isMod sql.NullBool
+	var isAdmin pgtype.Bool
+	var isMod pgtype.Bool
 	for rows.Next() {
 		if err := rows.Scan(&uuid, &isAdmin, &isMod); err != nil {
 			return nil, err
@@ -994,15 +994,15 @@ func scanRowsIntoModActions(ctx context.Context, tx pgx.Tx, rows pgx.Rows) ([]*m
 		var action_dbid int64
 		var user_dbid int64
 		var action_type int
-		var start_time sql.NullTime
-		var end_time sql.NullTime
-		var removed_time sql.NullTime
-		var message_id sql.NullString
-		var applier_dbid sql.NullInt64
-		var remover_dbid sql.NullInt64
-		var chat_text sql.NullString
-		var note sql.NullString
-		var removal_note sql.NullString
+		var start_time pgtype.Timestamptz
+		var end_time pgtype.Timestamptz
+		var removed_time pgtype.Timestamptz
+		var message_id pgtype.Text
+		var applier_dbid pgtype.Int8
+		var remover_dbid pgtype.Int8
+		var chat_text pgtype.Text
+		var note pgtype.Text
+		var removal_note pgtype.Text
 		var email_type int
 
 		if err := rows.Scan(&action_dbid, &user_dbid, &action_type, &start_time,
@@ -1123,8 +1123,8 @@ func getActionsDB(ctx context.Context, tx pgx.Tx, userUUID string) (map[string]*
 	return modActionsMap, dbUniqueValuesMap, nil
 }
 
-func ApplySingleActionDB(ctx context.Context, tx pgx.Tx, userDBID int64, applierDBID sql.NullInt64, removerDBID sql.NullInt64, action *ms.ModAction) error {
-	var endTime sql.NullTime
+func ApplySingleActionDB(ctx context.Context, tx pgx.Tx, userDBID int64, applierDBID pgtype.Int8, removerDBID pgtype.Int8, action *ms.ModAction) error {
+	var endTime pgtype.Timestamptz
 	endTime.Valid = false
 	if action.EndTime != nil {
 		endTime.Time = action.EndTime.AsTime()
@@ -1140,7 +1140,7 @@ func ApplySingleActionDB(ctx context.Context, tx pgx.Tx, userDBID int64, applier
 	return err
 }
 
-func updateActionForRemoval(ctx context.Context, tx pgx.Tx, removedActionDBID int64, removerDBID sql.NullInt64, removalNote string) error {
+func updateActionForRemoval(ctx context.Context, tx pgx.Tx, removedActionDBID int64, removerDBID pgtype.Int8, removalNote string) error {
 	result, err := tx.Exec(ctx, `UPDATE user_actions SET removed_time = NOW(), remover_id = $1, removal_note = $2
 	WHERE id = $3`, removerDBID, removalNote, removedActionDBID)
 	if result.RowsAffected() != 1 {
@@ -1298,7 +1298,7 @@ func applyOrRemoveActionsDB(ctx context.Context, s *DBStore, actions []*ms.ModAc
 			return fmt.Errorf("DBID not found for user: %s", action.UserId)
 		}
 
-		var nullOrAppliererDBID sql.NullInt64
+		var nullOrAppliererDBID pgtype.Int8
 		nullOrAppliererDBID.Valid = false
 		if action.ApplierUserId != "" {
 			removerDBID, exists := userDBIDs[action.ApplierUserId]
@@ -1325,7 +1325,7 @@ func applyOrRemoveActionsDB(ctx context.Context, s *DBStore, actions []*ms.ModAc
 		}
 
 		if apply {
-			err := ApplySingleActionDB(ctx, tx, userDBID, nullOrAppliererDBID, sql.NullInt64{Valid: false}, action)
+			err := ApplySingleActionDB(ctx, tx, userDBID, nullOrAppliererDBID, pgtype.Int8{Valid: false}, action)
 			if err != nil {
 				return err
 			}

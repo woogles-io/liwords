@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"os"
 
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -42,7 +42,7 @@ func getAllActions(ctx context.Context, dbPool *pgxpool.Pool) (map[string]bool, 
 	for rows.Next() {
 		var user_uuid string
 		var action_type int
-		var start_time sql.NullTime
+		var start_time pgtype.Timestamptz
 
 		if err := rows.Scan(&user_uuid, &start_time, &action_type); err != nil {
 			return nil, err
@@ -106,7 +106,7 @@ func migrateActions(ctx context.Context, dbPool *pgxpool.Pool, actionsToMigrate 
 			return fmt.Errorf("user DBID not found: %s\n", action.UserId)
 		}
 
-		applierDBIDOption := sql.NullInt64{Valid: false}
+		applierDBIDOption := pgtype.Int8{Valid: false}
 
 		if action.ApplierUserId != "" && action.ApplierUserId != "AUTOMOD" {
 			err = addUserUUID(ctx, tx, action.ApplierUserId, userUUIDtoDBIDs)
@@ -121,7 +121,7 @@ func migrateActions(ctx context.Context, dbPool *pgxpool.Pool, actionsToMigrate 
 			applierDBIDOption.Valid = true
 		}
 
-		removerDBIDOption := sql.NullInt64{Valid: false}
+		removerDBIDOption := pgtype.Int8{Valid: false}
 
 		if action.RemoverUserId != "" && action.RemoverUserId != "AUTOMOD" {
 			err = addUserUUID(ctx, tx, action.RemoverUserId, userUUIDtoDBIDs)

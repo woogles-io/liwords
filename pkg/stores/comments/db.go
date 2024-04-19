@@ -2,10 +2,10 @@ package comments
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 )
 
@@ -28,7 +28,7 @@ func (s *DBStore) AddComment(ctx context.Context, gameID string, authorID int,
 
 	id, err := s.queries.AddComment(ctx, models.AddCommentParams{
 		// how do i rename this default field uuid?
-		Uuid:        sql.NullString{gameID, true},
+		Uuid:        pgtype.Text{String: gameID, Valid: true},
 		AuthorID:    int32(authorID),
 		EventNumber: int32(eventNumber),
 		Comment:     comment,
@@ -41,7 +41,7 @@ func (s *DBStore) AddComment(ctx context.Context, gameID string, authorID int,
 }
 
 func (s *DBStore) GetComments(ctx context.Context, gameID string) ([]models.GetCommentsForGameRow, error) {
-	return s.queries.GetCommentsForGame(ctx, sql.NullString{gameID, true})
+	return s.queries.GetCommentsForGame(ctx, pgtype.Text{String: gameID, Valid: true})
 }
 
 func (s *DBStore) GetCommentsForAllGames(ctx context.Context, limit, offset int) ([]models.GetCommentsForAllGamesRow, error) {
