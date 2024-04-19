@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -37,10 +38,16 @@ func (t *Timers) Value() (driver.Value, error) {
 }
 
 func (t *Timers) Scan(value interface{}) error {
-	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed")
+	var b []byte
+	switch v := value.(type) {
+	case []byte:
+		b = v
+	case string:
+		b = []byte(v)
+	default:
+		return fmt.Errorf("unexpected type %T for timers", value)
 	}
+
 	return json.Unmarshal(b, &t)
 }
 
@@ -85,10 +92,16 @@ func (q *Quickdata) Value() (driver.Value, error) {
 }
 
 func (q *Quickdata) Scan(value interface{}) error {
-	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed")
+	var b []byte
+	switch v := value.(type) {
+	case []byte:
+		b = v
+	case string:
+		b = []byte(v)
+	default:
+		return fmt.Errorf("unexpected type %T for quickdata", value)
 	}
+
 	return json.Unmarshal(b, &q)
 }
 

@@ -2,7 +2,6 @@ package puzzles
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"math"
@@ -16,7 +15,8 @@ import (
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/macondo/move"
 	"github.com/domino14/word-golib/tilemapping"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lithammer/shortuuid"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
@@ -1146,7 +1146,7 @@ func getPuzzlePopularity(ctx context.Context, pool *pgxpool.Pool, puzzleUUID str
 	return popularity, err
 }
 
-func getPuzzleAttempt(ctx context.Context, pool *pgxpool.Pool, userUUID string, puzzleUUID string) (int32, *sql.NullBool, error) {
+func getPuzzleAttempt(ctx context.Context, pool *pgxpool.Pool, userUUID string, puzzleUUID string) (int32, *pgtype.Bool, error) {
 	pid, err := commondb.GetDBIDFromUUID(ctx, pool, &commondb.CommonDBConfig{
 		TableType: commondb.PuzzlesTable,
 		Value:     puzzleUUID,
@@ -1163,7 +1163,7 @@ func getPuzzleAttempt(ctx context.Context, pool *pgxpool.Pool, userUUID string, 
 		return 0, nil, err
 	}
 	var attempts int32
-	correct := &sql.NullBool{}
+	correct := &pgtype.Bool{}
 	err = pool.QueryRow(ctx, `SELECT attempts, correct FROM puzzle_attempts WHERE user_id = $1 AND puzzle_id = $2`, uid, pid).Scan(&attempts, correct)
 	if err != nil {
 		return 0, nil, err

@@ -2,13 +2,10 @@ package session
 
 import (
 	"context"
-	"database/sql/driver"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lithammer/shortuuid"
 
 	"github.com/woogles-io/liwords/pkg/entity"
@@ -126,17 +123,4 @@ func (s *DBStore) ExtendExpiry(ctx context.Context, sess *entity.Session) error 
 		return err
 	}
 	return nil
-}
-
-func (si *sessionInfo) Value() (driver.Value, error) {
-	return json.Marshal(si)
-}
-
-func (si *sessionInfo) Scan(value interface{}) error {
-	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed for session info")
-	}
-
-	return json.Unmarshal(b, &si)
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"

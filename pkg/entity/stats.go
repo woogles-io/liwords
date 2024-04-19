@@ -3,6 +3,7 @@ package entity
 import (
 	"database/sql/driver"
 	"encoding/json"
+	"fmt"
 )
 
 // A ListDatum is the individual datum that is stored in a list. It is
@@ -210,11 +211,19 @@ func (ld *ListDatum) Value() (driver.Value, error) {
 	return json.Marshal(ld)
 }
 
+// Remove these transformation functions once we get rid of Gorm everywhere.
 func (ld *ListDatum) Scan(value interface{}) error {
-	var err error
-	b, ok := value.([]byte)
-	if ok {
-		err = json.Unmarshal(b, &ld)
+	var b []byte
+	switch v := value.(type) {
+	case []byte:
+		b = v
+	case string:
+		b = []byte(v)
+	case nil:
+		return nil
+	default:
+		return fmt.Errorf("unexpected type %T for listdatum", value)
 	}
-	return err
+
+	return json.Unmarshal(b, &ld)
 }

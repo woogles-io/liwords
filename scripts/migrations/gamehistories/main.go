@@ -2,18 +2,20 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"os"
 
 	"github.com/domino14/macondo/gen/api/proto/macondo"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/proto"
+
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/stores/common"
-	"google.golang.org/protobuf/proto"
 )
 
 const GameChunkSize = 1000
@@ -92,7 +94,7 @@ type GameFields struct {
 	mdata               entity.Quickdata
 	tdata               entity.Timers
 	history             entity.GameHistory
-	winnerIdx, loserIdx sql.NullInt32
+	winnerIdx, loserIdx pgtype.Int4
 	id                  int
 }
 

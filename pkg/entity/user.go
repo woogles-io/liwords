@@ -1,8 +1,6 @@
 package entity
 
 import (
-	"database/sql/driver"
-	"encoding/json"
 	"errors"
 	"math"
 	"strconv"
@@ -225,17 +223,4 @@ func (u *User) IsChild() pb.ChildStatus {
 		return pb.ChildStatus_UNKNOWN
 	}
 	return InferChildStatus(u.Profile.BirthDate, time.Now())
-}
-
-func (p *Profile) Value() (driver.Value, error) {
-	return json.Marshal(p)
-}
-
-func (p *Profile) Scan(value interface{}) error {
-	var err error
-	b, ok := value.([]byte)
-	if ok {
-		err = json.Unmarshal(b, &p)
-	}
-	return err
 }

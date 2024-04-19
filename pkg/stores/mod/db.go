@@ -3,7 +3,7 @@ package mod
 import (
 	"context"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/woogles-io/liwords/pkg/stores/common"
 	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 )

@@ -64,7 +64,7 @@ func (cs *CommentsService) GetGameComments(ctx context.Context, req *connect.Req
 				Username:    c.Username.String,
 				EventNumber: uint32(c.EventNumber),
 				Comment:     c.Comment,
-				LastEdited:  timestamppb.New(c.EditedAt),
+				LastEdited:  timestamppb.New(c.EditedAt.Time),
 			}
 		}),
 	}), nil
@@ -115,7 +115,7 @@ func (cs *CommentsService) GetCommentsForAllGames(ctx context.Context, req *conn
 	return connect.NewResponse(&pb.GetCommentsResponse{
 		Comments: lo.Map(comments, func(c models.GetCommentsForAllGamesRow, idx int) *pb.GameComment {
 			qd := &entity.Quickdata{}
-			err := json.Unmarshal(c.Quickdata.Bytes, qd)
+			err := json.Unmarshal(c.Quickdata, qd)
 			gameMeta := map[string]string{}
 			if err == nil {
 				playerNames := lo.Map(qd.PlayerInfo, func(p *ipc.PlayerInfo, idx int) string {
@@ -129,7 +129,7 @@ func (cs *CommentsService) GetCommentsForAllGames(ctx context.Context, req *conn
 				UserId:      c.UserUuid.String,
 				Username:    c.Username.String,
 				EventNumber: uint32(c.EventNumber),
-				LastEdited:  timestamppb.New(c.EditedAt),
+				LastEdited:  timestamppb.New(c.EditedAt.Time),
 				GameMeta:    gameMeta,
 			}
 		}),

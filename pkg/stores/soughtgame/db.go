@@ -3,9 +3,10 @@ package soughtgame
 import (
 	"context"
 	"fmt"
+	"strings"
 
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/stores/common"
@@ -351,7 +352,14 @@ func getSoughtGameBy(ctx context.Context, tx pgx.Tx, cfg *common.CommonDBConfig)
 	req := pb.SeekRequest{}
 	err := tx.QueryRow(ctx, fmt.Sprintf("SELECT request FROM soughtgames WHERE %s = $1", common.SelectByTypeToString[cfg.SelectByType]), cfg.Value).Scan(&req)
 	if err != nil {
-		return nil, err
+		if strings.Contains(err.Error(), "cannot scan NULL") {
+			// Do nothing, can just return a blank request.
+			// XXX: This is ugly and we should not be scanning/saving the pb
+			// requests directly; why not using the entity.SoughtGame wrapper +
+			// its custom Scan function?
+		} else {
+			return nil, err
+		}
 	}
 	return &entity.SoughtGame{SeekRequest: &req}, nil
 }

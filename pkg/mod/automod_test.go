@@ -10,7 +10,7 @@ import (
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/word-golib/tilemapping"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lithammer/shortuuid"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"

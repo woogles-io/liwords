@@ -3,6 +3,7 @@ package entity
 import (
 	"database/sql/driver"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
@@ -54,25 +55,38 @@ func (r *Ratings) Value() (driver.Value, error) {
 }
 
 func (r *Ratings) Scan(value interface{}) error {
-	var err error
-	b, ok := value.([]byte)
-	if ok {
-		err = json.Unmarshal(b, &r)
+	var b []byte
+	switch v := value.(type) {
+	case []byte:
+		b = v
+	case string:
+		b = []byte(v)
+	default:
+		return fmt.Errorf("unexpected type %T for ratings", value)
 	}
-	return err
+
+	return json.Unmarshal(b, &r)
 }
 
+// XXX: Get rid of these when we're no longer using Gorm anywhere.
+// PGXV5 should be able to directly scan into these types.
 func (r *SingleRating) Value() (driver.Value, error) {
 	return json.Marshal(r)
 }
 
 func (r *SingleRating) Scan(value interface{}) error {
-	var err error
-	b, ok := value.([]byte)
-	if ok {
-		err = json.Unmarshal(b, &r)
+	var b []byte
+	switch v := value.(type) {
+	case []byte:
+		b = v
+	case string:
+		b = []byte(v)
+	default:
+		return fmt.Errorf("unexpected type %T for SingleRating", value)
 	}
-	return err
+
+	return json.Unmarshal(b, &r)
+
 }
 
 func transformLexiconName(lexiconName string) string {

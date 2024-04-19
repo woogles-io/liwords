@@ -167,6 +167,7 @@ func (sg *SoughtGame) Value() (driver.Value, error) {
 }
 
 func (sg *SoughtGame) Scan(value interface{}) error {
+	fmt.Println("tryna scan", value)
 	b, ok := value.([]byte)
 	if !ok {
 		return errors.New("type assertion to []byte failed for sought game")

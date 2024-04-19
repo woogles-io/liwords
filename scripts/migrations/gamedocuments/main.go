@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/config"
