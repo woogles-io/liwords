@@ -2,9 +2,6 @@ package session
 
 import (
 	"context"
-	"database/sql/driver"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
@@ -126,17 +123,4 @@ func (s *DBStore) ExtendExpiry(ctx context.Context, sess *entity.Session) error 
 		return err
 	}
 	return nil
-}
-
-func (si *sessionInfo) Value() (driver.Value, error) {
-	return json.Marshal(si)
-}
-
-func (si *sessionInfo) Scan(value interface{}) error {
-	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed for session info")
-	}
-
-	return json.Unmarshal(b, &si)
 }

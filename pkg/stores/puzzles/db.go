@@ -2,9 +2,7 @@ package puzzles
 
 import (
 	"context"
-	"database/sql/driver"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
@@ -1040,19 +1038,6 @@ func sanitizeHistory(hist *macondopb.GameHistory) {
 	hist.Players[1].UserId = commontest.DefaultPlayerTwoInfo.UserId
 }
 
-func (a *answer) Value() (driver.Value, error) {
-	return json.Marshal(a)
-}
-
-func (a *answer) Scan(value interface{}) error {
-	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed")
-	}
-
-	return json.Unmarshal(b, &a)
-}
-
 func gameEventToAnswer(evt *macondopb.GameEvent) *answer {
 	return &answer{
 		EventType:   int32(evt.Type),
@@ -1083,7 +1068,7 @@ func answerToGameEvent(a *answer) *macondopb.GameEvent {
 
 func AnswerBytesToGameEvent(abts []byte) (*macondopb.GameEvent, error) {
 	a := &answer{}
-	err := a.Scan(abts)
+	err := json.Unmarshal(abts, a)
 	if err != nil {
 		return nil, err
 	}
