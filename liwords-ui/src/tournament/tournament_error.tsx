@@ -1,4 +1,3 @@
-import { ConnectError } from '@domino14/connect-web';
 import { errorInfo } from '../utils/parse_woogles_error';
 import { WooglesError } from '../gen/api/proto/ipc/errors_pb';
 import { flashError } from '../utils/hooks/connect';
@@ -6,6 +5,7 @@ import { TournamentState } from '../store/reducers/tournament_reducer';
 import { WarningOutlined } from '@ant-design/icons';
 import { MessageInstance } from 'antd/lib/message/interface';
 import { NotificationInstance } from 'antd/lib/notification/interface';
+import { ConnectError } from '@connectrpc/connect';
 
 export const flashTournamentError = (
   message: MessageInstance,

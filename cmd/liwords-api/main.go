@@ -290,8 +290,6 @@ func main() {
 	connectapichain := middlewares.Then(connectapi)
 
 	router.Handle("/api/", http.StripPrefix("/api", connectapichain))
-	// Handle legacy path while we migrate off of it:
-	router.Handle("/twirp/", http.StripPrefix("/twirp", connectapichain))
 
 	router.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
 	router.Handle(

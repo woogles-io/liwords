@@ -98,13 +98,13 @@ import {
 import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { flashError, useClient } from '../utils/hooks/connect';
 import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connectweb';
-import { PromiseClient } from '@domino14/connect-web';
 import { RackEditor } from './rack_editor';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
 const EnterKey = 'Enter';
 import variables from '../base.module.scss';
+import { PromiseClient } from '@connectrpc/connect';
 const { colorPrimary } = variables;
 
 type Props = {

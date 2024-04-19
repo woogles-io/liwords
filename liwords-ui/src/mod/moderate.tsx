@@ -10,9 +10,9 @@ import {
   ModActionsList,
   ModActionsMap,
 } from '../gen/api/proto/mod_service/mod_service_pb';
-import { PromiseClient } from '@domino14/connect-web';
 import { ModActionType } from '../gen/api/proto/mod_service/mod_service_pb';
 import { HookAPI } from 'antd/lib/modal/useModal';
+import { PromiseClient } from '@connectrpc/connect';
 
 type ModProps = {
   userID: string;
