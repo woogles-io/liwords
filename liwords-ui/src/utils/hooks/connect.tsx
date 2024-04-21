@@ -1,38 +1,27 @@
 import { useMemo } from 'react';
-import {
-  ConnectError,
-  createConnectTransport,
-  createPromiseClient,
-  PromiseClient,
-} from '@domino14/connect-web';
 
 import { ServiceType } from '@bufbuild/protobuf';
 import { message } from 'antd';
 import { parseWooglesError } from '../parse_woogles_error';
+import { createConnectTransport } from '@connectrpc/connect-web';
+import {
+  ConnectError,
+  PromiseClient,
+  createPromiseClient,
+} from '@connectrpc/connect';
 
 const loc = window.location;
 const apiEndpoint = window.RUNTIME_CONFIGURATION?.apiEndpoint || loc.host;
 
-// const errorTranslator: Interceptor = (next) => async (req) => {
-//   try {
-//     const res = await next(req);
-//     console.log('in interceptor', res);
-//     return res;
-//   } catch (e) {
-//     console.log('in interceptor, caught', e);
-//     throw e;
-//   }
-// };
-
 export const baseURL = `${loc.protocol}//${apiEndpoint}`;
 
 export const transport = createConnectTransport({
-  baseUrl: `${baseURL}/twirp/`,
+  baseUrl: `${baseURL}/api/`,
   //   interceptors: [errorTranslator],
 });
 
 export const binaryTransport = createConnectTransport({
-  baseUrl: `${loc.protocol}//${apiEndpoint}/twirp/`,
+  baseUrl: `${loc.protocol}//${apiEndpoint}/api/`,
   useBinaryFormat: true,
 });
 
