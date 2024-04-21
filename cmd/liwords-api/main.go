@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"expvar"
 	"fmt"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -20,6 +22,10 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/gomodule/redigo/redis"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/runtime/protoiface"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/bus"
@@ -94,6 +100,47 @@ func pingEndpoint(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(200)
 	w.Write([]byte(`{"status":"copacetic"}`))
+}
+
+func errNotProto(message any) error {
+	if _, ok := message.(protoiface.MessageV1); ok {
+		return fmt.Errorf("%T uses github.com/golang/protobuf, but connect-go only supports google.golang.org/protobuf: see https://go.dev/blog/protobuf-apiv2", message)
+	}
+	return fmt.Errorf("%T doesn't implement proto.Message", message)
+}
+
+type DefaultValuesProtoJSONCodec struct{}
+
+func (j *DefaultValuesProtoJSONCodec) Name() string {
+	return "json"
+}
+
+func (j *DefaultValuesProtoJSONCodec) Marshal(message any) ([]byte, error) {
+	protoMessage, ok := message.(proto.Message)
+	if !ok {
+		return nil, errNotProto(message)
+	}
+	return protojson.MarshalOptions{
+		EmitDefaultValues: true,
+	}.Marshal(protoMessage)
+}
+
+func (j *DefaultValuesProtoJSONCodec) Unmarshal(bts []byte, message any) error {
+	protoMessage, ok := message.(proto.Message)
+	if !ok {
+		return errNotProto(message)
+	}
+	if len(bts) == 0 {
+		return errors.New("zero-length payload is not a valid JSON object")
+	}
+	// Discard unknown fields so clients and servers aren't forced to always use
+	// exactly the same version of the schema.
+	options := protojson.UnmarshalOptions{DiscardUnknown: true}
+	err := options.Unmarshal(bts, protoMessage)
+	if err != nil {
+		return fmt.Errorf("unmarshal into %T: %w", message, err)
+	}
+	return nil
 }
 
 func main() {
@@ -246,45 +293,47 @@ func main() {
 
 	router.Handle(memento.GameimgPrefix, middlewares.Then(mementoService))
 
+	options := connect.WithHandlerOptions(connect.WithCodec(&DefaultValuesProtoJSONCodec{}))
+
 	connectapi := http.NewServeMux()
 	connectapi.Handle(
-		user_serviceconnect.NewAuthenticationServiceHandler(authenticationService),
+		user_serviceconnect.NewAuthenticationServiceHandler(authenticationService, options),
 	)
 	connectapi.Handle(
-		user_serviceconnect.NewRegistrationServiceHandler(registrationService),
+		user_serviceconnect.NewRegistrationServiceHandler(registrationService, options),
 	)
 	connectapi.Handle(
-		user_serviceconnect.NewProfileServiceHandler(profileService),
+		user_serviceconnect.NewProfileServiceHandler(profileService, options),
 	)
 	connectapi.Handle(
-		user_serviceconnect.NewAutocompleteServiceHandler(autocompleteService),
+		user_serviceconnect.NewAutocompleteServiceHandler(autocompleteService, options),
 	)
 	connectapi.Handle(
-		user_serviceconnect.NewSocializeServiceHandler(socializeService),
+		user_serviceconnect.NewSocializeServiceHandler(socializeService, options),
 	)
 	connectapi.Handle(
-		game_serviceconnect.NewGameMetadataServiceHandler(gameService),
+		game_serviceconnect.NewGameMetadataServiceHandler(gameService, options),
 	)
 	connectapi.Handle(
-		omgwords_serviceconnect.NewGameEventServiceHandler(omgwordsService),
+		omgwords_serviceconnect.NewGameEventServiceHandler(omgwordsService, options),
 	)
 	connectapi.Handle(
-		word_serviceconnect.NewWordServiceHandler(wordService),
+		word_serviceconnect.NewWordServiceHandler(wordService, options),
 	)
 	connectapi.Handle(
-		config_serviceconnect.NewConfigServiceHandler(configService),
+		config_serviceconnect.NewConfigServiceHandler(configService, options),
 	)
 	connectapi.Handle(
-		tournament_serviceconnect.NewTournamentServiceHandler(tournamentService),
+		tournament_serviceconnect.NewTournamentServiceHandler(tournamentService, options),
 	)
 	connectapi.Handle(
-		mod_serviceconnect.NewModServiceHandler(modService),
+		mod_serviceconnect.NewModServiceHandler(modService, options),
 	)
 	connectapi.Handle(
-		puzzle_serviceconnect.NewPuzzleServiceHandler(puzzleService),
+		puzzle_serviceconnect.NewPuzzleServiceHandler(puzzleService, options),
 	)
 	connectapi.Handle(
-		comments_serviceconnect.NewGameCommentServiceHandler(commentService),
+		comments_serviceconnect.NewGameCommentServiceHandler(commentService, options),
 	)
 
 	connectapichain := middlewares.Then(connectapi)
