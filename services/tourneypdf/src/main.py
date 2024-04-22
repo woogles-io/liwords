@@ -7,7 +7,7 @@ import zipfile
 
 import nats
 
-from generator import ScorecardCreator, URLNotUniqueException
+from generator import ScorecardCreator
 from fetch_tourney import get_tournament
 
 
@@ -71,8 +71,8 @@ async def message_handler(msg):
 async def main():
     nc = await nats.connect(os.environ["NATS_URL"])
 
-    sub = await nc.subscribe("tourneypdf", cb=message_handler)
-    print("Subscribed to tourneypdf channel")
+    sub = await nc.subscribe(os.environ["TOURNEY_PDF_SUBJECT"], cb=message_handler)
+    print("Subscribed to " + os.environ["TOURNEY_PDF_SUBJECT"] + " channel")
     # Use an asyncio.Event to manage the loop termination
     loop_done = asyncio.Event()
 
