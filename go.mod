@@ -29,6 +29,7 @@ require (
 	github.com/nats-io/nats.go v1.34.1
 	github.com/rs/zerolog v1.32.0
 	github.com/samber/lo v1.39.0
+	go.akshayshah.org/connectproto v0.6.0
 	golang.org/x/crypto v0.22.0
 	google.golang.org/protobuf v1.33.0
 	gorm.io/datatypes v1.2.0

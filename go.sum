@@ -255,6 +255,10 @@ github.com/stvp/tempredis v0.0.0-20181119212430-b82af8480203/go.mod h1:oqN97ltKN
 github.com/subosito/gotenv v1.6.0 h1:9NlTDc1FTs4qu0DDq7AEtTPNw6SVm7uBMsUCUjABIf8=
 github.com/subosito/gotenv v1.6.0/go.mod h1:Dk4QP5c2W3ibzajGcXpNraDfq2IrhjMIvMSWPKKo0FU=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
+go.akshayshah.org/attest v1.0.0 h1:f66BDlh/xo2KjIfmtqOFlj5cpn6mvGrP1LXY3Tex4L0=
+go.akshayshah.org/attest v1.0.0/go.mod h1:PnWzcW5j9dkyGwTlBmUsYpPnHG0AUPrs1RQ+HrldWO0=
+go.akshayshah.org/connectproto v0.6.0 h1:tqmysQF2AfvUeYS03mRAAZTFpiQeXqhGIDnH1GO2D2U=
+go.akshayshah.org/connectproto v0.6.0/go.mod h1:uA9TR/6MhBlLn0fh8VXRyL26EKTJlimWao4jbz7JHbA=
 go.uber.org/atomic v1.11.0 h1:ZvwS0R+56ePWxUNi+Atn9dWONBPp/AUETXlHW0DxSjE=
 go.uber.org/atomic v1.11.0/go.mod h1:LUxbIzbOniOlMKjJjyPfpl4v+PKK2cNJn91OQbhoJI0=
 go.uber.org/multierr v1.11.0 h1:blXXJkSxSSfBVBlC76pxqeO+LN3aDfLQo+309xJstO0=

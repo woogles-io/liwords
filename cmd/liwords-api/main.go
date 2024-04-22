@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -20,6 +21,8 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/gomodule/redigo/redis"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.akshayshah.org/connectproto"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/bus"
@@ -246,45 +249,55 @@ func main() {
 
 	router.Handle(memento.GameimgPrefix, middlewares.Then(mementoService))
 
+	// We want to emit default values for backwards compatibility.
+	// see https://github.com/connectrpc/connect-go/issues/684
+	// Use this 3rd party package until connectrpc exposes this.
+	opt := connectproto.WithJSON(
+		protojson.MarshalOptions{EmitDefaultValues: true},
+		protojson.UnmarshalOptions{DiscardUnknown: true},
+	)
+
+	options := connect.WithHandlerOptions(opt)
+
 	connectapi := http.NewServeMux()
 	connectapi.Handle(
-		user_serviceconnect.NewAuthenticationServiceHandler(authenticationService),
+		user_serviceconnect.NewAuthenticationServiceHandler(authenticationService, options),
 	)
 	connectapi.Handle(
-		user_serviceconnect.NewRegistrationServiceHandler(registrationService),
+		user_serviceconnect.NewRegistrationServiceHandler(registrationService, options),
 	)
 	connectapi.Handle(
-		user_serviceconnect.NewProfileServiceHandler(profileService),
+		user_serviceconnect.NewProfileServiceHandler(profileService, options),
 	)
 	connectapi.Handle(
-		user_serviceconnect.NewAutocompleteServiceHandler(autocompleteService),
+		user_serviceconnect.NewAutocompleteServiceHandler(autocompleteService, options),
 	)
 	connectapi.Handle(
-		user_serviceconnect.NewSocializeServiceHandler(socializeService),
+		user_serviceconnect.NewSocializeServiceHandler(socializeService, options),
 	)
 	connectapi.Handle(
-		game_serviceconnect.NewGameMetadataServiceHandler(gameService),
+		game_serviceconnect.NewGameMetadataServiceHandler(gameService, options),
 	)
 	connectapi.Handle(
-		omgwords_serviceconnect.NewGameEventServiceHandler(omgwordsService),
+		omgwords_serviceconnect.NewGameEventServiceHandler(omgwordsService, options),
 	)
 	connectapi.Handle(
-		word_serviceconnect.NewWordServiceHandler(wordService),
+		word_serviceconnect.NewWordServiceHandler(wordService, options),
 	)
 	connectapi.Handle(
-		config_serviceconnect.NewConfigServiceHandler(configService),
+		config_serviceconnect.NewConfigServiceHandler(configService, options),
 	)
 	connectapi.Handle(
-		tournament_serviceconnect.NewTournamentServiceHandler(tournamentService),
+		tournament_serviceconnect.NewTournamentServiceHandler(tournamentService, options),
 	)
 	connectapi.Handle(
-		mod_serviceconnect.NewModServiceHandler(modService),
+		mod_serviceconnect.NewModServiceHandler(modService, options),
 	)
 	connectapi.Handle(
-		puzzle_serviceconnect.NewPuzzleServiceHandler(puzzleService),
+		puzzle_serviceconnect.NewPuzzleServiceHandler(puzzleService, options),
 	)
 	connectapi.Handle(
-		comments_serviceconnect.NewGameCommentServiceHandler(commentService),
+		comments_serviceconnect.NewGameCommentServiceHandler(commentService, options),
 	)
 
 	connectapichain := middlewares.Then(connectapi)
