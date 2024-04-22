@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"expvar"
 	"fmt"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
@@ -13,54 +15,55 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"connectrpc.com/otelconnect"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/exaring/otelpgx"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/gomodule/redigo/redis"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/justinas/alice"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/hlog"
+	"github.com/rs/zerolog/log"
 	"go.akshayshah.org/connectproto"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/auth"
 	"github.com/woogles-io/liwords/pkg/bus"
 	"github.com/woogles-io/liwords/pkg/comments"
+	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/gameplay"
 	"github.com/woogles-io/liwords/pkg/memento"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/omgwords"
 	omgstores "github.com/woogles-io/liwords/pkg/omgwords/stores"
+	pkgprofile "github.com/woogles-io/liwords/pkg/profile"
 	"github.com/woogles-io/liwords/pkg/puzzles"
+	"github.com/woogles-io/liwords/pkg/registration"
 	commentsstore "github.com/woogles-io/liwords/pkg/stores/comments"
 	cfgstore "github.com/woogles-io/liwords/pkg/stores/config"
 	"github.com/woogles-io/liwords/pkg/stores/game"
 	modstore "github.com/woogles-io/liwords/pkg/stores/mod"
 	puzzlestore "github.com/woogles-io/liwords/pkg/stores/puzzles"
+	pkgredis "github.com/woogles-io/liwords/pkg/stores/redis"
 	"github.com/woogles-io/liwords/pkg/stores/session"
 	"github.com/woogles-io/liwords/pkg/stores/soughtgame"
 	"github.com/woogles-io/liwords/pkg/stores/stats"
-	"github.com/woogles-io/liwords/pkg/tournament"
-	"github.com/woogles-io/liwords/pkg/utilities"
-	"github.com/woogles-io/liwords/pkg/words"
-
-	"github.com/woogles-io/liwords/pkg/registration"
-
-	"github.com/woogles-io/liwords/pkg/auth"
-
-	"github.com/justinas/alice"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/hlog"
-	"github.com/rs/zerolog/log"
-
-	"github.com/woogles-io/liwords/pkg/config"
-	pkgprofile "github.com/woogles-io/liwords/pkg/profile"
-	pkgredis "github.com/woogles-io/liwords/pkg/stores/redis"
 	tournamentstore "github.com/woogles-io/liwords/pkg/stores/tournament"
 	"github.com/woogles-io/liwords/pkg/stores/user"
+	"github.com/woogles-io/liwords/pkg/tournament"
 	userservices "github.com/woogles-io/liwords/pkg/user/services"
+	"github.com/woogles-io/liwords/pkg/utilities"
+	"github.com/woogles-io/liwords/pkg/words"
 	"github.com/woogles-io/liwords/rpc/api/proto/comments_service/comments_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/config_service/config_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/game_service/game_serviceconnect"
@@ -70,12 +73,14 @@ import (
 	"github.com/woogles-io/liwords/rpc/api/proto/tournament_service/tournament_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/user_service/user_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/word_service/word_serviceconnect"
-
-	"net/http/pprof"
 )
 
 const (
 	GracefulShutdownTimeout = 30 * time.Second
+)
+
+var (
+	tracer = otel.Tracer("main")
 )
 
 var (
@@ -131,15 +136,29 @@ func main() {
 	e1, e2 := m.Close()
 	log.Err(e1).Msg("close-source")
 	log.Err(e2).Msg("close-database")
+	ctx, pubsubCancel := context.WithCancel(context.Background())
 
+	// Set up OpenTelemetry.
+	otelShutdown, err := setupOTelSDK(ctx)
+	if err != nil {
+		return
+	}
+
+	// Handle shutdown properly so nothing leaks.
+	defer func() {
+		err = errors.Join(err, otelShutdown(context.Background()))
+	}()
+
+	// XXX: REDIS, GORM, NATS
 	redisPool := newPool(cfg.RedisURL)
-	dbPool, err := pgxpool.New(context.Background(), cfg.DBConnUri)
+	dbCfg, err := pgxpool.ParseConfig(cfg.DBConnUri)
 	if err != nil {
 		panic(err)
 	}
+	dbCfg.ConnConfig.Tracer = otelpgx.NewTracer(otelpgx.WithIncludeQueryParameters())
+	dbPool, err := pgxpool.NewWithConfig(ctx, dbCfg)
 
-	router := http.NewServeMux() // here you could also go with third party packages to create a router
-
+	router := http.NewServeMux()
 	stores := bus.Stores{}
 
 	stores.UserStore, err = user.NewDBStore(dbPool)
@@ -214,6 +233,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	otelaws.AppendMiddlewares(&awscfg.APIOptions)
 	s3Client := s3.NewFromConfig(awscfg, utilities.CustomClientOptions)
 	lambdaClient := lambda.NewFromConfig(awscfg)
 	stores.GameDocumentStore, err = omgstores.NewGameDocumentStore(cfg, redisPool, dbPool)
@@ -248,8 +268,22 @@ func main() {
 
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
-	router.Handle(memento.GameimgPrefix, middlewares.Then(mementoService))
+	otcInterceptor, err := otelconnect.NewInterceptor()
+	if err != nil {
+		panic("could not set up otelconnect interceptor")
+	}
 
+	customHTTPSpanNameFormatter := func(opName string, r *http.Request) string {
+		return r.Method + " " + r.URL.Path
+	}
+
+	router.Handle(memento.GameimgPrefix, otelhttp.WithRouteTag(memento.GameimgPrefix, otelhttp.NewHandler(
+		middlewares.Then(mementoService),
+		"memento-api",
+		otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter),
+	)))
+
+	interceptors := connect.WithInterceptors(otcInterceptor)
 	// We want to emit default values for backwards compatibility.
 	// see https://github.com/connectrpc/connect-go/issues/684
 	// Use this 3rd party package until connectrpc exposes this.
@@ -258,7 +292,7 @@ func main() {
 		protojson.UnmarshalOptions{DiscardUnknown: true},
 	)
 
-	options := connect.WithHandlerOptions(opt)
+	options := connect.WithHandlerOptions(opt, interceptors)
 
 	connectapi := http.NewServeMux()
 	connectapi.Handle(
@@ -303,7 +337,10 @@ func main() {
 
 	connectapichain := middlewares.Then(connectapi)
 
-	router.Handle("/api/", http.StripPrefix("/api", connectapichain))
+	router.Handle("/api/", otelhttp.WithRouteTag("/api/",
+		otelhttp.NewHandler(http.StripPrefix("/api", connectapichain),
+			"api",
+			otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter))))
 
 	router.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
 	router.Handle(
@@ -348,8 +385,6 @@ func main() {
 
 	router.Handle(bus.GameEventStreamPrefix,
 		middlewares.Then(pubsubBus.EventAPIServerInstance()))
-
-	ctx, pubsubCancel := context.WithCancel(context.Background())
 
 	srv := &http.Server{
 		Addr:         cfg.ListenAddr,
