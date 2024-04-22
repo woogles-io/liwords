@@ -112,37 +112,41 @@ const (
 	// TournamentServiceExportTournamentProcedure is the fully-qualified name of the TournamentService's
 	// ExportTournament RPC.
 	TournamentServiceExportTournamentProcedure = "/tournament_service.TournamentService/ExportTournament"
+	// TournamentServiceGetTournamentScorecardsProcedure is the fully-qualified name of the
+	// TournamentService's GetTournamentScorecards RPC.
+	TournamentServiceGetTournamentScorecardsProcedure = "/tournament_service.TournamentService/GetTournamentScorecards"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	tournamentServiceServiceDescriptor                      = tournament_service.File_tournament_service_tournament_service_proto.Services().ByName("TournamentService")
-	tournamentServiceNewTournamentMethodDescriptor          = tournamentServiceServiceDescriptor.Methods().ByName("NewTournament")
-	tournamentServiceGetTournamentMetadataMethodDescriptor  = tournamentServiceServiceDescriptor.Methods().ByName("GetTournamentMetadata")
-	tournamentServiceGetTournamentMethodDescriptor          = tournamentServiceServiceDescriptor.Methods().ByName("GetTournament")
-	tournamentServiceFinishTournamentMethodDescriptor       = tournamentServiceServiceDescriptor.Methods().ByName("FinishTournament")
-	tournamentServiceSetTournamentMetadataMethodDescriptor  = tournamentServiceServiceDescriptor.Methods().ByName("SetTournamentMetadata")
-	tournamentServicePairRoundMethodDescriptor              = tournamentServiceServiceDescriptor.Methods().ByName("PairRound")
-	tournamentServiceSetSingleRoundControlsMethodDescriptor = tournamentServiceServiceDescriptor.Methods().ByName("SetSingleRoundControls")
-	tournamentServiceSetRoundControlsMethodDescriptor       = tournamentServiceServiceDescriptor.Methods().ByName("SetRoundControls")
-	tournamentServiceSetDivisionControlsMethodDescriptor    = tournamentServiceServiceDescriptor.Methods().ByName("SetDivisionControls")
-	tournamentServiceAddDirectorsMethodDescriptor           = tournamentServiceServiceDescriptor.Methods().ByName("AddDirectors")
-	tournamentServiceRemoveDirectorsMethodDescriptor        = tournamentServiceServiceDescriptor.Methods().ByName("RemoveDirectors")
-	tournamentServiceAddDivisionMethodDescriptor            = tournamentServiceServiceDescriptor.Methods().ByName("AddDivision")
-	tournamentServiceRenameDivisionMethodDescriptor         = tournamentServiceServiceDescriptor.Methods().ByName("RenameDivision")
-	tournamentServiceRemoveDivisionMethodDescriptor         = tournamentServiceServiceDescriptor.Methods().ByName("RemoveDivision")
-	tournamentServiceAddPlayersMethodDescriptor             = tournamentServiceServiceDescriptor.Methods().ByName("AddPlayers")
-	tournamentServiceRemovePlayersMethodDescriptor          = tournamentServiceServiceDescriptor.Methods().ByName("RemovePlayers")
-	tournamentServiceSetPairingMethodDescriptor             = tournamentServiceServiceDescriptor.Methods().ByName("SetPairing")
-	tournamentServiceSetResultMethodDescriptor              = tournamentServiceServiceDescriptor.Methods().ByName("SetResult")
-	tournamentServiceStartRoundCountdownMethodDescriptor    = tournamentServiceServiceDescriptor.Methods().ByName("StartRoundCountdown")
-	tournamentServiceRecentGamesMethodDescriptor            = tournamentServiceServiceDescriptor.Methods().ByName("RecentGames")
-	tournamentServiceCreateClubSessionMethodDescriptor      = tournamentServiceServiceDescriptor.Methods().ByName("CreateClubSession")
-	tournamentServiceGetRecentClubSessionsMethodDescriptor  = tournamentServiceServiceDescriptor.Methods().ByName("GetRecentClubSessions")
-	tournamentServiceUnstartTournamentMethodDescriptor      = tournamentServiceServiceDescriptor.Methods().ByName("UnstartTournament")
-	tournamentServiceUncheckInMethodDescriptor              = tournamentServiceServiceDescriptor.Methods().ByName("UncheckIn")
-	tournamentServiceCheckInMethodDescriptor                = tournamentServiceServiceDescriptor.Methods().ByName("CheckIn")
-	tournamentServiceExportTournamentMethodDescriptor       = tournamentServiceServiceDescriptor.Methods().ByName("ExportTournament")
+	tournamentServiceServiceDescriptor                       = tournament_service.File_tournament_service_tournament_service_proto.Services().ByName("TournamentService")
+	tournamentServiceNewTournamentMethodDescriptor           = tournamentServiceServiceDescriptor.Methods().ByName("NewTournament")
+	tournamentServiceGetTournamentMetadataMethodDescriptor   = tournamentServiceServiceDescriptor.Methods().ByName("GetTournamentMetadata")
+	tournamentServiceGetTournamentMethodDescriptor           = tournamentServiceServiceDescriptor.Methods().ByName("GetTournament")
+	tournamentServiceFinishTournamentMethodDescriptor        = tournamentServiceServiceDescriptor.Methods().ByName("FinishTournament")
+	tournamentServiceSetTournamentMetadataMethodDescriptor   = tournamentServiceServiceDescriptor.Methods().ByName("SetTournamentMetadata")
+	tournamentServicePairRoundMethodDescriptor               = tournamentServiceServiceDescriptor.Methods().ByName("PairRound")
+	tournamentServiceSetSingleRoundControlsMethodDescriptor  = tournamentServiceServiceDescriptor.Methods().ByName("SetSingleRoundControls")
+	tournamentServiceSetRoundControlsMethodDescriptor        = tournamentServiceServiceDescriptor.Methods().ByName("SetRoundControls")
+	tournamentServiceSetDivisionControlsMethodDescriptor     = tournamentServiceServiceDescriptor.Methods().ByName("SetDivisionControls")
+	tournamentServiceAddDirectorsMethodDescriptor            = tournamentServiceServiceDescriptor.Methods().ByName("AddDirectors")
+	tournamentServiceRemoveDirectorsMethodDescriptor         = tournamentServiceServiceDescriptor.Methods().ByName("RemoveDirectors")
+	tournamentServiceAddDivisionMethodDescriptor             = tournamentServiceServiceDescriptor.Methods().ByName("AddDivision")
+	tournamentServiceRenameDivisionMethodDescriptor          = tournamentServiceServiceDescriptor.Methods().ByName("RenameDivision")
+	tournamentServiceRemoveDivisionMethodDescriptor          = tournamentServiceServiceDescriptor.Methods().ByName("RemoveDivision")
+	tournamentServiceAddPlayersMethodDescriptor              = tournamentServiceServiceDescriptor.Methods().ByName("AddPlayers")
+	tournamentServiceRemovePlayersMethodDescriptor           = tournamentServiceServiceDescriptor.Methods().ByName("RemovePlayers")
+	tournamentServiceSetPairingMethodDescriptor              = tournamentServiceServiceDescriptor.Methods().ByName("SetPairing")
+	tournamentServiceSetResultMethodDescriptor               = tournamentServiceServiceDescriptor.Methods().ByName("SetResult")
+	tournamentServiceStartRoundCountdownMethodDescriptor     = tournamentServiceServiceDescriptor.Methods().ByName("StartRoundCountdown")
+	tournamentServiceRecentGamesMethodDescriptor             = tournamentServiceServiceDescriptor.Methods().ByName("RecentGames")
+	tournamentServiceCreateClubSessionMethodDescriptor       = tournamentServiceServiceDescriptor.Methods().ByName("CreateClubSession")
+	tournamentServiceGetRecentClubSessionsMethodDescriptor   = tournamentServiceServiceDescriptor.Methods().ByName("GetRecentClubSessions")
+	tournamentServiceUnstartTournamentMethodDescriptor       = tournamentServiceServiceDescriptor.Methods().ByName("UnstartTournament")
+	tournamentServiceUncheckInMethodDescriptor               = tournamentServiceServiceDescriptor.Methods().ByName("UncheckIn")
+	tournamentServiceCheckInMethodDescriptor                 = tournamentServiceServiceDescriptor.Methods().ByName("CheckIn")
+	tournamentServiceExportTournamentMethodDescriptor        = tournamentServiceServiceDescriptor.Methods().ByName("ExportTournament")
+	tournamentServiceGetTournamentScorecardsMethodDescriptor = tournamentServiceServiceDescriptor.Methods().ByName("GetTournamentScorecards")
 )
 
 // TournamentServiceClient is a client for the tournament_service.TournamentService service.
@@ -179,6 +183,7 @@ type TournamentServiceClient interface {
 	// CheckIn allows players to check themselves in.
 	CheckIn(context.Context, *connect.Request[tournament_service.CheckinRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	ExportTournament(context.Context, *connect.Request[tournament_service.ExportTournamentRequest]) (*connect.Response[tournament_service.ExportTournamentResponse], error)
+	GetTournamentScorecards(context.Context, *connect.Request[tournament_service.TournamentScorecardRequest]) (*connect.Response[tournament_service.TournamentScorecardResponse], error)
 }
 
 // NewTournamentServiceClient constructs a client for the tournament_service.TournamentService
@@ -201,12 +206,14 @@ func NewTournamentServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+TournamentServiceGetTournamentMetadataProcedure,
 			connect.WithSchema(tournamentServiceGetTournamentMetadataMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getTournament: connect.NewClient[tournament_service.GetTournamentRequest, ipc.FullTournamentDivisions](
 			httpClient,
 			baseURL+TournamentServiceGetTournamentProcedure,
 			connect.WithSchema(tournamentServiceGetTournamentMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		finishTournament: connect.NewClient[tournament_service.FinishTournamentRequest, tournament_service.TournamentResponse](
@@ -309,6 +316,7 @@ func NewTournamentServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+TournamentServiceRecentGamesProcedure,
 			connect.WithSchema(tournamentServiceRecentGamesMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		createClubSession: connect.NewClient[tournament_service.NewClubSessionRequest, tournament_service.ClubSessionResponse](
@@ -321,6 +329,7 @@ func NewTournamentServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+TournamentServiceGetRecentClubSessionsProcedure,
 			connect.WithSchema(tournamentServiceGetRecentClubSessionsMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		unstartTournament: connect.NewClient[tournament_service.UnstartTournamentRequest, tournament_service.TournamentResponse](
@@ -345,6 +354,14 @@ func NewTournamentServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+TournamentServiceExportTournamentProcedure,
 			connect.WithSchema(tournamentServiceExportTournamentMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		getTournamentScorecards: connect.NewClient[tournament_service.TournamentScorecardRequest, tournament_service.TournamentScorecardResponse](
+			httpClient,
+			baseURL+TournamentServiceGetTournamentScorecardsProcedure,
+			connect.WithSchema(tournamentServiceGetTournamentScorecardsMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -352,32 +369,33 @@ func NewTournamentServiceClient(httpClient connect.HTTPClient, baseURL string, o
 
 // tournamentServiceClient implements TournamentServiceClient.
 type tournamentServiceClient struct {
-	newTournament          *connect.Client[tournament_service.NewTournamentRequest, tournament_service.NewTournamentResponse]
-	getTournamentMetadata  *connect.Client[tournament_service.GetTournamentMetadataRequest, tournament_service.TournamentMetadataResponse]
-	getTournament          *connect.Client[tournament_service.GetTournamentRequest, ipc.FullTournamentDivisions]
-	finishTournament       *connect.Client[tournament_service.FinishTournamentRequest, tournament_service.TournamentResponse]
-	setTournamentMetadata  *connect.Client[tournament_service.SetTournamentMetadataRequest, tournament_service.TournamentResponse]
-	pairRound              *connect.Client[tournament_service.PairRoundRequest, tournament_service.TournamentResponse]
-	setSingleRoundControls *connect.Client[tournament_service.SingleRoundControlsRequest, tournament_service.TournamentResponse]
-	setRoundControls       *connect.Client[ipc.DivisionRoundControls, tournament_service.TournamentResponse]
-	setDivisionControls    *connect.Client[ipc.DivisionControls, tournament_service.TournamentResponse]
-	addDirectors           *connect.Client[ipc.TournamentPersons, tournament_service.TournamentResponse]
-	removeDirectors        *connect.Client[ipc.TournamentPersons, tournament_service.TournamentResponse]
-	addDivision            *connect.Client[tournament_service.TournamentDivisionRequest, tournament_service.TournamentResponse]
-	renameDivision         *connect.Client[tournament_service.DivisionRenameRequest, tournament_service.TournamentResponse]
-	removeDivision         *connect.Client[tournament_service.TournamentDivisionRequest, tournament_service.TournamentResponse]
-	addPlayers             *connect.Client[ipc.TournamentPersons, tournament_service.TournamentResponse]
-	removePlayers          *connect.Client[ipc.TournamentPersons, tournament_service.TournamentResponse]
-	setPairing             *connect.Client[tournament_service.TournamentPairingsRequest, tournament_service.TournamentResponse]
-	setResult              *connect.Client[tournament_service.TournamentResultOverrideRequest, tournament_service.TournamentResponse]
-	startRoundCountdown    *connect.Client[tournament_service.TournamentStartRoundCountdownRequest, tournament_service.TournamentResponse]
-	recentGames            *connect.Client[tournament_service.RecentGamesRequest, tournament_service.RecentGamesResponse]
-	createClubSession      *connect.Client[tournament_service.NewClubSessionRequest, tournament_service.ClubSessionResponse]
-	getRecentClubSessions  *connect.Client[tournament_service.RecentClubSessionsRequest, tournament_service.ClubSessionsResponse]
-	unstartTournament      *connect.Client[tournament_service.UnstartTournamentRequest, tournament_service.TournamentResponse]
-	uncheckIn              *connect.Client[tournament_service.UncheckInRequest, tournament_service.TournamentResponse]
-	checkIn                *connect.Client[tournament_service.CheckinRequest, tournament_service.TournamentResponse]
-	exportTournament       *connect.Client[tournament_service.ExportTournamentRequest, tournament_service.ExportTournamentResponse]
+	newTournament           *connect.Client[tournament_service.NewTournamentRequest, tournament_service.NewTournamentResponse]
+	getTournamentMetadata   *connect.Client[tournament_service.GetTournamentMetadataRequest, tournament_service.TournamentMetadataResponse]
+	getTournament           *connect.Client[tournament_service.GetTournamentRequest, ipc.FullTournamentDivisions]
+	finishTournament        *connect.Client[tournament_service.FinishTournamentRequest, tournament_service.TournamentResponse]
+	setTournamentMetadata   *connect.Client[tournament_service.SetTournamentMetadataRequest, tournament_service.TournamentResponse]
+	pairRound               *connect.Client[tournament_service.PairRoundRequest, tournament_service.TournamentResponse]
+	setSingleRoundControls  *connect.Client[tournament_service.SingleRoundControlsRequest, tournament_service.TournamentResponse]
+	setRoundControls        *connect.Client[ipc.DivisionRoundControls, tournament_service.TournamentResponse]
+	setDivisionControls     *connect.Client[ipc.DivisionControls, tournament_service.TournamentResponse]
+	addDirectors            *connect.Client[ipc.TournamentPersons, tournament_service.TournamentResponse]
+	removeDirectors         *connect.Client[ipc.TournamentPersons, tournament_service.TournamentResponse]
+	addDivision             *connect.Client[tournament_service.TournamentDivisionRequest, tournament_service.TournamentResponse]
+	renameDivision          *connect.Client[tournament_service.DivisionRenameRequest, tournament_service.TournamentResponse]
+	removeDivision          *connect.Client[tournament_service.TournamentDivisionRequest, tournament_service.TournamentResponse]
+	addPlayers              *connect.Client[ipc.TournamentPersons, tournament_service.TournamentResponse]
+	removePlayers           *connect.Client[ipc.TournamentPersons, tournament_service.TournamentResponse]
+	setPairing              *connect.Client[tournament_service.TournamentPairingsRequest, tournament_service.TournamentResponse]
+	setResult               *connect.Client[tournament_service.TournamentResultOverrideRequest, tournament_service.TournamentResponse]
+	startRoundCountdown     *connect.Client[tournament_service.TournamentStartRoundCountdownRequest, tournament_service.TournamentResponse]
+	recentGames             *connect.Client[tournament_service.RecentGamesRequest, tournament_service.RecentGamesResponse]
+	createClubSession       *connect.Client[tournament_service.NewClubSessionRequest, tournament_service.ClubSessionResponse]
+	getRecentClubSessions   *connect.Client[tournament_service.RecentClubSessionsRequest, tournament_service.ClubSessionsResponse]
+	unstartTournament       *connect.Client[tournament_service.UnstartTournamentRequest, tournament_service.TournamentResponse]
+	uncheckIn               *connect.Client[tournament_service.UncheckInRequest, tournament_service.TournamentResponse]
+	checkIn                 *connect.Client[tournament_service.CheckinRequest, tournament_service.TournamentResponse]
+	exportTournament        *connect.Client[tournament_service.ExportTournamentRequest, tournament_service.ExportTournamentResponse]
+	getTournamentScorecards *connect.Client[tournament_service.TournamentScorecardRequest, tournament_service.TournamentScorecardResponse]
 }
 
 // NewTournament calls tournament_service.TournamentService.NewTournament.
@@ -510,6 +528,11 @@ func (c *tournamentServiceClient) ExportTournament(ctx context.Context, req *con
 	return c.exportTournament.CallUnary(ctx, req)
 }
 
+// GetTournamentScorecards calls tournament_service.TournamentService.GetTournamentScorecards.
+func (c *tournamentServiceClient) GetTournamentScorecards(ctx context.Context, req *connect.Request[tournament_service.TournamentScorecardRequest]) (*connect.Response[tournament_service.TournamentScorecardResponse], error) {
+	return c.getTournamentScorecards.CallUnary(ctx, req)
+}
+
 // TournamentServiceHandler is an implementation of the tournament_service.TournamentService
 // service.
 type TournamentServiceHandler interface {
@@ -545,6 +568,7 @@ type TournamentServiceHandler interface {
 	// CheckIn allows players to check themselves in.
 	CheckIn(context.Context, *connect.Request[tournament_service.CheckinRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	ExportTournament(context.Context, *connect.Request[tournament_service.ExportTournamentRequest]) (*connect.Response[tournament_service.ExportTournamentResponse], error)
+	GetTournamentScorecards(context.Context, *connect.Request[tournament_service.TournamentScorecardRequest]) (*connect.Response[tournament_service.TournamentScorecardResponse], error)
 }
 
 // NewTournamentServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -563,12 +587,14 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 		TournamentServiceGetTournamentMetadataProcedure,
 		svc.GetTournamentMetadata,
 		connect.WithSchema(tournamentServiceGetTournamentMetadataMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	tournamentServiceGetTournamentHandler := connect.NewUnaryHandler(
 		TournamentServiceGetTournamentProcedure,
 		svc.GetTournament,
 		connect.WithSchema(tournamentServiceGetTournamentMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	tournamentServiceFinishTournamentHandler := connect.NewUnaryHandler(
@@ -671,6 +697,7 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 		TournamentServiceRecentGamesProcedure,
 		svc.RecentGames,
 		connect.WithSchema(tournamentServiceRecentGamesMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	tournamentServiceCreateClubSessionHandler := connect.NewUnaryHandler(
@@ -683,6 +710,7 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 		TournamentServiceGetRecentClubSessionsProcedure,
 		svc.GetRecentClubSessions,
 		connect.WithSchema(tournamentServiceGetRecentClubSessionsMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	tournamentServiceUnstartTournamentHandler := connect.NewUnaryHandler(
@@ -707,6 +735,14 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 		TournamentServiceExportTournamentProcedure,
 		svc.ExportTournament,
 		connect.WithSchema(tournamentServiceExportTournamentMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	tournamentServiceGetTournamentScorecardsHandler := connect.NewUnaryHandler(
+		TournamentServiceGetTournamentScorecardsProcedure,
+		svc.GetTournamentScorecards,
+		connect.WithSchema(tournamentServiceGetTournamentScorecardsMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/tournament_service.TournamentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -763,6 +799,8 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 			tournamentServiceCheckInHandler.ServeHTTP(w, r)
 		case TournamentServiceExportTournamentProcedure:
 			tournamentServiceExportTournamentHandler.ServeHTTP(w, r)
+		case TournamentServiceGetTournamentScorecardsProcedure:
+			tournamentServiceGetTournamentScorecardsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -874,4 +912,8 @@ func (UnimplementedTournamentServiceHandler) CheckIn(context.Context, *connect.R
 
 func (UnimplementedTournamentServiceHandler) ExportTournament(context.Context, *connect.Request[tournament_service.ExportTournamentRequest]) (*connect.Response[tournament_service.ExportTournamentResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.ExportTournament is not implemented"))
+}
+
+func (UnimplementedTournamentServiceHandler) GetTournamentScorecards(context.Context, *connect.Request[tournament_service.TournamentScorecardRequest]) (*connect.Response[tournament_service.TournamentScorecardResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.GetTournamentScorecards is not implemented"))
 }

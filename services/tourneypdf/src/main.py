@@ -27,16 +27,16 @@ async def message_handler(msg):
         return
 
     try:
-        t = get_tournament(payload.get("slug", ""))
+        t = get_tournament(payload.get("id", ""))
     except Exception as e:
         print("Failed to fetch tourney", e)
         return
 
     creator = ScorecardCreator(
         t,
-        payload.get("show_opponents", False),
-        payload.get("show_seeds", False),
-        payload.get("show_qrcode", False),
+        payload.get("showOpponents", False),
+        payload.get("showSeeds", False),
+        payload.get("showQrCode", False),
     )
 
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -95,4 +95,5 @@ async def main():
 
 
 if __name__ == "__main__":
+    print("Entering tourneypdf service loop")
     asyncio.run(main())

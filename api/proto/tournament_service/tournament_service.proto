@@ -184,11 +184,25 @@ message UncheckInRequest { string id = 1; }
 
 message CheckinRequest { string id = 1; }
 
+message TournamentScorecardRequest {
+  string id = 1;
+  bool show_opponents = 2;
+  bool show_seeds = 3;
+  bool show_qr_code = 4;
+}
+
+message TournamentScorecardResponse { bytes pdf_zip = 1; }
+
 service TournamentService {
   rpc NewTournament(NewTournamentRequest) returns (NewTournamentResponse);
   rpc GetTournamentMetadata(GetTournamentMetadataRequest)
-      returns (TournamentMetadataResponse);
-  rpc GetTournament(GetTournamentRequest) returns (ipc.FullTournamentDivisions);
+      returns (TournamentMetadataResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetTournament(GetTournamentRequest)
+      returns (ipc.FullTournamentDivisions) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc FinishTournament(FinishTournamentRequest) returns (TournamentResponse);
   rpc SetTournamentMetadata(SetTournamentMetadataRequest)
       returns (TournamentResponse);
@@ -213,11 +227,15 @@ service TournamentService {
   rpc StartRoundCountdown(TournamentStartRoundCountdownRequest)
       returns (TournamentResponse);
 
-  rpc RecentGames(RecentGamesRequest) returns (RecentGamesResponse);
+  rpc RecentGames(RecentGamesRequest) returns (RecentGamesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   rpc CreateClubSession(NewClubSessionRequest) returns (ClubSessionResponse);
   rpc GetRecentClubSessions(RecentClubSessionsRequest)
-      returns (ClubSessionsResponse);
+      returns (ClubSessionsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   rpc UnstartTournament(UnstartTournamentRequest) returns (TournamentResponse);
 
@@ -227,7 +245,14 @@ service TournamentService {
   rpc CheckIn(CheckinRequest) returns (TournamentResponse);
 
   rpc ExportTournament(ExportTournamentRequest)
-      returns (ExportTournamentResponse);
+      returns (ExportTournamentResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc GetTournamentScorecards(TournamentScorecardRequest)
+      returns (TournamentScorecardResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 message ExportTournamentRequest {

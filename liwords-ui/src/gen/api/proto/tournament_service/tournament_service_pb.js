@@ -308,6 +308,29 @@ export const CheckinRequest = /*@__PURE__*/ proto3.makeMessageType(
 );
 
 /**
+ * @generated from message tournament_service.TournamentScorecardRequest
+ */
+export const TournamentScorecardRequest = /*@__PURE__*/ proto3.makeMessageType(
+  "tournament_service.TournamentScorecardRequest",
+  () => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "show_opponents", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 3, name: "show_seeds", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 4, name: "show_qr_code", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ],
+);
+
+/**
+ * @generated from message tournament_service.TournamentScorecardResponse
+ */
+export const TournamentScorecardResponse = /*@__PURE__*/ proto3.makeMessageType(
+  "tournament_service.TournamentScorecardResponse",
+  () => [
+    { no: 1, name: "pdf_zip", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
+  ],
+);
+
+/**
  * @generated from message tournament_service.ExportTournamentRequest
  */
 export const ExportTournamentRequest = /*@__PURE__*/ proto3.makeMessageType(

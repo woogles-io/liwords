@@ -78,6 +78,9 @@ const FormModal = (props: ModalProps) => {
     'set-single-round-controls': (
       <SetSingleRoundControls tournamentID={props.tournamentID} />
     ),
+    'create-printable-scorecards': (
+      <CreatePrintableScorecards tournamentID={props.tournamentID} />
+    ),
     'export-tournament': <ExportTournament tournamentID={props.tournamentID} />,
     'edit-description': <EditDescription tournamentID={props.tournamentID} />,
     'unstart-tournament': (
@@ -137,6 +140,7 @@ export const GhettoTools = (props: Props) => {
     'Remove division',
     'Set tournament controls',
     'Set round controls',
+    'Create printable scorecards',
   ];
 
   const inTournamentTypes = [
@@ -1912,6 +1916,74 @@ const ExportTournament = (props: { tournamentID: string }) => {
             </Select.Option>
           </Select>
         </Form.Item>
+        <Form.Item>
+          <Button type="primary" htmlType="submit">
+            Submit
+          </Button>
+        </Form.Item>
+      </Form>
+    </>
+  );
+};
+
+const CreatePrintableScorecards = (props: { tournamentID: string }) => {
+  const { tournamentContext } = useTournamentStoreContext();
+  const formItemLayout = {
+    labelCol: {
+      span: 7,
+    },
+    wrapperCol: {
+      span: 12,
+    },
+  };
+  const tClient = useClient(TournamentService);
+  const onSubmit = async (vals: Store) => {
+    const obj = {
+      id: props.tournamentID,
+      showOpponents: vals.showOpponents,
+      showSeeds: vals.showSeeds,
+      showQrCode: vals.showQrCode,
+    };
+    try {
+      const resp = await tClient.getTournamentScorecards(obj);
+      const url = window.URL.createObjectURL(new Blob([resp.pdfZip]));
+      const link = document.createElement('a');
+      link.href = url;
+      const tname = tournamentContext.metadata.name;
+      const extension = 'zip';
+      const downloadFilename = `${tname}.${extension}`;
+      link.setAttribute('download', downloadFilename);
+      document.body.appendChild(link);
+      link.onclick = () => {
+        link.remove();
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+        }, 1000);
+      };
+      link.click();
+    } catch (e) {
+      flashError(e);
+    }
+  };
+
+  return (
+    <>
+      <Form onFinish={onSubmit}>
+        <Form.Item
+          {...formItemLayout}
+          label="Show opponents"
+          name="showOpponents"
+        >
+          <Switch />
+        </Form.Item>
+        <Form.Item {...formItemLayout} label="Show seeds" name="showSeeds">
+          <Switch />
+        </Form.Item>
+
+        <Form.Item {...formItemLayout} label="Show QR code" name="showQrCode">
+          <Switch />
+        </Form.Item>
+
         <Form.Item>
           <Button type="primary" htmlType="submit">
             Submit

@@ -5,13 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/lithammer/shortuuid"
+	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/user"
@@ -27,11 +31,12 @@ type TournamentService struct {
 	tournamentStore TournamentStore
 	userStore       user.Store
 	eventChannel    chan *entity.EventWrapper
+	cfg             *config.Config
 }
 
 // NewTournamentService creates a TournamentService
-func NewTournamentService(ts TournamentStore, us user.Store) *TournamentService {
-	return &TournamentService{ts, us, nil}
+func NewTournamentService(ts TournamentStore, us user.Store, cfg *config.Config) *TournamentService {
+	return &TournamentService{ts, us, nil, cfg}
 }
 
 func (ts *TournamentService) SetEventChannel(c chan *entity.EventWrapper) {
@@ -656,4 +661,29 @@ func (ts *TournamentService) ExportTournament(ctx context.Context, req *connect.
 		return nil, err
 	}
 	return connect.NewResponse(&pb.ExportTournamentResponse{Exported: ret}), nil
+}
+
+func (ts *TournamentService) GetTournamentScorecards(ctx context.Context, req *connect.Request[pb.TournamentScorecardRequest],
+) (*connect.Response[pb.TournamentScorecardResponse], error) {
+
+	err := authenticateDirector(ctx, ts, req.Msg.Id, false, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	natsconn, err := nats.Connect(ts.cfg.NatsURL)
+	if err != nil {
+		return nil, err
+	}
+	request, err := protojson.Marshal(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := natsconn.Request(ts.cfg.TourneyPDFSubject, request, time.Second*5)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&pb.TournamentScorecardResponse{
+		PdfZip: resp.Data,
+	}), nil
 }

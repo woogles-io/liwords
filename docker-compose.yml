@@ -102,6 +102,8 @@ services:
       NATS_URL: nats://nats:4222
       API_ENDPOINT: http://app:8001/api
       PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./services/tourneypdf:/app:rw
     networks:
       - aeronet
     depends_on:
