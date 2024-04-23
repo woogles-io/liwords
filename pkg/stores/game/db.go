@@ -18,9 +18,11 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"gorm.io/plugin/opentelemetry/tracing"
 
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/stores/common"
 
 	macondogame "github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -85,8 +87,11 @@ type game struct {
 // NewDBStore creates a new DB store for games.
 func NewDBStore(config *config.Config, userStore pkguser.Store) (*DBStore, error) {
 
-	db, err := gorm.Open(postgres.Open(config.DBConnDSN), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(config.DBConnDSN), &gorm.Config{Logger: common.GormLogger})
 	if err != nil {
+		return nil, err
+	}
+	if err := db.Use(tracing.NewPlugin()); err != nil {
 		return nil, err
 	}
 	// Note: We need to manually add the following index on production:

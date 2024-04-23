@@ -11,6 +11,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"gorm.io/plugin/opentelemetry/tracing"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -283,8 +284,11 @@ type registrant struct {
 }
 
 func NewDBStore(config *config.Config, gs gameplay.GameStore) (*DBStore, error) {
-	db, err := gorm.Open(postgres.Open(config.DBConnDSN), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(config.DBConnDSN), &gorm.Config{Logger: common.GormLogger})
 	if err != nil {
+		return nil, err
+	}
+	if err := db.Use(tracing.NewPlugin()); err != nil {
 		return nil, err
 	}
 	return &DBStore{db: db, gameStore: gs, cfg: config}, nil

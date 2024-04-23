@@ -32,6 +32,7 @@ require (
 	github.com/nats-io/nats.go v1.34.1
 	github.com/rs/zerolog v1.32.0
 	github.com/samber/lo v1.39.0
+	github.com/signalfx/splunk-otel-go/instrumentation/github.com/gomodule/redigo/splunkredigo v1.15.0
 	go.akshayshah.org/connectproto v0.6.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.50.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.50.0
@@ -107,6 +108,7 @@ require (
 	github.com/rs/xid v1.5.0 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
+	github.com/signalfx/splunk-otel-go/instrumentation/internal v1.15.0 // indirect
 	github.com/sirupsen/logrus v1.9.2 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect

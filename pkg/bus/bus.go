@@ -94,13 +94,7 @@ type Bus struct {
 	gameEventAPIServer *EventAPIServer
 }
 
-func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, error) {
-
-	natsconn, err := nats.Connect(cfg.NatsURL)
-
-	if err != nil {
-		return nil, err
-	}
+func NewBus(cfg *config.Config, natsconn *nats.Conn, stores Stores, redisPool *redis.Pool) (*Bus, error) {
 	bus := &Bus{
 		natsconn:            natsconn,
 		userStore:           stores.UserStore,

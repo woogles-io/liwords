@@ -252,6 +252,10 @@ github.com/sagikazarmark/slog-shim v0.1.0 h1:diDBnUNK9N/354PgrxMywXnAwEr1QZcOr6g
 github.com/sagikazarmark/slog-shim v0.1.0/go.mod h1:SrcSrq8aKtyuqEI1uvTDTK1arOWRIczQRv+GVI1AkeQ=
 github.com/samber/lo v1.39.0 h1:4gTz1wUhNYLhFSKl6O+8peW0v2F4BCY034GRpU9WnuA=
 github.com/samber/lo v1.39.0/go.mod h1:+m/ZKRl6ClXCE2Lgf3MsQlWfh4bn1bz6CXEOxnEXnEA=
+github.com/signalfx/splunk-otel-go/instrumentation/github.com/gomodule/redigo/splunkredigo v1.15.0 h1:GJ7K2+yBBXPpeHFY4FBB/0eqXbPzmapwkuQ7JospYLM=
+github.com/signalfx/splunk-otel-go/instrumentation/github.com/gomodule/redigo/splunkredigo v1.15.0/go.mod h1:TYT9md6OOPDz1pDZDAXWlU6bzO5jMJyZKQY0SbEjFhU=
+github.com/signalfx/splunk-otel-go/instrumentation/internal v1.15.0 h1:WWhW69XpvEK6jMGEVifpPCHBE00XtqZr9TZ9FR+1QmQ=
+github.com/signalfx/splunk-otel-go/instrumentation/internal v1.15.0/go.mod h1:MKFi4Fxa6BIidCjFhJaKHAdojIEkJJkqj8A60uvSbUI=
 github.com/sirupsen/logrus v1.9.2 h1:oxx1eChJGI6Uks2ZC4W1zpLlVgqB8ner4EuQwV4Ik1Y=
 github.com/sirupsen/logrus v1.9.2/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
 github.com/sourcegraph/conc v0.3.0 h1:OQTbbt6P72L20UqAkXXuLOj79LfEanQ+YQFNpLA9ySo=

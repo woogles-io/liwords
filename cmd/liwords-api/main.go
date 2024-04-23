@@ -27,13 +27,19 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/justinas/alice"
+	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
+	otelredisoption "github.com/signalfx/splunk-otel-go/instrumentation/github.com/gomodule/redigo/splunkredigo/option"
+	splunkredis "github.com/signalfx/splunk-otel-go/instrumentation/github.com/gomodule/redigo/splunkredigo/redis"
+
 	"go.akshayshah.org/connectproto"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
@@ -91,11 +97,18 @@ var (
 )
 
 func newPool(addr string) *redis.Pool {
+	db := 0
 	return &redis.Pool{
 		MaxIdle:     3,
 		IdleTimeout: 240 * time.Second,
 		// Dial or DialContext must be set. When both are set, DialContext takes precedence over Dial.
-		Dial: func() (redis.Conn, error) { return redis.DialURL(addr) },
+		Dial: func() (redis.Conn, error) {
+			return splunkredis.DialURL(addr,
+				otelredisoption.WithAttributes([]attribute.KeyValue{
+					semconv.DBRedisDBIndexKey.Int(db),
+				}),
+			)
+		},
 	}
 }
 
@@ -149,7 +162,6 @@ func main() {
 		err = errors.Join(err, otelShutdown(context.Background()))
 	}()
 
-	// XXX: REDIS, GORM, NATS
 	redisPool := newPool(cfg.RedisURL)
 	dbCfg, err := pgxpool.ParseConfig(cfg.DBConnUri)
 	if err != nil {
@@ -375,8 +387,13 @@ func main() {
 	idleConnsClosed := make(chan struct{})
 	sig := make(chan os.Signal, 1)
 
+	natsconn, err := nats.Connect(cfg.NatsURL)
+	if err != nil {
+		panic(err)
+	}
+
 	// Handle bus.
-	pubsubBus, err := bus.NewBus(cfg, stores, redisPool)
+	pubsubBus, err := bus.NewBus(cfg, natsconn, stores, redisPool)
 	if err != nil {
 		panic(err)
 	}
