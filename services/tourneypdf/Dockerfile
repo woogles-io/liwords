@@ -1,6 +1,9 @@
 FROM python:3
 
-# RUN apt-get update && apt-get install -y pkg-config
+# Install Noto Serif Font
+RUN apt-get update && apt-get install -y \
+    fonts-open-sans \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY . /app

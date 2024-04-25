@@ -121,7 +121,7 @@ class ScorecardCreator:
         black = format_color("black")
         ctx.new_path()
         ctx.set_font_size(20)
-        ctx.select_font_face("Arial", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+
         player_name_x = 25
         if self.show_seeds:
             # circle with number
@@ -343,7 +343,9 @@ class ScorecardCreator:
             # 8.5 x 11 inches in points (612 x 792)
             surface = cairo.PDFSurface(fname, 612, 792)
             ctx = cairo.Context(surface)
-
+            ctx.select_font_face(
+                "Open Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL
+            )
             for i in range(0, len(div["players"]["persons"]), skip):
                 end = i + skip - 1
                 if end > len(div["players"]["persons"]) - 1:
