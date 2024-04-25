@@ -304,7 +304,7 @@ func main() {
 		protojson.UnmarshalOptions{DiscardUnknown: true},
 	)
 
-	options := connect.WithHandlerOptions(opt, interceptors)
+	options := connect.WithHandlerOptions(opt, interceptors, connect.WithCompressMinBytes(500))
 
 	connectapi := http.NewServeMux()
 	connectapi.Handle(
@@ -433,3 +433,25 @@ func main() {
 	<-idleConnsClosed
 	log.Info().Msg("server gracefully shutting down")
 }
+
+// func customInterceptor() connect.UnaryInterceptorFunc {
+// 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
+// 		return connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+// 			printStackContexts(50) // Adjust the depth as needed to explore the call stack
+
+// 			pc, file, line, ok := runtime.Caller(4)
+// 			if !ok {
+// 				return next(ctx, req)
+// 			}
+// 			_, span := tracer.Start(ctx, "custom-context", trace.WithAttributes(
+// 				// Capture caller file and line information
+// 				attribute.String("code.file", file),
+// 				attribute.String("code.func", runtime.FuncForPC(pc).Name()),
+// 				attribute.Int("code.line", line),
+// 			))
+// 			defer span.End()
+// 			return next(ctx, req)
+// 		})
+// 	}
+// 	return connect.UnaryInterceptorFunc(interceptor)
+// }
