@@ -3,8 +3,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CheckinRequest, ClubSessionResponse, ClubSessionsResponse, DivisionRenameRequest, ExportTournamentRequest, ExportTournamentResponse, FinishTournamentRequest, GetTournamentMetadataRequest, GetTournamentRequest, NewClubSessionRequest, NewTournamentRequest, NewTournamentResponse, PairRoundRequest, RecentClubSessionsRequest, RecentGamesRequest, RecentGamesResponse, SetTournamentMetadataRequest, SingleRoundControlsRequest, TournamentDivisionRequest, TournamentMetadataResponse, TournamentPairingsRequest, TournamentResponse, TournamentResultOverrideRequest, TournamentStartRoundCountdownRequest, UncheckInRequest, UnstartTournamentRequest } from "./tournament_service_pb.js";
-import { MethodKind } from "@bufbuild/protobuf";
+import { CheckinRequest, ClubSessionResponse, ClubSessionsResponse, DivisionRenameRequest, ExportTournamentRequest, ExportTournamentResponse, FinishTournamentRequest, GetTournamentMetadataRequest, GetTournamentRequest, NewClubSessionRequest, NewTournamentRequest, NewTournamentResponse, PairRoundRequest, RecentClubSessionsRequest, RecentGamesRequest, RecentGamesResponse, SetTournamentMetadataRequest, SingleRoundControlsRequest, TournamentDivisionRequest, TournamentMetadataResponse, TournamentPairingsRequest, TournamentResponse, TournamentResultOverrideRequest, TournamentScorecardRequest, TournamentScorecardResponse, TournamentStartRoundCountdownRequest, UncheckInRequest, UnstartTournamentRequest } from "./tournament_service_pb.js";
+import { MethodIdempotency, MethodKind } from "@bufbuild/protobuf";
 import { DivisionControls, DivisionRoundControls, FullTournamentDivisions, TournamentPersons } from "../ipc/tournament_pb.js";
 
 /**
@@ -30,6 +30,7 @@ export const TournamentService = {
       I: GetTournamentMetadataRequest,
       O: TournamentMetadataResponse,
       kind: MethodKind.Unary,
+      idempotency: MethodIdempotency.NoSideEffects,
     },
     /**
      * @generated from rpc tournament_service.TournamentService.GetTournament
@@ -39,6 +40,7 @@ export const TournamentService = {
       I: GetTournamentRequest,
       O: FullTournamentDivisions,
       kind: MethodKind.Unary,
+      idempotency: MethodIdempotency.NoSideEffects,
     },
     /**
      * @generated from rpc tournament_service.TournamentService.FinishTournament
@@ -200,6 +202,7 @@ export const TournamentService = {
       I: RecentGamesRequest,
       O: RecentGamesResponse,
       kind: MethodKind.Unary,
+      idempotency: MethodIdempotency.NoSideEffects,
     },
     /**
      * @generated from rpc tournament_service.TournamentService.CreateClubSession
@@ -218,6 +221,7 @@ export const TournamentService = {
       I: RecentClubSessionsRequest,
       O: ClubSessionsResponse,
       kind: MethodKind.Unary,
+      idempotency: MethodIdempotency.NoSideEffects,
     },
     /**
      * @generated from rpc tournament_service.TournamentService.UnstartTournament
@@ -258,6 +262,17 @@ export const TournamentService = {
       I: ExportTournamentRequest,
       O: ExportTournamentResponse,
       kind: MethodKind.Unary,
+      idempotency: MethodIdempotency.NoSideEffects,
+    },
+    /**
+     * @generated from rpc tournament_service.TournamentService.GetTournamentScorecards
+     */
+    getTournamentScorecards: {
+      name: "GetTournamentScorecards",
+      I: TournamentScorecardRequest,
+      O: TournamentScorecardResponse,
+      kind: MethodKind.Unary,
+      idempotency: MethodIdempotency.NoSideEffects,
     },
   }
 };

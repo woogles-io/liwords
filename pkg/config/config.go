@@ -49,6 +49,8 @@ type Config struct {
 	ECSClusterName                 string
 	PuzzleGenerationTaskDefinition string
 
+	TourneyPDFSubject string
+
 	Debug bool
 }
 
@@ -87,6 +89,7 @@ func (c *Config) Load(args []string) error {
 	fs.StringVar(&c.PuzzleGenerationSecretKey, "puzzle-generation-secret-key", shortuuid.New(), "a secret key used for generating puzzles")
 	fs.StringVar(&c.ECSClusterName, "ecs-cluster-name", "", "the ECS cluster this runs on")
 	fs.StringVar(&c.PuzzleGenerationTaskDefinition, "puzzle-generation-task-definition", "", "the task definition for the puzzle generation ECS task")
+	fs.StringVar(&c.TourneyPDFSubject, "tourney-pdf-subject", "", "the NATS subject that the tourneypdf service listens on")
 	// For password hashing:
 	fs.IntVar(&c.ArgonConfig.Keylen, "argon-key-len", 32, "the Argon key length")
 	fs.IntVar(&c.ArgonConfig.Time, "argon-time", 1, "the Argon time")

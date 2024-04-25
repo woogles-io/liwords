@@ -1,0 +1,5 @@
+pycairo
+webcolors
+requests
+qrcode[pil]
+nats-py

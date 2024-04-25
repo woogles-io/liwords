@@ -910,6 +910,69 @@ export declare class CheckinRequest extends Message<CheckinRequest> {
 }
 
 /**
+ * @generated from message tournament_service.TournamentScorecardRequest
+ */
+export declare class TournamentScorecardRequest extends Message<TournamentScorecardRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: bool show_opponents = 2;
+   */
+  showOpponents: boolean;
+
+  /**
+   * @generated from field: bool show_seeds = 3;
+   */
+  showSeeds: boolean;
+
+  /**
+   * @generated from field: bool show_qr_code = 4;
+   */
+  showQrCode: boolean;
+
+  constructor(data?: PartialMessage<TournamentScorecardRequest>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "tournament_service.TournamentScorecardRequest";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TournamentScorecardRequest;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TournamentScorecardRequest;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TournamentScorecardRequest;
+
+  static equals(a: TournamentScorecardRequest | PlainMessage<TournamentScorecardRequest> | undefined, b: TournamentScorecardRequest | PlainMessage<TournamentScorecardRequest> | undefined): boolean;
+}
+
+/**
+ * @generated from message tournament_service.TournamentScorecardResponse
+ */
+export declare class TournamentScorecardResponse extends Message<TournamentScorecardResponse> {
+  /**
+   * @generated from field: bytes pdf_zip = 1;
+   */
+  pdfZip: Uint8Array;
+
+  constructor(data?: PartialMessage<TournamentScorecardResponse>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "tournament_service.TournamentScorecardResponse";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TournamentScorecardResponse;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TournamentScorecardResponse;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TournamentScorecardResponse;
+
+  static equals(a: TournamentScorecardResponse | PlainMessage<TournamentScorecardResponse> | undefined, b: TournamentScorecardResponse | PlainMessage<TournamentScorecardResponse> | undefined): boolean;
+}
+
+/**
  * @generated from message tournament_service.ExportTournamentRequest
  */
 export declare class ExportTournamentRequest extends Message<ExportTournamentRequest> {
