@@ -1,6 +1,6 @@
 FROM python:3
 
-# Install Noto Serif Font
+# Install Open Sans font needed for scorecard generator.
 RUN apt-get update && apt-get install -y \
     fonts-open-sans \
     && rm -rf /var/lib/apt/lists/*
