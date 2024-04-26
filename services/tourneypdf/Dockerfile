@@ -1,14 +1,11 @@
-FROM python:3
+FROM public.ecr.aws/sam/build-python3.9
 
-# Install Open Sans font needed for scorecard generator.
-RUN apt-get update && apt-get install -y \
-    fonts-open-sans \
-    && rm -rf /var/lib/apt/lists/*
+RUN yum install -y cairo-devel cairo pkgconfig open-sans-fonts
 
-WORKDIR /app
-COPY . /app
+# WORKDIR /app
+# COPY . /app
 
-RUN pip install --no-cache-dir -r requirements.txt
+# RUN pip install --no-cache-dir -r /app/src/requirements.txt
 
-# Run main.py when the container launches
-CMD ["python", "src/main.py"]
+# # Run main.py when the container launches
+# CMD ["python", "src/main.py"]

@@ -1,42 +1,26 @@
-import asyncio
+import base64
 import json
 import os
-import signal
 import tempfile
 import zipfile
 
-import nats
 
 from generator import ScorecardCreator
 from fetch_tourney import get_tournament
 
 
-async def message_handler(msg):
-    subject = msg.subject
-    reply = msg.reply
-    data = msg.data.decode()
-    print(
-        "Received a message on '{subject} {reply}': {data}".format(
-            subject=subject, reply=reply, data=data
-        )
-    )
+def message_handler(msg):
     try:
-        payload = json.loads(data)
-    except Exception as e:
-        print("Failed to load JSON data", e)
-        return
-
-    try:
-        t = get_tournament(payload.get("id", ""))
+        t = get_tournament(msg.get("id", ""))
     except Exception as e:
         print("Failed to fetch tourney", e)
-        return
+        raise
 
     creator = ScorecardCreator(
         t,
-        payload.get("showOpponents", False),
-        payload.get("showSeeds", False),
-        payload.get("showQrCode", False),
+        msg.get("showOpponents", False),
+        msg.get("showSeeds", False),
+        msg.get("showQrCode", False),
     )
 
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -47,7 +31,7 @@ async def message_handler(msg):
             creator.gen_scorecards()
         except Exception as e:
             print("Failed to generate scorecards", e)
-            return
+            raise
 
         # Zipping the PDF files in the temporary directory
         zip_path = os.path.join(temp_dir, "output.zip")
@@ -60,40 +44,13 @@ async def message_handler(msg):
         with open(zip_path, "rb") as f:
             zip_bytes = f.read()
 
-        # Send the zip file back via NATS reply channel
-        if reply:
-            print("Sending zip back via", reply)
-            await msg.respond(zip_bytes)
-
-        print("Succeeded; created pdfs")
+        return zip_bytes
 
 
-async def main():
-    nc = await nats.connect(os.environ["NATS_URL"])
+def lambda_handler(event, context):
+    try:
+        zip_bytes = message_handler(event)
+    except Exception as e:
+        return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
 
-    sub = await nc.subscribe(os.environ["TOURNEY_PDF_SUBJECT"], cb=message_handler)
-    print("Subscribed to " + os.environ["TOURNEY_PDF_SUBJECT"] + " channel")
-    # Use an asyncio.Event to manage the loop termination
-    loop_done = asyncio.Event()
-
-    # Define a function to stop the loop on signal
-    def signal_handler():
-        loop_done.set()
-
-    # Register the signal handler for SIGINT
-    loop = asyncio.get_running_loop()
-    for signame in {"SIGINT", "SIGTERM"}:
-        loop.add_signal_handler(getattr(signal, signame), signal_handler)
-
-    # Wait until the event is set
-    await loop_done.wait()
-    print("loop_done")
-    # Cleanup: Unsubscribe, drain connection
-    await sub.unsubscribe()
-    await nc.drain()
-    print("Exiting main()")
-
-
-if __name__ == "__main__":
-    print("Entering tourneypdf service loop")
-    asyncio.run(main())
+    return {"statusCode": 200, "payload": base64.b64encode(zip_bytes)}

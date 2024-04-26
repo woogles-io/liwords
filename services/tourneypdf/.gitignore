@@ -1,2 +1,3 @@
 .venv
 tourneypdf.egg-info
+.aws-sam
