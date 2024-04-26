@@ -2,14 +2,17 @@ package tournament
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"connectrpc.com/connect"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/lambda"
+	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
 	"github.com/lithammer/shortuuid"
-	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -32,11 +35,12 @@ type TournamentService struct {
 	userStore       user.Store
 	eventChannel    chan *entity.EventWrapper
 	cfg             *config.Config
+	lambdaClient    *lambda.Client
 }
 
 // NewTournamentService creates a TournamentService
-func NewTournamentService(ts TournamentStore, us user.Store, cfg *config.Config) *TournamentService {
-	return &TournamentService{ts, us, nil, cfg}
+func NewTournamentService(ts TournamentStore, us user.Store, cfg *config.Config, lc *lambda.Client) *TournamentService {
+	return &TournamentService{ts, us, nil, cfg, lc}
 }
 
 func (ts *TournamentService) SetEventChannel(c chan *entity.EventWrapper) {
@@ -670,20 +674,40 @@ func (ts *TournamentService) GetTournamentScorecards(ctx context.Context, req *c
 	if err != nil {
 		return nil, err
 	}
-	natsconn, err := nats.Connect(ts.cfg.NatsURL)
-	if err != nil {
-		return nil, err
-	}
+
 	request, err := protojson.Marshal(req.Msg)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := natsconn.Request(ts.cfg.TourneyPDFSubject, request, time.Second*5)
+	out, err := ts.lambdaClient.Invoke(ctx, &lambda.InvokeInput{
+		FunctionName:   aws.String(ts.cfg.TourneyPDFLambdaFunctionName),
+		InvocationType: types.InvocationTypeRequestResponse,
+		Payload:        request,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	type lambdaOutput struct {
+		StatusCode int    `json:"statusCode"`
+		Body       string `json:"body"`
+		Payload    string `json:"payload"`
+	}
+
+	lo := &lambdaOutput{}
+	err = json.Unmarshal(out.Payload, lo)
+	if err != nil {
+		return nil, err
+	}
+	if lo.StatusCode != 200 {
+		return nil, apiserver.InternalErr(errors.New(lo.Body))
+	}
+	bts, err := base64.StdEncoding.DecodeString(lo.Payload)
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&pb.TournamentScorecardResponse{
-		PdfZip: resp.Data,
+		PdfZip: bts,
 	}), nil
 }

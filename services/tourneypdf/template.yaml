@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  tourneypdf
+
+  Sample SAM Template for tourneypdf
+  Use `sam build -t template.yaml --use-container` in this directory to build.
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 2048
+
+Resources:
+  TourneyPDFFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      FunctionName: "TourneyPDFFunction"
+      CodeUri: src/
+      Handler: main.lambda_handler
+      Runtime: python3.9
+      Layers:
+        - arn:aws:lambda:us-east-2:509130939211:layer:tourneypdf-lambda-layer:12
+      Architectures:
+        - x86_64
+      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
+        Variables:
+          API_ENDPOINT: https://woogles.io/api
+          PYTHONUNBUFFERED: 1
+          FONTCONFIG_PATH: /opt/fonts
+  TourneyPDFFunctionLog:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${TourneyPDFFunction}"
+      RetentionInDays: 14
+
+
+Outputs:
+  TourneyPDFFunction:
+    Description: "Hello World Lambda Function ARN"
+    Value: !GetAtt TourneyPDFFunction.Arn
+  TourneyPDFFunctionIamRole:
+    Description: "Implicit IAM Role created for Hello World function"
+    Value: !GetAtt TourneyPDFFunctionRole.Arn

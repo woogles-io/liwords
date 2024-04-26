@@ -1,14 +1,32 @@
-FROM python:3
+FROM public.ecr.aws/sam/build-python3.9
 
-# Install Open Sans font needed for scorecard generator.
-RUN apt-get update && apt-get install -y \
-    fonts-open-sans \
-    && rm -rf /var/lib/apt/lists/*
+RUN yum install -y cairo-devel pkgconfig open-sans-fonts
+WORKDIR /opt
 
-WORKDIR /app
-COPY . /app
+# Copy the requirements.txt file into the Docker container
+COPY requirements.txt .
+RUN python3.9 -m pip install -r requirements.txt -t python/lib/python3.9/site-packages/
 
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy necessary libcairo shared libraries
+RUN mkdir -p lib
+RUN cp /usr/lib64/libcairo.so.2 lib/
+RUN cp /usr/lib64/libpixman-1.so.0 lib/
+RUN cp /usr/lib64/libEGL.so.1 lib/
+RUN cp /usr/lib64/libxcb-shm.so.0 lib/
+RUN cp /usr/lib64/libxcb.so.1 lib/
+RUN cp /usr/lib64/libxcb-render.so.0 lib/
+RUN cp /usr/lib64/libXrender.so.1 lib/
+RUN cp /usr/lib64/libX11.so.6 lib/
+RUN cp /usr/lib64/libXext.so.6 lib/
+RUN cp /usr/lib64/libGL.so.1 lib/
+RUN cp /usr/lib64/libGLdispatch.so.0 lib/
+RUN cp /usr/lib64/libGLX.so.0 lib/
+RUN cp /usr/lib64/libXau.so.6 lib/
 
-# Run main.py when the container launches
-CMD ["python", "src/main.py"]
+# Copy fonts
+RUN mkdir -p fonts
+RUN cp -r /usr/share/fonts/open-sans fonts/
+COPY fonts.conf /opt/fonts
+
+# Package everything into a zip file
+CMD zip -r /output/pycairo-layer.zip python lib fonts

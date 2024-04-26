@@ -34,7 +34,6 @@ services:
       PUZZLE_GENERATION_SECRET_KEY: perplexemes
       ECS_CLUSTER_NAME: ${ECS_CLUSTER_NAME:-}
       PUZZLE_GENERATION_TASK_DEFINITION: ${PUZZLE_GENERATION_TASK_DEFINITION:-}
-      TOURNEY_PDF_SUBJECT: tourneypdf
     volumes:
       - .:/opt/program:rw
       - ./data/lexica/gaddag:/opt/program/data/lexica/gaddag
@@ -93,21 +92,6 @@ services:
   #     - "4500:4500"
   #   networks:
   #     - aeronet
-
-  tourneypdf:
-    build:
-      context: ./services/tourneypdf
-    environment:
-      TOURNEY_PDF_SUBJECT: tourneypdf
-      NATS_URL: nats://nats:4222
-      API_ENDPOINT: http://app:8001/api
-      PYTHONUNBUFFERED: "1"
-    volumes:
-      - ./services/tourneypdf:/app:rw
-    networks:
-      - aeronet
-    depends_on:
-      - nats
 
   socket:
     &socketsetup

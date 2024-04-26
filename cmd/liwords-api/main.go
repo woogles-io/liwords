@@ -15,6 +15,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -214,7 +215,7 @@ func main() {
 		panic(err)
 	}
 	s3Client := s3.NewFromConfig(awscfg, utilities.CustomClientOptions)
-
+	lambdaClient := lambda.NewFromConfig(awscfg)
 	stores.GameDocumentStore, err = omgstores.NewGameDocumentStore(cfg, redisPool, dbPool)
 	if err != nil {
 		panic(err)
@@ -239,7 +240,7 @@ func main() {
 	autocompleteService := userservices.NewAutocompleteService(stores.UserStore)
 	socializeService := userservices.NewSocializeService(stores.UserStore, stores.ChatStore, stores.PresenceStore)
 	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore)
-	tournamentService := tournament.NewTournamentService(stores.TournamentStore, stores.UserStore, cfg)
+	tournamentService := tournament.NewTournamentService(stores.TournamentStore, stores.UserStore, cfg, lambdaClient)
 	modService := mod.NewModService(stores.UserStore, stores.ChatStore)
 	puzzleService := puzzles.NewPuzzleService(stores.PuzzleStore, stores.UserStore, cfg.PuzzleGenerationSecretKey, cfg.ECSClusterName, cfg.PuzzleGenerationTaskDefinition)
 	omgwordsService := omgwords.NewOMGWordsService(stores.UserStore, cfg, stores.GameDocumentStore, stores.AnnotatedGameStore)
