@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"runtime"
 	"time"
 
 	"connectrpc.com/connect"
@@ -13,9 +12,6 @@ import (
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/user"
 	userservices "github.com/woogles-io/liwords/pkg/user/services"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/rs/zerolog/log"
 
@@ -304,23 +300,23 @@ func (ps *ProfileService) RemoveAvatar(ctx context.Context, r *connect.Request[p
 func (ps *ProfileService) GetBriefProfiles(ctx context.Context, r *connect.Request[pb.BriefProfilesRequest],
 ) (*connect.Response[pb.BriefProfilesResponse], error) {
 	// this endpoint should work without login
-	pc, file, line, ok := runtime.Caller(0)
-	var span trace.Span
-	if ok {
-		_, span = otel.Tracer("test-for-now").Start(ctx, "in-gbp", trace.WithAttributes(
-			// Capture caller file and line information
-			attribute.String("code.file", file),
-			attribute.String("code.func", runtime.FuncForPC(pc).Name()),
-			attribute.Int("code.line", line),
-		))
-		defer span.End()
-	}
-	span.AddEvent("fetching-profiles")
+	// pc, file, line, ok := runtime.Caller(0)
+	// var span trace.Span
+	// if ok {
+	// 	_, span = otel.Tracer("test-for-now").Start(ctx, "in-gbp", trace.WithAttributes(
+	// 		// Capture caller file and line information
+	// 		attribute.String("code.file", file),
+	// 		attribute.String("code.func", runtime.FuncForPC(pc).Name()),
+	// 		attribute.Int("code.line", line),
+	// 	))
+	// 	defer span.End()
+	// }
+	// span.AddEvent("fetching-profiles")
 	response, err := ps.userStore.GetBriefProfiles(ctx, r.Msg.UserIds)
 	if err != nil {
 		return nil, err
 	}
-	span.AddEvent("got-profiles")
+	// span.AddEvent("got-profiles")
 
 	return connect.NewResponse(&pb.BriefProfilesResponse{Response: response}), nil
 }
