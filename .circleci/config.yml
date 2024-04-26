@@ -63,11 +63,6 @@ jobs:
           -t ghcr.io/woogles-io/liwords-maintenance:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
           -f Dockerfile-maintenance .
       - run: docker push ghcr.io/woogles-io/liwords-maintenance:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
-      - run: >
-          docker build
-          -t ghcr.io/woogles-io/liwords-tourneypdf:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
-          -f services/tourneypdf/Dockerfile services/tourneypdf
-      - run: docker push ghcr.io/woogles-io/liwords-tourneypdf:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
       - discord/status: *discord-webhook-setting
 
   build_fe:
