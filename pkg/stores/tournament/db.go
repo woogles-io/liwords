@@ -10,10 +10,12 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"gorm.io/plugin/opentelemetry/tracing"
 
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/gameplay"
+	"github.com/woogles-io/liwords/pkg/stores/common"
 	tl "github.com/woogles-io/liwords/pkg/tournament"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/tournament_service"
@@ -58,8 +60,11 @@ type registrant struct {
 
 // NewDBStore creates a new DB store for tournament managers.
 func NewDBStore(config *config.Config, gs gameplay.GameStore) (*DBStore, error) {
-	db, err := gorm.Open(postgres.Open(config.DBConnDSN), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(config.DBConnDSN), &gorm.Config{Logger: common.GormLogger})
 	if err != nil {
+		return nil, err
+	}
+	if err := db.Use(tracing.NewPlugin()); err != nil {
 		return nil, err
 	}
 	return &DBStore{db: db, gameStore: gs, cfg: config}, nil

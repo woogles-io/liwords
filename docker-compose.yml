@@ -34,6 +34,8 @@ services:
       PUZZLE_GENERATION_SECRET_KEY: perplexemes
       ECS_CLUSTER_NAME: ${ECS_CLUSTER_NAME:-}
       PUZZLE_GENERATION_TASK_DEFINITION: ${PUZZLE_GENERATION_TASK_DEFINITION:-}
+      OTEL_RESOURCE_ATTRIBUTES: "service.name=liwords,service.version=0.1.0"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
     volumes:
       - .:/opt/program:rw
       - ./data/lexica/gaddag:/opt/program/data/lexica/gaddag
@@ -117,6 +119,16 @@ services:
       - traefik.enable=true
 
   # socket2: *socketsetup
+
+  jaeger:
+    image: jaegertracing/all-in-one:${JAEGER_VERSION:-latest}
+    ports:
+      - "16686:16686"
+      - "4318:4318"
+    environment:
+      - LOG_LEVEL=debug
+    networks:
+      - aeronet
 
   proxy:
     image: "traefik:v2.2"

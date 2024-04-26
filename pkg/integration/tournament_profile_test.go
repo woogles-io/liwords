@@ -216,7 +216,11 @@ func createBus() (context.Context, *bus.Bus, context.CancelFunc, bus.Stores, *co
 	if err != nil {
 		panic(err)
 	}
-	pubsubBus, err := bus.NewBus(cfg, stores, redisPool)
+	natsconn, err := nats.Connect(cfg.NatsURL)
+	if err != nil {
+		panic(err)
+	}
+	pubsubBus, err := bus.NewBus(cfg, natsconn, stores, redisPool)
 	if err != nil {
 		panic(err)
 	}

@@ -1,11 +1,10 @@
 package common
 
 import (
-	"log"
-	"os"
 	"time"
 
 	"gorm.io/gorm/logger"
+	"gorm.io/plugin/opentelemetry/logging/logrus"
 )
 
 // we're going to remove Gorm. for now let's put some common
@@ -15,7 +14,7 @@ var GormLogger logger.Interface
 
 func init() {
 	GormLogger = logger.New(
-		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
+		logrus.NewWriter(),
 		logger.Config{
 			SlowThreshold:             200 * time.Millisecond, // Slow SQL threshold
 			LogLevel:                  logger.Warn,            // Log level

@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/utilities"
+	"go.opentelemetry.io/otel"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	cpb "github.com/woogles-io/liwords/rpc/api/proto/config_service"
@@ -66,6 +67,10 @@ type backingStore interface {
 	ApplyActions(ctx context.Context, actions []*ms.ModAction) error
 	RemoveActions(ctx context.Context, actions []*ms.ModAction) error
 }
+
+var (
+	tracer = otel.Tracer("pkg/stores/user")
+)
 
 const (
 	// Allow for 400 simultaneously logged on users.
@@ -199,9 +204,11 @@ func (c *Cache) SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string)
 }
 
 func (c *Cache) GetBriefProfiles(ctx context.Context, uuids []string) (map[string]*pb.BriefProfile, error) {
+	ctx, span := tracer.Start(ctx, "cache.GetBriefProfiles")
+	defer span.End()
 	c.briefProfileCache.Lock()
 	defer c.briefProfileCache.Unlock()
-
+	span.AddEvent("locked-mutex")
 	missingUuids := make([]string, 0, len(uuids))
 	ret := make(map[string]*pb.BriefProfile)
 	for _, uuid := range uuids {
@@ -213,6 +220,7 @@ func (c *Cache) GetBriefProfiles(ctx context.Context, uuids []string) (map[strin
 	}
 
 	if len(missingUuids) > 0 {
+		span.AddEvent("missing-uuids")
 		additionalStuffs, err := c.backing.GetBriefProfiles(ctx, missingUuids)
 		if err != nil {
 			return nil, err
