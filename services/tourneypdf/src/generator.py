@@ -220,7 +220,7 @@ class ScorecardCreator:
                             continue
                         if rd > 0:
                             ctx.move_to(fields[last_field - 1][0] + 10, y + 5)
-                            ctx.show_text(to_spread(st["spread"]))
+                            ctx.show_text(to_spread(st.get("spread", 0)))
                         wins, losses = wl(st)
                         ctx.move_to(fields[last_field - 5][0] + 5, ourscorey)
                         ctx.show_text(wins)

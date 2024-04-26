@@ -8,6 +8,12 @@ This should be implemented as a serverless/lambda function on production.
 
 Manual for now
 
-1) docker build -t my-custom-lambda-build-image .
-2) sam build -t template.yaml --use-container --build-image TourneyPDFFunction=my-custom-lambda-build-image
-3) AWS_PROFILE=prod sam deploy --guided  (use all defaults)
+#### If we change any dependencies
+1) docker build -t pycairo-layer .
+2) docker run --rm -v $(pwd)/output:/output pycairo-layer
+3) upload the layer with AWS console (to AWS Lambda Layers)
+4) Update the template.yaml with the new layer ARN
+
+#### Regular deploy:
+5) sam build -t template.yaml --use-container --build-image TourneyPDFFunction=pycairo-layer
+6) AWS_PROFILE=prod sam deploy --guided  (use all defaults)
