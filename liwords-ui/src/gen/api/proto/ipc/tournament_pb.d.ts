@@ -463,6 +463,11 @@ export declare class RoundControl extends Message<RoundControl> {
    */
   winDifferenceRelativeWeight: number;
 
+  /**
+   * @generated from field: bool interleave_team_round_robin = 11;
+   */
+  interleaveTeamRoundRobin: boolean;
+
   constructor(data?: PartialMessage<RoundControl>);
 
   static readonly runtime: typeof proto3;

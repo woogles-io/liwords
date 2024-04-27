@@ -1353,6 +1353,13 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
           by the director every round. This is not recommended except for the
           smallest tournaments.
         </li>
+        <li>
+          - <strong>Team Round Robin:</strong> Set up a round robin where each
+          "team" member plays each other team member some set number of times in
+          a row. You can divide the teams into top and bottom halves, or
+          interleave them (shirts and skins), by using the "rating" of each
+          player to separate them into teams.
+        </li>
       </ul>
     </>
   );
@@ -1416,7 +1423,7 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
               </Form.Item>
             );
 
-          case 'bool':
+          case 'boolean':
             return (
               <Form.Item
                 {...formItemLayout}
@@ -1518,6 +1525,7 @@ const rdCtrlFromSetting = (rdSetting: RoundControl): RoundControl => {
 
     case PairingMethod.TEAM_ROUND_ROBIN:
       rdCtrl.gamesPerRound = rdSetting.gamesPerRound || 1;
+      rdCtrl.interleaveTeamRoundRobin = rdSetting.interleaveTeamRoundRobin;
       break;
   }
   // Other cases don't matter, we've already set the pairing method.
@@ -1646,6 +1654,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
           allowOverMaxRepeats: v.allowOverMaxRepeats,
           repeatRelativeWeight: v.repeatRelativeWeight,
           winDifferenceRelativeWeight: v.winDifferenceRelativeWeight,
+          interleaveTeamRoundRobin: v.interleaveTeamRoundRobin,
         });
         if (lastSetting !== null) {
           if (settingsEqual(lastSetting, thisSetting)) {

@@ -112,6 +112,7 @@ message RoundControl {
   bool allow_over_max_repeats = 8;
   int32 repeat_relative_weight = 9;
   int32 win_difference_relative_weight = 10;
+  bool interleave_team_round_robin = 11;
 }
 
 message DivisionControls {

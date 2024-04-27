@@ -103,7 +103,11 @@ export const DirectorTools = React.memo((props: DTProps) => {
                     omitSendMessage
                     omitBlock
                   />
-                  {/* &nbsp;{d.checkedInPlayers.has(p) ? '✓' : ''} */}
+                  <small>
+                    &nbsp;&nbsp;&nbsp;
+                    {/* &nbsp;{d.checkedInPlayers.has(p) ? '✓' : ''} */}(
+                    {p.rating})
+                  </small>
                 </li>
               );
             })}
