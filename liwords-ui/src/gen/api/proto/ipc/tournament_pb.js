@@ -164,6 +164,7 @@ export const RoundControl = /*@__PURE__*/ proto3.makeMessageType(
     { no: 8, name: "allow_over_max_repeats", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 9, name: "repeat_relative_weight", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 10, name: "win_difference_relative_weight", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 11, name: "interleave_team_round_robin", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ],
 );
 

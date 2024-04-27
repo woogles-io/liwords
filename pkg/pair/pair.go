@@ -82,7 +82,7 @@ func pairRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
 }
 
 func pairTeamRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
-	return getTeamRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round), int(members.RoundControls.GamesPerRound))
+	return getTeamRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round), int(members.RoundControls.GamesPerRound), members.RoundControls.InterleaveTeamRoundRobin)
 }
 
 func pairKingOfTheHill(members *entity.UnpairedPoolMembers) ([]int, error) {
@@ -553,7 +553,7 @@ func getTeamRoundRobinRotation(numberOfPlayers int, round int, gamesPerMatchup i
 	return ((round / gamesPerMatchup) * (numberOfPlayers/2 - 1)) % (numberOfPlayers / 2)
 }
 
-func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int) ([]int, error) {
+func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int, interleave bool) ([]int, error) {
 	// A team round robin contains two teams: A and B
 	// Everyone in A plays everyone in B gamesPerMatchup times (in a row for speed).
 	if numberOfPlayers%2 == 1 {
@@ -561,8 +561,17 @@ func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int) ([]i
 	}
 
 	players := []int{}
-	for i := 0; i < numberOfPlayers; i++ {
-		players = append(players, i)
+	if !interleave {
+		for i := 0; i < numberOfPlayers; i++ {
+			players = append(players, i)
+		}
+	} else {
+		for i := 0; i < numberOfPlayers; i += 2 {
+			players = append(players, i)
+		}
+		for i := 1; i < numberOfPlayers; i += 2 {
+			players = append(players, i)
+		}
 	}
 
 	l := len(players)
