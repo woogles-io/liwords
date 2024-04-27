@@ -27,7 +27,7 @@ export const binaryTransport = createConnectTransport({
 
 export function useClient<T extends ServiceType>(
   service: T,
-  binary = true
+  binary = false
 ): PromiseClient<T> {
   const tf = binary ? binaryTransport : transport;
   return useMemo(() => createPromiseClient(service, tf), [service, tf]);
