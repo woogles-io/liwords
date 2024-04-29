@@ -104,3 +104,7 @@ If we wish to assign player 1 an empty, or unknown rack, and player 2 the rack "
 ```
 
 `AQUJDhMUAA==` is the base64-encoding of the bytes `[1, 5, 9, 14, 19, 20, 0]` which correspond to the letters `AEINST?`. See the comments in SetRacksEvent in the `omgwords.proto` file referenced above.
+
+## Other notes
+
+Note that if you use the JSON content type, the field names in the JSON dictionary are the same as the proto names. So, for example, `game_id`, not `gameId`.
