@@ -300,7 +300,7 @@ func main() {
 	// see https://github.com/connectrpc/connect-go/issues/684
 	// Use this 3rd party package until connectrpc exposes this.
 	opt := connectproto.WithJSON(
-		protojson.MarshalOptions{EmitDefaultValues: true},
+		protojson.MarshalOptions{EmitDefaultValues: true, UseProtoNames: true},
 		protojson.UnmarshalOptions{DiscardUnknown: true},
 	)
 

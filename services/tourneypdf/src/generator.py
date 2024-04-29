@@ -156,7 +156,7 @@ class ScorecardCreator:
     def draw_known_pairings(self, ctx, div, pidx, rect_ht, nrounds, fields):
         ctx.set_font_size(12)
         pid = div["players"]["persons"][pidx]["id"]
-        for k, v in div["pairingMap"].items():
+        for k, v in div["pairing_map"].items():
             if pidx in v["players"]:
                 rd = v.get("round", 0)
                 first = True
@@ -216,7 +216,7 @@ class ScorecardCreator:
                     # Get cumulative spread and record from standings object.
                     starr = div["standings"][str(rd)]["standings"]
                     for st in starr:
-                        if st["playerId"] != pid:
+                        if st["player_id"] != pid:
                             continue
                         if rd > 0:
                             ctx.move_to(fields[last_field - 1][0] + 10, y + 5)
@@ -337,7 +337,7 @@ class ScorecardCreator:
 
     def _gen_scorecards(self):
         for divname, div in self.tourney["t"]["divisions"].items():
-            nrounds = len(div["roundControls"])
+            nrounds = len(div["round_controls"])
             skip = 2 if nrounds <= 8 else 1
             fname = os.path.join(self.output_path, f"{divname}_scorecards.pdf")
             # 8.5 x 11 inches in points (612 x 792)

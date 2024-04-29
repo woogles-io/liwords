@@ -1946,6 +1946,7 @@ const CreatePrintableScorecards = (props: { tournamentID: string }) => {
     },
   };
   const tClient = useClient(TournamentService);
+  const [isLoading, setIsLoading] = useState(false);
   const onSubmit = async (vals: Store) => {
     const obj = {
       id: props.tournamentID,
@@ -1953,6 +1954,8 @@ const CreatePrintableScorecards = (props: { tournamentID: string }) => {
       showSeeds: vals.showSeeds,
       showQrCode: vals.showQrCode,
     };
+    setIsLoading(true);
+
     try {
       const resp = await tClient.getTournamentScorecards(obj);
       const url = window.URL.createObjectURL(new Blob([resp.pdfZip]));
@@ -1972,6 +1975,8 @@ const CreatePrintableScorecards = (props: { tournamentID: string }) => {
       link.click();
     } catch (e) {
       flashError(e);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -1994,7 +1999,7 @@ const CreatePrintableScorecards = (props: { tournamentID: string }) => {
         </Form.Item>
 
         <Form.Item>
-          <Button type="primary" htmlType="submit">
+          <Button type="primary" htmlType="submit" loading={isLoading}>
             Submit
           </Button>
         </Form.Item>
