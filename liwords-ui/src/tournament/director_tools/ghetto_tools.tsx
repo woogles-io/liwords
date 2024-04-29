@@ -1954,10 +1954,10 @@ const CreatePrintableScorecards = (props: { tournamentID: string }) => {
       showSeeds: vals.showSeeds,
       showQrCode: vals.showQrCode,
     };
+    setIsLoading(true);
+
     try {
-      setIsLoading(true);
       const resp = await tClient.getTournamentScorecards(obj);
-      setIsLoading(false);
       const url = window.URL.createObjectURL(new Blob([resp.pdfZip]));
       const link = document.createElement('a');
       link.href = url;
@@ -1975,6 +1975,8 @@ const CreatePrintableScorecards = (props: { tournamentID: string }) => {
       link.click();
     } catch (e) {
       flashError(e);
+    } finally {
+      setIsLoading(false);
     }
   };
 
