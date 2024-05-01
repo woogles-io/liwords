@@ -33,12 +33,20 @@ type UsernameWithContextProps = {
   iconOnly?: boolean;
   currentActiveGames?: Array<string>;
   currentWatchedGames?: Array<string>;
+  currentEditingGames?: Array<string>;
+  currentWatchedAnnoGames?: Array<string>;
   currentlyPuzzling?: boolean;
 };
 
 export const UsernameWithContext = (props: UsernameWithContextProps) => {
   const { isPettable, isPetting, setPetting } = useContext(PettableContext);
-  const { currentActiveGames, currentWatchedGames, currentlyPuzzling } = props;
+  const {
+    currentActiveGames,
+    currentWatchedGames,
+    currentEditingGames,
+    currentWatchedAnnoGames,
+    currentlyPuzzling,
+  } = props;
   const { handleContextMatches } = useContextMatchContext();
   const { loginState } = useLoginStateStoreContext();
   const { loggedIn, userID, perms } = loginState;
@@ -63,6 +71,24 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
         ];
       return {
         label: <Link to={`/game/${encodeURIComponent(gameID)}`}>Join</Link>,
+        key: `join-${userID}`,
+      };
+    } else if (currentEditingGames && currentEditingGames.length > 0) {
+      const gameID =
+        currentEditingGames[
+          Math.floor(Math.random() * currentEditingGames.length)
+        ];
+      return {
+        label: <Link to={`/anno/${encodeURIComponent(gameID)}`}>Watch</Link>,
+        key: `watch-${userID}`,
+      };
+    } else if (currentWatchedAnnoGames && currentWatchedAnnoGames.length > 0) {
+      const gameID =
+        currentWatchedAnnoGames[
+          Math.floor(Math.random() * currentWatchedAnnoGames.length)
+        ];
+      return {
+        label: <Link to={`/anno/${encodeURIComponent(gameID)}`}>Join</Link>,
         key: `join-${userID}`,
       };
     } else if (currentlyPuzzling) {
