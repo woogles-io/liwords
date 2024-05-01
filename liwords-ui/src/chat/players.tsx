@@ -36,6 +36,26 @@ type PlayerProps = {
   sendMessage?: (uuid: string, username: string) => void;
 };
 
+const activityToText = (
+  inGame: boolean,
+  watching: boolean,
+  editing: boolean,
+  watchingAnno: boolean
+) => {
+  if (inGame) {
+    return 'Playing OMGWords';
+  }
+  if (watching) {
+    return 'Watching OMGWords';
+  }
+  if (editing) {
+    return 'Annotating an OMGWords game';
+  }
+  if (watchingAnno) {
+    return 'Watching an OMGWords annotation';
+  }
+};
+
 const Player = React.memo((props: PlayerProps) => {
   let online = props.fromChat;
   let puzzling = false;
@@ -63,11 +83,23 @@ const Player = React.memo((props: PlayerProps) => {
   }
   const currentActiveGames: Array<string> = [];
   const currentWatchedGames: Array<string> = [];
+  const currentEditingGames: Array<string> = [];
+  const currentWatchedAnnoGames: Array<string> = [];
   games.forEach((groupNames, gameId) => {
     if (groupNames.has('activegame:') && groupNames.has('chat.game.')) {
       currentActiveGames.push(gameId);
     } else if (groupNames.has('chat.gametv.')) {
-      currentWatchedGames.push(gameId);
+      if (gameId.includes('.')) {
+        // editor or anno
+        const [t, actualGameId] = gameId.split('.');
+        if (t === 'editor') {
+          currentEditingGames.push(actualGameId);
+        } else if (t === 'anno') {
+          currentWatchedAnnoGames.push(actualGameId);
+        }
+      } else {
+        currentWatchedGames.push(gameId);
+      }
     }
   });
   if (props.channel?.includes('chat.puzzlelobby')) {
@@ -77,6 +109,8 @@ const Player = React.memo((props: PlayerProps) => {
 
   const inGame = currentActiveGames.length > 0;
   const watching = currentWatchedGames.length > 0;
+  const editing = currentEditingGames.length > 0;
+  const watchingAnno = currentWatchedAnnoGames.length > 0;
   if (!props.username) {
     return null;
   }
@@ -108,12 +142,14 @@ const Player = React.memo((props: PlayerProps) => {
               sendMessage={props.sendMessage}
               currentActiveGames={currentActiveGames}
               currentWatchedGames={currentWatchedGames}
+              currentEditingGames={currentEditingGames}
+              currentWatchedAnnoGames={currentWatchedAnnoGames}
               currentlyPuzzling={puzzling}
             />
           </p>
-          {inGame || watching ? (
+          {inGame || watching || editing || watchingAnno ? (
             <p className="player-activity">
-              {inGame ? 'Playing OMGWords' : 'Watching OMGWords'}
+              {activityToText(inGame, watching, editing, watchingAnno)}
             </p>
           ) : puzzling ? (
             <p className="player-activity">Solving puzzles</p>

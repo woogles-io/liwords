@@ -471,13 +471,13 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			realm := "channel-" + omgwords.AnnotatedChannelName(gameID)
 			// Appending chat-gametv-gameID for presence
 			resp.Realms = append(resp.Realms,
-				realm, "chat-gametv-"+gameID)
+				realm, "chat-gametv-editor-"+gameID) /// this is so ugly, clean up all this subscription code.
 
 		} else if strings.HasPrefix(path, "/anno/") {
 			// annotated games are always in TV mode for viewers
 			gameID := strings.TrimPrefix(path, "/anno/")
 			realm := "channel-" + omgwords.AnnotatedChannelName(gameID)
-			resp.Realms = append(resp.Realms, realm, "chat-gametv-"+gameID)
+			resp.Realms = append(resp.Realms, realm, "chat-gametv-anno-"+gameID)
 		} else {
 			log.Debug().Str("path", path).Msg("realm-req-not-handled")
 		}
@@ -830,7 +830,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 		} else if strings.HasPrefix(realm, "game-") || strings.HasPrefix(realm, "gametv-") {
 			components := strings.Split(realm, "-")
 			// Get a sanitized history
-			gameID := components[1]
+			gameID := components[len(components)-1]
 			err := b.sendGameRefresher(ctx, gameID, connID, evt.UserId)
 			if err != nil {
 				return err
