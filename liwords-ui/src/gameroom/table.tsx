@@ -639,7 +639,7 @@ export const Table = React.memo((props: Props) => {
               highlightText="Director"
               defaultChannel={`chat.${
                 isObserver ? 'gametv' : 'game'
-              }.${gameID}`}
+              }${props.annotated ? '.anno' : ''}.${gameID}`}
               defaultDescription={getChatTitle(
                 playerNames,
                 username,
