@@ -8,7 +8,6 @@ on:
 jobs:
   build_api_srv:
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/master' || github.event_name == 'pull_request' }}
     env:
       MACONDO_DATA_PATH: /opt/liwords/data
       TEST_DB_HOST: localhost
@@ -45,7 +44,7 @@ jobs:
 
   deploy_api_docker:
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/master' && github.event_name == 'push' }}
+    if: ${{ github.ref == 'refs/heads/master'}}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -55,7 +54,6 @@ jobs:
 
   build_fe:
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/master' || github.event_name == 'pull_request' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -83,7 +81,7 @@ jobs:
 
   deploy_fe:
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/master' && github.event_name == 'push' }}
+    if: ${{ github.ref == 'refs/heads/master'  }}
     needs: build_fe
     steps:
       - name: Checkout
