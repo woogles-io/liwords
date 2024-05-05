@@ -1,0 +1,137 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - "*"
+
+jobs:
+  build_api_srv:
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/master' || github.event_name == 'pull_request' }}
+    env:
+      MACONDO_DATA_PATH: /opt/liwords/data
+      TEST_DB_HOST: localhost
+      TEST_DB_PREFIX: liwords_test
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: pass
+      DB_SSL_MODE: disable
+      DB_MIGRATIONS_PATH: file:///opt/liwords/db/migrations
+      REDIS_URL: redis://localhost:6379
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Clone macondo
+        run: git clone --depth 1 git@github.com:domino14/macondo /opt/macondo
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ">=1.22"
+
+      - name: Build API
+        run: cd cmd/liwords-api && go build
+
+      - name: Test API
+        run: go test -race ./...
+
+      - name: Build Puzzle Generator
+        run: cd cmd/puzzlegen && go build
+
+      - name: Build Maintenance
+        run: cd cmd/maintenance && go build
+
+  deploy_api_docker:
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/master' && github.event_name == 'push' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and Tag Docker Image
+        run: cd deploy && ./build-and-tag.sh
+
+  build_fe:
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/master' || github.event_name == 'pull_request' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Dependencies
+        run: cd liwords-ui && npm ci
+
+      - name: Test Frontend
+        run: cd liwords-ui && npm run test
+
+      - name: Build Frontend
+        run: cd liwords-ui && npm run build
+        continue-on-error: true
+
+      - name: Persist Dist Directory
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: liwords-ui/dist
+
+  deploy_fe:
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/master' && github.event_name == 'push' }}
+    needs: build_fe
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Dist Directory
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: /tmp/liwords-ui
+
+      - name: Calculate UI Hash
+        run: |
+          UI_HASH=$(find /tmp/liwords-ui/dist -type f -exec md5sum {} \; | sort -k 2 | md5sum | head -c 32)
+          echo $UI_HASH
+          sed -i "s:unknown:${UI_HASH}:" /tmp/liwords-ui/dist/config.js
+          echo "export UI_HASH=$UI_HASH" >> $GITHUB_ENV
+
+      - name: Install AWS CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y awscli
+
+      - name: Sync to S3 (Cache Everything)
+        run: |
+          cd /tmp/liwords-ui/dist &&
+          aws s3 sync --cache-control 'max-age=3024000' \
+          --exclude index.html --exclude config.js --exclude '*.wasm' \
+          --metadata FEHash=${UI_HASH} \
+          . s3://woogles.io
+
+      - name: Sync to S3 (No Cache Except Wasm)
+        run: |
+          cd /tmp/liwords-ui/dist &&
+          aws s3 sync --cache-control 'no-cache' --exclude '*.wasm' \
+          --metadata FEHash=${UI_HASH} \
+          . s3://woogles.io
+
+      - name: Cache Wasm File Separately
+        run: |
+          cd /tmp/liwords-ui/dist &&
+          aws s3 sync --cache-control 'max-age=3024000' --exclude '*' --include '*.wasm' \
+          --metadata FEHash=${UI_HASH} \
+          --content-type 'application/wasm' . s3://woogles.io
+
+      - name: Update Frontend Hash
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+          -H "X-Api-Key: $ADMIN_WOOGLES_API_KEY" \
+          https://woogles.io/api/config_service.ConfigService/SetFEHash \
+          -d "{\"hash\": \"$UI_HASH\"}"
