@@ -13,6 +13,10 @@ import (
 var pkg = "session"
 
 func TestSession(t *testing.T) {
+	err := common.RecreateTestDB(pkg)
+	if err != nil {
+		panic(err)
+	}
 	pool, err := common.OpenTestingDB(pkg)
 	if err != nil {
 		panic(err)
