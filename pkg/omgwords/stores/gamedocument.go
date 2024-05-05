@@ -78,7 +78,7 @@ func (gs *GameDocumentStore) GetDocument(ctx context.Context, uuid string, lock 
 			log.Err(err).Msg("lock failed")
 			return nil, err
 		}
-		log.Debug().Str("name", mutex.Name()).Str("val", mutex.Value()).Msg("locked mutx")
+		log.Debug().Str("name", mutex.Name()).Str("val", mutex.Value()).Msg("locked mutex")
 	}
 	log.Debug().Msg("getting document")
 	bts, err := redis.Bytes(conn.Do("GET", RedisDocPrefix+uuid))
@@ -212,7 +212,7 @@ func (gs *GameDocumentStore) UpdateDocument(ctx context.Context, doc *MaybeLocke
 			redsync.WithValue(doc.LockValue))
 		if ok, err := mutex.Unlock(); !ok || err != nil {
 			// The unlock failed. Maybe it wasn't locked?
-			log.Err(err).Str("mutexname", mutex.Name()).Str("val", mutex.Value()).Msg("redsync-unlock-failed")
+			log.Err(err).Str("mutexname", mutex.Name()).Str("val", mutex.Value()).Msg("update-redsync-unlock-failed")
 		}
 	}
 
