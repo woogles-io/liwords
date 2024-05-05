@@ -1541,6 +1541,51 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 			is.NoErr(err)
 		}
 	}
+
+	for i := 0; i < 4; i++ {
+		roundControls = append(roundControls, &pb.RoundControl{FirstMethod: pb.FirstMethod_MANUAL_FIRST,
+			PairingMethod:               pb.PairingMethod_ROUND_ROBIN,
+			GamesPerRound:               defaultGamesPerRound,
+			Round:                       int32(i + 10),
+			Factor:                      1,
+			MaxRepeats:                  1,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1})
+	}
+
+	tc, err = compactNewClassicDivision(defaultPlayers, roundControls, true)
+	is.NoErr(err)
+	is.True(tc != nil)
+
+	is.NoErr(validatePairings(tc, 0))
+	is.NoErr(validatePairings(tc, 1))
+	is.NoErr(validatePairings(tc, 2))
+	is.NoErr(validatePairings(tc, 3))
+	is.NoErr(validatePairings(tc, 4))
+	is.NoErr(validatePairings(tc, 5))
+	is.NoErr(validatePairings(tc, 6))
+	is.NoErr(validatePairings(tc, 7))
+	is.NoErr(validatePairings(tc, 8))
+	is.NoErr(validatePairings(tc, 9))
+	is.NoErr(validatePairings(tc, 10))
+	is.NoErr(validatePairings(tc, 11))
+	is.NoErr(validatePairings(tc, 12))
+	is.NoErr(validatePairings(tc, 13))
+
+	// Ensure that firsts and seconds always switch between round robins.
+	for i := 3; i < 14; i++ {
+		for _, player := range defaultPlayers.Persons {
+			thisRRpairing, err := tc.getPairing(player.Id, i)
+			is.NoErr(err)
+			prevRRpairing, err := tc.getPairing(player.Id, i-3)
+			is.NoErr(err)
+			is.Equal(thisRRpairing.Players[0], prevRRpairing.Players[1])
+			is.Equal(thisRRpairing.Players[1], prevRRpairing.Players[0])
+		}
+
+	}
+
 }
 
 func TestClassicDivisionInitialFontes(t *testing.T) {
@@ -3412,13 +3457,13 @@ func TestClassicDivisionMessages(t *testing.T) {
 
 	expectedPairingsRsp = []*pb.Pairing{
 		{
-			Players: []int32{1, 2},
+			Players: []int32{2, 1},
 			Round:   0,
 			Games: []*pb.TournamentGame{
-				{Scores: []int32{400, 500},
-					Results:       []pb.TournamentGameResult{2, 1},
+				{Scores: []int32{500, 400},
+					Results:       []pb.TournamentGameResult{1, 2},
 					GameEndReason: 2}},
-			Outcomes:    []pb.TournamentGameResult{2, 1},
+			Outcomes:    []pb.TournamentGameResult{1, 2},
 			ReadyStates: []string{"", ""}}}
 
 	expectedStandings, _, err := tc.GetStandings(0)
@@ -3434,13 +3479,13 @@ func TestClassicDivisionMessages(t *testing.T) {
 
 	expectedPairingsRsp = []*pb.Pairing{
 		{
-			Players: []int32{0, 3},
+			Players: []int32{3, 0},
 			Round:   0,
 			Games: []*pb.TournamentGame{
-				{Scores: []int32{200, 450},
-					Results:       []pb.TournamentGameResult{2, 1},
+				{Scores: []int32{450, 200},
+					Results:       []pb.TournamentGameResult{1, 2},
 					GameEndReason: 2}},
-			Outcomes:    []pb.TournamentGameResult{2, 1},
+			Outcomes:    []pb.TournamentGameResult{1, 2},
 			ReadyStates: []string{"", ""}}}
 
 	expectedStandings, _, err = tc.GetStandings(0)
@@ -3467,10 +3512,10 @@ func TestClassicDivisionMessages(t *testing.T) {
 			Players: []int32{0, 1},
 			Round:   2,
 			Games: []*pb.TournamentGame{
-				{Scores: []int32{-50, 0},
-					Results:       []pb.TournamentGameResult{6, 5},
+				{Scores: []int32{0, -50},
+					Results:       []pb.TournamentGameResult{5, 6},
 					GameEndReason: 0}},
-			Outcomes:    []pb.TournamentGameResult{6, 5},
+			Outcomes:    []pb.TournamentGameResult{5, 6},
 			ReadyStates: []string{"", ""}},
 		{
 			Players: []int32{2, 3},
@@ -3561,10 +3606,10 @@ func TestClassicDivisionMessages(t *testing.T) {
 			Players: []int32{2, 3},
 			Round:   2,
 			Games: []*pb.TournamentGame{
-				{Scores: []int32{500, 400},
-					Results:       []pb.TournamentGameResult{1, 2},
+				{Scores: []int32{400, 500},
+					Results:       []pb.TournamentGameResult{2, 1},
 					GameEndReason: 2}},
-			Outcomes:    []pb.TournamentGameResult{1, 2},
+			Outcomes:    []pb.TournamentGameResult{2, 1},
 			ReadyStates: []string{"", ""}}}
 
 	is.NoErr(equalPairingsResponses(expectedPairingsRsp, pairingsRsp.DivisionPairings))
@@ -3580,10 +3625,10 @@ func TestClassicDivisionMessages(t *testing.T) {
 			Players: []int32{0, 1},
 			Round:   2,
 			Games: []*pb.TournamentGame{
-				{Scores: []int32{200, 450},
-					Results:       []pb.TournamentGameResult{2, 1},
+				{Scores: []int32{450, 200},
+					Results:       []pb.TournamentGameResult{1, 2},
 					GameEndReason: 2}},
-			Outcomes:    []pb.TournamentGameResult{2, 1},
+			Outcomes:    []pb.TournamentGameResult{1, 2},
 			ReadyStates: []string{"", ""}},
 		{
 			Players: []int32{2, 3},

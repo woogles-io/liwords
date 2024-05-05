@@ -1570,7 +1570,18 @@ func newClassicPairing(t *ClassicDivision,
 	switchFirst := false
 	firstMethod := t.RoundControls[round].FirstMethod
 
-	if firstMethod != pb.FirstMethod_MANUAL_FIRST {
+	// Do not do this for Team RR, only RR
+	if t.RoundControls[round].PairingMethod == pb.PairingMethod_ROUND_ROBIN {
+		// Use the round robin phase to consistently switch who is going
+		// first between the first, second, third, etc. round robins phases.
+		// Use the playersIndexSum to determine who is going first initially
+		// to give some initial variety to the pairings so that a given player
+		// doesn't go first every game in the first phase and second every
+		// game in the second phase.
+		roundRobinPhase := round / (len(t.Players.Persons) - 1)
+		playersIndexSum := playerOne + playerTwo
+		switchFirst = ((roundRobinPhase + int(playersIndexSum)) % 2) == 1
+	} else if firstMethod != pb.FirstMethod_MANUAL_FIRST {
 		playerOneFS := getPlayerFirstsAndSeconds(t, playerGoingFirst, round-1)
 		playerTwoFS := getPlayerFirstsAndSeconds(t, playerGoingSecond, round-1)
 		if firstMethod == pb.FirstMethod_RANDOM_FIRST {
