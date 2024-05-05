@@ -44,24 +44,7 @@ jobs:
     machine: true
     steps:
       - checkout
-      - run: echo $GHCR_TOKEN | docker login ghcr.io -u domino14 --password-stdin
-      - run: >
-          docker build --build-arg BUILD_HASH=${CIRCLE_SHA1}
-          --build-arg BUILD_DATE=$(date -Iseconds -u)
-          -t ghcr.io/woogles-io/liwords-api:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM} .
-      - run: docker push ghcr.io/woogles-io/liwords-api:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
-      - run: >
-          docker build --build-arg BUILD_HASH=${CIRCLE_SHA1}
-          --build-arg BUILD_DATE=$(date -Iseconds -u)
-          -t ghcr.io/woogles-io/liwords-puzzlegen:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
-          -f Dockerfile-puzzlegen .
-      - run: docker push ghcr.io/woogles-io/liwords-puzzlegen:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
-      - run: >
-          docker build --build-arg BUILD_HASH=${CIRCLE_SHA1}
-          --build-arg BUILD_DATE=$(date -Iseconds -u)
-          -t ghcr.io/woogles-io/liwords-maintenance:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
-          -f Dockerfile-maintenance .
-      - run: docker push ghcr.io/woogles-io/liwords-maintenance:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
+      - run: cd deploy && ./build-and-tag.sh
       - discord/status: *discord-webhook-setting
 
   build_fe:

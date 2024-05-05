@@ -15,18 +15,32 @@ import (
 
 var RedisURL = os.Getenv("REDIS_URL")
 
+// Make sure this doesn't interfere with other test databases
+// (for example, the ones used in omgwords/stores/gamedocument_test.go
+var RedisPresenceTestDB = 15
+
 func newPool(addr string) *redis.Pool {
 	log.Info().Str("addr", addr).Msg("new-redis-pool")
 	return &redis.Pool{
 		MaxIdle:     3,
 		IdleTimeout: 240 * time.Second,
 		// Dial or DialContext must be set. When both are set, DialContext takes precedence over Dial.
-		Dial: func() (redis.Conn, error) { return redis.DialURL(addr) },
+		Dial: func() (redis.Conn, error) {
+			c, err := redis.DialURL(addr)
+			if err != nil {
+				return nil, err
+			}
+			_, err = c.Do("SELECT", RedisPresenceTestDB)
+			if err != nil {
+				c.Close()
+				return nil, err
+			}
+			return c, nil
+		},
 	}
 }
 
 func flushTestDB(r *redis.Pool) {
-	// flush the test DB (1)
 	conn := r.Get()
 	defer conn.Close()
 	conn.Do("FLUSHDB")

@@ -1,0 +1,10 @@
+FROM golang as build-env
+
+RUN mkdir /opt/program
+WORKDIR /opt/program
+
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
+
+COPY . .
