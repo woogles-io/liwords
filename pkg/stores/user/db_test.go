@@ -24,13 +24,15 @@ import (
 	"github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
 
+var pkg = "user"
+
 func recreateDB() (*DBStore, *pgxpool.Pool, context.Context) {
-	err := common.RecreateTestDB()
+	err := common.RecreateTestDB(pkg)
 	if err != nil {
 		panic(err)
 	}
 
-	pool, err := common.OpenTestingDB()
+	pool, err := common.OpenTestingDB(pkg)
 	if err != nil {
 		panic(err)
 	}

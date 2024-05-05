@@ -16,6 +16,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+var pkg = "soughtgame"
+
 func TestSoughtGame(t *testing.T) {
 	pool, store := recreateDB()
 	is := is.New(t)
@@ -247,12 +249,12 @@ func setNullValues(ctx context.Context, pool *pgxpool.Pool, sgIds []interface{})
 }
 
 func recreateDB() (*pgxpool.Pool, *DBStore) {
-	err := commondb.RecreateTestDB()
+	err := commondb.RecreateTestDB(pkg)
 	if err != nil {
 		panic(err)
 	}
 
-	pool, err := commondb.OpenTestingDB()
+	pool, err := commondb.OpenTestingDB(pkg)
 	if err != nil {
 		panic(err)
 	}

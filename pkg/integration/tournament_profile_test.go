@@ -36,6 +36,8 @@ import (
 	pb "github.com/woogles-io/liwords/rpc/api/proto/tournament_service"
 )
 
+var pkg = "integration_test"
+
 const (
 	tournamentName = "my tournament"
 )
@@ -63,7 +65,7 @@ var gameReq = &ipc.GameRequest{Lexicon: "CSW21",
 	MaxOvertimeMinutes: 10}
 
 func userStore() pkguser.Store {
-	ustore, err := user.NewDBStore(common.TestingPostgresConnDSN())
+	ustore, err := user.NewDBStore(common.TestingPostgresConnDSN(pkg))
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
@@ -73,7 +75,7 @@ func userStore() pkguser.Store {
 func gameStore(userStore pkguser.Store) (*config.Config, gameplay.GameStore) {
 	cfg := &config.Config{}
 	cfg.MacondoConfig = DefaultConfig
-	cfg.DBConnDSN = common.TestingPostgresConnDSN()
+	cfg.DBConnDSN = common.TestingPostgresConnDSN(pkg)
 
 	tmp, err := game.NewDBStore(cfg, userStore)
 	if err != nil {
@@ -86,7 +88,7 @@ func gameStore(userStore pkguser.Store) (*config.Config, gameplay.GameStore) {
 func tournamentStore(gs gameplay.GameStore) (*config.Config, tournament.TournamentStore) {
 	cfg := &config.Config{}
 	cfg.MacondoConfig = DefaultConfig
-	cfg.DBConnDSN = common.TestingPostgresConnDSN()
+	cfg.DBConnDSN = common.TestingPostgresConnDSN(pkg)
 
 	tmp, err := ts.NewDBStore(cfg, gs)
 	if err != nil {
@@ -99,7 +101,7 @@ func tournamentStore(gs gameplay.GameStore) (*config.Config, tournament.Tourname
 const NumUsers = 200
 
 func recreateDBManyUsers() {
-	err := common.RecreateTestDB()
+	err := common.RecreateTestDB(pkg)
 	if err != nil {
 		panic(err)
 	}

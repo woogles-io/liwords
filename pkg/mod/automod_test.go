@@ -34,6 +34,8 @@ import (
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
+var pkg = "mod_test"
+
 var gameReq = &pb.GameRequest{Lexicon: "CSW21",
 	Rules: &pb.GameRules{BoardLayoutName: entity.CrosswordGame,
 		LetterDistributionName: "English",
@@ -54,7 +56,7 @@ var DefaultConfig = config.DefaultConfig()
 
 func gameStore(userStore pkguser.Store) (*config.Config, gameplay.GameStore) {
 	cfg := DefaultConfig
-	cfg.DBConnDSN = common.TestingPostgresConnDSN()
+	cfg.DBConnDSN = common.TestingPostgresConnDSN(pkg)
 
 	tmp, err := game.NewDBStore(&cfg, userStore)
 	if err != nil {
@@ -104,12 +106,12 @@ func (ec *evtConsumer) consumeEventChan(ctx context.Context,
 }
 
 func recreateDB() (*pgxpool.Pool, *user.Cache, *stats.DBStore, *mod.DBStore) {
-	err := common.RecreateTestDB()
+	err := common.RecreateTestDB(pkg)
 	if err != nil {
 		panic(err)
 	}
 
-	pool, err := common.OpenTestingDB()
+	pool, err := common.OpenTestingDB(pkg)
 	if err != nil {
 		panic(err)
 	}

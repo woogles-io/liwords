@@ -7,7 +7,7 @@ jobs:
       MACONDO_DATA_PATH: /opt/liwords/data
       # Needed for running local tests that use the database:
       TEST_DB_HOST: localhost
-      TEST_DB_NAME: liwords_test
+      TEST_DB_PREFIX: liwords_test
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: pass
@@ -31,8 +31,7 @@ jobs:
           name: Clone macondo
           command: git clone --depth 1 git@github.com:domino14/macondo /opt/macondo
       - run: cd cmd/liwords-api && go build
-      # Tests must not be run in parallel; postgres issues happen otherwise.
-      - run: go test -race -p 1 ./...
+      - run: go test -race ./...
       # Make sure puzzle generator builds too, since we're deploying that docker image.
       - run: cd cmd/puzzlegen && go build
       - run: cd cmd/maintenance && go build

@@ -18,6 +18,7 @@ import (
 	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
+var pkg = "stores"
 var RedisUrl = os.Getenv("REDIS_URL")
 
 func newPool(addr string) *redis.Pool {
@@ -161,12 +162,12 @@ func TestRedisLockingWithTurnLogic(t *testing.T) {
 func TestDBGetAndSet(t *testing.T) {
 	is := is.New(t)
 
-	err := commondb.RecreateTestDB()
+	err := commondb.RecreateTestDB(pkg)
 	if err != nil {
 		panic(err)
 	}
 
-	dbPool, err := pgxpool.New(context.Background(), commondb.TestingPostgresConnUri())
+	dbPool, err := pgxpool.New(context.Background(), commondb.TestingPostgresConnUri(pkg))
 	is.NoErr(err)
 	store, err := NewGameDocumentStore(&DefaultConfig, newPool(RedisUrl), dbPool)
 	is.NoErr(err)
