@@ -12,15 +12,42 @@ jobs:
   build_api_srv:
     runs-on: ubuntu-latest
     env:
-      MACONDO_DATA_PATH: /opt/liwords/data
-      TEST_DB_HOST: localhost
+      MACONDO_DATA_PATH: $GITHUB_WORKSPACE/data
+      TEST_DB_HOST: postgres
       TEST_DB_PREFIX: liwords_test
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: pass
       DB_SSL_MODE: disable
-      DB_MIGRATIONS_PATH: file:///opt/liwords/db/migrations
-      REDIS_URL: redis://localhost:6379
+      DB_MIGRATIONS_PATH: file:///$GITHUB_WORKSPACE/db/migrations
+      REDIS_URL: redis://redis:6379
+    services:
+      # Label used to access the service container
+      redis:
+        # Docker Hub image
+        image: redis
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 3s
+          --health-timeout 5s
+          --health-retries 5
+      postgres:
+        # Docker Hub image
+        image: postgres
+        # Provide the password for postgres
+        env:
+          POSTGRES_PASSWORD: pass
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 3s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps tcp port 5432 on service container to the host
+          - 5432:5432
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
