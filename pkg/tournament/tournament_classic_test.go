@@ -1550,7 +1550,9 @@ func TestClassicDivisionInitialFontes(t *testing.T) {
 
 	is := is.New(t)
 
-	roundControls := defaultRoundControls(3)
+	fontesPlayers := makeTournamentPersons(map[string]int32{"Will": 10000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100, "Tim": 2000, "Ben": 1900, "Matt": 200, "Naveen": 20000})
+
+	roundControls := defaultRoundControls(10)
 
 	// Make all rounds Initial Fontes
 	// This doesn't make sense and shouldn't be done
@@ -1558,7 +1560,7 @@ func TestClassicDivisionInitialFontes(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		roundControls[i].PairingMethod = pb.PairingMethod_INITIAL_FONTES
 	}
-	_, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
+	_, err := compactNewClassicDivision(fontesPlayers, roundControls, true)
 	is.NoErr(err)
 
 	roundControls = defaultRoundControls(defaultRounds)
@@ -1597,7 +1599,7 @@ func TestClassicDivisionInitialFontes(t *testing.T) {
 		}
 	}
 
-	tc, err = compactNewClassicDivision(defaultPlayers, roundControls, true)
+	tc, err = compactNewClassicDivision(fontesPlayers, roundControls, true)
 	is.NoErr(err)
 
 	is.NoErr(validatePairings(tc, 0))
