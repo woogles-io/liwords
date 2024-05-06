@@ -161,10 +161,10 @@ jobs:
 
       - name: Calculate UI Hash
         run: |
-          ls -al /tmp/liwords-ui
-          UI_HASH=$(find /tmp/liwords-ui -type f -exec md5sum {} \; | sort -k 2 | md5sum | head -c 32)
+          ls -al /tmp/liwords-ui/artifact
+          UI_HASH=$(find /tmp/liwords-ui/artifact -type f -exec md5sum {} \; | sort -k 2 | md5sum | head -c 32)
           echo $UI_HASH
-          sed -i "s:unknown:${UI_HASH}:" /tmp/liwords-ui/config.js
+          sed -i "s:unknown:${UI_HASH}:" /tmp/liwords-ui/artifact/config.js
           echo "export UI_HASH=$UI_HASH" >> $GITHUB_ENV
 
       - name: Install AWS CLI
@@ -174,7 +174,7 @@ jobs:
 
       - name: Sync to S3 (Cache Everything)
         run: |
-          cd /tmp/liwords-ui &&
+          cd /tmp/liwords-ui/artifact &&
           aws s3 sync --cache-control 'max-age=3024000' \
           --exclude index.html --exclude config.js --exclude '*.wasm' \
           --metadata FEHash=${UI_HASH} \
@@ -182,14 +182,14 @@ jobs:
 
       - name: Sync to S3 (No Cache Except Wasm)
         run: |
-          cd /tmp/liwords-ui &&
+          cd /tmp/liwords-ui/artifact &&
           aws s3 sync --cache-control 'no-cache' --exclude '*.wasm' \
           --metadata FEHash=${UI_HASH} \
           . s3://woogles.io
 
       - name: Cache Wasm File Separately
         run: |
-          cd /tmp/liwords-ui &&
+          cd /tmp/liwords-ui/artifact &&
           aws s3 sync --cache-control 'max-age=3024000' --exclude '*' --include '*.wasm' \
           --metadata FEHash=${UI_HASH} \
           --content-type 'application/wasm' . s3://woogles.io
