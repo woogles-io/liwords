@@ -12,14 +12,14 @@ jobs:
   build_api_srv:
     runs-on: ubuntu-latest
     env:
-      MACONDO_DATA_PATH: $GITHUB_WORKSPACE/data
+      MACONDO_DATA_PATH: ${{ github.workspace }}/data
       TEST_DB_HOST: postgres
       TEST_DB_PREFIX: liwords_test
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: pass
       DB_SSL_MODE: disable
-      DB_MIGRATIONS_PATH: file:///$GITHUB_WORKSPACE/db/migrations
+      DB_MIGRATIONS_PATH: file:///${{ github.workspace }}/db/migrations
       REDIS_URL: redis://redis:6379
     services:
       # Label used to access the service container
