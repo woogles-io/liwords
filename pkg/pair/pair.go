@@ -368,6 +368,11 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 	}
 
 	sizeOfNtiles := numberOfPlayers / numberOfNtiles
+
+	if sizeOfNtiles < 2 {
+		return nil, fmt.Errorf("number of initial fontes rounds (%d) should be less than half the number of players (%d)", numberOfNtiles-1, numberOfPlayers)
+	}
+
 	numberOfRemainingPlayers := numberOfPlayers - (sizeOfNtiles * numberOfNtiles)
 	remainderOffset := 0
 	remainderSpacing := 0
