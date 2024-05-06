@@ -130,7 +130,6 @@ jobs:
 
       - name: Build Frontend
         run: cd liwords-ui && npm run build
-        continue-on-error: true
 
       - name: Persist Dist Directory
         uses: actions/upload-artifact@v4
@@ -164,6 +163,9 @@ jobs:
 
       - name: Calculate UI Hash
         run: |
+          ls -al /tmp/liwords-ui
+          echo "Looking in dist"
+          ls -al /tmp/liwords-ui/dist
           UI_HASH=$(find /tmp/liwords-ui/dist -type f -exec md5sum {} \; | sort -k 2 | md5sum | head -c 32)
           echo $UI_HASH
           sed -i "s:unknown:${UI_HASH}:" /tmp/liwords-ui/dist/config.js
