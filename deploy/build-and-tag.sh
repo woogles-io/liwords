@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -e
 
-echo $GHCR_TOKEN | docker login ghcr.io -u domino14 --password-stdin
 docker build -t liwords-builder  -f Dockerfile-builder ..
 docker build --build-arg BUILD_HASH=${GITHUB_SHA} \
           --build-arg BUILD_DATE=$(date -Iseconds -u) \
