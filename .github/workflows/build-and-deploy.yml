@@ -22,12 +22,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Clone macondo
-        uses: actions/checkout@v4
-        with:
-          repository: domino14/macondo
+      # - name: Clone macondo
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: domino14/macondo
+      #     path: macondo
 
-      - run: mv macondo /opt/macondo
+      # - run: mv $GITHUB_WORKSPACE/macondo /opt/macondo
 
       - name: Setup Go
         uses: actions/setup-go@v5
