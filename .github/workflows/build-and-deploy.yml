@@ -23,7 +23,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Clone macondo
-        run: git clone --depth 1 git@github.com:domino14/macondo /opt/macondo
+        uses: actions/checkout@v4
+        with:
+          repository: domino14/macondo
+
+      - run: mv macondo /opt/macondo
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -42,15 +46,29 @@ jobs:
       - name: Build Maintenance
         run: cd cmd/maintenance && go build
 
+      - name: Discord notification
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: "Backend built successfully for branch {{GITHUB_REF_NAME}}."
+
   deploy_api_docker:
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/master'}}
+    if: ${{ github.ref == 'refs/heads/master' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Build and Tag Docker Image
         run: cd deploy && ./build-and-tag.sh
+
+      - name: Discord notification
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: "Backend docker container uploaded; tag = {{GITHUB_REF_NAME}}-gh{{GITHUB_RUN_NUMBER}}"
 
   build_fe:
     runs-on: ubuntu-latest
@@ -79,10 +97,20 @@ jobs:
           name: dist
           path: liwords-ui/dist
 
+      - name: Discord notification
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: "Front-end built successfully for branch {{GITHUB_REF_NAME}}."
+
   deploy_fe:
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/master'  }}
+    if: ${{ github.ref == 'refs/heads/master' }}
     needs: build_fe
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -133,3 +161,10 @@ jobs:
           -H "X-Api-Key: $ADMIN_WOOGLES_API_KEY" \
           https://woogles.io/api/config_service.ConfigService/SetFEHash \
           -d "{\"hash\": \"$UI_HASH\"}"
+
+      - name: Discord notification
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: "Front-end deployed successfully for branch {{GITHUB_REF_NAME}}."
