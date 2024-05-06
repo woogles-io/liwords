@@ -198,7 +198,7 @@ jobs:
       - name: Update Frontend Hash
         run: |
           curl -X POST -H "Content-Type: application/json" \
-          -H "X-Api-Key: $ADMIN_WOOGLES_API_KEY" \
+          -H "X-Api-Key: ${{ secrets.ADMIN_WOOGLES_API_KEY }}" \
           https://woogles.io/api/config_service.ConfigService/SetFEHash \
           -d "{\"hash\": \"$UI_HASH\"}"
 
