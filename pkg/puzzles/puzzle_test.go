@@ -36,6 +36,8 @@ import (
 	"github.com/woogles-io/liwords/rpc/api/proto/puzzle_service"
 )
 
+var pkg = "puzzles"
+
 const PuzzlerUUID = "puzzler"
 const PuzzleCreatorUUID = "kenji"
 const OtherLexicon = "CSW19"
@@ -948,20 +950,20 @@ func TestUniqueSingleTileKey(t *testing.T) {
 
 func RecreateDB() (*DBController, int, int) {
 	cfg := DefaultConfig
-	cfg.DBConnUri = commondb.TestingPostgresConnUri()
-	cfg.DBConnDSN = commondb.TestingPostgresConnDSN()
+	cfg.DBConnUri = commondb.TestingPostgresConnUri(pkg)
+	cfg.DBConnDSN = commondb.TestingPostgresConnDSN(pkg)
 	cfg.MacondoConfig.Set(macondoconfig.ConfigDefaultLexicon, common.DefaultLexicon)
 	zerolog.SetGlobalLevel(zerolog.Disabled)
 	ctx := context.Background()
 	log.Info().Msg("here first")
 	// Recreate the test database
-	err := commondb.RecreateTestDB()
+	err := commondb.RecreateTestDB(pkg)
 	if err != nil {
 		panic(err)
 	}
 
 	// Reconnect to the new test database
-	pool, err := commondb.OpenTestingDB()
+	pool, err := commondb.OpenTestingDB(pkg)
 	if err != nil {
 		panic(err)
 	}

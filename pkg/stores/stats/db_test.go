@@ -11,13 +11,15 @@ import (
 	commondb "github.com/woogles-io/liwords/pkg/stores/common"
 )
 
+var pkg = "stores_stats"
+
 func TestListStats(t *testing.T) {
-	err := commondb.RecreateTestDB()
+	err := commondb.RecreateTestDB(pkg)
 	if err != nil {
 		panic(err)
 	}
 
-	pool, err := commondb.OpenTestingDB()
+	pool, err := commondb.OpenTestingDB(pkg)
 	if err != nil {
 		panic(err)
 	}

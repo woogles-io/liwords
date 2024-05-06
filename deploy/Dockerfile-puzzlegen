@@ -1,16 +1,4 @@
-FROM golang:alpine as build-env
-
-RUN mkdir /opt/program
-WORKDIR /opt/program
-
-RUN apk update
-RUN apk add build-base ca-certificates git
-
-COPY go.mod .
-COPY go.sum .
-RUN go mod download
-
-COPY . .
+FROM liwords-builder as build-env
 
 WORKDIR /opt/program/cmd/puzzlegen
 
@@ -21,7 +9,7 @@ RUN go build -o puzzle-generator -ldflags "-X=main.BuildDate=${BUILD_DATE} -X=ma
 ### This Dockerfile is for an ECS task that generates puzzles.
 
 # Build minimal image:
-FROM alpine
+FROM debian:latest
 COPY --from=build-env /opt/program/cmd/puzzlegen/puzzle-generator /opt/puzzle-generator
 WORKDIR /opt
 CMD ["/opt/puzzle-generator"]

@@ -18,13 +18,17 @@ import (
 
 var TestDBHost = os.Getenv("TEST_DB_HOST")
 var MigrationsPath = os.Getenv("DB_MIGRATIONS_PATH")
-var TestDBName = os.Getenv("TEST_DB_NAME")
+var TestDBPrefix = os.Getenv("TEST_DB_PREFIX")
 var TestDBPort = os.Getenv("DB_PORT")
 var TestDBUser = os.Getenv("DB_USER")
 var TestDBPassword = os.Getenv("DB_PASSWORD")
 var TestDBSSLMode = os.Getenv("DB_SSL_MODE")
 
-func RecreateTestDB() error {
+func TestDBName(pkg string) string {
+	return TestDBPrefix + "_" + pkg
+}
+
+func RecreateTestDB(pkg string) error {
 	ctx := context.Background()
 	db, err := pgx.Connect(ctx, PostgresConnUri(TestDBHost, TestDBPort,
 		"", TestDBUser, TestDBPassword, TestDBSSLMode))
@@ -33,18 +37,18 @@ func RecreateTestDB() error {
 	}
 	defer db.Close(ctx)
 	log.Info().Msg("dropping db")
-	_, err = db.Exec(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS %s", TestDBName))
+	_, err = db.Exec(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS %s", TestDBName(pkg)))
 	if err != nil {
 		return err
 	}
 	log.Info().Msg("creating db")
-	_, err = db.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s", TestDBName))
+	_, err = db.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s", TestDBName(pkg)))
 	if err != nil {
 		return err
 	}
 	log.Info().Msg("running migrations")
 	// And create all tables/sequences/etc.
-	m, err := migrate.New(MigrationsPath, TestingPostgresConnUri())
+	m, err := migrate.New(MigrationsPath, TestingPostgresConnUri(pkg))
 	if err != nil {
 		return err
 	}
@@ -58,7 +62,7 @@ func RecreateTestDB() error {
 	return nil
 }
 
-func TeardownTestDB() error {
+func TeardownTestDB(pkg string) error {
 	ctx := context.Background()
 	db, err := pgx.Connect(ctx, PostgresConnUri(TestDBHost, TestDBPort,
 		"", TestDBUser, TestDBPassword, TestDBSSLMode))
@@ -67,24 +71,24 @@ func TeardownTestDB() error {
 	}
 	defer db.Close(ctx)
 
-	_, err = db.Exec(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS %s", TestDBName))
+	_, err = db.Exec(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS %s", TestDBName(pkg)))
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func OpenTestingDB() (*pgxpool.Pool, error) {
-	return OpenDB(TestDBHost, TestDBPort, TestDBName, TestDBUser, TestDBPassword, TestDBSSLMode)
+func OpenTestingDB(pkg string) (*pgxpool.Pool, error) {
+	return OpenDB(TestDBHost, TestDBPort, TestDBName(pkg), TestDBUser, TestDBPassword, TestDBSSLMode)
 }
 
-func TestingPostgresConnUri() string {
-	return PostgresConnUri(TestDBHost, TestDBPort, TestDBName, TestDBUser, TestDBPassword, TestDBSSLMode)
+func TestingPostgresConnUri(pkg string) string {
+	return PostgresConnUri(TestDBHost, TestDBPort, TestDBName(pkg), TestDBUser, TestDBPassword, TestDBSSLMode)
 }
 
 // XXX: Delete me after removing Gorm
-func TestingPostgresConnDSN() string {
-	return PostgresConnDSN(TestDBHost, TestDBPort, TestDBName, TestDBUser, TestDBPassword, TestDBSSLMode)
+func TestingPostgresConnDSN(pkg string) string {
+	return PostgresConnDSN(TestDBHost, TestDBPort, TestDBName(pkg), TestDBUser, TestDBPassword, TestDBSSLMode)
 }
 
 func UpdateWithPool(ctx context.Context, pool *pgxpool.Pool, columns []string, args []interface{}, cfg *CommonDBConfig) error {

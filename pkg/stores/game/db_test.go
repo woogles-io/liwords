@@ -25,6 +25,7 @@ import (
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
+var pkg = "game"
 var DefaultConfig = config.DefaultConfig()
 
 func newMacondoGame(users [2]*entity.User) *macondogame.Game {
@@ -52,8 +53,8 @@ func newMacondoGame(users [2]*entity.User) *macondogame.Game {
 	return mcg
 }
 
-func userStore(dbURL string) pkguser.Store {
-	pool, err := common.OpenTestingDB()
+func userStore() pkguser.Store {
+	pool, err := common.OpenTestingDB(pkg)
 	if err != nil {
 		panic(err)
 	}
@@ -65,13 +66,13 @@ func userStore(dbURL string) pkguser.Store {
 }
 
 func recreateDB() pkguser.Store {
-	err := common.RecreateTestDB()
+	err := common.RecreateTestDB(pkg)
 	if err != nil {
 		panic(err)
 	}
 
 	// Crete a user table. Initialize the user store.
-	ustore := userStore(common.TestingPostgresConnDSN())
+	ustore := userStore()
 	// Insert a couple of users into the table.
 
 	for _, u := range []*entity.User{
@@ -110,7 +111,7 @@ func addfakeGames(ustore pkguser.Store) {
 	}
 	// Add some fake games to the table
 	store, err := NewDBStore(&config.Config{
-		DBConnDSN: common.TestingPostgresConnDSN()}, ustore)
+		DBConnDSN: common.TestingPostgresConnDSN(pkg)}, ustore)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
@@ -132,7 +133,7 @@ func addfakeGames(ustore pkguser.Store) {
 }
 
 func teardown() {
-	err := common.TeardownTestDB()
+	err := common.TeardownTestDB(pkg)
 	if err != nil {
 		panic(err)
 	}
@@ -146,9 +147,9 @@ func TestMain(m *testing.M) {
 }
 
 func createGame(p0, p1 string, initTime int32, is *is.I) *entity.Game {
-	ustore := userStore(common.TestingPostgresConnDSN())
+	ustore := userStore()
 	store, err := NewDBStore(&config.Config{
-		DBConnDSN: common.TestingPostgresConnDSN()}, ustore)
+		DBConnDSN: common.TestingPostgresConnDSN(pkg)}, ustore)
 	is.NoErr(err)
 
 	u1, err := ustore.Get(context.Background(), p0)
@@ -200,10 +201,10 @@ func TestCreate(t *testing.T) {
 
 	is.True(entGame.Quickdata != nil)
 
-	ustore := userStore(common.TestingPostgresConnDSN())
+	ustore := userStore()
 	store, err := NewDBStore(&config.Config{
 		MacondoConfig: DefaultConfig.MacondoConfig,
-		DBConnDSN:     common.TestingPostgresConnDSN(),
+		DBConnDSN:     common.TestingPostgresConnDSN(pkg),
 	}, ustore)
 	is.NoErr(err)
 	// Make sure we can fetch the game from the DB.
@@ -223,10 +224,10 @@ func TestSet(t *testing.T) {
 	recreateDB()
 
 	is := is.New(t)
-	ustore := userStore(common.TestingPostgresConnDSN())
+	ustore := userStore()
 	store, err := NewDBStore(&config.Config{
 		MacondoConfig: DefaultConfig.MacondoConfig,
-		DBConnDSN:     common.TestingPostgresConnDSN()}, ustore)
+		DBConnDSN:     common.TestingPostgresConnDSN(pkg)}, ustore)
 	is.NoErr(err)
 
 	// Fetch the game from the backend.
@@ -265,10 +266,10 @@ func TestGet(t *testing.T) {
 
 	is := is.New(t)
 
-	ustore := userStore(common.TestingPostgresConnDSN())
+	ustore := userStore()
 	store, err := NewDBStore(&config.Config{
 		MacondoConfig: DefaultConfig.MacondoConfig,
-		DBConnDSN:     common.TestingPostgresConnDSN(),
+		DBConnDSN:     common.TestingPostgresConnDSN(pkg),
 	}, ustore)
 	is.NoErr(err)
 
@@ -298,13 +299,13 @@ func TestListActive(t *testing.T) {
 	is := is.New(t)
 	createGame("cesar", "jesse", int32(120), is)
 	createGame("jesse", "mina", int32(240), is)
-	ustore := userStore(common.TestingPostgresConnDSN())
+	ustore := userStore()
 
 	// There should be an additional game, so 3 total, from recreateDB()
 	// The first game is cesar vs mina. (see TestGet)
 	store, err := NewDBStore(&config.Config{
 		MacondoConfig: DefaultConfig.MacondoConfig,
-		DBConnDSN:     common.TestingPostgresConnDSN(),
+		DBConnDSN:     common.TestingPostgresConnDSN(pkg),
 	}, ustore)
 	is.NoErr(err)
 

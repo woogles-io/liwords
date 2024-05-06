@@ -23,6 +23,7 @@ import (
 )
 
 var DefaultConfig = config.DefaultConfig()
+var pkg = "stats"
 
 func TestMain(m *testing.M) {
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
@@ -32,12 +33,12 @@ func TestMain(m *testing.M) {
 
 func recreateDB() *pgxpool.Pool {
 	// Create a database.
-	err := common.RecreateTestDB()
+	err := common.RecreateTestDB(pkg)
 	if err != nil {
 		panic(err)
 	}
 
-	pool, err := common.OpenTestingDB()
+	pool, err := common.OpenTestingDB(pkg)
 	if err != nil {
 		panic(err)
 	}

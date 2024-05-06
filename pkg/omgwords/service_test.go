@@ -26,6 +26,7 @@ import (
 
 var DefaultConfig = config.DefaultConfig()
 var RedisURL = os.Getenv("REDIS_URL")
+var pkg = "omgwords"
 
 func newPool(addr string) *redis.Pool {
 	log.Info().Str("addr", addr).Msg("new-redis-pool")
@@ -51,7 +52,7 @@ func newPool(addr string) *redis.Pool {
 */
 
 func userStore() pkguser.Store {
-	pool, err := common.OpenTestingDB()
+	pool, err := common.OpenTestingDB(pkg)
 	if err != nil {
 		panic(err)
 	}
@@ -63,7 +64,7 @@ func userStore() pkguser.Store {
 }
 
 func metaStore() *stores.DBStore {
-	pool, err := common.OpenTestingDB()
+	pool, err := common.OpenTestingDB(pkg)
 	if err != nil {
 		panic(err)
 	}
@@ -76,7 +77,7 @@ func metaStore() *stores.DBStore {
 
 func gameStore() *stores.GameDocumentStore {
 	redisPool := newPool(RedisURL)
-	pool, err := common.OpenTestingDB()
+	pool, err := common.OpenTestingDB(pkg)
 	if err != nil {
 		panic(err)
 	}
@@ -89,7 +90,7 @@ func gameStore() *stores.GameDocumentStore {
 
 func recreateDB() {
 	// Create a database.
-	err := common.RecreateTestDB()
+	err := common.RecreateTestDB(pkg)
 	if err != nil {
 		panic(err)
 	}

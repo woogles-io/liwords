@@ -21,11 +21,12 @@ import (
 	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 )
 
+var pkg = "mod"
 var DefaultConfig = config.DefaultConfig()
 
 func recreateDB() {
 	// Create a database.
-	err := common.RecreateTestDB()
+	err := common.RecreateTestDB(pkg)
 	if err != nil {
 		panic(err)
 	}
@@ -49,7 +50,7 @@ func recreateDB() {
 }
 
 func userStore() pkguser.Store {
-	pool, err := common.OpenTestingDB()
+	pool, err := common.OpenTestingDB(pkg)
 	if err != nil {
 		panic(err)
 	}

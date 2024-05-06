@@ -24,6 +24,8 @@ import (
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
+var pkg = "gameplay_test"
+
 func ctxForTests() context.Context {
 	ctx := context.Background()
 	ctx = log.Logger.WithContext(ctx)
@@ -33,7 +35,7 @@ func ctxForTests() context.Context {
 
 func gameStore(userStore pkguser.Store) (*config.Config, gameplay.GameStore) {
 	cfg := DefaultConfig
-	cfg.DBConnDSN = common.TestingPostgresConnDSN()
+	cfg.DBConnDSN = common.TestingPostgresConnDSN(pkg)
 
 	tmp, err := game.NewDBStore(&cfg, userStore)
 	if err != nil {

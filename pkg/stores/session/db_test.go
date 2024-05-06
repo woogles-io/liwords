@@ -10,8 +10,14 @@ import (
 	"github.com/woogles-io/liwords/pkg/stores/common"
 )
 
+var pkg = "session"
+
 func TestSession(t *testing.T) {
-	pool, err := common.OpenTestingDB()
+	err := common.RecreateTestDB(pkg)
+	if err != nil {
+		panic(err)
+	}
+	pool, err := common.OpenTestingDB(pkg)
 	if err != nil {
 		panic(err)
 	}

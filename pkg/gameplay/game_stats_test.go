@@ -52,11 +52,11 @@ var gameEndedEventObj = &pb.GameEndedEvent{
 
 func recreateDB() (*pgxpool.Pool, *user.DBStore, *stats.DBStore, *mod.DBStore) {
 	// Create a database.
-	err := common.RecreateTestDB()
+	err := common.RecreateTestDB(pkg)
 	if err != nil {
 		panic(err)
 	}
-	pool, err := common.OpenTestingDB()
+	pool, err := common.OpenTestingDB(pkg)
 	if err != nil {
 		panic(err)
 	}
