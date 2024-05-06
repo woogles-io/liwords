@@ -13,14 +13,14 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MACONDO_DATA_PATH: ${{ github.workspace }}/data
-      TEST_DB_HOST: postgres
+      TEST_DB_HOST: localhost
       TEST_DB_PREFIX: liwords_test
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: pass
       DB_SSL_MODE: disable
       DB_MIGRATIONS_PATH: file:///${{ github.workspace }}/db/migrations
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://localhost:6379
     services:
       # Label used to access the service container
       redis:
@@ -32,6 +32,8 @@ jobs:
           --health-interval 3s
           --health-timeout 5s
           --health-retries 5
+        ports:
+          - 6379:6379
       postgres:
         # Docker Hub image
         image: postgres
@@ -41,7 +43,7 @@ jobs:
         # Set health checks to wait until postgres has started
         options: >-
           --health-cmd pg_isready
-          --health-interval 3s
+          --health-interval 5s
           --health-timeout 5s
           --health-retries 5
         ports:
@@ -87,6 +89,7 @@ jobs:
   deploy_api_docker:
     runs-on: ubuntu-latest
     if: ${{ github.ref == 'refs/heads/master' }}
+    needs: build_api_srv
     steps:
       - name: Checkout
         uses: actions/checkout@v4
