@@ -957,7 +957,7 @@ func (s *DBStore) Username(ctx context.Context, uuid string) (string, error) {
 
 func (s *DBStore) GetAPIKey(ctx context.Context, uuid string) (string, error) {
 	var apikey string
-	err := s.dbPool.QueryRow(ctx, `SELECT api_key FROM users where uuid = $1`, uuid).Scan(
+	err := s.dbPool.QueryRow(ctx, `SELECT COALESCE((SELECT api_key FROM users where uuid = $1), '')`, uuid).Scan(
 		&apikey)
 	if err != nil {
 		// Ignore errors, but just return a blank API key.
