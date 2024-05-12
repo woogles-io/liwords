@@ -21,6 +21,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/mod"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 	"github.com/woogles-io/liwords/pkg/utilities"
 
@@ -36,11 +37,12 @@ type TournamentService struct {
 	eventChannel    chan *entity.EventWrapper
 	cfg             *config.Config
 	lambdaClient    *lambda.Client
+	queries         *models.Queries
 }
 
 // NewTournamentService creates a TournamentService
-func NewTournamentService(ts TournamentStore, us user.Store, cfg *config.Config, lc *lambda.Client) *TournamentService {
-	return &TournamentService{ts, us, nil, cfg, lc}
+func NewTournamentService(ts TournamentStore, us user.Store, cfg *config.Config, lc *lambda.Client, q *models.Queries) *TournamentService {
+	return &TournamentService{ts, us, nil, cfg, lc, q}
 }
 
 func (ts *TournamentService) SetEventChannel(c chan *entity.EventWrapper) {
@@ -344,6 +346,7 @@ func (ts *TournamentService) SetPairing(ctx context.Context, req *connect.Reques
 
 func (ts *TournamentService) SetResult(ctx context.Context, req *connect.Request[pb.TournamentResultOverrideRequest],
 ) (*connect.Response[pb.TournamentResponse], error) {
+
 	err := authenticateDirector(ctx, ts, req.Msg.Id, false, req.Msg)
 	if err != nil {
 		t, err := ts.tournamentStore.Get(ctx, req.Msg.Id)
@@ -377,7 +380,8 @@ func (ts *TournamentService) SetResult(ctx context.Context, req *connect.Request
 		int(req.Msg.Round),
 		int(req.Msg.GameIndex),
 		req.Msg.Amendment,
-		nil)
+		nil,
+		ts.queries)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}

@@ -22,14 +22,9 @@ import (
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/gameplay"
-	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/omgwords"
-	"github.com/woogles-io/liwords/pkg/omgwords/stores"
-	"github.com/woogles-io/liwords/pkg/puzzles"
-	"github.com/woogles-io/liwords/pkg/sessions"
-	"github.com/woogles-io/liwords/pkg/stats"
+	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/tournament"
-	"github.com/woogles-io/liwords/pkg/user"
 
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -49,38 +44,11 @@ const (
 	BotRequestID = "bot-request"
 )
 
-type Stores struct {
-	UserStore       user.Store
-	GameStore       gameplay.GameStore
-	SoughtGameStore gameplay.SoughtGameStore
-	PresenceStore   user.PresenceStore
-	ChatStore       user.ChatStore
-	ListStatStore   stats.ListStatStore
-	NotorietyStore  mod.NotorietyStore
-	TournamentStore tournament.TournamentStore
-	ConfigStore     config.ConfigStore
-	SessionStore    sessions.SessionStore
-	PuzzleStore     puzzles.PuzzleStore
-
-	// Refactor this soon:
-	GameDocumentStore  *stores.GameDocumentStore
-	AnnotatedGameStore *stores.DBStore
-}
-
 // Bus is the struct; it should contain all the stores to verify messages, etc.
 type Bus struct {
-	natsconn        *nats.Conn
-	config          *config.Config
-	userStore       user.Store
-	gameStore       gameplay.GameStore
-	soughtGameStore gameplay.SoughtGameStore
-	presenceStore   user.PresenceStore
-	listStatStore   stats.ListStatStore
-	notorietyStore  mod.NotorietyStore
-	tournamentStore tournament.TournamentStore
-	configStore     config.ConfigStore
-	chatStore       user.ChatStore
-	puzzleStore     puzzles.PuzzleStore
+	natsconn *nats.Conn
+	config   *config.Config
+	stores   *stores.Stores
 
 	redisPool *redis.Pool
 
@@ -94,19 +62,10 @@ type Bus struct {
 	gameEventAPIServer *EventAPIServer
 }
 
-func NewBus(cfg *config.Config, natsconn *nats.Conn, stores Stores, redisPool *redis.Pool) (*Bus, error) {
+func NewBus(cfg *config.Config, natsconn *nats.Conn, stores *stores.Stores, redisPool *redis.Pool) (*Bus, error) {
 	bus := &Bus{
 		natsconn:            natsconn,
-		userStore:           stores.UserStore,
-		gameStore:           stores.GameStore,
-		soughtGameStore:     stores.SoughtGameStore,
-		presenceStore:       stores.PresenceStore,
-		listStatStore:       stores.ListStatStore,
-		tournamentStore:     stores.TournamentStore,
-		notorietyStore:      stores.NotorietyStore,
-		configStore:         stores.ConfigStore,
-		chatStore:           stores.ChatStore,
-		puzzleStore:         stores.PuzzleStore,
+		stores:              stores,
 		subscriptions:       []*nats.Subscription{},
 		subchans:            map[string]chan *nats.Msg{},
 		config:              cfg,
@@ -119,10 +78,10 @@ func NewBus(cfg *config.Config, natsconn *nats.Conn, stores Stores, redisPool *r
 		redisPool:          redisPool,
 		gameEventAPIServer: NewEventApiServer(stores.UserStore, stores.GameStore),
 	}
-	bus.gameStore.SetGameEventChan(bus.gameEventChan)
-	bus.tournamentStore.SetTournamentEventChan(bus.tournamentEventChan)
-	bus.chatStore.SetEventChan(bus.genericEventChan)
-	bus.presenceStore.SetEventChan(bus.genericEventChan)
+	bus.stores.GameStore.SetGameEventChan(bus.gameEventChan)
+	bus.stores.TournamentStore.SetTournamentEventChan(bus.tournamentEventChan)
+	bus.stores.ChatStore.SetEventChan(bus.genericEventChan)
+	bus.stores.PresenceStore.SetEventChan(bus.genericEventChan)
 
 	topics := []string{
 		// ipc.pb are generic publishes
@@ -274,7 +233,7 @@ outerfor:
 				// This message usually has no audience.
 				if evt, ok := msg.Event.(*pb.ActiveGameEntry); ok {
 					log.Debug().Interface("event", evt).Msg("active-game-entry")
-					ret, err := b.presenceStore.UpdateActiveGame(ctx, evt)
+					ret, err := b.stores.PresenceStore.UpdateActiveGame(ctx, evt)
 					if err != nil {
 						log.Err(err).Msg("update-active-game-error")
 						// but continue anyway
@@ -372,7 +331,7 @@ outerfor:
 
 		case <-seekExpirer.C:
 			go func() {
-				err := b.soughtGameStore.ExpireOld(ctx)
+				err := b.stores.SoughtGameStore.ExpireOld(ctx)
 				if err != nil {
 					log.Err(err).Msg("expiration-error")
 				}
@@ -424,7 +383,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 		currentTournamentID := ""
 		if strings.HasPrefix(path, "/game/") {
 			gameID := strings.TrimPrefix(path, "/game/")
-			game, err := b.gameStore.Get(ctx, gameID)
+			game, err := b.stores.GameStore.Get(ctx, gameID)
 			if err != nil {
 				return err
 			}
@@ -452,7 +411,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			}
 
 		} else if strings.HasPrefix(path, "/tournament/") || strings.HasPrefix(path, "/club/") {
-			t, err := b.tournamentStore.GetBySlug(ctx, path)
+			t, err := b.stores.TournamentStore.GetBySlug(ctx, path)
 			if err != nil {
 				return err
 			}
@@ -482,7 +441,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			log.Debug().Str("path", path).Msg("realm-req-not-handled")
 		}
 
-		activeTourneys, err := b.tournamentStore.ActiveTournamentsFor(ctx, userID)
+		activeTourneys, err := b.stores.TournamentStore.ActiveTournamentsFor(ctx, userID)
 		if err != nil {
 			return err
 		}
@@ -580,8 +539,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
-		_, err = gameplay.HandleEvent(ctx, b.gameStore, b.userStore, b.notorietyStore, b.listStatStore,
-			b.tournamentStore, userID, evt)
+		_, err = gameplay.HandleEvent(ctx, b.stores, userID, evt)
 		return err
 
 	case pb.MessageType_TIMED_OUT.String():
@@ -590,7 +548,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
-		return gameplay.TimedOut(ctx, b.gameStore, b.userStore, b.notorietyStore, b.listStatStore, b.tournamentStore, evt.UserId, evt.GameId)
+		return gameplay.TimedOut(ctx, b.stores, evt.UserId, evt.GameId)
 
 	case pb.MessageType_READY_FOR_GAME.String():
 		evt := &pb.ReadyForGame{}
@@ -678,7 +636,7 @@ func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 	channel string) error {
 	// Publish to a user, but pass in a specific channel. Only publish to those
 	// user sockets that are in this channel/realm/what-have-you.
-	sanitized, err := sanitize(b.userStore, evt, userID)
+	sanitized, err := sanitize(b.stores.UserStore, evt, userID)
 	if err != nil {
 		return err
 	}
@@ -698,7 +656,7 @@ func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 
 func (b *Bus) pubToConnectionID(connID, userID string, evt *entity.EventWrapper) error {
 	// Publish to a specific connection ID.
-	sanitized, err := sanitize(b.userStore, evt, userID)
+	sanitized, err := sanitize(b.stores.UserStore, evt, userID)
 	if err != nil {
 		return err
 	}
@@ -732,12 +690,12 @@ func (b *Bus) broadcastChannelChanges(ctx context.Context, oldChannels, newChann
 	}
 
 	// Courtesy note: followee* is not acceptable in csw19.
-	followee, err := b.userStore.GetByUUID(ctx, userID)
+	followee, err := b.stores.UserStore.GetByUUID(ctx, userID)
 	if err != nil {
 		return err
 	}
 
-	followerUsers, err := b.userStore.GetFollowedBy(ctx, followee.ID)
+	followerUsers, err := b.stores.UserStore.GetFollowedBy(ctx, followee.ID)
 	if err != nil {
 		return err
 	}
@@ -788,7 +746,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 		anon = true
 		username = evt.UserId
 	} else {
-		username, err = b.userStore.Username(ctx, evt.UserId)
+		username, err = b.stores.UserStore.Username(ctx, evt.UserId)
 		if err != nil {
 			return err
 		}
@@ -813,7 +771,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 
 		if presenceChan != "" {
 			log.Debug().Str("presence-chan", presenceChan).Str("username", username).Msg("SetPresence")
-			oldChannels, newChannels, err := b.presenceStore.SetPresence(ctx, evt.UserId, username, anon, presenceChan, connID)
+			oldChannels, newChannels, err := b.stores.PresenceStore.SetPresence(ctx, evt.UserId, username, anon, presenceChan, connID)
 			if err != nil {
 				return err
 			}
@@ -859,7 +817,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 }
 
 func (b *Bus) getPresence(ctx context.Context, presenceChan string) (*entity.EventWrapper, error) {
-	users, err := b.presenceStore.GetInChannel(ctx, presenceChan)
+	users, err := b.stores.PresenceStore.GetInChannel(ctx, presenceChan)
 	if err != nil {
 		return nil, err
 	}
@@ -887,12 +845,12 @@ func (b *Bus) leaveTab(ctx context.Context, userID, connID string) error {
 		anon = true
 		username = userID
 	} else {
-		username, err = b.userStore.Username(ctx, userID)
+		username, err = b.stores.UserStore.Username(ctx, userID)
 		if err != nil {
 			return err
 		}
 	}
-	oldChannels, newChannels, channels, err := b.presenceStore.ClearPresence(ctx, userID, username, anon, connID)
+	oldChannels, newChannels, channels, err := b.stores.PresenceStore.ClearPresence(ctx, userID, username, anon, connID)
 	if err != nil {
 		return err
 	}
@@ -963,14 +921,14 @@ func (b *Bus) pongReceived(ctx context.Context, userID, connID, ips string) erro
 		anon = true
 		username = userID
 	} else {
-		username, err = b.userStore.Username(ctx, userID)
+		username, err = b.stores.UserStore.Username(ctx, userID)
 		if err != nil {
 			return err
 		}
 	}
 	log.Debug().Str("username", username).Str("connID", connID).Str("ips", ips).Msg("pong-received")
 
-	oldChannels, newChannels, err := b.presenceStore.RenewPresence(ctx, userID, username, anon, connID)
+	oldChannels, newChannels, err := b.stores.PresenceStore.RenewPresence(ctx, userID, username, anon, connID)
 	if err != nil {
 		return err
 	}
@@ -981,7 +939,7 @@ func (b *Bus) pongReceived(ctx context.Context, userID, connID, ips string) erro
 }
 
 func (b *Bus) activeGames(ctx context.Context, tourneyID string) (*entity.EventWrapper, error) {
-	games, err := b.gameStore.ListActive(ctx, tourneyID, false)
+	games, err := b.stores.GameStore.ListActive(ctx, tourneyID, false)
 
 	if err != nil {
 		return nil, err
@@ -995,7 +953,7 @@ func (b *Bus) activeGames(ctx context.Context, tourneyID string) (*entity.EventW
 // Return 0 if uid1 blocks uid2, 1 if uid2 blocks uid1, and -1 if neither blocks
 // the other. Note, if they both block each other it will return 0.
 func (b *Bus) blockExists(ctx context.Context, u1, u2 *entity.User) (int, error) {
-	blockedUsers, err := b.userStore.GetBlocks(ctx, u1.ID)
+	blockedUsers, err := b.stores.UserStore.GetBlocks(ctx, u1.ID)
 	if err != nil {
 		return 0, err
 	}
@@ -1006,7 +964,7 @@ func (b *Bus) blockExists(ctx context.Context, u1, u2 *entity.User) (int, error)
 		}
 	}
 	// Check in the other direction
-	blockedUsers, err = b.userStore.GetBlockedBy(ctx, u1.ID)
+	blockedUsers, err = b.stores.UserStore.GetBlockedBy(ctx, u1.ID)
 	if err != nil {
 		return 0, err
 	}
@@ -1021,7 +979,7 @@ func (b *Bus) blockExists(ctx context.Context, u1, u2 *entity.User) (int, error)
 
 func (b *Bus) sendLobbyContext(ctx context.Context, userID, connID string) error {
 	if !userIsAnon(userID) {
-		u, err := b.userStore.GetByUUID(ctx, userID)
+		u, err := b.stores.UserStore.GetByUUID(ctx, userID)
 		if err != nil {
 			return err
 		}

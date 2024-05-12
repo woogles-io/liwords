@@ -54,12 +54,12 @@ func (b *Bus) seekRequest(ctx context.Context, auth, userID, connID string,
 		return err
 	}
 
-	err = actionExists(ctx, b.userStore, userID, gameRequest)
+	err = actionExists(ctx, b.stores.UserStore, userID, gameRequest)
 	if err != nil {
 		return err
 	}
 
-	exists, err := b.soughtGameStore.ExistsForUser(ctx, gameRequest.RequestId)
+	exists, err := b.stores.SoughtGameStore.ExistsForUser(ctx, gameRequest.RequestId)
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func (b *Bus) newSeekRequest(ctx context.Context, auth, userID, connID string,
 	}
 	req.RatingKey = string(ratingKey)
 
-	u, err := b.userStore.GetByUUID(ctx, reqUser.UserId)
+	u, err := b.stores.UserStore.GetByUUID(ctx, reqUser.UserId)
 	if err != nil {
 		return err
 	}
@@ -139,12 +139,12 @@ func (b *Bus) newSeekRequest(ctx context.Context, auth, userID, connID string,
 
 	if req.ReceivingUser != nil {
 		req.ReceivingUser.DisplayName = strings.TrimSpace(req.ReceivingUser.DisplayName)
-		receiver, err := b.userStore.Get(ctx, req.ReceivingUser.DisplayName)
+		receiver, err := b.stores.UserStore.Get(ctx, req.ReceivingUser.DisplayName)
 		if err != nil {
 			// No such user, most likely.
 			return err
 		}
-		requester, err := b.userStore.GetByUUID(ctx, reqUser.UserId)
+		requester, err := b.stores.UserStore.GetByUUID(ctx, reqUser.UserId)
 		if err != nil {
 			return err
 		}
@@ -157,7 +157,7 @@ func (b *Bus) newSeekRequest(ctx context.Context, auth, userID, connID string,
 		req.ReceivingUser.UserId = receiver.UUID
 	}
 
-	sg, err := gameplay.NewSoughtGame(ctx, b.soughtGameStore, req)
+	sg, err := gameplay.NewSoughtGame(ctx, b.stores.SoughtGameStore, req)
 	if err != nil {
 		return err
 	}
@@ -173,7 +173,7 @@ func (b *Bus) updateSeekRequest(ctx context.Context, auth, userID, connID string
 		return errors.New("nil game request for seek to update")
 	}
 	reqId := newReq.GameRequest.RequestId
-	sg, err := b.soughtGameStore.Get(ctx, reqId)
+	sg, err := b.stores.SoughtGameStore.Get(ctx, reqId)
 	if err != nil {
 		return err
 	}
@@ -196,12 +196,12 @@ func (b *Bus) updateSeekRequest(ctx context.Context, auth, userID, connID string
 	}
 
 	sg.SeekRequest.ReceivingUser.DisplayName = strings.TrimSpace(receiverDisplayName)
-	receiver, err := b.userStore.Get(ctx, receiverDisplayName)
+	receiver, err := b.stores.UserStore.Get(ctx, receiverDisplayName)
 	if err != nil {
 		// No such user, most likely.
 		return err
 	}
-	requester, err := b.userStore.GetByUUID(ctx, seekerUserID)
+	requester, err := b.stores.UserStore.GetByUUID(ctx, seekerUserID)
 	if err != nil {
 		return err
 	}
@@ -318,7 +318,7 @@ func (b *Bus) gameRequestForSeek(ctx context.Context, req *pb.SeekRequest,
 	if gameID == "" {
 		gameRequest = req.GameRequest
 	} else { // It's a rematch.
-		gm, err := b.gameStore.GetMetadata(ctx, gameID)
+		gm, err := b.stores.GameStore.GetMetadata(ctx, gameID)
 		if err != nil {
 			return nil, "", err
 		}
@@ -391,9 +391,9 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.SeekRequest, botUserID str
 	}
 
 	if botUserID == "" {
-		accUser, err = b.userStore.GetBot(ctx, req.GameRequest.BotType)
+		accUser, err = b.stores.UserStore.GetBot(ctx, req.GameRequest.BotType)
 	} else {
-		accUser, err = b.userStore.GetByUUID(ctx, botUserID)
+		accUser, err = b.stores.UserStore.GetByUUID(ctx, botUserID)
 	}
 	if err != nil {
 		return err
@@ -416,7 +416,7 @@ func (b *Bus) sendSoughtGameDeletion(ctx context.Context, sg *entity.SoughtGame)
 
 func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 	userID, connID string) error {
-	sg, err := b.soughtGameStore.Get(ctx, evt.RequestId)
+	sg, err := b.stores.SoughtGameStore.Get(ctx, evt.RequestId)
 	if err != nil {
 		return err
 	}
@@ -424,14 +424,14 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 	requester := sg.SeekRequest.User.UserId
 	gameReq := sg.SeekRequest.GameRequest
 
-	err = actionExists(ctx, b.userStore, userID, gameReq)
+	err = actionExists(ctx, b.stores.UserStore, userID, gameReq)
 	if err != nil {
 		return err
 	}
 
 	if requester == userID {
 		log.Info().Str("sender", requester).Msg("canceling seek")
-		err := gameplay.CancelSoughtGame(ctx, b.soughtGameStore, evt.RequestId)
+		err := gameplay.CancelSoughtGame(ctx, b.stores.SoughtGameStore, evt.RequestId)
 		if err != nil {
 			return err
 		}
@@ -439,7 +439,7 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 		return b.sendSoughtGameDeletion(ctx, sg)
 	}
 
-	accUser, err := b.userStore.GetByUUID(ctx, userID)
+	accUser, err := b.stores.UserStore.GetByUUID(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -453,7 +453,7 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 			return err
 		}
 
-		reqUser, err := b.userStore.GetByUUID(ctx, requester)
+		reqUser, err := b.stores.UserStore.GetByUUID(ctx, requester)
 		if err != nil {
 			return err
 		}
@@ -480,7 +480,7 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 		}
 	}
 
-	reqUser, err := b.userStore.GetByUUID(ctx, requester)
+	reqUser, err := b.stores.UserStore.GetByUUID(ctx, requester)
 	if err != nil {
 		return err
 	}
@@ -531,7 +531,7 @@ func checkForBlock(ctx context.Context, b *Bus, connID string, accUser *entity.U
 func (b *Bus) seekDeclined(ctx context.Context, evt *pb.DeclineSeekRequest, userID string) error {
 	// the sending user declined the match request. Send this declination
 	// to the matcher and delete the request.
-	sg, err := b.soughtGameStore.Get(ctx, evt.RequestId)
+	sg, err := b.stores.SoughtGameStore.Get(ctx, evt.RequestId)
 	if err != nil {
 		return err
 	}
@@ -540,7 +540,7 @@ func (b *Bus) seekDeclined(ctx context.Context, evt *pb.DeclineSeekRequest, user
 		return errors.New("request userID does not match")
 	}
 
-	err = gameplay.CancelSoughtGame(ctx, b.soughtGameStore, evt.RequestId)
+	err = gameplay.CancelSoughtGame(ctx, b.stores.SoughtGameStore, evt.RequestId)
 	if err != nil {
 		return err
 	}
@@ -673,7 +673,7 @@ func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.
 }
 
 func (b *Bus) deleteSoughtForUser(ctx context.Context, userID string) error {
-	req, err := b.soughtGameStore.DeleteForUser(ctx, userID)
+	req, err := b.stores.SoughtGameStore.DeleteForUser(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -686,7 +686,7 @@ func (b *Bus) deleteSoughtForUser(ctx context.Context, userID string) error {
 		return err
 	}
 
-	req, err = b.soughtGameStore.UpdateForReceiver(ctx, userID)
+	req, err = b.stores.SoughtGameStore.UpdateForReceiver(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -698,7 +698,7 @@ func (b *Bus) deleteSoughtForUser(ctx context.Context, userID string) error {
 }
 
 func (b *Bus) deleteSoughtForConnID(ctx context.Context, connID string) error {
-	req, err := b.soughtGameStore.DeleteForSeekerConnID(ctx, connID)
+	req, err := b.stores.SoughtGameStore.DeleteForSeekerConnID(ctx, connID)
 	if err != nil {
 		return err
 	}
@@ -711,7 +711,7 @@ func (b *Bus) deleteSoughtForConnID(ctx context.Context, connID string) error {
 		return err
 	}
 
-	req, err = b.soughtGameStore.UpdateForReceiverConnID(ctx, connID)
+	req, err = b.stores.SoughtGameStore.UpdateForReceiverConnID(ctx, connID)
 	if err != nil {
 		return err
 	}
@@ -723,7 +723,7 @@ func (b *Bus) deleteSoughtForConnID(ctx context.Context, connID string) error {
 }
 
 func (b *Bus) openSeeks(ctx context.Context, receiverID string, tourneyID string) (*entity.EventWrapper, error) {
-	sgs, err := b.soughtGameStore.ListOpenSeeks(ctx, receiverID, tourneyID)
+	sgs, err := b.stores.SoughtGameStore.ListOpenSeeks(ctx, receiverID, tourneyID)
 	if err != nil {
 		return nil, err
 	}
@@ -733,7 +733,7 @@ func (b *Bus) openSeeks(ctx context.Context, receiverID string, tourneyID string
 
 	var receiver *entity.User
 	if !userIsAnon(receiverID) {
-		receiver, err = b.userStore.GetByUUID(ctx, receiverID)
+		receiver, err = b.stores.UserStore.GetByUUID(ctx, receiverID)
 		if err != nil {
 			return nil, err
 		}
@@ -742,7 +742,7 @@ func (b *Bus) openSeeks(ctx context.Context, receiverID string, tourneyID string
 	log.Debug().Str("receiver", receiverID).Interface("open-matches", sgs).Msg("open-matches")
 	pbobj := &pb.SeekRequests{Requests: []*pb.SeekRequest{}}
 	for _, sg := range sgs {
-		seeker, err := b.userStore.GetByUUID(ctx, sg.SeekRequest.User.UserId)
+		seeker, err := b.stores.UserStore.GetByUUID(ctx, sg.SeekRequest.User.UserId)
 		if err != nil {
 			return nil, err
 		}

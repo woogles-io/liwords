@@ -54,8 +54,8 @@ func (u *UserModeratedError) Error() string {
 
 // DB version of the ActionExists function above for testing purposes
 // This can be deleted once the above function uses the DB to get the actions.
-func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLogout bool, actionTypes []ms.ModActionType) (bool, error) {
-	currentActions, err := us.GetActions(ctx, uuid)
+func ActionExists(ctx context.Context, userStore user.Store, uuid string, forceInsistLogout bool, actionTypes []ms.ModActionType) (bool, error) {
+	currentActions, err := userStore.GetActions(ctx, uuid)
 	if err != nil {
 		return false, err
 	}
@@ -196,21 +196,21 @@ func prepareAction(ctx context.Context, us user.Store, cs user.ChatStore, action
 	return nil
 }
 
-func RemoveActions(ctx context.Context, us user.Store, removerUserId string, actions []*ms.ModAction) error {
-	return us.RemoveActions(ctx, actions)
+func RemoveActions(ctx context.Context, userStore user.Store, removerUserId string, actions []*ms.ModAction) error {
+	return userStore.RemoveActions(ctx, actions)
 }
 
 func IsRemoval(action *ms.ModAction) bool {
 	return action.Duration != 0 && action.Duration <= int32(RemovalDuration)
 }
 
-func IsCensorable(ctx context.Context, us user.Store, uuid string) bool {
+func IsCensorable(ctx context.Context, userStore user.Store, uuid string) bool {
 	// Don't censor if already censored
 	if uuid == utilities.CensoredUsername ||
 		uuid == utilities.AnotherCensoredUsername {
 		return false
 	}
-	permaban, _ := ActionExists(ctx, us, uuid, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	permaban, _ := ActionExists(ctx, userStore, uuid, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	return permaban
 }
 
@@ -224,12 +224,12 @@ func censorPlayerInHistory(hist *macondopb.GameHistory, playerIndex int, bothCen
 	hist.Players[playerIndex].Nickname = censoredUsername
 }
 
-func CensorHistory(ctx context.Context, us user.Store, hist *macondopb.GameHistory) *macondopb.GameHistory {
+func CensorHistory(ctx context.Context, userStore user.Store, hist *macondopb.GameHistory) *macondopb.GameHistory {
 	playerOne := hist.Players[0].UserId
 	playerTwo := hist.Players[1].UserId
 
-	playerOneCensorable := IsCensorable(ctx, us, playerOne)
-	playerTwoCensorable := IsCensorable(ctx, us, playerTwo)
+	playerOneCensorable := IsCensorable(ctx, userStore, playerOne)
+	playerTwoCensorable := IsCensorable(ctx, userStore, playerTwo)
 	bothCensorable := playerOneCensorable && playerTwoCensorable
 
 	if !playerOneCensorable && !playerTwoCensorable {

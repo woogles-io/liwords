@@ -5,20 +5,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
-	"github.com/woogles-io/liwords/pkg/gameplay"
+	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/common"
-	"github.com/woogles-io/liwords/pkg/stores/game"
-	ts "github.com/woogles-io/liwords/pkg/stores/tournament"
-	"github.com/woogles-io/liwords/pkg/stores/user"
 	"github.com/woogles-io/liwords/pkg/tournament"
-	pkguser "github.com/woogles-io/liwords/pkg/user"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/tournament_service"
 )
@@ -45,7 +40,7 @@ var DefaultConfig = config.DefaultConfig()
 var divOneName = "Division 1"
 var divTwoName = "Division 2"
 
-func recreateDB() (*DBController, *config.Config) {
+func recreateDB() (*stores.Stores, *config.Config) {
 	// Create a database.
 	err := common.RecreateTestDB(pkg)
 	if err != nil {
@@ -57,7 +52,13 @@ func recreateDB() (*DBController, *config.Config) {
 		panic(err)
 	}
 
-	ustore := userStore(pool)
+	cfg := DefaultConfig
+	cfg.DBConnDSN = common.TestingPostgresConnDSN(pkg) // for gorm stores
+
+	stores, err := stores.NewInitializedStores(pool, nil, &cfg)
+	if err != nil {
+		panic(err)
+	}
 
 	for _, u := range []*entity.User{
 		{Username: "Will", Email: "cesar@woogles.io", UUID: "Will"},
@@ -78,35 +79,13 @@ func recreateDB() (*DBController, *config.Config) {
 		{Username: "Comrade", Email: "comrade@woogles.io", UUID: "Comrade"},
 		{Username: "ValuedCustomer", Email: "valued@woogles.io", UUID: "ValuedCustomer"},
 	} {
-		err = ustore.New(context.Background(), u)
+		err = stores.UserStore.New(context.Background(), u)
 		if err != nil {
 			log.Fatal().Err(err).Msg("error")
 		}
 	}
-	ustore.(*user.DBStore).Disconnect()
 
-	pool, err = common.OpenTestingDB(pkg)
-	if err != nil {
-		panic(err)
-	}
-	us := userStore(pool)
-	_, gs := gameStore(us)
-	cfg, tstore := tournamentStore(gs)
-	return &DBController{
-		us: us, gs: gs, ts: tstore,
-	}, cfg
-}
-
-func tournamentStore(gs gameplay.GameStore) (*config.Config, tournament.TournamentStore) {
-	cfg := DefaultConfig
-	cfg.DBConnDSN = common.TestingPostgresConnDSN(pkg)
-
-	tmp, err := ts.NewDBStore(&cfg, gs)
-	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-	tournamentStore := ts.NewCache(tmp)
-	return &cfg, tournamentStore
+	return stores, &cfg
 }
 
 func makeRoundControls() []*ipc.RoundControl {
@@ -171,44 +150,20 @@ func makeTournamentPersons(persons map[string]int32) *ipc.TournamentPersons {
 	return tp
 }
 
-func userStore(pool *pgxpool.Pool) pkguser.Store {
-	ustore, err := user.NewDBStore(pool)
-	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-	return ustore
-}
-
-func gameStore(userStore pkguser.Store) (*config.Config, gameplay.GameStore) {
-	cfg := DefaultConfig
-	cfg.DBConnDSN = common.TestingPostgresConnDSN(pkg)
-
-	tmp, err := game.NewDBStore(&cfg, userStore)
-	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-	gameStore := game.NewCache(tmp)
-	return &cfg, gameStore
-}
-
-type DBController struct {
-	us pkguser.Store
-	gs gameplay.GameStore
-	ts tournament.TournamentStore
-}
-
-func (dbc *DBController) cleanup() {
-	dbc.us.(*user.DBStore).Disconnect()
-	dbc.ts.(*ts.Cache).Disconnect()
-	dbc.gs.(*game.Cache).Disconnect()
+func cleanup(s *stores.Stores) {
+	s.UserStore.Disconnect()
+	s.TournamentStore.Disconnect()
+	s.GameStore.Disconnect()
+	s.NotorietyStore.Disconnect()
+	s.ListStatStore.Disconnect()
 }
 
 func TestTournamentSingleDivision(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
-	dbc, cfg := recreateDB()
-	defer func() { dbc.cleanup() }()
-	tstore, us := dbc.ts, dbc.us
+	stores, cfg := recreateDB()
+	defer func() { cleanup(stores) }()
+	tstore, us := stores.TournamentStore, stores.UserStore
 
 	players := makeTournamentPersons(map[string]int32{"Will": 1000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100})
 	directors := makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2})
@@ -410,6 +365,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 		0,
 		false,
 		nil,
+		stores.Queries,
 	)
 	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NOT_STARTED, tournamentName, divOneName).Error())
 
@@ -460,7 +416,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 		0,
 		0,
 		false,
-		nil)
+		nil, stores.Queries)
 	is.NoErr(err)
 
 	// Set results for a division that does not exist
@@ -479,7 +435,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 		0,
 		0,
 		false,
-		nil)
+		nil, stores.Queries)
 	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, tournamentName, divOneName+"big boi").Error())
 
 	isStarted, err = tournament.IsStarted(ctx, tstore, ty.UUID)
@@ -506,7 +462,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 		0,
 		0,
 		false,
-		nil)
+		nil, stores.Queries)
 	is.NoErr(err)
 
 	isRoundComplete, err = tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 0)
@@ -531,7 +487,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 		1,
 		0,
 		false,
-		nil)
+		nil, stores.Queries)
 	is.NoErr(err)
 
 	err = tournament.SetResult(ctx,
@@ -549,7 +505,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 		1,
 		0,
 		false,
-		nil)
+		nil, stores.Queries)
 	is.NoErr(err)
 
 	isRoundComplete, err = tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 1)
@@ -586,9 +542,9 @@ func TestTournamentSingleDivision(t *testing.T) {
 func TestTournamentMultipleDivisions(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
-	dbc, cfg := recreateDB()
-	defer func() { dbc.cleanup() }()
-	tstore, us := dbc.ts, dbc.us
+	stores, cfg := recreateDB()
+	defer func() { cleanup(stores) }()
+	tstore, us := stores.TournamentStore, stores.UserStore
 
 	divOnePlayers := makeTournamentPersons(map[string]int32{"Will": 1000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100})
 	divTwoPlayers := makeTournamentPersons(map[string]int32{"Guy": 1000, "Dude": 3000, "Comrade": 2200, "ValuedCustomer": 2100})
@@ -630,7 +586,7 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 
 	div1 := ty.Divisions[divOneName]
 	div2 := ty.Divisions[divTwoName]
-
+	fmt.Println(divOnePlayers)
 	// Add players
 	err = tournament.AddPlayers(ctx, tstore, us, ty.UUID, divOneName, divOnePlayers)
 	is.NoErr(err)
@@ -680,7 +636,7 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 		0,
 		0,
 		false,
-		nil)
+		nil, stores.Queries)
 	is.NoErr(err)
 
 	err = tournament.SetResult(ctx,
@@ -698,7 +654,7 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 		0,
 		0,
 		false,
-		nil)
+		nil, stores.Queries)
 	is.NoErr(err)
 
 	err = tournament.SetResult(ctx,
@@ -716,7 +672,7 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 		0,
 		0,
 		false,
-		nil)
+		nil, stores.Queries)
 	is.NoErr(err)
 
 	err = tournament.SetResult(ctx,
@@ -734,7 +690,7 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 		0,
 		0,
 		false,
-		nil)
+		nil, stores.Queries)
 	is.NoErr(err)
 
 	divOneComplete, err := tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 0)

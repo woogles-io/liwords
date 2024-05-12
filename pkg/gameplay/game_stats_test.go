@@ -15,10 +15,8 @@ import (
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/gameplay"
 	pkgstats "github.com/woogles-io/liwords/pkg/stats"
+	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/common"
-	"github.com/woogles-io/liwords/pkg/stores/mod"
-	"github.com/woogles-io/liwords/pkg/stores/stats"
-	"github.com/woogles-io/liwords/pkg/stores/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
@@ -50,7 +48,7 @@ var gameEndedEventObj = &pb.GameEndedEvent{
 	Tie:       false,
 }
 
-func recreateDB() (*pgxpool.Pool, *user.DBStore, *stats.DBStore, *mod.DBStore) {
+func recreateDB() (*pgxpool.Pool, *stores.Stores, *config.Config) {
 	// Create a database.
 	err := common.RecreateTestDB(pkg)
 	if err != nil {
@@ -61,22 +59,12 @@ func recreateDB() (*pgxpool.Pool, *user.DBStore, *stats.DBStore, *mod.DBStore) {
 		panic(err)
 	}
 
-	// Create a user table. Initialize the user store.
-	ustore, err := user.NewDBStore(pool)
+	cfg := DefaultConfig
+	cfg.DBConnDSN = common.TestingPostgresConnDSN(pkg) // for gorm stores
+	stores, err := stores.NewInitializedStores(pool, nil, &cfg)
 	if err != nil {
 		panic(err)
 	}
-
-	lstore, err := stats.NewDBStore(pool)
-	if err != nil {
-		panic(err)
-	}
-
-	nstore, err := mod.NewDBStore(pool)
-	if err != nil {
-		panic(err)
-	}
-
 	// Insert a couple of users into the table.
 
 	for _, u := range []*entity.User{
@@ -84,12 +72,12 @@ func recreateDB() (*pgxpool.Pool, *user.DBStore, *stats.DBStore, *mod.DBStore) {
 		{Username: "Mina", Email: "mina@gmail.com", UUID: "qUQkST8CendYA3baHNoPjk"},
 		{Username: "jesse", Email: "jesse@woogles.io", UUID: "3xpEkpRAy3AizbVmDg3kdi"},
 	} {
-		err = ustore.New(context.Background(), u)
+		err = stores.UserStore.New(context.Background(), u)
 		if err != nil {
 			log.Fatal().Err(err).Msg("error")
 		}
 	}
-	return pool, ustore, lstore, nstore
+	return pool, stores, &cfg
 }
 
 func TestMain(m *testing.M) {
@@ -107,7 +95,7 @@ func variantKey(req *pb.GameRequest) entity.VariantKey {
 
 func TestComputeGameStats(t *testing.T) {
 	is := is.New(t)
-	_, ustore, lstore, _ := recreateDB()
+	_, stores, _ := recreateDB()
 
 	histjson, err := os.ReadFile("./testdata/game1/history.json")
 	is.NoErr(err)
@@ -122,9 +110,9 @@ func TestComputeGameStats(t *testing.T) {
 	is.NoErr(err)
 
 	ctx := context.WithValue(context.Background(), config.CtxKeyword, &DefaultConfig)
-	s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
+	s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, stores)
 	is.NoErr(err)
-	pkgstats.Finalize(ctx, s, lstore, []string{"m5ktbp4qPVTqaAhg6HJMsb"},
+	pkgstats.Finalize(ctx, s, stores.ListStatStore, []string{"m5ktbp4qPVTqaAhg6HJMsb"},
 		"qUQkST8CendYA3baHNoPjk", "xjCWug7EZtDxDHX5fRZTLo",
 	)
 
@@ -153,13 +141,16 @@ func TestComputeGameStats(t *testing.T) {
 		},
 	})
 
-	ustore.Disconnect()
-	lstore.Disconnect()
+	stores.UserStore.Disconnect()
+	stores.NotorietyStore.Disconnect()
+	stores.ListStatStore.Disconnect()
+	stores.GameStore.Disconnect()
+	stores.TournamentStore.Disconnect()
 }
 
 func TestComputeGameStats2(t *testing.T) {
 	is := is.New(t)
-	_, ustore, lstore, _ := recreateDB()
+	_, stores, _ := recreateDB()
 
 	histjson, err := os.ReadFile("./testdata/game2/history.json")
 	is.NoErr(err)
@@ -174,10 +165,10 @@ func TestComputeGameStats2(t *testing.T) {
 	is.NoErr(err)
 
 	ctx := context.WithValue(context.Background(), config.CtxKeyword, &DefaultConfig)
-	s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
+	s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, stores)
 	is.NoErr(err)
 
-	pkgstats.Finalize(ctx, s, lstore, []string{"ycj5de5gArFF3ap76JyiUA"},
+	pkgstats.Finalize(ctx, s, stores.ListStatStore, []string{"ycj5de5gArFF3ap76JyiUA"},
 		"xjCWug7EZtDxDHX5fRZTLo", "qUQkST8CendYA3baHNoPjk",
 	)
 	log.Info().Interface("bingos", s.PlayerOneData[entity.BINGOS_STAT].List).Msg("player one bingos")
@@ -200,14 +191,16 @@ func TestComputeGameStats2(t *testing.T) {
 		},
 	})
 
-	ustore.Disconnect()
-	lstore.Disconnect()
-
+	stores.UserStore.Disconnect()
+	stores.NotorietyStore.Disconnect()
+	stores.ListStatStore.Disconnect()
+	stores.GameStore.Disconnect()
+	stores.TournamentStore.Disconnect()
 }
 
 func TestComputePlayerStats(t *testing.T) {
 	is := is.New(t)
-	_, ustore, lstore, _ := recreateDB()
+	_, stores, _ := recreateDB()
 
 	histjson, err := os.ReadFile("./testdata/game1/history.json")
 	is.NoErr(err)
@@ -222,20 +215,20 @@ func TestComputePlayerStats(t *testing.T) {
 	is.NoErr(err)
 
 	ctx := context.WithValue(context.Background(), config.CtxKeyword, &DefaultConfig)
-	_, err = gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
+	_, err = gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, stores)
 	is.NoErr(err)
 
 	p0id, p1id := hist.Players[0].UserId, hist.Players[1].UserId
 
-	u0, err := ustore.GetByUUID(context.Background(), p0id)
+	u0, err := stores.UserStore.GetByUUID(context.Background(), p0id)
 	is.NoErr(err)
-	u1, err := ustore.GetByUUID(context.Background(), p1id)
+	u1, err := stores.UserStore.GetByUUID(context.Background(), p1id)
 	is.NoErr(err)
 
 	stats0, ok := u0.Profile.Stats.Data["CSW19.classic.ultrablitz"]
 	is.True(ok)
 
-	err = pkgstats.Finalize(ctx, stats0, lstore, []string{"m5ktbp4qPVTqaAhg6HJMsb"},
+	err = pkgstats.Finalize(ctx, stats0, stores.ListStatStore, []string{"m5ktbp4qPVTqaAhg6HJMsb"},
 		"qUQkST8CendYA3baHNoPjk", "xjCWug7EZtDxDHX5fRZTLo",
 	)
 	is.NoErr(err)
@@ -260,13 +253,16 @@ func TestComputePlayerStats(t *testing.T) {
 	stats1, ok := u1.Profile.Stats.Data["CSW19.classic.ultrablitz"]
 	is.True(ok)
 	is.Equal(stats1.PlayerOneData[entity.WINS_STAT].Total, 0)
-	ustore.Disconnect()
-	lstore.Disconnect()
+	stores.UserStore.Disconnect()
+	stores.NotorietyStore.Disconnect()
+	stores.ListStatStore.Disconnect()
+	stores.GameStore.Disconnect()
+	stores.TournamentStore.Disconnect()
 }
 
 func TestComputePlayerStatsMultipleGames(t *testing.T) {
 	is := is.New(t)
-	_, ustore, lstore, _ := recreateDB()
+	_, stores, _ := recreateDB()
 	ctx := context.Background()
 
 	for _, g := range []string{"game1", "game2"} {
@@ -283,14 +279,14 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 		is.NoErr(err)
 
 		ctx := context.WithValue(context.Background(), config.CtxKeyword, &DefaultConfig)
-		s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
+		s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, stores)
 		is.NoErr(err)
 		log.Debug().Interface("stats", s).Msg("computed-stats")
 	}
 
-	u0, err := ustore.Get(context.Background(), "Mina")
+	u0, err := stores.UserStore.Get(context.Background(), "Mina")
 	is.NoErr(err)
-	u1, err := ustore.Get(context.Background(), "cesar4")
+	u1, err := stores.UserStore.Get(context.Background(), "cesar4")
 	is.NoErr(err)
 
 	stats0, ok := u0.Profile.Stats.Data["CSW19.classic.ultrablitz"]
@@ -299,7 +295,7 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 	is.Equal(stats0.PlayerOneData[entity.WINS_STAT].Total, 1)
 
 	log.Debug().Interface("li", stats0.PlayerOneData[entity.BINGOS_STAT].List).Msg("--")
-	err = pkgstats.Finalize(ctx, stats0, lstore, []string{
+	err = pkgstats.Finalize(ctx, stats0, stores.ListStatStore, []string{
 		// Aggregate across two games
 		"m5ktbp4qPVTqaAhg6HJMsb", "ycj5de5gArFF3ap76JyiUA"},
 		// Mina then cesar4
@@ -331,12 +327,12 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 	stats1, ok := u1.Profile.Stats.Data["CSW19.classic.ultrablitz"]
 	is.True(ok)
 
-	err = pkgstats.Finalize(ctx, stats1, lstore, []string{
+	err = pkgstats.Finalize(ctx, stats1, stores.ListStatStore, []string{
 		"m5ktbp4qPVTqaAhg6HJMsb", "ycj5de5gArFF3ap76JyiUA",
 	},
 		// cesar4 then mina
 		"xjCWug7EZtDxDHX5fRZTLo", "qUQkST8CendYA3baHNoPjk")
-
+	is.NoErr(err)
 	is.Equal(stats1.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
 		{
 			GameId:   "ycj5de5gArFF3ap76JyiUA",
@@ -348,6 +344,10 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 
 	is.Equal(stats1.PlayerOneData[entity.SCORE_STAT].Total, 307)
 	is.Equal(stats1.PlayerOneData[entity.WINS_STAT].Total, 1)
-	ustore.Disconnect()
-	lstore.Disconnect()
+	stores.UserStore.Disconnect()
+	stores.NotorietyStore.Disconnect()
+	stores.ListStatStore.Disconnect()
+	stores.GameStore.Disconnect()
+	stores.TournamentStore.Disconnect()
+
 }

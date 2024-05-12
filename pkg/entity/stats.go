@@ -109,7 +109,7 @@ type StatItem struct {
 	Maximum       int            `json:"-"`
 	Total         int            `json:"t"`
 	IncrementType IncrementType  `json:"-"`
-	List          []*ListItem    `json:"-"`
+	List          []*ListItem    `json:"l"`
 	Subitems      map[string]int `json:"s"`
 }
 
