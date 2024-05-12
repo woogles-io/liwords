@@ -211,6 +211,73 @@ func (FirstMethod) EnumDescriptor() ([]byte, []int) {
 	return file_ipc_tournament_proto_rawDescGZIP(), []int{2}
 }
 
+type AggregatedStat_StatType int32
+
+const (
+	AggregatedStat_NO_STAT             AggregatedStat_StatType = 0
+	AggregatedStat_STAT_WINNING_SCORE  AggregatedStat_StatType = 1
+	AggregatedStat_STAT_LOSING_SCORE   AggregatedStat_StatType = 2
+	AggregatedStat_STAT_COMBINED_SCORE AggregatedStat_StatType = 3
+	AggregatedStat_STAT_UPSET_WIN      AggregatedStat_StatType = 4
+	AggregatedStat_STAT_TURN_SCORE     AggregatedStat_StatType = 5
+	AggregatedStat_STAT_TOTAL_BINGOS   AggregatedStat_StatType = 6
+	AggregatedStat_STAT_TOTAL_SCORE    AggregatedStat_StatType = 7
+	AggregatedStat_STAT_PLAYED_GAMES   AggregatedStat_StatType = 8
+)
+
+// Enum value maps for AggregatedStat_StatType.
+var (
+	AggregatedStat_StatType_name = map[int32]string{
+		0: "NO_STAT",
+		1: "STAT_WINNING_SCORE",
+		2: "STAT_LOSING_SCORE",
+		3: "STAT_COMBINED_SCORE",
+		4: "STAT_UPSET_WIN",
+		5: "STAT_TURN_SCORE",
+		6: "STAT_TOTAL_BINGOS",
+		7: "STAT_TOTAL_SCORE",
+		8: "STAT_PLAYED_GAMES",
+	}
+	AggregatedStat_StatType_value = map[string]int32{
+		"NO_STAT":             0,
+		"STAT_WINNING_SCORE":  1,
+		"STAT_LOSING_SCORE":   2,
+		"STAT_COMBINED_SCORE": 3,
+		"STAT_UPSET_WIN":      4,
+		"STAT_TURN_SCORE":     5,
+		"STAT_TOTAL_BINGOS":   6,
+		"STAT_TOTAL_SCORE":    7,
+		"STAT_PLAYED_GAMES":   8,
+	}
+)
+
+func (x AggregatedStat_StatType) Enum() *AggregatedStat_StatType {
+	p := new(AggregatedStat_StatType)
+	*p = x
+	return p
+}
+
+func (x AggregatedStat_StatType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AggregatedStat_StatType) Descriptor() protoreflect.EnumDescriptor {
+	return file_ipc_tournament_proto_enumTypes[3].Descriptor()
+}
+
+func (AggregatedStat_StatType) Type() protoreflect.EnumType {
+	return &file_ipc_tournament_proto_enumTypes[3]
+}
+
+func (x AggregatedStat_StatType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AggregatedStat_StatType.Descriptor instead.
+func (AggregatedStat_StatType) EnumDescriptor() ([]byte, []int) {
+	return file_ipc_tournament_proto_rawDescGZIP(), []int{23, 0}
+}
+
 // New tournaments will use full tournament
 // messages (specifically, TournamentDivisionDataResponse et al).
 // This event is also used in the tournament_service's RecentGamesResponse,
@@ -1864,6 +1931,234 @@ func (x *TournamentDivisionDeletedResponse) GetDivision() string {
 	return ""
 }
 
+type TournamentStats struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	DivisionStats []*DivisionStats `protobuf:"bytes,1,rep,name=division_stats,json=divisionStats,proto3" json:"division_stats,omitempty"`
+}
+
+func (x *TournamentStats) Reset() {
+	*x = TournamentStats{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_ipc_tournament_proto_msgTypes[21]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *TournamentStats) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TournamentStats) ProtoMessage() {}
+
+func (x *TournamentStats) ProtoReflect() protoreflect.Message {
+	mi := &file_ipc_tournament_proto_msgTypes[21]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TournamentStats.ProtoReflect.Descriptor instead.
+func (*TournamentStats) Descriptor() ([]byte, []int) {
+	return file_ipc_tournament_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *TournamentStats) GetDivisionStats() []*DivisionStats {
+	if x != nil {
+		return x.DivisionStats
+	}
+	return nil
+}
+
+type SingleStat struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Stat           int32  `protobuf:"varint,1,opt,name=stat,proto3" json:"stat,omitempty"`
+	UserIdx        int32  `protobuf:"varint,2,opt,name=user_idx,json=userIdx,proto3" json:"user_idx,omitempty"`
+	Round          int32  `protobuf:"varint,3,opt,name=round,proto3" json:"round,omitempty"`                                        // Round doesn't apply to all stats
+	OppIdx         int32  `protobuf:"varint,4,opt,name=opp_idx,json=oppIdx,proto3" json:"opp_idx,omitempty"`                        // The other involved user
+	PlayDescriptor string `protobuf:"bytes,5,opt,name=play_descriptor,json=playDescriptor,proto3" json:"play_descriptor,omitempty"` // Could be a bingo or high play, may be blank
+}
+
+func (x *SingleStat) Reset() {
+	*x = SingleStat{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_ipc_tournament_proto_msgTypes[22]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *SingleStat) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SingleStat) ProtoMessage() {}
+
+func (x *SingleStat) ProtoReflect() protoreflect.Message {
+	mi := &file_ipc_tournament_proto_msgTypes[22]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SingleStat.ProtoReflect.Descriptor instead.
+func (*SingleStat) Descriptor() ([]byte, []int) {
+	return file_ipc_tournament_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *SingleStat) GetStat() int32 {
+	if x != nil {
+		return x.Stat
+	}
+	return 0
+}
+
+func (x *SingleStat) GetUserIdx() int32 {
+	if x != nil {
+		return x.UserIdx
+	}
+	return 0
+}
+
+func (x *SingleStat) GetRound() int32 {
+	if x != nil {
+		return x.Round
+	}
+	return 0
+}
+
+func (x *SingleStat) GetOppIdx() int32 {
+	if x != nil {
+		return x.OppIdx
+	}
+	return 0
+}
+
+func (x *SingleStat) GetPlayDescriptor() string {
+	if x != nil {
+		return x.PlayDescriptor
+	}
+	return ""
+}
+
+type AggregatedStat struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	StatType AggregatedStat_StatType `protobuf:"varint,1,opt,name=stat_type,json=statType,proto3,enum=ipc.AggregatedStat_StatType" json:"stat_type,omitempty"`
+	Stats    []*SingleStat           `protobuf:"bytes,2,rep,name=stats,proto3" json:"stats,omitempty"`
+}
+
+func (x *AggregatedStat) Reset() {
+	*x = AggregatedStat{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_ipc_tournament_proto_msgTypes[23]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *AggregatedStat) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AggregatedStat) ProtoMessage() {}
+
+func (x *AggregatedStat) ProtoReflect() protoreflect.Message {
+	mi := &file_ipc_tournament_proto_msgTypes[23]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AggregatedStat.ProtoReflect.Descriptor instead.
+func (*AggregatedStat) Descriptor() ([]byte, []int) {
+	return file_ipc_tournament_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *AggregatedStat) GetStatType() AggregatedStat_StatType {
+	if x != nil {
+		return x.StatType
+	}
+	return AggregatedStat_NO_STAT
+}
+
+func (x *AggregatedStat) GetStats() []*SingleStat {
+	if x != nil {
+		return x.Stats
+	}
+	return nil
+}
+
+type DivisionStats struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	AggregatedStats []*AggregatedStat `protobuf:"bytes,1,rep,name=aggregated_stats,json=aggregatedStats,proto3" json:"aggregated_stats,omitempty"`
+}
+
+func (x *DivisionStats) Reset() {
+	*x = DivisionStats{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_ipc_tournament_proto_msgTypes[24]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *DivisionStats) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DivisionStats) ProtoMessage() {}
+
+func (x *DivisionStats) ProtoReflect() protoreflect.Message {
+	mi := &file_ipc_tournament_proto_msgTypes[24]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DivisionStats.ProtoReflect.Descriptor instead.
+func (*DivisionStats) Descriptor() ([]byte, []int) {
+	return file_ipc_tournament_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *DivisionStats) GetAggregatedStats() []*AggregatedStat {
+	if x != nil {
+		return x.AggregatedStats
+	}
+	return nil
+}
+
 type TournamentGameEndedEvent_Player struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -1877,7 +2172,7 @@ type TournamentGameEndedEvent_Player struct {
 func (x *TournamentGameEndedEvent_Player) Reset() {
 	*x = TournamentGameEndedEvent_Player{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_ipc_tournament_proto_msgTypes[21]
+		mi := &file_ipc_tournament_proto_msgTypes[25]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1890,7 +2185,7 @@ func (x *TournamentGameEndedEvent_Player) String() string {
 func (*TournamentGameEndedEvent_Player) ProtoMessage() {}
 
 func (x *TournamentGameEndedEvent_Player) ProtoReflect() protoreflect.Message {
-	mi := &file_ipc_tournament_proto_msgTypes[21]
+	mi := &file_ipc_tournament_proto_msgTypes[25]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2268,35 +2563,75 @@ var file_ipc_tournament_proto_rawDesc = []byte{
 	0x6c, 0x65, 0x74, 0x65, 0x64, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x0e, 0x0a,
 	0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x1a, 0x0a,
 	0x08, 0x64, 0x69, 0x76, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x08, 0x64, 0x69, 0x76, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x2a, 0x88, 0x01, 0x0a, 0x14, 0x54, 0x6f,
-	0x75, 0x72, 0x6e, 0x61, 0x6d, 0x65, 0x6e, 0x74, 0x47, 0x61, 0x6d, 0x65, 0x52, 0x65, 0x73, 0x75,
-	0x6c, 0x74, 0x12, 0x0d, 0x0a, 0x09, 0x4e, 0x4f, 0x5f, 0x52, 0x45, 0x53, 0x55, 0x4c, 0x54, 0x10,
-	0x00, 0x12, 0x07, 0x0a, 0x03, 0x57, 0x49, 0x4e, 0x10, 0x01, 0x12, 0x08, 0x0a, 0x04, 0x4c, 0x4f,
-	0x53, 0x53, 0x10, 0x02, 0x12, 0x08, 0x0a, 0x04, 0x44, 0x52, 0x41, 0x57, 0x10, 0x03, 0x12, 0x07,
-	0x0a, 0x03, 0x42, 0x59, 0x45, 0x10, 0x04, 0x12, 0x0f, 0x0a, 0x0b, 0x46, 0x4f, 0x52, 0x46, 0x45,
-	0x49, 0x54, 0x5f, 0x57, 0x49, 0x4e, 0x10, 0x05, 0x12, 0x10, 0x0a, 0x0c, 0x46, 0x4f, 0x52, 0x46,
-	0x45, 0x49, 0x54, 0x5f, 0x4c, 0x4f, 0x53, 0x53, 0x10, 0x06, 0x12, 0x0e, 0x0a, 0x0a, 0x45, 0x4c,
-	0x49, 0x4d, 0x49, 0x4e, 0x41, 0x54, 0x45, 0x44, 0x10, 0x07, 0x12, 0x08, 0x0a, 0x04, 0x56, 0x4f,
-	0x49, 0x44, 0x10, 0x08, 0x2a, 0xaf, 0x01, 0x0a, 0x0d, 0x50, 0x61, 0x69, 0x72, 0x69, 0x6e, 0x67,
-	0x4d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x12, 0x0a, 0x0a, 0x06, 0x52, 0x41, 0x4e, 0x44, 0x4f, 0x4d,
-	0x10, 0x00, 0x12, 0x0f, 0x0a, 0x0b, 0x52, 0x4f, 0x55, 0x4e, 0x44, 0x5f, 0x52, 0x4f, 0x42, 0x49,
-	0x4e, 0x10, 0x01, 0x12, 0x14, 0x0a, 0x10, 0x4b, 0x49, 0x4e, 0x47, 0x5f, 0x4f, 0x46, 0x5f, 0x54,
-	0x48, 0x45, 0x5f, 0x48, 0x49, 0x4c, 0x4c, 0x10, 0x02, 0x12, 0x0f, 0x0a, 0x0b, 0x45, 0x4c, 0x49,
-	0x4d, 0x49, 0x4e, 0x41, 0x54, 0x49, 0x4f, 0x4e, 0x10, 0x03, 0x12, 0x0a, 0x0a, 0x06, 0x46, 0x41,
-	0x43, 0x54, 0x4f, 0x52, 0x10, 0x04, 0x12, 0x12, 0x0a, 0x0e, 0x49, 0x4e, 0x49, 0x54, 0x49, 0x41,
-	0x4c, 0x5f, 0x46, 0x4f, 0x4e, 0x54, 0x45, 0x53, 0x10, 0x05, 0x12, 0x09, 0x0a, 0x05, 0x53, 0x57,
-	0x49, 0x53, 0x53, 0x10, 0x06, 0x12, 0x0d, 0x0a, 0x09, 0x51, 0x55, 0x49, 0x43, 0x4b, 0x50, 0x41,
-	0x49, 0x52, 0x10, 0x07, 0x12, 0x0a, 0x0a, 0x06, 0x4d, 0x41, 0x4e, 0x55, 0x41, 0x4c, 0x10, 0x08,
-	0x12, 0x14, 0x0a, 0x10, 0x54, 0x45, 0x41, 0x4d, 0x5f, 0x52, 0x4f, 0x55, 0x4e, 0x44, 0x5f, 0x52,
-	0x4f, 0x42, 0x49, 0x4e, 0x10, 0x09, 0x2a, 0x46, 0x0a, 0x0b, 0x46, 0x69, 0x72, 0x73, 0x74, 0x4d,
-	0x65, 0x74, 0x68, 0x6f, 0x64, 0x12, 0x10, 0x0a, 0x0c, 0x4d, 0x41, 0x4e, 0x55, 0x41, 0x4c, 0x5f,
-	0x46, 0x49, 0x52, 0x53, 0x54, 0x10, 0x00, 0x12, 0x10, 0x0a, 0x0c, 0x52, 0x41, 0x4e, 0x44, 0x4f,
-	0x4d, 0x5f, 0x46, 0x49, 0x52, 0x53, 0x54, 0x10, 0x01, 0x12, 0x13, 0x0a, 0x0f, 0x41, 0x55, 0x54,
-	0x4f, 0x4d, 0x41, 0x54, 0x49, 0x43, 0x5f, 0x46, 0x49, 0x52, 0x53, 0x54, 0x10, 0x02, 0x42, 0x31,
-	0x5a, 0x2f, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x77, 0x6f, 0x6f,
-	0x67, 0x6c, 0x65, 0x73, 0x2d, 0x69, 0x6f, 0x2f, 0x6c, 0x69, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x2f,
-	0x72, 0x70, 0x63, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x69, 0x70,
-	0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x08, 0x64, 0x69, 0x76, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x22, 0x4c, 0x0a, 0x0f, 0x54, 0x6f, 0x75,
+	0x72, 0x6e, 0x61, 0x6d, 0x65, 0x6e, 0x74, 0x53, 0x74, 0x61, 0x74, 0x73, 0x12, 0x39, 0x0a, 0x0e,
+	0x64, 0x69, 0x76, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x5f, 0x73, 0x74, 0x61, 0x74, 0x73, 0x18, 0x01,
+	0x20, 0x03, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x69, 0x70, 0x63, 0x2e, 0x44, 0x69, 0x76, 0x69, 0x73,
+	0x69, 0x6f, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x73, 0x52, 0x0d, 0x64, 0x69, 0x76, 0x69, 0x73, 0x69,
+	0x6f, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x73, 0x22, 0x93, 0x01, 0x0a, 0x0a, 0x53, 0x69, 0x6e, 0x67,
+	0x6c, 0x65, 0x53, 0x74, 0x61, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x73, 0x74, 0x61, 0x74, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x05, 0x52, 0x04, 0x73, 0x74, 0x61, 0x74, 0x12, 0x19, 0x0a, 0x08, 0x75, 0x73,
+	0x65, 0x72, 0x5f, 0x69, 0x64, 0x78, 0x18, 0x02, 0x20, 0x01, 0x28, 0x05, 0x52, 0x07, 0x75, 0x73,
+	0x65, 0x72, 0x49, 0x64, 0x78, 0x12, 0x14, 0x0a, 0x05, 0x72, 0x6f, 0x75, 0x6e, 0x64, 0x18, 0x03,
+	0x20, 0x01, 0x28, 0x05, 0x52, 0x05, 0x72, 0x6f, 0x75, 0x6e, 0x64, 0x12, 0x17, 0x0a, 0x07, 0x6f,
+	0x70, 0x70, 0x5f, 0x69, 0x64, 0x78, 0x18, 0x04, 0x20, 0x01, 0x28, 0x05, 0x52, 0x06, 0x6f, 0x70,
+	0x70, 0x49, 0x64, 0x78, 0x12, 0x27, 0x0a, 0x0f, 0x70, 0x6c, 0x61, 0x79, 0x5f, 0x64, 0x65, 0x73,
+	0x63, 0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0e, 0x70,
+	0x6c, 0x61, 0x79, 0x44, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x22, 0xc1, 0x02,
+	0x0a, 0x0e, 0x41, 0x67, 0x67, 0x72, 0x65, 0x67, 0x61, 0x74, 0x65, 0x64, 0x53, 0x74, 0x61, 0x74,
+	0x12, 0x39, 0x0a, 0x09, 0x73, 0x74, 0x61, 0x74, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x0e, 0x32, 0x1c, 0x2e, 0x69, 0x70, 0x63, 0x2e, 0x41, 0x67, 0x67, 0x72, 0x65, 0x67,
+	0x61, 0x74, 0x65, 0x64, 0x53, 0x74, 0x61, 0x74, 0x2e, 0x53, 0x74, 0x61, 0x74, 0x54, 0x79, 0x70,
+	0x65, 0x52, 0x08, 0x73, 0x74, 0x61, 0x74, 0x54, 0x79, 0x70, 0x65, 0x12, 0x25, 0x0a, 0x05, 0x73,
+	0x74, 0x61, 0x74, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x69, 0x70, 0x63,
+	0x2e, 0x53, 0x69, 0x6e, 0x67, 0x6c, 0x65, 0x53, 0x74, 0x61, 0x74, 0x52, 0x05, 0x73, 0x74, 0x61,
+	0x74, 0x73, 0x22, 0xcc, 0x01, 0x0a, 0x08, 0x53, 0x74, 0x61, 0x74, 0x54, 0x79, 0x70, 0x65, 0x12,
+	0x0b, 0x0a, 0x07, 0x4e, 0x4f, 0x5f, 0x53, 0x54, 0x41, 0x54, 0x10, 0x00, 0x12, 0x16, 0x0a, 0x12,
+	0x53, 0x54, 0x41, 0x54, 0x5f, 0x57, 0x49, 0x4e, 0x4e, 0x49, 0x4e, 0x47, 0x5f, 0x53, 0x43, 0x4f,
+	0x52, 0x45, 0x10, 0x01, 0x12, 0x15, 0x0a, 0x11, 0x53, 0x54, 0x41, 0x54, 0x5f, 0x4c, 0x4f, 0x53,
+	0x49, 0x4e, 0x47, 0x5f, 0x53, 0x43, 0x4f, 0x52, 0x45, 0x10, 0x02, 0x12, 0x17, 0x0a, 0x13, 0x53,
+	0x54, 0x41, 0x54, 0x5f, 0x43, 0x4f, 0x4d, 0x42, 0x49, 0x4e, 0x45, 0x44, 0x5f, 0x53, 0x43, 0x4f,
+	0x52, 0x45, 0x10, 0x03, 0x12, 0x12, 0x0a, 0x0e, 0x53, 0x54, 0x41, 0x54, 0x5f, 0x55, 0x50, 0x53,
+	0x45, 0x54, 0x5f, 0x57, 0x49, 0x4e, 0x10, 0x04, 0x12, 0x13, 0x0a, 0x0f, 0x53, 0x54, 0x41, 0x54,
+	0x5f, 0x54, 0x55, 0x52, 0x4e, 0x5f, 0x53, 0x43, 0x4f, 0x52, 0x45, 0x10, 0x05, 0x12, 0x15, 0x0a,
+	0x11, 0x53, 0x54, 0x41, 0x54, 0x5f, 0x54, 0x4f, 0x54, 0x41, 0x4c, 0x5f, 0x42, 0x49, 0x4e, 0x47,
+	0x4f, 0x53, 0x10, 0x06, 0x12, 0x14, 0x0a, 0x10, 0x53, 0x54, 0x41, 0x54, 0x5f, 0x54, 0x4f, 0x54,
+	0x41, 0x4c, 0x5f, 0x53, 0x43, 0x4f, 0x52, 0x45, 0x10, 0x07, 0x12, 0x15, 0x0a, 0x11, 0x53, 0x54,
+	0x41, 0x54, 0x5f, 0x50, 0x4c, 0x41, 0x59, 0x45, 0x44, 0x5f, 0x47, 0x41, 0x4d, 0x45, 0x53, 0x10,
+	0x08, 0x22, 0x4f, 0x0a, 0x0d, 0x44, 0x69, 0x76, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x53, 0x74, 0x61,
+	0x74, 0x73, 0x12, 0x3e, 0x0a, 0x10, 0x61, 0x67, 0x67, 0x72, 0x65, 0x67, 0x61, 0x74, 0x65, 0x64,
+	0x5f, 0x73, 0x74, 0x61, 0x74, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x13, 0x2e, 0x69,
+	0x70, 0x63, 0x2e, 0x41, 0x67, 0x67, 0x72, 0x65, 0x67, 0x61, 0x74, 0x65, 0x64, 0x53, 0x74, 0x61,
+	0x74, 0x52, 0x0f, 0x61, 0x67, 0x67, 0x72, 0x65, 0x67, 0x61, 0x74, 0x65, 0x64, 0x53, 0x74, 0x61,
+	0x74, 0x73, 0x2a, 0x88, 0x01, 0x0a, 0x14, 0x54, 0x6f, 0x75, 0x72, 0x6e, 0x61, 0x6d, 0x65, 0x6e,
+	0x74, 0x47, 0x61, 0x6d, 0x65, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x12, 0x0d, 0x0a, 0x09, 0x4e,
+	0x4f, 0x5f, 0x52, 0x45, 0x53, 0x55, 0x4c, 0x54, 0x10, 0x00, 0x12, 0x07, 0x0a, 0x03, 0x57, 0x49,
+	0x4e, 0x10, 0x01, 0x12, 0x08, 0x0a, 0x04, 0x4c, 0x4f, 0x53, 0x53, 0x10, 0x02, 0x12, 0x08, 0x0a,
+	0x04, 0x44, 0x52, 0x41, 0x57, 0x10, 0x03, 0x12, 0x07, 0x0a, 0x03, 0x42, 0x59, 0x45, 0x10, 0x04,
+	0x12, 0x0f, 0x0a, 0x0b, 0x46, 0x4f, 0x52, 0x46, 0x45, 0x49, 0x54, 0x5f, 0x57, 0x49, 0x4e, 0x10,
+	0x05, 0x12, 0x10, 0x0a, 0x0c, 0x46, 0x4f, 0x52, 0x46, 0x45, 0x49, 0x54, 0x5f, 0x4c, 0x4f, 0x53,
+	0x53, 0x10, 0x06, 0x12, 0x0e, 0x0a, 0x0a, 0x45, 0x4c, 0x49, 0x4d, 0x49, 0x4e, 0x41, 0x54, 0x45,
+	0x44, 0x10, 0x07, 0x12, 0x08, 0x0a, 0x04, 0x56, 0x4f, 0x49, 0x44, 0x10, 0x08, 0x2a, 0xaf, 0x01,
+	0x0a, 0x0d, 0x50, 0x61, 0x69, 0x72, 0x69, 0x6e, 0x67, 0x4d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x12,
+	0x0a, 0x0a, 0x06, 0x52, 0x41, 0x4e, 0x44, 0x4f, 0x4d, 0x10, 0x00, 0x12, 0x0f, 0x0a, 0x0b, 0x52,
+	0x4f, 0x55, 0x4e, 0x44, 0x5f, 0x52, 0x4f, 0x42, 0x49, 0x4e, 0x10, 0x01, 0x12, 0x14, 0x0a, 0x10,
+	0x4b, 0x49, 0x4e, 0x47, 0x5f, 0x4f, 0x46, 0x5f, 0x54, 0x48, 0x45, 0x5f, 0x48, 0x49, 0x4c, 0x4c,
+	0x10, 0x02, 0x12, 0x0f, 0x0a, 0x0b, 0x45, 0x4c, 0x49, 0x4d, 0x49, 0x4e, 0x41, 0x54, 0x49, 0x4f,
+	0x4e, 0x10, 0x03, 0x12, 0x0a, 0x0a, 0x06, 0x46, 0x41, 0x43, 0x54, 0x4f, 0x52, 0x10, 0x04, 0x12,
+	0x12, 0x0a, 0x0e, 0x49, 0x4e, 0x49, 0x54, 0x49, 0x41, 0x4c, 0x5f, 0x46, 0x4f, 0x4e, 0x54, 0x45,
+	0x53, 0x10, 0x05, 0x12, 0x09, 0x0a, 0x05, 0x53, 0x57, 0x49, 0x53, 0x53, 0x10, 0x06, 0x12, 0x0d,
+	0x0a, 0x09, 0x51, 0x55, 0x49, 0x43, 0x4b, 0x50, 0x41, 0x49, 0x52, 0x10, 0x07, 0x12, 0x0a, 0x0a,
+	0x06, 0x4d, 0x41, 0x4e, 0x55, 0x41, 0x4c, 0x10, 0x08, 0x12, 0x14, 0x0a, 0x10, 0x54, 0x45, 0x41,
+	0x4d, 0x5f, 0x52, 0x4f, 0x55, 0x4e, 0x44, 0x5f, 0x52, 0x4f, 0x42, 0x49, 0x4e, 0x10, 0x09, 0x2a,
+	0x46, 0x0a, 0x0b, 0x46, 0x69, 0x72, 0x73, 0x74, 0x4d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x12, 0x10,
+	0x0a, 0x0c, 0x4d, 0x41, 0x4e, 0x55, 0x41, 0x4c, 0x5f, 0x46, 0x49, 0x52, 0x53, 0x54, 0x10, 0x00,
+	0x12, 0x10, 0x0a, 0x0c, 0x52, 0x41, 0x4e, 0x44, 0x4f, 0x4d, 0x5f, 0x46, 0x49, 0x52, 0x53, 0x54,
+	0x10, 0x01, 0x12, 0x13, 0x0a, 0x0f, 0x41, 0x55, 0x54, 0x4f, 0x4d, 0x41, 0x54, 0x49, 0x43, 0x5f,
+	0x46, 0x49, 0x52, 0x53, 0x54, 0x10, 0x02, 0x42, 0x31, 0x5a, 0x2f, 0x67, 0x69, 0x74, 0x68, 0x75,
+	0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x77, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x73, 0x2d, 0x69, 0x6f,
+	0x2f, 0x6c, 0x69, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x2f, 0x72, 0x70, 0x63, 0x2f, 0x61, 0x70, 0x69,
+	0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x69, 0x70, 0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x33,
 }
 
 var (
@@ -2311,90 +2646,99 @@ func file_ipc_tournament_proto_rawDescGZIP() []byte {
 	return file_ipc_tournament_proto_rawDescData
 }
 
-var file_ipc_tournament_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_ipc_tournament_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
+var file_ipc_tournament_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_ipc_tournament_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
 var file_ipc_tournament_proto_goTypes = []interface{}{
 	(TournamentGameResult)(0),                 // 0: ipc.TournamentGameResult
 	(PairingMethod)(0),                        // 1: ipc.PairingMethod
 	(FirstMethod)(0),                          // 2: ipc.FirstMethod
-	(*TournamentGameEndedEvent)(nil),          // 3: ipc.TournamentGameEndedEvent
-	(*TournamentRoundStarted)(nil),            // 4: ipc.TournamentRoundStarted
-	(*ReadyForTournamentGame)(nil),            // 5: ipc.ReadyForTournamentGame
-	(*TournamentPerson)(nil),                  // 6: ipc.TournamentPerson
-	(*TournamentPersons)(nil),                 // 7: ipc.TournamentPersons
-	(*RoundControl)(nil),                      // 8: ipc.RoundControl
-	(*DivisionControls)(nil),                  // 9: ipc.DivisionControls
-	(*TournamentGame)(nil),                    // 10: ipc.TournamentGame
-	(*Pairing)(nil),                           // 11: ipc.Pairing
-	(*PlayerStanding)(nil),                    // 12: ipc.PlayerStanding
-	(*RoundStandings)(nil),                    // 13: ipc.RoundStandings
-	(*DivisionPairingsResponse)(nil),          // 14: ipc.DivisionPairingsResponse
-	(*DivisionPairingsDeletedResponse)(nil),   // 15: ipc.DivisionPairingsDeletedResponse
-	(*PlayersAddedOrRemovedResponse)(nil),     // 16: ipc.PlayersAddedOrRemovedResponse
-	(*DivisionRoundControls)(nil),             // 17: ipc.DivisionRoundControls
-	(*DivisionControlsResponse)(nil),          // 18: ipc.DivisionControlsResponse
-	(*TournamentDivisionDataResponse)(nil),    // 19: ipc.TournamentDivisionDataResponse
-	(*FullTournamentDivisions)(nil),           // 20: ipc.FullTournamentDivisions
-	(*TournamentFinishedResponse)(nil),        // 21: ipc.TournamentFinishedResponse
-	(*TournamentDataResponse)(nil),            // 22: ipc.TournamentDataResponse
-	(*TournamentDivisionDeletedResponse)(nil), // 23: ipc.TournamentDivisionDeletedResponse
-	(*TournamentGameEndedEvent_Player)(nil),   // 24: ipc.TournamentGameEndedEvent.Player
-	nil,                                       // 25: ipc.DivisionPairingsResponse.DivisionStandingsEntry
-	nil,                                       // 26: ipc.PlayersAddedOrRemovedResponse.DivisionStandingsEntry
-	nil,                                       // 27: ipc.DivisionRoundControls.DivisionStandingsEntry
-	nil,                                       // 28: ipc.DivisionControlsResponse.DivisionStandingsEntry
-	nil,                                       // 29: ipc.TournamentDivisionDataResponse.StandingsEntry
-	nil,                                       // 30: ipc.TournamentDivisionDataResponse.PairingMapEntry
-	nil,                                       // 31: ipc.FullTournamentDivisions.DivisionsEntry
-	(GameEndReason)(0),                        // 32: ipc.GameEndReason
-	(*timestamppb.Timestamp)(nil),             // 33: google.protobuf.Timestamp
-	(*GameRequest)(nil),                       // 34: ipc.GameRequest
+	(AggregatedStat_StatType)(0),              // 3: ipc.AggregatedStat.StatType
+	(*TournamentGameEndedEvent)(nil),          // 4: ipc.TournamentGameEndedEvent
+	(*TournamentRoundStarted)(nil),            // 5: ipc.TournamentRoundStarted
+	(*ReadyForTournamentGame)(nil),            // 6: ipc.ReadyForTournamentGame
+	(*TournamentPerson)(nil),                  // 7: ipc.TournamentPerson
+	(*TournamentPersons)(nil),                 // 8: ipc.TournamentPersons
+	(*RoundControl)(nil),                      // 9: ipc.RoundControl
+	(*DivisionControls)(nil),                  // 10: ipc.DivisionControls
+	(*TournamentGame)(nil),                    // 11: ipc.TournamentGame
+	(*Pairing)(nil),                           // 12: ipc.Pairing
+	(*PlayerStanding)(nil),                    // 13: ipc.PlayerStanding
+	(*RoundStandings)(nil),                    // 14: ipc.RoundStandings
+	(*DivisionPairingsResponse)(nil),          // 15: ipc.DivisionPairingsResponse
+	(*DivisionPairingsDeletedResponse)(nil),   // 16: ipc.DivisionPairingsDeletedResponse
+	(*PlayersAddedOrRemovedResponse)(nil),     // 17: ipc.PlayersAddedOrRemovedResponse
+	(*DivisionRoundControls)(nil),             // 18: ipc.DivisionRoundControls
+	(*DivisionControlsResponse)(nil),          // 19: ipc.DivisionControlsResponse
+	(*TournamentDivisionDataResponse)(nil),    // 20: ipc.TournamentDivisionDataResponse
+	(*FullTournamentDivisions)(nil),           // 21: ipc.FullTournamentDivisions
+	(*TournamentFinishedResponse)(nil),        // 22: ipc.TournamentFinishedResponse
+	(*TournamentDataResponse)(nil),            // 23: ipc.TournamentDataResponse
+	(*TournamentDivisionDeletedResponse)(nil), // 24: ipc.TournamentDivisionDeletedResponse
+	(*TournamentStats)(nil),                   // 25: ipc.TournamentStats
+	(*SingleStat)(nil),                        // 26: ipc.SingleStat
+	(*AggregatedStat)(nil),                    // 27: ipc.AggregatedStat
+	(*DivisionStats)(nil),                     // 28: ipc.DivisionStats
+	(*TournamentGameEndedEvent_Player)(nil),   // 29: ipc.TournamentGameEndedEvent.Player
+	nil,                                       // 30: ipc.DivisionPairingsResponse.DivisionStandingsEntry
+	nil,                                       // 31: ipc.PlayersAddedOrRemovedResponse.DivisionStandingsEntry
+	nil,                                       // 32: ipc.DivisionRoundControls.DivisionStandingsEntry
+	nil,                                       // 33: ipc.DivisionControlsResponse.DivisionStandingsEntry
+	nil,                                       // 34: ipc.TournamentDivisionDataResponse.StandingsEntry
+	nil,                                       // 35: ipc.TournamentDivisionDataResponse.PairingMapEntry
+	nil,                                       // 36: ipc.FullTournamentDivisions.DivisionsEntry
+	(GameEndReason)(0),                        // 37: ipc.GameEndReason
+	(*timestamppb.Timestamp)(nil),             // 38: google.protobuf.Timestamp
+	(*GameRequest)(nil),                       // 39: ipc.GameRequest
 }
 var file_ipc_tournament_proto_depIdxs = []int32{
-	24, // 0: ipc.TournamentGameEndedEvent.players:type_name -> ipc.TournamentGameEndedEvent.Player
-	32, // 1: ipc.TournamentGameEndedEvent.end_reason:type_name -> ipc.GameEndReason
-	33, // 2: ipc.TournamentRoundStarted.deadline:type_name -> google.protobuf.Timestamp
-	6,  // 3: ipc.TournamentPersons.persons:type_name -> ipc.TournamentPerson
+	29, // 0: ipc.TournamentGameEndedEvent.players:type_name -> ipc.TournamentGameEndedEvent.Player
+	37, // 1: ipc.TournamentGameEndedEvent.end_reason:type_name -> ipc.GameEndReason
+	38, // 2: ipc.TournamentRoundStarted.deadline:type_name -> google.protobuf.Timestamp
+	7,  // 3: ipc.TournamentPersons.persons:type_name -> ipc.TournamentPerson
 	1,  // 4: ipc.RoundControl.pairing_method:type_name -> ipc.PairingMethod
 	2,  // 5: ipc.RoundControl.first_method:type_name -> ipc.FirstMethod
-	34, // 6: ipc.DivisionControls.game_request:type_name -> ipc.GameRequest
+	39, // 6: ipc.DivisionControls.game_request:type_name -> ipc.GameRequest
 	0,  // 7: ipc.DivisionControls.suspended_result:type_name -> ipc.TournamentGameResult
 	0,  // 8: ipc.TournamentGame.results:type_name -> ipc.TournamentGameResult
-	32, // 9: ipc.TournamentGame.game_end_reason:type_name -> ipc.GameEndReason
-	10, // 10: ipc.Pairing.games:type_name -> ipc.TournamentGame
+	37, // 9: ipc.TournamentGame.game_end_reason:type_name -> ipc.GameEndReason
+	11, // 10: ipc.Pairing.games:type_name -> ipc.TournamentGame
 	0,  // 11: ipc.Pairing.outcomes:type_name -> ipc.TournamentGameResult
-	12, // 12: ipc.RoundStandings.standings:type_name -> ipc.PlayerStanding
-	11, // 13: ipc.DivisionPairingsResponse.division_pairings:type_name -> ipc.Pairing
-	25, // 14: ipc.DivisionPairingsResponse.division_standings:type_name -> ipc.DivisionPairingsResponse.DivisionStandingsEntry
-	7,  // 15: ipc.PlayersAddedOrRemovedResponse.players:type_name -> ipc.TournamentPersons
-	11, // 16: ipc.PlayersAddedOrRemovedResponse.division_pairings:type_name -> ipc.Pairing
-	26, // 17: ipc.PlayersAddedOrRemovedResponse.division_standings:type_name -> ipc.PlayersAddedOrRemovedResponse.DivisionStandingsEntry
-	8,  // 18: ipc.DivisionRoundControls.round_controls:type_name -> ipc.RoundControl
-	11, // 19: ipc.DivisionRoundControls.division_pairings:type_name -> ipc.Pairing
-	27, // 20: ipc.DivisionRoundControls.division_standings:type_name -> ipc.DivisionRoundControls.DivisionStandingsEntry
-	9,  // 21: ipc.DivisionControlsResponse.division_controls:type_name -> ipc.DivisionControls
-	28, // 22: ipc.DivisionControlsResponse.division_standings:type_name -> ipc.DivisionControlsResponse.DivisionStandingsEntry
-	7,  // 23: ipc.TournamentDivisionDataResponse.players:type_name -> ipc.TournamentPersons
-	29, // 24: ipc.TournamentDivisionDataResponse.standings:type_name -> ipc.TournamentDivisionDataResponse.StandingsEntry
-	30, // 25: ipc.TournamentDivisionDataResponse.pairing_map:type_name -> ipc.TournamentDivisionDataResponse.PairingMapEntry
-	9,  // 26: ipc.TournamentDivisionDataResponse.controls:type_name -> ipc.DivisionControls
-	8,  // 27: ipc.TournamentDivisionDataResponse.round_controls:type_name -> ipc.RoundControl
-	31, // 28: ipc.FullTournamentDivisions.divisions:type_name -> ipc.FullTournamentDivisions.DivisionsEntry
-	7,  // 29: ipc.TournamentDataResponse.directors:type_name -> ipc.TournamentPersons
-	33, // 30: ipc.TournamentDataResponse.start_time:type_name -> google.protobuf.Timestamp
-	0,  // 31: ipc.TournamentGameEndedEvent.Player.result:type_name -> ipc.TournamentGameResult
-	13, // 32: ipc.DivisionPairingsResponse.DivisionStandingsEntry.value:type_name -> ipc.RoundStandings
-	13, // 33: ipc.PlayersAddedOrRemovedResponse.DivisionStandingsEntry.value:type_name -> ipc.RoundStandings
-	13, // 34: ipc.DivisionRoundControls.DivisionStandingsEntry.value:type_name -> ipc.RoundStandings
-	13, // 35: ipc.DivisionControlsResponse.DivisionStandingsEntry.value:type_name -> ipc.RoundStandings
-	13, // 36: ipc.TournamentDivisionDataResponse.StandingsEntry.value:type_name -> ipc.RoundStandings
-	11, // 37: ipc.TournamentDivisionDataResponse.PairingMapEntry.value:type_name -> ipc.Pairing
-	19, // 38: ipc.FullTournamentDivisions.DivisionsEntry.value:type_name -> ipc.TournamentDivisionDataResponse
-	39, // [39:39] is the sub-list for method output_type
-	39, // [39:39] is the sub-list for method input_type
-	39, // [39:39] is the sub-list for extension type_name
-	39, // [39:39] is the sub-list for extension extendee
-	0,  // [0:39] is the sub-list for field type_name
+	13, // 12: ipc.RoundStandings.standings:type_name -> ipc.PlayerStanding
+	12, // 13: ipc.DivisionPairingsResponse.division_pairings:type_name -> ipc.Pairing
+	30, // 14: ipc.DivisionPairingsResponse.division_standings:type_name -> ipc.DivisionPairingsResponse.DivisionStandingsEntry
+	8,  // 15: ipc.PlayersAddedOrRemovedResponse.players:type_name -> ipc.TournamentPersons
+	12, // 16: ipc.PlayersAddedOrRemovedResponse.division_pairings:type_name -> ipc.Pairing
+	31, // 17: ipc.PlayersAddedOrRemovedResponse.division_standings:type_name -> ipc.PlayersAddedOrRemovedResponse.DivisionStandingsEntry
+	9,  // 18: ipc.DivisionRoundControls.round_controls:type_name -> ipc.RoundControl
+	12, // 19: ipc.DivisionRoundControls.division_pairings:type_name -> ipc.Pairing
+	32, // 20: ipc.DivisionRoundControls.division_standings:type_name -> ipc.DivisionRoundControls.DivisionStandingsEntry
+	10, // 21: ipc.DivisionControlsResponse.division_controls:type_name -> ipc.DivisionControls
+	33, // 22: ipc.DivisionControlsResponse.division_standings:type_name -> ipc.DivisionControlsResponse.DivisionStandingsEntry
+	8,  // 23: ipc.TournamentDivisionDataResponse.players:type_name -> ipc.TournamentPersons
+	34, // 24: ipc.TournamentDivisionDataResponse.standings:type_name -> ipc.TournamentDivisionDataResponse.StandingsEntry
+	35, // 25: ipc.TournamentDivisionDataResponse.pairing_map:type_name -> ipc.TournamentDivisionDataResponse.PairingMapEntry
+	10, // 26: ipc.TournamentDivisionDataResponse.controls:type_name -> ipc.DivisionControls
+	9,  // 27: ipc.TournamentDivisionDataResponse.round_controls:type_name -> ipc.RoundControl
+	36, // 28: ipc.FullTournamentDivisions.divisions:type_name -> ipc.FullTournamentDivisions.DivisionsEntry
+	8,  // 29: ipc.TournamentDataResponse.directors:type_name -> ipc.TournamentPersons
+	38, // 30: ipc.TournamentDataResponse.start_time:type_name -> google.protobuf.Timestamp
+	28, // 31: ipc.TournamentStats.division_stats:type_name -> ipc.DivisionStats
+	3,  // 32: ipc.AggregatedStat.stat_type:type_name -> ipc.AggregatedStat.StatType
+	26, // 33: ipc.AggregatedStat.stats:type_name -> ipc.SingleStat
+	27, // 34: ipc.DivisionStats.aggregated_stats:type_name -> ipc.AggregatedStat
+	0,  // 35: ipc.TournamentGameEndedEvent.Player.result:type_name -> ipc.TournamentGameResult
+	14, // 36: ipc.DivisionPairingsResponse.DivisionStandingsEntry.value:type_name -> ipc.RoundStandings
+	14, // 37: ipc.PlayersAddedOrRemovedResponse.DivisionStandingsEntry.value:type_name -> ipc.RoundStandings
+	14, // 38: ipc.DivisionRoundControls.DivisionStandingsEntry.value:type_name -> ipc.RoundStandings
+	14, // 39: ipc.DivisionControlsResponse.DivisionStandingsEntry.value:type_name -> ipc.RoundStandings
+	14, // 40: ipc.TournamentDivisionDataResponse.StandingsEntry.value:type_name -> ipc.RoundStandings
+	12, // 41: ipc.TournamentDivisionDataResponse.PairingMapEntry.value:type_name -> ipc.Pairing
+	20, // 42: ipc.FullTournamentDivisions.DivisionsEntry.value:type_name -> ipc.TournamentDivisionDataResponse
+	43, // [43:43] is the sub-list for method output_type
+	43, // [43:43] is the sub-list for method input_type
+	43, // [43:43] is the sub-list for extension type_name
+	43, // [43:43] is the sub-list for extension extendee
+	0,  // [0:43] is the sub-list for field type_name
 }
 
 func init() { file_ipc_tournament_proto_init() }
@@ -2657,6 +3001,54 @@ func file_ipc_tournament_proto_init() {
 			}
 		}
 		file_ipc_tournament_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*TournamentStats); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_ipc_tournament_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*SingleStat); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_ipc_tournament_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*AggregatedStat); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_ipc_tournament_proto_msgTypes[24].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DivisionStats); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_ipc_tournament_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*TournamentGameEndedEvent_Player); i {
 			case 0:
 				return &v.state
@@ -2674,8 +3066,8 @@ func file_ipc_tournament_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_ipc_tournament_proto_rawDesc,
-			NumEnums:      3,
-			NumMessages:   29,
+			NumEnums:      4,
+			NumMessages:   33,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

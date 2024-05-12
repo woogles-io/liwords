@@ -33,8 +33,7 @@ func TestHandleAbort(t *testing.T) {
 	}
 
 	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 
 	is.NoErr(err)
 
@@ -48,8 +47,7 @@ func TestHandleAbort(t *testing.T) {
 	}
 
 	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 	is.NoErr(err)
 
 	gsetup.cancel()
@@ -95,8 +93,7 @@ func TestHandleAbortTooManyTurns(t *testing.T) {
 	}
 
 	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 	is.Equal(err, gameplay.ErrTooManyTurns)
 
 	gsetup.cancel()
@@ -124,8 +121,7 @@ func TestHandleAbortAcceptWrongId(t *testing.T) {
 	}
 
 	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 
 	is.NoErr(err)
 
@@ -139,8 +135,7 @@ func TestHandleAbortAcceptWrongId(t *testing.T) {
 	}
 
 	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 	is.Equal(err, gameplay.ErrNoMatchingEvent)
 
 	gsetup.cancel()
@@ -168,8 +163,7 @@ func TestHandleAbortDeny(t *testing.T) {
 	}
 
 	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 
 	is.NoErr(err)
 
@@ -183,8 +177,7 @@ func TestHandleAbortDeny(t *testing.T) {
 	}
 
 	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 	is.NoErr(err)
 
 	gsetup.cancel()
@@ -212,8 +205,7 @@ func TestHandleTooManyAborts(t *testing.T) {
 	}
 
 	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 
 	is.NoErr(err)
 
@@ -227,8 +219,7 @@ func TestHandleTooManyAborts(t *testing.T) {
 	}
 
 	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 	is.NoErr(err)
 
 	// Jesse requests an abort again.
@@ -241,8 +232,7 @@ func TestHandleTooManyAborts(t *testing.T) {
 	}
 
 	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 	is.Equal(err, gameplay.ErrTooManyAborts)
 
 	gsetup.cancel()
@@ -275,8 +265,7 @@ func TestHandleAbortTooLate(t *testing.T) {
 	}
 
 	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 
 	is.Equal(err, gameplay.ErrPleaseWaitToEnd)
 
@@ -304,8 +293,7 @@ func TestHandleAbortAutoaccept(t *testing.T) {
 	}
 
 	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 
 	is.NoErr(err)
 
@@ -321,8 +309,7 @@ func TestHandleAbortAutoaccept(t *testing.T) {
 	}
 
 	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 	is.NoErr(err)
 
 	gsetup.cancel()
@@ -350,8 +337,7 @@ func TestHandleAbortAutoacceptTooEarly(t *testing.T) {
 	}
 
 	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 
 	is.NoErr(err)
 
@@ -367,8 +353,7 @@ func TestHandleAbortAutoacceptTooEarly(t *testing.T) {
 	}
 
 	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 	is.Equal(err, gameplay.ErrMetaEventExpirationIncorrect)
 
 	gsetup.cancel()
@@ -397,8 +382,7 @@ func TestHandleAbortDenyThenAccept(t *testing.T) {
 	}
 
 	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 
 	is.NoErr(err)
 
@@ -412,8 +396,7 @@ func TestHandleAbortDenyThenAccept(t *testing.T) {
 	}
 
 	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 	is.NoErr(err)
 
 	gsetup.nower.Sleep(120 * 1000)
@@ -427,8 +410,7 @@ func TestHandleAbortDenyThenAccept(t *testing.T) {
 	}
 
 	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 	is.Equal(err, gameplay.ErrNoMatchingEvent)
 
 	gsetup.cancel()
@@ -570,8 +552,7 @@ func TestDisallowAbortAndAdjudication(t *testing.T) {
 	}
 
 	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 
 	is.NoErr(err)
 
@@ -585,8 +566,7 @@ func TestDisallowAbortAndAdjudication(t *testing.T) {
 	}
 
 	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 	is.Equal(err, gameplay.ErrAlreadyOutstandingRequest)
 
 	gsetup.cancel()
@@ -615,8 +595,7 @@ func TestDisallowAnonymousAbortCreation(t *testing.T) {
 	}
 
 	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 
 	is.Equal(err, gameplay.ErrNotAllowed)
 
@@ -647,8 +626,7 @@ func TestDisallowAnonymousAbortAcceptance(t *testing.T) {
 	}
 
 	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 
 	is.NoErr(err)
 
@@ -662,8 +640,7 @@ func TestDisallowAnonymousAbortAcceptance(t *testing.T) {
 	}
 
 	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 	is.Equal(err, gameplay.ErrNotAllowed)
 
 	gsetup.cancel()
@@ -693,8 +670,7 @@ func TestDisallowSamePlayerAbortAcceptance(t *testing.T) {
 	}
 
 	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 
 	is.NoErr(err)
 
@@ -708,8 +684,7 @@ func TestDisallowSamePlayerAbortAcceptance(t *testing.T) {
 	}
 
 	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.nstore, gsetup.lstore,
-		gsetup.tstore)
+		gsetup.consumer.ch, gsetup.stores)
 	is.Equal(err, gameplay.ErrCannotAcceptOwnEvents)
 
 	gsetup.cancel()

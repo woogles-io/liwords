@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/pair"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/utilities"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -34,6 +35,7 @@ type ClassicDivision struct {
 	DivisionControls *pb.DivisionControls         `json:"divisionControls"`
 	CurrentRound     int32                        `json:"currentRound"`
 	PairingKeyInt    int                          `json:"pairingKeyInt"`
+	Stats            *pb.DivisionStats            `json:"divisionStats"`
 }
 
 func NewClassicDivision(tournamentName string, divisionName string) *ClassicDivision {
@@ -2029,3 +2031,116 @@ func (t *ClassicDivision) ClearCheckedIn() {
 	}
 	t.writeResponse(0)
 */
+
+// CalculateStats calculates most stats for the division that are directly calculatable
+// from the raw division data (scores, wins, losses, etc.)
+func (t *ClassicDivision) CalculateStats(queries *models.Queries) error {
+	aggStats := []*pb.AggregatedStat{}
+	winStat := &pb.AggregatedStat{
+		StatType: pb.AggregatedStat_STAT_WINNING_SCORE,
+		Stats:    []*pb.SingleStat{},
+	}
+	loseStat := &pb.AggregatedStat{
+		StatType: pb.AggregatedStat_STAT_LOSING_SCORE,
+		Stats:    []*pb.SingleStat{},
+	}
+	combinedStat := &pb.AggregatedStat{
+		StatType: pb.AggregatedStat_STAT_COMBINED_SCORE,
+		Stats:    []*pb.SingleStat{},
+	}
+	upsetWinStat := &pb.AggregatedStat{
+		StatType: pb.AggregatedStat_STAT_UPSET_WIN,
+		Stats:    []*pb.SingleStat{},
+	}
+	// turnScoreStat := &pb.AggregatedStat{
+	// 	StatType: pb.AggregatedStat_STAT_TURN_SCORE,
+	// 	Stats:    []*pb.SingleStat{},
+	// }
+	// totalBingosStat := &pb.AggregatedStat{
+	// 	StatType: pb.AggregatedStat_STAT_TOTAL_BINGOS,
+	// 	Stats:    []*pb.SingleStat{},
+	// }
+	totalScoreStat := &pb.AggregatedStat{
+		StatType: pb.AggregatedStat_STAT_TOTAL_SCORE,
+		Stats:    []*pb.SingleStat{},
+	}
+	playedGamesStat := &pb.AggregatedStat{
+		StatType: pb.AggregatedStat_STAT_PLAYED_GAMES,
+		Stats:    []*pb.SingleStat{},
+	}
+	aggStats = append(aggStats, winStat, loseStat, combinedStat, upsetWinStat,
+		totalScoreStat, playedGamesStat)
+
+	scoresMap := map[int]int32{}
+	nGamesMap := map[int]int32{}
+
+	for _, pairing := range t.PairingMap {
+		if len(pairing.Games) == 0 {
+			continue
+		}
+		results := pairing.Games[0].Results
+		if len(results) != 2 {
+			continue
+		}
+		for _, p := range []int{0, 1} {
+			if results[p] == pb.TournamentGameResult_WIN {
+				uidx := pairing.Players[p]
+				oidx := pairing.Players[1-p]
+				winStat.Stats = append(winStat.Stats, &pb.SingleStat{
+					Stat:    pairing.Games[0].Scores[p],
+					UserIdx: uidx,
+					Round:   pairing.Round,
+					OppIdx:  oidx,
+				})
+				if t.Players.Persons[uidx].Rating < t.Players.Persons[oidx].Rating {
+					upsetWinStat.Stats = append(upsetWinStat.Stats, &pb.SingleStat{
+						Stat:    t.Players.Persons[oidx].Rating - t.Players.Persons[uidx].Rating,
+						UserIdx: uidx,
+						Round:   pairing.Round,
+						OppIdx:  oidx,
+					})
+				}
+			}
+		}
+
+		for _, p := range []int{0, 1} {
+			if results[p] == pb.TournamentGameResult_LOSS {
+				loseStat.Stats = append(loseStat.Stats, &pb.SingleStat{
+					Stat:    pairing.Games[0].Scores[p],
+					UserIdx: pairing.Players[p],
+					Round:   pairing.Round,
+					OppIdx:  pairing.Players[1-p],
+				})
+			}
+			if results[p] == pb.TournamentGameResult_WIN ||
+				results[p] == pb.TournamentGameResult_DRAW ||
+				results[p] == pb.TournamentGameResult_LOSS {
+
+				scoresMap[int(pairing.Players[p])] += pairing.Games[0].Scores[p]
+				nGamesMap[int(pairing.Players[p])]++
+			}
+		}
+
+		combinedStat.Stats = append(combinedStat.Stats, &pb.SingleStat{
+			Stat:    pairing.Games[0].Scores[0] + pairing.Games[0].Scores[1],
+			UserIdx: pairing.Players[0],
+			OppIdx:  pairing.Players[1],
+		})
+	}
+	for k, v := range scoresMap {
+		totalScoreStat.Stats = append(totalScoreStat.Stats, &pb.SingleStat{
+			Stat:    v,
+			UserIdx: int32(k),
+		})
+	}
+	for k, v := range nGamesMap {
+		playedGamesStat.Stats = append(playedGamesStat.Stats, &pb.SingleStat{
+			Stat:    v,
+			UserIdx: int32(k),
+		})
+	}
+	t.Stats = &pb.DivisionStats{
+		AggregatedStats: aggStats,
+	}
+	return nil
+}

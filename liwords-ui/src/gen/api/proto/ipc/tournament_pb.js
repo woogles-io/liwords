@@ -371,3 +371,66 @@ export const TournamentDivisionDeletedResponse = /*@__PURE__*/ proto3.makeMessag
   ],
 );
 
+/**
+ * @generated from message ipc.TournamentStats
+ */
+export const TournamentStats = /*@__PURE__*/ proto3.makeMessageType(
+  "ipc.TournamentStats",
+  () => [
+    { no: 1, name: "division_stats", kind: "message", T: DivisionStats, repeated: true },
+  ],
+);
+
+/**
+ * @generated from message ipc.SingleStat
+ */
+export const SingleStat = /*@__PURE__*/ proto3.makeMessageType(
+  "ipc.SingleStat",
+  () => [
+    { no: 1, name: "stat", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "user_idx", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "round", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "opp_idx", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "play_descriptor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ],
+);
+
+/**
+ * @generated from message ipc.AggregatedStat
+ */
+export const AggregatedStat = /*@__PURE__*/ proto3.makeMessageType(
+  "ipc.AggregatedStat",
+  () => [
+    { no: 1, name: "stat_type", kind: "enum", T: proto3.getEnumType(AggregatedStat_StatType) },
+    { no: 2, name: "stats", kind: "message", T: SingleStat, repeated: true },
+  ],
+);
+
+/**
+ * @generated from enum ipc.AggregatedStat.StatType
+ */
+export const AggregatedStat_StatType = /*@__PURE__*/ proto3.makeEnum(
+  "ipc.AggregatedStat.StatType",
+  [
+    {no: 0, name: "NO_STAT"},
+    {no: 1, name: "STAT_WINNING_SCORE"},
+    {no: 2, name: "STAT_LOSING_SCORE"},
+    {no: 3, name: "STAT_COMBINED_SCORE"},
+    {no: 4, name: "STAT_UPSET_WIN"},
+    {no: 5, name: "STAT_TURN_SCORE"},
+    {no: 6, name: "STAT_TOTAL_BINGOS"},
+    {no: 7, name: "STAT_TOTAL_SCORE"},
+    {no: 8, name: "STAT_PLAYED_GAMES"},
+  ],
+);
+
+/**
+ * @generated from message ipc.DivisionStats
+ */
+export const DivisionStats = /*@__PURE__*/ proto3.makeMessageType(
+  "ipc.DivisionStats",
+  () => [
+    { no: 1, name: "aggregated_stats", kind: "message", T: AggregatedStat, repeated: true },
+  ],
+);
+

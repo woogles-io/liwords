@@ -5,7 +5,7 @@
 
 import { proto3, Timestamp } from "@bufbuild/protobuf";
 import { GameEndReason, GameRequest } from "../ipc/omgwords_pb.js";
-import { RoundControl, TournamentGameEndedEvent, TournamentGameResult } from "../ipc/tournament_pb.js";
+import { RoundControl, TournamentGameEndedEvent, TournamentGameResult, TournamentStats } from "../ipc/tournament_pb.js";
 
 /**
  * @generated from enum tournament_service.TType
@@ -327,6 +327,24 @@ export const TournamentScorecardResponse = /*@__PURE__*/ proto3.makeMessageType(
   "tournament_service.TournamentScorecardResponse",
   () => [
     { no: 1, name: "pdf_zip", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
+  ],
+);
+
+/**
+ * @generated from message tournament_service.GetStatsRequest
+ */
+export const GetStatsRequest = /*@__PURE__*/ proto3.makeMessageType(
+  "tournament_service.GetStatsRequest",
+  [],
+);
+
+/**
+ * @generated from message tournament_service.GetStatsResponse
+ */
+export const GetStatsResponse = /*@__PURE__*/ proto3.makeMessageType(
+  "tournament_service.GetStatsResponse",
+  () => [
+    { no: 1, name: "stats", kind: "message", T: TournamentStats },
   ],
 );
 

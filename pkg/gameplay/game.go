@@ -26,8 +26,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/stats"
-	"github.com/woogles-io/liwords/pkg/tournament"
-	"github.com/woogles-io/liwords/pkg/user"
+	"github.com/woogles-io/liwords/pkg/stores"
 	gs "github.com/woogles-io/liwords/rpc/api/proto/game_service"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -220,7 +219,7 @@ func clientEventToMove(cge *pb.ClientGameplayEvent, g *game.Game) (*move.Move, e
 	return nil, errors.New("client gameplay event not handled")
 }
 
-func StartGame(ctx context.Context, gameStore GameStore, userStore user.Store, eventChan chan<- *entity.EventWrapper,
+func StartGame(ctx context.Context, stores *stores.Stores, eventChan chan<- *entity.EventWrapper,
 	entGame *entity.Game) error {
 	// Note that StartGame does _not_ start the Macondo game, which
 	// has already started, but we don't "know" that. It is _this_
@@ -236,7 +235,7 @@ func StartGame(ctx context.Context, gameStore GameStore, userStore user.Store, e
 	entGame.ResetTimersAndStart()
 	log.Debug().Msg("going-to-save")
 	// Save the game back to the store always.
-	if err := gameStore.Set(ctx, entGame); err != nil {
+	if err := stores.GameStore.Set(ctx, entGame); err != nil {
 		log.Err(err).Msg("error-saving")
 		return err
 	}
@@ -247,7 +246,7 @@ func StartGame(ctx context.Context, gameStore GameStore, userStore user.Store, e
 	log.Debug().Interface("history", entGame.Game.History()).Msg("game history")
 
 	evt := entGame.HistoryRefresherEvent()
-	evt.History = proto.Clone(mod.CensorHistory(ctx, userStore, evt.History)).(*macondopb.GameHistory)
+	evt.History = proto.Clone(mod.CensorHistory(ctx, stores.UserStore, evt.History)).(*macondopb.GameHistory)
 	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_HISTORY_REFRESHER)
 	wrapped.AddAudience(entity.AudGameTV, entGame.GameID())
 	for _, p := range players(entGame) {
@@ -258,7 +257,7 @@ func StartGame(ctx context.Context, gameStore GameStore, userStore user.Store, e
 	// If the previous game was a rematch, notify
 	// the viewers that this game has started.
 	if entGame.Quickdata.OriginalRequestId != "" {
-		rematchStreak, err := gameStore.GetRematchStreak(ctx, entGame.Quickdata.OriginalRequestId)
+		rematchStreak, err := stores.GameStore.GetRematchStreak(ctx, entGame.Quickdata.OriginalRequestId)
 		if err != nil {
 			return err
 		}
@@ -270,7 +269,7 @@ func StartGame(ctx context.Context, gameStore GameStore, userStore user.Store, e
 			entGame.SendChange(wrappedRematch)
 		}
 	}
-	return potentiallySendBotMoveRequest(ctx, userStore, entGame)
+	return potentiallySendBotMoveRequest(ctx, stores, entGame)
 
 }
 
@@ -331,8 +330,7 @@ func calculateReturnedTiles(cfg *config.Config, letdist string, playerRack strin
 	return tilemapping.MachineWord(returnedMLs).UserVisible(dist.TileMapping()), nil
 }
 
-func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameStore,
-	userStore user.Store, notorietyStore mod.NotorietyStore, listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore,
+func handleChallenge(ctx context.Context, entGame *entity.Game, stores *stores.Stores,
 	timeRemaining int, challengerID string) error {
 	if entGame.ChallengeRule() == macondopb.ChallengeRule_VOID {
 		// The front-end shouldn't even show the button.
@@ -422,12 +420,12 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 			entGame.SetWinnerIdx(winner)
 			entGame.SetLoserIdx(1 - winner)
 		}
-		err = performEndgameDuties(ctx, entGame, gameStore, userStore, notorietyStore, listStatStore, tournamentStore)
+		err = performEndgameDuties(ctx, entGame, stores)
 		if err != nil {
 			return err
 		}
 	} else {
-		return potentiallySendBotMoveRequest(ctx, userStore, entGame)
+		return potentiallySendBotMoveRequest(ctx, stores, entGame)
 	}
 
 	return nil
@@ -435,11 +433,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 
 func PlayMove(ctx context.Context,
 	entGame *entity.Game,
-	gameStore GameStore,
-	userStore user.Store,
-	notorietyStore mod.NotorietyStore,
-	listStatStore stats.ListStatStore,
-	tournamentStore tournament.TournamentStore,
+	stores *stores.Stores,
 	userID string, onTurn,
 	timeRemaining int,
 	m *move.Move) error {
@@ -458,7 +452,7 @@ func PlayMove(ctx context.Context,
 
 	if m.Action() == move.MoveTypeChallenge {
 		// Handle in another way
-		return handleChallenge(ctx, entGame, gameStore, userStore, notorietyStore, listStatStore, tournamentStore, timeRemaining, userID)
+		return handleChallenge(ctx, entGame, stores, timeRemaining, userID)
 	}
 
 	oldTurnLength := len(entGame.Game.History().Events)
@@ -508,22 +502,21 @@ func PlayMove(ctx context.Context,
 		entGame.SendChange(wrapped)
 	}
 	if playing == macondopb.PlayState_GAME_OVER {
-		err = performEndgameDuties(ctx, entGame, gameStore, userStore, notorietyStore, listStatStore, tournamentStore)
+		err = performEndgameDuties(ctx, entGame, stores)
 		if err != nil {
 			return err
 		}
 	} else {
-		return potentiallySendBotMoveRequest(ctx, userStore, entGame)
+		return potentiallySendBotMoveRequest(ctx, stores, entGame)
 	}
 
 	return nil
 }
 
 // HandleEvent handles a gameplay event from the socket
-func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store, notorietyStore mod.NotorietyStore,
-	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore, userID string, cge *pb.ClientGameplayEvent) (*entity.Game, error) {
+func HandleEvent(ctx context.Context, stores *stores.Stores, userID string, cge *pb.ClientGameplayEvent) (*entity.Game, error) {
 
-	entGame, err := gameStore.Get(ctx, cge.GameId)
+	entGame, err := stores.GameStore.Get(ctx, cge.GameId)
 	if err != nil {
 		return nil, err
 	}
@@ -531,12 +524,11 @@ func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store,
 	defer entGame.Unlock()
 
 	log := zerolog.Ctx(ctx).With().Str("gameID", entGame.GameID()).Logger()
-	return handleEventAfterLockingGame(log.WithContext(ctx), gameStore, userStore, listStatStore, notorietyStore, tournamentStore, userID, cge, entGame)
+	return handleEventAfterLockingGame(log.WithContext(ctx), stores, userID, cge, entGame)
 }
 
 // Assume entGame is already locked.
-func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userStore user.Store,
-	listStatStore stats.ListStatStore, notorietyStore mod.NotorietyStore, tournamentStore tournament.TournamentStore, userID string, cge *pb.ClientGameplayEvent,
+func handleEventAfterLockingGame(ctx context.Context, stores *stores.Stores, userID string, cge *pb.ClientGameplayEvent,
 	entGame *entity.Game) (*entity.Game, error) {
 
 	log := zerolog.Ctx(ctx)
@@ -571,7 +563,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 			}
 		} else {
 			// Basically skip to the bottom and exit.
-			return entGame, setTimedOut(ctx, entGame, onTurn, gameStore, userStore, notorietyStore, listStatStore, tournamentStore)
+			return entGame, setTimedOut(ctx, entGame, onTurn, stores)
 		}
 	}
 
@@ -590,7 +582,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 		entGame.History().Winner = int32(winner)
 		entGame.SetWinnerIdx(winner)
 		entGame.SetLoserIdx(1 - winner)
-		err := performEndgameDuties(ctx, entGame, gameStore, userStore, notorietyStore, listStatStore, tournamentStore)
+		err := performEndgameDuties(ctx, entGame, stores)
 		if err != nil {
 			return entGame, err
 		}
@@ -600,7 +592,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 			return entGame, err
 		}
 
-		err = PlayMove(ctx, entGame, gameStore, userStore, notorietyStore, listStatStore, tournamentStore, userID, onTurn, timeRemaining, m)
+		err = PlayMove(ctx, entGame, stores, userID, onTurn, timeRemaining, m)
 		if err != nil {
 			return entGame, err
 		}
@@ -620,7 +612,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 			}
 		}
 
-		if err := gameStore.Set(ctx, entGame); err != nil {
+		if err := stores.GameStore.Set(ctx, entGame); err != nil {
 			log.Err(err).Msg("error-saving")
 			return entGame, err
 		}
@@ -631,13 +623,12 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 
 // TimedOut gets called when the client thinks the user's time ran out. We
 // verify that that is actually the case.
-func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store, notorietyStore mod.NotorietyStore,
-	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore, timedout string, gameID string) error {
+func TimedOut(ctx context.Context, stores *stores.Stores, timedout string, gameID string) error {
 	// XXX: VERIFY THAT THE GAME ID is the client's current game!!
 	// Note: we can get this event multiple times; the opponent and the player on turn
 	// both send it.
 	log.Debug().Str("timedout", timedout).Msg("got-timed-out")
-	entGame, err := gameStore.Get(ctx, gameID)
+	entGame, err := stores.GameStore.Get(ctx, gameID)
 	if err != nil {
 		return err
 	}
@@ -663,7 +654,7 @@ func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store, no
 	// If opponent played out, auto-pass instead of forfeiting.
 	if entGame.Game.Playing() == macondopb.PlayState_WAITING_FOR_FINAL_PASS {
 		log.Debug().Msg("timed out, so auto-passing instead of forfeiting")
-		_, err = handleEventAfterLockingGame(ctx, gameStore, userStore, listStatStore, notorietyStore, tournamentStore,
+		_, err = handleEventAfterLockingGame(ctx, stores,
 			entGame.Game.PlayerIDOnTurn(), &pb.ClientGameplayEvent{
 				Type:   pb.ClientGameplayEvent_PASS,
 				GameId: gameID,
@@ -671,13 +662,13 @@ func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store, no
 		return err
 	}
 
-	return setTimedOut(ctx, entGame, onTurn, gameStore, userStore, notorietyStore, listStatStore, tournamentStore)
+	return setTimedOut(ctx, entGame, onTurn, stores)
 }
 
-func statsForUser(ctx context.Context, id string, userStore user.Store,
+func statsForUser(ctx context.Context, id string, stores *stores.Stores,
 	variantKey entity.VariantKey) (*entity.Stats, error) {
 
-	u, err := userStore.GetByUUID(ctx, id)
+	u, err := stores.UserStore.GetByUUID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -692,8 +683,8 @@ func statsForUser(ctx context.Context, id string, userStore user.Store,
 }
 
 // send a request to the internal Macondo bot to move.
-func potentiallySendBotMoveRequest(ctx context.Context, userStore user.Store, g *entity.Game) error {
-	userOnTurn, err := userStore.GetByUUID(ctx, g.PlayerIDOnTurn())
+func potentiallySendBotMoveRequest(ctx context.Context, stores *stores.Stores, g *entity.Game) error {
+	userOnTurn, err := stores.UserStore.GetByUUID(ctx, g.PlayerIDOnTurn())
 	if err != nil {
 		return err
 	}

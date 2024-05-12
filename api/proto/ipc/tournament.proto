@@ -223,3 +223,31 @@ message TournamentDivisionDeletedResponse {
   string id = 1;
   string division = 2;
 }
+
+message TournamentStats { repeated DivisionStats division_stats = 1; }
+
+message SingleStat {
+  int32 stat = 1;
+  int32 user_idx = 2;
+  int32 round = 3;            // Round doesn't apply to all stats
+  int32 opp_idx = 4;          // The other involved user
+  string play_descriptor = 5; // Could be a bingo or high play, may be blank
+}
+
+message AggregatedStat {
+  enum StatType {
+    NO_STAT = 0;
+    STAT_WINNING_SCORE = 1;
+    STAT_LOSING_SCORE = 2;
+    STAT_COMBINED_SCORE = 3;
+    STAT_UPSET_WIN = 4;
+    STAT_TURN_SCORE = 5;
+    STAT_TOTAL_BINGOS = 6;
+    STAT_TOTAL_SCORE = 7;
+    STAT_PLAYED_GAMES = 8;
+  }
+  StatType stat_type = 1;
+  repeated SingleStat stats = 2;
+}
+
+message DivisionStats { repeated AggregatedStat aggregated_stats = 1; }

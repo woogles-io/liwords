@@ -17,13 +17,21 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/tournament_service"
 )
 
 const MaxDivisionNameLength = 24
+
+var (
+	tracer = otel.Tracer("tournament")
+)
 
 type TournamentStore interface {
 	Get(context.Context, string) (*entity.Tournament, error)
@@ -50,7 +58,7 @@ func md5hash(s string) string {
 }
 
 func HandleTournamentGameEnded(ctx context.Context, ts TournamentStore, us user.Store,
-	g *entity.Game) error {
+	g *entity.Game, queries *models.Queries) error {
 
 	Results := []ipc.TournamentGameResult{ipc.TournamentGameResult_DRAW,
 		ipc.TournamentGameResult_WIN,
@@ -74,7 +82,7 @@ func HandleTournamentGameEnded(ctx context.Context, ts TournamentStore, us user.
 		g.TournamentData.Round,
 		g.TournamentData.GameIndex,
 		false,
-		g)
+		g, queries)
 }
 
 func NewTournament(ctx context.Context,
@@ -785,7 +793,10 @@ func SetResult(ctx context.Context,
 	round int,
 	gameIndex int,
 	amendment bool,
-	g *entity.Game) error {
+	g *entity.Game,
+	queries *models.Queries) error {
+	ctx, span := tracer.Start(ctx, "set-result")
+	defer span.End()
 
 	log.Debug().Str("playerOneId", playerOneId).Str("playerTwoId", playerTwoId).Msg("tSetResult")
 
@@ -796,6 +807,8 @@ func SetResult(ctx context.Context,
 
 	t.Lock()
 	defer t.Unlock()
+
+	span.AddEvent("lock", trace.WithAttributes(attribute.String("tid", id)))
 
 	if t.IsFinished {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
@@ -889,6 +902,7 @@ func SetResult(ctx context.Context,
 	if g != nil {
 		gid = g.GameID()
 	}
+	span.AddEvent("about-to-submit-result")
 
 	pairingsResp, err := divisionObject.DivisionManager.SubmitResult(round,
 		p1TID,
@@ -904,16 +918,26 @@ func SetResult(ctx context.Context,
 	if err != nil {
 		return err
 	}
+	span.AddEvent("result-submitted")
 
 	err = possiblyEndTournament(ctx, ts, t, division)
 	if err != nil {
 		return err
 	}
 
+	// Calculate tournament stats given new result
+	err = divisionObject.DivisionManager.CalculateStats(queries)
+	if err != nil {
+		return err
+	}
+	span.AddEvent("stats-calculated")
+
 	err = ts.Set(ctx, t)
 	if err != nil {
 		return err
 	}
+	span.AddEvent("ts-set")
+
 	pairingsResp.Id = id
 	pairingsResp.Division = division
 	wrapped := entity.WrapEvent(pairingsResp, ipc.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)

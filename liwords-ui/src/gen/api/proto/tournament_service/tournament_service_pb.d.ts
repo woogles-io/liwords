@@ -6,7 +6,7 @@
 import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage, Timestamp } from "@bufbuild/protobuf";
 import { Message, proto3 } from "@bufbuild/protobuf";
 import type { GameEndReason, GameRequest } from "../ipc/omgwords_pb.js";
-import type { RoundControl, TournamentGameEndedEvent, TournamentGameResult } from "../ipc/tournament_pb.js";
+import type { RoundControl, TournamentGameEndedEvent, TournamentGameResult, TournamentStats } from "../ipc/tournament_pb.js";
 
 /**
  * @generated from enum tournament_service.TType
@@ -970,6 +970,49 @@ export declare class TournamentScorecardResponse extends Message<TournamentScore
   static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TournamentScorecardResponse;
 
   static equals(a: TournamentScorecardResponse | PlainMessage<TournamentScorecardResponse> | undefined, b: TournamentScorecardResponse | PlainMessage<TournamentScorecardResponse> | undefined): boolean;
+}
+
+/**
+ * @generated from message tournament_service.GetStatsRequest
+ */
+export declare class GetStatsRequest extends Message<GetStatsRequest> {
+  constructor(data?: PartialMessage<GetStatsRequest>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "tournament_service.GetStatsRequest";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetStatsRequest;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetStatsRequest;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetStatsRequest;
+
+  static equals(a: GetStatsRequest | PlainMessage<GetStatsRequest> | undefined, b: GetStatsRequest | PlainMessage<GetStatsRequest> | undefined): boolean;
+}
+
+/**
+ * @generated from message tournament_service.GetStatsResponse
+ */
+export declare class GetStatsResponse extends Message<GetStatsResponse> {
+  /**
+   * @generated from field: ipc.TournamentStats stats = 1;
+   */
+  stats?: TournamentStats;
+
+  constructor(data?: PartialMessage<GetStatsResponse>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "tournament_service.GetStatsResponse";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetStatsResponse;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetStatsResponse;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetStatsResponse;
+
+  static equals(a: GetStatsResponse | PlainMessage<GetStatsResponse> | undefined, b: GetStatsResponse | PlainMessage<GetStatsResponse> | undefined): boolean;
 }
 
 /**

@@ -27,6 +27,7 @@ import { DirectorTools } from './director_tools/director_tools';
 import { useClient } from '../utils/hooks/connect';
 import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_connectweb';
 import { flashTournamentError } from './tournament_error';
+import { TournamentStats } from './stats';
 // import { CheckIn } from './check_in';
 
 const PAGE_SIZE = 30;
@@ -49,6 +50,7 @@ type Props = {
 
 export const ActionsPanel = React.memo((props: Props) => {
   const [matchModalVisible, setMatchModalVisible] = useState(false);
+  const [statsModalVisible, setStatsModalVisible] = useState(false);
   const [formDisabled, setFormDisabled] = useState(false);
   const {
     selectedGameTab,
@@ -282,7 +284,12 @@ export const ActionsPanel = React.memo((props: Props) => {
     if (selectedGameTab === 'STANDINGS') {
       return (
         <div className="standings-container">
-          <div className="round-options">{renderDivisionSelector}</div>
+          <div className="round-options">
+            {renderDivisionSelector}
+            <Button type="link" onClick={() => setStatsModalVisible(true)}>
+              View stats
+            </Button>
+          </div>
           <Standings selectedDivision={selectedDivision} />
         </div>
       );
@@ -330,6 +337,23 @@ export const ActionsPanel = React.memo((props: Props) => {
         friendRef={friendRef}
         id="match-seek"
         tournamentID={props.tournamentID}
+      />
+    </Modal>
+  );
+
+  const statsModal = (
+    <Modal
+      className="stats-modal"
+      title={`Statistics for ${selectedDivision}`}
+      open={statsModalVisible}
+      destroyOnClose
+      onCancel={() => {
+        setStatsModalVisible(false);
+      }}
+    >
+      <TournamentStats
+        tournamentContext={tournamentContext}
+        selectedDivision={selectedDivision}
       />
     </Modal>
   );
@@ -514,6 +538,7 @@ export const ActionsPanel = React.memo((props: Props) => {
             selectedGameTab === 'DIRECTOR TOOLS' &&
             renderDirectorTools()}
           {matchModal}
+          {statsModal}
           {renderGamesTab()}
         </div>
       </Card>

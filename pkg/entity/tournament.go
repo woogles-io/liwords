@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"sync"
 
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
@@ -33,6 +34,7 @@ type DivisionManager interface {
 	ClearReadyStates(userID string, round, gameIndex int) ([]*pb.Pairing, error)
 	ResetToBeginning() error
 	ChangeName(string)
+	CalculateStats(queries *models.Queries) error
 }
 
 /**	SetCheckedIn(userID string) error

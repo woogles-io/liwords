@@ -1110,3 +1110,180 @@ export declare class TournamentDivisionDeletedResponse extends Message<Tournamen
   static equals(a: TournamentDivisionDeletedResponse | PlainMessage<TournamentDivisionDeletedResponse> | undefined, b: TournamentDivisionDeletedResponse | PlainMessage<TournamentDivisionDeletedResponse> | undefined): boolean;
 }
 
+/**
+ * @generated from message ipc.TournamentStats
+ */
+export declare class TournamentStats extends Message<TournamentStats> {
+  /**
+   * @generated from field: repeated ipc.DivisionStats division_stats = 1;
+   */
+  divisionStats: DivisionStats[];
+
+  constructor(data?: PartialMessage<TournamentStats>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "ipc.TournamentStats";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TournamentStats;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TournamentStats;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TournamentStats;
+
+  static equals(a: TournamentStats | PlainMessage<TournamentStats> | undefined, b: TournamentStats | PlainMessage<TournamentStats> | undefined): boolean;
+}
+
+/**
+ * @generated from message ipc.SingleStat
+ */
+export declare class SingleStat extends Message<SingleStat> {
+  /**
+   * @generated from field: int32 stat = 1;
+   */
+  stat: number;
+
+  /**
+   * @generated from field: int32 user_idx = 2;
+   */
+  userIdx: number;
+
+  /**
+   * Round doesn't apply to all stats
+   *
+   * @generated from field: int32 round = 3;
+   */
+  round: number;
+
+  /**
+   * The other involved user
+   *
+   * @generated from field: int32 opp_idx = 4;
+   */
+  oppIdx: number;
+
+  /**
+   * Could be a bingo or high play, may be blank
+   *
+   * @generated from field: string play_descriptor = 5;
+   */
+  playDescriptor: string;
+
+  constructor(data?: PartialMessage<SingleStat>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "ipc.SingleStat";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SingleStat;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SingleStat;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SingleStat;
+
+  static equals(a: SingleStat | PlainMessage<SingleStat> | undefined, b: SingleStat | PlainMessage<SingleStat> | undefined): boolean;
+}
+
+/**
+ * @generated from message ipc.AggregatedStat
+ */
+export declare class AggregatedStat extends Message<AggregatedStat> {
+  /**
+   * @generated from field: ipc.AggregatedStat.StatType stat_type = 1;
+   */
+  statType: AggregatedStat_StatType;
+
+  /**
+   * @generated from field: repeated ipc.SingleStat stats = 2;
+   */
+  stats: SingleStat[];
+
+  constructor(data?: PartialMessage<AggregatedStat>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "ipc.AggregatedStat";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AggregatedStat;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AggregatedStat;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AggregatedStat;
+
+  static equals(a: AggregatedStat | PlainMessage<AggregatedStat> | undefined, b: AggregatedStat | PlainMessage<AggregatedStat> | undefined): boolean;
+}
+
+/**
+ * @generated from enum ipc.AggregatedStat.StatType
+ */
+export declare enum AggregatedStat_StatType {
+  /**
+   * @generated from enum value: NO_STAT = 0;
+   */
+  NO_STAT = 0,
+
+  /**
+   * @generated from enum value: STAT_WINNING_SCORE = 1;
+   */
+  STAT_WINNING_SCORE = 1,
+
+  /**
+   * @generated from enum value: STAT_LOSING_SCORE = 2;
+   */
+  STAT_LOSING_SCORE = 2,
+
+  /**
+   * @generated from enum value: STAT_COMBINED_SCORE = 3;
+   */
+  STAT_COMBINED_SCORE = 3,
+
+  /**
+   * @generated from enum value: STAT_UPSET_WIN = 4;
+   */
+  STAT_UPSET_WIN = 4,
+
+  /**
+   * @generated from enum value: STAT_TURN_SCORE = 5;
+   */
+  STAT_TURN_SCORE = 5,
+
+  /**
+   * @generated from enum value: STAT_TOTAL_BINGOS = 6;
+   */
+  STAT_TOTAL_BINGOS = 6,
+
+  /**
+   * @generated from enum value: STAT_TOTAL_SCORE = 7;
+   */
+  STAT_TOTAL_SCORE = 7,
+
+  /**
+   * @generated from enum value: STAT_PLAYED_GAMES = 8;
+   */
+  STAT_PLAYED_GAMES = 8,
+}
+
+/**
+ * @generated from message ipc.DivisionStats
+ */
+export declare class DivisionStats extends Message<DivisionStats> {
+  /**
+   * @generated from field: repeated ipc.AggregatedStat aggregated_stats = 1;
+   */
+  aggregatedStats: AggregatedStat[];
+
+  constructor(data?: PartialMessage<DivisionStats>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "ipc.DivisionStats";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DivisionStats;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DivisionStats;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DivisionStats;
+
+  static equals(a: DivisionStats | PlainMessage<DivisionStats> | undefined, b: DivisionStats | PlainMessage<DivisionStats> | undefined): boolean;
+}
+

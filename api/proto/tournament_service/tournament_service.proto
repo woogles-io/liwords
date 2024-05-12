@@ -193,6 +193,10 @@ message TournamentScorecardRequest {
 
 message TournamentScorecardResponse { bytes pdf_zip = 1; }
 
+message GetStatsRequest {}
+
+message GetStatsResponse { ipc.TournamentStats stats = 1; }
+
 service TournamentService {
   rpc NewTournament(NewTournamentRequest) returns (NewTournamentResponse);
   rpc GetTournamentMetadata(GetTournamentMetadataRequest)
@@ -253,6 +257,7 @@ service TournamentService {
       returns (TournamentScorecardResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  //   rpc GetStats(GetStatsRequest) returns (GetStatsResponse);
 }
 
 message ExportTournamentRequest {
