@@ -1,44 +1,57 @@
 -- name: GetHeadToHead :one
-SELECT
-  SUM(wins) AS player_wins,
-  SUM(losses) AS player_losses,
-  SUM(draws) AS player_draws,
-  SUM(our_bingos) AS our_total_bingos,
-  SUM(their_bingos) AS their_total_bingos,
-  SUM(our_tiles_played) AS our_total_tiles_played,
-  SUM(their_tiles_played) AS their_total_tiles_played,
-  SUM(our_blanks_played) AS our_total_blanks_played,
-  SUM(their_blanks_played) AS their_total_blanks_played,
-  SUM(score_difference) AS spread
-FROM
-  (SELECT
-     (stats->CASE WHEN stats->>'i1' = @p1uuid::text THEN 'd1' ELSE 'd2' END->'Wins'->>'t')::int AS wins,
-     (stats->CASE WHEN stats->>'i1' = @p1uuid::text THEN 'd1' ELSE 'd2' END->'Losses'->>'t')::int AS losses,
-     (stats->CASE WHEN stats->>'i1' = @p1uuid::text THEN 'd1' ELSE 'd2' END->'Draws'->>'t')::int AS draws,
-     (stats->CASE WHEN stats->>'i1' = @p1uuid::text THEN 'd1' ELSE 'd2' END->'Bingos'->>'t')::int AS our_bingos,
-     (stats->CASE WHEN stats->>'i1' = @p1uuid::text THEN 'd2' ELSE 'd1' END->'Bingos'->>'t')::int AS their_bingos,
-     (stats->CASE WHEN stats->>'i1' = @p1uuid::text THEN 'd1' ELSE 'd2' END->'Tiles Played'->>'t')::int AS our_tiles_played,
-     (stats->CASE WHEN stats->>'i1' = @p1uuid::text THEN 'd2' ELSE 'd1' END->'Tiles Played'->>'t')::int AS their_tiles_played,
-     (stats->CASE WHEN stats->>'i1' = @p1uuid::text THEN 'd1' ELSE 'd2' END->'Tiles Played'->'s'->>'?')::int AS our_blanks_played,
-     (stats->CASE WHEN stats->>'i1' = @p1uuid::text THEN 'd2' ELSE 'd1' END->'Tiles Played'->'s'->>'?')::int AS their_blanks_played,
-
-     ((stats->CASE WHEN stats->>'i1' = @p1uuid::text THEN 'd1' ELSE 'd2' END->'Score'->>'t')::int -
-      (stats->CASE WHEN stats->>'i1' = @p1uuid::text THEN 'd2' ELSE 'd1' END->'Score'->>'t')::int) AS score_difference
-   FROM
-     games
-   INNER JOIN users u1 ON games.player0_id = u1.id
-   INNER JOIN users u2 ON games.player1_id = u2.id
-   WHERE
-     (u1.uuid = @p1uuid AND u2.uuid = @p2uuid::text) OR
-     (u1.uuid = @p2uuid::text AND u2.uuid = @p1uuid)
-   ORDER BY
-     games.created_at DESC
-   LIMIT $1
-   OFFSET $2
-  ) AS aggregated_stats;
+with
+  affected_games as (
+    select games.*
+    from games
+    inner join users u1 on u1.uuid = @u1_uuid::text
+    inner join users u2 on u2.uuid = @u2_uuid::text
+    where
+      (games.player0_id = u1.id and games.player1_id = u2.id) or
+      (games.player0_id = u2.id and games.player1_id = u1.id)
+    order by games.created_at desc
+    limit $1
+    offset $2
+  ),
+  t as (
+    select
+      stats->>'i1' user_uuid,
+      (d1."Wins"->>'t')::int wins,
+      (d1."Losses"->>'t')::int losses,
+      (d1."Draws"->>'t')::int draws,
+      (d1."Bingos"->>'t')::int bingos,
+      (d1."Tiles Played"->>'t')::int tiles_played,
+      (d1."Tiles Played"->'s'->>'?')::int blanks_played,
+      (d1."Score"->>'t')::int - (stats->'d2'->'Score'->>'t')::int score_difference
+    from affected_games,
+      jsonb_to_record(stats->'d1') d1("Wins" jsonb, "Losses" jsonb, "Draws" jsonb, "Bingos" jsonb, "Tiles Played" jsonb, "Score" jsonb)
+  union all
+    select
+      stats->>'i2' user_uuid,
+      (d2."Wins"->>'t')::int wins,
+      (d2."Losses"->>'t')::int losses,
+      (d2."Draws"->>'t')::int draws,
+      (d2."Bingos"->>'t')::int bingos,
+      (d2."Tiles Played"->>'t')::int tiles_played,
+      (d2."Tiles Played"->'s'->>'?')::int blanks_played,
+      (d2."Score"->>'t')::int - (stats->'d1'->'Score'->>'t')::int score_difference
+    from affected_games,
+      jsonb_to_record(stats->'d2') d2("Wins" jsonb, "Losses" jsonb, "Draws" jsonb, "Bingos" jsonb, "Tiles Played" jsonb, "Score" jsonb)
+  )
+  select
+    user_uuid::text,
+    sum(wins) wins,
+    sum(losses) losses,
+    sum(draws) draws,
+    sum(bingos) bingos,
+    sum(tiles_played) tiles_played,
+    sum(blanks_played) blanks_played,
+    sum(score_difference) spread
+  from t
+  group by user_uuid
+  order by user_uuid;
 
 -- name: GetHighestTurnsFromGameUUIDs :many
-select user_uuid, max(high_turn) high_turn
+select user_uuid::text, max(high_turn)::int high_turn
 from
   (
     select stats->>'i1' user_uuid, (stats->'d1'->'High Turn'->>'t')::int high_turn
@@ -53,7 +66,7 @@ group by user_uuid
 order by high_turn desc;
 
 -- name: GetTotalBingosFromGameUUIDs :many
-select user_uuid, sum(bingos) total_bingos
+select user_uuid::text, sum(bingos)::int total_bingos
 from
   (
     select stats->>'i1' user_uuid, (stats->'d1'->'Bingos'->>'t')::int bingos

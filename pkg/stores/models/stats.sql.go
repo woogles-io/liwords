@@ -10,90 +10,99 @@ import (
 )
 
 const getHeadToHead = `-- name: GetHeadToHead :one
-SELECT
-  SUM(wins) AS player_wins,
-  SUM(losses) AS player_losses,
-  SUM(draws) AS player_draws,
-  SUM(our_bingos) AS our_total_bingos,
-  SUM(their_bingos) AS their_total_bingos,
-  SUM(our_tiles_played) AS our_total_tiles_played,
-  SUM(their_tiles_played) AS their_total_tiles_played,
-  SUM(our_blanks_played) AS our_total_blanks_played,
-  SUM(their_blanks_played) AS their_total_blanks_played,
-  SUM(score_difference) AS spread
-FROM
-  (SELECT
-     (stats->CASE WHEN stats->>'i1' = $3::text THEN 'd1' ELSE 'd2' END->'Wins'->>'t')::int AS wins,
-     (stats->CASE WHEN stats->>'i1' = $3::text THEN 'd1' ELSE 'd2' END->'Losses'->>'t')::int AS losses,
-     (stats->CASE WHEN stats->>'i1' = $3::text THEN 'd1' ELSE 'd2' END->'Draws'->>'t')::int AS draws,
-     (stats->CASE WHEN stats->>'i1' = $3::text THEN 'd1' ELSE 'd2' END->'Bingos'->>'t')::int AS our_bingos,
-     (stats->CASE WHEN stats->>'i1' = $3::text THEN 'd2' ELSE 'd1' END->'Bingos'->>'t')::int AS their_bingos,
-     (stats->CASE WHEN stats->>'i1' = $3::text THEN 'd1' ELSE 'd2' END->'Tiles Played'->>'t')::int AS our_tiles_played,
-     (stats->CASE WHEN stats->>'i1' = $3::text THEN 'd2' ELSE 'd1' END->'Tiles Played'->>'t')::int AS their_tiles_played,
-     (stats->CASE WHEN stats->>'i1' = $3::text THEN 'd1' ELSE 'd2' END->'Tiles Played'->'s'->>'?')::int AS our_blanks_played,
-     (stats->CASE WHEN stats->>'i1' = $3::text THEN 'd2' ELSE 'd1' END->'Tiles Played'->'s'->>'?')::int AS their_blanks_played,
-
-     ((stats->CASE WHEN stats->>'i1' = $3::text THEN 'd1' ELSE 'd2' END->'Score'->>'t')::int -
-      (stats->CASE WHEN stats->>'i1' = $3::text THEN 'd2' ELSE 'd1' END->'Score'->>'t')::int) AS score_difference
-   FROM
-     games
-   INNER JOIN users u1 ON games.player0_id = u1.id
-   INNER JOIN users u2 ON games.player1_id = u2.id
-   WHERE
-     (u1.uuid = $3 AND u2.uuid = $4::text) OR
-     (u1.uuid = $4::text AND u2.uuid = $3)
-   ORDER BY
-     games.created_at DESC
-   LIMIT $1
-   OFFSET $2
-  ) AS aggregated_stats
+with
+  affected_games as (
+    select games.id, games.created_at, games.updated_at, games.deleted_at, games.uuid, games.player0_id, games.player1_id, games.timers, games.started, games.game_end_reason, games.winner_idx, games.loser_idx, games.request, games.history, games.stats, games.quickdata, games.tournament_data, games.tournament_id, games.ready_flag, games.meta_events, games.type
+    from games
+    inner join users u1 on u1.uuid = $3::text
+    inner join users u2 on u2.uuid = $4::text
+    where
+      (games.player0_id = u1.id and games.player1_id = u2.id) or
+      (games.player0_id = u2.id and games.player1_id = u1.id)
+    order by games.created_at desc
+    limit $1
+    offset $2
+  ),
+  t as (
+    select
+      stats->>'i1' user_uuid,
+      (d1."Wins"->>'t')::int wins,
+      (d1."Losses"->>'t')::int losses,
+      (d1."Draws"->>'t')::int draws,
+      (d1."Bingos"->>'t')::int bingos,
+      (d1."Tiles Played"->>'t')::int tiles_played,
+      (d1."Tiles Played"->'s'->>'?')::int blanks_played,
+      (d1."Score"->>'t')::int - (stats->'d2'->'Score'->>'t')::int score_difference
+    from affected_games,
+      jsonb_to_record(stats->'d1') d1("Wins" jsonb, "Losses" jsonb, "Draws" jsonb, "Bingos" jsonb, "Tiles Played" jsonb, "Score" jsonb)
+  union all
+    select
+      stats->>'i2' user_uuid,
+      (d2."Wins"->>'t')::int wins,
+      (d2."Losses"->>'t')::int losses,
+      (d2."Draws"->>'t')::int draws,
+      (d2."Bingos"->>'t')::int bingos,
+      (d2."Tiles Played"->>'t')::int tiles_played,
+      (d2."Tiles Played"->'s'->>'?')::int blanks_played,
+      (d2."Score"->>'t')::int - (stats->'d1'->'Score'->>'t')::int score_difference
+    from affected_games,
+      jsonb_to_record(stats->'d2') d2("Wins" jsonb, "Losses" jsonb, "Draws" jsonb, "Bingos" jsonb, "Tiles Played" jsonb, "Score" jsonb)
+  )
+  select
+    user_uuid::text,
+    sum(wins) wins,
+    sum(losses) losses,
+    sum(draws) draws,
+    sum(bingos) bingos,
+    sum(tiles_played) tiles_played,
+    sum(blanks_played) blanks_played,
+    sum(score_difference) spread
+  from t
+  group by user_uuid
+  order by user_uuid
 `
 
 type GetHeadToHeadParams struct {
 	Limit  int32
 	Offset int32
-	P1uuid string
-	P2uuid string
+	U1Uuid string
+	U2Uuid string
 }
 
 type GetHeadToHeadRow struct {
-	PlayerWins             int64
-	PlayerLosses           int64
-	PlayerDraws            int64
-	OurTotalBingos         int64
-	TheirTotalBingos       int64
-	OurTotalTilesPlayed    int64
-	TheirTotalTilesPlayed  int64
-	OurTotalBlanksPlayed   int64
-	TheirTotalBlanksPlayed int64
-	Spread                 int64
+	UserUuid     string
+	Wins         int64
+	Losses       int64
+	Draws        int64
+	Bingos       int64
+	TilesPlayed  int64
+	BlanksPlayed int64
+	Spread       int64
 }
 
 func (q *Queries) GetHeadToHead(ctx context.Context, arg GetHeadToHeadParams) (GetHeadToHeadRow, error) {
 	row := q.db.QueryRow(ctx, getHeadToHead,
 		arg.Limit,
 		arg.Offset,
-		arg.P1uuid,
-		arg.P2uuid,
+		arg.U1Uuid,
+		arg.U2Uuid,
 	)
 	var i GetHeadToHeadRow
 	err := row.Scan(
-		&i.PlayerWins,
-		&i.PlayerLosses,
-		&i.PlayerDraws,
-		&i.OurTotalBingos,
-		&i.TheirTotalBingos,
-		&i.OurTotalTilesPlayed,
-		&i.TheirTotalTilesPlayed,
-		&i.OurTotalBlanksPlayed,
-		&i.TheirTotalBlanksPlayed,
+		&i.UserUuid,
+		&i.Wins,
+		&i.Losses,
+		&i.Draws,
+		&i.Bingos,
+		&i.TilesPlayed,
+		&i.BlanksPlayed,
 		&i.Spread,
 	)
 	return i, err
 }
 
 const getHighestTurnsFromGameUUIDs = `-- name: GetHighestTurnsFromGameUUIDs :many
-select user_uuid, max(high_turn) high_turn
+select user_uuid::text, max(high_turn)::int high_turn
 from
   (
     select stats->>'i1' user_uuid, (stats->'d1'->'High Turn'->>'t')::int high_turn
@@ -109,8 +118,8 @@ order by high_turn desc
 `
 
 type GetHighestTurnsFromGameUUIDsRow struct {
-	UserUuid interface{}
-	HighTurn interface{}
+	UserUuid string
+	HighTurn int32
 }
 
 func (q *Queries) GetHighestTurnsFromGameUUIDs(ctx context.Context, dollar_1 []string) ([]GetHighestTurnsFromGameUUIDsRow, error) {
@@ -134,7 +143,7 @@ func (q *Queries) GetHighestTurnsFromGameUUIDs(ctx context.Context, dollar_1 []s
 }
 
 const getTotalBingosFromGameUUIDs = `-- name: GetTotalBingosFromGameUUIDs :many
-select user_uuid, sum(bingos) total_bingos
+select user_uuid::text, sum(bingos)::int total_bingos
 from
   (
     select stats->>'i1' user_uuid, (stats->'d1'->'Bingos'->>'t')::int bingos
@@ -150,8 +159,8 @@ order by total_bingos desc
 `
 
 type GetTotalBingosFromGameUUIDsRow struct {
-	UserUuid    interface{}
-	TotalBingos int64
+	UserUuid    string
+	TotalBingos int32
 }
 
 func (q *Queries) GetTotalBingosFromGameUUIDs(ctx context.Context, dollar_1 []string) ([]GetTotalBingosFromGameUUIDsRow, error) {

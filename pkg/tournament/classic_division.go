@@ -2,6 +2,7 @@ package tournament
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"sort"
@@ -35,7 +36,7 @@ type ClassicDivision struct {
 	DivisionControls *pb.DivisionControls         `json:"divisionControls"`
 	CurrentRound     int32                        `json:"currentRound"`
 	PairingKeyInt    int                          `json:"pairingKeyInt"`
-	Stats            *pb.DivisionStats            `json:"divisionStats"`
+	Statistics       *pb.DivisionStats            `json:"statistics"`
 }
 
 func NewClassicDivision(tournamentName string, divisionName string) *ClassicDivision {
@@ -2034,7 +2035,7 @@ func (t *ClassicDivision) ClearCheckedIn() {
 
 // CalculateStats calculates most stats for the division that are directly calculatable
 // from the raw division data (scores, wins, losses, etc.)
-func (t *ClassicDivision) CalculateStats(queries *models.Queries) error {
+func (t *ClassicDivision) CalculateStats(ctx context.Context, queries *models.Queries) error {
 	aggStats := []*pb.AggregatedStat{}
 	winStat := &pb.AggregatedStat{
 		StatType: pb.AggregatedStat_STAT_WINNING_SCORE,
@@ -2052,14 +2053,14 @@ func (t *ClassicDivision) CalculateStats(queries *models.Queries) error {
 		StatType: pb.AggregatedStat_STAT_UPSET_WIN,
 		Stats:    []*pb.SingleStat{},
 	}
-	// turnScoreStat := &pb.AggregatedStat{
-	// 	StatType: pb.AggregatedStat_STAT_TURN_SCORE,
-	// 	Stats:    []*pb.SingleStat{},
-	// }
-	// totalBingosStat := &pb.AggregatedStat{
-	// 	StatType: pb.AggregatedStat_STAT_TOTAL_BINGOS,
-	// 	Stats:    []*pb.SingleStat{},
-	// }
+	turnScoreStat := &pb.AggregatedStat{
+		StatType: pb.AggregatedStat_STAT_TURN_SCORE,
+		Stats:    []*pb.SingleStat{},
+	}
+	totalBingosStat := &pb.AggregatedStat{
+		StatType: pb.AggregatedStat_STAT_TOTAL_BINGOS,
+		Stats:    []*pb.SingleStat{},
+	}
 	totalScoreStat := &pb.AggregatedStat{
 		StatType: pb.AggregatedStat_STAT_TOTAL_SCORE,
 		Stats:    []*pb.SingleStat{},
@@ -2069,16 +2070,31 @@ func (t *ClassicDivision) CalculateStats(queries *models.Queries) error {
 		Stats:    []*pb.SingleStat{},
 	}
 	aggStats = append(aggStats, winStat, loseStat, combinedStat, upsetWinStat,
-		totalScoreStat, playedGamesStat)
+		totalScoreStat, playedGamesStat, turnScoreStat, totalBingosStat)
 
 	scoresMap := map[int]int32{}
 	nGamesMap := map[int]int32{}
+	gameIDs := []string{}
+	// XXX: t already has a PlayerIndexMap but it indexes uuid:username to pidx.
+	// We need to get rid of the uuid:username concept.
+	pidxMap := map[string]int32{}
+
+	for k, v := range t.PlayerIndexMap {
+		idx := strings.IndexByte(k, ':')
+		if idx == -1 {
+			return errors.New("unexpected pstr " + k)
+		}
+		pidxMap[k[:idx]] = v
+	}
 
 	for _, pairing := range t.PairingMap {
 		if len(pairing.Games) == 0 {
 			continue
 		}
 		results := pairing.Games[0].Results
+		if pairing.Games[0].Id != "" {
+			gameIDs = append(gameIDs, pairing.Games[0].Id)
+		}
 		if len(results) != 2 {
 			continue
 		}
@@ -2139,8 +2155,35 @@ func (t *ClassicDivision) CalculateStats(queries *models.Queries) error {
 			UserIdx: int32(k),
 		})
 	}
-	t.Stats = &pb.DivisionStats{
+
+	if len(gameIDs) > 0 {
+		highTurns, err := queries.GetHighestTurnsFromGameUUIDs(ctx, gameIDs)
+		if err != nil {
+			return err
+		}
+		for _, r := range highTurns {
+			turnScoreStat.Stats = append(turnScoreStat.Stats, &pb.SingleStat{
+				Stat:    r.HighTurn,
+				UserIdx: pidxMap[r.UserUuid],
+			})
+		}
+		totalBingos, err := queries.GetTotalBingosFromGameUUIDs(ctx, gameIDs)
+		if err != nil {
+			return err
+		}
+		for _, b := range totalBingos {
+			totalBingosStat.Stats = append(totalBingosStat.Stats, &pb.SingleStat{
+				Stat:    int32(b.TotalBingos),
+				UserIdx: pidxMap[b.UserUuid],
+			})
+		}
+	}
+	t.Statistics = &pb.DivisionStats{
 		AggregatedStats: aggStats,
 	}
 	return nil
+}
+
+func (t *ClassicDivision) Stats() *pb.DivisionStats {
+	return t.Statistics
 }

@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"context"
 	"encoding/json"
 	"sync"
 
@@ -34,7 +35,8 @@ type DivisionManager interface {
 	ClearReadyStates(userID string, round, gameIndex int) ([]*pb.Pairing, error)
 	ResetToBeginning() error
 	ChangeName(string)
-	CalculateStats(queries *models.Queries) error
+	CalculateStats(ctx context.Context, queries *models.Queries) error
+	Stats() *pb.DivisionStats
 }
 
 /**	SetCheckedIn(userID string) error

@@ -926,7 +926,7 @@ func SetResult(ctx context.Context,
 	}
 
 	// Calculate tournament stats given new result
-	err = divisionObject.DivisionManager.CalculateStats(queries)
+	err = divisionObject.DivisionManager.CalculateStats(ctx, queries)
 	if err != nil {
 		return err
 	}
