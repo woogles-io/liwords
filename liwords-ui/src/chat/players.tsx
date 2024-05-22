@@ -27,6 +27,11 @@ type Props = {
   sendMessage?: (uuid: string, username: string) => void;
 };
 
+type MyIntersectionObserver = {
+  observe: (domElt: HTMLElement, uuid: string) => void;
+  unobserve: (domElt: HTMLElement, uuid: string) => void;
+};
+
 type PlayerProps = {
   className?: string;
   username?: string;
@@ -34,6 +39,7 @@ type PlayerProps = {
   channel?: string[];
   fromChat?: boolean; // XXX: this doesn't seem to be used?
   sendMessage?: (uuid: string, username: string) => void;
+  myio: MyIntersectionObserver;
 };
 
 const activityToText = (
@@ -114,6 +120,17 @@ const Player = React.memo((props: PlayerProps) => {
   if (!props.username) {
     return null;
   }
+
+  const [domElt, setDomElt] = React.useState();
+  React.useEffect(() => {
+    if (domElt && props.myio && props.uuid) {
+      props.myio.observe(domElt, props.uuid);
+      return () => {
+        props.myio.unobserve(domElt, props.uuid);
+      };
+    }
+  }, [domElt, props.myio, props.uuid]);
+
   return (
     <div
       className={`player-display ${!online ? 'offline' : ''} ${
@@ -121,6 +138,7 @@ const Player = React.memo((props: PlayerProps) => {
       } ${props.className ? props.className : ''} ${
         puzzling && !inGame ? 'puzzling' : ''
       }`}
+      ref={setDomElt}
       key={props.uuid}
     >
       <PettableAvatar>
@@ -159,6 +177,107 @@ const Player = React.memo((props: PlayerProps) => {
     </div>
   );
 });
+
+type PlayerListProps = {
+  userList: Partial<FriendUser>[];
+  className: string;
+  sendMessage: (uuid: string, username: string) => void;
+};
+
+const PlayerList = (props: PlayerListProps) => {
+  const uuidToIndex = React.useMemo(
+    () =>
+      props.userList.reduce((ret, { uuid }, idx) => {
+        ret[uuid] = idx;
+        return ret;
+      }, {}),
+    [props.userList]
+  );
+
+  // 48px height + 18px margin = 66px for each entry.
+  // assume 1080px monitor at full height.
+  // then the formula is roughly Math.ceil((1080 + 18) / 66).
+  const [numShown, setNumShown] = React.useState(17);
+
+  const domEltToUuid = React.useRef(new Map());
+  const visibleDomElts = React.useRef(new Set());
+
+  const [intersectionObserver, setIntersectionObserver] =
+    React.useState<IntersectionObserver>();
+  React.useEffect(() => {
+    const callback = (entries) => {
+      entries.forEach((entry) => {
+        const uuid = domEltToUuid.current.get(entry.target);
+        if (uuid) {
+          const visible = entry.isIntersecting;
+          if (visible) {
+            visibleDomElts.current.add(entry.target);
+
+            // expand in one direction only for simplicity.
+            // (because not rendering the earlier elements would affect the scroll position.)
+
+            // one-based index corresponds to the minimum number of items
+            // that must be shown for this item to be shown.
+            const oneBasedIndex = (uuidToIndex[uuid] ?? 0) + 1;
+            // pageSize is approximate, depends on timing.
+            const pageSize = Math.max(visibleDomElts.current.size, 1);
+            const newMinNumShown = oneBasedIndex + pageSize;
+            const threshold = 0; // can increase this to load earlier.
+            setNumShown((numShown) => {
+              if (oneBasedIndex >= numShown - threshold) {
+                // it is near the end, time to load more.
+                return Math.max(numShown, newMinNumShown);
+              } else {
+                // it is not near the end, do nothing for now.
+                return numShown;
+              }
+            });
+          } else {
+            visibleDomElts.current.delete(entry.target);
+          }
+        }
+      });
+    };
+    const intersectionObserver = new IntersectionObserver(callback);
+    setIntersectionObserver(intersectionObserver);
+    return () => {
+      intersectionObserver.disconnect();
+    };
+  }, [uuidToIndex]);
+
+  const myio = React.useMemo(() => {
+    return {
+      observe: (domElt: HTMLElement, uuid: string): void => {
+        if (!domEltToUuid.current.has(domElt)) {
+          domEltToUuid.current.set(domElt, uuid);
+        }
+        intersectionObserver?.observe(domElt);
+      },
+      unobserve: (domElt: HTMLElement, uuid: string): void => {
+        intersectionObserver?.unobserve(domElt);
+        domEltToUuid.current.delete(domElt);
+        visibleDomElts.current.delete(domElt);
+      },
+    };
+  }, [intersectionObserver]);
+
+  return (
+    <>
+      {props.userList.map(
+        (p, idx) =>
+          idx < numShown && (
+            <Player
+              sendMessage={props.sendMessage}
+              className={props.className}
+              key={p.uuid}
+              myio={myio}
+              {...p}
+            />
+          )
+      )}
+    </>
+  );
+};
 
 export const Players = React.memo((props: Props) => {
   const { friends } = useFriendsStoreContext();
@@ -240,16 +359,11 @@ export const Players = React.memo((props: Props) => {
       });
 
       return (
-        <>
-          {nonExcludedUsers.map((p) => (
-            <Player
-              sendMessage={sendMessage}
-              className={className}
-              key={p.uuid}
-              {...p}
-            />
-          ))}
-        </>
+        <PlayerList
+          userList={nonExcludedUsers}
+          className={className}
+          sendMessage={sendMessage}
+        />
       );
     },
     [sendMessage, excludedPlayers]
