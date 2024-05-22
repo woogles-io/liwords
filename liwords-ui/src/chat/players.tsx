@@ -267,9 +267,9 @@ const PlayerList = (props: PlayerListProps) => {
 
   return (
     <>
-      {props.userList.map(
-        (p, idx) =>
-          idx < numShown && (
+      {props.userList.reduce((ret, p, idx) => {
+        if (idx < numShown)
+          ret.push(
             <Player
               sendMessage={props.sendMessage}
               className={props.className}
@@ -277,8 +277,9 @@ const PlayerList = (props: PlayerListProps) => {
               myio={myio}
               {...p}
             />
-          )
-      )}
+          );
+        return ret;
+      }, [] as ReactNode[])}
     </>
   );
 };
