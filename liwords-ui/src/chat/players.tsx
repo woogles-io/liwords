@@ -324,7 +324,7 @@ export const Players = React.memo((props: Props) => {
 
   const onPlayerSearch = useCallback(
     async (searchText: string) => {
-      if (searchText?.length > 0) {
+      if (searchText) {
         try {
           const resp = await acClient.getCompletion({ prefix: searchText });
           setSearchResults(
@@ -351,8 +351,12 @@ export const Players = React.memo((props: Props) => {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const prefix = e.target.value;
       setSearchText(prefix);
-      if (prefix?.length > 0) {
-        searchUsernameDebounced(prefix);
+      // when clearing the text box, cancel the now unwanted search.
+      // so, always call this.
+      searchUsernameDebounced(prefix);
+      if (!prefix) {
+        // but clear the results immediately.
+        setSearchResults([]);
       }
     },
     [searchUsernameDebounced]
@@ -543,12 +547,12 @@ export const Players = React.memo((props: Props) => {
             )}
         </section>
         <section className="search">
-          {searchResults?.length > 0 && searchText.length > 0 && (
-            <div className="breadcrumb">ALL PLAYERS</div>
+          {searchResults?.length > 0 && (
+            <>
+              <div className="breadcrumb">ALL PLAYERS</div>
+              {renderPlayerList(searchResults, 'search')}
+            </>
           )}
-          {searchResults?.length > 0 &&
-            searchText.length > 0 &&
-            renderPlayerList(searchResults, 'search')}
         </section>
       </div>
     </div>
