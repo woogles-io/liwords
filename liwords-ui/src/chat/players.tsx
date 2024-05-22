@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -121,8 +122,8 @@ const Player = React.memo((props: PlayerProps) => {
     return null;
   }
 
-  const [domElt, setDomElt] = React.useState<HTMLElement | null>();
-  React.useEffect(() => {
+  const [domElt, setDomElt] = useState<HTMLElement | null>();
+  useEffect(() => {
     if (domElt && props.myio && props.uuid) {
       const uuid = props.uuid;
       props.myio.observe(domElt, uuid);
@@ -186,7 +187,7 @@ type PlayerListProps = {
 };
 
 const PlayerList = (props: PlayerListProps) => {
-  const uuidToIndex = React.useMemo(
+  const uuidToIndex = useMemo(
     () =>
       props.userList.reduce(
         (ret, { uuid }, idx) => {
@@ -203,16 +204,16 @@ const PlayerList = (props: PlayerListProps) => {
   // so it does not immediately trigger another load.
   // assume 1080px monitor at full height.
   const threshold = 0; // can increase this to load earlier.
-  const [numShown, setNumShown] = React.useState(
+  const [numShown, setNumShown] = useState(
     Math.ceil(1080 + 18) / 66 + (threshold + 1)
   );
 
-  const domEltToUuid = React.useRef(new Map());
-  const visibleDomElts = React.useRef(new Set());
+  const domEltToUuid = useRef(new Map());
+  const visibleDomElts = useRef(new Set());
 
   const [intersectionObserver, setIntersectionObserver] =
-    React.useState<IntersectionObserver>();
-  React.useEffect(() => {
+    useState<IntersectionObserver>();
+  useEffect(() => {
     const callback = (entries: IntersectionObserverEntry[]) => {
       entries.forEach((entry) => {
         const uuid = domEltToUuid.current.get(entry.target);
@@ -252,7 +253,7 @@ const PlayerList = (props: PlayerListProps) => {
     };
   }, [uuidToIndex]);
 
-  const myio = React.useMemo(() => {
+  const myio = useMemo(() => {
     return {
       observe: (domElt: HTMLElement, uuid: string): void => {
         if (!domEltToUuid.current.has(domElt)) {
@@ -322,7 +323,7 @@ export const Players = React.memo((props: Props) => {
     []
   );
 
-  const lastSearchedText = React.useRef('');
+  const lastSearchedText = useRef('');
   const onPlayerSearch = useCallback(
     async (searchText: string) => {
       if (lastSearchedText.current === searchText) {
