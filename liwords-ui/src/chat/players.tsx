@@ -199,9 +199,13 @@ const PlayerList = (props: PlayerListProps) => {
   );
 
   // 48px height + 18px margin = 66px for each entry.
+  // initially we show just as many items as needed
+  // so it does not immediately trigger another load.
   // assume 1080px monitor at full height.
-  // then the formula is roughly Math.ceil((1080 + 18) / 66).
-  const [numShown, setNumShown] = React.useState(17);
+  const threshold = 0; // can increase this to load earlier.
+  const [numShown, setNumShown] = React.useState(
+    Math.ceil(1080 + 18) / 66 + (threshold + 1)
+  );
 
   const domEltToUuid = React.useRef(new Map());
   const visibleDomElts = React.useRef(new Set());
@@ -226,7 +230,6 @@ const PlayerList = (props: PlayerListProps) => {
             // pageSize is approximate, depends on timing.
             const pageSize = Math.max(visibleDomElts.current.size, 1);
             const newMinNumShown = oneBasedIndex + pageSize;
-            const threshold = 0; // can increase this to load earlier.
             setNumShown((numShown) => {
               if (oneBasedIndex >= numShown - threshold) {
                 // it is near the end, time to load more.
