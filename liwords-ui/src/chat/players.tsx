@@ -121,12 +121,13 @@ const Player = React.memo((props: PlayerProps) => {
     return null;
   }
 
-  const [domElt, setDomElt] = React.useState();
+  const [domElt, setDomElt] = React.useState<HTMLElement | null>();
   React.useEffect(() => {
     if (domElt && props.myio && props.uuid) {
-      props.myio.observe(domElt, props.uuid);
+      const uuid = props.uuid;
+      props.myio.observe(domElt, uuid);
       return () => {
-        props.myio.unobserve(domElt, props.uuid);
+        props.myio.unobserve(domElt, uuid);
       };
     }
   }, [domElt, props.myio, props.uuid]);
@@ -181,16 +182,19 @@ const Player = React.memo((props: PlayerProps) => {
 type PlayerListProps = {
   userList: Partial<FriendUser>[];
   className: string;
-  sendMessage: (uuid: string, username: string) => void;
+  sendMessage?: (uuid: string, username: string) => void;
 };
 
 const PlayerList = (props: PlayerListProps) => {
   const uuidToIndex = React.useMemo(
     () =>
-      props.userList.reduce((ret, { uuid }, idx) => {
-        ret[uuid] = idx;
-        return ret;
-      }, {}),
+      props.userList.reduce(
+        (ret, { uuid }, idx) => {
+          if (uuid != null) ret[uuid] = idx;
+          return ret;
+        },
+        {} as { [key: string]: number }
+      ),
     [props.userList]
   );
 
@@ -205,7 +209,7 @@ const PlayerList = (props: PlayerListProps) => {
   const [intersectionObserver, setIntersectionObserver] =
     React.useState<IntersectionObserver>();
   React.useEffect(() => {
-    const callback = (entries) => {
+    const callback = (entries: IntersectionObserverEntry[]) => {
       entries.forEach((entry) => {
         const uuid = domEltToUuid.current.get(entry.target);
         if (uuid) {
