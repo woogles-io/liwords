@@ -24,8 +24,8 @@ import { flashError, useClient } from '../utils/hooks/connect';
 import { AutocompleteService } from '../gen/api/proto/user_service/user_service_connectweb';
 
 type Props = {
-  defaultChannelType?: string;
-  sendMessage?: (uuid: string, username: string) => void;
+  defaultChannelType: string;
+  sendMessage: (uuid: string, username: string) => void;
 };
 
 type MyIntersectionObserver = {
@@ -34,12 +34,12 @@ type MyIntersectionObserver = {
 };
 
 type PlayerProps = {
-  className?: string;
+  className: string;
   username?: string;
   uuid?: string;
   channel?: string[];
   fromChat?: boolean; // XXX: this doesn't seem to be used?
-  sendMessage?: (uuid: string, username: string) => void;
+  sendMessage: (uuid: string, username: string) => void;
   myio: MyIntersectionObserver;
 };
 
@@ -77,7 +77,7 @@ const Player = React.memo((props: PlayerProps) => {
         if (!games.has(gameID)) {
           games.set(gameID, new Set());
         }
-        games.get(gameID)?.add(groupName);
+        games.get(gameID)!.add(groupName);
         if (groupName === 'activegame:') {
           --numChannels;
         }
@@ -183,7 +183,7 @@ const Player = React.memo((props: PlayerProps) => {
 type PlayerListProps = {
   userList: Partial<FriendUser>[];
   className: string;
-  sendMessage?: (uuid: string, username: string) => void;
+  sendMessage: (uuid: string, username: string) => void;
 };
 
 const PlayerList = (props: PlayerListProps) => {
@@ -391,7 +391,7 @@ export const Players = React.memo((props: Props) => {
 
   const filterPlayerListBySearch = useCallback(
     (searchTerm: string, list: Partial<FriendUser>[]) => {
-      if (searchTerm?.length) {
+      if (searchTerm.length) {
         const lowercasedSearchTerm = searchTerm.toLowerCase();
         return list.filter((u) =>
           u.username?.toLowerCase().startsWith(lowercasedSearchTerm)
@@ -555,7 +555,7 @@ export const Players = React.memo((props: Props) => {
             )}
         </section>
         <section className="search">
-          {searchResults?.length > 0 && (
+          {searchResults.length > 0 && (
             <>
               <div className="breadcrumb">ALL PLAYERS</div>
               {renderPlayerList(searchResults, 'search')}
