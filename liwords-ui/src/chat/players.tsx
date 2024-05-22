@@ -322,19 +322,25 @@ export const Players = React.memo((props: Props) => {
     []
   );
 
+  const lastSearchedText = React.useRef('');
   const onPlayerSearch = useCallback(
     async (searchText: string) => {
+      if (lastSearchedText.current === searchText) {
+        // do not trigger a search if user types something and undoes it,
+        // because we would already have the same search results in that case.
+        // (does not apply if user clears the text box.)
+        return;
+      }
+      lastSearchedText.current = searchText;
       if (searchText) {
         try {
           const resp = await acClient.getCompletion({ prefix: searchText });
           setSearchResults(
-            !searchText
-              ? []
-              : resp.users
-                  .filter(
-                    (u) => u.uuid && u.uuid !== userID && !(u.uuid in friends)
-                  )
-                  .sort(onlineAlphaComparator)
+            resp.users
+              .filter(
+                (u) => u.uuid && u.uuid !== userID && !(u.uuid in friends)
+              )
+              .sort(onlineAlphaComparator)
           );
         } catch (e) {
           flashError(e);
@@ -356,6 +362,7 @@ export const Players = React.memo((props: Props) => {
       searchUsernameDebounced(prefix);
       if (!prefix) {
         // but clear the results immediately.
+        lastSearchedText.current = '';
         setSearchResults([]);
       }
     },
