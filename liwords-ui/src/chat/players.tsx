@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -23,17 +24,23 @@ import { flashError, useClient } from '../utils/hooks/connect';
 import { AutocompleteService } from '../gen/api/proto/user_service/user_service_connectweb';
 
 type Props = {
-  defaultChannelType?: string;
-  sendMessage?: (uuid: string, username: string) => void;
+  defaultChannelType: string;
+  sendMessage: (uuid: string, username: string) => void;
+};
+
+type MyIntersectionObserver = {
+  observe: (domElt: HTMLElement, uuid: string) => void;
+  unobserve: (domElt: HTMLElement, uuid: string) => void;
 };
 
 type PlayerProps = {
-  className?: string;
+  className: string;
   username?: string;
   uuid?: string;
   channel?: string[];
   fromChat?: boolean; // XXX: this doesn't seem to be used?
-  sendMessage?: (uuid: string, username: string) => void;
+  sendMessage: (uuid: string, username: string) => void;
+  myio: MyIntersectionObserver;
 };
 
 const activityToText = (
@@ -70,7 +77,7 @@ const Player = React.memo((props: PlayerProps) => {
         if (!games.has(gameID)) {
           games.set(gameID, new Set());
         }
-        games.get(gameID)?.add(groupName);
+        games.get(gameID)!.add(groupName);
         if (groupName === 'activegame:') {
           --numChannels;
         }
@@ -114,6 +121,18 @@ const Player = React.memo((props: PlayerProps) => {
   if (!props.username) {
     return null;
   }
+
+  const [domElt, setDomElt] = useState<HTMLElement | null>();
+  useEffect(() => {
+    if (domElt && props.myio && props.uuid) {
+      const uuid = props.uuid;
+      props.myio.observe(domElt, uuid);
+      return () => {
+        props.myio.unobserve(domElt, uuid);
+      };
+    }
+  }, [domElt, props.myio, props.uuid]);
+
   return (
     <div
       className={`player-display ${!online ? 'offline' : ''} ${
@@ -121,6 +140,7 @@ const Player = React.memo((props: PlayerProps) => {
       } ${props.className ? props.className : ''} ${
         puzzling && !inGame ? 'puzzling' : ''
       }`}
+      ref={setDomElt}
       key={props.uuid}
     >
       <PettableAvatar>
@@ -160,6 +180,114 @@ const Player = React.memo((props: PlayerProps) => {
   );
 });
 
+type PlayerListProps = {
+  userList: Partial<FriendUser>[];
+  className: string;
+  sendMessage: (uuid: string, username: string) => void;
+};
+
+const PlayerList = (props: PlayerListProps) => {
+  const uuidToIndex = useMemo(
+    () =>
+      props.userList.reduce(
+        (ret, { uuid }, idx) => {
+          if (uuid != null) ret[uuid] = idx;
+          return ret;
+        },
+        {} as { [key: string]: number }
+      ),
+    [props.userList]
+  );
+
+  // 48px height + 18px margin = 66px for each entry.
+  // initially we show just as many items as needed
+  // so it does not immediately trigger another load.
+  // assume 1080px monitor at full height.
+  const threshold = 0; // can increase this to load earlier.
+  const [numShown, setNumShown] = useState(
+    Math.ceil(1080 + 18) / 66 + (threshold + 1)
+  );
+
+  const domEltToUuid = useRef(new Map());
+  const visibleDomElts = useRef(new Set());
+
+  const [intersectionObserver, setIntersectionObserver] =
+    useState<IntersectionObserver>();
+  useEffect(() => {
+    const callback = (entries: IntersectionObserverEntry[]) => {
+      entries.forEach((entry) => {
+        const uuid = domEltToUuid.current.get(entry.target);
+        if (uuid) {
+          const visible = entry.isIntersecting;
+          if (visible) {
+            visibleDomElts.current.add(entry.target);
+
+            // expand in one direction only for simplicity.
+            // (because not rendering the earlier elements would affect the scroll position.)
+
+            // one-based index corresponds to the minimum number of items
+            // that must be shown for this item to be shown.
+            const oneBasedIndex = (uuidToIndex[uuid] ?? 0) + 1;
+            // pageSize is approximate, depends on timing.
+            const pageSize = Math.max(visibleDomElts.current.size, 1);
+            const newMinNumShown = oneBasedIndex + pageSize;
+            setNumShown((numShown) => {
+              if (oneBasedIndex >= numShown - threshold) {
+                // it is near the end, time to load more.
+                return Math.max(numShown, newMinNumShown);
+              } else {
+                // it is not near the end, do nothing for now.
+                return numShown;
+              }
+            });
+          } else {
+            visibleDomElts.current.delete(entry.target);
+          }
+        }
+      });
+    };
+    const intersectionObserver = new IntersectionObserver(callback);
+    setIntersectionObserver(intersectionObserver);
+    return () => {
+      intersectionObserver.disconnect();
+    };
+  }, [uuidToIndex]);
+
+  const myio = useMemo(() => {
+    return {
+      observe: (domElt: HTMLElement, uuid: string): void => {
+        if (!domEltToUuid.current.has(domElt)) {
+          domEltToUuid.current.set(domElt, uuid);
+        }
+        intersectionObserver?.observe(domElt);
+      },
+      unobserve: (domElt: HTMLElement, uuid: string): void => {
+        intersectionObserver?.unobserve(domElt);
+        domEltToUuid.current.delete(domElt);
+        visibleDomElts.current.delete(domElt);
+      },
+    };
+  }, [intersectionObserver]);
+
+  return (
+    <>
+      {props.userList.reduce((ret, p, idx) => {
+        if (idx < numShown)
+          ret.push(
+            <Player
+              sendMessage={props.sendMessage}
+              className={props.className}
+              key={p.uuid}
+              myio={myio}
+              {...p}
+            />
+          );
+        return ret;
+      }, [] as ReactNode[])}
+    </>
+  );
+};
+
 export const Players = React.memo((props: Props) => {
   const { friends } = useFriendsStoreContext();
   const { loginState } = useLoginStateStoreContext();
@@ -195,19 +323,25 @@ export const Players = React.memo((props: Props) => {
     []
   );
 
+  const lastSearchedText = useRef('');
   const onPlayerSearch = useCallback(
     async (searchText: string) => {
-      if (searchText?.length > 0) {
+      if (lastSearchedText.current === searchText) {
+        // do not trigger a search if user types something and undoes it,
+        // because we would already have the same search results in that case.
+        // (does not apply if user clears the text box.)
+        return;
+      }
+      lastSearchedText.current = searchText;
+      if (searchText) {
         try {
           const resp = await acClient.getCompletion({ prefix: searchText });
           setSearchResults(
-            !searchText
-              ? []
-              : resp.users
-                  .filter(
-                    (u) => u.uuid && u.uuid !== userID && !(u.uuid in friends)
-                  )
-                  .sort(onlineAlphaComparator)
+            resp.users
+              .filter(
+                (u) => u.uuid && u.uuid !== userID && !(u.uuid in friends)
+              )
+              .sort(onlineAlphaComparator)
           );
         } catch (e) {
           flashError(e);
@@ -224,8 +358,13 @@ export const Players = React.memo((props: Props) => {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const prefix = e.target.value;
       setSearchText(prefix);
-      if (prefix?.length > 0) {
-        searchUsernameDebounced(prefix);
+      // when clearing the text box, cancel the now unwanted search.
+      // so, always call this.
+      searchUsernameDebounced(prefix);
+      if (!prefix) {
+        // but clear the results immediately.
+        lastSearchedText.current = '';
+        setSearchResults([]);
       }
     },
     [searchUsernameDebounced]
@@ -240,16 +379,11 @@ export const Players = React.memo((props: Props) => {
       });
 
       return (
-        <>
-          {nonExcludedUsers.map((p) => (
-            <Player
-              sendMessage={sendMessage}
-              className={className}
-              key={p.uuid}
-              {...p}
-            />
-          ))}
-        </>
+        <PlayerList
+          userList={nonExcludedUsers}
+          className={className}
+          sendMessage={sendMessage}
+        />
       );
     },
     [sendMessage, excludedPlayers]
@@ -257,7 +391,7 @@ export const Players = React.memo((props: Props) => {
 
   const filterPlayerListBySearch = useCallback(
     (searchTerm: string, list: Partial<FriendUser>[]) => {
-      if (searchTerm?.length) {
+      if (searchTerm.length) {
         const lowercasedSearchTerm = searchTerm.toLowerCase();
         return list.filter((u) =>
           u.username?.toLowerCase().startsWith(lowercasedSearchTerm)
@@ -421,12 +555,12 @@ export const Players = React.memo((props: Props) => {
             )}
         </section>
         <section className="search">
-          {searchResults?.length > 0 && searchText.length > 0 && (
-            <div className="breadcrumb">ALL PLAYERS</div>
+          {searchResults.length > 0 && (
+            <>
+              <div className="breadcrumb">ALL PLAYERS</div>
+              {renderPlayerList(searchResults, 'search')}
+            </>
           )}
-          {searchResults?.length > 0 &&
-            searchText.length > 0 &&
-            renderPlayerList(searchResults, 'search')}
         </section>
       </div>
     </div>
