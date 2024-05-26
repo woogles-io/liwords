@@ -37,7 +37,6 @@ import (
 	"go.akshayshah.org/connectproto"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -51,21 +50,10 @@ import (
 	"github.com/woogles-io/liwords/pkg/memento"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/omgwords"
-	omgstores "github.com/woogles-io/liwords/pkg/omgwords/stores"
 	pkgprofile "github.com/woogles-io/liwords/pkg/profile"
 	"github.com/woogles-io/liwords/pkg/puzzles"
 	"github.com/woogles-io/liwords/pkg/registration"
-	commentsstore "github.com/woogles-io/liwords/pkg/stores/comments"
-	cfgstore "github.com/woogles-io/liwords/pkg/stores/config"
-	"github.com/woogles-io/liwords/pkg/stores/game"
-	modstore "github.com/woogles-io/liwords/pkg/stores/mod"
-	puzzlestore "github.com/woogles-io/liwords/pkg/stores/puzzles"
-	pkgredis "github.com/woogles-io/liwords/pkg/stores/redis"
-	"github.com/woogles-io/liwords/pkg/stores/session"
-	"github.com/woogles-io/liwords/pkg/stores/soughtgame"
-	"github.com/woogles-io/liwords/pkg/stores/stats"
-	tournamentstore "github.com/woogles-io/liwords/pkg/stores/tournament"
-	"github.com/woogles-io/liwords/pkg/stores/user"
+	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/tournament"
 	userservices "github.com/woogles-io/liwords/pkg/user/services"
 	"github.com/woogles-io/liwords/pkg/utilities"
@@ -83,10 +71,6 @@ import (
 
 const (
 	GracefulShutdownTimeout = 30 * time.Second
-)
-
-var (
-	tracer = otel.Tracer("main")
 )
 
 var (
@@ -171,14 +155,7 @@ func main() {
 	dbPool, err := pgxpool.NewWithConfig(ctx, dbCfg)
 
 	router := http.NewServeMux()
-	stores := bus.Stores{}
-
-	stores.UserStore, err = user.NewDBStore(dbPool)
-	if err != nil {
-		panic(err)
-	}
-
-	stores.SessionStore, err = session.NewDBStore(dbPool)
+	stores, err := stores.NewInitializedStores(dbPool, redisPool, cfg)
 	if err != nil {
 		panic(err)
 	}
@@ -202,41 +179,6 @@ func main() {
 		ErrorReqResLoggingMiddleware,
 	)
 
-	tmpGameStore, err := game.NewDBStore(cfg, stores.UserStore)
-	if err != nil {
-		panic(err)
-	}
-
-	stores.GameStore = game.NewCache(tmpGameStore)
-
-	tmpTournamentStore, err := tournamentstore.NewDBStore(cfg, stores.GameStore)
-	if err != nil {
-		panic(err)
-	}
-	stores.TournamentStore = tournamentstore.NewCache(tmpTournamentStore)
-
-	stores.SoughtGameStore, err = soughtgame.NewDBStore(dbPool)
-	if err != nil {
-		panic(err)
-	}
-	stores.ConfigStore = cfgstore.NewRedisConfigStore(redisPool)
-	stores.ListStatStore, err = stats.NewDBStore(dbPool)
-	if err != nil {
-		panic(err)
-	}
-
-	stores.NotorietyStore, err = modstore.NewDBStore(dbPool)
-	if err != nil {
-		panic(err)
-	}
-	stores.PresenceStore = pkgredis.NewRedisPresenceStore(redisPool)
-	stores.ChatStore = pkgredis.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore)
-
-	stores.PuzzleStore, err = puzzlestore.NewDBStore(dbPool)
-	if err != nil {
-		panic(err)
-	}
-
 	// s3 config
 
 	awscfg, err := awsconfig.LoadDefaultConfig(
@@ -248,18 +190,6 @@ func main() {
 	otelaws.AppendMiddlewares(&awscfg.APIOptions)
 	s3Client := s3.NewFromConfig(awscfg, utilities.CustomClientOptions)
 	lambdaClient := lambda.NewFromConfig(awscfg)
-	stores.GameDocumentStore, err = omgstores.NewGameDocumentStore(cfg, redisPool, dbPool)
-	if err != nil {
-		panic(err)
-	}
-	stores.AnnotatedGameStore, err = omgstores.NewDBStore(dbPool)
-	if err != nil {
-		panic(err)
-	}
-	commentsStore, err := commentsstore.NewDBStore(dbPool)
-	if err != nil {
-		panic(err)
-	}
 
 	mementoService := memento.NewMementoService(stores.UserStore, stores.GameStore,
 		stores.GameDocumentStore, cfg)
@@ -272,12 +202,11 @@ func main() {
 	autocompleteService := userservices.NewAutocompleteService(stores.UserStore)
 	socializeService := userservices.NewSocializeService(stores.UserStore, stores.ChatStore, stores.PresenceStore)
 	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore)
-	tournamentService := tournament.NewTournamentService(stores.TournamentStore, stores.UserStore, cfg, lambdaClient)
+	tournamentService := tournament.NewTournamentService(stores.TournamentStore, stores.UserStore, cfg, lambdaClient, stores.Queries)
 	modService := mod.NewModService(stores.UserStore, stores.ChatStore)
 	puzzleService := puzzles.NewPuzzleService(stores.PuzzleStore, stores.UserStore, cfg.PuzzleGenerationSecretKey, cfg.ECSClusterName, cfg.PuzzleGenerationTaskDefinition)
 	omgwordsService := omgwords.NewOMGWordsService(stores.UserStore, cfg, stores.GameDocumentStore, stores.AnnotatedGameStore)
-	commentService := comments.NewCommentsService(stores.UserStore, stores.GameStore, commentsStore)
-
+	commentService := comments.NewCommentsService(stores.UserStore, stores.GameStore, stores.CommentsStore)
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
 	otcInterceptor, err := otelconnect.NewInterceptor()

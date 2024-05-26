@@ -31,7 +31,7 @@ const (
 )
 
 func (b *Bus) errIfGamesDisabled(ctx context.Context) error {
-	enabled, err := b.configStore.GamesEnabled(ctx)
+	enabled, err := b.stores.ConfigStore.GamesEnabled(ctx)
 	if err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func (b *Bus) errIfGamesDisabled(ctx context.Context) error {
 func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User, requester string,
 	gameReq *pb.GameRequest, sg *entity.SoughtGame, reqID, acceptingConnID string) error {
 
-	reqUser, err := b.userStore.GetByUUID(ctx, requester)
+	reqUser, err := b.stores.UserStore.GetByUUID(ctx, requester)
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,7 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 		if sg.SeekRequest.RematchFor != "" {
 			// Assign firsts to be the other player.
 			gameID := sg.SeekRequest.RematchFor
-			gh, err := b.gameStore.GetHistory(ctx, gameID)
+			gh, err := b.stores.GameStore.GetHistory(ctx, gameID)
 			if err != nil {
 				return err
 			}
@@ -86,7 +86,7 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 			}
 		}
 		if sg.SeekRequest.TournamentId != "" {
-			t, err := b.tournamentStore.Get(ctx, sg.SeekRequest.TournamentId)
+			t, err := b.stores.TournamentStore.Get(ctx, sg.SeekRequest.TournamentId)
 			if err != nil {
 				return errors.New("tournament not found")
 			}
@@ -109,14 +109,14 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 		users = [2]*entity.User{reqUser, accUser}
 	}
 
-	g, err := gameplay.InstantiateNewGame(ctx, b.gameStore, b.config,
+	g, err := gameplay.InstantiateNewGame(ctx, b.stores.GameStore, b.config,
 		users, gameReq, trdata)
 	if err != nil {
 		return err
 	}
 	// Broadcast a seek delete event, and send both parties a game redirect.
 	if reqID != BotRequestID {
-		b.soughtGameStore.Delete(ctx, reqID)
+		b.stores.SoughtGameStore.Delete(ctx, reqID)
 		err = b.sendSoughtGameDeletion(ctx, sg)
 		if err != nil {
 			log.Err(err).Msg("broadcasting-sg-deletion")
@@ -170,7 +170,7 @@ func (b *Bus) goHandleBotMove(ctx context.Context, resp *macondo.BotResponse,
 				log.Err(err).Str("gid", gid).Msg("error-acknowledging")
 			}
 		}()
-		g, err := b.gameStore.Get(ctx, gid)
+		g, err := b.stores.GameStore.Get(ctx, gid)
 		if err != nil {
 			log.Err(err).Str("gid", gid).Msg("cant-handle-bot-move")
 			return
@@ -189,9 +189,7 @@ func (b *Bus) goHandleBotMove(ctx context.Context, resp *macondo.BotResponse,
 				log.Err(err).Msg("move-from-event-error")
 				return
 			}
-			err = gameplay.PlayMove(ctx, g, b.gameStore, b.userStore,
-				b.notorietyStore, b.listStatStore, b.tournamentStore,
-				userID, onTurn, timeRemaining, m)
+			err = gameplay.PlayMove(ctx, g, b.stores, userID, onTurn, timeRemaining, m)
 			if err != nil {
 				log.Err(err).Msg("bot-cant-move-play-error")
 				return
@@ -202,7 +200,7 @@ func (b *Bus) goHandleBotMove(ctx context.Context, resp *macondo.BotResponse,
 		}
 		// And save the game after playing the move. Note that PlayMove doesn't do
 		// this.
-		err = b.gameStore.Set(ctx, g)
+		err = b.stores.GameStore.Set(ctx, g)
 		if err != nil {
 			log.Err(err).Msg("setting-game-after-bot-move")
 		}
@@ -210,7 +208,7 @@ func (b *Bus) goHandleBotMove(ctx context.Context, resp *macondo.BotResponse,
 }
 
 func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID string) error {
-	g, err := b.gameStore.Get(ctx, evt.GameId)
+	g, err := b.stores.GameStore.Get(ctx, evt.GameId)
 	if err != nil {
 		return err
 	}
@@ -234,7 +232,7 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 	}
 
 	log.Debug().Str("gameID", evt.GameId).Int("readyID", readyID).Msg("setReady")
-	rf, err := b.gameStore.SetReady(ctx, evt.GameId, readyID)
+	rf, err := b.stores.GameStore.SetReady(ctx, evt.GameId, readyID)
 	if err != nil {
 		log.Err(err).Msg("in-set-ready")
 		return err
@@ -243,7 +241,7 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 	// Start the game if both players are ready (or if it's a bot game).
 	// readyflag will be (01 | 10) = 3 for two players.
 	if rf == (1<<len(g.History().Players))-1 || g.GameReq.PlayerVsBot {
-		err = gameplay.StartGame(ctx, b.gameStore, b.userStore, b.gameEventChan, g)
+		err = gameplay.StartGame(ctx, b.stores, b.gameEventChan, g)
 		if err != nil {
 			log.Err(err).Msg("starting-game")
 		} else {
@@ -263,19 +261,19 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 		}
 	}
 
-	reqUser, err := b.userStore.GetByUUID(ctx, userID)
+	reqUser, err := b.stores.UserStore.GetByUUID(ctx, userID)
 	if err != nil {
 		return err
 	}
 
 	fullUserID := reqUser.TournamentID()
 
-	t, err := b.tournamentStore.Get(ctx, evt.TournamentId)
+	t, err := b.stores.TournamentStore.Get(ctx, evt.TournamentId)
 	if err != nil {
 		return err
 	}
 
-	playerIDs, bothReady, err := tournament.SetReadyForGame(ctx, b.tournamentStore, t, fullUserID, connID,
+	playerIDs, bothReady, err := tournament.SetReadyForGame(ctx, b.stores.TournamentStore, t, fullUserID, connID,
 		evt.Division, int(evt.Round), int(evt.GameIndex), evt.Unready)
 
 	if err != nil {
@@ -351,7 +349,7 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 	if otherUserIdx == -1 {
 		return errors.New("unexpected behavior; did not find other player")
 	}
-	users[otherUserIdx], err = b.userStore.GetByUUID(ctx, otherID)
+	users[otherUserIdx], err = b.stores.UserStore.GetByUUID(ctx, otherID)
 	if err != nil {
 		return err
 	}
@@ -366,7 +364,7 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 		GameIndex: int(evt.GameIndex),
 	}
 
-	g, err := gameplay.InstantiateNewGame(ctx, b.gameStore, b.config,
+	g, err := gameplay.InstantiateNewGame(ctx, b.stores.GameStore, b.config,
 		users, gameReq, tdata)
 	if err != nil {
 		return err
@@ -409,7 +407,7 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 
 func (b *Bus) sendGameRefresher(ctx context.Context, gameID, connID, userID string) error {
 	// Get a game refresher event.
-	entGame, err := b.gameStore.Get(ctx, string(gameID))
+	entGame, err := b.stores.GameStore.Get(ctx, string(gameID))
 	if err != nil {
 		return err
 	}
@@ -435,7 +433,7 @@ func (b *Bus) sendGameRefresher(ctx context.Context, gameID, connID, userID stri
 	} else {
 		log.Debug().Str("gameid", entGame.History().Uid).Msg("sent-refresher-for-started-game")
 		hre := entGame.HistoryRefresherEvent()
-		hre.History = mod.CensorHistory(ctx, b.userStore, hre.History)
+		hre.History = mod.CensorHistory(ctx, b.stores.UserStore, hre.History)
 		evt = entity.WrapEvent(hre,
 			pb.MessageType_GAME_HISTORY_REFRESHER)
 	}
@@ -449,7 +447,7 @@ func (b *Bus) sendGameRefresher(ctx context.Context, gameID, connID, userID stri
 func (b *Bus) adjudicateGames(ctx context.Context) error {
 	// Always bust the cache when we're adjudicating games.
 
-	gs, err := b.gameStore.ListActive(ctx, "", true)
+	gs, err := b.stores.GameStore.ListActive(ctx, "", true)
 
 	if err != nil {
 		return err
@@ -458,7 +456,7 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 	log.Debug().Interface("active-games", gs).Msg("maybe-adjudicating...")
 	for _, g := range gs.GameInfo {
 		// These will likely be in the cache.
-		entGame, err := b.gameStore.Get(ctx, g.GameId)
+		entGame, err := b.stores.GameStore.Get(ctx, g.GameId)
 		if err != nil {
 			return err
 		}
@@ -470,8 +468,7 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 
 		if started && timeRanOut {
 			log.Debug().Str("gid", g.GameId).Msg("adjudicating-time-ran-out")
-			err = gameplay.TimedOut(ctx, b.gameStore, b.userStore, b.notorietyStore,
-				b.listStatStore, b.tournamentStore, entGame.Game.PlayerIDOnTurn(), g.GameId)
+			err = gameplay.TimedOut(ctx, b.stores, entGame.Game.PlayerIDOnTurn(), g.GameId)
 			log.Err(err).Msg("adjudicating-after-gameplay-timed-out")
 		} else if !started && now.Sub(entGame.CreatedAt) > CancelAfter {
 			log.Debug().Str("gid", g.GameId).
@@ -483,8 +480,7 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 				// need to lock game to abort? maybe lock inside AbortGame?
 			log.Debug().Str("gid", g.GameId).Msg("locking")
 			entGame.Lock()
-			err = gameplay.AbortGame(ctx, b.gameStore, b.tournamentStore,
-				entGame, pb.GameEndReason_CANCELLED)
+			err = gameplay.AbortGame(ctx, b.stores, entGame, pb.GameEndReason_CANCELLED)
 			log.Err(err).Msg("adjudicating-after-abort-game")
 			entGame.Unlock()
 			log.Debug().Str("gid", g.GameId).Msg("unlocking")
@@ -516,5 +512,5 @@ func (b *Bus) gameMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, userID s
 		evt.OrigEventId = shortuuid.New()
 	}
 
-	return gameplay.HandleMetaEvent(ctx, evt, b.gameEventChan, b.gameStore, b.userStore, b.notorietyStore, b.listStatStore, b.tournamentStore)
+	return gameplay.HandleMetaEvent(ctx, evt, b.gameEventChan, b.stores)
 }

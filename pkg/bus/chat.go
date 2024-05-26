@@ -26,12 +26,12 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	// chat.a[.b]
 	// e.g. chat.gametv.abcdef, chat.pm.user1_user2, chat.lobby, chat.tournament.weto
 
-	sendingUser, err := b.userStore.GetByUUID(ctx, userID)
+	sendingUser, err := b.stores.UserStore.GetByUUID(ctx, userID)
 	if err != nil {
 		return err
 	}
 
-	_, err = mod.ActionExists(ctx, b.userStore, userID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT, ms.ModActionType_MUTE})
+	_, err = mod.ActionExists(ctx, b.stores.UserStore, userID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT, ms.ModActionType_MUTE})
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		if err != nil {
 			return err
 		}
-		recUser, err := b.userStore.GetByUUID(ctx, receiver)
+		recUser, err := b.stores.UserStore.GetByUUID(ctx, receiver)
 		if err != nil {
 			return err
 		}
@@ -74,7 +74,7 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		if len(tid) == 0 {
 			return errors.New("nonexistent tournament")
 		}
-		t, err := b.tournamentStore.Get(ctx, tid)
+		t, err := b.stores.TournamentStore.Get(ctx, tid)
 		if err != nil {
 			return err
 		}
@@ -94,7 +94,7 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		}
 	}
 
-	chatMessage, err := b.chatStore.AddChat(ctx, sendingUser.Username, userID, evt.Message, evt.Channel, userFriendlyChannelName, regulateChat)
+	chatMessage, err := b.stores.ChatStore.AddChat(ctx, sendingUser.Username, userID, evt.Message, evt.Channel, userFriendlyChannelName, regulateChat)
 	if err != nil {
 		return err
 	}

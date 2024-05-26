@@ -13,13 +13,14 @@ import (
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/stats"
+	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/tournament"
 	"github.com/woogles-io/liwords/pkg/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
-func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameStore,
-	userStore user.Store, notorietyStore mod.NotorietyStore, listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore) error {
+func performEndgameDuties(ctx context.Context, g *entity.Game,
+	stores *stores.Stores) error {
 	log := zerolog.Ctx(ctx)
 
 	log.Debug().Interface("game-end-reason", g.GameEndReason).Msg("checking-game-over")
@@ -127,11 +128,11 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	// occur between threads.
 	var users []*entity.User
 
-	u0, err := userStore.GetByUUID(ctx, g.History().Players[0].UserId)
+	u0, err := stores.UserStore.GetByUUID(ctx, g.History().Players[0].UserId)
 	if err != nil {
 		return err
 	}
-	u1, err := userStore.GetByUUID(ctx, g.History().Players[1].UserId)
+	u1, err := stores.UserStore.GetByUUID(ctx, g.History().Players[1].UserId)
 	if err != nil {
 		return err
 	}
@@ -148,7 +149,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	defer users[1-firstLockingIndex].Unlock()
 
 	// Send a gameEndedEvent, which rates the game.
-	evt := proto.Clone(gameEndedEvent(ctx, g, userStore)).(*pb.GameEndedEvent)
+	evt := proto.Clone(gameEndedEvent(ctx, g, stores.UserStore)).(*pb.GameEndedEvent)
 	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_ENDED_EVENT)
 	for _, p := range players(g) {
 		wrapped.AddAudience(entity.AudUser, p+".game."+g.GameID())
@@ -161,7 +162,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 		log.Err(err).Msg("getting variant key")
 	} else {
 		gameStats, err := ComputeGameStats(ctx, g.History(), g.GameReq, variantKey,
-			evt, userStore, listStatStore)
+			evt, stores)
 		if err != nil {
 			log.Err(err).Msg("computing stats")
 		} else {
@@ -181,14 +182,14 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	g.SendChange(wrapped)
 
 	if g.TournamentData != nil && g.TournamentData.Id != "" {
-		err := tournament.HandleTournamentGameEnded(ctx, tournamentStore, userStore, g)
+		err := tournament.HandleTournamentGameEnded(ctx, stores.TournamentStore, stores.UserStore, g, stores.Queries)
 		if err != nil {
 			log.Err(err).Msg("error-tourney-game-ended")
 		}
 	} else if g.GameReq.RatingMode == pb.RatingMode_RATED {
 		// Applies penalties to players who have misbehaved during the game
 		// Does not apply for tournament games
-		err = mod.Automod(ctx, userStore, notorietyStore, users[0], users[1], g)
+		err = mod.Automod(ctx, stores.UserStore, stores.NotorietyStore, users[0], users[1], g)
 		if err != nil {
 			log.Err(err).Msg("automod-error")
 		}
@@ -196,13 +197,13 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 
 	// Save and unload the game from the cache.
 
-	err = gameStore.Set(ctx, g)
+	err = stores.GameStore.Set(ctx, g)
 	if err != nil {
 		return err
 	}
 
 	log.Info().Msg("game-ended-unload-cache")
-	gameStore.Unload(ctx, g.GameID())
+	stores.GameStore.Unload(ctx, g.GameID())
 	g.SendChange(g.NewActiveGameEntry(false))
 
 	// send each player their new profile with updated ratings.
@@ -225,8 +226,7 @@ func sendProfileUpdate(ctx context.Context, g *entity.Game, users []*entity.User
 }
 
 func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *pb.GameRequest,
-	variantKey entity.VariantKey, evt *pb.GameEndedEvent, userStore user.Store,
-	listStatStore stats.ListStatStore) (*entity.Stats, error) {
+	variantKey entity.VariantKey, evt *pb.GameEndedEvent, stores *stores.Stores) (*entity.Stats, error) {
 
 	// stats := entity.InstantiateNewStats(1, 2))
 
@@ -240,7 +240,7 @@ func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 	p0id, p1id := history.Players[0].UserId, history.Players[1].UserId
 	gameStats := stats.InstantiateNewStats(p0id, p1id)
 
-	err = stats.AddGame(ctx, gameStats, listStatStore, history, req, cfg.MacondoConfigMap, evt, history.Uid)
+	err = stats.AddGame(ctx, gameStats, stores.ListStatStore, history, req, cfg.MacondoConfigMap, evt, history.Uid)
 	if err != nil {
 		return nil, err
 	}
@@ -252,12 +252,12 @@ func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 		p0NewProfileStats := stats.InstantiateNewStats(p0id, "")
 		p1NewProfileStats := stats.InstantiateNewStats(p1id, "")
 
-		p0ProfileStats, err := statsForUser(ctx, p0id, userStore, variantKey)
+		p0ProfileStats, err := statsForUser(ctx, p0id, stores, variantKey)
 		if err != nil {
 			return nil, err
 		}
 
-		p1ProfileStats, err := statsForUser(ctx, p1id, userStore, variantKey)
+		p1ProfileStats, err := statsForUser(ctx, p1id, stores, variantKey)
 		if err != nil {
 			return nil, err
 		}
@@ -280,7 +280,7 @@ func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 		}
 
 		// Save all stats back to the database.
-		err = userStore.SetStats(ctx, p0id, p1id, variantKey, p0NewProfileStats, p1NewProfileStats)
+		err = stores.UserStore.SetStats(ctx, p0id, p1id, variantKey, p0NewProfileStats, p1NewProfileStats)
 		if err != nil {
 			return nil, err
 		}
@@ -289,8 +289,8 @@ func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 	return gameStats, nil
 }
 
-func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore GameStore,
-	userStore user.Store, notorietyStore mod.NotorietyStore, listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore) error {
+func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int,
+	stores *stores.Stores) error {
 
 	log := zerolog.Ctx(ctx)
 	log.Debug().Interface("playing", entGame.Game.Playing()).Msg("timed out!")
@@ -304,7 +304,7 @@ func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore 
 	entGame.SetGameEndReason(pb.GameEndReason_TIME)
 	entGame.SetWinnerIdx(1 - pidx)
 	entGame.SetLoserIdx(pidx)
-	return performEndgameDuties(ctx, entGame, gameStore, userStore, notorietyStore, listStatStore, tournamentStore)
+	return performEndgameDuties(ctx, entGame, stores)
 }
 
 func redoCancelledGamePairings(ctx context.Context, tstore tournament.TournamentStore,
@@ -336,7 +336,7 @@ func redoCancelledGamePairings(ctx context.Context, tstore tournament.Tournament
 // AbortGame aborts a game. This should be done for games that never started,
 // or games that were aborted by mutual consent.
 // It will send events to the correct places, and takes in a locked game.
-func AbortGame(ctx context.Context, gameStore GameStore, tournamentStore tournament.TournamentStore,
+func AbortGame(ctx context.Context, stores *stores.Stores,
 	g *entity.Game, gameEndReason pb.GameEndReason) error {
 
 	log := zerolog.Ctx(ctx)
@@ -346,18 +346,18 @@ func AbortGame(ctx context.Context, gameStore GameStore, tournamentStore tournam
 	g.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
 
 	// save the game back into the store
-	err := gameStore.Set(ctx, g)
+	err := stores.GameStore.Set(ctx, g)
 	if err != nil {
 		return err
 	}
 	// Unload the game
 	log.Info().Msg("game-aborted-unload-cache")
-	gameStore.Unload(ctx, g.GameID())
+	stores.GameStore.Unload(ctx, g.GameID())
 
 	// We use this instead of the game's event channel directly because there's
 	// a possibility that a game that never got started never got its channel
 	// registered.
-	evtChan := gameStore.GameEventChan()
+	evtChan := stores.GameStore.GameEventChan()
 
 	wrapped := entity.WrapEvent(&pb.GameDeletion{Id: g.GameID()},
 		pb.MessageType_GAME_DELETION)
@@ -385,7 +385,7 @@ func AbortGame(ctx context.Context, gameStore GameStore, tournamentStore tournam
 	// If this game is part of a tournament that is not in clubhouse
 	// mode, we must allow the players to try to play again.
 	if g.TournamentData != nil && g.TournamentData.Id != "" {
-		err = redoCancelledGamePairings(ctx, tournamentStore, g)
+		err = redoCancelledGamePairings(ctx, stores.TournamentStore, g)
 		log.Err(err).Msg("redo-cancelled-game-pairings")
 	}
 

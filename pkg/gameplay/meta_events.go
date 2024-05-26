@@ -8,10 +8,7 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/entity"
-	"github.com/woogles-io/liwords/pkg/mod"
-	"github.com/woogles-io/liwords/pkg/stats"
-	"github.com/woogles-io/liwords/pkg/tournament"
-	"github.com/woogles-io/liwords/pkg/user"
+	"github.com/woogles-io/liwords/pkg/stores"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -126,9 +123,8 @@ func lastEventWithId(evts []*pb.GameMetaEvent, origEvtId string) *pb.GameMetaEve
 // HandleMetaEvent processes a passed-in Meta Event, returning an error if
 // it is not applicable.
 func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<- *entity.EventWrapper,
-	gameStore GameStore, userStore user.Store, notorietyStore mod.NotorietyStore,
-	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore) error {
-	g, err := gameStore.Get(ctx, evt.GameId)
+	stores *stores.Stores) error {
+	g, err := stores.GameStore.Get(ctx, evt.GameId)
 	if err != nil {
 		return err
 	}
@@ -219,7 +215,7 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 		// For this type of event, we just append it to the list and return.
 		// The event will be sent via the appropriate game channel
 		g.MetaEvents.Events = append(g.MetaEvents.Events, evt)
-		err := gameStore.Set(ctx, g)
+		err := stores.GameStore.Set(ctx, g)
 		if err != nil {
 			return err
 		}
@@ -254,8 +250,7 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 			}
 			g.MetaEvents.Events = append(g.MetaEvents.Events, evt)
 
-			err = processMetaEvent(ctx, g, pseudoEvt, matchingEvt, gameStore, userStore, notorietyStore,
-				listStatStore, tournamentStore)
+			err = processMetaEvent(ctx, g, pseudoEvt, matchingEvt, stores)
 			if err != nil {
 				return err
 			}
@@ -272,8 +267,7 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 			}
 			g.MetaEvents.Events = append(g.MetaEvents.Events, evt)
 
-			err = processMetaEvent(ctx, g, pseudoEvt, matchingEvt, gameStore, userStore, notorietyStore,
-				listStatStore, tournamentStore)
+			err = processMetaEvent(ctx, g, pseudoEvt, matchingEvt, stores)
 			if err != nil {
 				return err
 			}
@@ -301,8 +295,7 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 		}
 		g.MetaEvents.Events = append(g.MetaEvents.Events, evt)
 
-		err = processMetaEvent(ctx, g, evt, matchingEvt, gameStore, userStore, notorietyStore,
-			listStatStore, tournamentStore)
+		err = processMetaEvent(ctx, g, evt, matchingEvt, stores)
 		if err != nil {
 			return err
 		}
@@ -352,8 +345,7 @@ func cancelMetaEvent(ctx context.Context, g *entity.Game, evt *pb.GameMetaEvent)
 }
 
 func processMetaEvent(ctx context.Context, g *entity.Game, evt *pb.GameMetaEvent, matchingEvt *pb.GameMetaEvent,
-	gameStore GameStore, userStore user.Store, notorietyStore mod.NotorietyStore,
-	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore) error {
+	stores *stores.Stores) error {
 	// process an event in a locked game. evt is the event that came in,
 	// and matchingEvt is the event that it corresponds to.
 	// evt is always going to be of a "response" type (like accept/decline),
@@ -363,14 +355,14 @@ func processMetaEvent(ctx context.Context, g *entity.Game, evt *pb.GameMetaEvent
 	case pb.GameMetaEvent_ABORT_ACCEPTED:
 		// Abort the game.
 		log.Info().Str("gameID", g.GameID()).Msg("abort-accepted")
-		err := AbortGame(ctx, gameStore, tournamentStore, g, pb.GameEndReason_ABORTED)
+		err := AbortGame(ctx, stores, g, pb.GameEndReason_ABORTED)
 		if err != nil {
 			return err
 		}
 
 	case pb.GameMetaEvent_ABORT_DENIED:
 		log.Info().Str("gameID", g.GameID()).Msg("abort-denied")
-		err := gameStore.Set(ctx, g)
+		err := stores.GameStore.Set(ctx, g)
 		if err != nil {
 			return err
 		}
@@ -394,10 +386,10 @@ func processMetaEvent(ctx context.Context, g *entity.Game, evt *pb.GameMetaEvent
 		g.SetLoserIdx(1 - winner)
 		// performEndgameDuties Sets the game back to the store, so no need to do it again here,
 		// unlike in the other cases.
-		return performEndgameDuties(ctx, g, gameStore, userStore, notorietyStore, listStatStore, tournamentStore)
+		return performEndgameDuties(ctx, g, stores)
 	case pb.GameMetaEvent_ADJUDICATION_DENIED:
 		log.Info().Str("gameID", g.GameID()).Msg("adjudication-denied")
-		err := gameStore.Set(ctx, g)
+		err := stores.GameStore.Set(ctx, g)
 		if err != nil {
 			return err
 		}

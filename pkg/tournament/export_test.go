@@ -22,9 +22,9 @@ func init() {
 func TestExport(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
-	dbc, cfg := recreateDB()
-	defer func() { dbc.cleanup() }()
-	tstore, us := dbc.ts, dbc.us
+	stores, cfg := recreateDB()
+	defer func() { cleanup(stores) }()
+	tstore, us := stores.TournamentStore, stores.UserStore
 
 	testcases := []struct {
 		name         string

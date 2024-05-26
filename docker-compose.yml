@@ -158,7 +158,7 @@ services:
     volumes:
       - redis-data-volume:/data
     ports:
-      - 6379:6379
+      - 16379:6379
     networks:
       - aeronet
 
@@ -173,7 +173,7 @@ services:
       # see https://github.com/woogles-io/liwords/wiki/Loading-a-db-dump
       - $HOME/data:/opt/data
     ports:
-      - 5432:5432
+      - 15432:5432
     networks:
       - aeronet
 

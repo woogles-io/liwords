@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/woogles-io/liwords/pkg/entity"
@@ -21,6 +22,10 @@ import (
 	cpb "github.com/woogles-io/liwords/rpc/api/proto/config_service"
 	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/user_service"
+)
+
+var (
+	tracer = otel.Tracer("user-db")
 )
 
 var botNames = map[macondopb.BotRequest_BotCode]string{
@@ -295,6 +300,7 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
+	span.AddEvent("got-tx-conn")
 
 	query := fmt.Sprintf(`SELECT uuid, username, internal_bot, country_code, avatar_url, first_name, last_name, birth_date
 		FROM users LEFT JOIN profiles ON users.id = profiles.user_id
