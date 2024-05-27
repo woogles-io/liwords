@@ -11,6 +11,9 @@ RUN go build -o maintenance -ldflags "-X=main.BuildDate=${BUILD_DATE} -X=main.Bu
 # Build minimal image:
 FROM debian:latest
 COPY --from=build-env /opt/program/cmd/maintenance/maintenance /opt/maintenance
+
+RUN apt-get install -y ca-certificates
+
 WORKDIR /opt
 CMD ["/opt/maintenance"]
 
