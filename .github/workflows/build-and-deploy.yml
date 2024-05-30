@@ -84,7 +84,7 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         uses: Ilshidur/action-discord@master
         with:
-          args: "Backend built successfully for branch {{GITHUB_REF_NAME}}."
+          args: "liwords backend built successfully for branch {{GITHUB_REF_NAME}}."
 
   deploy_api_docker:
     runs-on: ubuntu-latest
@@ -107,9 +107,17 @@ jobs:
       - name: Discord notification
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_EMBEDS: '[    {
+            "fields": [
+            { "name": "Repository", "value": "[${{github.event.repository.name}}](${{github.event.repository.clone_url}})", "inline": true },
+            { "name": "Branch", "value": "[${{github.ref_name}}](https://github.com/${{github.repository}}/tree/${{github.ref_name}})", "inline": true },
+            { "name": "Tag", "value": "ghcr.io/woogles-io/liwords-api:${{github.ref_name}}-gh${{github.run_number}}"}
+            ],
+            "color":1127128
+            }    ]'
         uses: Ilshidur/action-discord@master
         with:
-          args: "Backend docker container uploaded; tag = {{GITHUB_REF_NAME}}-gh{{GITHUB_RUN_NUMBER}}"
+          args: ""
 
   build_fe:
     runs-on: ubuntu-latest
@@ -141,7 +149,7 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         uses: Ilshidur/action-discord@master
         with:
-          args: "Front-end built successfully for branch {{GITHUB_REF_NAME}}."
+          args: "liwords front-end built successfully for branch {{GITHUB_REF_NAME}}."
 
   deploy_fe:
     runs-on: ubuntu-latest
@@ -207,4 +215,4 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         uses: Ilshidur/action-discord@master
         with:
-          args: "Front-end deployed successfully for branch {{GITHUB_REF_NAME}}."
+          args: "liwords front-end deployed successfully for branch {{GITHUB_REF_NAME}}."
