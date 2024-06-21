@@ -130,6 +130,18 @@ services:
     networks:
       - aeronet
 
+  ccotlp:
+    build:
+      context: ../../codecomet/lovejoy
+      dockerfile: Dockerfile-otlp
+    volumes:
+      - ../../codecomet/lovejoy:/opt/program:rw
+
+    command: sh -c "go run -race cmd/otlpreceiver/*.go"
+    # command: bash -c "tail -f /dev/null"
+    networks:
+      - aeronet
+
   proxy:
     image: "traefik:v2.2"
     command:

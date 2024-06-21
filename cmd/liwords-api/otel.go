@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"log"
 	"os"
 	"strings"
 
@@ -86,8 +87,16 @@ func newTraceProvider() (*trace.TracerProvider, error) {
 		return nil, err
 	}
 
+	// Set up the OTLP HTTP exporter
+	ccOtlpExporter, err := otlptracehttp.New(context.Background(),
+		otlptracehttp.WithEndpoint("your-otlp-backend:4318"))
+	if err != nil {
+		log.Fatalf("failed to create OTLP exporter: %v", err)
+	}
+
 	traceProvider := trace.NewTracerProvider(
 		trace.WithBatcher(traceExporter),
+		trace.WithBatcher(ccOtlpExporter),
 	)
 	return traceProvider, nil
 }
