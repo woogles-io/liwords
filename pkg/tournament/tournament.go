@@ -1302,6 +1302,8 @@ func GetXHRResponse(ctx context.Context, ts TournamentStore, id string) (*ipc.Fu
 	if err != nil {
 		return nil, err
 	}
+	t.RLock()
+	defer t.RUnlock()
 
 	response := &ipc.FullTournamentDivisions{Divisions: make(map[string]*ipc.TournamentDivisionDataResponse),
 		Started: t.IsStarted}
@@ -1376,7 +1378,7 @@ func TournamentDataResponse(ctx context.Context, ts TournamentStore, id string) 
 	if err != nil {
 		return nil, err
 	}
-
+	// no lock needed; only gets called while already locked.
 	return &ipc.TournamentDataResponse{Id: t.UUID,
 		Name:              t.Name,
 		Description:       t.Description,
