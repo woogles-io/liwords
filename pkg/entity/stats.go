@@ -164,6 +164,9 @@ const (
 	ONE_PLAYER_PLAYS_EVERY_E_STAT          string = "One Player Plays Every E"
 	MANY_CHALLENGES_STAT                   string = "Many Challenges"
 	FOUR_OR_MORE_CONSECUTIVE_BINGOS_STAT   string = "Four or More Consecutive Bingos"
+	LOW_WIN_STAT                           string = "Low Win"
+	HIGH_LOSS_STAT                         string = "High Loss"
+	UPSET_WIN_STAT                         string = "Upset Win"
 )
 
 var StatName_value = map[string]int{
@@ -205,6 +208,9 @@ var StatName_value = map[string]int{
 	ONE_PLAYER_PLAYS_EVERY_E_STAT:          35,
 	MANY_CHALLENGES_STAT:                   36,
 	FOUR_OR_MORE_CONSECUTIVE_BINGOS_STAT:   37,
+	LOW_WIN_STAT:                           38,
+	HIGH_LOSS_STAT:                         39,
+	UPSET_WIN_STAT:                         40,
 }
 
 func (ld *ListDatum) Value() (driver.Value, error) {
