@@ -95,6 +95,13 @@ export const Chat = React.memo((props: Props) => {
     }
   }, [channelType, channel]);
 
+  const noChat = defaultChannel === 'chat.lobby' && channel === 'chat.lobby';
+  useEffect(() => {
+    if (noChat && selectedChatTab === 'CHAT') {
+      setSelectedChatTab('PLAYERS');
+    }
+  }, [noChat, selectedChatTab]);
+
   const setCurMsg = useCallback(
     (x: string) => {
       if (!canonicalizedChannel) {
@@ -683,7 +690,7 @@ export const Chat = React.memo((props: Props) => {
           suppressDefault={props.suppressDefault}
           tournamentID={props.tournamentID}
         />
-      ) : defaultChannel === 'chat.lobby' && channel === 'chat.lobby' ? (
+      ) : noChat ? (
         <React.Fragment key="chat-disabled">
           <p className="disabled-message">Help chat is disabled.</p>
         </React.Fragment>
@@ -785,7 +792,7 @@ export const Chat = React.memo((props: Props) => {
         )
       ),
     },
-  ];
+  ].filter((x) => !(noChat && x.key === 'CHAT'));
 
   return (
     <Card className="chat" id="chat">
