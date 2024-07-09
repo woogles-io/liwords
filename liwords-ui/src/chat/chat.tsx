@@ -683,6 +683,10 @@ export const Chat = React.memo((props: Props) => {
           suppressDefault={props.suppressDefault}
           tournamentID={props.tournamentID}
         />
+      ) : defaultChannel === 'chat.lobby' && channel === 'chat.lobby' ? (
+        <React.Fragment key="chat-disabled">
+          <p className="disabled-message">Help chat is disabled.</p>
+        </React.Fragment>
       ) : (
         channel && (
           <>
