@@ -95,13 +95,6 @@ export const Chat = React.memo((props: Props) => {
     }
   }, [channelType, channel]);
 
-  const noChat = defaultChannel === 'chat.lobby' && channel === 'chat.lobby';
-  useEffect(() => {
-    if (noChat && selectedChatTab === 'CHAT') {
-      setSelectedChatTab('PLAYERS');
-    }
-  }, [noChat, selectedChatTab]);
-
   const setCurMsg = useCallback(
     (x: string) => {
       if (!canonicalizedChannel) {
@@ -690,10 +683,6 @@ export const Chat = React.memo((props: Props) => {
           suppressDefault={props.suppressDefault}
           tournamentID={props.tournamentID}
         />
-      ) : noChat ? (
-        <React.Fragment key="chat-disabled">
-          <p className="disabled-message">Help chat is disabled.</p>
-        </React.Fragment>
       ) : (
         channel && (
           <>
@@ -757,42 +746,50 @@ export const Chat = React.memo((props: Props) => {
                 </>
               ) : null}
             </div>
-            <div
-              className={`entities ${channelType}`}
-              style={
-                maxEntitiesHeight
-                  ? {
-                      maxHeight: maxEntitiesHeight,
+            {defaultChannel === 'chat.lobby' && channel === 'chat.lobby' ? (
+              <React.Fragment key="chat-disabled">
+                <p className="disabled-message">Help chat is disabled.</p>
+              </React.Fragment>
+            ) : (
+              <React.Fragment key="chat-enabled">
+                <div
+                  className={`entities ${channelType}`}
+                  style={
+                    maxEntitiesHeight
+                      ? {
+                          maxHeight: maxEntitiesHeight,
+                        }
+                      : undefined
+                  }
+                  ref={setTabContainerElement}
+                  onScroll={handleChatScrolled}
+                >
+                  {entities}
+                </div>
+                <form>
+                  <Input
+                    autoFocus={!defaultChannel.startsWith('chat.game')}
+                    autoComplete="off"
+                    placeholder={
+                      channel === 'chat.lobby'
+                        ? 'Ask or answer question...'
+                        : 'chat...'
                     }
-                  : undefined
-              }
-              ref={setTabContainerElement}
-              onScroll={handleChatScrolled}
-            >
-              {entities}
-            </div>
-            <form>
-              <Input
-                autoFocus={!defaultChannel.startsWith('chat.game')}
-                autoComplete="off"
-                placeholder={
-                  channel === 'chat.lobby'
-                    ? 'Ask or answer question...'
-                    : 'chat...'
-                }
-                name="chat-input"
-                disabled={!loggedIn}
-                onKeyDown={onKeyDown}
-                onChange={onChange}
-                value={curMsg}
-                spellCheck={false}
-              />
-            </form>
+                    name="chat-input"
+                    disabled={!loggedIn}
+                    onKeyDown={onKeyDown}
+                    onChange={onChange}
+                    value={curMsg}
+                    spellCheck={false}
+                  />
+                </form>
+              </React.Fragment>
+            )}
           </>
         )
       ),
     },
-  ].filter((x) => !(noChat && x.key === 'CHAT'));
+  ];
 
   return (
     <Card className="chat" id="chat">
