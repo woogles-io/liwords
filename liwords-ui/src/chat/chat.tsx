@@ -680,9 +680,7 @@ export const Chat = React.memo((props: Props) => {
             setShowChannels(false);
           }}
           sendMessage={sendNewMessage}
-          suppressDefault={
-            props.suppressDefault || defaultChannel === 'chat.lobby'
-          }
+          suppressDefault={props.suppressDefault}
           tournamentID={props.tournamentID}
         />
       ) : (
