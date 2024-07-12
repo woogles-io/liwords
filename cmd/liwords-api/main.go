@@ -209,11 +209,6 @@ func main() {
 	commentService := comments.NewCommentsService(stores.UserStore, stores.GameStore, stores.CommentsStore)
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
-	otcInterceptor, err := otelconnect.NewInterceptor()
-	if err != nil {
-		panic("could not set up otelconnect interceptor")
-	}
-
 	customHTTPSpanNameFormatter := func(opName string, r *http.Request) string {
 		return r.Method + " " + r.URL.Path
 	}
@@ -223,6 +218,11 @@ func main() {
 		"memento-api",
 		otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter),
 	)))
+
+	otcInterceptor, err := otelconnect.NewInterceptor()
+	if err != nil {
+		panic("could not set up otelconnect interceptor")
+	}
 
 	interceptors := connect.WithInterceptors(otcInterceptor)
 	// We want to emit default values for backwards compatibility.
@@ -278,10 +278,10 @@ func main() {
 
 	connectapichain := middlewares.Then(connectapi)
 
-	router.Handle("/api/", otelhttp.WithRouteTag("/api/",
+	router.Handle("/api/",
 		otelhttp.NewHandler(http.StripPrefix("/api", connectapichain),
 			"api",
-			otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter))))
+			otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter)))
 
 	router.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
 	router.Handle(
