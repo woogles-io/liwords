@@ -1,6 +1,6 @@
 module github.com/woogles-io/liwords
 
-go 1.22.2
+go 1.22.5
 
 require (
 	connectrpc.com/connect v1.16.2
