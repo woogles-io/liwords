@@ -87,17 +87,22 @@ func newTraceProvider() (*trace.TracerProvider, error) {
 		return nil, err
 	}
 
-	// Set up the OTLP HTTP exporter
-	ccOtlpExporter, err := otlptracehttp.New(context.Background(),
-		otlptracehttp.WithEndpoint("your-otlp-backend:4318"))
-	if err != nil {
-		log.Fatalf("failed to create OTLP exporter: %v", err)
+	tpopts := []trace.TracerProviderOption{trace.WithBatcher(traceExporter)}
+
+	if os.Getenv("CODECOMET_OTLP_EXPORT") == "1" {
+		// Set up the OTLP HTTP exporter
+		ccOtlpExporter, err := otlptracehttp.New(context.Background(),
+			otlptracehttp.WithEndpoint(os.Getenv("CODECOMET_OTLP_ENDPOINT")),
+			otlptracehttp.WithHeaders(map[string]string{
+				"Api-Key":    os.Getenv("CODECOMET_API_KEY"),
+				"Project-ID": os.Getenv("CODECOMET_PROJECT_ID")}))
+		if err != nil {
+			log.Fatalf("failed to create OTLP exporter: %v", err)
+		}
+		tpopts = append(tpopts, trace.WithBatcher(ccOtlpExporter))
 	}
 
-	traceProvider := trace.NewTracerProvider(
-		trace.WithBatcher(traceExporter),
-		trace.WithBatcher(ccOtlpExporter),
-	)
+	traceProvider := trace.NewTracerProvider(tpopts...)
 	return traceProvider, nil
 }
 

@@ -36,6 +36,11 @@ services:
       PUZZLE_GENERATION_TASK_DEFINITION: ${PUZZLE_GENERATION_TASK_DEFINITION:-}
       OTEL_RESOURCE_ATTRIBUTES: "service.name=liwords,service.version=0.1.0"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+
+      CODECOMET_OTLP_EXPORT: 1
+      CODECOMET_API_KEY: abc
+      CODECOMET_PROJECT_ID: abcd
+      CODECOMET_OTLP_ENDPOINT: ccotlp:4318
     volumes:
       - .:/opt/program:rw
       - ./data/lexica/gaddag:/opt/program/data/lexica/gaddag
@@ -136,6 +141,8 @@ services:
       dockerfile: Dockerfile-otlp
     volumes:
       - ../../codecomet/lovejoy:/opt/program:rw
+    environment:
+      CODECOMET_DEBUG: true
 
     command: sh -c "go run -race cmd/otlpreceiver/*.go"
     # command: bash -c "tail -f /dev/null"
