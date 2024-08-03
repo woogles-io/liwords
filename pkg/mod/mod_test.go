@@ -68,9 +68,6 @@ func chatStore() pkguser.ChatStore {
 	return cstore
 }
 
-// TestModDB is identical to the test above, except it uses the DB methods
-// to confirm the actual results.
-// This can be deleted once the migration is complete
 func TestMod(t *testing.T) {
 	is := is.New(t)
 	session := &entity.Session{
@@ -358,6 +355,9 @@ func TestMod(t *testing.T) {
 	is.True(actualCheaterHistory[len(actualCheaterHistory)-1].RemoverUserId == "")
 	is.True(actualCheaterHistory[len(actualCheaterHistory)-1].ApplierUserId == "Moderator")
 	is.True(actualCheaterHistory[len(actualCheaterHistory)-1].UserId == "Cheater")
+
+	is.True(false)
+
 }
 
 func TestNotifications(t *testing.T) {
@@ -369,8 +369,9 @@ func TestNotifications(t *testing.T) {
 		Expiry:   time.Now().Add(time.Second * 100)}
 	ctx := context.Background()
 	ctx = apiserver.PlaceInContext(ctx, session)
-	ctx = context.WithValue(ctx, config.CtxKeyword,
-		&config.Config{MailgunKey: os.Getenv("TEST_MAILGUN_KEY"), DiscordToken: os.Getenv("TEST_DISCORD_TOKEN")})
+
+	testcfg := &config.Config{MailgunKey: os.Getenv("TEST_MAILGUN_KEY"), DiscordToken: os.Getenv("TEST_DISCORD_TOKEN")}
+	ctx = testcfg.WithContext(ctx)
 
 	recreateDB()
 	us := userStore()

@@ -2,7 +2,6 @@ package mod
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -20,11 +19,12 @@ func sendNotification(ctx context.Context, us user.Store, user *entity.User, act
 	if !ok {
 		return
 	}
-	config, ok := ctx.Value(config.CtxKeyword).(*config.Config)
-	if !ok {
-		log.Err(errors.New("config does not exist in notify")).Str("userID", user.UUID).Msg("notification-nil-config")
+	config, err := config.Ctx(ctx)
+	if err != nil {
+		log.Err(err).Str("userID", user.UUID).Msg("notification-nil-config")
 		return
 	}
+
 	if config.MailgunKey != "" && !IsRemoval(action) {
 		emailContent, emailSubject, err := instantiateEmail(user.Username,
 			actionEmailText,

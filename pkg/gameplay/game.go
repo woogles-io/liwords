@@ -346,9 +346,9 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, stores *stores.S
 		lastEvent := entGame.Game.LastEvent()
 		numPlayers := entGame.Game.NumPlayers() // if this is always 2, we can just do PlayerOnTurn() ^ 1
 		// there is no need to remove tilemapping.ASCIIPlayedThrough from playedTiles because it should not appear on Rack
-		cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
-		if !ok {
-			return errors.New("config not found in ctx")
+		cfg, err := config.Ctx(ctx)
+		if err != nil {
+			return err
 		}
 		returnedTiles, err = calculateReturnedTiles(cfg, entGame.Game.Rules().LetterDistributionName(), entGame.Game.History().LastKnownRacks[(entGame.Game.PlayerOnTurn()+numPlayers-1)%numPlayers], lastEvent.Rack, lastEvent.PlayedTiles)
 		if err != nil {

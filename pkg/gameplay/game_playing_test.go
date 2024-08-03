@@ -22,7 +22,7 @@ var pkg = "gameplay_test"
 func ctxForTests() context.Context {
 	ctx := context.Background()
 	ctx = log.Logger.WithContext(ctx)
-	ctx = context.WithValue(ctx, config.CtxKeyword, &DefaultConfig)
+	ctx = DefaultConfig.WithContext(ctx)
 	return ctx
 }
 

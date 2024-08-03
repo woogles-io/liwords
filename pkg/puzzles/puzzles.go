@@ -146,9 +146,9 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID
 	if req.Rules == nil {
 		return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, nil, nil, errors.New("nil-game-rules")
 	}
-	cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
-	if !ok {
-		return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, nil, nil, errors.New("missing-config-in-context")
+	cfg, err := config.Ctx(ctx)
+	if err != nil {
+		return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, nil, nil, err
 	}
 	ld, err := tilemapping.GetDistribution(cfg.MacondoConfig.WGLConfig(), req.Rules.LetterDistributionName)
 	if err != nil {

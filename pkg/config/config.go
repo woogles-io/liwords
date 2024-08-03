@@ -49,9 +49,9 @@ type Config struct {
 	Debug bool
 }
 
-type CtxKey string
+type ctxKey string
 
-const CtxKeyword CtxKey = CtxKey("config")
+const ctxKeyword ctxKey = ctxKey("config")
 
 // Load loads the configs from the given arguments
 func (c *Config) Load(args []string) error {
@@ -95,30 +95,35 @@ func (c *Config) Load(args []string) error {
 	return err
 }
 
-var defaultConfig = Config{
-	MacondoConfig: macondoconfig.DefaultConfig(),
+// WithContext stores the config in the passed-in context, returning a new context. Context.
+func (c *Config) WithContext(ctx context.Context) context.Context {
+	return context.WithValue(ctx, ctxKeyword, c)
 }
 
-func DefaultConfig() Config {
-	return defaultConfig
-}
-
-// Get the config from the context
-func GetConfig(ctx context.Context) (*Config, error) {
-	ctxConfig, ok := ctx.Value(CtxKeyword).(*Config)
+// ctx gets the config from the context, or an error if no config is found.
+func Ctx(ctx context.Context) (*Config, error) {
+	ctxConfig, ok := ctx.Value(ctxKeyword).(*Config)
 	if !ok {
-		return nil, errors.New("config is not ok")
+		return nil, errors.New("config in context is not ok")
 	}
 	if ctxConfig == nil {
-		return nil, errors.New("config is nil")
+		return nil, errors.New("config in context is nil")
 	}
 	return ctxConfig, nil
 }
 
-func CtxMiddlewareGenerator(config *Config) (mw func(http.Handler) http.Handler) {
+var defaultConfig = &Config{
+	MacondoConfig: macondoconfig.DefaultConfig(),
+}
+
+func DefaultConfig() *Config {
+	return defaultConfig
+}
+
+func CtxMiddlewareGenerator(config Config) (mw func(http.Handler) http.Handler) {
 	mw = func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := context.WithValue(r.Context(), CtxKeyword, config)
+			ctx := config.WithContext(r.Context())
 			r = r.WithContext(ctx)
 			h.ServeHTTP(w, r)
 		})

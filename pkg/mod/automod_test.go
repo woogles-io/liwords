@@ -82,7 +82,7 @@ func recreateDB() (*pgxpool.Pool, *stores.Stores, *config.Config) {
 
 	cfg := DefaultConfig
 	cfg.DBConnDSN = common.TestingPostgresConnDSN(pkg) // for gorm stores
-	stores, err := stores.NewInitializedStores(pool, nil, &cfg)
+	stores, err := stores.NewInitializedStores(pool, nil, cfg)
 
 	// Insert a couple of users into the table.
 
@@ -95,7 +95,7 @@ func recreateDB() (*pgxpool.Pool, *stores.Stores, *config.Config) {
 			log.Fatal().Err(err).Msg("error")
 		}
 	}
-	return pool, stores, &cfg
+	return pool, stores, cfg
 }
 
 func makeGame(cfg *config.Config, stores *stores.Stores, initialTime int, ratingMode pb.RatingMode) (
@@ -283,8 +283,7 @@ func TestNotoriety(t *testing.T) {
 	//zerolog.SetGlobalLevel(zerolog.Disabled)
 	is := is.New(t)
 	_, stores, cfg := recreateDB()
-
-	ctx := context.WithValue(context.Background(), config.CtxKeyword, &DefaultConfig)
+	ctx := DefaultConfig.WithContext(context.Background())
 
 	defaultTurns := []*pb.ClientGameplayEvent{
 		{
@@ -618,15 +617,16 @@ func TestNotoriety(t *testing.T) {
 		UserUUID: "Moderator",
 		Expiry:   time.Now().Add(time.Second * 100)}
 	ctx = apiserver.PlaceInContext(ctx, session)
-	ctx = context.WithValue(ctx, config.CtxKeyword,
-		&config.Config{MailgunKey: os.Getenv("TEST_MAILGUN_KEY"), DiscordToken: os.Getenv("TEST_DISCORD_TOKEN")})
+
+	cfg.MailgunKey = os.Getenv("TEST_MAILGUN_KEY")
+	cfg.DiscordToken = os.Getenv("TEST_DISCORD_TOKEN")
 
 	err = playGame(ctx, g, stores, nil, 1, pb.GameEndReason_RESIGNED, false)
 	is.NoErr(err)
 
 	// Set the context back so the tests do not give excessive notifications
-	ctx = context.WithValue(ctx, config.CtxKeyword,
-		&config.Config{MailgunKey: "", DiscordToken: ""})
+	cfg.MailgunKey = ""
+	cfg.DiscordToken = ""
 
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
 		{Score: 3, Games: []*ms.NotoriousGame{

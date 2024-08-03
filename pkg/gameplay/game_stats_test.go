@@ -61,7 +61,7 @@ func recreateDB() (*pgxpool.Pool, *stores.Stores, *config.Config) {
 
 	cfg := DefaultConfig
 	cfg.DBConnDSN = common.TestingPostgresConnDSN(pkg) // for gorm stores
-	stores, err := stores.NewInitializedStores(pool, nil, &cfg)
+	stores, err := stores.NewInitializedStores(pool, nil, cfg)
 	if err != nil {
 		panic(err)
 	}
@@ -77,7 +77,7 @@ func recreateDB() (*pgxpool.Pool, *stores.Stores, *config.Config) {
 			log.Fatal().Err(err).Msg("error")
 		}
 	}
-	return pool, stores, &cfg
+	return pool, stores, cfg
 }
 
 func TestMain(m *testing.M) {
@@ -108,8 +108,7 @@ func TestComputeGameStats(t *testing.T) {
 	req := &pb.GameRequest{}
 	err = json.Unmarshal(reqjson, req)
 	is.NoErr(err)
-
-	ctx := context.WithValue(context.Background(), config.CtxKeyword, &DefaultConfig)
+	ctx := DefaultConfig.WithContext(context.Background())
 	s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, stores)
 	is.NoErr(err)
 	pkgstats.Finalize(ctx, s, stores.ListStatStore, []string{"m5ktbp4qPVTqaAhg6HJMsb"},
@@ -164,7 +163,8 @@ func TestComputeGameStats2(t *testing.T) {
 	err = json.Unmarshal(reqjson, req)
 	is.NoErr(err)
 
-	ctx := context.WithValue(context.Background(), config.CtxKeyword, &DefaultConfig)
+	ctx := DefaultConfig.WithContext(context.Background())
+
 	s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, stores)
 	is.NoErr(err)
 
@@ -214,7 +214,7 @@ func TestComputePlayerStats(t *testing.T) {
 	err = json.Unmarshal(reqjson, req)
 	is.NoErr(err)
 
-	ctx := context.WithValue(context.Background(), config.CtxKeyword, &DefaultConfig)
+	ctx := DefaultConfig.WithContext(context.Background())
 	_, err = gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, stores)
 	is.NoErr(err)
 
@@ -278,7 +278,7 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 		err = json.Unmarshal(reqjson, req)
 		is.NoErr(err)
 
-		ctx := context.WithValue(context.Background(), config.CtxKeyword, &DefaultConfig)
+		ctx := DefaultConfig.WithContext(context.Background())
 		s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, stores)
 		is.NoErr(err)
 		log.Debug().Interface("stats", s).Msg("computed-stats")

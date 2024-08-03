@@ -24,7 +24,7 @@ func TestCalculateReturnedTiles(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
-		tiles, err := calculateReturnedTiles(&cfg, tc.letdist, tc.playerRack, tc.lastEventRack, tc.lastEventTiles)
+		tiles, err := calculateReturnedTiles(cfg, tc.letdist, tc.playerRack, tc.lastEventRack, tc.lastEventTiles)
 		is.NoErr(err)
 		is.Equal(tiles, tc.expectedReturned)
 	}

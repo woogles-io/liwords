@@ -126,8 +126,7 @@ func (b *Bus) EventAPIServerInstance() *EventAPIServer {
 // ProcessMessages is very similar to the PubsubProcess in liwords-socket,
 // but that's because they do similar things.
 func (b *Bus) ProcessMessages(ctx context.Context) {
-
-	ctx = context.WithValue(ctx, config.CtxKeyword, b.config)
+	ctx = b.config.WithContext(ctx)
 	ctx = log.Logger.WithContext(ctx)
 	log := zerolog.Ctx(ctx)
 	// Adjudicate unfinished games every few seconds.

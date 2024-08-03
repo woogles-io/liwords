@@ -29,7 +29,7 @@ func TestMigrateEnglish(t *testing.T) {
 	gdoc := &ipc.GameDocument{}
 	err = protojson.Unmarshal(bts, gdoc)
 	is.NoErr(err)
-	err = MigrateGameDocument(&DefaultConfig, gdoc)
+	err = MigrateGameDocument(DefaultConfig, gdoc)
 	is.NoErr(err)
 
 	dump, err := protojson.Marshal(gdoc)

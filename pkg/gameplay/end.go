@@ -230,8 +230,8 @@ func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 
 	// stats := entity.InstantiateNewStats(1, 2))
 
-	// Fetch the Macondo config
-	cfg, err := config.GetConfig(ctx)
+	// Fetch the config
+	cfg, err := config.Ctx(ctx)
 	if err != nil {
 		return nil, err
 	}

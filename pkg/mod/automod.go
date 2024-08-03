@@ -70,7 +70,7 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 	loserId := history.Players[nonNegativeLoserIdx].UserId
 	winnerIdx := 1 - nonNegativeLoserIdx
 
-	cfg, err := config.GetConfig(ctx)
+	cfg, err := config.Ctx(ctx)
 	if err != nil {
 		return err
 	}

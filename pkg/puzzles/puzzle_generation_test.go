@@ -44,7 +44,7 @@ func TestPuzzleGeneration(t *testing.T) {
 
 	// A fulfilled request
 	pgrjReq := proto.Clone(DefaultPuzzleGenerationJobRequest).(*pb.PuzzleGenerationJobRequest)
-	genId, err := Generate(ctx, &cfg, gs, ps, pgrjReq)
+	genId, err := Generate(ctx, cfg, gs, ps, pgrjReq)
 	is.NoErr(err)
 
 	_, _, _, fulfilledOption, errorStatusOption, totalPuzzles, _, _, err := GetJobInfo(ctx, ps, genId)
@@ -56,7 +56,7 @@ func TestPuzzleGeneration(t *testing.T) {
 	// An unfulfilled request
 	pgrjReq = proto.Clone(DefaultPuzzleGenerationJobRequest).(*pb.PuzzleGenerationJobRequest)
 	pgrjReq.GameCreationLimit = 10
-	genId, err = Generate(ctx, &cfg, gs, ps, pgrjReq)
+	genId, err = Generate(ctx, cfg, gs, ps, pgrjReq)
 	is.NoErr(err)
 	_, _, _, fulfilledOption, errorStatusOption, _, totalGames, _, err := GetJobInfo(ctx, ps, genId)
 	is.NoErr(err)
@@ -67,7 +67,7 @@ func TestPuzzleGeneration(t *testing.T) {
 	// An error
 	pgrjReq = proto.Clone(DefaultPuzzleGenerationJobRequest).(*pb.PuzzleGenerationJobRequest)
 	pgrjReq.Request = nil
-	genId, err = Generate(ctx, &cfg, gs, ps, pgrjReq)
+	genId, err = Generate(ctx, cfg, gs, ps, pgrjReq)
 	is.NoErr(err)
 	_, _, _, fulfilledOption, errorStatusOption, totalPuzzles, totalGames, _, err = GetJobInfo(ctx, ps, genId)
 	is.NoErr(err)
@@ -91,7 +91,7 @@ func TestPuzzleGeneration(t *testing.T) {
 			Excludes: []macondopb.PuzzleTag{},
 		},
 	}...)
-	genId, err = Generate(ctx, &cfg, gs, ps, pgrjReq)
+	genId, err = Generate(ctx, cfg, gs, ps, pgrjReq)
 	is.NoErr(err)
 	_, _, _, fulfilledOption, errorStatusOption, totalPuzzles, _, breakdowns, err := GetJobInfo(ctx, ps, genId)
 	is.NoErr(err)
@@ -126,7 +126,7 @@ func TestPuzzleGeneration(t *testing.T) {
 			Excludes: []macondopb.PuzzleTag{},
 		},
 	}...)
-	genId, err = Generate(ctx, &cfg, gs, ps, pgrjReq)
+	genId, err = Generate(ctx, cfg, gs, ps, pgrjReq)
 	is.NoErr(err)
 	_, _, _, fulfilledOption, errorStatusOption, totalPuzzles, _, breakdowns, err = GetJobInfo(ctx, ps, genId)
 	is.NoErr(err)
@@ -164,7 +164,7 @@ func TestPuzzleGeneration(t *testing.T) {
 			Excludes: []macondopb.PuzzleTag{},
 		},
 	}...)
-	genId, err = Generate(ctx, &cfg, gs, ps, pgrjReq)
+	genId, err = Generate(ctx, cfg, gs, ps, pgrjReq)
 	is.NoErr(err)
 	_, _, _, fulfilledOption, errorStatusOption, _, totalGames, _, err = GetJobInfo(ctx, ps, genId)
 	is.NoErr(err)

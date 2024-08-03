@@ -47,7 +47,7 @@ var DefaultConfig = config.DefaultConfig()
 func ctxForTests() context.Context {
 	ctx := context.Background()
 	ctx = log.Logger.WithContext(ctx)
-	ctx = context.WithValue(ctx, config.CtxKeyword, &DefaultConfig)
+	ctx = DefaultConfig.WithContext(ctx)
 	return ctx
 }
 
@@ -982,7 +982,7 @@ func RecreateDB() (*DBController, int, int) {
 		panic(err)
 	}
 
-	tempGameStore, err := gamestore.NewDBStore(&cfg, userStore)
+	tempGameStore, err := gamestore.NewDBStore(cfg, userStore)
 	if err != nil {
 		panic(err)
 	}

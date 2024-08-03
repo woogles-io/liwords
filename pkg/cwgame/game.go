@@ -47,16 +47,16 @@ func (e *InvalidWordsError) Error() string {
 
 func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, tr int64) error {
 	log.Debug().Interface("gevt", gevt).Msg("play-move")
-	cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
-	if !ok {
-		return errors.New("config does not exist in context")
+	cfg, err := config.Ctx(ctx)
+	if err != nil {
+		return err
 	}
 
 	if gevt.Type == ipc.GameEvent_CHALLENGE {
 		return challengeEvent(ctx, cfg, gdoc, tr)
 	}
 
-	err := validateMove(cfg, gevt, gdoc)
+	err = validateMove(cfg, gevt, gdoc)
 	if err != nil {
 		return err
 	}
