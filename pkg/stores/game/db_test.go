@@ -30,7 +30,7 @@ var DefaultConfig = config.DefaultConfig()
 
 func newMacondoGame(users [2]*entity.User) *macondogame.Game {
 	rules, err := macondogame.NewBasicGameRules(
-		&DefaultConfig.MacondoConfig, "NWL20",
+		DefaultConfig.MacondoConfig, "NWL20",
 		board.CrosswordGameLayout, "english",
 		macondogame.CrossScoreOnly, "")
 	if err != nil {

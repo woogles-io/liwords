@@ -8,17 +8,20 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/domino14/macondo/game"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
+	wglconfig "github.com/domino14/word-golib/config"
 	"github.com/domino14/word-golib/kwg"
 	"github.com/domino14/word-golib/tilemapping"
-	"github.com/rs/zerolog/log"
+
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/user"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type NotorietyStore interface {
@@ -71,7 +74,6 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 	if err != nil {
 		return err
 	}
-	cfgmap := cfg.MacondoConfigMap
 
 	isBotGame := u0.IsBot || u1.IsBot
 
@@ -117,7 +119,7 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 
 	// Check for excessive phonies
 	if wngt == ms.NotoriousGameType_GOOD {
-		excessive, err := excessivePhonies(history, cfgmap, winnerIdx)
+		excessive, err := excessivePhonies(history, cfg.MacondoConfig.WGLConfig(), winnerIdx)
 		if err != nil {
 			return err
 		}
@@ -127,7 +129,7 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 	}
 
 	if lngt == ms.NotoriousGameType_GOOD {
-		excessive, err := excessivePhonies(history, cfgmap, nonNegativeLoserIdx)
+		excessive, err := excessivePhonies(history, cfg.MacondoConfig.WGLConfig(), nonNegativeLoserIdx)
 		if err != nil {
 			return err
 		}
@@ -267,14 +269,14 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 	return nil
 }
 
-func excessivePhonies(history *pb.GameHistory, cfgmap map[string]any, pidx int) (bool, error) {
+func excessivePhonies(history *pb.GameHistory, cfg *wglconfig.Config, pidx int) (bool, error) {
 	totalTileMoves := 0
 	totalPhonies := 0
 	for i := 0; i < len(history.Events); i++ {
 		evt := history.Events[i]
 		if evt.PlayerIndex == uint32(pidx) && evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE {
 			totalTileMoves++
-			isPhony, err := isPhonyEvent(evt, history, cfgmap)
+			isPhony, err := isPhonyEvent(evt, history, cfg)
 			if err != nil {
 				return false, err
 			}
@@ -303,9 +305,9 @@ func loserDeniedNudge(g *entity.Game, userId string) bool {
 
 func isPhonyEvent(event *pb.GameEvent,
 	history *pb.GameHistory,
-	cfgmap map[string]any) (bool, error) {
+	cfg *wglconfig.Config) (bool, error) {
 	phony := false
-	gd, err := kwg.Get(cfgmap, history.Lexicon)
+	gd, err := kwg.Get(cfg, history.Lexicon)
 	if err != nil {
 		return phony, err
 	}

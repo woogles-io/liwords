@@ -20,13 +20,8 @@ type ArgonConfig struct {
 }
 
 type Config struct {
-	MacondoConfig macondoconfig.Config
-	// MacondoConfigMap is a map version of all the settings in MacondoConfig.
-	// We need to eventually obsolete MacondoConfig (and Macondo as a library).
-	// This will help a bit in making sure we only pass a map of key-value pairs
-	// to whoever can take them, while keeping MacondoConfig for legacy functions in Macondo.
-	MacondoConfigMap map[string]any
-	ArgonConfig      ArgonConfig
+	MacondoConfig *macondoconfig.Config
+	ArgonConfig   ArgonConfig
 
 	DBHost           string
 	DBPort           string
@@ -61,13 +56,10 @@ const CtxKeyword CtxKey = CtxKey("config")
 // Load loads the configs from the given arguments
 func (c *Config) Load(args []string) error {
 
-	c.MacondoConfig = macondoconfig.Config{}
 	err := c.MacondoConfig.Load(nil)
 	if err != nil {
 		return err
 	}
-
-	c.MacondoConfigMap = c.MacondoConfig.AllSettings()
 
 	fs := flag.NewFlagSet("liwords", flag.ContinueOnError)
 
@@ -108,7 +100,6 @@ var defaultConfig = Config{
 }
 
 func DefaultConfig() Config {
-	defaultConfig.MacondoConfigMap = defaultConfig.MacondoConfig.AllSettings()
 	return defaultConfig
 }
 

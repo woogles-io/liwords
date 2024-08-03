@@ -268,7 +268,7 @@ func comparePlayerNotorieties(pnrs []*ms.NotorietyReport, stores *stores.Stores)
 }
 
 func englishBytes(tiles string) []byte {
-	ld, err := tilemapping.GetDistribution(DefaultConfig.MacondoConfigMap, "english")
+	ld, err := tilemapping.GetDistribution(DefaultConfig.MacondoConfig.WGLConfig(), "english")
 	if err != nil {
 		panic(err)
 	}

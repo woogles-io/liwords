@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	wglconfig "github.com/domino14/word-golib/config"
+
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/cwgame"
 	"github.com/woogles-io/liwords/pkg/entity"
@@ -14,7 +16,7 @@ import (
 
 // handlers handle events from either the HTTP API or from the websocket/bus
 // The return boolean indicates if the game ended as a result of this event.
-func handleEvent(ctx context.Context, userID string, evt *ipc.ClientGameplayEvent,
+func handleEvent(ctx context.Context, cfg *wglconfig.Config, userID string, evt *ipc.ClientGameplayEvent,
 	amendment bool, evtIndex uint32, gs *stores.GameDocumentStore,
 	evtChan chan *entity.EventWrapper) (bool, error) {
 
@@ -38,7 +40,7 @@ func handleEvent(ctx context.Context, userID string, evt *ipc.ClientGameplayEven
 		pidx := g.Events[evtIndex].PlayerIndex
 		// Truncate the document; we are editing an old event.
 		evts := g.Events[:evtIndex]
-		err = cwgame.ReplayEvents(ctx, g.GameDocument, evts, false)
+		err = cwgame.ReplayEvents(ctx, cfg, g.GameDocument, evts, false)
 		if err != nil {
 			gs.UnlockDocument(ctx, g)
 			return false, apiserver.InvalidArg(err.Error())
@@ -69,19 +71,11 @@ func handleEvent(ctx context.Context, userID string, evt *ipc.ClientGameplayEven
 	// Save the old values
 	oldNumEvents := len(g.Events)
 
-	err = cwgame.ProcessGameplayEvent(ctx, evt, userID, g.GameDocument)
+	err = cwgame.ProcessGameplayEvent(ctx, cfg, evt, userID, g.GameDocument)
 	if err != nil {
 		gs.UnlockDocument(ctx, g)
 		return false, apiserver.InvalidArg(err.Error())
 	}
-
-	// REMOVE ME BEFORE DEPLOY
-	// err = cwgame.ReconcileAllTiles(ctx, g.GameDocument)
-	// if err != nil {
-	// 	gs.UnlockDocument(ctx, g)
-	// 	err = fmt.Errorf("failed-to-reconcile-handleevent: %w", err)
-	// 	return false, twirp.NewError(twirp.InvalidArgument, err.Error())
-	// }
 
 	if amendment {
 		// Send an entire document event.

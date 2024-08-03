@@ -240,7 +240,7 @@ func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 	p0id, p1id := history.Players[0].UserId, history.Players[1].UserId
 	gameStats := stats.InstantiateNewStats(p0id, p1id)
 
-	err = stats.AddGame(ctx, gameStats, stores.ListStatStore, history, req, cfg.MacondoConfigMap, evt, history.Uid)
+	err = stats.AddGame(ctx, gameStats, stores.ListStatStore, history, req, cfg.MacondoConfig.WGLConfig(), evt, history.Uid)
 	if err != nil {
 		return nil, err
 	}

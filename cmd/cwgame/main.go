@@ -88,7 +88,7 @@ func main() {
 		fmt.Println()
 	}
 
-	dist, err := tilemapping.GetDistribution(DefaultMacondoConfig.AllSettings(), gdoc.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(DefaultMacondoConfig.WGLConfig(), gdoc.LetterDistribution)
 	if err != nil {
 		panic(err)
 	}

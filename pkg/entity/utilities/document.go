@@ -53,7 +53,7 @@ func MacondoEvtToOMGEvt(evt *macondo.GameEvent, index int, letterdist *tilemappi
 // GameDocuments. We can delete this after some time.
 
 func ToGameDocument(g *entity.Game, cfg *config.Config) (*ipc.GameDocument, error) {
-	letterdist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, g.History().LetterDistribution)
+	letterdist, err := tilemapping.GetDistribution(cfg.MacondoConfig.WGLConfig(), g.History().LetterDistribution)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func populateBag(g *entity.Game, gdoc *ipc.GameDocument) {
 // ToGameHistory is a helper function to convert a GameDocument back to a game history.
 // Eventually we will not have GameHistory's anymore.
 func ToGameHistory(doc *ipc.GameDocument, cfg *config.Config) (*macondo.GameHistory, error) {
-	letterdist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, doc.LetterDistribution)
+	letterdist, err := tilemapping.GetDistribution(cfg.MacondoConfig.WGLConfig(), doc.LetterDistribution)
 	if err != nil {
 		return nil, err
 	}

@@ -18,9 +18,9 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	wglconfig "github.com/domino14/word-golib/config"
 	"github.com/domino14/word-golib/kwg"
 	"github.com/domino14/word-golib/tilemapping"
-	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/cwgame/board"
 	"github.com/woogles-io/liwords/pkg/cwgame/tiles"
 	"github.com/woogles-io/liwords/pkg/omgwords/stores"
@@ -62,14 +62,14 @@ func init() {
 
 // NewGame creates a new GameDocument. The playerinfo array contains
 // the players, which must be in order of who goes first!
-func NewGame(cfg *config.Config, rules *GameRules, playerinfo []*ipc.GameDocument_MinimalPlayerInfo) (*ipc.GameDocument, error) {
+func NewGame(cfg *wglconfig.Config, rules *GameRules, playerinfo []*ipc.GameDocument_MinimalPlayerInfo) (*ipc.GameDocument, error) {
 	// try to instantiate all aspects of the game from the given rules.
 
-	dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, rules.distname)
+	dist, err := tilemapping.GetDistribution(cfg, rules.distname)
 	if err != nil {
 		return nil, err
 	}
-	_, err = kwg.Get(cfg.MacondoConfigMap, rules.lexicon)
+	_, err = kwg.Get(cfg, rules.lexicon)
 	if err != nil {
 		return nil, err
 	}
@@ -197,13 +197,8 @@ func AssignRacks(gdoc *ipc.GameDocument, racks [][]byte, assignEmpty RackAssignB
 // ReconcileAllTiles returns an error if the tiles on the board and on
 // player racks do not match the letter distribution. It is not meant to
 // be used in production, but for debugging purposes only.
-func ReconcileAllTiles(ctx context.Context, gdoc *ipc.GameDocument) error {
-	cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
-	if !ok {
-		return errors.New("config does not exist in context")
-	}
-
-	dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, gdoc.LetterDistribution)
+func ReconcileAllTiles(cfg *wglconfig.Config, gdoc *ipc.GameDocument) error {
+	dist, err := tilemapping.GetDistribution(cfg, gdoc.LetterDistribution)
 	if err != nil {
 		return err
 	}
@@ -251,7 +246,7 @@ func ReconcileAllTiles(ctx context.Context, gdoc *ipc.GameDocument) error {
 	return nil
 }
 
-func EditOldRack(ctx context.Context, gdoc *ipc.GameDocument, evtNumber uint32, rack []byte) error {
+func EditOldRack(ctx context.Context, cfg *wglconfig.Config, gdoc *ipc.GameDocument, evtNumber uint32, rack []byte) error {
 
 	// Determine whether it is possible to edit the rack to the passed-in rack at this point in the game.
 	// First clone and truncate the document.
@@ -259,7 +254,7 @@ func EditOldRack(ctx context.Context, gdoc *ipc.GameDocument, evtNumber uint32, 
 	evt := gdoc.Events[evtNumber]
 
 	// replay until the event before evt.
-	err := ReplayEvents(ctx, gc, gc.Events[:evtNumber], false)
+	err := ReplayEvents(ctx, cfg, gc, gc.Events[:evtNumber], false)
 	if err != nil {
 		return err
 	}
@@ -280,14 +275,8 @@ func EditOldRack(ctx context.Context, gdoc *ipc.GameDocument, evtNumber uint32, 
 // ReplayEvents plays the events on the game document. For simplicity,
 // assume these events replace every event in the game document; i.e.,
 // initialize from scratch.
-func ReplayEvents(ctx context.Context, gdoc *ipc.GameDocument, evts []*ipc.GameEvent, rememberRacks bool) error {
-
-	cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
-	if !ok {
-		return errors.New("config does not exist in context")
-	}
-
-	dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, gdoc.LetterDistribution)
+func ReplayEvents(ctx context.Context, cfg *wglconfig.Config, gdoc *ipc.GameDocument, evts []*ipc.GameEvent, rememberRacks bool) error {
+	dist, err := tilemapping.GetDistribution(cfg, gdoc.LetterDistribution)
 	if err != nil {
 		return err
 	}
@@ -399,7 +388,7 @@ func ReplayEvents(ctx context.Context, gdoc *ipc.GameDocument, evts []*ipc.GameE
 // from wherever. This function can modify the document in-place. The caller
 // should be responsible for saving it back to whatever store is required if
 // there is no error.
-func ProcessGameplayEvent(ctx context.Context, evt *ipc.ClientGameplayEvent,
+func ProcessGameplayEvent(ctx context.Context, cfg *wglconfig.Config, evt *ipc.ClientGameplayEvent,
 	userID string, gdoc *ipc.GameDocument) error {
 
 	log := zerolog.Ctx(ctx)
@@ -469,7 +458,7 @@ func ProcessGameplayEvent(ctx context.Context, evt *ipc.ClientGameplayEvent,
 
 	} else {
 		// convt to internal move
-		gevt, err := clientEventToGameEvent(ctx, evt, gdoc)
+		gevt, err := clientEventToGameEvent(cfg, evt, gdoc)
 		if err != nil {
 			return err
 		}
@@ -487,13 +476,8 @@ func ProcessGameplayEvent(ctx context.Context, evt *ipc.ClientGameplayEvent,
 }
 
 // ToCGP converts the game to a CGP string.
-func ToCGP(ctx context.Context, gdoc *ipc.GameDocument) (string, error) {
-	cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
-	if !ok {
-		return "", errors.New("config does not exist in context")
-	}
-
-	dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, gdoc.LetterDistribution)
+func ToCGP(cfg *wglconfig.Config, gdoc *ipc.GameDocument) (string, error) {
+	dist, err := tilemapping.GetDistribution(cfg, gdoc.LetterDistribution)
 	if err != nil {
 		return "", err
 	}
@@ -539,15 +523,11 @@ func ToCGP(ctx context.Context, gdoc *ipc.GameDocument) (string, error) {
 	return ss.String(), nil
 }
 
-func clientEventToGameEvent(ctx context.Context, evt *ipc.ClientGameplayEvent, gdoc *ipc.GameDocument) (*ipc.GameEvent, error) {
+func clientEventToGameEvent(cfg *wglconfig.Config, evt *ipc.ClientGameplayEvent, gdoc *ipc.GameDocument) (*ipc.GameEvent, error) {
 	playerid := gdoc.PlayerOnTurn
 	rackmw := tilemapping.FromByteArr(gdoc.Racks[playerid])
-	cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
-	if !ok {
-		return nil, errors.New("config does not exist in context")
-	}
 
-	dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, gdoc.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(cfg, gdoc.LetterDistribution)
 	if err != nil {
 		return nil, err
 	}

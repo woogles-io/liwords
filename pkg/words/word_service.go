@@ -73,7 +73,7 @@ var daPool = sync.Pool{
 
 func (ws *WordService) DefineWords(ctx context.Context, req *connect.Request[pb.DefineWordsRequest],
 ) (*connect.Response[pb.DefineWordsResponse], error) {
-	gd, err := kwg.Get(ws.cfg.MacondoConfigMap, req.Msg.Lexicon)
+	gd, err := kwg.Get(ws.cfg.MacondoConfig.WGLConfig(), req.Msg.Lexicon)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}

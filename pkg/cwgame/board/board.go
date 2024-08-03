@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/domino14/word-golib/cache"
+	wglconfig "github.com/domino14/word-golib/config"
 	"github.com/domino14/word-golib/tilemapping"
 	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -34,7 +35,7 @@ const (
 var CacheKeyPrefix = "boardlayout:"
 
 // CacheLoadFunc is the function that loads an object into the global cache.
-func CacheLoadFunc(cfg map[string]any, key string) (interface{}, error) {
+func CacheLoadFunc(cfg *wglconfig.Config, key string) (interface{}, error) {
 	dist := strings.TrimPrefix(key, CacheKeyPrefix)
 	return NamedBoardLayout(dist)
 }

@@ -87,7 +87,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	log.Debug().Interface("req-rules", req.Rules).Msg("new-game-rules")
 
 	rules, err := game.NewBasicGameRules(
-		&cfg.MacondoConfig, req.Lexicon, req.Rules.BoardLayoutName,
+		cfg.MacondoConfig, req.Lexicon, req.Rules.BoardLayoutName,
 		req.Rules.LetterDistributionName, game.CrossScoreOnly,
 		game.Variant(req.Rules.VariantName))
 	if err != nil {
@@ -309,7 +309,7 @@ func minusMLs(a, b []tilemapping.MachineLetter) []tilemapping.MachineLetter {
 }
 
 func calculateReturnedTiles(cfg *config.Config, letdist string, playerRack string, lastEventRack string, lastEventTiles string) (string, error) {
-	dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, letdist)
+	dist, err := tilemapping.GetDistribution(cfg.MacondoConfig.WGLConfig(), letdist)
 	if err != nil {
 		return "", err
 	}
