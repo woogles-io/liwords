@@ -55,7 +55,7 @@ const ctxKeyword ctxKey = ctxKey("config")
 
 // Load loads the configs from the given arguments
 func (c *Config) Load(args []string) error {
-
+	c.MacondoConfig = &macondoconfig.Config{}
 	err := c.MacondoConfig.Load(nil)
 	if err != nil {
 		return err
@@ -120,7 +120,7 @@ func DefaultConfig() *Config {
 	return defaultConfig
 }
 
-func CtxMiddlewareGenerator(config Config) (mw func(http.Handler) http.Handler) {
+func CtxMiddlewareGenerator(config *Config) (mw func(http.Handler) http.Handler) {
 	mw = func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := config.WithContext(r.Context())
