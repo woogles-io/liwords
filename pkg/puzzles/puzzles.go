@@ -150,7 +150,7 @@ func SubmitAnswer(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID
 	if err != nil {
 		return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, nil, nil, err
 	}
-	ld, err := tilemapping.GetDistribution(cfg.MacondoConfig.WGLConfig(), req.Rules.LetterDistributionName)
+	ld, err := tilemapping.GetDistribution(cfg.WGLConfig(), req.Rules.LetterDistributionName)
 	if err != nil {
 		return false, nil, nil, "", -1, "", -1, time.Time{}, time.Time{}, nil, nil, err
 	}

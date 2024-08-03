@@ -76,7 +76,7 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, oldLex, newLex string) erro
 		if err = proto.Unmarshal(req, greq); err != nil {
 			return err
 		}
-		rules, err := game.NewBasicGameRules(cfg.MacondoConfig, oldLex, greq.Rules.BoardLayoutName,
+		rules, err := game.NewBasicGameRules(cfg.MacondoConfig(), oldLex, greq.Rules.BoardLayoutName,
 			greq.Rules.LetterDistributionName, game.CrossScoreOnly, game.Variant(greq.Rules.VariantName))
 		if err != nil {
 			return err
@@ -85,7 +85,7 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, oldLex, newLex string) erro
 		if err != nil {
 			return err
 		}
-		valid, err := puzzles.IsEquityPuzzleStillValid(cfg.MacondoConfig, mcg, turn, gevt, newLex)
+		valid, err := puzzles.IsEquityPuzzleStillValid(cfg.MacondoConfig(), mcg, turn, gevt, newLex)
 		if err != nil {
 			return err
 		}

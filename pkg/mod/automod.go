@@ -119,7 +119,7 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 
 	// Check for excessive phonies
 	if wngt == ms.NotoriousGameType_GOOD {
-		excessive, err := excessivePhonies(history, cfg.MacondoConfig.WGLConfig(), winnerIdx)
+		excessive, err := excessivePhonies(history, cfg.WGLConfig(), winnerIdx)
 		if err != nil {
 			return err
 		}
@@ -129,7 +129,7 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 	}
 
 	if lngt == ms.NotoriousGameType_GOOD {
-		excessive, err := excessivePhonies(history, cfg.MacondoConfig.WGLConfig(), nonNegativeLoserIdx)
+		excessive, err := excessivePhonies(history, cfg.WGLConfig(), nonNegativeLoserIdx)
 		if err != nil {
 			return err
 		}

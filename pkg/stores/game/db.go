@@ -457,7 +457,7 @@ func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 	}
 
 	rules, err := macondogame.NewBasicGameRules(
-		cfg.MacondoConfig, lexicon, req.Rules.BoardLayoutName,
+		cfg.MacondoConfig(), lexicon, req.Rules.BoardLayoutName,
 		req.Rules.LetterDistributionName, macondogame.CrossScoreOnly,
 		macondogame.Variant(req.Rules.VariantName))
 	if err != nil {

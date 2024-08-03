@@ -115,7 +115,7 @@ func (gs *OMGWordsService) createGDoc(ctx context.Context, u *entity.User, req *
 		req.ChallengeRule, cwgame.Variant(req.Rules.VariantName), []int{0, 0}, 0, 0, true,
 	)
 
-	g, err := cwgame.NewGame(gs.cfg.MacondoConfig.WGLConfig(), cwgameRules, mcplayers)
+	g, err := cwgame.NewGame(gs.cfg.WGLConfig(), cwgameRules, mcplayers)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +188,7 @@ func (gs *OMGWordsService) SendGameEvent(ctx context.Context, req *connect.Reque
 		return nil, apiserver.InvalidArg("event is required")
 	}
 
-	justEnded, err := handleEvent(ctx, gs.cfg.MacondoConfig.WGLConfig(), req.Msg.UserId, req.Msg.Event, req.Msg.Amendment, req.Msg.EventNumber, gs.gameStore, gs.gameEventChan)
+	justEnded, err := handleEvent(ctx, gs.cfg.WGLConfig(), req.Msg.UserId, req.Msg.Event, req.Msg.Amendment, req.Msg.EventNumber, gs.gameStore, gs.gameEventChan)
 	if err != nil {
 		return nil, err
 	}
@@ -443,7 +443,7 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *connect.Request[pb
 	// racks.
 	if req.Msg.Amendment {
 		evt := g.Events[req.Msg.EventNumber]
-		err = cwgame.EditOldRack(ctx, gs.cfg.MacondoConfig.WGLConfig(), g.GameDocument, req.Msg.EventNumber, req.Msg.Racks[evt.PlayerIndex])
+		err = cwgame.EditOldRack(ctx, gs.cfg.WGLConfig(), g.GameDocument, req.Msg.EventNumber, req.Msg.Racks[evt.PlayerIndex])
 		if err != nil {
 			gs.gameStore.UnlockDocument(ctx, g)
 			return nil, err
@@ -481,7 +481,7 @@ func (gs *OMGWordsService) GetCGP(ctx context.Context, req *connect.Request[pb.G
 		return nil, err
 	}
 
-	cgp, err := cwgame.ToCGP(gs.cfg.MacondoConfig.WGLConfig(), g.GameDocument)
+	cgp, err := cwgame.ToCGP(gs.cfg.WGLConfig(), g.GameDocument)
 	if err != nil {
 		return nil, err
 	}
@@ -539,7 +539,7 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *connect.Request[p
 		return nil, apiserver.InvalidArg(err.Error())
 	}
 
-	letterdist, err := tilemapping.GetDistribution(gs.cfg.MacondoConfig.WGLConfig(), req.Msg.Rules.LetterDistributionName)
+	letterdist, err := tilemapping.GetDistribution(gs.cfg.WGLConfig(), req.Msg.Rules.LetterDistributionName)
 	if err != nil {
 		return nil, err
 	}

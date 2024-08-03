@@ -100,7 +100,7 @@ func migrateToV2(cfg *config.Config, gdoc *ipc.GameDocument) error {
 		isNorwegian = true
 	}
 
-	dist, err := tilemapping.GetDistribution(cfg.MacondoConfig.WGLConfig(), gdoc.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(cfg.WGLConfig(), gdoc.LetterDistribution)
 	if err != nil {
 		return err
 	}

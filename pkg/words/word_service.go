@@ -27,9 +27,9 @@ type WordService struct {
 // NewWordService creates a WordService
 func NewWordService(cfg *config.Config) *WordService {
 
-	lexPath := filepath.Join(cfg.MacondoConfig.GetString(macondoconfig.ConfigDataPath), "lexica")
+	lexPath := filepath.Join(cfg.MacondoConfig().GetString(macondoconfig.ConfigDataPath), "lexica")
 	kwgPath := filepath.Join(lexPath, "gaddag")
-	pp := cfg.MacondoConfig.GetString(macondoconfig.ConfigKWGPathPrefix)
+	pp := cfg.MacondoConfig().GetString(macondoconfig.ConfigKWGPathPrefix)
 	if pp != "" {
 		kwgPath = filepath.Join(kwgPath, pp)
 	}
@@ -73,7 +73,7 @@ var daPool = sync.Pool{
 
 func (ws *WordService) DefineWords(ctx context.Context, req *connect.Request[pb.DefineWordsRequest],
 ) (*connect.Response[pb.DefineWordsResponse], error) {
-	gd, err := kwg.Get(ws.cfg.MacondoConfig.WGLConfig(), req.Msg.Lexicon)
+	gd, err := kwg.Get(ws.cfg.WGLConfig(), req.Msg.Lexicon)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}

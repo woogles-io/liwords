@@ -9,6 +9,7 @@ import (
 	"github.com/namsral/flag"
 
 	macondoconfig "github.com/domino14/macondo/config"
+	wglconfig "github.com/domino14/word-golib/config"
 	"github.com/woogles-io/liwords/pkg/stores/common"
 )
 
@@ -20,7 +21,7 @@ type ArgonConfig struct {
 }
 
 type Config struct {
-	MacondoConfig *macondoconfig.Config
+	macondoConfig *macondoconfig.Config
 	ArgonConfig   ArgonConfig
 
 	DBHost           string
@@ -55,8 +56,8 @@ const ctxKeyword ctxKey = ctxKey("config")
 
 // Load loads the configs from the given arguments
 func (c *Config) Load(args []string) error {
-	c.MacondoConfig = &macondoconfig.Config{}
-	err := c.MacondoConfig.Load(nil)
+	c.macondoConfig = &macondoconfig.Config{}
+	err := c.macondoConfig.Load(nil)
 	if err != nil {
 		return err
 	}
@@ -100,6 +101,14 @@ func (c *Config) WithContext(ctx context.Context) context.Context {
 	return context.WithValue(ctx, ctxKeyword, c)
 }
 
+func (c *Config) MacondoConfig() *macondoconfig.Config {
+	return c.macondoConfig
+}
+
+func (c *Config) WGLConfig() *wglconfig.Config {
+	return c.WGLConfig()
+}
+
 // ctx gets the config from the context, or an error if no config is found.
 func Ctx(ctx context.Context) (*Config, error) {
 	ctxConfig, ok := ctx.Value(ctxKeyword).(*Config)
@@ -113,7 +122,7 @@ func Ctx(ctx context.Context) (*Config, error) {
 }
 
 var defaultConfig = &Config{
-	MacondoConfig: macondoconfig.DefaultConfig(),
+	macondoConfig: macondoconfig.DefaultConfig(),
 }
 
 func DefaultConfig() *Config {

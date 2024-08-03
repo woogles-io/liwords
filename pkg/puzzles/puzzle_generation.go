@@ -98,11 +98,11 @@ func processWithRealGames(ctx context.Context, cfg *config.Config, req *pb.Puzzl
 	// For non-bot-v-bot games we need to "hydrate" the game we get back
 	// from the database with the right data structures in order for it
 	// to generate moves properly.
-	gd, err := kwg.Get(cfg.MacondoConfig.WGLConfig(), req.Lexicon)
+	gd, err := kwg.Get(cfg.WGLConfig(), req.Lexicon)
 	if err != nil {
 		return false, err
 	}
-	dist, err := tilemapping.GetDistribution(cfg.MacondoConfig.WGLConfig(), req.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(cfg.WGLConfig(), req.LetterDistribution)
 	if err != nil {
 		return false, err
 	}
@@ -169,7 +169,7 @@ func processJob(ctx context.Context, cfg *config.Config, req *pb.PuzzleGeneratio
 	} else {
 		gamesCreated := 0
 		for i := 0; i < int(req.GameConsiderationLimit); i++ {
-			r := automatic.NewGameRunner(nil, cfg.MacondoConfig)
+			r := automatic.NewGameRunner(nil, cfg.MacondoConfig())
 			err := r.CompVsCompStatic(true)
 			if err != nil {
 				return false, err

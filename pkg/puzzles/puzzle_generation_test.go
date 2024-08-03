@@ -38,8 +38,8 @@ func TestPuzzleGeneration(t *testing.T) {
 	}()
 	gs, ps := dbc.gs, dbc.ps
 	cfg := DefaultConfig
-	cfg.MacondoConfig.Set(macondoconfig.ConfigDefaultLexicon, DefaultPuzzleGenerationJobRequest.Lexicon)
-	cfg.MacondoConfig.Set(macondoconfig.ConfigDefaultLetterDistribution, DefaultPuzzleGenerationJobRequest.LetterDistribution)
+	cfg.MacondoConfig().Set(macondoconfig.ConfigDefaultLexicon, DefaultPuzzleGenerationJobRequest.Lexicon)
+	cfg.MacondoConfig().Set(macondoconfig.ConfigDefaultLetterDistribution, DefaultPuzzleGenerationJobRequest.LetterDistribution)
 	ctx := context.Background()
 
 	// A fulfilled request

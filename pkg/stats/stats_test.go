@@ -27,7 +27,7 @@ var pkg = "stats"
 
 func TestMain(m *testing.M) {
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	DefaultConfig.MacondoConfig.Set(macondoconfig.ConfigDefaultLexicon, "CSW19")
+	DefaultConfig.MacondoConfig().Set(macondoconfig.ConfigDefaultLexicon, "CSW19")
 	os.Exit(m.Run())
 }
 
@@ -47,7 +47,7 @@ func recreateDB() *pgxpool.Pool {
 
 func InstantiateNewStatsWithHistory(ctx context.Context, filename string, listStatStore ListStatStore) (*entity.Stats, error) {
 
-	history, err := gcgio.ParseGCG(DefaultConfig.MacondoConfig, filename)
+	history, err := gcgio.ParseGCG(DefaultConfig.MacondoConfig(), filename)
 	if err != nil {
 		panic(err)
 	}
@@ -88,7 +88,7 @@ func InstantiateNewStatsWithHistory(ctx context.Context, filename string, listSt
 		Tie:       history.FinalScores[0] != history.FinalScores[1],
 	}
 
-	AddGame(ctx, stats, listStatStore, history, req, DefaultConfig.MacondoConfig.WGLConfig(), gameEndedEvent, filename)
+	AddGame(ctx, stats, listStatStore, history, req, DefaultConfig.WGLConfig(), gameEndedEvent, filename)
 
 	return stats, nil
 }
