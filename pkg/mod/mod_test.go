@@ -356,8 +356,6 @@ func TestMod(t *testing.T) {
 	is.True(actualCheaterHistory[len(actualCheaterHistory)-1].ApplierUserId == "Moderator")
 	is.True(actualCheaterHistory[len(actualCheaterHistory)-1].UserId == "Cheater")
 
-	is.True(false)
-
 }
 
 func TestNotifications(t *testing.T) {

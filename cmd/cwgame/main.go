@@ -74,7 +74,7 @@ func main() {
 		panic(err)
 	}
 	v := gdoc.Version
-	err = stores.MigrateGameDocument(&config.Config{MacondoConfig: DefaultMacondoConfig}, gdoc)
+	err = stores.MigrateGameDocument(config.DefaultConfig(), gdoc)
 	if err != nil {
 		panic(err)
 	}
