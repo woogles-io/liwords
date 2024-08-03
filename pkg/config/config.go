@@ -106,7 +106,7 @@ func (c *Config) MacondoConfig() *macondoconfig.Config {
 }
 
 func (c *Config) WGLConfig() *wglconfig.Config {
-	return c.WGLConfig()
+	return c.macondoConfig.WGLConfig()
 }
 
 // ctx gets the config from the context, or an error if no config is found.

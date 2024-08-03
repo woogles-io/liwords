@@ -107,7 +107,7 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, oldLex, newLex string) erro
 func main() {
 	cfg := &config.Config{}
 	cfg.Load(nil)
-	log.Info().Msgf("Loaded config: %v", cfg.MacondoConfig)
+	log.Info().Msgf("Loaded config: %v", cfg.MacondoConfig())
 
 	if len(os.Args) < 3 {
 		panic("need 2 arguments: before and after lexica")
