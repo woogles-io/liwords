@@ -55,7 +55,7 @@ func recreateDB() (*stores.Stores, *config.Config) {
 	cfg := DefaultConfig
 	cfg.DBConnDSN = common.TestingPostgresConnDSN(pkg) // for gorm stores
 
-	stores, err := stores.NewInitializedStores(pool, nil, &cfg)
+	stores, err := stores.NewInitializedStores(pool, nil, cfg)
 	if err != nil {
 		panic(err)
 	}
@@ -85,7 +85,7 @@ func recreateDB() (*stores.Stores, *config.Config) {
 		}
 	}
 
-	return stores, &cfg
+	return stores, cfg
 }
 
 func makeRoundControls() []*ipc.RoundControl {

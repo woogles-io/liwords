@@ -47,14 +47,14 @@ var DefaultConfig = config.DefaultConfig()
 func ctxForTests() context.Context {
 	ctx := context.Background()
 	ctx = log.Logger.WithContext(ctx)
-	ctx = context.WithValue(ctx, config.CtxKeyword, &DefaultConfig)
+	ctx = DefaultConfig.WithContext(ctx)
 	return ctx
 }
 
 func gameEventToClientGameplayEvent(evt *pb.GameEvent) *ipc.ClientGameplayEvent {
 	cge := &ipc.ClientGameplayEvent{}
 	// use hard-coded english alphabet for this test
-	eng, err := tilemapping.GetDistribution(DefaultConfig.MacondoConfigMap, "english")
+	eng, err := tilemapping.GetDistribution(DefaultConfig.WGLConfig(), "english")
 	if err != nil {
 		panic(err)
 	}
@@ -107,7 +107,7 @@ func TestPuzzlesMain(t *testing.T) {
 	pool, ps := dbc.pool, dbc.ps
 
 	ctx := ctxForTests()
-	engDist, err := tilemapping.GetDistribution(DefaultConfig.MacondoConfigMap, "english")
+	engDist, err := tilemapping.GetDistribution(DefaultConfig.WGLConfig(), "english")
 	is.NoErr(err)
 	rk := entity.LexiconToPuzzleVariantKey(common.DefaultGameReq.Lexicon)
 
@@ -932,7 +932,7 @@ func TestPuzzlesVerticalPlays(t *testing.T) {
 
 func TestUniqueSingleTileKey(t *testing.T) {
 	is := is.New(t)
-	ld, err := tilemapping.EnglishLetterDistribution(DefaultConfig.MacondoConfigMap)
+	ld, err := tilemapping.EnglishLetterDistribution(DefaultConfig.WGLConfig())
 	is.NoErr(err)
 	is.Equal(uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: pb.GameEvent_HORIZONTAL}, ld),
 		uniqueSingleTileKey(&pb.GameEvent{Row: 8, Column: 10, PlayedTiles: "Q.", Direction: pb.GameEvent_VERTICAL}, ld))
@@ -952,7 +952,7 @@ func RecreateDB() (*DBController, int, int) {
 	cfg := DefaultConfig
 	cfg.DBConnUri = commondb.TestingPostgresConnUri(pkg)
 	cfg.DBConnDSN = commondb.TestingPostgresConnDSN(pkg)
-	cfg.MacondoConfig.Set(macondoconfig.ConfigDefaultLexicon, common.DefaultLexicon)
+	cfg.MacondoConfig().Set(macondoconfig.ConfigDefaultLexicon, common.DefaultLexicon)
 	zerolog.SetGlobalLevel(zerolog.Disabled)
 	ctx := context.Background()
 	log.Info().Msg("here first")
@@ -982,7 +982,7 @@ func RecreateDB() (*DBController, int, int) {
 		panic(err)
 	}
 
-	tempGameStore, err := gamestore.NewDBStore(&cfg, userStore)
+	tempGameStore, err := gamestore.NewDBStore(cfg, userStore)
 	if err != nil {
 		panic(err)
 	}
@@ -1025,7 +1025,7 @@ func RecreateDB() (*DBController, int, int) {
 		panic(err)
 	}
 
-	rules, err := game.NewBasicGameRules(&DefaultConfig.MacondoConfig, common.DefaultLexicon, board.CrosswordGameLayout, "english", game.CrossScoreAndSet, game.VarClassic)
+	rules, err := game.NewBasicGameRules(DefaultConfig.MacondoConfig(), common.DefaultLexicon, board.CrosswordGameLayout, "english", game.CrossScoreAndSet, game.VarClassic)
 	if err != nil {
 		panic(err)
 	}
@@ -1033,7 +1033,7 @@ func RecreateDB() (*DBController, int, int) {
 	authoredPuzzles := 0
 	totalPuzzles := 0
 	for idx, f := range files {
-		gameHistory, err := gcgio.ParseGCG(&DefaultConfig.MacondoConfig, fmt.Sprintf("./testdata/%s", f.Name()))
+		gameHistory, err := gcgio.ParseGCG(DefaultConfig.MacondoConfig(), fmt.Sprintf("./testdata/%s", f.Name()))
 		if err != nil {
 			panic(err)
 		}

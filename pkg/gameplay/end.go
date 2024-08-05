@@ -230,8 +230,8 @@ func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 
 	// stats := entity.InstantiateNewStats(1, 2))
 
-	// Fetch the Macondo config
-	cfg, err := config.GetConfig(ctx)
+	// Fetch the config
+	cfg, err := config.Ctx(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +240,7 @@ func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 	p0id, p1id := history.Players[0].UserId, history.Players[1].UserId
 	gameStats := stats.InstantiateNewStats(p0id, p1id)
 
-	err = stats.AddGame(ctx, gameStats, stores.ListStatStore, history, req, cfg.MacondoConfigMap, evt, history.Uid)
+	err = stats.AddGame(ctx, gameStats, stores.ListStatStore, history, req, cfg.WGLConfig(), evt, history.Uid)
 	if err != nil {
 		return nil, err
 	}

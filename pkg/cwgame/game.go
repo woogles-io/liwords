@@ -47,16 +47,16 @@ func (e *InvalidWordsError) Error() string {
 
 func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, tr int64) error {
 	log.Debug().Interface("gevt", gevt).Msg("play-move")
-	cfg, ok := ctx.Value(config.CtxKeyword).(*config.Config)
-	if !ok {
-		return errors.New("config does not exist in context")
+	cfg, err := config.Ctx(ctx)
+	if err != nil {
+		return err
 	}
 
 	if gevt.Type == ipc.GameEvent_CHALLENGE {
 		return challengeEvent(ctx, cfg, gdoc, tr)
 	}
 
-	err := validateMove(cfg, gevt, gdoc)
+	err = validateMove(cfg, gevt, gdoc)
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 		if gdoc.PlayState == ipc.PlayState_WAITING_FOR_FINAL_PASS {
 			gdoc.PlayState = ipc.PlayState_GAME_OVER
 			gdoc.EndReason = ipc.GameEndReason_STANDARD
-			dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, gdoc.LetterDistribution)
+			dist, err := tilemapping.GetDistribution(cfg.WGLConfig(), gdoc.LetterDistribution)
 			if err != nil {
 				return err
 			}
@@ -138,7 +138,7 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 
 	}
 	if gdoc.ScorelessTurns == MaxConsecutiveScorelessTurns {
-		dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, gdoc.LetterDistribution)
+		dist, err := tilemapping.GetDistribution(cfg.WGLConfig(), gdoc.LetterDistribution)
 		if err != nil {
 			return err
 		}
@@ -153,13 +153,13 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 }
 
 func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.GameDocument, tr int64) error {
-	dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, gdoc.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(cfg.WGLConfig(), gdoc.LetterDistribution)
 	if err != nil {
 		return err
 	}
 
 	// validate the tile play move
-	gd, err := kwg.Get(cfg.MacondoConfigMap, gdoc.Lexicon)
+	gd, err := kwg.Get(cfg.WGLConfig(), gdoc.Lexicon)
 	if err != nil {
 		return err
 	}
@@ -454,11 +454,11 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 	// a challenge event shouldn't modify the clock per se.
 	recordTimeOfMove(gdoc, globalNower, gdoc.PlayerOnTurn, false)
 
-	dist, err := tilemapping.GetDistribution(cfg.MacondoConfigMap, gdoc.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(cfg.WGLConfig(), gdoc.LetterDistribution)
 	if err != nil {
 		return err
 	}
-	gd, err := kwg.Get(cfg.MacondoConfigMap, gdoc.Lexicon)
+	gd, err := kwg.Get(cfg.WGLConfig(), gdoc.Lexicon)
 	if err != nil {
 		return err
 	}

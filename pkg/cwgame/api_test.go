@@ -29,7 +29,7 @@ func restoreGlobalNower() {
 func ctxForTests() context.Context {
 	ctx := context.Background()
 	ctx = log.Logger.WithContext(ctx)
-	ctx = context.WithValue(ctx, config.CtxKeyword, &DefaultConfig)
+	ctx = DefaultConfig.WithContext(ctx)
 	return ctx
 }
 
@@ -50,7 +50,7 @@ func TestNewGame(t *testing.T) {
 	is := is.New(t)
 	rules := NewBasicGameRules("NWL20", "CrosswordGame", "english", ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
 		"classic", []int{300, 300}, 1, 0, false)
-	g, err := NewGame(&DefaultConfig, rules, []*ipc.GameDocument_MinimalPlayerInfo{
+	g, err := NewGame(DefaultConfig.WGLConfig(), rules, []*ipc.GameDocument_MinimalPlayerInfo{
 		{Nickname: "Cesitar", RealName: "Cesar", UserId: "cesar1"},
 		{Nickname: "Lucas", RealName: "Lucas", UserId: "lucas1"},
 	})
@@ -67,7 +67,7 @@ func TestStartGame(t *testing.T) {
 
 	rules := NewBasicGameRules("NWL20", "CrosswordGame", "english", ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
 		"classic", []int{300, 300}, 1, 0, false)
-	g, _ := NewGame(&DefaultConfig, rules, []*ipc.GameDocument_MinimalPlayerInfo{
+	g, _ := NewGame(DefaultConfig.WGLConfig(), rules, []*ipc.GameDocument_MinimalPlayerInfo{
 		{Nickname: "Cesitar", RealName: "Cesar", UserId: "cesar1"},
 		{Nickname: "Lucas", RealName: "Lucas", UserId: "lucas1"},
 	})
@@ -87,7 +87,7 @@ func TestStartGame(t *testing.T) {
 }
 
 func englishBytes(tiles string) []byte {
-	ld, err := tilemapping.GetDistribution(DefaultConfig.MacondoConfigMap, "english")
+	ld, err := tilemapping.GetDistribution(DefaultConfig.WGLConfig(), "english")
 	if err != nil {
 		panic(err)
 	}
@@ -99,7 +99,7 @@ func englishBytes(tiles string) []byte {
 }
 
 func norwegianBytes(tiles string) []byte {
-	ld, err := tilemapping.GetDistribution(DefaultConfig.MacondoConfigMap, "norwegian")
+	ld, err := tilemapping.GetDistribution(DefaultConfig.WGLConfig(), "norwegian")
 	if err != nil {
 		panic(err)
 	}
@@ -243,7 +243,7 @@ func TestProcessGameplayEventSanityChecks(t *testing.T) {
 			defer restoreGlobalNower()
 			onturn := gdoc.PlayerOnTurn
 
-			err := ProcessGameplayEvent(ctx, tc.cge, tc.userID, gdoc)
+			err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), tc.cge, tc.userID, gdoc)
 			is.Equal(err, tc.expectedErr)
 			if err != nil {
 				// return early; nothing changes
@@ -275,7 +275,7 @@ func TestChallengeBadWord(t *testing.T) {
 		MachineLetters: englishBytes("KNI.EW"),
 	}
 
-	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
 	is.NoErr(err)
 
 	globalNower.(*FakeNower).Sleep(2500) // second player challenges after 2500 ms
@@ -284,7 +284,7 @@ func TestChallengeBadWord(t *testing.T) {
 		Type:   ipc.ClientGameplayEvent_CHALLENGE_PLAY,
 		GameId: "9aK3YgVk",
 	}
-	err = ProcessGameplayEvent(ctx, cge2, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge2, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
 	is.NoErr(err)
 	is.Equal(gdoc.ScorelessTurns, uint32(1))
 
@@ -295,7 +295,7 @@ func TestChallengeBadWord(t *testing.T) {
 		PositionCoords: "15C",
 		MachineLetters: englishBytes("S.HEROID"),
 	}
-	err = ProcessGameplayEvent(ctx, cge3, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge3, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
 	is.NoErr(err)
 	is.Equal(len(gdoc.Events), 7)
 
@@ -368,7 +368,7 @@ func TestChallengeGoodWordSingle(t *testing.T) {
 		MachineLetters: englishBytes("KNI.E"),
 	}
 
-	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
 	is.NoErr(err)
 
 	globalNower.(*FakeNower).Sleep(2500)
@@ -379,7 +379,7 @@ func TestChallengeGoodWordSingle(t *testing.T) {
 		Type:   ipc.ClientGameplayEvent_CHALLENGE_PLAY,
 		GameId: "9aK3YgVk",
 	}
-	err = ProcessGameplayEvent(ctx, cge2, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge2, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
 	is.NoErr(err)
 
 	globalNower.(*FakeNower).Sleep(1500)
@@ -390,7 +390,7 @@ func TestChallengeGoodWordSingle(t *testing.T) {
 		PositionCoords: "15C",
 		MachineLetters: englishBytes("S.HEROID"),
 	}
-	err = ProcessGameplayEvent(ctx, cge3, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge3, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
 	is.NoErr(err)
 	is.Equal(len(gdoc.Events), 7)
 
@@ -459,7 +459,7 @@ func TestChallengeGoodWordDouble(t *testing.T) {
 		MachineLetters: englishBytes("KNI.E"),
 	}
 
-	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
 	is.NoErr(err)
 
 	globalNower.(*FakeNower).Sleep(2500)
@@ -469,7 +469,7 @@ func TestChallengeGoodWordDouble(t *testing.T) {
 		Type:   ipc.ClientGameplayEvent_CHALLENGE_PLAY,
 		GameId: "9aK3YgVk",
 	}
-	err = ProcessGameplayEvent(ctx, cge2, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge2, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
 	is.NoErr(err)
 
 	globalNower.(*FakeNower).Sleep(1500)
@@ -480,7 +480,7 @@ func TestChallengeGoodWordDouble(t *testing.T) {
 		PositionCoords: "C11",
 		MachineLetters: englishBytes("TEW"), // this is their leave from their last move.
 	}
-	err = ProcessGameplayEvent(ctx, cge3, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge3, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
 	is.NoErr(err)
 	is.Equal(len(gdoc.Events), 7)
 
@@ -528,7 +528,7 @@ func TestChallengeGoodWordNorwegian(t *testing.T) {
 	ctx := ctxForTests()
 	rules := NewBasicGameRules("NSF22", "CrosswordGame", "norwegian", ipc.ChallengeRule_ChallengeRule_TEN_POINT,
 		"classic", []int{300, 300}, 1, 0, false)
-	g, _ := NewGame(&DefaultConfig, rules, []*ipc.GameDocument_MinimalPlayerInfo{
+	g, _ := NewGame(DefaultConfig.WGLConfig(), rules, []*ipc.GameDocument_MinimalPlayerInfo{
 		{Nickname: "Cesitar", RealName: "Cesar", UserId: "cesar1"},
 		{Nickname: "Lucas", RealName: "Lucas", UserId: "lucas1"},
 	})
@@ -554,7 +554,7 @@ func TestChallengeGoodWordNorwegian(t *testing.T) {
 		PositionCoords: "8G",
 		MachineLetters: norwegianBytes("ÅMA"),
 	}
-	ld, err := tilemapping.GetDistribution(DefaultConfig.MacondoConfigMap, "norwegian")
+	ld, err := tilemapping.GetDistribution(DefaultConfig.WGLConfig(), "norwegian")
 	is.NoErr(err)
 	rack, err := tilemapping.ToMachineLetters("AÅM", ld.TileMapping())
 	is.NoErr(err)
@@ -565,7 +565,7 @@ func TestChallengeGoodWordNorwegian(t *testing.T) {
 	}, AlwaysAssignEmpty)
 	is.NoErr(err)
 
-	err = ProcessGameplayEvent(ctx, cge, "cesar1", g)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge, "cesar1", g)
 	is.NoErr(err)
 
 	globalNower.(*FakeNower).Sleep(2500)
@@ -574,7 +574,7 @@ func TestChallengeGoodWordNorwegian(t *testing.T) {
 		Type:   ipc.ClientGameplayEvent_CHALLENGE_PLAY,
 		GameId: g.Uid,
 	}
-	err = ProcessGameplayEvent(ctx, cge2, "lucas1", g)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge2, "lucas1", g)
 	is.NoErr(err)
 
 	fmt.Println(g.Events)
@@ -608,7 +608,7 @@ func TestChallengeGoodWordDoubleWithTimeIncrement(t *testing.T) {
 		MachineLetters: englishBytes("KNI.E"),
 	}
 
-	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
 	is.NoErr(err)
 
 	globalNower.(*FakeNower).Sleep(2500)
@@ -618,7 +618,7 @@ func TestChallengeGoodWordDoubleWithTimeIncrement(t *testing.T) {
 		Type:   ipc.ClientGameplayEvent_CHALLENGE_PLAY,
 		GameId: "9aK3YgVk",
 	}
-	err = ProcessGameplayEvent(ctx, cge2, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge2, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
 	is.NoErr(err)
 
 	is.Equal(len(gdoc.Events), 6)
@@ -676,7 +676,7 @@ func TestChallengeBadWordWithTimeIncrement(t *testing.T) {
 		MachineLetters: englishBytes("KNI.EW"),
 	}
 
-	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
 	is.NoErr(err)
 
 	globalNower.(*FakeNower).Sleep(2500)
@@ -686,7 +686,7 @@ func TestChallengeBadWordWithTimeIncrement(t *testing.T) {
 		Type:   ipc.ClientGameplayEvent_CHALLENGE_PLAY,
 		GameId: "9aK3YgVk",
 	}
-	err = ProcessGameplayEvent(ctx, cge2, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge2, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
 	is.NoErr(err)
 
 	is.Equal(len(gdoc.Events), 6)
@@ -746,7 +746,7 @@ func TestTimeRanOut(t *testing.T) {
 		MachineLetters: englishBytes("KNI.EW"),
 	}
 
-	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
 	is.NoErr(err)
 
 	globalNower.(*FakeNower).Sleep(899914 + 60001)
@@ -757,7 +757,7 @@ func TestTimeRanOut(t *testing.T) {
 		Type:   ipc.ClientGameplayEvent_CHALLENGE_PLAY,
 		GameId: "9aK3YgVk",
 	}
-	err = ProcessGameplayEvent(ctx, cge2, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge2, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
 	is.NoErr(err)
 
 	is.Equal(len(gdoc.Events), 6)
@@ -796,7 +796,7 @@ func TestTimeRanOut(t *testing.T) {
 		MachineLetters: englishBytes("FOO"), // doesn't matter
 	}
 
-	err = ProcessGameplayEvent(ctx, cge3, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge3, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
 	is.Equal(err, errGameNotActive)
 }
 
@@ -819,7 +819,7 @@ func TestChallengeBadWordEndOfGame(t *testing.T) {
 		MachineLetters: englishBytes("AER.OITh"),
 	}
 
-	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
 	is.NoErr(err)
 
 	is.Equal(len(gdoc.Events), 25)
@@ -831,7 +831,7 @@ func TestChallengeBadWordEndOfGame(t *testing.T) {
 		GameId: "9zaaSuN5",
 	}
 
-	err = ProcessGameplayEvent(ctx, cge2, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge2, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
 	is.NoErr(err)
 
 	is.Equal(len(gdoc.Events), 26)
@@ -847,7 +847,7 @@ func TestChallengeBadWordEndOfGame(t *testing.T) {
 		PositionCoords: "14J",
 		MachineLetters: englishBytes("PR..CE"),
 	}
-	err = ProcessGameplayEvent(ctx, cge3, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge3, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
 	is.NoErr(err)
 	is.Equal(gdoc.PlayState, ipc.PlayState_PLAYING)
 	is.Equal(gdoc.PlayerOnTurn, uint32(1))
@@ -881,7 +881,7 @@ func TestChallengeGoodWordEndOfGame(t *testing.T) {
 				MachineLetters: englishBytes("TRIAlO..E"),
 			}
 
-			err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+			err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
 			is.NoErr(err)
 
 			is.Equal(len(gdoc.Events), 25)
@@ -893,7 +893,7 @@ func TestChallengeGoodWordEndOfGame(t *testing.T) {
 				GameId: "9zaaSuN5",
 			}
 
-			err = ProcessGameplayEvent(ctx, cge2, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+			err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge2, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
 			is.NoErr(err)
 
 			is.Equal(len(gdoc.Events), 27)
@@ -960,7 +960,7 @@ func TestLoadChallengeOrPassState(t *testing.T) {
 				GameId: "9zaaSuN5",
 			}
 
-			err := ProcessGameplayEvent(ctx, cge, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+			err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
 			is.NoErr(err)
 
 			is.Equal(len(gdoc.Events), 27)
@@ -1001,7 +1001,7 @@ func TestRejectNonChallOrPass(t *testing.T) {
 		GameId:         "9zaaSuN5",
 	}
 
-	err := ProcessGameplayEvent(ctx, cge, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
 	is.Equal(err, errOnlyPassOrChallenge)
 }
 
@@ -1021,10 +1021,10 @@ func TestConsecutiveScorelessTurns(t *testing.T) {
 		Type:   ipc.ClientGameplayEvent_PASS,
 		GameId: "9aK3YgVk",
 	}
-	err := ProcessGameplayEvent(ctx, passCGE, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), passCGE, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
 	is.NoErr(err)
 	is.Equal(gdoc.ScorelessTurns, uint32(1))
-	err = ProcessGameplayEvent(ctx, passCGE, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), passCGE, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
 	is.NoErr(err)
 	is.Equal(gdoc.ScorelessTurns, uint32(2))
 
@@ -1035,16 +1035,16 @@ func TestConsecutiveScorelessTurns(t *testing.T) {
 		MachineLetters: englishBytes("KNI.EW"),
 	}
 
-	err = ProcessGameplayEvent(ctx, phonyCGE, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), phonyCGE, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
 	is.NoErr(err)
 	is.Equal(gdoc.ScorelessTurns, uint32(0))
-	err = ProcessGameplayEvent(ctx, &ipc.ClientGameplayEvent{
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), &ipc.ClientGameplayEvent{
 		Type:   ipc.ClientGameplayEvent_CHALLENGE_PLAY,
 		GameId: "9aK3YgVk",
 	}, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
 	is.NoErr(err)
 	is.Equal(gdoc.ScorelessTurns, uint32(3))
-	err = ProcessGameplayEvent(ctx, passCGE, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), passCGE, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
 	is.NoErr(err)
 	is.Equal(gdoc.ScorelessTurns, uint32(4))
 	exchangeCGE := &ipc.ClientGameplayEvent{
@@ -1052,7 +1052,7 @@ func TestConsecutiveScorelessTurns(t *testing.T) {
 		GameId:         "9aK3YgVk",
 		MachineLetters: englishBytes("KW"),
 	}
-	err = ProcessGameplayEvent(ctx, exchangeCGE, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), exchangeCGE, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
 	is.NoErr(err)
 	is.Equal(gdoc.ScorelessTurns, uint32(5))
 	// now play a phony and challenge it off
@@ -1062,14 +1062,14 @@ func TestConsecutiveScorelessTurns(t *testing.T) {
 		PositionCoords: "15C",
 		MachineLetters: englishBytes("S.HERIOD"),
 	}
-	err = ProcessGameplayEvent(ctx, phonyCGE, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), phonyCGE, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
 	is.NoErr(err)
 	is.Equal(gdoc.ScorelessTurns, uint32(0))
 	chCGE := &ipc.ClientGameplayEvent{
 		Type:   ipc.ClientGameplayEvent_CHALLENGE_PLAY,
 		GameId: "9aK3YgVk",
 	}
-	err = ProcessGameplayEvent(ctx, chCGE, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), chCGE, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
 	is.NoErr(err)
 	is.Equal(gdoc.ScorelessTurns, uint32(6))
 	is.Equal(gdoc.EndReason, ipc.GameEndReason_CONSECUTIVE_ZEROES)
@@ -1128,7 +1128,7 @@ func TestResign(t *testing.T) {
 				Type:   ipc.ClientGameplayEvent_RESIGN,
 				GameId: "9aK3YgVk",
 			}
-			err := ProcessGameplayEvent(ctx, resignCGE, tc.resignerid, gdoc)
+			err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), resignCGE, tc.resignerid, gdoc)
 			if err != nil {
 				is.Equal(err, tc.expectedErr)
 				return
@@ -1167,7 +1167,7 @@ func TestVoidChallenge(t *testing.T) {
 		MachineLetters: englishBytes("KNI.EW"),
 	}
 
-	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
 	is.Equal(err.Error(), "invalid words: KNIVEW")
 
 	cge2 := &ipc.ClientGameplayEvent{
@@ -1176,7 +1176,7 @@ func TestVoidChallenge(t *testing.T) {
 		PositionCoords: "1D",
 		MachineLetters: englishBytes("KNI.E"),
 	}
-	err = ProcessGameplayEvent(ctx, cge2, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge2, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
 	is.NoErr(err)
 	is.Equal(gdoc.CurrentScores, []int32{113, 137})
 }
@@ -1200,7 +1200,7 @@ func TestVoidChallengeEndOfGame(t *testing.T) {
 		MachineLetters: englishBytes("TRIAlO..E"),
 	}
 
-	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
 	is.NoErr(err)
 	is.Equal(gdoc.EndReason, ipc.GameEndReason_STANDARD)
 	is.Equal(gdoc.PlayState, ipc.PlayState_GAME_OVER)
@@ -1227,14 +1227,14 @@ func TestTripleChallenge(t *testing.T) {
 		MachineLetters: englishBytes("TRIAlO..E"),
 	}
 
-	err := ProcessGameplayEvent(ctx, cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
 	is.NoErr(err)
 
 	cge2 := &ipc.ClientGameplayEvent{
 		Type:   ipc.ClientGameplayEvent_CHALLENGE_PLAY,
 		GameId: "9zaaSuN5",
 	}
-	err = ProcessGameplayEvent(ctx, cge2, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge2, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
 	is.NoErr(err)
 
 	is.Equal(gdoc.EndReason, ipc.GameEndReason_TRIPLE_CHALLENGE)
@@ -1264,7 +1264,7 @@ func TestExchange(t *testing.T) {
 	}
 	userID := "2gJGaYnchL6LbQVTNQ6mjT"
 
-	err := ProcessGameplayEvent(ctx, cge, userID, gdoc)
+	err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge, userID, gdoc)
 	is.NoErr(err)
 	fmt.Println(gdoc.Events[len(gdoc.Events)-1])
 	is.True(proto.Equal(gdoc.Events[len(gdoc.Events)-1], &ipc.GameEvent{
@@ -1274,7 +1274,7 @@ func TestExchange(t *testing.T) {
 		Exchanged:       []byte{5, 11, 23},
 		MillisRemaining: 883808,
 	}))
-	err = ReconcileAllTiles(ctx, gdoc)
+	err = ReconcileAllTiles(DefaultConfig.WGLConfig(), gdoc)
 	is.NoErr(err)
 }
 
@@ -1300,7 +1300,7 @@ func TestExchangePartialRack(t *testing.T) {
 	}
 	userID := "2gJGaYnchL6LbQVTNQ6mjT"
 
-	err = ProcessGameplayEvent(ctx, cge, userID, gdoc)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge, userID, gdoc)
 	is.NoErr(err)
 	fmt.Println(gdoc.Events[len(gdoc.Events)-1])
 	is.True(proto.Equal(gdoc.Events[len(gdoc.Events)-1], &ipc.GameEvent{
@@ -1310,14 +1310,14 @@ func TestExchangePartialRack(t *testing.T) {
 		Exchanged:       []byte{9, 9, 9, 9, 9},
 		MillisRemaining: 883808,
 	}))
-	err = ReconcileAllTiles(ctx, gdoc)
+	err = ReconcileAllTiles(DefaultConfig.WGLConfig(), gdoc)
 	is.NoErr(err)
 }
 
 func TestAssignRacks(t *testing.T) {
 	is := is.New(t)
 
-	dist, err := tilemapping.GetDistribution(DefaultConfig.MacondoConfigMap, "English")
+	dist, err := tilemapping.GetDistribution(DefaultConfig.WGLConfig(), "English")
 	is.NoErr(err)
 
 	doc := &ipc.GameDocument{
@@ -1341,7 +1341,7 @@ func TestAssignRacks(t *testing.T) {
 func TestAssignRacksEmptyRack(t *testing.T) {
 	is := is.New(t)
 
-	dist, err := tilemapping.GetDistribution(DefaultConfig.MacondoConfigMap, "English")
+	dist, err := tilemapping.GetDistribution(DefaultConfig.WGLConfig(), "English")
 	is.NoErr(err)
 
 	doc := &ipc.GameDocument{
@@ -1377,7 +1377,7 @@ func TestAssignRacksIfBagEmpty(t *testing.T) {
 		{0, 5, 16, 18, 20},
 		{1, 3, 5, 9, 15, 18, 20},
 	})
-	is.NoErr(ReconcileAllTiles(ctxForTests(), gdoc))
+	is.NoErr(ReconcileAllTiles(DefaultConfig.WGLConfig(), gdoc))
 }
 
 func TestAssignRacksIfBagAmbiguous(t *testing.T) {
@@ -1397,7 +1397,7 @@ func TestAssignRacksIfBagAmbiguous(t *testing.T) {
 		nil,
 		{1, 3, 5, 9},
 	})
-	is.NoErr(ReconcileAllTiles(ctxForTests(), gdoc))
+	is.NoErr(ReconcileAllTiles(DefaultConfig.WGLConfig(), gdoc))
 }
 
 func TestReplayEvents(t *testing.T) {
@@ -1416,7 +1416,7 @@ func TestReplayEvents(t *testing.T) {
 			gdocClone := loadGDoc(tc)
 
 			ctx := ctxForTests()
-			err := ReplayEvents(ctx, gdoc, gdocClone.Events, true)
+			err := ReplayEvents(ctx, config.DefaultConfig().WGLConfig(), gdoc, gdocClone.Events, true)
 			is.NoErr(err)
 			tiles.Sort(gdoc.Bag)
 			tiles.Sort(gdocClone.Bag)
@@ -1432,7 +1432,7 @@ func TestEditOldRack(t *testing.T) {
 	gdoc := loadGDoc("document-game-almost-over.json")
 	ctx := ctxForTests()
 
-	err := EditOldRack(ctx, gdoc, 0, []byte{1, 2, 3, 4, 5, 6, 7})
+	err := EditOldRack(ctx, DefaultConfig.WGLConfig(), gdoc, 0, []byte{1, 2, 3, 4, 5, 6, 7})
 	is.NoErr(err)
 	is.Equal(gdoc.Events[0].Rack, []byte{1, 2, 3, 4, 5, 6, 7})
 	is.Equal(gdoc.Events[0].PlayedTiles, []byte{1, 18, 5, 14, 15, 19, 5})
@@ -1447,9 +1447,9 @@ func TestEditOldRackDisallowed(t *testing.T) {
 
 	// Try to set the rack for event indexed 8 to JKL. It shouldn't
 	// let you, because event index 7 already used a J.
-	err := EditOldRack(ctx, gdoc, 8, []byte{10, 11, 12})
+	err := EditOldRack(ctx, DefaultConfig.WGLConfig(), gdoc, 8, []byte{10, 11, 12})
 	is.Equal(err.Error(), "tried to remove tile 10 from bag that was not there")
-	err = EditOldRack(ctx, gdoc, 7, []byte{10, 11, 12})
+	err = EditOldRack(ctx, DefaultConfig.WGLConfig(), gdoc, 7, []byte{10, 11, 12})
 	is.NoErr(err)
 	is.Equal(gdoc.Events[7].Rack, []byte{10, 11, 12})
 }
@@ -1457,9 +1457,8 @@ func TestEditOldRackDisallowed(t *testing.T) {
 func TestToCGP(t *testing.T) {
 	is := is.New(t)
 	gdoc := loadGDoc("document-game-almost-over.json")
-	ctx := ctxForTests()
 
-	cgp, err := ToCGP(ctx, gdoc)
+	cgp, err := ToCGP(DefaultConfig.WGLConfig(), gdoc)
 	is.NoErr(err)
 	is.Equal(cgp, "V6K7/EL5N1JAGG2/TA1V2HO3RUIN/1Z1I2OWE1QI2I/1YELPED3IT2T/3DON4N2AR/4UM1BUYS2WO/3ARENOSE2SEX/4IS6A2/3MEH6g2/3O8O2/3L7GU2/3D7LI2/FACETE5IN2/3DARAF3B3 ?AEIORT/CEPRT 245/446 0 lex CSW21; ld english;")
 }

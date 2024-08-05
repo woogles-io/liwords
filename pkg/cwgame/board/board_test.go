@@ -17,7 +17,7 @@ func TestFormedWords(t *testing.T) {
 	is.NoErr(err)
 
 	b := NewBoard(layout)
-	ld, err := tilemapping.NamedLetterDistribution(DefaultMacondoConfig.AllSettings(), "english")
+	ld, err := tilemapping.NamedLetterDistribution(DefaultMacondoConfig.WGLConfig(), "english")
 	is.NoErr(err)
 	tm := ld.TileMapping()
 	setFromPlaintext(b, VsOxy, tm)
@@ -44,11 +44,11 @@ func TestPlayMoveGiant(t *testing.T) {
 	layout, err := GetBoardLayout("CrosswordGame")
 	is.NoErr(err)
 
-	dist, err := tilemapping.GetDistribution(DefaultMacondoConfig.AllSettings(), "english")
+	dist, err := tilemapping.GetDistribution(DefaultMacondoConfig.WGLConfig(), "english")
 	is.NoErr(err)
 
 	b := NewBoard(layout)
-	ld, err := tilemapping.NamedLetterDistribution(DefaultMacondoConfig.AllSettings(), "english")
+	ld, err := tilemapping.NamedLetterDistribution(DefaultMacondoConfig.WGLConfig(), "english")
 	is.NoErr(err)
 	tm := ld.TileMapping()
 	setFromPlaintext(b, VsOxy, tm)
@@ -66,7 +66,7 @@ func TestMoveInBetween(t *testing.T) {
 	layout, err := GetBoardLayout("CrosswordGame")
 	is.NoErr(err)
 
-	dist, err := tilemapping.GetDistribution(DefaultMacondoConfig.AllSettings(), "english")
+	dist, err := tilemapping.GetDistribution(DefaultMacondoConfig.WGLConfig(), "english")
 	is.NoErr(err)
 
 	b := NewBoard(layout)
@@ -87,7 +87,7 @@ func TestToFENEmpty(t *testing.T) {
 	layout, err := GetBoardLayout("CrosswordGame")
 	is.NoErr(err)
 
-	dist, err := tilemapping.GetDistribution(DefaultMacondoConfig.AllSettings(), "english")
+	dist, err := tilemapping.GetDistribution(DefaultMacondoConfig.WGLConfig(), "english")
 	is.NoErr(err)
 
 	b := NewBoard(layout)
@@ -100,7 +100,7 @@ func TestToFEN(t *testing.T) {
 	layout, err := GetBoardLayout("CrosswordGame")
 	is.NoErr(err)
 
-	dist, err := tilemapping.GetDistribution(DefaultMacondoConfig.AllSettings(), "english")
+	dist, err := tilemapping.GetDistribution(DefaultMacondoConfig.WGLConfig(), "english")
 	is.NoErr(err)
 
 	b := NewBoard(layout)
@@ -117,7 +117,7 @@ func TestToFENCatalan(t *testing.T) {
 	layout, err := GetBoardLayout("CrosswordGame")
 	is.NoErr(err)
 
-	dist, err := tilemapping.GetDistribution(DefaultMacondoConfig.AllSettings(), "catalan")
+	dist, err := tilemapping.GetDistribution(DefaultMacondoConfig.WGLConfig(), "catalan")
 	is.NoErr(err)
 
 	b := NewBoard(layout)
@@ -131,7 +131,7 @@ func TestToFENCatalan(t *testing.T) {
 
 func BenchmarkPlayMove(b *testing.B) {
 	layout, _ := GetBoardLayout("CrosswordGame")
-	dist, _ := tilemapping.GetDistribution(DefaultMacondoConfig.AllSettings(), "english")
+	dist, _ := tilemapping.GetDistribution(DefaultMacondoConfig.WGLConfig(), "english")
 	bd := NewBoard(layout)
 	tm := dist.TileMapping()
 	lv := zerolog.GlobalLevel()

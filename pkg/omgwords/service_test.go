@@ -81,7 +81,7 @@ func gameStore() *stores.GameDocumentStore {
 	if err != nil {
 		panic(err)
 	}
-	gds, err := stores.NewGameDocumentStore(&DefaultConfig, redisPool, pool)
+	gds, err := stores.NewGameDocumentStore(DefaultConfig, redisPool, pool)
 	if err != nil {
 		panic(err)
 	}
@@ -112,13 +112,13 @@ func recreateDB() {
 func newService() *OMGWordsService {
 	recreateDB()
 
-	return NewOMGWordsService(userStore(), &DefaultConfig, gameStore(), metaStore())
+	return NewOMGWordsService(userStore(), DefaultConfig, gameStore(), metaStore())
 }
 
 func ctxForTests() context.Context {
 	ctx := context.Background()
 	ctx = log.Logger.WithContext(ctx)
-	ctx = context.WithValue(ctx, config.CtxKeyword, &DefaultConfig)
+	ctx = DefaultConfig.WithContext(ctx)
 	return ctx
 }
 

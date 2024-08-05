@@ -36,8 +36,8 @@ func main() {
 	cfg := &config.Config{}
 	// Only load config from environment variables:
 	cfg.Load(nil)
-	cfg.MacondoConfig.Set(macondoconfig.ConfigDefaultLexicon, req.Lexicon)
-	cfg.MacondoConfig.Set(macondoconfig.ConfigDefaultLetterDistribution, req.LetterDistribution)
+	cfg.MacondoConfig().Set(macondoconfig.ConfigDefaultLexicon, req.Lexicon)
+	cfg.MacondoConfig().Set(macondoconfig.ConfigDefaultLetterDistribution, req.LetterDistribution)
 	ctx := context.Background()
 
 	pool, err := commondb.OpenDB(cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBUser, cfg.DBPassword, cfg.DBSSLMode)

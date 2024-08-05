@@ -9,6 +9,7 @@ import (
 	"github.com/namsral/flag"
 
 	macondoconfig "github.com/domino14/macondo/config"
+	wglconfig "github.com/domino14/word-golib/config"
 	"github.com/woogles-io/liwords/pkg/stores/common"
 )
 
@@ -20,13 +21,8 @@ type ArgonConfig struct {
 }
 
 type Config struct {
-	MacondoConfig macondoconfig.Config
-	// MacondoConfigMap is a map version of all the settings in MacondoConfig.
-	// We need to eventually obsolete MacondoConfig (and Macondo as a library).
-	// This will help a bit in making sure we only pass a map of key-value pairs
-	// to whoever can take them, while keeping MacondoConfig for legacy functions in Macondo.
-	MacondoConfigMap map[string]any
-	ArgonConfig      ArgonConfig
+	macondoConfig *macondoconfig.Config
+	ArgonConfig   ArgonConfig
 
 	DBHost           string
 	DBPort           string
@@ -54,20 +50,17 @@ type Config struct {
 	Debug bool
 }
 
-type CtxKey string
+type ctxKey string
 
-const CtxKeyword CtxKey = CtxKey("config")
+const ctxKeyword ctxKey = ctxKey("config")
 
 // Load loads the configs from the given arguments
 func (c *Config) Load(args []string) error {
-
-	c.MacondoConfig = macondoconfig.Config{}
-	err := c.MacondoConfig.Load(nil)
+	c.macondoConfig = &macondoconfig.Config{}
+	err := c.macondoConfig.Load(nil)
 	if err != nil {
 		return err
 	}
-
-	c.MacondoConfigMap = c.MacondoConfig.AllSettings()
 
 	fs := flag.NewFlagSet("liwords", flag.ContinueOnError)
 
@@ -103,31 +96,43 @@ func (c *Config) Load(args []string) error {
 	return err
 }
 
-var defaultConfig = Config{
-	MacondoConfig: macondoconfig.DefaultConfig(),
+// WithContext stores the config in the passed-in context, returning a new context. Context.
+func (c *Config) WithContext(ctx context.Context) context.Context {
+	return context.WithValue(ctx, ctxKeyword, c)
 }
 
-func DefaultConfig() Config {
-	defaultConfig.MacondoConfigMap = defaultConfig.MacondoConfig.AllSettings()
-	return defaultConfig
+func (c *Config) MacondoConfig() *macondoconfig.Config {
+	return c.macondoConfig
 }
 
-// Get the config from the context
-func GetConfig(ctx context.Context) (*Config, error) {
-	ctxConfig, ok := ctx.Value(CtxKeyword).(*Config)
+func (c *Config) WGLConfig() *wglconfig.Config {
+	return c.macondoConfig.WGLConfig()
+}
+
+// ctx gets the config from the context, or an error if no config is found.
+func Ctx(ctx context.Context) (*Config, error) {
+	ctxConfig, ok := ctx.Value(ctxKeyword).(*Config)
 	if !ok {
-		return nil, errors.New("config is not ok")
+		return nil, errors.New("config in context is not ok")
 	}
 	if ctxConfig == nil {
-		return nil, errors.New("config is nil")
+		return nil, errors.New("config in context is nil")
 	}
 	return ctxConfig, nil
+}
+
+var defaultConfig = &Config{
+	macondoConfig: macondoconfig.DefaultConfig(),
+}
+
+func DefaultConfig() *Config {
+	return defaultConfig
 }
 
 func CtxMiddlewareGenerator(config *Config) (mw func(http.Handler) http.Handler) {
 	mw = func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := context.WithValue(r.Context(), CtxKeyword, config)
+			ctx := config.WithContext(r.Context())
 			r = r.WithContext(ctx)
 			h.ServeHTTP(w, r)
 		})

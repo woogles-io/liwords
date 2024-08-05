@@ -28,9 +28,13 @@ import (
 var pkg = "game"
 var DefaultConfig = config.DefaultConfig()
 
+func init() {
+	DefaultConfig.DBConnDSN = common.TestingPostgresConnDSN(pkg)
+}
+
 func newMacondoGame(users [2]*entity.User) *macondogame.Game {
 	rules, err := macondogame.NewBasicGameRules(
-		&DefaultConfig.MacondoConfig, "NWL20",
+		DefaultConfig.MacondoConfig(), "NWL20",
 		board.CrosswordGameLayout, "english",
 		macondogame.CrossScoreOnly, "")
 	if err != nil {
@@ -202,10 +206,7 @@ func TestCreate(t *testing.T) {
 	is.True(entGame.Quickdata != nil)
 
 	ustore := userStore()
-	store, err := NewDBStore(&config.Config{
-		MacondoConfig: DefaultConfig.MacondoConfig,
-		DBConnDSN:     common.TestingPostgresConnDSN(pkg),
-	}, ustore)
+	store, err := NewDBStore(DefaultConfig, ustore)
 	is.NoErr(err)
 	// Make sure we can fetch the game from the DB.
 	log.Debug().Str("entGameID", entGame.GameID()).Msg("trying-to-fetch")
@@ -225,9 +226,7 @@ func TestSet(t *testing.T) {
 
 	is := is.New(t)
 	ustore := userStore()
-	store, err := NewDBStore(&config.Config{
-		MacondoConfig: DefaultConfig.MacondoConfig,
-		DBConnDSN:     common.TestingPostgresConnDSN(pkg)}, ustore)
+	store, err := NewDBStore(DefaultConfig, ustore)
 	is.NoErr(err)
 
 	// Fetch the game from the backend.
@@ -267,10 +266,7 @@ func TestGet(t *testing.T) {
 	is := is.New(t)
 
 	ustore := userStore()
-	store, err := NewDBStore(&config.Config{
-		MacondoConfig: DefaultConfig.MacondoConfig,
-		DBConnDSN:     common.TestingPostgresConnDSN(pkg),
-	}, ustore)
+	store, err := NewDBStore(DefaultConfig, ustore)
 	is.NoErr(err)
 
 	entGame, err := store.Get(context.Background(), "wJxURccCgSAPivUvj4QdYL")
@@ -303,10 +299,7 @@ func TestListActive(t *testing.T) {
 
 	// There should be an additional game, so 3 total, from recreateDB()
 	// The first game is cesar vs mina. (see TestGet)
-	store, err := NewDBStore(&config.Config{
-		MacondoConfig: DefaultConfig.MacondoConfig,
-		DBConnDSN:     common.TestingPostgresConnDSN(pkg),
-	}, ustore)
+	store, err := NewDBStore(DefaultConfig, ustore)
 	is.NoErr(err)
 
 	games, err := store.ListActive(context.Background(), "")

@@ -74,7 +74,7 @@ func main() {
 		panic(err)
 	}
 	v := gdoc.Version
-	err = stores.MigrateGameDocument(&config.Config{MacondoConfig: DefaultMacondoConfig}, gdoc)
+	err = stores.MigrateGameDocument(config.DefaultConfig(), gdoc)
 	if err != nil {
 		panic(err)
 	}
@@ -88,7 +88,7 @@ func main() {
 		fmt.Println()
 	}
 
-	dist, err := tilemapping.GetDistribution(DefaultMacondoConfig.AllSettings(), gdoc.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(DefaultMacondoConfig.WGLConfig(), gdoc.LetterDistribution)
 	if err != nil {
 		panic(err)
 	}

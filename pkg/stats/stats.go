@@ -6,12 +6,15 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/domino14/macondo/board"
 	"github.com/domino14/macondo/game"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
+	wglconfig "github.com/domino14/word-golib/config"
 	"github.com/domino14/word-golib/kwg"
 	"github.com/domino14/word-golib/tilemapping"
-	"github.com/rs/zerolog/log"
+
 	"github.com/woogles-io/liwords/pkg/entity"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -23,7 +26,7 @@ type ListStatStore interface {
 
 type IncrementInfo struct {
 	Ctx                 context.Context
-	CfgMap              map[string]any
+	Cfg                 *wglconfig.Config
 	Req                 *ipc.GameRequest
 	Evt                 *ipc.GameEndedEvent
 	Lss                 ListStatStore
@@ -133,12 +136,12 @@ func InstantiateNewStats(playerOneId string, playerTwoId string) *entity.Stats {
 }
 
 func AddGame(ctx context.Context, stats *entity.Stats, lss ListStatStore, history *pb.GameHistory, req *ipc.GameRequest,
-	cfgMap map[string]any, gameEndedEvent *ipc.GameEndedEvent, gameId string) error {
+	cfg *wglconfig.Config, gameEndedEvent *ipc.GameEndedEvent, gameId string) error {
 	// Josh, plz fix these asinine calls to incrementStatItem
 	events := history.GetEvents()
 
 	info := &IncrementInfo{Ctx: ctx,
-		CfgMap:  cfgMap,
+		Cfg:     cfg,
 		Req:     req,
 		Evt:     gameEndedEvent,
 		Lss:     lss,
@@ -456,7 +459,7 @@ func addChallengedPhonies(info *IncrementInfo) error {
 func addUnchallengedPhonies(info *IncrementInfo) error {
 	events := info.History.GetEvents()
 	event := events[info.EventIndex]
-	isUnchallengedPhony, err := isUnchallengedPhonyEvent(event, info.History, info.CfgMap)
+	isUnchallengedPhony, err := isUnchallengedPhonyEvent(event, info.History, info.Cfg)
 	if err != nil {
 		return err
 	}
@@ -934,7 +937,7 @@ func getOccupiedIndexes(info *IncrementInfo, event *pb.GameEvent) [][]int {
 		ldname = "english"
 	}
 
-	ld, err := tilemapping.GetDistribution(info.CfgMap, ldname)
+	ld, err := tilemapping.GetDistribution(info.Cfg, ldname)
 	if err != nil {
 		log.Err(err).Str("dist", ldname).Msg("get-occupied-indexes-get-dist-err")
 		return occupied
@@ -983,7 +986,7 @@ func countBonusSquares(info *IncrementInfo,
 
 func isUnchallengedPhonyEvent(event *pb.GameEvent,
 	history *pb.GameHistory,
-	cfg map[string]any) (bool, error) {
+	cfg *wglconfig.Config) (bool, error) {
 	phony := false
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE {
 		kwg, err := kwg.Get(cfg, history.Lexicon)
