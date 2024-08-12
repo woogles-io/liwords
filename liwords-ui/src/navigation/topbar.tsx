@@ -21,6 +21,10 @@ const TopMenu = React.memo((props: Props) => {
       label: <Link to="/">OMGWords</Link>,
     },
     {
+      key: 'puzzles',
+      label: <Link to="/puzzle">Puzzles</Link>,
+    },
+    {
       key: 'editor',
       label: <Link to="/editor">Board editor</Link>,
     },
@@ -116,7 +120,7 @@ const TopMenu = React.memo((props: Props) => {
         </Dropdown>
       </div>
       <div>
-        <a href="/puzzle">Puzzles</a> {/* why isn't this a Link? */}
+        <a href="/donate">Donate</a>
       </div>
       <div>
         <Dropdown
