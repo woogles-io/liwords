@@ -60,6 +60,7 @@ const Footer = React.memo(() => {
         <div className="links-play-learn link-group">
           <h4>Play</h4>
           <Link to="/">OMGWords</Link>
+          <Link to="/puzzle">Puzzles</Link>
           <Link to="/editor">Board editor</Link>
           <a
             href="//anagrams.mynetgear.com/"
@@ -75,8 +76,6 @@ const Footer = React.memo(() => {
           >
             License to Spell
           </a>
-          <h4>Puzzles</h4>
-          <a href="/puzzle">Solve Puzzles</a>
           <h4>Study</h4>
           <a
             href="https://aerolith.org"
