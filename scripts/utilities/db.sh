@@ -1,1 +1,1 @@
-docker-compose exec db psql -U postgres liwords
+docker compose exec db psql -U postgres liwords
