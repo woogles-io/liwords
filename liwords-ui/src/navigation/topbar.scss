@@ -15,7 +15,8 @@ body {
   @include colorModed() {
     background-color: m($header);
   }
-  *, button.link {
+  *,
+  button.link {
     @include type-default;
     letter-spacing: 0.16em;
     font-size: 13px;
@@ -29,7 +30,6 @@ body {
       display: inline;
       margin-left: 6px;
     }
-
   }
   .user-info {
     white-space: nowrap;
@@ -55,7 +55,8 @@ body {
   div {
     display: none;
     padding: 12px 24px;
-    a, p {
+    a,
+    p {
       @include colorModed() {
         color: m($primary-dark);
       }
@@ -69,7 +70,8 @@ body {
           color: m($primary-dark);
         }
       }
-      &:active, &.active {
+      &:active,
+      &.active {
         border-bottom: 3px;
       }
     }
@@ -81,7 +83,6 @@ body {
     }
   }
 }
-
 
 .tournament-mode {
   .site-name {

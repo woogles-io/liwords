@@ -35,13 +35,12 @@
   .ant-card-body {
     display: flex;
   }
-  .player-card{
+  .player-card {
     width: 50%;
     &:last-child .player {
       order: 0;
     }
   }
-
 }
 
 .player-cards.ant-card {
@@ -136,10 +135,10 @@
       }
     }
     &:last-child {
-       .player {
-         order: 2;
-       }
-     }
+      .player {
+        order: 2;
+      }
+    }
 
     &.on-turn {
       @include colorModed() {
@@ -162,7 +161,8 @@
         @include colorModed() {
           background: m($timer-low-light);
         }
-        p, .player-details {
+        p,
+        .player-details {
           color: #414141; // theming outlier
         }
         a {
@@ -176,7 +176,7 @@
           }
           &.timer {
             color: #414141; // theming outlier
-            background: white;// theming outlier
+            background: white; // theming outlier
             @include colorModed() {
               border-color: m($timer-low-dark);
             }
@@ -256,5 +256,3 @@
     }
   }
 }
-
-

@@ -1,7 +1,7 @@
 // This file and any files it imports should only include definitions (mixins, variables, functions)
 @use 'color_modes' as *;
-@use "sass:math";
-@forward "color_modes";
+@use 'sass:math';
+@forward 'color_modes';
 
 $card-shadow: 0px 0px 12px rgba(0, 0, 0, 0.15);
 $card-shadow-lower: 0px 0px 6px rgba(0, 0, 0, 0.15);
@@ -279,7 +279,8 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
       }
     }
   }
-  .ant-tabs>.ant-tabs-nav .ant-tabs-nav-operations, .ant-tabs>div>.ant-tabs-nav .ant-tabs-nav-operations {
+  .ant-tabs > .ant-tabs-nav .ant-tabs-nav-operations,
+  .ant-tabs > div > .ant-tabs-nav .ant-tabs-nav-operations {
     display: none;
   }
 }
@@ -287,7 +288,7 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
   .ant-modal-root {
     .ant-modal-content {
       border-radius: 8px;
-      font-family: "Mulish", sans-serif;
+      font-family: 'Mulish', sans-serif;
       @include colorModed() {
         background: m($background);
         color: m($gray-extreme);
@@ -300,7 +301,7 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
         color: m($gray-extreme);
       }
       .ant-modal-title {
-        font-family: "Mulish", sans-serif;
+        font-family: 'Mulish', sans-serif;
         font-weight: 700;
         @include colorModed() {
           color: m($gray-extreme);
@@ -488,11 +489,11 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
         text-decoration: underline;
         cursor: pointer;
       }
-    //   .anticon {
-    //     @include colorModed() {
-    //       color: m($primary-light);
-    //     }
-    //   }
+      //   .anticon {
+      //     @include colorModed() {
+      //       color: m($primary-light);
+      //     }
+      //   }
     }
     button.ant-btn,
     button.ant-btn-primary,
@@ -500,15 +501,15 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
     a.btn-primary {
       box-shadow: none;
       font-size: 14px;
-    //   @include colorModed() {
-    //     background-color: transparent;
-    //     border-color: m($background);
-    //     color: m($background);
-    //   }
+      //   @include colorModed() {
+      //     background-color: transparent;
+      //     border-color: m($background);
+      //     color: m($background);
+      //   }
     }
   }
 }
 
 .ant-popconfirm-buttons > .ant-btn-sm {
-    height: 36px;
+  height: 36px;
 }

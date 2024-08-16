@@ -77,12 +77,16 @@
         font-weight: 200;
       }
 
-      &:hover h4, &:hover p{
+      &:hover h4,
+      &:hover p {
         @include colorModed() {
-          background-color: mix(m($primary-middle), m($background), $weight: 50%);
+          background-color: mix(
+            m($primary-middle),
+            m($background),
+            $weight: 50%
+          );
         }
       }
-
     }
   }
 }

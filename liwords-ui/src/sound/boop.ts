@@ -40,7 +40,10 @@ class Booper {
 
   private unlocked = false;
 
-  constructor(readonly soundName: string, src: string) {
+  constructor(
+    readonly soundName: string,
+    src: string
+  ) {
     this.audio = new Audio(src);
     // On iOS, if not yet loaded, audio.play() will silently play a short
     // silent sound instead, and fire ended event on that.

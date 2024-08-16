@@ -162,7 +162,8 @@
   padding: 0 10px;
 }
 
-.ant-select-dropdown, .ant-select-selection-item {
+.ant-select-dropdown,
+.ant-select-selection-item {
   span.level {
     font-size: 14px;
     font-weight: 700;
@@ -171,10 +172,10 @@
     font-size: 13px;
     font-weight: 400;
     &::before {
-      content: '('
+      content: '(';
     }
     &::after {
-      content: ')'
+      content: ')';
     }
   }
   span.description {

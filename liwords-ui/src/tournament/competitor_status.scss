@@ -60,12 +60,11 @@
     display: block;
   }
 }
-.game-table
-  .chat-area .ant-card.competitor-status
-{
+.game-table .chat-area .ant-card.competitor-status {
   margin-top: 12px;
 }
-.tournament-info .ant-card.competitor-status, .data-area .ant-card.competitor-status {
+.tournament-info .ant-card.competitor-status,
+.data-area .ant-card.competitor-status {
   @media (min-width: $screen-laptop-min) {
     display: none;
   }

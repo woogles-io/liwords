@@ -58,7 +58,9 @@ div.account {
       border: 1px solid #cfcfcf;
       border-radius: 4px;
     }
-    .ant-select-selector, .ant-select-item , .ant-select-dropdown{
+    .ant-select-selector,
+    .ant-select-item,
+    .ant-select-dropdown {
       @include colorModed() {
         background: m($background);
         color: m($gray-extreme);
@@ -123,7 +125,8 @@ div.account {
       }
     }
     .ant-row.ant-form-item.password {
-      &, * {
+      &,
+      * {
         transition: none;
       }
       input {
@@ -167,7 +170,8 @@ div.account {
     margin-top: 6px;
   }
   .ant-row.ant-form-item.password {
-    &, * {
+    &,
+    * {
       transition: none;
     }
     input {
