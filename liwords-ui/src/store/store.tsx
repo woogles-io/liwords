@@ -199,7 +199,7 @@ type ExamineStoreData = {
   handleExamineDisableShortcuts: () => void;
   addHandleExaminer: (x: () => void) => void;
   removeHandleExaminer: (x: () => void) => void;
-  doneButtonRef: React.MutableRefObject<HTMLElement | null>;
+  doneButtonRef: React.MutableRefObject<HTMLButtonElement | null>;
 };
 
 const defaultGameState = startingGameState(StandardEnglishAlphabet, [], '');
@@ -429,7 +429,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   const { gameContext } = gameContextStore;
   const numberOfTurns = gameContext.turns.length;
   const [isExamining, setIsExamining] = useState(false);
-  const doneButtonRef = useRef<HTMLElement | null>(null);
+  const doneButtonRef = useRef<HTMLButtonElement | null>(null);
   const [examinedTurn, setExaminedTurnRaw] = useState(Infinity);
   const setExaminedTurn = useCallback(
     (x: ((x: number) => number) | number) => {
