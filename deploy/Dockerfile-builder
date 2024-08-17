@@ -1,4 +1,4 @@
-FROM golang as build-env
+FROM golang AS build-env
 
 RUN mkdir /opt/program
 WORKDIR /opt/program

@@ -1,4 +1,4 @@
-FROM liwords-builder as build-env
+FROM liwords-builder AS build-env
 
 WORKDIR /opt/program/cmd/puzzlegen
 
