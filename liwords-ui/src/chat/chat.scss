@@ -53,11 +53,11 @@ p {
 
 .chat-area {
   order: 3;
-  font-family: $font-default;
 
   p {
     font-family: $font-default;
   }
+  font-family: $font-default;
   .ant-card.chat {
     .entities {
       overflow-y: auto;
@@ -85,22 +85,22 @@ p {
   .channel-list {
     min-height: 48px;
     width: 100%;
-    font-size: 16px;
-    font-weight: bold;
-    z-index: 1;
-    padding: 12px 24px 0;
     @include colorModed() {
       background: m($card-background);
       color: m($gray-extreme);
     }
+    font-size: 16px;
+    font-weight: bold;
+    z-index: 1;
+    padding: 12px 24px 0;
     .list-trigger {
       letter-spacing: 0;
       cursor: pointer;
-      font-weight: bold;
-      text-transform: none;
       @include colorModed() {
         color: m($primary-dark);
       }
+      font-weight: bold;
+      text-transform: none;
     }
     .ant-select {
       width: 100%;
@@ -339,7 +339,6 @@ p {
         line-height: 1.2em;
       }
       .special-sender {
-        font-weight: 800;
         @include colorModed() {
           color: m($primary-dark);
         }
@@ -347,6 +346,7 @@ p {
           padding-right: 9px;
           margin: 0;
         }
+        font-weight: 800;
         .ant-tag {
           position: relative;
           top: -1px;
@@ -374,6 +374,9 @@ p {
         }
       }
       .timestamp {
+        @include colorModed() {
+          color: m($secondary);
+        }
         visibility: hidden;
         float: right;
         font-size: 75%;
@@ -381,9 +384,6 @@ p {
         position: relative;
         text-align: right;
         top: -2px;
-        @include colorModed() {
-          color: m($secondary);
-        }
       }
     }
     .server-error {

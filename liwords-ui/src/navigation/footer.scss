@@ -13,12 +13,12 @@ footer {
   }
 
   .footer-container {
+    @include container;
     padding: 18px;
     display: flex;
     flex-direction: column;
     flex-wrap: wrap;
     align-items: flex-start;
-    @include container;
     & > * {
       min-width: 33%;
     }
@@ -81,10 +81,10 @@ footer {
     }
   }
   .anticon-heart {
-    margin-left: 4px;
     @include colorModed() {
       color: m($timer-out-dark);
     }
+    margin-left: 4px;
   }
   .links-social {
     order: 7;

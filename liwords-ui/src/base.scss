@@ -166,11 +166,11 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
       margin: 0;
       height: 100%;
       border: 0;
-      @include type-link;
       @include colorModed() {
         background: m($background);
         color: m($gray-extreme);
       }
+      @include type-link;
       span {
         transition: none !important;
         width: 100%;
@@ -185,12 +185,12 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 14px;
-        width: 100%;
-        height: 100%;
         @include colorModed() {
           color: m($gray-extreme);
         }
+        font-size: 14px;
+        width: 100%;
+        height: 100%;
       }
       &:hover div {
         @include colorModed() {
@@ -416,14 +416,14 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
   button.primary,
   a.btn-primary {
     margin: 6px 3px;
-    border: 0;
-    outline: 0;
-    transition: none;
-    cursor: pointer;
     @include colorModed() {
       background-color: m($button);
       color: m($button-text);
     }
+    border: 0;
+    outline: 0;
+    transition: none;
+    cursor: pointer;
     &:not(.ant-btn-circle) {
       border-radius: 3px;
     }
@@ -433,11 +433,11 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
       &:focus,
       &:visited,
       &:active {
-        transition: none;
         @include colorModed() {
           background: m($timer-out-dark);
           border: m($timer-out-dark);
         }
+        transition: none;
       }
     }
     &,
@@ -445,11 +445,11 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
     &:focus,
     &:visited,
     &:active {
-      transition: none;
       @include colorModed() {
         background-color: m($button);
         color: m($button-text);
       }
+      transition: none;
     }
     &:disabled,
     &:disabled:hover {

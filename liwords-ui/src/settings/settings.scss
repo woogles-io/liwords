@@ -1,14 +1,12 @@
 @use '../base.scss' as *;
 
 .settings {
+  @include container;
+  @include type-default;
   padding: 51px 24px 48px;
   line-height: 20px;
   display: flex;
   justify-content: center;
-  @include container;
-  & {
-    @include type-default;
-  }
   &.stand-alone {
     flex-direction: column;
     align-items: center;
@@ -20,10 +18,10 @@
     margin-top: 12px;
   }
   .anticon-heart {
-    margin-right: 6px;
     @include colorModed() {
       color: m($timer-out-dark);
     }
+    margin-right: 6px;
   }
   h3 {
     font-family: $font-default;
@@ -45,13 +43,13 @@
       text-align: right;
       height: 32px;
       font-weight: bold;
+      @include colorModed() {
+        color: m($gray-medium);
+      }
       cursor: pointer;
       padding-right: 14px;
       padding-top: 8px;
       border-right: 2px solid transparent;
-      @include colorModed() {
-        color: m($gray-medium);
-      }
       &:hover,
       &.active {
         @include colorModed() {
@@ -243,13 +241,13 @@
   }
   .avatar-section,
   .no-avatar-section {
+    @include container;
     padding: 0 24px;
     display: flex;
     flex-direction: row;
     justify-content: left;
     align-items: center;
 
-    @include container;
     .ant-btn {
       font-size: 14px;
     }
@@ -447,12 +445,12 @@
   .ant-modal-body {
     padding: 0 16px;
     .cropper {
-      position: relative;
-      width: 296px;
-      height: 296px;
       @include colorModed() {
         background: m($primary-dark);
       }
+      position: relative;
+      width: 296px;
+      height: 296px;
     }
   }
   .ant-modal-footer {

@@ -6,19 +6,19 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 140px;
   @include colorModed() {
     background-image: linear-gradient(m($header) 20%, m($background) 70%);
   }
+  height: 140px;
   h1 {
     margin-bottom: 0;
   }
 }
 .bios {
   p {
+    @include type-default;
     font-weight: 500;
     line-height: 1.5em;
-    @include type-default;
     @include colorModed() {
       background: transparent;
       color: m($gray-extreme);
@@ -55,11 +55,11 @@
       height: 380px;
     }
     h3 {
-      font-size: 24px;
-      margin-bottom: 0.5em;
       @include colorModed() {
         color: m($secondary);
       }
+      font-size: 24px;
+      margin-bottom: 0.5em;
     }
     .team-info {
       padding: 24px 24px 0 24px;
@@ -77,11 +77,11 @@
       background: m($primary-light);
     }
     h3 {
-      font-size: 21px;
-      margin-bottom: 0.5em;
       @include colorModed() {
         color: m($primary-dark);
       }
+      font-size: 21px;
+      margin-bottom: 0.5em;
     }
     img {
       order: 2;

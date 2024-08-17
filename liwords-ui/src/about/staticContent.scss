@@ -1,11 +1,11 @@
 @use '../base.scss' as *;
 
 .static-content {
+  @include container;
   display: flex;
   flex-direction: row;
   align-items: flex-start;
   justify-content: flex-start;
-  @include container;
   .woogles {
     display: none;
     width: 160px;

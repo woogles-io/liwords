@@ -104,12 +104,12 @@
     margin-top: 8px;
   }
   h5.section-header {
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    margin: 16px 0 8px;
     @include colorModed() {
       color: m($gray-medium);
     }
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    margin: 16px 0 8px;
   }
   h3.tournament-name {
     font-size: 24px;
@@ -133,10 +133,10 @@
     list-style-type: disc;
   }
   li {
-    margin-left: 48px;
     @include colorModed() {
       color: m($gray-extreme);
     }
+    margin-left: 48px;
   }
 }
 

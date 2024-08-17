@@ -96,10 +96,10 @@
     }
     &.offline {
       .player-name {
-        font-style: oblique;
         @include colorModed() {
           color: m($gray-medium);
         }
+        font-style: oblique;
       }
       .player-avatar:after {
         background: transparent;
@@ -128,11 +128,11 @@
     }
     &.search {
       .player-name {
-        font-style: normal;
-        font-weight: normal;
         @include colorModed() {
           color: m($gray-extreme);
         }
+        font-style: normal;
+        font-weight: normal;
       }
     }
   }
