@@ -2,7 +2,9 @@
 
 .profile {
   @include container;
-  padding: 0 24px 48px;
+  & {
+    padding: 0 24px 48px;
+  }
   .settings-link {
     text-align: right;
     margin: 15px 0 0 0;
@@ -295,7 +297,9 @@
         @include colorModed() {
           color: m($timer-low-dark);
         }
-        text-transform: uppercase;
+        & {
+          text-transform: uppercase;
+        }
       }
     }
     .opponent-link {

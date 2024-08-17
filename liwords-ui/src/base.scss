@@ -170,7 +170,9 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
         background: m($background);
         color: m($gray-extreme);
       }
-      @include type-link;
+      & {
+        @include type-link;
+      }
       span {
         transition: none !important;
         width: 100%;
@@ -188,9 +190,11 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
         @include colorModed() {
           color: m($gray-extreme);
         }
-        font-size: 14px;
-        width: 100%;
-        height: 100%;
+        & {
+          font-size: 14px;
+          width: 100%;
+          height: 100%;
+        }
       }
       &:hover div {
         @include colorModed() {
@@ -420,10 +424,12 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
       background-color: m($button);
       color: m($button-text);
     }
-    border: 0;
-    outline: 0;
-    transition: none;
-    cursor: pointer;
+    & {
+      border: 0;
+      outline: 0;
+      transition: none;
+      cursor: pointer;
+    }
     &:not(.ant-btn-circle) {
       border-radius: 3px;
     }
@@ -437,7 +443,9 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
           background: m($timer-out-dark);
           border: m($timer-out-dark);
         }
-        transition: none;
+        & {
+          transition: none;
+        }
       }
     }
     &,
@@ -449,7 +457,9 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
         background-color: m($button);
         color: m($button-text);
       }
-      transition: none;
+      & {
+        transition: none;
+      }
     }
     &:disabled,
     &:disabled:hover {

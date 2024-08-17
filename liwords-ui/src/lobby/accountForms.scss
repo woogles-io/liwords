@@ -65,7 +65,9 @@ div.account {
         background: m($background);
         color: m($gray-extreme);
       }
-      z-index: 1100;
+      & {
+        z-index: 1100;
+      }
       .hover-help {
         display: none;
       }
@@ -136,7 +138,9 @@ div.account {
         top: 6px;
       }
 
-      margin-bottom: 12px;
+      & {
+        margin-bottom: 12px;
+      }
       .ant-form-item-explain {
         margin-top: 12px;
       }
@@ -179,7 +183,9 @@ div.account {
       border-radius: 4px;
     }
 
-    margin-bottom: 12px;
+    & {
+      margin-bottom: 12px;
+    }
     .ant-form-item-explain {
       margin-top: 12px;
     }
@@ -190,10 +196,12 @@ div.account {
     @include colorModed() {
       color: m($primary-dark);
     }
-    font-weight: bold;
-    font-size: 13px;
-    border: 0;
-    outline: 0;
+    & {
+      font-weight: bold;
+      font-size: 13px;
+      border: 0;
+      outline: 0;
+    }
     &:hover,
     &:active {
       @include colorModed() {

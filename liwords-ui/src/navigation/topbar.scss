@@ -18,10 +18,12 @@ body {
   *,
   button.link {
     @include type-default;
-    letter-spacing: 0.16em;
-    font-size: 13px;
-    font-weight: bold;
-    text-transform: uppercase;
+    & {
+      letter-spacing: 0.16em;
+      font-size: 13px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
     @include colorModed() {
       color: m($primary-dark);
       background-color: m($header);
@@ -60,9 +62,11 @@ body {
       @include colorModed() {
         color: m($primary-dark);
       }
-      cursor: pointer;
-      letter-spacing: 0.16em;
-      white-space: nowrap;
+      & {
+        cursor: pointer;
+        letter-spacing: 0.16em;
+        white-space: nowrap;
+      }
       &:focus,
       &:hover,
       &:active {
@@ -106,7 +110,9 @@ body {
     @include colorModed() {
       background: m($logo);
     }
-    border-radius: 4px;
+    & {
+      border-radius: 4px;
+    }
   }
   /* W */
   .site-icon-w {
@@ -131,14 +137,16 @@ body {
     @include colorModed() {
       color: m($logo);
     }
-    flex: none;
-    text-transform: none;
-    align-self: center;
-    margin: 0 12px;
-    font-size: 28px;
-    font-weight: 900;
-    line-height: 35px;
-    letter-spacing: -0.03em;
+    & {
+      flex: none;
+      text-transform: none;
+      align-self: center;
+      margin: 0 12px;
+      font-size: 28px;
+      font-weight: 900;
+      line-height: 35px;
+      letter-spacing: -0.03em;
+    }
   }
 
   .tournament {

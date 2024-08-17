@@ -9,7 +9,9 @@
   @include colorModed() {
     background-image: linear-gradient(m($header) 20%, m($background) 70%);
   }
-  height: 140px;
+  & {
+    height: 140px;
+  }
   h1 {
     margin-bottom: 0;
   }
@@ -17,8 +19,10 @@
 .bios {
   p {
     @include type-default;
-    font-weight: 500;
-    line-height: 1.5em;
+    & {
+      font-weight: 500;
+      line-height: 1.5em;
+    }
     @include colorModed() {
       background: transparent;
       color: m($gray-extreme);
@@ -58,8 +62,10 @@
       @include colorModed() {
         color: m($secondary);
       }
-      font-size: 24px;
-      margin-bottom: 0.5em;
+      & {
+        font-size: 24px;
+        margin-bottom: 0.5em;
+      }
     }
     .team-info {
       padding: 24px 24px 0 24px;
@@ -80,8 +86,10 @@
       @include colorModed() {
         color: m($primary-dark);
       }
-      font-size: 21px;
-      margin-bottom: 0.5em;
+      & {
+        font-size: 21px;
+        margin-bottom: 0.5em;
+      }
     }
     img {
       order: 2;

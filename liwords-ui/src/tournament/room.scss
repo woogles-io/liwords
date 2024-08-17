@@ -108,9 +108,11 @@
       @include colorModed() {
         border-color: m($gray-subtle);
       }
-      border: 1px solid;
-      border-left: 0;
-      border-right: 0;
+      & {
+        border: 1px solid;
+        border-left: 0;
+        border-right: 0;
+      }
     }
   }
   .ant-table-empty {
@@ -173,8 +175,10 @@
         @include colorModed() {
           color: m($primary-dark);
         }
-        width: 100%;
-        height: 100%;
+        & {
+          width: 100%;
+          height: 100%;
+        }
       }
       &:nth-child(2) {
         font-size: 20px;

@@ -14,7 +14,9 @@
   @include colorModed() {
     background-color: m($background);
   }
-  flex-direction: column;
+  & {
+    flex-direction: column;
+  }
   p,
   h1,
   h2,
@@ -61,7 +63,9 @@
     background-color: m($background);
     box-shadow: m($shadow);
   }
-  min-width: 200px;
+  & {
+    min-width: 200px;
+  }
 }
 a,
 button.ant-btn-link,
@@ -71,9 +75,11 @@ button.link {
     color: m($primary-dark);
     background: transparent;
   }
-  font-weight: bold;
-  border: 0;
-  outline: 0;
+  & {
+    font-weight: bold;
+    border: 0;
+    outline: 0;
+  }
   &:hover,
   &:active {
     @include colorModed() {
@@ -123,15 +129,19 @@ button.link {
 
 .donations {
   @include container;
-  padding: 48px 18px;
+  & {
+    padding: 48px 18px;
+  }
 
   &.donation-success {
     text-align: center;
     h4 {
       @include type-default;
-      font-weight: 700;
-      font-size: 18px;
-      letter-spacing: 0;
+      & {
+        font-weight: 700;
+        font-size: 18px;
+        letter-spacing: 0;
+      }
     }
   }
 }
@@ -364,7 +374,9 @@ ul {
     background: m($background);
     color: m($gray-extreme);
   }
-  z-index: 1100;
+  & {
+    z-index: 1100;
+  }
   .hover-help {
     display: none;
   }

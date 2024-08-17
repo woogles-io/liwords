@@ -99,7 +99,9 @@
         @include colorModed() {
           color: m($gray-medium);
         }
-        font-style: oblique;
+        & {
+          font-style: oblique;
+        }
       }
       .player-avatar:after {
         background: transparent;
@@ -131,8 +133,10 @@
         @include colorModed() {
           color: m($gray-extreme);
         }
-        font-style: normal;
-        font-weight: normal;
+        & {
+          font-style: normal;
+          font-weight: normal;
+        }
       }
     }
   }

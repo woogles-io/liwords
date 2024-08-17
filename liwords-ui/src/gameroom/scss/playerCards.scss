@@ -72,9 +72,11 @@
       @include colorModed() {
         background-color: m($primary-dark);
       }
-      margin: 3px;
-      border-radius: 4px;
-      flex: 1;
+      & {
+        margin: 3px;
+        border-radius: 4px;
+        flex: 1;
+      }
     }
 
     .player {
@@ -123,14 +125,18 @@
         @include colorModed() {
           color: m($background);
         }
-        font-weight: bold;
+        & {
+          font-weight: bold;
+        }
         &.timer {
           @include colorModed() {
             background-color: m($card-background);
             color: m($primary-dark);
             border: 1px solid m($primary-dark);
           }
-          font-weight: 500;
+          & {
+            font-weight: 500;
+          }
         }
       }
     }

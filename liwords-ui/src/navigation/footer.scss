@@ -14,11 +14,13 @@ footer {
 
   .footer-container {
     @include container;
-    padding: 18px;
-    display: flex;
-    flex-direction: column;
-    flex-wrap: wrap;
-    align-items: flex-start;
+    & {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
     & > * {
       min-width: 33%;
     }
@@ -84,7 +86,9 @@ footer {
     @include colorModed() {
       color: m($timer-out-dark);
     }
-    margin-left: 4px;
+    & {
+      margin-left: 4px;
+    }
   }
   .links-social {
     order: 7;
