@@ -11,12 +11,12 @@
   .ant-card.puzzle-info {
     .ant-card-head .ant-card-head-title {
       padding: 18px 6px;
-      @include colorModed() {
-        color: m($secondary);
-      }
       font-size: 13px;
       letter-spacing: 1.2px;
       text-transform: uppercase;
+      @include colorModed() {
+        color: m($secondary);
+      }
     }
     .ant-card-body {
       padding: 0 18px 60px;
@@ -40,13 +40,13 @@
       font-size: 14px;
     }
     .puzzle-hints {
-      .hint-prompt {
-        margin-top: 3px;
-      }
       margin: 0 0 24px;
       padding-top: 8px;
       @include colorModed() {
         border-top: 1px solid m($gray-subtle);
+      }
+      .hint-prompt {
+        margin-top: 3px;
       }
       button.ant-btn {
         margin: 3px 0;

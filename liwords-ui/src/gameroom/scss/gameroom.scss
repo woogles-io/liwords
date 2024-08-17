@@ -79,10 +79,10 @@ p.streak-loss {
       }
 
       .ant-card-extra {
-        @include type-default;
         font-weight: bold;
         line-height: 2em;
         font-size: 13px;
+        @include type-default;
       }
     }
   }
@@ -1193,6 +1193,8 @@ p.rune {
 .tile.preview:not(.over-board) {
   width: $tile-size-desktop;
   height: $tile-size-desktop;
+  margin: 2px;
+  transition: $tile-transition;
 
   @include colorModed() {
     background: m($tile-background);
@@ -1201,8 +1203,6 @@ p.rune {
   @include userTile() {
     background: ut($tile-background);
   }
-
-  margin: 2px;
 
   p.rune {
     font-size: $tile-font-size-desktop;
@@ -1231,8 +1231,6 @@ p.rune {
   @include userTile() {
     background: ut($tile-background);
   }
-
-  transition: $tile-transition;
 }
 
 .exchange .rack .tile {
@@ -1327,7 +1325,6 @@ p.rune {
   }
 
   .vc-distribution {
-    @include type-default;
     text-transform: uppercase;
     letter-spacing: 0.16em;
     font-size: 11px;
@@ -1335,6 +1332,7 @@ p.rune {
     display: flex;
     border-radius: 0 0 8px 8px;
 
+    @include type-default;
     @include colorModed() {
       background: m($primary-dark);
       color: m($background);
@@ -1426,7 +1424,6 @@ p.rune {
     top: -28px;
 
     li.ant-dropdown-menu-item {
-      @include type-default;
       font-weight: bold;
       font-size: 12px;
       height: 24px;
@@ -1434,6 +1431,7 @@ p.rune {
       width: 100px;
       line-height: 2.3em;
 
+      @include type-default;
       @include colorModed() {
         color: m($gray-extreme);
       }
@@ -1451,13 +1449,13 @@ p.rune {
   font-size: 14px;
 
   .tournament-name {
-    @include colorModed() {
-      color: m($secondary);
-    }
-
     font-size: 13px;
     letter-spacing: 1.2px;
     text-transform: uppercase;
+
+    @include colorModed() {
+      color: m($secondary);
+    }
   }
 
   &.ant-card .ant-card-body {
@@ -1567,12 +1565,12 @@ p.rune {
     .time-penalty,
     .tiles-left,
     .challenge {
+      display: block;
+      margin-bottom: 3px;
+
       @include colorModed() {
         color: m($timer-out-dark);
       }
-
-      display: block;
-      margin-bottom: 3px;
     }
 
     .challenge.unsuccessful {
@@ -1613,10 +1611,10 @@ p.rune {
           padding: 6px 0px 0px 0px;
         }
         .timeago {
+          padding-left: 12px;
           @include colorModed() {
             color: m($gray-subtle);
           }
-          padding-left: 12px;
         }
         .anticon-delete {
           padding-left: 12px;
@@ -2299,12 +2297,12 @@ p.rune {
   .ant-dropdown-menu,
   .ant-select-dropdown,
   .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+    z-index: 0;
+
     @include colorModed() {
       background: m($background);
       color: m($gray-extreme);
     }
-
-    z-index: 0;
   }
 
   .readable-text-color {

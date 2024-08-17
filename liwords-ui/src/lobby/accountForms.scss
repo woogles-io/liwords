@@ -61,11 +61,11 @@ div.account {
     .ant-select-selector,
     .ant-select-item,
     .ant-select-dropdown {
+      z-index: 1100;
       @include colorModed() {
         background: m($background);
         color: m($gray-extreme);
       }
-      z-index: 1100;
       .hover-help {
         display: none;
       }
@@ -125,6 +125,8 @@ div.account {
       }
     }
     .ant-row.ant-form-item.password {
+      margin-bottom: 12px;
+
       &,
       * {
         transition: none;
@@ -135,8 +137,6 @@ div.account {
         height: 26px;
         top: 6px;
       }
-
-      margin-bottom: 12px;
       .ant-form-item-explain {
         margin-top: 12px;
       }
@@ -170,6 +170,8 @@ div.account {
     margin-top: 6px;
   }
   .ant-row.ant-form-item.password {
+    margin-bottom: 12px;
+
     &,
     * {
       transition: none;
@@ -178,8 +180,6 @@ div.account {
       height: 48px;
       border-radius: 4px;
     }
-
-    margin-bottom: 12px;
     .ant-form-item-explain {
       margin-top: 12px;
     }
@@ -187,13 +187,13 @@ div.account {
   a {
     cursor: pointer;
     letter-spacing: 0;
-    @include colorModed() {
-      color: m($primary-dark);
-    }
     font-weight: bold;
     font-size: 13px;
     border: 0;
     outline: 0;
+    @include colorModed() {
+      color: m($primary-dark);
+    }
     &:hover,
     &:active {
       @include colorModed() {

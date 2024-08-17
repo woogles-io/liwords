@@ -1,8 +1,8 @@
 @use '../base.scss' as *;
 
 .profile {
-  @include container;
   padding: 0 24px 48px;
+  @include container;
   .settings-link {
     text-align: right;
     margin: 15px 0 0 0;
@@ -292,10 +292,10 @@
         @include type-deco;
         font-size: 12px;
         letter-spacing: 0;
+        text-transform: uppercase;
         @include colorModed() {
           color: m($timer-low-dark);
         }
-        text-transform: uppercase;
       }
     }
     .opponent-link {

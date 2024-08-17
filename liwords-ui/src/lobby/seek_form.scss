@@ -22,12 +22,12 @@
   }
 
   .ant-radio-button-wrapper:not(.ant-radio-button-wrapper-disabled) {
+    opacity: 0.9;
     @include colorModed() {
       background: m($background);
       border-color: m($gray-medium);
       color: m($gray-medium);
     }
-    opacity: 0.9;
     &:before {
       @include colorModed() {
         background: m($gray-medium);
@@ -35,13 +35,13 @@
     }
   }
   .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+    opacity: 1;
+    transition: none;
     @include colorModed() {
       border-color: m($primary-dark);
       color: m($gray-extreme);
       background: m($primary-light);
     }
-    opacity: 1;
-    transition: none;
     &:before {
       @include colorModed() {
         background: m($primary-dark);
@@ -65,11 +65,11 @@
   .ant-select-selector,
   .ant-select-item,
   .ant-select-dropdown {
+    z-index: 1100;
     @include colorModed() {
       background: m($background);
       color: m($gray-extreme);
     }
-    z-index: 1100;
     .hover-help {
       display: none;
     }

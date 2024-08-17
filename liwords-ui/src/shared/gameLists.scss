@@ -23,13 +23,13 @@
     }
   }
   .ant-table-thead > tr > th {
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
     font-size: 12px;
     font-weight: bold;
     letter-spacing: 0.16em;
     text-transform: uppercase;
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
     &.details {
       text-align: right;
     }
@@ -63,10 +63,10 @@
     display: flex;
     flex-direction: row;
     justify-content: space-around;
+    height: 36px;
     @include colorModed() {
       border-bottom: 1px solid m($off-background);
     }
-    height: 36px;
     .tab {
       padding: 0px 24px 6px;
       text-transform: uppercase;
@@ -185,9 +185,6 @@
         }
         td.players:after {
           content: 'Resume';
-          @include colorModed() {
-            color: m($black);
-          }
           text-align: center;
           font-size: 12px;
           font-weight: bold;
@@ -196,6 +193,9 @@
           position: absolute;
           top: 12px;
           left: 18px;
+          @include colorModed() {
+            color: m($black);
+          }
         }
       }
       &.outgoing {
@@ -220,9 +220,6 @@
           }
         }
         td.seeker:after {
-          @include colorModed() {
-            color: m($gray-extreme);
-          }
           content: 'Cancel';
           text-align: center;
           font-size: 12px;
@@ -232,6 +229,9 @@
           position: absolute;
           top: 12px;
           left: 18px;
+          @include colorModed() {
+            color: m($gray-extreme);
+          }
         }
       }
     }
@@ -248,17 +248,17 @@
     display: none;
   }
   h4 {
-    @include type-default;
-    @include colorModed() {
-      color: m($list-header-text);
-      background-color: m($list-header);
-    }
     font-size: 22px;
     font-weight: bold;
     text-align: left;
     padding: 12px;
     letter-spacing: 0;
     margin: 0;
+    @include type-default;
+    @include colorModed() {
+      color: m($list-header-text);
+      background-color: m($list-header);
+    }
   }
 
   td.opponent {
@@ -285,11 +285,11 @@
   td.details {
     text-align: right;
     .anticon-fund {
+      font-size: 18px;
+      margin-left: 6px;
       @include colorModed() {
         color: m($primary-dark);
       }
-      font-size: 18px;
-      margin-left: 6px;
     }
     .challenge-rule {
       font-size: 14px;
@@ -307,10 +307,10 @@
         @include type-deco;
         font-size: 12px;
         letter-spacing: 0;
+        text-transform: uppercase;
         @include colorModed() {
           color: m($timer-low-dark);
         }
-        text-transform: uppercase;
       }
     }
   }

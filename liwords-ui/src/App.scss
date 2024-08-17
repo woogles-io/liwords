@@ -11,10 +11,10 @@
   font-family: $font-default;
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   @include colorModed() {
     background-color: m($background);
   }
-  flex-direction: column;
   p,
   h1,
   h2,
@@ -57,23 +57,23 @@
   height: 0.8em;
 }
 .ant-dropdown.user-menu {
+  min-width: 200px;
   @include colorModed() {
     background-color: m($background);
     box-shadow: m($shadow);
   }
-  min-width: 200px;
 }
 a,
 button.ant-btn-link,
 button.link {
   cursor: pointer;
+  font-weight: bold;
+  border: 0;
+  outline: 0;
   @include colorModed() {
     color: m($primary-dark);
     background: transparent;
   }
-  font-weight: bold;
-  border: 0;
-  outline: 0;
   &:hover,
   &:active {
     @include colorModed() {
@@ -122,16 +122,16 @@ button.link {
 }
 
 .donations {
-  @include container;
   padding: 48px 18px;
+  @include container;
 
   &.donation-success {
     text-align: center;
     h4 {
-      @include type-default;
       font-weight: 700;
       font-size: 18px;
       letter-spacing: 0;
+      @include type-default;
     }
   }
 }
@@ -360,11 +360,11 @@ ul {
 .ant-select-item,
 .ant-select-dropdown,
 .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+  z-index: 1100;
   @include colorModed() {
     background: m($background);
     color: m($gray-extreme);
   }
-  z-index: 1100;
   .hover-help {
     display: none;
   }

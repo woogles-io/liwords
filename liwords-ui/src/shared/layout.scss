@@ -20,7 +20,6 @@ span.user-context-menu.ant-dropdown-trigger {
 .lobby,
 .game-table,
 .top-header .container {
-  @include container();
   padding: 12px 12px 0px;
   display: flex;
   flex-wrap: wrap;
@@ -28,6 +27,7 @@ span.user-context-menu.ant-dropdown-trigger {
   justify-content: center;
   align-items: flex-start;
   margin: 0 auto;
+  @include container();
 }
 .top-header .container {
   flex-wrap: nowrap;
