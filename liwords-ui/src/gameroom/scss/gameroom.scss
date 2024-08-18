@@ -930,12 +930,12 @@ p.streak-loss {
     height: $tile-size-desktop;
     margin: 0 6px;
     padding: 1px 0 0;
-    line-height: 0;
 
     span {
       font-family: $font-tile;
       font-weight: normal;
       font-size: 28px;
+      line-height: 0;
     }
 
     .anticon {
