@@ -441,7 +441,7 @@ export const SeekForm = (props: Props) => {
       playerVsBot: props.vsBot || false,
       botType: val.botType,
       tournamentID: props.tournamentID || '',
-      variant: val.variant as string,
+      variant: (val.variant as string) || '',
       receiverIsPermanent: receiver.displayName !== '',
       // these are independent values in the backend but for now will be
       // modified together on the front end.
