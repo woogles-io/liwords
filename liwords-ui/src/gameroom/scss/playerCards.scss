@@ -122,6 +122,7 @@
         @include type-monospace;
         font-size: 22px;
         line-height: 28px;
+        align-items: flex-start;
         @include colorModed() {
           color: m($background);
         }
