@@ -1,4 +1,5 @@
 import { MatchUser } from '../gen/api/proto/ipc/omgseeks_pb';
+import { BotTypesEnum } from './bots';
 import { sendSeek } from './sought_game_interactions';
 
 it('tests sendSeek', () => {
@@ -25,7 +26,7 @@ it('tests sendSeek', () => {
     receiverIsPermanent: false,
     minRatingRange: -500,
     maxRatingRange: 500,
-    botType: undefined,
+    botType: BotTypesEnum.MASTER,
     variant: '',
   };
 
