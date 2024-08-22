@@ -8,10 +8,10 @@ require (
 	github.com/TwiN/go-away v1.6.13
 	github.com/aws/aws-sdk-go-v2 v1.30.4
 	github.com/aws/aws-sdk-go-v2/config v1.27.28
-	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.17.11
-	github.com/aws/aws-sdk-go-v2/service/ecs v1.45.0
-	github.com/aws/aws-sdk-go-v2/service/lambda v1.56.4
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.59.0
+	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.17.12
+	github.com/aws/aws-sdk-go-v2/service/ecs v1.45.1
+	github.com/aws/aws-sdk-go-v2/service/lambda v1.58.0
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.60.0
 	github.com/aws/smithy-go v1.20.4
 	github.com/domino14/macondo v0.9.6
 	github.com/domino14/word-golib v0.2.0
@@ -126,9 +126,9 @@ require (
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.24.0 // indirect
 	golang.org/x/text v0.17.0 // indirect
-	gonum.org/v1/gonum v0.15.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240814211410-ddb44dafa142 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240814211410-ddb44dafa142 // indirect
+	gonum.org/v1/gonum v0.15.1 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240820151423-278611b39280 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240820151423-278611b39280 // indirect
 	google.golang.org/grpc v1.65.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
