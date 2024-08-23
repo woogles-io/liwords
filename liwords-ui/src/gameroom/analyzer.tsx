@@ -738,7 +738,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   );
   const equityBase = React.useMemo(
     () =>
-      showEquityLoss ? moves?.find((x) => x.valid ?? true)?.equity ?? 0 : 0,
+      showEquityLoss ? (moves?.find((x) => x.valid ?? true)?.equity ?? 0) : 0,
     [moves, showEquityLoss]
   );
   const renderAnalyzerMoves = useMemo(

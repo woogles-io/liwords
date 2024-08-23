@@ -14,9 +14,11 @@
       @include colorModed() {
         color: m($secondary);
       }
-      font-size: 13px;
-      letter-spacing: 1.2px;
-      text-transform: uppercase;
+      & {
+        font-size: 13px;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+      }
     }
     .ant-card-body {
       padding: 0 18px 60px;
@@ -43,8 +45,10 @@
       .hint-prompt {
         margin-top: 3px;
       }
-      margin: 0 0 24px;
-      padding-top: 8px;
+      & {
+        margin: 0 0 24px;
+        padding-top: 8px;
+      }
       @include colorModed() {
         border-top: 1px solid m($gray-subtle);
       }
@@ -80,7 +84,8 @@
         padding: 2px 6px;
         margin-left: 0.5em;
       }
-      .anticon-eye, .anticon-eye-invisible {
+      .anticon-eye,
+      .anticon-eye-invisible {
         cursor: pointer;
         margin-left: 0.5em;
         font-size: 18px;
@@ -135,7 +140,8 @@
     }
   }
   .ant-card.puzzle-info {
-    .ant-card-extra, .game-settings {
+    .ant-card-extra,
+    .game-settings {
       text-transform: capitalize;
     }
     .user-context-menu {
@@ -149,7 +155,8 @@
     .ant-card-body {
       display: flex;
     }
-    .player, .puzzle {
+    .player,
+    .puzzle {
       display: flex;
       align-items: center;
       width: 100%;
@@ -261,7 +268,8 @@
         background: ut($tile-background-secondary);
       }
     }
-    p.rune, .point-value {
+    p.rune,
+    .point-value {
       @include colorModed() {
         color: m($background);
       }
@@ -293,7 +301,8 @@
         }
       }
     }
-    p.rune, p.point-value {
+    p.rune,
+    p.point-value {
       @include colorModed() {
         color: m($tile-last-text);
       }
@@ -302,9 +311,9 @@
       }
     }
   }
-
 }
-.puzzle-container .stars, .ant-modal-body .stars {
+.puzzle-container .stars,
+.ant-modal-body .stars {
   margin: 9px 0 18px;
   .anticon {
     font-size: 38px;
@@ -328,7 +337,8 @@
   .stars {
     margin-bottom: 12px;
   }
-  button, button.ant-btn {
+  button,
+  button.ant-btn {
     font-size: 14px;
   }
   .invalid-plays {

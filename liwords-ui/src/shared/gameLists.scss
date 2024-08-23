@@ -11,11 +11,11 @@
     //   color: m($column-sorter);
     // }
   }
-//   .ant-table-thead > tr > th:hover {
-//     @include colorModed() {
-//       background: m($off-background);
-//     }
-//   }
+  //   .ant-table-thead > tr > th:hover {
+  //     @include colorModed() {
+  //       background: m($off-background);
+  //     }
+  //   }
   .ant-table-thead > tr,
   .ant-table-tbody > tr {
     @include colorModed() {
@@ -26,10 +26,12 @@
     @include colorModed() {
       color: m($gray-extreme);
     }
-    font-size: 12px;
-    font-weight: bold;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
+    & {
+      font-size: 12px;
+      font-weight: bold;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
     &.details {
       text-align: right;
     }
@@ -66,7 +68,9 @@
     @include colorModed() {
       border-bottom: 1px solid m($off-background);
     }
-    height: 36px;
+    & {
+      height: 36px;
+    }
     .tab {
       padding: 0px 24px 6px;
       text-transform: uppercase;
@@ -188,14 +192,16 @@
           @include colorModed() {
             color: m($black);
           }
-          text-align: center;
-          font-size: 12px;
-          font-weight: bold;
-          letter-spacing: 0.3em;
-          text-transform: uppercase;
-          position: absolute;
-          top: 12px;
-          left: 18px;
+          & {
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            position: absolute;
+            top: 12px;
+            left: 18px;
+          }
         }
       }
       &.outgoing {
@@ -223,15 +229,17 @@
           @include colorModed() {
             color: m($gray-extreme);
           }
-          content: 'Cancel';
-          text-align: center;
-          font-size: 12px;
-          font-weight: bold;
-          letter-spacing: 0.3em;
-          text-transform: uppercase;
-          position: absolute;
-          top: 12px;
-          left: 18px;
+          & {
+            content: 'Cancel';
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            position: absolute;
+            top: 12px;
+            left: 18px;
+          }
         }
       }
     }
@@ -253,12 +261,14 @@
       color: m($list-header-text);
       background-color: m($list-header);
     }
-    font-size: 22px;
-    font-weight: bold;
-    text-align: left;
-    padding: 12px;
-    letter-spacing: 0;
-    margin: 0;
+    & {
+      font-size: 22px;
+      font-weight: bold;
+      text-align: left;
+      padding: 12px;
+      letter-spacing: 0;
+      margin: 0;
+    }
   }
 
   td.opponent {
@@ -288,8 +298,10 @@
       @include colorModed() {
         color: m($primary-dark);
       }
-      font-size: 18px;
-      margin-left: 6px;
+      & {
+        font-size: 18px;
+        margin-left: 6px;
+      }
     }
     .challenge-rule {
       font-size: 14px;
@@ -310,7 +322,9 @@
         @include colorModed() {
           color: m($timer-low-dark);
         }
-        text-transform: uppercase;
+        & {
+          text-transform: uppercase;
+        }
       }
     }
   }

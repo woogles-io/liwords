@@ -256,8 +256,8 @@ const GameControls = React.memo((props: Props) => {
     }
   }, [currentPopUp, actualCurrentPopUp]);
 
-  const passButton = useRef<HTMLElement>(null);
-  const challengeButton = useRef<HTMLElement>(null);
+  const passButton = useRef<HTMLButtonElement>(null);
+  const challengeButton = useRef<HTMLButtonElement>(null);
 
   const darkMode = useMemo(
     () => localStorage?.getItem('darkMode') === 'true',

@@ -2,11 +2,15 @@
 
 .settings {
   @include container;
-  @include type-default;
-  padding: 51px 24px 48px;
-  line-height: 20px;
-  display: flex;
-  justify-content: center;
+  & {
+    @include type-default;
+  }
+  & {
+    padding: 51px 24px 48px;
+    line-height: 20px;
+    display: flex;
+    justify-content: center;
+  }
   &.stand-alone {
     flex-direction: column;
     align-items: center;
@@ -21,7 +25,9 @@
     @include colorModed() {
       color: m($timer-out-dark);
     }
-    margin-right: 6px;
+    & {
+      margin-right: 6px;
+    }
   }
   h3 {
     font-family: $font-default;
@@ -46,10 +52,12 @@
       @include colorModed() {
         color: m($gray-medium);
       }
-      cursor: pointer;
-      padding-right: 14px;
-      padding-top: 8px;
-      border-right: 2px solid transparent;
+      & {
+        cursor: pointer;
+        padding-right: 14px;
+        padding-top: 8px;
+        border-right: 2px solid transparent;
+      }
       &:hover,
       &.active {
         @include colorModed() {
@@ -179,7 +187,9 @@
     }
   }
   .preferences {
-    .tile-order, .tile-style, .board-style {
+    .tile-order,
+    .tile-style,
+    .board-style {
       font-weight: bold;
     }
     .tile-order-select {
@@ -240,11 +250,13 @@
   .avatar-section,
   .no-avatar-section {
     @include container;
-    padding: 0 24px;
-    display: flex;
-    flex-direction: row;
-    justify-content: left;
-    align-items: center;
+    & {
+      padding: 0 24px;
+      display: flex;
+      flex-direction: row;
+      justify-content: left;
+      align-items: center;
+    }
 
     .ant-btn {
       font-size: 14px;
@@ -292,7 +304,8 @@
       @include colorModed() {
         background: m($background);
       }
-      .anticon, .anticon:hover {
+      .anticon,
+      .anticon:hover {
         @include colorModed() {
           color: m($gray-medium);
           background: m($background);
@@ -339,7 +352,9 @@
     border-radius: 4px;
     margin-bottom: 18px;
   }
-  .ant-select-selector, .ant-select-item , .ant-select-dropdown{
+  .ant-select-selector,
+  .ant-select-item,
+  .ant-select-dropdown {
     @include colorModed() {
       background: m($background);
       color: m($gray-extreme);
@@ -443,9 +458,11 @@
       @include colorModed() {
         background: m($primary-dark);
       }
-      position: relative;
-      width: 296px;
-      height: 296px;
+      & {
+        position: relative;
+        width: 296px;
+        height: 296px;
+      }
     }
   }
   .ant-modal-footer {
@@ -461,7 +478,8 @@
       margin: 16px;
       width: 100%;
       top: 2px;
-      .ant-slider-track, .ant-slider-rail {
+      .ant-slider-track,
+      .ant-slider-rail {
         @include colorModed() {
           background: m($gray-extreme);
         }
@@ -473,7 +491,7 @@
         // border-radius: 10px;
         @include colorModed() {
           background-color: m($primary-dark);
-          border-color: m($primary-dark)
+          border-color: m($primary-dark);
         }
       }
     }
@@ -482,7 +500,9 @@
     }
   }
 }
-.tile-selection, .board-selection, .puzzle-lexicon-selection {
+.tile-selection,
+.board-selection,
+.puzzle-lexicon-selection {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -518,7 +538,7 @@
   }
   .anticon-reload {
     @include colorModed() {
-        color: m($primary-midDark);
-      }
+      color: m($primary-midDark);
+    }
   }
 }

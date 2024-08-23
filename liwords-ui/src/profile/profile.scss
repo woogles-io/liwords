@@ -2,7 +2,9 @@
 
 .profile {
   @include container;
-  padding: 0 24px 48px;
+  & {
+    padding: 0 24px 48px;
+  }
   .settings-link {
     text-align: right;
     margin: 15px 0 0 0;
@@ -26,7 +28,6 @@
       color: m($gray-extreme);
     }
   }
-
 
   header {
     margin: 36px 0 0;
@@ -72,7 +73,7 @@
       width: 50%;
     }
     .aggregate-item {
-      width: calc(100%/3);
+      width: calc(100% / 3);
       height: 100px;
       margin: 0;
       display: flex;
@@ -97,9 +98,9 @@
     }
   }
 
-
-
-  .variant-stats, .puzzle-stats, .game-items {
+  .variant-stats,
+  .puzzle-stats,
+  .game-items {
     display: inline-block;
     margin: 6px;
     width: 100%;
@@ -144,7 +145,6 @@
     }
   }
 
-
   .ant-carousel {
     margin-bottom: 24px;
     .slick-slide {
@@ -154,7 +154,7 @@
     .slick-dots-bottom {
       bottom: -18px;
     }
-    .slick-dots{
+    .slick-dots {
       align-items: baseline;
     }
     .slick-dots li {
@@ -194,7 +194,7 @@
     }
 
     .game-items {
-      .slick-dots li button{
+      .slick-dots li button {
         @include colorModed() {
           background: m($gray-medium);
         }
@@ -205,7 +205,6 @@
         }
       }
     }
-
   }
 
   .game-info {
@@ -258,7 +257,8 @@
       div {
         padding: 9px 0 12px;
       }
-      h3, p {
+      h3,
+      p {
         margin: 0;
       }
       h3 {
@@ -275,7 +275,7 @@
       display: block;
       height: 140px;
     }
-    .time-control{
+    .time-control {
       text-transform: capitalize;
     }
     .challenge-rule {
@@ -297,7 +297,9 @@
         @include colorModed() {
           color: m($timer-low-dark);
         }
-        text-transform: uppercase;
+        & {
+          text-transform: uppercase;
+        }
       }
     }
     .opponent-link {
@@ -339,8 +341,8 @@
         text-align: center;
       }
     }
-    .ant-card-actions>li>span>.anticon,
-    .ant-card-actions>li>span a:not(.ant-btn){
+    .ant-card-actions > li > span > .anticon,
+    .ant-card-actions > li > span a:not(.ant-btn) {
       @include colorModed() {
         color: m($primary-dark);
       }
@@ -396,7 +398,7 @@
     }
   }
   // hide puzzle ratings for now
-  tr[data-row-key*="puzzle"] {
+  tr[data-row-key*='puzzle'] {
     display: none;
   }
 }

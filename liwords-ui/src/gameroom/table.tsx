@@ -503,7 +503,7 @@ export const Table = React.memo((props: Props) => {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const searchedTurn = useMemo(() => searchParams.get('turn'), [searchParams]);
-  const turnAsStr = us && !gameDone ? '' : searchedTurn ?? ''; // Do not examine our current games.
+  const turnAsStr = us && !gameDone ? '' : (searchedTurn ?? ''); // Do not examine our current games.
   const hasActivatedExamineRef = useRef(false);
   const [autocorrectURL, setAutocorrectURL] = useState(false);
   useEffect(() => {

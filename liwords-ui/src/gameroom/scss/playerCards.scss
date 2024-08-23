@@ -35,13 +35,12 @@
   .ant-card-body {
     display: flex;
   }
-  .player-card{
+  .player-card {
     width: 50%;
     &:last-child .player {
       order: 0;
     }
   }
-
 }
 
 .player-cards.ant-card {
@@ -73,9 +72,11 @@
       @include colorModed() {
         background-color: m($primary-dark);
       }
-      margin: 3px;
-      border-radius: 4px;
-      flex: 1;
+      & {
+        margin: 3px;
+        border-radius: 4px;
+        flex: 1;
+      }
     }
 
     .player {
@@ -121,25 +122,30 @@
         @include type-monospace;
         font-size: 22px;
         line-height: 28px;
+        align-items: flex-start;
         @include colorModed() {
           color: m($background);
         }
-        font-weight: bold;
+        & {
+          font-weight: bold;
+        }
         &.timer {
           @include colorModed() {
             background-color: m($card-background);
             color: m($primary-dark);
             border: 1px solid m($primary-dark);
           }
-          font-weight: 500;
+          & {
+            font-weight: 500;
+          }
         }
       }
     }
     &:last-child {
-       .player {
-         order: 2;
-       }
-     }
+      .player {
+        order: 2;
+      }
+    }
 
     &.on-turn {
       @include colorModed() {
@@ -162,7 +168,8 @@
         @include colorModed() {
           background: m($timer-low-light);
         }
-        p, .player-details {
+        p,
+        .player-details {
           color: #414141; // theming outlier
         }
         a {
@@ -176,7 +183,7 @@
           }
           &.timer {
             color: #414141; // theming outlier
-            background: white;// theming outlier
+            background: white; // theming outlier
             @include colorModed() {
               border-color: m($timer-low-dark);
             }
@@ -256,5 +263,3 @@
     }
   }
 }
-
-

@@ -1,4 +1,4 @@
-FROM golang:latest as base
+FROM golang:latest AS base
 
 RUN apt-get update && apt-get install -y curl
 
@@ -34,8 +34,7 @@ FROM node:latest
 RUN useradd unprivileged
 
 WORKDIR /opt
-RUN npm install @bufbuild/protoc-gen-es
-RUN npm install @bufbuild/protoc-gen-connect-web
+RUN npm install @bufbuild/protoc-gen-es @connectrpc/protoc-gen-connect-es
 
 COPY --from=base /go/bin/protoc-gen-go /opt
 COPY --from=base /go/bin/protoc-gen-connect-go /opt

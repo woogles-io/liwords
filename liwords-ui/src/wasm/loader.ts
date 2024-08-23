@@ -6,7 +6,10 @@ class Loadable {
 
   private fetchPromise?: Promise<Response>;
 
-  constructor(readonly cacheKey: string, readonly path: string) {}
+  constructor(
+    readonly cacheKey: string,
+    readonly path: string
+  ) {}
 
   startFetch = async () => {
     if (this.whichStep > 0) return;
@@ -127,10 +130,10 @@ const loadablesByKey: { [key: string]: Array<Loadable> } = {};
         extension === '.kwg'
           ? `kwg/${baseFilename}`
           : extension === '.kad'
-          ? `kwg/${baseFilename}.WordSmog`
-          : extension === '.klv2'
-          ? `klv/${baseFilename}`
-          : null;
+            ? `kwg/${baseFilename}.WordSmog`
+            : extension === '.klv2'
+              ? `klv/${baseFilename}`
+              : null;
       if (cacheKey) {
         lexicons[lexicon] = true;
         loadables[filename] = new Loadable(cacheKey, `/wasm/2024/${filename}`);

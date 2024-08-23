@@ -205,7 +205,7 @@ func (ps *PuzzleService) StartPuzzleGenJob(ctx context.Context, req *connect.Req
 	// This message is meant to be copy-pasted from the terminal
 	// when run locally. On production, though, it will try to execute
 	// an ECS task.
-	fmt.Printf("docker-compose run --rm -w /opt/program/cmd/puzzlegen app go run . '%s'\n", string(bts))
+	fmt.Printf("docker compose run --rm -w /opt/program/cmd/puzzlegen app go run . '%s'\n", string(bts))
 
 	err = invokeECSPuzzleGen(ctx, string(bts), ps.ecsCluster, ps.puzzleGenTaskDef)
 	if err != nil {

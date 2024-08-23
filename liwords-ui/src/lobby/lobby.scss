@@ -77,12 +77,16 @@
         font-weight: 200;
       }
 
-      &:hover h4, &:hover p{
+      &:hover h4,
+      &:hover p {
         @include colorModed() {
-          background-color: mix(m($primary-middle), m($background), $weight: 50%);
+          background-color: mix(
+            m($primary-middle),
+            m($background),
+            $weight: 50%
+          );
         }
       }
-
     }
   }
 }
@@ -103,9 +107,11 @@
     @include colorModed() {
       color: m($gray-medium);
     }
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    margin: 16px 0 8px;
+    & {
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      margin: 16px 0 8px;
+    }
   }
   h3.tournament-name {
     font-size: 24px;
@@ -132,7 +138,9 @@
     @include colorModed() {
       color: m($gray-extreme);
     }
-    margin-left: 48px;
+    & {
+      margin-left: 48px;
+    }
   }
 }
 

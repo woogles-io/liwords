@@ -14,11 +14,13 @@ footer {
 
   .footer-container {
     @include container;
-    padding: 18px;
-    display: flex;
-    flex-direction: column;
-    flex-wrap: wrap;
-    align-items: flex-start;
+    & {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
     & > * {
       min-width: 33%;
     }
@@ -27,7 +29,11 @@ footer {
       flex-direction: row;
       align-items: center;
     }
-    p, a, h1, h2, h3 {
+    p,
+    a,
+    h1,
+    h2,
+    h3 {
       font-size: 15px;
       font-weight: 700;
       line-height: 27px;
@@ -80,7 +86,9 @@ footer {
     @include colorModed() {
       color: m($timer-out-dark);
     }
-    margin-left: 4px;
+    & {
+      margin-left: 4px;
+    }
   }
   .links-social {
     order: 7;
@@ -92,7 +100,8 @@ footer {
     a {
       display: inline;
     }
-    .anticon, .fa-discord {
+    .anticon,
+    .fa-discord {
       font-size: 24px;
       margin-right: 6px;
       @include colorModed() {

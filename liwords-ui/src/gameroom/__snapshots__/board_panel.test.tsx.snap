@@ -2377,7 +2377,7 @@ exports[`renders a game board panel 1`] = `
           class="rack-container"
         >
           <button
-            class="ant-btn css-dev-only-do-not-override-1qhpsh8 ant-btn-circle ant-btn-primary ant-btn-icon-only"
+            class="ant-btn css-dev-only-do-not-override-1gwfwyx ant-btn-circle ant-btn-primary ant-btn-icon-only"
             type="button"
           >
             <span
@@ -2417,7 +2417,7 @@ exports[`renders a game board panel 1`] = `
             />
           </div>
           <button
-            class="ant-btn css-dev-only-do-not-override-1qhpsh8 ant-btn-circle ant-btn-primary ant-btn-icon-only"
+            class="ant-btn css-dev-only-do-not-override-1gwfwyx ant-btn-circle ant-btn-primary ant-btn-icon-only"
             type="button"
           >
             <span
@@ -2457,7 +2457,7 @@ exports[`renders a game board panel 1`] = `
           class="secondary-controls"
         >
           <button
-            class="ant-btn css-dev-only-do-not-override-1qhpsh8 ant-btn-default ant-dropdown-trigger"
+            class="ant-btn css-dev-only-do-not-override-1gwfwyx ant-btn-default ant-dropdown-trigger"
             disabled=""
             type="button"
           >
@@ -2466,7 +2466,7 @@ exports[`renders a game board panel 1`] = `
             </span>
           </button>
           <button
-            class="ant-btn css-dev-only-do-not-override-1qhpsh8 ant-btn-default"
+            class="ant-btn css-dev-only-do-not-override-1gwfwyx ant-btn-default"
             disabled=""
             type="button"
           >
@@ -2484,7 +2484,7 @@ exports[`renders a game board panel 1`] = `
           class="secondary-controls"
         >
           <button
-            class="ant-btn css-dev-only-do-not-override-1qhpsh8 ant-btn-default"
+            class="ant-btn css-dev-only-do-not-override-1gwfwyx ant-btn-default"
             disabled=""
             type="button"
           >
@@ -2498,7 +2498,7 @@ exports[`renders a game board panel 1`] = `
             </span>
           </button>
           <button
-            class="ant-btn css-dev-only-do-not-override-1qhpsh8 ant-btn-default"
+            class="ant-btn css-dev-only-do-not-override-1gwfwyx ant-btn-default"
             disabled=""
             type="button"
           >
@@ -2513,7 +2513,7 @@ exports[`renders a game board panel 1`] = `
           </button>
         </div>
         <button
-          class="ant-btn css-dev-only-do-not-override-1qhpsh8 ant-btn-primary play"
+          class="ant-btn css-dev-only-do-not-override-1gwfwyx ant-btn-primary play"
           disabled=""
           type="button"
         >

@@ -29,7 +29,7 @@ You have two options for developing locally.
 
 5. Run the following command in one of your terminal tabs, to run the backend, frontend, and databases.
 
-`docker-compose up`
+`docker compose up`
 
 6. Edit your `hosts` file, typically `/etc/hosts`, by adding this line:
 
@@ -40,7 +40,7 @@ You have two options for developing locally.
 (If you are on Windows and you want to use Chrome, you cannot use `.localhost`. Use `liwords.local` in your `C:\Windows\System32\drivers\etc\hosts`.)
 
 7. Access the app at http://liwords.localhost
-8. If you wish to add a new front-end package, you need to run `npm i` INSIDE the Docker container. You can do this like: `docker-compose exec frontend npm i` when the docker-compose is up.
+8. If you wish to add a new front-end package, you need to run `npm i` INSIDE the Docker container. You can do this like: `docker compose exec frontend npm i` when the docker compose is up.
 9. You can register a user by going to http://liwords.localhost/ and clicking on `SIGN UP` at the top right.
 
 To have two players play each other you must have one browser window in incognito mode, or use another browser.
@@ -51,7 +51,7 @@ To have two players play each other you must have one browser window in incognit
 
 **Tips**
 
-You can do `docker-compose up app` and `docker-compose up frontend` in two different terminal windows to bring these up separately. This may be desirable, for example, when making backend changes and not wanting to restart the frontend compilation everytime something changes.
+You can do `docker compose up app` and `docker compose up frontend` in two different terminal windows to bring these up separately. This may be desirable, for example, when making backend changes and not wanting to restart the frontend compilation everytime something changes.
 
 #### Hybrid stack on Docker
 
@@ -61,7 +61,7 @@ You can do `docker-compose up app` and `docker-compose up frontend` in two diffe
 3. Download and install Go from golang.org
 4. Copy the `local_skeleton.env` file in this directory to `local.env`, and modify the copy to match your local paths. (See all the variables ending in _PATH).
 5. Open up a few tabs or panels in your terminal so you can bring up the services separately. In each tab, you can do `source local.env`, or alternatively you can put this command in your profile to do it automatically.
-6. Bring up the `dc-local-services.yml` file with `docker-compose -f dc-local-services.yml up` in one tab.
+6. Bring up the `dc-local-services.yml` file with `docker compose -f dc-local-services.yml up` in one tab.
 7. You can bring up the other services in your other tabs:
 - For the api server, do `go run cmd/liwords-api/*.go`
 - For the socket server, do `go run cmd/socketsrv/main.go` in the `liwords-socket` repo.
@@ -75,7 +75,7 @@ To have two players play each other you must have one browser window in incognit
 
 10. To register a bot, register a user the regular way. Then run this following script, replacing the `$1` with the bot username you just registered.
 
-`docker-compose exec db psql -U postgres liwords -c "UPDATE users SET internal_bot='t' WHERE username = '$1';"`
+`docker compose exec db psql -U postgres liwords -c "UPDATE users SET internal_bot='t' WHERE username = '$1';"`
 
 
 
@@ -99,13 +99,13 @@ If you change any of the `.proto` files (in this repo or in the Macondo repo) yo
 
 To do so, run in this directory:
 
-`docker-compose run --rm goutils ./build-protobuf.sh`
+`docker compose run --rm goutils ./build-protobuf.sh`
 
 ### sqlc
 
 We use `sqlc` for generating Go code from our `.sql` files. If you create new `.sql` files in `db/migrations` or `db/queries` you can rerun sqlc as follows:
 
-`docker-compose run --rm goutils sqlc generate`
+`docker compose run --rm goutils sqlc generate`
 
 ### Attributions
 

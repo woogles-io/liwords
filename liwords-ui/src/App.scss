@@ -14,7 +14,9 @@
   @include colorModed() {
     background-color: m($background);
   }
-  flex-direction: column;
+  & {
+    flex-direction: column;
+  }
   p,
   h1,
   h2,
@@ -61,7 +63,9 @@
     background-color: m($background);
     box-shadow: m($shadow);
   }
-  min-width: 200px;
+  & {
+    min-width: 200px;
+  }
 }
 a,
 button.ant-btn-link,
@@ -71,9 +75,11 @@ button.link {
     color: m($primary-dark);
     background: transparent;
   }
-  font-weight: bold;
-  border: 0;
-  outline: 0;
+  & {
+    font-weight: bold;
+    border: 0;
+    outline: 0;
+  }
   &:hover,
   &:active {
     @include colorModed() {
@@ -81,7 +87,8 @@ button.link {
     }
   }
 }
-button.ant-btn-link, button.link {
+button.ant-btn-link,
+button.link {
   @include colorModed() {
     color: m($primary-dark);
   }
@@ -122,15 +129,19 @@ button.ant-btn-link, button.link {
 
 .donations {
   @include container;
-  padding: 48px 18px;
+  & {
+    padding: 48px 18px;
+  }
 
   &.donation-success {
     text-align: center;
     h4 {
       @include type-default;
-      font-weight: 700;
-      font-size: 18px;
-      letter-spacing: 0;
+      & {
+        font-weight: 700;
+        font-size: 18px;
+        letter-spacing: 0;
+      }
     }
   }
 }
@@ -173,7 +184,6 @@ button.ant-btn-link, button.link {
 .ant-form-item .ant-select-selection-item-content {
   color: #777777;
 }
-
 
 h1,
 h2,
@@ -222,8 +232,8 @@ ul {
     box-shadow: m($shadow);
   }
 }
-.App, .custom-tags {
-
+.App,
+.custom-tags {
   .ant-tag {
     font-weight: 800;
     color: #414141;
@@ -305,7 +315,7 @@ ul {
   }
 
   .ant-tag-volcano,
-  .ant-tag-loss{
+  .ant-tag-loss {
     background: #b3263c;
     color: #ffffff;
     border-color: #b3263c;
@@ -340,7 +350,7 @@ ul {
 
 .ant-dropdown-menu,
 .ant-select-dropdown {
-//   padding: 0;
+  //   padding: 0;
   z-index: 1100;
   @include colorModed() {
     background: m($background);
@@ -364,7 +374,9 @@ ul {
     background: m($background);
     color: m($gray-extreme);
   }
-  z-index: 1100;
+  & {
+    z-index: 1100;
+  }
   .hover-help {
     display: none;
   }
@@ -388,8 +400,8 @@ ul {
 .ant-form-item input,
 .ant-form-item textarea,
 .ant-select-single:not(.ant-select-customize-input)
-.ant-select-selector
-.ant-select-selection-search-input {
+  .ant-select-selector
+  .ant-select-selection-search-input {
   @include colorModed() {
     background: m($background);
     color: m($gray-extreme);
@@ -500,11 +512,11 @@ ul {
   }
 }
 .ant-popconfirm-inner {
-    @include colorModed() {
-      background-color: m($card-background);
-      color: m($gray-extreme);
-    }
+  @include colorModed() {
+    background-color: m($card-background);
+    color: m($gray-extreme);
   }
+}
 
 .ant-modal-close-x {
   @include colorModed() {
@@ -517,10 +529,10 @@ ul {
   }
 }
 .ant-popconfirm-message {
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
+  @include colorModed() {
+    color: m($gray-extreme);
   }
+}
 .ant-popover-placement-top > .ant-popover-content > .ant-popover-arrow,
 .ant-popover-placement-topLeft > .ant-popover-content > .ant-popover-arrow,
 .ant-popover-placement-topRight > .ant-popover-content > .ant-popover-arrow {
@@ -531,16 +543,23 @@ ul {
 }
 
 .ant-popconfirm-placement-top > .ant-popconfirm-content > .ant-popconfirm-arrow,
-.ant-popconfirm-placement-topLeft > .ant-popconfirm-content > .ant-popconfirm-arrow,
-.ant-popconfirm-placement-topRight > .ant-popconfirm-content > .ant-popconfirm-arrow {
+.ant-popconfirm-placement-topLeft
+  > .ant-popconfirm-content
+  > .ant-popconfirm-arrow,
+.ant-popconfirm-placement-topRight
+  > .ant-popconfirm-content
+  > .ant-popconfirm-arrow {
   @include colorModed() {
     border-right-color: m($card-background);
     border-bottom-color: m($card-background);
   }
 }
 
-
-.ant-collapse, .ant-collapse-item, .ant-collapse-header, .ant-collapse-content, .ant-collapse-content-box {
+.ant-collapse,
+.ant-collapse-item,
+.ant-collapse-header,
+.ant-collapse-content,
+.ant-collapse-content-box {
   @include colorModed() {
     background-color: m($card-background);
     color: m($gray-extreme);
@@ -552,9 +571,9 @@ ul {
 }
 
 .readable-text-color {
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
 }
 
 .auto-cursor {

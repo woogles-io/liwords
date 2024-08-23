@@ -1,2 +1,5 @@
 src/gen/**/*.js
 src/gen/**/*.ts
+wolges-wasm-pkg/
+package.json
+package-lock.json

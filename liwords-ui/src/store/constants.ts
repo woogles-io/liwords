@@ -273,12 +273,12 @@ export const sortTiles = (
       aIndex < bIndex
         ? -1
         : aIndex > bIndex
-        ? 1
-        : aTile < bTile
-        ? -1
-        : aTile > bTile
-        ? 1
-        : 0
+          ? 1
+          : aTile < bTile
+            ? -1
+            : aTile > bTile
+              ? 1
+              : 0
     )
     .map((s) => s[1]);
 

@@ -59,7 +59,7 @@ params can be prefixed with these flags:
 	args := flag.Args()
 
 	if *urlFlag == "local" {
-		*urlFlag = "http://localhost" // compatible with docker-compose
+		*urlFlag = "http://localhost" // compatible with docker compose
 	}
 
 	var whichColor int

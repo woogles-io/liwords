@@ -1,5 +1,6 @@
 {
   "name": "wolges-wasm",
+  "type": "module",
   "collaborators": [
     "Andy Kurnia"
   ],
@@ -17,7 +18,7 @@
     "wolges_wasm.d.ts",
     "LICENSE.txt"
   ],
-  "module": "wolges_wasm.js",
+  "main": "wolges_wasm.js",
   "types": "wolges_wasm.d.ts",
   "sideEffects": [
     "./wolges_wasm.js",

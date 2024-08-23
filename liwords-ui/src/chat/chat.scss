@@ -19,13 +19,13 @@ p {
       color: m($gray-medium);
     }
   }
-//   .link.plain {
-//     text-transform: none;
-//     font-size: 14px;
-//     @include colorModed() {
-//       color: m($primary-dark);
-//     }
-//   }
+  //   .link.plain {
+  //     text-transform: none;
+  //     font-size: 14px;
+  //     @include colorModed() {
+  //       color: m($primary-dark);
+  //     }
+  //   }
   .anticon {
     font-size: 18px;
     margin-right: 12px;
@@ -57,7 +57,9 @@ p {
   p {
     font-family: $font-default;
   }
-  font-family: $font-default;
+  & {
+    font-family: $font-default;
+  }
   .ant-card.chat {
     .entities {
       overflow-y: auto;
@@ -89,18 +91,22 @@ p {
       background: m($card-background);
       color: m($gray-extreme);
     }
-    font-size: 16px;
-    font-weight: bold;
-    z-index: 1;
-    padding: 12px 24px 0;
+    & {
+      font-size: 16px;
+      font-weight: bold;
+      z-index: 1;
+      padding: 12px 24px 0;
+    }
     .list-trigger {
       letter-spacing: 0;
       cursor: pointer;
       @include colorModed() {
         color: m($primary-dark);
       }
-      font-weight: bold;
-      text-transform: none;
+      & {
+        font-weight: bold;
+        text-transform: none;
+      }
     }
     .ant-select {
       width: 100%;
@@ -346,7 +352,9 @@ p {
           padding-right: 9px;
           margin: 0;
         }
-        font-weight: 800;
+        & {
+          font-weight: 800;
+        }
         .ant-tag {
           position: relative;
           top: -1px;
@@ -377,13 +385,15 @@ p {
         @include colorModed() {
           color: m($secondary);
         }
-        visibility: hidden;
-        float: right;
-        font-size: 75%;
-        margin: 3px 0;
-        position: relative;
-        text-align: right;
-        top: -2px;
+        & {
+          visibility: hidden;
+          float: right;
+          font-size: 75%;
+          margin: 3px 0;
+          position: relative;
+          text-align: right;
+          top: -2px;
+        }
       }
     }
     .server-error {
