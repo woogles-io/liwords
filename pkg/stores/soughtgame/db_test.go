@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/lithammer/shortuuid"
+	"github.com/lithammer/shortuuid/v4"
 	"github.com/matryer/is"
 	"github.com/woogles-io/liwords/pkg/common"
 	"github.com/woogles-io/liwords/pkg/entity"

@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/lithammer/shortuuid"
+	"github.com/lithammer/shortuuid/v4"
 	"github.com/rs/zerolog/log"
 	commontest "github.com/woogles-io/liwords/pkg/common"
 	"github.com/woogles-io/liwords/pkg/entity"

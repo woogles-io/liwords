@@ -12,7 +12,7 @@ import (
 	"time"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
-	"github.com/lithammer/shortuuid"
+	"github.com/lithammer/shortuuid/v4"
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity/utilities"

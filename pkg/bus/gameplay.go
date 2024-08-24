@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lithammer/shortuuid"
+	"github.com/lithammer/shortuuid/v4"
 	"github.com/rs/zerolog/log"
 	"lukechampine.com/frand"
 

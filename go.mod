@@ -24,7 +24,7 @@ require (
 	github.com/hashicorp/golang-lru v1.0.2
 	github.com/jackc/pgx/v5 v5.6.0
 	github.com/justinas/alice v1.2.0
-	github.com/lithammer/shortuuid v3.0.0+incompatible
+	github.com/lithammer/shortuuid/v4 v4.0.0
 	github.com/mailgun/mailgun-go/v4 v4.15.0
 	github.com/matryer/is v1.4.1
 	github.com/mmcdole/gofeed v1.3.0

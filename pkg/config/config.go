@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/lithammer/shortuuid"
+	"github.com/lithammer/shortuuid/v4"
 	"github.com/namsral/flag"
 
 	macondoconfig "github.com/domino14/macondo/config"
