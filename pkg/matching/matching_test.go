@@ -1,8 +1,9 @@
 package matching
 
 import (
-	"github.com/matryer/is"
 	"testing"
+
+	"github.com/matryer/is"
 )
 
 func compareSlices(a []int, b []int) bool {
