@@ -13,7 +13,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/lambda v1.58.1
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.60.1
 	github.com/aws/smithy-go v1.20.4
-	github.com/domino14/macondo v0.9.7
+	github.com/domino14/macondo v0.9.8
 	github.com/domino14/word-golib v0.2.0
 	github.com/exaring/otelpgx v0.6.2
 	github.com/go-redsync/redsync/v4 v4.13.0
@@ -106,7 +106,7 @@ require (
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/rs/xid v1.5.0 // indirect
+	github.com/rs/xid v1.6.0 // indirect
 	github.com/sagikazarmark/locafero v0.6.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/signalfx/splunk-otel-go/instrumentation/internal v1.18.0 // indirect
