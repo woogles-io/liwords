@@ -130,9 +130,6 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Remove node_modules
-        run: cd liwords-ui && rm -frv node_modules
-
       - name: Install Dependencies
         run: cd liwords-ui && npm ci
 
