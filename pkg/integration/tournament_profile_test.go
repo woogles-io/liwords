@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
-	"github.com/lithammer/shortuuid"
+	"github.com/lithammer/shortuuid/v4"
 	"github.com/matryer/is"
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"

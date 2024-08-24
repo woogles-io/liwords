@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/golang-jwt/jwt"
-	"github.com/lithammer/shortuuid"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/lithammer/shortuuid/v4"
 	"github.com/rs/zerolog/log"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"

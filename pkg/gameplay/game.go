@@ -12,7 +12,7 @@ import (
 
 	"github.com/domino14/macondo/turnplayer"
 	"github.com/domino14/word-golib/tilemapping"
-	"github.com/lithammer/shortuuid"
+	"github.com/lithammer/shortuuid/v4"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/rs/zerolog"
