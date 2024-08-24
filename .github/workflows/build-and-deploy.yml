@@ -128,10 +128,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-
-      - name: Remove node_modules
-        run: cd liwords-ui && rm -frv node_modules
+          node-version: "22"
+          check-latest: true
 
       - name: Install Dependencies
         run: cd liwords-ui && npm ci
