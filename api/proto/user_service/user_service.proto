@@ -1,8 +1,7 @@
 syntax = "proto3";
 package user_service;
-option go_package = "github.com/woogles-io/liwords/rpc/api/proto/user_service";
 
-import "ipc/chat.proto";
+import "proto/ipc/chat.proto";
 
 // User service contains an actual service for doing user-related things.
 // For example, registering, changing passwords, logging in, logging out, and

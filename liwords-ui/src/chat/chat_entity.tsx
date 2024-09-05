@@ -17,7 +17,7 @@ import { moderateUser, deleteChatMessage } from '../mod/moderate';
 import { PettableAvatar, PlayerAvatar } from '../shared/player_avatar';
 import { ChatEntityType } from '../store/constants';
 import { useClient } from '../utils/hooks/connect';
-import { ModService } from '../gen/api/proto/mod_service/mod_service_connectweb';
+import { ModService } from '../gen/api/proto/mod_service/mod_service_connect';
 import { HookAPI } from 'antd/lib/modal/useModal';
 import { PromiseClient } from '@connectrpc/connect';
 

@@ -5,7 +5,7 @@ import { useDebounce } from '../../utils/debounce';
 import { AutoComplete } from 'antd';
 import { Store } from 'antd/lib/form/interface';
 import { useClient } from '../../utils/hooks/connect';
-import { AutocompleteService } from '../../gen/api/proto/user_service/user_service_connectweb';
+import { AutocompleteService } from '../../gen/api/proto/user_service/user_service_connect';
 
 type user = {
   username: string;

@@ -46,7 +46,7 @@ import {
   GameHistory,
   GameEvent_Direction,
   GameEvent_Type,
-} from '../gen/api/proto/macondo/macondo_pb';
+} from '../gen/api/vendor/macondo/macondo_pb';
 import { MatchLexiconDisplay, puzzleLexica } from '../shared/lexicon_display';
 import { Store } from 'antd/lib/form/interface';
 
@@ -68,9 +68,9 @@ import { LearnContextProvider } from '../learn/learn_overlay';
 import { PuzzleShareButton } from './puzzle_share';
 import { RatingsCard } from './ratings';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { WordService } from '../gen/api/proto/word_service/word_service_connectweb';
-import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_connectweb';
-import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connectweb';
+import { WordService } from '../gen/api/proto/word_service/word_service_connect';
+import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_connect';
+import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connect';
 
 const doNothing = () => {};
 

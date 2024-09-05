@@ -1,6 +1,5 @@
 syntax = "proto3";
 package word_service;
-option go_package = "github.com/woogles-io/liwords/rpc/api/proto/word_service";
 
 message DefineWordsRequest {
   string lexicon = 1;
@@ -11,13 +10,11 @@ message DefineWordsRequest {
 
 message DefineWordsResult {
   string d = 1; // definitions, not "" iff (valid and requesting definitions)
-  bool v = 2; // true iff valid
+  bool v = 2;   // true iff valid
 }
 
-message DefineWordsResponse {
-  map<string, DefineWordsResult> results = 1;
-}
+message DefineWordsResponse { map<string, DefineWordsResult> results = 1; }
 
 service WordService {
-  rpc DefineWords(DefineWordsRequest) returns(DefineWordsResponse);
+  rpc DefineWords(DefineWordsRequest) returns (DefineWordsResponse);
 }

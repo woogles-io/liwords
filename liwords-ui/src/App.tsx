@@ -58,7 +58,7 @@ import {
 import {
   AuthenticationService,
   SocializeService,
-} from './gen/api/proto/user_service/user_service_connectweb';
+} from './gen/api/proto/user_service/user_service_connect';
 import { BoardEditor } from './boardwizard/editor';
 import { RootState } from './store/redux_store';
 import { CallbackHandler as ScrabblecamCallbackHandler } from './boardwizard/callback_handler';

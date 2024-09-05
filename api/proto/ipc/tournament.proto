@@ -1,10 +1,9 @@
 
 syntax = "proto3";
 package ipc;
-option go_package = "github.com/woogles-io/liwords/rpc/api/proto/ipc";
 
 import "google/protobuf/timestamp.proto";
-import "ipc/omgwords.proto";
+import "proto/ipc/omgwords.proto";
 
 // TournamentGameEndedEvent gets sent to a tournament channel when a game is
 // over. This is a legacy way of showing tournament results right in the

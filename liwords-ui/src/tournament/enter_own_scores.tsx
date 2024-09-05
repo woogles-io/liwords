@@ -7,7 +7,7 @@ import {
 } from '../store/reducers/tournament_reducer';
 import { Button, Divider, Form, InputNumber, message } from 'antd';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_connectweb';
+import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_connect';
 import { TournamentGameResult } from '../gen/api/proto/ipc/tournament_pb';
 import { GameEndReason } from '../gen/api/proto/ipc/omgwords_pb';
 import { ActionsPanel } from './actions_panel';

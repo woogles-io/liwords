@@ -6,7 +6,7 @@ import {
   GameHistory,
   GameEvent_Type,
   GameEvent_Direction,
-} from '../../gen/api/proto/macondo/macondo_pb';
+} from '../../gen/api/vendor/macondo/macondo_pb';
 import { Action, ActionType } from '../../actions/actions';
 import {
   PlayedTiles,

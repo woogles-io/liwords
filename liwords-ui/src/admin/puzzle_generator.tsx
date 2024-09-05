@@ -17,7 +17,7 @@ import {
   PuzzleBucket,
   PuzzleGenerationRequest,
   PuzzleTag,
-} from '../gen/api/proto/macondo/macondo_pb';
+} from '../gen/api/vendor/macondo/macondo_pb';
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   APIPuzzleGenerationJobRequest,
@@ -28,7 +28,7 @@ import {
 import moment from 'moment';
 import { proto3 } from '@bufbuild/protobuf';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_connectweb';
+import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_connect';
 
 const layout = {
   labelCol: {

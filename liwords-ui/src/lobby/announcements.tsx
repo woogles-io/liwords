@@ -3,7 +3,7 @@ import { Card } from 'antd';
 import ReactMarkdown from 'react-markdown';
 import { Announcement } from '../gen/api/proto/config_service/config_service_pb';
 import { useClient } from '../utils/hooks/connect';
-import { ConfigService } from '../gen/api/proto/config_service/config_service_connectweb';
+import { ConfigService } from '../gen/api/proto/config_service/config_service_connect';
 
 export type Announcements = {
   announcements: Array<Announcement>;

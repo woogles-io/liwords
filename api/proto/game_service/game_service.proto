@@ -1,9 +1,8 @@
 syntax = "proto3";
 package game_service;
-option go_package = "github.com/woogles-io/liwords/rpc/api/proto/game_service";
 
-import "ipc/omgwords.proto";
-import "macondo/macondo.proto";
+import "proto/ipc/omgwords.proto";
+import "vendor/macondo/macondo.proto";
 
 // Meta information about a game, including its players.
 message GameInfoRequest { string game_id = 1; }

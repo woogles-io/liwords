@@ -1,12 +1,23 @@
-version: v1
+version: v2
+managed:
+  enabled: true
+  disable:
+    # Use the go_package declaration that is in this directory's files.
+    - path: vendor
+  override:
+    - file_option: go_package_prefix
+      value: github.com/woogles-io/liwords/rpc/api
+
 plugins:
-  - name: go
-    out: ../rpc/api/proto
-    opt: paths=source_relative
-  - plugin: connect-go
-    out: ../rpc/api/proto
-    opt: paths=source_relative
-  - name: es
-    out: ../liwords-ui/src/gen/api/proto
-  - name: connect-web
-    out: ../liwords-ui/src/gen/api/proto
+  - remote: buf.build/protocolbuffers/go:v1.34.1
+    out: ../rpc/api
+    opt:
+      - paths=source_relative
+  - remote: buf.build/connectrpc/go:v1.16.2
+    out: ../rpc/api
+    opt:
+      - paths=source_relative
+  - remote: buf.build/bufbuild/es:v1.10.0
+    out: ../liwords-ui/src/gen/api
+  - remote: buf.build/connectrpc/es:v1.4.0
+    out: ../liwords-ui/src/gen/api

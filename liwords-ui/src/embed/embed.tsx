@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { ChallengeRule, PlayState } from '../gen/api/proto/macondo/macondo_pb';
+import { ChallengeRule, PlayState } from '../gen/api/vendor/macondo/macondo_pb';
 import {
   useExaminableGameContextStoreContext,
   useExamineStoreContext,
@@ -18,7 +18,7 @@ import {
 import { PlayerCards } from '../gameroom/player_cards';
 import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connectweb';
+import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connect';
 import { MachineLetter } from '../utils/cwgame/common';
 
 const doNothing = () => {};

@@ -23,7 +23,7 @@ import { DndProvider } from 'react-dnd';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { RatingBadge } from '../lobby/rating_badge';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_connectweb';
+import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_connect';
 import { MachineLetter } from '../utils/cwgame/common';
 
 export const PuzzlePreview = React.memo(() => {

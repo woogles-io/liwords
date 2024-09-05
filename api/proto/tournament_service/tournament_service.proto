@@ -1,9 +1,8 @@
 syntax = "proto3";
 package tournament_service;
-option go_package = "github.com/woogles-io/liwords/rpc/api/proto/tournament_service";
 
-import "ipc/omgwords.proto";
-import "ipc/tournament.proto";
+import "proto/ipc/omgwords.proto";
+import "proto/ipc/tournament.proto";
 import "google/protobuf/timestamp.proto";
 
 message StartRoundRequest {

@@ -1,7 +1,7 @@
 import {
   GameEvent,
   GameEvent_Type,
-} from '../../gen/api/proto/macondo/macondo_pb';
+} from '../../gen/api/vendor/macondo/macondo_pb';
 import { gameEventsToTurns } from './turns';
 
 it('test turns simple', () => {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { GameCommentService } from '../../gen/api/proto/comments_service/comments_service_connectweb';
+import { GameCommentService } from '../../gen/api/proto/comments_service/comments_service_connect';
 import { GameComment } from '../../gen/api/proto/comments_service/comments_service_pb';
 import { useGameContextStoreContext } from '../../store/store';
 import { flashError } from './connect';

@@ -1,10 +1,9 @@
 syntax = "proto3";
 package puzzle_service;
-option go_package = "github.com/woogles-io/liwords/rpc/api/proto/puzzle_service";
 
-import "macondo/macondo.proto";
+import "vendor/macondo/macondo.proto";
 import "google/protobuf/timestamp.proto";
-import "ipc/omgwords.proto";
+import "proto/ipc/omgwords.proto";
 
 enum PuzzleQueryResult {
   UNSEEN = 0;

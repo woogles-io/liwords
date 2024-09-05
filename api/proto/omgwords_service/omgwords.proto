@@ -1,9 +1,8 @@
 syntax = "proto3";
 package omgwords_service;
-option go_package = "github.com/woogles-io/liwords/rpc/api/proto/omgwords_service";
 
 import "google/protobuf/timestamp.proto";
-import "ipc/omgwords.proto";
+import "proto/ipc/omgwords.proto";
 
 // GameEventResponse doesn't need to have any extra data. The GameEvent API
 // will still use sockets to broadcast game information.

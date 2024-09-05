@@ -26,7 +26,7 @@ import {
 import { Players } from './players';
 import { ChatMessage } from '../gen/api/proto/ipc/chat_pb';
 import { useClient } from '../utils/hooks/connect';
-import { SocializeService } from '../gen/api/proto/user_service/user_service_connectweb';
+import { SocializeService } from '../gen/api/proto/user_service/user_service_connect';
 
 export type Props = {
   sendChat: (msg: string, chan: string) => void;

@@ -5,43 +5,30 @@ RUN apt-get update && apt-get install -y curl
 # protobuf executables:
 WORKDIR /tmp
 
-# Install protoc-gen-go
-RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest \
-    && go install github.com/bufbuild/buf/cmd/buf@latest \
-    && go install connectrpc.com/connect/cmd/protoc-gen-connect-go@latest
+# Install buf
+RUN go install github.com/bufbuild/buf/cmd/buf@latest
 
 # Detect arch for migrate
 ENV ARCH="$(uname -m | sed 's/aarch64/aarch_64/g')"
 RUN echo "Detected arch ${ARCH}"
-# migrate:
 
-ENV MIGRATE_VERSION v4.15.2
+# migrate:
+ENV MIGRATE_VERSION v4.17.1
 ENV MIGRATE_ARCH="$(case ${ARCH} in \"aarch_64\") echo \"arm64\" ;; \"x86_64\") echo \"amd64\";; *) echo \"invalid architecture\" ;; esac;)"
 
 RUN echo "Fetching from URL: https://github.com/golang-migrate/migrate/releases/download/${MIGRATE_VERSION}/migrate.linux-$(eval echo ${MIGRATE_ARCH}).tar.gz"
-
 RUN curl -L https://github.com/golang-migrate/migrate/releases/download/${MIGRATE_VERSION}/migrate.linux-$(eval echo ${MIGRATE_ARCH}).tar.gz | tar xvz
 
-RUN mv /tmp/migrate /opt
-RUN mv /go/bin/buf /opt
-
-# Install sqlc
-
+# sqlc
 RUN go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 
-FROM node:latest
-
-RUN useradd unprivileged
-
-WORKDIR /opt
-RUN npm install @bufbuild/protoc-gen-es @connectrpc/protoc-gen-connect-es
-
-COPY --from=base /go/bin/protoc-gen-go /opt
-COPY --from=base /go/bin/protoc-gen-connect-go /opt
-COPY --from=base /opt/buf /opt
-COPY --from=base /opt/migrate /opt
-COPY --from=base /go/bin/sqlc /opt
-
+# Move everything into /opt
+RUN mv /tmp/migrate /opt
+RUN mv /go/bin/buf /opt
+RUN mv /go/bin/sqlc /opt
 ENV PATH /opt:$PATH
+
+# add an unprivileged user.
+RUN useradd unprivileged
 
 WORKDIR /opt/code/liwords

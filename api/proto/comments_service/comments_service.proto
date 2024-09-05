@@ -1,6 +1,5 @@
 syntax = "proto3";
 package comments_service;
-option go_package = "github.com/woogles-io/liwords/rpc/api/proto/comments_service";
 
 import "google/protobuf/timestamp.proto";
 

@@ -41,7 +41,7 @@ import {
 import { SeekRequest } from '../gen/api/proto/ipc/omgseeks_pb';
 import { ServerChallengeResultEvent } from '../gen/api/proto/ipc/omgwords_pb';
 import { message } from 'antd';
-import { GameEvent_Type } from '../gen/api/proto/macondo/macondo_pb';
+import { GameEvent_Type } from '../gen/api/vendor/macondo/macondo_pb';
 
 const MaxChatLength = 150;
 
