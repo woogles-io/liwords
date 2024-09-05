@@ -20,6 +20,9 @@ You have two options for developing locally.
 
 2. The other option is to use Docker for the long-running services (postgres, Redis, NATS), and run your program executables locally. It is a bit more complex to set up initially, but may work better if you are developing on Mac OS (or Windows?).
 
+<details>
+<summary>Using the full stack on Docker</summary>
+
 #### Using the full stack on Docker:
 
 1. Download Docker for your operating system
@@ -53,7 +56,13 @@ To have two players play each other you must have one browser window in incognit
 
 You can do `docker compose up app` and `docker compose up frontend` in two different terminal windows to bring these up separately. This may be desirable, for example, when making backend changes and not wanting to restart the frontend compilation everytime something changes.
 
-#### Hybrid stack on Docker
+</details>
+
+<details>
+
+<summary>Using a hybrid stack on Docker</summary>
+
+**NOTE: These instructions need to be updated and might not work currently.**
 
 
 1. Download Docker for your operating system
@@ -77,7 +86,7 @@ To have two players play each other you must have one browser window in incognit
 
 `docker compose exec db psql -U postgres liwords -c "UPDATE users SET internal_bot='t' WHERE username = '$1';"`
 
-
+</details>
 
 ### macondo
 
@@ -99,13 +108,13 @@ If you change any of the `.proto` files (in this repo or in the Macondo repo) yo
 
 To do so, run in this directory:
 
-`docker compose run --rm goutils ./build-protobuf.sh`
+`go generate`
 
 ### sqlc
 
 We use `sqlc` for generating Go code from our `.sql` files. If you create new `.sql` files in `db/migrations` or `db/queries` you can rerun sqlc as follows:
 
-`docker compose run --rm goutils sqlc generate`
+`go generate`
 
 ### Attributions
 
