@@ -25,7 +25,7 @@ import { isPairedMode, isClubType } from '../store/constants';
 import { Standings } from './standings';
 import { DirectorTools } from './director_tools/director_tools';
 import { useClient } from '../utils/hooks/connect';
-import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_connectweb';
+import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_connect';
 import { flashTournamentError } from './tournament_error';
 // import { CheckIn } from './check_in';
 

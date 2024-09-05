@@ -8,7 +8,7 @@ import {
 import { LoginState } from '../store/login_state';
 import { message } from 'antd';
 import { useClient } from '../utils/hooks/connect';
-import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_connectweb';
+import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_connect';
 
 export const useTourneyMetadata = (
   path: string,

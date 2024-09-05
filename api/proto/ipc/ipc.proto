@@ -5,7 +5,6 @@
 
 syntax = "proto3";
 package ipc;
-option go_package = "github.com/woogles-io/liwords/rpc/api/proto/ipc";
 
 // Message types
 

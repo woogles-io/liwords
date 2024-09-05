@@ -11,7 +11,7 @@ import {
 } from 'antd';
 
 import { Store } from 'antd/lib/form/interface';
-import { ChallengeRule } from '../gen/api/proto/macondo/macondo_pb';
+import { ChallengeRule } from '../gen/api/vendor/macondo/macondo_pb';
 import {
   initialTimeMinutesToSlider,
   initialTimeSecondsToSlider,
@@ -37,7 +37,7 @@ import { GameRequest, RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
 import { MatchUser } from '../gen/api/proto/ipc/omgseeks_pb';
 import { ProfileUpdate_Rating } from '../gen/api/proto/ipc/users_pb';
 import { useClient } from '../utils/hooks/connect';
-import { AutocompleteService } from '../gen/api/proto/user_service/user_service_connectweb';
+import { AutocompleteService } from '../gen/api/proto/user_service/user_service_connect';
 
 const initTimeFormatter = (val?: number) => {
   return val != null ? initTimeDiscreteScale[val].label : null;

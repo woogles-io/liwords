@@ -33,7 +33,7 @@ import {
 import { GameRequest } from '../gen/api/proto/ipc/omgwords_pb';
 import { proto3 } from '@bufbuild/protobuf';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_connectweb';
+import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_connect';
 
 type DProps = {
   description: string;

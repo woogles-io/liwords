@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { message, Form, Select, InputNumber, Input, Button } from 'antd';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { ModService } from '../gen/api/proto/mod_service/mod_service_connectweb';
+import { ModService } from '../gen/api/proto/mod_service/mod_service_connect';
 import { proto3 } from '@bufbuild/protobuf';
 import {
   EmailType,

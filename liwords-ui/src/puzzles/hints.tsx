@@ -9,7 +9,7 @@ import React, {
 import {
   GameEvent,
   GameEvent_Direction,
-} from '../gen/api/proto/macondo/macondo_pb';
+} from '../gen/api/vendor/macondo/macondo_pb';
 import {
   PuzzleRequest,
   PuzzleStatus,
@@ -27,7 +27,7 @@ import {
   EyeOutlined,
 } from '@ant-design/icons';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_connectweb';
+import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_connect';
 
 type Props = {
   puzzleID?: string;

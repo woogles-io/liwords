@@ -5,7 +5,7 @@ import './director_tools.scss';
 import { UsernameWithContext } from '../../shared/usernameWithContext';
 import { Button, Divider } from 'antd';
 import { GhettoTools } from './ghetto_tools';
-import { TournamentService } from '../../gen/api/proto/tournament_service/tournament_service_connectweb';
+import { TournamentService } from '../../gen/api/proto/tournament_service/tournament_service_connect';
 import { flashError, useClient } from '../../utils/hooks/connect';
 /*
 import { AddPlayerForm, playersToAdd } from './add_player_form';

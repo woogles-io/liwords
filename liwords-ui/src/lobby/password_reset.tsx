@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Row, Col, Input, Form, Alert, notification, Button } from 'antd';
 import { TopBar } from '../navigation/topbar';
 import { connectErrorMessage, useClient } from '../utils/hooks/connect';
-import { AuthenticationService } from '../gen/api/proto/user_service/user_service_connectweb';
+import { AuthenticationService } from '../gen/api/proto/user_service/user_service_connect';
 
 const layout = {
   labelCol: {

@@ -1,6 +1,6 @@
 import { Button, Col, Divider, message, Row } from 'antd';
 import React, { useMemo } from 'react';
-import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_connectweb';
+import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_connect';
 import { useTournamentStoreContext } from '../store/store';
 import { flashError, useClient } from '../utils/hooks/connect';
 

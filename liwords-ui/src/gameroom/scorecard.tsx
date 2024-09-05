@@ -8,7 +8,10 @@ import React, {
   useState,
 } from 'react';
 import { Card } from 'antd';
-import { GameEvent, GameEvent_Type } from '../gen/api/proto/macondo/macondo_pb';
+import {
+  GameEvent,
+  GameEvent_Type,
+} from '../gen/api/vendor/macondo/macondo_pb';
 import { Board } from '../utils/cwgame/board';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { millisToTimeStr } from '../store/timer_controller';
@@ -28,7 +31,7 @@ import { GameComment } from '../gen/api/proto/comments_service/comments_service_
 import { useGameContextStoreContext } from '../store/store';
 import { Comments } from './comments';
 import { useClient } from '../utils/hooks/connect';
-import { GameCommentService } from '../gen/api/proto/comments_service/comments_service_connectweb';
+import { GameCommentService } from '../gen/api/proto/comments_service/comments_service_connect';
 import { useComments } from '../utils/hooks/comments';
 import {
   Alphabet,

@@ -75,7 +75,7 @@ import {
   GameEvent,
   GameEvent_Type,
   PlayState,
-} from '../gen/api/proto/macondo/macondo_pb';
+} from '../gen/api/vendor/macondo/macondo_pb';
 import { TilePreview } from './tile';
 import {
   Alphabet,
@@ -97,7 +97,7 @@ import {
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connectweb';
+import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connect';
 import { RackEditor } from './rack_editor';
 
 // The frame atop is 24 height

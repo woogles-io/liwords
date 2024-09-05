@@ -1,9 +1,8 @@
 // Definitions for OMGWord seek functionality.
 syntax = "proto3";
 package ipc;
-option go_package = "github.com/woogles-io/liwords/rpc/api/proto/ipc";
 
-import "ipc/omgwords.proto";
+import "proto/ipc/omgwords.proto";
 
 // A MatchUser requests or receives a match via a seek or a match request.
 message MatchUser {

@@ -3,9 +3,8 @@
 // superomgwords, etc etc
 syntax = "proto3";
 package ipc;
-option go_package = "github.com/woogles-io/liwords/rpc/api/proto/ipc";
 
-import "macondo/macondo.proto";
+import "vendor/macondo/macondo.proto";
 import "google/protobuf/timestamp.proto";
 
 enum GameEndReason {

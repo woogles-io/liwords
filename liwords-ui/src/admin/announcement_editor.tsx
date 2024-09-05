@@ -7,7 +7,7 @@ import {
 import { Button, Divider, Form, Input, message } from 'antd';
 import { Store } from 'rc-field-form/lib/interface';
 import React, { useEffect } from 'react';
-import { ConfigService } from '../gen/api/proto/config_service/config_service_connectweb';
+import { ConfigService } from '../gen/api/proto/config_service/config_service_connect';
 import { flashError, useClient } from '../utils/hooks/connect';
 
 const layout = {

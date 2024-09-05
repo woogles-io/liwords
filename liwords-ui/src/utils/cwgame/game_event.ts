@@ -12,7 +12,7 @@ import { Board } from './board';
 import {
   GameEvent,
   GameEvent_Direction,
-} from '../../gen/api/proto/macondo/macondo_pb';
+} from '../../gen/api/vendor/macondo/macondo_pb';
 import {
   ClientGameplayEvent,
   ClientGameplayEvent_EventType,

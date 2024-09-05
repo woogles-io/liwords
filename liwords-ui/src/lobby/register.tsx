@@ -20,7 +20,7 @@ import { connectErrorMessage, useClient } from '../utils/hooks/connect';
 import {
   AuthenticationService,
   RegistrationService,
-} from '../gen/api/proto/user_service/user_service_connectweb';
+} from '../gen/api/proto/user_service/user_service_connect';
 
 const allMonthNames = [
   'January',

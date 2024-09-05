@@ -3,21 +3,21 @@ managed:
   enabled: true
   disable:
     # Use the go_package declaration that is in this directory's files.
-    - path: proto/vendored
+    - path: vendor
   override:
     - file_option: go_package_prefix
-      value: github.com/woogles-io/liwords/pkg/gen
+      value: github.com/woogles-io/liwords/rpc/api
 
 plugins:
   - remote: buf.build/protocolbuffers/go:v1.34.1
-    out: pkg/gen
+    out: ../rpc/api
     opt:
       - paths=source_relative
   - remote: buf.build/connectrpc/go:v1.16.2
-    out: pkg/gen
+    out: ../rpc/api
     opt:
       - paths=source_relative
   - remote: buf.build/bufbuild/es:v1.10.0
-    out: liwords-ui/src/gen/api
+    out: ../liwords-ui/src/gen/api
   - remote: buf.build/connectrpc/es:v1.4.0
-    out: liwords-ui/src/gen/api
+    out: ../liwords-ui/src/gen/api
