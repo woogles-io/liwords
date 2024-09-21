@@ -241,6 +241,22 @@ export const PlayerProfile = React.memo(() => {
   const gameMetadataClient = useClient(GameMetadataService);
   const gameEventClient = useClient(GameEventService);
 
+  const checkWide = useMemo(
+    () => window.matchMedia(`(min-width: ${screenSizeTablet}px)`),
+    []
+  );
+  const [isWide, setIsWide] = useState(checkWide.matches);
+  useEffect(() => {
+    const handler = (evt: MediaQueryListEvent) => {
+      setIsWide(evt.matches);
+    };
+    checkWide.addEventListener('change', handler);
+    return () => {
+      checkWide.removeEventListener('change', handler);
+    };
+  }, [checkWide]);
+  const eltsPerRow = isWide ? 4 : 2;
+
   useEffect(() => {
     if (!username) {
       return;
@@ -427,10 +443,6 @@ export const PlayerProfile = React.memo(() => {
       .map((d) => {
         return <VariantCard key={d.variant} {...d} />;
       });
-    // Mobile swipe requires an even number of cards
-    if (ret.length % 2) {
-      ret.push(<div key={`empty-${ret.length}`} />);
-    }
     return ret;
   }, [ratings, stats]);
 
@@ -463,10 +475,6 @@ export const PlayerProfile = React.memo(() => {
         </Card>
       );
     });
-    // Mobile swipe requires an even number of cards
-    if (ret.length % 2) {
-      ret.push(<div key={`empty-${ret.length}`} />);
-    }
     return ret;
   }, [ratings]);
 
@@ -479,12 +487,17 @@ export const PlayerProfile = React.memo(() => {
         (g) => g.players?.length && g.gameEndReason !== GameEndReason.CANCELLED
       )
       .map((g) => <GameCard game={g} key={g.gameId} userID={userID} />);
-    // Mobile swipe requires an even number of cards
-    if (ret.length % 2) {
-      ret.push(<div key={`empty-${ret.length}`} />);
-    }
     return ret;
   }, [recentGames, userID]);
+
+  const emptyCards = (n: number, f: (n: number) => boolean) => {
+    const ret = [];
+    while (f(n)) {
+      ret.push(<div key={`empty-${n}`} />);
+      ++n;
+    }
+    return ret;
+  };
 
   return (
     <>
@@ -541,22 +554,17 @@ export const PlayerProfile = React.memo(() => {
               <Carousel
                 arrows
                 className="variant-items"
-                slidesToScroll={4}
-                slidesToShow={4}
+                slidesToScroll={eltsPerRow}
+                slidesToShow={eltsPerRow}
                 swipeToSlide
                 swipe
                 infinite={false}
-                responsive={[
-                  {
-                    breakpoint: screenSizeTablet - 1,
-                    settings: {
-                      slidesToShow: 2,
-                      slidesToScroll: 2,
-                    },
-                  },
-                ]}
               >
                 {variantCards}
+                {emptyCards(
+                  variantCards.length,
+                  (n) => n % (n <= eltsPerRow ? eltsPerRow : n) !== 0
+                )}
               </Carousel>
             </>
           )}
@@ -566,22 +574,17 @@ export const PlayerProfile = React.memo(() => {
               <Carousel
                 arrows
                 className="puzzle-items"
-                slidesToScroll={4}
-                slidesToShow={4}
+                slidesToScroll={eltsPerRow}
+                slidesToShow={eltsPerRow}
                 swipeToSlide
                 swipe
                 infinite={false}
-                responsive={[
-                  {
-                    breakpoint: screenSizeTablet - 1,
-                    settings: {
-                      slidesToShow: 2,
-                      slidesToScroll: 2,
-                    },
-                  },
-                ]}
               >
                 {puzzleCards}
+                {emptyCards(
+                  puzzleCards.length,
+                  (n) => n % (n <= eltsPerRow ? eltsPerRow : n) !== 0
+                )}
               </Carousel>
             </>
           )}
@@ -591,24 +594,18 @@ export const PlayerProfile = React.memo(() => {
               <Carousel
                 arrows
                 className="game-items"
-                slidesToScroll={4}
-                slidesToShow={4}
-                rows={gameCards.length > 4 ? 2 : 1}
+                slidesToScroll={eltsPerRow}
+                slidesToShow={eltsPerRow}
+                rows={gameCards.length > eltsPerRow ? 2 : 1}
                 swipeToSlide
                 swipe
                 infinite={false}
-                responsive={[
-                  {
-                    breakpoint: screenSizeTablet - 1,
-                    settings: {
-                      slidesToShow: 2,
-                      slidesToScroll: 2,
-                      rows: gameCards.length > 2 ? 2 : 1,
-                    },
-                  },
-                ]}
               >
                 {gameCards}
+                {emptyCards(
+                  gameCards.length,
+                  (n) => n % (n <= 2 * eltsPerRow ? eltsPerRow : n) !== 0
+                )}
               </Carousel>
             </>
           )}
