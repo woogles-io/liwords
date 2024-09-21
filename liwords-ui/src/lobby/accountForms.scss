@@ -100,9 +100,16 @@ div.account {
       padding-top: 3px;
       font-size: 14px;
     }
+    .ant-input-affix-wrapper:has(input),
     input {
       width: 300px;
       height: 48px;
+    }
+    .ant-input-affix-wrapper input {
+      width: 100%;
+      height: unset;
+    }
+    .ant-form-item-control > *:last-child {
       margin-bottom: 12px;
     }
     .ant-form-item-has-feedback .ant-form-item-children-icon {
