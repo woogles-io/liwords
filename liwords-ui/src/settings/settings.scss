@@ -197,21 +197,18 @@
       margin-bottom: 18px;
       width: 100%;
     }
+    .toggles-section {
+      display: flex;
+    }
     .toggle-section {
-      position: relative;
       margin-bottom: 24px;
-      .ant-switch {
-        margin: 12px 0 0 0;
-        @media (min-width: $screen-tablet-min) {
-          margin: 0 0 0 12px;
+      & > div:last-child {
+        display: flex;
+        gap: 12px;
+        & > div:first-child {
+          flex: 1;
         }
       }
-      p {
-        display: inline-block;
-      }
-    }
-    .toggle-section > div {
-      padding-right: 60px;
     }
   }
 }
