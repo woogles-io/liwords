@@ -111,7 +111,7 @@ const Moderation = (props: ModProps) => {
           name="duration"
           label="Duration, in hours. Use 0 for indefinite"
         >
-          <InputNumber min={0} max={720 * 6} />
+          <InputNumber inputMode="numeric" min={0} max={720 * 6} />
         </Form.Item>
 
         <Form.Item name="note" label="Optional note">

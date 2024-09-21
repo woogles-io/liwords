@@ -591,6 +591,7 @@ export const SeekForm = (props: Props) => {
         extra={extraTimeLabel}
       >
         <InputNumber
+          inputMode="numeric"
           min={0}
           max={maxTimeSetting}
           disabled={disableTimeControls}

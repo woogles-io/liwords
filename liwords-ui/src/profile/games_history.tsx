@@ -232,6 +232,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       />
       <div className="game-history-controls">
         <InputNumber
+          inputMode="numeric"
           min={1}
           value={desiredPageNumber}
           onChange={props.onChangePageNumber}

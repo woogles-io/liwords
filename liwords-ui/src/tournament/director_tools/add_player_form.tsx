@@ -99,7 +99,7 @@ export const AddPlayerForm = (props: Props) => {
         </Form.Item>
 
         <Form.Item label="Rating" name="rating">
-          <InputNumber min={0} max={10000} />
+          <InputNumber inputMode="numeric" min={0} max={10000} />
         </Form.Item>
 
         <Form.Item

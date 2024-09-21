@@ -190,13 +190,13 @@ export const PuzzleGenerator = () => {
           label="Game Consideration Limit (total for bots, per chunk for real games)"
           initialValue={6000}
         >
-          <InputNumber />
+          <InputNumber inputMode="numeric" />
         </Form.Item>
         <Form.Item
           name="gameCreationLimit"
           label="Game Creation Limit (only for bot v bot games)"
         >
-          <InputNumber />
+          <InputNumber inputMode="numeric" />
         </Form.Item>
 
         <Form.Item
@@ -211,7 +211,7 @@ export const PuzzleGenerator = () => {
           label="Total equity loss limit"
           initialValue={150}
         >
-          <InputNumber />
+          <InputNumber inputMode="numeric" />
         </Form.Item>
 
         <Form.Item
@@ -227,7 +227,7 @@ export const PuzzleGenerator = () => {
           label="How many days to search at a time"
           initialValue={1}
         >
-          <InputNumber />
+          <InputNumber inputMode="numeric" />
         </Form.Item>
 
         <Form.List name="buckets">
@@ -241,7 +241,7 @@ export const PuzzleGenerator = () => {
                     label="Size"
                     rules={[{ required: true, message: 'Missing bucket size' }]}
                   >
-                    <InputNumber />
+                    <InputNumber inputMode="numeric" />
                   </Form.Item>
                   <Form.Item
                     {...field}

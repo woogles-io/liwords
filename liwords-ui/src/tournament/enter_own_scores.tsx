@@ -176,14 +176,14 @@ const ScoreForm = (props: ScoreFormProps) => {
           name="ourscore"
           required
         >
-          <InputNumber />
+          <InputNumber inputMode="numeric" />
         </Form.Item>
         <Form.Item
           label={`Score for ${props.opponentName}`}
           name="theirscore"
           required
         >
-          <InputNumber />
+          <InputNumber inputMode="numeric" />
         </Form.Item>
 
         <Form.Item label="Please have opponent verify scores.">
