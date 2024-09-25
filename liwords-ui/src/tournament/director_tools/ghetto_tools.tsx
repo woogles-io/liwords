@@ -721,7 +721,7 @@ const SetPairing = (props: { tournamentID: string }) => {
       )}
 
       <Form.Item name="round" label="Round (1-indexed)">
-        <InputNumber min={1} required />
+        <InputNumber inputMode="numeric" min={1} required />
       </Form.Item>
 
       <Form.Item>
@@ -825,15 +825,23 @@ const SetResult = (props: { tournamentID: string }) => {
       />
 
       <Form.Item name="round" label="Round (1-indexed)">
-        <InputNumber min={1} required />
+        <InputNumber inputMode="numeric" min={1} required />
       </Form.Item>
 
       <Form.Item name="p1score" label="Player 1 score">
-        <InputNumber onChange={score1Change} value={score1} />
+        <InputNumber
+          inputMode="numeric"
+          onChange={score1Change}
+          value={score1}
+        />
       </Form.Item>
 
       <Form.Item name="p2score" label="Player 2 score">
-        <InputNumber onChange={score2Change} value={score2} />
+        <InputNumber
+          inputMode="numeric"
+          onChange={score2Change}
+          value={score2}
+        />
       </Form.Item>
 
       <Form.Item name="p1result" label="Player 1 result">
@@ -917,7 +925,7 @@ const PairRound = (props: { tournamentID: string }) => {
       <DivisionFormItem />
 
       <Form.Item name="round" label="Round (1-indexed)">
-        <InputNumber min={1} required />
+        <InputNumber inputMode="numeric" min={1} required />
       </Form.Item>
 
       <Form.Item name="preserveByes" label="Preserve byes">
@@ -956,7 +964,7 @@ const UnpairRound = (props: { tournamentID: string }) => {
     <Form onFinish={onFinish}>
       <DivisionFormItem />
       <Form.Item name="round" label="Round (1-indexed)">
-        <InputNumber min={1} required />
+        <InputNumber inputMode="numeric" min={1} required />
       </Form.Item>
       <Form.Item>
         <Button type="primary" htmlType="submit">
@@ -1174,6 +1182,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
           }
         >
           <InputNumber
+            inputMode="numeric"
             min={0}
             value={gibsonSpread}
             onChange={(v: number | string | undefined | null) =>
@@ -1192,6 +1201,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
           }
         >
           <InputNumber
+            inputMode="numeric"
             min={1}
             value={gibsonMinPlacement}
             onChange={(p: number | string | undefined | null) =>
@@ -1211,6 +1221,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
           }
         >
           <InputNumber
+            inputMode="numeric"
             min={1}
             value={byeMaxPlacement}
             onChange={(p: number | string | undefined | null) =>
@@ -1229,6 +1240,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
           }
         >
           <InputNumber
+            inputMode="numeric"
             min={0}
             value={spreadCap}
             onChange={(p: number | string | undefined | null) =>
@@ -1413,6 +1425,7 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
                 key={`${idx}-${fieldName}`}
               >
                 <InputNumber
+                  inputMode="numeric"
                   key={key}
                   min={0}
                   value={setting[fieldName] as number}
@@ -1452,6 +1465,7 @@ const RoundControlFields = (props: RdCtrlFieldsProps) => {
       <Form size="small">
         <Form.Item label="First round">
           <InputNumber
+            inputMode="numeric"
             min={1}
             value={setting.beginRound}
             onChange={(e) => props.onChange('beginRound', e as number)}
@@ -1459,6 +1473,7 @@ const RoundControlFields = (props: RdCtrlFieldsProps) => {
         </Form.Item>
         <Form.Item label="Last round">
           <InputNumber
+            inputMode="numeric"
             min={1}
             value={setting.endRound}
             onChange={(e) => props.onChange('endRound', e as number)}
@@ -1602,6 +1617,7 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
         </Form.Item>
         <Form.Item {...formItemLayout} label="Round">
           <InputNumber
+            inputMode="numeric"
             value={userVisibleRound}
             onChange={(e) => e && setUserVisibleRound(e as number)}
           />

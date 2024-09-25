@@ -186,7 +186,7 @@ export const SettingsForm = (props: Props) => {
         name="extratime"
         extra={extraTimeLabel}
       >
-        <InputNumber min={0} max={maxTimeSetting} />
+        <InputNumber inputMode="numeric" min={0} max={maxTimeSetting} />
       </Form.Item>
 
       <Form.Item label="Rated" name="rated" valuePropName="checked">
