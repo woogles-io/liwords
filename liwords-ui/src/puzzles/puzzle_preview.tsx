@@ -75,7 +75,17 @@ export const PuzzlePreview = React.memo(() => {
           payload: gh,
         });
       } catch (err) {
-        flashError(err);
+        const typescriptErr = err as Error;
+        if (
+          typescriptErr.name === 'ConnectError' &&
+          typescriptErr.message ===
+            '[invalid_argument] cannot get id from uuid E3kGXKyzhYirNzsMfCW3QV: no rows for table puzzles'
+        ) {
+          // The hard coded puzzle only exists in production.
+          setPuzzleID(null);
+        } else {
+          flashError(err);
+        }
       }
     }
     if (puzzleID) {
