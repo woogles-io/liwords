@@ -112,84 +112,102 @@ export const Secret = React.memo(() => {
           Learn more.
         </a>
       </div>
-      <div>
-        <div className="toggle-section">
-          <div className="title">Telestrator</div>
-          <div>Draw on the board while you’re playing</div>
-          <Switch
-            defaultChecked={telestrator}
-            onChange={toggleTelestrator}
-            className="telestrator-toggle"
-          />
-        </div>
-        <div className="toggle-section">
-          <div className="title">Blindfold</div>
-          <div>Enable text-to-speech keyboard commands</div>
-          <Switch
-            defaultChecked={blindfold}
-            onChange={toggleBlindfold}
-            className="blindfold-toggle"
-          />
-        </div>
-        <div className="toggle-section">
-          <div className="title">Lexicons</div>
-          <div>Enable all lexicons</div>
-          <Switch
-            defaultChecked={enableAllLexicons}
-            onChange={toggleEnableAllLexicons}
-            className="dark-toggle"
-          />
-        </div>
-        <div className="toggle-section">
-          <div className="title">Variants</div>
-          <div>Enable Variants, such as WordSmog and ZOMGWords</div>
-          <Switch
-            defaultChecked={variantsEnabled}
-            onChange={toggleVariants}
-            className="variants-toggle"
-          />
-        </div>
-        <div className="toggle-section">
-          <div className="title">Show equity loss</div>
-          <div>Show equity loss in analyzer</div>
-          <Switch
-            defaultChecked={showEquityLoss}
-            onChange={toggleShowEquityLoss}
-            className="show-equity-loss-toggle"
-          />
-        </div>
-        <div className="toggle-section">
-          <div className="title">Enable silent site</div>
-          <div>Mute all sounds</div>
-          <Switch
-            defaultChecked={enableSilentSite}
-            onChange={toggleEnableSilentSite}
-            className="sounds-toggle"
-          />
-        </div>
-        <div className="toggle-section">
-          <div className="title">Practice manual tracking and scoring</div>
-          <div>
-            Disable automatic tracking of tiles and scoring of tentative moves
-            for you only
+      <div className="toggles-section">
+        <div>
+          <div className="toggle-section">
+            <div className="title">Telestrator</div>
+            <div>
+              <div>Draw on the board while you’re playing</div>
+              <Switch
+                defaultChecked={telestrator}
+                onChange={toggleTelestrator}
+                className="telestrator-toggle"
+              />
+            </div>
           </div>
-          <Switch
-            defaultChecked={hidePool}
-            onChange={toggleHidePool}
-            className="pool-toggle"
-          />
-        </div>
-        <div className="toggle-section">
-          <div className="title">Infuse Second Color</div>
-          <div>
-            Highlight one player's tiles instead of the last move. Requires
-            Refresher Orb.
+          <div className="toggle-section">
+            <div className="title">Blindfold</div>
+            <div>
+              <div>Enable text-to-speech keyboard commands</div>
+              <Switch
+                defaultChecked={blindfold}
+                onChange={toggleBlindfold}
+                className="blindfold-toggle"
+              />
+            </div>
           </div>
-          <Switch
-            defaultChecked={enableBicolorMode}
-            onChange={toggleEnableBicolorMode}
-            className="bicolor-toggle"
-          />
+          <div className="toggle-section">
+            <div className="title">Lexicons</div>
+            <div>
+              <div>Enable all lexicons</div>
+              <Switch
+                defaultChecked={enableAllLexicons}
+                onChange={toggleEnableAllLexicons}
+                className="dark-toggle"
+              />
+            </div>
+          </div>
+          <div className="toggle-section">
+            <div className="title">Variants</div>
+            <div>
+              <div>Enable Variants, such as WordSmog and ZOMGWords</div>
+              <Switch
+                defaultChecked={variantsEnabled}
+                onChange={toggleVariants}
+                className="variants-toggle"
+              />
+            </div>
+          </div>
+          <div className="toggle-section">
+            <div className="title">Show equity loss</div>
+            <div>
+              <div>Show equity loss in analyzer</div>
+              <Switch
+                defaultChecked={showEquityLoss}
+                onChange={toggleShowEquityLoss}
+                className="show-equity-loss-toggle"
+              />
+            </div>
+          </div>
+          <div className="toggle-section">
+            <div className="title">Enable silent site</div>
+            <div>
+              <div>Mute all sounds</div>
+              <Switch
+                defaultChecked={enableSilentSite}
+                onChange={toggleEnableSilentSite}
+                className="sounds-toggle"
+              />
+            </div>
+          </div>
+          <div className="toggle-section">
+            <div className="title">Practice manual tracking and scoring</div>
+            <div>
+              <div>
+                Disable automatic tracking of tiles and scoring of tentative
+                moves for you only
+              </div>
+              <Switch
+                defaultChecked={hidePool}
+                onChange={toggleHidePool}
+                className="pool-toggle"
+              />
+            </div>
+          </div>
+          <div className="toggle-section">
+            <div className="title">Infuse Second Color</div>
+            <div>
+              <div>
+                Highlight one player's tiles instead of the last move. Requires
+                Refresher Orb.
+              </div>
+              <Switch
+                defaultChecked={enableBicolorMode}
+                onChange={toggleEnableBicolorMode}
+                className="bicolor-toggle"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

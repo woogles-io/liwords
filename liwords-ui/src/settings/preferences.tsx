@@ -296,14 +296,20 @@ export const Preferences = React.memo(() => {
     <div className="preferences">
       <h3>Preferences</h3>
       <div className="section-header">Display</div>
-      <div className="toggle-section">
-        <div className="title">Dark mode</div>
-        <p>Use the dark version of the Woogles UI on Woogles.io</p>
-        <Switch
-          defaultChecked={darkMode}
-          onChange={(checked: boolean) => dispatch(setDarkMode(checked))}
-          className="dark-toggle"
-        />
+      <div className="toggles-section">
+        <div>
+          <div className="toggle-section">
+            <div className="title">Dark mode</div>
+            <div>
+              <div>Use the dark version of the Woogles UI on Woogles.io</div>
+              <Switch
+                defaultChecked={darkMode}
+                onChange={(checked: boolean) => dispatch(setDarkMode(checked))}
+                className="dark-toggle"
+              />
+            </div>
+          </div>
+        </div>
       </div>
       <div className="section-header">OMGWords settings</div>
       <Row>
