@@ -18,17 +18,26 @@ const Sider = (props: SiderProps) => {
     props.setVisibleTab(info.key);
   };
   return (
-    <Menu onClick={handleClick} style={{ width: 200 }} mode="inline">
-      {/* <Menu.Item>Options</Menu.Item> */}
-      {/* <SubMenu key="tournaments" title="Tournaments"> */}
-      <Menu.Item key="edit-tournament">Edit Tournament</Menu.Item>
-      <Menu.Item key="new-tournament">New Tournament</Menu.Item>
-      <Menu.Item key="announcement-editor">Edit Announcements</Menu.Item>
-      <Menu.Item key="puzzle-generator">Puzzle Generator</Menu.Item>
-      {/* <Menu.Item key="manage-tournament">Tournament Manager</Menu.Item> */}
-      {/* <Menu.Item key="user-editor">User Editor</Menu.Item> */}
-      {/* </SubMenu> */}
-    </Menu>
+    <Menu
+      onClick={handleClick}
+      style={{ width: 200 }}
+      mode="inline"
+      items={[
+        //{ label: 'Options' },
+        //{
+        //  key: 'tournaments',
+        //  label: 'Tournaments',
+        //  children: [
+        { key: 'edit-tournament', label: 'Edit Tournament' },
+        { key: 'new-tournament', label: 'New Tournament' },
+        { key: 'announcement-editor', label: 'Edit Announcements' },
+        { key: 'puzzle-generator', label: 'Puzzle Generator' },
+        //    { key: 'manage-tournament', label: 'Tournament Manager' },
+        //    { key: 'user-editor', label: 'User Editor' },
+        //  ],
+        //},
+      ]}
+    />
   );
 };
 
