@@ -68,94 +68,99 @@ export declare enum PairError {
   INVALID_ROUND_PAIRINGS_COUNT = 8,
 
   /**
-   * @generated from enum value: UNPAIRED_PLAYER = 9;
+   * @generated from enum value: PLAYER_INDEX_OUT_OF_BOUNDS = 9;
    */
-  UNPAIRED_PLAYER = 9,
+  PLAYER_INDEX_OUT_OF_BOUNDS = 9,
 
   /**
-   * @generated from enum value: INVALID_PAIRING = 10;
+   * @generated from enum value: UNPAIRED_PLAYER = 10;
    */
-  INVALID_PAIRING = 10,
+  UNPAIRED_PLAYER = 10,
 
   /**
-   * @generated from enum value: MORE_RESULTS_THAN_ROUNDS = 11;
+   * @generated from enum value: INVALID_PAIRING = 11;
    */
-  MORE_RESULTS_THAN_ROUNDS = 11,
+  INVALID_PAIRING = 11,
 
   /**
-   * @generated from enum value: MORE_RESULTS_THAN_PAIRINGS = 12;
+   * @generated from enum value: MORE_RESULTS_THAN_ROUNDS = 12;
    */
-  MORE_RESULTS_THAN_PAIRINGS = 12,
+  MORE_RESULTS_THAN_ROUNDS = 12,
 
   /**
-   * @generated from enum value: INVALID_ROUND_RESULTS_COUNT = 13;
+   * @generated from enum value: MORE_RESULTS_THAN_PAIRINGS = 13;
    */
-  INVALID_ROUND_RESULTS_COUNT = 13,
+  MORE_RESULTS_THAN_PAIRINGS = 13,
 
   /**
-   * @generated from enum value: MORE_CLASSES_THAN_PLAYERS = 14;
+   * @generated from enum value: INVALID_ROUND_RESULTS_COUNT = 14;
    */
-  MORE_CLASSES_THAN_PLAYERS = 14,
+  INVALID_ROUND_RESULTS_COUNT = 14,
 
   /**
-   * @generated from enum value: INVALID_CLASS = 15;
+   * @generated from enum value: MORE_CLASSES_THAN_PLAYERS = 15;
    */
-  INVALID_CLASS = 15,
+  MORE_CLASSES_THAN_PLAYERS = 15,
 
   /**
-   * @generated from enum value: MISORDERED_CLASS = 16;
+   * @generated from enum value: INVALID_CLASS = 16;
    */
-  MISORDERED_CLASS = 16,
+  INVALID_CLASS = 16,
 
   /**
-   * @generated from enum value: INVALID_CLASS_PRIZES_COUNT = 17;
+   * @generated from enum value: MISORDERED_CLASS = 17;
    */
-  INVALID_CLASS_PRIZES_COUNT = 17,
+  MISORDERED_CLASS = 17,
 
   /**
-   * @generated from enum value: INVALID_CLASS_PRIZE = 18;
+   * @generated from enum value: INVALID_CLASS_PRIZES_COUNT = 18;
    */
-  INVALID_CLASS_PRIZE = 18,
+  INVALID_CLASS_PRIZES_COUNT = 18,
 
   /**
-   * @generated from enum value: INVALID_GIBSON_SPREAD_COUNT = 19;
+   * @generated from enum value: INVALID_CLASS_PRIZE = 19;
    */
-  INVALID_GIBSON_SPREAD_COUNT = 19,
+  INVALID_CLASS_PRIZE = 19,
 
   /**
-   * @generated from enum value: INVALID_GIBSON_SPREAD = 20;
+   * @generated from enum value: INVALID_GIBSON_SPREAD_COUNT = 20;
    */
-  INVALID_GIBSON_SPREAD = 20,
+  INVALID_GIBSON_SPREAD_COUNT = 20,
 
   /**
-   * @generated from enum value: INVALID_CONTROL_LOSS_THRESHOLD = 21;
+   * @generated from enum value: INVALID_GIBSON_SPREAD = 21;
    */
-  INVALID_CONTROL_LOSS_THRESHOLD = 21,
+  INVALID_GIBSON_SPREAD = 21,
 
   /**
-   * @generated from enum value: INVALID_HOPEFULNESS_THRESHOLD = 22;
+   * @generated from enum value: INVALID_CONTROL_LOSS_THRESHOLD = 22;
    */
-  INVALID_HOPEFULNESS_THRESHOLD = 22,
+  INVALID_CONTROL_LOSS_THRESHOLD = 22,
 
   /**
-   * @generated from enum value: INVALID_DIVISION_SIMS = 23;
+   * @generated from enum value: INVALID_HOPEFULNESS_THRESHOLD = 23;
    */
-  INVALID_DIVISION_SIMS = 23,
+  INVALID_HOPEFULNESS_THRESHOLD = 23,
 
   /**
-   * @generated from enum value: INVALID_CONTROL_LOSS_SIMS = 24;
+   * @generated from enum value: INVALID_DIVISION_SIMS = 24;
    */
-  INVALID_CONTROL_LOSS_SIMS = 24,
+  INVALID_DIVISION_SIMS = 24,
 
   /**
-   * @generated from enum value: INVALID_PLACE_PRIZES = 25;
+   * @generated from enum value: INVALID_CONTROL_LOSS_SIMS = 25;
    */
-  INVALID_PLACE_PRIZES = 25,
+  INVALID_CONTROL_LOSS_SIMS = 25,
 
   /**
-   * @generated from enum value: REQUEST_TO_JSON_FAILED = 26;
+   * @generated from enum value: INVALID_PLACE_PRIZES = 26;
    */
-  REQUEST_TO_JSON_FAILED = 26,
+  INVALID_PLACE_PRIZES = 26,
+
+  /**
+   * @generated from enum value: REQUEST_TO_JSON_FAILED = 27;
+   */
+  REQUEST_TO_JSON_FAILED = 27,
 }
 
 /**
