@@ -85,7 +85,7 @@ func TestCOPErrors(t *testing.T) {
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_ROUND_PAIRINGS_COUNT)
 
 	req = defaultPairRequest()
-	addRoundPairings(req, "4 5 6 7 0 1 20 3")
+	addRoundPairings(req, "4 5 20 7 0 1 2 3")
 	resp = COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_PLAYER_INDEX_OUT_OF_BOUNDS)
 

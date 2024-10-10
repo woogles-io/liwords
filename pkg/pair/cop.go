@@ -82,6 +82,8 @@ func getPrecompData(req *pb.PairRequest, logsb *strings.Builder) (*PrecompData, 
 
 	gibsonizedPlayers := getGibsonizedPlayers(req, standings)
 
+	_ = standings.SimFactorPair(int(req.DivisionSims), int(req.Players), int(req.Rounds)-len(req.DivisionResults), gibsonizedPlayers)
+
 	return &PrecompData{
 		standings:         standings,
 		pairingCounts:     pairingCounts,
@@ -443,7 +445,7 @@ func getGibsonizedPlayers(req *pb.PairRequest, standings *Standings) []bool {
 		}
 	}
 
-	for playerIdx := 0; playerIdx < int(req.Players); playerIdx++ {
+	for playerIdx := 0; playerIdx < int(req.PlacePrizes); playerIdx++ {
 		gibsonizedPlayers[playerIdx] = true
 		if playerIdx > 0 && standings.CanCatch(roundsRemaining, cumeGibsonSpread, playerIdx-1, playerIdx) {
 			gibsonizedPlayers[playerIdx] = false
