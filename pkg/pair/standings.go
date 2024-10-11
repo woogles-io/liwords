@@ -1,7 +1,6 @@
 package pair
 
 import (
-	"fmt"
 	"math/rand"
 	"sort"
 )
@@ -238,20 +237,17 @@ func (standings *Standings) simFactorPairSegment(results [][]int, i int, j int, 
 		}
 	}
 
-	oddNumPlayers := numPlayers%2 == 1
-
-	startingRecords := make([]uint64, len(standings.records))
-
+	numTotalPlayers := len(standings.records)
+	oddNumPlayers := numTotalPlayers%2 == 1
+	startingRecords := make([]uint64, numTotalPlayers)
 	copy(startingRecords, standings.records)
 
 	for simIdx := 0; simIdx < sims; simIdx++ {
 		for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
-			fmt.Printf("round: %d\n", roundIdx)
 			for pairIdx := 0; pairIdx < numPlayers-1; pairIdx += 2 {
 				randomResult := rand.Intn(2)
 				p1 := pairings[roundIdx][pairIdx]
 				p2 := pairings[roundIdx][pairIdx+1]
-				fmt.Printf("p1: %d, p2: %d, randomResult: %d\n", p1, p2, randomResult)
 				winner := p1*(1-randomResult) + p2*randomResult
 				loser := p2*(1-randomResult) + p1*randomResult
 				randomSpread := rand.Intn(MaxSpread + 1)
