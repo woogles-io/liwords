@@ -85,7 +85,7 @@ def generate_go_code(players, tournament_name, number_of_rounds, total_rounds):
 
 def main():
     if len(sys.argv) != 4:
-        print("Usage: python script_name.py <path_to_input_file> <tournament_name> <number_of_rounds>")
+        print("Usage: python script_name.py <path_to_tsh_t_file> <tournament_name> <number_of_rounds>")
         sys.exit(1)
 
     file_path = sys.argv[1]

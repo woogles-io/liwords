@@ -1,98 +1,17 @@
-package pair
+package verifyreq
 
 import (
 	"fmt"
-	"strings"
 
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
-	"google.golang.org/protobuf/encoding/protojson"
 )
-
-type PrecompData struct {
-	standings         *Standings
-	pairingCounts     map[string]int
-	repeatCounts      []int
-	gibsonizedPlayers []bool
-}
 
 const (
-	ByePlayerIndex uint64 = (uint64(1) << PlayerSpreadOffset) - 1
+	MaxPlayerCount = 50000
 )
 
-func COPPair(req *pb.PairRequest) *pb.PairResponse {
-	// TODO: implement COP
-	// Required data:
-	// standings
-	// sim results
-	// number of times played - pairingCounts
-	// total number of repeats - repeats
-	// previous pairing
-
-	// Weights:
-	// repeats
-	// rank diff
-	// casher-noncasher
-	// control loss
-
-	// Constraints:
-	// prepaired
-	// koth
-	// gibson
-	// repeated bye
-
-	var logsb strings.Builder
-
-	_, resp := getPrecompData(req, &logsb)
-
-	if resp.ErrorCode != pb.PairError_SUCCESS {
-		return resp
-	}
-
-	resp.Message = logsb.String()
-	return resp
-}
-
-func getPrecompData(req *pb.PairRequest, logsb *strings.Builder) (*PrecompData, *pb.PairResponse) {
-	resp := verifyPairRequest(req)
-	if resp != nil {
-		return nil, resp
-	}
-
-	reqJSONstr := getReqAsJSONString(req)
-
-	if reqJSONstr == "" {
-		return nil, &pb.PairResponse{
-			ErrorCode: pb.PairError_REQUEST_TO_JSON_FAILED,
-			Message:   "unable to parse request",
-		}
-	}
-
-	resp = &pb.PairResponse{
-		ErrorCode: pb.PairError_SUCCESS,
-		Pairings:  make([]int32, req.Players),
-	}
-
-	logsb.WriteString("Pairings Request:\n\n" + reqJSONstr)
-
-	standings := createInitialStandings(req)
-
-	logsb.WriteString("\n\nInitial Standings:\n\n" + getStandingsString(req, standings))
-
-	pairingCounts, repeatCounts := getPairingFrequency(req)
-
-	gibsonizedPlayers := getGibsonizedPlayers(req, standings)
-
-	_ = standings.SimFactorPair(int(req.DivisionSims), int(req.Players), int(req.Rounds)-len(req.DivisionResults), gibsonizedPlayers)
-
-	return &PrecompData{
-		standings:         standings,
-		pairingCounts:     pairingCounts,
-		repeatCounts:      repeatCounts,
-		gibsonizedPlayers: gibsonizedPlayers,
-	}, resp
-}
-
-func verifyPairRequest(req *pb.PairRequest) *pb.PairResponse {
+// This function can be broken up and renamed as more pairing methods are added
+func Verify(req *pb.PairRequest) *pb.PairResponse {
 	// Verify number of players
 	if req.Players < 2 {
 		return &pb.PairResponse{
@@ -100,7 +19,7 @@ func verifyPairRequest(req *pb.PairRequest) *pb.PairResponse {
 			Message:   fmt.Sprintf("not enough players (%d)", req.Players),
 		}
 	}
-	if req.Players >= 1<<PlayerSpreadOffset {
+	if req.Players > MaxPlayerCount {
 		return &pb.PairResponse{
 			ErrorCode: pb.PairError_PLAYER_COUNT_TOO_LARGE,
 			Message:   fmt.Sprintf("too many players (%d)", req.Players),
@@ -319,142 +238,4 @@ func verifyPairRequest(req *pb.PairRequest) *pb.PairResponse {
 	}
 
 	return nil
-}
-
-func getReqAsJSONString(req *pb.PairRequest) string {
-	marshaler := protojson.MarshalOptions{
-		Multiline: true, // Enables pretty printing
-		Indent:    "  ", // Sets the indentation level
-	}
-	jsonData, err := marshaler.Marshal(req)
-	if err != nil {
-		return ""
-	}
-	return string(jsonData)
-}
-
-func createInitialStandings(req *pb.PairRequest) *Standings {
-	standings := CreateEmptyStandings(int(req.Players))
-
-	for roundIdx, roundResults := range req.DivisionResults {
-		for playerIdx, playerScore := range roundResults.Results {
-			oppIdx := int(req.DivisionPairings[roundIdx].Pairings[playerIdx])
-			if playerIdx == int(oppIdx) {
-				// Bye
-				if playerScore >= 0 {
-					standings.IncrementPlayerWins(playerIdx)
-				}
-				standings.IncrementPlayerSpread(playerIdx, int(playerScore))
-			} else if playerIdx < oppIdx {
-				oppScore := roundResults.Results[oppIdx]
-				playerSpread := playerScore - oppScore
-				oppSpread := oppScore - playerScore
-				if playerSpread > 0 {
-					standings.IncrementPlayerWins(playerIdx)
-				} else if playerSpread < 0 {
-					standings.IncrementPlayerWins(oppIdx)
-				} else {
-					standings.IncrementPlayerTies(playerIdx)
-					standings.IncrementPlayerTies(oppIdx)
-				}
-				standings.IncrementPlayerSpread(playerIdx, int(playerSpread))
-				standings.IncrementPlayerSpread(oppIdx, int(oppSpread))
-			}
-		}
-	}
-
-	standings.Sort()
-
-	return standings
-}
-
-func getStandingsString(req *pb.PairRequest, standings *Standings) string {
-	maxNameLength := 0
-	for _, playerName := range req.PlayerNames {
-		if len(playerName) > maxNameLength {
-			if len(playerName) > 30 {
-				maxNameLength = 30
-			} else {
-				maxNameLength = len(playerName)
-			}
-		}
-	}
-
-	playerNameColWidth := maxNameLength
-	if playerNameColWidth > 30 {
-		playerNameColWidth = 30
-	}
-
-	headerFormat := fmt.Sprintf("%%-4s | %%-%ds | %%-4s | %%-6s\n", playerNameColWidth)
-	rowFormat := fmt.Sprintf("%%-4d | %%-%ds | %%-4.1f | %%-6d\n", playerNameColWidth)
-
-	var sb strings.Builder
-	header := fmt.Sprintf(headerFormat, "Rank", "Name", "Wins", "Spread")
-	sb.WriteString(header)
-	sb.WriteString(strings.Repeat("-", len(header)) + "\n")
-
-	for rankIdx := 0; rankIdx < int(req.Players); rankIdx++ {
-		playerIdx := standings.GetPlayerIndex(rankIdx)
-		wins := standings.GetPlayerWins(rankIdx)
-		spread := standings.GetPlayerSpread(rankIdx)
-		playerName := req.PlayerNames[playerIdx]
-		if len(playerName) > 30 {
-			playerName = playerName[:30]
-		}
-		sb.WriteString(fmt.Sprintf(rowFormat, rankIdx+1, playerName, wins, spread))
-	}
-
-	return sb.String()
-}
-
-func getPairingFrequency(req *pb.PairRequest) (map[string]int, []int) {
-	pairingCounts := make(map[string]int)
-	totalRepeats := make([]int, req.Players)
-	for _, roundPairings := range req.DivisionPairings {
-		for playerIdx := 0; playerIdx < len(roundPairings.Pairings); playerIdx++ {
-			oppIdx := int(roundPairings.Pairings[playerIdx])
-			var pairingKey string
-			if playerIdx == oppIdx {
-				pairingKey = fmt.Sprintf("%d:BYE", playerIdx)
-			} else if playerIdx < oppIdx {
-				pairingKey = fmt.Sprintf("%d:%d", playerIdx, oppIdx)
-			}
-			if pairingCounts[pairingKey] > 0 {
-				totalRepeats[playerIdx]++
-				if playerIdx != oppIdx {
-					totalRepeats[oppIdx]++
-				}
-			}
-			pairingCounts[pairingKey]++
-		}
-	}
-	return pairingCounts, totalRepeats
-}
-
-// Assumes the standings are already sorted
-func getGibsonizedPlayers(req *pb.PairRequest, standings *Standings) []bool {
-	gibsonizedPlayers := make([]bool, req.Players)
-	roundsRemaining := int(req.Rounds) - len(req.DivisionResults)
-	numInputGibonsSpreads := len(req.GibsonSpreads)
-	cumeGibsonSpread := 0
-	for round := roundsRemaining - 1; round >= 0; round-- {
-		if round >= numInputGibonsSpreads {
-			cumeGibsonSpread += int(req.GibsonSpreads[numInputGibonsSpreads-1])
-		} else {
-			cumeGibsonSpread += int(req.GibsonSpreads[round])
-		}
-	}
-
-	for playerIdx := 0; playerIdx < int(req.PlacePrizes); playerIdx++ {
-		gibsonizedPlayers[playerIdx] = true
-		if playerIdx > 0 && standings.CanCatch(roundsRemaining, cumeGibsonSpread, playerIdx-1, playerIdx) {
-			gibsonizedPlayers[playerIdx] = false
-			continue
-		}
-		if playerIdx < int(req.Players)-1 && standings.CanCatch(roundsRemaining, cumeGibsonSpread, playerIdx, playerIdx+1) {
-			gibsonizedPlayers[playerIdx] = false
-			continue
-		}
-	}
-	return gibsonizedPlayers
 }
