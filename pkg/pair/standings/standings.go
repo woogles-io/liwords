@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
-
 	"golang.org/x/exp/rand"
 )
 
@@ -28,6 +27,7 @@ const (
 // Losses have a value of 0
 type Standings struct {
 	records         []uint64
+	recordsBackup   []uint64
 	possibleResults []uint64
 }
 
@@ -37,6 +37,7 @@ func CreateInitialStandings(req *pb.PairRequest) *Standings {
 	// Create empty standings
 	standings := &Standings{}
 	standings.records = make([]uint64, req.Players)
+	standings.recordsBackup = make([]uint64, req.Players)
 	for playerIdx := 0; playerIdx < int(req.Players); playerIdx++ {
 		standings.records[playerIdx] = uint64(playerIdx)
 		standings.IncrementPlayerSpread(playerIdx, initialSpreadValue)
@@ -90,6 +91,18 @@ func CreateInitialStandings(req *pb.PairRequest) *Standings {
 	standings.Sort()
 
 	return standings
+}
+
+func (standings *Standings) Backup() {
+	copy(standings.recordsBackup, standings.records)
+}
+
+func (standings *Standings) RestoreFromBackup() {
+	copy(standings.records, standings.recordsBackup)
+}
+
+func (standings *Standings) GetNumPlayers() int {
+	return len(standings.records)
 }
 
 func (standings *Standings) IncrementPlayerWins(rankIdx int) {
@@ -171,8 +184,81 @@ func (standings *Standings) SimFactorPair(sims int, maxFactor int, roundsRemaini
 			j++
 		}
 	}
-
 	return results
+}
+
+func (standings *Standings) SimSingleIteration(pairings [][]int, roundsRemaining int, i int, j int) {
+	numPlayers := len(pairings[0])
+	numTotalPlayers := len(standings.records)
+	oddNumPlayers := numTotalPlayers%2 == 1
+	for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
+		for pairIdx := 0; pairIdx < numPlayers-1; pairIdx += 2 {
+			randomResult := rand.Intn(2)
+			p1 := pairings[roundIdx][pairIdx]
+			p2 := pairings[roundIdx][pairIdx+1]
+			winner := p1*(1-randomResult) + p2*randomResult
+			loser := p2*(1-randomResult) + p1*randomResult
+			randomSpread := rand.Intn(maxSpread + 1)
+			standings.incrementPlayerRecord(winner, standings.possibleResults[randomSpread*2])
+			standings.decrementPlayerRecord(loser, standings.possibleResults[randomSpread*2+1])
+		}
+		// FIXME: Branch predictor should be able to predict this close to 100%
+		// of the time since the value of oddNumPlayers never changes in this function
+		// but test it to be sure
+		if oddNumPlayers {
+			standings.incrementPlayerRecord(numPlayers-1, standings.possibleResults[byeSpread*2])
+		}
+		standings.sortRange(i, j)
+	}
+}
+
+func (standings *Standings) UpdateResultsWithFinishedSim(results [][]int, i int, j int) {
+	for rankIdx := i; rankIdx < j; rankIdx++ {
+		playerIdx := getIndex(standings.records[rankIdx])
+		results[playerIdx][rankIdx] += 1
+	}
+}
+
+// Gets the factor pairings for players in for all remaining rounds [i, j)
+// Assumes i < j
+// Returns pairings in pairs of player indexes
+// For example, pairings of [0, 2, 1, 3] indicate player 0 plays player 4
+// and player 1 plays player 3.
+func GetSegmentPairings(i int, j int, roundsRemaining int, maxFactor int) [][]int {
+	numPlayers := j - i
+	pairings := make([][]int, roundsRemaining)
+	for i := 0; i < roundsRemaining; i++ {
+		pairings[i] = make([]int, numPlayers)
+	}
+
+	for factor := roundsRemaining; factor > 0; factor-- {
+		roundFactor := factor
+		if roundFactor > maxFactor {
+			roundFactor = maxFactor
+		}
+		maxPlayerFactor := numPlayers / 2
+		if roundFactor > maxPlayerFactor {
+			roundFactor = maxPlayerFactor
+		}
+		roundIdx := roundsRemaining - factor
+		pairIdx := 0
+		for k := 0; k < roundFactor; k++ {
+			pairings[roundIdx][pairIdx] = k
+			pairIdx += 1
+			pairings[roundIdx][pairIdx] = k + roundFactor
+			pairIdx += 1
+		}
+		for k := roundFactor * 2; k < numPlayers; k += 2 {
+			pairings[roundIdx][pairIdx] = k
+			pairIdx += 1
+			if pairIdx == numPlayers {
+				break
+			}
+			pairings[roundIdx][pairIdx] = k + 1
+			pairIdx += 1
+		}
+	}
+	return pairings
 }
 
 func (standings *Standings) String(req *pb.PairRequest) string {
@@ -284,69 +370,11 @@ func (standings *Standings) sortRange(i, j int) {
 // Factor pair the players in [i, j)
 // Assumes i < j
 func (standings *Standings) simFactorPairSegment(results [][]int, i int, j int, roundsRemaining int, maxFactor int, sims int) {
-	numPlayers := j - i
-	pairings := make([][]int, roundsRemaining)
-	for i := 0; i < roundsRemaining; i++ {
-		pairings[i] = make([]int, numPlayers)
-	}
-
-	for factor := roundsRemaining; factor > 0; factor-- {
-		roundFactor := factor
-		if roundFactor > maxFactor {
-			roundFactor = maxFactor
-		}
-		maxPlayerFactor := numPlayers / 2
-		if roundFactor > maxPlayerFactor {
-			roundFactor = maxPlayerFactor
-		}
-		roundIdx := roundsRemaining - factor
-		pairIdx := 0
-		for k := 0; k < roundFactor; k++ {
-			pairings[roundIdx][pairIdx] = k
-			pairIdx += 1
-			pairings[roundIdx][pairIdx] = k + roundFactor
-			pairIdx += 1
-		}
-		for k := roundFactor * 2; k < numPlayers; k += 2 {
-			pairings[roundIdx][pairIdx] = k
-			pairIdx += 1
-			if pairIdx == numPlayers {
-				break
-			}
-			pairings[roundIdx][pairIdx] = k + 1
-			pairIdx += 1
-		}
-	}
-
-	numTotalPlayers := len(standings.records)
-	oddNumPlayers := numTotalPlayers%2 == 1
-	startingRecords := make([]uint64, numTotalPlayers)
-	copy(startingRecords, standings.records)
-
+	pairings := GetSegmentPairings(i, j, roundsRemaining, maxFactor)
+	standings.Backup()
 	for simIdx := 0; simIdx < sims; simIdx++ {
-		for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
-			for pairIdx := 0; pairIdx < numPlayers-1; pairIdx += 2 {
-				randomResult := rand.Intn(2)
-				p1 := pairings[roundIdx][pairIdx]
-				p2 := pairings[roundIdx][pairIdx+1]
-				winner := p1*(1-randomResult) + p2*randomResult
-				loser := p2*(1-randomResult) + p1*randomResult
-				randomSpread := rand.Intn(maxSpread + 1)
-				standings.incrementPlayerRecord(winner, standings.possibleResults[randomSpread*2])
-				standings.decrementPlayerRecord(loser, standings.possibleResults[randomSpread*2+1])
-			}
-			// FIXME: Branch predictor should be able to predict this close to 100%
-			// of the time since the value of oddNumPlayers never changes in this function
-			// but test it to be sure
-			if oddNumPlayers {
-				standings.incrementPlayerRecord(numPlayers-1, standings.possibleResults[byeSpread*2])
-			}
-			standings.sortRange(i, j)
-		}
-		for rankIdx := i; rankIdx < j; rankIdx++ {
-			playerIdx := getIndex(standings.records[rankIdx])
-			results[playerIdx][rankIdx] += 1
-		}
-		copy(standings.records, startingRecords)
+		standings.SimSingleIteration(pairings, roundsRemaining, i, j)
+		standings.UpdateResultsWithFinishedSim(results, i, j)
+		standings.RestoreFromBackup()
 	}
 }
