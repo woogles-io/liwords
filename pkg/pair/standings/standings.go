@@ -3,6 +3,7 @@ package standings
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -11,6 +12,7 @@ import (
 
 const (
 	playerWinsOffset   int    = 48
+	initialWinsValue   int    = 1 << (64 - playerWinsOffset - 1)
 	playerSpreadOffset int    = 16
 	initialSpreadValue int    = 1 << (playerWinsOffset - playerSpreadOffset - 1)
 	playerIndexMask    uint64 = 0xFFFF
@@ -18,17 +20,12 @@ const (
 	byeSpread          int    = 50
 )
 
-// Player standings are implemented as an array of uint64s.
-// The 16 most significant bits represent the win score
-// The next 32 most significant bits represent the spread
-// The last 16 bits represent the player index
-// Wins have a value of 2
-// Ties have a value of 1
-// Losses have a value of 0
 type Standings struct {
-	records         []uint64
-	recordsBackup   []uint64
-	possibleResults []uint64
+	records            []uint64
+	recordsBackup      []uint64
+	possibleResults    []uint64
+	roundsPlayed       int
+	roundsPlayedBackup int
 }
 
 // Exported functions
@@ -36,54 +33,43 @@ type Standings struct {
 func CreateInitialStandings(req *pb.PairRequest) *Standings {
 	// Create empty standings
 	standings := &Standings{}
+	standings.roundsPlayed = len(req.DivisionResults)
 	standings.records = make([]uint64, req.Players)
 	standings.recordsBackup = make([]uint64, req.Players)
 	for playerIdx := 0; playerIdx < int(req.Players); playerIdx++ {
-		standings.records[playerIdx] = uint64(playerIdx)
-		standings.IncrementPlayerSpread(playerIdx, initialSpreadValue)
+		standings.records[playerIdx] = getRecordFromWinsAndSpread(initialWinsValue, initialSpreadValue)
+		standings.records[playerIdx] += uint64(playerIdx)
 	}
 
 	// Initialize the possible results
-	standings.possibleResults = make([]uint64, (maxSpread+1)*2)
-	for spread := 0; spread < maxSpread; spread++ {
-		baseResultIdx := spread * 2
-		if spread == 0 {
-			// Set the tie results
-			incrementTies(&standings.possibleResults[baseResultIdx])
-			incrementTies(&standings.possibleResults[baseResultIdx+1])
-		} else {
-			// Set the winning result
-			incrementWins(&standings.possibleResults[baseResultIdx])
-			incrementSpread(&standings.possibleResults[baseResultIdx], spread)
-			// Set the losing result
-			incrementSpread(&standings.possibleResults[baseResultIdx+1], spread)
-		}
+	standings.possibleResults = make([]uint64, maxSpread+1)
+	for spread := 1; spread < maxSpread; spread++ {
+		standings.possibleResults[spread] = getRecordFromWinsAndSpread(1, spread)
 	}
 
 	// Update the standings wuth the pairing results
 	for roundIdx, roundResults := range req.DivisionResults {
 		for playerIdx, playerScore := range roundResults.Results {
 			oppIdx := int(req.DivisionPairings[roundIdx].Pairings[playerIdx])
+			ps := int(playerScore)
 			if playerIdx == int(oppIdx) {
 				// Bye
-				if playerScore >= 0 {
-					standings.IncrementPlayerWins(playerIdx)
+				if ps > 0 {
+					standings.incrementPlayerRecord(playerIdx, getRecordFromWinsAndSpread(1, ps))
+				} else if ps < 0 {
+					standings.decrementPlayerRecord(playerIdx, getRecordFromWinsAndSpread(1, ps))
 				}
-				standings.IncrementPlayerSpread(playerIdx, int(playerScore))
 			} else if playerIdx < oppIdx {
-				oppScore := roundResults.Results[oppIdx]
-				playerSpread := playerScore - oppScore
-				oppSpread := oppScore - playerScore
+				playerSpread := ps - int(roundResults.Results[oppIdx])
 				if playerSpread > 0 {
-					standings.IncrementPlayerWins(playerIdx)
+					record := getRecordFromWinsAndSpread(1, playerSpread)
+					standings.incrementPlayerRecord(playerIdx, record)
+					standings.decrementPlayerRecord(oppIdx, record)
 				} else if playerSpread < 0 {
-					standings.IncrementPlayerWins(oppIdx)
-				} else {
-					standings.IncrementPlayerTies(playerIdx)
-					standings.IncrementPlayerTies(oppIdx)
+					record := getRecordFromWinsAndSpread(1, -playerSpread)
+					standings.incrementPlayerRecord(oppIdx, record)
+					standings.decrementPlayerRecord(playerIdx, record)
 				}
-				standings.IncrementPlayerSpread(playerIdx, int(playerSpread))
-				standings.IncrementPlayerSpread(oppIdx, int(oppSpread))
 			}
 		}
 	}
@@ -95,26 +81,12 @@ func CreateInitialStandings(req *pb.PairRequest) *Standings {
 
 func (standings *Standings) Backup() {
 	copy(standings.recordsBackup, standings.records)
+	standings.roundsPlayedBackup = standings.roundsPlayed
 }
 
 func (standings *Standings) RestoreFromBackup() {
 	copy(standings.records, standings.recordsBackup)
-}
-
-func (standings *Standings) GetNumPlayers() int {
-	return len(standings.records)
-}
-
-func (standings *Standings) IncrementPlayerWins(rankIdx int) {
-	incrementWins(&standings.records[rankIdx])
-}
-
-func (standings *Standings) IncrementPlayerTies(rankIdx int) {
-	incrementTies(&standings.records[rankIdx])
-}
-
-func (standings *Standings) IncrementPlayerSpread(rankIdx int, spread int) {
-	incrementSpread(&standings.records[rankIdx], spread)
+	standings.roundsPlayed = standings.roundsPlayedBackup
 }
 
 func (standings *Standings) GetPlayerIndex(rankIdx int) int {
@@ -122,35 +94,98 @@ func (standings *Standings) GetPlayerIndex(rankIdx int) int {
 }
 
 func (standings *Standings) GetPlayerWins(rankIdx int) float64 {
-	return getWinsHumanReadable(standings.records[rankIdx])
+	return float64(getWinsValue(standings.records[rankIdx])-initialWinsValue+standings.roundsPlayed) / 2
 }
 
 func (standings *Standings) GetPlayerSpread(rankIdx int) int {
-	return getSpreadHumanReadable(standings.records[rankIdx])
+	spread := getSpreadValue(standings.records[rankIdx])
+	if spread > uint64(initialSpreadValue) {
+		return int(spread - uint64(initialSpreadValue))
+	} else {
+		return -int(uint64(initialSpreadValue) - spread)
+	}
 }
 
 // Assumes the standings are already sorted and i < j
 func (standings *Standings) CanCatch(roundsRemaining int, cumeGibsonSpread int, i int, j int) bool {
 	ri := standings.records[i]
 	rj := standings.records[j]
-	winDiff := getWins(ri) - getWins(rj)
-	// Multiply by 2 because wins count as 2 and ties count as 1
-	highestPossibleWinScore := roundsRemaining * 2
+	winDiff := getWinsValue(ri) - getWinsValue(rj)
+	// FIXME: Check this logic
+	highestPossibleWinScore := roundsRemaining
 	if winDiff != highestPossibleWinScore {
 		return winDiff < highestPossibleWinScore
 	}
-	piSpread := getSpread(ri)
-	pjSpread := getSpread(rj)
-	if pjSpread > piSpread {
+	piSpread := getSpreadValue(ri)
+	pjSpread := getSpreadValue(rj)
+	if pjSpread >= piSpread {
 		return true
 	}
 	return (piSpread - pjSpread) <= uint64(cumeGibsonSpread)
+}
+
+// Assumes the standings are already sorted
+func (standings *Standings) GetGibsonizedPlayers(req *pb.PairRequest) []bool {
+	gibsonizedPlayers := make([]bool, req.Players)
+	roundsRemaining := int(req.Rounds) - len(req.DivisionResults)
+	numInputGibonsSpreads := len(req.GibsonSpreads)
+	cumeGibsonSpread := 0
+	for round := roundsRemaining - 1; round >= 0; round-- {
+		if round >= numInputGibonsSpreads {
+			cumeGibsonSpread += int(req.GibsonSpreads[numInputGibonsSpreads-1])
+		} else {
+			cumeGibsonSpread += int(req.GibsonSpreads[round])
+		}
+	}
+
+	for playerIdx := 0; playerIdx < int(req.PlacePrizes); playerIdx++ {
+		gibsonizedPlayers[playerIdx] = true
+		if playerIdx > 0 && standings.CanCatch(roundsRemaining, cumeGibsonSpread, playerIdx-1, playerIdx) {
+			gibsonizedPlayers[playerIdx] = false
+			continue
+		}
+		if playerIdx < int(req.Players)-1 && standings.CanCatch(roundsRemaining, cumeGibsonSpread, playerIdx, playerIdx+1) {
+			gibsonizedPlayers[playerIdx] = false
+			continue
+		}
+	}
+	return gibsonizedPlayers
 }
 
 func (standings *Standings) Sort() {
 	sort.Slice(standings.records, func(i, j int) bool {
 		return standings.records[i] > standings.records[j]
 	})
+}
+
+func (standings *Standings) GetAllSegments(gibsonizedPlayers []bool) [][]int {
+	// FIXME: probably need better names for i and j
+	numPlayers := len(standings.records)
+	i := 0
+	j := 0
+	pairingsSegments := [][]int{}
+	for j <= numPlayers {
+		if j == numPlayers {
+			pairingsSegments = append(pairingsSegments, []int{i, j})
+			break
+		}
+		if gibsonizedPlayers[j] {
+			if j != i {
+				// FIXME: explain this
+				if (j-i)%2 == 1 {
+					pairingsSegments = append(pairingsSegments, []int{i, j + 1})
+				} else {
+					pairingsSegments = append(pairingsSegments, []int{i, j})
+
+				}
+			}
+			j++
+			i = j
+		} else {
+			j++
+		}
+	}
+	return pairingsSegments
 }
 
 // Assumes the standings are already sorted
@@ -160,29 +195,11 @@ func (standings *Standings) SimFactorPair(sims int, maxFactor int, roundsRemaini
 	for i := range results {
 		results[i] = make([]int, numPlayers)
 	}
-	// FIXME: probably need better names for i and j
-	i := 0
-	j := 0
-	for j <= numPlayers {
-		if j == numPlayers {
-			standings.simFactorPairSegment(results, i, j, roundsRemaining, maxFactor, sims)
-			break
-		}
-		if gibsonizedPlayers[j] {
-			// FIXME: add results for gibsonized player
-			if j != i {
-				// FIXME: explain this
-				includeGibsonizedPlayer := 0
-				if j-i%2 == 1 {
-					includeGibsonizedPlayer = 1
-				}
-				standings.simFactorPairSegment(results, i, j+includeGibsonizedPlayer, roundsRemaining, maxFactor, sims)
-			}
-			j++
-			i = j
-		} else {
-			j++
-		}
+	// FIXME: add results for gibsonized player
+	pairingSegments := standings.GetAllSegments(gibsonizedPlayers)
+	for _, ps := range pairingSegments {
+		standings.simFactorPairSegment(results, ps[0], ps[1], roundsRemaining, maxFactor, sims)
+
 	}
 	return results
 }
@@ -199,17 +216,20 @@ func (standings *Standings) SimSingleIteration(pairings [][]int, roundsRemaining
 			winner := p1*(1-randomResult) + p2*randomResult
 			loser := p2*(1-randomResult) + p1*randomResult
 			randomSpread := rand.Intn(maxSpread + 1)
-			standings.incrementPlayerRecord(winner, standings.possibleResults[randomSpread*2])
-			standings.decrementPlayerRecord(loser, standings.possibleResults[randomSpread*2+1])
+			record := standings.possibleResults[randomSpread]
+			standings.incrementPlayerRecord(winner, record)
+			standings.decrementPlayerRecord(loser, record)
 		}
 		// FIXME: Branch predictor should be able to predict this close to 100%
 		// of the time since the value of oddNumPlayers never changes in this function
 		// but test it to be sure
 		if oddNumPlayers {
-			standings.incrementPlayerRecord(numPlayers-1, standings.possibleResults[byeSpread*2])
+			standings.incrementPlayerRecord(numPlayers-1, standings.possibleResults[byeSpread])
 		}
+		// FIXME: is sort range inclusive?
 		standings.sortRange(i, j)
 	}
+	standings.roundsPlayed += roundsRemaining
 }
 
 func (standings *Standings) UpdateResultsWithFinishedSim(results [][]int, i int, j int) {
@@ -224,15 +244,15 @@ func (standings *Standings) UpdateResultsWithFinishedSim(results [][]int, i int,
 // Returns pairings in pairs of player indexes
 // For example, pairings of [0, 2, 1, 3] indicate player 0 plays player 4
 // and player 1 plays player 3.
-func GetSegmentPairings(i int, j int, roundsRemaining int, maxFactor int) [][]int {
+func GetPairingsForSegment(i int, j int, totalRoundsRemaining int, maxFactor int) [][]int {
 	numPlayers := j - i
-	pairings := make([][]int, roundsRemaining)
-	for i := 0; i < roundsRemaining; i++ {
+	pairings := make([][]int, totalRoundsRemaining)
+	for i := 0; i < totalRoundsRemaining; i++ {
 		pairings[i] = make([]int, numPlayers)
 	}
 
-	for factor := roundsRemaining; factor > 0; factor-- {
-		roundFactor := factor
+	for roundsRemaining := totalRoundsRemaining; roundsRemaining > 0; roundsRemaining-- {
+		roundFactor := roundsRemaining
 		if roundFactor > maxFactor {
 			roundFactor = maxFactor
 		}
@@ -240,7 +260,7 @@ func GetSegmentPairings(i int, j int, roundsRemaining int, maxFactor int) [][]in
 		if roundFactor > maxPlayerFactor {
 			roundFactor = maxPlayerFactor
 		}
-		roundIdx := roundsRemaining - factor
+		roundIdx := totalRoundsRemaining - roundsRemaining
 		pairIdx := 0
 		for k := 0; k < roundFactor; k++ {
 			pairings[roundIdx][pairIdx] = k
@@ -262,15 +282,29 @@ func GetSegmentPairings(i int, j int, roundsRemaining int, maxFactor int) [][]in
 }
 
 func (standings *Standings) String(req *pb.PairRequest) string {
+	var playerNames []string
+
 	maxNameLength := 0
-	for _, playerName := range req.PlayerNames {
-		if len(playerName) > maxNameLength {
-			if len(playerName) > 30 {
-				maxNameLength = 30
-			} else {
-				maxNameLength = len(playerName)
+	numPlayers := 0
+	if req != nil {
+		for _, playerName := range req.PlayerNames {
+			if len(playerName) > maxNameLength {
+				if len(playerName) > 30 {
+					maxNameLength = 30
+				} else {
+					maxNameLength = len(playerName)
+				}
 			}
 		}
+		playerNames = req.PlayerNames
+		numPlayers = int(req.Players)
+	} else {
+		playerNames = make([]string, len(standings.records))
+		for i := 0; i < len(standings.records); i++ {
+			playerNames[i] = strconv.Itoa(i + 1)
+		}
+		maxNameLength = len(playerNames[len(standings.records)-1])
+		numPlayers = len(standings.records)
 	}
 
 	playerNameColWidth := maxNameLength
@@ -286,11 +320,11 @@ func (standings *Standings) String(req *pb.PairRequest) string {
 	sb.WriteString(header)
 	sb.WriteString(strings.Repeat("-", len(header)) + "\n")
 
-	for rankIdx := 0; rankIdx < int(req.Players); rankIdx++ {
+	for rankIdx := 0; rankIdx < numPlayers; rankIdx++ {
 		playerIdx := standings.GetPlayerIndex(rankIdx)
 		wins := standings.GetPlayerWins(rankIdx)
 		spread := standings.GetPlayerSpread(rankIdx)
-		playerName := req.PlayerNames[playerIdx]
+		playerName := playerNames[playerIdx]
 		if len(playerName) > 30 {
 			playerName = playerName[:30]
 		}
@@ -302,63 +336,33 @@ func (standings *Standings) String(req *pb.PairRequest) string {
 
 // Unexported functions
 
-func incrementWins(record *uint64) {
-	*record += uint64(2) << playerWinsOffset
+// Init records
+// set all possible records
+// inc winner record
+// dec loser record
+
+func getRecordFromWinsAndSpread(wins int, spread int) uint64 {
+	return uint64(wins)<<playerWinsOffset | uint64(spread)<<playerSpreadOffset
 }
 
-func incrementTies(record *uint64) {
-	*record += uint64(1) << playerWinsOffset
+func (standings *Standings) incrementPlayerRecord(playerRank int, incRecord uint64) {
+	standings.records[playerRank] += incRecord
 }
 
-func incrementSpread(record *uint64, spread int) {
-	if spread < 0 {
-		*record -= uint64((-spread)) << playerSpreadOffset
-	} else {
-		*record += uint64(spread) << playerSpreadOffset
-	}
-}
-
-func incrementRecord(record *uint64, incRecord uint64) {
-	*record += incRecord
-}
-
-func decrementRecord(record *uint64, incRecord uint64) {
-	*record -= incRecord
+func (standings *Standings) decrementPlayerRecord(playerRank int, incRecord uint64) {
+	standings.records[playerRank] -= incRecord
 }
 
 func getIndex(record uint64) int {
 	return int(record & playerIndexMask)
 }
 
-func getWins(record uint64) int {
+func getWinsValue(record uint64) int {
 	return int((record >> playerWinsOffset) & 0xFFFF)
 }
 
-func getWinsHumanReadable(record uint64) float64 {
-	return float64(getWins(record)) / 2
-}
-
-func getSpread(record uint64) uint64 {
+func getSpreadValue(record uint64) uint64 {
 	return (record >> playerSpreadOffset) & 0xFFFFFFFF
-}
-
-func getSpreadHumanReadable(record uint64) int {
-	spread := getSpread(record)
-	if spread > uint64(initialSpreadValue) {
-		return int(spread - uint64(initialSpreadValue))
-	} else {
-		return -int(uint64(initialSpreadValue) - spread)
-	}
-}
-
-// Private standings methods
-
-func (standings *Standings) incrementPlayerRecord(rankIdx int, incRecord uint64) {
-	incrementRecord(&standings.records[rankIdx], incRecord)
-}
-
-func (standings *Standings) decrementPlayerRecord(rankIdx int, incRecord uint64) {
-	decrementRecord(&standings.records[rankIdx], incRecord)
 }
 
 func (standings *Standings) sortRange(i, j int) {
@@ -370,7 +374,7 @@ func (standings *Standings) sortRange(i, j int) {
 // Factor pair the players in [i, j)
 // Assumes i < j
 func (standings *Standings) simFactorPairSegment(results [][]int, i int, j int, roundsRemaining int, maxFactor int, sims int) {
-	pairings := GetSegmentPairings(i, j, roundsRemaining, maxFactor)
+	pairings := GetPairingsForSegment(i, j, roundsRemaining, maxFactor)
 	standings.Backup()
 	for simIdx := 0; simIdx < sims; simIdx++ {
 		standings.SimSingleIteration(pairings, roundsRemaining, i, j)

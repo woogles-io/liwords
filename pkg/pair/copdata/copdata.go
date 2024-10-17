@@ -62,31 +62,3 @@ func getPairingFrequencies(req *pb.PairRequest) (map[string]int, []int) {
 	}
 	return pairingCounts, totalRepeats
 }
-
-// Assumes the standings are already sorted
-func getGibsonizedPlayers(req *pb.PairRequest, standings *pkgstnd.Standings) []bool {
-	gibsonizedPlayers := make([]bool, req.Players)
-	roundsRemaining := int(req.Rounds) - len(req.DivisionResults)
-	numInputGibonsSpreads := len(req.GibsonSpreads)
-	cumeGibsonSpread := 0
-	for round := roundsRemaining - 1; round >= 0; round-- {
-		if round >= numInputGibonsSpreads {
-			cumeGibsonSpread += int(req.GibsonSpreads[numInputGibonsSpreads-1])
-		} else {
-			cumeGibsonSpread += int(req.GibsonSpreads[round])
-		}
-	}
-
-	for playerIdx := 0; playerIdx < int(req.PlacePrizes); playerIdx++ {
-		gibsonizedPlayers[playerIdx] = true
-		if playerIdx > 0 && standings.CanCatch(roundsRemaining, cumeGibsonSpread, playerIdx-1, playerIdx) {
-			gibsonizedPlayers[playerIdx] = false
-			continue
-		}
-		if playerIdx < int(req.Players)-1 && standings.CanCatch(roundsRemaining, cumeGibsonSpread, playerIdx, playerIdx+1) {
-			gibsonizedPlayers[playerIdx] = false
-			continue
-		}
-	}
-	return gibsonizedPlayers
-}
