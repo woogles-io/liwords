@@ -67,7 +67,7 @@ func TestStandings(t *testing.T) {
 	assertGibsonizedPlayers(is, standings, req, map[int]bool{})
 	assertGetAllSegments(is, standings, req, [][]int{{0, 8}})
 	// FIXME: pass in segments
-	factorPairings := pkgstnd.GetPairingsForSegment(0, int(req.Players), int(req.Rounds), int(req.Players))
+	factorPairings := pkgstnd.GetPairingsForSegment(0, 8, int(req.Rounds), int(req.Players))
 	is.Equal(len(factorPairings), int(req.Rounds))
 	assertFactorPairings(is, factorPairings[0], []int{0, 4, 1, 5, 2, 6, 3, 7})
 	assertFactorPairings(is, factorPairings[1], []int{0, 4, 1, 5, 2, 6, 3, 7})
@@ -80,7 +80,7 @@ func TestStandings(t *testing.T) {
 	assertFactorPairings(is, factorPairings[8], []int{0, 2, 1, 3, 4, 5, 6, 7})
 	assertFactorPairings(is, factorPairings[9], []int{0, 1, 2, 3, 4, 5, 6, 7})
 	// FIXME: pass in segments
-	simAndAssertStandingTotals(is, standings, 10, int(req.Players), int(req.Rounds), 0, 8, false)
+	simAndAssertStandingTotals(is, standings, 10, int(req.Players), int(req.Rounds), 0, 8)
 
 	req = pairtestutils.CreateDefaultOddPairRequest()
 	standings = pkgstnd.CreateInitialStandings(req)
@@ -92,7 +92,7 @@ func TestStandings(t *testing.T) {
 	}
 	assertGibsonizedPlayers(is, standings, req, map[int]bool{})
 	assertGetAllSegments(is, standings, req, [][]int{{0, 7}})
-	factorPairings = pkgstnd.GetPairingsForSegment(0, int(req.Players), int(req.Rounds), int(req.Players))
+	factorPairings = pkgstnd.GetPairingsForSegment(0, 7, int(req.Rounds), int(req.Players))
 	is.Equal(len(factorPairings), int(req.Rounds))
 	assertFactorPairings(is, factorPairings[0], []int{0, 3, 1, 4, 2, 5, 6})
 	assertFactorPairings(is, factorPairings[1], []int{0, 3, 1, 4, 2, 5, 6})
@@ -104,11 +104,42 @@ func TestStandings(t *testing.T) {
 	assertFactorPairings(is, factorPairings[7], []int{0, 3, 1, 4, 2, 5, 6})
 	assertFactorPairings(is, factorPairings[8], []int{0, 2, 1, 3, 4, 5, 6})
 	assertFactorPairings(is, factorPairings[9], []int{0, 1, 2, 3, 4, 5, 6})
-	simAndAssertStandingTotals(is, standings, 10, int(req.Players), int(req.Rounds), 0, 7, true)
+	simAndAssertStandingTotals(is, standings, 50, int(req.Players), int(req.Rounds), 0, 7)
+
+	req = pairtestutils.CreateLakegeorgeAfterRound13PairRequest()
+	standings = pkgstnd.CreateInitialStandings(req)
+	assertPlayerRecord(is, standings, 0, 3, 12, 980)
+	assertPlayerRecord(is, standings, 1, 10, 9, 290)
+	assertPlayerRecord(is, standings, 2, 4, 9, 245)
+	assertPlayerRecord(is, standings, 3, 8, 9, 142)
+	assertPlayerRecord(is, standings, 4, 1, 8, 695)
+	assertPlayerRecord(is, standings, 5, 2, 8, 652)
+	is.True(standings.CanCatch(3, 1000, 0, 1))
+	is.True(standings.CanCatch(3, 700, 0, 1))
+	is.True(standings.CanCatch(3, 690, 0, 1))
+	is.True(!standings.CanCatch(3, 689, 0, 1))
+	is.True(!standings.CanCatch(3, 600, 0, 1))
+	is.True(standings.CanCatch(3, 1000, 0, 3))
+	is.True(standings.CanCatch(3, 838, 0, 3))
+	is.True(!standings.CanCatch(3, 837, 0, 3))
+	is.True(!standings.CanCatch(3, 1000, 0, 4))
+	is.True(!standings.CanCatch(3, 100000000, 0, 4))
+	is.True(standings.CanCatch(3, 100000000, 1, 6))
+	is.True(!standings.CanCatch(3, 100000000, 1, 20))
+	is.True(!standings.CanCatch(3, 100000000, 12, 27))
+	is.True(standings.CanCatch(3, 100000000, 13, 27))
+	is.True(standings.CanCatch(3, 100000000, 13, 27))
+	is.True(standings.CanCatch(3, 755, 13, 27))
+	is.True(!standings.CanCatch(3, 754, 13, 27))
+	assertGibsonizedPlayers(is, standings, req, map[int]bool{0: true})
+	assertGetAllSegments(is, standings, req, [][]int{{1, 28}})
+	factorPairings = pkgstnd.GetPairingsForSegment(1, 28, 2, int(req.Players))
+	is.Equal(len(factorPairings), 2)
+	assertFactorPairings(is, factorPairings[0], []int{1, 3, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27})
+	assertFactorPairings(is, factorPairings[1], []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27})
+	simAndAssertStandingTotals(is, standings, 50, int(req.Players)-1, 2, 1, 28)
 
 	// canCatch + simFactorPairing + Simming for the following scenarios:
-	// No one is gibsonized
-	// No one is gibsonized odd
 	// 1st gibsonized
 	// 1st and 2nd gibsonized
 	// 3rd gibsonized
@@ -152,23 +183,14 @@ func assertFactorPairings(is *is.I, actualPairings []int, expectedPairings []int
 	}
 }
 
-func getWinAndSpreadSums(is *is.I, standings *pkgstnd.Standings, i int, j int) (float64, int) {
-	winsSum := 0.0
-	spreadSum := 0
-	for k := i; k < j; k++ {
-		winsSum += standings.GetPlayerWins(k)
-		spreadSum += standings.GetPlayerSpread(k)
-	}
-	return winsSum, spreadSum
-}
-
 // Asserts the sums of wins and spreads from players [i, j)
-func simAndAssertStandingTotals(is *is.I, standings *pkgstnd.Standings, sims int, maxFactor int, roundsRemaining int, i int, j int, hasBye bool) {
+func simAndAssertStandingTotals(is *is.I, standings *pkgstnd.Standings, sims int, maxFactor int, roundsRemaining int, i int, j int) {
 	pairings := pkgstnd.GetPairingsForSegment(i, j, roundsRemaining, maxFactor)
 	standings.Backup()
+	standingsCopy := standings.Copy()
 	expectedTotalWins := ((j - i) / 2) * roundsRemaining
 	expectedTotalSpread := 0
-	if hasBye {
+	if (j-i)%2 == 1 {
 		expectedTotalWins += roundsRemaining
 		expectedTotalSpread += 50 * roundsRemaining
 	}
@@ -178,8 +200,8 @@ func simAndAssertStandingTotals(is *is.I, standings *pkgstnd.Standings, sims int
 		winsSum := 0
 		spreadSum := 0
 		for k := i; k < j; k++ {
-			winsSum += int(standings.GetPlayerWins(k) * 2)
-			spreadSum += standings.GetPlayerSpread(k)
+			winsSum += int(standings.GetPlayerWins(k)*2) - int(standingsCopy.GetPlayerWins(k)*2)
+			spreadSum += standings.GetPlayerSpread(k) - standingsCopy.GetPlayerSpread(k)
 		}
 		is.Equal(winsSum, expectedTotalWins*2)
 		is.Equal(spreadSum, expectedTotalSpread)

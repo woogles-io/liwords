@@ -1,4 +1,5 @@
 import sys
+import re
 
 class Player:
     def __init__(self, name, opponents, scores):
@@ -12,17 +13,17 @@ def parse_t_file(file_path):
     with open(file_path, 'r') as file:
         for line in file:
             parts = line.split(';')
-            player_info_parts = parts[0].strip().split()
+            player_name_and_opps = re.split(r'\d+', parts[0], 1)
+            name_info = player_name_and_opps[0].split(',')
+            name_str = f"{name_info[1].strip()} {name_info[0].strip()}"
+                
             scores_str = parts[1].strip()
-            
-            name = (player_info_parts[1] + ' ' + player_info_parts[0]).replace(',', '')
-    
-            opponents = list(map(lambda x: int(x) - 1, player_info_parts[3:]))
+            opponents = list(map(lambda x: int(x) - 1, player_name_and_opps[1].split()))
             
             if total_rounds == -1:
                 total_rounds = len(opponents)
             elif total_rounds != len(opponents):
-                print("Error: all players must have the same number of rounds")
+                print(f"Error: all players must have the same number of rounds ({total_rounds} != {len(opponents)}): {line}")
                 sys.exit(1)
 
             scores = list(map(int, scores_str.split()))
@@ -30,13 +31,13 @@ def parse_t_file(file_path):
                 print("Error: all players must have the same number of scores")
                 sys.exit(1)
             
-            players.append(Player(name, opponents, scores))
+            players.append(Player(name_str, opponents, scores))
     return players, total_rounds
 
 def generate_go_code(players, tournament_name, number_of_rounds, total_rounds):
     go_code = ""
 
-    func_name = f"create{tournament_name.capitalize()}AfterRound{number_of_rounds}PairRequest"
+    func_name = f"Create{tournament_name.capitalize()}AfterRound{number_of_rounds}PairRequest"
     go_code += f"func {func_name}() *pb.PairRequest {{\n"
     go_code += "    request := &pb.PairRequest{\n"
     go_code += "        PairMethod:           pb.PairMethod_COP,\n"

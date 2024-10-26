@@ -79,6 +79,19 @@ func CreateInitialStandings(req *pb.PairRequest) *Standings {
 	return standings
 }
 
+func (standings *Standings) Copy() *Standings {
+	standingsCopy := &Standings{
+		records:            make([]uint64, len(standings.records)),
+		recordsBackup:      make([]uint64, len(standings.recordsBackup)),
+		possibleResults:    standings.possibleResults,
+		roundsPlayed:       standings.roundsPlayed,
+		roundsPlayedBackup: standings.roundsPlayedBackup,
+	}
+	copy(standingsCopy.records, standings.records)
+	copy(standingsCopy.recordsBackup, standings.recordsBackup)
+	return standingsCopy
+}
+
 func (standings *Standings) Backup() {
 	copy(standings.recordsBackup, standings.records)
 	standings.roundsPlayedBackup = standings.roundsPlayed
@@ -111,8 +124,7 @@ func (standings *Standings) CanCatch(roundsRemaining int, cumeGibsonSpread int, 
 	ri := standings.records[i]
 	rj := standings.records[j]
 	winDiff := getWinsValue(ri) - getWinsValue(rj)
-	// FIXME: Check this logic
-	highestPossibleWinScore := roundsRemaining
+	highestPossibleWinScore := roundsRemaining * 2
 	if winDiff != highestPossibleWinScore {
 		return winDiff < highestPossibleWinScore
 	}
@@ -206,8 +218,7 @@ func (standings *Standings) SimFactorPair(sims int, maxFactor int, roundsRemaini
 
 func (standings *Standings) SimSingleIteration(pairings [][]int, roundsRemaining int, i int, j int) {
 	numPlayers := len(pairings[0])
-	numTotalPlayers := len(standings.records)
-	oddNumPlayers := numTotalPlayers%2 == 1
+	oddNumPlayers := numPlayers%2 == 1
 	for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
 		for pairIdx := 0; pairIdx < numPlayers-1; pairIdx += 2 {
 			randomResult := rand.Intn(2)
@@ -224,7 +235,7 @@ func (standings *Standings) SimSingleIteration(pairings [][]int, roundsRemaining
 		// of the time since the value of oddNumPlayers never changes in this function
 		// but test it to be sure
 		if oddNumPlayers {
-			standings.incrementPlayerRecord(numPlayers-1, standings.possibleResults[byeSpread])
+			standings.incrementPlayerRecord(numPlayers-1+i, standings.possibleResults[byeSpread])
 		}
 		// FIXME: is sort range inclusive?
 		standings.sortRange(i, j)
@@ -262,13 +273,13 @@ func GetPairingsForSegment(i int, j int, totalRoundsRemaining int, maxFactor int
 		}
 		roundIdx := totalRoundsRemaining - roundsRemaining
 		pairIdx := 0
-		for k := 0; k < roundFactor; k++ {
+		for k := i; k < roundFactor+i; k++ {
 			pairings[roundIdx][pairIdx] = k
 			pairIdx += 1
 			pairings[roundIdx][pairIdx] = k + roundFactor
 			pairIdx += 1
 		}
-		for k := roundFactor * 2; k < numPlayers; k += 2 {
+		for k := roundFactor*2 + i; k < numPlayers+i; k += 2 {
 			pairings[roundIdx][pairIdx] = k
 			pairIdx += 1
 			if pairIdx == numPlayers {
