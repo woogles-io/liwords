@@ -24,7 +24,7 @@ func GetPrecompData(req *pb.PairRequest, logsb *strings.Builder) *PrecompData {
 
 	pairingCounts, repeatCounts := getPairingFrequencies(req)
 
-	gibsonizedPlayers := getGibsonizedPlayers(req, standings)
+	gibsonizedPlayers := standings.GetGibsonizedPlayers(req)
 
 	_ = standings.SimFactorPair(int(req.DivisionSims), int(req.Players), int(req.Rounds)-len(req.DivisionResults), gibsonizedPlayers)
 

@@ -10,6 +10,7 @@ class Player:
 def parse_t_file(file_path):
     players = []
     total_rounds = -1
+    player_number = 0
     with open(file_path, 'r') as file:
         for line in file:
             parts = line.split(';')
@@ -18,7 +19,14 @@ def parse_t_file(file_path):
             name_str = f"{name_info[1].strip()} {name_info[0].strip()}"
                 
             scores_str = parts[1].strip()
-            opponents = list(map(lambda x: int(x) - 1, player_name_and_opps[1].split()))
+            opponent_strs = player_name_and_opps[1].split()
+            opponents = []
+            for opponent_str in opponent_strs:
+                opponent_number = int(opponent_str)
+                if opponent_number == 0:
+                    opponents.append(player_number)
+                else:
+                    opponents.append(int(opponent_str) - 1)
             
             if total_rounds == -1:
                 total_rounds = len(opponents)
@@ -32,6 +40,7 @@ def parse_t_file(file_path):
                 sys.exit(1)
             
             players.append(Player(name_str, opponents, scores))
+            player_number += 1
     return players, total_rounds
 
 def generate_go_code(players, tournament_name, number_of_rounds, total_rounds):

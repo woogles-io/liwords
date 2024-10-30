@@ -51,16 +51,16 @@ func CreateInitialStandings(req *pb.PairRequest) *Standings {
 	for roundIdx, roundResults := range req.DivisionResults {
 		for playerIdx, playerScore := range roundResults.Results {
 			oppIdx := int(req.DivisionPairings[roundIdx].Pairings[playerIdx])
-			ps := int(playerScore)
+			pScore := int(playerScore)
 			if playerIdx == int(oppIdx) {
 				// Bye
-				if ps > 0 {
-					standings.incrementPlayerRecord(playerIdx, getRecordFromWinsAndSpread(1, ps))
-				} else if ps < 0 {
-					standings.decrementPlayerRecord(playerIdx, getRecordFromWinsAndSpread(1, ps))
+				if pScore > 0 {
+					standings.incrementPlayerRecord(playerIdx, getRecordFromWinsAndSpread(1, pScore))
+				} else if pScore < 0 {
+					standings.decrementPlayerRecord(playerIdx, getRecordFromWinsAndSpread(1, -pScore))
 				}
 			} else if playerIdx < oppIdx {
-				playerSpread := ps - int(roundResults.Results[oppIdx])
+				playerSpread := pScore - int(roundResults.Results[oppIdx])
 				if playerSpread > 0 {
 					record := getRecordFromWinsAndSpread(1, playerSpread)
 					standings.incrementPlayerRecord(playerIdx, record)
@@ -138,25 +138,26 @@ func (standings *Standings) CanCatch(roundsRemaining int, cumeGibsonSpread int, 
 
 // Assumes the standings are already sorted
 func (standings *Standings) GetGibsonizedPlayers(req *pb.PairRequest) []bool {
-	gibsonizedPlayers := make([]bool, req.Players)
+	numPlayers := len(standings.records)
+	gibsonizedPlayers := make([]bool, numPlayers)
 	roundsRemaining := int(req.Rounds) - len(req.DivisionResults)
 	numInputGibonsSpreads := len(req.GibsonSpreads)
 	cumeGibsonSpread := 0
 	for round := roundsRemaining - 1; round >= 0; round-- {
+		// FIXME: should these be multiplied by 2?
 		if round >= numInputGibonsSpreads {
-			cumeGibsonSpread += int(req.GibsonSpreads[numInputGibonsSpreads-1])
+			cumeGibsonSpread += int(req.GibsonSpreads[numInputGibonsSpreads-1]) * 2
 		} else {
-			cumeGibsonSpread += int(req.GibsonSpreads[round])
+			cumeGibsonSpread += int(req.GibsonSpreads[round]) * 2
 		}
 	}
-
 	for playerIdx := 0; playerIdx < int(req.PlacePrizes); playerIdx++ {
 		gibsonizedPlayers[playerIdx] = true
 		if playerIdx > 0 && standings.CanCatch(roundsRemaining, cumeGibsonSpread, playerIdx-1, playerIdx) {
 			gibsonizedPlayers[playerIdx] = false
 			continue
 		}
-		if playerIdx < int(req.Players)-1 && standings.CanCatch(roundsRemaining, cumeGibsonSpread, playerIdx, playerIdx+1) {
+		if playerIdx < numPlayers-1 && standings.CanCatch(roundsRemaining, cumeGibsonSpread, playerIdx, playerIdx+1) {
 			gibsonizedPlayers[playerIdx] = false
 			continue
 		}
@@ -207,18 +208,14 @@ func (standings *Standings) SimFactorPair(sims int, maxFactor int, roundsRemaini
 	for i := range results {
 		results[i] = make([]int, numPlayers)
 	}
-	// FIXME: add results for gibsonized player
-	pairingSegments := standings.GetAllSegments(gibsonizedPlayers)
-	for _, ps := range pairingSegments {
-		standings.simFactorPairSegment(results, ps[0], ps[1], roundsRemaining, maxFactor, sims)
-
-	}
+	standings.simFactorPairSegments(results, standings.GetAllSegments(gibsonizedPlayers), roundsRemaining, maxFactor, sims)
 	return results
 }
 
 func (standings *Standings) SimSingleIteration(pairings [][]int, roundsRemaining int, i int, j int) {
 	numPlayers := len(pairings[0])
-	oddNumPlayers := numPlayers%2 == 1
+	segmentHasOddNumPlayers := numPlayers%2 == 1
+	divisionHasOddNumPlayers := len(standings.records)%2 == 1
 	for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
 		for pairIdx := 0; pairIdx < numPlayers-1; pairIdx += 2 {
 			randomResult := rand.Intn(2)
@@ -226,16 +223,26 @@ func (standings *Standings) SimSingleIteration(pairings [][]int, roundsRemaining
 			p2 := pairings[roundIdx][pairIdx+1]
 			winner := p1*(1-randomResult) + p2*randomResult
 			loser := p2*(1-randomResult) + p1*randomResult
+			// FIXME: limit by the gibson spread for this round
 			randomSpread := rand.Intn(maxSpread + 1)
 			record := standings.possibleResults[randomSpread]
 			standings.incrementPlayerRecord(winner, record)
 			standings.decrementPlayerRecord(loser, record)
 		}
-		// FIXME: Branch predictor should be able to predict this close to 100%
-		// of the time since the value of oddNumPlayers never changes in this function
-		// but test it to be sure
-		if oddNumPlayers {
-			standings.incrementPlayerRecord(numPlayers-1+i, standings.possibleResults[byeSpread])
+		// FIXME: branches could be slow, think about this some more
+		if segmentHasOddNumPlayers {
+			bottomPlayerIdx := pairings[roundIdx][numPlayers-1]
+			if divisionHasOddNumPlayers {
+				standings.incrementPlayerRecord(bottomPlayerIdx, standings.possibleResults[byeSpread])
+			} else {
+				randomSpread := rand.Intn(maxSpread + 1)
+				record := standings.possibleResults[randomSpread]
+				if rand.Intn(2) == 0 {
+					standings.incrementPlayerRecord(bottomPlayerIdx, record)
+				} else {
+					standings.decrementPlayerRecord(bottomPlayerIdx, record)
+				}
+			}
 		}
 		// FIXME: is sort range inclusive?
 		standings.sortRange(i, j)
@@ -243,8 +250,9 @@ func (standings *Standings) SimSingleIteration(pairings [][]int, roundsRemaining
 	standings.roundsPlayed += roundsRemaining
 }
 
-func (standings *Standings) UpdateResultsWithFinishedSim(results [][]int, i int, j int) {
-	for rankIdx := i; rankIdx < j; rankIdx++ {
+func (standings *Standings) UpdateResultsWithFinishedSim(results [][]int) {
+	numRecords := len(standings.records)
+	for rankIdx := 0; rankIdx < numRecords; rankIdx++ {
 		playerIdx := getIndex(standings.records[rankIdx])
 		results[playerIdx][rankIdx] += 1
 	}
@@ -345,14 +353,43 @@ func (standings *Standings) String(req *pb.PairRequest) string {
 	return sb.String()
 }
 
+func (standings *Standings) ResultsString(results [][]int, req *pb.PairRequest) string {
+	numPlayers := len(results)
+	var builder strings.Builder
+	nameColumnWidth := 30
+	resultColumnWidth := 8
+
+	rankColumnWidth := len(fmt.Sprintf("%d", numPlayers))
+
+	builder.WriteString(fmt.Sprintf("%-*s", rankColumnWidth+1, ""))
+	builder.WriteString(fmt.Sprintf("%-*s", nameColumnWidth, ""))
+	for pos := 1; pos <= numPlayers; pos++ {
+		builder.WriteString(fmt.Sprintf("%-8d", pos))
+	}
+	builder.WriteString("\n")
+
+	for i, playerRecord := range standings.records {
+		playerIdx := getIndex(playerRecord)
+		playerName := req.PlayerNames[playerIdx]
+
+		builder.WriteString(fmt.Sprintf("%-*d ", rankColumnWidth, i+1))
+		builder.WriteString(fmt.Sprintf("%-*s", nameColumnWidth, playerName))
+
+		for rankIdx := 0; rankIdx < numPlayers; rankIdx++ {
+			builder.WriteString(fmt.Sprintf("%-*d", resultColumnWidth, results[playerIdx][rankIdx]))
+		}
+		builder.WriteString("\n")
+	}
+
+	return builder.String()
+}
+
 // Unexported functions
 
-// Init records
-// set all possible records
-// inc winner record
-// dec loser record
-
 func getRecordFromWinsAndSpread(wins int, spread int) uint64 {
+	if wins < 0 || spread < 0 {
+		panic("wins and spread must be non-negative")
+	}
 	return uint64(wins)<<playerWinsOffset | uint64(spread)<<playerSpreadOffset
 }
 
@@ -384,12 +421,23 @@ func (standings *Standings) sortRange(i, j int) {
 
 // Factor pair the players in [i, j)
 // Assumes i < j
-func (standings *Standings) simFactorPairSegment(results [][]int, i int, j int, roundsRemaining int, maxFactor int, sims int) {
-	pairings := GetPairingsForSegment(i, j, roundsRemaining, maxFactor)
+func (standings *Standings) simFactorPairSegments(results [][]int, allSegments [][]int, roundsRemaining int, maxFactor int, sims int) {
 	standings.Backup()
+	allSegmentPairings := [][][]int{}
+	for _, segment := range allSegments {
+		i := segment[0]
+		j := segment[1]
+		pairings := GetPairingsForSegment(i, j, roundsRemaining, maxFactor)
+		allSegmentPairings = append(allSegmentPairings, pairings)
+	}
+
 	for simIdx := 0; simIdx < sims; simIdx++ {
-		standings.SimSingleIteration(pairings, roundsRemaining, i, j)
-		standings.UpdateResultsWithFinishedSim(results, i, j)
+		for idx, segmentPairings := range allSegmentPairings {
+			i := allSegments[idx][0]
+			j := allSegments[idx][1]
+			standings.SimSingleIteration(segmentPairings, roundsRemaining, i, j)
+		}
+		standings.UpdateResultsWithFinishedSim(results)
 		standings.RestoreFromBackup()
 	}
 }
