@@ -57,7 +57,7 @@ func COPPair(req *pb.PairRequest) *pb.PairResponse {
 	_ = copdata.GetPrecompData(req, &logsb)
 
 	// FIXME: implement pairings with the cop data
-	pairings := make([]int32, req.Players)
+	pairings := make([]int32, req.ValidPlayers)
 
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
 	logsb.WriteString(fmt.Sprintf("COP successfully finished at %s\n", timestamp))

@@ -72,7 +72,8 @@ func CreateDefaultPairRequest() *pb.PairRequest {
 		GibsonSpreads:        []int32{300, 250, 200},
 		ControlLossThreshold: 0.25,
 		HopefulnessThreshold: 0.02,
-		Players:              8,
+		AllPlayers:           8,
+		ValidPlayers:         8,
 		Rounds:               10,
 		PlacePrizes:          2,
 		DivisionSims:         1000,
@@ -94,7 +95,8 @@ func CreateDefaultOddPairRequest() *pb.PairRequest {
 		GibsonSpreads:        []int32{300, 250, 200},
 		ControlLossThreshold: 0.25,
 		HopefulnessThreshold: 0.02,
-		Players:              7,
+		AllPlayers:           7,
+		ValidPlayers:         7,
 		Rounds:               10,
 		PlacePrizes:          2,
 		DivisionSims:         1000,
@@ -107,10 +109,11 @@ func CreateDefaultOddPairRequest() *pb.PairRequest {
 
 func CreateKingston2023AfterRound15PairRequest() *pb.PairRequest {
 	request := &pb.PairRequest{
-		PairMethod:  pb.PairMethod_COP,
-		Players:     26,
-		Rounds:      23,
-		PlayerNames: []string{"Jackson Smylie", "Joshua Sokol", "Arie Sinke", "Michael Fagen", "Max Panitch", "Lou Cornelis", "Eric Goldstein", "Jason Li", "Christopher Sykes", "Chloe Fatsis", "Deen Hergott", "Stefan Fatsis", "Noah Kalus", "Steve Ozorio", "Anna Miransky", "Lydia Keras", "Andre Popadynec", "Marcela Kadanka", "Agnes Kramer", "Richard Kirsch", "Joan Buma", "Gregg Bigourdin", "Sharmaine Farini", "Lilla Sinanan", "Mad Palazzo", "Trevor Sealy"},
+		PairMethod:   pb.PairMethod_COP,
+		AllPlayers:   26,
+		ValidPlayers: 26,
+		Rounds:       23,
+		PlayerNames:  []string{"Jackson Smylie", "Joshua Sokol", "Arie Sinke", "Michael Fagen", "Max Panitch", "Lou Cornelis", "Eric Goldstein", "Jason Li", "Christopher Sykes", "Chloe Fatsis", "Deen Hergott", "Stefan Fatsis", "Noah Kalus", "Steve Ozorio", "Anna Miransky", "Lydia Keras", "Andre Popadynec", "Marcela Kadanka", "Agnes Kramer", "Richard Kirsch", "Joan Buma", "Gregg Bigourdin", "Sharmaine Farini", "Lilla Sinanan", "Mad Palazzo", "Trevor Sealy"},
 		DivisionPairings: []*pb.RoundPairings{
 			{Pairings: []int32{20, 22, 23, 25, 21, 24, 10, 14, 16, 15, 6, 17, 19, 18, 7, 9, 8, 11, 13, 12, 0, 4, 1, 2, 5, 3}},
 			{Pairings: []int32{16, 13, 17, 19, 14, 15, 18, 21, 20, 24, 22, 23, 25, 1, 4, 5, 0, 2, 6, 3, 8, 7, 10, 11, 9, 12}},
@@ -161,10 +164,11 @@ func CreateKingston2023AfterRound15PairRequest() *pb.PairRequest {
 
 func CreateAlbanyjuly4th2024AfterRound21PairRequest() *pb.PairRequest {
 	request := &pb.PairRequest{
-		PairMethod:  pb.PairMethod_COP,
-		Players:     30,
-		Rounds:      27,
-		PlayerNames: []string{"Wellington Jighere", "Adam Logan", "Will Anderson", "Dennis Ikekeregor", "Austin Shin", "Matthew O'Connor", "Chris Lipe", "Joshua Castellano", "Josh Sokol", "Jason Keller", "Ben Schoenbrun", "Erickson Smith", "Bright Idahosa", "Robert Linn", "Jason Ubeika", "Tim Weiss", "Richard Buck", "Anthony Ikolo", "Daniel Blake", "Terry Kang", "Carmel Dodd", "Niel Gan", "Steve Ozorio", "Thomas Stumpf", "Joe Roberdeau", "Cheryl Melvin", "Iliana Filby", "Ivan Sentongo", "Edgar Odongkara", "Mohamed Kamara"},
+		PairMethod:   pb.PairMethod_COP,
+		AllPlayers:   30,
+		ValidPlayers: 30,
+		Rounds:       27,
+		PlayerNames:  []string{"Wellington Jighere", "Adam Logan", "Will Anderson", "Dennis Ikekeregor", "Austin Shin", "Matthew O'Connor", "Chris Lipe", "Joshua Castellano", "Josh Sokol", "Jason Keller", "Ben Schoenbrun", "Erickson Smith", "Bright Idahosa", "Robert Linn", "Jason Ubeika", "Tim Weiss", "Richard Buck", "Anthony Ikolo", "Daniel Blake", "Terry Kang", "Carmel Dodd", "Niel Gan", "Steve Ozorio", "Thomas Stumpf", "Joe Roberdeau", "Cheryl Melvin", "Iliana Filby", "Ivan Sentongo", "Edgar Odongkara", "Mohamed Kamara"},
 		DivisionPairings: []*pb.RoundPairings{
 			{Pairings: []int32{25, 20, 26, 22, 21, 13, 23, 24, 27, 29, 15, 17, 19, 5, 18, 10, 28, 11, 14, 12, 1, 4, 3, 6, 7, 0, 2, 8, 16, 9}},
 			{Pairings: []int32{29, 19, 14, 16, 17, 18, 15, 27, 24, 25, 23, 21, 20, 26, 2, 6, 3, 4, 5, 1, 12, 11, 28, 10, 8, 9, 13, 7, 22, 0}},
@@ -227,10 +231,11 @@ func CreateAlbanyjuly4th2024AfterRound21PairRequest() *pb.PairRequest {
 
 func CreateLakeGeorgeAfterRound13PairRequest() *pb.PairRequest {
 	request := &pb.PairRequest{
-		PairMethod:  pb.PairMethod_COP,
-		Players:     28,
-		Rounds:      15,
-		PlayerNames: []string{"Mack Meller", "Joey Mallick", "Cesar Del Solar", "Jackson Smylie", "Chloe Fatsis", "Arie Sinke", "Zachary Ansell", "Michael Fagen", "Seth Lipkin", "Eric Goldstein", "Jason Li", "Lisa Odom", "Karl Higby", "Jeremy Hall", "Morris Greenberg", "Rick Julian", "Matthew Zeleznik", "David Spargo", "Wallace Schultz", "Jeff Cook", "Jeffrey Nelson", "John Stardom", "Ed Liebfried", "Froilan Mendoza", "Jonathan Lindh", "David Weisberg", "Deen Hergott", "Wes Eddings"},
+		PairMethod:   pb.PairMethod_COP,
+		AllPlayers:   28,
+		ValidPlayers: 28,
+		Rounds:       15,
+		PlayerNames:  []string{"Mack Meller", "Joey Mallick", "Cesar Del Solar", "Jackson Smylie", "Chloe Fatsis", "Arie Sinke", "Zachary Ansell", "Michael Fagen", "Seth Lipkin", "Eric Goldstein", "Jason Li", "Lisa Odom", "Karl Higby", "Jeremy Hall", "Morris Greenberg", "Rick Julian", "Matthew Zeleznik", "David Spargo", "Wallace Schultz", "Jeff Cook", "Jeffrey Nelson", "John Stardom", "Ed Liebfried", "Froilan Mendoza", "Jonathan Lindh", "David Weisberg", "Deen Hergott", "Wes Eddings"},
 		DivisionPairings: []*pb.RoundPairings{
 			{Pairings: []int32{25, 21, 24, 23, 27, 26, 22, 14, 18, 15, 19, 16, 17, 20, 7, 9, 11, 12, 8, 10, 13, 1, 6, 3, 2, 0, 5, 4}},
 			{Pairings: []int32{15, 18, 16, 14, 19, 20, 17, 23, 21, 25, 27, 24, 22, 26, 3, 0, 2, 6, 1, 4, 5, 8, 12, 7, 11, 9, 13, 10}},
@@ -277,10 +282,11 @@ func CreateLakeGeorgeAfterRound13PairRequest() *pb.PairRequest {
 
 func CreateAlbanyAfterRound24PairRequest() *pb.PairRequest {
 	request := &pb.PairRequest{
-		PairMethod:  pb.PairMethod_COP,
-		Players:     30,
-		Rounds:      27,
-		PlayerNames: []string{"Wellington Jighere", "Adam Logan", "Will Anderson", "Dennis Ikekeregor", "Austin Shin", "Matthew O'Connor", "Chris Lipe", "Joshua Castellano", "Josh Sokol", "Jason Keller", "Ben Schoenbrun", "Erickson Smith", "Bright Idahosa", "Robert Linn", "Jason Ubeika", "Tim Weiss", "Richard Buck", "Anthony Ikolo", "Daniel Blake", "Terry Kang", "Carmel Dodd", "Niel Gan", "Steve Ozorio", "Thomas Stumpf", "Joe Roberdeau", "Cheryl Melvin", "Iliana Filby", "Ivan Sentongo", "Edgar Odongkara", "Mohamed Kamara"},
+		PairMethod:   pb.PairMethod_COP,
+		AllPlayers:   30,
+		ValidPlayers: 30,
+		Rounds:       27,
+		PlayerNames:  []string{"Wellington Jighere", "Adam Logan", "Will Anderson", "Dennis Ikekeregor", "Austin Shin", "Matthew O'Connor", "Chris Lipe", "Joshua Castellano", "Josh Sokol", "Jason Keller", "Ben Schoenbrun", "Erickson Smith", "Bright Idahosa", "Robert Linn", "Jason Ubeika", "Tim Weiss", "Richard Buck", "Anthony Ikolo", "Daniel Blake", "Terry Kang", "Carmel Dodd", "Niel Gan", "Steve Ozorio", "Thomas Stumpf", "Joe Roberdeau", "Cheryl Melvin", "Iliana Filby", "Ivan Sentongo", "Edgar Odongkara", "Mohamed Kamara"},
 		DivisionPairings: []*pb.RoundPairings{
 			{Pairings: []int32{25, 20, 26, 22, 21, 13, 23, 24, 27, 29, 15, 17, 19, 5, 18, 10, 28, 11, 14, 12, 1, 4, 3, 6, 7, 0, 2, 8, 16, 9}},
 			{Pairings: []int32{29, 19, 14, 16, 17, 18, 15, 27, 24, 25, 23, 21, 20, 26, 2, 6, 3, 4, 5, 1, 12, 11, 28, 10, 8, 9, 13, 7, 22, 0}},
@@ -349,10 +355,11 @@ func CreateAlbanyAfterRound24PairRequest() *pb.PairRequest {
 
 func CreateAlbany3rdGibsonizedAfterRound25PairRequest() *pb.PairRequest {
 	request := &pb.PairRequest{
-		PairMethod:  pb.PairMethod_COP,
-		Players:     24,
-		Rounds:      27,
-		PlayerNames: []string{"Joey Krafchick", "Christopher Sykes", "Andy Hoang", "Robin Pollock Daniel", "Zachary Ansell", "Billy Nakamura", "David Spargo", "Wes Eddings", "Wallace Schultz", "Eric Goldstein", "Jonathan Lindh", "Chris Kulig", "Annette Obrestad", "Joel Horn", "Michael Ecsedy", "Richard Popper", "Edwin Roth", "Michael Fleck", "David Firstman", "Noah Kalus", "Noah Goldstein", "Carol McDonald", "David Postal", "Vera Bigall"},
+		PairMethod:   pb.PairMethod_COP,
+		AllPlayers:   24,
+		ValidPlayers: 23,
+		Rounds:       27,
+		PlayerNames:  []string{"Joey Krafchick", "Christopher Sykes", "Andy Hoang", "Robin Pollock Daniel", "Zachary Ansell", "Billy Nakamura", "David Spargo", "Wes Eddings", "Wallace Schultz", "Eric Goldstein", "Jonathan Lindh", "Chris Kulig", "Annette Obrestad", "Joel Horn", "Michael Ecsedy", "Richard Popper", "Edwin Roth", "Michael Fleck", "David Firstman", "Noah Kalus", "Noah Goldstein", "Carol McDonald", "David Postal", "Vera Bigall"},
 		DivisionPairings: []*pb.RoundPairings{
 			{Pairings: []int32{23, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15, 18, 17, 20, 19, 22, 21, 0}},
 			{Pairings: []int32{22, 3, 5, 1, 7, 2, 9, 4, 11, 6, 13, 8, 15, 10, 17, 12, 19, 14, 21, 16, 23, 18, 0, 20}},
@@ -417,16 +424,18 @@ func CreateAlbany3rdGibsonizedAfterRound25PairRequest() *pb.PairRequest {
 		ControlLossSims:      1000,
 		UseControlLoss:       false,
 		AllowRepeatByes:      false,
+		RemovedPlayers:       []int32{11},
 	}
 	return request
 }
 
 func CreateAlbany4thGibsonizedAfterRound25PairRequest() *pb.PairRequest {
 	request := &pb.PairRequest{
-		PairMethod:  pb.PairMethod_COP,
-		Players:     24,
-		Rounds:      27,
-		PlayerNames: []string{"Joey Krafchick", "Christopher Sykes", "Andy Hoang", "Robin Pollock Daniel", "Zachary Ansell", "Billy Nakamura", "David Spargo", "Wes Eddings", "Wallace Schultz", "Eric Goldstein", "Jonathan Lindh", "Chris Kulig", "Annette Obrestad", "Joel Horn", "Michael Ecsedy", "Richard Popper", "Edwin Roth", "Michael Fleck", "David Firstman", "Noah Kalus", "Noah Goldstein", "Carol McDonald", "David Postal", "Vera Bigall"},
+		PairMethod:   pb.PairMethod_COP,
+		AllPlayers:   24,
+		ValidPlayers: 23,
+		Rounds:       27,
+		PlayerNames:  []string{"Joey Krafchick", "Christopher Sykes", "Andy Hoang", "Robin Pollock Daniel", "Zachary Ansell", "Billy Nakamura", "David Spargo", "Wes Eddings", "Wallace Schultz", "Eric Goldstein", "Jonathan Lindh", "Chris Kulig", "Annette Obrestad", "Joel Horn", "Michael Ecsedy", "Richard Popper", "Edwin Roth", "Michael Fleck", "David Firstman", "Noah Kalus", "Noah Goldstein", "Carol McDonald", "David Postal", "Vera Bigall"},
 		DivisionPairings: []*pb.RoundPairings{
 			{Pairings: []int32{23, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15, 18, 17, 20, 19, 22, 21, 0}},
 			{Pairings: []int32{22, 3, 5, 1, 7, 2, 9, 4, 11, 6, 13, 8, 15, 10, 17, 12, 19, 14, 21, 16, 23, 18, 0, 20}},
@@ -491,16 +500,18 @@ func CreateAlbany4thGibsonizedAfterRound25PairRequest() *pb.PairRequest {
 		ControlLossSims:      1000,
 		UseControlLoss:       false,
 		AllowRepeatByes:      false,
+		RemovedPlayers:       []int32{11},
 	}
 	return request
 }
 
 func CreateAlbany1stAnd4thGibsonizedAfterRound25PairRequest() *pb.PairRequest {
 	request := &pb.PairRequest{
-		PairMethod:  pb.PairMethod_COP,
-		Players:     24,
-		Rounds:      27,
-		PlayerNames: []string{"Joey Krafchick", "Christopher Sykes", "Andy Hoang", "Robin Pollock Daniel", "Zachary Ansell", "Billy Nakamura", "David Spargo", "Wes Eddings", "Wallace Schultz", "Eric Goldstein", "Jonathan Lindh", "Chris Kulig", "Annette Obrestad", "Joel Horn", "Michael Ecsedy", "Richard Popper", "Edwin Roth", "Michael Fleck", "David Firstman", "Noah Kalus", "Noah Goldstein", "Carol McDonald", "David Postal", "Vera Bigall"},
+		PairMethod:   pb.PairMethod_COP,
+		AllPlayers:   24,
+		ValidPlayers: 23,
+		Rounds:       27,
+		PlayerNames:  []string{"Joey Krafchick", "Christopher Sykes", "Andy Hoang", "Robin Pollock Daniel", "Zachary Ansell", "Billy Nakamura", "David Spargo", "Wes Eddings", "Wallace Schultz", "Eric Goldstein", "Jonathan Lindh", "Chris Kulig", "Annette Obrestad", "Joel Horn", "Michael Ecsedy", "Richard Popper", "Edwin Roth", "Michael Fleck", "David Firstman", "Noah Kalus", "Noah Goldstein", "Carol McDonald", "David Postal", "Vera Bigall"},
 		DivisionPairings: []*pb.RoundPairings{
 			{Pairings: []int32{23, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15, 18, 17, 20, 19, 22, 21, 0}},
 			{Pairings: []int32{22, 3, 5, 1, 7, 2, 9, 4, 11, 6, 13, 8, 15, 10, 17, 12, 19, 14, 21, 16, 23, 18, 0, 20}},
@@ -565,16 +576,18 @@ func CreateAlbany1stAnd4thGibsonizedAfterRound25PairRequest() *pb.PairRequest {
 		ControlLossSims:      1000,
 		UseControlLoss:       false,
 		AllowRepeatByes:      false,
+		RemovedPlayers:       []int32{11},
 	}
 	return request
 }
 
 func CreateAlbany1stAnd4thAnd8thGibsonizedAfterRound25PairRequest() *pb.PairRequest {
 	request := &pb.PairRequest{
-		PairMethod:  pb.PairMethod_COP,
-		Players:     24,
-		Rounds:      27,
-		PlayerNames: []string{"Joey Krafchick", "Christopher Sykes", "Andy Hoang", "Robin Pollock Daniel", "Zachary Ansell", "Billy Nakamura", "David Spargo", "Wes Eddings", "Wallace Schultz", "Eric Goldstein", "Jonathan Lindh", "Chris Kulig", "Annette Obrestad", "Joel Horn", "Michael Ecsedy", "Richard Popper", "Edwin Roth", "Michael Fleck", "David Firstman", "Noah Kalus", "Noah Goldstein", "Carol McDonald", "David Postal", "Vera Bigall"},
+		PairMethod:   pb.PairMethod_COP,
+		AllPlayers:   24,
+		ValidPlayers: 23,
+		Rounds:       27,
+		PlayerNames:  []string{"Joey Krafchick", "Christopher Sykes", "Andy Hoang", "Robin Pollock Daniel", "Zachary Ansell", "Billy Nakamura", "David Spargo", "Wes Eddings", "Wallace Schultz", "Eric Goldstein", "Jonathan Lindh", "Chris Kulig", "Annette Obrestad", "Joel Horn", "Michael Ecsedy", "Richard Popper", "Edwin Roth", "Michael Fleck", "David Firstman", "Noah Kalus", "Noah Goldstein", "Carol McDonald", "David Postal", "Vera Bigall"},
 		DivisionPairings: []*pb.RoundPairings{
 			{Pairings: []int32{23, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15, 18, 17, 20, 19, 22, 21, 0}},
 			{Pairings: []int32{22, 3, 5, 1, 7, 2, 9, 4, 11, 6, 13, 8, 15, 10, 17, 12, 19, 14, 21, 16, 23, 18, 0, 20}},
@@ -639,6 +652,7 @@ func CreateAlbany1stAnd4thAnd8thGibsonizedAfterRound25PairRequest() *pb.PairRequ
 		ControlLossSims:      1000,
 		UseControlLoss:       false,
 		AllowRepeatByes:      false,
+		RemovedPlayers:       []int32{11},
 	}
 	return request
 }

@@ -24,13 +24,15 @@ message PairRequest {
   repeated int32 gibson_spreads = 7;
   double control_loss_threshold = 8;
   double hopefulness_threshold = 9;
-  int32 players = 10;
-  int32 rounds = 11;
-  int32 place_prizes = 12;
-  int32 division_sims = 13;
-  int32 control_loss_sims = 14;
-  bool use_control_loss = 15;
-  bool allow_repeat_byes = 16;
+  int32 all_players = 10;
+  int32 valid_players = 11;
+  int32 rounds = 12;
+  int32 place_prizes = 13;
+  int32 division_sims = 14;
+  int32 control_loss_sims = 15;
+  bool use_control_loss = 16;
+  bool allow_repeat_byes = 17;
+  repeated int32 removed_players = 18;
 }
 
 enum PairError {
@@ -61,7 +63,9 @@ enum PairError {
   INVALID_DIVISION_SIMS = 24;
   INVALID_CONTROL_LOSS_SIMS = 25;
   INVALID_PLACE_PRIZES = 26;
-  REQUEST_TO_JSON_FAILED = 27;
+  INVALID_REMOVED_PLAYER = 27;
+  INVALID_VALID_PLAYER_COUNT = 28;
+  REQUEST_TO_JSON_FAILED = 29;
 }
 
 message PairResponse {

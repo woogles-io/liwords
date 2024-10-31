@@ -34,9 +34,8 @@ func CreateInitialStandings(req *pb.PairRequest) *Standings {
 	// Create empty standings
 	standings := &Standings{}
 	standings.roundsPlayed = len(req.DivisionResults)
-	standings.records = make([]uint64, req.Players)
-	standings.recordsBackup = make([]uint64, req.Players)
-	for playerIdx := 0; playerIdx < int(req.Players); playerIdx++ {
+	standings.records = make([]uint64, int(req.AllPlayers))
+	for playerIdx := 0; playerIdx < int(req.AllPlayers); playerIdx++ {
 		standings.records[playerIdx] = getRecordFromWinsAndSpread(initialWinsValue, initialSpreadValue)
 		standings.records[playerIdx] += uint64(playerIdx)
 	}
@@ -73,6 +72,23 @@ func CreateInitialStandings(req *pb.PairRequest) *Standings {
 			}
 		}
 	}
+
+	validRecords := make([]uint64, int(req.ValidPlayers))
+	validPlayersIdx := 0
+	removedPlayersMap := make(map[int]struct{}, len(req.RemovedPlayers))
+	for _, removedPlayer := range req.RemovedPlayers {
+		removedPlayersMap[int(removedPlayer)] = struct{}{}
+	}
+	for playerIdx := 0; playerIdx < int(req.AllPlayers); playerIdx++ {
+		if _, exists := removedPlayersMap[playerIdx]; exists {
+			continue
+		}
+		validRecords[validPlayersIdx] = standings.records[playerIdx]
+		validPlayersIdx++
+	}
+
+	standings.records = validRecords
+	standings.recordsBackup = make([]uint64, int(req.ValidPlayers))
 
 	standings.Sort()
 
@@ -202,14 +218,19 @@ func (standings *Standings) GetAllSegments(gibsonizedPlayers []bool) [][]int {
 }
 
 // Assumes the standings are already sorted
-func (standings *Standings) SimFactorPair(sims int, maxFactor int, roundsRemaining int, gibsonizedPlayers []bool) [][]int {
+// FIXME: calculate the gibsonizedPlayers in this function instead of passing it in
+func (standings *Standings) SimFactorPair(req *pb.PairRequest, sims int, maxFactor int, roundsRemaining int, gibsonizedPlayers []bool) ([][]int, string) {
 	numPlayers := len(standings.records)
 	results := make([][]int, numPlayers)
 	for i := range results {
 		results[i] = make([]int, numPlayers)
 	}
-	standings.simFactorPairSegments(results, standings.GetAllSegments(gibsonizedPlayers), roundsRemaining, maxFactor, sims)
-	return results
+	playerIdxToRankIdx := map[int]int{}
+	for i := 0; i < len(standings.records); i++ {
+		playerIdxToRankIdx[standings.GetPlayerIndex(i)] = i
+	}
+	standings.simFactorPairSegments(results, playerIdxToRankIdx, standings.GetAllSegments(gibsonizedPlayers), roundsRemaining, maxFactor, sims)
+	return results, standings.resultsString(results, playerIdxToRankIdx, req)
 }
 
 func (standings *Standings) SimSingleIteration(pairings [][]int, roundsRemaining int, i int, j int) {
@@ -250,11 +271,10 @@ func (standings *Standings) SimSingleIteration(pairings [][]int, roundsRemaining
 	standings.roundsPlayed += roundsRemaining
 }
 
-func (standings *Standings) UpdateResultsWithFinishedSim(results [][]int) {
+func (standings *Standings) UpdateResultsWithFinishedSim(results [][]int, playerIdxToRankIdx map[int]int) {
 	numRecords := len(standings.records)
 	for rankIdx := 0; rankIdx < numRecords; rankIdx++ {
-		playerIdx := getIndex(standings.records[rankIdx])
-		results[playerIdx][rankIdx] += 1
+		results[playerIdxToRankIdx[getIndex(standings.records[rankIdx])]][rankIdx] += 1
 	}
 }
 
@@ -304,7 +324,6 @@ func (standings *Standings) String(req *pb.PairRequest) string {
 	var playerNames []string
 
 	maxNameLength := 0
-	numPlayers := 0
 	if req != nil {
 		for _, playerName := range req.PlayerNames {
 			if len(playerName) > maxNameLength {
@@ -316,15 +335,14 @@ func (standings *Standings) String(req *pb.PairRequest) string {
 			}
 		}
 		playerNames = req.PlayerNames
-		numPlayers = int(req.Players)
 	} else {
 		playerNames = make([]string, len(standings.records))
 		for i := 0; i < len(standings.records); i++ {
 			playerNames[i] = strconv.Itoa(i + 1)
 		}
 		maxNameLength = len(playerNames[len(standings.records)-1])
-		numPlayers = len(standings.records)
 	}
+	numPlayers := len(standings.records)
 
 	playerNameColWidth := maxNameLength
 	if playerNameColWidth > 30 {
@@ -353,7 +371,7 @@ func (standings *Standings) String(req *pb.PairRequest) string {
 	return sb.String()
 }
 
-func (standings *Standings) ResultsString(results [][]int, req *pb.PairRequest) string {
+func (standings *Standings) resultsString(results [][]int, playerIdxToRankIdx map[int]int, req *pb.PairRequest) string {
 	numPlayers := len(results)
 	var builder strings.Builder
 	nameColumnWidth := 30
@@ -376,7 +394,7 @@ func (standings *Standings) ResultsString(results [][]int, req *pb.PairRequest) 
 		builder.WriteString(fmt.Sprintf("%-*s", nameColumnWidth, playerName))
 
 		for rankIdx := 0; rankIdx < numPlayers; rankIdx++ {
-			builder.WriteString(fmt.Sprintf("%-*d", resultColumnWidth, results[playerIdx][rankIdx]))
+			builder.WriteString(fmt.Sprintf("%-*d", resultColumnWidth, results[playerIdxToRankIdx[playerIdx]][rankIdx]))
 		}
 		builder.WriteString("\n")
 	}
@@ -419,9 +437,7 @@ func (standings *Standings) sortRange(i, j int) {
 	})
 }
 
-// Factor pair the players in [i, j)
-// Assumes i < j
-func (standings *Standings) simFactorPairSegments(results [][]int, allSegments [][]int, roundsRemaining int, maxFactor int, sims int) {
+func (standings *Standings) simFactorPairSegments(results [][]int, playerIdxToRankIdx map[int]int, allSegments [][]int, roundsRemaining int, maxFactor int, sims int) {
 	standings.Backup()
 	allSegmentPairings := [][][]int{}
 	for _, segment := range allSegments {
@@ -437,7 +453,7 @@ func (standings *Standings) simFactorPairSegments(results [][]int, allSegments [
 			j := allSegments[idx][1]
 			standings.SimSingleIteration(segmentPairings, roundsRemaining, i, j)
 		}
-		standings.UpdateResultsWithFinishedSim(results)
+		standings.UpdateResultsWithFinishedSim(results, playerIdxToRankIdx)
 		standings.RestoreFromBackup()
 	}
 }

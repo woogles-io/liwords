@@ -158,9 +158,19 @@ export declare enum PairError {
   INVALID_PLACE_PRIZES = 26,
 
   /**
-   * @generated from enum value: REQUEST_TO_JSON_FAILED = 27;
+   * @generated from enum value: INVALID_REMOVED_PLAYER = 27;
    */
-  REQUEST_TO_JSON_FAILED = 27,
+  INVALID_REMOVED_PLAYER = 27,
+
+  /**
+   * @generated from enum value: INVALID_VALID_PLAYER_COUNT = 28;
+   */
+  INVALID_VALID_PLAYER_COUNT = 28,
+
+  /**
+   * @generated from enum value: REQUEST_TO_JSON_FAILED = 29;
+   */
+  REQUEST_TO_JSON_FAILED = 29,
 }
 
 /**
@@ -261,39 +271,49 @@ export declare class PairRequest extends Message<PairRequest> {
   hopefulnessThreshold: number;
 
   /**
-   * @generated from field: int32 players = 10;
+   * @generated from field: int32 all_players = 10;
    */
-  players: number;
+  allPlayers: number;
 
   /**
-   * @generated from field: int32 rounds = 11;
+   * @generated from field: int32 valid_players = 11;
+   */
+  validPlayers: number;
+
+  /**
+   * @generated from field: int32 rounds = 12;
    */
   rounds: number;
 
   /**
-   * @generated from field: int32 place_prizes = 12;
+   * @generated from field: int32 place_prizes = 13;
    */
   placePrizes: number;
 
   /**
-   * @generated from field: int32 division_sims = 13;
+   * @generated from field: int32 division_sims = 14;
    */
   divisionSims: number;
 
   /**
-   * @generated from field: int32 control_loss_sims = 14;
+   * @generated from field: int32 control_loss_sims = 15;
    */
   controlLossSims: number;
 
   /**
-   * @generated from field: bool use_control_loss = 15;
+   * @generated from field: bool use_control_loss = 16;
    */
   useControlLoss: boolean;
 
   /**
-   * @generated from field: bool allow_repeat_byes = 16;
+   * @generated from field: bool allow_repeat_byes = 17;
    */
   allowRepeatByes: boolean;
+
+  /**
+   * @generated from field: repeated int32 removed_players = 18;
+   */
+  removedPlayers: number[];
 
   constructor(data?: PartialMessage<PairRequest>);
 

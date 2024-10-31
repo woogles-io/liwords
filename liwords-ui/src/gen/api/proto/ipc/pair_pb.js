@@ -50,7 +50,9 @@ export const PairError = /*@__PURE__*/ proto3.makeEnum(
     {no: 24, name: "INVALID_DIVISION_SIMS"},
     {no: 25, name: "INVALID_CONTROL_LOSS_SIMS"},
     {no: 26, name: "INVALID_PLACE_PRIZES"},
-    {no: 27, name: "REQUEST_TO_JSON_FAILED"},
+    {no: 27, name: "INVALID_REMOVED_PLAYER"},
+    {no: 28, name: "INVALID_VALID_PLAYER_COUNT"},
+    {no: 29, name: "REQUEST_TO_JSON_FAILED"},
   ],
 );
 
@@ -89,13 +91,15 @@ export const PairRequest = /*@__PURE__*/ proto3.makeMessageType(
     { no: 7, name: "gibson_spreads", kind: "scalar", T: 5 /* ScalarType.INT32 */, repeated: true },
     { no: 8, name: "control_loss_threshold", kind: "scalar", T: 1 /* ScalarType.DOUBLE */ },
     { no: 9, name: "hopefulness_threshold", kind: "scalar", T: 1 /* ScalarType.DOUBLE */ },
-    { no: 10, name: "players", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 11, name: "rounds", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 12, name: "place_prizes", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 13, name: "division_sims", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 14, name: "control_loss_sims", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 15, name: "use_control_loss", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-    { no: 16, name: "allow_repeat_byes", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 10, name: "all_players", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 11, name: "valid_players", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 12, name: "rounds", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 13, name: "place_prizes", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 14, name: "division_sims", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 15, name: "control_loss_sims", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 16, name: "use_control_loss", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 17, name: "allow_repeat_byes", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 18, name: "removed_players", kind: "scalar", T: 5 /* ScalarType.INT32 */, repeated: true },
   ],
 );
 

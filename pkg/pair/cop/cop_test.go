@@ -13,12 +13,12 @@ import (
 func TestCOPErrors(t *testing.T) {
 	is := is.New(t)
 	req := pairtestutils.CreateDefaultPairRequest()
-	req.Players = -1
+	req.AllPlayers = -1
 	resp := cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_PLAYER_COUNT_INSUFFICIENT)
 
 	req = pairtestutils.CreateDefaultPairRequest()
-	req.Players = 0
+	req.AllPlayers = 0
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_PLAYER_COUNT_INSUFFICIENT)
 
@@ -33,7 +33,7 @@ func TestCOPErrors(t *testing.T) {
 	is.Equal(resp.ErrorCode, pb.PairError_ROUND_COUNT_INSUFFICIENT)
 
 	req = pairtestutils.CreateDefaultPairRequest()
-	req.Players = 100000
+	req.AllPlayers = 100000
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_PLAYER_COUNT_TOO_LARGE)
 
@@ -173,7 +173,7 @@ func TestCOPErrors(t *testing.T) {
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_CLASS_PRIZE)
 
 	req = pairtestutils.CreateDefaultPairRequest()
-	req.GibsonSpreads = []int32{100, 100, 100, 100, 100, 100, 100, 100, 100}
+	req.GibsonSpreads = []int32{100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_GIBSON_SPREAD_COUNT)
 
@@ -231,6 +231,16 @@ func TestCOPErrors(t *testing.T) {
 	req.PlacePrizes = 9
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_PLACE_PRIZES)
+
+	req = pairtestutils.CreateDefaultPairRequest()
+	req.RemovedPlayers = []int32{0, 8, 1}
+	resp = cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_INVALID_REMOVED_PLAYER)
+
+	req = pairtestutils.CreateDefaultPairRequest()
+	req.RemovedPlayers = []int32{0, -1}
+	resp = cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_INVALID_REMOVED_PLAYER)
 }
 
 func TestCOPSuccess(t *testing.T) {

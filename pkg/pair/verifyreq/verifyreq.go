@@ -13,16 +13,16 @@ const (
 // This function can be broken up and renamed as more pairing methods are added
 func Verify(req *pb.PairRequest) *pb.PairResponse {
 	// Verify number of players
-	if req.Players < 2 {
+	if req.ValidPlayers < 2 {
 		return &pb.PairResponse{
 			ErrorCode: pb.PairError_PLAYER_COUNT_INSUFFICIENT,
-			Message:   fmt.Sprintf("not enough players (%d)", req.Players),
+			Message:   fmt.Sprintf("not enough players (%d)", req.ValidPlayers),
 		}
 	}
-	if req.Players > MaxPlayerCount {
+	if req.AllPlayers > MaxPlayerCount {
 		return &pb.PairResponse{
 			ErrorCode: pb.PairError_PLAYER_COUNT_TOO_LARGE,
-			Message:   fmt.Sprintf("too many players (%d)", req.Players),
+			Message:   fmt.Sprintf("too many players (%d)", req.AllPlayers),
 		}
 	}
 	// Verify number of rounds
@@ -33,10 +33,10 @@ func Verify(req *pb.PairRequest) *pb.PairResponse {
 		}
 	}
 	// Verify player names
-	if len(req.PlayerNames) != int(req.Players) {
+	if len(req.PlayerNames) != int(req.AllPlayers) {
 		return &pb.PairResponse{
 			ErrorCode: pb.PairError_PLAYER_NAME_COUNT_INSUFFICIENT,
-			Message:   fmt.Sprintf("player name count (%d) does not match number of players (%d)", len(req.PlayerNames), req.Players),
+			Message:   fmt.Sprintf("player name count (%d) does not match number of players (%d)", len(req.PlayerNames), req.AllPlayers),
 		}
 	}
 	for playerIdx, playerName := range req.PlayerNames {
@@ -64,16 +64,16 @@ func Verify(req *pb.PairRequest) *pb.PairResponse {
 		}
 	}
 	for roundIdx, roundPairings := range req.DivisionPairings {
-		if len(roundPairings.Pairings) != int(req.Players) {
+		if len(roundPairings.Pairings) != int(req.AllPlayers) {
 			return &pb.PairResponse{
 				ErrorCode: pb.PairError_INVALID_ROUND_PAIRINGS_COUNT,
-				Message:   fmt.Sprintf("round pairings length (%d) for round %d does not match number of players (%d)", len(roundPairings.Pairings), roundIdx+1, req.Players),
+				Message:   fmt.Sprintf("round pairings length (%d) for round %d does not match number of players (%d)", len(roundPairings.Pairings), roundIdx+1, req.AllPlayers),
 			}
 		}
 		seen := make(map[int]bool)
 		for playerIdx, oppIdxInt32 := range roundPairings.Pairings {
 			oppIdx := int(oppIdxInt32)
-			if oppIdx < -1 || oppIdx >= int(req.Players) {
+			if oppIdx < -1 || oppIdx >= int(req.AllPlayers) {
 				return &pb.PairResponse{
 					ErrorCode: pb.PairError_PLAYER_INDEX_OUT_OF_BOUNDS,
 					Message:   fmt.Sprintf("opponent (%d) for player %d in round %d is out of bounds", oppIdx+1, playerIdx+1, roundIdx+1),
@@ -136,23 +136,23 @@ func Verify(req *pb.PairRequest) *pb.PairResponse {
 		}
 	}
 	for roundIdx, roundResults := range req.DivisionResults {
-		if len(roundResults.Results) != int(req.Players) {
+		if len(roundResults.Results) != int(req.AllPlayers) {
 			return &pb.PairResponse{
 				ErrorCode: pb.PairError_INVALID_ROUND_RESULTS_COUNT,
-				Message:   fmt.Sprintf("round results length (%d) for round %d does not match number of players (%d)", len(roundResults.Results), roundIdx+1, req.Players),
+				Message:   fmt.Sprintf("round results length (%d) for round %d does not match number of players (%d)", len(roundResults.Results), roundIdx+1, req.AllPlayers),
 			}
 		}
 	}
 
 	// Verify classes
-	if len(req.Classes) > int(req.Players) {
+	if len(req.Classes) > int(req.ValidPlayers) {
 		return &pb.PairResponse{
 			ErrorCode: pb.PairError_MORE_CLASSES_THAN_PLAYERS,
-			Message:   fmt.Sprintf("more classes (%d) than players (%d)", len(req.Classes), req.Players),
+			Message:   fmt.Sprintf("more classes (%d) than players (%d)", len(req.Classes), req.ValidPlayers),
 		}
 	}
 	for classIdx, class := range req.Classes {
-		if class >= req.Players || class <= 0 {
+		if class >= req.ValidPlayers || class <= 0 {
 			return &pb.PairResponse{
 				ErrorCode: pb.PairError_INVALID_CLASS,
 				Message:   fmt.Sprintf("invalid class %d", class),
@@ -166,14 +166,14 @@ func Verify(req *pb.PairRequest) *pb.PairResponse {
 		}
 	}
 	// Verify class prizes
-	if len(req.ClassPrizes) > int(req.Players) {
+	if len(req.ClassPrizes) > int(req.ValidPlayers) {
 		return &pb.PairResponse{
 			ErrorCode: pb.PairError_INVALID_CLASS_PRIZES_COUNT,
-			Message:   fmt.Sprintf("class prizes length (%d) does not match number of players (%d)", len(req.ClassPrizes), req.Players),
+			Message:   fmt.Sprintf("class prizes length (%d) does not match number of players (%d)", len(req.ClassPrizes), req.ValidPlayers),
 		}
 	}
 	for _, classPrize := range req.ClassPrizes {
-		if classPrize > req.Players || classPrize < 1 {
+		if classPrize > req.ValidPlayers || classPrize < 1 {
 			return &pb.PairResponse{
 				ErrorCode: pb.PairError_INVALID_CLASS_PRIZE,
 				Message:   fmt.Sprintf("invalid class prize %d", classPrize),
@@ -182,10 +182,10 @@ func Verify(req *pb.PairRequest) *pb.PairResponse {
 	}
 
 	// Verify gibsons
-	if len(req.GibsonSpreads) > int(req.Players) {
+	if len(req.GibsonSpreads) > int(req.Rounds) {
 		return &pb.PairResponse{
 			ErrorCode: pb.PairError_INVALID_GIBSON_SPREAD_COUNT,
-			Message:   fmt.Sprintf("more gibson spreads (%d) than players (%d)", len(req.GibsonSpreads), req.Players),
+			Message:   fmt.Sprintf("more gibson spreads (%d) than rounds (%d)", len(req.GibsonSpreads), req.Rounds),
 		}
 	}
 	for _, gibsonSpread := range req.GibsonSpreads {
@@ -230,10 +230,27 @@ func Verify(req *pb.PairRequest) *pb.PairResponse {
 	}
 
 	// Verify place prizes
-	if req.PlacePrizes > req.Players || req.PlacePrizes < 1 {
+	if req.PlacePrizes > req.ValidPlayers || req.PlacePrizes < 1 {
 		return &pb.PairResponse{
 			ErrorCode: pb.PairError_INVALID_PLACE_PRIZES,
 			Message:   fmt.Sprintf("invalid place prizes %d", req.PlacePrizes),
+		}
+	}
+
+	// Verify removed players
+	for _, removedPlayer := range req.RemovedPlayers {
+		if removedPlayer < 0 || removedPlayer >= req.AllPlayers {
+			return &pb.PairResponse{
+				ErrorCode: pb.PairError_INVALID_REMOVED_PLAYER,
+				Message:   fmt.Sprintf("invalid removed player %d", removedPlayer),
+			}
+		}
+	}
+
+	if int(req.AllPlayers-req.ValidPlayers) != len(req.RemovedPlayers) {
+		return &pb.PairResponse{
+			ErrorCode: pb.PairError_INVALID_VALID_PLAYER_COUNT,
+			Message:   fmt.Sprintf("total players %d minus removed players %d does not equal valid players %d", req.AllPlayers, len(req.RemovedPlayers), req.ValidPlayers),
 		}
 	}
 
