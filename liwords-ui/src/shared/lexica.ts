@@ -73,6 +73,13 @@ export const AllLexica: { [code: string]: Lexicon } = {
     longDescription:
       'Published under license with Collins, an imprint of HarperCollins Publishers Limited',
   },
+  CSW24: {
+    code: 'CSW24',
+    shortDescription: 'CSW 24 (World English)',
+    matchName: 'CSW24',
+    longDescription:
+      'Published under license with Collins, an imprint of HarperCollins Publishers Limited',
+  },
   ECWL: {
     code: 'ECWL',
     shortDescription: 'CEL (Common English Lexicon)',
