@@ -37,6 +37,7 @@ export const MatchLexiconDisplay = (props: {
 
 export const lexiconOrder = [
   'CSW21',
+  'CSW24',
   'NWL23',
   'ECWL',
   'RD28',
