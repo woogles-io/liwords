@@ -57,14 +57,26 @@ def wl(standing):
 def create_simple_qr(data, error_correction=qrcode.constants.ERROR_CORRECT_L):
     # Instantiate QRCode object with desired settings
     qr = qrcode.QRCode(
-        version=1,  # You might start with version 1 for the simplest QR code
         error_correction=error_correction,
-        box_size=10,  # Adjust box size for the size of each square (the smaller, the more squares)
-        border=4,  # The border around the QR code
+        box_size=10,
+        border=4,
     )
-
     # Add data to the QR code
     qr.add_data(data)
+    best_fit_version = qr.best_fit()
+    print("best_fit", best_fit_version)
+
+    if best_fit_version <= 3:
+        qr.box_size = 10
+    elif best_fit_version == 4:
+        qr.box_size = 9
+    elif best_fit_version == 5:
+        qr.box_size = 8
+    # version 5 with error correct L can hold up to 154 characters. we really
+    # don't need any more.
+    else:
+        raise Exception("Too much data for QR code")
+
     qr.make(fit=True)  # Fit to the smallest possible QR code version
 
     # Create an image from the QR Code instance
@@ -107,7 +119,7 @@ class ScorecardCreator:
         )
 
         ctx.save()
-        ctx.translate(495, 10)
+        ctx.translate(490, 6)
         ctx.scale(0.20, 0.20)
 
         ctx.set_source_surface(qrsurface, 0, 0)
@@ -144,7 +156,7 @@ class ScorecardCreator:
         ctx.show_text(tourney_name)
 
         if self.show_qrcode:
-            ctx.move_to(320, 75)
+            ctx.move_to(300, 75)
             ctx.set_font_size(12)
             ctx.show_text("Enter scores and view standings:")
         # line for player and name
@@ -312,7 +324,7 @@ class ScorecardCreator:
             ctx.line_to(f[0] - 5, 100)
 
         rect_ht = 40
-        if nrounds == 8:
+        if nrounds >= 8:
             rect_ht = 35
         for i in range(nrounds):
             self.draw_row(ctx, i, rect_ht, nrounds, fields)
