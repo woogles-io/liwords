@@ -1,7 +1,6 @@
 package standings_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/matryer/is"
@@ -69,19 +68,21 @@ func TestStandings(t *testing.T) {
 		}
 	}
 	assertGibsonizedPlayers(is, standings, req, map[int]bool{})
-	assertGetAllSegments(is, standings, req, [][]int{{0, 8}})
-	factorPairings := pkgstnd.GetPairingsForSegment(0, 8, int(req.Rounds), int(req.ValidPlayers))
-	is.Equal(len(factorPairings), int(req.Rounds))
-	assertFactorPairings(is, factorPairings[0], []int{0, 4, 1, 5, 2, 6, 3, 7})
-	assertFactorPairings(is, factorPairings[1], []int{0, 4, 1, 5, 2, 6, 3, 7})
-	assertFactorPairings(is, factorPairings[2], []int{0, 4, 1, 5, 2, 6, 3, 7})
-	assertFactorPairings(is, factorPairings[3], []int{0, 4, 1, 5, 2, 6, 3, 7})
-	assertFactorPairings(is, factorPairings[4], []int{0, 4, 1, 5, 2, 6, 3, 7})
-	assertFactorPairings(is, factorPairings[5], []int{0, 4, 1, 5, 2, 6, 3, 7})
-	assertFactorPairings(is, factorPairings[6], []int{0, 4, 1, 5, 2, 6, 3, 7})
-	assertFactorPairings(is, factorPairings[7], []int{0, 3, 1, 4, 2, 5, 6, 7})
-	assertFactorPairings(is, factorPairings[8], []int{0, 2, 1, 3, 4, 5, 6, 7})
-	assertFactorPairings(is, factorPairings[9], []int{0, 1, 2, 3, 4, 5, 6, 7})
+	_, pairings, gibsonGroups := standings.SimFactorPair(req, 10, int(req.ValidPlayers))
+	is.Equal(len(pairings), int(req.Rounds))
+	assertFactorPairings(is, pairings[0], []int{0, 4, 1, 5, 2, 6, 3, 7})
+	assertFactorPairings(is, pairings[1], []int{0, 4, 1, 5, 2, 6, 3, 7})
+	assertFactorPairings(is, pairings[2], []int{0, 4, 1, 5, 2, 6, 3, 7})
+	assertFactorPairings(is, pairings[3], []int{0, 4, 1, 5, 2, 6, 3, 7})
+	assertFactorPairings(is, pairings[4], []int{0, 4, 1, 5, 2, 6, 3, 7})
+	assertFactorPairings(is, pairings[5], []int{0, 4, 1, 5, 2, 6, 3, 7})
+	assertFactorPairings(is, pairings[6], []int{0, 4, 1, 5, 2, 6, 3, 7})
+	assertFactorPairings(is, pairings[7], []int{0, 3, 1, 4, 2, 5, 6, 7})
+	assertFactorPairings(is, pairings[8], []int{0, 2, 1, 3, 4, 5, 6, 7})
+	assertFactorPairings(is, pairings[9], []int{0, 1, 2, 3, 4, 5, 6, 7})
+	for i := 0; i < int(req.ValidPlayers); i++ {
+		is.Equal(gibsonGroups[i], 0)
+	}
 
 	// New 9 player tournament
 	req = pairtestutils.CreateDefaultOddPairRequest()
@@ -94,19 +95,22 @@ func TestStandings(t *testing.T) {
 		}
 	}
 	assertGibsonizedPlayers(is, standings, req, map[int]bool{})
-	assertGetAllSegments(is, standings, req, [][]int{{0, 7}})
-	factorPairings = pkgstnd.GetPairingsForSegment(0, 7, int(req.Rounds), int(req.ValidPlayers))
-	is.Equal(len(factorPairings), int(req.Rounds))
-	assertFactorPairings(is, factorPairings[0], []int{0, 3, 1, 4, 2, 5, 6})
-	assertFactorPairings(is, factorPairings[1], []int{0, 3, 1, 4, 2, 5, 6})
-	assertFactorPairings(is, factorPairings[2], []int{0, 3, 1, 4, 2, 5, 6})
-	assertFactorPairings(is, factorPairings[3], []int{0, 3, 1, 4, 2, 5, 6})
-	assertFactorPairings(is, factorPairings[4], []int{0, 3, 1, 4, 2, 5, 6})
-	assertFactorPairings(is, factorPairings[5], []int{0, 3, 1, 4, 2, 5, 6})
-	assertFactorPairings(is, factorPairings[6], []int{0, 3, 1, 4, 2, 5, 6})
-	assertFactorPairings(is, factorPairings[7], []int{0, 3, 1, 4, 2, 5, 6})
-	assertFactorPairings(is, factorPairings[8], []int{0, 2, 1, 3, 4, 5, 6})
-	assertFactorPairings(is, factorPairings[9], []int{0, 1, 2, 3, 4, 5, 6})
+	_, pairings, _ = standings.SimFactorPair(req, 10, int(req.ValidPlayers))
+	is.Equal(len(pairings), int(req.Rounds))
+	// The pairings will add an extra dummy player
+	assertFactorPairings(is, pairings[0], []int{0, 4, 1, 5, 2, 6, 3, 7})
+	assertFactorPairings(is, pairings[1], []int{0, 4, 1, 5, 2, 6, 3, 7})
+	assertFactorPairings(is, pairings[2], []int{0, 4, 1, 5, 2, 6, 3, 7})
+	assertFactorPairings(is, pairings[3], []int{0, 4, 1, 5, 2, 6, 3, 7})
+	assertFactorPairings(is, pairings[4], []int{0, 4, 1, 5, 2, 6, 3, 7})
+	assertFactorPairings(is, pairings[5], []int{0, 4, 1, 5, 2, 6, 3, 7})
+	assertFactorPairings(is, pairings[6], []int{0, 4, 1, 5, 2, 6, 3, 7})
+	assertFactorPairings(is, pairings[7], []int{0, 3, 1, 4, 2, 5, 6, 7})
+	assertFactorPairings(is, pairings[8], []int{0, 2, 1, 3, 4, 5, 6, 7})
+	assertFactorPairings(is, pairings[9], []int{0, 1, 2, 3, 4, 5, 6, 7})
+	for i := 0; i < int(req.ValidPlayers); i++ {
+		is.Equal(gibsonGroups[i], 0)
+	}
 
 	// 1st is gibsonized
 	req = pairtestutils.CreateLakeGeorgeAfterRound13PairRequest()
@@ -136,14 +140,13 @@ func TestStandings(t *testing.T) {
 	is.True(standings.CanCatch(3, 755, 13, 27))
 	is.True(!standings.CanCatch(3, 754, 13, 27))
 	assertGibsonizedPlayers(is, standings, req, map[int]bool{0: true})
-	assertGetAllSegments(is, standings, req, [][]int{{1, 28}})
-	factorPairings = pkgstnd.GetPairingsForSegment(1, 28, 2, int(req.ValidPlayers))
-	is.Equal(len(factorPairings), 2)
-	assertFactorPairings(is, factorPairings[0], []int{1, 3, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27})
-	assertFactorPairings(is, factorPairings[1], []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27})
 	numSims := 1000
-	results, _ := standings.SimFactorPair(req, numSims, 2, 2, standings.GetGibsonizedPlayers(req))
-
+	results, pairings, gibsonGroups := standings.SimFactorPair(req, numSims, 2)
+	assertFactorPairings(is, pairings[0], []int{1, 3, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 0})
+	assertFactorPairings(is, pairings[1], []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 0})
+	for i := 0; i < int(req.ValidPlayers); i++ {
+		is.Equal(gibsonGroups[i], 0)
+	}
 	// Jackson is gibsonized and should always be first
 	assertGibsonizedResult(is, results, numSims, 0)
 	// Jeffrey cannot get 12th as he is two wins back with two to go and
@@ -153,7 +156,7 @@ func TestStandings(t *testing.T) {
 	assertResultSums(is, results, int(req.ValidPlayers), numSims)
 
 	// 1st and 2nd are gibsonized
-	req = pairtestutils.CreateAlbanyAfterRound24PairRequest()
+	req = pairtestutils.CreateAlbanyCSWAfterRound24PairRequest()
 	is.True(verifyreq.Verify(req) == nil)
 	standings = pkgstnd.CreateInitialStandings(req)
 	is.True(!standings.CanCatch(3, 1000, 0, 1))
@@ -161,12 +164,13 @@ func TestStandings(t *testing.T) {
 	is.True(standings.CanCatch(3, 1477, 0, 1))
 	is.True(!standings.CanCatch(3, 100000000, 1, 2))
 	assertGibsonizedPlayers(is, standings, req, map[int]bool{0: true, 1: true})
-	assertGetAllSegments(is, standings, req, [][]int{{2, 30}})
-	factorPairings = pkgstnd.GetPairingsForSegment(2, 30, 3, int(req.ValidPlayers))
-	assertFactorPairings(is, factorPairings[0], []int{2, 5, 3, 6, 4, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29})
-	assertFactorPairings(is, factorPairings[1], []int{2, 4, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29})
-	assertFactorPairings(is, factorPairings[2], []int{2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29})
-	results, _ = standings.SimFactorPair(req, numSims, 2, 3, standings.GetGibsonizedPlayers(req))
+	results, pairings, gibsonGroups = standings.SimFactorPair(req, numSims, 3)
+	assertFactorPairings(is, pairings[0], []int{2, 5, 3, 6, 4, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 0, 1})
+	assertFactorPairings(is, pairings[1], []int{2, 4, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 0, 1})
+	assertFactorPairings(is, pairings[2], []int{2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 0, 1})
+	for i := 0; i < int(req.ValidPlayers); i++ {
+		is.Equal(gibsonGroups[i], 0)
+	}
 	assertGibsonizedResult(is, results, numSims, 0)
 	assertGibsonizedResult(is, results, numSims, 1)
 	assertResultSums(is, results, int(req.ValidPlayers), numSims)
@@ -178,14 +182,14 @@ func TestStandings(t *testing.T) {
 	assertPlayerRecord(is, standings, 16, 7, 9.5, -682)
 	assertPlayerRecord(is, standings, 22, 20, 7, -455)
 	assertGibsonizedPlayers(is, standings, req, map[int]bool{2: true})
-	assertGetAllSegments(is, standings, req, [][]int{{0, 2}, {3, 23}})
-	factorPairings = pkgstnd.GetPairingsForSegment(0, 2, 2, int(req.ValidPlayers))
-	assertFactorPairings(is, factorPairings[0], []int{0, 1})
-	assertFactorPairings(is, factorPairings[1], []int{0, 1})
-	factorPairings = pkgstnd.GetPairingsForSegment(3, 23, 2, int(req.ValidPlayers))
-	assertFactorPairings(is, factorPairings[0], []int{3, 5, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22})
-	assertFactorPairings(is, factorPairings[1], []int{3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22})
-	results, _ = standings.SimFactorPair(req, numSims, 2, 2, standings.GetGibsonizedPlayers(req))
+	results, pairings, gibsonGroups = standings.SimFactorPair(req, numSims, 2)
+	assertFactorPairings(is, pairings[0], []int{0, 1, 3, 5, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 2})
+	assertFactorPairings(is, pairings[1], []int{0, 1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 2})
+	is.Equal(gibsonGroups[0], 1)
+	is.Equal(gibsonGroups[1], 1)
+	for i := 2; i < int(req.ValidPlayers); i++ {
+		is.Equal(gibsonGroups[i], 0)
+	}
 	assertGibsonizedResult(is, results, numSims, 2)
 	assertResultSums(is, results, int(req.ValidPlayers), numSims)
 
@@ -194,15 +198,16 @@ func TestStandings(t *testing.T) {
 	is.True(verifyreq.Verify(req) == nil)
 	standings = pkgstnd.CreateInitialStandings(req)
 	assertGibsonizedPlayers(is, standings, req, map[int]bool{3: true})
-	assertGetAllSegments(is, standings, req, [][]int{{0, 4}, {4, 23}})
-	// FIXME: inelegant, plz fix
-	factorPairings = pkgstnd.GetPairingsForSegment(0, 4, 2, int(req.ValidPlayers))
-	assertFactorPairings(is, factorPairings[0], []int{0, 2, 1, 3})
-	assertFactorPairings(is, factorPairings[1], []int{0, 1, 2, 3})
-	factorPairings = pkgstnd.GetPairingsForSegment(4, 23, 2, int(req.ValidPlayers))
-	assertFactorPairings(is, factorPairings[0], []int{4, 6, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22})
-	assertFactorPairings(is, factorPairings[1], []int{4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22})
-	results, _ = standings.SimFactorPair(req, numSims, 2, 2, standings.GetGibsonizedPlayers(req))
+	results, pairings, gibsonGroups = standings.SimFactorPair(req, numSims, 2)
+	assertFactorPairings(is, pairings[0], []int{0, 2, 1, 3, 4, 6, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23})
+	assertFactorPairings(is, pairings[1], []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23})
+	is.Equal(gibsonGroups[0], 1)
+	is.Equal(gibsonGroups[1], 1)
+	is.Equal(gibsonGroups[2], 1)
+	is.Equal(gibsonGroups[3], 1)
+	for i := 4; i < int(req.ValidPlayers); i++ {
+		is.Equal(gibsonGroups[i], 0)
+	}
 	assertGibsonizedResult(is, results, numSims, 3)
 	assertResultSums(is, results, int(req.ValidPlayers), numSims)
 
@@ -211,37 +216,39 @@ func TestStandings(t *testing.T) {
 	is.True(verifyreq.Verify(req) == nil)
 	standings = pkgstnd.CreateInitialStandings(req)
 	assertGibsonizedPlayers(is, standings, req, map[int]bool{0: true, 3: true})
-	assertGetAllSegments(is, standings, req, [][]int{{1, 3}, {4, 23}})
-	factorPairings = pkgstnd.GetPairingsForSegment(1, 3, 2, int(req.ValidPlayers))
-	assertFactorPairings(is, factorPairings[0], []int{1, 2})
-	assertFactorPairings(is, factorPairings[1], []int{1, 2})
-	factorPairings = pkgstnd.GetPairingsForSegment(4, 23, 2, int(req.ValidPlayers))
-	assertFactorPairings(is, factorPairings[0], []int{4, 6, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22})
-	assertFactorPairings(is, factorPairings[1], []int{4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22})
-	results, _ = standings.SimFactorPair(req, numSims, 2, 2, standings.GetGibsonizedPlayers(req))
+	results, pairings, gibsonGroups = standings.SimFactorPair(req, numSims, 2)
+	assertFactorPairings(is, pairings[0], []int{1, 2, 4, 6, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 3})
+	assertFactorPairings(is, pairings[1], []int{1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 3})
+	is.Equal(gibsonGroups[0], 0)
+	is.Equal(gibsonGroups[1], 1)
+	is.Equal(gibsonGroups[2], 1)
+	is.Equal(gibsonGroups[3], 0)
+	for i := 4; i < int(req.ValidPlayers); i++ {
+		is.Equal(gibsonGroups[i], 0)
+	}
 	assertGibsonizedResult(is, results, numSims, 0)
 	assertGibsonizedResult(is, results, numSims, 3)
 	assertResultSums(is, results, int(req.ValidPlayers), numSims)
 
-	fmt.Println("here3")
+	// 1st and 4th and 8th are gibsonized
 	req = pairtestutils.CreateAlbany1stAnd4thAnd8thGibsonizedAfterRound25PairRequest()
 	is.True(verifyreq.Verify(req) == nil)
 	standings = pkgstnd.CreateInitialStandings(req)
-	fmt.Println(standings.String(req))
 	assertGibsonizedPlayers(is, standings, req, map[int]bool{0: true, 3: true, 7: true})
-	assertGetAllSegments(is, standings, req, [][]int{{1, 3}, {4, 8}, {8, 23}})
-	factorPairings = pkgstnd.GetPairingsForSegment(1, 3, 2, int(req.ValidPlayers))
-	assertFactorPairings(is, factorPairings[0], []int{1, 2})
-	assertFactorPairings(is, factorPairings[1], []int{1, 2})
-	factorPairings = pkgstnd.GetPairingsForSegment(4, 8, 2, int(req.ValidPlayers))
-	assertFactorPairings(is, factorPairings[0], []int{4, 6, 5, 7})
-	assertFactorPairings(is, factorPairings[1], []int{4, 5, 6, 7})
-	factorPairings = pkgstnd.GetPairingsForSegment(8, 23, 2, int(req.ValidPlayers))
-	assertFactorPairings(is, factorPairings[0], []int{8, 10, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22})
-	assertFactorPairings(is, factorPairings[1], []int{8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22})
-	// FIXME: limit game spread to gibson spread
-	results, resultStr := standings.SimFactorPair(req, numSims, 2, 2, standings.GetGibsonizedPlayers(req))
-	fmt.Println(resultStr)
+	results, pairings, gibsonGroups = standings.SimFactorPair(req, numSims, 2)
+	assertFactorPairings(is, pairings[0], []int{1, 2, 4, 6, 5, 7, 8, 10, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 3})
+	assertFactorPairings(is, pairings[1], []int{1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 3})
+	is.Equal(gibsonGroups[0], 0)
+	is.Equal(gibsonGroups[1], 1)
+	is.Equal(gibsonGroups[2], 1)
+	is.Equal(gibsonGroups[3], 0)
+	is.Equal(gibsonGroups[4], 2)
+	is.Equal(gibsonGroups[5], 2)
+	is.Equal(gibsonGroups[6], 2)
+	is.Equal(gibsonGroups[7], 2)
+	for i := 8; i < int(req.ValidPlayers); i++ {
+		is.Equal(gibsonGroups[i], 0)
+	}
 	assertGibsonizedResult(is, results, numSims, 0)
 	assertGibsonizedResult(is, results, numSims, 3)
 	assertGibsonizedResult(is, results, numSims, 7)
@@ -252,6 +259,7 @@ func TestStandings(t *testing.T) {
 }
 
 func assertGibsonizedResult(is *is.I, results [][]int, numSims int, gibsonizedPos int) {
+	is.Helper()
 	numPlayers := len(results)
 	for i := 0; i < numPlayers; i++ {
 		if i == gibsonizedPos {
@@ -262,6 +270,7 @@ func assertGibsonizedResult(is *is.I, results [][]int, numSims int, gibsonizedPo
 	}
 }
 func assertPlayerRecord(is *is.I, standings *pkgstnd.Standings, rank int, playerIdx int, wins float64, spread int) {
+	is.Helper()
 	if playerIdx >= 0 {
 		is.Equal(standings.GetPlayerIndex(rank), playerIdx)
 	}
@@ -270,22 +279,15 @@ func assertPlayerRecord(is *is.I, standings *pkgstnd.Standings, rank int, player
 }
 
 func assertGibsonizedPlayers(is *is.I, standings *pkgstnd.Standings, req *pb.PairRequest, expectedGibsonizedPlayers map[int]bool) {
+	is.Helper()
 	actualGibsonizedPlayers := standings.GetGibsonizedPlayers(req)
 	for i := range int(req.ValidPlayers) {
 		is.Equal(expectedGibsonizedPlayers[i], actualGibsonizedPlayers[i])
 	}
 }
 
-func assertGetAllSegments(is *is.I, standings *pkgstnd.Standings, req *pb.PairRequest, expectedSegments [][]int) {
-	gibsonizedPlayers := standings.GetGibsonizedPlayers(req)
-	actualSegments := standings.GetAllSegments(gibsonizedPlayers)
-	is.Equal(len(expectedSegments), len(actualSegments))
-	for i := range expectedSegments {
-		is.Equal(expectedSegments[i], actualSegments[i])
-	}
-}
-
 func assertFactorPairings(is *is.I, actualPairings []int, expectedPairings []int) {
+	is.Helper()
 	is.Equal(len(expectedPairings), len(actualPairings))
 	for i := range expectedPairings {
 		is.Equal(expectedPairings[i], actualPairings[i])
@@ -293,6 +295,7 @@ func assertFactorPairings(is *is.I, actualPairings []int, expectedPairings []int
 }
 
 func assertResultSums(is *is.I, results [][]int, dim int, total int) {
+	is.Helper()
 	is.Equal(len(results), dim)
 	is.Equal(len(results[0]), dim)
 

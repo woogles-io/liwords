@@ -115,6 +115,7 @@ func (standings *Standings) Backup() {
 
 func (standings *Standings) RestoreFromBackup() {
 	copy(standings.records, standings.recordsBackup)
+	// FIXME: only needed for printing
 	standings.roundsPlayed = standings.roundsPlayedBackup
 }
 
@@ -187,137 +188,140 @@ func (standings *Standings) Sort() {
 	})
 }
 
-func (standings *Standings) GetAllSegments(gibsonizedPlayers []bool) [][]int {
-	// FIXME: probably need better names for i and j
-	numPlayers := len(standings.records)
-	i := 0
-	j := 0
-	pairingsSegments := [][]int{}
-	for j <= numPlayers {
-		if j == numPlayers {
-			pairingsSegments = append(pairingsSegments, []int{i, j})
-			break
-		}
-		if gibsonizedPlayers[j] {
-			if j != i {
-				// FIXME: explain this
-				if (j-i)%2 == 1 {
-					pairingsSegments = append(pairingsSegments, []int{i, j + 1})
-				} else {
-					pairingsSegments = append(pairingsSegments, []int{i, j})
-
-				}
-			}
-			j++
-			i = j
-		} else {
-			j++
-		}
-	}
-	return pairingsSegments
-}
-
 // Assumes the standings are already sorted
 // FIXME: calculate the gibsonizedPlayers in this function instead of passing it in
-func (standings *Standings) SimFactorPair(req *pb.PairRequest, sims int, maxFactor int, roundsRemaining int, gibsonizedPlayers []bool) ([][]int, string) {
+func (standings *Standings) SimFactorPair(req *pb.PairRequest, sims int, maxFactor int) ([][]int, [][]int, map[int]int) {
 	numPlayers := len(standings.records)
+	roundsRemaining := int(req.Rounds) - len(req.DivisionPairings)
+	evenerPlayerAdded := false
+	if numPlayers%2 == 1 {
+		// If there are an odd number of players, add a dummy player
+		// who will act as the "bye" player. In this implementation,
+		// players who play the "bye" player could possibly lose, which
+		// is okay because repeat byes are usually avoided and players
+		// that low rarely cash anyway.
+		// FIXME: test that this works
+		lowestWins := getWinsValue(standings.records[numPlayers-1])
+		standings.records = append(standings.records, getRecordFromWinsAndSpread(lowestWins-(roundsRemaining+1)*2, initialSpreadValue))
+		standings.records[numPlayers] += uint64(req.AllPlayers)
+		numPlayers++
+		standings.recordsBackup = make([]uint64, numPlayers)
+		evenerPlayerAdded = true
+	}
 	results := make([][]int, numPlayers)
 	for i := range results {
 		results[i] = make([]int, numPlayers)
 	}
-	playerIdxToRankIdx := map[int]int{}
-	for i := 0; i < len(standings.records); i++ {
-		playerIdxToRankIdx[standings.GetPlayerIndex(i)] = i
-	}
-	standings.simFactorPairSegments(results, playerIdxToRankIdx, standings.GetAllSegments(gibsonizedPlayers), roundsRemaining, maxFactor, sims)
-	return results, standings.resultsString(results, playerIdxToRankIdx, req)
-}
-
-func (standings *Standings) SimSingleIteration(pairings [][]int, roundsRemaining int, i int, j int) {
-	numPlayers := len(pairings[0])
-	segmentHasOddNumPlayers := numPlayers%2 == 1
-	divisionHasOddNumPlayers := len(standings.records)%2 == 1
-	for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
-		for pairIdx := 0; pairIdx < numPlayers-1; pairIdx += 2 {
-			randomResult := rand.Intn(2)
-			p1 := pairings[roundIdx][pairIdx]
-			p2 := pairings[roundIdx][pairIdx+1]
-			winner := p1*(1-randomResult) + p2*randomResult
-			loser := p2*(1-randomResult) + p1*randomResult
-			// FIXME: limit by the gibson spread for this round
-			randomSpread := rand.Intn(maxSpread + 1)
-			record := standings.possibleResults[randomSpread]
-			standings.incrementPlayerRecord(winner, record)
-			standings.decrementPlayerRecord(loser, record)
-		}
-		// FIXME: branches could be slow, think about this some more
-		if segmentHasOddNumPlayers {
-			bottomPlayerIdx := pairings[roundIdx][numPlayers-1]
-			if divisionHasOddNumPlayers {
-				standings.incrementPlayerRecord(bottomPlayerIdx, standings.possibleResults[byeSpread])
-			} else {
-				randomSpread := rand.Intn(maxSpread + 1)
-				record := standings.possibleResults[randomSpread]
-				if rand.Intn(2) == 0 {
-					standings.incrementPlayerRecord(bottomPlayerIdx, record)
-				} else {
-					standings.decrementPlayerRecord(bottomPlayerIdx, record)
-				}
-			}
-		}
-		// FIXME: is sort range inclusive?
-		standings.sortRange(i, j)
-	}
-	standings.roundsPlayed += roundsRemaining
-}
-
-func (standings *Standings) UpdateResultsWithFinishedSim(results [][]int, playerIdxToRankIdx map[int]int) {
-	numRecords := len(standings.records)
-	for rankIdx := 0; rankIdx < numRecords; rankIdx++ {
-		results[playerIdxToRankIdx[getIndex(standings.records[rankIdx])]][rankIdx] += 1
-	}
-}
-
-// Gets the factor pairings for players in for all remaining rounds [i, j)
-// Assumes i < j
-// Returns pairings in pairs of player indexes
-// For example, pairings of [0, 2, 1, 3] indicate player 0 plays player 4
-// and player 1 plays player 3.
-func GetPairingsForSegment(i int, j int, totalRoundsRemaining int, maxFactor int) [][]int {
-	numPlayers := j - i
-	pairings := make([][]int, totalRoundsRemaining)
-	for i := 0; i < totalRoundsRemaining; i++ {
+	pairings := make([][]int, roundsRemaining)
+	for i := 0; i < roundsRemaining; i++ {
 		pairings[i] = make([]int, numPlayers)
 	}
-
-	for roundsRemaining := totalRoundsRemaining; roundsRemaining > 0; roundsRemaining-- {
-		roundFactor := roundsRemaining
-		if roundFactor > maxFactor {
-			roundFactor = maxFactor
-		}
-		maxPlayerFactor := numPlayers / 2
-		if roundFactor > maxPlayerFactor {
-			roundFactor = maxPlayerFactor
-		}
-		roundIdx := totalRoundsRemaining - roundsRemaining
-		pairIdx := 0
-		for k := i; k < roundFactor+i; k++ {
-			pairings[roundIdx][pairIdx] = k
-			pairIdx += 1
-			pairings[roundIdx][pairIdx] = k + roundFactor
-			pairIdx += 1
-		}
-		for k := roundFactor*2 + i; k < numPlayers+i; k += 2 {
-			pairings[roundIdx][pairIdx] = k
-			pairIdx += 1
-			if pairIdx == numPlayers {
-				break
+	gibsonizedPlayers := standings.GetGibsonizedPlayers(req)
+	gibsonGroups := map[int]int{}
+	nextGibsonGroup := 1
+	startRankIdx := 0
+	endRankIdx := 0
+	leftoverGibsonPlayers := []int{}
+	pairingsStartIdx := 0
+	for endRankIdx <= numPlayers {
+		if endRankIdx == numPlayers {
+			assignPairingsForSegment(pairingsStartIdx, startRankIdx, endRankIdx-1, roundsRemaining, maxFactor, leftoverGibsonPlayers, pairings)
+			for rankIdx := startRankIdx; rankIdx < endRankIdx; rankIdx++ {
+				gibsonGroups[rankIdx] = 0
 			}
-			pairings[roundIdx][pairIdx] = k + 1
-			pairIdx += 1
+			break
 		}
+		if gibsonizedPlayers[endRankIdx] {
+			gibsonIsLeftover := true
+			if endRankIdx != startRankIdx {
+				numPlayersInGibsonGroup := endRankIdx - startRankIdx
+				if numPlayersInGibsonGroup%2 == 1 {
+					// The number of players in the group is odd, so
+					// we have to pull in the gibsonized player at endRankIdx
+					// to even the group
+					assignPairingsForSegment(pairingsStartIdx, startRankIdx, endRankIdx, roundsRemaining, maxFactor, []int{}, pairings)
+					pairingsStartIdx += numPlayersInGibsonGroup + 1
+					for rankIdx := startRankIdx; rankIdx <= endRankIdx; rankIdx++ {
+						gibsonGroups[rankIdx] = nextGibsonGroup
+					}
+					nextGibsonGroup++
+					gibsonIsLeftover = false
+				} else {
+					// The number of players in the group is even, so
+					// the gibsonized player is not included in the group
+					// and will be included in the bottom gibson group
+					assignPairingsForSegment(pairingsStartIdx, startRankIdx, endRankIdx-1, roundsRemaining, maxFactor, []int{}, pairings)
+					pairingsStartIdx += numPlayersInGibsonGroup
+					for rankIdx := startRankIdx; rankIdx < endRankIdx; rankIdx++ {
+						gibsonGroups[rankIdx] = nextGibsonGroup
+					}
+					nextGibsonGroup++
+					gibsonGroups[endRankIdx] = 0
+				}
+			}
+			if gibsonIsLeftover {
+				leftoverGibsonPlayers = append(leftoverGibsonPlayers, endRankIdx)
+			}
+			startRankIdx = endRankIdx + 1
+		}
+		endRankIdx++
 	}
-	return pairings
+
+	var gibsonSpread int
+	if roundsRemaining > len(req.GibsonSpreads) {
+		gibsonSpread = int(req.GibsonSpreads[len(req.GibsonSpreads)-1])
+	} else {
+		gibsonSpread = int(req.GibsonSpreads[roundsRemaining-1])
+	}
+	// FIXME: find a better way to do this
+	maxScoreDiff := maxSpread
+	if maxScoreDiff > gibsonSpread {
+		maxScoreDiff = gibsonSpread
+	}
+
+	playerIdxToRankIdx := standings.getPlayerIdxToRankIdxMap()
+	standings.Backup()
+	numRecords := len(standings.records)
+	for simIdx := 0; simIdx < sims; simIdx++ {
+		for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
+			for pairIdx := 0; pairIdx < numPlayers; pairIdx += 2 {
+				randomResult := rand.Intn(2)
+				p1 := pairings[roundIdx][pairIdx]
+				p2 := pairings[roundIdx][pairIdx+1]
+				winner := p1*(1-randomResult) + p2*randomResult
+				loser := p2*(1-randomResult) + p1*randomResult
+				randomSpread := rand.Intn(maxScoreDiff + 1)
+				record := standings.possibleResults[randomSpread]
+				standings.incrementPlayerRecord(winner, record)
+				standings.decrementPlayerRecord(loser, record)
+			}
+			standings.Sort()
+		}
+		standings.roundsPlayed += roundsRemaining
+
+		// Update results
+		for rankIdx := 0; rankIdx < numRecords; rankIdx++ {
+			// The rankIdx is the final rank index that the player achieved
+			// for the simulation. We need to get the player index at that
+			// rankIdx and find the starting rank for the player, since results
+			// are ordered by starting rank index.
+			results[playerIdxToRankIdx[getIndex(standings.records[rankIdx])]][rankIdx] += 1
+		}
+
+		standings.RestoreFromBackup()
+	}
+
+	if evenerPlayerAdded {
+		// FIXME: test that this works
+		standings.records = standings.records[:numPlayers-1]
+		standings.recordsBackup = make([]uint64, numPlayers-1)
+		for i := 0; i < numPlayers; i++ {
+			results[i] = results[i][:numPlayers-1]
+		}
+		results = results[:numPlayers-1]
+	}
+
+	return results, pairings, gibsonGroups
 }
 
 func (standings *Standings) String(req *pb.PairRequest) string {
@@ -371,7 +375,66 @@ func (standings *Standings) String(req *pb.PairRequest) string {
 	return sb.String()
 }
 
-func (standings *Standings) resultsString(results [][]int, playerIdxToRankIdx map[int]int, req *pb.PairRequest) string {
+// Unexported functions
+
+// Gets the factor pairings for players in [i, j] for all remaining rounds
+// Assumes i < j
+// Returns pairings in pairs of player indexes
+// For example, pairings of [0, 2, 1, 3] indicate player 0 plays player 2
+// and player 1 plays player 3.
+func assignPairingsForSegment(pairingsStartIdx int, startRankIdx int, endRankIdx int, totalRoundsRemaining int, maxFactor int, leftoverGibsonPlayers []int, pairings [][]int) {
+	numPlayers := endRankIdx - startRankIdx + 1
+
+	for roundsRemaining := totalRoundsRemaining; roundsRemaining > 0; roundsRemaining-- {
+		roundFactor := roundsRemaining
+		if roundFactor > maxFactor {
+			roundFactor = maxFactor
+		}
+		maxPlayerFactor := numPlayers / 2
+		if roundFactor > maxPlayerFactor {
+			roundFactor = maxPlayerFactor
+		}
+		roundIdx := totalRoundsRemaining - roundsRemaining
+		for factorPairing := 0; factorPairing < roundFactor; factorPairing++ {
+			basePairingIdx := pairingsStartIdx + 2*factorPairing
+			basePlayerIdx := startRankIdx + factorPairing
+			pairings[roundIdx][basePairingIdx] = basePlayerIdx
+			pairings[roundIdx][basePairingIdx+1] = basePlayerIdx + roundFactor
+		}
+		numKothPlayers := numPlayers - 2*roundFactor
+		numKothPairings := numKothPlayers / 2
+		var nextKothPairingIdx int
+		var nextKothPairingPlayerIdx int
+		for kothPairing := 0; kothPairing < numKothPairings; kothPairing++ {
+			basePairingIdx := pairingsStartIdx + 2*roundFactor + 2*kothPairing
+			basePlayerIdx := startRankIdx + 2*roundFactor + 2*kothPairing
+			pairings[roundIdx][basePairingIdx] = basePlayerIdx
+			pairings[roundIdx][basePairingIdx+1] = basePlayerIdx + 1
+
+			nextKothPairingIdx = basePairingIdx + 2
+			nextKothPairingPlayerIdx = basePlayerIdx + 2
+		}
+		if numKothPlayers%2 == 1 {
+			pairings[roundIdx][nextKothPairingIdx] = nextKothPairingPlayerIdx
+		}
+		if len(leftoverGibsonPlayers) > 0 {
+			baseGibsonPairingIdx := pairingsStartIdx + numPlayers
+			for playerIdx := 0; playerIdx < len(leftoverGibsonPlayers); playerIdx++ {
+				pairings[roundIdx][baseGibsonPairingIdx+playerIdx] = leftoverGibsonPlayers[playerIdx]
+			}
+		}
+	}
+}
+
+func (standings *Standings) getPlayerIdxToRankIdxMap() map[int]int {
+	playerIdxToRankIdx := map[int]int{}
+	for i := 0; i < len(standings.records); i++ {
+		playerIdxToRankIdx[standings.GetPlayerIndex(i)] = i
+	}
+	return playerIdxToRankIdx
+}
+
+func (standings *Standings) ResultsString(results [][]int, req *pb.PairRequest) string {
 	numPlayers := len(results)
 	var builder strings.Builder
 	nameColumnWidth := 30
@@ -386,6 +449,7 @@ func (standings *Standings) resultsString(results [][]int, playerIdxToRankIdx ma
 	}
 	builder.WriteString("\n")
 
+	playerIdxToRankIdx := standings.getPlayerIdxToRankIdxMap()
 	for i, playerRecord := range standings.records {
 		playerIdx := getIndex(playerRecord)
 		playerName := req.PlayerNames[playerIdx]
@@ -401,8 +465,6 @@ func (standings *Standings) resultsString(results [][]int, playerIdxToRankIdx ma
 
 	return builder.String()
 }
-
-// Unexported functions
 
 func getRecordFromWinsAndSpread(wins int, spread int) uint64 {
 	if wins < 0 || spread < 0 {
@@ -429,31 +491,4 @@ func getWinsValue(record uint64) int {
 
 func getSpreadValue(record uint64) uint64 {
 	return (record >> playerSpreadOffset) & 0xFFFFFFFF
-}
-
-func (standings *Standings) sortRange(i, j int) {
-	sort.Slice(standings.records[i:j], func(x, y int) bool {
-		return standings.records[i+x] > standings.records[i+y]
-	})
-}
-
-func (standings *Standings) simFactorPairSegments(results [][]int, playerIdxToRankIdx map[int]int, allSegments [][]int, roundsRemaining int, maxFactor int, sims int) {
-	standings.Backup()
-	allSegmentPairings := [][][]int{}
-	for _, segment := range allSegments {
-		i := segment[0]
-		j := segment[1]
-		pairings := GetPairingsForSegment(i, j, roundsRemaining, maxFactor)
-		allSegmentPairings = append(allSegmentPairings, pairings)
-	}
-
-	for simIdx := 0; simIdx < sims; simIdx++ {
-		for idx, segmentPairings := range allSegmentPairings {
-			i := allSegments[idx][0]
-			j := allSegments[idx][1]
-			standings.SimSingleIteration(segmentPairings, roundsRemaining, i, j)
-		}
-		standings.UpdateResultsWithFinishedSim(results, playerIdxToRankIdx)
-		standings.RestoreFromBackup()
-	}
 }

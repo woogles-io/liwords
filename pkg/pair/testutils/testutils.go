@@ -280,7 +280,7 @@ func CreateLakeGeorgeAfterRound13PairRequest() *pb.PairRequest {
 	return request
 }
 
-func CreateAlbanyAfterRound24PairRequest() *pb.PairRequest {
+func CreateAlbanyCSWAfterRound24PairRequest() *pb.PairRequest {
 	request := &pb.PairRequest{
 		PairMethod:   pb.PairMethod_COP,
 		AllPlayers:   30,
