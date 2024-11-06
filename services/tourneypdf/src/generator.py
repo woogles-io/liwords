@@ -64,7 +64,6 @@ def create_simple_qr(data, error_correction=qrcode.constants.ERROR_CORRECT_L):
     # Add data to the QR code
     qr.add_data(data)
     best_fit_version = qr.best_fit()
-    print("best_fit", best_fit_version)
 
     if best_fit_version <= 3:
         qr.box_size = 10
@@ -165,12 +164,14 @@ class ScorecardCreator:
         ctx.show_text(f"{player_name}  ({player_rating})")
         ctx.set_font_size(12)
 
-    def draw_known_pairings(self, ctx, div, pidx, rect_ht, nrounds, fields):
+    def draw_known_pairings(self, ctx, div, pidx, rect_ht, nrounds, offset, fields):
         ctx.set_font_size(12)
         pid = div["players"]["persons"][pidx]["id"]
         for k, v in div["pairing_map"].items():
             if pidx in v["players"]:
                 rd = v.get("round", 0)
+                if rd - offset >= 16 or rd - offset < 0:
+                    continue
                 first = True
                 opp = None
                 opp_name = None
@@ -184,7 +185,7 @@ class ScorecardCreator:
                     # self-pairing
                     opp = pidx
                     opp_name = v["outcomes"][0].title()
-                rdY = 125 + (rd * rect_ht) - (2 if nrounds == 8 else 0)
+                rdY = 125 + ((rd - offset) * rect_ht) - (2 if nrounds == 8 else 0)
                 rdX = 97
                 if len(str(opp + 1)) > 1:
                     rdX = 93
@@ -196,7 +197,7 @@ class ScorecardCreator:
                     ctx.move_to(rdX, rdY)
                 ctx.show_text(opp_name)
                 # Circle 1st or 2nd
-                y = 130 + (rd * rect_ht) + (5 if nrounds == 7 else 0) - 2
+                y = 130 + ((rd - offset) * rect_ht) + (5 if nrounds == 7 else 0) - 2
                 ctx.new_sub_path()
                 if first:
                     ctx.arc(40, y, 8, 0, 2 * math.pi)
@@ -241,13 +242,15 @@ class ScorecardCreator:
 
         ctx.new_path()
 
-    def draw_row(self, ctx, i, rect_ht, nrounds, fields):
-        ctx.rectangle(25, 100 + (i * rect_ht), 535, rect_ht)
+    def draw_row(self, ctx, i, rect_ht, nrounds, fields, offset):
+        yi = i - offset
+
+        ctx.rectangle(25, 100 + (yi * rect_ht), 535, rect_ht)
         ctx.stroke()
         if self.show_seeds:
             ctx.arc(  # circle around player's number
                 100,
-                100 + (i * rect_ht) + (rect_ht / 2),
+                100 + (yi * rect_ht) + (rect_ht / 2),
                 (rect_ht - 4) / 2,
                 0,
                 2 * math.pi,
@@ -257,11 +260,11 @@ class ScorecardCreator:
         # Round number
         ctx.set_font_size(18)
         if (i + 1) >= 10:  # If it's two digits move it left a lil.
-            ctx.move_to(45, 125 + (i * rect_ht))
+            ctx.move_to(45, 125 + (yi * rect_ht))
         else:
-            ctx.move_to(50, 125 + (i * rect_ht))
+            ctx.move_to(50, 125 + (yi * rect_ht))
         ctx.show_text(str(i + 1))
-        ctx.move_to(35, 130 + (i * rect_ht) + (5 if nrounds == 7 else 0))
+        ctx.move_to(35, 130 + (yi * rect_ht) + (5 if nrounds == 7 else 0))
         ctx.set_font_size(8)
         ctx.show_text("1st        2nd")
 
@@ -270,79 +273,101 @@ class ScorecardCreator:
             last_field = len(fields) - 1
 
         for f in fields[1:last_field]:
-            ctx.move_to(f[0] - 5, 100 + (i * rect_ht))  # 340 to 380 at end
-            ctx.line_to(f[0] - 5, 100 + (i * rect_ht) + rect_ht)
+            ctx.move_to(f[0] - 5, 100 + (yi * rect_ht))  # 340 to 380 at end
+            ctx.line_to(f[0] - 5, 100 + (yi * rect_ht) + rect_ht)
             ctx.stroke()
         # Deal with spread box.
         if i > 0:
             f = fields[last_field]
-            ctx.move_to(f[0] - 5, 100 + (i * rect_ht))
-            ctx.line_to(f[0] - 5, 100 + (i * rect_ht) + rect_ht / 2)
+            ctx.move_to(f[0] - 5, 100 + (yi * rect_ht))
+            ctx.line_to(f[0] - 5, 100 + (yi * rect_ht) + rect_ht / 2)
             ctx.stroke()
             ctx.move_to(
-                fields[last_field - 1][0] - 5, 100 + (i * rect_ht) + rect_ht / 2
+                fields[last_field - 1][0] - 5, 100 + (yi * rect_ht) + rect_ht / 2
             )
-            ctx.line_to(560, 100 + (i * rect_ht) + rect_ht / 2)
+            ctx.line_to(560, 100 + (yi * rect_ht) + rect_ht / 2)
             ctx.stroke()
             ctx.move_to(
-                fields[last_field - 1][0] - 2, 100 + (i * rect_ht) + 7 * (rect_ht / 8)
+                fields[last_field - 1][0] - 2, 100 + (yi * rect_ht) + 7 * (rect_ht / 8)
             )
             ctx.set_font_size(12)
             ctx.show_text("Cumulative:")
 
-    def gen_single_player_scorecard(self, ctx, div, nrounds, meta, pidx):
-        player = div["players"]["persons"][pidx]
-        if self.show_qrcode:
-            idtrunc = player["id"][: self.url_uniqueness_trunc]
-            qrcode_url = f"https://woogles.io{meta['metadata']['slug']}?es={idtrunc}"
-            if qrcode_url in self.qrcode_urls:
-                raise URLNotUniqueException()
-            self.place_qr_code(ctx, qrcode_url)
-        self.draw_name_and_tourney_header(ctx, player, pidx, meta["metadata"]["name"])
+    def gen_single_player_scorecard(self, ctx, div, nrounds, meta, pidx, surface):
 
-        # header row
-        ctx.rectangle(25, 80, 535, 20)
-        ctx.stroke()
+        drawing_pages = True
+        offset = 0
+        rounds = list(range(nrounds))
 
-        fields = [
-            (35, "Round"),
-            (85, "Opponent"),
-            (300, "Won"),
-            (335, "Lost"),
-            (370, "Your Score"),
-            (440, "Opp Score"),
-            (510, "Spread"),
-        ]
+        while drawing_pages:
+            player = div["players"]["persons"][pidx]
+            if self.show_qrcode:
+                idtrunc = player["id"][: self.url_uniqueness_trunc]
+                qrcode_url = (
+                    f"https://woogles.io{meta['metadata']['slug']}?es={idtrunc}"
+                )
+                if offset == 0 and qrcode_url in self.qrcode_urls:
+                    # If we are in the middle of drawing a multipage scoresheet
+                    # don't check for uniqueness after every page.
+                    raise URLNotUniqueException()
+                self.place_qr_code(ctx, qrcode_url)
+            self.draw_name_and_tourney_header(
+                ctx, player, pidx, meta["metadata"]["name"]
+            )
 
-        for field in fields:
-            ctx.move_to(field[0], 95)
-            ctx.show_text(field[1])
+            # header row
+            ctx.rectangle(25, 80, 535, 20)
+            ctx.stroke()
 
-        # header lines
-        for f in fields[1:]:
-            ctx.move_to(f[0] - 5, 80)
-            ctx.line_to(f[0] - 5, 100)
+            fields = [
+                (35, "Round"),
+                (85, "Opponent"),
+                (300, "Won"),
+                (335, "Lost"),
+                (370, "Your Score"),
+                (440, "Opp Score"),
+                (510, "Spread"),
+            ]
 
-        rect_ht = 40
-        if nrounds >= 8:
-            rect_ht = 35
-        for i in range(nrounds):
-            self.draw_row(ctx, i, rect_ht, nrounds, fields)
+            for field in fields:
+                ctx.move_to(field[0], 95)
+                ctx.show_text(field[1])
 
-        # Draw known pairings
-        if self.show_opponents:
-            self.draw_known_pairings(ctx, div, pidx, rect_ht, nrounds, fields)
+            # header lines
+            for f in fields[1:]:
+                ctx.move_to(f[0] - 5, 80)
+                ctx.line_to(f[0] - 5, 100)
+
+            rect_ht = 40
+            if nrounds == 8:
+                # Special case; max 8 rounds for drawing two scorecards on a single sheet.
+                rect_ht = 35
+
+            for i in rounds[:16]:
+                self.draw_row(ctx, i, rect_ht, nrounds, fields, offset)
+            # Draw known pairings
+            if self.show_opponents:
+                self.draw_known_pairings(
+                    ctx, div, pidx, rect_ht, nrounds, offset, fields
+                )
+
+            offset += 16
+            rounds = rounds[16:]
+            if len(rounds) == 0:
+                drawing_pages = False
+            else:
+                surface.show_page()  # New page
 
     def gen_scorecard(self, surface, ctx, div, nrounds, meta, p1, p2):
         if p1 != p2:
             for idx, pidx in enumerate([p1, p2]):
                 ctx.save()
                 ctx.translate(0, idx * 396)
-                self.gen_single_player_scorecard(ctx, div, nrounds, meta, pidx)
+                self.gen_single_player_scorecard(ctx, div, nrounds, meta, pidx, surface)
                 ctx.restore()
             surface.show_page()  # Add a new page for the next scorecard
         else:
-            self.gen_single_player_scorecard(ctx, div, nrounds, meta, p1)
+            self.gen_single_player_scorecard(ctx, div, nrounds, meta, p1, surface)
             surface.show_page()  # Add a new page for the next scorecard
 
         surface.flush()
