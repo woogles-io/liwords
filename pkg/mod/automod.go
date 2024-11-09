@@ -200,7 +200,8 @@ func FormatNotorietyReport(ctx context.Context, ns NotorietyStore, uuid string, 
 
 	var report strings.Builder
 	for _, game := range games {
-		fmt.Fprintf(&report, "%s (%d): <https://woogles.io/game/%s>\n", BehaviorToString[game.Type], BehaviorToScore[game.Type], game.Id)
+		fmt.Fprintf(&report, "%s (%d): <https://woogles.io/game/%s> (%s)\n",
+			BehaviorToString[game.Type], BehaviorToScore[game.Type], game.Id, game.CreatedAt.AsTime().Format(time.RFC1123Z))
 	}
 	return report.String(), nil
 }
@@ -249,7 +250,7 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 				notorietyReport = err.Error()
 				log.Err(err).Str("error", err.Error()).Msg("notoriety-report-error")
 			}
-			moderatorMessage := fmt.Sprintf("\nNotoriety Report:\n%s\nCurrent Notoriety: %d", notorietyReport, newNotoriety)
+			moderatorMessage := fmt.Sprintf("\n### Notoriety Report:\n%s\nCurrent Notoriety: %d", notorietyReport, newNotoriety)
 			sendNotification(ctx, us, user, action, moderatorMessage)
 		}
 	} else if newNotoriety > 0 {
