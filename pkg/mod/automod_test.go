@@ -358,7 +358,7 @@ func TestNotoriety(t *testing.T) {
 	g, _, _, _, _ := makeGame(cfg, stores, 60, pb.RatingMode_RATED)
 	err := playGame(ctx, g, stores, defaultTurns[:1], 1, pb.GameEndReason_TIME, false)
 	is.NoErr(err)
-	//printPlayerNotorieties(ustore)
+	// printPlayerNotorieties(stores)
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{
 		{Score: 0, Games: []*ms.NotoriousGame{}},
 		{Score: 6, Games: []*ms.NotoriousGame{{Type: ms.NotoriousGameType_NO_PLAY}}},

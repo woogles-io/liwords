@@ -2,18 +2,23 @@ package mod
 
 import (
 	"context"
+	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type DBStore struct {
-	dbPool *pgxpool.Pool
+	dbPool  *pgxpool.Pool
+	queries *models.Queries
 }
 
 func NewDBStore(p *pgxpool.Pool) (*DBStore, error) {
-	return &DBStore{dbPool: p}, nil
+	return &DBStore{dbPool: p, queries: models.New(p)}, nil
 }
 
 func (s *DBStore) Disconnect() {
@@ -38,32 +43,30 @@ func (s *DBStore) AddNotoriousGame(ctx context.Context, playerID string, gameID 
 	return nil
 }
 
-func (s *DBStore) GetNotoriousGames(ctx context.Context, playerID string, limit int) ([]*ms.NotoriousGame, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
+func ConvertUnixToTimestampPb(unixTime int64) *timestamppb.Timestamp {
+	t := time.Unix(unixTime, 0)
+	return timestamppb.New(t)
+}
 
-	rows, err := tx.Query(ctx, `SELECT game_id, type FROM notoriousgames WHERE player_id = $1 ORDER BY timestamp DESC LIMIT $2`, playerID, limit)
+func (s *DBStore) GetNotoriousGames(ctx context.Context, playerID string, limit int) ([]*ms.NotoriousGame, error) {
+	rows, err := s.queries.GetNotoriousGames(ctx, models.GetNotoriousGamesParams{
+		PlayerID: pgtype.Text{Valid: true, String: playerID},
+		Limit:    int32(limit),
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	games := []*ms.NotoriousGame{}
 
-	for rows.Next() {
-		var gameID string
-		var gameType int
-		if err := rows.Scan(&gameID, &gameType); err != nil {
-			return nil, err
-		}
-		games = append(games, &ms.NotoriousGame{Id: gameID, Type: ms.NotoriousGameType(gameType)})
+	for i := range rows {
+		games = append(games, &ms.NotoriousGame{
+			Id:        rows[i].GameID.String,
+			Type:      ms.NotoriousGameType(rows[i].Type.Int32),
+			CreatedAt: ConvertUnixToTimestampPb(rows[i].Timestamp.Int64),
+		})
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
-	}
+
 	return games, nil
 }
 
