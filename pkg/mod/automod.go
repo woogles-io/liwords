@@ -201,7 +201,8 @@ func FormatNotorietyReport(ctx context.Context, ns NotorietyStore, uuid string, 
 	var report strings.Builder
 	for _, game := range games {
 		fmt.Fprintf(&report, "%s (%d): <https://woogles.io/game/%s> (%s)\n",
-			BehaviorToString[game.Type], BehaviorToScore[game.Type], game.Id, game.CreatedAt.AsTime().Format(time.RFC1123Z))
+			BehaviorToString[game.Type], BehaviorToScore[game.Type], game.Id,
+			game.CreatedAt.AsTime().UTC().Format(time.RFC1123Z))
 	}
 	return report.String(), nil
 }
