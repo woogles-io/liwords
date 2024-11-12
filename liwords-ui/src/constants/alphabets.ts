@@ -14,7 +14,7 @@ import {
 import { ThroughTileMarker } from '../utils/cwgame/game_event';
 
 type AlphabetLetter = {
-  rune: string; // the physical displayed character(s)
+  rune: string; // the character that's on the tile
   score: number;
   count: number; // how many of these there are in the bag
   vowel: boolean;
@@ -22,6 +22,7 @@ type AlphabetLetter = {
   bnjyable?: boolean; // whether this letter is bnjyable
   shortcut?: string; // a character that can be used to enter this rune.
   // for example:  'AEIOU,DGLNRT,BCFHMPVWY,JKQXZS?'
+  tileDisplay?: string; // in cases like Spanish, this is what actually gets displayed to the user in a tile
 };
 
 export type Alphabet = {
@@ -515,6 +516,121 @@ export const StandardCatalanAlphabet: Alphabet = {
   longestPossibleTileRune: 3,
 };
 
+export const StandardSpanishAlphabet: Alphabet = {
+  letters: [
+    { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
+    { rune: 'A', score: 1, count: 12, vowel: true, category: 0 },
+    { rune: 'B', score: 3, count: 2, vowel: false, category: 2 },
+    { rune: 'C', score: 3, count: 4, vowel: false, category: 2 },
+    {
+      rune: '[CH]', // In Spanish the multichar runes are defined as having the [ ] brackets.
+      score: 5,
+      count: 1,
+      vowel: false,
+      category: 3,
+      shortcut: '1',
+      tileDisplay: 'CH',
+    },
+    { rune: 'D', score: 2, count: 5, vowel: false, category: 1 },
+    { rune: 'E', score: 1, count: 12, vowel: true, category: 0 },
+    { rune: 'F', score: 4, count: 1, vowel: false, category: 2 },
+    { rune: 'G', score: 2, count: 2, vowel: false, category: 1 },
+    {
+      rune: 'H',
+      score: 4,
+      count: 2,
+      vowel: false,
+      category: 2,
+      bnjyable: true,
+    },
+    { rune: 'I', score: 1, count: 6, vowel: true, category: 0, bnjyable: true },
+    { rune: 'J', score: 8, count: 1, vowel: false, category: 3 },
+    { rune: 'L', score: 1, count: 4, vowel: false, category: 1 },
+    {
+      rune: '[LL]',
+      score: 8,
+      count: 1,
+      vowel: false,
+      category: 3,
+      tileDisplay: 'LL',
+      shortcut: '2',
+    },
+    { rune: 'M', score: 3, count: 2, vowel: false, category: 2 },
+    {
+      rune: 'N',
+      score: 1,
+      count: 5,
+      vowel: false,
+      category: 1,
+      bnjyable: true,
+    },
+    {
+      rune: 'Ñ',
+      score: 8,
+      count: 1,
+      vowel: false,
+      category: 3,
+    },
+    { rune: 'O', score: 1, count: 9, vowel: true, category: 0, bnjyable: true },
+    { rune: 'P', score: 3, count: 2, vowel: false, category: 2 },
+    {
+      rune: 'Q',
+      score: 5,
+      count: 1,
+      vowel: false,
+      category: 3,
+    },
+    { rune: 'R', score: 1, count: 5, vowel: false, category: 1 },
+    {
+      rune: '[RR]',
+      score: 8,
+      count: 1,
+      vowel: false,
+      category: 3,
+      tileDisplay: 'RR',
+      shortcut: '3',
+    },
+    {
+      rune: 'S',
+      score: 1,
+      count: 6,
+      vowel: false,
+      category: 3,
+      bnjyable: true,
+    },
+    { rune: 'T', score: 1, count: 4, vowel: false, category: 1 },
+    { rune: 'U', score: 1, count: 5, vowel: true, category: 0 },
+    { rune: 'V', score: 4, count: 1, vowel: false, category: 2 },
+    {
+      rune: 'X',
+      score: 8,
+      count: 1,
+      vowel: false,
+      category: 3,
+      bnjyable: true,
+    },
+    {
+      rune: 'Y',
+      score: 4,
+      count: 1,
+      vowel: false,
+      category: 2,
+    },
+    {
+      rune: 'Z',
+      score: 10,
+      count: 1,
+      vowel: false,
+      category: 3,
+      bnjyable: true,
+    },
+  ],
+  letterMap: {},
+  machineLetterMap: {},
+  shortcutMap: {},
+  longestPossibleTileRune: 4,
+};
+
 export const StandardPolishAlphabet: Alphabet = {
   letters: [
     { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
@@ -662,7 +778,7 @@ export const machineLetterToRune = (
   } else {
     rn = alphabet.letters[i]?.rune ?? '';
   }
-  if (useBracketsForMultichar && rn.length > 1) {
+  if (useBracketsForMultichar && rn.length > 1 && rn[0] !== '[') {
     rn = `[${rn}]`;
   }
   return rn;

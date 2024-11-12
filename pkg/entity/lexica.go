@@ -7,6 +7,7 @@ func init() {
 		"CSW19X",
 		"CSW21",
 		"ECWL",
+		"FILE2017",
 		"FRA24",
 		"NSF23",
 		"NSWL20",
