@@ -709,6 +709,7 @@ export const StandardPolishAlphabet: Alphabet = {
   StandardFrenchAlphabet,
   SuperEnglishAlphabet,
   StandardCatalanAlphabet,
+  StandardSpanishAlphabet,
   StandardPolishAlphabet,
 ].forEach((alph) => {
   alph.letters.forEach((letter, idx) => {
@@ -736,6 +737,8 @@ export const alphabetFromName = (
       return SuperEnglishAlphabet;
     case 'catalan':
       return StandardCatalanAlphabet;
+    case 'spanish':
+      return StandardSpanishAlphabet;
     case 'polish':
       return StandardPolishAlphabet;
     default:
@@ -754,6 +757,40 @@ export const scoreFor = (
     return alphabet.letters[ml].score;
   }
   return 0;
+};
+
+export const machineLetterToDisplayedTile = (
+  i: MachineLetter,
+  alphabet: Alphabet
+): string => {
+  if (i === 0) {
+    return Blank;
+  }
+  let rn = '';
+
+  const isBlank = i > 0x80;
+  const unblanked = i & 0x07f;
+
+  if (isBlank) {
+    const rawML = alphabet.letters[unblanked];
+    if (rawML != undefined) {
+      if (rawML.tileDisplay) {
+        rn = rawML.tileDisplay.toLowerCase();
+      } else {
+        rn = rawML.rune.toLowerCase();
+      }
+    }
+  } else {
+    const rawML = alphabet.letters[i];
+    if (rawML != undefined) {
+      if (rawML.tileDisplay) {
+        rn = rawML.tileDisplay;
+      } else {
+        rn = rawML.rune;
+      }
+    }
+  }
+  return rn;
 };
 
 export const machineLetterToRune = (
