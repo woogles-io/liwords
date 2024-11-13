@@ -23,6 +23,7 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
   //       http://liwords.localhost/tile_images/german
   //       http://liwords.localhost/tile_images/norwegian
   //       http://liwords.localhost/tile_images/catalan
+  //       http://liwords.localhost/tile_images/spanish
   //    3.1. In Inspect Elements, find the relevant node (marked in the source),
   //         right-click it, and choose "Capture node screenshot".
   //         Be sure that no selection is highlighted when capturing the screenshot.

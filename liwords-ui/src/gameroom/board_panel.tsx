@@ -67,7 +67,7 @@ import {
   useTentativeTileContext,
   useTimerStoreContext,
 } from '../store/store';
-import { sharedEnableAutoShuffle } from '../store/constants';
+import { isSpanish, sharedEnableAutoShuffle } from '../store/constants';
 import { BlankSelector } from './blank_selector';
 import { GameMetaMessage } from './game_meta_message';
 import {
@@ -727,7 +727,15 @@ export const BoardPanel = React.memo((props: Props) => {
       }, 0) - 7;
     // Subtract 7 for opponent rack, won't matter when the
     // rack is smaller than that because past the threshold by then
-    setexchangeAllowed(tilesRemaining >= 7 || props.boardEditingMode === true);
+    if (isSpanish(props.lexicon)) {
+      setexchangeAllowed(
+        tilesRemaining >= 1 || props.boardEditingMode === true
+      );
+    } else {
+      setexchangeAllowed(
+        tilesRemaining >= 7 || props.boardEditingMode === true
+      );
+    }
   }, [gameContext.pool, props.currentRack, props.boardEditingMode]);
 
   useEffect(() => {
