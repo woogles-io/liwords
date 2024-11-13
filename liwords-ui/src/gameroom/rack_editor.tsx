@@ -1,12 +1,18 @@
 import { InputRef } from 'rc-input';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { MachineWord } from '../utils/cwgame/common';
 import {
   Alphabet,
   machineWordToRunes,
   runesToMachineWord,
 } from '../constants/alphabets';
-import { Input } from 'antd';
+import { Button, Input } from 'antd';
 
 type Props = {
   rackCallback: (rack: MachineWord) => void;
@@ -18,7 +24,16 @@ type Props = {
 const MaxRackLength = 7;
 
 export const RackEditor = (props: Props) => {
+  const calculateRackStr = useCallback(
+    (rack: MachineWord) => machineWordToRunes(rack, props.alphabet, false),
+    []
+  );
+
   const [currentRack, setCurrentRack] = useState(props.currentRack);
+  const [curRackStr, setCurRackStr] = useState(
+    calculateRackStr(props.currentRack)
+  );
+
   const inputRef = useRef<InputRef>(null);
   const handleKeyDown = (evt: React.KeyboardEvent) => {
     if (evt.key === 'Enter') {
@@ -32,35 +47,45 @@ export const RackEditor = (props: Props) => {
       cursor: 'all',
     });
   }, [inputRef]);
-  const curRackStr = useMemo(
-    () => machineWordToRunes(currentRack, props.alphabet, false),
-    [currentRack, props.alphabet]
-  );
 
   const handleRackEditChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
     // strip out any spaces, fix max length, etc.
     const raw = evt.target.value;
     let out = raw;
     out = out.toLocaleUpperCase();
-    const onlyLettersAndBlank = out.match(/[\p{Letter}·\?]/gu);
-    let curRack = runesToMachineWord(
-      onlyLettersAndBlank?.join('') ?? '',
-      props.alphabet
-    );
-    if (curRack.length > MaxRackLength) {
-      curRack = curRack.slice(0, MaxRackLength);
+
+    // letters, interpunct, blank, and [] for multi-char Spanish tiles.
+    const onlyValidTileCharacters = out.match(/[\p{Letter}·\?\[\]]/gu);
+    try {
+      let curRack = runesToMachineWord(
+        onlyValidTileCharacters?.join('') ?? '',
+        props.alphabet
+      );
+      if (curRack.length > MaxRackLength) {
+        curRack = curRack.slice(0, MaxRackLength);
+      }
+      setCurrentRack(curRack);
+      setCurRackStr(machineWordToRunes(curRack, props.alphabet, false));
+    } catch (e) {
+      // Do nothing for now. Maybe the user is not done typing their multi-char tile.
+      // Just echo back what they are typing.
+      setCurRackStr(onlyValidTileCharacters?.join('') ?? '');
     }
-    setCurrentRack(curRack);
   };
 
   return (
-    <Input
-      ref={inputRef}
-      placeholder="Enter rack. Use ? for blank"
-      className="rack"
-      value={curRackStr}
-      onChange={handleRackEditChange}
-      onKeyDown={handleKeyDown}
-    />
+    <>
+      <Input
+        ref={inputRef}
+        placeholder={
+          'Enter rack. Use ? for blank.' +
+          (props.alphabet.name === 'spanish' ? ' Use [CH] for digraph CH.' : '')
+        }
+        className="rack"
+        value={curRackStr}
+        onChange={handleRackEditChange}
+        onKeyDown={handleKeyDown}
+      />
+    </>
   );
 };

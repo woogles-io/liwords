@@ -35,6 +35,7 @@ export type Alphabet = {
   // For Catalan we will have L·L, NY, etc. Spanish also has a couple of two-
   // character tiles.
   longestPossibleTileRune: number;
+  name: string;
 };
 
 export const StandardEnglishAlphabet: Alphabet = {
@@ -106,6 +107,7 @@ export const StandardEnglishAlphabet: Alphabet = {
   machineLetterMap: {},
   shortcutMap: {},
   longestPossibleTileRune: 1,
+  name: 'english',
 };
 
 export const StandardGermanAlphabet: Alphabet = {
@@ -180,6 +182,7 @@ export const StandardGermanAlphabet: Alphabet = {
   machineLetterMap: {},
   shortcutMap: {},
   longestPossibleTileRune: 1,
+  name: 'german',
 };
 
 export const StandardNorwegianAlphabet: Alphabet = {
@@ -259,6 +262,7 @@ export const StandardNorwegianAlphabet: Alphabet = {
   machineLetterMap: {},
   shortcutMap: {},
   longestPossibleTileRune: 1,
+  name: 'norwegian',
 };
 
 export const StandardFrenchAlphabet: Alphabet = {
@@ -330,6 +334,7 @@ export const StandardFrenchAlphabet: Alphabet = {
   machineLetterMap: {},
   shortcutMap: {},
   longestPossibleTileRune: 1,
+  name: 'french',
 };
 
 export const SuperEnglishAlphabet: Alphabet = {
@@ -415,6 +420,7 @@ export const SuperEnglishAlphabet: Alphabet = {
   machineLetterMap: {},
   shortcutMap: {},
   longestPossibleTileRune: 1,
+  name: 'english_super',
 };
 
 export const StandardCatalanAlphabet: Alphabet = {
@@ -514,6 +520,7 @@ export const StandardCatalanAlphabet: Alphabet = {
   machineLetterMap: {},
   shortcutMap: {},
   longestPossibleTileRune: 3,
+  name: 'catalan',
 };
 
 export const StandardSpanishAlphabet: Alphabet = {
@@ -528,7 +535,7 @@ export const StandardSpanishAlphabet: Alphabet = {
       count: 1,
       vowel: false,
       category: 3,
-      shortcut: '1',
+      shortcut: 'K',
       tileDisplay: 'CH',
     },
     { rune: 'D', score: 2, count: 5, vowel: false, category: 1 },
@@ -553,7 +560,7 @@ export const StandardSpanishAlphabet: Alphabet = {
       vowel: false,
       category: 3,
       tileDisplay: 'LL',
-      shortcut: '2',
+      shortcut: '[',
     },
     { rune: 'M', score: 3, count: 2, vowel: false, category: 2 },
     {
@@ -588,7 +595,7 @@ export const StandardSpanishAlphabet: Alphabet = {
       vowel: false,
       category: 3,
       tileDisplay: 'RR',
-      shortcut: '3',
+      shortcut: 'W',
     },
     {
       rune: 'S',
@@ -629,6 +636,7 @@ export const StandardSpanishAlphabet: Alphabet = {
   machineLetterMap: {},
   shortcutMap: {},
   longestPossibleTileRune: 4,
+  name: 'spanish',
 };
 
 export const StandardPolishAlphabet: Alphabet = {
@@ -699,6 +707,7 @@ export const StandardPolishAlphabet: Alphabet = {
   machineLetterMap: {},
   shortcutMap: {},
   longestPossibleTileRune: 1,
+  name: 'polish',
 };
 
 // Create letter maps for faster access.
