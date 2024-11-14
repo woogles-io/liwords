@@ -347,21 +347,7 @@ func TestStandings(t *testing.T) {
 	is.Equal(highestControlLossRankIdx, 1)
 	is.True(lowestFactorPairWins < 4000)
 	numSims = 1000
-	// fmt.Println(logsb.String())
 }
-
-// func TestStandingsDebug(t *testing.T) {
-// 	is := is.New(t)
-// 	numSims := 10000
-// 	var logsb strings.Builder
-// 	fmt.Print("\n\n\nSTARTING BUGGY CONTROL LOSS\n\n\n")
-// 	req := pairtestutils.CreateAlbanyjuly4th2024AfterRound21PairRequest()
-// 	is.True(verifyreq.Verify(req) == nil)
-// 	standings := pkgstnd.CreateInitialStandings(req)
-// 	_, _, _, _, _ = standings.SimFactorPairSegment(req, numSims, 6, 12, true, &logsb)
-// 	fmt.Println(logsb.String())
-
-// }
 
 func assertGibsonizedResult(is *is.I, results [][]int, numSims int, gibsonizedPos int) {
 	is.Helper()
