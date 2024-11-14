@@ -656,3 +656,93 @@ func CreateAlbany1stAnd4thAnd8thGibsonizedAfterRound25PairRequest() *pb.PairRequ
 	}
 	return request
 }
+
+func CreateLakegeorgeCSWAfterRound8PairRequest() *pb.PairRequest {
+	request := &pb.PairRequest{
+		PairMethod:   pb.PairMethod_COP,
+		AllPlayers:   18,
+		ValidPlayers: 18,
+		Rounds:       15,
+		PlayerNames:  []string{"Joshua Castellano", "Matthew Tunnicliffe", "Matthew O'Connor", "Ben Schoenbrun", "Josh Sokol", "Jason Keller", "Erickson Smith", "Mark Francillon", "Robert Linn", "Stefan Kac", "Bradley Whitmarsh", "Tim Weiss", "Jason Ubeika", "Shan Abbasi", "Terry Kang", "Kyle Fellahi", "BJ Premore", "Jim Brennan"},
+		DivisionPairings: []*pb.RoundPairings{
+			{Pairings: []int32{17, 15, 13, 16, 11, 8, 12, 9, 5, 7, 14, 4, 6, 2, 10, 1, 3, 0}},
+			{Pairings: []int32{12, 10, 9, 11, 16, 14, 17, 13, 15, 2, 1, 3, 0, 7, 5, 8, 4, 6}},
+			{Pairings: []int32{6, 5, 7, 4, 3, 1, 0, 2, 10, 13, 8, 16, 17, 9, 15, 14, 11, 12}},
+			{Pairings: []int32{4, 13, 3, 2, 0, 10, 11, 14, 9, 8, 5, 6, 16, 1, 7, 17, 12, 15}},
+			{Pairings: []int32{9, 8, 10, 17, 13, 15, 16, 11, 1, 0, 2, 7, 14, 4, 12, 5, 6, 3}},
+			{Pairings: []int32{1, 0, 17, 15, 9, 16, 8, 12, 6, 4, 13, 14, 7, 10, 11, 3, 5, 2}},
+			{Pairings: []int32{5, 9, 4, 8, 2, 0, 10, 15, 3, 1, 6, 12, 11, 16, 17, 7, 13, 14}},
+			{Pairings: []int32{3, 4, 5, 0, 1, 2, 14, 8, 7, 16, 12, 15, 10, 17, 6, 11, 9, 13}},
+		},
+		DivisionResults: []*pb.RoundResults{
+			{Results: []int32{418, 477, 390, 536, 536, 396, 392, 373, 401, 493, 507, 261, 333, 455, 330, 347, 480, 377}},
+			{Results: []int32{523, 528, 432, 352, 402, 482, 431, 378, 489, 446, 352, 413, 368, 500, 389, 381, 359, 432}},
+			{Results: []int32{515, 435, 522, 359, 458, 442, 373, 441, 512, 413, 525, 433, 462, 413, 291, 486, 458, 385}},
+			{Results: []int32{385, 445, 563, 464, 371, 350, 522, 341, 349, 443, 402, 461, 362, 427, 428, 395, 430, 528}},
+			{Results: []int32{536, 504, 413, 529, 526, 554, 382, 394, 359, 323, 381, 377, 460, 371, 414, 323, 331, 304}},
+			{Results: []int32{368, 741, 438, 526, 400, 496, 403, 536, 450, 418, 399, 399, 515, 414, 460, 232, 394, 446}},
+			{Results: []int32{528, 457, 392, 337, 557, 396, 376, 450, 403, 441, 516, 428, 460, 359, 401, 384, 419, 383}},
+			{Results: []int32{472, 474, 516, 387, 462, 337, 473, 496, 363, 398, 457, 464, 340, 480, 419, 426, 444, 343}},
+		},
+		Classes:              []int32{4},
+		ClassPrizes:          []int32{2},
+		GibsonSpreads:        []int32{300, 250, 200},
+		ControlLossThreshold: 0.25,
+		HopefulnessThreshold: 0.02,
+		PlacePrizes:          2,
+		DivisionSims:         1000,
+		ControlLossSims:      1000,
+		UseControlLoss:       false,
+		AllowRepeatByes:      false,
+	}
+	return request
+}
+
+func CreateBellevilleCSWAfterRound12PairRequest() *pb.PairRequest {
+	request := &pb.PairRequest{
+		PairMethod:   pb.PairMethod_COP,
+		AllPlayers:   12,
+		ValidPlayers: 12,
+		Rounds:       15,
+		PlayerNames:  []string{"Matthew O'Connor", "Jason Keller", "Joshua Castellano", "Matthew Tunnicliffe", "Jason Ubeika", "Jason Broersma", "Terry Kang", "George MacAulay", "Yvonne Lobo", "Sue Tremblay", "David Nwabor", "Roger Cullman"},
+		DivisionPairings: []*pb.RoundPairings{
+			{Pairings: []int32{6, 11, 10, 9, 8, 7, 0, 5, 4, 3, 2, 1}},
+			{Pairings: []int32{4, 8, 6, 10, 0, 11, 2, 9, 1, 7, 3, 5}},
+			{Pairings: []int32{11, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 0}},
+			{Pairings: []int32{9, 6, 4, 8, 2, 10, 1, 11, 3, 0, 5, 7}},
+			{Pairings: []int32{10, 3, 5, 1, 7, 2, 9, 4, 11, 6, 0, 8}},
+			{Pairings: []int32{3, 5, 7, 0, 9, 1, 11, 2, 10, 4, 8, 6}},
+			{Pairings: []int32{8, 7, 9, 5, 11, 3, 10, 1, 0, 2, 6, 4}},
+			{Pairings: []int32{5, 9, 11, 7, 10, 0, 8, 3, 6, 1, 4, 2}},
+			{Pairings: []int32{1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10}},
+			{Pairings: []int32{7, 10, 8, 11, 6, 9, 4, 0, 2, 5, 1, 3}},
+			{Pairings: []int32{2, 4, 0, 6, 1, 8, 3, 10, 5, 11, 7, 9}},
+			{Pairings: []int32{3, 4, 7, 0, 1, 11, 9, 2, 10, 6, 8, 5}},
+		},
+		DivisionResults: []*pb.RoundResults{
+			{Results: []int32{543, 365, 536, 451, 363, 448, 378, 473, 463, 343, 284, 461}},
+			{Results: []int32{403, 450, 439, 543, 624, 443, 440, 342, 449, 490, 335, 342}},
+			{Results: []int32{461, 511, 380, 453, 457, 505, 344, 497, 364, 443, 300, 295}},
+			{Results: []int32{595, 434, 511, 501, 326, 306, 381, 324, 380, 370, 412, 405}},
+			{Results: []int32{588, 381, 390, 494, 438, 352, 395, 578, 430, 485, 324, 386}},
+			{Results: []int32{411, 462, 381, 449, 510, 355, 442, 476, 349, 413, 547, 398}},
+			{Results: []int32{478, 414, 422, 537, 373, 352, 467, 399, 424, 443, 376, 404}},
+			{Results: []int32{524, 570, 492, 396, 423, 302, 425, 448, 375, 283, 533, 339}},
+			{Results: []int32{405, 553, 380, 509, 495, 428, 458, 426, 486, 476, 335, 407}},
+			{Results: []int32{513, 465, 483, 418, 556, 436, 395, 374, 370, 384, 432, 351}},
+			{Results: []int32{441, 447, 374, 459, 472, 383, 437, 517, 379, 458, 339, 378}},
+			{Results: []int32{417, 379, 479, 427, 464, 406, 400, 385, 414, 494, 413, 432}},
+		},
+		Classes:              []int32{4},
+		ClassPrizes:          []int32{2},
+		GibsonSpreads:        []int32{300, 250, 200},
+		ControlLossThreshold: 0.25,
+		HopefulnessThreshold: 0.02,
+		PlacePrizes:          2,
+		DivisionSims:         1000,
+		ControlLossSims:      1000,
+		UseControlLoss:       false,
+		AllowRepeatByes:      false,
+	}
+	return request
+}

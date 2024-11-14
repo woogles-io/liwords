@@ -46,11 +46,12 @@ def parse_t_file(file_path):
 def generate_go_code(players, tournament_name, number_of_rounds, total_rounds):
     go_code = ""
 
-    func_name = f"Create{tournament_name.capitalize()}AfterRound{number_of_rounds}PairRequest"
+    func_name = f"Create{tournament_name}AfterRound{number_of_rounds}PairRequest"
     go_code += f"func {func_name}() *pb.PairRequest {{\n"
     go_code += "    request := &pb.PairRequest{\n"
     go_code += "        PairMethod:           pb.PairMethod_COP,\n"
-    go_code += f"        Players:              {len(players)},\n"
+    go_code += f"        AllPlayers:           {len(players)},\n"
+    go_code += f"        ValidPlayers:         {len(players)},\n"
     go_code += f"        Rounds:               {total_rounds},\n"
     go_code += "        PlayerNames:          []string{"
     go_code += ', '.join([f'"{player.name}"' for player in players])
