@@ -29,6 +29,15 @@ type Standings struct {
 	roundsPlayedBackup int
 }
 
+type SimResults struct {
+	FinalRanks                [][]int
+	Pairings                  [][]int
+	GibsonGroups              []int
+	GibsonizedPlayers         []bool
+	HighestControlLossRankIdx int
+	LowestFactorPairWins      int
+}
+
 // Exported functions
 // FIXME: recheck if some of these need to be exported
 
@@ -194,7 +203,7 @@ func (standings *Standings) Sort() {
 	})
 }
 
-func (standings *Standings) SimFactorPairSegment(req *pb.PairRequest, sims int, maxFactor int, numCashers int, computeControlLoss bool, logsb *strings.Builder) ([][]int, [][]int, map[int]int, int, int) {
+func (standings *Standings) SimFactorPairSegment(req *pb.PairRequest, sims int, maxFactor int, numCashers int, computeControlLoss bool, logsb *strings.Builder) *SimResults {
 	if numCashers%2 == 1 {
 		numCashers++
 	}
@@ -209,17 +218,17 @@ func (standings *Standings) SimFactorPairSegment(req *pb.PairRequest, sims int, 
 	standings.records = standings.records[:numCashers]
 	standings.recordsBackup = standings.recordsBackup[:numCashers]
 
-	results, pairings, gibsonGroups, highestControlLossRankIdx, lowestFactorPairWins := standings.SimFactorPairAll(req, sims, maxFactor, computeControlLoss, logsb)
+	simResults := standings.SimFactorPairAll(req, sims, maxFactor, computeControlLoss, logsb)
 
 	standings.records = recordsAll
 	standings.recordsBackup = recordsBackupAll
 
-	return results, pairings, gibsonGroups, highestControlLossRankIdx, lowestFactorPairWins
+	return simResults
 }
 
 // Assumes the standings are already sorted
 // FIXME: calculate the gibsonizedPlayers in this function instead of passing it in
-func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, sims int, maxFactor int, computeControlLoss bool, logsb *strings.Builder) ([][]int, [][]int, map[int]int, int, int) {
+func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, sims int, maxFactor int, computeControlLoss bool, logsb *strings.Builder) *SimResults {
 	numPlayers := len(standings.records)
 	roundsRemaining := int(req.Rounds) - len(req.DivisionPairings)
 	evenerPlayerAdded := false
@@ -246,7 +255,7 @@ func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, sims int, maxF
 		pairings[i] = make([]int, numPlayers)
 	}
 	gibsonizedPlayers := standings.GetGibsonizedPlayers(req)
-	gibsonGroups := map[int]int{}
+	gibsonGroups := make([]int, numPlayers)
 	nextGibsonGroup := 1
 	startRankIdx := 0
 	endRankIdx := 0
@@ -386,7 +395,14 @@ func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, sims int, maxF
 		results = results[:numPlayers-1]
 	}
 
-	return results, pairings, gibsonGroups, highestControlLossRankIdx, lowestFactorPairWins
+	return &SimResults{
+		FinalRanks:                results,
+		Pairings:                  pairings,
+		GibsonGroups:              gibsonGroups,
+		GibsonizedPlayers:         gibsonizedPlayers,
+		HighestControlLossRankIdx: highestControlLossRankIdx,
+		LowestFactorPairWins:      lowestFactorPairWins,
+	}
 }
 
 func (standings *Standings) simForceWinnerForRound(pairings [][]int, roundIdx int, forcedWinnerRankIdx int, maxScoreDiff int) {

@@ -2,6 +2,7 @@ package copdata
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	pkgstnd "github.com/woogles-io/liwords/pkg/pair/standings"
@@ -9,10 +10,13 @@ import (
 )
 
 type PrecompData struct {
-	standings         *pkgstnd.Standings
-	pairingCounts     map[string]int
-	repeatCounts      []int
-	gibsonizedPlayers []bool
+	standings                 *pkgstnd.Standings
+	pairingCounts             map[string]int
+	repeatCounts              []int
+	highestRankHopefully      []int
+	highestRankAbsolutely     []int
+	highestControlLossRankIdx int
+	gibsonGroups              []int
 }
 
 // Exported functions
@@ -20,27 +24,61 @@ type PrecompData struct {
 func GetPrecompData(req *pb.PairRequest, logsb *strings.Builder) *PrecompData {
 	standings := pkgstnd.CreateInitialStandings(req)
 
-	logsb.WriteString("\n\nInitial Standings:\n\n" + standings.String(req))
+	// Use the initial results to get a tighter bound on the maximum factor
+	initialSimResults := standings.SimFactorPairAll(req, int(req.DivisionSims), int(req.AllPlayers), false, logsb)
 
-	pairingCounts, repeatCounts := getPairingFrequencies(req)
-
-	gibsonizedPlayers := standings.GetGibsonizedPlayers(req)
-
-	_ = standings.SimFactorPair(int(req.DivisionSims), int(req.Players), int(req.Rounds)-len(req.DivisionResults), gibsonizedPlayers)
-
-	return &PrecompData{
-		standings:         standings,
-		pairingCounts:     pairingCounts,
-		repeatCounts:      repeatCounts,
-		gibsonizedPlayers: gibsonizedPlayers,
+	numPlayers := len(initialSimResults.FinalRanks)
+	// The maximum factor should be with respect to the highest non-gibsonized rank
+	highestNongibsonizedRank := 0
+	for rankIdx, isGibsonized := range initialSimResults.GibsonizedPlayers {
+		if !isGibsonized {
+			highestNongibsonizedRank = rankIdx
+			break
+		}
 	}
-}
 
-// Unexported functions
+	minWinsForHopeful := int(math.Round(float64(req.DivisionSims) * req.HopefulnessThreshold))
+	maxFactor := 1
+	for i := highestNongibsonizedRank + 1; i < numPlayers; i++ {
+		numReachedHighestNongibsonizedRank := 0
+		for j := 0; j <= numReachedHighestNongibsonizedRank; j++ {
+			numReachedHighestNongibsonizedRank += initialSimResults.FinalRanks[i][j]
+		}
+		if numReachedHighestNongibsonizedRank >= minWinsForHopeful {
+			maxFactor++
+		} else {
+			break
+		}
+	}
 
-func getPairingFrequencies(req *pb.PairRequest) (map[string]int, []int) {
+	useControlLoss := req.UseControlLoss && !initialSimResults.GibsonizedPlayers[0]
+
+	improvedFactorSimResults := standings.SimFactorPairAll(req, int(req.DivisionSims), maxFactor, useControlLoss, logsb)
+
+	highestRankHopefully := make([]int, numPlayers)
+	highestRankAbsolutely := make([]int, numPlayers)
+	for playerRankIdx := 0; playerRankIdx < numPlayers; playerRankIdx++ {
+		winsSum := 0
+		hopefulRank := numPlayers - 1
+		absoluteRank := numPlayers - 1
+		for rank := 0; rank < numPlayers; rank++ {
+			winsSum += improvedFactorSimResults.FinalRanks[playerRankIdx][rank]
+			if winsSum > 0 {
+				absoluteRank = rank
+				if winsSum >= minWinsForHopeful {
+					hopefulRank = rank
+					break
+				}
+			}
+		}
+		highestRankHopefully[playerRankIdx] = hopefulRank
+		highestRankAbsolutely[playerRankIdx] = absoluteRank
+	}
+
+	// FIXME: calculate control loss from tourney wins
+
 	pairingCounts := make(map[string]int)
-	totalRepeats := make([]int, req.Players)
+	repeatCounts := make([]int, numPlayers)
 	for _, roundPairings := range req.DivisionPairings {
 		for playerIdx := 0; playerIdx < len(roundPairings.Pairings); playerIdx++ {
 			oppIdx := int(roundPairings.Pairings[playerIdx])
@@ -52,13 +90,22 @@ func getPairingFrequencies(req *pb.PairRequest) (map[string]int, []int) {
 				pairingKey = fmt.Sprintf("%d:%d", playerIdx, oppIdx)
 			}
 			if pairingCounts[pairingKey] > 0 {
-				totalRepeats[playerIdx]++
+				repeatCounts[playerIdx]++
 				if playerIdx != oppIdx {
-					totalRepeats[oppIdx]++
+					repeatCounts[oppIdx]++
 				}
 			}
 			pairingCounts[pairingKey]++
 		}
 	}
-	return pairingCounts, totalRepeats
+
+	return &PrecompData{
+		standings:                 standings,
+		pairingCounts:             pairingCounts,
+		repeatCounts:              repeatCounts,
+		highestRankHopefully:      highestRankHopefully,
+		highestRankAbsolutely:     highestRankAbsolutely,
+		highestControlLossRankIdx: -1,
+		gibsonGroups:              improvedFactorSimResults.GibsonGroups,
+	}
 }
