@@ -256,7 +256,7 @@ export const BoardPanel = React.memo((props: Props) => {
   const { isExamining, handleExamineStart } = useExamineStoreContext();
   const { gameContext } = useGameContextStoreContext();
   const { stopClock } = useTimerStoreContext();
-  const [exchangeAllowed, setexchangeAllowed] = useState(true);
+  const [exchangeAllowed, setExchangeAllowed] = useState(true);
   // XXX: this is complicated, it doesn't seem like we should need these:
   const handlePassShortcut = useRef<(() => void) | null>(null);
   const setHandlePassShortcut = useCallback(
@@ -756,11 +756,11 @@ export const BoardPanel = React.memo((props: Props) => {
     // Subtract 7 for opponent rack, won't matter when the
     // rack is smaller than that because past the threshold by then
     if (isSpanish(props.lexicon)) {
-      setexchangeAllowed(
+      setExchangeAllowed(
         tilesRemaining >= 1 || props.boardEditingMode === true
       );
     } else {
-      setexchangeAllowed(
+      setExchangeAllowed(
         tilesRemaining >= 7 || props.boardEditingMode === true
       );
     }
