@@ -1,4 +1,4 @@
-import { Button, Card, Col, Dropdown, Form, Layout, Menu, Row } from 'antd';
+import { Button, Dropdown, Layout } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { TopBar } from '../navigation/topbar';
 import { EditorControl } from './editor_control';
@@ -17,7 +17,6 @@ import {
   UploadOutlined,
 } from '@ant-design/icons';
 import { MenuProps } from 'antd/lib';
-import { LexiconFormItem } from '../shared/lexicon_display';
 import { GCGProcessForm } from './gcg_process_form';
 // When no game is visible, this is the page that is visible.
 

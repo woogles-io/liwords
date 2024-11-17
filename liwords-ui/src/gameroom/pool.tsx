@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Card, Dropdown, Menu } from 'antd';
+import { Card, Dropdown } from 'antd';
 import { PoolFormatType, PoolFormats } from '../constants/pool_formats';
 import { singularCount } from '../utils/plural';
 import { Alphabet, machineLetterToRune } from '../constants/alphabets';

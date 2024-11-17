@@ -1,18 +1,12 @@
 import { InputRef } from 'rc-input';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { MachineWord } from '../utils/cwgame/common';
 import {
   Alphabet,
   machineWordToRunes,
   runesToMachineWord,
 } from '../constants/alphabets';
-import { Button, Input } from 'antd';
+import { Input } from 'antd';
 
 type Props = {
   rackCallback: (rack: MachineWord) => void;

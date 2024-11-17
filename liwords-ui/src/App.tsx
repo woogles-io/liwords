@@ -44,7 +44,7 @@ import { ChatMessage } from './gen/api/proto/ipc/chat_pb';
 import { MessageType } from './gen/api/proto/ipc/ipc_pb';
 import Footer from './navigation/footer';
 import { Embed } from './embed/embed';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 
 import { App as AntDApp } from 'antd';
 import { ConfigProvider } from 'antd';

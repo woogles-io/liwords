@@ -7,7 +7,6 @@ import React, {
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Affix, App, Button, Dropdown, MenuProps, Popconfirm } from 'antd';
-import { MenuInfo } from 'rc-menu/lib/interface';
 
 import {
   DoubleLeftOutlined,
