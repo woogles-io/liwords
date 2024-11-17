@@ -117,6 +117,7 @@ export const SoughtGames = (props: Props) => {
         'ECWL',
         'RD28',
         'FRA24',
+        'FILE2017',
         'NSF23',
         'DISC2',
         'OSPS49',

@@ -293,7 +293,7 @@ export declare class GameRules extends Message<GameRules> {
 
   /**
    * The supported letter distributions are english, french, norwegian, german,
-   * catalan. There are more to come!
+   * catalan, spanish. There are more to come!
    *
    * @generated from field: string letter_distribution_name = 2;
    */

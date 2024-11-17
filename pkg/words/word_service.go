@@ -55,6 +55,7 @@ func NewWordService(cfg *config.Config) *WordService {
 		}
 		definitionSource, err := loadDefinitionSource(filepath.Join(dictionaryPath, lexicon+".txt"))
 		if err != nil {
+			definitionSources[lexicon] = nil // still whitelist the file.
 			log.Warn().Err(err).Msgf("bad definition source for %s", lexicon)
 		} else {
 			definitionSources[lexicon] = definitionSource
@@ -73,13 +74,20 @@ var daPool = sync.Pool{
 
 func (ws *WordService) DefineWords(ctx context.Context, req *connect.Request[pb.DefineWordsRequest],
 ) (*connect.Response[pb.DefineWordsResponse], error) {
+	definer, hasDefiner := ws.definitionSources[req.Msg.Lexicon]
+	if !hasDefiner {
+		return nil, apiserver.InvalidArg("no such lexicon: " + req.Msg.Lexicon)
+	}
+	// a lexicon can exist with no definitions.
+	hasDefiner = definer != nil
+
+	// we have checked Lexicon is not "../etc/passwd".
 	gd, err := kwg.Get(ws.cfg.WGLConfig(), req.Msg.Lexicon)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
 
 	alph := gd.GetAlphabet()
-	definer, hasDefiner := ws.definitionSources[req.Msg.Lexicon]
 
 	var wordsToDefine []string
 	results := make(map[string]*pb.DefineWordsResult)
