@@ -21,7 +21,7 @@ import (
 var pkg = "tournament_test"
 
 var tournamentName = "testTournament"
-var gameReq = &ipc.GameRequest{Lexicon: "CSW21",
+var gameReq = &ipc.GameRequest{Lexicon: "CSW24",
 	Rules: &ipc.GameRules{BoardLayoutName: entity.CrosswordGame,
 		LetterDistributionName: "English",
 		VariantName:            "classic"},

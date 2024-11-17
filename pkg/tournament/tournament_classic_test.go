@@ -4417,7 +4417,7 @@ func logTwo(n int) int {
 
 func newDivisionControls() *pb.DivisionControls {
 	return &pb.DivisionControls{
-		GameRequest: &pb.GameRequest{Lexicon: "CSW21",
+		GameRequest: &pb.GameRequest{Lexicon: "CSW24",
 			Rules: &pb.GameRules{BoardLayoutName: entity.CrosswordGame,
 				LetterDistributionName: "English", VariantName: "classic"},
 			InitialTimeSeconds: 25 * 60,
