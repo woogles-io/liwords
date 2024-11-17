@@ -467,15 +467,7 @@ export const AnalyzerContextProvider = (
         throw e;
       }
     });
-  }, [
-    examinableGameContext,
-    rerenderMoves,
-    unrace,
-    lexicon,
-    variant,
-    boardJsonKey,
-    parsedEgc,
-  ]);
+  }, [examinableGameContext, rerenderMoves, unrace, boardJsonKey, parsedEgc]);
 
   const cachedMovesThisTurn =
     movesCacheRef.current[examinableGameContext.turns.length];
