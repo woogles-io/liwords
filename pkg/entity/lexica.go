@@ -6,6 +6,7 @@ func init() {
 	AllowedNewGameLexica = append(AllowedNewGameLexica,
 		"CSW19X",
 		"CSW21",
+		"CSW24",
 		"ECWL",
 		"FILE2017",
 		"FRA24",

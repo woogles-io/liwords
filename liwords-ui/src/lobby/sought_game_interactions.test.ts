@@ -8,7 +8,7 @@ it('tests sendSeek', () => {
     userRating: '',
     seekID: '',
     ratingKey: '',
-    lexicon: 'CSW21',
+    lexicon: 'CSW24',
     challengeRule: 0,
     initialTimeSecs: 1200,
     incrementSecs: 0,

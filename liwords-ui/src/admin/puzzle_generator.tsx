@@ -161,7 +161,7 @@ export const PuzzleGenerator = () => {
         onFinish={onFinish}
         initialValues={{
           letterdist: 'english',
-          lexicon: 'CSW21',
+          lexicon: 'CSW24',
         }}
         layout="vertical"
       >
