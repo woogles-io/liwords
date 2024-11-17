@@ -41,8 +41,6 @@ import {
 type AnalyzerProps = {
   includeCard?: boolean;
   style?: React.CSSProperties;
-  lexicon: string;
-  variant?: string;
 };
 
 type JsonMove =
@@ -331,29 +329,43 @@ const parseExaminableGameContext = (
   };
 };
 
+type CachedAnalyzerMoves = {
+  jsonKey: string;
+  analyzerMoves: Array<AnalyzerMove> | null;
+};
+
 const AnalyzerContext = React.createContext<{
   autoMode: boolean;
   setAutoMode: React.Dispatch<React.SetStateAction<boolean>>;
-  cachedMoves: Array<AnalyzerMove> | null;
+  cachedMoves: Array<AnalyzerMove> | null | undefined;
   examinerLoading: boolean;
-  requestAnalysis: (lexicon: string, variant?: string) => void;
+  requestAnalysis: () => void;
   showMovesForTurn: number;
   setShowMovesForTurn: (a: number) => void;
+  lexicon: string;
+  variant?: string;
 }>({
   autoMode: false,
   cachedMoves: null,
   examinerLoading: false,
-  requestAnalysis: (lexicon: string, variant?: string) => {},
+  requestAnalysis: () => {},
   showMovesForTurn: -1,
   setShowMovesForTurn: (a: number) => {},
   setAutoMode: () => {},
+  lexicon: '',
+  variant: undefined,
 });
 
-export const AnalyzerContextProvider = ({
-  children,
-}: {
+type AnalyzerContextProviderProps = {
   children: React.ReactNode;
-}) => {
+  lexicon: string;
+  variant?: string;
+};
+
+export const AnalyzerContextProvider = (
+  props: AnalyzerContextProviderProps
+) => {
+  const { children, lexicon, variant } = props;
   const [, setMovesCacheId] = useState(0);
   const rerenderMoves = useCallback(
     () => setMovesCacheId((n) => (n + 1) | 0),
@@ -367,64 +379,111 @@ export const AnalyzerContextProvider = ({
     useExaminableGameContextStoreContext();
 
   const examinerId = useRef(0);
-  const movesCacheRef = useRef<Array<Array<AnalyzerMove> | null>>([]);
+  const movesCacheRef = useRef<Array<CachedAnalyzerMoves>>([]);
   useEffect(() => {
     examinerId.current = (examinerId.current + 1) | 0;
     movesCacheRef.current = [];
     setUnrace(new Unrace());
   }, [examinableGameContext.gameID]);
 
-  const requestAnalysis = useCallback(
-    (lexicon: string, variant?: string) => {
-      const examinerIdAtStart = examinerId.current;
-      const turn = examinableGameContext.turns.length;
-      const movesCache = movesCacheRef.current;
-      // null = loading. undefined = not yet requested.
-      if (movesCache[turn] !== undefined) return;
-      movesCache[turn] = null;
-
-      unrace.run(async () => {
-        try {
-          const {
-            dim,
-            letters,
-            rackNum,
-            loadableKey,
-            boardObj: bareBoardObj,
-            alphabet,
-          } = parseExaminableGameContext(
-            examinableGameContext,
-            lexicon,
-            variant
-          );
-          const boardObj = { ...bareBoardObj, count: 15 };
-
-          const wolges = await getWolges(loadableKey);
-          if (examinerIdAtStart !== examinerId.current) return;
-
-          const boardStr = JSON.stringify(boardObj);
-          const movesStr = await wolges.analyze(boardStr);
-          if (examinerIdAtStart !== examinerId.current) return;
-          const movesObj = JSON.parse(movesStr) as Array<JsonMove>;
-
-          const formattedMoves = movesObj.map((move) =>
-            analyzerMoveFromJsonMove(move, dim, letters, rackNum, alphabet)
-          );
-          movesCache[turn] = formattedMoves;
-          rerenderMoves();
-        } catch (e) {
-          if (examinerIdAtStart === examinerId.current) {
-            movesCache[turn] = [];
-            rerenderMoves();
-          }
-          throw e;
-        }
-      });
-    },
-    [examinableGameContext, rerenderMoves, unrace]
+  const parsedEgc = React.useMemo(() => {
+    try {
+      return parseExaminableGameContext(
+        examinableGameContext,
+        lexicon,
+        variant
+      );
+    } catch (e) {
+      return null;
+    }
+  }, [examinableGameContext, lexicon, variant]);
+  const boardJsonKey = React.useMemo(
+    () => JSON.stringify(parsedEgc?.boardObj),
+    [parsedEgc]
   );
+  const requestAnalysis = useCallback(() => {
+    if (!parsedEgc) return;
+    const examinerIdAtStart = examinerId.current;
+    const turn = examinableGameContext.turns.length;
+    const movesCache = movesCacheRef.current;
+    // [boardJsonKey, null] = loading. undefined = not yet requested.
+    // phrased this way so that in future it's possible for movesCache[turn] to be null (as opposed to undefined).
+    if (
+      (movesCache[turn] &&
+        (movesCache[turn].jsonKey === boardJsonKey
+          ? movesCache[turn].analyzerMoves
+          : undefined)) !== undefined
+    )
+      return;
+    movesCache[turn] = {
+      jsonKey: boardJsonKey,
+      analyzerMoves: null,
+    };
 
-  const cachedMoves = movesCacheRef.current[examinableGameContext.turns.length];
+    unrace.run(async () => {
+      try {
+        const {
+          dim,
+          letters,
+          rackNum,
+          loadableKey,
+          boardObj: bareBoardObj,
+          alphabet,
+        } = parsedEgc;
+        const boardObj = { ...bareBoardObj, count: 15 };
+
+        const wolges = await getWolges(loadableKey);
+        if (
+          examinerIdAtStart !== examinerId.current ||
+          movesCache[turn]?.jsonKey !== boardJsonKey
+        )
+          return;
+
+        const boardStr = JSON.stringify(boardObj);
+        const movesStr = await wolges.analyze(boardStr);
+        if (
+          examinerIdAtStart !== examinerId.current ||
+          movesCache[turn]?.jsonKey !== boardJsonKey
+        )
+          return;
+        const movesObj = JSON.parse(movesStr) as Array<JsonMove>;
+
+        const formattedMoves = movesObj.map((move) =>
+          analyzerMoveFromJsonMove(move, dim, letters, rackNum, alphabet)
+        );
+        movesCache[turn] = {
+          jsonKey: boardJsonKey,
+          analyzerMoves: formattedMoves,
+        };
+        rerenderMoves();
+      } catch (e) {
+        if (examinerIdAtStart === examinerId.current) {
+          movesCache[turn] = {
+            jsonKey: boardJsonKey,
+            analyzerMoves: [],
+          };
+          rerenderMoves();
+        }
+        throw e;
+      }
+    });
+  }, [
+    examinableGameContext,
+    rerenderMoves,
+    unrace,
+    lexicon,
+    variant,
+    boardJsonKey,
+    parsedEgc,
+  ]);
+
+  const cachedMovesThisTurn =
+    movesCacheRef.current[examinableGameContext.turns.length];
+  const cachedMoves =
+    cachedMovesThisTurn &&
+    (cachedMovesThisTurn.jsonKey === boardJsonKey
+      ? cachedMovesThisTurn.analyzerMoves
+      : undefined);
   const examinerLoading = cachedMoves === null;
   const contextValue = useMemo(
     () => ({
@@ -435,6 +494,8 @@ export const AnalyzerContextProvider = ({
       requestAnalysis,
       showMovesForTurn,
       setShowMovesForTurn,
+      lexicon,
+      variant,
     }),
     [
       autoMode,
@@ -444,6 +505,8 @@ export const AnalyzerContextProvider = ({
       requestAnalysis,
       showMovesForTurn,
       setShowMovesForTurn,
+      lexicon,
+      variant,
     ]
   );
 
@@ -512,7 +575,6 @@ export const usePlaceMoveCallback = () => {
 };
 
 export const Analyzer = React.memo((props: AnalyzerProps) => {
-  const { lexicon, variant } = props;
   const {
     autoMode,
     setAutoMode,
@@ -521,6 +583,8 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     requestAnalysis,
     showMovesForTurn,
     setShowMovesForTurn,
+    lexicon,
+    variant,
   } = useContext(AnalyzerContext);
 
   const { gameContext: examinableGameContext } =
@@ -532,13 +596,11 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
 
   const handleExaminer = useCallback(() => {
     setShowMovesForTurn(examinableGameContext.turns.length);
-    requestAnalysis(lexicon, variant);
+    requestAnalysis();
   }, [
     examinableGameContext.turns.length,
-    lexicon,
     requestAnalysis,
     setShowMovesForTurn,
-    variant,
   ]);
 
   const toggleAutoMode = useCallback(() => {

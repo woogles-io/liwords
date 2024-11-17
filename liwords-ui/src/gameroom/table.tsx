@@ -649,11 +649,7 @@ export const Table = React.memo((props: Props) => {
             />
           ) : null}
           {isExamining ? (
-            <Analyzer
-              includeCard
-              lexicon={gameInfo.gameRequest?.lexicon ?? ''}
-              variant={gameInfo.gameRequest?.rules?.variantName}
-            />
+            <Analyzer includeCard />
           ) : (
             <React.Fragment key="not-examining">
               <Notepad includeCard />
@@ -780,8 +776,6 @@ export const Table = React.memo((props: Props) => {
           />
           <ScoreCard
             isExamining={isExamining}
-            lexicon={gameInfo.gameRequest?.lexicon ?? ''}
-            variant={gameInfo.gameRequest?.rules?.variantName}
             events={examinableGameContext.turns}
             board={examinableGameContext.board}
             playerMeta={gameInfo.players}
@@ -794,6 +788,12 @@ export const Table = React.memo((props: Props) => {
     </div>
   );
   ret = <NotepadContextProvider children={ret} feRackInfo={feRackInfo} />;
-  ret = <AnalyzerContextProvider children={ret} />;
+  ret = (
+    <AnalyzerContextProvider
+      children={ret}
+      lexicon={gameInfo.gameRequest?.lexicon ?? ''}
+      variant={gameInfo.gameRequest?.rules?.variantName}
+    />
+  );
   return ret;
 });
