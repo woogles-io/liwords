@@ -118,9 +118,6 @@ const Player = React.memo((props: PlayerProps) => {
   const watching = currentWatchedGames.length > 0;
   const editing = currentEditingGames.length > 0;
   const watchingAnno = currentWatchedAnnoGames.length > 0;
-  if (!props.username) {
-    return null;
-  }
 
   const [domElt, setDomElt] = useState<HTMLElement | null>();
   useEffect(() => {
@@ -132,6 +129,10 @@ const Player = React.memo((props: PlayerProps) => {
       };
     }
   }, [domElt, props.myio, props.uuid]);
+
+  if (!props.username) {
+    return null;
+  }
 
   return (
     <div
