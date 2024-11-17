@@ -87,7 +87,7 @@ export const GameRequestToFormValues: (
 ) => mandatoryFormValues = (gameRequest: GameRequest | undefined) => {
   if (!gameRequest) {
     return {
-      lexicon: 'CSW21',
+      lexicon: 'CSW24',
       variant: 'classic',
       challengerule: ChallengeRule.FIVE_POINT,
       initialtimeslider: initialTimeMinutesToSlider(15),
@@ -203,7 +203,8 @@ export const SeekForm = (props: Props) => {
       storedValues.lexicon = 'NWL23';
       break;
     case 'CSW19':
-      storedValues.lexicon = 'CSW21';
+    case 'CSW21':
+      storedValues.lexicon = 'CSW24';
       break;
     case 'FRA20':
       storedValues.lexicon = 'FRA24';
@@ -224,7 +225,7 @@ export const SeekForm = (props: Props) => {
     }
   }, [props.friendRef]);
   const defaultValues: seekPropVals = {
-    lexicon: 'CSW21',
+    lexicon: 'CSW24',
     challengerule: ChallengeRule.VOID,
     initialtimeslider: initialTimeMinutesToSlider(20),
     rated: true,

@@ -68,13 +68,6 @@ export const AllLexica: { [code: string]: Lexicon } = {
     longDescription:
       'NASPA School Word List 2020 Edition (NSWL20), © 2020 North American Word Game Players Association. All rights reserved.',
   },
-  CSW21: {
-    code: 'CSW21',
-    shortDescription: 'CSW 21 (World English)',
-    matchName: 'CSW21',
-    longDescription:
-      'Published under license with Collins, an imprint of HarperCollins Publishers Limited',
-  },
   CSW24: {
     code: 'CSW24',
     shortDescription: 'CSW 24 (World English)',

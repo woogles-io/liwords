@@ -166,7 +166,6 @@ export const ActiveGames = (props: Props) => {
       dataIndex: 'lexicon',
       key: 'lexicon',
       filters: [
-        'CSW21',
         'CSW24',
         'NWL23',
         'ECWL',
