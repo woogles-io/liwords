@@ -20,7 +20,7 @@ const MaxRackLength = 7;
 export const RackEditor = (props: Props) => {
   const calculateRackStr = useCallback(
     (rack: MachineWord) => machineWordToRunes(rack, props.alphabet, false),
-    []
+    [props.alphabet]
   );
 
   const [currentRack, setCurrentRack] = useState(props.currentRack);
