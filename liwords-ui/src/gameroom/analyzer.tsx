@@ -351,10 +351,8 @@ const AnalyzerContext = React.createContext<{
 
 export const AnalyzerContextProvider = ({
   children,
-  nocache,
 }: {
   children: React.ReactNode;
-  nocache?: boolean;
 }) => {
   const [, setMovesCacheId] = useState(0);
   const rerenderMoves = useCallback(
@@ -380,9 +378,6 @@ export const AnalyzerContextProvider = ({
     (lexicon: string, variant?: string) => {
       const examinerIdAtStart = examinerId.current;
       const turn = examinableGameContext.turns.length;
-      if (nocache) {
-        movesCacheRef.current = [];
-      }
       const movesCache = movesCacheRef.current;
       // null = loading. undefined = not yet requested.
       if (movesCache[turn] !== undefined) return;
@@ -426,7 +421,7 @@ export const AnalyzerContextProvider = ({
         }
       });
     },
-    [examinableGameContext, nocache, rerenderMoves, unrace]
+    [examinableGameContext, rerenderMoves, unrace]
   );
 
   const cachedMoves = movesCacheRef.current[examinableGameContext.turns.length];

@@ -425,6 +425,6 @@ export const BoardEditor = () => {
       </div>
     </div>
   );
-  ret = <AnalyzerContextProvider children={ret} nocache />;
+  ret = <AnalyzerContextProvider children={ret} />;
   return ret;
 };
