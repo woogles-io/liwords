@@ -45,8 +45,6 @@ type Props = {
   isExamining?: boolean;
   events: Array<GameEvent>;
   board: Board;
-  lexicon: string;
-  variant?: string;
   poolFormat: PoolFormatType;
   playerMeta: Array<PlayerInfo>;
   gameEpilog?: React.ReactElement;
@@ -465,11 +463,7 @@ export const ScoreCard = React.memo((props: Props) => {
     >
       <div ref={el} style={cardStyle}>
         {props.isExamining ? (
-          <Analyzer
-            lexicon={props.lexicon}
-            variant={props.variant}
-            style={analyzerStyle}
-          />
+          <Analyzer style={analyzerStyle} />
         ) : (
           <Notepad style={notepadStyle} />
         )}

@@ -337,11 +337,7 @@ export const BoardEditor = () => {
             tournamentID={gameInfo.tournamentId}
           /> */}
           <Card></Card>
-          <Analyzer
-            includeCard
-            lexicon={gameContext.gameDocument.lexicon}
-            variant={gameContext.gameDocument.variant}
-          />
+          <Analyzer includeCard />
 
           <Card
             title="Editor controls"
@@ -413,8 +409,6 @@ export const BoardEditor = () => {
           />
           <ScoreCard
             isExamining={true}
-            lexicon={gameContext.gameDocument.lexicon}
-            variant={gameContext.gameDocument.variant}
             events={examinableGameContext.turns}
             board={examinableGameContext.board}
             playerMeta={gameInfo.players}
@@ -425,6 +419,12 @@ export const BoardEditor = () => {
       </div>
     </div>
   );
-  ret = <AnalyzerContextProvider children={ret} nocache />;
+  ret = (
+    <AnalyzerContextProvider
+      children={ret}
+      lexicon={gameContext.gameDocument.lexicon}
+      variant={gameContext.gameDocument.variant}
+    />
+  );
   return ret;
 };

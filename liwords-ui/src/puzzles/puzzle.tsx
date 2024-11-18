@@ -716,11 +716,7 @@ export const SinglePuzzle = (props: Props) => {
             suppressDefault
           />
           {isExamining ? (
-            <Analyzer
-              includeCard
-              lexicon={puzzleInfo.lexicon}
-              variant={puzzleInfo.variantName}
-            />
+            <Analyzer includeCard />
           ) : (
             <React.Fragment key="not-examining">
               <Notepad includeCard />
@@ -803,7 +799,13 @@ export const SinglePuzzle = (props: Props) => {
     </div>
   );
   ret = <NotepadContextProvider children={ret} feRackInfo />;
-  ret = <AnalyzerContextProvider children={ret} />;
+  ret = (
+    <AnalyzerContextProvider
+      children={ret}
+      lexicon={puzzleInfo.lexicon}
+      variant={puzzleInfo.variantName}
+    />
+  );
   ret = <LearnContextProvider children={ret} />;
   return ret;
 };
