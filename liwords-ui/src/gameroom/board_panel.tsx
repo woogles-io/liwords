@@ -256,23 +256,50 @@ export const BoardPanel = React.memo((props: Props) => {
   const { isExamining, handleExamineStart } = useExamineStoreContext();
   const { gameContext } = useGameContextStoreContext();
   const { stopClock } = useTimerStoreContext();
-  const [exchangeAllowed, setexchangeAllowed] = useState(true);
+  const [exchangeAllowed, setExchangeAllowed] = useState(true);
   // XXX: this is complicated, it doesn't seem like we should need these:
   const handlePassShortcut = useRef<(() => void) | null>(null);
-  const setHandlePassShortcut = useCallback((x: any) => {
-    handlePassShortcut.current =
-      typeof x === 'function' ? x(handlePassShortcut.current) : x;
-  }, []);
+  const setHandlePassShortcut = useCallback(
+    (
+      makeNewValue:
+        | ((oldValue: (() => void) | null) => (() => void) | null)
+        | null
+    ): void => {
+      handlePassShortcut.current =
+        typeof makeNewValue === 'function'
+          ? makeNewValue(handlePassShortcut.current)
+          : makeNewValue;
+    },
+    []
+  );
   const handleChallengeShortcut = useRef<(() => void) | null>(null);
-  const setHandleChallengeShortcut = useCallback((x: any) => {
-    handleChallengeShortcut.current =
-      typeof x === 'function' ? x(handleChallengeShortcut.current) : x;
-  }, []);
+  const setHandleChallengeShortcut = useCallback(
+    (
+      makeNewValue:
+        | ((oldValue: (() => void) | null) => (() => void) | null)
+        | null
+    ): void => {
+      handleChallengeShortcut.current =
+        typeof makeNewValue === 'function'
+          ? makeNewValue(handleChallengeShortcut.current)
+          : makeNewValue;
+    },
+    []
+  );
   const handleNeitherShortcut = useRef<(() => void) | null>(null);
-  const setHandleNeitherShortcut = useCallback((x: any) => {
-    handleNeitherShortcut.current =
-      typeof x === 'function' ? x(handleNeitherShortcut.current) : x;
-  }, []);
+  const setHandleNeitherShortcut = useCallback(
+    (
+      makeNewValue:
+        | ((oldValue: (() => void) | null) => (() => void) | null)
+        | null
+    ): void => {
+      handleNeitherShortcut.current =
+        typeof makeNewValue === 'function'
+          ? makeNewValue(handleNeitherShortcut.current)
+          : makeNewValue;
+    },
+    []
+  );
   const boardContainer = useRef<HTMLDivElement>(null);
 
   const {
@@ -391,6 +418,7 @@ export const BoardPanel = React.memo((props: Props) => {
       gameID,
       sendGameplayEvent,
       username,
+      message,
     ]
   );
 
@@ -728,15 +756,20 @@ export const BoardPanel = React.memo((props: Props) => {
     // Subtract 7 for opponent rack, won't matter when the
     // rack is smaller than that because past the threshold by then
     if (isSpanish(props.lexicon)) {
-      setexchangeAllowed(
+      setExchangeAllowed(
         tilesRemaining >= 1 || props.boardEditingMode === true
       );
     } else {
-      setexchangeAllowed(
+      setExchangeAllowed(
         tilesRemaining >= 7 || props.boardEditingMode === true
       );
     }
-  }, [gameContext.pool, props.currentRack, props.boardEditingMode]);
+  }, [
+    gameContext.pool,
+    props.currentRack,
+    props.boardEditingMode,
+    props.lexicon,
+  ]);
 
   useEffect(() => {
     if (
@@ -774,7 +807,7 @@ export const BoardPanel = React.memo((props: Props) => {
         15
       );
     }
-  }, [examinableGameContext.playState, isMyTurn, makeMove]);
+  }, [examinableGameContext.playState, isMyTurn, makeMove, message]);
 
   useEffect(() => {
     if (!props.events.length) {
@@ -807,7 +840,13 @@ export const BoardPanel = React.memo((props: Props) => {
         undefined
       );
     }
-  }, [props.events, props.playerMeta, props.username, props.puzzleMode]);
+  }, [
+    props.events,
+    props.playerMeta,
+    props.username,
+    props.puzzleMode,
+    message,
+  ]);
 
   const numTurns = examinableGameContext.turns.length;
 
@@ -1488,6 +1527,7 @@ export const BoardPanel = React.memo((props: Props) => {
     sendSocketMsg,
     username,
     props.tournamentID,
+    notification,
   ]);
 
   const handleKeyDown = useCallback(

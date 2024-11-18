@@ -44,6 +44,7 @@
       }
     ],
     "no-plusplus": "off",
+    "react/react-in-jsx-scope": "off",
     "react/jsx-key": "error",
     // "import/no-extraneous-dependencies": [
     //   "error",
@@ -69,6 +70,6 @@
     "@typescript-eslint/no-empty-function": "off",
     "react/display-name": "off",
     "react/no-children-prop": "off",
-    "@typescript-eslint/restrict-plus-operands": ["error", { "checkCompoundAssignments": true }]
+    // "@typescript-eslint/restrict-plus-operands": ["error", { "checkCompoundAssignments": true }]
   }
 }

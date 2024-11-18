@@ -161,7 +161,7 @@ export const BoardEditor = () => {
           'The bag is now empty; please Pass or Challenge to end the game.',
       });
     }
-  }, [gameContext.playState]);
+  }, [gameContext.playState, notification]);
 
   const sortedRack = useMemo(() => {
     const rack =

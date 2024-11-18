@@ -1,8 +1,9 @@
+import { pluginEslint } from '@rsbuild/plugin-eslint';
 import { pluginReact } from '@rsbuild/plugin-react';
 import { pluginSass } from '@rsbuild/plugin-sass';
 
 export default {
-  plugins: [pluginReact(), pluginSass()],
+  plugins: [pluginEslint(), pluginReact(), pluginSass()],
   html: {
     template: './index.html',
   },
