@@ -315,6 +315,11 @@ export declare class PairRequest extends Message<PairRequest> {
    */
   removedPlayers: number[];
 
+  /**
+   * @generated from field: int32 seed = 19;
+   */
+  seed: number;
+
   constructor(data?: PartialMessage<PairRequest>);
 
   static readonly runtime: typeof proto3;

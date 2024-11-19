@@ -56,6 +56,8 @@ func COPPair(req *pb.PairRequest) *pb.PairResponse {
 
 	_ = copdata.GetPrecompData(req, &logsb)
 
+	// FIXME: set the random seed
+
 	// FIXME: implement pairings with the cop data
 	pairings := make([]int32, req.ValidPlayers)
 

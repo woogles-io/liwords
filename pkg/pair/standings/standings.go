@@ -369,7 +369,17 @@ func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, sims int, maxF
 		// who also always wins every tournament while always play first place and win every game.\
 		allControlLosses = map[int][]int{}
 		leftPlayerRankIdx := 1
-		rightPlayerRankIdx := numPlayers - 1
+		// Only consider players for control loss that are in the highest gibson group
+		rightPlayerRankIdx := 1
+		// FIXME: only consider players who can catch first
+		for rightPlayerRankIdx < numPlayers {
+			// FIXME: don't need this gibsonizedPlayers check
+			if gibsonizedPlayers[rightPlayerRankIdx] {
+				break
+			}
+			rightPlayerRankIdx++
+		}
+		// FIXME: don't need iters, plz remove
 		iters := 0
 		for leftPlayerRankIdx <= rightPlayerRankIdx {
 			iters++
@@ -514,6 +524,7 @@ func assignPairingsForSegment(pairingsStartIdx int, startRankIdx int, endRankIdx
 			pairings[roundIdx][basePairingIdx] = basePlayerIdx
 			pairings[roundIdx][basePairingIdx+1] = basePlayerIdx + roundFactor
 		}
+		// FIXME: need better pairings than KOTH
 		numKothPlayers := numPlayers - 2*roundFactor
 		numKothPairings := numKothPlayers / 2
 		var nextKothPairingIdx int

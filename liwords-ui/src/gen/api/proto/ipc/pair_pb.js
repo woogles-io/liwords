@@ -100,6 +100,7 @@ export const PairRequest = /*@__PURE__*/ proto3.makeMessageType(
     { no: 16, name: "use_control_loss", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 17, name: "allow_repeat_byes", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 18, name: "removed_players", kind: "scalar", T: 5 /* ScalarType.INT32 */, repeated: true },
+    { no: 19, name: "seed", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ],
 );
 

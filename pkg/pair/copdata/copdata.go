@@ -27,15 +27,17 @@ type PrecompData struct {
 func GetPrecompData(req *pb.PairRequest, logsb *strings.Builder) *PrecompData {
 	standings := pkgstnd.CreateInitialStandings(req)
 
-	writeStandingsToLog("Initial Standings", standings, req, logsb)
 	// Use the initial results to get a tighter bound on the maximum factor
-	initialFactor := int(req.AllPlayers) - 1
+	initialFactor := int(req.Rounds) - len(req.DivisionResults)
 	initialSimResults := standings.SimFactorPairAll(req, int(req.DivisionSims), initialFactor, false, nil, logsb)
 
-	writeFinalRankResultsToLog(fmt.Sprintf("Initial Sim Results (factor %d)", initialFactor), initialSimResults.FinalRanks, standings, req, logsb)
+	writeFinalRankResultsToLog(fmt.Sprintf("Initial Sim Results (factor ceiling of %d)", initialFactor), initialSimResults.FinalRanks, standings, req, logsb)
 
 	numPlayers := len(initialSimResults.FinalRanks)
-	// The maximum factor should be with respect to the highest non-gibsonized rank
+
+	// Attempt to tighten the max factor.
+	// When tightening the factor bounds, the  maximum factor should
+	// be with respect to the highest non-gibsonized rank.
 	highestNongibsonizedRank := 0
 	for rankIdx, isGibsonized := range initialSimResults.GibsonizedPlayers {
 		if !isGibsonized {
@@ -44,6 +46,9 @@ func GetPrecompData(req *pb.PairRequest, logsb *strings.Builder) *PrecompData {
 		}
 	}
 
+	// If the initial factor is N, then 1st played (1 + N)th, but if (1 + N)th never achieved
+	// 1st, then (1 + N)th should never have played 1st at all, so we use the initial results
+	// to get a tighter bound on the maximum factor.
 	minWinsForHopeful := int(math.Round(float64(req.DivisionSims) * req.HopefulnessThreshold))
 	maxFactor := 0
 	for playerRankIdx := highestNongibsonizedRank + 1; playerRankIdx < numPlayers; playerRankIdx++ {
@@ -54,22 +59,42 @@ func GetPrecompData(req *pb.PairRequest, logsb *strings.Builder) *PrecompData {
 		}
 	}
 
-	useControlLoss := req.UseControlLoss && !initialSimResults.GibsonizedPlayers[0]
+	// Get the number of players in the highest gibson group where the factor would be applied
+	numPlayersInhighestNongibsonGroup := 0
+	highestNongibsonizedRankGroup := initialSimResults.GibsonGroups[highestNongibsonizedRank]
+	for rankIdx := highestNongibsonizedRank; rankIdx < numPlayers; rankIdx++ {
+		if initialSimResults.GibsonGroups[rankIdx] == highestNongibsonizedRankGroup {
+			numPlayersInhighestNongibsonGroup++
+		} else {
+			break
+		}
+	}
 
-	improvedFactorSimResults := standings.SimFactorPairAll(req, int(req.DivisionSims), maxFactor, useControlLoss, initialSimResults.SegmentRoundFactors, logsb)
+	var improvedFactorSimResults *pkgstnd.SimResults
 
-	// FIXME: test this
+	// Only re-sim with the improved bound if it actually makes the max factor smaller
+	// for the highest gibson group.
+	if maxFactor*2 < numPlayersInhighestNongibsonGroup {
+		improvedFactorSimResults = standings.SimFactorPairAll(req, int(req.DivisionSims), maxFactor, false, initialSimResults.SegmentRoundFactors, logsb)
+	}
+
 	if improvedFactorSimResults == nil {
 		improvedFactorSimResults = initialSimResults
 		logsb.WriteString("\n\nNo factor improvement made.\n\n")
 	} else {
-		writeFinalRankResultsToLog(fmt.Sprintf("Improved Factor Sim Results (factor %d)", maxFactor), initialSimResults.FinalRanks, standings, req, logsb)
+		writeFinalRankResultsToLog(fmt.Sprintf("Improved Factor Sim Results (factor ceiling of %d)", maxFactor), improvedFactorSimResults.FinalRanks, standings, req, logsb)
 	}
 
+	var controlLossSimResults *pkgstnd.SimResults
+	var allControlLosses map[int][]int
 	highestControlLossRankIdx := -1
-	if improvedFactorSimResults.HighestControlLossRankIdx >= 0 &&
-		1.0-float64(improvedFactorSimResults.LowestFactorPairWins)/float64(req.DivisionSims) >= req.ControlLossThreshold {
-		highestControlLossRankIdx = improvedFactorSimResults.HighestControlLossRankIdx
+	if req.UseControlLoss && !improvedFactorSimResults.GibsonizedPlayers[0] {
+		controlLossSimResults = standings.SimFactorPairAll(req, int(req.DivisionSims), maxFactor, true, nil, logsb)
+		allControlLosses = controlLossSimResults.AllControlLosses
+		if controlLossSimResults.HighestControlLossRankIdx >= 0 &&
+			1.0-float64(controlLossSimResults.LowestFactorPairWins)/float64(req.DivisionSims) >= req.ControlLossThreshold {
+			highestControlLossRankIdx = controlLossSimResults.HighestControlLossRankIdx
+		}
 	}
 
 	highestRankHopefully := make([]int, numPlayers)
@@ -79,13 +104,14 @@ func GetPrecompData(req *pb.PairRequest, logsb *strings.Builder) *PrecompData {
 		hopefulRank := numPlayers - 1
 		absoluteRank := numPlayers - 1
 		for rank := 0; rank < numPlayers; rank++ {
-			winsSum += improvedFactorSimResults.FinalRanks[playerRankIdx][rank]
-			if winsSum > 0 {
+			rankSum := improvedFactorSimResults.FinalRanks[playerRankIdx][rank]
+			if winsSum == 0 && rankSum > 0 {
 				absoluteRank = rank
-				if winsSum >= minWinsForHopeful {
-					hopefulRank = rank
-					break
-				}
+			}
+			winsSum += rankSum
+			if winsSum >= minWinsForHopeful {
+				hopefulRank = rank
+				break
 			}
 		}
 		highestRankHopefully[playerRankIdx] = hopefulRank
@@ -111,7 +137,7 @@ func GetPrecompData(req *pb.PairRequest, logsb *strings.Builder) *PrecompData {
 		}
 	}
 
-	writePrecompDataToLog("Precomp Data", improvedFactorSimResults, highestRankHopefully, highestRankAbsolutely, standings, req, logsb)
+	writePrecompDataToLog("Precomp Data", improvedFactorSimResults, highestControlLossRankIdx, allControlLosses, highestRankHopefully, highestRankAbsolutely, standings, req, logsb)
 
 	return &PrecompData{
 		Standings:                 standings,
@@ -137,11 +163,11 @@ func GetPairingKey(playerIdx int, oppIdx int) string {
 	return pairingKey
 }
 
-func writePrecompDataToLog(title string, simResults *pkgstnd.SimResults, highestRankHopefully []int, highestRankAbsolutely []int, standings *pkgstnd.Standings, req *pb.PairRequest, logsb *strings.Builder) {
+func writePrecompDataToLog(title string, simResults *pkgstnd.SimResults, highestControlLossRankIdx int, allControlLosses map[int][]int, highestRankHopefully []int, highestRankAbsolutely []int, standings *pkgstnd.Standings, req *pb.PairRequest, logsb *strings.Builder) {
 	numPlayers := len(simResults.FinalRanks)
 	matrix := make([][]string, numPlayers)
 
-	useControlLoss := simResults.AllControlLosses != nil
+	useControlLoss := allControlLosses != nil
 	var header []string
 	for rankIdx := 0; rankIdx < numPlayers; rankIdx++ {
 		if useControlLoss {
@@ -156,9 +182,17 @@ func writePrecompDataToLog(title string, simResults *pkgstnd.SimResults, highest
 		matrix[rankIdx][2] = strconv.Itoa(highestRankHopefully[rankIdx] + 1)
 		matrix[rankIdx][3] = strconv.Itoa(highestRankAbsolutely[rankIdx] + 1)
 		if useControlLoss {
-			matrix[rankIdx][4] = strconv.Itoa(simResults.AllControlLosses[rankIdx][0])
-			matrix[rankIdx][5] = strconv.Itoa(simResults.AllControlLosses[rankIdx][1])
-			matrix[rankIdx][6] = boolToYesEmpty(simResults.HighestControlLossRankIdx == rankIdx)
+			matrix[rankIdx][4] = ""
+			matrix[rankIdx][5] = ""
+			matrix[rankIdx][6] = ""
+			playerControlLosses, exists := allControlLosses[rankIdx]
+			if exists {
+				matrix[rankIdx][4] = strconv.Itoa(playerControlLosses[0])
+				if playerControlLosses[1] >= 0 {
+					matrix[rankIdx][5] = strconv.Itoa(playerControlLosses[1])
+				}
+				matrix[rankIdx][6] = boolToYesEmpty(highestControlLossRankIdx == rankIdx)
+			}
 		}
 	}
 
@@ -235,10 +269,6 @@ func writeStringDataToLog(title string, header []string, data [][]string, logsb 
 	border := strings.Repeat("*", len(titleLine))
 	logsb.WriteString(fmt.Sprintf("%s\n%s\n%s\n\n", border, titleLine, border))
 	logsb.WriteString(formatStringData(header, data))
-}
-
-func writeStandingsToLog(title string, standings *pkgstnd.Standings, req *pb.PairRequest, logsb *strings.Builder) {
-	writeStringDataToLog(title, standingsHeader, standings.StringData(req), logsb)
 }
 
 func combineStringMatrices(m1, m2 [][]string) [][]string {
