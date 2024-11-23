@@ -385,13 +385,14 @@ func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, sims int, maxF
 			iters++
 			forcedWinnerRankIdx := (leftPlayerRankIdx + rightPlayerRankIdx) / 2
 			forcedWinnerPlayerIdx := standings.GetPlayerIndex(forcedWinnerRankIdx)
+			// FIXME: if forcedWinnerPlayerIdx is 1 and they can catch, vsFirstTournamentWins will always be sims and is therefore useless
 			vsFirstTournamentWins := standings.simForceWinner(sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, maxScoreDiff, true)
 			if vsFirstTournamentWins < sims {
 				rightPlayerRankIdx = forcedWinnerRankIdx - 1
-				allControlLosses[forcedWinnerRankIdx] = []int{vsFirstTournamentWins, -1, iters}
 				continue
 			}
 			vsFactorPairTournamentWins := standings.simForceWinner(sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, maxScoreDiff, false)
+			// FIXME: always vsFirstTournamentWins == sims here so it's useless
 			allControlLosses[forcedWinnerRankIdx] = []int{vsFirstTournamentWins, vsFactorPairTournamentWins, iters}
 			if vsFactorPairTournamentWins < lowestFactorPairWins {
 				leftPlayerRankIdx = forcedWinnerRankIdx + 1
@@ -489,10 +490,14 @@ func (standings *Standings) simForceWinner(sims int, roundsRemaining int, pairin
 				pairings[roundIdx][1], pairings[roundIdx][switchPairingIdx] = pairings[roundIdx][switchPairingIdx], pairings[roundIdx][1]
 			}
 		}
-		if standings.GetPlayerIndex(0) == forcedWinnerPlayerIdx {
+		playerInFirst := standings.GetPlayerIndex(0)
+		if playerInFirst == forcedWinnerPlayerIdx {
 			tournamentWins++
 		}
 		standings.RestoreFromBackup()
+		if vsFirst && playerInFirst != forcedWinnerPlayerIdx {
+			return 0
+		}
 	}
 	return tournamentWins
 }

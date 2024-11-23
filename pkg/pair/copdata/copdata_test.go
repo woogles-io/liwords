@@ -1,7 +1,6 @@
 package copdata_test
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -218,23 +217,30 @@ func TestCOPPrecompData(t *testing.T) {
 	is.Equal(copdata.HighestControlLossRankIdx, -1)
 
 	req = pairtestutils.CreateBellevilleCSWAfterRound12PairRequest()
+	req.UseControlLoss = false
+	rand.Seed(1)
+	copdata = pkgcopdata.GetPrecompData(req, &logsb)
+	is.Equal(copdata.HighestControlLossRankIdx, -1)
+	for rank := 0; rank < len(copdata.GibsonGroups); rank++ {
+		is.Equal(copdata.GibsonGroups[rank], 0)
+	}
+
+	req = pairtestutils.CreateBellevilleCSWAfterRound12PairRequest()
+	req.UseControlLoss = true
+	req.ControlLossThreshold = 0.5
+	rand.Seed(1)
+	copdata = pkgcopdata.GetPrecompData(req, &logsb)
+	is.Equal(copdata.HighestControlLossRankIdx, -1)
+	for rank := 0; rank < len(copdata.GibsonGroups); rank++ {
+		is.Equal(copdata.GibsonGroups[rank], 0)
+	}
+
+	req = pairtestutils.CreateBellevilleCSWAfterRound12PairRequest()
 	req.UseControlLoss = true
 	rand.Seed(1)
 	copdata = pkgcopdata.GetPrecompData(req, &logsb)
 	is.Equal(copdata.HighestControlLossRankIdx, 1)
-
-	// Need to test:
-	// no one gibsonized, no cl,
-	// no one gibsonized, cl, no dc
-	// no one gibsonized, cl, dc
-	// no improvement to factor
-
-	// req = pairtestutils.CreateAlbany1stAnd4thAnd8thGibsonizedAfterRound25PairRequest()
-	// _ = pkgcopdata.GetPrecompData(req, &logsb)
-	// req = pairtestutils.CreateAlbanyjuly4th2024AfterRound21PairRequest()
-	// _ = pkgcopdata.GetPrecompData(req, &logsb)
-	// req = pairtestutils.CreateBellevilleCSWAfterRound12PairRequest()
-	// _ = pkgcopdata.GetPrecompData(req, &logsb)
-
-	fmt.Println(logsb.String())
+	for rank := 0; rank < len(copdata.GibsonGroups); rank++ {
+		is.Equal(copdata.GibsonGroups[rank], 0)
+	}
 }
