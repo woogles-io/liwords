@@ -33,7 +33,7 @@ func GetPrecompData(req *pb.PairRequest, logsb *strings.Builder) *PrecompData {
 
 	writeFinalRankResultsToLog(fmt.Sprintf("Initial Sim Results (factor ceiling of %d)", initialFactor), initialSimResults.FinalRanks, standings, req, logsb)
 
-	numPlayers := len(initialSimResults.FinalRanks)
+	numPlayers := standings.GetNumPlayers()
 
 	// Attempt to tighten the max factor.
 	// When tightening the factor bounds, the  maximum factor should
@@ -164,7 +164,7 @@ func GetPairingKey(playerIdx int, oppIdx int) string {
 }
 
 func writePrecompDataToLog(title string, simResults *pkgstnd.SimResults, highestControlLossRankIdx int, allControlLosses map[int][]int, highestRankHopefully []int, highestRankAbsolutely []int, standings *pkgstnd.Standings, req *pb.PairRequest, logsb *strings.Builder) {
-	numPlayers := len(simResults.FinalRanks)
+	numPlayers := standings.GetNumPlayers()
 	matrix := make([][]string, numPlayers)
 
 	useControlLoss := allControlLosses != nil
@@ -201,14 +201,14 @@ func writePrecompDataToLog(title string, simResults *pkgstnd.SimResults, highest
 
 func writeFinalRankResultsToLog(title string, finalRanks [][]int, standings *pkgstnd.Standings, req *pb.PairRequest, logsb *strings.Builder) {
 	header := append([]string{}, standingsHeader[:]...)
-	numPlayers := len(finalRanks)
+	numPlayers := standings.GetNumPlayers()
 	for rankIdx := 0; rankIdx < numPlayers; rankIdx++ {
 		header = append(header, strconv.Itoa(rankIdx+1))
 	}
 
 	finalRanksStr := make([][]string, numPlayers)
 	for rankIdx := 0; rankIdx < numPlayers; rankIdx++ {
-		finalRanksStr[rankIdx] = make([]string, len(finalRanks[rankIdx]))
+		finalRanksStr[rankIdx] = make([]string, numPlayers)
 		for colIdx, value := range finalRanks[rankIdx] {
 			finalRanksStr[rankIdx][colIdx] = strconv.Itoa(value)
 		}

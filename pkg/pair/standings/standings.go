@@ -11,6 +11,10 @@ import (
 )
 
 const (
+	ByePlayerIndex int = 0xFFFF
+)
+
+const (
 	playerWinsOffset   int    = 48
 	initialWinsValue   int    = 1 << (64 - playerWinsOffset - 1)
 	playerSpreadOffset int    = 16
@@ -18,7 +22,6 @@ const (
 	playerIndexMask    uint64 = 0xFFFF
 	maxSpread          int    = 300
 	byeSpread          int    = 50
-	byePlayerIndex     int    = 0xFFFF
 )
 
 type Standings struct {
@@ -130,6 +133,10 @@ func (standings *Standings) RestoreFromBackup() {
 	copy(standings.records, standings.recordsBackup)
 	// FIXME: only needed for printing
 	standings.roundsPlayed = standings.roundsPlayedBackup
+}
+
+func (standings *Standings) GetNumPlayers() int {
+	return len(standings.records)
 }
 
 func (standings *Standings) GetPlayerIndex(rankIdx int) int {
@@ -244,7 +251,7 @@ func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, sims int, maxF
 		// FIXME: test that this works
 		lowestWins := getWinsValue(standings.records[numPlayers-1])
 		standings.records = append(standings.records, getRecordFromWinsAndSpread(lowestWins-(roundsRemaining+1)*2, initialSpreadValue))
-		standings.records[numPlayers] += uint64(byePlayerIndex)
+		standings.records[numPlayers] += uint64(ByePlayerIndex)
 		numPlayers++
 		standings.recordsBackup = make([]uint64, numPlayers)
 		evenerPlayerAdded = true
@@ -565,7 +572,7 @@ func (standings *Standings) getPlayerIdxToRankIdxMap() map[int]int {
 
 func (standings *Standings) StringData(req *pb.PairRequest) [][]string {
 	numPlayers := len(standings.records)
-	if standings.GetPlayerIndex(numPlayers-1) == byePlayerIndex {
+	if standings.GetPlayerIndex(numPlayers-1) == ByePlayerIndex {
 		numPlayers--
 	}
 	stringData := make([][]string, numPlayers)
