@@ -725,8 +725,8 @@ export const SinglePuzzle = (props: Props) => {
         </div>
         <div className="play-area puzzle-area">
           {lexiconModal}
-          {responseModalWrong}
-          {responseModalCorrect}
+          {showResponseModalWrong && responseModalWrong}
+          {showResponseModalCorrect && responseModalCorrect}
           {gameHistory?.lexicon && alphabet && (
             <BoardPanel
               anonymousViewer={!loggedIn}
