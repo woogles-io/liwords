@@ -392,7 +392,8 @@ func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, sims int, maxF
 			iters++
 			forcedWinnerRankIdx := (leftPlayerRankIdx + rightPlayerRankIdx) / 2
 			forcedWinnerPlayerIdx := standings.GetPlayerIndex(forcedWinnerRankIdx)
-			// FIXME: if forcedWinnerPlayerIdx is 1 and they can catch, vsFirstTournamentWins will always be sims and is therefore useless
+			// FIXME: if forcedWinnerPlayerIdx is 1 and they can catch, vsFirstTournamentWins will always be == sims and is therefore useless
+			// FIXME: actually maybe not cuz of spread, we still need this I think
 			vsFirstTournamentWins := standings.simForceWinner(sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, maxScoreDiff, true)
 			if vsFirstTournamentWins < sims {
 				rightPlayerRankIdx = forcedWinnerRankIdx - 1
@@ -472,7 +473,6 @@ func (standings *Standings) findRankIdx(playerIdx int) int {
 	return -1
 }
 
-// FIXME: remove req
 func (standings *Standings) simForceWinner(sims int, roundsRemaining int, pairings [][]int, forcedWinnerPlayerIdx int, maxScoreDiff int, vsFirst bool) int {
 	tournamentWins := 0
 	for simIdx := 0; simIdx < sims; simIdx++ {
@@ -570,24 +570,27 @@ func (standings *Standings) getPlayerIdxToRankIdxMap() map[int]int {
 	return playerIdxToRankIdx
 }
 
+func (standings *Standings) StringDataForPlayer(req *pb.PairRequest, rankIdx int) []string {
+	playerData := make([]string, 5)
+	playerData[0] = strconv.Itoa(rankIdx + 1)
+	playerData[1] = strconv.Itoa(standings.GetPlayerIndex(rankIdx) + 1)
+	playerData[2] = ""
+	if req != nil {
+		playerData[2] = req.PlayerNames[standings.GetPlayerIndex(rankIdx)]
+	}
+	playerData[3] = fmt.Sprintf("%.1f", standings.GetPlayerWins(rankIdx))
+	playerData[4] = strconv.Itoa(standings.GetPlayerSpread(rankIdx))
+	return playerData
+}
+
 func (standings *Standings) StringData(req *pb.PairRequest) [][]string {
 	numPlayers := len(standings.records)
 	if standings.GetPlayerIndex(numPlayers-1) == ByePlayerIndex {
 		numPlayers--
 	}
-	stringData := make([][]string, numPlayers)
-	for i := 0; i < numPlayers; i++ {
-		stringData[i] = make([]string, 5)
-	}
+	stringData := [][]string{}
 	for rankIdx := 0; rankIdx < numPlayers; rankIdx++ {
-		stringData[rankIdx][0] = strconv.Itoa(rankIdx + 1)
-		stringData[rankIdx][1] = strconv.Itoa(standings.GetPlayerIndex(rankIdx) + 1)
-		stringData[rankIdx][2] = ""
-		if req != nil {
-			stringData[rankIdx][2] = req.PlayerNames[standings.GetPlayerIndex(rankIdx)]
-		}
-		stringData[rankIdx][3] = fmt.Sprintf("%.1f", standings.GetPlayerWins(rankIdx))
-		stringData[rankIdx][4] = strconv.Itoa(standings.GetPlayerSpread(rankIdx))
+		stringData = append(stringData, standings.StringDataForPlayer(req, rankIdx))
 	}
 	return stringData
 }

@@ -196,7 +196,7 @@ func writePrecompDataToLog(title string, simResults *pkgstnd.SimResults, highest
 		}
 	}
 
-	writeStringDataToLog(title, header, combineStringMatrices(standings.StringData(req), matrix), logsb)
+	WriteStringDataToLog(title, header, combineStringMatrices(standings.StringData(req), matrix), logsb)
 }
 
 func writeFinalRankResultsToLog(title string, finalRanks [][]int, standings *pkgstnd.Standings, req *pb.PairRequest, logsb *strings.Builder) {
@@ -214,7 +214,7 @@ func writeFinalRankResultsToLog(title string, finalRanks [][]int, standings *pkg
 		}
 	}
 
-	writeStringDataToLog(title, header, combineStringMatrices(standings.StringData(req), finalRanksStr), logsb)
+	WriteStringDataToLog(title, header, combineStringMatrices(standings.StringData(req), finalRanksStr), logsb)
 }
 
 func formatStringData(header []string, data [][]string) string {
@@ -264,7 +264,7 @@ func formatStringData(header []string, data [][]string) string {
 	return sb.String()
 }
 
-func writeStringDataToLog(title string, header []string, data [][]string, logsb *strings.Builder) {
+func WriteStringDataToLog(title string, header []string, data [][]string, logsb *strings.Builder) {
 	titleLine := fmt.Sprintf("** %s **", title)
 	border := strings.Repeat("*", len(titleLine))
 	logsb.WriteString(fmt.Sprintf("%s\n%s\n%s\n\n", border, titleLine, border))
