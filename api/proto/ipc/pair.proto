@@ -66,11 +66,14 @@ enum PairError {
   INVALID_PLACE_PRIZES = 26;
   INVALID_REMOVED_PLAYER = 27;
   INVALID_VALID_PLAYER_COUNT = 28;
-  REQUEST_TO_JSON_FAILED = 29;
+  MIN_WEIGHT_MATCHING = 29;
+  INVALID_PAIRINGS_LENGTH = 30;
+  REQUEST_TO_JSON_FAILED = 31;
 }
 
 message PairResponse {
   PairError error_code = 1;
-  string message = 2;
-  repeated int32 pairings = 3;
+  string error_message = 2;
+  string log = 3;
+  repeated int32 pairings = 4;
 }

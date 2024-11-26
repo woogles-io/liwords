@@ -20,7 +20,7 @@ const (
 
 type policy struct {
 	name    string
-	handler func(*pb.PairRequest, *copdatapkg.PrecompData) (int64, bool)
+	handler func(*pb.PairRequest, *copdatapkg.PrecompData, []int, int, int) (int64, bool)
 }
 
 // TODO: implement COP
@@ -39,44 +39,13 @@ type policy struct {
 var constraintPolicies = []policy{
 	{
 		name: "PolicyOne",
-		handler: func(req *pb.PairRequest, copdata *copdatapkg.PrecompData) (int64, bool) {
+		handler: func(req *pb.PairRequest, copdata *copdatapkg.PrecompData, playerNodes []int, ri int, rj int) (int64, bool) {
 			return 42, true
-		},
-	},
-	{
-		name: "PolicyTwo",
-		handler: func(req *pb.PairRequest, copdata *copdatapkg.PrecompData) (int64, bool) {
-			return 0, false
-		},
-	},
-	{
-		name: "PolicyThree",
-		handler: func(req *pb.PairRequest, copdata *copdatapkg.PrecompData) (int64, bool) {
-			return 100, true
 		},
 	},
 }
 
-var weightPolicies = []policy{
-	{
-		name: "PolicyOne",
-		handler: func(req *pb.PairRequest, copdata *copdatapkg.PrecompData) (int64, bool) {
-			return 42, true
-		},
-	},
-	{
-		name: "PolicyTwo",
-		handler: func(req *pb.PairRequest, copdata *copdatapkg.PrecompData) (int64, bool) {
-			return 0, false
-		},
-	},
-	{
-		name: "PolicyThree",
-		handler: func(req *pb.PairRequest, copdata *copdatapkg.PrecompData) (int64, bool) {
-			return 100, true
-		},
-	},
-}
+var weightPolicies = []policy{}
 
 func COPPair(req *pb.PairRequest) *pb.PairResponse {
 	logsb := &strings.Builder{}
@@ -84,16 +53,17 @@ func COPPair(req *pb.PairRequest) *pb.PairResponse {
 	resp := copPairWithLog(req, logsb)
 	endtime := time.Now()
 	duration := endtime.Sub(starttime)
-	if resp.ErrorCode == pb.PairError_SUCCESS {
-		logsb.WriteString(fmt.Sprintf("Started:  %s\nFinished: %s\nDuration: %s",
-			starttime.Format(timeFormat), endtime.Format(timeFormat), duration))
+	if resp.ErrorCode != pb.PairError_SUCCESS {
+		logsb.WriteString("COP finished with error:\n" + resp.ErrorMessage + "\n")
 	}
-	// FIXME: this overwrites error messsage, please rethink
-	resp.Message = logsb.String()
+	logsb.WriteString(fmt.Sprintf("Started:  %s\nFinished: %s\nDuration: %s",
+		starttime.Format(timeFormat), endtime.Format(timeFormat), duration))
+	resp.Log = logsb.String()
 	return resp
 }
 
 func copPairWithLog(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
+	req.Seed = int32(time.Now().Unix())
 	marshaler := protojson.MarshalOptions{
 		Multiline: true, // Enables pretty printing
 		Indent:    "  ", // Sets the indentation level
@@ -101,8 +71,8 @@ func copPairWithLog(req *pb.PairRequest, logsb *strings.Builder) *pb.PairRespons
 	jsonData, err := marshaler.Marshal(req)
 	if err != nil {
 		return &pb.PairResponse{
-			ErrorCode: pb.PairError_REQUEST_TO_JSON_FAILED,
-			Message:   err.Error(),
+			ErrorCode:    pb.PairError_REQUEST_TO_JSON_FAILED,
+			ErrorMessage: err.Error(),
 		}
 	}
 
@@ -112,12 +82,14 @@ func copPairWithLog(req *pb.PairRequest, logsb *strings.Builder) *pb.PairRespons
 	if resp != nil {
 		return resp
 	}
-	req.Seed = int32(time.Now().Unix())
 
-	// FIXME: only compute all fields when not doing KOTH
 	copdata := copdatapkg.GetPrecompData(req, logsb)
 
-	pairings := copMinWeightMatching(req, copdata, logsb)
+	pairings, resp := copMinWeightMatching(req, copdata, logsb)
+
+	if resp != nil {
+		return resp
+	}
 
 	pairingsProto := make([]int32, len(pairings))
 	for i, pairing := range pairings {
@@ -130,7 +102,7 @@ func copPairWithLog(req *pb.PairRequest, logsb *strings.Builder) *pb.PairRespons
 	}
 }
 
-func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, logsb *strings.Builder) []int {
+func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, logsb *strings.Builder) ([]int, *pb.PairResponse) {
 	numPlayers := copdata.Standings.GetNumPlayers()
 	playerNodes := []int{}
 	divisionPlayerData := [][]string{}
@@ -161,7 +133,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 			pairingDataRow := []string{getMatchupString(divisionPlayerData, rankIdxI, rankIdxJ)}
 			violatedConstraint := ""
 			for _, constraintPolicy := range constraintPolicies {
-				_, valid := constraintPolicy.handler(req, copdata)
+				_, valid := constraintPolicy.handler(req, copdata, playerNodes, rankIdxI, rankIdxJ)
 				if !valid {
 					violatedConstraint = constraintPolicy.name
 					break
@@ -172,7 +144,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 				pairingDataRow = append(pairingDataRow, fmt.Sprintf("%d", copdata.PairingCounts[copdatapkg.GetPairingKey(rankIdxI, rankIdxJ)]))
 				weightSum := int64(0)
 				for _, weightPolicy := range weightPolicies {
-					weight, _ := weightPolicy.handler(req, copdata)
+					weight, _ := weightPolicy.handler(req, copdata, playerNodes, rankIdxI, rankIdxJ)
 					weightSum += weight
 					pairingDataRow = append(pairingDataRow, fmt.Sprintf("%d", weight))
 				}
@@ -193,8 +165,10 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	pairings, totalWeight, err := matching.MinWeightMatching(edges, true)
 
 	if err != nil {
-		logsb.WriteString(fmt.Sprintf("min weight matching error: %s\n", err.Error()))
-		return nil
+		return nil, &pb.PairResponse{
+			ErrorCode:    pb.PairError_MIN_WEIGHT_MATCHING,
+			ErrorMessage: fmt.Sprintf("min weight matching error: %s\n", err.Error()),
+		}
 	}
 
 	if addBye {
@@ -202,8 +176,10 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	}
 
 	if len(pairings) != numPlayers {
-		logsb.WriteString(fmt.Sprintf("invalid pairings length %d for %d players", len(pairings), numPlayers))
-		return nil
+		return nil, &pb.PairResponse{
+			ErrorCode:    pb.PairError_INVALID_PAIRINGS_LENGTH,
+			ErrorMessage: fmt.Sprintf("invalid pairings length %d for %d players", len(pairings), numPlayers),
+		}
 	}
 
 	finalPairings := [][]string{}
@@ -229,7 +205,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		}
 	}
 
-	return pairings
+	return pairings, nil
 }
 
 func getCompatPlayerRecord(playerData []string) string {

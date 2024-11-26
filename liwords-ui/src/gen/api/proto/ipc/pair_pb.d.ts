@@ -168,9 +168,19 @@ export declare enum PairError {
   INVALID_VALID_PLAYER_COUNT = 28,
 
   /**
-   * @generated from enum value: REQUEST_TO_JSON_FAILED = 29;
+   * @generated from enum value: MIN_WEIGHT_MATCHING = 29;
    */
-  REQUEST_TO_JSON_FAILED = 29,
+  MIN_WEIGHT_MATCHING = 29,
+
+  /**
+   * @generated from enum value: INVALID_PAIRINGS_LENGTH = 30;
+   */
+  INVALID_PAIRINGS_LENGTH = 30,
+
+  /**
+   * @generated from enum value: REQUEST_TO_JSON_FAILED = 31;
+   */
+  REQUEST_TO_JSON_FAILED = 31,
 }
 
 /**
@@ -345,12 +355,17 @@ export declare class PairResponse extends Message<PairResponse> {
   errorCode: PairError;
 
   /**
-   * @generated from field: string message = 2;
+   * @generated from field: string error_message = 2;
    */
-  message: string;
+  errorMessage: string;
 
   /**
-   * @generated from field: repeated int32 pairings = 3;
+   * @generated from field: string log = 3;
+   */
+  log: string;
+
+  /**
+   * @generated from field: repeated int32 pairings = 4;
    */
   pairings: number[];
 

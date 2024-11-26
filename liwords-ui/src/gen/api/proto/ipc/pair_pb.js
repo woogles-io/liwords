@@ -52,7 +52,9 @@ export const PairError = /*@__PURE__*/ proto3.makeEnum(
     {no: 26, name: "INVALID_PLACE_PRIZES"},
     {no: 27, name: "INVALID_REMOVED_PLAYER"},
     {no: 28, name: "INVALID_VALID_PLAYER_COUNT"},
-    {no: 29, name: "REQUEST_TO_JSON_FAILED"},
+    {no: 29, name: "MIN_WEIGHT_MATCHING"},
+    {no: 30, name: "INVALID_PAIRINGS_LENGTH"},
+    {no: 31, name: "REQUEST_TO_JSON_FAILED"},
   ],
 );
 
@@ -111,8 +113,9 @@ export const PairResponse = /*@__PURE__*/ proto3.makeMessageType(
   "ipc.PairResponse",
   () => [
     { no: 1, name: "error_code", kind: "enum", T: proto3.getEnumType(PairError) },
-    { no: 2, name: "message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "pairings", kind: "scalar", T: 5 /* ScalarType.INT32 */, repeated: true },
+    { no: 2, name: "error_message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "log", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "pairings", kind: "scalar", T: 5 /* ScalarType.INT32 */, repeated: true },
   ],
 );
 
