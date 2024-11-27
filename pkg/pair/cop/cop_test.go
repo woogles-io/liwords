@@ -1,6 +1,7 @@
 package cop_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/matryer/is"
@@ -13,12 +14,12 @@ import (
 func TestCOPErrors(t *testing.T) {
 	is := is.New(t)
 	req := pairtestutils.CreateDefaultPairRequest()
-	req.AllPlayers = -1
+	req.ValidPlayers = -1
 	resp := cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_PLAYER_COUNT_INSUFFICIENT)
 
 	req = pairtestutils.CreateDefaultPairRequest()
-	req.AllPlayers = 0
+	req.ValidPlayers = 0
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_PLAYER_COUNT_INSUFFICIENT)
 
@@ -95,7 +96,13 @@ func TestCOPErrors(t *testing.T) {
 	is.Equal(resp.ErrorCode, pb.PairError_PLAYER_INDEX_OUT_OF_BOUNDS)
 
 	req = pairtestutils.CreateDefaultPairRequest()
-	pairtestutils.AddRoundResultsAndPairings(req, "4 300 5 250 6 400 -1 500 0 400 1 300 2 425 3 200")
+	pairtestutils.AddRoundResultsAndPairings(req, "4 300 5 250 6 400 7 500 0 400 1 300 2 425 3 200")
+	pairtestutils.AddRoundPairings(req, "4 5 6 7 0 1 2 3")
+	pairtestutils.AddRoundPairings(req, "4 5 6 7 0 1 2 3")
+	pairtestutils.AddRoundPairings(req, "4 5 6 7 0 1 2 3")
+	pairtestutils.AddRoundPairings(req, "4 5 6 7 0 1 2 3")
+	pairtestutils.AddRoundPairings(req, "4 5 6 -1 0 1 2 3")
+	pairtestutils.AddRoundPairings(req, "4 5 6 7 0 1 2 3")
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_UNPAIRED_PLAYER)
 
@@ -249,9 +256,11 @@ func TestCOPSuccess(t *testing.T) {
 	pairtestutils.AddRoundResultsAndPairings(req, "4 300 5 250 6 400 7 500 0 300 1 300 2 425 3 200")
 	resp := cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	fmt.Println(resp.Log)
 
 	req = pairtestutils.CreateDefaultOddPairRequest()
 	pairtestutils.AddRoundResultsAndPairings(req, "4 300 5 250 6 400 3 50 0 400 1 300 2 425")
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	fmt.Println(resp.Log)
 }

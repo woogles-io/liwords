@@ -265,6 +265,7 @@ func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, sims int, maxF
 		pairings[i] = make([]int, numPlayers)
 	}
 	gibsonizedPlayers := standings.GetGibsonizedPlayers(req)
+	// FIXME: reconsider gibson groups
 	gibsonGroups := make([]int, numPlayers)
 	nextGibsonGroup := 1
 	startRankIdx := 0

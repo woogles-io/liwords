@@ -49,7 +49,6 @@ func Verify(req *pb.PairRequest) *pb.PairResponse {
 	}
 
 	// Verify division pairings
-	numResults := len(req.DivisionResults)
 	numPairings := len(req.DivisionPairings)
 	if numPairings > int(req.Rounds) {
 		return &pb.PairResponse{
@@ -80,7 +79,7 @@ func Verify(req *pb.PairRequest) *pb.PairResponse {
 				}
 			}
 			if oppIdx < 0 {
-				if roundIdx < numResults {
+				if roundIdx != len(req.DivisionPairings)-1 {
 					return &pb.PairResponse{
 						ErrorCode:    pb.PairError_UNPAIRED_PLAYER,
 						ErrorMessage: fmt.Sprintf("player (%d) not paired in round %d", playerIdx, roundIdx+1),
