@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/woogles-io/liwords/pkg/pair/standings"
 	pkgstnd "github.com/woogles-io/liwords/pkg/pair/standings"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -22,6 +23,7 @@ type PrecompData struct {
 	HighestRankAbsolutely     []int
 	HighestControlLossRankIdx int
 	GibsonGroups              []int
+	GibsonizedPlayers         []bool
 }
 
 func GetPrecompData(req *pb.PairRequest, logsb *strings.Builder) *PrecompData {
@@ -147,12 +149,13 @@ func GetPrecompData(req *pb.PairRequest, logsb *strings.Builder) *PrecompData {
 		HighestRankAbsolutely:     highestRankAbsolutely,
 		HighestControlLossRankIdx: highestControlLossRankIdx,
 		GibsonGroups:              improvedFactorSimResults.GibsonGroups,
+		GibsonizedPlayers:         improvedFactorSimResults.GibsonizedPlayers,
 	}
 }
 
 func GetPairingKey(playerIdx int, oppIdx int) string {
 	var pairingKey string
-	if playerIdx == oppIdx {
+	if playerIdx == oppIdx || oppIdx == standings.ByePlayerIndex {
 		pairingKey = fmt.Sprintf("%d:BYE", playerIdx)
 	} else {
 		if oppIdx > playerIdx {
