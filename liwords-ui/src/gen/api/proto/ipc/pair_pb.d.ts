@@ -178,9 +178,14 @@ export declare enum PairError {
   INVALID_PAIRINGS_LENGTH = 30,
 
   /**
-   * @generated from enum value: REQUEST_TO_JSON_FAILED = 31;
+   * @generated from enum value: OVERCONSTRAINED = 31;
    */
-  REQUEST_TO_JSON_FAILED = 31,
+  OVERCONSTRAINED = 31,
+
+  /**
+   * @generated from enum value: REQUEST_TO_JSON_FAILED = 32;
+   */
+  REQUEST_TO_JSON_FAILED = 32,
 }
 
 /**

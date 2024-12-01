@@ -54,7 +54,8 @@ export const PairError = /*@__PURE__*/ proto3.makeEnum(
     {no: 28, name: "INVALID_VALID_PLAYER_COUNT"},
     {no: 29, name: "MIN_WEIGHT_MATCHING"},
     {no: 30, name: "INVALID_PAIRINGS_LENGTH"},
-    {no: 31, name: "REQUEST_TO_JSON_FAILED"},
+    {no: 31, name: "OVERCONSTRAINED"},
+    {no: 32, name: "REQUEST_TO_JSON_FAILED"},
   ],
 );
 

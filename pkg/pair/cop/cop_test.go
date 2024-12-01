@@ -250,6 +250,15 @@ func TestCOPErrors(t *testing.T) {
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_REMOVED_PLAYER)
 }
 
+func TestCOPPolicies(t *testing.T) {
+	is := is.New(t)
+	req := pairtestutils.CreateBellevilleCSWAfterRound12PairRequest()
+	req.UseControlLoss = true
+	resp := cop.COPPair(req)
+	fmt.Println(resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+}
+
 func TestCOPSuccess(t *testing.T) {
 	is := is.New(t)
 	req := pairtestutils.CreateDefaultPairRequest()

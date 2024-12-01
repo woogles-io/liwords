@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/woogles-io/liwords/pkg/pair/standings"
 	pkgstnd "github.com/woogles-io/liwords/pkg/pair/standings"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -155,7 +154,7 @@ func GetPrecompData(req *pb.PairRequest, logsb *strings.Builder) *PrecompData {
 
 func GetPairingKey(playerIdx int, oppIdx int) string {
 	var pairingKey string
-	if playerIdx == oppIdx || oppIdx == standings.ByePlayerIndex {
+	if playerIdx == oppIdx || oppIdx == pkgstnd.ByePlayerIndex {
 		pairingKey = fmt.Sprintf("%d:BYE", playerIdx)
 	} else {
 		if oppIdx > playerIdx {

@@ -122,7 +122,7 @@ var constraintPolicies = []policy{
 			playerJeligible := (playerJRankIdx == pargs.copdata.HighestControlLossRankIdx ||
 				playerJRankIdx == pargs.copdata.HighestControlLossRankIdx-1)
 			if playerIRankIdx == 0 && playerJeligible {
-				return 1
+				return 0
 			}
 			if playerIRankIdx == 0 || playerJeligible {
 				return -1
@@ -158,7 +158,7 @@ var weightPolicies = []policy{
 		// Rank diff
 		name: "RD",
 		handler: func(pargs *policyArgs, ri int, rj int) int64 {
-			diff := int64(ri - rj)
+			diff := int64(rj - ri)
 			if ri > pargs.lowestPossibleAbsCasher {
 				return diff
 			}
@@ -173,7 +173,6 @@ var weightPolicies = []policy{
 				ri > pargs.lowestPossibleHopeCasher {
 				return 0
 			}
-			// FIXME: need lowest ranked player who can finished in nth hopefully
 			if rj <= pargs.lowestPossibleHopeNth[ri] ||
 				(pargs.lowestPossibleHopeNth[ri] == ri && ri == rj-1) {
 				casherDiff := pargs.lowestPossibleHopeNth[ri] - rj
@@ -250,7 +249,7 @@ var weightPolicies = []policy{
 	},
 	{
 		// Bye Repeats
-		name: "TR",
+		name: "BR",
 		handler: func(pargs *policyArgs, ri int, rj int) int64 {
 			if pargs.req.AllowRepeatByes {
 				return 0
@@ -275,7 +274,9 @@ func COPPair(req *pb.PairRequest) *pb.PairResponse {
 	endtime := time.Now()
 	duration := endtime.Sub(starttime)
 	if resp.ErrorCode != pb.PairError_SUCCESS {
-		logsb.WriteString("COP finished with error:\n" + resp.ErrorMessage + "\n")
+		logsb.WriteString("\nCOP finished with error:\n\n" + resp.ErrorMessage + "\n\n")
+	} else {
+		logsb.WriteString("\nCOP finished successfully.\n\n")
 	}
 	logsb.WriteString(fmt.Sprintf("Started:  %s\nFinished: %s\nDuration: %s",
 		starttime.Format(timeFormat), endtime.Format(timeFormat), duration))
@@ -380,20 +381,26 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		gibsonGetsBye:            numGibsonsInBaseGroup%2 == 1,
 	}
 
+	logsb.WriteString(fmt.Sprintf("Lowest Hopeful Casher: %s\n", req.PlayerNames[playerNodes[lowestPossibleHopeCasher]]))
+	logsb.WriteString(fmt.Sprintf("Lowest Absolute Casher: %s\n", req.PlayerNames[playerNodes[lowestPossibleAbsCasher]]))
+	logsb.WriteString(fmt.Sprintf("Rounds Remaining: %d\n", pargs.roundsRemaining))
+	logsb.WriteString(fmt.Sprintf("Gibson Gets Bye: %t\n\n", pargs.gibsonGetsBye))
+
 	numPlayerNodes := len(playerNodes)
 
 	edges := []*matching.Edge{}
 
-	// pairing, invalid reason, num repeats, total weight, individual weights
+	matchupHeader := []string{"Player", "W", "S", "Player", "W", "S"}
 	pairingDetails := [][]string{}
-	pairingDetailsheader := []string{"Pairing", "Invalid Reason", "Repeats", "Total"}
+	pairingDetailsheader := append(matchupHeader, []string{"S", "C", "Repeats", "Total"}...)
 	for _, weightPolicy := range weightPolicies {
 		pairingDetailsheader = append(pairingDetailsheader, weightPolicy.name)
 	}
 	numColums := len(pairingDetailsheader)
+	pairingsToDetailsIndex := map[string]int{}
 	for rankIdxI := 0; rankIdxI < numPlayerNodes; rankIdxI++ {
 		for rankIdxJ := rankIdxI + 1; rankIdxJ < numPlayerNodes; rankIdxJ++ {
-			pairingDataRow := []string{getMatchupString(divisionPlayerData, rankIdxI, rankIdxJ)}
+			pairingDataRow := getMatchupStrArray(divisionPlayerData, rankIdxI, rankIdxJ)
 			constraintPolicyOutcome := int64(0)
 			constraintPolicyName := ""
 			for _, constraintPolicy := range constraintPolicies {
@@ -403,10 +410,12 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 					break
 				}
 			}
+			pairingDataRow = append(pairingDataRow, "")
 			pairingDataRow = append(pairingDataRow, constraintPolicyName)
 			weightSum := int64(0)
 			if constraintPolicyOutcome == 0 {
-				pairingDataRow = append(pairingDataRow, fmt.Sprintf("%d", copdata.PairingCounts[copdatapkg.GetPairingKey(rankIdxI, rankIdxJ)]))
+				// Add the number of repeats for convenience
+				pairingDataRow = append(pairingDataRow, fmt.Sprintf("%d", copdata.PairingCounts[copdatapkg.GetPairingKey(playerNodes[rankIdxI], playerNodes[rankIdxJ])]))
 				// Placeholder for total weight
 				pairingDataRow = append(pairingDataRow, "")
 				for _, weightPolicy := range weightPolicies {
@@ -414,7 +423,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 					weightSum += weight
 					pairingDataRow = append(pairingDataRow, fmt.Sprintf("%d", weight))
 				}
-				pairingDataRow[3] = fmt.Sprintf("%d", weightSum)
+				pairingDataRow[len(matchupHeader)+3] = fmt.Sprintf("%d", weightSum)
 			} else {
 				emptyColsToAdd := numColums - len(pairingDataRow)
 				for i := 0; i < emptyColsToAdd; i++ {
@@ -424,11 +433,14 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 			if constraintPolicyOutcome != -1 {
 				edges = append(edges, matching.NewEdge(rankIdxI, rankIdxJ, weightSum))
 			}
+			pairingsToDetailsIndex[fmt.Sprintf("%d:%d", rankIdxI, rankIdxJ)] = len(pairingDetails)
 			pairingDetails = append(pairingDetails, pairingDataRow)
 		}
+		if rankIdxI < numPlayerNodes-2 {
+			spacingRow := make([]string, numColums)
+			pairingDetails = append(pairingDetails, spacingRow)
+		}
 	}
-
-	copdatapkg.WriteStringDataToLog("Pairing Weights", pairingDetailsheader, pairingDetails, logsb)
 
 	pairings, totalWeight, err := matching.MinWeightMatching(edges, true)
 
@@ -450,26 +462,56 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		}
 	}
 
+	for playerRankIdx, oppRankIdx := range pairings {
+		if oppRankIdx < playerRankIdx {
+			continue
+		}
+		pairingDetails[pairingsToDetailsIndex[fmt.Sprintf("%d:%d", playerRankIdx, oppRankIdx)]][len(matchupHeader)] = "*"
+	}
+
+	copdatapkg.WriteStringDataToLog("Pairing Weights", pairingDetailsheader, pairingDetails, logsb)
+
+	unpairedRankIdxes := []int{}
+	for playerRankIdx, oppRankIdx := range pairings {
+		if oppRankIdx < 0 {
+			unpairedRankIdxes = append(unpairedRankIdxes, playerRankIdx)
+		}
+	}
+
+	if len(unpairedRankIdxes) > 0 {
+		msg := "COP pairings could not be completed because there were too many constraints. The unpaired players by rank index are:\n\n"
+		for idx, unpairedRankIdx := range unpairedRankIdxes {
+			msg += fmt.Sprintf("%d", unpairedRankIdx+1)
+			if idx < len(unpairedRankIdxes)-1 {
+				msg += ", "
+			}
+		}
+		return nil, &pb.PairResponse{
+			ErrorCode:    pb.PairError_OVERCONSTRAINED,
+			ErrorMessage: msg,
+		}
+	}
+
 	pairingsLogMx := [][]string{}
 	for playerRankIdx := 0; playerRankIdx < len(pairings); playerRankIdx++ {
 		oppRankIdx := pairings[playerRankIdx]
 		if oppRankIdx < playerRankIdx {
 			continue
 		}
-		pairingsLogMxRow := []string{getMatchupString(divisionPlayerData, playerRankIdx, oppRankIdx)}
+		pairingsLogMxRow := getMatchupStrArray(divisionPlayerData, playerRankIdx, oppRankIdx)
 		playerIdx := playerNodes[playerRankIdx]
 		oppIdx := playerNodes[oppRankIdx]
 		pairingsLogMxRow = append(pairingsLogMxRow, fmt.Sprintf("%d", copdata.PairingCounts[copdatapkg.GetPairingKey(playerIdx, oppIdx)]))
 		pairingsLogMx = append(pairingsLogMx, pairingsLogMxRow)
 	}
 
-	copdatapkg.WriteStringDataToLog("Final Pairings", []string{"Pairing", "Repeats"}, pairingsLogMx, logsb)
+	copdatapkg.WriteStringDataToLog("Final Pairings", append(matchupHeader, []string{"Repeats"}...), pairingsLogMx, logsb)
 
 	logsb.WriteString(fmt.Sprintf("Total Weight: %d\n", totalWeight))
 
 	allPlayerPairings := make([]int32, req.AllPlayers)
 
-	// Convert the bye format from ByePlayerIndex to player index
+	// Convert rank indexes to player indexes and convert the bye format from ByePlayerIndex to player index
 	for playerRankIdx := 0; playerRankIdx < len(pairings); playerRankIdx++ {
 		oppRankIdx := pairings[playerRankIdx]
 		playerIdx := playerNodes[playerRankIdx]
@@ -483,12 +525,12 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	return allPlayerPairings, nil
 }
 
-func getCompatPlayerRecord(playerData []string) string {
-	return fmt.Sprintf("%s (#%s) %s %s %s", playerData[0], playerData[1], playerData[2], playerData[3], playerData[4])
+func getPlayerRecordStrArray(playerData []string) []string {
+	return []string{fmt.Sprintf("%s (#%s) %s", playerData[0], playerData[1], playerData[2]), playerData[3], playerData[4]}
 }
 
-func getMatchupString(divisionPlayerData [][]string, i int, j int) string {
-	return fmt.Sprintf("%s vs %s", getCompatPlayerRecord(divisionPlayerData[i]), getCompatPlayerRecord(divisionPlayerData[j]))
+func getMatchupStrArray(divisionPlayerData [][]string, i int, j int) []string {
+	return append(getPlayerRecordStrArray(divisionPlayerData[i]), getPlayerRecordStrArray(divisionPlayerData[j])...)
 }
 
 func intPow(base, exp int) int {
