@@ -331,9 +331,9 @@ export declare class PairRequest extends Message<PairRequest> {
   removedPlayers: number[];
 
   /**
-   * @generated from field: int32 seed = 19;
+   * @generated from field: int64 seed = 19;
    */
-  seed: number;
+  seed: bigint;
 
   constructor(data?: PartialMessage<PairRequest>);
 

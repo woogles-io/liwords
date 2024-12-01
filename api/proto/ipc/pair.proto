@@ -33,7 +33,7 @@ message PairRequest {
   bool use_control_loss = 16;
   bool allow_repeat_byes = 17;
   repeated int32 removed_players = 18;
-  int32 seed = 19;
+  int64 seed = 19;
 }
 
 enum PairError {

@@ -2,6 +2,9 @@ package cop
 
 import (
 	"fmt"
+
+	"golang.org/x/exp/rand"
+
 	"strings"
 	"time"
 
@@ -15,16 +18,16 @@ import (
 )
 
 const (
-	timeFormat   = "2006-01-02T15:04:05.000Z"
-	majorPenalty = 1e9
-	minorPenalty = majorPenalty / 1e3
+	timeFormat    = "2006-01-02T15:04:05.000Z"
+	majorPenalty  = 1e9
+	minorPenalty  = majorPenalty / 1e3
+	byePlayerName = "BYE"
 )
 
 type policyArgs struct {
 	req                      *pb.PairRequest
 	copdata                  *copdatapkg.PrecompData
 	playerNodes              []int
-	kothPairedPlayers        map[int]bool
 	prepairedRoundIdx        int
 	lowestPossibleAbsCasher  int
 	lowestPossibleHopeCasher int
@@ -33,7 +36,12 @@ type policyArgs struct {
 	gibsonGetsBye            bool
 }
 
-type policy struct {
+type constraintPolicy struct {
+	name    string
+	handler func(*policyArgs) ([][2]int, [][2]int)
+}
+
+type weightPolicy struct {
 	name    string
 	handler func(*policyArgs, int, int) int64
 }
@@ -68,92 +76,101 @@ type policy struct {
 // -1 means the pairing is not allowed
 // 1 means the pairing is forced
 // 0 means no constraint is applied
-var constraintPolicies = []policy{
+var constraintPolicies = []constraintPolicy{
 	{
 		// Prepaired players
 		name: "PP",
-		handler: func(pargs *policyArgs, playerIRankIdx int, playerJRankIdx int) int64 {
+		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
 			if pargs.prepairedRoundIdx == -1 {
-				return 0
+				return [][2]int{}, [][2]int{}
 			}
-			playerIPlayerIdx := pargs.playerNodes[playerIRankIdx]
-			playerJPlayerIdx := pargs.playerNodes[playerJRankIdx]
-			oppPlayerIdx := int(pargs.req.DivisionPairings[pargs.prepairedRoundIdx].Pairings[playerIPlayerIdx])
-			if oppPlayerIdx == -1 {
-				return 0
+			forcedPairings := [][2]int{}
+			for playerIdx, reqOppIdx := range pargs.req.DivisionPairings[pargs.prepairedRoundIdx].Pairings {
+				if int(reqOppIdx) < playerIdx {
+					continue
+				}
+				oppIdx := int(reqOppIdx)
+				if oppIdx == playerIdx {
+					oppIdx = pkgstnd.ByePlayerIndex
+				}
+				forcedPairings = append(forcedPairings, [2]int{playerIdx, oppIdx})
 			}
-			if oppPlayerIdx == playerJPlayerIdx ||
-				(oppPlayerIdx == playerIPlayerIdx &&
-					playerJPlayerIdx == pkgstnd.ByePlayerIndex) {
-				return 1
-			}
-			return -1
+			return forcedPairings, [][2]int{}
 		},
 	},
 	{
 		// KOTH
 		name: "KH",
-		handler: func(pargs *policyArgs, playerIRankIdx int, playerJRankIdx int) int64 {
-			// Only apply KOTH in the last round
+		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
 			if pargs.roundsRemaining != 1 {
-				return 0
+				return [][2]int{}, [][2]int{}
 			}
-			// If either player has already been KOTH paired, this pairing is not allowed
-			if pargs.kothPairedPlayers[playerIRankIdx] || pargs.kothPairedPlayers[playerJRankIdx] {
-				return -1
+			numPlayers := len(pargs.playerNodes)
+			forcedPairings := [][2]int{}
+			for playerRankIdx := 0; playerRankIdx < numPlayers-1; playerRankIdx++ {
+				if pargs.copdata.GibsonizedPlayers[playerRankIdx] || pargs.copdata.GibsonizedPlayers[playerRankIdx+1] {
+					continue
+				}
+				forcedPairings = append(forcedPairings, [2]int{pargs.playerNodes[playerRankIdx], pargs.playerNodes[playerRankIdx+1]})
+				playerRankIdx++
 			}
-			if playerIRankIdx != playerJRankIdx-1 ||
-				pargs.copdata.GibsonizedPlayers[playerIRankIdx] ||
-				(playerIRankIdx > pargs.lowestPossibleAbsCasher) {
-				return 0
-			}
-			pargs.kothPairedPlayers[playerIRankIdx] = true
-			pargs.kothPairedPlayers[playerJRankIdx] = true
-			return 1
+			return forcedPairings, [][2]int{}
 		},
 	},
 	{
 		// Control loss
 		name: "CL",
-		handler: func(pargs *policyArgs, playerIRankIdx int, playerJRankIdx int) int64 {
+		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
 			if pargs.copdata.HighestControlLossRankIdx < 0 {
-				return 0
+				return [][2]int{}, [][2]int{}
 			}
-			playerJeligible := (playerJRankIdx == pargs.copdata.HighestControlLossRankIdx ||
-				playerJRankIdx == pargs.copdata.HighestControlLossRankIdx-1)
-			if playerIRankIdx == 0 && playerJeligible {
-				return 0
+			disallowedPairings := [][2]int{}
+			numPlayers := len(pargs.playerNodes)
+			for playerRankIdx := 1; playerRankIdx < numPlayers; playerRankIdx++ {
+				if playerRankIdx == pargs.copdata.HighestControlLossRankIdx || playerRankIdx == pargs.copdata.HighestControlLossRankIdx-1 {
+					continue
+				}
+				disallowedPairings = append(disallowedPairings, [2]int{pargs.playerNodes[0], pargs.playerNodes[playerRankIdx]})
 			}
-			if playerIRankIdx == 0 || playerJeligible {
-				return -1
-			}
-			return 0
+			return [][2]int{}, disallowedPairings
 		},
 	},
 	{
 		// Gibson groups
 		name: "GG",
-		handler: func(pargs *policyArgs, playerIRankIdx int, playerJRankIdx int) int64 {
-			if pargs.copdata.GibsonGroups[playerIRankIdx] != pargs.copdata.GibsonGroups[playerJRankIdx] {
-				return -1
+		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
+			numPlayers := len(pargs.playerNodes)
+			disallowedPairings := [][2]int{}
+			for pri := 0; pri < numPlayers; pri++ {
+				for prj := pri + 1; prj < numPlayers; prj++ {
+					if pargs.copdata.GibsonGroups[pri] != pargs.copdata.GibsonGroups[prj] {
+						disallowedPairings = append(disallowedPairings, [2]int{pargs.playerNodes[pri], pargs.playerNodes[prj]})
+					}
+				}
 			}
-			return 0
+			return [][2]int{}, disallowedPairings
 		},
 	},
 	{
 		// Gibson Bye
 		name: "GB",
-		handler: func(pargs *policyArgs, playerIRankIdx int, playerJRankIdx int) int64 {
-			if !pargs.gibsonGetsBye || pargs.playerNodes[playerJRankIdx] != pkgstnd.ByePlayerIndex ||
-				(pargs.copdata.GibsonizedPlayers[playerIRankIdx] && pargs.copdata.GibsonGroups[playerIRankIdx] == 0) {
-				return 0
+		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
+			if !pargs.gibsonGetsBye {
+				return [][2]int{}, [][2]int{}
 			}
-			return -1
+			disallowedPairings := [][2]int{}
+			for pri := 0; pri < len(pargs.playerNodes); pri++ {
+				if pargs.copdata.GibsonizedPlayers[pri] {
+					continue
+				}
+				disallowedPairings = append(disallowedPairings, [2]int{pargs.playerNodes[pri], pkgstnd.ByePlayerIndex})
+			}
+			return [][2]int{}, disallowedPairings
 		},
 	},
 }
 
-var weightPolicies = []policy{
+var weightPolicies = []weightPolicy{
 	{
 		// Rank diff
 		name: "RD",
@@ -285,7 +302,7 @@ func COPPair(req *pb.PairRequest) *pb.PairResponse {
 }
 
 func copPairWithLog(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
-	req.Seed = int32(time.Now().Unix())
+	req.Seed = time.Now().Unix()
 	marshaler := protojson.MarshalOptions{
 		Multiline: true, // Enables pretty printing
 		Indent:    "  ", // Sets the indentation level
@@ -305,7 +322,7 @@ func copPairWithLog(req *pb.PairRequest, logsb *strings.Builder) *pb.PairRespons
 		return resp
 	}
 
-	copdata := copdatapkg.GetPrecompData(req, logsb)
+	copdata := copdatapkg.GetPrecompData(req, rand.New(rand.NewSource(uint64(req.Seed))), logsb)
 
 	pairings, resp := copMinWeightMatching(req, copdata, logsb)
 
@@ -373,7 +390,6 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		copdata:                  copdata,
 		playerNodes:              playerNodes,
 		prepairedRoundIdx:        prepairedRoundIdx,
-		kothPairedPlayers:        map[int]bool{},
 		lowestPossibleAbsCasher:  lowestPossibleAbsCasher,
 		lowestPossibleHopeCasher: lowestPossibleHopeCasher,
 		lowestPossibleHopeNth:    lowestPossibleHopeNth,
@@ -388,11 +404,33 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 
 	numPlayerNodes := len(playerNodes)
 
+	disallowedPairs := map[string]string{}
+	for _, cPol := range constraintPolicies {
+		forced, disallowed := cPol.handler(pargs)
+		for _, dp := range disallowed {
+			setDisallowPairs(disallowedPairs, dp[0], dp[1], cPol.name)
+		}
+		for _, fp := range forced {
+			for pri := 0; pri < numPlayerNodes; pri++ {
+				for prj := pri + 1; prj < numPlayerNodes; prj++ {
+					pi := pargs.playerNodes[pri]
+					pj := pargs.playerNodes[prj]
+					if (fp[0] == pi && fp[1] == pj) || (fp[1] == pi && fp[0] == pj) {
+						continue
+					}
+					if fp[0] == pi || fp[1] == pi || fp[0] == pj || fp[1] == pj {
+						setDisallowPairs(disallowedPairs, pi, pj, cPol.name)
+					}
+				}
+			}
+		}
+	}
+
 	edges := []*matching.Edge{}
 
 	matchupHeader := []string{"Player", "W", "S", "Player", "W", "S"}
 	pairingDetails := [][]string{}
-	pairingDetailsheader := append(matchupHeader, []string{"S", "C", "Repeats", "Total"}...)
+	pairingDetailsheader := append(matchupHeader, []string{"S", "C", "PTP", "Total"}...)
 	for _, weightPolicy := range weightPolicies {
 		pairingDetailsheader = append(pairingDetailsheader, weightPolicy.name)
 	}
@@ -401,39 +439,33 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	for rankIdxI := 0; rankIdxI < numPlayerNodes; rankIdxI++ {
 		for rankIdxJ := rankIdxI + 1; rankIdxJ < numPlayerNodes; rankIdxJ++ {
 			pairingDataRow := getMatchupStrArray(divisionPlayerData, rankIdxI, rankIdxJ)
-			constraintPolicyOutcome := int64(0)
-			constraintPolicyName := ""
-			for _, constraintPolicy := range constraintPolicies {
-				constraintPolicyOutcome = constraintPolicy.handler(pargs, rankIdxI, rankIdxJ)
-				if constraintPolicyOutcome != 0 {
-					constraintPolicyName = constraintPolicy.name
-					break
-				}
-			}
+			pairKey := copdatapkg.GetPairingKey(playerNodes[rankIdxI], playerNodes[rankIdxJ])
+			disallowReason, disallowPair := disallowedPairs[pairKey]
+			// Pairing selected bool placeholder
 			pairingDataRow = append(pairingDataRow, "")
-			pairingDataRow = append(pairingDataRow, constraintPolicyName)
-			weightSum := int64(0)
-			if constraintPolicyOutcome == 0 {
+			if disallowPair {
+				pairingDataRow = append(pairingDataRow, disallowReason)
+				emptyColsToAdd := numColums - len(pairingDataRow)
+				for i := 0; i < emptyColsToAdd; i++ {
+					pairingDataRow = append(pairingDataRow, "")
+				}
+			} else {
+				// No disallow reason
+				pairingDataRow = append(pairingDataRow, "")
 				// Add the number of repeats for convenience
-				pairingDataRow = append(pairingDataRow, fmt.Sprintf("%d", copdata.PairingCounts[copdatapkg.GetPairingKey(playerNodes[rankIdxI], playerNodes[rankIdxJ])]))
+				pairingDataRow = append(pairingDataRow, fmt.Sprintf("%d", copdata.PairingCounts[pairKey]))
 				// Placeholder for total weight
 				pairingDataRow = append(pairingDataRow, "")
+				weightSum := int64(0)
 				for _, weightPolicy := range weightPolicies {
 					weight := weightPolicy.handler(pargs, rankIdxI, rankIdxJ)
 					weightSum += weight
 					pairingDataRow = append(pairingDataRow, fmt.Sprintf("%d", weight))
 				}
 				pairingDataRow[len(matchupHeader)+3] = fmt.Sprintf("%d", weightSum)
-			} else {
-				emptyColsToAdd := numColums - len(pairingDataRow)
-				for i := 0; i < emptyColsToAdd; i++ {
-					pairingDataRow = append(pairingDataRow, "")
-				}
-			}
-			if constraintPolicyOutcome != -1 {
 				edges = append(edges, matching.NewEdge(rankIdxI, rankIdxJ, weightSum))
 			}
-			pairingsToDetailsIndex[fmt.Sprintf("%d:%d", rankIdxI, rankIdxJ)] = len(pairingDetails)
+			pairingsToDetailsIndex[getRankPairingKey(rankIdxI, rankIdxJ)] = len(pairingDetails)
 			pairingDetails = append(pairingDetails, pairingDataRow)
 		}
 		if rankIdxI < numPlayerNodes-2 {
@@ -466,7 +498,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		if oppRankIdx < playerRankIdx {
 			continue
 		}
-		pairingDetails[pairingsToDetailsIndex[fmt.Sprintf("%d:%d", playerRankIdx, oppRankIdx)]][len(matchupHeader)] = "*"
+		pairingDetails[pairingsToDetailsIndex[getRankPairingKey(playerRankIdx, oppRankIdx)]][len(matchupHeader)] = "*"
 	}
 
 	copdatapkg.WriteStringDataToLog("Pairing Weights", pairingDetailsheader, pairingDetails, logsb)
@@ -505,7 +537,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		pairingsLogMx = append(pairingsLogMx, pairingsLogMxRow)
 	}
 
-	copdatapkg.WriteStringDataToLog("Final Pairings", append(matchupHeader, []string{"Repeats"}...), pairingsLogMx, logsb)
+	copdatapkg.WriteStringDataToLog("Final Pairings", append(matchupHeader, []string{"Previous Times Played"}...), pairingsLogMx, logsb)
 
 	logsb.WriteString(fmt.Sprintf("Total Weight: %d\n", totalWeight))
 
@@ -526,11 +558,25 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 }
 
 func getPlayerRecordStrArray(playerData []string) []string {
+	if playerData[2] == byePlayerName {
+		return []string{byePlayerName, "", ""}
+	}
 	return []string{fmt.Sprintf("%s (#%s) %s", playerData[0], playerData[1], playerData[2]), playerData[3], playerData[4]}
 }
 
 func getMatchupStrArray(divisionPlayerData [][]string, i int, j int) []string {
 	return append(getPlayerRecordStrArray(divisionPlayerData[i]), getPlayerRecordStrArray(divisionPlayerData[j])...)
+}
+
+func setDisallowPairs(disallowedPairs map[string]string, playerIdx int, oppIdx int, policyName string) {
+	key := copdatapkg.GetPairingKey(playerIdx, oppIdx)
+	if _, exists := disallowedPairs[key]; !exists {
+		disallowedPairs[key] = policyName
+	}
+}
+
+func getRankPairingKey(playerRankIdx int, oppRankIdx int) string {
+	return fmt.Sprintf("%d:%d", playerRankIdx, oppRankIdx)
 }
 
 func intPow(base, exp int) int {

@@ -252,11 +252,38 @@ func TestCOPErrors(t *testing.T) {
 
 func TestCOPPolicies(t *testing.T) {
 	is := is.New(t)
+
+	// Prepaired players
 	req := pairtestutils.CreateBellevilleCSWAfterRound12PairRequest()
-	req.UseControlLoss = true
+	pairtestutils.AddRoundPairings(req, "-1 -1 -1 10 -1 -1 -1 -1 -1 11 3 9")
 	resp := cop.COPPair(req)
+
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(resp.Pairings[3], int32(10))
+	is.Equal(resp.Pairings[9], int32(11))
+	is.Equal(resp.Pairings[10], int32(3))
+	is.Equal(resp.Pairings[11], int32(9))
+
+	// Prepaired players
+	req = pairtestutils.CreateAlbany3rdGibsonizedAfterRound25PairRequest()
+	pairtestutils.AddRoundPairings(req, "-1 -1 -1 14 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 3 -1 -1 -1 -1 -1 21 20 -1 -1")
+	resp = cop.COPPair(req)
 	fmt.Println(resp.Log)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(resp.Pairings[0], int32(23))
+	is.Equal(resp.Pairings[1], int32(1))
+
+	// KOTH
+	req = pairtestutils.CreateBellevilleCSWAfterRound12PairRequest()
+	req.Rounds = 13
+	req.PlacePrizes = 3
+	resp = cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(resp.Pairings[3], int32(10))
+	is.Equal(resp.Pairings[9], int32(11))
+	is.Equal(resp.Pairings[10], int32(3))
+	is.Equal(resp.Pairings[11], int32(9))
+
 }
 
 func TestCOPSuccess(t *testing.T) {

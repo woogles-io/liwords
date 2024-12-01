@@ -212,33 +212,9 @@ func (standings *Standings) Sort() {
 	})
 }
 
-// FIXME: probably remove this function, it shouldn't be needed
-func (standings *Standings) SimFactorPairSegment(req *pb.PairRequest, sims int, maxFactor int, numCashers int, computeControlLoss bool, prevSegmentRoundFactors []int, logsb *strings.Builder) *SimResults {
-	if numCashers%2 == 1 {
-		numCashers++
-	}
-	if numCashers >= len(standings.records) {
-		return standings.SimFactorPairAll(req, sims, maxFactor, computeControlLoss, prevSegmentRoundFactors, logsb)
-	}
-	recordsAll := make([]uint64, len(standings.records))
-	recordsBackupAll := make([]uint64, len(standings.recordsBackup))
-	copy(recordsAll, standings.records)
-	copy(recordsBackupAll, standings.recordsBackup)
-
-	standings.records = standings.records[:numCashers]
-	standings.recordsBackup = standings.recordsBackup[:numCashers]
-
-	simResults := standings.SimFactorPairAll(req, sims, maxFactor, computeControlLoss, prevSegmentRoundFactors, logsb)
-
-	standings.records = recordsAll
-	standings.recordsBackup = recordsBackupAll
-
-	return simResults
-}
-
 // Assumes the standings are already sorted
 // FIXME: calculate the gibsonizedPlayers in this function instead of passing it in
-func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, sims int, maxFactor int, computeControlLoss bool, prevSegmentRoundFactors []int, logsb *strings.Builder) *SimResults {
+func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, computeControlLoss bool, prevSegmentRoundFactors []int, logsb *strings.Builder) *SimResults {
 	numPlayers := len(standings.records)
 	roundsRemaining := int(req.Rounds) - len(req.DivisionPairings)
 	evenerPlayerAdded := false
@@ -345,12 +321,12 @@ func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, sims int, maxF
 			for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
 				for pairIdx := 0; pairIdx < numPlayers; pairIdx += 2 {
 					// FIXME: consolidate with simForceWinnerForRound
-					randomResult := rand.Intn(2)
+					randomResult := copRand.Intn(2)
 					p1 := pairings[roundIdx][pairIdx]
 					p2 := pairings[roundIdx][pairIdx+1]
 					winner := p1*(1-randomResult) + p2*randomResult
 					loser := p2*(1-randomResult) + p1*randomResult
-					randomSpread := rand.Intn(maxScoreDiff + 1)
+					randomSpread := copRand.Intn(maxScoreDiff + 1)
 					record := standings.possibleResults[randomSpread]
 					standings.incrementPlayerRecord(winner, record)
 					standings.decrementPlayerRecord(loser, record)
@@ -387,22 +363,18 @@ func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, sims int, maxF
 			}
 			rightPlayerRankIdx++
 		}
-		// FIXME: don't need iters, plz remove
-		iters := 0
 		for leftPlayerRankIdx <= rightPlayerRankIdx {
-			iters++
 			forcedWinnerRankIdx := (leftPlayerRankIdx + rightPlayerRankIdx) / 2
 			forcedWinnerPlayerIdx := standings.GetPlayerIndex(forcedWinnerRankIdx)
-			// FIXME: if forcedWinnerPlayerIdx is 1 and they can catch, vsFirstTournamentWins will always be == sims and is therefore useless
-			// FIXME: actually maybe not cuz of spread, we still need this I think
-			vsFirstTournamentWins := standings.simForceWinner(sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, maxScoreDiff, true)
+			vsFirstTournamentWins := standings.simForceWinner(copRand, sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, maxScoreDiff, true)
 			if vsFirstTournamentWins < sims {
 				rightPlayerRankIdx = forcedWinnerRankIdx - 1
+				allControlLosses[forcedWinnerRankIdx] = []int{-1, -1}
 				continue
 			}
-			vsFactorPairTournamentWins := standings.simForceWinner(sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, maxScoreDiff, false)
+			vsFactorPairTournamentWins := standings.simForceWinner(copRand, sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, maxScoreDiff, false)
 			// FIXME: always vsFirstTournamentWins == sims here so it's useless
-			allControlLosses[forcedWinnerRankIdx] = []int{vsFirstTournamentWins, vsFactorPairTournamentWins, iters}
+			allControlLosses[forcedWinnerRankIdx] = []int{vsFirstTournamentWins, vsFactorPairTournamentWins}
 			if vsFactorPairTournamentWins < lowestFactorPairWins {
 				leftPlayerRankIdx = forcedWinnerRankIdx + 1
 				lowestFactorPairWins = vsFactorPairTournamentWins
@@ -435,7 +407,7 @@ func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, sims int, maxF
 	}
 }
 
-func (standings *Standings) simForceWinnerForRound(pairings [][]int, roundIdx int, forcedWinnerRankIdx int, maxScoreDiff int) {
+func (standings *Standings) simForceWinnerForRound(copRand *rand.Rand, pairings [][]int, roundIdx int, forcedWinnerRankIdx int, maxScoreDiff int) {
 	numPlayers := len(standings.records)
 	for pairIdx := 0; pairIdx < numPlayers; pairIdx += 2 {
 		p1 := pairings[roundIdx][pairIdx]
@@ -452,11 +424,11 @@ func (standings *Standings) simForceWinnerForRound(pairings [][]int, roundIdx in
 			loser = p1
 			preventTies = 1
 		} else {
-			randomResult := rand.Intn(2)
+			randomResult := copRand.Intn(2)
 			winner = p1*(1-randomResult) + p2*randomResult
 			loser = p2*(1-randomResult) + p1*randomResult
 		}
-		randomSpread := preventTies + rand.Intn(maxScoreDiff+1-preventTies)
+		randomSpread := preventTies + copRand.Intn(maxScoreDiff+1-preventTies)
 		record := standings.possibleResults[randomSpread]
 		standings.incrementPlayerRecord(winner, record)
 		standings.decrementPlayerRecord(loser, record)
@@ -474,7 +446,7 @@ func (standings *Standings) findRankIdx(playerIdx int) int {
 	return -1
 }
 
-func (standings *Standings) simForceWinner(sims int, roundsRemaining int, pairings [][]int, forcedWinnerPlayerIdx int, maxScoreDiff int, vsFirst bool) int {
+func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsRemaining int, pairings [][]int, forcedWinnerPlayerIdx int, maxScoreDiff int, vsFirst bool) int {
 	tournamentWins := 0
 	for simIdx := 0; simIdx < sims; simIdx++ {
 		for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
@@ -493,7 +465,7 @@ func (standings *Standings) simForceWinner(sims int, roundsRemaining int, pairin
 			if vsFirst {
 				pairings[roundIdx][1], pairings[roundIdx][switchPairingIdx] = pairings[roundIdx][switchPairingIdx], pairings[roundIdx][1]
 			}
-			standings.simForceWinnerForRound(pairings, roundIdx, forcedWinnerRankIdx, maxScoreDiff)
+			standings.simForceWinnerForRound(copRand, pairings, roundIdx, forcedWinnerRankIdx, maxScoreDiff)
 			if vsFirst {
 				pairings[roundIdx][1], pairings[roundIdx][switchPairingIdx] = pairings[roundIdx][switchPairingIdx], pairings[roundIdx][1]
 			}
