@@ -48,6 +48,32 @@ func Verify(req *pb.PairRequest) *pb.PairResponse {
 		}
 	}
 
+	// Verify player classes
+	if len(req.PlayerClasses) != int(req.AllPlayers) {
+		return &pb.PairResponse{
+			ErrorCode:    pb.PairError_INVALID_PLAYER_CLASS_COUNT,
+			ErrorMessage: fmt.Sprintf("player class count (%d) does not match number of players (%d)", len(req.PlayerClasses), req.AllPlayers),
+		}
+	}
+	for playerIdx, playerClass := range req.PlayerClasses {
+		if playerClass < 0 || playerClass > int32(len(req.ClassPrizes)) {
+			return &pb.PairResponse{
+				ErrorCode:    pb.PairError_INVALID_PLAYER_CLASS,
+				ErrorMessage: fmt.Sprintf("player class invalid for player %d: %d", playerIdx+1, playerClass),
+			}
+		}
+	}
+
+	// Verify class prizes
+	for _, classPrize := range req.ClassPrizes {
+		if classPrize < 1 {
+			return &pb.PairResponse{
+				ErrorCode:    pb.PairError_INVALID_CLASS_PRIZE,
+				ErrorMessage: fmt.Sprintf("invalid class prize %d", classPrize),
+			}
+		}
+	}
+
 	// Verify division pairings
 	numPairings := len(req.DivisionPairings)
 	if numPairings > int(req.Rounds) {
@@ -139,43 +165,6 @@ func Verify(req *pb.PairRequest) *pb.PairResponse {
 			return &pb.PairResponse{
 				ErrorCode:    pb.PairError_INVALID_ROUND_RESULTS_COUNT,
 				ErrorMessage: fmt.Sprintf("round results length (%d) for round %d does not match number of players (%d)", len(roundResults.Results), roundIdx+1, req.AllPlayers),
-			}
-		}
-	}
-
-	// Verify classes
-	if len(req.Classes) > int(req.ValidPlayers) {
-		return &pb.PairResponse{
-			ErrorCode:    pb.PairError_MORE_CLASSES_THAN_PLAYERS,
-			ErrorMessage: fmt.Sprintf("more classes (%d) than players (%d)", len(req.Classes), req.ValidPlayers),
-		}
-	}
-	for classIdx, class := range req.Classes {
-		if class >= req.ValidPlayers || class <= 0 {
-			return &pb.PairResponse{
-				ErrorCode:    pb.PairError_INVALID_CLASS,
-				ErrorMessage: fmt.Sprintf("invalid class %d", class),
-			}
-		}
-		if classIdx > 0 && class <= req.Classes[classIdx-1] {
-			return &pb.PairResponse{
-				ErrorCode:    pb.PairError_MISORDERED_CLASS,
-				ErrorMessage: fmt.Sprintf("misordered class %d", class),
-			}
-		}
-	}
-	// Verify class prizes
-	if len(req.ClassPrizes) > int(req.ValidPlayers) {
-		return &pb.PairResponse{
-			ErrorCode:    pb.PairError_INVALID_CLASS_PRIZES_COUNT,
-			ErrorMessage: fmt.Sprintf("class prizes length (%d) does not match number of players (%d)", len(req.ClassPrizes), req.ValidPlayers),
-		}
-	}
-	for _, classPrize := range req.ClassPrizes {
-		if classPrize > req.ValidPlayers || classPrize < 1 {
-			return &pb.PairResponse{
-				ErrorCode:    pb.PairError_INVALID_CLASS_PRIZE,
-				ErrorMessage: fmt.Sprintf("invalid class prize %d", classPrize),
 			}
 		}
 	}

@@ -78,7 +78,10 @@ def generate_go_code(players, tournament_name, number_of_rounds, total_rounds):
         go_code += "}},\n"
     go_code += "        },\n"
 
-    go_code += "        Classes:              []int32{4},\n"
+    go_code += "        PlayerClasses:        []int32{"
+    go_code += ', '.join(['0'] * len(players))
+    go_code += "},\n"
+
     go_code += "        ClassPrizes:          []int32{2},\n"
     go_code += "        GibsonSpreads:        []int32{300, 250, 200},\n"
     go_code += "        ControlLossThreshold: 0.25,\n"

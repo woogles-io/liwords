@@ -98,94 +98,84 @@ export declare enum PairError {
   INVALID_ROUND_RESULTS_COUNT = 14,
 
   /**
-   * @generated from enum value: MORE_CLASSES_THAN_PLAYERS = 15;
+   * @generated from enum value: INVALID_PLAYER_CLASS_COUNT = 15;
    */
-  MORE_CLASSES_THAN_PLAYERS = 15,
+  INVALID_PLAYER_CLASS_COUNT = 15,
 
   /**
-   * @generated from enum value: INVALID_CLASS = 16;
+   * @generated from enum value: INVALID_PLAYER_CLASS = 16;
    */
-  INVALID_CLASS = 16,
+  INVALID_PLAYER_CLASS = 16,
 
   /**
-   * @generated from enum value: MISORDERED_CLASS = 17;
+   * @generated from enum value: INVALID_CLASS_PRIZE = 17;
    */
-  MISORDERED_CLASS = 17,
+  INVALID_CLASS_PRIZE = 17,
 
   /**
-   * @generated from enum value: INVALID_CLASS_PRIZES_COUNT = 18;
+   * @generated from enum value: INVALID_GIBSON_SPREAD_COUNT = 18;
    */
-  INVALID_CLASS_PRIZES_COUNT = 18,
+  INVALID_GIBSON_SPREAD_COUNT = 18,
 
   /**
-   * @generated from enum value: INVALID_CLASS_PRIZE = 19;
+   * @generated from enum value: INVALID_GIBSON_SPREAD = 19;
    */
-  INVALID_CLASS_PRIZE = 19,
+  INVALID_GIBSON_SPREAD = 19,
 
   /**
-   * @generated from enum value: INVALID_GIBSON_SPREAD_COUNT = 20;
+   * @generated from enum value: INVALID_CONTROL_LOSS_THRESHOLD = 20;
    */
-  INVALID_GIBSON_SPREAD_COUNT = 20,
+  INVALID_CONTROL_LOSS_THRESHOLD = 20,
 
   /**
-   * @generated from enum value: INVALID_GIBSON_SPREAD = 21;
+   * @generated from enum value: INVALID_HOPEFULNESS_THRESHOLD = 21;
    */
-  INVALID_GIBSON_SPREAD = 21,
+  INVALID_HOPEFULNESS_THRESHOLD = 21,
 
   /**
-   * @generated from enum value: INVALID_CONTROL_LOSS_THRESHOLD = 22;
+   * @generated from enum value: INVALID_DIVISION_SIMS = 22;
    */
-  INVALID_CONTROL_LOSS_THRESHOLD = 22,
+  INVALID_DIVISION_SIMS = 22,
 
   /**
-   * @generated from enum value: INVALID_HOPEFULNESS_THRESHOLD = 23;
+   * @generated from enum value: INVALID_CONTROL_LOSS_SIMS = 23;
    */
-  INVALID_HOPEFULNESS_THRESHOLD = 23,
+  INVALID_CONTROL_LOSS_SIMS = 23,
 
   /**
-   * @generated from enum value: INVALID_DIVISION_SIMS = 24;
+   * @generated from enum value: INVALID_PLACE_PRIZES = 24;
    */
-  INVALID_DIVISION_SIMS = 24,
+  INVALID_PLACE_PRIZES = 24,
 
   /**
-   * @generated from enum value: INVALID_CONTROL_LOSS_SIMS = 25;
+   * @generated from enum value: INVALID_REMOVED_PLAYER = 25;
    */
-  INVALID_CONTROL_LOSS_SIMS = 25,
+  INVALID_REMOVED_PLAYER = 25,
 
   /**
-   * @generated from enum value: INVALID_PLACE_PRIZES = 26;
+   * @generated from enum value: INVALID_VALID_PLAYER_COUNT = 26;
    */
-  INVALID_PLACE_PRIZES = 26,
+  INVALID_VALID_PLAYER_COUNT = 26,
 
   /**
-   * @generated from enum value: INVALID_REMOVED_PLAYER = 27;
+   * @generated from enum value: MIN_WEIGHT_MATCHING = 27;
    */
-  INVALID_REMOVED_PLAYER = 27,
+  MIN_WEIGHT_MATCHING = 27,
 
   /**
-   * @generated from enum value: INVALID_VALID_PLAYER_COUNT = 28;
+   * @generated from enum value: INVALID_PAIRINGS_LENGTH = 28;
    */
-  INVALID_VALID_PLAYER_COUNT = 28,
+  INVALID_PAIRINGS_LENGTH = 28,
 
   /**
-   * @generated from enum value: MIN_WEIGHT_MATCHING = 29;
+   * @generated from enum value: OVERCONSTRAINED = 29;
    */
-  MIN_WEIGHT_MATCHING = 29,
+  OVERCONSTRAINED = 29,
 
   /**
-   * @generated from enum value: INVALID_PAIRINGS_LENGTH = 30;
+   * @generated from enum value: REQUEST_TO_JSON_FAILED = 30;
    */
-  INVALID_PAIRINGS_LENGTH = 30,
-
-  /**
-   * @generated from enum value: OVERCONSTRAINED = 31;
-   */
-  OVERCONSTRAINED = 31,
-
-  /**
-   * @generated from enum value: REQUEST_TO_JSON_FAILED = 32;
-   */
-  REQUEST_TO_JSON_FAILED = 32,
+  REQUEST_TO_JSON_FAILED = 30,
 }
 
 /**
@@ -251,19 +241,19 @@ export declare class PairRequest extends Message<PairRequest> {
   playerNames: string[];
 
   /**
-   * @generated from field: repeated ipc.RoundPairings division_pairings = 3;
+   * @generated from field: repeated int32 player_classes = 3;
+   */
+  playerClasses: number[];
+
+  /**
+   * @generated from field: repeated ipc.RoundPairings division_pairings = 4;
    */
   divisionPairings: RoundPairings[];
 
   /**
-   * @generated from field: repeated ipc.RoundResults division_results = 4;
+   * @generated from field: repeated ipc.RoundResults division_results = 5;
    */
   divisionResults: RoundResults[];
-
-  /**
-   * @generated from field: repeated int32 classes = 5;
-   */
-  classes: number[];
 
   /**
    * @generated from field: repeated int32 class_prizes = 6;

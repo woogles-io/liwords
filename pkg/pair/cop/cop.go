@@ -14,7 +14,6 @@ import (
 	"github.com/woogles-io/liwords/pkg/pair/verifyreq"
 
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 const (
@@ -72,10 +71,8 @@ type weightPolicy struct {
 // with and without bye
 // with and without control loss
 
-// For constraint policies:
-// -1 means the pairing is not allowed
-// 1 means the pairing is forced
-// 0 means no constraint is applied
+// FIXME: test class prizes
+
 var constraintPolicies = []constraintPolicy{
 	{
 		// Prepaired players
@@ -108,11 +105,94 @@ var constraintPolicies = []constraintPolicy{
 			numPlayers := len(pargs.playerNodes)
 			forcedPairings := [][2]int{}
 			for playerRankIdx := 0; playerRankIdx < numPlayers-1; playerRankIdx++ {
+				if pargs.lowestPossibleAbsCasher < playerRankIdx {
+					break
+				}
 				if pargs.copdata.GibsonizedPlayers[playerRankIdx] || pargs.copdata.GibsonizedPlayers[playerRankIdx+1] {
 					continue
 				}
 				forcedPairings = append(forcedPairings, [2]int{pargs.playerNodes[playerRankIdx], pargs.playerNodes[playerRankIdx+1]})
 				playerRankIdx++
+			}
+			return forcedPairings, [][2]int{}
+		},
+	},
+	{
+		// KOTH Class Prizes
+		name: "KC",
+		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
+			if pargs.roundsRemaining != 1 {
+				return [][2]int{}, [][2]int{}
+			}
+			numPlayers := len(pargs.playerNodes)
+			// Do not consider the bye as a player in this case
+			if pargs.playerNodes[numPlayers-1] == pkgstnd.ByePlayerIndex {
+				numPlayers--
+			}
+			forcedPairings := [][2]int{}
+			// Determine if players in lower classes should play each other
+			for playerIdx, playerClass := range pargs.req.PlayerClasses {
+				fmt.Printf("player %d, %s is class %d\n", playerIdx, pargs.req.PlayerNames[playerIdx], playerClass)
+			}
+			for classPrizesIdx, classPrizes := range pargs.req.ClassPrizes {
+				classIdx := classPrizesIdx + 1
+				classPrizesKOTHEnabled := true
+				for i := 0; i <= pargs.lowestPossibleAbsCasher; i++ {
+					pIdx := pargs.copdata.Standings.GetPlayerIndex(i)
+					if int(pargs.req.PlayerClasses[pIdx]) == classIdx {
+						classPrizesKOTHEnabled = false
+						break
+					}
+				}
+				if !classPrizesKOTHEnabled {
+					fmt.Printf("Skipping class %d KOTH\n", classIdx)
+					continue
+				}
+				fmt.Printf("Enabling class %d KOTH with %d prizes\n", classIdx, classPrizes)
+				ri := pargs.lowestPossibleAbsCasher + 1
+				fmt.Printf("starting at rank %d\n", ri)
+				lockedPrizers := 0
+				prevClassContender := -1
+				for {
+					for ri < numPlayers && int(pargs.req.PlayerClasses[pargs.playerNodes[ri]]) != classIdx {
+						fmt.Printf("skipping %s as ri\n", pargs.req.PlayerNames[pargs.playerNodes[ri]])
+						ri++
+					}
+					rj := ri + 1
+					for rj < numPlayers && int(pargs.req.PlayerClasses[pargs.playerNodes[rj]]) != classIdx {
+						fmt.Printf("skipping %s as rj\n", pargs.req.PlayerNames[pargs.playerNodes[rj]])
+						rj++
+					}
+					if rj >= numPlayers {
+						fmt.Printf("class %d KOTH complete\n", classIdx)
+						break
+					}
+
+					fmt.Printf("potential matchup: %s vs %s\n", pargs.req.PlayerNames[pargs.playerNodes[ri]], pargs.req.PlayerNames[pargs.playerNodes[rj]])
+					if prevClassContender >= 0 && !pargs.copdata.Standings.CanCatch(1, int(pargs.req.GibsonSpreads[0]), prevClassContender, rj) {
+						fmt.Printf("player %s cannot catch %s\n", pargs.req.PlayerNames[pargs.playerNodes[rj]], pargs.req.PlayerNames[pargs.playerNodes[prevClassContender]])
+						lockedPrizers++
+						if lockedPrizers >= int(classPrizes) {
+							fmt.Printf("prizers are locked for class %d\n", classIdx)
+							break
+						}
+					}
+
+					if !pargs.copdata.Standings.CanCatch(1, int(pargs.req.GibsonSpreads[0]), ri, rj) {
+						fmt.Printf("cannot catch!\n")
+						ri = rj
+					} else {
+						fmt.Printf("can catch! forcing the pairing\n")
+						forcedPairings = append(forcedPairings, [2]int{pargs.playerNodes[ri], pargs.playerNodes[rj]})
+						prevClassContender = rj
+						ri = rj + 1
+					}
+					lockedPrizers++
+					if lockedPrizers >= int(classPrizes) {
+						fmt.Printf("prizers are locked for class %d\n", classIdx)
+						break
+					}
+				}
 			}
 			return forcedPairings, [][2]int{}
 		},
@@ -303,19 +383,21 @@ func COPPair(req *pb.PairRequest) *pb.PairResponse {
 
 func copPairWithLog(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 	req.Seed = time.Now().Unix()
-	marshaler := protojson.MarshalOptions{
-		Multiline: true, // Enables pretty printing
-		Indent:    "  ", // Sets the indentation level
-	}
-	jsonData, err := marshaler.Marshal(req)
-	if err != nil {
-		return &pb.PairResponse{
-			ErrorCode:    pb.PairError_REQUEST_TO_JSON_FAILED,
-			ErrorMessage: err.Error(),
-		}
-	}
+	// FIXME: add a separate field for the request string
+	// FIXME: add this back when done debugging
+	// marshaler := protojson.MarshalOptions{
+	// 	Multiline: true, // Enables pretty printing
+	// 	Indent:    "  ", // Sets the indentation level
+	// }
+	// jsonData, err := marshaler.Marshal(req)
+	// if err != nil {
+	// 	return &pb.PairResponse{
+	// 		ErrorCode:    pb.PairError_REQUEST_TO_JSON_FAILED,
+	// 		ErrorMessage: err.Error(),
+	// 	}
+	// }
 
-	logsb.WriteString("Pairings Request:\n\n" + string(jsonData) + "\n\n")
+	// logsb.WriteString("Pairings Request:\n\n" + string(jsonData) + "\n\n")
 
 	resp := verifyreq.Verify(req)
 	if resp != nil {
@@ -511,6 +593,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	}
 
 	if len(unpairedRankIdxes) > 0 {
+		// FIXME: add player names
 		msg := "COP pairings could not be completed because there were too many constraints. The unpaired players by rank index are:\n\n"
 		for idx, unpairedRankIdx := range unpairedRankIdxes {
 			msg += fmt.Sprintf("%d", unpairedRankIdx+1)

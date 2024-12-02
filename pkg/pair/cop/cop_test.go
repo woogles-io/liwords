@@ -145,34 +145,44 @@ func TestCOPErrors(t *testing.T) {
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_ROUND_RESULTS_COUNT)
 
 	req = pairtestutils.CreateDefaultPairRequest()
-	req.Classes = []int32{0, 1, 2, 3, 4, 5, 6, 7, 8}
+	req.PlayerClasses = []int32{0, 0, 0, 0, 0, 0, 0}
 	resp = cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_MORE_CLASSES_THAN_PLAYERS)
+	is.Equal(resp.ErrorCode, pb.PairError_INVALID_PLAYER_CLASS_COUNT)
 
 	req = pairtestutils.CreateDefaultPairRequest()
-	req.Classes = []int32{-1}
+	req.PlayerClasses = []int32{}
 	resp = cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_INVALID_CLASS)
+	is.Equal(resp.ErrorCode, pb.PairError_INVALID_PLAYER_CLASS_COUNT)
 
 	req = pairtestutils.CreateDefaultPairRequest()
-	req.Classes = []int32{0}
+	req.PlayerClasses = []int32{0}
 	resp = cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_INVALID_CLASS)
+	is.Equal(resp.ErrorCode, pb.PairError_INVALID_PLAYER_CLASS_COUNT)
 
 	req = pairtestutils.CreateDefaultPairRequest()
-	req.Classes = []int32{8}
+	req.PlayerClasses = []int32{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	resp = cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_INVALID_CLASS)
+	is.Equal(resp.ErrorCode, pb.PairError_INVALID_PLAYER_CLASS_COUNT)
 
 	req = pairtestutils.CreateDefaultPairRequest()
-	req.Classes = []int32{3, 2}
+	req.PlayerClasses = []int32{0, 0, 0, 0, 0, 0, 0, -1}
 	resp = cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_MISORDERED_CLASS)
+	is.Equal(resp.ErrorCode, pb.PairError_INVALID_PLAYER_CLASS)
 
 	req = pairtestutils.CreateDefaultPairRequest()
-	req.ClassPrizes = []int32{2, 2, 2, 2, 2, 2, 2, 2, 2, 2}
+	req.PlayerClasses = []int32{0, 0, 0, 0, 0, 0, 0, 2}
 	resp = cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_INVALID_CLASS_PRIZES_COUNT)
+	is.Equal(resp.ErrorCode, pb.PairError_INVALID_PLAYER_CLASS)
+
+	req = pairtestutils.CreateDefaultPairRequest()
+	req.ClassPrizes = []int32{-1}
+	resp = cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_INVALID_CLASS_PRIZE)
+
+	req = pairtestutils.CreateDefaultPairRequest()
+	req.ClassPrizes = []int32{0}
+	resp = cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_INVALID_CLASS_PRIZE)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.ClassPrizes = []int32{-1}
@@ -264,39 +274,138 @@ func TestCOPPolicies(t *testing.T) {
 	is.Equal(resp.Pairings[10], int32(3))
 	is.Equal(resp.Pairings[11], int32(9))
 
-	// Prepaired players
 	req = pairtestutils.CreateAlbany3rdGibsonizedAfterRound25PairRequest()
 	pairtestutils.AddRoundPairings(req, "-1 -1 -1 14 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 3 -1 -1 -1 -1 -1 21 20 -1 -1")
 	resp = cop.COPPair(req)
-	fmt.Println(resp.Log)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	is.Equal(resp.Pairings[0], int32(23))
-	is.Equal(resp.Pairings[1], int32(1))
+	is.Equal(resp.Pairings[0], int32(1))
+	is.Equal(resp.Pairings[1], int32(0))
+	is.Equal(resp.Pairings[4], int32(4))
+	is.Equal(resp.Pairings[3], int32(14))
+	is.Equal(resp.Pairings[14], int32(3))
+	is.Equal(resp.Pairings[20], int32(21))
+	is.Equal(resp.Pairings[21], int32(20))
 
 	// KOTH
-	req = pairtestutils.CreateBellevilleCSWAfterRound12PairRequest()
-	req.Rounds = 13
-	req.PlacePrizes = 3
+	req = pairtestutils.CreateAlbany3rdGibsonizedAfterRound25PairRequest()
+	req.Rounds = 26
 	resp = cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	is.Equal(resp.Pairings[3], int32(10))
-	is.Equal(resp.Pairings[9], int32(11))
-	is.Equal(resp.Pairings[10], int32(3))
-	is.Equal(resp.Pairings[11], int32(9))
-
-}
-
-func TestCOPSuccess(t *testing.T) {
-	is := is.New(t)
-	req := pairtestutils.CreateDefaultPairRequest()
-	pairtestutils.AddRoundResultsAndPairings(req, "4 300 5 250 6 400 7 500 0 300 1 300 2 425 3 200")
-	resp := cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(resp.Pairings[0], int32(1))
+	is.Equal(resp.Pairings[1], int32(0))
+	is.Equal(resp.Pairings[2], int32(9))
+	is.Equal(resp.Pairings[9], int32(2))
+	is.Equal(resp.Pairings[12], int32(15))
+	is.Equal(resp.Pairings[15], int32(12))
 	fmt.Println(resp.Log)
 
-	req = pairtestutils.CreateDefaultOddPairRequest()
-	pairtestutils.AddRoundResultsAndPairings(req, "4 300 5 250 6 400 3 50 0 400 1 300 2 425")
+	req = pairtestutils.CreateAlbany3rdGibsonizedAfterRound25PairRequest()
+	req.Rounds = 26
+	req.PlacePrizes = 8
 	resp = cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(resp.Pairings[0], int32(1))
+	is.Equal(resp.Pairings[1], int32(0))
+	is.Equal(resp.Pairings[2], int32(9))
+	is.Equal(resp.Pairings[9], int32(2))
+	is.Equal(resp.Pairings[12], int32(15))
+	is.Equal(resp.Pairings[15], int32(12))
+	is.Equal(resp.Pairings[5], int32(6))
+	is.Equal(resp.Pairings[6], int32(5))
+	is.Equal(resp.Pairings[8], int32(10))
+	is.Equal(resp.Pairings[10], int32(8))
+
+	// KOTH Class Prizes
+	req = pairtestutils.CreateAlbany3rdGibsonizedAfterRound25PairRequest()
+	req.Rounds = 26
+	req.ClassPrizes = []int32{1, 1}
+	// Create class B
+	req.PlayerClasses[9] = 1
+	req.PlayerClasses[2] = 1
+	req.PlayerClasses[12] = 1
+	req.PlayerClasses[15] = 1
+	req.PlayerClasses[5] = 1
+	req.PlayerClasses[8] = 1
+	// Create class C
+	req.PlayerClasses[14] = 2
+	req.PlayerClasses[13] = 2
+	req.PlayerClasses[17] = 2
+	req.PlayerClasses[21] = 2
+	req.PlayerClasses[23] = 2
+	req.PlayerClasses[19] = 2
+	req.PlayerClasses[20] = 2
+	resp = cop.COPPair(req)
+	// Expect the normal KOTH casher pairings:
+	is.Equal(resp.Pairings[0], int32(1))
+	is.Equal(resp.Pairings[1], int32(0))
+	is.Equal(resp.Pairings[2], int32(9))
+	is.Equal(resp.Pairings[9], int32(2))
+	is.Equal(resp.Pairings[12], int32(15))
+	is.Equal(resp.Pairings[15], int32(12))
+	// No class B pairings because a class B player can cash
+	// Expect class C KOTH pairings for 1 class prize:
+	is.Equal(resp.Pairings[14], int32(13))
+	is.Equal(resp.Pairings[13], int32(14))
+
+	req = pairtestutils.CreateAlbany3rdGibsonizedAfterRound25PairRequest()
+	req.Rounds = 26
+	req.ClassPrizes = []int32{2}
+	// Create class B
+	req.PlayerClasses[14] = 1
+	req.PlayerClasses[13] = 1
+	req.PlayerClasses[17] = 1
+	req.PlayerClasses[21] = 1
+	req.PlayerClasses[23] = 1
+	req.PlayerClasses[19] = 1
+	req.PlayerClasses[20] = 1
+	resp = cop.COPPair(req)
+	// Expect the normal KOTH casher pairings:
+	is.Equal(resp.Pairings[0], int32(1))
+	is.Equal(resp.Pairings[1], int32(0))
+	is.Equal(resp.Pairings[2], int32(9))
+	is.Equal(resp.Pairings[9], int32(2))
+	is.Equal(resp.Pairings[12], int32(15))
+	is.Equal(resp.Pairings[15], int32(12))
+	// Expect class B KOTH pairings for 2 class prizes:
+	is.Equal(resp.Pairings[14], int32(13))
+	is.Equal(resp.Pairings[13], int32(14))
+	is.Equal(resp.Pairings[17], int32(21))
+	is.Equal(resp.Pairings[21], int32(17))
+
+	req = pairtestutils.CreateAlbany3rdGibsonizedAfterRound25PairRequest()
+	req.Rounds = 26
+	req.ClassPrizes = []int32{2}
+	// Create class B
+	req.PlayerClasses[5] = 1
+	req.PlayerClasses[8] = 1
+	req.PlayerClasses[14] = 1
+	req.PlayerClasses[13] = 1
+	req.PlayerClasses[17] = 1
+	req.PlayerClasses[21] = 1
+	req.PlayerClasses[23] = 1
+	req.PlayerClasses[19] = 1
+	req.PlayerClasses[20] = 1
+	resp = cop.COPPair(req)
 	fmt.Println(resp.Log)
+	// Expect the normal KOTH casher pairings:
+	is.Equal(resp.Pairings[0], int32(1))
+	is.Equal(resp.Pairings[1], int32(0))
+	is.Equal(resp.Pairings[2], int32(9))
+	is.Equal(resp.Pairings[9], int32(2))
+	is.Equal(resp.Pairings[12], int32(15))
+	is.Equal(resp.Pairings[15], int32(12))
+	// Expect class B KOTH pairings for 2 class prizes:
+	// The top 2 in class B cannot be surpassed by other
+	// players in class B, so there is only 1 class B pairing
+	is.Equal(resp.Pairings[5], int32(8))
+	is.Equal(resp.Pairings[8], int32(5))
+	is.Equal(resp.Pairings[13], int32(17))
+	is.Equal(resp.Pairings[17], int32(13))
+
+	// FIXME: test class prize KOTH
+	// class prizes
+	// - classer casher
+	// - 1 classer gibsoned
+	// - 2 classers gibsoned
+	// - 3 classers gibsoned
+	// - 4 classers gibsoned
+
 }

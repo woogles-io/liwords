@@ -17,9 +17,9 @@ message RoundResults {
 message PairRequest {
   PairMethod pair_method = 1;
   repeated string player_names = 2;
-  repeated RoundPairings division_pairings = 3;
-  repeated RoundResults division_results = 4;
-  repeated int32 classes = 5;
+  repeated int32 player_classes = 3;
+  repeated RoundPairings division_pairings = 4;
+  repeated RoundResults division_results = 5;
   repeated int32 class_prizes = 6;
   repeated int32 gibson_spreads = 7;
   double control_loss_threshold = 8;
@@ -52,24 +52,22 @@ enum PairError {
   MORE_RESULTS_THAN_ROUNDS = 12;
   MORE_RESULTS_THAN_PAIRINGS = 13;
   INVALID_ROUND_RESULTS_COUNT = 14;
-  MORE_CLASSES_THAN_PLAYERS = 15;
-  INVALID_CLASS = 16;
-  MISORDERED_CLASS = 17;
-  INVALID_CLASS_PRIZES_COUNT = 18;
-  INVALID_CLASS_PRIZE = 19;
-  INVALID_GIBSON_SPREAD_COUNT = 20;
-  INVALID_GIBSON_SPREAD = 21;
-  INVALID_CONTROL_LOSS_THRESHOLD = 22;
-  INVALID_HOPEFULNESS_THRESHOLD = 23;
-  INVALID_DIVISION_SIMS = 24;
-  INVALID_CONTROL_LOSS_SIMS = 25;
-  INVALID_PLACE_PRIZES = 26;
-  INVALID_REMOVED_PLAYER = 27;
-  INVALID_VALID_PLAYER_COUNT = 28;
-  MIN_WEIGHT_MATCHING = 29;
-  INVALID_PAIRINGS_LENGTH = 30;
-  OVERCONSTRAINED = 31;
-  REQUEST_TO_JSON_FAILED = 32;
+  INVALID_PLAYER_CLASS_COUNT = 15;
+  INVALID_PLAYER_CLASS = 16;
+  INVALID_CLASS_PRIZE = 17;
+  INVALID_GIBSON_SPREAD_COUNT = 18;
+  INVALID_GIBSON_SPREAD = 19;
+  INVALID_CONTROL_LOSS_THRESHOLD = 20;
+  INVALID_HOPEFULNESS_THRESHOLD = 21;
+  INVALID_DIVISION_SIMS = 22;
+  INVALID_CONTROL_LOSS_SIMS = 23;
+  INVALID_PLACE_PRIZES = 24;
+  INVALID_REMOVED_PLAYER = 25;
+  INVALID_VALID_PLAYER_COUNT = 26;
+  MIN_WEIGHT_MATCHING = 27;
+  INVALID_PAIRINGS_LENGTH = 28;
+  OVERCONSTRAINED = 29;
+  REQUEST_TO_JSON_FAILED = 30;
 }
 
 message PairResponse {
