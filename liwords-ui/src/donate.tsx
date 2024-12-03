@@ -83,10 +83,63 @@ export const Donate = () => {
         <Button onClick={() => donateClick(500)}>Contribute $500</Button>
       </div>
       <p>
-        <span className="bolder">Want to make a monthly donation?</span> Check
-        out the
-        <a href="https://www.patreon.com/woogles_io"> Woogles Patreon.</a>
+        <span className="bolder">
+          Want to make a monthly donation? You can set up a membership with
+          Patreon and unlock some benefits! Check out the
+          <a
+            href="https://www.patreon.com/woogles_io"
+            target="_blank"
+            rel="noreferrer"
+          >
+            {' '}
+            Woogles Patreon.
+          </a>
+        </span>
       </p>
+      {loginState.loggedIn ? (
+        <p style={{ marginTop: 10 }}>
+          After subscribing, you can click this button to recognize your
+          subscription: <LoginWithPatreonButton />
+        </p>
+      ) : (
+        <p>
+          Please log in to Woogles to connect your Patreon account after
+          subscribing.
+        </p>
+      )}
     </>
+  );
+};
+
+const LoginWithPatreonButton: React.FC = () => {
+  const handleLogin = () => {
+    const clientId = import.meta.env.PUBLIC_PATREON_CLIENT_ID;
+    const redirectUri = encodeURIComponent(
+      import.meta.env.PUBLIC_PATREON_REDIRECT_URL
+    );
+    const scopes = encodeURIComponent(
+      'identity identity[email] identity.memberships'
+    );
+    const csrfToken = Math.random().toString(36).substring(2);
+    // Store the CSRF token locally for validation later
+    localStorage.setItem('patreon_login_csrf_token', csrfToken);
+
+    // Combine the CSRF token and the current page's URL
+    const state = btoa(
+      JSON.stringify({
+        csrfToken,
+        redirectTo: window.location.href, // Current page URL
+      })
+    );
+
+    const authorizationUrl = `https://www.patreon.com/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scopes}&state=${state}`;
+
+    window.location.href = authorizationUrl;
+  };
+
+  return (
+    <Button onClick={handleLogin} style={{ minWidth: 200 }}>
+      Connect with Patreon
+    </Button>
   );
 };
