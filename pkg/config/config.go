@@ -47,7 +47,8 @@ type Config struct {
 
 	TourneyPDFLambdaFunctionName string
 
-	Debug bool
+	DebugLogging bool
+	Dev          bool
 }
 
 type ctxKey string
@@ -64,7 +65,8 @@ func (c *Config) Load(args []string) error {
 
 	fs := flag.NewFlagSet("liwords", flag.ContinueOnError)
 
-	fs.BoolVar(&c.Debug, "debug", false, "debug logging on")
+	fs.BoolVar(&c.DebugLogging, "debug-logging", false, "debug logging on")
+	fs.BoolVar(&c.Dev, "dev", false, "development mode on (false on prod)")
 
 	fs.StringVar(&c.DBHost, "db-host", "", "the database host")
 	fs.StringVar(&c.DBPort, "db-port", "", "the database port")

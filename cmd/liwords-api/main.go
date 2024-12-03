@@ -25,6 +25,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/gomodule/redigo/redis"
+	"github.com/gorilla/csrf"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/justinas/alice"
 	"github.com/nats-io/nats.go"
@@ -114,7 +115,7 @@ func main() {
 	if cfg.SecretKey == "" {
 		panic("secret key must be non blank")
 	}
-	if cfg.Debug {
+	if cfg.DebugLogging {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	} else {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
@@ -160,13 +161,24 @@ func main() {
 		panic(err)
 	}
 
+	csrfOptions := []csrf.Option{
+		csrf.Path("/"),
+	}
+
+	if cfg.Dev {
+		log.Info().Msg("in-dev-environment")
+		csrfOptions = append(csrfOptions, csrf.Secure(false))
+	}
+
+	csrf := csrf.Protect([]byte(cfg.SecretKey), csrfOptions...)
+
 	middlewares := alice.New(
 		hlog.NewHandler(log.With().Str("service", "liwords").Logger()),
 		apiserver.ExposeResponseWriterMiddleware,
 		apiserver.AuthenticationMiddlewareGenerator(stores.SessionStore),
 		apiserver.APIKeyMiddlewareGenerator(),
 		config.CtxMiddlewareGenerator(cfg),
-
+		csrf,
 		hlog.AccessHandler(func(r *http.Request, status int, size int, d time.Duration) {
 			path := strings.Split(r.URL.Path, "/")
 			method := path[len(path)-1]
