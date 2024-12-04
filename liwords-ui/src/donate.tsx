@@ -1,6 +1,9 @@
 import { loadStripe, StripeError } from '@stripe/stripe-js';
 import { App, Button } from 'antd';
 import { useLoginStateStoreContext } from './store/store';
+import { useClient } from './utils/hooks/connect';
+import { IntegrationService } from './gen/api/proto/user_service/user_service_connect';
+import { useEffect, useState } from 'react';
 
 const PUBLISHABLE_KEY =
   'pk_live_51I7T0HH0ARGCjmpLmLvzN6JMTkUCaFr0xNhg7Mq2wcXTMhGI6R7ShMxnLmoaCynTO0cQ7BZtiSPfOjnA9LmO21dT00gBrlxiSa';
@@ -32,6 +35,8 @@ type StripeResult = {
 export const Donate = () => {
   const { loginState } = useLoginStateStoreContext();
   const { message } = App.useApp();
+  const [hasPatreonIntegration, setHasPatreonIntegration] = useState(false);
+
   const handleResult = (result: StripeResult) => {
     if (result.error) {
       message.error({
@@ -40,6 +45,24 @@ export const Donate = () => {
       });
     }
   };
+
+  const integrationsClient = useClient(IntegrationService);
+  useEffect(() => {
+    if (!loginState.loggedIn) {
+      return;
+    }
+    const fetchIntegrations = async () => {
+      try {
+        const integrations = await integrationsClient.getIntegrations({});
+        setHasPatreonIntegration(
+          integrations.integrations.some((i) => i.integrationName === 'patreon')
+        );
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchIntegrations();
+  }, [integrationsClient, loginState.loggedIn]);
 
   const donateClick = async (money: number) => {
     const price = prices[money as keyof typeof prices];
@@ -97,10 +120,17 @@ export const Donate = () => {
         </span>
       </p>
       {loginState.loggedIn ? (
-        <p style={{ marginTop: 10 }}>
-          After subscribing, you can click this button to recognize your
-          subscription: <LoginWithPatreonButton />
-        </p>
+        hasPatreonIntegration ? (
+          <p style={{ marginTop: 10 }}>
+            Your Patreon account is connected to Woogles. You can manage your
+            integrations in the Settings page.
+          </p>
+        ) : (
+          <p style={{ marginTop: 10 }}>
+            After subscribing, you can click this button to recognize your
+            subscription: <LoginWithPatreonButton />
+          </p>
+        )
       ) : (
         <p>
           Please log in to Woogles to connect your Patreon account after
@@ -118,7 +148,7 @@ const LoginWithPatreonButton: React.FC = () => {
       import.meta.env.PUBLIC_PATREON_REDIRECT_URL
     );
     const scopes = encodeURIComponent(
-      'identity identity[email] identity.memberships campaign.members'
+      'identity identity[email] identity.memberships'
     );
     const csrfToken = Math.random().toString(36).substring(2);
 

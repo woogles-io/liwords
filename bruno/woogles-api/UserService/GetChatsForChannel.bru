@@ -1,0 +1,17 @@
+meta {
+  name: GetChatsForChannel
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseURL}}/api/user_service.SocializeService/GetChatsForChannel
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "channel": "chat.game.q4JhmVVm"
+  }
+}

@@ -32,6 +32,8 @@ const (
 	AutocompleteServiceName = "user_service.AutocompleteService"
 	// SocializeServiceName is the fully-qualified name of the SocializeService service.
 	SocializeServiceName = "user_service.SocializeService"
+	// IntegrationServiceName is the fully-qualified name of the IntegrationService service.
+	IntegrationServiceName = "user_service.IntegrationService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -131,6 +133,9 @@ const (
 	// SocializeServiceGetModListProcedure is the fully-qualified name of the SocializeService's
 	// GetModList RPC.
 	SocializeServiceGetModListProcedure = "/user_service.SocializeService/GetModList"
+	// IntegrationServiceGetIntegrationsProcedure is the fully-qualified name of the
+	// IntegrationService's GetIntegrations RPC.
+	IntegrationServiceGetIntegrationsProcedure = "/user_service.IntegrationService/GetIntegrations"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -170,6 +175,8 @@ var (
 	socializeServiceGetActiveChatChannelsMethodDescriptor     = socializeServiceServiceDescriptor.Methods().ByName("GetActiveChatChannels")
 	socializeServiceGetChatsForChannelMethodDescriptor        = socializeServiceServiceDescriptor.Methods().ByName("GetChatsForChannel")
 	socializeServiceGetModListMethodDescriptor                = socializeServiceServiceDescriptor.Methods().ByName("GetModList")
+	integrationServiceServiceDescriptor                       = user_service.File_proto_user_service_user_service_proto.Services().ByName("IntegrationService")
+	integrationServiceGetIntegrationsMethodDescriptor         = integrationServiceServiceDescriptor.Methods().ByName("GetIntegrations")
 )
 
 // AuthenticationServiceClient is a client for the user_service.AuthenticationService service.
@@ -1167,4 +1174,72 @@ func (UnimplementedSocializeServiceHandler) GetChatsForChannel(context.Context, 
 
 func (UnimplementedSocializeServiceHandler) GetModList(context.Context, *connect.Request[user_service.GetModListRequest]) (*connect.Response[user_service.GetModListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.SocializeService.GetModList is not implemented"))
+}
+
+// IntegrationServiceClient is a client for the user_service.IntegrationService service.
+type IntegrationServiceClient interface {
+	GetIntegrations(context.Context, *connect.Request[user_service.GetIntegrationsRequest]) (*connect.Response[user_service.IntegrationsResponse], error)
+}
+
+// NewIntegrationServiceClient constructs a client for the user_service.IntegrationService service.
+// By default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped
+// responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewIntegrationServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) IntegrationServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &integrationServiceClient{
+		getIntegrations: connect.NewClient[user_service.GetIntegrationsRequest, user_service.IntegrationsResponse](
+			httpClient,
+			baseURL+IntegrationServiceGetIntegrationsProcedure,
+			connect.WithSchema(integrationServiceGetIntegrationsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// integrationServiceClient implements IntegrationServiceClient.
+type integrationServiceClient struct {
+	getIntegrations *connect.Client[user_service.GetIntegrationsRequest, user_service.IntegrationsResponse]
+}
+
+// GetIntegrations calls user_service.IntegrationService.GetIntegrations.
+func (c *integrationServiceClient) GetIntegrations(ctx context.Context, req *connect.Request[user_service.GetIntegrationsRequest]) (*connect.Response[user_service.IntegrationsResponse], error) {
+	return c.getIntegrations.CallUnary(ctx, req)
+}
+
+// IntegrationServiceHandler is an implementation of the user_service.IntegrationService service.
+type IntegrationServiceHandler interface {
+	GetIntegrations(context.Context, *connect.Request[user_service.GetIntegrationsRequest]) (*connect.Response[user_service.IntegrationsResponse], error)
+}
+
+// NewIntegrationServiceHandler builds an HTTP handler from the service implementation. It returns
+// the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewIntegrationServiceHandler(svc IntegrationServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	integrationServiceGetIntegrationsHandler := connect.NewUnaryHandler(
+		IntegrationServiceGetIntegrationsProcedure,
+		svc.GetIntegrations,
+		connect.WithSchema(integrationServiceGetIntegrationsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/user_service.IntegrationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case IntegrationServiceGetIntegrationsProcedure:
+			integrationServiceGetIntegrationsHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedIntegrationServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedIntegrationServiceHandler struct{}
+
+func (UnimplementedIntegrationServiceHandler) GetIntegrations(context.Context, *connect.Request[user_service.GetIntegrationsRequest]) (*connect.Response[user_service.IntegrationsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.IntegrationService.GetIntegrations is not implemented"))
 }

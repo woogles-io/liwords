@@ -6,33 +6,25 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
+
 	"github.com/woogles-io/liwords/pkg/apiserver"
-	"github.com/woogles-io/liwords/pkg/config"
-	"github.com/woogles-io/liwords/pkg/sessions"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 )
 
-type IntegrationService struct {
-	sessionStore sessions.SessionStore
-	cfg          *config.Config
+type PatreonTokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
-func NewIntegrationService(s sessions.SessionStore, cfg *config.Config) *IntegrationService {
-	return &IntegrationService{s, cfg}
+type PatreonUserData struct {
+	ID    string `json:"id"`
+	Email string `json:"email"`
 }
 
-type SaveCSRFRequest struct {
-	CSRF string `json:"csrf"`
-}
-
-type OAuthState struct {
-	CSRF       string `json:"csrfToken"`
-	RedirectTo string `json:"redirectTo"`
-}
-
-func (s *IntegrationService) patreonCallback(w http.ResponseWriter, r *http.Request) {
+func (s *OAuthIntegrationService) patreonCallback(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
@@ -89,45 +81,28 @@ func (s *IntegrationService) patreonCallback(w http.ResponseWriter, r *http.Requ
 
 	log.Info().Interface("ud", userData).Msg("userData")
 
-	// TODO: Associate the Patreon account with your app's user account
+	// re-dump token data for saving into table
+	td, err := json.Marshal(token)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
+	id, err := s.queries.AddOrUpdateIntegration(ctx, models.AddOrUpdateIntegrationParams{
+		UserUuid:        pgtype.Text{String: sess.UserUUID, Valid: true},
+		IntegrationName: PatreonIntegrationName,
+		Data:            td,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	log.Debug().Str("uuid", id.String()).Msg("integration-table-updated")
 	// Redirect the user back to the original page
 	http.Redirect(w, r, state.RedirectTo, http.StatusFound)
 }
 
-func (s *IntegrationService) integrationsEndpoint(w http.ResponseWriter, r *http.Request, name string) {
-	ctx := r.Context()
-	switch name {
-	case "csrf":
-		sess, err := apiserver.GetSession(ctx)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusUnauthorized)
-			return
-		}
-		var req SaveCSRFRequest
-		err = json.NewDecoder(r.Body).Decode(&req)
-		if err != nil || req.CSRF == "" {
-			http.Error(w, "Invalid CSRF token", http.StatusBadRequest)
-			return
-		}
-		err = s.sessionStore.SetCSRFToken(ctx, sess, req.CSRF)
-		if err != nil {
-			http.Error(w, "Error setting CSRF token", http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-	case "patreon/callback":
-		s.patreonCallback(w, r)
-	}
-
-}
-
-type TokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-}
-
-func (s *IntegrationService) exchangePatreonCodeForToken(code string) (*TokenResponse, error) {
+func (s *OAuthIntegrationService) exchangePatreonCodeForToken(code string) (*PatreonTokenResponse, error) {
 	tokenURL := "https://www.patreon.com/api/oauth2/token"
 
 	data := url.Values{}
@@ -143,7 +118,7 @@ func (s *IntegrationService) exchangePatreonCodeForToken(code string) (*TokenRes
 	}
 	defer resp.Body.Close()
 
-	var tokenResp TokenResponse
+	var tokenResp PatreonTokenResponse
 	err = json.NewDecoder(resp.Body).Decode(&tokenResp)
 	if err != nil {
 		return nil, err
@@ -153,12 +128,7 @@ func (s *IntegrationService) exchangePatreonCodeForToken(code string) (*TokenRes
 	return &tokenResp, nil
 }
 
-type UserData struct {
-	ID    string `json:"id"`
-	Email string `json:"email"`
-}
-
-func fetchPatreonUserData(accessToken string) (*UserData, error) {
+func fetchPatreonUserData(accessToken string) (*PatreonUserData, error) {
 	apiURL := "https://www.patreon.com/api/oauth2/v2/identity?fields[user]=email,first_name,last_name&fields[campaign]=summary,is_monthly&include=memberships,campaign"
 
 	req, _ := http.NewRequest("GET", apiURL, nil)
@@ -187,21 +157,10 @@ func fetchPatreonUserData(accessToken string) (*UserData, error) {
 		return nil, err
 	}
 
-	userData := &UserData{
+	userData := &PatreonUserData{
 		ID:    userResp.Data.ID,
 		Email: userResp.Data.Attributes.Email,
 	}
 
 	return userData, nil
-}
-
-// must end with /
-const IntegrationServicePrefix = "/integrations/"
-
-func (s *IntegrationService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if strings.HasPrefix(r.URL.Path, IntegrationServicePrefix) {
-		s.integrationsEndpoint(w, r, strings.TrimPrefix(r.URL.Path, IntegrationServicePrefix))
-	} else {
-		http.NotFound(w, r)
-	}
 }
