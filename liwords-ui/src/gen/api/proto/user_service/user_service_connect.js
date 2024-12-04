@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ActiveChatChannels, AddBlockRequest, AddFollowRequest, BriefProfilesRequest, BriefProfilesResponse, ChangePasswordRequest, ChangePasswordResponse, GetActiveChatChannelsRequest, GetAPIKeyRequest, GetAPIKeyResponse, GetBlocksRequest, GetBlocksResponse, GetChatsRequest, GetFollowsRequest, GetFollowsResponse, GetFullBlocksRequest, GetFullBlocksResponse, GetModListRequest, GetModListResponse, GetSignedCookieRequest, InstallSignedCookieResponse, LoginResponse, LogoutResponse, NotifyAccountClosureRequest, NotifyAccountClosureResponse, OKResponse, PersonalInfoRequest, PersonalInfoResponse, ProfileRequest, ProfileResponse, RatingsRequest, RatingsResponse, RegistrationResponse, RemoveAvatarRequest, RemoveAvatarResponse, RemoveBlockRequest, RemoveFollowRequest, ResetPasswordRequestStep1, ResetPasswordRequestStep2, ResetPasswordResponse, SignedCookieResponse, SocketTokenRequest, SocketTokenResponse, StatsRequest, StatsResponse, UpdateAvatarRequest, UpdateAvatarResponse, UpdatePersonalInfoRequest, UpdatePersonalInfoResponse, UserLoginRequest, UserLogoutRequest, UsernameSearchRequest, UsernameSearchResponse, UserRegistrationRequest } from "./user_service_pb.js";
+import { ActiveChatChannels, AddBlockRequest, AddFollowRequest, BriefProfilesRequest, BriefProfilesResponse, ChangePasswordRequest, ChangePasswordResponse, GetActiveChatChannelsRequest, GetAPIKeyRequest, GetAPIKeyResponse, GetBlocksRequest, GetBlocksResponse, GetChatsRequest, GetFollowsRequest, GetFollowsResponse, GetFullBlocksRequest, GetFullBlocksResponse, GetIntegrationsRequest, GetModListRequest, GetModListResponse, GetSignedCookieRequest, InstallSignedCookieResponse, IntegrationsResponse, LoginResponse, LogoutResponse, NotifyAccountClosureRequest, NotifyAccountClosureResponse, OKResponse, PersonalInfoRequest, PersonalInfoResponse, ProfileRequest, ProfileResponse, RatingsRequest, RatingsResponse, RegistrationResponse, RemoveAvatarRequest, RemoveAvatarResponse, RemoveBlockRequest, RemoveFollowRequest, ResetPasswordRequestStep1, ResetPasswordRequestStep2, ResetPasswordResponse, SignedCookieResponse, SocketTokenRequest, SocketTokenResponse, StatsRequest, StatsResponse, UpdateAvatarRequest, UpdateAvatarResponse, UpdatePersonalInfoRequest, UpdatePersonalInfoResponse, UserLoginRequest, UserLogoutRequest, UsernameSearchRequest, UsernameSearchResponse, UserRegistrationRequest } from "./user_service_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 import { ChatMessages } from "../ipc/chat_pb.js";
 
@@ -324,6 +324,24 @@ export const SocializeService = {
       name: "GetModList",
       I: GetModListRequest,
       O: GetModListResponse,
+      kind: MethodKind.Unary,
+    },
+  }
+};
+
+/**
+ * @generated from service user_service.IntegrationService
+ */
+export const IntegrationService = {
+  typeName: "user_service.IntegrationService",
+  methods: {
+    /**
+     * @generated from rpc user_service.IntegrationService.GetIntegrations
+     */
+    getIntegrations: {
+      name: "GetIntegrations",
+      I: GetIntegrationsRequest,
+      O: IntegrationsResponse,
       kind: MethodKind.Unary,
     },
   }

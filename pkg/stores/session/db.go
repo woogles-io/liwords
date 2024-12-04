@@ -14,8 +14,9 @@ import (
 
 // The data inside the session's Data object.
 type sessionInfo struct {
-	Username string `json:"username"`
-	UserUUID string `json:"uuid"`
+	Username  string `json:"username"`
+	UserUUID  string `json:"uuid"`
+	CSRFToken string `json:"csrf_token"`
 }
 
 type DBStore struct {
@@ -50,10 +51,11 @@ func (s *DBStore) Get(ctx context.Context, sessionID string) (*entity.Session, e
 	}
 
 	return &entity.Session{
-		ID:       sessionID,
-		Username: data.Username,
-		UserUUID: data.UserUUID,
-		Expiry:   expiry,
+		ID:        sessionID,
+		Username:  data.Username,
+		UserUUID:  data.UserUUID,
+		Expiry:    expiry,
+		CSRFToken: data.CSRFToken,
 	}, nil
 }
 
@@ -117,6 +119,34 @@ func (s *DBStore) ExtendExpiry(ctx context.Context, sess *entity.Session) error 
 	}
 	if result.RowsAffected() != 1 {
 		return fmt.Errorf("could not extend expiry of session %s", sess.ID)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *DBStore) SetCSRFToken(ctx context.Context, sess *entity.Session, csrfToken string) error {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// Update the CSRFToken in the JSONB blob
+	query := `
+		UPDATE db_sessions
+		SET data = jsonb_set(data, '{csrf_token}', to_jsonb($1::text))
+		WHERE uuid = $2
+	`
+	result, err := tx.Exec(ctx, query, csrfToken, sess.ID)
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() != 1 {
+		return fmt.Errorf("could not update CSRF token for session %s", sess.ID)
 	}
 
 	if err := tx.Commit(ctx); err != nil {

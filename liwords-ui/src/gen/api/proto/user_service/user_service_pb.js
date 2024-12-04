@@ -659,3 +659,32 @@ export const GetModListResponse = /*@__PURE__*/ proto3.makeMessageType(
   ],
 );
 
+/**
+ * @generated from message user_service.Integration
+ */
+export const Integration = /*@__PURE__*/ proto3.makeMessageType(
+  "user_service.Integration",
+  () => [
+    { no: 1, name: "uuid", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "integration_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ],
+);
+
+/**
+ * @generated from message user_service.GetIntegrationsRequest
+ */
+export const GetIntegrationsRequest = /*@__PURE__*/ proto3.makeMessageType(
+  "user_service.GetIntegrationsRequest",
+  [],
+);
+
+/**
+ * @generated from message user_service.IntegrationsResponse
+ */
+export const IntegrationsResponse = /*@__PURE__*/ proto3.makeMessageType(
+  "user_service.IntegrationsResponse",
+  () => [
+    { no: 1, name: "integrations", kind: "message", T: Integration, repeated: true },
+  ],
+);
+

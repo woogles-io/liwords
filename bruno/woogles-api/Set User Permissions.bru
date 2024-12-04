@@ -1,0 +1,26 @@
+meta {
+  name: Set User Permissions
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseURL}}/api/config_service.ConfigService/SetUserPermissions
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+      "username": "penumbra",
+    "director": false,
+    "admin": false,
+    "mod": true,
+    "bot": false
+    
+  }
+}
+
+assert {
+  res.body.is_admin: eq true
+}

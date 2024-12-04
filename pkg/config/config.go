@@ -46,6 +46,10 @@ type Config struct {
 	PuzzleGenerationTaskDefinition string
 
 	TourneyPDFLambdaFunctionName string
+	// Integrations
+	PatreonClientID     string
+	PatreonClientSecret string
+	PatreonRedirectURI  string
 
 	Debug bool
 }
@@ -83,6 +87,10 @@ func (c *Config) Load(args []string) error {
 	fs.StringVar(&c.ECSClusterName, "ecs-cluster-name", "", "the ECS cluster this runs on")
 	fs.StringVar(&c.PuzzleGenerationTaskDefinition, "puzzle-generation-task-definition", "", "the task definition for the puzzle generation ECS task")
 	fs.StringVar(&c.TourneyPDFLambdaFunctionName, "tourney-pdf-lambda-function-name", "", "the name of the TourneyPDF lambda function")
+	fs.StringVar(&c.PatreonClientID, "patreon-client-id", "", "The Patreon Integration Client ID")
+	fs.StringVar(&c.PatreonClientSecret, "patreon-client-secret", "", "The Patreon Integration Client secret")
+	fs.StringVar(&c.PatreonRedirectURI, "patreon-redirect-uri", "", "The Patreon redirect URI")
+
 	// For password hashing:
 	fs.IntVar(&c.ArgonConfig.Keylen, "argon-key-len", 32, "the Argon key length")
 	fs.IntVar(&c.ArgonConfig.Time, "argon-time", 1, "the Argon time")

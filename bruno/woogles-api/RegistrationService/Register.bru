@@ -1,0 +1,19 @@
+meta {
+  name: Register
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseURL}}/api/user_service.RegistrationService/Register
+  body: json
+  auth: none
+}
+
+headers {
+  : 
+}
+
+body:json {
+  {"username": "use-a-slur-here-for-testing", "password": "password", "email": "foo"}
+}
