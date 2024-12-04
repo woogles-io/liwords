@@ -147,9 +147,7 @@ const LoginWithPatreonButton: React.FC = () => {
     const redirectUri = encodeURIComponent(
       import.meta.env.PUBLIC_PATREON_REDIRECT_URL
     );
-    const scopes = encodeURIComponent(
-      'identity identity[email] identity.memberships campaigns.members'
-    );
+    const scopes = encodeURIComponent('identity identity[email]');
     const csrfToken = Math.random().toString(36).substring(2);
 
     // Save the CSRF token on the backend
