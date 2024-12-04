@@ -68,10 +68,11 @@ const (
 
 // Session - The db specific-details are in the store package.
 type Session struct {
-	ID       string
-	Username string
-	UserUUID string
-	Expiry   time.Time
+	ID        string
+	Username  string
+	UserUUID  string
+	Expiry    time.Time
+	CSRFToken string
 }
 
 // Profile is a user profile. It might not be defined for anonymous users.

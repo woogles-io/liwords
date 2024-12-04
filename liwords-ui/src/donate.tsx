@@ -112,23 +112,28 @@ export const Donate = () => {
 };
 
 const LoginWithPatreonButton: React.FC = () => {
-  const handleLogin = () => {
+  const handleLogin = async () => {
     const clientId = import.meta.env.PUBLIC_PATREON_CLIENT_ID;
     const redirectUri = encodeURIComponent(
       import.meta.env.PUBLIC_PATREON_REDIRECT_URL
     );
     const scopes = encodeURIComponent(
-      'identity identity[email] identity.memberships'
+      'identity identity[email] identity.memberships campaign.members'
     );
     const csrfToken = Math.random().toString(36).substring(2);
-    // Store the CSRF token locally for validation later
-    localStorage.setItem('patreon_login_csrf_token', csrfToken);
+
+    // Save the CSRF token on the backend
+    await fetch('/integrations/csrf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ csrf: csrfToken }),
+    });
 
     // Combine the CSRF token and the current page's URL
     const state = btoa(
       JSON.stringify({
         csrfToken,
-        redirectTo: window.location.href, // Current page URL
+        redirectTo: '/donate', // Current page URL
       })
     );
 
@@ -138,8 +143,8 @@ const LoginWithPatreonButton: React.FC = () => {
   };
 
   return (
-    <Button onClick={handleLogin} style={{ minWidth: 200 }}>
-      Connect with Patreon
+    <Button onClick={handleLogin} style={{ minWidth: 300 }}>
+      Link your Patreon account
     </Button>
   );
 };

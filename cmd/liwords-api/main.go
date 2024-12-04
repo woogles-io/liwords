@@ -47,6 +47,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/comments"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/gameplay"
+	"github.com/woogles-io/liwords/pkg/integrations"
 	"github.com/woogles-io/liwords/pkg/memento"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/omgwords"
@@ -193,6 +194,7 @@ func main() {
 
 	mementoService := memento.NewMementoService(stores.UserStore, stores.GameStore,
 		stores.GameDocumentStore, cfg)
+	integrationService := integrations.NewIntegrationService(stores.SessionStore, cfg)
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
 		cfg.SecretKey, cfg.MailgunKey, cfg.DiscordToken, cfg.ArgonConfig)
 	registrationService := registration.NewRegistrationService(stores.UserStore, cfg.ArgonConfig)
@@ -221,6 +223,11 @@ func main() {
 	router.Handle(memento.GameimgPrefix, otelhttp.WithRouteTag(memento.GameimgPrefix, otelhttp.NewHandler(
 		middlewares.Then(mementoService),
 		"memento-api",
+		otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter),
+	)))
+	router.Handle(integrations.IntegrationServicePrefix, otelhttp.WithRouteTag(integrations.IntegrationServicePrefix, otelhttp.NewHandler(
+		middlewares.Then(integrationService),
+		"integration-handlers",
 		otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter),
 	)))
 

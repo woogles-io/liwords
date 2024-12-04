@@ -10,6 +10,7 @@ import (
 type SessionStore interface {
 	Get(ctx context.Context, sessionID string) (*entity.Session, error)
 	New(ctx context.Context, user *entity.User) (*entity.Session, error)
+	SetCSRFToken(ctx context.Context, sess *entity.Session, csrfToken string) error
 	Delete(ctx context.Context, sess *entity.Session) error
 	ExtendExpiry(ctx context.Context, s *entity.Session) error
 }

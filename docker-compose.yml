@@ -34,6 +34,9 @@ services:
       PUZZLE_GENERATION_TASK_DEFINITION: ${PUZZLE_GENERATION_TASK_DEFINITION:-}
       OTEL_RESOURCE_ATTRIBUTES: "service.name=liwords,service.version=0.1.0"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      PATREON_CLIENT_ID: UhLzukHPyjascp5vNI0_AP5z_ABiz_6-sqU_y8YALVxiiJSxBqRQWFXxAox5vuqE
+      PATREON_CLIENT_SECRET: ${PATREON_CLIENT_SECRET:-}
+      PATREON_REDIRECT_URI: http://localhost/integrations/patreon/callback
     volumes:
       - .:/opt/program:rw
       - ./data/lexica/gaddag:/opt/program/data/lexica/gaddag
@@ -56,7 +59,7 @@ services:
     labels:
       - "traefik.http.middlewares.floc.headers.customresponseheaders.Permissions-Policy=interest-cohort=()"
       - "traefik.http.routers.liwords.middlewares=floc"
-      - "traefik.http.routers.liwords.rule=PathPrefix(`/api/`, `/gameimg/`, `/debug/`)"
+      - "traefik.http.routers.liwords.rule=PathPrefix(`/api/`, `/gameimg/`, `/debug/`, `/integrations/`)"
       - "traefik.http.routers.liwords.entrypoints=web"
       - "traefik.http.services.liwords.loadbalancer.server.port=8001"
       - traefik.enable=true
