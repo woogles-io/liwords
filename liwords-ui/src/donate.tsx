@@ -148,7 +148,7 @@ const LoginWithPatreonButton: React.FC = () => {
       import.meta.env.PUBLIC_PATREON_REDIRECT_URL
     );
     const scopes = encodeURIComponent(
-      'identity identity[email] identity.memberships'
+      'identity identity[email] identity.memberships campaigns.members'
     );
     const csrfToken = Math.random().toString(36).substring(2);
 
