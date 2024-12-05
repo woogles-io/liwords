@@ -130,68 +130,52 @@ var constraintPolicies = []constraintPolicy{
 				numPlayers--
 			}
 			forcedPairings := [][2]int{}
-			// Determine if players in lower classes should play each other
-			for playerIdx, playerClass := range pargs.req.PlayerClasses {
-				fmt.Printf("player %d, %s is class %d\n", playerIdx, pargs.req.PlayerNames[playerIdx], playerClass)
-			}
 			for classPrizesIdx, classPrizes := range pargs.req.ClassPrizes {
 				classIdx := classPrizesIdx + 1
-				classPrizesKOTHEnabled := true
-				for i := 0; i <= pargs.lowestPossibleAbsCasher; i++ {
-					pIdx := pargs.copdata.Standings.GetPlayerIndex(i)
-					if int(pargs.req.PlayerClasses[pIdx]) == classIdx {
-						classPrizesKOTHEnabled = false
-						break
+				availableClassPrizes := int(classPrizes)
+				for pRankIdx := 0; pRankIdx <= pargs.lowestPossibleAbsCasher; pRankIdx++ {
+					pIdx := pargs.copdata.Standings.GetPlayerIndex(pRankIdx)
+					if int(pargs.req.PlayerClasses[pIdx]) == classIdx && pargs.copdata.LowestRankAbsolutely[pRankIdx] >= int(pargs.req.PlacePrizes) {
+						availableClassPrizes--
 					}
 				}
-				if !classPrizesKOTHEnabled {
-					fmt.Printf("Skipping class %d KOTH\n", classIdx)
+				if availableClassPrizes < 1 {
 					continue
 				}
-				fmt.Printf("Enabling class %d KOTH with %d prizes\n", classIdx, classPrizes)
 				ri := pargs.lowestPossibleAbsCasher + 1
-				fmt.Printf("starting at rank %d\n", ri)
-				lockedPrizers := 0
-				prevClassContender := -1
+				numPlayersAhead := 0
+				playerToCatch := -1
+				KOTHCumeGibsonSpread := int(pargs.req.GibsonSpreads[0] * 2)
 				for {
 					for ri < numPlayers && int(pargs.req.PlayerClasses[pargs.playerNodes[ri]]) != classIdx {
-						fmt.Printf("skipping %s as ri\n", pargs.req.PlayerNames[pargs.playerNodes[ri]])
 						ri++
 					}
 					rj := ri + 1
 					for rj < numPlayers && int(pargs.req.PlayerClasses[pargs.playerNodes[rj]]) != classIdx {
-						fmt.Printf("skipping %s as rj\n", pargs.req.PlayerNames[pargs.playerNodes[rj]])
 						rj++
 					}
 					if rj >= numPlayers {
-						fmt.Printf("class %d KOTH complete\n", classIdx)
 						break
 					}
-
-					fmt.Printf("potential matchup: %s vs %s\n", pargs.req.PlayerNames[pargs.playerNodes[ri]], pargs.req.PlayerNames[pargs.playerNodes[rj]])
-					if prevClassContender >= 0 && !pargs.copdata.Standings.CanCatch(1, int(pargs.req.GibsonSpreads[0]), prevClassContender, rj) {
-						fmt.Printf("player %s cannot catch %s\n", pargs.req.PlayerNames[pargs.playerNodes[rj]], pargs.req.PlayerNames[pargs.playerNodes[prevClassContender]])
-						lockedPrizers++
-						if lockedPrizers >= int(classPrizes) {
-							fmt.Printf("prizers are locked for class %d\n", classIdx)
+					if !pargs.copdata.Standings.CanCatch(1, KOTHCumeGibsonSpread, ri, rj) {
+						ri = rj
+						numPlayersAhead++
+						if numPlayersAhead == availableClassPrizes {
 							break
 						}
+						continue
 					}
-
-					if !pargs.copdata.Standings.CanCatch(1, int(pargs.req.GibsonSpreads[0]), ri, rj) {
-						fmt.Printf("cannot catch!\n")
-						ri = rj
-					} else {
-						fmt.Printf("can catch! forcing the pairing\n")
-						forcedPairings = append(forcedPairings, [2]int{pargs.playerNodes[ri], pargs.playerNodes[rj]})
-						prevClassContender = rj
-						ri = rj + 1
-					}
-					lockedPrizers++
-					if lockedPrizers >= int(classPrizes) {
-						fmt.Printf("prizers are locked for class %d\n", classIdx)
+					placesRemaining := availableClassPrizes - numPlayersAhead
+					if placesRemaining == 2 {
+						playerToCatch = rj
+					} else if placesRemaining == 1 {
+						playerToCatch = ri
+					} else if playerToCatch >= 0 && !pargs.copdata.Standings.CanCatch(1, KOTHCumeGibsonSpread, playerToCatch, rj) {
 						break
 					}
+					forcedPairings = append(forcedPairings, [2]int{pargs.playerNodes[ri], pargs.playerNodes[rj]})
+					numPlayersAhead += 2
+					ri = rj + 1
 				}
 			}
 			return forcedPairings, [][2]int{}
@@ -270,6 +254,7 @@ var weightPolicies = []weightPolicy{
 				ri > pargs.lowestPossibleHopeCasher {
 				return 0
 			}
+			// FIXME: fix bug with lowestPossibleHopeNth
 			if rj <= pargs.lowestPossibleHopeNth[ri] ||
 				(pargs.lowestPossibleHopeNth[ri] == ri && ri == rj-1) {
 				casherDiff := pargs.lowestPossibleHopeNth[ri] - rj
@@ -382,7 +367,9 @@ func COPPair(req *pb.PairRequest) *pb.PairResponse {
 }
 
 func copPairWithLog(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
-	req.Seed = time.Now().Unix()
+	if req.Seed == 0 {
+		req.Seed = time.Now().Unix()
+	}
 	// FIXME: add a separate field for the request string
 	// FIXME: add this back when done debugging
 	// marshaler := protojson.MarshalOptions{
@@ -452,18 +439,18 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	lowestPossibleHopeCasher := 0
 	lowestPossibleHopeNth := make([]int, len(copdata.HighestRankHopefully))
 	for playerRankIdx, place := range copdata.HighestRankHopefully {
-		if lowestPossibleHopeNth[place] < playerRankIdx {
+		if playerRankIdx > lowestPossibleHopeNth[place] {
 			lowestPossibleHopeNth[place] = playerRankIdx
 		}
-		if place < int(req.PlacePrizes) {
-			lowestPossibleHopeCasher = playerRankIdx
-		}
 	}
+	lowestPossibleHopeCasher = lowestPossibleHopeNth[int(req.PlacePrizes)-1]
 
-	numGibsonsInBaseGroup := 0
-	for i := 0; i < numPlayers; i++ {
-		if copdata.GibsonizedPlayers[i] && copdata.GibsonGroups[i] == 0 {
-			numGibsonsInBaseGroup++
+	gibsonGetsBye := false
+	if addBye {
+		for i := 0; i < numPlayers; i++ {
+			if copdata.GibsonizedPlayers[i] && copdata.GibsonGroups[i] == 0 {
+				gibsonGetsBye = true
+			}
 		}
 	}
 
@@ -476,9 +463,10 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		lowestPossibleHopeCasher: lowestPossibleHopeCasher,
 		lowestPossibleHopeNth:    lowestPossibleHopeNth,
 		roundsRemaining:          int(req.Rounds) - len(req.DivisionResults),
-		gibsonGetsBye:            numGibsonsInBaseGroup%2 == 1,
+		gibsonGetsBye:            gibsonGetsBye,
 	}
 
+	logsb.WriteString(fmt.Sprintf("Control Loss Sims: %d\n", req.ControlLossSims))
 	logsb.WriteString(fmt.Sprintf("Lowest Hopeful Casher: %s\n", req.PlayerNames[playerNodes[lowestPossibleHopeCasher]]))
 	logsb.WriteString(fmt.Sprintf("Lowest Absolute Casher: %s\n", req.PlayerNames[playerNodes[lowestPossibleAbsCasher]]))
 	logsb.WriteString(fmt.Sprintf("Rounds Remaining: %d\n", pargs.roundsRemaining))

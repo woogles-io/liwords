@@ -23,6 +23,7 @@ type PrecompData struct {
 	RepeatCounts              []int
 	HighestRankHopefully      []int
 	HighestRankAbsolutely     []int
+	LowestRankAbsolutely      []int
 	HighestControlLossRankIdx int
 	GibsonGroups              []int
 	GibsonizedPlayers         []bool
@@ -90,7 +91,7 @@ func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Buil
 	}
 
 	var controlLossSimResults *pkgstnd.SimResults
-	var allControlLosses map[int][]int
+	var allControlLosses map[int]int
 	highestControlLossRankIdx := -1
 	if req.UseControlLoss && !improvedFactorSimResults.GibsonizedPlayers[0] {
 		controlLossSimResults = standings.SimFactorPairAll(req, copRand, int(req.ControlLossSims), maxFactor, true, nil, logsb)
@@ -103,6 +104,7 @@ func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Buil
 
 	highestRankHopefully := make([]int, numPlayers)
 	highestRankAbsolutely := make([]int, numPlayers)
+	lowestRankAbsolutely := make([]int, numPlayers)
 	for playerRankIdx := 0; playerRankIdx < numPlayers; playerRankIdx++ {
 		winsSum := 0
 		hopefulRank := numPlayers - 1
@@ -120,6 +122,15 @@ func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Buil
 		}
 		highestRankHopefully[playerRankIdx] = hopefulRank
 		highestRankAbsolutely[playerRankIdx] = absoluteRank
+		lowestRank := 0
+		for rank := numPlayers - 1; rank >= 0; rank-- {
+			rankSum := improvedFactorSimResults.FinalRanks[playerRankIdx][rank]
+			if rankSum > 0 {
+				lowestRank = rank
+				break
+			}
+		}
+		lowestRankAbsolutely[playerRankIdx] = lowestRank
 	}
 
 	pairingCounts := make(map[string]int)
@@ -141,7 +152,7 @@ func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Buil
 		}
 	}
 
-	writePrecompDataToLog("Precomp Data", improvedFactorSimResults, highestControlLossRankIdx, allControlLosses, highestRankHopefully, highestRankAbsolutely, standings, req, logsb)
+	writePrecompDataToLog("Precomp Data", improvedFactorSimResults, allControlLosses, highestRankHopefully, highestRankAbsolutely, standings, req, logsb)
 
 	return &PrecompData{
 		Standings:                 standings,
@@ -149,6 +160,7 @@ func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Buil
 		RepeatCounts:              repeatCounts,
 		HighestRankHopefully:      highestRankHopefully,
 		HighestRankAbsolutely:     highestRankAbsolutely,
+		LowestRankAbsolutely:      lowestRankAbsolutely,
 		HighestControlLossRankIdx: highestControlLossRankIdx,
 		GibsonGroups:              improvedFactorSimResults.GibsonGroups,
 		GibsonizedPlayers:         improvedFactorSimResults.GibsonizedPlayers,
@@ -168,16 +180,16 @@ func GetPairingKey(playerIdx int, oppIdx int) string {
 	return pairingKey
 }
 
-func writePrecompDataToLog(title string, simResults *pkgstnd.SimResults, highestControlLossRankIdx int, allControlLosses map[int][]int, highestRankHopefully []int, highestRankAbsolutely []int, standings *pkgstnd.Standings, req *pb.PairRequest, logsb *strings.Builder) {
-	numPlayers := standings.GetNumPlayers()
+func writePrecompDataToLog(title string, simResults *pkgstnd.SimResults, allControlLosses map[int]int, highestRankHopefully []int, highestRankAbsolutely []int, standings *pkgstnd.Standings, req *pb.PairRequest, logsb *strings.Builder) {
+	numPlayers := len(highestRankHopefully)
 	matrix := make([][]string, numPlayers)
 
 	useControlLoss := allControlLosses != nil
 	var header []string
 	for rankIdx := 0; rankIdx < numPlayers; rankIdx++ {
 		if useControlLoss {
-			matrix[rankIdx] = make([]string, 7)
-			header = append(standingsHeader, []string{"Gb", "Gr", "H", "A", "CL1", "CLf", "D"}...)
+			matrix[rankIdx] = make([]string, 5)
+			header = append(standingsHeader, []string{"Gb", "Gr", "H", "A", "CLf"}...)
 		} else {
 			matrix[rankIdx] = make([]string, 4)
 			header = append(standingsHeader, []string{"Gb", "Gr", "H", "A"}...)
@@ -188,19 +200,12 @@ func writePrecompDataToLog(title string, simResults *pkgstnd.SimResults, highest
 		matrix[rankIdx][3] = strconv.Itoa(highestRankAbsolutely[rankIdx] + 1)
 		if useControlLoss {
 			matrix[rankIdx][4] = ""
-			matrix[rankIdx][5] = ""
-			matrix[rankIdx][6] = ""
 			playerControlLosses, exists := allControlLosses[rankIdx]
 			if exists {
-				if playerControlLosses[0] < 0 {
+				if playerControlLosses < 0 {
 					matrix[rankIdx][4] = "-"
 				} else {
-					matrix[rankIdx][4] = strconv.Itoa(playerControlLosses[0])
-				}
-				if playerControlLosses[1] < 0 {
-					matrix[rankIdx][5] = "-"
-				} else {
-					matrix[rankIdx][5] = strconv.Itoa(playerControlLosses[1])
+					matrix[rankIdx][4] = strconv.Itoa(playerControlLosses)
 				}
 			}
 		}
