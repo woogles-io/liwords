@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-	"strings"
 
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"golang.org/x/exp/rand"
@@ -20,7 +19,6 @@ const (
 	playerSpreadOffset int    = 16
 	initialSpreadValue int    = 1 << (playerWinsOffset - playerSpreadOffset - 1)
 	playerIndexMask    uint64 = 0xFFFF
-	maxSpread          int    = 300
 	byeSpread          int    = 50
 )
 
@@ -28,6 +26,7 @@ type Standings struct {
 	records            []uint64
 	recordsBackup      []uint64
 	possibleResults    []uint64
+	tieResults         int
 	roundsPlayed       int
 	roundsPlayedBackup int
 }
@@ -43,9 +42,6 @@ type SimResults struct {
 	SegmentRoundFactors       []int
 }
 
-// Exported functions
-// FIXME: recheck if some of these need to be exported
-
 func CreateInitialStandings(req *pb.PairRequest) *Standings {
 	// Create empty standings
 	standings := &Standings{}
@@ -57,10 +53,33 @@ func CreateInitialStandings(req *pb.PairRequest) *Standings {
 	}
 
 	// Initialize the possible results
-	standings.possibleResults = make([]uint64, maxSpread+1)
-	for spread := 1; spread < maxSpread; spread++ {
-		standings.possibleResults[spread] = getRecordFromWinsAndSpread(1, spread)
+	roundsRemaining := int(req.Rounds) - len(req.DivisionResults)
+	var gibsonSpread int
+	if roundsRemaining > len(req.GibsonSpreads) {
+		gibsonSpread = int(req.GibsonSpreads[len(req.GibsonSpreads)-1])
+	} else {
+		gibsonSpread = int(req.GibsonSpreads[roundsRemaining-1])
 	}
+
+	// FIXME: test this
+	// Update the possible results with the maximum gibson spread
+	fmt.Printf("capping at %d\n", gibsonSpread)
+	scoreDiffs := GetScoreDifferences()
+	numPossibleResults := len(scoreDiffs)
+	standings.possibleResults = make([]uint64, numPossibleResults)
+	tieResults := 0
+	for i := 0; i < numPossibleResults; i++ {
+		spread := scoreDiffs[i]
+		if spread == 0 {
+			tieResults++
+			continue
+		}
+		if spread > uint64(gibsonSpread) {
+			spread = uint64(gibsonSpread)
+		}
+		standings.possibleResults[i] = getRecordFromWinsAndSpread(1, int(spread))
+	}
+	standings.tieResults = tieResults
 
 	// Update the standings wuth the pairing results
 	for roundIdx, roundResults := range req.DivisionResults {
@@ -116,6 +135,7 @@ func (standings *Standings) Copy() *Standings {
 		records:            make([]uint64, len(standings.records)),
 		recordsBackup:      make([]uint64, len(standings.recordsBackup)),
 		possibleResults:    standings.possibleResults,
+		tieResults:         standings.tieResults,
 		roundsPlayed:       standings.roundsPlayed,
 		roundsPlayedBackup: standings.roundsPlayedBackup,
 	}
@@ -212,7 +232,7 @@ func (standings *Standings) Sort() {
 }
 
 // Assumes the standings are already sorted
-func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, computeControlLoss bool, prevSegmentRoundFactors []int, logsb *strings.Builder) *SimResults {
+func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, computeControlLoss bool, prevSegmentRoundFactors []int) *SimResults {
 	numPlayers := standings.GetNumPlayers()
 	roundsRemaining := int(req.Rounds) - len(req.DivisionPairings)
 	evenerPlayerAdded := false
@@ -222,7 +242,6 @@ func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, copRand *rand.
 		// players who play the "bye" player could possibly lose, which
 		// is okay because repeat byes are usually avoided and players
 		// that low rarely cash anyway.
-		// FIXME: test that this works
 		lowestWins := getWinsValue(standings.records[numPlayers-1])
 		standings.records = append(standings.records, getRecordFromWinsAndSpread(lowestWins-(roundsRemaining+1)*2, initialSpreadValue))
 		standings.records[numPlayers] += uint64(ByePlayerIndex)
@@ -231,10 +250,9 @@ func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, copRand *rand.
 		evenerPlayerAdded = true
 	}
 
-	simResults := standings.evenedSimFactorPairAll(req, copRand, sims, maxFactor, computeControlLoss, prevSegmentRoundFactors, roundsRemaining, logsb)
+	simResults := standings.evenedSimFactorPairAll(req, copRand, sims, maxFactor, computeControlLoss, prevSegmentRoundFactors, roundsRemaining)
 
 	if evenerPlayerAdded {
-		// FIXME: test that this works
 		standings.records = standings.records[:numPlayers-1]
 		standings.recordsBackup = make([]uint64, numPlayers-1)
 		if simResults != nil {
@@ -247,7 +265,7 @@ func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, copRand *rand.
 	return simResults
 }
 
-func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, computeControlLoss bool, prevSegmentRoundFactors []int, roundsRemaining int, logsb *strings.Builder) *SimResults {
+func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, computeControlLoss bool, prevSegmentRoundFactors []int, roundsRemaining int) *SimResults {
 	numPlayers := standings.GetNumPlayers()
 	results := make([][]int, numPlayers)
 	for i := range results {
@@ -258,7 +276,6 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 		pairings[i] = make([]int, numPlayers)
 	}
 	gibsonizedPlayers := standings.GetGibsonizedPlayers(req)
-	// FIXME: reconsider gibson groups
 	gibsonGroups := make([]int, numPlayers)
 	nextGibsonGroup := 1
 	startRankIdx := 0
@@ -315,18 +332,6 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 		return nil
 	}
 
-	var gibsonSpread int
-	if roundsRemaining > len(req.GibsonSpreads) {
-		gibsonSpread = int(req.GibsonSpreads[len(req.GibsonSpreads)-1])
-	} else {
-		gibsonSpread = int(req.GibsonSpreads[roundsRemaining-1])
-	}
-	// FIXME: find a better way to do this
-	maxScoreDiff := maxSpread
-	if maxScoreDiff > gibsonSpread {
-		maxScoreDiff = gibsonSpread
-	}
-
 	playerIdxToRankIdx := standings.getPlayerIdxToRankIdxMap()
 	standings.Backup()
 	numRecords := len(standings.records)
@@ -334,6 +339,7 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 	lowestFactorPairWins := sims + 1
 	var allControlLosses map[int]int
 	if !computeControlLoss {
+		numScoreDiffs := len(standings.possibleResults)
 		for simIdx := 0; simIdx < sims; simIdx++ {
 			for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
 				for pairIdx := 0; pairIdx < numPlayers; pairIdx += 2 {
@@ -343,8 +349,7 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 					p2 := pairings[roundIdx][pairIdx+1]
 					winner := p1*(1-randomResult) + p2*randomResult
 					loser := p2*(1-randomResult) + p1*randomResult
-					randomSpread := copRand.Intn(maxScoreDiff + 1)
-					record := standings.possibleResults[randomSpread]
+					record := standings.possibleResults[copRand.Intn(numScoreDiffs)]
 					standings.incrementPlayerRecord(winner, record)
 					standings.decrementPlayerRecord(loser, record)
 				}
@@ -383,14 +388,13 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 		for leftPlayerRankIdx <= rightPlayerRankIdx {
 			forcedWinnerRankIdx := (leftPlayerRankIdx + rightPlayerRankIdx) / 2
 			forcedWinnerPlayerIdx := standings.GetPlayerIndex(forcedWinnerRankIdx)
-			vsFirstTournamentWins := standings.simForceWinner(copRand, sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, maxScoreDiff, true)
+			vsFirstTournamentWins := standings.simForceWinner(copRand, sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, true)
 			if vsFirstTournamentWins < sims {
 				rightPlayerRankIdx = forcedWinnerRankIdx - 1
 				allControlLosses[forcedWinnerRankIdx] = -1
 				continue
 			}
-			vsFactorPairTournamentWins := standings.simForceWinner(copRand, sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, maxScoreDiff, false)
-			// FIXME: always vsFirstTournamentWins == sims here so it's useless
+			vsFactorPairTournamentWins := standings.simForceWinner(copRand, sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, false)
 			allControlLosses[forcedWinnerRankIdx] = vsFactorPairTournamentWins
 			if vsFactorPairTournamentWins < lowestFactorPairWins {
 				leftPlayerRankIdx = forcedWinnerRankIdx + 1
@@ -413,29 +417,32 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 	}
 }
 
-func (standings *Standings) simForceWinnerForRound(copRand *rand.Rand, pairings [][]int, roundIdx int, forcedWinnerRankIdx int, maxScoreDiff int) {
+func (standings *Standings) simForceWinnerForRound(copRand *rand.Rand, pairings [][]int, roundIdx int, forcedWinnerRankIdx int) {
 	numPlayers := len(standings.records)
+	numScoreDiffs := len(standings.possibleResults)
 	for pairIdx := 0; pairIdx < numPlayers; pairIdx += 2 {
 		p1 := pairings[roundIdx][pairIdx]
 		p2 := pairings[roundIdx][pairIdx+1]
 		var winner int
 		var loser int
-		preventTies := 0
+		var randResultIdx int
 		if p1 == forcedWinnerRankIdx {
 			winner = forcedWinnerRankIdx
 			loser = p2
-			preventTies = 1
+			// Prevent tie scores for the forced winner
+			randResultIdx = copRand.Intn(numScoreDiffs-standings.tieResults) + standings.tieResults
 		} else if p2 == forcedWinnerRankIdx {
 			winner = forcedWinnerRankIdx
 			loser = p1
-			preventTies = 1
+			// Prevent tie scores for the forced winner
+			randResultIdx = copRand.Intn(numScoreDiffs-standings.tieResults) + standings.tieResults
 		} else {
 			randomResult := copRand.Intn(2)
 			winner = p1*(1-randomResult) + p2*randomResult
 			loser = p2*(1-randomResult) + p1*randomResult
+			randResultIdx = copRand.Intn(numScoreDiffs)
 		}
-		randomSpread := preventTies + copRand.Intn(maxScoreDiff+1-preventTies)
-		record := standings.possibleResults[randomSpread]
+		record := standings.possibleResults[randResultIdx]
 		standings.incrementPlayerRecord(winner, record)
 		standings.decrementPlayerRecord(loser, record)
 	}
@@ -452,7 +459,7 @@ func (standings *Standings) findRankIdx(playerIdx int) int {
 	return -1
 }
 
-func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsRemaining int, pairings [][]int, forcedWinnerPlayerIdx int, maxScoreDiff int, vsFirst bool) int {
+func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsRemaining int, pairings [][]int, forcedWinnerPlayerIdx int, vsFirst bool) int {
 	tournamentWins := 0
 	for simIdx := 0; simIdx < sims; simIdx++ {
 		for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
@@ -471,7 +478,7 @@ func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsR
 			if vsFirst {
 				pairings[roundIdx][1], pairings[roundIdx][switchPairingIdx] = pairings[roundIdx][switchPairingIdx], pairings[roundIdx][1]
 			}
-			standings.simForceWinnerForRound(copRand, pairings, roundIdx, forcedWinnerRankIdx, maxScoreDiff)
+			standings.simForceWinnerForRound(copRand, pairings, roundIdx, forcedWinnerRankIdx)
 			if vsFirst {
 				pairings[roundIdx][1], pairings[roundIdx][switchPairingIdx] = pairings[roundIdx][switchPairingIdx], pairings[roundIdx][1]
 			}

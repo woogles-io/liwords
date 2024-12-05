@@ -633,7 +633,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req.PlayerClasses[0] = 1
 	req.PlayerClasses[1] = 1
 	req.PlayerClasses[4] = 1
-	req.PlayerClasses[9] = 1
+	req.PlayerClasses[2] = 1
 	req.PlayerClasses[5] = 1
 	req.PlayerClasses[8] = 1
 	resp = cop.COPPair(req)
@@ -651,7 +651,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	// Control loss with player in 2nd
 	req = pairtestutils.CreateBellevilleCSWAfterRound12PairRequest()
 	req.UseControlLoss = true
-	req.Seed = 1
+	req.Seed = 2
 	resp = cop.COPPair(req)
 	is.Equal(resp.Pairings[0], int32(3))
 	is.Equal(resp.Pairings[3], int32(0))

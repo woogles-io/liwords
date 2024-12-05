@@ -116,7 +116,7 @@ func TestCOPPrecompData(t *testing.T) {
 	is.Equal(copdata.HighestRankHopefully[6], 3)
 	is.Equal(copdata.HighestRankAbsolutely[6], 3)
 	is.Equal(copdata.HighestRankHopefully[7], 4)
-	is.Equal(copdata.HighestRankAbsolutely[7], 3)
+	is.Equal(copdata.HighestRankAbsolutely[7], 4)
 	is.Equal(copdata.HighestRankHopefully[17], 9)
 	is.Equal(copdata.HighestRankAbsolutely[17], 7)
 	for _, group := range copdata.GibsonGroups {
@@ -170,7 +170,7 @@ func TestCOPPrecompData(t *testing.T) {
 		is.Equal(copdata.HighestRankAbsolutely[rank], rank)
 	}
 	is.Equal(copdata.HighestRankHopefully[23], 16)
-	is.Equal(copdata.HighestRankAbsolutely[23], 14)
+	is.Equal(copdata.HighestRankAbsolutely[23], 15)
 	is.Equal(copdata.LowestRankAbsolutely[0], 0)
 	is.Equal(copdata.LowestRankAbsolutely[1], 1)
 	is.Equal(copdata.LowestRankAbsolutely[2], 9)

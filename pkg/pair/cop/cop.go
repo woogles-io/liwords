@@ -45,34 +45,6 @@ type weightPolicy struct {
 	handler func(*policyArgs, int, int) int64
 }
 
-// Constraints and Weights:
-// repeats
-//  - back to back
-//  - matchup repeats
-//  - total repeats
-//  - byes
-// rank diff
-//  - one can cash
-//  - neither can cash
-// pair with casher
-//  - can catch
-//  - cannot catch
-// gibson - cashers
-//  - gibsons should not player cashers
-// *** the following should be constraints:
-// gibson - groups
-// gibson - bye
-//  - gibsons should play byes first
-// control loss
-// koth
-// prepaired
-
-// Test logging:
-// with and without bye
-// with and without control loss
-
-// FIXME: test class prizes
-
 var constraintPolicies = []constraintPolicy{
 	{
 		// Prepaired players
@@ -581,7 +553,6 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	}
 
 	if len(unpairedRankIdxes) > 0 {
-		// FIXME: add player names
 		msg := "COP pairings could not be completed because there were too many constraints. The unpaired players by rank index are:\n\n"
 		for idx, unpairedRankIdx := range unpairedRankIdxes {
 			msg += fmt.Sprintf("%d", unpairedRankIdx+1)
