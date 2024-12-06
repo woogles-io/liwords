@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"golang.org/x/exp/rand"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"strings"
 	"time"
@@ -226,7 +227,6 @@ var weightPolicies = []weightPolicy{
 				ri > pargs.lowestPossibleHopeCasher {
 				return 0
 			}
-			// FIXME: fix bug with lowestPossibleHopeNth
 			if rj <= pargs.lowestPossibleHopeNth[ri] ||
 				(pargs.lowestPossibleHopeNth[ri] == ri && ri == rj-1) {
 				casherDiff := pargs.lowestPossibleHopeNth[ri] - rj
@@ -342,21 +342,20 @@ func copPairWithLog(req *pb.PairRequest, logsb *strings.Builder) *pb.PairRespons
 	if req.Seed == 0 {
 		req.Seed = time.Now().Unix()
 	}
-	// FIXME: add a separate field for the request string
-	// FIXME: add this back when done debugging
-	// marshaler := protojson.MarshalOptions{
-	// 	Multiline: true, // Enables pretty printing
-	// 	Indent:    "  ", // Sets the indentation level
-	// }
-	// jsonData, err := marshaler.Marshal(req)
-	// if err != nil {
-	// 	return &pb.PairResponse{
-	// 		ErrorCode:    pb.PairError_REQUEST_TO_JSON_FAILED,
-	// 		ErrorMessage: err.Error(),
-	// 	}
-	// }
+	marshaler := protojson.MarshalOptions{
+		Multiline:    true, // Enables pretty printing
+		Indent:       "  ", // Sets the indentation level
+		AllowPartial: true,
+	}
+	jsonData, err := marshaler.Marshal(req)
+	if err != nil {
+		return &pb.PairResponse{
+			ErrorCode:    pb.PairError_REQUEST_TO_JSON_FAILED,
+			ErrorMessage: err.Error(),
+		}
+	}
 
-	// logsb.WriteString("Pairings Request:\n\n" + string(jsonData) + "\n\n")
+	logsb.WriteString("Pairings Request:\n\n" + string(jsonData) + "\n\n")
 
 	resp := verifyreq.Verify(req)
 	if resp != nil {

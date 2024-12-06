@@ -61,9 +61,7 @@ func CreateInitialStandings(req *pb.PairRequest) *Standings {
 		gibsonSpread = int(req.GibsonSpreads[roundsRemaining-1])
 	}
 
-	// FIXME: test this
 	// Update the possible results with the maximum gibson spread
-	fmt.Printf("capping at %d\n", gibsonSpread)
 	scoreDiffs := GetScoreDifferences()
 	numPossibleResults := len(scoreDiffs)
 	standings.possibleResults = make([]uint64, numPossibleResults)
@@ -146,13 +144,10 @@ func (standings *Standings) Copy() *Standings {
 
 func (standings *Standings) Backup() {
 	copy(standings.recordsBackup, standings.records)
-	standings.roundsPlayedBackup = standings.roundsPlayed
 }
 
 func (standings *Standings) RestoreFromBackup() {
 	copy(standings.records, standings.recordsBackup)
-	// FIXME: only needed for printing
-	standings.roundsPlayed = standings.roundsPlayedBackup
 }
 
 func (standings *Standings) GetNumPlayers() int {
@@ -355,9 +350,6 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 				}
 				standings.Sort()
 			}
-			// FIXME: only needed for debugging, remove when done
-			standings.roundsPlayed += roundsRemaining
-
 			// Update results
 			for rankIdx := 0; rankIdx < numRecords; rankIdx++ {
 				// The rankIdx is the final rank index that the player achieved
@@ -463,8 +455,6 @@ func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsR
 	tournamentWins := 0
 	for simIdx := 0; simIdx < sims; simIdx++ {
 		for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
-			// FIXME: only needed for debugging, remove when done
-			standings.roundsPlayed++
 			forcedWinnerRankIdx := standings.findRankIdx(forcedWinnerPlayerIdx)
 			var switchPairingIdx int
 			if vsFirst {
