@@ -59,7 +59,6 @@ func pairRandom(members *entity.UnpairedPoolMembers) ([]int, error) {
 	for i, _ := range members.PoolMembers {
 		playerIndexes = append(playerIndexes, i)
 	}
-	// rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(playerIndexes),
 		func(i, j int) {
 			playerIndexes[i], playerIndexes[j] = playerIndexes[j], playerIndexes[i]
