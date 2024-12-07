@@ -1,12 +1,16 @@
 package integrations
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
 
@@ -14,14 +18,70 @@ import (
 	"github.com/woogles-io/liwords/pkg/stores/models"
 )
 
+var ErrNotSubscribed = errors.New("user not subscribed")
+
+type PatreonUserData struct {
+	Data struct {
+		Attributes struct {
+			Email     string `json:"email"`
+			FirstName string `json:"first_name"`
+			LastName  string `json:"last_name"`
+		} `json:"attributes"`
+		ID            string `json:"id"`
+		Relationships struct {
+			Memberships struct {
+				Data []struct {
+					ID   string `json:"id"`
+					Type string `json:"type"`
+				} `json:"data"`
+			} `json:"memberships"`
+		} `json:"relationships"`
+		Type string `json:"type"`
+	} `json:"data"`
+}
+
+type PatreonMemberData struct {
+	Data struct {
+		Attributes struct {
+			Email          string `json:"email"`
+			FullName       string `json:"full_name"`
+			IsFollower     bool   `json:"is_follower"`
+			LastChargeDate string `json:"last_charge_date"`
+		} `json:"attributes"`
+		ID            string `json:"id"`
+		Relationships struct {
+			CurrentlyEntitledTiers struct {
+				Data []struct {
+					ID   string `json:"id"`
+					Type string `json:"type"`
+				} `json:"data"`
+			} `json:"currently_entitled_tiers"`
+		} `json:"relationships"`
+		Type string `json:"type"`
+	} `json:"data"`
+	Included []struct {
+		Attributes struct {
+			Description string `json:"description"`
+			Title       string `json:"title"`
+		} `json:"attributes"`
+		ID   string `json:"id"`
+		Type string `json:"type"`
+	} `json:"included"`
+}
+
 type PatreonTokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
+	ExpiresIn    int    `json:"expires_in"`
 }
 
-type PatreonUserData struct {
-	ID    string `json:"id"`
-	Email string `json:"email"`
+type PatreonError struct {
+	code     int
+	errorMsg string
+}
+
+func (p *PatreonError) Error() string {
+	return fmt.Sprintf("patreon error: %s (code %d)", p.errorMsg, p.code)
 }
 
 func (s *OAuthIntegrationService) patreonCallback(w http.ResponseWriter, r *http.Request) {
@@ -128,11 +188,45 @@ func (s *OAuthIntegrationService) exchangePatreonCodeForToken(code string) (*Pat
 	return &tokenResp, nil
 }
 
-func fetchPatreonUserData(accessToken string) (*PatreonUserData, error) {
-	apiURL := "https://www.patreon.com/api/oauth2/v2/identity?fields[user]=email,first_name,last_name&fields[campaign]=summary,is_monthly&include=memberships,campaign"
+func (s *OAuthIntegrationService) refreshPatreonToken(refreshToken string) (*PatreonTokenResponse, error) {
+	tokenURL := "https://www.patreon.com/api/oauth2/token"
 
-	req, _ := http.NewRequest("GET", apiURL, nil)
+	data := url.Values{}
+	data.Set("grant_type", "refresh_token")
+	data.Set("client_id", s.cfg.PatreonClientID)
+	data.Set("client_secret", s.cfg.PatreonClientSecret)
+	data.Set("refresh_token", refreshToken)
+
+	resp, err := http.PostForm(tokenURL, data)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var tokenResp PatreonTokenResponse
+	err = json.NewDecoder(resp.Body).Decode(&tokenResp)
+	if err != nil {
+		return nil, err
+	}
+	log.Debug().Interface("tr", tokenResp).Msg("refresh-token-response")
+
+	return &tokenResp, nil
+}
+
+func fetchPatreonUserData(accessToken string) (*PatreonUserData, error) {
+	apiURL := "https://www.patreon.com/api/oauth2/v2/identity"
+
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	// Set the Authorization header
 	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	query := req.URL.Query() // Get a copy of the query parameters
+	query.Set("fields[user]", "email,first_name,last_name")
+	query.Set("include", "memberships")
+	req.URL.RawQuery = query.Encode()
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -141,26 +235,114 @@ func fetchPatreonUserData(accessToken string) (*PatreonUserData, error) {
 	}
 	defer resp.Body.Close()
 
-	var userResp struct {
-		Data struct {
-			ID         string `json:"id"`
-			Attributes struct {
-				Email     string `json:"email"`
-				FirstName string `json:"first_name"`
-				LastName  string `json:"last_name"`
-			} `json:"attributes"`
-		} `json:"data"`
-	}
-
-	err = json.NewDecoder(resp.Body).Decode(&userResp)
+	bts, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 
-	userData := &PatreonUserData{
-		ID:    userResp.Data.ID,
-		Email: userResp.Data.Attributes.Email,
+	if resp.StatusCode != http.StatusOK {
+		return nil, &PatreonError{resp.StatusCode, string(bts)}
 	}
 
-	return userData, nil
+	var userResp PatreonUserData
+	err = json.Unmarshal(bts, &userResp)
+	if err != nil {
+		return nil, err
+	}
+	return &userResp, nil
+}
+
+func fetchPatreonMemberData(accessToken, memberID string) (*PatreonMemberData, error) {
+	apiURL := "https://www.patreon.com/api/oauth2/v2/members/" + memberID
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	// Set the Authorization header
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	query := req.URL.Query() // Get a copy of the query parameters
+	query.Set("fields[member]", "full_name,is_follower,last_charge_date,email")
+	query.Set("include", "currently_entitled_tiers")
+	query.Set("fields[tier]", "title,description")
+	req.URL.RawQuery = query.Encode()
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	bts, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, &PatreonError{resp.StatusCode, string(bts)}
+	}
+
+	var memberResp PatreonMemberData
+	err = json.Unmarshal(bts, &memberResp)
+	if err != nil {
+		return nil, err
+	}
+	return &memberResp, nil
+
+}
+
+// DetermineUserTier determines what tier the user is in.
+func DetermineUserTier(ctx context.Context, userID string, queries *models.Queries) (string, error) {
+	bts, err := queries.GetIntegrationData(ctx, models.GetIntegrationDataParams{
+		IntegrationName: PatreonIntegrationName,
+		UserUuid:        pgtype.Text{String: userID, Valid: true},
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// Not an error
+			log.Info().Str("userID", userID).Msg("no-patreon-integration")
+			return "", nil
+		}
+		return "", err
+	}
+	ptoken := PatreonTokenResponse{}
+	err = json.Unmarshal(bts, &ptoken)
+	if err != nil {
+		return "", fmt.Errorf("unable to unmarshal data into token: %w", err)
+	}
+	userData, err := fetchPatreonUserData(ptoken.AccessToken)
+	if err != nil {
+		return "", fmt.Errorf("unable to fetch user data: %w", err)
+	}
+	memberships := userData.Data.Relationships.Memberships.Data
+	if len(memberships) == 0 {
+		// Not subscribed.
+		log.Info().Str("userID", userID).Msg("no-memberships")
+		return "", nil
+	}
+	// we should really only find one ID. But, shrug.
+	memberIDs := []string{}
+	for _, m := range memberships {
+		if m.Type == "member" {
+			memberIDs = append(memberIDs, m.ID)
+		}
+	}
+	// Now look up the ID in the members endpoint, using the global/creator token.
+	bts, err = queries.GetGlobalIntegrationData(ctx, PatreonIntegrationName)
+	if err != nil {
+		return "", err
+	}
+	err = json.Unmarshal(bts, &ptoken)
+	if err != nil {
+		return "", fmt.Errorf("unable to unmarshal global integration data into token: %w", err)
+	}
+	memberData, err := fetchPatreonMemberData(ptoken.AccessToken, memberIDs[0])
+	if err != nil {
+		return "", err
+	}
+	if len(memberData.Included) == 0 {
+		return "", errors.New("missing-member-data")
+	}
+	return memberData.Included[0].Attributes.Title, nil
 }

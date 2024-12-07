@@ -325,3 +325,32 @@ export declare class SetSingleAnnouncementRequest extends Message<SetSingleAnnou
   static equals(a: SetSingleAnnouncementRequest | PlainMessage<SetSingleAnnouncementRequest> | undefined, b: SetSingleAnnouncementRequest | PlainMessage<SetSingleAnnouncementRequest> | undefined): boolean;
 }
 
+/**
+ * @generated from message config_service.SetGlobalIntegrationRequest
+ */
+export declare class SetGlobalIntegrationRequest extends Message<SetGlobalIntegrationRequest> {
+  /**
+   * @generated from field: string integration_name = 1;
+   */
+  integrationName: string;
+
+  /**
+   * @generated from field: string json_data = 2;
+   */
+  jsonData: string;
+
+  constructor(data?: PartialMessage<SetGlobalIntegrationRequest>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "config_service.SetGlobalIntegrationRequest";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SetGlobalIntegrationRequest;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SetGlobalIntegrationRequest;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SetGlobalIntegrationRequest;
+
+  static equals(a: SetGlobalIntegrationRequest | PlainMessage<SetGlobalIntegrationRequest> | undefined, b: SetGlobalIntegrationRequest | PlainMessage<SetGlobalIntegrationRequest> | undefined): boolean;
+}
+

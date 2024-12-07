@@ -1,0 +1,26 @@
+meta {
+  name: Set Global Integration
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseURL}}/api/config_service.ConfigService/SetGlobalIntegration
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "integration_name": "patreon",
+    "json_data": "{\"access_token\": \"{{patreon_creator_access_token}}\", \"refresh_token\": \"{{patreon_creator_refresh_token}}\"}"
+  }
+}
+
+vars:pre-request {
+  :
+}
+
+assert {
+  :
+}
