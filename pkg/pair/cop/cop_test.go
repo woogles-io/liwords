@@ -1,6 +1,9 @@
 package cop_test
 
 import (
+	"fmt"
+	"os"
+	"runtime/pprof"
 	"testing"
 
 	"github.com/matryer/is"
@@ -699,4 +702,28 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	pairtestutils.AddRoundPairings(req, resp.Pairings)
 	resp = cop.COPPair(req)
 	is.Equal(resp.Pairings[10], int32(10))
+}
+
+func TestCOPProf(t *testing.T) {
+	if os.Getenv("COP_PROF") == "" {
+		t.Skip("Skipping COP profiling test. Use 'COP_PROF=1 go test -run Prof' to run it.")
+	}
+
+	is := is.New(t)
+	f, err := os.Create("cop.prof")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	req := pairtestutils.CreateAlbanyAfterRound15PairRequest()
+	is.Equal(verifyreq.Verify(req), nil)
+	req.UseControlLoss = true
+	req.DivisionSims = 100000
+	req.ControlLossSims = 100000
+	pprof.StartCPUProfile(f)
+	resp := cop.COPPair(req)
+	pprof.StopCPUProfile()
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	fmt.Println(resp.Log)
 }
