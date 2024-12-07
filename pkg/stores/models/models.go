@@ -79,6 +79,12 @@ type Integration struct {
 	Data            []byte
 }
 
+type IntegrationsGlobal struct {
+	ID              int64
+	IntegrationName string
+	Data            []byte
+}
+
 type Liststat struct {
 	GameID    pgtype.Text
 	PlayerID  pgtype.Text

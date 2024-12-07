@@ -12,6 +12,7 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/gameplay"
+	"github.com/woogles-io/liwords/pkg/integrations"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -380,12 +381,17 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.SeekRequest, botUserID str
 			if req.GameRequest.Rules.VariantName == string(game.VarClassicSuper) {
 				return errors.New("that variant is not supported for BestBot yet")
 			}
-			if req.GameRequest.InitialTimeSeconds < 300 {
+			if req.GameRequest.InitialTimeSeconds < 180 {
 				return errors.New("BestBot needs more time than that to play at its best.")
 			}
-			if strings.HasSuffix(req.User.RelevantRating, "?") {
-				log.Info().Str("relevant-rating", req.User.RelevantRating).Str("username", req.User.DisplayName).Msg("user-rating-not-allowed")
-				return errors.New("please play some more games first before you challenge BestBot")
+			// Determine user tier
+			tier, err := integrations.DetermineUserTier(ctx, req.User.UserId, b.stores.Queries)
+			if err != nil {
+				return err
+			}
+			log.Info().Str("tier", tier).Msg("tier-for-bestbot-game")
+			if tier == "" {
+				return errors.New("You don't currently appear to have a Patreon membership. Please sign up at https://woogles.io/donate to have access to BestBot.")
 			}
 		}
 	}

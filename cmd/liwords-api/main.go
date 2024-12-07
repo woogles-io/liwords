@@ -206,7 +206,7 @@ func main() {
 	wordService := words.NewWordService(cfg)
 	autocompleteService := userservices.NewAutocompleteService(stores.UserStore)
 	socializeService := userservices.NewSocializeService(stores.UserStore, stores.ChatStore, stores.PresenceStore)
-	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore)
+	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore, stores.Queries)
 	tournamentService := tournament.NewTournamentService(stores.TournamentStore, stores.UserStore, cfg, lambdaClient, stores.Queries)
 	modService := mod.NewModService(stores.UserStore, stores.ChatStore)
 	puzzleService := puzzles.NewPuzzleService(stores.PuzzleStore, stores.UserStore, cfg.PuzzleGenerationSecretKey, cfg.ECSClusterName, cfg.PuzzleGenerationTaskDefinition)
