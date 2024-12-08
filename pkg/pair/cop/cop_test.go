@@ -5,6 +5,7 @@ import (
 	"os"
 	"runtime/pprof"
 	"testing"
+	"time"
 
 	"github.com/matryer/is"
 	"github.com/woogles-io/liwords/pkg/pair/cop"
@@ -706,7 +707,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 
 func TestCOPProf(t *testing.T) {
 	if os.Getenv("COP_PROF") == "" {
-		t.Skip("Skipping COP profiling test. Use 'COP_PROF=1 go test -run Prof' to run it.")
+		t.Skip("Skipping COP profiling test. Use 'COP_PROF=1 go test -run COPProf' to run it and 'go tool pprof cop.prof' to analyze the results.")
 	}
 
 	is := is.New(t)
@@ -719,11 +720,34 @@ func TestCOPProf(t *testing.T) {
 	req := pairtestutils.CreateAlbanyAfterRound15PairRequest()
 	is.Equal(verifyreq.Verify(req), nil)
 	req.UseControlLoss = true
-	req.DivisionSims = 100000
-	req.ControlLossSims = 100000
+	req.DivisionSims = 1000000
+	req.ControlLossSims = 1000000
 	pprof.StartCPUProfile(f)
+
+	start := time.Now() // Start timing
 	resp := cop.COPPair(req)
+	elapsed := time.Since(start)                               // Calculate elapsed time
+	fmt.Printf("COPPair took %v ms\n", elapsed.Milliseconds()) // Print elapsed time in ms
+
 	pprof.StopCPUProfile()
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	fmt.Println(resp.Log)
+}
+
+func TestCOPTime(t *testing.T) {
+	if os.Getenv("COP_TIME") == "" {
+		t.Skip("Skipping COP profiling test. Use 'COP_TIME=1 go test -run COPTime' to run it.")
+	}
+	is := is.New(t)
+	req := pairtestutils.CreateAlbanyAfterRound15PairRequest()
+	req.UseControlLoss = true
+	req.DivisionSims = 200000
+	req.ControlLossSims = 200000
+	is.Equal(verifyreq.Verify(req), nil)
+	start := time.Now() // Start timing
+	resp := cop.COPPair(req)
+	elapsed := time.Since(start)                               // Calculate elapsed time
+	fmt.Printf("COPPair took %v ms\n", elapsed.Milliseconds()) // Print elapsed time in ms
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	fmt.Println(resp.Log)
 }

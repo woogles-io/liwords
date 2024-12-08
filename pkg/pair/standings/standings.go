@@ -346,11 +346,11 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 		cumeGibsonSpread := getCumeGibsonSpread(req)
 		for rightPlayerRankIdx < numPlayers {
 			if !standings.CanCatch(roundsRemaining, cumeGibsonSpread, 0, rightPlayerRankIdx) {
-				rightPlayerRankIdx--
 				break
 			}
 			rightPlayerRankIdx++
 		}
+		rightPlayerRankIdx--
 		for leftPlayerRankIdx <= rightPlayerRankIdx {
 			forcedWinnerRankIdx := (leftPlayerRankIdx + rightPlayerRankIdx) / 2
 			forcedWinnerPlayerIdx := standings.GetPlayerIndex(forcedWinnerRankIdx)
