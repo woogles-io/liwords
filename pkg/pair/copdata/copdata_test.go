@@ -118,7 +118,7 @@ func TestCOPPrecompData(t *testing.T) {
 	is.Equal(copdata.HighestRankHopefully[7], 4)
 	is.Equal(copdata.HighestRankAbsolutely[7], 4)
 	is.Equal(copdata.HighestRankHopefully[17], 9)
-	is.Equal(copdata.HighestRankAbsolutely[17], 7)
+	is.Equal(copdata.HighestRankAbsolutely[17], 8)
 	for _, group := range copdata.GibsonGroups {
 		is.Equal(group, 0)
 	}

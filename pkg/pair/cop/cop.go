@@ -118,7 +118,7 @@ var constraintPolicies = []constraintPolicy{
 				ri := pargs.lowestPossibleAbsCasher + 1
 				numPlayersAhead := 0
 				playerToCatch := -1
-				KOTHCumeGibsonSpread := int(pargs.req.GibsonSpreads[0] * 2)
+				KOTHCumeGibsonSpread := int(pargs.req.GibsonSpread * 2)
 				for {
 					for ri < numPlayers && int(pargs.req.PlayerClasses[pargs.playerNodes[ri]]) != classIdx {
 						ri++

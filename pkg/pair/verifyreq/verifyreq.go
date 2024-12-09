@@ -170,18 +170,10 @@ func Verify(req *pb.PairRequest) *pb.PairResponse {
 	}
 
 	// Verify gibsons
-	if len(req.GibsonSpreads) > int(req.Rounds) {
+	if req.GibsonSpread < 0 {
 		return &pb.PairResponse{
-			ErrorCode:    pb.PairError_INVALID_GIBSON_SPREAD_COUNT,
-			ErrorMessage: fmt.Sprintf("more gibson spreads (%d) than rounds (%d)", len(req.GibsonSpreads), req.Rounds),
-		}
-	}
-	for _, gibsonSpread := range req.GibsonSpreads {
-		if gibsonSpread < 0 {
-			return &pb.PairResponse{
-				ErrorCode:    pb.PairError_INVALID_GIBSON_SPREAD,
-				ErrorMessage: fmt.Sprintf("invalid gibson spread %d", gibsonSpread),
-			}
+			ErrorCode:    pb.PairError_INVALID_GIBSON_SPREAD,
+			ErrorMessage: fmt.Sprintf("invalid gibson spread %d", req.GibsonSpread),
 		}
 	}
 

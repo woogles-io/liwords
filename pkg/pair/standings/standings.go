@@ -52,9 +52,6 @@ func CreateInitialStandings(req *pb.PairRequest) *Standings {
 		standings.records[playerIdx] += uint64(playerIdx)
 	}
 
-	// Initialize the possible results
-	gibsonSpread := getCurrentGibsonSpread(req)
-
 	// Update the possible results with the maximum gibson spread
 	scoreDiffs := GetScoreDifferences()
 	numPossibleResults := len(scoreDiffs)
@@ -66,8 +63,8 @@ func CreateInitialStandings(req *pb.PairRequest) *Standings {
 			tieResults++
 			continue
 		}
-		if spread > uint64(gibsonSpread) {
-			spread = uint64(gibsonSpread)
+		if spread > uint64(req.GibsonSpread) {
+			spread = uint64(req.GibsonSpread)
 		}
 		standings.possibleResults[i] = getRecordFromWinsAndSpread(1, int(spread))
 	}
@@ -383,17 +380,9 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 	}
 }
 
-func getCurrentGibsonSpread(req *pb.PairRequest) int {
-	roundsRemaining := int(req.Rounds) - len(req.DivisionResults)
-	if roundsRemaining > len(req.GibsonSpreads) {
-		return int(req.GibsonSpreads[len(req.GibsonSpreads)-1])
-	}
-	return int(req.GibsonSpreads[roundsRemaining-1])
-}
-
 func getCumeGibsonSpread(req *pb.PairRequest) int {
 	roundsRemaining := int(req.Rounds) - len(req.DivisionResults)
-	return getCurrentGibsonSpread(req) * roundsRemaining
+	return int(req.GibsonSpread) * roundsRemaining * 2
 }
 
 func (standings *Standings) simRound(copRand *rand.Rand, pairings [][]int, roundIdx int, forcedWinnerRankIdx int) {

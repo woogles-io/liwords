@@ -113,69 +113,64 @@ export declare enum PairError {
   INVALID_CLASS_PRIZE = 17,
 
   /**
-   * @generated from enum value: INVALID_GIBSON_SPREAD_COUNT = 18;
+   * @generated from enum value: INVALID_GIBSON_SPREAD = 18;
    */
-  INVALID_GIBSON_SPREAD_COUNT = 18,
+  INVALID_GIBSON_SPREAD = 18,
 
   /**
-   * @generated from enum value: INVALID_GIBSON_SPREAD = 19;
+   * @generated from enum value: INVALID_CONTROL_LOSS_THRESHOLD = 19;
    */
-  INVALID_GIBSON_SPREAD = 19,
+  INVALID_CONTROL_LOSS_THRESHOLD = 19,
 
   /**
-   * @generated from enum value: INVALID_CONTROL_LOSS_THRESHOLD = 20;
+   * @generated from enum value: INVALID_HOPEFULNESS_THRESHOLD = 20;
    */
-  INVALID_CONTROL_LOSS_THRESHOLD = 20,
+  INVALID_HOPEFULNESS_THRESHOLD = 20,
 
   /**
-   * @generated from enum value: INVALID_HOPEFULNESS_THRESHOLD = 21;
+   * @generated from enum value: INVALID_DIVISION_SIMS = 21;
    */
-  INVALID_HOPEFULNESS_THRESHOLD = 21,
+  INVALID_DIVISION_SIMS = 21,
 
   /**
-   * @generated from enum value: INVALID_DIVISION_SIMS = 22;
+   * @generated from enum value: INVALID_CONTROL_LOSS_SIMS = 22;
    */
-  INVALID_DIVISION_SIMS = 22,
+  INVALID_CONTROL_LOSS_SIMS = 22,
 
   /**
-   * @generated from enum value: INVALID_CONTROL_LOSS_SIMS = 23;
+   * @generated from enum value: INVALID_PLACE_PRIZES = 23;
    */
-  INVALID_CONTROL_LOSS_SIMS = 23,
+  INVALID_PLACE_PRIZES = 23,
 
   /**
-   * @generated from enum value: INVALID_PLACE_PRIZES = 24;
+   * @generated from enum value: INVALID_REMOVED_PLAYER = 24;
    */
-  INVALID_PLACE_PRIZES = 24,
+  INVALID_REMOVED_PLAYER = 24,
 
   /**
-   * @generated from enum value: INVALID_REMOVED_PLAYER = 25;
+   * @generated from enum value: INVALID_VALID_PLAYER_COUNT = 25;
    */
-  INVALID_REMOVED_PLAYER = 25,
+  INVALID_VALID_PLAYER_COUNT = 25,
 
   /**
-   * @generated from enum value: INVALID_VALID_PLAYER_COUNT = 26;
+   * @generated from enum value: MIN_WEIGHT_MATCHING = 26;
    */
-  INVALID_VALID_PLAYER_COUNT = 26,
+  MIN_WEIGHT_MATCHING = 26,
 
   /**
-   * @generated from enum value: MIN_WEIGHT_MATCHING = 27;
+   * @generated from enum value: INVALID_PAIRINGS_LENGTH = 27;
    */
-  MIN_WEIGHT_MATCHING = 27,
+  INVALID_PAIRINGS_LENGTH = 27,
 
   /**
-   * @generated from enum value: INVALID_PAIRINGS_LENGTH = 28;
+   * @generated from enum value: OVERCONSTRAINED = 28;
    */
-  INVALID_PAIRINGS_LENGTH = 28,
+  OVERCONSTRAINED = 28,
 
   /**
-   * @generated from enum value: OVERCONSTRAINED = 29;
+   * @generated from enum value: REQUEST_TO_JSON_FAILED = 29;
    */
-  OVERCONSTRAINED = 29,
-
-  /**
-   * @generated from enum value: REQUEST_TO_JSON_FAILED = 30;
-   */
-  REQUEST_TO_JSON_FAILED = 30,
+  REQUEST_TO_JSON_FAILED = 29,
 }
 
 /**
@@ -261,9 +256,9 @@ export declare class PairRequest extends Message<PairRequest> {
   classPrizes: number[];
 
   /**
-   * @generated from field: repeated int32 gibson_spreads = 7;
+   * @generated from field: int32 gibson_spread = 7;
    */
-  gibsonSpreads: number[];
+  gibsonSpread: number;
 
   /**
    * @generated from field: double control_loss_threshold = 8;

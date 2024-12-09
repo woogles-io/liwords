@@ -194,12 +194,7 @@ func TestCOPErrors(t *testing.T) {
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_CLASS_PRIZE)
 
 	req = pairtestutils.CreateDefaultPairRequest()
-	req.GibsonSpreads = []int32{100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}
-	resp = cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_INVALID_GIBSON_SPREAD_COUNT)
-
-	req = pairtestutils.CreateDefaultPairRequest()
-	req.GibsonSpreads = []int32{-100}
+	req.GibsonSpread = -100
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_GIBSON_SPREAD)
 
@@ -703,6 +698,12 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	pairtestutils.AddRoundPairings(req, resp.Pairings)
 	resp = cop.COPPair(req)
 	is.Equal(resp.Pairings[10], int32(10))
+
+	req = pairtestutils.CreateLakeGeorgeAfterRound13PairRequest()
+	is.Equal(verifyreq.Verify(req), nil)
+	resp = cop.COPPair(req)
+	fmt.Println(resp.Log)
+
 }
 
 func TestCOPProf(t *testing.T) {
