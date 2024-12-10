@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -19,6 +20,10 @@ import (
 )
 
 var ErrNotSubscribed = errors.New("user not subscribed")
+
+const (
+	ChargeStatusPaid = "Paid"
+)
 
 type PatreonUserData struct {
 	Data struct {
@@ -43,10 +48,11 @@ type PatreonUserData struct {
 type PatreonMemberData struct {
 	Data struct {
 		Attributes struct {
-			Email          string `json:"email"`
-			FullName       string `json:"full_name"`
-			IsFollower     bool   `json:"is_follower"`
-			LastChargeDate string `json:"last_charge_date"`
+			Email            string `json:"email"`
+			FullName         string `json:"full_name"`
+			IsFollower       bool   `json:"is_follower"`
+			LastChargeDate   string `json:"last_charge_date"`
+			LastChargeStatus string `json:"last_charge_status"`
 		} `json:"attributes"`
 		ID            string `json:"id"`
 		Relationships struct {
@@ -67,6 +73,12 @@ type PatreonMemberData struct {
 		ID   string `json:"id"`
 		Type string `json:"type"`
 	} `json:"included"`
+}
+
+type PaidTierData struct {
+	LastChargeDate   time.Time
+	LastChargeStatus string
+	TierName         string
 }
 
 type PatreonTokenResponse struct {
@@ -262,7 +274,7 @@ func fetchPatreonMemberData(accessToken, memberID string) (*PatreonMemberData, e
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
 	query := req.URL.Query() // Get a copy of the query parameters
-	query.Set("fields[member]", "full_name,is_follower,last_charge_date,email")
+	query.Set("fields[member]", "full_name,is_follower,last_charge_date,last_charge_status,email")
 	query.Set("include", "currently_entitled_tiers")
 	query.Set("fields[tier]", "title,description")
 	req.URL.RawQuery = query.Encode()
@@ -293,7 +305,7 @@ func fetchPatreonMemberData(accessToken, memberID string) (*PatreonMemberData, e
 }
 
 // DetermineUserTier determines what tier the user is in.
-func DetermineUserTier(ctx context.Context, userID string, queries *models.Queries) (string, error) {
+func DetermineUserTier(ctx context.Context, userID string, queries *models.Queries) (*PaidTierData, error) {
 	bts, err := queries.GetIntegrationData(ctx, models.GetIntegrationDataParams{
 		IntegrationName: PatreonIntegrationName,
 		UserUuid:        pgtype.Text{String: userID, Valid: true},
@@ -302,24 +314,24 @@ func DetermineUserTier(ctx context.Context, userID string, queries *models.Queri
 		if errors.Is(err, pgx.ErrNoRows) {
 			// Not an error
 			log.Info().Str("userID", userID).Msg("no-patreon-integration")
-			return "", nil
+			return nil, nil
 		}
-		return "", err
+		return nil, err
 	}
 	ptoken := PatreonTokenResponse{}
 	err = json.Unmarshal(bts, &ptoken)
 	if err != nil {
-		return "", fmt.Errorf("unable to unmarshal data into token: %w", err)
+		return nil, fmt.Errorf("unable to unmarshal data into token: %w", err)
 	}
 	userData, err := fetchPatreonUserData(ptoken.AccessToken)
 	if err != nil {
-		return "", fmt.Errorf("unable to fetch user data: %w", err)
+		return nil, fmt.Errorf("unable to fetch user data: %w", err)
 	}
 	memberships := userData.Data.Relationships.Memberships.Data
 	if len(memberships) == 0 {
 		// Not subscribed.
 		log.Info().Str("userID", userID).Msg("no-memberships")
-		return "", nil
+		return nil, nil
 	}
 	// we should really only find one ID. But, shrug.
 	memberIDs := []string{}
@@ -331,18 +343,27 @@ func DetermineUserTier(ctx context.Context, userID string, queries *models.Queri
 	// Now look up the ID in the members endpoint, using the global/creator token.
 	bts, err = queries.GetGlobalIntegrationData(ctx, PatreonIntegrationName)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	err = json.Unmarshal(bts, &ptoken)
 	if err != nil {
-		return "", fmt.Errorf("unable to unmarshal global integration data into token: %w", err)
+		return nil, fmt.Errorf("unable to unmarshal global integration data into token: %w", err)
 	}
 	memberData, err := fetchPatreonMemberData(ptoken.AccessToken, memberIDs[0])
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if len(memberData.Included) == 0 {
-		return "", errors.New("missing-member-data")
+		return nil, errors.New("missing-member-data")
 	}
-	return memberData.Included[0].Attributes.Title, nil
+	lastChargeDate, err := time.Parse(time.RFC3339, memberData.Data.Attributes.LastChargeDate)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PaidTierData{
+		TierName:         memberData.Included[0].Attributes.Title,
+		LastChargeStatus: memberData.Data.Attributes.LastChargeStatus,
+		LastChargeDate:   lastChargeDate,
+	}, nil
 }

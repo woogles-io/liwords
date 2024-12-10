@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
@@ -372,28 +373,13 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.SeekRequest, botUserID str
 	var err error
 	var accUser *entity.User
 
-	if req.GameRequest != nil && req.GameRequest.Rules != nil {
-		if req.GameRequest.Rules.VariantName == string(game.VarWordSmog) &&
-			req.GameRequest.BotType != macondopb.BotRequest_HASTY_BOT {
-			return errors.New("only HastyBot can play WordSmog at this time")
-		}
-		if req.GameRequest.BotType == macondopb.BotRequest_SIMMING_BOT {
-			if req.GameRequest.Rules.VariantName == string(game.VarClassicSuper) {
-				return errors.New("that variant is not supported for BestBot yet")
-			}
-			if req.GameRequest.InitialTimeSeconds < 180 {
-				return errors.New("BestBot needs more time than that to play at its best.")
-			}
-			// Determine user tier
-			tier, err := integrations.DetermineUserTier(ctx, req.User.UserId, b.stores.Queries)
-			if err != nil {
-				return err
-			}
-			log.Info().Str("tier", tier).Msg("tier-for-bestbot-game")
-			if tier == "" {
-				return errors.New("You don't currently appear to have a Patreon membership. Please sign up at https://woogles.io/donate to have access to BestBot.")
-			}
-		}
+	if req.GameRequest == nil || req.GameRequest.Rules == nil {
+		return errors.New("game request or rules were nil")
+	}
+
+	if req.GameRequest.Rules.VariantName == string(game.VarWordSmog) &&
+		req.GameRequest.BotType != macondopb.BotRequest_HASTY_BOT {
+		return errors.New("only HastyBot can play WordSmog at this time")
 	}
 
 	if botUserID == "" {
@@ -408,6 +394,38 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.SeekRequest, botUserID str
 	err = validateCELLexicon(req.GameRequest.Lexicon, req.GameRequest.BotType)
 	if err != nil {
 		return err
+	}
+
+	if req.GameRequest.BotType == macondopb.BotRequest_SIMMING_BOT {
+		if req.GameRequest.Rules.VariantName == string(game.VarClassicSuper) {
+			return errors.New("that variant is not supported for BestBot yet")
+		}
+		if req.GameRequest.InitialTimeSeconds < 180 {
+			return errors.New("BestBot needs more time than that to play at its best.")
+		}
+		// Determine user tier
+		tierData, err := integrations.DetermineUserTier(ctx, req.User.UserId, b.stores.Queries)
+		if err != nil {
+			return err
+		}
+		log.Info().Interface("tierData", tierData).Msg("tier-for-bestbot-game")
+		if tierData == nil {
+			return errors.New("You don't currently appear to have a Patreon membership. Please sign up at https://woogles.io/donate to have access to BestBot.")
+		}
+		reqUser, err := b.stores.UserStore.GetByUUID(ctx, req.User.UserId)
+		if err != nil {
+			return err
+		}
+
+		entitled, err := entitledToBestBot(ctx, b.stores.Queries, tierData, reqUser.ID, time.Now())
+		if err != nil {
+			return err
+		}
+		if !entitled {
+			return errors.New("It appears you have already played your allotment of BestBot games for this period. Please upgrade your membership or wait a few days.")
+		}
+		// Update counter
+
 	}
 
 	sg := entity.NewSoughtGame(req)
