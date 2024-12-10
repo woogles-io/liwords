@@ -46,6 +46,7 @@ type Config struct {
 	PuzzleGenerationTaskDefinition string
 
 	TourneyPDFLambdaFunctionName string
+	COPPairLambdaFunctionName    string
 
 	Debug bool
 }
