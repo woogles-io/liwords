@@ -102,8 +102,8 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	}
 
 	for {
-		// Overwrite the randomly generated macondo long UUID with a shorter
-		// uuid for Woogles usage.
+		// Overwrite the randomly generated macondo long ID with a shorter
+		// ID for Woogles usage.
 		turnplayer.Game.History().Uid = shortuuid.New()[2:10]
 		turnplayer.Game.History().IdAuth = IdentificationAuthority
 
