@@ -124,3 +124,14 @@ export const SetSingleAnnouncementRequest = /*@__PURE__*/ proto3.makeMessageType
   ],
 );
 
+/**
+ * @generated from message config_service.SetGlobalIntegrationRequest
+ */
+export const SetGlobalIntegrationRequest = /*@__PURE__*/ proto3.makeMessageType(
+  "config_service.SetGlobalIntegrationRequest",
+  () => [
+    { no: 1, name: "integration_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "json_data", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ],
+);
+

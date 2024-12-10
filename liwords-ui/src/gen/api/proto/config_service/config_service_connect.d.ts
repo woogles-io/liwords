@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AnnouncementsResponse, ConfigResponse, EnableGamesRequest, GetAnnouncementsRequest, PermissionsRequest, SetAnnouncementsRequest, SetFEHashRequest, SetSingleAnnouncementRequest, UserRequest, UserResponse } from "./config_service_pb.js";
+import { AnnouncementsResponse, ConfigResponse, EnableGamesRequest, GetAnnouncementsRequest, PermissionsRequest, SetAnnouncementsRequest, SetFEHashRequest, SetGlobalIntegrationRequest, SetSingleAnnouncementRequest, UserRequest, UserResponse } from "./config_service_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -75,6 +75,15 @@ export declare const ConfigService: {
     readonly setSingleAnnouncement: {
       readonly name: "SetSingleAnnouncement",
       readonly I: typeof SetSingleAnnouncementRequest,
+      readonly O: typeof ConfigResponse,
+      readonly kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc config_service.ConfigService.SetGlobalIntegration
+     */
+    readonly setGlobalIntegration: {
+      readonly name: "SetGlobalIntegration",
+      readonly I: typeof SetGlobalIntegrationRequest,
       readonly O: typeof ConfigResponse,
       readonly kind: MethodKind.Unary,
     },

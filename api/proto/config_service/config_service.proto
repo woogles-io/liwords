@@ -46,6 +46,11 @@ message SetSingleAnnouncementRequest {
   string link_search_string = 2;
 }
 
+message SetGlobalIntegrationRequest {
+  string integration_name = 1;
+  string json_data = 2;
+}
+
 // ConfigService requires admin authentication, except for the GetAnnouncements
 // endpoint.
 service ConfigService {
@@ -58,5 +63,7 @@ service ConfigService {
   rpc SetAnnouncements(SetAnnouncementsRequest) returns (ConfigResponse);
   rpc GetAnnouncements(GetAnnouncementsRequest) returns (AnnouncementsResponse);
   rpc SetSingleAnnouncement(SetSingleAnnouncementRequest)
+      returns (ConfigResponse);
+  rpc SetGlobalIntegration(SetGlobalIntegrationRequest)
       returns (ConfigResponse);
 }
