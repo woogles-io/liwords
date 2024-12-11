@@ -18,7 +18,7 @@ import {
 import { PlayerCards } from '../gameroom/player_cards';
 import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connect';
+import { GameMetadataService } from '../gen/api/proto/game_service/game_service_pb';
 import { MachineLetter } from '../utils/cwgame/common';
 
 const doNothing = () => {};

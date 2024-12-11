@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { message, Form, Select, InputNumber, Input, Button } from 'antd';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { ModService } from '../gen/api/proto/mod_service/mod_service_connect';
+import { ModService } from '../gen/api/proto/mod_service/mod_service_pb';
 import { proto3 } from '@bufbuild/protobuf';
 import {
   EmailType,
@@ -12,7 +12,7 @@ import {
 } from '../gen/api/proto/mod_service/mod_service_pb';
 import { ModActionType } from '../gen/api/proto/mod_service/mod_service_pb';
 import { HookAPI } from 'antd/lib/modal/useModal';
-import { PromiseClient } from '@connectrpc/connect';
+import { Client } from '@connectrpc/connect';
 
 type ModProps = {
   userID: string;
@@ -178,7 +178,7 @@ export const deleteChatMessage = async (
   userid: string,
   msgid: string,
   channel: string,
-  modClient: PromiseClient<typeof ModService>
+  modClient: Client<typeof ModService>
 ) => {
   const obj = {
     actions: [

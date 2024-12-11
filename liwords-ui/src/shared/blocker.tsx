@@ -4,7 +4,7 @@ import {
 } from '../store/store';
 import React, { forwardRef, useImperativeHandle } from 'react';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { SocializeService } from '../gen/api/proto/user_service/user_service_connect';
+import { SocializeService } from '../gen/api/proto/user_service/user_service_pb';
 
 type BlockerProps = {
   className?: string;

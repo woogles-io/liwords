@@ -6,8 +6,8 @@ import { parseWooglesError } from '../parse_woogles_error';
 import { createConnectTransport } from '@connectrpc/connect-web';
 import {
   ConnectError,
-  PromiseClient,
-  createPromiseClient,
+  Client,
+  createClient,
 } from '@connectrpc/connect';
 
 const loc = window.location;
@@ -28,9 +28,9 @@ export const binaryTransport = createConnectTransport({
 export function useClient<T extends ServiceType>(
   service: T,
   binary = false
-): PromiseClient<T> {
+): Client<T> {
   const tf = binary ? binaryTransport : transport;
-  return useMemo(() => createPromiseClient(service, tf), [service, tf]);
+  return useMemo(() => createClient(service, tf), [service, tf]);
 }
 
 export const flashError = (e: unknown, time = 5) => {

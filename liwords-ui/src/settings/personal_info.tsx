@@ -26,7 +26,7 @@ import {
   flashError,
   useClient,
 } from '../utils/hooks/connect';
-import { ProfileService } from '../gen/api/proto/user_service/user_service_connect';
+import { ProfileService } from '../gen/api/proto/user_service/user_service_pb';
 import type { Moment } from 'moment';
 import momentGenerateConfig from 'rc-picker/lib/generate/moment';
 

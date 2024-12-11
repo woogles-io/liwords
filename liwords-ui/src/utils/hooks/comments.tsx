@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { GameCommentService } from '../../gen/api/proto/comments_service/comments_service_connect';
+import { GameCommentService } from '../../gen/api/proto/comments_service/comments_service_pb';
 import { GameComment } from '../../gen/api/proto/comments_service/comments_service_pb';
 import { useGameContextStoreContext } from '../../store/store';
 import { flashError } from './connect';
-import { PromiseClient } from '@connectrpc/connect';
+import { Client } from '@connectrpc/connect';
 
 export const useComments = (
-  commentsClient: PromiseClient<typeof GameCommentService>,
+  commentsClient: Client<typeof GameCommentService>,
   enableComments: boolean
 ) => {
   const { gameContext } = useGameContextStoreContext();

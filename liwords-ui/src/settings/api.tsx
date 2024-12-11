@@ -1,7 +1,7 @@
 import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
 import { Popconfirm, Tooltip, Typography } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
-import { AuthenticationService } from '../gen/api/proto/user_service/user_service_connect';
+import { AuthenticationService } from '../gen/api/proto/user_service/user_service_pb';
 import { flashError, useClient } from '../utils/hooks/connect';
 
 export const API = () => {

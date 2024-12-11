@@ -15,7 +15,7 @@ import { ActionType } from '../actions/actions';
 import { reloadAction } from './reload';
 import { birthdateWarning } from './birthdateWarning';
 import { useClient } from '../utils/hooks/connect';
-import { AuthenticationService } from '../gen/api/proto/user_service/user_service_connect';
+import { AuthenticationService } from '../gen/api/proto/user_service/user_service_pb';
 
 const getSocketURI = (): string => {
   const loc = window.location;

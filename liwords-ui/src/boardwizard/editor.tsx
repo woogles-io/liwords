@@ -21,7 +21,7 @@ import {
   ChallengeRule as OMGChallengeRule,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { GameDocument } from '../gen/api/proto/ipc/omgwords_pb';
-import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_connect';
+import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_pb';
 import { defaultLetterDistribution } from '../lobby/sought_game_interactions';
 import { TopBar } from '../navigation/topbar';
 import { sortTiles } from '../store/constants';

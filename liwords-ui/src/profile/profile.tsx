@@ -25,10 +25,10 @@ import {
   GameInfoResponse,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { ProfileService } from '../gen/api/proto/user_service/user_service_connect';
-import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connect';
+import { ProfileService } from '../gen/api/proto/user_service/user_service_pb';
+import { GameMetadataService } from '../gen/api/proto/game_service/game_service_pb';
 import { BroadcastGamesResponse_BroadcastGame } from '../gen/api/proto/omgwords_service/omgwords_pb';
-import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_connect';
+import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_pb';
 import { AnnotatedGamesHistoryCard } from './annotated_games_history';
 import variables from '../base.module.scss';
 const { screenSizeTablet } = variables;

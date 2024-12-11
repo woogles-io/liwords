@@ -26,7 +26,7 @@ import {
 import {
   AuthenticationService,
   ProfileService,
-} from '../gen/api/proto/user_service/user_service_connect';
+} from '../gen/api/proto/user_service/user_service_pb';
 import { PersonalInfoResponse } from '../gen/api/proto/user_service/user_service_pb';
 import { API } from './api';
 
