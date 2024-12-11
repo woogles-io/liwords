@@ -68,9 +68,9 @@ import { LearnContextProvider } from '../learn/learn_overlay';
 import { PuzzleShareButton } from './puzzle_share';
 import { RatingsCard } from './ratings';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { WordService } from '../gen/api/proto/word_service/word_service_connect';
-import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_connect';
-import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connect';
+import { WordService } from '../gen/api/proto/word_service/word_service_pb';
+import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
+import { GameMetadataService } from '../gen/api/proto/game_service/game_service_pb';
 
 const doNothing = () => {};
 

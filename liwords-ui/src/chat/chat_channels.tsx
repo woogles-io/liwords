@@ -12,7 +12,7 @@ import { DisplayUserFlag } from '../shared/display_flag';
 import { TrophyOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons';
 import { ChatEntityObj } from '../store/constants';
 import { useClient } from '../utils/hooks/connect';
-import { AutocompleteService } from '../gen/api/proto/user_service/user_service_connect';
+import { AutocompleteService } from '../gen/api/proto/user_service/user_service_pb';
 
 type Props = {
   defaultChannel: string;

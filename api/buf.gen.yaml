@@ -1,4 +1,5 @@
 version: v2
+clean: true
 managed:
   enabled: true
   disable:
@@ -17,7 +18,7 @@ plugins:
     out: ../rpc/api
     opt:
       - paths=source_relative
-  - remote: buf.build/bufbuild/es:v1.10.0
+  - remote: buf.build/bufbuild/es:v2.2.0
     out: ../liwords-ui/src/gen/api
-  - remote: buf.build/connectrpc/es:v1.4.0
-    out: ../liwords-ui/src/gen/api
+    include_imports: true
+    opt: target=ts

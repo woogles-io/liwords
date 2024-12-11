@@ -28,7 +28,7 @@ import {
 import moment from 'moment';
 import { proto3 } from '@bufbuild/protobuf';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_connect';
+import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 
 const layout = {
   labelCol: {

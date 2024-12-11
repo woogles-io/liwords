@@ -13,7 +13,7 @@ import {
   BriefProfilesRequest,
 } from '../gen/api/proto/user_service/user_service_pb';
 import { useClient } from './hooks/connect';
-import { ProfileService } from '../gen/api/proto/user_service/user_service_connect';
+import { ProfileService } from '../gen/api/proto/user_service/user_service_pb';
 
 type CacheType = Map<string, { data: BriefProfile | null; expires: number }>;
 

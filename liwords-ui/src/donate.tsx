@@ -2,7 +2,7 @@ import { loadStripe, StripeError } from '@stripe/stripe-js';
 import { App, Button } from 'antd';
 import { useLoginStateStoreContext } from './store/store';
 import { useClient } from './utils/hooks/connect';
-import { IntegrationService } from './gen/api/proto/user_service/user_service_connect';
+import { IntegrationService } from './gen/api/proto/user_service/user_service_pb';
 import { useEffect, useState } from 'react';
 
 const PUBLISHABLE_KEY =

@@ -12,7 +12,7 @@ import {
 import { LoginModal } from '../lobby/login';
 import { isClubType } from '../store/constants';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { AuthenticationService } from '../gen/api/proto/user_service/user_service_connect';
+import { AuthenticationService } from '../gen/api/proto/user_service/user_service_pb';
 
 const TopMenu = React.memo((props: Props) => {
   const playMenuItems = [

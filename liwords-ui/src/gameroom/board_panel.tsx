@@ -97,14 +97,14 @@ import {
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connect';
+import { GameMetadataService } from '../gen/api/proto/game_service/game_service_pb';
 import { RackEditor } from './rack_editor';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
 const EnterKey = 'Enter';
 import variables from '../base.module.scss';
-import { PromiseClient } from '@connectrpc/connect';
+import { Client } from '@connectrpc/connect';
 const { colorPrimary } = variables;
 
 type Props = {
@@ -189,7 +189,7 @@ const shuffleLetters = (a: Array<MachineLetter>): Array<MachineLetter> => {
 const gcgExport = async (
   gameID: string,
   playerMeta: Array<PlayerInfo>,
-  gameMetadataClient: PromiseClient<typeof GameMetadataService>
+  gameMetadataClient: Client<typeof GameMetadataService>
 ) => {
   try {
     const resp = await gameMetadataClient.getGCG({ gameId: gameID });

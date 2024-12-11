@@ -27,7 +27,7 @@ import {
   EyeOutlined,
 } from '@ant-design/icons';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_connect';
+import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 
 type Props = {
   puzzleID?: string;

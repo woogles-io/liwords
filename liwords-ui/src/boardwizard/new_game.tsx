@@ -6,7 +6,7 @@ import { EditorControl } from './editor_control';
 import { ChallengeRule } from '../gen/api/proto/ipc/omgwords_pb';
 import { BroadcastGamesResponse_BroadcastGame } from '../gen/api/proto/omgwords_service/omgwords_pb';
 import { useClient } from '../utils/hooks/connect';
-import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_connect';
+import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_pb';
 import { AnnotatedGamesHistoryCard } from '../profile/annotated_games_history';
 import { useLoginStateStoreContext } from '../store/store';
 import { Content } from 'antd/lib/layout/layout';

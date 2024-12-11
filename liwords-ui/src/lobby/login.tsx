@@ -10,7 +10,7 @@ import {
   flashError,
   useClient,
 } from '../utils/hooks/connect';
-import { AuthenticationService } from '../gen/api/proto/user_service/user_service_connect';
+import { AuthenticationService } from '../gen/api/proto/user_service/user_service_pb';
 
 export const Login = React.memo(() => {
   const { resetStore } = useResetStoreContext();

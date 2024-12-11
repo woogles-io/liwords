@@ -3,7 +3,7 @@ import iconx from '../assets/icon-x.png';
 import { notification } from 'antd';
 import { Modal } from '../utils/focus_modal';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { SocializeService } from '../gen/api/proto/user_service/user_service_connect';
+import { SocializeService } from '../gen/api/proto/user_service/user_service_pb';
 
 type user = {
   username: string;

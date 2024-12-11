@@ -44,7 +44,7 @@ import {
 import { GameRequest } from '../../gen/api/proto/ipc/omgwords_pb';
 import { HelptipLabel } from './helptip_label';
 import { flashError, useClient } from '../../utils/hooks/connect';
-import { TournamentService } from '../../gen/api/proto/tournament_service/tournament_service_connect';
+import { TournamentService } from '../../gen/api/proto/tournament_service/tournament_service_pb';
 
 type ModalProps = {
   title: string;

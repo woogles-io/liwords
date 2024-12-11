@@ -60,8 +60,8 @@ import {
 } from '../gen/api/proto/ipc/omgseeks_pb';
 import { StreakInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
 import { useClient } from '../utils/hooks/connect';
-import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connect';
-import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_connect';
+import { GameMetadataService } from '../gen/api/proto/game_service/game_service_pb';
+import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_pb';
 import { ActionType } from '../actions/actions';
 import { syntheticGameInfo } from '../boardwizard/synthetic_game_info';
 import { MachineLetter, MachineWord } from '../utils/cwgame/common';

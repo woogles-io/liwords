@@ -31,7 +31,7 @@ import { GameComment } from '../gen/api/proto/comments_service/comments_service_
 import { useGameContextStoreContext } from '../store/store';
 import { Comments } from './comments';
 import { useClient } from '../utils/hooks/connect';
-import { GameCommentService } from '../gen/api/proto/comments_service/comments_service_connect';
+import { GameCommentService } from '../gen/api/proto/comments_service/comments_service_pb';
 import { useComments } from '../utils/hooks/comments';
 import {
   Alphabet,
