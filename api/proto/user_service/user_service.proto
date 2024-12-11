@@ -295,5 +295,7 @@ message GetIntegrationsRequest {}
 message IntegrationsResponse { repeated Integration integrations = 1; }
 
 service IntegrationService {
-  rpc GetIntegrations(GetIntegrationsRequest) returns (IntegrationsResponse);
+  rpc GetIntegrations(GetIntegrationsRequest) returns (IntegrationsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
