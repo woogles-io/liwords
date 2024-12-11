@@ -1,4 +1,4 @@
-package bus
+package entitlements
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
+
 	"github.com/woogles-io/liwords/pkg/integrations"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 )
@@ -52,37 +53,6 @@ func getChargePeriodStart(lastPaymentDate time.Time, now time.Time) (time.Time, 
 	return chargePeriodStart, nil
 }
 
-// For paywalling certain bots etc.
-func entitledToBestBot(ctx context.Context, queries *models.Queries, tierData *integrations.PaidTierData,
-	userID uint, now time.Time) (bool, error) {
-	log := log.Ctx(ctx)
-
-	uptodate, msg := paymentsUpToDate(tierData.LastChargeDate, tierData.LastChargeStatus == integrations.ChargeStatusPaid, now)
-
-	if !uptodate {
-		log.Info().Str("uptodate-msg", msg).Uint("user-id", userID).Msg("not-up-to-date")
-		return false, nil
-	}
-
-	bbGamesPlayedThisPeriod, err := queries.GetNumberOfBotGames(ctx, models.GetNumberOfBotGamesParams{
-		BotID:       pgtype.Int4{Int32: int32(BestBotUserID), Valid: true},
-		UserID:      pgtype.Int4{Int32: int32(userID), Valid: true},
-		CreatedDate: pgtype.Timestamptz{Valid: true, Time: tierData.LastChargeDate},
-	})
-	if err != nil {
-		return false, err
-	}
-	log.Info().Time("last-charge", tierData.LastChargeDate).Uint("user-id", userID).
-		Int64("bestbot-games", bbGamesPlayedThisPeriod).Msg("number-of-bot-games")
-
-	if int(bbGamesPlayedThisPeriod) >= entitledBestBotGamesFor(tierData.TierName) {
-		log.Info().Str("tierdata", tierData.TierName).Msg("not-entitled")
-		return false, nil
-	}
-
-	return true, nil
-}
-
 func paymentsUpToDate(lastPaymentDate time.Time, paymentUpToDate bool, now time.Time) (bool, string) {
 	// Get the start of the current charge period
 	currentChargePeriodStart, err := getChargePeriodStart(lastPaymentDate, now)
@@ -110,4 +80,35 @@ func paymentsUpToDate(lastPaymentDate time.Time, paymentUpToDate bool, now time.
 	}
 
 	return false, "Your payment is not up-to-date. Please renew to continue playing."
+}
+
+// For paywalling certain bots etc.
+func EntitledToBestBot(ctx context.Context, queries *models.Queries, tierData *integrations.PaidTierData,
+	userID uint, now time.Time) (bool, error) {
+	log := log.Ctx(ctx)
+
+	uptodate, msg := paymentsUpToDate(tierData.LastChargeDate, tierData.LastChargeStatus == integrations.ChargeStatusPaid, now)
+
+	if !uptodate {
+		log.Info().Str("uptodate-msg", msg).Uint("user-id", userID).Msg("not-up-to-date")
+		return false, nil
+	}
+
+	bbGamesPlayedThisPeriod, err := queries.GetNumberOfBotGames(ctx, models.GetNumberOfBotGamesParams{
+		BotID:       pgtype.Int4{Int32: int32(BestBotUserID), Valid: true},
+		UserID:      pgtype.Int4{Int32: int32(userID), Valid: true},
+		CreatedDate: pgtype.Timestamptz{Valid: true, Time: tierData.LastChargeDate},
+	})
+	if err != nil {
+		return false, err
+	}
+	log.Info().Time("last-charge", tierData.LastChargeDate).Uint("user-id", userID).
+		Int64("bestbot-games", bbGamesPlayedThisPeriod).Msg("number-of-bot-games")
+
+	if int(bbGamesPlayedThisPeriod) >= entitledBestBotGamesFor(tierData.TierName) {
+		log.Info().Str("tierdata", tierData.TierName).Msg("not-entitled")
+		return false, nil
+	}
+
+	return true, nil
 }

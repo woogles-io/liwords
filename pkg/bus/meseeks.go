@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/woogles-io/liwords/pkg/entitlements"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/gameplay"
 	"github.com/woogles-io/liwords/pkg/integrations"
@@ -417,7 +418,7 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.SeekRequest, botUserID str
 			return err
 		}
 
-		entitled, err := entitledToBestBot(ctx, b.stores.Queries, tierData, reqUser.ID, time.Now())
+		entitled, err := entitlements.EntitledToBestBot(ctx, b.stores.Queries, tierData, reqUser.ID, time.Now())
 		if err != nil {
 			return err
 		}
