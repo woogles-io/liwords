@@ -4,7 +4,7 @@
 // @ts-nocheck
 
 import { ActiveChatChannels, AddBlockRequest, AddFollowRequest, BriefProfilesRequest, BriefProfilesResponse, ChangePasswordRequest, ChangePasswordResponse, GetActiveChatChannelsRequest, GetAPIKeyRequest, GetAPIKeyResponse, GetBlocksRequest, GetBlocksResponse, GetChatsRequest, GetFollowsRequest, GetFollowsResponse, GetFullBlocksRequest, GetFullBlocksResponse, GetIntegrationsRequest, GetModListRequest, GetModListResponse, GetSignedCookieRequest, InstallSignedCookieResponse, IntegrationsResponse, LoginResponse, LogoutResponse, NotifyAccountClosureRequest, NotifyAccountClosureResponse, OKResponse, PersonalInfoRequest, PersonalInfoResponse, ProfileRequest, ProfileResponse, RatingsRequest, RatingsResponse, RegistrationResponse, RemoveAvatarRequest, RemoveAvatarResponse, RemoveBlockRequest, RemoveFollowRequest, ResetPasswordRequestStep1, ResetPasswordRequestStep2, ResetPasswordResponse, SignedCookieResponse, SocketTokenRequest, SocketTokenResponse, StatsRequest, StatsResponse, UpdateAvatarRequest, UpdateAvatarResponse, UpdatePersonalInfoRequest, UpdatePersonalInfoResponse, UserLoginRequest, UserLogoutRequest, UsernameSearchRequest, UsernameSearchResponse, UserRegistrationRequest } from "./user_service_pb.js";
-import { MethodKind } from "@bufbuild/protobuf";
+import { MethodIdempotency, MethodKind } from "@bufbuild/protobuf";
 import { ChatMessages } from "../ipc/chat_pb.js";
 
 /**
@@ -343,6 +343,7 @@ export declare const IntegrationService: {
       readonly I: typeof GetIntegrationsRequest,
       readonly O: typeof IntegrationsResponse,
       readonly kind: MethodKind.Unary,
+      readonly idempotency: MethodIdempotency.NoSideEffects,
     },
   }
 };

@@ -1,0 +1,18 @@
+meta {
+  name: Refresh Token
+  type: http
+  seq: 5
+}
+
+post {
+  url: https://www.patreon.com/api/oauth2/token?grant_type=refresh_token&refresh_token={{REFRESH_TOKEN}}&client_id={{CLIENT_ID}}&client_secret={{CLIENT_SECRET}}
+  body: none
+  auth: none
+}
+
+params:query {
+  grant_type: refresh_token
+  refresh_token: {{REFRESH_TOKEN}}
+  client_id: {{CLIENT_ID}}
+  client_secret: {{CLIENT_SECRET}}
+}

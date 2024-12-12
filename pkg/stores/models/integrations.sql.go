@@ -12,6 +12,23 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addOrUpdateGlobalIntegration = `-- name: AddOrUpdateGlobalIntegration :exec
+INSERT INTO integrations_global(integration_name, data)
+VALUES ($1, $2)
+ON CONFLICT (integration_name)
+DO UPDATE SET data = EXCLUDED.data
+`
+
+type AddOrUpdateGlobalIntegrationParams struct {
+	IntegrationName string
+	Data            []byte
+}
+
+func (q *Queries) AddOrUpdateGlobalIntegration(ctx context.Context, arg AddOrUpdateGlobalIntegrationParams) error {
+	_, err := q.db.Exec(ctx, addOrUpdateGlobalIntegration, arg.IntegrationName, arg.Data)
+	return err
+}
+
 const addOrUpdateIntegration = `-- name: AddOrUpdateIntegration :one
 INSERT INTO integrations(user_id, integration_name, data)
 VALUES (
@@ -37,13 +54,30 @@ func (q *Queries) AddOrUpdateIntegration(ctx context.Context, arg AddOrUpdateInt
 	return uuid, err
 }
 
-const getIntegrationData = `-- name: GetIntegrationData :one
-SELECT data FROM integrations
-WHERE uuid = $1
+const getGlobalIntegrationData = `-- name: GetGlobalIntegrationData :one
+SELECT data FROM integrations_global WHERE integration_name = $1
 `
 
-func (q *Queries) GetIntegrationData(ctx context.Context, argUuid uuid.UUID) ([]byte, error) {
-	row := q.db.QueryRow(ctx, getIntegrationData, argUuid)
+func (q *Queries) GetGlobalIntegrationData(ctx context.Context, integrationName string) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getGlobalIntegrationData, integrationName)
+	var data []byte
+	err := row.Scan(&data)
+	return data, err
+}
+
+const getIntegrationData = `-- name: GetIntegrationData :one
+SELECT data FROM integrations
+WHERE user_id = (SELECT id from users where users.uuid = $2)
+AND integration_name = $1
+`
+
+type GetIntegrationDataParams struct {
+	IntegrationName string
+	UserUuid        pgtype.Text
+}
+
+func (q *Queries) GetIntegrationData(ctx context.Context, arg GetIntegrationDataParams) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getIntegrationData, arg.IntegrationName, arg.UserUuid)
 	var data []byte
 	err := row.Scan(&data)
 	return data, err
