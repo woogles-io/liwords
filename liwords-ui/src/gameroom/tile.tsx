@@ -10,7 +10,7 @@ import {
   uniqueTileIdx,
 } from '../utils/cwgame/common';
 import { Popover } from 'antd';
-import { Alphabet, machineLetterToRune } from '../constants/alphabets';
+import { Alphabet, machineLetterToDisplayedTile } from '../constants/alphabets';
 
 // just refresh the page when changing the setting...
 const bicolorMode = localStorage.getItem('enableBicolorMode') === 'true';
@@ -24,7 +24,7 @@ export const TILE_TYPE = 'TILE_TYPE';
 
 export const TileLetter = React.memo((props: TileLetterProps) => {
   const { letter, alphabet } = props;
-  let rune = machineLetterToRune(letter, alphabet);
+  let rune = machineLetterToDisplayedTile(letter, alphabet);
   // For display purposes, an empty blank should just look empty and not like a `?`.
   if (rune === Blank) {
     rune = ' ';
@@ -143,7 +143,7 @@ type TileProps = {
 
 const Tile = React.memo((props: TileProps) => {
   const rune = useMemo(
-    () => machineLetterToRune(props.letter, props.alphabet),
+    () => machineLetterToDisplayedTile(props.letter, props.alphabet),
     [props.letter, props.alphabet]
   );
   const bnjyable = useMemo(() => {

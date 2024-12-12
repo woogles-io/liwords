@@ -7,7 +7,6 @@ import React, {
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Affix, App, Button, Dropdown, MenuProps, Popconfirm } from 'antd';
-import { MenuInfo } from 'rc-menu/lib/interface';
 
 import {
   DoubleLeftOutlined,
@@ -223,9 +222,27 @@ export type Props = {
   lexicon: string;
   challengeRule: ChallengeRule;
   puzzleMode?: boolean;
-  setHandlePassShortcut: ((handler: (() => void) | null) => void) | null;
-  setHandleChallengeShortcut: ((handler: (() => void) | null) => void) | null;
-  setHandleNeitherShortcut: ((handler: (() => void) | null) => void) | null;
+  setHandlePassShortcut:
+    | ((
+        makeNewValue:
+          | ((oldValue: (() => void) | null) => (() => void) | null)
+          | null
+      ) => void)
+    | null;
+  setHandleChallengeShortcut:
+    | ((
+        makeNewValue:
+          | ((oldValue: (() => void) | null) => (() => void) | null)
+          | null
+      ) => void)
+    | null;
+  setHandleNeitherShortcut:
+    | ((
+        makeNewValue:
+          | ((oldValue: (() => void) | null) => (() => void) | null)
+          | null
+      ) => void)
+    | null;
   tournamentPairedMode?: boolean;
   showNudge: boolean;
   showAbort: boolean;

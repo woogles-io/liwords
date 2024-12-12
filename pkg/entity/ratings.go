@@ -112,6 +112,8 @@ func transformLexiconName(lexiconName string) string {
 		newlex = "DISC"
 	case strings.HasPrefix(lexiconName, "OSPS"):
 		newlex = "OSPS"
+	case strings.HasPrefix(lexiconName, "FILE"):
+		newlex = "FILE"
 	default:
 		newlex = lexiconName
 	}

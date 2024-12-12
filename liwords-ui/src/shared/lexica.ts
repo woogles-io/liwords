@@ -13,6 +13,7 @@ const lexiconCodeToInternalRatingName = (code: string) => {
   if (code.startsWith('FRA')) return 'FRA20';
   if (code.startsWith('DISC')) return 'DISC';
   if (code.startsWith('OSPS')) return 'OSPS';
+  if (code.startsWith('FILE')) return 'FILE';
   return code;
 };
 
@@ -31,6 +32,7 @@ const InternalRatingNameToProfileRatingName: {
   FRA20: 'Français',
   DISC: 'Català',
   OSPS: 'Polski',
+  FILE: 'Español',
 };
 
 export const lexiconCodeToProfileRatingName = (code: string) => {
@@ -66,10 +68,10 @@ export const AllLexica: { [code: string]: Lexicon } = {
     longDescription:
       'NASPA School Word List 2020 Edition (NSWL20), © 2020 North American Word Game Players Association. All rights reserved.',
   },
-  CSW21: {
-    code: 'CSW21',
-    shortDescription: 'CSW 21 (World English)',
-    matchName: 'CSW21',
+  CSW24: {
+    code: 'CSW24',
+    shortDescription: 'CSW 24 (World English)',
+    matchName: 'CSW24',
     longDescription:
       'Published under license with Collins, an imprint of HarperCollins Publishers Limited',
   },
@@ -101,6 +103,14 @@ export const AllLexica: { [code: string]: Lexicon } = {
     shortDescription: 'Français (French)',
     matchName: 'Français',
     flagCode: 'fr',
+  },
+  FILE2017: {
+    code: 'FILE2017',
+    shortDescription: 'Español (Spanish)',
+    matchName: 'Español',
+    longDescription:
+      'Copyright 2017 Federación Internacional de Léxico en Español',
+    flagCode: 'es',
   },
   OSPS49: {
     code: 'OSPS49',

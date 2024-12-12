@@ -285,6 +285,8 @@ export const sortTiles = (
   return sorted;
 };
 
+export const isSpanish = (lexicon: string) => lexicon.startsWith('FILE');
+
 // Can skip error codes for now.
 // 1001 - max bye placement - front end doesn't allow this
 // 1002 - min gibson placement - front end doesn't allow this

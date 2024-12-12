@@ -30,7 +30,7 @@
     "scripts": {
         "analyze": "source-map-explorer 'build/static/js/*.js'",
         "start": "rsbuild dev",
-        "build": "tsc && rsbuild build",
+        "build": "tsc && rsbuild build --env-mode production",
         "preview": "rsbuild preview",
         "test": "vitest",
         "lint": "eslint --ext .js,.jsx,.ts,.tsx src --color",
@@ -42,6 +42,7 @@
     },
     "devDependencies": {
         "@rsbuild/core": "^1.0.5",
+        "@rsbuild/plugin-eslint": "^1.0.4",
         "@rsbuild/plugin-react": "^1.0.2",
         "@rsbuild/plugin-sass": "^1.0.1",
         "@testing-library/jest-dom": "^6.5.0",

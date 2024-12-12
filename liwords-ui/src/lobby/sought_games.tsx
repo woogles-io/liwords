@@ -111,11 +111,12 @@ export const SoughtGames = (props: Props) => {
       dataIndex: 'lexicon',
       key: 'lexicon',
       filters: [
-        'CSW21',
+        'CSW24',
         'NWL23',
         'ECWL',
         'RD28',
         'FRA24',
+        'FILE2017',
         'NSF23',
         'DISC2',
         'OSPS49',

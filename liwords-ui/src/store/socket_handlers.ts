@@ -923,6 +923,8 @@ export const useOnSocketMsg = () => {
       stopClock,
       tournamentContext,
       isExamining,
+      message,
+      notification,
     ]
   );
 };

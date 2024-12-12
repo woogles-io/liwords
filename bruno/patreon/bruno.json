@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "patreon",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

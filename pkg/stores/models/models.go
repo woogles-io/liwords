@@ -71,6 +71,14 @@ type GameDocument struct {
 	Document []byte
 }
 
+type Integration struct {
+	ID              int64
+	Uuid            uuid.UUID
+	UserID          int64
+	IntegrationName string
+	Data            []byte
+}
+
 type Liststat struct {
 	GameID    pgtype.Text
 	PlayerID  pgtype.Text

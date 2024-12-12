@@ -25,6 +25,8 @@ export const defaultLetterDistribution = (lexicon: string): string => {
     return 'catalan';
   } else if (lowercasedLexicon.startsWith('osps')) {
     return 'polish';
+  } else if (lowercasedLexicon.startsWith('file')) {
+    return 'spanish';
   } else {
     return 'english';
   }

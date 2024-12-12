@@ -1,0 +1,21 @@
+meta {
+  name: Get User Details
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseURL}}/api/config_service.ConfigService/GetUserDetails
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+      "username": "rightbehindyou"
+  }
+}
+
+assert {
+  res.body.is_admin: eq true
+}

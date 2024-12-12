@@ -1,0 +1,23 @@
+meta {
+  name: Get Identity
+  type: http
+  seq: 2
+}
+
+get {
+  url: https://www.patreon.com/api/oauth2/v2/identity?fields[user]=email,first_name,last_name&fields[campaign]=summary,is_monthly&fields[member]=full_name,is_follower,last_charge_date,last_charge_status,lifetime_support_cents,currently_entitled_amount_cents,patron_status&fields[tier]=amount_cents,created_at,description,discord_role_ids,edited_at,patron_count,published,published_at,requires_shipping,title,url&include=memberships
+  body: none
+  auth: inherit
+}
+
+params:query {
+  fields[user]: email,first_name,last_name
+  fields[campaign]: summary,is_monthly
+  fields[member]: full_name,is_follower,last_charge_date,last_charge_status,lifetime_support_cents,currently_entitled_amount_cents,patron_status
+  fields[tier]: amount_cents,created_at,description,discord_role_ids,edited_at,patron_count,published,published_at,requires_shipping,title,url
+  include: memberships
+}
+
+headers {
+  Content-Type: application/json
+}

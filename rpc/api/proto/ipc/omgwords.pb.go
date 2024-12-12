@@ -724,7 +724,7 @@ type GameRules struct {
 	// The supported board layout names are CrosswordGame and SuperCrosswordGame
 	BoardLayoutName string `protobuf:"bytes,1,opt,name=board_layout_name,json=boardLayoutName,proto3" json:"board_layout_name,omitempty"`
 	// The supported letter distributions are english, french, norwegian, german,
-	// catalan. There are more to come!
+	// catalan, spanish. There are more to come!
 	LetterDistributionName string `protobuf:"bytes,2,opt,name=letter_distribution_name,json=letterDistributionName,proto3" json:"letter_distribution_name,omitempty"`
 	// Use "classic" for our classic game, otherwise it could be some other game
 	// (a is worth 100, dogworms, etc.)

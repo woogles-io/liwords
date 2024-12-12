@@ -161,7 +161,7 @@ export const PuzzleGenerator = () => {
         onFinish={onFinish}
         initialValues={{
           letterdist: 'english',
-          lexicon: 'CSW21',
+          lexicon: 'CSW24',
         }}
         layout="vertical"
       >
@@ -183,6 +183,7 @@ export const PuzzleGenerator = () => {
             <Select.Option value="german">German</Select.Option>
             <Select.Option value="norwegian">Norwegian</Select.Option>
             <Select.Option value="catalan">Catalan</Select.Option>
+            <Select.Option value="spanish">Spanish</Select.Option>
           </Select>
         </Form.Item>
         <Form.Item

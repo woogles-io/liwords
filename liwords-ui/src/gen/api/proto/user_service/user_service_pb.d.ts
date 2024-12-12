@@ -1708,3 +1708,75 @@ export declare class GetModListResponse extends Message<GetModListResponse> {
   static equals(a: GetModListResponse | PlainMessage<GetModListResponse> | undefined, b: GetModListResponse | PlainMessage<GetModListResponse> | undefined): boolean;
 }
 
+/**
+ * @generated from message user_service.Integration
+ */
+export declare class Integration extends Message<Integration> {
+  /**
+   * @generated from field: string uuid = 1;
+   */
+  uuid: string;
+
+  /**
+   * @generated from field: string integration_name = 2;
+   */
+  integrationName: string;
+
+  constructor(data?: PartialMessage<Integration>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "user_service.Integration";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Integration;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Integration;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Integration;
+
+  static equals(a: Integration | PlainMessage<Integration> | undefined, b: Integration | PlainMessage<Integration> | undefined): boolean;
+}
+
+/**
+ * @generated from message user_service.GetIntegrationsRequest
+ */
+export declare class GetIntegrationsRequest extends Message<GetIntegrationsRequest> {
+  constructor(data?: PartialMessage<GetIntegrationsRequest>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "user_service.GetIntegrationsRequest";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetIntegrationsRequest;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetIntegrationsRequest;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetIntegrationsRequest;
+
+  static equals(a: GetIntegrationsRequest | PlainMessage<GetIntegrationsRequest> | undefined, b: GetIntegrationsRequest | PlainMessage<GetIntegrationsRequest> | undefined): boolean;
+}
+
+/**
+ * @generated from message user_service.IntegrationsResponse
+ */
+export declare class IntegrationsResponse extends Message<IntegrationsResponse> {
+  /**
+   * @generated from field: repeated user_service.Integration integrations = 1;
+   */
+  integrations: Integration[];
+
+  constructor(data?: PartialMessage<IntegrationsResponse>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "user_service.IntegrationsResponse";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): IntegrationsResponse;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): IntegrationsResponse;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): IntegrationsResponse;
+
+  static equals(a: IntegrationsResponse | PlainMessage<IntegrationsResponse> | undefined, b: IntegrationsResponse | PlainMessage<IntegrationsResponse> | undefined): boolean;
+}
+

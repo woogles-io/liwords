@@ -284,3 +284,16 @@ service SocializeService {
   rpc GetChatsForChannel(GetChatsRequest) returns (ipc.ChatMessages);
   rpc GetModList(GetModListRequest) returns (GetModListResponse);
 }
+
+message Integration {
+  string uuid = 1;
+  string integration_name = 2;
+}
+
+message GetIntegrationsRequest {}
+
+message IntegrationsResponse { repeated Integration integrations = 1; }
+
+service IntegrationService {
+  rpc GetIntegrations(GetIntegrationsRequest) returns (IntegrationsResponse);
+}

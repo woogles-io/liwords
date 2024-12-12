@@ -179,6 +179,7 @@ export const MetaEventControl = (props: Props) => {
     denyAbort,
     denyAdjudication,
     eventTimeout,
+    notification,
   ]);
 
   return activeNotif;

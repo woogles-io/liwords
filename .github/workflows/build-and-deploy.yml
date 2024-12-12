@@ -85,6 +85,11 @@ jobs:
         uses: Ilshidur/action-discord@master
         with:
           args: "liwords backend built successfully for branch {{GITHUB_REF_NAME}}."
+        continue-on-error: true
+
+      - name: Check Discord notification status
+        if: ${{ failure() }}
+        run: echo "Discord notification failed, but the workflow will continue."
 
   deploy_api_docker:
     runs-on: ubuntu-latest
@@ -118,6 +123,7 @@ jobs:
         uses: Ilshidur/action-discord@master
         with:
           args: ""
+        continue-on-error: true
 
   build_fe:
     runs-on: ubuntu-latest
@@ -151,6 +157,11 @@ jobs:
         uses: Ilshidur/action-discord@master
         with:
           args: "liwords front-end built successfully for branch {{GITHUB_REF_NAME}}."
+        continue-on-error: true
+
+      - name: Check Discord notification status
+        if: ${{ failure() }}
+        run: echo "Discord notification failed, but the workflow will continue."
 
   deploy_fe:
     runs-on: ubuntu-latest
@@ -217,3 +228,4 @@ jobs:
         uses: Ilshidur/action-discord@master
         with:
           args: "liwords front-end deployed successfully for branch {{GITHUB_REF_NAME}}."
+        continue-on-error: true
