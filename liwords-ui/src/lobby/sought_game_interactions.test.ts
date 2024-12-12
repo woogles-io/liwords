@@ -1,4 +1,5 @@
-import { MatchUser } from '../gen/api/proto/ipc/omgseeks_pb';
+import { create } from '@bufbuild/protobuf';
+import { MatchUser, MatchUserSchema } from '../gen/api/proto/ipc/omgseeks_pb';
 import { BotTypesEnum } from './bots';
 import { sendSeek } from './sought_game_interactions';
 
@@ -14,7 +15,7 @@ it('tests sendSeek', () => {
     incrementSecs: 0,
     rated: true,
     maxOvertimeMinutes: 1,
-    receiver: new MatchUser({
+    receiver: create(MatchUserSchema, {
       userId: '',
       relevantRating: '',
       isAnonymous: false,

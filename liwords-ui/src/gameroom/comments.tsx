@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { GameComment } from '../gen/api/proto/comments_service/comments_service_pb';
 import { canMod } from '../mod/perms';
 import { useLoginStateStoreContext } from '../store/store';
+import { timestampDate } from '@bufbuild/protobuf/wkt';
 
 type Props = {
   comments: Array<GameComment>;
@@ -81,7 +82,9 @@ export const Comment = (props: SingleCommentProps) => {
             {props.comment.username}
           </a>
           <span className="timeago">
-            {moment(props.comment.lastEdited?.toDate()).fromNow()}
+            {props.comment.lastEdited
+              ? moment(timestampDate(props.comment.lastEdited)).fromNow()
+              : ''}
           </span>
         </>
       }

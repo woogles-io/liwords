@@ -6,26 +6,30 @@ import {
 import { ftData } from './testdata/tourney_1_divisions';
 import { ChallengeRule } from '../../gen/api/vendor/macondo/macondo_pb';
 import {
-  TournamentMetadata,
+  TournamentMetadataSchema,
   TType,
 } from '../../gen/api/proto/tournament_service/tournament_service_pb';
-import { GameRequest, GameRules } from '../../gen/api/proto/ipc/omgwords_pb';
 import {
-  FullTournamentDivisions,
-  TournamentRoundStarted,
-  TournamentDivisionDataResponse,
-  PlayersAddedOrRemovedResponse,
-  TournamentPersons,
-  TournamentPerson,
-  DivisionControls,
   TournamentGameResult,
-  DivisionControlsResponse,
-  DivisionRoundControls,
-  RoundControl,
-  Pairing,
   FirstMethod,
-  TournamentGame,
+  FullTournamentDivisionsSchema,
+  TournamentRoundStartedSchema,
+  TournamentDivisionDataResponseSchema,
+  PlayersAddedOrRemovedResponseSchema,
+  TournamentPersonsSchema,
+  TournamentPersonSchema,
+  DivisionControlsSchema,
+  DivisionControlsResponseSchema,
+  DivisionRoundControlsSchema,
+  RoundControlSchema,
+  TournamentGameSchema,
+  PairingSchema,
 } from '../../gen/api/proto/ipc/tournament_pb';
+import { create, fromBinary } from '@bufbuild/protobuf';
+import {
+  GameRequestSchema,
+  GameRulesSchema,
+} from '../../gen/api/proto/ipc/omgwords_pb';
 
 const toArr = (s: string) => {
   const bytes = new Uint8Array(Math.ceil(s.length / 2));
@@ -38,11 +42,11 @@ const toArr = (s: string) => {
 // This is a fairly complex tourney
 const initialTourneyXHRMessage = () => {
   const msg = toArr(ftData);
-  return FullTournamentDivisions.fromBinary(msg);
+  return fromBinary(FullTournamentDivisionsSchema, msg);
 };
 
 const tourneyMetadataPayload = () => {
-  const metadata = new TournamentMetadata({
+  const metadata = create(TournamentMetadataSchema, {
     name: 'Wolges Incorporated',
     description: 'Welcome to Wolges: population: You',
     slug: '/tournament/wolges',
@@ -57,7 +61,7 @@ const tourneyMetadataPayload = () => {
 };
 
 const startTourneyMessage = () => {
-  const msg = new TournamentRoundStarted({
+  const msg = create(TournamentRoundStartedSchema, {
     tournamentId: 'qzqWHsGVBrAgiuAZp9nJJm',
     division: 'CSW',
   });
@@ -144,7 +148,7 @@ it('tests tourneystart', () => {
 });
 
 const newDivisionMessage = () => {
-  const msg = new TournamentDivisionDataResponse({
+  const msg = create(TournamentDivisionDataResponseSchema, {
     id: 'qzqWHsGVBrAgiuAZp9nJJm',
     division: 'NWL B',
     currentRound: -1,
@@ -153,16 +157,16 @@ const newDivisionMessage = () => {
 };
 
 const newPlayersMessage = () => {
-  const msg = new PlayersAddedOrRemovedResponse({
+  const msg = create(PlayersAddedOrRemovedResponseSchema, {
     id: 'qzqWHsGVBrAgiuAZp9nJJm',
     division: 'NWL B',
-    players: new TournamentPersons({
+    players: create(TournamentPersonsSchema, {
       persons: [
-        new TournamentPerson({
+        create(TournamentPersonSchema, {
           id: 'ViSLeuyqNcSA3GcHJP5rA5:nigel',
           rating: 2344,
         }),
-        new TournamentPerson({
+        create(TournamentPersonSchema, {
           id: 'JkW7MXvVPfj7HdgAwLQzJ4:will',
           rating: 1234,
         }),
@@ -174,25 +178,25 @@ const newPlayersMessage = () => {
 };
 
 const newTournamentControlsMessage = () => {
-  const rules = new GameRules({
+  const rules = create(GameRulesSchema, {
     boardLayoutName: 'CrosswordGame',
     letterDistributionName: 'English',
   });
-  const gameReq = new GameRequest({
+  const gameReq = create(GameRequestSchema, {
     lexicon: 'NWL20',
     rules: rules,
     initialTimeSeconds: 180,
     challengeRule: ChallengeRule.DOUBLE,
   });
 
-  const divControls = new DivisionControls({
+  const divControls = create(DivisionControlsSchema, {
     id: 'qzqWHsGVBrAgiuAZp9nJJm',
     division: 'NWL B',
     gameRequest: gameReq,
     suspendedResult: TournamentGameResult.BYE,
   });
 
-  const msg = new DivisionControlsResponse({
+  const msg = create(DivisionControlsResponseSchema, {
     division: 'NWL B',
     id: 'qzqWHsGVBrAgiuAZp9nJJm',
     divisionControls: divControls,
@@ -202,20 +206,20 @@ const newTournamentControlsMessage = () => {
 };
 
 const newDivisionRoundControlsMessage = () => {
-  const msg = new DivisionRoundControls({
+  const msg = create(DivisionRoundControlsSchema, {
     id: 'qzqWHsGVBrAgiuAZp9nJJm',
     division: 'NWL B',
   });
-  const rcl = new RoundControl({
+  const rcl = create(RoundControlSchema, {
     firstMethod: FirstMethod.AUTOMATIC_FIRST,
     gamesPerRound: 1,
   });
 
-  const game = new TournamentGame({
+  const game = create(TournamentGameSchema, {
     scores: [0, 0],
     results: [0, 0],
   });
-  const pairing = new Pairing({
+  const pairing = create(PairingSchema, {
     players: [1, 0],
     round: 0,
     games: [game],

@@ -27,13 +27,14 @@ import {
 } from '../tournament/director_tools/game_settings_form';
 
 import {
-  GetTournamentMetadataRequest,
+  GetTournamentMetadataRequestSchema,
   TType,
 } from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { GameRequest } from '../gen/api/proto/ipc/omgwords_pb';
-import { proto3 } from '@bufbuild/protobuf';
 import { flashError, useClient } from '../utils/hooks/connect';
 import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_pb';
+import { create } from '@bufbuild/protobuf';
+import { getEnumLabel } from '../utils/protobuf';
 
 type DProps = {
   description: string;
@@ -134,7 +135,7 @@ export const TourneyEditor = (props: Props) => {
   const tournamentClient = useClient(TournamentService);
 
   const onSearch = async (val: string) => {
-    const tmreq = new GetTournamentMetadataRequest();
+    const tmreq = create(GetTournamentMetadataRequestSchema, {});
     tmreq.slug = val;
 
     try {
@@ -175,7 +176,7 @@ export const TourneyEditor = (props: Props) => {
     let apicall: 'newTournament' | 'setTournamentMetadata' = 'newTournament';
     let obj = {};
 
-    const jsontype = proto3.getEnumType(TType).findNumber(vals.type)?.name;
+    const jsontype = getEnumLabel(TType, vals.type);
 
     if (props.mode === 'new') {
       apicall = 'newTournament';

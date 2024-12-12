@@ -11,7 +11,7 @@ import {
   GameEvent_Direction,
 } from '../gen/api/vendor/macondo/macondo_pb';
 import {
-  PuzzleRequest,
+  PuzzleRequestSchema,
   PuzzleStatus,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { Button } from 'antd';
@@ -28,6 +28,7 @@ import {
 } from '@ant-design/icons';
 import { flashError, useClient } from '../utils/hooks/connect';
 import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
+import { create } from '@bufbuild/protobuf';
 
 type Props = {
   puzzleID?: string;
@@ -68,7 +69,7 @@ export const Hints = (props: Props) => {
     if (!puzzleID) {
       return;
     }
-    const req = new PuzzleRequest({ puzzleId: puzzleID });
+    const req = create(PuzzleRequestSchema, { puzzleId: puzzleID });
     try {
       const resp = await puzzleClient.getPuzzleAnswer(req);
       // Only CorrectAnswer is filled in properly.

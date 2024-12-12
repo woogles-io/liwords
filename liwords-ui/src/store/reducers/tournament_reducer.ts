@@ -1,3 +1,4 @@
+import { clone, create, toBinary } from '@bufbuild/protobuf';
 import { Action, ActionType } from '../../actions/actions';
 import { MessageType } from '../../gen/api/proto/ipc/ipc_pb';
 import { GameEndReason } from '../../gen/api/proto/ipc/omgwords_pb';
@@ -11,7 +12,9 @@ import {
   Pairing,
   PlayersAddedOrRemovedResponse,
   ReadyForTournamentGame,
+  ReadyForTournamentGameSchema,
   RoundControl,
+  RoundControlSchema,
   RoundStandings,
   TournamentDataResponse,
   TournamentDivisionDataResponse,
@@ -19,11 +22,13 @@ import {
   TournamentGameEndedEvent,
   TournamentGameResult,
   TournamentPerson,
+  TournamentPersonSchema,
   TournamentRoundStarted,
 } from '../../gen/api/proto/ipc/tournament_pb';
 
 import {
   TournamentMetadata,
+  TournamentMetadataSchema,
   TType,
 } from '../../gen/api/proto/tournament_service/tournament_service_pb';
 import { encodeToSocketFmt } from '../../utils/protobuf';
@@ -94,7 +99,9 @@ export type TournamentState = {
   initializedFromXHR: boolean;
 };
 
-const defaultMetadata = new TournamentMetadata({ type: TType.LEGACY });
+const defaultMetadata = create(TournamentMetadataSchema, {
+  type: TType.LEGACY,
+});
 
 export const defaultTournamentState = {
   metadata: defaultMetadata,
@@ -129,7 +136,7 @@ export const readyForTournamentGame = (
   tournamentID: string,
   competitorState: CompetitorState
 ) => {
-  const evt = new ReadyForTournamentGame();
+  const evt = create(ReadyForTournamentGameSchema, {});
   const division = competitorState.division;
   if (!division) {
     return;
@@ -139,7 +146,10 @@ export const readyForTournamentGame = (
   evt.tournamentId = tournamentID;
   evt.round = round;
   sendSocketMsg(
-    encodeToSocketFmt(MessageType.READY_FOR_TOURNAMENT_GAME, evt.toBinary())
+    encodeToSocketFmt(
+      MessageType.READY_FOR_TOURNAMENT_GAME,
+      toBinary(ReadyForTournamentGameSchema, evt)
+    )
   );
 };
 
@@ -230,7 +240,7 @@ const copyPairings = (existingPairings: Array<RoundPairings>) => {
         roundPairings.push({} as SinglePairing);
       } else {
         value.players.forEach((person) => {
-          players.push(person.clone());
+          players.push(clone(TournamentPersonSchema, person));
         });
         const newSinglePairing = {
           players,
@@ -489,7 +499,7 @@ export function TournamentReducer(
     }
     case ActionType.SetTourneyReducedMetadata: {
       const m = action.payload as TournamentDataResponse;
-      const newMetadata = state.metadata.clone();
+      const newMetadata = clone(TournamentMetadataSchema, state.metadata);
       newMetadata.name = m.name;
       newMetadata.description = m.description;
       return {
@@ -537,7 +547,7 @@ export function TournamentReducer(
         // This can only be an individual round control in the future.
         newRoundControls = new Array<RoundControl>();
         state.divisions[division].roundControls.forEach((rc: RoundControl) => {
-          newRoundControls.push(rc.clone());
+          newRoundControls.push(clone(RoundControlSchema, rc));
         });
         drc.roundControls.roundControls.forEach((rc: RoundControl) => {
           newRoundControls[rc.round] = rc;

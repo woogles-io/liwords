@@ -85,14 +85,14 @@ import {
 } from '../constants/alphabets';
 import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
 import {
-  MatchUser,
-  SeekRequest,
+  MatchUserSchema,
+  SeekRequestSchema,
   SeekState,
 } from '../gen/api/proto/ipc/omgseeks_pb';
 import {
   ClientGameplayEvent,
-  GameMetaEvent,
   GameMetaEvent_EventType,
+  GameMetaEventSchema,
   PlayerInfo,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
@@ -105,6 +105,7 @@ import { RackEditor } from './rack_editor';
 const EnterKey = 'Enter';
 import variables from '../base.module.scss';
 import { Client } from '@connectrpc/connect';
+import { create, toBinary } from '@bufbuild/protobuf';
 const { colorPrimary } = variables;
 
 type Props = {
@@ -424,12 +425,15 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const sendMetaEvent = useCallback(
     (evtType: GameMetaEvent_EventType) => {
-      const metaEvt = new GameMetaEvent();
+      const metaEvt = create(GameMetaEventSchema);
       metaEvt.type = evtType;
       metaEvt.gameId = gameID;
 
       sendSocketMsg(
-        encodeToSocketFmt(MessageType.GAME_META_EVENT, metaEvt.toBinary())
+        encodeToSocketFmt(
+          MessageType.GAME_META_EVENT,
+          toBinary(GameMetaEventSchema, metaEvt)
+        )
       );
     },
     [sendSocketMsg, gameID]
@@ -1491,8 +1495,8 @@ export const BoardPanel = React.memo((props: Props) => {
   );
 
   const rematch = useCallback(() => {
-    const evt = new SeekRequest();
-    const receiver = new MatchUser();
+    const evt = create(SeekRequestSchema);
+    const receiver = create(MatchUserSchema);
 
     let opp = '';
     playerMeta.forEach((p) => {
@@ -1514,7 +1518,12 @@ export const BoardPanel = React.memo((props: Props) => {
     if (props.tournamentID) {
       evt.tournamentId = props.tournamentID;
     }
-    sendSocketMsg(encodeToSocketFmt(MessageType.SEEK_REQUEST, evt.toBinary()));
+    sendSocketMsg(
+      encodeToSocketFmt(
+        MessageType.SEEK_REQUEST,
+        toBinary(SeekRequestSchema, evt)
+      )
+    );
 
     notification.info({
       message: 'Rematch',

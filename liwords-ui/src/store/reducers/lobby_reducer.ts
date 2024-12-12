@@ -1,5 +1,10 @@
+import { create } from '@bufbuild/protobuf';
 import { Action, ActionType } from '../../actions/actions';
-import { MatchUser, SeekRequest } from '../../gen/api/proto/ipc/omgseeks_pb';
+import {
+  MatchUser,
+  MatchUserSchema,
+  SeekRequest,
+} from '../../gen/api/proto/ipc/omgseeks_pb';
 import {
   GameInfoResponse,
   RatingMode,
@@ -79,7 +84,7 @@ export const SeekRequestToSoughtGame = (
     return null;
   }
 
-  let receivingUser = new MatchUser();
+  let receivingUser = create(MatchUserSchema, {});
   let rematchFor = '';
   let tournamentID = '';
   if (req.receiverIsPermanent) {

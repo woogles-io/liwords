@@ -1,14 +1,15 @@
 import { useEffect } from 'react';
 import { Action, ActionType } from '../actions/actions';
 import {
-  GetTournamentMetadataRequest,
-  GetTournamentRequest,
+  GetTournamentMetadataRequestSchema,
+  GetTournamentRequestSchema,
   TType,
 } from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { LoginState } from '../store/login_state';
 import { message } from 'antd';
 import { useClient } from '../utils/hooks/connect';
 import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_pb';
+import { create } from '@bufbuild/protobuf';
 
 export const useTourneyMetadata = (
   path: string,
@@ -35,7 +36,7 @@ export const useTourneyMetadata = (
       if (!path && !tournamentID) {
         return;
       }
-      const tmreq = new GetTournamentMetadataRequest();
+      const tmreq = create(GetTournamentMetadataRequestSchema, {});
       if (tournamentID) {
         tmreq.id = tournamentID;
       } else if (path) {
@@ -58,7 +59,7 @@ export const useTourneyMetadata = (
           // tournament divisions.
           return;
         }
-        const treq = new GetTournamentRequest();
+        const treq = create(GetTournamentRequestSchema, {});
         if (meta.metadata) {
           treq.id = meta.metadata.id;
         }

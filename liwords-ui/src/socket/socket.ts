@@ -10,12 +10,19 @@ import {
   enableShowSocket,
   parseMsgs,
 } from '../store/socket_handlers';
-import { decodeToMsg } from '../utils/protobuf';
+import { decodeToMsg, encodeToSocketFmt } from '../utils/protobuf';
 import { ActionType } from '../actions/actions';
 import { reloadAction } from './reload';
 import { birthdateWarning } from './birthdateWarning';
 import { useClient } from '../utils/hooks/connect';
 import { AuthenticationService } from '../gen/api/proto/user_service/user_service_pb';
+import {
+  create,
+  DescMessage,
+  MessageInitShape,
+  toBinary,
+} from '@bufbuild/protobuf';
+import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
 
 const getSocketURI = (): string => {
   const loc = window.location;
@@ -49,6 +56,11 @@ export const LiwordsSocket = (props: {
   setValues: (_: {
     sendMessage: (msg: Uint8Array) => void;
     justDisconnected: boolean;
+    sendProtoSocketMsg: <T extends DescMessage>(
+      schema: T,
+      messageType: MessageType,
+      data: MessageInitShape<T>
+    ) => void;
   }) => void;
 }): null => {
   const isMountedRef = useRef(false);
@@ -256,9 +268,25 @@ export const LiwordsSocket = (props: {
     };
   }, [originalSendMessage]);
 
+  const sendProtoSocketMsg = useCallback(
+    <T extends DescMessage>(
+      schema: T,
+      messageType: MessageType,
+      data: MessageInitShape<T>
+    ) => {
+      const message = create(schema, data); // Create the message with the provided schema and data
+      const encodedMessage = encodeToSocketFmt(
+        messageType,
+        toBinary(schema, message)
+      ); // Encode the message
+      sendMessage(encodedMessage); // Send the encoded message
+    },
+    [sendMessage]
+  );
+
   const ret = useMemo(
-    () => ({ sendMessage, justDisconnected }),
-    [sendMessage, justDisconnected]
+    () => ({ sendMessage, justDisconnected, sendProtoSocketMsg }),
+    [sendMessage, justDisconnected, sendProtoSocketMsg]
   );
   useEffect(() => {
     setValues(ret);

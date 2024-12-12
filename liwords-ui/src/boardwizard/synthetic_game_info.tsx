@@ -1,21 +1,24 @@
-import { GameRequest } from '../gen/api/proto/ipc/omgwords_pb';
+import { create } from '@bufbuild/protobuf';
+import {
+  GameInfoResponseSchema,
+  GameRequestSchema,
+  GameRulesSchema,
+  PlayerInfoSchema,
+} from '../gen/api/proto/ipc/omgwords_pb';
 import { RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
-import { GameRules } from '../gen/api/proto/ipc/omgwords_pb';
-import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
 import {
   GameDocument,
   GameInfoResponse,
 } from '../gen/api/proto/ipc/omgwords_pb';
 
 export const syntheticGameInfo = (doc: GameDocument): GameInfoResponse => {
-  return new GameInfoResponse({
-    players: doc.players.map(
-      (p) =>
-        new PlayerInfo({
-          userId: p.userId,
-          nickname: p.nickname,
-          fullName: p.realName,
-        })
+  return create(GameInfoResponseSchema, {
+    players: doc.players.map((p) =>
+      create(PlayerInfoSchema, {
+        userId: p.userId,
+        nickname: p.nickname,
+        fullName: p.realName,
+      })
     ),
     timeControlName: 'Annotated',
     tournamentId: '', // maybe can populate from a description later
@@ -26,9 +29,9 @@ export const syntheticGameInfo = (doc: GameDocument): GameInfoResponse => {
     gameId: doc.uid,
     // no last update
     type: doc.type,
-    gameRequest: new GameRequest({
+    gameRequest: create(GameRequestSchema, {
       lexicon: doc.lexicon,
-      rules: new GameRules({
+      rules: create(GameRulesSchema, {
         boardLayoutName: doc.boardLayout,
         letterDistributionName: doc.letterDistribution,
         variantName: doc.variant,

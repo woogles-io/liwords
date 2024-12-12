@@ -1,14 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
 import {
-  GameMetaEvent,
   GameMetaEvent_EventType,
+  GameMetaEventSchema,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { MetaStates } from '../store/meta_game_events';
 import { useGameMetaEventContext } from '../store/store';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { ShowNotif } from './show_notif';
 import { App } from 'antd';
+import { create, toBinary } from '@bufbuild/protobuf';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -25,12 +26,15 @@ export const MetaEventControl = (props: Props) => {
 
   const denyAbort = useCallback(
     (evtid: string) => {
-      const deny = new GameMetaEvent();
+      const deny = create(GameMetaEventSchema, {});
       deny.type = GameMetaEvent_EventType.ABORT_DENIED;
       deny.origEventId = evtid;
       deny.gameId = gameID;
       sendSocketMsg(
-        encodeToSocketFmt(MessageType.GAME_META_EVENT, deny.toBinary())
+        encodeToSocketFmt(
+          MessageType.GAME_META_EVENT,
+          toBinary(GameMetaEventSchema, deny)
+        )
       );
     },
     [sendSocketMsg, gameID]
@@ -38,12 +42,15 @@ export const MetaEventControl = (props: Props) => {
 
   const denyAdjudication = useCallback(
     (evtid: string) => {
-      const deny = new GameMetaEvent();
+      const deny = create(GameMetaEventSchema, {});
       deny.type = GameMetaEvent_EventType.ADJUDICATION_DENIED;
       deny.origEventId = evtid;
       deny.gameId = gameID;
       sendSocketMsg(
-        encodeToSocketFmt(MessageType.GAME_META_EVENT, deny.toBinary())
+        encodeToSocketFmt(
+          MessageType.GAME_META_EVENT,
+          toBinary(GameMetaEventSchema, deny)
+        )
       );
     },
     [sendSocketMsg, gameID]
@@ -51,13 +58,16 @@ export const MetaEventControl = (props: Props) => {
 
   const acceptAbort = useCallback(
     (evtid: string) => {
-      const accept = new GameMetaEvent();
+      const accept = create(GameMetaEventSchema);
       accept.type = GameMetaEvent_EventType.ABORT_ACCEPTED;
       accept.origEventId = evtid;
       accept.gameId = gameID;
 
       sendSocketMsg(
-        encodeToSocketFmt(MessageType.GAME_META_EVENT, accept.toBinary())
+        encodeToSocketFmt(
+          MessageType.GAME_META_EVENT,
+          toBinary(GameMetaEventSchema, accept)
+        )
       );
     },
     [sendSocketMsg, gameID]
@@ -65,13 +75,16 @@ export const MetaEventControl = (props: Props) => {
 
   const eventTimeout = useCallback(
     (evtid: string) => {
-      const to = new GameMetaEvent();
+      const to = create(GameMetaEventSchema);
       to.type = GameMetaEvent_EventType.TIMER_EXPIRED;
       to.origEventId = evtid;
       to.gameId = gameID;
 
       sendSocketMsg(
-        encodeToSocketFmt(MessageType.GAME_META_EVENT, to.toBinary())
+        encodeToSocketFmt(
+          MessageType.GAME_META_EVENT,
+          toBinary(GameMetaEventSchema, to)
+        )
       );
     },
     [sendSocketMsg, gameID]

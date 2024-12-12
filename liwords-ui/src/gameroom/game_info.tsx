@@ -5,7 +5,9 @@ import { VariantIcon } from '../shared/variant_icons';
 import { MatchLexiconDisplay } from '../shared/lexicon_display';
 import {
   GameEndReason,
-  GameRequest,
+  GameInfoResponseSchema,
+  GameRequestSchema,
+  GameRulesSchema,
   PlayerInfo,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import {
@@ -13,15 +15,15 @@ import {
   ChallengeRule,
 } from '../gen/api/vendor/macondo/macondo_pb';
 import { RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
-import { GameRules } from '../gen/api/proto/ipc/omgwords_pb';
 import { challengeRuleNames } from '../constants/challenge_rules';
 import { GameInfoResponse } from '../gen/api/proto/ipc/omgwords_pb';
+import { create } from '@bufbuild/protobuf';
 
-export const defaultGameInfo = new GameInfoResponse({
+export const defaultGameInfo = create(GameInfoResponseSchema, {
   players: new Array<PlayerInfo>(),
-  gameRequest: new GameRequest({
+  gameRequest: create(GameRequestSchema, {
     lexicon: '',
-    rules: new GameRules({
+    rules: create(GameRulesSchema, {
       variantName: '',
       boardLayoutName: 'CrosswordGame',
       letterDistributionName: 'english',

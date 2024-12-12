@@ -12,7 +12,7 @@ import { sortTiles } from '../store/constants';
 import { alphabetFromName } from '../constants/alphabets';
 import { ActionType } from '../actions/actions';
 import {
-  GameHistoryRefresher,
+  GameHistoryRefresherSchema,
   GameInfoResponse,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { PlayerCards } from '../gameroom/player_cards';
@@ -20,6 +20,7 @@ import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
 import { flashError, useClient } from '../utils/hooks/connect';
 import { GameMetadataService } from '../gen/api/proto/game_service/game_service_pb';
 import { MachineLetter } from '../utils/cwgame/common';
+import { create } from '@bufbuild/protobuf';
 
 const doNothing = () => {};
 
@@ -73,7 +74,9 @@ export const Embed = () => {
         const resp = await gameMetadataClient.getGameHistory({
           gameId: gameID,
         });
-        const ghr = new GameHistoryRefresher({ history: resp.history });
+        const ghr = create(GameHistoryRefresherSchema, {
+          history: resp.history,
+        });
         dispatchGameContext({
           actionType: ActionType.RefreshHistory,
           payload: ghr,

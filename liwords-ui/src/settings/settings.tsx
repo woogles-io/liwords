@@ -25,10 +25,13 @@ import {
 } from '../utils/hooks/connect';
 import {
   AuthenticationService,
+  PersonalInfoRequestSchema,
+  PersonalInfoResponseSchema,
   ProfileService,
 } from '../gen/api/proto/user_service/user_service_pb';
 import { PersonalInfoResponse } from '../gen/api/proto/user_service/user_service_pb';
 import { API } from './api';
+import { create } from '@bufbuild/protobuf';
 
 enum Category {
   PersonalInfo = 1,
@@ -107,7 +110,9 @@ export const Settings = React.memo(() => {
     }
     (async () => {
       try {
-        const resp = await profileClient.getPersonalInfo({ username: viewer });
+        const resp = await profileClient.getPersonalInfo(
+          create(PersonalInfoRequestSchema, {})
+        );
 
         setPlayer({
           fullName: resp.fullName,
@@ -159,8 +164,14 @@ export const Settings = React.memo(() => {
 
   const updatedAvatar = useCallback(
     (avatarUrl: string) => {
+      if (!personalInfo) {
+        return;
+      }
       setPersonalInfo(
-        new PersonalInfoResponse({ ...personalInfo, avatarUrl: avatarUrl })
+        create(PersonalInfoResponseSchema, {
+          ...personalInfo,
+          avatarUrl: avatarUrl,
+        })
       );
     },
     [personalInfo]

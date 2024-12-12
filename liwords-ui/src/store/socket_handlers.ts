@@ -30,43 +30,71 @@ import { metaStateFromMetaEvent } from './meta_game_events';
 import { parseWooglesError } from '../utils/parse_woogles_error';
 import {
   LagMeasurement,
+  LagMeasurementSchema,
   MessageType,
   ServerMessage,
+  ServerMessageSchema,
 } from '../gen/api/proto/ipc/ipc_pb';
 import {
   DeclineSeekRequest,
+  DeclineSeekRequestSchema,
   SeekRequest,
+  SeekRequestSchema,
   SeekRequests,
+  SeekRequestsSchema,
   SoughtGameProcessEvent,
+  SoughtGameProcessEventSchema,
 } from '../gen/api/proto/ipc/omgseeks_pb';
-import { ErrorMessage } from '../gen/api/proto/ipc/errors_pb';
-import { ChatMessage, ChatMessageDeleted } from '../gen/api/proto/ipc/chat_pb';
+import {
+  ErrorMessage,
+  ErrorMessageSchema,
+} from '../gen/api/proto/ipc/errors_pb';
+import {
+  ChatMessage,
+  ChatMessageDeleted,
+  ChatMessageDeletedSchema,
+  ChatMessageSchema,
+} from '../gen/api/proto/ipc/chat_pb';
 import {
   NewGameEvent,
   GameHistoryRefresher,
-  ClientGameplayEvent,
   ServerGameplayEvent,
   GameEndedEvent,
   ServerChallengeResultEvent,
-  TimedOut,
   GameDeletion,
-  ReadyForGame,
   RematchStartedEvent,
   GameMetaEvent,
-  ActiveGameEntry,
   GameInfoResponse,
   GameInfoResponses,
+  NewGameEventSchema,
+  GameHistoryRefresherSchema,
+  ClientGameplayEventSchema,
+  ServerGameplayEventSchema,
+  GameEndedEventSchema,
+  ServerChallengeResultEventSchema,
+  TimedOutSchema,
+  GameInfoResponseSchema,
+  GameInfoResponsesSchema,
+  GameDeletionSchema,
+  ReadyForGameSchema,
+  RematchStartedEventSchema,
+  GameMetaEventSchema,
+  ActiveGameEntrySchema,
+  ServerOMGWordsEventSchema,
+  GameDocumentEventSchema,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import {
   UserPresence,
   UserPresences,
   PresenceEntry,
+  UserPresenceSchema,
+  UserPresencesSchema,
+  PresenceEntrySchema,
 } from '../gen/api/proto/ipc/presence_pb';
 import {
   ReadyForTournamentGame,
   TournamentRoundStarted,
   TournamentGameEndedEvent,
-  FullTournamentDivisions,
   DivisionRoundControls,
   DivisionPairingsResponse,
   DivisionControlsResponse,
@@ -76,86 +104,125 @@ import {
   DivisionPairingsDeletedResponse,
   TournamentDataResponse,
   TournamentDivisionDataResponse,
+  ReadyForTournamentGameSchema,
+  TournamentRoundStartedSchema,
+  TournamentGameEndedEventSchema,
+  FullTournamentDivisionsSchema,
+  DivisionRoundControlsSchema,
+  DivisionPairingsResponseSchema,
+  DivisionControlsResponseSchema,
+  PlayersAddedOrRemovedResponseSchema,
+  TournamentFinishedResponseSchema,
+  TournamentDivisionDeletedResponseSchema,
+  DivisionPairingsDeletedResponseSchema,
+  TournamentDataResponseSchema,
+  TournamentDivisionDataResponseSchema,
 } from '../gen/api/proto/ipc/tournament_pb';
-import { ProfileUpdate } from '../gen/api/proto/ipc/users_pb';
+import {
+  ProfileUpdate,
+  ProfileUpdateSchema,
+} from '../gen/api/proto/ipc/users_pb';
 import { ChatEntityType, PresenceEntity } from './constants';
 import { ServerOMGWordsEvent } from '../gen/api/proto/ipc/omgwords_pb';
 import { GameDocumentEvent } from '../gen/api/proto/ipc/omgwords_pb';
 import { App } from 'antd';
+import { fromBinary } from '@bufbuild/protobuf';
 // Feature flag.
 export const enableShowSocket =
   localStorage?.getItem('enableShowSocket') === 'true';
 
-export const parseMsgs = (msg: Uint8Array) => {
+const MsgTypesMap = {
+  [MessageType.SEEK_REQUEST]: SeekRequestSchema,
+  [MessageType.ERROR_MESSAGE]: ErrorMessageSchema,
+  [MessageType.SERVER_MESSAGE]: ServerMessageSchema,
+  [MessageType.NEW_GAME_EVENT]: NewGameEventSchema,
+  [MessageType.GAME_HISTORY_REFRESHER]: GameHistoryRefresherSchema,
+  [MessageType.MATCH_REQUEST]: SeekRequestSchema,
+  [MessageType.SOUGHT_GAME_PROCESS_EVENT]: SoughtGameProcessEventSchema,
+  [MessageType.CLIENT_GAMEPLAY_EVENT]: ClientGameplayEventSchema,
+  [MessageType.SERVER_GAMEPLAY_EVENT]: ServerGameplayEventSchema,
+  [MessageType.GAME_ENDED_EVENT]: GameEndedEventSchema,
+  [MessageType.SERVER_CHALLENGE_RESULT_EVENT]: ServerChallengeResultEventSchema,
+  [MessageType.SEEK_REQUESTS]: SeekRequestsSchema,
+  [MessageType.TIMED_OUT]: TimedOutSchema,
+  [MessageType.ONGOING_GAME_EVENT]: GameInfoResponseSchema,
+  [MessageType.ONGOING_GAMES]: GameInfoResponsesSchema,
+  [MessageType.GAME_DELETION]: GameDeletionSchema,
+  [MessageType.MATCH_REQUESTS]: SeekRequestsSchema,
+  [MessageType.DECLINE_SEEK_REQUEST]: DeclineSeekRequestSchema,
+  [MessageType.CHAT_MESSAGE]: ChatMessageSchema,
+  [MessageType.USER_PRESENCE]: UserPresenceSchema,
+  [MessageType.USER_PRESENCES]: UserPresencesSchema,
+  [MessageType.READY_FOR_GAME]: ReadyForGameSchema,
+  [MessageType.READY_FOR_TOURNAMENT_GAME]: ReadyForTournamentGameSchema,
+  [MessageType.TOURNAMENT_ROUND_STARTED]: TournamentRoundStartedSchema,
+  [MessageType.LAG_MEASUREMENT]: LagMeasurementSchema,
+  [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEventSchema,
+  [MessageType.REMATCH_STARTED]: RematchStartedEventSchema,
+  [MessageType.GAME_META_EVENT]: GameMetaEventSchema,
+  [MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE]:
+    FullTournamentDivisionsSchema,
+  [MessageType.TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE]:
+    DivisionRoundControlsSchema,
+  [MessageType.TOURNAMENT_DIVISION_PAIRINGS_MESSAGE]:
+    DivisionPairingsResponseSchema,
+  [MessageType.TOURNAMENT_DIVISION_CONTROLS_MESSAGE]:
+    DivisionControlsResponseSchema,
+  [MessageType.TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE]:
+    PlayersAddedOrRemovedResponseSchema,
+  [MessageType.TOURNAMENT_FINISHED_MESSAGE]: TournamentFinishedResponseSchema,
+  [MessageType.TOURNAMENT_DIVISION_DELETED_MESSAGE]:
+    TournamentDivisionDeletedResponseSchema,
+  [MessageType.TOURNAMENT_DIVISION_PAIRINGS_DELETED_MESSAGE]:
+    DivisionPairingsDeletedResponseSchema,
+  [MessageType.CHAT_MESSAGE_DELETED]: ChatMessageDeletedSchema,
+  [MessageType.TOURNAMENT_MESSAGE]: TournamentDataResponseSchema,
+  [MessageType.TOURNAMENT_DIVISION_MESSAGE]:
+    TournamentDivisionDataResponseSchema,
+  [MessageType.PRESENCE_ENTRY]: PresenceEntrySchema,
+  [MessageType.ACTIVE_GAME_ENTRY]: ActiveGameEntrySchema,
+  [MessageType.PROFILE_UPDATE_EVENT]: ProfileUpdateSchema,
+  [MessageType.OMGWORDS_GAMEPLAY_EVENT]: ServerOMGWordsEventSchema,
+  [MessageType.OMGWORDS_GAMEDOCUMENT]: GameDocumentEventSchema,
+};
+
+export const parseMsgs = (
+  msg: Uint8Array
+): Array<{
+  msgType: MessageType;
+  parsedMsg: ReturnType<typeof fromBinary>;
+  msgLength: number;
+}> => {
   // Multiple msgs can come in the same packet.
+
   const msgs = [];
 
   while (msg.length > 0) {
+    // Extract message length from the first two bytes
     const msgLength = msg[0] * 256 + msg[1];
+
+    // Extract message type from the third byte
     const msgType = msg[2] as MessageType;
+
+    // Extract the payload for the message
     const msgBytes = msg.slice(3, 3 + (msgLength - 1));
 
-    const msgTypes = {
-      [MessageType.SEEK_REQUEST]: SeekRequest,
-      [MessageType.ERROR_MESSAGE]: ErrorMessage,
-      [MessageType.SERVER_MESSAGE]: ServerMessage,
-      [MessageType.NEW_GAME_EVENT]: NewGameEvent,
-      [MessageType.GAME_HISTORY_REFRESHER]: GameHistoryRefresher,
-      [MessageType.MATCH_REQUEST]: SeekRequest,
-      [MessageType.SOUGHT_GAME_PROCESS_EVENT]: SoughtGameProcessEvent,
-      [MessageType.CLIENT_GAMEPLAY_EVENT]: ClientGameplayEvent,
-      [MessageType.SERVER_GAMEPLAY_EVENT]: ServerGameplayEvent,
-      [MessageType.GAME_ENDED_EVENT]: GameEndedEvent,
-      [MessageType.SERVER_CHALLENGE_RESULT_EVENT]: ServerChallengeResultEvent,
-      [MessageType.SEEK_REQUESTS]: SeekRequests,
-      [MessageType.TIMED_OUT]: TimedOut,
-      [MessageType.ONGOING_GAME_EVENT]: GameInfoResponse,
-      [MessageType.ONGOING_GAMES]: GameInfoResponses,
-      [MessageType.GAME_DELETION]: GameDeletion,
-      [MessageType.MATCH_REQUESTS]: SeekRequests,
-      [MessageType.DECLINE_SEEK_REQUEST]: DeclineSeekRequest,
-      [MessageType.CHAT_MESSAGE]: ChatMessage,
-      [MessageType.USER_PRESENCE]: UserPresence,
-      [MessageType.USER_PRESENCES]: UserPresences,
-      [MessageType.READY_FOR_GAME]: ReadyForGame,
-      [MessageType.READY_FOR_TOURNAMENT_GAME]: ReadyForTournamentGame,
-      [MessageType.TOURNAMENT_ROUND_STARTED]: TournamentRoundStarted,
-      [MessageType.LAG_MEASUREMENT]: LagMeasurement,
-      [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,
-      [MessageType.REMATCH_STARTED]: RematchStartedEvent,
-      [MessageType.GAME_META_EVENT]: GameMetaEvent,
-      [MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE]: FullTournamentDivisions,
-      [MessageType.TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE]:
-        DivisionRoundControls,
-      [MessageType.TOURNAMENT_DIVISION_PAIRINGS_MESSAGE]:
-        DivisionPairingsResponse,
-      [MessageType.TOURNAMENT_DIVISION_CONTROLS_MESSAGE]:
-        DivisionControlsResponse,
-      [MessageType.TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE]:
-        PlayersAddedOrRemovedResponse,
-      [MessageType.TOURNAMENT_FINISHED_MESSAGE]: TournamentFinishedResponse,
-      [MessageType.TOURNAMENT_DIVISION_DELETED_MESSAGE]:
-        TournamentDivisionDeletedResponse,
-      [MessageType.TOURNAMENT_DIVISION_PAIRINGS_DELETED_MESSAGE]:
-        DivisionPairingsDeletedResponse,
-      [MessageType.CHAT_MESSAGE_DELETED]: ChatMessageDeleted,
-      [MessageType.TOURNAMENT_MESSAGE]: TournamentDataResponse,
-      [MessageType.TOURNAMENT_DIVISION_MESSAGE]: TournamentDivisionDataResponse,
-      [MessageType.PRESENCE_ENTRY]: PresenceEntry,
-      [MessageType.ACTIVE_GAME_ENTRY]: ActiveGameEntry,
-      [MessageType.PROFILE_UPDATE_EVENT]: ProfileUpdate,
-      [MessageType.OMGWORDS_GAMEPLAY_EVENT]: ServerOMGWordsEvent,
-      [MessageType.OMGWORDS_GAMEDOCUMENT]: GameDocumentEvent,
-    };
+    // Parse the message using the appropriate schema
+    const schema = MsgTypesMap[msgType];
+    if (!schema) {
+      throw new Error(`No schema found for message type: ${msgType}`);
+    }
 
-    const parsedMsg = msgTypes[msgType];
-    const topush = {
+    const parsedMsg = fromBinary(schema, msgBytes);
+
+    // Add the parsed message to the result array
+    msgs.push({
       msgType,
-      parsedMsg: parsedMsg?.fromBinary(msgBytes),
+      parsedMsg,
       msgLength,
-    };
-    msgs.push(topush);
-    // eslint-disable-next-line no-param-reassign
+    });
+
+    // Remove the processed message from the input buffer
     msg = msg.slice(3 + (msgLength - 1));
   }
   return msgs;

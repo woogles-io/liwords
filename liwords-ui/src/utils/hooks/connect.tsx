@@ -1,14 +1,10 @@
 import { useMemo } from 'react';
 
-import { ServiceType } from '@bufbuild/protobuf';
+import { type DescService } from '@bufbuild/protobuf';
 import { message } from 'antd';
 import { parseWooglesError } from '../parse_woogles_error';
 import { createConnectTransport } from '@connectrpc/connect-web';
-import {
-  ConnectError,
-  Client,
-  createClient,
-} from '@connectrpc/connect';
+import { ConnectError, Client, createClient } from '@connectrpc/connect';
 
 const loc = window.location;
 const apiEndpoint = window.RUNTIME_CONFIGURATION?.apiEndpoint || loc.host;
@@ -25,7 +21,7 @@ export const binaryTransport = createConnectTransport({
   useBinaryFormat: true,
 });
 
-export function useClient<T extends ServiceType>(
+export function useClient<T extends DescService>(
   service: T,
   binary = false
 ): Client<T> {

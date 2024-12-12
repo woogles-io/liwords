@@ -4,6 +4,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
 import { BroadcastGamesResponse_BroadcastGame } from '../gen/api/proto/omgwords_service/omgwords_pb';
+import { timestampDate } from '@bufbuild/protobuf/wkt';
 
 type Props = {
   games: Array<BroadcastGamesResponse_BroadcastGame>;
@@ -21,7 +22,9 @@ export const AnnotatedGamesHistoryCard = React.memo((props: Props) => {
       })
       .join(' vs ');
     const url = `/anno/${encodeURIComponent(item.gameId)}?turn=1`;
-    const whenMoment = moment(item.createdAt ? item.createdAt.toDate() : '');
+    const whenMoment = moment(
+      item.createdAt ? timestampDate(item.createdAt) : ''
+    );
     const when = (
       <Tooltip title={whenMoment.format('LLL')}>{whenMoment.fromNow()}</Tooltip>
     );

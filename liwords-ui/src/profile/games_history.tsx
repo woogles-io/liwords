@@ -11,6 +11,7 @@ import { challengeRuleNamesShort } from '../constants/challenge_rules';
 import { GameEndReason } from '../gen/api/proto/ipc/omgwords_pb';
 import { ChallengeRule } from '../gen/api/vendor/macondo/macondo_pb';
 import { lexiconCodeToProfileRatingName } from '../shared/lexica';
+import { timestampDate } from '@bufbuild/protobuf/wkt';
 
 type Props = {
   games: Array<GameInfoResponse>;
@@ -108,7 +109,9 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       if (item.players[userplace].first) {
         turnOrder = <CheckCircleTwoTone twoToneColor="#52c41a" />;
       }
-      const whenMoment = moment(item.createdAt ? item.createdAt.toDate() : '');
+      const whenMoment = moment(
+        item.createdAt ? timestampDate(item.createdAt) : ''
+      );
       const when = (
         <Tooltip title={whenMoment.format('LLL')}>
           {whenMoment.fromNow()}

@@ -38,10 +38,14 @@ import {
   StandardEnglishAlphabet,
   runesToMachineWord,
 } from '../constants/alphabets';
-import { SeekRequest } from '../gen/api/proto/ipc/omgseeks_pb';
+import {
+  SeekRequest,
+  SeekRequestSchema,
+} from '../gen/api/proto/ipc/omgseeks_pb';
 import { ServerChallengeResultEvent } from '../gen/api/proto/ipc/omgwords_pb';
 import { message } from 'antd';
 import { GameEvent_Type } from '../gen/api/vendor/macondo/macondo_pb';
+import { create } from '@bufbuild/protobuf';
 
 const MaxChatLength = 150;
 
@@ -339,7 +343,7 @@ const [GameEndMessageContext, ExaminableGameEndMessageContext] = Array.from(
 );
 
 const RematchRequestContext = createContext<RematchRequestStoreData>({
-  rematchRequest: new SeekRequest(),
+  rematchRequest: create(SeekRequestSchema, {}),
   setRematchRequest: defaultFunction,
 });
 
@@ -865,7 +869,9 @@ const RealStore = ({ children, ...props }: Props) => {
   );
 
   const [gameEndMessage, setGameEndMessage] = useState('');
-  const [rematchRequest, setRematchRequest] = useState(new SeekRequest());
+  const [rematchRequest, setRematchRequest] = useState(
+    create(SeekRequestSchema, {})
+  );
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
   const [chatChannels, setChatChannels] = useState<
     ActiveChatChannels | undefined

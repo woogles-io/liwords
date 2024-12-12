@@ -18,7 +18,7 @@ import { Modal } from '../../utils/focus_modal';
 import { Store } from 'rc-field-form/lib/interface';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  SingleRoundControlsRequest,
+  SingleRoundControlsRequestSchema,
   TType,
 } from '../../gen/api/proto/tournament_service/tournament_service_pb';
 import { Division } from '../../store/reducers/tournament_reducer';
@@ -34,17 +34,19 @@ import {
 } from './pairing_methods';
 import {
   TournamentGameResult,
-  DivisionControls,
   PairingMethod,
   RoundControl,
   FirstMethod,
-  DivisionRoundControls,
   TournamentPerson,
+  DivisionControlsSchema,
+  RoundControlSchema,
+  DivisionRoundControlsSchema,
 } from '../../gen/api/proto/ipc/tournament_pb';
 import { GameRequest } from '../../gen/api/proto/ipc/omgwords_pb';
 import { HelptipLabel } from './helptip_label';
 import { flashError, useClient } from '../../utils/hooks/connect';
 import { TournamentService } from '../../gen/api/proto/tournament_service/tournament_service_pb';
+import { create, clone } from '@bufbuild/protobuf';
 
 type ModalProps = {
   title: string;
@@ -1049,7 +1051,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
       showError('No game request');
       return;
     }
-    const ctrls = new DivisionControls({
+    const ctrls = create(DivisionControlsSchema, {
       id: props.tournamentID,
       division,
       gameRequest: selectedGameRequest,
@@ -1101,10 +1103,10 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
   const copySettings = React.useCallback(() => {
     // copy settings from copyFromDivision to division
     const cd = tournamentContext.divisions[copyFromDivision];
-    const cdCopy = cd.divisionControls?.clone();
-    if (!cdCopy) {
+    if (!cd.divisionControls) {
       return;
     }
+    const cdCopy = clone(DivisionControlsSchema, cd.divisionControls);
     setSelectedGameRequest(cdCopy.gameRequest);
     setSuspendedResult(cdCopy.suspendedResult);
     setGibsonize(cdCopy.gibsonize);
@@ -1493,7 +1495,7 @@ const RoundControlFields = (props: RdCtrlFieldsProps) => {
 };
 
 const rdCtrlFromSetting = (rdSetting: RoundControl): RoundControl => {
-  const rdCtrl = new RoundControl({
+  const rdCtrl = create(RoundControlSchema, {
     firstMethod: FirstMethod.AUTOMATIC_FIRST,
     gamesPerRound: 1,
     pairingMethod: rdSetting.pairingMethod,
@@ -1550,7 +1552,7 @@ const rdCtrlFromSetting = (rdSetting: RoundControl): RoundControl => {
 const SetSingleRoundControls = (props: { tournamentID: string }) => {
   const [division, setDivision] = useState('');
   const [roundSetting, setRoundSetting] = useState<RoundControl>(
-    new RoundControl({
+    create(RoundControlSchema, {
       pairingMethod: PairingMethod.RANDOM,
     })
   );
@@ -1570,7 +1572,7 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
       return;
     }
 
-    const ctrls = new SingleRoundControlsRequest({
+    const ctrls = create(SingleRoundControlsRequestSchema, {
       id: props.tournamentID,
       division: division,
       round: userVisibleRound - 1, // round is 0-indexed on backend.
@@ -1632,7 +1634,7 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
             value: string | number | boolean | PairingMethod
           ) => {
             const val = { ...roundSetting, [fieldName]: value };
-            setRoundSetting(new RoundControl(val));
+            setRoundSetting(create(RoundControlSchema, val));
           }}
         />
         <Form.Item>
@@ -1662,7 +1664,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
       let min = 1;
       let max = 1;
       roundControls.forEach((v: RoundControl, rd: number) => {
-        const thisSetting = new RoundControl({
+        const thisSetting = create(RoundControlSchema, {
           pairingMethod: v.pairingMethod,
           gamesPerRound: v.gamesPerRound,
           factor: v.factor,
@@ -1738,7 +1740,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
       lastRd = rdCtrl.endRound;
     }
 
-    const ctrls = new DivisionRoundControls({
+    const ctrls = create(DivisionRoundControlsSchema, {
       id: props.tournamentID,
       division: division,
     });
@@ -1846,7 +1848,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
             } else {
               newRdArray[idx] = {
                 ...newRdArray[idx],
-                setting: new RoundControl({
+                setting: create(RoundControlSchema, {
                   ...newRdArray[idx].setting,
                   [fieldName]: value,
                 }),
@@ -1868,7 +1870,9 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
           newRdArray.push({
             beginRound: last?.endRound ? last.endRound + 1 : 1,
             endRound: last?.endRound ? last.endRound + 1 : 1,
-            setting: new RoundControl({ pairingMethod: PairingMethod.MANUAL }),
+            setting: create(RoundControlSchema, {
+              pairingMethod: PairingMethod.MANUAL,
+            }),
           });
           setRoundArray(newRdArray);
         }}

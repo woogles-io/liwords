@@ -40,7 +40,7 @@ import { TournamentRoom } from './tournament/room';
 import { Admin } from './admin/admin';
 import { DonateSuccess } from './donate_success';
 import { TermsOfService } from './about/termsOfService';
-import { ChatMessage } from './gen/api/proto/ipc/chat_pb';
+import { ChatMessageSchema } from './gen/api/proto/ipc/chat_pb';
 import { MessageType } from './gen/api/proto/ipc/ipc_pb';
 import Footer from './navigation/footer';
 import { Embed } from './embed/embed';
@@ -62,6 +62,7 @@ import {
 import { BoardEditor } from './boardwizard/editor';
 import { RootState } from './store/redux_store';
 import { CallbackHandler as ScrabblecamCallbackHandler } from './boardwizard/callback_handler';
+import { create, toBinary } from '@bufbuild/protobuf';
 
 // const useDarkMode = localStorage?.getItem('darkMode') === 'true';
 // document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
@@ -282,8 +283,13 @@ const App = React.memo(() => {
 
   const sendChat = useCallback(
     (msg: string, chan: string) => {
-      const evt = new ChatMessage({ message: msg, channel: chan });
-      sendMessage(encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.toBinary()));
+      const evt = create(ChatMessageSchema, { message: msg, channel: chan });
+      sendMessage(
+        encodeToSocketFmt(
+          MessageType.CHAT_MESSAGE,
+          toBinary(ChatMessageSchema, evt)
+        )
+      );
     },
     [sendMessage]
   );

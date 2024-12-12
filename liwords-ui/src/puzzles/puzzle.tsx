@@ -24,11 +24,11 @@ import './puzzles.scss';
 import { PuzzleInfo as PuzzleInfoWidget } from './puzzle_info';
 import { ActionType } from '../actions/actions';
 import {
-  PuzzleRequest,
   PuzzleStatus,
-  SubmissionRequest,
-  NextClosestRatingPuzzleIdRequest,
-  StartPuzzleIdRequest,
+  NextClosestRatingPuzzleIdRequestSchema,
+  StartPuzzleIdRequestSchema,
+  SubmissionRequestSchema,
+  PuzzleRequestSchema,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { sortTiles } from '../store/constants';
 import { Notepad, NotepadContextProvider } from '../gameroom/notepad';
@@ -60,7 +60,7 @@ import { EphemeralTile, MachineLetter } from '../utils/cwgame/common';
 import { useFirefoxPatch } from '../utils/hooks/firefox';
 import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
 import { BoopSounds } from '../sound/boop';
-import { GameInfoRequest } from '../gen/api/proto/game_service/game_service_pb';
+import { GameInfoRequestSchema } from '../gen/api/proto/game_service/game_service_pb';
 import { isLegalPlay } from '../utils/cwgame/scoring';
 import { singularCount } from '../utils/plural';
 import { getWordsFormed } from '../utils/cwgame/tile_placement';
@@ -71,6 +71,8 @@ import { flashError, useClient } from '../utils/hooks/connect';
 import { WordService } from '../gen/api/proto/word_service/word_service_pb';
 import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { GameMetadataService } from '../gen/api/proto/game_service/game_service_pb';
+import { create } from '@bufbuild/protobuf';
+import { timestampDate } from '@bufbuild/protobuf/wkt';
 
 const doNothing = () => {};
 
@@ -196,19 +198,19 @@ export const SinglePuzzle = (props: Props) => {
         setShowLexiconModal(true);
         return;
       }
-      let req;
-      let method: 'getStartPuzzleId' | 'getNextClosestRatingPuzzleId';
-      if (firstLoad === true) {
-        req = new StartPuzzleIdRequest();
-        method = 'getStartPuzzleId';
-      } else {
-        req = new NextClosestRatingPuzzleIdRequest();
-        method = 'getNextClosestRatingPuzzleId';
-      }
 
-      req.lexicon = userLexicon;
       try {
-        const resp = await puzzleClient[method](req);
+        let req, resp;
+        if (firstLoad === true) {
+          req = create(StartPuzzleIdRequestSchema, { lexicon: userLexicon });
+          resp = await puzzleClient.getStartPuzzleId(req);
+        } else {
+          req = create(NextClosestRatingPuzzleIdRequestSchema, {
+            lexicon: userLexicon,
+          });
+          resp = await puzzleClient.getNextClosestRatingPuzzleId(req);
+        }
+
         navigate(`/puzzle/${encodeURIComponent(resp.puzzleId)}`, {
           replace: !!firstLoad,
         });
@@ -263,7 +265,7 @@ export const SinglePuzzle = (props: Props) => {
 
   const setGameInfo = useCallback(
     async (gid: string, turnNumber: number) => {
-      const req = new GameInfoRequest({ gameId: gid });
+      const req = create(GameInfoRequestSchema, { gameId: gid });
       try {
         const resp = await gameMetadataClient.getMetadata(req);
         const gameRequest = resp.gameRequest;
@@ -273,7 +275,9 @@ export const SinglePuzzle = (props: Props) => {
             challengeRule: gameRequest.challengeRule,
             ratingMode:
               gameRequest?.ratingMode === RatingMode.RATED ? 'Rated' : 'Casual',
-            gameDate: resp.createdAt?.toDate(),
+            gameDate: resp.createdAt
+              ? timestampDate(resp.createdAt)
+              : new Date(),
             initialTimeSeconds: gameRequest?.initialTimeSeconds,
             incrementSeconds: gameRequest?.incrementSeconds,
             maxOvertimeMinutes: gameRequest?.maxOvertimeMinutes,
@@ -293,7 +297,7 @@ export const SinglePuzzle = (props: Props) => {
     if (!puzzleID) {
       return;
     }
-    const req = new SubmissionRequest();
+    const req = create(SubmissionRequestSchema);
     req.showSolution = true;
     req.puzzleId = puzzleID;
     BoopSounds.playSound('puzzleWrongSound');
@@ -349,7 +353,10 @@ export const SinglePuzzle = (props: Props) => {
       ) {
         return;
       }
-      const req = new SubmissionRequest({ answer: evt, puzzleId: puzzleID });
+      const req = create(SubmissionRequestSchema, {
+        answer: evt,
+        puzzleId: puzzleID,
+      });
 
       try {
         const resp = await puzzleClient.submitAnswer(req);
@@ -365,8 +372,9 @@ export const SinglePuzzle = (props: Props) => {
             turn: answerResponse.turnNumber,
             gameId: answerResponse.gameId,
             dateSolved:
-              answerResponse.status === PuzzleStatus.CORRECT
-                ? answerResponse.lastAttemptTime?.toDate()
+              answerResponse.status === PuzzleStatus.CORRECT &&
+              answerResponse.lastAttemptTime
+                ? timestampDate(answerResponse.lastAttemptTime)
                 : undefined,
             attempts: answerResponse.attempts,
             solved: answerResponse.status,
@@ -384,8 +392,9 @@ export const SinglePuzzle = (props: Props) => {
             turn: answerResponse.turnNumber,
             gameId: answerResponse.gameId,
             dateSolved:
-              answerResponse.status === PuzzleStatus.CORRECT
-                ? answerResponse.lastAttemptTime?.toDate()
+              answerResponse.status === PuzzleStatus.CORRECT &&
+              answerResponse.lastAttemptTime
+                ? timestampDate(answerResponse.lastAttemptTime)
                 : undefined,
             attempts: answerResponse.attempts,
             solved: answerResponse.status,
@@ -412,7 +421,7 @@ export const SinglePuzzle = (props: Props) => {
       if (!puzzleID) {
         return;
       }
-      const req = new PuzzleRequest({ puzzleId: puzzleID });
+      const req = create(PuzzleRequestSchema, { puzzleId: puzzleID });
       try {
         const resp = await puzzleClient.getPuzzle(req);
 
@@ -441,8 +450,9 @@ export const SinglePuzzle = (props: Props) => {
           attempts: answerResponse.attempts,
           // XXX: add dateSolved to backend, in the meantime...
           dateSolved:
-            answerResponse.status === PuzzleStatus.CORRECT
-              ? answerResponse.lastAttemptTime?.toDate()
+            answerResponse.status === PuzzleStatus.CORRECT &&
+            answerResponse.lastAttemptTime
+              ? timestampDate(answerResponse.lastAttemptTime)
               : undefined,
           lexicon: gh.lexicon,
           variantName: gh.variant,

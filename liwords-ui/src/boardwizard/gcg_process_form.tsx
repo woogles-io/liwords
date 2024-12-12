@@ -6,11 +6,12 @@ import { useGameContextStoreContext } from '../store/store';
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useState } from 'react';
 import { ActionType } from '../actions/actions';
-import { GameRules } from '../gen/api/proto/ipc/omgwords_pb';
+import { GameRulesSchema } from '../gen/api/proto/ipc/omgwords_pb';
 import { defaultLetterDistribution } from '../lobby/sought_game_interactions';
 import { LexiconFormItem } from '../shared/lexicon_display';
 import { ChallengeRule } from '../gen/api/proto/ipc/omgwords_pb';
 import { UploadOutlined } from '@ant-design/icons';
+import { create } from '@bufbuild/protobuf';
 
 type Props = {
   gcg: string;
@@ -67,7 +68,7 @@ export const GCGProcessForm = (props: Props) => {
           const resp = await eventClient.importGCG({
             gcg: gcg,
             lexicon,
-            rules: new GameRules({
+            rules: create(GameRulesSchema, {
               boardLayoutName: 'CrosswordGame',
               letterDistributionName: defaultLetterDistribution(lexicon),
               variantName: 'classic',

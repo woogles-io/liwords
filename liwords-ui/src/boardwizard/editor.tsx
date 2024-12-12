@@ -11,16 +11,16 @@ import { BoardPanel } from '../gameroom/board_panel';
 import { PlayerCards } from '../gameroom/player_cards';
 import Pool from '../gameroom/pool';
 import { ScoreCard } from '../gameroom/scorecard';
-import { GameRules } from '../gen/api/proto/ipc/omgwords_pb';
 import { GameInfo } from '../gameroom/game_info';
 
 import {
   ClientGameplayEvent,
-  GameDocument_MinimalPlayerInfo,
-  PlayerInfo as OMGPlayerInfo,
+  PlayerInfoSchema as OMGPlayerInfoSchema,
   ChallengeRule as OMGChallengeRule,
+  GameDocumentSchema,
+  GameDocument_MinimalPlayerInfoSchema,
+  GameRulesSchema,
 } from '../gen/api/proto/ipc/omgwords_pb';
-import { GameDocument } from '../gen/api/proto/ipc/omgwords_pb';
 import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_pb';
 import { defaultLetterDistribution } from '../lobby/sought_game_interactions';
 import { TopBar } from '../navigation/topbar';
@@ -38,16 +38,17 @@ import { PlayState } from '../gen/api/proto/ipc/omgwords_pb';
 import { syntheticGameInfo } from './synthetic_game_info';
 import { EditorLandingPage } from './new_game';
 import { MachineLetter, MachineWord } from '../utils/cwgame/common';
+import { create } from '@bufbuild/protobuf';
 
 const doNothing = () => {};
 
-const blankGamePayload = new GameDocument({
+const blankGamePayload = create(GameDocumentSchema, {
   players: [
-    new GameDocument_MinimalPlayerInfo({
+    create(GameDocument_MinimalPlayerInfoSchema, {
       nickname: 'player1',
       userId: 'player1',
     }),
-    new GameDocument_MinimalPlayerInfo({
+    create(GameDocument_MinimalPlayerInfoSchema, {
       nickname: 'player2',
       userId: 'player2',
     }),
@@ -231,7 +232,7 @@ export const BoardEditor = () => {
 
   const omgPlayerInfo = (pname: string, idx: number) => {
     const collapsed = pname.replaceAll(' ', '');
-    return new OMGPlayerInfo({
+    return create(OMGPlayerInfoSchema, {
       nickname: collapsed,
       fullName: pname,
       userId: collapsed,
@@ -251,7 +252,7 @@ export const BoardEditor = () => {
       const resp = await eventClient.createBroadcastGame({
         playersInfo: [p1name, p2name].map(omgPlayerInfo),
         lexicon: lex,
-        rules: new GameRules({
+        rules: create(GameRulesSchema, {
           boardLayoutName: 'CrosswordGame', // for now
           letterDistributionName: ld,
           variantName: 'classic', // for now
@@ -272,10 +273,10 @@ export const BoardEditor = () => {
   ) => {
     try {
       await eventClient.patchGameDocument({
-        document: new GameDocument({
+        document: create(GameDocumentSchema, {
           players: [p1name, p2name].map((p, idx) => {
             const collapsed = p.replaceAll(' ', '');
-            return new GameDocument_MinimalPlayerInfo({
+            return create(GameDocument_MinimalPlayerInfoSchema, {
               nickname: collapsed,
               realName: p,
               userId: collapsed,

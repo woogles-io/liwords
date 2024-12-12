@@ -1,13 +1,13 @@
-import React from 'react';
 import { act, cleanup, render } from '@testing-library/react';
 import { BoardPanel } from './board_panel';
 import { ChallengeRule } from '../gen/api/vendor/macondo/macondo_pb';
 import { CrosswordGameGridLayout } from '../constants/board_layout';
 import { Board } from '../utils/cwgame/board';
-import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
+import { PlayerInfoSchema } from '../gen/api/proto/ipc/omgwords_pb';
 import { StandardEnglishAlphabet } from '../constants/alphabets';
 import { BrowserRouter } from 'react-router-dom';
 import { waitFor } from '@testing-library/react';
+import { create } from '@bufbuild/protobuf';
 
 function renderBoardPanel() {
   const dummyFunction = () => {};
@@ -15,12 +15,12 @@ function renderBoardPanel() {
   const rack = [0, 1, 5, 9, 14, 19, 20];
   const board = new Board(CrosswordGameGridLayout);
   const playerInfo = [
-    new PlayerInfo({
+    create(PlayerInfoSchema, {
       userId: 'cesarid',
       nickname: 'cesar',
       fullName: 'cesar richards',
     }),
-    new PlayerInfo({
+    create(PlayerInfoSchema, {
       userId: 'oppid',
       nickname: 'opp',
       fullName: 'opp mcOppface',

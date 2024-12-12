@@ -34,10 +34,11 @@ import { excludedLexica, LexiconFormItem } from '../shared/lexicon_display';
 import { AllLexica } from '../shared/lexica';
 import { BotTypesEnum, BotTypesEnumProperties } from './bots';
 import { GameRequest, RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
-import { MatchUser } from '../gen/api/proto/ipc/omgseeks_pb';
+import { MatchUserSchema } from '../gen/api/proto/ipc/omgseeks_pb';
 import { ProfileUpdate_Rating } from '../gen/api/proto/ipc/users_pb';
 import { useClient } from '../utils/hooks/connect';
 import { AutocompleteService } from '../gen/api/proto/user_service/user_service_pb';
+import { create } from '@bufbuild/protobuf';
 
 const initTimeFormatter = (val?: number) => {
   return val != null ? initTimeDiscreteScale[val].label : null;
@@ -418,7 +419,9 @@ export const SeekForm = (props: Props) => {
   const searchUsernameDebounced = useDebounce(onUsernameSearch, 300);
 
   const onFormSubmit = (val: Store) => {
-    const receiver = new MatchUser({ displayName: val.friend as string });
+    const receiver = create(MatchUserSchema, {
+      displayName: val.friend as string,
+    });
     const obj = {
       // These items are assigned by the server:
       seeker: '',

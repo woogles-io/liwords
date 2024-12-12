@@ -1,12 +1,13 @@
+import { create, toBinary } from '@bufbuild/protobuf';
 import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
 import {
-  SeekRequest,
+  SeekRequestSchema,
   SeekState,
-  SoughtGameProcessEvent,
+  SoughtGameProcessEventSchema,
 } from '../gen/api/proto/ipc/omgseeks_pb';
 import {
-  GameRequest,
-  GameRules,
+  GameRequestSchema,
+  GameRulesSchema,
   RatingMode,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
@@ -36,9 +37,9 @@ export const sendSeek = (
   game: SoughtGame,
   sendSocketMsg: (msg: Uint8Array) => void
 ): void => {
-  const sr = new SeekRequest();
-  const gr = new GameRequest();
-  const rules = new GameRules();
+  const sr = create(SeekRequestSchema);
+  const gr = create(GameRequestSchema);
+  const rules = create(GameRulesSchema);
   rules.boardLayoutName = 'CrosswordGame';
   rules.variantName = game.variant;
   rules.letterDistributionName = defaultLetterDistribution(game.lexicon);
@@ -71,7 +72,9 @@ export const sendSeek = (
     console.log('this is a match request');
   }
   console.log('sr: ', sr);
-  sendSocketMsg(encodeToSocketFmt(MessageType.SEEK_REQUEST, sr.toBinary()));
+  sendSocketMsg(
+    encodeToSocketFmt(MessageType.SEEK_REQUEST, toBinary(SeekRequestSchema, sr))
+  );
 };
 
 export const sendAccept = (
@@ -79,9 +82,12 @@ export const sendAccept = (
   sendSocketMsg: (msg: Uint8Array) => void
 ): void => {
   // Eventually use the ID.
-  const sa = new SoughtGameProcessEvent();
+  const sa = create(SoughtGameProcessEventSchema, {});
   sa.requestId = seekID;
   sendSocketMsg(
-    encodeToSocketFmt(MessageType.SOUGHT_GAME_PROCESS_EVENT, sa.toBinary())
+    encodeToSocketFmt(
+      MessageType.SOUGHT_GAME_PROCESS_EVENT,
+      toBinary(SoughtGameProcessEventSchema, sa)
+    )
   );
 };
