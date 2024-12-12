@@ -1,6 +1,7 @@
 package cop_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"runtime/pprof"
@@ -17,39 +18,41 @@ import (
 
 func TestCOPErrors(t *testing.T) {
 	is := is.New(t)
+	ctx := context.Background()
+
 	req := pairtestutils.CreateDefaultPairRequest()
 	req.ValidPlayers = -1
-	resp := cop.COPPair(req)
+	resp := cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_PLAYER_COUNT_INSUFFICIENT)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.ValidPlayers = 0
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_PLAYER_COUNT_INSUFFICIENT)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.Rounds = -1
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_ROUND_COUNT_INSUFFICIENT)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.Rounds = 0
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_ROUND_COUNT_INSUFFICIENT)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.AllPlayers = 100000
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_PLAYER_COUNT_TOO_LARGE)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.PlayerNames = []string{"a", "b", "c"}
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_PLAYER_NAME_COUNT_INSUFFICIENT)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.PlayerNames[5] = ""
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_PLAYER_NAME_EMPTY)
 
 	req = pairtestutils.CreateDefaultPairRequest()
@@ -64,7 +67,7 @@ func TestCOPErrors(t *testing.T) {
 	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3")
 	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3")
 	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3")
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_MORE_PAIRINGS_THAN_ROUNDS)
 
 	req = pairtestutils.CreateDefaultPairRequest()
@@ -78,7 +81,7 @@ func TestCOPErrors(t *testing.T) {
 	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3")
 	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3")
 	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3")
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_ALL_ROUNDS_PAIRED)
 
 	req = pairtestutils.CreateDefaultPairRequest()
@@ -86,17 +89,17 @@ func TestCOPErrors(t *testing.T) {
 	req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{
 		Pairings: []int32{4, 5, 6, 7}})
 	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3")
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_ROUND_PAIRINGS_COUNT)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	pairtestutils.AddRoundPairingsStr(req, "4 5 20 7 0 1 2 3")
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_PLAYER_INDEX_OUT_OF_BOUNDS)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	pairtestutils.AddRoundPairingsStr(req, "4 5 -6 7 0 1 2 3")
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_PLAYER_INDEX_OUT_OF_BOUNDS)
 
 	req = pairtestutils.CreateDefaultPairRequest()
@@ -107,17 +110,17 @@ func TestCOPErrors(t *testing.T) {
 	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3")
 	pairtestutils.AddRoundPairingsStr(req, "4 5 6 -1 0 1 2 3")
 	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3")
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_UNPAIRED_PLAYER)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 -1 3")
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_PAIRING)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 1 3")
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_PAIRING)
 
 	req = pairtestutils.CreateDefaultPairRequest()
@@ -132,141 +135,142 @@ func TestCOPErrors(t *testing.T) {
 	pairtestutils.AddRoundResultsStr(req, "400 300 250 400 300 425 200 500")
 	pairtestutils.AddRoundResultsStr(req, "400 300 250 400 300 425 200 500")
 	pairtestutils.AddRoundResultsStr(req, "400 300 250 400 300 425 200 500")
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_MORE_RESULTS_THAN_ROUNDS)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3")
 	pairtestutils.AddRoundResultsStr(req, "400 300 250 400 300 425 200 500")
 	pairtestutils.AddRoundResultsStr(req, "400 300 250 400 300 425 200 500")
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_MORE_RESULTS_THAN_PAIRINGS)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3")
 	pairtestutils.AddRoundResultsStr(req, "400 300 250 400 300 500")
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_ROUND_RESULTS_COUNT)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.PlayerClasses = []int32{0, 0, 0, 0, 0, 0, 0}
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_PLAYER_CLASS_COUNT)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.PlayerClasses = []int32{}
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_PLAYER_CLASS_COUNT)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.PlayerClasses = []int32{0}
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_PLAYER_CLASS_COUNT)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.PlayerClasses = []int32{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_PLAYER_CLASS_COUNT)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.PlayerClasses = []int32{0, 0, 0, 0, 0, 0, 0, -1}
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_PLAYER_CLASS)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.PlayerClasses = []int32{0, 0, 0, 0, 0, 0, 0, 2}
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_PLAYER_CLASS)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.ClassPrizes = []int32{-1}
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_CLASS_PRIZE)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.ClassPrizes = []int32{0}
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_CLASS_PRIZE)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.ClassPrizes = []int32{-1}
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_CLASS_PRIZE)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.GibsonSpread = -100
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_GIBSON_SPREAD)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.ControlLossThreshold = 2.4
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_CONTROL_LOSS_THRESHOLD)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.ControlLossThreshold = -1.3
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_CONTROL_LOSS_THRESHOLD)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.HopefulnessThreshold = 2.4
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_HOPEFULNESS_THRESHOLD)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.HopefulnessThreshold = -1.3
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_HOPEFULNESS_THRESHOLD)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.DivisionSims = -1
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_DIVISION_SIMS)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.DivisionSims = 0
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_DIVISION_SIMS)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.ControlLossSims = -1
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_CONTROL_LOSS_SIMS)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.ControlLossSims = 0
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_CONTROL_LOSS_SIMS)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.PlacePrizes = -1
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_PLACE_PRIZES)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.PlacePrizes = 9
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_PLACE_PRIZES)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.RemovedPlayers = []int32{0, 8, 1}
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_REMOVED_PLAYER)
 
 	req = pairtestutils.CreateDefaultPairRequest()
 	req.RemovedPlayers = []int32{0, -1}
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_REMOVED_PLAYER)
 }
 
 func TestCOPConstraintPolicies(t *testing.T) {
 	is := is.New(t)
+	ctx := context.Background()
 
 	// Prepaired players
 	req := pairtestutils.CreateBellevilleCSWAfterRound12PairRequest()
 	req.Seed = 1
 	pairtestutils.AddRoundPairingsStr(req, "-1 -1 -1 10 -1 -1 -1 -1 -1 11 3 9")
-	resp := cop.COPPair(req)
+	resp := cop.COPPair(ctx, req)
 
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	is.Equal(resp.Pairings[3], int32(10))
@@ -277,7 +281,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req = pairtestutils.CreateAlbany3rdGibsonizedAfterRound25PairRequest()
 	req.Seed = 1
 	pairtestutils.AddRoundPairingsStr(req, "-1 -1 -1 14 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 3 -1 -1 -1 -1 -1 21 20 -1 -1")
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	is.Equal(resp.Pairings[0], int32(1))
 	is.Equal(resp.Pairings[1], int32(0))
@@ -291,7 +295,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req = pairtestutils.CreateAlbany3rdGibsonizedAfterRound25PairRequest()
 	req.Seed = 1
 	req.Rounds = 26
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.Pairings[0], int32(1))
 	is.Equal(resp.Pairings[1], int32(0))
 	is.Equal(resp.Pairings[2], int32(9))
@@ -303,7 +307,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req.Seed = 1
 	req.Rounds = 26
 	req.PlacePrizes = 8
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.Pairings[0], int32(1))
 	is.Equal(resp.Pairings[1], int32(0))
 	is.Equal(resp.Pairings[2], int32(9))
@@ -335,7 +339,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req.PlayerClasses[23] = 2
 	req.PlayerClasses[19] = 2
 	req.PlayerClasses[20] = 2
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	// Expect the normal KOTH casher pairings:
 	is.Equal(resp.Pairings[0], int32(1))
 	is.Equal(resp.Pairings[1], int32(0))
@@ -360,7 +364,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req.PlayerClasses[23] = 1
 	req.PlayerClasses[19] = 1
 	req.PlayerClasses[20] = 1
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	// Expect the normal KOTH casher pairings:
 	is.Equal(resp.Pairings[0], int32(1))
 	is.Equal(resp.Pairings[1], int32(0))
@@ -388,7 +392,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req.PlayerClasses[23] = 1
 	req.PlayerClasses[19] = 1
 	req.PlayerClasses[20] = 1
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	// Expect the normal KOTH casher pairings:
 	is.Equal(resp.Pairings[0], int32(1))
 	is.Equal(resp.Pairings[1], int32(0))
@@ -417,7 +421,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req.PlayerClasses[23] = 1
 	req.PlayerClasses[19] = 1
 	req.PlayerClasses[20] = 1
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	// Expect the normal KOTH casher pairings:
 	is.Equal(resp.Pairings[0], int32(1))
 	is.Equal(resp.Pairings[1], int32(0))
@@ -449,7 +453,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req.PlayerClasses[23] = 1
 	req.PlayerClasses[19] = 1
 	req.PlayerClasses[20] = 1
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	// Expect the normal KOTH casher pairings:
 	is.Equal(resp.Pairings[0], int32(1))
 	is.Equal(resp.Pairings[1], int32(0))
@@ -483,7 +487,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req.PlayerClasses[23] = 1
 	req.PlayerClasses[19] = 1
 	req.PlayerClasses[20] = 1
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	// Expect the normal KOTH casher pairings:
 	is.Equal(resp.Pairings[0], int32(1))
 	is.Equal(resp.Pairings[1], int32(0))
@@ -518,7 +522,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req.PlayerClasses[23] = 2
 	req.PlayerClasses[19] = 2
 	req.PlayerClasses[20] = 2
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	// Expect the normal KOTH casher pairings:
 	is.Equal(resp.Pairings[0], int32(1))
 	is.Equal(resp.Pairings[1], int32(0))
@@ -553,7 +557,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req.PlayerClasses[23] = 1
 	req.PlayerClasses[19] = 1
 	req.PlayerClasses[20] = 1
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	// Expect the normal KOTH casher pairings:
 	is.Equal(resp.Pairings[0], int32(1))
 	is.Equal(resp.Pairings[1], int32(0))
@@ -585,7 +589,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req.PlayerClasses[23] = 1
 	req.PlayerClasses[19] = 1
 	req.PlayerClasses[20] = 1
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	// Expect the normal KOTH casher pairings:
 	is.Equal(resp.Pairings[0], int32(1))
 	is.Equal(resp.Pairings[1], int32(0))
@@ -612,7 +616,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req.PlayerClasses[4] = 1
 	req.PlayerClasses[5] = 1
 	req.PlayerClasses[8] = 1
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	// Expect the normal KOTH casher pairings:
 	is.Equal(resp.Pairings[0], int32(1))
 	is.Equal(resp.Pairings[1], int32(0))
@@ -635,7 +639,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req.PlayerClasses[2] = 1
 	req.PlayerClasses[5] = 1
 	req.PlayerClasses[8] = 1
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	// Expect the normal KOTH casher pairings:
 	is.Equal(resp.Pairings[0], int32(1))
 	is.Equal(resp.Pairings[1], int32(0))
@@ -651,7 +655,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req = pairtestutils.CreateBellevilleCSWAfterRound12PairRequest()
 	req.UseControlLoss = true
 	req.Seed = 2
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.Pairings[0], int32(3))
 	is.Equal(resp.Pairings[3], int32(0))
 
@@ -659,7 +663,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req = pairtestutils.CreateBellevilleCSW4thCLAfterRound12PairRequest()
 	req.UseControlLoss = true
 	req.Seed = 1
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	// The control loss should force 1st to play either 3rd or 4th, and 4th
 	// isn't hopeful enough, so 1st should play third
 	is.Equal(resp.Pairings[0], int32(3))
@@ -670,7 +674,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req.UseControlLoss = true
 	req.Seed = 1
 	req.HopefulnessThreshold = 0.01
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	// The control loss should force 1st to play either 3rd or 4th, and
 	// in this case should play 3rd because of repeats and other considerations
 	is.Equal(resp.Pairings[4], int32(3))
@@ -679,12 +683,12 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	// Gibson groups and Gibson Bye
 	req = pairtestutils.CreateAlbany1stAnd4thAnd8thGibsonizedAfterRound25PairRequest()
 	req.Seed = 1
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.Pairings[0], int32(4))
 	is.Equal(resp.Pairings[4], int32(0))
 	is.Equal(resp.Pairings[1], int32(1))
 	pairtestutils.AddRoundPairings(req, resp.Pairings)
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.Pairings[0], int32(4))
 	is.Equal(resp.Pairings[4], int32(0))
 	is.Equal(resp.Pairings[2], int32(2))
@@ -693,17 +697,27 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req = pairtestutils.CreateAlbanyCSWAfterRound24OddPairRequest()
 	is.Equal(verifyreq.Verify(req), nil)
 	req.Seed = 1
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.Pairings[10], int32(10))
 	pairtestutils.AddRoundPairings(req, resp.Pairings)
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.Pairings[10], int32(10))
 
 	req = pairtestutils.CreateLakeGeorgeAfterRound13PairRequest()
 	is.Equal(verifyreq.Verify(req), nil)
-	resp = cop.COPPair(req)
+	resp = cop.COPPair(ctx, req)
 	fmt.Println(resp.Log)
 
+	// Check that timeouts work
+	req = pairtestutils.CreateAlbanyAfterRound15PairRequest()
+	is.Equal(verifyreq.Verify(req), nil)
+	req.UseControlLoss = true
+	req.DivisionSims = 1000000000
+	req.ControlLossSims = 1000000000
+	ctx, _ = context.WithTimeout(context.Background(), 100*time.Millisecond)
+	is.NoErr(ctx.Err())
+	resp = cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_TIMEOUT)
 }
 
 func TestCOPProf(t *testing.T) {
@@ -712,6 +726,7 @@ func TestCOPProf(t *testing.T) {
 	}
 
 	is := is.New(t)
+	ctx := context.Background()
 	f, err := os.Create("cop.prof")
 	if err != nil {
 		panic(err)
@@ -726,7 +741,7 @@ func TestCOPProf(t *testing.T) {
 	pprof.StartCPUProfile(f)
 
 	start := time.Now() // Start timing
-	resp := cop.COPPair(req)
+	resp := cop.COPPair(ctx, req)
 	elapsed := time.Since(start)                               // Calculate elapsed time
 	fmt.Printf("COPPair took %v ms\n", elapsed.Milliseconds()) // Print elapsed time in ms
 
@@ -740,13 +755,14 @@ func TestCOPTime(t *testing.T) {
 		t.Skip("Skipping COP profiling test. Use 'COP_TIME=1 go test -run COPTime' to run it.")
 	}
 	is := is.New(t)
+	ctx := context.Background()
 	req := pairtestutils.CreateAlbanyAfterRound15PairRequest()
 	req.UseControlLoss = true
 	req.DivisionSims = 200000
 	req.ControlLossSims = 200000
 	is.Equal(verifyreq.Verify(req), nil)
 	start := time.Now() // Start timing
-	resp := cop.COPPair(req)
+	resp := cop.COPPair(ctx, req)
 	elapsed := time.Since(start)                               // Calculate elapsed time
 	fmt.Printf("COPPair took %v ms\n", elapsed.Milliseconds()) // Print elapsed time in ms
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)

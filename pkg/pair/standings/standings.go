@@ -1,6 +1,7 @@
 package standings
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strconv"
@@ -210,7 +211,7 @@ func (standings *Standings) Sort() {
 }
 
 // Assumes the standings are already sorted
-func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, computeControlLoss bool, prevSegmentRoundFactors []int) *SimResults {
+func (standings *Standings) SimFactorPairAll(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, computeControlLoss bool, prevSegmentRoundFactors []int) (*SimResults, pb.PairError) {
 	numPlayers := standings.GetNumPlayers()
 	roundsRemaining := int(req.Rounds) - len(req.DivisionPairings)
 	evenerPlayerAdded := false
@@ -228,8 +229,10 @@ func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, copRand *rand.
 		evenerPlayerAdded = true
 	}
 
-	simResults := standings.evenedSimFactorPairAll(req, copRand, sims, maxFactor, computeControlLoss, prevSegmentRoundFactors, roundsRemaining)
-
+	simResults, pairErr := standings.evenedSimFactorPairAll(ctx, req, copRand, sims, maxFactor, computeControlLoss, prevSegmentRoundFactors, roundsRemaining)
+	if pairErr != pb.PairError_SUCCESS {
+		return nil, pairErr
+	}
 	if evenerPlayerAdded {
 		standings.records = standings.records[:numPlayers-1]
 		standings.recordsBackup = make([]uint64, numPlayers-1)
@@ -240,10 +243,10 @@ func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, copRand *rand.
 			simResults.FinalRanks = simResults.FinalRanks[:numPlayers-1]
 		}
 	}
-	return simResults
+	return simResults, pb.PairError_SUCCESS
 }
 
-func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, computeControlLoss bool, prevSegmentRoundFactors []int, roundsRemaining int) *SimResults {
+func (standings *Standings) evenedSimFactorPairAll(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, computeControlLoss bool, prevSegmentRoundFactors []int, roundsRemaining int) (*SimResults, pb.PairError) {
 	numPlayers := standings.GetNumPlayers()
 	results := make([][]int, numPlayers)
 	for i := range results {
@@ -307,7 +310,7 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 
 	// If the previous simulation ran with the same parameters, there is no need to rerun
 	if prevSegmentRoundFactors != nil && areIntArraysEqual(segmentRoundFactors, prevSegmentRoundFactors) {
-		return nil
+		return nil, pb.PairError_SUCCESS
 	}
 
 	playerIdxToRankIdx := standings.getPlayerIdxToRankIdxMap()
@@ -319,7 +322,10 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 	if !computeControlLoss {
 		for simIdx := 0; simIdx < sims; simIdx++ {
 			for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
-				standings.simRound(copRand, pairings, roundIdx, -1)
+				pairErr := standings.simRound(ctx, copRand, pairings, roundIdx, -1)
+				if pairErr != pb.PairError_SUCCESS {
+					return nil, pairErr
+				}
 			}
 			// Update results
 			for rankIdx := 0; rankIdx < numRecords; rankIdx++ {
@@ -351,13 +357,19 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 		for leftPlayerRankIdx <= rightPlayerRankIdx {
 			forcedWinnerRankIdx := (leftPlayerRankIdx + rightPlayerRankIdx) / 2
 			forcedWinnerPlayerIdx := standings.GetPlayerIndex(forcedWinnerRankIdx)
-			vsFirstTournamentWins := standings.simForceWinner(copRand, sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, true)
+			vsFirstTournamentWins, pairErr := standings.simForceWinner(ctx, copRand, sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, true)
+			if pairErr != pb.PairError_SUCCESS {
+				return nil, pairErr
+			}
 			if vsFirstTournamentWins < sims {
 				rightPlayerRankIdx = forcedWinnerRankIdx - 1
 				allControlLosses[forcedWinnerRankIdx] = -1
 				continue
 			}
-			vsFactorPairTournamentWins := standings.simForceWinner(copRand, sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, false)
+			vsFactorPairTournamentWins, pairErr := standings.simForceWinner(ctx, copRand, sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, false)
+			if pairErr != pb.PairError_SUCCESS {
+				return nil, pairErr
+			}
 			allControlLosses[forcedWinnerRankIdx] = vsFactorPairTournamentWins
 			if vsFactorPairTournamentWins < lowestFactorPairWins {
 				leftPlayerRankIdx = forcedWinnerRankIdx + 1
@@ -377,7 +389,7 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 		LowestFactorPairWins:      lowestFactorPairWins,
 		AllControlLosses:          allControlLosses,
 		SegmentRoundFactors:       segmentRoundFactors,
-	}
+	}, pb.PairError_SUCCESS
 }
 
 func getCumeGibsonSpread(req *pb.PairRequest) int {
@@ -385,7 +397,11 @@ func getCumeGibsonSpread(req *pb.PairRequest) int {
 	return int(req.GibsonSpread) * roundsRemaining * 2
 }
 
-func (standings *Standings) simRound(copRand *rand.Rand, pairings [][]int, roundIdx int, forcedWinnerRankIdx int) {
+func (standings *Standings) simRound(ctx context.Context, copRand *rand.Rand, pairings [][]int, roundIdx int, forcedWinnerRankIdx int) pb.PairError {
+	if ctx.Err() != nil {
+		// Assume ctx errors are always timeouts
+		return pb.PairError_TIMEOUT
+	}
 	numPlayers := len(standings.records)
 	numScoreDiffs := len(standings.possibleResults)
 	if forcedWinnerRankIdx < 0 {
@@ -428,6 +444,7 @@ func (standings *Standings) simRound(copRand *rand.Rand, pairings [][]int, round
 		}
 	}
 	standings.Sort()
+	return pb.PairError_SUCCESS
 }
 
 func (standings *Standings) findRankIdx(playerIdx int) int {
@@ -440,7 +457,7 @@ func (standings *Standings) findRankIdx(playerIdx int) int {
 	return -1
 }
 
-func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsRemaining int, pairings [][]int, forcedWinnerPlayerIdx int, vsFirst bool) int {
+func (standings *Standings) simForceWinner(ctx context.Context, copRand *rand.Rand, sims int, roundsRemaining int, pairings [][]int, forcedWinnerPlayerIdx int, vsFirst bool) (int, pb.PairError) {
 	tournamentWins := 0
 	for simIdx := 0; simIdx < sims; simIdx++ {
 		for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
@@ -457,7 +474,10 @@ func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsR
 			if vsFirst {
 				pairings[roundIdx][1], pairings[roundIdx][switchPairingIdx] = pairings[roundIdx][switchPairingIdx], pairings[roundIdx][1]
 			}
-			standings.simRound(copRand, pairings, roundIdx, forcedWinnerRankIdx)
+			pairErr := standings.simRound(ctx, copRand, pairings, roundIdx, forcedWinnerRankIdx)
+			if pairErr != pb.PairError_SUCCESS {
+				return 0, pairErr
+			}
 			if vsFirst {
 				pairings[roundIdx][1], pairings[roundIdx][switchPairingIdx] = pairings[roundIdx][switchPairingIdx], pairings[roundIdx][1]
 			}
@@ -468,10 +488,10 @@ func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsR
 		}
 		standings.RestoreFromBackup()
 		if vsFirst && playerInFirst != forcedWinnerPlayerIdx {
-			return 0
+			return 0, pb.PairError_SUCCESS
 		}
 	}
-	return tournamentWins
+	return tournamentWins, pb.PairError_SUCCESS
 }
 
 // Unexported functions

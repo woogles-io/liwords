@@ -7,7 +7,7 @@ import (
 	"github.com/matryer/is"
 	pairtestutils "github.com/woogles-io/liwords/pkg/pair/testutils"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
-	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestHandleRequest(t *testing.T) {
@@ -25,10 +25,15 @@ func TestHandleRequest(t *testing.T) {
 	req.PlayerClasses[19] = 1
 	req.PlayerClasses[20] = 1
 	ctx := context.Background()
-	JSONResponse, err := HandleRequest(ctx, *req)
+	pairRequestByes, err := proto.Marshal(req)
+	is.NoErr(err)
+	evt := LambdaInvokeInput{
+		PairRequestBytes: pairRequestByes,
+	}
+	JSONResponse, err := HandleRequest(ctx, evt)
 	is.NoErr(err)
 	pairResponse := &pb.PairResponse{}
-	err = protojson.Unmarshal([]byte(JSONResponse), pairResponse)
+	err = proto.Unmarshal([]byte(JSONResponse), pairResponse)
 	is.NoErr(err)
 	// Expect the normal KOTH casher pairings:
 	is.Equal(pairResponse.Pairings[0], int32(1))

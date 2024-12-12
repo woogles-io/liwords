@@ -53,6 +53,7 @@ export const PairError = /*@__PURE__*/ proto3.makeEnum(
     {no: 27, name: "INVALID_PAIRINGS_LENGTH"},
     {no: 28, name: "OVERCONSTRAINED"},
     {no: 29, name: "REQUEST_TO_JSON_FAILED"},
+    {no: 30, name: "TIMEOUT"},
   ],
 );
 

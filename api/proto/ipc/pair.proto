@@ -67,6 +67,7 @@ enum PairError {
   INVALID_PAIRINGS_LENGTH = 27;
   OVERCONSTRAINED = 28;
   REQUEST_TO_JSON_FAILED = 29;
+  TIMEOUT = 30;
 }
 
 message PairResponse {

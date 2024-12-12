@@ -11,8 +11,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/pair/cop_lambda"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
-	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	"connectrpc.com/connect"
 )
@@ -30,7 +31,12 @@ func NewPairService(cfg *config.Config, lc *lambda.Client) *PairService {
 }
 
 func (ps *PairService) HandlePairRequest(ctx context.Context, req *connect.Request[pb.PairRequest]) (*connect.Response[pb.PairResponse], error) {
-	request, err := protojson.Marshal(req.Msg)
+	pairRequestBytes, err := proto.Marshal(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	lambdaInvokeInputJSON, err := json.Marshal(cop_lambda.LambdaInvokeInput{PairRequestBytes: pairRequestBytes})
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +44,7 @@ func (ps *PairService) HandlePairRequest(ctx context.Context, req *connect.Reque
 	out, err := ps.lambdaClient.Invoke(ctx, &lambda.InvokeInput{
 		FunctionName:   aws.String(ps.cfg.COPPairLambdaFunctionName),
 		InvocationType: types.InvocationTypeRequestResponse,
-		Payload:        request,
+		Payload:        lambdaInvokeInputJSON,
 	})
 	if err != nil {
 		return nil, err
@@ -63,7 +69,7 @@ func (ps *PairService) HandlePairRequest(ctx context.Context, req *connect.Reque
 		return nil, err
 	}
 	pairResponse := &pb.PairResponse{}
-	err = protojson.Unmarshal(bts, pairResponse)
+	err = proto.Unmarshal(bts, pairResponse)
 	if err != nil {
 		return nil, err
 	}

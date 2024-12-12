@@ -171,6 +171,11 @@ export declare enum PairError {
    * @generated from enum value: REQUEST_TO_JSON_FAILED = 29;
    */
   REQUEST_TO_JSON_FAILED = 29,
+
+  /**
+   * @generated from enum value: TIMEOUT = 30;
+   */
+  TIMEOUT = 30,
 }
 
 /**
