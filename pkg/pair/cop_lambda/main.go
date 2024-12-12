@@ -2,6 +2,7 @@ package cop_lambda
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -12,13 +13,13 @@ import (
 
 const TimeLimit = 15
 
-type LambdaInvokeInput struct {
-	PairRequestBytes []byte
+type LambdaInvokeIO struct {
+	Bytes []byte
 }
 
-func HandleRequest(ctx context.Context, evt LambdaInvokeInput) (string, error) {
+func HandleRequest(ctx context.Context, evt LambdaInvokeIO) (string, error) {
 	var pairRequest pb.PairRequest
-	err := proto.Unmarshal(evt.PairRequestBytes, &pairRequest)
+	err := proto.Unmarshal(evt.Bytes, &pairRequest)
 	if err != nil {
 		return "", err
 	}
@@ -36,7 +37,15 @@ func HandleRequest(ctx context.Context, evt LambdaInvokeInput) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return string(pairResponseBytes), nil
+
+	lambdaInvokeIOJSON, err := json.Marshal(&LambdaInvokeIO{
+		Bytes: pairResponseBytes,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return string(lambdaInvokeIOJSON), nil
 }
 
 func main() {

@@ -36,7 +36,7 @@ func (ps *PairService) HandlePairRequest(ctx context.Context, req *connect.Reque
 		return nil, err
 	}
 
-	lambdaInvokeInputJSON, err := json.Marshal(cop_lambda.LambdaInvokeInput{PairRequestBytes: pairRequestBytes})
+	lambdaInvokeInputJSON, err := json.Marshal(cop_lambda.LambdaInvokeIO{Bytes: pairRequestBytes})
 	if err != nil {
 		return nil, err
 	}
@@ -68,8 +68,13 @@ func (ps *PairService) HandlePairRequest(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, err
 	}
+	lambdaInvokeIOResponse := &cop_lambda.LambdaInvokeIO{}
+	err = json.Unmarshal(bts, lambdaInvokeIOResponse)
+	if err != nil {
+		return nil, err
+	}
 	pairResponse := &pb.PairResponse{}
-	err = proto.Unmarshal(bts, pairResponse)
+	err = proto.Unmarshal(lambdaInvokeIOResponse.Bytes, pairResponse)
 	if err != nil {
 		return nil, err
 	}

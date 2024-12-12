@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/rs/zerolog/log"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"golang.org/x/exp/rand"
 )
@@ -399,7 +400,7 @@ func getCumeGibsonSpread(req *pb.PairRequest) int {
 
 func (standings *Standings) simRound(ctx context.Context, copRand *rand.Rand, pairings [][]int, roundIdx int, forcedWinnerRankIdx int) pb.PairError {
 	if ctx.Err() != nil {
-		// Assume ctx errors are always timeouts
+		log.Err(ctx.Err()).Msg("cop-timeout")
 		return pb.PairError_TIMEOUT
 	}
 	numPlayers := len(standings.records)

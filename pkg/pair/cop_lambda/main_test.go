@@ -2,6 +2,7 @@ package cop_lambda
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/matryer/is"
@@ -27,13 +28,16 @@ func TestHandleRequest(t *testing.T) {
 	ctx := context.Background()
 	pairRequestByes, err := proto.Marshal(req)
 	is.NoErr(err)
-	evt := LambdaInvokeInput{
-		PairRequestBytes: pairRequestByes,
+	evt := LambdaInvokeIO{
+		Bytes: pairRequestByes,
 	}
 	JSONResponse, err := HandleRequest(ctx, evt)
 	is.NoErr(err)
+	lambdaInvokeIOResponse := &LambdaInvokeIO{}
+	err = json.Unmarshal([]byte(JSONResponse), lambdaInvokeIOResponse)
+	is.NoErr(err)
 	pairResponse := &pb.PairResponse{}
-	err = proto.Unmarshal([]byte(JSONResponse), pairResponse)
+	err = proto.Unmarshal(lambdaInvokeIOResponse.Bytes, pairResponse)
 	is.NoErr(err)
 	// Expect the normal KOTH casher pairings:
 	is.Equal(pairResponse.Pairings[0], int32(1))
