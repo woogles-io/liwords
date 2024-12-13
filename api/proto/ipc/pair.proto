@@ -1,0 +1,78 @@
+// Definitions for pairing messages
+syntax = "proto3";
+package ipc;
+
+enum PairMethod {
+  COP = 0;
+}
+
+message RoundPairings {
+  repeated int32 pairings = 1;
+}
+
+message RoundResults {
+  repeated int32 results = 1;
+}
+
+message PairRequest {
+  PairMethod pair_method = 1;
+  repeated string player_names = 2;
+  repeated int32 player_classes = 3;
+  repeated RoundPairings division_pairings = 4;
+  repeated RoundResults division_results = 5;
+  repeated int32 class_prizes = 6;
+  int32 gibson_spread = 7;
+  double control_loss_threshold = 8;
+  double hopefulness_threshold = 9;
+  int32 all_players = 10;
+  int32 valid_players = 11;
+  int32 rounds = 12;
+  int32 place_prizes = 13;
+  int32 division_sims = 14;
+  int32 control_loss_sims = 15;
+  bool use_control_loss = 16;
+  bool allow_repeat_byes = 17;
+  repeated int32 removed_players = 18;
+  int64 seed = 19;
+}
+
+enum PairError {
+  SUCCESS = 0;
+  PLAYER_COUNT_INSUFFICIENT = 1;
+  ROUND_COUNT_INSUFFICIENT = 2;
+  PLAYER_COUNT_TOO_LARGE = 3;
+  PLAYER_NAME_COUNT_INSUFFICIENT = 4;
+  PLAYER_NAME_EMPTY = 5;
+  MORE_PAIRINGS_THAN_ROUNDS = 6;
+  ALL_ROUNDS_PAIRED = 7;
+  INVALID_ROUND_PAIRINGS_COUNT = 8;
+  PLAYER_INDEX_OUT_OF_BOUNDS = 9;
+  UNPAIRED_PLAYER = 10;
+  INVALID_PAIRING = 11;
+  MORE_RESULTS_THAN_ROUNDS = 12;
+  MORE_RESULTS_THAN_PAIRINGS = 13;
+  INVALID_ROUND_RESULTS_COUNT = 14;
+  INVALID_PLAYER_CLASS_COUNT = 15;
+  INVALID_PLAYER_CLASS = 16;
+  INVALID_CLASS_PRIZE = 17;
+  INVALID_GIBSON_SPREAD = 18;
+  INVALID_CONTROL_LOSS_THRESHOLD = 19;
+  INVALID_HOPEFULNESS_THRESHOLD = 20;
+  INVALID_DIVISION_SIMS = 21;
+  INVALID_CONTROL_LOSS_SIMS = 22;
+  INVALID_PLACE_PRIZES = 23;
+  INVALID_REMOVED_PLAYER = 24;
+  INVALID_VALID_PLAYER_COUNT = 25;
+  MIN_WEIGHT_MATCHING = 26;
+  INVALID_PAIRINGS_LENGTH = 27;
+  OVERCONSTRAINED = 28;
+  REQUEST_TO_JSON_FAILED = 29;
+  TIMEOUT = 30;
+}
+
+message PairResponse {
+  PairError error_code = 1;
+  string error_message = 2;
+  string log = 3;
+  repeated int32 pairings = 4;
+}
