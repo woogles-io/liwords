@@ -42,11 +42,15 @@ import {
   RoundControlSchema,
   DivisionRoundControlsSchema,
 } from '../../gen/api/proto/ipc/tournament_pb';
-import { GameRequest } from '../../gen/api/proto/ipc/omgwords_pb';
+import {
+  GameEndReason,
+  GameRequest,
+} from '../../gen/api/proto/ipc/omgwords_pb';
 import { HelptipLabel } from './helptip_label';
 import { flashError, useClient } from '../../utils/hooks/connect';
 import { TournamentService } from '../../gen/api/proto/tournament_service/tournament_service_pb';
 import { create, clone } from '@bufbuild/protobuf';
+import { getEnumValue } from '../../utils/protobuf';
 
 type ModalProps = {
   title: string;
@@ -757,9 +761,9 @@ const SetResult = (props: { tournamentID: string }) => {
       round: vals.round - 1, // 1-indexed input
       playerOneScore: vals.p1score,
       playerTwoScore: vals.p2score,
-      playerOneResult: vals.p1result,
-      playerTwoResult: vals.p2result,
-      gameEndReason: vals.gameEndReason,
+      playerOneResult: getEnumValue(TournamentGameResult, vals.p1result),
+      playerTwoResult: getEnumValue(TournamentGameResult, vals.p2result),
+      gameEndReason: getEnumValue(GameEndReason, vals.gameEndReason),
       amendment: vals.amendment,
     };
     try {
