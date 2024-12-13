@@ -476,9 +476,10 @@ export const SinglePuzzle = (props: Props) => {
   }, [loadNewPuzzle, userLexicon, puzzleID]);
 
   useEffect(() => {
-    if (puzzleInfo.solution && pendingSolution) {
+    const puzzleInfoSolution = puzzleInfo.solution;
+    if (puzzleInfoSolution && pendingSolution) {
       setPendingSolution(() => {
-        placeGameEvt(puzzleInfo.solution);
+        placeGameEvt(puzzleInfoSolution);
         return false;
       });
     }
