@@ -34,7 +34,6 @@ import { GameRequest } from '../gen/api/proto/ipc/omgwords_pb';
 import { flashError, useClient } from '../utils/hooks/connect';
 import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { create } from '@bufbuild/protobuf';
-import { getEnumLabel } from '../utils/protobuf';
 
 type DProps = {
   description: string;
@@ -176,8 +175,6 @@ export const TourneyEditor = (props: Props) => {
     let apicall: 'newTournament' | 'setTournamentMetadata' = 'newTournament';
     let obj = {};
 
-    const jsontype = getEnumLabel(TType, vals.type);
-
     if (props.mode === 'new') {
       apicall = 'newTournament';
       const directors = (vals.directors as string)
@@ -188,7 +185,7 @@ export const TourneyEditor = (props: Props) => {
         name: vals.name,
         description: vals.description,
         slug: vals.slug,
-        type: jsontype,
+        type: vals.type,
         directorUsernames: directors,
         freeformClubSettingFields: vals.freeformItems,
         defaultClubSettings: selectedGameRequest,
@@ -201,7 +198,7 @@ export const TourneyEditor = (props: Props) => {
           name: vals.name,
           description: vals.description,
           slug: vals.slug,
-          type: jsontype,
+          type: vals.type,
           defaultClubSettings: selectedGameRequest,
           freeformClubSettingFields: vals.freeformItems,
           boardStyle: vals.boardStyle,
