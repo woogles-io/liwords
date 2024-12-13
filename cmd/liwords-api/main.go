@@ -51,6 +51,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/memento"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/omgwords"
+	"github.com/woogles-io/liwords/pkg/pair"
 	pkgprofile "github.com/woogles-io/liwords/pkg/profile"
 	"github.com/woogles-io/liwords/pkg/puzzles"
 	"github.com/woogles-io/liwords/pkg/registration"
@@ -64,6 +65,7 @@ import (
 	"github.com/woogles-io/liwords/rpc/api/proto/game_service/game_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/mod_service/mod_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/omgwords_service/omgwords_serviceconnect"
+	"github.com/woogles-io/liwords/rpc/api/proto/pair_service/pair_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/puzzle_service/puzzle_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/tournament_service/tournament_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/user_service/user_serviceconnect"
@@ -210,6 +212,7 @@ func main() {
 	puzzleService := puzzles.NewPuzzleService(stores.PuzzleStore, stores.UserStore, cfg.PuzzleGenerationSecretKey, cfg.ECSClusterName, cfg.PuzzleGenerationTaskDefinition)
 	omgwordsService := omgwords.NewOMGWordsService(stores.UserStore, cfg, stores.GameDocumentStore, stores.AnnotatedGameStore)
 	commentService := comments.NewCommentsService(stores.UserStore, stores.GameStore, stores.CommentsStore)
+	pairService := pair.NewPairService(cfg, lambdaClient)
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
 	otcInterceptor, err := otelconnect.NewInterceptor()
@@ -286,6 +289,9 @@ func main() {
 	)
 	connectapi.Handle(
 		user_serviceconnect.NewIntegrationServiceHandler(integrationService, options),
+	)
+	connectapi.Handle(
+		pair_serviceconnect.NewPairServiceHandler(pairService, options),
 	)
 
 	connectapichain := middlewares.Then(connectapi)
