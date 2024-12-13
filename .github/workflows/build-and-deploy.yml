@@ -188,12 +188,6 @@ jobs:
           sed -i "s:unknown:${UI_HASH}:" /tmp/liwords-ui/artifact/config.js
           echo "export UI_HASH=$UI_HASH" >> $GITHUB_ENV
 
-      - name: Install AWS CLI
-        run: |
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install
-
       - name: Sync to S3 (Cache Everything)
         run: |
           cd /tmp/liwords-ui/artifact &&
