@@ -21,7 +21,7 @@ import { UsernameWithContext } from '../shared/usernameWithContext';
 import './playerList.scss';
 import { useDebounce } from '../utils/debounce';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { AutocompleteService } from '../gen/api/proto/user_service/user_service_connect';
+import { AutocompleteService } from '../gen/api/proto/user_service/user_service_pb';
 
 type Props = {
   defaultChannelType: string;

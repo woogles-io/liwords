@@ -3,8 +3,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { message, Form, Select, InputNumber, Input, Button } from 'antd';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { ModService } from '../gen/api/proto/mod_service/mod_service_connect';
-import { proto3 } from '@bufbuild/protobuf';
+import {
+  ModActionsListSchema,
+  ModActionsMapSchema,
+  ModService,
+} from '../gen/api/proto/mod_service/mod_service_pb';
 import {
   EmailType,
   ModActionsList,
@@ -12,7 +15,9 @@ import {
 } from '../gen/api/proto/mod_service/mod_service_pb';
 import { ModActionType } from '../gen/api/proto/mod_service/mod_service_pb';
 import { HookAPI } from 'antd/lib/modal/useModal';
-import { PromiseClient } from '@connectrpc/connect';
+import { Client } from '@connectrpc/connect';
+import { create, toJsonString } from '@bufbuild/protobuf';
+import { getEnumValue } from '../utils/protobuf';
 
 type ModProps = {
   userID: string;
@@ -20,21 +25,17 @@ type ModProps = {
 
 const Moderation = (props: ModProps) => {
   const [activeActions, setActiveActions] = useState<ModActionsMap>(
-    new ModActionsMap()
+    create(ModActionsMapSchema, {})
   );
   const [actionsHistory, setActionsHistory] = useState<ModActionsList>(
-    new ModActionsList()
+    create(ModActionsListSchema, {})
   );
 
   const modClient = useClient(ModService);
 
   const onFinish = async (values: { [key: string]: string | number }) => {
-    const actionType = proto3
-      .getEnumType(ModActionType)
-      .findName(values.action as string)?.no;
-    const emailType = proto3
-      .getEnumType(EmailType)
-      .findName(values.emailType as string)?.no;
+    const actionType = getEnumValue(ModActionType, values.action as string);
+    const emailType = getEnumValue(EmailType, values.emailType as string);
     const obj = {
       actions: [
         {
@@ -139,14 +140,16 @@ const Moderation = (props: ModProps) => {
 
       <h3>Active mod actions</h3>
       <pre className="readable-text-color">
-        {activeActions.toJsonString({ prettySpaces: 2 })}
+        {toJsonString(ModActionsMapSchema, activeActions, { prettySpaces: 2 })}
       </pre>
       <h3>Moderation history</h3>
       <pre
         className="readable-text-color"
         style={{ maxHeight: 200, overflowY: 'scroll' }}
       >
-        {actionsHistory.toJsonString({ prettySpaces: 2 })}
+        {toJsonString(ModActionsListSchema, actionsHistory, {
+          prettySpaces: 2,
+        })}
       </pre>
     </div>
   );
@@ -178,7 +181,7 @@ export const deleteChatMessage = async (
   userid: string,
   msgid: string,
   channel: string,
-  modClient: PromiseClient<typeof ModService>
+  modClient: Client<typeof ModService>
 ) => {
   const obj = {
     actions: [

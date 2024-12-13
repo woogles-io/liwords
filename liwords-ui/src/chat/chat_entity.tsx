@@ -17,9 +17,9 @@ import { moderateUser, deleteChatMessage } from '../mod/moderate';
 import { PettableAvatar, PlayerAvatar } from '../shared/player_avatar';
 import { ChatEntityType } from '../store/constants';
 import { useClient } from '../utils/hooks/connect';
-import { ModService } from '../gen/api/proto/mod_service/mod_service_connect';
+import { ModService } from '../gen/api/proto/mod_service/mod_service_pb';
 import { HookAPI } from 'antd/lib/modal/useModal';
-import { PromiseClient } from '@connectrpc/connect';
+import { Client } from '@connectrpc/connect';
 
 type EntityProps = {
   entityType: ChatEntityType;
@@ -41,7 +41,7 @@ const deleteMessage = (
   msgid: string,
   message: string,
   channel: string,
-  modClient: PromiseClient<typeof ModService>
+  modClient: Client<typeof ModService>
 ) => {
   modal.confirm({
     title: (

@@ -1,4 +1,4 @@
-import React, {
+import {
   createContext,
   useCallback,
   useContext,
@@ -10,10 +10,11 @@ import React, {
 import { Unrace } from './unrace';
 import {
   BriefProfile,
-  BriefProfilesRequest,
+  BriefProfilesRequestSchema,
 } from '../gen/api/proto/user_service/user_service_pb';
 import { useClient } from './hooks/connect';
-import { ProfileService } from '../gen/api/proto/user_service/user_service_connect';
+import { ProfileService } from '../gen/api/proto/user_service/user_service_pb';
+import { create } from '@bufbuild/protobuf';
 
 type CacheType = Map<string, { data: BriefProfile | null; expires: number }>;
 
@@ -51,7 +52,7 @@ export const BriefProfiles = (props: {
       if (toRequestHere !== toRequest.current) return;
       if (toRequestHere.size === 0) return;
       toRequest.current = new Set();
-      const req = new BriefProfilesRequest();
+      const req = create(BriefProfilesRequestSchema, {});
       req.userIds = Array.from(toRequestHere);
       try {
         const respObj = await profileClient.getBriefProfiles(req);

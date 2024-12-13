@@ -2,10 +2,10 @@ import { GameReducer, startingGameState } from './game_reducer';
 import { ActionType } from '../../actions/actions';
 
 import {
-  GameHistory,
-  PlayerInfo,
-  GameEvent,
   GameEvent_Type,
+  GameEventSchema,
+  GameHistorySchema,
+  PlayerInfoSchema,
 } from '../../gen/api/vendor/macondo/macondo_pb';
 import {
   StandardEnglishAlphabet,
@@ -13,17 +13,20 @@ import {
 } from '../../constants/alphabets';
 import {
   GameHistoryRefresher,
+  GameHistoryRefresherSchema,
   ServerGameplayEvent,
+  ServerGameplayEventSchema,
 } from '../../gen/api/proto/ipc/omgwords_pb';
+import { create } from '@bufbuild/protobuf';
 
 const rtmwEng = (s: string) => runesToMachineWord(s, StandardEnglishAlphabet);
 
 const historyRefresher = () => {
-  return new GameHistoryRefresher({
-    history: new GameHistory({
+  return create(GameHistoryRefresherSchema, {
+    history: create(GameHistorySchema, {
       players: [
-        new PlayerInfo({ nickname: 'césar', userId: 'cesar123' }),
-        new PlayerInfo({ nickname: 'mina', userId: 'mina123' }),
+        create(PlayerInfoSchema, { nickname: 'césar', userId: 'cesar123' }),
+        create(PlayerInfoSchema, { nickname: 'mina', userId: 'mina123' }),
       ],
       lastKnownRacks: ['CDEIPTV', 'FIMRSUU'],
       uid: 'game42',
@@ -52,7 +55,7 @@ it('tests addevent', () => {
     payload: historyRefresher(),
   });
 
-  const evt = new GameEvent({
+  const evt = create(GameEventSchema, {
     playerIndex: 0,
     rack: 'CDEIPTV',
     cumulative: 26,
@@ -63,7 +66,7 @@ it('tests addevent', () => {
     score: 26,
   });
 
-  const sge = new ServerGameplayEvent({
+  const sge = create(ServerGameplayEventSchema, {
     newRack: 'EFIKNNV',
     event: evt,
     gameId: 'game42',
@@ -87,7 +90,7 @@ it('tests addevent with different id', () => {
     payload: historyRefresher(),
   });
 
-  const evt = new GameEvent({
+  const evt = create(GameEventSchema, {
     type: GameEvent_Type.TILE_PLACEMENT_MOVE,
     playerIndex: 0,
     rack: 'CDEIPTV',
@@ -98,7 +101,7 @@ it('tests addevent with different id', () => {
     playedTiles: 'DEPICT',
     score: 26,
   });
-  const sge = new ServerGameplayEvent({
+  const sge = create(ServerGameplayEventSchema, {
     newRack: 'EFIKNNV',
     event: evt,
     gameId: 'anotherone',
@@ -118,11 +121,11 @@ it('tests addevent with different id', () => {
 });
 
 const historyRefresher3 = () => {
-  return new GameHistoryRefresher({
-    history: new GameHistory({
+  return create(GameHistoryRefresherSchema, {
+    history: create(GameHistorySchema, {
       players: [
-        new PlayerInfo({ nickname: 'mina', userId: 'mina123' }),
-        new PlayerInfo({ nickname: 'césar', userId: 'cesar123' }),
+        create(PlayerInfoSchema, { nickname: 'mina', userId: 'mina123' }),
+        create(PlayerInfoSchema, { nickname: 'césar', userId: 'cesar123' }),
       ],
       lastKnownRacks: ['AEELRX?', 'EFMPRST'],
       uid: 'game63',
@@ -135,16 +138,16 @@ const historyRefresher3AfterChallenge = () => {
   // "position": "8H", "played_tiles": "RELAXEs", "score": 92
   // }, { "nickname":"mina", "type":3, "cumulative":97, "bonus":5}]}], "players": [{ "nickname": "césar", "real_name": "césar" }, { "nickname": "mina", "real_name": "mina" }], "id_auth": "org.aerolith", "uid": "kqVFQ7PXG3Es3gn9jNX5p9", "description": "Created with Macondo", "last_known_racks": ["EFMPRST", "EEJNNOQ"]
 
-  return new GameHistoryRefresher({
-    history: new GameHistory({
+  return create(GameHistoryRefresherSchema, {
+    history: create(GameHistorySchema, {
       players: [
-        new PlayerInfo({ nickname: 'mina', userId: 'mina123' }),
-        new PlayerInfo({ nickname: 'césar', userId: 'cesar123' }),
+        create(PlayerInfoSchema, { nickname: 'mina', userId: 'mina123' }),
+        create(PlayerInfoSchema, { nickname: 'césar', userId: 'cesar123' }),
       ],
       lastKnownRacks: ['EEJNNOQ', 'EFMPRST'],
       uid: 'game63',
       events: [
-        new GameEvent({
+        create(GameEventSchema, {
           playerIndex: 0,
           rack: '?AEELRX',
           cumulative: 92,
@@ -154,7 +157,7 @@ const historyRefresher3AfterChallenge = () => {
           playedTiles: 'RELAXEs',
           score: 92,
         }),
-        new GameEvent({
+        create(GameEventSchema, {
           playerIndex: 0,
           type: GameEvent_Type.CHALLENGE_BONUS,
           cumulative: 97,
@@ -172,10 +175,10 @@ it('tests challenge with refresher event afterwards', () => {
     payload: historyRefresher3(),
   });
 
-  const sge = new ServerGameplayEvent({
+  const sge = create(ServerGameplayEventSchema, {
     newRack: 'EEJNNOQ',
     gameId: 'game63',
-    event: new GameEvent({
+    event: create(GameEventSchema, {
       playerIndex: 0,
       rack: '?AEELRX',
       cumulative: 92,
@@ -220,9 +223,9 @@ it('tests challenge with challenge event afterwards', () => {
     payload: historyRefresher3(),
   });
 
-  const sge = new ServerGameplayEvent({
+  const sge = create(ServerGameplayEventSchema, {
     newRack: 'EEJNNOQ',
-    event: new GameEvent({
+    event: create(GameEventSchema, {
       playerIndex: 0,
       rack: '?AEELRX',
       cumulative: 92,
@@ -241,8 +244,8 @@ it('tests challenge with challenge event afterwards', () => {
   });
 
   // Now add a challenge event.
-  const sge2 = new ServerGameplayEvent({
-    event: new GameEvent({
+  const sge2 = create(ServerGameplayEventSchema, {
+    event: create(GameEventSchema, {
       playerIndex: 0,
       type: GameEvent_Type.CHALLENGE_BONUS,
       cumulative: 97,
@@ -267,15 +270,15 @@ it('tests challenge with challenge event afterwards', () => {
 });
 
 const historyRefresherWithPlay = () => {
-  return new GameHistoryRefresher({
-    history: new GameHistory({
+  return create(GameHistoryRefresherSchema, {
+    history: create(GameHistorySchema, {
       players: [
-        new PlayerInfo({ nickname: 'césar', userId: 'cesar123' }),
-        new PlayerInfo({ nickname: 'mina', userId: 'mina123' }),
+        create(PlayerInfoSchema, { nickname: 'césar', userId: 'cesar123' }),
+        create(PlayerInfoSchema, { nickname: 'mina', userId: 'mina123' }),
       ],
       lastKnownRacks: ['', 'DEIMNRU'],
       events: [
-        new GameEvent({
+        create(GameEventSchema, {
           column: 6,
           row: 7,
           score: 12,
@@ -297,8 +300,8 @@ it('tests deduplication of event', () => {
     payload: historyRefresherWithPlay(),
   });
 
-  const sge = new ServerGameplayEvent({
-    event: new GameEvent({
+  const sge = create(ServerGameplayEventSchema, {
+    event: create(GameEventSchema, {
       cumulative: 12,
       row: 7,
       column: 6,

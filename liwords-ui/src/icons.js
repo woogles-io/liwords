@@ -5,8 +5,6 @@ export { default as DownOutlined } from '@ant-design/icons/lib/icons/DownOutline
 
 export { default as MinusCircleOutlined } from '@ant-design/icons/lib/icons/MinusCircleOutlined';
 
-export { default as PlusOutlined } from '@ant-design/icons/lib/icons/PlusOutlined';
-
 export { default as UpOutlined } from '@ant-design/icons/lib/icons/UpOutlined';
 
 export { default as TrophyOutlined } from '@ant-design/icons/lib/icons/TrophyOutlined';
@@ -37,8 +35,6 @@ export { default as ArrowRightOutlined } from '@ant-design/icons/lib/icons/Arrow
 
 export { default as StarOutlined } from '@ant-design/icons/lib/icons/StarOutlined';
 
-export { default as UserOutlined } from '@ant-design/icons/lib/icons/UserOutlined';
-
 export { default as DoubleLeftOutlined } from '@ant-design/icons/lib/icons/DoubleLeftOutlined';
 
 export { default as DoubleRightOutlined } from '@ant-design/icons/lib/icons/DoubleRightOutlined';
@@ -66,8 +62,6 @@ export { default as TwitterCircleFilled } from '@ant-design/icons/lib/icons/Twit
 export { default as DisconnectOutlined } from '@ant-design/icons/lib/icons/DisconnectOutlined';
 
 export { default as SettingOutlined } from '@ant-design/icons/lib/icons/SettingOutlined';
-
-export { default as ExportOutlined } from '@ant-design/icons/lib/icons/ExportOutlined';
 
 export { default as CheckCircleTwoTone } from '@ant-design/icons/lib/icons/CheckCircleTwoTone';
 

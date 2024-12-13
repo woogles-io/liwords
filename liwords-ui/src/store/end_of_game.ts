@@ -1,9 +1,11 @@
-import { proto3 } from '@bufbuild/protobuf';
+import { create } from '@bufbuild/protobuf';
 import {
   GameEndedEvent,
+  GameEndedEventSchema,
   GameEndReason,
   GameInfoResponse,
 } from '../gen/api/proto/ipc/omgwords_pb';
+import { getEnumLabel } from '../utils/protobuf';
 
 export const endGameMessage = (gee: GameEndedEvent): string => {
   const scores = gee.scores;
@@ -85,16 +87,16 @@ export const endGameMessage = (gee: GameEndedEvent): string => {
 export const endGameMessageFromGameInfo = (info: GameInfoResponse): string => {
   // construct an artificial GameEndedEvent
 
-  const gee = new GameEndedEvent();
+  const gee = create(GameEndedEventSchema, {});
   const scores = gee.scores;
   if (
     info.gameEndReason === GameEndReason.ABORTED ||
     info.gameEndReason === GameEndReason.CANCELLED
   ) {
-    const endReasonText = proto3
-      .getEnumType(GameEndReason)
-      .findNumber(info.gameEndReason)
-      ?.name.toLowerCase();
+    const endReasonText = getEnumLabel(
+      GameEndReason,
+      info.gameEndReason
+    )?.toLowerCase();
     return `Game was ${endReasonText}.`;
   }
   if (info.scores) {

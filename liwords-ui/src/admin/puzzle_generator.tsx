@@ -15,20 +15,23 @@ import { Store } from 'antd/lib/form/interface';
 import { excludedLexica, LexiconFormItem } from '../shared/lexicon_display';
 import {
   PuzzleBucket,
-  PuzzleGenerationRequest,
+  PuzzleBucketSchema,
+  PuzzleGenerationRequestSchema,
   PuzzleTag,
 } from '../gen/api/vendor/macondo/macondo_pb';
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import {
-  APIPuzzleGenerationJobRequest,
-  PuzzleGenerationJobRequest,
+  APIPuzzleGenerationJobRequestSchema,
+  PuzzleGenerationJobRequestSchema,
   PuzzleJobLog,
-  PuzzleJobLogsRequest,
+  PuzzleJobLogsRequestSchema,
 } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import moment from 'moment';
-import { proto3 } from '@bufbuild/protobuf';
+import { create, toJsonString } from '@bufbuild/protobuf';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_connect';
+import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
+import { timestampDate } from '@bufbuild/protobuf/wkt';
+import { enumToOptions } from '../utils/protobuf';
 
 const layout = {
   labelCol: {
@@ -58,10 +61,10 @@ export const PuzzleGenerator = () => {
           const completedAt = item.completedAt;
           let dcreate, dcomplete;
           if (createdAt) {
-            dcreate = moment(createdAt.toDate()).fromNow();
+            dcreate = moment(timestampDate(createdAt)).fromNow();
           }
           if (completedAt) {
-            dcomplete = moment(completedAt.toDate()).toISOString();
+            dcomplete = moment(timestampDate(completedAt)).toISOString();
           }
 
           return (
@@ -74,7 +77,15 @@ export const PuzzleGenerator = () => {
                     <p>Fulfilled: {`${item.fulfilled}`}</p>
                     <p>Error status: {item.errorStatus}</p>
                     <p>Request:</p>
-                    <pre>{item.request?.toJsonString({ prettySpaces: 2 })}</pre>
+                    <pre>
+                      {item.request
+                        ? toJsonString(
+                            PuzzleGenerationJobRequestSchema,
+                            item.request,
+                            { prettySpaces: 2 }
+                          )
+                        : ''}
+                    </pre>
                   </div>
                 }
               />
@@ -91,9 +102,9 @@ export const PuzzleGenerator = () => {
     async (vals: Store) => {
       console.log('vals', vals);
 
-      const apireq = new APIPuzzleGenerationJobRequest();
+      const apireq = create(APIPuzzleGenerationJobRequestSchema, {});
 
-      const req = new PuzzleGenerationJobRequest();
+      const req = create(PuzzleGenerationJobRequestSchema, {});
       req.botVsBot = vals.bvb;
       req.lexicon = vals.lexicon;
       req.letterDistribution = vals.letterdist;
@@ -104,11 +115,11 @@ export const PuzzleGenerator = () => {
       req.equityLossTotalLimit = vals.equityLossTotalLimit;
       req.startDate = vals.startDate;
 
-      const bucketReq = new PuzzleGenerationRequest();
+      const bucketReq = create(PuzzleGenerationRequestSchema, {});
 
       const buckets = new Array<PuzzleBucket>();
       vals.buckets.forEach((bucket: formBucket) => {
-        const pb = new PuzzleBucket();
+        const pb = create(PuzzleBucketSchema, {});
         pb.size = bucket.size;
 
         pb.includes = bucket.includes ?? new Array<PuzzleTag>();
@@ -134,7 +145,7 @@ export const PuzzleGenerator = () => {
   );
 
   const fetchRecentLogs = useCallback(async () => {
-    const req = new PuzzleJobLogsRequest();
+    const req = create(PuzzleJobLogsRequestSchema, {});
     req.offset = 0;
     req.limit = 20;
 
@@ -148,8 +159,8 @@ export const PuzzleGenerator = () => {
 
   const puzzleTags = useMemo(
     () =>
-      proto3.getEnumType(PuzzleTag).values.map((val) => {
-        return <Select.Option key={val.no}>{val.name}</Select.Option>;
+      enumToOptions(PuzzleTag).map((key) => {
+        return <Select.Option key={key.value}>{key.label}</Select.Option>;
       }),
     []
   );

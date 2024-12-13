@@ -46,25 +46,30 @@ import { useTourneyMetadata } from '../tournament/utils';
 import { Disclaimer } from './disclaimer';
 import { alphabetFromName } from '../constants/alphabets';
 import {
+  ClientGameplayEventSchema,
   GameEndReason,
   GameInfoResponse,
   GameType,
-  ReadyForGame,
-  TimedOut,
+  ReadyForGameSchema,
+  TimedOutSchema,
 } from '../gen/api/proto/ipc/omgwords_pb';
 import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
 import {
-  DeclineSeekRequest,
-  SeekRequest,
-  SoughtGameProcessEvent,
+  DeclineSeekRequestSchema,
+  SeekRequestSchema,
+  SoughtGameProcessEventSchema,
 } from '../gen/api/proto/ipc/omgseeks_pb';
-import { StreakInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
+import {
+  StreakInfoResponse,
+  StreakInfoResponseSchema,
+} from '../gen/api/proto/game_service/game_service_pb';
 import { useClient } from '../utils/hooks/connect';
-import { GameMetadataService } from '../gen/api/proto/game_service/game_service_connect';
-import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_connect';
+import { GameMetadataService } from '../gen/api/proto/game_service/game_service_pb';
+import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_pb';
 import { ActionType } from '../actions/actions';
 import { syntheticGameInfo } from '../boardwizard/synthetic_game_info';
 import { MachineLetter, MachineWord } from '../utils/cwgame/common';
+import { create, toBinary } from '@bufbuild/protobuf';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -209,7 +214,7 @@ export const Table = React.memo((props: Props) => {
   const { sendSocketMsg } = props;
   const [gameInfo, setGameInfo] = useState<GameInfoResponse>(defaultGameInfo);
   const [streakGameInfo, setStreakGameInfo] = useState<StreakInfoResponse>(
-    new StreakInfoResponse({
+    create(StreakInfoResponseSchema, {
       streak: [],
       playersInfo: [],
     })
@@ -383,10 +388,12 @@ export const Table = React.memo((props: Props) => {
       }
     });
 
-    const to = new TimedOut();
+    const to = create(TimedOutSchema);
     to.gameId = gameID;
     to.userId = timedout;
-    sendSocketMsg(encodeToSocketFmt(MessageType.TIMED_OUT, to.toBinary()));
+    sendSocketMsg(
+      encodeToSocketFmt(MessageType.TIMED_OUT, toBinary(TimedOutSchema, to))
+    );
     setPTimedOut(undefined);
   }, [
     gameContext.nickToPlayerOrder,
@@ -411,10 +418,13 @@ export const Table = React.memo((props: Props) => {
     setPlayerNames(gameInfo.players.map((p) => p.nickname));
     // If we are not the observer, tell the server we're ready for the game to start.
     if (gameInfo.gameEndReason === GameEndReason.NONE && !observer) {
-      const evt = new ReadyForGame();
+      const evt = create(ReadyForGameSchema);
       evt.gameId = gameID;
       sendSocketMsg(
-        encodeToSocketFmt(MessageType.READY_FOR_GAME, evt.toBinary())
+        encodeToSocketFmt(
+          MessageType.READY_FOR_GAME,
+          toBinary(ReadyForGameSchema, evt)
+        )
       );
     }
   }, [userID, gameInfo, gameID, sendSocketMsg]);
@@ -433,10 +443,13 @@ export const Table = React.memo((props: Props) => {
 
   const acceptRematch = useCallback(
     (reqID: string) => {
-      const evt = new SoughtGameProcessEvent();
+      const evt = create(SoughtGameProcessEventSchema);
       evt.requestId = reqID;
       sendSocketMsg(
-        encodeToSocketFmt(MessageType.SOUGHT_GAME_PROCESS_EVENT, evt.toBinary())
+        encodeToSocketFmt(
+          MessageType.SOUGHT_GAME_PROCESS_EVENT,
+          toBinary(SoughtGameProcessEventSchema, evt)
+        )
       );
     },
     [sendSocketMsg]
@@ -446,15 +459,18 @@ export const Table = React.memo((props: Props) => {
     const gr = rematchRequest.gameRequest;
     if (gr) {
       acceptRematch(gr.requestId);
-      setRematchRequest(new SeekRequest());
+      setRematchRequest(create(SeekRequestSchema, {}));
     }
   }, [acceptRematch, rematchRequest, setRematchRequest]);
 
   const declineRematch = useCallback(
     (reqID: string) => {
-      const evt = new DeclineSeekRequest({ requestId: reqID });
+      const evt = create(DeclineSeekRequestSchema, { requestId: reqID });
       sendSocketMsg(
-        encodeToSocketFmt(MessageType.DECLINE_SEEK_REQUEST, evt.toBinary())
+        encodeToSocketFmt(
+          MessageType.DECLINE_SEEK_REQUEST,
+          toBinary(DeclineSeekRequestSchema, evt)
+        )
       );
     },
     [sendSocketMsg]
@@ -464,7 +480,7 @@ export const Table = React.memo((props: Props) => {
     const gr = rematchRequest.gameRequest;
     if (gr) {
       declineRematch(gr.requestId);
-      setRematchRequest(new SeekRequest());
+      setRematchRequest(create(SeekRequestSchema, {}));
     }
   }, [declineRematch, rematchRequest, setRematchRequest]);
 
@@ -695,7 +711,7 @@ export const Table = React.memo((props: Props) => {
               props.sendSocketMsg(
                 encodeToSocketFmt(
                   MessageType.CLIENT_GAMEPLAY_EVENT,
-                  evt.toBinary()
+                  toBinary(ClientGameplayEventSchema, evt)
                 )
               )
             }

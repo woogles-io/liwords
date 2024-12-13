@@ -2,10 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card } from 'antd';
 import { BoardPreview } from '../settings/board_preview';
 import './puzzle_preview.scss';
-import {
-  StartPuzzleIdRequest,
-  PuzzleRequest,
-} from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { ActionType } from '../actions/actions';
 import {
   useGameContextStoreContext,
@@ -23,8 +19,13 @@ import { DndProvider } from 'react-dnd';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { RatingBadge } from '../lobby/rating_badge';
 import { flashError, useClient } from '../utils/hooks/connect';
-import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_connect';
+import {
+  PuzzleRequestSchema,
+  PuzzleService,
+  StartPuzzleIdRequestSchema,
+} from '../gen/api/proto/puzzle_service/puzzle_service_pb';
 import { MachineLetter } from '../utils/cwgame/common';
+import { create } from '@bufbuild/protobuf';
 
 export const PuzzlePreview = React.memo(() => {
   const userLexicon = localStorage?.getItem('puzzleLexicon');
@@ -47,7 +48,7 @@ export const PuzzlePreview = React.memo(() => {
       setPuzzleID('E3kGXKyzhYirNzsMfCW3QV');
       return;
     }
-    const req = new StartPuzzleIdRequest();
+    const req = create(StartPuzzleIdRequestSchema, {});
     req.lexicon = userLexicon;
     try {
       const resp = await puzzleClient.getStartPuzzleId(req);
@@ -63,7 +64,7 @@ export const PuzzlePreview = React.memo(() => {
 
   useEffect(() => {
     async function fetchPuzzleData(id: string) {
-      const req = new PuzzleRequest({ puzzleId: id });
+      const req = create(PuzzleRequestSchema, { puzzleId: id });
 
       try {
         const resp = await puzzleClient.getPuzzle(req);

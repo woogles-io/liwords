@@ -25,10 +25,12 @@ import { GameRequestToFormValues } from '../../lobby/seek_form';
 import {
   GameMode,
   GameRequest,
-  GameRules,
+  GameRequestSchema,
+  GameRulesSchema,
   RatingMode,
 } from '../../gen/api/proto/ipc/omgwords_pb';
 import { defaultLetterDistribution } from '../../lobby/sought_game_interactions';
+import { create } from '@bufbuild/protobuf';
 
 type Props = {
   setGameRequest: (gr: GameRequest) => void;
@@ -105,8 +107,8 @@ export const SettingsForm = (props: Props) => {
   };
 
   const submitGameReq = (values: Store) => {
-    const gr = new GameRequest();
-    const rules = new GameRules({
+    const gr = create(GameRequestSchema, {});
+    const rules = create(GameRulesSchema, {
       boardLayoutName: 'CrosswordGame',
       letterDistributionName: defaultLetterDistribution(values.lexicon),
       variantName: values.variant,

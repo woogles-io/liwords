@@ -14,8 +14,8 @@ import {
   GameEvent_Direction,
 } from '../../gen/api/vendor/macondo/macondo_pb';
 import {
-  ClientGameplayEvent,
   ClientGameplayEvent_EventType,
+  ClientGameplayEventSchema,
   PlayerInfo,
 } from '../../gen/api/proto/ipc/omgwords_pb';
 import {
@@ -23,6 +23,7 @@ import {
   machineLetterToRune,
   runesToMachineWord,
 } from '../../constants/alphabets';
+import { create } from '@bufbuild/protobuf';
 
 export const ThroughTileMarker = '.';
 // convert a set of ephemeral tiles to a protobuf game event.
@@ -61,7 +62,7 @@ export const tilesetToMoveEvent = (
     wordPos = col + row;
   }
 
-  const evt = new ClientGameplayEvent({
+  const evt = create(ClientGameplayEventSchema, {
     positionCoords: wordPos,
     machineLetters: Uint8Array.from(letArr),
     type: ClientGameplayEvent_EventType.TILE_PLACEMENT,
@@ -76,7 +77,7 @@ export const exchangeMoveEvent = (
   gameID: string,
   alphabet: Alphabet
 ) => {
-  const evt = new ClientGameplayEvent({
+  const evt = create(ClientGameplayEventSchema, {
     machineLetters: Uint8Array.from(rack),
     type: ClientGameplayEvent_EventType.EXCHANGE,
     gameId: gameID,
@@ -86,7 +87,7 @@ export const exchangeMoveEvent = (
 };
 
 export const passMoveEvent = (gameID: string) => {
-  const evt = new ClientGameplayEvent({
+  const evt = create(ClientGameplayEventSchema, {
     type: ClientGameplayEvent_EventType.PASS,
     gameId: gameID,
   });
@@ -94,7 +95,7 @@ export const passMoveEvent = (gameID: string) => {
 };
 
 export const resignMoveEvent = (gameID: string) => {
-  const evt = new ClientGameplayEvent({
+  const evt = create(ClientGameplayEventSchema, {
     type: ClientGameplayEvent_EventType.RESIGN,
     gameId: gameID,
   });
@@ -102,7 +103,7 @@ export const resignMoveEvent = (gameID: string) => {
 };
 
 export const challengeMoveEvent = (gameID: string) => {
-  const evt = new ClientGameplayEvent({
+  const evt = create(ClientGameplayEventSchema, {
     type: ClientGameplayEvent_EventType.CHALLENGE_PLAY,
     gameId: gameID,
   });

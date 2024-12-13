@@ -1,14 +1,10 @@
 import { useMemo } from 'react';
 
-import { ServiceType } from '@bufbuild/protobuf';
+import { type DescService } from '@bufbuild/protobuf';
 import { message } from 'antd';
 import { parseWooglesError } from '../parse_woogles_error';
 import { createConnectTransport } from '@connectrpc/connect-web';
-import {
-  ConnectError,
-  PromiseClient,
-  createPromiseClient,
-} from '@connectrpc/connect';
+import { ConnectError, Client, createClient } from '@connectrpc/connect';
 
 const loc = window.location;
 const apiEndpoint = window.RUNTIME_CONFIGURATION?.apiEndpoint || loc.host;
@@ -25,12 +21,12 @@ export const binaryTransport = createConnectTransport({
   useBinaryFormat: true,
 });
 
-export function useClient<T extends ServiceType>(
+export function useClient<T extends DescService>(
   service: T,
   binary = false
-): PromiseClient<T> {
+): Client<T> {
   const tf = binary ? binaryTransport : transport;
-  return useMemo(() => createPromiseClient(service, tf), [service, tf]);
+  return useMemo(() => createClient(service, tf), [service, tf]);
 }
 
 export const flashError = (e: unknown, time = 5) => {

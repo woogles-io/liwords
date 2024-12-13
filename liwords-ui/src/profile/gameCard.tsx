@@ -11,6 +11,7 @@ import { challengeRuleNamesShort } from '../constants/challenge_rules';
 import { GameEndReason } from '../gen/api/proto/ipc/omgwords_pb';
 import { ChallengeRule } from '../gen/api/vendor/macondo/macondo_pb';
 import { lexiconCodeToProfileRatingName } from '../shared/lexica';
+import { timestampDate } from '@bufbuild/protobuf/wkt';
 
 type GameCardProps = {
   game: GameInfoResponse;
@@ -29,7 +30,7 @@ export const GameCard = React.memo((props: GameCardProps) => {
     gameEndReason,
     timeControlName,
   } = game;
-  const whenMoment = moment(createdAt?.toDate() || '');
+  const whenMoment = moment(createdAt ? timestampDate(createdAt) : '');
   const when = (
     <Tooltip title={whenMoment.format('LLL')}>{whenMoment.fromNow()}</Tooltip>
   );

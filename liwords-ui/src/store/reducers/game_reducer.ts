@@ -6,6 +6,8 @@ import {
   GameHistory,
   GameEvent_Type,
   GameEvent_Direction,
+  GameEventSchema,
+  PlayerInfoSchema,
 } from '../../gen/api/vendor/macondo/macondo_pb';
 import { Action, ActionType } from '../../actions/actions';
 import {
@@ -32,11 +34,14 @@ import {
   GameEvent as OMGWordsGameEvent,
   GameEvent_Type as OMGWordsGameEventType,
   ServerOMGWordsEvent,
+  GameDocumentSchema,
+  ServerGameplayEventSchema,
 } from '../../gen/api/proto/ipc/omgwords_pb';
 import {
   CrosswordGameGridLayout,
   SuperCrosswordGameGridLayout,
 } from '../../constants/board_layout';
+import { clone, create } from '@bufbuild/protobuf';
 
 type TileDistribution = { [ml: MachineLetter]: number };
 
@@ -115,7 +120,7 @@ export const startingGameState = (
     clockController: null,
     onClockTick: () => {},
     onClockTimeout: () => {},
-    gameDocument: new GameDocument(),
+    gameDocument: create(GameDocumentSchema, {}),
   };
   return gs;
 };
@@ -142,7 +147,7 @@ const newGameStateFromGameplayEvent = (
   }
   // Append the event.
 
-  turns.push(evt.clone());
+  turns.push(clone(GameEventSchema, evt));
   const players = clonePlayers(state.players);
 
   // onturn should be set to the player that came with the event.
@@ -278,9 +283,9 @@ const convertToGameEvt = (
   alphabet: Alphabet
 ): GameEvent => {
   if (!evt) {
-    return new GameEvent();
+    return create(GameEventSchema, {});
   }
-  return new GameEvent({
+  return create(GameEventSchema, {
     rack: machineWordToRunes(Array.from(evt.rack), alphabet),
     type: evt.type.valueOf(),
     cumulative: evt.cumulative,
@@ -313,7 +318,7 @@ const convertToServerGameplayEvent = (
   evt: ServerOMGWordsEvent,
   alphabet: Alphabet
 ): ServerGameplayEvent => {
-  return new ServerGameplayEvent({
+  return create(ServerGameplayEventSchema, {
     event: convertToGameEvt(evt.event, alphabet),
     gameId: evt.gameId,
     newRack: machineWordToRunes(Array.from(evt.newRack), alphabet),
@@ -353,7 +358,7 @@ export const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
     }
 
     // Push a deep clone of the turn.
-    gs.turns.push(evt.clone());
+    gs.turns.push(clone(GameEventSchema, evt));
     // eslint-disable-next-line no-param-reassign
     gs.players[onturn].score = events[idx].cumulative;
     // eslint-disable-next-line no-param-reassign
@@ -440,6 +445,13 @@ const stateFromHistory = (history: GameHistory): GameState => {
 
 const stateFromDocument = (gdoc: GameDocument): GameState => {
   const playerList = gdoc.players;
+  // Convert from a gdoc's playerList to a macondo playerList
+  const compatiblePlayerList = playerList.map((pinfo) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { $typeName: _, ...properties } = pinfo;
+    const mcpinfo = create(PlayerInfoSchema, properties);
+    return mcpinfo;
+  });
 
   const nickToPlayerOrder = {
     [playerList[0].nickname]: 'p0' as PlayerOrder,
@@ -453,7 +465,7 @@ const stateFromDocument = (gdoc: GameDocument): GameState => {
   const alphabet = alphabetFromName(gdoc.letterDistribution.toLowerCase());
   const gs = startingGameState(
     alphabet,
-    initialExpandToFull(playerList),
+    initialExpandToFull(compatiblePlayerList),
     gdoc.uid,
     gdoc.boardLayout === 'SuperCrosswordGame'
       ? SuperCrosswordGameGridLayout

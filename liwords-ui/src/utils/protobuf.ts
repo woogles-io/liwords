@@ -29,3 +29,42 @@ export const decodeToMsg = (
   reader.onload = () => onload(reader);
   reader.readAsArrayBuffer(data);
 };
+
+type EnumOption = { label: string; value: number | string };
+
+export function enumToOptions<T extends Record<string, string | number>>(
+  enumObj: T
+): EnumOption[] {
+  return Object.keys(enumObj)
+    .filter((key) => isNaN(Number(key))) // Filter out numeric keys (reverse mapping)
+    .map((key) => ({
+      label: key, // The string key of the enum
+      value: enumObj[key as keyof T], // The associated value of the enum
+    }));
+}
+
+export function getEnumLabel<T extends Record<string, string | number>>(
+  enumObj: T,
+  value: number
+): string | undefined {
+  // Find the key where the value matches the input number
+  const label = Object.keys(enumObj).find(
+    (key) => enumObj[key as keyof T] === value && isNaN(Number(key)) // Exclude reverse mapping numeric keys
+  );
+  return label;
+}
+
+export function getEnumValue<T extends Record<string, string | number>>(
+  enumObj: T,
+  label: string
+): number | undefined {
+  // Ensure the label exists in the enum
+  if (label in enumObj) {
+    const value = enumObj[label as keyof T];
+    // Ensure the value is a number (to exclude reverse-mapping strings in numeric enums)
+    if (typeof value === 'number') {
+      return value;
+    }
+  }
+  return undefined;
+}
