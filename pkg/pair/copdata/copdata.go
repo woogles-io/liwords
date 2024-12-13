@@ -1,6 +1,7 @@
 package copdata
 
 import (
+	"context"
 	"fmt"
 	"math"
 
@@ -29,13 +30,15 @@ type PrecompData struct {
 	GibsonizedPlayers         []bool
 }
 
-func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Builder) *PrecompData {
+func GetPrecompData(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Builder) (*PrecompData, pb.PairError) {
 	standings := pkgstnd.CreateInitialStandings(req)
 
 	// Use the initial results to get a tighter bound on the maximum factor
 	initialFactor := int(req.Rounds) - len(req.DivisionResults)
-	initialSimResults := standings.SimFactorPairAll(req, copRand, int(req.DivisionSims), initialFactor, false, nil)
-
+	initialSimResults, pairErr := standings.SimFactorPairAll(ctx, req, copRand, int(req.DivisionSims), initialFactor, false, nil)
+	if pairErr != pb.PairError_SUCCESS {
+		return nil, pairErr
+	}
 	writeFinalRankResultsToLog(fmt.Sprintf("Initial Sim Results (factor ceiling of %d)", initialFactor), initialSimResults.FinalRanks, standings, req, logsb)
 
 	numPlayers := standings.GetNumPlayers()
@@ -80,7 +83,10 @@ func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Buil
 	// Only re-sim with the improved bound if it actually makes the max factor smaller
 	// for the highest gibson group.
 	if maxFactor*2 < numPlayersInhighestNongibsonGroup {
-		improvedFactorSimResults = standings.SimFactorPairAll(req, copRand, int(req.DivisionSims), maxFactor, false, initialSimResults.SegmentRoundFactors)
+		improvedFactorSimResults, pairErr = standings.SimFactorPairAll(ctx, req, copRand, int(req.DivisionSims), maxFactor, false, initialSimResults.SegmentRoundFactors)
+		if pairErr != pb.PairError_SUCCESS {
+			return nil, pairErr
+		}
 	}
 
 	if improvedFactorSimResults == nil {
@@ -94,7 +100,10 @@ func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Buil
 	var allControlLosses map[int]int
 	highestControlLossRankIdx := -1
 	if req.UseControlLoss && !improvedFactorSimResults.GibsonizedPlayers[0] {
-		controlLossSimResults = standings.SimFactorPairAll(req, copRand, int(req.ControlLossSims), maxFactor, true, nil)
+		controlLossSimResults, pairErr = standings.SimFactorPairAll(ctx, req, copRand, int(req.ControlLossSims), maxFactor, true, nil)
+		if pairErr != pb.PairError_SUCCESS {
+			return nil, pairErr
+		}
 		allControlLosses = controlLossSimResults.AllControlLosses
 		if controlLossSimResults.HighestControlLossRankIdx >= 0 &&
 			1.0-float64(controlLossSimResults.LowestFactorPairWins)/float64(req.ControlLossSims) >= req.ControlLossThreshold {
@@ -164,7 +173,7 @@ func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Buil
 		HighestControlLossRankIdx: highestControlLossRankIdx,
 		GibsonGroups:              improvedFactorSimResults.GibsonGroups,
 		GibsonizedPlayers:         improvedFactorSimResults.GibsonizedPlayers,
-	}
+	}, pb.PairError_SUCCESS
 }
 
 func GetPairingKey(playerIdx int, oppIdx int) string {

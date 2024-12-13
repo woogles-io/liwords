@@ -1,0 +1,8 @@
+syntax = "proto3";
+package pair_service;
+
+import "proto/ipc/pair.proto";
+
+service PairService {
+  rpc HandlePairRequest(ipc.PairRequest) returns (ipc.PairResponse);
+}

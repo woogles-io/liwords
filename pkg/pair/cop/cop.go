@@ -1,6 +1,7 @@
 package cop
 
 import (
+	"context"
 	"fmt"
 
 	"golang.org/x/exp/rand"
@@ -321,10 +322,10 @@ var weightPolicies = []weightPolicy{
 	},
 }
 
-func COPPair(req *pb.PairRequest) *pb.PairResponse {
+func COPPair(ctx context.Context, req *pb.PairRequest) *pb.PairResponse {
 	logsb := &strings.Builder{}
 	starttime := time.Now()
-	resp := copPairWithLog(req, logsb)
+	resp := copPairWithLog(ctx, req, logsb)
 	endtime := time.Now()
 	duration := endtime.Sub(starttime)
 	if resp.ErrorCode != pb.PairError_SUCCESS {
@@ -338,7 +339,7 @@ func COPPair(req *pb.PairRequest) *pb.PairResponse {
 	return resp
 }
 
-func copPairWithLog(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
+func copPairWithLog(ctx context.Context, req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 	if req.Seed == 0 {
 		req.Seed = time.Now().Unix()
 	}
@@ -362,7 +363,14 @@ func copPairWithLog(req *pb.PairRequest, logsb *strings.Builder) *pb.PairRespons
 		return resp
 	}
 
-	copdata := copdatapkg.GetPrecompData(req, rand.New(rand.NewSource(uint64(req.Seed))), logsb)
+	copdata, pairErr := copdatapkg.GetPrecompData(ctx, req, rand.New(rand.NewSource(uint64(req.Seed))), logsb)
+
+	if pairErr != pb.PairError_SUCCESS {
+		return &pb.PairResponse{
+			ErrorCode:    pairErr,
+			ErrorMessage: fmt.Sprintf("error computing required inputs: %s", pb.PairError_name[int32(pairErr)]),
+		}
+	}
 
 	pairings, resp := copMinWeightMatching(req, copdata, logsb)
 

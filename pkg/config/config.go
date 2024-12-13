@@ -46,6 +46,8 @@ type Config struct {
 	PuzzleGenerationTaskDefinition string
 
 	TourneyPDFLambdaFunctionName string
+	COPPairLambdaFunctionName    string
+
 	// Integrations
 	PatreonClientID     string
 	PatreonClientSecret string
