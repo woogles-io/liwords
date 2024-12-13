@@ -477,9 +477,11 @@ export const SinglePuzzle = (props: Props) => {
 
   useEffect(() => {
     if (puzzleInfo.solution && pendingSolution) {
-      placeGameEvt(puzzleInfo.solution);
+      setPendingSolution(() => {
+        placeGameEvt(puzzleInfo.solution);
+        return false;
+      });
     }
-    setPendingSolution(false);
   }, [puzzleInfo.solution, pendingSolution, placeGameEvt]);
 
   // This is displayed if there is no puzzle id and no preferred puzzle lexicon saved in local storage
