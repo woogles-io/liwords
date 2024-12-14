@@ -1,10 +1,10 @@
-import React, { useEffect, useRef } from 'react';
-import BoardSpace from './board_space';
-import { PlacementArrow } from '../utils/cwgame/tile_placement';
-import { BonusType } from '../constants/board_layout';
-import { isTouchDevice } from '../utils/cwgame/common';
-import { useDrop, XYCoord } from 'react-dnd';
-import { TILE_TYPE } from './tile';
+import React, { useEffect, useRef } from "react";
+import BoardSpace from "./board_space";
+import { PlacementArrow } from "../utils/cwgame/tile_placement";
+import { BonusType } from "../constants/board_layout";
+import { isTouchDevice } from "../utils/cwgame/common";
+import { useDrop, XYCoord } from "react-dnd";
+import { TILE_TYPE } from "./tile";
 
 type Props = {
   gridDim: number;
@@ -12,7 +12,7 @@ type Props = {
     row: number,
     col: number,
     rackIndex: number | undefined,
-    tileIndex: number | undefined
+    tileIndex: number | undefined,
   ) => void;
   gridLayout: Array<string>;
   placementArrow: PlacementArrow;
@@ -21,7 +21,7 @@ type Props = {
 const calculatePosition = (
   position: XYCoord,
   boardElement: HTMLElement,
-  gridSize: number
+  gridSize: number,
 ) => {
   const boardTop = boardElement.getBoundingClientRect().top;
   const boardLeft = boardElement.getBoundingClientRect().left;
@@ -41,18 +41,18 @@ const BoardSpaces = React.memo((props: Props) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     drop: (item: any, monitor) => {
       const clientOffset = monitor.getClientOffset();
-      const boardElement = document.getElementById('board');
+      const boardElement = document.getElementById("board");
       if (clientOffset && props.handleTileDrop && boardElement) {
         const { row, col } = calculatePosition(
           clientOffset,
           boardElement,
-          props.gridDim
+          props.gridDim,
         );
         props.handleTileDrop(
           row,
           col,
           parseInt(item.rackIndex, 10),
-          parseInt(item.tileIndex, 10)
+          parseInt(item.tileIndex, 10),
         );
       }
     },
@@ -93,12 +93,12 @@ const BoardSpaces = React.memo((props: Props) => {
               props.handleTileDrop(
                 y,
                 x,
-                parseInt(e.dataTransfer.getData('rackIndex'), 10),
-                parseInt(e.dataTransfer.getData('tileIndex'), 10)
+                parseInt(e.dataTransfer.getData("rackIndex"), 10),
+                parseInt(e.dataTransfer.getData("tileIndex"), 10),
               );
             }
           }}
-        />
+        />,
       );
     }
   }

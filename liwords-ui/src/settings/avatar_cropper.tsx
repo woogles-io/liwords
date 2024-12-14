@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Slider } from 'antd';
-import { Modal } from '../utils/focus_modal';
-import Cropper from 'react-easy-crop';
-import { Area } from 'react-easy-crop/types';
+import React, { useCallback, useEffect, useState } from "react";
+import { Button, Slider } from "antd";
+import { Modal } from "../utils/focus_modal";
+import Cropper from "react-easy-crop";
+import { Area } from "react-easy-crop/types";
 
 type Props = {
   file?: Blob;
@@ -23,8 +23,8 @@ export const AvatarCropper = React.memo((props: Props) => {
     }
     const image = new Image();
     image.onload = () => {
-      const canvas = document.createElement('canvas'),
-        ctx = canvas.getContext('2d');
+      const canvas = document.createElement("canvas"),
+        ctx = canvas.getContext("2d");
       canvas.width = 96;
       canvas.height = 96;
       ctx?.drawImage(
@@ -36,9 +36,9 @@ export const AvatarCropper = React.memo((props: Props) => {
         0,
         0,
         canvas.width,
-        canvas.height
+        canvas.height,
       );
-      const newDataUrl = canvas.toDataURL('image/jpeg', 1);
+      const newDataUrl = canvas.toDataURL("image/jpeg", 1);
       onSave(newDataUrl);
     };
     image.src = dataUrl;
@@ -48,7 +48,7 @@ export const AvatarCropper = React.memo((props: Props) => {
     (croppedArea: Area, croppedAreaPixels: Area) => {
       setCroppedArea(croppedAreaPixels);
     },
-    []
+    [],
   );
 
   useEffect(() => {
@@ -56,19 +56,19 @@ export const AvatarCropper = React.memo((props: Props) => {
     reader.onload = () => {
       const image = new Image();
       image.onload = () => {
-        const canvas = document.createElement('canvas'),
+        const canvas = document.createElement("canvas"),
           width = image.width,
           height = image.height,
-          ctx = canvas.getContext('2d');
+          ctx = canvas.getContext("2d");
 
         canvas.width = width;
         canvas.height = height;
         if (ctx) {
-          ctx.fillStyle = 'rgba(255,255,255,1)';
+          ctx.fillStyle = "rgba(255,255,255,1)";
           ctx.fillRect(0, 0, width, height);
           ctx.drawImage(image, 0, 0, width, height);
         }
-        setDataUrl(canvas.toDataURL('image/jpeg', 1));
+        setDataUrl(canvas.toDataURL("image/jpeg", 1));
       };
       image.src = String(reader.result);
     };

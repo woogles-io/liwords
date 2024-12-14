@@ -4,20 +4,20 @@ import React, {
   useMemo,
   useRef,
   useState,
-} from 'react';
+} from "react";
 import {
   Navigate,
   Route,
   Routes,
   useLocation,
   useSearchParams,
-} from 'react-router-dom';
-import './App.scss';
+} from "react-router-dom";
+import "./App.scss";
 
-import { Table as GameTable } from './gameroom/table';
-import { SinglePuzzle } from './puzzles/puzzle';
-import TileImages from './gameroom/tile_images';
-import { Lobby } from './lobby/lobby';
+import { Table as GameTable } from "./gameroom/table";
+import { SinglePuzzle } from "./puzzles/puzzle";
+import TileImages from "./gameroom/tile_images";
+import { Lobby } from "./lobby/lobby";
 import {
   useExcludedPlayersStoreContext,
   useLoginStateStoreContext,
@@ -25,70 +25,70 @@ import {
   useModeratorStoreContext,
   FriendUser,
   useFriendsStoreContext,
-} from './store/store';
+} from "./store/store";
 
-import { LiwordsSocket } from './socket/socket';
-import { Team } from './about/team';
-import { Register } from './lobby/register';
-import { PlayerProfile } from './profile/profile';
-import { Settings } from './settings/settings';
-import { PasswordReset } from './lobby/password_reset';
-import { NewPassword } from './lobby/new_password';
-import { encodeToSocketFmt } from './utils/protobuf';
-import { Clubs } from './clubs';
-import { TournamentRoom } from './tournament/room';
-import { Admin } from './admin/admin';
-import { DonateSuccess } from './donate_success';
-import { TermsOfService } from './about/termsOfService';
-import { ChatMessageSchema } from './gen/api/proto/ipc/chat_pb';
-import { MessageType } from './gen/api/proto/ipc/ipc_pb';
-import Footer from './navigation/footer';
-import { Embed } from './embed/embed';
-import { useSelector } from 'react-redux';
+import { LiwordsSocket } from "./socket/socket";
+import { Team } from "./about/team";
+import { Register } from "./lobby/register";
+import { PlayerProfile } from "./profile/profile";
+import { Settings } from "./settings/settings";
+import { PasswordReset } from "./lobby/password_reset";
+import { NewPassword } from "./lobby/new_password";
+import { encodeToSocketFmt } from "./utils/protobuf";
+import { Clubs } from "./clubs";
+import { TournamentRoom } from "./tournament/room";
+import { Admin } from "./admin/admin";
+import { DonateSuccess } from "./donate_success";
+import { TermsOfService } from "./about/termsOfService";
+import { ChatMessageSchema } from "./gen/api/proto/ipc/chat_pb";
+import { MessageType } from "./gen/api/proto/ipc/ipc_pb";
+import Footer from "./navigation/footer";
+import { Embed } from "./embed/embed";
+import { useSelector } from "react-redux";
 
-import { App as AntDApp } from 'antd';
-import { ConfigProvider } from 'antd';
-import { liwordsDefaultTheme, liwordsDarkTheme } from './themes';
+import { App as AntDApp } from "antd";
+import { ConfigProvider } from "antd";
+import { liwordsDefaultTheme, liwordsDarkTheme } from "./themes";
 
 import {
   connectErrorMessage,
   flashError,
   useClient,
-} from './utils/hooks/connect';
+} from "./utils/hooks/connect";
 import {
   AuthenticationService,
   SocializeService,
-} from './gen/api/proto/user_service/user_service_pb';
-import { BoardEditor } from './boardwizard/editor';
-import { RootState } from './store/redux_store';
-import { CallbackHandler as ScrabblecamCallbackHandler } from './boardwizard/callback_handler';
-import { create, toBinary } from '@bufbuild/protobuf';
+} from "./gen/api/proto/user_service/user_service_pb";
+import { BoardEditor } from "./boardwizard/editor";
+import { RootState } from "./store/redux_store";
+import { CallbackHandler as ScrabblecamCallbackHandler } from "./boardwizard/callback_handler";
+import { create, toBinary } from "@bufbuild/protobuf";
 
 // const useDarkMode = localStorage?.getItem('darkMode') === 'true';
 // document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
 
-const userTile = localStorage?.getItem('userTile');
+const userTile = localStorage?.getItem("userTile");
 if (userTile) {
   document?.body?.classList?.add(`tile--${userTile}`);
 }
 
-const userBoard = localStorage?.getItem('userBoard');
+const userBoard = localStorage?.getItem("userBoard");
 if (userBoard) {
   document?.body?.classList?.add(`board--${userBoard}`);
 }
-const bnjyTile = localStorage?.getItem('bnjyMode') === 'true';
+const bnjyTile = localStorage?.getItem("bnjyMode") === "true";
 if (bnjyTile) {
   document?.body?.classList?.add(`bnjyMode`);
 }
 
 // Migrate default lexicons on frontend.
-const puzzleLexicon = localStorage?.getItem('puzzleLexicon');
+const puzzleLexicon = localStorage?.getItem("puzzleLexicon");
 switch (puzzleLexicon) {
-  case 'NWL20':
-    localStorage.setItem('puzzleLexicon', 'NWL23');
+  case "NWL20":
+    localStorage.setItem("puzzleLexicon", "NWL23");
     break;
-  case 'FRA20':
-    localStorage.setItem('puzzleLexicon', 'FRA24');
+  case "FRA20":
+    localStorage.setItem("puzzleLexicon", "FRA24");
     break;
 }
 
@@ -96,9 +96,9 @@ switch (puzzleLexicon) {
 const HandoverSignedCookie = () => {
   // No render.
   const [searchParams] = useSearchParams();
-  const jwt = searchParams.get('jwt');
-  const ls = searchParams.get('ls');
-  const path = searchParams.get('path');
+  const jwt = searchParams.get("jwt");
+  const ls = searchParams.get("ls");
+  const path = searchParams.get("path");
 
   const successFn = useCallback(() => {
     if (ls) {
@@ -156,20 +156,20 @@ const App = React.memo(() => {
 
   const useDarkMode = useSelector((state: RootState) => state.theme.darkMode);
   useEffect(() => {
-    console.log('Detected useDarkMode = ', useDarkMode);
-    localStorage.setItem('darkMode', useDarkMode ? 'true' : 'false');
-    document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
+    console.log("Detected useDarkMode = ", useDarkMode);
+    localStorage.setItem("darkMode", useDarkMode ? "true" : "false");
+    document?.body?.classList?.add(`mode--${useDarkMode ? "dark" : "default"}`);
     document?.body?.classList?.remove(
-      `mode--${useDarkMode ? 'default' : 'dark'}`
+      `mode--${useDarkMode ? "default" : "dark"}`,
     );
   }, [useDarkMode]);
 
   const antdTheme = useMemo(() => {
     if (useDarkMode) {
-      console.log('Using antd dark theme');
+      console.log("Using antd dark theme");
       return liwordsDarkTheme;
     }
-    console.log('Using antd-default-theme');
+    console.log("Using antd-default-theme");
     return liwordsDefaultTheme;
   }, [useDarkMode]);
 
@@ -179,7 +179,7 @@ const App = React.memo(() => {
 
   const [liwordsSocketValues, setLiwordsSocketValues] = useState({
     sendMessage: (msg: Uint8Array) => {
-      console.log('fakesend', msg);
+      console.log("fakesend", msg);
     },
 
     justDisconnected: false,
@@ -195,7 +195,7 @@ const App = React.memo(() => {
   }, [isCurrentLocation, resetStore]);
 
   const isEmbeddedPath = useMemo(() => {
-    const embedPrefixes = ['/embed'];
+    const embedPrefixes = ["/embed"];
     return embedPrefixes.some((v) => location.pathname.startsWith(v));
   }, [location.pathname]);
 
@@ -287,11 +287,11 @@ const App = React.memo(() => {
       sendMessage(
         encodeToSocketFmt(
           MessageType.CHAT_MESSAGE,
-          toBinary(ChatMessageSchema, evt)
-        )
+          toBinary(ChatMessageSchema, evt),
+        ),
       );
     },
-    [sendMessage]
+    [sendMessage],
   );
 
   const authClient = useClient(AuthenticationService);
@@ -299,18 +299,18 @@ const App = React.memo(() => {
   // using Cloudfront to redirect:
   {
     const loc = window.location;
-    if (loc.hostname.startsWith('www.')) {
+    if (loc.hostname.startsWith("www.")) {
       const redirectToHandoff = (path: string) => {
         const protocol = loc.protocol;
         const hostname = loc.hostname;
-        const nakedHost = hostname.replace(/www\./, '');
+        const nakedHost = hostname.replace(/www\./, "");
         localStorage.clear();
         window.location.replace(`${protocol}//${nakedHost}${path}`);
       };
       authClient
         .getSignedCookie({})
         .then((response) => {
-          console.log('got jwt', response.jwt);
+          console.log("got jwt", response.jwt);
           const newPath = `/handover-signed-cookie?${new URLSearchParams({
             jwt: response.jwt,
             ls: JSON.stringify(localStorage),
@@ -319,7 +319,7 @@ const App = React.memo(() => {
           redirectToHandoff(newPath);
         })
         .catch((e) => {
-          if (connectErrorMessage(e) === 'need auth for this endpoint') {
+          if (connectErrorMessage(e) === "need auth for this endpoint") {
             // We don't have a jwt because we're not logged in. That's ok;
             // let's hand off just the local storage then.
             const newPath = `/handover-signed-cookie?${new URLSearchParams({

@@ -1,15 +1,15 @@
-import React from 'react';
-import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
+import React from "react";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 
-import { ExchangeTiles } from './exchange_tiles';
-import { MachineLetter, MachineWord } from '../utils/cwgame/common';
+import { ExchangeTiles } from "./exchange_tiles";
+import { MachineLetter, MachineWord } from "../utils/cwgame/common";
 import {
   StandardCatalanAlphabet,
   StandardEnglishAlphabet,
-} from '../constants/alphabets';
-import { DndProvider } from 'react-dnd';
-import { TouchBackend } from 'react-dnd-touch-backend';
-import { act } from 'react-dom/test-utils';
+} from "../constants/alphabets";
+import { DndProvider } from "react-dnd";
+import { TouchBackend } from "react-dnd-touch-backend";
+import { act } from "react-dom/test-utils";
 
 function renderExchangeTiles(callback: (t: MachineWord) => void) {
   vi.useFakeTimers();
@@ -23,7 +23,7 @@ function renderExchangeTiles(callback: (t: MachineWord) => void) {
         onCancel={() => {}}
         modalVisible={true}
       />
-    </DndProvider>
+    </DndProvider>,
   );
   // there's a delay in ExchangeTiles before it becomes interactive.
   // simulate that here.
@@ -45,7 +45,7 @@ function renderExchangeCatalanTiles(callback: (t: MachineWord) => void) {
         onCancel={() => {}}
         modalVisible={true}
       />
-    </DndProvider>
+    </DndProvider>,
   );
   act(() => {
     vi.advanceTimersByTime(500);
@@ -55,9 +55,9 @@ function renderExchangeCatalanTiles(callback: (t: MachineWord) => void) {
 
 afterEach(cleanup);
 
-it('is idiotic, that is, the whole goddamn javascript ecosystem', () => {
+it("is idiotic, that is, the whole goddamn javascript ecosystem", () => {
   expect(
-    "these stupid ass tests don't work anymore, no matter how many acts and waitFors I put everywhere"
+    "these stupid ass tests don't work anymore, no matter how many acts and waitFors I put everywhere",
   ).toBeTruthy();
 });
 

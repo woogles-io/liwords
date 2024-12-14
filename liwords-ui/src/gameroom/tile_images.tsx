@@ -1,11 +1,11 @@
-import React from 'react';
-import { DndProvider } from 'react-dnd';
-import { TouchBackend } from 'react-dnd-touch-backend';
-import { useParams } from 'react-router-dom';
-import BoardSpace from './board_space';
-import Tile from './tile';
-import { BonusType } from '../constants/board_layout';
-import { alphabetFromName, scoreFor } from '../constants/alphabets';
+import React from "react";
+import { DndProvider } from "react-dnd";
+import { TouchBackend } from "react-dnd-touch-backend";
+import { useParams } from "react-router-dom";
+import BoardSpace from "./board_space";
+import Tile from "./tile";
+import { BonusType } from "../constants/board_layout";
+import { alphabetFromName, scoreFor } from "../constants/alphabets";
 
 const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
   // Note: We use Chrome on Mac. Other browsers and other OSes have similar
@@ -73,7 +73,7 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
     new Set([
       // digits (48 to 57)
       ...Array.from(new Array(1 + 57 - 48), (_, i) =>
-        String.fromCodePoint(48 + i)
+        String.fromCodePoint(48 + i),
       ),
       // runes in the alphabet
       ...alphabet.letters
@@ -84,9 +84,9 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
         ]),
       // other ASCII characters (32 to 126)
       ...Array.from(new Array(1 + 126 - 32), (_, i) =>
-        String.fromCodePoint(32 + i)
+        String.fromCodePoint(32 + i),
       ),
-    ])
+    ]),
   );
 
   let y = 0;
@@ -97,7 +97,7 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
   let curNumCols = Math.floor(expectedWidth / curDimX);
   const numTileCols = curNumCols;
   const golang: Array<string> = [];
-  let currentLine = '';
+  let currentLine = "";
   let indentLevel = 0;
 
   const escape = (s: string) => {
@@ -107,14 +107,14 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
     return t.substring(1, t.length - 1);
   };
   const commitLine = (s?: string) => {
-    if (currentLine) golang.push(`${'\t'.repeat(indentLevel)}${currentLine}`);
-    if (s != null) golang.push(`${'\t'.repeat(s ? indentLevel : 0)}${s}`);
-    currentLine = '';
+    if (currentLine) golang.push(`${"\t".repeat(indentLevel)}${currentLine}`);
+    if (s != null) golang.push(`${"\t".repeat(s ? indentLevel : 0)}${s}`);
+    currentLine = "";
   };
   const recordPos = (c: string | number) => {
-    if (currentLine) currentLine += ' ';
-    else currentLine = '\t';
-    currentLine += `${typeof c === 'number' ? c : `'${escape(c)}'`}: {${
+    if (currentLine) currentLine += " ";
+    else currentLine = "\t";
+    currentLine += `${typeof c === "number" ? c : `'${escape(c)}'`}: {${
       x * curDimX
     }, ${yOffset + y * curDimY}},`;
     ++x;
@@ -125,39 +125,39 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
     if (x % 5 === 0) commitLine();
   };
 
-  const groupName = props.letterDistribution || 'english';
+  const groupName = props.letterDistribution || "english";
   commitLine(`//go:embed letterdistributions/${groupName}`);
   commitLine(`var ${groupName}LetterDistributionCSVBytes []byte`);
-  commitLine('');
+  commitLine("");
   commitLine(`//go:embed tiles-${groupName}.png`);
   commitLine(`var ${groupName}TilesBytes []byte`);
-  commitLine('');
+  commitLine("");
   commitLine(`const squareDim = ${squareDim}`);
   commitLine(`const monospacedFontDimX = ${monospacedFontDimX}`);
   commitLine(`const monospacedFontDimY = ${monospacedFontDimY}`);
-  commitLine('');
+  commitLine("");
   ++indentLevel;
   const orig = { yOffset, y, x, curDimY, curDimX, curNumCols };
   let numTextCols = 0;
   for (const [letterDistributionName, boardConfig] of [
-    [groupName, 'standardBoardConfig'],
-    ...(groupName === 'english'
-      ? [[`${groupName}_super`, 'superBoardConfig']]
+    [groupName, "standardBoardConfig"],
+    ...(groupName === "english"
+      ? [[`${groupName}_super`, "superBoardConfig"]]
       : []),
   ]) {
     ({ yOffset, y, x, curDimY, curDimX, curNumCols } = orig);
     commitLine(`${JSON.stringify(letterDistributionName)}: {`);
     ++indentLevel;
     commitLine(`TilesBytes: ${groupName}TilesBytes,`);
-    commitLine('Tile0Src: map[byte][2]int{');
+    commitLine("Tile0Src: map[byte][2]int{");
     for (const c of shownLetters) recordPos(c);
-    commitLine('},');
-    commitLine('Tile1Src: map[byte][2]int{');
+    commitLine("},");
+    commitLine("Tile1Src: map[byte][2]int{");
     for (const c of shownLetters) recordPos(c);
-    commitLine('},');
-    commitLine('BoardSrc: map[rune][2]int{');
+    commitLine("},");
+    commitLine("BoardSrc: map[rune][2]int{");
     for (const c of bonusTypes) recordPos(c);
-    commitLine('},');
+    commitLine("},");
     if (x !== 0) {
       ++y;
       x = 0;
@@ -168,48 +168,48 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
     curDimX = monospacedFontDimX;
     curNumCols = Math.floor(expectedWidth / curDimX);
     numTextCols = curNumCols;
-    commitLine('TextXSrc: map[rune][2]int{');
+    commitLine("TextXSrc: map[rune][2]int{");
     for (const c of textChars) recordPos(c);
-    commitLine('},');
-    commitLine('Text0Src: map[rune][2]int{');
+    commitLine("},");
+    commitLine("Text0Src: map[rune][2]int{");
     for (const c of textChars) recordPos(c);
-    commitLine('},');
-    commitLine('Text1Src: map[rune][2]int{');
+    commitLine("},");
+    commitLine("Text1Src: map[rune][2]int{");
     for (const c of textChars) recordPos(c);
-    commitLine('},');
+    commitLine("},");
     const nRows = y + (x !== 0 ? 1 : 0);
     commitLine(
-      `ExpDimXY: [2]int{${expectedWidth}, ${yOffset + nRows * curDimY}},`
+      `ExpDimXY: [2]int{${expectedWidth}, ${yOffset + nRows * curDimY}},`,
     );
     commitLine(`BoardConfig: ${boardConfig},`);
     --indentLevel;
-    commitLine('},');
+    commitLine("},");
   }
-  console.log(golang.join('\n'));
+  console.log(golang.join("\n"));
 
   return (
     <DndProvider backend={TouchBackend}>
       <div
         style={{
-          alignItems: 'center',
-          background: '#ffffff',
-          display: 'flex',
-          height: '100vh',
-          justifyContent: 'center',
+          alignItems: "center",
+          background: "#ffffff",
+          display: "flex",
+          height: "100vh",
+          justifyContent: "center",
         }}
       >
         <div
           className="CAPTURE-NODE-SCREENSHOT" // To help find this node in Inspector.
           style={{
-            background: '#000000',
-            display: 'flex',
-            flexDirection: 'column',
+            background: "#000000",
+            display: "flex",
+            flexDirection: "column",
             width: `${expectedWidth / retina}px`,
           }}
         >
           <div
             style={{
-              display: 'grid',
+              display: "grid",
               gridTemplateColumns: `repeat(${numTileCols}, ${eachWidth}px)`,
             }}
           >
@@ -233,7 +233,7 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
                     );
                   })}
                 </React.Fragment>
-              )
+              ),
             )}
             {bonusTypes.map((bonusType) => (
               <div style={{ minWidth: `${eachWidth}px` }} key={bonusType}>
@@ -255,20 +255,20 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
           </div>
           <div
             style={{
-              display: 'grid',
+              display: "grid",
               gridTemplateColumns: `repeat(${numTextCols}, ${monospacedFontWidth}px)`,
             }}
           >
             {Array.from(
               [
                 {
-                  className: 'tile-images chars',
+                  className: "tile-images chars",
                 },
                 {
-                  className: 'tile-images chars p0',
+                  className: "tile-images chars p0",
                 },
                 {
-                  className: 'tile-images chars p1',
+                  className: "tile-images chars p1",
                 },
               ],
               (things, idx) => (
@@ -278,9 +278,9 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
                       <div
                         style={{
                           fontSize: `${fontSize}px`,
-                          fontWeight: 'normal',
+                          fontWeight: "normal",
                           lineHeight: `${lineHeight}`,
-                          whiteSpace: 'pre',
+                          whiteSpace: "pre",
                         }}
                         {...things}
                       >
@@ -289,7 +289,7 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
                     </React.Fragment>
                   ))}
                 </React.Fragment>
-              )
+              ),
             )}
           </div>
         </div>
@@ -300,7 +300,7 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
 
 const TileImages = React.memo(() => {
   const { letterDistribution } = useParams();
-  return <TileImagesSingle letterDistribution={letterDistribution || ''} />;
+  return <TileImagesSingle letterDistribution={letterDistribution || ""} />;
 });
 
 export default TileImages;

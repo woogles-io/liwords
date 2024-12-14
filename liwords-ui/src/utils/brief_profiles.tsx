@@ -6,15 +6,15 @@ import {
   useMemo,
   useRef,
   useState,
-} from 'react';
-import { Unrace } from './unrace';
+} from "react";
+import { Unrace } from "./unrace";
 import {
   BriefProfile,
   BriefProfilesRequestSchema,
-} from '../gen/api/proto/user_service/user_service_pb';
-import { useClient } from './hooks/connect';
-import { ProfileService } from '../gen/api/proto/user_service/user_service_pb';
-import { create } from '@bufbuild/protobuf';
+} from "../gen/api/proto/user_service/user_service_pb";
+import { useClient } from "./hooks/connect";
+import { ProfileService } from "../gen/api/proto/user_service/user_service_pb";
+import { create } from "@bufbuild/protobuf";
 
 type CacheType = Map<string, { data: BriefProfile | null; expires: number }>;
 
@@ -32,7 +32,7 @@ export const BriefProfiles = (props: {
   const [profileId, setProfileId] = useState(0);
   const triggerRefresh = useCallback(
     () => setProfileId((n) => (n + 1) | 0),
-    []
+    [],
   );
 
   const cacheRef = useRef<CacheType>(new Map());
@@ -65,7 +65,7 @@ export const BriefProfiles = (props: {
         });
         triggerRefresh();
       } catch (e) {
-        console.error('unable to access api', e);
+        console.error("unable to access api", e);
       }
     });
   }, [triggerRefresh, profileClient]);
@@ -81,7 +81,7 @@ export const BriefProfiles = (props: {
           timerToRequest.current = setTimeout(performRequest, 0);
       }
     },
-    [performRequest]
+    [performRequest],
   );
   useEffect(() => {
     return () => {

@@ -3,7 +3,7 @@
 import {
   PairingMethod,
   RoundControl,
-} from '../../gen/api/proto/ipc/tournament_pb';
+} from "../../gen/api/proto/ipc/tournament_pb";
 
 export type RoundSetting = {
   beginRound: number;
@@ -27,7 +27,7 @@ export const settingsEqual = (s1: RoundControl, s2: RoundControl): boolean => {
 export type PairingMethodField = [string, keyof RoundControl, string, string];
 
 export const fieldsForMethod = (
-  m: PairingMethod
+  m: PairingMethod,
 ): Array<PairingMethodField> => {
   const fields = new Array<PairingMethodField>();
   switch (m) {
@@ -40,49 +40,49 @@ export const fieldsForMethod = (
     // @ts-expect-error fallthrough is purposeful:
     case PairingMethod.FACTOR:
       fields.push([
-        'number',
-        'factor',
-        'Factor',
-        'Your selected factor (use 2 for 1v3, 2v4 for example).',
+        "number",
+        "factor",
+        "Factor",
+        "Your selected factor (use 2 for 1v3, 2v4 for example).",
       ]);
     case PairingMethod.SWISS:
       fields.push(
         [
-          'number',
-          'maxRepeats',
-          'Max Desirable Repeats',
+          "number",
+          "maxRepeats",
+          "Max Desirable Repeats",
           'Use "1" for no repeats, "2" for 1 max repeat, and so on. ' +
-            'The pairing system will try to meet your requirement, but it is not guaranteed.',
+            "The pairing system will try to meet your requirement, but it is not guaranteed.",
         ],
         [
-          'number',
-          'repeatRelativeWeight',
-          'Repeat Relative Weight',
-          'The larger this number relative to other weights, the less likely a repeat will be.',
+          "number",
+          "repeatRelativeWeight",
+          "Repeat Relative Weight",
+          "The larger this number relative to other weights, the less likely a repeat will be.",
         ],
         [
-          'number',
-          'winDifferenceRelativeWeight',
-          'Win Difference Relative Weight',
-          'The smaller this number relative to other weights, the more mismatched your pairings will be, in terms of win difference.',
-        ]
+          "number",
+          "winDifferenceRelativeWeight",
+          "Win Difference Relative Weight",
+          "The smaller this number relative to other weights, the more mismatched your pairings will be, in terms of win difference.",
+        ],
       );
       break;
 
     case PairingMethod.TEAM_ROUND_ROBIN:
       fields.push(
         [
-          'number',
-          'gamesPerRound',
-          'Games per Round',
-          'The number of games per round. For example, set this to two if you wish each team member to play the other team member twice.',
+          "number",
+          "gamesPerRound",
+          "Games per Round",
+          "The number of games per round. For example, set this to two if you wish each team member to play the other team member twice.",
         ],
         [
-          'boolean',
-          'interleaveTeamRoundRobin',
-          'Interleave pairings (shirts and skins)',
-          'Select this to use shirts and skins pairings. The default is top half vs bottom half.',
-        ]
+          "boolean",
+          "interleaveTeamRoundRobin",
+          "Interleave pairings (shirts and skins)",
+          "Select this to use shirts and skins pairings. The default is top half vs bottom half.",
+        ],
       );
       break;
   }

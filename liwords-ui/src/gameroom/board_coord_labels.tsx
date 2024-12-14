@@ -1,6 +1,6 @@
-import React from 'react';
+import React from "react";
 
-import CoordLabel from './board_coord_label';
+import CoordLabel from "./board_coord_label";
 
 type Props = {
   gridDim: number;
@@ -14,9 +14,9 @@ const BoardCoordLabels = React.memo((props: Props) => {
   for (let i = 0; i < props.gridDim; i += 1) {
     horizLabels.push(
       <CoordLabel
-        label={String.fromCharCode(i + 'A'.charCodeAt(0))}
+        label={String.fromCharCode(i + "A".charCodeAt(0))}
         key={`collbl${i}`}
-      />
+      />,
     );
   }
 

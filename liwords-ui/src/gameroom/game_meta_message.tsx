@@ -1,5 +1,5 @@
-import React from 'react';
-import { Card, Row, Col } from 'antd';
+import React from "react";
+import { Card, Row, Col } from "antd";
 
 type Props = {
   message: string;
@@ -7,7 +7,7 @@ type Props = {
 
 export const GameMetaMessage = (props: Props) => (
   <Card className="end-message" size="small">
-    {props.message.split('\n').map((line, idx) => (
+    {props.message.split("\n").map((line, idx) => (
       <Row key={`l-${idx + 0}`} justify="center">
         <Col>{line}</Col>
       </Row>

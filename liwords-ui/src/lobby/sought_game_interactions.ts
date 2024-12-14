@@ -1,46 +1,46 @@
-import { create, toBinary } from '@bufbuild/protobuf';
-import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
+import { create, toBinary } from "@bufbuild/protobuf";
+import { MessageType } from "../gen/api/proto/ipc/ipc_pb";
 import {
   SeekRequestSchema,
   SeekState,
   SoughtGameProcessEventSchema,
-} from '../gen/api/proto/ipc/omgseeks_pb';
+} from "../gen/api/proto/ipc/omgseeks_pb";
 import {
   GameRequestSchema,
   GameRulesSchema,
   RatingMode,
-} from '../gen/api/proto/ipc/omgwords_pb';
-import { SoughtGame } from '../store/reducers/lobby_reducer';
-import { encodeToSocketFmt } from '../utils/protobuf';
-import { BotTypesEnumProperties } from './bots';
+} from "../gen/api/proto/ipc/omgwords_pb";
+import { SoughtGame } from "../store/reducers/lobby_reducer";
+import { encodeToSocketFmt } from "../utils/protobuf";
+import { BotTypesEnumProperties } from "./bots";
 
 export const defaultLetterDistribution = (lexicon: string): string => {
   const lowercasedLexicon = lexicon.toLowerCase();
-  if (lowercasedLexicon.startsWith('rd')) {
-    return 'german';
-  } else if (lowercasedLexicon.startsWith('nsf')) {
-    return 'norwegian';
-  } else if (lowercasedLexicon.startsWith('fra')) {
-    return 'french';
-  } else if (lowercasedLexicon.startsWith('disc')) {
-    return 'catalan';
-  } else if (lowercasedLexicon.startsWith('osps')) {
-    return 'polish';
-  } else if (lowercasedLexicon.startsWith('file')) {
-    return 'spanish';
+  if (lowercasedLexicon.startsWith("rd")) {
+    return "german";
+  } else if (lowercasedLexicon.startsWith("nsf")) {
+    return "norwegian";
+  } else if (lowercasedLexicon.startsWith("fra")) {
+    return "french";
+  } else if (lowercasedLexicon.startsWith("disc")) {
+    return "catalan";
+  } else if (lowercasedLexicon.startsWith("osps")) {
+    return "polish";
+  } else if (lowercasedLexicon.startsWith("file")) {
+    return "spanish";
   } else {
-    return 'english';
+    return "english";
   }
 };
 
 export const sendSeek = (
   game: SoughtGame,
-  sendSocketMsg: (msg: Uint8Array) => void
+  sendSocketMsg: (msg: Uint8Array) => void,
 ): void => {
   const sr = create(SeekRequestSchema);
   const gr = create(GameRequestSchema);
   const rules = create(GameRulesSchema);
-  rules.boardLayoutName = 'CrosswordGame';
+  rules.boardLayoutName = "CrosswordGame";
   rules.variantName = game.variant;
   rules.letterDistributionName = defaultLetterDistribution(game.lexicon);
 
@@ -62,24 +62,27 @@ export const sendSeek = (
 
   if (!game.receiverIsPermanent) {
     sr.gameRequest = gr;
-    console.log('this is a seek request');
+    console.log("this is a seek request");
   } else {
     // We make it a match request if the receiver is non-empty, or if playerVsBot.
     sr.gameRequest = gr;
     sr.receivingUser = game.receiver;
     sr.tournamentId = game.tournamentID;
     sr.receiverIsPermanent = true;
-    console.log('this is a match request');
+    console.log("this is a match request");
   }
-  console.log('sr: ', sr);
+  console.log("sr: ", sr);
   sendSocketMsg(
-    encodeToSocketFmt(MessageType.SEEK_REQUEST, toBinary(SeekRequestSchema, sr))
+    encodeToSocketFmt(
+      MessageType.SEEK_REQUEST,
+      toBinary(SeekRequestSchema, sr),
+    ),
   );
 };
 
 export const sendAccept = (
   seekID: string,
-  sendSocketMsg: (msg: Uint8Array) => void
+  sendSocketMsg: (msg: Uint8Array) => void,
 ): void => {
   // Eventually use the ID.
   const sa = create(SoughtGameProcessEventSchema, {});
@@ -87,7 +90,7 @@ export const sendAccept = (
   sendSocketMsg(
     encodeToSocketFmt(
       MessageType.SOUGHT_GAME_PROCESS_EVENT,
-      toBinary(SoughtGameProcessEventSchema, sa)
-    )
+      toBinary(SoughtGameProcessEventSchema, sa),
+    ),
   );
 };

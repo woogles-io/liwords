@@ -1,29 +1,29 @@
-import React, { useCallback, useState } from 'react';
-import { TopBar } from '../navigation/topbar';
-import './about.scss';
-import { Col, Dropdown, Row } from 'antd';
-import andy from '../assets/bio/bio_andy.jpg';
-import cesar from '../assets/bio/bio_cesar.jpg';
-import conrad from '../assets/bio/bio_conrad.jpg';
-import doug from '../assets/bio/bio_doug.jpg';
-import jesse from '../assets/bio/bio_jesse.jpg';
-import josh from '../assets/bio/bio_josh.jpg';
-import lola from '../assets/bio/bio_lola.jpg';
-import macondo from '../assets/bio/bio_macondo.jpg';
-import woogles from '../assets/bio/bio_woogles.jpg';
-import benjy from '../assets/bio/bio_benjy.jpg';
+import React, { useCallback, useState } from "react";
+import { TopBar } from "../navigation/topbar";
+import "./about.scss";
+import { Col, Dropdown, Row } from "antd";
+import andy from "../assets/bio/bio_andy.jpg";
+import cesar from "../assets/bio/bio_cesar.jpg";
+import conrad from "../assets/bio/bio_conrad.jpg";
+import doug from "../assets/bio/bio_doug.jpg";
+import jesse from "../assets/bio/bio_jesse.jpg";
+import josh from "../assets/bio/bio_josh.jpg";
+import lola from "../assets/bio/bio_lola.jpg";
+import macondo from "../assets/bio/bio_macondo.jpg";
+import woogles from "../assets/bio/bio_woogles.jpg";
+import benjy from "../assets/bio/bio_benjy.jpg";
 
 export const Team = () => {
   const [bnjyMode, setBnjyMode] = useState(
-    localStorage?.getItem('bnjyMode') === 'true'
+    localStorage?.getItem("bnjyMode") === "true",
   );
   const toggleBnjyMode = useCallback(() => {
-    const useBenjyMode = localStorage?.getItem('bnjyMode') !== 'true';
-    localStorage.setItem('bnjyMode', useBenjyMode ? 'true' : 'false');
+    const useBenjyMode = localStorage?.getItem("bnjyMode") !== "true";
+    localStorage.setItem("bnjyMode", useBenjyMode ? "true" : "false");
     if (useBenjyMode) {
-      document?.body?.classList?.add('bnjyMode');
+      document?.body?.classList?.add("bnjyMode");
     } else {
-      document?.body?.classList?.remove('bnjyMode');
+      document?.body?.classList?.remove("bnjyMode");
     }
     setBnjyMode((x) => !x);
   }, []);
@@ -32,10 +32,10 @@ export const Team = () => {
     {
       label: (
         <span className="link plain" onClick={toggleBnjyMode}>
-          {bnjyMode ? 'Disable wonky tiles' : 'Enable wonky tiles'}
+          {bnjyMode ? "Disable wonky tiles" : "Enable wonky tiles"}
         </span>
       ),
-      key: 'bnjyMode',
+      key: "bnjyMode",
     },
   ];
 
@@ -73,7 +73,7 @@ export const Team = () => {
             <p>
               Absolutely. Financially, you can help the team by donating. We are
               funded completely by players like you. We are registered as a
-              non-profit in the state of New Jersey.{' '}
+              non-profit in the state of New Jersey.{" "}
               <a href="https://docs.google.com/spreadsheets/d/1RCdyjgq-QF2OihNKXDOhW6WDQyayxhmjhMakfUNNuLQ">
                 Here's our plan for the funds.
               </a>
@@ -244,18 +244,18 @@ export const Team = () => {
             <div className="container">
               <img src={benjy} alt="Ben Schoenbrun" />
               <div className="team-info">
-                <h3 style={{ cursor: 'pointer' }}>
+                <h3 style={{ cursor: "pointer" }}>
                   <Dropdown
                     overlayClassName="user-menu"
                     menu={{ items: bnjyMenuItems }}
                     getPopupContainer={() =>
-                      document.getElementById('root') as HTMLElement
+                      document.getElementById("root") as HTMLElement
                     }
                     overlayStyle={{
                       width: 240,
                     }}
                     placement="bottomLeft"
-                    trigger={['click']}
+                    trigger={["click"]}
                   >
                     <span>Ben Schoenbrun</span>
                   </Dropdown>

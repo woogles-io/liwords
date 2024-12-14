@@ -1,8 +1,8 @@
 import {
   EmptyRackSpaceMachineLetter,
   MachineLetter,
-} from '../utils/cwgame/common';
-import { Alphabet } from './alphabets';
+} from "../utils/cwgame/common";
+import { Alphabet } from "./alphabets";
 
 export enum PoolFormatType {
   Alphabet,
@@ -19,7 +19,7 @@ export type PoolFormat = {
 export const PoolFormats: PoolFormat[] = [
   {
     poolFormatType: PoolFormatType.Alphabet,
-    displayName: 'Alphabetical',
+    displayName: "Alphabetical",
     format: (alphabet: Alphabet) => [
       alphabet.letters
         .map((l, idx) => (l.count > 0 ? idx : EmptyRackSpaceMachineLetter))
@@ -28,7 +28,7 @@ export const PoolFormats: PoolFormat[] = [
   },
   {
     poolFormatType: PoolFormatType.VowelConsonant,
-    displayName: 'Vowels first',
+    displayName: "Vowels first",
     format: (alphabet: Alphabet) => {
       const vowels = new Array<MachineLetter>();
       const consonants = new Array<MachineLetter>();
@@ -47,7 +47,7 @@ export const PoolFormats: PoolFormat[] = [
   },
   {
     poolFormatType: PoolFormatType.Detail,
-    displayName: 'Detailed',
+    displayName: "Detailed",
     format: (alphabet: Alphabet) => {
       const categories: { [k: number]: Array<MachineLetter> } = {};
       alphabet.letters.forEach((l, idx) => {

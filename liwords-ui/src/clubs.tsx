@@ -1,7 +1,7 @@
-import { Col, Divider, Row } from 'antd';
-import React from 'react';
-import { TopBar } from './navigation/topbar';
-import './clubs.scss';
+import { Col, Divider, Row } from "antd";
+import React from "react";
+import { TopBar } from "./navigation/topbar";
+import "./clubs.scss";
 export const Clubs = () => {
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -17,7 +17,7 @@ export const Clubs = () => {
         <h3>Club Directory</h3>
         <iframe
           src={`https://calendar.google.com/calendar/embed?src=c_qv1pd8072ui5aal0u0jsnh2n34%40group.calendar.google.com&showTitle=0&mode=AGENDA&ctz=${encodeURIComponent(
-            tz
+            tz,
           )}`}
           style={{ border: 0 }}
           height="600"
@@ -33,7 +33,7 @@ export const Clubs = () => {
 
         <iframe
           src={`https://calendar.google.com/calendar/embed?src=c_q7s63i04spmcd7o1qep0vo0920%40group.calendar.google.com&showTitle=0&mode=AGENDA&ctz=${encodeURIComponent(
-            tz
+            tz,
           )}`}
           style={{ border: 0 }}
           width="800"

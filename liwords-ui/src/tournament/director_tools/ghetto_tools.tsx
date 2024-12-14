@@ -1,6 +1,6 @@
 // Ghetto tools are Cesar tools before making things pretty.
 
-import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   AutoComplete,
   Button,
@@ -13,25 +13,25 @@ import {
   Select,
   Space,
   Switch,
-} from 'antd';
-import { Modal } from '../../utils/focus_modal';
-import { Store } from 'rc-field-form/lib/interface';
-import React, { useEffect, useMemo, useState } from 'react';
+} from "antd";
+import { Modal } from "../../utils/focus_modal";
+import { Store } from "rc-field-form/lib/interface";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   SingleRoundControlsRequestSchema,
   TType,
-} from '../../gen/api/proto/tournament_service/tournament_service_pb';
-import { Division } from '../../store/reducers/tournament_reducer';
-import { useTournamentStoreContext } from '../../store/store';
-import { DisplayedGameSetting, SettingsForm } from './game_settings_form';
-import '../../lobby/seek_form.scss';
+} from "../../gen/api/proto/tournament_service/tournament_service_pb";
+import { Division } from "../../store/reducers/tournament_reducer";
+import { useTournamentStoreContext } from "../../store/store";
+import { DisplayedGameSetting, SettingsForm } from "./game_settings_form";
+import "../../lobby/seek_form.scss";
 
 import {
   fieldsForMethod,
   PairingMethodField,
   RoundSetting,
   settingsEqual,
-} from './pairing_methods';
+} from "./pairing_methods";
 import {
   TournamentGameResult,
   PairingMethod,
@@ -41,16 +41,16 @@ import {
   DivisionControlsSchema,
   RoundControlSchema,
   DivisionRoundControlsSchema,
-} from '../../gen/api/proto/ipc/tournament_pb';
+} from "../../gen/api/proto/ipc/tournament_pb";
 import {
   GameEndReason,
   GameRequest,
-} from '../../gen/api/proto/ipc/omgwords_pb';
-import { HelptipLabel } from './helptip_label';
-import { flashError, useClient } from '../../utils/hooks/connect';
-import { TournamentService } from '../../gen/api/proto/tournament_service/tournament_service_pb';
-import { create, clone } from '@bufbuild/protobuf';
-import { getEnumValue } from '../../utils/protobuf';
+} from "../../gen/api/proto/ipc/omgwords_pb";
+import { HelptipLabel } from "./helptip_label";
+import { flashError, useClient } from "../../utils/hooks/connect";
+import { TournamentService } from "../../gen/api/proto/tournament_service/tournament_service_pb";
+import { create, clone } from "@bufbuild/protobuf";
+import { getEnumValue } from "../../utils/protobuf";
 
 type ModalProps = {
   title: string;
@@ -65,31 +65,31 @@ const FormModal = (props: ModalProps) => {
   // const [form] = Form.useForm();
 
   const forms = {
-    'add-division': <AddDivision tournamentID={props.tournamentID} />,
-    'rename-division': <RenameDivision tournamentID={props.tournamentID} />,
-    'remove-division': <RemoveDivision tournamentID={props.tournamentID} />,
-    'add-players': <AddPlayers tournamentID={props.tournamentID} />,
-    'remove-player': <RemovePlayer tournamentID={props.tournamentID} />,
+    "add-division": <AddDivision tournamentID={props.tournamentID} />,
+    "rename-division": <RenameDivision tournamentID={props.tournamentID} />,
+    "remove-division": <RemoveDivision tournamentID={props.tournamentID} />,
+    "add-players": <AddPlayers tournamentID={props.tournamentID} />,
+    "remove-player": <RemovePlayer tournamentID={props.tournamentID} />,
     // 'clear-checked-in': <ClearCheckedIn tournamentID={props.tournamentID} />,
-    'set-single-pairing': <SetPairing tournamentID={props.tournamentID} />,
-    'set-game-result': <SetResult tournamentID={props.tournamentID} />,
-    'pair-entire-round': <PairRound tournamentID={props.tournamentID} />,
-    'unpair-entire-round': <UnpairRound tournamentID={props.tournamentID} />,
-    'set-tournament-controls': (
+    "set-single-pairing": <SetPairing tournamentID={props.tournamentID} />,
+    "set-game-result": <SetResult tournamentID={props.tournamentID} />,
+    "pair-entire-round": <PairRound tournamentID={props.tournamentID} />,
+    "unpair-entire-round": <UnpairRound tournamentID={props.tournamentID} />,
+    "set-tournament-controls": (
       <SetTournamentControls tournamentID={props.tournamentID} />
     ),
-    'set-round-controls': (
+    "set-round-controls": (
       <SetDivisionRoundControls tournamentID={props.tournamentID} />
     ),
-    'set-single-round-controls': (
+    "set-single-round-controls": (
       <SetSingleRoundControls tournamentID={props.tournamentID} />
     ),
-    'create-printable-scorecards': (
+    "create-printable-scorecards": (
       <CreatePrintableScorecards tournamentID={props.tournamentID} />
     ),
-    'export-tournament': <ExportTournament tournamentID={props.tournamentID} />,
-    'edit-description': <EditDescription tournamentID={props.tournamentID} />,
-    'unstart-tournament': (
+    "export-tournament": <ExportTournament tournamentID={props.tournamentID} />,
+    "edit-description": <EditDescription tournamentID={props.tournamentID} />,
+    "unstart-tournament": (
       <UnstartTournament tournamentID={props.tournamentID} />
     ),
   };
@@ -112,12 +112,12 @@ const FormModal = (props: ModalProps) => {
 
 const lowerAndJoin = (v: string): string => {
   const l = v.toLowerCase();
-  return l.split(' ').join('-');
+  return l.split(" ").join("-");
 };
 
 const showError = (msg: string) => {
   message.error({
-    content: 'Error: ' + msg,
+    content: "Error: " + msg,
     duration: 5,
   });
 };
@@ -127,9 +127,9 @@ type Props = {
 };
 
 export const GhettoTools = (props: Props) => {
-  const [modalTitle, setModalTitle] = useState('');
+  const [modalTitle, setModalTitle] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
-  const [modalType, setModalType] = useState('');
+  const [modalType, setModalType] = useState("");
   const { tournamentContext } = useTournamentStoreContext();
 
   const showModal = (key: string, title: string) => {
@@ -138,31 +138,31 @@ export const GhettoTools = (props: Props) => {
     setModalTitle(title);
   };
 
-  const metadataTypes = ['Edit description'];
+  const metadataTypes = ["Edit description"];
 
   const preTournamentTypes = [
-    'Add division',
-    'Rename division',
-    'Remove division',
-    'Set tournament controls',
-    'Set round controls',
-    'Create printable scorecards',
+    "Add division",
+    "Rename division",
+    "Remove division",
+    "Set tournament controls",
+    "Set round controls",
+    "Create printable scorecards",
   ];
 
   const inTournamentTypes = [
-    'Add players',
-    'Remove player',
-    'Set single round controls', // Set controls for a single round
-    'Set single pairing', // Set a single pairing
-    'Pair entire round', // Pair a whole round
-    'Set game result', // Set a single result
-    'Unpair entire round', // Unpair a whole round
+    "Add players",
+    "Remove player",
+    "Set single round controls", // Set controls for a single round
+    "Set single pairing", // Set a single pairing
+    "Pair entire round", // Pair a whole round
+    "Set game result", // Set a single result
+    "Unpair entire round", // Unpair a whole round
     // 'Clear checked in',
   ];
 
-  const postTournamentTypes = ['Export tournament'];
+  const postTournamentTypes = ["Export tournament"];
 
-  const dangerousTypes = ['Unstart tournament'];
+  const dangerousTypes = ["Unstart tournament"];
 
   const mapFn = (v: string) => {
     const key = lowerAndJoin(v);
@@ -245,7 +245,7 @@ const DivisionFormItem = (props: {
       rules={[
         {
           required: true,
-          message: 'Please input division name',
+          message: "Please input division name",
         },
       ]}
     >
@@ -277,7 +277,7 @@ const PlayersFormItem = (props: {
           return 1;
         }
         return 0;
-      }
+      },
     );
     return players.map((u) => ({ value: username(u.id) }));
   }, [thisDivPlayers]);
@@ -310,7 +310,7 @@ const AddDivision = (props: { tournamentID: string }) => {
     try {
       await tClient.addDivision(obj);
       message.info({
-        content: 'Division added',
+        content: "Division added",
         duration: 3,
       });
     } catch (e) {
@@ -343,7 +343,7 @@ const RenameDivision = (props: { tournamentID: string }) => {
     try {
       await tClient.renameDivision(obj);
       message.info({
-        content: 'Division name changed',
+        content: "Division name changed",
         duration: 3,
       });
     } catch (e) {
@@ -378,7 +378,7 @@ const RemoveDivision = (props: { tournamentID: string }) => {
     try {
       await tClient.removeDivision(obj);
       message.info({
-        content: 'Division removed',
+        content: "Division removed",
         duration: 3,
       });
     } catch (e) {
@@ -403,13 +403,13 @@ const AddPlayers = (props: { tournamentID: string }) => {
 
   const tClient = useClient(TournamentService);
   const [showRating, setShowRating] = useState(
-    tournamentContext.metadata.irlMode
+    tournamentContext.metadata.irlMode,
   );
   const onFinish = async (vals: Store) => {
     const players = [];
     // const playerMap: { [username: string]: number } = {};
     if (!vals.players) {
-      showError('Add some players first');
+      showError("Add some players first");
       return;
     }
     for (let i = 0; i < vals.players.length; i++) {
@@ -418,7 +418,7 @@ const AddPlayers = (props: { tournamentID: string }) => {
         continue;
       }
       const username = enteredUsername.trim();
-      if (username === '') {
+      if (username === "") {
         continue;
       }
       players.push({
@@ -428,7 +428,7 @@ const AddPlayers = (props: { tournamentID: string }) => {
     }
 
     if (players.length === 0) {
-      showError('Add some players first');
+      showError("Add some players first");
       return;
     }
 
@@ -442,7 +442,7 @@ const AddPlayers = (props: { tournamentID: string }) => {
     try {
       await tClient.addPlayers(obj);
       message.info({
-        content: 'Players added',
+        content: "Players added",
         duration: 3,
       });
     } catch (e) {
@@ -463,21 +463,21 @@ const AddPlayers = (props: { tournamentID: string }) => {
             {fields.map((field) => (
               <Space
                 key={field.key}
-                style={{ display: 'flex', marginBottom: 8 }}
+                style={{ display: "flex", marginBottom: 8 }}
                 align="baseline"
               >
                 <Form.Item
                   {...field}
-                  name={[field.name, 'username']}
-                  rules={[{ required: true, message: 'Missing username' }]}
+                  name={[field.name, "username"]}
+                  rules={[{ required: true, message: "Missing username" }]}
                 >
                   <Input placeholder="Username" />
                 </Form.Item>
                 {showRating && (
                   <Form.Item
                     {...field}
-                    name={[field.name, 'rating']}
-                    rules={[{ required: true, message: 'Missing rating' }]}
+                    name={[field.name, "rating"]}
+                    rules={[{ required: true, message: "Missing rating" }]}
                   >
                     <Input placeholder="Rating" />
                   </Form.Item>
@@ -509,7 +509,7 @@ const AddPlayers = (props: { tournamentID: string }) => {
 };
 
 const RemovePlayer = (props: { tournamentID: string }) => {
-  const [division, setDivision] = useState('');
+  const [division, setDivision] = useState("");
   const tClient = useClient(TournamentService);
   const onFinish = async (vals: Store) => {
     const obj = {
@@ -525,7 +525,7 @@ const RemovePlayer = (props: { tournamentID: string }) => {
     try {
       await tClient.removePlayers(obj);
       message.info({
-        content: 'Player removed',
+        content: "Player removed",
         duration: 3,
       });
     } catch (e) {
@@ -588,10 +588,10 @@ const ClearCheckedIn = (props: { tournamentID: string }) => {
 // userUUID looks up the UUID of a username
 const userUUID = (username: string, divobj: Division) => {
   if (!divobj) {
-    return '';
+    return "";
   }
   const p = divobj.players.find((p) => {
-    const parts = p.id.split(':');
+    const parts = p.id.split(":");
     const pusername = parts[1].toLowerCase();
 
     if (username.toLowerCase() === pusername) {
@@ -600,22 +600,22 @@ const userUUID = (username: string, divobj: Division) => {
     return false;
   });
   if (!p) {
-    return '';
+    return "";
   }
-  return p.id.split(':')[0];
+  return p.id.split(":")[0];
 };
 
 const username = (fullID: string) => {
-  const parts = fullID.split(':');
+  const parts = fullID.split(":");
   return parts[1];
 };
 
 const fullPlayerID = (username: string, divobj: Division) => {
   if (!divobj) {
-    return '';
+    return "";
   }
   const p = divobj.players.find((p) => {
-    const parts = p.id.split(':');
+    const parts = p.id.split(":");
     const pusername = parts[1].toLowerCase();
 
     if (username.toLowerCase() === pusername) {
@@ -624,36 +624,36 @@ const fullPlayerID = (username: string, divobj: Division) => {
     return false;
   });
   if (!p) {
-    return '';
+    return "";
   }
   return p.id;
 };
 
 const SetPairing = (props: { tournamentID: string }) => {
   const { tournamentContext } = useTournamentStoreContext();
-  const [division, setDivision] = useState('');
+  const [division, setDivision] = useState("");
   const [selfplay, setSelfplay] = useState(false);
   const tClient = useClient(TournamentService);
   const onFinish = async (vals: Store) => {
     if (!vals.p1) {
-      message.error('Player 1 is required.');
+      message.error("Player 1 is required.");
       return;
     }
     if (!vals.selfplay && !vals.p2) {
-      message.error('Player 2 is required.');
+      message.error("Player 2 is required.");
       return;
     }
 
     const p1id = fullPlayerID(
       vals.p1,
-      tournamentContext.divisions[vals.division]
+      tournamentContext.divisions[vals.division],
     );
     let p2id;
 
     if (vals.selfplay) {
       p2id = p1id;
       if (!vals.selfplayresult) {
-        message.error('Desired result for Player 1 is required.');
+        message.error("Desired result for Player 1 is required.");
         return;
       }
     } else {
@@ -676,7 +676,7 @@ const SetPairing = (props: { tournamentID: string }) => {
     try {
       await tClient.setPairing(obj);
       message.info({
-        content: 'Pairing set',
+        content: "Pairing set",
         duration: 3,
       });
     } catch (e) {
@@ -741,7 +741,7 @@ const SetPairing = (props: { tournamentID: string }) => {
 
 const SetResult = (props: { tournamentID: string }) => {
   const { tournamentContext } = useTournamentStoreContext();
-  const [division, setDivision] = useState('');
+  const [division, setDivision] = useState("");
   const [score1, setScore1] = useState(0);
   const [score2, setScore2] = useState(0);
   const [form] = Form.useForm();
@@ -752,11 +752,11 @@ const SetResult = (props: { tournamentID: string }) => {
       division: vals.division,
       playerOneId: userUUID(
         vals.p1,
-        tournamentContext.divisions[vals.division]
+        tournamentContext.divisions[vals.division],
       ),
       playerTwoId: userUUID(
         vals.p2,
-        tournamentContext.divisions[vals.division]
+        tournamentContext.divisions[vals.division],
       ),
       round: vals.round - 1, // 1-indexed input
       playerOneScore: vals.p1score,
@@ -769,7 +769,7 @@ const SetResult = (props: { tournamentID: string }) => {
     try {
       await tClient.setResult(obj);
       message.info({
-        content: 'Result set',
+        content: "Result set",
         duration: 3,
       });
     } catch (e) {
@@ -780,30 +780,30 @@ const SetResult = (props: { tournamentID: string }) => {
   useEffect(() => {
     if (score1 > score2) {
       form.setFieldsValue({
-        p1result: 'WIN',
-        p2result: 'LOSS',
+        p1result: "WIN",
+        p2result: "LOSS",
       });
     } else if (score1 < score2) {
       form.setFieldsValue({
-        p1result: 'LOSS',
-        p2result: 'WIN',
+        p1result: "LOSS",
+        p2result: "WIN",
       });
     } else {
       form.setFieldsValue({
-        p1result: 'DRAW',
-        p2result: 'DRAW',
+        p1result: "DRAW",
+        p2result: "DRAW",
       });
     }
   }, [form, score1, score2]);
 
   const score1Change = (v: number | string | null | undefined) => {
-    if (typeof v !== 'number') {
+    if (typeof v !== "number") {
       return;
     }
     setScore1(v);
   };
   const score2Change = (v: number | string | null | undefined) => {
-    if (typeof v !== 'number') {
+    if (typeof v !== "number") {
       return;
     }
     setScore2(v);
@@ -813,7 +813,7 @@ const SetResult = (props: { tournamentID: string }) => {
     <Form
       form={form}
       onFinish={onFinish}
-      initialValues={{ gameEndReason: 'STANDARD' }}
+      initialValues={{ gameEndReason: "STANDARD" }}
     >
       <DivisionFormItem onChange={(div: string) => setDivision(div)} />
 
@@ -918,7 +918,7 @@ const PairRound = (props: { tournamentID: string }) => {
     try {
       await tClient.pairRound(obj);
       message.info({
-        content: 'Pair round completed',
+        content: "Pair round completed",
         duration: 3,
       });
     } catch (e) {
@@ -959,7 +959,7 @@ const UnpairRound = (props: { tournamentID: string }) => {
     try {
       await tClient.pairRound(obj);
       message.info({
-        content: 'Pairings for selected round have been deleted',
+        content: "Pairings for selected round have been deleted",
         duration: 3,
       });
     } catch (e) {
@@ -987,8 +987,8 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     GameRequest | undefined
   >(undefined);
 
-  const [division, setDivision] = useState('');
-  const [copyFromDivision, setCopyFromDivision] = useState('');
+  const [division, setDivision] = useState("");
+  const [copyFromDivision, setCopyFromDivision] = useState("");
   const [gibsonize, setGibsonize] = useState(false);
   const [gibsonSpread, setGibsonSpread] = useState(500);
 
@@ -999,7 +999,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
   const [byeMaxPlacement, setByeMaxPlacement] = useState(1);
   const [spreadCap, setSpreadCap] = useState(0);
   const [suspendedResult, setSuspendedResult] = useState<TournamentGameResult>(
-    TournamentGameResult.FORFEIT_LOSS
+    TournamentGameResult.FORFEIT_LOSS,
   );
   const { tournamentContext } = useTournamentStoreContext();
 
@@ -1035,7 +1035,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
         open={mprops.visible}
         onCancel={mprops.onCancel}
         className="seek-modal"
-        okButtonProps={{ style: { display: 'none' } }}
+        okButtonProps={{ style: { display: "none" } }}
       >
         <SettingsForm
           setGameRequest={(gr) => {
@@ -1052,7 +1052,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
 
   const submit = async () => {
     if (!selectedGameRequest) {
-      showError('No game request');
+      showError("No game request");
       return;
     }
     const ctrls = create(DivisionControlsSchema, {
@@ -1078,7 +1078,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     try {
       await tClient.setDivisionControls(ctrls);
       message.info({
-        content: 'Controls set',
+        content: "Controls set",
         duration: 3,
       });
     } catch (e) {
@@ -1129,13 +1129,13 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
             value={division}
             onChange={(value: string) => {
               setDivision(value);
-              setCopyFromDivision('');
+              setCopyFromDivision("");
             }}
           />
         </Form.Item>
 
         {Object.keys(tournamentContext.divisions).length > 1 &&
-          division !== '' &&
+          division !== "" &&
           selectedGameRequest == null && (
             <Collapse style={{ marginBottom: 10 }}>
               <Collapse.Panel header="Copy from division" key="copyFrom">
@@ -1289,7 +1289,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
       <Button
         htmlType="button"
         style={{
-          margin: '0 8px',
+          margin: "0 8px",
         }}
         onClick={() => setModalVisible(true)}
       >
@@ -1317,7 +1317,7 @@ type SingleRdCtrlFieldsProps = {
   setting: RoundControl;
   onChange: (
     fieldName: keyof RoundControl,
-    value: string | number | boolean | PairingMethod
+    value: string | number | boolean | PairingMethod,
   ) => void;
 };
 
@@ -1393,7 +1393,7 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
         <Select
           value={setting.pairingMethod}
           onChange={(e) => {
-            props.onChange('pairingMethod', e);
+            props.onChange("pairingMethod", e);
             // Show more fields potentially.
           }}
         >
@@ -1422,7 +1422,7 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
         const key = `ni-${idx}`;
         const [fieldType, fieldName, displayName, help] = v;
         switch (fieldType) {
-          case 'number':
+          case "number":
             return (
               <Form.Item
                 {...formItemLayout}
@@ -1442,7 +1442,7 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
               </Form.Item>
             );
 
-          case 'boolean':
+          case "boolean":
             return (
               <Form.Item
                 {...formItemLayout}
@@ -1474,7 +1474,7 @@ const RoundControlFields = (props: RdCtrlFieldsProps) => {
             inputMode="numeric"
             min={1}
             value={setting.beginRound}
-            onChange={(e) => props.onChange('beginRound', e as number)}
+            onChange={(e) => props.onChange("beginRound", e as number)}
           />
         </Form.Item>
         <Form.Item label="Last round">
@@ -1482,7 +1482,7 @@ const RoundControlFields = (props: RdCtrlFieldsProps) => {
             inputMode="numeric"
             min={1}
             value={setting.endRound}
-            onChange={(e) => props.onChange('endRound', e as number)}
+            onChange={(e) => props.onChange("endRound", e as number)}
           />
         </Form.Item>
       </Form>
@@ -1519,26 +1519,26 @@ const rdCtrlFromSetting = (rdSetting: RoundControl): RoundControl => {
         rdSetting.factor <= 0
       ) {
         throw new Error(
-          'Factor 0 is equivalent to just Swiss for every player. Use Swiss pairings instead, or use a Factor greater than 0.'
+          "Factor 0 is equivalent to just Swiss for every player. Use Swiss pairings instead, or use a Factor greater than 0.",
         );
       }
       rdCtrl.factor = rdSetting.factor || 0;
 
       if (rdCtrl.maxRepeats <= 0) {
         throw new Error(
-          'Max repeats should be at least 1. A "repeat" in this case is just a single game; 0 will allow no pairings to occur.'
+          'Max repeats should be at least 1. A "repeat" in this case is just a single game; 0 will allow no pairings to occur.',
         );
       }
 
       if (rdCtrl.repeatRelativeWeight <= 0) {
         throw new Error(
-          'Repeat relative weight should be at least 1. Please hover on the question mark to see more info about what this means.'
+          "Repeat relative weight should be at least 1. Please hover on the question mark to see more info about what this means.",
         );
       }
 
       if (rdCtrl.winDifferenceRelativeWeight <= 0) {
         throw new Error(
-          'Win difference relative weight should be at least 1. Please hover on the question mark to see more info about what this means.'
+          "Win difference relative weight should be at least 1. Please hover on the question mark to see more info about what this means.",
         );
       }
 
@@ -1554,25 +1554,25 @@ const rdCtrlFromSetting = (rdSetting: RoundControl): RoundControl => {
 };
 
 const SetSingleRoundControls = (props: { tournamentID: string }) => {
-  const [division, setDivision] = useState('');
+  const [division, setDivision] = useState("");
   const [roundSetting, setRoundSetting] = useState<RoundControl>(
     create(RoundControlSchema, {
       pairingMethod: PairingMethod.RANDOM,
-    })
+    }),
   );
   const [userVisibleRound, setUserVisibleRound] = useState(1);
   const tClient = useClient(TournamentService);
   const setRoundControls = async () => {
     if (!division) {
-      showError('Division is missing');
+      showError("Division is missing");
       return;
     }
     if (userVisibleRound <= 0) {
-      showError('Round must be a positive round number');
+      showError("Round must be a positive round number");
       return;
     }
     if (!roundSetting) {
-      showError('Missing round setting');
+      showError("Missing round setting");
       return;
     }
 
@@ -1635,7 +1635,7 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
           setting={roundSetting}
           onChange={(
             fieldName: keyof RoundControl,
-            value: string | number | boolean | PairingMethod
+            value: string | number | boolean | PairingMethod,
           ) => {
             const val = { ...roundSetting, [fieldName]: value };
             setRoundSetting(create(RoundControlSchema, val));
@@ -1657,8 +1657,8 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
   // So we're just going to use form components instead.
 
   const [roundArray, setRoundArray] = useState<Array<RoundSetting>>([]);
-  const [division, setDivision] = useState('');
-  const [copyFromDivision, setCopyFromDivision] = useState('');
+  const [division, setDivision] = useState("");
+  const [copyFromDivision, setCopyFromDivision] = useState("");
 
   const roundControlsToDisplayArray = React.useCallback(
     (roundControls: RoundControl[]) => {
@@ -1703,7 +1703,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
       }
       return settings;
     },
-    []
+    [],
   );
 
   useEffect(() => {
@@ -1718,11 +1718,11 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
 
   const setRoundControls = async () => {
     if (!division) {
-      showError('Division is missing');
+      showError("Division is missing");
       return;
     }
     if (!roundArray.length) {
-      showError('Round controls are missing');
+      showError("Round controls are missing");
       return;
     }
     // validate round array
@@ -1730,15 +1730,15 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
     for (let i = 0; i < roundArray.length; i++) {
       const rdCtrl = roundArray[i];
       if (rdCtrl.beginRound <= lastRd) {
-        showError('Round numbers must be consecutive and increasing');
+        showError("Round numbers must be consecutive and increasing");
         return;
       }
       if (rdCtrl.endRound < rdCtrl.beginRound) {
-        showError('End round must not be smaller than begin round');
+        showError("End round must not be smaller than begin round");
         return;
       }
       if (rdCtrl.beginRound > lastRd + 1) {
-        showError('Round numbers must be consecutive; you cannot skip rounds');
+        showError("Round numbers must be consecutive; you cannot skip rounds");
         return;
       }
       lastRd = rdCtrl.endRound;
@@ -1772,7 +1772,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
     try {
       await tClient.setRoundControls(ctrls);
       message.info({
-        content: 'Controls set',
+        content: "Controls set",
         duration: 3,
       });
     } catch (e) {
@@ -1808,7 +1808,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
       </Form.Item>
 
       {Object.keys(tournamentContext.divisions).length > 1 &&
-        division !== '' &&
+        division !== "" &&
         roundArray.length === 0 && (
           <Collapse style={{ marginBottom: 10 }}>
             <Collapse.Panel header="Copy from division" key="copyFrom">
@@ -1844,7 +1844,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
           onChange={(fieldName: string, value: string | number | boolean) => {
             const newRdArray = [...roundArray];
 
-            if (fieldName === 'beginRound' || fieldName === 'endRound') {
+            if (fieldName === "beginRound" || fieldName === "endRound") {
               newRdArray[idx] = {
                 ...newRdArray[idx],
                 [fieldName]: value,
@@ -1908,20 +1908,20 @@ const ExportTournament = (props: { tournamentID: string }) => {
     try {
       const resp = await tClient.exportTournament(obj);
       const url = window.URL.createObjectURL(new Blob([resp.exported]));
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
       const tname = tournamentContext.metadata.name;
       let extension;
       switch (vals.format) {
-        case 'tsh':
-          extension = 'tsh';
+        case "tsh":
+          extension = "tsh";
           break;
-        case 'standingsonly':
-          extension = 'csv';
+        case "standingsonly":
+          extension = "csv";
           break;
       }
       const downloadFilename = `${tname}.${extension}`;
-      link.setAttribute('download', downloadFilename);
+      link.setAttribute("download", downloadFilename);
       document.body.appendChild(link);
       link.onclick = () => {
         link.remove();
@@ -1983,12 +1983,12 @@ const CreatePrintableScorecards = (props: { tournamentID: string }) => {
     try {
       const resp = await tClient.getTournamentScorecards(obj);
       const url = window.URL.createObjectURL(new Blob([resp.pdfZip]));
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
       const tname = tournamentContext.metadata.name;
-      const extension = 'zip';
+      const extension = "zip";
       const downloadFilename = `${tname}.${extension}`;
-      link.setAttribute('download', downloadFilename);
+      link.setAttribute("download", downloadFilename);
       document.body.appendChild(link);
       link.onclick = () => {
         link.remove();
@@ -2091,7 +2091,7 @@ const EditDescription = (props: { tournamentID: string }) => {
     try {
       await tClient.setTournamentMetadata(obj);
       message.info({
-        content: 'Set tournament metadata successfully.',
+        content: "Set tournament metadata successfully.",
         duration: 3,
       });
     } catch (e) {

@@ -1,9 +1,9 @@
 import {
   StandardEnglishAlphabet,
   runesToMachineWord,
-} from '../../constants/alphabets';
-import { CrosswordGameGridLayout } from '../../constants/board_layout';
-import { EmptySpace, MachineLetter } from './common';
+} from "../../constants/alphabets";
+import { CrosswordGameGridLayout } from "../../constants/board_layout";
+import { EmptySpace, MachineLetter } from "./common";
 
 export type Tile = {
   row: number;
@@ -22,7 +22,7 @@ function blankLayout(gridlayout: string[]) {
 function setLetterAt(
   letters: Array<MachineLetter>,
   index: number,
-  ml: MachineLetter
+  ml: MachineLetter,
 ) {
   if (index > letters.length - 1) {
     return letters;

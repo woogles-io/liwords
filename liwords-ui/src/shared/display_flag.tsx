@@ -1,5 +1,5 @@
-import React from 'react';
-import { useBriefProfile } from '../utils/brief_profiles';
+import React from "react";
+import { useBriefProfile } from "../utils/brief_profiles";
 
 type DisplayFlagProps = {
   className?: string;
@@ -10,7 +10,7 @@ export const DisplayFlag = (props: DisplayFlagProps) => (
   <>
     {props.countryCode ? (
       <img
-        className={`country-flag ${props.className ? props.className : ''}`}
+        className={`country-flag ${props.className ? props.className : ""}`}
         src={`https://woogles-flags.s3.us-east-2.amazonaws.com/${props.countryCode}.png`}
         alt={`${props.countryCode.toUpperCase()} flag`}
         title={`${props.countryCode.toUpperCase()} flag`}

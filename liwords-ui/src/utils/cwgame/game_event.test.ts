@@ -1,161 +1,161 @@
-import { EphemeralTile } from './common';
-import { computeLeave, tilesetToMoveEvent } from './game_event';
-import { Board } from './board';
-import { englishLetterToML } from '../../constants/alphabets';
+import { EphemeralTile } from "./common";
+import { computeLeave, tilesetToMoveEvent } from "./game_event";
+import { Board } from "./board";
+import { englishLetterToML } from "../../constants/alphabets";
 
 const oxyTilesLayout = [
-  ' PACIFYING     ',
-  ' IS            ',
-  'YE             ',
-  ' REQUALIFIED   ',
-  'H L            ',
-  'EDS            ',
-  'NO   T         ',
-  ' RAINWASHING   ',
-  'UM   O         ',
-  'T  E O         ',
-  ' WAKEnERS      ',
-  ' OnETIME       ',
-  'OOT  E B       ',
-  'N      U       ',
-  ' JACULATING    ',
+  " PACIFYING     ",
+  " IS            ",
+  "YE             ",
+  " REQUALIFIED   ",
+  "H L            ",
+  "EDS            ",
+  "NO   T         ",
+  " RAINWASHING   ",
+  "UM   O         ",
+  "T  E O         ",
+  " WAKEnERS      ",
+  " OnETIME       ",
+  "OOT  E B       ",
+  "N      U       ",
+  " JACULATING    ",
 ];
 
-it('tests complex event', () => {
+it("tests complex event", () => {
   const placedTiles = new Set<EphemeralTile>();
   placedTiles.add({
     row: 0,
     col: 0,
-    letter: englishLetterToML('O'),
+    letter: englishLetterToML("O"),
   });
   placedTiles.add({
     row: 1,
     col: 0,
-    letter: englishLetterToML('X'),
+    letter: englishLetterToML("X"),
   });
   placedTiles.add({
     row: 3,
     col: 0,
-    letter: englishLetterToML('P'),
+    letter: englishLetterToML("P"),
   });
   placedTiles.add({
     row: 7,
     col: 0,
-    letter: englishLetterToML('B'),
+    letter: englishLetterToML("B"),
   });
   placedTiles.add({
     row: 10,
     col: 0,
-    letter: englishLetterToML('A'),
+    letter: englishLetterToML("A"),
   });
   placedTiles.add({
     row: 11,
     col: 0,
-    letter: englishLetterToML('Z'),
+    letter: englishLetterToML("Z"),
   });
   placedTiles.add({
     row: 14,
     col: 0,
-    letter: englishLetterToML('E'),
+    letter: englishLetterToML("E"),
   });
   const board = new Board();
   board.setTileLayout(oxyTilesLayout);
-  const evt = tilesetToMoveEvent(placedTiles, board, '');
+  const evt = tilesetToMoveEvent(placedTiles, board, "");
   expect(evt).not.toBeNull();
-  expect(evt?.positionCoords).toEqual('A1');
+  expect(evt?.positionCoords).toEqual("A1");
   expect(evt?.machineLetters).toEqual(
-    Uint8Array.from([15, 24, 0, 16, 0, 0, 0, 2, 0, 0, 1, 26, 0, 0, 5])
+    Uint8Array.from([15, 24, 0, 16, 0, 0, 0, 2, 0, 0, 1, 26, 0, 0, 5]),
   ); // 'OX.P...B..AZ..E'
 });
 
-it('tests invalid play', () => {
+it("tests invalid play", () => {
   const placedTiles = new Set<EphemeralTile>();
   placedTiles.add({
     row: 0,
     col: 0,
-    letter: englishLetterToML('O'),
+    letter: englishLetterToML("O"),
   });
   placedTiles.add({
     row: 1,
     col: 0,
-    letter: englishLetterToML('X'),
+    letter: englishLetterToML("X"),
   });
   // Not contiguous; missing the Y.
   placedTiles.add({
     row: 7,
     col: 0,
-    letter: englishLetterToML('B'),
+    letter: englishLetterToML("B"),
   });
   placedTiles.add({
     row: 10,
     col: 0,
-    letter: englishLetterToML('A'),
+    letter: englishLetterToML("A"),
   });
   placedTiles.add({
     row: 11,
     col: 0,
-    letter: englishLetterToML('Z'),
+    letter: englishLetterToML("Z"),
   });
   placedTiles.add({
     row: 14,
     col: 0,
-    letter: englishLetterToML('E'),
+    letter: englishLetterToML("E"),
   });
   const board = new Board();
   board.setTileLayout(oxyTilesLayout);
-  const evt = tilesetToMoveEvent(placedTiles, board, '');
+  const evt = tilesetToMoveEvent(placedTiles, board, "");
   expect(evt).toBeNull();
 });
 
-it('should not commit undesignated blank', () => {
+it("should not commit undesignated blank", () => {
   const placedTiles = new Set<EphemeralTile>();
   placedTiles.add({
     row: 4,
     col: 3,
-    letter: englishLetterToML('I'),
+    letter: englishLetterToML("I"),
   });
   placedTiles.add({
     row: 4,
     col: 4,
-    letter: englishLetterToML('?'),
+    letter: englishLetterToML("?"),
   });
   placedTiles.add({
     row: 4,
     col: 5,
-    letter: englishLetterToML('B'),
+    letter: englishLetterToML("B"),
   });
   const board = new Board();
   board.setTileLayout(oxyTilesLayout);
-  const evt = tilesetToMoveEvent(placedTiles, board, '');
+  const evt = tilesetToMoveEvent(placedTiles, board, "");
   expect(evt).toBeNull();
 });
 
-it('tests event with blank', () => {
+it("tests event with blank", () => {
   const placedTiles = new Set<EphemeralTile>();
   placedTiles.add({
     row: 4,
     col: 3,
-    letter: englishLetterToML('I'),
+    letter: englishLetterToML("I"),
   });
   placedTiles.add({
     row: 4,
     col: 4,
-    letter: englishLetterToML('m'),
+    letter: englishLetterToML("m"),
   });
   placedTiles.add({
     row: 4,
     col: 5,
-    letter: englishLetterToML('B'),
+    letter: englishLetterToML("B"),
   });
   const board = new Board();
   board.setTileLayout(oxyTilesLayout);
-  const evt = tilesetToMoveEvent(placedTiles, board, '');
+  const evt = tilesetToMoveEvent(placedTiles, board, "");
   expect(evt).not.toBeNull();
-  expect(evt?.positionCoords).toEqual('5C');
+  expect(evt?.positionCoords).toEqual("5C");
   expect(evt?.machineLetters).toEqual(Uint8Array.from([0, 9, 0x80 | 13, 2]));
 });
 
-it('tests computeLeave', () => {
-  expect(computeLeave('DOGS', 'GOURDES')).toBe('ERU');
-  expect(computeLeave('DOgS', '?OURDES')).toBe('ERU');
+it("tests computeLeave", () => {
+  expect(computeLeave("DOGS", "GOURDES")).toBe("ERU");
+  expect(computeLeave("DOgS", "?OURDES")).toBe("ERU");
 });

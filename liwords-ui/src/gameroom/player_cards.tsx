@@ -1,22 +1,22 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Card, Row, Button, Tooltip } from 'antd';
-import { RawPlayerInfo } from '../store/reducers/game_reducer';
+import React from "react";
+import { Link } from "react-router-dom";
+import { Card, Row, Button, Tooltip } from "antd";
+import { RawPlayerInfo } from "../store/reducers/game_reducer";
 import {
   useExaminableGameContextStoreContext,
   useExaminableTimerStoreContext,
   useExamineStoreContext,
-} from '../store/store';
-import { Millis, millisToTimeStr } from '../store/timer_controller';
-import { PlayerAvatar } from '../shared/player_avatar';
-import './scss/playerCards.scss';
-import { PlayState } from '../gen/api/vendor/macondo/macondo_pb';
-import { DisplayUserFlag } from '../shared/display_flag';
-import { useBriefProfile } from '../utils/brief_profiles';
-import { GameInfoResponse, PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
-import { MachineLetter } from '../utils/cwgame/common';
+} from "../store/store";
+import { Millis, millisToTimeStr } from "../store/timer_controller";
+import { PlayerAvatar } from "../shared/player_avatar";
+import "./scss/playerCards.scss";
+import { PlayState } from "../gen/api/vendor/macondo/macondo_pb";
+import { DisplayUserFlag } from "../shared/display_flag";
+import { useBriefProfile } from "../utils/brief_profiles";
+import { GameInfoResponse, PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
+import { MachineLetter } from "../utils/cwgame/common";
 
-import variables from '../base.module.scss';
+import variables from "../base.module.scss";
 const { colorPrimary } = variables;
 
 type CardProps = {
@@ -52,15 +52,15 @@ const PlayerCard = React.memo((props: CardProps) => {
   // Find the metadata for this player.
   const meta = props.meta.find((pi) => pi.userId === props.player?.userID);
   const timeStr =
-    isExamining || props.playing ? millisToTimeStr(props.time) : '--:--';
+    isExamining || props.playing ? millisToTimeStr(props.time) : "--:--";
   // TODO: what we consider low time likely be set somewhere and not a magic number
   const timeLowCutoff = Math.max(props.initialTimeSeconds / 5, 30000);
   const timeLow = props.time <= timeLowCutoff && props.time > 0;
   const timeOut = props.time <= 0;
   return (
     <div
-      className={`player-card${props.player.onturn ? ' on-turn' : ''}
-      ${timeLow ? ' time-low' : ''}${timeOut ? ' time-out' : ''}`}
+      className={`player-card${props.player.onturn ? " on-turn" : ""}
+      ${timeLow ? " time-low" : ""}${timeOut ? " time-out" : ""}`}
     >
       <Row className="player">
         <PlayerAvatar player={meta} />
@@ -70,13 +70,13 @@ const PlayerCard = React.memo((props: CardProps) => {
           </p>
           <div className="player-details">
             <DisplayUserFlag uuid={props.player?.userID} />
-            {meta?.rating || 'Unrated'}
+            {meta?.rating || "Unrated"}
             {props.hideProfileLink ? null : (
               <>
-                •{' '}
+                •{" "}
                 <Link
                   target="_blank"
-                  to={`/profile/${encodeURIComponent(meta?.nickname ?? '')}`}
+                  to={`/profile/${encodeURIComponent(meta?.nickname ?? "")}`}
                 >
                   View profile
                 </Link>
@@ -89,7 +89,7 @@ const PlayerCard = React.memo((props: CardProps) => {
         <Tooltip
           placement="left"
           color={colorPrimary}
-          title={`${props.spread >= 0 ? '+' : ''}${props.spread}`}
+          title={`${props.spread >= 0 ? "+" : ""}${props.spread}`}
         >
           <Button className="score" type="primary">
             {props.score}
@@ -161,9 +161,9 @@ export const PlayerCards = React.memo((props: Props) => {
   return (
     <Card
       className={`player-cards${
-        props.horizontal ? ' horizontal' : ' vertical'
+        props.horizontal ? " horizontal" : " vertical"
       }`}
-      id={`player-cards-${props.horizontal ? 'horizontal' : 'vertical'}`}
+      id={`player-cards-${props.horizontal ? "horizontal" : "vertical"}`}
     >
       <PlayerCard
         player={p0}

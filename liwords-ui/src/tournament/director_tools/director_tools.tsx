@@ -1,12 +1,12 @@
-import React, { useCallback } from 'react';
+import React, { useCallback } from "react";
 // import { toAPIUrl } from '../api/api';
-import { useTournamentStoreContext } from '../../store/store';
-import './director_tools.scss';
-import { UsernameWithContext } from '../../shared/usernameWithContext';
-import { Button, Divider } from 'antd';
-import { GhettoTools } from './ghetto_tools';
-import { TournamentService } from '../../gen/api/proto/tournament_service/tournament_service_pb';
-import { flashError, useClient } from '../../utils/hooks/connect';
+import { useTournamentStoreContext } from "../../store/store";
+import "./director_tools.scss";
+import { UsernameWithContext } from "../../shared/usernameWithContext";
+import { Button, Divider } from "antd";
+import { GhettoTools } from "./ghetto_tools";
+import { TournamentService } from "../../gen/api/proto/tournament_service/tournament_service_pb";
+import { flashError, useClient } from "../../utils/hooks/connect";
 /*
 import { AddPlayerForm, playersToAdd } from './add_player_form';
 import { ModifyDivisionsForm } from './modify_divisions_form';
@@ -94,7 +94,7 @@ export const DirectorTools = React.memo((props: DTProps) => {
           <h4 className="division-name">{d.divisionID} entrants</h4>
           <ul>
             {d.players.map((p) => {
-              const [userID, playerName] = p.id.split(':');
+              const [userID, playerName] = p.id.split(":");
               return (
                 <li key={p.id} className="player-name">
                   <UsernameWithContext

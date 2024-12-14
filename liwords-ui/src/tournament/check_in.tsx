@@ -1,8 +1,8 @@
-import { Button, Col, Divider, message, Row } from 'antd';
-import React, { useMemo } from 'react';
-import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_pb';
-import { useTournamentStoreContext } from '../store/store';
-import { flashError, useClient } from '../utils/hooks/connect';
+import { Button, Col, Divider, message, Row } from "antd";
+import React, { useMemo } from "react";
+import { TournamentService } from "../gen/api/proto/tournament_service/tournament_service_pb";
+import { useTournamentStoreContext } from "../store/store";
+import { flashError, useClient } from "../utils/hooks/connect";
 
 // I did not find a design for this, but it is trial functionality in order
 // to keep the tournament running smoothly.
@@ -38,7 +38,7 @@ export const CheckIn = () => {
     try {
       await tournamentClient.checkIn({ id: tournamentContext.metadata?.id });
       message.info({
-        content: 'You are checked in.',
+        content: "You are checked in.",
         duration: 3,
       });
     } catch (e) {

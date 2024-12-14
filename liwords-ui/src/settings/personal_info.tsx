@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState } from "react";
 import {
   Alert,
   Button,
@@ -10,25 +10,25 @@ import {
   Select,
   notification,
   DatePicker as DatePickerWithDayJs,
-} from 'antd';
-import { Modal } from '../utils/focus_modal';
-import moment from 'moment';
-import { PlayerAvatar } from '../shared/player_avatar';
-import { AvatarRemoveModal } from './avatar_remove_modal';
-import { countryArray } from './country_map';
-import { MarkdownTips } from './markdown_tips';
-import { AvatarCropper } from './avatar_cropper';
-import { UploadChangeParam } from 'antd/lib/upload';
-import { PersonalInfoResponse } from '../gen/api/proto/user_service/user_service_pb';
-import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
+} from "antd";
+import { Modal } from "../utils/focus_modal";
+import moment from "moment";
+import { PlayerAvatar } from "../shared/player_avatar";
+import { AvatarRemoveModal } from "./avatar_remove_modal";
+import { countryArray } from "./country_map";
+import { MarkdownTips } from "./markdown_tips";
+import { AvatarCropper } from "./avatar_cropper";
+import { UploadChangeParam } from "antd/lib/upload";
+import { PersonalInfoResponse } from "../gen/api/proto/user_service/user_service_pb";
+import { PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
 import {
   connectErrorMessage,
   flashError,
   useClient,
-} from '../utils/hooks/connect';
-import { ProfileService } from '../gen/api/proto/user_service/user_service_pb';
-import type { Moment } from 'moment';
-import momentGenerateConfig from 'rc-picker/lib/generate/moment';
+} from "../utils/hooks/connect";
+import { ProfileService } from "../gen/api/proto/user_service/user_service_pb";
+import type { Moment } from "moment";
+import momentGenerateConfig from "rc-picker/lib/generate/moment";
 
 // FIXME: antd has moved on to day.js, but we are still using moment.js :-(
 const DatePicker =
@@ -47,11 +47,11 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
   const [removeAvatarModalVisible, setRemoveAvatarModalVisible] =
     useState(false);
   const [bioTipsModalVisible, setBioTipsModalVisible] = useState(false);
-  const [avatarErr, setAvatarErr] = useState('');
+  const [avatarErr, setAvatarErr] = useState("");
   const [uploadPending, setUploadPending] = useState(false);
   const [cropperOpen, setCropperOpen] = useState(false);
   const [imageToUpload, setImageToUpload] = useState<Blob | undefined>(
-    undefined
+    undefined,
   );
 
   const avatarErrorCatcher = useCallback((e: unknown) => {
@@ -72,7 +72,7 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
         setCropperOpen(true);
       }
     },
-    accept: 'image/*',
+    accept: "image/*",
     showUploadList: false,
   };
 
@@ -85,11 +85,11 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
     try {
       await profileClient.removeAvatar({});
       notification.info({
-        message: 'Success',
-        description: 'Your avatar was removed.',
+        message: "Success",
+        description: "Your avatar was removed.",
       });
       setRemoveAvatarModalVisible(false);
-      propsUpdatedAvatar('');
+      propsUpdatedAvatar("");
     } catch (e) {
       avatarErrorCatcher(e);
     }
@@ -111,8 +111,8 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
       try {
         const resp = await profileClient.updateAvatar({ jpgData: jpegUint8 });
         notification.info({
-          message: 'Success',
-          description: 'Your avatar was updated.',
+          message: "Success",
+          description: "Your avatar was updated.",
         });
         setUploadPending(false);
         propsUpdatedAvatar(resp.avatarUrl);
@@ -120,21 +120,21 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
         avatarErrorCatcher(e);
       }
     },
-    [propsUpdatedAvatar, avatarErrorCatcher, profileClient]
+    [propsUpdatedAvatar, avatarErrorCatcher, profileClient],
   );
 
   const updateFields = async (values: { [key: string]: string }) => {
     const birthDate = values.birthDate
-      ? moment(values.birthDate).format('YYYY-MM-DD')
-      : '';
+      ? moment(values.birthDate).format("YYYY-MM-DD")
+      : "";
     try {
       await profileClient.updatePersonalInfo({
         ...values,
         birthDate,
       });
       notification.info({
-        message: 'Success',
-        description: 'Your personal info was changed.',
+        message: "Success",
+        description: "Your personal info was changed.",
       });
     } catch (e) {
       flashError(e);
@@ -178,9 +178,9 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
           key="cheat-sheet"
           onClick={() => {
             const newWindow = window.open(
-              'https://www.markdownguide.org/cheat-sheet/',
-              '_blank',
-              'noopener,noreferrer'
+              "https://www.markdownguide.org/cheat-sheet/",
+              "_blank",
+              "noopener,noreferrer",
             );
             if (newWindow) newWindow.opener = null;
           }}
@@ -209,13 +209,13 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
       initialValues={{
         ...props.personalInfo,
         birthDate: props.personalInfo.birthDate
-          ? moment(props.personalInfo.birthDate, 'YYYY-MM-DD')
+          ? moment(props.personalInfo.birthDate, "YYYY-MM-DD")
           : null,
       }}
     >
       <h3>Personal info</h3>
       <div className="section-header">Profile picture</div>
-      {props.personalInfo?.avatarUrl !== '' ? (
+      {props.personalInfo?.avatarUrl !== "" ? (
         <div className="avatar-section">
           <PlayerAvatar
             player={props.player}
@@ -223,7 +223,7 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
           />
           <Upload {...fileProps}>
             <Button className="change-avatar">
-              {uploadPending ? 'Uploading...' : 'Change'}
+              {uploadPending ? "Uploading..." : "Change"}
             </Button>
           </Upload>
           <Button
@@ -236,15 +236,15 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
         </div>
       ) : (
         <div className="no-avatar-section">
-          {' '}
+          {" "}
           <Upload {...fileProps}>
             <Button className="change-avatar" disabled={uploadPending}>
-              {uploadPending ? 'Uploading...' : 'Add a profile photo'}
+              {uploadPending ? "Uploading..." : "Add a profile photo"}
             </Button>
           </Upload>
         </div>
       )}
-      {avatarErr !== '' ? <Alert message={avatarErr} type="error" /> : null}
+      {avatarErr !== "" ? <Alert message={avatarErr} type="error" /> : null}
       {bioTipsModal}
       <AvatarRemoveModal
         visible={removeAvatarModalVisible}
@@ -294,7 +294,7 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
             name="birthDate"
             label={
               <>
-                Date of birth{' '}
+                Date of birth{" "}
                 <span className="notice">(This will not be displayed.)</span>
               </>
             }
@@ -302,12 +302,12 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
               {
                 required: true,
                 message:
-                  'Your profile information will be private unless you provide a birthdate.',
+                  "Your profile information will be private unless you provide a birthdate.",
               },
             ]}
           >
             <DatePicker
-              format={'YYYY-MM-DD'}
+              format={"YYYY-MM-DD"}
               placeholder="YYYY-MM-DD"
               showToday={false}
             />
@@ -322,8 +322,8 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
             rules={[
               {
                 required: true,
-                type: 'email',
-                message: 'Enter a valid email address',
+                type: "email",
+                message: "Enter a valid email address",
               },
             ]}
           >

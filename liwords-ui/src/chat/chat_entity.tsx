@@ -1,25 +1,25 @@
-import React from 'react';
-import moment from 'moment';
+import React from "react";
+import moment from "moment";
 import {
   useExcludedPlayersStoreContext,
   useModeratorStoreContext,
-} from '../store/store';
-import { UsernameWithContext } from '../shared/usernameWithContext';
-import { Wooglinkify } from '../shared/wooglinkify';
-import { App, Tag } from 'antd';
+} from "../store/store";
+import { UsernameWithContext } from "../shared/usernameWithContext";
+import { Wooglinkify } from "../shared/wooglinkify";
+import { App, Tag } from "antd";
 import {
   CrownFilled,
   SafetyCertificateFilled,
   StarFilled,
-} from '@ant-design/icons';
-import { ExclamationCircleOutlined } from '@ant-design/icons';
-import { moderateUser, deleteChatMessage } from '../mod/moderate';
-import { PettableAvatar, PlayerAvatar } from '../shared/player_avatar';
-import { ChatEntityType } from '../store/constants';
-import { useClient } from '../utils/hooks/connect';
-import { ModService } from '../gen/api/proto/mod_service/mod_service_pb';
-import { HookAPI } from 'antd/lib/modal/useModal';
-import { Client } from '@connectrpc/connect';
+} from "@ant-design/icons";
+import { ExclamationCircleOutlined } from "@ant-design/icons";
+import { moderateUser, deleteChatMessage } from "../mod/moderate";
+import { PettableAvatar, PlayerAvatar } from "../shared/player_avatar";
+import { ChatEntityType } from "../store/constants";
+import { useClient } from "../utils/hooks/connect";
+import { ModService } from "../gen/api/proto/mod_service/mod_service_pb";
+import { HookAPI } from "antd/lib/modal/useModal";
+import { Client } from "@connectrpc/connect";
 
 type EntityProps = {
   entityType: ChatEntityType;
@@ -41,7 +41,7 @@ const deleteMessage = (
   msgid: string,
   message: string,
   channel: string,
-  modClient: Client<typeof ModService>
+  modClient: Client<typeof ModService>,
 ) => {
   modal.confirm({
     title: (
@@ -53,32 +53,32 @@ const deleteMessage = (
       deleteChatMessage(sender, msgid, channel, modClient);
     },
     onCancel() {
-      console.log('no');
+      console.log("no");
     },
   });
 };
 
 export const ChatEntity = (props: EntityProps) => {
-  let ts = '';
+  let ts = "";
 
   const { excludedPlayers, excludedPlayersFetched } =
     useExcludedPlayersStoreContext();
   const { moderators, admins } = useModeratorStoreContext();
   if (props.timestamp) {
     if (
-      moment(Date.now()).format('MMM Do') !==
-      moment(Number(props.timestamp)).format('MMM Do')
+      moment(Date.now()).format("MMM Do") !==
+      moment(Number(props.timestamp)).format("MMM Do")
     ) {
-      ts = moment(Number(props.timestamp)).format('MMM Do - LT');
+      ts = moment(Number(props.timestamp)).format("MMM Do - LT");
     } else {
-      ts = moment(Number(props.timestamp)).format('LT');
+      ts = moment(Number(props.timestamp)).format("LT");
     }
   }
   let el;
-  let senderClass = 'sender';
+  let senderClass = "sender";
   let fromMod = false;
   let fromAdmin = false;
-  const channel = '';
+  const channel = "";
   const modClient = useClient(ModService);
   const { modal } = App.useApp();
 
@@ -97,7 +97,7 @@ export const ChatEntity = (props: EntityProps) => {
     fromAdmin = true;
   }
   if (props.highlight || fromMod || fromAdmin) {
-    senderClass = 'special-sender';
+    senderClass = "special-sender";
   }
   switch (props.entityType) {
     case ChatEntityType.ServerMsg:
@@ -143,7 +143,7 @@ export const ChatEntity = (props: EntityProps) => {
                           props.msgID,
                           props.message,
                           props.channel,
-                          modClient
+                          modClient,
                         );
                       }
                     }}
@@ -153,7 +153,7 @@ export const ChatEntity = (props: EntityProps) => {
                     <Tag
                       className="director"
                       icon={<CrownFilled />}
-                      color={'#d5cad6'}
+                      color={"#d5cad6"}
                     >
                       {props.highlightText}
                     </Tag>
@@ -162,7 +162,7 @@ export const ChatEntity = (props: EntityProps) => {
                     <Tag
                       className="admin"
                       icon={<StarFilled />}
-                      color={'#F4B000'}
+                      color={"#F4B000"}
                     >
                       Admin
                     </Tag>
@@ -171,7 +171,7 @@ export const ChatEntity = (props: EntityProps) => {
                     <Tag
                       className="mod"
                       icon={<SafetyCertificateFilled />}
-                      color={'#E6FFDF'}
+                      color={"#E6FFDF"}
                     >
                       Moderator
                     </Tag>

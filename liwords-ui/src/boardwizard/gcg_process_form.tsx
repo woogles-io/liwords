@@ -1,17 +1,17 @@
-import { Button, Form, Select, Typography, Upload, message } from 'antd';
-import { Store } from 'antd/es/form/interface';
-import { flashError, useClient } from '../utils/hooks/connect';
-import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_pb';
-import { useGameContextStoreContext } from '../store/store';
-import { useNavigate } from 'react-router-dom';
-import React, { useCallback, useState } from 'react';
-import { ActionType } from '../actions/actions';
-import { GameRulesSchema } from '../gen/api/proto/ipc/omgwords_pb';
-import { defaultLetterDistribution } from '../lobby/sought_game_interactions';
-import { LexiconFormItem } from '../shared/lexicon_display';
-import { ChallengeRule } from '../gen/api/proto/ipc/omgwords_pb';
-import { UploadOutlined } from '@ant-design/icons';
-import { create } from '@bufbuild/protobuf';
+import { Button, Form, Select, Typography, Upload, message } from "antd";
+import { Store } from "antd/es/form/interface";
+import { flashError, useClient } from "../utils/hooks/connect";
+import { GameEventService } from "../gen/api/proto/omgwords_service/omgwords_pb";
+import { useGameContextStoreContext } from "../store/store";
+import { useNavigate } from "react-router-dom";
+import React, { useCallback, useState } from "react";
+import { ActionType } from "../actions/actions";
+import { GameRulesSchema } from "../gen/api/proto/ipc/omgwords_pb";
+import { defaultLetterDistribution } from "../lobby/sought_game_interactions";
+import { LexiconFormItem } from "../shared/lexicon_display";
+import { ChallengeRule } from "../gen/api/proto/ipc/omgwords_pb";
+import { UploadOutlined } from "@ant-design/icons";
+import { create } from "@bufbuild/protobuf";
 
 type Props = {
   gcg: string;
@@ -35,7 +35,7 @@ export const GCGProcessForm = (props: Props) => {
         const resp = await eventClient.getGameDocument({
           gameId: gid,
         });
-        console.log('got a game document, dispatching, redirect is', redirect);
+        console.log("got a game document, dispatching, redirect is", redirect);
         dispatchGameContext({
           actionType: ActionType.InitFromDocument,
           payload: resp,
@@ -49,7 +49,7 @@ export const GCGProcessForm = (props: Props) => {
         flashError(e);
       }
     },
-    [dispatchGameContext, eventClient, navigate]
+    [dispatchGameContext, eventClient, navigate],
   );
 
   return (
@@ -58,7 +58,7 @@ export const GCGProcessForm = (props: Props) => {
       onFinish={async (vals: Store) => {
         if (!gcg) {
           message.error({
-            content: 'Please upload a valid gcg file',
+            content: "Please upload a valid gcg file",
           });
           return;
         }
@@ -69,9 +69,9 @@ export const GCGProcessForm = (props: Props) => {
             gcg: gcg,
             lexicon,
             rules: create(GameRulesSchema, {
-              boardLayoutName: 'CrosswordGame',
+              boardLayoutName: "CrosswordGame",
               letterDistributionName: defaultLetterDistribution(lexicon),
-              variantName: 'classic',
+              variantName: "classic",
             }),
             challengeRule: vals.challengerule,
           });
@@ -104,7 +104,7 @@ export const GCGProcessForm = (props: Props) => {
         <Form.Item>
           <Typography.Text code>
             {gcg
-              .split('\n')
+              .split("\n")
               .slice(0, previewLength)
               .map((line, index) => (
                 <React.Fragment key={index}>
@@ -112,14 +112,14 @@ export const GCGProcessForm = (props: Props) => {
                   <br />
                 </React.Fragment>
               ))}
-            {gcg.split('\n').length > previewLength ? '...' : ''}
+            {gcg.split("\n").length > previewLength ? "..." : ""}
           </Typography.Text>
         </Form.Item>
       )}
 
       <LexiconFormItem
-        excludedLexica={new Set(['ECWL'])}
-        additionalLexica={['NWL20', 'NWL18', 'CSW19']}
+        excludedLexica={new Set(["ECWL"])}
+        additionalLexica={["NWL20", "NWL18", "CSW19"]}
       />
 
       <Form.Item
@@ -128,7 +128,7 @@ export const GCGProcessForm = (props: Props) => {
         rules={[
           {
             required: true,
-            message: 'Challenge rule is required',
+            message: "Challenge rule is required",
           },
         ]}
       >

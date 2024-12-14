@@ -1,7 +1,7 @@
-import { clone, create, toBinary } from '@bufbuild/protobuf';
-import { Action, ActionType } from '../../actions/actions';
-import { MessageType } from '../../gen/api/proto/ipc/ipc_pb';
-import { GameEndReason } from '../../gen/api/proto/ipc/omgwords_pb';
+import { clone, create, toBinary } from "@bufbuild/protobuf";
+import { Action, ActionType } from "../../actions/actions";
+import { MessageType } from "../../gen/api/proto/ipc/ipc_pb";
+import { GameEndReason } from "../../gen/api/proto/ipc/omgwords_pb";
 import {
   DivisionControls,
   DivisionControlsResponse,
@@ -24,16 +24,16 @@ import {
   TournamentPerson,
   TournamentPersonSchema,
   TournamentRoundStarted,
-} from '../../gen/api/proto/ipc/tournament_pb';
+} from "../../gen/api/proto/ipc/tournament_pb";
 
 import {
   TournamentMetadata,
   TournamentMetadataSchema,
   TType,
-} from '../../gen/api/proto/tournament_service/tournament_service_pb';
-import { encodeToSocketFmt } from '../../utils/protobuf';
-import { LoginState } from '../login_state';
-import { ActiveGame } from './lobby_reducer';
+} from "../../gen/api/proto/tournament_service/tournament_service_pb";
+import { encodeToSocketFmt } from "../../utils/protobuf";
+import { LoginState } from "../login_state";
+import { ActiveGame } from "./lobby_reducer";
 
 type TournamentGame = {
   scores: Array<number>;
@@ -118,23 +118,23 @@ export const defaultTournamentState = {
 };
 
 export enum TourneyStatus {
-  PRETOURNEY = 'PRETOURNEY',
-  ROUND_BYE = 'ROUND_BYE',
-  ROUND_OPEN = 'ROUND_OPEN',
-  ROUND_GAME_FINISHED = 'ROUND_GAME_FINISHED',
-  ROUND_READY = 'ROUND_READY', // waiting for your opponent
-  ROUND_OPPONENT_WAITING = 'ROUND_OPPONENT_WAITING',
-  ROUND_LATE = 'ROUND_LATE', // expect this to override opponent waiting
-  ROUND_GAME_ACTIVE = 'ROUND_GAME_ACTIVE',
-  ROUND_FORFEIT_LOSS = 'ROUND_FORFEIT_LOSS',
-  ROUND_FORFEIT_WIN = 'ROUND_FORFEIT_WIN',
-  POSTTOURNEY = 'POSTTOURNEY',
+  PRETOURNEY = "PRETOURNEY",
+  ROUND_BYE = "ROUND_BYE",
+  ROUND_OPEN = "ROUND_OPEN",
+  ROUND_GAME_FINISHED = "ROUND_GAME_FINISHED",
+  ROUND_READY = "ROUND_READY", // waiting for your opponent
+  ROUND_OPPONENT_WAITING = "ROUND_OPPONENT_WAITING",
+  ROUND_LATE = "ROUND_LATE", // expect this to override opponent waiting
+  ROUND_GAME_ACTIVE = "ROUND_GAME_ACTIVE",
+  ROUND_FORFEIT_LOSS = "ROUND_FORFEIT_LOSS",
+  ROUND_FORFEIT_WIN = "ROUND_FORFEIT_WIN",
+  POSTTOURNEY = "POSTTOURNEY",
 }
 
 export const readyForTournamentGame = (
   sendSocketMsg: (msg: Uint8Array) => void,
   tournamentID: string,
-  competitorState: CompetitorState
+  competitorState: CompetitorState,
 ) => {
   const evt = create(ReadyForTournamentGameSchema, {});
   const division = competitorState.division;
@@ -148,8 +148,8 @@ export const readyForTournamentGame = (
   sendSocketMsg(
     encodeToSocketFmt(
       MessageType.READY_FOR_TOURNAMENT_GAME,
-      toBinary(ReadyForTournamentGameSchema, evt)
-    )
+      toBinary(ReadyForTournamentGameSchema, evt),
+    ),
   );
 };
 
@@ -157,7 +157,7 @@ const findOpponentIdx = (
   player: number,
   playerIndexMap: { [playerID: string]: number },
   pairings: Array<RoundPairings>,
-  round: number
+  round: number,
 ): number => {
   if (!pairings[round].roundPairings[player]?.players) {
     return -1;
@@ -174,7 +174,7 @@ const findOpponentIdx = (
 
 const deletePairings = (
   existingPairings: Array<RoundPairings>,
-  round: number
+  round: number,
 ): Array<RoundPairings> => {
   const updatedPairings = [...existingPairings];
 
@@ -188,7 +188,7 @@ const reducePairings = (
   players: Array<TournamentPerson>,
   playerIndexMap: { [playerID: string]: number },
   existingPairings: Array<RoundPairings>,
-  newPairings: Pairing[]
+  newPairings: Pairing[],
 ): Array<RoundPairings> => {
   const updatedPairings = [...existingPairings];
 
@@ -212,7 +212,7 @@ const reducePairings = (
         value.players[pidx],
         playerIndexMap,
         updatedPairings,
-        value.round
+        value.round,
       );
       if (opp !== -1) {
         updatedPairings[value.round].roundPairings[opp] = {} as SinglePairing;
@@ -264,7 +264,7 @@ const copyPairings = (existingPairings: Array<RoundPairings>) => {
 
 const reduceStandings = (
   existingStandings: { [key: number]: RoundStandings },
-  newStandings: { [key: number]: RoundStandings }
+  newStandings: { [key: number]: RoundStandings },
 ): { [key: number]: RoundStandings } => {
   const updatedStandings: { [key: number]: RoundStandings } = {};
 
@@ -280,7 +280,7 @@ const reduceStandings = (
 };
 
 const divisionDataResponseToObj = (
-  dd: TournamentDivisionDataResponse
+  dd: TournamentDivisionDataResponse,
 ): Division => {
   const ret = {
     tournamentID: dd.id,
@@ -363,7 +363,7 @@ const divisionDataResponseToObj = (
 const getPairing = (
   round: number,
   fullPlayerID: string,
-  division: Division
+  division: Division,
 ): SinglePairing | undefined => {
   if (
     !(
@@ -387,7 +387,7 @@ const getPairing = (
 const tourneyStatus = (
   division: Division,
   activeGames: Array<ActiveGame>,
-  loginContext: LoginState
+  loginContext: LoginState,
 ): TourneyStatus => {
   if (!division) {
     return TourneyStatus.PRETOURNEY; // XXX: maybe a state for not being part of tourney
@@ -433,22 +433,22 @@ const tourneyStatus = (
     return TourneyStatus.ROUND_GAME_ACTIVE;
   }
   if (
-    pairing.readyStates[playerIdx] === '' &&
-    pairing.readyStates[1 - playerIdx] !== ''
+    pairing.readyStates[playerIdx] === "" &&
+    pairing.readyStates[1 - playerIdx] !== ""
   ) {
     // Our opponent is ready
     return TourneyStatus.ROUND_OPPONENT_WAITING;
   } else if (
-    pairing.readyStates[1 - playerIdx] === '' &&
-    pairing.readyStates[playerIdx] !== ''
+    pairing.readyStates[1 - playerIdx] === "" &&
+    pairing.readyStates[playerIdx] !== ""
   ) {
     // We're ready
     return TourneyStatus.ROUND_READY;
   }
 
   if (
-    pairing.readyStates[playerIdx] === '' &&
-    pairing.readyStates[1 - playerIdx] === ''
+    pairing.readyStates[playerIdx] === "" &&
+    pairing.readyStates[1 - playerIdx] === ""
   ) {
     return TourneyStatus.ROUND_OPEN;
   }
@@ -459,7 +459,7 @@ const tourneyStatus = (
 
 export function TournamentReducer(
   state: TournamentState,
-  action: Action
+  action: Action,
 ): TournamentState {
   if (!state.initializedFromXHR) {
     // Throw away messages if we haven't received the XHR back yet.
@@ -520,7 +520,7 @@ export function TournamentReducer(
       let newPairings = copyPairings(state.divisions[division].pairings);
       let newStandings = reduceStandings(
         state.divisions[division].standingsMap,
-        {}
+        {},
       );
 
       if (!state.started) {
@@ -540,7 +540,7 @@ export function TournamentReducer(
           state.divisions[division].players,
           state.divisions[division].playerIndexMap,
           newPairings,
-          drc.roundControls.divisionPairings
+          drc.roundControls.divisionPairings,
         );
         newStandings = drc.roundControls.divisionStandings;
       } else {
@@ -575,7 +575,7 @@ export function TournamentReducer(
 
       const newStandings = reduceStandings(
         state.divisions[division].standingsMap,
-        dc.divisionControlsResponse.divisionStandings
+        dc.divisionControlsResponse.divisionStandings,
       );
 
       return Object.assign({}, state, {
@@ -596,7 +596,7 @@ export function TournamentReducer(
       const division = dp.dpdr.division;
       const newPairings = deletePairings(
         state.divisions[division].pairings,
-        dp.dpdr.round
+        dp.dpdr.round,
       );
       const newState = Object.assign({}, state, {
         divisions: Object.assign({}, state.divisions, {
@@ -618,12 +618,12 @@ export function TournamentReducer(
         state.divisions[division].players,
         state.divisions[division].playerIndexMap,
         state.divisions[division].pairings,
-        dp.dpr.divisionPairings
+        dp.dpr.divisionPairings,
       );
 
       const newStandings = reduceStandings(
         state.divisions[division].standingsMap,
-        dp.dpr.divisionStandings
+        dp.dpr.divisionStandings,
       );
 
       const fullLoggedInID = `${dp.loginState.userID}:${dp.loginState.username}`;
@@ -663,7 +663,7 @@ export function TournamentReducer(
       });
 
       const newActiveGames = state.activeGames.filter(
-        (ag) => !finishedGamesMap[ag.gameID]
+        (ag) => !finishedGamesMap[ag.gameID],
       );
 
       const newState = Object.assign({}, state, {
@@ -700,7 +700,7 @@ export function TournamentReducer(
       let expandedPairings = copyPairings(state.divisions[division].pairings);
       let newStandings = reduceStandings(
         state.divisions[division].standingsMap,
-        {}
+        {},
       );
 
       if (
@@ -735,7 +735,7 @@ export function TournamentReducer(
         newPlayers,
         newPlayerIndexMap,
         expandedPairings,
-        dp.parr.divisionPairings
+        dp.parr.divisionPairings,
       );
       newStandings = reduceStandings(newStandings, dp.parr.divisionStandings);
 
@@ -756,7 +756,7 @@ export function TournamentReducer(
           status: tourneyStatus(
             myRegisteredDivision,
             state.activeGames,
-            dp.loginState
+            dp.loginState,
           ),
         };
       } else {
@@ -811,7 +811,7 @@ export function TournamentReducer(
           status: tourneyStatus(
             registeredDivision,
             state.activeGames,
-            dd.loginState
+            dd.loginState,
           ),
         };
       }
@@ -865,7 +865,7 @@ export function TournamentReducer(
           status: tourneyStatus(
             registeredDivision,
             state.activeGames,
-            dd.loginState
+            dd.loginState,
           ),
         };
       }
@@ -902,7 +902,7 @@ export function TournamentReducer(
           ? tourneyStatus(
               newDivisions[division],
               state.activeGames,
-              m.loginState
+              m.loginState,
             )
           : state.competitorState.status;
 
@@ -936,13 +936,13 @@ export function TournamentReducer(
       if (m.ready.round !== division.currentRound) {
         // this should not happen, the ready state should always be for the
         // current round.
-        console.error('ready state current round does not match');
+        console.error("ready state current round does not match");
         return state;
       }
       if (m.ready.division !== registeredDivision) {
         // this should not happen, the ready state should always be for the
         // current division.
-        console.error('ready state current division does not match');
+        console.error("ready state current division does not match");
         return state;
       }
       const pairing = getPairing(m.ready.round, fullPlayerID, division);
@@ -961,7 +961,7 @@ export function TournamentReducer(
       } else if (newPairing.players[1].id === fullPlayerID) {
         usLoc = 1;
       } else {
-        console.error('unexpected usLoc', newPairing);
+        console.error("unexpected usLoc", newPairing);
         return state;
       }
       let toModify;
@@ -972,7 +972,7 @@ export function TournamentReducer(
         toModify = 1 - usLoc;
       }
 
-      newPairing.readyStates[toModify] = m.ready.unready ? '' : 'ready';
+      newPairing.readyStates[toModify] = m.ready.unready ? "" : "ready";
 
       const updatedPairings = copyPairings(division.pairings);
       updatedPairings[m.ready.round].roundPairings[
@@ -987,7 +987,7 @@ export function TournamentReducer(
         state.divisions[registeredDivision],
         {
           pairings: updatedPairings,
-        }
+        },
       );
 
       const newCompetitorState = {
@@ -995,7 +995,7 @@ export function TournamentReducer(
         status: tourneyStatus(
           newRegisteredDiv,
           state.activeGames,
-          m.loginState
+          m.loginState,
         ),
       };
 
@@ -1023,7 +1023,7 @@ export function TournamentReducer(
           status: tourneyStatus(
             state.divisions[registeredDivision],
             g.activeGames,
-            g.loginState
+            g.loginState,
           ),
         };
       }
@@ -1049,7 +1049,7 @@ export function TournamentReducer(
           status: tourneyStatus(
             state.divisions[registeredDivision],
             [...state.activeGames, g.activeGame],
-            g.loginState
+            g.loginState,
           ),
         };
       }

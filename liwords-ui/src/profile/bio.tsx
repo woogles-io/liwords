@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import { useParams } from 'react-router-dom';
-import { useLoginStateStoreContext } from '../store/store';
+import React, { useState } from "react";
+import ReactMarkdown from "react-markdown";
+import { useParams } from "react-router-dom";
+import { useLoginStateStoreContext } from "../store/store";
 
 type BioProps = {
   bio: string;
@@ -13,13 +13,13 @@ export const BioCard = React.memo((props: BioProps) => {
   const { username: viewer } = loginState;
   const { username } = useParams();
 
-  const [latestBio, setLatestBio] = useState('');
+  const [latestBio, setLatestBio] = useState("");
 
   React.useEffect(() => {
     setLatestBio(props.bio);
   }, [props.bio]);
 
-  return viewer === username || latestBio !== '' ? (
+  return viewer === username || latestBio !== "" ? (
     <div className="bio">
       <ReactMarkdown>
         {latestBio ? latestBio : "You haven't yet provided your bio."}

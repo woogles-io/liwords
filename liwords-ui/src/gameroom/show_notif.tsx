@@ -1,7 +1,7 @@
-import React from 'react';
-import { Millis } from '../store/timer_controller';
-import { TimedNotif } from './timed_notif';
-import { NotificationInstance } from 'antd/lib/notification/interface';
+import React from "react";
+import { Millis } from "../store/timer_controller";
+import { TimedNotif } from "./timed_notif";
+import { NotificationInstance } from "antd/lib/notification/interface";
 
 type Props = {
   maxDuration: Millis;
@@ -18,17 +18,17 @@ type Props = {
 export const ShowNotif = (props: Props) => {
   const myId = React.useMemo(
     () => `notif/${Math.random()}/${performance.now()}`,
-    []
+    [],
   );
   React.useEffect(() => {
     props.notification.open({
       // other params, TODO
-      className: 'cancel-notification',
+      className: "cancel-notification",
       closeIcon: <div></div>,
       key: myId,
-      message: '',
+      message: "",
       description: <TimedNotif {...props} />,
-      placement: 'topRight',
+      placement: "topRight",
       duration: 0,
     });
     return () => {

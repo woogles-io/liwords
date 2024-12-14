@@ -1,20 +1,20 @@
-import React from 'react';
+import React from "react";
 
-import BoardSpaces from './board_spaces';
-import { useDrawing } from './drawing';
-import { useExamineStoreContext } from '../store/store';
-import { PlacementArrow } from '../utils/cwgame/tile_placement';
-import BoardCoordLabels from './board_coord_labels';
-import Tiles from './tiles';
+import BoardSpaces from "./board_spaces";
+import { useDrawing } from "./drawing";
+import { useExamineStoreContext } from "../store/store";
+import { PlacementArrow } from "../utils/cwgame/tile_placement";
+import BoardCoordLabels from "./board_coord_labels";
+import Tiles from "./tiles";
 import {
   EphemeralTile,
   MachineLetter,
   PlayedTiles,
   PlayerOfTiles,
-} from '../utils/cwgame/common';
-import { Alphabet } from '../constants/alphabets';
-import { LearnOverlay } from '../learn/learn_overlay';
-import { SuperCrosswordGameGridLayout } from '../constants/board_layout';
+} from "../utils/cwgame/common";
+import { Alphabet } from "../constants/alphabets";
+import { LearnOverlay } from "../learn/learn_overlay";
+import { SuperCrosswordGameGridLayout } from "../constants/board_layout";
 
 type Props = {
   tileColorId: number;
@@ -25,7 +25,7 @@ type Props = {
     row: number,
     col: number,
     rackIndex: number | undefined,
-    tileIndex: number | undefined
+    tileIndex: number | undefined,
   ) => void;
   tilesLayout: Array<MachineLetter>;
   alphabet: Alphabet;
@@ -38,7 +38,7 @@ type Props = {
   handleSetHover?: (
     x: number,
     y: number,
-    words: Array<string> | undefined
+    words: Array<string> | undefined,
   ) => void;
   handleUnsetHover?: () => void;
   definitionPopover?:
@@ -53,9 +53,9 @@ const Board = React.memo((props: Props) => {
 
   const { outerDivProps, svgDrawing } = useDrawing(props.gridSize);
   const { isExamining } = useExamineStoreContext();
-  let zomgClass = '';
+  let zomgClass = "";
   if (props.gridSize === SuperCrosswordGameGridLayout.length) {
-    zomgClass = ' zomgboard';
+    zomgClass = " zomgboard";
   }
 
   return (

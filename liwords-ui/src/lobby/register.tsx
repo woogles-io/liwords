@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { TopBar } from '../navigation/topbar';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { TopBar } from "../navigation/topbar";
 import {
   Input,
   Form,
@@ -9,36 +9,36 @@ import {
   Checkbox,
   Select,
   AutoComplete,
-} from 'antd';
-import { Rule } from 'antd/lib/form';
-import './accountForms.scss';
-import woogles from '../assets/woogles.png';
-import { useLoginStateStoreContext } from '../store/store';
-import { LoginModal } from './login';
-import { countryArray } from '../settings/country_map';
-import { connectErrorMessage, useClient } from '../utils/hooks/connect';
+} from "antd";
+import { Rule } from "antd/lib/form";
+import "./accountForms.scss";
+import woogles from "../assets/woogles.png";
+import { useLoginStateStoreContext } from "../store/store";
+import { LoginModal } from "./login";
+import { countryArray } from "../settings/country_map";
+import { connectErrorMessage, useClient } from "../utils/hooks/connect";
 import {
   AuthenticationService,
   RegistrationService,
-} from '../gen/api/proto/user_service/user_service_pb';
+} from "../gen/api/proto/user_service/user_service_pb";
 
 const allMonthNames = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 const allMonthLowercaseNames = allMonthNames.map((name) => name.toLowerCase());
 const allMonthNumbers = allMonthNames.map((_, idx) =>
-  String(idx + 1).padStart(2, '0')
+  String(idx + 1).padStart(2, "0"),
 );
 const allMonthOptions = allMonthNames.map((name, idx) => ({
   value: name,
@@ -46,7 +46,7 @@ const allMonthOptions = allMonthNames.map((name, idx) => ({
 }));
 
 const allDateOptions = Array.from(new Array(31), (_, x) => ({
-  value: String(x + 1).padStart(2, '0'),
+  value: String(x + 1).padStart(2, "0"),
 }));
 
 // 2006-01-02 (hi Golang), 2012-01-02, 2006-10-02, 2006-01-09 are Mondays.
@@ -78,10 +78,10 @@ const useBirthBox = (
   deduceSelection: (s: string) => number | undefined,
   formatSelection: (n: number) => string,
   filterOptions: (s: string) => Array<Option>,
-  placeholder: string
+  placeholder: string,
 ) => {
   const [selection, setSelection] = useState<number | undefined>(undefined);
-  const [searched, setSearched] = useState('');
+  const [searched, setSearched] = useState("");
   const [shownOptions, setShownOptions] = useState(allOptions);
   useEffect(() => {
     setShownOptions(allOptions);
@@ -95,14 +95,14 @@ const useBirthBox = (
       }
       setShownOptions(allOptions);
     },
-    [deduceSelection, formatSelection, allOptions]
+    [deduceSelection, formatSelection, allOptions],
   );
   const handleSearch = useCallback(
     (s: string) => {
       setSearched(s);
       setShownOptions(filterOptions(s));
     },
-    [filterOptions]
+    [filterOptions],
   );
   const [reformatSelection, setReformatSelection] = useState<boolean>(false);
   const handleDropdownVisibleChange = useCallback((open: boolean) => {
@@ -140,22 +140,22 @@ const useBirthBox = (
 
 const usernameValidator = async (rule: Rule, value: string) => {
   if (!value) {
-    throw new Error('Please input your username');
+    throw new Error("Please input your username");
   }
   if (value.length < 3) {
-    throw new Error('Min username length is 3');
+    throw new Error("Min username length is 3");
   }
   if (value.length > 20) {
-    throw new Error('Max username length is 20');
+    throw new Error("Max username length is 20");
   }
   if (!/^[0-9a-zA-Z\-_.]+$/.test(value)) {
-    throw new Error('Valid characters are A-Z a-z 0-9 . _ -');
+    throw new Error("Valid characters are A-Z a-z 0-9 . _ -");
   }
   if (!/^[0-9a-zA-Z]/.test(value)) {
-    throw new Error('Valid starting characters are A-Z a-z 0-9');
+    throw new Error("Valid starting characters are A-Z a-z 0-9");
   }
   if (!/[0-9a-zA-Z]$/.test(value)) {
-    throw new Error('Valid ending characters are A-Z a-z 0-9');
+    throw new Error("Valid ending characters are A-Z a-z 0-9");
   }
 };
 
@@ -181,12 +181,12 @@ const birthDateValidator = async (rule: Rule, value: string) => {
     }
   }
   if (!valid) {
-    throw new Error('Please input your birth date');
+    throw new Error("Please input your birth date");
   }
 };
 
 export const Register = () => {
-  const [err, setErr] = useState('');
+  const [err, setErr] = useState("");
   const [signedUp, setSignedUp] = useState(false);
 
   const [loginModalVisible, setLoginModalVisible] = useState(false);
@@ -196,7 +196,7 @@ export const Register = () => {
       evt.preventDefault();
       setLoginModalVisible(true);
     },
-    []
+    [],
   );
   const authClient = useClient(AuthenticationService);
   const registrationClient = useClient(RegistrationService);
@@ -228,7 +228,7 @@ export const Register = () => {
   const loggedIn = signedUp || loginState.loggedIn;
   useEffect(() => {
     if (loggedIn) {
-      navigate('/', { replace: true });
+      navigate("/", { replace: true });
     }
   }, [navigate, loggedIn]);
 
@@ -251,7 +251,7 @@ export const Register = () => {
   const birthYearOptions = useMemo(() => {
     const a = [];
     for (let i = currentYear; i >= 1900; --i) {
-      a.push({ value: String(i).padStart(4, '0') });
+      a.push({ value: String(i).padStart(4, "0") });
     }
     return a;
   }, [currentYear]);
@@ -277,14 +277,14 @@ export const Register = () => {
         }
         return y == null ? undefined : +y.value;
       },
-      [birthYearOptions, currentYear]
+      [birthYearOptions, currentYear],
     ),
-    useCallback((n) => String(n).padStart(4, '0'), []),
+    useCallback((n) => String(n).padStart(4, "0"), []),
     useCallback(
       (s) => birthYearOptions.filter(({ value }) => value.includes(s)),
-      [birthYearOptions]
+      [birthYearOptions],
     ),
-    'Year'
+    "Year",
   );
 
   const [birthMonthBox, birthMonthSelected] = useBirthBox(
@@ -295,12 +295,12 @@ export const Register = () => {
         // allow month prefixes
         const lowerSearch = s.toLowerCase();
         const matchingMonths = allMonthLowercaseNames.filter(
-          (monthLowercaseName) => monthLowercaseName.startsWith(lowerSearch)
+          (monthLowercaseName) => monthLowercaseName.startsWith(lowerSearch),
         );
         if (matchingMonths.length === 1) {
           // only one match, it wins
           idx = allMonthLowercaseNames.findIndex((monthLowercaseName) =>
-            monthLowercaseName.startsWith(lowerSearch)
+            monthLowercaseName.startsWith(lowerSearch),
           );
         }
       }
@@ -317,7 +317,7 @@ export const Register = () => {
       if (n >= 1 && n <= allMonthNames.length) {
         return allMonthNames[n - 1];
       } else {
-        return String(n).padStart(2, '0');
+        return String(n).padStart(2, "0");
       }
     }, []),
     useCallback((s) => {
@@ -325,10 +325,10 @@ export const Register = () => {
       return allMonthOptions.filter(
         (_, idx) =>
           allMonthLowercaseNames[idx].includes(lowerSearch) ||
-          allMonthNumbers[idx].includes(lowerSearch)
+          allMonthNumbers[idx].includes(lowerSearch),
       );
     }, []),
-    'Month'
+    "Month",
   );
 
   const [birthDateBox, birthDateSelected] = useBirthBox(
@@ -342,12 +342,12 @@ export const Register = () => {
       }
       return idx < 0 ? undefined : idx + 1;
     }, []),
-    useCallback((n) => String(n).padStart(2, '0'), []),
+    useCallback((n) => String(n).padStart(2, "0"), []),
     useCallback(
       (s) => allDateOptions.filter(({ value }) => value.includes(s)),
-      []
+      [],
     ),
-    'Date'
+    "Date",
   );
 
   const localDateSequence = useMemo(() => determineLocalDateSequence(), []);
@@ -369,17 +369,17 @@ export const Register = () => {
       birthYearSelected != null &&
       birthMonthSelected != null &&
       birthDateSelected != null
-        ? `${String(birthYearSelected).padStart(4, '0')}-${String(
-            birthMonthSelected
-          ).padStart(2, '0')}-${String(birthDateSelected).padStart(2, '0')}`
-        : '';
-    const oldValue = form.getFieldValue('birthDate') ?? '';
+        ? `${String(birthYearSelected).padStart(4, "0")}-${String(
+            birthMonthSelected,
+          ).padStart(2, "0")}-${String(birthDateSelected).padStart(2, "0")}`
+        : "";
+    const oldValue = form.getFieldValue("birthDate") ?? "";
     if (oldValue !== birthDate) {
       form.setFieldsValue({ birthDate });
       if (birthDate) {
         // validate only when complete, don't nag "required" while filling in.
         // for example this would show an error when selecting 31 Feb.
-        form.validateFields(['birthDate']); // async
+        form.validateFields(["birthDate"]); // async
       }
     }
   }, [form, birthYearSelected, birthMonthSelected, birthDateSelected]);
@@ -408,8 +408,8 @@ export const Register = () => {
                   message: "We need your email. We won't spam you",
                 },
                 {
-                  type: 'email',
-                  message: 'This is not a valid email',
+                  type: "email",
+                  message: "This is not a valid email",
                 },
               ]}
             >
@@ -434,11 +434,11 @@ export const Register = () => {
               rules={[
                 {
                   required: true,
-                  message: 'Please input your password',
+                  message: "Please input your password",
                 },
                 {
                   min: 8,
-                  message: 'Password should be at least 8 characters',
+                  message: "Password should be at least 8 characters",
                 },
               ]}
             >
@@ -508,9 +508,9 @@ export const Register = () => {
                 rules={[
                   {
                     required: true,
-                    message: 'You must agree to this condition',
+                    message: "You must agree to this condition",
                     transform: (value) => value || undefined,
-                    type: 'boolean',
+                    type: "boolean",
                   },
                 ]}
                 valuePropName="checked"
@@ -519,7 +519,7 @@ export const Register = () => {
               >
                 <Checkbox>
                   <p className="no-cheat">
-                    I agree to the{' '}
+                    I agree to the{" "}
                     <Link target="_blank" to="/terms">
                       Woogles Terms of Service
                     </Link>
@@ -536,10 +536,10 @@ export const Register = () => {
               </Button>
             </Form.Item>
           </Form>
-          {err !== '' ? <Alert message={err} type="error" /> : null}
+          {err !== "" ? <Alert message={err} type="error" /> : null}
 
           <p>
-            Already have a Woogles account? No worries!{' '}
+            Already have a Woogles account? No worries!{" "}
             <Link to="/" onClick={handleShowLoginModal}>
               Log in here
             </Link>

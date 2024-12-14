@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from "react";
 
 import {
   Button,
@@ -10,28 +10,28 @@ import {
   message,
   Select,
   Switch,
-} from 'antd';
-import { Store } from 'antd/lib/form/interface';
-import { excludedLexica, LexiconFormItem } from '../shared/lexicon_display';
+} from "antd";
+import { Store } from "antd/lib/form/interface";
+import { excludedLexica, LexiconFormItem } from "../shared/lexicon_display";
 import {
   PuzzleBucket,
   PuzzleBucketSchema,
   PuzzleGenerationRequestSchema,
   PuzzleTag,
-} from '../gen/api/vendor/macondo/macondo_pb';
-import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+} from "../gen/api/vendor/macondo/macondo_pb";
+import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   APIPuzzleGenerationJobRequestSchema,
   PuzzleGenerationJobRequestSchema,
   PuzzleJobLog,
   PuzzleJobLogsRequestSchema,
-} from '../gen/api/proto/puzzle_service/puzzle_service_pb';
-import moment from 'moment';
-import { create, toJsonString } from '@bufbuild/protobuf';
-import { flashError, useClient } from '../utils/hooks/connect';
-import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
-import { timestampDate } from '@bufbuild/protobuf/wkt';
-import { enumToOptions } from '../utils/protobuf';
+} from "../gen/api/proto/puzzle_service/puzzle_service_pb";
+import moment from "moment";
+import { create, toJsonString } from "@bufbuild/protobuf";
+import { flashError, useClient } from "../utils/hooks/connect";
+import { PuzzleService } from "../gen/api/proto/puzzle_service/puzzle_service_pb";
+import { timestampDate } from "@bufbuild/protobuf/wkt";
+import { enumToOptions } from "../utils/protobuf";
 
 const layout = {
   labelCol: {
@@ -82,9 +82,9 @@ export const PuzzleGenerator = () => {
                         ? toJsonString(
                             PuzzleGenerationJobRequestSchema,
                             item.request,
-                            { prettySpaces: 2 }
+                            { prettySpaces: 2 },
                           )
-                        : ''}
+                        : ""}
                     </pre>
                   </div>
                 }
@@ -100,7 +100,7 @@ export const PuzzleGenerator = () => {
 
   const onFinish = useCallback(
     async (vals: Store) => {
-      console.log('vals', vals);
+      console.log("vals", vals);
 
       const apireq = create(APIPuzzleGenerationJobRequestSchema, {});
 
@@ -136,12 +136,12 @@ export const PuzzleGenerator = () => {
 
       try {
         await puzzleClient.startPuzzleGenJob(apireq);
-        message.info({ content: 'Submitted job' });
+        message.info({ content: "Submitted job" });
       } catch (e) {
         flashError(e);
       }
     },
-    [puzzleClient]
+    [puzzleClient],
   );
 
   const fetchRecentLogs = useCallback(async () => {
@@ -162,7 +162,7 @@ export const PuzzleGenerator = () => {
       enumToOptions(PuzzleTag).map((key) => {
         return <Select.Option key={key.value}>{key.label}</Select.Option>;
       }),
-    []
+    [],
   );
 
   return (
@@ -171,8 +171,8 @@ export const PuzzleGenerator = () => {
         // {...layout}
         onFinish={onFinish}
         initialValues={{
-          letterdist: 'english',
-          lexicon: 'CSW24',
+          letterdist: "english",
+          lexicon: "CSW24",
         }}
         layout="vertical"
       >
@@ -249,15 +249,15 @@ export const PuzzleGenerator = () => {
                 <>
                   <Form.Item
                     {...field}
-                    name={[field.name, 'size']}
+                    name={[field.name, "size"]}
                     label="Size"
-                    rules={[{ required: true, message: 'Missing bucket size' }]}
+                    rules={[{ required: true, message: "Missing bucket size" }]}
                   >
                     <InputNumber inputMode="numeric" />
                   </Form.Item>
                   <Form.Item
                     {...field}
-                    name={[field.name, 'includes']}
+                    name={[field.name, "includes"]}
                     label="Includes"
                   >
                     <Select mode="multiple" allowClear>
@@ -266,7 +266,7 @@ export const PuzzleGenerator = () => {
                   </Form.Item>
                   <Form.Item
                     {...field}
-                    name={[field.name, 'excludes']}
+                    name={[field.name, "excludes"]}
                     label="Excludes"
                   >
                     <Select mode="multiple" allowClear>

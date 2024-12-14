@@ -1,15 +1,15 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
+import React, { useCallback, useEffect, useState } from "react";
+import { MessageType } from "../gen/api/proto/ipc/ipc_pb";
 import {
   GameMetaEvent_EventType,
   GameMetaEventSchema,
-} from '../gen/api/proto/ipc/omgwords_pb';
-import { MetaStates } from '../store/meta_game_events';
-import { useGameMetaEventContext } from '../store/store';
-import { encodeToSocketFmt } from '../utils/protobuf';
-import { ShowNotif } from './show_notif';
-import { App } from 'antd';
-import { create, toBinary } from '@bufbuild/protobuf';
+} from "../gen/api/proto/ipc/omgwords_pb";
+import { MetaStates } from "../store/meta_game_events";
+import { useGameMetaEventContext } from "../store/store";
+import { encodeToSocketFmt } from "../utils/protobuf";
+import { ShowNotif } from "./show_notif";
+import { App } from "antd";
+import { create, toBinary } from "@bufbuild/protobuf";
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -21,7 +21,7 @@ export const MetaEventControl = (props: Props) => {
   const { sendSocketMsg, gameID } = props;
   // can't get this to work with types:
   const [activeNotif, setActiveNotif] = useState<React.ReactElement | null>(
-    null
+    null,
   );
 
   const denyAbort = useCallback(
@@ -33,11 +33,11 @@ export const MetaEventControl = (props: Props) => {
       sendSocketMsg(
         encodeToSocketFmt(
           MessageType.GAME_META_EVENT,
-          toBinary(GameMetaEventSchema, deny)
-        )
+          toBinary(GameMetaEventSchema, deny),
+        ),
       );
     },
-    [sendSocketMsg, gameID]
+    [sendSocketMsg, gameID],
   );
 
   const denyAdjudication = useCallback(
@@ -49,11 +49,11 @@ export const MetaEventControl = (props: Props) => {
       sendSocketMsg(
         encodeToSocketFmt(
           MessageType.GAME_META_EVENT,
-          toBinary(GameMetaEventSchema, deny)
-        )
+          toBinary(GameMetaEventSchema, deny),
+        ),
       );
     },
-    [sendSocketMsg, gameID]
+    [sendSocketMsg, gameID],
   );
 
   const acceptAbort = useCallback(
@@ -66,11 +66,11 @@ export const MetaEventControl = (props: Props) => {
       sendSocketMsg(
         encodeToSocketFmt(
           MessageType.GAME_META_EVENT,
-          toBinary(GameMetaEventSchema, accept)
-        )
+          toBinary(GameMetaEventSchema, accept),
+        ),
       );
     },
-    [sendSocketMsg, gameID]
+    [sendSocketMsg, gameID],
   );
 
   const eventTimeout = useCallback(
@@ -83,11 +83,11 @@ export const MetaEventControl = (props: Props) => {
       sendSocketMsg(
         encodeToSocketFmt(
           MessageType.GAME_META_EVENT,
-          toBinary(GameMetaEventSchema, to)
-        )
+          toBinary(GameMetaEventSchema, to),
+        ),
       );
     },
-    [sendSocketMsg, gameID]
+    [sendSocketMsg, gameID],
   );
 
   const { notification } = App.useApp();
@@ -117,7 +117,7 @@ export const MetaEventControl = (props: Props) => {
             countdownText="Automatic cancellation in "
             acceptText=""
             declineText="Keep playing"
-          />
+          />,
         );
         break;
 
@@ -139,7 +139,7 @@ export const MetaEventControl = (props: Props) => {
             countdownText="Automatic cancellation in "
             acceptText="Yes, cancel"
             declineText="Keep playing"
-          />
+          />,
         );
         break;
 
@@ -159,7 +159,7 @@ export const MetaEventControl = (props: Props) => {
             countdownText="Automatic forfeit in "
             acceptText=""
             declineText="Keep playing"
-          />
+          />,
         );
 
         break;
@@ -181,7 +181,7 @@ export const MetaEventControl = (props: Props) => {
             countdownText="Automatic forfeit in "
             acceptText=""
             declineText="Keep playing"
-          />
+          />,
         );
 
         break;

@@ -1,6 +1,6 @@
-import React from 'react';
-import { Tag } from 'antd';
-import { ratingToColor } from '../store/constants';
+import React from "react";
+import { Tag } from "antd";
+import { ratingToColor } from "../store/constants";
 
 type Props = {
   rating: string;

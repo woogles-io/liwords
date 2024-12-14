@@ -1,22 +1,22 @@
-import { useEffect } from 'react';
-import { Action, ActionType } from '../actions/actions';
+import { useEffect } from "react";
+import { Action, ActionType } from "../actions/actions";
 import {
   GetTournamentMetadataRequestSchema,
   GetTournamentRequestSchema,
   TType,
-} from '../gen/api/proto/tournament_service/tournament_service_pb';
-import { LoginState } from '../store/login_state';
-import { message } from 'antd';
-import { useClient } from '../utils/hooks/connect';
-import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_pb';
-import { create } from '@bufbuild/protobuf';
+} from "../gen/api/proto/tournament_service/tournament_service_pb";
+import { LoginState } from "../store/login_state";
+import { message } from "antd";
+import { useClient } from "../utils/hooks/connect";
+import { TournamentService } from "../gen/api/proto/tournament_service/tournament_service_pb";
+import { create } from "@bufbuild/protobuf";
 
 export const useTourneyMetadata = (
   path: string,
   tournamentID: string,
   dispatchTournamentContext: (action: Action) => void,
   loginState: LoginState,
-  setBadTournament: React.Dispatch<React.SetStateAction<boolean>> | undefined
+  setBadTournament: React.Dispatch<React.SetStateAction<boolean>> | undefined,
 ) => {
   const tournamentClient = useClient(TournamentService);
   useEffect(() => {
@@ -31,7 +31,7 @@ export const useTourneyMetadata = (
       loginState: LoginState,
       setBadTournament:
         | React.Dispatch<React.SetStateAction<boolean>>
-        | undefined
+        | undefined,
     ) => {
       if (!path && !tournamentID) {
         return;
@@ -45,7 +45,7 @@ export const useTourneyMetadata = (
 
       try {
         const meta = await tournamentClient.getTournamentMetadata(tmreq);
-        console.log('got meta', meta);
+        console.log("got meta", meta);
         dispatchTournamentContext({
           actionType: ActionType.SetTourneyMetadata,
           payload: {
@@ -74,7 +74,7 @@ export const useTourneyMetadata = (
         });
       } catch (err) {
         message.error({
-          content: 'Error fetching tournament data',
+          content: "Error fetching tournament data",
           duration: 5,
         });
         if (setBadTournament) {
@@ -88,7 +88,7 @@ export const useTourneyMetadata = (
       tournamentID,
       dispatchTournamentContext,
       loginState,
-      setBadTournament
+      setBadTournament,
     );
   }, [
     dispatchTournamentContext,

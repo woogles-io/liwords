@@ -1,15 +1,15 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Card, Button } from 'antd';
-import { Modal } from '../utils/focus_modal';
-import { SoughtGames } from './sought_games';
-import { ActiveGames } from './active_games';
-import { SeekForm } from './seek_form';
-import { useContextMatchContext, useLobbyStoreContext } from '../store/store';
-import { ActiveGame, SoughtGame } from '../store/reducers/lobby_reducer';
-import { ActionType } from '../actions/actions';
-import './seek_form.scss';
-import '../shared/gameLists.scss';
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Card, Button } from "antd";
+import { Modal } from "../utils/focus_modal";
+import { SoughtGames } from "./sought_games";
+import { ActiveGames } from "./active_games";
+import { SeekForm } from "./seek_form";
+import { useContextMatchContext, useLobbyStoreContext } from "../store/store";
+import { ActiveGame, SoughtGame } from "../store/reducers/lobby_reducer";
+import { ActionType } from "../actions/actions";
+import "./seek_form.scss";
+import "../shared/gameLists.scss";
 
 type Props = {
   loggedIn: boolean;
@@ -41,7 +41,7 @@ export const GameLists = React.memo((props: Props) => {
 
   const { addHandleContextMatch, removeHandleContextMatch } =
     useContextMatchContext();
-  const friendRef = useRef('');
+  const friendRef = useRef("");
   const handleContextMatch = useCallback((s: string) => {
     friendRef.current = s;
     setMatchModalVisible(true);
@@ -68,42 +68,42 @@ export const GameLists = React.memo((props: Props) => {
       evt.preventDefault();
       setSimultaneousModeEnabled(true);
     },
-    []
+    [],
   );
   const myCurrentGames = React.useMemo(
     () =>
       lobbyContext.activeGames.filter((ag) =>
-        ag.players.some((p) => p.displayName === username)
+        ag.players.some((p) => p.displayName === username),
       ),
-    [lobbyContext.activeGames, username]
+    [lobbyContext.activeGames, username],
   );
   const simultaneousModeEffectivelyEnabled =
     simultaneousModeEnabled || myCurrentGames.length !== 1;
   const currentGame: ActiveGame | null = myCurrentGames[0] ?? null;
   const opponent = currentGame?.players.find(
-    (p) => p.displayName !== username
+    (p) => p.displayName !== username,
   )?.displayName;
 
   const enableVariants = React.useMemo(
-    () => localStorage.getItem('enableVariants') === 'true',
-    []
+    () => localStorage.getItem("enableVariants") === "true",
+    [],
   );
   const unsanitizedSoughtGames = lobbyContext.soughtGames;
   const sanitizedSoughtGames = React.useMemo(
     () =>
       (unsanitizedSoughtGames || []).filter((soughtGame) => {
-        if (!enableVariants && (soughtGame.variant || 'classic') !== 'classic')
+        if (!enableVariants && (soughtGame.variant || "classic") !== "classic")
           return false;
         return true;
       }),
 
-    [enableVariants, unsanitizedSoughtGames]
+    [enableVariants, unsanitizedSoughtGames],
   );
 
-  const matchButtonText = 'Match a friend';
+  const matchButtonText = "Match a friend";
 
   const renderGames = () => {
-    if (loggedIn && userID && username && selectedGameTab === 'PLAY') {
+    if (loggedIn && userID && username && selectedGameTab === "PLAY") {
       return (
         <>
           {simultaneousModeEffectivelyEnabled && myCurrentGames.length > 0 && (
@@ -154,9 +154,9 @@ export const GameLists = React.memo((props: Props) => {
     );
   };
   const resetLobbyFilter = (gameLexicon: string) => {
-    const lobbyFilter = localStorage.getItem('lobbyFilterByLexicon');
+    const lobbyFilter = localStorage.getItem("lobbyFilterByLexicon");
     if (lobbyFilter && lobbyFilter !== gameLexicon) {
-      localStorage.removeItem('lobbyFilterByLexicon');
+      localStorage.removeItem("lobbyFilterByLexicon");
       dispatchLobbyContext({
         actionType: ActionType.setLobbyFilterByLexicon,
         payload: null,
@@ -309,11 +309,11 @@ export const GameLists = React.memo((props: Props) => {
           className="resume"
           onClick={() => {
             navigate(`/game/${encodeURIComponent(currentGame.gameID)}`);
-            console.log('redirecting to', currentGame.gameID);
+            console.log("redirecting to", currentGame.gameID);
           }}
         >
           Resume your game with {opponent}
-        </div>
+        </div>,
       );
     } else {
       actions.push(
@@ -324,7 +324,7 @@ export const GameLists = React.memo((props: Props) => {
           }}
         >
           Play a computer
-        </div>
+        </div>,
       );
       actions.push(
         <div
@@ -334,7 +334,7 @@ export const GameLists = React.memo((props: Props) => {
           }}
         >
           {matchButtonText}
-        </div>
+        </div>,
       );
 
       actions.push(
@@ -345,7 +345,7 @@ export const GameLists = React.memo((props: Props) => {
           }}
         >
           Create a game
-        </div>
+        </div>,
       );
     }
   }
@@ -356,19 +356,19 @@ export const GameLists = React.memo((props: Props) => {
           {loggedIn ? (
             <div
               onClick={() => {
-                setSelectedGameTab('PLAY');
+                setSelectedGameTab("PLAY");
               }}
-              className={selectedGameTab === 'PLAY' ? 'tab active' : 'tab'}
+              className={selectedGameTab === "PLAY" ? "tab active" : "tab"}
             >
               Play
             </div>
           ) : null}
           <div
             onClick={() => {
-              setSelectedGameTab('WATCH');
+              setSelectedGameTab("WATCH");
             }}
             className={
-              selectedGameTab === 'WATCH' || !loggedIn ? 'tab active' : 'tab'
+              selectedGameTab === "WATCH" || !loggedIn ? "tab active" : "tab"
             }
           >
             Watch

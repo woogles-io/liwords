@@ -1,7 +1,7 @@
-import React from 'react';
-import { Alert, Button, Checkbox, Col, Form, Input, Row } from 'antd';
-import { PlayerAvatar } from '../shared/player_avatar';
-import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
+import React from "react";
+import { Alert, Button, Checkbox, Col, Form, Input, Row } from "antd";
+import { PlayerAvatar } from "../shared/player_avatar";
+import { PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
 
 type Props = {
   cancel: () => void;
@@ -39,7 +39,7 @@ export const CloseAccount = React.memo((props: Props) => {
           rules={[
             {
               required: true,
-              message: 'Confirm your identity by entering your password',
+              message: "Confirm your identity by entering your password",
             },
           ]}
         >
@@ -51,9 +51,9 @@ export const CloseAccount = React.memo((props: Props) => {
               {
                 required: true,
                 message:
-                  'You must acknowledge the finality of closing your account',
+                  "You must acknowledge the finality of closing your account",
                 transform: (value) => value || undefined,
-                type: 'boolean',
+                type: "boolean",
               },
             ]}
             valuePropName="checked"
@@ -87,7 +87,7 @@ export const CloseAccount = React.memo((props: Props) => {
           </Col>
         </Row>
       </Form>
-      {props.err !== '' ? <Alert message={props.err} type="error" /> : null}
+      {props.err !== "" ? <Alert message={props.err} type="error" /> : null}
     </div>
   );
 });

@@ -1,46 +1,46 @@
-import { calculateTemporaryScore, borders, touchesBoardTile } from './scoring';
-import { EphemeralTile } from './common';
-import { Board } from './board';
+import { calculateTemporaryScore, borders, touchesBoardTile } from "./scoring";
+import { EphemeralTile } from "./common";
+import { Board } from "./board";
 import {
   StandardEnglishAlphabet,
   englishLetterToML,
-} from '../../constants/alphabets';
+} from "../../constants/alphabets";
 
 export const someTileLayout = [
-  '         RADIOS',
-  '         E     ',
-  '      R SI     ',
-  '      U E      ',
-  '    ZINGARO    ',
-  '    o   T      ',
-  '    N          ',
-  '   WASTE       ',
-  '    T          ',
-  '    I          ',
-  '    O          ',
-  '    N          ',
-  '               ',
-  '               ',
-  '               ',
+  "         RADIOS",
+  "         E     ",
+  "      R SI     ",
+  "      U E      ",
+  "    ZINGARO    ",
+  "    o   T      ",
+  "    N          ",
+  "   WASTE       ",
+  "    T          ",
+  "    I          ",
+  "    O          ",
+  "    N          ",
+  "               ",
+  "               ",
+  "               ",
 ];
 
-it('tests borders', () => {
+it("tests borders", () => {
   // Check the R SI (row 3) scenario
   // The actual letters don't matter here.
   const t1 = {
     row: 2,
     col: 5,
-    letter: englishLetterToML('R'),
+    letter: englishLetterToML("R"),
   };
   const t2 = {
     row: 2,
     col: 7,
-    letter: englishLetterToML('F'),
+    letter: englishLetterToML("F"),
   };
   const t3 = {
     row: 2,
     col: 10,
-    letter: englishLetterToML('U'),
+    letter: englishLetterToML("U"),
   };
   const board = new Board();
   board.setTileLayout(someTileLayout);
@@ -50,26 +50,26 @@ it('tests borders', () => {
   expect(borders(t1, t3, board)).toBeFalsy();
 });
 
-it('testTouches', () => {
+it("testTouches", () => {
   const t1 = {
     row: 2,
     col: 5,
-    letter: englishLetterToML('R'),
+    letter: englishLetterToML("R"),
   };
   const t2 = {
     row: 2,
     col: 4,
-    letter: englishLetterToML('T'),
+    letter: englishLetterToML("T"),
   };
   const t3 = {
     row: 0,
     col: 14,
-    letter: englishLetterToML('S'),
+    letter: englishLetterToML("S"),
   };
   const t4 = {
     row: 5,
     col: 11,
-    letter: englishLetterToML('Q'),
+    letter: englishLetterToML("Q"),
   };
 
   const board = new Board();
@@ -81,179 +81,179 @@ it('testTouches', () => {
   expect(touchesBoardTile(t4, board)).toBeFalsy();
 });
 
-it('tests scores', () => {
+it("tests scores", () => {
   const placedTiles = new Set<EphemeralTile>();
   placedTiles.add({
     row: 9,
     col: 1,
-    letter: englishLetterToML('Q'),
+    letter: englishLetterToML("Q"),
   });
   placedTiles.add({
     row: 9,
     col: 2,
-    letter: englishLetterToML('u'),
+    letter: englishLetterToML("u"),
   });
   placedTiles.add({
     row: 9,
     col: 3,
-    letter: englishLetterToML('A'),
+    letter: englishLetterToML("A"),
   });
   const board = new Board();
   board.setTileLayout(someTileLayout);
 
   expect(
-    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet)
+    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet),
   ).toEqual(32);
   placedTiles.add({
     row: 9,
     col: 5,
-    letter: englishLetterToML('L'),
+    letter: englishLetterToML("L"),
   });
   expect(
-    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet)
+    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet),
   ).toEqual(35);
 });
 
-it('tests more scores', () => {
+it("tests more scores", () => {
   const placedTiles = new Set<EphemeralTile>();
   placedTiles.add({
     row: 10,
     col: 2,
-    letter: englishLetterToML('Q'),
+    letter: englishLetterToML("Q"),
   });
   placedTiles.add({
     row: 10,
     col: 3,
-    letter: englishLetterToML('u'),
+    letter: englishLetterToML("u"),
   });
   placedTiles.add({
     row: 10,
     col: 5,
-    letter: englishLetterToML('D'),
+    letter: englishLetterToML("D"),
   });
 
   const board = new Board();
   board.setTileLayout(someTileLayout);
 
   expect(
-    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet)
+    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet),
   ).toEqual(13);
 });
 
 const oxyTilesLayout = [
-  ' PACIFYING     ',
-  ' IS            ',
-  'YE             ',
-  ' REQUALIFIED   ',
-  'H L            ',
-  'EDS            ',
-  'NO   T         ',
-  ' RAINWASHING   ',
-  'UM   O         ',
-  'T  E O         ',
-  ' WAKEnERS      ',
-  ' OnETIME       ',
-  'OOT  E B       ',
-  'N      U       ',
-  ' JACULATING    ',
+  " PACIFYING     ",
+  " IS            ",
+  "YE             ",
+  " REQUALIFIED   ",
+  "H L            ",
+  "EDS            ",
+  "NO   T         ",
+  " RAINWASHING   ",
+  "UM   O         ",
+  "T  E O         ",
+  " WAKEnERS      ",
+  " OnETIME       ",
+  "OOT  E B       ",
+  "N      U       ",
+  " JACULATING    ",
 ];
 
-it('tests more complex scores', () => {
+it("tests more complex scores", () => {
   const placedTiles = new Set<EphemeralTile>();
   placedTiles.add({
     row: 0,
     col: 0,
-    letter: englishLetterToML('O'),
+    letter: englishLetterToML("O"),
   });
   placedTiles.add({
     row: 1,
     col: 0,
-    letter: englishLetterToML('X'),
+    letter: englishLetterToML("X"),
   });
   placedTiles.add({
     row: 3,
     col: 0,
-    letter: englishLetterToML('P'),
+    letter: englishLetterToML("P"),
   });
   placedTiles.add({
     row: 7,
     col: 0,
-    letter: englishLetterToML('B'),
+    letter: englishLetterToML("B"),
   });
   placedTiles.add({
     row: 10,
     col: 0,
-    letter: englishLetterToML('A'),
+    letter: englishLetterToML("A"),
   });
   placedTiles.add({
     row: 11,
     col: 0,
-    letter: englishLetterToML('Z'),
+    letter: englishLetterToML("Z"),
   });
   placedTiles.add({
     row: 14,
     col: 0,
-    letter: englishLetterToML('E'),
+    letter: englishLetterToML("E"),
   });
   const board = new Board();
   board.setTileLayout(oxyTilesLayout);
   expect(
-    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet)
+    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet),
   ).toEqual(1780);
 });
 
-it('tests opening score', () => {
+it("tests opening score", () => {
   const placedTiles = new Set<EphemeralTile>();
-  placedTiles.add({ row: 7, col: 7, letter: englishLetterToML('Q') });
-  placedTiles.add({ row: 7, col: 8, letter: englishLetterToML('I') });
+  placedTiles.add({ row: 7, col: 7, letter: englishLetterToML("Q") });
+  placedTiles.add({ row: 7, col: 8, letter: englishLetterToML("I") });
   const board = new Board();
   expect(
-    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet)
+    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet),
   ).toEqual(22);
 });
 
-it('tests scores vertical', () => {
+it("tests scores vertical", () => {
   const placedTiles = new Set<EphemeralTile>();
   placedTiles.add({
     row: 6,
     col: 7,
-    letter: englishLetterToML('M'),
+    letter: englishLetterToML("M"),
   });
   const board = new Board();
   board.setTileLayout(someTileLayout);
 
   expect(
-    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet)
+    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet),
   ).toEqual(4);
   placedTiles.add({
     row: 8,
     col: 7,
-    letter: englishLetterToML('L'),
+    letter: englishLetterToML("L"),
   });
   expect(
-    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet)
+    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet),
   ).toEqual(5);
 });
 
-it('tests scores horizontal', () => {
+it("tests scores horizontal", () => {
   const placedTiles = new Set<EphemeralTile>();
   placedTiles.add({
     row: 10,
     col: 3,
-    letter: englishLetterToML('M'),
+    letter: englishLetterToML("M"),
   });
   const board = new Board();
   board.setTileLayout(someTileLayout);
 
   expect(
-    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet)
+    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet),
   ).toEqual(4);
   placedTiles.add({
     row: 10,
     col: 5,
-    letter: englishLetterToML('L'),
+    letter: englishLetterToML("L"),
   });
   expect(
-    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet)
+    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet),
   ).toEqual(5);
 });

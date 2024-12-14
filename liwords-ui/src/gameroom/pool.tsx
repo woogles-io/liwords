@@ -1,10 +1,10 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Card, Dropdown } from 'antd';
-import { PoolFormatType, PoolFormats } from '../constants/pool_formats';
-import { singularCount } from '../utils/plural';
-import { Alphabet, machineLetterToRune } from '../constants/alphabets';
-import { Blank, MachineLetter, MachineWord } from '../utils/cwgame/common';
+import React from "react";
+import { Link } from "react-router-dom";
+import { Card, Dropdown } from "antd";
+import { PoolFormatType, PoolFormats } from "../constants/pool_formats";
+import { singularCount } from "../utils/plural";
+import { Alphabet, machineLetterToRune } from "../constants/alphabets";
+import { Blank, MachineLetter, MachineWord } from "../utils/cwgame/common";
 
 type poolType = { [ml: MachineLetter]: number };
 
@@ -21,7 +21,7 @@ function renderLetters(
   alphabet: Alphabet,
   possibleLetters: Array<MachineLetter>,
   sectionIndex: number,
-  maxConsecutive = 6
+  maxConsecutive = 6,
 ) {
   const output = [];
   for (
@@ -30,7 +30,7 @@ function renderLetters(
     possibility += 1
   ) {
     const letter = possibleLetters[possibility];
-    let letterGroup = '';
+    let letterGroup = "";
     if (pool[letter]) {
       const rune = machineLetterToRune(letter, alphabet, false, true);
       for (let i = 0; i < pool[letter]; i++) {
@@ -44,8 +44,8 @@ function renderLetters(
         <React.Fragment key={`lg-${letter}-${possibility}`}>
           <span className="letter-group" data-multichar={rune.length > 1}>
             {letterGroup.trim()}
-          </span>{' '}
-        </React.Fragment>
+          </span>{" "}
+        </React.Fragment>,
       );
     }
   }
@@ -59,7 +59,7 @@ function renderLetters(
 function getPoolCount(
   pool: poolType,
   alphabet: Alphabet,
-  filterfn: (a: Alphabet) => Array<MachineLetter>
+  filterfn: (a: Alphabet) => Array<MachineLetter>,
 ) {
   const letters = filterfn(alphabet);
   return letters.reduce((acc, cur) => {
@@ -78,8 +78,8 @@ type Props = {
 
 const Pool = React.memo((props: Props) => {
   const readHidePool = React.useCallback(
-    () => localStorage.getItem('hidePool') === 'true',
-    []
+    () => localStorage.getItem("hidePool") === "true",
+    [],
   );
   const [hidePool, setHidePool] = React.useState(readHidePool);
   React.useEffect(() => {
@@ -100,7 +100,7 @@ const Pool = React.memo((props: Props) => {
 
 const ActualPool = React.memo((props: Props & { hidePool: boolean }) => {
   const letterOrder = PoolFormats.find(
-    (f) => f.poolFormatType === props.poolFormat
+    (f) => f.poolFormatType === props.poolFormat,
   )?.format(props.alphabet) || [props.alphabet.letters.map((_, idx) => idx)];
   const pool = poolMinusRack(props.pool, props.currentRack);
   const letterSections = letterOrder.map((section, idx) => {
@@ -116,14 +116,14 @@ const ActualPool = React.memo((props: Props & { hidePool: boolean }) => {
       menu={{
         items: poolMenuItems,
         onClick: ({ key }) => {
-          localStorage?.setItem('poolFormat', key);
+          localStorage?.setItem("poolFormat", key);
           props.setPoolFormat(
             PoolFormats.find((p) => p.poolFormatType.toString() === key)
-              ?.poolFormatType || PoolFormatType.Alphabet
+              ?.poolFormatType || PoolFormatType.Alphabet,
           );
         },
       }}
-      trigger={['click']}
+      trigger={["click"]}
       placement="bottomRight"
       overlayClassName="format-dropdown"
     >
@@ -162,15 +162,15 @@ const ActualPool = React.memo((props: Props & { hidePool: boolean }) => {
               <div>
                 {singularCount(
                   getPoolCount(pool, props.alphabet, vowels),
-                  'vowel',
-                  'vowels'
+                  "vowel",
+                  "vowels",
                 )}
               </div>
               <div>
                 {singularCount(
                   getPoolCount(pool, props.alphabet, consonants),
-                  'consonant',
-                  'consonants'
+                  "consonant",
+                  "consonants",
                 )}
               </div>
             </div>
@@ -180,15 +180,15 @@ const ActualPool = React.memo((props: Props & { hidePool: boolean }) => {
     );
 
   const unseen = getPoolCount(pool, props.alphabet, (a: Alphabet) =>
-    a.letters.map((l, idx) => idx)
+    a.letters.map((l, idx) => idx),
   );
   const inbag = Math.max(unseen - 7, 0);
 
   let title: string;
   if (inbag === 0) {
-    title = `Opponent has ${singularCount(unseen, 'tile', 'tiles')}`;
+    title = `Opponent has ${singularCount(unseen, "tile", "tiles")}`;
   } else {
-    title = `${singularCount(inbag, 'tile', 'tiles')} in bag`;
+    title = `${singularCount(inbag, "tile", "tiles")} in bag`;
   }
 
   if (props.omitCard) {

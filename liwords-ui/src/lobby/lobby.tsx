@@ -1,16 +1,16 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from "react";
 
-import { TopBar } from '../navigation/topbar';
+import { TopBar } from "../navigation/topbar";
 
-import { SoughtGame } from '../store/reducers/lobby_reducer';
-import { GameLists } from './gameLists';
-import { Chat } from '../chat/chat';
-import { useLoginStateStoreContext } from '../store/store';
-import './lobby.scss';
-import { AnnouncementsWidget } from './announcements';
-import { sendAccept, sendSeek } from './sought_game_interactions';
-import { PuzzlePreview } from '../puzzles/puzzle_preview';
-import { ConfigProvider } from 'antd';
+import { SoughtGame } from "../store/reducers/lobby_reducer";
+import { GameLists } from "./gameLists";
+import { Chat } from "../chat/chat";
+import { useLoginStateStoreContext } from "../store/store";
+import "./lobby.scss";
+import { AnnouncementsWidget } from "./announcements";
+import { sendAccept, sendSeek } from "./sought_game_interactions";
+import { PuzzlePreview } from "../puzzles/puzzle_preview";
+import { ConfigProvider } from "antd";
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -25,25 +25,25 @@ export const Lobby = (props: Props) => {
   const { loggedIn, username, userID } = loginState;
 
   const [selectedGameTab, setSelectedGameTab] = useState(
-    loggedIn ? 'PLAY' : 'WATCH'
+    loggedIn ? "PLAY" : "WATCH",
   );
 
   useEffect(() => {
-    setSelectedGameTab(loggedIn ? 'PLAY' : 'WATCH');
+    setSelectedGameTab(loggedIn ? "PLAY" : "WATCH");
   }, [loggedIn]);
 
   const handleNewGame = useCallback(
     (seekID: string) => {
       sendAccept(seekID, sendSocketMsg);
     },
-    [sendSocketMsg]
+    [sendSocketMsg],
   );
   const onSeekSubmit = useCallback(
     (g: SoughtGame) => {
-      console.log('sought game', g);
+      console.log("sought game", g);
       sendSeek(g, sendSocketMsg);
     },
-    [sendSocketMsg]
+    [sendSocketMsg],
   );
 
   return (

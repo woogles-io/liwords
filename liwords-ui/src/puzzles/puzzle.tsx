@@ -1,14 +1,14 @@
-import { HomeOutlined } from '@ant-design/icons';
-import { Card, Form, Modal, Select } from 'antd';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Chat } from '../chat/chat';
+import { HomeOutlined } from "@ant-design/icons";
+import { Card, Form, Modal, Select } from "antd";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { Chat } from "../chat/chat";
 import {
   alphabetFromName,
   machineWordToRunes,
   runesToMachineWord,
-} from '../constants/alphabets';
-import { TopBar } from '../navigation/topbar';
+} from "../constants/alphabets";
+import { TopBar } from "../navigation/topbar";
 import {
   useExaminableGameContextStoreContext,
   useExamineStoreContext,
@@ -16,27 +16,27 @@ import {
   useLoginStateStoreContext,
   // usePoolFormatStoreContext,
   useTentativeTileContext,
-} from '../store/store';
-import { BoardPanel } from '../gameroom/board_panel';
-import { calculatePuzzleScore, renderStars } from './puzzle_info';
+} from "../store/store";
+import { BoardPanel } from "../gameroom/board_panel";
+import { calculatePuzzleScore, renderStars } from "./puzzle_info";
 // import Pool from '../gameroom/pool';
-import './puzzles.scss';
-import { PuzzleInfo as PuzzleInfoWidget } from './puzzle_info';
-import { ActionType } from '../actions/actions';
+import "./puzzles.scss";
+import { PuzzleInfo as PuzzleInfoWidget } from "./puzzle_info";
+import { ActionType } from "../actions/actions";
 import {
   PuzzleStatus,
   NextClosestRatingPuzzleIdRequestSchema,
   StartPuzzleIdRequestSchema,
   SubmissionRequestSchema,
   PuzzleRequestSchema,
-} from '../gen/api/proto/puzzle_service/puzzle_service_pb';
-import { sortTiles } from '../store/constants';
-import { Notepad, NotepadContextProvider } from '../gameroom/notepad';
+} from "../gen/api/proto/puzzle_service/puzzle_service_pb";
+import { sortTiles } from "../store/constants";
+import { Notepad, NotepadContextProvider } from "../gameroom/notepad";
 import {
   Analyzer,
   AnalyzerContextProvider,
   usePlaceMoveCallback,
-} from '../gameroom/analyzer';
+} from "../gameroom/analyzer";
 // Put the player cards back when we have strategy puzzles.
 // import { StaticPlayerCards } from './static_player_cards';
 
@@ -46,33 +46,33 @@ import {
   GameHistory,
   GameEvent_Direction,
   GameEvent_Type,
-} from '../gen/api/vendor/macondo/macondo_pb';
-import { MatchLexiconDisplay, puzzleLexica } from '../shared/lexicon_display';
-import { Store } from 'antd/lib/form/interface';
+} from "../gen/api/vendor/macondo/macondo_pb";
+import { MatchLexiconDisplay, puzzleLexica } from "../shared/lexicon_display";
+import { Store } from "antd/lib/form/interface";
 
 import {
   ClientGameplayEvent,
   ClientGameplayEvent_EventType,
   RatingMode,
-} from '../gen/api/proto/ipc/omgwords_pb';
-import { computeLeaveWithGaps } from '../utils/cwgame/game_event';
-import { EphemeralTile, MachineLetter } from '../utils/cwgame/common';
-import { useFirefoxPatch } from '../utils/hooks/firefox';
-import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
-import { BoopSounds } from '../sound/boop';
-import { GameInfoRequestSchema } from '../gen/api/proto/game_service/game_service_pb';
-import { isLegalPlay } from '../utils/cwgame/scoring';
-import { singularCount } from '../utils/plural';
-import { getWordsFormed } from '../utils/cwgame/tile_placement';
-import { LearnContextProvider } from '../learn/learn_overlay';
-import { PuzzleShareButton } from './puzzle_share';
-import { RatingsCard } from './ratings';
-import { flashError, useClient } from '../utils/hooks/connect';
-import { WordService } from '../gen/api/proto/word_service/word_service_pb';
-import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
-import { GameMetadataService } from '../gen/api/proto/game_service/game_service_pb';
-import { create } from '@bufbuild/protobuf';
-import { timestampDate } from '@bufbuild/protobuf/wkt';
+} from "../gen/api/proto/ipc/omgwords_pb";
+import { computeLeaveWithGaps } from "../utils/cwgame/game_event";
+import { EphemeralTile, MachineLetter } from "../utils/cwgame/common";
+import { useFirefoxPatch } from "../utils/hooks/firefox";
+import { useDefinitionAndPhonyChecker } from "../utils/hooks/definitions";
+import { BoopSounds } from "../sound/boop";
+import { GameInfoRequestSchema } from "../gen/api/proto/game_service/game_service_pb";
+import { isLegalPlay } from "../utils/cwgame/scoring";
+import { singularCount } from "../utils/plural";
+import { getWordsFormed } from "../utils/cwgame/tile_placement";
+import { LearnContextProvider } from "../learn/learn_overlay";
+import { PuzzleShareButton } from "./puzzle_share";
+import { RatingsCard } from "./ratings";
+import { flashError, useClient } from "../utils/hooks/connect";
+import { WordService } from "../gen/api/proto/word_service/word_service_pb";
+import { PuzzleService } from "../gen/api/proto/puzzle_service/puzzle_service_pb";
+import { GameMetadataService } from "../gen/api/proto/game_service/game_service_pb";
+import { create } from "@bufbuild/protobuf";
+import { timestampDate } from "@bufbuild/protobuf/wkt";
 
 const doNothing = () => {};
 
@@ -111,8 +111,8 @@ type PuzzleInfo = {
 const defaultPuzzleInfo = {
   attempts: 0,
   dateSolved: undefined,
-  lexicon: '',
-  variantName: '',
+  lexicon: "",
+  variantName: "",
   solved: PuzzleStatus.UNANSWERED,
 };
 
@@ -123,7 +123,7 @@ export const SinglePuzzle = (props: Props) => {
     number | undefined
   >(undefined);
   const [userLexicon, setUserLexicon] = useState<string | undefined>(
-    localStorage?.getItem('puzzleLexicon') || undefined
+    localStorage?.getItem("puzzleLexicon") || undefined,
   );
   const [pendingSolution, setPendingSolution] = useState(false);
   const [gameHistory, setGameHistory] = useState<GameHistory | null>(null);
@@ -181,7 +181,7 @@ export const SinglePuzzle = (props: Props) => {
   }, [examinableGameContext.alphabet, examinableGameContext.players]);
   const userIDOnTurn = useMemo(
     () => examinableGameContext.players.find((p) => p.onturn)?.userID,
-    [examinableGameContext]
+    [examinableGameContext],
   );
   // Play sound here.
 
@@ -218,7 +218,7 @@ export const SinglePuzzle = (props: Props) => {
         flashError(err);
       }
     },
-    [userLexicon, navigate, puzzleClient]
+    [userLexicon, navigate, puzzleClient],
   );
 
   useEffect(() => {
@@ -236,9 +236,9 @@ export const SinglePuzzle = (props: Props) => {
   const placeGameEvt = useCallback(
     (evt: GameEvent) => {
       const m = {
-        jsonKey: '',
-        displayMove: '',
-        coordinates: '',
+        jsonKey: "",
+        displayMove: "",
+        coordinates: "",
         vertical: evt.direction === GameEvent_Direction.VERTICAL,
         col: evt.column,
         row: evt.row,
@@ -246,21 +246,21 @@ export const SinglePuzzle = (props: Props) => {
         equity: 0.0, // not shown yet
         tiles: runesToMachineWord(
           evt.playedTiles || evt.exchanged,
-          examinableGameContext.alphabet
+          examinableGameContext.alphabet,
         ),
         isExchange: evt.type === GameEvent_Type.EXCHANGE,
         leave: new Array<MachineLetter>(),
         leaveWithGaps: runesToMachineWord(
           computeLeaveWithGaps(
             evt.playedTiles || evt.exchanged,
-            machineWordToRunes(sortedRack, examinableGameContext.alphabet)
+            machineWordToRunes(sortedRack, examinableGameContext.alphabet),
           ),
-          examinableGameContext.alphabet
+          examinableGameContext.alphabet,
         ),
       };
       placeMove(m);
     },
-    [placeMove, sortedRack, examinableGameContext.alphabet]
+    [placeMove, sortedRack, examinableGameContext.alphabet],
   );
 
   const setGameInfo = useCallback(
@@ -274,7 +274,7 @@ export const SinglePuzzle = (props: Props) => {
             ...x,
             challengeRule: gameRequest.challengeRule,
             ratingMode:
-              gameRequest?.ratingMode === RatingMode.RATED ? 'Rated' : 'Casual',
+              gameRequest?.ratingMode === RatingMode.RATED ? "Rated" : "Casual",
             gameDate: resp.createdAt
               ? timestampDate(resp.createdAt)
               : new Date(),
@@ -290,7 +290,7 @@ export const SinglePuzzle = (props: Props) => {
         flashError(err);
       }
     },
-    [gameMetadataClient]
+    [gameMetadataClient],
   );
 
   const showSolution = useCallback(async () => {
@@ -300,17 +300,17 @@ export const SinglePuzzle = (props: Props) => {
     const req = create(SubmissionRequestSchema);
     req.showSolution = true;
     req.puzzleId = puzzleID;
-    BoopSounds.playSound('puzzleWrongSound');
+    BoopSounds.playSound("puzzleWrongSound");
     console.log(
-      'showing solution?',
+      "showing solution?",
       userIDOnTurn,
-      examinableGameContext.players
+      examinableGameContext.players,
     );
     try {
       const resp = await puzzleClient.submitAnswer(req);
       const answerResponse = resp.answer;
       if (!answerResponse) {
-        throw new Error('Did not have an answer!');
+        throw new Error("Did not have an answer!");
       }
       const solution = answerResponse.correctAnswer;
       setPuzzleInfo((x) => ({
@@ -348,7 +348,7 @@ export const SinglePuzzle = (props: Props) => {
         evt.type === ClientGameplayEvent_EventType.TILE_PLACEMENT &&
         !isLegalPlay(
           Array.from(placedTiles.values()),
-          examinableGameContext.board
+          examinableGameContext.board,
         )
       ) {
         return;
@@ -362,10 +362,10 @@ export const SinglePuzzle = (props: Props) => {
         const resp = await puzzleClient.submitAnswer(req);
         const answerResponse = resp.answer;
         if (!answerResponse) {
-          throw new Error('Did not have an answer!');
+          throw new Error("Did not have an answer!");
         }
         if (resp.userIsCorrect) {
-          BoopSounds.playSound('puzzleCorrectSound');
+          BoopSounds.playSound("puzzleCorrectSound");
           setGameInfo(answerResponse.gameId, answerResponse.turnNumber);
           setPuzzleInfo((x) => ({
             ...x,
@@ -384,7 +384,7 @@ export const SinglePuzzle = (props: Props) => {
           setShowResponseModalCorrect(true);
         } else {
           // Wrong answer
-          BoopSounds.playSound('puzzleWrongSound');
+          BoopSounds.playSound("puzzleWrongSound");
           setShowResponseModalWrong(true);
           setCheckWordsPending(true);
           setPuzzleInfo((x) => ({
@@ -412,7 +412,7 @@ export const SinglePuzzle = (props: Props) => {
       puzzleID,
       puzzleClient,
       setGameInfo,
-    ]
+    ],
   );
 
   useEffect(() => {
@@ -432,7 +432,7 @@ export const SinglePuzzle = (props: Props) => {
         }*/
         const gh = resp.history;
         if (gh === null || gh === undefined) {
-          throw new Error('Did not receive a valid puzzle position!');
+          throw new Error("Did not receive a valid puzzle position!");
         }
         dispatchGameContext({
           actionType: ActionType.SetupStaticPosition,
@@ -441,10 +441,10 @@ export const SinglePuzzle = (props: Props) => {
         setGameHistory(gh);
         const answerResponse = resp.answer;
         if (!answerResponse) {
-          throw new Error('Fetch puzzle returned a null response!');
+          throw new Error("Fetch puzzle returned a null response!");
         }
         if (answerResponse.status === PuzzleStatus.UNANSWERED) {
-          BoopSounds.playSound('puzzleStartSound');
+          BoopSounds.playSound("puzzleStartSound");
         }
         setPuzzleInfo({
           attempts: answerResponse.attempts,
@@ -472,7 +472,7 @@ export const SinglePuzzle = (props: Props) => {
     if (puzzleID) {
       dispatchGameContext({
         actionType: ActionType.ClearHistory,
-        payload: 'noclock',
+        payload: "noclock",
       });
 
       fetchPuzzleData();
@@ -520,7 +520,7 @@ export const SinglePuzzle = (props: Props) => {
           <Form
             name="chooseLexicon"
             onFinish={(val: Store) => {
-              localStorage?.setItem('puzzleLexicon', val.lexicon);
+              localStorage?.setItem("puzzleLexicon", val.lexicon);
               setUserLexicon(val.lexicon);
               if (puzzleID) {
                 //This loaded because user tried to go to next with no lexicon. Try again now.
@@ -560,7 +560,7 @@ export const SinglePuzzle = (props: Props) => {
       setPlacedTiles(new Set<EphemeralTile>());
       setPlacedTilesTempScore(undefined);
       setPhoniesPlayed([]);
-      document.getElementById('board-container')?.focus();
+      document.getElementById("board-container")?.focus();
     };
     return (
       <Modal
@@ -588,13 +588,13 @@ export const SinglePuzzle = (props: Props) => {
         ]}
       >
         <p>
-          Sorry, that’s not the correct solution. You have made{' '}
-          {singularCount(puzzleInfo.attempts, 'attempt', 'attempts')}.
+          Sorry, that’s not the correct solution. You have made{" "}
+          {singularCount(puzzleInfo.attempts, "attempt", "attempts")}.
         </p>
         {phoniesPlayed?.length > 0 && (
-          <p className={'invalid-plays'}>{`Invalid words played: ${phoniesPlayed
+          <p className={"invalid-plays"}>{`Invalid words played: ${phoniesPlayed
             .map((x) => `${x}*`)
-            .join(', ')}`}</p>
+            .join(", ")}`}</p>
         )}
         {!!puzzleInfo.puzzleRating && !!puzzleInfo.userRating && (
           <>
@@ -619,7 +619,7 @@ export const SinglePuzzle = (props: Props) => {
       const wordsFormed = getWordsFormed(
         examinableGameContext.board,
         placedTiles,
-        examinableGameContext.alphabet
+        examinableGameContext.alphabet,
       ).map((w) => w.toUpperCase());
       setCheckWordsPending(false);
       //Todo: Now run them by the endpoint
@@ -633,9 +633,9 @@ export const SinglePuzzle = (props: Props) => {
         });
         const wordsChecked = resp.results;
         const phonies = Object.keys(wordsChecked).filter(
-          (w) => !wordsChecked[w].v
+          (w) => !wordsChecked[w].v,
         );
-        console.log('Phonies played: ', phonies);
+        console.log("Phonies played: ", phonies);
         setPhoniesPlayed(phonies);
       })();
     }
@@ -650,17 +650,17 @@ export const SinglePuzzle = (props: Props) => {
 
   const responseModalCorrect = useMemo(() => {
     //TODO: different title for different scores
-    let correctTitle = 'Awesome!';
+    let correctTitle = "Awesome!";
     switch (puzzleInfo.attempts) {
       case 0:
-        correctTitle = 'Awesome!';
+        correctTitle = "Awesome!";
         break;
       case 1:
-        correctTitle = 'Great job!';
+        correctTitle = "Great job!";
         break;
       case 2:
       default:
-        correctTitle = 'Nicely done.';
+        correctTitle = "Nicely done.";
     }
     const stars = calculatePuzzleScore(true, puzzleInfo.attempts);
     return (
@@ -694,8 +694,8 @@ export const SinglePuzzle = (props: Props) => {
       >
         {renderStars(stars)}
         <p>
-          You solved the puzzle in{' '}
-          {singularCount(puzzleInfo.attempts, 'attempt', 'attempts')}.
+          You solved the puzzle in{" "}
+          {singularCount(puzzleInfo.attempts, "attempt", "attempts")}.
         </p>
         {!!puzzleInfo.puzzleRating && !!puzzleInfo.userRating && (
           <>
@@ -747,7 +747,7 @@ export const SinglePuzzle = (props: Props) => {
               board={examinableGameContext.board}
               currentRack={sortedRack}
               events={examinableGameContext.turns}
-              gameID={''} /* no game id for a puzzle */
+              gameID={""} /* no game id for a puzzle */
               sendSocketMsg={doNothing}
               sendGameplayEvent={allowAttempt ? attemptPuzzle : doNothing}
               gameDone={false}

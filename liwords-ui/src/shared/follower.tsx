@@ -1,10 +1,10 @@
 import {
   useFriendsStoreContext,
   useLoginStateStoreContext,
-} from '../store/store';
-import React, { forwardRef, useImperativeHandle } from 'react';
-import { flashError, useClient } from '../utils/hooks/connect';
-import { SocializeService } from '../gen/api/proto/user_service/user_service_pb';
+} from "../store/store";
+import React, { forwardRef, useImperativeHandle } from "react";
+import { flashError, useClient } from "../utils/hooks/connect";
+import { SocializeService } from "../gen/api/proto/user_service/user_service_pb";
 
 type FollowerProps = {
   className?: string;
@@ -23,14 +23,14 @@ export const TheFollower = forwardRef((props: FollowerProps, ref) => {
   const { userID } = loginState;
   const socializeClient = useClient(SocializeService);
 
-  let apiFunc: 'addFollow' | 'removeFollow';
+  let apiFunc: "addFollow" | "removeFollow";
   let friendText: string;
   if (friends[props.target]) {
-    apiFunc = 'removeFollow';
-    friendText = 'Remove from friends';
+    apiFunc = "removeFollow";
+    friendText = "Remove from friends";
   } else {
-    apiFunc = 'addFollow';
-    friendText = 'Add friend';
+    apiFunc = "addFollow";
+    friendText = "Add friend";
     // Add some confirmation.
   }
 
@@ -56,9 +56,9 @@ export const TheFollower = forwardRef((props: FollowerProps, ref) => {
   }
 
   const DynamicTagName = (props.tagName ||
-    'span') as keyof JSX.IntrinsicElements;
+    "span") as keyof JSX.IntrinsicElements;
   return (
-    <DynamicTagName className={props.className || ''}>
+    <DynamicTagName className={props.className || ""}>
       {friendText}
     </DynamicTagName>
   );

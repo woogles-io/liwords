@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 
 // Feature flag.
 const drawingCanBeEnabled =
-  localStorage?.getItem('enableScreenDrawing') === 'true';
+  localStorage?.getItem("enableScreenDrawing") === "true";
 
 export const makeDrawingHandlersSetterContext = () => {
   const keyDownHandlers = new Set<(evt: React.KeyboardEvent) => void>();
@@ -23,7 +23,7 @@ export const makeDrawingHandlersSetterContext = () => {
 
 // Just abusing this as a global variable.
 export const DrawingHandlersSetterContext = React.createContext(
-  makeDrawingHandlersSetterContext()
+  makeDrawingHandlersSetterContext(),
 );
 
 export const useDrawing = (dim: number) => {
@@ -61,35 +61,35 @@ export const useDrawing = (dim: number) => {
       boardEltRef.current = elt;
       resizeFunc();
     },
-    [resizeFunc]
+    [resizeFunc],
   );
   React.useEffect(() => {
     if (!isEnabled) return;
-    window.addEventListener('resize', resizeFunc);
-    return () => window.removeEventListener('resize', resizeFunc);
+    window.addEventListener("resize", resizeFunc);
+    return () => window.removeEventListener("resize", resizeFunc);
   }, [isEnabled, resizeFunc]);
   const getXY = React.useCallback(
     (evt: React.MouseEvent): { x: number; y: number } => {
       const x = Math.max(
         0,
-        Math.min(1, (evt.clientX - boardSize.left) / boardSize.width)
+        Math.min(1, (evt.clientX - boardSize.left) / boardSize.width),
       );
       const y = Math.max(
         0,
-        Math.min(1, (evt.clientY - boardSize.top) / boardSize.height)
+        Math.min(1, (evt.clientY - boardSize.top) / boardSize.height),
       );
       return { x, y };
     },
-    [boardSize]
+    [boardSize],
   );
   const scaledXYStr = React.useCallback(
     ({ x, y }: { x: number; y: number }) =>
       `${x * boardSize.width},${y * boardSize.height}`,
-    [boardSize.width, boardSize.height]
+    [boardSize.width, boardSize.height],
   );
 
-  const [penColor, setPenColor] = useState('red');
-  const [drawMode, setDrawMode] = useState('freehand');
+  const [penColor, setPenColor] = useState("red");
+  const [drawMode, setDrawMode] = useState("freehand");
   const [snapEnabled, setSnapEnabled] = useState(true);
   const boardResizedSinceLastPaintRef = React.useRef(true);
   const penRef = React.useRef<{ pen: string; mode: string; snap: boolean }>();
@@ -104,7 +104,7 @@ export const useDrawing = (dim: number) => {
     }>
   >([]);
   const [currentDrawing, setCurrentDrawing] = useState<JSX.Element | undefined>(
-    undefined
+    undefined,
   );
   const plannedRepaintRef = React.useRef<number>();
 
@@ -142,13 +142,13 @@ export const useDrawing = (dim: number) => {
           const dimXReciprocal = 1 / dimX;
           const dimYReciprocal = 1 / dimY;
           const [x1Orig, y1Orig, x2Orig, y2Orig] = [x1, y1, x2, y2];
-          if (stroke.mode === 'line' || stroke.mode === 'arrow') {
+          if (stroke.mode === "line" || stroke.mode === "arrow") {
             // snap to center of grid
             x1 = (Math.floor(x1 / dimXReciprocal) + 0.5) * dimXReciprocal;
             y1 = (Math.floor(y1 / dimYReciprocal) + 0.5) * dimYReciprocal;
             x2 = (Math.floor(x2 / dimXReciprocal) + 0.5) * dimXReciprocal;
             y2 = (Math.floor(y2 / dimYReciprocal) + 0.5) * dimYReciprocal;
-          } else if (stroke.mode === 'quadrangle' || stroke.mode === 'circle') {
+          } else if (stroke.mode === "quadrangle" || stroke.mode === "circle") {
             // snap to grid lines
             if (x1 > x2) {
               [x1, x2] = [x2, x1];
@@ -167,18 +167,18 @@ export const useDrawing = (dim: number) => {
           }
         }
         if (
-          stroke.mode === 'freehand'
+          stroke.mode === "freehand"
             ? stroke.points.length === 1
             : x1 === x2 && y1 === y2
         ) {
           // Draw a diamond to represent a single point.
-          path += 'm-1,0l1,1l1,-1l-1,-1l-1,1l1,1';
-        } else if (stroke.mode === 'line') {
+          path += "m-1,0l1,1l1,-1l-1,-1l-1,1l1,1";
+        } else if (stroke.mode === "line") {
           path = `M${scaledXYStr({ x: x1, y: y1 })}L${scaledXYStr({
             x: x2,
             y: y2,
           })}`;
-        } else if (stroke.mode === 'arrow') {
+        } else if (stroke.mode === "arrow") {
           // h12 = line length
           const h12 = Math.hypot(x2 - x1, y2 - y1);
           // h23 = arrow length before rotation
@@ -208,7 +208,7 @@ export const useDrawing = (dim: number) => {
             x: x2,
             y: y2,
           })}L${scaledXYStr({ x: x4, y: y4 })}`;
-        } else if (stroke.mode === 'quadrangle') {
+        } else if (stroke.mode === "quadrangle") {
           path = `M${scaledXYStr({ x: x1, y: y1 })}L${scaledXYStr({
             x: x1,
             y: y2,
@@ -216,7 +216,7 @@ export const useDrawing = (dim: number) => {
             x: x2,
             y: y1,
           })}Z`;
-        } else if (stroke.mode === 'circle') {
+        } else if (stroke.mode === "circle") {
           const cx = (x1 + x2) / 2;
           const cy = (y1 + y2) / 2;
           const rx = Math.abs(x2 - x1) / 2;
@@ -230,7 +230,7 @@ export const useDrawing = (dim: number) => {
           })},0,1,0,${scaledXYStr({ x: -2 * rx, y: 0 })}`;
         }
         stroke.elt =
-          stroke.pen === 'erase' ? (
+          stroke.pen === "erase" ? (
             <path key={i} d={path} fill="none" strokeWidth={5} stroke="black" />
           ) : (
             <path
@@ -251,7 +251,7 @@ export const useDrawing = (dim: number) => {
     for (let i = 0; i < strokesRef.current.length; ) {
       for (
         ;
-        i < strokesRef.current.length && strokesRef.current[i].pen !== 'erase';
+        i < strokesRef.current.length && strokesRef.current[i].pen !== "erase";
         ++i
       ) {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -259,7 +259,7 @@ export const useDrawing = (dim: number) => {
       }
       for (
         ;
-        i < strokesRef.current.length && strokesRef.current[i].pen === 'erase';
+        i < strokesRef.current.length && strokesRef.current[i].pen === "erase";
         ++i
       ) {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -277,7 +277,7 @@ export const useDrawing = (dim: number) => {
                 fill="white"
               />
               {toErase}
-            </mask>
+            </mask>,
           );
           toDraw = [
             <g key={i - 1} mask={`url(#${maskId})`}>
@@ -301,8 +301,8 @@ export const useDrawing = (dim: number) => {
     setCurrentDrawing(ret);
 
     setPenColor((x) => {
-      if (x === 'erase' && strokesRef.current.length === 0) {
-        return 'red'; // Deactivate eraser when no drawing.
+      if (x === "erase" && strokesRef.current.length === 0) {
+        return "red"; // Deactivate eraser when no drawing.
       }
       return x;
     });
@@ -340,7 +340,7 @@ export const useDrawing = (dim: number) => {
         scheduleRepaint();
       }
     },
-    [penColor, drawMode, snapEnabled, getXY, scaledXYStr, scheduleRepaint]
+    [penColor, drawMode, snapEnabled, getXY, scaledXYStr, scheduleRepaint],
   );
 
   const handleMouseUp = React.useCallback(
@@ -369,7 +369,7 @@ export const useDrawing = (dim: number) => {
       penRef.current = undefined;
       scheduleRepaint();
     },
-    [scheduleRepaint]
+    [scheduleRepaint],
   );
 
   const handleMouseMove = React.useCallback(
@@ -385,7 +385,7 @@ export const useDrawing = (dim: number) => {
       lastStroke.elt = undefined; // will be recomputed later
       scheduleRepaint();
     },
-    [getXY, scaledXYStr, scheduleRepaint]
+    [getXY, scaledXYStr, scheduleRepaint],
   );
 
   const handlePointerDown = React.useCallback((evt: React.PointerEvent) => {
@@ -396,7 +396,7 @@ export const useDrawing = (dim: number) => {
       (evt.target as Element).releasePointerCapture(evt.pointerId);
       handleMouseUp(evt);
     },
-    [handleMouseUp]
+    [handleMouseUp],
   );
 
   React.useEffect(() => {
@@ -421,53 +421,53 @@ export const useDrawing = (dim: number) => {
         return;
       }
       const key = evt.key.toUpperCase();
-      if (key === '0') {
+      if (key === "0") {
         // Toggle drawing.
         setIsEnabled((x) => !x);
       } else if (isEnabled) {
-        if (key === 'F') {
-          setDrawMode('freehand');
+        if (key === "F") {
+          setDrawMode("freehand");
         }
-        if (key === 'L') {
-          setDrawMode('line');
+        if (key === "L") {
+          setDrawMode("line");
         }
-        if (key === 'A') {
-          setDrawMode('arrow');
+        if (key === "A") {
+          setDrawMode("arrow");
         }
-        if (key === 'Q') {
-          setDrawMode('quadrangle');
+        if (key === "Q") {
+          setDrawMode("quadrangle");
         }
-        if (key === 'C') {
-          setDrawMode('circle');
+        if (key === "C") {
+          setDrawMode("circle");
         }
-        if (key === 'S') {
+        if (key === "S") {
           setSnapEnabled(true);
         }
-        if (key === 'D') {
+        if (key === "D") {
           setSnapEnabled(false);
         }
-        if (key === 'R') {
-          setPenColor('red');
+        if (key === "R") {
+          setPenColor("red");
         }
-        if (key === 'G') {
-          setPenColor('green');
+        if (key === "G") {
+          setPenColor("green");
         }
-        if (key === 'B') {
-          setPenColor('blue');
+        if (key === "B") {
+          setPenColor("blue");
         }
-        if (key === 'Y') {
-          setPenColor('yellow');
+        if (key === "Y") {
+          setPenColor("yellow");
         }
-        if (key === 'E') {
-          setPenColor('erase');
+        if (key === "E") {
+          setPenColor("erase");
         }
-        if (key === 'U') {
+        if (key === "U") {
           // Undo.
           strokesRef.current.pop();
           penRef.current = undefined;
           scheduleRepaint();
         }
-        if (key === 'W') {
+        if (key === "W") {
           // Wipe.
           strokesRef.current = [];
           penRef.current = undefined;
@@ -475,11 +475,11 @@ export const useDrawing = (dim: number) => {
         }
       }
     },
-    [isEnabled, scheduleRepaint]
+    [isEnabled, scheduleRepaint],
   );
 
   const { setHandleKeyDown, unsetHandleKeyDown } = React.useContext(
-    DrawingHandlersSetterContext
+    DrawingHandlersSetterContext,
   );
 
   // Register handlers for board_panel to call.
@@ -494,9 +494,9 @@ export const useDrawing = (dim: number) => {
   React.useEffect(() => {
     if (canBeEnabled) {
       if (isEnabled) {
-        console.log('Drawing enabled.');
+        console.log("Drawing enabled.");
       } else {
-        console.log('Drawing disabled. To enable, type 00.');
+        console.log("Drawing disabled. To enable, type 00.");
       }
     }
   }, [canBeEnabled, isEnabled]);
@@ -504,7 +504,7 @@ export const useDrawing = (dim: number) => {
     if (canBeEnabled) {
       if (isEnabled) {
         console.log(
-          `Pen color: ${penColor}. Mode: ${drawMode}. Snap: ${snapEnabled}. To draw on the board, use the right mouse button. For menu, press 0.`
+          `Pen color: ${penColor}. Mode: ${drawMode}. Snap: ${snapEnabled}. To draw on the board, use the right mouse button. For menu, press 0.`,
         );
       }
     }
@@ -532,7 +532,7 @@ export const useDrawing = (dim: number) => {
       handleMouseMove,
       handlePointerDown,
       handlePointerUp,
-    ]
+    ],
   );
   const svgProps: React.SVGProps<SVGSVGElement> = React.useMemo(
     () =>
@@ -540,27 +540,27 @@ export const useDrawing = (dim: number) => {
         ? {
             viewBox: `0 0 ${boardSize.width} ${boardSize.height}`,
             style: {
-              position: 'absolute',
+              position: "absolute",
               left: 0,
               top: 0,
               width: boardSize.width,
               height: boardSize.height,
-              pointerEvents: 'none',
+              pointerEvents: "none",
             },
           }
         : {},
-    [isEnabled, boardSize.width, boardSize.height]
+    [isEnabled, boardSize.width, boardSize.height],
   );
   const svgDrawing = React.useMemo(
     () =>
       isEnabled && currentDrawing ? (
         <svg {...svgProps}>{currentDrawing}</svg>
       ) : null,
-    [isEnabled, svgProps, currentDrawing]
+    [isEnabled, svgProps, currentDrawing],
   );
   const ret = React.useMemo(
     () => ({ outerDivProps, svgDrawing }),
-    [outerDivProps, svgDrawing]
+    [outerDivProps, svgDrawing],
   );
   return ret;
 };

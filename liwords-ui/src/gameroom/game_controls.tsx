@@ -4,9 +4,9 @@ import React, {
   useMemo,
   useRef,
   useState,
-} from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Affix, App, Button, Dropdown, MenuProps, Popconfirm } from 'antd';
+} from "react";
+import { useNavigate } from "react-router-dom";
+import { Affix, App, Button, Dropdown, MenuProps, Popconfirm } from "antd";
 
 import {
   DoubleLeftOutlined,
@@ -14,23 +14,23 @@ import {
   ExclamationCircleOutlined,
   LeftOutlined,
   RightOutlined,
-} from '@ant-design/icons';
+} from "@ant-design/icons";
 import {
   useExaminableGameContextStoreContext,
   useExamineStoreContext,
   useGameContextStoreContext,
   useTentativeTileContext,
-} from '../store/store';
-import { EphemeralTile } from '../utils/cwgame/common';
-import { ChallengeRule } from '../gen/api/vendor/macondo/macondo_pb';
+} from "../store/store";
+import { EphemeralTile } from "../utils/cwgame/common";
+import { ChallengeRule } from "../gen/api/vendor/macondo/macondo_pb";
 
 const downloadGameImg = (downloadFilename: string) => {
-  const link = document.createElement('a');
+  const link = document.createElement("a");
   link.href = new URL(
     `/gameimg/${encodeURIComponent(downloadFilename)}`,
-    window.location.href
+    window.location.href,
   ).href;
-  link.setAttribute('download', downloadFilename);
+  link.setAttribute("download", downloadFilename);
   document.body.appendChild(link);
   link.onclick = () => {
     link.remove();
@@ -79,30 +79,30 @@ const ExamineGameControls = React.memo(
     const exportMenuItems = useMemo(() => {
       const items = [
         {
-          label: 'PNG',
-          key: isAtLastTurn ? 'download-png' : 'download-png-turn',
+          label: "PNG",
+          key: isAtLastTurn ? "download-png" : "download-png-turn",
           disabled: gameHasNotStarted,
         },
       ];
 
       if (!isAtLastTurn) {
         items.push({
-          label: 'Animated GIF to this position',
-          key: 'download-animated-gif-turn',
+          label: "Animated GIF to this position",
+          key: "download-animated-gif-turn",
           disabled: gameHasNotStarted,
         });
       }
       if (gameDone) {
         items.push({
-          label: 'Animated GIF of complete game',
-          key: 'download-animated-gif',
+          label: "Animated GIF of complete game",
+          key: "download-animated-gif",
           disabled: gameHasNotStarted,
         });
       }
       if (gameDone || props.editMode) {
         items.push({
-          label: 'GCG',
-          key: 'download-gcg',
+          label: "GCG",
+          key: "download-gcg",
           disabled: gameHasNotStarted,
           // add onclick to menu parent.
         });
@@ -110,33 +110,33 @@ const ExamineGameControls = React.memo(
       return items;
     }, [gameDone, gameHasNotStarted, isAtLastTurn, props.editMode]);
 
-    const exportMenuOnClick: MenuProps['onClick'] = ({ key }) => {
+    const exportMenuOnClick: MenuProps["onClick"] = ({ key }) => {
       // When at the last move, examineStoreContext.examinedTurn === Infinity.
       // To also detect new moves, we use examinableGameContext.turns.length.
       switch (key) {
-        case 'download-png':
-          downloadGameImg(`${gameContext.gameID}${gameDone ? '-v2' : ''}.png`);
+        case "download-png":
+          downloadGameImg(`${gameContext.gameID}${gameDone ? "-v2" : ""}.png`);
           break;
-        case 'download-png-turn':
+        case "download-png-turn":
           downloadGameImg(
-            `${gameContext.gameID}${gameDone ? '-v2' : ''}-${
+            `${gameContext.gameID}${gameDone ? "-v2" : ""}-${
               examinableGameContext.turns.length + 1
-            }.png`
+            }.png`,
           );
           break;
-        case 'download-animated-gif-turn':
+        case "download-animated-gif-turn":
           downloadGameImg(
-            `${gameContext.gameID}${gameDone ? '-v2-b' : '-a'}-${
+            `${gameContext.gameID}${gameDone ? "-v2-b" : "-a"}-${
               examinableGameContext.turns.length + 1
-            }.gif`
+            }.gif`,
           );
           break;
-        case 'download-animated-gif':
+        case "download-animated-gif":
           downloadGameImg(
-            `${gameContext.gameID}${gameDone ? '-v2-b' : '-a'}.gif`
+            `${gameContext.gameID}${gameDone ? "-v2-b" : "-a"}.gif`,
           );
           break;
-        case 'download-gcg':
+        case "download-gcg":
           props.onExportGCG();
           break;
       }
@@ -148,9 +148,9 @@ const ExamineGameControls = React.memo(
             menu={{
               items: exportMenuItems,
               onClick: exportMenuOnClick,
-              theme: props.darkMode ? 'dark' : 'light',
+              theme: props.darkMode ? "dark" : "light",
             }}
-            trigger={['click']}
+            trigger={["click"]}
             placement="topLeft"
             disabled={props.puzzleMode}
           >
@@ -195,7 +195,7 @@ const ExamineGameControls = React.memo(
         </div>
       </Affix>
     );
-  }
+  },
 );
 
 export type Props = {
@@ -226,21 +226,21 @@ export type Props = {
     | ((
         makeNewValue:
           | ((oldValue: (() => void) | null) => (() => void) | null)
-          | null
+          | null,
       ) => void)
     | null;
   setHandleChallengeShortcut:
     | ((
         makeNewValue:
           | ((oldValue: (() => void) | null) => (() => void) | null)
-          | null
+          | null,
       ) => void)
     | null;
   setHandleNeitherShortcut:
     | ((
         makeNewValue:
           | ((oldValue: (() => void) | null) => (() => void) | null)
-          | null
+          | null,
       ) => void)
     | null;
   tournamentPairedMode?: boolean;
@@ -256,14 +256,14 @@ const GameControls = React.memo((props: Props) => {
 
   // Poka-yoke against accidentally having multiple pop-ups active.
   const [actualCurrentPopUp, setCurrentPopUp] = useState<
-    'NONE' | 'CHALLENGE' | 'PASS'
-  >('NONE');
+    "NONE" | "CHALLENGE" | "PASS"
+  >("NONE");
   // This should match disabled= and/or hidden= props.
   const currentPopUp =
-    (actualCurrentPopUp === 'CHALLENGE' &&
+    (actualCurrentPopUp === "CHALLENGE" &&
       (!props.myTurn || props.challengeRule === ChallengeRule.VOID)) ||
-    (actualCurrentPopUp === 'PASS' && !props.myTurn)
-      ? 'NONE'
+    (actualCurrentPopUp === "PASS" && !props.myTurn)
+      ? "NONE"
       : actualCurrentPopUp;
   useEffect(() => {
     if (currentPopUp !== actualCurrentPopUp) {
@@ -277,13 +277,13 @@ const GameControls = React.memo((props: Props) => {
   const challengeButton = useRef<HTMLButtonElement>(null);
 
   const darkMode = useMemo(
-    () => localStorage?.getItem('darkMode') === 'true',
-    []
+    () => localStorage?.getItem("darkMode") === "true",
+    [],
   );
 
   const navigate = useNavigate();
   const handleExitToLobby = useCallback(() => {
-    props.tournamentSlug ? navigate(props.tournamentSlug) : navigate('/');
+    props.tournamentSlug ? navigate(props.tournamentSlug) : navigate("/");
   }, [navigate, props.tournamentSlug]);
 
   const {
@@ -302,9 +302,9 @@ const GameControls = React.memo((props: Props) => {
     if (!passButton.current) return;
     passButton.current.focus();
     setCurrentPopUp((v) => {
-      if (v !== 'PASS') return 'PASS';
+      if (v !== "PASS") return "PASS";
       if (onPass) onPass();
-      return 'NONE';
+      return "NONE";
     });
   }, [hasRegularButtons, onPass]);
   const handleChallengeShortcut = useCallback(() => {
@@ -312,14 +312,14 @@ const GameControls = React.memo((props: Props) => {
     if (!challengeButton.current) return;
     challengeButton.current.focus();
     setCurrentPopUp((v) => {
-      if (v !== 'CHALLENGE') return 'CHALLENGE';
+      if (v !== "CHALLENGE") return "CHALLENGE";
       if (onChallenge) onChallenge();
-      return 'NONE';
+      return "NONE";
     });
   }, [hasRegularButtons, onChallenge]);
   const handleNeitherShortcut = useCallback(() => {
     if (!hasRegularButtons) return;
-    setCurrentPopUp('NONE');
+    setCurrentPopUp("NONE");
   }, [hasRegularButtons]);
   useEffect(() => {
     if (!setHandlePassShortcut) return;
@@ -357,29 +357,29 @@ const GameControls = React.memo((props: Props) => {
   const optionsMenuItems = useMemo(() => {
     const items = [
       {
-        label: 'Resign',
-        key: 'resign',
+        label: "Resign",
+        key: "resign",
       },
     ];
     if (props.showAbort) {
       items.push({
-        label: 'Cancel Game',
-        key: 'abort',
+        label: "Cancel Game",
+        key: "abort",
       });
     }
     if (props.showNudge) {
       items.push({
-        label: 'Nudge',
-        key: 'nudge',
+        label: "Nudge",
+        key: "nudge",
       });
     }
     items.push({
-      label: 'PNG',
-      key: 'download-png-turn',
+      label: "PNG",
+      key: "download-png-turn",
     });
     items.push({
-      label: 'Animated GIF to this position',
-      key: 'download-animated-gif-turn',
+      label: "Animated GIF to this position",
+      key: "download-animated-gif-turn",
     });
     return items;
   }, [props.showAbort, props.showNudge]);
@@ -431,9 +431,9 @@ const GameControls = React.memo((props: Props) => {
     );
   }
 
-  const optionsMenuOnClick: MenuProps['onClick'] = ({ key }) => {
+  const optionsMenuOnClick: MenuProps["onClick"] = ({ key }) => {
     switch (key) {
-      case 'resign':
+      case "resign":
         modal.confirm({
           title: (
             <p className="readable-text-color">
@@ -452,31 +452,31 @@ const GameControls = React.memo((props: Props) => {
           },
         });
         break;
-      case 'abort':
+      case "abort":
         props.onRequestAbort();
         break;
-      case 'nudge':
+      case "nudge":
         props.onNudge();
         break;
-      case 'download-png-turn':
+      case "download-png-turn":
         downloadGameImg(
-          `${gameContext.gameID}${gameDone ? '-v2' : ''}-${
+          `${gameContext.gameID}${gameDone ? "-v2" : ""}-${
             gameContext.turns.length + 1
-          }.png`
+          }.png`,
         );
         break;
-      case 'download-animated-gif-turn':
+      case "download-animated-gif-turn":
         downloadGameImg(
-          `${gameContext.gameID}${gameDone ? '-v2-b' : '-a'}-${
+          `${gameContext.gameID}${gameDone ? "-v2-b" : "-a"}-${
             gameContext.turns.length + 1
-          }.gif`
+          }.gif`,
         );
         break;
     }
   };
 
   return (
-    <div className={props.boardEditingMode ? 'board-editor-controls' : ''}>
+    <div className={props.boardEditingMode ? "board-editor-controls" : ""}>
       <div className="game-controls">
         <div className="secondary-controls">
           {!props.puzzleMode && !props.boardEditingMode && (
@@ -484,9 +484,9 @@ const GameControls = React.memo((props: Props) => {
               menu={{
                 items: optionsMenuItems,
                 onClick: optionsMenuOnClick,
-                theme: darkMode ? 'dark' : 'light',
+                theme: darkMode ? "dark" : "light",
               }}
-              trigger={['click']}
+              trigger={["click"]}
               disabled={gameHasNotStarted}
               placement="topLeft"
             >
@@ -497,32 +497,32 @@ const GameControls = React.memo((props: Props) => {
             <Popconfirm
               title="Are you sure you wish to pass?"
               onCancel={() => {
-                setCurrentPopUp('NONE');
+                setCurrentPopUp("NONE");
               }}
               onConfirm={() => {
                 props.onPass();
-                setCurrentPopUp('NONE');
+                setCurrentPopUp("NONE");
               }}
               onOpenChange={(visible) => {
-                setCurrentPopUp(visible ? 'PASS' : 'NONE');
+                setCurrentPopUp(visible ? "PASS" : "NONE");
               }}
               okText="Yes"
               cancelText="No"
-              open={currentPopUp === 'PASS'}
+              open={currentPopUp === "PASS"}
             >
               <Button
                 ref={passButton}
                 onClick={() => {
-                  if (currentPopUp === 'PASS') {
+                  if (currentPopUp === "PASS") {
                     props.onPass();
-                    setCurrentPopUp('NONE');
+                    setCurrentPopUp("NONE");
                   }
                 }}
                 disabled={!props.myTurn}
                 type={
                   props.finalPassOrChallenge && props.myTurn
-                    ? 'primary'
-                    : 'default'
+                    ? "primary"
+                    : "default"
                 }
               >
                 Pass
@@ -536,25 +536,25 @@ const GameControls = React.memo((props: Props) => {
             <Popconfirm
               title="Are you sure you wish to challenge?"
               onCancel={() => {
-                setCurrentPopUp('NONE');
+                setCurrentPopUp("NONE");
               }}
               onConfirm={() => {
                 props.onChallenge();
-                setCurrentPopUp('NONE');
+                setCurrentPopUp("NONE");
               }}
               onOpenChange={(visible) => {
-                setCurrentPopUp(visible ? 'CHALLENGE' : 'NONE');
+                setCurrentPopUp(visible ? "CHALLENGE" : "NONE");
               }}
               okText="Yes"
               cancelText="No"
-              open={currentPopUp === 'CHALLENGE'}
+              open={currentPopUp === "CHALLENGE"}
             >
               <Button
                 ref={challengeButton}
                 onClick={() => {
-                  if (currentPopUp === 'CHALLENGE') {
+                  if (currentPopUp === "CHALLENGE") {
                     props.onChallenge();
-                    setCurrentPopUp('NONE');
+                    setCurrentPopUp("NONE");
                   }
                 }}
                 disabled={!props.myTurn}
@@ -579,7 +579,7 @@ const GameControls = React.memo((props: Props) => {
           onClick={props.onCommit}
           disabled={!props.myTurn || props.finalPassOrChallenge}
         >
-          {props.puzzleMode ? 'Solve' : 'Play'}
+          {props.puzzleMode ? "Solve" : "Play"}
         </Button>
       </div>
       {props.boardEditingMode && (
@@ -624,40 +624,40 @@ const EndGameControls = (props: EGCProps) => {
             menu={{
               items: [
                 {
-                  key: 'download-png',
-                  label: 'PNG',
+                  key: "download-png",
+                  label: "PNG",
                   disabled: gameHasNotStarted,
                 },
                 {
-                  key: 'download-animated-gif',
-                  label: 'Animated GIF of complete game',
+                  key: "download-animated-gif",
+                  label: "Animated GIF of complete game",
                   disabled: gameHasNotStarted,
                 },
                 {
-                  key: 'download-gcg',
-                  label: 'GCG',
+                  key: "download-gcg",
+                  label: "GCG",
                   disabled: gameHasNotStarted,
                 },
               ],
               onClick: ({ key }) => {
                 switch (key) {
-                  case 'download-png':
+                  case "download-png":
                     downloadGameImg(
-                      `${gameContext.gameID}${gameDone ? '-v2' : ''}.png`
+                      `${gameContext.gameID}${gameDone ? "-v2" : ""}.png`,
                     );
                     break;
-                  case 'download-animated-gif':
+                  case "download-animated-gif":
                     downloadGameImg(
-                      `${gameContext.gameID}${gameDone ? '-v2-b' : '-a'}.gif`
+                      `${gameContext.gameID}${gameDone ? "-v2-b" : "-a"}.gif`,
                     );
                     break;
-                  case 'download-gcg':
+                  case "download-gcg":
                     props.onExportGCG();
                     break;
                 }
               },
             }}
-            trigger={['click']}
+            trigger={["click"]}
             placement="topLeft"
           >
             <Button>Export</Button>

@@ -1,12 +1,12 @@
-import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
-import { Popconfirm, Tooltip, Typography } from 'antd';
-import React, { useEffect, useMemo, useState } from 'react';
-import { AuthenticationService } from '../gen/api/proto/user_service/user_service_pb';
-import { flashError, useClient } from '../utils/hooks/connect';
+import { EyeOutlined, ReloadOutlined } from "@ant-design/icons";
+import { Popconfirm, Tooltip, Typography } from "antd";
+import React, { useEffect, useMemo, useState } from "react";
+import { AuthenticationService } from "../gen/api/proto/user_service/user_service_pb";
+import { flashError, useClient } from "../utils/hooks/connect";
 
 export const API = () => {
   const authClient = useClient(AuthenticationService);
-  const [apikey, setapikey] = useState('');
+  const [apikey, setapikey] = useState("");
   const [keyhidden, setkeyhidden] = useState(true);
   const [confirmResetVisible, setConfirmResetVisible] = useState(false);
   useEffect(() => {
@@ -39,7 +39,7 @@ export const API = () => {
 
   const keyDisplay = useMemo(() => {
     if (!apikey) {
-      return 'You have not generated an API key';
+      return "You have not generated an API key";
     }
     if (keyhidden) {
       return (
@@ -47,7 +47,7 @@ export const API = () => {
           title="Click the eye icon to view full API key"
           placement="bottom"
         >
-          {apikey.substring(0, 10) + '...'}
+          {apikey.substring(0, 10) + "..."}
         </Tooltip>
       );
     }
@@ -58,9 +58,9 @@ export const API = () => {
     );
   }, [apikey, keyhidden]);
 
-  let resetHeader = 'This will create a new API key.';
+  let resetHeader = "This will create a new API key.";
   if (apikey) {
-    resetHeader = 'Resetting this API key will invalidate your last key.';
+    resetHeader = "Resetting this API key will invalidate your last key.";
   }
 
   const apiKeyDisplay = (
@@ -78,7 +78,7 @@ export const API = () => {
         okText="Yes"
         cancelText="No"
       >
-        <Tooltip title={apikey ? 'Reset API key' : 'Generate API key'}>
+        <Tooltip title={apikey ? "Reset API key" : "Generate API key"}>
           <ReloadOutlined onClick={() => setConfirmResetVisible(true)} />
         </Tooltip>
       </Popconfirm>
@@ -97,7 +97,7 @@ export const API = () => {
         this front end (the Woogles web app) to communicate with the backend.
       </p>
       <p style={{ marginBottom: 10 }}>
-        You can check our API documentation at{' '}
+        You can check our API documentation at{" "}
         <a
           href="https://buf.build/domino14/liwords"
           target="_blank"
@@ -109,7 +109,7 @@ export const API = () => {
       </p>
       <div className="section-header">API Key</div>
       <p style={{ marginBottom: 10 }}>
-        Your API key should be kept secret.{' '}
+        Your API key should be kept secret.{" "}
         <em>Please do not share it with anyone!</em>
       </p>
       <p>{apiKeyDisplay}</p>

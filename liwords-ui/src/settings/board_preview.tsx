@@ -1,10 +1,10 @@
-import React from 'react';
-import { CrosswordGameGridLayout } from '../constants/board_layout';
-import BoardSpaces from '../gameroom/board_spaces';
-import Tiles from '../gameroom/tiles';
-import { Alphabet, StandardEnglishAlphabet } from '../constants/alphabets';
-import { EphemeralTile, PlayedTiles } from '../utils/cwgame/common';
-import { Board } from '../utils/cwgame/board';
+import React from "react";
+import { CrosswordGameGridLayout } from "../constants/board_layout";
+import BoardSpaces from "../gameroom/board_spaces";
+import Tiles from "../gameroom/tiles";
+import { Alphabet, StandardEnglishAlphabet } from "../constants/alphabets";
+import { EphemeralTile, PlayedTiles } from "../utils/cwgame/common";
+import { Board } from "../utils/cwgame/board";
 
 type Props = {
   tilesLayout?: string[];

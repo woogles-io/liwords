@@ -1,6 +1,6 @@
-@use 'base.scss' as *;
-@use 'color_modes' as *;
-@import './shared/layout';
+@use "base.scss" as *;
+@use "color_modes" as *;
+@import "./shared/layout";
 
 @include button;
 @include notification;
@@ -147,7 +147,7 @@ button.link {
 }
 
 .bnjyMode {
-  .tile[data-bnjy='1'] {
+  .tile[data-bnjy="1"] {
     transform: rotate(180deg);
 
     /* this mirrors gameroom/scss/gameroom.scss */

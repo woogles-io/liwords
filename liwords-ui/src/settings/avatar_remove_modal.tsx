@@ -1,7 +1,7 @@
-import React from 'react';
+import React from "react";
 
-import { Alert } from 'antd';
-import { Modal } from '../utils/focus_modal';
+import { Alert } from "antd";
+import { Modal } from "../utils/focus_modal";
 
 type Props = {
   visible: boolean;
@@ -25,7 +25,7 @@ export const AvatarRemoveModal = React.memo((props: Props) => {
       }}
     >
       Are you sure you want to remove your avatar?
-      {props.error !== '' ? <Alert message={props.error} type="error" /> : null}
+      {props.error !== "" ? <Alert message={props.error} type="error" /> : null}
     </Modal>
   );
 });

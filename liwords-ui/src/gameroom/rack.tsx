@@ -1,8 +1,8 @@
-import React, { DragEvent, useEffect, useRef } from 'react';
-import { useDrop, XYCoord } from 'react-dnd';
-import Tile, { TILE_TYPE } from './tile';
-import { MachineWord, isTouchDevice } from '../utils/cwgame/common';
-import { Alphabet, scoreFor } from '../constants/alphabets';
+import React, { DragEvent, useEffect, useRef } from "react";
+import { useDrop, XYCoord } from "react-dnd";
+import Tile, { TILE_TYPE } from "./tile";
+import { MachineWord, isTouchDevice } from "../utils/cwgame/common";
+import { Alphabet, scoreFor } from "../constants/alphabets";
 
 // const TileSpacing = 6;
 
@@ -10,7 +10,7 @@ const calculatePosition = (
   position: XYCoord,
   rackElement: HTMLElement,
   rackEmptyLeftElement: HTMLElement,
-  rackSize: number
+  rackSize: number,
 ) => {
   const rackLeft = rackElement.getBoundingClientRect().left;
   const rackWidth = rackElement.clientWidth;
@@ -31,11 +31,11 @@ type Props = {
   selected?: Set<number>;
   moveRackTile: (
     indexA: number | undefined,
-    indexB: number | undefined
+    indexB: number | undefined,
   ) => void;
   returnToRack?: (
     rackIndex: number | undefined,
-    tileIndex: number | undefined
+    tileIndex: number | undefined,
   ) => void;
 };
 
@@ -45,15 +45,15 @@ export const Rack = React.memo((props: Props) => {
     e.stopPropagation();
   };
   const handleDrop = (e: DragEvent<HTMLDivElement>, index: number) => {
-    if (e.dataTransfer.getData('rackIndex')) {
+    if (e.dataTransfer.getData("rackIndex")) {
       props.moveRackTile(
         index,
-        parseInt(e.dataTransfer.getData('rackIndex'), 10)
+        parseInt(e.dataTransfer.getData("rackIndex"), 10),
       );
-    } else if (props.returnToRack && e.dataTransfer.getData('tileIndex')) {
+    } else if (props.returnToRack && e.dataTransfer.getData("tileIndex")) {
       props.returnToRack(
         index,
-        parseInt(e.dataTransfer.getData('tileIndex'), 10)
+        parseInt(e.dataTransfer.getData("tileIndex"), 10),
       );
     }
   };
@@ -62,15 +62,15 @@ export const Rack = React.memo((props: Props) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     drop: (item: any, monitor) => {
       const clientOffset = monitor.getClientOffset();
-      const rackElement = document.getElementById('rack');
-      const rackEmptyElement = document.getElementById('left-empty');
+      const rackElement = document.getElementById("rack");
+      const rackEmptyElement = document.getElementById("left-empty");
       let rackPosition = 0;
       if (clientOffset && rackElement && rackEmptyElement) {
         rackPosition = calculatePosition(
           clientOffset,
           rackElement,
           rackEmptyElement,
-          props.letters.length
+          props.letters.length,
         );
       }
       if (item.rackIndex) {
@@ -119,7 +119,7 @@ export const Rack = React.memo((props: Props) => {
               props.onTileClick(n);
             }
           }}
-        />
+        />,
       );
     }
     return <>{tiles}</>;

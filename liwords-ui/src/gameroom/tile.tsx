@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef, DragEvent, useState } from 'react';
-import { useDrag, useDragLayer, useDrop } from 'react-dnd';
-import TentativeScore from './tentative_score';
+import React, { useEffect, useMemo, useRef, DragEvent, useState } from "react";
+import { useDrag, useDragLayer, useDrop } from "react-dnd";
+import TentativeScore from "./tentative_score";
 import {
   Blank,
   EmptyRackSpaceMachineLetter,
@@ -8,26 +8,26 @@ import {
   isDesignatedBlankMachineLetter,
   isTouchDevice,
   uniqueTileIdx,
-} from '../utils/cwgame/common';
-import { Popover } from 'antd';
-import { Alphabet, machineLetterToDisplayedTile } from '../constants/alphabets';
+} from "../utils/cwgame/common";
+import { Popover } from "antd";
+import { Alphabet, machineLetterToDisplayedTile } from "../constants/alphabets";
 
 // just refresh the page when changing the setting...
-const bicolorMode = localStorage.getItem('enableBicolorMode') === 'true';
+const bicolorMode = localStorage.getItem("enableBicolorMode") === "true";
 
 type TileLetterProps = {
   letter: MachineLetter;
   alphabet: Alphabet;
 };
 
-export const TILE_TYPE = 'TILE_TYPE';
+export const TILE_TYPE = "TILE_TYPE";
 
 export const TileLetter = React.memo((props: TileLetterProps) => {
   const { letter, alphabet } = props;
   let rune = machineLetterToDisplayedTile(letter, alphabet);
   // For display purposes, an empty blank should just look empty and not like a `?`.
   if (rune === Blank) {
-    rune = ' ';
+    rune = " ";
   }
   return (
     <p className="rune">
@@ -68,7 +68,7 @@ export const TilePreview = React.memo((props: TilePreviewProps) => {
     value: monitor.getItem()?.value,
     playerOfTile: monitor.getItem()?.playerOfTile,
   }));
-  const boardElement = document.getElementById('board-spaces');
+  const boardElement = document.getElementById("board-spaces");
   if (isDragging && boardElement && position) {
     const boardTop = boardElement.getBoundingClientRect().top;
     const boardLeft = boardElement.getBoundingClientRect().left;
@@ -91,9 +91,9 @@ export const TilePreview = React.memo((props: TilePreviewProps) => {
       top,
       left,
     };
-    const computedClass = `tile preview${overBoard ? ' over-board' : ''}${
-      letter && isDesignatedBlankMachineLetter(letter) ? ' blank' : ''
-    }${playerOfTile ? ' tile-p1' : ' tile-p0'}`;
+    const computedClass = `tile preview${overBoard ? " over-board" : ""}${
+      letter && isDesignatedBlankMachineLetter(letter) ? " blank" : ""
+    }${playerOfTile ? " tile-p1" : " tile-p0"}`;
     return (
       <div className={computedClass} style={computedStyle}>
         <TileLetter letter={letter} alphabet={alphabet} />
@@ -119,11 +119,11 @@ type TileProps = {
   selected?: boolean;
   moveRackTile?: (
     indexA: number | undefined,
-    indexB: number | undefined
+    indexB: number | undefined,
   ) => void;
   returnToRack?: (
     rackIndex: number | undefined,
-    tileIndex: number | undefined
+    tileIndex: number | undefined,
   ) => void;
   onClick?: (evt: React.MouseEvent<HTMLElement>) => void;
   onContextMenu?: (evt: React.MouseEvent<HTMLElement>) => void;
@@ -137,14 +137,14 @@ type TileProps = {
     row: number,
     col: number,
     rackIndex: number | undefined,
-    tileIndex: number | undefined
+    tileIndex: number | undefined,
   ) => void;
 };
 
 const Tile = React.memo((props: TileProps) => {
   const rune = useMemo(
     () => machineLetterToDisplayedTile(props.letter, props.alphabet),
-    [props.letter, props.alphabet]
+    [props.letter, props.alphabet],
   );
   const bnjyable = useMemo(() => {
     return props.alphabet.letterMap[rune.toUpperCase()]?.bnjyable;
@@ -154,18 +154,18 @@ const Tile = React.memo((props: TileProps) => {
 
   const handleStartDrag = (e: DragEvent<HTMLDivElement>) => {
     setIsMouseDragging(true);
-    e.dataTransfer.dropEffect = 'move';
+    e.dataTransfer.dropEffect = "move";
     if (
       props.tentative &&
-      typeof props.x == 'number' &&
-      typeof props.y == 'number'
+      typeof props.x == "number" &&
+      typeof props.y == "number"
     ) {
       e.dataTransfer.setData(
-        'tileIndex',
-        uniqueTileIdx(props.y, props.x).toString()
+        "tileIndex",
+        uniqueTileIdx(props.y, props.x).toString(),
       );
     } else {
-      e.dataTransfer.setData('rackIndex', props.rackIndex?.toString() || '');
+      e.dataTransfer.setData("rackIndex", props.rackIndex?.toString() || "");
     }
   };
 
@@ -178,21 +178,21 @@ const Tile = React.memo((props: TileProps) => {
       props.handleTileDrop(
         props.y,
         props.x,
-        parseInt(e.dataTransfer.getData('rackIndex'), 10),
-        parseInt(e.dataTransfer.getData('tileIndex'), 10)
+        parseInt(e.dataTransfer.getData("rackIndex"), 10),
+        parseInt(e.dataTransfer.getData("tileIndex"), 10),
       );
       return;
     }
-    if (props.moveRackTile && e.dataTransfer.getData('rackIndex')) {
+    if (props.moveRackTile && e.dataTransfer.getData("rackIndex")) {
       props.moveRackTile(
         props.rackIndex,
-        parseInt(e.dataTransfer.getData('rackIndex'), 10)
+        parseInt(e.dataTransfer.getData("rackIndex"), 10),
       );
     } else {
-      if (props.returnToRack && e.dataTransfer.getData('tileIndex')) {
+      if (props.returnToRack && e.dataTransfer.getData("tileIndex")) {
         props.returnToRack(
           props.rackIndex,
-          parseInt(e.dataTransfer.getData('tileIndex'), 10)
+          parseInt(e.dataTransfer.getData("tileIndex"), 10),
         );
       }
     }
@@ -208,11 +208,11 @@ const Tile = React.memo((props: TileProps) => {
   const [{ isDragging }, drag, preview] = useDrag({
     item: {
       rackIndex:
-        typeof props.rackIndex === 'number'
+        typeof props.rackIndex === "number"
           ? props.rackIndex.toString()
           : undefined,
       tileIndex:
-        typeof props.x === 'number' && typeof props.y === 'number'
+        typeof props.x === "number" && typeof props.y === "number"
           ? uniqueTileIdx(props.y, props.x).toString()
           : undefined,
       letter: props.letter,
@@ -240,7 +240,7 @@ const Tile = React.memo((props: TileProps) => {
           props.y,
           props.x,
           parseInt(item.rackIndex, 10),
-          parseInt(item.tileIndex, 10)
+          parseInt(item.tileIndex, 10),
         );
       }
     },
@@ -265,13 +265,13 @@ const Tile = React.memo((props: TileProps) => {
   }, [canDrop, isTouchDeviceResult, drop]);
 
   const computedClassName = `tile${
-    isDragging || isMouseDragging ? ' dragging' : ''
-  }${canDrag ? ' droppable' : ''}${props.selected ? ' selected' : ''}${
-    props.tentative ? ' tentative' : ''
-  }${props.lastPlayed ? ' last-played' : ''}${
-    isDesignatedBlankMachineLetter(props.letter) ? ' blank' : ''
-  }${props.playerOfTile ? ' tile-p1' : ' tile-p0'}${
-    (bicolorMode ? props.playerOfTile : props.lastPlayed) ? ' second-color' : ''
+    isDragging || isMouseDragging ? " dragging" : ""
+  }${canDrag ? " droppable" : ""}${props.selected ? " selected" : ""}${
+    props.tentative ? " tentative" : ""
+  }${props.lastPlayed ? " last-played" : ""}${
+    isDesignatedBlankMachineLetter(props.letter) ? " blank" : ""
+  }${props.playerOfTile ? " tile-p1" : " tile-p0"}${
+    (bicolorMode ? props.playerOfTile : props.lastPlayed) ? " second-color" : ""
   }`;
   let ret = (
     <div onDragOver={handleDropOver} onDrop={handleDrop} ref={tileRef}>
@@ -279,11 +279,11 @@ const Tile = React.memo((props: TileProps) => {
         className={computedClassName}
         data-letter={props.letter}
         data-length={rune.length}
-        data-bnjy={bnjyable ? '1' : '0'}
+        data-bnjy={bnjyable ? "1" : "0"}
         style={{
-          cursor: canDrag ? 'grab' : 'default',
+          cursor: canDrag ? "grab" : "default",
           ...(props.letter === EmptyRackSpaceMachineLetter
-            ? { visibility: 'hidden' }
+            ? { visibility: "hidden" }
             : null),
         }}
         onClick={props.onClick}

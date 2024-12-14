@@ -1,4 +1,4 @@
-import variables from '../../base.module.scss';
+import variables from "../../base.module.scss";
 const { screenSizeLaptop, screenSizeTablet } = variables;
 
 export type MachineLetter = number;
@@ -15,10 +15,10 @@ export type EphemeralTile = {
 // a 0 because that is a blank. 0x80 would be a "lowercase blank", which
 // doesn't exist. This is a good "gap" letter.
 export const EmptyRackSpaceMachineLetter: MachineLetter = 0x80;
-export const EmptySpace = ' ';
+export const EmptySpace = " ";
 export const EmptyBoardSpaceMachineLetter: MachineLetter = 0;
 export const BlankMachineLetter: MachineLetter = 0;
-export const Blank = '?';
+export const Blank = "?";
 // PlayedTiles is made for quick indexing of a recently placed tile.
 export type PlayedTiles = { [tilecoords: string]: boolean };
 
@@ -35,7 +35,7 @@ export const isTouchDevice = () => {
   if (/android/i.test(userAgent) || /iPad|iPhone|iPod/.test(userAgent)) {
     return true;
   }
-  return !!('ontouchstart' in window);
+  return !!("ontouchstart" in window);
 };
 
 export const isMac = () => {
@@ -84,13 +84,13 @@ export const isDesignatedBlank = (letter: string): boolean => {
 export const fixedCharAt = (
   string: string,
   startIndex: number,
-  length: number
+  length: number,
 ) => {
   const surrogatePairs = /[\uD800-\uDBFF][\uDC00-\uDFFF]/g;
   const end = string.length;
   let currentIndex = startIndex;
   let remainingChars = length;
-  let ret = '';
+  let ret = "";
 
   while (remainingChars > 0) {
     while (surrogatePairs.exec(string) != null) {

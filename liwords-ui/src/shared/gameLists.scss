@@ -1,4 +1,4 @@
-@use '../base.scss' as *;
+@use "../base.scss" as *;
 
 .game-lists,
 .game-history {
@@ -188,7 +188,7 @@
           min-height: 78px;
         }
         td.players:after {
-          content: 'Resume';
+          content: "Resume";
           @include colorModed() {
             color: m($black);
           }
@@ -230,7 +230,7 @@
             color: m($gray-extreme);
           }
           & {
-            content: 'Cancel';
+            content: "Cancel";
             text-align: center;
             font-size: 12px;
             font-weight: bold;

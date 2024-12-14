@@ -1,15 +1,15 @@
-import { pluginEslint } from '@rsbuild/plugin-eslint';
-import { pluginReact } from '@rsbuild/plugin-react';
-import { pluginSass } from '@rsbuild/plugin-sass';
+import { pluginEslint } from "@rsbuild/plugin-eslint";
+import { pluginReact } from "@rsbuild/plugin-react";
+import { pluginSass } from "@rsbuild/plugin-sass";
 
 export default {
   plugins: [pluginEslint(), pluginReact(), pluginSass()],
   html: {
-    template: './index.html',
+    template: "./index.html",
   },
   source: {
     entry: {
-      index: './src/index.tsx',
+      index: "./src/index.tsx",
     },
   },
 };

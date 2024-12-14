@@ -4,33 +4,33 @@ import React, {
   useMemo,
   useRef,
   useState,
-} from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Card, Carousel } from 'antd';
-import { TopBar } from '../navigation/topbar';
-import { PettableAvatar, PlayerAvatar } from '../shared/player_avatar';
-import { UsernameWithContext } from '../shared/usernameWithContext';
-import { moderateUser } from '../mod/moderate';
-import { DisplayFlag } from '../shared/display_flag';
-import { useLoginStateStoreContext } from '../store/store';
-import './profile.scss';
-import { BioCard } from './bio';
-import { lexiconCodeToProfileRatingName } from '../shared/lexica';
-import { VariantIcon } from '../shared/variant_icons';
-import moment from 'moment';
-import { GameCard } from './gameCard';
-import { GamesHistoryCard } from './games_history';
+} from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Card, Carousel } from "antd";
+import { TopBar } from "../navigation/topbar";
+import { PettableAvatar, PlayerAvatar } from "../shared/player_avatar";
+import { UsernameWithContext } from "../shared/usernameWithContext";
+import { moderateUser } from "../mod/moderate";
+import { DisplayFlag } from "../shared/display_flag";
+import { useLoginStateStoreContext } from "../store/store";
+import "./profile.scss";
+import { BioCard } from "./bio";
+import { lexiconCodeToProfileRatingName } from "../shared/lexica";
+import { VariantIcon } from "../shared/variant_icons";
+import moment from "moment";
+import { GameCard } from "./gameCard";
+import { GamesHistoryCard } from "./games_history";
 import {
   GameEndReason,
   GameInfoResponse,
-} from '../gen/api/proto/ipc/omgwords_pb';
-import { flashError, useClient } from '../utils/hooks/connect';
-import { ProfileService } from '../gen/api/proto/user_service/user_service_pb';
-import { GameMetadataService } from '../gen/api/proto/game_service/game_service_pb';
-import { BroadcastGamesResponse_BroadcastGame } from '../gen/api/proto/omgwords_service/omgwords_pb';
-import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_pb';
-import { AnnotatedGamesHistoryCard } from './annotated_games_history';
-import variables from '../base.module.scss';
+} from "../gen/api/proto/ipc/omgwords_pb";
+import { flashError, useClient } from "../utils/hooks/connect";
+import { ProfileService } from "../gen/api/proto/user_service/user_service_pb";
+import { GameMetadataService } from "../gen/api/proto/game_service/game_service_pb";
+import { BroadcastGamesResponse_BroadcastGame } from "../gen/api/proto/omgwords_service/omgwords_pb";
+import { GameEventService } from "../gen/api/proto/omgwords_service/omgwords_pb";
+import { AnnotatedGamesHistoryCard } from "./annotated_games_history";
+import variables from "../base.module.scss";
 const { screenSizeTablet } = variables;
 
 type Rating = {
@@ -70,13 +70,13 @@ const VariantCard = React.memo((props: VariantCardProps) => {
   const { ratings, stats, variant } = props;
   const gamesPlayed = stats.d1.Games.t;
   const rating = ratings?.r.toFixed(0);
-  const highGame = stats.d1['High Game'].t;
-  const averageGame = (stats.d1['Score'].t / gamesPlayed).toFixed(0);
-  const averageTurn = (stats.d1['Score'].t / stats.d1['Turns'].t).toFixed(0);
-  const bestPlay = stats.d1['High Turn'].t.toFixed(0);
-  const bingos = stats.d1['Bingos'].t.toFixed(0);
+  const highGame = stats.d1["High Game"].t;
+  const averageGame = (stats.d1["Score"].t / gamesPlayed).toFixed(0);
+  const averageTurn = (stats.d1["Score"].t / stats.d1["Turns"].t).toFixed(0);
+  const bestPlay = stats.d1["High Turn"].t.toFixed(0);
+  const bingos = stats.d1["Bingos"].t.toFixed(0);
   const lastPlayed =
-    ratings?.ts && moment(new Date(ratings?.ts * 1000)).format('MMM DD, YYYY');
+    ratings?.ts && moment(new Date(ratings?.ts * 1000)).format("MMM DD, YYYY");
   return (
     <Card className="variant-stats" title={variantToName(variant)}>
       {rating && <h3 className="rating">{rating}</h3>}
@@ -145,13 +145,13 @@ const AggregateStatsCard = React.memo((props: AggregateStatsProps) => {
   }
   const player = Object.values(stats).map((a) => a.d1);
   const totals = mergeStats(player);
-  const gamesPlayed = totals['Games']?.t || 0;
-  const points = totals['Score']?.t || 0;
-  const wins = totals['Wins']?.t || 0;
-  const bingos = totals['Bingos']?.t || 0;
-  const challenges = totals['Challenges Won']?.t || 0;
+  const gamesPlayed = totals["Games"]?.t || 0;
+  const points = totals["Score"]?.t || 0;
+  const wins = totals["Wins"]?.t || 0;
+  const bingos = totals["Bingos"]?.t || 0;
+  const challenges = totals["Challenges Won"]?.t || 0;
   const phonies =
-    totals['Challenged Phonies']?.t + totals['Unchallenged Phonies']?.t;
+    totals["Challenged Phonies"]?.t + totals["Unchallenged Phonies"]?.t;
   return (
     <div className="aggregate-stats">
       <div className="aggregate-item games">
@@ -183,17 +183,17 @@ const AggregateStatsCard = React.memo((props: AggregateStatsProps) => {
 });
 
 const variantToName = (variant: string) => {
-  const arr = variant.split('.');
+  const arr = variant.split(".");
   let lex = arr[0];
   lex = lexiconCodeToProfileRatingName(lex);
 
   const timectrl = {
-    ultrablitz: 'Ultra-Blitz!',
-    blitz: 'Blitz',
-    rapid: 'Rapid',
-    regular: 'Regular',
-    corres: arr[1] === 'puzzle' ? 'Puzzle' : 'Correspondence',
-  }[arr[2] as 'ultrablitz' | 'blitz' | 'rapid' | 'regular' | 'corres']; // cmon typescript
+    ultrablitz: "Ultra-Blitz!",
+    blitz: "Blitz",
+    rapid: "Rapid",
+    regular: "Regular",
+    corres: arr[1] === "puzzle" ? "Puzzle" : "Correspondence",
+  }[arr[2] as "ultrablitz" | "blitz" | "rapid" | "regular" | "corres"]; // cmon typescript
 
   return (
     <>
@@ -216,14 +216,14 @@ export const PlayerProfile = React.memo(() => {
   // Show username's profile
   const [ratings, setRatings] = useState<ProfileRatings | null>(null);
   const [stats, setStats] = useState<ProfileStats | null>(null);
-  const [userID, setUserID] = useState('');
+  const [userID, setUserID] = useState("");
   const [userFetched, setUserFetched] = useState(false);
-  const [fullName, setFullName] = useState('');
+  const [fullName, setFullName] = useState("");
   // const [avatarUrl, setAvatarUrl] = useState('');
   const [avatarsEditable, setAvatarsEditable] = useState(false);
-  const [bio, setBio] = useState('');
+  const [bio, setBio] = useState("");
   const [showGameTable, setShowGameTable] = useState(false);
-  const [countryCode, setCountryCode] = useState('');
+  const [countryCode, setCountryCode] = useState("");
   const [bioLoaded, setBioLoaded] = useState(false);
   const [recentGames, setRecentGames] = useState<{
     numGames: number;
@@ -243,16 +243,16 @@ export const PlayerProfile = React.memo(() => {
 
   const checkWide = useMemo(
     () => window.matchMedia(`(min-width: ${screenSizeTablet}px)`),
-    []
+    [],
   );
   const [isWide, setIsWide] = useState(checkWide.matches);
   useEffect(() => {
     const handler = (evt: MediaQueryListEvent) => {
       setIsWide(evt.matches);
     };
-    checkWide.addEventListener('change', handler);
+    checkWide.addEventListener("change", handler);
     return () => {
-      checkWide.removeEventListener('change', handler);
+      checkWide.removeEventListener("change", handler);
     };
   }, [checkWide]);
   const eltsPerRow = isWide ? 4 : 2;
@@ -314,7 +314,7 @@ export const PlayerProfile = React.memo(() => {
           // The maximum valid page number is before the empty page retrieved.
           const maxGuess = Math.max(
             Math.floor(queriedOffset / gamesPageSize - 1),
-            0
+            0,
           );
           let guessBit = 1;
           while (guessBit < maxGuess) guessBit *= 2;
@@ -359,7 +359,7 @@ export const PlayerProfile = React.memo(() => {
     const maxPage = Math.floor(((1 << 30) * 2 - 1) / gamesPageSize);
     const adjustedRecentGamesOffset = Math.max(
       Math.min(recentGamesOffset, maxPage * gamesPageSize),
-      0
+      0,
     );
     if (recentGamesOffset !== adjustedRecentGamesOffset) {
       setRecentGamesOffset(adjustedRecentGamesOffset);
@@ -398,7 +398,7 @@ export const PlayerProfile = React.memo(() => {
         setRecentGamesOffset((valueNum - 1) * gamesPageSize);
       }
     },
-    []
+    [],
   );
 
   useEffect(() => {
@@ -438,7 +438,7 @@ export const PlayerProfile = React.memo(() => {
     }
     const ret = data
       .sort((a, b) => {
-        return (b.stats?.d1['Games']?.t || 0) - (a.stats?.d1['Games']?.t || 0);
+        return (b.stats?.d1["Games"]?.t || 0) - (a.stats?.d1["Games"]?.t || 0);
       })
       .map((d) => {
         return <VariantCard key={d.variant} {...d} />;
@@ -449,7 +449,7 @@ export const PlayerProfile = React.memo(() => {
   const puzzleCards = useMemo(() => {
     const data = [];
     for (const variant in ratings) {
-      if (ratings.hasOwnProperty(variant) && variant.includes('puzzle')) {
+      if (ratings.hasOwnProperty(variant) && variant.includes("puzzle")) {
         data.push({
           variant: variant,
           ratings: ratings[variant],
@@ -463,7 +463,7 @@ export const PlayerProfile = React.memo(() => {
       const rating = v.ratings?.r.toFixed(0);
       const lastPlayed =
         v.ratings?.ts &&
-        moment(new Date(v.ratings?.ts * 1000)).format('MMM DD, YYYY');
+        moment(new Date(v.ratings?.ts * 1000)).format("MMM DD, YYYY");
       return (
         <Card
           className="puzzle-stats"
@@ -484,7 +484,7 @@ export const PlayerProfile = React.memo(() => {
     }
     const ret = recentGames?.array
       ?.filter(
-        (g) => g.players?.length && g.gameEndReason !== GameEndReason.CANCELLED
+        (g) => g.players?.length && g.gameEndReason !== GameEndReason.CANCELLED,
       )
       .map((g) => <GameCard game={g} key={g.gameId} userID={userID} />);
     return ret;
@@ -539,9 +539,9 @@ export const PlayerProfile = React.memo(() => {
               )}
               {missingBirthdate && viewer === username && (
                 <div className="bio">
-                  <Link to={'/settings/personal'}>
+                  <Link to={"/settings/personal"}>
                     Let us know your birthdate
-                  </Link>{' '}
+                  </Link>{" "}
                   to share your bio and details
                 </div>
               )}
@@ -563,7 +563,7 @@ export const PlayerProfile = React.memo(() => {
                 {variantCards}
                 {emptyCards(
                   variantCards.length,
-                  (n) => n % (n <= eltsPerRow ? eltsPerRow : n) !== 0
+                  (n) => n % (n <= eltsPerRow ? eltsPerRow : n) !== 0,
                 )}
               </Carousel>
             </>
@@ -583,7 +583,7 @@ export const PlayerProfile = React.memo(() => {
                 {puzzleCards}
                 {emptyCards(
                   puzzleCards.length,
-                  (n) => n % (n <= eltsPerRow ? eltsPerRow : n) !== 0
+                  (n) => n % (n <= eltsPerRow ? eltsPerRow : n) !== 0,
                 )}
               </Carousel>
             </>
@@ -604,7 +604,7 @@ export const PlayerProfile = React.memo(() => {
                 {gameCards}
                 {emptyCards(
                   gameCards.length,
-                  (n) => n % (n <= 2 * eltsPerRow ? eltsPerRow : n) !== 0
+                  (n) => n % (n <= 2 * eltsPerRow ? eltsPerRow : n) !== 0,
                 )}
               </Carousel>
             </>
@@ -615,7 +615,7 @@ export const PlayerProfile = React.memo(() => {
               setShowGameTable((x) => !x);
             }}
           >
-            {!showGameTable ? 'Show game table' : 'Hide game table'}
+            {!showGameTable ? "Show game table" : "Hide game table"}
           </p>
           {username && showGameTable && (
             <GamesHistoryCard

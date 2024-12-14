@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Row, Col, Input, Form, Alert, notification, Button } from 'antd';
-import { TopBar } from '../navigation/topbar';
-import { connectErrorMessage, useClient } from '../utils/hooks/connect';
-import { AuthenticationService } from '../gen/api/proto/user_service/user_service_pb';
+import React, { useState } from "react";
+import { Row, Col, Input, Form, Alert, notification, Button } from "antd";
+import { TopBar } from "../navigation/topbar";
+import { connectErrorMessage, useClient } from "../utils/hooks/connect";
+import { AuthenticationService } from "../gen/api/proto/user_service/user_service_pb";
 
 const layout = {
   labelCol: {
@@ -20,15 +20,15 @@ const tailLayout = {
 };
 
 export const PasswordReset = () => {
-  const [err, setErr] = useState('');
+  const [err, setErr] = useState("");
   const authClient = useClient(AuthenticationService);
 
   const onFinish = async (values: { [key: string]: string }) => {
     try {
       await authClient.resetPasswordStep1({ email: values.email });
       notification.info({
-        message: 'Sent',
-        description: 'Please check your email; a reset code was sent.',
+        message: "Sent",
+        description: "Please check your email; a reset code was sent.",
       });
     } catch (e) {
       setErr(connectErrorMessage(e));
@@ -52,7 +52,7 @@ export const PasswordReset = () => {
               rules={[
                 {
                   required: true,
-                  message: 'Please input your email address!',
+                  message: "Please input your email address!",
                 },
               ]}
             >
@@ -68,7 +68,7 @@ export const PasswordReset = () => {
         </Col>
       </Row>
 
-      {err !== '' ? <Alert message={err} type="error" /> : null}
+      {err !== "" ? <Alert message={err} type="error" /> : null}
     </>
   );
 };

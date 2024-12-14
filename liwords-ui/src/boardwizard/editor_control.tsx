@@ -1,12 +1,12 @@
 // Control the editor
 
-import { Button, Form, Input, Popconfirm, Select, Typography } from 'antd';
-import { Store } from 'antd/lib/form/interface';
-import { useEffect, useState } from 'react';
-import { ChallengeRule } from '../gen/api/proto/ipc/omgwords_pb';
-import { LexiconFormItem } from '../shared/lexicon_display';
-import { useGameContextStoreContext } from '../store/store';
-import { baseURL } from '../utils/hooks/connect';
+import { Button, Form, Input, Popconfirm, Select, Typography } from "antd";
+import { Store } from "antd/lib/form/interface";
+import { useEffect, useState } from "react";
+import { ChallengeRule } from "../gen/api/proto/ipc/omgwords_pb";
+import { LexiconFormItem } from "../shared/lexicon_display";
+import { useGameContextStoreContext } from "../store/store";
+import { baseURL } from "../utils/hooks/connect";
 
 type Props = {
   gameID?: string;
@@ -14,7 +14,7 @@ type Props = {
     p1name: string,
     p2name: string,
     lex: string,
-    chrule: ChallengeRule
+    chrule: ChallengeRule,
   ) => void;
   deleteGame: (gid: string) => void;
   editGame: (p1name: string, p2name: string, description: string) => void;
@@ -29,7 +29,7 @@ export const EditorControl = (props: Props) => {
     form = <EditForm editGame={props.editGame} />;
   }
 
-  let gameURL = '';
+  let gameURL = "";
 
   if (props.gameID) {
     gameURL = `${baseURL}/anno/${props.gameID}`;
@@ -79,7 +79,7 @@ type CreationFormProps = {
     p1name: string,
     p2name: string,
     lex: string,
-    chrule: ChallengeRule
+    chrule: ChallengeRule,
   ) => void;
 };
 const CreationForm = (props: CreationFormProps) => {
@@ -90,7 +90,7 @@ const CreationForm = (props: CreationFormProps) => {
           vals.p1name,
           vals.p2name,
           vals.lexicon,
-          vals.challengerule
+          vals.challengerule,
         )
       }
     >
@@ -100,7 +100,7 @@ const CreationForm = (props: CreationFormProps) => {
         rules={[
           {
             required: true,
-            message: 'Player name is required',
+            message: "Player name is required",
           },
         ]}
       >
@@ -112,7 +112,7 @@ const CreationForm = (props: CreationFormProps) => {
         rules={[
           {
             required: true,
-            message: 'Player name is required',
+            message: "Player name is required",
           },
         ]}
       >
@@ -120,8 +120,8 @@ const CreationForm = (props: CreationFormProps) => {
       </Form.Item>
       {/* exclude ECWL since that lexicon can't be played without VOID for now */}
       <LexiconFormItem
-        excludedLexica={new Set(['ECWL'])}
-        additionalLexica={['NWL20', 'NWL18', 'CSW19', 'CSW21']}
+        excludedLexica={new Set(["ECWL"])}
+        additionalLexica={["NWL20", "NWL18", "CSW19", "CSW21"]}
       />
       <Form.Item
         label="Challenge rule"
@@ -129,7 +129,7 @@ const CreationForm = (props: CreationFormProps) => {
         rules={[
           {
             required: true,
-            message: 'Challenge rule is required',
+            message: "Challenge rule is required",
           },
         ]}
       >

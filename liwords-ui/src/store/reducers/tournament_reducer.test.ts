@@ -1,14 +1,14 @@
-import { ActionType } from '../../actions/actions';
+import { ActionType } from "../../actions/actions";
 import {
   defaultTournamentState,
   TournamentReducer,
-} from './tournament_reducer';
-import { ftData } from './testdata/tourney_1_divisions';
-import { ChallengeRule } from '../../gen/api/vendor/macondo/macondo_pb';
+} from "./tournament_reducer";
+import { ftData } from "./testdata/tourney_1_divisions";
+import { ChallengeRule } from "../../gen/api/vendor/macondo/macondo_pb";
 import {
   TournamentMetadataSchema,
   TType,
-} from '../../gen/api/proto/tournament_service/tournament_service_pb';
+} from "../../gen/api/proto/tournament_service/tournament_service_pb";
 import {
   TournamentGameResult,
   FirstMethod,
@@ -24,12 +24,12 @@ import {
   RoundControlSchema,
   TournamentGameSchema,
   PairingSchema,
-} from '../../gen/api/proto/ipc/tournament_pb';
-import { create, fromBinary } from '@bufbuild/protobuf';
+} from "../../gen/api/proto/ipc/tournament_pb";
+import { create, fromBinary } from "@bufbuild/protobuf";
 import {
   GameRequestSchema,
   GameRulesSchema,
-} from '../../gen/api/proto/ipc/omgwords_pb';
+} from "../../gen/api/proto/ipc/omgwords_pb";
 
 const toArr = (s: string) => {
   const bytes = new Uint8Array(Math.ceil(s.length / 2));
@@ -47,23 +47,23 @@ const initialTourneyXHRMessage = () => {
 
 const tourneyMetadataPayload = () => {
   const metadata = create(TournamentMetadataSchema, {
-    name: 'Wolges Incorporated',
-    description: 'Welcome to Wolges: population: You',
-    slug: '/tournament/wolges',
-    id: 'qzqWHsGVBrAgiuAZp9nJJm',
+    name: "Wolges Incorporated",
+    description: "Welcome to Wolges: population: You",
+    slug: "/tournament/wolges",
+    id: "qzqWHsGVBrAgiuAZp9nJJm",
     type: TType.STANDARD,
   });
 
   return {
-    directors: ['cesar', 'thedirector'],
+    directors: ["cesar", "thedirector"],
     metadata,
   };
 };
 
 const startTourneyMessage = () => {
   const msg = create(TournamentRoundStartedSchema, {
-    tournamentId: 'qzqWHsGVBrAgiuAZp9nJJm',
-    division: 'CSW',
+    tournamentId: "qzqWHsGVBrAgiuAZp9nJJm",
+    division: "CSW",
   });
 
   return msg;
@@ -71,10 +71,10 @@ const startTourneyMessage = () => {
 
 const cesarLoginState = () => {
   return {
-    username: 'cesar',
-    userID: 'ncSw3WeNGMzATfwzz7pdkF',
+    username: "cesar",
+    userID: "ncSw3WeNGMzATfwzz7pdkF",
     loggedIn: true,
-    connId: 'conn-123',
+    connId: "conn-123",
     connectedToSocket: true,
   };
 };
@@ -92,10 +92,10 @@ const fullDivisionsState = () => {
     payload: {
       fullDivisions: initialTourneyXHRMessage(),
       loginState: {
-        username: 'foo',
-        userID: 'foo123',
+        username: "foo",
+        userID: "foo123",
         loggedIn: true,
-        connId: 'conn-123',
+        connId: "conn-123",
         connectedToSocket: true,
       },
     },
@@ -104,36 +104,36 @@ const fullDivisionsState = () => {
   return state2;
 };
 
-it('tests initial fulldivisions message', () => {
+it("tests initial fulldivisions message", () => {
   const state = defaultTournamentState;
   const newState = TournamentReducer(state, {
     actionType: ActionType.SetDivisionsData,
     payload: {
       fullDivisions: initialTourneyXHRMessage(),
       loginState: {
-        username: 'mina',
-        userID: 'MoczSz5dksZuKMnxcH6yVT',
+        username: "mina",
+        userID: "MoczSz5dksZuKMnxcH6yVT",
         loggedIn: true,
-        connId: 'conn-123',
+        connId: "conn-123",
         connectedToSocket: true,
       },
     },
   });
 
   expect(newState.started).toBe(false);
-  expect(newState.divisions['CSW']).toBeTruthy();
-  expect(newState.divisions['NWL']).toBeTruthy();
-  expect(newState.divisions['TWL']).toBeFalsy();
+  expect(newState.divisions["CSW"]).toBeTruthy();
+  expect(newState.divisions["NWL"]).toBeTruthy();
+  expect(newState.divisions["TWL"]).toBeFalsy();
   expect(newState.competitorState).toEqual({
     isRegistered: true,
     currentRound: -1,
-    division: 'CSW',
-    status: 'PRETOURNEY',
+    division: "CSW",
+    status: "PRETOURNEY",
   });
   expect(newState.initializedFromXHR).toBe(true);
 });
 
-it('tests tourneystart', () => {
+it("tests tourneystart", () => {
   const state = fullDivisionsState();
 
   const finalState = TournamentReducer(state, {
@@ -149,8 +149,8 @@ it('tests tourneystart', () => {
 
 const newDivisionMessage = () => {
   const msg = create(TournamentDivisionDataResponseSchema, {
-    id: 'qzqWHsGVBrAgiuAZp9nJJm',
-    division: 'NWL B',
+    id: "qzqWHsGVBrAgiuAZp9nJJm",
+    division: "NWL B",
     currentRound: -1,
   });
   return msg;
@@ -158,16 +158,16 @@ const newDivisionMessage = () => {
 
 const newPlayersMessage = () => {
   const msg = create(PlayersAddedOrRemovedResponseSchema, {
-    id: 'qzqWHsGVBrAgiuAZp9nJJm',
-    division: 'NWL B',
+    id: "qzqWHsGVBrAgiuAZp9nJJm",
+    division: "NWL B",
     players: create(TournamentPersonsSchema, {
       persons: [
         create(TournamentPersonSchema, {
-          id: 'ViSLeuyqNcSA3GcHJP5rA5:nigel',
+          id: "ViSLeuyqNcSA3GcHJP5rA5:nigel",
           rating: 2344,
         }),
         create(TournamentPersonSchema, {
-          id: 'JkW7MXvVPfj7HdgAwLQzJ4:will',
+          id: "JkW7MXvVPfj7HdgAwLQzJ4:will",
           rating: 1234,
         }),
       ],
@@ -179,26 +179,26 @@ const newPlayersMessage = () => {
 
 const newTournamentControlsMessage = () => {
   const rules = create(GameRulesSchema, {
-    boardLayoutName: 'CrosswordGame',
-    letterDistributionName: 'English',
+    boardLayoutName: "CrosswordGame",
+    letterDistributionName: "English",
   });
   const gameReq = create(GameRequestSchema, {
-    lexicon: 'NWL20',
+    lexicon: "NWL20",
     rules: rules,
     initialTimeSeconds: 180,
     challengeRule: ChallengeRule.DOUBLE,
   });
 
   const divControls = create(DivisionControlsSchema, {
-    id: 'qzqWHsGVBrAgiuAZp9nJJm',
-    division: 'NWL B',
+    id: "qzqWHsGVBrAgiuAZp9nJJm",
+    division: "NWL B",
     gameRequest: gameReq,
     suspendedResult: TournamentGameResult.BYE,
   });
 
   const msg = create(DivisionControlsResponseSchema, {
-    division: 'NWL B',
-    id: 'qzqWHsGVBrAgiuAZp9nJJm',
+    division: "NWL B",
+    id: "qzqWHsGVBrAgiuAZp9nJJm",
     divisionControls: divControls,
   });
 
@@ -207,8 +207,8 @@ const newTournamentControlsMessage = () => {
 
 const newDivisionRoundControlsMessage = () => {
   const msg = create(DivisionRoundControlsSchema, {
-    id: 'qzqWHsGVBrAgiuAZp9nJJm',
-    division: 'NWL B',
+    id: "qzqWHsGVBrAgiuAZp9nJJm",
+    division: "NWL B",
   });
   const rcl = create(RoundControlSchema, {
     firstMethod: FirstMethod.AUTOMATIC_FIRST,
@@ -224,7 +224,7 @@ const newDivisionRoundControlsMessage = () => {
     round: 0,
     games: [game],
     outcomes: [0, 0],
-    readyStates: ['', ''],
+    readyStates: ["", ""],
   });
 
   msg.roundControls = [rcl];
@@ -232,7 +232,7 @@ const newDivisionRoundControlsMessage = () => {
   return msg;
 };
 
-it('adds new divisions and pairings', () => {
+it("adds new divisions and pairings", () => {
   const state = fullDivisionsState();
 
   const loginState = cesarLoginState();
@@ -271,14 +271,14 @@ it('adds new divisions and pairings', () => {
     },
   });
 
-  console.log('the final state', finalState);
-  expect(finalState.divisions['NWL B'].pairings.length).toBe(1);
+  console.log("the final state", finalState);
+  expect(finalState.divisions["NWL B"].pairings.length).toBe(1);
   expect(
-    finalState.divisions['NWL B'].pairings[0].roundPairings[0].players[0].id
-  ).toBe('JkW7MXvVPfj7HdgAwLQzJ4:will');
+    finalState.divisions["NWL B"].pairings[0].roundPairings[0].players[0].id,
+  ).toBe("JkW7MXvVPfj7HdgAwLQzJ4:will");
   expect(
-    finalState.divisions['NWL B'].pairings[0].roundPairings[0].players[1].id
-  ).toBe('ViSLeuyqNcSA3GcHJP5rA5:nigel');
+    finalState.divisions["NWL B"].pairings[0].roundPairings[0].players[1].id,
+  ).toBe("ViSLeuyqNcSA3GcHJP5rA5:nigel");
 });
 
 // it('tests my pairings', () => {

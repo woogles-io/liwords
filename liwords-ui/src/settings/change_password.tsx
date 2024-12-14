@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Button, Input, Form, Row, Col, notification } from 'antd';
-import { Link } from 'react-router-dom';
-import { connectErrorMessage, useClient } from '../utils/hooks/connect';
-import { AuthenticationService } from '../gen/api/proto/user_service/user_service_pb';
+import React, { useState } from "react";
+import { Button, Input, Form, Row, Col, notification } from "antd";
+import { Link } from "react-router-dom";
+import { connectErrorMessage, useClient } from "../utils/hooks/connect";
+import { AuthenticationService } from "../gen/api/proto/user_service/user_service_pb";
 
 const layout = {
   labelCol: {
@@ -14,7 +14,7 @@ const layout = {
 };
 
 export const ChangePassword = React.memo(() => {
-  const [err, setErr] = useState('');
+  const [err, setErr] = useState("");
   const [form] = Form.useForm();
 
   const authClient = useClient(AuthenticationService);
@@ -26,10 +26,10 @@ export const ChangePassword = React.memo(() => {
         newPassword: values.newPassword,
       });
       notification.info({
-        message: 'Success',
-        description: 'Your password was changed.',
+        message: "Success",
+        description: "Your password was changed.",
       });
-      setErr('');
+      setErr("");
     } catch (err) {
       setErr(connectErrorMessage(err));
       form.validateFields();
@@ -45,7 +45,7 @@ export const ChangePassword = React.memo(() => {
         name="changepassword"
         onFinish={onFinish}
         onValuesChange={(changedValues, allValues) => {
-          setErr('');
+          setErr("");
         }}
         style={{ marginTop: 20 }}
         requiredMark={false}
@@ -58,14 +58,14 @@ export const ChangePassword = React.memo(() => {
               rules={[
                 {
                   validator: async (_, oldPassword) => {
-                    if (err !== '') {
+                    if (err !== "") {
                       return Promise.reject(new Error(err));
                     }
                   },
                 },
                 {
                   required: true,
-                  message: 'Please input your old password',
+                  message: "Please input your old password",
                 },
               ]}
             >
@@ -80,7 +80,7 @@ export const ChangePassword = React.memo(() => {
               rules={[
                 {
                   required: true,
-                  message: 'Please input your new password',
+                  message: "Please input your new password",
                 },
               ]}
             >

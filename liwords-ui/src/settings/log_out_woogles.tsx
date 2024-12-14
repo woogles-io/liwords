@@ -1,7 +1,7 @@
-import React from 'react';
-import { Button } from 'antd';
-import { PlayerAvatar } from '../shared/player_avatar';
-import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
+import React from "react";
+import { Button } from "antd";
+import { PlayerAvatar } from "../shared/player_avatar";
+import { PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
 
 type Props = {
   player: Partial<PlayerInfo> | undefined;

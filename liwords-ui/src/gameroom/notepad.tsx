@@ -5,24 +5,24 @@ import React, {
   useEffect,
   useMemo,
   useState,
-} from 'react';
-import { Button, Card } from 'antd';
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+} from "react";
+import { Button, Card } from "antd";
+import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   useGameContextStoreContext,
   useTentativeTileContext,
-} from '../store/store';
-import { sortTiles } from '../store/constants';
+} from "../store/store";
+import { sortTiles } from "../store/constants";
 import {
   contiguousTilesFromTileSet,
   simpletile,
-} from '../utils/cwgame/scoring';
-import { Direction, isMobile } from '../utils/cwgame/common';
-import { BoopSounds } from '../sound/boop';
+} from "../utils/cwgame/scoring";
+import { Direction, isMobile } from "../utils/cwgame/common";
+import { BoopSounds } from "../sound/boop";
 import {
   machineLetterToRune,
   machineWordToRunes,
-} from '../constants/alphabets';
+} from "../constants/alphabets";
 
 type NotepadProps = {
   style?: React.CSSProperties;
@@ -31,7 +31,7 @@ type NotepadProps = {
 
 const humanReadablePosition = (
   direction: Direction,
-  firstLetter: simpletile
+  firstLetter: simpletile,
 ): string => {
   const readableCol = String.fromCodePoint(firstLetter.col + 65);
   const readableRow = (firstLetter.row + 1).toString();
@@ -42,7 +42,7 @@ const humanReadablePosition = (
 };
 
 const NotepadContext = React.createContext({
-  curNotepad: '',
+  curNotepad: "",
   setCurNotepad: ((a: string) => {}) as React.Dispatch<
     React.SetStateAction<string>
   >,
@@ -56,10 +56,10 @@ export const NotepadContextProvider = ({
   children: React.ReactNode;
   feRackInfo: boolean;
 }) => {
-  const [curNotepad, setCurNotepad] = useState('');
+  const [curNotepad, setCurNotepad] = useState("");
   const contextValue = useMemo(
     () => ({ curNotepad, setCurNotepad, feRackInfo }),
-    [curNotepad, setCurNotepad, feRackInfo]
+    [curNotepad, setCurNotepad, feRackInfo],
   );
 
   return <NotepadContext.Provider value={contextValue} children={children} />;
@@ -75,45 +75,45 @@ export const Notepad = React.memo((props: NotepadProps) => {
   const board = gameContext.board;
   const addPlay = useCallback(() => {
     const contiguousTiles = contiguousTilesFromTileSet(placedTiles, board);
-    let play = '';
-    let position = '';
+    let play = "";
+    let position = "";
     const leave = machineWordToRunes(
       sortTiles(displayedRack, gameContext.alphabet),
-      gameContext.alphabet
+      gameContext.alphabet,
     );
     if (contiguousTiles?.length === 2) {
       position = humanReadablePosition(
         contiguousTiles[1],
-        contiguousTiles[0][0]
+        contiguousTiles[0][0],
       );
       let inParen = false;
       for (const tile of contiguousTiles[0]) {
         if (!tile.fresh) {
           if (!inParen) {
-            play += '(';
+            play += "(";
             inParen = true;
           }
         } else {
           if (inParen) {
-            play += ')';
+            play += ")";
             inParen = false;
           }
         }
         play += machineLetterToRune(tile.letter, gameContext.alphabet);
       }
-      if (inParen) play += ')';
+      if (inParen) play += ")";
     }
     setCurNotepad(
       (curNotepad) =>
-        `${curNotepad ? curNotepad + '\n' : ''}${
+        `${curNotepad ? curNotepad + "\n" : ""}${
           play
-            ? `${position} ${play} ${placedTilesTempScore}${leave ? ' ' : ''}`
-            : ''
-        }${leave}`
+            ? `${position} ${play} ${placedTilesTempScore}${leave ? " " : ""}`
+            : ""
+        }${leave}`,
     );
     // Return focus to board on all but mobile so the key commands can be used immediately
     if (!isMobile()) {
-      document.getElementById('board-container')?.focus();
+      document.getElementById("board-container")?.focus();
     }
   }, [
     displayedRack,
@@ -124,7 +124,7 @@ export const Notepad = React.memo((props: NotepadProps) => {
     gameContext.alphabet,
   ]);
   const clearNotepad = useCallback(() => {
-    setCurNotepad('');
+    setCurNotepad("");
   }, [setCurNotepad]);
   useEffect(() => {
     if (notepadEl.current && !(notepadEl.current === document.activeElement)) {
@@ -135,20 +135,20 @@ export const Notepad = React.memo((props: NotepadProps) => {
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       setCurNotepad(e.target.value);
     },
-    [setCurNotepad]
+    [setCurNotepad],
   );
   const easterEggEnabled = useMemo(
     () => /catcam/i.test(curNotepad),
-    [curNotepad]
+    [curNotepad],
   );
   const numWolgesWas = useRef(0);
   const numWolges = useMemo(
     () => curNotepad.match(/wolges/gi)?.length || 0,
-    [curNotepad]
+    [curNotepad],
   );
   useEffect(() => {
     if (numWolges > numWolgesWas.current) {
-      BoopSounds.playSound('wolgesSound');
+      BoopSounds.playSound("wolgesSound");
     }
     numWolgesWas.current = numWolges;
   }, [numWolges]);
@@ -173,7 +173,7 @@ export const Notepad = React.memo((props: NotepadProps) => {
         />
       </React.Fragment>
     ),
-    [easterEggEnabled, feRackInfo, notepadIsNotEmpty, clearNotepad, addPlay]
+    [easterEggEnabled, feRackInfo, notepadIsNotEmpty, clearNotepad, addPlay],
   );
   const notepadContainer = (
     <div className="notepad-container" style={props.style}>
@@ -243,7 +243,7 @@ const EasterEgg = () => {
         timeOn: number,
         duration: number,
         type: OscillatorType,
-        chan: number
+        chan: number,
       ) => {
         const env = ctx.createGain();
         // TODO: find a believable ADSR envelope
@@ -268,7 +268,7 @@ const EasterEgg = () => {
         note: number,
         beats: number,
         type: OscillatorType,
-        chan: number
+        chan: number,
       ) => {
         if (note) {
           playFreq(
@@ -276,13 +276,13 @@ const EasterEgg = () => {
             t0 + t * dur,
             beats * dur,
             type,
-            chan
+            chan,
           );
         }
         t += beats;
       };
 
-      if (song === 'catcam') {
+      if (song === "catcam") {
         // https://www.youtube.com/watch?v=J7UwSVsiwzI
         dur = 60 / 128;
         // 69 is middle A and 60 is middle C
@@ -345,7 +345,7 @@ const EasterEgg = () => {
         ];
 
         for (const [note, beats] of fullSong) {
-          playNote(note, beats, 'sawtooth', 0);
+          playNote(note, beats, "sawtooth", 0);
         }
 
         const accompaniment = [
@@ -357,23 +357,23 @@ const EasterEgg = () => {
           const note2 = note1 + 12;
           for (let i = 0; i < 4; ++i) {
             for (const note of [note1, note2]) {
-              playNote(note, 0.5, 'triangle', 1);
+              playNote(note, 0.5, "triangle", 1);
             }
           }
         }
-        playNote(40, 1, 'triangle', 1);
+        playNote(40, 1, "triangle", 1);
 
         for (const t1 of [82, 98]) {
           t = t1;
           for (let i = 0; i < 6; ++i) {
             for (const note of [79, 78, 76, 74]) {
-              playNote(note, 1 / 4, 'square', 2);
+              playNote(note, 1 / 4, "square", 2);
             }
           }
         }
       }
     },
-    [stopIt, ctx]
+    [stopIt, ctx],
   );
 
   return (
@@ -382,7 +382,7 @@ const EasterEgg = () => {
         shape="circle"
         icon={<React.Fragment>&#x1f63b;</React.Fragment>}
         type="primary"
-        onClick={() => handler('catcam')}
+        onClick={() => handler("catcam")}
       />
     </React.Fragment>
   );

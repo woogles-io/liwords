@@ -1,15 +1,15 @@
-import React from 'react';
-import { createRoot } from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
-import App from './App';
-import { Store as LegacyStore } from './store/store';
-import { BriefProfiles } from './utils/brief_profiles';
+import React from "react";
+import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import App from "./App";
+import { Store as LegacyStore } from "./store/store";
+import { BriefProfiles } from "./utils/brief_profiles";
 
-import { Provider } from 'react-redux';
+import { Provider } from "react-redux";
 
-import 'antd/dist/reset.css';
-import './index.css';
-import { store } from './store/redux_store';
+import "antd/dist/reset.css";
+import "./index.css";
+import { store } from "./store/redux_store";
 
 declare global {
   interface Window {
@@ -19,17 +19,17 @@ declare global {
 }
 
 window.console.info(
-  'Woogles.io is open source! https://github.com/woogles-io/liwords'
+  "Woogles.io is open source! https://github.com/woogles-io/liwords",
 );
 
 // Scope the variables declared here.
 {
-  const oldValue = localStorage.getItem('enableWordSmog');
+  const oldValue = localStorage.getItem("enableWordSmog");
   if (oldValue) {
-    if (!localStorage.getItem('enableVariants')) {
-      localStorage.setItem('enableVariants', oldValue);
+    if (!localStorage.getItem("enableVariants")) {
+      localStorage.setItem("enableVariants", oldValue);
     }
-    localStorage.removeItem('enableWordSmog');
+    localStorage.removeItem("enableWordSmog");
   }
 }
 
@@ -40,23 +40,23 @@ window.console.info(
   const metaViewport = document.querySelector("meta[name='viewport']");
   if (!metaViewport) {
     // Should not happen because this is in public/index.html.
-    throw new Error('missing meta');
+    throw new Error("missing meta");
   }
   const resizeFunc = () => {
-    let desiredViewport = 'width=device-width, initial-scale=1';
+    let desiredViewport = "width=device-width, initial-scale=1";
     const deviceWidth = window.outerWidth;
     if (deviceWidth < minimumViableWidth) {
       desiredViewport = `width=${minimumViableWidth}, initial-scale=${
         deviceWidth / minimumViableWidth
       }`;
     }
-    metaViewport.setAttribute('content', desiredViewport);
+    metaViewport.setAttribute("content", desiredViewport);
   };
-  window.addEventListener('resize', resizeFunc);
+  window.addEventListener("resize", resizeFunc);
   resizeFunc();
 }
 
-const container = document.getElementById('root');
+const container = document.getElementById("root");
 const root = createRoot(container!);
 
 root.render(
@@ -71,5 +71,5 @@ root.render(
         </LegacyStore>
       </Provider>
     </BrowserRouter>
-  </React.StrictMode>
+  </React.StrictMode>,
 );

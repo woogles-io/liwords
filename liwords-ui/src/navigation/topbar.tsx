@@ -1,35 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 
-import { Link } from 'react-router-dom';
-import './topbar.scss';
-import { DisconnectOutlined, SettingOutlined } from '@ant-design/icons';
-import { notification, Dropdown } from 'antd';
+import { Link } from "react-router-dom";
+import "./topbar.scss";
+import { DisconnectOutlined, SettingOutlined } from "@ant-design/icons";
+import { notification, Dropdown } from "antd";
 import {
   useLoginStateStoreContext,
   useResetStoreContext,
   useTournamentStoreContext,
-} from '../store/store';
-import { LoginModal } from '../lobby/login';
-import { isClubType } from '../store/constants';
-import { flashError, useClient } from '../utils/hooks/connect';
-import { AuthenticationService } from '../gen/api/proto/user_service/user_service_pb';
+} from "../store/store";
+import { LoginModal } from "../lobby/login";
+import { isClubType } from "../store/constants";
+import { flashError, useClient } from "../utils/hooks/connect";
+import { AuthenticationService } from "../gen/api/proto/user_service/user_service_pb";
 
 const TopMenu = React.memo((props: Props) => {
   const playMenuItems = [
     {
-      key: 'omgwords',
+      key: "omgwords",
       label: <Link to="/">OMGWords</Link>,
     },
     {
-      key: 'puzzles',
+      key: "puzzles",
       label: <Link to="/puzzle">Puzzles</Link>,
     },
     {
-      key: 'editor',
+      key: "editor",
       label: <Link to="/editor">Board editor</Link>,
     },
     {
-      key: 'anagrams',
+      key: "anagrams",
       label: (
         <a
           href="//anagrams.mynetgear.com/"
@@ -41,7 +41,7 @@ const TopMenu = React.memo((props: Props) => {
       ),
     },
     {
-      key: 'licensetospell',
+      key: "licensetospell",
       label: (
         <a
           href="https://seattlephysicstutor.com/plates.html"
@@ -65,7 +65,7 @@ const TopMenu = React.memo((props: Props) => {
           Aerolith
         </a>
       ),
-      key: 'aerolith',
+      key: "aerolith",
     },
     {
       label: (
@@ -77,10 +77,10 @@ const TopMenu = React.memo((props: Props) => {
           Random Racer
         </a>
       ),
-      key: 'randomracer',
+      key: "randomracer",
     },
     {
-      key: 'wordtree',
+      key: "wordtree",
       label: (
         <a
           href="https://seattlephysicstutor.com/tree.html"
@@ -95,11 +95,11 @@ const TopMenu = React.memo((props: Props) => {
 
   const aboutMenuItems = [
     {
-      key: 'team',
+      key: "team",
       label: <Link to="/team">Meet the Woogles team</Link>,
     },
     {
-      key: 'tos',
+      key: "tos",
       label: <Link to="/terms">Terms of Service</Link>,
     },
   ];
@@ -111,9 +111,9 @@ const TopMenu = React.memo((props: Props) => {
           overlayClassName="user-menu"
           menu={{ items: playMenuItems }}
           placement="bottom"
-          trigger={['click']}
+          trigger={["click"]}
           getPopupContainer={() =>
-            document.getElementById('root') as HTMLElement
+            document.getElementById("root") as HTMLElement
           }
         >
           <p>Play</p>
@@ -127,9 +127,9 @@ const TopMenu = React.memo((props: Props) => {
           overlayClassName="user-menu"
           menu={{ items: studyMenuItems }}
           placement="bottom"
-          trigger={['click']}
+          trigger={["click"]}
           getPopupContainer={() =>
-            document.getElementById('root') as HTMLElement
+            document.getElementById("root") as HTMLElement
           }
         >
           <p>Study</p>
@@ -143,9 +143,9 @@ const TopMenu = React.memo((props: Props) => {
           overlayClassName="user-menu"
           menu={{ items: aboutMenuItems }}
           placement="bottom"
-          trigger={['click']}
+          trigger={["click"]}
           getPopupContainer={() =>
-            document.getElementById('root') as HTMLElement
+            document.getElementById("root") as HTMLElement
           }
         >
           <p>About</p>
@@ -171,8 +171,8 @@ export const TopBar = React.memo((props: Props) => {
     try {
       await authClient.logout({});
       notification.info({
-        message: 'Success',
-        description: 'You have been logged out.',
+        message: "Success",
+        description: "You have been logged out.",
       });
       resetStore();
     } catch (e) {
@@ -185,34 +185,34 @@ export const TopBar = React.memo((props: Props) => {
       label: (
         <Link to={`/profile/${encodeURIComponent(username)}`}>Profile</Link>
       ),
-      key: 'profile',
+      key: "profile",
     },
     {
       label: <Link to={`/settings`}>Settings</Link>,
-      key: 'settings',
+      key: "settings",
     },
     {
       label: <a href="/clubs">Clubs</a>,
-      key: 'clubs',
+      key: "clubs",
     },
     {
       label: <a href="/donate">Donate</a>,
-      key: 'donate',
+      key: "donate",
     },
     {
       label: <a>Log out</a>,
-      key: 'logout',
+      key: "logout",
     },
   ];
 
-  const homeLink = props.tournamentID ? tournamentContext.metadata?.slug : '/';
+  const homeLink = props.tournamentID ? tournamentContext.metadata?.slug : "/";
 
   return (
     <nav className="top-header" id="main-nav">
       <div className="container">
         <Link
           to={homeLink}
-          className={`logo${props.tournamentID ? ' tournament-mode' : ''}`}
+          className={`logo${props.tournamentID ? " tournament-mode" : ""}`}
         >
           <div className="site-icon-rect">
             <div className="site-icon-w">W</div>
@@ -223,8 +223,8 @@ export const TopBar = React.memo((props: Props) => {
             <div className="tournament">
               Back to
               {isClubType(tournamentContext.metadata?.type)
-                ? ' Club'
-                : ' Tournament'}
+                ? " Club"
+                : " Tournament"}
             </div>
           ) : null}
         </Link>
@@ -236,15 +236,15 @@ export const TopBar = React.memo((props: Props) => {
               menu={{
                 items: userMenuItems,
                 onClick: ({ key }) => {
-                  if (key === 'logout') {
+                  if (key === "logout") {
                     handleLogout();
                   }
                 },
               }}
-              trigger={['click']}
+              trigger={["click"]}
               placement="bottomRight"
               getPopupContainer={() =>
-                document.getElementById('root') as HTMLElement
+                document.getElementById("root") as HTMLElement
               }
             >
               <button className="link">
@@ -253,7 +253,7 @@ export const TopBar = React.memo((props: Props) => {
               </button>
             </Dropdown>
             {!connectedToSocket ? (
-              <DisconnectOutlined style={{ color: 'red', marginLeft: 5 }} />
+              <DisconnectOutlined style={{ color: "red", marginLeft: 5 }} />
             ) : null}
           </div>
         ) : (

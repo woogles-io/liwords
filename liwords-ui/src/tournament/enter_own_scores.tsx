@@ -1,16 +1,16 @@
-import React, { useMemo, useState } from 'react';
-import { useTournamentStoreContext } from '../store/store';
+import React, { useMemo, useState } from "react";
+import { useTournamentStoreContext } from "../store/store";
 import {
   Division,
   SinglePairing,
   TournamentState,
-} from '../store/reducers/tournament_reducer';
-import { Button, Divider, Form, InputNumber, message } from 'antd';
-import { flashError, useClient } from '../utils/hooks/connect';
-import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_pb';
-import { TournamentGameResult } from '../gen/api/proto/ipc/tournament_pb';
-import { GameEndReason } from '../gen/api/proto/ipc/omgwords_pb';
-import { ActionsPanel } from './actions_panel';
+} from "../store/reducers/tournament_reducer";
+import { Button, Divider, Form, InputNumber, message } from "antd";
+import { flashError, useClient } from "../utils/hooks/connect";
+import { TournamentService } from "../gen/api/proto/tournament_service/tournament_service_pb";
+import { TournamentGameResult } from "../gen/api/proto/ipc/tournament_pb";
+import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
+import { ActionsPanel } from "./actions_panel";
 
 type Props = {
   truncatedID: string;
@@ -41,7 +41,7 @@ type ShowResultsProps = {
 
 const ShowResults = (props: ShowResultsProps) => {
   const [show, setShow] = useState(props.autoshow ?? false);
-  const [selectedGameTab, setSelectedGameTab] = useState('GAMES');
+  const [selectedGameTab, setSelectedGameTab] = useState("GAMES");
 
   return (
     <>
@@ -114,7 +114,7 @@ const ScoreForm = (props: ScoreFormProps) => {
       </h4>
 
       <h4>
-        You are going <strong>{props.first ? 'first' : 'second'}</strong>.
+        You are going <strong>{props.first ? "first" : "second"}</strong>.
       </h4>
       <Divider />
 
@@ -127,7 +127,7 @@ const ScoreForm = (props: ScoreFormProps) => {
         wrapperCol={{ span: 14 }}
         onValuesChange={(changedValues, values) => {
           setSubmitDisabled(
-            values.ourscore == undefined || values.theirscore == undefined
+            values.ourscore == undefined || values.theirscore == undefined,
           );
         }}
         onFinish={async (values) => {
@@ -150,8 +150,8 @@ const ScoreForm = (props: ScoreFormProps) => {
           const obj = {
             id: props.division.tournamentID,
             division: props.division.divisionID,
-            playerOneId: props.pairing.players[0].id.split(':')[0],
-            playerTwoId: props.pairing.players[1].id.split(':')[0],
+            playerOneId: props.pairing.players[0].id.split(":")[0],
+            playerTwoId: props.pairing.players[1].id.split(":")[0],
             round: props.division.currentRound,
             playerOneScore: p1score,
             playerTwoScore: p2score,
@@ -163,7 +163,7 @@ const ScoreForm = (props: ScoreFormProps) => {
           try {
             await tClient.setResult(obj);
             message.info({
-              content: 'Result submitted',
+              content: "Result submitted",
               duration: 3,
             });
           } catch (e) {
@@ -212,14 +212,14 @@ export const OwnScoreEnterer = (props: Props) => {
 
   if (player == null) {
     if (Object.keys(tournamentContext.divisions).length > 0) {
-      throw new Error('unexpected truncated ID: ' + props.truncatedID);
+      throw new Error("unexpected truncated ID: " + props.truncatedID);
     }
     return <></>;
   }
   const division = tournamentContext.divisions[player.division];
   const foundPlayer = division.players[player.index];
-  const fullName = foundPlayer.id.split(':')[1];
-  const md5ID = foundPlayer.id.split(':')[0];
+  const fullName = foundPlayer.id.split(":")[1];
+  const md5ID = foundPlayer.id.split(":")[0];
   // determine context of what to show.
   // 1) Tourney hasn't started yet
   // 2) We are in round X, but we have not entered a score yet
@@ -241,13 +241,13 @@ export const OwnScoreEnterer = (props: Props) => {
         pairing.players[0].id === foundPlayer.id ||
         pairing.players[1].id === foundPlayer.id
       );
-    }
+    },
   );
   let opponent, opponentName;
   if (!pairing) {
     return (
       <h4 className="readable-text-color">
-        Pairing not found for round {division.currentRound + 1} and player{' '}
+        Pairing not found for round {division.currentRound + 1} and player{" "}
         {fullName}
       </h4>
     );
@@ -255,11 +255,11 @@ export const OwnScoreEnterer = (props: Props) => {
   let first = false;
   if (pairing.players[0].id === foundPlayer.id) {
     opponent = pairing.players[1].id;
-    opponentName = opponent.split(':')[1];
+    opponentName = opponent.split(":")[1];
     first = true;
   } else if (pairing.players[1].id === foundPlayer.id) {
     opponent = pairing.players[0].id;
-    opponentName = opponent.split(':')[1];
+    opponentName = opponent.split(":")[1];
   }
 
   let display = null;
@@ -313,7 +313,7 @@ export const OwnScoreEnterer = (props: Props) => {
       <h4 className="readable-text-color">Hi, {fullName}.</h4>
 
       <h4 className="readable-text-color">
-        You played {opponent?.split(':')[1]} in round{' '}
+        You played {opponent?.split(":")[1]} in round{" "}
         {division.currentRound + 1}.
       </h4>
       <h4>

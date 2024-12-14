@@ -1,17 +1,17 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import moment from 'moment';
-import { Button, Card, InputNumber, Table, Tag, Tooltip } from 'antd';
-import { CheckCircleTwoTone } from '@ant-design/icons';
-import { FundOutlined } from '@ant-design/icons';
-import { timeToString } from '../store/constants';
-import { VariantIcon } from '../shared/variant_icons';
-import { GameInfoResponse, RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
-import { challengeRuleNamesShort } from '../constants/challenge_rules';
-import { GameEndReason } from '../gen/api/proto/ipc/omgwords_pb';
-import { ChallengeRule } from '../gen/api/vendor/macondo/macondo_pb';
-import { lexiconCodeToProfileRatingName } from '../shared/lexica';
-import { timestampDate } from '@bufbuild/protobuf/wkt';
+import React from "react";
+import { Link } from "react-router-dom";
+import moment from "moment";
+import { Button, Card, InputNumber, Table, Tag, Tooltip } from "antd";
+import { CheckCircleTwoTone } from "@ant-design/icons";
+import { FundOutlined } from "@ant-design/icons";
+import { timeToString } from "../store/constants";
+import { VariantIcon } from "../shared/variant_icons";
+import { GameInfoResponse, RatingMode } from "../gen/api/proto/ipc/omgwords_pb";
+import { challengeRuleNamesShort } from "../constants/challenge_rules";
+import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
+import { ChallengeRule } from "../gen/api/vendor/macondo/macondo_pb";
+import { lexiconCodeToProfileRatingName } from "../shared/lexica";
+import { timestampDate } from "@bufbuild/protobuf/wkt";
 
 type Props = {
   games: Array<GameInfoResponse>;
@@ -51,11 +51,11 @@ export const GamesHistoryCard = React.memo((props: Props) => {
   //      <React.Fragment> &rarr; {String(desiredPageNumber)}</React.Fragment>
   //    )}
 
-  const special = ['Unwoogler', 'AnotherUnwoogler', userID];
+  const special = ["Unwoogler", "AnotherUnwoogler", userID];
   const formattedGames = props.games
     .filter(
       (item) =>
-        item.players?.length && item.gameEndReason !== GameEndReason.CANCELLED
+        item.players?.length && item.gameEndReason !== GameEndReason.CANCELLED,
     )
     .map((item) => {
       const userplace =
@@ -66,18 +66,18 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       const opponent = (
         <Link
           to={`/profile/${encodeURIComponent(
-            item.players[1 - userplace].nickname
+            item.players[1 - userplace].nickname,
           )}`}
         >
           {item.players[1 - userplace].nickname}
         </Link>
       );
       const scores = item.scores ? (
-        <Link to={`/game/${encodeURIComponent(String(item.gameId ?? ''))}`}>
+        <Link to={`/game/${encodeURIComponent(String(item.gameId ?? ""))}`}>
           {item.scores[userplace]} - {item.scores[1 - userplace]}
         </Link>
       ) : (
-        ''
+        ""
       );
       let result = <Tag color="blue">Loss</Tag>;
       const challenge =
@@ -88,7 +88,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       const getDetails = () => {
         return (
           <>
-            <VariantIcon vcode={item.gameRequest?.rules?.variantName} />{' '}
+            <VariantIcon vcode={item.gameRequest?.rules?.variantName} />{" "}
             <span className={`challenge-rule mode_${challenge}`}>
               {challenge}
             </span>
@@ -110,43 +110,43 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         turnOrder = <CheckCircleTwoTone twoToneColor="#52c41a" />;
       }
       const whenMoment = moment(
-        item.createdAt ? timestampDate(item.createdAt) : ''
+        item.createdAt ? timestampDate(item.createdAt) : "",
       );
       const when = (
-        <Tooltip title={whenMoment.format('LLL')}>
+        <Tooltip title={whenMoment.format("LLL")}>
           {whenMoment.fromNow()}
         </Tooltip>
       );
-      let endReason = '';
+      let endReason = "";
       switch (item.gameEndReason) {
         case GameEndReason.TIME:
-          endReason = 'Time out';
+          endReason = "Time out";
           break;
         case GameEndReason.CONSECUTIVE_ZEROES:
-          endReason = 'Six-zero rule';
+          endReason = "Six-zero rule";
           break;
         case GameEndReason.RESIGNED:
-          endReason = 'Resignation';
+          endReason = "Resignation";
           break;
         case GameEndReason.FORCE_FORFEIT:
-          endReason = 'Forfeit';
+          endReason = "Forfeit";
           break;
         case GameEndReason.ABORTED:
-          endReason = 'Aborted';
+          endReason = "Aborted";
           break;
         case GameEndReason.CANCELLED:
-          endReason = 'Cancelled';
+          endReason = "Cancelled";
           break;
         case GameEndReason.TRIPLE_CHALLENGE:
-          endReason = 'Triple challenge';
+          endReason = "Triple challenge";
           break;
         case GameEndReason.STANDARD:
-          endReason = 'Completed';
+          endReason = "Completed";
       }
       const time = `${item.timeControlName} ${timeToString(
         item.gameRequest?.initialTimeSeconds ?? 0,
         item.gameRequest?.incrementSeconds ?? 0,
-        item.gameRequest?.maxOvertimeMinutes ?? 0
+        item.gameRequest?.maxOvertimeMinutes ?? 0,
       )}`;
       return {
         gameId: item.gameId, // used by rowKey
@@ -157,7 +157,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         turnOrder,
         endReason,
         lexicon: lexiconCodeToProfileRatingName(
-          item.gameRequest?.lexicon ?? ''
+          item.gameRequest?.lexicon ?? "",
         ),
         time,
         when,
@@ -166,58 +166,58 @@ export const GamesHistoryCard = React.memo((props: Props) => {
     .filter((item) => item !== null);
   const columns = [
     {
-      className: 'result',
-      dataIndex: 'result',
-      key: 'result',
-      title: ' ',
+      className: "result",
+      dataIndex: "result",
+      key: "result",
+      title: " ",
     },
     {
-      className: 'when',
-      dataIndex: 'when',
-      key: 'when',
-      title: ' ',
+      className: "when",
+      dataIndex: "when",
+      key: "when",
+      title: " ",
     },
     {
-      className: 'opponent',
-      dataIndex: 'opponent',
-      key: 'opponent',
-      title: 'Opponent',
+      className: "opponent",
+      dataIndex: "opponent",
+      key: "opponent",
+      title: "Opponent",
     },
     {
-      className: 'score',
-      dataIndex: 'scores',
-      key: 'scores',
-      title: 'Final Score',
+      className: "score",
+      dataIndex: "scores",
+      key: "scores",
+      title: "Final Score",
     },
     {
-      className: 'turn-order',
-      dataIndex: 'turnOrder',
-      key: 'turnOrder',
-      title: 'First',
+      className: "turn-order",
+      dataIndex: "turnOrder",
+      key: "turnOrder",
+      title: "First",
     },
     {
-      className: 'end-reason',
-      dataIndex: 'endReason',
-      key: 'endReason',
-      title: 'End',
+      className: "end-reason",
+      dataIndex: "endReason",
+      key: "endReason",
+      title: "End",
     },
     {
-      className: 'lexicon',
-      dataIndex: 'lexicon',
-      key: 'lexicon',
-      title: 'Words',
+      className: "lexicon",
+      dataIndex: "lexicon",
+      key: "lexicon",
+      title: "Words",
     },
     {
-      className: 'time',
-      dataIndex: 'time',
-      key: 'time',
-      title: 'Time Settings',
+      className: "time",
+      dataIndex: "time",
+      key: "time",
+      title: "Time Settings",
     },
     {
-      title: 'Details',
-      className: 'details',
-      dataIndex: 'details',
-      key: 'details',
+      title: "Details",
+      className: "details",
+      dataIndex: "details",
+      key: "details",
     },
   ];
   // TODO: use the normal Ant table pagination when the backend can give us a total

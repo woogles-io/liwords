@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef } from "react";
 
 // evolved from
 // https://www.matthewgerstman.com/tech/throttle-and-debounce/
@@ -13,7 +13,7 @@ export function useDebounce(func: Function, timeout: number) {
         func(...args);
       }, timeout);
     },
-    [func, timeout]
+    [func, timeout],
   );
   return debounced;
 }

@@ -3,12 +3,12 @@ import {
   MinusCircleOutlined,
   PlusOutlined,
   UpOutlined,
-} from '@ant-design/icons';
-import { Button, Divider, Form, Input, message } from 'antd';
-import { Store } from 'rc-field-form/lib/interface';
-import React, { useEffect } from 'react';
-import { ConfigService } from '../gen/api/proto/config_service/config_service_pb';
-import { flashError, useClient } from '../utils/hooks/connect';
+} from "@ant-design/icons";
+import { Button, Divider, Form, Input, message } from "antd";
+import { Store } from "rc-field-form/lib/interface";
+import React, { useEffect } from "react";
+import { ConfigService } from "../gen/api/proto/config_service/config_service_pb";
+import { flashError, useClient } from "../utils/hooks/connect";
 
 const layout = {
   labelCol: {
@@ -33,13 +33,13 @@ export const AnnouncementEditor = () => {
   }, [configClient, form]);
 
   const onFinish = async (vals: Store) => {
-    console.log('vals', vals);
+    console.log("vals", vals);
     try {
       await configClient.setAnnouncements({
         announcements: vals.announcements,
       });
       message.info({
-        content: 'Updated announcements on front page',
+        content: "Updated announcements on front page",
         duration: 3,
       });
     } catch (err) {
@@ -57,25 +57,25 @@ export const AnnouncementEditor = () => {
                 <>
                   <Form.Item
                     {...restField}
-                    name={[name, 'title']}
+                    name={[name, "title"]}
                     label="Title"
-                    rules={[{ required: true, message: 'Missing title' }]}
+                    rules={[{ required: true, message: "Missing title" }]}
                   >
                     <Input placeholder="Title" />
                   </Form.Item>
                   <Form.Item
                     {...restField}
-                    name={[name, 'link']}
+                    name={[name, "link"]}
                     label="Link"
-                    rules={[{ required: true, message: 'Missing link' }]}
+                    rules={[{ required: true, message: "Missing link" }]}
                   >
                     <Input placeholder="https://" />
                   </Form.Item>
                   <Form.Item
                     {...restField}
-                    name={[name, 'body']}
+                    name={[name, "body"]}
                     label="Body"
-                    rules={[{ required: true, message: 'Missing body' }]}
+                    rules={[{ required: true, message: "Missing body" }]}
                   >
                     <Input.TextArea
                       rows={4}

@@ -1,7 +1,7 @@
-import React, { ReactNode, useMemo } from 'react';
-import { useTournamentStoreContext } from '../store/store';
-import { UsernameWithContext } from '../shared/usernameWithContext';
-import { Table } from 'antd';
+import React, { ReactNode, useMemo } from "react";
+import { useTournamentStoreContext } from "../store/store";
+import { UsernameWithContext } from "../shared/usernameWithContext";
+import { Table } from "antd";
 // import { PlayerTag } from './player_tags';
 
 type Props = {
@@ -25,7 +25,7 @@ export const Standings = (props: Props) => {
       divisions.hasOwnProperty(props.selectedDivision)
         ? divisions[props.selectedDivision].currentRound
         : 0,
-    [props.selectedDivision, divisions]
+    [props.selectedDivision, divisions],
   );
   if (!props.selectedDivision) {
     return null;
@@ -39,7 +39,7 @@ export const Standings = (props: Props) => {
   if (currentRound > -1) {
     formatStandings = division.standingsMap[currentRound]?.standings.map(
       (standing, index): StandingsTableData => {
-        const [playerId, playerName] = standing.playerId.split(':');
+        const [playerId, playerName] = standing.playerId.split(":");
         return {
           rank: index + 1,
           player: (
@@ -49,7 +49,7 @@ export const Standings = (props: Props) => {
                 userID={playerId}
                 omitSendMessage
                 omitBlock
-              />{' '}
+              />{" "}
               {/* <PlayerTag
                 username={playerName}
                 players={division.players}
@@ -62,39 +62,39 @@ export const Standings = (props: Props) => {
           spread: standing.spread,
           //actions: null, //scorecard button goes here
         };
-      }
+      },
     );
   }
   const columns = [
     {
-      title: '',
-      dataIndex: 'rank',
-      key: 'rank',
-      className: 'rank',
+      title: "",
+      dataIndex: "rank",
+      key: "rank",
+      className: "rank",
     },
     {
-      title: 'Player',
-      dataIndex: 'player',
-      key: 'players',
-      className: 'player',
+      title: "Player",
+      dataIndex: "player",
+      key: "players",
+      className: "player",
     },
     {
-      title: 'W',
-      dataIndex: 'wins',
-      key: 'wins',
-      className: 'wins',
+      title: "W",
+      dataIndex: "wins",
+      key: "wins",
+      className: "wins",
     },
     {
-      title: 'L',
-      dataIndex: 'losses',
-      key: 'losses',
-      className: 'losses',
+      title: "L",
+      dataIndex: "losses",
+      key: "losses",
+      className: "losses",
     },
     {
-      title: 'Spread',
-      dataIndex: 'spread',
-      key: 'spread',
-      className: 'spread',
+      title: "Spread",
+      dataIndex: "spread",
+      key: "spread",
+      className: "spread",
     },
     /*    {
       title: '',
@@ -111,7 +111,7 @@ export const Standings = (props: Props) => {
         return `${record.rank}`;
       }}
       locale={{
-        emptyText: 'Standings are not yet available.',
+        emptyText: "Standings are not yet available.",
       }}
       dataSource={formatStandings}
       pagination={false}

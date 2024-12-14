@@ -3,9 +3,9 @@
 // for lichess (https://github.com/ornicar/lila)
 // You rock Thibault
 
-import { PlayerOrder } from './constants';
+import { PlayerOrder } from "./constants";
 // import { GameState } from './reducers/game_reducer';
-import { PlayState } from '../gen/api/vendor/macondo/macondo_pb';
+import { PlayState } from "../gen/api/vendor/macondo/macondo_pb";
 
 const positiveShowTenthsCutoff = 10000;
 const negativeShowTenthsCutoff = -1000;
@@ -49,7 +49,7 @@ export const millisToTimeStr = (ms: number, showTenths = true): string => {
     }
     secs = totalSecs % 60;
     mins = Math.floor(totalSecs / 60);
-    secStr = secs.toString().padStart(2, '0');
+    secStr = secs.toString().padStart(2, "0");
   } else {
     let totalDecisecs;
     if (!neg) {
@@ -60,12 +60,12 @@ export const millisToTimeStr = (ms: number, showTenths = true): string => {
     secs = totalDecisecs % 600;
     mins = Math.floor(totalDecisecs / 600);
     // Avoid using .toFixed(1), which elicits floating-point off-by-one errors.
-    secStr = secs.toString().padStart(3, '0');
+    secStr = secs.toString().padStart(3, "0");
     const dot = secStr.length - 1;
-    secStr = secStr.substr(0, dot) + '.' + secStr.substr(dot);
+    secStr = secStr.substr(0, dot) + "." + secStr.substr(dot);
   }
-  const minStr = mins.toString().padStart(2, '0');
-  return `${neg ? '-' : ''}${minStr}:${secStr}`;
+  const minStr = mins.toString().padStart(2, "0");
+  return `${neg ? "-" : ""}${minStr}:${secStr}`;
 };
 
 export type Times = {
@@ -93,14 +93,14 @@ export class ClockController {
   constructor(
     ts: Times,
     onTimeout: (activePlayer: PlayerOrder) => void,
-    onTick: (p: PlayerOrder, t: Millis) => void
+    onTick: (p: PlayerOrder, t: Millis) => void,
   ) {
     this.times = { ...ts };
     this.onTimeout = onTimeout;
     this.onTick = onTick;
     this.setClock(PlayState.PLAYING, this.times);
     this.maxOvertimeMinutes = 0;
-    console.log('in timer controller constructor', this.times);
+    console.log("in timer controller constructor", this.times);
   }
 
   setClock = (playState: number, ts: Times, delay: Centis = 0) => {
@@ -119,19 +119,19 @@ export class ClockController {
   };
 
   setMaxOvertime = (maxOTMinutes: number | undefined) => {
-    console.log('Set max overtime mins', maxOTMinutes);
+    console.log("Set max overtime mins", maxOTMinutes);
     this.maxOvertimeMinutes = maxOTMinutes || 0;
   };
 
   stopClock = (): Millis | null => {
-    console.log('stopClock');
+    console.log("stopClock");
 
     const { activePlayer } = this.times;
     if (activePlayer) {
       const curElapse = this.elapsed();
       this.times[activePlayer] = Math.max(
         -minsToMillis(this.maxOvertimeMinutes),
-        this.times[activePlayer] - curElapse
+        this.times[activePlayer] - curElapse,
       );
       this.times.activePlayer = undefined;
       return curElapse;
@@ -149,7 +149,7 @@ export class ClockController {
       // 1000ms resolution, non-negative remainder.
       delay = Math.min(
         ((time + 999) % 1000) + 1,
-        time - positiveShowTenthsCutoff
+        time - positiveShowTenthsCutoff,
       );
     } else if (time >= 0) {
       // 100ms resolution, non-negative remainder.
@@ -168,7 +168,7 @@ export class ClockController {
 
     this.tickCallback = window.setTimeout(
       this.tick,
-      delay + Math.max(extraDelay, 0)
+      delay + Math.max(extraDelay, 0),
     );
   };
 
@@ -184,7 +184,7 @@ export class ClockController {
     const now = performance.now();
     const millis = Math.max(
       -minsToMillis(this.maxOvertimeMinutes),
-      this.times[activePlayer] - this.elapsed(now)
+      this.times[activePlayer] - this.elapsed(now),
     );
     this.onTick(activePlayer, millis);
 
@@ -199,14 +199,14 @@ export class ClockController {
   elapsed = (now = performance.now()) =>
     Math.max(
       -minsToMillis(this.maxOvertimeMinutes),
-      now - this.times.lastUpdate
+      now - this.times.lastUpdate,
     );
 
   millisOf = (p: PlayerOrder): Millis =>
     this.times.activePlayer === p
       ? Math.max(
           -minsToMillis(this.maxOvertimeMinutes),
-          this.times[p] - this.elapsed()
+          this.times[p] - this.elapsed(),
         )
       : this.times[p];
 }

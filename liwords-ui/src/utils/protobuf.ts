@@ -5,7 +5,7 @@
 // indicating the message type.
 export const encodeToSocketFmt = (
   msgTypeCode: number,
-  serializedPBPacket: Uint8Array
+  serializedPBPacket: Uint8Array,
 ): Uint8Array => {
   // 1 byte for the msg type.
   const packetLength = serializedPBPacket.length + 1;
@@ -23,7 +23,7 @@ export const encodeToSocketFmt = (
 
 export const decodeToMsg = (
   data: Blob,
-  onload: (reader: FileReader) => void
+  onload: (reader: FileReader) => void,
 ) => {
   const reader = new FileReader();
   reader.onload = () => onload(reader);
@@ -33,7 +33,7 @@ export const decodeToMsg = (
 type EnumOption = { label: string; value: number | string };
 
 export function enumToOptions<T extends Record<string, string | number>>(
-  enumObj: T
+  enumObj: T,
 ): EnumOption[] {
   return Object.keys(enumObj)
     .filter((key) => isNaN(Number(key))) // Filter out numeric keys (reverse mapping)
@@ -45,24 +45,24 @@ export function enumToOptions<T extends Record<string, string | number>>(
 
 export function getEnumLabel<T extends Record<string, string | number>>(
   enumObj: T,
-  value: number
+  value: number,
 ): string | undefined {
   // Find the key where the value matches the input number
   const label = Object.keys(enumObj).find(
-    (key) => enumObj[key as keyof T] === value && isNaN(Number(key)) // Exclude reverse mapping numeric keys
+    (key) => enumObj[key as keyof T] === value && isNaN(Number(key)), // Exclude reverse mapping numeric keys
   );
   return label;
 }
 
 export function getEnumValue<T extends Record<string, string | number>>(
   enumObj: T,
-  label: string
+  label: string,
 ): number | undefined {
   // Ensure the label exists in the enum
   if (label in enumObj) {
     const value = enumObj[label as keyof T];
     // Ensure the value is a number (to exclude reverse-mapping strings in numeric enums)
-    if (typeof value === 'number') {
+    if (typeof value === "number") {
       return value;
     }
   }

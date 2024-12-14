@@ -1,13 +1,13 @@
-import { act, cleanup, render } from '@testing-library/react';
-import { BoardPanel } from './board_panel';
-import { ChallengeRule } from '../gen/api/vendor/macondo/macondo_pb';
-import { CrosswordGameGridLayout } from '../constants/board_layout';
-import { Board } from '../utils/cwgame/board';
-import { PlayerInfoSchema } from '../gen/api/proto/ipc/omgwords_pb';
-import { StandardEnglishAlphabet } from '../constants/alphabets';
-import { BrowserRouter } from 'react-router-dom';
-import { waitFor } from '@testing-library/react';
-import { create } from '@bufbuild/protobuf';
+import { act, cleanup, render } from "@testing-library/react";
+import { BoardPanel } from "./board_panel";
+import { ChallengeRule } from "../gen/api/vendor/macondo/macondo_pb";
+import { CrosswordGameGridLayout } from "../constants/board_layout";
+import { Board } from "../utils/cwgame/board";
+import { PlayerInfoSchema } from "../gen/api/proto/ipc/omgwords_pb";
+import { StandardEnglishAlphabet } from "../constants/alphabets";
+import { BrowserRouter } from "react-router-dom";
+import { waitFor } from "@testing-library/react";
+import { create } from "@bufbuild/protobuf";
 
 function renderBoardPanel() {
   const dummyFunction = () => {};
@@ -16,14 +16,14 @@ function renderBoardPanel() {
   const board = new Board(CrosswordGameGridLayout);
   const playerInfo = [
     create(PlayerInfoSchema, {
-      userId: 'cesarid',
-      nickname: 'cesar',
-      fullName: 'cesar richards',
+      userId: "cesarid",
+      nickname: "cesar",
+      fullName: "cesar richards",
     }),
     create(PlayerInfoSchema, {
-      userId: 'oppid',
-      nickname: 'opp',
-      fullName: 'opp mcOppface',
+      userId: "oppid",
+      nickname: "opp",
+      fullName: "opp mcOppface",
     }),
   ];
   return render(
@@ -33,7 +33,7 @@ function renderBoardPanel() {
         username="cesar"
         currentRack={rack}
         events={[]}
-        gameID={'abcdef'}
+        gameID={"abcdef"}
         challengeRule={ChallengeRule.DOUBLE}
         board={board}
         sendSocketMsg={() => {}}
@@ -46,13 +46,13 @@ function renderBoardPanel() {
         handleAcceptAbort={dummyFunction}
         vsBot={false}
       />
-    </BrowserRouter>
+    </BrowserRouter>,
   );
 }
 
 afterEach(cleanup);
 
-it('renders a game board panel', async () => {
+it("renders a game board panel", async () => {
   let container: HTMLElement;
   // act so that we can wait for useEffect hooks to run:
   await act(async () => {

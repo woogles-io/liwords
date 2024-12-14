@@ -1,29 +1,29 @@
-import { Table, Tooltip } from 'antd';
+import { Table, Tooltip } from "antd";
 import {
   FilterValue,
   SorterResult,
   TableCurrentDataSource,
   TablePaginationConfig,
-} from 'antd/lib/table/interface';
-import React, { ReactNode, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FundOutlined } from '@ant-design/icons';
-import { RatingBadge } from './rating_badge';
-import { challengeFormat, PlayerDisplay, timeFormat } from './sought_games';
-import { ActiveGame } from '../store/reducers/lobby_reducer';
-import { calculateTotalTime } from '../store/constants';
-import { VariantIcon } from '../shared/variant_icons';
-import { MatchLexiconDisplay } from '../shared/lexicon_display';
+} from "antd/lib/table/interface";
+import React, { ReactNode, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { FundOutlined } from "@ant-design/icons";
+import { RatingBadge } from "./rating_badge";
+import { challengeFormat, PlayerDisplay, timeFormat } from "./sought_games";
+import { ActiveGame } from "../store/reducers/lobby_reducer";
+import { calculateTotalTime } from "../store/constants";
+import { VariantIcon } from "../shared/variant_icons";
+import { MatchLexiconDisplay } from "../shared/lexicon_display";
 import {
   useLoginStateStoreContext,
   useLobbyStoreContext,
-} from '../store/store';
-import { ActionType } from '../actions/actions';
+} from "../store/store";
+import { ActionType } from "../actions/actions";
 
 type Props = {
   activeGames: ActiveGame[];
   username?: string;
-  type?: 'RESUME';
+  type?: "RESUME";
 };
 
 export const ActiveGames = (props: Props) => {
@@ -33,13 +33,13 @@ export const ActiveGames = (props: Props) => {
   } = useLobbyStoreContext();
   const lobbyFilterByLexiconArray = useMemo(
     () => lobbyFilterByLexicon?.match(/\S+/g) ?? [],
-    [lobbyFilterByLexicon]
+    [lobbyFilterByLexicon],
   );
   const navigate = useNavigate();
   const {
     loginState: { perms },
   } = useLoginStateStoreContext();
-  const isAdmin = perms.includes('adm');
+  const isAdmin = perms.includes("adm");
 
   const handleChange = useCallback(
     (
@@ -48,13 +48,13 @@ export const ActiveGames = (props: Props) => {
       _sorter:
         | SorterResult<ActiveGameTableData>
         | SorterResult<ActiveGameTableData>[],
-      extra: TableCurrentDataSource<ActiveGameTableData>
+      extra: TableCurrentDataSource<ActiveGameTableData>,
     ) => {
-      if (extra.action === 'filter') {
+      if (extra.action === "filter") {
         if (filters.lexicon && filters.lexicon.length > 0) {
-          const lexicon = filters.lexicon.join(' ');
+          const lexicon = filters.lexicon.join(" ");
           if (lexicon !== lobbyFilterByLexicon) {
-            localStorage.setItem('lobbyFilterByLexicon', lexicon);
+            localStorage.setItem("lobbyFilterByLexicon", lexicon);
             dispatchLobbyContext({
               actionType: ActionType.setLobbyFilterByLexicon,
               payload: lexicon,
@@ -62,7 +62,7 @@ export const ActiveGames = (props: Props) => {
           }
         } else {
           // filter is reset, remove lexicon
-          localStorage.removeItem('lobbyFilterByLexicon');
+          localStorage.removeItem("lobbyFilterByLexicon");
           dispatchLobbyContext({
             actionType: ActionType.setLobbyFilterByLexicon,
             payload: null,
@@ -70,7 +70,7 @@ export const ActiveGames = (props: Props) => {
         }
       }
     },
-    [lobbyFilterByLexicon, dispatchLobbyContext]
+    [lobbyFilterByLexicon, dispatchLobbyContext],
   );
 
   type ActiveGameTableData = {
@@ -89,7 +89,7 @@ export const ActiveGames = (props: Props) => {
       .sort((agA: ActiveGame, agB: ActiveGame) => {
         // Default sort should be by combined rating
         const parseRating = (rating: string) => {
-          return rating.endsWith('?')
+          return rating.endsWith("?")
             ? parseInt(rating.substring(0, rating.length - 1), 10)
             : parseInt(rating, 10);
         };
@@ -104,7 +104,7 @@ export const ActiveGames = (props: Props) => {
         const getDetails = () => {
           return (
             <>
-              <VariantIcon vcode={ag.variant} />{' '}
+              <VariantIcon vcode={ag.variant} />{" "}
               {challengeFormat(ag.challengeRule)}
               {ag.rated ? (
                 <Tooltip title="Rated">
@@ -139,12 +139,12 @@ export const ActiveGames = (props: Props) => {
           time: timeFormat(
             ag.initialTimeSecs,
             ag.incrementSecs,
-            ag.maxOvertimeMinutes
+            ag.maxOvertimeMinutes,
           ),
           totalTime: calculateTotalTime(
             ag.initialTimeSecs,
             ag.incrementSecs,
-            ag.maxOvertimeMinutes
+            ag.maxOvertimeMinutes,
           ),
           details: getDetails(),
           player1: ag.players[0].displayName,
@@ -155,26 +155,26 @@ export const ActiveGames = (props: Props) => {
   };
   const columns = [
     {
-      title: 'Players',
-      className: 'players',
-      dataIndex: 'players',
-      key: 'players',
+      title: "Players",
+      className: "players",
+      dataIndex: "players",
+      key: "players",
     },
     {
-      title: 'Words',
-      className: 'lexicon',
-      dataIndex: 'lexicon',
-      key: 'lexicon',
+      title: "Words",
+      className: "lexicon",
+      dataIndex: "lexicon",
+      key: "lexicon",
       filters: [
-        'CSW24',
-        'NWL23',
-        'ECWL',
-        'RD28',
-        'FRA24',
-        'FILE2017',
-        'NSF23',
-        'DISC2',
-        'OSPS49',
+        "CSW24",
+        "NWL23",
+        "ECWL",
+        "RD28",
+        "FRA24",
+        "FILE2017",
+        "NSF23",
+        "DISC2",
+        "OSPS49",
       ].map((l) => ({
         text: <MatchLexiconDisplay lexiconCode={l} />,
         value: l,
@@ -182,29 +182,29 @@ export const ActiveGames = (props: Props) => {
       filteredValue: lobbyFilterByLexiconArray,
       filterMultiple: true,
       onFilter: (value: React.Key | boolean, record: ActiveGameTableData) =>
-        typeof value === 'string' && record.lexiconCode === value,
+        typeof value === "string" && record.lexiconCode === value,
     },
     {
-      title: 'Time',
-      className: 'time',
-      dataIndex: 'time',
-      key: 'time',
+      title: "Time",
+      className: "time",
+      dataIndex: "time",
+      key: "time",
       sorter: (a: ActiveGameTableData, b: ActiveGameTableData) =>
         a.totalTime - b.totalTime,
     },
     {
-      title: 'Details',
-      className: 'details',
-      dataIndex: 'details',
-      key: 'details',
+      title: "Details",
+      className: "details",
+      dataIndex: "details",
+      key: "details",
     },
   ];
 
   let title = <>Resume</>;
-  if (props.type !== 'RESUME') {
+  if (props.type !== "RESUME") {
     title = isAdmin ? (
       <>
-        {'Games live now'}
+        {"Games live now"}
         <span className="game-count">{props.activeGames?.length}</span>
       </>
     ) : (
@@ -228,7 +228,7 @@ export const ActiveGames = (props: Props) => {
                 window.open(`/game/${encodeURIComponent(record.gameID)}`);
               } else {
                 navigate(`/game/${encodeURIComponent(record.gameID)}`);
-                console.log('redirecting to', record.gameID);
+                console.log("redirecting to", record.gameID);
               }
             },
             onAuxClick: (event) => {
@@ -245,9 +245,9 @@ export const ActiveGames = (props: Props) => {
             (record.player1 === props.username ||
               record.player2 === props.username)
           ) {
-            return 'game-listing resume';
+            return "game-listing resume";
           }
-          return 'game-listing';
+          return "game-listing";
         }}
         onChange={handleChange}
       />

@@ -1,20 +1,20 @@
-import { create } from '@bufbuild/protobuf';
-import { Action, ActionType } from '../../actions/actions';
+import { create } from "@bufbuild/protobuf";
+import { Action, ActionType } from "../../actions/actions";
 import {
   MatchUser,
   MatchUserSchema,
   SeekRequest,
-} from '../../gen/api/proto/ipc/omgseeks_pb';
+} from "../../gen/api/proto/ipc/omgseeks_pb";
 import {
   GameInfoResponse,
   RatingMode,
-} from '../../gen/api/proto/ipc/omgwords_pb';
+} from "../../gen/api/proto/ipc/omgwords_pb";
 import {
   ProfileUpdate,
   ProfileUpdate_Rating,
-} from '../../gen/api/proto/ipc/users_pb';
-import { BotTypesEnum } from '../../lobby/bots';
-import { StartingRating } from '../constants';
+} from "../../gen/api/proto/ipc/users_pb";
+import { BotTypesEnum } from "../../lobby/bots";
+import { StartingRating } from "../constants";
 
 export type SoughtGame = {
   seeker: string;
@@ -76,7 +76,7 @@ export type LobbyState = {
 };
 
 export const SeekRequestToSoughtGame = (
-  req: SeekRequest
+  req: SeekRequest,
 ): SoughtGame | null => {
   const gameReq = req.gameRequest;
   const user = req.user;
@@ -85,10 +85,10 @@ export const SeekRequestToSoughtGame = (
   }
 
   let receivingUser = create(MatchUserSchema, {});
-  let rematchFor = '';
-  let tournamentID = '';
+  let rematchFor = "";
+  let tournamentID = "";
   if (req.receiverIsPermanent) {
-    console.log('ismatchrequest');
+    console.log("ismatchrequest");
     receivingUser = req.receivingUser ?? receivingUser;
     rematchFor = req.rematchFor;
     tournamentID = req.tournamentId;
@@ -111,7 +111,7 @@ export const SeekRequestToSoughtGame = (
     incrementSecs: gameReq.incrementSeconds,
     playerVsBot: gameReq.playerVsBot,
     tournamentID,
-    variant: gameReq.rules?.variantName || '',
+    variant: gameReq.rules?.variantName || "",
     ratingKey: req.ratingKey,
     receiverIsPermanent: req.receiverIsPermanent,
     // this is inconsequential as bot match requests are never shown
@@ -121,7 +121,7 @@ export const SeekRequestToSoughtGame = (
 };
 
 export const GameInfoResponseToActiveGame = (
-  gi: GameInfoResponse
+  gi: GameInfoResponse,
 ): ActiveGame | null => {
   const users = gi.players;
   const gameReq = gi.gameRequest;
@@ -136,7 +136,7 @@ export const GameInfoResponseToActiveGame = (
   }
   let variant = gameReq.rules?.variantName;
   if (!variant) {
-    variant = 'classic';
+    variant = "classic";
   }
   return {
     players,
@@ -157,7 +157,7 @@ export const GameInfoResponseToActiveGame = (
 
 export const matchesRatingFormula = (
   sg: SoughtGame,
-  ratings: { [k: string]: ProfileUpdate_Rating }
+  ratings: { [k: string]: ProfileUpdate_Rating },
 ) => {
   const ratingKey = sg.ratingKey;
   // Note that accidentally, if sg.userRating ends with a `?`, parseInt still
@@ -289,7 +289,7 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
         ratings[k] = v;
       }
 
-      console.log('got ratings', ratings);
+      console.log("got ratings", ratings);
       return {
         ...state,
         profile: {

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect } from "react";
 
 export const useFirefoxPatch = () => {
   useEffect(() => {
@@ -19,12 +19,12 @@ export const useFirefoxPatch = () => {
       }
     };
 
-    document.addEventListener('keydown', evtHandler);
-    document.addEventListener('keypress', evtHandler);
+    document.addEventListener("keydown", evtHandler);
+    document.addEventListener("keypress", evtHandler);
 
     return () => {
-      document.removeEventListener('keydown', evtHandler);
-      document.removeEventListener('keypress', evtHandler);
+      document.removeEventListener("keydown", evtHandler);
+      document.removeEventListener("keypress", evtHandler);
     };
   }, []);
 };

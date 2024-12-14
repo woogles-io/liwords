@@ -1,34 +1,34 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Card } from 'antd';
-import { BoardPreview } from '../settings/board_preview';
-import './puzzle_preview.scss';
-import { ActionType } from '../actions/actions';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Card } from "antd";
+import { BoardPreview } from "../settings/board_preview";
+import "./puzzle_preview.scss";
+import { ActionType } from "../actions/actions";
 import {
   useGameContextStoreContext,
   useLoginStateStoreContext,
-} from '../store/store';
-import { sortTiles } from '../store/constants';
-import Tile from '../gameroom/tile';
+} from "../store/store";
+import { sortTiles } from "../store/constants";
+import Tile from "../gameroom/tile";
 import {
   Alphabet,
   scoreFor,
   StandardEnglishAlphabet,
-} from '../constants/alphabets';
-import { TouchBackend } from 'react-dnd-touch-backend';
-import { DndProvider } from 'react-dnd';
-import { PlayerAvatar } from '../shared/player_avatar';
-import { RatingBadge } from '../lobby/rating_badge';
-import { flashError, useClient } from '../utils/hooks/connect';
+} from "../constants/alphabets";
+import { TouchBackend } from "react-dnd-touch-backend";
+import { DndProvider } from "react-dnd";
+import { PlayerAvatar } from "../shared/player_avatar";
+import { RatingBadge } from "../lobby/rating_badge";
+import { flashError, useClient } from "../utils/hooks/connect";
 import {
   PuzzleRequestSchema,
   PuzzleService,
   StartPuzzleIdRequestSchema,
-} from '../gen/api/proto/puzzle_service/puzzle_service_pb';
-import { MachineLetter } from '../utils/cwgame/common';
-import { create } from '@bufbuild/protobuf';
+} from "../gen/api/proto/puzzle_service/puzzle_service_pb";
+import { MachineLetter } from "../utils/cwgame/common";
+import { create } from "@bufbuild/protobuf";
 
 export const PuzzlePreview = React.memo(() => {
-  const userLexicon = localStorage?.getItem('puzzleLexicon');
+  const userLexicon = localStorage?.getItem("puzzleLexicon");
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { username, loggedIn } = loginState;
@@ -37,7 +37,7 @@ export const PuzzlePreview = React.memo(() => {
   const [puzzleID, setPuzzleID] = useState<string | null>(null);
   const [userRating, setUserRating] = useState<number | undefined>(undefined);
   const [puzzleRating, setPuzzleRating] = useState<number | undefined>(
-    undefined
+    undefined,
   );
   const puzzleClient = useClient(PuzzleService);
 
@@ -45,7 +45,7 @@ export const PuzzlePreview = React.memo(() => {
     if (!userLexicon) {
       // A hard coded id for a simple puzzle to display. Clicking in will
 
-      setPuzzleID('E3kGXKyzhYirNzsMfCW3QV');
+      setPuzzleID("E3kGXKyzhYirNzsMfCW3QV");
       return;
     }
     const req = create(StartPuzzleIdRequestSchema, {});
@@ -78,9 +78,9 @@ export const PuzzlePreview = React.memo(() => {
       } catch (err) {
         const typescriptErr = err as Error;
         if (
-          typescriptErr.name === 'ConnectError' &&
+          typescriptErr.name === "ConnectError" &&
           typescriptErr.message ===
-            '[invalid_argument] cannot get id from uuid E3kGXKyzhYirNzsMfCW3QV: no rows for table puzzles'
+            "[invalid_argument] cannot get id from uuid E3kGXKyzhYirNzsMfCW3QV: no rows for table puzzles"
         ) {
           // The hard coded puzzle only exists in production.
           setPuzzleID(null);
@@ -124,20 +124,20 @@ export const PuzzlePreview = React.memo(() => {
           returnToRack={noop}
           moveRackTile={noop}
           onClick={noop}
-        />
+        />,
       );
     }
     return <>{tiles}</>;
   }, [alphabet, rack]);
 
   const title = useMemo(() => {
-    return userLexicon ? 'Next puzzle' : 'Try a puzzle';
+    return userLexicon ? "Next puzzle" : "Try a puzzle";
   }, [userLexicon]);
 
   return (
     <Card
       title={title}
-      className={`puzzle-preview ${!puzzleID ? 'tease' : ''}`}
+      className={`puzzle-preview ${!puzzleID ? "tease" : ""}`}
     >
       <div className="puzzle-container">
         <DndProvider backend={TouchBackend}>
@@ -153,14 +153,14 @@ export const PuzzlePreview = React.memo(() => {
             <PlayerAvatar username={username} />
             <div className="player-details">
               <p>{username}</p>
-              <RatingBadge rating={userRating?.toString() || '1500?'} />
+              <RatingBadge rating={userRating?.toString() || "1500?"} />
             </div>
           </div>
           <div className="player-rating">
             <PlayerAvatar icon={<i className="fa-solid fa-puzzle-piece" />} />
             <div className="player-details">
               <p>Equity Puzzle</p>
-              <RatingBadge rating={puzzleRating?.toString() || '1500?'} />
+              <RatingBadge rating={puzzleRating?.toString() || "1500?"} />
             </div>
           </div>
         </div>

@@ -1,12 +1,12 @@
-import React from 'react';
-import { cleanup, fireEvent, render } from '@testing-library/react';
-import GameControls, { Props } from './game_controls';
-import { ChallengeRule } from '../gen/api/vendor/macondo/macondo_pb';
+import React from "react";
+import { cleanup, fireEvent, render } from "@testing-library/react";
+import GameControls, { Props } from "./game_controls";
+import { ChallengeRule } from "../gen/api/vendor/macondo/macondo_pb";
 
 const mockedUsedNavigate = vi.fn();
 
-vi.mock('react-router-dom', () => ({
-  ...(vi.importActual('react-router-dom') as any),
+vi.mock("react-router-dom", () => ({
+  ...(vi.importActual("react-router-dom") as any),
   useNavigate: () => mockedUsedNavigate,
 }));
 
@@ -21,7 +21,7 @@ function renderGameControls(props: Partial<Props> = {}) {
     finalPassOrChallenge: false,
     myTurn: false,
     observer: false,
-    lexicon: 'dummy',
+    lexicon: "dummy",
     allowAnalysis: true,
     setHandleChallengeShortcut: dummyFunction,
     setHandleNeitherShortcut: dummyFunction,
@@ -47,14 +47,14 @@ function renderGameControls(props: Partial<Props> = {}) {
 
 afterEach(cleanup);
 
-it('fires clicks on rematch only once', async () => {
+it("fires clicks on rematch only once", async () => {
   const onRematch = vi.fn();
   const { findByTestId } = renderGameControls({
     gameEndControls: true,
     onRematch: onRematch,
     showRematch: true,
   });
-  const rematchButton = await findByTestId('rematch-button');
+  const rematchButton = await findByTestId("rematch-button");
   expect(rematchButton).toBeVisible();
   fireEvent.click(rematchButton);
   fireEvent.click(rematchButton);

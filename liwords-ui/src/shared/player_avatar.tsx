@@ -4,17 +4,17 @@ import React, {
   useEffect,
   useMemo,
   useState,
-} from 'react';
-import { fixedCharAt } from '../utils/cwgame/common';
-import './avatar.scss';
-import { Tooltip } from 'antd';
-import { useBriefProfile } from '../utils/brief_profiles';
-import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
+} from "react";
+import { fixedCharAt } from "../utils/cwgame/common";
+import "./avatar.scss";
+import { Tooltip } from "antd";
+import { useBriefProfile } from "../utils/brief_profiles";
+import { PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
 
-import variables from '../base.module.scss';
+import variables from "../base.module.scss";
 const { colorPrimary } = variables;
 
-import petMacondog from '../assets/pet-macondog.gif';
+import petMacondog from "../assets/pet-macondog.gif";
 
 const doNothing = () => {};
 export const PettableContext = createContext<{
@@ -34,7 +34,7 @@ export const PettableAvatar = ({ children }: { children: React.ReactNode }) => {
   const [isPetting, setPetting] = useState(false);
   const value = useMemo(
     () => ({ isPettable, setPettable, isPetting, setPetting }),
-    [isPettable, setPettable, isPetting, setPetting]
+    [isPettable, setPettable, isPetting, setPetting],
   );
 
   return <PettableContext.Provider value={value} children={children} />;
@@ -63,14 +63,14 @@ export const PlayerAvatar = (props: AvatarProps) => {
 
   if (props.player?.first) {
     avatarStyle = {
-      transform: 'rotate(-10deg)',
+      transform: "rotate(-10deg)",
     };
   }
 
   if (avatarUrl) {
     let avatarCurrentUrl = avatarUrl;
     if (
-      avatarUrl === 'https://woogles-prod-assets.s3.amazonaws.com/macondog.png'
+      avatarUrl === "https://woogles-prod-assets.s3.amazonaws.com/macondog.png"
     ) {
       canPet = true;
       // TODO: put this in s3
@@ -95,11 +95,11 @@ export const PlayerAvatar = (props: AvatarProps) => {
       {!avatarUrl && props.icon}
       {!avatarUrl && !props.icon
         ? fixedCharAt(
-            profile?.fullName || props.player?.nickname || username || '?',
+            profile?.fullName || props.player?.nickname || username || "?",
             0,
-            1
+            1,
           )
-        : ''}
+        : ""}
     </div>
   );
   if (!props.withTooltip) {

@@ -1,10 +1,10 @@
-import { Card, Col, Row } from 'antd';
-import React from 'react';
-import { Link } from 'react-router-dom';
+import { Card, Col, Row } from "antd";
+import React from "react";
+import { Link } from "react-router-dom";
 import {
   StreakInfoResponse,
   StreakInfoResponse_SingleGameInfo,
-} from '../gen/api/proto/game_service/game_service_pb';
+} from "../gen/api/proto/game_service/game_service_pb";
 
 type Props = {
   streakInfo: StreakInfoResponse;
@@ -47,12 +47,12 @@ const SingleGame = (props: SGProps) => {
   }
 
   const innerel = (
-    <div style={{ display: 'inline-block', marginLeft: 10 }}>{cells}</div>
+    <div style={{ display: "inline-block", marginLeft: 10 }}>{cells}</div>
   );
 
   return (
     <span>
-      <Link to={`/game/${encodeURIComponent(String(props.game.gameId ?? ''))}`}>
+      <Link to={`/game/${encodeURIComponent(String(props.game.gameId ?? ""))}`}>
         {innerel}
       </Link>
     </span>
@@ -97,15 +97,15 @@ export const StreakWidget = React.memo((props: Props) => {
     });
 
   const pStyle = {
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap' as const,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap" as const,
   };
 
   return (
     <Card style={{ marginTop: 10 }}>
       <Row>
-        <Col span={16} style={{ justifyContent: 'right', textAlign: 'right' }}>
+        <Col span={16} style={{ justifyContent: "right", textAlign: "right" }}>
           {pergame}
         </Col>
         <Col span={6}>

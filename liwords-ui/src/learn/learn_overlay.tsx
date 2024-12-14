@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useState } from "react";
 
 export const LearnContext = React.createContext<{
   gridDim: number;
@@ -25,25 +25,25 @@ export const LearnContextProvider = ({
   const [learnLayout, setLearnLayout] = useState<Array<Array<string>>>([]);
   const contextValue = useMemo(
     () => ({ gridDim, setGridDim, learnLayout, setLearnLayout }),
-    [gridDim, setGridDim, learnLayout, setLearnLayout]
+    [gridDim, setGridDim, learnLayout, setLearnLayout],
   );
   return <LearnContext.Provider value={contextValue} children={children} />;
 };
 
 export enum LearnSpaceType {
-  Normal = ' ',
-  Faded = 'f',
-  Highlighted = 'h',
+  Normal = " ",
+  Faded = "f",
+  Highlighted = "h",
 }
 
 const getLearnSpaceClassName = (l: LearnSpaceType) => {
   switch (l) {
     case LearnSpaceType.Faded:
-      return 'faded';
+      return "faded";
     case LearnSpaceType.Highlighted:
-      return 'highlighted';
+      return "highlighted";
   }
-  return '';
+  return "";
 };
 
 type LearnSpaceProps = {
@@ -65,7 +65,7 @@ type LearnOverlayProps = {
 
 export const generateEmptyLearnLayout = (
   size: number,
-  filler: string = LearnSpaceType.Normal
+  filler: string = LearnSpaceType.Normal,
 ) => {
   return new Array(size).fill(null).map(() => new Array(size).fill(filler));
 };
@@ -76,7 +76,7 @@ export const LearnOverlay = React.memo((props: LearnOverlayProps) => {
   useEffect(() => {
     setGridDim(props.gridDim);
     setLearnLayout(
-      generateEmptyLearnLayout(props.gridDim, LearnSpaceType.Normal)
+      generateEmptyLearnLayout(props.gridDim, LearnSpaceType.Normal),
     );
   }, [props.gridDim, setGridDim, setLearnLayout]);
 

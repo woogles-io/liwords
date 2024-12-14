@@ -1,6 +1,6 @@
-import React from 'react';
-import woogles from '../assets/woogles.png';
-import { Row, Col } from 'antd';
+import React from "react";
+import woogles from "../assets/woogles.png";
+import { Row, Col } from "antd";
 
 export const ClosedAccount = React.memo(() => {
   return (

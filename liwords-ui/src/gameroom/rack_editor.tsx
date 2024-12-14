@@ -1,12 +1,12 @@
-import { InputRef } from 'rc-input';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { MachineWord } from '../utils/cwgame/common';
+import { InputRef } from "rc-input";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { MachineWord } from "../utils/cwgame/common";
 import {
   Alphabet,
   machineWordToRunes,
   runesToMachineWord,
-} from '../constants/alphabets';
-import { Input } from 'antd';
+} from "../constants/alphabets";
+import { Input } from "antd";
 
 type Props = {
   rackCallback: (rack: MachineWord) => void;
@@ -20,25 +20,25 @@ const MaxRackLength = 7;
 export const RackEditor = (props: Props) => {
   const calculateRackStr = useCallback(
     (rack: MachineWord) => machineWordToRunes(rack, props.alphabet, false),
-    [props.alphabet]
+    [props.alphabet],
   );
 
   const [currentRack, setCurrentRack] = useState(props.currentRack);
   const [curRackStr, setCurRackStr] = useState(
-    calculateRackStr(props.currentRack)
+    calculateRackStr(props.currentRack),
   );
 
   const inputRef = useRef<InputRef>(null);
   const handleKeyDown = (evt: React.KeyboardEvent) => {
-    if (evt.key === 'Enter') {
+    if (evt.key === "Enter") {
       props.rackCallback(currentRack);
-    } else if (evt.key === 'Escape') {
+    } else if (evt.key === "Escape") {
       props.cancelCallback();
     }
   };
   useEffect(() => {
     inputRef.current?.focus({
-      cursor: 'all',
+      cursor: "all",
     });
   }, [inputRef]);
 
@@ -52,8 +52,8 @@ export const RackEditor = (props: Props) => {
     const onlyValidTileCharacters = out.match(/[\p{Letter}·\?\[\]]/gu);
     try {
       let curRack = runesToMachineWord(
-        onlyValidTileCharacters?.join('') ?? '',
-        props.alphabet
+        onlyValidTileCharacters?.join("") ?? "",
+        props.alphabet,
       );
       if (curRack.length > MaxRackLength) {
         curRack = curRack.slice(0, MaxRackLength);
@@ -63,7 +63,7 @@ export const RackEditor = (props: Props) => {
     } catch (e) {
       // Do nothing for now. Maybe the user is not done typing their multi-char tile.
       // Just echo back what they are typing.
-      setCurRackStr(onlyValidTileCharacters?.join('') ?? '');
+      setCurRackStr(onlyValidTileCharacters?.join("") ?? "");
     }
   };
 
@@ -72,8 +72,8 @@ export const RackEditor = (props: Props) => {
       <Input
         ref={inputRef}
         placeholder={
-          'Enter rack. Use ? for blank.' +
-          (props.alphabet.name === 'spanish' ? ' Use [CH] for digraph CH.' : '')
+          "Enter rack. Use ? for blank." +
+          (props.alphabet.name === "spanish" ? " Use [CH] for digraph CH." : "")
         }
         className="rack"
         value={curRackStr}

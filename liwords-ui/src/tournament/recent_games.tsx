@@ -1,12 +1,12 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import moment from 'moment';
-import { Button, Table, Tag, Tooltip } from 'antd';
+import React from "react";
+import { Link } from "react-router-dom";
+import moment from "moment";
+import { Button, Table, Tag, Tooltip } from "antd";
 import {
   TournamentGameEndedEvent,
   TournamentGameResult,
-} from '../gen/api/proto/ipc/tournament_pb';
-import { GameEndReason } from '../gen/api/proto/ipc/omgwords_pb';
+} from "../gen/api/proto/ipc/tournament_pb";
+import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 
 type Props = {
   games: Array<TournamentGameEndedEvent>;
@@ -37,7 +37,7 @@ export const RecentTourneyGames = React.memo((props: Props) => {
   const formattedGames = props.games
     .filter(
       (item) =>
-        item.players?.length && item.endReason !== GameEndReason.CANCELLED
+        item.players?.length && item.endReason !== GameEndReason.CANCELLED,
     )
     .map((item) => {
       const p1 = (
@@ -55,41 +55,41 @@ export const RecentTourneyGames = React.memo((props: Props) => {
         />
       );
       const scores = (
-        <Link to={`/game/${encodeURIComponent(String(item.gameId ?? ''))}`}>
+        <Link to={`/game/${encodeURIComponent(String(item.gameId ?? ""))}`}>
           {item.players[0].score} - {item.players[1].score}
         </Link>
       );
       const whenMoment = moment.unix(item.time ? Number(item.time) : 0);
 
-      let when: string | JSX.Element = whenMoment.format('HH:mm');
+      let when: string | JSX.Element = whenMoment.format("HH:mm");
       if (whenMoment.dayOfYear() !== moment.unix(lastDate).dayOfYear()) {
-        when = whenMoment.format('MMM Do HH:mm');
+        when = whenMoment.format("MMM Do HH:mm");
       }
-      when = <Tooltip title={whenMoment.format('LLL')}>{when}</Tooltip>;
+      when = <Tooltip title={whenMoment.format("LLL")}>{when}</Tooltip>;
 
       lastDate = Number(item.time);
-      let endReason = '';
+      let endReason = "";
       switch (item.endReason) {
         case GameEndReason.TIME:
-          endReason = 'Time';
+          endReason = "Time";
           break;
         case GameEndReason.CONSECUTIVE_ZEROES:
-          endReason = 'Six 0';
+          endReason = "Six 0";
           break;
         case GameEndReason.RESIGNED:
-          endReason = 'Resign';
+          endReason = "Resign";
           break;
         case GameEndReason.ABORTED:
-          endReason = 'Abort';
+          endReason = "Abort";
           break;
         case GameEndReason.CANCELLED:
-          endReason = 'Cancel';
+          endReason = "Cancel";
           break;
         case GameEndReason.TRIPLE_CHALLENGE:
-          endReason = 'Triple';
+          endReason = "Triple";
           break;
         case GameEndReason.STANDARD:
-          endReason = 'Complete';
+          endReason = "Complete";
       }
 
       return {
@@ -104,32 +104,32 @@ export const RecentTourneyGames = React.memo((props: Props) => {
     .filter((item) => item !== null);
   const columns = [
     {
-      dataIndex: 'p1',
-      key: 'p1',
-      title: '1st',
+      dataIndex: "p1",
+      key: "p1",
+      title: "1st",
     },
     {
-      dataIndex: 'p2',
-      key: 'p2',
-      title: '2nd',
+      dataIndex: "p2",
+      key: "p2",
+      title: "2nd",
     },
     {
-      className: 'score',
-      dataIndex: 'scores',
-      key: 'scores',
-      title: 'Score',
+      className: "score",
+      dataIndex: "scores",
+      key: "scores",
+      title: "Score",
     },
     {
-      className: 'end-reason',
-      dataIndex: 'endReason',
-      key: 'endReason',
-      title: 'End',
+      className: "end-reason",
+      dataIndex: "endReason",
+      key: "endReason",
+      title: "End",
     },
     {
-      className: 'when',
-      dataIndex: 'when',
-      key: 'when',
-      title: ' ',
+      className: "when",
+      dataIndex: "when",
+      key: "when",
+      title: " ",
     },
   ];
   // TODO: use the normal Ant table pagination when the backend can give us a total

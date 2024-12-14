@@ -1,7 +1,7 @@
 // This file and any files it imports should only include definitions (mixins, variables, functions)
-@use 'color_modes' as *;
-@use 'sass:math';
-@forward 'color_modes';
+@use "color_modes" as *;
+@use "sass:math";
+@forward "color_modes";
 
 $card-shadow: 0px 0px 12px rgba(0, 0, 0, 0.15);
 $card-shadow-lower: 0px 0px 6px rgba(0, 0, 0, 0.15);
@@ -18,7 +18,7 @@ $screen-desktop-min: 1440px;
 $screen-desktop-l-min: 1600px;
 
 @function strip-unit($number) {
-  @if type-of($number) == 'number' and not unitless($number) {
+  @if type-of($number) == "number" and not unitless($number) {
     @return math.div($number, $number * 0 + 1);
   }
 
@@ -44,10 +44,10 @@ $screen-min-height-laptop-min: 680px;
 $screen-min-height-desktop-min: 830px;
 $screen-min-height-desktop-max: 910px;
 
-$font-deco: 'Fjalla One', sans-serif;
-$font-default: 'Mulish', sans-serif;
-$font-monospaced: 'Courier Prime', monospace;
-$font-tile: 'Roboto Mono', monospace;
+$font-deco: "Fjalla One", sans-serif;
+$font-default: "Mulish", sans-serif;
+$font-monospaced: "Courier Prime", monospace;
+$font-tile: "Roboto Mono", monospace;
 
 $tile-size-embed: calc(25px * 15 / var(--dim, 15));
 $tile-size-mobile: calc(34px * 15 / var(--dim, 15));
@@ -292,7 +292,7 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
   .ant-modal-root {
     .ant-modal-content {
       border-radius: 8px;
-      font-family: 'Mulish', sans-serif;
+      font-family: "Mulish", sans-serif;
       @include colorModed() {
         background: m($background);
         color: m($gray-extreme);
@@ -305,7 +305,7 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
         color: m($gray-extreme);
       }
       .ant-modal-title {
-        font-family: 'Mulish', sans-serif;
+        font-family: "Mulish", sans-serif;
         font-weight: 700;
         @include colorModed() {
           color: m($gray-extreme);

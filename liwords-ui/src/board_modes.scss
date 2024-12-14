@@ -134,7 +134,7 @@ $boards: (
     color-board-empty: #ffffff00,
     color-grid: #d9d9d9,
     color-board-fill:
-      url('https://woogles-prod-assets.s3.amazonaws.com/metallicback.jpg'),
+      url("https://woogles-prod-assets.s3.amazonaws.com/metallicback.jpg"),
     number-board-space-opacity: 1,
     type-board-space-mix-mode: hard-light,
     color-center-icon: #4c1e1ee0,
@@ -152,7 +152,7 @@ $boards: (
     color-board-empty: #ffffff00,
     color-grid: #665e59,
     color-board-fill:
-      url('https://woogles-prod-assets.s3.amazonaws.com/paper.jpg'),
+      url("https://woogles-prod-assets.s3.amazonaws.com/paper.jpg"),
     number-board-space-opacity: 1,
     type-board-space-mix-mode: hard-light,
     color-center-icon: #4c1e1ee0,
@@ -170,7 +170,7 @@ $boards: (
     color-board-empty: #ffffff00,
     color-grid: #665e59,
     color-board-fill:
-      url('https://woogles-prod-assets.s3.amazonaws.com/balsa.jpg'),
+      url("https://woogles-prod-assets.s3.amazonaws.com/balsa.jpg"),
     number-board-space-opacity: 1,
     type-board-space-mix-mode: hard-light,
     color-center-icon: #4c1e1ee0,
@@ -188,7 +188,7 @@ $boards: (
     color-board-empty: #ffffff00,
     color-grid: #3e332f,
     color-board-fill:
-      url('https://woogles-prod-assets.s3.amazonaws.com/mahogany.jpg'),
+      url("https://woogles-prod-assets.s3.amazonaws.com/mahogany.jpg"),
     number-board-space-opacity: 1,
     type-board-space-mix-mode: screen,
     color-center-icon: #c8ae91,
@@ -222,7 +222,7 @@ $boards: (
     .board--#{$board} & {
       $board-map: () !global;
       @each $key, $submap in $map {
-        $value: map-get(map-get($boards, $board), '#{$key}');
+        $value: map-get(map-get($boards, $board), "#{$key}");
         $board-map: map-merge(
           $board-map,
           (
@@ -241,16 +241,16 @@ $boards: (
 }
 
 @function blender($color, $background) {
-  @if $color == 'ignore' {
+  @if $color == "ignore" {
     @return $color;
   }
-  @if $background == 'ignore' {
+  @if $background == "ignore" {
     @return $color;
   }
   @return mix($color, $background, $weight: 50%);
 }
 @function lightener($color) {
-  @if $color == 'ignore' {
+  @if $color == "ignore" {
     @return $color;
   }
   @return scale-color($color, $lightness: -10%);

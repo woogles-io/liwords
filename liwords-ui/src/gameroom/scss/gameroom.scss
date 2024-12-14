@@ -1,7 +1,7 @@
-@use '../../base.scss' as *;
-@use '../../color_modes' as *;
-@use '../../tile_modes' as *;
-@use '../../board_modes' as *;
+@use "../../base.scss" as *;
+@use "../../color_modes" as *;
+@use "../../tile_modes" as *;
+@use "../../board_modes" as *;
 
 $tile-transition:
   width ease-in 100ms,
@@ -489,7 +489,7 @@ p.streak-loss {
 }
 
 .board-space::before {
-  content: '';
+  content: "";
   padding-bottom: 100%;
   display: inline-block;
   vertical-align: top;
@@ -988,10 +988,10 @@ p.streak-loss {
   p.rune > span {
     display: inline-block;
   }
-  &[data-length='2'] p.rune > span {
+  &[data-length="2"] p.rune > span {
     transform: scaleX(calc(1 / 1.5));
   }
-  &[data-length='3'] p.rune > span {
+  &[data-length="3"] p.rune > span {
     transform: scaleX(calc(1 / 1.8));
     letter-spacing: -1em;
   }
@@ -1015,10 +1015,10 @@ p.streak-loss {
   }
   */
 
-  &[data-length='2'] p.rune > span {
+  &[data-length="2"] p.rune > span {
     transform: scaleX(calc(1 / 1.5));
   }
-  &[data-length='3'] p.rune > span {
+  &[data-length="3"] p.rune > span {
     transform: translate(0.05em) scaleX(calc(1 / 1.8));
     letter-spacing: -1em;
   }
@@ -1134,7 +1134,7 @@ p.streak-loss {
 
 // squareness fix
 .tile::before {
-  content: '';
+  content: "";
   padding-bottom: 100%;
   display: inline-block;
   vertical-align: top;
@@ -1382,7 +1382,7 @@ p.rune {
     .letter-group {
       // white-space: pre would lock each rune group to a single line if we ever want that
       white-space: normal;
-      &[data-multichar='true'] {
+      &[data-multichar="true"] {
         letter-spacing: 0em;
       }
     }
@@ -1738,7 +1738,7 @@ p.rune {
 }
 
 .end-message + .examiner-controls {
-  div[aria-hidden='true'] {
+  div[aria-hidden="true"] {
     display: none;
   }
 
@@ -1755,7 +1755,7 @@ p.rune {
 .examiner-controls,
 .rack-affix {
   @media (min-width: $screen-tablet-min) {
-    div[aria-hidden='true'] {
+    div[aria-hidden="true"] {
       display: none;
     }
 

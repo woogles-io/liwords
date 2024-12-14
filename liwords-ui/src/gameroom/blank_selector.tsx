@@ -1,7 +1,7 @@
-import React from 'react';
-import Tile from './tile';
-import { Alphabet } from '../constants/alphabets';
-import { Blank, MachineLetter } from '../utils/cwgame/common';
+import React from "react";
+import Tile from "./tile";
+import { Alphabet } from "../constants/alphabets";
+import { Blank, MachineLetter } from "../utils/cwgame/common";
 
 type Props = {
   tileColorId: number;

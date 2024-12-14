@@ -1,5 +1,5 @@
-import { useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   useChallengeResultEventStoreContext,
   useChatStoreContext,
@@ -16,25 +16,25 @@ import {
   useRematchRequestStoreContext,
   useTimerStoreContext,
   useTournamentStoreContext,
-} from './store';
+} from "./store";
 
-import { ActionType } from '../actions/actions';
-import { endGameMessage } from './end_of_game';
+import { ActionType } from "../actions/actions";
+import { endGameMessage } from "./end_of_game";
 import {
   GameInfoResponseToActiveGame,
   SeekRequestToSoughtGame,
   SoughtGame,
-} from './reducers/lobby_reducer';
-import { BoopSounds } from '../sound/boop';
-import { metaStateFromMetaEvent } from './meta_game_events';
-import { parseWooglesError } from '../utils/parse_woogles_error';
+} from "./reducers/lobby_reducer";
+import { BoopSounds } from "../sound/boop";
+import { metaStateFromMetaEvent } from "./meta_game_events";
+import { parseWooglesError } from "../utils/parse_woogles_error";
 import {
   LagMeasurement,
   LagMeasurementSchema,
   MessageType,
   ServerMessage,
   ServerMessageSchema,
-} from '../gen/api/proto/ipc/ipc_pb';
+} from "../gen/api/proto/ipc/ipc_pb";
 import {
   DeclineSeekRequest,
   DeclineSeekRequestSchema,
@@ -44,17 +44,17 @@ import {
   SeekRequestsSchema,
   SoughtGameProcessEvent,
   SoughtGameProcessEventSchema,
-} from '../gen/api/proto/ipc/omgseeks_pb';
+} from "../gen/api/proto/ipc/omgseeks_pb";
 import {
   ErrorMessage,
   ErrorMessageSchema,
-} from '../gen/api/proto/ipc/errors_pb';
+} from "../gen/api/proto/ipc/errors_pb";
 import {
   ChatMessage,
   ChatMessageDeleted,
   ChatMessageDeletedSchema,
   ChatMessageSchema,
-} from '../gen/api/proto/ipc/chat_pb';
+} from "../gen/api/proto/ipc/chat_pb";
 import {
   NewGameEvent,
   GameHistoryRefresher,
@@ -82,7 +82,7 @@ import {
   ActiveGameEntrySchema,
   ServerOMGWordsEventSchema,
   GameDocumentEventSchema,
-} from '../gen/api/proto/ipc/omgwords_pb';
+} from "../gen/api/proto/ipc/omgwords_pb";
 import {
   UserPresence,
   UserPresences,
@@ -90,7 +90,7 @@ import {
   UserPresenceSchema,
   UserPresencesSchema,
   PresenceEntrySchema,
-} from '../gen/api/proto/ipc/presence_pb';
+} from "../gen/api/proto/ipc/presence_pb";
 import {
   ReadyForTournamentGame,
   TournamentRoundStarted,
@@ -117,19 +117,19 @@ import {
   DivisionPairingsDeletedResponseSchema,
   TournamentDataResponseSchema,
   TournamentDivisionDataResponseSchema,
-} from '../gen/api/proto/ipc/tournament_pb';
+} from "../gen/api/proto/ipc/tournament_pb";
 import {
   ProfileUpdate,
   ProfileUpdateSchema,
-} from '../gen/api/proto/ipc/users_pb';
-import { ChatEntityType, PresenceEntity } from './constants';
-import { ServerOMGWordsEvent } from '../gen/api/proto/ipc/omgwords_pb';
-import { GameDocumentEvent } from '../gen/api/proto/ipc/omgwords_pb';
-import { App } from 'antd';
-import { fromBinary } from '@bufbuild/protobuf';
+} from "../gen/api/proto/ipc/users_pb";
+import { ChatEntityType, PresenceEntity } from "./constants";
+import { ServerOMGWordsEvent } from "../gen/api/proto/ipc/omgwords_pb";
+import { GameDocumentEvent } from "../gen/api/proto/ipc/omgwords_pb";
+import { App } from "antd";
+import { fromBinary } from "@bufbuild/protobuf";
 // Feature flag.
 export const enableShowSocket =
-  localStorage?.getItem('enableShowSocket') === 'true';
+  localStorage?.getItem("enableShowSocket") === "true";
 
 const MsgTypesMap = {
   [MessageType.SEEK_REQUEST]: SeekRequestSchema,
@@ -187,7 +187,7 @@ const MsgTypesMap = {
 };
 
 export const parseMsgs = (
-  msg: Uint8Array
+  msg: Uint8Array,
 ): Array<{
   msgType: MessageType;
   parsedMsg: ReturnType<typeof fromBinary>;
@@ -271,13 +271,13 @@ export const useOnSocketMsg = () => {
 
         if (enableShowSocket) {
           console.log(
-            '%crcvd',
-            'background: pink',
+            "%crcvd",
+            "background: pink",
             ReverseMessageType[msgType] ?? msgType,
             parsedMsg,
             performance.now(),
-            'bytelength:',
-            msgLength
+            "bytelength:",
+            msgLength,
           );
         }
 
@@ -286,7 +286,7 @@ export const useOnSocketMsg = () => {
             const sr = parsedMsg as SeekRequest;
 
             if (!sr.receiverIsPermanent) {
-              console.log('Got a seek request', sr);
+              console.log("Got a seek request", sr);
 
               const userID = sr.user?.userId;
               if (!userID || excludedPlayers.has(userID)) {
@@ -315,29 +315,29 @@ export const useOnSocketMsg = () => {
               if (soughtGame === null) {
                 break;
               }
-              console.log('gameContext', gameContext);
+              console.log("gameContext", gameContext);
               let inReceiverGameList = false;
               if (receiver === loginState.username) {
-                BoopSounds.playSound('matchReqSound');
+                BoopSounds.playSound("matchReqSound");
                 const rematchFor = sr.rematchFor;
                 console.log(
-                  'sg',
+                  "sg",
                   soughtGame.tournamentID,
-                  'gc',
+                  "gc",
                   gameContext.gameID,
-                  'tc',
-                  tournamentContext
+                  "tc",
+                  tournamentContext,
                 );
                 if (soughtGame.tournamentID) {
                   // This is a match game attached to a tourney.
-                  console.log('match attached to tourney');
+                  console.log("match attached to tourney");
                   if (
                     tournamentContext.metadata?.id ===
                       soughtGame.tournamentID &&
                     !gameContext.gameID
                   ) {
                     console.log(
-                      'matches this tourney, and we are not in a game'
+                      "matches this tourney, and we are not in a game",
                     );
 
                     dispatchLobbyContext({
@@ -346,12 +346,12 @@ export const useOnSocketMsg = () => {
                     });
                     inReceiverGameList = true;
                   } else if (rematchFor && rematchFor === gameContext.gameID) {
-                    console.log('it is a rematch');
+                    console.log("it is a rematch");
                     setRematchRequest(sr);
                   } else {
-                    console.log('tourney match request elsewhere');
+                    console.log("tourney match request elsewhere");
                     notification.info({
-                      message: 'Tournament Match Request',
+                      message: "Tournament Match Request",
                       description: `You have a tournament match request from ${soughtGame.seeker}. Please return to your tournament at your convenience.`,
                     });
                   }
@@ -362,7 +362,7 @@ export const useOnSocketMsg = () => {
                     setRematchRequest(sr);
                   } else {
                     notification.info({
-                      message: 'Match Request',
+                      message: "Match Request",
                       description: `You have a match request from ${soughtGame.seeker}, in the lobby.`,
                     });
                     inReceiverGameList = true;
@@ -409,7 +409,7 @@ export const useOnSocketMsg = () => {
             message.warning({
               content: sm.message,
               duration: 3,
-              key: 'server-message',
+              key: "server-message",
             });
             break;
           }
@@ -420,18 +420,18 @@ export const useOnSocketMsg = () => {
             const url = `/game/${encodeURIComponent(gid)}`;
             if (isExamining) {
               notification.info({
-                message: 'A rematch has started',
-                description: 'Click this notification to watch',
-                key: 'rematch-notification',
+                message: "A rematch has started",
+                description: "Click this notification to watch",
+                key: "rematch-notification",
                 duration: 10, // 10 seconds,
                 onClick: () => {
                   navigate(url);
-                  notification.destroy('rematch-notification');
+                  notification.destroy("rematch-notification");
                 },
               });
             } else {
               navigate(url, { replace: true });
-              setGameEndMessage('');
+              setGameEndMessage("");
             }
             break;
           }
@@ -446,14 +446,14 @@ export const useOnSocketMsg = () => {
             const err = parsedMsg as ErrorMessage;
             const errorMessage = parseWooglesError(err.message);
             notification.open({
-              message: 'Error',
+              message: "Error",
               description: errorMessage,
             });
             addChat({
               entityType: ChatEntityType.ErrorMsg,
-              sender: 'Woogles',
+              sender: "Woogles",
               message: errorMessage,
-              channel: 'server',
+              channel: "server",
             });
             break;
           }
@@ -473,9 +473,9 @@ export const useOnSocketMsg = () => {
               id: cm.id,
             });
             if (cm.username !== loginState.username) {
-              const tokenizedName = cm.channel.split('.');
-              if (tokenizedName.length > 1 && tokenizedName[1] === 'pm') {
-                BoopSounds.playSound('receiveMsgSound');
+              const tokenizedName = cm.channel.split(".");
+              if (tokenizedName.length > 1 && tokenizedName[1] === "pm") {
+                BoopSounds.playSound("receiveMsgSound");
               }
             }
             break;
@@ -576,7 +576,7 @@ export const useOnSocketMsg = () => {
               payload: gee,
             });
 
-            BoopSounds.playSound('endgameSound');
+            BoopSounds.playSound("endgameSound");
             break;
           }
 
@@ -596,7 +596,7 @@ export const useOnSocketMsg = () => {
               },
             });
             if (tournamentContext.competitorState?.division === trs.division) {
-              BoopSounds.playSound('startTourneyRoundSound');
+              BoopSounds.playSound("startTourneyRoundSound");
             }
             break;
           }
@@ -710,23 +710,23 @@ export const useOnSocketMsg = () => {
               nge.requesterCid !== loginState.connID
             ) {
               console.log(
-                'ignoring on this tab...',
+                "ignoring on this tab...",
                 nge.accepterCid,
-                '-',
+                "-",
                 nge.requesterCid,
-                '-',
-                loginState.connID
+                "-",
+                loginState.connID,
               );
               break;
             }
 
             dispatchGameContext({
               actionType: ActionType.ClearHistory,
-              payload: '',
+              payload: "",
             });
             const gid = nge.gameId;
             navigate(`/game/${encodeURIComponent(gid)}`, { replace: true });
-            setGameEndMessage('');
+            setGameEndMessage("");
             break;
           }
 
@@ -746,13 +746,13 @@ export const useOnSocketMsg = () => {
                   message,
                   gameMetaEventContext,
                   gme,
-                  loginState.userID
-                )
+                  loginState.userID,
+                ),
               );
             }
 
             // If there is an Antd message about "waiting for game", destroy it.
-            message.destroy('server-message');
+            message.destroy("server-message");
             break;
           }
 
@@ -789,9 +789,9 @@ export const useOnSocketMsg = () => {
             const sge = parsedMsg as ServerChallengeResultEvent;
             challengeResultEvent(sge);
             if (!sge.valid) {
-              BoopSounds.playSound('woofSound');
+              BoopSounds.playSound("woofSound");
             } else {
-              BoopSounds.playSound('meowSound');
+              BoopSounds.playSound("meowSound");
             }
             break;
           }
@@ -813,8 +813,8 @@ export const useOnSocketMsg = () => {
               payload: dec.requestId,
             });
             notification.info({
-              message: 'Declined',
-              description: 'Your match request was declined.',
+              message: "Declined",
+              description: "Your match request was declined.",
             });
             break;
           }
@@ -826,10 +826,10 @@ export const useOnSocketMsg = () => {
                 message,
                 gameMetaEventContext,
                 gme,
-                loginState.userID
-              )
+                loginState.userID,
+              ),
             );
-            BoopSounds.playSound('abortnudgeSound');
+            BoopSounds.playSound("abortnudgeSound");
 
             break;
           }
@@ -873,7 +873,7 @@ export const useOnSocketMsg = () => {
 
           case MessageType.ONGOING_GAMES: {
             const age = parsedMsg as GameInfoResponses;
-            console.log('got active games', age, 'tc', tournamentContext);
+            console.log("got active games", age, "tc", tournamentContext);
 
             let inTourney = !!tournamentContext.metadata?.id;
             if (!inTourney) {
@@ -883,7 +883,7 @@ export const useOnSocketMsg = () => {
                 gil[0].tournamentId &&
                 gil.every((g) => g.tournamentId === gil[0].tournamentId)
               ) {
-                console.log('in a tourney');
+                console.log("in a tourney");
                 inTourney = true;
               }
             }
@@ -898,7 +898,7 @@ export const useOnSocketMsg = () => {
               actionType: ActionType.AddActiveGames,
               payload: {
                 activeGames: age.gameInfo.map((g) =>
-                  GameInfoResponseToActiveGame(g)
+                  GameInfoResponseToActiveGame(g),
                 ),
                 loginState,
               },
@@ -992,6 +992,6 @@ export const useOnSocketMsg = () => {
       isExamining,
       message,
       notification,
-    ]
+    ],
   );
 };

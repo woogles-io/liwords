@@ -10,8 +10,8 @@ import {
   EmptySpace,
   MachineLetter,
   MachineWord,
-} from '../utils/cwgame/common';
-import { ThroughTileMarker } from '../utils/cwgame/game_event';
+} from "../utils/cwgame/common";
+import { ThroughTileMarker } from "../utils/cwgame/game_event";
 
 type AlphabetLetter = {
   rune: string; // the character that's on the tile
@@ -41,61 +41,61 @@ export type Alphabet = {
 export const StandardEnglishAlphabet: Alphabet = {
   letters: [
     { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
-    { rune: 'A', score: 1, count: 9, vowel: true, category: 0 },
-    { rune: 'B', score: 3, count: 2, vowel: false, category: 2 },
-    { rune: 'C', score: 3, count: 2, vowel: false, category: 2 },
-    { rune: 'D', score: 2, count: 4, vowel: false, category: 1 },
-    { rune: 'E', score: 1, count: 12, vowel: true, category: 0 },
-    { rune: 'F', score: 4, count: 2, vowel: false, category: 2 },
-    { rune: 'G', score: 2, count: 3, vowel: false, category: 1 },
+    { rune: "A", score: 1, count: 9, vowel: true, category: 0 },
+    { rune: "B", score: 3, count: 2, vowel: false, category: 2 },
+    { rune: "C", score: 3, count: 2, vowel: false, category: 2 },
+    { rune: "D", score: 2, count: 4, vowel: false, category: 1 },
+    { rune: "E", score: 1, count: 12, vowel: true, category: 0 },
+    { rune: "F", score: 4, count: 2, vowel: false, category: 2 },
+    { rune: "G", score: 2, count: 3, vowel: false, category: 1 },
     {
-      rune: 'H',
+      rune: "H",
       score: 4,
       count: 2,
       vowel: false,
       category: 2,
       bnjyable: true,
     },
-    { rune: 'I', score: 1, count: 9, vowel: true, category: 0, bnjyable: true },
-    { rune: 'J', score: 8, count: 1, vowel: false, category: 3 },
-    { rune: 'K', score: 5, count: 1, vowel: false, category: 3 },
-    { rune: 'L', score: 1, count: 4, vowel: false, category: 1 },
-    { rune: 'M', score: 3, count: 2, vowel: false, category: 2 },
+    { rune: "I", score: 1, count: 9, vowel: true, category: 0, bnjyable: true },
+    { rune: "J", score: 8, count: 1, vowel: false, category: 3 },
+    { rune: "K", score: 5, count: 1, vowel: false, category: 3 },
+    { rune: "L", score: 1, count: 4, vowel: false, category: 1 },
+    { rune: "M", score: 3, count: 2, vowel: false, category: 2 },
     {
-      rune: 'N',
+      rune: "N",
       score: 1,
       count: 6,
       vowel: false,
       category: 1,
       bnjyable: true,
     },
-    { rune: 'O', score: 1, count: 8, vowel: true, category: 0, bnjyable: true },
-    { rune: 'P', score: 3, count: 2, vowel: false, category: 2 },
-    { rune: 'Q', score: 10, count: 1, vowel: false, category: 3 },
-    { rune: 'R', score: 1, count: 6, vowel: false, category: 1 },
+    { rune: "O", score: 1, count: 8, vowel: true, category: 0, bnjyable: true },
+    { rune: "P", score: 3, count: 2, vowel: false, category: 2 },
+    { rune: "Q", score: 10, count: 1, vowel: false, category: 3 },
+    { rune: "R", score: 1, count: 6, vowel: false, category: 1 },
     {
-      rune: 'S',
+      rune: "S",
       score: 1,
       count: 4,
       vowel: false,
       category: 3,
       bnjyable: true,
     },
-    { rune: 'T', score: 1, count: 6, vowel: false, category: 1 },
-    { rune: 'U', score: 1, count: 4, vowel: true, category: 0 },
-    { rune: 'V', score: 4, count: 2, vowel: false, category: 2 },
-    { rune: 'W', score: 4, count: 2, vowel: false, category: 2 },
+    { rune: "T", score: 1, count: 6, vowel: false, category: 1 },
+    { rune: "U", score: 1, count: 4, vowel: true, category: 0 },
+    { rune: "V", score: 4, count: 2, vowel: false, category: 2 },
+    { rune: "W", score: 4, count: 2, vowel: false, category: 2 },
     {
-      rune: 'X',
+      rune: "X",
       score: 8,
       count: 1,
       vowel: false,
       category: 3,
       bnjyable: true,
     },
-    { rune: 'Y', score: 4, count: 2, vowel: false, category: 2 },
+    { rune: "Y", score: 4, count: 2, vowel: false, category: 2 },
     {
-      rune: 'Z',
+      rune: "Z",
       score: 10,
       count: 1,
       vowel: false,
@@ -107,70 +107,70 @@ export const StandardEnglishAlphabet: Alphabet = {
   machineLetterMap: {},
   shortcutMap: {},
   longestPossibleTileRune: 1,
-  name: 'english',
+  name: "english",
 };
 
 export const StandardGermanAlphabet: Alphabet = {
   letters: [
     { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
-    { rune: 'A', score: 1, count: 5, vowel: true, category: 0 },
-    { rune: 'Ä', score: 6, count: 1, vowel: true, category: 3 },
-    { rune: 'B', score: 3, count: 2, vowel: false, category: 2 },
-    { rune: 'C', score: 4, count: 2, vowel: false, category: 2 },
-    { rune: 'D', score: 1, count: 4, vowel: false, category: 1 },
-    { rune: 'E', score: 1, count: 15, vowel: true, category: 0 },
-    { rune: 'F', score: 4, count: 2, vowel: false, category: 2 },
-    { rune: 'G', score: 2, count: 3, vowel: false, category: 1 },
+    { rune: "A", score: 1, count: 5, vowel: true, category: 0 },
+    { rune: "Ä", score: 6, count: 1, vowel: true, category: 3 },
+    { rune: "B", score: 3, count: 2, vowel: false, category: 2 },
+    { rune: "C", score: 4, count: 2, vowel: false, category: 2 },
+    { rune: "D", score: 1, count: 4, vowel: false, category: 1 },
+    { rune: "E", score: 1, count: 15, vowel: true, category: 0 },
+    { rune: "F", score: 4, count: 2, vowel: false, category: 2 },
+    { rune: "G", score: 2, count: 3, vowel: false, category: 1 },
     {
-      rune: 'H',
+      rune: "H",
       score: 2,
       count: 4,
       vowel: false,
       category: 1,
       bnjyable: true,
     },
-    { rune: 'I', score: 1, count: 6, vowel: true, category: 0, bnjyable: true },
-    { rune: 'J', score: 6, count: 1, vowel: false, category: 3 },
-    { rune: 'K', score: 4, count: 2, vowel: false, category: 2 },
-    { rune: 'L', score: 2, count: 3, vowel: false, category: 1 },
-    { rune: 'M', score: 3, count: 4, vowel: false, category: 2 },
+    { rune: "I", score: 1, count: 6, vowel: true, category: 0, bnjyable: true },
+    { rune: "J", score: 6, count: 1, vowel: false, category: 3 },
+    { rune: "K", score: 4, count: 2, vowel: false, category: 2 },
+    { rune: "L", score: 2, count: 3, vowel: false, category: 1 },
+    { rune: "M", score: 3, count: 4, vowel: false, category: 2 },
     {
-      rune: 'N',
+      rune: "N",
       score: 1,
       count: 9,
       vowel: false,
       category: 1,
       bnjyable: true,
     },
-    { rune: 'O', score: 2, count: 3, vowel: true, category: 0, bnjyable: true },
-    { rune: 'Ö', score: 8, count: 1, vowel: true, category: 3 },
-    { rune: 'P', score: 4, count: 1, vowel: false, category: 2 },
-    { rune: 'Q', score: 10, count: 1, vowel: false, category: 3 },
-    { rune: 'R', score: 1, count: 6, vowel: false, category: 1 },
+    { rune: "O", score: 2, count: 3, vowel: true, category: 0, bnjyable: true },
+    { rune: "Ö", score: 8, count: 1, vowel: true, category: 3 },
+    { rune: "P", score: 4, count: 1, vowel: false, category: 2 },
+    { rune: "Q", score: 10, count: 1, vowel: false, category: 3 },
+    { rune: "R", score: 1, count: 6, vowel: false, category: 1 },
     {
-      rune: 'S',
+      rune: "S",
       score: 1,
       count: 7,
       vowel: false,
       category: 1,
       bnjyable: true,
     },
-    { rune: 'T', score: 1, count: 6, vowel: false, category: 1 },
-    { rune: 'U', score: 1, count: 6, vowel: true, category: 0 },
-    { rune: 'Ü', score: 6, count: 1, vowel: true, category: 3 },
-    { rune: 'V', score: 6, count: 1, vowel: false, category: 3 },
-    { rune: 'W', score: 3, count: 1, vowel: false, category: 2 },
+    { rune: "T", score: 1, count: 6, vowel: false, category: 1 },
+    { rune: "U", score: 1, count: 6, vowel: true, category: 0 },
+    { rune: "Ü", score: 6, count: 1, vowel: true, category: 3 },
+    { rune: "V", score: 6, count: 1, vowel: false, category: 3 },
+    { rune: "W", score: 3, count: 1, vowel: false, category: 2 },
     {
-      rune: 'X',
+      rune: "X",
       score: 8,
       count: 1,
       vowel: false,
       category: 3,
       bnjyable: true,
     },
-    { rune: 'Y', score: 10, count: 1, vowel: false, category: 3 },
+    { rune: "Y", score: 10, count: 1, vowel: false, category: 3 },
     {
-      rune: 'Z',
+      rune: "Z",
       score: 3,
       count: 1,
       vowel: false,
@@ -182,147 +182,147 @@ export const StandardGermanAlphabet: Alphabet = {
   machineLetterMap: {},
   shortcutMap: {},
   longestPossibleTileRune: 1,
-  name: 'german',
+  name: "german",
 };
 
 export const StandardNorwegianAlphabet: Alphabet = {
   letters: [
     { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
-    { rune: 'A', score: 1, count: 7, vowel: true, category: 0 },
-    { rune: 'B', score: 4, count: 3, vowel: false, category: 2 },
-    { rune: 'C', score: 10, count: 1, vowel: false, category: 3 },
-    { rune: 'D', score: 1, count: 5, vowel: false, category: 1 },
-    { rune: 'E', score: 1, count: 9, vowel: true, category: 0 },
-    { rune: 'F', score: 2, count: 4, vowel: false, category: 1 },
-    { rune: 'G', score: 2, count: 4, vowel: false, category: 1 },
+    { rune: "A", score: 1, count: 7, vowel: true, category: 0 },
+    { rune: "B", score: 4, count: 3, vowel: false, category: 2 },
+    { rune: "C", score: 10, count: 1, vowel: false, category: 3 },
+    { rune: "D", score: 1, count: 5, vowel: false, category: 1 },
+    { rune: "E", score: 1, count: 9, vowel: true, category: 0 },
+    { rune: "F", score: 2, count: 4, vowel: false, category: 1 },
+    { rune: "G", score: 2, count: 4, vowel: false, category: 1 },
     {
-      rune: 'H',
+      rune: "H",
       score: 3,
       count: 3,
       vowel: false,
       category: 2,
       bnjyable: true,
     },
-    { rune: 'I', score: 1, count: 5, vowel: true, category: 0, bnjyable: true },
-    { rune: 'J', score: 4, count: 2, vowel: false, category: 2 },
-    { rune: 'K', score: 2, count: 4, vowel: false, category: 1 },
-    { rune: 'L', score: 1, count: 5, vowel: false, category: 1 },
-    { rune: 'M', score: 2, count: 3, vowel: false, category: 1 },
+    { rune: "I", score: 1, count: 5, vowel: true, category: 0, bnjyable: true },
+    { rune: "J", score: 4, count: 2, vowel: false, category: 2 },
+    { rune: "K", score: 2, count: 4, vowel: false, category: 1 },
+    { rune: "L", score: 1, count: 5, vowel: false, category: 1 },
+    { rune: "M", score: 2, count: 3, vowel: false, category: 1 },
     {
-      rune: 'N',
+      rune: "N",
       score: 1,
       count: 6,
       vowel: false,
       category: 1,
       bnjyable: true,
     },
-    { rune: 'O', score: 2, count: 4, vowel: true, category: 0, bnjyable: true },
-    { rune: 'P', score: 4, count: 2, vowel: false, category: 2 },
-    { rune: 'Q', score: 0, count: 0, vowel: false, category: -1 },
-    { rune: 'R', score: 1, count: 6, vowel: false, category: 1 },
+    { rune: "O", score: 2, count: 4, vowel: true, category: 0, bnjyable: true },
+    { rune: "P", score: 4, count: 2, vowel: false, category: 2 },
+    { rune: "Q", score: 0, count: 0, vowel: false, category: -1 },
+    { rune: "R", score: 1, count: 6, vowel: false, category: 1 },
     {
-      rune: 'S',
+      rune: "S",
       score: 1,
       count: 6,
       vowel: false,
       category: 1,
       bnjyable: true,
     },
-    { rune: 'T', score: 1, count: 6, vowel: false, category: 1 },
-    { rune: 'U', score: 4, count: 3, vowel: true, category: 0 },
-    { rune: 'V', score: 4, count: 3, vowel: false, category: 2 },
-    { rune: 'W', score: 8, count: 1, vowel: false, category: 3 },
+    { rune: "T", score: 1, count: 6, vowel: false, category: 1 },
+    { rune: "U", score: 4, count: 3, vowel: true, category: 0 },
+    { rune: "V", score: 4, count: 3, vowel: false, category: 2 },
+    { rune: "W", score: 8, count: 1, vowel: false, category: 3 },
     {
-      rune: 'X',
+      rune: "X",
       score: 0,
       count: 0,
       vowel: false,
       category: -1,
       bnjyable: true,
     },
-    { rune: 'Y', score: 6, count: 1, vowel: false, category: 3 },
-    { rune: 'Ü', score: 0, count: 0, vowel: true, category: -1 },
+    { rune: "Y", score: 6, count: 1, vowel: false, category: 3 },
+    { rune: "Ü", score: 0, count: 0, vowel: true, category: -1 },
     {
-      rune: 'Z',
+      rune: "Z",
       score: 0,
       count: 0,
       vowel: false,
       category: -1,
       bnjyable: true,
     },
-    { rune: 'Æ', score: 6, count: 1, vowel: true, category: 3 },
+    { rune: "Æ", score: 6, count: 1, vowel: true, category: 3 },
     // Norwegian has several letters in its alphabet that there are zero of
     // (we need to show them here for the blank designation panel)
-    { rune: 'Ä', score: 0, count: 0, vowel: true, category: -1 },
-    { rune: 'Ø', score: 5, count: 2, vowel: true, category: 3, bnjyable: true },
-    { rune: 'Ö', score: 0, count: 0, vowel: true, category: -1 },
-    { rune: 'Å', score: 4, count: 2, vowel: true, category: 2 },
+    { rune: "Ä", score: 0, count: 0, vowel: true, category: -1 },
+    { rune: "Ø", score: 5, count: 2, vowel: true, category: 3, bnjyable: true },
+    { rune: "Ö", score: 0, count: 0, vowel: true, category: -1 },
+    { rune: "Å", score: 4, count: 2, vowel: true, category: 2 },
   ],
   letterMap: {},
   machineLetterMap: {},
   shortcutMap: {},
   longestPossibleTileRune: 1,
-  name: 'norwegian',
+  name: "norwegian",
 };
 
 export const StandardFrenchAlphabet: Alphabet = {
   letters: [
     { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
-    { rune: 'A', score: 1, count: 9, vowel: true, category: 0 },
-    { rune: 'B', score: 3, count: 2, vowel: false, category: 2 },
-    { rune: 'C', score: 3, count: 2, vowel: false, category: 2 },
-    { rune: 'D', score: 2, count: 3, vowel: false, category: 1 },
-    { rune: 'E', score: 1, count: 15, vowel: true, category: 0 },
-    { rune: 'F', score: 4, count: 2, vowel: false, category: 2 },
-    { rune: 'G', score: 2, count: 2, vowel: false, category: 1 },
+    { rune: "A", score: 1, count: 9, vowel: true, category: 0 },
+    { rune: "B", score: 3, count: 2, vowel: false, category: 2 },
+    { rune: "C", score: 3, count: 2, vowel: false, category: 2 },
+    { rune: "D", score: 2, count: 3, vowel: false, category: 1 },
+    { rune: "E", score: 1, count: 15, vowel: true, category: 0 },
+    { rune: "F", score: 4, count: 2, vowel: false, category: 2 },
+    { rune: "G", score: 2, count: 2, vowel: false, category: 1 },
     {
-      rune: 'H',
+      rune: "H",
       score: 4,
       count: 2,
       vowel: false,
       category: 2,
       bnjyable: true,
     },
-    { rune: 'I', score: 1, count: 8, vowel: true, category: 0, bnjyable: true },
-    { rune: 'J', score: 8, count: 1, vowel: false, category: 3 },
-    { rune: 'K', score: 10, count: 1, vowel: false, category: 3 },
-    { rune: 'L', score: 1, count: 5, vowel: false, category: 1 },
-    { rune: 'M', score: 2, count: 3, vowel: false, category: 1 },
+    { rune: "I", score: 1, count: 8, vowel: true, category: 0, bnjyable: true },
+    { rune: "J", score: 8, count: 1, vowel: false, category: 3 },
+    { rune: "K", score: 10, count: 1, vowel: false, category: 3 },
+    { rune: "L", score: 1, count: 5, vowel: false, category: 1 },
+    { rune: "M", score: 2, count: 3, vowel: false, category: 1 },
     {
-      rune: 'N',
+      rune: "N",
       score: 1,
       count: 6,
       vowel: false,
       category: 1,
       bnjyable: true,
     },
-    { rune: 'O', score: 1, count: 6, vowel: true, category: 0, bnjyable: true },
-    { rune: 'P', score: 3, count: 2, vowel: false, category: 1 },
-    { rune: 'Q', score: 8, count: 1, vowel: false, category: 3 },
-    { rune: 'R', score: 1, count: 6, vowel: false, category: 1 },
+    { rune: "O", score: 1, count: 6, vowel: true, category: 0, bnjyable: true },
+    { rune: "P", score: 3, count: 2, vowel: false, category: 1 },
+    { rune: "Q", score: 8, count: 1, vowel: false, category: 3 },
+    { rune: "R", score: 1, count: 6, vowel: false, category: 1 },
     {
-      rune: 'S',
+      rune: "S",
       score: 1,
       count: 6,
       vowel: false,
       category: 3,
       bnjyable: true,
     },
-    { rune: 'T', score: 1, count: 6, vowel: false, category: 1 },
-    { rune: 'U', score: 1, count: 6, vowel: true, category: 0 },
-    { rune: 'V', score: 4, count: 2, vowel: false, category: 2 },
-    { rune: 'W', score: 10, count: 1, vowel: false, category: 3 },
+    { rune: "T", score: 1, count: 6, vowel: false, category: 1 },
+    { rune: "U", score: 1, count: 6, vowel: true, category: 0 },
+    { rune: "V", score: 4, count: 2, vowel: false, category: 2 },
+    { rune: "W", score: 10, count: 1, vowel: false, category: 3 },
     {
-      rune: 'X',
+      rune: "X",
       score: 10,
       count: 1,
       vowel: false,
       category: 3,
       bnjyable: true,
     },
-    { rune: 'Y', score: 10, count: 1, vowel: true, category: 3 },
+    { rune: "Y", score: 10, count: 1, vowel: true, category: 3 },
     {
-      rune: 'Z',
+      rune: "Z",
       score: 10,
       count: 1,
       vowel: false,
@@ -334,21 +334,21 @@ export const StandardFrenchAlphabet: Alphabet = {
   machineLetterMap: {},
   shortcutMap: {},
   longestPossibleTileRune: 1,
-  name: 'french',
+  name: "french",
 };
 
 export const SuperEnglishAlphabet: Alphabet = {
   letters: [
     { rune: Blank, score: 0, count: 4, vowel: false, category: 3 },
-    { rune: 'A', score: 1, count: 16, vowel: true, category: 0 },
-    { rune: 'B', score: 3, count: 4, vowel: false, category: 2 },
-    { rune: 'C', score: 3, count: 6, vowel: false, category: 2 },
-    { rune: 'D', score: 2, count: 8, vowel: false, category: 1 },
-    { rune: 'E', score: 1, count: 24, vowel: true, category: 0 },
-    { rune: 'F', score: 4, count: 4, vowel: false, category: 2 },
-    { rune: 'G', score: 2, count: 5, vowel: false, category: 1 },
+    { rune: "A", score: 1, count: 16, vowel: true, category: 0 },
+    { rune: "B", score: 3, count: 4, vowel: false, category: 2 },
+    { rune: "C", score: 3, count: 6, vowel: false, category: 2 },
+    { rune: "D", score: 2, count: 8, vowel: false, category: 1 },
+    { rune: "E", score: 1, count: 24, vowel: true, category: 0 },
+    { rune: "F", score: 4, count: 4, vowel: false, category: 2 },
+    { rune: "G", score: 2, count: 5, vowel: false, category: 1 },
     {
-      rune: 'H',
+      rune: "H",
       score: 4,
       count: 5,
       vowel: false,
@@ -356,19 +356,19 @@ export const SuperEnglishAlphabet: Alphabet = {
       bnjyable: true,
     },
     {
-      rune: 'I',
+      rune: "I",
       score: 1,
       count: 13,
       vowel: true,
       category: 0,
       bnjyable: true,
     },
-    { rune: 'J', score: 8, count: 2, vowel: false, category: 3 },
-    { rune: 'K', score: 5, count: 2, vowel: false, category: 3 },
-    { rune: 'L', score: 1, count: 7, vowel: false, category: 1 },
-    { rune: 'M', score: 3, count: 6, vowel: false, category: 2 },
+    { rune: "J", score: 8, count: 2, vowel: false, category: 3 },
+    { rune: "K", score: 5, count: 2, vowel: false, category: 3 },
+    { rune: "L", score: 1, count: 7, vowel: false, category: 1 },
+    { rune: "M", score: 3, count: 6, vowel: false, category: 2 },
     {
-      rune: 'N',
+      rune: "N",
       score: 1,
       count: 13,
       vowel: false,
@@ -376,39 +376,39 @@ export const SuperEnglishAlphabet: Alphabet = {
       bnjyable: true,
     },
     {
-      rune: 'O',
+      rune: "O",
       score: 1,
       count: 15,
       vowel: true,
       category: 0,
       bnjyable: true,
     },
-    { rune: 'P', score: 3, count: 4, vowel: false, category: 2 },
-    { rune: 'Q', score: 10, count: 2, vowel: false, category: 3 },
-    { rune: 'R', score: 1, count: 13, vowel: false, category: 1 },
+    { rune: "P", score: 3, count: 4, vowel: false, category: 2 },
+    { rune: "Q", score: 10, count: 2, vowel: false, category: 3 },
+    { rune: "R", score: 1, count: 13, vowel: false, category: 1 },
     {
-      rune: 'S',
+      rune: "S",
       score: 1,
       count: 10,
       vowel: false,
       category: 3,
       bnjyable: true,
     },
-    { rune: 'T', score: 1, count: 15, vowel: false, category: 1 },
-    { rune: 'U', score: 1, count: 7, vowel: true, category: 0 },
-    { rune: 'V', score: 4, count: 3, vowel: false, category: 2 },
-    { rune: 'W', score: 4, count: 4, vowel: false, category: 2 },
+    { rune: "T", score: 1, count: 15, vowel: false, category: 1 },
+    { rune: "U", score: 1, count: 7, vowel: true, category: 0 },
+    { rune: "V", score: 4, count: 3, vowel: false, category: 2 },
+    { rune: "W", score: 4, count: 4, vowel: false, category: 2 },
     {
-      rune: 'X',
+      rune: "X",
       score: 8,
       count: 2,
       vowel: false,
       category: 3,
       bnjyable: true,
     },
-    { rune: 'Y', score: 4, count: 4, vowel: false, category: 2 },
+    { rune: "Y", score: 4, count: 4, vowel: false, category: 2 },
     {
-      rune: 'Z',
+      rune: "Z",
       score: 10,
       count: 2,
       vowel: false,
@@ -420,49 +420,49 @@ export const SuperEnglishAlphabet: Alphabet = {
   machineLetterMap: {},
   shortcutMap: {},
   longestPossibleTileRune: 1,
-  name: 'english_super',
+  name: "english_super",
 };
 
 export const StandardCatalanAlphabet: Alphabet = {
   letters: [
     { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
-    { rune: 'A', score: 1, count: 12, vowel: true, category: 0 },
-    { rune: 'B', score: 3, count: 2, vowel: false, category: 2 },
-    { rune: 'C', score: 2, count: 3, vowel: false, category: 2 },
+    { rune: "A", score: 1, count: 12, vowel: true, category: 0 },
+    { rune: "B", score: 3, count: 2, vowel: false, category: 2 },
+    { rune: "C", score: 2, count: 3, vowel: false, category: 2 },
     {
-      rune: 'Ç',
+      rune: "Ç",
       score: 10,
       count: 1,
       vowel: false,
       category: 3,
-      shortcut: 'K',
+      shortcut: "K",
     },
-    { rune: 'D', score: 2, count: 3, vowel: false, category: 1 },
-    { rune: 'E', score: 1, count: 13, vowel: true, category: 0 },
-    { rune: 'F', score: 4, count: 1, vowel: false, category: 2 },
-    { rune: 'G', score: 3, count: 2, vowel: false, category: 1 },
+    { rune: "D", score: 2, count: 3, vowel: false, category: 1 },
+    { rune: "E", score: 1, count: 13, vowel: true, category: 0 },
+    { rune: "F", score: 4, count: 1, vowel: false, category: 2 },
+    { rune: "G", score: 3, count: 2, vowel: false, category: 1 },
     {
-      rune: 'H',
+      rune: "H",
       score: 8,
       count: 1,
       vowel: false,
       category: 2,
       bnjyable: true,
     },
-    { rune: 'I', score: 1, count: 8, vowel: true, category: 0, bnjyable: true },
-    { rune: 'J', score: 8, count: 1, vowel: false, category: 3 },
-    { rune: 'L', score: 1, count: 4, vowel: false, category: 1 },
+    { rune: "I", score: 1, count: 8, vowel: true, category: 0, bnjyable: true },
+    { rune: "J", score: 8, count: 1, vowel: false, category: 3 },
+    { rune: "L", score: 1, count: 4, vowel: false, category: 1 },
     {
-      rune: 'L·L',
+      rune: "L·L",
       score: 10,
       count: 1,
       vowel: false,
       category: 3,
-      shortcut: 'W',
+      shortcut: "W",
     },
-    { rune: 'M', score: 2, count: 3, vowel: false, category: 2 },
+    { rune: "M", score: 2, count: 3, vowel: false, category: 2 },
     {
-      rune: 'N',
+      rune: "N",
       score: 1,
       count: 6,
       vowel: false,
@@ -470,37 +470,37 @@ export const StandardCatalanAlphabet: Alphabet = {
       bnjyable: true,
     },
     {
-      rune: 'NY',
+      rune: "NY",
       score: 10,
       count: 1,
       vowel: false,
       category: 3,
-      shortcut: 'Y',
+      shortcut: "Y",
     },
-    { rune: 'O', score: 1, count: 5, vowel: true, category: 0, bnjyable: true },
-    { rune: 'P', score: 3, count: 2, vowel: false, category: 2 },
+    { rune: "O", score: 1, count: 5, vowel: true, category: 0, bnjyable: true },
+    { rune: "P", score: 3, count: 2, vowel: false, category: 2 },
     {
-      rune: 'QU',
+      rune: "QU",
       score: 8,
       count: 1,
       vowel: false,
       category: 3,
-      shortcut: 'Q',
+      shortcut: "Q",
     },
-    { rune: 'R', score: 1, count: 8, vowel: false, category: 1 },
+    { rune: "R", score: 1, count: 8, vowel: false, category: 1 },
     {
-      rune: 'S',
+      rune: "S",
       score: 1,
       count: 8,
       vowel: false,
       category: 3,
       bnjyable: true,
     },
-    { rune: 'T', score: 1, count: 5, vowel: false, category: 1 },
-    { rune: 'U', score: 1, count: 4, vowel: true, category: 0 },
-    { rune: 'V', score: 4, count: 1, vowel: false, category: 2 },
+    { rune: "T", score: 1, count: 5, vowel: false, category: 1 },
+    { rune: "U", score: 1, count: 4, vowel: true, category: 0 },
+    { rune: "V", score: 4, count: 1, vowel: false, category: 2 },
     {
-      rune: 'X',
+      rune: "X",
       score: 10,
       count: 1,
       vowel: false,
@@ -508,7 +508,7 @@ export const StandardCatalanAlphabet: Alphabet = {
       bnjyable: true,
     },
     {
-      rune: 'Z',
+      rune: "Z",
       score: 8,
       count: 1,
       vowel: false,
@@ -520,51 +520,51 @@ export const StandardCatalanAlphabet: Alphabet = {
   machineLetterMap: {},
   shortcutMap: {},
   longestPossibleTileRune: 3,
-  name: 'catalan',
+  name: "catalan",
 };
 
 export const StandardSpanishAlphabet: Alphabet = {
   letters: [
     { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
-    { rune: 'A', score: 1, count: 12, vowel: true, category: 0 },
-    { rune: 'B', score: 3, count: 2, vowel: false, category: 2 },
-    { rune: 'C', score: 3, count: 4, vowel: false, category: 2 },
+    { rune: "A", score: 1, count: 12, vowel: true, category: 0 },
+    { rune: "B", score: 3, count: 2, vowel: false, category: 2 },
+    { rune: "C", score: 3, count: 4, vowel: false, category: 2 },
     {
-      rune: '[CH]', // In Spanish the multichar runes are defined as having the [ ] brackets.
+      rune: "[CH]", // In Spanish the multichar runes are defined as having the [ ] brackets.
       score: 5,
       count: 1,
       vowel: false,
       category: 3,
-      shortcut: 'K',
-      tileDisplay: 'CH',
+      shortcut: "K",
+      tileDisplay: "CH",
     },
-    { rune: 'D', score: 2, count: 5, vowel: false, category: 1 },
-    { rune: 'E', score: 1, count: 12, vowel: true, category: 0 },
-    { rune: 'F', score: 4, count: 1, vowel: false, category: 2 },
-    { rune: 'G', score: 2, count: 2, vowel: false, category: 1 },
+    { rune: "D", score: 2, count: 5, vowel: false, category: 1 },
+    { rune: "E", score: 1, count: 12, vowel: true, category: 0 },
+    { rune: "F", score: 4, count: 1, vowel: false, category: 2 },
+    { rune: "G", score: 2, count: 2, vowel: false, category: 1 },
     {
-      rune: 'H',
+      rune: "H",
       score: 4,
       count: 2,
       vowel: false,
       category: 2,
       bnjyable: true,
     },
-    { rune: 'I', score: 1, count: 6, vowel: true, category: 0, bnjyable: true },
-    { rune: 'J', score: 8, count: 1, vowel: false, category: 3 },
-    { rune: 'L', score: 1, count: 4, vowel: false, category: 1 },
+    { rune: "I", score: 1, count: 6, vowel: true, category: 0, bnjyable: true },
+    { rune: "J", score: 8, count: 1, vowel: false, category: 3 },
+    { rune: "L", score: 1, count: 4, vowel: false, category: 1 },
     {
-      rune: '[LL]',
+      rune: "[LL]",
       score: 8,
       count: 1,
       vowel: false,
       category: 3,
-      tileDisplay: 'LL',
-      shortcut: '[',
+      tileDisplay: "LL",
+      shortcut: "[",
     },
-    { rune: 'M', score: 3, count: 2, vowel: false, category: 2 },
+    { rune: "M", score: 3, count: 2, vowel: false, category: 2 },
     {
-      rune: 'N',
+      rune: "N",
       score: 1,
       count: 5,
       vowel: false,
@@ -572,44 +572,44 @@ export const StandardSpanishAlphabet: Alphabet = {
       bnjyable: true,
     },
     {
-      rune: 'Ñ',
+      rune: "Ñ",
       score: 8,
       count: 1,
       vowel: false,
       category: 3,
     },
-    { rune: 'O', score: 1, count: 9, vowel: true, category: 0, bnjyable: true },
-    { rune: 'P', score: 3, count: 2, vowel: false, category: 2 },
+    { rune: "O", score: 1, count: 9, vowel: true, category: 0, bnjyable: true },
+    { rune: "P", score: 3, count: 2, vowel: false, category: 2 },
     {
-      rune: 'Q',
+      rune: "Q",
       score: 5,
       count: 1,
       vowel: false,
       category: 3,
     },
-    { rune: 'R', score: 1, count: 5, vowel: false, category: 1 },
+    { rune: "R", score: 1, count: 5, vowel: false, category: 1 },
     {
-      rune: '[RR]',
+      rune: "[RR]",
       score: 8,
       count: 1,
       vowel: false,
       category: 3,
-      tileDisplay: 'RR',
-      shortcut: 'W',
+      tileDisplay: "RR",
+      shortcut: "W",
     },
     {
-      rune: 'S',
+      rune: "S",
       score: 1,
       count: 6,
       vowel: false,
       category: 3,
       bnjyable: true,
     },
-    { rune: 'T', score: 1, count: 4, vowel: false, category: 1 },
-    { rune: 'U', score: 1, count: 5, vowel: true, category: 0 },
-    { rune: 'V', score: 4, count: 1, vowel: false, category: 2 },
+    { rune: "T", score: 1, count: 4, vowel: false, category: 1 },
+    { rune: "U", score: 1, count: 5, vowel: true, category: 0 },
+    { rune: "V", score: 4, count: 1, vowel: false, category: 2 },
     {
-      rune: 'X',
+      rune: "X",
       score: 8,
       count: 1,
       vowel: false,
@@ -617,14 +617,14 @@ export const StandardSpanishAlphabet: Alphabet = {
       bnjyable: true,
     },
     {
-      rune: 'Y',
+      rune: "Y",
       score: 4,
       count: 1,
       vowel: false,
       category: 2,
     },
     {
-      rune: 'Z',
+      rune: "Z",
       score: 10,
       count: 1,
       vowel: false,
@@ -636,78 +636,78 @@ export const StandardSpanishAlphabet: Alphabet = {
   machineLetterMap: {},
   shortcutMap: {},
   longestPossibleTileRune: 4,
-  name: 'spanish',
+  name: "spanish",
 };
 
 export const StandardPolishAlphabet: Alphabet = {
   letters: [
     { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
-    { rune: 'A', score: 1, count: 9, vowel: true, category: 0 },
-    { rune: 'Ą', score: 5, count: 1, vowel: true, category: 2 },
-    { rune: 'B', score: 3, count: 2, vowel: false, category: 1 },
-    { rune: 'C', score: 2, count: 3, vowel: false, category: 1 },
-    { rune: 'Ć', score: 6, count: 1, vowel: false, category: 3 },
-    { rune: 'D', score: 2, count: 3, vowel: false, category: 1 },
-    { rune: 'E', score: 1, count: 7, vowel: true, category: 0 },
-    { rune: 'Ę', score: 5, count: 1, vowel: true, category: 2 },
-    { rune: 'F', score: 5, count: 1, vowel: false, category: 2 },
-    { rune: 'G', score: 3, count: 2, vowel: false, category: 1 },
+    { rune: "A", score: 1, count: 9, vowel: true, category: 0 },
+    { rune: "Ą", score: 5, count: 1, vowel: true, category: 2 },
+    { rune: "B", score: 3, count: 2, vowel: false, category: 1 },
+    { rune: "C", score: 2, count: 3, vowel: false, category: 1 },
+    { rune: "Ć", score: 6, count: 1, vowel: false, category: 3 },
+    { rune: "D", score: 2, count: 3, vowel: false, category: 1 },
+    { rune: "E", score: 1, count: 7, vowel: true, category: 0 },
+    { rune: "Ę", score: 5, count: 1, vowel: true, category: 2 },
+    { rune: "F", score: 5, count: 1, vowel: false, category: 2 },
+    { rune: "G", score: 3, count: 2, vowel: false, category: 1 },
     {
-      rune: 'H',
+      rune: "H",
       score: 3,
       count: 2,
       vowel: false,
       category: 0,
       bnjyable: true,
     },
-    { rune: 'I', score: 1, count: 8, vowel: true, category: 0, bnjyable: true },
-    { rune: 'J', score: 3, count: 2, vowel: false, category: 1 },
-    { rune: 'K', score: 2, count: 3, vowel: false, category: 1 },
-    { rune: 'L', score: 2, count: 3, vowel: false, category: 1 },
-    { rune: 'Ł', score: 3, count: 2, vowel: false, category: 1 },
-    { rune: 'M', score: 2, count: 3, vowel: false, category: 1 },
+    { rune: "I", score: 1, count: 8, vowel: true, category: 0, bnjyable: true },
+    { rune: "J", score: 3, count: 2, vowel: false, category: 1 },
+    { rune: "K", score: 2, count: 3, vowel: false, category: 1 },
+    { rune: "L", score: 2, count: 3, vowel: false, category: 1 },
+    { rune: "Ł", score: 3, count: 2, vowel: false, category: 1 },
+    { rune: "M", score: 2, count: 3, vowel: false, category: 1 },
     {
-      rune: 'N',
+      rune: "N",
       score: 1,
       count: 5,
       vowel: false,
       category: 0,
       bnjyable: true,
     },
-    { rune: 'Ń', score: 7, count: 1, vowel: false, category: 3 },
-    { rune: 'O', score: 1, count: 6, vowel: true, category: 0, bnjyable: true },
-    { rune: 'Ó', score: 5, count: 1, vowel: true, category: 2 },
-    { rune: 'P', score: 2, count: 3, vowel: false, category: 1 },
-    { rune: 'R', score: 1, count: 4, vowel: false, category: 1 },
+    { rune: "Ń", score: 7, count: 1, vowel: false, category: 3 },
+    { rune: "O", score: 1, count: 6, vowel: true, category: 0, bnjyable: true },
+    { rune: "Ó", score: 5, count: 1, vowel: true, category: 2 },
+    { rune: "P", score: 2, count: 3, vowel: false, category: 1 },
+    { rune: "R", score: 1, count: 4, vowel: false, category: 1 },
     {
-      rune: 'S',
+      rune: "S",
       score: 1,
       count: 4,
       vowel: false,
       category: 1,
       bnjyable: true,
     },
-    { rune: 'Ś', score: 5, count: 1, vowel: false, category: 2 },
-    { rune: 'T', score: 2, count: 3, vowel: false, category: 1 },
-    { rune: 'U', score: 3, count: 2, vowel: true, category: 0 },
-    { rune: 'W', score: 1, count: 4, vowel: false, category: 1 },
-    { rune: 'Y', score: 2, count: 4, vowel: true, category: 1 },
+    { rune: "Ś", score: 5, count: 1, vowel: false, category: 2 },
+    { rune: "T", score: 2, count: 3, vowel: false, category: 1 },
+    { rune: "U", score: 3, count: 2, vowel: true, category: 0 },
+    { rune: "W", score: 1, count: 4, vowel: false, category: 1 },
+    { rune: "Y", score: 2, count: 4, vowel: true, category: 1 },
     {
-      rune: 'Z',
+      rune: "Z",
       score: 1,
       count: 5,
       vowel: false,
       category: 1,
       bnjyable: true,
     },
-    { rune: 'Ź', score: 9, count: 1, vowel: false, category: 3 },
-    { rune: 'Ż', score: 5, count: 1, vowel: false, category: 2 },
+    { rune: "Ź", score: 9, count: 1, vowel: false, category: 3 },
+    { rune: "Ż", score: 5, count: 1, vowel: false, category: 2 },
   ],
   letterMap: {},
   machineLetterMap: {},
   shortcutMap: {},
   longestPossibleTileRune: 1,
-  name: 'polish',
+  name: "polish",
 };
 
 // Create letter maps for faster access.
@@ -731,24 +731,24 @@ export const StandardPolishAlphabet: Alphabet = {
 });
 
 export const alphabetFromName = (
-  letterDistribution: string | undefined
+  letterDistribution: string | undefined,
 ): Alphabet => {
   switch (letterDistribution) {
-    case 'norwegian':
+    case "norwegian":
       return StandardNorwegianAlphabet;
-    case 'german':
+    case "german":
       return StandardGermanAlphabet;
-    case 'english':
+    case "english":
       return StandardEnglishAlphabet;
-    case 'french':
+    case "french":
       return StandardFrenchAlphabet;
-    case 'english_super':
+    case "english_super":
       return SuperEnglishAlphabet;
-    case 'catalan':
+    case "catalan":
       return StandardCatalanAlphabet;
-    case 'spanish':
+    case "spanish":
       return StandardSpanishAlphabet;
-    case 'polish':
+    case "polish":
       return StandardPolishAlphabet;
     default:
       return StandardEnglishAlphabet;
@@ -757,7 +757,7 @@ export const alphabetFromName = (
 
 export const scoreFor = (
   alphabet: Alphabet,
-  ml: MachineLetter | null
+  ml: MachineLetter | null,
 ): number => {
   if (ml == null) {
     return 0;
@@ -770,12 +770,12 @@ export const scoreFor = (
 
 export const machineLetterToDisplayedTile = (
   i: MachineLetter,
-  alphabet: Alphabet
+  alphabet: Alphabet,
 ): string => {
   if (i === 0) {
     return Blank;
   }
-  let rn = '';
+  let rn = "";
 
   const isBlank = i > 0x80;
   const unblanked = i & 0x07f;
@@ -806,25 +806,25 @@ export const machineLetterToRune = (
   i: MachineLetter,
   alphabet: Alphabet,
   usePlaythrough?: boolean,
-  useBracketsForMultichar?: boolean
+  useBracketsForMultichar?: boolean,
 ): string => {
   if (i === 0) {
     return usePlaythrough ? ThroughTileMarker : Blank;
   }
   if (i === EmptyRackSpaceMachineLetter) {
-    return ' ';
+    return " ";
   }
-  let rn = '';
+  let rn = "";
 
   const isBlank = i > 0x80;
   const unblanked = i & 0x07f;
 
   if (isBlank) {
-    rn = alphabet.letters[unblanked]?.rune?.toLowerCase() ?? '';
+    rn = alphabet.letters[unblanked]?.rune?.toLowerCase() ?? "";
   } else {
-    rn = alphabet.letters[i]?.rune ?? '';
+    rn = alphabet.letters[i]?.rune ?? "";
   }
-  if (useBracketsForMultichar && rn.length > 1 && rn[0] !== '[') {
+  if (useBracketsForMultichar && rn.length > 1 && rn[0] !== "[") {
     rn = `[${rn}]`;
   }
   return rn;
@@ -834,15 +834,15 @@ export const machineWordToRunes = (
   arr: Array<MachineLetter>,
   alphabet: Alphabet,
   usePlaythrough?: boolean,
-  useBracketsForMultichar?: boolean
+  useBracketsForMultichar?: boolean,
 ): string => {
-  let s = '';
+  let s = "";
   arr.forEach((v) => {
     s += machineLetterToRune(
       v,
       alphabet,
       usePlaythrough,
-      useBracketsForMultichar
+      useBracketsForMultichar,
     );
   });
   return s;
@@ -851,7 +851,7 @@ export const machineWordToRunes = (
 export const machineWordToRuneArray = (
   arr: Array<MachineLetter>,
   alphabet: Alphabet,
-  usePlaythrough?: boolean
+  usePlaythrough?: boolean,
 ): string[] => {
   const s: string[] = [];
   arr.forEach((v) => {
@@ -862,7 +862,7 @@ export const machineWordToRuneArray = (
 
 export const runesToMachineWord = (
   runes: string,
-  alphabet: Alphabet
+  alphabet: Alphabet,
 ): MachineWord => {
   const bts: Array<MachineLetter> = [];
   const chars = Array.from(runes);
@@ -874,7 +874,7 @@ export const runesToMachineWord = (
       if (j > chars.length) {
         continue;
       }
-      const rune = chars.slice(i, j).join('');
+      const rune = chars.slice(i, j).join("");
       if (rune === ThroughTileMarker) {
         bts.push(0);
         i = j;
@@ -902,7 +902,7 @@ export const runesToMachineWord = (
         bts.push(EmptyRackSpaceMachineLetter);
         i++;
       } else {
-        throw new Error('cannot convert ' + runes + ' to uint8array');
+        throw new Error("cannot convert " + runes + " to uint8array");
       }
     }
   }
@@ -912,7 +912,7 @@ export const runesToMachineWord = (
 
 export const runesToRuneArray = (
   runes: string,
-  alphabet: Alphabet
+  alphabet: Alphabet,
 ): string[] => {
   const arr = [];
   const chars = Array.from(runes);
@@ -924,7 +924,7 @@ export const runesToRuneArray = (
       if (j > chars.length) {
         continue;
       }
-      const rune = chars.slice(i, j).join('');
+      const rune = chars.slice(i, j).join("");
       if (
         rune === ThroughTileMarker ||
         alphabet.machineLetterMap[rune] != undefined ||
@@ -937,7 +937,7 @@ export const runesToRuneArray = (
       }
     }
     if (!match) {
-      throw new Error('cannot convert ' + runes + ' to rune array');
+      throw new Error("cannot convert " + runes + " to rune array");
     }
   }
 
@@ -947,7 +947,7 @@ export const runesToRuneArray = (
 // used for keypresses.
 export const getMachineLetterForKey = (
   key: string,
-  alphabet: Alphabet
+  alphabet: Alphabet,
 ): MachineLetter | null => {
   let foundML = alphabet.machineLetterMap[key];
   if (foundML == null) {

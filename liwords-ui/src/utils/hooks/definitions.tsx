@@ -4,14 +4,14 @@ import React, {
   useMemo,
   useRef,
   useState,
-} from 'react';
-import { GameState } from '../../store/reducers/game_reducer';
-import { ChatEntityType, ChatEntityObj } from '../../store/constants';
-import { Blank } from '../../utils/cwgame/common';
-import { Unrace } from '../../utils/unrace';
-import { GameEvent_Type } from '../../gen/api/vendor/macondo/macondo_pb';
-import { useClient } from './connect';
-import { WordService } from '../../gen/api/proto/word_service/word_service_pb';
+} from "react";
+import { GameState } from "../../store/reducers/game_reducer";
+import { ChatEntityType, ChatEntityObj } from "../../store/constants";
+import { Blank } from "../../utils/cwgame/common";
+import { Unrace } from "../../utils/unrace";
+import { GameEvent_Type } from "../../gen/api/vendor/macondo/macondo_pb";
+import { useClient } from "./connect";
+import { WordService } from "../../gen/api/proto/word_service/word_service_pb";
 
 export const useDefinitionAndPhonyChecker = ({
   addChat,
@@ -40,7 +40,7 @@ export const useDefinitionAndPhonyChecker = ({
   // undefined = not ready to report
   // null = game may have ended, check if ready to report
   const [phonies, setPhonies] = useState<undefined | null | Array<string>>(
-    undefined
+    undefined,
   );
 
   const [showDefinitionHover, setShowDefinitionHover] = useState<
@@ -48,7 +48,7 @@ export const useDefinitionAndPhonyChecker = ({
   >(undefined);
   const [willHideDefinitionHover, setWillHideDefinitionHover] = useState(false);
 
-  const anagrams = variant === 'wordsmog';
+  const anagrams = variant === "wordsmog";
   const [definedAnagram, setDefinedAnagram] = useState(0);
   const definedAnagramRef = useRef(definedAnagram);
   definedAnagramRef.current = definedAnagram;
@@ -65,7 +65,7 @@ export const useDefinitionAndPhonyChecker = ({
         if (anagrams && definition.v) {
           const shortList = []; // list of words and invalid entries
           const anagramDefinitions = []; // defined words
-          for (const singleEntry of definition.d.split('\n')) {
+          for (const singleEntry of definition.d.split("\n")) {
             const m = singleEntry.match(/^([^-]*) - (.*)$/m);
             if (m) {
               const [, actualWord, actualDefinition] = m;
@@ -73,7 +73,7 @@ export const useDefinitionAndPhonyChecker = ({
                 word: actualWord,
                 definition: (
                   <React.Fragment>
-                    <span className="defined-word">{actualWord}</span> -{' '}
+                    <span className="defined-word">{actualWord}</span> -{" "}
                     {actualDefinition}
                   </React.Fragment>
                 ),
@@ -90,10 +90,10 @@ export const useDefinitionAndPhonyChecker = ({
           const anagramDefinition = anagramDefinitions[defineWhich];
           entries.push(
             <li key={entries.length} className="definition-entry">
-              {uppercasedWord} -{' '}
+              {uppercasedWord} -{" "}
               {shortList.map((word, idx) => (
                 <React.Fragment key={idx}>
-                  {idx > 0 && ', '}
+                  {idx > 0 && ", "}
                   {word === anagramDefinition?.word ? (
                     <span className="defined-word">{word}</span>
                   ) : (
@@ -101,14 +101,14 @@ export const useDefinitionAndPhonyChecker = ({
                   )}
                 </React.Fragment>
               ))}
-            </li>
+            </li>,
           );
           if (anagramDefinitions.length > 0) {
             numAnagramsEach.push(anagramDefinitions.length);
             entries.push(
               <li key={entries.length} className="definition-entry">
                 {anagramDefinition.definition}
-              </li>
+              </li>,
             );
           }
         } else {
@@ -116,17 +116,17 @@ export const useDefinitionAndPhonyChecker = ({
             <li key={entries.length} className="definition-entry">
               <span className="defined-word">
                 {uppercasedWord}
-                {definition.v ? '' : '*'}
-              </span>{' '}
-              -{' '}
+                {definition.v ? "" : "*"}
+              </span>{" "}
+              -{" "}
               {definition.v ? (
                 <span className="definition">{String(definition.d)}</span>
               ) : (
                 <span className="invalid-word">
-                  {anagrams ? 'no valid words' : 'not a word'}
+                  {anagrams ? "no valid words" : "not a word"}
                 </span>
               )}
-            </li>
+            </li>,
           );
         }
       }
@@ -173,7 +173,7 @@ export const useDefinitionAndPhonyChecker = ({
   const handleSetHover = useCallback(
     (x: number, y: number, words: Array<string> | undefined) => {
       if (enableHoverDefine && words) {
-        console.log('words', words);
+        console.log("words", words);
         setWillHideDefinitionHover(false);
         setShowDefinitionHover((oldValue) => {
           const newValue = {
@@ -193,7 +193,7 @@ export const useDefinitionAndPhonyChecker = ({
         setWillHideDefinitionHover(true);
       }
     },
-    [enableHoverDefine, definedAnagram]
+    [enableHoverDefine, definedAnagram],
   );
 
   const [playedWords, setPlayedWords] = useState(new Set<string>());
@@ -278,10 +278,10 @@ export const useDefinitionAndPhonyChecker = ({
 
         if (showDefinitionHover) {
           // for certain lexicons, try getting definitions from other sources
-          for (const otherLexicon of lexicon === 'ECWL'
-            ? ['CSW24', 'NWL23']
-            : lexicon === 'CSW19X'
-              ? ['CSW24']
+          for (const otherLexicon of lexicon === "ECWL"
+            ? ["CSW24", "NWL23"]
+            : lexicon === "CSW19X"
+              ? ["CSW24"]
               : []) {
             const wordsToRedefine = [];
             for (const word of wordsToDefine) {
@@ -316,7 +316,7 @@ export const useDefinitionAndPhonyChecker = ({
         });
       } catch (e) {
         // no definitions then... sadpepe.
-        console.log('cannot check words', e);
+        console.log("cannot check words", e);
       }
     });
   }, [anagrams, showDefinitionHover, lexicon, wordClient, wordInfo, unrace]);
@@ -346,7 +346,7 @@ export const useDefinitionAndPhonyChecker = ({
     }
   }, [gameDone, phonies, playedWords, wordInfo]);
 
-  const lastPhonyReport = useRef('');
+  const lastPhonyReport = useRef("");
   useEffect(() => {
     if (!phonies) return;
     if (phonies.length) {
@@ -366,10 +366,10 @@ export const useDefinitionAndPhonyChecker = ({
       }
       // note that a phony can appear in both lists
       const unchallengedPhonies = phonies.filter((word) =>
-        groupedWords[0].has(word)
+        groupedWords[0].has(word),
       );
       const challengedPhonies = phonies.filter((word) =>
-        groupedWords[1].has(word)
+        groupedWords[1].has(word),
       );
       const thisPhonyReport = JSON.stringify({
         challengedPhonies,
@@ -380,33 +380,33 @@ export const useDefinitionAndPhonyChecker = ({
         if (challengedPhonies.length) {
           addChat({
             entityType: ChatEntityType.ErrorMsg,
-            sender: '',
+            sender: "",
             message: `Invalid words challenged off: ${challengedPhonies
               .map((x) => `${x}*`)
-              .join(', ')}`,
-            channel: 'server',
+              .join(", ")}`,
+            channel: "server",
           });
         }
         if (unchallengedPhonies.length) {
           addChat({
             entityType: ChatEntityType.ErrorMsg,
-            sender: '',
+            sender: "",
             message: `Invalid words played and not challenged: ${unchallengedPhonies
               .map((x) => `${x}*`)
-              .join(', ')}`,
-            channel: 'server',
+              .join(", ")}`,
+            channel: "server",
           });
         }
       }
     } else {
-      const thisPhonyReport = 'all valid';
+      const thisPhonyReport = "all valid";
       if (lastPhonyReport.current !== thisPhonyReport) {
         lastPhonyReport.current = thisPhonyReport;
         addChat({
           entityType: ChatEntityType.ServerMsg,
-          sender: '',
-          message: 'All words played are valid',
-          channel: 'server',
+          sender: "",
+          message: "All words played are valid",
+          channel: "server",
         });
       }
     }

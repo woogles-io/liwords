@@ -1,4 +1,4 @@
-import { Action, ActionType } from '../actions/actions';
+import { Action, ActionType } from "../actions/actions";
 
 export type LoginState = {
   username: string;
@@ -20,12 +20,12 @@ export type AuthInfo = {
 
 export function LoginStateReducer(
   state: LoginState,
-  action: Action
+  action: Action,
 ): LoginState {
   switch (action.actionType) {
     case ActionType.SetAuthentication: {
       const auth = action.payload as AuthInfo;
-      console.log('decoded auth', auth);
+      console.log("decoded auth", auth);
       return {
         ...state,
         ...auth,

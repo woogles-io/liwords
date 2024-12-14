@@ -1,11 +1,11 @@
-import { DeleteOutlined, EditOutlined } from '@ant-design/icons';
-import { Card, Input, Popconfirm } from 'antd';
-import moment from 'moment';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { GameComment } from '../gen/api/proto/comments_service/comments_service_pb';
-import { canMod } from '../mod/perms';
-import { useLoginStateStoreContext } from '../store/store';
-import { timestampDate } from '@bufbuild/protobuf/wkt';
+import { DeleteOutlined, EditOutlined } from "@ant-design/icons";
+import { Card, Input, Popconfirm } from "antd";
+import moment from "moment";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { GameComment } from "../gen/api/proto/comments_service/comments_service_pb";
+import { canMod } from "../mod/perms";
+import { useLoginStateStoreContext } from "../store/store";
+import { timestampDate } from "@bufbuild/protobuf/wkt";
 
 type Props = {
   comments: Array<GameComment>;
@@ -34,7 +34,7 @@ export const CommentEditor = (props: EditProps) => {
 
   useEffect(() => {
     console.log(myRef.current);
-    myRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    myRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, []);
   const [inputValue, setInputValue] = useState(props.initialValue);
   return (
@@ -57,7 +57,7 @@ export const CommentEditor = (props: EditProps) => {
         {props.buttonCaption}
       </span>
       {/* a lil hack for scrolling into view */}
-      <div style={{ position: 'relative', top: 80 }} ref={myRef} />
+      <div style={{ position: "relative", top: 80 }} ref={myRef} />
     </div>
   );
 };
@@ -66,7 +66,7 @@ export const Comment = (props: SingleCommentProps) => {
   const [popupOpen, setPopupOpen] = useState(false);
   const initialCommentDisplay = useMemo(
     () => <p>{props.comment.comment}</p>,
-    [props.comment.comment]
+    [props.comment.comment],
   );
   const [commentDisplay, setCommentDisplay] = useState(initialCommentDisplay);
   useEffect(() => {
@@ -84,7 +84,7 @@ export const Comment = (props: SingleCommentProps) => {
           <span className="timeago">
             {props.comment.lastEdited
               ? moment(timestampDate(props.comment.lastEdited)).fromNow()
-              : ''}
+              : ""}
           </span>
         </>
       }
@@ -104,7 +104,7 @@ export const Comment = (props: SingleCommentProps) => {
                       updateComment={(cmt: string) =>
                         props.editComment(props.comment.commentId, cmt)
                       }
-                    />
+                    />,
                   );
                 }}
               />
@@ -143,7 +143,7 @@ export const Comments = (props: Props) => {
       // unless the user clicked and interacted with the scorecard.
       // In this case, we want to make sure the "add new comment" button
       // is visible.
-      myRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      myRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     }
   }, [props.comments]);
 
@@ -168,7 +168,7 @@ export const Comments = (props: Props) => {
         >
           Add a comment
         </span>
-        <div style={{ position: 'relative', top: 50 }} ref={myRef} />
+        <div style={{ position: "relative", top: 50 }} ref={myRef} />
       </>
     );
   }

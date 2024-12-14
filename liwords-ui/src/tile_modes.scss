@@ -210,7 +210,7 @@ $tiles: (
     .tile--#{$tile} & {
       $tile-map: () !global;
       @each $key, $submap in $map {
-        $value: map-get(map-get($tiles, $tile), '#{$key}');
+        $value: map-get(map-get($tiles, $tile), "#{$key}");
         $tile-map: map-merge(
           $tile-map,
           (

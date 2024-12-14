@@ -6,39 +6,39 @@ import React, {
   useMemo,
   useRef,
   useState,
-} from 'react';
-import { Card } from 'antd';
+} from "react";
+import { Card } from "antd";
 import {
   GameEvent,
   GameEvent_Type,
-} from '../gen/api/vendor/macondo/macondo_pb';
-import { Board } from '../utils/cwgame/board';
-import { PlayerAvatar } from '../shared/player_avatar';
-import { millisToTimeStr } from '../store/timer_controller';
+} from "../gen/api/vendor/macondo/macondo_pb";
+import { Board } from "../utils/cwgame/board";
+import { PlayerAvatar } from "../shared/player_avatar";
+import { millisToTimeStr } from "../store/timer_controller";
 import {
   nicknameFromEvt,
   tilePlacementEventDisplay,
-} from '../utils/cwgame/game_event';
-import { Turn, gameEventsToTurns } from '../store/reducers/turns';
-import { PoolFormatType } from '../constants/pool_formats';
-import { Notepad } from './notepad';
-import { sortTiles } from '../store/constants';
-import { getVW, isTablet } from '../utils/cwgame/common';
-import { Analyzer } from './analyzer';
-import { HeartFilled } from '@ant-design/icons';
-import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
-import { GameComment } from '../gen/api/proto/comments_service/comments_service_pb';
-import { useGameContextStoreContext } from '../store/store';
-import { Comments } from './comments';
-import { useClient } from '../utils/hooks/connect';
-import { GameCommentService } from '../gen/api/proto/comments_service/comments_service_pb';
-import { useComments } from '../utils/hooks/comments';
+} from "../utils/cwgame/game_event";
+import { Turn, gameEventsToTurns } from "../store/reducers/turns";
+import { PoolFormatType } from "../constants/pool_formats";
+import { Notepad } from "./notepad";
+import { sortTiles } from "../store/constants";
+import { getVW, isTablet } from "../utils/cwgame/common";
+import { Analyzer } from "./analyzer";
+import { HeartFilled } from "@ant-design/icons";
+import { PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
+import { GameComment } from "../gen/api/proto/comments_service/comments_service_pb";
+import { useGameContextStoreContext } from "../store/store";
+import { Comments } from "./comments";
+import { useClient } from "../utils/hooks/connect";
+import { GameCommentService } from "../gen/api/proto/comments_service/comments_service_pb";
+import { useComments } from "../utils/hooks/comments";
 import {
   Alphabet,
   machineWordToRunes,
   runesToMachineWord,
-} from '../constants/alphabets';
-import variables from '../base.module.scss';
+} from "../constants/alphabets";
+import variables from "../base.module.scss";
 const { screenSizeDesktop, screenSizeLaptop, screenSizeTablet } = variables;
 
 type Props = {
@@ -100,8 +100,8 @@ const displaySummary = (evt: GameEvent, board: Board, alphabet: Alphabet) => {
       // We must deal with these two cases. Note that this assumes that
       // tiles cannot be numbers. This is OK for now. We will have to redo
       // this behavior anyway once we move to OMGWordsEvents.
-      let exchStr = '';
-      if (evt.exchanged === '') {
+      let exchStr = "";
+      if (evt.exchanged === "") {
         exchStr = `${evt.numTilesFromRack}`;
       } else {
         exchStr = sortStringRack(evt.exchanged, alphabet);
@@ -121,7 +121,7 @@ const displaySummary = (evt: GameEvent, board: Board, alphabet: Alphabet) => {
     case GameEvent_Type.TIME_PENALTY:
       return <span className="time-penalty">Time penalty</span>;
   }
-  return '';
+  return "";
 };
 
 const displayType = (evt: GameEvent) => {
@@ -151,7 +151,7 @@ const ScorecardTurn = (props: turnProps) => {
     } else {
       oldScore = evts[0].cumulative - evts[0].score;
     }
-    let timeRemaining = '';
+    let timeRemaining = "";
     if (
       evts[0].type !== GameEvent_Type.END_RACK_PTS &&
       evts[0].type !== GameEvent_Type.END_RACK_PENALTY
@@ -162,12 +162,12 @@ const ScorecardTurn = (props: turnProps) => {
     const turnNickname = nicknameFromEvt(evts[0], props.playerMeta);
     const turn = {
       player: props.playerMeta.find(
-        (playerMeta) => playerMeta.nickname === turnNickname
+        (playerMeta) => playerMeta.nickname === turnNickname,
       ) ?? {
         nickname: turnNickname,
         // XXX: FIX THIS. avatar url should be set.
-        fullName: '',
-        avatarUrl: '',
+        fullName: "",
+        avatarUrl: "",
       },
       coords: evts[0].position,
       timeRemaining: timeRemaining,
@@ -188,7 +188,7 @@ const ScorecardTurn = (props: turnProps) => {
     }
     // Otherwise, we have to make some modifications.
     if (evts[1].type === GameEvent_Type.PHONY_TILES_RETURNED) {
-      turn.score = '0';
+      turn.score = "0";
       turn.cumulative = evts[1].cumulative;
       turn.play = (
         <>
@@ -198,7 +198,7 @@ const ScorecardTurn = (props: turnProps) => {
           </span>
         </>
       );
-      turn.rack = 'Play is invalid';
+      turn.rack = "Play is invalid";
     } else {
       if (evts[1].type === GameEvent_Type.CHALLENGE_BONUS) {
         turn.cumulative = evts[1].cumulative;
@@ -212,7 +212,7 @@ const ScorecardTurn = (props: turnProps) => {
         );
         turn.rack = `Play is valid ${sortStringRack(
           evts[0].rack,
-          props.alphabet
+          props.alphabet,
         )}`;
       } else {
         // Void challenge combines the end rack points.
@@ -247,11 +247,11 @@ const ScorecardTurn = (props: turnProps) => {
     className: string;
     onClick?: MouseEventHandler<HTMLDivElement>;
   } = {
-    className: `turn${memoizedTurn.isBingo ? ' bingo' : ''}`,
+    className: `turn${memoizedTurn.isBingo ? " bingo" : ""}`,
   };
 
   if (props.showComments) {
-    divProps['onClick'] = () => props.toggleCommentEditorVisible();
+    divProps["onClick"] = () => props.toggleCommentEditorVisible();
   }
 
   return (
@@ -310,11 +310,11 @@ export const ScoreCard = React.memo((props: Props) => {
     if (currentEl) {
       currentEl.scrollTop = currentEl.scrollHeight || 0;
       const boardHeight =
-        document.getElementById('board-container')?.clientHeight;
-      const poolTop = document.getElementById('pool')?.clientHeight || 0;
+        document.getElementById("board-container")?.clientHeight;
+      const poolTop = document.getElementById("pool")?.clientHeight || 0;
       const playerCardTop =
-        document.getElementById('player-cards-vertical')?.clientHeight || 0;
-      const navHeight = document.getElementById('main-nav')?.clientHeight || 0;
+        document.getElementById("player-cards-vertical")?.clientHeight || 0;
+      const navHeight = document.getElementById("main-nav")?.clientHeight || 0;
       let offset = 0;
       if (getVW() > parseInt(screenSizeLaptop)) {
         offset = 45;
@@ -331,7 +331,7 @@ export const ScoreCard = React.memo((props: Props) => {
             poolTop -
             playerCardTop -
             15 +
-            navHeight
+            navHeight,
         );
       } else {
         setCardHeight(0);
@@ -342,9 +342,9 @@ export const ScoreCard = React.memo((props: Props) => {
     resizeListener();
   }, [props.events, props.poolFormat, resizeListener]);
   useEffect(() => {
-    window.addEventListener('resize', resizeListener);
+    window.addEventListener("resize", resizeListener);
     return () => {
-      window.removeEventListener('resize', resizeListener);
+      window.removeEventListener("resize", resizeListener);
     };
   }, [resizeListener]);
 
@@ -357,37 +357,37 @@ export const ScoreCard = React.memo((props: Props) => {
             minHeight: cardHeight,
           }
         : undefined,
-    [cardHeight]
+    [cardHeight],
   );
   const notepadStyle = useMemo(
     () =>
       cardHeight
         ? {
             height: cardHeight - 24,
-            display: flipHidden ? 'none' : 'flex',
+            display: flipHidden ? "none" : "flex",
           }
         : undefined,
-    [cardHeight, flipHidden]
+    [cardHeight, flipHidden],
   );
   const analyzerStyle = useMemo(
     () =>
       cardHeight
         ? {
             height: cardHeight,
-            display: flipHidden ? 'none' : 'flex',
+            display: flipHidden ? "none" : "flex",
           }
         : undefined,
-    [cardHeight, flipHidden]
+    [cardHeight, flipHidden],
   );
   let title = `Turn ${turns.length + 1}`;
   let extra = null;
   if (flipEnabled) {
     if (props.isExamining) {
-      title = !flipHidden ? 'Analyzer' : `Turn ${turns.length + 1}`;
-      extra = !flipHidden ? 'View Scorecard' : 'View Analyzer';
+      title = !flipHidden ? "Analyzer" : `Turn ${turns.length + 1}`;
+      extra = !flipHidden ? "View Scorecard" : "View Analyzer";
     } else {
-      title = !flipHidden ? 'Notepad' : `Turn ${turns.length + 1}`;
-      extra = !flipHidden ? 'View Scorecard' : 'View Notepad';
+      title = !flipHidden ? "Notepad" : `Turn ${turns.length + 1}`;
+      extra = !flipHidden ? "View Scorecard" : "View Notepad";
     }
   }
   let contents = null;
@@ -396,7 +396,7 @@ export const ScoreCard = React.memo((props: Props) => {
   const commentsClient = useClient(GameCommentService);
   const { comments, editComment, addNewComment, deleteComment } = useComments(
     commentsClient,
-    props.showComments ?? false
+    props.showComments ?? false,
   );
   const [commentEditorVisibleForTurn, setCommentEditorVisibleForTurn] =
     useState<number | undefined>(undefined);
@@ -420,7 +420,7 @@ export const ScoreCard = React.memo((props: Props) => {
               ? comments.filter(
                   (c) =>
                     c.eventNumber >= t.firstEvtIdx &&
-                    c.eventNumber < t.firstEvtIdx + t.events.length
+                    c.eventNumber < t.firstEvtIdx + t.events.length,
                 )
               : []
           }
@@ -434,7 +434,7 @@ export const ScoreCard = React.memo((props: Props) => {
             addNewComment(
               gameContext.gameID,
               t.firstEvtIdx + t.events.length - 1,
-              comment
+              comment,
             )
           }
           alphabet={gameContext.alphabet}
@@ -451,7 +451,7 @@ export const ScoreCard = React.memo((props: Props) => {
 
   return (
     <Card
-      className={`score-card${flipHidden ? '' : ' flipped'}`}
+      className={`score-card${flipHidden ? "" : " flipped"}`}
       title={title}
       extra={
         isTablet() ? (
