@@ -6,7 +6,7 @@ import {
   TablePaginationConfig,
 } from "antd/lib/table/interface";
 import React, { ReactNode, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { FundOutlined } from "@ant-design/icons";
 import { RatingBadge } from "./rating_badge";
 import { challengeFormat, PlayerDisplay, timeFormat } from "./sought_games";

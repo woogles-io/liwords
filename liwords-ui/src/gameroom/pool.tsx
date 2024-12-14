@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { Card, Dropdown } from "antd";
 import { PoolFormatType, PoolFormats } from "../constants/pool_formats";
 import { singularCount } from "../utils/plural";

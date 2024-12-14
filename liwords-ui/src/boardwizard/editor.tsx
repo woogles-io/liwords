@@ -3,7 +3,7 @@
 import { HomeOutlined } from "@ant-design/icons";
 import { App, Card } from "antd";
 import { useCallback, useEffect, useMemo } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router";
 import { ActionType } from "../actions/actions";
 import { alphabetFromName } from "../constants/alphabets";
 import { Analyzer, AnalyzerContextProvider } from "../gameroom/analyzer";

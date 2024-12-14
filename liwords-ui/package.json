@@ -25,7 +25,7 @@
     "react-easy-crop": "^5.2.0",
     "react-markdown": "^9.0.1",
     "react-redux": "^9.2.0",
-    "react-router-dom": "^7.0.2",
+    "react-router": "^7.0.2",
     "react-use-websocket": "^4.11.1",
     "wolges-wasm": "file:wolges-wasm-pkg"
   },

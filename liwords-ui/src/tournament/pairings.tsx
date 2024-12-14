@@ -7,7 +7,7 @@ import {
   TourneyStatus,
 } from "../store/reducers/tournament_reducer";
 
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { ReadyButton } from "./ready_button";
 import {
   TournamentPerson,

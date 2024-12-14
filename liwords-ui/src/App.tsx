@@ -11,7 +11,7 @@ import {
   Routes,
   useLocation,
   useSearchParams,
-} from "react-router-dom";
+} from "react-router";
 import "./App.scss";
 
 import { Table as GameTable } from "./gameroom/table";

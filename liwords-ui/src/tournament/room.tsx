@@ -16,7 +16,7 @@ import { CompetitorStatus } from "./competitor_status";
 import { readyForTournamentGame } from "../store/reducers/tournament_reducer";
 import "./room.scss";
 import { useTourneyMetadata } from "./utils";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router";
 import { OwnScoreEnterer } from "./enter_own_scores";
 import { ConfigProvider } from "antd";
 

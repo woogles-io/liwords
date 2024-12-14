@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { notification } from "antd";
 import { TopBar } from "../navigation/topbar";
 import { ChangePassword } from "./change_password";
@@ -11,7 +11,7 @@ import { BlockedPlayers } from "./blocked_players";
 import { LogOut } from "./log_out_woogles";
 import { Support } from "./support_woogles";
 import { useLoginStateStoreContext } from "../store/store";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { useResetStoreContext } from "../store/store";
 
 import "./settings.scss";

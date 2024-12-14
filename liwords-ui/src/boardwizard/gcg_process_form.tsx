@@ -3,7 +3,7 @@ import { Store } from "antd/es/form/interface";
 import { flashError, useClient } from "../utils/hooks/connect";
 import { GameEventService } from "../gen/api/proto/omgwords_service/omgwords_pb";
 import { useGameContextStoreContext } from "../store/store";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import React, { useCallback, useState } from "react";
 import { ActionType } from "../actions/actions";
 import { GameRulesSchema } from "../gen/api/proto/ipc/omgwords_pb";

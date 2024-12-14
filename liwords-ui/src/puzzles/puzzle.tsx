@@ -1,7 +1,7 @@
 import { HomeOutlined } from "@ant-design/icons";
 import { Card, Form, Modal, Select } from "antd";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router";
 import { Chat } from "../chat/chat";
 import {
   alphabetFromName,

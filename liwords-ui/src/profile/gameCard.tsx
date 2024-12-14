@@ -2,7 +2,7 @@ import React from "react";
 import moment from "moment";
 import { Card, Tag, Tooltip } from "antd";
 import { PlayerAvatar } from "../shared/player_avatar";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { VariantIcon } from "../shared/variant_icons";
 import { FundOutlined } from "@ant-design/icons";
 import { timeToString } from "../store/constants";

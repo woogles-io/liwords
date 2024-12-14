@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { useLoginStateStoreContext } from "../store/store";
 
 type BioProps = {

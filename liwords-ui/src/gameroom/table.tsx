@@ -8,7 +8,7 @@ import React, {
 import { Card, message, Popconfirm } from "antd";
 import { HomeOutlined } from "@ant-design/icons";
 
-import { Link, useSearchParams, useParams } from "react-router-dom";
+import { Link, useSearchParams, useParams } from "react-router";
 import { useFirefoxPatch } from "../utils/hooks/firefox";
 import { useDefinitionAndPhonyChecker } from "../utils/hooks/definitions";
 import { BoardPanel } from "./board_panel";

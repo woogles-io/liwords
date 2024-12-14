@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { jwtDecode } from "jwt-decode";
 import useWebSocket from "react-use-websocket";
-import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 import { message } from "antd";
 import { useLoginStateStoreContext } from "../store/store";
 import {

@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { Card, Carousel } from "antd";
 import { TopBar } from "../navigation/topbar";
 import { PettableAvatar, PlayerAvatar } from "../shared/player_avatar";

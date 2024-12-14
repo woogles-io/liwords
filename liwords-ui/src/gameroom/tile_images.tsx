@@ -1,7 +1,7 @@
 import React from "react";
 import { DndProvider } from "react-dnd";
 import { TouchBackend } from "react-dnd-touch-backend";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import BoardSpace from "./board_space";
 import Tile from "./tile";
 import { BonusType } from "../constants/board_layout";

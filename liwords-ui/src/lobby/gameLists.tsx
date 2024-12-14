@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import { Card, Button } from "antd";
 import { Modal } from "../utils/focus_modal";
 import { SoughtGames } from "./sought_games";

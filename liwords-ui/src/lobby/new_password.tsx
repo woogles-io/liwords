@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Row, Col, Input, Form, Alert, notification, Button } from "antd";
 import qs from "qs";
-import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 import { TopBar } from "../navigation/topbar";
 import { connectErrorMessage, useClient } from "../utils/hooks/connect";
 import { AuthenticationService } from "../gen/api/proto/user_service/user_service_pb";

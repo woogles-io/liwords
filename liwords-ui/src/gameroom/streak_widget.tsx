@@ -1,6 +1,6 @@
 import { Card, Col, Row } from "antd";
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import {
   StreakInfoResponse,
   StreakInfoResponse_SingleGameInfo,

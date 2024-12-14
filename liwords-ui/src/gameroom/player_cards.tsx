@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { Card, Row, Button, Tooltip } from "antd";
 import { RawPlayerInfo } from "../store/reducers/game_reducer";
 import {

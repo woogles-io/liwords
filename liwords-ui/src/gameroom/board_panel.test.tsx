@@ -5,7 +5,7 @@ import { CrosswordGameGridLayout } from "../constants/board_layout";
 import { Board } from "../utils/cwgame/board";
 import { PlayerInfoSchema } from "../gen/api/proto/ipc/omgwords_pb";
 import { StandardEnglishAlphabet } from "../constants/alphabets";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter } from "react-router";
 import { waitFor } from "@testing-library/react";
 import { create } from "@bufbuild/protobuf";
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import moment from "moment";
 import { Button, Card, InputNumber, Table, Tag, Tooltip } from "antd";
 import { CheckCircleTwoTone } from "@ant-design/icons";
