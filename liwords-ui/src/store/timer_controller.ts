@@ -27,7 +27,6 @@ export interface ClockData {
 
 export const millisToTimeStr = (ms: number, showTenths = true): string => {
   const neg = ms < 0;
-  // eslint-disable-next-line no-param-reassign
   const absms = Math.abs(ms);
   // const mins = Math.floor(ms / 60000);
   let secs;

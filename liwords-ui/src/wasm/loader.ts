@@ -21,7 +21,6 @@ class Loadable {
     if (this.whichStep > 1) return;
     this.startFetch(); // In case this is not done yet.
     this.whichStep = 2;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const resp = await this.fetchPromise!;
     if (resp.ok) {
       return await resp.arrayBuffer();
@@ -44,7 +43,6 @@ class Loadable {
     try {
       const arrayBuffer = await this.getArrayBuffer();
       await this.disownArrayBuffer();
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       return arrayBuffer!;
     } catch (e) {
       console.error(`failed to load ${this.cacheKey}`, e);

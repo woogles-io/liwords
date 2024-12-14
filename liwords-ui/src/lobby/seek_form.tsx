@@ -219,8 +219,6 @@ export const SeekForm = (props: Props) => {
   useEffect(() => {
     if (props.friendRef) {
       return () => {
-        // why?
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         props.friendRef!.current = "";
       };
     }

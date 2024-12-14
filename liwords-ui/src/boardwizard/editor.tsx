@@ -378,8 +378,6 @@ export const BoardEditor = () => {
             tournamentID={""}
             vsBot={false}
             tournamentPairedMode={false}
-            // why does my linter keep overwriting this?
-            // eslint-disable-next-line max-len
             lexicon={gameContext.gameDocument.lexicon}
             alphabet={alphabet}
             challengeRule={macChallengeRule}

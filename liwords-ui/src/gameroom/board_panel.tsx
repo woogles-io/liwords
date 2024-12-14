@@ -607,8 +607,6 @@ export const BoardPanel = React.memo((props: Props) => {
     }
     let fullReset = false;
     const lastLetters = lastLettersRef.current;
-    // XXX: please fix me:
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const dep = readOnlyEffectDependenciesRef.current!;
     if (lastLetters === undefined) {
       // First load.
@@ -998,7 +996,6 @@ export const BoardPanel = React.memo((props: Props) => {
 
         const playerTimeToText = (ms: number): string => {
           const neg = ms < 0;
-          // eslint-disable-next-line no-param-reassign
           const absms = Math.abs(ms);
           // const mins = Math.floor(ms / 60000);
           let totalSecs;
@@ -1678,7 +1675,6 @@ export const BoardPanel = React.memo((props: Props) => {
   // playerOrder enum seems to ensure we can only have two-player games :-(
   const myId = useMemo(() => {
     const myPlayerOrder = gameContext.nickToPlayerOrder[props.username];
-    // eslint-disable-next-line no-nested-ternary
     return myPlayerOrder === "p0" ? 0 : myPlayerOrder === "p1" ? 1 : null;
   }, [gameContext.nickToPlayerOrder, props.username]);
 

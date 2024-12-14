@@ -336,7 +336,6 @@ export const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
     // We only care about placement and unplacement events here:
     switch (evt.type) {
       case GameEvent_Type.TILE_PLACEMENT_MOVE:
-        // eslint-disable-next-line no-param-reassign
         [gs.lastPlayedTiles, gs.pool] = placeOnBoard(
           gs.board,
           gs.pool,
@@ -350,7 +349,6 @@ export const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
       case GameEvent_Type.PHONY_TILES_RETURNED: {
         // Unplace the move BEFORE this one.
         const toUnplace = events[idx - 1];
-        // eslint-disable-next-line no-param-reassign
         gs.pool = unplaceOnBoard(gs.board, gs.pool, toUnplace, gs.alphabet);
         // Set the user's rack back to what it used to be.
         break;
@@ -359,9 +357,7 @@ export const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
 
     // Push a deep clone of the turn.
     gs.turns.push(clone(GameEventSchema, evt));
-    // eslint-disable-next-line no-param-reassign
     gs.players[onturn].score = events[idx].cumulative;
-    // eslint-disable-next-line no-param-reassign
     gs.onturn = (onturn + 1) % 2;
   });
 };
@@ -376,7 +372,6 @@ const pushTurnsNew = (gs: GameState, events: Array<OMGWordsGameEvent>) => {
     // We only care about placement and unplacement events here:
     switch (evt.type) {
       case OMGWordsGameEventType.TILE_PLACEMENT_MOVE:
-        // eslint-disable-next-line no-param-reassign
         [gs.lastPlayedTiles, gs.pool] = placeOnBoard(
           gs.board,
           gs.pool,
@@ -390,16 +385,13 @@ const pushTurnsNew = (gs: GameState, events: Array<OMGWordsGameEvent>) => {
       case OMGWordsGameEventType.PHONY_TILES_RETURNED: {
         // Unplace the move BEFORE this one.
         const toUnplace = convertToGameEvt(events[idx - 1], gs.alphabet);
-        // eslint-disable-next-line no-param-reassign
         gs.pool = unplaceOnBoard(gs.board, gs.pool, toUnplace, gs.alphabet);
         // Set the user's rack back to what it used to be.
         break;
       }
     }
     gs.turns.push(evt);
-    // eslint-disable-next-line no-param-reassign
     gs.players[onturn].score = events[idx].cumulative;
-    // eslint-disable-next-line no-param-reassign
     gs.onturn = (onturn + 1) % 2;
   });
 };

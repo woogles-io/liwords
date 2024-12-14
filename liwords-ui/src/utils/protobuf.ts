@@ -1,4 +1,3 @@
-/* eslint-disable no-bitwise */
 // a serialization library
 
 // SocketFmt is just the protobuf, with an extra byte prepended,

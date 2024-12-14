@@ -889,7 +889,6 @@ const RealStore = ({ children, ...props }: Props) => {
   const addChat = useCallback((entity: ChatEntityObj) => {
     setChat((oldChat) => {
       if (!entity.id) {
-        // eslint-disable-next-line no-param-reassign
         entity.id = randomID();
       }
       // XXX: This should be sped up.

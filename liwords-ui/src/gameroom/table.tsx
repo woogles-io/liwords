@@ -106,7 +106,6 @@ const ManageWindowTitleAndTurnSound = () => {
 
   const myId = useMemo(() => {
     const myPlayerOrder = gameContext.uidToPlayerOrder[userID];
-    // eslint-disable-next-line no-nested-ternary
     return myPlayerOrder === "p0" ? 0 : myPlayerOrder === "p1" ? 1 : null;
   }, [gameContext.uidToPlayerOrder, userID]);
 
@@ -141,7 +140,6 @@ const ManageWindowTitleAndTurnSound = () => {
     }
     let first = true;
     for (let i = 0; i < gameContext.players.length; ++i) {
-      // eslint-disable-next-line no-continue
       if (gameContext.players[i].userID === userID) continue;
       if (first) {
         first = false;
@@ -241,7 +239,6 @@ export const Table = React.memo((props: Props) => {
     const evtHandler = (evt: BeforeUnloadEvent) => {
       if (!gameDone && !isObserver) {
         const msg = "You are currently in a game!";
-        // eslint-disable-next-line no-param-reassign
         evt.returnValue = msg;
         return msg;
       }
@@ -724,8 +721,6 @@ export const Table = React.memo((props: Props) => {
               tournamentContext.metadata?.type,
             )}
             tournamentNonDirectorObserver={tournamentNonDirectorObserver}
-            // why does my linter keep overwriting this?
-            // eslint-disable-next-line max-len
             tournamentPrivateAnalysis={
               tournamentContext.metadata?.privateAnalysis
             }

@@ -50,7 +50,6 @@ export const EditorControl = (props: Props) => {
             <Popconfirm
               title="Are you sure you wish to delete this game? This action can not be undone!"
               onConfirm={() => {
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 props.deleteGame(props.gameID!);
                 setConfirmDelVisible(false);
               }}
