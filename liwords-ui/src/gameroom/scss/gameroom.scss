@@ -598,7 +598,11 @@ p.streak-loss {
 
     &.selected {
       @include colorModed() {
-        background-color: color.mix(m($board-qws), m($timer-light), $weight: 60%);
+        background-color: color.mix(
+          m($board-qws),
+          m($timer-light),
+          $weight: 60%
+        );
       }
 
       @include userboard() {
@@ -691,7 +695,11 @@ p.streak-loss {
 
     &.selected {
       @include colorModed() {
-        background-color: color.mix(m($board-dws), m($timer-light), $weight: 60%);
+        background-color: color.mix(
+          m($board-dws),
+          m($timer-light),
+          $weight: 60%
+        );
       }
 
       @include userboard() {
@@ -726,7 +734,11 @@ p.streak-loss {
 
     &.selected {
       @include colorModed() {
-        background-color: color.mix(m($board-qls), m($timer-light), $weight: 30%);
+        background-color: color.mix(
+          m($board-qls),
+          m($timer-light),
+          $weight: 30%
+        );
       }
 
       @include userboard() {
@@ -799,7 +811,11 @@ p.streak-loss {
 
     &.selected {
       @include colorModed() {
-        background-color: color.mix(m($board-dls), m($timer-light), $weight: 30%);
+        background-color: color.mix(
+          m($board-dls),
+          m($timer-light),
+          $weight: 30%
+        );
       }
 
       @include userboard() {
