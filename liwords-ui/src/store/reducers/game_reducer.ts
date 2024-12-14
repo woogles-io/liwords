@@ -520,10 +520,18 @@ const setClock = (newState: GameState, sge: ServerGameplayEvent) => {
   }
 
   if (justPlayed === 0) {
-    flipTimeRemaining ? (p1 = rem) : (p0 = rem);
+    if (flipTimeRemaining) {
+      p1 = rem;
+    } else {
+      p0 = rem;
+    }
     activePlayer = "p1";
   } else if (justPlayed === 1) {
-    flipTimeRemaining ? (p0 = rem) : (p1 = rem);
+    if (flipTimeRemaining) {
+      p0 = rem;
+    } else {
+      p1 = rem;
+    }
     activePlayer = "p0";
   } else {
     throw new Error(`just played ${justPlayed} is unexpected`);

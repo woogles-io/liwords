@@ -6,7 +6,7 @@ import { ChallengeRule } from "../gen/api/vendor/macondo/macondo_pb";
 const mockedUsedNavigate = vi.fn();
 
 vi.mock("react-router-dom", () => ({
-  ...(vi.importActual("react-router-dom") as any),
+  ...(vi.importActual("react-router-dom") as object),
   useNavigate: () => mockedUsedNavigate,
 }));
 

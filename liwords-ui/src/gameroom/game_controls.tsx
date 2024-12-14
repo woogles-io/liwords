@@ -283,7 +283,7 @@ const GameControls = React.memo((props: Props) => {
 
   const navigate = useNavigate();
   const handleExitToLobby = useCallback(() => {
-    props.tournamentSlug ? navigate(props.tournamentSlug) : navigate("/");
+    navigate(props.tournamentSlug || "/");
   }, [navigate, props.tournamentSlug]);
 
   const {
