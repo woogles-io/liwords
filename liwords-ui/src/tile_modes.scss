@@ -1,3 +1,4 @@
+@use "sass:map";
 // Theming system adapted from Katie McTigue https://medium.com/@katiemctigue/how-to-create-a-dark-tile-in-sass-609f131a3995
 
 //Strings for calling the mixin are defined in color_tiles.scss
@@ -219,8 +220,8 @@ $tiles: (
     .tile--#{$tile} & {
       $tile-map: () !global;
       @each $key, $submap in $map {
-        $value: map-get(map-get($tiles, $tile), "#{$key}");
-        $tile-map: map-merge(
+        $value: map.get(map.get($tiles, $tile), "#{$key}");
+        $tile-map: map.merge(
           $tile-map,
           (
             $key: $value,
@@ -234,5 +235,5 @@ $tiles: (
 }
 
 @function ut($key) {
-  @return map-get($tile-map, $key);
+  @return map.get($tile-map, $key);
 }

@@ -1,3 +1,4 @@
+@use "sass:meta";
 // This file and any files it imports should only include definitions (mixins, variables, functions)
 @use "color_modes" as *;
 @use "sass:math";
@@ -18,7 +19,7 @@ $screen-desktop-min: 1440px;
 $screen-desktop-l-min: 1600px;
 
 @function strip-unit($number) {
-  @if type-of($number) == "number" and not unitless($number) {
+  @if meta.type-of($number) == "number" and not math.is-unitless($number) {
     @return math.div($number, $number * 0 + 1);
   }
 

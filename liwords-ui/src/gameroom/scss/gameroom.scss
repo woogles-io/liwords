@@ -1,3 +1,4 @@
+@use "sass:color";
 @use "../../base.scss" as *;
 @use "../../color_modes" as *;
 @use "../../tile_modes" as *;
@@ -587,7 +588,7 @@ p.streak-loss {
 
     .bonus-label {
       @include colorModed() {
-        color: mix(m($board-qws), m($gray-extreme), $weight: 30%);
+        color: color.mix(m($board-qws), m($gray-extreme), $weight: 30%);
       }
 
       @include userboard() {
@@ -597,7 +598,7 @@ p.streak-loss {
 
     &.selected {
       @include colorModed() {
-        background-color: mix(m($board-qws), m($timer-light), $weight: 60%);
+        background-color: color.mix(m($board-qws), m($timer-light), $weight: 60%);
       }
 
       @include userboard() {
@@ -638,8 +639,8 @@ p.streak-loss {
 
     &.selected {
       @include colorModed() {
-        background-color: mix(m($board-tws), m($white), $weight: 70%);
-        border-color: scale-color(m($timer-light), $lightness: -10%);
+        background-color: color.mix(m($board-tws), m($white), $weight: 70%);
+        border-color: color.scale(m($timer-light), $lightness: -10%);
       }
 
       @include userboard() {
@@ -649,7 +650,7 @@ p.streak-loss {
 
       .anticon {
         @include colorModed() {
-          color: scale-color(m($timer-light), $lightness: -10%);
+          color: color.scale(m($timer-light), $lightness: -10%);
         }
 
         @include userboard() {
@@ -680,7 +681,7 @@ p.streak-loss {
 
     .bonus-label {
       @include colorModed() {
-        color: mix(m($board-tws), m($gray-extreme), $weight: 30%);
+        color: color.mix(m($board-tws), m($gray-extreme), $weight: 30%);
       }
 
       @include userboard() {
@@ -690,7 +691,7 @@ p.streak-loss {
 
     &.selected {
       @include colorModed() {
-        background-color: mix(m($board-dws), m($timer-light), $weight: 60%);
+        background-color: color.mix(m($board-dws), m($timer-light), $weight: 60%);
       }
 
       @include userboard() {
@@ -725,7 +726,7 @@ p.streak-loss {
 
     &.selected {
       @include colorModed() {
-        background-color: mix(m($board-qls), m($timer-light), $weight: 30%);
+        background-color: color.mix(m($board-qls), m($timer-light), $weight: 30%);
       }
 
       @include userboard() {
@@ -736,7 +737,7 @@ p.streak-loss {
 
     .bonus-label {
       @include colorModed() {
-        color: mix(m($board-qls), m($gray-extreme), $weight: 20%);
+        color: color.mix(m($board-qls), m($gray-extreme), $weight: 20%);
       }
 
       @include userboard() {
@@ -766,8 +767,8 @@ p.streak-loss {
 
     &.selected {
       @include colorModed() {
-        background-color: mix(m($board-tls), m($white), $weight: 70%);
-        border-color: scale-color(m($timer-light), $lightness: -10%);
+        background-color: color.mix(m($board-tls), m($white), $weight: 70%);
+        border-color: color.scale(m($timer-light), $lightness: -10%);
       }
 
       @include userboard() {
@@ -777,7 +778,7 @@ p.streak-loss {
 
       .anticon {
         @include colorModed() {
-          color: scale-color(m($timer-light), $lightness: -10%);
+          color: color.scale(m($timer-light), $lightness: -10%);
         }
 
         @include userboard() {
@@ -798,7 +799,7 @@ p.streak-loss {
 
     &.selected {
       @include colorModed() {
-        background-color: mix(m($board-dls), m($timer-light), $weight: 30%);
+        background-color: color.mix(m($board-dls), m($timer-light), $weight: 30%);
       }
 
       @include userboard() {
@@ -809,7 +810,7 @@ p.streak-loss {
 
     .bonus-label {
       @include colorModed() {
-        color: mix(m($board-tls), m($gray-extreme), $weight: 20%);
+        color: color.mix(m($board-tls), m($gray-extreme), $weight: 20%);
       }
 
       @include userboard() {

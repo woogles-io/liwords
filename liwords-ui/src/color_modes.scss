@@ -1,3 +1,4 @@
+@use "sass:map";
 // The body itself is an outlier
 body.mode--dark {
   background: #2e2e2e;
@@ -240,8 +241,8 @@ $modes: (
     .mode--#{$mode} & {
       $mode-map: () !global;
       @each $key, $submap in $map {
-        $value: map-get(map-get($modes, $mode), "#{$key}");
-        $mode-map: map-merge(
+        $value: map.get(map.get($modes, $mode), "#{$key}");
+        $mode-map: map.merge(
           $mode-map,
           (
             $key: $value,
@@ -255,5 +256,5 @@ $modes: (
 }
 
 @function m($key) {
-  @return map-get($mode-map, $key);
+  @return map.get($mode-map, $key);
 }

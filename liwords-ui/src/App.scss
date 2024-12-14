@@ -1,6 +1,6 @@
 @use "base.scss" as *;
 @use "color_modes" as *;
-@import "./shared/layout";
+@use "shared/layout";
 
 @include button;
 @include notification;

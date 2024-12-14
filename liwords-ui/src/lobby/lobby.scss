@@ -1,3 +1,4 @@
+@use "sass:color";
 @use "../base.scss" as *;
 
 .lobby {
@@ -80,7 +81,7 @@
       &:hover h4,
       &:hover p {
         @include colorModed() {
-          background-color: mix(
+          background-color: color.mix(
             m($primary-middle),
             m($background),
             $weight: 50%

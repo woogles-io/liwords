@@ -1,3 +1,5 @@
+@use "sass:color";
+@use "sass:map";
 // Theming system adapted from Katie McTigue https://medium.com/@katiemctigue/how-to-create-a-dark-board-in-sass-609f131a3995
 
 //Strings for calling the mixin are defined in color_boards.scss
@@ -222,8 +224,8 @@ $boards: (
     .board--#{$board} & {
       $board-map: () !global;
       @each $key, $submap in $map {
-        $value: map-get(map-get($boards, $board), "#{$key}");
-        $board-map: map-merge(
+        $value: map.get(map.get($boards, $board), "#{$key}");
+        $board-map: map.merge(
           $board-map,
           (
             $key: $value,
@@ -237,7 +239,7 @@ $boards: (
 }
 
 @function ub($key) {
-  @return map-get($board-map, $key);
+  @return map.get($board-map, $key);
 }
 
 @function blender($color, $background) {
@@ -247,11 +249,11 @@ $boards: (
   @if $background == "ignore" {
     @return $color;
   }
-  @return mix($color, $background, $weight: 50%);
+  @return color.mix($color, $background, $weight: 50%);
 }
 @function lightener($color) {
   @if $color == "ignore" {
     @return $color;
   }
-  @return scale-color($color, $lightness: -10%);
+  @return color.scale($color, $lightness: -10%);
 }
