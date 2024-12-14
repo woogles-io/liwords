@@ -72,7 +72,7 @@ export const useTourneyMetadata = (
             loginState: loginState,
           },
         });
-      } catch (err) {
+      } catch {
         message.error({
           content: "Error fetching tournament data",
           duration: 5,

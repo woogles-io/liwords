@@ -1128,7 +1128,7 @@ export const BoardPanel = React.memo((props: Props) => {
                   "",
                 );
               }
-            } catch (e) {
+            } catch {
               // do nothing.
             }
           } else if (blindfoldCommand.toUpperCase() === "N") {

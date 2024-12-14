@@ -60,7 +60,7 @@ export const RackEditor = (props: Props) => {
       }
       setCurrentRack(curRack);
       setCurRackStr(machineWordToRunes(curRack, props.alphabet, false));
-    } catch (e) {
+    } catch {
       // Do nothing for now. Maybe the user is not done typing their multi-char tile.
       // Just echo back what they are typing.
       setCurRackStr(onlyValidTileCharacters?.join("") ?? "");

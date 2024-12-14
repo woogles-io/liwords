@@ -393,7 +393,7 @@ export const AnalyzerContextProvider = (
         lexicon,
         variant,
       );
-    } catch (e) {
+    } catch {
       return null;
     }
   }, [examinableGameContext, lexicon, variant]);

@@ -1,5 +1,5 @@
 import { create } from "@bufbuild/protobuf";
-import { MatchUser, MatchUserSchema } from "../gen/api/proto/ipc/omgseeks_pb";
+import { MatchUserSchema } from "../gen/api/proto/ipc/omgseeks_pb";
 import { BotTypesEnum } from "./bots";
 import { sendSeek } from "./sought_game_interactions";
 

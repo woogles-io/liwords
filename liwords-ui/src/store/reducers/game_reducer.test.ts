@@ -12,9 +12,7 @@ import {
   runesToMachineWord,
 } from "../../constants/alphabets";
 import {
-  GameHistoryRefresher,
   GameHistoryRefresherSchema,
-  ServerGameplayEvent,
   ServerGameplayEventSchema,
 } from "../../gen/api/proto/ipc/omgwords_pb";
 import { create } from "@bufbuild/protobuf";

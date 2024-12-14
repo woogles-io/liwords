@@ -1,6 +1,5 @@
 import { create } from "@bufbuild/protobuf";
 import {
-  GameEvent,
   GameEvent_Type,
   GameEventSchema,
 } from "../../gen/api/vendor/macondo/macondo_pb";

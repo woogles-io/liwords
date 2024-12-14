@@ -423,7 +423,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
             where.closest(selector),
           )
         );
-      } catch (e) {
+      } catch {
         return false;
       }
     },
@@ -506,7 +506,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     const replayedTurns = gameContext.turns.slice(0, examinedTurn);
     try {
       pushTurns(ret, replayedTurns);
-    } catch (e) {
+    } catch {
       message.error({
         content:
           "Error pushing turns. The app may have updated. Please refresh the app.",
