@@ -1,5 +1,5 @@
-src/gen/**/*.js
-src/gen/**/*.ts
+*.kad
+*.klv2
+*.kwg
+src/gen/
 wolges-wasm-pkg/
-package.json
-package-lock.json
