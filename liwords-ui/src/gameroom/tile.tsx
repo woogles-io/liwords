@@ -233,8 +233,7 @@ const Tile = React.memo((props: TileProps) => {
 
   const [, drop] = useDrop({
     accept: TILE_TYPE,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    drop: (item: any) => {
+    drop: (item: { rackIndex: string; tileIndex: string }) => {
       if (props.handleTileDrop && props.y != null && props.x != null) {
         props.handleTileDrop(
           props.y,

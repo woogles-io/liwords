@@ -40,8 +40,7 @@ const BoardSpaces = React.memo((props: Props) => {
 
   const [, drop] = useDrop({
     accept: TILE_TYPE,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    drop: (item: any, monitor) => {
+    drop: (item: { rackIndex: string; tileIndex: string }, monitor) => {
       const clientOffset = monitor.getClientOffset();
       const boardElement = document.getElementById("board");
       if (clientOffset && handleTileDrop && boardElement) {
@@ -91,8 +90,7 @@ const BoardSpaces = React.memo((props: Props) => {
             arrowHoriz={placementArrow.horizontal}
             startingSquare={startingSquare}
             clicked={() => squareClicked(y, x)}
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            handleTileDrop={(e: any) => {
+            handleTileDrop={(e: React.DragEvent) => {
               if (handleTileDrop) {
                 handleTileDrop(
                   y,

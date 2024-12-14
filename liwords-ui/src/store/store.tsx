@@ -447,8 +447,8 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
           const dae = document.activeElement;
           if (
             doneButtonRef.current &&
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            ((dae as any)?.disabled || !shouldTrigger(dae))
+            ((dae as unknown as { disabled: boolean })?.disabled ||
+              !shouldTrigger(dae))
           ) {
             // Focusing on the Done button reenables first/prev shortcuts.
             doneButtonRef.current.focus();

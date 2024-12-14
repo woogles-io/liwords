@@ -203,8 +203,8 @@ const EasterEgg = () => {
   const ctx = useMemo(() => {
     const AudioContext =
       window.AudioContext ||
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ((window as any).webkitAudioContext as AudioContext);
+      (window as unknown as { webkitAudioContext: AudioContext })
+        .webkitAudioContext;
     return new AudioContext();
   }, []);
 

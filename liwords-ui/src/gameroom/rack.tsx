@@ -59,8 +59,7 @@ export const Rack = React.memo((props: Props) => {
   };
   const [, drop] = useDrop({
     accept: TILE_TYPE,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    drop: (item: any, monitor) => {
+    drop: (item: { rackIndex: string; tileIndex: number }, monitor) => {
       const clientOffset = monitor.getClientOffset();
       const rackElement = document.getElementById("rack");
       const rackEmptyElement = document.getElementById("left-empty");

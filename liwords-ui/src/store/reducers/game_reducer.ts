@@ -439,8 +439,8 @@ const stateFromDocument = (gdoc: GameDocument): GameState => {
   const playerList = gdoc.players;
   // Convert from a gdoc's playerList to a macondo playerList
   const compatiblePlayerList = playerList.map((pinfo) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { $typeName: _, ...properties } = pinfo;
+    void _;
     const mcpinfo = create(PlayerInfoSchema, properties);
     return mcpinfo;
   });

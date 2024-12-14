@@ -231,8 +231,7 @@ export const parseMsgs = (
 export const ReverseMessageType = (() => {
   const ret = [];
   for (const k in MessageType) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ret[(MessageType as { [key: string]: any })[k]] = k;
+    ret[(MessageType as unknown as { [key: string]: number })[k]] = k;
   }
   return ret;
 })();
