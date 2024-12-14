@@ -33,12 +33,16 @@ $tiles: (
     color-tile-border: 0px solid transparent,
   ),
   metallic: (
-    color-tile-background:
-      linear-gradient(45deg, #97a0ca 0%, #e0d2c0 30%, #f1eee8 44%, #a7bdcd 96%),
+    color-tile-background: linear-gradient(
+        45deg,
+        #97a0ca 0%,
+        #e0d2c0 30%,
+        #f1eee8 44%,
+        #a7bdcd 96%
+      ),
     color-tile-background-secondary: rgba(1, 1, 1, 0.3),
     //Circle in blank
-    color-tile-background-tertiary:
-      linear-gradient(
+    color-tile-background-tertiary: linear-gradient(
         126deg,
         #9398b7 0%,
         #e9e2d4 30%,
@@ -50,8 +54,13 @@ $tiles: (
     //Tentative blank circle
     color-tile-blank-text: #efefef,
     color-tile-text: #292929,
-    color-tile-last-background:
-      linear-gradient(76deg, #858bae 0%, #b1aca2 30%, #807b72 44%, #567791 96%),
+    color-tile-last-background: linear-gradient(
+        76deg,
+        #858bae 0%,
+        #b1aca2 30%,
+        #807b72 44%,
+        #567791 96%
+      ),
     color-tile-last-text: #fff,
     color-tile-last-blank: rgba(1, 1, 1, 0.3),
     color-tile-border: 1px solid #888,

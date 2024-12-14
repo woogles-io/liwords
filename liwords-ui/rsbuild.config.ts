@@ -4,7 +4,7 @@ import { pluginSass } from "@rsbuild/plugin-sass";
 
 export default {
   plugins: [pluginEslint(), pluginReact(), pluginSass()],
-  dev: { client: { overlay: false }},
+  dev: { client: { overlay: false } },
   html: {
     template: "./index.html",
   },
