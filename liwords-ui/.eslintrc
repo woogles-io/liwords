@@ -17,7 +17,10 @@
       "typescript": {
         "alwaysTryTypes": true
       }
-    }
+    },
+      "react": {
+        "version": "18.3.1"
+      }
   },
   "rules": {
     "object-curly-spacing": ["warn", "always"],
