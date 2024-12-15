@@ -4,16 +4,16 @@ import React, {
   useMemo,
   useRef,
   useState,
-} from 'react';
-import { Card, message, Popconfirm } from 'antd';
-import { HomeOutlined } from '@ant-design/icons';
+} from "react";
+import { Card, message, Popconfirm } from "antd";
+import { HomeOutlined } from "@ant-design/icons";
 
-import { Link, useSearchParams, useParams } from 'react-router-dom';
-import { useFirefoxPatch } from '../utils/hooks/firefox';
-import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
-import { BoardPanel } from './board_panel';
-import { TopBar } from '../navigation/topbar';
-import { Chat } from '../chat/chat';
+import { Link, useSearchParams, useParams } from "react-router";
+import { useFirefoxPatch } from "../utils/hooks/firefox";
+import { useDefinitionAndPhonyChecker } from "../utils/hooks/definitions";
+import { BoardPanel } from "./board_panel";
+import { TopBar } from "../navigation/topbar";
+import { Chat } from "../chat/chat";
 import {
   useChatStoreContext,
   useExaminableGameContextStoreContext,
@@ -25,26 +25,26 @@ import {
   useRematchRequestStoreContext,
   useTimerStoreContext,
   useTournamentStoreContext,
-} from '../store/store';
-import { PlayerCards } from './player_cards';
-import Pool from './pool';
-import { encodeToSocketFmt } from '../utils/protobuf';
-import './scss/gameroom.scss';
-import { ScoreCard } from './scorecard';
-import { defaultGameInfo, GameInfo } from './game_info';
-import { BoopSounds } from '../sound/boop';
-import { StreakWidget } from './streak_widget';
-import { ChallengeRule, PlayState } from '../gen/api/vendor/macondo/macondo_pb';
-import { endGameMessageFromGameInfo } from '../store/end_of_game';
-import { Notepad, NotepadContextProvider } from './notepad';
-import { Analyzer, AnalyzerContextProvider } from './analyzer';
-import { isClubType, isPairedMode, sortTiles } from '../store/constants';
-import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
-import { CompetitorStatus } from '../tournament/competitor_status';
-import { MetaEventControl } from './meta_event_control';
-import { useTourneyMetadata } from '../tournament/utils';
-import { Disclaimer } from './disclaimer';
-import { alphabetFromName } from '../constants/alphabets';
+} from "../store/store";
+import { PlayerCards } from "./player_cards";
+import Pool from "./pool";
+import { encodeToSocketFmt } from "../utils/protobuf";
+import "./scss/gameroom.scss";
+import { ScoreCard } from "./scorecard";
+import { defaultGameInfo, GameInfo } from "./game_info";
+import { BoopSounds } from "../sound/boop";
+import { StreakWidget } from "./streak_widget";
+import { ChallengeRule, PlayState } from "../gen/api/vendor/macondo/macondo_pb";
+import { endGameMessageFromGameInfo } from "../store/end_of_game";
+import { Notepad, NotepadContextProvider } from "./notepad";
+import { Analyzer, AnalyzerContextProvider } from "./analyzer";
+import { isClubType, isPairedMode, sortTiles } from "../store/constants";
+import { readyForTournamentGame } from "../store/reducers/tournament_reducer";
+import { CompetitorStatus } from "../tournament/competitor_status";
+import { MetaEventControl } from "./meta_event_control";
+import { useTourneyMetadata } from "../tournament/utils";
+import { Disclaimer } from "./disclaimer";
+import { alphabetFromName } from "../constants/alphabets";
 import {
   ClientGameplayEventSchema,
   GameEndReason,
@@ -52,24 +52,24 @@ import {
   GameType,
   ReadyForGameSchema,
   TimedOutSchema,
-} from '../gen/api/proto/ipc/omgwords_pb';
-import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
+} from "../gen/api/proto/ipc/omgwords_pb";
+import { MessageType } from "../gen/api/proto/ipc/ipc_pb";
 import {
   DeclineSeekRequestSchema,
   SeekRequestSchema,
   SoughtGameProcessEventSchema,
-} from '../gen/api/proto/ipc/omgseeks_pb';
+} from "../gen/api/proto/ipc/omgseeks_pb";
 import {
   StreakInfoResponse,
   StreakInfoResponseSchema,
-} from '../gen/api/proto/game_service/game_service_pb';
-import { useClient } from '../utils/hooks/connect';
-import { GameMetadataService } from '../gen/api/proto/game_service/game_service_pb';
-import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_pb';
-import { ActionType } from '../actions/actions';
-import { syntheticGameInfo } from '../boardwizard/synthetic_game_info';
-import { MachineLetter, MachineWord } from '../utils/cwgame/common';
-import { create, toBinary } from '@bufbuild/protobuf';
+} from "../gen/api/proto/game_service/game_service_pb";
+import { useClient } from "../utils/hooks/connect";
+import { GameMetadataService } from "../gen/api/proto/game_service/game_service_pb";
+import { GameEventService } from "../gen/api/proto/omgwords_service/omgwords_pb";
+import { ActionType } from "../actions/actions";
+import { syntheticGameInfo } from "../boardwizard/synthetic_game_info";
+import { MachineLetter, MachineWord } from "../utils/cwgame/common";
+import { create, toBinary } from "@bufbuild/protobuf";
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -79,7 +79,7 @@ type Props = {
 
 const StreakFetchDelay = 2000;
 
-const DEFAULT_TITLE = 'Woogles.io';
+const DEFAULT_TITLE = "Woogles.io";
 
 const ManageWindowTitleAndTurnSound = () => {
   const { gameContext } = useGameContextStoreContext();
@@ -106,8 +106,7 @@ const ManageWindowTitleAndTurnSound = () => {
 
   const myId = useMemo(() => {
     const myPlayerOrder = gameContext.uidToPlayerOrder[userID];
-    // eslint-disable-next-line no-nested-ternary
-    return myPlayerOrder === 'p0' ? 0 : myPlayerOrder === 'p1' ? 1 : null;
+    return myPlayerOrder === "p0" ? 0 : myPlayerOrder === "p1" ? 1 : null;
   }, [gameContext.uidToPlayerOrder, userID]);
 
   const gameDone =
@@ -125,9 +124,9 @@ const ManageWindowTitleAndTurnSound = () => {
       }
 
       if (myId === gameContext.onturn) {
-        BoopSounds.playSound('oppMoveSound');
+        BoopSounds.playSound("oppMoveSound");
       } else {
-        BoopSounds.playSound('makeMoveSound');
+        BoopSounds.playSound("makeMoveSound");
       }
     } else {
       soundUnlocked.current = false;
@@ -135,25 +134,24 @@ const ManageWindowTitleAndTurnSound = () => {
   }, [canPlaySound, myId, gameContext.onturn]);
 
   const desiredTitle = useMemo(() => {
-    let title = '';
+    let title = "";
     if (!gameDone && myId === gameContext.onturn) {
-      title += '*';
+      title += "*";
     }
     let first = true;
     for (let i = 0; i < gameContext.players.length; ++i) {
-      // eslint-disable-next-line no-continue
       if (gameContext.players[i].userID === userID) continue;
       if (first) {
         first = false;
       } else {
-        title += ' vs ';
+        title += " vs ";
       }
-      title += playerNicks[i] ?? '?';
+      title += playerNicks[i] ?? "?";
       if (!gameDone && myId == null && i === gameContext.onturn) {
-        title += '*';
+        title += "*";
       }
     }
-    if (title.length > 0) title += ' - ';
+    if (title.length > 0) title += " - ";
     title += DEFAULT_TITLE;
     return title;
   }, [
@@ -181,15 +179,15 @@ const ManageWindowTitleAndTurnSound = () => {
 const getChatTitle = (
   playerNames: Array<string> | undefined,
   username: string,
-  isObserver: boolean
+  isObserver: boolean,
 ): string => {
   if (!playerNames) {
-    return '';
+    return "";
   }
   if (isObserver) {
-    return playerNames.join(' versus ');
+    return playerNames.join(" versus ");
   }
-  return playerNames.filter((n) => n !== username).shift() || '';
+  return playerNames.filter((n) => n !== username).shift() || "";
 };
 
 export const Table = React.memo((props: Props) => {
@@ -217,14 +215,14 @@ export const Table = React.memo((props: Props) => {
     create(StreakInfoResponseSchema, {
       streak: [],
       playersInfo: [],
-    })
+    }),
   );
   const [isObserver, setIsObserver] = useState(false);
   const tournamentNonDirectorObserver = useMemo(() => {
     return (
       isObserver &&
       !tournamentContext.directors?.includes(username) &&
-      !loginState.perms.includes('adm')
+      !loginState.perms.includes("adm")
     );
   }, [isObserver, loginState.perms, username, tournamentContext.directors]);
   useFirefoxPatch();
@@ -240,16 +238,15 @@ export const Table = React.memo((props: Props) => {
 
     const evtHandler = (evt: BeforeUnloadEvent) => {
       if (!gameDone && !isObserver) {
-        const msg = 'You are currently in a game!';
-        // eslint-disable-next-line no-param-reassign
+        const msg = "You are currently in a game!";
         evt.returnValue = msg;
         return msg;
       }
       return true;
     };
-    window.addEventListener('beforeunload', evtHandler);
+    window.addEventListener("beforeunload", evtHandler);
     return () => {
-      window.removeEventListener('beforeunload', evtHandler);
+      window.removeEventListener("beforeunload", evtHandler);
     };
   }, [gameDone, isObserver]);
 
@@ -257,14 +254,14 @@ export const Table = React.memo((props: Props) => {
     // Request game API to get info about the game at the beginning.
 
     const fetchGameMetadata = async () => {
-      console.log('gonna fetch metadata, game id is', gameID);
+      console.log("gonna fetch metadata, game id is", gameID);
 
       try {
         const resp = await gmClient.getMetadata({ gameId: gameID });
 
-        if (localStorage?.getItem('poolFormat')) {
+        if (localStorage?.getItem("poolFormat")) {
           setPoolFormat(
-            parseInt(localStorage.getItem('poolFormat') || '0', 10)
+            parseInt(localStorage.getItem("poolFormat") || "0", 10),
           );
         }
 
@@ -293,7 +290,7 @@ export const Table = React.memo((props: Props) => {
 
     return () => {
       setGameInfo(defaultGameInfo);
-      message.destroy('board-messages');
+      message.destroy("board-messages");
     };
   }, [gameID, gmClient, setGameEndMessage, setPoolFormat]);
 
@@ -305,7 +302,7 @@ export const Table = React.memo((props: Props) => {
       return;
     }
     const fetchGameDocument = async () => {
-      console.log('fetching game document');
+      console.log("fetching game document");
 
       try {
         const resp = await omgClient.getGameDocument({ gameId: gameID });
@@ -331,11 +328,11 @@ export const Table = React.memo((props: Props) => {
   }, [gameContext.gameDocument]);
 
   useTourneyMetadata(
-    '',
+    "",
     gameInfo.tournamentId,
     dispatchTournamentContext,
     loginState,
-    undefined
+    undefined,
   );
 
   useEffect(() => {
@@ -380,7 +377,7 @@ export const Table = React.memo((props: Props) => {
     if (isObserver) return;
     if (!gameID) return;
 
-    let timedout = '';
+    let timedout = "";
 
     gameInfo.players.forEach((p) => {
       if (gameContext.uidToPlayerOrder[p.userId] === pTimedOut) {
@@ -392,7 +389,7 @@ export const Table = React.memo((props: Props) => {
     to.gameId = gameID;
     to.userId = timedout;
     sendSocketMsg(
-      encodeToSocketFmt(MessageType.TIMED_OUT, toBinary(TimedOutSchema, to))
+      encodeToSocketFmt(MessageType.TIMED_OUT, toBinary(TimedOutSchema, to)),
     );
     setPTimedOut(undefined);
   }, [
@@ -423,8 +420,8 @@ export const Table = React.memo((props: Props) => {
       sendSocketMsg(
         encodeToSocketFmt(
           MessageType.READY_FOR_GAME,
-          toBinary(ReadyForGameSchema, evt)
-        )
+          toBinary(ReadyForGameSchema, evt),
+        ),
       );
     }
   }, [userID, gameInfo, gameID, sendSocketMsg]);
@@ -437,7 +434,7 @@ export const Table = React.memo((props: Props) => {
       gameContext,
       gameDone,
       gameID,
-      lexicon: gameInfo.gameRequest?.lexicon ?? '',
+      lexicon: gameInfo.gameRequest?.lexicon ?? "",
       variant: gameInfo.gameRequest?.rules?.variantName,
     });
 
@@ -448,11 +445,11 @@ export const Table = React.memo((props: Props) => {
       sendSocketMsg(
         encodeToSocketFmt(
           MessageType.SOUGHT_GAME_PROCESS_EVENT,
-          toBinary(SoughtGameProcessEventSchema, evt)
-        )
+          toBinary(SoughtGameProcessEventSchema, evt),
+        ),
       );
     },
-    [sendSocketMsg]
+    [sendSocketMsg],
   );
 
   const handleAcceptRematch = useCallback(() => {
@@ -469,11 +466,11 @@ export const Table = React.memo((props: Props) => {
       sendSocketMsg(
         encodeToSocketFmt(
           MessageType.DECLINE_SEEK_REQUEST,
-          toBinary(DeclineSeekRequestSchema, evt)
-        )
+          toBinary(DeclineSeekRequestSchema, evt),
+        ),
       );
     },
-    [sendSocketMsg]
+    [sendSocketMsg],
   );
 
   const handleDeclineRematch = useCallback(() => {
@@ -491,7 +488,7 @@ export const Table = React.memo((props: Props) => {
   let rack: MachineWord;
   const us = useMemo(
     () => gameInfo.players.find((p) => p.userId === userID),
-    [gameInfo.players, userID]
+    [gameInfo.players, userID],
   );
   if (us && !(gameDone && isExamining)) {
     rack =
@@ -504,7 +501,7 @@ export const Table = React.memo((props: Props) => {
   }
   const sortedRack = useMemo(
     () => sortTiles(rack, gameContext.alphabet),
-    [rack, gameContext.alphabet]
+    [rack, gameContext.alphabet],
   );
 
   // The game "starts" when the GameHistoryRefresher object comes in via the socket.
@@ -513,13 +510,13 @@ export const Table = React.memo((props: Props) => {
   useEffect(() => {
     // Don't play when loading from history
     if (!gameDone) {
-      BoopSounds.playSound('startgameSound');
+      BoopSounds.playSound("startgameSound");
     }
   }, [gameID, gameDone]);
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const searchedTurn = useMemo(() => searchParams.get('turn'), [searchParams]);
-  const turnAsStr = us && !gameDone ? '' : (searchedTurn ?? ''); // Do not examine our current games.
+  const searchedTurn = useMemo(() => searchParams.get("turn"), [searchParams]);
+  const turnAsStr = us && !gameDone ? "" : (searchedTurn ?? ""); // Do not examine our current games.
   const hasActivatedExamineRef = useRef(false);
   const [autocorrectURL, setAutocorrectURL] = useState(false);
   useEffect(() => {
@@ -559,11 +556,11 @@ export const Table = React.memo((props: Props) => {
     searchedTurn,
     setSearchParams,
   ]);
-  const boardTheme = 'board--' + tournamentContext.metadata.boardStyle || '';
-  const tileTheme = 'tile--' + tournamentContext.metadata.tileStyle || '';
+  const boardTheme = "board--" + tournamentContext.metadata.boardStyle || "";
+  const tileTheme = "tile--" + tournamentContext.metadata.tileStyle || "";
   const alphabet = useMemo(
     () => alphabetFromName(gameInfo.gameRequest?.rules?.letterDistributionName),
-    [gameInfo]
+    [gameInfo],
   );
   const showingFinalTurn =
     gameContext.turns.length === examinableGameContext.turns.length;
@@ -620,15 +617,15 @@ export const Table = React.memo((props: Props) => {
     );
   }
   let ret = (
-    <div className={`game-container${isRegistered ? ' competitor' : ''}`}>
+    <div className={`game-container${isRegistered ? " competitor" : ""}`}>
       <ManageWindowTitleAndTurnSound />
       <TopBar tournamentID={gameInfo.tournamentId} />
       <div className={`game-table ${boardTheme} ${tileTheme}`}>
         <div
           className={`chat-area ${
             !isExamining && tournamentContext.metadata.disclaimer
-              ? 'has-disclaimer'
-              : ''
+              ? "has-disclaimer"
+              : ""
           }`}
           id="left-sidebar"
         >
@@ -638,8 +635,8 @@ export const Table = React.memo((props: Props) => {
                 <HomeOutlined />
                 Back to
                 {isClubType(tournamentContext.metadata?.type)
-                  ? ' Club'
-                  : ' Tournament'}
+                  ? " Club"
+                  : " Tournament"}
               </Link>
             ) : (
               <Link to="/">
@@ -654,12 +651,12 @@ export const Table = React.memo((props: Props) => {
               highlight={tournamentContext.directors}
               highlightText="Director"
               defaultChannel={`chat.${
-                isObserver ? 'gametv' : 'game'
-              }${props.annotated ? '.anno' : ''}.${gameID}`}
+                isObserver ? "gametv" : "game"
+              }${props.annotated ? ".anno" : ""}.${gameID}`}
               defaultDescription={getChatTitle(
                 playerNames,
                 username,
-                isObserver
+                isObserver,
               )}
               tournamentID={gameInfo.tournamentId}
             />
@@ -683,7 +680,7 @@ export const Table = React.memo((props: Props) => {
                 readyForTournamentGame(
                   sendSocketMsg,
                   tournamentContext.metadata?.id,
-                  competitorState
+                  competitorState,
                 )
               }
             />
@@ -711,8 +708,8 @@ export const Table = React.memo((props: Props) => {
               props.sendSocketMsg(
                 encodeToSocketFmt(
                   MessageType.CLIENT_GAMEPLAY_EVENT,
-                  toBinary(ClientGameplayEventSchema, evt)
-                )
+                  toBinary(ClientGameplayEventSchema, evt),
+                ),
               )
             }
             gameDone={gameDone}
@@ -721,15 +718,13 @@ export const Table = React.memo((props: Props) => {
             vsBot={gameInfo.gameRequest?.playerVsBot ?? false}
             tournamentSlug={tournamentContext.metadata?.slug}
             tournamentPairedMode={isPairedMode(
-              tournamentContext.metadata?.type
+              tournamentContext.metadata?.type,
             )}
             tournamentNonDirectorObserver={tournamentNonDirectorObserver}
-            // why does my linter keep overwriting this?
-            // eslint-disable-next-line max-len
             tournamentPrivateAnalysis={
               tournamentContext.metadata?.privateAnalysis
             }
-            lexicon={gameInfo.gameRequest?.lexicon ?? ''}
+            lexicon={gameInfo.gameRequest?.lexicon ?? ""}
             alphabet={alphabet}
             challengeRule={
               gameInfo.gameRequest?.challengeRule ?? ChallengeRule.VOID
@@ -758,7 +753,7 @@ export const Table = React.memo((props: Props) => {
                 readyForTournamentGame(
                   sendSocketMsg,
                   tournamentContext.metadata?.id,
-                  competitorState
+                  competitorState,
                 )
               }
             />
@@ -784,7 +779,7 @@ export const Table = React.memo((props: Props) => {
           />
           <Popconfirm
             title={`${rematchRequest.user?.displayName} sent you a rematch request`}
-            open={rematchRequest.rematchFor !== ''}
+            open={rematchRequest.rematchFor !== ""}
             onConfirm={handleAcceptRematch}
             onCancel={handleDeclineRematch}
             okText="Accept"
@@ -807,7 +802,7 @@ export const Table = React.memo((props: Props) => {
   ret = (
     <AnalyzerContextProvider
       children={ret}
-      lexicon={gameInfo.gameRequest?.lexicon ?? ''}
+      lexicon={gameInfo.gameRequest?.lexicon ?? ""}
       variant={gameInfo.gameRequest?.rules?.variantName}
     />
   );

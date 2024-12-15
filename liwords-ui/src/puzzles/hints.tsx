@@ -5,30 +5,30 @@ import React, {
   useEffect,
   useMemo,
   useState,
-} from 'react';
+} from "react";
 import {
   GameEvent,
   GameEvent_Direction,
-} from '../gen/api/vendor/macondo/macondo_pb';
+} from "../gen/api/vendor/macondo/macondo_pb";
 import {
   PuzzleRequestSchema,
   PuzzleStatus,
-} from '../gen/api/proto/puzzle_service/puzzle_service_pb';
-import { Button } from 'antd';
-import { singularCount } from '../utils/plural';
+} from "../gen/api/proto/puzzle_service/puzzle_service_pb";
+import { Button } from "antd";
+import { singularCount } from "../utils/plural";
 import {
   generateEmptyLearnLayout,
   LearnContext,
   LearnSpaceType,
-} from '../learn/learn_overlay';
+} from "../learn/learn_overlay";
 import {
   BulbFilled,
   EyeInvisibleOutlined,
   EyeOutlined,
-} from '@ant-design/icons';
-import { flashError, useClient } from '../utils/hooks/connect';
-import { PuzzleService } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
-import { create } from '@bufbuild/protobuf';
+} from "@ant-design/icons";
+import { flashError, useClient } from "../utils/hooks/connect";
+import { PuzzleService } from "../gen/api/proto/puzzle_service/puzzle_service_pb";
+import { create } from "@bufbuild/protobuf";
 
 type Props = {
   puzzleID?: string;
@@ -52,9 +52,9 @@ const RATED_ATTEMPTS = 2;
 
 const readableLane = (row: number, col: number, direction: 0 | 1) => {
   if (direction === 0) {
-    return 'row ' + (row + 1).toString();
+    return "row " + (row + 1).toString();
   } else {
-    return 'column ' + String.fromCodePoint(col + 65);
+    return "column " + String.fromCodePoint(col + 65);
   }
 };
 
@@ -101,10 +101,10 @@ export const Hints = (props: Props) => {
         <div className="puzzle-hint" key={hint.key}>
           <BulbFilled />
           {hint.message}
-          {hint.key === 'position-hint' && (
+          {hint.key === "position-hint" && (
             <div
               onClick={() => {
-                console.log('um');
+                console.log("um");
                 setBoardHighlightingOn((x) => !x);
               }}
             >
@@ -114,17 +114,17 @@ export const Hints = (props: Props) => {
         </div>
       );
     },
-    [boardHighlightingOn, setBoardHighlightingOn]
+    [boardHighlightingOn, setBoardHighlightingOn],
   );
 
   useEffect(() => {
     if (solution) {
       // Add score hint
       const scoreHint: HintInfo = {
-        key: 'score-hint',
+        key: "score-hint",
         message: (
           <>
-            The score for the play is{' '}
+            The score for the play is{" "}
             <span className="tentative-score">{solution.score}</span>
           </>
         ),
@@ -132,28 +132,28 @@ export const Hints = (props: Props) => {
       };
       // Add tiles hint
       const tilesUsed = Array.from(solution.playedTiles).filter(
-        (x) => x !== '.'
+        (x) => x !== ".",
       ).length;
       const isBingo = solution.isBingo;
       const tilesMessage = isBingo ? (
         <>The play is a bingo! Use all your tiles.</>
       ) : (
         <>
-          The play uses {singularCount(tilesUsed, 'tile', 'tiles')} from the
+          The play uses {singularCount(tilesUsed, "tile", "tiles")} from the
           rack.
         </>
       );
       const tilesHint: HintInfo = {
-        key: 'tile-hint',
+        key: "tile-hint",
         message: tilesMessage,
         revealed: false,
       };
 
       const positionHint: HintInfo = {
-        key: 'position-hint',
+        key: "position-hint",
         message: (
           <>
-            The play should be placed on{' '}
+            The play should be placed on{" "}
             {readableLane(solution.row, solution.column, solution.direction)}.
           </>
         ),
@@ -173,7 +173,7 @@ export const Hints = (props: Props) => {
       const layout = generateEmptyLearnLayout(gridDim, LearnSpaceType.Faded);
       if (solution.direction === GameEvent_Direction.HORIZONTAL) {
         layout[solution.row] = new Array(gridDim).fill(
-          LearnSpaceType.Highlighted
+          LearnSpaceType.Highlighted,
         );
       } else {
         for (let i = 0; i < gridDim; i++) {
@@ -203,7 +203,7 @@ export const Hints = (props: Props) => {
   }, [solved, setLearnLayout, gridDim]);
 
   const revealHint = useCallback(
-    (hintToReveal: 'score' | 'tiles' | 'position') => {
+    (hintToReveal: "score" | "tiles" | "position") => {
       setHints((x) => ({
         ...x,
         [hintToReveal]: {
@@ -212,7 +212,7 @@ export const Hints = (props: Props) => {
         },
       }));
     },
-    []
+    [],
   );
 
   const actions = useMemo(() => {
@@ -223,7 +223,7 @@ export const Hints = (props: Props) => {
             <Button
               type="primary"
               onClick={() => {
-                revealHint('score');
+                revealHint("score");
               }}
               disabled={!earnedHints}
             >
@@ -234,7 +234,7 @@ export const Hints = (props: Props) => {
             <Button
               type="primary"
               onClick={() => {
-                revealHint('tiles');
+                revealHint("tiles");
               }}
               disabled={!earnedHints}
             >
@@ -245,7 +245,7 @@ export const Hints = (props: Props) => {
             <Button
               type="primary"
               onClick={() => {
-                revealHint('position');
+                revealHint("position");
               }}
               disabled={!earnedHints}
             >
@@ -258,8 +258,8 @@ export const Hints = (props: Props) => {
     return (
       <div className="hint-actions">
         <p>
-          Hints are available after{' '}
-          {singularCount(RATED_ATTEMPTS, 'attempt', 'attempts')}.
+          Hints are available after{" "}
+          {singularCount(RATED_ATTEMPTS, "attempt", "attempts")}.
         </p>
       </div>
     );
@@ -276,8 +276,8 @@ export const Hints = (props: Props) => {
     <div className="puzzle-hints">
       {earnedHints > 0 && hintsRemaining > 0 && (
         <p className="hint-prompt">
-          Having trouble? You've earned{' '}
-          {singularCount(earnedHints, 'hint', 'hints')}.
+          Having trouble? You've earned{" "}
+          {singularCount(earnedHints, "hint", "hints")}.
         </p>
       )}
       <div className="displayed-hints">

@@ -1,4 +1,4 @@
-import { BonusType } from '../../constants/board_layout';
+import { BonusType } from "../../constants/board_layout";
 
 import {
   EphemeralTile,
@@ -7,10 +7,10 @@ import {
   EmptyBoardSpaceMachineLetter,
   MachineLetter,
   isDesignatedBlankMachineLetter,
-} from './common';
+} from "./common";
 
-import { Board } from './board';
-import { Alphabet, scoreFor } from '../../constants/alphabets';
+import { Board } from "./board";
+import { Alphabet, scoreFor } from "../../constants/alphabets";
 
 export type simpletile = {
   fresh: boolean;
@@ -21,7 +21,7 @@ export type simpletile = {
 
 const genContiguousTiles = (
   sorted: Array<EphemeralTile>,
-  board: Board
+  board: Board,
 ): [Array<simpletile>, Direction] => {
   // build an object of contiguous tiles that includes `sorted`,
   // return the direction of play on the board.
@@ -129,7 +129,7 @@ const getCrossScore = (
   col: number,
   crossDir: Direction,
   board: Board,
-  alphabet: Alphabet
+  alphabet: Alphabet,
 ): [number, boolean] => {
   // Traverse in both directions from (row, col) in the crossDir axis.
   let lastSeenTile;
@@ -188,7 +188,7 @@ const tileOnBoard = (row: number, col: number, board: Board): boolean => {
 export const borders = (
   t1: EphemeralTile,
   t2: EphemeralTile,
-  board: Board
+  board: Board,
 ): boolean => {
   // Do the two tiles touch each other either directly or across board tiles?
   if (t1.col !== t2.col && t1.row !== t2.row) {
@@ -256,7 +256,7 @@ export const touchesBoardTile = (t1: EphemeralTile, board: Board): boolean => {
 
 export const isLegalPlay = (
   currentlyPlacedTiles: Array<EphemeralTile>,
-  board: Board
+  board: Board,
 ): boolean => {
   // Check that all tiles are colinear
   const placedTiles = Array.from(currentlyPlacedTiles.values());
@@ -315,7 +315,7 @@ export const isLegalPlay = (
 
 export const contiguousTilesFromTileSet = (
   tiles: Set<EphemeralTile>,
-  board: Board
+  board: Board,
 ): [Array<simpletile>, Direction] | null => {
   const sorted = Array.from(tiles.values());
   sorted.sort((a, b) => {
@@ -335,7 +335,7 @@ export const contiguousTilesFromTileSet = (
 export const calculateTemporaryScore = (
   currentlyPlacedTiles: Set<EphemeralTile>,
   board: Board,
-  alphabet: Alphabet
+  alphabet: Alphabet,
 ): number | undefined => {
   const ret = contiguousTilesFromTileSet(currentlyPlacedTiles, board);
   if (ret === null) {
@@ -394,7 +394,7 @@ export const calculateTemporaryScore = (
       st.col,
       crossDir,
       board,
-      alphabet
+      alphabet,
     );
     let ls;
     if (isDesignatedBlankMachineLetter(st.letter)) {

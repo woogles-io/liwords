@@ -1,5 +1,5 @@
-import { Divider, Typography } from 'antd';
-import { GCGProcessForm } from './gcg_process_form';
+import { Divider, Typography } from "antd";
+import { GCGProcessForm } from "./gcg_process_form";
 
 export const CallbackHandler = () => {
   const urlParams = new URLSearchParams(window.location.search);
@@ -11,7 +11,7 @@ export const CallbackHandler = () => {
         annotated game and click Create new annotated game.
       </Typography.Text>
       <Divider />
-      <GCGProcessForm gcg={urlParams.get('gcg') ?? ''} showUpload={false} />
+      <GCGProcessForm gcg={urlParams.get("gcg") ?? ""} showUpload={false} />
     </div>
   );
 };

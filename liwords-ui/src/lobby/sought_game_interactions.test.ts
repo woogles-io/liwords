@@ -1,37 +1,37 @@
-import { create } from '@bufbuild/protobuf';
-import { MatchUser, MatchUserSchema } from '../gen/api/proto/ipc/omgseeks_pb';
-import { BotTypesEnum } from './bots';
-import { sendSeek } from './sought_game_interactions';
+import { create } from "@bufbuild/protobuf";
+import { MatchUserSchema } from "../gen/api/proto/ipc/omgseeks_pb";
+import { BotTypesEnum } from "./bots";
+import { sendSeek } from "./sought_game_interactions";
 
-it('tests sendSeek', () => {
+it("tests sendSeek", () => {
   const game = {
-    seeker: '',
-    userRating: '',
-    seekID: '',
-    ratingKey: '',
-    lexicon: 'CSW24',
+    seeker: "",
+    userRating: "",
+    seekID: "",
+    ratingKey: "",
+    lexicon: "CSW24",
     challengeRule: 0,
     initialTimeSecs: 1200,
     incrementSecs: 0,
     rated: true,
     maxOvertimeMinutes: 1,
     receiver: create(MatchUserSchema, {
-      userId: '',
-      relevantRating: '',
+      userId: "",
+      relevantRating: "",
       isAnonymous: false,
-      displayName: '',
+      displayName: "",
     }),
-    rematchFor: '',
+    rematchFor: "",
     playerVsBot: false,
-    tournamentID: '',
+    tournamentID: "",
     receiverIsPermanent: false,
     minRatingRange: -500,
     maxRatingRange: 500,
     botType: BotTypesEnum.MASTER,
-    variant: '',
+    variant: "",
   };
 
   sendSeek(game, (msg: Uint8Array) => {
-    console.log('Fake sending a msg: ', msg);
+    console.log("Fake sending a msg: ", msg);
   });
 });

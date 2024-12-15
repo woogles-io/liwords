@@ -1,160 +1,160 @@
-import React, { useCallback, useState } from 'react';
-import { Col, Row, Select, Switch } from 'antd';
+import React, { useCallback, useState } from "react";
+import { Col, Row, Select, Switch } from "antd";
 import {
   preferredSortOrder,
   setPreferredSortOrder,
   setSharedEnableAutoShuffle,
   sharedEnableAutoShuffle,
-} from '../store/constants';
-import '../gameroom/scss/gameroom.scss';
-import { BoardPreview } from './board_preview';
-import { MatchLexiconDisplay, puzzleLexica } from '../shared/lexicon_display';
-import { TouchBackend } from 'react-dnd-touch-backend';
-import { DndProvider } from 'react-dnd';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../store/redux_store';
-import { setDarkMode } from '../store/theme';
+} from "../store/constants";
+import "../gameroom/scss/gameroom.scss";
+import { BoardPreview } from "./board_preview";
+import { MatchLexiconDisplay, puzzleLexica } from "../shared/lexicon_display";
+import { TouchBackend } from "react-dnd-touch-backend";
+import { DndProvider } from "react-dnd";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState } from "../store/redux_store";
+import { setDarkMode } from "../store/theme";
 
 const previewTilesLayout = [
-  '               ',
-  '               ',
-  '               ',
-  '               ',
-  '               ',
-  '               ',
-  '               ',
-  '  WOOGLES OmG  ',
-  '               ',
-  '               ',
-  '               ',
-  '               ',
-  '               ',
-  '               ',
-  '               ',
+  "               ",
+  "               ",
+  "               ",
+  "               ",
+  "               ",
+  "               ",
+  "               ",
+  "  WOOGLES OmG  ",
+  "               ",
+  "               ",
+  "               ",
+  "               ",
+  "               ",
+  "               ",
+  "               ",
 ];
 
 const KNOWN_TILE_ORDERS = [
   {
-    name: 'Alphabetical',
-    value: '',
+    name: "Alphabetical",
+    value: "",
   },
   {
-    name: 'Vowels first',
-    value: 'AÄEIOÖUÜÆØÅ',
+    name: "Vowels first",
+    value: "AÄEIOÖUÜÆØÅ",
   },
   {
-    name: 'Consonants first',
-    value: 'BCÇDFGHJKLMNPQRSTVWXYZ',
+    name: "Consonants first",
+    value: "BCÇDFGHJKLMNPQRSTVWXYZ",
   },
   {
-    name: 'Descending points',
-    value: 'QZJXKFHVWYBCMPDG',
+    name: "Descending points",
+    value: "QZJXKFHVWYBCMPDG",
   },
   {
-    name: 'Blanks first',
-    value: '?',
+    name: "Blanks first",
+    value: "?",
   },
 ];
 
 const KNOWN_BOARD_STYLES = [
   {
-    name: 'Default',
-    value: '',
+    name: "Default",
+    value: "",
   },
   {
-    name: 'Cheery',
-    value: 'cheery',
+    name: "Cheery",
+    value: "cheery",
   },
   {
-    name: 'Almost Colorless',
-    value: 'charcoal',
+    name: "Almost Colorless",
+    value: "charcoal",
   },
   {
-    name: 'Forest',
-    value: 'forest',
+    name: "Forest",
+    value: "forest",
   },
   {
-    name: 'Aflame',
-    value: 'aflame',
+    name: "Aflame",
+    value: "aflame",
   },
   {
-    name: 'Teal and Plum',
-    value: 'tealish',
+    name: "Teal and Plum",
+    value: "tealish",
   },
   {
-    name: 'Pastel',
-    value: 'pastel',
+    name: "Pastel",
+    value: "pastel",
   },
   {
-    name: 'Vintage',
-    value: 'vintage',
+    name: "Vintage",
+    value: "vintage",
   },
   {
-    name: 'Balsa',
-    value: 'balsa',
+    name: "Balsa",
+    value: "balsa",
   },
   {
-    name: 'Mahogany',
-    value: 'mahogany',
+    name: "Mahogany",
+    value: "mahogany",
   },
   {
-    name: 'Metallic',
-    value: 'metallic',
+    name: "Metallic",
+    value: "metallic",
   },
 ];
 
 const KNOWN_TILE_STYLES = [
   {
-    name: 'Default',
-    value: '',
+    name: "Default",
+    value: "",
   },
   {
-    name: 'Charcoal',
-    value: 'charcoal',
+    name: "Charcoal",
+    value: "charcoal",
   },
   {
-    name: 'White',
-    value: 'whitish',
+    name: "White",
+    value: "whitish",
   },
   {
-    name: 'Mahogany',
-    value: 'mahogany',
+    name: "Mahogany",
+    value: "mahogany",
   },
   {
-    name: 'Balsa',
-    value: 'balsa',
+    name: "Balsa",
+    value: "balsa",
   },
   {
-    name: 'Brick',
-    value: 'brick',
+    name: "Brick",
+    value: "brick",
   },
   {
-    name: 'Forest',
-    value: 'forest',
+    name: "Forest",
+    value: "forest",
   },
   {
-    name: 'Teal',
-    value: 'tealish',
+    name: "Teal",
+    value: "tealish",
   },
   {
-    name: 'Plum',
-    value: 'plumish',
+    name: "Plum",
+    value: "plumish",
   },
   {
-    name: 'Pastel',
-    value: 'pastel',
+    name: "Pastel",
+    value: "pastel",
   },
   {
-    name: 'Fuchsia',
-    value: 'fuchsiaish',
+    name: "Fuchsia",
+    value: "fuchsiaish",
   },
   {
-    name: 'Blue',
-    value: 'blueish',
+    name: "Blue",
+    value: "blueish",
   },
   {
-    name: 'Metallic',
-    value: 'metallic',
+    name: "Metallic",
+    value: "metallic",
   },
 ];
 
@@ -165,54 +165,54 @@ export const Preferences = React.memo(() => {
   const darkMode = useSelector((state: RootState) => state.theme.darkMode);
   const dispatch = useDispatch();
 
-  const initialTileStyle = localStorage?.getItem('userTile') || 'Default';
+  const initialTileStyle = localStorage?.getItem("userTile") || "Default";
   const [userTile, setUserTile] = useState<string>(initialTileStyle);
 
-  const initialBoardStyle = localStorage?.getItem('userBoard') || 'Default';
+  const initialBoardStyle = localStorage?.getItem("userBoard") || "Default";
   const [userBoard, setUserBoard] = useState<string>(initialBoardStyle);
 
   const initialPuzzleLexicon =
-    localStorage?.getItem('puzzleLexicon') || undefined;
+    localStorage?.getItem("puzzleLexicon") || undefined;
   const [puzzleLexicon, setPuzzleLexicon] = useState<string | undefined>(
-    initialPuzzleLexicon
+    initialPuzzleLexicon,
   );
 
   const handleUserTileChange = useCallback((tileStyle: string) => {
     const classes = document?.body?.className
-      .split(' ')
-      .filter((c) => !c.startsWith('tile--'));
-    document.body.className = classes.join(' ').trim();
+      .split(" ")
+      .filter((c) => !c.startsWith("tile--"));
+    document.body.className = classes.join(" ").trim();
     if (tileStyle) {
-      localStorage.setItem('userTile', tileStyle);
+      localStorage.setItem("userTile", tileStyle);
       document?.body?.classList?.add(`tile--${tileStyle}`);
     } else {
-      localStorage.removeItem('userTile');
+      localStorage.removeItem("userTile");
     }
     setUserTile(tileStyle);
   }, []);
 
   const handlePuzzleLexiconChange = useCallback((lexicon: string) => {
-    localStorage.setItem('puzzleLexicon', lexicon);
+    localStorage.setItem("puzzleLexicon", lexicon);
     setPuzzleLexicon(lexicon);
   }, []);
 
   const handleUserBoardChange = useCallback((boardStyle: string) => {
     const classes = document?.body?.className
-      .split(' ')
-      .filter((c) => !c.startsWith('board--'));
-    document.body.className = classes.join(' ').trim();
+      .split(" ")
+      .filter((c) => !c.startsWith("board--"));
+    document.body.className = classes.join(" ").trim();
     if (boardStyle) {
-      localStorage.setItem('userBoard', boardStyle);
+      localStorage.setItem("userBoard", boardStyle);
       document?.body?.classList?.add(`board--${boardStyle}`);
     } else {
-      localStorage.removeItem('userBoard');
+      localStorage.removeItem("userBoard");
     }
     setUserBoard(boardStyle);
   }, []);
 
   const [reevaluateTileOrderOptions, setReevaluateTileOrderOptions] =
     useState(0);
-  const [tileOrder, setTileOrder] = useState(preferredSortOrder ?? '');
+  const [tileOrder, setTileOrder] = useState(preferredSortOrder ?? "");
   const handleTileOrderAndAutoShuffleChange = useCallback((value: string) => {
     try {
       const parsedStuff = JSON.parse(value);
@@ -229,7 +229,7 @@ export const Preferences = React.memo(() => {
   const localEnableAutoShuffle = sharedEnableAutoShuffle;
   const tileOrderValue = React.useMemo(
     () => makeTileOrderValue(tileOrder, localEnableAutoShuffle),
-    [tileOrder, localEnableAutoShuffle]
+    [tileOrder, localEnableAutoShuffle],
   );
   const tileOrderOptions = React.useMemo(() => {
     void reevaluateTileOrderOptions;
@@ -237,13 +237,13 @@ export const Preferences = React.memo(() => {
     const pushTileOrder = (
       name: string,
       value: string,
-      autoShuffle: boolean
+      autoShuffle: boolean,
     ) => {
       // Design only wants "Random" for "Alphabetical".
       if (
         !(
           (tileOrder === value && autoShuffle === localEnableAutoShuffle) ||
-          name === 'Alphabetical' ||
+          name === "Alphabetical" ||
           !autoShuffle
         )
       ) {
@@ -252,11 +252,11 @@ export const Preferences = React.memo(() => {
       let nameText = name;
       let hoverHelp = null;
       if (autoShuffle !== localEnableAutoShuffle) {
-        hoverHelp = `(turn ${autoShuffle ? 'on' : 'off'} auto-shuffle)`;
+        hoverHelp = `(turn ${autoShuffle ? "on" : "off"} auto-shuffle)`;
       }
-      if (name === 'Alphabetical' && autoShuffle) {
-        nameText = 'Random';
-        hoverHelp = '(automatically shuffle tiles at every turn)';
+      if (name === "Alphabetical" && autoShuffle) {
+        nameText = "Random";
+        hoverHelp = "(automatically shuffle tiles at every turn)";
       } else if (autoShuffle) {
         // The page should still work logically if this is set manually.
         // localStorage.enableAutoShuffle = true;
@@ -268,7 +268,7 @@ export const Preferences = React.memo(() => {
             {nameText}
             {hoverHelp && (
               <React.Fragment>
-                {' '}
+                {" "}
                 <span className="hover-help">{hoverHelp}</span>
               </React.Fragment>
             )}
@@ -287,7 +287,7 @@ export const Preferences = React.memo(() => {
       addTileOrder({ name, value });
     }
     if (!found) {
-      addTileOrder({ name: 'Custom', value: tileOrder });
+      addTileOrder({ name: "Custom", value: tileOrder });
     }
     return ret;
   }, [reevaluateTileOrderOptions, tileOrder, localEnableAutoShuffle]);

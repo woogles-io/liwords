@@ -1,15 +1,15 @@
-import { create } from '@bufbuild/protobuf';
+import { create } from "@bufbuild/protobuf";
 import {
   GameInfoResponseSchema,
   GameRequestSchema,
   GameRulesSchema,
   PlayerInfoSchema,
-} from '../gen/api/proto/ipc/omgwords_pb';
-import { RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
+} from "../gen/api/proto/ipc/omgwords_pb";
+import { RatingMode } from "../gen/api/proto/ipc/omgwords_pb";
 import {
   GameDocument,
   GameInfoResponse,
-} from '../gen/api/proto/ipc/omgwords_pb';
+} from "../gen/api/proto/ipc/omgwords_pb";
 
 export const syntheticGameInfo = (doc: GameDocument): GameInfoResponse => {
   return create(GameInfoResponseSchema, {
@@ -18,10 +18,10 @@ export const syntheticGameInfo = (doc: GameDocument): GameInfoResponse => {
         userId: p.userId,
         nickname: p.nickname,
         fullName: p.realName,
-      })
+      }),
     ),
-    timeControlName: 'Annotated',
-    tournamentId: '', // maybe can populate from a description later
+    timeControlName: "Annotated",
+    tournamentId: "", // maybe can populate from a description later
     gameEndReason: doc.endReason,
     scores: doc.currentScores,
     winner: doc.winner,
@@ -39,9 +39,9 @@ export const syntheticGameInfo = (doc: GameDocument): GameInfoResponse => {
       incrementSeconds: doc.timers?.incrementSeconds,
       challengeRule: doc.challengeRule.valueOf(),
       ratingMode: RatingMode.CASUAL,
-      requestId: 'none',
+      requestId: "none",
       maxOvertimeMinutes: doc.timers?.maxOvertime,
-      originalRequestId: 'none',
+      originalRequestId: "none",
     }),
   });
 };

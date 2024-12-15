@@ -1,15 +1,15 @@
-import { errorMap } from '../store/constants';
+import { errorMap } from "../store/constants";
 
 function sprintf(template: string, args: Array<string>): string {
   return template.replace(/\$(\d+)/g, (_, i) => args[i - 1]);
 }
 
 export function errorInfo(err: string): [number, string[]] {
-  if (err.charAt(0) !== ';') {
+  if (err.charAt(0) !== ";") {
     return [0, []];
   }
   err = err.substring(1);
-  const data = err.split(';');
+  const data = err.split(";");
   const errCode = data.shift();
   if (errCode === undefined) {
     return [0, []];

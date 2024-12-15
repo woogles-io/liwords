@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
-import { GameCommentService } from '../../gen/api/proto/comments_service/comments_service_pb';
-import { GameComment } from '../../gen/api/proto/comments_service/comments_service_pb';
-import { useGameContextStoreContext } from '../../store/store';
-import { flashError } from './connect';
-import { Client } from '@connectrpc/connect';
+import { useCallback, useEffect, useState } from "react";
+import { GameCommentService } from "../../gen/api/proto/comments_service/comments_service_pb";
+import { GameComment } from "../../gen/api/proto/comments_service/comments_service_pb";
+import { useGameContextStoreContext } from "../../store/store";
+import { flashError } from "./connect";
+import { Client } from "@connectrpc/connect";
 
 export const useComments = (
   commentsClient: Client<typeof GameCommentService>,
-  enableComments: boolean
+  enableComments: boolean,
 ) => {
   const { gameContext } = useGameContextStoreContext();
 
@@ -63,7 +63,7 @@ export const useComments = (
   const addNewComment = async (
     gameID: string,
     eventNumber: number,
-    comment: string
+    comment: string,
   ) => {
     try {
       await commentsClient.addGameComment({

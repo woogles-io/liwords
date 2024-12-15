@@ -1,24 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from "react";
 
 import {
   useLoginStateStoreContext,
   useTournamentStoreContext,
-} from '../store/store';
-import { TopBar } from '../navigation/topbar';
-import { Chat } from '../chat/chat';
-import { TournamentInfo } from './tournament_info';
-import { sendAccept, sendSeek } from '../lobby/sought_game_interactions';
-import { SoughtGame } from '../store/reducers/lobby_reducer';
-import { ActionsPanel } from './actions_panel';
-import { CompetitorStatus } from './competitor_status';
-import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
-import './room.scss';
-import { useTourneyMetadata } from './utils';
-import { useSearchParams } from 'react-router-dom';
-import { OwnScoreEnterer } from './enter_own_scores';
-import { ConfigProvider } from 'antd';
+} from "../store/store";
+import { TopBar } from "../navigation/topbar";
+import { Chat } from "../chat/chat";
+import { TournamentInfo } from "./tournament_info";
+import { sendAccept, sendSeek } from "../lobby/sought_game_interactions";
+import { SoughtGame } from "../store/reducers/lobby_reducer";
+import { ActionsPanel } from "./actions_panel";
+import { CompetitorStatus } from "./competitor_status";
+import { readyForTournamentGame } from "../store/reducers/tournament_reducer";
+import "./room.scss";
+import { useTourneyMetadata } from "./utils";
+import { useSearchParams } from "react-router";
+import { OwnScoreEnterer } from "./enter_own_scores";
+import { ConfigProvider } from "antd";
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -37,14 +37,14 @@ export const TournamentRoom = (props: Props) => {
   const { sendSocketMsg } = props;
   const { path } = loginState;
   const [badTournament, setBadTournament] = useState(false);
-  const [selectedGameTab, setSelectedGameTab] = useState('GAMES');
+  const [selectedGameTab, setSelectedGameTab] = useState("GAMES");
 
   useTourneyMetadata(
     path,
-    '',
+    "",
     dispatchTournamentContext,
     loginState,
-    setBadTournament
+    setBadTournament,
   );
 
   const tournamentID = useMemo(() => {
@@ -57,20 +57,20 @@ export const TournamentRoom = (props: Props) => {
   }, [tournamentContext.directors, username]);
 
   const isAdmin = useMemo(() => {
-    return perms.includes('adm');
+    return perms.includes("adm");
   }, [perms]);
 
   const handleNewGame = useCallback(
     (seekID: string) => {
       sendAccept(seekID, sendSocketMsg);
     },
-    [sendSocketMsg]
+    [sendSocketMsg],
   );
   const onSeekSubmit = useCallback(
     (g: SoughtGame) => {
       sendSeek(g, sendSocketMsg);
     },
-    [sendSocketMsg]
+    [sendSocketMsg],
   );
 
   if (badTournament) {
@@ -92,10 +92,10 @@ export const TournamentRoom = (props: Props) => {
     );
   }
 
-  if (searchParams.get('es') != null) {
+  if (searchParams.get("es") != null) {
     return (
       <>
-        <OwnScoreEnterer truncatedID={searchParams.get('es') ?? ''} />
+        <OwnScoreEnterer truncatedID={searchParams.get("es") ?? ""} />
         <div style={{ marginTop: 400 }}></div>
       </>
     );
@@ -104,7 +104,7 @@ export const TournamentRoom = (props: Props) => {
   return (
     <>
       <TopBar />
-      <div className={`lobby room ${isRegistered ? ' competitor' : ''}`}>
+      <div className={`lobby room ${isRegistered ? " competitor" : ""}`}>
         <div className="chat-area">
           <Chat
             sendChat={props.sendChat}
@@ -120,7 +120,7 @@ export const TournamentRoom = (props: Props) => {
                 readyForTournamentGame(
                   sendSocketMsg,
                   tournamentContext.metadata.id,
-                  competitorContext
+                  competitorContext,
                 )
               }
             />
@@ -152,7 +152,7 @@ export const TournamentRoom = (props: Props) => {
               readyForTournamentGame(
                 sendSocketMsg,
                 tournamentContext.metadata.id,
-                competitorContext
+                competitorContext,
               )
             }
           />

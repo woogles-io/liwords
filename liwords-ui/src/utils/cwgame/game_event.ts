@@ -6,31 +6,31 @@ import {
   isBlank,
   BlankMachineLetter,
   MachineLetter,
-} from './common';
-import { contiguousTilesFromTileSet } from './scoring';
-import { Board } from './board';
+} from "./common";
+import { contiguousTilesFromTileSet } from "./scoring";
+import { Board } from "./board";
 import {
   GameEvent,
   GameEvent_Direction,
-} from '../../gen/api/vendor/macondo/macondo_pb';
+} from "../../gen/api/vendor/macondo/macondo_pb";
 import {
   ClientGameplayEvent_EventType,
   ClientGameplayEventSchema,
   PlayerInfo,
-} from '../../gen/api/proto/ipc/omgwords_pb';
+} from "../../gen/api/proto/ipc/omgwords_pb";
 import {
   Alphabet,
   machineLetterToRune,
   runesToMachineWord,
-} from '../../constants/alphabets';
-import { create } from '@bufbuild/protobuf';
+} from "../../constants/alphabets";
+import { create } from "@bufbuild/protobuf";
 
-export const ThroughTileMarker = '.';
+export const ThroughTileMarker = ".";
 // convert a set of ephemeral tiles to a protobuf game event.
 export const tilesetToMoveEvent = (
   tiles: Set<EphemeralTile>,
   board: Board,
-  gameID: string
+  gameID: string,
 ) => {
   const ret = contiguousTilesFromTileSet(tiles, board);
   if (ret === null) {
@@ -40,7 +40,7 @@ export const tilesetToMoveEvent = (
 
   const [wordTiles, wordDir] = ret;
   const letArr = new Array<MachineLetter>();
-  let wordPos = '';
+  let wordPos = "";
   let undesignatedBlank = false;
   wordTiles.forEach((t) => {
     letArr.push(t.fresh ? t.letter : 0);
@@ -50,11 +50,11 @@ export const tilesetToMoveEvent = (
   });
   if (undesignatedBlank) {
     // Play has an undesignated blank. Not valid.
-    console.log('Undesignated blank');
+    console.log("Undesignated blank");
     return null;
   }
   const row = String(wordTiles[0].row + 1);
-  const col = String.fromCharCode(wordTiles[0].col + 'A'.charCodeAt(0));
+  const col = String.fromCharCode(wordTiles[0].col + "A".charCodeAt(0));
 
   if (wordDir === Direction.Horizontal) {
     wordPos = row + col;
@@ -75,7 +75,7 @@ export const tilesetToMoveEvent = (
 export const exchangeMoveEvent = (
   rack: Array<MachineLetter>,
   gameID: string,
-  alphabet: Alphabet
+  alphabet: Alphabet,
 ) => {
   const evt = create(ClientGameplayEventSchema, {
     machineLetters: Uint8Array.from(rack),
@@ -113,7 +113,7 @@ export const challengeMoveEvent = (gameID: string) => {
 export const tilePlacementEventDisplay = (
   evt: GameEvent,
   board: Board,
-  alphabet: Alphabet
+  alphabet: Alphabet,
 ) => {
   // modify a tile placement move for display purposes.
   const row = evt.row;
@@ -121,32 +121,32 @@ export const tilePlacementEventDisplay = (
   const ri = evt.direction === GameEvent_Direction.HORIZONTAL ? 0 : 1;
   const ci = 1 - ri;
 
-  let m = '';
+  let m = "";
   let openParen = false;
   const mls = runesToMachineWord(evt.playedTiles, alphabet);
   for (let i = 0, r = row, c = col; i < mls.length; i += 1, r += ri, c += ci) {
     const t = mls[i];
     if (t === 0) {
       if (!openParen) {
-        m += '(';
+        m += "(";
         openParen = true;
       }
       m += machineLetterToRune(
         board.letterAt(r, c) ?? 0,
         alphabet,
         false,
-        true
+        true,
       );
     } else {
       if (openParen) {
-        m += ')';
+        m += ")";
         openParen = false;
       }
       m += machineLetterToRune(t, alphabet, false, true);
     }
   }
   if (openParen) {
-    m += ')';
+    m += ")";
   }
   return m;
 };
@@ -155,7 +155,7 @@ export const tilePlacementEventDisplay = (
 // event.
 export const nicknameFromEvt = (
   evt: GameEvent,
-  players: Array<PlayerInfo>
+  players: Array<PlayerInfo>,
 ): string => {
   return players[evt.playerIndex]?.nickname;
 };
@@ -182,10 +182,10 @@ export const computeLeaveWithGaps = (tilesPlayed: string, rack: string) => {
       leave[i] = EmptySpace;
     }
   }
-  return leave.join('');
+  return leave.join("");
 };
 
 export const computeLeave = (tilesPlayed: string, rack: string): string => {
   const lwg = computeLeaveWithGaps(tilesPlayed, rack);
-  return Array.from(lwg.replaceAll(' ', '')).sort().join('');
+  return Array.from(lwg.replaceAll(" ", "")).sort().join("");
 };

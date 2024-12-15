@@ -5,38 +5,38 @@ import React, {
   useMemo,
   useRef,
   useState,
-} from 'react';
-import { Button, Card, Switch } from 'antd';
-import { BulbOutlined } from '@ant-design/icons';
-import { defaultLetterDistribution } from '../lobby/sought_game_interactions';
+} from "react";
+import { Button, Card, Switch } from "antd";
+import { BulbOutlined } from "@ant-design/icons";
+import { defaultLetterDistribution } from "../lobby/sought_game_interactions";
 import {
   useExaminableGameContextStoreContext,
   useExamineStoreContext,
   useGameContextStoreContext,
   useTentativeTileContext,
-} from '../store/store';
-import { getLeaveKey, getLexiconKey, getWolges } from '../wasm/loader';
-import { RedoOutlined } from '@ant-design/icons';
+} from "../store/store";
+import { getLeaveKey, getLexiconKey, getWolges } from "../wasm/loader";
+import { RedoOutlined } from "@ant-design/icons";
 import {
   EmptyBoardSpaceMachineLetter,
   EmptyRackSpaceMachineLetter,
   EphemeralTile,
   MachineLetter,
   MachineWord,
-} from '../utils/cwgame/common';
-import { Unrace } from '../utils/unrace';
-import { sortTiles } from '../store/constants';
+} from "../utils/cwgame/common";
+import { Unrace } from "../utils/unrace";
+import { sortTiles } from "../store/constants";
 import {
   GameEvent_Type,
   GameEvent_Direction,
-} from '../gen/api/vendor/macondo/macondo_pb';
-import { GameState } from '../store/reducers/game_reducer';
+} from "../gen/api/vendor/macondo/macondo_pb";
+import { GameState } from "../store/reducers/game_reducer";
 import {
   Alphabet,
   machineLetterToRune,
   machineWordToRunes,
   runesToMachineWord,
-} from '../constants/alphabets';
+} from "../constants/alphabets";
 
 type AnalyzerProps = {
   includeCard?: boolean;
@@ -46,14 +46,14 @@ type AnalyzerProps = {
 type JsonMove =
   | {
       equity: number;
-      action: 'exchange';
+      action: "exchange";
       tiles: Array<number>;
       valid?: boolean;
       invalid_words?: Array<Array<number>>;
     }
   | {
       equity: number;
-      action: 'play';
+      action: "play";
       down: boolean;
       lane: number;
       idx: number;
@@ -65,26 +65,26 @@ type JsonMove =
 
 const jsonMoveToKey = (v: JsonMove) => {
   switch (v.action) {
-    case 'exchange': {
+    case "exchange": {
       return JSON.stringify(
-        ['action', 'tiles'].reduce(
+        ["action", "tiles"].reduce(
           (h: { [key: string]: unknown }, k: string) => {
             h[k] = (v as { [key: string]: unknown })[k];
             return h;
           },
-          {}
-        )
+          {},
+        ),
       );
     }
-    case 'play': {
+    case "play": {
       return JSON.stringify(
-        ['action', 'down', 'lane', 'idx', 'word'].reduce(
+        ["action", "down", "lane", "idx", "word"].reduce(
           (h: { [key: string]: unknown }, k: string) => {
             h[k] = (v as { [key: string]: unknown })[k];
             return h;
           },
-          {}
-        )
+          {},
+        ),
       );
     }
     default: {
@@ -143,13 +143,13 @@ export const analyzerMoveFromJsonMove = (
   dim: number,
   letters: Array<MachineLetter>,
   rackNum: MachineWord,
-  alphabet: Alphabet
+  alphabet: Alphabet,
 ): AnalyzerMove => {
   const jsonKey = jsonMoveToKey(move);
   const defaultRet = {
     jsonKey,
-    displayMove: '',
-    coordinates: '',
+    displayMove: "",
+    coordinates: "",
     // always leave out leave
     vertical: false,
     col: 0,
@@ -161,10 +161,10 @@ export const analyzerMoveFromJsonMove = (
   };
 
   switch (move.action) {
-    case 'play': {
+    case "play": {
       let leaveNum = [...rackNum];
       const leaveWithGaps = [...rackNum];
-      let displayMove = '';
+      let displayMove = "";
       const tilesBeingMoved = new Array<MachineLetter>();
       const vertical = move.down;
       const row = vertical ? move.idx : move.lane;
@@ -180,19 +180,19 @@ export const analyzerMoveFromJsonMove = (
       for (const t of move.word) {
         if (t === 0) {
           if (!inParen) {
-            displayMove += '(';
+            displayMove += "(";
             inParen = true;
           }
           displayMove += machineLetterToRune(
             letters[r * dim + c],
             alphabet,
             false,
-            true
+            true,
           );
           tilesBeingMoved.push(0); // through space
         } else {
           if (inParen) {
-            displayMove += ')';
+            displayMove += ")";
             inParen = false;
           }
           const tileLabel = wolgesLetterToLabel(t, alphabet);
@@ -208,7 +208,7 @@ export const analyzerMoveFromJsonMove = (
         if (vertical) ++r;
         else ++c;
       }
-      if (inParen) displayMove += ')';
+      if (inParen) displayMove += ")";
       // sortTiles takes out the gaps:
       leaveNum = sortTiles(leaveNum, alphabet);
       return {
@@ -226,7 +226,7 @@ export const analyzerMoveFromJsonMove = (
         isExchange: false,
       };
     }
-    case 'exchange': {
+    case "exchange": {
       let leaveNum = [...rackNum];
       const leaveWithGaps = [...rackNum];
 
@@ -250,9 +250,9 @@ export const analyzerMoveFromJsonMove = (
                 tilesBeingMoved,
                 alphabet,
                 false,
-                true
+                true,
               )}`
-            : 'Pass',
+            : "Pass",
         leave: leaveNum,
         leaveWithGaps,
         equity: move.equity,
@@ -275,7 +275,7 @@ export const analyzerMoveFromJsonMove = (
 const parseExaminableGameContext = (
   examinableGameContext: GameState,
   lexicon: string,
-  variant?: string
+  variant?: string,
 ) => {
   const {
     board: { dim, letters },
@@ -291,17 +291,17 @@ const parseExaminableGameContext = (
   const rackNum = sortTiles(players[onturn].currentRack, alphabet);
 
   let loadableKey = lexicon;
-  let rules = 'CrosswordGame';
-  if (variant === 'wordsmog' || variant === 'wordsmog_super') {
-    rules = 'WordSmog';
-    loadableKey += '.WordSmog';
+  let rules = "CrosswordGame";
+  if (variant === "wordsmog" || variant === "wordsmog_super") {
+    rules = "WordSmog";
+    loadableKey += ".WordSmog";
   }
-  if (variant === 'classic_super' || variant === 'wordsmog_super') {
+  if (variant === "classic_super" || variant === "wordsmog_super") {
     // only english and catalan supported.
-    rules += 'Super';
+    rules += "Super";
     loadableKey = `super-${loadableKey}`;
   }
-  if (letterDistribution !== 'english') {
+  if (letterDistribution !== "english") {
     rules += `/${letterDistribution}`;
   }
   const boardObj = {
@@ -311,8 +311,8 @@ const parseExaminableGameContext = (
         letters
           .slice(row * dim, row * dim + dim)
           // I like writing write-only code.
-          .map((l) => (l & 0x80 ? -(l & 0x7f) : l))
-      )
+          .map((l) => (l & 0x80 ? -(l & 0x7f) : l)),
+      ),
     ),
     lexicon: getLexiconKey(loadableKey),
     leave: getLeaveKey(loadableKey),
@@ -352,7 +352,7 @@ const AnalyzerContext = React.createContext<{
   showMovesForTurn: -1,
   setShowMovesForTurn: (a: number) => {},
   setAutoMode: () => {},
-  lexicon: '',
+  lexicon: "",
   variant: undefined,
 });
 
@@ -363,13 +363,13 @@ type AnalyzerContextProviderProps = {
 };
 
 export const AnalyzerContextProvider = (
-  props: AnalyzerContextProviderProps
+  props: AnalyzerContextProviderProps,
 ) => {
   const { children, lexicon, variant } = props;
   const [, setMovesCacheId] = useState(0);
   const rerenderMoves = useCallback(
     () => setMovesCacheId((n) => (n + 1) | 0),
-    []
+    [],
   );
   const [showMovesForTurn, setShowMovesForTurn] = useState(-1);
   const [autoMode, setAutoMode] = useState(false);
@@ -391,15 +391,15 @@ export const AnalyzerContextProvider = (
       return parseExaminableGameContext(
         examinableGameContext,
         lexicon,
-        variant
+        variant,
       );
-    } catch (e) {
+    } catch {
       return null;
     }
   }, [examinableGameContext, lexicon, variant]);
   const boardJsonKey = React.useMemo(
     () => JSON.stringify(parsedEgc?.boardObj),
-    [parsedEgc]
+    [parsedEgc],
   );
   const requestAnalysis = useCallback(() => {
     if (!parsedEgc) return;
@@ -449,7 +449,7 @@ export const AnalyzerContextProvider = (
         const movesObj = JSON.parse(movesStr) as Array<JsonMove>;
 
         const formattedMoves = movesObj.map((move) =>
-          analyzerMoveFromJsonMove(move, dim, letters, rackNum, alphabet)
+          analyzerMoveFromJsonMove(move, dim, letters, rackNum, alphabet),
         );
         movesCache[turn] = {
           jsonKey: boardJsonKey,
@@ -499,7 +499,7 @@ export const AnalyzerContextProvider = (
       setShowMovesForTurn,
       lexicon,
       variant,
-    ]
+    ],
   );
 
   return <AnalyzerContext.Provider value={contextValue} children={children} />;
@@ -560,7 +560,7 @@ export const usePlaceMoveCallback = () => {
       setDisplayedRack,
       setPlacedTiles,
       setPlacedTilesTempScore,
-    ]
+    ],
   );
 
   return placeMove;
@@ -643,13 +643,13 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
         case GameEvent_Type.TILE_PLACEMENT_MOVE: {
           const down = evt.direction === GameEvent_Direction.VERTICAL;
           return {
-            action: 'play',
+            action: "play",
             down,
             lane: down ? evt.column : evt.row,
             idx: down ? evt.row : evt.column,
             word: wolgesLabelsToLetter(
               evt.playedTiles,
-              examinableGameContext.alphabet
+              examinableGameContext.alphabet,
             ),
             score: evt.score,
           };
@@ -658,14 +658,14 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           return null;
         }
         case GameEvent_Type.PASS: {
-          return { action: 'exchange', tiles: [] };
+          return { action: "exchange", tiles: [] };
         }
         case GameEvent_Type.EXCHANGE: {
           return {
-            action: 'exchange',
+            action: "exchange",
             tiles: runesToMachineWord(
               evt.exchanged,
-              examinableGameContext.alphabet
+              examinableGameContext.alphabet,
             ),
           };
         }
@@ -707,13 +707,13 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
         const movesObj = JSON.parse(movesStr);
         const moveObj = movesObj[0];
 
-        if (moveObj.result === 'scored') {
+        if (moveObj.result === "scored") {
           const analyzerMove = analyzerMoveFromJsonMove(
             moveObj,
             dim,
             letters,
             rackNum,
-            alphabet
+            alphabet,
           );
           setEvaluatedMove({
             evaluatedMoveId: evaluatedMoveIdAtStart,
@@ -723,12 +723,12 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
               chosen: true,
               valid: moveObj.valid,
               invalid_words: moveObj.invalid_words?.map(
-                (tiles: Array<number>) => machineWordToRunes(tiles, alphabet)
+                (tiles: Array<number>) => machineWordToRunes(tiles, alphabet),
               ),
             },
           });
         } else {
-          console.error('invalid move', moveObj);
+          console.error("invalid move", moveObj);
           setEvaluatedMove({
             evaluatedMoveId: evaluatedMoveIdAtStart,
             moveObj: null,
@@ -782,13 +782,13 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   }, [showMoves, cachedMoves, currentEvaluatedMove]);
 
   const showEquityLoss = React.useMemo(
-    () => localStorage.getItem('enableShowEquityLoss') === 'true',
-    []
+    () => localStorage.getItem("enableShowEquityLoss") === "true",
+    [],
   );
   const equityBase = React.useMemo(
     () =>
       showEquityLoss ? (moves?.find((x) => x.valid ?? true)?.equity ?? 0) : 0,
-    [moves, showEquityLoss]
+    [moves, showEquityLoss],
   );
   const renderAnalyzerMoves = useMemo(
     () =>
@@ -798,7 +798,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           onClick={() => {
             placeMove(m);
           }}
-          {...((m.chosen ?? false) && { className: 'move-chosen' })}
+          {...((m.chosen ?? false) && { className: "move-chosen" })}
         >
           <td className="move-coords">{m.coordinates}</td>
           <td className="move">
@@ -808,7 +808,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
                 <br />(
                 {m.invalid_words.map((word, idx) => (
                   <React.Fragment key={idx}>
-                    {idx > 0 && ', '}
+                    {idx > 0 && ", "}
                     {word}*
                   </React.Fragment>
                 ))}
@@ -826,7 +826,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           </td>
         </tr>
       )) ?? null,
-    [equityBase, examinableGameContext.alphabet, moves, placeMove]
+    [equityBase, examinableGameContext.alphabet, moves, placeMove],
   );
   const analyzerControls = (
     <div className="analyzer-controls">

@@ -1,15 +1,15 @@
-import React, { ReactNode, useMemo } from 'react';
-import { Button, Card } from 'antd';
-import { UsernameWithContext } from '../shared/usernameWithContext';
-import moment from 'moment';
-import { timeCtrlToDisplayName } from '../store/constants';
-import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
-import { StarFilled, StarOutlined } from '@ant-design/icons';
-import { Hints } from './hints';
-import { PuzzleShareButton } from './puzzle_share';
-import { ChallengeRule } from '../gen/api/vendor/macondo/macondo_pb';
-import { challengeRuleNames } from '../constants/challenge_rules';
-import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
+import React, { ReactNode, useMemo } from "react";
+import { Button, Card } from "antd";
+import { UsernameWithContext } from "../shared/usernameWithContext";
+import moment from "moment";
+import { timeCtrlToDisplayName } from "../store/constants";
+import { PuzzleStatus } from "../gen/api/proto/puzzle_service/puzzle_service_pb";
+import { StarFilled, StarOutlined } from "@ant-design/icons";
+import { Hints } from "./hints";
+import { PuzzleShareButton } from "./puzzle_share";
+import { ChallengeRule } from "../gen/api/vendor/macondo/macondo_pb";
+import { challengeRuleNames } from "../constants/challenge_rules";
+import { PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
 
 type Props = {
   solved: number;
@@ -35,10 +35,10 @@ type Props = {
 
 export const renderStars = (stars: number, useEmoji = false) => {
   const ret: ReactNode[] = [];
-  let eRet = '';
+  let eRet = "";
   for (let i = stars; i > 0; i--) {
     if (useEmoji) {
-      eRet += '⭐';
+      eRet += "⭐";
     } else ret.push(<StarFilled key={`star-${i}`} />);
   }
   if (useEmoji) {
@@ -46,7 +46,7 @@ export const renderStars = (stars: number, useEmoji = false) => {
   }
   while (ret.length < MAX_STARS) {
     ret.push(
-      <StarOutlined className="unearned" key={`unearned-star-${ret.length}`} />
+      <StarOutlined className="unearned" key={`unearned-star-${ret.length}`} />,
     );
   }
 
@@ -81,30 +81,30 @@ export const PuzzleInfo = React.memo((props: Props) => {
   } = props;
 
   // TODO: should be determined on the back end and not hardcoded
-  const puzzleType = 'Equity puzzle';
+  const puzzleType = "Equity puzzle";
   const score = calculatePuzzleScore(!!dateSolved, attempts);
   const attemptsText = useMemo(() => {
     if (solved === PuzzleStatus.CORRECT) {
-      const solveDate = moment(dateSolved).format('MMMM D, YYYY');
+      const solveDate = moment(dateSolved).format("MMMM D, YYYY");
       return (
         <p className="attempts-made">{`Solved in ${attempts} ${
-          attempts === 1 ? 'attempt' : 'attempts'
+          attempts === 1 ? "attempt" : "attempts"
         } on ${solveDate}`}</p>
       );
     }
     switch (solved) {
       case PuzzleStatus.CORRECT:
-        const solveDate = moment(dateSolved).format('MMMM D, YYYY');
+        const solveDate = moment(dateSolved).format("MMMM D, YYYY");
         return (
           <p className="attempts-made">{`Solved in ${attempts} ${
-            attempts === 1 ? 'attempt' : 'attempts'
+            attempts === 1 ? "attempt" : "attempts"
           } on ${solveDate}`}</p>
         );
       case PuzzleStatus.UNANSWERED:
         return (
           <p className="attempts-made">
             {`You have made ${attempts} ${
-              attempts === 1 ? 'attempt' : 'attempts'
+              attempts === 1 ? "attempt" : "attempts"
             }`}
           </p>
         );
@@ -112,7 +112,7 @@ export const PuzzleInfo = React.memo((props: Props) => {
       default:
         return (
           <p className="attempts-made">{`You gave up after ${attempts} ${
-            attempts === 1 ? 'attempt' : 'attempts'
+            attempts === 1 ? "attempt" : "attempts"
           }`}</p>
         );
     }
@@ -146,14 +146,14 @@ export const PuzzleInfo = React.memo((props: Props) => {
   }, [loadNewPuzzle, showSolution, solved, puzzleID, attempts]);
 
   const formattedGameDate = useMemo(() => {
-    return moment(gameDate).format('MMMM D, YYYY');
+    return moment(gameDate).format("MMMM D, YYYY");
   }, [gameDate]);
 
   const gameLink = useMemo(() => {
     if (gameUrl) {
       return (
         <span>
-          {' • '}
+          {" • "}
           <a href={gameUrl} target="_blank" rel="noopener noreferrer">
             View Game
           </a>
@@ -164,15 +164,15 @@ export const PuzzleInfo = React.memo((props: Props) => {
 
   const challengeDisplay = challengeRule
     ? challengeRuleNames[challengeRule]
-    : '';
+    : "";
 
   const player1NameDisplay = player1?.nickname ? (
-    <UsernameWithContext username={player1?.nickname || ''} />
+    <UsernameWithContext username={player1?.nickname || ""} />
   ) : (
     <span>unknown player</span>
   );
   const player2NameDisplay = player2?.nickname ? (
-    <UsernameWithContext username={player2?.nickname || ''} />
+    <UsernameWithContext username={player2?.nickname || ""} />
   ) : (
     <span>unknown player</span>
   );
@@ -186,7 +186,7 @@ export const PuzzleInfo = React.memo((props: Props) => {
   if (!initialTimeSeconds && !incrementSeconds && !maxOvertimeMinutes) {
     settingsDisplay = (
       <p className="game-settings">{`${
-        variantName || 'classic'
+        variantName || "classic"
       } • ${lexicon}`}</p>
     );
   } else {
@@ -195,9 +195,9 @@ export const PuzzleInfo = React.memo((props: Props) => {
         timeCtrlToDisplayName(
           initialTimeSeconds || 0,
           incrementSeconds || 0,
-          maxOvertimeMinutes || 0
+          maxOvertimeMinutes || 0,
         )[0]
-      } • ${variantName || 'classic'} • ${lexicon}`}</p>
+      } • ${variantName || "classic"} • ${lexicon}`}</p>
     );
   }
 
@@ -217,7 +217,7 @@ export const PuzzleInfo = React.memo((props: Props) => {
         {settingsDisplay}
         <div>
           {challengeDisplay}
-          {challengeDisplay && ratingMode ? ' • ' : ''}
+          {challengeDisplay && ratingMode ? " • " : ""}
           {ratingMode}
         </div>
         <p className="instructions">

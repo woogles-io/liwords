@@ -1,7 +1,7 @@
-import React from 'react';
-import { TopBar } from '../navigation/topbar';
-import './staticContent.scss';
-import woogles from '../assets/woogles.png';
+import React from "react";
+import { TopBar } from "../navigation/topbar";
+import "./staticContent.scss";
+import woogles from "../assets/woogles.png";
 
 export const TermsOfService = () => {
   return (
@@ -38,7 +38,7 @@ export const TermsOfService = () => {
             word gamers of all skill levels to compete and improve at their
             favorite games. We actively solicit feedback for features that our
             users would like to see. Please feel free to contact us with
-            suggestions via our{' '}
+            suggestions via our{" "}
             <a
               href="https://tinyurl.com/y4dkb2g6"
               target="_blank"
@@ -46,14 +46,14 @@ export const TermsOfService = () => {
             >
               Google form
             </a>
-            ,{' '}
+            ,{" "}
             <a
               href="https://discord.gg/GqkUqA7ENm"
               target="_blank"
               rel="noopener noreferrer"
             >
               Discord,
-            </a>{' '}
+            </a>{" "}
             or e-mail us at woogles at woogles.io.
           </p>
           <p>
@@ -179,7 +179,7 @@ export const TermsOfService = () => {
               <p>
                 <span className="bullet-heading">
                   Artificially inflating or deflating your rating.
-                </span>{' '}
+                </span>{" "}
                 This is where a User purposefully loses, or has arranged with an
                 opponent to win. As a result, the User’s rating will
                 artificially increase or decrease. This compromises the
@@ -205,7 +205,7 @@ export const TermsOfService = () => {
               <p>
                 <span className="bullet-heading">
                   Harassing conduct or offensive language.
-                </span>{' '}
+                </span>{" "}
                 We reserve the right for our team and mods to unilaterally
                 determine what constitutes harassment or offensive language.
               </p>
@@ -214,7 +214,7 @@ export const TermsOfService = () => {
               <p>
                 <span className="bullet-heading">
                   Sharing copyrighted material,
-                </span>{' '}
+                </span>{" "}
                 defined as posting anything other than what you’ve made
                 yourself, or have a fiduciary right to share. Users are
                 responsible for what they post and share.
@@ -224,7 +224,7 @@ export const TermsOfService = () => {
               <p>
                 <span className="bullet-heading">
                   Abuse our infrastructure.
-                </span>{' '}
+                </span>{" "}
                 Don’t take any action that imposes an unreasonable load on our
                 infrastructure or on our third-party providers. We reserve the
                 right to determine what is reasonable.
@@ -255,7 +255,7 @@ export const TermsOfService = () => {
           <p>
             <span className="bullet-heading">
               Data that is not erased upon account closure:
-            </span>{' '}
+            </span>{" "}
             We will not delete the existence of games in which you participated;
             however, your username will no longer be associated with those
             games. We may also retain certain information as required by law or
@@ -309,7 +309,7 @@ export const TermsOfService = () => {
           </p>
           <h4>Copyright</h4>
           <p>
-            Woogles is licensed under the{' '}
+            Woogles is licensed under the{" "}
             <a
               href="https://github.com/woogles-io/liwords/blob/master/LICENSE"
               target="_blank"
@@ -344,7 +344,7 @@ export const TermsOfService = () => {
             Any user may use Woogles.io for free in perpetuity, with no
             expectation of payment. Users can donate to Woogles Inc via the
             donation link on our homepage (
-            <a href="/donate">woogles.io/donate</a>), or by becoming a{' '}
+            <a href="/donate">woogles.io/donate</a>), or by becoming a{" "}
             <a
               href="https://www.patreon.com/woogles_io/"
               target="_blank"

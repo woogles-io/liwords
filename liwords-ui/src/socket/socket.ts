@@ -1,36 +1,36 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { jwtDecode } from 'jwt-decode';
-import useWebSocket from 'react-use-websocket';
-import { useLocation } from 'react-router-dom';
-import { message } from 'antd';
-import { useLoginStateStoreContext } from '../store/store';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { jwtDecode } from "jwt-decode";
+import useWebSocket from "react-use-websocket";
+import { useLocation } from "react-router";
+import { message } from "antd";
+import { useLoginStateStoreContext } from "../store/store";
 import {
   useOnSocketMsg,
   ReverseMessageType,
   enableShowSocket,
   parseMsgs,
-} from '../store/socket_handlers';
-import { decodeToMsg, encodeToSocketFmt } from '../utils/protobuf';
-import { ActionType } from '../actions/actions';
-import { reloadAction } from './reload';
-import { birthdateWarning } from './birthdateWarning';
-import { useClient } from '../utils/hooks/connect';
-import { AuthenticationService } from '../gen/api/proto/user_service/user_service_pb';
+} from "../store/socket_handlers";
+import { decodeToMsg, encodeToSocketFmt } from "../utils/protobuf";
+import { ActionType } from "../actions/actions";
+import { reloadAction } from "./reload";
+import { birthdateWarning } from "./birthdateWarning";
+import { useClient } from "../utils/hooks/connect";
+import { AuthenticationService } from "../gen/api/proto/user_service/user_service_pb";
 import {
   create,
   DescMessage,
   MessageInitShape,
   toBinary,
-} from '@bufbuild/protobuf';
-import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
+} from "@bufbuild/protobuf";
+import { MessageType } from "../gen/api/proto/ipc/ipc_pb";
 
 const getSocketURI = (): string => {
   const loc = window.location;
   let protocol;
-  if (loc.protocol === 'https:') {
-    protocol = 'wss:';
+  if (loc.protocol === "https:") {
+    protocol = "wss:";
   } else {
-    protocol = 'ws:';
+    protocol = "ws:";
   }
   const host = window.RUNTIME_CONFIGURATION.socketEndpoint || loc.host;
 
@@ -59,7 +59,7 @@ export const LiwordsSocket = (props: {
     sendProtoSocketMsg: <T extends DescMessage>(
       schema: T,
       messageType: MessageType,
-      data: MessageInitShape<T>
+      data: MessageInitShape<T>,
     ) => void;
   }) => void;
 }): null => {
@@ -87,8 +87,8 @@ export const LiwordsSocket = (props: {
   const { dispatchLoginState } = loginStateStore;
   const authClient = useClient(AuthenticationService);
   const getFullSocketUrlAsync = useCallback(async () => {
-    console.log('About to request token');
-    const failUrl = '';
+    console.log("About to request token");
+    const failUrl = "";
     try {
       const resp = await authClient.getSocketToken({});
 
@@ -114,10 +114,10 @@ export const LiwordsSocket = (props: {
           connID: cid,
           isChild: decoded.cs,
           path: pathname,
-          perms: decoded.perms?.split(','),
+          perms: decoded.perms?.split(","),
         },
       });
-      const bdateWarning = localStorage?.getItem('birthdateWarning');
+      const bdateWarning = localStorage?.getItem("birthdateWarning");
       if (
         parseInt(decoded.cs) === 2 &&
         decoded.a &&
@@ -126,28 +126,28 @@ export const LiwordsSocket = (props: {
       ) {
         message.warning({
           content: birthdateWarning,
-          className: 'board-hud-message',
-          key: 'birthdate-warning',
+          className: "board-hud-message",
+          key: "birthdate-warning",
           duration: 5,
         });
         // Only warn them once a day
-        localStorage.setItem('birthdateWarning', Date.now().toString());
+        localStorage.setItem("birthdateWarning", Date.now().toString());
       }
-      console.log('Got token, setting state, and will try to connect...');
+      console.log("Got token, setting state, and will try to connect...");
       if (window.RUNTIME_CONFIGURATION.appVersion !== frontEndVersion) {
         console.log(
-          'app version mismatch',
-          'local',
+          "app version mismatch",
+          "local",
           window.RUNTIME_CONFIGURATION.appVersion,
-          'remote',
-          frontEndVersion
+          "remote",
+          frontEndVersion,
         );
 
-        if (frontEndVersion !== '') {
+        if (frontEndVersion !== "") {
           message.warning({
             content: reloadAction,
-            className: 'board-hud-message',
-            key: 'reload-warning',
+            className: "board-hud-message",
+            key: "reload-warning",
             duration: 0,
           });
         }
@@ -158,7 +158,7 @@ export const LiwordsSocket = (props: {
       if ((e as { [response: string]: string }).response) {
         window.console.log((e as { [response: string]: string }).response);
       } else {
-        window.console.log('Unknown error', e);
+        window.console.log("Unknown error", e);
       }
       return failUrl;
     }
@@ -166,19 +166,19 @@ export const LiwordsSocket = (props: {
 
   useEffect(() => {
     if (isConnectedToSocket) {
-      console.log('connected to socket');
+      console.log("connected to socket");
       dispatchLoginState({
         actionType: ActionType.SetConnectedToSocket,
         payload: true,
       });
-      message.destroy('connecting-socket');
+      message.destroy("connecting-socket");
       setJustDisconnected(false);
       return () => {
         if (isMountedRef.current) {
-          console.log('disconnected from socket :(');
+          console.log("disconnected from socket :(");
         } else {
           // Yes, the smiley matters!
-          console.log('disconnected from socket :)');
+          console.log("disconnected from socket :)");
         }
         // Special case: useEffect cleanups seem to be run in forward order,
         // but resetSocket does not imply resetStore, and it is important that
@@ -199,9 +199,9 @@ export const LiwordsSocket = (props: {
     }
     const t = setTimeout(() => {
       message.warning({
-        content: 'Connecting to server...',
+        content: "Connecting to server...",
         duration: 0,
-        key: 'connecting-socket',
+        key: "connecting-socket",
       });
     }, 2000);
     return () => {
@@ -212,11 +212,11 @@ export const LiwordsSocket = (props: {
   const [patienceId, setPatienceId] = useState(0);
   const resetPatience = useCallback(
     () => setPatienceId((n) => (n + 1) | 0),
-    []
+    [],
   );
   useEffect(() => {
     const t = setTimeout(() => {
-      console.log('reconnecting socket');
+      console.log("reconnecting socket");
       resetSocket();
     }, 15000);
     return () => {
@@ -244,7 +244,7 @@ export const LiwordsSocket = (props: {
         resetPatience();
         return decodeToMsg(event.data, onSocketMsg);
       },
-    }
+    },
   );
 
   const sendMessage = useMemo(() => {
@@ -254,13 +254,13 @@ export const LiwordsSocket = (props: {
       msgs.forEach((m) => {
         const { msgType, parsedMsg } = m;
         console.log(
-          '%csent',
-          'background: cyan',
+          "%csent",
+          "background: cyan",
           ReverseMessageType[msgType] ?? msgType,
           parsedMsg,
           performance.now(),
-          'bytelength:',
-          msg.byteLength
+          "bytelength:",
+          msg.byteLength,
         );
       });
 
@@ -272,21 +272,21 @@ export const LiwordsSocket = (props: {
     <T extends DescMessage>(
       schema: T,
       messageType: MessageType,
-      data: MessageInitShape<T>
+      data: MessageInitShape<T>,
     ) => {
       const message = create(schema, data); // Create the message with the provided schema and data
       const encodedMessage = encodeToSocketFmt(
         messageType,
-        toBinary(schema, message)
+        toBinary(schema, message),
       ); // Encode the message
       sendMessage(encodedMessage); // Send the encoded message
     },
-    [sendMessage]
+    [sendMessage],
   );
 
   const ret = useMemo(
     () => ({ sendMessage, justDisconnected, sendProtoSocketMsg }),
-    [sendMessage, justDisconnected, sendProtoSocketMsg]
+    [sendMessage, justDisconnected, sendProtoSocketMsg],
   );
   useEffect(() => {
     setValues(ret);

@@ -1,11 +1,11 @@
-import React, { ReactNode } from 'react';
-import { Card } from 'antd';
-import ReactMarkdown from 'react-markdown';
-import { useTournamentStoreContext } from '../store/store';
-import { UsernameWithContext } from '../shared/usernameWithContext';
-import { CompetitorStatus } from './competitor_status';
-import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
-import { isClubType } from '../store/constants';
+import React, { ReactNode } from "react";
+import { Card } from "antd";
+import ReactMarkdown from "react-markdown";
+import { useTournamentStoreContext } from "../store/store";
+import { UsernameWithContext } from "../shared/usernameWithContext";
+import { CompetitorStatus } from "./competitor_status";
+import { readyForTournamentGame } from "../store/reducers/tournament_reducer";
+import { isClubType } from "../store/constants";
 
 type TournamentInfoProps = {
   setSelectedGameTab: (tab: string) => void;
@@ -25,11 +25,11 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
   const { competitorState: competitorContext, metadata } = tournamentContext;
   const directors = tournamentContext.directors.map((username, i) => (
     <span className="director" key={username}>
-      {i > 0 && ', '}
+      {i > 0 && ", "}
       <UsernameWithContext username={username} omitSendMessage />
     </span>
   ));
-  const type = isClubType(metadata.type) ? 'Club' : 'Tournament';
+  const type = isClubType(metadata.type) ? "Club" : "Tournament";
   const title = (
     <span style={{ color: tournamentContext.metadata.color }}>
       {tournamentContext.metadata.name}
@@ -44,7 +44,7 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
             readyForTournamentGame(
               props.sendSocketMsg,
               tournamentContext.metadata.id,
-              competitorContext
+              competitorContext,
             )
           }
         />
@@ -56,9 +56,9 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
             alt={tournamentContext.metadata.name}
             style={{
               width: 150,
-              textAlign: 'center',
-              margin: '0 auto 18px',
-              display: 'block',
+              textAlign: "center",
+              margin: "0 auto 18px",
+              display: "block",
             }}
           />
         )}

@@ -1,4 +1,4 @@
-@use '../base.scss' as *;
+@use "../base.scss" as *;
 
 .profile {
   @include container;
@@ -398,7 +398,7 @@
     }
   }
   // hide puzzle ratings for now
-  tr[data-row-key*='puzzle'] {
+  tr[data-row-key*="puzzle"] {
     display: none;
   }
 }

@@ -1,11 +1,11 @@
-import { create } from '@bufbuild/protobuf';
+import { create } from "@bufbuild/protobuf";
 import {
   GameEndedEvent,
   GameEndedEventSchema,
   GameEndReason,
   GameInfoResponse,
-} from '../gen/api/proto/ipc/omgwords_pb';
-import { getEnumLabel } from '../utils/protobuf';
+} from "../gen/api/proto/ipc/omgwords_pb";
+import { getEnumLabel } from "../utils/protobuf";
 
 export const endGameMessage = (gee: GameEndedEvent): string => {
   const scores = gee.scores;
@@ -15,12 +15,12 @@ export const endGameMessage = (gee: GameEndedEvent): string => {
   let winner = gee.winner;
   let loser = gee.loser;
   const tie = gee.tie;
-  let summary = [''];
+  let summary = [""];
   // const message = `Game is over. Scores: ${JSON.stringify(
   //   scores
   // )}, new ratings: ${JSON.stringify(ratings)}`;
-  let summaryReason = '';
-  let summaryAddendum = '';
+  let summaryReason = "";
+  let summaryAddendum = "";
   if (tie) {
     // Doesn't matter who we call the "winner" and "loser" here.
     const wlArray = Object.keys(scores);
@@ -44,7 +44,7 @@ export const endGameMessage = (gee: GameEndedEvent): string => {
       break;
     case GameEndReason.CONSECUTIVE_ZEROES:
       properEnding = true;
-      summaryReason = ' (six consecutive scores of zero)';
+      summaryReason = " (six consecutive scores of zero)";
       summaryAddendum = `Final score: ${winscore} - ${losescore}`;
       break;
 
@@ -54,17 +54,17 @@ export const endGameMessage = (gee: GameEndedEvent): string => {
       break;
     case GameEndReason.TRIPLE_CHALLENGE:
       properEnding = true;
-      summaryReason = ' (triple challenge!)';
+      summaryReason = " (triple challenge!)";
       break;
     case GameEndReason.ABORTED:
-      summaryReason = 'Game was cancelled.';
+      summaryReason = "Game was cancelled.";
       break;
     case GameEndReason.CANCELLED:
-      summaryReason = 'Game was cancelled.';
+      summaryReason = "Game was cancelled.";
       break;
     case GameEndReason.FORCE_FORFEIT:
       properEnding = true;
-      summaryReason = ' by forfeit';
+      summaryReason = " by forfeit";
       break;
   }
   if (!properEnding) {
@@ -77,11 +77,11 @@ export const endGameMessage = (gee: GameEndedEvent): string => {
     }
     if (winrating || loserating) {
       summary.push(
-        `New ratings: ${winner}: ${winrating}, ${loser}: ${loserating}`
+        `New ratings: ${winner}: ${winrating}, ${loser}: ${loserating}`,
       );
     }
   }
-  return summary.join('\n');
+  return summary.join("\n");
 };
 
 export const endGameMessageFromGameInfo = (info: GameInfoResponse): string => {
@@ -95,7 +95,7 @@ export const endGameMessageFromGameInfo = (info: GameInfoResponse): string => {
   ) {
     const endReasonText = getEnumLabel(
       GameEndReason,
-      info.gameEndReason
+      info.gameEndReason,
     )?.toLowerCase();
     return `Game was ${endReasonText}.`;
   }

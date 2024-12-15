@@ -1,10 +1,10 @@
 import {
   useExcludedPlayersStoreContext,
   useLoginStateStoreContext,
-} from '../store/store';
-import React, { forwardRef, useImperativeHandle } from 'react';
-import { flashError, useClient } from '../utils/hooks/connect';
-import { SocializeService } from '../gen/api/proto/user_service/user_service_pb';
+} from "../store/store";
+import React, { forwardRef, useImperativeHandle } from "react";
+import { flashError, useClient } from "../utils/hooks/connect";
+import { SocializeService } from "../gen/api/proto/user_service/user_service_pb";
 
 type BlockerProps = {
   className?: string;
@@ -25,17 +25,17 @@ export const TheBlocker = forwardRef((props: BlockerProps, ref) => {
   const { userID } = loginState;
   const socializeClient = useClient(SocializeService);
 
-  let apiFunc: 'addBlock' | 'removeBlock';
+  let apiFunc: "addBlock" | "removeBlock";
   let blockText: string;
 
   if (excludedPlayers.has(props.target)) {
-    apiFunc = 'removeBlock';
+    apiFunc = "removeBlock";
     blockText = props.userName
       ? `Unblock ${props.userName}`
-      : 'Unblock this user';
+      : "Unblock this user";
   } else {
-    apiFunc = 'addBlock';
-    blockText = props.userName ? `Block ${props.userName}` : 'Block this user';
+    apiFunc = "addBlock";
+    blockText = props.userName ? `Block ${props.userName}` : "Block this user";
     // Add some confirmation.
   }
   const blockAction = async () => {
@@ -60,9 +60,9 @@ export const TheBlocker = forwardRef((props: BlockerProps, ref) => {
   }
 
   const DynamicTagName = (props.tagName ||
-    'span') as keyof JSX.IntrinsicElements;
+    "span") as keyof JSX.IntrinsicElements;
   return (
-    <DynamicTagName className={props.className || ''}>
+    <DynamicTagName className={props.className || ""}>
       {blockText}
     </DynamicTagName>
   );

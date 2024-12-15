@@ -1,18 +1,18 @@
-import React, { ReactNode, useCallback, useEffect, useState } from 'react';
-import { AutoComplete } from 'antd';
+import React, { ReactNode, useCallback, useEffect, useState } from "react";
+import { AutoComplete } from "antd";
 import {
   useChatStoreContext,
   useExcludedPlayersStoreContext,
   useLoginStateStoreContext,
-} from '../store/store';
-import { useDebounce } from '../utils/debounce';
-import { ActiveChatChannels_Channel } from '../gen/api/proto/user_service/user_service_pb';
-import { PlayerAvatar } from '../shared/player_avatar';
-import { DisplayUserFlag } from '../shared/display_flag';
-import { TrophyOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons';
-import { ChatEntityObj } from '../store/constants';
-import { useClient } from '../utils/hooks/connect';
-import { AutocompleteService } from '../gen/api/proto/user_service/user_service_pb';
+} from "../store/store";
+import { useDebounce } from "../utils/debounce";
+import { ActiveChatChannels_Channel } from "../gen/api/proto/user_service/user_service_pb";
+import { PlayerAvatar } from "../shared/player_avatar";
+import { DisplayUserFlag } from "../shared/display_flag";
+import { TrophyOutlined, TeamOutlined, UserOutlined } from "@ant-design/icons";
+import { ChatEntityObj } from "../store/constants";
+import { useClient } from "../utils/hooks/connect";
+import { AutocompleteService } from "../gen/api/proto/user_service/user_service_pb";
 
 type Props = {
   defaultChannel: string;
@@ -34,29 +34,29 @@ export type ChatChannelLabel = {
 };
 
 const getChannelType = (channel: string): string => {
-  return channel?.split('.')[1] || '';
+  return channel?.split(".")[1] || "";
 };
 
 const getChannelIcon = (channelType: string): ReactNode => {
   // Note: We may allow tournaments and clubs to have their own avatar going forward
   switch (channelType) {
-    case 'lobby':
+    case "lobby":
       return (
         <div className={`player-avatar channel-icon ch-${channelType}`}>?</div>
       );
-    case 'game':
+    case "game":
       return (
         <div className={`player-avatar channel-icon ch${channelType}`}>
           <UserOutlined />
         </div>
       );
-    case 'gametv':
+    case "gametv":
       return (
         <div className={`player-avatar channel-icon ch-${channelType}`}>
           <TeamOutlined />
         </div>
       );
-    case 'tournament':
+    case "tournament":
       return (
         <div className={`player-avatar channel-icon ch-${channelType}`}>
           <TrophyOutlined />
@@ -68,19 +68,19 @@ const getChannelIcon = (channelType: string): ReactNode => {
 
 export const parseChannelLabel = (
   channelName: string,
-  currentUser: string
+  currentUser: string,
 ): ChatChannelLabel | undefined => {
-  let tokenized = channelName.split(':');
+  let tokenized = channelName.split(":");
   if (tokenized.length > 1) {
-    if (tokenized[0] === 'pm') {
+    if (tokenized[0] === "pm") {
       tokenized.shift();
       tokenized = tokenized.filter((player) => player !== currentUser);
       return {
-        title: `Chat with ${tokenized.join(', ')}`,
-        label: tokenized.join(', '),
+        title: `Chat with ${tokenized.join(", ")}`,
+        label: tokenized.join(", "),
       };
     }
-    if (tokenized[0] === 'tournament') {
+    if (tokenized[0] === "tournament") {
       tokenized.shift();
       return {
         title: `${tokenized[0]} chat`,
@@ -95,16 +95,16 @@ export const parseChannelLabel = (
 const getLocationLabel = (defaultChannel: string): string => {
   const channelType = getChannelType(defaultChannel);
   switch (channelType) {
-    case 'game':
-      return 'Game Chat';
-    case 'gametv':
-      return 'Observer Chat';
-    case 'lobby':
-      return '';
-    case 'tournament':
-      return 'Tournament/Club Chat';
+    case "game":
+      return "Game Chat";
+    case "gametv":
+      return "Observer Chat";
+    case "lobby":
+      return "";
+    case "tournament":
+      return "Tournament/Club Chat";
   }
-  return '';
+  return "";
 };
 
 type user = {
@@ -115,13 +115,13 @@ type user = {
 const extractUser = (
   ch: ActiveChatChannels_Channel,
   userId: string,
-  username: string
+  username: string,
 ): user => {
-  const nameTokens = ch.displayName.split(':');
-  if (nameTokens[0] === 'pm' || 'game') {
+  const nameTokens = ch.displayName.split(":");
+  if (nameTokens[0] === "pm" || "game") {
     const chatUsername =
       nameTokens[1] === username ? nameTokens[2] : nameTokens[1];
-    const idTokens = ch.name.split('.')[2]?.split('_');
+    const idTokens = ch.name.split(".")[2]?.split("_");
     const chatUserId = idTokens[0] === userId ? idTokens[1] : idTokens[0];
     return { uuid: chatUserId, username: chatUsername };
   }
@@ -143,24 +143,24 @@ export const ChatChannels = React.memo((props: Props) => {
       const resp = await acClient.getCompletion({ prefix: searchText });
       setUsernameOptions(resp.users);
     },
-    [acClient]
+    [acClient],
   );
 
   const searchUsernameDebounced = useDebounce(onUsernameSearch, 300);
 
   const handleUsernameSelect = useCallback(
     (data: string) => {
-      const user = data.split(':');
+      const user = data.split(":");
       if (user.length > 1 && sendMessage) {
         sendMessage(user[0], user[1]);
       }
       setShowSearch(false);
     },
-    [sendMessage]
+    [sendMessage],
   );
 
   const setHeight = useCallback(() => {
-    const tabPaneHeight = document.getElementById('chat')?.clientHeight;
+    const tabPaneHeight = document.getElementById("chat")?.clientHeight;
     setMaxHeight(tabPaneHeight ? tabPaneHeight - 48 : undefined);
   }, []);
 
@@ -169,9 +169,9 @@ export const ChatChannels = React.memo((props: Props) => {
   }, [setHeight]);
 
   useEffect(() => {
-    window.addEventListener('resize', setHeight);
+    window.addEventListener("resize", setHeight);
     return () => {
-      window.removeEventListener('resize', setHeight);
+      window.removeEventListener("resize", setHeight);
     };
   }, [setHeight]);
 
@@ -199,16 +199,16 @@ export const ChatChannels = React.memo((props: Props) => {
       // From the lobby, filter out channels we can't get new messages for
       // Todo: Remove this when we send tournament messages to all enrollees
       // regardless of their location
-      if (props.defaultChannel === 'chat.lobby') {
-        return ch.displayName.startsWith('pm');
+      if (props.defaultChannel === "chat.lobby") {
+        return ch.displayName.startsWith("pm");
       }
       if (props.tournamentID) {
         return (
-          ch.displayName.startsWith('pm') ||
+          ch.displayName.startsWith("pm") ||
           ch.name === `chat.tournament.${props.tournamentID}`
         );
       } else {
-        return ch.displayName.startsWith('pm');
+        return ch.displayName.startsWith("pm");
       }
     })
     .map((ch) => {
@@ -223,20 +223,20 @@ export const ChatChannels = React.memo((props: Props) => {
           (acc === undefined || (acc.timestamp && m.timestamp > acc.timestamp))
             ? m
             : acc,
-        undefined
+        undefined,
       );
       const isUnread = props.updatedChannels?.has(ch.name) || lastUnread;
       const chatUser = extractUser(ch, userID, username);
       const channelType = getChannelType(ch.name);
       return (
         <div
-          className={`channel-listing${isUnread ? ' unread' : ''}`}
+          className={`channel-listing${isUnread ? " unread" : ""}`}
           key={ch.name}
           onClick={() => {
             props.onChannelSelect(ch.name, channelLabel.title);
           }}
         >
-          {channelType === 'pm' && chatUser.username ? (
+          {channelType === "pm" && chatUser.username ? (
             <PlayerAvatar
               player={{
                 userId: chatUser.uuid,
@@ -278,11 +278,11 @@ export const ChatChannels = React.memo((props: Props) => {
       {locationLabel && <p className="breadcrumb">{locationLabel}</p>}
       {!props.suppressDefault && (
         <div
-          className={`channel-listing default${defaultUnread ? ' unread' : ''}`}
+          className={`channel-listing default${defaultUnread ? " unread" : ""}`}
           onClick={() => {
             props.onChannelSelect(
               props.defaultChannel,
-              props.defaultDescription
+              props.defaultDescription,
             );
           }}
         >

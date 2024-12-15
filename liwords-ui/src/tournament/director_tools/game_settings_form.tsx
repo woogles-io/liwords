@@ -9,36 +9,36 @@ import {
   Switch,
   Tag,
   Typography,
-} from 'antd';
-import { Store } from 'rc-field-form/lib/interface';
-import React, { useState } from 'react';
+} from "antd";
+import { Store } from "rc-field-form/lib/interface";
+import React, { useState } from "react";
 import {
   challRuleToStr,
   initTimeDiscreteScale,
   timeCtrlToDisplayName,
-} from '../../store/constants';
-import { ChallengeRulesFormItem } from '../../lobby/challenge_rules_form_item';
-import { VariantIcon } from '../../shared/variant_icons';
-import { LexiconFormItem } from '../../shared/lexicon_display';
-import { SmileOutlined } from '@ant-design/icons';
-import { GameRequestToFormValues } from '../../lobby/seek_form';
+} from "../../store/constants";
+import { ChallengeRulesFormItem } from "../../lobby/challenge_rules_form_item";
+import { VariantIcon } from "../../shared/variant_icons";
+import { LexiconFormItem } from "../../shared/lexicon_display";
+import { SmileOutlined } from "@ant-design/icons";
+import { GameRequestToFormValues } from "../../lobby/seek_form";
 import {
   GameMode,
   GameRequest,
   GameRequestSchema,
   GameRulesSchema,
   RatingMode,
-} from '../../gen/api/proto/ipc/omgwords_pb';
-import { defaultLetterDistribution } from '../../lobby/sought_game_interactions';
-import { create } from '@bufbuild/protobuf';
+} from "../../gen/api/proto/ipc/omgwords_pb";
+import { defaultLetterDistribution } from "../../lobby/sought_game_interactions";
+import { create } from "@bufbuild/protobuf";
 
 type Props = {
   setGameRequest: (gr: GameRequest) => void;
   gameRequest: GameRequest | undefined;
 };
 
-const otLabel = 'Overtime';
-const incLabel = 'Increment';
+const otLabel = "Overtime";
+const incLabel = "Increment";
 const otUnitLabel = (
   <>
     minutes <span className="help">(10 point penalty each extra minute)</span>
@@ -60,27 +60,27 @@ export const SettingsForm = (props: Props) => {
 
   const [itc, , itt] = timeCtrlToDisplayName(
     initTimeDiscreteScale[initialValues.initialtimeslider].seconds,
-    initialValues.incOrOT === 'increment'
+    initialValues.incOrOT === "increment"
       ? Math.round(initialValues.extratime as number)
       : 0,
-    initialValues.incOrOT === 'increment'
+    initialValues.incOrOT === "increment"
       ? 0
-      : Math.round(initialValues.extratime as number)
+      : Math.round(initialValues.extratime as number),
   );
   const [timectrl, setTimectrl] = useState(itc);
   const [ttag, setTtag] = useState(itt);
   const [timeSetting, setTimeSetting] = useState(
-    initialValues.incOrOT === 'overtime' ? otLabel : incLabel
+    initialValues.incOrOT === "overtime" ? otLabel : incLabel,
   );
   const [extraTimeLabel, setExtraTimeLabel] = useState(
-    initialValues.incOrOT === 'overtime' ? otUnitLabel : incUnitLabel
+    initialValues.incOrOT === "overtime" ? otUnitLabel : incUnitLabel,
   );
   const [maxTimeSetting, setMaxTimeSetting] = useState(
-    initialValues.incOrOT === 'overtime' ? 10 : 60
+    initialValues.incOrOT === "overtime" ? 10 : 60,
   );
 
   const onFormChange = (val: Store, allvals: Store) => {
-    if (allvals.incOrOT === 'increment') {
+    if (allvals.incOrOT === "increment") {
       setTimeSetting(incLabel);
       setMaxTimeSetting(60);
       setExtraTimeLabel(incUnitLabel);
@@ -91,25 +91,25 @@ export const SettingsForm = (props: Props) => {
     }
     const [tc, , tt] = timeCtrlToDisplayName(
       initTimeDiscreteScale[allvals.initialtimeslider].seconds,
-      allvals.incOrOT === 'increment'
+      allvals.incOrOT === "increment"
         ? Math.round(allvals.extratime as number)
         : 0,
-      allvals.incOrOT === 'increment'
+      allvals.incOrOT === "increment"
         ? 0
-        : Math.round(allvals.extratime as number)
+        : Math.round(allvals.extratime as number),
     );
     setTimectrl(tc);
     setTtag(tt);
   };
 
   const validateMessages = {
-    required: 'This field is required.',
+    required: "This field is required.",
   };
 
   const submitGameReq = (values: Store) => {
     const gr = create(GameRequestSchema, {});
     const rules = create(GameRulesSchema, {
-      boardLayoutName: 'CrosswordGame',
+      boardLayoutName: "CrosswordGame",
       letterDistributionName: defaultLetterDistribution(values.lexicon),
       variantName: values.variant,
     });
@@ -119,7 +119,7 @@ export const SettingsForm = (props: Props) => {
     gr.initialTimeSeconds =
       initTimeDiscreteScale[values.initialtimeslider].seconds;
 
-    if (values.incOrOT === 'increment') {
+    if (values.incOrOT === "increment") {
       gr.incrementSeconds = values.extratime;
     } else {
       gr.maxOvertimeMinutes = values.extratime;
@@ -220,7 +220,7 @@ export const DisplayedGameSetting = (gr: GameRequest | undefined) => {
       <dt>Challenge Rule</dt>
       <dd>{challRuleToStr(gr.challengeRule)}</dd>
       <dt>Rated</dt>
-      <dd>{gr.ratingMode === RatingMode.RATED ? 'Yes' : 'No'}</dd>
+      <dd>{gr.ratingMode === RatingMode.RATED ? "Yes" : "No"}</dd>
     </dl>
   ) : (
     <Typography.Text

@@ -1,6 +1,6 @@
-import { Col, Row } from 'antd';
-import React from 'react';
-import { TopBar } from './navigation/topbar';
+import { Col, Row } from "antd";
+import React from "react";
+import { TopBar } from "./navigation/topbar";
 
 export const DonateSuccess = () => {
   return (

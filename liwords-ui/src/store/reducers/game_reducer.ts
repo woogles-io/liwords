@@ -1,4 +1,4 @@
-import { Board } from '../../utils/cwgame/board';
+import { Board } from "../../utils/cwgame/board";
 import {
   PlayerInfo,
   GameEvent,
@@ -8,24 +8,24 @@ import {
   GameEvent_Direction,
   GameEventSchema,
   PlayerInfoSchema,
-} from '../../gen/api/vendor/macondo/macondo_pb';
-import { Action, ActionType } from '../../actions/actions';
+} from "../../gen/api/vendor/macondo/macondo_pb";
+import { Action, ActionType } from "../../actions/actions";
 import {
   PlayedTiles,
   PlayerOfTiles,
   MachineLetter,
   isDesignatedBlankMachineLetter,
   MachineWord,
-} from '../../utils/cwgame/common';
-import { PlayerOrder } from '../constants';
-import { ClockController, Millis } from '../timer_controller';
+} from "../../utils/cwgame/common";
+import { PlayerOrder } from "../constants";
+import { ClockController, Millis } from "../timer_controller";
 import {
   Alphabet,
   alphabetFromName,
   machineWordToRunes,
   runesToMachineWord,
   StandardEnglishAlphabet,
-} from '../../constants/alphabets';
+} from "../../constants/alphabets";
 import {
   GameDocument,
   GameEndedEvent,
@@ -36,12 +36,12 @@ import {
   ServerOMGWordsEvent,
   GameDocumentSchema,
   ServerGameplayEventSchema,
-} from '../../gen/api/proto/ipc/omgwords_pb';
+} from "../../gen/api/proto/ipc/omgwords_pb";
 import {
   CrosswordGameGridLayout,
   SuperCrosswordGameGridLayout,
-} from '../../constants/board_layout';
-import { clone, create } from '@bufbuild/protobuf';
+} from "../../constants/board_layout";
+import { clone, create } from "@bufbuild/protobuf";
 
 type TileDistribution = { [ml: MachineLetter]: number };
 
@@ -102,7 +102,7 @@ export const startingGameState = (
   alphabet: Alphabet,
   players: Array<RawPlayerInfo>,
   gameID: string,
-  layout = CrosswordGameGridLayout
+  layout = CrosswordGameGridLayout,
 ): GameState => {
   const gs = {
     board: new Board(layout),
@@ -135,7 +135,7 @@ const clonePlayers = (players: Array<RawPlayerInfo>) => {
 
 const newGameStateFromGameplayEvent = (
   state: GameState,
-  sge: ServerGameplayEvent
+  sge: ServerGameplayEvent,
 ): GameState => {
   // Variables to pass down anew:
   let { board, lastPlayedTiles, playerOfTileAt, pool } = state;
@@ -143,7 +143,7 @@ const newGameStateFromGameplayEvent = (
   // let currentTurn;
   const evt = sge.event;
   if (!evt) {
-    throw new Error('missing event');
+    throw new Error("missing event");
   }
   // Append the event.
 
@@ -170,7 +170,7 @@ const newGameStateFromGameplayEvent = (
       // Set the user's rack back to what it used to be.
       players[onturn].currentRack = runesToMachineWord(
         toUnplace.rack,
-        state.alphabet
+        state.alphabet,
       );
       break;
     }
@@ -182,7 +182,7 @@ const newGameStateFromGameplayEvent = (
   ) {
     players[onturn].currentRack = runesToMachineWord(
       sge.newRack,
-      state.alphabet
+      state.alphabet,
     );
   }
 
@@ -216,7 +216,7 @@ const placeOnBoard = (
   board: Board,
   pool: TileDistribution,
   evt: GameEvent,
-  alphabet: Alphabet
+  alphabet: Alphabet,
 ): [PlayedTiles, TileDistribution] => {
   const play = evt.playedTiles;
   const playedTiles: PlayedTiles = {};
@@ -249,7 +249,7 @@ const unplaceOnBoard = (
   board: Board,
   pool: TileDistribution,
   evt: GameEvent,
-  alphabet: Alphabet
+  alphabet: Alphabet,
 ): TileDistribution => {
   const play = evt.playedTiles;
   const newPool = { ...pool };
@@ -280,7 +280,7 @@ const unplaceOnBoard = (
 // but it will be a pain. We need a GameEvent that contains user-visible rack info.
 const convertToGameEvt = (
   evt: OMGWordsGameEvent | undefined,
-  alphabet: Alphabet
+  alphabet: Alphabet,
 ): GameEvent => {
   if (!evt) {
     return create(GameEventSchema, {});
@@ -296,7 +296,7 @@ const convertToGameEvt = (
     playedTiles: machineWordToRunes(
       Array.from(evt.playedTiles),
       alphabet,
-      true
+      true,
     ),
     exchanged: machineWordToRunes(Array.from(evt.exchanged), alphabet),
     score: evt.score,
@@ -305,7 +305,7 @@ const convertToGameEvt = (
     lostScore: evt.lostScore,
     isBingo: evt.isBingo,
     wordsFormed: evt.wordsFormed.map((v) =>
-      machineWordToRunes(Array.from(v), alphabet)
+      machineWordToRunes(Array.from(v), alphabet),
     ),
     millisRemaining: evt.millisRemaining,
     playerIndex: evt.playerIndex,
@@ -316,7 +316,7 @@ const convertToGameEvt = (
 // and have a single server event type.
 const convertToServerGameplayEvent = (
   evt: ServerOMGWordsEvent,
-  alphabet: Alphabet
+  alphabet: Alphabet,
 ): ServerGameplayEvent => {
   return create(ServerGameplayEventSchema, {
     event: convertToGameEvt(evt.event, alphabet),
@@ -336,12 +336,11 @@ export const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
     // We only care about placement and unplacement events here:
     switch (evt.type) {
       case GameEvent_Type.TILE_PLACEMENT_MOVE:
-        // eslint-disable-next-line no-param-reassign
         [gs.lastPlayedTiles, gs.pool] = placeOnBoard(
           gs.board,
           gs.pool,
           evt,
-          gs.alphabet
+          gs.alphabet,
         );
         for (const k in gs.lastPlayedTiles) {
           gs.playerOfTileAt[k] = onturn;
@@ -350,7 +349,6 @@ export const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
       case GameEvent_Type.PHONY_TILES_RETURNED: {
         // Unplace the move BEFORE this one.
         const toUnplace = events[idx - 1];
-        // eslint-disable-next-line no-param-reassign
         gs.pool = unplaceOnBoard(gs.board, gs.pool, toUnplace, gs.alphabet);
         // Set the user's rack back to what it used to be.
         break;
@@ -359,9 +357,7 @@ export const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
 
     // Push a deep clone of the turn.
     gs.turns.push(clone(GameEventSchema, evt));
-    // eslint-disable-next-line no-param-reassign
     gs.players[onturn].score = events[idx].cumulative;
-    // eslint-disable-next-line no-param-reassign
     gs.onturn = (onturn + 1) % 2;
   });
 };
@@ -376,12 +372,11 @@ const pushTurnsNew = (gs: GameState, events: Array<OMGWordsGameEvent>) => {
     // We only care about placement and unplacement events here:
     switch (evt.type) {
       case OMGWordsGameEventType.TILE_PLACEMENT_MOVE:
-        // eslint-disable-next-line no-param-reassign
         [gs.lastPlayedTiles, gs.pool] = placeOnBoard(
           gs.board,
           gs.pool,
           evt,
-          gs.alphabet
+          gs.alphabet,
         );
         for (const k in gs.lastPlayedTiles) {
           gs.playerOfTileAt[k] = onturn;
@@ -390,16 +385,13 @@ const pushTurnsNew = (gs: GameState, events: Array<OMGWordsGameEvent>) => {
       case OMGWordsGameEventType.PHONY_TILES_RETURNED: {
         // Unplace the move BEFORE this one.
         const toUnplace = convertToGameEvt(events[idx - 1], gs.alphabet);
-        // eslint-disable-next-line no-param-reassign
         gs.pool = unplaceOnBoard(gs.board, gs.pool, toUnplace, gs.alphabet);
         // Set the user's rack back to what it used to be.
         break;
       }
     }
     gs.turns.push(evt);
-    // eslint-disable-next-line no-param-reassign
     gs.players[onturn].score = events[idx].cumulative;
-    // eslint-disable-next-line no-param-reassign
     gs.onturn = (onturn + 1) % 2;
   });
 };
@@ -408,13 +400,13 @@ const stateFromHistory = (history: GameHistory): GameState => {
   const playerList = history.players;
 
   const nickToPlayerOrder = {
-    [playerList[0].nickname]: 'p0' as PlayerOrder,
-    [playerList[1].nickname]: 'p1' as PlayerOrder,
+    [playerList[0].nickname]: "p0" as PlayerOrder,
+    [playerList[1].nickname]: "p1" as PlayerOrder,
   };
 
   const uidToPlayerOrder = {
-    [playerList[0].userId]: 'p0' as PlayerOrder,
-    [playerList[1].userId]: 'p1' as PlayerOrder,
+    [playerList[0].userId]: "p0" as PlayerOrder,
+    [playerList[1].userId]: "p1" as PlayerOrder,
   };
 
   const alphabet = alphabetFromName(history.letterDistribution.toLowerCase());
@@ -423,9 +415,9 @@ const stateFromHistory = (history: GameHistory): GameState => {
     alphabet,
     initialExpandToFull(playerList),
     history.uid,
-    history.boardLayout === 'SuperCrosswordGame'
+    history.boardLayout === "SuperCrosswordGame"
       ? SuperCrosswordGameGridLayout
-      : CrosswordGameGridLayout
+      : CrosswordGameGridLayout,
   );
   gs.nickToPlayerOrder = nickToPlayerOrder;
   gs.uidToPlayerOrder = uidToPlayerOrder;
@@ -447,19 +439,19 @@ const stateFromDocument = (gdoc: GameDocument): GameState => {
   const playerList = gdoc.players;
   // Convert from a gdoc's playerList to a macondo playerList
   const compatiblePlayerList = playerList.map((pinfo) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { $typeName: _, ...properties } = pinfo;
+    void _;
     const mcpinfo = create(PlayerInfoSchema, properties);
     return mcpinfo;
   });
 
   const nickToPlayerOrder = {
-    [playerList[0].nickname]: 'p0' as PlayerOrder,
-    [playerList[1].nickname]: 'p1' as PlayerOrder,
+    [playerList[0].nickname]: "p0" as PlayerOrder,
+    [playerList[1].nickname]: "p1" as PlayerOrder,
   };
   const uidToPlayerOrder = {
-    [playerList[0].userId]: 'p0' as PlayerOrder,
-    [playerList[1].userId]: 'p1' as PlayerOrder,
+    [playerList[0].userId]: "p0" as PlayerOrder,
+    [playerList[1].userId]: "p1" as PlayerOrder,
   };
 
   const alphabet = alphabetFromName(gdoc.letterDistribution.toLowerCase());
@@ -467,9 +459,9 @@ const stateFromDocument = (gdoc: GameDocument): GameState => {
     alphabet,
     initialExpandToFull(compatiblePlayerList),
     gdoc.uid,
-    gdoc.boardLayout === 'SuperCrosswordGame'
+    gdoc.boardLayout === "SuperCrosswordGame"
       ? SuperCrosswordGameGridLayout
-      : CrosswordGameGridLayout
+      : CrosswordGameGridLayout,
   );
   gs.nickToPlayerOrder = nickToPlayerOrder;
   gs.uidToPlayerOrder = uidToPlayerOrder;
@@ -499,7 +491,7 @@ const setClock = (newState: GameState, sge: ServerGameplayEvent) => {
   const rem = sge.timeRemaining; // time remaining for the player who just played
   const evt = sge.event;
   if (!evt) {
-    throw new Error('missing event in setclock');
+    throw new Error("missing event in setclock");
   }
 
   const justPlayed = evt.playerIndex;
@@ -516,15 +508,23 @@ const setClock = (newState: GameState, sge: ServerGameplayEvent) => {
     // Therefore, it's not the time remaining of the player whose nickname is
     // in the event, so we must flip the times here.
     flipTimeRemaining = true;
-    console.log('flipTimeRemaining = true');
+    console.log("flipTimeRemaining = true");
   }
 
   if (justPlayed === 0) {
-    flipTimeRemaining ? (p1 = rem) : (p0 = rem);
-    activePlayer = 'p1';
+    if (flipTimeRemaining) {
+      p1 = rem;
+    } else {
+      p0 = rem;
+    }
+    activePlayer = "p1";
   } else if (justPlayed === 1) {
-    flipTimeRemaining ? (p0 = rem) : (p1 = rem);
-    activePlayer = 'p0';
+    if (flipTimeRemaining) {
+      p0 = rem;
+    } else {
+      p1 = rem;
+    }
+    activePlayer = "p0";
   } else {
     throw new Error(`just played ${justPlayed} is unexpected`);
   }
@@ -536,23 +536,23 @@ const setClock = (newState: GameState, sge: ServerGameplayEvent) => {
       activePlayer: activePlayer as PlayerOrder,
       lastUpdate: 0, // will get overwritten by setclock
     },
-    0
+    0,
   );
   // Send out a tick so the state updates right away (See store)
   newState.onClockTick(
     activePlayer as PlayerOrder,
-    newState.clockController.current.millisOf(activePlayer as PlayerOrder)
+    newState.clockController.current.millisOf(activePlayer as PlayerOrder),
   );
 };
 
 const initializeTimerController = (
   state: GameState,
   newState: GameState,
-  ghr: GameHistoryRefresher
+  ghr: GameHistoryRefresher,
 ) => {
   const history = ghr.history;
   if (!history) {
-    throw new Error('missing history in initialize');
+    throw new Error("missing history in initialize");
   }
   if (!newState.clockController) {
     return;
@@ -560,7 +560,7 @@ const initializeTimerController = (
 
   const [t1, t2] = [ghr.timePlayer1, ghr.timePlayer2];
 
-  let onturn = 'p0' as PlayerOrder;
+  let onturn = "p0" as PlayerOrder;
 
   // Note that p0 and p1 correspond to the new indices
   const evts = history.events;
@@ -568,9 +568,9 @@ const initializeTimerController = (
     // determine onturn from the last event.
     const lastWent = evts[evts.length - 1].playerIndex;
     if (lastWent === 1) {
-      onturn = 'p0' as PlayerOrder;
+      onturn = "p0" as PlayerOrder;
     } else if (lastWent === 0) {
-      onturn = 'p1' as PlayerOrder;
+      onturn = "p1" as PlayerOrder;
     } else {
       throw new Error(`unexpected lastwent: ${lastWent}`);
     }
@@ -589,13 +589,13 @@ const initializeTimerController = (
     newState.clockController.current = new ClockController(
       clockState,
       state.onClockTimeout,
-      state.onClockTick
+      state.onClockTick,
     );
   }
   // And send out a tick right now.
   newState.onClockTick(
     onturn,
-    newState.clockController.current.millisOf(onturn)
+    newState.clockController.current.millisOf(onturn),
   );
   newState.clockController.current.setMaxOvertime(ghr.maxOvertimeMinutes);
 };
@@ -609,13 +609,13 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       const gs = startingGameState(
         StandardEnglishAlphabet,
         new Array<RawPlayerInfo>(),
-        ''
+        "",
       );
       gs.playState = PlayState.GAME_OVER;
       // Don't lose the clock controller, but pass it on until we get a
       // history refresher etc. Reset the shown time to 0.
       const cmd = action.payload as string;
-      if (cmd !== 'noclock') {
+      if (cmd !== "noclock") {
         if (state.clockController !== null) {
           gs.clockController = state.clockController;
           if (gs.clockController.current) {
@@ -628,7 +628,7 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
             gs.clockController.current = new ClockController(
               { p0: 0, p1: 0, lastUpdate: 0 },
               state.onClockTimeout,
-              state.onClockTick
+              state.onClockTick,
             );
           }
         }
@@ -670,7 +670,7 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       const ghr = action.payload as GameHistoryRefresher;
       const history = ghr.history;
       if (!history) {
-        throw new Error('missing history in refresh');
+        throw new Error("missing history in refresh");
       }
       const newState = stateFromHistory(history);
 
@@ -713,7 +713,7 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       const gee = action.payload as GameEndedEvent;
       const history = gee.history;
       if (!history) {
-        throw new Error('missing history in end game event');
+        throw new Error("missing history in end game event");
       }
       const newState = stateFromHistory(history);
       if (newState.clockController) {

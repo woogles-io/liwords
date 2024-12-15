@@ -1,8 +1,8 @@
-import React from 'react';
+import React from "react";
 
-import { Select, Form } from 'antd';
-import { AllLexica } from './lexica';
-import { DisplayFlag } from './display_flag';
+import { Select, Form } from "antd";
+import { AllLexica } from "./lexica";
+import { DisplayFlag } from "./display_flag";
 
 type Props = {
   excludedLexica?: Set<string>;
@@ -25,7 +25,7 @@ export const MatchLexiconDisplay = (props: {
       {props.useShortDescription ? lex.shortDescription : lex.matchName}
       {lex.flagCode && (
         <>
-          {' '}
+          {" "}
           <DisplayFlag countryCode={lex.flagCode} />
         </>
       )}
@@ -36,19 +36,19 @@ export const MatchLexiconDisplay = (props: {
 };
 
 export const lexiconOrder = [
-  'CSW24',
-  'NWL23',
-  'ECWL',
-  'RD28',
-  'FRA24',
-  'FILE2017',
-  'NSF23',
-  'NSWL20',
-  'DISC2',
-  'OSPS49',
+  "CSW24",
+  "NWL23",
+  "ECWL",
+  "RD28",
+  "FRA24",
+  "FILE2017",
+  "NSF23",
+  "NSWL20",
+  "DISC2",
+  "OSPS49",
 ];
 
-export const puzzleLexica = ['CSW24', 'NWL23', 'RD28', 'FRA24'];
+export const puzzleLexica = ["CSW24", "NWL23", "RD28", "FRA24"];
 
 export const LexiconFormItem = React.memo((props: Props) => {
   const options = lexiconOrder
@@ -63,7 +63,7 @@ export const LexiconFormItem = React.memo((props: Props) => {
     options.push(
       <Select.Option key={lex} value={lex}>
         <MatchLexiconDisplay lexiconCode={lex} useShortDescription />
-      </Select.Option>
+      </Select.Option>,
     );
   });
 
@@ -87,12 +87,12 @@ export const LexiconFormItem = React.memo((props: Props) => {
 
 export const excludedLexica = (
   enableAllLexicons: boolean,
-  enableCSW19X: boolean
+  enableCSW19X: boolean,
 ): Set<string> => {
   if (!enableAllLexicons) {
-    return new Set<string>(['NSWL20', 'ECWL', 'CSW19X']);
+    return new Set<string>(["NSWL20", "ECWL", "CSW19X"]);
   } else if (!enableCSW19X) {
-    return new Set<string>(['CSW19X']);
+    return new Set<string>(["CSW19X"]);
   }
   return new Set<string>();
 };

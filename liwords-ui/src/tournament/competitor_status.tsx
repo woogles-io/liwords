@@ -1,10 +1,10 @@
-import React, { useCallback } from 'react';
-import { Card, Button } from 'antd';
-import { useTournamentStoreContext } from '../store/store';
-import { ClockCircleOutlined } from '@ant-design/icons';
-import './competitor_status.scss';
-import { TourneyStatus } from '../store/reducers/tournament_reducer';
-import { ReadyButton } from './ready_button';
+import React, { useCallback } from "react";
+import { Card, Button } from "antd";
+import { useTournamentStoreContext } from "../store/store";
+import { ClockCircleOutlined } from "@ant-design/icons";
+import "./competitor_status.scss";
+import { TourneyStatus } from "../store/reducers/tournament_reducer";
+import { ReadyButton } from "./ready_button";
 
 type Props = {
   sendReady: () => void;
@@ -54,7 +54,7 @@ export const CompetitorStatus = (props: Props) => {
           <>
             <ClockCircleOutlined />
             <p>
-              You forfeited your Round {competitorContext.currentRound + 1}{' '}
+              You forfeited your Round {competitorContext.currentRound + 1}{" "}
               game.
               <span className="optional">
                 Please check in with the director.
@@ -67,8 +67,8 @@ export const CompetitorStatus = (props: Props) => {
           <>
             <ClockCircleOutlined />
             <p>
-              Your opponent forfeited their Round{' '}
-              {competitorContext.currentRound + 1} game.{' '}
+              Your opponent forfeited their Round{" "}
+              {competitorContext.currentRound + 1} game.{" "}
               <span className="optional">
                 Please check in with the director.
               </span>
@@ -85,7 +85,7 @@ export const CompetitorStatus = (props: Props) => {
               You have a bye for round {competitorContext.currentRound + 1}.
               {!isLastRound && (
                 <span className="secondary-message">
-                  Please return in time for round{' '}
+                  Please return in time for round{" "}
                   {competitorContext.currentRound + 2}.
                 </span>
               )}
@@ -166,7 +166,7 @@ export const CompetitorStatus = (props: Props) => {
               Your round {competitorContext.currentRound + 1} score has been
               recorded.
               <span className="optional">
-                {!isLastRound ? ' Good luck in your next game!' : ''}
+                {!isLastRound ? " Good luck in your next game!" : ""}
               </span>
             </p>
           </>
@@ -177,7 +177,7 @@ export const CompetitorStatus = (props: Props) => {
           <>
             <ClockCircleOutlined />
             <p>
-              Thanks so much for playing in the{' '}
+              Thanks so much for playing in the{" "}
               {tournamentContext.metadata.name}!
             </p>
           </>

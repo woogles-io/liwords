@@ -1,37 +1,37 @@
-import React, { useEffect, useCallback, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { notification } from 'antd';
-import { TopBar } from '../navigation/topbar';
-import { ChangePassword } from './change_password';
-import { PersonalInfoWidget } from './personal_info';
-import { CloseAccount } from './close_account';
-import { ClosedAccount } from './closed_account';
-import { Preferences } from './preferences';
-import { BlockedPlayers } from './blocked_players';
-import { LogOut } from './log_out_woogles';
-import { Support } from './support_woogles';
-import { useLoginStateStoreContext } from '../store/store';
-import { useNavigate } from 'react-router-dom';
-import { useResetStoreContext } from '../store/store';
+import React, { useEffect, useCallback, useState } from "react";
+import { useParams } from "react-router";
+import { notification } from "antd";
+import { TopBar } from "../navigation/topbar";
+import { ChangePassword } from "./change_password";
+import { PersonalInfoWidget } from "./personal_info";
+import { CloseAccount } from "./close_account";
+import { ClosedAccount } from "./closed_account";
+import { Preferences } from "./preferences";
+import { BlockedPlayers } from "./blocked_players";
+import { LogOut } from "./log_out_woogles";
+import { Support } from "./support_woogles";
+import { useLoginStateStoreContext } from "../store/store";
+import { useNavigate } from "react-router";
+import { useResetStoreContext } from "../store/store";
 
-import './settings.scss';
-import { Secret } from './secret';
-import { HeartFilled } from '@ant-design/icons';
-import { PlayerInfo } from '../gen/api/proto/ipc/omgwords_pb';
+import "./settings.scss";
+import { Secret } from "./secret";
+import { HeartFilled } from "@ant-design/icons";
+import { PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
 import {
   connectErrorMessage,
   flashError,
   useClient,
-} from '../utils/hooks/connect';
+} from "../utils/hooks/connect";
 import {
   AuthenticationService,
   PersonalInfoRequestSchema,
   PersonalInfoResponseSchema,
   ProfileService,
-} from '../gen/api/proto/user_service/user_service_pb';
-import { PersonalInfoResponse } from '../gen/api/proto/user_service/user_service_pb';
-import { API } from './api';
-import { create } from '@bufbuild/protobuf';
+} from "../gen/api/proto/user_service/user_service_pb";
+import { PersonalInfoResponse } from "../gen/api/proto/user_service/user_service_pb";
+import { API } from "./api";
+import { create } from "@bufbuild/protobuf";
 
 enum Category {
   PersonalInfo = 1,
@@ -49,28 +49,28 @@ const getInitialCategory = (categoryShortcut: string, loggedIn: boolean) => {
   // We don't want to keep /donate or any other shortcuts in the url after reading it on first load
   // These are just shortcuts for backwards compatibility so we can send existing urls to the new
   // settings pages
-  if (!loggedIn && categoryShortcut === 'donate') {
+  if (!loggedIn && categoryShortcut === "donate") {
     // Don't redirect if they aren't logged in and just donating
     return Category.Support;
   }
-  window.history.replaceState({}, 'settings', '/settings');
+  window.history.replaceState({}, "settings", "/settings");
   switch (categoryShortcut) {
-    case 'donate':
-    case 'support':
+    case "donate":
+    case "support":
       return Category.Support;
-    case 'personal':
+    case "personal":
       return Category.PersonalInfo;
-    case 'password':
+    case "password":
       return Category.ChangePassword;
-    case 'preferences':
+    case "preferences":
       return Category.Preferences;
-    case 'secret':
+    case "secret":
       return Category.Secret;
-    case 'blocked':
+    case "blocked":
       return Category.BlockedPlayers;
-    case 'logout':
+    case "logout":
       return Category.LogOut;
-    case 'api':
+    case "api":
       return Category.API;
   }
   // to be streaming-friendly, PersonalInfo should not be the default tab.
@@ -83,27 +83,27 @@ export const Settings = React.memo(() => {
   const { resetStore } = useResetStoreContext();
   let { section } = useParams();
   if (!section) {
-    section = '';
+    section = "";
   }
   const [category, setCategory] = useState(
-    getInitialCategory(section, loggedIn)
+    getInitialCategory(section, loggedIn),
   );
   const [player, setPlayer] = useState<Partial<PlayerInfo> | undefined>(
-    undefined
+    undefined,
   );
   const [personalInfo, setPersonalInfo] = useState<
     PersonalInfoResponse | undefined
   >(undefined);
   const [showCloseAccount, setShowCloseAccount] = useState(false);
   const [showClosedAccount, setShowClosedAccount] = useState(false);
-  const [accountClosureError, setAccountClosureError] = useState('');
+  const [accountClosureError, setAccountClosureError] = useState("");
   const navigate = useNavigate();
 
   const profileClient = useClient(ProfileService);
   const authClient = useClient(AuthenticationService);
 
   useEffect(() => {
-    if (viewer === '' || (!loggedIn && category === Category.Support)) return;
+    if (viewer === "" || (!loggedIn && category === Category.Support)) return;
     if (!loggedIn) {
       setCategory(Category.NoUser);
       return;
@@ -111,7 +111,7 @@ export const Settings = React.memo(() => {
     (async () => {
       try {
         const resp = await profileClient.getPersonalInfo(
-          create(PersonalInfoRequestSchema, {})
+          create(PersonalInfoRequestSchema, {}),
         );
 
         setPlayer({
@@ -134,7 +134,7 @@ export const Settings = React.memo(() => {
   const CategoryChoice = React.memo((props: CategoryProps) => {
     return (
       <div
-        className={category === props.category ? 'choice active' : 'choice'}
+        className={category === props.category ? "choice active" : "choice"}
         onClick={() => {
           setCategory(props.category);
         }}
@@ -145,18 +145,18 @@ export const Settings = React.memo(() => {
   });
 
   const handleContribute = useCallback(() => {
-    navigate('/settings');
+    navigate("/settings");
   }, [navigate]);
 
   const handleLogout = useCallback(async () => {
     try {
       await authClient.logout({});
       notification.info({
-        message: 'Success',
-        description: 'You have been logged out.',
+        message: "Success",
+        description: "You have been logged out.",
       });
       resetStore();
-      navigate('/');
+      navigate("/");
     } catch (e) {
       flashError(e);
     }
@@ -171,14 +171,14 @@ export const Settings = React.memo(() => {
         create(PersonalInfoResponseSchema, {
           ...personalInfo,
           avatarUrl: avatarUrl,
-        })
+        }),
       );
     },
-    [personalInfo]
+    [personalInfo],
   );
 
   const startClosingAccount = useCallback(() => {
-    setAccountClosureError('');
+    setAccountClosureError("");
     setShowCloseAccount(true);
   }, []);
 
@@ -193,7 +193,7 @@ export const Settings = React.memo(() => {
         setAccountClosureError(connectErrorMessage(e));
       }
     },
-    [authClient, handleLogout]
+    [authClient, handleLogout],
   );
 
   const logIn = <div className="log-in">Log in to see your settings</div>;

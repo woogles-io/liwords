@@ -1,4 +1,5 @@
-@use '../base.scss' as *;
+@use "sass:color";
+@use "../base.scss" as *;
 
 .game-lists,
 .game-history {
@@ -162,12 +163,12 @@
         }
         &:hover {
           @include colorModed() {
-            background-color: scale-color(m($column-sorter), $lightness: 10%);
+            background-color: color.scale(m($column-sorter), $lightness: 10%);
           }
         }
         td.ant-table-column-sort {
           @include colorModed() {
-            background-color: mix(
+            background-color: color.mix(
               m($card-background),
               m($timer-low-light),
               $weight: 90%
@@ -188,7 +189,7 @@
           min-height: 78px;
         }
         td.players:after {
-          content: 'Resume';
+          content: "Resume";
           @include colorModed() {
             color: m($black);
           }
@@ -217,7 +218,7 @@
         }
         &:hover {
           @include colorModed() {
-            background-color: scale-color(m($off-background), $lightness: 10%);
+            background-color: color.scale(m($off-background), $lightness: 10%);
           }
         }
         td.seeker {
@@ -230,7 +231,7 @@
             color: m($gray-extreme);
           }
           & {
-            content: 'Cancel';
+            content: "Cancel";
             text-align: center;
             font-size: 12px;
             font-weight: bold;

@@ -1,14 +1,14 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Tooltip } from 'antd';
+import React from "react";
+import { Link } from "react-router";
+import { Tooltip } from "antd";
 
-import { useLagStoreContext } from '../store/store';
-import './footer.scss';
+import { useLagStoreContext } from "../store/store";
+import "./footer.scss";
 import {
   FacebookFilled,
   InstagramFilled,
   TwitterCircleFilled,
-} from '@ant-design/icons';
+} from "@ant-design/icons";
 
 const Footer = React.memo(() => {
   const { currentLagMs } = useLagStoreContext();
@@ -18,7 +18,7 @@ const Footer = React.memo(() => {
       <div className="footer-container ">
         <Tooltip
           placement="bottomLeft"
-          title={`Latency: ${currentLagMs || '...'} ms.`}
+          title={`Latency: ${currentLagMs || "..."} ms.`}
         >
           <Link to="/" className="logo">
             <div className="site-icon-rect">

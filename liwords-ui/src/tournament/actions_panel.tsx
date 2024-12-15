@@ -1,5 +1,5 @@
-import { App, Button, Card, Select } from 'antd';
-import { Modal } from '../utils/focus_modal';
+import { App, Button, Card, Select } from "antd";
+import { Modal } from "../utils/focus_modal";
 import React, {
   ReactNode,
   useCallback,
@@ -7,26 +7,26 @@ import React, {
   useMemo,
   useRef,
   useState,
-} from 'react';
-import { LeftOutlined, RightOutlined } from '@ant-design/icons';
-import { ActiveGames } from '../lobby/active_games';
-import { SeekForm } from '../lobby/seek_form';
-import { SoughtGames } from '../lobby/sought_games';
-import { SoughtGame } from '../store/reducers/lobby_reducer';
+} from "react";
+import { LeftOutlined, RightOutlined } from "@ant-design/icons";
+import { ActiveGames } from "../lobby/active_games";
+import { SeekForm } from "../lobby/seek_form";
+import { SoughtGames } from "../lobby/sought_games";
+import { SoughtGame } from "../store/reducers/lobby_reducer";
 import {
   useContextMatchContext,
   useLobbyStoreContext,
   useTournamentStoreContext,
-} from '../store/store';
-import { RecentTourneyGames } from './recent_games';
-import { ActionType } from '../actions/actions';
-import { Pairings } from './pairings';
-import { isPairedMode, isClubType } from '../store/constants';
-import { Standings } from './standings';
-import { DirectorTools } from './director_tools/director_tools';
-import { useClient } from '../utils/hooks/connect';
-import { TournamentService } from '../gen/api/proto/tournament_service/tournament_service_pb';
-import { flashTournamentError } from './tournament_error';
+} from "../store/store";
+import { RecentTourneyGames } from "./recent_games";
+import { ActionType } from "../actions/actions";
+import { Pairings } from "./pairings";
+import { isPairedMode, isClubType } from "../store/constants";
+import { Standings } from "./standings";
+import { DirectorTools } from "./director_tools/director_tools";
+import { useClient } from "../utils/hooks/connect";
+import { TournamentService } from "../gen/api/proto/tournament_service/tournament_service_pb";
+import { flashTournamentError } from "./tournament_error";
 // import { CheckIn } from './check_in';
 
 const PAGE_SIZE = 30;
@@ -67,14 +67,14 @@ export const ActionsPanel = React.memo((props: Props) => {
     useTournamentStoreContext();
   const itIsPairedMode = useMemo(
     () => isPairedMode(tournamentContext.metadata?.type),
-    [tournamentContext]
+    [tournamentContext],
   );
   const { divisions } = tournamentContext;
   const [competitorStatusLoaded, setCompetitorStatusLoaded] = useState(
-    tournamentContext.competitorState.isRegistered
+    tournamentContext.competitorState.isRegistered,
   );
   let initialRound = 0;
-  let initialDivision = '';
+  let initialDivision = "";
   if (tournamentContext.competitorState.division) {
     initialDivision = tournamentContext.competitorState.division;
     initialRound = tournamentContext.competitorState.currentRound;
@@ -86,7 +86,7 @@ export const ActionsPanel = React.memo((props: Props) => {
 
   const { addHandleContextMatch, removeHandleContextMatch } =
     useContextMatchContext();
-  const friendRef = useRef('');
+  const friendRef = useRef("");
   const handleContextMatch = useCallback((s: string) => {
     friendRef.current = s;
     setMatchModalVisible(true);
@@ -110,9 +110,9 @@ export const ActionsPanel = React.memo((props: Props) => {
   const thisTournamentMatchRequests = useMemo(
     () =>
       lobbyContextMatchRequests?.filter(
-        (matchRequest) => matchRequest.tournamentID === tournamentID
+        (matchRequest) => matchRequest.tournamentID === tournamentID,
       ),
-    [lobbyContextMatchRequests, tournamentID]
+    [lobbyContextMatchRequests, tournamentID],
   );
 
   const fetchPrev = useCallback(() => {
@@ -120,7 +120,7 @@ export const ActionsPanel = React.memo((props: Props) => {
       actionType: ActionType.SetTourneyGamesOffset,
       payload: Math.max(
         tournamentContext.gamesOffset - tournamentContext.gamesPageSize,
-        0
+        0,
       ),
     });
   }, [
@@ -199,7 +199,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     }
     if (
       !isDirector ||
-      !(typeof roundToStart === 'number') ||
+      !(typeof roundToStart === "number") ||
       !(roundToStart === selectedRound) ||
       roundToStart === 0 // (handle this with Start Tournament)
     ) {
@@ -223,7 +223,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     );
   };
   const renderGamesTab = () => {
-    if (selectedGameTab === 'GAMES') {
+    if (selectedGameTab === "GAMES") {
       if (itIsPairedMode) {
         return (
           <div className="pairings-container">
@@ -261,7 +261,7 @@ export const ActionsPanel = React.memo((props: Props) => {
         </>
       );
     }
-    if (selectedGameTab === 'RECENT') {
+    if (selectedGameTab === "RECENT") {
       return (
         <>
           <h4>Recent games</h4>
@@ -279,7 +279,7 @@ export const ActionsPanel = React.memo((props: Props) => {
         </>
       );
     }
-    if (selectedGameTab === 'STANDINGS') {
+    if (selectedGameTab === "STANDINGS") {
       return (
         <div className="standings-container">
           <div className="round-options">{renderDivisionSelector}</div>
@@ -334,7 +334,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     </Modal>
   );
 
-  const idFromPlayerEntry = useCallback((p: string) => p.split(':')[0], []);
+  const idFromPlayerEntry = useCallback((p: string) => p.split(":")[0], []);
   useEffect(() => {
     const divisionArray = Object.values(divisions);
     const foundDivision = userID
@@ -368,7 +368,7 @@ export const ActionsPanel = React.memo((props: Props) => {
           setSelectedRound(
             divisionArray[0].currentRound > -1
               ? divisionArray[0].currentRound
-              : 0
+              : 0,
           );
         }
       }
@@ -384,12 +384,12 @@ export const ActionsPanel = React.memo((props: Props) => {
   ]);
 
   const actions = useMemo(() => {
-    if (selectedGameTab === 'STANDINGS') {
+    if (selectedGameTab === "STANDINGS") {
       return [];
     }
-    let matchButtonText = 'Start tournament game';
+    let matchButtonText = "Start tournament game";
     if (isClubType(tournamentContext.metadata?.type)) {
-      matchButtonText = 'Start club game';
+      matchButtonText = "Start club game";
     }
     const availableActions = new Array<ReactNode>();
     if (props.loggedIn && !itIsPairedMode) {
@@ -403,7 +403,7 @@ export const ActionsPanel = React.memo((props: Props) => {
           key="match-action"
         >
           {matchButtonText}
-        </div>
+        </div>,
       );
     }
     if (
@@ -426,15 +426,15 @@ export const ActionsPanel = React.memo((props: Props) => {
           >
             <LeftOutlined />
             {/* The previous, zero-indexed round converted to 1-indexed */}
-            Round {selectedRound}{' '}
-          </div>
+            Round {selectedRound}{" "}
+          </div>,
         );
       }
       availableActions.push(
         <div className="round-label">
           {/* The current zero-indexed round converted to 1-indexed */}
           Round {selectedRound + 1}
-        </div>
+        </div>,
       );
       if (lastRound === selectedRound) {
         availableActions.push(<div className="empty"></div>);
@@ -449,7 +449,7 @@ export const ActionsPanel = React.memo((props: Props) => {
             {/* The next zero-indexed round converted to 1-indexed*/}
             Round {selectedRound + 2}
             <RightOutlined />
-          </div>
+          </div>,
         );
       }
     }
@@ -466,32 +466,32 @@ export const ActionsPanel = React.memo((props: Props) => {
     <div className="game-lists">
       <Card
         actions={actions}
-        className={itIsPairedMode ? 'paired-mode' : 'free-form'}
+        className={itIsPairedMode ? "paired-mode" : "free-form"}
       >
         <div className="tabs">
           <div
             onClick={() => {
-              setSelectedGameTab('GAMES');
+              setSelectedGameTab("GAMES");
             }}
-            className={selectedGameTab === 'GAMES' ? 'tab active' : 'tab'}
+            className={selectedGameTab === "GAMES" ? "tab active" : "tab"}
           >
             Games
           </div>
           {!itIsPairedMode ? (
             <div
               onClick={() => {
-                setSelectedGameTab('RECENT');
+                setSelectedGameTab("RECENT");
               }}
-              className={selectedGameTab === 'RECENT' ? 'tab active' : 'tab'}
+              className={selectedGameTab === "RECENT" ? "tab active" : "tab"}
             >
               Recent games
             </div>
           ) : (
             <div
               onClick={() => {
-                setSelectedGameTab('STANDINGS');
+                setSelectedGameTab("STANDINGS");
               }}
-              className={selectedGameTab === 'STANDINGS' ? 'tab active' : 'tab'}
+              className={selectedGameTab === "STANDINGS" ? "tab active" : "tab"}
             >
               Standings
             </div>
@@ -499,10 +499,10 @@ export const ActionsPanel = React.memo((props: Props) => {
           {(isDirector || isAdmin) && (
             <div
               onClick={() => {
-                setSelectedGameTab('DIRECTOR TOOLS');
+                setSelectedGameTab("DIRECTOR TOOLS");
               }}
               className={
-                selectedGameTab === 'DIRECTOR TOOLS' ? 'tab active' : 'tab'
+                selectedGameTab === "DIRECTOR TOOLS" ? "tab active" : "tab"
               }
             >
               Director Tools
@@ -511,7 +511,7 @@ export const ActionsPanel = React.memo((props: Props) => {
         </div>
         <div className="main-content">
           {(isDirector || isAdmin) &&
-            selectedGameTab === 'DIRECTOR TOOLS' &&
+            selectedGameTab === "DIRECTOR TOOLS" &&
             renderDirectorTools()}
           {matchModal}
           {renderGamesTab()}

@@ -1,10 +1,10 @@
-import React, { useEffect, useRef } from 'react';
-import BoardSpace from './board_space';
-import { PlacementArrow } from '../utils/cwgame/tile_placement';
-import { BonusType } from '../constants/board_layout';
-import { isTouchDevice } from '../utils/cwgame/common';
-import { useDrop, XYCoord } from 'react-dnd';
-import { TILE_TYPE } from './tile';
+import React, { useEffect, useMemo, useRef } from "react";
+import BoardSpace from "./board_space";
+import { PlacementArrow } from "../utils/cwgame/tile_placement";
+import { BonusType } from "../constants/board_layout";
+import { isTouchDevice } from "../utils/cwgame/common";
+import { useDrop, XYCoord } from "react-dnd";
+import { TILE_TYPE } from "./tile";
 
 type Props = {
   gridDim: number;
@@ -12,7 +12,7 @@ type Props = {
     row: number,
     col: number,
     rackIndex: number | undefined,
-    tileIndex: number | undefined
+    tileIndex: number | undefined,
   ) => void;
   gridLayout: Array<string>;
   placementArrow: PlacementArrow;
@@ -21,7 +21,7 @@ type Props = {
 const calculatePosition = (
   position: XYCoord,
   boardElement: HTMLElement,
-  gridSize: number
+  gridSize: number,
 ) => {
   const boardTop = boardElement.getBoundingClientRect().top;
   const boardLeft = boardElement.getBoundingClientRect().left;
@@ -33,26 +33,27 @@ const calculatePosition = (
 };
 
 const BoardSpaces = React.memo((props: Props) => {
-  const spaces = [];
+  const { gridDim, gridLayout, placementArrow, squareClicked, handleTileDrop } =
+    props;
+
   const boardRef = useRef(null);
 
   const [, drop] = useDrop({
     accept: TILE_TYPE,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    drop: (item: any, monitor) => {
+    drop: (item: { rackIndex: string; tileIndex: string }, monitor) => {
       const clientOffset = monitor.getClientOffset();
-      const boardElement = document.getElementById('board');
-      if (clientOffset && props.handleTileDrop && boardElement) {
+      const boardElement = document.getElementById("board");
+      if (clientOffset && handleTileDrop && boardElement) {
         const { row, col } = calculatePosition(
           clientOffset,
           boardElement,
-          props.gridDim
+          gridDim,
         );
-        props.handleTileDrop(
+        handleTileDrop(
           row,
           col,
           parseInt(item.rackIndex, 10),
-          parseInt(item.tileIndex, 10)
+          parseInt(item.tileIndex, 10),
         );
       }
     },
@@ -69,39 +70,49 @@ const BoardSpaces = React.memo((props: Props) => {
     }
   }, [isTouchDeviceResult, drop]);
   // y row, x col
-  const midway = Math.trunc(props.gridDim / 2);
+  const midway = Math.trunc(gridDim / 2);
 
-  for (let y = 0; y < props.gridDim; y += 1) {
-    for (let x = 0; x < props.gridDim; x += 1) {
-      const sq = props.gridLayout[y][x];
-      const startingSquare = x === midway && y === midway;
-      const showArrow =
-        props.placementArrow.show &&
-        props.placementArrow.row === y &&
-        props.placementArrow.col === x;
-      spaces.push(
-        <BoardSpace
-          bonusType={sq as BonusType}
-          key={`sq_${x}_${y}`}
-          arrow={showArrow}
-          arrowHoriz={props.placementArrow.horizontal}
-          startingSquare={startingSquare}
-          clicked={() => props.squareClicked(y, x)}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          handleTileDrop={(e: any) => {
-            if (props.handleTileDrop) {
-              props.handleTileDrop(
-                y,
-                x,
-                parseInt(e.dataTransfer.getData('rackIndex'), 10),
-                parseInt(e.dataTransfer.getData('tileIndex'), 10)
-              );
-            }
-          }}
-        />
-      );
+  const spaces = useMemo(() => {
+    const spaces = [];
+    for (let y = 0; y < gridDim; y += 1) {
+      for (let x = 0; x < gridDim; x += 1) {
+        const sq = gridLayout[y][x];
+        const startingSquare = x === midway && y === midway;
+        const showArrow =
+          placementArrow.show &&
+          placementArrow.row === y &&
+          placementArrow.col === x;
+        spaces.push(
+          <BoardSpace
+            bonusType={sq as BonusType}
+            key={`sq_${x}_${y}`}
+            arrow={showArrow}
+            arrowHoriz={placementArrow.horizontal}
+            startingSquare={startingSquare}
+            clicked={() => squareClicked(y, x)}
+            handleTileDrop={(e: React.DragEvent) => {
+              if (handleTileDrop) {
+                handleTileDrop(
+                  y,
+                  x,
+                  parseInt(e.dataTransfer.getData("rackIndex"), 10),
+                  parseInt(e.dataTransfer.getData("tileIndex"), 10),
+                );
+              }
+            }}
+          />,
+        );
+      }
     }
-  }
+    return spaces;
+  }, [
+    midway,
+    gridDim,
+    gridLayout,
+    placementArrow,
+    squareClicked,
+    handleTileDrop,
+  ]);
 
   return (
     <div className="board-spaces" ref={boardRef} id="board-spaces">

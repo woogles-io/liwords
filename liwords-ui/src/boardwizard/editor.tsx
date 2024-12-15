@@ -1,17 +1,17 @@
 // boardwizard is our board editor
 
-import { HomeOutlined } from '@ant-design/icons';
-import { App, Card } from 'antd';
-import { useCallback, useEffect, useMemo } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ActionType } from '../actions/actions';
-import { alphabetFromName } from '../constants/alphabets';
-import { Analyzer, AnalyzerContextProvider } from '../gameroom/analyzer';
-import { BoardPanel } from '../gameroom/board_panel';
-import { PlayerCards } from '../gameroom/player_cards';
-import Pool from '../gameroom/pool';
-import { ScoreCard } from '../gameroom/scorecard';
-import { GameInfo } from '../gameroom/game_info';
+import { HomeOutlined } from "@ant-design/icons";
+import { App, Card } from "antd";
+import { useCallback, useEffect, useMemo } from "react";
+import { Link, useNavigate, useParams } from "react-router";
+import { ActionType } from "../actions/actions";
+import { alphabetFromName } from "../constants/alphabets";
+import { Analyzer, AnalyzerContextProvider } from "../gameroom/analyzer";
+import { BoardPanel } from "../gameroom/board_panel";
+import { PlayerCards } from "../gameroom/player_cards";
+import Pool from "../gameroom/pool";
+import { ScoreCard } from "../gameroom/scorecard";
+import { GameInfo } from "../gameroom/game_info";
 
 import {
   ClientGameplayEvent,
@@ -20,37 +20,37 @@ import {
   GameDocumentSchema,
   GameDocument_MinimalPlayerInfoSchema,
   GameRulesSchema,
-} from '../gen/api/proto/ipc/omgwords_pb';
-import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_pb';
-import { defaultLetterDistribution } from '../lobby/sought_game_interactions';
-import { TopBar } from '../navigation/topbar';
-import { sortTiles } from '../store/constants';
+} from "../gen/api/proto/ipc/omgwords_pb";
+import { GameEventService } from "../gen/api/proto/omgwords_service/omgwords_pb";
+import { defaultLetterDistribution } from "../lobby/sought_game_interactions";
+import { TopBar } from "../navigation/topbar";
+import { sortTiles } from "../store/constants";
 import {
   useExaminableGameContextStoreContext,
   useExamineStoreContext,
   useGameContextStoreContext,
   usePoolFormatStoreContext,
-} from '../store/store';
-import { useClient, flashError } from '../utils/hooks/connect';
-import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
-import { EditorControl } from './editor_control';
-import { PlayState } from '../gen/api/proto/ipc/omgwords_pb';
-import { syntheticGameInfo } from './synthetic_game_info';
-import { EditorLandingPage } from './new_game';
-import { MachineLetter, MachineWord } from '../utils/cwgame/common';
-import { create } from '@bufbuild/protobuf';
+} from "../store/store";
+import { useClient, flashError } from "../utils/hooks/connect";
+import { useDefinitionAndPhonyChecker } from "../utils/hooks/definitions";
+import { EditorControl } from "./editor_control";
+import { PlayState } from "../gen/api/proto/ipc/omgwords_pb";
+import { syntheticGameInfo } from "./synthetic_game_info";
+import { EditorLandingPage } from "./new_game";
+import { MachineLetter, MachineWord } from "../utils/cwgame/common";
+import { create } from "@bufbuild/protobuf";
 
 const doNothing = () => {};
 
 const blankGamePayload = create(GameDocumentSchema, {
   players: [
     create(GameDocument_MinimalPlayerInfoSchema, {
-      nickname: 'player1',
-      userId: 'player1',
+      nickname: "player1",
+      userId: "player1",
     }),
     create(GameDocument_MinimalPlayerInfoSchema, {
-      nickname: 'player2',
-      userId: 'player2',
+      nickname: "player2",
+      userId: "player2",
     }),
   ],
 });
@@ -104,7 +104,7 @@ export const BoardEditor = () => {
         const resp = await eventClient.getGameDocument({
           gameId: gid,
         });
-        console.log('got a game document, dispatching, redirect is', redirect);
+        console.log("got a game document, dispatching, redirect is", redirect);
         dispatchGameContext({
           actionType: ActionType.InitFromDocument,
           payload: resp,
@@ -118,7 +118,7 @@ export const BoardEditor = () => {
         flashError(e);
       }
     },
-    [dispatchGameContext, eventClient, navigate]
+    [dispatchGameContext, eventClient, navigate],
   );
 
   // Initialize on mount with unfinished game, new game, or existing game:
@@ -157,9 +157,9 @@ export const BoardEditor = () => {
   useEffect(() => {
     if (gameContext.playState === PlayState.WAITING_FOR_FINAL_PASS) {
       notification.info({
-        message: 'Pass or challenge',
+        message: "Pass or challenge",
         description:
-          'The bag is now empty; please Pass or Challenge to end the game.',
+          "The bag is now empty; please Pass or Challenge to end the game.",
       });
     }
   }, [gameContext.playState, notification]);
@@ -173,7 +173,7 @@ export const BoardEditor = () => {
 
   const alphabet = useMemo(
     () => alphabetFromName(gameContext.gameDocument.letterDistribution),
-    [gameContext.gameDocument.letterDistribution]
+    [gameContext.gameDocument.letterDistribution],
   );
 
   const changeCurrentRack = async (rack: MachineWord, evtIdx: number) => {
@@ -231,7 +231,7 @@ export const BoardEditor = () => {
   };
 
   const omgPlayerInfo = (pname: string, idx: number) => {
-    const collapsed = pname.replaceAll(' ', '');
+    const collapsed = pname.replaceAll(" ", "");
     return create(OMGPlayerInfoSchema, {
       nickname: collapsed,
       fullName: pname,
@@ -244,7 +244,7 @@ export const BoardEditor = () => {
     p1name: string,
     p2name: string,
     lex: string,
-    chrule: OMGChallengeRule
+    chrule: OMGChallengeRule,
   ) => {
     // the lexicon and letter distribution are tied together.
     const ld = defaultLetterDistribution(lex);
@@ -253,9 +253,9 @@ export const BoardEditor = () => {
         playersInfo: [p1name, p2name].map(omgPlayerInfo),
         lexicon: lex,
         rules: create(GameRulesSchema, {
-          boardLayoutName: 'CrosswordGame', // for now
+          boardLayoutName: "CrosswordGame", // for now
           letterDistributionName: ld,
-          variantName: 'classic', // for now
+          variantName: "classic", // for now
         }),
         challengeRule: chrule,
         public: false,
@@ -269,13 +269,13 @@ export const BoardEditor = () => {
   const editGame = async (
     p1name: string,
     p2name: string,
-    description: string
+    description: string,
   ) => {
     try {
       await eventClient.patchGameDocument({
         document: create(GameDocumentSchema, {
           players: [p1name, p2name].map((p, idx) => {
-            const collapsed = p.replaceAll(' ', '');
+            const collapsed = p.replaceAll(" ", "");
             return create(GameDocument_MinimalPlayerInfoSchema, {
               nickname: collapsed,
               realName: p,
@@ -288,7 +288,7 @@ export const BoardEditor = () => {
         }),
       });
       notification.success({
-        message: 'Saved game information',
+        message: "Saved game information",
       });
     } catch (e) {
       flashError(e);
@@ -309,7 +309,7 @@ export const BoardEditor = () => {
 
   const macChallengeRule = useMemo(
     () => gameContext.gameDocument.challengeRule.valueOf(),
-    [gameContext.gameDocument.challengeRule]
+    [gameContext.gameDocument.challengeRule],
   );
   // Create a GameInfoResponse for the purposes of rendering a few of our widgets.
   const gameInfo = useMemo(() => {
@@ -366,7 +366,7 @@ export const BoardEditor = () => {
           <BoardPanel
             boardEditingMode={true}
             anonymousViewer={false} // tbd
-            username={''} // shouldn't matter, but it might have to be some large random string
+            username={""} // shouldn't matter, but it might have to be some large random string
             board={examinableGameContext.board}
             currentRack={sortedRack}
             events={examinableGameContext.turns}
@@ -375,11 +375,9 @@ export const BoardEditor = () => {
             sendGameplayEvent={(evt) => sendGameplayEvent(evt)}
             gameDone={false} // tbd
             playerMeta={gameInfo.players}
-            tournamentID={''}
+            tournamentID={""}
             vsBot={false}
             tournamentPairedMode={false}
-            // why does my linter keep overwriting this?
-            // eslint-disable-next-line max-len
             lexicon={gameContext.gameDocument.lexicon}
             alphabet={alphabet}
             challengeRule={macChallengeRule}
@@ -400,7 +398,7 @@ export const BoardEditor = () => {
             playerMeta={gameInfo.players}
             hideProfileLink
           />
-          <GameInfo meta={gameInfo} tournamentName={''} />
+          <GameInfo meta={gameInfo} tournamentName={""} />
           <Pool
             pool={examinableGameContext?.pool}
             currentRack={sortedRack}

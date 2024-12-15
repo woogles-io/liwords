@@ -1,23 +1,21 @@
-import { GameReducer, startingGameState } from './game_reducer';
-import { ActionType } from '../../actions/actions';
+import { GameReducer, startingGameState } from "./game_reducer";
+import { ActionType } from "../../actions/actions";
 
 import {
   GameEvent_Type,
   GameEventSchema,
   GameHistorySchema,
   PlayerInfoSchema,
-} from '../../gen/api/vendor/macondo/macondo_pb';
+} from "../../gen/api/vendor/macondo/macondo_pb";
 import {
   StandardEnglishAlphabet,
   runesToMachineWord,
-} from '../../constants/alphabets';
+} from "../../constants/alphabets";
 import {
-  GameHistoryRefresher,
   GameHistoryRefresherSchema,
-  ServerGameplayEvent,
   ServerGameplayEventSchema,
-} from '../../gen/api/proto/ipc/omgwords_pb';
-import { create } from '@bufbuild/protobuf';
+} from "../../gen/api/proto/ipc/omgwords_pb";
+import { create } from "@bufbuild/protobuf";
 
 const rtmwEng = (s: string) => runesToMachineWord(s, StandardEnglishAlphabet);
 
@@ -25,31 +23,31 @@ const historyRefresher = () => {
   return create(GameHistoryRefresherSchema, {
     history: create(GameHistorySchema, {
       players: [
-        create(PlayerInfoSchema, { nickname: 'césar', userId: 'cesar123' }),
-        create(PlayerInfoSchema, { nickname: 'mina', userId: 'mina123' }),
+        create(PlayerInfoSchema, { nickname: "césar", userId: "cesar123" }),
+        create(PlayerInfoSchema, { nickname: "mina", userId: "mina123" }),
       ],
-      lastKnownRacks: ['CDEIPTV', 'FIMRSUU'],
-      uid: 'game42',
+      lastKnownRacks: ["CDEIPTV", "FIMRSUU"],
+      uid: "game42",
     }),
   });
 };
 
-it('tests refresher', () => {
-  const state = startingGameState(StandardEnglishAlphabet, [], '');
+it("tests refresher", () => {
+  const state = startingGameState(StandardEnglishAlphabet, [], "");
   const newState = GameReducer(state, {
     actionType: ActionType.RefreshHistory,
     payload: historyRefresher(),
   });
-  expect(newState.players[0].currentRack).toStrictEqual(rtmwEng('CDEIPTV'));
-  expect(newState.players[0].userID).toBe('cesar123');
-  expect(newState.players[1].currentRack).toStrictEqual(rtmwEng('FIMRSUU'));
-  expect(newState.players[1].userID).toBe('mina123');
+  expect(newState.players[0].currentRack).toStrictEqual(rtmwEng("CDEIPTV"));
+  expect(newState.players[0].userID).toBe("cesar123");
+  expect(newState.players[1].currentRack).toStrictEqual(rtmwEng("FIMRSUU"));
+  expect(newState.players[1].userID).toBe("mina123");
   expect(newState.onturn).toBe(0);
   expect(newState.turns.length).toBe(0);
 });
 
-it('tests addevent', () => {
-  const state = startingGameState(StandardEnglishAlphabet, [], '');
+it("tests addevent", () => {
+  const state = startingGameState(StandardEnglishAlphabet, [], "");
   const newState = GameReducer(state, {
     actionType: ActionType.RefreshHistory,
     payload: historyRefresher(),
@@ -57,34 +55,34 @@ it('tests addevent', () => {
 
   const evt = create(GameEventSchema, {
     playerIndex: 0,
-    rack: 'CDEIPTV',
+    rack: "CDEIPTV",
     cumulative: 26,
     row: 7,
     column: 3,
-    position: '8D',
-    playedTiles: 'DEPICT',
+    position: "8D",
+    playedTiles: "DEPICT",
     score: 26,
   });
 
   const sge = create(ServerGameplayEventSchema, {
-    newRack: 'EFIKNNV',
+    newRack: "EFIKNNV",
     event: evt,
-    gameId: 'game42',
+    gameId: "game42",
   });
   const newState2 = GameReducer(newState, {
     actionType: ActionType.AddGameEvent,
     payload: sge,
   });
-  expect(newState2.players[0].currentRack).toStrictEqual(rtmwEng('EFIKNNV'));
-  expect(newState2.players[0].userID).toBe('cesar123');
-  expect(newState2.players[1].currentRack).toStrictEqual(rtmwEng('FIMRSUU'));
-  expect(newState2.players[1].userID).toBe('mina123');
+  expect(newState2.players[0].currentRack).toStrictEqual(rtmwEng("EFIKNNV"));
+  expect(newState2.players[0].userID).toBe("cesar123");
+  expect(newState2.players[1].currentRack).toStrictEqual(rtmwEng("FIMRSUU"));
+  expect(newState2.players[1].userID).toBe("mina123");
   expect(newState2.onturn).toBe(1);
   expect(newState2.turns.length).toBe(1);
 });
 
-it('tests addevent with different id', () => {
-  const state = startingGameState(StandardEnglishAlphabet, [], '');
+it("tests addevent with different id", () => {
+  const state = startingGameState(StandardEnglishAlphabet, [], "");
   const newState = GameReducer(state, {
     actionType: ActionType.RefreshHistory,
     payload: historyRefresher(),
@@ -93,18 +91,18 @@ it('tests addevent with different id', () => {
   const evt = create(GameEventSchema, {
     type: GameEvent_Type.TILE_PLACEMENT_MOVE,
     playerIndex: 0,
-    rack: 'CDEIPTV',
+    rack: "CDEIPTV",
     cumulative: 26,
     row: 7,
     column: 3,
-    position: '8D',
-    playedTiles: 'DEPICT',
+    position: "8D",
+    playedTiles: "DEPICT",
     score: 26,
   });
   const sge = create(ServerGameplayEventSchema, {
-    newRack: 'EFIKNNV',
+    newRack: "EFIKNNV",
     event: evt,
-    gameId: 'anotherone',
+    gameId: "anotherone",
   });
 
   const newState2 = GameReducer(newState, {
@@ -112,10 +110,10 @@ it('tests addevent with different id', () => {
     payload: sge,
   });
   // No change
-  expect(newState2.players[0].currentRack).toStrictEqual(rtmwEng('CDEIPTV'));
-  expect(newState2.players[0].userID).toBe('cesar123');
-  expect(newState2.players[1].currentRack).toStrictEqual(rtmwEng('FIMRSUU'));
-  expect(newState2.players[1].userID).toBe('mina123');
+  expect(newState2.players[0].currentRack).toStrictEqual(rtmwEng("CDEIPTV"));
+  expect(newState2.players[0].userID).toBe("cesar123");
+  expect(newState2.players[1].currentRack).toStrictEqual(rtmwEng("FIMRSUU"));
+  expect(newState2.players[1].userID).toBe("mina123");
   expect(newState2.onturn).toBe(0);
   expect(newState2.turns.length).toBe(0);
 });
@@ -124,11 +122,11 @@ const historyRefresher3 = () => {
   return create(GameHistoryRefresherSchema, {
     history: create(GameHistorySchema, {
       players: [
-        create(PlayerInfoSchema, { nickname: 'mina', userId: 'mina123' }),
-        create(PlayerInfoSchema, { nickname: 'césar', userId: 'cesar123' }),
+        create(PlayerInfoSchema, { nickname: "mina", userId: "mina123" }),
+        create(PlayerInfoSchema, { nickname: "césar", userId: "cesar123" }),
       ],
-      lastKnownRacks: ['AEELRX?', 'EFMPRST'],
-      uid: 'game63',
+      lastKnownRacks: ["AEELRX?", "EFMPRST"],
+      uid: "game63",
     }),
   });
 };
@@ -141,20 +139,20 @@ const historyRefresher3AfterChallenge = () => {
   return create(GameHistoryRefresherSchema, {
     history: create(GameHistorySchema, {
       players: [
-        create(PlayerInfoSchema, { nickname: 'mina', userId: 'mina123' }),
-        create(PlayerInfoSchema, { nickname: 'césar', userId: 'cesar123' }),
+        create(PlayerInfoSchema, { nickname: "mina", userId: "mina123" }),
+        create(PlayerInfoSchema, { nickname: "césar", userId: "cesar123" }),
       ],
-      lastKnownRacks: ['EEJNNOQ', 'EFMPRST'],
-      uid: 'game63',
+      lastKnownRacks: ["EEJNNOQ", "EFMPRST"],
+      uid: "game63",
       events: [
         create(GameEventSchema, {
           playerIndex: 0,
-          rack: '?AEELRX',
+          rack: "?AEELRX",
           cumulative: 92,
           row: 7,
           column: 7,
-          position: '8H',
-          playedTiles: 'RELAXEs',
+          position: "8H",
+          playedTiles: "RELAXEs",
           score: 92,
         }),
         create(GameEventSchema, {
@@ -168,24 +166,24 @@ const historyRefresher3AfterChallenge = () => {
   });
 };
 
-it('tests challenge with refresher event afterwards', () => {
-  const state = startingGameState(StandardEnglishAlphabet, [], '');
+it("tests challenge with refresher event afterwards", () => {
+  const state = startingGameState(StandardEnglishAlphabet, [], "");
   let newState = GameReducer(state, {
     actionType: ActionType.RefreshHistory,
     payload: historyRefresher3(),
   });
 
   const sge = create(ServerGameplayEventSchema, {
-    newRack: 'EEJNNOQ',
-    gameId: 'game63',
+    newRack: "EEJNNOQ",
+    gameId: "game63",
     event: create(GameEventSchema, {
       playerIndex: 0,
-      rack: '?AEELRX',
+      rack: "?AEELRX",
       cumulative: 92,
       row: 7,
       column: 7,
-      position: '8H',
-      playedTiles: 'RELAXEs',
+      position: "8H",
+      playedTiles: "RELAXEs",
       score: 92,
     }),
   });
@@ -194,10 +192,10 @@ it('tests challenge with refresher event afterwards', () => {
     actionType: ActionType.AddGameEvent,
     payload: sge,
   });
-  expect(newState.players[0].currentRack).toStrictEqual(rtmwEng('EEJNNOQ'));
-  expect(newState.players[0].userID).toBe('mina123');
-  expect(newState.players[1].currentRack).toStrictEqual(rtmwEng('EFMPRST'));
-  expect(newState.players[1].userID).toBe('cesar123');
+  expect(newState.players[0].currentRack).toStrictEqual(rtmwEng("EEJNNOQ"));
+  expect(newState.players[0].userID).toBe("mina123");
+  expect(newState.players[1].currentRack).toStrictEqual(rtmwEng("EFMPRST"));
+  expect(newState.players[1].userID).toBe("cesar123");
   expect(newState.onturn).toBe(1);
   expect(newState.turns.length).toBe(1);
   // Now césar challenges RELAXEs (who knows why, it looks phony)
@@ -205,10 +203,10 @@ it('tests challenge with refresher event afterwards', () => {
     actionType: ActionType.RefreshHistory,
     payload: historyRefresher3AfterChallenge(),
   });
-  expect(newState.players[0].currentRack).toStrictEqual(rtmwEng('EEJNNOQ'));
-  expect(newState.players[0].userID).toBe('mina123');
-  expect(newState.players[1].currentRack).toStrictEqual(rtmwEng('EFMPRST'));
-  expect(newState.players[1].userID).toBe('cesar123');
+  expect(newState.players[0].currentRack).toStrictEqual(rtmwEng("EEJNNOQ"));
+  expect(newState.players[0].userID).toBe("mina123");
+  expect(newState.players[1].currentRack).toStrictEqual(rtmwEng("EFMPRST"));
+  expect(newState.players[1].userID).toBe("cesar123");
   expect(newState.players[0].score).toBe(97);
   expect(newState.players[1].score).toBe(0);
   // It is still César's turn
@@ -216,26 +214,26 @@ it('tests challenge with refresher event afterwards', () => {
   expect(newState.turns.length).toBe(2);
 });
 
-it('tests challenge with challenge event afterwards', () => {
-  const state = startingGameState(StandardEnglishAlphabet, [], '');
+it("tests challenge with challenge event afterwards", () => {
+  const state = startingGameState(StandardEnglishAlphabet, [], "");
   let newState = GameReducer(state, {
     actionType: ActionType.RefreshHistory,
     payload: historyRefresher3(),
   });
 
   const sge = create(ServerGameplayEventSchema, {
-    newRack: 'EEJNNOQ',
+    newRack: "EEJNNOQ",
     event: create(GameEventSchema, {
       playerIndex: 0,
-      rack: '?AEELRX',
+      rack: "?AEELRX",
       cumulative: 92,
       row: 7,
       column: 7,
-      position: '8H',
-      playedTiles: 'RELAXEs',
+      position: "8H",
+      playedTiles: "RELAXEs",
       score: 92,
     }),
-    gameId: 'game63',
+    gameId: "game63",
   });
 
   newState = GameReducer(newState, {
@@ -251,17 +249,17 @@ it('tests challenge with challenge event afterwards', () => {
       cumulative: 97,
       bonus: 5,
     }),
-    gameId: 'game63',
+    gameId: "game63",
   });
 
   newState = GameReducer(newState, {
     actionType: ActionType.AddGameEvent,
     payload: sge2,
   });
-  expect(newState.players[0].currentRack).toStrictEqual(rtmwEng('EEJNNOQ'));
-  expect(newState.players[0].userID).toBe('mina123');
-  expect(newState.players[1].currentRack).toStrictEqual(rtmwEng('EFMPRST'));
-  expect(newState.players[1].userID).toBe('cesar123');
+  expect(newState.players[0].currentRack).toStrictEqual(rtmwEng("EEJNNOQ"));
+  expect(newState.players[0].userID).toBe("mina123");
+  expect(newState.players[1].currentRack).toStrictEqual(rtmwEng("EFMPRST"));
+  expect(newState.players[1].userID).toBe("cesar123");
   expect(newState.players[0].score).toBe(97);
   expect(newState.players[1].score).toBe(0);
   // It is still César's turn
@@ -273,28 +271,28 @@ const historyRefresherWithPlay = () => {
   return create(GameHistoryRefresherSchema, {
     history: create(GameHistorySchema, {
       players: [
-        create(PlayerInfoSchema, { nickname: 'césar', userId: 'cesar123' }),
-        create(PlayerInfoSchema, { nickname: 'mina', userId: 'mina123' }),
+        create(PlayerInfoSchema, { nickname: "césar", userId: "cesar123" }),
+        create(PlayerInfoSchema, { nickname: "mina", userId: "mina123" }),
       ],
-      lastKnownRacks: ['', 'DEIMNRU'],
+      lastKnownRacks: ["", "DEIMNRU"],
       events: [
         create(GameEventSchema, {
           column: 6,
           row: 7,
           score: 12,
-          position: '8G',
-          playedTiles: 'WIT',
+          position: "8G",
+          playedTiles: "WIT",
           playerIndex: 0,
           cumulative: 12,
         }),
       ],
-      uid: 'game42',
+      uid: "game42",
     }),
   });
 };
 
-it('tests deduplication of event', () => {
-  const state = startingGameState(StandardEnglishAlphabet, [], '');
+it("tests deduplication of event", () => {
+  const state = startingGameState(StandardEnglishAlphabet, [], "");
   let newState = GameReducer(state, {
     actionType: ActionType.RefreshHistory,
     payload: historyRefresherWithPlay(),
@@ -305,13 +303,13 @@ it('tests deduplication of event', () => {
       cumulative: 12,
       row: 7,
       column: 6,
-      position: '8G',
-      playedTiles: 'WIT',
+      position: "8G",
+      playedTiles: "WIT",
       score: 12,
       playerIndex: 0,
     }),
-    newRack: '',
-    gameId: 'game42',
+    newRack: "",
+    gameId: "game42",
   });
 
   newState = GameReducer(newState, {

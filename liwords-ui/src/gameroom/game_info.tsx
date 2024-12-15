@@ -1,45 +1,45 @@
-import React from 'react';
-import { Card } from 'antd';
-import { timeCtrlToDisplayName, timeToString } from '../store/constants';
-import { VariantIcon } from '../shared/variant_icons';
-import { MatchLexiconDisplay } from '../shared/lexicon_display';
+import React from "react";
+import { Card } from "antd";
+import { timeCtrlToDisplayName, timeToString } from "../store/constants";
+import { VariantIcon } from "../shared/variant_icons";
+import { MatchLexiconDisplay } from "../shared/lexicon_display";
 import {
   GameEndReason,
   GameInfoResponseSchema,
   GameRequestSchema,
   GameRulesSchema,
   PlayerInfo,
-} from '../gen/api/proto/ipc/omgwords_pb';
+} from "../gen/api/proto/ipc/omgwords_pb";
 import {
   BotRequest_BotCode,
   ChallengeRule,
-} from '../gen/api/vendor/macondo/macondo_pb';
-import { RatingMode } from '../gen/api/proto/ipc/omgwords_pb';
-import { challengeRuleNames } from '../constants/challenge_rules';
-import { GameInfoResponse } from '../gen/api/proto/ipc/omgwords_pb';
-import { create } from '@bufbuild/protobuf';
+} from "../gen/api/vendor/macondo/macondo_pb";
+import { RatingMode } from "../gen/api/proto/ipc/omgwords_pb";
+import { challengeRuleNames } from "../constants/challenge_rules";
+import { GameInfoResponse } from "../gen/api/proto/ipc/omgwords_pb";
+import { create } from "@bufbuild/protobuf";
 
 export const defaultGameInfo = create(GameInfoResponseSchema, {
   players: new Array<PlayerInfo>(),
   gameRequest: create(GameRequestSchema, {
-    lexicon: '',
+    lexicon: "",
     rules: create(GameRulesSchema, {
-      variantName: '',
-      boardLayoutName: 'CrosswordGame',
-      letterDistributionName: 'english',
+      variantName: "",
+      boardLayoutName: "CrosswordGame",
+      letterDistributionName: "english",
     }),
     initialTimeSeconds: 0,
     incrementSeconds: 0,
     challengeRule: ChallengeRule.VOID,
     ratingMode: RatingMode.RATED,
     maxOvertimeMinutes: 0,
-    originalRequestId: '',
+    originalRequestId: "",
     playerVsBot: false,
     botType: BotRequest_BotCode.HASTY_BOT,
   }),
-  tournamentId: '',
+  tournamentId: "",
   gameEndReason: GameEndReason.NONE,
-  timeControlName: '',
+  timeControlName: "",
 });
 
 type Props = {
@@ -52,14 +52,14 @@ type Props = {
 export const GameInfo = React.memo((props: Props) => {
   const variant = (
     <VariantIcon
-      vcode={props.meta.gameRequest?.rules?.variantName || 'classic'}
+      vcode={props.meta.gameRequest?.rules?.variantName || "classic"}
       withName
     />
   );
   const rated =
     props.meta.gameRequest?.ratingMode === RatingMode.RATED
-      ? 'Rated'
-      : 'Unrated';
+      ? "Rated"
+      : "Unrated";
 
   const challenge =
     challengeRuleNames[
@@ -72,7 +72,7 @@ export const GameInfo = React.memo((props: Props) => {
         {props.meta.tournamentId && (
           <p
             className="tournament-name"
-            style={{ color: props.colorOverride || 'ignore' }}
+            style={{ color: props.colorOverride || "ignore" }}
           >
             {props.tournamentName}
           </p>
@@ -83,19 +83,19 @@ export const GameInfo = React.memo((props: Props) => {
               props.meta.gameRequest?.initialTimeSeconds ?? 0,
               props.meta.gameRequest?.incrementSeconds ?? 0,
               props.meta.gameRequest?.maxOvertimeMinutes ?? 0,
-              props.meta.timeControlName === 'Annotated'
+              props.meta.timeControlName === "Annotated"
                 ? props.meta.timeControlName
-                : undefined
+                : undefined,
             )[0]
           } ${timeToString(
             props.meta.gameRequest?.initialTimeSeconds ?? 0,
             props.meta.gameRequest?.incrementSeconds ?? 0,
             props.meta.gameRequest?.maxOvertimeMinutes ?? 0,
-            props.meta.timeControlName === 'Annotated'
-          )}`}{' '}
-          • {variant} •{' '}
+            props.meta.timeControlName === "Annotated",
+          )}`}{" "}
+          • {variant} •{" "}
           <MatchLexiconDisplay
-            lexiconCode={props.meta.gameRequest?.lexicon ?? ''}
+            lexiconCode={props.meta.gameRequest?.lexicon ?? ""}
           />
         </p>
         <p>

@@ -1,27 +1,27 @@
-import { loadStripe, StripeError } from '@stripe/stripe-js';
-import { App, Button } from 'antd';
-import { useLoginStateStoreContext } from './store/store';
-import { useClient } from './utils/hooks/connect';
-import { IntegrationService } from './gen/api/proto/user_service/user_service_pb';
-import { useEffect, useState } from 'react';
+import { loadStripe, StripeError } from "@stripe/stripe-js";
+import { App, Button } from "antd";
+import { useLoginStateStoreContext } from "./store/store";
+import { useClient } from "./utils/hooks/connect";
+import { IntegrationService } from "./gen/api/proto/user_service/user_service_pb";
+import { useEffect, useState } from "react";
 
 const PUBLISHABLE_KEY =
-  'pk_live_51I7T0HH0ARGCjmpLmLvzN6JMTkUCaFr0xNhg7Mq2wcXTMhGI6R7ShMxnLmoaCynTO0cQ7BZtiSPfOjnA9LmO21dT00gBrlxiSa';
+  "pk_live_51I7T0HH0ARGCjmpLmLvzN6JMTkUCaFr0xNhg7Mq2wcXTMhGI6R7ShMxnLmoaCynTO0cQ7BZtiSPfOjnA9LmO21dT00gBrlxiSa";
 
 const prices = {
-  5: 'price_1Iaq0DH0ARGCjmpLkqP0dtl0',
-  20: 'price_1Iaq18H0ARGCjmpL1SV8SQff',
-  50: 'price_1Iaq1YH0ARGCjmpLfUUwAOdu',
-  100: 'price_1Iaq1uH0ARGCjmpL9lsPC3jJ',
-  500: 'price_1Ib7UJH0ARGCjmpLWP4pDmTs',
+  5: "price_1Iaq0DH0ARGCjmpLkqP0dtl0",
+  20: "price_1Iaq18H0ARGCjmpL1SV8SQff",
+  50: "price_1Iaq1YH0ARGCjmpLfUUwAOdu",
+  100: "price_1Iaq1uH0ARGCjmpL9lsPC3jJ",
+  500: "price_1Ib7UJH0ARGCjmpLWP4pDmTs",
 };
 
-const DOMAIN = new URL('/', window.location.href).href;
+const DOMAIN = new URL("/", window.location.href).href;
 const stripePromise = (async () => {
   try {
     return await loadStripe(PUBLISHABLE_KEY);
   } catch (e) {
-    console.groupCollapsed('cannot load Stripe');
+    console.groupCollapsed("cannot load Stripe");
     console.error(e);
     console.groupEnd();
     return null;
@@ -55,7 +55,9 @@ export const Donate = () => {
       try {
         const integrations = await integrationsClient.getIntegrations({});
         setHasPatreonIntegration(
-          integrations.integrations.some((i) => i.integrationName === 'patreon')
+          integrations.integrations.some(
+            (i) => i.integrationName === "patreon",
+          ),
         );
       } catch (e) {
         console.error(e);
@@ -66,7 +68,7 @@ export const Donate = () => {
 
   const donateClick = async (money: number) => {
     const price = prices[money as keyof typeof prices];
-    const mode = 'payment';
+    const mode = "payment";
     const items = [
       {
         price,
@@ -81,12 +83,12 @@ export const Donate = () => {
       .redirectToCheckout({
         mode,
         lineItems: items,
-        successUrl: DOMAIN + 'donate_success?session_id={CHECKOUT_SESSION_ID}',
-        cancelUrl: DOMAIN + 'donate?session_id={CHECKOUT_SESSION_ID}',
+        successUrl: DOMAIN + "donate_success?session_id={CHECKOUT_SESSION_ID}",
+        cancelUrl: DOMAIN + "donate?session_id={CHECKOUT_SESSION_ID}",
         clientReferenceId: loginState.loggedIn
-          ? loginState.userID + ':' + loginState.username
-          : 'anonymous-' + loginState.userID,
-        submitType: 'donate',
+          ? loginState.userID + ":" + loginState.username
+          : "anonymous-" + loginState.userID,
+        submitType: "donate",
       })
       .then(handleResult);
   };
@@ -114,7 +116,7 @@ export const Donate = () => {
             target="_blank"
             rel="noreferrer"
           >
-            {' '}
+            {" "}
             Woogles Patreon.
           </a>
         </span>
@@ -145,15 +147,15 @@ const LoginWithPatreonButton: React.FC = () => {
   const handleLogin = async () => {
     const clientId = import.meta.env.PUBLIC_PATREON_CLIENT_ID;
     const redirectUri = encodeURIComponent(
-      import.meta.env.PUBLIC_PATREON_REDIRECT_URL
+      import.meta.env.PUBLIC_PATREON_REDIRECT_URL,
     );
-    const scopes = encodeURIComponent('identity identity[email]');
+    const scopes = encodeURIComponent("identity identity[email]");
     const csrfToken = Math.random().toString(36).substring(2);
 
     // Save the CSRF token on the backend
-    await fetch('/integrations/csrf', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    await fetch("/integrations/csrf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ csrf: csrfToken }),
     });
 
@@ -161,8 +163,8 @@ const LoginWithPatreonButton: React.FC = () => {
     const state = btoa(
       JSON.stringify({
         csrfToken,
-        redirectTo: '/donate', // Current page URL
-      })
+        redirectTo: "/donate", // Current page URL
+      }),
     );
 
     const authorizationUrl = `https://www.patreon.com/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scopes}&state=${state}`;

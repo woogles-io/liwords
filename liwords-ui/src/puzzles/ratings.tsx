@@ -1,8 +1,8 @@
-import React from 'react';
-import { Card } from 'antd';
-import { PlayerAvatar } from '../shared/player_avatar';
-import { useLoginStateStoreContext } from '../store/store';
-import { FallOutlined, RiseOutlined } from '@ant-design/icons';
+import React from "react";
+import { Card } from "antd";
+import { PlayerAvatar } from "../shared/player_avatar";
+import { useLoginStateStoreContext } from "../store/store";
+import { FallOutlined, RiseOutlined } from "@ant-design/icons";
 
 type Props = {
   userRating?: number;

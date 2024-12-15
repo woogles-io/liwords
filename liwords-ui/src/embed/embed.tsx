@@ -1,26 +1,26 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { ChallengeRule, PlayState } from '../gen/api/vendor/macondo/macondo_pb';
+import React, { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router";
+import { ChallengeRule, PlayState } from "../gen/api/vendor/macondo/macondo_pb";
 import {
   useExaminableGameContextStoreContext,
   useExamineStoreContext,
   useGameContextStoreContext,
-} from '../store/store';
-import { defaultGameInfo } from '../gameroom/game_info';
-import { BoardPanel } from '../gameroom/board_panel';
-import { sortTiles } from '../store/constants';
-import { alphabetFromName } from '../constants/alphabets';
-import { ActionType } from '../actions/actions';
+} from "../store/store";
+import { defaultGameInfo } from "../gameroom/game_info";
+import { BoardPanel } from "../gameroom/board_panel";
+import { sortTiles } from "../store/constants";
+import { alphabetFromName } from "../constants/alphabets";
+import { ActionType } from "../actions/actions";
 import {
   GameHistoryRefresherSchema,
   GameInfoResponse,
-} from '../gen/api/proto/ipc/omgwords_pb';
-import { PlayerCards } from '../gameroom/player_cards';
-import { useDefinitionAndPhonyChecker } from '../utils/hooks/definitions';
-import { flashError, useClient } from '../utils/hooks/connect';
-import { GameMetadataService } from '../gen/api/proto/game_service/game_service_pb';
-import { MachineLetter } from '../utils/cwgame/common';
-import { create } from '@bufbuild/protobuf';
+} from "../gen/api/proto/ipc/omgwords_pb";
+import { PlayerCards } from "../gameroom/player_cards";
+import { useDefinitionAndPhonyChecker } from "../utils/hooks/definitions";
+import { flashError, useClient } from "../utils/hooks/connect";
+import { GameMetadataService } from "../gen/api/proto/game_service/game_service_pb";
+import { MachineLetter } from "../utils/cwgame/common";
+import { create } from "@bufbuild/protobuf";
 
 const doNothing = () => {};
 
@@ -44,7 +44,7 @@ export const Embed = () => {
       gameContext,
       gameDone: true,
       gameID,
-      lexicon: gameInfo.gameRequest?.lexicon ?? '',
+      lexicon: gameInfo.gameRequest?.lexicon ?? "",
       variant: gameInfo.gameRequest?.rules?.variantName,
     });
 
@@ -58,7 +58,7 @@ export const Embed = () => {
       return;
     }
     // Request game API to get info about the game at the beginning.
-    console.log('gonna fetch metadata, game id is', gameID);
+    console.log("gonna fetch metadata, game id is", gameID);
 
     (async () => {
       try {
@@ -120,7 +120,7 @@ export const Embed = () => {
   }, [examinableGameContext.alphabet, examinableGameContext.players]);
   const alphabet = useMemo(
     () => alphabetFromName(gameInfo.gameRequest?.rules?.letterDistributionName),
-    [gameInfo]
+    [gameInfo],
   );
 
   if (!gameID) {
@@ -141,7 +141,7 @@ export const Embed = () => {
         <div className="play-area ">
           <BoardPanel
             anonymousViewer={true}
-            username={''}
+            username={""}
             board={examinableGameContext.board}
             currentRack={sortedRack}
             events={examinableGameContext.turns}
@@ -152,7 +152,7 @@ export const Embed = () => {
             playerMeta={gameInfo.players}
             tournamentID={gameInfo.tournamentId}
             vsBot={gameInfo.gameRequest?.playerVsBot ?? false}
-            lexicon={gameInfo.gameRequest?.lexicon ?? ''}
+            lexicon={gameInfo.gameRequest?.lexicon ?? ""}
             alphabet={alphabet}
             challengeRule={
               gameInfo.gameRequest?.challengeRule ?? ChallengeRule.VOID

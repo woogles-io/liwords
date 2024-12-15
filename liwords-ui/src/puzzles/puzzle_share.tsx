@@ -1,11 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Tooltip } from 'antd';
-import { ShareAltOutlined } from '@ant-design/icons';
-import { calculatePuzzleScore, renderStars } from './puzzle_info';
-import { singularCount } from '../utils/plural';
-import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Button, Tooltip } from "antd";
+import { ShareAltOutlined } from "@ant-design/icons";
+import { calculatePuzzleScore, renderStars } from "./puzzle_info";
+import { singularCount } from "../utils/plural";
+import { PuzzleStatus } from "../gen/api/proto/puzzle_service/puzzle_service_pb";
 
-import variables from '../base.module.scss';
+import variables from "../base.module.scss";
 const { colorPrimary } = variables;
 
 type Props = {
@@ -18,19 +18,19 @@ export const PuzzleShareButton = (props: Props) => {
   const { puzzleID, attempts, solved } = props;
   const [showTooltip, setShowTooltip] = useState(false);
   const message = useMemo(() => {
-    let messageBuilder = '';
+    let messageBuilder = "";
     if (solved === PuzzleStatus.CORRECT && attempts !== undefined) {
       messageBuilder += `${renderStars(
         calculatePuzzleScore(true, attempts),
-        true
+        true,
       )}`;
       messageBuilder += ` I solved this puzzle at Woogles.io in ${singularCount(
         attempts,
-        'try',
-        'tries'
+        "try",
+        "tries",
       )}!`;
     } else {
-      messageBuilder += 'Check out this puzzle at Woogles.io.';
+      messageBuilder += "Check out this puzzle at Woogles.io.";
     }
     messageBuilder += ` https://woogles.io/puzzle/${puzzleID} Can you solve it?`;
     return messageBuilder;

@@ -1,10 +1,9 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef } from "react";
 
 // evolved from
 // https://www.matthewgerstman.com/tech/throttle-and-debounce/
 
-// eslint-disable-next-line @typescript-eslint/ban-types
-export function useDebounce(func: Function, timeout: number) {
+export function useDebounce(func: (...args: any[]) => void, timeout: number) {
   const timer = useRef<NodeJS.Timeout>();
   const debounced = useCallback(
     (...args: any[]) => {
@@ -13,7 +12,7 @@ export function useDebounce(func: Function, timeout: number) {
         func(...args);
       }, timeout);
     },
-    [func, timeout]
+    [func, timeout],
   );
   return debounced;
 }

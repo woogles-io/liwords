@@ -1,4 +1,4 @@
-@use '../base.scss' as *;
+@use "../base.scss" as *;
 
 p {
   margin: 0;
@@ -37,7 +37,7 @@ p {
   width: 15px;
   height: 15px;
   font-size: 10px;
-  font-family: 'Mulish';
+  font-family: "Mulish";
   line-height: 0;
   text-align: center;
   padding: 1px 0 0 2px;
@@ -436,7 +436,7 @@ p {
   }
 }
 
-.chat input[name='chat-input'] {
+.chat input[name="chat-input"] {
   position: absolute;
   bottom: 0;
   left: 0;

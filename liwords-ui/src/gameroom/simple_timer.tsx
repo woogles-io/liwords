@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Millis } from '../store/timer_controller';
+import React, { useCallback, useEffect, useState } from "react";
+import { Millis } from "../store/timer_controller";
 
 // This magical timer was written by Andy. I am not sure how it works.
 export const SimpleTimer = ({
@@ -14,7 +14,7 @@ export const SimpleTimer = ({
   const [, setRerender] = useState(0);
   const requestRerender = useCallback(
     () => setRerender((n) => (n + 1) | 0),
-    []
+    [],
   );
 
   const currentMillis = isRunning
@@ -36,11 +36,11 @@ export const SimpleTimer = ({
   const nonnegativeSec = Math.max(currentSec, 0);
   const displayMinutes = Math.floor(nonnegativeSec / 60);
   const displaySeconds = (nonnegativeSec - displayMinutes * 60).toLocaleString(
-    'en-US',
+    "en-US",
     {
       minimumIntegerDigits: 2,
       useGrouping: false,
-    }
+    },
   );
   return <>{`${displayMinutes}:${displaySeconds}`}</>;
 };

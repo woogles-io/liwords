@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import iconx from '../assets/icon-x.png';
-import { notification } from 'antd';
-import { Modal } from '../utils/focus_modal';
-import { flashError, useClient } from '../utils/hooks/connect';
-import { SocializeService } from '../gen/api/proto/user_service/user_service_pb';
+import React, { useCallback, useEffect, useState } from "react";
+import iconx from "../assets/icon-x.png";
+import { notification } from "antd";
+import { Modal } from "../utils/focus_modal";
+import { flashError, useClient } from "../utils/hooks/connect";
+import { SocializeService } from "../gen/api/proto/user_service/user_service_pb";
 
 type user = {
   username: string;
@@ -13,7 +13,7 @@ type user = {
 export const BlockedPlayers = React.memo(() => {
   const [blockedUsers, setBlockedUsers] = useState<Array<user>>([]);
   const [confirmModalUser, setConfirmModalUser] = useState<user | undefined>(
-    undefined
+    undefined,
   );
 
   const socializeClient = useClient(SocializeService);
@@ -34,17 +34,17 @@ export const BlockedPlayers = React.memo(() => {
       try {
         await socializeClient.removeBlock({ uuid: user.uuid });
         notification.info({
-          message: 'Success',
+          message: "Success",
           description: `${user.username} was unblocked.`,
         });
         setBlockedUsers(
-          blockedUsers.filter((blockedUser) => blockedUser.uuid !== user.uuid)
+          blockedUsers.filter((blockedUser) => blockedUser.uuid !== user.uuid),
         );
       } catch (e) {
         flashError(e);
       }
     },
-    [blockedUsers, socializeClient]
+    [blockedUsers, socializeClient],
   );
 
   useEffect(refreshBlocks, [refreshBlocks]);
@@ -64,7 +64,7 @@ export const BlockedPlayers = React.memo(() => {
           setConfirmModalUser(undefined);
         }}
       >
-        Are you sure you want to unblock{' '}
+        Are you sure you want to unblock{" "}
         <span className="blocked-player">{confirmModalUser.username}</span>?
         <br />
         <br />

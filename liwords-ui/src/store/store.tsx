@@ -5,17 +5,17 @@ import React, {
   useMemo,
   useRef,
   useState,
-} from 'react';
+} from "react";
 
-import { LobbyState, LobbyReducer } from './reducers/lobby_reducer';
-import { Action } from '../actions/actions';
+import { LobbyState, LobbyReducer } from "./reducers/lobby_reducer";
+import { Action } from "../actions/actions";
 import {
   GameState,
   pushTurns,
   startingGameState,
   GameReducer,
-} from './reducers/game_reducer';
-import { ClockController, Times, Millis } from './timer_controller';
+} from "./reducers/game_reducer";
+import { ClockController, Times, Millis } from "./timer_controller";
 import {
   ChatEntityObj,
   ChatEntityType,
@@ -23,36 +23,36 @@ import {
   PlayerOrder,
   PresenceEntity,
   randomID,
-} from './constants';
-import { PoolFormatType } from '../constants/pool_formats';
-import { LoginState, LoginStateReducer } from './login_state';
-import { EphemeralTile, MachineLetter } from '../utils/cwgame/common';
-import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
+} from "./constants";
+import { PoolFormatType } from "../constants/pool_formats";
+import { LoginState, LoginStateReducer } from "./login_state";
+import { EphemeralTile, MachineLetter } from "../utils/cwgame/common";
+import { ActiveChatChannels } from "../gen/api/proto/user_service/user_service_pb";
 import {
   defaultTournamentState,
   TournamentReducer,
   TournamentState,
-} from './reducers/tournament_reducer';
-import { MetaEventState, MetaStates } from './meta_game_events';
+} from "./reducers/tournament_reducer";
+import { MetaEventState, MetaStates } from "./meta_game_events";
 import {
   StandardEnglishAlphabet,
   runesToMachineWord,
-} from '../constants/alphabets';
+} from "../constants/alphabets";
 import {
   SeekRequest,
   SeekRequestSchema,
-} from '../gen/api/proto/ipc/omgseeks_pb';
-import { ServerChallengeResultEvent } from '../gen/api/proto/ipc/omgwords_pb';
-import { message } from 'antd';
-import { GameEvent_Type } from '../gen/api/vendor/macondo/macondo_pb';
-import { create } from '@bufbuild/protobuf';
+} from "../gen/api/proto/ipc/omgseeks_pb";
+import { ServerChallengeResultEvent } from "../gen/api/proto/ipc/omgwords_pb";
+import { message } from "antd";
+import { GameEvent_Type } from "../gen/api/vendor/macondo/macondo_pb";
+import { create } from "@bufbuild/protobuf";
 
 const MaxChatLength = 150;
 
 const defaultTimerContext = {
   p0: 0,
   p1: 0,
-  activePlayer: 'p0' as PlayerOrder,
+  activePlayer: "p0" as PlayerOrder,
   lastUpdate: 0,
 };
 
@@ -206,7 +206,7 @@ type ExamineStoreData = {
   doneButtonRef: React.MutableRefObject<HTMLButtonElement | null>;
 };
 
-const defaultGameState = startingGameState(StandardEnglishAlphabet, [], '');
+const defaultGameState = startingGameState(StandardEnglishAlphabet, [], "");
 
 // This is annoying, but we have to add a default for everything in this
 // declaration. Declaring it as a Partial<StoreData> breaks things elsewhere.
@@ -224,19 +224,19 @@ const LobbyContext = createContext<LobbyStoreData>({
     activeGames: [],
     matchRequests: [],
     profile: { ratings: {} },
-    lobbyFilterByLexicon: localStorage.getItem('lobbyFilterByLexicon'),
+    lobbyFilterByLexicon: localStorage.getItem("lobbyFilterByLexicon"),
   },
   dispatchLobbyContext: defaultFunction,
 });
 
 const LoginStateContext = createContext<LoginStateStoreData>({
   loginState: {
-    username: '',
-    userID: '',
+    username: "",
+    userID: "",
     loggedIn: false,
     connectedToSocket: false,
-    connID: '',
-    path: '',
+    connID: "",
+    path: "",
     perms: [],
   },
   dispatchLoginState: defaultFunction,
@@ -251,7 +251,7 @@ const TentativePlayContext = createContext<TentativePlayData>({
   placedTilesTempScore: undefined,
   placedTiles: new Set<EphemeralTile>(),
   displayedRack: new Array<MachineLetter>(),
-  blindfoldCommand: '',
+  blindfoldCommand: "",
   blindfoldUseNPA: false,
   setPlacedTilesTempScore: defaultFunction,
   setPlacedTiles: defaultFunction,
@@ -296,8 +296,8 @@ const GameMetaEventContext = createContext<GameMetaEventStoreData>({
   gameMetaEventContext: {
     curEvt: MetaStates.NO_ACTIVE_REQUEST,
     initialExpiry: 0,
-    evtId: '',
-    evtCreator: '',
+    evtId: "",
+    evtCreator: "",
     // timer: null,
   },
   setGameMetaEventContext: defaultFunction,
@@ -309,7 +309,7 @@ const [GameContextContext, ExaminableGameContextContext] = Array.from(
     createContext<GameContextStoreData>({
       gameContext: defaultGameState,
       dispatchGameContext: defaultFunction,
-    })
+    }),
 );
 
 const ChatContext = createContext<ChatStoreData>({
@@ -337,9 +337,9 @@ const [GameEndMessageContext, ExaminableGameEndMessageContext] = Array.from(
   new Array(2),
   () =>
     createContext<GameEndMessageStoreData>({
-      gameEndMessage: '',
+      gameEndMessage: "",
       setGameEndMessage: defaultFunction,
-    })
+    }),
 );
 
 const RematchRequestContext = createContext<RematchRequestStoreData>({
@@ -355,7 +355,7 @@ const [TimerContext, ExaminableTimerContext] = Array.from(new Array(2), () =>
     timerContext: defaultTimerContext,
     pTimedOut: undefined,
     setPTimedOut: defaultFunction,
-  })
+  }),
 );
 
 const PoolFormatContext = createContext<PoolFormatStoreData>({
@@ -386,7 +386,7 @@ type Props = {
 const gameStateInitializer = (
   clockController: React.MutableRefObject<ClockController | null>,
   onClockTick: (p: PlayerOrder, t: Millis) => void,
-  onClockTimeout: (p: PlayerOrder) => void
+  onClockTimeout: (p: PlayerOrder) => void,
 ) => ({
   ...defaultGameState,
   clockController,
@@ -400,9 +400,9 @@ const doNothing = () => {}; // defaultFunction currently is the same as this.
 
 // CSS selectors that should support Analyze shortcuts.
 const WHERE_TO_ENABLE_EXAMINE_SHORTCUTS = [
-  '.analyzer-card',
-  '.analyzer-container',
-  '.play-area',
+  ".analyzer-card",
+  ".analyzer-container",
+  ".play-area",
 ];
 
 const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
@@ -420,14 +420,14 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
         return (
           where &&
           WHERE_TO_ENABLE_EXAMINE_SHORTCUTS.some((selector) =>
-            where.closest(selector)
+            where.closest(selector),
           )
         );
-      } catch (e) {
+      } catch {
         return false;
       }
     },
-    [shortcutsDisabled]
+    [shortcutsDisabled],
   );
 
   const { gameContext } = gameContextStore;
@@ -447,8 +447,8 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
           const dae = document.activeElement;
           if (
             doneButtonRef.current &&
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            ((dae as any)?.disabled || !shouldTrigger(dae))
+            ((dae as unknown as { disabled: boolean })?.disabled ||
+              !shouldTrigger(dae))
           ) {
             // Focusing on the Done button reenables first/prev shortcuts.
             doneButtonRef.current.focus();
@@ -457,7 +457,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       }
       setExaminedTurnRaw(x);
     },
-    [shouldTrigger]
+    [shouldTrigger],
   );
   const handleExamineStartUnconditionally = useCallback(() => {
     setIsExamining(true);
@@ -485,7 +485,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
         setExaminedTurn(Math.max(Math.min(x, numberOfTurns), 0));
       }
     },
-    [setExaminedTurn, numberOfTurns]
+    [setExaminedTurn, numberOfTurns],
   );
 
   const examinableGameContext = useMemo(() => {
@@ -499,17 +499,17 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
         currentRack: new Array<MachineLetter>(),
       })),
       gameContext.gameID,
-      gameContext.board.gridLayout
+      gameContext.board.gridLayout,
     );
     ret.nickToPlayerOrder = gameContext.nickToPlayerOrder;
     ret.uidToPlayerOrder = gameContext.uidToPlayerOrder;
     const replayedTurns = gameContext.turns.slice(0, examinedTurn);
     try {
       pushTurns(ret, replayedTurns);
-    } catch (e) {
+    } catch {
       message.error({
         content:
-          'Error pushing turns. The app may have updated. Please refresh the app.',
+          "Error pushing turns. The app may have updated. Please refresh the app.",
         duration: 10,
       });
     }
@@ -604,7 +604,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   const { gameEndMessage } = gameEndMessageStore;
   const examinableGameEndMessageStore = useMemo(() => {
     return {
-      gameEndMessage: isShowingLatest ? gameEndMessage : '',
+      gameEndMessage: isShowingLatest ? gameEndMessage : "",
       setGameEndMessage: doNothing,
     };
   }, [isShowingLatest, gameEndMessage]);
@@ -627,7 +627,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   // There are two handlers (the Tablet view has its own Analyzer button).
   // They are functionally the same.
   const [handleExaminers, setHandleExaminers] = useState(
-    new Array<() => void>()
+    new Array<() => void>(),
   );
   const addHandleExaminer = useCallback((x: () => void) => {
     setHandleExaminers((a: Array<() => void>) => {
@@ -650,30 +650,30 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
         if (evt.ctrlKey || evt.altKey || evt.metaKey) {
           // If a modifier key is held, never mind.
         } else {
-          if (evt.key === '<' || evt.key === 'Home') {
+          if (evt.key === "<" || evt.key === "Home") {
             evt.preventDefault();
             handleExamineFirst();
           }
-          if (evt.key === ',' || evt.key === 'PageUp') {
+          if (evt.key === "," || evt.key === "PageUp") {
             evt.preventDefault();
             handleExaminePrev();
           }
-          if (evt.key === '.' || evt.key === 'PageDown') {
+          if (evt.key === "." || evt.key === "PageDown") {
             evt.preventDefault();
             handleExamineNext();
           }
-          if (evt.key === '>' || evt.key === 'End') {
+          if (evt.key === ">" || evt.key === "End") {
             evt.preventDefault();
             handleExamineLast();
           }
-          if (evt.key === '/' || evt.key === '?') {
+          if (evt.key === "/" || evt.key === "?") {
             evt.preventDefault();
             for (const handleExaminer of handleExaminers) {
               handleExaminer();
               break; // They are functionally the same, trigger either one.
             }
           }
-          if (evt.key === 'Escape') {
+          if (evt.key === "Escape") {
             evt.preventDefault();
             handleExamineEnd();
           }
@@ -689,7 +689,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       handleExamineLast,
       handleExamineEnd,
       handleExaminers,
-    ]
+    ],
   );
 
   const handleExamineDisableShortcuts = useCallback(() => {
@@ -698,9 +698,9 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
 
   React.useEffect(() => {
     if (isExamining) {
-      document.addEventListener('keydown', handleExamineShortcuts);
+      document.addEventListener("keydown", handleExamineShortcuts);
       return () => {
-        document.removeEventListener('keydown', handleExamineShortcuts);
+        document.removeEventListener("keydown", handleExamineShortcuts);
       };
     }
   }, [isExamining, handleExamineShortcuts]);
@@ -735,7 +735,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       addHandleExaminer,
       removeHandleExaminer,
       doneButtonRef,
-    ]
+    ],
   );
 
   let ret = children;
@@ -785,29 +785,29 @@ const RealStore = ({ children, ...props }: Props) => {
     activeGames: [],
     matchRequests: [],
     profile: { ratings: {} },
-    lobbyFilterByLexicon: localStorage.getItem('lobbyFilterByLexicon'),
+    lobbyFilterByLexicon: localStorage.getItem("lobbyFilterByLexicon"),
   });
   const dispatchLobbyContext = useCallback(
     (action: Action) => setLobbyContext((state) => LobbyReducer(state, action)),
-    []
+    [],
   );
   const [loginState, setLoginState] = useState({
-    username: '',
-    userID: '',
+    username: "",
+    userID: "",
     loggedIn: false,
     connectedToSocket: false,
-    connID: '',
-    path: '',
+    connID: "",
+    path: "",
     perms: new Array<string>(),
   });
   const dispatchLoginState = useCallback(
     (action: Action) =>
       setLoginState((state) => LoginStateReducer(state, action)),
-    []
+    [],
   );
 
   const [tournamentContext, setTournamentContext] = useState(
-    defaultTournamentState
+    defaultTournamentState,
   );
   const dispatchTournamentContext = useCallback((action: Action) => {
     setTournamentContext((state) => {
@@ -823,13 +823,13 @@ const RealStore = ({ children, ...props }: Props) => {
   >(undefined);
   const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
   const [displayedRack, setDisplayedRack] = useState(
-    new Array<MachineLetter>()
+    new Array<MachineLetter>(),
   );
-  const [blindfoldCommand, setBlindfoldCommand] = useState('');
+  const [blindfoldCommand, setBlindfoldCommand] = useState("");
   const [blindfoldUseNPA, setBlindfoldUseNPA] = useState(false);
 
   const [gameContext, setGameContext] = useState<GameState>(() =>
-    gameStateInitializer(clockController, onClockTick, onClockTimeout)
+    gameStateInitializer(clockController, onClockTick, onClockTimeout),
   );
   const dispatchGameContext = useCallback(
     (action: Action) =>
@@ -839,38 +839,38 @@ const RealStore = ({ children, ...props }: Props) => {
         } catch (e) {
           message.error({
             content:
-              'Error setting game context. The app may have updated. Please refresh the app. (Error: ' +
+              "Error setting game context. The app may have updated. Please refresh the app. (Error: " +
               (e as { message: string }).message +
-              ')',
+              ")",
             duration: 10,
           });
           return state;
         }
       }),
-    []
+    [],
   );
 
   const [timerContext, setTimerContext] = useState<Times>(defaultTimerContext);
   const [pTimedOut, setPTimedOut] = useState<PlayerOrder | undefined>(
-    undefined
+    undefined,
   );
 
   const [gameMetaEventContext, setGameMetaEventContext] =
     useState<MetaEventState>({
       curEvt: MetaStates.NO_ACTIVE_REQUEST,
       initialExpiry: 0,
-      evtId: '',
-      evtCreator: '',
+      evtId: "",
+      evtCreator: "",
       // clockController: null,
     });
 
   const [poolFormat, setPoolFormat] = useState<PoolFormatType>(
-    PoolFormatType.Alphabet
+    PoolFormatType.Alphabet,
   );
 
-  const [gameEndMessage, setGameEndMessage] = useState('');
+  const [gameEndMessage, setGameEndMessage] = useState("");
   const [rematchRequest, setRematchRequest] = useState(
-    create(SeekRequestSchema, {})
+    create(SeekRequestSchema, {}),
   );
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
   const [chatChannels, setChatChannels] = useState<
@@ -889,7 +889,6 @@ const RealStore = ({ children, ...props }: Props) => {
   const addChat = useCallback((entity: ChatEntityObj) => {
     setChat((oldChat) => {
       if (!entity.id) {
-        // eslint-disable-next-line no-param-reassign
         entity.id = randomID();
       }
       // XXX: This should be sped up.
@@ -904,18 +903,18 @@ const RealStore = ({ children, ...props }: Props) => {
 
   const challengeResultEvent = useCallback(
     (sge: ServerChallengeResultEvent) => {
-      console.log('sge', sge);
+      console.log("sge", sge);
       addChat({
         entityType: ChatEntityType.ServerMsg,
-        sender: '',
+        sender: "",
         message: sge.valid
-          ? 'Challenged play was valid'
-          : 'Play was challenged off the board!',
+          ? "Challenged play was valid"
+          : "Play was challenged off the board!",
         id: randomID(),
-        channel: 'server',
+        channel: "server",
       });
     },
-    [addChat]
+    [addChat],
   );
 
   const addChats = useCallback((entities: Array<ChatEntityObj>) => {
@@ -929,7 +928,7 @@ const RealStore = ({ children, ...props }: Props) => {
   const deleteChat = useCallback((id: string, channel: string) => {
     setChat((oldChat) => {
       const chatCopy = oldChat.filter(
-        (c) => !(c.id === id && c.channel === channel)
+        (c) => !(c.id === id && c.channel === channel),
       );
       return chatCopy;
     });
@@ -940,7 +939,7 @@ const RealStore = ({ children, ...props }: Props) => {
       // filter out the current entity then add it if we're not deleting
       // (prevents duplicates)
       const presencesCopy = prevPresences.filter(
-        (p) => !(p.channel === entity.channel && p.uuid === entity.uuid)
+        (p) => !(p.channel === entity.channel && p.uuid === entity.uuid),
       );
       if (!entity.deleting) {
         return presencesCopy.concat(entity);
@@ -955,7 +954,7 @@ const RealStore = ({ children, ...props }: Props) => {
         setPresence(p);
       });
     },
-    [setPresence]
+    [setPresence],
   );
 
   const stopClock = useCallback(() => {
@@ -967,7 +966,7 @@ const RealStore = ({ children, ...props }: Props) => {
   }, []);
 
   const [handleContextMatches, setHandleContextMatches] = useState(
-    new Array<(s: string) => void>()
+    new Array<(s: string) => void>(),
   );
   const addHandleContextMatch = useCallback((x: (s: string) => void) => {
     setHandleContextMatches((a: Array<(s: string) => void>) => {
@@ -990,35 +989,35 @@ const RealStore = ({ children, ...props }: Props) => {
       addHandleContextMatch,
       removeHandleContextMatch,
     }),
-    [handleContextMatches, addHandleContextMatch, removeHandleContextMatch]
+    [handleContextMatches, addHandleContextMatch, removeHandleContextMatch],
   );
   const lobbyStore = useMemo(
     () => ({
       lobbyContext,
       dispatchLobbyContext,
     }),
-    [lobbyContext, dispatchLobbyContext]
+    [lobbyContext, dispatchLobbyContext],
   );
   const loginStateStore = useMemo(
     () => ({
       loginState,
       dispatchLoginState,
     }),
-    [loginState, dispatchLoginState]
+    [loginState, dispatchLoginState],
   );
   const tournamentStateStore = useMemo(
     () => ({
       tournamentContext,
       dispatchTournamentContext,
     }),
-    [tournamentContext, dispatchTournamentContext]
+    [tournamentContext, dispatchTournamentContext],
   );
   const lagStore = useMemo(
     () => ({
       currentLagMs,
       setCurrentLagMs,
     }),
-    [currentLagMs, setCurrentLagMs]
+    [currentLagMs, setCurrentLagMs],
   );
   const tentativePlayStore = useMemo(
     () => ({
@@ -1044,7 +1043,7 @@ const RealStore = ({ children, ...props }: Props) => {
       setDisplayedRack,
       setBlindfoldCommand,
       setBlindfoldUseNPA,
-    ]
+    ],
   );
   const excludedPlayersStore = useMemo(
     () => ({
@@ -1062,7 +1061,7 @@ const RealStore = ({ children, ...props }: Props) => {
       setExcludedPlayersFetched,
       pendingBlockRefresh,
       setPendingBlockRefresh,
-    ]
+    ],
   );
   const friendsStore = useMemo(
     () => ({
@@ -1071,7 +1070,7 @@ const RealStore = ({ children, ...props }: Props) => {
       pendingFriendsRefresh,
       setPendingFriendsRefresh,
     }),
-    [friends, setFriends, pendingFriendsRefresh, setPendingFriendsRefresh]
+    [friends, setFriends, pendingFriendsRefresh, setPendingFriendsRefresh],
   );
   const moderatorsStore = useMemo(
     () => ({
@@ -1082,20 +1081,20 @@ const RealStore = ({ children, ...props }: Props) => {
       modsFetched,
       setModsFetched,
     }),
-    [moderators, setModerators, admins, setAdmins, modsFetched, setModsFetched]
+    [moderators, setModerators, admins, setAdmins, modsFetched, setModsFetched],
   );
   const challengeResultEventStore = useMemo(
     () => ({
       challengeResultEvent,
     }),
-    [challengeResultEvent]
+    [challengeResultEvent],
   );
   const gameContextStore = useMemo(
     () => ({
       gameContext,
       dispatchGameContext,
     }),
-    [gameContext, dispatchGameContext]
+    [gameContext, dispatchGameContext],
   );
 
   const gameMetaEventContextStore = useMemo(
@@ -1103,7 +1102,7 @@ const RealStore = ({ children, ...props }: Props) => {
       gameMetaEventContext,
       setGameMetaEventContext,
     }),
-    [gameMetaEventContext, setGameMetaEventContext]
+    [gameMetaEventContext, setGameMetaEventContext],
   );
 
   const chatStore = useMemo(
@@ -1124,7 +1123,7 @@ const RealStore = ({ children, ...props }: Props) => {
       chatChannels,
       deleteChat,
       setChatChannels,
-    ]
+    ],
   );
   const presenceStore = useMemo(
     () => ({
@@ -1132,21 +1131,21 @@ const RealStore = ({ children, ...props }: Props) => {
       addPresences,
       presences,
     }),
-    [setPresence, addPresences, presences]
+    [setPresence, addPresences, presences],
   );
   const gameEndMessageStore = useMemo(
     () => ({
       gameEndMessage,
       setGameEndMessage,
     }),
-    [gameEndMessage, setGameEndMessage]
+    [gameEndMessage, setGameEndMessage],
   );
   const rematchRequestStore = useMemo(
     () => ({
       rematchRequest,
       setRematchRequest,
     }),
-    [rematchRequest, setRematchRequest]
+    [rematchRequest, setRematchRequest],
   );
   const timerStore = useMemo(
     () => ({
@@ -1162,14 +1161,14 @@ const RealStore = ({ children, ...props }: Props) => {
       timerContext,
       pTimedOut,
       setPTimedOut,
-    ]
+    ],
   );
   const poolFormatStore = useMemo(
     () => ({
       poolFormat,
       setPoolFormat,
     }),
-    [poolFormat, setPoolFormat]
+    [poolFormat, setPoolFormat],
   );
 
   let ret = <ExaminableStore children={children} />;
@@ -1240,9 +1239,9 @@ export const Store = ({ children }: { children: React.ReactNode }) => {
     const handleBrowserNavigation = (evt: PopStateEvent) => {
       resetStore();
     };
-    window.addEventListener('popstate', handleBrowserNavigation);
+    window.addEventListener("popstate", handleBrowserNavigation);
     return () => {
-      window.removeEventListener('popstate', handleBrowserNavigation);
+      window.removeEventListener("popstate", handleBrowserNavigation);
     };
   }, [resetStore]);
 

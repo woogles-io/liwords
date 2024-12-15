@@ -1,7 +1,7 @@
-import { Button } from 'antd';
-import React from 'react';
-import { Millis } from '../store/timer_controller';
-import { SimpleTimer } from './simple_timer';
+import { Button } from "antd";
+import React from "react";
+import { Millis } from "../store/timer_controller";
+import { SimpleTimer } from "./simple_timer";
 
 type Props = {
   maxDuration: Millis;
@@ -48,7 +48,7 @@ export const TimedNotif = (props: Props) => {
       </p>
       <div className="row-of-buttons">
         {onDecline && (
-          <Button type={onAccept ? 'primary' : undefined} onClick={onDecline}>
+          <Button type={onAccept ? "primary" : undefined} onClick={onDecline}>
             {declineText}
           </Button>
         )}

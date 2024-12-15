@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { Row, Col, Input, Form, Alert, notification, Button } from 'antd';
-import qs from 'qs';
-import { useLocation } from 'react-router-dom';
-import { TopBar } from '../navigation/topbar';
-import { connectErrorMessage, useClient } from '../utils/hooks/connect';
-import { AuthenticationService } from '../gen/api/proto/user_service/user_service_pb';
+import React, { useState } from "react";
+import { Row, Col, Input, Form, Alert, notification, Button } from "antd";
+import qs from "qs";
+import { useLocation } from "react-router";
+import { TopBar } from "../navigation/topbar";
+import { connectErrorMessage, useClient } from "../utils/hooks/connect";
+import { AuthenticationService } from "../gen/api/proto/user_service/user_service_pb";
 
 const layout = {
   labelCol: {
@@ -22,25 +22,25 @@ const tailLayout = {
 };
 
 export const NewPassword = () => {
-  const [err, setErr] = useState('');
+  const [err, setErr] = useState("");
   const location = useLocation();
   const params = qs.parse(location.search, { ignoreQueryPrefix: true });
   const authClient = useClient(AuthenticationService);
   const onFinish = async (values: { [key: string]: string }) => {
     if (values.newPassword !== values.confirmnewPassword) {
-      setErr('New passwords must match');
+      setErr("New passwords must match");
       return;
     }
-    setErr('');
+    setErr("");
     try {
       await authClient.resetPasswordStep2({
         password: values.newPassword,
-        resetCode: typeof params.t === 'string' ? params.t : '',
+        resetCode: typeof params.t === "string" ? params.t : "",
       });
       notification.info({
-        message: 'Changed',
+        message: "Changed",
         description:
-          'Your password was successfully changed. Please Log In with your new password.',
+          "Your password was successfully changed. Please Log In with your new password.",
       });
     } catch (e) {
       setErr(connectErrorMessage(e));
@@ -68,7 +68,7 @@ export const NewPassword = () => {
               rules={[
                 {
                   required: true,
-                  message: 'Please input your new password!',
+                  message: "Please input your new password!",
                 },
               ]}
             >
@@ -81,7 +81,7 @@ export const NewPassword = () => {
               rules={[
                 {
                   required: true,
-                  message: 'Please confirm your new password!',
+                  message: "Please confirm your new password!",
                 },
               ]}
             >
@@ -97,7 +97,7 @@ export const NewPassword = () => {
         </Col>
       </Row>
 
-      {err !== '' ? <Alert message={err} type="error" /> : null}
+      {err !== "" ? <Alert message={err} type="error" /> : null}
     </>
   );
 };

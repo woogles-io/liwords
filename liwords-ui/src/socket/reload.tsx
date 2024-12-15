@@ -1,15 +1,15 @@
-import React from 'react';
+import React from "react";
 
 export const reloadAction = (
   <>
-    Woogles has been updated. Please{' '}
+    Woogles has been updated. Please{" "}
     <span
       className="message-action"
       onClick={() => window.location.reload()}
       role="button"
     >
       refresh
-    </span>{' '}
+    </span>{" "}
     at your convenience.
   </>
 );

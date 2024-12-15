@@ -1,4 +1,4 @@
-import { Unrace } from '../utils/unrace';
+import { Unrace } from "../utils/unrace";
 
 // Good enough for now. If need to reload, just refresh the whole page.
 class Loadable {
@@ -8,7 +8,7 @@ class Loadable {
 
   constructor(
     readonly cacheKey: string,
-    readonly path: string
+    readonly path: string,
   ) {}
 
   startFetch = async () => {
@@ -21,7 +21,6 @@ class Loadable {
     if (this.whichStep > 1) return;
     this.startFetch(); // In case this is not done yet.
     this.whichStep = 2;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const resp = await this.fetchPromise!;
     if (resp.ok) {
       return await resp.arrayBuffer();
@@ -44,7 +43,6 @@ class Loadable {
     try {
       const arrayBuffer = await this.getArrayBuffer();
       await this.disownArrayBuffer();
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       return arrayBuffer!;
     } catch (e) {
       console.error(`failed to load ${this.cacheKey}`, e);
@@ -57,70 +55,70 @@ class Loadable {
 const loadablesByKey: { [key: string]: Array<Loadable> } = {};
 {
   const filenames = [
-    'CSW19.kad',
-    'CSW19.klv2',
-    'CSW19.kwg',
-    'CSW19X.kad',
-    'CSW19X.klv2',
-    'CSW19X.kwg',
-    'CSW21.kad',
-    'CSW21.klv2',
-    'CSW21.kwg',
-    'CSW24.kad',
-    'CSW24.klv2',
-    'CSW24.kwg',
-    'DISC2.kad',
-    'DISC2.klv2',
-    'DISC2.kwg',
-    'ECWL.kad',
-    'ECWL.klv2',
-    'ECWL.kwg',
-    'FILE2017.kad',
-    'FILE2017.klv2',
-    'FILE2017.kwg',
-    'FRA20.kad',
-    'FRA20.klv2',
-    'FRA20.kwg',
-    'FRA24.kad',
-    'FRA24.klv2',
-    'FRA24.kwg',
-    'NSF21.kad',
-    'NSF21.klv2',
-    'NSF21.kwg',
-    'NSF22.kad',
-    'NSF22.klv2',
-    'NSF22.kwg',
-    'NSF23.kad',
-    'NSF23.klv2',
-    'NSF23.kwg',
-    'NSWL20.kad',
-    'NSWL20.klv2',
-    'NSWL20.kwg',
-    'NWL18.kad',
-    'NWL18.klv2',
-    'NWL18.kwg',
-    'NWL20.kad',
-    'NWL20.klv2',
-    'NWL20.kwg',
-    'NWL23.kad',
-    'NWL23.klv2',
-    'NWL23.kwg',
-    'OSPS49.kad',
-    'OSPS49.klv2',
-    'OSPS49.kwg',
-    'RD28.kad',
-    'RD28.klv2',
-    'RD28.kwg',
-    'super-CSW19.klv2',
-    'super-CSW19X.klv2',
-    'super-CSW21.klv2',
-    'super-CSW24.klv2',
-    'super-DISC2.klv2',
-    'super-ECWL.klv2',
-    'super-NSWL20.klv2',
-    'super-NWL18.klv2',
-    'super-NWL20.klv2',
-    'super-NWL23.klv2',
+    "CSW19.kad",
+    "CSW19.klv2",
+    "CSW19.kwg",
+    "CSW19X.kad",
+    "CSW19X.klv2",
+    "CSW19X.kwg",
+    "CSW21.kad",
+    "CSW21.klv2",
+    "CSW21.kwg",
+    "CSW24.kad",
+    "CSW24.klv2",
+    "CSW24.kwg",
+    "DISC2.kad",
+    "DISC2.klv2",
+    "DISC2.kwg",
+    "ECWL.kad",
+    "ECWL.klv2",
+    "ECWL.kwg",
+    "FILE2017.kad",
+    "FILE2017.klv2",
+    "FILE2017.kwg",
+    "FRA20.kad",
+    "FRA20.klv2",
+    "FRA20.kwg",
+    "FRA24.kad",
+    "FRA24.klv2",
+    "FRA24.kwg",
+    "NSF21.kad",
+    "NSF21.klv2",
+    "NSF21.kwg",
+    "NSF22.kad",
+    "NSF22.klv2",
+    "NSF22.kwg",
+    "NSF23.kad",
+    "NSF23.klv2",
+    "NSF23.kwg",
+    "NSWL20.kad",
+    "NSWL20.klv2",
+    "NSWL20.kwg",
+    "NWL18.kad",
+    "NWL18.klv2",
+    "NWL18.kwg",
+    "NWL20.kad",
+    "NWL20.klv2",
+    "NWL20.kwg",
+    "NWL23.kad",
+    "NWL23.klv2",
+    "NWL23.kwg",
+    "OSPS49.kad",
+    "OSPS49.klv2",
+    "OSPS49.kwg",
+    "RD28.kad",
+    "RD28.klv2",
+    "RD28.kwg",
+    "super-CSW19.klv2",
+    "super-CSW19X.klv2",
+    "super-CSW21.klv2",
+    "super-CSW24.klv2",
+    "super-DISC2.klv2",
+    "super-ECWL.klv2",
+    "super-NSWL20.klv2",
+    "super-NWL18.klv2",
+    "super-NWL20.klv2",
+    "super-NWL23.klv2",
   ];
 
   // convention-over-configuration.
@@ -134,11 +132,11 @@ const loadablesByKey: { [key: string]: Array<Loadable> } = {};
       const baseFilename = m[1] ? `super-${lexicon}` : lexicon;
       const extension = m[3];
       const cacheKey =
-        extension === '.kwg'
+        extension === ".kwg"
           ? `kwg/${baseFilename}`
-          : extension === '.kad'
+          : extension === ".kad"
             ? `kwg/${baseFilename}.WordSmog`
-            : extension === '.klv2'
+            : extension === ".klv2"
               ? `klv/${baseFilename}`
               : null;
       if (cacheKey) {
@@ -178,14 +176,14 @@ const loadablesByKey: { [key: string]: Array<Loadable> } = {};
   const errors = [];
   if (unsupportedFilenames.length > 0) {
     errors.push(
-      `unsupported filenames: ${unsupportedFilenames.sort().join(', ')}`
+      `unsupported filenames: ${unsupportedFilenames.sort().join(", ")}`,
     );
   }
   if (missingFiles.length > 0) {
-    errors.push(`missing files: ${missingFiles.sort().join(', ')}`);
+    errors.push(`missing files: ${missingFiles.sort().join(", ")}`);
   }
   if (errors.length > 0) {
-    throw new Error(errors.join('; '));
+    throw new Error(errors.join("; "));
   }
 }
 
@@ -194,15 +192,15 @@ const unrace = new Unrace();
 const wolgesCache = new WeakMap();
 
 export const getLexiconKey = (loadableKey: string) =>
-  loadablesByKey[loadableKey]?.[0]?.cacheKey?.replace(/^kwg\//, '');
+  loadablesByKey[loadableKey]?.[0]?.cacheKey?.replace(/^kwg\//, "");
 
 export const getLeaveKey = (loadableKey: string) =>
-  loadablesByKey[loadableKey]?.[1]?.cacheKey?.replace(/^klv\//, '');
+  loadablesByKey[loadableKey]?.[1]?.cacheKey?.replace(/^klv\//, "");
 
 export const getWolges = async (loadableKey: string) =>
   unrace.run(async () => {
     // Allow these files to start loading.
-    const wolgesPromise = import('wolges-wasm');
+    const wolgesPromise = import("wolges-wasm");
     const effectiveLoadables = loadablesByKey[loadableKey] ?? [];
     for (const loadable of effectiveLoadables) {
       loadable.startFetch();
@@ -218,26 +216,26 @@ export const getWolges = async (loadableKey: string) =>
       effectiveLoadables.map(async (loadable) => {
         const cacheKey = loadable.cacheKey;
         if (!cachedStuffs[cacheKey]) {
-          const splitAt = cacheKey.indexOf('/');
+          const splitAt = cacheKey.indexOf("/");
           if (splitAt < 0) throw new Error(`invalid cache key ${cacheKey}`);
           const type = cacheKey.substring(0, splitAt);
           const name = cacheKey.substring(splitAt + 1);
-          if (type === 'klv') {
+          if (type === "klv") {
             await wolges.precache_klv(
               name,
-              new Uint8Array(await loadable.getSingleUseArrayBuffer())
+              new Uint8Array(await loadable.getSingleUseArrayBuffer()),
             );
-          } else if (type === 'kwg') {
+          } else if (type === "kwg") {
             await wolges.precache_kwg(
               name,
-              new Uint8Array(await loadable.getSingleUseArrayBuffer())
+              new Uint8Array(await loadable.getSingleUseArrayBuffer()),
             );
           } else {
             throw new Error(`invalid cache key ${cacheKey}`);
           }
           cachedStuffs[cacheKey] = true;
         }
-      })
+      }),
     );
     return wolges;
   });

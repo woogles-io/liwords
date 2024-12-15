@@ -1,15 +1,15 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import Rack from './rack';
+import React, { useCallback, useEffect, useState } from "react";
+import Rack from "./rack";
 import {
   useGameContextStoreContext,
   usePoolFormatStoreContext,
-} from '../store/store';
-import Pool from './pool';
-import { singularCount } from '../utils/plural';
-import { Button } from 'antd';
-import { Modal } from '../utils/focus_modal';
-import { Alphabet, getMachineLetterForKey } from '../constants/alphabets';
-import { MachineLetter, MachineWord } from '../utils/cwgame/common';
+} from "../store/store";
+import Pool from "./pool";
+import { singularCount } from "../utils/plural";
+import { Button } from "antd";
+import { Modal } from "../utils/focus_modal";
+import { Alphabet, getMachineLetterForKey } from "../constants/alphabets";
+import { MachineLetter, MachineWord } from "../utils/cwgame/common";
 
 const doNothing = () => {};
 
@@ -26,10 +26,10 @@ type Props = {
 
 export const ExchangeTiles = React.memo((props: Props) => {
   const [exchangedRackIndices, setExchangedRackIndices] = useState(
-    new Set<number>()
+    new Set<number>(),
   );
   const [exchangedRack, setExchangedRack] = useState(
-    new Array<MachineLetter>()
+    new Array<MachineLetter>(),
   );
 
   const [delayInput, setDelayInput] = useState(true);
@@ -40,7 +40,7 @@ export const ExchangeTiles = React.memo((props: Props) => {
   useEffect(() => {
     if (props.modalVisible) {
       console.log(
-        'When exchanging, press - to toggle the tiles selected. For example, type 4 E - Enter to exchange 6 and keep E.'
+        "When exchanging, press - to toggle the tiles selected. For example, type 4 E - Enter to exchange 6 and keep E.",
       );
     }
   }, [props.modalVisible]);
@@ -50,7 +50,7 @@ export const ExchangeTiles = React.memo((props: Props) => {
       if (delayInput || !props.modalVisible) {
         return;
       }
-      if (e.key === 'Enter') {
+      if (e.key === "Enter") {
         // Prevent also activating the focused button.
         // Previously, if the Exchange button was clicked,
         // pressing Enter would reactivate the exchange modal.
@@ -64,7 +64,7 @@ export const ExchangeTiles = React.memo((props: Props) => {
       const key = e.key.toLocaleUpperCase();
 
       // Toggle all. To keep selected tiles, toggle just before exchanging.
-      if (key === '-') {
+      if (key === "-") {
         if (props.rack.length > 0) {
           const tempToExchange = new Set<number>();
           for (let i = 0; i < props.rack.length; ++i) {
@@ -110,12 +110,12 @@ export const ExchangeTiles = React.memo((props: Props) => {
       props.rack,
       props.alphabet,
       propsOnOk,
-    ]
+    ],
   );
   useEffect(() => {
-    window.addEventListener('keydown', keydown);
+    window.addEventListener("keydown", keydown);
     return () => {
-      window.removeEventListener('keydown', keydown);
+      window.removeEventListener("keydown", keydown);
     };
   }, [keydown]);
   useEffect(() => {
@@ -146,7 +146,7 @@ export const ExchangeTiles = React.memo((props: Props) => {
       }
       setExchangedRackIndices(newExchangedRackIndices);
     },
-    [exchangedRackIndices]
+    [exchangedRackIndices],
   );
   const handleOnOk = useCallback(() => {
     propsOnOk(exchangedRack);
@@ -165,8 +165,8 @@ export const ExchangeTiles = React.memo((props: Props) => {
           {exchangedRackIndices.size > 0 ? (
             <p className="label">{`${singularCount(
               exchangedRackIndices.size,
-              'tile',
-              'tiles'
+              "tile",
+              "tiles",
             )} selected`}</p>
           ) : null}
           <Button

@@ -1,10 +1,10 @@
-import React, { DragEvent } from 'react';
-import { BonusType } from '../constants/board_layout';
+import React, { DragEvent } from "react";
+import { BonusType } from "../constants/board_layout";
 import {
   ArrowRightOutlined,
   ArrowDownOutlined,
   StarOutlined,
-} from '@ant-design/icons';
+} from "@ant-design/icons";
 interface BonusProperties {
   bonusText: string;
   bonusClass: string;
@@ -13,19 +13,19 @@ interface BonusProperties {
 function getBonusProperties(bt: BonusType): BonusProperties {
   switch (bt) {
     case BonusType.DoubleWord:
-      return { bonusText: '2x word', bonusClass: '2WS' };
+      return { bonusText: "2x word", bonusClass: "2WS" };
     case BonusType.TripleWord:
-      return { bonusText: '3x word', bonusClass: '3WS' };
+      return { bonusText: "3x word", bonusClass: "3WS" };
     case BonusType.QuadrupleWord:
-      return { bonusText: '4x word', bonusClass: '4WS' };
+      return { bonusText: "4x word", bonusClass: "4WS" };
     case BonusType.DoubleLetter:
-      return { bonusText: '2x letter', bonusClass: '2LS' };
+      return { bonusText: "2x letter", bonusClass: "2LS" };
     case BonusType.TripleLetter:
-      return { bonusText: '3x letter', bonusClass: '3LS' };
+      return { bonusText: "3x letter", bonusClass: "3LS" };
     case BonusType.QuadrupleLetter:
-      return { bonusText: '4x letter', bonusClass: '4LS' };
+      return { bonusText: "4x letter", bonusClass: "4LS" };
   }
-  return { bonusText: '', bonusClass: '' };
+  return { bonusText: "", bonusClass: "" };
 }
 
 type Props = {
@@ -45,7 +45,7 @@ const BoardSpace = React.memo((props: Props) => {
   // ✩✪✫
   if (props.startingSquare) {
     startingSquare = <StarOutlined className="center-square" />;
-  } else if (bonusText !== '') {
+  } else if (bonusText !== "") {
     bonusLabel = <p className="bonus-label">{bonusText}</p>;
   }
   if (props.arrow) {
@@ -63,8 +63,8 @@ const BoardSpace = React.memo((props: Props) => {
   return (
     <div
       className={`board-space droppable ${
-        props.arrow ? 'selected' : ''
-      } bonus-${bonusClass ? bonusClass : 'none'}`}
+        props.arrow ? "selected" : ""
+      } bonus-${bonusClass ? bonusClass : "none"}`}
       onClick={props.clicked}
       onDragOver={handleDropOver}
       onDrop={props.handleTileDrop}

@@ -7,19 +7,19 @@ import {
   makeBlank,
   EmptyBoardSpaceMachineLetter,
   EmptyRackSpaceMachineLetter,
-} from './common';
-import { calculateTemporaryScore } from './scoring';
-import { Board } from './board';
+} from "./common";
+import { calculateTemporaryScore } from "./scoring";
+import { Board } from "./board";
 import {
   Alphabet,
   getMachineLetterForKey,
   machineLetterToRune,
-} from '../../constants/alphabets';
-import { isDesignatedBlankMachineLetter } from './common';
-import { BlankMachineLetter } from './common';
+} from "../../constants/alphabets";
+import { isDesignatedBlankMachineLetter } from "./common";
+import { BlankMachineLetter } from "./common";
 
-const NormalizedBackspace = 'BACKSPACE';
-const NormalizedSpace = ' ';
+const NormalizedBackspace = "BACKSPACE";
+const NormalizedSpace = " ";
 
 export type PlacementArrow = {
   row: number;
@@ -31,7 +31,7 @@ export type PlacementArrow = {
 export const nextArrowPropertyState = (
   props: PlacementArrow,
   row: number,
-  col: number
+  col: number,
 ): PlacementArrow => {
   if (row !== props.row || col !== props.col) {
     // start over
@@ -83,7 +83,7 @@ export const handleTileDeletion = (
   unplacedTiles: Array<MachineLetter>, // tiles currently still on rack
   currentlyPlacedTiles: Set<EphemeralTile>,
   board: Board,
-  alphabet: Alphabet
+  alphabet: Alphabet,
 ): KeypressHandlerReturn => {
   // Remove any tiles.
   const newUnplacedTiles = [...unplacedTiles];
@@ -120,7 +120,7 @@ export const nextArrowStateAfterTilePlacement = (
   arrowProperty: PlacementArrow,
   ephTileMap: { [tileIdx: number]: EphemeralTile },
   increment: 1 | -1,
-  board: Board
+  board: Board,
 ) => {
   let { col, row } = arrowProperty;
   if (arrowProperty.horizontal) {
@@ -163,7 +163,7 @@ export const handleKeyPress = (
   key: string,
   unplacedTiles: Array<MachineLetter>, // tiles currently still on rack
   currentlyPlacedTiles: Set<EphemeralTile>,
-  alphabet: Alphabet
+  alphabet: Alphabet,
 ): KeypressHandlerReturn | null => {
   const normalizedKey = key.toUpperCase();
 
@@ -173,7 +173,7 @@ export const handleKeyPress = (
     !Object.prototype.hasOwnProperty.call(alphabet.letterMap, normalizedKey) &&
     !Object.prototype.hasOwnProperty.call(
       alphabet.shortcutMap,
-      normalizedKey
+      normalizedKey,
     ) &&
     normalizedKey !== NormalizedBackspace &&
     normalizedKey !== NormalizedSpace
@@ -218,7 +218,7 @@ export const handleKeyPress = (
     arrowProperty,
     ephTileMap,
     increment,
-    board
+    board,
   );
 
   if (normalizedKey === NormalizedBackspace) {
@@ -239,7 +239,7 @@ export const handleKeyPress = (
       unplacedTiles,
       currentlyPlacedTiles,
       board,
-      alphabet
+      alphabet,
     );
   }
 
@@ -330,7 +330,7 @@ export const handleKeyPress = (
 export const stableInsertRack = (
   unplacedTiles: Array<MachineLetter>,
   rackIndex: number,
-  letter?: MachineLetter
+  letter?: MachineLetter,
 ): Array<MachineLetter> => {
   if (letter == null) {
     return unplacedTiles;
@@ -338,10 +338,10 @@ export const stableInsertRack = (
   let newUnplacedTilesLeft = unplacedTiles.slice(0, rackIndex);
   let newUnplacedTilesRight = unplacedTiles.slice(rackIndex);
   let emptyIndexLeft = newUnplacedTilesLeft.lastIndexOf(
-    EmptyRackSpaceMachineLetter
+    EmptyRackSpaceMachineLetter,
   );
   let emptyIndexRight = newUnplacedTilesRight.indexOf(
-    EmptyRackSpaceMachineLetter
+    EmptyRackSpaceMachineLetter,
   );
   if (emptyIndexLeft >= 0 && emptyIndexRight >= 0) {
     // Determine which gap to recover.
@@ -360,7 +360,7 @@ export const stableInsertRack = (
     // Keep Left's length the same if possible.
     if (newUnplacedTilesRight.length > 0) {
       newUnplacedTilesLeft = newUnplacedTilesLeft.concat(
-        newUnplacedTilesRight[0]
+        newUnplacedTilesRight[0],
       );
       newUnplacedTilesRight = newUnplacedTilesRight.slice(1);
     }
@@ -379,7 +379,7 @@ export const returnTileToRack = (
   currentlyPlacedTiles: Set<EphemeralTile>,
   alphabet: Alphabet,
   rackIndex = -1,
-  tileIndex = -1
+  tileIndex = -1,
 ): PlacementHandlerReturn | null => {
   // Create an ephemeral tile map with unique keys.
   const ephTileMap: { [tileIdx: number]: EphemeralTile } = {};
@@ -412,7 +412,7 @@ export const handleDroppedTile = (
   currentlyPlacedTiles: Set<EphemeralTile>,
   rackIndex: number,
   tileIndex: number,
-  alphabet: Alphabet
+  alphabet: Alphabet,
 ): PlacementHandlerReturn | null => {
   // Create an ephemeral tile map with unique keys.
   const ephTileMap: { [tileIdx: number]: EphemeralTile } = {};
@@ -441,7 +441,7 @@ export const handleDroppedTile = (
         .concat(
           isDesignatedBlankMachineLetter(targetSquare.letter)
             ? BlankMachineLetter
-            : targetSquare.letter
+            : targetSquare.letter,
         )
         .concat(unplacedTiles.slice(rackIndex + 1));
     } else {
@@ -490,7 +490,7 @@ export const designateBlank = (
   currentlyPlacedTiles: Set<EphemeralTile>,
   displayedRack: Array<MachineLetter>,
   letter: MachineLetter,
-  alphabet: Alphabet
+  alphabet: Alphabet,
 ): PlacementHandlerReturn | null => {
   // Find the undesignated blank
   const newPlacedTiles = new Set(currentlyPlacedTiles);
@@ -511,7 +511,7 @@ export const designateBlank = (
 export const getWordsFormed = (
   board: Board,
   tiles: Set<EphemeralTile> | undefined,
-  alphabet: Alphabet
+  alphabet: Alphabet,
 ): string[] => {
   const tentativeTiles = tiles ? Array.from(tiles.values()) : [];
   const tilesLayout = board.letters;
@@ -523,10 +523,10 @@ export const getWordsFormed = (
   });
   const boardSize = board.gridLayout.length;
   const tentativeBoard = Array.from(new Array(boardSize), (_, y) =>
-    Array.from(new Array(boardSize), (_, x) => tilesLayout[y * boardSize + x])
+    Array.from(new Array(boardSize), (_, x) => tilesLayout[y * boardSize + x]),
   );
   const newTilesPlaced = Array.from(new Array(boardSize), (_, y) =>
-    Array.from(new Array(boardSize), (_, x) => EmptyBoardSpaceMachineLetter)
+    Array.from(new Array(boardSize), (_, x) => EmptyBoardSpaceMachineLetter),
   );
   for (const { row, col, letter } of tentativeTiles) {
     tentativeBoard[row][col] = letter;
@@ -536,7 +536,7 @@ export const getWordsFormed = (
   for (let y = 0; y < boardSize; y += 1) {
     for (let x = 0; x < boardSize; x += 1) {
       let usesTentativeTile = false;
-      let sh = '';
+      let sh = "";
       {
         let i = x;
         while (
@@ -558,10 +558,10 @@ export const getWordsFormed = (
       }
       //Ignore if it's not a new word and new tiles were placed.
       if (tiles && !usesTentativeTile) {
-        sh = '';
+        sh = "";
       }
       usesTentativeTile = false;
-      let sv = '';
+      let sv = "";
       {
         let i = y;
         while (
@@ -582,7 +582,7 @@ export const getWordsFormed = (
         }
       }
       if (tiles && !usesTentativeTile) {
-        sv = '';
+        sv = "";
       }
       const tempWords = [sh, sv].filter((word) => word.length >= 2);
       tempWords.forEach(wordsFormed.add, wordsFormed);

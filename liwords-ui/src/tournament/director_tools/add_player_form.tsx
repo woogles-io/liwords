@@ -1,11 +1,11 @@
-import { Button, Form, InputNumber, Select } from 'antd';
-import React, { useCallback, useState } from 'react';
+import { Button, Form, InputNumber, Select } from "antd";
+import React, { useCallback, useState } from "react";
 
-import { useDebounce } from '../../utils/debounce';
-import { AutoComplete } from 'antd';
-import { Store } from 'antd/lib/form/interface';
-import { useClient } from '../../utils/hooks/connect';
-import { AutocompleteService } from '../../gen/api/proto/user_service/user_service_pb';
+import { useDebounce } from "../../utils/debounce";
+import { AutoComplete } from "antd";
+import { Store } from "antd/lib/form/interface";
+import { useClient } from "../../utils/hooks/connect";
+import { AutocompleteService } from "../../gen/api/proto/user_service/user_service_pb";
 
 type user = {
   username: string;
@@ -38,17 +38,17 @@ export const AddPlayerForm = (props: Props) => {
       const resp = await acClient.getCompletion({ prefix: searchText });
       setUsernameOptions(resp.users);
     },
-    [acClient]
+    [acClient],
   );
 
   const searchUsernameDebounced = useDebounce(onUsernameSearch, 300);
 
   const onFormSubmit = (val: Store) => {
     const playersCopy = { ...playersToAdd };
-    const user = val.player.split(':');
+    const user = val.player.split(":");
 
     if (usersAdded.has(user[0])) {
-      window.alert('You have already added this player');
+      window.alert("You have already added this player");
       return;
     }
 

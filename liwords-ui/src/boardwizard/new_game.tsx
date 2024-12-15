@@ -1,23 +1,23 @@
-import { Button, Dropdown, Layout } from 'antd';
-import { useCallback, useEffect, useState } from 'react';
-import { TopBar } from '../navigation/topbar';
-import { EditorControl } from './editor_control';
+import { Button, Dropdown, Layout } from "antd";
+import { useCallback, useEffect, useState } from "react";
+import { TopBar } from "../navigation/topbar";
+import { EditorControl } from "./editor_control";
 
-import { ChallengeRule } from '../gen/api/proto/ipc/omgwords_pb';
-import { BroadcastGamesResponse_BroadcastGame } from '../gen/api/proto/omgwords_service/omgwords_pb';
-import { useClient } from '../utils/hooks/connect';
-import { GameEventService } from '../gen/api/proto/omgwords_service/omgwords_pb';
-import { AnnotatedGamesHistoryCard } from '../profile/annotated_games_history';
-import { useLoginStateStoreContext } from '../store/store';
-import { Content } from 'antd/lib/layout/layout';
+import { ChallengeRule } from "../gen/api/proto/ipc/omgwords_pb";
+import { BroadcastGamesResponse_BroadcastGame } from "../gen/api/proto/omgwords_service/omgwords_pb";
+import { useClient } from "../utils/hooks/connect";
+import { GameEventService } from "../gen/api/proto/omgwords_service/omgwords_pb";
+import { AnnotatedGamesHistoryCard } from "../profile/annotated_games_history";
+import { useLoginStateStoreContext } from "../store/store";
+import { Content } from "antd/lib/layout/layout";
 import {
   EditOutlined,
   FileImageOutlined,
   PlusOutlined,
   UploadOutlined,
-} from '@ant-design/icons';
-import { MenuProps } from 'antd/lib';
-import { GCGProcessForm } from './gcg_process_form';
+} from "@ant-design/icons";
+import { MenuProps } from "antd/lib";
+import { GCGProcessForm } from "./gcg_process_form";
 // When no game is visible, this is the page that is visible.
 
 type Props = {
@@ -25,7 +25,7 @@ type Props = {
     p1name: string,
     p2name: string,
     lex: string,
-    chrule: ChallengeRule
+    chrule: ChallengeRule,
   ) => void;
 };
 
@@ -38,7 +38,7 @@ export const EditorLandingPage = (props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const [recentAnnotatedGamesOffset, setRecentAnnotatedGamesOffset] =
     useState(0);
-  const [selectedMenu, setSelectedMenu] = useState('');
+  const [selectedMenu, setSelectedMenu] = useState("");
 
   const fetchPrevAnnotatedGames = useCallback(() => {
     setRecentAnnotatedGamesOffset((r) => Math.max(r - annotatedPageSize, 0));
@@ -72,15 +72,15 @@ export const EditorLandingPage = (props: Props) => {
     return `${loc.protocol}//${loc.host}/scrabblecam/callback`;
   }, []);
 
-  const menuItems: MenuProps['items'] = [
+  const menuItems: MenuProps["items"] = [
     {
-      label: 'Create a new game from scratch',
-      key: 'createGame',
+      label: "Create a new game from scratch",
+      key: "createGame",
       icon: <EditOutlined />,
     },
     {
-      label: 'Upload a GCG file',
-      key: 'uploadGCG',
+      label: "Upload a GCG file",
+      key: "uploadGCG",
       icon: <UploadOutlined />,
     },
     {
@@ -91,7 +91,7 @@ export const EditorLandingPage = (props: Props) => {
           Annotate from your camera with Scrabblecam
         </a>
       ),
-      key: 'image',
+      key: "image",
       icon: <FileImageOutlined />,
     },
   ];
@@ -109,12 +109,12 @@ export const EditorLandingPage = (props: Props) => {
         <Content>
           <div
             style={{
-              display: 'flex',
-              justifyContent: 'center',
+              display: "flex",
+              justifyContent: "center",
               padding: 24,
             }}
           >
-            <Dropdown menu={menuProps} trigger={['click']}>
+            <Dropdown menu={menuProps} trigger={["click"]}>
               <Button type="primary" icon={<PlusOutlined />}>
                 Add an annotated game
               </Button>
@@ -122,12 +122,12 @@ export const EditorLandingPage = (props: Props) => {
           </div>
           <div
             style={{
-              display: 'flex',
-              justifyContent: 'center',
+              display: "flex",
+              justifyContent: "center",
             }}
           >
-            {selectedMenu === 'createGame' && (
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
+            {selectedMenu === "createGame" && (
+              <div style={{ display: "flex", justifyContent: "center" }}>
                 <EditorControl
                   createNewGame={props.createNewGame}
                   deleteGame={() => {}}
@@ -135,11 +135,11 @@ export const EditorLandingPage = (props: Props) => {
                 />
               </div>
             )}
-            {selectedMenu === 'uploadGCG' && (
+            {selectedMenu === "uploadGCG" && (
               <div
                 style={{
-                  display: 'flex',
-                  justifyContent: 'center',
+                  display: "flex",
+                  justifyContent: "center",
                 }}
               >
                 <GCGProcessForm gcg="" showUpload showPreview />

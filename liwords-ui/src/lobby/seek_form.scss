@@ -1,4 +1,4 @@
-@use '../base.scss' as *;
+@use "../base.scss" as *;
 
 .ant-modal-root .seek-modal {
   .ant-modal-header {
@@ -118,7 +118,7 @@
       }
     }
     & > label::after {
-      content: '';
+      content: "";
     }
   }
   .ant-slider {
@@ -178,10 +178,10 @@
     font-size: 13px;
     font-weight: 400;
     &::before {
-      content: '(';
+      content: "(";
     }
     &::after {
-      content: ')';
+      content: ")";
     }
   }
   span.description {

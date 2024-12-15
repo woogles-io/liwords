@@ -1,20 +1,19 @@
-import { create } from '@bufbuild/protobuf';
+import { create } from "@bufbuild/protobuf";
 import {
-  GameEvent,
   GameEvent_Type,
   GameEventSchema,
-} from '../../gen/api/vendor/macondo/macondo_pb';
-import { gameEventsToTurns } from './turns';
+} from "../../gen/api/vendor/macondo/macondo_pb";
+import { gameEventsToTurns } from "./turns";
 
-it('test turns simple', () => {
+it("test turns simple", () => {
   const evt1 = create(GameEventSchema, {
     playerIndex: 1,
-    rack: '?AEELRX',
+    rack: "?AEELRX",
     cumulative: 92,
     row: 7,
     column: 7,
-    position: '8H',
-    playedTiles: 'RELAXEs',
+    position: "8H",
+    playedTiles: "RELAXEs",
     score: 92,
   });
 
@@ -34,15 +33,15 @@ it('test turns simple', () => {
   ]);
 });
 
-it('test turns simple 2', () => {
+it("test turns simple 2", () => {
   const evt1 = create(GameEventSchema, {
     playerIndex: 1,
-    rack: '?AEELRX',
+    rack: "?AEELRX",
     cumulative: 92,
     row: 7,
     column: 7,
-    position: '8H',
-    playedTiles: 'RELAXEs',
+    position: "8H",
+    playedTiles: "RELAXEs",
     score: 92,
   });
 
@@ -55,12 +54,12 @@ it('test turns simple 2', () => {
 
   const evt3 = create(GameEventSchema, {
     playerIndex: 0,
-    rack: 'ABCDEFG',
+    rack: "ABCDEFG",
     cumulative: 38,
     row: 6,
     column: 12,
-    position: 'M7',
-    playedTiles: 'F.EDBAG',
+    position: "M7",
+    playedTiles: "F.EDBAG",
     score: 38,
   });
 
@@ -78,15 +77,15 @@ it('test turns simple 2', () => {
   ]);
 });
 
-it('test turns simple 3', () => {
+it("test turns simple 3", () => {
   const evt1 = create(GameEventSchema, {
     playerIndex: 1,
-    rack: '?AEELRX',
+    rack: "?AEELRX",
     cumulative: 92,
     row: 7,
     column: 7,
-    position: '8H',
-    playedTiles: 'RELAXEs',
+    position: "8H",
+    playedTiles: "RELAXEs",
     score: 92,
   });
 
@@ -99,12 +98,12 @@ it('test turns simple 3', () => {
 
   const evt3 = create(GameEventSchema, {
     playerIndex: 0,
-    rack: 'ABCDEFG',
+    rack: "ABCDEFG",
     cumulative: 40,
     row: 6,
     column: 12,
-    position: 'M7',
-    playedTiles: 'F.EDBAC',
+    position: "M7",
+    playedTiles: "F.EDBAC",
     score: 40,
   });
 

@@ -5,23 +5,23 @@ import React, {
   useMemo,
   useRef,
   useState,
-} from 'react';
+} from "react";
 import {
   FriendUser,
   useFriendsStoreContext,
   useLoginStateStoreContext,
   usePresenceStoreContext,
   useExcludedPlayersStoreContext,
-} from '../store/store';
-import { PresenceEntity } from '../store/constants';
-import { PettableAvatar, PlayerAvatar } from '../shared/player_avatar';
-import { moderateUser } from '../mod/moderate';
-import { Form, Input } from 'antd';
-import { UsernameWithContext } from '../shared/usernameWithContext';
-import './playerList.scss';
-import { useDebounce } from '../utils/debounce';
-import { flashError, useClient } from '../utils/hooks/connect';
-import { AutocompleteService } from '../gen/api/proto/user_service/user_service_pb';
+} from "../store/store";
+import { PresenceEntity } from "../store/constants";
+import { PettableAvatar, PlayerAvatar } from "../shared/player_avatar";
+import { moderateUser } from "../mod/moderate";
+import { Form, Input } from "antd";
+import { UsernameWithContext } from "../shared/usernameWithContext";
+import "./playerList.scss";
+import { useDebounce } from "../utils/debounce";
+import { flashError, useClient } from "../utils/hooks/connect";
+import { AutocompleteService } from "../gen/api/proto/user_service/user_service_pb";
 
 type Props = {
   defaultChannelType: string;
@@ -47,19 +47,19 @@ const activityToText = (
   inGame: boolean,
   watching: boolean,
   editing: boolean,
-  watchingAnno: boolean
+  watchingAnno: boolean,
 ) => {
   if (inGame) {
-    return 'Playing OMGWords';
+    return "Playing OMGWords";
   }
   if (watching) {
-    return 'Watching OMGWords';
+    return "Watching OMGWords";
   }
   if (editing) {
-    return 'Annotating an OMGWords game';
+    return "Annotating an OMGWords game";
   }
   if (watchingAnno) {
-    return 'Watching an OMGWords annotation';
+    return "Watching an OMGWords annotation";
   }
 };
 
@@ -78,7 +78,7 @@ const Player = React.memo((props: PlayerProps) => {
           games.set(gameID, new Set());
         }
         games.get(gameID)!.add(groupName);
-        if (groupName === 'activegame:') {
+        if (groupName === "activegame:") {
           --numChannels;
         }
       }
@@ -93,15 +93,15 @@ const Player = React.memo((props: PlayerProps) => {
   const currentEditingGames: Array<string> = [];
   const currentWatchedAnnoGames: Array<string> = [];
   games.forEach((groupNames, gameId) => {
-    if (groupNames.has('activegame:') && groupNames.has('chat.game.')) {
+    if (groupNames.has("activegame:") && groupNames.has("chat.game.")) {
       currentActiveGames.push(gameId);
-    } else if (groupNames.has('chat.gametv.')) {
-      if (gameId.includes('.')) {
+    } else if (groupNames.has("chat.gametv.")) {
+      if (gameId.includes(".")) {
         // editor or anno
-        const [t, actualGameId] = gameId.split('.');
-        if (t === 'editor') {
+        const [t, actualGameId] = gameId.split(".");
+        if (t === "editor") {
           currentEditingGames.push(actualGameId);
-        } else if (t === 'anno') {
+        } else if (t === "anno") {
           currentWatchedAnnoGames.push(actualGameId);
         }
       } else {
@@ -109,7 +109,7 @@ const Player = React.memo((props: PlayerProps) => {
       }
     }
   });
-  if (props.channel?.includes('chat.puzzlelobby')) {
+  if (props.channel?.includes("chat.puzzlelobby")) {
     puzzling = true;
     // later can use specific puzzle chats and follow people to specific puzzles.
   }
@@ -136,10 +136,10 @@ const Player = React.memo((props: PlayerProps) => {
 
   return (
     <div
-      className={`player-display ${!online ? 'offline' : ''} ${
-        inGame ? 'ingame' : ''
-      } ${props.className ? props.className : ''} ${
-        puzzling && !inGame ? 'puzzling' : ''
+      className={`player-display ${!online ? "offline" : ""} ${
+        inGame ? "ingame" : ""
+      } ${props.className ? props.className : ""} ${
+        puzzling && !inGame ? "puzzling" : ""
       }`}
       ref={setDomElt}
       key={props.uuid}
@@ -158,7 +158,7 @@ const Player = React.memo((props: PlayerProps) => {
               userID={props.uuid}
               moderate={moderateUser}
               includeFlag
-              omitBlock={props.className === 'friends'}
+              omitBlock={props.className === "friends"}
               showModTools
               sendMessage={props.sendMessage}
               currentActiveGames={currentActiveGames}
@@ -195,9 +195,9 @@ const PlayerList = (props: PlayerListProps) => {
           if (uuid != null) ret[uuid] = idx;
           return ret;
         },
-        {} as { [key: string]: number }
+        {} as { [key: string]: number },
       ),
-    [props.userList]
+    [props.userList],
   );
 
   // 48px height + 18px margin = 66px for each entry.
@@ -206,7 +206,7 @@ const PlayerList = (props: PlayerListProps) => {
   // assume 1080px monitor at full height.
   const threshold = 0; // can increase this to load earlier.
   const [numShown, setNumShown] = useState(
-    Math.ceil(1080 + 18) / 66 + (threshold + 1)
+    Math.ceil(1080 + 18) / 66 + (threshold + 1),
   );
 
   const domEltToUuid = useRef(new Map());
@@ -281,7 +281,7 @@ const PlayerList = (props: PlayerListProps) => {
               key={p.uuid}
               myio={myio}
               {...p}
-            />
+            />,
           );
         return ret;
       }, [] as ReactNode[])}
@@ -298,12 +298,12 @@ export const Players = React.memo((props: Props) => {
   const [searchResults, setSearchResults] = useState<
     Array<Partial<FriendUser>>
   >([]);
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState("");
   const { presences } = usePresenceStoreContext();
   const { excludedPlayers } = useExcludedPlayersStoreContext();
 
   const setHeight = useCallback(() => {
-    const tabPaneHeight = document.getElementById('chat')?.clientHeight;
+    const tabPaneHeight = document.getElementById("chat")?.clientHeight;
     setMaxHeight(tabPaneHeight ? tabPaneHeight - 117 : undefined);
   }, []);
 
@@ -318,13 +318,13 @@ export const Players = React.memo((props: Props) => {
       const countA = (a.channel || []).length > 0 ? 1 : -1;
       const countB = (b.channel || []).length > 0 ? 1 : -1;
       return (
-        countB - countA || (a.username ?? '').localeCompare(b.username ?? '')
+        countB - countA || (a.username ?? "").localeCompare(b.username ?? "")
       );
     },
-    []
+    [],
   );
 
-  const lastSearchedText = useRef('');
+  const lastSearchedText = useRef("");
   const onPlayerSearch = useCallback(
     async (searchText: string) => {
       if (lastSearchedText.current === searchText) {
@@ -340,9 +340,9 @@ export const Players = React.memo((props: Props) => {
           setSearchResults(
             resp.users
               .filter(
-                (u) => u.uuid && u.uuid !== userID && !(u.uuid in friends)
+                (u) => u.uuid && u.uuid !== userID && !(u.uuid in friends),
               )
-              .sort(onlineAlphaComparator)
+              .sort(onlineAlphaComparator),
           );
         } catch (e) {
           flashError(e);
@@ -351,7 +351,7 @@ export const Players = React.memo((props: Props) => {
         setSearchResults([]);
       }
     },
-    [userID, friends, onlineAlphaComparator, acClient]
+    [userID, friends, onlineAlphaComparator, acClient],
   );
   const searchUsernameDebounced = useDebounce(onPlayerSearch, 200);
 
@@ -364,15 +364,15 @@ export const Players = React.memo((props: Props) => {
       searchUsernameDebounced(prefix);
       if (!prefix) {
         // but clear the results immediately.
-        lastSearchedText.current = '';
+        lastSearchedText.current = "";
         setSearchResults([]);
       }
     },
-    [searchUsernameDebounced]
+    [searchUsernameDebounced],
   );
 
   const renderPlayerList = useCallback(
-    (userList: Partial<FriendUser>[], className = ''): ReactNode => {
+    (userList: Partial<FriendUser>[], className = ""): ReactNode => {
       const nonExcludedUsers = userList.filter((p) => {
         if (p.uuid) {
           return !excludedPlayers.has(p.uuid);
@@ -387,7 +387,7 @@ export const Players = React.memo((props: Props) => {
         />
       );
     },
-    [sendMessage, excludedPlayers]
+    [sendMessage, excludedPlayers],
   );
 
   const filterPlayerListBySearch = useCallback(
@@ -395,19 +395,19 @@ export const Players = React.memo((props: Props) => {
       if (searchTerm.length) {
         const lowercasedSearchTerm = searchTerm.toLowerCase();
         return list.filter((u) =>
-          u.username?.toLowerCase().startsWith(lowercasedSearchTerm)
+          u.username?.toLowerCase().startsWith(lowercasedSearchTerm),
         );
       } else {
         return list;
       }
     },
-    []
+    [],
   );
 
   const transformAndFilterPresences = useCallback(
     (
       presenceEntities: PresenceEntity[],
-      searchTerm: string
+      searchTerm: string,
     ): Partial<FriendUser>[] => {
       const presencePlayersMap: { [uuid: string]: FriendUser } = {};
       presenceEntities.forEach((p) => {
@@ -427,72 +427,72 @@ export const Players = React.memo((props: Props) => {
         }
       });
       const presencePlayers = Object.values(presencePlayersMap).sort(
-        onlineAlphaComparator
+        onlineAlphaComparator,
       );
       return filterPlayerListBySearch(searchTerm, presencePlayers);
     },
-    [userID, onlineAlphaComparator, filterPlayerListBySearch]
+    [userID, onlineAlphaComparator, filterPlayerListBySearch],
   );
 
   const transformedAndFilteredPresences = useMemo(
     () => transformAndFilterPresences(presences, searchText),
-    [transformAndFilterPresences, presences, searchText]
+    [transformAndFilterPresences, presences, searchText],
   );
 
   const tournamentPresences = useMemo(() => {
-    if (defaultChannelType === 'lobby') {
+    if (defaultChannelType === "lobby") {
       return [];
     }
     const tournamentPresences = transformedAndFilteredPresences.filter(
       (p) =>
         p.channel &&
         p.channel.some((c) => {
-          return c.startsWith('chat.tournament');
-        })
+          return c.startsWith("chat.tournament");
+        }),
     );
     return tournamentPresences;
   }, [transformedAndFilteredPresences, defaultChannelType]);
 
   const gamePresence = useMemo(() => {
-    if (defaultChannelType === 'lobby') {
+    if (defaultChannelType === "lobby") {
       return [];
     }
     const gamePresences = transformedAndFilteredPresences.filter(
       (p) =>
         p.channel &&
         p.channel.some((c) => {
-          return c.startsWith('chat.game');
-        })
+          return c.startsWith("chat.game");
+        }),
     );
     return gamePresences;
   }, [transformedAndFilteredPresences, defaultChannelType]);
 
   useEffect(() => {
-    window.addEventListener('resize', setHeight);
+    window.addEventListener("resize", setHeight);
     return () => {
-      window.removeEventListener('resize', setHeight);
+      window.removeEventListener("resize", setHeight);
     };
   }, [setHeight]);
 
   const getPresenceLabel = (channelType: string) => {
     switch (channelType) {
-      case 'lobby':
-        return 'IN LOBBY';
-      case 'game':
-        return 'OPPONENT';
-      case 'gametv':
-        return 'OBSERVERS';
-      case 'tournament':
-        return 'CLUB/TOURNAMENT';
-      case 'puzzle':
-        return 'SOLVING PUZZLES';
+      case "lobby":
+        return "IN LOBBY";
+      case "game":
+        return "OPPONENT";
+      case "gametv":
+        return "OBSERVERS";
+      case "tournament":
+        return "CLUB/TOURNAMENT";
+      case "puzzle":
+        return "SOLVING PUZZLES";
     }
-    return 'IN ROOM';
+    return "IN ROOM";
   };
 
   const friendsValues = useMemo(
     () => Object.values(friends).sort(onlineAlphaComparator),
-    [friends, onlineAlphaComparator]
+    [friends, onlineAlphaComparator],
   );
   return (
     <div className="player-list">
@@ -508,13 +508,13 @@ export const Players = React.memo((props: Props) => {
       </Form>
       <div
         className={`player-sections p-${
-          props.defaultChannelType ? props.defaultChannelType : ''
+          props.defaultChannelType ? props.defaultChannelType : ""
         }`}
         style={
           maxHeight
             ? {
                 maxHeight: maxHeight,
-                overflowY: 'auto',
+                overflowY: "auto",
               }
             : undefined
         }
@@ -524,7 +524,7 @@ export const Players = React.memo((props: Props) => {
           {loggedIn &&
             renderPlayerList(
               filterPlayerListBySearch(searchText, friendsValues),
-              'friends'
+              "friends",
             )}
           {loggedIn && friendsValues.length === 0 && (
             <p className="prompt">
@@ -536,12 +536,12 @@ export const Players = React.memo((props: Props) => {
         <section className="present">
           {gamePresence.length > 0 && (
             <div className="breadcrumb">
-              {getPresenceLabel(defaultChannelType || '')}
+              {getPresenceLabel(defaultChannelType || "")}
             </div>
           )}
           {renderPlayerList(gamePresence)}
           {tournamentPresences.length > 0 && (
-            <div className="breadcrumb">{getPresenceLabel('tournament')}</div>
+            <div className="breadcrumb">{getPresenceLabel("tournament")}</div>
           )}
           {renderPlayerList(tournamentPresences)}
           {!gamePresence.length &&
@@ -549,7 +549,7 @@ export const Players = React.memo((props: Props) => {
             transformedAndFilteredPresences.length > 0 && (
               <>
                 <div className="breadcrumb">
-                  {getPresenceLabel(props.defaultChannelType || '')}
+                  {getPresenceLabel(props.defaultChannelType || "")}
                 </div>
                 {renderPlayerList(transformedAndFilteredPresences)}
               </>
@@ -559,7 +559,7 @@ export const Players = React.memo((props: Props) => {
           {searchResults.length > 0 && (
             <>
               <div className="breadcrumb">ALL PLAYERS</div>
-              {renderPlayerList(searchResults, 'search')}
+              {renderPlayerList(searchResults, "search")}
             </>
           )}
         </section>

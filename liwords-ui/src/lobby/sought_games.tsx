@@ -1,46 +1,46 @@
-import { Popconfirm, Table, Tooltip } from 'antd';
+import { Popconfirm, Table, Tooltip } from "antd";
 import {
   FilterValue,
   SorterResult,
   TableCurrentDataSource,
   TablePaginationConfig,
-} from 'antd/lib/table/interface';
-import React, { ReactNode, useCallback, useMemo, useState } from 'react';
-import { FundOutlined, ExportOutlined } from '@ant-design/icons';
+} from "antd/lib/table/interface";
+import React, { ReactNode, useCallback, useMemo, useState } from "react";
+import { FundOutlined, ExportOutlined } from "@ant-design/icons";
 import {
   calculateTotalTime,
   challRuleToStr,
   timeCtrlToDisplayName,
   timeToString,
-} from '../store/constants';
+} from "../store/constants";
 import {
   SoughtGame,
   matchesRatingFormula,
-} from '../store/reducers/lobby_reducer';
-import { PlayerAvatar } from '../shared/player_avatar';
-import { DisplayUserFlag } from '../shared/display_flag';
-import { RatingBadge } from './rating_badge';
-import { VariantIcon } from '../shared/variant_icons';
-import { MatchLexiconDisplay } from '../shared/lexicon_display';
-import { ProfileUpdate_Rating } from '../gen/api/proto/ipc/users_pb';
-import { useLobbyStoreContext } from '../store/store';
-import { ActionType } from '../actions/actions';
+} from "../store/reducers/lobby_reducer";
+import { PlayerAvatar } from "../shared/player_avatar";
+import { DisplayUserFlag } from "../shared/display_flag";
+import { RatingBadge } from "./rating_badge";
+import { VariantIcon } from "../shared/variant_icons";
+import { MatchLexiconDisplay } from "../shared/lexicon_display";
+import { ProfileUpdate_Rating } from "../gen/api/proto/ipc/users_pb";
+import { useLobbyStoreContext } from "../store/store";
+import { ActionType } from "../actions/actions";
 
 export const timeFormat = (
   initialTimeSecs: number,
   incrementSecs: number,
-  maxOvertime: number
+  maxOvertime: number,
 ): string => {
   const label = timeCtrlToDisplayName(
     initialTimeSecs,
     incrementSecs,
-    maxOvertime
+    maxOvertime,
   )[0];
 
   return `${label} ${timeToString(
     initialTimeSecs,
     incrementSecs,
-    maxOvertime
+    maxOvertime,
   )}`;
 };
 
@@ -88,38 +88,38 @@ export const SoughtGames = (props: Props) => {
   } = useLobbyStoreContext();
   const lobbyFilterByLexiconArray = useMemo(
     () => lobbyFilterByLexicon?.match(/\S+/g) ?? [],
-    [lobbyFilterByLexicon]
+    [lobbyFilterByLexicon],
   );
   const columns = [
     {
-      title: 'Player',
-      className: 'seeker',
-      dataIndex: 'seeker',
-      key: 'seeker',
+      title: "Player",
+      className: "seeker",
+      dataIndex: "seeker",
+      key: "seeker",
     },
     {
-      title: 'Rating',
-      className: 'rating',
-      dataIndex: 'ratingBadge',
-      key: 'rating',
+      title: "Rating",
+      className: "rating",
+      dataIndex: "ratingBadge",
+      key: "rating",
       sorter: (a: SoughtGameTableData, b: SoughtGameTableData) =>
         parseInt(a.rating) - parseInt(b.rating),
     },
     {
-      title: 'Words',
-      className: 'lexicon',
-      dataIndex: 'lexicon',
-      key: 'lexicon',
+      title: "Words",
+      className: "lexicon",
+      dataIndex: "lexicon",
+      key: "lexicon",
       filters: [
-        'CSW24',
-        'NWL23',
-        'ECWL',
-        'RD28',
-        'FRA24',
-        'FILE2017',
-        'NSF23',
-        'DISC2',
-        'OSPS49',
+        "CSW24",
+        "NWL23",
+        "ECWL",
+        "RD28",
+        "FRA24",
+        "FILE2017",
+        "NSF23",
+        "DISC2",
+        "OSPS49",
       ].map((l) => ({
         text: <MatchLexiconDisplay lexiconCode={l} />,
         value: l,
@@ -127,21 +127,21 @@ export const SoughtGames = (props: Props) => {
       filteredValue: lobbyFilterByLexiconArray,
       filterMultiple: true,
       onFilter: (value: React.Key | boolean, record: SoughtGameTableData) =>
-        typeof value === 'string' && record.lexiconCode === value,
+        typeof value === "string" && record.lexiconCode === value,
     },
     {
-      title: 'Time',
-      className: 'time',
-      dataIndex: 'time',
-      key: 'time',
+      title: "Time",
+      className: "time",
+      dataIndex: "time",
+      key: "time",
       sorter: (a: SoughtGameTableData, b: SoughtGameTableData) =>
         a.totalTime - b.totalTime,
     },
     {
-      title: 'Details',
-      className: 'details',
-      dataIndex: 'details',
-      key: 'details',
+      title: "Details",
+      className: "details",
+      dataIndex: "details",
+      key: "details",
     },
   ];
 
@@ -152,13 +152,13 @@ export const SoughtGames = (props: Props) => {
       _sorter:
         | SorterResult<SoughtGameTableData>
         | SorterResult<SoughtGameTableData>[],
-      extra: TableCurrentDataSource<SoughtGameTableData>
+      extra: TableCurrentDataSource<SoughtGameTableData>,
     ) => {
-      if (extra.action === 'filter') {
+      if (extra.action === "filter") {
         if (filters.lexicon && filters.lexicon.length > 0) {
-          const lexicon = filters.lexicon.join(' ');
+          const lexicon = filters.lexicon.join(" ");
           if (lexicon !== lobbyFilterByLexicon) {
-            localStorage.setItem('lobbyFilterByLexicon', lexicon);
+            localStorage.setItem("lobbyFilterByLexicon", lexicon);
             dispatchLobbyContext({
               actionType: ActionType.setLobbyFilterByLexicon,
               payload: lexicon,
@@ -166,7 +166,7 @@ export const SoughtGames = (props: Props) => {
           }
         } else {
           // filter is reset, remove lexicon
-          localStorage.removeItem('lobbyFilterByLexicon');
+          localStorage.removeItem("lobbyFilterByLexicon");
           dispatchLobbyContext({
             actionType: ActionType.setLobbyFilterByLexicon,
             payload: null,
@@ -174,7 +174,7 @@ export const SoughtGames = (props: Props) => {
         }
       }
     },
-    [lobbyFilterByLexicon, dispatchLobbyContext]
+    [lobbyFilterByLexicon, dispatchLobbyContext],
   );
 
   type SoughtGameTableData = {
@@ -206,7 +206,7 @@ export const SoughtGames = (props: Props) => {
         const getDetails = () => {
           return (
             <>
-              <VariantIcon vcode={sg.variant} />{' '}
+              <VariantIcon vcode={sg.variant} />{" "}
               {challengeFormat(sg.challengeRule)}
               {sg.rated ? (
                 <Tooltip title="Rated">
@@ -228,7 +228,7 @@ export const SoughtGames = (props: Props) => {
               okText="Yes"
               cancelText="No"
               onCancel={() => {
-                console.log('trying', setCancelVisible, cancelVisible);
+                console.log("trying", setCancelVisible, cancelVisible);
                 setCancelVisible(false);
               }}
               onOpenChange={(visible) => {
@@ -238,24 +238,24 @@ export const SoughtGames = (props: Props) => {
             >
               <div>
                 <ExportOutlined />
-                {` ${sg.receiver?.displayName || 'Seeking...'}`}
+                {` ${sg.receiver?.displayName || "Seeking..."}`}
               </div>
             </Popconfirm>
           ) : (
             <PlayerDisplay userID={sg.seekerID} username={sg.seeker} />
           ),
-          rating: outgoing ? '' : sg.userRating,
+          rating: outgoing ? "" : sg.userRating,
           ratingBadge: outgoing ? null : <RatingBadge rating={sg.userRating} />,
           lexicon: <MatchLexiconDisplay lexiconCode={sg.lexicon} />,
           time: timeFormat(
             sg.initialTimeSecs,
             sg.incrementSecs,
-            sg.maxOvertimeMinutes
+            sg.maxOvertimeMinutes,
           ),
           totalTime: calculateTotalTime(
             sg.initialTimeSecs,
             sg.incrementSecs,
-            sg.maxOvertimeMinutes
+            sg.maxOvertimeMinutes,
           ),
           details: getDetails(),
           outgoing,
@@ -271,7 +271,7 @@ export const SoughtGames = (props: Props) => {
       {props.isMatch ? <h4>Match requests</h4> : <h4>Available games</h4>}
 
       <Table
-        className={`games ${props.isMatch ? 'match' : 'seek'}`}
+        className={`games ${props.isMatch ? "match" : "seek"}`}
         dataSource={formatGameData(props.requests)}
         columns={columns}
         pagination={false}
@@ -290,9 +290,9 @@ export const SoughtGames = (props: Props) => {
         }}
         rowClassName={(record) => {
           if (record.outgoing) {
-            return 'game-listing outgoing';
+            return "game-listing outgoing";
           }
-          return 'game-listing';
+          return "game-listing";
         }}
         onChange={handleChange}
       />

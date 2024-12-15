@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Modal as AntdModal } from 'antd';
+import React, { useState } from "react";
+import { Modal as AntdModal } from "antd";
 
 // XXX: previously some Modal came from here instead:
 // import Modal from 'antd/lib/modal/Modal';
@@ -20,7 +20,7 @@ export const Modal = (props: React.ComponentProps<typeof AntdModal>) => {
       // When hiding a modal and then showing it again, ref is already set.
       // Need setTimeout to let the modal opening animation complete first.
       const t = setTimeout(() => {
-        const allChildren = shownDivElt.querySelectorAll<HTMLElement>('*');
+        const allChildren = shownDivElt.querySelectorAll<HTMLElement>("*");
 
         // Negative tabIndex should not be selected.
         // Zero tabIndex (default) are selected after positive tabIndex.

@@ -1,6 +1,6 @@
-import React from 'react';
-import { Button, Card, Row } from 'antd';
-import { PlayerAvatar } from '../shared/player_avatar';
+import React from "react";
+import { Button, Card, Row } from "antd";
+import { PlayerAvatar } from "../shared/player_avatar";
 
 type StaticPlayerCardProps = {
   p0Score: number;
@@ -17,7 +17,7 @@ type MiniProps = {
 
 export const MiniPlayerCard = React.memo((props: MiniProps) => {
   return (
-    <div className={`player-card mini-player${props.onTurn ? ' on-turn' : ''}`}>
+    <div className={`player-card mini-player${props.onTurn ? " on-turn" : ""}`}>
       <Row className="player">
         <PlayerAvatar username={props.iconName} player={undefined} />
         <p className="player-name">{props.playerName}</p>

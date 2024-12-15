@@ -1,6 +1,6 @@
-import React, { ReactNode } from 'react';
-import { Card } from 'antd';
-import ReactMarkdown from 'react-markdown';
+import React, { ReactNode } from "react";
+import { Card } from "antd";
+import ReactMarkdown from "react-markdown";
 
 type Props = {
   disclaimer: string;

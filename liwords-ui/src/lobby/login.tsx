@@ -1,21 +1,21 @@
-import React, { useCallback, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useResetStoreContext } from '../store/store';
-import './accountForms.scss';
+import React, { useCallback, useState } from "react";
+import { Link } from "react-router";
+import { useResetStoreContext } from "../store/store";
+import "./accountForms.scss";
 
-import { Form, Input, Button, Alert } from 'antd';
-import { Modal } from '../utils/focus_modal';
+import { Form, Input, Button, Alert } from "antd";
+import { Modal } from "../utils/focus_modal";
 import {
   connectErrorMessage,
   flashError,
   useClient,
-} from '../utils/hooks/connect';
-import { AuthenticationService } from '../gen/api/proto/user_service/user_service_pb';
+} from "../utils/hooks/connect";
+import { AuthenticationService } from "../gen/api/proto/user_service/user_service_pb";
 
 export const Login = React.memo(() => {
   const { resetStore } = useResetStoreContext();
 
-  const [err, setErr] = useState('');
+  const [err, setErr] = useState("");
   const [loggedIn, setLoggedIn] = useState(false);
   const authClient = useClient(AuthenticationService);
   const onFinish = async (values: { [key: string]: string }) => {
@@ -46,7 +46,7 @@ export const Login = React.memo(() => {
             rules={[
               {
                 required: true,
-                message: 'Please input your username!',
+                message: "Please input your username!",
               },
             ]}
           >
@@ -58,7 +58,7 @@ export const Login = React.memo(() => {
             rules={[
               {
                 required: true,
-                message: 'Please input your password!',
+                message: "Please input your password!",
               },
             ]}
           >
@@ -71,7 +71,7 @@ export const Login = React.memo(() => {
             </Button>
           </Form.Item>
         </Form>
-        {err !== '' ? <Alert message={err} type="error" /> : null}
+        {err !== "" ? <Alert message={err} type="error" /> : null}
         <Link to="/password/reset">
           I’m drawing a blank on my password. Help!
         </Link>

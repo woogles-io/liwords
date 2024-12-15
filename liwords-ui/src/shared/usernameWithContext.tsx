@@ -1,17 +1,17 @@
-import React, { useContext, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { App, Dropdown } from 'antd';
-import { BlockerHandle, TheBlocker } from './blocker';
+import React, { useContext, useRef } from "react";
+import { Link } from "react-router";
+import { App, Dropdown } from "antd";
+import { BlockerHandle, TheBlocker } from "./blocker";
 import {
   useContextMatchContext,
   useLoginStateStoreContext,
-} from '../store/store';
-import { canMod } from '../mod/perms';
-import { DisplayUserFlag } from './display_flag';
-import { SettingOutlined } from '@ant-design/icons';
-import { FollowerHandle, TheFollower } from './follower';
-import { PettableContext } from './player_avatar';
-import { HookAPI } from 'antd/lib/modal/useModal';
+} from "../store/store";
+import { canMod } from "../mod/perms";
+import { DisplayUserFlag } from "./display_flag";
+import { SettingOutlined } from "@ant-design/icons";
+import { FollowerHandle, TheFollower } from "./follower";
+import { PettableContext } from "./player_avatar";
+import { HookAPI } from "antd/lib/modal/useModal";
 
 type UsernameWithContextProps = {
   additionalMenuItems?: React.ReactNode;
@@ -112,7 +112,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
   if (isPettable) {
     userMenuOptions.push({
       key: `pettable-${userID}`,
-      label: isPetting ? 'Stop petting' : 'Pet',
+      label: isPetting ? "Stop petting" : "Pet",
     });
   }
   if (
@@ -124,7 +124,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
   ) {
     userMenuOptions.push({
       key: `messageable-${props.userID}`,
-      label: 'Chat',
+      label: "Chat",
     });
   }
   if (!props.omitProfileLink) {
@@ -152,7 +152,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
   ) {
     userMenuOptions.push({
       key: `match-${props.userID}`,
-      label: 'Match user',
+      label: "Match user",
     });
   }
   if (
@@ -194,7 +194,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
   if (props.showDeleteMessage && canMod(perms) && props.userID !== userID) {
     userMenuOptions.push({
       key: `delete-${props.userID}`,
-      label: 'Delete this message',
+      label: "Delete this message",
     });
   }
   const { modal } = App.useApp();
@@ -236,13 +236,13 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           }
         },
       }}
-      getPopupContainer={() => document.getElementById('root') as HTMLElement}
+      getPopupContainer={() => document.getElementById("root") as HTMLElement}
       placement="bottomLeft"
-      trigger={userMenuOptions.length > 0 ? ['click'] : []}
+      trigger={userMenuOptions.length > 0 ? ["click"] : []}
     >
       <span
         className={`user-context-menu ${
-          userMenuOptions.length > 0 ? '' : 'auto-cursor'
+          userMenuOptions.length > 0 ? "" : "auto-cursor"
         }`}
       >
         {props.iconOnly ? ( // Not yet used

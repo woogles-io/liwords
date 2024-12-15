@@ -4,16 +4,16 @@ import React, {
   useMemo,
   useRef,
   useState,
-} from 'react';
-import { TouchBackend } from 'react-dnd-touch-backend';
-import { Button, Tooltip, Affix, App } from 'antd';
-import { Modal } from '../utils/focus_modal';
-import { DndProvider } from 'react-dnd';
+} from "react";
+import { TouchBackend } from "react-dnd-touch-backend";
+import { Button, Tooltip, Affix, App } from "antd";
+import { Modal } from "../utils/focus_modal";
+import { DndProvider } from "react-dnd";
 import {
   ArrowDownOutlined,
   EditOutlined,
   SyncOutlined,
-} from '@ant-design/icons';
+} from "@ant-design/icons";
 import {
   isTouchDevice,
   uniqueTileIdx,
@@ -23,13 +23,13 @@ import {
   MachineLetter,
   EmptyBoardSpaceMachineLetter,
   BlankMachineLetter,
-} from '../utils/cwgame/common';
+} from "../utils/cwgame/common";
 
-import GameBoard from './board';
-import { DrawingHandlersSetterContext } from './drawing';
-import GameControls from './game_controls';
-import { Rack } from './rack';
-import { ExchangeTiles } from './exchange_tiles';
+import GameBoard from "./board";
+import { DrawingHandlersSetterContext } from "./drawing";
+import GameControls from "./game_controls";
+import { Rack } from "./rack";
+import { ExchangeTiles } from "./exchange_tiles";
 import {
   nextArrowPropertyState,
   handleKeyPress,
@@ -39,14 +39,14 @@ import {
   designateBlank,
   stableInsertRack,
   nextArrowStateAfterTilePlacement,
-} from '../utils/cwgame/tile_placement';
+} from "../utils/cwgame/tile_placement";
 
 import {
   parseBlindfoldCoordinates,
   say,
   wordToSayString,
-} from '../utils/cwgame/blindfold';
-import { singularCount } from '../utils/plural';
+} from "../utils/cwgame/blindfold";
+import { singularCount } from "../utils/plural";
 
 import {
   tilesetToMoveEvent,
@@ -55,9 +55,9 @@ import {
   resignMoveEvent,
   challengeMoveEvent,
   nicknameFromEvt,
-} from '../utils/cwgame/game_event';
-import { Board } from '../utils/cwgame/board';
-import { encodeToSocketFmt } from '../utils/protobuf';
+} from "../utils/cwgame/game_event";
+import { Board } from "../utils/cwgame/board";
+import { encodeToSocketFmt } from "../utils/protobuf";
 import {
   useExaminableGameContextStoreContext,
   useExaminableGameEndMessageStoreContext,
@@ -66,46 +66,46 @@ import {
   useGameContextStoreContext,
   useTentativeTileContext,
   useTimerStoreContext,
-} from '../store/store';
-import { isSpanish, sharedEnableAutoShuffle } from '../store/constants';
-import { BlankSelector } from './blank_selector';
-import { GameMetaMessage } from './game_meta_message';
+} from "../store/store";
+import { isSpanish, sharedEnableAutoShuffle } from "../store/constants";
+import { BlankSelector } from "./blank_selector";
+import { GameMetaMessage } from "./game_meta_message";
 import {
   ChallengeRule,
   GameEvent,
   GameEvent_Type,
   PlayState,
-} from '../gen/api/vendor/macondo/macondo_pb';
-import { TilePreview } from './tile';
+} from "../gen/api/vendor/macondo/macondo_pb";
+import { TilePreview } from "./tile";
 import {
   Alphabet,
   machineLetterToRune,
   machineWordToRunes,
   runesToMachineWord,
-} from '../constants/alphabets';
-import { MessageType } from '../gen/api/proto/ipc/ipc_pb';
+} from "../constants/alphabets";
+import { MessageType } from "../gen/api/proto/ipc/ipc_pb";
 import {
   MatchUserSchema,
   SeekRequestSchema,
   SeekState,
-} from '../gen/api/proto/ipc/omgseeks_pb';
+} from "../gen/api/proto/ipc/omgseeks_pb";
 import {
   ClientGameplayEvent,
   GameMetaEvent_EventType,
   GameMetaEventSchema,
   PlayerInfo,
-} from '../gen/api/proto/ipc/omgwords_pb';
-import { PuzzleStatus } from '../gen/api/proto/puzzle_service/puzzle_service_pb';
-import { flashError, useClient } from '../utils/hooks/connect';
-import { GameMetadataService } from '../gen/api/proto/game_service/game_service_pb';
-import { RackEditor } from './rack_editor';
+} from "../gen/api/proto/ipc/omgwords_pb";
+import { PuzzleStatus } from "../gen/api/proto/puzzle_service/puzzle_service_pb";
+import { flashError, useClient } from "../utils/hooks/connect";
+import { GameMetadataService } from "../gen/api/proto/game_service/game_service_pb";
+import { RackEditor } from "./rack_editor";
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
-const EnterKey = 'Enter';
-import variables from '../base.module.scss';
-import { Client } from '@connectrpc/connect';
-import { create, toBinary } from '@bufbuild/protobuf';
+const EnterKey = "Enter";
+import variables from "../base.module.scss";
+import { Client } from "@connectrpc/connect";
+import { create, toBinary } from "@bufbuild/protobuf";
 const { colorPrimary } = variables;
 
 type Props = {
@@ -135,7 +135,7 @@ type Props = {
   handleSetHover?: (
     x: number,
     y: number,
-    words: Array<string> | undefined
+    words: Array<string> | undefined,
   ) => void;
   handleUnsetHover?: () => void;
   definitionPopover?:
@@ -183,19 +183,19 @@ const shuffleLetters = (a: Array<MachineLetter>): Array<MachineLetter> => {
   // Preserve the gaps.
   let r = 0;
   return alistWithGaps.map((x) =>
-    x === EmptyRackSpaceMachineLetter ? x : alist[r++]
+    x === EmptyRackSpaceMachineLetter ? x : alist[r++],
   );
 };
 
 const gcgExport = async (
   gameID: string,
   playerMeta: Array<PlayerInfo>,
-  gameMetadataClient: Client<typeof GameMetadataService>
+  gameMetadataClient: Client<typeof GameMetadataService>,
 ) => {
   try {
     const resp = await gameMetadataClient.getGCG({ gameId: gameID });
     const url = window.URL.createObjectURL(new Blob([resp.gcg]));
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
     let downloadFilename = `${gameID}.gcg`;
     // TODO: allow more characters as applicable
@@ -206,10 +206,10 @@ const gcgExport = async (
         byStarts[+!!x.first].push(x.nickname);
       }
       downloadFilename = `${[...byStarts[1], ...byStarts[0]].join(
-        '-'
+        "-",
       )}-${gameID}.gcg`;
     }
-    link.setAttribute('download', downloadFilename);
+    link.setAttribute("download", downloadFilename);
     document.body.appendChild(link);
     link.onclick = () => {
       link.remove();
@@ -229,14 +229,14 @@ const backupKey = (letters: Array<MachineLetter>, rack: Array<MachineLetter>) =>
 export const BoardPanel = React.memo((props: Props) => {
   // Poka-yoke against accidentally having multiple modes active.
   const [currentMode, setCurrentMode] = useState<
-    | 'BLANK_MODAL'
-    | 'DRAWING_HOTKEY'
-    | 'EXCHANGE_MODAL'
-    | 'NORMAL'
-    | 'BLIND'
-    | 'EDITING_RACK'
-    | 'WAITING_FOR_RACK_EDIT'
-  >('NORMAL');
+    | "BLANK_MODAL"
+    | "DRAWING_HOTKEY"
+    | "EXCHANGE_MODAL"
+    | "NORMAL"
+    | "BLIND"
+    | "EDITING_RACK"
+    | "WAITING_FOR_RACK_EDIT"
+  >("NORMAL");
 
   const { drawingCanBeEnabled, handleKeyDown: handleDrawingKeyDown } =
     React.useContext(DrawingHandlersSetterContext);
@@ -264,42 +264,42 @@ export const BoardPanel = React.memo((props: Props) => {
     (
       makeNewValue:
         | ((oldValue: (() => void) | null) => (() => void) | null)
-        | null
+        | null,
     ): void => {
       handlePassShortcut.current =
-        typeof makeNewValue === 'function'
+        typeof makeNewValue === "function"
           ? makeNewValue(handlePassShortcut.current)
           : makeNewValue;
     },
-    []
+    [],
   );
   const handleChallengeShortcut = useRef<(() => void) | null>(null);
   const setHandleChallengeShortcut = useCallback(
     (
       makeNewValue:
         | ((oldValue: (() => void) | null) => (() => void) | null)
-        | null
+        | null,
     ): void => {
       handleChallengeShortcut.current =
-        typeof makeNewValue === 'function'
+        typeof makeNewValue === "function"
           ? makeNewValue(handleChallengeShortcut.current)
           : makeNewValue;
     },
-    []
+    [],
   );
   const handleNeitherShortcut = useRef<(() => void) | null>(null);
   const setHandleNeitherShortcut = useCallback(
     (
       makeNewValue:
         | ((oldValue: (() => void) | null) => (() => void) | null)
-        | null
+        | null,
     ): void => {
       handleNeitherShortcut.current =
-        typeof makeNewValue === 'function'
+        typeof makeNewValue === "function"
           ? makeNewValue(handleNeitherShortcut.current)
           : makeNewValue;
     },
-    []
+    [],
   );
   const boardContainer = useRef<HTMLDivElement>(null);
 
@@ -353,39 +353,39 @@ export const BoardPanel = React.memo((props: Props) => {
     (move: string, addl?: Array<MachineLetter>) => {
       if (isExamining && !boardEditingMode) return;
       let moveEvt;
-      if (move !== 'resign' && !isMyTurn) {
+      if (move !== "resign" && !isMyTurn) {
         console.log(
-          'off turn move attempts',
+          "off turn move attempts",
           gameContext.nickToPlayerOrder,
           username,
-          examinableGameContext.onturn
+          examinableGameContext.onturn,
         );
         // It is not my turn. Ignore this event.
         message.warning({
-          content: 'It is not your turn.',
-          className: 'board-hud-message',
-          key: 'board-messages',
+          content: "It is not your turn.",
+          className: "board-hud-message",
+          key: "board-messages",
           duration: 1.5,
         });
         return;
       }
 
       switch (move) {
-        case 'exchange':
+        case "exchange":
           if (addl) {
             moveEvt = exchangeMoveEvent(addl, gameID, gameContext.alphabet);
           }
           break;
-        case 'pass':
+        case "pass":
           moveEvt = passMoveEvent(gameID);
           break;
-        case 'resign':
+        case "resign":
           moveEvt = resignMoveEvent(gameID);
           break;
-        case 'challenge':
+        case "challenge":
           moveEvt = challengeMoveEvent(gameID);
           break;
-        case 'commit':
+        case "commit":
           moveEvt = tilesetToMoveEvent(placedTiles, board, gameID);
           if (!moveEvt) {
             // this is an invalid play
@@ -420,7 +420,7 @@ export const BoardPanel = React.memo((props: Props) => {
       sendGameplayEvent,
       username,
       message,
-    ]
+    ],
   );
 
   const sendMetaEvent = useCallback(
@@ -432,11 +432,11 @@ export const BoardPanel = React.memo((props: Props) => {
       sendSocketMsg(
         encodeToSocketFmt(
           MessageType.GAME_META_EVENT,
-          toBinary(GameMetaEventSchema, metaEvt)
-        )
+          toBinary(GameMetaEventSchema, metaEvt),
+        ),
       );
     },
-    [sendSocketMsg, gameID]
+    [sendSocketMsg, gameID],
   );
 
   // For reinstating a premove if an invalid move that invalidates it is successfully challenged off.
@@ -454,7 +454,7 @@ export const BoardPanel = React.memo((props: Props) => {
           show: boolean;
         };
       }
-    >()
+    >(),
   );
 
   // for use with right-click
@@ -470,7 +470,7 @@ export const BoardPanel = React.memo((props: Props) => {
         displayedRack,
         placedTiles,
         props.board,
-        props.alphabet
+        props.alphabet,
       );
       setDisplayedRack(handlerReturn.newDisplayedRack);
       // ignore the newArrow
@@ -485,7 +485,7 @@ export const BoardPanel = React.memo((props: Props) => {
       setDisplayedRack,
       setPlacedTiles,
       setPlacedTilesTempScore,
-    ]
+    ],
   );
 
   const recallTiles = useCallback(() => {
@@ -607,8 +607,6 @@ export const BoardPanel = React.memo((props: Props) => {
     }
     let fullReset = false;
     const lastLetters = lastLettersRef.current;
-    // XXX: please fix me:
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const dep = readOnlyEffectDependenciesRef.current!;
     if (lastLetters === undefined) {
       // First load.
@@ -629,7 +627,7 @@ export const BoardPanel = React.memo((props: Props) => {
             return (ml & 0x80) !== 0 ? 0 : ml;
           }),
           ...dep.displayedRack.filter((ml) => ml !== 0x80),
-        ].sort()
+        ].sort(),
       ) !== JSON.stringify([...props.currentRack].sort())
     ) {
       // First load after receiving rack.
@@ -647,7 +645,7 @@ export const BoardPanel = React.memo((props: Props) => {
       const letterAt = (
         row: number,
         col: number,
-        letters: Array<MachineLetter>
+        letters: Array<MachineLetter>,
       ) =>
         row < 0 || row >= dep.dim || col < 0 || col >= dep.dim
           ? null
@@ -659,7 +657,7 @@ export const BoardPanel = React.memo((props: Props) => {
         row: number,
         col: number,
         drow: number,
-        dcol: number
+        dcol: number,
       ) => {
         while (true) {
           row += drow;
@@ -690,7 +688,7 @@ export const BoardPanel = React.memo((props: Props) => {
       }
     }
     const bak = backupStatesRef.current.get(
-      backupKey(props.board.letters, props.currentRack)
+      backupKey(props.board.letters, props.currentRack),
     );
     // Do not reset if considering a new placement move when challenging.
     if (fullReset || (bak && dep.placedTiles.size === 0)) {
@@ -761,11 +759,11 @@ export const BoardPanel = React.memo((props: Props) => {
     // rack is smaller than that because past the threshold by then
     if (isSpanish(props.lexicon)) {
       setExchangeAllowed(
-        tilesRemaining >= 1 || props.boardEditingMode === true
+        tilesRemaining >= 1 || props.boardEditingMode === true,
       );
     } else {
       setExchangeAllowed(
-        tilesRemaining >= 7 || props.boardEditingMode === true
+        tilesRemaining >= 7 || props.boardEditingMode === true,
       );
     }
   }, [
@@ -782,19 +780,19 @@ export const BoardPanel = React.memo((props: Props) => {
     ) {
       const finalAction = (
         <>
-          Your opponent has played their final tiles. You must{' '}
+          Your opponent has played their final tiles. You must{" "}
           <span
             className="message-action"
-            onClick={() => makeMove('pass')}
+            onClick={() => makeMove("pass")}
             role="button"
           >
             pass
-          </span>{' '}
-          or{' '}
+          </span>{" "}
+          or{" "}
           <span
             className="message-action"
             role="button"
-            onClick={() => makeMove('challenge')}
+            onClick={() => makeMove("challenge")}
           >
             challenge
           </span>
@@ -805,10 +803,10 @@ export const BoardPanel = React.memo((props: Props) => {
       message.info(
         {
           content: finalAction,
-          className: 'board-hud-message',
-          key: 'board-messages',
+          className: "board-hud-message",
+          key: "board-messages",
         },
-        15
+        15,
       );
     }
   }, [examinableGameContext.playState, isMyTurn, makeMove, message]);
@@ -837,11 +835,11 @@ export const BoardPanel = React.memo((props: Props) => {
       message.info(
         {
           content: boardMessage,
-          className: 'board-hud-message',
-          key: 'board-messages',
+          className: "board-hud-message",
+          key: "board-messages",
         },
         3,
-        undefined
+        undefined,
       );
     }
   }, [
@@ -859,7 +857,7 @@ export const BoardPanel = React.memo((props: Props) => {
     // and the user is moving around the analyzer. This prevents keeping
     // the rack editor or other modals open.
     if (props.boardEditingMode) {
-      setCurrentMode('NORMAL');
+      setCurrentMode("NORMAL");
     }
   }, [numTurns, props.boardEditingMode]);
 
@@ -872,7 +870,7 @@ export const BoardPanel = React.memo((props: Props) => {
       setArrowProperties(nextArrowPropertyState(arrowProperties, row, col));
       handleUnsetHover?.();
     },
-    [arrowProperties, board, handleUnsetHover]
+    [arrowProperties, board, handleUnsetHover],
   );
 
   const keydown = useCallback(
@@ -884,16 +882,16 @@ export const BoardPanel = React.memo((props: Props) => {
       let { key } = evt;
       // Neutralize caps lock to prevent accidental blank usage.
       if (key.length === 1) {
-        if (!evt.shiftKey && key >= 'A' && key <= 'Z') {
+        if (!evt.shiftKey && key >= "A" && key <= "Z") {
           // Without shift, can only type lowercase.
           key = key.toLowerCase();
-        } else if (evt.shiftKey && key >= 'a' && key <= 'z') {
+        } else if (evt.shiftKey && key >= "a" && key <= "z") {
           // With shift, can only type uppercase.
           key = key.toUpperCase();
         }
       }
 
-      if (currentMode === 'BLIND') {
+      if (currentMode === "BLIND") {
         const PlayerScoresAndTimes = (): [
           string,
           number,
@@ -936,19 +934,19 @@ export const BoardPanel = React.memo((props: Props) => {
           // Always list the player scores and times first
           if (props.playerMeta[1].nickname === props.username) {
             return [
-              'you',
+              "you",
               p1Score,
               playerTimeToText(p1Time),
-              'opponent',
+              "opponent",
               p0Score,
               playerTimeToText(p0Time),
             ];
           }
           return [
-            'you',
+            "you",
             p0Score,
             playerTimeToText(p0Time),
-            'opponent',
+            "opponent",
             p1Score,
             playerTimeToText(p1Time),
           ];
@@ -956,17 +954,17 @@ export const BoardPanel = React.memo((props: Props) => {
 
         const sayGameEvent = (ge: GameEvent) => {
           const type = ge.type;
-          let nickname = 'opponent.';
+          let nickname = "opponent.";
           const evtNickname = nicknameFromEvt(ge, props.playerMeta);
           if (evtNickname === props.username) {
-            nickname = 'you.';
+            nickname = "you.";
           }
           const playedTiles = ge.playedTiles;
           const mainWord = ge.wordsFormed[0];
-          let blankAwareWord = '';
+          let blankAwareWord = "";
           for (let i = 0; i < playedTiles.length; i++) {
             const tile = playedTiles[i];
-            if (tile >= 'a' && tile <= 'z') {
+            if (tile >= "a" && tile <= "z") {
               blankAwareWord += tile;
             } else {
               blankAwareWord += mainWord[i];
@@ -974,31 +972,30 @@ export const BoardPanel = React.memo((props: Props) => {
           }
           if (type === GameEvent_Type.TILE_PLACEMENT_MOVE) {
             say(
-              nickname + ' ' + wordToSayString(ge.position, blindfoldUseNPA),
+              nickname + " " + wordToSayString(ge.position, blindfoldUseNPA),
               wordToSayString(blankAwareWord, blindfoldUseNPA) +
-                ' ' +
-                ge.score.toString()
+                " " +
+                ge.score.toString(),
             );
           } else if (type === GameEvent_Type.PHONY_TILES_RETURNED) {
-            say(nickname + ' lost challenge', '');
+            say(nickname + " lost challenge", "");
           } else if (type === GameEvent_Type.EXCHANGE) {
-            say(nickname + ' exchanged ' + ge.exchanged, '');
+            say(nickname + " exchanged " + ge.exchanged, "");
           } else if (type === GameEvent_Type.PASS) {
-            say(nickname + ' passed', '');
+            say(nickname + " passed", "");
           } else if (type === GameEvent_Type.CHALLENGE) {
-            say(nickname + ' challenged', '');
+            say(nickname + " challenged", "");
           } else if (type === GameEvent_Type.CHALLENGE_BONUS) {
-            say(nickname + ' challenge bonus', '');
+            say(nickname + " challenge bonus", "");
           } else {
             // This is a bum way to deal with all other events
             // but I am holding out for a better solution to saying events altogether
-            say(nickname + ' 5 point challenge or outplay', '');
+            say(nickname + " 5 point challenge or outplay", "");
           }
         };
 
         const playerTimeToText = (ms: number): string => {
           const neg = ms < 0;
-          // eslint-disable-next-line no-param-reassign
           const absms = Math.abs(ms);
           // const mins = Math.floor(ms / 60000);
           let totalSecs;
@@ -1010,15 +1007,15 @@ export const BoardPanel = React.memo((props: Props) => {
           const secs = totalSecs % 60;
           const mins = Math.floor(totalSecs / 60);
 
-          let negative = '';
+          let negative = "";
           if (neg) {
-            negative = 'negative ';
+            negative = "negative ";
           }
-          let minutes = '';
+          let minutes = "";
           if (mins) {
-            minutes = singularCount(mins, 'minute', 'minutes') + ' and ';
+            minutes = singularCount(mins, "minute", "minutes") + " and ";
           }
-          return negative + minutes + singularCount(secs, 'second', 'seconds');
+          return negative + minutes + singularCount(secs, "second", "seconds");
         };
 
         let newBlindfoldCommand = blindfoldCommand;
@@ -1027,72 +1024,72 @@ export const BoardPanel = React.memo((props: Props) => {
           // This should be done like the Scorecards
           // are. It should access the Scorecard info somehow
           // but I is of the not knowing.
-          if (blindfoldCommand.toUpperCase() === 'P') {
+          if (blindfoldCommand.toUpperCase() === "P") {
             if (gameContext.turns.length < 2) {
-              say('no previous play', '');
+              say("no previous play", "");
             } else {
               sayGameEvent(gameContext.turns[gameContext.turns.length - 2]);
             }
-          } else if (blindfoldCommand.toUpperCase() === 'C') {
+          } else if (blindfoldCommand.toUpperCase() === "C") {
             if (gameContext.turns.length < 1) {
-              say('no current play', '');
+              say("no current play", "");
             } else {
               sayGameEvent(gameContext.turns[gameContext.turns.length - 1]);
             }
-          } else if (blindfoldCommand.toUpperCase() === 'S') {
+          } else if (blindfoldCommand.toUpperCase() === "S") {
             const [, p0Score, , , p1Score] = PlayerScoresAndTimes();
             const scoresay = `${p0Score} to ${p1Score}`;
-            say(scoresay, '');
+            say(scoresay, "");
           } else if (
-            blindfoldCommand.toUpperCase() === 'E' &&
+            blindfoldCommand.toUpperCase() === "E" &&
             exchangeAllowed &&
             !props.gameDone
           ) {
             evt.preventDefault();
             if (handleNeitherShortcut.current) handleNeitherShortcut.current();
-            setCurrentMode('EXCHANGE_MODAL');
-            setBlindfoldCommand('');
-            say('exchange modal opened', '');
+            setCurrentMode("EXCHANGE_MODAL");
+            setBlindfoldCommand("");
+            say("exchange modal opened", "");
             return;
           } else if (
-            blindfoldCommand.toUpperCase() === 'PASS' &&
+            blindfoldCommand.toUpperCase() === "PASS" &&
             !props.gameDone
           ) {
-            makeMove('pass');
-            setCurrentMode('NORMAL');
+            makeMove("pass");
+            setCurrentMode("NORMAL");
           } else if (
-            blindfoldCommand.toUpperCase() === 'CHAL' &&
+            blindfoldCommand.toUpperCase() === "CHAL" &&
             !props.gameDone
           ) {
-            makeMove('challenge');
-            setCurrentMode('NORMAL');
+            makeMove("challenge");
+            setCurrentMode("NORMAL");
             return;
-          } else if (blindfoldCommand.toUpperCase() === 'T') {
+          } else if (blindfoldCommand.toUpperCase() === "T") {
             const [, , p0Time, , , p1Time] = PlayerScoresAndTimes();
             const timesay = `${p0Time} to ${p1Time}.`;
-            say(timesay, '');
-          } else if (blindfoldCommand.toUpperCase() === 'R') {
+            say(timesay, "");
+          } else if (blindfoldCommand.toUpperCase() === "R") {
             say(
               wordToSayString(
                 machineWordToRunes(props.currentRack, props.alphabet),
-                blindfoldUseNPA
+                blindfoldUseNPA,
               ),
-              ''
+              "",
             );
-          } else if (blindfoldCommand.toUpperCase() === 'B') {
+          } else if (blindfoldCommand.toUpperCase() === "B") {
             const bag = { ...gameContext.pool };
             for (let i = 0; i < props.currentRack.length; i += 1) {
               bag[props.currentRack[i]] -= 1;
             }
             let numTilesRemaining = 0;
-            let tilesRemaining = '';
-            let blankString = ' ';
+            let tilesRemaining = "";
+            let blankString = " ";
             for (const [key, value] of Object.entries(bag)) {
               const letter =
-                machineLetterToRune(parseInt(key, 10), props.alphabet) + '. ';
+                machineLetterToRune(parseInt(key, 10), props.alphabet) + ". ";
               if (value > 0) {
                 numTilesRemaining += value;
-                if (key === '0') {
+                if (key === "0") {
                   blankString = `${value}, blank`;
                 } else {
                   tilesRemaining += `${value}, ${letter}`;
@@ -1103,10 +1100,10 @@ export const BoardPanel = React.memo((props: Props) => {
               `${numTilesRemaining} tiles unseen, ` +
                 wordToSayString(tilesRemaining, blindfoldUseNPA) +
                 blankString,
-              ''
+              "",
             );
           } else if (
-            blindfoldCommand.charAt(0).toUpperCase() === 'B' &&
+            blindfoldCommand.charAt(0).toUpperCase() === "B" &&
             blindfoldCommand.length === 2 &&
             blindfoldCommand.charAt(1).match(/[a-z.]/i)
           ) {
@@ -1118,51 +1115,51 @@ export const BoardPanel = React.memo((props: Props) => {
             try {
               const letter = runesToMachineWord(tile, props.alphabet)[0];
               let numTiles = bag[letter];
-              if (tile === '.') {
-                tile = '?';
+              if (tile === ".") {
+                tile = "?";
                 numTiles = bag[letter];
-                say(`${numTiles}, blank`, '');
+                say(`${numTiles}, blank`, "");
               } else {
                 say(
                   wordToSayString(`${numTiles}, ${tile}`, blindfoldUseNPA),
-                  ''
+                  "",
                 );
               }
-            } catch (e) {
+            } catch {
               // do nothing.
             }
-          } else if (blindfoldCommand.toUpperCase() === 'N') {
+          } else if (blindfoldCommand.toUpperCase() === "N") {
             setBlindfoldUseNPA(!blindfoldUseNPA);
             say(
-              'NATO Phonetic Alphabet is ' +
-                (!blindfoldUseNPA ? ' enabled.' : ' disabled.'),
-              ''
+              "NATO Phonetic Alphabet is " +
+                (!blindfoldUseNPA ? " enabled." : " disabled."),
+              "",
             );
-          } else if (blindfoldCommand.toUpperCase() === 'W') {
+          } else if (blindfoldCommand.toUpperCase() === "W") {
             if (isMyTurn) {
-              say('It is your turn.', '');
+              say("It is your turn.", "");
             } else {
-              say("It is your opponent's turn", '');
+              say("It is your opponent's turn", "");
             }
-          } else if (blindfoldCommand.toUpperCase() === 'L') {
+          } else if (blindfoldCommand.toUpperCase() === "L") {
             say(
-              'B for bag. C for current play. ' +
-                'E for exchange. N for NATO pronunciations. ' +
-                'P for the previous play. R for rack. ' +
-                'S for score. T for time. W for turn. ' +
-                'P, A, S, S, for pass. C, H, A, L, for challenge.',
-              ''
+              "B for bag. C for current play. " +
+                "E for exchange. N for NATO pronunciations. " +
+                "P for the previous play. R for rack. " +
+                "S for score. T for time. W for turn. " +
+                "P, A, S, S, for pass. C, H, A, L, for challenge.",
+              "",
             );
           } else {
             const blindfoldCoordinates =
               parseBlindfoldCoordinates(blindfoldCommand);
             if (blindfoldCoordinates !== undefined) {
               // Valid coordinates, place the arrow
-              say(wordToSayString(blindfoldCommand, blindfoldUseNPA), '');
+              say(wordToSayString(blindfoldCommand, blindfoldUseNPA), "");
               const board = gameContext.board;
               const existingTile = board.letterAt(
                 blindfoldCoordinates.row,
-                blindfoldCoordinates.col
+                blindfoldCoordinates.col,
               );
               if (existingTile === EmptyBoardSpaceMachineLetter) {
                 setArrowProperties({
@@ -1173,52 +1170,52 @@ export const BoardPanel = React.memo((props: Props) => {
                 });
               }
             } else {
-              console.log('invalid command: ', blindfoldCommand);
-              say('invalid command', '');
+              console.log("invalid command: ", blindfoldCommand);
+              say("invalid command", "");
             }
           }
 
-          newBlindfoldCommand = '';
-          setCurrentMode('NORMAL');
+          newBlindfoldCommand = "";
+          setCurrentMode("NORMAL");
         } else {
           newBlindfoldCommand = blindfoldCommand + key.toUpperCase();
         }
         setBlindfoldCommand(newBlindfoldCommand);
-      } else if (currentMode === 'NORMAL') {
+      } else if (currentMode === "NORMAL") {
         if (
-          key.toUpperCase() === ';' &&
-          localStorage?.getItem('enableBlindfoldMode') === 'true'
+          key.toUpperCase() === ";" &&
+          localStorage?.getItem("enableBlindfoldMode") === "true"
         ) {
           evt.preventDefault();
           if (handleNeitherShortcut.current) handleNeitherShortcut.current();
-          setCurrentMode('BLIND');
+          setCurrentMode("BLIND");
           return;
         }
         if (isMyTurn && !props.gameDone) {
-          if (key === '2') {
+          if (key === "2") {
             evt.preventDefault();
             if (handlePassShortcut.current) handlePassShortcut.current();
             return;
           }
-          if (key === '3') {
+          if (key === "3") {
             evt.preventDefault();
             if (handleChallengeShortcut.current)
               handleChallengeShortcut.current();
             return;
           }
-          if (key === '4' && exchangeAllowed) {
+          if (key === "4" && exchangeAllowed) {
             evt.preventDefault();
             if (handleNeitherShortcut.current) handleNeitherShortcut.current();
-            setCurrentMode('EXCHANGE_MODAL');
+            setCurrentMode("EXCHANGE_MODAL");
             return;
           }
-          if (key === '$' && exchangeAllowed) {
+          if (key === "$" && exchangeAllowed) {
             evt.preventDefault();
-            makeMove('exchange', props.currentRack);
+            makeMove("exchange", props.currentRack);
             return;
           }
         }
-        if (key === 'ArrowLeft' || key === 'ArrowRight') {
+        if (key === "ArrowLeft" || key === "ArrowRight") {
           evt.preventDefault();
           setArrowProperties({
             ...arrowProperties,
@@ -1226,22 +1223,22 @@ export const BoardPanel = React.memo((props: Props) => {
           });
           return;
         }
-        if (key === 'ArrowDown') {
+        if (key === "ArrowDown") {
           evt.preventDefault();
           recallTiles();
           return;
         }
-        if (key === 'ArrowUp') {
+        if (key === "ArrowUp") {
           evt.preventDefault();
           shuffleTiles();
           return;
         }
         if (key === EnterKey) {
           evt.preventDefault();
-          makeMove('commit');
+          makeMove("commit");
           return;
         }
-        if (key === '?') {
+        if (key === "?") {
           return;
         }
         // This should return a new set of arrow properties, and also set
@@ -1253,7 +1250,7 @@ export const BoardPanel = React.memo((props: Props) => {
           key,
           displayedRack,
           placedTiles,
-          props.alphabet
+          props.alphabet,
         );
 
         if (handlerReturn === null) {
@@ -1298,7 +1295,7 @@ export const BoardPanel = React.memo((props: Props) => {
       props.gameDone,
       recallTiles,
       shuffleTiles,
-    ]
+    ],
   );
 
   const handleTileDrop = useCallback(
@@ -1311,7 +1308,7 @@ export const BoardPanel = React.memo((props: Props) => {
         placedTiles,
         rackIndex,
         tileIndex,
-        props.alphabet
+        props.alphabet,
       );
       if (handlerReturn === null) {
         return;
@@ -1321,7 +1318,7 @@ export const BoardPanel = React.memo((props: Props) => {
       setPlacedTilesTempScore(handlerReturn.playScore);
       setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
       if (handlerReturn.isUndesignated) {
-        setCurrentMode('BLANK_MODAL');
+        setCurrentMode("BLANK_MODAL");
       }
     },
     [
@@ -1332,7 +1329,7 @@ export const BoardPanel = React.memo((props: Props) => {
       setDisplayedRack,
       setPlacedTilesTempScore,
       setPlacedTiles,
-    ]
+    ],
   );
 
   const clickToBoard = useCallback(
@@ -1352,7 +1349,7 @@ export const BoardPanel = React.memo((props: Props) => {
         placedTiles,
         rackIndex,
         uniqueTileIdx(arrowProperties.row, arrowProperties.col),
-        props.alphabet
+        props.alphabet,
       );
       if (handlerReturn === null) {
         return;
@@ -1361,7 +1358,7 @@ export const BoardPanel = React.memo((props: Props) => {
       setPlacedTiles(handlerReturn.newPlacedTiles);
       setPlacedTilesTempScore(handlerReturn.playScore);
       if (handlerReturn.isUndesignated) {
-        setCurrentMode('BLANK_MODAL');
+        setCurrentMode("BLANK_MODAL");
       }
       // Create an ephemeral tile map with unique keys.
       const ephTileMap: { [tileIdx: number]: EphemeralTile } = {};
@@ -1374,8 +1371,8 @@ export const BoardPanel = React.memo((props: Props) => {
           arrowProperties,
           ephTileMap,
           1,
-          props.board
-        )
+          props.board,
+        ),
       );
     },
     [
@@ -1387,12 +1384,12 @@ export const BoardPanel = React.memo((props: Props) => {
       setPlacedTiles,
       setPlacedTilesTempScore,
       props.board,
-    ]
+    ],
   );
 
   const handleBoardTileClick = useCallback((ml: MachineLetter) => {
     if (ml === BlankMachineLetter) {
-      setCurrentMode('BLANK_MODAL');
+      setCurrentMode("BLANK_MODAL");
     }
   }, []);
 
@@ -1403,12 +1400,12 @@ export const BoardPanel = React.memo((props: Props) => {
         placedTiles,
         displayedRack,
         letter,
-        props.alphabet
+        props.alphabet,
       );
       if (handlerReturn === null) {
         return;
       }
-      setCurrentMode('NORMAL');
+      setCurrentMode("NORMAL");
       setPlacedTiles(handlerReturn.newPlacedTiles);
       setPlacedTilesTempScore(handlerReturn.playScore);
     },
@@ -1419,11 +1416,11 @@ export const BoardPanel = React.memo((props: Props) => {
       props.board,
       setPlacedTiles,
       setPlacedTilesTempScore,
-    ]
+    ],
   );
 
   const handleBlankModalCancel = useCallback(() => {
-    setCurrentMode('NORMAL');
+    setCurrentMode("NORMAL");
   }, []);
 
   const returnToRack = useCallback(
@@ -1434,7 +1431,7 @@ export const BoardPanel = React.memo((props: Props) => {
         placedTiles,
         props.alphabet,
         rackIndex,
-        tileIndex
+        tileIndex,
       );
       if (handlerReturn === null) {
         return;
@@ -1452,12 +1449,12 @@ export const BoardPanel = React.memo((props: Props) => {
       setPlacedTiles,
       props.alphabet,
       props.board,
-    ]
+    ],
   );
 
   const moveRackTile = useCallback(
     (newIndex: number | undefined, oldIndex: number | undefined) => {
-      if (typeof newIndex === 'number' && typeof oldIndex === 'number') {
+      if (typeof newIndex === "number" && typeof oldIndex === "number") {
         const leftIndex = Math.min(oldIndex, newIndex);
         const rightIndex = Math.max(oldIndex, newIndex) + 1;
         // Within only the affected area, replace oldIndex with empty,
@@ -1472,33 +1469,33 @@ export const BoardPanel = React.memo((props: Props) => {
                   .concat(EmptyRackSpaceMachineLetter)
                   .concat(displayedRack.slice(oldIndex + 1, rightIndex)),
                 newIndex - leftIndex,
-                displayedRack[oldIndex]
-              )
+                displayedRack[oldIndex],
+              ),
             )
-            .concat(displayedRack.slice(rightIndex))
+            .concat(displayedRack.slice(rightIndex)),
         );
       }
     },
-    [displayedRack, setDisplayedRack]
+    [displayedRack, setDisplayedRack],
   );
 
   const showExchangeModal = useCallback(() => {
-    setCurrentMode('EXCHANGE_MODAL');
+    setCurrentMode("EXCHANGE_MODAL");
   }, []);
 
   const handleExchangeModalOk = useCallback(
     (exchangedTiles: Array<MachineLetter>) => {
-      setCurrentMode('NORMAL');
-      makeMove('exchange', exchangedTiles);
+      setCurrentMode("NORMAL");
+      makeMove("exchange", exchangedTiles);
     },
-    [makeMove]
+    [makeMove],
   );
 
   const rematch = useCallback(() => {
     const evt = create(SeekRequestSchema);
     const receiver = create(MatchUserSchema);
 
-    let opp = '';
+    let opp = "";
     playerMeta.forEach((p) => {
       if (!(p.nickname === username)) {
         opp = p.nickname;
@@ -1521,12 +1518,12 @@ export const BoardPanel = React.memo((props: Props) => {
     sendSocketMsg(
       encodeToSocketFmt(
         MessageType.SEEK_REQUEST,
-        toBinary(SeekRequestSchema, evt)
-      )
+        toBinary(SeekRequestSchema, evt),
+      ),
     );
 
     notification.info({
-      message: 'Rematch',
+      message: "Rematch",
       description: `Sent rematch request to ${opp}`,
     });
   }, [
@@ -1543,36 +1540,36 @@ export const BoardPanel = React.memo((props: Props) => {
     (e: React.KeyboardEvent<Element>) => {
       if (drawingCanBeEnabled) {
         // To activate a drawing hotkey, type 0, then the hotkey.
-        if (currentMode === 'NORMAL' || currentMode === 'DRAWING_HOTKEY') {
+        if (currentMode === "NORMAL" || currentMode === "DRAWING_HOTKEY") {
           if (e.ctrlKey || e.altKey || e.metaKey) {
             // Do not prevent Ctrl+0/Cmd+0.
           } else {
-            if (currentMode === 'DRAWING_HOTKEY') {
+            if (currentMode === "DRAWING_HOTKEY") {
               e.preventDefault();
-              setCurrentMode('NORMAL');
+              setCurrentMode("NORMAL");
               handleDrawingKeyDown(e);
               return;
             }
-            if (e.key === '0') {
+            if (e.key === "0") {
               e.preventDefault();
-              setCurrentMode('DRAWING_HOTKEY');
+              setCurrentMode("DRAWING_HOTKEY");
               console.log(
-                'You pressed 0. Now press one of these keys:' +
-                  '\n0 = Toggle drawing' +
-                  '\nU = Undo' +
-                  '\nW = Wipe' +
-                  '\nF = Freehand mode' +
-                  '\nL = Line mode' +
-                  '\nA = Arrow mode' +
-                  '\nQ = Quadrangle mode' +
-                  '\nC = Circle mode' +
-                  '\nS = Snap (does not affect freehand)' +
-                  '\nD = Do not snap' +
-                  '\nR = Red pen' +
-                  '\nG = Green pen' +
-                  '\nB = Blue pen' +
-                  '\nY = Yellow pen' +
-                  '\nE = Eraser'
+                "You pressed 0. Now press one of these keys:" +
+                  "\n0 = Toggle drawing" +
+                  "\nU = Undo" +
+                  "\nW = Wipe" +
+                  "\nF = Freehand mode" +
+                  "\nL = Line mode" +
+                  "\nA = Arrow mode" +
+                  "\nQ = Quadrangle mode" +
+                  "\nC = Circle mode" +
+                  "\nS = Snap (does not affect freehand)" +
+                  "\nD = Do not snap" +
+                  "\nR = Red pen" +
+                  "\nG = Green pen" +
+                  "\nB = Blue pen" +
+                  "\nY = Yellow pen" +
+                  "\nE = Eraser",
               );
               return;
             }
@@ -1583,34 +1580,34 @@ export const BoardPanel = React.memo((props: Props) => {
         // If a modifier key is held, never mind.
       } else {
         // prevent page from scrolling
-        if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === ' ') {
+        if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === " ") {
           e.preventDefault();
         }
       }
       keydown(e);
     },
-    [currentMode, drawingCanBeEnabled, handleDrawingKeyDown, keydown]
+    [currentMode, drawingCanBeEnabled, handleDrawingKeyDown, keydown],
   );
 
   useEffect(() => {
     if (
-      currentMode !== 'EDITING_RACK' &&
-      currentMode !== 'WAITING_FOR_RACK_EDIT' &&
+      currentMode !== "EDITING_RACK" &&
+      currentMode !== "WAITING_FOR_RACK_EDIT" &&
       props.boardEditingMode &&
       props.currentRack.filter((v) => v !== EmptyRackSpaceMachineLetter)
         .length === 0
     ) {
-      setCurrentMode('EDITING_RACK');
+      setCurrentMode("EDITING_RACK");
     }
   }, [currentMode, props.boardEditingMode, props.currentRack]);
 
   useEffect(() => {
     if (
-      currentMode === 'WAITING_FOR_RACK_EDIT' &&
+      currentMode === "WAITING_FOR_RACK_EDIT" &&
       props.currentRack.filter((v) => v !== EmptyRackSpaceMachineLetter)
         .length > 0
     ) {
-      setCurrentMode('NORMAL');
+      setCurrentMode("NORMAL");
     }
   }, [currentMode, props.currentRack]);
 
@@ -1618,25 +1615,25 @@ export const BoardPanel = React.memo((props: Props) => {
   // placing a tile not on rack also do not trigger type-to-find on firefox.
   const preventFirefoxTypeToSearch = useCallback(
     (e: { preventDefault: () => void }) => {
-      if (currentMode !== 'EDITING_RACK') {
+      if (currentMode !== "EDITING_RACK") {
         e.preventDefault();
       }
     },
-    [currentMode]
+    [currentMode],
   );
 
   const metadataClient = useClient(GameMetadataService);
 
-  const handlePass = useCallback(() => makeMove('pass'), [makeMove]);
-  const handleResign = useCallback(() => makeMove('resign'), [makeMove]);
-  const handleChallenge = useCallback(() => makeMove('challenge'), [makeMove]);
-  const handleCommit = useCallback(() => makeMove('commit'), [makeMove]);
+  const handlePass = useCallback(() => makeMove("pass"), [makeMove]);
+  const handleResign = useCallback(() => makeMove("resign"), [makeMove]);
+  const handleChallenge = useCallback(() => makeMove("challenge"), [makeMove]);
+  const handleCommit = useCallback(() => makeMove("commit"), [makeMove]);
   const handleExportGCG = useCallback(
     () => gcgExport(props.gameID, props.playerMeta, metadataClient),
-    [props.gameID, props.playerMeta, metadataClient]
+    [props.gameID, props.playerMeta, metadataClient],
   );
   const handleExchangeTilesCancel = useCallback(() => {
-    setCurrentMode('NORMAL');
+    setCurrentMode("NORMAL");
   }, []);
   const handleRequestAbort = useCallback(() => {
     sendMetaEvent(GameMetaEvent_EventType.REQUEST_ABORT);
@@ -1650,7 +1647,7 @@ export const BoardPanel = React.memo((props: Props) => {
   }, [gameContext.turns, props.vsBot]);
   const showNudge = useMemo(() => {
     // Only show nudge if this is not a tournament/club game and it's not our turn.
-    return !isMyTurn && !props.vsBot && props.tournamentID === '';
+    return !isMyTurn && !props.vsBot && props.tournamentID === "";
   }, [isMyTurn, props.tournamentID, props.vsBot]);
   const anonymousTourneyViewer =
     props.tournamentID && props.anonymousViewer && !props.gameDone;
@@ -1665,21 +1662,20 @@ export const BoardPanel = React.memo((props: Props) => {
   if (examinableGameEndMessage) {
     gameMetaMessage = examinableGameEndMessage;
   } else if (anonymousTourneyViewer) {
-    gameMetaMessage = 'Log in or register to see player tiles';
+    gameMetaMessage = "Log in or register to see player tiles";
   } else if (stillWaitingForGameToStart) {
-    gameMetaMessage = 'Waiting for game to start...';
+    gameMetaMessage = "Waiting for game to start...";
     if (gameContext.gameDocument?.uid) {
-      gameMetaMessage = 'Waiting for rack information...';
+      gameMetaMessage = "Waiting for rack information...";
     }
   } else if (props.puzzleMode && props.anonymousViewer) {
-    gameMetaMessage = 'Log in or register to start solving puzzles';
+    gameMetaMessage = "Log in or register to start solving puzzles";
   }
 
   // playerOrder enum seems to ensure we can only have two-player games :-(
   const myId = useMemo(() => {
     const myPlayerOrder = gameContext.nickToPlayerOrder[props.username];
-    // eslint-disable-next-line no-nested-ternary
-    return myPlayerOrder === 'p0' ? 0 : myPlayerOrder === 'p1' ? 1 : null;
+    return myPlayerOrder === "p0" ? 0 : myPlayerOrder === "p1" ? 1 : null;
   }, [gameContext.nickToPlayerOrder, props.username]);
 
   const tileColorId =
@@ -1721,12 +1717,12 @@ export const BoardPanel = React.memo((props: Props) => {
         showNudge={authedSolvingPuzzle ? false : showNudge}
         showAbort={authedSolvingPuzzle ? false : showAbort}
         showRematch={
-          authedSolvingPuzzle ? false : examinableGameEndMessage !== ''
+          authedSolvingPuzzle ? false : examinableGameEndMessage !== ""
         }
         gameEndControls={
           authedSolvingPuzzle
             ? props.puzzleSolved !== PuzzleStatus.UNANSWERED
-            : examinableGameEndMessage !== '' || props.gameDone
+            : examinableGameEndMessage !== "" || props.gameDone
         }
         tournamentSlug={props.tournamentSlug}
         tournamentPairedMode={props.tournamentPairedMode}
@@ -1810,12 +1806,12 @@ export const BoardPanel = React.memo((props: Props) => {
                   icon={<EditOutlined />}
                   type="primary"
                   onClick={() => {
-                    setCurrentMode('EDITING_RACK');
+                    setCurrentMode("EDITING_RACK");
                   }}
                 />
               </Tooltip>
             )}
-            {currentMode === 'EDITING_RACK' ? (
+            {currentMode === "EDITING_RACK" ? (
               <RackEditor
                 currentRack={displayedRack}
                 alphabet={props.alphabet}
@@ -1823,12 +1819,12 @@ export const BoardPanel = React.memo((props: Props) => {
                   if (props.changeCurrentRack) {
                     props.changeCurrentRack(
                       rack,
-                      examinableGameContext.turns.length
+                      examinableGameContext.turns.length,
                     );
                   }
-                  setCurrentMode('WAITING_FOR_RACK_EDIT');
+                  setCurrentMode("WAITING_FOR_RACK_EDIT");
                 }}
-                cancelCallback={() => setCurrentMode('NORMAL')}
+                cancelCallback={() => setCurrentMode("NORMAL")}
               />
             ) : (
               <Rack
@@ -1868,14 +1864,14 @@ export const BoardPanel = React.memo((props: Props) => {
         tileColorId={tileColorId}
         alphabet={props.alphabet}
         rack={props.currentRack}
-        modalVisible={currentMode === 'EXCHANGE_MODAL'}
+        modalVisible={currentMode === "EXCHANGE_MODAL"}
         onOk={handleExchangeModalOk}
         onCancel={handleExchangeTilesCancel}
       />
       <Modal
         className="blank-modal"
         title="Designate your blank"
-        open={currentMode === 'BLANK_MODAL'}
+        open={currentMode === "BLANK_MODAL"}
         onCancel={handleBlankModalCancel}
         width={360}
         footer={null}

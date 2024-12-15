@@ -1,6 +1,6 @@
-import React from 'react';
-import woogles from '../assets/woogles.png';
-import { Donate } from '../donate';
+import React from "react";
+import woogles from "../assets/woogles.png";
+import { Donate } from "../donate";
 
 type Props = {
   handleContribute?: () => void;

@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 export const Wooglinkify = (props: { message: string }) => {
   const { message } = props;
@@ -13,10 +13,10 @@ export const Wooglinkify = (props: { message: string }) => {
         arr.push(
           <React.Fragment key={arr.length}>
             {message.substring(pos, index)}
-          </React.Fragment>
+          </React.Fragment>,
         );
       }
-      const chunkLink = chunk.startsWith('http') ? chunk : `https://${chunk}`;
+      const chunkLink = chunk.startsWith("http") ? chunk : `https://${chunk}`;
       arr.push(
         <a
           key={arr.length}
@@ -25,7 +25,7 @@ export const Wooglinkify = (props: { message: string }) => {
           href={chunkLink}
         >
           {chunk}
-        </a>
+        </a>,
       );
       pos = index + chunk.length;
     }
@@ -33,7 +33,7 @@ export const Wooglinkify = (props: { message: string }) => {
       arr.push(
         <React.Fragment key={arr.length}>
           {message.substring(pos)}
-        </React.Fragment>
+        </React.Fragment>,
       );
     }
     return <React.Fragment>{arr}</React.Fragment>;

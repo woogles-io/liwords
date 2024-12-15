@@ -1,26 +1,26 @@
-import React, { ReactNode, useMemo } from 'react';
-import { useTournamentStoreContext } from '../store/store';
-import { Button, List, Table, Tag } from 'antd';
+import React, { ReactNode, useMemo } from "react";
+import { useTournamentStoreContext } from "../store/store";
+import { Button, List, Table, Tag } from "antd";
 import {
   Division,
   SinglePairing,
   TourneyStatus,
-} from '../store/reducers/tournament_reducer';
+} from "../store/reducers/tournament_reducer";
 
-import { useNavigate } from 'react-router-dom';
-import { ReadyButton } from './ready_button';
+import { useNavigate } from "react-router";
+import { ReadyButton } from "./ready_button";
 import {
   TournamentPerson,
   TournamentGameResult,
-} from '../gen/api/proto/ipc/tournament_pb';
+} from "../gen/api/proto/ipc/tournament_pb";
 // import { PlayerTag } from './player_tags';
 
 const usernameFromPlayerEntry = (p: string) =>
-  p.split(':').length > 0 ? p.split(':')[1] : 'Unknown player';
+  p.split(":").length > 0 ? p.split(":")[1] : "Unknown player";
 
 const pairingsForRound = (
   round: number,
-  division: Division
+  division: Division,
 ): [Array<SinglePairing>, Set<string>] => {
   const m = new Set<string>();
   const n = new Array<SinglePairing>();
@@ -30,9 +30,9 @@ const pairingsForRound = (
   const unpairedPlayers = new Set(division.players.map((tp) => tp.id));
 
   const key = (persons: TournamentPerson[]): string => {
-    let k = persons[0].id + '-' + persons[1].id;
+    let k = persons[0].id + "-" + persons[1].id;
     if (persons[1].id < persons[0].id) {
-      k = persons[1].id + '-' + persons[0].id;
+      k = persons[1].id + "-" + persons[0].id;
     }
     return k;
   };
@@ -84,7 +84,7 @@ const recordToString = (rec: record) => {
 const getPerformance = (
   playerName: string,
   viewedRound: number,
-  division: Division
+  division: Division,
 ): record => {
   const currentTournamentRound = division.currentRound;
   let roundOfRecord =
@@ -93,7 +93,7 @@ const getPerformance = (
     roundOfRecord = 0;
   }
   const results = division.standingsMap[roundOfRecord]?.standings.find((s) =>
-    s.playerId.endsWith(`:${playerName}`)
+    s.playerId.endsWith(`:${playerName}`),
   );
 
   const wins = results?.wins || 0;
@@ -127,7 +127,7 @@ const getScores = (playerName: string, pairing: SinglePairing) => {
   ) {
     return pairing.games[0].scores[playerIndex];
   }
-  return '';
+  return "";
 };
 
 type Props = {
@@ -159,7 +159,7 @@ export const Pairings = React.memo((props: Props) => {
       props.selectedDivision && divisions[props.selectedDivision]
         ? divisions[props.selectedDivision].currentRound
         : tournamentContext.competitorState.currentRound,
-    [props.selectedDivision, divisions, tournamentContext.competitorState]
+    [props.selectedDivision, divisions, tournamentContext.competitorState],
   );
 
   if (!props.selectedDivision) {
@@ -168,13 +168,13 @@ export const Pairings = React.memo((props: Props) => {
 
   const [pairings, unpairedPlayers] = pairingsForRound(
     props.selectedRound,
-    divisions[props.selectedDivision]
+    divisions[props.selectedDivision],
   );
 
   const formatPairingsData = (
     division: Division,
     round: number,
-    pairings: Array<SinglePairing>
+    pairings: Array<SinglePairing>,
   ): PairingTableData[] => {
     if (!division) {
       return new Array<PairingTableData>();
@@ -221,7 +221,7 @@ export const Pairings = React.memo((props: Props) => {
         const isGibsonized = (playerID: string) => {
           return (
             division.standingsMap[round]?.standings?.find(
-              (p) => p.playerId === playerID && p.gibsonized
+              (p) => p.playerId === playerID && p.gibsonized,
             ) !== undefined
           );
         };
@@ -229,16 +229,16 @@ export const Pairings = React.memo((props: Props) => {
         const pairingCt = pairing.pairingCount || 1;
         const repeatCount =
           pairingCt <= 1
-            ? ''
+            ? ""
             : pairingCt === 2
-              ? 'Repeat'
+              ? "Repeat"
               : `${pairingCt}-peat`;
 
         const players =
           playerNames[0] === playerNames[1] ? (
             <div>
               <p>
-                {playerNames[0]}{' '}
+                {playerNames[0]}{" "}
                 {
                   // <PlayerTag
                   //   username={playerNames[0]}
@@ -264,7 +264,7 @@ export const Pairings = React.memo((props: Props) => {
             <div>
               {playerFullIDs.map((playerID, idx) => (
                 <p key={playerID}>
-                  {usernameFromPlayerEntry(playerID)}{' '}
+                  {usernameFromPlayerEntry(playerID)}{" "}
                   {
                     // <PlayerTag
                     //   username={playerName}
@@ -325,8 +325,8 @@ export const Pairings = React.memo((props: Props) => {
                         if (props.username) {
                           navigate(
                             `/game/${encodeURIComponent(
-                              findGameIdFromActive(props.username) || ''
-                            )}`
+                              findGameIdFromActive(props.username) || "",
+                            )}`,
                           );
                         }
                       }}
@@ -350,7 +350,7 @@ export const Pairings = React.memo((props: Props) => {
                       window.open(`/game/${encodeURIComponent(otherGameId)}`);
                     } else {
                       navigate(`/game/${encodeURIComponent(otherGameId)}`);
-                      console.log('redirecting to', otherGameId);
+                      console.log("redirecting to", otherGameId);
                     }
                   }}
                   onAuxClick={(event) => {
@@ -379,7 +379,7 @@ export const Pairings = React.memo((props: Props) => {
                     window.open(`/game/${encodeURIComponent(finishedGame)}`);
                   } else {
                     navigate(`/game/${encodeURIComponent(finishedGame)}`);
-                    console.log('redirecting to', finishedGame);
+                    console.log("redirecting to", finishedGame);
                   }
                 }}
                 onAuxClick={(event) => {
@@ -401,8 +401,8 @@ export const Pairings = React.memo((props: Props) => {
                 getPerformance(
                   playerNames[0],
                   round,
-                  divisions[props.selectedDivision]
-                )
+                  divisions[props.selectedDivision],
+                ),
               )}
             </p>
           ) : (
@@ -414,11 +414,11 @@ export const Pairings = React.memo((props: Props) => {
                       getPerformance(
                         playerName,
                         round,
-                        divisions[props.selectedDivision]
-                      )
+                        divisions[props.selectedDivision],
+                      ),
                     )}
                   </p>
-                )
+                ),
             )
           );
         const scores =
@@ -432,53 +432,53 @@ export const Pairings = React.memo((props: Props) => {
 
         return {
           players,
-          key: playerNames.join(':'),
+          key: playerNames.join(":"),
           sort: sortPriority || 0,
           isMine: isMyGame || false,
           wl,
           scores,
           actions: actions || null,
         };
-      }
+      },
     );
     return pairingsData.sort((a, b) => b.sort - a.sort);
   };
 
   const columns = [
     {
-      title: 'Players',
-      dataIndex: 'players',
-      key: 'players',
-      className: 'players',
+      title: "Players",
+      dataIndex: "players",
+      key: "players",
+      className: "players",
     },
     {
-      title: 'W/L',
-      dataIndex: 'wl',
-      key: 'wl',
+      title: "W/L",
+      dataIndex: "wl",
+      key: "wl",
 
-      className: 'wl',
+      className: "wl",
     },
   ];
 
   if (!(props.selectedRound > currentRound)) {
     columns.push({
-      title: 'Score',
-      dataIndex: 'scores',
-      key: 'scores',
-      className: 'scores',
+      title: "Score",
+      dataIndex: "scores",
+      key: "scores",
+      className: "scores",
     });
   }
   columns.push({
-    title: ' ',
-    dataIndex: 'actions',
-    key: 'actions',
-    className: 'actions',
+    title: " ",
+    dataIndex: "actions",
+    key: "actions",
+    className: "actions",
   });
 
   const tableData = formatPairingsData(
     divisions[props.selectedDivision],
     props.selectedRound,
-    pairings
+    pairings,
   );
 
   return (
@@ -486,10 +486,10 @@ export const Pairings = React.memo((props: Props) => {
       <Table
         className={`pairings ${
           currentRound < props.selectedRound
-            ? 'future'
+            ? "future"
             : currentRound > props.selectedRound
-              ? 'completed'
-              : 'current'
+              ? "completed"
+              : "current"
         }`}
         columns={columns}
         pagination={false}
@@ -497,16 +497,16 @@ export const Pairings = React.memo((props: Props) => {
           return `${record.key}`;
         }}
         locale={{
-          emptyText: 'The pairings are not yet available for this round.',
+          emptyText: "The pairings are not yet available for this round.",
         }}
         dataSource={tableData}
         rowClassName={(record) => {
           let computedClass = `single-pairing ${tournamentContext.competitorState.status}`;
           if (record.isMine) {
-            computedClass += ' mine';
+            computedClass += " mine";
           }
           if (props.selectedRound === currentRound) {
-            computedClass += ' current';
+            computedClass += " current";
           }
           return computedClass;
         }}
@@ -516,7 +516,7 @@ export const Pairings = React.memo((props: Props) => {
           <h5 style={{ marginTop: 10 }}>Unpaired players</h5>
           <List
             size="small"
-            dataSource={Array.from(unpairedPlayers).map((v) => v.split(':')[1])}
+            dataSource={Array.from(unpairedPlayers).map((v) => v.split(":")[1])}
             renderItem={(item) => (
               <List.Item className="readable-text-color">{item}</List.Item>
             )}

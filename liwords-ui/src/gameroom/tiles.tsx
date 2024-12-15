@@ -1,6 +1,6 @@
-import React from 'react';
+import React from "react";
 
-import Tile from './tile';
+import Tile from "./tile";
 import {
   BlankMachineLetter,
   EmptyBoardSpaceMachineLetter,
@@ -8,9 +8,9 @@ import {
   MachineLetter,
   PlayedTiles,
   PlayerOfTiles,
-} from '../utils/cwgame/common';
-import { PlacementArrow } from '../utils/cwgame/tile_placement';
-import { Alphabet, machineWordToRunes, scoreFor } from '../constants/alphabets';
+} from "../utils/cwgame/common";
+import { PlacementArrow } from "../utils/cwgame/tile_placement";
+import { Alphabet, machineWordToRunes, scoreFor } from "../constants/alphabets";
 
 type Props = {
   tileColorId: number;
@@ -25,12 +25,12 @@ type Props = {
   tentativeTileScore: number | undefined;
   returnToRack?: (
     rackIndex: number | undefined,
-    tileIndex: number | undefined
+    tileIndex: number | undefined,
   ) => void;
   handleSetHover?: (
     x: number,
     y: number,
-    words: Array<string> | undefined
+    words: Array<string> | undefined,
   ) => void;
   handleUnsetHover?: () => void;
   definitionPopover?:
@@ -40,7 +40,7 @@ type Props = {
     row: number,
     col: number,
     rackIndex: number | undefined,
-    tileIndex: number | undefined
+    tileIndex: number | undefined,
   ) => void;
   recallOneTile?: (row: number, col: number) => void;
 };
@@ -120,8 +120,8 @@ const Tiles = React.memo((props: Props) => {
   const tentativeBoard = Array.from(new Array(props.gridDim), (_, y) =>
     Array.from(
       new Array(props.gridDim),
-      (_, x) => props.tilesLayout[y * props.gridDim + x]
-    )
+      (_, x) => props.tilesLayout[y * props.gridDim + x],
+    ),
   );
   for (const { row, col, letter } of tentativeTiles) {
     tentativeBoard[row][col] = letter;
@@ -188,7 +188,7 @@ const Tiles = React.memo((props: Props) => {
               y,
               formedWords.length
                 ? formedWords.map((w) => machineWordToRunes(w, props.alphabet))
-                : undefined
+                : undefined,
             );
           },
           onMouseLeave: (evt: React.MouseEvent<HTMLElement>) => {
@@ -220,11 +220,11 @@ const Tiles = React.memo((props: Props) => {
             tentativeScoreIsHorizontal={tentativeScoreHereIsHorizontal}
             grabbable={false}
             {...definitionHandlers}
-          />
+          />,
         );
       } else {
         const tentativeTile = tentativeTiles.find(
-          (tile) => tile.col === x && tile.row === y
+          (tile) => tile.col === x && tile.row === y,
         );
         if (tentativeTile) {
           tiles.push(
@@ -260,13 +260,13 @@ const Tiles = React.memo((props: Props) => {
               alphabet={props.alphabet}
               {...(tentativeTile.letter !== BlankMachineLetter &&
                 definitionHandlers)}
-            />
+            />,
           );
         } else {
           tiles.push(
             <div className="empty-space" key={`tile_${x}_${y}`}>
               &nbsp;
-            </div>
+            </div>,
           );
         }
       }

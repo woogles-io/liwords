@@ -1,27 +1,27 @@
-import { errorInfo } from '../utils/parse_woogles_error';
-import { WooglesError } from '../gen/api/proto/ipc/errors_pb';
-import { flashError } from '../utils/hooks/connect';
-import { TournamentState } from '../store/reducers/tournament_reducer';
-import { WarningOutlined } from '@ant-design/icons';
-import { MessageInstance } from 'antd/lib/message/interface';
-import { NotificationInstance } from 'antd/lib/notification/interface';
-import { ConnectError } from '@connectrpc/connect';
+import { errorInfo } from "../utils/parse_woogles_error";
+import { WooglesError } from "../gen/api/proto/ipc/errors_pb";
+import { flashError } from "../utils/hooks/connect";
+import { TournamentState } from "../store/reducers/tournament_reducer";
+import { WarningOutlined } from "@ant-design/icons";
+import { MessageInstance } from "antd/lib/message/interface";
+import { NotificationInstance } from "antd/lib/notification/interface";
+import { ConnectError } from "@connectrpc/connect";
 
 export const flashTournamentError = (
   message: MessageInstance,
   notification: NotificationInstance,
   e: unknown,
   tc: TournamentState,
-  time = 10
+  time = 10,
 ) => {
   if (e instanceof ConnectError) {
     const [errCode, data] = errorInfo(e.rawMessage);
     if (errCode === 0) {
       message.error({
-        content: 'Unknown tournament error, see console',
+        content: "Unknown tournament error, see console",
         duration: time,
       });
-      console.error('Unknown tournament error', e);
+      console.error("Unknown tournament error", e);
 
       return;
     }
@@ -47,14 +47,14 @@ export const flashTournamentError = (
 };
 
 const parseRoundNotCompleteErr = (data: string[], tc: TournamentState) => {
-  let explanation = '';
+  let explanation = "";
   const division = data[1];
   const missingPlayer = parseInt(data[3], 10);
   const round = parseInt(data[2], 10) - 1; // 0-indexed
 
   if (missingPlayer != undefined) {
     const player =
-      tc.divisions[division].players[missingPlayer].id.split(':')[1];
+      tc.divisions[division].players[missingPlayer].id.split(":")[1];
     const pairings = tc.divisions[division].pairings[round].roundPairings;
     if (pairings[missingPlayer].players == undefined) {
       // This player is not paired at all.
