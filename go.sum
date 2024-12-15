@@ -87,10 +87,10 @@ github.com/docker/go-connections v0.5.0 h1:USnMq7hx7gwdVZq1L49hLXaFtUdTADjXGp+uj
 github.com/docker/go-connections v0.5.0/go.mod h1:ov60Kzw0kKElRwhNs9UlUHAE/F9Fe6GLaXnqyDdmEXc=
 github.com/docker/go-units v0.5.0 h1:69rxXcBk27SvSaaxTtLh/8llcHD8vYHT7WSdRZ/jvr4=
 github.com/docker/go-units v0.5.0/go.mod h1:fgPhTUdO+D/Jk86RDLlptpiXQzgHJF7gydDDbaIK4Dk=
-github.com/domino14/macondo v0.10.1 h1:wjJtkHa1jfC5T9UBjVpizC5+6SJBNwyQeKDscn6u18Y=
-github.com/domino14/macondo v0.10.1/go.mod h1:xnQlfmxJsZz4i7lfpdh3nYnfjLQulpAiNgbpYHhGh24=
-github.com/domino14/word-golib v0.2.3 h1:ZujAaU7fBzcQFupow6WmLHJv5qSmyZ8JuTOn5Hkpaec=
-github.com/domino14/word-golib v0.2.3/go.mod h1:N4swRNC9NDDoRKpiYHSWzv/jWDEK6fh89r4ppjwe2po=
+github.com/domino14/macondo v0.10.2-0.20241215034412-f0a08f6d847f h1:kqEqa4MO0Q7jDBQ6PcEfzWd7+HsU0vthNFsGaoFRcFs=
+github.com/domino14/macondo v0.10.2-0.20241215034412-f0a08f6d847f/go.mod h1:rbFKw9fRMrF8VifH9nhLKXgzG5FAie/4fQ0SRu+qB8Q=
+github.com/domino14/word-golib v0.2.4 h1:iQgQ8HidOJijiYw8x2O4haQ+QHTRqOzhBh63r85k9Kg=
+github.com/domino14/word-golib v0.2.4/go.mod h1:p3J+APKtDktBo6LuytRg6t5+zuwyQTfYBhI5MrqmjbQ=
 github.com/exaring/otelpgx v0.7.0 h1:Wv1x53y6zmmBsEPbWNae6XJAbMNC3KSJmpWRoZxtZr8=
 github.com/exaring/otelpgx v0.7.0/go.mod h1:2oRpYkkPBXpvRqQqP0gqkkFPwITRObbpsrA8NT1Fu/I=
 github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=

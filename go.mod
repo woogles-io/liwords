@@ -14,8 +14,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/lambda v1.69.1
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.71.0
 	github.com/aws/smithy-go v1.22.1
-	github.com/domino14/macondo v0.10.1
-	github.com/domino14/word-golib v0.2.3
+	github.com/domino14/macondo v0.10.2-0.20241215034412-f0a08f6d847f
+	github.com/domino14/word-golib v0.2.4
 	github.com/exaring/otelpgx v0.7.0
 	github.com/go-redsync/redsync/v4 v4.13.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
