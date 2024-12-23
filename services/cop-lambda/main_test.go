@@ -1,4 +1,4 @@
-package cop_lambda
+package main
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/matryer/is"
+	"github.com/woogles-io/liwords/pkg/pair"
 	pairtestutils "github.com/woogles-io/liwords/pkg/pair/testutils"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"google.golang.org/protobuf/proto"
@@ -28,12 +29,12 @@ func TestHandleRequest(t *testing.T) {
 	ctx := context.Background()
 	pairRequestByes, err := proto.Marshal(req)
 	is.NoErr(err)
-	evt := LambdaInvokeIO{
+	evt := pair.LambdaInvokeIO{
 		Bytes: pairRequestByes,
 	}
 	JSONResponse, err := HandleRequest(ctx, evt)
 	is.NoErr(err)
-	lambdaInvokeIOResponse := &LambdaInvokeIO{}
+	lambdaInvokeIOResponse := &pair.LambdaInvokeIO{}
 	err = json.Unmarshal([]byte(JSONResponse), lambdaInvokeIOResponse)
 	is.NoErr(err)
 	pairResponse := &pb.PairResponse{}
