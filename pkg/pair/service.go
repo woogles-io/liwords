@@ -6,21 +6,24 @@ import (
 	"encoding/json"
 	"errors"
 
+	"connectrpc.com/connect"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
-	"github.com/woogles-io/liwords/pkg/apiserver"
-	"github.com/woogles-io/liwords/pkg/config"
-	"github.com/woogles-io/liwords/pkg/pair/cop_lambda"
-	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"google.golang.org/protobuf/proto"
 
-	"connectrpc.com/connect"
+	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/config"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 type PairService struct {
 	cfg          *config.Config
 	lambdaClient *lambda.Client
+}
+
+type LambdaInvokeIO struct {
+	Bytes []byte
 }
 
 func NewPairService(cfg *config.Config, lc *lambda.Client) *PairService {
@@ -36,7 +39,7 @@ func (ps *PairService) HandlePairRequest(ctx context.Context, req *connect.Reque
 		return nil, err
 	}
 
-	lambdaInvokeInputJSON, err := json.Marshal(cop_lambda.LambdaInvokeIO{Bytes: pairRequestBytes})
+	lambdaInvokeInputJSON, err := json.Marshal(LambdaInvokeIO{Bytes: pairRequestBytes})
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +71,7 @@ func (ps *PairService) HandlePairRequest(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, err
 	}
-	lambdaInvokeIOResponse := &cop_lambda.LambdaInvokeIO{}
+	lambdaInvokeIOResponse := &LambdaInvokeIO{}
 	err = json.Unmarshal(bts, lambdaInvokeIOResponse)
 	if err != nil {
 		return nil, err

@@ -2,3 +2,4 @@
 tourneypdf.egg-info
 .aws-sam
 output
+venv

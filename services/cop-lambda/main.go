@@ -1,4 +1,4 @@
-package cop_lambda
+package main
 
 import (
 	"context"
@@ -6,18 +6,18 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/proto"
+
+	"github.com/woogles-io/liwords/pkg/pair"
 	"github.com/woogles-io/liwords/pkg/pair/cop"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
-	"google.golang.org/protobuf/proto"
 )
 
 const TimeLimit = 15
 
-type LambdaInvokeIO struct {
-	Bytes []byte
-}
-
-func HandleRequest(ctx context.Context, evt LambdaInvokeIO) (string, error) {
+func HandleRequest(ctx context.Context, evt pair.LambdaInvokeIO) (string, error) {
+	log.Info().Int("msg-length", len(evt.Bytes)).Msg("got-pair-request")
 	var pairRequest pb.PairRequest
 	err := proto.Unmarshal(evt.Bytes, &pairRequest)
 	if err != nil {
@@ -38,7 +38,7 @@ func HandleRequest(ctx context.Context, evt LambdaInvokeIO) (string, error) {
 		return "", err
 	}
 
-	lambdaInvokeIOJSON, err := json.Marshal(&LambdaInvokeIO{
+	lambdaInvokeIOJSON, err := json.Marshal(&pair.LambdaInvokeIO{
 		Bytes: pairResponseBytes,
 	})
 	if err != nil {
