@@ -401,10 +401,12 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 
 	prepairedRoundIdx := -1
 	numDivPairings := len(req.DivisionPairings)
-	for _, oppIdx := range req.DivisionPairings[numDivPairings-1].Pairings {
-		if oppIdx == -1 {
-			prepairedRoundIdx = numDivPairings - 1
-			break
+	if numDivPairings > 0 {
+		for _, oppIdx := range req.DivisionPairings[numDivPairings-1].Pairings {
+			if oppIdx == -1 {
+				prepairedRoundIdx = numDivPairings - 1
+				break
+			}
 		}
 	}
 

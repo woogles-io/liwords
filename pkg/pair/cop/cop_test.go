@@ -714,12 +714,20 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req.UseControlLoss = true
 	req.DivisionSims = 1000000000
 	req.ControlLossSims = 1000000000
-	ctx, _ = context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	is.NoErr(ctx.Err())
 	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_TIMEOUT)
+	cancelFn()
 }
+func TestCOPSuccess(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
 
+	req := pairtestutils.CreateDefaultPairRequest()
+	resp := cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+}
 func TestCOPProf(t *testing.T) {
 	if os.Getenv("COP_PROF") == "" {
 		t.Skip("Skipping COP profiling test. Use 'COP_PROF=1 go test -run COPProf' to run it and 'go tool pprof cop.prof' to analyze the results.")
