@@ -720,6 +720,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	is.Equal(resp.ErrorCode, pb.PairError_TIMEOUT)
 	cancelFn()
 }
+
 func TestCOPSuccess(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
@@ -728,6 +729,7 @@ func TestCOPSuccess(t *testing.T) {
 	resp := cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 }
+
 func TestCOPProf(t *testing.T) {
 	if os.Getenv("COP_PROF") == "" {
 		t.Skip("Skipping COP profiling test. Use 'COP_PROF=1 go test -run COPProf' to run it and 'go tool pprof cop.prof' to analyze the results.")
