@@ -20,7 +20,7 @@ type PairService struct {
 }
 
 type LambdaInvokeIO struct {
-	Bytes []byte
+	Bytes []byte `json:"bytes"`
 }
 
 func NewPairService(cfg *config.Config, lc *lambda.Client) *PairService {
