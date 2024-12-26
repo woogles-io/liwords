@@ -101,16 +101,19 @@ type ScoreFormProps = {
   division: Division;
   pairing: SinglePairing;
   ourName: string;
+  ourSeed: number;
+  opponentSeed?: number;
 };
 
 const ScoreForm = (props: ScoreFormProps) => {
   const tClient = useClient(TournamentService);
   const [submitDisabled, setSubmitDisabled] = useState(true);
-
+  console.log(JSON.stringify(props.division));
   return (
     <>
       <h4 className="readable-text-color">
-        You are playing {props.opponentName} in round {props.currentRound + 1}.
+        You are playing {props.opponentName} ({props.opponentSeed}) in round{" "}
+        {props.currentRound + 1}.
       </h4>
 
       <h4>
@@ -124,7 +127,8 @@ const ScoreForm = (props: ScoreFormProps) => {
       <Form
         layout="vertical"
         size="large"
-        wrapperCol={{ span: 14 }}
+        wrapperCol={{ span: 6 }}
+        labelCol={{ span: 6 }}
         onValuesChange={(changedValues, values) => {
           setSubmitDisabled(
             values.ourscore == undefined || values.theirscore == undefined,
@@ -176,14 +180,23 @@ const ScoreForm = (props: ScoreFormProps) => {
           name="ourscore"
           required
         >
-          <InputNumber inputMode="numeric" />
+          <InputNumber
+            inputMode="numeric"
+            style={{ width: 200, height: 45, fontSize: 24 }}
+            placeholder="Click / touch..."
+          />
         </Form.Item>
+        <Divider />
         <Form.Item
           label={`Score for ${props.opponentName}`}
           name="theirscore"
           required
         >
-          <InputNumber inputMode="numeric" />
+          <InputNumber
+            inputMode="numeric"
+            style={{ width: 200, height: 45, fontSize: 24 }}
+            placeholder="Click / touch..."
+          />
         </Form.Item>
 
         <Form.Item label="Please have opponent verify scores.">
@@ -203,7 +216,6 @@ const ScoreForm = (props: ScoreFormProps) => {
 
 export const OwnScoreEnterer = (props: Props) => {
   const { tournamentContext } = useTournamentStoreContext();
-  console.log(tournamentContext);
 
   const player = useMemo(() => {
     const p = findPlayerByTruncatedId(tournamentContext, props.truncatedID);
@@ -243,7 +255,8 @@ export const OwnScoreEnterer = (props: Props) => {
       );
     },
   );
-  let opponent, opponentName;
+  let opponent, opponentName, opponentSeed;
+  const ourSeed = player.index + 1;
   if (!pairing) {
     return (
       <h4 className="readable-text-color">
@@ -256,10 +269,13 @@ export const OwnScoreEnterer = (props: Props) => {
   if (pairing.players[0].id === foundPlayer.id) {
     opponent = pairing.players[1].id;
     opponentName = opponent.split(":")[1];
+    opponentSeed = division.playerIndexMap[pairing.players[1].id] + 1;
+
     first = true;
   } else if (pairing.players[1].id === foundPlayer.id) {
     opponent = pairing.players[0].id;
     opponentName = opponent.split(":")[1];
+    opponentSeed = division.playerIndexMap[pairing.players[0].id] + 1;
   }
 
   let display = null;
@@ -280,7 +296,9 @@ export const OwnScoreEnterer = (props: Props) => {
       display = (
         <ScoreForm
           opponentName={opponentName}
+          opponentSeed={opponentSeed}
           ourName={fullName}
+          ourSeed={ourSeed}
           currentRound={currentRound}
           first={first}
           division={division}
@@ -291,7 +309,9 @@ export const OwnScoreEnterer = (props: Props) => {
 
     return (
       <div style={{ marginLeft: 20, marginTop: 10 }}>
-        <h4 className="readable-text-color">Hi, {fullName}.</h4>
+        <h4 className="readable-text-color">
+          Hi, {fullName} ({ourSeed}).
+        </h4>
         {display}
         <Divider />
         <ShowResults
@@ -310,10 +330,12 @@ export const OwnScoreEnterer = (props: Props) => {
     : pairing.games[0].scores[0];
   return (
     <div style={{ marginLeft: 20, marginTop: 10 }}>
-      <h4 className="readable-text-color">Hi, {fullName}.</h4>
+      <h4 className="readable-text-color">
+        Hi, {fullName} ({ourSeed}).
+      </h4>
 
       <h4 className="readable-text-color">
-        You played {opponent?.split(":")[1]} in round{" "}
+        You played {opponent?.split(":")[1]} ({opponentSeed}) in round{" "}
         {division.currentRound + 1}.
       </h4>
       <h4>
