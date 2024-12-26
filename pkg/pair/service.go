@@ -2,9 +2,7 @@ package pair
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
-	"errors"
 
 	"connectrpc.com/connect"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -12,7 +10,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/config"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -23,7 +20,7 @@ type PairService struct {
 }
 
 type LambdaInvokeIO struct {
-	Bytes []byte
+	Bytes []byte `json:"bytes"`
 }
 
 func NewPairService(cfg *config.Config, lc *lambda.Client) *PairService {
@@ -53,31 +50,13 @@ func (ps *PairService) HandlePairRequest(ctx context.Context, req *connect.Reque
 		return nil, err
 	}
 
-	type lambdaOutput struct {
-		StatusCode int    `json:"statusCode"`
-		Body       string `json:"body"`
-		Payload    string `json:"payload"`
-	}
-
-	lo := &lambdaOutput{}
+	lo := &LambdaInvokeIO{}
 	err = json.Unmarshal(out.Payload, lo)
 	if err != nil {
 		return nil, err
 	}
-	if lo.StatusCode != 200 {
-		return nil, apiserver.InternalErr(errors.New(lo.Body))
-	}
-	bts, err := base64.StdEncoding.DecodeString(lo.Payload)
-	if err != nil {
-		return nil, err
-	}
-	lambdaInvokeIOResponse := &LambdaInvokeIO{}
-	err = json.Unmarshal(bts, lambdaInvokeIOResponse)
-	if err != nil {
-		return nil, err
-	}
 	pairResponse := &pb.PairResponse{}
-	err = proto.Unmarshal(lambdaInvokeIOResponse.Bytes, pairResponse)
+	err = proto.Unmarshal(lo.Bytes, pairResponse)
 	if err != nil {
 		return nil, err
 	}
