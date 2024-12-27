@@ -108,7 +108,6 @@ type ScoreFormProps = {
 const ScoreForm = (props: ScoreFormProps) => {
   const tClient = useClient(TournamentService);
   const [submitDisabled, setSubmitDisabled] = useState(true);
-  console.log(JSON.stringify(props.division));
   return (
     <>
       <h4 className="readable-text-color">
