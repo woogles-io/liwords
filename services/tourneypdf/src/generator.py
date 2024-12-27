@@ -5,6 +5,8 @@ import qrcode
 
 import cairo
 import webcolors
+import requests
+from io import BytesIO
 
 
 class URLNotUniqueException(Exception):
@@ -125,7 +127,9 @@ class ScorecardCreator:
         ctx.paint()
         ctx.restore()
 
-    def draw_name_and_tourney_header(self, ctx, player, pidx, tourney_name):
+    def draw_name_and_tourney_header(
+        self, ctx, player, pidx, tourney_name, tourney_logo
+    ):
         player_name = player["id"].split(":")[1]
         player_rating = player.get("rating", 0)
 
@@ -154,10 +158,30 @@ class ScorecardCreator:
             ctx.move_to(360, 56)
         ctx.show_text(tourney_name)
 
-        if self.show_qrcode:
+        if self.show_qrcode and not tourney_logo:
             ctx.move_to(300, 75)
             ctx.set_font_size(12)
             ctx.show_text("Enter scores and view standings:")
+
+        if tourney_logo:
+            if not hasattr(self, "cached_logo"):
+                response = requests.get(tourney_logo)
+                self.cached_logo = cairo.ImageSurface.create_from_png(
+                    BytesIO(response.content)
+                )
+            logo_surface = self.cached_logo
+
+            ctx.save()
+            ctx.translate(290, 10)
+
+            logo_height = logo_surface.get_height()
+            logo_width = logo_surface.get_width()
+            scale_factor = 70 / logo_height
+            ctx.scale(scale_factor, scale_factor)
+
+            ctx.set_source_surface(logo_surface, 0, 0)
+            ctx.paint()
+            ctx.restore()
         # line for player and name
         ctx.set_font_size(20)
         ctx.move_to(player_name_x, 56)
@@ -312,7 +336,11 @@ class ScorecardCreator:
                     raise URLNotUniqueException()
                 self.place_qr_code(ctx, qrcode_url)
             self.draw_name_and_tourney_header(
-                ctx, player, pidx, meta["metadata"]["name"]
+                ctx,
+                player,
+                pidx,
+                meta["metadata"]["name"],
+                meta["metadata"].get("logo", ""),
             )
 
             # header row
