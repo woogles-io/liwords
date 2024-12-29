@@ -115,6 +115,9 @@ const (
 	// TournamentServiceGetTournamentScorecardsProcedure is the fully-qualified name of the
 	// TournamentService's GetTournamentScorecards RPC.
 	TournamentServiceGetTournamentScorecardsProcedure = "/tournament_service.TournamentService/GetTournamentScorecards"
+	// TournamentServiceImportTournamentProcedure is the fully-qualified name of the TournamentService's
+	// ImportTournament RPC.
+	TournamentServiceImportTournamentProcedure = "/tournament_service.TournamentService/ImportTournament"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -147,6 +150,7 @@ var (
 	tournamentServiceCheckInMethodDescriptor                 = tournamentServiceServiceDescriptor.Methods().ByName("CheckIn")
 	tournamentServiceExportTournamentMethodDescriptor        = tournamentServiceServiceDescriptor.Methods().ByName("ExportTournament")
 	tournamentServiceGetTournamentScorecardsMethodDescriptor = tournamentServiceServiceDescriptor.Methods().ByName("GetTournamentScorecards")
+	tournamentServiceImportTournamentMethodDescriptor        = tournamentServiceServiceDescriptor.Methods().ByName("ImportTournament")
 )
 
 // TournamentServiceClient is a client for the tournament_service.TournamentService service.
@@ -184,6 +188,7 @@ type TournamentServiceClient interface {
 	CheckIn(context.Context, *connect.Request[tournament_service.CheckinRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	ExportTournament(context.Context, *connect.Request[tournament_service.ExportTournamentRequest]) (*connect.Response[tournament_service.ExportTournamentResponse], error)
 	GetTournamentScorecards(context.Context, *connect.Request[tournament_service.TournamentScorecardRequest]) (*connect.Response[tournament_service.TournamentScorecardResponse], error)
+	ImportTournament(context.Context, *connect.Request[tournament_service.ImportTournamentRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 }
 
 // NewTournamentServiceClient constructs a client for the tournament_service.TournamentService
@@ -364,6 +369,12 @@ func NewTournamentServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		importTournament: connect.NewClient[tournament_service.ImportTournamentRequest, tournament_service.TournamentResponse](
+			httpClient,
+			baseURL+TournamentServiceImportTournamentProcedure,
+			connect.WithSchema(tournamentServiceImportTournamentMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -396,6 +407,7 @@ type tournamentServiceClient struct {
 	checkIn                 *connect.Client[tournament_service.CheckinRequest, tournament_service.TournamentResponse]
 	exportTournament        *connect.Client[tournament_service.ExportTournamentRequest, tournament_service.ExportTournamentResponse]
 	getTournamentScorecards *connect.Client[tournament_service.TournamentScorecardRequest, tournament_service.TournamentScorecardResponse]
+	importTournament        *connect.Client[tournament_service.ImportTournamentRequest, tournament_service.TournamentResponse]
 }
 
 // NewTournament calls tournament_service.TournamentService.NewTournament.
@@ -533,6 +545,11 @@ func (c *tournamentServiceClient) GetTournamentScorecards(ctx context.Context, r
 	return c.getTournamentScorecards.CallUnary(ctx, req)
 }
 
+// ImportTournament calls tournament_service.TournamentService.ImportTournament.
+func (c *tournamentServiceClient) ImportTournament(ctx context.Context, req *connect.Request[tournament_service.ImportTournamentRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return c.importTournament.CallUnary(ctx, req)
+}
+
 // TournamentServiceHandler is an implementation of the tournament_service.TournamentService
 // service.
 type TournamentServiceHandler interface {
@@ -569,6 +586,7 @@ type TournamentServiceHandler interface {
 	CheckIn(context.Context, *connect.Request[tournament_service.CheckinRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	ExportTournament(context.Context, *connect.Request[tournament_service.ExportTournamentRequest]) (*connect.Response[tournament_service.ExportTournamentResponse], error)
 	GetTournamentScorecards(context.Context, *connect.Request[tournament_service.TournamentScorecardRequest]) (*connect.Response[tournament_service.TournamentScorecardResponse], error)
+	ImportTournament(context.Context, *connect.Request[tournament_service.ImportTournamentRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 }
 
 // NewTournamentServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -745,6 +763,12 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	tournamentServiceImportTournamentHandler := connect.NewUnaryHandler(
+		TournamentServiceImportTournamentProcedure,
+		svc.ImportTournament,
+		connect.WithSchema(tournamentServiceImportTournamentMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tournament_service.TournamentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TournamentServiceNewTournamentProcedure:
@@ -801,6 +825,8 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 			tournamentServiceExportTournamentHandler.ServeHTTP(w, r)
 		case TournamentServiceGetTournamentScorecardsProcedure:
 			tournamentServiceGetTournamentScorecardsHandler.ServeHTTP(w, r)
+		case TournamentServiceImportTournamentProcedure:
+			tournamentServiceImportTournamentHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -916,4 +942,8 @@ func (UnimplementedTournamentServiceHandler) ExportTournament(context.Context, *
 
 func (UnimplementedTournamentServiceHandler) GetTournamentScorecards(context.Context, *connect.Request[tournament_service.TournamentScorecardRequest]) (*connect.Response[tournament_service.TournamentScorecardResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.GetTournamentScorecards is not implemented"))
+}
+
+func (UnimplementedTournamentServiceHandler) ImportTournament(context.Context, *connect.Request[tournament_service.ImportTournamentRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.ImportTournament is not implemented"))
 }
