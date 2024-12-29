@@ -356,13 +356,27 @@ func DetermineUserTier(ctx context.Context, userID string, queries *models.Queri
 	if len(memberData.Included) == 0 {
 		return nil, errors.New("missing-member-data")
 	}
+
 	lastChargeDate, err := time.Parse(time.RFC3339, memberData.Data.Attributes.LastChargeDate)
 	if err != nil {
 		return nil, err
 	}
 
+	if len(memberData.Data.Relationships.CurrentlyEntitledTiers.Data) == 0 {
+		log.Info().Str("userID", userID).Msg("no-currently-entitled-tiers")
+		return nil, ErrNotSubscribed
+	}
+	tierID := memberData.Data.Relationships.CurrentlyEntitledTiers.Data[0].ID
+	var tierName string
+	for _, included := range memberData.Included {
+		if included.Type == "tier" && included.ID == tierID {
+			tierName = included.Attributes.Title
+			break
+		}
+	}
+
 	return &PaidTierData{
-		TierName:         memberData.Included[0].Attributes.Title,
+		TierName:         tierName,
 		LastChargeStatus: memberData.Data.Attributes.LastChargeStatus,
 		LastChargeDate:   lastChargeDate,
 	}, nil
