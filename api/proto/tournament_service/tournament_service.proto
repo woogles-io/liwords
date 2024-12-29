@@ -190,6 +190,20 @@ message TournamentScorecardRequest {
   bool show_qr_code = 4;
 }
 
+message ImportTournamentRequest {
+  enum ImportTournamentType {
+    NONE = 0;
+    // Import a tournament from a file
+    FILE = 1;
+    // Import a tournament from another Woogles tournament (copy)
+    WOOGLES = 2;
+  }
+  string id = 1;
+  ImportTournamentType import_type = 2;
+  string cloned_tourney_id = 3;
+  string tourney_entrants = 4;
+}
+
 message TournamentScorecardResponse { bytes pdf_zip = 1; }
 
 service TournamentService {
@@ -252,6 +266,8 @@ service TournamentService {
       returns (TournamentScorecardResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+
+  rpc ImportTournament(ImportTournamentRequest) returns (TournamentResponse);
 }
 
 message ExportTournamentRequest {

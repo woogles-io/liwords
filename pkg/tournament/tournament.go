@@ -1482,6 +1482,23 @@ func UncheckIn(ctx context.Context, ts TournamentStore, tid string) error {
 	return errors.New("not implemented")
 }
 
+func ImportTournament(ctx context.Context, ts TournamentStore, us user.Store, tid string, tourneyEntrants string) error {
+	t, err := ts.Get(ctx, tid)
+	if err != nil {
+		return err
+	}
+	t.Lock()
+	defer t.Unlock()
+
+	// Wipe out the last tournament data
+
+	err := ts.Set(ctx, t)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 /*
 func CheckIn(ctx context.Context, ts TournamentStore, tid string, playerid string) error {
 	t, err := ts.Get(ctx, tid)
