@@ -179,7 +179,7 @@ export const SeekForm = (props: Props) => {
   );
 
   const enableGrandmasterBot = React.useMemo(
-    () => localStorage.getItem("enableGrandmastaP") === "true" || true,
+    () => localStorage.getItem("enableGrandmastaP") === "true",
     [],
   );
 
