@@ -225,3 +225,10 @@ func (u *User) IsChild() pb.ChildStatus {
 	}
 	return InferChildStatus(u.Profile.BirthDate, time.Now())
 }
+
+type ProfileEntitlements struct {
+	BestBotGames struct {
+		Since time.Time `json:"since"`
+		Count int       `json:"count"`
+	} `json:"best_bot_games"`
+}

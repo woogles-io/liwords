@@ -77,6 +77,14 @@ type Integration struct {
 	UserID          int64
 	IntegrationName string
 	Data            []byte
+	LastUpdated     pgtype.Timestamptz
+}
+
+type IntegrationsGlobal struct {
+	ID              int64
+	IntegrationName string
+	Data            []byte
+	LastUpdated     pgtype.Timestamptz
 }
 
 type Liststat struct {

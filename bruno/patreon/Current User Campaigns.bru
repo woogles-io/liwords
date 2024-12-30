@@ -1,0 +1,15 @@
+meta {
+  name: Current User Campaigns
+  type: http
+  seq: 8
+}
+
+get {
+  url: https://www.patreon.com/api/oauth2/api/current_user/campaigns
+  body: none
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}

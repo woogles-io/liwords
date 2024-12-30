@@ -470,6 +470,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 
 // handleNatsPublish runs in a separate goroutine
 func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []byte) error {
+	log := log.Ctx(ctx)
 
 	log.Debug().Interface("subtopics", subtopics).Msg("handling nats publish")
 

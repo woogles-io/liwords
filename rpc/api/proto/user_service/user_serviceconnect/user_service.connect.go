@@ -1195,6 +1195,7 @@ func NewIntegrationServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			httpClient,
 			baseURL+IntegrationServiceGetIntegrationsProcedure,
 			connect.WithSchema(integrationServiceGetIntegrationsMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -1225,6 +1226,7 @@ func NewIntegrationServiceHandler(svc IntegrationServiceHandler, opts ...connect
 		IntegrationServiceGetIntegrationsProcedure,
 		svc.GetIntegrations,
 		connect.WithSchema(integrationServiceGetIntegrationsMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/user_service.IntegrationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

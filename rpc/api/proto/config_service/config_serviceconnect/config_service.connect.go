@@ -53,6 +53,9 @@ const (
 	// ConfigServiceSetSingleAnnouncementProcedure is the fully-qualified name of the ConfigService's
 	// SetSingleAnnouncement RPC.
 	ConfigServiceSetSingleAnnouncementProcedure = "/config_service.ConfigService/SetSingleAnnouncement"
+	// ConfigServiceSetGlobalIntegrationProcedure is the fully-qualified name of the ConfigService's
+	// SetGlobalIntegration RPC.
+	ConfigServiceSetGlobalIntegrationProcedure = "/config_service.ConfigService/SetGlobalIntegration"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -65,6 +68,7 @@ var (
 	configServiceSetAnnouncementsMethodDescriptor      = configServiceServiceDescriptor.Methods().ByName("SetAnnouncements")
 	configServiceGetAnnouncementsMethodDescriptor      = configServiceServiceDescriptor.Methods().ByName("GetAnnouncements")
 	configServiceSetSingleAnnouncementMethodDescriptor = configServiceServiceDescriptor.Methods().ByName("SetSingleAnnouncement")
+	configServiceSetGlobalIntegrationMethodDescriptor  = configServiceServiceDescriptor.Methods().ByName("SetGlobalIntegration")
 )
 
 // ConfigServiceClient is a client for the config_service.ConfigService service.
@@ -76,6 +80,7 @@ type ConfigServiceClient interface {
 	SetAnnouncements(context.Context, *connect.Request[config_service.SetAnnouncementsRequest]) (*connect.Response[config_service.ConfigResponse], error)
 	GetAnnouncements(context.Context, *connect.Request[config_service.GetAnnouncementsRequest]) (*connect.Response[config_service.AnnouncementsResponse], error)
 	SetSingleAnnouncement(context.Context, *connect.Request[config_service.SetSingleAnnouncementRequest]) (*connect.Response[config_service.ConfigResponse], error)
+	SetGlobalIntegration(context.Context, *connect.Request[config_service.SetGlobalIntegrationRequest]) (*connect.Response[config_service.ConfigResponse], error)
 }
 
 // NewConfigServiceClient constructs a client for the config_service.ConfigService service. By
@@ -130,6 +135,12 @@ func NewConfigServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(configServiceSetSingleAnnouncementMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		setGlobalIntegration: connect.NewClient[config_service.SetGlobalIntegrationRequest, config_service.ConfigResponse](
+			httpClient,
+			baseURL+ConfigServiceSetGlobalIntegrationProcedure,
+			connect.WithSchema(configServiceSetGlobalIntegrationMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -142,6 +153,7 @@ type configServiceClient struct {
 	setAnnouncements      *connect.Client[config_service.SetAnnouncementsRequest, config_service.ConfigResponse]
 	getAnnouncements      *connect.Client[config_service.GetAnnouncementsRequest, config_service.AnnouncementsResponse]
 	setSingleAnnouncement *connect.Client[config_service.SetSingleAnnouncementRequest, config_service.ConfigResponse]
+	setGlobalIntegration  *connect.Client[config_service.SetGlobalIntegrationRequest, config_service.ConfigResponse]
 }
 
 // SetGamesEnabled calls config_service.ConfigService.SetGamesEnabled.
@@ -179,6 +191,11 @@ func (c *configServiceClient) SetSingleAnnouncement(ctx context.Context, req *co
 	return c.setSingleAnnouncement.CallUnary(ctx, req)
 }
 
+// SetGlobalIntegration calls config_service.ConfigService.SetGlobalIntegration.
+func (c *configServiceClient) SetGlobalIntegration(ctx context.Context, req *connect.Request[config_service.SetGlobalIntegrationRequest]) (*connect.Response[config_service.ConfigResponse], error) {
+	return c.setGlobalIntegration.CallUnary(ctx, req)
+}
+
 // ConfigServiceHandler is an implementation of the config_service.ConfigService service.
 type ConfigServiceHandler interface {
 	SetGamesEnabled(context.Context, *connect.Request[config_service.EnableGamesRequest]) (*connect.Response[config_service.ConfigResponse], error)
@@ -188,6 +205,7 @@ type ConfigServiceHandler interface {
 	SetAnnouncements(context.Context, *connect.Request[config_service.SetAnnouncementsRequest]) (*connect.Response[config_service.ConfigResponse], error)
 	GetAnnouncements(context.Context, *connect.Request[config_service.GetAnnouncementsRequest]) (*connect.Response[config_service.AnnouncementsResponse], error)
 	SetSingleAnnouncement(context.Context, *connect.Request[config_service.SetSingleAnnouncementRequest]) (*connect.Response[config_service.ConfigResponse], error)
+	SetGlobalIntegration(context.Context, *connect.Request[config_service.SetGlobalIntegrationRequest]) (*connect.Response[config_service.ConfigResponse], error)
 }
 
 // NewConfigServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -238,6 +256,12 @@ func NewConfigServiceHandler(svc ConfigServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(configServiceSetSingleAnnouncementMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	configServiceSetGlobalIntegrationHandler := connect.NewUnaryHandler(
+		ConfigServiceSetGlobalIntegrationProcedure,
+		svc.SetGlobalIntegration,
+		connect.WithSchema(configServiceSetGlobalIntegrationMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/config_service.ConfigService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ConfigServiceSetGamesEnabledProcedure:
@@ -254,6 +278,8 @@ func NewConfigServiceHandler(svc ConfigServiceHandler, opts ...connect.HandlerOp
 			configServiceGetAnnouncementsHandler.ServeHTTP(w, r)
 		case ConfigServiceSetSingleAnnouncementProcedure:
 			configServiceSetSingleAnnouncementHandler.ServeHTTP(w, r)
+		case ConfigServiceSetGlobalIntegrationProcedure:
+			configServiceSetGlobalIntegrationHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -289,4 +315,8 @@ func (UnimplementedConfigServiceHandler) GetAnnouncements(context.Context, *conn
 
 func (UnimplementedConfigServiceHandler) SetSingleAnnouncement(context.Context, *connect.Request[config_service.SetSingleAnnouncementRequest]) (*connect.Response[config_service.ConfigResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("config_service.ConfigService.SetSingleAnnouncement is not implemented"))
+}
+
+func (UnimplementedConfigServiceHandler) SetGlobalIntegration(context.Context, *connect.Request[config_service.SetGlobalIntegrationRequest]) (*connect.Response[config_service.ConfigResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("config_service.ConfigService.SetGlobalIntegration is not implemented"))
 }

@@ -1,0 +1,22 @@
+meta {
+  name: Get Campaign Members
+  type: http
+  seq: 6
+}
+
+get {
+  url: https://www.patreon.com/api/oauth2/v2/campaigns/6109248/members?include=currently_entitled_tiers,user&fields[tier]=description,title&fields[benefit]=description,title&fields[user]=email,full_name
+  body: none
+  auth: inherit
+}
+
+params:query {
+  include: currently_entitled_tiers,user
+  fields[tier]: description,title
+  fields[benefit]: description,title
+  fields[user]: email,full_name
+}
+
+headers {
+  Content-Type: application/json
+}

@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/config_service"
 )
@@ -32,10 +33,11 @@ type ConfigStore interface {
 type ConfigService struct {
 	store     ConfigStore
 	userStore user.Store
+	q         *models.Queries
 }
 
-func NewConfigService(cs ConfigStore, userStore user.Store) *ConfigService {
-	return &ConfigService{store: cs, userStore: userStore}
+func NewConfigService(cs ConfigStore, userStore user.Store, q *models.Queries) *ConfigService {
+	return &ConfigService{store: cs, userStore: userStore, q: q}
 }
 
 func (cs *ConfigService) SetGamesEnabled(ctx context.Context, req *connect.Request[pb.EnableGamesRequest],
@@ -190,6 +192,28 @@ func (cs *ConfigService) SetSingleAnnouncement(ctx context.Context, req *connect
 		return nil, apiserver.InvalidArg("need a link search string")
 	}
 	err = cs.store.SetAnnouncement(ctx, req.Msg.LinkSearchString, req.Msg.Announcement)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&pb.ConfigResponse{}), nil
+}
+
+func (cs *ConfigService) SetGlobalIntegration(ctx context.Context, req *connect.Request[pb.SetGlobalIntegrationRequest]) (
+	*connect.Response[pb.ConfigResponse], error) {
+
+	allowed, err := isAdmin(ctx, cs.userStore)
+	if err != nil {
+		return nil, err
+	}
+	if !allowed {
+		return nil, apiserver.Unauthenticated(errRequiresAdmin.Error())
+	}
+
+	err = cs.q.AddOrUpdateGlobalIntegration(ctx, models.AddOrUpdateGlobalIntegrationParams{
+		IntegrationName: req.Msg.IntegrationName,
+		Data:            []byte(req.Msg.JsonData),
+	})
 	if err != nil {
 		return nil, err
 	}

@@ -1,0 +1,15 @@
+meta {
+  name: Current User
+  type: http
+  seq: 7
+}
+
+get {
+  url: https://www.patreon.com/api/oauth2/api/current_user
+  body: none
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
