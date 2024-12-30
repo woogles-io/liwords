@@ -16,7 +16,7 @@ const addOrUpdateGlobalIntegration = `-- name: AddOrUpdateGlobalIntegration :exe
 INSERT INTO integrations_global(integration_name, data)
 VALUES ($1, $2)
 ON CONFLICT (integration_name)
-DO UPDATE SET data = EXCLUDED.data
+DO UPDATE SET data = EXCLUDED.data, last_updated = CURRENT_TIMESTAMP
 `
 
 type AddOrUpdateGlobalIntegrationParams struct {
@@ -37,7 +37,7 @@ VALUES (
   $2
 )
 ON CONFLICT (user_id, integration_name)
-DO UPDATE SET data = EXCLUDED.data
+DO UPDATE SET data = EXCLUDED.data, last_updated = CURRENT_TIMESTAMP
 RETURNING integrations.uuid
 `
 
@@ -52,6 +52,53 @@ func (q *Queries) AddOrUpdateIntegration(ctx context.Context, arg AddOrUpdateInt
 	var uuid uuid.UUID
 	err := row.Scan(&uuid)
 	return uuid, err
+}
+
+const getExpiringGlobalPatreonIntegration = `-- name: GetExpiringGlobalPatreonIntegration :one
+SELECT data
+FROM integrations_global
+WHERE integration_name = 'patreon'
+AND last_updated + COALESCE((data->>'expires_in')::interval, INTERVAL '0 seconds') <= CURRENT_TIMESTAMP + INTERVAL '3 days'
+`
+
+func (q *Queries) GetExpiringGlobalPatreonIntegration(ctx context.Context) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getExpiringGlobalPatreonIntegration)
+	var data []byte
+	err := row.Scan(&data)
+	return data, err
+}
+
+const getExpiringPatreonIntegrations = `-- name: GetExpiringPatreonIntegrations :many
+SELECT uuid, integration_name, data
+FROM integrations
+WHERE integration_name = 'patreon'
+AND last_updated + COALESCE((data->>'expires_in')::interval, INTERVAL '0 seconds') <= CURRENT_TIMESTAMP + INTERVAL '3 days'
+`
+
+type GetExpiringPatreonIntegrationsRow struct {
+	Uuid            uuid.UUID
+	IntegrationName string
+	Data            []byte
+}
+
+func (q *Queries) GetExpiringPatreonIntegrations(ctx context.Context) ([]GetExpiringPatreonIntegrationsRow, error) {
+	rows, err := q.db.Query(ctx, getExpiringPatreonIntegrations)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetExpiringPatreonIntegrationsRow
+	for rows.Next() {
+		var i GetExpiringPatreonIntegrationsRow
+		if err := rows.Scan(&i.Uuid, &i.IntegrationName, &i.Data); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getGlobalIntegrationData = `-- name: GetGlobalIntegrationData :one
@@ -111,4 +158,20 @@ func (q *Queries) GetIntegrations(ctx context.Context, userUuid pgtype.Text) ([]
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateIntegrationData = `-- name: UpdateIntegrationData :exec
+UPDATE integrations
+SET data = $1, last_updated = CURRENT_TIMESTAMP
+WHERE uuid = $2
+`
+
+type UpdateIntegrationDataParams struct {
+	Data []byte
+	Uuid uuid.UUID
+}
+
+func (q *Queries) UpdateIntegrationData(ctx context.Context, arg UpdateIntegrationDataParams) error {
+	_, err := q.db.Exec(ctx, updateIntegrationData, arg.Data, arg.Uuid)
+	return err
 }

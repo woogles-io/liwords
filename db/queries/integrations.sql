@@ -6,7 +6,7 @@ VALUES (
   $2
 )
 ON CONFLICT (user_id, integration_name)
-DO UPDATE SET data = EXCLUDED.data
+DO UPDATE SET data = EXCLUDED.data, last_updated = CURRENT_TIMESTAMP
 RETURNING integrations.uuid;
 
 -- name: GetIntegrations :many
@@ -25,4 +25,21 @@ SELECT data FROM integrations_global WHERE integration_name = $1;
 INSERT INTO integrations_global(integration_name, data)
 VALUES ($1, $2)
 ON CONFLICT (integration_name)
-DO UPDATE SET data = EXCLUDED.data;
+DO UPDATE SET data = EXCLUDED.data, last_updated = CURRENT_TIMESTAMP;
+
+-- name: GetExpiringPatreonIntegrations :many
+SELECT uuid, integration_name, data
+FROM integrations
+WHERE integration_name = 'patreon'
+AND last_updated + COALESCE((data->>'expires_in')::interval, INTERVAL '0 seconds') <= CURRENT_TIMESTAMP + INTERVAL '3 days';
+
+-- name: GetExpiringGlobalPatreonIntegration :one
+SELECT data
+FROM integrations_global
+WHERE integration_name = 'patreon'
+AND last_updated + COALESCE((data->>'expires_in')::interval, INTERVAL '0 seconds') <= CURRENT_TIMESTAMP + INTERVAL '3 days';
+
+-- name: UpdateIntegrationData :exec
+UPDATE integrations
+SET data = $1, last_updated = CURRENT_TIMESTAMP
+WHERE uuid = $2;

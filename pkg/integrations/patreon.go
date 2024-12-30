@@ -85,6 +85,7 @@ type PatreonTokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	ExpiresIn    int    `json:"expires_in"`
+	Scope        string `json:"scope"`
 }
 
 type PatreonError struct {
@@ -200,7 +201,7 @@ func (s *OAuthIntegrationService) exchangePatreonCodeForToken(code string) (*Pat
 	return &tokenResp, nil
 }
 
-func (s *OAuthIntegrationService) refreshPatreonToken(refreshToken string) (*PatreonTokenResponse, error) {
+func (s *OAuthIntegrationService) RefreshPatreonToken(refreshToken string) (*PatreonTokenResponse, error) {
 	tokenURL := "https://www.patreon.com/api/oauth2/token"
 
 	data := url.Values{}

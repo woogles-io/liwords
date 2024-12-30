@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -9,10 +11,16 @@ import (
 	"os"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/integrations"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/config_service"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/mmcdole/gofeed"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -29,7 +37,7 @@ var WooglesAPIBasePath = os.Getenv("WOOGLES_API_BASE_PATH")
 // A set of maintenance functions on Woogles that can run at some given
 // cadence.
 
-// go run . blogrssupdater,foo,bar,baz
+// go run . blogrss-updater,foo,bar,baz
 func main() {
 	if len(os.Args) < 2 {
 		panic("need one comma-separated list of commands")
@@ -38,10 +46,12 @@ func main() {
 	log.Info().Interface("commands", commands).Msg("starting maintenance")
 	for _, command := range commands {
 		switch strings.ToLower(command) {
-		case "blogrssupdater":
+		case "blogrss-updater":
 			err := BlogRssUpdater()
 			log.Err(err).Msg("ran blogRssUpdater")
-
+		case "integrations-refresher":
+			err := IntegrationsRefresher()
+			log.Err(err).Msg("ran integrationsRefresher")
 		default:
 			log.Error().Str("command", command).Msg("command not recognized")
 		}
@@ -125,4 +135,110 @@ func BlogRssUpdater() error {
 	log.Info().Str("body", string(body)).Msg("received")
 
 	return nil
+}
+
+func IntegrationsRefresher() error {
+	log.Info().Msg("before load")
+	cfg := &config.Config{}
+	log.Info().Msg("after cfg")
+	cfg.Load(os.Args[1:])
+	log.Info().Msg("after load")
+	log.Info().Interface("config", cfg).Msg("started")
+
+	if cfg.Debug {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+	log.Debug().Msg("debug log is on")
+
+	dbCfg, err := pgxpool.ParseConfig(cfg.DBConnUri)
+	if err != nil {
+		panic(err)
+	}
+	ctx := context.Background()
+	dbPool, err := pgxpool.NewWithConfig(ctx, dbCfg)
+
+	q := models.New(dbPool)
+
+	oauthIntegrationService := integrations.NewOAuthIntegrationService(nil, q, cfg)
+
+	refreshPatreonIntegrationTokens(ctx, q, oauthIntegrationService)
+
+	return nil
+}
+
+func refreshPatreonIntegrationTokens(ctx context.Context, q *models.Queries, svc *integrations.OAuthIntegrationService) {
+	expiringIntegrations, err := q.GetExpiringPatreonIntegrations(ctx)
+	if err != nil {
+		panic(err)
+	}
+	for _, integration := range expiringIntegrations {
+		refreshPatreonToken(ctx, q, integration, svc)
+	}
+	bts, err := q.GetExpiringGlobalPatreonIntegration(ctx)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			log.Info().Msg("no global patreon integration to refresh")
+			return
+		}
+		panic(err)
+	}
+	var integrationData integrations.PatreonTokenResponse
+
+	if err := json.Unmarshal(bts, &integrationData); err != nil {
+		log.Err(err).Msg("failed to unmarshal integration data")
+		return
+	}
+
+	tokres, err := svc.RefreshPatreonToken(integrationData.RefreshToken)
+	if err != nil {
+		log.Err(err).Msg("failed to refresh global patreon token")
+		return
+	}
+	tokresjson, err := json.Marshal(tokres)
+	if err != nil {
+		panic(err)
+	}
+
+	err = q.AddOrUpdateGlobalIntegration(ctx, models.AddOrUpdateGlobalIntegrationParams{
+		IntegrationName: integrations.PatreonIntegrationName,
+		Data:            tokresjson,
+	})
+	if err != nil {
+		log.Err(err).Msg("failed to update global patreon integration data")
+		return
+	} else {
+		log.Info().Msg("refreshed and saved global integration token")
+	}
+}
+
+func refreshPatreonToken(ctx context.Context, q *models.Queries, integration models.GetExpiringPatreonIntegrationsRow, svc *integrations.OAuthIntegrationService) {
+	var integrationData integrations.PatreonTokenResponse
+
+	if err := json.Unmarshal(integration.Data, &integrationData); err != nil {
+		log.Err(err).Msg("failed to unmarshal integration data")
+		return
+	}
+
+	tokres, err := svc.RefreshPatreonToken(integrationData.RefreshToken)
+	if err != nil {
+		log.Err(err).Str("integration-uuid", integration.Uuid.String()).Msg("failed to refresh patreon token")
+		return
+	}
+	tokresjson, err := json.Marshal(tokres)
+	if err != nil {
+		panic(err)
+	}
+
+	err = q.UpdateIntegrationData(ctx, models.UpdateIntegrationDataParams{
+		Uuid: integration.Uuid,
+		Data: tokresjson,
+	})
+	if err != nil {
+		log.Err(err).Str("integration-uuid", integration.Uuid.String()).Msg("failed to update integration data")
+		return
+	} else {
+		log.Info().Str("integration-uuid", integration.Uuid.String()).Msg("refreshed and saved token")
+	}
 }
