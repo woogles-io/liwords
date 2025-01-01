@@ -47,6 +47,7 @@
     "@rsbuild/plugin-eslint": "^1.1.0",
     "@rsbuild/plugin-react": "^1.1.0",
     "@rsbuild/plugin-sass": "^1.1.2",
+    "@rsbuild/plugin-svgr": "^1.0.6",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.5.2",

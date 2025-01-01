@@ -37,6 +37,10 @@ services:
       PATREON_CLIENT_ID: UhLzukHPyjascp5vNI0_AP5z_ABiz_6-sqU_y8YALVxiiJSxBqRQWFXxAox5vuqE
       PATREON_CLIENT_SECRET: ${PATREON_CLIENT_SECRET:-}
       PATREON_REDIRECT_URI: http://localhost/integrations/patreon/callback
+      TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID:-}
+      TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET:-}
+      TWITCH_REDIRECT_URI: http://localhost/integrations/twitch/callback
+
     volumes:
       - .:/opt/program:rw
       - ./data/lexica/gaddag:/opt/program/data/lexica/gaddag

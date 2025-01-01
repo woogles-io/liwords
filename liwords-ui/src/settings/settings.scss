@@ -539,3 +539,23 @@
     }
   }
 }
+.integration-card {
+  .ant-card-head-title {
+    @include colorModed() {
+      color: m($primary-dark);
+    }
+  }
+  .ant-card-extra {
+    @include colorModed() {
+      color: m($primary-dark);
+    }
+  }
+  .ant-card-body {
+    min-height: 220px;
+  }
+  .ant-card-actions {
+    @include colorModed() {
+      background: m($card-background);
+    }
+  }
+}

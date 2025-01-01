@@ -4,6 +4,7 @@ import { useLoginStateStoreContext } from "./store/store";
 import { useClient } from "./utils/hooks/connect";
 import { IntegrationService } from "./gen/api/proto/user_service/user_service_pb";
 import { useEffect, useState } from "react";
+import { LoginWithPatreonButton } from "./settings/integrations";
 
 const PUBLISHABLE_KEY =
   "pk_live_51I7T0HH0ARGCjmpLmLvzN6JMTkUCaFr0xNhg7Mq2wcXTMhGI6R7ShMxnLmoaCynTO0cQ7BZtiSPfOjnA9LmO21dT00gBrlxiSa";
@@ -130,7 +131,8 @@ export const Donate = () => {
         ) : (
           <p style={{ marginTop: 10 }}>
             After subscribing, you can click this button to recognize your
-            subscription: <LoginWithPatreonButton />
+            subscription:{" "}
+            <LoginWithPatreonButton label="Link your Patreon account" />
           </p>
         )
       ) : (
@@ -140,41 +142,5 @@ export const Donate = () => {
         </p>
       )}
     </>
-  );
-};
-
-const LoginWithPatreonButton: React.FC = () => {
-  const handleLogin = async () => {
-    const clientId = import.meta.env.PUBLIC_PATREON_CLIENT_ID;
-    const redirectUri = encodeURIComponent(
-      import.meta.env.PUBLIC_PATREON_REDIRECT_URL,
-    );
-    const scopes = encodeURIComponent("identity identity[email]");
-    const csrfToken = Math.random().toString(36).substring(2);
-
-    // Save the CSRF token on the backend
-    await fetch("/integrations/csrf", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ csrf: csrfToken }),
-    });
-
-    // Combine the CSRF token and the current page's URL
-    const state = btoa(
-      JSON.stringify({
-        csrfToken,
-        redirectTo: "/donate", // Current page URL
-      }),
-    );
-
-    const authorizationUrl = `https://www.patreon.com/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scopes}&state=${state}`;
-
-    window.location.href = authorizationUrl;
-  };
-
-  return (
-    <Button onClick={handleLogin} style={{ minWidth: 300 }}>
-      Link your Patreon account
-    </Button>
   );
 };

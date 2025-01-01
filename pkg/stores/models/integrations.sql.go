@@ -54,6 +54,21 @@ func (q *Queries) AddOrUpdateIntegration(ctx context.Context, arg AddOrUpdateInt
 	return uuid, err
 }
 
+const deleteIntegration = `-- name: DeleteIntegration :exec
+DELETE FROM integrations
+WHERE integrations.uuid = $1 and user_id = (SELECT id FROM users WHERE users.uuid = $2)
+`
+
+type DeleteIntegrationParams struct {
+	IntegrationUuid uuid.UUID
+	UserUuid        pgtype.Text
+}
+
+func (q *Queries) DeleteIntegration(ctx context.Context, arg DeleteIntegrationParams) error {
+	_, err := q.db.Exec(ctx, deleteIntegration, arg.IntegrationUuid, arg.UserUuid)
+	return err
+}
+
 const getExpiringGlobalPatreonIntegration = `-- name: GetExpiringGlobalPatreonIntegration :one
 SELECT data
 FROM integrations_global
@@ -131,13 +146,14 @@ func (q *Queries) GetIntegrationData(ctx context.Context, arg GetIntegrationData
 }
 
 const getIntegrations = `-- name: GetIntegrations :many
-SELECT uuid, integration_name FROM integrations
+SELECT uuid, integration_name, data FROM integrations
 WHERE user_id = (SELECT id from users where users.uuid = $1)
 `
 
 type GetIntegrationsRow struct {
 	Uuid            uuid.UUID
 	IntegrationName string
+	Data            []byte
 }
 
 func (q *Queries) GetIntegrations(ctx context.Context, userUuid pgtype.Text) ([]GetIntegrationsRow, error) {
@@ -149,7 +165,7 @@ func (q *Queries) GetIntegrations(ctx context.Context, userUuid pgtype.Text) ([]
 	var items []GetIntegrationsRow
 	for rows.Next() {
 		var i GetIntegrationsRow
-		if err := rows.Scan(&i.Uuid, &i.IntegrationName); err != nil {
+		if err := rows.Scan(&i.Uuid, &i.IntegrationName, &i.Data); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

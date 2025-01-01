@@ -136,6 +136,9 @@ const (
 	// IntegrationServiceGetIntegrationsProcedure is the fully-qualified name of the
 	// IntegrationService's GetIntegrations RPC.
 	IntegrationServiceGetIntegrationsProcedure = "/user_service.IntegrationService/GetIntegrations"
+	// IntegrationServiceDeleteIntegrationProcedure is the fully-qualified name of the
+	// IntegrationService's DeleteIntegration RPC.
+	IntegrationServiceDeleteIntegrationProcedure = "/user_service.IntegrationService/DeleteIntegration"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -177,6 +180,7 @@ var (
 	socializeServiceGetModListMethodDescriptor                = socializeServiceServiceDescriptor.Methods().ByName("GetModList")
 	integrationServiceServiceDescriptor                       = user_service.File_proto_user_service_user_service_proto.Services().ByName("IntegrationService")
 	integrationServiceGetIntegrationsMethodDescriptor         = integrationServiceServiceDescriptor.Methods().ByName("GetIntegrations")
+	integrationServiceDeleteIntegrationMethodDescriptor       = integrationServiceServiceDescriptor.Methods().ByName("DeleteIntegration")
 )
 
 // AuthenticationServiceClient is a client for the user_service.AuthenticationService service.
@@ -1179,6 +1183,7 @@ func (UnimplementedSocializeServiceHandler) GetModList(context.Context, *connect
 // IntegrationServiceClient is a client for the user_service.IntegrationService service.
 type IntegrationServiceClient interface {
 	GetIntegrations(context.Context, *connect.Request[user_service.GetIntegrationsRequest]) (*connect.Response[user_service.IntegrationsResponse], error)
+	DeleteIntegration(context.Context, *connect.Request[user_service.DeleteIntegrationRequest]) (*connect.Response[user_service.DeleteIntegrationResponse], error)
 }
 
 // NewIntegrationServiceClient constructs a client for the user_service.IntegrationService service.
@@ -1198,12 +1203,19 @@ func NewIntegrationServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		deleteIntegration: connect.NewClient[user_service.DeleteIntegrationRequest, user_service.DeleteIntegrationResponse](
+			httpClient,
+			baseURL+IntegrationServiceDeleteIntegrationProcedure,
+			connect.WithSchema(integrationServiceDeleteIntegrationMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // integrationServiceClient implements IntegrationServiceClient.
 type integrationServiceClient struct {
-	getIntegrations *connect.Client[user_service.GetIntegrationsRequest, user_service.IntegrationsResponse]
+	getIntegrations   *connect.Client[user_service.GetIntegrationsRequest, user_service.IntegrationsResponse]
+	deleteIntegration *connect.Client[user_service.DeleteIntegrationRequest, user_service.DeleteIntegrationResponse]
 }
 
 // GetIntegrations calls user_service.IntegrationService.GetIntegrations.
@@ -1211,9 +1223,15 @@ func (c *integrationServiceClient) GetIntegrations(ctx context.Context, req *con
 	return c.getIntegrations.CallUnary(ctx, req)
 }
 
+// DeleteIntegration calls user_service.IntegrationService.DeleteIntegration.
+func (c *integrationServiceClient) DeleteIntegration(ctx context.Context, req *connect.Request[user_service.DeleteIntegrationRequest]) (*connect.Response[user_service.DeleteIntegrationResponse], error) {
+	return c.deleteIntegration.CallUnary(ctx, req)
+}
+
 // IntegrationServiceHandler is an implementation of the user_service.IntegrationService service.
 type IntegrationServiceHandler interface {
 	GetIntegrations(context.Context, *connect.Request[user_service.GetIntegrationsRequest]) (*connect.Response[user_service.IntegrationsResponse], error)
+	DeleteIntegration(context.Context, *connect.Request[user_service.DeleteIntegrationRequest]) (*connect.Response[user_service.DeleteIntegrationResponse], error)
 }
 
 // NewIntegrationServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -1229,10 +1247,18 @@ func NewIntegrationServiceHandler(svc IntegrationServiceHandler, opts ...connect
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	integrationServiceDeleteIntegrationHandler := connect.NewUnaryHandler(
+		IntegrationServiceDeleteIntegrationProcedure,
+		svc.DeleteIntegration,
+		connect.WithSchema(integrationServiceDeleteIntegrationMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/user_service.IntegrationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case IntegrationServiceGetIntegrationsProcedure:
 			integrationServiceGetIntegrationsHandler.ServeHTTP(w, r)
+		case IntegrationServiceDeleteIntegrationProcedure:
+			integrationServiceDeleteIntegrationHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1244,4 +1270,8 @@ type UnimplementedIntegrationServiceHandler struct{}
 
 func (UnimplementedIntegrationServiceHandler) GetIntegrations(context.Context, *connect.Request[user_service.GetIntegrationsRequest]) (*connect.Response[user_service.IntegrationsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.IntegrationService.GetIntegrations is not implemented"))
+}
+
+func (UnimplementedIntegrationServiceHandler) DeleteIntegration(context.Context, *connect.Request[user_service.DeleteIntegrationRequest]) (*connect.Response[user_service.DeleteIntegrationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.IntegrationService.DeleteIntegration is not implemented"))
 }

@@ -10,7 +10,7 @@ DO UPDATE SET data = EXCLUDED.data, last_updated = CURRENT_TIMESTAMP
 RETURNING integrations.uuid;
 
 -- name: GetIntegrations :many
-SELECT uuid, integration_name FROM integrations
+SELECT uuid, integration_name, data FROM integrations
 WHERE user_id = (SELECT id from users where users.uuid = @user_uuid);
 
 -- name: GetIntegrationData :one
@@ -43,3 +43,7 @@ AND last_updated + COALESCE((data->>'expires_in')::interval, INTERVAL '0 seconds
 UPDATE integrations
 SET data = $1, last_updated = CURRENT_TIMESTAMP
 WHERE uuid = $2;
+
+-- name: DeleteIntegration :exec
+DELETE FROM integrations
+WHERE integrations.uuid = @integration_uuid and user_id = (SELECT id FROM users WHERE users.uuid = @user_uuid);
