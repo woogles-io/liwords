@@ -288,14 +288,21 @@ service SocializeService {
 message Integration {
   string uuid = 1;
   string integration_name = 2;
+  map<string, string> integration_details = 3;
 }
 
 message GetIntegrationsRequest {}
 
 message IntegrationsResponse { repeated Integration integrations = 1; }
 
+message DeleteIntegrationRequest { string uuid = 1; }
+
+message DeleteIntegrationResponse {}
+
 service IntegrationService {
   rpc GetIntegrations(GetIntegrationsRequest) returns (IntegrationsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  rpc DeleteIntegration(DeleteIntegrationRequest)
+      returns (DeleteIntegrationResponse);
 }

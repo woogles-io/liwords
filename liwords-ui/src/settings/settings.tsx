@@ -32,11 +32,13 @@ import {
 import { PersonalInfoResponse } from "../gen/api/proto/user_service/user_service_pb";
 import { API } from "./api";
 import { create } from "@bufbuild/protobuf";
+import { Integrations } from "./integrations";
 
 enum Category {
   PersonalInfo = 1,
   ChangePassword,
   Preferences,
+  Integrations,
   BlockedPlayers,
   Secret,
   LogOut,
@@ -64,6 +66,8 @@ const getInitialCategory = (categoryShortcut: string, loggedIn: boolean) => {
       return Category.ChangePassword;
     case "preferences":
       return Category.Preferences;
+    case "integrations":
+      return Category.Integrations;
     case "secret":
       return Category.Secret;
     case "blocked":
@@ -205,6 +209,7 @@ export const Settings = React.memo(() => {
         title="Change password"
         category={Category.ChangePassword}
       />
+      <CategoryChoice title="Integrations" category={Category.Integrations} />
       <CategoryChoice title="Preferences" category={Category.Preferences} />
       <CategoryChoice
         title="Blocked players list"
@@ -255,6 +260,7 @@ export const Settings = React.memo(() => {
             ) : null}
             {category === Category.ChangePassword ? <ChangePassword /> : null}
             {category === Category.Preferences ? <Preferences /> : null}
+            {category === Category.Integrations ? <Integrations /> : null}
             {category === Category.Secret ? <Secret /> : null}
             {category === Category.BlockedPlayers ? <BlockedPlayers /> : null}
             {category === Category.API ? <API /> : null}

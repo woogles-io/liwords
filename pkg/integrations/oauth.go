@@ -53,6 +53,8 @@ func (s *OAuthIntegrationService) integrationsEndpoint(w http.ResponseWriter, r 
 		w.WriteHeader(http.StatusOK)
 	case "patreon/callback":
 		s.patreonCallback(w, r)
+	case "twitch/callback":
+		s.twitchCallback(w, r)
 	}
 
 }
