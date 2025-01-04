@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -16,36 +15,35 @@ import (
 
 const TimeLimit = 15
 
-func HandleRequest(ctx context.Context, evt pair.LambdaInvokeIO) (string, error) {
+func HandleRequest(ctx context.Context, evt pair.LambdaInvokeIO) (*pair.LambdaInvokeIO, error) {
 	log.Info().Int("msg-length", len(evt.Bytes)).Msg("got-pair-request")
 	var pairRequest pb.PairRequest
 	err := proto.Unmarshal(evt.Bytes, &pairRequest)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-
+	log.Info().Msg("unmarshalled-pair-request")
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Duration(TimeLimit)*time.Second)
 	defer cancel()
 
 	if err := ctxWithTimeout.Err(); err != nil {
-		return "", err
+		return nil, err
 	}
-
+	log.Info().Msg("calling-cop-pair")
 	pairResponse := cop.COPPair(ctxWithTimeout, &pairRequest)
+	log.Info().Msg("marshalling-pair-response")
 
 	pairResponseBytes, err := proto.Marshal(pairResponse)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	lambdaInvokeIOJSON, err := json.Marshal(&pair.LambdaInvokeIO{
+	response := &pair.LambdaInvokeIO{
 		Bytes: pairResponseBytes,
-	})
-	if err != nil {
-		return "", err
 	}
+	log.Info().Interface("invokeio-response", response).Msg("returning-pair-response")
 
-	return string(lambdaInvokeIOJSON), nil
+	return response, nil
 }
 
 func main() {
