@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
 	"github.com/matryer/is"
@@ -32,10 +31,7 @@ func TestHandleRequest(t *testing.T) {
 	evt := pair.LambdaInvokeIO{
 		Bytes: pairRequestByes,
 	}
-	JSONResponse, err := HandleRequest(ctx, evt)
-	is.NoErr(err)
-	lambdaInvokeIOResponse := &pair.LambdaInvokeIO{}
-	err = json.Unmarshal([]byte(JSONResponse), lambdaInvokeIOResponse)
+	lambdaInvokeIOResponse, err := HandleRequest(ctx, evt)
 	is.NoErr(err)
 	pairResponse := &pb.PairResponse{}
 	err = proto.Unmarshal(lambdaInvokeIOResponse.Bytes, pairResponse)
