@@ -271,8 +271,9 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req.Seed = 1
 	pairtestutils.AddRoundPairingsStr(req, "-1 -1 -1 10 -1 -1 -1 -1 -1 11 3 9")
 	resp := cop.COPPair(ctx, req)
-
+	fmt.Println(resp.Log)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	fmt.Printf("Pairings: %v\n", resp.Pairings)
 	is.Equal(resp.Pairings[3], int32(10))
 	is.Equal(resp.Pairings[9], int32(11))
 	is.Equal(resp.Pairings[10], int32(3))
@@ -728,6 +729,21 @@ func TestCOPSuccess(t *testing.T) {
 	req := pairtestutils.CreateDefaultPairRequest()
 	resp := cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+}
+
+func TestCOPProdBugs(t *testing.T) {
+	// These are all tests for requests that created unexpected behavior
+	// in prod
+	is := is.New(t)
+	ctx := context.Background()
+
+	req := pairtestutils.CreateAlbanyAfterRound16PairRequest()
+	resp := cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(resp.Pairings[1], int32(4))
+	is.Equal(resp.Pairings[0], int32(22))
+	is.Equal(resp.Pairings[11], int32(11))
+	is.Equal(resp.Pairings[19], int32(19))
 }
 
 func TestCOPProf(t *testing.T) {

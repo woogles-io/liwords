@@ -49,27 +49,6 @@ type weightPolicy struct {
 
 var constraintPolicies = []constraintPolicy{
 	{
-		// Prepaired players
-		name: "PP",
-		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
-			if pargs.prepairedRoundIdx == -1 {
-				return [][2]int{}, [][2]int{}
-			}
-			forcedPairings := [][2]int{}
-			for playerIdx, reqOppIdx := range pargs.req.DivisionPairings[pargs.prepairedRoundIdx].Pairings {
-				if int(reqOppIdx) < playerIdx {
-					continue
-				}
-				oppIdx := int(reqOppIdx)
-				if oppIdx == playerIdx {
-					oppIdx = pkgstnd.ByePlayerIndex
-				}
-				forcedPairings = append(forcedPairings, [2]int{playerIdx, oppIdx})
-			}
-			return forcedPairings, [][2]int{}
-		},
-	},
-	{
 		// KOTH
 		name: "KH",
 		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
@@ -385,19 +364,7 @@ func copPairWithLog(ctx context.Context, req *pb.PairRequest, logsb *strings.Bui
 }
 
 func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, logsb *strings.Builder) ([]int32, *pb.PairResponse) {
-	numPlayers := copdata.Standings.GetNumPlayers()
-	playerNodes := []int{}
-	divisionPlayerData := [][]string{}
-	for i := 0; i < numPlayers; i++ {
-		playerNodes = append(playerNodes, copdata.Standings.GetPlayerIndex(i))
-		divisionPlayerData = append(divisionPlayerData, copdata.Standings.StringDataForPlayer(req, i))
-	}
-
-	addBye := numPlayers%2 == 1
-	if addBye {
-		playerNodes = append(playerNodes, pkgstnd.ByePlayerIndex)
-		divisionPlayerData = append(divisionPlayerData, []string{"", "", "BYE", "", ""})
-	}
+	numStandingsPlayers := copdata.Standings.GetNumPlayers()
 
 	prepairedRoundIdx := -1
 	numDivPairings := len(req.DivisionPairings)
@@ -408,6 +375,24 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 				break
 			}
 		}
+	}
+
+	playerNodes := []int{}
+	divisionPlayerData := [][]string{}
+	numPlayers := 0
+	for i := 0; i < numStandingsPlayers; i++ {
+		playerIdx := copdata.Standings.GetPlayerIndex(i)
+		if prepairedRoundIdx < 0 || req.DivisionPairings[prepairedRoundIdx].Pairings[playerIdx] < 0 {
+			playerNodes = append(playerNodes, playerIdx)
+			divisionPlayerData = append(divisionPlayerData, copdata.Standings.StringDataForPlayer(req, i))
+			numPlayers++
+		}
+	}
+
+	addBye := numPlayers%2 == 1
+	if addBye {
+		playerNodes = append(playerNodes, pkgstnd.ByePlayerIndex)
+		divisionPlayerData = append(divisionPlayerData, []string{"", "", "BYE", "", ""})
 	}
 
 	lowestPossibleAbsCasher := 0
@@ -562,9 +547,9 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	}
 
 	if len(unpairedRankIdxes) > 0 {
-		msg := "COP pairings could not be completed because there were too many constraints. The unpaired players by rank index are:\n\n"
+		msg := "COP pairings could not be completed because there were too many constraints. The unpaired players are:\n\n"
 		for idx, unpairedRankIdx := range unpairedRankIdxes {
-			msg += fmt.Sprintf("%d", unpairedRankIdx+1)
+			msg += fmt.Sprintf("%s", divisionPlayerData[unpairedRankIdx][2])
 			if idx < len(unpairedRankIdxes)-1 {
 				msg += ", "
 			}
@@ -588,7 +573,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		pairingsLogMx = append(pairingsLogMx, pairingsLogMxRow)
 	}
 
-	copdatapkg.WriteStringDataToLog("Final Pairings", append(matchupHeader, []string{"Previous Times Played"}...), pairingsLogMx, logsb)
+	copdatapkg.WriteStringDataToLog("Final COP Pairings", append(matchupHeader, []string{"Previous Times Played"}...), pairingsLogMx, logsb)
 
 	logsb.WriteString(fmt.Sprintf("Total Weight: %d\n", totalWeight))
 
@@ -603,6 +588,23 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 			oppIdx = playerIdx
 		}
 		allPlayerPairings[playerIdx] = int32(oppIdx)
+	}
+
+	if prepairedRoundIdx >= 0 {
+		logsb.WriteString("\nPrepaired Players:\n\n")
+		for playerIdx := 0; playerIdx < int(req.AllPlayers); playerIdx++ {
+			oppIdx := req.DivisionPairings[prepairedRoundIdx].Pairings[playerIdx]
+			if playerIdx <= int(oppIdx) {
+				allPlayerPairings[playerIdx] = oppIdx
+				allPlayerPairings[oppIdx] = int32(playerIdx)
+				logsb.WriteString(fmt.Sprintf("(#%d) %s vs ", playerIdx+1, req.PlayerNames[playerIdx]))
+				if playerIdx == int(oppIdx) {
+					logsb.WriteString("BYE\n")
+				} else {
+					logsb.WriteString(fmt.Sprintf("(#%d) %s\n", oppIdx+1, req.PlayerNames[oppIdx]))
+				}
+			}
+		}
 	}
 
 	return allPlayerPairings, nil
