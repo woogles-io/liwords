@@ -271,9 +271,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req.Seed = 1
 	pairtestutils.AddRoundPairingsStr(req, "-1 -1 -1 10 -1 -1 -1 -1 -1 11 3 9")
 	resp := cop.COPPair(ctx, req)
-	fmt.Println(resp.Log)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	fmt.Printf("Pairings: %v\n", resp.Pairings)
 	is.Equal(resp.Pairings[3], int32(10))
 	is.Equal(resp.Pairings[9], int32(11))
 	is.Equal(resp.Pairings[10], int32(3))
@@ -707,7 +705,6 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req = pairtestutils.CreateLakeGeorgeAfterRound13PairRequest()
 	is.Equal(verifyreq.Verify(req), nil)
 	resp = cop.COPPair(ctx, req)
-	fmt.Println(resp.Log)
 
 	// Check that timeouts work
 	req = pairtestutils.CreateAlbanyAfterRound15PairRequest()
@@ -773,7 +770,6 @@ func TestCOPProf(t *testing.T) {
 
 	pprof.StopCPUProfile()
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	fmt.Println(resp.Log)
 }
 
 func TestCOPTime(t *testing.T) {
@@ -792,5 +788,4 @@ func TestCOPTime(t *testing.T) {
 	elapsed := time.Since(start)                               // Calculate elapsed time
 	fmt.Printf("COPPair took %v ms\n", elapsed.Milliseconds()) // Print elapsed time in ms
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	fmt.Println(resp.Log)
 }
