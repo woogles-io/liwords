@@ -241,10 +241,7 @@ var weightPolicies = []weightPolicy{
 			pj := pargs.playerNodes[rj]
 			pairingKey := copdatapkg.GetPairingKey(pi, pj)
 			timesPlayed := pargs.copdata.PairingCounts[pairingKey]
-			if timesPlayed == 0 {
-				return 0
-			}
-			return int64(intPow(timesPlayed, 2) * intPow(pargs.copdata.Standings.GetNumPlayers()/3, 3))
+			return int64(timesPlayed * 2 * intPow(pargs.copdata.Standings.GetNumPlayers()/3, 3))
 		},
 	},
 	{
@@ -254,7 +251,7 @@ var weightPolicies = []weightPolicy{
 			if ri <= pargs.lowestPossibleHopeCasher {
 				return 0
 			}
-			prevRound := len(pargs.req.DivisionPairings) - 2
+			prevRound := len(pargs.req.DivisionPairings) - 1
 			if pargs.prepairedRoundIdx >= 0 {
 				prevRound = pargs.prepairedRoundIdx - 1
 			}
@@ -402,12 +399,21 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		}
 	}
 
+	// FIXME: test these values
 	lowestPossibleHopeCasher := 0
 	lowestPossibleHopeNth := make([]int, len(copdata.HighestRankHopefully))
+	prevPlace := 0
 	for playerRankIdx, place := range copdata.HighestRankHopefully {
 		if playerRankIdx > lowestPossibleHopeNth[place] {
 			lowestPossibleHopeNth[place] = playerRankIdx
 		}
+		for i := prevPlace + 1; i < place; i++ {
+			lowestPossibleHopeNth[i] = playerRankIdx - 1
+		}
+		prevPlace = place
+	}
+	for i := prevPlace + 1; i < len(copdata.HighestRankHopefully); i++ {
+		lowestPossibleHopeNth[i] = len(copdata.HighestRankHopefully) - 1
 	}
 	lowestPossibleHopeCasher = lowestPossibleHopeNth[int(req.PlacePrizes)-1]
 

@@ -741,6 +741,11 @@ func TestCOPProdBugs(t *testing.T) {
 	is.Equal(resp.Pairings[0], int32(22))
 	is.Equal(resp.Pairings[11], int32(11))
 	is.Equal(resp.Pairings[19], int32(19))
+
+	// FIXME: this test should be moved to copdata
+	req = pairtestutils.CreateAlbanyCSWNewYearsAfterRound27PairRequest()
+	resp = cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 }
 
 func TestCOPProf(t *testing.T) {
