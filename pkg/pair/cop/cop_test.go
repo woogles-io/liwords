@@ -271,7 +271,6 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req.Seed = 1
 	pairtestutils.AddRoundPairingsStr(req, "-1 -1 -1 10 -1 -1 -1 -1 -1 11 3 9")
 	resp := cop.COPPair(ctx, req)
-
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	is.Equal(resp.Pairings[3], int32(10))
 	is.Equal(resp.Pairings[9], int32(11))
@@ -706,7 +705,6 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req = pairtestutils.CreateLakeGeorgeAfterRound13PairRequest()
 	is.Equal(verifyreq.Verify(req), nil)
 	resp = cop.COPPair(ctx, req)
-	fmt.Println(resp.Log)
 
 	// Check that timeouts work
 	req = pairtestutils.CreateAlbanyAfterRound15PairRequest()
@@ -727,6 +725,27 @@ func TestCOPSuccess(t *testing.T) {
 
 	req := pairtestutils.CreateDefaultPairRequest()
 	resp := cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+}
+
+func TestCOPProdBugs(t *testing.T) {
+	// These are all tests for requests that created unexpected behavior
+	// in prod
+	is := is.New(t)
+	ctx := context.Background()
+
+	// Test players prepaired with byes
+	req := pairtestutils.CreateAlbanyAfterRound16PairRequest()
+	resp := cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(resp.Pairings[1], int32(4))
+	is.Equal(resp.Pairings[0], int32(22))
+	is.Equal(resp.Pairings[11], int32(11))
+	is.Equal(resp.Pairings[19], int32(19))
+
+	// Test that back-to-back pairings are penalized correctly
+	req = pairtestutils.CreateAlbanyCSWNewYearsAfterRound27PairRequest()
+	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 }
 
@@ -757,7 +776,6 @@ func TestCOPProf(t *testing.T) {
 
 	pprof.StopCPUProfile()
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	fmt.Println(resp.Log)
 }
 
 func TestCOPTime(t *testing.T) {
@@ -776,5 +794,4 @@ func TestCOPTime(t *testing.T) {
 	elapsed := time.Since(start)                               // Calculate elapsed time
 	fmt.Printf("COPPair took %v ms\n", elapsed.Milliseconds()) // Print elapsed time in ms
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	fmt.Println(resp.Log)
 }

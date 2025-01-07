@@ -57,10 +57,9 @@ func GetPrecompData(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand
 	// If the initial factor is N, then 1st played (1 + N)th, but if (1 + N)th never achieved
 	// 1st, then (1 + N)th should never have played 1st at all, so we use the initial results
 	// to get a tighter bound on the maximum factor.
-	minWinsForHopeful := int(math.Round(float64(req.DivisionSims) * req.HopefulnessThreshold))
 	maxFactor := 0
 	for playerRankIdx := highestNongibsonizedRank + 1; playerRankIdx < numPlayers; playerRankIdx++ {
-		if initialSimResults.FinalRanks[playerRankIdx][highestNongibsonizedRank] >= minWinsForHopeful {
+		if initialSimResults.FinalRanks[playerRankIdx][highestNongibsonizedRank] > 0 {
 			maxFactor++
 		} else {
 			break
@@ -111,6 +110,7 @@ func GetPrecompData(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand
 		}
 	}
 
+	minWinsForHopeful := int(math.Round(float64(req.DivisionSims) * req.HopefulnessThreshold))
 	highestRankHopefully := make([]int, numPlayers)
 	highestRankAbsolutely := make([]int, numPlayers)
 	lowestRankAbsolutely := make([]int, numPlayers)
