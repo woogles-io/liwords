@@ -734,6 +734,7 @@ func TestCOPProdBugs(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
+	// Test players prepaired with byes
 	req := pairtestutils.CreateAlbanyAfterRound16PairRequest()
 	resp := cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
@@ -742,7 +743,7 @@ func TestCOPProdBugs(t *testing.T) {
 	is.Equal(resp.Pairings[11], int32(11))
 	is.Equal(resp.Pairings[19], int32(19))
 
-	// FIXME: this test should be moved to copdata
+	// Test that back-to-back pairings are penalized correctly
 	req = pairtestutils.CreateAlbanyCSWNewYearsAfterRound27PairRequest()
 	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)

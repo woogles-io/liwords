@@ -399,7 +399,6 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		}
 	}
 
-	// FIXME: test these values
 	lowestPossibleHopeCasher := 0
 	lowestPossibleHopeNth := make([]int, len(copdata.HighestRankHopefully))
 	prevPlace := 0
