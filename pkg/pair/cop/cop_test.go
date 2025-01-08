@@ -222,6 +222,11 @@ func TestCOPErrors(t *testing.T) {
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_HOPEFULNESS_THRESHOLD)
 
 	req = pairtestutils.CreateDefaultPairRequest()
+	req.HopefulnessThreshold = 0
+	resp = cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_INVALID_HOPEFULNESS_THRESHOLD)
+
+	req = pairtestutils.CreateDefaultPairRequest()
 	req.DivisionSims = -1
 	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_DIVISION_SIMS)
