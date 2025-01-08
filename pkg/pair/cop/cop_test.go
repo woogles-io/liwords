@@ -761,7 +761,6 @@ func TestCOPProdBugs(t *testing.T) {
 
 	req = pairtestutils.CreateAlbanyCSWNewYearsRound25PartiallyPairedPairRequest()
 	resp = cop.COPPair(ctx, req)
-	fmt.Println(resp.Log)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 }
 
