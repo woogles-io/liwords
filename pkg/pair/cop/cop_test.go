@@ -752,6 +752,12 @@ func TestCOPProdBugs(t *testing.T) {
 	req = pairtestutils.CreateAlbanyCSWNewYearsAfterRound27PairRequest()
 	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+
+	// There are pairings for all rounds, but the last round is only partially
+	// paired, so this should finish successfully
+	req = pairtestutils.CreateAlbanyCSWNewYearsAfterRound27LastRoundPartiallyPairedPairRequest()
+	resp = cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 }
 
 func TestCOPProf(t *testing.T) {
