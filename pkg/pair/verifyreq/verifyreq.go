@@ -186,7 +186,7 @@ func Verify(req *pb.PairRequest) *pb.PairResponse {
 	}
 
 	// Verify hopefulness threshold
-	if req.HopefulnessThreshold < 0 || req.HopefulnessThreshold > 1 {
+	if req.HopefulnessThreshold <= 0 || req.HopefulnessThreshold > 1 {
 		return &pb.PairResponse{
 			ErrorCode:    pb.PairError_INVALID_HOPEFULNESS_THRESHOLD,
 			ErrorMessage: fmt.Sprintf("invalid hopefulness threshold %f", req.HopefulnessThreshold),
