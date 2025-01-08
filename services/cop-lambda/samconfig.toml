@@ -19,6 +19,7 @@ resolve_s3 = true
 s3_prefix = "cop-lambda"
 region = "us-east-2"
 image_repositories = []
+disable_rollback = true
 
 [default.package.parameters]
 resolve_s3 = true
