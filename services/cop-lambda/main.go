@@ -6,6 +6,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/woogles-io/liwords/pkg/pair"
@@ -29,7 +30,18 @@ func HandleRequest(ctx context.Context, evt pair.LambdaInvokeIO) (*pair.LambdaIn
 	if err := ctxWithTimeout.Err(); err != nil {
 		return nil, err
 	}
-	log.Info().Msg("calling-cop-pair")
+
+	marshaler := protojson.MarshalOptions{
+		Multiline:    true, // Enables pretty printing
+		Indent:       "  ", // Sets the indentation level
+		AllowPartial: true,
+	}
+	requestJSONData, err := marshaler.Marshal(&pairRequest)
+	if err != nil {
+		return nil, err
+	}
+	log.Info().Str("request-json", string(requestJSONData)).Msg("calling-cop-pair")
+
 	pairResponse := cop.COPPair(ctxWithTimeout, &pairRequest)
 	log.Info().Msg("marshalling-pair-response")
 
