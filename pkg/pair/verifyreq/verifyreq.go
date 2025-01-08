@@ -75,19 +75,14 @@ func Verify(req *pb.PairRequest) *pb.PairResponse {
 	}
 
 	// Verify division pairings
-	numPairings := len(req.DivisionPairings)
-	if numPairings > int(req.Rounds) {
+	pairingsLength := len(req.DivisionPairings)
+	if pairingsLength > int(req.Rounds) {
 		return &pb.PairResponse{
 			ErrorCode:    pb.PairError_MORE_PAIRINGS_THAN_ROUNDS,
-			ErrorMessage: fmt.Sprintf("more pairings (%d) than rounds (%d)", numPairings, req.Rounds),
+			ErrorMessage: fmt.Sprintf("more pairings (%d) than rounds (%d)", pairingsLength, req.Rounds),
 		}
 	}
-	if numPairings == int(req.Rounds) {
-		return &pb.PairResponse{
-			ErrorCode:    pb.PairError_ALL_ROUNDS_PAIRED,
-			ErrorMessage: fmt.Sprintf("equal pairings (%d) and rounds (%d)", numPairings, req.Rounds),
-		}
-	}
+	lastRoundPartiallyPaired := false
 	for roundIdx, roundPairings := range req.DivisionPairings {
 		if len(roundPairings.Pairings) != int(req.AllPlayers) {
 			return &pb.PairResponse{
@@ -111,6 +106,7 @@ func Verify(req *pb.PairRequest) *pb.PairResponse {
 						ErrorMessage: fmt.Sprintf("player (%d) not paired in round %d", playerIdx, roundIdx+1),
 					}
 				}
+				lastRoundPartiallyPaired = true
 				continue
 			}
 			// Bye
@@ -144,6 +140,18 @@ func Verify(req *pb.PairRequest) *pb.PairResponse {
 				seen[playerIdx] = true
 				seen[oppIdx] = true
 			}
+		}
+	}
+
+	numCompletePairings := pairingsLength
+	if lastRoundPartiallyPaired {
+		numCompletePairings--
+	}
+
+	if numCompletePairings == int(req.Rounds) {
+		return &pb.PairResponse{
+			ErrorCode:    pb.PairError_ALL_ROUNDS_PAIRED,
+			ErrorMessage: fmt.Sprintf("equal pairings (%d) and rounds (%d)", numCompletePairings, req.Rounds),
 		}
 	}
 
