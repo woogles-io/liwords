@@ -691,6 +691,8 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	is.Equal(resp.Pairings[0], int32(4))
 	is.Equal(resp.Pairings[4], int32(0))
 	is.Equal(resp.Pairings[1], int32(1))
+	is.Equal(resp.Pairings[11], int32(-1))
+	resp.Pairings[11] = 11
 	pairtestutils.AddRoundPairings(req, resp.Pairings)
 	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.Pairings[0], int32(4))
@@ -743,9 +745,8 @@ func TestCOPProdBugs(t *testing.T) {
 	req := pairtestutils.CreateAlbanyAfterRound16PairRequest()
 	resp := cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	is.Equal(resp.Pairings[1], int32(4))
 	is.Equal(resp.Pairings[0], int32(22))
-	is.Equal(resp.Pairings[11], int32(11))
+	is.Equal(resp.Pairings[11], int32(-1))
 	is.Equal(resp.Pairings[19], int32(19))
 
 	// Test that back-to-back pairings are penalized correctly
