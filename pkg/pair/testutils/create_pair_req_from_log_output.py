@@ -30,6 +30,7 @@ rounds = request_data["rounds"]
 place_prizes = request_data["placePrizes"]
 division_sims = request_data["divisionSims"]
 control_loss_sims = request_data["controlLossSims"]
+use_control_loss = request_data["useControlLoss"]
 allow_repeat_byes = request_data["allowRepeatByes"]
 removed_players = request_data.get("removedPlayers", [])
 seed = request_data["seed"]
@@ -60,6 +61,7 @@ func {function_name}() *pb.PairRequest {{
         PlacePrizes:          {place_prizes},
         DivisionSims:         {division_sims},
         ControlLossSims:      {control_loss_sims},
+        UseControlLoss:       {str(use_control_loss).lower()},
         AllowRepeatByes:      {str(allow_repeat_byes).lower()},
         RemovedPlayers:       []int32{{{", ".join(map(str, removed_players))}}},
         Seed:                 {seed},

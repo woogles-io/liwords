@@ -19,9 +19,14 @@ var (
 )
 
 type PrecompData struct {
-	Standings                 *pkgstnd.Standings
-	PairingCounts             map[string]int
-	RepeatCounts              []int
+	Standings     *pkgstnd.Standings
+	PairingCounts map[string]int
+
+	// Indexed by player id
+	RepeatCounts []int
+
+	// The remaining following fields are indexed by player rank
+
 	HighestRankHopefully      []int
 	HighestRankAbsolutely     []int
 	LowestRankAbsolutely      []int
@@ -34,7 +39,7 @@ func GetPrecompData(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand
 	standings := pkgstnd.CreateInitialStandings(req)
 
 	// Use the initial results to get a tighter bound on the maximum factor
-	initialFactor := int(req.Rounds) - len(req.DivisionResults)
+	initialFactor := pkgstnd.GetRoundsRemaining(req)
 	initialSimResults, pairErr := standings.SimFactorPairAll(ctx, req, copRand, int(req.DivisionSims), initialFactor, false, nil)
 	if pairErr != pb.PairError_SUCCESS {
 		return nil, pairErr

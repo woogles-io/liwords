@@ -29,12 +29,13 @@ type policyArgs struct {
 	req                      *pb.PairRequest
 	copdata                  *copdatapkg.PrecompData
 	playerNodes              []int
-	prepairedRoundIdx        int
 	lowestPossibleAbsCasher  int
 	lowestPossibleHopeCasher int
 	lowestPossibleHopeNth    []int
 	roundsRemaining          int
 	gibsonGetsBye            bool
+	prepairedRoundIdx        int
+	prepairedPlayerIndexes   map[int]int
 }
 
 type constraintPolicy struct {
@@ -49,6 +50,23 @@ type weightPolicy struct {
 
 var constraintPolicies = []constraintPolicy{
 	{
+		// Prepaired players
+		name: "PP",
+		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
+			if pargs.prepairedRoundIdx == -1 {
+				return [][2]int{}, [][2]int{}
+			}
+			numPlayers := len(pargs.playerNodes)
+			disallowedPairings := [][2]int{}
+			for playerIdx := range pargs.prepairedPlayerIndexes {
+				for i := 0; i < numPlayers; i++ {
+					disallowedPairings = append(disallowedPairings, [2]int{playerIdx, pargs.playerNodes[i]})
+				}
+			}
+			return [][2]int{}, disallowedPairings
+		},
+	},
+	{
 		// KOTH
 		name: "KH",
 		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
@@ -61,10 +79,15 @@ var constraintPolicies = []constraintPolicy{
 				if pargs.lowestPossibleAbsCasher < playerRankIdx {
 					break
 				}
+				pi := pargs.playerNodes[playerRankIdx]
+				pj := pargs.playerNodes[playerRankIdx+1]
+				if pi == pkgstnd.ByePlayerIndex || pj == pkgstnd.ByePlayerIndex {
+					continue
+				}
 				if pargs.copdata.GibsonizedPlayers[playerRankIdx] || pargs.copdata.GibsonizedPlayers[playerRankIdx+1] {
 					continue
 				}
-				forcedPairings = append(forcedPairings, [2]int{pargs.playerNodes[playerRankIdx], pargs.playerNodes[playerRankIdx+1]})
+				forcedPairings = append(forcedPairings, [2]int{pi, pj})
 				playerRankIdx++
 			}
 			return forcedPairings, [][2]int{}
@@ -157,6 +180,10 @@ var constraintPolicies = []constraintPolicy{
 		name: "GG",
 		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
 			numPlayers := len(pargs.playerNodes)
+			// Do not consider the bye as a player in this case
+			if pargs.playerNodes[numPlayers-1] == pkgstnd.ByePlayerIndex {
+				numPlayers--
+			}
 			disallowedPairings := [][2]int{}
 			for pri := 0; pri < numPlayers; pri++ {
 				for prj := pri + 1; prj < numPlayers; prj++ {
@@ -176,7 +203,12 @@ var constraintPolicies = []constraintPolicy{
 				return [][2]int{}, [][2]int{}
 			}
 			disallowedPairings := [][2]int{}
-			for pri := 0; pri < len(pargs.playerNodes); pri++ {
+			numPlayers := len(pargs.playerNodes)
+			// Do not consider the bye as a player in this case
+			if pargs.playerNodes[numPlayers-1] == pkgstnd.ByePlayerIndex {
+				numPlayers--
+			}
+			for pri := 0; pri < numPlayers; pri++ {
 				if pargs.copdata.GibsonizedPlayers[pri] {
 					continue
 				}
@@ -203,7 +235,12 @@ var weightPolicies = []weightPolicy{
 		// Pair with Casher
 		name: "PC",
 		handler: func(pargs *policyArgs, ri int, rj int) int64 {
-			if pargs.copdata.GibsonizedPlayers[ri] || pargs.copdata.GibsonizedPlayers[rj] ||
+			// rj might be the Bye, which is out of range for this arrays
+			rjGibsonized := false
+			if rj < len(pargs.copdata.GibsonizedPlayers) {
+				rjGibsonized = pargs.copdata.GibsonizedPlayers[rj]
+			}
+			if pargs.copdata.GibsonizedPlayers[ri] || rjGibsonized ||
 				ri > pargs.lowestPossibleHopeCasher {
 				return 0
 			}
@@ -222,12 +259,21 @@ var weightPolicies = []weightPolicy{
 		// Gibson cashers
 		name: "GC",
 		handler: func(pargs *policyArgs, ri int, rj int) int64 {
-			if pargs.copdata.GibsonGroups[ri] != 0 || pargs.copdata.GibsonGroups[rj] != 0 ||
-				(pargs.copdata.GibsonizedPlayers[ri] && pargs.copdata.GibsonizedPlayers[rj]) {
+			// rj might be the Bye, which is out of range for these arrays
+			rjGibsonGroup := 0
+			if rj < len(pargs.copdata.GibsonGroups) {
+				rjGibsonGroup = pargs.copdata.GibsonGroups[rj]
+			}
+			rjGibsonized := false
+			if rj < len(pargs.copdata.GibsonizedPlayers) {
+				rjGibsonized = pargs.copdata.GibsonizedPlayers[rj]
+			}
+			if pargs.copdata.GibsonGroups[ri] != 0 || rjGibsonGroup != 0 ||
+				(pargs.copdata.GibsonizedPlayers[ri] && rjGibsonized) {
 				return 0
 			}
 			if pargs.copdata.GibsonizedPlayers[ri] && rj <= pargs.lowestPossibleAbsCasher ||
-				pargs.copdata.GibsonizedPlayers[rj] && ri <= pargs.lowestPossibleAbsCasher {
+				rjGibsonized && ri <= pargs.lowestPossibleAbsCasher {
 				return majorPenalty
 			}
 			return 0
@@ -361,10 +407,14 @@ func copPairWithLog(ctx context.Context, req *pb.PairRequest, logsb *strings.Bui
 }
 
 func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, logsb *strings.Builder) ([]int32, *pb.PairResponse) {
-	numStandingsPlayers := copdata.Standings.GetNumPlayers()
-
 	prepairedRoundIdx := -1
 	numDivPairings := len(req.DivisionPairings)
+	prepairedPlayerIndexes := map[int]int{}
+	numForcedByes := 0
+	removedPlayersSet := map[int]bool{}
+	for _, removedPlayerIdx := range req.RemovedPlayers {
+		removedPlayersSet[int(removedPlayerIdx)] = true
+	}
 	if numDivPairings > 0 {
 		for _, oppIdx := range req.DivisionPairings[numDivPairings-1].Pairings {
 			if oppIdx == -1 {
@@ -372,21 +422,37 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 				break
 			}
 		}
-	}
-
-	playerNodes := []int{}
-	divisionPlayerData := [][]string{}
-	numPlayers := 0
-	for i := 0; i < numStandingsPlayers; i++ {
-		playerIdx := copdata.Standings.GetPlayerIndex(i)
-		if prepairedRoundIdx < 0 || req.DivisionPairings[prepairedRoundIdx].Pairings[playerIdx] < 0 {
-			playerNodes = append(playerNodes, playerIdx)
-			divisionPlayerData = append(divisionPlayerData, copdata.Standings.StringDataForPlayer(req, i))
-			numPlayers++
+		if prepairedRoundIdx >= 0 {
+			for playerIdx, oppIdx := range req.DivisionPairings[prepairedRoundIdx].Pairings {
+				if int(oppIdx) < playerIdx || removedPlayersSet[playerIdx] {
+					continue
+				}
+				prepairedPlayerIndexes[playerIdx] = int(oppIdx)
+				prepairedPlayerIndexes[int(oppIdx)] = playerIdx
+				prepairedPlayersStr := fmt.Sprintf("Forcing (#%d) %s vs ", playerIdx+1, req.PlayerNames[playerIdx])
+				if playerIdx == (int(oppIdx)) {
+					numForcedByes++
+					prepairedPlayersStr += "BYE\n"
+				} else {
+					prepairedPlayersStr += fmt.Sprintf("(#%d) %s\n", int(oppIdx)+1, req.PlayerNames[int(oppIdx)])
+				}
+				logsb.WriteString(prepairedPlayersStr)
+			}
 		}
 	}
 
-	addBye := numPlayers%2 == 1
+	logsb.WriteString(fmt.Sprintf("\nForcing %d bye(s)\n\n", numForcedByes))
+
+	playerNodes := []int{}
+	divisionPlayerData := [][]string{}
+	numPlayers := copdata.Standings.GetNumPlayers()
+	for playerRankIdx := 0; playerRankIdx < numPlayers; playerRankIdx++ {
+		playerIdx := copdata.Standings.GetPlayerIndex(playerRankIdx)
+		playerNodes = append(playerNodes, playerIdx)
+		divisionPlayerData = append(divisionPlayerData, copdata.Standings.StringDataForPlayer(req, playerRankIdx))
+	}
+
+	addBye := (numPlayers-numForcedByes)%2 == 1
 	if addBye {
 		playerNodes = append(playerNodes, pkgstnd.ByePlayerIndex)
 		divisionPlayerData = append(divisionPlayerData, []string{"", "", "BYE", "", ""})
@@ -419,8 +485,12 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	gibsonGetsBye := false
 	if addBye {
 		for i := 0; i < numPlayers; i++ {
+			if playerNodes[i] == pkgstnd.ByePlayerIndex {
+				break
+			}
 			if copdata.GibsonizedPlayers[i] && copdata.GibsonGroups[i] == 0 {
 				gibsonGetsBye = true
+				break
 			}
 		}
 	}
@@ -429,19 +499,22 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		req:                      req,
 		copdata:                  copdata,
 		playerNodes:              playerNodes,
-		prepairedRoundIdx:        prepairedRoundIdx,
 		lowestPossibleAbsCasher:  lowestPossibleAbsCasher,
 		lowestPossibleHopeCasher: lowestPossibleHopeCasher,
 		lowestPossibleHopeNth:    lowestPossibleHopeNth,
-		roundsRemaining:          int(req.Rounds) - len(req.DivisionResults),
+		roundsRemaining:          pkgstnd.GetRoundsRemaining(req),
 		gibsonGetsBye:            gibsonGetsBye,
+		prepairedRoundIdx:        prepairedRoundIdx,
+		prepairedPlayerIndexes:   prepairedPlayerIndexes,
 	}
 
 	logsb.WriteString(fmt.Sprintf("Control Loss Sims: %d\n", req.ControlLossSims))
 	logsb.WriteString(fmt.Sprintf("Lowest Hopeful Casher: %s\n", req.PlayerNames[playerNodes[lowestPossibleHopeCasher]]))
 	logsb.WriteString(fmt.Sprintf("Lowest Absolute Casher: %s\n", req.PlayerNames[playerNodes[lowestPossibleAbsCasher]]))
 	logsb.WriteString(fmt.Sprintf("Rounds Remaining: %d\n", pargs.roundsRemaining))
-	logsb.WriteString(fmt.Sprintf("Gibson Gets Bye: %t\n\n", pargs.gibsonGetsBye))
+	logsb.WriteString(fmt.Sprintf("Using Unforced Bye: %t\n", addBye))
+	logsb.WriteString(fmt.Sprintf("Gibson Gets Bye: %t\n", pargs.gibsonGetsBye))
+	logsb.WriteString(fmt.Sprintf("Prepaired Round (0 for none): %d\n\n", pargs.prepairedRoundIdx+1))
 
 	numPlayerNodes := len(playerNodes)
 
@@ -528,11 +601,18 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		pairings = pairings[:len(pairings)-1]
 	}
 
-	if len(pairings) != numPlayers {
+	if len(pairings) > numPlayers {
 		return nil, &pb.PairResponse{
 			ErrorCode:    pb.PairError_INVALID_PAIRINGS_LENGTH,
 			ErrorMessage: fmt.Sprintf("invalid pairings length %d for %d players", len(pairings), numPlayers),
 		}
+	} else if len(pairings) < numPlayers {
+		numUnpairedAtBottom := numPlayers - len(pairings)
+		unpairedIndexes := make([]int, numUnpairedAtBottom)
+		for i := range unpairedIndexes {
+			unpairedIndexes[i] = -1
+		}
+		pairings = append(pairings, unpairedIndexes...)
 	}
 
 	for playerRankIdx, oppRankIdx := range pairings {
@@ -543,27 +623,6 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	}
 
 	copdatapkg.WriteStringDataToLog("Pairing Weights", pairingDetailsheader, pairingDetails, logsb)
-
-	unpairedRankIdxes := []int{}
-	for playerRankIdx, oppRankIdx := range pairings {
-		if oppRankIdx < 0 {
-			unpairedRankIdxes = append(unpairedRankIdxes, playerRankIdx)
-		}
-	}
-
-	if len(unpairedRankIdxes) > 0 {
-		msg := "COP pairings could not be completed because there were too many constraints. The unpaired players are:\n\n"
-		for idx, unpairedRankIdx := range unpairedRankIdxes {
-			msg += fmt.Sprintf("%s", divisionPlayerData[unpairedRankIdx][2])
-			if idx < len(unpairedRankIdxes)-1 {
-				msg += ", "
-			}
-		}
-		return nil, &pb.PairResponse{
-			ErrorCode:    pb.PairError_OVERCONSTRAINED,
-			ErrorMessage: msg,
-		}
-	}
 
 	pairingsLogMx := [][]string{}
 	for playerRankIdx := 0; playerRankIdx < len(pairings); playerRankIdx++ {
@@ -583,32 +642,72 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	logsb.WriteString(fmt.Sprintf("Total Weight: %d\n", totalWeight))
 
 	allPlayerPairings := make([]int32, req.AllPlayers)
-
+	for i := 0; i < int(req.AllPlayers); i++ {
+		allPlayerPairings[i] = -1
+	}
+	unpairedPlayerIndexes := []int{}
+	prepairedPlayersStr := ""
 	// Convert rank indexes to player indexes and convert the bye format from ByePlayerIndex to player index
 	for playerRankIdx := 0; playerRankIdx < len(pairings); playerRankIdx++ {
 		oppRankIdx := pairings[playerRankIdx]
 		playerIdx := playerNodes[playerRankIdx]
-		oppIdx := playerNodes[oppRankIdx]
-		if oppIdx == pkgstnd.ByePlayerIndex {
-			oppIdx = playerIdx
-		}
-		allPlayerPairings[playerIdx] = int32(oppIdx)
-	}
-
-	if prepairedRoundIdx >= 0 {
-		logsb.WriteString("\nPrepaired Players:\n\n")
-		for playerIdx := 0; playerIdx < int(req.AllPlayers); playerIdx++ {
-			oppIdx := req.DivisionPairings[prepairedRoundIdx].Pairings[playerIdx]
-			if playerIdx <= int(oppIdx) {
-				allPlayerPairings[playerIdx] = oppIdx
-				allPlayerPairings[oppIdx] = int32(playerIdx)
-				logsb.WriteString(fmt.Sprintf("(#%d) %s vs ", playerIdx+1, req.PlayerNames[playerIdx]))
-				if playerIdx == int(oppIdx) {
-					logsb.WriteString("BYE\n")
+		prepairedOppIdx, playerIsPrepaired := prepairedPlayerIndexes[playerIdx]
+		if oppRankIdx < 0 {
+			if !playerIsPrepaired {
+				unpairedPlayerIndexes = append(unpairedPlayerIndexes, playerIdx)
+				continue
+			}
+			allPlayerPairings[playerIdx] = int32(prepairedOppIdx)
+			if playerIdx <= prepairedOppIdx {
+				prepairedPlayersStr += fmt.Sprintf("(#%d) %s vs ", playerIdx+1, req.PlayerNames[playerIdx])
+				if playerIdx == prepairedOppIdx {
+					prepairedPlayersStr += "BYE\n"
 				} else {
-					logsb.WriteString(fmt.Sprintf("(#%d) %s\n", oppIdx+1, req.PlayerNames[oppIdx]))
+					prepairedPlayersStr += fmt.Sprintf("(#%d) %s\n", prepairedOppIdx+1, req.PlayerNames[prepairedOppIdx])
 				}
 			}
+		} else if playerIsPrepaired {
+			return nil, &pb.PairResponse{
+				ErrorCode:    pb.PairError_OVERCONSTRAINED,
+				ErrorMessage: fmt.Sprintf("player %s is prepaired but was still paired by COP", req.PlayerNames[playerIdx]),
+			}
+		} else {
+			oppIdx := playerNodes[oppRankIdx]
+			if oppIdx == pkgstnd.ByePlayerIndex {
+				oppIdx = playerIdx
+			}
+			allPlayerPairings[playerIdx] = int32(oppIdx)
+		}
+	}
+
+	if prepairedPlayersStr != "" {
+		logsb.WriteString(fmt.Sprintf("\nPrepaired players:\n\n%s", prepairedPlayersStr))
+	}
+
+	removedPlayersStr := ""
+	for _, removedPlayerIdx := range req.RemovedPlayers {
+		if allPlayerPairings[removedPlayerIdx] != -1 {
+			return nil, &pb.PairResponse{
+				ErrorCode:    pb.PairError_OVERCONSTRAINED,
+				ErrorMessage: fmt.Sprintf("player %s was removed but was still paired by COP", req.PlayerNames[removedPlayerIdx]),
+			}
+		}
+		removedPlayersStr += fmt.Sprintf("(#%d) %s\n", removedPlayerIdx+1, req.PlayerNames[removedPlayerIdx])
+	}
+
+	if removedPlayersStr != "" {
+		logsb.WriteString(fmt.Sprintf("\nRemoved players:\n\n%s\n", removedPlayersStr))
+	}
+
+	numUnpairedPlayers := len(unpairedPlayerIndexes)
+	if numUnpairedPlayers > 0 {
+		msg := "COP pairings could not be completed because there were too many constraints. The unpaired players are:\n\n"
+		for _, unpairedPlayerIdx := range unpairedPlayerIndexes {
+			msg += fmt.Sprintf("%s\n", req.PlayerNames[unpairedPlayerIdx])
+		}
+		return nil, &pb.PairResponse{
+			ErrorCode:    pb.PairError_OVERCONSTRAINED,
+			ErrorMessage: msg,
 		}
 	}
 

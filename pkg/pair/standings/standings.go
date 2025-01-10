@@ -44,6 +44,10 @@ type SimResults struct {
 	SegmentRoundFactors       []int
 }
 
+func GetRoundsRemaining(req *pb.PairRequest) int {
+	return int(req.Rounds) - len(req.DivisionResults)
+}
+
 func CreateInitialStandings(req *pb.PairRequest) *Standings {
 	// Create empty standings
 	standings := &Standings{}
@@ -185,20 +189,17 @@ func (standings *Standings) CanCatch(roundsRemaining int, cumeGibsonSpread int, 
 func (standings *Standings) GetGibsonizedPlayers(req *pb.PairRequest) []bool {
 	numPlayers := len(standings.records)
 	gibsonizedPlayers := make([]bool, numPlayers)
-	roundsRemaining := int(req.Rounds) - len(req.DivisionResults)
+	roundsRemaining := GetRoundsRemaining(req)
 	cumeGibsonSpread := getCumeGibsonSpread(req)
-	maxPlayerIdx := int(req.PlacePrizes)
-	if maxPlayerIdx > numPlayers {
-		maxPlayerIdx = numPlayers
-	}
-	for playerIdx := 0; playerIdx < maxPlayerIdx; playerIdx++ {
-		gibsonizedPlayers[playerIdx] = true
-		if playerIdx > 0 && standings.CanCatch(roundsRemaining, cumeGibsonSpread, playerIdx-1, playerIdx) {
-			gibsonizedPlayers[playerIdx] = false
+	maxPlayerRankIdx := int(req.PlacePrizes)
+	for playerRankIdx := 0; playerRankIdx < maxPlayerRankIdx; playerRankIdx++ {
+		gibsonizedPlayers[playerRankIdx] = true
+		if playerRankIdx > 0 && standings.CanCatch(roundsRemaining, cumeGibsonSpread, playerRankIdx-1, playerRankIdx) {
+			gibsonizedPlayers[playerRankIdx] = false
 			continue
 		}
-		if playerIdx < numPlayers-1 && standings.CanCatch(roundsRemaining, cumeGibsonSpread, playerIdx, playerIdx+1) {
-			gibsonizedPlayers[playerIdx] = false
+		if playerRankIdx < numPlayers-1 && standings.CanCatch(roundsRemaining, cumeGibsonSpread, playerRankIdx, playerRankIdx+1) {
+			gibsonizedPlayers[playerRankIdx] = false
 			continue
 		}
 	}
@@ -214,7 +215,7 @@ func (standings *Standings) Sort() {
 // Assumes the standings are already sorted
 func (standings *Standings) SimFactorPairAll(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, computeControlLoss bool, prevSegmentRoundFactors []int) (*SimResults, pb.PairError) {
 	numPlayers := standings.GetNumPlayers()
-	roundsRemaining := int(req.Rounds) - len(req.DivisionPairings)
+	roundsRemaining := GetRoundsRemaining(req)
 	evenerPlayerAdded := false
 	if numPlayers%2 == 1 {
 		// If there are an odd number of players, add a dummy player
@@ -230,7 +231,7 @@ func (standings *Standings) SimFactorPairAll(ctx context.Context, req *pb.PairRe
 		evenerPlayerAdded = true
 	}
 
-	simResults, pairErr := standings.evenedSimFactorPairAll(ctx, req, copRand, sims, maxFactor, computeControlLoss, prevSegmentRoundFactors, roundsRemaining)
+	simResults, pairErr := standings.evenedSimFactorPairAll(ctx, req, copRand, sims, maxFactor, computeControlLoss, prevSegmentRoundFactors)
 	if pairErr != pb.PairError_SUCCESS {
 		return nil, pairErr
 	}
@@ -247,12 +248,13 @@ func (standings *Standings) SimFactorPairAll(ctx context.Context, req *pb.PairRe
 	return simResults, pb.PairError_SUCCESS
 }
 
-func (standings *Standings) evenedSimFactorPairAll(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, computeControlLoss bool, prevSegmentRoundFactors []int, roundsRemaining int) (*SimResults, pb.PairError) {
+func (standings *Standings) evenedSimFactorPairAll(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, computeControlLoss bool, prevSegmentRoundFactors []int) (*SimResults, pb.PairError) {
 	numPlayers := standings.GetNumPlayers()
 	results := make([][]int, numPlayers)
 	for i := range results {
 		results[i] = make([]int, numPlayers)
 	}
+	roundsRemaining := GetRoundsRemaining(req)
 	pairings := make([][]int, roundsRemaining)
 	for i := 0; i < roundsRemaining; i++ {
 		pairings[i] = make([]int, numPlayers)
@@ -346,7 +348,6 @@ func (standings *Standings) evenedSimFactorPairAll(ctx context.Context, req *pb.
 		allControlLosses = map[int]int{}
 		leftPlayerRankIdx := 1
 		rightPlayerRankIdx := 1
-		roundsRemaining := int(req.Rounds) - len(req.DivisionResults)
 		cumeGibsonSpread := getCumeGibsonSpread(req)
 		for rightPlayerRankIdx < numPlayers {
 			if !standings.CanCatch(roundsRemaining, cumeGibsonSpread, 0, rightPlayerRankIdx) {
@@ -394,8 +395,7 @@ func (standings *Standings) evenedSimFactorPairAll(ctx context.Context, req *pb.
 }
 
 func getCumeGibsonSpread(req *pb.PairRequest) int {
-	roundsRemaining := int(req.Rounds) - len(req.DivisionResults)
-	return int(req.GibsonSpread) * roundsRemaining * 2
+	return int(req.GibsonSpread) * GetRoundsRemaining(req) * 2
 }
 
 func (standings *Standings) simRound(ctx context.Context, copRand *rand.Rand, pairings [][]int, roundIdx int, forcedWinnerRankIdx int) pb.PairError {
@@ -502,10 +502,10 @@ func (standings *Standings) simForceWinner(ctx context.Context, copRand *rand.Ra
 // Returns pairings in pairs of player indexes
 // For example, pairings of [0, 2, 1, 3] indicate player 0 plays player 2
 // and player 1 plays player 3.
-func assignPairingsForSegment(pairingsStartIdx int, startRankIdx int, endRankIdx int, totalRoundsRemaining int, maxFactor int, leftoverGibsonPlayers []int, pairings [][]int, segmentRoundFactors *[]int) {
+func assignPairingsForSegment(pairingsStartIdx int, startRankIdx int, endRankIdx int, initialRoundsRemaining int, maxFactor int, leftoverGibsonPlayers []int, pairings [][]int, segmentRoundFactors *[]int) {
 	numPlayers := endRankIdx - startRankIdx + 1
 
-	for roundsRemaining := totalRoundsRemaining; roundsRemaining > 0; roundsRemaining-- {
+	for roundsRemaining := initialRoundsRemaining; roundsRemaining > 0; roundsRemaining-- {
 		roundFactor := roundsRemaining
 		if roundFactor > maxFactor {
 			roundFactor = maxFactor
@@ -515,7 +515,7 @@ func assignPairingsForSegment(pairingsStartIdx int, startRankIdx int, endRankIdx
 			roundFactor = maxPlayerFactor
 		}
 		*segmentRoundFactors = append(*segmentRoundFactors, roundFactor)
-		roundIdx := totalRoundsRemaining - roundsRemaining
+		roundIdx := initialRoundsRemaining - roundsRemaining
 		for factorPairing := 0; factorPairing < roundFactor; factorPairing++ {
 			basePairingIdx := pairingsStartIdx + 2*factorPairing
 			basePlayerIdx := startRankIdx + factorPairing
