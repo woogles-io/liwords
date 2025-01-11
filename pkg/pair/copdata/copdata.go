@@ -103,7 +103,7 @@ func GetPrecompData(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand
 	var controlLossSimResults *pkgstnd.SimResults
 	var allControlLosses map[int]int
 	highestControlLossRankIdx := -1
-	if req.UseControlLoss && !improvedFactorSimResults.GibsonizedPlayers[0] {
+	if req.UseControlLoss && !improvedFactorSimResults.GibsonizedPlayers[0] && initialFactor > 1 {
 		controlLossSimResults, pairErr = standings.SimFactorPairAll(ctx, req, copRand, int(req.ControlLossSims), maxFactor, true, nil)
 		if pairErr != pb.PairError_SUCCESS {
 			return nil, pairErr
