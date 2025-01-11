@@ -31,7 +31,6 @@ type policyArgs struct {
 	playerNodes              []int
 	lowestPossibleAbsCasher  int
 	lowestPossibleHopeCasher int
-	lowestPossibleHopeNth    []int
 	roundsRemaining          int
 	gibsonGetsBye            bool
 	prepairedRoundIdx        int
@@ -161,13 +160,13 @@ var constraintPolicies = []constraintPolicy{
 		// Control loss
 		name: "CL",
 		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
-			if pargs.copdata.HighestControlLossRankIdx < 0 {
+			if pargs.copdata.DestinysChild < 0 {
 				return [][2]int{}, [][2]int{}
 			}
 			disallowedPairings := [][2]int{}
 			numPlayers := len(pargs.playerNodes)
 			for playerRankIdx := 1; playerRankIdx < numPlayers; playerRankIdx++ {
-				if playerRankIdx == pargs.copdata.HighestControlLossRankIdx || playerRankIdx == pargs.copdata.HighestControlLossRankIdx-1 {
+				if playerRankIdx == pargs.copdata.DestinysChild || (pargs.roundsRemaining > 2 && playerRankIdx == pargs.copdata.DestinysChild-1) {
 					continue
 				}
 				disallowedPairings = append(disallowedPairings, [2]int{pargs.playerNodes[0], pargs.playerNodes[playerRankIdx]})
@@ -244,9 +243,9 @@ var weightPolicies = []weightPolicy{
 				ri > pargs.lowestPossibleHopeCasher {
 				return 0
 			}
-			if rj <= pargs.lowestPossibleHopeNth[ri] ||
-				(pargs.lowestPossibleHopeNth[ri] == ri && ri == rj-1) {
-				casherDiff := pargs.lowestPossibleHopeNth[ri] - rj
+			if rj <= pargs.copdata.LowestPossibleHopeNth[ri] ||
+				(pargs.copdata.LowestPossibleHopeNth[ri] == ri && ri == rj-1) {
+				casherDiff := pargs.copdata.LowestPossibleHopeNth[ri] - rj
 				if casherDiff < 0 {
 					casherDiff *= -1
 				}
@@ -465,22 +464,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		}
 	}
 
-	lowestPossibleHopeCasher := 0
-	lowestPossibleHopeNth := make([]int, len(copdata.HighestRankHopefully))
-	prevPlace := 0
-	for playerRankIdx, place := range copdata.HighestRankHopefully {
-		if playerRankIdx > lowestPossibleHopeNth[place] {
-			lowestPossibleHopeNth[place] = playerRankIdx
-		}
-		for i := prevPlace + 1; i < place; i++ {
-			lowestPossibleHopeNth[i] = playerRankIdx - 1
-		}
-		prevPlace = place
-	}
-	for i := prevPlace + 1; i < len(copdata.HighestRankHopefully); i++ {
-		lowestPossibleHopeNth[i] = len(copdata.HighestRankHopefully) - 1
-	}
-	lowestPossibleHopeCasher = lowestPossibleHopeNth[int(req.PlacePrizes)-1]
+	lowestPossibleHopeCasher := copdata.LowestPossibleHopeNth[int(req.PlacePrizes)-1]
 
 	gibsonGetsBye := false
 	if addBye {
@@ -501,7 +485,6 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		playerNodes:              playerNodes,
 		lowestPossibleAbsCasher:  lowestPossibleAbsCasher,
 		lowestPossibleHopeCasher: lowestPossibleHopeCasher,
-		lowestPossibleHopeNth:    lowestPossibleHopeNth,
 		roundsRemaining:          pkgstnd.GetRoundsRemaining(req),
 		gibsonGetsBye:            gibsonGetsBye,
 		prepairedRoundIdx:        prepairedRoundIdx,
@@ -515,6 +498,13 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	logsb.WriteString(fmt.Sprintf("Using Unforced Bye: %t\n", addBye))
 	logsb.WriteString(fmt.Sprintf("Gibson Gets Bye: %t\n", pargs.gibsonGetsBye))
 	logsb.WriteString(fmt.Sprintf("Prepaired Round (0 for none): %d\n\n", pargs.prepairedRoundIdx+1))
+	logsb.WriteString("Destinys Child: ")
+	if copdata.DestinysChild >= 0 {
+		logsb.WriteString(req.PlayerNames[playerNodes[copdata.DestinysChild]])
+	} else {
+		logsb.WriteString("(none)")
+	}
+	logsb.WriteString("\n\n")
 
 	numPlayerNodes := len(playerNodes)
 
