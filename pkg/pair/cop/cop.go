@@ -497,7 +497,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	logsb.WriteString(fmt.Sprintf("Rounds Remaining: %d\n", pargs.roundsRemaining))
 	logsb.WriteString(fmt.Sprintf("Using Unforced Bye: %t\n", addBye))
 	logsb.WriteString(fmt.Sprintf("Gibson Gets Bye: %t\n", pargs.gibsonGetsBye))
-	logsb.WriteString(fmt.Sprintf("Prepaired Round (0 for none): %d\n\n", pargs.prepairedRoundIdx+1))
+	logsb.WriteString(fmt.Sprintf("Prepaired Round (0 for none): %d\n", pargs.prepairedRoundIdx+1))
 	logsb.WriteString("Destinys Child: ")
 	if copdata.DestinysChild >= 0 {
 		logsb.WriteString(req.PlayerNames[playerNodes[copdata.DestinysChild]])
