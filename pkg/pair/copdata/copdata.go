@@ -41,7 +41,7 @@ func GetPrecompData(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand
 
 	// Use the initial results to get a tighter bound on the maximum factor
 	initialFactor := pkgstnd.GetRoundsRemaining(req)
-	initialSimResults, pairErr := standings.SimFactorPairAll(ctx, req, copRand, int(req.DivisionSims), initialFactor, false, nil)
+	initialSimResults, pairErr := standings.SimFactorPairAll(ctx, req, copRand, int(req.DivisionSims), initialFactor, -1, nil)
 	if pairErr != pb.PairError_SUCCESS {
 		return nil, pairErr
 	}
@@ -88,7 +88,7 @@ func GetPrecompData(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand
 	// Only re-sim with the improved bound if it actually makes the max factor smaller
 	// for the highest gibson group.
 	if maxFactor*2 < numPlayersInhighestNongibsonGroup {
-		improvedFactorSimResults, pairErr = standings.SimFactorPairAll(ctx, req, copRand, int(req.DivisionSims), maxFactor, false, initialSimResults.SegmentRoundFactors)
+		improvedFactorSimResults, pairErr = standings.SimFactorPairAll(ctx, req, copRand, int(req.DivisionSims), maxFactor, -1, initialSimResults.SegmentRoundFactors)
 		if pairErr != pb.PairError_SUCCESS {
 			return nil, pairErr
 		}
@@ -171,7 +171,7 @@ func GetPrecompData(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand
 	var allControlLosses map[int]int
 	destinysChild := -1
 	if req.UseControlLoss && !improvedFactorSimResults.GibsonizedPlayers[0] && initialFactor > 1 {
-		controlLossSimResults, pairErr = standings.SimFactorPairAll(ctx, req, copRand, int(req.ControlLossSims), maxFactor, true, nil)
+		controlLossSimResults, pairErr = standings.SimFactorPairAll(ctx, req, copRand, int(req.ControlLossSims), maxFactor, lowestPossibleHopeNth[0], nil)
 		if pairErr != pb.PairError_SUCCESS {
 			return nil, pairErr
 		}
