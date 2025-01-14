@@ -27,12 +27,13 @@ type PrecompData struct {
 
 	// The remaining following fields are indexed by player rank
 
-	HighestRankHopefully      []int
-	HighestRankAbsolutely     []int
-	LowestRankAbsolutely      []int
-	HighestControlLossRankIdx int
-	GibsonGroups              []int
-	GibsonizedPlayers         []bool
+	HighestRankHopefully  []int
+	HighestRankAbsolutely []int
+	LowestRankAbsolutely  []int
+	LowestPossibleHopeNth []int
+	DestinysChild         int
+	GibsonGroups          []int
+	GibsonizedPlayers     []bool
 }
 
 func GetPrecompData(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Builder) (*PrecompData, pb.PairError) {
@@ -100,21 +101,6 @@ func GetPrecompData(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand
 		writeFinalRankResultsToLog(fmt.Sprintf("Improved Factor Sim Results (factor ceiling of %d)", maxFactor), improvedFactorSimResults.FinalRanks, standings, req, logsb)
 	}
 
-	var controlLossSimResults *pkgstnd.SimResults
-	var allControlLosses map[int]int
-	highestControlLossRankIdx := -1
-	if req.UseControlLoss && !improvedFactorSimResults.GibsonizedPlayers[0] {
-		controlLossSimResults, pairErr = standings.SimFactorPairAll(ctx, req, copRand, int(req.ControlLossSims), maxFactor, true, nil)
-		if pairErr != pb.PairError_SUCCESS {
-			return nil, pairErr
-		}
-		allControlLosses = controlLossSimResults.AllControlLosses
-		if controlLossSimResults.HighestControlLossRankIdx >= 0 &&
-			1.0-float64(controlLossSimResults.LowestFactorPairWins)/float64(req.ControlLossSims) >= req.ControlLossThreshold {
-			highestControlLossRankIdx = controlLossSimResults.HighestControlLossRankIdx
-		}
-	}
-
 	minWinsForHopeful := int(math.Round(float64(req.DivisionSims) * req.HopefulnessThreshold))
 	highestRankHopefully := make([]int, numPlayers)
 	highestRankAbsolutely := make([]int, numPlayers)
@@ -147,6 +133,21 @@ func GetPrecompData(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand
 		lowestRankAbsolutely[playerRankIdx] = lowestRank
 	}
 
+	lowestPossibleHopeNth := make([]int, len(highestRankHopefully))
+	prevPlace := 0
+	for playerRankIdx, place := range highestRankHopefully {
+		if playerRankIdx > lowestPossibleHopeNth[place] {
+			lowestPossibleHopeNth[place] = playerRankIdx
+		}
+		for i := prevPlace + 1; i < place; i++ {
+			lowestPossibleHopeNth[i] = playerRankIdx - 1
+		}
+		prevPlace = place
+	}
+	for i := prevPlace + 1; i < len(highestRankHopefully); i++ {
+		lowestPossibleHopeNth[i] = len(highestRankHopefully) - 1
+	}
+
 	pairingCounts := make(map[string]int)
 	repeatCounts := make([]int, int(req.AllPlayers))
 	for _, roundPairings := range req.DivisionPairings {
@@ -166,18 +167,36 @@ func GetPrecompData(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand
 		}
 	}
 
+	var controlLossSimResults *pkgstnd.SimResults
+	var allControlLosses map[int]int
+	destinysChild := -1
+	if req.UseControlLoss && !improvedFactorSimResults.GibsonizedPlayers[0] && initialFactor > 1 {
+		controlLossSimResults, pairErr = standings.SimFactorPairAll(ctx, req, copRand, int(req.ControlLossSims), maxFactor, true, nil)
+		if pairErr != pb.PairError_SUCCESS {
+			return nil, pairErr
+		}
+		allControlLosses = controlLossSimResults.AllControlLosses
+		if controlLossSimResults.HighestControlLossRankIdx >= 0 &&
+			1.0-float64(controlLossSimResults.LowestFactorPairWins)/float64(req.ControlLossSims) >= req.ControlLossThreshold {
+			destinysChild = controlLossSimResults.HighestControlLossRankIdx
+		} else {
+			destinysChild = lowestPossibleHopeNth[0]
+		}
+	}
+
 	writePrecompDataToLog("Precomp Data", improvedFactorSimResults, allControlLosses, highestRankHopefully, highestRankAbsolutely, standings, req, logsb)
 
 	return &PrecompData{
-		Standings:                 standings,
-		PairingCounts:             pairingCounts,
-		RepeatCounts:              repeatCounts,
-		HighestRankHopefully:      highestRankHopefully,
-		HighestRankAbsolutely:     highestRankAbsolutely,
-		LowestRankAbsolutely:      lowestRankAbsolutely,
-		HighestControlLossRankIdx: highestControlLossRankIdx,
-		GibsonGroups:              improvedFactorSimResults.GibsonGroups,
-		GibsonizedPlayers:         improvedFactorSimResults.GibsonizedPlayers,
+		Standings:             standings,
+		PairingCounts:         pairingCounts,
+		RepeatCounts:          repeatCounts,
+		HighestRankHopefully:  highestRankHopefully,
+		HighestRankAbsolutely: highestRankAbsolutely,
+		LowestRankAbsolutely:  lowestRankAbsolutely,
+		LowestPossibleHopeNth: lowestPossibleHopeNth,
+		DestinysChild:         destinysChild,
+		GibsonGroups:          improvedFactorSimResults.GibsonGroups,
+		GibsonizedPlayers:     improvedFactorSimResults.GibsonizedPlayers,
 	}, pb.PairError_SUCCESS
 }
 
