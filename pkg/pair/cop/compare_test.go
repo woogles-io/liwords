@@ -472,7 +472,7 @@ func TestCompare(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	tourneyName := "2024-10-18-LakeGeorge-CSW-ME"
+	tourneyName := "2024-12-29-Albany-NWL-ME"
 
 	// URLs and filepaths
 	tfileURL := fmt.Sprintf("https://scrabbleplayers.org/directors/AA003954/%s/a.t", tourneyName)

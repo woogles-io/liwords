@@ -3,6 +3,7 @@ package cop
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"golang.org/x/exp/rand"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -249,7 +250,7 @@ var weightPolicies = []weightPolicy{
 				if casherDiff < 0 {
 					casherDiff *= -1
 				}
-				return int64(intPow(casherDiff, 3) * 2)
+				return int64(math.Pow(float64(casherDiff), 3) * 2)
 			}
 			return majorPenalty
 		},
@@ -286,7 +287,7 @@ var weightPolicies = []weightPolicy{
 			pj := pargs.playerNodes[rj]
 			pairingKey := copdatapkg.GetPairingKey(pi, pj)
 			timesPlayed := pargs.copdata.PairingCounts[pairingKey]
-			return int64(timesPlayed * 2 * intPow(pargs.copdata.Standings.GetNumPlayers()/3, 3))
+			return int64(timesPlayed * 2 * int(math.Pow(float64(pargs.copdata.Standings.GetNumPlayers())/3.0, 3)))
 		},
 	},
 	{
@@ -724,20 +725,4 @@ func setDisallowPairs(disallowedPairs map[string]string, playerIdx int, oppIdx i
 
 func getRankPairingKey(playerRankIdx int, oppRankIdx int) string {
 	return fmt.Sprintf("%d:%d", playerRankIdx, oppRankIdx)
-}
-
-func intPow(base, exp int) int {
-	result := 1
-	for {
-		if exp&1 == 1 {
-			result *= base
-		}
-		exp >>= 1
-		if exp == 0 {
-			break
-		}
-		base *= base
-	}
-
-	return result
 }
