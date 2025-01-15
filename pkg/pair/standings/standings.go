@@ -213,7 +213,7 @@ func (standings *Standings) Sort() {
 }
 
 // Assumes the standings are already sorted
-func (standings *Standings) SimFactorPairAll(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, computeControlLoss bool, prevSegmentRoundFactors []int) (*SimResults, pb.PairError) {
+func (standings *Standings) SimFactorPairAll(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, lowestHopeControlLosser int, prevSegmentRoundFactors []int) (*SimResults, pb.PairError) {
 	numPlayers := standings.GetNumPlayers()
 	roundsRemaining := GetRoundsRemaining(req)
 	evenerPlayerAdded := false
@@ -231,7 +231,7 @@ func (standings *Standings) SimFactorPairAll(ctx context.Context, req *pb.PairRe
 		evenerPlayerAdded = true
 	}
 
-	simResults, pairErr := standings.evenedSimFactorPairAll(ctx, req, copRand, sims, maxFactor, computeControlLoss, prevSegmentRoundFactors)
+	simResults, pairErr := standings.evenedSimFactorPairAll(ctx, req, copRand, sims, maxFactor, lowestHopeControlLosser, prevSegmentRoundFactors)
 	if pairErr != pb.PairError_SUCCESS {
 		return nil, pairErr
 	}
@@ -248,7 +248,7 @@ func (standings *Standings) SimFactorPairAll(ctx context.Context, req *pb.PairRe
 	return simResults, pb.PairError_SUCCESS
 }
 
-func (standings *Standings) evenedSimFactorPairAll(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, computeControlLoss bool, prevSegmentRoundFactors []int) (*SimResults, pb.PairError) {
+func (standings *Standings) evenedSimFactorPairAll(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, lowestHopeControlLosser int, prevSegmentRoundFactors []int) (*SimResults, pb.PairError) {
 	numPlayers := standings.GetNumPlayers()
 	results := make([][]int, numPlayers)
 	for i := range results {
@@ -322,7 +322,7 @@ func (standings *Standings) evenedSimFactorPairAll(ctx context.Context, req *pb.
 	highestControlLossRankIdx := -1
 	lowestFactorPairWins := sims + 1
 	var allControlLosses map[int]int
-	if !computeControlLoss {
+	if lowestHopeControlLosser < 0 {
 		for simIdx := 0; simIdx < sims; simIdx++ {
 			for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
 				pairErr := standings.simRound(ctx, copRand, pairings, roundIdx, -1)
@@ -347,15 +347,7 @@ func (standings *Standings) evenedSimFactorPairAll(ctx context.Context, req *pb.
 		// who also always wins every tournament while always play first place and win every game.\
 		allControlLosses = map[int]int{}
 		leftPlayerRankIdx := 1
-		rightPlayerRankIdx := 1
-		cumeGibsonSpread := getCumeGibsonSpread(req)
-		for rightPlayerRankIdx < numPlayers {
-			if !standings.CanCatch(roundsRemaining, cumeGibsonSpread, 0, rightPlayerRankIdx) {
-				break
-			}
-			rightPlayerRankIdx++
-		}
-		rightPlayerRankIdx--
+		rightPlayerRankIdx := lowestHopeControlLosser
 		for leftPlayerRankIdx <= rightPlayerRankIdx {
 			forcedWinnerRankIdx := (leftPlayerRankIdx + rightPlayerRankIdx) / 2
 			forcedWinnerPlayerIdx := standings.GetPlayerIndex(forcedWinnerRankIdx)
