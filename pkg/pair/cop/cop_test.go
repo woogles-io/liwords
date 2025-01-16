@@ -414,11 +414,10 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req = pairtestutils.CreateAlbany3rdGibsonizedAfterRound25PairRequest()
 	req.Seed = 1
 	req.Rounds = 26
-	req.ClassPrizes = []int32{2}
+	req.ClassPrizes = []int32{3}
 	// Create class B
 	req.PlayerClasses[5] = 1
 	req.PlayerClasses[8] = 1
-	req.PlayerClasses[14] = 1
 	req.PlayerClasses[13] = 1
 	req.PlayerClasses[17] = 1
 	req.PlayerClasses[21] = 1
