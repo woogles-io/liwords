@@ -667,7 +667,6 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req.UseControlLoss = true
 	req.Seed = 1
 	resp = cop.COPPair(ctx, req)
-	fmt.Println(resp.Log)
 	// The control loss should force 1st to play either 2nd or 3rd since 4th
 	// isn't hopeful enough.
 	is.True(resp.Pairings[3] == int32(2) || resp.Pairings[3] == int32(0))
