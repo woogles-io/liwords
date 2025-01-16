@@ -336,10 +336,11 @@ var weightPolicies = []weightPolicy{
 				return 0
 			}
 			pi := pargs.playerNodes[ri]
-			if pargs.copdata.PairingCounts[copdatapkg.GetPairingKey(pi, pj)] == 0 {
+			numTimesWithBye := pargs.copdata.PairingCounts[copdatapkg.GetPairingKey(pi, pj)]
+			if numTimesWithBye == 0 {
 				return 0
 			}
-			return majorPenalty
+			return majorPenalty * int64(numTimesWithBye)
 		},
 	},
 }
