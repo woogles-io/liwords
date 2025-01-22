@@ -280,7 +280,7 @@ export const useDefinitionAndPhonyChecker = ({
           // for certain lexicons, try getting definitions from other sources
           for (const otherLexicon of lexicon === "ECWL"
             ? ["CSW24", "NWL23"]
-            : lexicon === "CSW19X"
+            : lexicon === "CSW19X" || lexicon === "CSW24X"
               ? ["CSW24"]
               : []) {
             const wordsToRedefine = [];

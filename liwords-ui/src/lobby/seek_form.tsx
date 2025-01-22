@@ -168,8 +168,8 @@ export const SeekForm = (props: Props) => {
     [],
   );
 
-  const enableCSW19X = React.useMemo(
-    () => localStorage.getItem("enableCSW19X") === "true",
+  const enableCSW24X = React.useMemo(
+    () => localStorage.getItem("enableCSW24X") === "true",
     [],
   );
 
@@ -209,6 +209,9 @@ export const SeekForm = (props: Props) => {
       break;
     case "FRA20":
       storedValues.lexicon = "FRA24";
+      break;
+    case "OSPS49":
+      storedValues.lexicon = "OSPS50";
       break;
   }
 
@@ -557,7 +560,7 @@ export const SeekForm = (props: Props) => {
       )}
       <LexiconFormItem
         disabled={disableLexiconControls}
-        excludedLexica={excludedLexica(enableAllLexicons, enableCSW19X)}
+        excludedLexica={excludedLexica(enableAllLexicons, enableCSW24X)}
       />
       {showChallengeRule && (
         <ChallengeRulesFormItem disabled={disableChallengeControls} />

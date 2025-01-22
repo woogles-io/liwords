@@ -112,18 +112,18 @@ export const AllLexica: { [code: string]: Lexicon } = {
       "Copyright 2017 Federación Internacional de Léxico en Español",
     flagCode: "es",
   },
-  OSPS49: {
-    code: "OSPS49",
+  OSPS50: {
+    code: "OSPS50",
     shortDescription: "Polski (Polish)",
     matchName: "Polski",
     longDescription:
-      "Copyright 2024 Polska Federacja Scrabble. Used with permission.",
+      "Copyright 2025 Polska Federacja Scrabble. Used with permission.",
     flagCode: "pl",
   },
-  CSW19X: {
-    code: "CSW19X",
-    shortDescription: "CSW19X (School Expurgated)",
-    matchName: "CSW19X",
+  CSW24X: {
+    code: "CSW24X",
+    shortDescription: "CSW24X (School Expurgated)",
+    matchName: "CSW24X",
   },
   DISC2: {
     code: "DISC2",
