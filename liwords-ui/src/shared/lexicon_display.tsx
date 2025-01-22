@@ -45,7 +45,7 @@ export const lexiconOrder = [
   "NSF23",
   "NSWL20",
   "DISC2",
-  "OSPS49",
+  "OSPS50",
 ];
 
 export const puzzleLexica = ["CSW24", "NWL23", "RD28", "FRA24"];
@@ -87,12 +87,12 @@ export const LexiconFormItem = React.memo((props: Props) => {
 
 export const excludedLexica = (
   enableAllLexicons: boolean,
-  enableCSW19X: boolean,
+  enableCSW24X: boolean,
 ): Set<string> => {
   if (!enableAllLexicons) {
-    return new Set<string>(["NSWL20", "ECWL", "CSW19X"]);
-  } else if (!enableCSW19X) {
-    return new Set<string>(["CSW19X"]);
+    return new Set<string>(["NSWL20", "ECWL", "CSW24X"]);
+  } else if (!enableCSW24X) {
+    return new Set<string>(["CSW24X"]);
   }
   return new Set<string>();
 };

@@ -174,7 +174,7 @@ export const ActiveGames = (props: Props) => {
         "FILE2017",
         "NSF23",
         "DISC2",
-        "OSPS49",
+        "OSPS50",
       ].map((l) => ({
         text: <MatchLexiconDisplay lexiconCode={l} />,
         value: l,

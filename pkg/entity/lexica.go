@@ -4,7 +4,7 @@ var AllowedNewGameLexica []string
 
 func init() {
 	AllowedNewGameLexica = append(AllowedNewGameLexica,
-		"CSW19X",
+		"CSW24X",
 		"CSW24",
 		"ECWL",
 		"FILE2017",
@@ -14,6 +14,6 @@ func init() {
 		"NWL23",
 		"RD28",
 		"DISC2",
-		"OSPS49",
+		"OSPS50",
 	)
 }
