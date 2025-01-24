@@ -1,0 +1,23 @@
+meta {
+  name: Set Games Enabled
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseURL}}/api/config_service.ConfigService/SetGamesEnabled
+  body: json
+  auth: none
+}
+
+body:json {
+  {"enabled": true}
+}
+
+vars:pre-request {
+  : 
+}
+
+assert {
+  : 
+}

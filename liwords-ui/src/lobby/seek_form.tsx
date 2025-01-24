@@ -32,13 +32,14 @@ import {
 import { VariantIcon } from "../shared/variant_icons";
 import { excludedLexica, LexiconFormItem } from "../shared/lexicon_display";
 import { AllLexica } from "../shared/lexica";
-import { BotTypesEnum, BotTypesEnumProperties } from "./bots";
+import { BotTypesEnum } from "./bots";
 import { GameRequest, RatingMode } from "../gen/api/proto/ipc/omgwords_pb";
 import { MatchUserSchema } from "../gen/api/proto/ipc/omgseeks_pb";
 import { ProfileUpdate_Rating } from "../gen/api/proto/ipc/users_pb";
 import { useClient } from "../utils/hooks/connect";
 import { AutocompleteService } from "../gen/api/proto/user_service/user_service_pb";
 import { create } from "@bufbuild/protobuf";
+import BotSelector from "./bot_selector";
 
 const initTimeFormatter = (val?: number) => {
   return val != null ? initTimeDiscreteScale[val].label : null;
@@ -175,11 +176,6 @@ export const SeekForm = (props: Props) => {
 
   const enableVariants = React.useMemo(
     () => localStorage.getItem("enableVariants") === "true",
-    [],
-  );
-
-  const enableGrandmasterBot = React.useMemo(
-    () => localStorage.getItem("enableGrandmastaP") === "true",
     [],
   );
 
@@ -466,17 +462,6 @@ export const SeekForm = (props: Props) => {
     }
   }, [defaultOptions, usernameOptions]);
 
-  const botTypes = [
-    BotTypesEnum.MASTER,
-    BotTypesEnum.EXPERT,
-    BotTypesEnum.INTERMEDIATE,
-    BotTypesEnum.EASY,
-    BotTypesEnum.BEGINNER,
-  ];
-  if (enableGrandmasterBot) {
-    botTypes.splice(0, 0, BotTypesEnum.GRANDMASTER);
-  }
-
   return (
     <Form
       id={props.id}
@@ -490,27 +475,7 @@ export const SeekForm = (props: Props) => {
       name="seekForm"
     >
       {props.prefixItems || null}
-      {props.vsBot && (
-        <Form.Item label="Select bot level" name="botType">
-          <Select listHeight={500}>
-            {botTypes.map((v) => (
-              <Select.Option value={v} key={v}>
-                <span className="level">
-                  {BotTypesEnumProperties[v].userVisible}{" "}
-                </span>
-                <span className="average">
-                  {BotTypesEnumProperties[v].shortDescription}
-                </span>
-                <span className="description">
-                  {BotTypesEnumProperties[v].description(
-                    selections?.lexicon || "",
-                  )}{" "}
-                </span>
-              </Select.Option>
-            ))}
-          </Select>
-        </Form.Item>
-      )}
+      {props.vsBot && <BotSelector lexicon={selections?.lexicon || ""} />}
       {props.showFriendInput && (
         <Form.Item
           label={props.tournamentID ? "Opponent" : "Friend"}
