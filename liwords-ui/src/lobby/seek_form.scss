@@ -178,106 +178,103 @@
     gap: 10px;
     height: 102px;
     .bot-selector-item-layout {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      padding: 0px;
+      gap: 16px;
+      width: 322px;
+      height: 70px;
+      flex: none;
+      order: 0;
+      align-self: stretch;
+      flex-grow: 0;
+      .bot-selector-image {
+        width: 48;
+        height: 48;
+        border-radius: 50%;
+        object-fit: cover;
+        flex: none;
+        order: 0;
+        align-self: stretch;
+        flex-grow: 0;
+      }
+      .bot-selector-info {
         display: flex;
-        flex-direction: row;
+        flex-direction: column;
         align-items: flex-start;
+        gap: 8px;
         padding: 0px;
-        gap: 16px;
-        width: 322px;
+        width: 258px;
         height: 70px;
         flex: none;
         order: 0;
         align-self: stretch;
         flex-grow: 0;
-        .bot-selector-image {
-            width: 48;
-            height: 48;
-            border-radius: 50%;
-            object-fit: cover;
-            flex: none;
-            order: 0;
-            align-self: stretch;
-            flex-grow: 0;
-        }
-        .bot-selector-info {
+        .bot-selector-name-and-short-desc {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          padding: 0px;
+          width: 258;
+          height: 22;
+          flex: none;
+          order: 1;
+          flex-grow: 1;
+          .bot-selector-name {
+            width: 128px;
+            height: 22px;
+            font-size: 16px;
+            line-height: 20px;
+            font-weight: 700;
+            font-style: normal;
             display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 8px;
-            padding: 0px;
-            width: 258px;
-            height: 70px;
-            flex: none;
-            order: 0;
-            align-self: stretch;
-            flex-grow: 0;
-            .bot-selector-name-and-short-desc {
-                display: flex;
-                flex-direction: row;
-                align-items: center;
-                padding: 0px;
-                width: 258;
-                height: 22;
-                flex: none;
-                order: 1;
-                flex-grow: 1;
-                .bot-selector-name {
-                    width: 128px;
-                    height: 22px;
-                    font-size: 16px;
-                    line-height: 20px;
-                    font-weight: 700;
-                    font-style: normal;
-                    display: flex;
-                    align-items: center;
-                    @include colorModed() {
-                        color: m($gray-extreme);
-                    }
-                }
-                .bot-selector-short-desc {
-                    width: 130px;
-                    height: 22px;
-                    font-style: italic;
-                    font-weight: 400;
-                    font-size: 14px;
-                    line-height: 18px;
-                    display: flex;
-                    align-items: center;
-                    text-align: right;
-                    @include colorModed() {
-                        color: m($gray-extreme);
-                    }
-                }
+            align-items: center;
+            @include colorModed() {
+              color: m($gray-extreme);
             }
-
-            .bot-selector-long-desc {
-                width: 258px;
-                height: 40px;
-                font-size: 14px;
-                line-height: 20px;
-                font-weight: 400;
-                font-style: normal;
-                flex: none;
-                order: 1;
-                align-self: stretch;
-                flex-grow: 0;
-                white-space: normal;
-                @include colorModed() {
-                    color: m($gray-extreme);
-                }
+          }
+          .bot-selector-short-desc {
+            width: 130px;
+            height: 22px;
+            font-style: italic;
+            font-weight: 400;
+            font-size: 14px;
+            line-height: 18px;
+            display: flex;
+            align-items: center;
+            text-align: right;
+            @include colorModed() {
+              color: m($gray-extreme);
             }
+          }
         }
+
+        .bot-selector-long-desc {
+          width: 258px;
+          height: 40px;
+          font-size: 14px;
+          line-height: 20px;
+          font-weight: 400;
+          font-style: normal;
+          flex: none;
+          order: 1;
+          align-self: stretch;
+          flex-grow: 0;
+          white-space: normal;
+          @include colorModed() {
+            color: m($gray-extreme);
+          }
+        }
+      }
     }
   }
-
 }
 
-
-.bot-selector.ant-select-single:not(.ant-select-customize-input) .ant-select-selector {
+.bot-selector.ant-select-single:not(.ant-select-customize-input)
+  .ant-select-selector {
   padding: 0px;
 }
-
-
 
 // .ant-select-dropdown,
 // .ant-select-selection-item {
