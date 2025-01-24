@@ -414,11 +414,10 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req = pairtestutils.CreateAlbany3rdGibsonizedAfterRound25PairRequest()
 	req.Seed = 1
 	req.Rounds = 26
-	req.ClassPrizes = []int32{2}
+	req.ClassPrizes = []int32{3}
 	// Create class B
 	req.PlayerClasses[5] = 1
 	req.PlayerClasses[8] = 1
-	req.PlayerClasses[14] = 1
 	req.PlayerClasses[13] = 1
 	req.PlayerClasses[17] = 1
 	req.PlayerClasses[21] = 1
@@ -668,7 +667,6 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req.UseControlLoss = true
 	req.Seed = 1
 	resp = cop.COPPair(ctx, req)
-	fmt.Println(resp.Log)
 	// The control loss should force 1st to play either 2nd or 3rd since 4th
 	// isn't hopeful enough.
 	is.True(resp.Pairings[3] == int32(2) || resp.Pairings[3] == int32(0))
@@ -743,6 +741,7 @@ func TestCOPProdBugs(t *testing.T) {
 
 	// Test players prepaired with byes
 	req := pairtestutils.CreateAlbanyAfterRound16PairRequest()
+	req.Seed = 1
 	resp := cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	is.Equal(resp.Pairings[0], int32(22))
@@ -751,16 +750,19 @@ func TestCOPProdBugs(t *testing.T) {
 
 	// Test that back-to-back pairings are penalized correctly
 	req = pairtestutils.CreateAlbanyCSWNewYearsAfterRound27PairRequest()
+	req.Seed = 1
 	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 
 	// There are pairings for all rounds, but the last round is only partially
 	// paired, so this should finish successfully
 	req = pairtestutils.CreateAlbanyCSWNewYearsAfterRound27LastRoundPartiallyPairedPairRequest()
+	req.Seed = 1
 	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 
 	req = pairtestutils.CreateAlbanyCSWNewYearsRound25PartiallyPairedPairRequest()
+	req.Seed = 1
 	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 }

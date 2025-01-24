@@ -313,18 +313,6 @@ var weightPolicies = []weightPolicy{
 		},
 	},
 	{
-		// Total repeats between both players
-		name: "TR",
-		handler: func(pargs *policyArgs, ri int, rj int) int64 {
-			pj := pargs.playerNodes[rj]
-			if pj == pkgstnd.ByePlayerIndex {
-				return 0
-			}
-			pi := pargs.playerNodes[ri]
-			return int64(pargs.copdata.RepeatCounts[pi]+pargs.copdata.RepeatCounts[pj]) * 2
-		},
-	},
-	{
 		// Bye Repeats
 		name: "BR",
 		handler: func(pargs *policyArgs, ri int, rj int) int64 {
@@ -336,10 +324,11 @@ var weightPolicies = []weightPolicy{
 				return 0
 			}
 			pi := pargs.playerNodes[ri]
-			if pargs.copdata.PairingCounts[copdatapkg.GetPairingKey(pi, pj)] == 0 {
+			numTimesWithBye := pargs.copdata.PairingCounts[copdatapkg.GetPairingKey(pi, pj)]
+			if numTimesWithBye == 0 {
 				return 0
 			}
-			return majorPenalty
+			return majorPenalty * int64(numTimesWithBye)
 		},
 	},
 }
