@@ -741,6 +741,7 @@ func TestCOPProdBugs(t *testing.T) {
 
 	// Test players prepaired with byes
 	req := pairtestutils.CreateAlbanyAfterRound16PairRequest()
+	req.Seed = 1
 	resp := cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	is.Equal(resp.Pairings[0], int32(22))
@@ -749,16 +750,19 @@ func TestCOPProdBugs(t *testing.T) {
 
 	// Test that back-to-back pairings are penalized correctly
 	req = pairtestutils.CreateAlbanyCSWNewYearsAfterRound27PairRequest()
+	req.Seed = 1
 	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 
 	// There are pairings for all rounds, but the last round is only partially
 	// paired, so this should finish successfully
 	req = pairtestutils.CreateAlbanyCSWNewYearsAfterRound27LastRoundPartiallyPairedPairRequest()
+	req.Seed = 1
 	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 
 	req = pairtestutils.CreateAlbanyCSWNewYearsRound25PartiallyPairedPairRequest()
+	req.Seed = 1
 	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 }
