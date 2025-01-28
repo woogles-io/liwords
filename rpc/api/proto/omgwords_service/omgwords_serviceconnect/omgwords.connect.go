@@ -74,24 +74,6 @@ const (
 	GameEventServiceImportGCGProcedure = "/omgwords_service.GameEventService/ImportGCG"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	gameEventServiceServiceDescriptor                       = omgwords_service.File_proto_omgwords_service_omgwords_proto.Services().ByName("GameEventService")
-	gameEventServiceCreateBroadcastGameMethodDescriptor     = gameEventServiceServiceDescriptor.Methods().ByName("CreateBroadcastGame")
-	gameEventServiceDeleteBroadcastGameMethodDescriptor     = gameEventServiceServiceDescriptor.Methods().ByName("DeleteBroadcastGame")
-	gameEventServiceSendGameEventMethodDescriptor           = gameEventServiceServiceDescriptor.Methods().ByName("SendGameEvent")
-	gameEventServiceSetRacksMethodDescriptor                = gameEventServiceServiceDescriptor.Methods().ByName("SetRacks")
-	gameEventServiceReplaceGameDocumentMethodDescriptor     = gameEventServiceServiceDescriptor.Methods().ByName("ReplaceGameDocument")
-	gameEventServicePatchGameDocumentMethodDescriptor       = gameEventServiceServiceDescriptor.Methods().ByName("PatchGameDocument")
-	gameEventServiceSetBroadcastGamePrivacyMethodDescriptor = gameEventServiceServiceDescriptor.Methods().ByName("SetBroadcastGamePrivacy")
-	gameEventServiceGetGamesForEditorMethodDescriptor       = gameEventServiceServiceDescriptor.Methods().ByName("GetGamesForEditor")
-	gameEventServiceGetMyUnfinishedGamesMethodDescriptor    = gameEventServiceServiceDescriptor.Methods().ByName("GetMyUnfinishedGames")
-	gameEventServiceGetGameDocumentMethodDescriptor         = gameEventServiceServiceDescriptor.Methods().ByName("GetGameDocument")
-	gameEventServiceGetRecentAnnotatedGamesMethodDescriptor = gameEventServiceServiceDescriptor.Methods().ByName("GetRecentAnnotatedGames")
-	gameEventServiceGetCGPMethodDescriptor                  = gameEventServiceServiceDescriptor.Methods().ByName("GetCGP")
-	gameEventServiceImportGCGMethodDescriptor               = gameEventServiceServiceDescriptor.Methods().ByName("ImportGCG")
-)
-
 // GameEventServiceClient is a client for the omgwords_service.GameEventService service.
 type GameEventServiceClient interface {
 	// CreateBroadcastGame will create a game for Woogles broadcast
@@ -125,83 +107,84 @@ type GameEventServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewGameEventServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) GameEventServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	gameEventServiceMethods := omgwords_service.File_proto_omgwords_service_omgwords_proto.Services().ByName("GameEventService").Methods()
 	return &gameEventServiceClient{
 		createBroadcastGame: connect.NewClient[omgwords_service.CreateBroadcastGameRequest, omgwords_service.CreateBroadcastGameResponse](
 			httpClient,
 			baseURL+GameEventServiceCreateBroadcastGameProcedure,
-			connect.WithSchema(gameEventServiceCreateBroadcastGameMethodDescriptor),
+			connect.WithSchema(gameEventServiceMethods.ByName("CreateBroadcastGame")),
 			connect.WithClientOptions(opts...),
 		),
 		deleteBroadcastGame: connect.NewClient[omgwords_service.DeleteBroadcastGameRequest, omgwords_service.DeleteBroadcastGameResponse](
 			httpClient,
 			baseURL+GameEventServiceDeleteBroadcastGameProcedure,
-			connect.WithSchema(gameEventServiceDeleteBroadcastGameMethodDescriptor),
+			connect.WithSchema(gameEventServiceMethods.ByName("DeleteBroadcastGame")),
 			connect.WithClientOptions(opts...),
 		),
 		sendGameEvent: connect.NewClient[omgwords_service.AnnotatedGameEvent, omgwords_service.GameEventResponse](
 			httpClient,
 			baseURL+GameEventServiceSendGameEventProcedure,
-			connect.WithSchema(gameEventServiceSendGameEventMethodDescriptor),
+			connect.WithSchema(gameEventServiceMethods.ByName("SendGameEvent")),
 			connect.WithClientOptions(opts...),
 		),
 		setRacks: connect.NewClient[omgwords_service.SetRacksEvent, omgwords_service.GameEventResponse](
 			httpClient,
 			baseURL+GameEventServiceSetRacksProcedure,
-			connect.WithSchema(gameEventServiceSetRacksMethodDescriptor),
+			connect.WithSchema(gameEventServiceMethods.ByName("SetRacks")),
 			connect.WithClientOptions(opts...),
 		),
 		replaceGameDocument: connect.NewClient[omgwords_service.ReplaceDocumentRequest, omgwords_service.GameEventResponse](
 			httpClient,
 			baseURL+GameEventServiceReplaceGameDocumentProcedure,
-			connect.WithSchema(gameEventServiceReplaceGameDocumentMethodDescriptor),
+			connect.WithSchema(gameEventServiceMethods.ByName("ReplaceGameDocument")),
 			connect.WithClientOptions(opts...),
 		),
 		patchGameDocument: connect.NewClient[omgwords_service.PatchDocumentRequest, omgwords_service.GameEventResponse](
 			httpClient,
 			baseURL+GameEventServicePatchGameDocumentProcedure,
-			connect.WithSchema(gameEventServicePatchGameDocumentMethodDescriptor),
+			connect.WithSchema(gameEventServiceMethods.ByName("PatchGameDocument")),
 			connect.WithClientOptions(opts...),
 		),
 		setBroadcastGamePrivacy: connect.NewClient[omgwords_service.BroadcastGamePrivacy, omgwords_service.GameEventResponse](
 			httpClient,
 			baseURL+GameEventServiceSetBroadcastGamePrivacyProcedure,
-			connect.WithSchema(gameEventServiceSetBroadcastGamePrivacyMethodDescriptor),
+			connect.WithSchema(gameEventServiceMethods.ByName("SetBroadcastGamePrivacy")),
 			connect.WithClientOptions(opts...),
 		),
 		getGamesForEditor: connect.NewClient[omgwords_service.GetGamesForEditorRequest, omgwords_service.BroadcastGamesResponse](
 			httpClient,
 			baseURL+GameEventServiceGetGamesForEditorProcedure,
-			connect.WithSchema(gameEventServiceGetGamesForEditorMethodDescriptor),
+			connect.WithSchema(gameEventServiceMethods.ByName("GetGamesForEditor")),
 			connect.WithClientOptions(opts...),
 		),
 		getMyUnfinishedGames: connect.NewClient[omgwords_service.GetMyUnfinishedGamesRequest, omgwords_service.BroadcastGamesResponse](
 			httpClient,
 			baseURL+GameEventServiceGetMyUnfinishedGamesProcedure,
-			connect.WithSchema(gameEventServiceGetMyUnfinishedGamesMethodDescriptor),
+			connect.WithSchema(gameEventServiceMethods.ByName("GetMyUnfinishedGames")),
 			connect.WithClientOptions(opts...),
 		),
 		getGameDocument: connect.NewClient[omgwords_service.GetGameDocumentRequest, ipc.GameDocument](
 			httpClient,
 			baseURL+GameEventServiceGetGameDocumentProcedure,
-			connect.WithSchema(gameEventServiceGetGameDocumentMethodDescriptor),
+			connect.WithSchema(gameEventServiceMethods.ByName("GetGameDocument")),
 			connect.WithClientOptions(opts...),
 		),
 		getRecentAnnotatedGames: connect.NewClient[omgwords_service.GetRecentAnnotatedGamesRequest, omgwords_service.BroadcastGamesResponse](
 			httpClient,
 			baseURL+GameEventServiceGetRecentAnnotatedGamesProcedure,
-			connect.WithSchema(gameEventServiceGetRecentAnnotatedGamesMethodDescriptor),
+			connect.WithSchema(gameEventServiceMethods.ByName("GetRecentAnnotatedGames")),
 			connect.WithClientOptions(opts...),
 		),
 		getCGP: connect.NewClient[omgwords_service.GetCGPRequest, omgwords_service.CGPResponse](
 			httpClient,
 			baseURL+GameEventServiceGetCGPProcedure,
-			connect.WithSchema(gameEventServiceGetCGPMethodDescriptor),
+			connect.WithSchema(gameEventServiceMethods.ByName("GetCGP")),
 			connect.WithClientOptions(opts...),
 		),
 		importGCG: connect.NewClient[omgwords_service.ImportGCGRequest, omgwords_service.ImportGCGResponse](
 			httpClient,
 			baseURL+GameEventServiceImportGCGProcedure,
-			connect.WithSchema(gameEventServiceImportGCGMethodDescriptor),
+			connect.WithSchema(gameEventServiceMethods.ByName("ImportGCG")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -319,82 +302,83 @@ type GameEventServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewGameEventServiceHandler(svc GameEventServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	gameEventServiceMethods := omgwords_service.File_proto_omgwords_service_omgwords_proto.Services().ByName("GameEventService").Methods()
 	gameEventServiceCreateBroadcastGameHandler := connect.NewUnaryHandler(
 		GameEventServiceCreateBroadcastGameProcedure,
 		svc.CreateBroadcastGame,
-		connect.WithSchema(gameEventServiceCreateBroadcastGameMethodDescriptor),
+		connect.WithSchema(gameEventServiceMethods.ByName("CreateBroadcastGame")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameEventServiceDeleteBroadcastGameHandler := connect.NewUnaryHandler(
 		GameEventServiceDeleteBroadcastGameProcedure,
 		svc.DeleteBroadcastGame,
-		connect.WithSchema(gameEventServiceDeleteBroadcastGameMethodDescriptor),
+		connect.WithSchema(gameEventServiceMethods.ByName("DeleteBroadcastGame")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameEventServiceSendGameEventHandler := connect.NewUnaryHandler(
 		GameEventServiceSendGameEventProcedure,
 		svc.SendGameEvent,
-		connect.WithSchema(gameEventServiceSendGameEventMethodDescriptor),
+		connect.WithSchema(gameEventServiceMethods.ByName("SendGameEvent")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameEventServiceSetRacksHandler := connect.NewUnaryHandler(
 		GameEventServiceSetRacksProcedure,
 		svc.SetRacks,
-		connect.WithSchema(gameEventServiceSetRacksMethodDescriptor),
+		connect.WithSchema(gameEventServiceMethods.ByName("SetRacks")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameEventServiceReplaceGameDocumentHandler := connect.NewUnaryHandler(
 		GameEventServiceReplaceGameDocumentProcedure,
 		svc.ReplaceGameDocument,
-		connect.WithSchema(gameEventServiceReplaceGameDocumentMethodDescriptor),
+		connect.WithSchema(gameEventServiceMethods.ByName("ReplaceGameDocument")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameEventServicePatchGameDocumentHandler := connect.NewUnaryHandler(
 		GameEventServicePatchGameDocumentProcedure,
 		svc.PatchGameDocument,
-		connect.WithSchema(gameEventServicePatchGameDocumentMethodDescriptor),
+		connect.WithSchema(gameEventServiceMethods.ByName("PatchGameDocument")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameEventServiceSetBroadcastGamePrivacyHandler := connect.NewUnaryHandler(
 		GameEventServiceSetBroadcastGamePrivacyProcedure,
 		svc.SetBroadcastGamePrivacy,
-		connect.WithSchema(gameEventServiceSetBroadcastGamePrivacyMethodDescriptor),
+		connect.WithSchema(gameEventServiceMethods.ByName("SetBroadcastGamePrivacy")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameEventServiceGetGamesForEditorHandler := connect.NewUnaryHandler(
 		GameEventServiceGetGamesForEditorProcedure,
 		svc.GetGamesForEditor,
-		connect.WithSchema(gameEventServiceGetGamesForEditorMethodDescriptor),
+		connect.WithSchema(gameEventServiceMethods.ByName("GetGamesForEditor")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameEventServiceGetMyUnfinishedGamesHandler := connect.NewUnaryHandler(
 		GameEventServiceGetMyUnfinishedGamesProcedure,
 		svc.GetMyUnfinishedGames,
-		connect.WithSchema(gameEventServiceGetMyUnfinishedGamesMethodDescriptor),
+		connect.WithSchema(gameEventServiceMethods.ByName("GetMyUnfinishedGames")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameEventServiceGetGameDocumentHandler := connect.NewUnaryHandler(
 		GameEventServiceGetGameDocumentProcedure,
 		svc.GetGameDocument,
-		connect.WithSchema(gameEventServiceGetGameDocumentMethodDescriptor),
+		connect.WithSchema(gameEventServiceMethods.ByName("GetGameDocument")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameEventServiceGetRecentAnnotatedGamesHandler := connect.NewUnaryHandler(
 		GameEventServiceGetRecentAnnotatedGamesProcedure,
 		svc.GetRecentAnnotatedGames,
-		connect.WithSchema(gameEventServiceGetRecentAnnotatedGamesMethodDescriptor),
+		connect.WithSchema(gameEventServiceMethods.ByName("GetRecentAnnotatedGames")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameEventServiceGetCGPHandler := connect.NewUnaryHandler(
 		GameEventServiceGetCGPProcedure,
 		svc.GetCGP,
-		connect.WithSchema(gameEventServiceGetCGPMethodDescriptor),
+		connect.WithSchema(gameEventServiceMethods.ByName("GetCGP")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameEventServiceImportGCGHandler := connect.NewUnaryHandler(
 		GameEventServiceImportGCGProcedure,
 		svc.ImportGCG,
-		connect.WithSchema(gameEventServiceImportGCGMethodDescriptor),
+		connect.WithSchema(gameEventServiceMethods.ByName("ImportGCG")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/omgwords_service.GameEventService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

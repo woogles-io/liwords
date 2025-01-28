@@ -459,23 +459,23 @@ ul {
       color: m($primary-midDark);
     }
   }
-  &:hover {
-    @include colorModed() {
-      background: m($off-background);
-      color: m($primary-dark);
-      .hover-help {
-        display: inline-block;
-      }
-    }
-  }
+  //   &:hover {
+  //     @include colorModed() {
+  //       background: m($off-background);
+  //       color: m($primary-dark);
+  //       .hover-help {
+  //         display: inline-block;
+  //       }
+  //     }
+  //   }
 }
 
 .ant-select-item-option-active:not(.ant-select-item-option-disabled),
 .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
-  @include colorModed() {
-    background: m($gray-subtle);
-    color: m($primary-dark);
-  }
+  //   @include colorModed() {
+  //     background: m($gray-subtle);
+  //     color: m($primary-dark);
+  //   }
   .hover-help {
     display: inline-block;
   }

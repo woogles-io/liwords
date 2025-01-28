@@ -50,16 +50,6 @@ const (
 	GameCommentServiceGetCommentsForAllGamesProcedure = "/comments_service.GameCommentService/GetCommentsForAllGames"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	gameCommentServiceServiceDescriptor                      = comments_service.File_proto_comments_service_comments_service_proto.Services().ByName("GameCommentService")
-	gameCommentServiceAddGameCommentMethodDescriptor         = gameCommentServiceServiceDescriptor.Methods().ByName("AddGameComment")
-	gameCommentServiceGetGameCommentsMethodDescriptor        = gameCommentServiceServiceDescriptor.Methods().ByName("GetGameComments")
-	gameCommentServiceEditGameCommentMethodDescriptor        = gameCommentServiceServiceDescriptor.Methods().ByName("EditGameComment")
-	gameCommentServiceDeleteGameCommentMethodDescriptor      = gameCommentServiceServiceDescriptor.Methods().ByName("DeleteGameComment")
-	gameCommentServiceGetCommentsForAllGamesMethodDescriptor = gameCommentServiceServiceDescriptor.Methods().ByName("GetCommentsForAllGames")
-)
-
 // GameCommentServiceClient is a client for the comments_service.GameCommentService service.
 type GameCommentServiceClient interface {
 	AddGameComment(context.Context, *connect.Request[comments_service.AddCommentRequest]) (*connect.Response[comments_service.AddCommentResponse], error)
@@ -78,35 +68,36 @@ type GameCommentServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewGameCommentServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) GameCommentServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	gameCommentServiceMethods := comments_service.File_proto_comments_service_comments_service_proto.Services().ByName("GameCommentService").Methods()
 	return &gameCommentServiceClient{
 		addGameComment: connect.NewClient[comments_service.AddCommentRequest, comments_service.AddCommentResponse](
 			httpClient,
 			baseURL+GameCommentServiceAddGameCommentProcedure,
-			connect.WithSchema(gameCommentServiceAddGameCommentMethodDescriptor),
+			connect.WithSchema(gameCommentServiceMethods.ByName("AddGameComment")),
 			connect.WithClientOptions(opts...),
 		),
 		getGameComments: connect.NewClient[comments_service.GetCommentsRequest, comments_service.GetCommentsResponse](
 			httpClient,
 			baseURL+GameCommentServiceGetGameCommentsProcedure,
-			connect.WithSchema(gameCommentServiceGetGameCommentsMethodDescriptor),
+			connect.WithSchema(gameCommentServiceMethods.ByName("GetGameComments")),
 			connect.WithClientOptions(opts...),
 		),
 		editGameComment: connect.NewClient[comments_service.EditCommentRequest, comments_service.EditCommentResponse](
 			httpClient,
 			baseURL+GameCommentServiceEditGameCommentProcedure,
-			connect.WithSchema(gameCommentServiceEditGameCommentMethodDescriptor),
+			connect.WithSchema(gameCommentServiceMethods.ByName("EditGameComment")),
 			connect.WithClientOptions(opts...),
 		),
 		deleteGameComment: connect.NewClient[comments_service.DeleteCommentRequest, comments_service.DeleteCommentResponse](
 			httpClient,
 			baseURL+GameCommentServiceDeleteGameCommentProcedure,
-			connect.WithSchema(gameCommentServiceDeleteGameCommentMethodDescriptor),
+			connect.WithSchema(gameCommentServiceMethods.ByName("DeleteGameComment")),
 			connect.WithClientOptions(opts...),
 		),
 		getCommentsForAllGames: connect.NewClient[comments_service.GetCommentsAllGamesRequest, comments_service.GetCommentsResponse](
 			httpClient,
 			baseURL+GameCommentServiceGetCommentsForAllGamesProcedure,
-			connect.WithSchema(gameCommentServiceGetCommentsForAllGamesMethodDescriptor),
+			connect.WithSchema(gameCommentServiceMethods.ByName("GetCommentsForAllGames")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -162,34 +153,35 @@ type GameCommentServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewGameCommentServiceHandler(svc GameCommentServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	gameCommentServiceMethods := comments_service.File_proto_comments_service_comments_service_proto.Services().ByName("GameCommentService").Methods()
 	gameCommentServiceAddGameCommentHandler := connect.NewUnaryHandler(
 		GameCommentServiceAddGameCommentProcedure,
 		svc.AddGameComment,
-		connect.WithSchema(gameCommentServiceAddGameCommentMethodDescriptor),
+		connect.WithSchema(gameCommentServiceMethods.ByName("AddGameComment")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameCommentServiceGetGameCommentsHandler := connect.NewUnaryHandler(
 		GameCommentServiceGetGameCommentsProcedure,
 		svc.GetGameComments,
-		connect.WithSchema(gameCommentServiceGetGameCommentsMethodDescriptor),
+		connect.WithSchema(gameCommentServiceMethods.ByName("GetGameComments")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameCommentServiceEditGameCommentHandler := connect.NewUnaryHandler(
 		GameCommentServiceEditGameCommentProcedure,
 		svc.EditGameComment,
-		connect.WithSchema(gameCommentServiceEditGameCommentMethodDescriptor),
+		connect.WithSchema(gameCommentServiceMethods.ByName("EditGameComment")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameCommentServiceDeleteGameCommentHandler := connect.NewUnaryHandler(
 		GameCommentServiceDeleteGameCommentProcedure,
 		svc.DeleteGameComment,
-		connect.WithSchema(gameCommentServiceDeleteGameCommentMethodDescriptor),
+		connect.WithSchema(gameCommentServiceMethods.ByName("DeleteGameComment")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameCommentServiceGetCommentsForAllGamesHandler := connect.NewUnaryHandler(
 		GameCommentServiceGetCommentsForAllGamesProcedure,
 		svc.GetCommentsForAllGames,
-		connect.WithSchema(gameCommentServiceGetCommentsForAllGamesMethodDescriptor),
+		connect.WithSchema(gameCommentServiceMethods.ByName("GetCommentsForAllGames")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/comments_service.GameCommentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

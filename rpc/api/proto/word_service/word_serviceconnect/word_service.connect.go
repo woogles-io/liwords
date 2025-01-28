@@ -37,12 +37,6 @@ const (
 	WordServiceDefineWordsProcedure = "/word_service.WordService/DefineWords"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	wordServiceServiceDescriptor           = word_service.File_proto_word_service_word_service_proto.Services().ByName("WordService")
-	wordServiceDefineWordsMethodDescriptor = wordServiceServiceDescriptor.Methods().ByName("DefineWords")
-)
-
 // WordServiceClient is a client for the word_service.WordService service.
 type WordServiceClient interface {
 	DefineWords(context.Context, *connect.Request[word_service.DefineWordsRequest]) (*connect.Response[word_service.DefineWordsResponse], error)
@@ -57,11 +51,12 @@ type WordServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewWordServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) WordServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	wordServiceMethods := word_service.File_proto_word_service_word_service_proto.Services().ByName("WordService").Methods()
 	return &wordServiceClient{
 		defineWords: connect.NewClient[word_service.DefineWordsRequest, word_service.DefineWordsResponse](
 			httpClient,
 			baseURL+WordServiceDefineWordsProcedure,
-			connect.WithSchema(wordServiceDefineWordsMethodDescriptor),
+			connect.WithSchema(wordServiceMethods.ByName("DefineWords")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -88,10 +83,11 @@ type WordServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewWordServiceHandler(svc WordServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	wordServiceMethods := word_service.File_proto_word_service_word_service_proto.Services().ByName("WordService").Methods()
 	wordServiceDefineWordsHandler := connect.NewUnaryHandler(
 		WordServiceDefineWordsProcedure,
 		svc.DefineWords,
-		connect.WithSchema(wordServiceDefineWordsMethodDescriptor),
+		connect.WithSchema(wordServiceMethods.ByName("DefineWords")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/word_service.WordService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

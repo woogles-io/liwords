@@ -54,17 +54,6 @@ const (
 	GameMetadataServiceGetGameDocumentProcedure = "/game_service.GameMetadataService/GetGameDocument"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	gameMetadataServiceServiceDescriptor                = game_service.File_proto_game_service_game_service_proto.Services().ByName("GameMetadataService")
-	gameMetadataServiceGetMetadataMethodDescriptor      = gameMetadataServiceServiceDescriptor.Methods().ByName("GetMetadata")
-	gameMetadataServiceGetGCGMethodDescriptor           = gameMetadataServiceServiceDescriptor.Methods().ByName("GetGCG")
-	gameMetadataServiceGetGameHistoryMethodDescriptor   = gameMetadataServiceServiceDescriptor.Methods().ByName("GetGameHistory")
-	gameMetadataServiceGetRecentGamesMethodDescriptor   = gameMetadataServiceServiceDescriptor.Methods().ByName("GetRecentGames")
-	gameMetadataServiceGetRematchStreakMethodDescriptor = gameMetadataServiceServiceDescriptor.Methods().ByName("GetRematchStreak")
-	gameMetadataServiceGetGameDocumentMethodDescriptor  = gameMetadataServiceServiceDescriptor.Methods().ByName("GetGameDocument")
-)
-
 // GameMetadataServiceClient is a client for the game_service.GameMetadataService service.
 type GameMetadataServiceClient interface {
 	GetMetadata(context.Context, *connect.Request[game_service.GameInfoRequest]) (*connect.Response[ipc.GameInfoResponse], error)
@@ -90,41 +79,42 @@ type GameMetadataServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewGameMetadataServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) GameMetadataServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	gameMetadataServiceMethods := game_service.File_proto_game_service_game_service_proto.Services().ByName("GameMetadataService").Methods()
 	return &gameMetadataServiceClient{
 		getMetadata: connect.NewClient[game_service.GameInfoRequest, ipc.GameInfoResponse](
 			httpClient,
 			baseURL+GameMetadataServiceGetMetadataProcedure,
-			connect.WithSchema(gameMetadataServiceGetMetadataMethodDescriptor),
+			connect.WithSchema(gameMetadataServiceMethods.ByName("GetMetadata")),
 			connect.WithClientOptions(opts...),
 		),
 		getGCG: connect.NewClient[game_service.GCGRequest, game_service.GCGResponse](
 			httpClient,
 			baseURL+GameMetadataServiceGetGCGProcedure,
-			connect.WithSchema(gameMetadataServiceGetGCGMethodDescriptor),
+			connect.WithSchema(gameMetadataServiceMethods.ByName("GetGCG")),
 			connect.WithClientOptions(opts...),
 		),
 		getGameHistory: connect.NewClient[game_service.GameHistoryRequest, game_service.GameHistoryResponse](
 			httpClient,
 			baseURL+GameMetadataServiceGetGameHistoryProcedure,
-			connect.WithSchema(gameMetadataServiceGetGameHistoryMethodDescriptor),
+			connect.WithSchema(gameMetadataServiceMethods.ByName("GetGameHistory")),
 			connect.WithClientOptions(opts...),
 		),
 		getRecentGames: connect.NewClient[game_service.RecentGamesRequest, ipc.GameInfoResponses](
 			httpClient,
 			baseURL+GameMetadataServiceGetRecentGamesProcedure,
-			connect.WithSchema(gameMetadataServiceGetRecentGamesMethodDescriptor),
+			connect.WithSchema(gameMetadataServiceMethods.ByName("GetRecentGames")),
 			connect.WithClientOptions(opts...),
 		),
 		getRematchStreak: connect.NewClient[game_service.RematchStreakRequest, game_service.StreakInfoResponse](
 			httpClient,
 			baseURL+GameMetadataServiceGetRematchStreakProcedure,
-			connect.WithSchema(gameMetadataServiceGetRematchStreakMethodDescriptor),
+			connect.WithSchema(gameMetadataServiceMethods.ByName("GetRematchStreak")),
 			connect.WithClientOptions(opts...),
 		),
 		getGameDocument: connect.NewClient[game_service.GameDocumentRequest, game_service.GameDocumentResponse](
 			httpClient,
 			baseURL+GameMetadataServiceGetGameDocumentProcedure,
-			connect.WithSchema(gameMetadataServiceGetGameDocumentMethodDescriptor),
+			connect.WithSchema(gameMetadataServiceMethods.ByName("GetGameDocument")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -192,40 +182,41 @@ type GameMetadataServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewGameMetadataServiceHandler(svc GameMetadataServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	gameMetadataServiceMethods := game_service.File_proto_game_service_game_service_proto.Services().ByName("GameMetadataService").Methods()
 	gameMetadataServiceGetMetadataHandler := connect.NewUnaryHandler(
 		GameMetadataServiceGetMetadataProcedure,
 		svc.GetMetadata,
-		connect.WithSchema(gameMetadataServiceGetMetadataMethodDescriptor),
+		connect.WithSchema(gameMetadataServiceMethods.ByName("GetMetadata")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameMetadataServiceGetGCGHandler := connect.NewUnaryHandler(
 		GameMetadataServiceGetGCGProcedure,
 		svc.GetGCG,
-		connect.WithSchema(gameMetadataServiceGetGCGMethodDescriptor),
+		connect.WithSchema(gameMetadataServiceMethods.ByName("GetGCG")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameMetadataServiceGetGameHistoryHandler := connect.NewUnaryHandler(
 		GameMetadataServiceGetGameHistoryProcedure,
 		svc.GetGameHistory,
-		connect.WithSchema(gameMetadataServiceGetGameHistoryMethodDescriptor),
+		connect.WithSchema(gameMetadataServiceMethods.ByName("GetGameHistory")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameMetadataServiceGetRecentGamesHandler := connect.NewUnaryHandler(
 		GameMetadataServiceGetRecentGamesProcedure,
 		svc.GetRecentGames,
-		connect.WithSchema(gameMetadataServiceGetRecentGamesMethodDescriptor),
+		connect.WithSchema(gameMetadataServiceMethods.ByName("GetRecentGames")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameMetadataServiceGetRematchStreakHandler := connect.NewUnaryHandler(
 		GameMetadataServiceGetRematchStreakProcedure,
 		svc.GetRematchStreak,
-		connect.WithSchema(gameMetadataServiceGetRematchStreakMethodDescriptor),
+		connect.WithSchema(gameMetadataServiceMethods.ByName("GetRematchStreak")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameMetadataServiceGetGameDocumentHandler := connect.NewUnaryHandler(
 		GameMetadataServiceGetGameDocumentProcedure,
 		svc.GetGameDocument,
-		connect.WithSchema(gameMetadataServiceGetGameDocumentMethodDescriptor),
+		connect.WithSchema(gameMetadataServiceMethods.ByName("GetGameDocument")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/game_service.GameMetadataService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

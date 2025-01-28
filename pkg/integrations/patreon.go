@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
@@ -24,6 +25,14 @@ var ErrNotSubscribed = errors.New("user not subscribed")
 const (
 	ChargeStatusPaid = "Paid"
 )
+
+// Use a simple LRU cache to avoid hammering Patreon API
+// in case people refresh etc.
+var PatreonAPICache *expirable.LRU[string, *PaidTierData]
+
+func init() {
+	PatreonAPICache = expirable.NewLRU[string, *PaidTierData](0, nil, time.Second*60)
+}
 
 type PatreonUserData struct {
 	Data struct {
@@ -307,6 +316,13 @@ func fetchPatreonMemberData(accessToken, memberID string) (*PatreonMemberData, e
 
 // DetermineUserTier determines what tier the user is in.
 func DetermineUserTier(ctx context.Context, userID string, queries *models.Queries) (*PaidTierData, error) {
+	// This function uses the cache.
+	res, ok := PatreonAPICache.Get(userID)
+	if ok {
+		log.Info().Str("userID", userID).Msg("found-cached-tier-data")
+		return res, nil
+	}
+
 	bts, err := queries.GetIntegrationData(ctx, models.GetIntegrationDataParams{
 		IntegrationName: PatreonIntegrationName,
 		UserUuid:        pgtype.Text{String: userID, Valid: true},
@@ -315,6 +331,7 @@ func DetermineUserTier(ctx context.Context, userID string, queries *models.Queri
 		if errors.Is(err, pgx.ErrNoRows) {
 			// Not an error
 			log.Info().Str("userID", userID).Msg("no-patreon-integration")
+			PatreonAPICache.Add(userID, nil)
 			return nil, nil
 		}
 		return nil, err
@@ -332,6 +349,7 @@ func DetermineUserTier(ctx context.Context, userID string, queries *models.Queri
 	if len(memberships) == 0 {
 		// Not subscribed.
 		log.Info().Str("userID", userID).Msg("no-memberships")
+		PatreonAPICache.Add(userID, nil)
 		return nil, nil
 	}
 	// we should really only find one ID. But, shrug.
@@ -365,6 +383,7 @@ func DetermineUserTier(ctx context.Context, userID string, queries *models.Queri
 
 	if len(memberData.Data.Relationships.CurrentlyEntitledTiers.Data) == 0 {
 		log.Info().Str("userID", userID).Msg("no-currently-entitled-tiers")
+		PatreonAPICache.Add(userID, nil)
 		return nil, ErrNotSubscribed
 	}
 	tierID := memberData.Data.Relationships.CurrentlyEntitledTiers.Data[0].ID
@@ -376,9 +395,12 @@ func DetermineUserTier(ctx context.Context, userID string, queries *models.Queri
 		}
 	}
 
-	return &PaidTierData{
+	tierData := &PaidTierData{
 		TierName:         tierName,
 		LastChargeStatus: memberData.Data.Attributes.LastChargeStatus,
 		LastChargeDate:   lastChargeDate,
-	}, nil
+	}
+	evicted := PatreonAPICache.Add(userID, tierData)
+	log.Debug().Bool("evicted", evicted).Str("userID", userID).Msg("added-to-cache")
+	return tierData, nil
 }

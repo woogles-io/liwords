@@ -58,19 +58,6 @@ const (
 	ConfigServiceSetGlobalIntegrationProcedure = "/config_service.ConfigService/SetGlobalIntegration"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	configServiceServiceDescriptor                     = config_service.File_proto_config_service_config_service_proto.Services().ByName("ConfigService")
-	configServiceSetGamesEnabledMethodDescriptor       = configServiceServiceDescriptor.Methods().ByName("SetGamesEnabled")
-	configServiceSetFEHashMethodDescriptor             = configServiceServiceDescriptor.Methods().ByName("SetFEHash")
-	configServiceSetUserPermissionsMethodDescriptor    = configServiceServiceDescriptor.Methods().ByName("SetUserPermissions")
-	configServiceGetUserDetailsMethodDescriptor        = configServiceServiceDescriptor.Methods().ByName("GetUserDetails")
-	configServiceSetAnnouncementsMethodDescriptor      = configServiceServiceDescriptor.Methods().ByName("SetAnnouncements")
-	configServiceGetAnnouncementsMethodDescriptor      = configServiceServiceDescriptor.Methods().ByName("GetAnnouncements")
-	configServiceSetSingleAnnouncementMethodDescriptor = configServiceServiceDescriptor.Methods().ByName("SetSingleAnnouncement")
-	configServiceSetGlobalIntegrationMethodDescriptor  = configServiceServiceDescriptor.Methods().ByName("SetGlobalIntegration")
-)
-
 // ConfigServiceClient is a client for the config_service.ConfigService service.
 type ConfigServiceClient interface {
 	SetGamesEnabled(context.Context, *connect.Request[config_service.EnableGamesRequest]) (*connect.Response[config_service.ConfigResponse], error)
@@ -92,53 +79,54 @@ type ConfigServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewConfigServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ConfigServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	configServiceMethods := config_service.File_proto_config_service_config_service_proto.Services().ByName("ConfigService").Methods()
 	return &configServiceClient{
 		setGamesEnabled: connect.NewClient[config_service.EnableGamesRequest, config_service.ConfigResponse](
 			httpClient,
 			baseURL+ConfigServiceSetGamesEnabledProcedure,
-			connect.WithSchema(configServiceSetGamesEnabledMethodDescriptor),
+			connect.WithSchema(configServiceMethods.ByName("SetGamesEnabled")),
 			connect.WithClientOptions(opts...),
 		),
 		setFEHash: connect.NewClient[config_service.SetFEHashRequest, config_service.ConfigResponse](
 			httpClient,
 			baseURL+ConfigServiceSetFEHashProcedure,
-			connect.WithSchema(configServiceSetFEHashMethodDescriptor),
+			connect.WithSchema(configServiceMethods.ByName("SetFEHash")),
 			connect.WithClientOptions(opts...),
 		),
 		setUserPermissions: connect.NewClient[config_service.PermissionsRequest, config_service.ConfigResponse](
 			httpClient,
 			baseURL+ConfigServiceSetUserPermissionsProcedure,
-			connect.WithSchema(configServiceSetUserPermissionsMethodDescriptor),
+			connect.WithSchema(configServiceMethods.ByName("SetUserPermissions")),
 			connect.WithClientOptions(opts...),
 		),
 		getUserDetails: connect.NewClient[config_service.UserRequest, config_service.UserResponse](
 			httpClient,
 			baseURL+ConfigServiceGetUserDetailsProcedure,
-			connect.WithSchema(configServiceGetUserDetailsMethodDescriptor),
+			connect.WithSchema(configServiceMethods.ByName("GetUserDetails")),
 			connect.WithClientOptions(opts...),
 		),
 		setAnnouncements: connect.NewClient[config_service.SetAnnouncementsRequest, config_service.ConfigResponse](
 			httpClient,
 			baseURL+ConfigServiceSetAnnouncementsProcedure,
-			connect.WithSchema(configServiceSetAnnouncementsMethodDescriptor),
+			connect.WithSchema(configServiceMethods.ByName("SetAnnouncements")),
 			connect.WithClientOptions(opts...),
 		),
 		getAnnouncements: connect.NewClient[config_service.GetAnnouncementsRequest, config_service.AnnouncementsResponse](
 			httpClient,
 			baseURL+ConfigServiceGetAnnouncementsProcedure,
-			connect.WithSchema(configServiceGetAnnouncementsMethodDescriptor),
+			connect.WithSchema(configServiceMethods.ByName("GetAnnouncements")),
 			connect.WithClientOptions(opts...),
 		),
 		setSingleAnnouncement: connect.NewClient[config_service.SetSingleAnnouncementRequest, config_service.ConfigResponse](
 			httpClient,
 			baseURL+ConfigServiceSetSingleAnnouncementProcedure,
-			connect.WithSchema(configServiceSetSingleAnnouncementMethodDescriptor),
+			connect.WithSchema(configServiceMethods.ByName("SetSingleAnnouncement")),
 			connect.WithClientOptions(opts...),
 		),
 		setGlobalIntegration: connect.NewClient[config_service.SetGlobalIntegrationRequest, config_service.ConfigResponse](
 			httpClient,
 			baseURL+ConfigServiceSetGlobalIntegrationProcedure,
-			connect.WithSchema(configServiceSetGlobalIntegrationMethodDescriptor),
+			connect.WithSchema(configServiceMethods.ByName("SetGlobalIntegration")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -214,52 +202,53 @@ type ConfigServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewConfigServiceHandler(svc ConfigServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	configServiceMethods := config_service.File_proto_config_service_config_service_proto.Services().ByName("ConfigService").Methods()
 	configServiceSetGamesEnabledHandler := connect.NewUnaryHandler(
 		ConfigServiceSetGamesEnabledProcedure,
 		svc.SetGamesEnabled,
-		connect.WithSchema(configServiceSetGamesEnabledMethodDescriptor),
+		connect.WithSchema(configServiceMethods.ByName("SetGamesEnabled")),
 		connect.WithHandlerOptions(opts...),
 	)
 	configServiceSetFEHashHandler := connect.NewUnaryHandler(
 		ConfigServiceSetFEHashProcedure,
 		svc.SetFEHash,
-		connect.WithSchema(configServiceSetFEHashMethodDescriptor),
+		connect.WithSchema(configServiceMethods.ByName("SetFEHash")),
 		connect.WithHandlerOptions(opts...),
 	)
 	configServiceSetUserPermissionsHandler := connect.NewUnaryHandler(
 		ConfigServiceSetUserPermissionsProcedure,
 		svc.SetUserPermissions,
-		connect.WithSchema(configServiceSetUserPermissionsMethodDescriptor),
+		connect.WithSchema(configServiceMethods.ByName("SetUserPermissions")),
 		connect.WithHandlerOptions(opts...),
 	)
 	configServiceGetUserDetailsHandler := connect.NewUnaryHandler(
 		ConfigServiceGetUserDetailsProcedure,
 		svc.GetUserDetails,
-		connect.WithSchema(configServiceGetUserDetailsMethodDescriptor),
+		connect.WithSchema(configServiceMethods.ByName("GetUserDetails")),
 		connect.WithHandlerOptions(opts...),
 	)
 	configServiceSetAnnouncementsHandler := connect.NewUnaryHandler(
 		ConfigServiceSetAnnouncementsProcedure,
 		svc.SetAnnouncements,
-		connect.WithSchema(configServiceSetAnnouncementsMethodDescriptor),
+		connect.WithSchema(configServiceMethods.ByName("SetAnnouncements")),
 		connect.WithHandlerOptions(opts...),
 	)
 	configServiceGetAnnouncementsHandler := connect.NewUnaryHandler(
 		ConfigServiceGetAnnouncementsProcedure,
 		svc.GetAnnouncements,
-		connect.WithSchema(configServiceGetAnnouncementsMethodDescriptor),
+		connect.WithSchema(configServiceMethods.ByName("GetAnnouncements")),
 		connect.WithHandlerOptions(opts...),
 	)
 	configServiceSetSingleAnnouncementHandler := connect.NewUnaryHandler(
 		ConfigServiceSetSingleAnnouncementProcedure,
 		svc.SetSingleAnnouncement,
-		connect.WithSchema(configServiceSetSingleAnnouncementMethodDescriptor),
+		connect.WithSchema(configServiceMethods.ByName("SetSingleAnnouncement")),
 		connect.WithHandlerOptions(opts...),
 	)
 	configServiceSetGlobalIntegrationHandler := connect.NewUnaryHandler(
 		ConfigServiceSetGlobalIntegrationProcedure,
 		svc.SetGlobalIntegration,
-		connect.WithSchema(configServiceSetGlobalIntegrationMethodDescriptor),
+		connect.WithSchema(configServiceMethods.ByName("SetGlobalIntegration")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/config_service.ConfigService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

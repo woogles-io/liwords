@@ -168,22 +168,70 @@
   padding: 0 10px;
 }
 
-.bot-selector {
-  height: 102px;
+.rc-virtual-list {
+  .bot-selector-item {
+    @include colorModed() {
+      border: 1px solid m($gray-subtle);
+    }
+  }
+}
+
+.rc-virtual-list .bot-selector-patreon-callout-not-subscribed,
+.rc.virtual-list .bot-selector-patreon-callout-ran-out-of-games,
+.bot-selector-item-holder .bot-selector-patreon-callout-not-subscribed,
+.bot-selector-item-holder .bot-selector-patreon-callout-ran-out-of-games {
+  display: flex;
+  padding: 8px 16px;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  align-self: stretch;
+  @include colorModed() {
+    background-color: m($primary-dark);
+  }
+  .pt-callout-link {
+    width: 24px;
+    height: 24px;
+    path {
+      @include colorModed() {
+        fill: m($background);
+      }
+    }
+  }
+  .pt-callout-text {
+    @include colorModed() {
+      color: m($background);
+    }
+    font-size: 14px;
+    font-weight: 700;
+    line-height: normal;
+    font-style: normal;
+    flex: 1 0 0;
+  }
+}
+
+.bot-selector,
+.bot-selector-item-holder {
+  min-height: 102px;
+  min-width: 352px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   .bot-selector-item {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     padding: 16px;
     gap: 10px;
-    height: 102px;
+    min-height: 102px;
+
     .bot-selector-item-layout {
       display: flex;
       flex-direction: row;
       align-items: flex-start;
       padding: 0px;
       gap: 16px;
-      width: 322px;
+      width: 320px;
       height: 70px;
       flex: none;
       order: 0;
@@ -269,62 +317,18 @@
       }
     }
   }
+  .bot-selector-item-disabled {
+    @include colorModed() {
+      background-color: m($gray-subtle);
+    }
+  }
 }
 
-.bot-selector.ant-select-single:not(.ant-select-customize-input)
-  .ant-select-selector {
-  padding: 0px;
+.bot-selector-contains-patreon-callout {
+  min-height: 142;
 }
 
-// .ant-select-dropdown,
-// .ant-select-selection-item {
-//     .botSelector {
-//       height: 102px;
-//     }
-//     .ant-select-selector {
-//       padding: 0px;
-//     }
-//     @include colorModed() {
-//       border-bottom: 1px solid m($gray-subtle);
-//     }
-//   }
-//   span.level {
-//     font-size: 14px;
-//     font-weight: 700;
-//   }
-//   span.average {
-//     font-size: 13px;
-//     font-weight: 400;
-//     &::before {
-//       content: "(";
-//     }
-//     &::after {
-//       content: ")";
-//     }
-//   }
-//   span.description {
-//     display: block;
-//     font-size: 13px;
-//     white-space: normal;
-//     @include colorModed() {
-//       color: m($gray-extreme);
-//     }
-//   }
-// }
-
-// .ant-select-selection-item {
-//   span.level {
-//     font-weight: 400;
-//   }
-//   span.average {
-//     font-size: 14px;
-//   }
-//   span.description {
-//     display: block;
-//     font-size: 13px;
-//     white-space: normal;
-//     @include colorModed() {
-//       color: m($primary-dark);
-//     }
-//   }
+// .bot-selector-patreon-callout-not-subscribed {
+//   /* over-ridden by rc-virtual-list holder above */
+//   display: none;
 // }

@@ -22,7 +22,7 @@ const isEnglish = (lexicon: string) =>
 
 export const BotTypesEnumProperties = {
   [BotTypesEnum.GRANDMASTER]: {
-    userVisible: "Grandmaster",
+    userVisible: "BestBot",
     botName: "BestBot",
     shortDescription: "470 point average",
     description: (lexicon: string) =>
@@ -32,7 +32,7 @@ export const BotTypesEnumProperties = {
     voidonly: false,
   },
   [BotTypesEnum.MASTER]: {
-    userVisible: "Master",
+    userVisible: "HastyBot",
     botName: "HastyBot",
     shortDescription: "460 point average",
     description: (lexicon: string) =>
@@ -42,7 +42,7 @@ export const BotTypesEnumProperties = {
     voidonly: false,
   },
   [BotTypesEnum.EXPERT]: {
-    userVisible: "Expert",
+    userVisible: "STEEBot",
     botName: "STEEBot",
     shortDescription: "410 point average",
     description: (lexicon: string) =>
@@ -52,7 +52,7 @@ export const BotTypesEnumProperties = {
     voidonly: false,
   },
   [BotTypesEnum.INTERMEDIATE]: {
-    userVisible: "Intermediate",
+    userVisible: "BetterBot",
     botName: "BetterBot",
     shortDescription: "370 point average",
     description: (lexicon: string) =>
@@ -67,7 +67,7 @@ export const BotTypesEnumProperties = {
     voidonly: true,
   },
   [BotTypesEnum.EASY]: {
-    userVisible: "Basic",
+    userVisible: "BasicBot",
     botName: "BasicBot",
     shortDescription: "330 point average",
     description: (lexicon: string) =>
@@ -82,7 +82,7 @@ export const BotTypesEnumProperties = {
     voidonly: true,
   },
   [BotTypesEnum.BEGINNER]: {
-    userVisible: "Beginner",
+    userVisible: "BeginnerBot",
     botName: "BeginnerBot",
     shortDescription: "240 point average",
     description: (lexicon: string) =>

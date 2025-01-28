@@ -26,13 +26,13 @@ func init() {
 
 func entitledBestBotGamesFor(tiername string) int {
 	switch tiername {
-	case "Double-Double Tier":
-		return 20
-	case "Bingo Tier":
+	case "Dalmatian":
+		return 50
+	case "Chihuahua":
 		return 4
-	case "Triple-Triple Tier":
+	case "Golden Retriever":
 		// Still add some limit.
-		return 1000
+		return 500
 	}
 	return 0
 }

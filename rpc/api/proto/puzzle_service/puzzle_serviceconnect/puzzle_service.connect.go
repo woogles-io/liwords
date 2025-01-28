@@ -64,21 +64,6 @@ const (
 	PuzzleServiceGetPuzzleJobLogsProcedure = "/puzzle_service.PuzzleService/GetPuzzleJobLogs"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	puzzleServiceServiceDescriptor                            = puzzle_service.File_proto_puzzle_service_puzzle_service_proto.Services().ByName("PuzzleService")
-	puzzleServiceGetStartPuzzleIdMethodDescriptor             = puzzleServiceServiceDescriptor.Methods().ByName("GetStartPuzzleId")
-	puzzleServiceGetNextPuzzleIdMethodDescriptor              = puzzleServiceServiceDescriptor.Methods().ByName("GetNextPuzzleId")
-	puzzleServiceGetNextClosestRatingPuzzleIdMethodDescriptor = puzzleServiceServiceDescriptor.Methods().ByName("GetNextClosestRatingPuzzleId")
-	puzzleServiceGetPuzzleMethodDescriptor                    = puzzleServiceServiceDescriptor.Methods().ByName("GetPuzzle")
-	puzzleServiceSubmitAnswerMethodDescriptor                 = puzzleServiceServiceDescriptor.Methods().ByName("SubmitAnswer")
-	puzzleServiceGetPuzzleAnswerMethodDescriptor              = puzzleServiceServiceDescriptor.Methods().ByName("GetPuzzleAnswer")
-	puzzleServiceGetPreviousPuzzleIdMethodDescriptor          = puzzleServiceServiceDescriptor.Methods().ByName("GetPreviousPuzzleId")
-	puzzleServiceSetPuzzleVoteMethodDescriptor                = puzzleServiceServiceDescriptor.Methods().ByName("SetPuzzleVote")
-	puzzleServiceStartPuzzleGenJobMethodDescriptor            = puzzleServiceServiceDescriptor.Methods().ByName("StartPuzzleGenJob")
-	puzzleServiceGetPuzzleJobLogsMethodDescriptor             = puzzleServiceServiceDescriptor.Methods().ByName("GetPuzzleJobLogs")
-)
-
 // PuzzleServiceClient is a client for the puzzle_service.PuzzleService service.
 type PuzzleServiceClient interface {
 	GetStartPuzzleId(context.Context, *connect.Request[puzzle_service.StartPuzzleIdRequest]) (*connect.Response[puzzle_service.StartPuzzleIdResponse], error)
@@ -104,65 +89,66 @@ type PuzzleServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewPuzzleServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) PuzzleServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	puzzleServiceMethods := puzzle_service.File_proto_puzzle_service_puzzle_service_proto.Services().ByName("PuzzleService").Methods()
 	return &puzzleServiceClient{
 		getStartPuzzleId: connect.NewClient[puzzle_service.StartPuzzleIdRequest, puzzle_service.StartPuzzleIdResponse](
 			httpClient,
 			baseURL+PuzzleServiceGetStartPuzzleIdProcedure,
-			connect.WithSchema(puzzleServiceGetStartPuzzleIdMethodDescriptor),
+			connect.WithSchema(puzzleServiceMethods.ByName("GetStartPuzzleId")),
 			connect.WithClientOptions(opts...),
 		),
 		getNextPuzzleId: connect.NewClient[puzzle_service.NextPuzzleIdRequest, puzzle_service.NextPuzzleIdResponse](
 			httpClient,
 			baseURL+PuzzleServiceGetNextPuzzleIdProcedure,
-			connect.WithSchema(puzzleServiceGetNextPuzzleIdMethodDescriptor),
+			connect.WithSchema(puzzleServiceMethods.ByName("GetNextPuzzleId")),
 			connect.WithClientOptions(opts...),
 		),
 		getNextClosestRatingPuzzleId: connect.NewClient[puzzle_service.NextClosestRatingPuzzleIdRequest, puzzle_service.NextClosestRatingPuzzleIdResponse](
 			httpClient,
 			baseURL+PuzzleServiceGetNextClosestRatingPuzzleIdProcedure,
-			connect.WithSchema(puzzleServiceGetNextClosestRatingPuzzleIdMethodDescriptor),
+			connect.WithSchema(puzzleServiceMethods.ByName("GetNextClosestRatingPuzzleId")),
 			connect.WithClientOptions(opts...),
 		),
 		getPuzzle: connect.NewClient[puzzle_service.PuzzleRequest, puzzle_service.PuzzleResponse](
 			httpClient,
 			baseURL+PuzzleServiceGetPuzzleProcedure,
-			connect.WithSchema(puzzleServiceGetPuzzleMethodDescriptor),
+			connect.WithSchema(puzzleServiceMethods.ByName("GetPuzzle")),
 			connect.WithClientOptions(opts...),
 		),
 		submitAnswer: connect.NewClient[puzzle_service.SubmissionRequest, puzzle_service.SubmissionResponse](
 			httpClient,
 			baseURL+PuzzleServiceSubmitAnswerProcedure,
-			connect.WithSchema(puzzleServiceSubmitAnswerMethodDescriptor),
+			connect.WithSchema(puzzleServiceMethods.ByName("SubmitAnswer")),
 			connect.WithClientOptions(opts...),
 		),
 		getPuzzleAnswer: connect.NewClient[puzzle_service.PuzzleRequest, puzzle_service.AnswerResponse](
 			httpClient,
 			baseURL+PuzzleServiceGetPuzzleAnswerProcedure,
-			connect.WithSchema(puzzleServiceGetPuzzleAnswerMethodDescriptor),
+			connect.WithSchema(puzzleServiceMethods.ByName("GetPuzzleAnswer")),
 			connect.WithClientOptions(opts...),
 		),
 		getPreviousPuzzleId: connect.NewClient[puzzle_service.PreviousPuzzleRequest, puzzle_service.PreviousPuzzleResponse](
 			httpClient,
 			baseURL+PuzzleServiceGetPreviousPuzzleIdProcedure,
-			connect.WithSchema(puzzleServiceGetPreviousPuzzleIdMethodDescriptor),
+			connect.WithSchema(puzzleServiceMethods.ByName("GetPreviousPuzzleId")),
 			connect.WithClientOptions(opts...),
 		),
 		setPuzzleVote: connect.NewClient[puzzle_service.PuzzleVoteRequest, puzzle_service.PuzzleVoteResponse](
 			httpClient,
 			baseURL+PuzzleServiceSetPuzzleVoteProcedure,
-			connect.WithSchema(puzzleServiceSetPuzzleVoteMethodDescriptor),
+			connect.WithSchema(puzzleServiceMethods.ByName("SetPuzzleVote")),
 			connect.WithClientOptions(opts...),
 		),
 		startPuzzleGenJob: connect.NewClient[puzzle_service.APIPuzzleGenerationJobRequest, puzzle_service.APIPuzzleGenerationJobResponse](
 			httpClient,
 			baseURL+PuzzleServiceStartPuzzleGenJobProcedure,
-			connect.WithSchema(puzzleServiceStartPuzzleGenJobMethodDescriptor),
+			connect.WithSchema(puzzleServiceMethods.ByName("StartPuzzleGenJob")),
 			connect.WithClientOptions(opts...),
 		),
 		getPuzzleJobLogs: connect.NewClient[puzzle_service.PuzzleJobLogsRequest, puzzle_service.PuzzleJobLogsResponse](
 			httpClient,
 			baseURL+PuzzleServiceGetPuzzleJobLogsProcedure,
-			connect.WithSchema(puzzleServiceGetPuzzleJobLogsMethodDescriptor),
+			connect.WithSchema(puzzleServiceMethods.ByName("GetPuzzleJobLogs")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -254,64 +240,65 @@ type PuzzleServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewPuzzleServiceHandler(svc PuzzleServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	puzzleServiceMethods := puzzle_service.File_proto_puzzle_service_puzzle_service_proto.Services().ByName("PuzzleService").Methods()
 	puzzleServiceGetStartPuzzleIdHandler := connect.NewUnaryHandler(
 		PuzzleServiceGetStartPuzzleIdProcedure,
 		svc.GetStartPuzzleId,
-		connect.WithSchema(puzzleServiceGetStartPuzzleIdMethodDescriptor),
+		connect.WithSchema(puzzleServiceMethods.ByName("GetStartPuzzleId")),
 		connect.WithHandlerOptions(opts...),
 	)
 	puzzleServiceGetNextPuzzleIdHandler := connect.NewUnaryHandler(
 		PuzzleServiceGetNextPuzzleIdProcedure,
 		svc.GetNextPuzzleId,
-		connect.WithSchema(puzzleServiceGetNextPuzzleIdMethodDescriptor),
+		connect.WithSchema(puzzleServiceMethods.ByName("GetNextPuzzleId")),
 		connect.WithHandlerOptions(opts...),
 	)
 	puzzleServiceGetNextClosestRatingPuzzleIdHandler := connect.NewUnaryHandler(
 		PuzzleServiceGetNextClosestRatingPuzzleIdProcedure,
 		svc.GetNextClosestRatingPuzzleId,
-		connect.WithSchema(puzzleServiceGetNextClosestRatingPuzzleIdMethodDescriptor),
+		connect.WithSchema(puzzleServiceMethods.ByName("GetNextClosestRatingPuzzleId")),
 		connect.WithHandlerOptions(opts...),
 	)
 	puzzleServiceGetPuzzleHandler := connect.NewUnaryHandler(
 		PuzzleServiceGetPuzzleProcedure,
 		svc.GetPuzzle,
-		connect.WithSchema(puzzleServiceGetPuzzleMethodDescriptor),
+		connect.WithSchema(puzzleServiceMethods.ByName("GetPuzzle")),
 		connect.WithHandlerOptions(opts...),
 	)
 	puzzleServiceSubmitAnswerHandler := connect.NewUnaryHandler(
 		PuzzleServiceSubmitAnswerProcedure,
 		svc.SubmitAnswer,
-		connect.WithSchema(puzzleServiceSubmitAnswerMethodDescriptor),
+		connect.WithSchema(puzzleServiceMethods.ByName("SubmitAnswer")),
 		connect.WithHandlerOptions(opts...),
 	)
 	puzzleServiceGetPuzzleAnswerHandler := connect.NewUnaryHandler(
 		PuzzleServiceGetPuzzleAnswerProcedure,
 		svc.GetPuzzleAnswer,
-		connect.WithSchema(puzzleServiceGetPuzzleAnswerMethodDescriptor),
+		connect.WithSchema(puzzleServiceMethods.ByName("GetPuzzleAnswer")),
 		connect.WithHandlerOptions(opts...),
 	)
 	puzzleServiceGetPreviousPuzzleIdHandler := connect.NewUnaryHandler(
 		PuzzleServiceGetPreviousPuzzleIdProcedure,
 		svc.GetPreviousPuzzleId,
-		connect.WithSchema(puzzleServiceGetPreviousPuzzleIdMethodDescriptor),
+		connect.WithSchema(puzzleServiceMethods.ByName("GetPreviousPuzzleId")),
 		connect.WithHandlerOptions(opts...),
 	)
 	puzzleServiceSetPuzzleVoteHandler := connect.NewUnaryHandler(
 		PuzzleServiceSetPuzzleVoteProcedure,
 		svc.SetPuzzleVote,
-		connect.WithSchema(puzzleServiceSetPuzzleVoteMethodDescriptor),
+		connect.WithSchema(puzzleServiceMethods.ByName("SetPuzzleVote")),
 		connect.WithHandlerOptions(opts...),
 	)
 	puzzleServiceStartPuzzleGenJobHandler := connect.NewUnaryHandler(
 		PuzzleServiceStartPuzzleGenJobProcedure,
 		svc.StartPuzzleGenJob,
-		connect.WithSchema(puzzleServiceStartPuzzleGenJobMethodDescriptor),
+		connect.WithSchema(puzzleServiceMethods.ByName("StartPuzzleGenJob")),
 		connect.WithHandlerOptions(opts...),
 	)
 	puzzleServiceGetPuzzleJobLogsHandler := connect.NewUnaryHandler(
 		PuzzleServiceGetPuzzleJobLogsProcedure,
 		svc.GetPuzzleJobLogs,
-		connect.WithSchema(puzzleServiceGetPuzzleJobLogsMethodDescriptor),
+		connect.WithSchema(puzzleServiceMethods.ByName("GetPuzzleJobLogs")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/puzzle_service.PuzzleService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

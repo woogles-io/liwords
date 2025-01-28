@@ -5,13 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/woogles-io/liwords/pkg/entitlements"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/gameplay"
+	"github.com/woogles-io/liwords/pkg/integrations"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -401,33 +404,29 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.SeekRequest, botUserID str
 		if req.GameRequest.InitialTimeSeconds < 180 {
 			return errors.New("BestBot needs more time than that to play at its best.")
 		}
-		// for now, allow the BestBot game. Will check for entitlements later.
 
-		/*
-			reqUser, err := b.stores.UserStore.GetByUUID(ctx, req.User.UserId)
-			if err != nil {
-				return err
-			}
+		reqUser, err := b.stores.UserStore.GetByUUID(ctx, req.User.UserId)
+		if err != nil {
+			return err
+		}
 
+		// Determine user tier
+		tierData, err := integrations.DetermineUserTier(ctx, req.User.UserId, b.stores.Queries)
+		if err != nil {
+			return err
+		}
+		log.Info().Interface("tierData", tierData).Msg("tier-for-bestbot-game")
+		if tierData == nil {
+			return errors.New("You don't currently appear to have a Patreon membership. Please sign up at https://woogles.io/donate to have access to BestBot.")
+		}
 
-			// Determine user tier
-			tierData, err := integrations.DetermineUserTier(ctx, req.User.UserId, b.stores.Queries)
-			if err != nil {
-				return err
-			}
-			log.Info().Interface("tierData", tierData).Msg("tier-for-bestbot-game")
-			if tierData == nil {
-				return errors.New("You don't currently appear to have a Patreon membership. Please sign up at https://woogles.io/donate to have access to BestBot.")
-			}
-
-			entitled, err := entitlements.EntitledToBestBot(ctx, b.stores.Queries, tierData, reqUser.ID, time.Now())
-			if err != nil {
-				return err
-			}
-			if !entitled {
-				return errors.New("It appears you have already played your allotment of BestBot games for this period. Please upgrade your membership or wait a few days.")
-			}
-		*/
+		entitled, err := entitlements.EntitledToBestBot(ctx, b.stores.Queries, tierData, reqUser.ID, time.Now())
+		if err != nil {
+			return err
+		}
+		if !entitled {
+			return errors.New("It appears you have already played your allotment of BestBot games for this period. Please upgrade your membership or wait a few days.")
+		}
 
 	}
 

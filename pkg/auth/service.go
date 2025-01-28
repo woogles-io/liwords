@@ -11,12 +11,16 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/lithammer/shortuuid/v4"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/emailer"
+	"github.com/woogles-io/liwords/pkg/entitlements"
+	"github.com/woogles-io/liwords/pkg/integrations"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/sessions"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -64,10 +68,12 @@ type AuthenticationService struct {
 	mailgunKey   string
 	discordToken string
 	argonConfig  config.ArgonConfig
+	q            *models.Queries
 }
 
 func NewAuthenticationService(u user.Store, ss sessions.SessionStore, cs config.ConfigStore,
-	secretKey, mailgunKey string, discordToken string, cfg config.ArgonConfig) *AuthenticationService {
+	secretKey, mailgunKey string, discordToken string, cfg config.ArgonConfig,
+	q *models.Queries) *AuthenticationService {
 	return &AuthenticationService{
 		userStore:    u,
 		sessionStore: ss,
@@ -75,7 +81,8 @@ func NewAuthenticationService(u user.Store, ss sessions.SessionStore, cs config.
 		secretKey:    secretKey,
 		mailgunKey:   mailgunKey,
 		discordToken: discordToken,
-		argonConfig:  cfg}
+		argonConfig:  cfg,
+		q:            q}
 }
 
 func modActionExistsErr(err error) error {
@@ -461,4 +468,32 @@ func (as *AuthenticationService) GetAPIKey(ctx context.Context, req *connect.Req
 		return nil, err
 	}
 	return connect.NewResponse(&pb.GetAPIKeyResponse{Key: apikey}), nil
+}
+
+func (as *AuthenticationService) GetSubscriptionCriteria(ctx context.Context, req *connect.Request[pb.GetSubscriptionCriteriaRequest],
+) (*connect.Response[pb.GetSubscriptionCriteriaResponse], error) {
+	user, err := apiserver.AuthUser(ctx, apiserver.CookieOnly, as.userStore)
+	if err != nil {
+		return nil, apiserver.Unauthenticated("did not authenticate")
+	}
+	tierData, err := integrations.DetermineUserTier(ctx, user.UUID, as.q)
+	if err != nil {
+		return nil, err
+	}
+	tierName := ""
+	entitled := false
+	lastChargeDate := timestamppb.New(time.Time{})
+	if tierData != nil {
+		tierName = tierData.TierName
+		entitled, err = entitlements.EntitledToBestBot(ctx, as.q, tierData, user.ID, time.Now())
+		if err != nil {
+			return nil, err
+		}
+		lastChargeDate = timestamppb.New(tierData.LastChargeDate)
+	}
+	return connect.NewResponse(&pb.GetSubscriptionCriteriaResponse{
+		TierName:           tierName,
+		EntitledToBotGames: entitled,
+		LastChargeDate:     lastChargeDate,
+	}), nil
 }
