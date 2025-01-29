@@ -157,6 +157,21 @@
       font-size: 14px;
       font-weight: bold;
     }
+    .patreon-button {
+      margin-top: 12px;
+      width: 256px;
+      flex-shrink: 0;
+    }
+    .pt-callout-link {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+      path {
+        @include colorModed() {
+          fill: m($primary-dark);
+        }
+      }
+    }
   }
   .change-password {
     .ant-form-item-label {

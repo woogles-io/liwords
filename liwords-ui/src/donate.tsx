@@ -5,6 +5,7 @@ import { useClient } from "./utils/hooks/connect";
 import { IntegrationService } from "./gen/api/proto/user_service/user_service_pb";
 import { useEffect, useState } from "react";
 import { LoginWithPatreonButton } from "./settings/integrations";
+import ExternalLink from "./assets/external-link.svg?react";
 
 const PUBLISHABLE_KEY =
   "pk_live_51I7T0HH0ARGCjmpLmLvzN6JMTkUCaFr0xNhg7Mq2wcXTMhGI6R7ShMxnLmoaCynTO0cQ7BZtiSPfOjnA9LmO21dT00gBrlxiSa";
@@ -96,10 +97,16 @@ export const Donate = () => {
 
   return (
     <>
-      <div className="title">Help us keep Woogles.io going!</div>
       <p>
         We’re an entirely volunteer-run 501(c)(3) non-profit. If you’re enjoying
-        the site, please feel free to contribute a few dollars to us!
+        the site, please consider contributing via a one-time donation or
+        monthly subscription.
+      </p>
+      <p className="bolder" style={{ marginTop: 24 }}>
+        One-time donation
+      </p>
+      <p>
+        Tax-deductible, one-time donations do not come with any site benefits
       </p>
       <div className="donation-buttons">
         <Button onClick={() => donateClick(5)}>Contribute $5</Button>
@@ -108,20 +115,15 @@ export const Donate = () => {
         <Button onClick={() => donateClick(100)}>Contribute $100</Button>
         <Button onClick={() => donateClick(500)}>Contribute $500</Button>
       </div>
+      <p className="bolder">Subscribe monthly</p>
       <p>
-        <span className="bolder">
-          Want to make a monthly donation? You can set up a membership with
-          Patreon and unlock some benefits! Check out the
-          <a
-            href="https://www.patreon.com/woogles_io"
-            target="_blank"
-            rel="noreferrer"
-          >
-            {" "}
-            Woogles Patreon.
-          </a>
-        </span>
+        When you join the Woogles Patreon, you can get access to BestBot, cool
+        badges, and even Woogles swag!
       </p>
+      <Button className="patreon-button">
+        <ExternalLink className="pt-callout-link" />
+        Subscribe monthly on Patreon
+      </Button>
       {loginState.loggedIn ? (
         hasPatreonIntegration ? (
           <p style={{ marginTop: 10 }}>

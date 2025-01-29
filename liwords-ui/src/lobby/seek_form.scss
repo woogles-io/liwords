@@ -199,14 +199,14 @@
     }
   }
   .pt-callout-text {
-    @include colorModed() {
-      color: m($background);
-    }
     font-size: 14px;
     font-weight: 700;
     line-height: normal;
     font-style: normal;
     flex: 1 0 0;
+    @include colorModed() {
+      color: m($background);
+    }
   }
 }
 
