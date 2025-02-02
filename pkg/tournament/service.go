@@ -715,3 +715,23 @@ func (ts *TournamentService) GetTournamentScorecards(ctx context.Context, req *c
 		PdfZip: bts,
 	}), nil
 }
+
+func (ts *TournamentService) ImportTournament(ctx context.Context, req *connect.Request[pb.ImportTournamentRequest]) (
+	*connect.Response[pb.TournamentResponse], error) {
+	err := authenticateDirector(ctx, ts, req.Msg.Id, false, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	if req.Msg.TourneyEntrants == "" && req.Msg.ClonedTourneyId == "" {
+		return nil, apiserver.InvalidArg("both tourney entrants and tourney id were empty")
+	}
+	if req.Msg.ClonedTourneyId != "" {
+		return nil, apiserver.InvalidArg("cloned tourney id is not currently implemented")
+	}
+
+	err = ImportTournament(ctx, ts.tournamentStore, ts.userStore, req.Msg.Id, req.Msg.TourneyEntrants)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+	return connect.NewResponse(&pb.TournamentResponse{}), nil
+}
