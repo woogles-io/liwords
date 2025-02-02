@@ -16,6 +16,7 @@ import (
 	"github.com/lithammer/shortuuid/v4"
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
@@ -65,6 +66,7 @@ func HandleTournamentGameEnded(ctx context.Context, ts TournamentStore, us user.
 		ipc.TournamentGameResult_LOSS}
 
 	p1idx, p2idx := 0, 1
+	// WinnerIdx and LoserIdx are both -1 if it's a tie:
 	p1result, p2result := Results[g.WinnerIdx+1], Results[g.LoserIdx+1]
 
 	return SetResult(ctx,
@@ -931,10 +933,33 @@ func SetResult(ctx context.Context,
 	}
 	span.AddEvent("ts-set")
 
+	stats, err := computeTourneyGameStats(ctx, p1TID, p2TID, playerOneScore, playerTwoScore,
+		playerOneResult, playerTwoResult, amendment, g)
+	if err != nil {
+		return err
+	}
+
+	span.AddEvent("set-stats")
+
 	pairingsResp.Id = id
 	pairingsResp.Division = division
 	wrapped := entity.WrapEvent(pairingsResp, ipc.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
+}
+
+func computeTourneyGameStats(ctx context.Context, p1TID, p2TID string, p1Score, p2Score int,
+	p1Result, p2Result ipc.TournamentGameResult, amendment bool, g *entity.Game) (*entity.Stats, error) {
+
+	cfg, err := config.GetConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var gameStats *entity.Stats
+	// Would have been computed by performEndgameDuties in end.go
+	if g != nil && g.Stats != nil {
+		gameStats = g.Stats
+	}
+	// hmmm.
 }
 
 func possiblyEndTournament(ctx context.Context, ts TournamentStore, t *entity.Tournament,
