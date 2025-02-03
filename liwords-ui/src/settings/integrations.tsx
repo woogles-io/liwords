@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   DeleteIntegrationRequestSchema,
   Integration,
@@ -13,11 +13,11 @@ import { typedKeys } from "../utils/cwgame/common";
 import "./settings.scss";
 import { create } from "@bufbuild/protobuf";
 
-export const LoginWithPatreonButton: React.FC<{
-  label?: string;
-  icon?: React.ReactNode;
-}> = ({ label, icon }) => {
-  const handleLogin = async () => {
+export const usePatreonLogin = (wooglesRedirectUri?: string) => {
+  const handleLogin = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    // Stop event propagation to prevent dropdown closure
+    e?.stopPropagation();
     const clientId = import.meta.env.PUBLIC_PATREON_CLIENT_ID;
     const redirectUri = encodeURIComponent(
       import.meta.env.PUBLIC_PATREON_REDIRECT_URL,
@@ -25,35 +25,78 @@ export const LoginWithPatreonButton: React.FC<{
     const scopes = encodeURIComponent("identity identity[email]");
     const csrfToken = Math.random().toString(36).substring(2);
 
-    // Save the CSRF token on the backend
     await fetch("/integrations/csrf", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ csrf: csrfToken }),
     });
 
-    // Combine the CSRF token and the current page's URL
     const state = btoa(
       JSON.stringify({
         csrfToken,
-        redirectTo: "/settings/integrations", // Current page URL
+        redirectTo: wooglesRedirectUri || "/settings/integrations",
       }),
     );
 
     const authorizationUrl = `https://www.patreon.com/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scopes}&state=${state}`;
-
     window.location.href = authorizationUrl;
   };
 
-  const style = label ? { minWidth: 300 } : {};
+  return handleLogin;
+};
+
+type ButtonProps = React.ComponentProps<typeof Button>;
+
+// Then extend those props with your custom ones
+interface LoginWithPatreonButtonProps extends ButtonProps {
+  label?: string;
+  icon?: React.ReactNode;
+}
+
+// Button version
+export const LoginWithPatreonButton: React.FC<LoginWithPatreonButtonProps> = ({
+  label,
+  icon,
+  ...props
+}) => {
+  const handleLogin = usePatreonLogin();
 
   return (
-    <Button onClick={handleLogin} style={style} icon={icon}>
+    <Button onClick={handleLogin} icon={icon} {...props}>
       {label ? label : ""}
     </Button>
   );
 };
 
+// Link version
+export const LoginWithPatreonLink: React.FC<{
+  className?: string;
+  children?: React.ReactNode;
+}> = ({ className, children, ...props }) => {
+  const handleLogin = usePatreonLogin("/?botdialog");
+
+  const linkRef = useRef<HTMLAnchorElement>(null);
+  // Handle mouse down to prevent dropdown toggle
+  const handleMouseDown = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Programmatically focus to maintain a11y
+    linkRef.current?.focus();
+  };
+
+  return (
+    <a
+      onClick={handleLogin}
+      className={className}
+      onMouseDown={handleMouseDown}
+      ref={linkRef}
+      {...props}
+    >
+      {children || "Login with Patreon"}
+    </a>
+  );
+};
 export const LoginWithTwitchButton: React.FC<{
   label?: string;
   icon?: React.ReactNode;

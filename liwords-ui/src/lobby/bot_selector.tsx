@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import ExternalLink from "../assets/external-link.svg?react";
 import { Link } from "react-router";
 import { Timestamp, timestampDate } from "@bufbuild/protobuf/wkt";
+import { LoginWithPatreonLink } from "../settings/integrations";
+import PatreonLogo from "../assets/patreon.svg?react";
 
 const botTypes = [
   BotTypesEnum.BEGINNER,
@@ -20,6 +22,7 @@ interface BotSelectorProps {
   lastChargeDate?: Timestamp;
   tierName?: string;
   botType: BotTypesEnum;
+  hasPatreonIntegration?: boolean;
 }
 
 const tierToNumGames = (tierName: string) => {
@@ -50,6 +53,7 @@ const BotSelector: React.FC<BotSelectorProps> = ({
   lastChargeDate,
   entitledToBestBot,
   botType,
+  hasPatreonIntegration,
 }) => {
   // for testing
   // tierName = "Chihuahua";
@@ -99,29 +103,14 @@ const BotSelector: React.FC<BotSelectorProps> = ({
             </div>
           </div>
           {/* display Patreon callout if not subscribed */}
-          {bestbot && !tierName && (
-            <Link
-              to="https://www.patreon.com/woogles_io/"
-              className="bot-selector-patreon-callout-not-subscribed"
-            >
-              <ExternalLink className="pt-callout-link" />
-              <div className="pt-callout-text">
-                Join our Patreon to play BestBot
-              </div>
-            </Link>
-          )}
-          {/* display Patreon callout if subscribed but ran out of games */}
-          {bestbot && !entitledToBestBot && tierName && (
-            <Link
-              to="https://www.patreon.com/woogles_io/"
-              className="bot-selector-patreon-callout-ran-out-of-games"
-            >
-              <ExternalLink className="pt-callout-link" />
-              <div className="pt-callout-text">
-                Upgrade your Patreon tier to play BestBot
-              </div>
-            </Link>
-          )}
+          {bestbot &&
+            (!tierName || !entitledToBestBot || !hasPatreonIntegration) && (
+              <PatreonCallout
+                tierName={tierName}
+                entitledToBestBot={entitledToBestBot}
+                hasPatreonIntegration={hasPatreonIntegration}
+              />
+            )}
         </div>
       ),
     };
@@ -158,6 +147,56 @@ const BotSelector: React.FC<BotSelectorProps> = ({
       </Form.Item>
     </ConfigProvider>
   );
+};
+
+interface PatreonCalloutProps {
+  hasPatreonIntegration?: boolean;
+  tierName?: string;
+  entitledToBestBot?: boolean;
+}
+
+const PatreonCallout: React.FC<PatreonCalloutProps> = ({
+  entitledToBestBot,
+  tierName,
+  hasPatreonIntegration,
+}) => {
+  // Account has no Patreon integration
+  if (!hasPatreonIntegration) {
+    return (
+      <LoginWithPatreonLink className="bot-selector-patreon-callout-not-subscribed">
+        <PatreonLogo className="pt-callout-link" />
+        <div className="pt-callout-text">
+          Log in with Patreon to play BestBot
+        </div>
+      </LoginWithPatreonLink>
+    );
+  }
+  // Account has a Patreon integration, but doesn't have a Patreon subscription
+  if (!tierName) {
+    return (
+      <Link
+        to="https://www.patreon.com/woogles_io/"
+        className="bot-selector-patreon-callout-not-subscribed"
+      >
+        <ExternalLink className="pt-callout-link" />
+        <div className="pt-callout-text">Join our Patreon to play BestBot</div>
+      </Link>
+    );
+  }
+  // Subscribed, but ran out of games:
+  if (!entitledToBestBot) {
+    return (
+      <Link
+        to="https://www.patreon.com/woogles_io/"
+        className="bot-selector-patreon-callout-ran-out-of-games"
+      >
+        <ExternalLink className="pt-callout-link" />
+        <div className="pt-callout-text">
+          Upgrade your Patreon tier to play BestBot
+        </div>
+      </Link>
+    );
+  }
 };
 
 export default BotSelector;

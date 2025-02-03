@@ -1,11 +1,13 @@
 import { loadStripe, StripeError } from "@stripe/stripe-js";
 import { App, Button } from "antd";
 import { useLoginStateStoreContext } from "./store/store";
-import { useClient } from "./utils/hooks/connect";
-import { IntegrationService } from "./gen/api/proto/user_service/user_service_pb";
-import { useEffect, useState } from "react";
 import { LoginWithPatreonButton } from "./settings/integrations";
 import ExternalLink from "./assets/external-link.svg?react";
+import { Link } from "react-router";
+import { useQuery } from "@connectrpc/connect-query";
+import { getIntegrations } from "./gen/api/proto/user_service/user_service-IntegrationService_connectquery";
+import { useCallback, useMemo } from "react";
+import { getSubscriptionCriteria } from "./gen/api/proto/user_service/user_service-AuthenticationService_connectquery";
 
 const PUBLISHABLE_KEY =
   "pk_live_51I7T0HH0ARGCjmpLmLvzN6JMTkUCaFr0xNhg7Mq2wcXTMhGI6R7ShMxnLmoaCynTO0cQ7BZtiSPfOjnA9LmO21dT00gBrlxiSa";
@@ -37,7 +39,6 @@ type StripeResult = {
 export const Donate = () => {
   const { loginState } = useLoginStateStoreContext();
   const { message } = App.useApp();
-  const [hasPatreonIntegration, setHasPatreonIntegration] = useState(false);
 
   const handleResult = (result: StripeResult) => {
     if (result.error) {
@@ -48,25 +49,17 @@ export const Donate = () => {
     }
   };
 
-  const integrationsClient = useClient(IntegrationService);
-  useEffect(() => {
-    if (!loginState.loggedIn) {
-      return;
-    }
-    const fetchIntegrations = async () => {
-      try {
-        const integrations = await integrationsClient.getIntegrations({});
-        setHasPatreonIntegration(
-          integrations.integrations.some(
-            (i) => i.integrationName === "patreon",
-          ),
-        );
-      } catch (e) {
-        console.error(e);
-      }
-    };
-    fetchIntegrations();
-  }, [integrationsClient, loginState.loggedIn]);
+  const { data: userIntegrations } = useQuery(
+    getIntegrations,
+    {},
+    { enabled: loginState.loggedIn },
+  );
+
+  const { data: subscriptionCriteria } = useQuery(
+    getSubscriptionCriteria,
+    {},
+    { enabled: loginState.loggedIn },
+  );
 
   const donateClick = async (money: number) => {
     const price = prices[money as keyof typeof prices];
@@ -95,6 +88,61 @@ export const Donate = () => {
       .then(handleResult);
   };
 
+  const hasPatreonIntegration = useMemo(
+    () =>
+      userIntegrations?.integrations.some(
+        (i) => i.integrationName === "patreon",
+      ),
+    [userIntegrations?.integrations],
+  );
+
+  const patreonButton = useCallback(() => {
+    if (!loginState.loggedIn) {
+      return (
+        <p>
+          Please log in to Woogles to connect your Patreon account after
+          subscribing.
+        </p>
+      );
+    }
+    if (hasPatreonIntegration) {
+      if (subscriptionCriteria?.tierName) {
+        return (
+          <p>
+            You are subscribed at the {subscriptionCriteria.tierName} level.
+            Thank you!
+          </p>
+        );
+      }
+      return (
+        <p style={{ marginTop: 10 }}>
+          <Button
+            style={{ width: 256 }}
+            onClick={() => {
+              window.location.href = "https://patreon.com/woogles_io";
+            }}
+          >
+            <ExternalLink className="pt-callout-link" />
+            Subscribe monthly on Patreon
+          </Button>
+        </p>
+      );
+    } else {
+      return (
+        <p style={{ marginTop: 10 }}>
+          <LoginWithPatreonButton
+            label="Link your Patreon account"
+            style={{ width: 300 }}
+          />
+        </p>
+      );
+    }
+  }, [
+    loginState.loggedIn,
+    hasPatreonIntegration,
+    subscriptionCriteria?.tierName,
+  ]);
+
   return (
     <>
       <p>
@@ -120,29 +168,7 @@ export const Donate = () => {
         When you join the Woogles Patreon, you can get access to BestBot, cool
         badges, and even Woogles swag!
       </p>
-      <Button className="patreon-button">
-        <ExternalLink className="pt-callout-link" />
-        Subscribe monthly on Patreon
-      </Button>
-      {loginState.loggedIn ? (
-        hasPatreonIntegration ? (
-          <p style={{ marginTop: 10 }}>
-            Your Patreon account is connected to Woogles. You can manage your
-            integrations in the Settings page.
-          </p>
-        ) : (
-          <p style={{ marginTop: 10 }}>
-            After subscribing, you can click this button to recognize your
-            subscription:{" "}
-            <LoginWithPatreonButton label="Link your Patreon account" />
-          </p>
-        )
-      ) : (
-        <p>
-          Please log in to Woogles to connect your Patreon account after
-          subscribing.
-        </p>
-      )}
+      {patreonButton()}
     </>
   );
 };

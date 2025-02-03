@@ -42,6 +42,7 @@ import { create } from "@bufbuild/protobuf";
 import BotSelector from "./bot_selector";
 import { useQuery } from "@connectrpc/connect-query";
 import { getSubscriptionCriteria } from "../gen/api/proto/user_service/user_service-AuthenticationService_connectquery";
+import { getIntegrations } from "../gen/api/proto/user_service/user_service-IntegrationService_connectquery";
 
 const initTimeFormatter = (val?: number) => {
   return val != null ? initTimeDiscreteScale[val].label : null;
@@ -168,6 +169,12 @@ export const SeekForm = (props: Props) => {
 
   const { data: subscriptionCriteria } = useQuery(
     getSubscriptionCriteria,
+    {},
+    { enabled: !!props.vsBot },
+  );
+
+  const { data: userIntegrations } = useQuery(
+    getIntegrations,
     {},
     { enabled: !!props.vsBot },
   );
@@ -500,6 +507,9 @@ export const SeekForm = (props: Props) => {
           lastChargeDate={subscriptionCriteria?.lastChargeDate}
           tierName={subscriptionCriteria?.tierName}
           botType={initialValues.botType}
+          hasPatreonIntegration={userIntegrations?.integrations.some(
+            (i) => i.integrationName === "patreon",
+          )}
         />
       )}
       {props.showFriendInput && (
